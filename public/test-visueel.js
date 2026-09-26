@@ -333,20 +333,43 @@ function run(over) {
   return r;
 }
 let m = V.meldingen(run(), [], true);
-waar('niets actief: geen regels, wel snelkoppelingen', m.regels.length === 0 && m.snel.length > 0);
+waar('niets actief: geen chips, geen regels, wel snelkoppelingen', m.lopend.length === 0 && m.regels.length === 0 && m.snel.length > 0);
 waar('de snelkoppelingen voor een beheerder: rit-monitor, caravanrit, bulk-recorder en waakronde',
   m.snel.map(s => s.id).join(',') === 'monitor,caravan,bulk,waak', m.snel.map(s => s.id).join(','));
 m = V.meldingen(run(), [], false);
 waar('voor een gewone gebruiker geen bulk-recorder (die weigert daar toch)',
   m.snel.map(s => s.id).join(',') === 'monitor,caravan,waak', m.snel.map(s => s.id).join(','));
 m = V.meldingen(run({ caravan: { aan: true, draait: true, detail: 'rit loopt' } }), [], true);
-waar('caravanrit loopt: die staat erin, met de status uit PLRun', m.regels[0] && m.regels[0].id === 'caravan' && m.regels[0].detail === 'rit loopt');
+waar('caravanrit loopt: die staat op de rail, met de status uit PLRun', m.lopend[0] && m.lopend[0].id === 'caravan' && m.lopend[0].kort === 'rit loopt');
 waar('caravanrit loopt: geen snelkoppeling naar rit-monitor of bulk-recorder (één tegelijk)',
   !m.snel.some(s => s.id === 'monitor' || s.id === 'bulk' || s.id === 'caravan'), m.snel.map(s => s.id).join(','));
 waar('caravanrit loopt: de waakronde kan er nog bij', m.snel.some(s => s.id === 'waak'));
 m = V.meldingen(run({ bulk: { aan: true, detail: 'neemt op — 40 regels' }, waak: { aan: true, detail: 'loopt rond, niets bijzonders' } }), []);
-waar('bulk-recorder en waakronde samen: twee regels, geen snelkoppelingen', m.regels.length === 2 && m.snel.length === 0,
-  JSON.stringify(m));
+waar('bulk-recorder en waakronde samen: twee chips, geen kaarten, geen snelkoppelingen',
+  m.lopend.length === 2 && m.regels.length === 0 && m.snel.length === 0, JSON.stringify(m));
+// De schermafdruk van 25-09: rit-monitor én recorder liepen, en het vak liet
+// alleen de rit-monitor zien — de recorder stond als zwevende pil ernaast.
+const T0 = 1000000;
+m = V.meldingen(run({
+  monitor: { aan: true, draait: true, detail: 'kijkt mee', tel: 0 },
+  bulk: { aan: true, draait: true, detail: 'neemt op — 673 regels', sinds: T0 - 674000, regels: 673, pauze: false },
+  waak: { aan: true, draait: true, detail: 'loopt rond', totaal: 13, gelezen: 4, let: 0 }
+}), [], true, T0);
+waar('rit-monitor, recorder en waakronde lopen samen: drie chips, in die volgorde',
+  m.lopend.map(c => c.id).join(',') === 'monitor,bulk,waak', m.lopend.map(c => c.id).join(','));
+const cb = m.lopend.find(c => c.id === 'bulk');
+waar('de recorder-chip draagt opnametijd en regels, zoals de pil die hij vervangt',
+  cb && cb.kort === '11 min · 673 r' && cb.opname, JSON.stringify(cb));
+waar('de waakronde-chip draagt de ronde', m.lopend[2].kort === '4/13', m.lopend[2].kort);
+m = V.meldingen(run({
+  monitor: { aan: true, draait: true, detail: 'kijkt mee', tel: 2, ernstig: true },
+  waak: { aan: true, draait: true, detail: '', totaal: 13, gelezen: 13, let: 1 }
+}), [], true, T0);
+waar('twee monitormeldingen, waarvan één ernstig: dat staat op de chip',
+  m.lopend[0].kort === '2 meldingen' && m.lopend[0].let === 2 && m.lopend[0].ernstig, JSON.stringify(m.lopend[0]));
+waar('een waakronde met een bevinding kleurt haar chip', m.lopend[1].kort === '1 let op' && m.lopend[1].let === 1, JSON.stringify(m.lopend[1]));
+m = V.meldingen(run({ bulk: { aan: true, draait: false, detail: 'gepauzeerd', pauze: true, sinds: T0 - 60000, regels: 5 } }), [], true, T0);
+waar('een gepauzeerde recorder zegt dat, en ademt niet', m.lopend[0].kort === 'gepauzeerd' && !m.lopend[0].opname, JSON.stringify(m.lopend[0]));
 const BEV = [{ id: 'a', naam: 'Regel A', uitleg: 'x', ernst: 2 }, { id: 'b', naam: 'Afwijkend', uitleg: 'y', ernst: 1 }, { id: 'c', naam: 'C', uitleg: 'z', ernst: 1 }];
 m = V.meldingen(run(), BEV);
 waar('drie bevindingen: de eerste twee, en een regel "nog 1 bevinding"',
@@ -357,6 +380,47 @@ m = V.meldingen(run(), null);
 waar('bevindingen uitgezet in ☰: ook hier geen bevindingen', !m.regels.some(x => x.soort === 'bevinding'));
 m = V.meldingen(null, BEV);
 waar('zonder PLRun geen vak (en geen snelkoppelingen die niets kunnen)', m.regels.length === 0 && m.snel.length === 0);
+
+// ══ 4b. DE SCHAAL PER MOTOR EN DE LAMPJES ══════════════════════════
+console.log('\n── 4b. een diesel heeft een eigen schaal; de lampjes boven de meter ──');
+const sd = V.schaalVoor('diesel', 6000), sb = V.schaalVoor('benzine', 6000);
+waar('diesel: schaal tot 6000, oranje vanaf 4500', sd.max === 6000 && sd.rood === 4500, JSON.stringify(sd));
+waar('benzine: schaal tot 8000, oranje vanaf de wH van 010C', sb.max === 8000 && sb.rood === 6000, JSON.stringify(sb));
+waar('onbekende motor is de benzineplaat', V.schaalVoor(undefined, 6000).max === 8000);
+const Ad = maak({ motor: 'diesel', actief: ['010C'] });
+waar('een diesel krijgt die schaal ook in de indeling', Ad.PLVisueel.indeling().schaal.max === 6000);
+const plaatD = V.wijzerplaat(4500, null, null, 6000);
+const streepD = [...plaatD.matchAll(/<line class="vis-streep([^"]*)"/g)].map(x => x[1]);
+waar('diesel: 13 streepjes, 0 tot 6000 per 500', streepD.length === 13, 'gevonden: ' + streepD.length);
+waar('diesel: vier oranje streepjes (4500–6000)', streepD.filter(c => /rood/.test(c)).length === 4, streepD.join('|'));
+const cijfD = [...plaatD.matchAll(/<text class="vis-cijfer[^"]*" x="([-\d.]+)" y="([-\d.]+)"[^>]*>([^<]*)</g)].map(x => ({ x: +x[1], y: +x[2], t: x[3] }));
+waar('diesel: cijfers 0 tot 6', cijfD.map(c => c.t).join('') === '0123456', cijfD.map(c => c.t).join(''));
+const vakD = cijfD.map(c => tekstVak('cijfer ' + c.t, c.x, c.y, G.FS_CIJFER, c.t));
+const rest = vakken.filter(v => !/^cijfer/.test(v.naam));
+const botsD = [];
+vakD.forEach(a => rest.forEach(b => { if (raakt(a, b)) botsD.push(a.naam + ' × ' + b.naam); }));
+vakD.forEach(a => bogen.forEach(b => { if (vakRaaktBoog(a, b[1], b[2], b[3], b[4])) botsD.push(a.naam + ' × ' + b[0]); }));
+waar('diesel: geen cijfer raakt een ander vak of een boog', botsD.length === 0, botsD.join(', '));
+waar('diesel: 6000 rpm staat op het laatste streepje', V.stand('toeren', 6000, 6000).hoek === G.A1);
+waar('diesel: 3000 rpm staat midden op de schaal', Math.abs(V.stand('toeren', 3000, 6000).hoek) < 0.01);
+waar('diesel: 9000 rpm blijft op het laatste streepje', V.stand('toeren', 9000, 6000).hoek === G.A1);
+
+const L = V.aandrijfLampjes;
+waar('geen aandrijfoordeel: beide lampjes uit', !L(null, 'benzine').motor && !L(null, 'benzine').hybride);
+waar('onbekend: beide lampjes uit', !L({ toestand: 'ONBEKEND' }, 'benzine').motor);
+let l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'benzine');
+waar('benzine, motor draait: links "Motor aan", rechts niets', l.motor && l.motor.soort === 'aan' && !l.hybride, JSON.stringify(l));
+l = L({ toestand: 'STARTSTOP', zekerheid: 'hoog' }, 'benzine');
+waar('start/stop-stop: links "Start/stop actief"', l.motor && l.motor.kop === 'Start/stop' && l.motor.waarde === 'actief' && !l.hybride, JSON.stringify(l));
+l = L({ toestand: 'ACCU_RIJDT', zekerheid: 'hoog', bewijstHybride: true }, 'benzine');
+waar('rijden met stille motor bewijst een hybride, ook met "benzine" op het kenteken',
+  l.hybride && l.hybride.soort === 'ev' && l.hybride.waarde === 'elektrisch' && l.motor.soort === 'uit', JSON.stringify(l));
+l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'hybride');
+waar('hybride met draaiende motor: rechts "Hybride actief"', l.hybride && l.hybride.soort === 'hyb', JSON.stringify(l));
+l = L({ toestand: 'ACCU_RIJDT', zekerheid: 'hoog' }, 'ev');
+waar('een volledig elektrische auto krijgt geen motorlampje', !l.motor && l.hybride, JSON.stringify(l));
+l = L({ toestand: 'UIT_VOOR_START', zekerheid: 'laag' }, 'benzine');
+waar('lage zekerheid staat op het lampje (twijfel), niet als feit', l.motor && l.motor.twijfel, JSON.stringify(l));
 
 // ══ 5. HET TEMPO ═══════════════════════════════════════════════════
 console.log('\n── 5. trager opvragen wat niet op de meter staat ──');

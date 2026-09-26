@@ -1349,7 +1349,12 @@ window.HUD_LABEL_DICT ={
     pedaal:    '<path d="M9.2 3.5h5.6a1.5 1.5 0 0 1 1.5 1.7l-1.6 11.6a1.5 1.5 0 0 1-1.5 1.3H8.9a1.5 1.5 0 0 1-1.5-1.7L8.9 4.8a1.5 1.5 0 0 1 .3-1.3z"/><path d="M10.2 7.5h4M9.8 10.5h4M9.4 13.5h4"/><path d="M4 21h16"/>',
     gasklep:   '<circle cx="12" cy="12" r="8"/><path d="M7 17 17 7"/><circle cx="12" cy="12" r="1.3"/><path d="M12 2v2M12 20v2"/>',
     turbo:     '<circle cx="11" cy="13" r="7"/><path d="M11 13a3 3 0 1 1 3-3"/><path d="M15.5 7.6 18 5h4v4.5"/>',
-    verbruik:  '<path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11z"/><path d="M9 15.5a3 3 0 0 1 5.6-1.5"/><path d="M12 15.5l2.2-2.2"/>'
+    verbruik:  '<path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11z"/><path d="M9 15.5a3 3 0 0 1 5.6-1.5"/><path d="M12 15.5l2.2-2.2"/>',
+    // De lampjes boven de meter: motorblok, het start/stop-teken (een A in
+    // een pijl die rondgaat) en een bliksem voor de elektromotor.
+    motor:     '<path d="M7 8h7l2 2h2.5V8.5H21v7h-2.5V14H16l-2 3H8.5L7 15H4.5v-5H7z"/><path d="M9.5 8V5.5h5M12 5.5V8"/><path d="M2.5 10.5v4"/>',
+    startstop: '<path d="M19.5 9A8 8 0 1 0 20 13"/><path d="M20.5 4.5V9H16"/><path d="M9.5 15.5 12 8.5l2.5 7M10.4 13h3.2"/>',
+    hybride:   '<path d="M13 2.5 5.5 13.5H11l-1 8 8-11h-5.5z"/>'
   };
 
   /* Staat deze PID in het tekstblok in plaats van in een tegel? */

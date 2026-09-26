@@ -14,6 +14,52 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 26-09-2026 — Rit-monitor: UITVAL-storm na bewust wegschakelen
+
+**Wat er te zien was.** Logboek 26-09, 01:17:55: lege multi-PID-antwoorden,
+de groep verkleind tot 1, een ELM-herinitialisatie (`ATWS`) — en om
+01:17:58 vijftien keer `UITVAL:…levert geen data meer terwijl de rest
+doorloopt`, vanaf 01:18:14 gevolgd door evenveel `hersteld na ~26–43s`. Er
+startte ook een verificatie op `UITVAL:0104`.
+
+**Waarom de bestaande rem het niet ving.** De watchers onderdrukten alleen
+bij een dichte bus-poort (`PLBusGate`, gaat over de ECU) of als ≥ 70% van
+de actieve PIDs stil was. De trage groep (koelwater, brandstof, druk)
+stond nog binnen zijn drempel van 30 s, dus de fractie bleef eronder. Een
+eerste versie van `test-watcherpauze.js` met alleen snelle PIDs was daardoor
+groen mét en zónder de fix — dat mengsel staat er nu in.
+
+**Wat er nu staat.** `_pauzeReden()`: `PLAchtergrond.weg()`,
+`PLElm.poortDicht()`, of een gat van meer dan drie tikken in de eigen tik
+(bevroren WebView: bij terugkomst staat `weg()` al op false). Tijdens een
+pauze doen de watchers niets; daarna telt stilte per PID vanaf het einde
+van de pauze plus `herstelMs` (20 s). De bulk-recorder pauzeert bewust níét
+mee: met de meetdienst loopt de meting op de achtergrond door, en wat hij
+dan opneemt is echt.
+
+## 26-09-2026 — Bulk-recorder: NOx en AdBlue met 100% dekking op een auto zonder SCR
+
+**Wat er te zien was.** In de bulk-analyse stonden "NOx doseerpomp 52,9 %"
+en "AdBlue injectiedruk 8,2 kPa", elk met 600 metingen en 100% dekking —
+en elk als vlakke lijn, min gelijk aan max. Daaronder ook `0160`, `0180` en
+`01A0`: de ondersteuningsbitmaps, als "sensor" met een getal.
+
+**Waarom.** `pakPidVals()` kopieerde elke seconde álles uit `pidVals`, en
+`pidVals` houdt de laatste waarde van elke PID vast — ook van een PID die
+één keer antwoordde (een sweep, een herkansing) en daarna nooit meer. Eén
+onzin-antwoord werd zo tien minuten lang zeshonderd "metingen". De
+PID-gate (`pidGate`, trede `kiesbaar`) keurde precies deze PIDs al af voor
+de live view en de keuzelijst; de recorder was de enige lezer die het hem
+niet vroeg.
+
+**Wat er nu staat.** Twee poorten in de recorder: de gate, en versheid
+(`_pidLastUpd` jonger dan 30 s — alle echte metingen lopen via `updPID()`,
+dus dat stempel is betrouwbaar). Opnames van daarvóór zijn niet te
+repareren; het analysevenster laat wat `vehiclePlausiblePid()` afkeurt
+weg en zegt hoeveel. Een bevroren waarde van een PID die wél plausibel is
+blijft in een oude opname staan: van buiten is niet meer te zien welke
+regels verse metingen waren.
+
 ## 25-09-2026 — Slim visueel: welke PID mag bewegen, en een meter die niet ontspoort
 
 **Waarom niet alle snelle PIDs op de meter.** `PID_POLL_CLASS` zet zeven PIDs

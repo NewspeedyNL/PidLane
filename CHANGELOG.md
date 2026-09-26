@@ -10,6 +10,47 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — Rit-monitor: geen uitval-meldingen bij wegschakelen
+ ═══════════════════════════════════════════════════════════
+
+ - Even wegschakelen gaf vijftien keer UITVAL en daarna vijftien keer
+   "hersteld na ~30s". De watchers pauzeren nu zolang de app op de
+   achtergrond staat, de adapter herstart (ELM-poort dicht) of hun eigen
+   tik stil lag, en tellen stilte daarna pas vanaf het einde van de pauze
+   plus 20 s. Een echte uitval wordt daarna gewoon weer gemeld.
+
+ ═══════════════════════════════════════════════════════════
+ 26-09-2026 — Bulk-recorder: alleen verse metingen van PIDs die bij de auto passen
+ ═══════════════════════════════════════════════════════════
+
+ - De recorder schreef elke seconde álles uit pidVals weg, ook de laatste
+   waarde van een PID die maar één keer antwoordde. Gevolg in de analyse:
+   NOx-doseerpomp en AdBlue op een auto zonder SCR, 600 keer hetzelfde
+   getal, 100% dekking. Nu gaat een waarde alleen mee als de PID-gate hem
+   voor dit voertuig toelaat en hij in de laatste 30 s is bijgewerkt.
+ - Het analysevenster laat in oudere opnames weg wat niet bij het voertuig
+   past, en zegt hoeveel sensoren dat waren.
+
+ ═══════════════════════════════════════════════════════════
+ 26-09-2026 — Slim visueel: lampjes boven de meter, dieselschaal, één rail
+ ═══════════════════════════════════════════════════════════
+
+ - Boven de meter twee lampjes: links (elf uur) de verbrandingsmotor —
+   "Motor aan", "Start/stop actief", "Motor start", "Motor uit" — en rechts
+   (één uur), alleen op een hybride, "Hybride actief" of "Hybride
+   elektrisch". Beide lezen PLAandrijving; de aandrijfbalk erboven is in
+   deze weergave weg, want hij zei hetzelfde.
+ - Een diesel krijgt een eigen toerenschaal: 0–6000, oranje vanaf 4500.
+ - Rit-monitor, bulk-recorder en waakronde stonden dubbel in beeld: als
+   kaart in het vak, als zwevende pil (🛡 km/u, 🔴 Recorder) en als
+   waakstrook boven de meter. Nu één rail met een chip per lopende module,
+   met het getal dat de pil toonde (meldingen, opnametijd en regels,
+   ronde). Pillen en strook zijn weg zolang Slim visueel in beeld is;
+   elders blijven ze. Liepen er twee tegelijk, dan stond er maar één in
+   het vak — nu staan ze er allemaal.
+ - De voetregel is één tikbare regel en valt niet meer onder de tokenteller.
+
+ ═══════════════════════════════════════════════════════════
  25-09-2026 — Slim visueel: één vaste meter met een meldingenvak eronder
  ═══════════════════════════════════════════════════════════
 

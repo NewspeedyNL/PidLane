@@ -140,13 +140,38 @@ function mb(bytes) { return (bytes / 1048576).toFixed(1); }
 
 /* Momentopname van alle PID-waarden die de app op dit moment heeft.
    We kopiëren wat er IS — niet wat we denken dat er zou moeten zijn.
-   Zo logt de recorder automatisch mee met wat de scheduler doet. */
+   Zo logt de recorder automatisch mee met wat de scheduler doet.
+
+   TWEE POORTEN (26-09-2026). "Wat er is" bleek ruimer dan wat er gemeten
+   wordt. pidVals houdt de laatste waarde van elke PID vast, ook van een
+   PID die één keer antwoordde (een sweep, een herkansing) en daarna niet
+   meer. De recorder schreef die waarde elke seconde opnieuw weg: NOx-
+   doseerpomp en AdBlue-druk op een auto zonder SCR, 600 "metingen" van
+   hetzelfde getal, 100% dekking. Nu gaat een waarde alleen mee als
+     1. de PID-gate hem op dit voertuig toelaat (pidGate 'kiesbaar': past bij
+        de brandstof en turbo, is een sensor, levert geen onzin) — dezelfde
+        poort die de live view en de keuzelijst al gebruiken; en
+     2. hij vers is: bijgewerkt in de laatste VERS_MS. Een oude waarde is
+        geen meting meer, en een gat in de reeks is eerlijker dan een
+        herhaling die eruitziet als een vlakke lijn. */
+var VERS_MS = 30000;
+function magMee(k, nu) {
+  try {
+    if (typeof pidGate === 'function' && !pidGate(k, 'kiesbaar')) return false;
+  } catch (e) { console.warn('pidGate(' + k + ') mislukt in de recorder:', e); }
+  try {
+    var t = (typeof _pidLastUpd !== 'undefined' && _pidLastUpd) ? _pidLastUpd[k] : 0;
+    if (t && nu - t > VERS_MS) return false;
+  } catch (e) { console.warn('_pidLastUpd onleesbaar in de recorder:', e); }
+  return true;
+}
 function pakPidVals() {
-  var uit = {};
+  var uit = {}, nu = _blkNu();
   try {
     if (typeof pidVals === 'undefined' || !pidVals) return uit;
     for (var k in pidVals) {
       if (!Object.prototype.hasOwnProperty.call(pidVals, k)) continue;
+      if (!magMee(k, nu)) continue;
       var v = pidVals[k];
       if (v === undefined || v === null) continue;
       if (typeof v === 'number') { if (isFinite(v)) uit[k] = Math.round(v * 1000) / 1000; }
@@ -683,6 +708,7 @@ window.PLBulk = {
   wis      : async function () { await dbKlaar(); return await dbWis(); },
   open     : openDash,
   sluit    : sluitDash,
+  _pakPidVals: pakPidVals, VERS_MS: VERS_MS,
   status   : function () {
     // `gestart` is epoch-ms en dus de tijd die telt (PIDLANE-CONTRACT.md §6);
     // `sessie` draagt dezelfde tijd als etiket, in de lokale klok. Blok 5 legt

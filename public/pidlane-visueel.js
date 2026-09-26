@@ -35,6 +35,13 @@
 //   onder de   het getal van de onderboog, gecentreerd onder de cirkel
 //   cirkel     (buiten de ring, dus de viewBox is hoger dan breed)
 //   meldingen  onder de meter; zie meldingen() hieronder
+//   boven      twee lampjes in de hoeken, op elf en op één uur: links wat de
+//              verbrandingsmotor doet (aan, start/stop, uit), rechts — alleen
+//              op een hybride — of hij elektrisch rijdt. Beide lezen
+//              PLAandrijving; zie aandrijfLampjes()
+//
+// Een diesel draait lager: daar loopt de schaal tot 6000 en begint het
+// oranje bij 4500. Zie SCHAAL hieronder en schaalVoor().
 //
 // Bewust NIET: motorbelasting, de gasklepsensoren A/B/C, de tweede en derde
 // pedaalsensor, ontstekingstiming, raildruk, luchtmassa. Die volgen uit het
@@ -83,6 +90,15 @@ const ACCU_LAADT  = 13.2;      // V, onder deze waarde laadt een draaiende dynam
 const ACCU_LAAG   = 12.0, ACCU_HOOG = 15.0;
 const MOTOR_DRAAIT = 300;      // rpm
 const TANK_RESERVE = 12;       // %
+
+// De toerenschaal per motorsoort. Een diesel met de benzineplaat tot 8000
+// gebruikt nooit het bovenste kwart, en het oranje stond bij 6000 — ver boven
+// waar een diesel al afregelt. De motorsoort komt uit detectEngineType()
+// (kentekendata); zonder die gegevens is het de benzineplaat.
+const SCHAAL = {
+  benzine: { max:8000, rood:null },   // rood: null = de wH van 010C
+  diesel:  { max:6000, rood:4500 }
+};
 
 const PEDAAL_KETEN = ['0149','015A','014A','0111'];
 const PLEKKEN = [
@@ -164,11 +180,13 @@ function tekst(rol, v){
 }
 /* De enige plek waar een meetwaarde iets aan de meter verandert. Geeft
    {hoek, deel, tekst} terug — of voor laaddruk {vac, boost, tekst} — en elk
-   veld is begrensd. `leeg` is true als er geen bruikbare waarde is: dan blijft
-   de naald op het begin en staat er een streepje. */
-function stand(rol, v){
+   veld is begrensd. `max` is het einde van de toerenschaal (standaard
+   G.RPM_MAX; een diesel geeft 6000 mee). `leeg` is true als er geen
+   bruikbare waarde is: dan blijft de naald op het begin en staat er een
+   streepje. */
+function stand(rol, v, max){
   if(rol==='toeren'){
-    const d=deel(v,0,G.RPM_MAX);
+    const d=deel(v,0,(max>0?max:G.RPM_MAX));
     return { leeg:d===null, deel:d===null?0:d, hoek:G.A0+(G.A1-G.A0)*(d===null?0:d)/100, tekst:tekst('toeren',v) };
   }
   if(rol==='pedaal'){
@@ -237,10 +255,10 @@ function tekstEl(id, cls, x, y, fs, inhoud, links){
 function icoonVak(id, x, y, s){
   return '<svg id="'+id+'" class="vis-icoon" x="'+(x-s/2)+'" y="'+(y-s/2)+'" width="'+s+'" height="'+s+'" viewBox="0 0 24 24"></svg>';
 }
-function streepjes(wH){
+function streepjes(wH, max){
   let s='';
-  for(let v=0; v<=G.RPM_MAX; v+=500){
-    const a=G.A0+(G.A1-G.A0)*v/G.RPM_MAX, groot=(v%1000===0);
+  for(let v=0; v<=max; v+=500){
+    const a=G.A0+(G.A1-G.A0)*v/max, groot=(v%1000===0);
     const cls='vis-streep'+(groot?' groot':'')+(wH && v>=wH?' rood':'');
     s+=lijn(groot?G.R_STREEP_GROOT:G.R_STREEP_KLEIN, G.R_STREEP_UIT, a, cls);
     if(groot){
@@ -250,16 +268,16 @@ function streepjes(wH){
   }
   return s;
 }
-function wijzerplaat(wH, olieWH, olieDH){
-  const C=G.C;
+function wijzerplaat(wH, olieWH, olieDH, max){
+  const C=G.C, M=(max>0?max:G.RPM_MAX);
   let s='';
   s+='<circle class="vis-plaat" cx="'+C+'" cy="'+C+'" r="'+G.R_RING+'"/>';
   // Toeren: spoor, zone vanaf de waarschuwingsgrens, vulling, streepjes.
   s+='<path class="vis-spoor" d="'+boogPad(G.R_BOOG,G.A0,G.A1)+'" stroke-width="'+G.B_BOOG+'"/>';
-  if(wH && wH<G.RPM_MAX)
-    s+='<path class="vis-zone" d="'+boogPad(G.R_BOOG,G.A0+(G.A1-G.A0)*wH/G.RPM_MAX,G.A1)+'" stroke-width="'+G.B_BOOG+'"/>';
+  if(wH && wH<M)
+    s+='<path class="vis-zone" d="'+boogPad(G.R_BOOG,G.A0+(G.A1-G.A0)*wH/M,G.A1)+'" stroke-width="'+G.B_BOOG+'"/>';
   s+='<path id="vis-toerenboog" class="vis-vul" pathLength="100" stroke-dasharray="0 200" d="'+boogPad(G.R_BOOG,G.A0,G.A1)+'" stroke-width="'+G.B_BOOG+'"/>';
-  s+=streepjes(wH);
+  s+=streepjes(wH, M);
   s+=tekstEl('', 'vis-schaal', C, G.Y_SCHAAL, G.FS_SCHAAL, '×1000 /min');
   s+=tekstEl('vis-rpm', 'vis-rpm', C, G.Y_RPM, G.FS_EENHEID, '— rpm');
   // De onderboog. Alle paden staan er altijd (vaste tekening); de CSS toont
@@ -297,7 +315,8 @@ function wijzerplaat(wH, olieWH, olieDH){
 }
 
 // ── DE INDELING ───────────────────────────────────────────────────
-const _staat = { aan:false, start:0, traag:new Set(), turboVast:false, handtekening:'', gebruik:new Set(), ind:null, timer:null, meldHtml:'' };
+const _staat = { aan:false, start:0, traag:new Set(), turboVast:false, handtekening:'', gebruik:new Set(), ind:null, timer:null,
+                 meldSleutel:'', lampSleutel:'' };
 
 function bruikbaar(pid){
   try{
@@ -354,9 +373,24 @@ function beoordeelTempo(pid){
   if(t!==null && t>VIS_TRAAG_MS) _staat.traag.add(pid);
 }
 
+/* De motorsoort uit de kentekendata. Onbekend is benzine: dat is de plaat
+   die er stond voordat een diesel een eigen schaal kreeg. */
+function leesMotor(){
+  try{ return (typeof detectEngineType==='function') ? (detectEngineType() || 'benzine') : 'benzine'; }
+  catch(e){ console.warn('PLVisueel: detectEngineType() mislukt', e); return 'benzine'; }
+}
+/* {max, rood} van de toerenschaal. rood is waar het oranje begint: bij een
+   diesel vast, anders de waarschuwingsgrens van 010C. */
+function schaalVoor(motor, wH){
+  const s=(motor==='diesel') ? SCHAAL.diesel : SCHAAL.benzine;
+  const rood=(s.rood!==null) ? s.rood : ((typeof wH==='number' && wH>0) ? wH : null);
+  return { max:s.max, rood:(rood!==null && rood<s.max) ? rood : null };
+}
 function indeling(){
+  const d10=defVan('010C'), motor=leesMotor();
   const ind={ naald:bruikbaar('010C')?'010C':null, midden:bruikbaar('010D')?'010D':null,
-              onder:kiesOnder(), plekken:{} };
+              onder:kiesOnder(), plekken:{}, motor:motor,
+              schaal:schaalVoor(motor, d10 && d10.wH) };
   PLEKKEN.forEach(function(r){ ind.plekken[r.rol]=eerste(r.keten); });
   return ind;
 }
@@ -370,7 +404,7 @@ function gebruiktePids(ind){
   return s;
 }
 function handtekening(ind){
-  return [ind.naald, ind.midden, ind.onder?ind.onder.soort+ind.onder.pid:'',
+  return [ind.naald, ind.midden, ind.onder?ind.onder.soort+ind.onder.pid:'', ind.schaal?ind.schaal.max:'',
           PLEKKEN.map(function(r){ return ind.plekken[r.rol]||''; }).join(',')].join('|');
 }
 function naamVan(pid){
@@ -416,24 +450,63 @@ function isOud(pid, nu){
 // die uit de pas gaat lopen, en dat is de vorm die PIDLANE-WERK.md en het
 // oude §11 de kop kostte.
 //
+// WAT ER LOOPT STAAT OP ÉÉN RAIL (25-09-2026). Tot deze datum kreeg elke
+// lopende module een eigen kaart, en daarnaast hing de rit-monitor als
+// zwevend schildje en de bulk-recorder als zwevende pil rechtsonder, en de
+// waakronde als strook boven de meter. Vier plekken voor drie dingen, en de
+// zwevende pillen vielen over de kaarten heen. Nu: één chip per lopende
+// module, met het getal dat die pil liet zien (meldingen, opnametijd en
+// regels, ronde). Zolang deze weergave in beeld is verbergt pidlane.css de
+// pillen en de strook (body.pl-visueel); elders blijven ze gewoon.
+//
+// Aandacht krijgt een kaart, lopen niet. Een bevinding is iets om te lezen;
+// "de recorder loopt" is een lampje. Daarom staan alleen de bevindingen nog
+// als kaart onder de rail.
+//
 // Rit-monitor, caravanrit, bulk-recorder en rit-analyse zijn één soort: je
-// draait er één tegelijk. Loopt er een, dan staat die er en verdwijnen de
-// snelkoppelingen naar de andere. Waakronde en bevindingen hebben waarde
-// náást elk van die vier en staan er dus los van.
+// start er één vanuit dit vak. Loopt er een, dan verdwijnen de snelkoppelingen
+// naar de andere. Lopen er toch twee (aangezet via het run-paneel), dan staan
+// ze allebei op de rail: wat loopt verzwijgen is erger dan een volle rail.
 // De bulk-recorder is alleen voor beheerders (magIk() in pidlane-bulk.js);
 // een snelkoppeling die bij iemand anders alleen "Alleen voor admin" zegt,
 // hoort er niet te staan.
 const HOOFD = [
-  { id:'monitor', naam:'Rit-monitor',   icoon:'🔔', snel:true },
-  { id:'caravan', naam:'Caravanrit',    icoon:'🚐', snel:true },
-  { id:'bulk',    naam:'Bulk-recorder', icoon:'⏺',  snel:true, admin:true },
-  { id:'rit',     naam:'Rit-analyse',   icoon:'🎒', snel:false }
+  { id:'monitor', naam:'Rit-monitor',   kort:'Rit-monitor', icoon:'🔔', snel:true },
+  { id:'caravan', naam:'Caravanrit',    kort:'Caravanrit',  icoon:'🚐', snel:true },
+  { id:'bulk',    naam:'Bulk-recorder', kort:'Recorder',    icoon:'⏺',  snel:true, admin:true },
+  { id:'rit',     naam:'Rit-analyse',   kort:'Rit-analyse', icoon:'🎒', snel:false }
 ];
 const BEV_IN_VAK = 2;           // zelfde grens als de bevindingenbalk (BEV_MAX)
 
 function leesRun(){
-  try{ return (window.PLRun && typeof window.PLRun.staat==='function') ? (window.PLRun.staat() || {}) : null; }
+  let run=null;
+  try{ run=(window.PLRun && typeof window.PLRun.staat==='function') ? (window.PLRun.staat() || {}) : null; }
   catch(e){ console.warn('PLVisueel: PLRun.staat() mislukt', e); return null; }
+  if(!run) return run;
+  // Wat de rail meer zegt dan aan/uit: dezelfde getallen die de zwevende
+  // pillen toonden, gelezen uit dezelfde bron op het moment van tekenen.
+  try{
+    if(run.monitor && run.monitor.aan && window.PLMon){
+      const o=window.PLMon._order || [];
+      run.monitor.tel=o.length;
+      run.monitor.ernstig=(typeof _MON_ERNSTIG!=='undefined') && o.some(function(k){ return _MON_ERNSTIG.test(k); });
+    }
+  }catch(e){ console.warn('PLVisueel: rit-monitor onleesbaar', e); }
+  try{
+    if(run.bulk && run.bulk.aan && window.PLBulk){
+      const b=window.PLBulk.status() || {};
+      run.bulk.sinds=b.gestart; run.bulk.regels=b.regels; run.bulk.pauze=!!b.gepauzeerd;
+    }
+  }catch(e){ console.warn('PLVisueel: bulk-recorder onleesbaar', e); }
+  try{
+    if(run.waak && run.waak.aan && window.PLWaak){
+      const l=window.PLWaak.lijst() || [];
+      run.waak.totaal=l.length;
+      run.waak.gelezen=l.filter(function(r){ return r.staat!=='leeg'; }).length;
+      run.waak.let=l.filter(function(r){ return r.staat==='let'; }).length;
+    }
+  }catch(e){ console.warn('PLVisueel: waakronde onleesbaar', e); }
+  return run;
 }
 function leesBevindingen(){
   try{
@@ -441,37 +514,63 @@ function leesBevindingen(){
     return (typeof _bevHits!=='undefined' && _bevHits) ? _bevHits.slice() : [];
   }catch(e){ console.warn('PLVisueel: bevindingen onleesbaar', e); return null; }
 }
-/* Wat er in het vak hoort, als gegevens. Los van de HTML zodat
-   test-visueel.js het kan toetsen zonder DOM. */
 function leesAdmin(){
   try{ return !!isAdmin(); }catch(e){ console.warn('PLVisueel: isAdmin() mislukt', e); return false; }
 }
-function meldingen(run, bev, admin){
-  const uit={ regels:[], snel:[] };
+function duur(ms){
+  const m=Math.max(0, Math.floor(ms/60000));
+  return m<60 ? m+' min' : Math.floor(m/60)+' u '+String(m%60).padStart(2,'0');
+}
+/* Eén chip op de rail. De korte tekst verandert hoogstens eens per minuut
+   of per ronde: een knop die elke seconde opnieuw getekend wordt slikt de
+   tik die er net op viel. */
+function chip(id, icoon, naam, r, nu){
+  const c={ id:id, icoon:icoon, naam:naam, kort:r.detail||'', let:0, ernstig:false, opname:false };
+  if(id==='monitor'){
+    c.let=r.tel||0; c.ernstig=!!r.ernstig;
+    c.kort=!r.draait ? 'wacht op verbinding' : (c.let ? c.let+' melding'+(c.let===1?'':'en') : 'kijkt mee');
+  } else if(id==='bulk'){
+    c.opname=!!r.draait && !r.pauze;
+    if(r.pauze) c.kort='gepauzeerd';
+    else if(typeof r.sinds==='number' && r.sinds>0) c.kort=duur((nu||Date.now())-r.sinds)+(typeof r.regels==='number'?' · '+r.regels+' r':'');
+  } else if(id==='waak'){
+    c.let=r.let||0;
+    c.kort=c.let ? c.let+' let op' : (r.totaal ? (r.gelezen||0)+'/'+r.totaal : 'loopt rond');
+  }
+  return c;
+}
+/* Wat er in het vak hoort, als gegevens. Los van de HTML zodat
+   test-visueel.js het kan toetsen zonder DOM. */
+function meldingen(run, bev, admin, nu){
+  const uit={ lopend:[], regels:[], snel:[] };
   if(!run) return uit;
-  const hoofd=HOOFD.filter(function(h){ return run[h.id] && run[h.id].aan; })[0] || null;
-  if(hoofd) uit.regels.push({ soort:'hoofd', id:hoofd.id, icoon:hoofd.icoon, naam:hoofd.naam, detail:run[hoofd.id].detail||'' });
-  if(run.waak && run.waak.aan) uit.regels.push({ soort:'waak', id:'waak', icoon:'👁', naam:'Waakronde', detail:run.waak.detail||'' });
+  const hoofd=HOOFD.filter(function(h){ return run[h.id] && run[h.id].aan; });
+  hoofd.forEach(function(h){ uit.lopend.push(chip(h.id, h.icoon, h.kort, run[h.id], nu)); });
+  if(run.waak && run.waak.aan) uit.lopend.push(chip('waak', '👁', 'Waakronde', run.waak, nu));
   if(bev && bev.length){
     bev.slice(0, BEV_IN_VAK).forEach(function(b){ uit.regels.push({ soort:'bevinding', ernst:b.ernst, naam:b.naam, detail:b.uitleg||'' }); });
     if(bev.length>BEV_IN_VAK) uit.regels.push({ soort:'meer', naam:'nog '+(bev.length-BEV_IN_VAK)+' bevinding'+(bev.length-BEV_IN_VAK===1?'':'en') });
   }
-  if(!hoofd) HOOFD.forEach(function(h){ if(h.snel && run[h.id] && (!h.admin || admin)) uit.snel.push({ id:h.id, icoon:h.icoon, naam:h.naam }); });
+  if(!hoofd.length) HOOFD.forEach(function(h){ if(h.snel && run[h.id] && (!h.admin || admin)) uit.snel.push({ id:h.id, icoon:h.icoon, naam:h.naam }); });
   if(run.waak && !run.waak.aan) uit.snel.push({ id:'waak', icoon:'👁', naam:'Waakronde' });
   return uit;
 }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+function chipHtml(c){
+  return '<button type="button" class="vis-chip'+(c.let?' let':'')+(c.ernstig?' ernstig':'')+(c.opname?' opname':'')+'"'+
+         ' data-id="'+c.id+'" onclick="PLVisueel.open(\''+c.id+'\')" title="'+esc(c.naam)+' openen">'+
+         '<span class="vis-chip-ic">'+c.icoon+'</span><b>'+esc(c.naam)+'</b>'+
+         '<small data-kort>'+esc(c.kort)+'</small></button>';
+}
 function meldHtml(m){
   let h='';
+  if(m.lopend.length) h+='<div class="vis-rail">'+m.lopend.map(chipHtml).join('')+'</div>';
   m.regels.forEach(function(r){
     if(r.soort==='bevinding'){
       h+='<button type="button" class="vis-meld bev'+(r.ernst>=2?' ernstig':'')+'" onclick="openBevindingen()"><span class="vis-meld-ic">🔗</span>'+
          '<span class="vis-meld-tx"><b>'+esc(r.naam)+'</b><small>'+esc(r.detail)+'</small></span></button>';
     } else if(r.soort==='meer'){
       h+='<button type="button" class="vis-meld meer" onclick="openBevindingen()">'+esc(r.naam)+' — bekijk alles →</button>';
-    } else {
-      h+='<button type="button" class="vis-meld" onclick="PLRun.open()"><span class="vis-meld-ic">'+r.icoon+'</span>'+
-         '<span class="vis-meld-tx"><b>'+esc(r.naam)+'</b><small>'+esc(r.detail)+'</small></span></button>';
     }
   });
   if(m.snel.length){
@@ -481,10 +580,15 @@ function meldHtml(m){
   }
   return h;
 }
+/* Alleen de korte teksten veranderd? Dan alleen die bijwerken, zodat de
+   knoppen blijven staan. Anders opnieuw tekenen. */
 function meldBij(){
   const el=document.getElementById('visMeld'); if(!el) return;
-  const h=meldHtml(meldingen(leesRun(), leesBevindingen(), leesAdmin()));
-  if(h!==_staat.meldHtml){ el.innerHTML=h; _staat.meldHtml=h; }
+  const m=meldingen(leesRun(), leesBevindingen(), leesAdmin(), Date.now());
+  const sleutel=JSON.stringify([m.lopend.map(function(c){ return [c.id,c.let>0,c.ernstig,c.opname]; }), m.regels, m.snel]);
+  if(sleutel!==_staat.meldSleutel){ el.innerHTML=meldHtml(m); _staat.meldSleutel=sleutel; return; }
+  const kort=el.querySelectorAll('.vis-chip [data-kort]');
+  m.lopend.forEach(function(c, i){ if(kort[i] && kort[i].textContent!==c.kort) kort[i].textContent=c.kort; });
 }
 // Via PLRun, zodat een snelkoppeling precies doet wat de schakelaar in het
 // run-paneel doet — ook de weigering zonder verbinding.
@@ -493,7 +597,70 @@ function schakel(id){
     const fout=(window.PLRun && typeof window.PLRun.schakel==='function') ? window.PLRun.schakel(id) : 'PLRun ontbreekt';
     if(fout){ try{ showToast(fout); }catch(e){ console.warn('PLVisueel: '+fout, e); } }
   }catch(e){ console.warn('PLVisueel: schakelen van '+id+' mislukt', e); }
-  _staat.meldHtml=''; meldBij();
+  _staat.meldSleutel=''; meldBij();
+}
+// Een chip op de rail opent het scherm van die module — hetzelfde als een tik
+// op de zwevende pil die hij vervangt. Zonder eigen scherm: het run-paneel.
+function open(id){
+  try{
+    if(id==='monitor' && typeof openMonitorView==='function') openMonitorView();
+    else if(id==='bulk' && typeof openBulkRecorder==='function') openBulkRecorder();
+    else if(id==='waak' && typeof openWaakvenster==='function') openWaakvenster();
+    else if(window.PLRun && typeof window.PLRun.open==='function') window.PLRun.open();
+  }catch(e){ console.warn('PLVisueel: openen van '+id+' mislukt', e); }
+}
+
+// ── DE LAMPJES BOVEN DE METER ─────────────────────────────────────
+// Links op elf uur de verbrandingsmotor, rechts op één uur de hybride. Het
+// oordeel is van PLAandrijving (pidlane-aandrijving.js); hier staat alleen
+// hoe het heet. Zolang deze weergave open staat verbergt pidlane.css de
+// aandrijfbalk erboven: hetzelfde oordeel twee keer is één keer te veel.
+//
+// Rechts brandt alleen op een hybride: volgens de kentekendata, of omdat
+// PLAandrijving het rijden-met-stille-motor al zag (bewijstHybride). Een
+// benzineauto die stilstaat met de motor uit is start/stop, geen hybride.
+const LAMP_MOTOR = {
+  DRAAIT_STIL:    { soort:'aan',   kop:'Motor',      waarde:'aan',    icoon:'motor' },
+  DRAAIT_RIJDT:   { soort:'aan',   kop:'Motor',      waarde:'aan',    icoon:'motor' },
+  STARTSTOP:      { soort:'ss',    kop:'Start/stop', waarde:'actief', icoon:'startstop' },
+  START:          { soort:'start', kop:'Motor',      waarde:'start…', icoon:'motor' },
+  UIT_VOOR_START: { soort:'uit',   kop:'Motor',      waarde:'uit',    icoon:'motor' },
+  ACCU_RIJDT:     { soort:'uit',   kop:'Motor',      waarde:'uit',    icoon:'motor' }
+};
+function aandrijfLampjes(res, motor){
+  const uit={ motor:null, hybride:null };
+  if(!res || !res.toestand || res.toestand==='ONBEKEND') return uit;
+  const m=LAMP_MOTOR[res.toestand];
+  // Een volledig elektrische auto heeft geen verbrandingsmotor om te melden.
+  if(m && motor!=='ev') uit.motor={ soort:m.soort, kop:m.kop, waarde:m.waarde, icoon:m.icoon, twijfel:res.zekerheid==='laag' };
+  if(motor==='hybride' || motor==='ev' || res.bewijstHybride){
+    const t=res.toestand;
+    uit.hybride = t==='ACCU_RIJDT' ? { soort:'ev', kop:'Hybride', waarde:'elektrisch', icoon:'hybride' }
+      : (t==='DRAAIT_STIL' || t==='DRAAIT_RIJDT') ? { soort:'hyb', kop:'Hybride', waarde:'actief', icoon:'hybride' }
+      : { soort:'rust', kop:'Hybride', waarde:'gereed', icoon:'hybride' };
+  }
+  return uit;
+}
+function leesAandrijving(){
+  try{ return (window.PLAandrijving && typeof window.PLAandrijving.laatste==='function') ? window.PLAandrijving.laatste() : null; }
+  catch(e){ console.warn('PLVisueel: PLAandrijving.laatste() mislukt', e); return null; }
+}
+function lampHtml(l){
+  return '<svg class="vis-lamp-ic" viewBox="0 0 24 24" aria-hidden="true">'+icoonHtml(l.icoon)+'</svg>'+
+         '<span class="vis-lamp-tx"><small>'+esc(l.kop)+'</small><b>'+esc(l.waarde)+'</b></span>';
+}
+function lampjesBij(){
+  const res=leesAandrijving(), L=aandrijfLampjes(res, _staat.ind ? _staat.ind.motor : leesMotor());
+  const sleutel=JSON.stringify(L);
+  if(sleutel===_staat.lampSleutel) return;
+  _staat.lampSleutel=sleutel;
+  [['vis-lamp-motor', L.motor], ['vis-lamp-hybride', L.hybride]].forEach(function(x){
+    const e=el(x[0]); if(!e) return;
+    const l=x[1];
+    e.className='vis-lamp'+(l ? ' '+l.soort+(l.twijfel?' twijfel':'') : ' leeg');
+    e.innerHTML=l ? lampHtml(l) : '';
+    e.title=l ? (l.kop+' '+l.waarde+(res && res.waarom ? ' — '+res.waarom : '')) : '';
+  });
 }
 
 // ── HET SCHERM ────────────────────────────────────────────────────
@@ -503,21 +670,22 @@ const ONDER_ICOON = { olie:'olie', laaddruk:'turbo', pedaal:'pedaal' };
 
 function bouw(g){
   const ind=indeling();
-  _staat.ind=ind; _staat.handtekening=handtekening(ind); _staat.gebruik=gebruiktePids(ind); _staat.meldHtml='';
+  _staat.ind=ind; _staat.handtekening=handtekening(ind); _staat.gebruik=gebruiktePids(ind); _staat.meldSleutel=''; _staat.lampSleutel='';
   if(!ind.naald){
     g.innerHTML='<div class="vis-leeg"><p><b>Slim visueel heeft het toerental nodig.</b> '+
       '010C is niet geselecteerd, verborgen, of deze auto geeft hem niet.</p>'+
       '<button class="pidview-btn" type="button" onclick="setPidView(\'slim\')">Naar Slim</button></div>';
     return;
   }
-  const d10=defVan('010C'), dOlie=defVan('015C');
-  const wH=(d10 && typeof d10.wH==='number')?d10.wH:null;
+  const dOlie=defVan('015C');
   g.innerHTML='<div class="vis">'+
-    '<svg class="vis-meter" viewBox="0 0 320 '+G.VB_H+'" role="img" aria-label="Toerental, snelheid, koelwater, accu en brandstof">'+
-      wijzerplaat(wH, dOlie && dOlie.wH, dOlie && dOlie.dH)+'</svg>'+
+    '<div class="vis-bak">'+
+      '<div class="vis-lampen"><span class="vis-lamp leeg" id="vis-lamp-motor"></span><span class="vis-lamp leeg" id="vis-lamp-hybride"></span></div>'+
+      '<svg class="vis-meter" viewBox="0 0 320 '+G.VB_H+'" role="img" aria-label="Toerental, snelheid, koelwater, accu en brandstof">'+
+        wijzerplaat(ind.schaal.rood, dOlie && dOlie.wH, dOlie && dOlie.dH, ind.schaal.max)+'</svg>'+
+    '</div>'+
     '<div class="vis-meldingen" id="visMeld"></div>'+
-    '<div class="vis-voet"><span>Overige sensoren staan in Slim</span>'+
-    '<button class="pidview-btn" type="button" onclick="setPidView(\'slim\')">Naar Slim</button></div></div>';
+    '<button class="vis-voet" type="button" onclick="setPidView(\'slim\')">Overige sensoren staan in <b>Slim →</b></button></div>';
   // Onderboog: soort, icoon en titel.
   const og=el('visg-onder'), oi=el('vis-ondericoon');
   if(ind.onder){
@@ -537,7 +705,7 @@ function bouw(g){
   // Wat er al binnen is meteen tonen: een herbouw midden in een rit hoort
   // niet eerst een lege meter te laten zien.
   _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
-  meldBij();
+  meldBij(); lampjesBij();
 }
 
 function zetDash(id, d){ const e=el(id); if(e) e.setAttribute('stroke-dasharray', (Math.round(d*10)/10)+' 200'); }
@@ -575,7 +743,7 @@ function onderBij(){
 function bij(pid, val){
   const ind=_staat.ind; if(!ind) return;
   if(pid===ind.naald){
-    const s=stand('toeren', val), st=oordeel(pid, val);
+    const max=ind.schaal.max, s=stand('toeren', val, max), st=oordeel(pid, val);
     const n=el('vis-naald'); if(n) n.style.transform='rotate('+s.hoek.toFixed(2)+'deg)';
     zetDash('vis-toerenboog', s.deel);
     zetTekst('vis-rpm', s.tekst+' rpm');
@@ -584,7 +752,7 @@ function bij(pid, val){
     if(pk){
       let p=null;
       try{ p=slimPiek(pid); }catch(e){ console.warn('PLVisueel: slimPiek mislukt', e); }
-      const pd=(p===null)?null:stand('toeren',p);
+      const pd=(p===null)?null:stand('toeren',p,max);
       // Zelfde regel als de tellerplaat: alleen als hij merkbaar boven de
       // naald ligt, anders leest hij als een tweede, tegenstrijdige waarde.
       if(!pd || pd.leeg || pd.deel-s.deel<1.5) pk.style.display='none';
@@ -625,7 +793,7 @@ function tik(){
     const e=el(x[0]); if(e && x[1]) e.classList.toggle('oud', isOud(x[1], nu));
   });
   PLEKKEN.forEach(function(r){ const p=el('visp-'+r.rol), pid=I.plekken[r.rol]; if(p && pid) p.classList.toggle('oud', isOud(pid, nu)); });
-  meldBij();
+  meldBij(); lampjesBij();
 }
 
 // De bevindingenbalk bovenaan de live view verhuist naar het meldingenvak
@@ -636,8 +804,16 @@ function balkBij(){
   try{ renderCorrelationBanner(typeof _bevHits!=='undefined' ? _bevHits : []); }
   catch(e){ console.warn('PLVisueel: bevindingenbalk bijwerken mislukt', e); }
 }
+// body.pl-visueel: zolang deze weergave in beeld is verbergt pidlane.css wat
+// hier al op de rail of in de lampjes staat (de zwevende pillen van
+// rit-monitor en recorder, de waakstrook, de aandrijfbalk).
+function lichaam(aan){
+  try{ if(typeof document!=='undefined' && document.body) document.body.classList.toggle('pl-visueel', aan); }
+  catch(e){ console.warn('PLVisueel: body-klasse zetten mislukt', e); }
+}
 function start(){
   if(_staat.aan) return;
+  lichaam(true);
   _staat.aan=true; _staat.start=Date.now(); _staat.traag=new Set(); _staat.handtekening='';
   // Meteen de indeling kennen: remt() leest hem, en een lege set zou in de
   // eerste pollronde ook de PIDs remmen die er straks wél op staan.
@@ -648,6 +824,7 @@ function start(){
 function stop(){
   const was=_staat.aan;
   _staat.aan=false;
+  lichaam(false);
   if(_staat.timer){ clearInterval(_staat.timer); _staat.timer=null; }
   _staat.ind=null; _staat.gebruik=new Set();
   if(was) balkBij();
@@ -655,7 +832,8 @@ function stop(){
 
 window.PLVisueel = {
   G:G, REM_MS:VIS_REM_MS, TRAAG_MS:VIS_TRAAG_MS, MIN_N:VIS_MIN_N, AANLOOP_MS:VIS_AANLOOP_MS, OUD_MIN_MS:VIS_OUD_MIN_MS,
-  PEDAAL_KETEN:PEDAAL_KETEN, PLEKKEN:PLEKKEN, HOOFD:HOOFD,
+  PEDAAL_KETEN:PEDAAL_KETEN, PLEKKEN:PLEKKEN, HOOFD:HOOFD, SCHAAL:SCHAAL,
+  schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, open:open,
   stand:stand, tekst:tekst, laaddrukNu:laaddrukNu, plekOordeel:plekOordeel,
   wijzerplaat:wijzerplaat, boogPad:boogPad, hoekOnder:hoekOnder, hoekLaaddrukNul:hoekLaaddrukNul,
   indeling:indeling, gebruiktePids:gebruiktePids, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,
