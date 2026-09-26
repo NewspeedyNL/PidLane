@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — De tests staan niet meer openbaar op app.pidlane.nl
+ ═══════════════════════════════════════════════════════════
+
+ - public/.assetsignore: Cloudflare uploadt test-*.js en bproef-*.js niet
+   meer (161 bestanden, 2,3 MB). Ze stonden tot nu toe openbaar online, met
+   de binnenkant van de app erin uitgelegd. In de repo, in CI en voor
+   plbrowser.sh verandert er niets. test-assetsignore.js toetst dat de lijst
+   niet te smal en niet te breed is. Twee mutaties in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  26-09-2026 — "Airtable" → "D1" waar het log al in D1 staat (#297)
  ═══════════════════════════════════════════════════════════
 

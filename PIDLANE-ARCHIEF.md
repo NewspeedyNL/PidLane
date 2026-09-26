@@ -14,6 +14,23 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 26-09-2026 — De tests stonden openbaar op app.pidlane.nl
+
+**Wat er aan de hand was.** `[assets] directory = "./public/"` levert álles in
+die map uit, en daar staan ook de 140 `test-*.js` en 20 `bproef-*.js`: ze
+lezen de modules naast zich in, dus ze horen daar. Gevolg: 2,3 MB aan tests,
+met ankers, randgevallen en de redenering achter de meetketen erin, stond op
+`app.pidlane.nl/test-….js`. Niemand zag het, omdat de app er nooit naar
+verwijst. Het kwam boven bij de doorlichting voor de release.
+
+**Waarom `.assetsignore` en geen verhuizing.** De tests naar een eigen map
+verplaatsen raakt `plcheck.sh`, `plmutate.sh`, `plbrowser.js`, de CI-jobs
+en elk pad in 160 bestanden, en dat vlak voor een release. Een
+`.assetsignore` in `public/` (gitignore-syntax, zelf ook niet geüpload) doet
+hetzelfde voor de site, zonder dat er iets anders verschuift.
+`test-assetsignore.js` gebruikt git zelf als patroonmotor en toetst de
+lijst in beide richtingen: niet te smal, niet te breed.
+
 ## 26-09-2026 — De PID-tabel stond vanaf 0169 op de verkeerde nummers
 
 **Hoe het boven kwam.** In de bulk-analyse van de CX-5 (benzine) stonden

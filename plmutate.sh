@@ -533,6 +533,12 @@ MUTATIES=(
 # de klasse fout die hier maanden blijft staan.
 ".gitattributes@@PIDLANE.md            merge=union@@PIDLANE.md            -merge@@test-gitattributes.js@@PIDLANE.md valt niet meer onder union, dus de conflicten komen terug"
 ".gitattributes@@CHANGELOG.md          merge=union@@CHANGELOG.md          merge=union\n*.js                  merge=union@@test-gitattributes.js@@union uitgebreid naar JS, waar een verdubbelde regel stil breekt"
+# ── De tests gaan mee naar app.pidlane.nl (26-09-2026) ──
+# public/.assetsignore houdt 2,3 MB aan tests van de site af. Te smal en een
+# testsoort staat alsnog openbaar; te breed en een module van de app wordt niet
+# geüpload. Allebei stil tot het live staat.
+"public/.assetsignore@@bproef-*.js@@bproef-*.txt@@test-assetsignore.js@@de browserproeven gaan weer mee online"
+"public/.assetsignore@@test-*.js@@test-*.js\npidlane-t*.js@@test-assetsignore.js@@een patroon te breed: pidlane-testrun.js en pidlane-theme.js worden niet geüpload"
 # ── §14 belooft iets wat §3 niet kent (10-09-2026) ──
 # De release notes zijn een ingedikte §3, met de hand. Een functie erbij zetten
 # zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop
