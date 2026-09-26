@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — package.json en wrangler.toml zeggen wat er is
+ ═══════════════════════════════════════════════════════════
+
+ - package.json: "main": "src/index.html" weg (die map bestaat niet), en
+   "private": true zodat npm het pakket nooit kan publiceren.
+ - wrangler.toml: de tweede deploy-route (npm run deploy) en de verwijzing
+   naar SETUP-WRANGLER.md zijn weg. Dat script en dat bestand bestonden
+   niet, en CLAUDE.md zegt al: geen lokale deploy. `npm run tail` is
+   vervangen door de plek in het dashboard.
+
+ ═══════════════════════════════════════════════════════════
  26-09-2026 — Favicon, iOS-icoon en webmanifest bestaan nu echt
  ═══════════════════════════════════════════════════════════
 

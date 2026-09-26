@@ -1,21 +1,16 @@
 # ═══════════════════════════════════════════════════════════════════════
 # wrangler.toml — Cloudflare Worker "pidlane-proxy"
 # ───────────────────────────────────────────────────────────────────────
-# Twee deploy-routes, allebei geldig:
-#   1. git push naar `main` → Cloudflare Workers Builds bouwt en deployt
-#      automatisch, meteen op 100% van het verkeer. Een push naar een BRANCH
-#      bouwt wel maar deployt niet; de "Deployment successful" die de
-#      Cloudflare-bot dan onder je PR zet is een bouwstatus en geen live
-#      versie. Nagemeten op 28-08-2026, zie issue #35. Deze regel zei eerder
-#      alleen "git push" zonder branch te noemen, en dat was het misverstand.
-#   2. npm run deploy → lokaal via wrangler (nu je node op deze PC hebt)
+# Eén deploy-route: git push naar `main` → Cloudflare Workers Builds bouwt en
+# deployt automatisch, meteen op 100% van het verkeer. Een push naar een
+# BRANCH bouwt wel maar deployt niet; de "Deployment successful" die de
+# Cloudflare-bot dan onder je PR zet is een bouwstatus en geen live versie.
+# Nagemeten op 28-08-2026, zie issue #35.
 #
-# Ze bijten elkaar niet, maar draai ze niet door elkaar heen: een lokale
-# deploy overschrijft wat de laatste git-build heeft neergezet. Houd één
-# route aan als "de waarheid" — bij voorkeur git — en gebruik lokaal
-# wrangler vooral voor `dev`, `tail` en `secret put`.
-#
-# Zie SETUP-WRANGLER.md voor de commando's.
+# Geen lokale deploy (CLAUDE.md): die overschrijft stil wat de laatste
+# git-build heeft neergezet. Hier stond tot 26-09-2026 nog `npm run deploy`
+# als tweede route, met een verwijzing naar SETUP-WRANGLER.md — maar dat
+# script en dat bestand bestonden allebei niet.
 # ═══════════════════════════════════════════════════════════════════════
 
 name = "pidlane-proxy"
@@ -108,7 +103,8 @@ storage = "sqlite"
 
 # ── Logs ───────────────────────────────────────────────────────────────
 # Zet Workers Logs aan, zodat je fouten in de nieuwe klant-endpoints kunt
-# terugzien in het dashboard en met `npm run tail` live kunt meekijken.
+# terugzien in het dashboard (Workers → pidlane-proxy → Logs) en er live
+# kunt meekijken.
 [observability]
 enabled = true
 head_sampling_rate = 1
