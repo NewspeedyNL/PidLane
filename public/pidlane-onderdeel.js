@@ -218,7 +218,7 @@ function cadansRegels(){
    16-09. Ze blijven wél gewoon in de live view staan. */
 var TELLER_PIDS = new Set([
   '0101','0102','0103','0112','011C','011E','011F','0121','012B','0130',
-  '0131','0141','014D','014E','0151','015F','017E','017F','0165',
+  '0131','0141','014D','014E','0151','015F','017D','017E','017F','0165',
   '0100','0120','0140','0160','0180','01A0','01C0'
 ]);
 function busBetrouwbaar(){
@@ -680,7 +680,10 @@ var REGELS = [
       C('Roetfiltercode aanwezig (P24xx / P042x)', 5, dtcProef(/^P24[0-9A-F]{2}$|^P04(2[1-9A-F])$/)),
       C('Uitlaattegendruk hoog', 3, function(c){
         if(c.draait!==true) return null;
-        var d=Veen('0169','016B');
+        // Stond op 0169/016B — dat zijn EGR-positie en EGR-temperatuur; de
+        // uitlaatdruk is 0173 (absoluut, kPa). De grens van 120 kPa is
+        // overgenomen en niet aan een echte diesel getoetst.
+        var d=Veen('0173');
         return d===null?null:(d>120);
       })
     ]

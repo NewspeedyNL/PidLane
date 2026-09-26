@@ -120,8 +120,8 @@ function buildCheckItems(){
     ['010C','Motortoerental'],['010D','Voertuigsnelheid'],
     ['0104','Motorbelasting'],['010B','Inlaatdruk'],['010F','Inlaatlucht temp'],
     ['013C','Uitlaatgas temp B1S1'],['0159','Raildruk (direct)'],
-    ['016B','DPF delta druk'],['018E','NOx doseerpomp'],
-    ['01A4','AdBlue injectiedruk'],['015B','HV accu SoC'],['0142','Accuspanning'],
+    ['017A','DPF drukverschil'],['0183','NOx B1S1'],
+    ['0185','AdBlue tankniveau'],['015B','HV accu SoC'],['0142','Accuspanning'],
   ];
   kernPids.forEach(([pid,name])=>{ const i=pc(pid,name); if(i) items.push(i); });
   // Vul aan met ELKE relevante gezonde sensor die de auto óók levert maar niet

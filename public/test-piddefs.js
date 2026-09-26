@@ -44,11 +44,13 @@ const vm = require('vm');
 // ── de tabellen inlezen ───────────────────────────────────────────
 // pidlane-data.js is een classic script dat alles op window hangt; een
 // sandbox waarin window naar zichzelf wijst is genoeg om 'm te draaien.
+let BYTE_LEN = null;
 function laadPidDefs() {
   const s = {};
   s.window = s;
   vm.createContext(s);
   vm.runInContext(fs.readFileSync('pidlane-data.js', 'utf8'), s, { filename: 'pidlane-data.js' });
+  BYTE_LEN = s.PID_BYTE_LEN;
   return s.ALL_PID_DEFS;
 }
 
@@ -139,6 +141,67 @@ function keurBitmapsGeenSensor(defs, geenSensor) {
                    .map(function (p) { return p + ' staat als sensor in ALL_PID_DEFS (' + (defs[p].name || 'naamloos') + ')'; });
 }
 
+// ── SAE-ankers (26-09-2026) ───────────────────────────────────────
+// Vanaf 0169 stond de tabel op de verkeerde nummers: 019E heette "Turbo temp
+// uitlaat A" en gaf −38 °C, 018E "NOx doseerpomp", 01A6 "Brandstof verbruik
+// abs". Allemaal geloofwaardig ogende getallen, en daarom zag niemand het.
+// Deze ankers zijn de BUITENKANT: de SAE-indeling zoals python-OBD, ELMduino
+// en AndrOBD hem eensluidend geven, met per PID een woord dat in de naam hoort
+// en één voorbeeldantwoord (databytes na 41 xx) met de uitkomst volgens de
+// norm. Dit is geen kopie van een tabel die de app ook heeft — het is de norm
+// waartegen die tabel gemeten wordt.
+const SAE_ANKERS = [
+  { pid: '0117', woord: /B1S4/,             b: [0x64, 0xFF],               hoort: 0.5 },
+  { pid: '014A', woord: /pedaal.* E$/i,     b: [0x80],                     hoort: 50.2 },
+  { pid: '014B', woord: /pedaal.* F$/i,     b: [0x80],                     hoort: 50.2 },
+  { pid: '014C', woord: /gestuurd/i,        b: [0xFF],                     hoort: 100 },
+  { pid: '0169', woord: /EGR/,              b: [0x02, 0x00, 0xFF],         hoort: 100 },
+  { pid: '016B', woord: /EGR.*temp/i,       b: [0x01, 0x7D],               hoort: 85 },
+  { pid: '0170', woord: /laaddruk/i,        b: [0x02, 0, 0, 0x10, 0x00],   hoort: 128 },
+  { pid: '017A', woord: /DPF/,              b: [0x01, 0x03, 0xE8],         hoort: 10 },
+  { pid: '017C', woord: /DPF/,              b: [0x01, 0x10, 0x68],         hoort: 380 },
+  { pid: '0183', woord: /NOx/,              b: [0x01, 0x01, 0x9C],         hoort: 412 },
+  { pid: '0185', woord: /AdBlue/,           b: [0x04, 0, 0, 0, 0, 0xFF],   hoort: 100 },
+  { pid: '018E', woord: /wrijving/i,        b: [0x7D],                     hoort: 0 },
+  { pid: '019E', woord: /uitlaatgasdebiet/i, b: [0x01, 0xF4],              hoort: 10 },
+  { pid: '01A2', woord: /cilinder/i,        b: [0x00, 0x40],               hoort: 2 },
+  { pid: '01A6', woord: /kilometer/i,       b: [0x00, 0x25, 0xD7, 0x90],   hoort: 0x0025D790 / 10 }
+];
+function keurSaeAnkers(defs) {
+  const uit = [];
+  SAE_ANKERS.forEach(function (a) {
+    const d = defs[a.pid];
+    if (!d || typeof d.parse !== 'function') { uit.push(a.pid + ': geen definitie of geen parser'); return; }
+    if (!a.woord.test(d.name || '')) uit.push(a.pid + ': heet "' + d.name + '", hoort ' + a.woord + ' te dragen');
+    const v = d.parse(a.b);
+    if (typeof v !== 'number' || Math.abs(v - a.hoort) > 0.06)
+      uit.push(a.pid + ': ' + JSON.stringify(a.b) + ' geeft ' + v + ', hoort ' + a.hoort);
+  });
+  return uit;
+}
+
+// Byte 0 van een blok-PID (vanaf 66, langer dan twee bytes volgens
+// PID_BYTE_LEN) is de steunbitmap. Staat geen enkel bit aan, dan is er niets
+// gemeten en hoort de parser null te geven. Leest hij die bitmap als databyte
+// — de fout die in juli al bij 0165–0168 zat en in september bij 0169–01A6 —
+// dan komt er bij een lege bitmap tóch een getal uit.
+// 64: koppelpunten zonder steunbyte; 65: zelf een statusveld; A6: de
+// kilometerstand is een kaal getal van vier bytes.
+const GEEN_BITMAP = new Set(['0164', '0165', '01A6']);
+function keurBitmapNietAlsData(defs, lengtes) {
+  const uit = [];
+  Object.keys(defs).forEach(function (pid) {
+    const n = parseInt(pid.slice(2), 16), len = lengtes[pid.slice(2)];
+    if (!(n >= 0x64) || !(len > 2) || GEEN_BITMAP.has(pid)) return;
+    const d = defs[pid];
+    if (!d || typeof d.parse !== 'function' || d.unit === 'code') return;
+    const b = [0]; for (let i = 1; i < len; i++) b.push(0x7F);
+    const v = d.parse(b);
+    if (v !== null) uit.push(pid + ' (' + d.name + '): steunbitmap leeg en toch ' + v + ' — leest hij de bitmap als data?');
+  });
+  return uit;
+}
+
 // ── toetshulpjes ─────────────────────────────────────────────────
 let fout = 0;
 
@@ -188,6 +251,12 @@ toetsSchoon('0143 klopt op alle drie de veldmetingen, max dekt overdruk',
   keurAbsoluteBelasting(DEFS));
 toetsSchoon('geen enkele steunbitmap heeft een sensordefinitie',
   keurBitmapsGeenSensor(DEFS, GEEN_SENSOR));
+toetsSchoon('PID_BYTE_LEN is gevuld',
+  BYTE_LEN && Object.keys(BYTE_LEN).length > 100 ? [] : ['PID_BYTE_LEN niet geladen — dan toetst de bitmapcontrole niets']);
+toetsSchoon(SAE_ANKERS.length + ' PIDs dragen hun SAE-naam en rekenen volgens de norm',
+  keurSaeAnkers(DEFS));
+toetsSchoon('geen blok-PID leest zijn steunbitmap als meetwaarde',
+  keurBitmapNietAlsData(DEFS, BYTE_LEN));
 
 // ── tegenproef: elke controle moet de oude fout terugvinden ──
 toetsMeldt('definitie weghalen wordt gezien',
@@ -220,6 +289,24 @@ toetsMeldt('0180 terugzetten als sensor wordt gezien (de fout van 23-08)',
 
 toetsMeldt('01A0 terugzetten als sensor wordt gezien',
   keurBitmapsGeenSensor(met(DEFS, function (d) { d['01A0'] = { name: 'Tussenkoeler temp A', parse: function (b) { return b[0] - 40; } }; }), GEEN_SENSOR), '01A0');
+
+toetsMeldt('de oude 019E ("Turbo temp uitlaat A", A−40) wordt gezien (de fout van 26-09)',
+  keurSaeAnkers(met(DEFS, function (d) { d['019E'] = { name: 'Turbo temp uitlaat A', parse: function (b) { return b[0] - 40; } }; })), '019E');
+
+toetsMeldt('de oude 0170 (bitmap als hoge byte) wordt gezien',
+  keurSaeAnkers(met(DEFS, function (d) { d['0170'] = { name: 'Laaddruk A', parse: function (b) { return (b[0] * 256 + b[1]) * 0.03125; } }; })), '0170');
+
+toetsMeldt('een goede formule onder een verschoven naam wordt gezien',
+  keurSaeAnkers(met(DEFS, function (d) { d['018E'] = { name: 'NOx doseerpomp', parse: DEFS['018E'].parse }; })), '018E');
+
+toetsMeldt('014A terug op "pedaal D" wordt gezien',
+  keurSaeAnkers(met(DEFS, function (d) { d['014A'] = { name: 'Gaspedaal positie D', parse: DEFS['014A'].parse }; })), '014A');
+
+toetsMeldt('de oude 017A (bitmap als hoge byte) wordt gezien door de bitmapcontrole',
+  keurBitmapNietAlsData(met(DEFS, function (d) { d['017A'] = { name: 'Uitlaatgas temp B2S3', unit: '°C', parse: function (b) { return (b[0] * 256 + b[1]) * 0.1 - 40; } }; }), BYTE_LEN), '017A');
+
+toetsMeldt('een steunbit dat niet gelezen wordt (0185 AdBlue) wordt gezien',
+  keurBitmapNietAlsData(met(DEFS, function (d) { d['0185'] = { name: 'AdBlue tankniveau', unit: '%', parse: function (b) { return b[5] * 100 / 255; } }; }), BYTE_LEN), '0185');
 
 toetsSchoon('twee bitmaps tegelijk geven twee meldingen',
   keurBitmapsGeenSensor(met(DEFS, function (d) {

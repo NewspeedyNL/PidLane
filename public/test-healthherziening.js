@@ -200,7 +200,7 @@ console.log('\n6. De gezondheidscheck stempelt pas als het oordeel er is');
   // `_pidLastUpd[pid]` — de versheidsbron — dus een sensor die de scan
   // vervolgens afkeurde droeg tóch het stempel "heeft in deze sessie gemeten".
   //
-  // 019D (Turbo temp inlaat B) is het geval waarop dat zichtbaar werd: een
+  // 019D (toen "Turbo temp inlaat B") is het geval waarop dat zichtbaar werd: een
   // atmosferische motor antwoordt met 0x00, en b[0]-40 maakt daar -40 °C van
   // — exact het definitie-minimum, waar de dummy-detectie 'nodata' van maakt.
   //
@@ -231,13 +231,16 @@ console.log('\n6. De gezondheidscheck stempelt pas als het oordeel er is');
   s._spionOordeel = function (pid) { volgorde.push('oordeel:' + pid); };
   s._antwoorden = {
     '0105': '410585',        // 93 °C — een gewone, geldige koelwatermeting
-    '019D': '419D00',        // 0x00 → -40 °C, precies het definitie-minimum
+    // Sinds 26-09-2026 op 0184: 019D bleek in de tabel verkeerd benoemd (het is
+    // het brandstofdebiet) en heeft geen definitie meer. 0184 is een
+    // temperatuur met dezelfde vorm (één byte, A−40) en dus hetzelfde geval.
+    '0184': '418400',        // 0x00 → -40 °C, precies het definitie-minimum
     '0110': 'NO DATA'        // helemaal geen antwoord
   };
   vm.runInContext(`
     var pidVals={}, pidHist={}, pidSmooth={}, stabilityCount={}, activePIDs=new Set();
     var dataStable=false, discoveredPIDDefs=[];
-    var demoMode=false, connected=true, supportedPIDs=new Set(['0105','019D','0110']);
+    var demoMode=false, connected=true, supportedPIDs=new Set(['0105','0184','0110']);
     var _pidHealth={}, _healthAbort=false;
     function log(){} function logToSheets(){} function btDiag(){}
     function fv(v){ return String(v); }
@@ -276,24 +279,24 @@ console.log('\n6. De gezondheidscheck stempelt pas als het oordeel er is');
   `, s, { filename: 'oordeel-spion' });
   vm.runInContext(knip2('pidlane-rijsituatie.js', 'async function initialHealthScan(){', '\n}', true), s, { filename: 'pidlane-rijsituatie.js (knip)' });
 
-  // Eerst de meetketen zelf: keurt de parser 019D goed en het oordeel af?
+  // Eerst de meetketen zelf: keurt de parser 0184 goed en het oordeel af?
   // Zonder deze twee zou "de scan doet niets" ook groen geven.
-  const val9D = vm.runInContext(`parsePID('019D','419D00')`, s);
-  toets('019D parseert netjes tot -40 °C', val9D === -40, 'parsePID gaf ' + val9D);
-  const oordeel9D = vm.runInContext(`_echteAssess('019D',-40,true).status`, s);
+  const val9D = vm.runInContext(`parsePID('0184','418400')`, s);
+  toets('0184 parseert netjes tot -40 °C', val9D === -40, 'parsePID gaf ' + val9D);
+  const oordeel9D = vm.runInContext(`_echteAssess('0184',-40,true).status`, s);
   toets('en de dummy-detectie keurt die -40 af', oordeel9D === 'nodata', 'oordeel: ' + oordeel9D);
 
   vm.runInContext(`_klaar = initialHealthScan();`, s);
   s._klaar.then(function () {
     const health = vm.runInContext('_pidHealth', s);
     toets('0105 wordt ok', health['0105'] === 'ok', 'oordeel: ' + health['0105']);
-    toets('019D wordt nodata', health['019D'] === 'nodata', 'oordeel: ' + health['019D']);
+    toets('0184 wordt nodata', health['0184'] === 'nodata', 'oordeel: ' + health['0184']);
     toets('0110 (NO DATA) wordt nodata', health['0110'] === 'nodata', 'oordeel: ' + health['0110']);
 
     toets('een goedgekeurde meting krijgt het versheidsstempel', gestempeld['0105'] === 93,
           'updPID kreeg voor 0105: ' + gestempeld['0105']);
-    toets('een AFGEKEURDE meting krijgt het NIET', !('019D' in gestempeld),
-          '019D staat gestempeld op ' + gestempeld['019D'] + ' terwijl het oordeel "' + health['019D'] +
+    toets('een AFGEKEURDE meting krijgt het NIET', !('0184' in gestempeld),
+          '0184 staat gestempeld op ' + gestempeld['0184'] + ' terwijl het oordeel "' + health['0184'] +
           '" is — dan meldt blok 5 "staat niet-ok terwijl hij meet"');
     toets('en een NO DATA al helemaal niet', !('0110' in gestempeld),
           '0110 staat gestempeld op ' + gestempeld['0110']);

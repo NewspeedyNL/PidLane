@@ -63,21 +63,21 @@ if (typeof B.pidGate !== 'function') { console.error('FOUT: pidGate niet geladen
 
 console.log('\n── 1. wat niet bij dit voertuig past, gaat niet mee ──');
 meet(B, '010C', 820); meet(B, '0105', 71);
-meet(B, '018E', 52.9); meet(B, '01A4', 8.2);       // NOx doseerpomp, AdBlue injectiedruk
+meet(B, '0183', 412); meet(B, '0185', 52.9);        // NOx B1S1, AdBlue tankniveau (SAE-nummers sinds 26-09)
 meet(B, '0160', 107); meet(B, '01A0', 16);          // ondersteuningsbitmaps, geen sensor
 let r = B.PLBulk._pakPidVals();
 waar('toerental en koelwater gaan mee', r['010C'] === 820 && r['0105'] === 71, JSON.stringify(r));
-waar('NOx doseerpomp gaat op een benzineauto niet mee', !('018E' in r), JSON.stringify(r));
-waar('AdBlue injectiedruk gaat op een benzineauto niet mee', !('01A4' in r), JSON.stringify(r));
+waar('een NOx-sensor gaat op een benzineauto niet mee', !('0183' in r), JSON.stringify(r));
+waar('het AdBlue-tankniveau gaat op een benzineauto niet mee', !('0185' in r), JSON.stringify(r));
 waar('een ondersteuningsbitmap (0160, 01A0) is geen meting', !('0160' in r) && !('01A0' in r), JSON.stringify(r));
 B._pidHealth['0105'] = 'onzin';
 r = B.PLBulk._pakPidVals();
 waar('een sensor die de app als onzin heeft beoordeeld gaat niet mee', !('0105' in r), JSON.stringify(r));
 
 const D = maak('Diesel');
-meet(D, '018E', 52.9); meet(D, '010C', 820);
+meet(D, '0185', 52.9); meet(D, '010C', 820);
 r = D.PLBulk._pakPidVals();
-waar('op een diesel gaat de NOx-doseerpomp wél mee (tegenproef: de poort kijkt naar het voertuig)', r['018E'] === 52.9, JSON.stringify(r));
+waar('op een diesel gaat het AdBlue-tankniveau wél mee (tegenproef: de poort kijkt naar het voertuig)', r['0185'] === 52.9, JSON.stringify(r));
 
 console.log('\n── 2. een oude waarde is geen meting ──');
 const O = maak('Benzine');
@@ -93,13 +93,13 @@ waar('binnen het venster: mee', r['0105'] === 71, JSON.stringify(r));
 console.log('\n── 3. een opname van vóór deze fix: de analyse laat het weg, en zegt dat ──');
 vm.runInContext(lees('pidlane-bulkvenster.js'), B, { filename: 'pidlane-bulkvenster.js' });
 const regels = [];
-for (let i = 0; i < 600; i++) regels.push({ t: 1000000 + i * 1000, seg: 'stil', n: 3, v: { '010C': 800 + i % 7, '018E': 52.9, '01A4': 8.2 } });
+for (let i = 0; i < 600; i++) regels.push({ t: 1000000 + i * 1000, seg: 'stil', n: 3, v: { '010C': 800 + i % 7, '0183': 412, '0185': 52.9 } });
 const an = B.PLBulkUI._analyseer('oud', regels);
 waar('toerental staat in de analyse', an.pids['010C'] && an.pids['010C'].n === 600, JSON.stringify(Object.keys(an.pids)));
-waar('NOx en AdBlue staan er op een benzineauto niet in', !an.pids['018E'] && !an.pids['01A4'], JSON.stringify(Object.keys(an.pids)));
+waar('NOx en AdBlue staan er op een benzineauto niet in', !an.pids['0183'] && !an.pids['0185'], JSON.stringify(Object.keys(an.pids)));
 const zin = B.PLBulkUI._conclusies(an).filter(z => z.kop === 'Weggelaten')[0];
 waar('de conclusies zeggen dat er twee sensoren zijn weggelaten, met naam',
-  zin && /^2 sensoren/.test(zin.tekst) && /NOx doseerpomp/.test(zin.tekst), JSON.stringify(zin));
+  zin && /^2 sensoren/.test(zin.tekst) && /AdBlue tankniveau/.test(zin.tekst), JSON.stringify(zin));
 
 console.log('\n' + (fout ? 'FOUT: ' : 'goed: ') + ok + ' ok, ' + fout + ' fout\n');
 process.exit(fout ? 1 : 0);

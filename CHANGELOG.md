@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — PID-tabel rechtgezet naar SAE J1979 (0169–01A6 en vier namen eronder)
+ ═══════════════════════════════════════════════════════════
+
+ - Vanaf 0169 hoorden de namen bij andere nummers en lazen de formules de
+   steunbitmap als meetwaarde. Zo stond er op een benzineauto "NOx
+   doseerpomp" (echt: motorwrijvingskoppel), "AdBlue injectiedruk" (echt:
+   versnelling) en "Turbo temp uitlaat A −38 °C" (echt: uitlaatgasdebiet).
+   Nu op de SAE-indeling, met het steunbit gelezen; PIDs waarvan de
+   indeling niet vaststaat hebben geen definitie meer en verschijnen niet.
+ - Ook rechtgezet: 0117 (O2 B1S4), 014A/014B (pedaal E/F), 014C (gestuurde
+   gasklep), de SAE-namenlijst, en de lijsten die op de foute betekenissen
+   leunden: de dieselfilter en turbofilter van de PID-gate, de DPF- en
+   NOx-controles, de sensorsets, de merklijsten, Total Check en de
+   uitlaattegendruk in de onderdelenanalyse.
+ - Een PID die alleen een SAE-naam heeft verschijnt niet meer als sensor
+   met zijn steunbitmap als getal.
+
+ ═══════════════════════════════════════════════════════════
  26-09-2026 — Weergaveknoppen op één regel, embleem in de meter, getallen bij de lampjes
  ═══════════════════════════════════════════════════════════
 

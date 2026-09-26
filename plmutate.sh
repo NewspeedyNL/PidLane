@@ -1009,6 +1009,14 @@ MUTATIES=(
 "public/pidlane-intro.js@@  var DUUR_MS = 2900;@@  var DUUR_MS = 2000;@@test-intro.js@@de JS-timer ruimt de intro op midden in de doorzoom: het logo verdwijnt met een knip"
 "public/pidlane.css@@#plIntro:not(.pli-speel){ animation:pliNood .01s@@#plIntro:not(.pli-speel){ animation:pliKlaar .01s@@test-intro.js@@noodrem en eindregel delen één keyframe: Chromium telt de 2,85 s dan vanaf het laden en de intro valt midden in het beeld weg"
 "public/pidlane.css@@#plIntro.pli-speel .pli-logo{ animation:pliOverend @@#plIntro.pli-speel .pli-logo{ animation:pliOverEnd @@bproef-intro.js@@een verschreven keyframe-naam: geen fout in de console, maar het logo blijft de hele intro onzichtbaar"
+# ── PID-tabel naar SAE J1979 (26-09-2026) ──
+# Vanaf 0169 stonden namen en formules op de verkeerde nummers, en lazen de
+# formules de steunbitmap als databyte. De fouten hieronder zijn die van toen.
+"public/pidlane-data.js@@  '019E':{name:'Uitlaatgasdebiet',       unit:'kg/h',cat:'Emissie',  min:0,max:1311, parse:b=>((b[0]*256+b[1])/50)},@@  '019E':{name:'Turbo temp uitlaat A',   unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},@@test-piddefs.js@@019E is weer een turbotemperatuur van −38 °C op een auto zonder turbo"
+"public/pidlane-data.js@@parse:b=>((b[0]&4)?(b[5]*100/255):null)},@@parse:b=>(b[5]*100/255)},@@test-piddefs.js@@AdBlue-tankniveau leest ook als het steunbit uit staat, en geeft dan een getal dat nergens op slaat"
+"public/pidlane-data.js@@  '014A':{name:'Gaspedaal positie E',    @@  '014A':{name:'Gaspedaal positie D',    @@test-piddefs.js@@twee pedaalsensoren heten allebei D en de derde staat onder de naam van de tweede"
+"public/pidlane-pidgate.js@@'0183','0185','0186','018B']);@@'0183','0186','018B']);@@test-bulkrecorder.js@@het AdBlue-tankniveau komt op een benzineauto weer in de opname"
+"public/pidlane-rijsituatie.js@@ALL_PID_DEFS[pid]={name:SAE_PID_NAMES[suf],unit:'raw',@@ALL_PID_DEFS[pid]={name:SAE_PID_NAMES[suf],unit:'',@@test-diepzoeken.js@@een PID met alleen een SAE-naam verschijnt als sensor en toont zijn steunbitmap als meetwaarde"
 # ── Rit-monitor: geen UITVAL als de app zelf niet meet (26-09-2026) ──
 "public/pidlane-watchers.js@@PLAchtergrond.weg()) return 'app op de achtergrond';@@false) return 'app op de achtergrond';@@test-watcherpauze.js@@even wegschakelen levert weer een rij UITVAL-meldingen op, en twintig seconden later evenveel 'hersteld'"
 "public/pidlane-watchers.js@@PLElm.poortDicht()) return 'adapter herstart';@@false) return 'adapter herstart';@@test-watcherpauze.js@@een ELM-herinitialisatie telt als uitval van elke snelle sensor"
