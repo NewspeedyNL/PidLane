@@ -14,6 +14,71 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 26-09-2026 — Tien punten uit de proefrit (#300): waarom ze stukgingen
+
+**"Sluit de app" verbrak de verbinding niet echt.** `plSluitApp()` riep
+`handleConnect()` aan, en die wachtte SPP netjes af, maar BLE niet
+(`_bleConn.ble.disconnect()` zonder `await`). Daarna kwam meteen
+`exitApp()`. Belangrijker: de meetdienst (#18) is een voorgronddienst. Die
+houdt het proces in leven nadat de activity weg is, en daarmee ook de
+BT-socket. `exitApp()` sluit alleen de activity. De dienst wordt nu eerst
+gestopt.
+
+**De terugknop kende maar zestien vensters.** `appBack()` had een vaste
+lijst met id's. Elk venster dat later bijkwam (waakronde, bulk-analyse,
+bulk-recorder, wizard, tegoedvensters, samen ruim dertig ✕-knoppen) deed
+niets op terug. Het probleem was de vorm, niet één vergeten id: een lijst
+die je moet bijhouden, wordt niet bijgehouden. Nu kijkt hij welk ✕ er
+bovenop ligt (`elementFromPoint`) en drukt dat in.
+
+**De grafiek werd bij een groep niet bijgewerkt.** Hertekenen hing in
+`updPID()` aan `graphPID===pid`, maar een groepskeuze zette `graphPID` op
+null. De groep tekende dus één keer en bleef dan stilstaan, tot je van
+tabblad wisselde. Daarbovenop normaliseerde elke lijn op zijn eigen min–max:
+twee lijnen op dezelfde hoogte konden 12 V en 90 °C zijn. Herbouwd in plaats
+van gerepareerd, omdat de vorm zelf onleesbaar was.
+
+**De systeemtest faalde op de volgorde van de lijst.** Tests liepen één voor
+één, met 12–15 s wachten op een voorwaarde en daarna "n.v.t.", of 30 s en
+daarna "twijfel" voor een test zonder voorwaarde. Veel stationair-tests
+(`idle_stab`, `map_idle`) hadden géén voorwaarde en werden tijdens het rijden
+dus gewoon afgekeurd. De uitkomst zei meer over waar je was toen de lijst
+bij die test kwam dan over de auto.
+
+**Bevindingen van één seconde.** De balk hertekende bij elke meetronde met de
+set van dat moment. Een waarde die even over een grens ging, stond dus
+precies één ronde in beeld. De naklank zit alleen in de weergave
+(`_bevToon`); `correlationLines()` rekent zelf en geeft de AI de stand van
+nu.
+
+## 26-09-2026 — Vier iconen waar index.html naar wees, bestonden nooit
+
+`favicon-32.png`, `favicon.ico`, `apple-touch-icon.png` en
+`manifest.webmanifest` stonden in de `<head>` maar nooit in `public/`
+(`git log --all` kent ze niet). Een ontbrekend asset valt door naar de
+Worker, dus elke paginalading kostte vier Worker-aanroepen die `not_found`
+teruggaven. Niets brak zichtbaar, en daarom bleef het staan. Alles is gemaakt
+uit `icon-512.png`, en `test-verwijzingen.js` legt nu de regel vast in plaats
+van dit ene geval: elke lokale verwijzing in een pagina moet een bestand of
+een Worker-route zijn.
+
+## 26-09-2026 — De tests stonden openbaar op app.pidlane.nl
+
+**Wat er aan de hand was.** `[assets] directory = "./public/"` levert álles in
+die map uit, en daar staan ook de 140 `test-*.js` en 20 `bproef-*.js`: ze
+lezen de modules naast zich in, dus ze horen daar. Gevolg: 2,3 MB aan tests,
+met ankers, randgevallen en de redenering achter de meetketen erin, stond op
+`app.pidlane.nl/test-….js`. Niemand zag het, omdat de app er nooit naar
+verwijst. Het kwam boven bij de doorlichting voor de release.
+
+**Waarom `.assetsignore` en geen verhuizing.** De tests naar een eigen map
+verplaatsen raakt `plcheck.sh`, `plmutate.sh`, `plbrowser.js`, de CI-jobs
+en elk pad in 160 bestanden, en dat vlak voor een release. Een
+`.assetsignore` in `public/` (gitignore-syntax, zelf ook niet geüpload) doet
+hetzelfde voor de site, zonder dat er iets anders verschuift.
+`test-assetsignore.js` gebruikt git zelf als patroonmotor en toetst de
+lijst in beide richtingen: niet te smal, niet te breed.
+
 ## 26-09-2026 — De PID-tabel stond vanaf 0169 op de verkeerde nummers
 
 **Hoe het boven kwam.** In de bulk-analyse van de CX-5 (benzine) stonden

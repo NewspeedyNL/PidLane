@@ -191,7 +191,7 @@ var BOOM = {
    functie; de wizard zet vooraf de juiste parameters.                     */
 var MODULES = {
   dtc:       {n:'Foutcodes & readiness', d:'Opgeslagen, sluimerende en permanente codes, met freeze frame', run:function(){ startChoice('dtc'); }},
-  systeem:   {n:'Systeemtest',           d:'Sensoren stilstaand tegen hun verwachte gedrag',                run:function(){ startChoice('basiccheck'); }},
+  systeem:   {n:'Systeemtest',           d:'Sensoren tegen hun verwachte gedrag, stilstaand en rijdend',                run:function(){ startChoice('basiccheck'); }},
   conditie:  {n:'Conditie per systeem',  d:'Oordeel per systeem, met de meetwaarde eronder',                run:function(){ startChoice('check'); }},
   verbruik:  {n:'Verbruik & rijgedrag',  d:'Werkelijk verbruik en wat je rijstijl kost',                    run:function(){ startChoice('fuel'); }},
   aimonteur: {n:'AI-monteur',            d:'Analyse van je klacht tegen de gemeten waarden',                run:function(){ startChoice('diag'); }},

@@ -550,7 +550,7 @@ function plCloseModeOverlays(){
       else cd.style.display='none';
     }
   }catch(e){ console.warn('minimizeCaravanDash mislukt:', e); }
-  for(const id of ['pidRecOv','onderhoudDash','evDash','langeRitDash','vlDash','vlSheet','vlSvOv','reportsOverviewSheet','aiReportSheet','srTextSheet']){
+  for(const id of ['pidRecOv','onderhoudDash','evDash','langeRitDash','vlDash','vlSvOv','reportsOverviewSheet','aiReportSheet','srTextSheet']){
     const el=document.getElementById(id); if(el) el.style.display='none';
   }
 }

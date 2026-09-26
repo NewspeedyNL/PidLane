@@ -60,13 +60,17 @@ function toets(naam, waar, uitleg) {
       const menu = document.getElementById('kebabMenu');
       const menuTekst = menu ? menu.innerText : '';
       return { live: inDeur('live'), onderweg: inDeur('saving'), diag: inDeur('diag'),
+               bulkana: !!document.getElementById('wc-bulkana'),
                menuWaak: /Waakronde/.test(menuTekst), menuBulk: /Bulk-/.test(menuTekst),
                menuCrash: /rendercrash/i.test(menuTekst) || !!document.getElementById('kbRenderProef'),
                titel: (document.querySelector('#dp-saving .wm-door-h') || {}).textContent || '' };
     })()`);
-    ['wc-waak', 'wc-pidrec', 'wc-bulkrec', 'wc-bulkana'].forEach(function (id) {
+    ['wc-waak', 'wc-pidrec', 'wc-bulkrec'].forEach(function (id) {
       toets(id + ' staat in de deur "Live data"', indeling.live.indexOf(id) >= 0, indeling.live.join(', '));
     });
+    // Sinds 26-09-2026 opent de bulk-analyse alleen nog vanuit de recorder.
+    toets('de bulk-analyse heeft geen eigen kaart meer', !indeling.bulkana,
+          'wc-bulkana staat nog in een deur');
     ['wc-monitor', 'wc-caravan', 'wc-fuel'].forEach(function (id) {
       toets(id + ' staat in de deur "Onderweg"', indeling.onderweg.indexOf(id) >= 0, indeling.onderweg.join(', '));
     });
@@ -92,15 +96,34 @@ function toets(naam, waar, uitleg) {
       const zicht = (id) => { const e = document.getElementById(id); return !!e && e.style.display !== 'none'; };
       window.currentUser = { user: 'klant', role: 'user', label: 'klant' };
       PLKlant.pasMenuAan();
-      const klant = { bulkrec: zicht('wc-bulkrec'), bulkana: zicht('wc-bulkana'), waak: zicht('wc-waak') };
+      const klant = { bulkrec: zicht('wc-bulkrec'), waak: zicht('wc-waak') };
       window.currentUser = { user: 'beheer', role: 'admin', label: 'beheer' };
       PLKlant.pasMenuAan();
-      const beheer = { bulkrec: zicht('wc-bulkrec'), bulkana: zicht('wc-bulkana') };
+      const beheer = { bulkrec: zicht('wc-bulkrec') };
       return { klant, beheer };
     })()`);
-    toets('een klant ziet de bulk-kaarten niet', !rol.klant.bulkrec && !rol.klant.bulkana, JSON.stringify(rol));
+    toets('een klant ziet de bulk-recorder niet', !rol.klant.bulkrec, JSON.stringify(rol));
     toets('maar wel de waakronde', rol.klant.waak, JSON.stringify(rol));
-    toets('TEGENPROEF: beheer ziet ze wel', rol.beheer.bulkrec && rol.beheer.bulkana, JSON.stringify(rol));
+    toets('TEGENPROEF: beheer ziet hem wel', rol.beheer.bulkrec, JSON.stringify(rol));
+
+    // De enige ingang naar de bulk-analyse: de knop in het recordervenster.
+    const ingang = await app.ev(`(async function(){
+      PLBulk.open();
+      const knop = document.getElementById('blkAna');
+      if (!knop) return { fout: 'geen knop blkAna in het recordervenster' };
+      knop.click();
+      await new Promise(r => setTimeout(r, 400));
+      const ov = document.getElementById('blvOv'), rec = document.getElementById('blkOverlay');
+      const open = !!ov && getComputedStyle(ov).display !== 'none';
+      const recDicht = !rec || getComputedStyle(rec).display === 'none';
+      if (window.PLBulkUI) PLBulkUI.sluit();
+      return { open, recDicht };
+    })()`);
+    if (ingang.fout) toets('de recorder opent de analyse', false, ingang.fout);
+    else {
+      toets('de knop in de recorder opent de bulk-analyse', ingang.open);
+      toets('en het recordervenster gaat daarbij dicht', ingang.recDicht);
+    }
 
     const klap = await app.ev(`(function(){
       const k = document.getElementById('vehSecChev');
@@ -116,7 +139,7 @@ function toets(naam, waar, uitleg) {
     const bedrading = await app.ev(`({
       waakUI : typeof window.PLWaakUI === 'object' && typeof PLWaakUI.open === 'function',
       bulkUI : typeof window.PLBulkUI === 'object' && typeof PLBulkUI.open === 'function',
-      // De kaarten in de deur "Live data" hangen aan deze twee losse globalen (#286).
+      // De kaart Waakronde en de knop Analyse in de recorder hangen aan deze twee globalen.
       knopW  : typeof window.openWaakvenster === 'function',
       knopB  : typeof window.openBulkAnalyse === 'function',
       // En de bronnen die ze lezen.
@@ -128,7 +151,7 @@ function toets(naam, waar, uitleg) {
     toets('openWaakvenster() bestaat', bedrading.knopW,
           'de kaart wc-waak roept hem aan');
     toets('openBulkAnalyse() bestaat', bedrading.knopB,
-          'de kaart wc-bulkana roept hem aan');
+          'de knop "Analyse" in de bulk-recorder roept hem aan');
     toets('PLWaak.historie() bestaat als bron', bedrading.waak);
     toets('PLBulk.lees() bestaat als bron', bedrading.lees);
 

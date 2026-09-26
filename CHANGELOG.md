@@ -10,6 +10,71 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — Testrun 8.1: tien punten uit de proefrit (#300)
+ ═══════════════════════════════════════════════════════════
+
+ - Veldlab: het vel met drie vragen na een AI-rapport is weg. De
+   automatische veldlab-sessies lopen door.
+ - Tokenteller: de zwevende chip "⚡ n tokens" staat voor niemand meer in
+   beeld (chipTonen:false). Het saldo staat in ☰ → Mijn account en in de
+   kostenmelding. De sessieteller van de admin (tokPill) wordt nu ook
+   weggehaald als daarna een user of klant inlogt.
+ - Sluit de app: de BLE-verbinding wordt afgewacht (stond zonder await), een
+   half opgebouwde verbinding wordt ook verbroken, en de meetdienst stopt
+   vóór exitApp(). Elke stap krijgt hoogstens 3 s.
+ - Terugknop: drukt het ✕ in van het bovenste venster, gevonden met
+   elementFromPoint(). De vaste lijst van zestien vensters blijft als
+   terugval. Nieuw: bproef-terugknop.js.
+ - Onderrand: de scenariobalk, de melding, de rit- en caravanpil, de
+   sessieteller en de verbindingspoort tellen --pl-sab mee.
+   bproef-schermranden.js meet ze (2h).
+ - Bulk-analyse: de kaart is weg; open hem met "📈 Analyse van de opname" in
+   het venster van de bulk-recorder.
+ - Bevindingen: blijven minstens 5 s in beeld (BEV_MIN_MS). De AI krijgt
+   nog steeds de stand van nu.
+ - Grafiek: herbouwd. Hoogstens drie sensoren, elk een eigen baan met eigen
+   as, normaalband en één zin over het verloop. Hertekenen op een eigen
+   klok. Nieuw: bproef-grafiek.js.
+ - Systeemtest: een checklist die zichzelf afvinkt. Elke test in BSC_TESTS
+   heeft een situatie (sit) en meet alleen dán; de stationair-tests wachten
+   tijdens het rijden. Stoppen kan altijd, wat niet voorkwam heet "niet
+   getest". Nieuw: bproef-systeemtest.js.
+ - Blok 5: vier proeven voor #300. CAMPAGNE voor deze ronde. Elf mutaties
+   in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
+ 26-09-2026 — package.json en wrangler.toml zeggen wat er is
+ ═══════════════════════════════════════════════════════════
+
+ - package.json: "main": "src/index.html" weg (die map bestaat niet), en
+   "private": true zodat npm het pakket nooit kan publiceren.
+ - wrangler.toml: de tweede deploy-route (npm run deploy) en de verwijzing
+   naar SETUP-WRANGLER.md zijn weg. Dat script en dat bestand bestonden
+   niet, en CLAUDE.md zegt al: geen lokale deploy. `npm run tail` is
+   vervangen door de plek in het dashboard.
+
+ ═══════════════════════════════════════════════════════════
+ 26-09-2026 — Favicon, iOS-icoon en webmanifest bestaan nu echt
+ ═══════════════════════════════════════════════════════════
+
+ - index.html wees naar favicon-32.png, favicon.ico, apple-touch-icon.png
+   en manifest.webmanifest, maar die hebben nooit bestaan: vier 404's per
+   paginalading, en vier keer de Worker die "not_found" antwoordde. Alle
+   vier zijn nu gemaakt uit icon-512.png, plus icon-192.png voor het
+   manifest. test-verwijzingen.js toetst dat elke lokale verwijzing in de
+   drie pagina's bestaat. Twee mutaties in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
+ 26-09-2026 — De tests staan niet meer openbaar op app.pidlane.nl
+ ═══════════════════════════════════════════════════════════
+
+ - public/.assetsignore: Cloudflare uploadt test-*.js en bproef-*.js niet
+   meer (161 bestanden, 2,3 MB). Ze stonden tot nu toe openbaar online, met
+   de binnenkant van de app erin uitgelegd. In de repo, in CI en voor
+   plbrowser.sh verandert er niets. test-assetsignore.js toetst dat de lijst
+   niet te smal en niet te breed is. Twee mutaties in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  26-09-2026 — "Airtable" → "D1" waar het log al in D1 staat (#297)
  ═══════════════════════════════════════════════════════════
 

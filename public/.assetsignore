@@ -1,0 +1,4 @@
+# Wat hier staat, uploadt Cloudflare niet naar app.pidlane.nl (gitignore-syntax).
+# De tests draaien in CI en lokaal vanaf de repo; een klant heeft ze niet nodig.
+test-*.js
+bproef-*.js

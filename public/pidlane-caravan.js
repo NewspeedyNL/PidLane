@@ -148,7 +148,7 @@ function _showCaravanPill(){
   if(!p){
     p=document.createElement('div');
     p.id='caravanPill';
-    p.style.cssText='position:fixed;bottom:48px;left:50%;transform:translateX(-50%);z-index:8500;background:linear-gradient(135deg,#0e9f6e,#1a6fff);color:#fff;font-size:12px;font-weight:800;padding:7px 14px;border-radius:16px;box-shadow:0 3px 14px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;gap:8px;letter-spacing:.3px';
+    p.style.cssText='position:fixed;bottom:calc(48px + var(--pl-sab,0px));left:50%;transform:translateX(-50%);z-index:8500;background:linear-gradient(135deg,#0e9f6e,#1a6fff);color:#fff;font-size:12px;font-weight:800;padding:7px 14px;border-radius:16px;box-shadow:0 3px 14px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;gap:8px;letter-spacing:.3px';
     p.onclick=restoreCaravanDash;
     document.body.appendChild(p);
   }

@@ -242,6 +242,35 @@ toetsSchoon('een opgeslagen "uit" geldt meteen bij het laden', keurStartUit());
 toetsSchoon('het venster toont wél alle zes', keurVensterToontAlles());
 toetsSchoon('de AI krijgt alle zes, ook met de balk uit', keurAiKrijgtAlles());
 
+// ── minimale toontijd (26-09-2026) ───────────────────────────────
+// Een bevinding die na één ronde weer weg is, bleef één seconde in beeld.
+// Nu minstens BEV_MIN_MS. De klok is _bevNu() uit de module; die zetten we
+// hier zelf, zodat de test niet op echte seconden hoeft te wachten.
+function keurToontijd(bron) {
+  const ctx = maakOmgeving(bron || BRON);
+  let t = 1000000;
+  ctx._bevNu = function () { return t; };
+  ctx.CORRELATION_RULES = [{ id: 'kort', naam: 'Kort', uitleg: 'MERK-KORT', test: function () { return aan; } }];
+  let aan = true;
+  const uit = [];
+  ctx.runCorrelationEngine();
+  if (merkenIn(banner(ctx) && banner(ctx).innerHTML).indexOf('MERK-KORT') < 0) return ['de bevinding kwam niet eens in beeld'];
+  // Eén seconde later is de waarde weer goed.
+  t += 1000; aan = false; ctx.runCorrelationEngine();
+  const naEen = banner(ctx);
+  if (!naEen || naEen.style.display === 'none' || merkenIn(naEen.innerHTML).indexOf('MERK-KORT') < 0)
+    uit.push('na 1 s en een goede waarde is de bevinding al weg — hij hoort 5 s te blijven');
+  if (ctx.correlationLines && /MERK-KORT/.test(String(ctx.correlationLines()))) uit.push('de AI krijgt een bevinding die er niet meer is');
+  // Op 4,9 s nog in beeld, op 5,1 s weg.
+  t += 3900; ctx.runCorrelationEngine();
+  if (merkenIn(banner(ctx).innerHTML).indexOf('MERK-KORT') < 0 || banner(ctx).style.display === 'none')
+    uit.push('op 4,9 s is hij al weg');
+  t += 200; ctx.runCorrelationEngine();
+  if (banner(ctx).style.display !== 'none') uit.push('op 5,1 s staat hij er nog — hij blijft hangen');
+  return uit;
+}
+toetsSchoon('een bevinding blijft minstens 5 s in beeld, ook als de waarde weer goed is', keurToontijd());
+
 // ── tegenproef ───────────────────────────────────────────────────
 // Zonder plafond moet de eerste controle rood worden. Zo niet, dan telt hij
 // iets anders dan wat er in de balk staat.
@@ -249,6 +278,10 @@ console.log('');
 toetsMeldt('zonder plafond loopt de balk weer vol (tegenproef)',
   keurPlafond(BRON.replace('const BEV_MAX = 2;', 'const BEV_MAX = 999;')),
   'er staan 6 bevindingen in de balk');
+
+toetsMeldt('zonder toontijd verdwijnt hij weer na één ronde (tegenproef)',
+  keurToontijd(BRON.replace('const BEV_MIN_MS = 5000;', 'const BEV_MIN_MS = 0;')),
+  'na 1 s en een goede waarde is de bevinding al weg');
 
 console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);

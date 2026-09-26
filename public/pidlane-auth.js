@@ -363,6 +363,7 @@ function finishLogin(user, account){
   // Hier, want dit is het enige punt waar zowel een verse login als een
   // herstelde sessie langskomt — en het is de rol die de chip bepaalt.
   try{ window.PLCredits?.chip?.(); }catch(e){ log('Tokenchip niet bijgewerkt na inloggen: '+(e.message||e),'warn'); }
+  try{ if(typeof updateTokenPill==='function') updateTokenPill(false); }catch(e){ log('Sessieteller niet bijgewerkt na inloggen: '+(e.message||e),'warn'); }
 
   // Klant erbij: haal het echte saldo op. De chip toont anders het afschrift uit
   // localStorage, en dat is bij een herstelde sessie (Android herlaadt de
@@ -474,6 +475,7 @@ async function logout(){
   // erin, en die bleef daarna op het loginscherm staan. Na deze twee regels
   // klopt het antwoord van _vrijgesteld() pas.
   try{ window.PLCredits?.chip?.(); }catch(e){ console.warn('Tokenchip niet opgeruimd bij uitloggen:', e); }
+  try{ if(typeof updateTokenPill==='function') updateTokenPill(false); }catch(e){ console.warn('Sessieteller niet opgeruimd bij uitloggen:', e); }
   tokClear();                                       // sessietoken ongeldig maken
   try{ localStorage.removeItem('pl_appstate'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } // sessiestaat niet meenemen naar volgende login
   uitlogVlagWeg();                                  // uitloggen is af; het loginscherm mag weer werken
@@ -502,11 +504,28 @@ async function plSluitApp(){
     console.warn('Sluit de app: geen Capacitor-schil, afsluiten kan hier niet');
     return false;
   }
-  try{ if(typeof connected!=='undefined' && connected) await handleConnect(); }
+  // Afsluiten mag nooit blijven hangen op een adapter die niet antwoordt:
+  // elke stap krijgt hoogstens _PL_SLUIT_MS, daarna gaat de app toch dicht.
+  const binnen=(p)=>Promise.race([Promise.resolve(p), new Promise(r=>setTimeout(r,_PL_SLUIT_MS))]);
+  try{ showToast?.('Verbinding verbreken…',1500); }catch(e){ console.warn('showToast mislukt:', e); }
+  // 1. De verbinding. handleConnect() bewaart de sessie en verbreekt SPP en BLE.
+  try{ if(typeof connected!=='undefined' && connected) await binnen(handleConnect()); }
   catch(e){ console.warn('verbinding verbreken vóór afsluiten mislukt:', e); }
+  // 2. Een verbinding die nog opgebouwd werd telt ook: dan is connected nog
+  //    false, maar houdt de socket de adapter al vast.
+  try{
+    if(window._sppConn) await binnen(window._sppConn.spp.disconnect({address:window._sppConn.address}));
+    if(window._bleConn) await binnen(window._bleConn.ble?.disconnect?.(window._bleConn.id));
+    window._sppConn=null; window._bleConn=null;
+  }catch(e){ console.warn('half opgebouwde verbinding niet verbroken:', e); }
+  // 3. De meetdienst. Die houdt het proces (en daarmee de BT-socket) in leven
+  //    nadat de activity weg is; exitApp() alleen stopt hem niet.
+  try{ const md=window.PLMeetdienst; if(md && typeof md.stop==='function') await binnen(md.stop()); }
+  catch(e){ console.warn('meetdienst stoppen vóór afsluiten mislukt:', e); }
   try{ await App.exitApp(); return true; }
   catch(e){ console.warn('App.exitApp mislukt:', e); return false; }
 }
+const _PL_SLUIT_MS=3000;
 window.plSluitApp=plSluitApp;
 // De knop alleen in de APK tonen. Dit script staat onderaan de body, dus het
 // menu bestaat al; de Capacitor-bridge wordt vóór de pagina geladen.
@@ -564,7 +583,7 @@ let _pidNextPoll={};            // pid -> ms-timestamp wanneer weer pollen
 let _focusPIDs=new Set();       // deze PIDs krijgen het snelste interval
 // ── Idee 1/2/3: sessie-stats verzameld tijdens de huidige rit ──
 let _sessionStats={};           // pid -> {n,sum,min,max,last}
-let dtcCodes=[], pollTimer=null, graphPID=null;
+let dtcCodes=[], pollTimer=null;
 let checkAnswers={}, checkResults=[];
 let diagCauses=[], selectedCause=null;
 let selectedProto='0';
@@ -675,7 +694,7 @@ function showToast(msg, duration=3000){
   document.getElementById('pidToast')?.remove();
   const t=document.createElement('div');
   t.id='pidToast';
-  t.style.cssText='position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:12px 20px;border-radius:10px;font-family:var(--f);font-size:13px;z-index:9999;max-width:80%;text-align:center;white-space:pre-line;box-shadow:0 4px 20px rgba(0,0,0,.3);';
+  t.style.cssText='position:fixed;bottom:calc(100px + var(--pl-sab,0px));left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:12px 20px;border-radius:10px;font-family:var(--f);font-size:13px;z-index:9999;max-width:80%;text-align:center;white-space:pre-line;box-shadow:0 4px 20px rgba(0,0,0,.3);';
   t.textContent=msg;
   document.body.appendChild(t);
   setTimeout(()=>t.remove(), duration);

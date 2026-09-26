@@ -610,7 +610,7 @@ function updateScenarioBadge(){
     if(!b){
       b=document.createElement('div');
       b.id='scenarioBadge';
-      b.style.cssText='position:fixed;bottom:10px;left:50%;transform:translateX(-50%);z-index:900;background:#7c3aed;color:#fff;font-size:12px;font-weight:800;padding:4px 12px;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.4);cursor:pointer;letter-spacing:.3px';
+      b.style.cssText='position:fixed;bottom:calc(10px + var(--pl-sab,0px));left:50%;transform:translateX(-50%);z-index:900;background:#7c3aed;color:#fff;font-size:12px;font-weight:800;padding:4px 12px;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.4);cursor:pointer;letter-spacing:.3px';
       b.textContent='🧪 SCENARIO ACTIEF — data is MANUEEL';
       b.onclick=openScenarioModal;
       document.body.appendChild(b);

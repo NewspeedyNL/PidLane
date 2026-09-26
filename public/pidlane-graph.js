@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════════
 // pidlane-graph.js
-// Grafieken: multi-line groepstrends
+// Grafieken: één baan per sensor, op één tijdas
 // Afgesplitst uit index.html (opsplitsronde 2026-07-28). Classic script:
 // geen module, geen IIFE — globals blijven globaal voor inline handlers.
 // ══════════════════════════════════════════════════════════════════
@@ -29,169 +29,234 @@ let hudPreset='rijden';
 let hudCorners=[...HUD_PRESETS.rijden.corners]; // door gebruiker per hoek aanpasbaar
 let hudCenter=HUD_PRESETS.rijden.center;
 
-let activeTrendGroup=null, trendPIDs=[];
+/* ── GRAFIEK: één baan per sensor (herbouwd 26-09-2026) ─────────────────
+   WAT ER WAS. Tot vier knoppenrijen, een losse keuzelijst, een chiprij en
+   een legendablok boven één canvas waarop tot zes lijnen door elkaar liepen,
+   elk genormaliseerd op zijn eigen min–max. Daardoor zei de as niets (twee
+   lijnen op dezelfde hoogte konden 12 V en 90 °C zijn), en een groep werd
+   alleen hertekend als er toevallig ook één losse sensor gekozen was: de
+   live-update hing aan `graphPID===pid` en een groep zette graphPID op null.
 
-function selectTrendGroup(group){
-  document.querySelectorAll('.trend-group-btn').forEach(b=>b.classList.remove('active'));
-  if(group==='none'||group===activeTrendGroup){
-    activeTrendGroup=null; trendPIDs=[];
-    const btn=document.getElementById('dashBtn'); if(btn) btn.disabled=true;
-    updateTrendChips(); drawGraph(); return;
+   WAT HET NU IS. Hoogstens GR_MAX sensoren, elk in een eigen baan met een
+   eigen as in zijn eigen eenheid, onder elkaar op dezelfde tijdas. Per baan:
+   de waarde van nu, het normaalbereik uit de PID-definitie (wL–wH) als
+   groene band, stukken buiten dat bereik in rood, en één zin eronder die zegt
+   hoe de sensor zich de afgelopen minuten gedroeg. Hertekenen gaat op een
+   eigen klok zolang het tabblad open staat, niet meer op een toevallige PID. */
+const GR_MAX = 3;
+const GR_VENSTER_MS = 120000;       // de tijdas: de laatste twee minuten
+let grKeuze = [];                   // de pids in beeld, in volgorde
+let activeTrendGroup = null;        // blijft bestaan: de HUD-presets delen TREND_GROUPS
+let trendPIDs = [];                 // idem, voor de resize-luisteraar in theme.js
+let _grKlok = null;
+
+function _grDef(pid){
+  return (typeof getPidDef==='function' && getPidDef(pid)) ||
+         discoveredPIDDefs.find(d=>d.pid===pid) || ALL_PID_DEFS[pid] || null;
+}
+function _grNaam(pid){ const d=_grDef(pid); return (d && d.name) || pid; }
+function _grEenheid(pid){ const d=_grDef(pid); return (d && d.unit) || ''; }
+// Het normaalbereik: alleen de waarschuwingsgrenzen die de definitie echt
+// heeft. Geen verzonnen band als er geen grens bekend is.
+function _grNormaal(pid){
+  const d=_grDef(pid) || {};
+  const lo = (typeof d.wL==='number') ? d.wL : null, hi = (typeof d.wH==='number') ? d.wH : null;
+  return (lo===null && hi===null) ? null : { lo, hi };
+}
+function _grBinnen(n, v){ return !n || ((n.lo===null || v>n.lo) && (n.hi===null || v<n.hi)); }
+function _grLevert(pid){
+  try{
+    if(typeof demoMode!=='undefined' && demoMode) return true;
+    if(pidHist[pid] && pidHist[pid].length) return true;
+    return (typeof supportedPIDs!=='undefined' && supportedPIDs && supportedPIDs.size) ? supportedPIDs.has(pid) : true;
+  }catch(e){ console.warn('grafiek: kan niet nagaan of de auto '+pid+' levert', e); return true; }
+}
+
+// Samenvatting in één zin — dit is wat een grafiek waardevol maakt: niet de
+// lijn zelf, maar wat je eraan kunt aflezen zonder hem te interpreteren.
+function grSamenvatting(pid, nu){
+  const t1 = nu || Date.now();
+  const data = (pidHist[pid]||[]).filter(x=>x.t>=t1-GR_VENSTER_MS && typeof x.v==='number');
+  if(data.length<2) return { tekst:'Wacht op meetwaarden…', buiten:0, n:data.length };
+  const vals=data.map(x=>x.v), n=_grNormaal(pid), eh=_grEenheid(pid);
+  const min=Math.min(...vals), max=Math.max(...vals);
+  const buiten=data.filter(x=>!_grBinnen(n, x.v)).length;
+  const pct=Math.round(buiten/data.length*100);
+  const sec=Math.round((data[data.length-1].t-data[0].t)/1000);
+  const bereik=fv(min)+'–'+fv(max)+(eh?' '+eh:'');
+  let tekst;
+  if(!n) tekst='Bereik '+bereik+' in '+sec+' s · geen normaalbereik bekend voor deze sensor';
+  else if(!buiten) tekst='Binnen normaal · '+bereik+' in '+sec+' s';
+  else tekst=pct+'% van de tijd buiten normaal · '+bereik+' in '+sec+' s';
+  return { tekst, buiten, n:data.length, pct };
+}
+
+function _grKleur(naam, terug){
+  try{ const v=getComputedStyle(document.documentElement).getPropertyValue(naam).trim(); return v||terug; }
+  catch(e){ return terug; }
+}
+
+function _grBaan(pid){
+  const id='grBaan-'+pid;
+  let b=document.getElementById(id);
+  if(b) return b;
+  b=document.createElement('div'); b.id=id; b.className='gr-baan'; b.dataset.pid=pid;
+  b.innerHTML=
+    '<div class="gr-baan-kop">'+
+      '<span class="gr-naam"></span>'+
+      '<span class="gr-waarde"></span>'+
+      '<button type="button" class="gr-weg" aria-label="Sensor uit de grafiek halen" onclick="grWeg(\''+pid+'\')">✕</button>'+
+    '</div>'+
+    '<canvas class="gr-doek"></canvas>'+
+    '<div class="gr-zin"></div>';
+  return b;
+}
+
+function _grTekenBaan(b, pid, nu){
+  const def=_grDef(pid), eh=_grEenheid(pid), n=_grNormaal(pid);
+  const data=(pidHist[pid]||[]).filter(x=>x.t>=nu-GR_VENSTER_MS && typeof x.v==='number');
+  const laatste=data.length ? data[data.length-1].v : pidVals[pid];
+  const ok = typeof laatste!=='number' || _grBinnen(n, laatste);
+  b.querySelector('.gr-naam').textContent=_grNaam(pid);
+  const w=b.querySelector('.gr-waarde');
+  w.textContent = typeof laatste==='number' ? fv(laatste)+(eh?' '+eh:'') : '—';
+  w.classList.toggle('buiten', !ok);
+  const s=grSamenvatting(pid, nu);
+  const z=b.querySelector('.gr-zin'); z.textContent=s.tekst; z.classList.toggle('buiten', s.buiten>0);
+
+  const c=b.querySelector('canvas'), dpr=window.devicePixelRatio||1;
+  const W=c.clientWidth||300, H=c.clientHeight||96;
+  c.width=Math.round(W*dpr); c.height=Math.round(H*dpr);
+  const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+  const pad={l:40,r:8,t:6,b:16}, gw=W-pad.l-pad.r, gh=H-pad.t-pad.b;
+  const tx=_grKleur('--tx3','#8a97a8'), rand=_grKleur('--bd','#2a3347');
+  const lijn=_grKleur('--bl','#1a6fff'), rood=_grKleur('--rd','#e53e3e'), groen=_grKleur('--gn','#16a34a');
+  // Tijdas: -2 min, -1 min, nu
+  g.font='9px DM Mono, monospace'; g.fillStyle=tx; g.textAlign='center';
+  [[0,'-2 min'],[0.5,'-1 min'],[1,'nu']].forEach(([f,l])=>{
+    const x=pad.l+f*gw; g.fillText(l, Math.min(Math.max(x,pad.l+14), W-pad.r-8), H-3);
+    g.strokeStyle=rand; g.lineWidth=1; g.beginPath(); g.moveTo(x,pad.t); g.lineTo(x,pad.t+gh); g.stroke();
+  });
+  if(data.length<2){
+    g.textAlign='left'; g.fillText('nog geen verloop', pad.l+6, pad.t+gh/2+3); return;
   }
-  activeTrendGroup=group;
-  const grp=TREND_GROUPS[group];
-  // Sensoren van deze grafiekgroep automatisch aanzetten — grafiek vult
-  // zichzelf zodra de data binnenkomt
-  ensurePIDListActive(grp.pids).then(()=>{
-    if(activeTrendGroup===group){
-      trendPIDs=grp.pids.filter(pid=>pidHist[pid]?.length||discoveredPIDDefs.find(d=>d.pid===pid));
-      updateTrendChips(); drawGraph();
-    }
-  });
-  trendPIDs=grp.pids.filter(pid=>pidHist[pid]?.length||discoveredPIDDefs.find(d=>d.pid===pid));
-  document.getElementById('gsel').value=''; graphPID=null;
-  const idx={fuel:0,power:1,accu:2,temp:3}[group];
-  document.querySelectorAll('.trend-group-btn')[idx]?.classList.add('active');
-  const btn=document.getElementById('dashBtn'); if(btn) btn.disabled=false;
-  updateTrendChips(); drawGraph();
-  log(`Groepstrend: ${grp.name}`,'info');
-}
-
-function updateTrendChips(){
-  const el=document.getElementById('activeTrendPIDs'); el.innerHTML='';
-  if(!trendPIDs.length) return;
-  const grp=activeTrendGroup?TREND_GROUPS[activeTrendGroup]:null;
-  trendPIDs.forEach((pid,i)=>{
-    const def=discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid];
-    const color=grp?grp.colors[i%grp.colors.length]:'#1a6fff';
-    const ok=isPIDOk(pid);
-    const chip=document.createElement('div'); chip.className='trend-pid-chip';
-    chip.style.cssText=`background:${ok?color+'22':'#e53e3e22'};border:1px solid ${ok?color:'#e53e3e'};color:${ok?color:'#e53e3e'}`;
-    chip.innerHTML=`<span style="width:7px;height:7px;border-radius:50%;background:${ok?color:'#e53e3e'};flex-shrink:0"></span>${def?.name||pid}${def?.unit?' ('+def.unit+')':''}${!ok?' ⚠':''}`;
-    el.appendChild(chip);
-  });
-}
-
-function isPIDOk(pid){
-  // Fix 19-07: één bron van waarheid — deze functie toetst simpelweg de
-  // actuele waarde via isPIDOkVal(), zodat de drempellogica (FIX C: centrale
-  // getPidDef, dekt 0164+ en de klassieke PIDS-lijst) maar op één plek staat.
-  const val=pidVals[pid]; if(val===undefined) return true;
-  return (typeof isPIDOkVal==='function') ? isPIDOkVal(pid,val) : true;
-}
-
-function rebuildGSel(){
-  const sel=document.getElementById('gsel'); const cur=sel.value;
-  sel.innerHTML='<option value="">— Of kies individuele sensor —</option>';
-  const source=discoveredPIDDefs.length>0?discoveredPIDDefs:PIDS;
-  source.forEach(p=>{
-    const o=document.createElement('option');
-    o.value=p.pid; o.textContent=p.name+(p.unit?' ('+p.unit+')':'');
-    if(p.pid===cur) o.selected=true; sel.appendChild(o);
-  });
-  graphPID=(cur&&source.find(d=>d.pid===cur))?cur:null;
-}
-
-function changeGraph(v){
-  graphPID=v||null;
-  if(v){
-    activeTrendGroup=null; trendPIDs=[]; document.querySelectorAll('.trend-group-btn').forEach(b=>b.classList.remove('active')); updateTrendChips();
-    // Gekozen sensor automatisch aanzetten zodat de grafiek data krijgt
-    ensurePIDListActive([v]).then(()=>{ if(graphPID===v) drawGraph(); });
+  // Y-bereik: de data, plus de normaalband als die er vlakbij ligt, zodat je
+  // ziet hoe ver een waarde ervan af zit. Een band op 200 °C bij een waarde
+  // van 90 °C zou de lijn plat drukken; die tekenen we dan niet mee.
+  let lo=Math.min(...data.map(x=>x.v)), hi=Math.max(...data.map(x=>x.v));
+  // Minimale schaal: 4% van het meetbereik van de sensor. Anders vult een
+  // schommeling van 0,5 °C de hele baan en ziet ruis eruit als onrust.
+  const vol=(def && typeof def.min==='number' && typeof def.max==='number') ? (def.max-def.min)*0.04 : 0;
+  const span0=Math.max(hi-lo, vol, Math.abs(hi)*0.02, 0.5);
+  if(hi-lo<span0){ const m=(hi+lo)/2; lo=m-span0/2; hi=m+span0/2; }
+  if(n){
+    if(n.lo!==null && n.lo>=lo-span0*2) lo=Math.min(lo,n.lo);
+    if(n.hi!==null && n.hi<=hi+span0*2) hi=Math.max(hi,n.hi);
   }
-  drawGraph();
+  const marge=Math.max((hi-lo)*0.12, span0*0.12); lo-=marge; hi+=marge;
+  const Y=v=>pad.t+gh-((v-lo)/(hi-lo))*gh, X=t=>pad.l+(1-(nu-t)/GR_VENSTER_MS)*gw;
+  // Normaalband
+  if(n){
+    const y1=Y(n.hi!==null?Math.min(n.hi,hi):hi), y2=Y(n.lo!==null?Math.max(n.lo,lo):lo);
+    g.globalAlpha=0.13; g.fillStyle=groen; g.fillRect(pad.l, y1, gw, Math.max(0,y2-y1)); g.globalAlpha=1;
+  }
+  // Y-labels: boven en onder
+  g.fillStyle=tx; g.textAlign='right';
+  g.fillText(fv(hi-marge), pad.l-4, pad.t+8); g.fillText(fv(lo+marge), pad.l-4, pad.t+gh);
+  // De lijn, per stuk gekleurd: rood waar hij buiten normaal ligt
+  g.lineWidth=2; g.lineJoin='round';
+  for(let i=1;i<data.length;i++){
+    const a=data[i-1], z=data[i];
+    g.strokeStyle=(_grBinnen(n,a.v)&&_grBinnen(n,z.v))?lijn:rood;
+    g.beginPath(); g.moveTo(X(a.t),Y(a.v)); g.lineTo(X(z.t),Y(z.v)); g.stroke();
+  }
+  const e=data[data.length-1];
+  g.fillStyle=ok?lijn:rood; g.beginPath(); g.arc(X(e.t),Y(e.v),3,0,Math.PI*2); g.fill();
 }
 
 function drawGraph(){
-  const canvas=document.getElementById('graphCanvas');
-  const ctx=canvas.getContext('2d');
-  const W=canvas.offsetWidth||560, H=280;
-  canvas.width=W; canvas.height=H;
-  ctx.fillStyle=isDark?'#161b25':'#fff'; ctx.fillRect(0,0,W,H);
-
-  const pad={t:16,r:16,b:28,l:48}, gW=W-pad.l-pad.r, gH=H-pad.t-pad.b;
-
-  // Bepaal welke PIDs tekenen
-  const pidsToShow=[];
-  if(activeTrendGroup&&trendPIDs.length){
-    const grp=TREND_GROUPS[activeTrendGroup];
-    trendPIDs.forEach((pid,i)=>{
-      if(pidHist[pid]?.length>=2) pidsToShow.push({pid,color:grp.colors[i%grp.colors.length],ok:isPIDOk(pid)});
-    });
-  } else if(graphPID&&pidHist[graphPID]?.length>=2){
-    pidsToShow.push({pid:graphPID,color:'#1a6fff',ok:isPIDOk(graphPID)});
-  }
-
-  if(!pidsToShow.length){
-    ctx.fillStyle='#8a97a8'; ctx.font='12px DM Sans'; ctx.textAlign='center';
-    ctx.fillText('Kies een groepstrend of individuele sensor',W/2,H/2);
-    document.getElementById('graphLegend').innerHTML=''; return;
-  }
-
-  // Grid
-  const gridC=isDark?'#2a3347':'#e2e6ed';
-  for(let i=0;i<=4;i++){
-    const y=pad.t+(i/4)*gH;
-    ctx.strokeStyle=gridC; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
-  }
-
-  // Teken elke PID als eigen lijn (genormaliseerd 0-100% van zijn bereik)
-  pidsToShow.forEach(({pid,color,ok})=>{
-    const data=pidHist[pid];
-    const def=discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid];
-    const vals=data.map(x=>x.v);
-    const minV=Math.min(...vals), maxV=Math.max(...vals)+.001, range=maxV-minV||1;
-    const lineColor=ok?color:'#e53e3e';
-
-    ctx.strokeStyle=lineColor; ctx.lineWidth=ok?2:2.5;
-    if(!ok) ctx.setLineDash([5,3]); else ctx.setLineDash([]);
-    if(!ok){ ctx.shadowColor='#e53e3e'; ctx.shadowBlur=4; }
-
-    ctx.beginPath();
-    data.forEach((x,i)=>{
-      const px=pad.l+(i/(data.length-1))*gW;
-      const py=pad.t+gH-((x.v-minV)/range)*gH;
-      i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
-    });
-    ctx.stroke(); ctx.shadowBlur=0; ctx.setLineDash([]);
-
-    // Eindpunt + waarde label
-    const lx=pad.l+gW;
-    const lastV=vals[vals.length-1];
-    const ly=pad.t+gH-((lastV-minV)/range)*gH;
-    ctx.fillStyle=lineColor;
-    ctx.beginPath(); ctx.arc(lx,ly,3.5,0,Math.PI*2); ctx.fill();
-    if(pidsToShow.length>1){
-      ctx.font='9px DM Mono'; ctx.textAlign='right';
-      ctx.fillText(`${fv(lastV)}${def?.unit||''}`,lx-6,ly-4);
-    }
+  const vak=document.getElementById('grBanen'); if(!vak) return;
+  const leeg=document.getElementById('grLeeg');
+  // Banen die niet meer gekozen zijn weg, nieuwe erbij, volgorde = grKeuze.
+  [...vak.children].forEach(k=>{ if(grKeuze.indexOf(k.dataset.pid)<0) k.remove(); });
+  grKeuze.forEach(pid=>vak.appendChild(_grBaan(pid)));
+  if(leeg) leeg.style.display=grKeuze.length?'none':'';
+  const nu=Date.now();
+  grKeuze.forEach(pid=>{
+    try{ _grTekenBaan(document.getElementById('grBaan-'+pid), pid, nu); }
+    catch(e){ console.warn('grafiek: baan '+pid+' niet getekend', e); }
   });
+  _grKnoppenBij();
+  trendPIDs=grKeuze.slice();
+}
 
-  // Y-as voor single PID
-  if(pidsToShow.length===1){
-    const {pid}=pidsToShow[0];
-    const def=discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid];
-    const vals=pidHist[pid].map(x=>x.v);
-    const minV=Math.min(...vals), maxV=Math.max(...vals)+.001;
-    for(let i=0;i<=4;i++){
-      const y=pad.t+(i/4)*gH; const v=maxV-(i/4)*(maxV-minV);
-      ctx.fillStyle='#8a97a8'; ctx.font='9px DM Mono'; ctx.textAlign='right';
-      ctx.fillText(fv(v),pad.l-3,y+3);
-    }
-    ctx.fillStyle='#8a97a8'; ctx.font='10px DM Sans'; ctx.textAlign='center';
-    ctx.fillText(`${def?.name||pid}${def?.unit?' ('+def.unit+')':''}`,W/2,H-4);
+function _grKnoppenBij(){
+  document.querySelectorAll('.gr-groep').forEach(k=>k.classList.toggle('active', k.dataset.groep===activeTrendGroup));
+  const sel=document.getElementById('gsel');
+  if(sel) sel.disabled = false;
+  const tel=document.getElementById('grTel'); if(tel) tel.textContent=grKeuze.length+'/'+GR_MAX;
+}
+
+function grKiesGroep(groep){
+  const grp=TREND_GROUPS[groep]; if(!grp) return;
+  if(activeTrendGroup===groep){ activeTrendGroup=null; grKeuze=[]; drawGraph(); return; }
+  activeTrendGroup=groep;
+  grKeuze=grp.pids.filter(_grLevert).slice(0,GR_MAX);
+  if(!grKeuze.length) showToast?.('Deze auto levert geen van de sensoren uit "'+grp.name+'"');
+  drawGraph();
+  ensurePIDListActive(grKeuze.slice()).then(drawGraph).catch(e=>console.warn('grafiek: sensoren niet aangezet', e));
+  try{ log('Grafiek: '+grp.name,'info'); }catch(e){ console.warn('log mislukt:', e); }
+}
+
+function grVoegToe(pid){
+  const sel=document.getElementById('gsel'); if(sel) sel.value='';
+  if(!pid || grKeuze.indexOf(pid)>=0) return;
+  activeTrendGroup=null;
+  if(grKeuze.length>=GR_MAX){
+    showToast?.('Hoogstens '+GR_MAX+' sensoren tegelijk — '+_grNaam(grKeuze[0])+' is eruit gehaald');
+    grKeuze.shift();
   }
+  grKeuze.push(pid);
+  drawGraph();
+  ensurePIDListActive([pid]).then(drawGraph).catch(e=>console.warn('grafiek: sensor niet aangezet', e));
+}
 
-  // Legenda onderaan
-  const legend=document.getElementById('graphLegend'); legend.innerHTML='';
-  pidsToShow.forEach(({pid,color,ok})=>{
-    const def=discoveredPIDDefs.find(d=>d.pid===pid)||ALL_PID_DEFS[pid];
-    const val=pidVals[pid]; const lc=ok?color:'#e53e3e';
-    const item=document.createElement('div'); item.className='legend-item';
-    item.innerHTML=`<div class="legend-dot" style="background:${lc}${ok?'':';border:1px dashed '+lc}"></div><span style="color:${lc};font-weight:${ok?500:700}">${def?.name||pid}</span><span style="font-family:var(--m);font-size:12px;color:${lc}">${val!==undefined?fv(val)+(def?.unit||''):'—'}</span>${!ok?'<span style="font-size:11px;font-weight:700;color:#e53e3e;background:#fff0f0;padding:1px 4px;border-radius:3px">⚠ AFWIJKING</span>':''}`;
-    legend.appendChild(item);
+function grWeg(pid){
+  grKeuze=grKeuze.filter(p=>p!==pid);
+  activeTrendGroup=null;
+  drawGraph();
+}
+
+// De keuzelijst: alleen sensoren die deze auto levert. Naam wordt nog op
+// veel plekken aangeroepen na een PID-scan, vandaar de oude naam.
+function rebuildGSel(){
+  const sel=document.getElementById('gsel'); if(!sel) return;
+  sel.innerHTML='<option value="">＋ Sensor toevoegen…</option>';
+  const bron=discoveredPIDDefs.length>0?discoveredPIDDefs:PIDS;
+  bron.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),'nl')).forEach(p=>{
+    const o=document.createElement('option');
+    o.value=p.pid; o.textContent=p.name+(p.unit?' ('+p.unit+')':'');
+    sel.appendChild(o);
   });
+  grKeuze=grKeuze.filter(pid=>bron.some(d=>d.pid===pid) || pidHist[pid]);
+}
+
+// Eigen klok: één keer per seconde, en alleen als het tabblad in beeld is.
+function _grTik(){
+  const pane=document.getElementById('pane-graph');
+  if(!pane || !pane.classList.contains('active') || document.hidden || !grKeuze.length) return;
+  drawGraph();
+}
+if(typeof setInterval==='function' && !_grKlok) _grKlok=setInterval(()=>{
+  try{ _grTik(); }catch(e){ console.warn('grafiek: tik mislukt', e); }
+}, 1000);
+
+// Oude ingangen die nog in opgeslagen HTML of andere modules kunnen staan.
+function selectTrendGroup(g){ if(g==='none'){ activeTrendGroup=null; grKeuze=[]; drawGraph(); } else grKiesGroep(g); }
+function changeGraph(v){ grVoegToe(v); }
+function isPIDOk(pid){
+  const val=pidVals[pid]; if(val===undefined) return true;
+  return (typeof isPIDOkVal==='function') ? isPIDOkVal(pid,val) : true;
 }
 
 // ════════════════════════════════════════

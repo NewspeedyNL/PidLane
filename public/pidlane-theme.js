@@ -226,7 +226,6 @@ document.addEventListener('DOMContentLoaded', function(){
   // #286: stonden in het menu, nu kaarten in de deur "Live data".
   wcBind('wc-waak',()=>openWaakvenster());
   wcBind('wc-bulkrec',()=>openBulkRecorder());
-  wcBind('wc-bulkana',()=>openBulkAnalyse());
   wcBind('wc-check',()=>startChoice('check'));
   wcBind('wc-basiccheck',()=>startChoice('basiccheck'));
   wcBind('wc-monitor',()=>openMonitorView());   // eigen opener: startChoice kent 'monitor' niet en viel terug op live view
@@ -291,7 +290,7 @@ document.addEventListener('DOMContentLoaded', function(){
     if(typeof plPidViewHerstel==='function') plPidViewHerstel();
   }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
 
-  window.addEventListener('resize',()=>{ if(graphPID||trendPIDs.length) drawGraph(); });
+  window.addEventListener('resize',()=>{ if(trendPIDs.length) drawGraph(); });
   document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeNeonDashboard?.(); closeRitAnalyse?.(); }});
 
   // Focus op login veld — tenzij er een onthouden sessie is

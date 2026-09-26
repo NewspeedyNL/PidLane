@@ -533,6 +533,34 @@ MUTATIES=(
 # de klasse fout die hier maanden blijft staan.
 ".gitattributes@@PIDLANE.md            merge=union@@PIDLANE.md            -merge@@test-gitattributes.js@@PIDLANE.md valt niet meer onder union, dus de conflicten komen terug"
 ".gitattributes@@CHANGELOG.md          merge=union@@CHANGELOG.md          merge=union\n*.js                  merge=union@@test-gitattributes.js@@union uitgebreid naar JS, waar een verdubbelde regel stil breekt"
+# ── Oplevering 26-09: tien punten uit de proefrit (#300) ──
+# Elke regel is een fout die bij dit werk echt gemaakt had kunnen worden, en
+# die niemand ziet tot hij in de auto zit.
+"public/pidlane-archief.js@@  try{ const x=_plBovensteSluitKnop(); if(x){ x.click(); return true; } }@@  try{ const x=null; if(x){ x.click(); return true; } }@@bproef-terugknop.js@@de terugknop kent weer alleen de vaste lijst: de waakronde en de bulkvensters gaan er niet mee dicht"
+# (Geen mutatie op de z-index-vergelijking in _plBovensteSluitKnop: nagemeten
+# op 26-09-2026 dat die bij overlappende vensters nooit beslist — een ✕ onder
+# een ander venster valt al af op elementFromPoint(). bproef-terugknop.js 2b
+# toetst het gelijke-z-geval wel, als gedrag.)
+"public/pidlane-correlatie.js@@if(rest>0){ uit.push(_bevLaatst[id]);@@if(rest>BEV_MIN_MS){ uit.push(_bevLaatst[id]);@@test-bevindingen.js@@een bevinding die weer goed is verdwijnt meteen: één seconde in beeld, zoals vóór 26-09"
+"public/pidlane-credits.js@@    chipTonen: false,@@    chipTonen: true,@@test-tokenchip.js@@de zwevende tokenteller hangt weer in beeld bij klanten"
+"public/pidlane-auth.js@@  try{ const md=window.PLMeetdienst; if(md && typeof md.stop==='function') await binnen(md.stop()); }@@  try{ }@@test-afmelden.js@@Sluit de app laat de meetdienst draaien: het proces en de BT-socket blijven leven na exitApp()"
+"public/pidlane-graph.js@@  w.classList.toggle('buiten', !ok);@@  w.classList.toggle('buiten', false);@@bproef-grafiek.js@@een waarde buiten het normaalbereik staat in de grafiek niet meer in het rood"
+"public/pidlane-graph.js@@const GR_MAX = 3;@@const GR_MAX = 6;@@bproef-grafiek.js@@een groep zet weer zes lijnen in de grafiek in plaats van hoogstens drie"
+"public/pidlane-totalcheck.js@@  if(!nu.has(sit)) mis.push(@@  if(false) mis.push(@@bproef-systeemtest.js@@de systeemtest kijkt niet meer naar de situatie: rijtests meten en falen tijdens stilstand"
+"public/pidlane-totalcheck.js@@if(t.sit==='koud' && koudBijStart===false)@@if(false)@@bproef-systeemtest.js@@de koude-starttest blijft op een warme motor eeuwig wachten in plaats van eerlijk niet getest te heten"
+"public/pidlane-bulk.js@@  _blkEl('blkAna').onclick   = function () {@@  _blkEl('blkAna').onclick   = function () { return;@@bproef-vensters.js@@de knop Analyse in de bulk-recorder doet niets: de bulk-analyse is dan nergens meer te openen"
+"public/pidlane-btflow.js@@b.style.cssText='position:fixed;bottom:calc(10px + var(--pl-sab,0px));@@b.style.cssText='position:fixed;bottom:10px;@@bproef-schermranden.js@@de balk van de scenariotest valt weer achter de Android-knoppen"
+# ── De tests gaan mee naar app.pidlane.nl (26-09-2026) ──
+# public/.assetsignore houdt 2,3 MB aan tests van de site af. Te smal en een
+# testsoort staat alsnog openbaar; te breed en een module van de app wordt niet
+# geüpload. Allebei stil tot het live staat.
+"public/.assetsignore@@bproef-*.js@@bproef-*.txt@@test-assetsignore.js@@de browserproeven gaan weer mee online"
+"public/.assetsignore@@test-*.js@@test-*.js\npidlane-t*.js@@test-assetsignore.js@@een patroon te breed: pidlane-testrun.js en pidlane-theme.js worden niet geüpload"
+# ── Een pagina wijst naar een bestand dat er niet is (26-09-2026) ──
+# index.html wees maandenlang naar vier iconen die nooit bestaan hebben: vier
+# 404's per paginalading, onzichtbaar tot het pre-launch-rapport van Play.
+"public/index.html@@<link rel=\"apple-touch-icon\" href=\"apple-touch-icon.png\">@@<link rel=\"apple-touch-icon\" href=\"apple-touch-icon-180.png\">@@test-verwijzingen.js@@index.html wijst naar een icoon dat niet bestaat"
+"public/manifest.webmanifest@@\"sizes\": \"192x192\"@@\"sizes\": \"144x144\"@@test-verwijzingen.js@@het manifest belooft een maat die het icoon niet heeft"
 # ── §14 belooft iets wat §3 niet kent (10-09-2026) ──
 # De release notes zijn een ingedikte §3, met de hand. Een functie erbij zetten
 # zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop
@@ -821,7 +849,7 @@ MUTATIES=(
 "public/pidlane-graph.js@@async function scanDTC(){\n  document.getElementById('bscan').disabled=true;@@async function scanDTC(){\n  window._didDTCScan=true;\n  document.getElementById('bscan').disabled=true;@@test-dtcvlag.js@@de DTC-vlag gaat weer aan vóór het antwoord: tijdens de scan en na een fout heet het geen foutcodes"
 # ── #261: afmelden opent geen verbindingsscherm, sluiten verbreekt eerst (22-09-2026) ──
 "public/pidlane-auth.js@@  if(typeof connected!=='undefined' && connected) handleConnect();\n}@@  handleConnect();\n}@@test-afmelden.js@@afmelden roept de verbindingsschakelaar weer blind aan en opent zonder verbinding het verbindingsscherm"
-"public/pidlane-auth.js@@  try{ if(typeof connected!=='undefined' && connected) await handleConnect(); }@@  try{ }@@test-afmelden.js@@Sluit de app sluit met een open verbinding: de sessie wordt niet bewaard en de adapter blijft bezet"
+"public/pidlane-auth.js@@  try{ if(typeof connected!=='undefined' && connected) await binnen(handleConnect()); }@@  try{ }@@test-afmelden.js@@Sluit de app sluit met een open verbinding: de sessie wordt niet bewaard en de adapter blijft bezet"
 "public/pidlane-archief.js@@  if(window._plBackMelding) return;@@  window.plSluitApp?.();\n  if(window._plBackMelding) return;@@test-terugknop.js@@de terugknop gaat via Sluit de app alsnog naar de uitgang"
 
 # ── De aandrijfstatus (17-09-2026). Zes fouten die de balk bovenin de
@@ -949,7 +977,7 @@ MUTATIES=(
 "public/pidlane-bt.js@@  if(!n){\n    bron='de standaardset';@@  if(false){\n    bron='de standaardset';@@test-sessiedoorloop.js@@een hervatting zonder bewaarde selectie zet nul sensoren aan: de meting staat stil, de fout van de eerste versie (#229)"
 "public/pidlane.css@@padding:20px 18px calc(28px + var(--pl-sab));max-height:92vh@@padding:20px 18px 28px;max-height:92vh@@bproef-schermranden.js@@Start analyse valt weer half achter de Android-knoppenbalk (#286)"
 "public/pidlane-theme.js@@  wcBind('wc-waak',()=>openWaakvenster());@@  wcBind('wc-waak',()=>{});@@bproef-vensters.js@@de kaart Waakronde doet niets: hij staat nergens meer, ook niet in het menu (#286)"
-"public/pidlane-klant.js@@      ['admGroupBtn', 'admGroup', 'wc-bulkrec', 'wc-bulkana'].forEach(function (id) {@@      ['admGroupBtn', 'admGroup'].forEach(function (id) {@@bproef-vensters.js@@een klant ziet de bulk-recorder van beheer in de deur Live data (#286)"
+"public/pidlane-klant.js@@      ['admGroupBtn', 'admGroup', 'wc-bulkrec'].forEach(function (id) {@@      ['admGroupBtn', 'admGroup'].forEach(function (id) {@@bproef-vensters.js@@een klant ziet de bulk-recorder van beheer in de deur Live data (#286)"
 "public/pidlane-archief.js@@  const vraagContext   = (window._plMeetcontext===null) && _plVoorvragenAan(opties);@@  const vraagContext   = (window._plMeetcontext===null);@@test-meetcontext.js@@de vier vragen komen weer vóór elke analyse in beeld, ook vóór de oorzakenlijst die alleen de klachttekst leest"
 "public/pidlane-archief.js@@    window._srCtxDismiss=()=>{ gekozen._rap='nee'; done(false, true); };@@    window._srCtxDismiss=()=>{ gekozen._rap='nee'; done(false); };@@test-meetcontext.js@@terug of wegklikken vóór de analyse betekent weer ga door: de analyse en het tegoed lopen toch"
 "public/pidlane-archief.js@@    if(!m){ m=_plMeetcontextUitMeting(); bron=@@    if(!m){ m={}; bron=@@test-meetcontext.js@@zonder vragen krijgt de AI niets meer over start/stop en gaten: een start/stop-stop leest weer als afslaan"

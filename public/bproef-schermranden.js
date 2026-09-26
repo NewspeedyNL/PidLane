@@ -639,6 +639,47 @@ async function keurVel(app, v, waar, sluit) {
     await app.ev(`setUiScale('m'); true`);
     await rust(150);
 
+    /* 2h (26-09-2026) — de zwevende pillen onderaan. Vanuit de scenariotest
+       viel de balk "SCENARIO ACTIEF" achter de Android-knoppen: hij stond op
+       bottom:10px, zonder --pl-sab. Een bronscan vond er zes van die vorm
+       (scenario, toast, rit, caravan, sessieteller, verbindingspoort). Hier
+       worden ze met hun eigen functie getekend en gemeten. */
+    console.log('\n2h. Zwevende pillen onderaan blijven boven de knoppenbalk');
+    const pillen = await app.ev(`(function(){
+      window.currentUser = { user:'proef', role:'admin', label:'proef' };
+      const maak = [
+        ['scenario-balk', 'scenarioBadge', function(){ _scenario.enabled = true; updateScenarioBadge(); }],
+        ['melding (toast)', 'pidToast',    function(){ showToast('proef', 60000); }],
+        ['rit-pil',        'ritPill',      function(){ _showRitPill(); }],
+        ['caravan-pil',    'caravanPill',  function(){ _showCaravanPill(); }],
+        ['sessieteller',   'tokPill',      function(){ updateTokenPill(false); }],
+      ];
+      const uit = [];
+      maak.forEach(function (m) {
+        try { m[2](); } catch (e) { uit.push({ naam: m[0], fout: String(e && e.message || e) }); return; }
+        const el = document.getElementById(m[1]);
+        if (!el || getComputedStyle(el).display === 'none') { uit.push({ naam: m[0], fout: 'niet getekend' }); return; }
+        const r = el.getBoundingClientRect();
+        uit.push({ naam: m[0], ruimteOnder: Math.round(window.innerHeight - r.bottom) });
+      });
+      return uit;
+    })()`);
+    for (const p of pillen) {
+      if (p.fout) { toets(p.naam + ': meetbaar', p.naam !== 'scenario-balk', p.fout); continue; }
+      toets(p.naam + ': ' + p.ruimteOnder + 'px boven de onderrand', p.ruimteOnder >= NAVBALK,
+            'minder dan de navigatiebalk (' + NAVBALK + 'px) — hij valt er deels achter');
+    }
+    // Tegenproef in dezelfde vorm als de fout: de oude bottom:10px terug.
+    const oud = await app.ev(`(function(){
+      const b = document.getElementById('scenarioBadge'); if (!b) return null;
+      const was = b.style.bottom; b.style.bottom = '10px';
+      const r = Math.round(window.innerHeight - b.getBoundingClientRect().bottom);
+      b.style.bottom = was; _scenario.enabled = false; updateScenarioBadge();
+      return r;
+    })()`);
+    toets('tegenproef: met de oude bottom:10px ziet de meting ' + oud + 'px en keurt hem af',
+          typeof oud === 'number' && oud < NAVBALK);
+
     console.log('\n3. Tegenproef — meet deze proef werkelijk iets?');
 
     /* EERST DE WACHTREGEL ZELF (#168). De rest van dit blok toetst of de

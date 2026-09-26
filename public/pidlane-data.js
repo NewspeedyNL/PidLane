@@ -388,12 +388,15 @@ window.CHK_CAT_META ={Motor:{l:'Motor',i:'⚙️'},Temp:{l:'Temperatuur',i:'🌡
 window.CHK_CAT_ORDER =['Motor','Temp','Brandstof','Emissie','Electrisch','Rijden','Overig','Foutcodes','Bestuurder'];
 
 // ── BSC_TESTS (was index.html regel 5953) ──
+// sit: de situatie waarin de test kan meten (zie BSC_SIT in pidlane-totalcheck.js).
+// De systeemtest zet alle tests tegelijk klaar en meet elke test zodra zijn
+// situatie zich voordoet; warm:true eist daarbij een bedrijfswarme motor.
 window.BSC_TESTS = [
   // ── UNIVERSEEL ──────────────────────────────────────────────────
-  {id:'idle_stab', groep:'universeel', naam:'Stationair stabiliteit', pids:['010C'],
+  {id:'idle_stab', sit:'stationair', warm:true, groep:'universeel', naam:'Stationair stabiliteit', pids:['010C'],
    uitleg:'RPM stabiel binnen ±50 rpm', hold:5,
    band:(v,h)=>{ const b=bscBaseline(h['010C'],3); return b==null?null:{lo:b-50,hi:b+50,ref:b}; }},
-  {id:'cool_warm', groep:'universeel', naam:'Koelvloeistof opwarmen', pids:['0105'],
+  {id:'cool_warm', sit:'draaiend', groep:'universeel', naam:'Koelvloeistof opwarmen', pids:['0105'],
    uitleg:'Geleidelijke stijging naar bedrijfstemperatuur (80–100 °C)', hold:4,
    band:{lo:70,hi:105}, trend:'stijgend'},
   /* 27-07-2026 — deze test toetste tegen de LAADband (13,3-15,0 V) maar had
@@ -402,20 +405,20 @@ window.BSC_TESTS = [
      x_laadspanning (mét eis motorDraait); deze meet nu waar hij goed in is:
      de rustspanning, juist mét de motor UIT. Samen dekken ze het hele beeld.
      12,6 V = vol · 12,4 V = ~75% · onder 12,0 V = diep ontladen. */
-  {id:'batt_rust', groep:'universeel', naam:'Accuspanning in rust', pids:['0142'],
+  {id:'batt_rust', sit:'motoruit', groep:'universeel', naam:'Accuspanning in rust', pids:['0142'],
    uitleg:'Contact aan maar motor uit: een gezonde accu staat op 12,4-12,8 V. Onder 12,2 V is hij half leeg of versleten.',
-   hold:4, eis:{motorUit:true}, eisWachtMs:10000,
+   hold:4,
    band:{lo:12.2,hi:12.9, ref:12.6}},
-  {id:'map_idle', groep:'universeel', naam:'MAP-druk stationair', pids:['010B'],
+  {id:'map_idle', sit:'stationair', groep:'universeel', naam:'MAP-druk stationair', pids:['010B'],
    uitleg:'30–40 kPa stationair = geen vacuümlek', hold:4, band:{lo:25,hi:45}},
-  {id:'tps_lin', groep:'universeel', naam:'Gasklep respons', pids:['0111'],
+  {id:'tps_lin', sit:'draaiend', groep:'universeel', naam:'Gasklep respons', pids:['0111'],
    uitleg:'Trap gas rustig in: 0→100 % vloeiend', hold:3, band:{lo:0,hi:100}, dynamiek:true},
-  {id:'iat_amb', groep:'universeel', naam:'Inlaatlucht bij koude start', pids:['010F','0146'],
+  {id:'iat_amb', sit:'koud', groep:'universeel', naam:'Inlaatlucht bij koude start', pids:['010F','0146'],
    uitleg:'IAT ≈ buitentemperatuur bij koude motor', hold:3,
    band:(v)=>{ const amb=v['0146']; return amb==null?{lo:-10,hi:45}:{lo:amb-8,hi:amb+15,ref:amb}; }},
-  {id:'ltft', groep:'universeel', naam:'Brandstoftrim (LTFT)', pids:['0107'],
+  {id:'ltft', sit:'draaiend', warm:true, groep:'universeel', naam:'Brandstoftrim (LTFT)', pids:['0107'],
    uitleg:'Lange trim tussen −10 % en +10 %', hold:4, band:{lo:-10,hi:10}},
-  {id:'misfire', groep:'universeel', naam:'Misfire-monitor', pids:['010C','0104'],
+  {id:'misfire', sit:'constant', groep:'universeel', naam:'Misfire-monitor', pids:['010C','0104'],
    uitleg:'RPM mag niet plots inzakken onder lichte belasting (indirecte misfire)', hold:5,
    band:(v,h)=>{ const b=bscBaseline(h['010C'],4); return b==null?null:{lo:b-120,hi:b+400,ref:b}; }},
   /* ── 27-07-2026 — LAMBDA: twee sensortypen, twee verschillende tests ──
@@ -433,9 +436,9 @@ window.BSC_TESTS = [
      ten onrechte laten zakken. Vandaar twee losse tests met eigen criteria.
      Ze sluiten elkaar vanzelf uit: welke van de twee wordt gekozen hangt af
      van welke PID de auto daadwerkelijk levert. */
-  {id:'o2_switch', groep:'universeel', naam:'Lambdasensor schakelt (smalband)', pids:['0114'],
+  {id:'o2_switch', sit:'stationair', warm:true, groep:'universeel', naam:'Lambdasensor schakelt (smalband)', pids:['0114'],
    uitleg:'Motor warm en stationair: de voorste smalbandsensor hoort meerdere keren per seconde tussen 0,1 en 0,9 V te pendelen.',
-   hold:4, eis:{warm:true, motorDraait:true}, eisWachtMs:15000,
+   hold:4,
    band:{lo:0.05,hi:0.95}, oscilleren:true},
   /* Achterste sensor (ná de katalysator). Die hoort zich juist ANDERS te
      gedragen dan de voorste: een werkende kat buffert zuurstof, waardoor de
@@ -443,55 +446,55 @@ window.BSC_TESTS = [
      mee schakelen met de voorste, dan is de kat op — een van de sterkste
      aanwijzingen die je zonder demontage kunt krijgen.
      Let op: dit is bewust GEEN oscillatietest maar het omgekeerde. */
-  {id:'o2_rear', groep:'universeel', naam:'Katalysator — achterste sensor', pids:['0115','0116'],
+  {id:'o2_rear', sit:'stationair', warm:true, groep:'universeel', naam:'Katalysator — achterste sensor', pids:['0115','0116'],
    uitleg:'Motor warm en stationair: achter de katalysator hoort de spanning traag en vlak rond 0,6-0,8 V te blijven staan. Schommelt hij net zo hard als de voorste sensor, dan buffert de kat geen zuurstof meer.',
-   hold:5, eis:{warm:true, motorDraait:true}, eisWachtMs:15000,
+   hold:5,
    band:{lo:0.55,hi:0.85, ref:0.70}},
-  {id:'o2_wide', groep:'universeel', naam:'Lambdaregeling (breedband)', pids:['0124','0134','0125','0135'],
+  {id:'o2_wide', sit:'stationair', warm:true, groep:'universeel', naam:'Lambdaregeling (breedband)', pids:['0124','0134','0125','0135'],
    uitleg:'Motor warm en stationair: een breedbandsensor pendelt niet, maar houdt lambda rond 1,00. Blijft de waarde daar netjes omheen, dan regelt het brandstofsysteem goed.',
-   hold:4, eis:{warm:true, motorDraait:true}, eisWachtMs:15000,
+   hold:4,
    band:{lo:0.97,hi:1.03, ref:1.00}},
-  {id:'spd_rpm', groep:'universeel', naam:'Snelheid vs toerental', pids:['010D','010C'],
+  {id:'spd_rpm', sit:'constant', groep:'universeel', naam:'Snelheid vs toerental', pids:['010D','010C'],
    uitleg:'Rij constant: snelheid en RPM lopen lineair mee (koppeling/automaat OK)', hold:4,
    band:{lo:0,hi:280}},
-  {id:'fuel_flow', groep:'universeel', naam:'Verbruik bij constante snelheid', pids:['015E'],
+  {id:'fuel_flow', sit:'constant', groep:'universeel', naam:'Verbruik bij constante snelheid', pids:['015E'],
    uitleg:'Verbruik stabiel bij gelijkmatig rijden', hold:4, band:{lo:0,hi:50}},
-  {id:'fan_act', groep:'universeel', naam:'Koelventilator-venster', pids:['0105'],
+  {id:'fan_act', sit:'draaiend', warm:true, groep:'universeel', naam:'Koelventilator-venster', pids:['0105'],
    uitleg:'Bij 95–105 °C hoort de fan te schakelen', hold:3, band:{lo:60,hi:115}, ref:100},
 
   // ── BENZINE ─────────────────────────────────────────────────────
-  {id:'maf_curve', groep:'benzine', naam:'MAF luchtflow', pids:['0110','010C'],
+  {id:'maf_curve', sit:'draaiend', groep:'benzine', naam:'MAF luchtflow', pids:['0110','010C'],
    uitleg:'MAF stijgt vloeiend met RPM', hold:4, band:{lo:1,hi:500}},
-  {id:'ign_time', groep:'benzine', naam:'Ontstekingstiming', pids:['010E'],
+  {id:'ign_time', sit:'optrekken', groep:'benzine', naam:'Ontstekingstiming', pids:['010E'],
    uitleg:'Timing verandert bij accelereren', hold:3, band:{lo:-15,hi:50}, dynamiek:true},
-  {id:'stft_resp', groep:'benzine', naam:'STFT op gasstoot', pids:['0106'],
+  {id:'stft_resp', sit:'draaiend', groep:'benzine', naam:'STFT op gasstoot', pids:['0106'],
    uitleg:'Korte positieve piek, daarna terug naar ~0 %', hold:3, band:{lo:-15,hi:20}, dynamiek:true},
-  {id:'cat_eff', groep:'benzine', naam:'Katalysator-efficiëntie', pids:['0115'],
+  {id:'cat_eff', sit:'draaiend', warm:true, groep:'benzine', naam:'Katalysator-efficiëntie', pids:['0115'],
    uitleg:'Achterste O2 stabiel rond 0,6–0,8 V', hold:5, band:{lo:0.5,hi:0.85}},
-  {id:'fuel_lvl', groep:'benzine', naam:'Tankniveau plausibel', pids:['012F'],
+  {id:'fuel_lvl', sit:'contact', groep:'benzine', naam:'Tankniveau plausibel', pids:['012F'],
    uitleg:'Geen abrupte sprongen in tankniveau', hold:4, band:{lo:0,hi:100}, stabiel:true},
 
   // ── DIESEL ──────────────────────────────────────────────────────
-  {id:'rail_stab', groep:'diesel', naam:'Raildruk stabiliteit', pids:['0159','0123'],
+  {id:'rail_stab', sit:'stationair', groep:'diesel', naam:'Raildruk stabiliteit', pids:['0159','0123'],
    uitleg:'Stationair stabiel, stijgt netjes bij gas', hold:4, band:{lo:200,hi:2200}},
-  {id:'egr_flow', groep:'diesel', naam:'EGR-flow', pids:['012C'],
+  {id:'egr_flow', sit:'rijden', groep:'diesel', naam:'EGR-flow', pids:['012C'],
    uitleg:'EGR-positie verandert bij lichte belasting', hold:3, band:{lo:0,hi:100}, dynamiek:true},
-  {id:'boost', groep:'diesel', naam:'Turbo-boost curve', pids:['0170','010B'],
+  {id:'boost', sit:'optrekken', groep:'diesel', naam:'Turbo-boost curve', pids:['0170','010B'],
    uitleg:'Boost stijgt vloeiend, geen pieken', hold:4, band:{lo:0,hi:300}},
   // Stond op 017C + 016B ("roetlast 0–45 %"): 016B is de EGR-temperatuur, en
   // een roetlast in procent levert generieke OBD niet. Het drukverschil over
   // het filter wel; de band is ruim en nog niet aan een echte diesel getoetst.
-  {id:'dpf_soot', groep:'diesel', naam:'DPF drukverschil', pids:['017A'],
+  {id:'dpf_soot', sit:'draaiend', warm:true, groep:'diesel', naam:'DPF drukverschil', pids:['017A'],
    uitleg:'Drukverschil over het roetfilter blijft binnen een normale band', hold:3, band:{lo:0,hi:30}},
-  {id:'nox_plaus', groep:'diesel', naam:'NOx plausibiliteit', pids:['0183'],
+  {id:'nox_plaus', sit:'rijden', groep:'diesel', naam:'NOx plausibiliteit', pids:['0183'],
    uitleg:'NOx-waarden stijgen bij accelereren', hold:3, band:{lo:0,hi:2000}, dynamiek:true},
 
   // ── HYBRIDE ─────────────────────────────────────────────────────
-  {id:'hv_soc', groep:'hybride', naam:'HV-batterij SOC', pids:['015B'],
+  {id:'hv_soc', sit:'contact', groep:'hybride', naam:'HV-batterij SOC', pids:['015B'],
    uitleg:'SOC blijft binnen 30–80 %', hold:4, band:{lo:25,hi:85}},
-  {id:'ev_ice', groep:'hybride', naam:'EV ↔ ICE overgang', pids:['010C'],
+  {id:'ev_ice', sit:'rijden', groep:'hybride', naam:'EV ↔ ICE overgang', pids:['010C'],
    uitleg:'RPM springt vloeiend in/uit (motor start/stopt netjes)', hold:4, band:{lo:0,hi:6000}},
-  {id:'regen', groep:'hybride', naam:'Regeneratie laadstroom', pids:['0142','015B'],
+  {id:'regen', sit:'remmen', groep:'hybride', naam:'Regeneratie laadstroom', pids:['0142','015B'],
    uitleg:'Spanning/laden stijgt bij remmen', hold:3, band:{lo:12,hi:15.5}, dynamiek:true},
 ];
 

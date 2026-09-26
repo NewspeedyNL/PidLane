@@ -23,12 +23,6 @@ window.PidLaneEvalLog = (function(){
     s.events.push({t:now(),cat,msg,data:data||null});
     if(s.events.length>800) s.events.splice(0,100);
     subs.forEach(f=>{ try{ f(s); }catch(e){ console.warn('Veldlab-abonnee gooide een fout:', e); } });
-    if(cat==='ai' && data && data.stoplicht){
-      try{ setTimeout(function(){
-        try{ vlMicroCheck(); }
-        catch(e){ console.warn('vlMicroCheck mislukt:', e); }
-      }, 1200); }catch(e){ console.warn('vlMicroCheck plannen mislukt:', e); }
-    }
   }
   function bindCrash(){
     window.addEventListener('error', ev=>{ if(s) _log('fout','crash: '+(ev.message||'')); });
@@ -743,45 +737,11 @@ function _plCheckPid(pid,val){
 }
 
 /* ---- adaptieve micro-check: alleen vragen als er iets te leren valt ---- */
-function vlMicroCheck(){
-  if(!PidLaneEvalLog.active || PidLaneEvalLog.asked) return;
-  const snap=PidLaneEvalLog.snapshot(); if(!snap||snap.invalid) return;
-  const g=vlDerive(snap.events||[]);
-  const nv=vlNovelty(g);
-  if(!(nv.newCell||nv.newMerk||nv.anomaly)) { try{ log('🧪 Veldlab: bekend terrein — geen vragen nodig','info'); }catch(e){ /* stil: melding mag nooit de meting breken */ } PidLaneEvalLog.setAsked(); return; }
-  PidLaneEvalLog.setAsked();
-  const why = nv.newCell?'Nieuw terrein: '+nv.fuel+' · '+nv.band+' · '+nv.pc : nv.newMerk?'Nieuw merk: '+(nv.merk||'?') : 'Afwijking gezien (fout/fallback/verdachte PID)';
-  let el=document.getElementById('vlSheet'); if(el) el.remove();
-  el=document.createElement('div'); el.id='vlSheet';
-  el.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9600;background:#141b23;border-top:1px solid #2a3644;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(0,0,0,.55);font-family:system-ui,sans-serif;color:#eaf0f6;max-height:70vh;overflow-y:auto';
-  el.innerHTML=
-    '<div style="font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px">🧪 Veldlab — 20 seconden <span style="margin-left:auto;font-weight:600;font-size:11px;color:#6b7d92">'+why.replace(/</g,'&lt;')+'</span></div>'+
-    '<div style="font-size:12.5px;color:#9db0c4;margin:4px 0 12px">Alleen deze auto levert nieuwe kennis op — daarom nu wél 3 korte vragen.</div>'+
-    '<div style="font-size:13px;font-weight:600;margin-bottom:6px">Klopte het AI-oordeel'+(g.ai.stoplicht?' ('+g.ai.stoplicht.toUpperCase()+')':'')+'?</div>'+
-    '<div id="vlSeg" style="display:flex;gap:8px;margin-bottom:12px">'+['Ja','Deels','Nee'].map(function(o){return '<button data-v="'+o+'" style="flex:1;background:#1f2a35;border:1px solid #2a3644;color:#9db0c4;padding:11px 6px;border-radius:10px;font:600 14px system-ui;cursor:pointer">'+o+'</button>';}).join('')+'</div>'+
-    '<div style="font-size:13px;font-weight:600;margin-bottom:6px">Wat was er werkelijk mis? (monteur — mag leeg)</div>'+
-    '<textarea id="vlEcht" placeholder="bv. bobine cilinder 3" style="width:100%;box-sizing:border-box;background:#1f2a35;border:1px solid #2a3644;border-radius:10px;color:#eaf0f6;padding:10px;font:14px system-ui;min-height:52px;margin-bottom:12px"></textarea>'+
-    '<div style="font-size:13px;font-weight:600;margin-bottom:6px">Liep je ergens op vast? (mag leeg)</div>'+
-    '<textarea id="vlBlok" placeholder="bv. delen-knop deed niets" style="width:100%;box-sizing:border-box;background:#1f2a35;border:1px solid #2a3644;border-radius:10px;color:#eaf0f6;padding:10px;font:14px system-ui;min-height:44px;margin-bottom:14px"></textarea>'+
-    '<div style="display:flex;gap:10px"><button id="vlOk" style="flex:2;background:#2fd0d6;color:#052225;border:none;border-radius:11px;padding:13px;font:700 14px system-ui;cursor:pointer">Klaar</button>'+
-    '<button id="vlSkip" style="flex:1;background:#1f2a35;border:1px solid #2a3644;color:#9db0c4;border-radius:11px;padding:13px;font:600 14px system-ui;cursor:pointer">Overslaan</button></div>';
-  document.body.appendChild(el);
-  el.querySelectorAll('#vlSeg button').forEach(function(b){ b.onclick=function(){
-    el.querySelectorAll('#vlSeg button').forEach(function(x){ x.style.background='#1f2a35'; x.style.borderColor='#2a3644'; x.style.color='#9db0c4'; });
-    var v=b.dataset.v;
-    b.style.background = v==='Ja'?'#123322' : v==='Nee'?'#3a1414' : '#1c6f74';
-    b.style.borderColor = v==='Ja'?'#3fd07a' : v==='Nee'?'#ff5b5b' : '#2fd0d6';
-    b.style.color='#eaf0f6';
-    PidLaneEvalLog.setHuman('correct', v);
-  };});
-  document.getElementById('vlOk').onclick=function(){
-    PidLaneEvalLog.setHuman('echt', (document.getElementById('vlEcht').value||'').trim());
-    PidLaneEvalLog.setHuman('blocker', (document.getElementById('vlBlok').value||'').trim());
-    el.remove();
-    try{ log('🧪 Veldlab: monteur-input vastgelegd','ok'); }catch(e){ /* stil: melding mag nooit de meting breken */ }
-  };
-  document.getElementById('vlSkip').onclick=function(){ el.remove(); };
-}
+/* Hier stond vlMicroCheck(): na elk AI-rapport schoof er een vel omhoog met
+   drie vragen ("Klopte het AI-oordeel?", "Wat was er werkelijk mis?", "Liep
+   je ergens op vast?"). Weggehaald op 26-09-2026 op verzoek: het kwam precies
+   op het moment dat je het rapport wilt lezen. Veldlab verzamelt de
+   automatische meetgegevens gewoon verder; alleen de menselijke input valt weg. */
 
 /* ---- structurele analyse over ALLE sessies ---- */
 function vlAnalyse(st){
