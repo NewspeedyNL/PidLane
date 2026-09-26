@@ -341,6 +341,7 @@ body:has(#welcomeScreen:not(.hidden)) .cc { visibility:hidden; }
 .dr-deal { background:linear-gradient(135deg,#7c4dff,#5a32d6); }
 .dr-saving { background:linear-gradient(135deg,#f2820c,#d96b00); }
 .dr-prep { background:linear-gradient(135deg,#06b36b,#04935a); }
+.dr-dtc { background:linear-gradient(135deg,#e11d48,#be123c); }
 .wm-door-ic { font-size:26px; line-height:1; }
 .wm-door-t { font-weight:800; font-size:14px; margin-top:8px; }
 .wm-door-d { font-size:12px; opacity:.9; margin-top:3px; line-height:1.4; }
@@ -414,6 +415,7 @@ body:has(#welcomeScreen:not(.hidden)) .cc { visibility:hidden; }
 .wm-door.dr-deal { background:#11151f; }   .wm-door.dr-deal::before { background:#7c4dff; }
 .wm-door.dr-saving { background:#11151f; } .wm-door.dr-saving::before { background:#f2820c; }
 .wm-door.dr-prep { background:#11151f; }   .wm-door.dr-prep::before { background:#06b36b; }
+.wm-door.dr-dtc { background:#11151f; }    .wm-door.dr-dtc::before { background:#e11d48; }
 
 /* ── DEUR-ACHTERGRONDEN (subtiel, base64-embedded — deur 1/2/3) ──
    Afbeelding + leesbaarheids-scrim in één ::after laag (z:0).

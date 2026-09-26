@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '8.1 (26-09-2026)';
+const TESTRUN_VERSIE = '8.2 (26-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -6286,6 +6286,32 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── het foutcodevenster leest deze auto (#304) ──
+  // Alleen LEZEN. Deze proef wist nooit: wissen gooit het freeze frame en de
+  // keuringsstatus weg, en dat hoort een mens te besluiten in het venster zelf.
+  {
+    issue: '#304',
+    naam: 'Het foutcodevenster leest 03, 07, 0A en de keuringsstatus van deze auto',
+    waarom: 'Of de ECU op 07 en 0A antwoordt en welke monitors hij in 0101 meldt, weet alleen de auto — de browserproef heeft een nep-adapter.',
+    proef: async function () {
+      if (!window.PLFoutcodes || typeof PLFoutcodes.scan !== 'function')
+        return { staat: 'FOUT', detail: 'PLFoutcodes ontbreekt — de deur op het startscherm opent dan niets (#304)' };
+      if (typeof connected === 'undefined' || !connected || (typeof demoMode !== 'undefined' && demoMode))
+        return { staat: 'LET OP', detail: 'niet verbonden met een echte auto — niets uitgelezen' };
+      const s = await PLFoutcodes.scan();
+      if (!s) return { staat: 'FOUT', detail: 'uitlezen liep niet af: ' + (PLFoutcodes.staat().fout || 'onbekend') };
+      const deel = function (k) { return s.gelezen[k] ? s.codes[k].length + (s.codes[k].length ? ' (' + s.codes[k].join(', ') + ')' : '') : 'niet gelezen'; };
+      const rd = s.readiness;
+      const tekst = 'bevestigd ' + deel('bevestigd') + ' · pending ' + deel('pending') + ' · permanent ' + deel('permanent') +
+        ' · keuringsstatus ' + (rd ? (rd.ondersteund - rd.nietKlaar.length) + '/' + rd.ondersteund + ' klaar' + (rd.nietKlaar.length ? ' (niet: ' + rd.nietKlaar.join(', ') + ')' : '') : 'niet gelezen') +
+        ' · freeze frame ' + (s.freeze ? s.freeze.code : 'geen') +
+        ' · sinds wissen ' + (s.sinds.km != null ? s.sinds.km + ' km' : 'onbekend');
+      if (!s.gelezen.bevestigd) return { staat: 'FOUT', detail: '03 gaf geen bruikbaar antwoord — ' + tekst };
+      if (!rd || !s.gelezen.pending || !s.gelezen.permanent) return { staat: 'LET OP', detail: tekst };
+      return tekst;
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -8580,6 +8606,7 @@ const CAMPAGNE = {
     'STAP 1 \u2014 SYSTEEMTEST STILSTAAND. Motor warm, auto stil: start de systeemtest en wacht tot de stilstandgroep groen is. Noteer wat er onder "Volgende kans" staat.',
     'STAP 2 \u2014 SYSTEEMTEST RIJDEND. Rij constant, trek op, laat uitrollen. Druk aan het eind op "Stop en maak rapport" en noteer hoeveel tests "niet getest" zijn en waarom.',
     'STAP 3 \u2014 GRAFIEK. Tabblad Grafiek \u2192 Temperatuur. Drie banen, elk met een eigen schaal, en ze lopen mee zonder dat je iets aanraakt.',
+    'STAP 3b \u2014 FOUTCODES & KEURINGSSTATUS (#304). Startscherm \u2192 de eerste deur. Staan er codes, vergelijk ze met het oude tabblad Foutcodes: het nieuwe venster hoort er minstens dezelfde te tonen, plus pending en permanent. Druk op "Foutcodes wissen\u2026" met draaiende motor: "Nu wissen" moet dicht blijven. Wis alleen als er een code staat die je kwijt wilt, met de motor uit.',
     'STAP 4 \u2014 DRAAI AAN HET EIND DE TESTRUN. Blok 5 meet op dit toestel of de scenariobalk boven de knoppenbalk staat, of de terugknop het bovenste venster vindt en welke rijsituatie de systeemtest herkent.',
     'NA AFLOOP. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop, plus de uitkomst van stap 2.',
     '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',

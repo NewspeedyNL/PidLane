@@ -14,6 +14,34 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 26-09-2026 — Het DTC-tabblad was het dunste scherm van de app (#304)
+
+**Gevonden bij een doorlichting op basisfuncties, niet bij een rit.** Het
+scherm dat een monteur als eerste opent, had de minste zorg gekregen:
+
+- `realScanDTC()` vraagt alleen mode 03. Pending en permanent codes bestaan
+  wél in de app, maar alleen in `PLMon`, dat op de achtergrond draait.
+- De parser zoekt per regel naar `43`. Een multiframe-antwoord (drie of meer
+  codes op CAN) staat over meerdere regels, en daarvan wordt alleen de
+  eerste gelezen.
+- `clearDTC()` stuurt `04` en gooit het antwoord weg. Daarna gaat de lijst
+  hoe dan ook leeg. Een ECU die weigert (`7F 04 22`, motor draait) ziet er
+  dus hetzelfde uit als een geslaagde wis.
+- Het freeze frame komt alleen mee voor codes die tíjdens de sessie
+  ontstaan. Van 0101 wordt alleen het MIL-bit gelezen.
+
+**Niet gerepareerd in `pidlane-graph.js`, met opzet.** Op verzoek is de
+goede vorm eerst als eigen venster gebouwd (`pidlane-foutcodes.js`), naast
+het oude. Pas als dat in de auto werkt, stappen de oude plekken over. Anders
+vervang je een scherm dat werkt door een scherm dat nog niet op een echte ECU
+is geweest.
+
+**Een tegenproef die doorglipte.** Een niet-klaar-bit in byte D telt alleen
+als dezelfde monitor in byte C ondersteund is. De eerste toets had één ECU,
+en daar maskeerde de telling de fout al. Pas met twee ECU's is het verschil
+te zien: een transmissie-ECU zonder katalysator die toch bit 0 zet. Die
+toets staat er nu bij.
+
 ## 26-09-2026 — De adapter werd trager in een sessie, niet de app (#302)
 
 **De vraag:** "normaal 8 per seconde, nu 3,9". Mijn eerste verklaring
