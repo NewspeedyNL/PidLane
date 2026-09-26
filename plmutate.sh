@@ -1009,6 +1009,8 @@ MUTATIES=(
 "public/pidlane-intro.js@@  var DUUR_MS = 2900;@@  var DUUR_MS = 2000;@@test-intro.js@@de JS-timer ruimt de intro op midden in de doorzoom: het logo verdwijnt met een knip"
 "public/pidlane.css@@#plIntro:not(.pli-speel){ animation:pliNood .01s@@#plIntro:not(.pli-speel){ animation:pliKlaar .01s@@test-intro.js@@noodrem en eindregel delen één keyframe: Chromium telt de 2,85 s dan vanaf het laden en de intro valt midden in het beeld weg"
 "public/pidlane.css@@#plIntro.pli-speel .pli-logo{ animation:pliOverend @@#plIntro.pli-speel .pli-logo{ animation:pliOverEnd @@bproef-intro.js@@een verschreven keyframe-naam: geen fout in de console, maar het logo blijft de hele intro onzichtbaar"
+# ── #297: het log staat in D1, en het scherm zegt dat ──
+"public/pidlane-meetkamer.js@@    { sleutel: 'terug',  titel: 'D1' },@@    { sleutel: 'terug',  titel: 'Airtable' },@@test-meetkamer.js@@de meetkamer stuurt je voor de uitslag naar Airtable, waar het log sinds #262 niet meer staat"
 # ── PID-tabel naar SAE J1979 (26-09-2026) ──
 # Vanaf 0169 stonden namen en formules op de verkeerde nummers, en lazen de
 # formules de steunbitmap als databyte. De fouten hieronder zijn die van toen.

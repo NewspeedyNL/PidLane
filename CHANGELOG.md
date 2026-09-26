@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — "Airtable" → "D1" waar het log al in D1 staat (#297)
+ ═══════════════════════════════════════════════════════════
+
+ - Meetkamer: het derde station van de lus heet D1. CAMPAGNE verwijst voor
+   de uitkomstregel naar de tabel logregels in D1. De console-meldingen van
+   de logbuffer zeggen D1. In beheer staat bij het logboek en de
+   meetopdrachten dat die tabellen in D1 staan (de routes heten nog
+   /airtable/…). Veldlab, klanten, config en gebruikers blijven Airtable en
+   zijn niet aangeraakt.
+
+ ═══════════════════════════════════════════════════════════
  26-09-2026 — PID-tabel rechtgezet naar SAE J1979 (0169–01A6 en vier namen eronder)
  ═══════════════════════════════════════════════════════════
 

@@ -380,8 +380,11 @@ console.log('\n8. het paneel tekent zonder bronnen, en zegt dat dan ook');
   toets('het paneel tekent zonder te klappen', (function () {
     try { h = kaal.html(s); return true; } catch (e) { return false; }
   })());
+  // Het derde station heet sinds #297 D1: de uitslagen gaan naar logregels,
+  // en die tabel staat niet meer in Airtable.
   toets('en bevat de vier stations van de lus',
-    /Opdracht/.test(h) && /Meten/.test(h) && /Airtable/.test(h) && /Claude/.test(h));
+    /Opdracht/.test(h) && /Meten/.test(h) && /\bD1\b/.test(h) && /Claude/.test(h));
+  toets('en het derde station zegt niet meer Airtable', !/Airtable/.test(h), h.slice(0, 300));
   toets('zonder opdracht staat er geen muur maar één uitnodiging',
     /Nog geen meetopdracht/.test(h), h.slice(0, 200));
 

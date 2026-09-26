@@ -75,7 +75,7 @@
   var STATIONS = [
     { sleutel: 'binnen', titel: 'Opdracht' },
     { sleutel: 'meten',  titel: 'Meten' },
-    { sleutel: 'terug',  titel: 'Airtable' },
+    { sleutel: 'terug',  titel: 'D1' },   // de uitslagen gaan naar logregels, en die tabel staat in D1 (#262, #297)
     { sleutel: 'lezen',  titel: 'Claude' }
   ];
 
