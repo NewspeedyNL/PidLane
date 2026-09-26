@@ -652,7 +652,6 @@ async function keurVel(app, v, waar, sluit) {
         ['melding (toast)', 'pidToast',    function(){ showToast('proef', 60000); }],
         ['rit-pil',        'ritPill',      function(){ _showRitPill(); }],
         ['caravan-pil',    'caravanPill',  function(){ _showCaravanPill(); }],
-        ['sessieteller',   'tokPill',      function(){ updateTokenPill(false); }],
       ];
       const uit = [];
       maak.forEach(function (m) {
@@ -679,6 +678,19 @@ async function keurVel(app, v, waar, sluit) {
     })()`);
     toets('tegenproef: met de oude bottom:10px ziet de meting ' + oud + 'px en keurt hem af',
           typeof oud === 'number' && oud < NAVBALK);
+
+    // De sessieteller van de admin zweeft niet meer (26-09-2026): hij lag
+    // linksonder over de inhoud. Als admin, mét een AI-call, mag er geen
+    // #tokPill staan — en de stand hoort in het adminmenu te staan.
+    const teller = await app.ev(`(function(){
+      window.currentUser = { user:'proef', role:'admin', label:'proef' };
+      trackTokens({ input_tokens: 1000, output_tokens: 200 }, '');
+      const k = document.getElementById('kbSessie');
+      return { pil: !!document.getElementById('tokPill'), menu: k ? k.textContent : null };
+    })()`);
+    toets('sessieteller: geen zwevende pil, ook niet voor de admin na een AI-call', teller && teller.pil === false);
+    toets('sessieteller: de stand staat in het adminmenu (' + (teller && teller.menu) + ')',
+          teller && /€/.test(teller.menu || ''));
 
     console.log('\n3. Tegenproef — meet deze proef werkelijk iets?');
 

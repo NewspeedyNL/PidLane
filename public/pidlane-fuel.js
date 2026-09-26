@@ -179,20 +179,16 @@ function trackTokens(u, mdl){
   updateTokenPill(true);
 }
 function updateTokenPill(flash){
-  // Alleen voor beheer. Wie géén admin is, krijgt de pil ook niet te zien als
-  // er eerder in deze sessie een admin ingelogd was: tot 26-09-2026 stond hier
-  // alleen een return, en bleef de teller van de admin staan voor de user of
-  // klant die daarna inlogde. Na elke rolwissel roept auth.js dit opnieuw aan.
-  if(!isAdmin()){ const oud=document.getElementById('tokPill'); if(oud) oud.remove(); return; }
-  let p=document.getElementById('tokPill');
-  if(!p){
-    p=document.createElement('div'); p.id='tokPill';
-    p.style.cssText='position:fixed;left:8px;bottom:calc(72px + var(--pl-sab,0px));z-index:var(--z-zwevend,9400);background:var(--sur2,#1a1f2e);border:1px solid var(--bd,#2a3142);color:var(--tx2,#cbd5e1);font:700 10px/1 var(--f,sans-serif);padding:6px 9px;border-radius:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);transition:background .25s,border-color .25s';
-    p.onclick=showTokenDetail; document.body.appendChild(p);
-  }
+  // Geen zwevende pil meer (26-09-2026). Op 26-09 ging de klantchip
+  // "⚡ n tokens" al uit beeld; deze sessieteller van de admin bleef linksonder
+  // over de inhoud liggen — over "Overige sensoren staan in Slim" in Slim
+  // visueel. De stand staat nu in ☰ → Admin → "AI-kosten deze sessie".
+  // Een pil uit een oudere versie van dit bestand wordt hier opgeruimd.
+  const oud=document.getElementById('tokPill'); if(oud) oud.remove();
+  const k=document.getElementById('kbSessie');
+  if(!k) return;
   const tot=_sessTokIn+_sessTokOut;
-  p.innerHTML='\ud83e\ude99 '+tot.toLocaleString('nl')+' tok \u00b7 \u20ac'+_sessCostEur.toFixed(_sessCostEur<1?3:2);
-  if(flash){ p.style.background='rgba(0,180,204,.28)'; p.style.borderColor='#00b4cc'; setTimeout(()=>{ if(p){ p.style.background='var(--sur2,#1a1f2e)'; p.style.borderColor='var(--bd,#2a3142)'; } },650); }
+  k.textContent='\ud83e\ude99 AI-kosten deze sessie'+(tot?' \u00b7 \u20ac'+_sessCostEur.toFixed(_sessCostEur<1?3:2):'');
 }
 function showTokenDetail(){
   showToast?.('\ud83e\ude99 Sessie: '+_sessCalls+' AI-calls \u00b7 '+_sessTokIn.toLocaleString('nl')+' in / '+_sessTokOut.toLocaleString('nl')+' uit \u00b7 \u20ac'+_sessCostEur.toFixed(3));
