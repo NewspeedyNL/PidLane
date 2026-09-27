@@ -223,9 +223,8 @@ async function laadWorker() {
 
   const tp = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, tankinhoud: 56, brandstofprijs: '1,959' } });
   toets('tankinhoud en literprijs, met drie decimalen', tp.ok && tp.voertuig.tankinhoud === 56 && tp.voertuig.brandstofprijs === 1.959, JSON.stringify(tp).slice(0, 300));
-  const ck = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, carrosserie: 'SUV', kleur: 'Rood' } });
-  toets('carrosserie en kleur voor het icoon', ck.ok && ck.voertuig.carrosserie === 'suv' && ck.voertuig.kleur === 'rood');
-  toets('een kleur die niet in de lijst staat: 400', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, kleur: '#ff0000' } }))._status === 400);
+  const ck = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, carrosserie: 'suv', kleur: 'rood' } });
+  toets('carrosserie en kleur worden niet meer bewaard (het icoon is weg)', ck.ok && !ck.voertuig.carrosserie && !ck.voertuig.kleur);
   const gr = await roep(tokA, { actie: 'rit_opslaan', voertuig_id: v1.voertuig.id, rit: { start: '2026-09-27T12:00:00.000Z', km: 12, extra: { gear: { v: 1, bin: 0.015, n: 300, h: { '171': 150, '199': 150 } } } } });
   toets('een rit draagt het histogram van de versnellingsindicator mee', gr.ok &&
     (await roep(tokA, { actie: 'ritten', voertuig_id: v1.voertuig.id })).ritten.some((r) => r.extra && r.extra.gear && r.extra.gear.n === 300));
@@ -312,6 +311,15 @@ async function laadWorker() {
     const s3 = await r3.json();
     const kol = db2.prepare("SELECT name FROM pragma_table_info('kp_voertuig')").all().map((r) => r.name);
     toets('de nieuwe kolommen staan er na de eerste aanroep', s3.ok && kol.indexOf('onderhoud_laatst') >= 0 && kol.indexOf('distributie') >= 0, JSON.stringify(s3) + ' ' + kol.join(','));
+
+    // Het icoon is weggehaald: wat er al aan carrosserie en kleur stond, wist
+    // de volgende start. Nagebouwd als een voertuig van vóór die start.
+    const W5 = await laadWorker();
+    db2.prepare("INSERT INTO kp_voertuig (id, klant_id, status, carrosserie, kleur, aangemaakt, bijgewerkt) VALUES ('x5', 'k', 'actief', 'suv', 'rood', 'nu', 'nu')").run();
+    await W5.default.fetch(new Request('https://app.pidlane.nl/klant/platform', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-App-Token': t3, Origin: 'https://app.pidlane.nl' }, body: JSON.stringify({ actie: 'stand' }) }), env3, {});
+    const x5 = db2.prepare("SELECT carrosserie, kleur FROM kp_voertuig WHERE id = 'x5'").get();
+    toets('carrosserie en kleur van vóór het weghalen van het icoon zijn gewist', x5.carrosserie === null && x5.kleur === null, JSON.stringify(x5));
 
     // Een migratie die om een ándere reden faalt dan "staat er al", hoort
     // niet stil door te gaan: dan draait de app op een tabel die hij niet kent.

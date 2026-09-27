@@ -177,11 +177,7 @@ const NEPSERVER = `(function(){
     toets('labelvoorstel: de derde rit krijgt Woon-werk voorgesteld', await wacht(`(document.getElementById('grLabel')||{}).value === 'Woon-werk' && /Voorstel/.test(document.getElementById('plGarBody').textContent)`));
     await app.ev(`PLGarage.sluit(); 'ok'`);
 
-    console.log('\n── 4e. het auto-icoon en leren uit opnames (27-09) ──');
-    await app.ev(`(function(){ const v = window._nepPlatform.voertuigen[0]; v.carrosserie = 'stationwagen'; v.kleur = 'blauw'; v.bouwjaar = 2018; })(); PLGarage.ververs(); PLGarage.open(); 'ok'`);
-    toets('het icoon staat in de lijst, in de kleur van de auto', await wacht(`(function(){ const i=document.querySelector('#plGarBody .gr-icoon'); return !!i && /#2f6fd6/.test(i.outerHTML) && /stationwagen/.test(i.getAttribute('aria-label')) && /2018/.test(document.getElementById('plGarBody').textContent); })()`));
-    toets('en op het startscherm', await wacht(`!!document.querySelector('#plGarageKaart .gr-icoon')`));
-    await app.ev(`PLGarage.sluit(); 'ok'`);
+    console.log('\n── 4e. leren uit opnames (27-09) ──');
     const opn = await app.ev(`(async function(){
       const R = [7.4, 13.1, 19.6, 25.8, 31.9, 38.2], regels = [];
       let t = 1e12;

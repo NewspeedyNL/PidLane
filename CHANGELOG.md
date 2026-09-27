@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-09-2026 — Auto-icoon weer weg
+ ═══════════════════════════════════════════════════════════
+
+ - Het zijaanzicht bij je auto (Mijn voertuigen, startscherm,
+   Voertuigoverzicht) is weggehaald: een generieke vorm leek niet op de
+   auto, en dan is geen plaatje beter. Carrosserie en kleur staan niet
+   meer in het profiel en worden niet meer bewaard; wat er al stond wist
+   de server bij de volgende start.
+
+ ═══════════════════════════════════════════════════════════
  27-09-2026 — Versnellingen leren uit eerdere data, auto-icoon, rustiger overzicht
  ═══════════════════════════════════════════════════════════
 

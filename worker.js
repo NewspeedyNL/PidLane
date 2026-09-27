@@ -4840,7 +4840,12 @@ var KP_MIGRATIES = [
   "ALTER TABLE kp_voertuig ADD COLUMN tankinhoud INTEGER",
   "ALTER TABLE kp_voertuig ADD COLUMN brandstofprijs REAL",
   "ALTER TABLE kp_voertuig ADD COLUMN carrosserie TEXT",
-  "ALTER TABLE kp_voertuig ADD COLUMN kleur TEXT"
+  "ALTER TABLE kp_voertuig ADD COLUMN kleur TEXT",
+  // Het auto-icoon is op 27-09-2026 weer weggehaald. De twee kolommen blijven
+  // (weghalen kan D1 niet zonder de tabel te herbouwen), maar wat erin kwam
+  // wordt gewist: gegevens bewaren waar geen functie meer bij hoort, is precies
+  // wat de akkoordtekst niet belooft. Idempotent, dus veilig bij elke start.
+  "UPDATE kp_voertuig SET carrosserie = NULL, kleur = NULL WHERE carrosserie IS NOT NULL OR kleur IS NOT NULL"
 ];
 var _kpSchemaKlaar = false;
 
@@ -4927,9 +4932,6 @@ var KP_VELDEN = {
   transmissie: { soort: "keuze", uit: ["handgeschakeld", "automaat", "onbekend"] },
   versnellingen: { soort: "geheel", min: 1, max: 10 },
   tankinhoud: { soort: "geheel", min: 10, max: 200 },
-  // Voor het icoontje (PLGarage.autoIcoonSvg); dezelfde lijsten als daar.
-  carrosserie: { soort: "keuze", uit: ["hatchback", "sedan", "stationwagen", "suv", "mpv", "coupe", "cabrio", "bestel"] },
-  kleur: { soort: "keuze", uit: ["zwart", "wit", "grijs", "zilver", "blauw", "rood", "groen", "geel", "oranje", "bruin", "beige", "paars", "roze"] },
   // Een literprijs heeft drie decimalen (1,959): "getal" rondt op één af.
   brandstofprijs: { soort: "prijs", min: 0.1, max: 5 },
   rijprofiel: { soort: "keuze", uit: ["stad", "gemengd", "snelweg", "korte ritten", "aanhanger of caravan"] },

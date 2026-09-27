@@ -1182,7 +1182,6 @@ MUTATIES=(
 "public/pidlane-gear.js@@    if (bron && m.bronnen[bron]) return@@    if (false) return@@test-gear.js@@dezelfde opname telt twee keer: het model gaat scheef naar die ene rit"
 "public/pidlane-gear.js@@    m.ankers=oud.ankers||[]; m.achteruit=oud.achteruit;@@    m.ankers=[]; m.achteruit=oud.achteruit;@@test-gear.js@@opnieuw opbouwen uit ritten gooit de correcties van de klant weg"
 "public/pidlane-gear.js@@      if (!verbonden()){ this._zet(null); this._buf=[]; return; }@@      if (this.uit || !verbonden()){ this._zet(null); this._buf=[]; return; }@@test-gear.js@@met de indicator uit leert hij niet meer, en is hij bij aanzetten weer leeg"
-"public/pidlane-garage.js@@    return null;\n  }\n  function kleurUitRdw(k) {@@    return 'hatchback';\n  }\n  function kleurUitRdw(k) {@@test-garage.js@@een onbekende carrosserie wordt stil een hatchback"
 "public/pidlane-rijsituatie.js@@  const open = !inklap || window._sitBlokOpen===true;@@  const open = true;@@bproef-garage.js@@de rijsituatie staat weer altijd open in het Voertuigoverzicht"
 )
 
