@@ -836,6 +836,48 @@ body {
 .logo-i { min-width:26px; }
 .logo-i { width:26px; height:26px; background:var(--bl); border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:14px; flex:0 0 auto; }
 .logo em { color:var(--bl); font-style:normal; }
+/* Versnellingsindicator (pidlane-gear.js) — staat op de plek van het logo
+   zolang er gereden wordt. body.pl-gear-aan is de enige schakelaar: dan gaat
+   het logo weg en komt #plGear. Op ≤480px is het logo er al niet (zie daar). */
+#plGear { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  position:relative; flex:0 0 auto; min-width:30px; height:36px; padding:0 4px; border:0; background:none;
+  color:var(--tx); font-family:var(--f); line-height:1; font-variant-numeric:tabular-nums; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; }
+#plGear[hidden] { display:none; }
+body.pl-gear-aan .topbar .logo { display:none; }
+.pl-gear-cijfer { font-size:22px; font-weight:800; letter-spacing:-.02em; }
+.pl-gear-cijfer.wissel { animation:plGearIn .22s ease; }
+.pl-gear-cijfer.n { color:var(--or); }
+.pl-gear-cijfer .v { font-size:.45em; font-weight:700; opacity:.6; margin-left:1px; vertical-align:top; }
+.pl-gear-rij { display:flex; gap:3px; }
+.pl-gear-rij i { display:block; width:5px; height:3px; border-radius:2px; background:currentColor; opacity:.25; }
+.pl-gear-rij i.nu { opacity:1; width:9px; }
+.pl-gear-stip { position:absolute; top:2px; right:0; width:7px; height:7px; border-radius:50%;
+  background:var(--or); box-shadow:0 0 0 2px var(--sur); }
+#plGear:focus-visible { outline:2px solid var(--bl); outline-offset:2px; border-radius:6px; }
+@keyframes plGearIn { from { transform:translateY(-4px); opacity:.3; } to { transform:none; opacity:1; } }
+@media (prefers-reduced-motion:reduce){ .pl-gear-cijfer.wissel { animation:none; } }
+#plGearOv { position:fixed; inset:0; z-index:var(--z-modal); display:flex; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.5); }
+#plGearOv .plg-vel { width:100%; max-width:480px; max-height:85vh; overflow:auto; background:var(--sur); color:var(--tx);
+  border-radius:18px 18px 0 0; padding:18px 18px calc(18px + var(--pl-sab, 0px)); box-shadow:var(--sl); font-family:var(--f); }
+#plGearOv h2 { flex:1; margin:0; font-size:18px; }
+#plGearOv .plg-sluit { background:none; border:0; color:inherit; font-size:20px; padding:4px 8px; cursor:pointer; }
+#plGearOv .plg-schakel { display:flex; align-items:center; gap:12px; margin-top:14px; cursor:pointer; }
+#plGearOv .plg-schakel input { width:22px; height:22px; accent-color:var(--bl); }
+#plGearOv .plg-uitleg { font-size:13px; color:var(--tx3); margin:10px 0 0; }
+#plGearOv .plg-klein { font-size:12px; color:var(--tx3); }
+#plGearOv .plg-voortgang { height:6px; border-radius:3px; background:var(--bd); margin-top:10px; overflow:hidden; }
+#plGearOv .plg-voortgang span { display:block; height:100%; background:var(--bl); }
+#plGearOv .plg-afwijking { margin-top:12px; padding:10px 12px; border-radius:10px; border:1px solid var(--or); font-size:13px; }
+#plGearOv .plg-rij { display:flex; align-items:center; gap:10px; padding:4px 0; }
+#plGearOv .plg-nr { width:22px; font-weight:800; font-variant-numeric:tabular-nums; opacity:.7; }
+#plGearOv .plg-balk { flex:1; height:6px; border-radius:3px; background:var(--bd); overflow:hidden; }
+#plGearOv .plg-balk span { display:block; height:100%; background:currentColor; opacity:.45; }
+#plGearOv .plg-rij.nu .plg-nr, #plGearOv .plg-rij.nu .plg-balk span { opacity:1; }
+#plGearOv .plg-r { width:74px; text-align:right; font-size:12px; color:var(--tx3); font-variant-numeric:tabular-nums; }
+#plGearOv .plg-wis { margin-top:14px; width:100%; padding:12px; border-radius:12px; border:1px solid var(--bd2);
+  background:none; color:inherit; font:inherit; font-weight:700; cursor:pointer; }
+#plGearOv .plg-wis.let { border-color:var(--or); }
 .tpr { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
 .pill { display:flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; border:1px solid var(--bd); font-size:12px; font-weight:500; color:var(--tx2); background:var(--sur2); }
 .dot { width:6px; height:6px; border-radius:50%; background:var(--tx3); transition:all .3s; }

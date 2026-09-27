@@ -152,7 +152,8 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 > 25-09: `pidlane-visueel.js` erbij, direct na `pidlane-pids.js`.
 > 26-09: `pidlane-foutcodes.js` erbij, direct na `pidlane-kmcheck.js`.
 > 27-09: `pidlane-garage.js` erbij, direct na `pidlane-foutcodes.js`.
-> 27-09: `pidlane-voorkeur.js` erbij, direct na `pidlane-run.js`.)
+> 27-09: `pidlane-voorkeur.js` erbij, direct na `pidlane-run.js`.
+> 27-09: `pidlane-gear.js` erbij, direct na `pidlane-watchers.js`.)
 > `plcheck.sh` controleert dat elke module in `index.html` hangt en dat
 > `pidlane-bedrading.js` achteraan staat.
 
@@ -221,6 +222,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 39 | `pidlane-credits.js` | 34 | `PLCredits` — kostenvenster vóór AI, saldoteller, activatiecode inwisselen |
 | 40 | `pidlane-klant.js` | 30 | `PLKlant` — klantregistratie, klantlogin, wachtwoordherstel, "Mijn tokens" |
 | 41 | `pidlane-watchers.js` | 20 | `PLWatch` — Laag B, ruwe-signaalwatchers op `pidHist` |
+| 41a | `pidlane-gear.js` | 23 | `PLGear` — **versnellingsindicator** in de topbalk (`#plGear`, op de plek van het logo via `body.pl-gear-aan`). Leert per auto de verhouding km/u per 1000 tpm uit stabiele, tijd-uitgelijnde paren 010D/010C in `pidHist` (histogram → pieken = versnellingen); geen bus-I/O. Model in localStorage onder het VIN-pseudoniem, nooit de ruwe VIN (§7). Instellingen via ☰ of een tik op het cijfer. Test: `test-gear.js` |
 | 42 | `pidlane-uitgebreid.js` | 8 | `PLUitgebreid` — fabrikant-PIDs buiten mode 01 (mode 21), `pidCmd()`/`isMode01()`, probe na verbinden |
 | 43 | `pidlane-waakronde.js` | 13 | `PLWaak` — stille achtergrondcontrole van sensoren buiten je selectie; claimt de bus 3 PIDs per 12s, oordeelt per meting, ambient strook |
 | 44 | `pidlane-bulk.js` | 27 | `PLBulk` — passieve bulk-datarecorder (IndexedDB). Eerste echte opname 19-08: 101 monsters op 1 Hz, 55 PIDs, geen gaten |

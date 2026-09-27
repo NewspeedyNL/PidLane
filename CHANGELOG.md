@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-09-2026 — Versnellingsindicator in de topbalk
+ ═══════════════════════════════════════════════════════════
+
+ - Tijdens het rijden staat de ingeschakelde versnelling op de plek van
+   het logo, met een streepje per versnelling eronder. Een oranje N bij
+   vrij of ingetrapte koppeling. Stilstand, geen verbinding of demo: het
+   logo komt terug. Op smalle schermen (≤480px) staat het cijfer tussen
+   menu en chips; het logo was daar al weg.
+ - Leert zelf: geen kalibratierit, geen specs. Na ongeveer 250 stabiele
+   metingen verschijnt het cijfer. Een vraagteken ("3?") betekent dat de
+   1e nog niet gezien is; dat corrigeert zich. Een oranje stip betekent
+   dat het patroon afwijkt (andere banden, andere auto zonder VIN).
+ - ☰ → 🔢 Versnellingsindicator (of een tik op het cijfer): aan/uit,
+   voortgang, geleerde verhoudingen en Leer opnieuw (tweede tik bevestigt).
+ - Model per auto in localStorage onder het VIN-pseudoniem, niet de VIN.
+ - Leest alleen `pidHist`; stuurt zelf niets naar de adapter.
+ - Getoetst in simulatie (`test-gear.js`), niet in een auto. Hoe snel en
+   hoe goed hij op een echte bus leert, is een vraag voor een rit.
  27-09-2026 — versie 3.1.0 voor de Play Console
  ═══════════════════════════════════════════════════════════
 

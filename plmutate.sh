@@ -1123,6 +1123,13 @@ MUTATIES=(
 "public/pidlane-voorkeur.js@@    if (p.adapterAdres && !toestel.adapterAdres) zet(@@    if (p.adapterAdres) zet(@@test-voorkeur.js@@het adres uit het account overschrijft een gekoppelde adapter op dit toestel"
 "public/pidlane-voorkeur.js@@    if (!passend.length) return 0;@@@@test-voorkeur.js@@past er niets van de vaste selectie, dan staan er ineens geen sensoren meer aan"
 "public/pidlane-voorkeur.js@@    scanBekend: function () { return (_pref && _pref.scanBekend) || 'vragen'; },@@    scanBekend: function () { return (_pref && _pref.scanBekend) || 'overslaan'; },@@test-voorkeur.js@@zonder voorkeur wordt de sensorscan bij een bekende auto stil overgeslagen"
+
+# ── Versnellingsindicator (pidlane-gear.js). Drie fouten die stil een verkeerd
+# cijfer of een lek opleveren: snelheid en toerental van verschillende momenten
+# als paar, een oude cachewaarde als verse meting, en de ruwe VIN als sleutel.
+"public/pidlane-gear.js@@    if (Math.abs(ts-tr)>CFG.alignMaxMs) return {los:true, kmh:s.v, rpm:r.v};@@@@test-gear.js@@snelheid en toerental van verschillende momenten tellen als één paar"
+"public/pidlane-gear.js@@    if (t-ts>CFG.versMaxMs || t-tr>CFG.versMaxMs) return {oud:true};@@@@test-gear.js@@een oude cachewaarde levert nog een versnelling op"
+"public/pidlane-gear.js@@      this._wissel(ps ? 'v_'+ps : 'onbekend');@@      this._wissel(ps ? 'v_'+vin : 'onbekend');@@test-gear.js@@het model wordt onder de ruwe VIN opgeslagen"
 )
 
 echo

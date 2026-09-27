@@ -916,6 +916,7 @@ function closeConnOv(){
              en onthoudt niets — hij start altijd dicht. -->
         <button class="kebab-item" id="kbGarage" style="display:none" onclick="closeKebab();PLGarage.open()">🚗 Mijn voertuigen</button>
         <button class="kebab-item" id="kbVoorkeur" style="display:none" onclick="closeKebab();PLVoorkeur.open()">⚙️ Mijn voorkeuren</button>
+        <button class="kebab-item" onclick="closeKebab();openGearInstellingen()">🔢 Versnellingsindicator</button>
         <button class="kebab-item" id="kbAccount" onclick="closeKebab();PLKlant.openMijnTokens()">👤 Mijn account</button>
         <button class="kebab-item kebab-group" id="admGroupBtn" onclick="toggleAdmGroup(event)" aria-expanded="false" aria-controls="admGroup">🛠️ Admin<span class="kb-caret" id="admCaret">▸</span></button>
         <div class="kebab-sub" id="admGroup">
@@ -946,6 +947,7 @@ function closeConnOv(){
     <button class="kebab-btn" onclick="goHome()" title="Home" aria-label="Home">🏠</button>
   </div>
   <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:26px;height:26px"><defs><linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bgC)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="440" stroke-width="14"/><line x1="256" y1="418" x2="256" y2="392" stroke-width="12"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grC)" stroke-width="18" stroke-linejoin="round"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spC)"/></svg></div>Pid<em>Lane</em></div>
+  <button type="button" id="plGear" hidden aria-live="polite" onclick="openGearInstellingen()"></button>
   <div class="tpr">
     <!-- 🔵 Systeem-chip — samengevoegd 27-08-2026 uit de vier losse chips
          hieronder (voertuig/OBD/AI/Run), die vier stuks brede ruimte kostten
@@ -2026,6 +2028,7 @@ function closeConnOv(){
 <script src="pidlane-credits.js"></script>
 <script src="pidlane-klant.js"></script><!-- klantaccounts: registreren, herstel, tokenscherm (PLKlant) --><!-- tegoed ("tokens") + kostenpreview vóór AI-calls (PLCredits) -->
 <script src="pidlane-watchers.js"></script><!-- rit-monitor Laag B (PLWatch) — vereist ná monitor -->
+<script src="pidlane-gear.js"></script><!-- versnellingsindicator in de topbalk — leest pidHist, geen bus-I/O -->
 <script src="pidlane-uitgebreid.js"></script><!-- fabrikant-PIDs mode 21 — vereist ná data + pidgate -->
 <script src="pidlane-bulk.js"></script><!-- passieve bulk-datarecorder (PLBulk) — vereist ná watchers -->
 <script src="pidlane-waakronde.js"></script><!-- stille achtergrondcontrole van niet-gekozen sensoren — vereist ná pids + pidgate + diagbundel -->
