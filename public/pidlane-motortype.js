@@ -368,11 +368,9 @@ function toggleSR(){
 // niet de socket. Het proces liep aantoonbaar door — de app logde de
 // herverbinding zelf, en dat kan alleen als hij draaide.
 //
-// Daarom: staat er een verbinding, dan gaat het bestand RECHTSTREEKS naar een
-// vaste map en komt er geen venster tussen. Staat er geen verbinding, dan is
-// de deelkaart gratis en blijft hij wat hij was — met "Opslaan in
-// Bestanden/Drive" erin, en dat is een mogelijkheid die we niet weggooien
-// voor een probleem dat op dat moment niet bestaat.
+// Daarom gaat het bestand RECHTSTREEKS naar een vaste map en komt er geen
+// venster tussen. Tot 27-09 gold dat alleen tijdens een verbinding — zie de
+// kop boven download() voor waarom dat onderscheid weg is.
 const PL_OPSLAGMAP = 'PidLane';
 
 async function _blobNaarB64(blob){
@@ -427,15 +425,22 @@ function _plVerbindingStaat(){
   }catch(e){ console.warn('Verbindingsstand onleesbaar bij het opslaan', e); return false; }
 }
 
+/* SINDS 27-09-2026 OOK ZONDER VERBINDING RECHTSTREEKS. De keuze hierboven
+   ("zonder verbinding is de deelkaart gratis") klopte voor de socket, maar
+   niet voor de gebruiker: de PDF-exports (_bewaar in pidlane-export.js)
+   schreven altijd rechtstreeks naar Documenten/PidLane/, de txt-knoppen
+   alleen tijdens een rit. Dezelfde knopsoort deed dus twee dingen, en het
+   foutcodevenster van testrun 8.2 — meestal zonder verbinding gebruikt —
+   opende daardoor weer een venster. De deelkaart blijft de terugval als
+   het schrijven mislukt; de verbinding bepaalt alleen nog de logregel. */
 async function download(name,content){
   const blob=new Blob([content],{type:'text/plain'});
-  if(_plVerbindingStaat()){
-    const pad=await nativeSchrijfDirect(blob,name);
-    if(pad){
-      log('💾 Opgeslagen in '+pad+' — geen deelvenster, dus de verbinding blijft staan (#132)','ok');
-      try{ showToast?.('💾 Opgeslagen in '+pad); }catch(e){ console.warn('Opslagmelding niet getoond:', e); }
-      return;
-    }
+  const pad=await nativeSchrijfDirect(blob,name);
+  if(pad){
+    const waarom=_plVerbindingStaat()?' — geen deelvenster, dus de verbinding blijft staan (#132)':'';
+    log('💾 Opgeslagen in '+pad+waarom,'ok');
+    try{ showToast?.('💾 Opgeslagen in '+pad); }catch(e){ console.warn('Opslagmelding niet getoond:', e); }
+    return;
   }
   if(await nativeShareFile(blob,name)) return;
   if(window.Capacitor?.isNativePlatform?.()){ showNeedsUpdate(); return; }

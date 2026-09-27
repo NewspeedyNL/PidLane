@@ -14,6 +14,32 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 27-09-2026 — Twee opslagroutes, één knopsoort
+
+**Waarneming.** Op de 3.1.0-build opende een opslagknop het deelvenster in
+plaats van op te slaan "zoals de rest".
+
+**Oorzaak.** Er waren twee routes. `_bewaar()` in `pidlane-export.js` (de
+PDF's) schreef altijd rechtstreeks naar `Documenten/PidLane/`. `download()`
+in `pidlane-motortype.js` (alle txt-knoppen) deed dat sinds #132 alleen
+tijdens een verbinding: zonder verbinding werd het deelvenster als "gratis"
+beschouwd, want er was geen socket om te verliezen. Voor de socket klopte
+dat. Voor de gebruiker deed dezelfde soort knop twee verschillende dingen.
+Het nieuwe foutcodevenster van testrun 8.2 wordt meestal zonder verbinding
+gebruikt, en daardoor viel het nu op.
+
+**Wat er veranderde.** `download()` schrijft altijd eerst rechtstreeks weg.
+De verbinding bepaalt alleen nog of de logregel de #132-reden noemt. De
+mutatie in `plmutate.sh` bouwt het oude gedrag na
+(`_plVerbindingStaat()?…:null`).
+
+**Niet getoetst.** Het schrijven zelf op Android ≤ 10: daar vraagt
+`DOCUMENTS` om een opslagrecht dat de bundel niet heeft. Het deelvenster is
+dan de terugval, en de logregel "Rechtstreeks opslaan mislukt" laat zien
+dat dat gebeurde.
+
+---
+
 ## 27-09-2026 — Mijn voertuigen: waarom D1, waarom een eigen akkoord
 
 **De keuzes, gemaakt met de eigenaar:**

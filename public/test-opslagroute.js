@@ -2,8 +2,9 @@
 //
 // Zeven van de zeven afwezigheden in de logboeken van 11-09 lieten zien dat de
 // SPP-socket binnen 2 tot 7 seconden na het wegschakelen omvalt. De deelkaart
-// van Android is zo'n wegschakeling. Daarom: staat er een verbinding, dan gaat
-// het bestand rechtstreeks naar een map en komt er geen venster tussen.
+// van Android is zo'n wegschakeling. Daarom gaat het bestand rechtstreeks naar
+// een map en komt er geen venster tussen — sinds 27-09-2026 ook zonder
+// verbinding, zodat de txt-knoppen doen wat de PDF-exports al deden.
 //
 // Wat hier getoetst wordt is de KEUZE, niet het schrijven zelf — dat laatste
 // is Capacitor en heeft een toestel nodig. De keuze is precies het deel waar
@@ -83,20 +84,25 @@ console.log('\n— met een verbinding gaat het bestand rechtstreeks naar de map 
   toets('en de deelkaart is NIET geopend', gedaan.gedeeld, null);
   toets('de gebruiker ziet waar het staat', gedaan.toast.some(t => /PidLane\/rit\.txt/.test(t)), true);
   toets('en het staat in het logboek', gedaan.log.some(l => l.indexOf('ok|') === 0), true);
+  toets('met de reden: de verbinding blijft staan', gedaan.log.some(l => /#132/.test(l)), true);
 }
 
-console.log('\n— zonder verbinding blijft de deelkaart wat hij was —');
+console.log('\n— zonder verbinding óók rechtstreeks, net als de PDF-exports —');
 {
   const { ctx, gedaan } = maak({ connected: false, native: true });
-  await ctx.download('rit.txt', 'inhoud');
-  toets('de deelkaart is geopend', gedaan.gedeeld, 'rit.txt');
-  toets('en er is niets rechtstreeks weggeschreven', gedaan.direct, null);
+  await ctx.download('foutcodes.txt', 'inhoud');
+  toets('rechtstreeks weggeschreven', gedaan.direct, 'PidLane/foutcodes.txt');
+  toets('en de deelkaart is NIET geopend', gedaan.gedeeld, null);
+  toets('de logregel beweert niets over een verbinding die er niet is',
+        gedaan.log.some(l => /#132/.test(l)), false);
 }
 
-console.log('\n— demo telt niet als verbinding: er is geen socket om te verliezen —');
+console.log('\n— demo telt niet als verbinding: er is geen socket om te sparen —');
 {
   const { ctx, gedaan } = maak({ connected: true, demo: true, native: true });
-  toets('de deelkaart is geopend', (await ctx.download('rit.txt', 'x'), gedaan.gedeeld), 'rit.txt');
+  await ctx.download('rit.txt', 'x');
+  toets('rechtstreeks weggeschreven', gedaan.direct, 'PidLane/rit.txt');
+  toets('zonder de verbindingsuitleg in het logboek', gedaan.log.some(l => /#132/.test(l)), false);
 }
 
 console.log('\n— mislukt het rechtstreeks schrijven, dan gaat het bestand niet verloren —');
