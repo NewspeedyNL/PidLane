@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-09-2026 — Opslaan zonder venster, ook zonder verbinding
+ ═══════════════════════════════════════════════════════════
+
+ - De txt-knoppen (foutcodes, rit-analyse, totaalcheck, caravan, scanlog,
+   waakvenster, bulk, veldlab) slaan voortaan altijd rechtstreeks op in
+   Documenten/PidLane/, net als de PDF-exports. Tot nu toe deden ze dat
+   alleen tijdens een verbinding en opende zonder verbinding het
+   deelvenster.
+ - Het deelvenster blijft de terugval als rechtstreeks schrijven mislukt.
+
+ ═══════════════════════════════════════════════════════════
  27-09-2026 — Versnellingsindicator in de topbalk
  ═══════════════════════════════════════════════════════════
 

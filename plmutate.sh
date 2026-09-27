@@ -644,12 +644,14 @@ MUTATIES=(
 # ── De opslagroute (#132, 11-09-2026). De deelkaart van Android duwt de app
 # naar de achtergrond, en dat kost binnen 2 tot 7 seconden de SPP-socket —
 # zeven van de zeven afwezigheden in de logboeken van 11-09. Staat er een
-# verbinding, dan gaat het bestand daarom rechtstreeks naar een map. Drie
-# fouten die geen foutmelding geven maar een herverbinding of een zoekgeraakt
+# verbinding, dan gaat het bestand daarom rechtstreeks naar een map — sinds
+# 27-09 ook zonder, zodat txt en PDF hetzelfde doen. Fouten die geen
+# foutmelding geven maar een herverbinding, een venster of een zoekgeraakt
 # bestand.
-"public/pidlane-motortype.js@@  if(_plVerbindingStaat()){@@  if(false){@@test-opslagroute.js@@de deelkaart gaat weer open tijdens een rit: elke export kost een herverbinding (#132)"
-"public/pidlane-motortype.js@@    if(typeof demoMode!=='undefined' && demoMode) return false;@@@@test-opslagroute.js@@demo telt als verbinding: in demo verdwijnt de deelkaart terwijl er geen socket te verliezen is"
-"public/pidlane-motortype.js@@    if(pad){@@    if(true){@@test-opslagroute.js@@een mislukt rechtstreeks schrijven meldt succes: het bestand landt nergens en niemand ziet het"
+"public/pidlane-motortype.js@@  const pad=await nativeSchrijfDirect(blob,name);@@  const pad=_plVerbindingStaat()?await nativeSchrijfDirect(blob,name):null;@@test-opslagroute.js@@zonder verbinding opent weer de deelkaart: de txt-knoppen doen iets anders dan de PDF-exports (27-09)"
+"public/pidlane-motortype.js@@  const pad=await nativeSchrijfDirect(blob,name);@@  const pad=null;@@test-opslagroute.js@@de deelkaart gaat weer open tijdens een rit: elke export kost een herverbinding (#132)"
+"public/pidlane-motortype.js@@    if(typeof demoMode!=='undefined' && demoMode) return false;@@@@test-opslagroute.js@@demo telt als verbinding: het logboek beweert dat er een socket gespaard is die er niet is"
+"public/pidlane-motortype.js@@  if(pad){@@  if(true){@@test-opslagroute.js@@een mislukt rechtstreeks schrijven meldt succes: het bestand landt nergens en niemand ziet het"
 
 # ── De dubbeltik-tip (#145, 11-09-2026). Hij hing aan renderGauges() en kwam
 # dus op het keuzescherm voorbij, waar geen tegel staat — en daarna nooit meer,
