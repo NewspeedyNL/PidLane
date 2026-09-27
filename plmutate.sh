@@ -1100,10 +1100,10 @@ MUTATIES=(
 #    klant bij een ander laten binnenkijken of een persoonsgegeven onversleuteld
 #    laten staan. App: de fouten die een rit, een issue of een rapport stil
 #    verkeerd laten vastleggen.
-"worker.js@@  return db.prepare("SELECT * FROM kp_voertuig WHERE id = ? AND klant_id = ?").bind(String(id), klantId).first();@@  return db.prepare("SELECT * FROM kp_voertuig WHERE id = ?").bind(String(id)).first();@@test-klantplatform.js@@een klant kan het voertuig van een andere klant wijzigen"
+"worker.js@@  return db.prepare(\"SELECT * FROM kp_voertuig WHERE id = ? AND klant_id = ?\").bind(String(id), klantId).first();@@  return db.prepare(\"SELECT * FROM kp_voertuig WHERE id = ?\").bind(String(id)).first();@@test-klantplatform.js@@een klant kan het voertuig van een andere klant wijzigen"
 "worker.js@@    if ((tel.actief || 0) >= KP_MAX_ACTIEF)@@    if (false)@@test-klantplatform.js@@een vierde actief voertuig mag"
 "worker.js@@      else if (!c.sleutel) kentekenOpgeslagen = false;   // niet bewaren is beter dan onversleuteld@@      else if (!c.sleutel) { zet.kenteken_enc = k; kentekenOpgeslagen = true; }@@test-klantplatform.js@@zonder sleutel gaat het kenteken leesbaar de database in"
-"worker.js@@      if (!ak || ak.versie !== KP_AKKOORD_VERSIE)\n        return json({ ok: false, error: "Eerst akkoord@@      if (false)\n        return json({ ok: false, error: "Eerst akkoord@@test-klantplatform.js@@schrijven zonder akkoord op het bewaren"
+"worker.js@@      if (!ak || ak.versie !== KP_AKKOORD_VERSIE)\n        return json({ ok: false, error: \"Eerst akkoord@@      if (false)\n        return json({ ok: false, error: \"Eerst akkoord@@test-klantplatform.js@@schrijven zonder akkoord op het bewaren"
 "worker.js@@        rijp.splice(i, 1);@@@@test-klantplatform.js@@D1 faalt en het account wordt toch gewist — de sleutel naar de voertuigdata is dan weg"
 "worker.js@@(v.kmstand == null || r.waarde >= v.kmstand)@@true@@test-klantplatform.js@@een gemeten kilometerstand zet de opgegeven stil lager"
 "public/pidlane-garage.js@@    if (dt > CFG.ritGatMaxS) dt = 0;@@@@test-garage.js@@een meetgat telt als afgelegde weg"
@@ -1112,7 +1112,7 @@ MUTATIES=(
 "public/pidlane-garage.js@@    var volledig = u.gelezen ? (u.gelezen.bevestigd && u.gelezen.pending !== false) : !!u.volledig;@@    var volledig = true;@@test-garage.js@@een issue gaat dicht na een uitlezing die niet volledig was (#218)"
 "public/pidlane-garage.js@@      if (!rec || !isKlant() || !(_st.stand && _st.stand.akkoord)) return;@@      if (!rec) return;@@test-garage.js@@een rapport gaat zonder akkoord de server op"
 "public/pidlane-garage.js@@    return km >= 20 ? {@@    return km >= 0 ? {@@test-garage.js@@een verbruiksoordeel op één korte rit"
-"worker.js@@    if (ak && ak.versie === "verwijderd")\n      return json(@@    if (false)\n      return json(@@test-klantplatform.js@@een verwijderd account houdt met zijn lopende token toegang tot Mijn voertuigen"
+"worker.js@@    if (ak && ak.versie === \"verwijderd\")\n      return json(@@    if (false)\n      return json(@@test-klantplatform.js@@een verwijderd account houdt met zijn lopende token toegang tot Mijn voertuigen"
 )
 
 echo
