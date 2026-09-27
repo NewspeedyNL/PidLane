@@ -108,6 +108,33 @@ const NEPSERVER = `(function(){
     toets('en de keuringsstatus gaat mee in de status', await wacht(`window._nepPlatform.log.indexOf('status_opslaan') >= 0`));
     await app.ev(`connected = false; PLFoutcodes.sluit(); 'ok'`);
 
+    console.log('\n── 4b. de waakronde: bevinding en resultaat bij het voertuig ──');
+    await app.nepAdapter({ '0142': '41 42 4E 20', '01421': '41 42 4E 20', '010C': '41 0C 00 00', '010D': '41 0D 00' });
+    const waak = await app.ev(`(function(){
+      connected = true; demoMode = false;
+      try { supportedPIDs = new Set(['0142']); } catch (e) { return 'supportedPIDs: ' + e.message; }
+      try { activePIDs.delete('0142'); } catch (e) { return 'activePIDs: ' + e.message; }
+      PLWaak.start(); return 'ok';
+    })()`);
+    toets('de waakronde start op de nep-adapter', waak === 'ok', waak);
+    toets('20 V accuspanning wordt een open punt bij het voertuig',
+      await wacht(`!!(window._nepPlatform.issues.v1 && window._nepPlatform.issues.v1['waak:0142'])`, 20000),
+      JSON.stringify(await app.ev(`PLWaak.lijst()`)));
+    await app.ev(`PLWaak.stop(); connected = false; 'ok'`);
+    toets('stoppen legt het resultaat vast als rapport bij het voertuig',
+      await wacht(`window._nepPlatform.rapporten.some(r => r.soort === 'waak' && /BEVINDINGEN \\(1\\)/.test(r.tekst))`));
+
+    console.log('\n── 4c. het Voertuigoverzicht leest en schrijft Mijn voertuigen ──');
+    await app.ev(`(function(){ const v = window._nepPlatform.voertuigen[0]; v.kmstand = 84210; v.onderhoud_laatst = '03-2026 / 80.000 km'; })(); PLGarage.ververs(); 'ok'`);
+    await wacht(`PLGarage.actief() && PLGarage.actief().kmstand === 84210`);
+    await app.ev(`openVehicleOverview(); 'ok'`);
+    const ov = await app.ev(`({ t: document.getElementById('vehOverview').textContent, km: document.getElementById('uvKm').value, beurt: document.getElementById('uvBeurt').value })`);
+    toets('het overzicht zegt dat het gekoppeld is', /Gekoppeld aan Blauwe Mazda/.test(ov.t), ov.t.slice(0, 200));
+    toets('km-stand en laatste beurt komen uit het voertuig', ov.km === '84210' && ov.beurt === '03-2026 / 80.000 km', JSON.stringify(ov));
+    await app.ev(`document.getElementById('uvKm').value = '85.100'; document.getElementById('uvDistr').value = 'ketting'; saveVehicleOverview(); 'ok'`);
+    toets('opslaan schrijft naar het voertuig in Mijn voertuigen',
+      await wacht(`(function(){ const v = window._nepPlatform.voertuigen[0]; return v.kmstand === 85100 && v.distributie === 'ketting'; })()`));
+
     console.log('\n── 5. de terugknop en het startscherm ──');
     await app.ev(`PLGarage.open(); 'ok'`);
     await app.ev(`appBack(); 'ok'`);

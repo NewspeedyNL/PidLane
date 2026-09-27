@@ -314,7 +314,13 @@
         rij.staat  = o.staat;
         rij.reden  = o.reden;
         rij.tijd   = Date.now();
-        boekHistorie(rij.pid, o, rij.tijd);
+        const h = boekHistorie(rij.pid, o, rij.tijd);
+        // Mijn voertuigen: de eerste keer dat een sensor buiten bereik valt,
+        // wordt het een open punt bij het actieve voertuig.
+        if (o.staat === 'let' && h.let === 1) {
+          try { if (window.PLGarage && PLGarage.waakBevinding) PLGarage.waakBevinding(rij.pid, naam(rij.pid) + ': ' + o.reden + (o.v !== undefined ? ' (' + toonWaarde(o.v, rij.pid) + ' ' + eenheid(rij.pid) + ')' : '')); }
+          catch (e) { console.warn('Waakronde: bevinding niet doorgegeven aan Mijn voertuigen', e); }
+        }
         try { await delay(40); } catch(e){ console.warn('delay mislukt:', e); }
       }
       _cursor += BATCH;
@@ -593,6 +599,12 @@
   function stop() {
     if (!_aan) return;
     _aan = false;
+    // Mijn voertuigen: het resultaat van deze sessie als rapport bij het
+    // actieve voertuig. Ook bij een verbroken verbinding (setConn hieronder).
+    try {
+      if (window.PLGarage && PLGarage.waakKlaar && window.PLWaak)
+        PLGarage.waakKlaar(PLWaak.historie(), function (p) { return { naam: naam(p), eenheid: eenheid(p) }; });
+    } catch (e) { console.warn('Waakronde: resultaat niet doorgegeven aan Mijn voertuigen', e); }
     if (_timer) { clearTimeout(_timer); _timer = null; }
     if (_pols)  { clearInterval(_pols); _pols = null; }
     if (_drukTimer) { clearTimeout(_drukTimer); _drukTimer = null; }

@@ -4823,11 +4823,23 @@ var KP_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS kp_issue (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, sleutel TEXT NOT NULL, soort TEXT NOT NULL, titel TEXT, ernst TEXT, status TEXT NOT NULL DEFAULT 'open', eerst_gezien TEXT NOT NULL, laatst_gezien TEXT NOT NULL, aantal INTEGER NOT NULL DEFAULT 1, gesloten_op TEXT, notitie TEXT)",
   "CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_issue_sleutel ON kp_issue (voertuig_id, sleutel)"
 ];
+// Kolommen die er later bij kwamen. CREATE TABLE IF NOT EXISTS voegt op een
+// bestaande tabel niets toe, dus die gaan er met ALTER bij. "duplicate column"
+// betekent: stond er al — dat is de normale uitkomst na de eerste keer. Elke
+// andere fout gaat gewoon naar boven.
+var KP_MIGRATIES = [
+  "ALTER TABLE kp_voertuig ADD COLUMN onderhoud_laatst TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN distributie TEXT"
+];
 var _kpSchemaKlaar = false;
 
 async function kpSchema(db) {
   if (_kpSchemaKlaar) return;
   for (const s of KP_SCHEMA) await db.prepare(s).run();
+  for (const s of KP_MIGRATIES) {
+    try { await db.prepare(s).run(); }
+    catch (e) { if (!/duplicate column/i.test(String(e && e.message || e))) throw e; }
+  }
   _kpSchemaKlaar = true;
 }
 __name(kpSchema, "kpSchema");
@@ -4908,6 +4920,8 @@ var KP_VELDEN = {
   apk_tot: { soort: "datum" },
   onderhoud_km: { soort: "geheel", min: 0, max: 2000000 },
   onderhoud_datum: { soort: "datum" },
+  onderhoud_laatst: { soort: "tekst", max: 80 },
+  distributie: { soort: "tekst", max: 80 },
   notities: { soort: "tekst", max: 1000 },
   vin_pseudo: { soort: "tekst", max: 32, patroon: /^[0-9a-f]{8,32}$/ }
 };
