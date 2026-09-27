@@ -2006,6 +2006,10 @@ async function startDiscovery(){
     // minuut zware bus is precies wat je na een crash niet wilt.
     _slaScanOver=true;
     btDiag('Hervatten ('+window._plHervat.reden+'): gezondheidscheck overgeslagen, oordeel uit het profiel','info');
+  } else if(usedProfile && _ph && Object.keys(_ph).length && !demoMode && window.PLVoorkeur && PLVoorkeur.scanBekend()!=='vragen'){
+    // Mijn voorkeuren: de klant heeft deze vraag al één keer beantwoord.
+    _slaScanOver = PLVoorkeur.scanBekend()==='overslaan';
+    btDiag('Bekende auto: sensorscan '+(_slaScanOver?'overgeslagen':'gedraaid')+' volgens Mijn voorkeuren','info');
   } else if(usedProfile && _ph && Object.keys(_ph).length && typeof plBevestig==='function' && !demoMode){
     try{
       _slaScanOver = await plBevestig(
@@ -2092,6 +2096,10 @@ async function startDiscovery(){
   window._plHervat = null;
   if(_hervat){
     _hervatAfronden(_hervat);
+  } else if(window.PLVoorkeur && !PLVoorkeur.samenvatting()){
+    // Mijn voorkeuren: geen samenvatting. De standaardset staat al aan
+    // (wizGo(6) hierboven); wizFinish() doet de rest zonder scherm.
+    try{ wizFinish(); }catch(e){ btDiag('Zonder samenvatting afronden mislukt — open de PID-lijst één keer met de hand: '+(e.message||e),'warn'); }
   } else {
     wizShow();
   }

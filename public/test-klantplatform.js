@@ -181,6 +181,24 @@ async function laadWorker() {
   const mz = st.voertuigen.find((v) => v.id === v1.voertuig.id);
   toets('stand telt rapporten, ritten en open issues', mz.aantal.rapporten === 1 && mz.aantal.ritten === 2 && mz.aantal.openIssues === 0, JSON.stringify(mz.aantal));
 
+  console.log('\n4b. Voorkeuren en de sensorselectie per voertuig');
+  const tokV = (await W.makeToken(env, 'vera@voorbeeld.nl', 'klant', 'Vera')).token;
+  toets('voorkeuren zonder akkoord op Mijn voertuigen: mag', (await roep(tokV, { actie: 'voorkeuren' })).ok === true);
+  const vk = await roep(tokV, { actie: 'voorkeuren_opslaan', voorkeur: { weergave: 'visueel', thema: 'licht', tekst: 'l', letter: 15, waakronde: true,
+    favorieten: ['wc-live', 'wc-live', 'wc-koop'], oudeData: 'ja', adapterAdres: '00:04:3E:AA:BB:CC', onbekend: 'x', rapport: '' } });
+  toets('voorkeuren bewaard, dubbele favoriet eruit, onbekende sleutel en lege waarde weg', vk.ok && vk.voorkeur.favorieten.length === 2 && !('onbekend' in vk.voorkeur) && !('rapport' in vk.voorkeur), JSON.stringify(vk));
+  const terugV = await roep(tokV, { actie: 'voorkeuren' });
+  toets('en weer terug te lezen', terugV.voorkeur.weergave === 'visueel' && terugV.voorkeur.letter === 15 && terugV.voorkeur.waakronde === true);
+  toets('een ongeldige keuze wordt geweigerd, niet stil bewaard', (await roep(tokV, { actie: 'voorkeuren_opslaan', voorkeur: { weergave: 'raar' } }))._status === 400);
+  toets('"true" als tekst is geen ja/nee', (await roep(tokV, { actie: 'voorkeuren_opslaan', voorkeur: { waakronde: 'true' } }))._status === 400);
+  toets('een favoriet die geen kaart is, wordt geweigerd', (await roep(tokV, { actie: 'voorkeuren_opslaan', voorkeur: { favorieten: ['javascript:alert(1)'] } }))._status === 400);
+  toets('een ander ziet ze niet', Object.keys((await roep(tokB, { actie: 'voorkeuren' })).voorkeur).length === 0);
+  const ps = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, pid_selectie: ['010c', '010D', '010C', '0105'] } });
+  toets('sensorselectie per voertuig: hoofdletters, uniek, als lijst terug', ps.ok && JSON.stringify(ps.voertuig.pid_selectie) === JSON.stringify(['010C', '010D', '0105']), JSON.stringify(ps.voertuig && ps.voertuig.pid_selectie));
+  toets('een selectie met iets anders dan PIDs wordt geweigerd', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, pid_selectie: ['010C', 'DROP'] } }))._status === 400);
+  await roep(tokV, { actie: 'alles_wissen' });
+  toets('alles wissen neemt de voorkeuren mee', Object.keys((await roep(tokV, { actie: 'voorkeuren' })).voorkeur).length === 0);
+
   console.log('\n5. Account verwijderd of geblokkeerd: meteen dicht');
   {
     const oud = global.fetch;

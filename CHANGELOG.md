@@ -10,6 +10,36 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-09-2026 — Mijn voorkeuren: standaardinstellingen per klantaccount
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw scherm ☰ → ⚙️ Mijn voorkeuren (alleen klanten). Het account wint
+   bij het inloggen. Bij elke keuze kan ook "Toestel" staan: dan beslist
+   het toestel zelf. "Huidige stand overnemen" vult het scherm met wat het
+   toestel nu doet.
+ - Weergave: live-weergave, thema, tekstgrootte, lettergrootte, verbruik
+   in l/100 km of km/l.
+ - Na inloggen en verbinden: meteen Live of het startscherm, automatisch
+   opnieuw verbinden, foutcodes uitlezen na verbinden, waakronde,
+   rit-monitor en bulk-recorder standaard aan (alleen aanzetten, nooit
+   uitzetten), vaste favorieten.
+ - Adapter en snelverbinden: type en vaste adapter (overschrijft geen
+   adapter die al op het toestel gekoppeld is), bij een bekende auto de
+   sensorscan vragen, overslaan of altijd doen, samenvatting na verbinden
+   aan of uit.
+ - Analyse en meldingen: eerdere rapporten meenemen (vragen, ja of nee). Dat
+   zijn nu ook de laatste drie rapporten van het actieve voertuig uit
+   eerdere sessies. Verder AI-rapport kort, normaal of uitgebreid, en de
+   meldingen voor APK/onderhoud, rit en nieuwe open punten.
+ - Sensoren per voertuig: de huidige selectie vastleggen bij het actieve
+   voertuig. Die gaat aan zodra die auto op zijn chassisnummer herkend is.
+   Past er niets van, dan blijft de huidige selectie staan.
+ - Server: tabel kp_voorkeur en kolom kp_voertuig.pid_selectie, beide met
+   een witte lijst. Voorkeuren vragen geen akkoord op Mijn voertuigen.
+ - test-voorkeur.js (21), test-klantplatform.js (69), bproef-voorkeur.js en
+   zes mutaties.
+
+ ═══════════════════════════════════════════════════════════
  27-09-2026 — Mijn voertuigen: waakronde en Voertuigoverzicht gekoppeld
  ═══════════════════════════════════════════════════════════
 
