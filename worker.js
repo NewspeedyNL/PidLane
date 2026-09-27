@@ -5013,7 +5013,6 @@ __name(kpAlleWissen, "kpAlleWissen");
 // de sleutels en keuzes gelijk zijn.
 var KP_VOORKEUR = {
   weergave: { soort: "keuze", uit: ["full", "numbers", "dots", "slim", "visueel"] },
-  thema: { soort: "keuze", uit: ["donker", "licht"] },
   tekst: { soort: "keuze", uit: ["s", "m", "l"] },
   letter: { soort: "geheel", min: 10, max: 18 },
   waakronde: { soort: "janee" },

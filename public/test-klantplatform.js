@@ -184,7 +184,7 @@ async function laadWorker() {
   console.log('\n4b. Voorkeuren en de sensorselectie per voertuig');
   const tokV = (await W.makeToken(env, 'vera@voorbeeld.nl', 'klant', 'Vera')).token;
   toets('voorkeuren zonder akkoord op Mijn voertuigen: mag', (await roep(tokV, { actie: 'voorkeuren' })).ok === true);
-  const vk = await roep(tokV, { actie: 'voorkeuren_opslaan', voorkeur: { weergave: 'visueel', thema: 'licht', tekst: 'l', letter: 15, waakronde: true,
+  const vk = await roep(tokV, { actie: 'voorkeuren_opslaan', voorkeur: { weergave: 'visueel', tekst: 'l', letter: 15, waakronde: true,
     favorieten: ['wc-live', 'wc-live', 'wc-koop'], oudeData: 'ja', adapterAdres: '00:04:3E:AA:BB:CC', onbekend: 'x', rapport: '' } });
   toets('voorkeuren bewaard, dubbele favoriet eruit, onbekende sleutel en lege waarde weg', vk.ok && vk.voorkeur.favorieten.length === 2 && !('onbekend' in vk.voorkeur) && !('rapport' in vk.voorkeur), JSON.stringify(vk));
   const terugV = await roep(tokV, { actie: 'voorkeuren' });
