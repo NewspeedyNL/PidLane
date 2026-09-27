@@ -2555,3 +2555,4 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .vis-trekerbij { grid-column:1/-1; min-height:36px; border-radius:10px; border:1px dashed var(--bd2); background:transparent; color:var(--tx2); font:700 12px var(--f); cursor:pointer; }
 .vis-trekknop { min-height:36px; padding:6px 14px; border-radius:18px; border:1px solid var(--bd); background:var(--sur); color:var(--tx2); font:700 12px var(--f); cursor:pointer; }
 .vis-trekknop.aan { border-color:var(--or); color:var(--tx); }
+#plGearOv .plg-r.plg-r2 { width:118px; }

@@ -221,6 +221,18 @@ async function laadWorker() {
   toets('leeg label = weg', (await roep(tokA, { actie: 'rit_label', id: ritId, label: '' })).label === null &&
     db.prepare('SELECT label FROM kp_rit WHERE id = ?').get(ritId).label === null);
 
+  const tp = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, tankinhoud: 56, brandstofprijs: '1,959' } });
+  toets('tankinhoud en literprijs, met drie decimalen', tp.ok && tp.voertuig.tankinhoud === 56 && tp.voertuig.brandstofprijs === 1.959, JSON.stringify(tp).slice(0, 300));
+  toets('een literprijs van € 50 is een tikfout: 400', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, brandstofprijs: 50 } }))._status === 400);
+  const ra = await roep(tokA, { actie: 'rapport_opslaan', voertuig_id: v1.voertuig.id, soort: 'waak', tekst: 'een' });
+  const rb = await roep(tokA, { actie: 'rapport_opslaan', voertuig_id: v1.voertuig.id, soort: 'waak', tekst: 'twee' });
+  const rBert = await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { naam: 'Bert2' } });
+  const rbx = rBert.ok ? await roep(tokB, { actie: 'rapport_opslaan', voertuig_id: rBert.voertuig.id, soort: 'waak', tekst: 'van bert' }) : { id: 'geen' };
+  const weg = await roep(tokA, { actie: 'rapport_verwijder', ids: [ra.id, rb.id, rbx.id] });
+  toets('meerdere rapporten tegelijk wissen, en die van een ander tellen niet mee', weg.ok && weg.gewist === 2 &&
+    db.prepare('SELECT COUNT(*) AS n FROM kp_rapport WHERE id = ?').get(rbx.id).n === 1, JSON.stringify(weg));
+  toets('een lege lijst: 400', (await roep(tokA, { actie: 'rapport_verwijder', ids: [] }))._status === 400);
+
   await roep(tokV, { actie: 'alles_wissen' });
   toets('alles wissen neemt de voorkeuren mee', Object.keys((await roep(tokV, { actie: 'voorkeuren' })).voorkeur).length === 0);
 

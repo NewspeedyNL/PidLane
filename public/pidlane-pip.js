@@ -238,8 +238,68 @@
      begeleide run. Twee dingen gebeuren hier, en allebei zijn ze zichtbaar:
      het scherm wisselt van vorm en de app-log zegt het. Zonder die logregel is
      achteraf niet na te gaan of PiP überhaupt aanging tijdens een rit. */
+  /* SESSIEBEWIJS (#319, 27-09-2026). Per PiP-periode: hoe lang, hoeveel
+     waarden er binnenkwamen, het langste gat tussen twee waarden en hoe lang
+     het na de laatste waarde nog stil was tot PiP uit ging. Dat is precies de
+     vraag van #319: staat het venster er terwijl de meetlus stilligt? Gemeten
+     in updPID zelf, niet met een eigen klok — een klok wordt net zo goed
+     afgeknepen als de meetlus, en meet dan zichzelf. */
+  var _perioden = [], _open = null;
+  function _periodeBegin() {
+    var nu = Date.now();
+    var verbonden = false;
+    try { verbonden = typeof connected !== 'undefined' && !!connected && !(typeof demoMode !== 'undefined' && demoMode); } catch (e) { verbonden = false; }
+    var n = 0;
+    try { n = (typeof activePIDs !== 'undefined' && activePIDs) ? activePIDs.size : 0; } catch (e) { n = 0; }
+    _open = { van: nu, tot: null, n: 0, maxGat: 0, laatste: nu, eindGat: null, verbonden: verbonden, sensoren: n, vlag: _laatsteVlag === true };
+  }
+  function _periodeEind() {
+    if (!_open) return;
+    var nu = Date.now();
+    _open.tot = nu; _open.eindGat = nu - _open.laatste;
+    _open.maxGat = Math.max(_open.maxGat, _open.eindGat);
+    _perioden.push(_open); if (_perioden.length > 50) _perioden.shift();
+    _open = null;
+  }
+  function _periodeTel() {
+    if (!_open) return;
+    var nu = Date.now();
+    _open.maxGat = Math.max(_open.maxGat, nu - _open.laatste);
+    _open.laatste = nu; _open.n++;
+  }
+  function perioden() {
+    var l = _perioden.slice();
+    if (_open) { var nu = Date.now(); l.push(Object.assign({}, _open, { tot: null, lopend: true, maxGat: Math.max(_open.maxGat, nu - _open.laatste), duurMs: nu - _open.van })); }
+    return l.map(function (p) { return Object.assign({ duurMs: (p.tot || Date.now()) - p.van }, p); });
+  }
+
+  /* Het oordeel voor blok 5 (#319), puur. Een periode telt als hij minstens
+     een minuut duurde met een verbonden auto; een gat van meer dan 5 s in die
+     periode is een stilgevallen meetlus. */
+  var PIP_MIN_MS = 60000, PIP_GAT_MS = 5000;
+  function oordeel(perioden, besluit) {
+    var lang = (perioden || []).filter(function (p) { return p.verbonden && p.duurMs >= PIP_MIN_MS; });
+    if (!lang.length) {
+      var b = besluit || {};
+      if (b.aan === false && b.sleutel && ['uit', 'geen-schil', 'los', 'demo'].indexOf(b.sleutel) < 0)
+        return { staat: 'FOUT', detail: 'beeld-in-beeld kon niet aan: ' + b.reden };
+      return { staat: 'LET OP', detail: 'nog geen minuut beeld-in-beeld met een verbonden auto gezien' +
+        ((perioden || []).length ? ' (' + perioden.length + ' kortere of zonder verbinding)' : '') +
+        '. Nodig: tijdens het rijden een minuut naar een andere app, bijvoorbeeld de navigatie.' + (b.reden ? ' Besluit nu: ' + b.reden + '.' : '') };
+    }
+    var slecht = lang.filter(function (p) { return p.maxGat > PIP_GAT_MS; });
+    var kort = function (p) { return Math.round(p.duurMs / 1000) + ' s, ' + p.n + ' waarden, langste gat ' + (Math.round(p.maxGat / 100) / 10) + ' s' + (p.eindGat != null ? ', stil aan het eind ' + Math.round(p.eindGat / 1000) + ' s' : ''); };
+    if (slecht.length)
+      return { staat: 'FOUT', detail: 'de meetlus lag stil in beeld-in-beeld: ' + slecht.map(kort).join(' | ') +
+        (slecht.some(function (p) { return !p.vlag; }) ? ' — en de vlag stond bij het begin niet aan (besluit te laat)' : '') };
+    return { staat: 'ok', detail: lang.length + ' periode' + (lang.length === 1 ? '' : 's') + ' in beeld-in-beeld, de meetlus liep door: ' + lang.map(kort).join(' | ') };
+  }
+
   function modus(inPip) {
+    var was = _inPip;
     _inPip = !!inPip;
+    try { if (_inPip && !was) _periodeBegin(); else if (!_inPip && was) _periodeEind(); }
+    catch (e) { console.warn('PiP: periode niet bijgehouden (#319)', e); }
     try {
       if (_inPip) _maakMini();
       if (document.body) document.body.classList[_inPip ? 'add' : 'remove']('pl-pip');
@@ -282,7 +342,10 @@
       var _u = updPID;
       updPID = function () {
         var r = _u.apply(this, arguments);
-        if (_inPip) { try { ververs(); } catch (e) { console.warn('PiP: venster niet ververst (#228)', e); } }
+        if (_inPip) {
+          try { _periodeTel(); } catch (e) { console.warn('PiP: gat niet gemeten (#319)', e); }
+          try { ververs(); } catch (e) { console.warn('PiP: venster niet ververst (#228)', e); }
+        }
         /* HET BESLUIT VOLGT OOK DE MEETLUS — 23-09-2026. setConn(true) valt
            in de app vóór de sensorkeuze (rijsituatie, meetopdracht), dus daar
            was het besluit altijd "geen selectie" en vroeg niets het opnieuw:
@@ -353,6 +416,8 @@
     modus: modus,
     ververs: ververs,
     inPip: function () { return _inPip; },
+    perioden: perioden,
+    oordeel: oordeel,
     laatste: function () { return _laatsteBesluit; },
     _sleutel: function () { return SLEUTEL; }
   };

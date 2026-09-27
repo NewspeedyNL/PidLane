@@ -10,6 +10,34 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-09-2026 — Alle voorstellen, en meetproeven die één rit nodig hebben
+ ═══════════════════════════════════════════════════════════
+
+ - Berekende PIDs erbij: koppel, brandstofkosten per uur en per rit,
+   bereik met de tank, rendement, schakeladvies (alleen opschakelen),
+   km sinds roetfilterregeneratie, koelwater min buiten, trim bank 2 en
+   het verschil tussen de banken, koppelomvormer-slip bij een automaat.
+   Profiel: tankinhoud en literprijs (anders een standaardprijs, en dat
+   staat erbij). Nieuwe sensordefinitie 017C (DPF-temperatuur).
+ - Versnelling: achteruit leren via Fout → R (geweigerd als R niet van
+   de 1e te onderscheiden is), tijd per versnelling en rijstijladvies in
+   het venster en in Mijn voertuigen.
+ - Trekmodus: toon en trilling als het koelwater warm is en snel stijgt,
+   hoogstens eens per drie minuten.
+ - Ritten: labelvoorstel uit eerdere ritten, verbruik en kosten per
+   label, export als CSV of PDF (per label of alles), kosten per rit.
+ - Rapporten: 📕 PDF rechtstreeks, selecteren om twee te vergelijken
+   (waakrondes per sensor, wat veranderde bovenaan) of meerdere tegelijk
+   te wissen.
+ - Bewust niet: automatische herkenning van een beladen rit en een
+   terugschakeladvies (op de top van een klim is dat verkeerd).
+ - Blok 5 oordeelt over de hele rit: zes nieuwe meetproeven (#319, #302,
+   #294, trekmodus, versnelling, berekende PIDs), elk met sessiebewijs
+   uit de module zelf en een getoetst oordeel. De #302-proef doet bij
+   drift zelf het experiment: ATWS, en zo nodig een nieuwe verbinding.
+   CAMPAGNE beschrijft één rit die alles dekt.
+
+ ═══════════════════════════════════════════════════════════
  27-09-2026 — Versnelling bij het voertuig, berekende PIDs, trekmodus
  ═══════════════════════════════════════════════════════════
 

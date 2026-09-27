@@ -46,7 +46,11 @@ const NEPSERVER = `(function(){
     else if (b.actie === 'issues_bijwerken') { const m = S.issues[b.voertuig_id] = S.issues[b.voertuig_id]||{};
       b.ops.forEach(o2 => { if (o2.actie==='gezien') m[o2.sleutel] = Object.assign({ status:'open', aantal:1, eerst_gezien:new Date().toISOString(), laatst_gezien:new Date().toISOString() }, o2, { status:'open' });
         else if (m[o2.sleutel]) m[o2.sleutel].status = o2.actie; }); }
-    else if (b.actie === 'ritten') d.ritten = [];
+    else if (b.actie === 'ritten') d.ritten = S.ritten || [];
+    else if (b.actie === 'rapport') { const i = parseInt(String(b.id).slice(1), 10) - 1; const r = S.rapporten[i];
+      d.rapport = r ? { id: b.id, soort: r.soort, titel: r.titel, tekst: r.tekst, aangemaakt: new Date(Date.now() - (10 - i) * 60000).toISOString() } : null; }
+    else if (b.actie === 'rapport_verwijder') { S.gewist = (S.gewist || []).concat(b.ids || [b.id]); d.gewist = (b.ids || [b.id]).length; }
+    else if (b.actie === 'rit_label') { (S.ritten || []).forEach(r => { if (r.id === b.id) r.label = b.label || null; }); d.label = b.label || null; }
     return { ok:true, status:200, json: async () => d };
   };
   return true;
@@ -134,6 +138,36 @@ const NEPSERVER = `(function(){
     await app.ev(`document.getElementById('uvKm').value = '85.100'; document.getElementById('uvDistr').value = 'ketting'; saveVehicleOverview(); 'ok'`);
     toets('opslaan schrijft naar het voertuig in Mijn voertuigen',
       await wacht(`(function(){ const v = window._nepPlatform.voertuigen[0]; return v.kmstand === 85100 && v.distributie === 'ketting'; })()`));
+
+    console.log('\n── 4d. rapporten vergelijken en meerdere tegelijk wissen, ritten exporteren (27-09) ──');
+    await app.ev(`(function(){
+      const S = window._nepPlatform, vid = S.voertuigen[0].id;
+      const w = (k, w1) => 'PidLane — Waakronde\\nDatum: x\\n3 sensoren\\n\\n=== BEVINDINGEN (' + (w1 ? 1 : 0) + ') ===\\n' +
+        (w1 ? ' Koelwater: boven het bereik — 3 van 12 metingen, laatst 112,4 °C (min 88, max 112,4)\\n' : ' geen\\n') +
+        '\\n=== ZONDER ANTWOORD (0) ===\\n geen\\n\\n=== NORMAAL ===\\n' + (w1 ? '' : ' Koelwater: 91 °C (12×, 88–92)\\n') + ' Accuspanning: 14,1 V (8×, 13,9–14,3)';
+      S.rapporten = [{ voertuig_id: vid, soort: 'waak', titel: 'Waakronde A', tekst: w(0, true) }, { voertuig_id: vid, soort: 'waak', titel: 'Waakronde B', tekst: w(0, false) }, { voertuig_id: vid, soort: 'ai', titel: 'AI', tekst: 'SAMENVATTING: niets' }];
+      S.ritten = [{ id: 'a', start: '2026-09-21T07:40:00', km: 21, liters: 1.26, verbruik_l100: 6, label: 'Woon-werk' },
+                  { id: 'b', start: '2026-09-22T07:55:00', km: 20, liters: 1.2, verbruik_l100: 6, label: 'Woon-werk' },
+                  { id: 'c', start: '2026-09-23T08:10:00', km: 20.5 }];
+      window.confirm = function () { return true; };
+      window.__csv = null; window.download = function (n, c) { window.__csv = { n: n, c: c }; };
+      delete PLGarage.staat().cache[vid];
+      PLGarage.open(vid); PLGarage._tab('rapporten'); return 'ok';
+    })()`);
+    toets('de rapportenlijst staat er', await wacht(`document.querySelectorAll('#plGarBody .gr-rapport').length === 3`));
+    await app.ev(`PLGarage._kiesModus(true); PLGarage._kies('r1', true); PLGarage._kies('r2', true); 'ok'`);
+    toets('selecteren: twee aangevinkt, Vergelijk staat aan', await app.ev(`(function(){ const b=[...document.querySelectorAll('#plGarBody button')].find(x=>/Vergelijk/.test(x.textContent)); return !!b && !b.disabled && document.querySelectorAll('#plGarBody .gr-kies:checked').length === 2; })()`));
+    await app.ev(`PLGarage._vergelijk(); 'ok'`);
+    toets('vergelijken: een tabel per sensor, koelwater (veranderd) bovenaan', await wacht(`(function(){ const r=document.querySelectorAll('#plGarBody .gr-vgl.anders'); return r.length >= 1 && /Koelwater/.test(r[0].textContent); })()`), await app.ev(`document.getElementById('plGarBody').textContent.slice(0,200)`));
+    await app.ev(`PLGarage._terugNaar('rapporten'); PLGarage._kiesModus(true); PLGarage._kies('r1', true); PLGarage._kies('r3', true); PLGarage._rapportWegKeuze(); 'ok'`);
+    toets('meerdere wissen: één verzoek met beide ids', await wacht(`JSON.stringify(window._nepPlatform.gewist) === JSON.stringify(['r1','r3'])`), await app.ev(`JSON.stringify(window._nepPlatform.gewist)`));
+    await app.ev(`PLGarage._tab('ritten'); 'ok'`);
+    toets('ritten: per label met verbruik', await wacht(`/Woon-werk/.test(document.getElementById('plGarBody').textContent) && /6(,0)? l\\/100 km/.test(document.getElementById('plGarBody').textContent)`), await app.ev(`document.getElementById('plGarBody').textContent.slice(0,400)`));
+    await app.ev(`PLGarage._labelFilter('Woon-werk'); PLGarage._ritExport('csv'); 'ok'`);
+    toets('export CSV van één label', await app.ev(`!!window.__csv && /^datum;vertrek;km/.test(window.__csv.c) && window.__csv.c.split('\\n').length === 3 && /woon-werk\\.csv$/.test(window.__csv.n)`), await app.ev(`JSON.stringify(window.__csv)`));
+    await app.ev(`PLGarage._labelFilter(''); PLGarage._labelOpen('c'); 'ok'`);
+    toets('labelvoorstel: de derde rit krijgt Woon-werk voorgesteld', await wacht(`(document.getElementById('grLabel')||{}).value === 'Woon-werk' && /Voorstel/.test(document.getElementById('plGarBody').textContent)`));
+    await app.ev(`PLGarage.sluit(); 'ok'`);
 
     console.log('\n── 5. de terugknop en het startscherm ──');
     await app.ev(`PLGarage.open(); 'ok'`);

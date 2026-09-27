@@ -245,6 +245,32 @@ console.log('\n4. de vlag gaat naar native, en alleen als hij verandert');
   toets('en het ontbreken van updPID ook',
     kaal.gewaarschuwd.some(function (m) { return /updPID/.test(m); }));
 
+  // ══════════════════════════════════════════════════════════════════
+  console.log('\n7. het sessiebewijs van #319: loopt de meetlus door in beeld-in-beeld?');
+  // ══════════════════════════════════════════════════════════════════
+  let T = 1e9;
+  const tijd = { now: function () { return T; } };
+  const m = laad({ connected: true, demoMode: false, activePIDs: new Set(['010C']), updPID: function () { }, Date: tijd });
+  m.PLPip.modus(true);
+  for (let i = 0; i < 60; i++) { T += 1000; m.updPID('010C', 800); }       // een minuut, elke seconde een waarde
+  T += 8000; m.updPID('010C', 800);                                       // één gat van 8 s
+  T += 2000;
+  m.PLPip.modus(false);
+  const p = m.PLPip.perioden();
+  toets('één periode, 61 waarden, langste gat 8 s, 2 s stil aan het eind',
+    p.length === 1 && p[0].n === 61 && p[0].maxGat === 8000 && p[0].eindGat === 2000 && p[0].verbonden, JSON.stringify(p));
+  const o = m.PLPip.oordeel(p, { aan: true });
+  toets('een gat van 8 s in PiP is FOUT, met de getallen erbij', o.staat === 'FOUT' && /8 s/.test(o.detail), JSON.stringify(o));
+  const goed = [{ verbonden: true, duurMs: 90000, n: 90, maxGat: 1200, eindGat: 400, vlag: true }];
+  toets('elke seconde een waarde: ok', m.PLPip.oordeel(goed, { aan: true }).staat === 'ok');
+  toets('korter dan een minuut: LET OP, met wat de rit nodig heeft',
+    m.PLPip.oordeel([{ verbonden: true, duurMs: 20000, n: 20, maxGat: 1000 }], { aan: true }).staat === 'LET OP');
+  toets('zonder verbinding telt het niet', m.PLPip.oordeel([{ verbonden: false, duurMs: 90000, n: 0, maxGat: 90000 }], null).staat === 'LET OP');
+  toets('verbonden met sensoren en toch nooit PiP omdat het besluit nee zei: FOUT',
+    m.PLPip.oordeel([], { aan: false, sleutel: 'geen-selectie', reden: 'geen sensoren geselecteerd' }).staat === 'FOUT');
+  toets('in de browser (geen schil) is dat geen fout maar een LET OP',
+    m.PLPip.oordeel([], { aan: false, sleutel: 'geen-schil', reden: 'x' }).staat === 'LET OP');
+
   console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles'
                             : 'goed: alle ' + n + ' controles') + '\n');
   process.exit(fout ? 1 : 0);

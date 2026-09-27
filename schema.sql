@@ -264,3 +264,5 @@ ALTER TABLE kp_voertuig ADD COLUMN pid_selectie TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN versnellingen INTEGER;
 ALTER TABLE kp_voertuig ADD COLUMN gear_model TEXT;
 ALTER TABLE kp_rit ADD COLUMN label TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN tankinhoud INTEGER;
+ALTER TABLE kp_voertuig ADD COLUMN brandstofprijs REAL;

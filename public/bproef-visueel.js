@@ -141,6 +141,17 @@ function beoordeel(m) {
     toets('koelwater, olie en belasting staan erop', /Koelwater/.test(trek.aan.tekst) && /Motorolie/.test(trek.aan.tekst) && /Belasting/.test(trek.aan.tekst), trek.aan.tekst);
     toets('de belasting (0104) wordt dan niet geremd', trek.aan.gebruik.indexOf('0104') >= 0, JSON.stringify(trek.aan.gebruik));
     toets('uit: de strook is weg, de knop om hem aan te zetten blijft', !trek.uit.strook && trek.uit.knop, JSON.stringify(trek.uit));
+    const alarm = await app.ev(`(function(){
+      PLVisueel._nieuweSessie();
+      let trilde = 0; const echt = navigator.vibrate; try { navigator.vibrate = function(){ trilde++; return true; }; } catch (e) {}
+      const nu = Date.now();
+      const a = PLVisueel.koelAlarm(101, 2.5, nu), b = PLVisueel.koelAlarm(103, 3, nu + 60000), c = PLVisueel.koelAlarm(104, 3, nu + PLVisueel.ALARM_MS + 1);
+      try { navigator.vibrate = echt; } catch (e) {}
+      return { a: a, b: b, c: c, n: PLVisueel.sessie().alarmen, trilde: trilde, fouten: 0 };
+    })()`);
+    toets('waarschuwing: de eerste klinkt en trilt', alarm.a === true && alarm.trilde >= 1, JSON.stringify(alarm));
+    toets('binnen drie minuten niet nog eens (geen piepconcert op een lange klim)', alarm.b === false, JSON.stringify(alarm));
+    toets('daarna weer wel, en de sessie telt ze', alarm.c === true && alarm.n === 2, JSON.stringify(alarm));
 
     console.log('\n4. De getallen sturen, en komen niet buiten de schaal');
     const naald = await app.ev(`(function(){

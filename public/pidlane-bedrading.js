@@ -148,6 +148,12 @@ var KRITIEK = [
   // versnellingsindicator met openGearInstellingen; zonder die twee valt het
   // venster terug op kale tekst of doet de knop niets.
   'plBerekendDefs','plIsBerekend','_aiReportHtml','openGearInstellingen',
+  // Mijn voertuigen → rapport of ritten → 📕 PDF, rechtstreeks zonder de keuze
+  // tekst/PDF (pidlane-export.js). Ontbreekt hij, dan doet de knop niets.
+  'plOpslaanPdf',
+  // De #302-proef initialiseert de ELM opnieuw om te zien of dat de drift
+  // herstelt. Ontbreekt initELM327, dan meldt hij dat en voert hij niets uit.
+  'initELM327',
   // Uitloggen na "Account verwijderen" (#41, pidlane-klant.js). Die aanroep
   // staat achter een guard omdat klant.js ook los getest wordt, maar in de app
   // hoort logout() er te zijn. Ontbreekt hij, dan blijft de gebruiker met een

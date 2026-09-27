@@ -37,6 +37,17 @@
 //     versnelling k, en de nummering schuift zo dat dat klopt. Staat de
 //     verhouding nog niet in het model, dan komt hij er als versnelling bij —
 //     een anker is ook een snelle start van de leercurve.
+//   • Achteruit (27-09-2026): OBD kent geen richting, dus de app kan R alleen
+//     herkennen aan zijn verhouding. Die leert hij van de klant: Fout → R.
+//     Ligt die verhouding binnen 7% van de 1e, dan zijn ze niet uit elkaar te
+//     houden en zegt de knop dat in plaats van te gokken. Een herkende R telt
+//     niet mee in het histogram: anders wordt hij een versnelling.
+//   • Koppelomvormer-slip (automaat): slip() = hoeveel sneller de motor draait
+//     dan de wielen in de getoonde versnelling vragen. Voedt CA16.
+//   • Tijd per versnelling: model.tijd telt per versnelling de seconden en de
+//     seconden boven het "hoge" toerental; rijstijl() maakt daar advies van.
+//   • sessie(): wat deze sessie gemeten is (stabiele metingen, hoeveel daarvan
+//     bij een versnelling pasten, correcties), voor de blok-5-proef.
 //
 // Publiek
 //   window.PLGear                    — module-object (state, model, detectie)
@@ -78,6 +89,8 @@ const CFG = {
   afwijkFrac: 0.30,
   nieuweGearMin: 0.14,    // gevestigd model: nieuwe piek moet ≥14% afliggen
   eersteMax: 11.5,        // laagste piek hierboven: 1e nog niet gezien
+  achteruitMaxKmh: 25,    // sneller dan dit is het geen achteruit
+  hoogRpm: { benzine:3000, diesel:2500 },  // "hoogtoerig" voor het rijstijladvies
   opslaanMs: 15000,
   serverMs: 120000,       // zo vaak hoogstens naar het voertuig op de server
   ankerVersMs: 5000,      // een stabiele verhouding van hoogstens zo oud mag een anker worden
@@ -111,6 +124,28 @@ function verbonden(){
          !(typeof demoMode!=='undefined' && demoMode);
 }
 
+/* Rijstijladvies uit de tijd per versnelling. tijd = { k: {s, hoog} }. Puur:
+   test-gear.js toetst het los. Advies alleen met genoeg rijtijd (5 min),
+   want een oordeel over een kwartier op de oprit is geen rijstijl. */
+function rijstijl(tijd, motor){
+  const ks=Object.keys(tijd||{}).map(Number).filter(k=>k>=1).sort((a,b)=>a-b);
+  const tot=ks.reduce((a,k)=>a+(tijd[k].s||0),0);
+  const hoog=ks.reduce((a,k)=>a+(tijd[k].hoog||0),0);
+  const verdeling=ks.map(k=>({ k, s:Math.round(tijd[k].s), pct:tot?Math.round(tijd[k].s/tot*100):0,
+    hoogPct:tijd[k].s?Math.round((tijd[k].hoog||0)/tijd[k].s*100):0 }));
+  const uit={ verdeling, totaalS:Math.round(tot), hoogPct:tot?Math.round(hoog/tot*100):0, advies:[] };
+  if (tot<300) return uit;
+  const grens=CFG.hoogRpm[motor==='diesel'?'diesel':'benzine'];
+  if (uit.hoogPct>=25)
+    uit.advies.push(`Je rijdt ${uit.hoogPct}% van de tijd boven ${grens} tpm. Eerder opschakelen scheelt brandstof en slijtage.`);
+  const hoogste=ks.length ? ks[ks.length-1] : null;
+  const laag=verdeling.filter(x=>hoogste && x.k<=Math.max(2, hoogste-3)).reduce((a,x)=>a+x.pct,0);
+  if (hoogste>=5 && laag>=60)
+    uit.advies.push(`${laag}% van de rijtijd staat hij in de 1e of 2e. Dat is veel stadsverkeer of lang doortrekken in een lage versnelling.`);
+  if (!uit.advies.length) uit.advies.push('Rustig toerental en een gewone verdeling over de versnellingen. Niets op aan te merken.');
+  return uit;
+}
+
 const PLGear = {
   cfg: CFG,
   uit: lsGet(LS_UIT)==='1',
@@ -130,6 +165,9 @@ const PLGear = {
   voertuig: null,         // {id, naam, versnellingen, transmissie, model, bewaar} uit PLGarage, of null
   _laatsteR: null, _laatsteRT: 0,   // laatste stabiele verhouding en wanneer
   _naarServer: 0, _serverSleutel: '',
+  _paarNu: null,          // laatste verse, uitgelijnde meting {t, kmh, rpm}
+  _tijdT: 0,
+  _sessie: { sinds: Date.now(), stabiel:0, pasten:0, correcties:0, achteruit:0, tijd:{} },
 
   // ═══════════════ voertuigsleutel ═══════════════
   _volgVoertuig(){
@@ -204,7 +242,7 @@ const PLGear = {
 
   // ═══════════════ model ═══════════════
   _leegModel(sleutel){
-    return { v:MODEL_V, sleutel, hist:{}, totaal:0, gears:[], ankers:[], offset:0, sinds:nu(), bijgewerkt:0 };
+    return { v:MODEL_V, sleutel, hist:{}, totaal:0, gears:[], ankers:[], offset:0, achteruit:null, tijd:{}, sinds:nu(), bijgewerkt:0 };
   },
   _laad(sleutel){
     let m=null;
@@ -216,6 +254,8 @@ const PLGear = {
     if (!m || m.v!==MODEL_V || typeof m.hist!=='object') m=this._leegModel(sleutel);
     if (!Array.isArray(m.ankers)) m.ankers=[];
     if (typeof m.offset!=='number') m.offset=0;
+    if (!m.tijd || typeof m.tijd!=='object') m.tijd={};
+    if (typeof m.achteruit!=='number') m.achteruit=null;
     this.model=m; this.sleutel=sleutel;
     this._recentMatch=[]; this.afwijking=false;
     this._herberekend=0; this._vuil=false;
@@ -314,6 +354,8 @@ const PLGear = {
       }
       m.gears=g.sort((a,b)=>a-b);
     } else m.gears=nieuw;
+    // Een herkende achteruit is geen versnelling.
+    if (typeof m.achteruit==='number') m.gears=m.gears.filter(r=>Math.abs(r-m.achteruit)/m.achteruit>CFG.matchTol);
     this._pasAnkers();
     m.bijgewerkt=nu(); this._vuil=true;
     if (m.gears.length!==oud)
@@ -353,6 +395,7 @@ const PLGear = {
   // verhouding (hoogstens ankerVersMs oud); zonder die weigert hij met een
   // reden, want een anker op een schakelmoment maakt de nummering stuk.
   corrigeer(k){
+    if (k==='R') return this._achteruit();
     k=Math.round(Number(k));
     if (!(k>=1 && k<=CFG.maxGear)) return { ok:false, reden:'Kies een versnelling van 1 tot '+CFG.maxGear };
     if (!this.model) this._laad(this.sleutel||'onbekend');
@@ -364,12 +407,67 @@ const PLGear = {
     m.ankers.push({ k, r:Math.round(r*100)/100, t:nu() });
     if (m.ankers.length>CFG.maxGear) m.ankers.shift();
     this._pasAnkers();
-    this.toon=k; this._kand=null;
+    this.toon=k; this._kand=null; this._sessie.correcties++;
     this._vuil=true; this._opslaan(true); this._naarVoertuig(true);
     logI(`⚙️ Versnellingsindicator gecorrigeerd: dit is de ${k}e (${nl(r,1)} km/u per 1000 tpm)`);
     this._render();
     return { ok:true, gear:k, r };
   },
+  // Fout → R. Zie de kop: alleen als R van de 1e te onderscheiden is.
+  _achteruit(){
+    if (!this.model) this._laad(this.sleutel||'onbekend');
+    const r=this._laatsteR;
+    if (r===null || nu()-this._laatsteRT>CFG.ankerVersMs)
+      return { ok:false, reden:'Rij eerst een paar meter rustig achteruit en tik dan opnieuw' };
+    const een=this.ratioVan(1);
+    if (een && Math.abs(r-een)/een<=CFG.matchTol)
+      return { ok:false, reden:'Achteruit heeft op deze auto bijna dezelfde verhouding als de 1e; die kan de indicator niet uit elkaar houden' };
+    const m=this.model;
+    m.achteruit=Math.round(r*100)/100;
+    m.gears=m.gears.filter(x=>Math.abs(x-r)/r>CFG.matchTol);
+    this._pasAnkers();
+    this.toon='R'; this._kand=null; this._sessie.correcties++;
+    this._vuil=true; this._opslaan(true); this._naarVoertuig(true);
+    logI(`⚙️ Versnellingsindicator: achteruit onthouden (${nl(r,1)} km/u per 1000 tpm)`);
+    this._render();
+    return { ok:true, gear:'R', r };
+  },
+  _isAchteruit(r, kmh){
+    const a=this.model && this.model.achteruit;
+    return typeof a==='number' && kmh<=CFG.achteruitMaxKmh && Math.abs(r-a)/a<=CFG.matchTol;
+  },
+  // De verhouding van versnelling k (met de verschuiving uit de correcties).
+  ratioVan(k){
+    const g=(this.model&&this.model.gears)||[], i=k-1-((this.model&&this.model.offset)||0);
+    return (i>=0 && i<g.length) ? g[i] : null;
+  },
+  /* Koppelomvormer-slip in %, alleen bij een automaat met een getoonde
+     versnelling en een verse meting. Negatief (de wielen drijven de motor)
+     telt als 0; boven de 60% is het geen slip maar een schakelmoment. */
+  slip(){
+    if (!this.automaat() || typeof this.toon!=='number') return null;
+    const p=this._paarNu, r=this.ratioVan(this.toon);
+    if (!p || !r || nu()-p.t>CFG.versMaxMs || p.rpm<CFG.minRpm || p.kmh<CFG.minKmh) return null;
+    const s=(1-(p.kmh/(p.rpm/1000))/r)*100;
+    return s>60 ? null : Math.max(0, Math.round(s*10)/10);
+  },
+  _motor(){
+    try{ return (typeof detectEngineType==='function' && detectEngineType()==='diesel') ? 'diesel' : 'benzine'; }
+    catch(e){ console.warn('PLGear: detectEngineType() mislukt', e); return 'benzine'; }
+  },
+  // Tijd in de getoonde versnelling bijtellen: model (over ritten heen) en sessie.
+  _telTijd(t, p){
+    const dt=this._tijdT ? Math.min(1000, t-this._tijdT) : 0;
+    this._tijdT=t;
+    if (!(dt>0) || typeof this.toon!=='number' || this.toon<1) return;
+    const hoog=p && typeof p.rpm==='number' && p.rpm>CFG.hoogRpm[this._motor()];
+    [this.model.tijd, this._sessie.tijd].forEach(tb=>{
+      const x=tb[this.toon]=tb[this.toon]||{ s:0, hoog:0 };
+      x.s+=dt/1000; if (hoog) x.hoog+=dt/1000;
+    });
+  },
+  rijstijl(tijd){ return rijstijl(tijd || (this.model && this.model.tijd) || {}, this._motor()); },
+  sessie(){ return JSON.parse(JSON.stringify(this._sessie)); },
   nummeringZeker(){
     const m=this.model, g=(m&&m.gears)||[];
     if (!g.length) return false;
@@ -381,7 +479,7 @@ const PLGear = {
   // Voor de berekende PID CA01: het getal, 0 voor neutraal, null = niets.
   waarde(){
     if (this.uit || this.toon===null) return null;
-    return this.toon==='N' ? 0 : this.toon;
+    return this.toon==='N' ? 0 : this.toon==='R' ? -1 : this.toon;
   },
   status(){
     const m=this.model||{totaal:0,gears:[]};
@@ -391,7 +489,7 @@ const PLGear = {
       leren: m.totaal<CFG.minLeerN, voortgang: Math.min(1, m.totaal/CFG.minLeerN),
       versnellingen: m.gears.slice(), nummeringZeker:this.nummeringZeker(),
       afwijking:this.afwijking, toon:this.toon,
-      offset:m.offset||0, ankers:(m.ankers||[]).length,
+      offset:m.offset||0, ankers:(m.ankers||[]).length, achteruit:(typeof m.achteruit==='number') ? m.achteruit : null,
       verwacht:this.verwacht(), automaat:this.automaat(),
       voertuig:this.voertuig ? (this.voertuig.naam||'je voertuig') : null,
       kanCorrigeren: this._laatsteR!==null && nu()-this._laatsteRT<=CFG.ankerVersMs
@@ -438,7 +536,9 @@ const PLGear = {
 
       if (p.kmh>=CFG.minKmh) this._laatstRijden=t;
       const rijdt = (t-this._laatstRijden) < CFG.stilNaMs;
-      if (!rijdt){ this._buf=[]; this._zet(null); return; }
+      if (!rijdt){ this._buf=[]; this._zet(null); this._tijdT=0; return; }
+      if (!p.los) this._paarNu={ t:p.t, kmh:p.kmh, rpm:p.rpm };
+      this._telTijd(t, p);
 
       // Nieuw vers paar → in de buffer. Stabiliteit wordt elke tik bepaald
       // (ook als de adapter nog geen nieuw paar leverde), maar het histogram en
@@ -454,8 +554,9 @@ const PLGear = {
         } else this._buf=[];
       } else if (!p.los && p.nieuw) this._buf=[];   // stationair/koppeling: reeks breekt
       const stabiel = this._buf.length ? this._stabiel() : null;
+      const achteruit = stabiel!==null && this._isAchteruit(stabiel, p.kmh);
       if (stabiel!==null){
-        if (geldig) this._voegToe(stabiel);
+        if (geldig && !achteruit) this._voegToe(stabiel);
         this._laatstStabiel=t;
         this._laatsteR=stabiel; this._laatsteRT=t;
       }
@@ -469,9 +570,12 @@ const PLGear = {
 
       // ── detectie ──
       let doel;
-      if (stabiel!==null){
+      if (achteruit){
+        doel='R';
+        if (geldig) this._sessie.achteruit++;
+      } else if (stabiel!==null){
         const m=this._match(stabiel);
-        if (geldig) this._afwijkRegistreer(!!m);
+        if (geldig){ this._afwijkRegistreer(!!m); this._sessie.stabiel++; if (m) this._sessie.pasten++; }
         doel = m ? m.gear : (p.rpm<CFG.neutraalRpm ? 'N' : undefined);
       } else if (p.kmh>=CFG.minKmh && p.rpm<CFG.neutraalRpm && !p.los){
         // rijden met toerental rond stationair en geen stabiele ratio → N
@@ -527,11 +631,12 @@ const PLGear = {
     const g=Math.max(this.verwacht()||0, this.nummer(this.model.gears.length-1));
     const toonRij = g>=2 && g<=CFG.maxGear;
     const zeker=this.nummeringZeker();
-    const cijfer = this.toon==='N' ? 'N' : String(this.toon);
+    const letter = this.toon==='N' || this.toon==='R';
+    const cijfer = String(this.toon);
     const oudCijfer = b.dataset.c;
     b.dataset.c=cijfer;
-    let h=`<span class="pl-gear-cijfer${this.toon==='N'?' n':''}${oudCijfer!==cijfer?' wissel':''}">`+
-          cijfer+(this.toon!=='N'&&!zeker?'<span class="v">?</span>':'')+`</span>`;
+    let h=`<span class="pl-gear-cijfer${letter?' n':''}${oudCijfer!==cijfer?' wissel':''}">`+
+          cijfer+(!letter&&!zeker?'<span class="v">?</span>':'')+`</span>`;
     if (toonRij){
       h+='<span class="pl-gear-rij" aria-hidden="true">';
       for (let i=1;i<=g;i++) h+=`<i class="${i===this.toon?'nu':''}"></i>`;
@@ -541,6 +646,7 @@ const PLGear = {
     b.innerHTML=h;
     b.setAttribute('aria-label', this.toon==='N'
       ? 'Neutraal of koppeling ingetrapt — tik voor instellingen'
+      : this.toon==='R' ? 'Achteruit — tik voor instellingen'
       : `Versnelling ${this.toon}${zeker?'':' (voorlopig)'} — tik voor instellingen`);
   },
 
@@ -617,6 +723,7 @@ function tekenInstellingen(){
     if (_foutOpen){
       let k='';
       for (let i=1;i<=maxK;i++) k+=`<button type="button" class="plg-k${st.toon===i?' nu':''}" onclick="plGearKies(${i})">${i}</button>`;
+      k+=`<button type="button" class="plg-k${st.toon==='R'?' nu':''}" onclick="plGearKies('R')" aria-label="Achteruit">R</button>`;
       fout+=`<div class="plg-kies"><div class="plg-klein">In welke versnelling zit de auto nu? ${st.kanCorrigeren?'':'<b>Rij eerst een paar seconden rustig door in die versnelling.</b>'}</div>
         <div class="plg-krij">${k}</div></div>`;
     }
@@ -636,10 +743,23 @@ function tekenInstellingen(){
       De metingen passen niet meer goed bij wat eerder is geleerd, bijvoorbeeld door andere banden of een andere auto. Kies Leer opnieuw.</div>`:''}
     ${fout}
     ${lijst}
+    ${st.achteruit?`<div class="plg-klein" style="margin-top:6px">Achteruit: ${nl(st.achteruit,1)} km/u per 1000 tpm</div>`:''}
+    ${tijdBlok()}
     ${autoTxt}
     <div class="plg-klein" style="margin-top:12px">Voertuig: ${vTxt} · ${st.metingen} metingen${st.ankers?` · ${st.ankers} correctie${st.ankers===1?'':'s'}`:''}</div>
     <button type="button" class="plg-wis${st.afwijking?' let':''}" onclick="plGearWis()">${wisTxt}</button>
   </div>`;
+}
+// Tijd per versnelling en het rijstijladvies, onder de geleerde verhoudingen.
+function tijdBlok(){
+  const rs=PLGear.rijstijl();
+  if (!rs.verdeling.length) return '';
+  const max=Math.max(...rs.verdeling.map(x=>x.pct), 1);
+  return `<div class="plg-klein" style="margin:14px 0 4px">Tijd per versnelling · ${Math.round(rs.totaalS/60)} min gereden</div>`+
+    rs.verdeling.map(x=>`<div class="plg-rij"><span class="plg-nr">${x.k}</span>
+      <span class="plg-balk"><span style="width:${Math.round(x.pct/max*100)}%"></span></span>
+      <span class="plg-r plg-r2">${x.pct}%${x.hoogPct?` · ${x.hoogPct}% hoog`:''}</span></div>`).join('')+
+    rs.advies.map(a=>`<p class="plg-uitleg">💡 ${a}</p>`).join('');
 }
 function plGearWis(){
   if (_wisBevestig && nu()-_wisBevestig<4000){ _wisBevestig=0; PLGear.leerOpnieuw(); }
@@ -650,12 +770,29 @@ function plGearWis(){
 function plGearFout(){ _foutOpen=!_foutOpen; _foutMelding=''; tekenInstellingen(); }
 function plGearKies(k){
   const r=PLGear.corrigeer(k);
-  _foutMelding = r.ok ? `✓ Onthouden: dit is de ${k}e. De rest schuift mee.` : '⚠️ '+r.reden;
+  _foutMelding = r.ok ? (k==='R' ? '✓ Onthouden: dit is achteruit.' : `✓ Onthouden: dit is de ${k}e. De rest schuift mee.`) : '⚠️ '+r.reden;
   if (r.ok) _foutOpen=false;
-  toast(r.ok ? `⚙️ Versnelling ${k} onthouden` : r.reden);
+  toast(r.ok ? (k==='R' ? '⚙️ Achteruit onthouden' : `⚙️ Versnelling ${k} onthouden`) : r.reden);
   tekenInstellingen();
 }
 
+/* Het oordeel voor blok 5, puur: minstens 300 stabiele metingen deze sessie
+   (ruwweg tien minuten rijden door de versnellingen). Past minder dan 70%
+   bij een geleerde versnelling, of zijn er meer geleerd dan het profiel zegt,
+   dan is dat de bevinding. */
+function gearOordeel(se, st){
+  se=se||{}; st=st||{};
+  const n=se.stabiel||0, p=se.pasten||0, g=(st.versnellingen||[]).length;
+  if (n<300) return { staat:'LET OP', detail:'maar '+n+' stabiele metingen deze rit; nodig: 300 (tien minuten door alle versnellingen)' };
+  const pct=Math.round(p/n*100);
+  const kop=pct+'% van '+n+' stabiele metingen paste bij een versnelling; '+g+(st.verwacht?' van '+st.verwacht:'')+' geleerd'+
+    (se.correcties?', '+se.correcties+' correctie(s)':'')+(st.achteruit?', achteruit bekend':'')+(se.achteruit?' ('+se.achteruit+'× herkend)':'');
+  if (st.verwacht && g>st.verwacht) return { staat:'FOUT', detail:kop+' — meer versnellingen dan het profiel zegt: slippende koppeling, andere banden of een verkeerd profiel' };
+  if (pct<70) return { staat:'FOUT', detail:kop+' — te weinig: de geleerde verhoudingen passen niet bij deze auto' };
+  return { staat:'ok', detail:kop };
+}
+PLGear._rijstijl = rijstijl;
+PLGear.oordeel = gearOordeel;
 window.PLGear = PLGear;
 window.plGearFout = plGearFout;
 window.plGearKies = plGearKies;

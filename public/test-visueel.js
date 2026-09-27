@@ -502,5 +502,20 @@ console.log('\n— trekmodus: caravan of beladen (27-09-2026) —');
   waar('trekstrook: laaddruk alleen met bewezen turbo', !rol('laaddruk') && V.trekIndeling(p => heeft.has(p), true).some(x => x.rol === 'laaddruk'));
 }
 
+console.log('\n— sessiebewijs en oordelen voor blok 5 (#294, trekmodus) —');
+{
+  const V = maak({ actief: ['010C'] }).PLVisueel;
+  const S = (o) => Object.assign({ openMs: 0, rijdendMs: 0, trekMs: 0, maxTrend: null, alarmen: 0, tempo: {}, onder: {}, turbo: false, traag: [], constant: { n: 0, som: 0, kmhSom: 0 } }, o);
+  waar('#294: twee minuten rijdend is te weinig (LET OP)', V.ritOordeel(S({ rijdendMs: 120000 })).staat === 'LET OP');
+  const goed = V.ritOordeel(S({ rijdendMs: 400000, tempo: { '0149': { max: 610 } }, onder: { pedaal: 400000 }, constant: { n: 20, som: 130, kmhSom: 1600 } }));
+  waar('#294: pedaal bleef op de meter: ok, met het tempo en het verbruik bij constant rijden', goed.staat === 'ok' && /0149 610 ms/.test(goed.detail) && /6,5 l\/100 km bij constant 80/.test(goed.detail), goed.detail);
+  waar('#294: pedaal van de meter gevallen: FOUT, met welke', V.ritOordeel(S({ rijdendMs: 400000, traag: ['0149'] })).staat === 'FOUT');
+  waar('#294: olie is van nature traag en telt niet als gevallen', V.ritOordeel(S({ rijdendMs: 400000, traag: ['015C'] })).staat === 'ok');
+  waar('#294: zonder constant stuk zegt het dat', /geen 30 s constant/.test(V.ritOordeel(S({ rijdendMs: 400000 })).detail));
+  waar('trekmodus: drie minuten is te weinig (LET OP)', V.trekOordeel(S({ trekMs: 180000 })).staat === 'LET OP');
+  const tr = V.trekOordeel(S({ trekMs: 600000, maxTrend: 2.4, alarmen: 1 }));
+  waar('trekmodus: tien minuten, trend en waarschuwing in het verslag', tr.staat === 'ok' && /2,4 °C\/min/.test(tr.detail) && /1 waarschuwing\b/.test(tr.detail), tr.detail);
+}
+
 console.log('\n' + (fout ? 'FOUT: ' : 'goed: ') + ok + ' ok, ' + fout + ' fout\n');
 process.exit(fout ? 1 : 0);

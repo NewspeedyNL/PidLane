@@ -262,6 +262,35 @@ function laad(opties) {
     console.log('\n11. Ritlabels');
     const som = K.labelSom([{ label: 'Woon-werk', km: 20.5 }, { label: 'Caravan', km: 310 }, { label: 'Woon-werk', km: 19.5 }, { km: 3 }]);
     eis(som.length === 2 && som[0].label === 'Caravan' && som[1].ritten === 2 && som[1].km === 40, 'per label opgeteld, grootste eerst, zonder label telt niet mee', JSON.stringify(som));
+
+    console.log('\n12. Verbruik en kosten per label, voorstel, export, vergelijken');
+    const rs = [
+      { id: 'a', start: '2026-09-21T07:40:00', km: 21, liters: 1.26, verbruik_l100: 6, label: 'Woon-werk' },
+      { id: 'b', start: '2026-09-22T07:55:00', km: 20, liters: 1.2, verbruik_l100: 6, label: 'Woon-werk' },
+      { id: 'c', start: '2026-09-20T10:00:00', km: 310, liters: 31, verbruik_l100: 10, label: 'Caravan' },
+      { id: 'd', start: '2026-09-23T08:10:00', km: 20.5 },
+      { id: 'e', start: '2026-09-27T08:05:00', km: 20 }                  // zaterdag
+    ];
+    const s2 = K.labelSom(rs, 2);
+    const ww = s2.find((x) => x.label === 'Woon-werk'), cv = s2.find((x) => x.label === 'Caravan');
+    eis(ww.verbruik === 6 && ww.kosten === 4.92 && cv.verbruik === 10 && cv.kosten === 62, 'verbruik (gewogen) en kosten per label', JSON.stringify(s2));
+    eis(K.labelSom([{ label: 'Kort', km: 5, liters: 1, verbruik_l100: 20 }], 2)[0].verbruik === null, 'onder 20 km geen verbruiksoordeel per label');
+    eis(K.labelSuggestie(rs[3], rs) === 'Woon-werk', 'dinsdag 08:10, 20,5 km: voorstel Woon-werk (twee gelijkende ritten)');
+    eis(K.labelSuggestie(rs[4], rs) === null, 'zaterdag op hetzelfde tijdstip: geen voorstel (andere soort dag)');
+    eis(K.labelSuggestie({ id: 'x', start: '2026-09-24T07:50:00', km: 80 }, rs) === null, 'zelfde tijd maar 80 km: geen voorstel');
+    eis(K.labelSuggestie({ id: 'x', start: '2026-09-24T07:50:00', km: 20 }, rs.slice(0, 1)) === null, 'één gelijkende rit is geen patroon');
+    const ex = K.ritExport(rs, 'Woon-werk', 2);
+    const r = ex.csv.split('\n');
+    eis(r.length === 3 && /^datum;vertrek;km/.test(r[0]) && /;21,0;/.test(r[1]) && /;2,52;Woon-werk$/.test(r[1]), 'CSV: puntkomma, komma als decimaal, kosten per rit', ex.csv);
+    eis(/Totaal: 2 ritten, 41,0 km/.test(ex.tekst) && /€ 4,92/.test(ex.tekst), 'de tekst (voor de PDF) telt op', ex.tekst);
+    eis(K.ritExport(rs, null, null).n === 5 && !/€/.test(K.ritExport(rs, null, null).tekst), 'zonder label alle ritten; zonder prijs geen bedragen');
+    eis(!/;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;/.test(K.ritExport([{ start: '2026-09-21T07:40:00', km: 1, label: 'a;b' }], null, 1).csv.split('\n')[1]), 'een puntkomma in een label breekt de CSV niet');
+    const w1 = K.waakDelen(K.waakTekst(hist2, nm2));
+    const hist3 = hist2.map((h) => h.pid === '0105' ? Object.assign({}, h, { let: 0, ok: 12, waarde: 91 }) : h);
+    const w2b = K.waakDelen(K.waakTekst(hist3, nm2));
+    const vg = K.waakVergelijk(w1, w2b);
+    eis(vg[0].naam === 'Koelwater' && vg[0].veranderd && vg[0].a.staat === 'let' && vg[0].b.staat === 'ok', 'vergelijken: wat veranderde staat bovenaan (koelwater: bevinding → normaal)', JSON.stringify(vg[0]));
+    eis(vg.filter((x) => !x.veranderd).length === 2, 'wat gelijk bleef staat eronder');
   }
 
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));

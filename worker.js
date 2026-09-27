@@ -4836,7 +4836,9 @@ var KP_MIGRATIES = [
   "ALTER TABLE kp_voertuig ADD COLUMN pid_selectie TEXT",
   "ALTER TABLE kp_voertuig ADD COLUMN versnellingen INTEGER",
   "ALTER TABLE kp_voertuig ADD COLUMN gear_model TEXT",
-  "ALTER TABLE kp_rit ADD COLUMN label TEXT"
+  "ALTER TABLE kp_rit ADD COLUMN label TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN tankinhoud INTEGER",
+  "ALTER TABLE kp_voertuig ADD COLUMN brandstofprijs REAL"
 ];
 var _kpSchemaKlaar = false;
 
@@ -4922,6 +4924,9 @@ var KP_VELDEN = {
   turbo: { soort: "keuze", uit: ["ja", "nee", "onbekend"] },
   transmissie: { soort: "keuze", uit: ["handgeschakeld", "automaat", "onbekend"] },
   versnellingen: { soort: "geheel", min: 1, max: 10 },
+  tankinhoud: { soort: "geheel", min: 10, max: 200 },
+  // Een literprijs heeft drie decimalen (1,959): "getal" rondt op één af.
+  brandstofprijs: { soort: "prijs", min: 0.1, max: 5 },
   rijprofiel: { soort: "keuze", uit: ["stad", "gemengd", "snelweg", "korte ritten", "aanhanger of caravan"] },
   verbruik_opgegeven: { soort: "getal", min: 0, max: 50 },
   kmstand: { soort: "geheel", min: 0, max: 2000000 },
@@ -4952,6 +4957,11 @@ function kpVeld(naam, waarde) {
     const n = Number(waarde);
     if (!isFinite(n) || n < d.min || n > d.max) return { fout: naam + " ligt buiten " + d.min + "–" + d.max };
     return { waarde: d.soort === "geheel" ? Math.round(n) : Math.round(n * 10) / 10 };
+  }
+  if (d.soort === "prijs") {
+    const n = Number(String(waarde).replace(",", "."));
+    if (!isFinite(n) || n < d.min || n > d.max) return { fout: naam + " ligt buiten " + d.min + "–" + d.max };
+    return { waarde: Math.round(n * 1000) / 1000 };
   }
   if (d.soort === "pidlijst") {
     if (!Array.isArray(waarde)) return { fout: naam + " moet een lijst zijn" };
@@ -5247,7 +5257,15 @@ var KP_ACTIES = {
     return r ? { ok: true, rapport: r } : { ok: false, error: "Rapport niet gevonden.", code: 404 };
   },
 
+  // Eén rapport (id) of meerdere tegelijk (ids, hoogstens 50). Alleen van
+  // deze klant: een vreemd id telt gewoon niet mee in `gewist`.
   async rapport_verwijder(c, b) {
+    if (Array.isArray(b.ids)) {
+      const ids = b.ids.slice(0, 50).map((x) => String(x || "")).filter((x) => x);
+      if (!ids.length) return { ok: false, error: "Geen rapporten gekozen.", code: 400 };
+      const r = await c.db.prepare("DELETE FROM kp_rapport WHERE klant_id = ? AND id IN (" + ids.map(() => "?").join(", ") + ")").bind(c.klantId, ...ids).run();
+      return { ok: true, gewist: (r && r.meta && r.meta.changes) || 0 };
+    }
     const r = await c.db.prepare("DELETE FROM kp_rapport WHERE id = ? AND klant_id = ?").bind(String(b.id || ""), c.klantId).run();
     return (r && r.meta && r.meta.changes) ? { ok: true } : { ok: false, error: "Rapport niet gevonden.", code: 404 };
   },

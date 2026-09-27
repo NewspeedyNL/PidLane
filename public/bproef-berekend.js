@@ -81,6 +81,26 @@ function toets(naam, waar, uitleg) {
     toets('met bronnen van 10 s oud komt er geen waarde', tik.naOud === undefined, JSON.stringify(tik));
     toets('de bronnen 0106 en 0107 zijn erbij gezet', tik.bronnen, JSON.stringify(tik));
     toets('getPidDef kent de naam (rapport en AI)', /Brandstoftrim totaal/.test(tik.def || ''), tik.def);
+
+    const telling = await app.ev(`(function(){ const s = PLBerekend.stats(); const o = PLBerekend.oordeel(s); return { n: s.geweigerd.length, cmd: s.geweigerd[0] && s.geweigerd[0].cmd, staat: o.staat }; })()`);
+    toets('de weigering uit deel 2 is geteld, en maakt de blok-5-proef rood', telling.n === 1 && telling.cmd === 'CA01' && telling.staat === 'FOUT', JSON.stringify(telling));
+
+    console.log('\n4. De meetproeven van deze ronde: zonder auto zeggen ze wat de rit nodig heeft');
+    await app.ev(`PLBerekend._nieuweSessie(); true`);
+    const b5 = await app.ev(`(async function(){
+      const namen = ['beeld-in-beeld', 'Slim visueel houdt', 'trekmodus toont', 'versnellingsindicator herkent', 'Berekende PIDs gaan', 'responstijd van de adapter'];
+      const lijst = PLBlok5.proeven(), uit = [];
+      for (const n of namen) {
+        const p = lijst.find(function (x) { return x.naam.indexOf(n) >= 0; });
+        if (!p) { uit.push({ n: n, fout: 'niet in PROEVEN_B5' }); continue; }
+        try { const r = await p.proef(); uit.push({ n: n, staat: r && r.staat, nodig: /nodig|Nodig/.test((r && r.detail) || '') }); }
+        catch (e) { uit.push({ n: n, fout: e.message }); }
+      }
+      return uit;
+    })()`);
+    b5.forEach(function (x) {
+      toets(x.n + ': draait, en zegt LET OP met wat er nodig is', !x.fout && x.staat === 'LET OP' && x.nodig, JSON.stringify(x));
+    });
   } finally {
     await app.stop();
   }

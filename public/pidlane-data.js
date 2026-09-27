@@ -810,6 +810,11 @@ Object.assign(ALL_PID_DEFS,{
   '0179':{name:'Uitlaatgastemp B2S1',    unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>((b[0]&1)?(((b[1]*256+b[2])*0.1)-40):null)},
   '017A':{name:'DPF drukverschil B1',    unit:'kPa', cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]&1)?((b[1]*256+b[2])/100):null)},
   '017B':{name:'DPF drukverschil B2',    unit:'kPa', cat:'Emissie',  min:0,max:655,  parse:b=>((b[0]&1)?((b[1]*256+b[2])/100):null)},
+  // 017C (27-09-2026): DPF-temperatuur. Zelfde blok als 0178 (9 bytes: bitmap
+  // plus vier 16-bits waarden op 0,1 °C met -40); hier de inlaat van bank 1.
+  // Voedt de roetfilterteller CA12 in pidlane-berekend.js. Niet met meetdata
+  // bevestigd — de blok-5-proef "Berekende PIDs" zegt of hij antwoordt.
+  '017C':{name:'DPF temperatuur inlaat B1', unit:'°C', cat:'Emissie', min:-40,max:6513,parse:b=>((b[0]&1)?(((b[1]*256+b[2])*0.1)-40):null)},
   '017C':{name:'DPF inlaattemp B1',      unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>((b[0]&1)?(((b[1]*256+b[2])*0.1)-40):null)},
   '017D':{name:'NOx NTE status',         unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
   '017E':{name:'PM NTE status',          unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},

@@ -109,6 +109,120 @@
 
   function historie() { return _hist.slice(); }
 
+  /* ── SESSIEBEWIJS (#302, 27-09-2026) ─────────────────────────────────
+     _hist bewaart twaalf minuten en wordt bij opnieuw verbinden gewist. Voor
+     #302 is dat precies te kort: de vraag is of de responstijd over een half
+     uur oploopt, in stappen of geleidelijk, bij welke gebeurtenis, en of een
+     nieuwe verbinding hem terugzet. Daarom een tweede, grove reeks: elke 30 s
+     één monster met de context erbij (weergave, aantal sensoren, lopende
+     modules, koelwater, verbindingsnummer), tot acht uur lang. driftAnalyse()
+     maakt er een oordeel van; de blok-5-proef leest dat aan het eind van de rit. */
+  const SESSIE_MS = 30000, SESSIE_MAX = 960;
+  const _sessie = [], _gebeurt = [];
+  let _verbNr = 0, _wasVerbonden = false, _sessieT = 0;
+  function _echt() {
+    try { return typeof connected !== 'undefined' && !!connected && !(typeof demoMode !== 'undefined' && demoMode); }
+    catch (e) { return false; }
+  }
+  function _context() {
+    const c = { pids: 0, weergave: '', modules: [], koel: null };
+    try { c.pids = (typeof activePIDs !== 'undefined' && activePIDs) ? activePIDs.size : 0; } catch (e) { console.warn('adapter-sessie: selectie onleesbaar', e); }
+    try { c.weergave = (typeof pidViewMode !== 'undefined') ? String(pidViewMode) : ''; } catch (e) { console.warn('adapter-sessie: weergave onleesbaar', e); }
+    try {
+      const r = (window.PLRun && typeof PLRun.staat === 'function') ? (PLRun.staat() || {}) : {};
+      c.modules = Object.keys(r).filter(function (k) { return r[k] && r[k].aan; }).sort();
+    } catch (e) { console.warn('adapter-sessie: lopende modules onleesbaar', e); }
+    try { const k = (typeof pidVals !== 'undefined') ? pidVals['0105'] : undefined; c.koel = typeof k === 'number' ? Math.round(k) : null; }
+    catch (e) { console.warn('adapter-sessie: koelwater onleesbaar', e); }
+    return c;
+  }
+  function _sessieTik() {
+    const nu = Date.now(), echt = _echt();
+    if (echt && !_wasVerbonden) { _verbNr++; _gebeurt.push({ t: nu, soort: 'verbonden', nr: _verbNr }); }
+    if (!echt && _wasVerbonden) _gebeurt.push({ t: nu, soort: 'verbroken', nr: _verbNr });
+    _wasVerbonden = echt;
+    if (!echt || nu - _sessieT < SESSIE_MS) return;
+    const s = _stats();
+    if (!s || !(s.perSec > 0) || !(s.venGemMs > 0)) return;
+    _sessieT = nu;
+    _sessie.push(Object.assign({ t: nu, nr: _verbNr, ms: Math.round(s.venGemMs), rps: Math.round((s.perSec || 0) * 10) / 10, bezet: s.belasting || 0 }, _context()));
+    if (_sessie.length > SESSIE_MAX) _sessie.shift();
+  }
+  function _sesMediaan(a) {
+    const b = a.slice().sort(function (x, y) { return x - y; });
+    if (!b.length) return null;
+    const m = b.length >> 1;
+    return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2;
+  }
+  /* Puur: de sessiereeks → per verbinding begin, eind, factor en de stappen
+     met wat er rond elke stap veranderde; en tussen twee verbindingen wat de
+     nieuwe verbinding deed. test-adaptersessie.js toetst hem los. */
+  /* Het oordeel voor blok 5 (#302), puur. Kijkt naar de langste verbinding:
+     korter dan `minMin` minuten is geen uitspraak; onder ×1,3 is de drift er
+     deze rit niet; daarboven een bevinding met het patroon erbij. */
+  function driftOordeel(a, minMin) {
+    minMin = minMin || 25;
+    const g = (a && a.groepen || []).slice().sort(function (x, y) { return y.minuten - x.minuten; })[0];
+    if (!g || g.minuten < minMin)
+      return { staat: 'LET OP', drift: false, detail: 'langste onafgebroken verbinding ' + (g ? g.minuten : 0) + ' min; nodig: ' + minMin + ' min zonder verbreken' };
+    const kop = g.minuten + ' min verbonden: responstijd ' + g.begin + ' → ' + g.eind + ' ms (×' + String(g.factor).replace('.', ',') + ')';
+    if (!(g.factor >= 1.3)) return { staat: 'ok', drift: false, groep: g, detail: kop + ' — de drift van #302 trad deze rit niet op' };
+    const patroon = g.stappen.length
+      ? 'stapsgewijs: ' + g.stappen.map(function (s) { return 'min ' + s.minuut + ' ' + s.van + '→' + s.naar + ' ms' + (s.wat.length ? ' bij ' + s.wat.join(', ') : ' zonder gebeurtenis'); }).join('; ')
+      : 'geleidelijk, zonder stap';
+    const h = (a.herstel || []).filter(function (x) { return x.nr === g.nr + 1; })[0];
+    return { staat: 'FOUT', drift: true, groep: g, detail: kop + ' — ' + patroon +
+      (h && h.van && h.naar ? '. Opnieuw verbinden' + (h.knop ? ' (knop)' : '') + ': ' + Math.round(h.van) + ' → ' + Math.round(h.naar) + ' ms' : '') };
+  }
+
+  function driftAnalyse(sessie, gebeurt) {
+    const groepen = [];
+    (sessie || []).forEach(function (m) {
+      let g = groepen[groepen.length - 1];
+      if (!g || g.nr !== m.nr) { g = { nr: m.nr, monsters: [] }; groepen.push(g); }
+      g.monsters.push(m);
+    });
+    groepen.forEach(function (g) {
+      const ms = g.monsters, t0 = ms[0].t, t1 = ms[ms.length - 1].t;
+      g.van = t0; g.tot = t1; g.minuten = Math.round((t1 - t0) / 60000);
+      const eerste = ms.filter(function (m) { return m.t - t0 <= 5 * 60000; }).map(function (m) { return m.ms; });
+      const laatste = ms.filter(function (m) { return t1 - m.t <= 5 * 60000; }).map(function (m) { return m.ms; });
+      g.begin = _sesMediaan(eerste); g.eind = _sesMediaan(laatste);
+      g.factor = (g.begin && g.eind) ? Math.round(g.eind / g.begin * 100) / 100 : null;
+      g.stappen = [];
+      for (let i = 4; i + 4 <= ms.length; i++) {
+        const voor = _sesMediaan(ms.slice(i - 4, i).map(function (m) { return m.ms; }));
+        const na = _sesMediaan(ms.slice(i, i + 4).map(function (m) { return m.ms; }));
+        if (!(voor > 0) || na / voor < 1.25 || na - voor < 30) continue;
+        // De medianen zien de stap al een paar monsters vóór hij er is. De
+        // gebeurtenis hoort bij de werkelijke sprong: het grootste verschil
+        // tussen twee opeenvolgende monsters binnen dit venster.
+        let k = i;
+        for (let j = i - 3; j <= i + 3; j++) if (j > 0 && j < ms.length && ms[j].ms - ms[j - 1].ms > ms[k].ms - ms[k - 1].ms) k = j;
+        const a = ms[k - 1], b = ms[k], wat = [];
+        if (a.weergave !== b.weergave) wat.push('weergave ' + a.weergave + ' → ' + b.weergave);
+        if (a.pids !== b.pids) wat.push('sensoren ' + a.pids + ' → ' + b.pids);
+        const bij = b.modules.filter(function (x) { return a.modules.indexOf(x) < 0; });
+        const af = a.modules.filter(function (x) { return b.modules.indexOf(x) < 0; });
+        if (bij.length) wat.push('gestart: ' + bij.join(', '));
+        if (af.length) wat.push('gestopt: ' + af.join(', '));
+        if (typeof a.koel === 'number' && typeof b.koel === 'number' && a.koel < 80 && b.koel >= 80) wat.push('motor warm (koelwater ' + b.koel + ' °C)');
+        const vorige = g.stappen[g.stappen.length - 1];
+        if (vorige && b.t - vorige.t < 3 * 60000) continue;       // dezelfde stap, een monster later
+        g.stappen.push({ t: b.t, minuut: Math.round((b.t - t0) / 60000), van: Math.round(voor), naar: Math.round(na), wat: wat });
+      }
+    });
+    const herstel = [];
+    for (let i = 1; i < groepen.length; i++) {
+      const a = groepen[i - 1], b = groepen[i];
+      const voor = _sesMediaan(a.monsters.filter(function (m) { return a.tot - m.t <= 3 * 60000; }).map(function (m) { return m.ms; }));
+      const na = _sesMediaan(b.monsters.filter(function (m) { return m.t - b.van <= 3 * 60000; }).map(function (m) { return m.ms; }));
+      const knop = (gebeurt || []).some(function (e) { return e.soort === 'herverbind-knop' && e.t >= a.tot - 60000 && e.t <= b.van + 60000; });
+      herstel.push({ van: voor, naar: na, knop: knop, nr: b.nr });
+    }
+    return { groepen: groepen.map(function (g) { const x = Object.assign({}, g); delete x.monsters; x.n = g.monsters.length; return x; }), herstel: herstel };
+  }
+
   // ══════════════════════════════════════════════════════════════════
   // HET ADVIES — een pure functie, want dit is het enige stuk rekenwerk
   // ══════════════════════════════════════════════════════════════════
@@ -790,6 +904,7 @@
       _melding('Opnieuw verbinden kan hier niet: de verbindingsmodule ontbreekt'); return false;
     }
     _herverbindBezig = true;
+    _gebeurt.push({ t: Date.now(), soort: 'herverbind-knop' });
     const voor = _hist.length ? _hist[_hist.length - 1] : null;
     // De selectie van NU bewaren, ook als hij na de laatste wijziging niet
     // meer weggeschreven is. De hervatstand leest hem terug.
@@ -865,6 +980,7 @@
     if (_sampler) return;
     _sampler = setInterval(function () {
       try { if (_verbonden()) monster(); } catch (e) { console.warn('Adaptermonster mislukt:', e); }
+      try { _sessieTik(); } catch (e) { console.warn('Adapter-sessiemonster mislukt (#302):', e); }
     }, HIST_MS);
   }
 
@@ -891,6 +1007,11 @@
     verbreek: verbreek,
     herverbind: herverbind,
     drift: drift,
+    sessie: function () { return _sessie.slice(); },
+    gebeurtenissen: function () { return _gebeurt.slice(); },
+    driftAnalyse: driftAnalyse,
+    sessieOordeel: function () { return driftAnalyse(_sessie, _gebeurt); },
+    driftOordeel: driftOordeel,
     adapterNaam: adapterNaam,
     protocol: protocol,
     ati: function () { return _ati; },

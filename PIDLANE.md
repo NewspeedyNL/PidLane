@@ -224,7 +224,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 40 | `pidlane-klant.js` | 30 | `PLKlant` — klantregistratie, klantlogin, wachtwoordherstel, "Mijn tokens" |
 | 41 | `pidlane-watchers.js` | 20 | `PLWatch` — Laag B, ruwe-signaalwatchers op `pidHist` |
 | 41a | `pidlane-gear.js` | 23 | `PLGear` — **versnellingsindicator** in de topbalk (`#plGear`, op de plek van het logo via `body.pl-gear-aan`). Leert per auto de verhouding km/u per 1000 tpm uit stabiele, tijd-uitgelijnde paren 010D/010C in `pidHist` (histogram → pieken = versnellingen); geen bus-I/O. Model in localStorage onder het VIN-pseudoniem, nooit de ruwe VIN (§7). Instellingen via ☰ of een tik op het cijfer. **Bij het voertuig** (27-09): voor een klant koppelt `PLGarage` het voertuig via `koppel()`; het model heet dan `kp_<id>` en gaat via `versnelling_opslaan` naar `kp_voertuig.gear_model`, het profiel geeft `versnellingen` en `transmissie`. De knop **Fout** (`corrigeer(k)`) legt een anker: de verhouding van dat moment is versnelling k, de nummering schuift mee (`model.offset`). `waarde()` voedt de berekende PID CA01. Test: `test-gear.js` |
-| 41b | `pidlane-berekend.js` | 9 | `PLBerekend` — **berekende PIDs** (27-09-2026): CA01 versnelling, CA02 brandstofdebiet, CA03 verbruik l/100 km, CA04 laaddruk, CA05 totale trim B1, CA06 vermogen. Kiesbaar onder "Berekend" (`plBerekendDefs()` in `buildDiscoveredPIDList`), rekent elke 400 ms uit verse bronwaarden en schrijft via `updPID()`. **Gaat nooit de bus op**: `pidsDueNow()` slaat CA-PIDs over (`plIsBerekend`), `sendCmd()` weigert ze, en ze komen nooit in `supportedPIDs`. Een gekozen berekende PID zet zijn bronnen erbij. Tests: `test-berekend.js`, `bproef-berekend.js` |
+| 41b | `pidlane-berekend.js` | 22 | `PLBerekend` — **berekende PIDs** (27-09-2026): CA01 versnelling (−1 = R), CA02 brandstofdebiet, CA03 verbruik l/100 km, CA04 laaddruk, CA05/CA14 totale trim B1/B2, CA15 trimverschil, CA06 vermogen, CA07 koppel, CA08 kosten €/u, CA09 bereik (vraagt tankinhoud), CA10 rendement, CA11 schakeladvies (alleen omhoog, nooit terug), CA12 km sinds roetfilterregeneratie (diesel, 017C/0178), CA13 koelwater − buiten, CA16 omvormerslip (automaat), CA17 kosten deze rit. Literprijs, tankinhoud, verbruik en vermogen komen via `voertuig()` uit Mijn voertuigen. Kiesbaar onder "Berekend" (`plBerekendDefs()` in `buildDiscoveredPIDList`), rekent elke 400 ms uit verse bronwaarden en schrijft via `updPID()`. **Gaat nooit de bus op**: `pidsDueNow()` slaat CA-PIDs over (`plIsBerekend`), `sendCmd()` weigert ze, en ze komen nooit in `supportedPIDs`. Een gekozen berekende PID zet zijn bronnen erbij. Tests: `test-berekend.js`, `bproef-berekend.js` |
 | 42 | `pidlane-uitgebreid.js` | 8 | `PLUitgebreid` — fabrikant-PIDs buiten mode 01 (mode 21), `pidCmd()`/`isMode01()`, probe na verbinden |
 | 43 | `pidlane-waakronde.js` | 13 | `PLWaak` — stille achtergrondcontrole van sensoren buiten je selectie; claimt de bus 3 PIDs per 12s, oordeelt per meting, ambient strook |
 | 44 | `pidlane-bulk.js` | 27 | `PLBulk` — passieve bulk-datarecorder (IndexedDB). Eerste echte opname 19-08: 101 monsters op 1 Hz, 55 PIDs, geen gaten |
@@ -1874,6 +1874,28 @@ busdiagnose, zelftest, opdracht, diagnosebundel, logscherm en copiloot. Wie een
 probleem wilde natrekken moest ze alle zes langs en zelf de tijdlijnen op elkaar
 leggen. Vandaar de samenvoeging tot `pidlane-testrun.js`: één knop, één rit,
 één logboek.
+
+### Blok 5 oordeelt over de hele rit (27-09-2026)
+
+Een proef die alleen kijkt naar het moment waarop de testrun draait, zegt
+niets over wat er een kwartier eerder op de weg gebeurde — en dan moest een rit
+over. Sinds 27-09 houdt elke module die een ritvraag heeft zelf het bewijs bij,
+vanaf het opstarten, en is het oordeel een pure functie in die module:
+
+| vraag | bewijs | oordeel |
+|---|---|---|
+| #319 beeld-in-beeld | `PLPip.perioden()` (gaten gemeten in `updPID`) | `PLPip.oordeel()` |
+| #302 responstijd | `PLAdapter.sessie()` (30 s-monsters met context) | `PLAdapter.driftAnalyse()` / `driftOordeel()` |
+| #294 Slim visueel | `PLVisueel.sessie()` | `PLVisueel.ritOordeel()` |
+| trekmodus | `PLVisueel.sessie()` | `PLVisueel.trekOordeel()` |
+| versnelling | `PLGear.sessie()` | `PLGear.oordeel()` |
+| berekende PIDs | `PLBerekend.stats()` (ook ongekozen PIDs, en elke weigering in `sendCmd`) | `PLBerekend.oordeel()` |
+
+Drie uitkomsten: ok, FOUT met het waarom, of LET OP met precies wat de rit nodig
+had. `CAMPAGNE` zet al die situaties in één rit. De #302-proef staat achteraan
+omdat hij bij gemeten drift zelf het experiment doet (ATWS, en zo nodig een
+nieuwe verbinding). Getoetst in node (de oordelen) en in `bproef-berekend.js`
+(alle zes draaien zonder auto en zeggen LET OP met wat er nodig is).
 
 ### Blok 5 is een lijst (6.6, 02-09-2026)
 
