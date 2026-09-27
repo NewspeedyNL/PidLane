@@ -358,7 +358,7 @@ function extractAIText(data){
 // krijgt er de dekkingscontrole bij: welke sensoren deze analyse nodig heeft en
 // welke daarvan ontbreken. {meet:false} zet het blok uit voor een call die niets
 // met sensordata te maken heeft.
-async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, aanlevering=null){
+async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, aanlevering=null, extra=null){
   // Key ophalen — prioriteit: login account → window → localStorage
   let key = '';
   try{
@@ -491,6 +491,9 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
       // Haiku 4.5 kent het type 'disabled' niet → daar het veld weglaten
       // (zonder thinking-veld draait Haiku sowieso zonder thinking).
       if(!/haiku/i.test(mdl)) body.thinking = { type: 'disabled' };
+      // Tools van de API (bijv. web_search voor PLEigen.zoekOnline). Alleen
+      // als de aanroeper ze vraagt; de gewone rapporten sturen er geen.
+      if(extra && Array.isArray(extra.tools) && extra.tools.length) body.tools = extra.tools;
       const resp = await plFetch('/v1/messages',{ method: 'POST', json: body });
 
       if(!resp.ok){

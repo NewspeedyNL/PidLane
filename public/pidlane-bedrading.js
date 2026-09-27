@@ -154,6 +154,8 @@ var KRITIEK = [
   // Slim visueel zet de trekstrook aan bij rijsituatie caravan of beladen
   // (27-09-2026). Valt hij weg, dan blijft de strook stil weg.
   'situatieActief',
+  // Mijn voertuigen → Sensoren → online zoeken naar codes (PLEigen.zoekOnline).
+  'apiFetch',
   // Mijn voertuigen → rapport of ritten → 📕 PDF, rechtstreeks zonder de keuze
   // tekst/PDF (pidlane-export.js). Ontbreekt hij, dan doet de knop niets.
   'plOpslaanPdf',

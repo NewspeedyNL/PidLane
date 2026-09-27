@@ -8763,7 +8763,7 @@ const CAMPAGNE = {
     'SLIM VISUEEL DRIE MINUTEN RIJDEND (#294), waarvan dertig seconden constant boven 50 km/u. Noteer wat de boordcomputer als verbruik zegt.',
     'TREKMODUS VIJF MINUTEN. Tik in het Voertuigoverzicht de rijsituatie caravan of beladen aan (of start de Caravanrit); de strook onder de meter verschijnt vanzelf. Met een caravan of volle auto het liefst een klim.',
     'EÉN KEER VOL GAS in de 2e of 3e, als het veilig kan. Dat is de enige manier om het berekende vermogen tegen het profiel te houden.',
-    'EEN EIGEN PID, ALS JE ER EEN HEBT. Mijn voertuigen → Sensoren → Eigen sensoren: code (21xx of 22xxxx), formule, Test op de auto, Toevoegen, Bewaren. Laat hem de rit meelopen.',
+    'EEN EIGEN PID. Mijn voertuigen → Sensoren. Heb je een code van de dealer: vul hem in (met ECU-adres als je dat weet, bijv. 7E1 voor de automaat), Test op de auto, Toevoegen, Bewaren. Zo niet: 📚 Codes voor dit model → Zoek online, test de kandidaten (elke test telt mee als werkt/werkt niet) en voeg er een toe die antwoordt. Laat hem de rit meelopen; werkt hij, tik dan Deel.',
     '── STAP VOOR STAP ────────',
     'STAP 0 — VOORAF. Nieuwste versie laden (☰ → Nieuwste versie laden). Mijn voertuigen: vul bij Profiel handbak of automaat, het aantal versnellingen, de tankinhoud, de literprijs en het vermogen in. Een nieuwe APK is niet nodig.',
     'STAP 1 — VERBINDEN EN WEGRIJDEN. Eén keer verbinden, dan niet meer verbreken tot na de testrun. Tik de rijsituatie caravan of beladen aan en kies Slim visueel.',

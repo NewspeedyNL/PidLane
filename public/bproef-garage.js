@@ -51,6 +51,10 @@ const NEPSERVER = `(function(){
       d.rapport = r ? { id: b.id, soort: r.soort, titel: r.titel, tekst: r.tekst, aangemaakt: new Date(Date.now() - (10 - i) * 60000).toISOString() } : null; }
     else if (b.actie === 'rapport_verwijder') { S.gewist = (S.gewist || []).concat(b.ids || [b.id]); d.gewist = (b.ids || [b.id]).length; }
     else if (b.actie === 'rit_label') { (S.ritten || []).forEach(r => { if (r.id === b.id) r.label = b.label || null; }); d.label = b.label || null; }
+    else if (b.actie === 'pidbib_lijst') d.lijst = S.bib || [];
+    else if (b.actie === 'pidbib_kandidaten') { S.kandidaten = b.lijst; d.erbij = b.lijst.length; d.geweigerd = 0; }
+    else if (b.actie === 'pidbib_stem') (S.stemmen = S.stemmen || []).push(b.id + ':' + b.uitkomst);
+    else if (b.actie === 'pidbib_deel') S.gedeeld = b.code + '@' + b.ecu;
     return { ok:true, status:200, json: async () => d };
   };
   return true;
@@ -214,6 +218,75 @@ const NEPSERVER = `(function(){
     toets('toegepast: de eigen PID staat in de keuzelijst, groep Eigen', eig.def && eig.lijst, JSON.stringify(eig));
     toets('hij wordt elke 2 s gevraagd, niet op het trage tempo van mode 22', eig.interval === 2000, JSON.stringify(eig));
     toets('parsePID rekent de formule: 5A − 40 = 50', eig.waarde === 50, JSON.stringify(eig));
+    const solo = await app.ev(`(async function(){
+      PLEigen.zet([{ code: '221E1C', naam: 'Automaat', formule: 'A-40', ecu: '7E1' }], 'x');
+      const echt = window.sendCmd, gestuurd = [];
+      window.sendCmd = async function (c) { gestuurd.push(c); return c === '221E1C1' ? '621E1C5A' : 'OK'; };
+      let r; try { r = await plVraagSolo('221E1C'); } finally { window.sendCmd = echt; }
+      return { gestuurd: gestuurd.join(' '), r: r };
+    })()`);
+    toets('de pollus vraagt een eigen PID met ECU-adres via ATSH en zet het adres terug', solo.gestuurd === 'ATSH7E1 221E1C1 ATSH7DF', JSON.stringify(solo));
+    await app.ev(`PLEigen.zet(null); PLGarage.sluit(); 'ok'`);
+
+    console.log('\n── 4g. ECU-adres, tempo, delen en de bibliotheek per model (27-09) ──');
+    const bib = await app.ev(`(async function(){
+      const S = window._nepPlatform, v = S.voertuigen[0];
+      // Ook de kopie die de app al heeft (uit de stand van 4f).
+      [v].concat((PLGarage.staat().stand || {}).voertuigen || []).forEach(x => { if (x.id === v.id) { x.merk = 'Mazda'; x.model = 'CX-5 2.2'; x.eigen_pids = []; x.pid_selectie = []; } });
+      S.bib = [{ id: 'b1', code: '220202', ecu: '', naam: 'Olietemperatuur', formule: 'A-40', eenheid: '°C', bron: 'online', url: 'https://forum.voorbeeld.nl/cx5', werkt: 0, werkt_niet: 0, mijn: null },
+               { id: 'b2', code: '221E1C', ecu: '7E1', naam: 'Temperatuur automaat', formule: 'A-40', eenheid: '°C', bron: 'klant', url: null, werkt: 3, werkt_niet: 1, mijn: null }];
+      const wacht = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise(r => setTimeout(r, 50)); return f(); };
+      PLGarage.open(v.id); PLGarage._tab('sensoren');
+      const body = () => document.getElementById('plGarBody').textContent;
+      const uit = {};
+      uit.lijst = await wacht(() => /Olietemperatuur/.test(body()) && /werkt bij 3/.test(body()) && /online gevonden, nog door niemand getest/.test(body()));
+      uit.bron = !!document.querySelector('#plGarBody .gr-bib a[href="https://forum.voorbeeld.nl/cx5"][rel~="noopener"]');
+      // Uit de bibliotheek toevoegen
+      PLGarage._bibErbij('b2');
+      uit.erbij = /staat bij je sensoren/.test(body()) && _st_eigen().some(e => e.code === '221E1C' && e.ecu === '7E1');
+      // Zelf een code met ECU-adres en tempo
+      document.getElementById('grsNaam').value = 'Olie druk'; document.getElementById('grsCode').value = '220303';
+      document.getElementById('grsFormule').value = 'A*4'; document.getElementById('grsEcu').value = '7e0'; document.getElementById('grsTempo').value = 'traag';
+      PLGarage._sensErbij();
+      uit.eigen = _st_eigen().find(e => e.code === '220303');
+      // Een test telt als stem — maar alleen een echte uitkomst.
+      const echtTest = PLEigen.test;
+      PLEigen.test = async () => ({ ok: true, raw: '62 02 02 5A', bytes: [90], waarde: 50, eenheid: '°C' });
+      await PLGarage._bibTest('b1');
+      PLEigen.test = async () => ({ ok: false, fout: 'Niet verbonden met een auto' });
+      await PLGarage._bibTest('b2');
+      PLEigen.test = async () => ({ ok: false, raw: '7F 22 31', fout: 'De auto weigert deze code (7F)' });
+      await PLGarage._bibTest('b2');
+      uit.stemmen = S.stemmen;
+      // Delen: pas na een geslaagde test, en pas na bewaren.
+      await PLGarage._sensBewaar();
+      const i = _st_eigen().findIndex(e => e.code === '221E1C');
+      uit.deelVoor = !!document.querySelector('#plGarBody button[onclick="PLGarage._sensDeel(' + i + ')"]');
+      PLEigen.test = async () => ({ ok: true, raw: '62 1E 1C 5A', bytes: [90], waarde: 50, eenheid: '°C' });
+      await PLGarage._sensTest(i);
+      uit.deelNa = !!document.querySelector('#plGarBody button[onclick="PLGarage._sensDeel(' + i + ')"]');
+      await PLGarage._sensDeel(i);
+      uit.gedeeld = S.gedeeld;
+      PLEigen.test = echtTest;
+      // Online zoeken: via apiFetch met de zoektool, wat door de controle komt naar de server.
+      const echtApi = window.apiFetch; let gevraagd = null;
+      window.apiFetch = async (p, m, sys, mdl, a, extra) => { gevraagd = extra; return '{"kandidaten":[{"code":"220404","naam":"AdBlue niveau","formule":"A","eenheid":"%","bron":"https://github.com/voorbeeld/pids"},{"code":"2E0404","naam":"x","formule":"A","bron":"https://x.nl"}]}'; };
+      await PLGarage._bibZoek();
+      window.apiFetch = echtApi;
+      uit.zoekTool = gevraagd && gevraagd.tools && gevraagd.tools[0].name;
+      uit.kandidaten = (S.kandidaten || []).map(k => k.code).join(',');
+      uit.zoekMelding = /1 nieuwe kandidaat/.test(body());
+      return uit;
+      function _st_eigen() { return PLGarage.staat().sens.eigen; }
+    })()`);
+    toets('de bibliotheek van dit model staat in Sensoren, met stand en bron', bib.lijst && bib.bron, JSON.stringify(bib));
+    toets('uit de bibliotheek toevoegen neemt het ECU-adres mee', bib.erbij, JSON.stringify(bib));
+    toets('een eigen code met ECU-adres (7e0 → 7E0) en tempo traag', bib.eigen && bib.eigen.ecu === '7E0' && bib.eigen.tempo === 'traag', JSON.stringify(bib.eigen));
+    toets('een test telt als stem: werkt en 7F tellen, "niet verbonden" niet', JSON.stringify(bib.stemmen) === '["b1:werkt","b2:werkt_niet"]', JSON.stringify(bib.stemmen));
+    toets('delen kan pas na een geslaagde test', !bib.deelVoor && bib.deelNa, JSON.stringify(bib));
+    toets('delen stuurt code en ECU-adres naar de server', bib.gedeeld === '221E1C@7E1', JSON.stringify(bib.gedeeld));
+    toets('online zoeken gebruikt de zoektool, en alleen leescodes gaan naar de server', bib.zoekTool === 'web_search' && bib.kandidaten === '220404', JSON.stringify(bib));
+    toets('en zegt hoeveel er nieuw in de lijst kwamen', bib.zoekMelding, JSON.stringify(bib));
     await app.ev(`PLEigen.zet(null); PLGarage.sluit(); 'ok'`);
 
     console.log('\n── 4e. leren uit opnames (27-09) ──');

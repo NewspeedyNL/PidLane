@@ -254,6 +254,43 @@ async function laadWorker() {
     db.prepare('SELECT COUNT(*) AS n FROM kp_rapport WHERE id = ?').get(rbx.id).n === 1, JSON.stringify(weg));
   toets('een lege lijst: 400', (await roep(tokA, { actie: 'rapport_verwijder', ids: [] }))._status === 400);
 
+  // ECU-adres en tempo per eigen PID, en de gedeelde bibliotheek (27-09-2026).
+  const ecuFout = async (e) => (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, eigen_pids: [Object.assign({ code: '221E1C', naam: 'x' }, e)] } }))._status;
+  toets('ECU-adres: 7E1 en 18DA18F1 mogen', await ecuFout({ ecu: '7e1' }) === 200 && await ecuFout({ ecu: '18DA18F1' }) === 200);
+  toets('ECU-adres: 7DF (functioneel) of rommel is 400', await ecuFout({ ecu: 'ATZ' }) === 400 && await ecuFout({ ecu: '18DB33F1' }) === 400);
+  await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, merk: 'Mazda', model: 'CX-5 2.2 Skyactiv-D', eigen_pids: [
+    { code: '221E1C', ecu: '7E1', naam: 'Temperatuur automaat', formule: 'A-40', eenheid: '°C', tempo: 'traag' }] } });
+  const epT = (await roep(tokA, { actie: 'stand' })).voertuigen.find((v) => v.id === v1.voertuig.id).eigen_pids[0];
+  toets('ECU-adres en tempo worden bewaard', epT.ecu === '7E1' && epT.tempo === 'traag', JSON.stringify(epT));
+  toets('bibliotheek: delen kan alleen wat bij het voertuig staat', (await roep(tokA, { actie: 'pidbib_deel', voertuig_id: v1.voertuig.id, code: '229999' }))._status === 404);
+  const deel = await roep(tokA, { actie: 'pidbib_deel', voertuig_id: v1.voertuig.id, code: '221E1C', ecu: '7E1' });
+  toets('bibliotheek: Anna deelt haar bewezen code', deel.ok && !!deel.id, JSON.stringify(deel));
+  await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { id: rBert.voertuig.id, merk: 'MAZDA', model: 'cx5' } });
+  let bl = await roep(tokB, { actie: 'pidbib_lijst', voertuig_id: rBert.voertuig.id });
+  toets('bibliotheek: Bert (MAZDA cx5) ziet hem, met één "werkt"', bl.ok && bl.merk === 'mazda' && bl.model === 'cx5' && bl.lijst.length === 1 &&
+    bl.lijst[0].code === '221E1C' && bl.lijst[0].ecu === '7E1' && bl.lijst[0].werkt === 1 && bl.lijst[0].bron === 'klant', JSON.stringify(bl));
+  toets('bibliotheek: zonder klant, voertuig of kenteken erin', !('klant_id' in bl.lijst[0]) && !('voertuig_id' in bl.lijst[0]) &&
+    db.prepare("SELECT COUNT(*) AS n FROM pragma_table_info('kp_pid_bib') WHERE name LIKE '%klant%' OR name LIKE '%voertuig%'").get().n === 0);
+  await roep(tokB, { actie: 'pidbib_stem', voertuig_id: rBert.voertuig.id, id: deel.id, uitkomst: 'werkt_niet' });
+  await roep(tokB, { actie: 'pidbib_stem', voertuig_id: rBert.voertuig.id, id: deel.id, uitkomst: 'werkt_niet' });
+  bl = await roep(tokB, { actie: 'pidbib_lijst', voertuig_id: rBert.voertuig.id });
+  toets('bibliotheek: twee keer stemmen telt één keer, en de eigen stem komt terug', bl.lijst[0].werkt === 1 && bl.lijst[0].werkt_niet === 1 && bl.lijst[0].mijn === 'werkt_niet', JSON.stringify(bl.lijst[0]));
+  toets('bibliotheek: stemmen met een verzonnen uitkomst is 400', (await roep(tokB, { actie: 'pidbib_stem', voertuig_id: rBert.voertuig.id, id: deel.id, uitkomst: 'geweldig' }))._status === 400);
+  const kand = await roep(tokB, { actie: 'pidbib_kandidaten', voertuig_id: rBert.voertuig.id, lijst: [
+    { code: '220202', naam: 'Olietemperatuur', formule: 'A-40', eenheid: '°C', url: 'https://forum.voorbeeld.nl/cx5-pids' },
+    { code: '2E0202', naam: 'schrijven', formule: 'A', url: 'https://x.nl' },
+    { code: '220303', naam: 'zonder bron', formule: 'A' },
+    { code: '220404', naam: 'script', formule: 'A', url: 'javascript:alert(1)' },
+    { code: '221E1C', ecu: '7E1', naam: 'dubbel', formule: 'A', url: 'https://x.nl' }] });
+  toets('kandidaten: alleen leescodes met een echte bron-URL, geen dubbele', kand.ok && kand.erbij === 1 && kand.geweigerd === 3, JSON.stringify(kand));
+  bl = await roep(tokA, { actie: 'pidbib_lijst', voertuig_id: v1.voertuig.id });
+  const online = bl.lijst.find((x) => x.code === '220202');
+  toets('kandidaten: Anna ziet de online kandidaat, met de bron en nog niet getest', !!online && online.bron === 'online' && /forum/.test(online.url) && online.werkt === 0, JSON.stringify(bl.lijst));
+  toets('kandidaten: meer dan 20 in één keer is 400', (await roep(tokB, { actie: 'pidbib_kandidaten', voertuig_id: rBert.voertuig.id,
+    lijst: Array.from({ length: 21 }, () => ({ code: '220505', naam: 'x', url: 'https://x.nl' })) }))._status === 400);
+  const vKia = await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { naam: 'Kia', merk: 'Kia', model: 'Ceed' } });
+  toets('een ander merk ziet de Mazda-codes niet', vKia.ok && (await roep(tokB, { actie: 'pidbib_lijst', voertuig_id: vKia.voertuig.id })).lijst.length === 0);
+
   await roep(tokV, { actie: 'alles_wissen' });
   toets('alles wissen neemt de voorkeuren mee', Object.keys((await roep(tokV, { actie: 'voorkeuren' })).voorkeur).length === 0);
 
@@ -306,12 +343,14 @@ async function laadWorker() {
   op = await W.klantWachtrijOpruimen(envOp, new Date('2026-09-27'));
   global.fetch = oudFetch;
   const annaId = await W.kpKlantId('anna@voorbeeld.nl');
-  const rest = ['kp_voertuig', 'kp_rapport', 'kp_rit', 'kp_issue', 'kp_akkoord'].map((t) => db.prepare('SELECT COUNT(*) AS n FROM ' + t + ' WHERE klant_id = ?').get(annaId).n);
+  const rest = ['kp_voertuig', 'kp_rapport', 'kp_rit', 'kp_issue', 'kp_pid_stem', 'kp_akkoord'].map((t) => db.prepare('SELECT COUNT(*) AS n FROM ' + t + ' WHERE klant_id = ?').get(annaId).n);
   toets('na de opruimer staat er van Anna niets meer in D1', rest.every((x) => x === 0), rest.join(','));
   toets('en is het Airtable-record daarna gewist', gewist.length === 1);
   toets('Bert is ongemoeid gebleven', db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig WHERE klant_id != ?').get(annaId).n > 0);
   toets('alles_wissen door de klant zelf', (await roep(tokB, { actie: 'alles_wissen' })).ok &&
     db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig').get().n === 0);
+  toets('alles_wissen neemt de stemmen in de PID-bibliotheek mee; de gedeelde codes blijven',
+    db.prepare('SELECT COUNT(*) AS n FROM kp_pid_stem').get().n === 0 && db.prepare('SELECT COUNT(*) AS n FROM kp_pid_bib').get().n === 2);
 
   console.log('\n7. Migratie op een tabel van vóór de nieuwe kolommen');
   {

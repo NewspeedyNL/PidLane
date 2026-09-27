@@ -33,6 +33,15 @@
  - Voertuigoverzicht: voor een voertuig uit Mijn voertuigen staan de
    gegevens er alleen ter inzage, met een knop "Profiel aanpassen". Geen
    tweede formulier meer voor dezelfde gegevens. De rijsituatie blijft.
+ - Eigen sensoren: per code een ECU-adres (bijv. 7E1 voor de automaat;
+   de app zet na de vraag het algemene adres terug) en hoe vaak hij
+   gevraagd wordt (elke seconde, 2 s of 10 s).
+ - 📚 Codes voor dit model (in Sensoren): een gedeelde lijst per merk en
+   model. Een code die bij jou werkt kun je na een geslaagde test delen;
+   "Zoek online" laat de AI (met de zoektool, op tegoed) forums en
+   PID-lijsten doorzoeken en zet wat door de controle komt erbij, met de
+   bron. Elke test op je auto telt mee als "werkt" of "werkt niet" —
+   zonder naam, kenteken of VIN, alleen merk en model.
  - Opslaan: een PDF-rapport (AI, dossier) gaat rechtstreeks naar
    Documenten/PidLane, zonder het venster "Delen / Opslaan in map". Ook
    de CSV van de PID-recorder en de remote-opname en het survey-bestand

@@ -198,7 +198,8 @@ function haalZeef(isMode01) {
 
   console.log('\n— eigen PIDs per voertuig: alleen lezen, eigen formule zonder eval (27-09-2026) —');
   {
-    const s = bouw({ antwoorden: { '221E1C': '621E1C5A', '220202': '7F2231', '2101': '6101 00 64' } });
+    // Solo met het antwoordaantal erachter (pidCmd(code, true)), net als de pollus.
+    const s = bouw({ antwoorden: { '221E1C1': '621E1C5A', '2202021': '7F2231', '21011': '6101 00 64' } });
     const E = s.PLEigen;
     t('PLEigen staat er', typeof E === 'object' && typeof s.plEigenDefs === 'function', true);
     const f = E.formule('(A*256+B)/10-40');
@@ -248,12 +249,12 @@ function haalZeef(isMode01) {
     t('ander voertuig zonder eigen PIDs: de oude zijn weg', !!s.ALL_PID_DEFS['221E1C'] + ',' + s.plEigenDefs().length, 'false,0');
 
     const r = await E.test({ code: '221E1C', naam: 'T', formule: 'A-40', eenheid: '°C' });
-    t('test: stuurt de code één keer', s._verzonden.filter(x => x === '221E1C').length, 1);
+    t('test: stuurt de code één keer, zoals de pollus hem stuurt', s._verzonden.filter(x => x === '221E1C1').length, 1);
     t('test: leest de byte achter de echo 621E1C', r.ok && r.waarde, 50);
     const w = await E.test({ code: '220202', naam: 'T', formule: 'A' });
     t('test: 7F wordt "de auto weigert"', /weigert/.test(w.fout || ''), true);
     const x = await E.test({ code: '2E1234', naam: 'T', formule: 'A' });
-    t('test: een schrijfcode gaat de bus niet eens op', !x.ok && s._verzonden.indexOf('2E1234') < 0, true);
+    t('test: een schrijfcode gaat de bus niet eens op', !x.ok && !s._verzonden.some(c => /^2E1234/.test(c)), true);
     const O = E.oordeel, d1 = [{ pid: '221E1C', name: 'Temp automaat', unit: '°C' }];
     t('oordeel: niet verbonden is LET OP', O({ echt: false, defs: d1 }).staat, 'LET OP');
     t('oordeel: geen eigen PID is LET OP', O({ echt: true, defs: [] }).staat, 'LET OP');
@@ -264,7 +265,64 @@ function haalZeef(isMode01) {
     t('oordeel: een minuut stil is LET OP met de code erbij', os.staat + ' ' + /221E1C/.test(os.detail), 'LET OP true');
     s.lezen('connected=false');
     const y = await E.test({ code: '2101', naam: 'T', formule: 'B' });
-    t('test: zonder verbinding niets versturen', !y.ok && s._verzonden.indexOf('2101') < 0, true);
+    t('test: zonder verbinding niets versturen', !y.ok && !s._verzonden.some(c => /^2101/.test(c)), true);
+  }
+
+  console.log('\n— ECU-adres, tempo en de bibliotheek (27-09-2026) —');
+  {
+    const s = bouw({ antwoorden: { '221E1C1': '7E9 04 62 1E 1C 5A', '2202021': '62020 2 64' } });
+    const E = s.PLEigen;
+    const c = (x) => E.controleer(Object.assign({ code: '221E1C', naam: 'T', formule: 'A' }, x));
+    t('ECU-adres 7e1 wordt 7E1', c({ ecu: '7e1' }).ecu, '7E1');
+    t('ECU-adres 18DA18F1 (29-bit) mag', c({ ecu: '18DA18F1' }).ok, true);
+    t('ECU-adres 7DF is het functionele adres: niet invullen', c({ ecu: '7DF' }).ok, true);
+    t('ECU-adres ATZ (een commando) wordt geweigerd', c({ ecu: 'ATZ' }).ok, false);
+    t('ECU-adres 7E1;ATMA wordt geweigerd', c({ ecu: '7E1;ATMA' }).ok, false);
+    E.zet([{ code: '221E1C', naam: 'Automaat', formule: 'A-40', ecu: '7E1', tempo: 'traag' },
+           { code: '220202', naam: 'Olie', formule: 'A', tempo: 'snel' },
+           { code: '220303', naam: 'Zonder tempo', formule: 'A' }], 'x');
+    t('tempo traag = 10 s, snel = 1 s, niets = 2 s', [E.interval('221E1C'), E.interval('220202'), E.interval('220303')].join(','), '10000,1000,2000');
+    s._verzonden.length = 0;
+    const r1 = await E.vraag('221E1C');
+    t('met ECU-adres: eerst ATSH7E1, dan de vraag, dan terug naar 7DF', s._verzonden.join(' '), 'ATSH7E1 221E1C1 ATSH7DF');
+    t('en het antwoord komt terug', r1, '7E9 04 62 1E 1C 5A');
+    s._verzonden.length = 0;
+    await E.vraag('220202');
+    t('zonder ECU-adres: alleen de vraag, geen header', s._verzonden.join(' '), '2202021');
+    E.zet([{ code: '221E1C', naam: 'A', formule: 'A', ecu: '18DA18F1' }], 'x');
+    s._verzonden.length = 0;
+    await E.vraag('221E1C');
+    t('29-bit: terug naar 18DB33F1, niet naar 7DF', s._verzonden.join(' '), 'ATSH18DA18F1 221E1C1 ATSH18DB33F1');
+    // Mislukt het terugzetten, dan probeert de volgende vraag het eerst.
+    const echt = s.sendCmd; let weiger = true;
+    s.sendCmd = async function (cmd) { s._verzonden.push(cmd); if (weiger && cmd === 'ATSH18DB33F1') { weiger = false; throw new Error('timeout'); } return 'OK'; };
+    s._verzonden.length = 0;
+    await E.vraag('221E1C');
+    await E.vraag('221E1C');
+    t('terugzetten mislukt: de volgende vraag zet eerst het functionele adres terug', s._verzonden.join(' '),
+      'ATSH18DA18F1 221E1C1 ATSH18DB33F1 ATSH18DB33F1 ATSH18DA18F1 221E1C1 ATSH18DB33F1');
+    s.sendCmd = echt;
+
+    const k = E.kandidatenUitTekst('Hier is wat ik vond:\n{"kandidaten":[' +
+      '{"code":"221e1c","ecu":"7e1","naam":"Temperatuur automaat","formule":"A - 40","eenheid":"°C","bron":"https://forum.nl/a"},' +
+      '{"code":"2E1E1C","naam":"schrijven","formule":"A","bron":"https://forum.nl/b"},' +
+      '{"code":"220202","naam":"zonder bron","formule":"A"},' +
+      '{"code":"220303","naam":"Signed","formule":"Signed(A)","bron":"https://forum.nl/c"},' +
+      '{"code":"221E1C","ecu":"7E1","naam":"dubbel","formule":"A","bron":"https://forum.nl/d"}]}\nSucces!');
+    t('kandidaten: alleen de geldige leescode met bron blijft over', k.map(x => x.code + '@' + x.ecu).join(','), '221E1C@7E1');
+    t('kandidaten: de formule zonder spaties, de bron erbij', k[0].formule + ' ' + k[0].url, 'A-40 https://forum.nl/a');
+    t('kandidaten: geen JSON is een lege lijst, geen fout', E.kandidatenUitTekst('Sorry, niets gevonden.').length, 0);
+
+    // Online zoeken: via apiFetch met de zoektool, en eerlijk als die ontbreekt.
+    let gevraagd = null;
+    s.apiFetch = async (p, max, sys, mdl, aanl, extra) => { gevraagd = { sys, extra }; return '{"kandidaten":[{"code":"220404","naam":"Olie","formule":"A","bron":"https://x.nl"}]}'; };
+    const z = await E.zoekOnline({ merk: 'Mazda', model: 'CX-5', bouwjaar: 2019 });
+    t('zoekOnline vraagt de zoektool van de API', gevraagd && gevraagd.extra.tools[0].name, 'web_search');
+    t('zoekOnline geeft de gecontroleerde kandidaten', z.ok && z.kandidaten.map(x => x.code).join(','), '220404');
+    s.apiFetch = async () => { throw new Error('API fout (400): web_search is not enabled'); };
+    const z2 = await E.zoekOnline({ merk: 'Mazda', model: 'CX-5' });
+    t('zonder zoektool: een melding, en geen kandidaten uit het geheugen', !z2.ok && /niet beschikbaar/.test(z2.fout) && !z2.kandidaten, true);
+    t('zonder merk of model: niet zoeken', (await E.zoekOnline({ merk: 'Mazda' })).ok, false);
   }
 
   console.log('\n─────────────────────────────────────────');
