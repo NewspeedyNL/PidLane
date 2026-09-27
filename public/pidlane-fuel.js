@@ -871,15 +871,14 @@ async function exportAIReportPDF(btn){
 
     footer();
 
-    // ── PDF klaar: dialoog met deel/download-knoppen tonen ──
-    // (navigator.share vereist een VERSE gebruikersactie — direct delen na
-    // het asynchrone genereren wordt door Android stil geweigerd)
+    // ── PDF klaar: rechtstreeks opslaan (geen deelmenu: navigator.share
+    // vereist een VERSE gebruikersactie, en schrijven naar een map niet) ──
     const fname=_niceReportName('pdf');
     window._lastPdf={blob:doc.output('blob'), fname};
     // PDF bewaren in het sessie-rapportarchief zodat hij later opnieuw
     // gedeeld/gedownload kan worden zonder opnieuw te genereren.
     try{ registerSessionReport({type:'pdf', title:fname, text:(window._lastAIReport&&window._lastAIReport.text)||'', blob:window._lastPdf.blob, fname}); }catch(e){ console.warn('PDF niet in het rapportarchief gezet — later opnieuw delen/downloaden zonder opnieuw te genereren lukt dan niet', e); }
-    showPdfReadyModal();
+    await pdfBewaar();
   }catch(e){
     log('PDF export fout: '+e.message+' — TXT-fallback','err');
     showToast?.('PDF mislukt — tekstbestand wordt gedownload');
@@ -902,39 +901,14 @@ async function exportAIReportPDF(btn){
   }
 }
 
-function showPdfReadyModal(){
-  let m=document.getElementById('pdfReadyModal');
-  if(!m){
-    // FIX: z-index MOET in de cssText zelf — cssText overschrijft alle eerder
-    // gezette inline styles, dus een losse m.style.zIndex vooraf ging verloren
-    // en de modal (9600) verdween achter de AI-rapport-sheet (.ai-sheet-ov, 9900).
-    m=document.createElement('div'); m.id='pdfReadyModal';
-    m.style.cssText='position:fixed;inset:0;z-index:9950;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:24px';
-    m.innerHTML=`<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:20px;max-width:300px;width:100%;text-align:center">
-      <div style="font-size:34px;margin-bottom:8px">📄</div>
-      <div style="font-weight:800;font-size:15px;margin-bottom:4px">PDF-rapport klaar</div>
-      <div id="pdfFname" style="font-size:12px;color:var(--tx3);margin-bottom:14px;word-break:break-all"></div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <button onclick="sharePdf()" style="padding:11px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer">💾 Delen / Downloaden</button>
-        <button onclick="savePdfToFolder(this)" style="padding:11px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer">📁 Opslaan in map</button>
-        <button onclick="document.getElementById('pdfReadyModal').style.display='none'" style="padding:9px;border-radius:9px;border:none;background:none;color:var(--tx3);font-family:var(--f);font-size:13px;cursor:pointer">Sluiten</button>
-      </div></div>`;
-    m.addEventListener('click',e=>{if(e.target===m)m.style.display='none';});
-    document.body.appendChild(m);
-  }
-  document.getElementById('pdfFname').textContent=window._lastPdf?.fname||'';
-  // Delen-knop tonen als native plugins óf web file-sharing beschikbaar is
-  try{
-    const native=!!(window.Capacitor?.Plugins?.Filesystem&&window.Capacitor?.Plugins?.Share);
-    const dummy=new File(['x'],'x.pdf',{type:'application/pdf'});
-    const canShare=native||!!(navigator.canShare&&navigator.canShare({files:[dummy]}));
-    const sb=m.querySelector('button[onclick="sharePdf()"]');
-    if(sb) sb.style.display=canShare?'block':'none';
-  }catch(_){
-    const sb=m.querySelector('button[onclick="sharePdf()"]');
-    if(sb) sb.style.display='none';
-  }
-  m.style.display='flex';
+/* PDF klaar: rechtstreeks opslaan in Documenten/PidLane/ (27-09-2026).
+   Hier stond een venster met "Delen / Downloaden" en "Opslaan in map" —
+   een keuze waarheen, bij elke export. De klant wil dat een opslagknop
+   opslaat. Delen blijft kan via ↗ Deel in het rapportenoverzicht. */
+async function pdfBewaar(){
+  if(!window._lastPdf) return false;
+  const {blob,fname}=window._lastPdf;
+  return plBewaarBestand(blob,fname);
 }
 
 // Nette bestandsnaam: PidLane_Mazda-CX5_2026-07-01.pdf i.p.v. UUID.
@@ -945,52 +919,9 @@ function _niceReportName(ext){
   return `PidLane_${parts}_${d}.${ext}`;
 }
 
-// Slaat de PDF rechtstreeks op in Documents/PidLane/ — vindbaar in de
-// bestandsbeheerder, zonder deelmenu of e-mail. Valt terug op het deelmenu
-// als de Filesystem-plugin ontbreekt of het schrijven faalt.
-async function savePdfToFolder(btn){
-  if(!window._lastPdf){ showToast?.('Geen rapport beschikbaar'); return; }
-  const {blob}=window._lastPdf;
-  const fname=_niceReportName('pdf');
-  const orig=btn?btn.textContent:''; if(btn){ btn.textContent='⏳ Opslaan...'; btn.disabled=true; }
-  const restore=()=>{ if(btn){ btn.textContent=orig; btn.disabled=false; } };
-  const FS=window.Capacitor?.Plugins?.Filesystem;
-  if(!FS){
-    // Geen plugin → gebruik de bestaande (werkende) deel/download-route
-    restore();
-    const m=document.getElementById('pdfReadyModal'); if(m) m.style.display='none';
-    showToast?.('Opslaan-in-map vereist de app — deelmenu geopend');
-    return downloadPdf();
-  }
-  try{
-    const b64=await new Promise((res,rej)=>{
-      const r=new FileReader();
-      r.onload=()=>res(String(r.result).split(',')[1]);
-      r.onerror=()=>rej(new Error('Lezen mislukt'));
-      r.readAsDataURL(blob);
-    });
-    // recursive:true maakt de map PidLane aan als die nog niet bestaat
-    await FS.writeFile({ path:`PidLane/${fname}`, data:b64, directory:'DOCUMENTS', recursive:true });
-    restore();
-    const m=document.getElementById('pdfReadyModal'); if(m) m.style.display='none';
-    showToast?.(`✅ Opgeslagen in Documenten/PidLane/\n${fname}`);
-    try{ log(`Rapport opgeslagen: Documents/PidLane/${fname}`,'ok'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
-  }catch(e){
-    restore();
-    // Val terug op het deelmenu (met "Opslaan in Bestanden") als schrijven faalt
-    log('Opslaan in map mislukt ('+(e.message||e)+') — deelmenu als terugval','warn');
-    showToast?.('Direct opslaan lukt niet — deelmenu geopend');
-    return downloadPdf();
-  }
-}
-
 async function sharePdf(){
   if(!window._lastPdf) return;
   const {blob,fname}=window._lastPdf;
-  // Sluit het venster METEEN — anders blijft de donkere overlay hangen als
-  // het Android-deelmenu de promise niet (op tijd) resolvet bij terugkeer.
-  const modal=document.getElementById('pdfReadyModal');
-  if(modal) modal.style.display='none';
   // Eerst de native route (Capacitor-plugins) — werkt altijd in de app
   if(await nativeShareFile(blob,fname)) return;
   try{
@@ -1002,30 +933,6 @@ async function sharePdf(){
     throw new Error('Delen niet ondersteund');
   }catch(e){
     if(e.name!=='AbortError'){ log('Delen mislukt ('+e.message+') — probeer Downloaden','warn'); showToast?.('Delen lukt niet — probeer 💾 Downloaden'); }
-  }
-}
-
-async function downloadPdf(){
-  if(!window._lastPdf) return;
-  const {blob,fname}=window._lastPdf;
-  // Sluit het venster METEEN — voorkomt dat de donkere overlay blijft staan
-  // wanneer je vanuit "Opslaan in Bestanden" terugkeert naar de app.
-  const modal=document.getElementById('pdfReadyModal');
-  if(modal) modal.style.display='none';
-  // Native route: Android-deelmenu bevat ook "Opslaan in Bestanden/Drive"
-  if(await nativeShareFile(blob,fname)) return;
-  // In de Android-app zonder plugins werkt een blob-download NOOIT
-  // (WebView krijgt de bytes niet) — wees daar eerlijk over.
-  if(window.Capacitor?.isNativePlatform?.()){ showNeedsUpdate(); return; }
-  try{
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url; a.download=fname;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),30000);
-    showToast?.('💾 Download gestart');
-  }catch(e){
-    log('Download mislukt: '+e.message,'err');
   }
 }
 

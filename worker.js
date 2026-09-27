@@ -4845,7 +4845,8 @@ var KP_MIGRATIES = [
   // (weghalen kan D1 niet zonder de tabel te herbouwen), maar wat erin kwam
   // wordt gewist: gegevens bewaren waar geen functie meer bij hoort, is precies
   // wat de akkoordtekst niet belooft. Idempotent, dus veilig bij elke start.
-  "UPDATE kp_voertuig SET carrosserie = NULL, kleur = NULL WHERE carrosserie IS NOT NULL OR kleur IS NOT NULL"
+  "UPDATE kp_voertuig SET carrosserie = NULL, kleur = NULL WHERE carrosserie IS NOT NULL OR kleur IS NOT NULL",
+  "ALTER TABLE kp_voertuig ADD COLUMN eigen_pids TEXT"
 ];
 var _kpSchemaKlaar = false;
 
@@ -4944,6 +4945,10 @@ var KP_VELDEN = {
   distributie: { soort: "tekst", max: 80 },
   notities: { soort: "tekst", max: 1000 },
   pid_selectie: { soort: "pidlijst", max: 200 },
+  // Eigen PIDs van de klant (dealercodes): alleen LEES-diensten 21xx en
+  // 22xxxx, een formule met alleen A–H, getallen, + - * / en haakjes. Zelfde
+  // regels als PLEigen.controleer() in pidlane-uitgebreid.js.
+  eigen_pids: { soort: "eigenpids", max: 20 },
   vin_pseudo: { soort: "tekst", max: 32, patroon: /^[0-9a-f]{8,32}$/ }
 };
 
@@ -4977,6 +4982,26 @@ function kpVeld(naam, waarde) {
       const p = String(x || "").toUpperCase();
       if (!/^[0-9A-F]{4,6}$/.test(p)) return { fout: naam + " bevat geen geldige PID: " + p.slice(0, 10) };
       if (l.indexOf(p) < 0) l.push(p);
+    }
+    return { waarde: JSON.stringify(l) };
+  }
+  if (d.soort === "eigenpids") {
+    if (!Array.isArray(waarde)) return { fout: naam + " moet een lijst zijn" };
+    if (waarde.length > d.max) return { fout: "hoogstens " + d.max + " eigen PIDs" };
+    const l = [], gezien = {};
+    for (const e of waarde) {
+      const code = String((e && e.code) || "").toUpperCase().replace(/\s+/g, "");
+      if (!/^(21[0-9A-F]{2}|22[0-9A-F]{4})$/.test(code)) return { fout: "alleen leescodes 21xx of 22xxxx, niet: " + code.slice(0, 10) };
+      if (gezien[code]) continue;
+      gezien[code] = 1;
+      const f = String((e && e.formule) || "A").replace(/\s+/g, "").toUpperCase();
+      if (f.length > 80 || !/^[A-H0-9.,+\-*/()]+$/.test(f)) return { fout: "formule van " + code + " mag alleen A–H, getallen, + - * / en haakjes bevatten" };
+      const naamE = String((e && e.naam) || "").trim().slice(0, 40);
+      if (!naamE) return { fout: "eigen PID " + code + " heeft geen naam" };
+      const o = { code, naam: naamE, formule: f, eenheid: String((e && e.eenheid) || "").trim().slice(0, 12) };
+      const mn = Number(e && e.min), mx = Number(e && e.max);
+      if (e && e.min !== "" && e.min != null && e.max !== "" && e.max != null && isFinite(mn) && isFinite(mx) && mx > mn) { o.min = mn; o.max = mx; }
+      l.push(o);
     }
     return { waarde: JSON.stringify(l) };
   }
@@ -5016,6 +5041,7 @@ async function kpVoertuigPubliek(v, sleutel, klantId) {
   uit.gezondheid = kpLees(v.gezondheid);
   uit.pid_selectie = kpLees(v.pid_selectie);
   uit.gear_model = kpLees(v.gear_model);
+  uit.eigen_pids = kpLees(v.eigen_pids);
   return uit;
 }
 __name(kpVoertuigPubliek, "kpVoertuigPubliek");

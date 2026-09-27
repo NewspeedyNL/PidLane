@@ -253,8 +253,11 @@
     if (typeof activePIDs === 'undefined' || typeof supportedPIDs === 'undefined') return 0;
     // Eerst bepalen wat er past, dán pas wissen: past er niets (andere auto,
     // andere firmware), dan blijft de huidige selectie staan in plaats van leeg.
+    // Ook wat in de keuzelijst staat zonder dat de auto het meldt: berekende
+    // PIDs en eigen PIDs van dit voertuig (27-09-2026).
+    var inLijst = function (pid) { try { return typeof discoveredPIDDefs !== 'undefined' && discoveredPIDDefs.some(function (d) { return d.pid === pid; }); } catch (e) { console.warn('PLVoorkeur: keuzelijst onleesbaar', e); return false; } };
     var passend = pids.filter(function (pid) {
-      return supportedPIDs.has(pid) && !(typeof pidGate === 'function' && !pidGate(pid, 'kiesbaar'));
+      return (supportedPIDs.has(pid) || inLijst(pid)) && !(typeof pidGate === 'function' && !pidGate(pid, 'kiesbaar'));
     });
     if (!passend.length) return 0;
     var voor = (typeof plSelectieVoor === 'function') ? plSelectieVoor() : null;

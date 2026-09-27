@@ -223,7 +223,7 @@ MUTATIES=(
 "public/pidlane-uihelpers.js@@'-' + String(d.getMilliseconds()).padStart(3,'0');@@'-' + String(d.getMilliseconds());@@test-tijdklok.js@@milliseconden verliezen hun voorloopnullen en sorteren verkeerd (#17)"
 "public/pidlane-uihelpers.js@@function plDatumLokaal(ms){\n  const d = (ms===undefined || ms===null) ? new Date() : new Date(ms);\n  return d.getFullYear() + '-' + _plTweeCijfers(d.getMonth()+1) + '-' + _plTweeCijfers(d.getDate());@@function plDatumLokaal(ms){\n  const d = (ms===undefined || ms===null) ? new Date() : new Date(ms);\n  return d.toISOString().slice(0,10);@@test-tijdklok.js@@de exportdatum staat weer op de UTC-dag (#17)"
 # ── de ronde van 08-09-2026 (#112, #140) ──
-"public/pidlane-veldlab.js@@      a.download='pidlane-survey-'+plDatumLokaal(t0)+'.json';@@      a.download='pidlane-survey-'+new Date(t0).toISOString().slice(0,10)+'.json';@@test-tijdklok.js@@een exportnaam bouwt zichzelf weer op de UTC-klok (#112)"
+"public/pidlane-veldlab.js@@    try{ download('pidlane-survey-'+plDatumLokaal(t0)+'.json',@@    try{ download('pidlane-survey-'+new Date(t0).toISOString().slice(0,10)+'.json',@@test-tijdklok.js@@een exportnaam bouwt zichzelf weer op de UTC-klok (#112)"
 "public/pidlane-logboek.js@@    met.sort(function (a, b) { return a.ms - b.ms; });@@    met.sort(function (a, b) { return a.t < b.t ? -1 : a.t > b.t ? 1 : 0; });@@test-logboeksort.js@@het logboek sorteert weer op de kloktijd en keert de nacht om (#140)"
 "public/pidlane-logboek.js@@      if (vorige !== null && sec > vorige) dagen++;  // klok liep terugkijkend vooruit@@      if (false) dagen++;@@test-logboeksort.js@@een bron zonder epoch verliest de dagsprong weer (#140)"
 # ── de veiligemarge-ronde van 08-09-2026 (#134, #135) ──
@@ -1183,6 +1183,23 @@ MUTATIES=(
 "public/pidlane-gear.js@@    m.ankers=oud.ankers||[]; m.achteruit=oud.achteruit;@@    m.ankers=[]; m.achteruit=oud.achteruit;@@test-gear.js@@opnieuw opbouwen uit ritten gooit de correcties van de klant weg"
 "public/pidlane-gear.js@@      if (!verbonden()){ this._zet(null); this._buf=[]; return; }@@      if (this.uit || !verbonden()){ this._zet(null); this._buf=[]; return; }@@test-gear.js@@met de indicator uit leert hij niet meer, en is hij bij aanzetten weer leeg"
 "public/pidlane-rijsituatie.js@@  const open = !inklap || window._sitBlokOpen===true;@@  const open = true;@@bproef-garage.js@@de rijsituatie staat weer altijd open in het Voertuigoverzicht"
+
+# ── 27-09-2026, ronde 4: eigen PIDs per voertuig, Slim visueel zonder knoppen,
+# het Voertuigoverzicht zonder tweede formulier, direct opslaan.
+"public/pidlane-uitgebreid.js@@  const EIGEN_CODE = /^(21[0-9A-F]{2}|22[0-9A-F]{4})$/;@@  const EIGEN_CODE = /^[0-9A-F]{4,8}$/;@@test-mode21.js@@een eigen PID mag een schrijfcode (2E) of een routine (31) zijn"
+"public/pidlane-uitgebreid.js@@return (b) => (b && typeof b[k] === 'number') ? b[k] : null; }@@return (b) => (b && b[k]) || 0; }@@test-mode21.js@@een kort antwoord rekent met 0 voor de ontbrekende byte: een geloofwaardig maar verzonnen getal"
+"public/pidlane-uitgebreid.js@@      if (window.ALL_PID_DEFS && ALL_PID_DEFS[r.code] && !ALL_PID_DEFS[r.code].eigen) return;@@      void 0;@@test-mode21.js@@een eigen PID overschrijft een definitie die de app al kent"
+"worker.js@@.test(code)) return { fout: \"alleen leescodes@@.test(code) && false) return { fout: \"alleen leescodes@@test-klantplatform.js@@de server bewaart een schrijfcode als eigen PID en stuurt hem naar elk toestel"
+"public/pidlane-voorkeur.js@@      return (supportedPIDs.has(pid) || inLijst(pid)) &&@@      return (supportedPIDs.has(pid)) &&@@test-voorkeur.js@@de vaste selectie laat eigen en berekende PIDs van het voertuig stil vallen"
+"public/pidlane-plload.js@@  try{ if(window.PLEigen && PLEigen.is(pid)) return 2000; }@@  try{ if(false) return 2000; }@@bproef-garage.js@@een eigen PID valt op het trage tempo van mode 22 (10 s)"
+"public/pidlane-garage.js@@return x ? ' value=\"' + esc(x) + '\"' : '';@@return '';@@bproef-garage.js@@na een foutmelding is wat de klant in het formulier typte weg"
+"public/pidlane-voertuigdata.js@@    const w=a||{};@@    const w={};@@bproef-garage.js@@het Voertuigoverzicht toont de gegevens uit Mijn voertuigen niet"
+"public/pidlane-visueel.js@@function trekAan(){ return caravanLoopt() || trekSituatie(); }@@function trekAan(){ return caravanLoopt(); }@@test-visueel.js@@rijsituatie caravan of beladen zet de trekstrook niet meer aan"
+"public/pidlane-visueel.js@@      if(heeft.has(p) && !verborgen.has(p)){@@      if(heeft.has(p)){@@test-visueel.js@@Slim visueel zet een sensor terug die de klant verborgen heeft"
+"public/pidlane-visueel.js@@  return g===0 ? 'N' : g===-1 ? 'R' : String(g);@@  return g===0 ? 'N' : String(g);@@test-visueel.js@@achteruit staat als -1 in het midden van de meter"
+"public/pidlane-visueel.js@@  const d = rol==='koel' ? (n-G.KOEL_LO)/(G.KOEL_HI-G.KOEL_LO)*100 : n;@@  const d = n;@@test-visueel.js@@de koelwaterstaaf staat bij 90 °C al bijna vol"
+"public/pidlane-uitgebreid.js@@      if (typeof t === 'number' && nu - t < 30000) ok.push(@@      if (typeof t === 'number') ok.push(@@test-mode21.js@@blok 5 noemt een eigen PID die een minuut niets meer zei nog steeds goed"
+"public/pidlane-fuel.js@@  return plBewaarBestand(blob,fname);@@  return nativeShareFile(blob,fname);@@test-opslagroute.js@@een PDF-export opent weer het deelmenu in plaats van op te slaan"
 )
 
 echo

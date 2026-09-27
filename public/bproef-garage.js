@@ -128,13 +128,14 @@ const NEPSERVER = `(function(){
     toets('stoppen legt het resultaat vast als rapport bij het voertuig',
       await wacht(`window._nepPlatform.rapporten.some(r => r.soort === 'waak' && /BEVINDINGEN \\(1\\)/.test(r.tekst))`));
 
-    console.log('\n── 4c. het Voertuigoverzicht leest en schrijft Mijn voertuigen ──');
+    console.log('\n── 4c. het Voertuigoverzicht toont Mijn voertuigen, zonder tweede formulier (27-09) ──');
     await app.ev(`(function(){ const v = window._nepPlatform.voertuigen[0]; v.kmstand = 84210; v.onderhoud_laatst = '03-2026 / 80.000 km'; })(); PLGarage.ververs(); 'ok'`);
     await wacht(`PLGarage.actief() && PLGarage.actief().kmstand === 84210`);
     await app.ev(`openVehicleOverview(); 'ok'`);
-    const ov = await app.ev(`({ t: document.getElementById('vehOverview').textContent, km: document.getElementById('uvKm').value, beurt: document.getElementById('uvBeurt').value })`);
-    toets('het overzicht zegt dat het gekoppeld is', /Gekoppeld aan Blauwe Mazda/.test(ov.t), ov.t.slice(0, 200));
-    toets('km-stand en laatste beurt komen uit het voertuig', ov.km === '84210' && ov.beurt === '03-2026 / 80.000 km', JSON.stringify(ov));
+    const ov = await app.ev(`({ t: document.getElementById('vehOverview').textContent, velden: ['uvMerk','uvModel','uvYear','uvBrand','uvKm','uvBeurt','uvDistr','uvBijz'].filter(i => document.getElementById(i)).length })`);
+    toets('het overzicht zegt uit welk voertuig het leest', /Blauwe Mazda — uit Mijn voertuigen/.test(ov.t), ov.t.slice(0, 200));
+    toets('km-stand en laatste beurt komen uit het voertuig', /84\.210 km/.test(ov.t) && /03-2026 \/ 80\.000 km/.test(ov.t), ov.t.slice(0, 400));
+    toets('geen tweede formulier: geen enkel invulveld voor voertuiggegevens', ov.velden === 0, JSON.stringify(ov.velden));
     const sit = await app.ev(`(function(){ const b = document.getElementById('sitBlok');
       const dicht = { chips: b.querySelectorAll('button[onclick^="toggleSituatie"]').length, tekst: b.textContent };
       situatieKlap();
@@ -143,9 +144,11 @@ const NEPSERVER = `(function(){
       return { dicht: dicht, open: open, weerDicht: b.querySelectorAll('button[onclick^="toggleSituatie"]').length }; })()`);
     toets('rijsituatie staat standaard dicht: geen chips, wel een regel', sit.dicht.chips === 0 && /Rijsituatie/.test(sit.dicht.tekst), JSON.stringify(sit));
     toets('één tik klapt hem open, nog een tik weer dicht', sit.open >= 8 && sit.weerDicht === 0, JSON.stringify(sit));
-    await app.ev(`document.getElementById('uvKm').value = '85.100'; document.getElementById('uvDistr').value = 'ketting'; saveVehicleOverview(); 'ok'`);
-    toets('opslaan schrijft naar het voertuig in Mijn voertuigen',
-      await wacht(`(function(){ const v = window._nepPlatform.voertuigen[0]; return v.kmstand === 85100 && v.distributie === 'ketting'; })()`));
+    await app.ev(`[...document.querySelectorAll('#vehOverview button')].find(b => /Profiel aanpassen/.test(b.textContent)).click(); 'ok'`);
+    toets('Profiel aanpassen sluit het overzicht en opent het profiel in Mijn voertuigen',
+      await wacht(`document.getElementById('vehOverview').style.display === 'none' && PLGarage.staat().view === 'formulier'`),
+      await app.ev(`JSON.stringify({ ov: document.getElementById('vehOverview').style.display, view: PLGarage.staat().view })`));
+    await app.ev(`PLGarage.sluit(); 'ok'`);
 
     console.log('\n── 4d. rapporten vergelijken en meerdere tegelijk wissen, ritten exporteren (27-09) ──');
     await app.ev(`(function(){
@@ -176,6 +179,42 @@ const NEPSERVER = `(function(){
     await app.ev(`PLGarage._labelFilter(''); PLGarage._labelOpen('c'); 'ok'`);
     toets('labelvoorstel: de derde rit krijgt Woon-werk voorgesteld', await wacht(`(document.getElementById('grLabel')||{}).value === 'Woon-werk' && /Voorstel/.test(document.getElementById('plGarBody').textContent)`));
     await app.ev(`PLGarage.sluit(); 'ok'`);
+
+    console.log('\n── 4f. sensoren per voertuig: berekend en eigen (27-09) ──');
+    await app.ev(`(function(){ const vid = window._nepPlatform.voertuigen[0].id; PLGarage.open(vid); PLGarage._tab('sensoren'); return 'ok'; })()`);
+    toets('het tabblad Sensoren staat er, met berekende en eigen sensoren',
+      await wacht(`/Berekende sensoren/.test(document.getElementById('plGarBody').textContent) && /Eigen sensoren/.test(document.getElementById('plGarBody').textContent)`),
+      await app.ev(`document.getElementById('plGarBody').textContent.slice(0, 300)`));
+    const sens = await app.ev(`(async function(){
+      const zet = (id, w) => { document.getElementById(id).value = w; };
+      const body = () => document.getElementById('plGarBody').textContent;
+      zet('grsNaam', 'Schrijven'); zet('grsCode', '2E1E1C'); zet('grsFormule', 'A');
+      PLGarage._sensErbij();
+      const geweigerd = /Alleen leescodes/.test(body()), bewaard = document.getElementById('grsCode').value;
+      zet('grsNaam', 'Temperatuur automaat'); zet('grsCode', '221e1c'); zet('grsFormule', 'A-40'); zet('grsEenheid', '°C');
+      PLGarage._sensErbij();
+      const erbij = /Temperatuur automaat/.test(body()) && /221E1C/.test(body()), leeg = document.getElementById('grsCode').value;
+      PLGarage._sensKies('CA03', true);
+      await PLGarage._sensBewaar();
+      const v = window._nepPlatform.voertuigen[0];
+      return { geweigerd, bewaard, erbij, leeg, eigen: v.eigen_pids, sel: v.pid_selectie, melding: /bewaard/.test(document.body.textContent) };
+    })()`);
+    toets('een schrijfcode (2E) wordt geweigerd, en wat je typte blijft staan', sens.geweigerd && sens.bewaard === '2E1E1C', JSON.stringify(sens));
+    toets('een leescode komt in de lijst, in hoofdletters, en het formulier is weer leeg', sens.erbij && sens.leeg === '', JSON.stringify(sens));
+    toets('bewaren schrijft eigen PID en selectie naar het voertuig',
+      Array.isArray(sens.eigen) && sens.eigen.length === 1 && sens.eigen[0].code === '221E1C' &&
+      sens.sel.indexOf('221E1C') >= 0 && sens.sel.indexOf('CA03') >= 0, JSON.stringify({ e: sens.eigen, s: sens.sel }));
+    const eig = await app.ev(`(function(){
+      supportedPIDs.add('010C');
+      PLEigen.zet(window._nepPlatform.voertuigen[0].eigen_pids, 'Blauwe Mazda');
+      const d = getPidDef('221E1C');
+      return { def: !!d && d.cat === 'Eigen', lijst: discoveredPIDDefs.some(x => x.pid === '221E1C'), interval: pidPollInterval('221E1C'),
+               waarde: parsePID('221E1C', '621E1C5A') };
+    })()`);
+    toets('toegepast: de eigen PID staat in de keuzelijst, groep Eigen', eig.def && eig.lijst, JSON.stringify(eig));
+    toets('hij wordt elke 2 s gevraagd, niet op het trage tempo van mode 22', eig.interval === 2000, JSON.stringify(eig));
+    toets('parsePID rekent de formule: 5A − 40 = 50', eig.waarde === 50, JSON.stringify(eig));
+    await app.ev(`PLEigen.zet(null); PLGarage.sluit(); 'ok'`);
 
     console.log('\n── 4e. leren uit opnames (27-09) ──');
     const opn = await app.ev(`(async function(){

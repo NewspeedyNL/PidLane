@@ -14,6 +14,21 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 27-09-2026 — De versnellingstegel liet achteruit zien als "-1"
+
+**Wat er stond.** De trekstrook schreef de versnelling als
+`g===0 ? 'N' : String(g)`. `PLGear.waarde()` geeft voor achteruit −1 (sinds de
+knop Fout → R), dus een caravan achteruit inparkeren liet "-1" zien. Geen test
+zag het: `test-visueel.js` toetste de tegel alleen op aanwezigheid.
+
+**Hoe het nu is.** De tegel is weg (de versnelling staat in het midden van de
+meter) en `gearTekst()` maakt er N, R of het getal van. De mutatie "achteruit
+staat als -1 in het midden" houdt dat scherp.
+
+**Waarom het hier staat.** Een nieuwe waarde (−1) in een bestaande functie
+raakt elke lezer, ook die in een andere module. Bij een uitbreiding van het
+bereik: zoek alle aanroepers, niet alleen de plek waar je het bedacht.
+
 ## 27-09-2026 — Het auto-icoon, en waarom het weer weg is
 
 **Wat er was.** Een zijaanzicht in acht carrosserievormen, in de RDW-kleur, met

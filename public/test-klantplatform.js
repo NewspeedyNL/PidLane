@@ -229,6 +229,22 @@ async function laadWorker() {
   toets('een rit draagt het histogram van de versnellingsindicator mee', gr.ok &&
     (await roep(tokA, { actie: 'ritten', voertuig_id: v1.voertuig.id })).ritten.some((r) => r.extra && r.extra.gear && r.extra.gear.n === 300));
   toets('een literprijs van € 50 is een tikfout: 400', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, brandstofprijs: 50 } }))._status === 400);
+  // Eigen PIDs per voertuig (27-09-2026): alleen leescodes, formule zonder code.
+  const ep = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, eigen_pids: [
+    { code: '221e1c', naam: 'Temperatuur automaat', formule: 'A - 40', eenheid: '°C', min: -40, max: 150 },
+    { code: '221E1C', naam: 'dubbel', formule: 'A' }, { code: '2101', naam: 'Blok 01', formule: '(A*256+B)/10' }] } });
+  toets('eigen PIDs: bewaard als lijst, code in hoofdletters, dubbele eruit', ep.ok && Array.isArray(ep.voertuig.eigen_pids) &&
+    ep.voertuig.eigen_pids.length === 2 && ep.voertuig.eigen_pids[0].code === '221E1C' && ep.voertuig.eigen_pids[0].formule === 'A-40' &&
+    ep.voertuig.eigen_pids[0].max === 150, JSON.stringify(ep).slice(0, 300));
+  const epFout = async (e) => (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, eigen_pids: [Object.assign({ naam: 'x', formule: 'A' }, e)] } }))._status;
+  toets('eigen PIDs: een schrijfcode (2E) is 400', await epFout({ code: '2E1E1C' }) === 400);
+  toets('eigen PIDs: een routine (31) is 400', await epFout({ code: '31010203' }) === 400);
+  toets('eigen PIDs: mode 01 hoort er niet in (400)', await epFout({ code: '0105' }) === 400);
+  toets('eigen PIDs: code in een formule is 400', await epFout({ code: '221E1C', formule: 'fetch(1)' }) === 400);
+  toets('eigen PIDs: zonder naam is 400', await epFout({ code: '221E1C', naam: '' }) === 400);
+  toets('eigen PIDs: 21 stuks is er één te veel (400)', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id,
+    eigen_pids: Array.from({ length: 21 }, (_, i) => ({ code: '2210' + String(i).padStart(2, '0'), naam: 'x' })) } }))._status === 400);
+  toets('eigen PIDs: na de weigeringen staat de goede lijst er nog', (await roep(tokA, { actie: 'stand' })).voertuigen.find((v) => v.id === v1.voertuig.id).eigen_pids.length === 2);
   const ra = await roep(tokA, { actie: 'rapport_opslaan', voertuig_id: v1.voertuig.id, soort: 'waak', tekst: 'een' });
   const rb = await roep(tokA, { actie: 'rapport_opslaan', voertuig_id: v1.voertuig.id, soort: 'waak', tekst: 'twee' });
   const rBert = await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { naam: 'Bert2' } });

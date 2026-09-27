@@ -629,14 +629,10 @@ async function vlFullSurvey(){
            .catch(e=>btDiag('Survey niet in de Airtable-wachtrij gezet: '+(e.message||e),'warn')); }
     catch(e){ btDiag('Survey niet in de Airtable-wachtrij gezet: '+(e.message||e),'warn'); }
 
-    // → direct los survey-JSON downloaden
-    try{
-      const blob=new Blob([JSON.stringify(sv,null,2)],{type:'application/json'});
-      const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-      a.download='pidlane-survey-'+plDatumLokaal(t0)+'.json';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(()=>URL.revokeObjectURL(a.href),2000);
-    }catch(e){ console.warn('Survey-bestand downloaden mislukt:', e); }
+    // → direct los survey-JSON opslaan, via download(): rechtstreeks naar
+    //   Documenten/PidLane/ (27-09-2026; een losse <a download> landt in de app nergens)
+    try{ download('pidlane-survey-'+plDatumLokaal(t0)+'.json', JSON.stringify(sv,null,2)); }
+    catch(e){ console.warn('Survey-bestand opslaan mislukt:', e); }
 
     try{ log('📋 Full survey v2: '+sv.pids.ok+' ok / '+sv.pids.nodata+' nodata / '+sv.pids.invalid+' ongeldig'+(sv.pids.transport?' / '+sv.pids.transport+' TRANSPORTFOUT (niet als ontbrekend geteld)':'')+' · gem. '+sv.timing.avgMs+'ms · batch max '+(sv.batch.maxPids||0)+' · DTC '+sv.dtc.actief.length+' actief / '+(sv.dtc.pending||[]).length+' pending / '+(sv.dtc.permanent||[]).length+' permanent · '+(sv.ecus?sv.ecus.n:0)+' ECU(s) — opgeslagen als veldlab-sessie #'+st2.sessies.length,'ok'); }catch(e){ /* stil: melding mag nooit de meting breken */ }
     const _flaky=sv.pids.detail.filter(x=>x.flaky).length;

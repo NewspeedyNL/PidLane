@@ -396,6 +396,9 @@ function pidPollInterval(pid){
   // mode-21-PID de pollklasse én het EV-filter van een wildvreemde
   // mode-01-PID erven. Ze meten allemaal traag (olietemp, kleptiming),
   // dus één vaste trage klasse volstaat.
+  // Een eigen PID (dealercode, pidlane-uitgebreid.js) wil de klant zien
+  // bewegen: 2 s in plaats van de trage klasse van de fabrikant-PIDs.
+  try{ if(window.PLEigen && PLEigen.is(pid)) return 2000; }catch(e){ console.warn('PLEigen.is mislukt:', e); }
   if(!/^01/i.test(String(pid))) return 10000;
   const suf=pid.slice(2).toUpperCase();
   // EV-modus: verbrandingsmotor-PIDs effectief uitschakelen. De ankers

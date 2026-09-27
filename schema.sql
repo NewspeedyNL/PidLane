@@ -269,3 +269,4 @@ ALTER TABLE kp_voertuig ADD COLUMN brandstofprijs REAL;
 ALTER TABLE kp_voertuig ADD COLUMN carrosserie TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN kleur TEXT;
 UPDATE kp_voertuig SET carrosserie = NULL, kleur = NULL WHERE carrosserie IS NOT NULL OR kleur IS NOT NULL;
+ALTER TABLE kp_voertuig ADD COLUMN eigen_pids TEXT;

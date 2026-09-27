@@ -40,18 +40,21 @@ const WACHT = ms => new Promise(r => setTimeout(r, ms));
 // omdat er toevallig een smal getal stond.
 const MEET = `(function(){
   const zet = { 'vis-snel':'999', 'visv-koel':'118°', 'visv-accu':'14,8 V',
-                'visv-tank':'100%', 'vis-ondertekst':'≈+1,5 bar' };
+                'visv-tank':'100%', 'vis-ondertekst':'≈+1,5 bar', 'vis-gear':'10' };
   Object.keys(zet).forEach(function(id){ const e=document.getElementById(id); if(e) e.textContent=zet[id]; });
+  // Versnelling en embleem delen één plek en staan nooit samen: meet de
+  // versnelling op zijn breedste ("10"), met het embleem weg zoals gearBij() doet.
+  const lg=document.getElementById('visg-logo'); if(lg) lg.style.display='none';
   const svg = document.querySelector('.vis-meter');
   if (!svg) return { fout: 'geen .vis-meter in het rooster' };
   const G = PLVisueel.G, uit = [];
-  svg.querySelectorAll('text, svg.vis-icoon, svg.vis-logo').forEach(function(e){
-    if (e.closest('.afwezig')) return;
+  svg.querySelectorAll('text, svg.vis-icoon, svg.vis-logo, rect.vis-staaf').forEach(function(e){
+    if (e.closest('.afwezig') || e.closest('[style*="display: none"], [style*="display:none"]')) return;
     let b;
     if (e.tagName.toLowerCase() === 'svg') b = { x:+e.getAttribute('x'), y:+e.getAttribute('y'), width:+e.getAttribute('width'), height:+e.getAttribute('height') };
     else b = e.getBBox();
     if (!b.width) return;
-    uit.push({ naam: e.id || (e.classList.contains('vis-logo') ? 'embleem' : e.textContent), x0:b.x, y0:b.y, x1:b.x+b.width, y1:b.y+b.height });
+    uit.push({ naam: e.id || (e.classList.contains('vis-logo') ? 'embleem' : e.classList.contains('vis-staaf') ? 'staaf in '+e.parentNode.id : e.textContent), x0:b.x, y0:b.y, x1:b.x+b.width, y1:b.y+b.height });
   });
   return { vakken: uit, C: G.C, R: G.R_RING,
            streepjes: svg.querySelectorAll('.vis-streep').length };
@@ -100,14 +103,18 @@ function beoordeel(m) {
       meter: !!document.querySelector('#gGrid .vis-meter'), aan: s.aan,
       onder: s.ind && s.ind.onder, plekken: s.ind && s.ind.plekken,
       koel: document.getElementById('visv-koel').textContent, tank: document.getElementById('visv-tank').textContent,
-      snel: document.querySelectorAll('#visMeld .vis-snelk button').length }; })()`);
+      snel: document.querySelectorAll('#visMeld .vis-snelk button').length,
+      snelTekst: document.getElementById('visMeld').textContent,
+      knoppen: document.querySelectorAll('.vis-trekknop, .vis-trekerbij').length }; })()`);
     toets('setPidView("visueel") bouwt de meter', staat.modus === 'visueel' && staat.meter, JSON.stringify(staat));
     toets('de rem staat aan zolang de weergave open is', staat.aan === true);
     toets('olie staat op de onderboog', staat.onder && staat.onder.pid === '015C', JSON.stringify(staat.onder));
     toets('koelwater, accu en brandstof hebben hun plek', staat.plekken && staat.plekken.koel === '0105' &&
       staat.plekken.accu === '0142' && staat.plekken.tank === '012F', JSON.stringify(staat.plekken));
     toets('de plekjes tonen een getal, geen streepje', /°$/.test(staat.koel) && /%$/.test(staat.tank), staat.koel + ' / ' + staat.tank);
-    toets('niets actief: snelkoppelingen in het meldingenvak', staat.snel >= 3, 'knoppen: ' + staat.snel);
+    toets('niets actief: snelkoppelingen in het meldingenvak', staat.snel >= 2, 'knoppen: ' + staat.snel);
+    toets('geen snelkoppeling, knop of tekst voor de caravanrit of trekmodus (27-09)',
+      !/Caravan|trekmodus/i.test(staat.snelTekst) && staat.knoppen === 0, JSON.stringify({ t: staat.snelTekst, k: staat.knoppen }));
 
     console.log('\n2. Gemeten in de browser: alles binnen de ring, niets over elkaar');
     const m = await app.ev(MEET);
@@ -128,19 +135,48 @@ function beoordeel(m) {
 
     console.log('\n3b. Trekmodus: caravan of beladen');
     const trek = await app.ev(`(async function(){
-      ['0104','010F'].forEach(function(p){ activePIDs.add(p); });
-      localStorage.setItem('pl_vis_trek','1'); setPidView('slim'); setPidView('visueel');
+      ['0104','010F'].forEach(function(p){ activePIDs.delete(p); });
+      if (situatieActief().some(function(x){ return x.id === 'beladen'; })) toggleSituatie('beladen');
+      toggleSituatie('beladen');
       await new Promise(function(r){ setTimeout(r, 1500); });
       const aan = { tegels: document.querySelectorAll('#visTrek .vis-tt').length, tekst: (document.getElementById('visTrek')||{}).textContent || '',
-                    gebruik: PLVisueel.staat().gebruik };
-      PLVisueel.trek(); await new Promise(function(r){ setTimeout(r, 300); });
+                    gebruik: PLVisueel.staat().gebruik, actief: ['0104','010F'].filter(function(p){ return activePIDs.has(p); }) };
+      toggleSituatie('beladen'); await new Promise(function(r){ setTimeout(r, 1500); });
       const uit = { strook: !!document.getElementById('visTrek'), knop: !!document.querySelector('.vis-trekknop') };
       return { aan: aan, uit: uit };
     })()`);
-    toets('trekmodus aan: een strook met tegels onder de meter', trek.aan.tegels >= 6, JSON.stringify(trek.aan));
+    toets('rijsituatie beladen: de strook verschijnt vanzelf, met tegels', trek.aan.tegels >= 5, JSON.stringify(trek.aan));
+    toets('en zet de sensoren van de strook zelf aan (belasting, inlaatlucht)', trek.aan.actief.length === 2, JSON.stringify(trek.aan.actief));
     toets('koelwater, olie en belasting staan erop', /Koelwater/.test(trek.aan.tekst) && /Motorolie/.test(trek.aan.tekst) && /Belasting/.test(trek.aan.tekst), trek.aan.tekst);
     toets('de belasting (0104) wordt dan niet geremd', trek.aan.gebruik.indexOf('0104') >= 0, JSON.stringify(trek.aan.gebruik));
-    toets('uit: de strook is weg, de knop om hem aan te zetten blijft', !trek.uit.strook && trek.uit.knop, JSON.stringify(trek.uit));
+    toets('rijsituatie weer uit: de strook is weg, en er staat geen knop voor in de plaats', !trek.uit.strook && !trek.uit.knop, JSON.stringify(trek.uit));
+
+    console.log('\n3c. Versnelling in het midden, staafjes, sensoren zelf aan (27-09)');
+    const mid = await app.ev(`(async function(){
+      const logo = function(){ const g=document.getElementById('visg-logo'); return !!g && g.style.display !== 'none'; };
+      const gear = function(){ return document.getElementById('vis-gear').textContent; };
+      const echt = PLGear.waarde; const uit = {};
+      PLGear.waarde = function(){ return null; }; PLVisueel.tik(); uit.onbekend = { logo: logo(), gear: gear() };
+      PLGear.waarde = function(){ return 3; };    PLVisueel.tik(); uit.drie = { logo: logo(), gear: gear() };
+      PLGear.waarde = function(){ return -1; };   PLVisueel.tik(); uit.achteruit = gear();
+      PLGear.waarde = function(){ return 0; };    PLVisueel.tik(); uit.neutraal = gear();
+      PLGear.waarde = echt;
+      const h = function(id){ return +document.getElementById(id).getAttribute('height'); };
+      PLVisueel.bij('0105', 130); uit.koelVol = h('viss-koel');
+      PLVisueel.bij('0105', 40);  uit.koelLeeg = h('viss-koel');
+      PLVisueel.bij('012F', 50);  uit.tankHalf = h('viss-tank');
+      uit.H = PLVisueel.G.STAAF_H;
+      activePIDs.delete('0105'); manualPIDs.delete('0105'); setPidView('slim'); setPidView('visueel');
+      await new Promise(function(r){ setTimeout(r, 500); });
+      uit.koelWeer = activePIDs.has('0105'); uit.handmatig = manualPIDs.has('0105');
+      return uit;
+    })()`);
+    toets('zonder bekende versnelling staat het embleem er', mid.onbekend.logo && mid.onbekend.gear === '', JSON.stringify(mid.onbekend));
+    toets('met een versnelling staat die in het midden, het embleem is weg', !mid.drie.logo && mid.drie.gear === '3', JSON.stringify(mid.drie));
+    toets('achteruit is R en neutraal N (niet "-1" en "0")', mid.achteruit === 'R' && mid.neutraal === 'N', JSON.stringify(mid));
+    toets('koelwaterstaafje: 130 °C vol, 40 °C leeg', mid.koelVol === mid.H && mid.koelLeeg === 0, JSON.stringify(mid));
+    toets('brandstofstaafje: 50% is half', Math.abs(mid.tankHalf - mid.H / 2) < 0.05, JSON.stringify(mid));
+    toets('Slim visueel openen zet een uitgezette sensor van de meter weer aan, niet als handmatige keuze', mid.koelWeer && !mid.handmatig, JSON.stringify(mid));
     const alarm = await app.ev(`(function(){
       PLVisueel._nieuweSessie();
       let trilde = 0; const echt = navigator.vibrate; try { navigator.vibrate = function(){ trilde++; return true; }; } catch (e) {}
@@ -250,12 +286,17 @@ function beoordeel(m) {
 
     console.log('\n7. Zonder toerental geen lege meter maar een uitleg');
     const zonder = await app.ev(`(function(){
+      // Alleen uitgezet: dat herstelt Slim visueel zelf (27-09). Verborgen
+      // is een keuze van de klant, en die blijft staan.
       activePIDs.delete('010C'); renderGauges();
-      const r={ uitleg: !!document.querySelector('#gGrid .vis-leeg'), meter: !!document.querySelector('#gGrid .vis-meter'),
-                knop: !!document.querySelector('#gGrid .vis-leeg button') };
-      activePIDs.add('010C'); renderGauges(); r.terug=!!document.querySelector('#gGrid .vis-meter'); return r;
+      const r={ zelfTerug: activePIDs.has('010C') && !!document.querySelector('#gGrid .vis-meter') };
+      hiddenPIDs.add('010C'); renderGauges();
+      r.uitleg=!!document.querySelector('#gGrid .vis-leeg'); r.meter=!!document.querySelector('#gGrid .vis-meter');
+      r.knop=!!document.querySelector('#gGrid .vis-leeg button');
+      hiddenPIDs.delete('010C'); renderGauges(); r.terug=!!document.querySelector('#gGrid .vis-meter'); return r;
     })()`);
-    toets('zonder 010C: uitleg met knop, geen meter', zonder.uitleg && zonder.knop && !zonder.meter, JSON.stringify(zonder));
+    toets('010C alleen uitgezet: Slim visueel zet hem zelf weer aan', zonder.zelfTerug, JSON.stringify(zonder));
+    toets('010C verborgen: uitleg met knop, geen meter (en hij blijft verborgen)', zonder.uitleg && zonder.knop && !zonder.meter, JSON.stringify(zonder));
     toets('met 010C terug: de meter staat er weer', zonder.terug);
 
     toets('geen fouten in de console', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));

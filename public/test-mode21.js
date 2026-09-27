@@ -69,6 +69,7 @@ function bouw(opties) {
       return Object.prototype.hasOwnProperty.call(_antwoorden,cmd) ? _antwoorden[cmd] : 'NO DATA';
     }
     window.PLBus = { claim: function(){ return _busVrij ? 1 : 0; },
+                     wait: async function(){ return _busVrij ? 1 : 0; },
                      release: function(){}, owner: function(){ return 'waakronde'; } };
   `, s, { filename: 'sandbox-omgeving' });
 
@@ -193,6 +194,77 @@ function haalZeef(isMode01) {
     s2.lezen("vehicleInfo={make:'MAZDA'};");
     const r2 = await s2.probeUitgebreid(true);
     t('een vrije bus levert wél een meting op', r2.nieuw, 1);
+  }
+
+  console.log('\n— eigen PIDs per voertuig: alleen lezen, eigen formule zonder eval (27-09-2026) —');
+  {
+    const s = bouw({ antwoorden: { '221E1C': '621E1C5A', '220202': '7F2231', '2101': '6101 00 64' } });
+    const E = s.PLEigen;
+    t('PLEigen staat er', typeof E === 'object' && typeof s.plEigenDefs === 'function', true);
+    const f = E.formule('(A*256+B)/10-40');
+    t('formule (A*256+B)/10-40 op 01 F4 = 10', f([1, 244]), 10);
+    t('formule met komma en spaties: A * 0,5', E.formule('A * 0,5')([9]), 4.5);
+    t('unaire min en haakjes: -(A-B)', E.formule('-(A-B)')([3, 5]), 2);
+    t('ontbrekende byte geeft null, geen NaN', E.formule('A+B')([7]), null);
+    t('delen door nul geeft null', E.formule('A/(B-B)')([1, 2]), null);
+    const weiger = x => { try { E.formule(x); return 'aangenomen'; } catch (e) { return 'geweigerd'; } };
+    t('geen code in een formule: alert(1)', weiger('alert(1)'), 'geweigerd');
+    t('geen code in een formule: A;B', weiger('A;B'), 'geweigerd');
+    t('geen code in een formule: constructor', weiger('constructor'), 'geweigerd');
+    t('byte I bestaat niet (alleen A–H)', weiger('I+1'), 'geweigerd');
+    t('haakje open zonder dicht', weiger('(A+1'), 'geweigerd');
+    t('twee operatoren achter elkaar', weiger('A*/B'), 'geweigerd');
+
+    const c = (code, extra) => E.controleer(Object.assign({ code, naam: 'Test', formule: 'A' }, extra || {}));
+    t('221e1c (kleine letters) is een leescode', c('221e1c').ok && c('221e1c').code, '221E1C');
+    t('2101 is een leescode', c('2101').ok, true);
+    t('2E1234 schrijft: geweigerd', c('2E1234').ok, false);
+    t('2F1234 stuurt aan: geweigerd', c('2F1234').ok, false);
+    t('31010203 start een routine: geweigerd', c('31010203').ok, false);
+    t('04 wist foutcodes: geweigerd', c('04').ok, false);
+    t('1101 reset: geweigerd', c('1101').ok, false);
+    t('0105 is mode 01 en hoort niet hier', c('0105').ok, false);
+    t('22 met te weinig tekens: geweigerd', c('2201').ok, false);
+    t('zonder naam: geweigerd', E.controleer({ code: '221E1C', formule: 'A' }).ok, false);
+    t('bereik alleen als max > min', c('221E1C', { min: 10, max: 5 }).def.max, 1e9);
+
+    s.ALL_PID_DEFS['220202'] = { name: 'bestaand', unit: '' };
+    const n = E.zet([
+      { code: '221E1C', naam: 'Temperatuur automaat', eenheid: '°C', formule: 'A-40' },
+      { code: '2E1234', naam: 'schrijven', formule: 'A' },
+      { code: '220202', naam: 'overschrijven', formule: 'A' }
+    ], 'Blauwe Mazda');
+    t('zet: alleen de geldige, niet-bekende code telt', n, 1);
+    t('zet: hij staat in ALL_PID_DEFS, als eigen, in de groep Eigen',
+      !!s.ALL_PID_DEFS['221E1C'] && s.ALL_PID_DEFS['221E1C'].eigen === true && s.ALL_PID_DEFS['221E1C'].cat, 'Eigen');
+    t('zet: een PID die de app al kent wordt niet overschreven', s.ALL_PID_DEFS['220202'].name, 'bestaand');
+    t('zet: de schrijfcode komt nergens terecht', !!s.ALL_PID_DEFS['2E1234'], false);
+    t('is(): 221E1C wel, 220202 niet', E.is('221e1c') + ',' + E.is('220202'), 'true,false');
+    t('plEigenDefs levert hem voor de keuzelijst', s.plEigenDefs().map(d => d.pid).join(','), '221E1C');
+    t('parse via de def: 5A − 40 = 50', s.ALL_PID_DEFS['221E1C'].parse([0x5A]), 50);
+    const veel = Array.from({ length: 25 }, (_, i) => ({ code: '2210' + (i < 16 ? '0' : '') + i.toString(16).toUpperCase(), naam: 'x' + i, formule: 'A' }));
+    t('hoogstens ' + E.MAX + ' per voertuig', E.zet(veel, 'x'), E.MAX);
+    E.zet(null, 'ander voertuig');
+    t('ander voertuig zonder eigen PIDs: de oude zijn weg', !!s.ALL_PID_DEFS['221E1C'] + ',' + s.plEigenDefs().length, 'false,0');
+
+    const r = await E.test({ code: '221E1C', naam: 'T', formule: 'A-40', eenheid: '°C' });
+    t('test: stuurt de code één keer', s._verzonden.filter(x => x === '221E1C').length, 1);
+    t('test: leest de byte achter de echo 621E1C', r.ok && r.waarde, 50);
+    const w = await E.test({ code: '220202', naam: 'T', formule: 'A' });
+    t('test: 7F wordt "de auto weigert"', /weigert/.test(w.fout || ''), true);
+    const x = await E.test({ code: '2E1234', naam: 'T', formule: 'A' });
+    t('test: een schrijfcode gaat de bus niet eens op', !x.ok && s._verzonden.indexOf('2E1234') < 0, true);
+    const O = E.oordeel, d1 = [{ pid: '221E1C', name: 'Temp automaat', unit: '°C' }];
+    t('oordeel: niet verbonden is LET OP', O({ echt: false, defs: d1 }).staat, 'LET OP');
+    t('oordeel: geen eigen PID is LET OP', O({ echt: true, defs: [] }).staat, 'LET OP');
+    t('oordeel: wel een, niet aan, is LET OP', O({ echt: true, defs: d1, actief: [] }).staat, 'LET OP');
+    const oo = O({ echt: true, defs: d1, actief: ['221E1C'], laatst: { '221E1C': 99000 }, waarden: { '221E1C': 71.5 }, nu: 100000 });
+    t('oordeel: antwoord binnen 30 s is ok, met de waarde', oo.staat + ' ' + /71,5 °C/.test(oo.detail), 'ok true');
+    const os = O({ echt: true, defs: d1, actief: ['221E1C'], laatst: { '221E1C': 50000 }, waarden: {}, nu: 100000 });
+    t('oordeel: een minuut stil is LET OP met de code erbij', os.staat + ' ' + /221E1C/.test(os.detail), 'LET OP true');
+    s.lezen('connected=false');
+    const y = await E.test({ code: '2101', naam: 'T', formule: 'B' });
+    t('test: zonder verbinding niets versturen', !y.ok && s._verzonden.indexOf('2101') < 0, true);
   }
 
   console.log('\n─────────────────────────────────────────');

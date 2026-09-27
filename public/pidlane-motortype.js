@@ -434,16 +434,24 @@ function _plVerbindingStaat(){
    opende daardoor weer een venster. De deelkaart blijft de terugval als
    het schrijven mislukt; de verbinding bepaalt alleen nog de logregel. */
 async function download(name,content){
-  const blob=new Blob([content],{type:'text/plain'});
+  return plBewaarBestand(new Blob([content],{type:'text/plain'}), name);
+}
+/* Elk bestand, niet alleen tekst (27-09-2026): ook een PDF of CSV gaat
+   rechtstreeks naar Documenten/PidLane/, zonder keuzescherm waarheen. De
+   deelkaart blijft alleen de terugval als het schrijven mislukt. */
+async function plBewaarBestand(blob,name){
   const pad=await nativeSchrijfDirect(blob,name);
   if(pad){
     const waarom=_plVerbindingStaat()?' — geen deelvenster, dus de verbinding blijft staan (#132)':'';
     log('💾 Opgeslagen in '+pad+waarom,'ok');
     try{ showToast?.('💾 Opgeslagen in '+pad); }catch(e){ console.warn('Opslagmelding niet getoond:', e); }
-    return;
+    return true;
   }
-  if(await nativeShareFile(blob,name)) return;
-  if(window.Capacitor?.isNativePlatform?.()){ showNeedsUpdate(); return; }
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
+  if(await nativeShareFile(blob,name)) return true;
+  if(window.Capacitor?.isNativePlatform?.()){ showNeedsUpdate(); return false; }
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){ console.warn('Downloadlink opruimen mislukt', e); } },30000);
+  return true;
 }
 function delay(ms){return new Promise(r=>setTimeout(r,ms));}

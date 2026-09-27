@@ -598,7 +598,7 @@ async function srShare(id){
   if(r.type==='pdf'){
     if(!r.blob){ showToast?.('PDF niet meer beschikbaar — genereer opnieuw'); return; }
     window._lastPdf={blob:r.blob, fname:r.fname||'PidLane-rapport.pdf'};
-    try{ showPdfReadyModal(); }catch(e){ console.warn('showPdfReadyModal mislukt:', e); }
+    try{ await sharePdf(); }catch(e){ console.warn('sharePdf mislukt:', e); }
     return;
   }
   // Ook hier eerst de formaatkeuze: een sessierapport is precies zo'n stuk dat
