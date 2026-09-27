@@ -1138,11 +1138,11 @@ MUTATIES=(
 # venster. Elk een fout die stil blijft: een correctie die niets verschuift, een
 # servermodel dat een verder gekomen model overschrijft, een CA-PID op de bus.
 "public/pidlane-gear.js@@    m.offset=a.k-(idx+1);@@    m.offset=0;@@test-gear.js@@de knop Fout onthoudt het anker maar de nummering schuift niet mee"
-"public/pidlane-gear.js@@    if (r===null || nu()-this._laatsteRT>CFG.ankerVersMs)@@    if (r===null)@@test-gear.js@@een correctie pakt een verouderde verhouding van een schakelmoment of stilstand"
+"public/pidlane-gear.js@@    if (r===null || nu()-this._laatsteRT>CFG.ankerVersMs)\n      return { ok:false, reden:'Rij eerst een paar seconden rustig in die@@    if (r===null)\n      return { ok:false, reden:'Rij eerst een paar seconden rustig in die@@test-gear.js@@een correctie pakt een verouderde verhouding van een schakelmoment of stilstand"
 "public/pidlane-gear.js@@    if (daar>hier || (daar===hier && ankersDaar>ankersHier)){@@    if (true){@@test-gear.js@@een kleiner model van de server overschrijft wat dit toestel al geleerd had"
 "public/pidlane-plload.js@@    if(typeof plIsBerekend==='function' && plIsBerekend(pid)) continue;@@@@bproef-berekend.js@@de pollus stuurt een berekende PID (CA01) als commando naar de auto"
 "public/pidlane-bt.js@@  if(/^CA[0-9A-F]{2}1?$/i.test(String(cmd||'').trim())){@@  if(false){@@bproef-berekend.js@@sendCmd laat een berekende PID door naar de adapter"
-"public/pidlane-berekend.js@@    if (isDiesel && set.indexOf('0110')>=0 && (pid==='CA02' || pid==='CA03')) continue;@@@@test-berekend.js@@een dieselverbruik uit de luchtmassa (een diesel loopt arm)"
+"public/pidlane-berekend.js@@    if (isDiesel && set.indexOf('0110')>=0) continue;@@@@test-berekend.js@@een dieselverbruik uit de luchtmassa (een diesel loopt arm)"
 "public/pidlane-berekend.js@@      if (l===null || typeof kmh!=='number' || kmh<5) return null;@@      if (l===null || typeof kmh!=='number' || kmh<=0) return null;@@test-berekend.js@@liters per 100 km bij stapvoets rijden: delen door bijna nul"
 "public/pidlane-berekend.js@@  return (nu-(x.t||0))<=max ? x.v : undefined;@@  return x.v;@@bproef-berekend.js@@een berekende PID rekent door op bronwaarden van tien seconden oud"
 "public/pidlane-visueel.js@@  if(p.length<5 || p[p.length-1].t-p[0].t<20000) return null;@@  if(p.length<2) return null;@@test-visueel.js@@de koelwatertrend spreekt zich uit op vier metingen"
@@ -1157,11 +1157,11 @@ MUTATIES=(
 # gevaarlijkste is de eerste: een schakeladvies dat ooit TERUG adviseert, op de
 # top van een klim. Daarna de meetproeven zelf: een oordeel dat een fout niet
 # meer ziet is erger dan geen proef, want dan staat er "ok" onder een rit.
-"public/pidlane-berekend.js@@  for (let k=gear+1; ratios[k]; k++){@@  for (let k=1; ratios[k]; k++){@@test-berekend.js@@het schakeladvies adviseert een lagere versnelling"
+"public/pidlane-berekend.js@@  if (rpm<g.vanaf) return gear;@@  if (rpm<g.vanaf) return Math.max(1, gear-1);@@test-berekend.js@@het schakeladvies zegt terugschakelen bij laag toerental (op de top van een klim precies verkeerd)"
 "public/pidlane-berekend.js@@  const heet=typeof m.temp==='number' && m.temp>=DPF.heet && !(typeof m.belasting==='number' && m.belasting>DPF.maxBelasting);@@  const heet=typeof m.temp==='number' && m.temp>=DPF.heet;@@test-berekend.js@@een hete uitlaat bij het trekken telt als roetfilterregeneratie"
 "public/pidlane-berekend.js@@  if ((s.geweigerd||[]).length) fout.push(@@  if (false) fout.push(@@test-berekend.js@@de blok-5-proef ziet niet meer dat een CA-PID naar de adapter ging"
-"public/pidlane-berekend.js@@      if (l===null || !(e>0) || l<0.5 || k<=0) return null;@@      if (l===null || !(e>0) || l<=0 || k<=0) return null;@@test-berekend.js@@rendement bij bijna nul debiet: delen door bijna nul"
-"public/pidlane-gear.js@@        if (geldig && !achteruit) this._voegToe(stabiel);@@        if (geldig) this._voegToe(stabiel);@@test-gear.js@@achteruit rijden wordt in het histogram een extra versnelling"
+"public/pidlane-berekend.js@@      if (k===null || l===null || !(e>0) || l<0.5 || k<=0) return null;@@      if (k===null || l===null || !(e>0) || l<=0 || k<=0) return null;@@test-berekend.js@@rendement bij bijna nul debiet: delen door bijna nul"
+"public/pidlane-gear.js@@      if (achteruit){\n        doel='R';@@      if (achteruit){\n        doel=undefined;@@test-gear.js@@een geleerde achteruit wordt nooit getoond: de klant ziet geen R"
 "public/pidlane-gear.js@@    if (een && Math.abs(r-een)/een<=CFG.matchTol)@@    if (false)@@test-gear.js@@R met dezelfde verhouding als de 1e wordt geaccepteerd en maakt de 1e tot achteruit"
 "public/pidlane-gear.js@@    return s>60 ? null : Math.max(0, Math.round(s*10)/10);@@    return s>60 ? null : Math.round(s*10)/10;@@test-gear.js@@koppelomvormer-slip wordt negatief bij uitrollen"
 "public/pidlane-gear.js@@  if (pct<70) return { staat:'FOUT'@@  if (pct<0) return { staat:'FOUT'@@test-gear.js@@de blok-5-proef keurt een indicator goed die bij 60% van de metingen niet past"
