@@ -60,7 +60,7 @@ async function laadWorker() {
   const i = bron.lastIndexOf('export {');
   if (i < 0) throw new Error('export-blok niet gevonden in worker.js');
   const mod = bron.slice(0, i) +
-    'export { worker_default as default, makeToken, hashPassword, klantWachtrijOpruimen, KP_SCHEMA, kpKlantId };\n';
+    'export { worker_default as default, makeToken, hashPassword, klantWachtrijOpruimen, KP_SCHEMA, KP_MIGRATIES, kpKlantId };\n';
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'kp-')), 'worker.mjs');
   fs.writeFileSync(f, mod);
   return import('file://' + f);
@@ -124,6 +124,9 @@ async function laadWorker() {
     (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { naam: 'Vierde' } })).ok);
   toets('herstellen uit het archief bij drie actief: 409', (await roep(tokA, { actie: 'voertuig_herstel', id: v3.voertuig.id }))._status === 409);
   toets('een actief voertuig verwijderen mag niet (eerst archiveren)', (await roep(tokA, { actie: 'voertuig_verwijder', id: v1.voertuig.id }))._status === 409);
+
+  const bij = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, onderhoud_laatst: '03-2026 / 135.000 km', distributie: 'ketting' } });
+  toets('laatste onderhoudsbeurt en distributie worden bewaard', bij.ok && bij.voertuig.onderhoud_laatst === '03-2026 / 135.000 km' && bij.voertuig.distributie === 'ketting', JSON.stringify(bij).slice(0, 200));
 
   console.log('\n3. De ene klant ziet de andere niet');
   toets('Bert kan Anna\'s voertuig niet wijzigen', (await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, naam: 'Gekaapt' } }))._status === 404);
@@ -234,11 +237,41 @@ async function laadWorker() {
   toets('alles_wissen door de klant zelf', (await roep(tokB, { actie: 'alles_wissen' })).ok &&
     db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig').get().n === 0);
 
-  console.log('\n7. Eén schema');
+  console.log('\n7. Migratie op een tabel van vóór de nieuwe kolommen');
+  {
+    const W2 = await laadWorker();
+    const db2 = new DatabaseSync(':memory:');
+    const oud = W2.KP_SCHEMA.map((x) => x);
+    oud.forEach((x) => db2.exec(x));                   // de tabel zoals hij op 27-09 live ging
+    const env3 = Object.assign({}, env, { LOGDB: maakD1(db2) });
+    const t3 = (await W2.makeToken(env3, 'cees@voorbeeld.nl', 'klant', 'Cees')).token;
+    // Via de VERSE module: in W heeft kpSchema al gedraaid (en onthoudt dat).
+    const r3 = await W2.default.fetch(new Request('https://app.pidlane.nl/klant/platform', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-App-Token': t3, Origin: 'https://app.pidlane.nl' }, body: JSON.stringify({ actie: 'stand' }) }), env3, {});
+    const s3 = await r3.json();
+    const kol = db2.prepare("SELECT name FROM pragma_table_info('kp_voertuig')").all().map((r) => r.name);
+    toets('de nieuwe kolommen staan er na de eerste aanroep', s3.ok && kol.indexOf('onderhoud_laatst') >= 0 && kol.indexOf('distributie') >= 0, JSON.stringify(s3) + ' ' + kol.join(','));
+
+    // Een migratie die om een ándere reden faalt dan "staat er al", hoort
+    // niet stil door te gaan: dan draait de app op een tabel die hij niet kent.
+    const W3 = await laadWorker();
+    const db3 = new DatabaseSync(':memory:');
+    const d1kapot = maakD1(db3);
+    const echtPrep = d1kapot.prepare;
+    d1kapot.prepare = (sql) => /^ALTER/.test(sql) ? { run: async () => { throw new Error('D1_ERROR: disk I/O error'); } } : echtPrep(sql);
+    const env4 = Object.assign({}, env, { LOGDB: d1kapot });
+    const t4 = (await W3.makeToken(env4, 'dirk@voorbeeld.nl', 'klant', 'Dirk')).token;
+    const r4 = await W3.default.fetch(new Request('https://app.pidlane.nl/klant/platform', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-App-Token': t4, Origin: 'https://app.pidlane.nl' }, body: JSON.stringify({ actie: 'stand' }) }), env4, {});
+    toets('een migratie die anders faalt dan "staat er al" geeft een fout, niet stil door', r4.status === 500, String(r4.status));
+  }
+
+  console.log('\n8. Eén schema');
   const inSql = W.KP_SCHEMA.every((s) => schemaSql.indexOf(s + ';') >= 0);
   toets('elk statement uit KP_SCHEMA staat letterlijk in schema.sql', inSql);
   const sqlKp = (schemaSql.match(/^CREATE (?:UNIQUE )?(?:TABLE|INDEX) IF NOT EXISTS (?:kp_|idx_kp_)[^\n]*;$/gm) || []).length;
   toets('en schema.sql heeft er niet meer (' + sqlKp + ' tegen ' + W.KP_SCHEMA.length + ')', sqlKp === W.KP_SCHEMA.length);
+  toets('elke migratie staat letterlijk in schema.sql', W.KP_MIGRATIES.every((m) => schemaSql.indexOf(m + ';') >= 0));
 
   console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' goed'));
   process.exit(fout ? 1 : 0);

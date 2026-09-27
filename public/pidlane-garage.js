@@ -192,6 +192,35 @@
     return ops;
   }
 
+  /* De waakronde van één sessie als tekst voor het voertuigarchief. `hist`
+     = PLWaak.historie(); `info(pid)` = { naam, eenheid }. Null als er niets
+     gemeten is: een leeg rapport is geen rapport. */
+  function waakTekst(hist, info, t) {
+    hist = (hist || []).filter(function (h) { return h && h.n > 0; });
+    if (!hist.length) return null;
+    info = info || function (p) { return { naam: p, eenheid: '' }; };
+    var getal = function (v) { return typeof v === 'number' && isFinite(v) ? (Math.round(v * 10) / 10).toLocaleString('nl') : '—'; };
+    var bev = hist.filter(function (h) { return h.let > 0; });
+    var stil = hist.filter(function (h) { return h.let === 0 && h.ok === 0 && h.stil > 0; });
+    var r = ['PidLane — Waakronde', 'Datum: ' + new Date(t || Date.now()).toLocaleString('nl'),
+      hist.length + ' sensoren buiten je selectie bewaakt, ' + hist.reduce(function (a, h) { return a + h.n; }, 0) + ' metingen.', ''];
+    r.push('=== BEVINDINGEN (' + bev.length + ') ===');
+    if (!bev.length) r.push(' geen');
+    bev.forEach(function (h) {
+      var i = info(h.pid) || {};
+      r.push(' ' + (i.naam || h.pid) + ': ' + (h.reden || 'buiten bereik') + ' — ' + h.let + ' van ' + h.n + ' metingen, laatst ' + getal(h.waarde) + ' ' + (i.eenheid || '') +
+        ' (min ' + getal(h.min) + ', max ' + getal(h.max) + ')');
+    });
+    r.push('', '=== ZONDER ANTWOORD (' + stil.length + ') ===');
+    r.push(stil.length ? ' ' + stil.map(function (h) { return (info(h.pid) || {}).naam || h.pid; }).join(', ') : ' geen');
+    r.push('', '=== NORMAAL ===');
+    hist.filter(function (h) { return h.let === 0 && h.ok > 0; }).forEach(function (h) {
+      var i = info(h.pid) || {};
+      r.push(' ' + (i.naam || h.pid) + ': ' + getal(h.waarde) + ' ' + (i.eenheid || '') + ' (' + h.n + '×, ' + getal(h.min) + '–' + getal(h.max) + ')');
+    });
+    return r.join('\n');
+  }
+
   // ── De ritwaarnemer: een rit als optelsom van monsters ─────────────
   function ritNieuw(t) {
     return { start: new Date(t).toISOString(), t0: t, tLaatst: t, tBeweeg: t, km: 0, s: 0, sStat: 0, sBeweeg: 0,
@@ -433,6 +462,64 @@
       delete _st.cache[v.id];
       ververs();
     } catch (e) { console.warn('PLGarage.foutcodes', e); }
+  }
+
+  function magBewaren() { return isKlant() && !!(_st.stand && _st.stand.akkoord) && !!actief(); }
+
+  /* De waakronde vond iets buiten bereik → een open punt bij het voertuig.
+     Eén keer per sensor per sessie: een volgende sessie met dezelfde
+     bevinding telt de server op via "gezien". */
+  var _waakGemeld = {};
+  function waakBevinding(pid, titel) {
+    try {
+      if (!magBewaren() || !pid || _waakGemeld[pid]) return;
+      _waakGemeld[pid] = true;
+      var v = actief();
+      schrijfOfWacht('issues_bijwerken', { voertuig_id: v.id, ops: [{ sleutel: 'waak:' + pid, soort: 'bevinding', titel: String(titel || pid).slice(0, 160), ernst: 'midden', actie: 'gezien' }] })
+        .then(function () { if (_st.cache[v.id]) delete _st.cache[v.id].issues; })
+        .catch(function (e) { console.warn('PLGarage: waakbevinding niet bewaard', e); });
+    } catch (e) { console.warn('PLGarage.waakBevinding', e); }
+  }
+
+  // De waakronde stopt → het resultaat als rapport bij het voertuig.
+  function waakKlaar(hist, info) {
+    try {
+      if (!magBewaren()) return;
+      var tekst = waakTekst(hist, info);
+      if (!tekst) return;
+      var v = actief();
+      var n = (hist || []).filter(function (h) { return h && h.let > 0; }).length;
+      schrijfOfWacht('rapport_opslaan', { voertuig_id: v.id, soort: 'waak', titel: 'Waakronde — ' + (n ? n + ' bevinding' + (n === 1 ? '' : 'en') : 'geen bevindingen'), tekst: tekst })
+        .then(function () { if (_st.cache[v.id]) delete _st.cache[v.id].rapporten; })
+        .catch(function (e) { console.warn('PLGarage: waakrapport niet bewaard', e); });
+    } catch (e) { console.warn('PLGarage.waakKlaar', e); }
+  }
+
+  /* Het Voertuigoverzicht (openVehicleOverview in pidlane-voertuigdata.js)
+     leest en schrijft voor een klant het actieve voertuig hier, in plaats
+     van een tweede lijst in localStorage die met Mijn voertuigen uit de pas
+     loopt. */
+  function dossier() {
+    if (!magBewaren()) return null;
+    var v = actief();
+    return { id: v.id, naam: v.naam || [v.merk, v.model].filter(Boolean).join(' ') || 'je voertuig',
+      km: v.kmstand != null ? String(v.kmstand) : '', beurt: v.onderhoud_laatst || '', distributie: v.distributie || '', bijz: v.notities || '',
+      merk: v.merk || '', model: v.model || '', year: v.bouwjaar != null ? String(v.bouwjaar) : '', brandstof: v.brandstof || '' };
+  }
+  async function dossierBewaar(d) {
+    if (!magBewaren()) return null;
+    var v = actief();
+    var km = String(d.km || '').replace(/[^0-9]/g, '');
+    var b = String(d.brandstof || '').toLowerCase().trim();
+    var jaar = String(d.year || '').replace(/[^0-9]/g, '');
+    var w = { id: v.id, kmstand: km ? parseInt(km, 10) : null, onderhoud_laatst: d.beurt || null, distributie: d.distributie || null,
+      notities: d.bijz || null, merk: d.merk || null, model: d.model || null };
+    if (/^\d{4}$/.test(jaar)) w.bouwjaar = parseInt(jaar, 10);
+    if (['benzine', 'diesel', 'hybride', 'plug-in hybride', 'elektrisch', 'lpg', 'cng'].indexOf(b) >= 0) w.brandstof = b;
+    var r = await api('voertuig_opslaan', { voertuig: w });
+    delete _st.cache[v.id];
+    await ververs();
+    return r.voertuig;
   }
 
   function pv(pid) {
@@ -758,8 +845,8 @@
       if (!c.rapporten) laad(v.id, 'rapporten');
       var rp = c.rapporten || [];
       h += '<div class="gr-blok">' + (c.rapporten ? (rp.length ? rp.map(function (r) {
-        return '<div class="gr-item klik" onclick="PLGarage._rapport(\'' + esc(r.id) + '\')"><b>' + (r.soort === 'ai' ? '🔬 ' : r.soort === 'dtc' ? '🔴 ' : '📄 ') + esc(r.titel || r.soort) + '</b><div class="gr-klein">' + datumNl(r.aangemaakt, true) + '</div></div>';
-      }).join('') : '<div class="gr-klein">Nog geen rapporten. Elk AI-rapport en elke foutcode-uitlezing met dit voertuig actief komt hier vanzelf terecht.</div>') : '<div class="gr-klein">⏳</div>') + '</div>';
+        return '<div class="gr-item klik" onclick="PLGarage._rapport(\'' + esc(r.id) + '\')"><b>' + (r.soort === 'ai' ? '🔬 ' : r.soort === 'dtc' ? '🔴 ' : r.soort === 'waak' ? '👁 ' : '📄 ') + esc(r.titel || r.soort) + '</b><div class="gr-klein">' + datumNl(r.aangemaakt, true) + '</div></div>';
+      }).join('') : '<div class="gr-klein">Nog geen rapporten. Elk AI-rapport, elke foutcode-uitlezing en elke waakronde met dit voertuig actief komt hier vanzelf terecht.</div>') : '<div class="gr-klein">⏳</div>') + '</div>';
     } else if (_st.tab === 'profiel') {
       var rijProf = function (l, w) { return '<div>' + l + '</div><div><b>' + (w == null || w === '' ? '—' : esc(w)) + '</b></div>'; };
       h += '<div class="gr-blok"><div class="gr-rij">' +
@@ -768,6 +855,7 @@
         rijProf('Motor', v.motor) + rijProf('Brandstof', v.brandstof) + rijProf('Turbo', v.turbo) + rijProf('Transmissie', v.transmissie) +
         rijProf('Rijprofiel', v.rijprofiel) + rijProf('Verbruik (opgegeven)', v.verbruik_opgegeven ? v.verbruik_opgegeven.toLocaleString('nl') + ' l/100 km' : null) +
         rijProf('Kilometerstand', v.kmstand != null ? v.kmstand.toLocaleString('nl') + ' km' : null) + rijProf('APK tot', v.apk_tot ? datumNl(v.apk_tot) : null) +
+        rijProf('Laatste onderhoudsbeurt', v.onderhoud_laatst) + rijProf('Distributieriem/-ketting', v.distributie) +
         rijProf('Volgend onderhoud', [v.onderhoud_km ? v.onderhoud_km.toLocaleString('nl') + ' km' : null, v.onderhoud_datum ? datumNl(v.onderhoud_datum) : null].filter(Boolean).join(' of ')) +
         rijProf('Gekoppeld aan de auto', v.vin_pseudo ? 'ja (via het chassisnummer)' : 'nog niet') +
         '</div>' + (v.notities ? '<div class="gr-klein" style="margin-top:8px">' + esc(v.notities) + '</div>' : '') + '</div>' +
@@ -804,6 +892,8 @@
       '<div class="gr-2">' + inv('verbruik_opgegeven', 'Verbruik (l/100 km)', v.verbruik_opgegeven, 'number', 'step="0.1" min="0" max="50"') + inv('kmstand', 'Kilometerstand', v.kmstand, 'number', 'min="0"') + '</div>' +
       '<div class="gr-2">' + inv('apk_tot', 'APK geldig tot', v.apk_tot, 'date') + inv('onderhoud_datum', 'Volgend onderhoud (datum)', v.onderhoud_datum, 'date') + '</div>' +
       inv('onderhoud_km', 'Volgend onderhoud (km-stand)', v.onderhoud_km, 'number', 'min="0"') +
+      '<div class="gr-2">' + inv('onderhoud_laatst', 'Laatste onderhoudsbeurt', v.onderhoud_laatst, 'text', 'maxlength="80" placeholder="bv. 03-2026 / 135.000 km"') +
+      inv('distributie', 'Distributieriem/-ketting', v.distributie, 'text', 'maxlength="80" placeholder="bv. vervangen bij 120.000 km"') + '</div>' +
       '<label class="gr-veld">Notities<textarea id="grf_notities" rows="3" maxlength="1000">' + esc(v.notities || '') + '</textarea></label>' +
       (v.cilinderinhoud ? '<input type="hidden" id="grf_cilinderinhoud" value="' + esc(v.cilinderinhoud) + '">' : '') +
       (v.vermogen_kw ? '<input type="hidden" id="grf_vermogen_kw" value="' + esc(v.vermogen_kw) + '">' : '') +
@@ -843,7 +933,7 @@
   }
 
   function formWaarden() {
-    var velden = ['naam', 'kenteken', 'merk', 'model', 'bouwjaar', 'motor', 'brandstof', 'turbo', 'transmissie', 'rijprofiel', 'verbruik_opgegeven', 'kmstand', 'apk_tot', 'onderhoud_datum', 'onderhoud_km', 'notities', 'cilinderinhoud', 'vermogen_kw', 'vin_pseudo'];
+    var velden = ['naam', 'kenteken', 'merk', 'model', 'bouwjaar', 'motor', 'brandstof', 'turbo', 'transmissie', 'rijprofiel', 'verbruik_opgegeven', 'kmstand', 'apk_tot', 'onderhoud_datum', 'onderhoud_km', 'onderhoud_laatst', 'distributie', 'notities', 'cilinderinhoud', 'vermogen_kw', 'vin_pseudo'];
     var uit = {};
     velden.forEach(function (k) { var el = document.getElementById('grf_' + k); if (el) uit[k] = el.value === '' ? null : el.value; });
     return uit;
@@ -896,6 +986,10 @@
     ververs: ververs,
     rapport: rapport,
     foutcodes: foutcodes,
+    waakBevinding: waakBevinding,
+    waakKlaar: waakKlaar,
+    dossier: dossier,
+    dossierBewaar: dossierBewaar,
     actief: actief,
     staat: function () { return _st; },
     tekenKaart: tekenKaart,
@@ -952,7 +1046,7 @@
     },
     // pure kern — voor test-garage.js
     _kern: { status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar,
-      rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, cfg: CFG }
+      rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst, cfg: CFG }
   };
 
   // ── De lus: rollen bijhouden, rit meten, auto herkennen ────────────

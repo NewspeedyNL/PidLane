@@ -1113,6 +1113,10 @@ MUTATIES=(
 "public/pidlane-garage.js@@      if (!rec || !isKlant() || !(_st.stand && _st.stand.akkoord)) return;@@      if (!rec) return;@@test-garage.js@@een rapport gaat zonder akkoord de server op"
 "public/pidlane-garage.js@@    return km >= 20 ? {@@    return km >= 0 ? {@@test-garage.js@@een verbruiksoordeel op één korte rit"
 "worker.js@@    if (ak && ak.versie === \"verwijderd\")\n      return json(@@    if (false)\n      return json(@@test-klantplatform.js@@een verwijderd account houdt met zijn lopende token toegang tot Mijn voertuigen"
+"worker.js@@    catch (e) { if (!/duplicate column/i.test(String(e && e.message || e))) throw e; }@@    catch (e) { }@@test-klantplatform.js@@een migratie die om een andere reden faalt, wordt stil ingeslikt"
+"worker.js@@  for (const s of KP_MIGRATIES) {@@  for (const s of []) {@@test-klantplatform.js@@de nieuwe kolommen komen er op een bestaande tabel nooit bij"
+"public/pidlane-garage.js@@      if (!magBewaren() || !pid || _waakGemeld[pid]) return;@@      if (!magBewaren() || !pid) return;@@test-garage.js@@elke ronde met dezelfde waakbevinding stuurt hem opnieuw"
+"public/pidlane-garage.js@@    if (['benzine', 'diesel', 'hybride', 'plug-in hybride', 'elektrisch', 'lpg', 'cng'].indexOf(b) >= 0) w.brandstof = b;@@    w.brandstof = b;@@test-garage.js@@vrije tekst uit het Voertuigoverzicht gaat als brandstof de server op"
 )
 
 echo

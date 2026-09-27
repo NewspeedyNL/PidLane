@@ -151,6 +151,13 @@ function loadUserVehicleData(){
   userVehicleData=_uvdDefault();
   try{ const s=localStorage.getItem(_uvKey()); if(s) userVehicleData={...userVehicleData,...JSON.parse(s)}; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
   if(!Array.isArray(userVehicleData.sit)) userVehicleData.sit=[];
+  // Klant met een actief voertuig in Mijn voertuigen: dáár staat het dossier.
+  // De lokale kopie volgt het, zodat de AI-prompt (_dossierPromptLine) en het
+  // overzicht hetzelfde zeggen als Mijn voertuigen — geen tweede waarheid.
+  try{
+    const gd=(window.PLGarage&&PLGarage.dossier)?PLGarage.dossier():null;
+    if(gd){ userVehicleData.km=gd.km; userVehicleData.beurt=gd.beurt; userVehicleData.distributie=gd.distributie; userVehicleData.bijz=gd.bijz; }
+  }catch(e){ console.warn('Voertuigdossier: Mijn voertuigen niet te lezen', e); }
   // Rijsituatie verloopt vanzelf: een caravanvlag van gisteren mag de analyse
   // van vandaag niet kleuren.
   try{
@@ -254,6 +261,12 @@ function openVehicleOverview(){
   const inp=(id,val,ph)=>`<input id="${id}" value="${esc(val)}" placeholder="${ph||''}" style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:13px;padding:8px 10px">`;
   const row=(lbl,html)=>`<div style="margin-bottom:9px"><div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:3px">${lbl}</div>${html}</div>`;
   const pct=dossierPct();
+  let gd=null;
+  try{ gd=(window.PLGarage&&PLGarage.dossier)?PLGarage.dossier():null; }catch(e){ console.warn('Voertuigdossier: Mijn voertuigen niet te lezen', e); }
+  const kern=k=>(gd&&gd[k])||v[k]||'';
+  const koppeling=gd
+    ? `<div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.45);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--tx2)">🔗 Gekoppeld aan <b>${esc(gd.naam)}</b> in Mijn voertuigen. Wat je hier bewaart, staat daar ook. <a href="#" onclick="event.preventDefault();document.getElementById('vehOverview').style.display='none';PLGarage.open('${esc(gd.id)}')" style="color:var(--bl);font-weight:700">Volledig profiel →</a></div>`
+    : '';
   m.innerHTML=`<div style="background:var(--sur);width:100%;max-width:560px;max-height:92vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--bd)">
       <b style="font-size:14px">🚗 Voertuigoverzicht</b>
@@ -262,10 +275,10 @@ function openVehicleOverview(){
     </div>
     <div style="overflow-y:auto;padding:14px 16px">
       <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">Alle data die de app nu kent (RDW + VIN + eerdere invoer). Pas aan of vul aan — <b>jouw invoer is leidend</b> en weegt mee in elke AI-analyse.</div>
-      ${plVoertuigWaarschuwingen()}
+      ${koppeling}${plVoertuigWaarschuwingen()}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
-        ${row('Merk',inp('uvMerk',v.merk))}${row('Model',inp('uvModel',v.model))}
-        ${row('Bouwjaar',inp('uvYear',v.year))}${row('Brandstof',inp('uvBrand',v.brandstof,'benzine / diesel / hybride / elektrisch'))}
+        ${row('Merk',inp('uvMerk',kern('merk')))}${row('Model',inp('uvModel',kern('model')))}
+        ${row('Bouwjaar',inp('uvYear',kern('year')))}${row('Brandstof',inp('uvBrand',kern('brandstof'),'benzine / diesel / hybride / elektrisch'))}
       </div>
       ${row('VIN (uitgelezen)',`<div style="font-family:monospace;font-size:12px;color:var(--tx2);word-break:break-all">${esc(v.vin)||'—'}</div>`)}
       <div style="border-top:1px solid var(--bd);margin:6px 0 12px"></div>
@@ -298,13 +311,23 @@ function saveVehicleOverview(){
   // pakken we hier nog een keer op zodat er niets verloren gaat bij snel sluiten.
   try{ const se=document.getElementById('uvSitExtra'); if(se) userVehicleData.sitExtra=String(se.value||'').trim(); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
   saveUserVehicleData();
+  // En bij het actieve voertuig in Mijn voertuigen, als dat er is.
+  let naarGarage=false;
+  try{
+    if(window.PLGarage&&PLGarage.dossier&&PLGarage.dossier()){
+      naarGarage=true;
+      PLGarage.dossierBewaar(userVehicleData)
+        .then(()=>showToast?.('✓ Bewaard bij je voertuig in Mijn voertuigen'))
+        .catch(e=>{ console.warn('Voertuigdossier: niet bewaard in Mijn voertuigen', e); showToast?.('⚠️ Alleen op dit toestel bewaard: '+(e.message||e)); });
+    }
+  }catch(e){ console.warn('Voertuigdossier: Mijn voertuigen niet bereikbaar', e); }
   try{
     const naam=`${vehicleInfo.merk||''} ${vehicleInfo.model||''}`.trim()||'Voertuig';
     showVtag(naam);
     const me=document.getElementById('vicMerk'); if(me) me.textContent=naam;
   }catch(e){ console.warn('showVtag mislukt:', e); }
   const m=document.getElementById('vehOverview'); if(m) m.style.display='none';
-  showToast?.('✓ Voertuigdata opgeslagen — telt mee in analyses');
+  if(!naarGarage) showToast?.('✓ Voertuigdata opgeslagen — telt mee in analyses');
   try{ logUsage('dossier_update','pct='+dossierPct()); }catch(e){ console.warn('dossierPct mislukt:', e); }
 }
 // Dossier-regel voor AI-prompts: gebruikersdata is leidend en weegt zwaar mee.

@@ -10,6 +10,27 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-09-2026 — Mijn voertuigen: waakronde en Voertuigoverzicht gekoppeld
+ ═══════════════════════════════════════════════════════════
+
+ - Waakronde: valt een sensor buiten bereik, dan wordt dat een open punt
+   bij het actieve voertuig (één keer per sensor per sessie). Bij het
+   stoppen, ook bij een verbroken verbinding, komt het resultaat als
+   rapport "Waakronde" bij het voertuig.
+ - Voertuigoverzicht (⋮ → auto): voor een klant met een actief voertuig
+   komen km-stand, laatste beurt, distributie, bijzonderheden, merk, model,
+   bouwjaar en brandstof uit Mijn voertuigen. Opslaan schrijft daarheen. De
+   lokale kopie volgt, zodat de AI-prompt hetzelfde zegt. Bovenaan staat met
+   welk voertuig het gekoppeld is. Zonder klantaccount werkt het zoals
+   voorheen.
+ - De rijsituatie-chips blijven: die gaan over deze meting (12 uur geldig)
+   en niet over de auto.
+ - Twee profielvelden erbij: laatste onderhoudsbeurt en distributie. Op
+   bestaande tabellen via een migratie in kpSchema().
+ - test-garage.js (53), test-klantplatform.js (59), bproef-garage.js
+   (waakronde op de nep-adapter en het overzicht), vier mutaties.
+
+ ═══════════════════════════════════════════════════════════
  27-09-2026 — Mijn voertuigen: het klantplatform
  ═══════════════════════════════════════════════════════════
 

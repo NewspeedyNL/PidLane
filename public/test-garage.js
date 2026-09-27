@@ -187,6 +187,58 @@ function laad(opties) {
   eis(sto && sto.gezondheid.milAan === true && sto.gezondheid.readinessNietKlaar[0] === 'Katalysator' && sto.gezondheid.accuRust === 12.5,
     'status: motorlampje en keuringsstatus erbij, accu blijft staan', JSON.stringify(sto));
 
+  console.log('\n8. De waakronde bij het voertuig');
+  const hist = [
+    { pid: '0105', n: 12, ok: 10, let: 2, stil: 0, waarde: 121, reden: 'boven verwacht bereik', min: 88, max: 121 },
+    { pid: '0133', n: 5, ok: 0, let: 0, stil: 5 },
+    { pid: '0142', n: 8, ok: 8, let: 0, stil: 0, waarde: 14.1, min: 13.9, max: 14.3 },
+    { pid: '0146', n: 0, ok: 0, let: 0, stil: 0 }
+  ];
+  const nm = (p2) => ({ naam: { '0105': 'Koelwater', '0133': 'Luchtdruk', '0142': 'Accu' }[p2] || p2, eenheid: { '0105': '°C', '0142': 'V' }[p2] || '' });
+  const wt = K.waakTekst(hist, nm, Date.UTC(2026, 8, 27));
+  eis(/3 sensoren buiten je selectie/.test(wt), 'een sensor zonder metingen telt niet mee', wt.split('\n')[2]);
+  eis(/BEVINDINGEN \(1\)[\s\S]*Koelwater: boven verwacht bereik — 2 van 12 metingen, laatst 121 °C/.test(wt), 'bevinding met reden, aantal en waarde');
+  eis(/ZONDER ANTWOORD \(1\) ===\n Luchtdruk/.test(wt), 'stil apart');
+  eis(/NORMAAL ===\n Accu: 14,1 V/.test(wt), 'normaal met komma');
+  eis(K.waakTekst([{ pid: 'x', n: 0 }], nm) === null, 'niets gemeten → geen rapport');
+
+  L = laad({ rol: 'klant' });
+  L.G.staat().stand = { akkoord: true, voertuigen: [{ id: 'v1', status: 'actief' }] };
+  L.G.staat().actiefId = 'v1';
+  L.G.waakBevinding('0105', 'Koelwater: boven verwacht bereik (121 °C)');
+  L.G.waakBevinding('0105', 'nog eens');
+  await new Promise((r2) => setImmediate(r2));
+  const wb = L.verzoeken.filter((x) => x.actie === 'issues_bijwerken');
+  eis(wb.length === 1 && wb[0].ops[0].sleutel === 'waak:0105' && wb[0].ops[0].soort === 'bevinding', 'een waakbevinding wordt één open punt, één keer per sessie', JSON.stringify(wb));
+  L.G.waakKlaar(hist, nm);
+  await new Promise((r2) => setImmediate(r2));
+  const wr = L.verzoeken.find((x) => x.actie === 'rapport_opslaan');
+  eis(wr && wr.soort === 'waak' && wr.titel === 'Waakronde — 1 bevinding' && /Koelwater/.test(wr.tekst), 'de waakronde stopt → rapport bij het voertuig', JSON.stringify(wr && wr.titel));
+  L = laad({ rol: 'klant' });
+  L.G.staat().stand = { akkoord: true, voertuigen: [] };
+  L.G.waakBevinding('0105', 'x'); L.G.waakKlaar(hist, nm);
+  await new Promise((r2) => setImmediate(r2));
+  eis(L.verzoeken.length === 0, 'zonder actief voertuig gaat er niets de server op');
+
+  console.log('\n9. Het Voertuigoverzicht leest en schrijft Mijn voertuigen');
+  L = laad({ rol: 'klant', server: { voertuig_opslaan: (b2) => ({ ok: true, voertuig: b2.voertuig }), stand: { ok: true, akkoord: true, voertuigen: [] } } });
+  L.G.staat().stand = { akkoord: true, voertuigen: [{ id: 'v1', status: 'actief', naam: 'Blauwe Mazda', kmstand: 84210, onderhoud_laatst: '03-2026', distributie: 'ketting', notities: 'nieuwe accu', merk: 'Mazda', bouwjaar: 2018 }] };
+  L.G.staat().actiefId = 'v1';
+  const dd = L.G.dossier();
+  eis(dd && dd.km === '84210' && dd.beurt === '03-2026' && dd.distributie === 'ketting' && dd.bijz === 'nieuwe accu' && dd.year === '2018', 'dossier uit het actieve voertuig', JSON.stringify(dd));
+  await L.G.dossierBewaar({ km: '142.500', beurt: '09-2026', distributie: '', bijz: 'x', merk: 'Mazda', model: 'CX-5', year: '2018', brandstof: 'Benzine' });
+  const vo = L.verzoeken.find((x) => x.actie === 'voertuig_opslaan');
+  eis(vo && vo.voertuig.id === 'v1' && vo.voertuig.kmstand === 142500 && vo.voertuig.brandstof === 'benzine' && vo.voertuig.distributie === null && vo.voertuig.bouwjaar === 2018,
+    '"142.500" → 142500, "Benzine" → benzine, leeg → wissen', JSON.stringify(vo && vo.voertuig));
+  L = laad({ rol: 'klant' });
+  L.G.staat().stand = { akkoord: true, voertuigen: [{ id: 'v1', status: 'actief' }] };
+  L.G.staat().actiefId = 'v1';
+  await L.G.dossierBewaar({ brandstof: 'benzine / diesel', year: 'onbekend' });
+  const vo2 = L.verzoeken.find((x) => x.actie === 'voertuig_opslaan');
+  eis(vo2 && !('brandstof' in vo2.voertuig) && !('bouwjaar' in vo2.voertuig), 'onzin in brandstof of bouwjaar wordt niet meegestuurd');
+  L = laad({ rol: 'user' });
+  eis(L.G.dossier() === null, 'geen klant → geen koppeling, het overzicht werkt zoals voorheen');
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });
