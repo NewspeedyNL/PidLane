@@ -621,7 +621,7 @@ zijn.
 
 | punt | bewaakt door |
 |---|---|
-| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.0.0) | `test-playteksten.js` |
+| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.1.0) | `test-playteksten.js` |
 | Geen locatie: manifest, code en de drie verklaringen zeggen hetzelfde | `test-geen-gps.js` |
 | Foutpagina in de schil als de app niet laadt (`server.errorPath`) | `test-foutpagina.js` |
 | `feat_demo` dekt beide demoknoppen — geen dode knop op het loginscherm | `test-demo-toegang.js` |
