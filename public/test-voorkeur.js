@@ -67,9 +67,9 @@ function laad(extra) {
   console.log('\n3. Toepassen bij het inloggen');
   const gedaan = [];
   const doe = {};
-  ['thema', 'tekst', 'letter', 'weergave', 'favorieten', 'autoVerbinden', 'adapterType', 'adapter', 'oudeData'].forEach((k) => { doe[k] = (w) => gedaan.push([k, w]); });
+  ['tekst', 'letter', 'weergave', 'favorieten', 'autoVerbinden', 'adapterType', 'adapter', 'oudeData'].forEach((k) => { doe[k] = (w) => gedaan.push([k, w]); });
   let t = K.toepassen({ thema: 'licht', tekst: 'l', weergave: 'slim', adapterAdres: '00:04:3E:AA:BB:CC', adapterNaam: 'OBDLink MX+' }, doe, {});
-  eis(t.join(',') === 'thema,tekst,weergave,adapterAdres', 'wat er staat wordt toegepast, in volgorde', t.join(','));
+  eis(t.join(',') === 'tekst,weergave,adapterAdres', 'wat er staat wordt toegepast, in volgorde; een thema bestaat niet (alleen donker sinds 11-09)', t.join(','));
   eis(gedaan.some((g) => g[0] === 'adapter' && g[1].adres === '00:04:3E:AA:BB:CC' && g[1].naam === 'OBDLink MX+'), 'adapter met adres en naam');
   gedaan.length = 0;
   t = K.toepassen({ adapterAdres: '00:04:3E:AA:BB:CC' }, doe, { adapterAdres: '11:22:33:44:55:66' });
@@ -77,8 +77,8 @@ function laad(extra) {
   gedaan.length = 0;
   t = K.toepassen({}, doe, {});
   eis(t.length === 0 && gedaan.length === 0, 'zonder voorkeuren verandert er niets');
-  const kapot = { thema: () => { throw new Error('stuk'); }, tekst: (w) => gedaan.push(['tekst', w]) };
-  t = K.toepassen({ thema: 'licht', tekst: 's' }, kapot, {});
+  const kapot = { weergave: () => { throw new Error('stuk'); }, tekst: (w) => gedaan.push(['tekst', w]) };
+  t = K.toepassen({ weergave: 'slim', tekst: 's' }, kapot, {});
   eis(t.join(',') === 'tekst', 'één handeling die faalt houdt de rest niet tegen');
 
   console.log('\n4. Achtergrondfuncties bij verbinden');

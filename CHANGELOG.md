@@ -44,6 +44,18 @@
    opruimer wiste die al; de pagina zei het niet.
 
  ═══════════════════════════════════════════════════════════
+ 27-09-2026 — Mijn voorkeuren: "Geen voorkeur" en geen themakeuze
+ ═══════════════════════════════════════════════════════════
+
+ - De knop "Toestel" heet nu "Geen voorkeur", want "Toestel" zei niet wat
+   hij deed. Kies je dit, dan verandert de app niets aan hoe het toestel
+   staat.
+ - De keuze voor een thema is weg, uit het scherm en uit de server. De app
+   heeft sinds 11-09-2026 alleen donker, dus "Licht" bood iets aan dat niet
+   bestaat. Een thema dat nog in een bewaarde voorkeur staat, wordt
+   genegeerd.
+
+ ═══════════════════════════════════════════════════════════
  27-09-2026 — Mijn voorkeuren: standaardinstellingen per klantaccount
  ═══════════════════════════════════════════════════════════
 

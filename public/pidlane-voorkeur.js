@@ -4,7 +4,7 @@
    WAT DIT IS (27-09-2026)
 
    De app onthield al van alles, maar per TOESTEL: de weergave in
-   pl_pidview, het thema in ns_theme, de tekstgrootte in pl_uiscale, de
+   pl_pidview, de tekstgrootte in pl_uiscale, de
    favorieten in pl_favorites, de waakronde in pl_waak. Een klant die op
    een andere telefoon of in de browser inlogt, begint daardoor elke keer
    opnieuw. Dit bestand hangt die keuzes aan het account.
@@ -35,7 +35,6 @@
 
   var VOORKEUR_SPEC = {
     weergave: { soort: 'keuze', uit: ['full', 'numbers', 'dots', 'slim', 'visueel'] },
-    thema: { soort: 'keuze', uit: ['donker', 'licht'] },
     tekst: { soort: 'keuze', uit: ['s', 'm', 'l'] },
     letter: { soort: 'geheel', min: 10, max: 18 },
     waakronde: { soort: 'janee' },
@@ -95,7 +94,6 @@
       try { fn(w !== undefined ? w : p[sleutel]); gedaan.push(sleutel); }
       catch (e) { console.warn('PLVoorkeur: ' + sleutel + ' niet toegepast', e); }
     };
-    zet('thema', doe.thema);
     zet('tekst', doe.tekst);
     zet('letter', doe.letter);
     zet('weergave', doe.weergave);
@@ -165,7 +163,6 @@
 
   // De echte handelingen bij toepassen().
   var DOE = {
-    thema: function (w) { if (typeof plThemaZet === 'function') plThemaZet(w); },
     tekst: function (w) { if (typeof setUiScale === 'function') setUiScale(w); },
     letter: function (w) {
       if (typeof fontSize !== 'function' || typeof currentFont === 'undefined') return;
@@ -199,7 +196,6 @@
     try { letter = (typeof currentFont !== 'undefined') ? currentFont : null; } catch (e) { letter = null; }
     return schoon({
       weergave: weergave,
-      thema: lees('ns_theme') === 'licht' ? 'licht' : 'donker',
       tekst: lees('pl_uiscale') || 'm',
       letter: letter,
       waakronde: !!(st.waak && st.waak.aan),
@@ -282,7 +278,6 @@
 
   var LABELS = {
     weergave: { full: 'Trends', numbers: 'Getallen', dots: 'Puntjes', slim: 'Slim', visueel: 'Visueel' },
-    thema: { donker: 'Donker', licht: 'Licht' },
     tekst: { s: 'Klein', m: 'Normaal', l: 'Groot' },
     start: { start: 'Startscherm', live: 'Meteen Live' },
     rapport: { kort: 'Kort', normaal: 'Normaal', uitgebreid: 'Uitgebreid' },
@@ -295,7 +290,7 @@
   function keuzeRij(k, titel, uitleg) {
     var w = _form[k];
     return '<div class="vk-rij"><div class="vk-t">' + titel + '</div>' + (uitleg ? '<div class="vk-u">' + uitleg + '</div>' : '') +
-      '<div class="vk-kn">' + ['<button class="vk-b' + (w === undefined ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'' + k + '\',null)">Toestel</button>']
+      '<div class="vk-kn">' + ['<button class="vk-b' + (w === undefined ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'' + k + '\',null)">Geen voorkeur</button>']
         .concat(VOORKEUR_SPEC[k].uit.map(function (o) {
           return '<button class="vk-b' + (w === o ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'' + k + '\',\'' + o + '\')">' + esc((LABELS[k] || {})[o] || o) + '</button>';
         })).join('') + '</div></div>';
@@ -303,7 +298,7 @@
   function janeeRij(k, titel, uitleg) {
     var w = _form[k];
     return '<div class="vk-rij"><div class="vk-t">' + titel + '</div>' + (uitleg ? '<div class="vk-u">' + uitleg + '</div>' : '') +
-      '<div class="vk-kn"><button class="vk-b' + (w === undefined ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'' + k + '\',null)">Toestel</button>' +
+      '<div class="vk-kn"><button class="vk-b' + (w === undefined ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'' + k + '\',null)">Geen voorkeur</button>' +
       '<button class="vk-b' + (w === true ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'' + k + '\',true)">Aan</button>' +
       '<button class="vk-b' + (w === false ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'' + k + '\',false)">Uit</button></div></div>';
   }
@@ -335,7 +330,7 @@
       ov = document.createElement('div'); ov.id = 'plVkOv';
       ov.innerHTML = '<div class="vk-doos"><div class="vk-kop"><div class="vk-titel">⚙️ Mijn voorkeuren</div>' +
         '<button class="vk-x" aria-label="Sluiten" onclick="PLVoorkeur.sluit()">✕</button></div>' +
-        '<div class="vk-sub">Wat de app standaard doet als je inlogt — op elk toestel en in de browser. "Toestel" betekent: dit toestel beslist zelf.</div>' +
+        '<div class="vk-sub">Wat de app standaard doet als je inlogt — op elk toestel en in de browser. Bij "Geen voorkeur" verandert de app niets aan hoe dit toestel nu staat.</div>' +
         '<div id="plVkBody"></div></div>';
       document.body.appendChild(ov);
       ov.addEventListener('click', function (e) { if (e.target === ov) sluit(); });
@@ -360,9 +355,9 @@
       (_bron === 'kopie' ? '<div class="vk-melding">Offline — je ziet de laatst bewaarde voorkeuren.</div>' : '') +
       '<div class="vk-knoppen" style="margin:0 0 10px"><button class="vk-k" onclick="PLVoorkeur._overnemen()">📥 Huidige stand overnemen</button></div>' +
       '<div class="vk-blok"><div class="vk-bh">Weergave</div>' +
-        keuzeRij('weergave', 'Live-weergave bij het openen') + keuzeRij('thema', 'Thema') + keuzeRij('tekst', 'Tekstgrootte') +
+        keuzeRij('weergave', 'Live-weergave bij het openen') + keuzeRij('tekst', 'Tekstgrootte') +
         '<div class="vk-rij"><div class="vk-t">Lettergrootte</div><div class="vk-kn">' +
-          '<button class="vk-b' + (_form.letter === undefined ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'letter\',null)">Toestel</button>' +
+          '<button class="vk-b' + (_form.letter === undefined ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'letter\',null)">Geen voorkeur</button>' +
           [11, 13, 15, 17].map(function (n) { return '<button class="vk-b' + (_form.letter === n ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'letter\',' + n + ')">' + n + '</button>'; }).join('') +
         '</div></div>' +
         keuzeRij('verbruik', 'Verbruik tonen als') + '</div>' +
@@ -372,7 +367,7 @@
         janeeRij('foutcodesNaVerbinden', 'Foutcodes uitlezen na verbinden', 'Leest stil uit; codes komen als open punt bij je voertuig.') +
         janeeRij('waakronde', 'Waakronde standaard aan') + janeeRij('ritmonitor', 'Rit-monitor standaard aan') + janeeRij('bulk', 'Bulk-recorder standaard aan') +
         '<div class="vk-rij"><div class="vk-t">Favorieten op het startscherm</div><div class="vk-u">' +
-          (_form.favorieten ? (favs.length ? esc(favs.join(', ')) : 'geen') : 'Toestel beslist') +
+          (_form.favorieten ? (favs.length ? esc(favs.join(', ')) : 'geen') : 'geen voorkeur') +
           ' — kies ze met het ☆ op de kaarten en druk dan op "Huidige stand overnemen".</div></div>' +
       '</div>' +
       '<div class="vk-blok"><div class="vk-bh">Adapter en snelverbinden</div>' +
