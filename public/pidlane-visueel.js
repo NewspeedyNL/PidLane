@@ -69,6 +69,18 @@
 // niet op staan (klasse ≤300 ms in PID_POLL_CLASS) teruggeschroefd naar
 // VIS_REM_MS — zie remt() en de aanroep in pidPollInterval(). Ze worden nog
 // gemeten, alleen minder vaak; terug naar "Slim" en het oude tempo geldt weer.
+//
+// ── TREKMODUS: CARAVAN OF BELADEN (27-09-2026) ─────────────────────
+// Met een caravan, aanhanger of volle auto tellen andere dingen dan het
+// toerental: hoe warm koelwater en olie worden, hoe zwaar de motor werkt en in
+// welke versnelling je dat doet. De trekmodus zet onder de meter een strook
+// tegels met precies die sensoren (TREK hieronder). Hij staat aan zolang de
+// Caravanrit loopt, of als je hem zelf aanzet met de knop onder de meter; die
+// keuze blijft bewaard (pl_vis_trek). De meter zelf verandert niet — een
+// wijzerplaat die van betekenis wisselt, leest niemand meer blind af.
+// Koelwater krijgt een trend (°C per minuut): bij een lange klim is "hij
+// stijgt nog" belangrijker dan het getal, want dan is er nog tijd om terug
+// te schakelen of te stoppen.
 // ══════════════════════════════════════════════════════════════════
 (function(){
 'use strict';
@@ -110,6 +122,54 @@ const PLEKKEN = [
 // Nooit remmen, ook niet als de indeling nog niet bekend is: zonder deze twee
 // is er geen meter, en ze horen altijd op het snelste tempo.
 const ANKERS = new Set(['010C','010D']);
+
+// De trekstrook. `keten` = de eerste bruikbare telt; `gear` leest PLGear
+// rechtstreeks (geen PID nodig); `turbo` alleen met bewezen turbo.
+const TREK = [
+  { rol:'gear',     naam:'Versnelling', gear:true },
+  { rol:'koel',     naam:'Koelwater',   keten:['0105','0167'], eenheid:'°C', trend:true },
+  { rol:'olie',     naam:'Motorolie',   keten:['015C'],        eenheid:'°C' },
+  { rol:'last',     naam:'Belasting',   keten:['0104','0143'], eenheid:'%'  },
+  { rol:'inlaat',   naam:'Inlaatlucht', keten:['010F'],        eenheid:'°C' },
+  { rol:'verbruik', naam:'Verbruik nu', keten:['CA03','015E'], eenheid:'' },
+  { rol:'laaddruk', naam:'Laaddruk',    keten:['CA04'],        eenheid:'bar', turbo:true }
+];
+const TREK_LS = 'pl_vis_trek';
+const KOEL_TREND_MS = 60000;   // venster voor de trend
+const KOEL_TREND_WARN = 1.5;   // °C per minuut: daarboven, en warm, is het een waarschuwing
+const KOEL_WARM = 90;
+
+/* Koelwatertrend in °C per minuut uit de historie (lineaire regressie over
+   het laatste venster). null = te weinig om iets te zeggen: minder dan vijf
+   metingen of minder dan twintig seconden. */
+function koelTrend(hist, nu){
+  if(!Array.isArray(hist)) return null;
+  const van=(nu||Date.now())-KOEL_TREND_MS;
+  const p=hist.filter(function(x){ return x && typeof x.v==='number' && isFinite(x.v) && typeof x.t==='number' && x.t>=van; });
+  if(p.length<5 || p[p.length-1].t-p[0].t<20000) return null;
+  const t0=p[0].t;
+  let sx=0, sy=0, sxx=0, sxy=0;
+  p.forEach(function(x){ const t=(x.t-t0)/60000; sx+=t; sy+=x.v; sxx+=t*t; sxy+=t*x.v; });
+  const n=p.length, d=n*sxx-sx*sx;
+  if(!(Math.abs(d)>1e-9)) return null;
+  return Math.round((n*sxy-sx*sy)/d*10)/10;
+}
+/* Welke PID staat op welke tegel? `mag(pid)` = bruikbaar; turbo = bewezen.
+   Geeft voor elke tegel {rol, naam, pid|null, gear?}. */
+function trekIndeling(mag, turbo){
+  return TREK.filter(function(t){ return !t.turbo || turbo; }).map(function(t){
+    if(t.gear) return { rol:t.rol, naam:t.naam, gear:true, pid:null };
+    let pid=null;
+    for(let i=0;i<t.keten.length;i++){ if(mag(t.keten[i])){ pid=t.keten[i]; break; } }
+    return { rol:t.rol, naam:t.naam, pid:pid, eenheid:t.eenheid, trend:!!t.trend };
+  });
+}
+function trekHandmatig(){ try{ return localStorage.getItem(TREK_LS)==='1'; }catch(e){ console.warn('PLVisueel: trekmodus onleesbaar', e); return false; } }
+function caravanLoopt(){
+  try{ const r=(window.PLRun && typeof window.PLRun.staat==='function') ? window.PLRun.staat() : null; return !!(r && r.caravan && r.caravan.aan); }
+  catch(e){ console.warn('PLVisueel: PLRun.staat() mislukt', e); return false; }
+}
+function trekAan(){ return trekHandmatig() || caravanLoopt(); }
 
 // ── DE GEOMETRIE ──────────────────────────────────────────────────
 // Alles in één viewBox van 320×320 rond (160,160). Hoeken in graden met de
@@ -414,6 +474,7 @@ function indeling(){
               lamp:{ belasting:bruikbaar('0104')?'0104':null, accu:bruikbaar('015B')?'015B':null },
               schaal:schaalVoor(motor, d10 && d10.wH) };
   PLEKKEN.forEach(function(r){ ind.plekken[r.rol]=eerste(r.keten); });
+  ind.trek = trekAan() ? trekIndeling(bruikbaar, turboBewezen()) : null;
   return ind;
 }
 function gebruiktePids(ind){
@@ -424,12 +485,14 @@ function gebruiktePids(ind){
   if(ind.onder){ s.add(ind.onder.pid); if(ind.onder.soort==='laaddruk') s.add('0133'); }
   if(ind.lamp){ if(ind.lamp.belasting) s.add(ind.lamp.belasting); if(ind.lamp.accu) s.add(ind.lamp.accu); }
   Object.keys(ind.plekken).forEach(function(k){ if(ind.plekken[k]) s.add(ind.plekken[k]); });
+  if(ind.trek) ind.trek.forEach(function(t){ if(t.pid) s.add(t.pid); if(t.gear){ s.add('010C'); s.add('010D'); } });
   return s;
 }
 function handtekening(ind){
   return [ind.naald, ind.midden, ind.onder?ind.onder.soort+ind.onder.pid:'', ind.schaal?ind.schaal.max:'',
           ind.lamp?(ind.lamp.belasting||'')+(ind.lamp.accu||''):'',
-          PLEKKEN.map(function(r){ return ind.plekken[r.rol]||''; }).join(',')].join('|');
+          PLEKKEN.map(function(r){ return ind.plekken[r.rol]||''; }).join(','),
+          ind.trek ? 'trek:'+ind.trek.map(function(t){ return t.pid||(t.gear?'g':'-'); }).join(',') : ''].join('|');
 }
 function naamVan(pid){
   try{ const d=(typeof getPidDef==='function')?getPidDef(pid):null; return (d && d.name) || pid; }
@@ -734,6 +797,9 @@ function bouw(g){
       '<svg class="vis-meter" viewBox="0 0 320 '+G.VB_H+'" role="img" aria-label="Toerental, snelheid, koelwater, accu en brandstof">'+
         wijzerplaat(ind.schaal.rood, dOlie && dOlie.wH, dOlie && dOlie.dH, ind.schaal.max)+'</svg>'+
     '</div>'+
+    (ind.trek ? '<div class="vis-trek" id="visTrek" aria-label="Trekmodus: caravan of beladen"></div>' : '')+
+    '<button class="vis-trekknop'+(ind.trek?' aan':'')+'" type="button" onclick="PLVisueel.trek()" aria-pressed="'+(ind.trek?'true':'false')+'">🚐 '+
+      (ind.trek ? (caravanLoopt() && !trekHandmatig() ? 'Trekmodus (Caravanrit loopt)' : 'Trekmodus aan — tik om uit te zetten') : 'Caravan of beladen? Zet de trekmodus aan')+'</button>'+
     '<div class="vis-meldingen" id="visMeld"></div>'+
     '<button class="vis-voet" type="button" onclick="setPidView(\'slim\')">Overige sensoren staan in <b>Slim →</b></button></div>';
   // Onderboog: soort, icoon en titel.
@@ -755,7 +821,75 @@ function bouw(g){
   // Wat er al binnen is meteen tonen: een herbouw midden in een rit hoort
   // niet eerst een lege meter te laten zien.
   _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
-  meldBij(); lampjesBij();
+  meldBij(); lampjesBij(); trekBij();
+}
+
+// ── DE TREKSTROOK ─────────────────────────────────────────────────
+function trekTekst(t, v){
+  const n=Number(v);
+  if(v===null || v===undefined || v==='' || !isFinite(n)) return '—';
+  if(t.rol==='verbruik') return n.toFixed(1).replace('.',',');
+  if(t.rol==='laaddruk') return (n>0.04?'+':'')+n.toFixed(2).replace('.',',');
+  return String(Math.round(n));
+}
+function trekBij(){
+  const ind=_staat.ind, e=el('visTrek');
+  if(!ind || !ind.trek || !e) return;
+  const nu=Date.now();
+  let mist=0;
+  const h=ind.trek.map(function(t){
+    let waarde='—', eenheid=t.eenheid||'', st='geen', sub='';
+    if(t.gear){
+      let g=null;
+      try{ g=(window.PLGear && typeof window.PLGear.waarde==='function') ? window.PLGear.waarde() : null; }
+      catch(x){ console.warn('PLVisueel: PLGear.waarde() mislukt', x); }
+      if(g!==null){ waarde=g===0?'N':String(g); st='ok'; }
+      sub=g===null ? 'leert of stilstand' : '';
+    } else if(t.pid){
+      const v=(typeof pidVals!=='undefined') ? pidVals[t.pid] : undefined;
+      if(v!==undefined && !isOud(t.pid, nu)){
+        waarde=trekTekst(t, v); st=oordeel(t.pid, v);
+        if(t.rol==='verbruik') eenheid=(t.pid==='CA03')?'l/100':'l/u';
+      }
+      if(t.trend){
+        const tr=koelTrend((typeof pidHist!=='undefined' && pidHist) ? pidHist[t.pid] : null, nu);
+        if(tr!==null){
+          sub=(tr>0.2?'↑ ':tr<-0.2?'↓ ':'→ ')+String(Math.abs(tr)).replace('.',',')+' °C/min';
+          const koel=Number(v);
+          if(tr>=KOEL_TREND_WARN && isFinite(koel) && koel>=KOEL_WARM && st==='ok') st='warn';
+        }
+      }
+    } else { mist++; sub='niet geselecteerd'; }
+    return '<div class="vis-tt '+st+'"><small>'+esc(t.naam)+'</small><b>'+esc(waarde)+(waarde!=='—' && eenheid?'<i>'+esc(eenheid)+'</i>':'')+'</b>'+
+      (sub?'<span>'+esc(sub)+'</span>':'')+'</div>';
+  }).join('');
+  const knop = mist ? '<button type="button" class="vis-trekerbij" onclick="PLVisueel.trekSensoren()">+ Sensoren voor trekken aanzetten</button>' : '';
+  const sleutel=h+knop;
+  if(e._sleutel!==sleutel){ e.innerHTML=h+knop; e._sleutel=sleutel; }
+}
+// De ontbrekende sensoren van de strook erbij: via de toevoegpoort, alleen wat
+// deze auto heeft (pidToevoegen keurt de rest af).
+function trekSensoren(){
+  const want=[];
+  TREK.forEach(function(t){ if(t.keten) t.keten.forEach(function(p){ want.push(p); }); });
+  want.push('010C','010D');
+  let heeft=[];
+  try{ heeft=(typeof discoveredPIDDefs!=='undefined' && discoveredPIDDefs) ? discoveredPIDDefs.map(function(d){ return d.pid; }) : []; }
+  catch(e){ console.warn('PLVisueel: keuzelijst onleesbaar', e); }
+  const kies=want.filter(function(p, i){ return want.indexOf(p)===i && heeft.indexOf(p)>=0 && !activePIDs.has(p); });
+  const voor=(typeof plSelectieVoor==='function') ? plSelectieVoor() : null;
+  const r=(typeof pidToevoegen==='function') ? pidToevoegen(kies, {}) : { ok:[] };
+  try{ if(voor) plSelectieMeld(voor, 'trekmodus'); }catch(e){ console.warn('PLVisueel: selectiemelding', e); }
+  try{ showToast(r.ok.length ? '🚐 '+r.ok.length+' sensor'+(r.ok.length===1?'':'en')+' voor trekken aangezet' : 'Deze auto heeft geen extra sensoren voor de trekstrook'); }
+  catch(e){ console.warn('PLVisueel: melding', e); }
+  try{ if(typeof renderGauges==='function') renderGauges(); }catch(e){ console.warn('PLVisueel: renderGauges', e); }
+}
+function trek(){
+  const nu=!trekHandmatig();
+  try{ localStorage.setItem(TREK_LS, nu?'1':'0'); }catch(e){ console.warn('PLVisueel: trekmodus niet bewaard', e); }
+  if(!nu && caravanLoopt()){ try{ showToast('De Caravanrit loopt nog — de trekmodus blijft tot je die stopt'); }catch(e){ console.warn('PLVisueel: melding', e); } }
+  const g=el('gGrid');
+  if(g && typeof pidViewMode!=='undefined' && pidViewMode==='visueel'){ _staat.handtekening=''; bouw(g); }
 }
 
 function zetDash(id, d){ const e=el(id); if(e) e.setAttribute('stroke-dasharray', (Math.round(d*10)/10)+' 200'); }
@@ -843,7 +977,7 @@ function tik(){
     const e=el(x[0]); if(e && x[1]) e.classList.toggle('oud', isOud(x[1], nu));
   });
   PLEKKEN.forEach(function(r){ const p=el('visp-'+r.rol), pid=I.plekken[r.rol]; if(p && pid) p.classList.toggle('oud', isOud(pid, nu)); });
-  meldBij(); lampjesBij();
+  meldBij(); lampjesBij(); trekBij();
 }
 
 // De bevindingenbalk bovenaan de live view verhuist naar het meldingenvak
@@ -888,6 +1022,7 @@ window.PLVisueel = {
   wijzerplaat:wijzerplaat, boogPad:boogPad, hoekOnder:hoekOnder, hoekLaaddrukNul:hoekLaaddrukNul,
   indeling:indeling, gebruiktePids:gebruiktePids, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,
   meldingen:meldingen, schakel:schakel,
+  TREK:TREK, trekIndeling:trekIndeling, koelTrend:koelTrend, trek:trek, trekSensoren:trekSensoren, trekAan:trekAan,
   remt:remt, isOud:isOud, bouw:bouw, bij:bij, tik:tik, start:start, stop:stop,
   staat:function(){ return { aan:_staat.aan, start:_staat.start, traag:Array.from(_staat.traag),
                              turboVast:_staat.turboVast, gebruik:Array.from(_staat.gebruik), ind:_staat.ind }; }

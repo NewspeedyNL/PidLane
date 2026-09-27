@@ -25,9 +25,22 @@
 //     dan krijgt het cijfer een oranje stip en adviseert het venster "Leer
 //     opnieuw".
 //   • Aan/uit via ☰ → Versnellingsindicator; de keuze blijft bewaard.
+//   • Gekoppeld aan het voertuig (27-09-2026). Voor een klant met Mijn
+//     voertuigen legt PLGarage het actieve voertuig vast via koppel(); het
+//     model heet dan 'kp_<voertuig-id>' en gaat via bewaar() mee naar de
+//     server, zodat de leercurve een herinstallatie of een ander toestel
+//     overleeft. Het profiel geeft het aantal versnellingen en of het een
+//     automaat is; met het aantal is de nummering zeker zodra ze alle
+//     geleerd zijn.
+//   • De knop Fout: de klant zegt welke versnelling er écht in zit
+//     (corrigeer(k)). Dat wordt een anker: de verhouding van dat moment is
+//     versnelling k, en de nummering schuift zo dat dat klopt. Staat de
+//     verhouding nog niet in het model, dan komt hij er als versnelling bij —
+//     een anker is ook een snelle start van de leercurve.
 //
 // Publiek
 //   window.PLGear                    — module-object (state, model, detectie)
+//     .koppel(v) / .corrigeer(k) / .waarde() — voertuig, anker, berekende PID CA01
 //   window.openGearInstellingen()    — instellingenvenster (aan/uit, leer opnieuw)
 // Test: test-gear.js
 // ═══════════════════════════════════════════════════════════════════════════
@@ -65,7 +78,10 @@ const CFG = {
   afwijkFrac: 0.30,
   nieuweGearMin: 0.14,    // gevestigd model: nieuwe piek moet ≥14% afliggen
   eersteMax: 11.5,        // laagste piek hierboven: 1e nog niet gezien
-  opslaanMs: 15000
+  opslaanMs: 15000,
+  serverMs: 120000,       // zo vaak hoogstens naar het voertuig op de server
+  ankerVersMs: 5000,      // een stabiele verhouding van hoogstens zo oud mag een anker worden
+  maxGear: 10
 };
 
 function nu(){ return Date.now(); }
@@ -111,9 +127,13 @@ const PLGear = {
   _timer: null,
   _vinGezien: null,       // de VIN waarvoor het pseudoniem is aangevraagd
   _tickFout: '',
+  voertuig: null,         // {id, naam, versnellingen, transmissie, model, bewaar} uit PLGarage, of null
+  _laatsteR: null, _laatsteRT: 0,   // laatste stabiele verhouding en wanneer
+  _naarServer: 0, _serverSleutel: '',
 
   // ═══════════════ voertuigsleutel ═══════════════
   _volgVoertuig(){
+    if (this.voertuig && this.voertuig.id){ this._wissel('kp_'+this.voertuig.id); return; }
     const vin=huidigeVin();
     if (vin===this._vinGezien) return;
     this._vinGezien=vin;
@@ -128,12 +148,63 @@ const PLGear = {
   },
   _wissel(sleutel){
     if (sleutel===this.sleutel) return;
-    this._opslaan(true); this._laad(sleutel); this.toon=null; this._render();
+    this._opslaan(true); this._laad(sleutel);
+    if (/^kp_/.test(sleutel)) this._neemServerModel();
+    this.toon=null; this._render();
+  },
+
+  // ═══════════════ voertuig (Mijn voertuigen) ═══════════════
+  // v = { id, naam, versnellingen, transmissie, model, bewaar(model) } of null.
+  // Alleen PLGarage roept dit aan, en alleen als de verbonden auto dit
+  // voertuig ís (herkend op het chassisnummer, of het actieve voertuig
+  // zonder VIN in beeld). null = terug naar de sleutel uit de VIN.
+  koppel(v){
+    const was=this.voertuig && this.voertuig.id;
+    this.voertuig = (v && v.id) ? v : null;
+    if ((this.voertuig && this.voertuig.id)!==was){
+      this._vinGezien=null; this._serverSleutel='';
+      if (this.voertuig) this._wissel('kp_'+this.voertuig.id);
+      else this._volgVoertuig();
+    } else if (this.voertuig) this._neemServerModel();
+    this._render();
+  },
+  verwacht(){
+    const n=this.voertuig && Number(this.voertuig.versnellingen);
+    return (n>=1 && n<=CFG.maxGear) ? Math.round(n) : null;
+  },
+  automaat(){ return !!(this.voertuig && this.voertuig.transmissie==='automaat'); },
+  // Heeft de server een model dat verder is dan wat hier staat? Dan dat.
+  // "Verder" = meer metingen, of evenveel met meer correcties.
+  _neemServerModel(){
+    const sm=this.voertuig && this.voertuig.model;
+    if (!sm || sm.v!==MODEL_V || typeof sm.hist!=='object' || !this.model) return;
+    const hier=this.model.totaal||0, daar=sm.totaal||0;
+    const ankersDaar=(sm.ankers||[]).length, ankersHier=(this.model.ankers||[]).length;
+    if (daar>hier || (daar===hier && ankersDaar>ankersHier)){
+      this.model=Object.assign(this._leegModel(this.sleutel), JSON.parse(JSON.stringify(sm)), { sleutel:this.sleutel });
+      if (!Array.isArray(this.model.ankers)) this.model.ankers=[];
+      this._vuil=true; this._opslaan(true);
+      this._herbereken();
+      logI(`⚙️ Versnellingen van ${this.voertuig.naam||'dit voertuig'} overgenomen uit Mijn voertuigen (${this.model.gears.length} geleerd)`);
+    }
+  },
+  _naarVoertuig(force){
+    const v=this.voertuig;
+    if (!v || typeof v.bewaar!=='function' || !this.model || !/^kp_/.test(this.sleutel||'')) return;
+    if (!force && nu()-this._naarServer<CFG.serverMs) return;
+    const sleutel=(this.model.totaal||0)+'|'+(this.model.ankers||[]).length+'|'+(this.model.gears||[]).join(',');
+    if (sleutel===this._serverSleutel) return;
+    this._naarServer=nu(); this._serverSleutel=sleutel;
+    try{
+      const kopie=JSON.parse(JSON.stringify(this.model));
+      v.model=kopie;
+      Promise.resolve(v.bewaar(kopie)).catch(e=>{ this._serverSleutel=''; console.warn('PLGear: model niet naar het voertuig', e); });
+    }catch(e){ this._serverSleutel=''; console.warn('PLGear: model niet naar het voertuig', e); }
   },
 
   // ═══════════════ model ═══════════════
   _leegModel(sleutel){
-    return { v:MODEL_V, sleutel, hist:{}, totaal:0, gears:[], sinds:nu(), bijgewerkt:0 };
+    return { v:MODEL_V, sleutel, hist:{}, totaal:0, gears:[], ankers:[], offset:0, sinds:nu(), bijgewerkt:0 };
   },
   _laad(sleutel){
     let m=null;
@@ -143,6 +214,8 @@ const PLGear = {
       catch(e){ console.warn('PLGear: opgeslagen model onleesbaar, begint opnieuw', e); m=null; }
     }
     if (!m || m.v!==MODEL_V || typeof m.hist!=='object') m=this._leegModel(sleutel);
+    if (!Array.isArray(m.ankers)) m.ankers=[];
+    if (typeof m.offset!=='number') m.offset=0;
     this.model=m; this.sleutel=sleutel;
     this._recentMatch=[]; this.afwijking=false;
     this._herberekend=0; this._vuil=false;
@@ -151,12 +224,13 @@ const PLGear = {
     if (!this.model || (!this._vuil && !force)) return;
     lsSet(LS_MODEL+this.sleutel, JSON.stringify(this.model));
     this._opgeslagen=nu(); this._vuil=false;
+    this._naarVoertuig(!!force);
   },
   leerOpnieuw(){
     const s=this.sleutel||'onbekend';
     this.model=this._leegModel(s); this.sleutel=s;
     this._recentMatch=[]; this.afwijking=false; this.toon=null;
-    this._vuil=true; this._opslaan(true);
+    this._vuil=true; this._opslaan(true); this._naarVoertuig(true);
     logI('⚙️ Versnellingsindicator: opnieuw leren gestart');
     toast('⚙️ Versnellingen worden opnieuw geleerd — rij gewoon door');
     this._render();
@@ -187,9 +261,9 @@ const PLGear = {
   _herbereken(){
     const m=this.model; if (!m) return;
     this._herberekend=nu();
-    if (m.totaal<CFG.minLeerN){ m.gears=[]; return; }
+    if (m.totaal<CFG.minLeerN){ m.gears=[]; this._pasAnkers(); return; }
     const keys=Object.keys(m.hist).map(Number);
-    if (!keys.length) return;
+    if (!keys.length){ this._pasAnkers(); return; }
     const lo=Math.min(...keys)-3, hi=Math.max(...keys)+3;
     const w=[1,2,3,2,1];
     const glad={};
@@ -240,12 +314,15 @@ const PLGear = {
       }
       m.gears=g.sort((a,b)=>a-b);
     } else m.gears=nieuw;
+    this._pasAnkers();
     m.bijgewerkt=nu(); this._vuil=true;
     if (m.gears.length!==oud)
       logI(`⚙️ Versnellingen geleerd: ${m.gears.length} (${m.gears.map(g=>nl(g,1)).join(' · ')} km/u per 1000 tpm)`);
   },
 
-  // welke versnelling past bij ratio r? → {gear, fout} of null
+  // welke versnelling past bij ratio r? → {gear, idx, fout} of null. `gear`
+  // is het nummer dat getoond wordt: de plek in de lijst plus de verschuiving
+  // uit de correcties van de klant. Onder de 1 = niet te nummeren.
   _match(r){
     const g=(this.model&&this.model.gears)||[];
     let best=-1, fout=Infinity;
@@ -253,11 +330,58 @@ const PLGear = {
       const f=Math.abs(r-g[i])/g[i];
       if (f<fout){ fout=f; best=i; }
     }
-    return (best>=0 && fout<=CFG.matchTol) ? {gear:best+1, fout} : null;
+    if (best<0 || fout>CFG.matchTol) return null;
+    const gear=this.nummer(best);
+    return gear>=1 ? {gear, idx:best, fout} : null;
+  },
+  nummer(idx){ return idx+1+((this.model&&this.model.offset)||0); },
+  // De correcties (ankers) van de klant toepassen: het nieuwste anker bepaalt
+  // de verschuiving. Staat zijn verhouding niet in de lijst, dan komt hij erin.
+  _pasAnkers(){
+    const m=this.model; if (!m) return;
+    if (!Array.isArray(m.ankers) || !m.ankers.length){ m.offset=0; return; }
+    const a=m.ankers[m.ankers.length-1];
+    let idx=-1, fout=Infinity;
+    m.gears.forEach((r,i)=>{ const f=Math.abs(a.r-r)/r; if (f<fout){ fout=f; idx=i; } });
+    if (idx<0 || fout>CFG.matchTol){
+      m.gears=m.gears.concat([a.r]).sort((x,y)=>x-y);
+      idx=m.gears.indexOf(a.r);
+    }
+    m.offset=a.k-(idx+1);
+  },
+  // De knop Fout: "nu zit hij in de k-de". Gebruikt de laatste stabiele
+  // verhouding (hoogstens ankerVersMs oud); zonder die weigert hij met een
+  // reden, want een anker op een schakelmoment maakt de nummering stuk.
+  corrigeer(k){
+    k=Math.round(Number(k));
+    if (!(k>=1 && k<=CFG.maxGear)) return { ok:false, reden:'Kies een versnelling van 1 tot '+CFG.maxGear };
+    if (!this.model) this._laad(this.sleutel||'onbekend');
+    const r=this._laatsteR;
+    if (r===null || nu()-this._laatsteRT>CFG.ankerVersMs)
+      return { ok:false, reden:'Rij eerst een paar seconden rustig in die versnelling, met de koppeling los, en tik dan opnieuw' };
+    const m=this.model;
+    m.ankers=(m.ankers||[]).filter(a=>a.k!==k && Math.abs(a.r-r)/r>CFG.matchTol);
+    m.ankers.push({ k, r:Math.round(r*100)/100, t:nu() });
+    if (m.ankers.length>CFG.maxGear) m.ankers.shift();
+    this._pasAnkers();
+    this.toon=k; this._kand=null;
+    this._vuil=true; this._opslaan(true); this._naarVoertuig(true);
+    logI(`⚙️ Versnellingsindicator gecorrigeerd: dit is de ${k}e (${nl(r,1)} km/u per 1000 tpm)`);
+    this._render();
+    return { ok:true, gear:k, r };
   },
   nummeringZeker(){
-    const g=(this.model&&this.model.gears)||[];
-    return g.length>0 && g[0]<=CFG.eersteMax;
+    const m=this.model, g=(m&&m.gears)||[];
+    if (!g.length) return false;
+    if (m.ankers && m.ankers.length) return true;
+    const n=this.verwacht();
+    if (n && g.length===n) return true;
+    return g[0]<=CFG.eersteMax;
+  },
+  // Voor de berekende PID CA01: het getal, 0 voor neutraal, null = niets.
+  waarde(){
+    if (this.uit || this.toon===null) return null;
+    return this.toon==='N' ? 0 : this.toon;
   },
   status(){
     const m=this.model||{totaal:0,gears:[]};
@@ -266,7 +390,11 @@ const PLGear = {
       metingen:m.totaal,
       leren: m.totaal<CFG.minLeerN, voortgang: Math.min(1, m.totaal/CFG.minLeerN),
       versnellingen: m.gears.slice(), nummeringZeker:this.nummeringZeker(),
-      afwijking:this.afwijking, toon:this.toon
+      afwijking:this.afwijking, toon:this.toon,
+      offset:m.offset||0, ankers:(m.ankers||[]).length,
+      verwacht:this.verwacht(), automaat:this.automaat(),
+      voertuig:this.voertuig ? (this.voertuig.naam||'je voertuig') : null,
+      kanCorrigeren: this._laatsteR!==null && nu()-this._laatsteRT<=CFG.ankerVersMs
     };
   },
 
@@ -329,6 +457,7 @@ const PLGear = {
       if (stabiel!==null){
         if (geldig) this._voegToe(stabiel);
         this._laatstStabiel=t;
+        this._laatsteR=stabiel; this._laatsteRT=t;
       }
 
       if (t-this._herberekend>CFG.herberekenMs) this._herbereken();
@@ -336,6 +465,7 @@ const PLGear = {
 
       const g=this.model.gears;
       if (!g.length){ this._zet(null); return; }   // nog aan het leren
+      this._naarVoertuig(false);                    // hoogstens elke serverMs, en alleen als er iets veranderde
 
       // ── detectie ──
       let doel;
@@ -394,8 +524,8 @@ const PLGear = {
     document.body.classList.toggle('pl-gear-aan', zicht);
     b.hidden=!zicht;
     if (!zicht){ b.dataset.c=''; return; }
-    const g=this.model.gears.length;
-    const toonRij = g>=2 && g<=9;
+    const g=Math.max(this.verwacht()||0, this.nummer(this.model.gears.length-1));
+    const toonRij = g>=2 && g<=CFG.maxGear;
     const zeker=this.nummeringZeker();
     const cijfer = this.toon==='N' ? 'N' : String(this.toon);
     const oudCijfer = b.dataset.c;
@@ -427,7 +557,7 @@ const PLGear = {
 };
 
 // ═══════════════ instellingenvenster ═══════════════
-let _wisBevestig=0;
+let _wisBevestig=0, _foutOpen=false, _foutMelding='';
 function openGearInstellingen(){
   let ov=document.getElementById('plGearOv');
   if (!ov){
@@ -437,7 +567,7 @@ function openGearInstellingen(){
     ov.addEventListener('click',e=>{ if(e.target===ov) sluitGearInstellingen(); });
     document.body.appendChild(ov);
   }
-  _wisBevestig=0;
+  _wisBevestig=0; _foutOpen=false; _foutMelding='';
   tekenInstellingen();
   ov.style.display='flex';
   if (!ov._ververs) ov._ververs=setInterval(()=>{
@@ -460,13 +590,14 @@ function tekenInstellingen(){
   let lijst='';
   if (g.length){
     lijst=g.map((r,i)=>{
-      const nuTxt = st.toon===i+1;
+      const nr=PLGear.nummer(i);
+      const nuTxt = st.toon===nr;
       return `<div class="plg-rij${nuTxt?' nu':''}">
-        <span class="plg-nr">${i+1}</span>
+        <span class="plg-nr">${nr>=1?nr:'?'}</span>
         <span class="plg-balk"><span style="width:${Math.round(r/maxR*100)}%"></span></span>
         <span class="plg-r">${nl(r,1)}</span></div>`;
     }).join('');
-    lijst=`<div class="plg-klein" style="margin:14px 0 4px">km/u per 1000 tpm</div>`+lijst;
+    lijst=`<div class="plg-klein" style="margin:14px 0 4px">km/u per 1000 tpm${st.verwacht?` · ${g.length} van ${st.verwacht} geleerd`:''}</div>`+lijst;
     if (!st.nummeringZeker) lijst+=`<p class="plg-klein" style="margin:8px 0 0">
       De 1e versnelling is nog niet gezien, dus de nummering is voorlopig (herkenbaar aan het vraagteken). Die klopt vanzelf zodra je even in de 1e rijdt.</p>`;
   }
@@ -475,7 +606,23 @@ function tekenInstellingen(){
     : `Tik op het cijfer in de topbalk om hier terug te komen.`;
   const wisTxt = _wisBevestig && nu()-_wisBevestig<4000 ? 'Tik nogmaals om te wissen' : 'Leer opnieuw';
   const naam = voertuigNaam();
-  const vTxt = st.voertuigBekend ? (naam || 'herkend aan de VIN') : 'onbekend (geen VIN) — gedeeld model';
+  const vTxt = st.voertuig ? `${st.voertuig} (Mijn voertuigen — bewaard bij dit voertuig)`
+    : st.voertuigBekend ? (naam || 'herkend aan de VIN') : 'onbekend (geen VIN) — gedeeld model';
+  // De knop Fout: welke versnelling zit er écht in? Tot het hoogste van wat
+  // het profiel zegt, wat er geleerd is en zes.
+  const maxK = Math.min(10, Math.max(st.verwacht||0, g.length, 6));
+  let fout='';
+  if (!st.uit){
+    fout=`<button type="button" class="plg-fout" onclick="plGearFout()" aria-expanded="${_foutOpen}">✋ Fout — dit is niet de juiste versnelling</button>`;
+    if (_foutOpen){
+      let k='';
+      for (let i=1;i<=maxK;i++) k+=`<button type="button" class="plg-k${st.toon===i?' nu':''}" onclick="plGearKies(${i})">${i}</button>`;
+      fout+=`<div class="plg-kies"><div class="plg-klein">In welke versnelling zit de auto nu? ${st.kanCorrigeren?'':'<b>Rij eerst een paar seconden rustig door in die versnelling.</b>'}</div>
+        <div class="plg-krij">${k}</div></div>`;
+    }
+    if (_foutMelding) fout+=`<p class="plg-uitleg">${_foutMelding}</p>`;
+  }
+  const autoTxt = st.automaat ? `<p class="plg-klein" style="margin:8px 0 0">Automaat: tijdens het schakelen en zolang de koppelomvormer slipt staat er geen cijfer. Dat is geen fout.</p>` : '';
   ov.innerHTML=`<div class="plg-vel">
     <div style="display:flex;align-items:center;gap:12px">
       <h2 id="plGearTtl">Versnellingsindicator</h2>
@@ -487,8 +634,10 @@ function tekenInstellingen(){
     ${st.leren&&!st.uit?`<div class="plg-voortgang"><span style="width:${Math.round(st.voortgang*100)}%"></span></div>`:''}
     ${st.afwijking&&!st.uit?`<div class="plg-afwijking">
       De metingen passen niet meer goed bij wat eerder is geleerd, bijvoorbeeld door andere banden of een andere auto. Kies Leer opnieuw.</div>`:''}
+    ${fout}
     ${lijst}
-    <div class="plg-klein" style="margin-top:12px">Voertuig: ${vTxt} · ${st.metingen} metingen</div>
+    ${autoTxt}
+    <div class="plg-klein" style="margin-top:12px">Voertuig: ${vTxt} · ${st.metingen} metingen${st.ankers?` · ${st.ankers} correctie${st.ankers===1?'':'s'}`:''}</div>
     <button type="button" class="plg-wis${st.afwijking?' let':''}" onclick="plGearWis()">${wisTxt}</button>
   </div>`;
 }
@@ -498,7 +647,18 @@ function plGearWis(){
   tekenInstellingen();
 }
 
+function plGearFout(){ _foutOpen=!_foutOpen; _foutMelding=''; tekenInstellingen(); }
+function plGearKies(k){
+  const r=PLGear.corrigeer(k);
+  _foutMelding = r.ok ? `✓ Onthouden: dit is de ${k}e. De rest schuift mee.` : '⚠️ '+r.reden;
+  if (r.ok) _foutOpen=false;
+  toast(r.ok ? `⚙️ Versnelling ${k} onthouden` : r.reden);
+  tekenInstellingen();
+}
+
 window.PLGear = PLGear;
+window.plGearFout = plGearFout;
+window.plGearKies = plGearKies;
 window.openGearInstellingen = openGearInstellingen;
 window.sluitGearInstellingen = sluitGearInstellingen;
 window.plGearWis = plGearWis;

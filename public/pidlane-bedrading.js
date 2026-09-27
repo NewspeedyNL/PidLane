@@ -140,6 +140,14 @@ var KRITIEK = [
   // sensorkeuzescherm om in plaats van stil te zwijgen -- en stil zwijgen is
   // precies de bug die #31 beschrijft.
   'plSelectieVoor','plSelectieMeld',
+  // 27-09-2026. De berekende PIDs (pidlane-berekend.js) hangen op twee plekken
+  // achter een guard: de keuzelijst (plBerekendDefs) en de pollus
+  // (plIsBerekend). Verdwijnt de tweede, dan gaat CA01 als commando de bus op;
+  // sendCmd weigert hem dan nog, maar de pollus telt hem als dode sensor.
+  // Mijn voertuigen toont een bewaard AI-rapport met _aiReportHtml en opent de
+  // versnellingsindicator met openGearInstellingen; zonder die twee valt het
+  // venster terug op kale tekst of doet de knop niets.
+  'plBerekendDefs','plIsBerekend','_aiReportHtml','openGearInstellingen',
   // Uitloggen na "Account verwijderen" (#41, pidlane-klant.js). Die aanroep
   // staat achter een guard omdat klant.js ook los getest wordt, maar in de app
   // hoort logout() er te zijn. Ontbreekt hij, dan blijft de gebruiker met een

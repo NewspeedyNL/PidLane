@@ -209,6 +209,80 @@ console.log('\n— privacy: de ruwe VIN gaat nergens in (§7, #102) —');
   await new Promise(r => setImmediate(r));
   ok(c.G.sleutel === a.G.sleutel, 'na herstart hetzelfde model gekozen');
 
+  // ── De knop Fout (27-09-2026) ──
+  console.log('\n— Fout: de klant zegt welke versnelling het is —');
+  {
+    // Een rit zonder de 1e: de laagste geleerde piek is dan eigenlijk de 2e,
+    // en de nummering is dus één te laag — precies waar de knop voor is.
+    const volg = [1,2,3,4,5,4,3,2];
+    const prof2 = (function(){
+      const seg = 14000, schakel = 1200; let T0 = null;
+      const g = t => { const i = Math.floor((t - T0) / seg) % volg.length; return { gear: volg[i], inSeg: (t - T0) % seg }; };
+      const f = t => {
+        if (T0 === null) T0 = t;
+        const { gear, inSeg } = g(t);
+        if (inSeg < schakel) return { rpm: 1000 + 60 * Math.sin(t / 97), kmh: Math.round(RATIO[gear] * 1.9) };
+        const fase = (inSeg - schakel) / (seg - schakel);
+        const rpm = (1500 + 2300 * Math.sin(fase * Math.PI)) * (1 + 0.004 * Math.sin(t / 13));
+        return { rpm, kmh: Math.round(RATIO[gear] * rpm / 1000) };
+      };
+      f.echt = t => { const { gear, inSeg } = g(t); return inSeg < schakel + 1600 ? null : gear + 1; };
+      f.segStart = t => T0 === null ? 0 : (t - T0) % seg;
+      return f;
+    })();
+    const a = nieuweApp();
+    a.rij(200000, prof2);
+    ok(a.G.model.gears.length === 5 && !a.G.nummeringZeker(), `zonder de 1e: 5 geleerd, nummering voorlopig (${a.G.model.gears.length})`);
+    const fout = a.rij(60000, prof2, { score: prof2.echt });
+    ok(fout !== null && fout < 0.2, `vóór de correctie klopt het cijfer bijna nooit (${(fout * 100).toFixed(1)}%)`);
+    // Rij tot midden in een stabiel stuk en zeg welke het is.
+    let echt = null;
+    for (let i = 0; i < 400 && echt === null; i++) { a.rij(200, prof2); if (prof2.segStart(a.T) > 5000 && prof2.segStart(a.T) < 9000) echt = prof2.echt(a.T); }
+    const r = a.G.corrigeer(echt);
+    ok(r.ok && a.G.toon === echt, `corrigeer(${echt}) wordt meteen getoond (${JSON.stringify(r)})`);
+    ok(a.G.nummeringZeker(), 'na een correctie is de nummering zeker');
+    const goed = a.rij(120000, prof2, { score: prof2.echt });
+    ok(goed >= 0.95, `daarna het juiste cijfer in ≥95% (${(goed * 100).toFixed(1)}%) — de rest schoof mee`);
+    a.rij(8000, () => null);
+    const weiger = a.G.corrigeer(2);
+    ok(!weiger.ok && /Rij eerst/.test(weiger.reden), 'zonder verse stabiele meting weigert hij, met de reden erbij');
+    ok(!a.G.corrigeer(0).ok && !a.G.corrigeer(11).ok, 'buiten 1–10 weigert hij');
+
+    // Een anker is ook een snelle start: nog niets geleerd, 10 s in de 3e.
+    const b = nieuweApp();
+    b.rij(10000, () => ({ rpm: 2200 + 5 * Math.sin(b.T / 50), kmh: Math.round(RATIO[2] * 2.2) }));
+    ok(b.G.model.gears.length === 0, 'na 10 s nog niets geleerd (anders toetst dit niets)');
+    const rb = b.G.corrigeer(3);
+    b.rij(2000, () => ({ rpm: 2200 + 5 * Math.sin(b.T / 50), kmh: Math.round(RATIO[2] * 2.2) }));
+    ok(rb.ok && b.G.toon === 3, `met een anker staat er meteen een 3 (${b.G.toon})`);
+  }
+
+  console.log('\n— gekoppeld aan het voertuig (Mijn voertuigen) —');
+  {
+    const a = nieuweApp();
+    a.rij(180000, profielMaker(RATIO));
+    const model = JSON.parse(JSON.stringify(a.G.model));
+    const b = nieuweApp();                          // ander toestel: lege opslag
+    const bewaard = [];
+    b.G.koppel({ id: 'v1', naam: 'Proefauto', versnellingen: 6, transmissie: 'handgeschakeld', model, bewaar: m => { bewaard.push(m); return Promise.resolve(); } });
+    b.rij(400, () => null);
+    ok(b.G.sleutel === 'kp_v1', `sleutel is het voertuig (${b.G.sleutel})`);
+    ok(b.G.model.gears.length === 6 && b.G.model.totaal === model.totaal, `het model van de server is overgenomen (${b.G.model.gears.length})`);
+    const pb = profielMaker(RATIO);
+    const score = b.rij(60000, pb, { score: pb.echt });
+    ok(score !== null && score >= 0.9, `rijdt meteen goed zonder opnieuw te leren (${score && (score * 100).toFixed(1)}%)`);
+    b.G._opslaan(true);
+    ok(bewaard.length >= 1 && typeof bewaard[bewaard.length - 1].hist === 'object', `het model gaat terug naar het voertuig (${bewaard.length}×)`);
+    ok(b.G.status().verwacht === 6, 'het aantal versnellingen komt uit het profiel');
+    // Een kleiner servermodel overschrijft niet wat hier al verder is.
+    const c = nieuweApp({ opslag: b.opslag });
+    c.G.koppel({ id: 'v1', model: { v: 1, hist: {}, totaal: 3, gears: [] }, bewaar: () => Promise.resolve() });
+    ok(c.G.model.totaal >= model.totaal, `een kleiner servermodel wint niet (${c.G.model.totaal})`);
+    c.G.koppel(null);
+    c.rij(400, () => null);
+    ok(c.G.sleutel === 'onbekend', 'ontkoppeld: terug naar de sleutel zonder voertuig');
+  }
+
   console.log(fouten ? `\n${fouten} fout(en)` : '\nAlles goed');
   process.exit(fouten ? 1 : 0);
 })();

@@ -14,6 +14,30 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 27-09-2026 — De terugknop en een weggescrold ✕
+
+**Waarneming.** In de nieuwe vensters (Mijn voertuigen, versnellingsindicator,
+Mijn voorkeuren) deed de Android-terugknop soms niets.
+
+**Oorzaak.** Sinds 26-09 drukt `appBack()` het ✕ in van het venster dat
+bovenop ligt, en "bovenop" is een waarneming: `elementFromPoint()` op het
+midden van het ✕ moet het ✕ zelf raken. Die vensters scrollen. Wie een lang
+rapport of een ritlijst omlaag schuift, schuift het ✕ uit beeld (of onder de
+rand van een eigen scrollvak), en dan raakt `elementFromPoint()` iets anders.
+Het venster werd overgeslagen, en omdat het niet in de vaste terugvallijst
+stond, deed de knop niets. `bproef-terugknop.js` opende de vensters alleen
+bovenaan, dus dat zag hij niet.
+
+**Oplossing.** Ligt het ✕ buiten beeld of weggescrold, dan telt of het
+venster zelf bovenop ligt, gemeten op het midden van zijn zichtbare deel. Een
+venster onder een ander venster raakt daar nog steeds niet. Deel 2c van de
+proef scrolt eerst; met de fix eruit wordt hij rood.
+
+**Niet gedaan.** De vaste lijst in `appBack()` aanvullen met de nieuwe id's.
+Dat is precies de lijst die de ✕-zoeker overbodig moest maken.
+
+---
+
 ## 27-09-2026 — Twee opslagroutes, één knopsoort
 
 **Waarneming.** Op de 3.1.0-build opende een opslagknop het deelvenster in

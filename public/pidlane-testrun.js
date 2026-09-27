@@ -6312,6 +6312,34 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── versnelling bij het voertuig en de berekende PIDs (27-09-2026) ──
+  // De browserproef toetst dat een CA-PID nooit de bus op gaat en dat de
+  // rekenregels kloppen. Wat alleen de auto weet: welke berekende PIDs hier
+  // kunnen (hangt af van wat de ECU ondersteunt), en of de indicator op déze
+  // bak het aantal versnellingen uit het profiel vindt.
+  {
+    issue: '—',
+    naam: 'Berekende PIDs en de versnellingsindicator op deze auto',
+    waarom: 'Welke bronnen de ECU levert (015E, 0162/0163, 0133) en hoeveel pieken een echte bak geeft, is in de browser niet na te bootsen.',
+    proef: async function () {
+      if (!window.PLBerekend || typeof PLBerekend.defs !== 'function')
+        return { staat: 'FOUT', detail: 'PLBerekend ontbreekt — de berekende PIDs staan niet in de keuzelijst' };
+      if (typeof plIsBerekend !== 'function' || !plIsBerekend('CA01'))
+        return { staat: 'FOUT', detail: 'plIsBerekend ontbreekt — dan vraagt de pollus CA01 bij de auto op' };
+      if (typeof connected === 'undefined' || !connected || (typeof demoMode !== 'undefined' && demoMode))
+        return { staat: 'LET OP', detail: 'niet verbonden met een echte auto — niets te zeggen over wat hier kan' };
+      const kan = PLBerekend.defs().map(function (d) { return d.pid; });
+      const gear = window.PLGear ? PLGear.status() : null;
+      const g = gear ? (gear.versnellingen.length + (gear.verwacht ? ' van ' + gear.verwacht : '') + ' geleerd, ' + gear.metingen + ' metingen' +
+        (gear.ankers ? ', ' + gear.ankers + ' correctie(s)' : '') + (gear.voertuig ? ', bij ' + gear.voertuig : ', niet aan een voertuig gekoppeld')) : 'PLGear ontbreekt';
+      const tekst = 'berekend op deze auto: ' + (kan.length ? kan.join(', ') : 'geen') + ' · versnellingen: ' + g;
+      if (!gear) return { staat: 'FOUT', detail: tekst };
+      if (gear.verwacht && gear.versnellingen.length > gear.verwacht)
+        return { staat: 'LET OP', detail: tekst + ' — meer pieken dan het profiel zegt: slippende koppeling, andere banden of een verkeerd profiel' };
+      return tekst;
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is

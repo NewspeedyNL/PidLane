@@ -126,6 +126,22 @@ function beoordeel(m) {
     toets('de snelheid op km/h geschoven wordt als botsing gezien',
       beoordeel(tegen).botsing.some(x => /vis-snel/.test(x)), 'de overlapcontrole bleef stil');
 
+    console.log('\n3b. Trekmodus: caravan of beladen');
+    const trek = await app.ev(`(async function(){
+      ['0104','010F'].forEach(function(p){ activePIDs.add(p); });
+      localStorage.setItem('pl_vis_trek','1'); setPidView('slim'); setPidView('visueel');
+      await new Promise(function(r){ setTimeout(r, 1500); });
+      const aan = { tegels: document.querySelectorAll('#visTrek .vis-tt').length, tekst: (document.getElementById('visTrek')||{}).textContent || '',
+                    gebruik: PLVisueel.staat().gebruik };
+      PLVisueel.trek(); await new Promise(function(r){ setTimeout(r, 300); });
+      const uit = { strook: !!document.getElementById('visTrek'), knop: !!document.querySelector('.vis-trekknop') };
+      return { aan: aan, uit: uit };
+    })()`);
+    toets('trekmodus aan: een strook met tegels onder de meter', trek.aan.tegels >= 6, JSON.stringify(trek.aan));
+    toets('koelwater, olie en belasting staan erop', /Koelwater/.test(trek.aan.tekst) && /Motorolie/.test(trek.aan.tekst) && /Belasting/.test(trek.aan.tekst), trek.aan.tekst);
+    toets('de belasting (0104) wordt dan niet geremd', trek.aan.gebruik.indexOf('0104') >= 0, JSON.stringify(trek.aan.gebruik));
+    toets('uit: de strook is weg, de knop om hem aan te zetten blijft', !trek.uit.strook && trek.uit.knop, JSON.stringify(trek.uit));
+
     console.log('\n4. De getallen sturen, en komen niet buiten de schaal');
     const naald = await app.ev(`(function(){
       function hoek(){ const t=document.getElementById('vis-naald').style.transform; const m=/rotate\\((-?[\\d.]+)deg\\)/.exec(t); return m?+m[1]:null; }

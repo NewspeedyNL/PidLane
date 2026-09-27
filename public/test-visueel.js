@@ -480,5 +480,27 @@ vm.runInContext(knip(lees('pidlane-plload.js'), 'function pidPollInterval(pid){'
 R2.PLVisueel.start();
 waar('zonder olie staat het pedaal op de onderboog en wordt het níét geremd', R2.pidPollInterval('0149') < R2.PLVisueel.REM_MS && R2.pidPollInterval('0111') >= R2.PLVisueel.REM_MS);
 
+console.log('\n— trekmodus: caravan of beladen (27-09-2026) —');
+{
+  const V = maak({ actief: ['010C', '010D', '0105'] }).PLVisueel;
+  const t0 = 1e9;
+  const stijg = Array.from({ length: 13 }, (_, i) => ({ t: t0 + i * 5000, v: 95 + i * 0.25 }));   // 3 °C/min
+  const tr = V.koelTrend(stijg, t0 + 60000);
+  waar('koelTrend: 0,25 °C per 5 s is 3 °C per minuut', tr === 3, String(tr));
+  waar('koelTrend: vlak is 0', V.koelTrend(stijg.map(x => ({ t: x.t, v: 90 })), t0 + 60000) === 0);
+  waar('koelTrend: vier metingen is te weinig (null, geen 0)', V.koelTrend(stijg.slice(-4), t0 + 60000) === null);
+  waar('koelTrend: vijf metingen binnen 16 s is te kort', V.koelTrend(stijg.slice(0, 5).map((x, i) => ({ t: t0 + i * 4000, v: x.v })), t0 + 16000) === null);
+  waar('koelTrend: oude metingen buiten het venster tellen niet',
+    V.koelTrend(stijg.map(x => ({ t: x.t - 120000, v: x.v })), t0 + 60000) === null);
+  const heeft = new Set(['0105', '0104', '010F', 'CA03']);
+  const ind = V.trekIndeling(p => heeft.has(p), false);
+  const rol = r => ind.find(x => x.rol === r);
+  waar('trekstrook: versnelling staat erop zonder PID (PLGear)', rol('gear') && rol('gear').gear === true);
+  waar('trekstrook: koelwater met trend, belasting 0104, verbruik uit CA03',
+    rol('koel').pid === '0105' && rol('koel').trend && rol('last').pid === '0104' && rol('verbruik').pid === 'CA03', JSON.stringify(ind));
+  waar('trekstrook: olie die de auto niet geeft blijft leeg (null, geen andere PID)', rol('olie').pid === null);
+  waar('trekstrook: laaddruk alleen met bewezen turbo', !rol('laaddruk') && V.trekIndeling(p => heeft.has(p), true).some(x => x.rol === 'laaddruk'));
+}
+
 console.log('\n' + (fout ? 'FOUT: ' : 'goed: ') + ok + ' ok, ' + fout + ' fout\n');
 process.exit(fout ? 1 : 0);

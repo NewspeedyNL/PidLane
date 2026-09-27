@@ -221,6 +221,50 @@
     return r.join('\n');
   }
 
+  /* En terug: de tekst van waakTekst() in delen, zodat het venster er een
+     overzicht van kan maken in plaats van de kale tekst (27-09-2026: "als je
+     op waakronde klikt krijg je een lelijk data-overzicht"). Leest alleen de
+     vorm die waakTekst() schrijft; past een regel niet, dan komt hij onder
+     `overig` en gaat er niets verloren. null = dit is geen waakrapport. */
+  function waakDelen(tekst) {
+    var regels = String(tekst || '').split('\n');
+    if (!/^PidLane — Waakronde/.test(regels[0] || '')) return null;
+    var uit = { datum: '', kop: '', bevindingen: [], stil: [], normaal: [], overig: [] };
+    var deel = null;
+    regels.slice(1).forEach(function (r) {
+      var m;
+      if (/^Datum: /.test(r)) { uit.datum = r.slice(7); return; }
+      if ((m = /^=== (BEVINDINGEN|ZONDER ANTWOORD|NORMAAL)/.exec(r))) { deel = m[1]; return; }
+      if (!r.trim()) return;
+      if (!deel) { uit.kop = uit.kop ? uit.kop + ' ' + r : r; return; }
+      if (r.trim() === 'geen') return;
+      if (deel === 'BEVINDINGEN' && (m = /^ (.+?): (.*) — (\d+) van (\d+) metingen, laatst (\S+) ?(.*?)\s*\(min (.+?), max (.+?)\)$/.exec(r))) {
+        uit.bevindingen.push({ naam: m[1], reden: m[2], let: +m[3], n: +m[4], waarde: m[5], eenheid: m[6], min: m[7], max: m[8] }); return;
+      }
+      if (deel === 'ZONDER ANTWOORD') { r.trim().split(/,\s*/).forEach(function (x) { if (x) uit.stil.push(x); }); return; }
+      if (deel === 'NORMAAL' && (m = /^ (.+?): (\S+) ?(.*?)\s*\((\d+)×, (.+?)–(.+?)\)$/.exec(r))) {
+        uit.normaal.push({ naam: m[1], waarde: m[2], eenheid: m[3], n: +m[4], min: m[5], max: m[6] }); return;
+      }
+      uit.overig.push(r.trim());
+    });
+    return uit;
+  }
+
+  /* Ritlabels. De klant geeft een rit een naam; `labelSom` telt per label de
+     ritten en kilometers op, zodat "woon-werk" en "caravan" los te zien zijn. */
+  var LABEL_VOORSTEL = ['Woon-werk', 'Zakelijk', 'Vakantie', 'Caravan', 'Beladen', 'Boodschappen', 'Proefrit'];
+  function labelSom(ritten) {
+    var som = {};
+    (ritten || []).forEach(function (r) {
+      var l = r && r.label ? String(r.label) : null;
+      if (!l) return;
+      var s = som[l] = som[l] || { label: l, ritten: 0, km: 0 };
+      s.ritten++; if (typeof r.km === 'number') s.km += r.km;
+    });
+    return Object.keys(som).map(function (k) { som[k].km = Math.round(som[k].km * 10) / 10; return som[k]; })
+      .sort(function (a, b) { return b.km - a.km; });
+  }
+
   // ── De ritwaarnemer: een rit als optelsom van monsters ─────────────
   function ritNieuw(t) {
     return { start: new Date(t).toISOString(), t0: t, tLaatst: t, tBeweeg: t, km: 0, s: 0, sStat: 0, sBeweeg: 0,
@@ -581,6 +625,33 @@
     teken();
   }
 
+  /* De versnellingsindicator hoort bij het voertuig (27-09-2026): wat hij
+     leert, bewaart hij bij dít voertuig op de server, en het profiel zegt
+     hoeveel versnellingen er zijn en of het een automaat is. Gekoppeld wordt
+     het voertuig dat aan de adapter hangt: herkend op het chassisnummer, of —
+     zonder chassisnummer in beeld — het actieve voertuig. Een auto die op het
+     chassisnummer níét herkend is, krijgt niets: dan leert PLGear onder zijn
+     eigen sleutel, zoals voor iedereen zonder Mijn voertuigen. */
+  function versnellingsVoertuig() {
+    if (!magBewaren() || _st.onbekend) return null;
+    return voertuig(_st.gekoppeld) || actief();
+  }
+  var _gearSleutel = '';
+  function gearKoppel() {
+    try {
+      if (!window.PLGear || typeof PLGear.koppel !== 'function') return;
+      var v = versnellingsVoertuig();
+      var sleutel = v ? [v.id, v.versnellingen || '', v.transmissie || '', v.naam || ''].join('|') : '';
+      if (sleutel === _gearSleutel) return;
+      _gearSleutel = sleutel;
+      if (!v) { PLGear.koppel(null); return; }
+      var vid = v.id;
+      PLGear.koppel({ id: vid, naam: v.naam || [v.merk, v.model].filter(Boolean).join(' ') || 'je voertuig',
+        versnellingen: v.versnellingen, transmissie: v.transmissie, model: v.gear_model || null,
+        bewaar: function (model) { return api('versnelling_opslaan', { voertuig_id: vid, model: model }).then(function () { var x = voertuig(vid); if (x) x.gear_model = model; }); } });
+    } catch (e) { console.warn('PLGarage: versnellingsindicator niet gekoppeld', e); }
+  }
+
   // Mijn voorkeuren: of een melding mag (met de standaard van vóór de
   // voorkeuren als die niets zegt) en hoe verbruik getoond wordt.
   function voorkeurMelding(soort, standaard) {
@@ -708,6 +779,25 @@
     '#plGarOv .gr-melding.blauw{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.45)}' +
     '#plGarOv pre.gr-tekst{white-space:pre-wrap;font:12px/1.5 ui-monospace,monospace;color:var(--tx2);margin:0}' +
     '#plGarOv ul{margin:4px 0 0 18px;padding:0;font-size:12px;color:var(--tx2)} #plGarOv li{margin:4px 0}' +
+    '#plGarOv .gr-rapport{display:flex;align-items:center;gap:8px}' +
+    '#plGarOv .gr-rapport .klik{cursor:pointer}' +
+    '#plGarOv .gr-tegels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}' +
+    '#plGarOv .gr-tegel{background:var(--sur2);border:1px solid var(--bd);border-radius:10px;padding:9px;text-align:center}' +
+    '#plGarOv .gr-tegel b{display:block;font:800 20px var(--f);color:var(--tx)} #plGarOv .gr-tegel span{font-size:11px;color:var(--tx3)}' +
+    '#plGarOv .gr-tegel.let b{color:#f59e0b} #plGarOv .gr-tegel.ok b{color:#22c55e}' +
+    '#plGarOv .gr-sec{font:800 11px var(--f);letter-spacing:.04em;text-transform:uppercase;color:var(--tx3);margin:12px 0 6px}' +
+    '#plGarOv .gr-vind{border:1px solid rgba(245,158,11,.45);background:rgba(245,158,11,.08);border-radius:9px;padding:8px 10px;margin-bottom:6px;font-size:13px;color:var(--tx)}' +
+    '#plGarOv .gr-vind .gr-waarde{float:right}' +
+    '#plGarOv .gr-wrij{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--bd);font-size:13px;color:var(--tx)}' +
+    '#plGarOv .gr-wrij .nm{flex:1;min-width:0} #plGarOv .gr-waarde{font:800 14px var(--f);font-variant-numeric:tabular-nums}' +
+    '#plGarOv .gr-wbereik{flex:0 0 auto;text-align:right;min-width:92px}' +
+    '#plGarOv .gr-stip{width:8px;height:8px;border-radius:50%;flex:0 0 8px} #plGarOv .gr-stip.ok{background:#22c55e}' +
+    '#plGarOv .gr-labels{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}' +
+    '#plGarOv .gr-lab{padding:6px 10px;border-radius:999px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font:700 12px var(--f);cursor:pointer}' +
+    '#plGarOv .gr-lab.aan{background:var(--bl,#3b82f6);border-color:var(--bl,#3b82f6);color:#fff}' +
+    '#plGarOv .gr-lab small{font-weight:600;opacity:.8}' +
+    '#plGarOv .gr-lab.klein{padding:2px 8px;font-size:11px;cursor:default}' +
+    '#plGarOv .gr-labin{margin-top:6px}' +
     '#plGarageKaart{margin:0 0 12px}' +
     '#plGarageKaart .gk{display:flex;align-items:center;gap:12px;background:#11151f;border:1px solid #232c40;border-radius:14px;padding:13px 14px;cursor:pointer;color:#fff}' +
     '#plGarageKaart .gk-t{font:800 14px var(--f)} #plGarageKaart .gk-d{font-size:12px;opacity:.8;margin-top:2px}' +
@@ -760,7 +850,8 @@
       '<li><b>Per voertuig</b> het profiel dat je invult: naam, kenteken, merk, model, motor, brandstof, rijprofiel, verbruik, kilometerstand, APK en onderhoud.</li>' +
       '<li><b>Je kenteken versleuteld.</b> Het chassisnummer (VIN) alleen als een uit dat nummer berekende code, zoals elders in de app. Dat is pseudonimisering: wie je VIN kent, kan die code narekenen.</li>' +
       '<li><b>Rapporten</b> die de app voor dit voertuig maakt (AI-rapporten en foutcode-uitlezingen).</li>' +
-      '<li><b>Ritten als samenvatting:</b> datum, duur, afstand, snelheid, verbruik, temperatuur en accuspanning. Geen locatie, geen route. De meting per seconde blijft op je telefoon.</li>' +
+      '<li><b>Ritten als samenvatting:</b> datum, duur, afstand, snelheid, verbruik, temperatuur en accuspanning, en het label dat je er zelf aan geeft. Geen locatie, geen route. De meting per seconde blijft op je telefoon.</li>' +
+      '<li><b>Wat de versnellingsindicator over je auto leert:</b> de verhouding tussen snelheid en toerental per versnelling, en je correcties. Geen locatie, geen tijdstippen van ritten.</li>' +
       '<li><b>Open punten</b>: foutcodes en wat de app opvalt, tot ze opgelost zijn.</li></ul></div>' +
       '<div class="gr-blok"><div class="gr-bh">Wat we er níét mee doen</div><ul>' +
       '<li>Niet delen met derden, niet verkopen.</li><li>Niet gebruiken voor de referentiedata onder een pseudoniem — dat is een aparte keuze die je al gemaakt hebt.</li></ul></div>' +
@@ -854,6 +945,7 @@
       h += '<div class="gr-blok"><div class="gr-bh">💡 Advies</div>' + (adv.length ? adv.map(function (a) {
         return '<div class="gr-item"><b>' + esc(a.titel) + '</b><div class="gr-klein" style="margin-top:2px">' + esc(a.tekst) + '</div></div>';
       }).join('') : '<div class="gr-klein">' + (c.ritten ? 'Nog geen advies. Rij een paar ritten met dit voertuig actief en vul je profiel aan.' : '⏳') + '</div>') + '</div>';
+      h += tekenVersnellingen(v);
       h += '<div class="gr-knoppen"><button class="gr-k" onclick="PLGarage.sluit();try{PLFoutcodes.open()}catch(e){console.warn(e)}">🩺 Foutcodes uitlezen</button></div>';
     } else if (_st.tab === 'issues') {
       if (!c.issues) laad(v.id, 'issues');
@@ -877,24 +969,36 @@
       h += '<div class="gr-blok"><div class="gr-rij"><div>Ritten</div><div><b>' + rs.length + '</b></div><div>Samen</div><div><b>' + Math.round(totKm).toLocaleString('nl') + ' km</b></div>' +
         '<div>Gemiddeld verbruik</div><div><b>' + (verb ? verbruikNl(verb.l100) : '—') + '</b></div>' +
         '<div>Opgegeven</div><div><b>' + (v.verbruik_opgegeven ? verbruikNl(v.verbruik_opgegeven) : '—') + '</b></div></div></div>';
-      h += '<div class="gr-blok">' + (c.ritten ? (rs.length ? rs.map(function (r) {
+      var som = labelSom(rs);
+      if (som.length) h += '<div class="gr-blok"><div class="gr-bh">🏷 Per label</div><div class="gr-labels">' +
+        '<button class="gr-lab' + (!_st.labelFilter ? ' aan' : '') + '" onclick="PLGarage._labelFilter(\'\')">Alle</button>' +
+        som.map(function (x) {
+          return '<button class="gr-lab' + (_st.labelFilter === x.label ? ' aan' : '') + '" onclick="PLGarage._labelFilter(' + esc(JSON.stringify(x.label)) + ')">' +
+            esc(x.label) + ' <small>' + x.ritten + '× · ' + Math.round(x.km).toLocaleString('nl') + ' km</small></button>';
+        }).join('') + '</div></div>';
+      var zicht = _st.labelFilter ? rs.filter(function (r) { return r.label === _st.labelFilter; }) : rs;
+      h += '<div class="gr-blok">' + (c.ritten ? (zicht.length ? zicht.map(function (r) {
         return '<div class="gr-item"><b>' + datumNl(r.start, true) + '</b> · ' + (r.km != null ? r.km.toLocaleString('nl') + ' km' : '') + (r.duur_s ? ' · ' + Math.round(r.duur_s / 60) + ' min' : '') +
+          (r.label ? ' <span class="gr-lab klein">🏷 ' + esc(r.label) + '</span>' : '') +
           '<div class="gr-klein">' + [r.verbruik_l100 != null ? verbruikNl(r.verbruik_l100) : null, r.max_kmh != null ? 'max ' + r.max_kmh + ' km/u' : null,
             r.max_koelwater != null ? 'koelwater ' + Math.round(r.max_koelwater) + ' °C' : null, r.min_accu != null ? 'accu ≥ ' + nl1(r.min_accu) + ' V' : null,
-            (r.codes && r.codes.length) ? 'codes: ' + r.codes.join(', ') : null].filter(Boolean).map(esc).join(' · ') + '</div></div>';
-      }).join('') : '<div class="gr-klein">Nog geen ritten. Een rit wordt vanzelf vastgelegd zodra je rijdt met dit voertuig actief en de adapter verbonden.</div>') : '<div class="gr-klein">⏳</div>') + '</div>';
+            (r.codes && r.codes.length) ? 'codes: ' + r.codes.join(', ') : null].filter(Boolean).map(esc).join(' · ') + '</div>' +
+          (_st.labelRit === r.id ? tekenLabelInvoer(r) :
+            '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._labelOpen(\'' + esc(r.id) + '\')">🏷 ' + (r.label ? 'Label wijzigen' : 'Label geven') + '</button></div>') + '</div>';
+      }).join('') : '<div class="gr-klein">' + (rs.length ? 'Geen ritten met dit label.' : 'Nog geen ritten. Een rit wordt vanzelf vastgelegd zodra je rijdt met dit voertuig actief en de adapter verbonden.') + '</div>') : '<div class="gr-klein">⏳</div>') + '</div>';
     } else if (_st.tab === 'rapporten') {
       if (!c.rapporten) laad(v.id, 'rapporten');
       var rp = c.rapporten || [];
       h += '<div class="gr-blok">' + (c.rapporten ? (rp.length ? rp.map(function (r) {
-        return '<div class="gr-item klik" onclick="PLGarage._rapport(\'' + esc(r.id) + '\')"><b>' + (r.soort === 'ai' ? '🔬 ' : r.soort === 'dtc' ? '🔴 ' : r.soort === 'waak' ? '👁 ' : '📄 ') + esc(r.titel || r.soort) + '</b><div class="gr-klein">' + datumNl(r.aangemaakt, true) + '</div></div>';
+        return '<div class="gr-item gr-rapport"><div class="klik" style="flex:1;min-width:0" onclick="PLGarage._rapport(\'' + esc(r.id) + '\')"><b>' + (r.soort === 'ai' ? '🔬 ' : r.soort === 'dtc' ? '🔴 ' : r.soort === 'waak' ? '👁 ' : '📄 ') + esc(r.titel || r.soort) + '</b><div class="gr-klein">' + datumNl(r.aangemaakt, true) + '</div></div>' +
+          '<button class="gr-k klein gevaar" aria-label="Rapport wissen" title="Rapport wissen" onclick="PLGarage._rapportWegId(\'' + esc(r.id) + '\')">🗑</button></div>';
       }).join('') : '<div class="gr-klein">Nog geen rapporten. Elk AI-rapport, elke foutcode-uitlezing en elke waakronde met dit voertuig actief komt hier vanzelf terecht.</div>') : '<div class="gr-klein">⏳</div>') + '</div>';
     } else if (_st.tab === 'profiel') {
       var rijProf = function (l, w) { return '<div>' + l + '</div><div><b>' + (w == null || w === '' ? '—' : esc(w)) + '</b></div>'; };
       h += '<div class="gr-blok"><div class="gr-rij">' +
         rijProf('Kenteken', v.kenteken ? kentekenNl(v.kenteken) : (v.kentekenLeesbaar === false ? 'onleesbaar' : null)) +
         rijProf('Merk en model', [v.merk, v.model].filter(Boolean).join(' ')) + rijProf('Bouwjaar', v.bouwjaar) +
-        rijProf('Motor', v.motor) + rijProf('Brandstof', v.brandstof) + rijProf('Turbo', v.turbo) + rijProf('Transmissie', v.transmissie) +
+        rijProf('Motor', v.motor) + rijProf('Brandstof', v.brandstof) + rijProf('Turbo', v.turbo) + rijProf('Handbak of automaat', v.transmissie) + rijProf('Aantal versnellingen', v.versnellingen) +
         rijProf('Rijprofiel', v.rijprofiel) + rijProf('Verbruik (opgegeven)', v.verbruik_opgegeven ? v.verbruik_opgegeven.toLocaleString('nl') + ' l/100 km' : null) +
         rijProf('Kilometerstand', v.kmstand != null ? v.kmstand.toLocaleString('nl') + ' km' : null) + rijProf('APK tot', v.apk_tot ? datumNl(v.apk_tot) : null) +
         rijProf('Laatste onderhoudsbeurt', v.onderhoud_laatst) + rijProf('Distributieriem/-ketting', v.distributie) +
@@ -909,7 +1013,8 @@
 
   var KEUZES = {
     brandstof: ['benzine', 'diesel', 'hybride', 'plug-in hybride', 'elektrisch', 'lpg', 'cng', 'onbekend'],
-    turbo: ['onbekend', 'ja', 'nee'], transmissie: ['onbekend', 'handgeschakeld', 'automaat'],
+    turbo: ['onbekend', 'ja', 'nee'], transmissie: ['handgeschakeld', 'automaat', 'onbekend'],
+    versnellingen: ['4', '5', '6', '7', '8', '9', '10'],
     rijprofiel: ['gemengd', 'stad', 'snelweg', 'korte ritten', 'aanhanger of caravan']
   };
   function tekenFormulier(v) {
@@ -919,7 +1024,7 @@
     };
     var kies = function (id, label, w) {
       return '<label class="gr-veld">' + label + '<select id="grf_' + id + '">' + ['<option value="">—</option>'].concat(KEUZES[id].map(function (k) {
-        return '<option' + (k === w ? ' selected' : '') + '>' + k + '</option>';
+        return '<option' + (k === String(w == null ? '' : w) ? ' selected' : '') + '>' + k + '</option>';
       })).join('') + '</select></label>';
     };
     return '<div class="gr-sub">Vul in wat je weet. Met het kenteken haalt de app merk, model, bouwjaar, motor, brandstof en APK bij het RDW.</div>' +
@@ -930,7 +1035,9 @@
       '<div class="gr-2">' + inv('merk', 'Merk', v.merk) + inv('model', 'Model', v.model) + '</div>' +
       '<div class="gr-2">' + inv('bouwjaar', 'Bouwjaar', v.bouwjaar, 'number', 'min="1950" max="2100"') + inv('motor', 'Motor', v.motor, 'text', 'placeholder="bijv. 2,0 liter, 121 kW"') + '</div>' +
       '<div class="gr-2">' + kies('brandstof', 'Brandstof', v.brandstof) + kies('turbo', 'Turbo', v.turbo) + '</div>' +
-      '<div class="gr-2">' + kies('transmissie', 'Transmissie', v.transmissie) + kies('rijprofiel', 'Hoe rijd je meestal?', v.rijprofiel) + '</div>' +
+      '<div class="gr-2">' + kies('transmissie', 'Handbak of automaat?', v.transmissie) + kies('versnellingen', 'Hoeveel versnellingen?', v.versnellingen) + '</div>' +
+      '<div class="gr-klein">Voor de versnellingsindicator: met het aantal weet hij zeker welke de 1e is. Achteruit telt niet mee.</div>' +
+      kies('rijprofiel', 'Hoe rijd je meestal?', v.rijprofiel) +
       '<div class="gr-2">' + inv('verbruik_opgegeven', 'Verbruik (l/100 km)', v.verbruik_opgegeven, 'number', 'step="0.1" min="0" max="50"') + inv('kmstand', 'Kilometerstand', v.kmstand, 'number', 'min="0"') + '</div>' +
       '<div class="gr-2">' + inv('apk_tot', 'APK geldig tot', v.apk_tot, 'date') + inv('onderhoud_datum', 'Volgend onderhoud (datum)', v.onderhoud_datum, 'date') + '</div>' +
       inv('onderhoud_km', 'Volgend onderhoud (km-stand)', v.onderhoud_km, 'number', 'min="0"') +
@@ -948,7 +1055,70 @@
     if (!r) return '<div class="gr-klein">⏳</div>';
     return '<div class="gr-knoppen" style="margin:0 0 10px"><button class="gr-k klein" onclick="PLGarage._terugNaar(\'rapporten\')">← Rapporten</button>' +
       '<button class="gr-k klein" onclick="PLGarage._rapportBewaar()">💾 Opslaan</button><button class="gr-k klein gevaar" onclick="PLGarage._rapportWeg()">Verwijderen</button></div>' +
-      '<div class="gr-blok"><div class="gr-bh">' + esc(r.titel || r.soort) + '<span class="gr-r">' + datumNl(r.aangemaakt, true) + '</span></div><pre class="gr-tekst">' + esc(r.tekst) + '</pre></div>';
+      '<div class="gr-blok"><div class="gr-bh">' + esc(r.titel || r.soort) + '<span class="gr-r">' + datumNl(r.aangemaakt, true) + '</span></div>' + rapportInhoud(r) + '</div>';
+  }
+
+  /* Een bewaard rapport zoals de app het ook elders toont: een AI-rapport met
+     de secties en kleuren van het AI-venster (_aiReportHtml), een waakronde als
+     overzicht zoals het waakvenster. Alleen als dat niet lukt de kale tekst. */
+  function rapportInhoud(r) {
+    try {
+      if (r.soort === 'ai' && typeof _aiReportHtml === 'function') return '<div class="gr-ai">' + _aiReportHtml(String(r.tekst || '')) + '</div>';
+      if (r.soort === 'waak') { var w = waakDelen(r.tekst); if (w) return tekenWaak(w); }
+    } catch (e) { console.warn('PLGarage: rapport niet op te maken, de tekst staat eronder', e); }
+    return '<pre class="gr-tekst">' + esc(r.tekst) + '</pre>';
+  }
+  function tekenWaak(w) {
+    var tegel = function (n, l, k) { return '<div class="gr-tegel' + (k ? ' ' + k : '') + '"><b>' + n + '</b><span>' + l + '</span></div>'; };
+    var h = '<div class="gr-klein" style="margin-bottom:8px">' + esc(w.kop) + '</div>' +
+      '<div class="gr-tegels">' + tegel(w.bevindingen.length, 'bevinding' + (w.bevindingen.length === 1 ? '' : 'en'), w.bevindingen.length ? 'let' : '') +
+      tegel(w.normaal.length, 'normaal', 'ok') + tegel(w.stil.length, 'zonder antwoord', 'stil') + '</div>';
+    h += '<div class="gr-sec">Bevindingen</div>' + (w.bevindingen.length ? w.bevindingen.map(function (b) {
+      return '<div class="gr-vind"><b>' + esc(b.naam) + '</b><span class="gr-waarde">' + esc(b.waarde) + ' ' + esc(b.eenheid) + '</span>' +
+        '<div class="gr-klein">' + esc(b.reden) + ' — ' + b.let + ' van ' + b.n + ' metingen · min ' + esc(b.min) + ', max ' + esc(b.max) + '</div></div>';
+    }).join('') : '<div class="gr-klein">Niets buiten bereik gezien.</div>');
+    if (w.normaal.length) h += '<div class="gr-sec">Normaal</div>' + w.normaal.map(function (x) {
+      return '<div class="gr-wrij"><span class="gr-stip ok"></span><span class="nm">' + esc(x.naam) + '</span><span class="gr-waarde">' + esc(x.waarde) + ' ' + esc(x.eenheid) + '</span>' +
+        '<span class="gr-klein gr-wbereik">' + esc(x.min) + '–' + esc(x.max) + ' · ' + x.n + '×</span></div>';
+    }).join('');
+    if (w.stil.length) h += '<div class="gr-sec">Zonder antwoord</div><div class="gr-klein">' + w.stil.map(esc).join(', ') +
+      '</div><div class="gr-klein" style="margin-top:4px">Deze sensoren gaven geen antwoord. Dat is meestal een sensor die deze auto niet heeft, geen defect.</div>';
+    if (w.overig.length) h += '<pre class="gr-tekst" style="margin-top:8px">' + esc(w.overig.join('\n')) + '</pre>';
+    return h;
+  }
+
+  function tekenVersnellingen(v) {
+    var m = v.gear_model || null;
+    var gears = (m && Array.isArray(m.gears)) ? m.gears : [];
+    var koppel = versnellingsVoertuig();
+    var nu = koppel && koppel.id === v.id;
+    var st = null;
+    try { if (nu && window.PLGear) st = PLGear.status(); } catch (e) { console.warn('PLGarage: status versnellingsindicator', e); }
+    var geleerd = st ? st.versnellingen.length : gears.length;
+    var metingen = st ? st.metingen : (m && m.totaal) || 0;
+    var n = v.versnellingen;
+    var h = '<div class="gr-blok"><div class="gr-bh">⚙️ Versnellingen<span class="gr-r">' + (v.transmissie ? esc(v.transmissie) : 'transmissie onbekend') + '</span></div><div class="gr-rij">' +
+      '<div>Aantal (profiel)</div><div><b>' + (n ? n : '—') + '</b></div>' +
+      '<div>Geleerd</div><div><b>' + geleerd + (n ? ' van ' + n : '') + '</b></div>' +
+      '<div>Metingen</div><div><b>' + metingen.toLocaleString('nl') + '</b></div>' +
+      '<div>Correcties</div><div><b>' + ((st ? st.ankers : (m && m.ankers ? m.ankers.length : 0)) || 0) + '</b></div></div>' +
+      '<div class="gr-klein" style="margin-top:6px">' + (nu ? 'De indicator leert nu voor dit voertuig en bewaart het hier, ook voor een ander toestel.'
+        : 'Leert zodra je met dit voertuig verbonden rijdt. Wat hij leert blijft bij dit voertuig bewaard.') +
+      (!n || !v.transmissie ? ' Vul bij Profiel in of het een handbak of automaat is en hoeveel versnellingen hij heeft.' : '') + '</div>' +
+      '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._versnelling()">⚙️ Versnellingsindicator</button>' +
+      (!n || !v.transmissie ? '<button class="gr-k klein" onclick="PLGarage._bewerk(\'' + esc(v.id) + '\')">✏️ Handbak/automaat invullen</button>' : '') +
+      ((m || nu) ? '<button class="gr-k klein gevaar" onclick="PLGarage._versnellingWis(\'' + esc(v.id) + '\')">Opnieuw laten leren</button>' : '') + '</div></div>';
+    return h;
+  }
+
+  function tekenLabelInvoer(r) {
+    return '<div class="gr-labin"><label class="gr-veld">Label voor deze rit<input id="grLabel" maxlength="40" value="' + esc(r.label || '') + '" placeholder="bijv. Woon-werk"></label>' +
+      '<div class="gr-labels">' + LABEL_VOORSTEL.map(function (l) {
+        return '<button class="gr-lab" onclick="document.getElementById(\'grLabel\').value=' + esc(JSON.stringify(l)) + '">' + esc(l) + '</button>';
+      }).join('') + '</div>' +
+      '<div class="gr-knoppen"><button class="gr-k klein hoofd" onclick="PLGarage._labelBewaar(\'' + esc(r.id) + '\')">Bewaren</button>' +
+      (r.label ? '<button class="gr-k klein gevaar" onclick="PLGarage._labelBewaar(\'' + esc(r.id) + '\',true)">Label weghalen</button>' : '') +
+      '<button class="gr-k klein" onclick="PLGarage._labelOpen(null)">Annuleren</button></div></div>';
   }
 
   // Het kaartje op het startscherm, boven de deuren.
@@ -975,7 +1145,7 @@
   }
 
   function formWaarden() {
-    var velden = ['naam', 'kenteken', 'merk', 'model', 'bouwjaar', 'motor', 'brandstof', 'turbo', 'transmissie', 'rijprofiel', 'verbruik_opgegeven', 'kmstand', 'apk_tot', 'onderhoud_datum', 'onderhoud_km', 'onderhoud_laatst', 'distributie', 'notities', 'cilinderinhoud', 'vermogen_kw', 'vin_pseudo'];
+    var velden = ['naam', 'kenteken', 'merk', 'model', 'bouwjaar', 'motor', 'brandstof', 'turbo', 'transmissie', 'versnellingen', 'rijprofiel', 'verbruik_opgegeven', 'kmstand', 'apk_tot', 'onderhoud_datum', 'onderhoud_km', 'onderhoud_laatst', 'distributie', 'notities', 'cilinderinhoud', 'vermogen_kw', 'vin_pseudo'];
     var uit = {};
     velden.forEach(function (k) { var el = document.getElementById('grf_' + k); if (el) uit[k] = el.value === '' ? null : el.value; });
     return uit;
@@ -1039,7 +1209,7 @@
     tekenKaart: tekenKaart,
     _akkoord: function () { doe(function () { return api('akkoord', { versie: _st.stand && _st.stand.akkoordVersie }); }, 'Mijn voertuigen staat aan'); },
     _open: function (id) { _st.view = 'voertuig'; _st.vid = id; _st.tab = 'overzicht'; teken(); },
-    _tab: function (t) { _st.tab = t; teken(); },
+    _tab: function (t) { _st.tab = t; _st.labelRit = null; teken(); },
     _terug: function () { _st.view = _st.view === 'formulier' && _st.vid ? 'voertuig' : 'lijst'; if (_st.view === 'lijst') _st.vid = null; teken(); },
     _terugNaar: function (t) { _st.view = 'voertuig'; _st.tab = t; teken(); },
     _actief: function (id) { zetActief(id); melding('Actief voertuig gewijzigd'); teken(); },
@@ -1084,13 +1254,48 @@
       try { if (typeof plOpslaan === 'function') plOpslaan('rapport-' + String(r.aangemaakt).slice(0, 10), r.tekst, { titel: r.titel || 'Rapport' }); }
       catch (e) { console.warn('PLGarage: opslaan', e); }
     },
+    _rapportWegId: function (id) {
+      if (!id || !confirm('Dit rapport wissen? Dat kan niet ongedaan gemaakt worden.')) return;
+      var vid = _st.vid;
+      doe(function () { return api('rapport_verwijder', { id: id }); }, 'Rapport gewist').then(function () { delete cacheVan(vid).rapporten; teken(); });
+    },
+    _labelOpen: function (id) { _st.labelRit = id; teken(); setTimeout(function () { var el = document.getElementById('grLabel'); if (el) el.focus(); }, 30); },
+    _labelFilter: function (l) { _st.labelFilter = l || null; teken(); },
+    _labelBewaar: async function (id, weg) {
+      var el = document.getElementById('grLabel');
+      var label = weg ? '' : String((el && el.value) || '').trim().slice(0, 40);
+      try {
+        var d = await api('rit_label', { id: id, label: label });
+        var rs = cacheVan(_st.vid).ritten || [];
+        rs.forEach(function (r) { if (r.id === id) r.label = d.label || null; });
+        _st.labelRit = null;
+        if (_st.labelFilter && !rs.some(function (r) { return r.label === _st.labelFilter; })) _st.labelFilter = null;
+        melding(d.label ? '🏷 Label bewaard' : 'Label weggehaald');
+      } catch (e) { melding('⚠️ ' + e.message); console.warn('PLGarage: label', e); }
+      teken();
+    },
+    _versnelling: function () {
+      sluit();
+      try { if (typeof openGearInstellingen === 'function') openGearInstellingen(); }
+      catch (e) { console.warn('PLGarage: versnellingsindicator openen', e); }
+    },
+    _versnellingWis: function (id) {
+      if (!confirm('De geleerde versnellingen van dit voertuig wissen en opnieuw laten leren?')) return;
+      doe(async function () {
+        await api('versnelling_opslaan', { voertuig_id: id, model: null });
+        var v = voertuig(id); if (v) v.gear_model = null;
+        var k = versnellingsVoertuig();
+        if (k && k.id === id && window.PLGear) PLGear.leerOpnieuw();
+      }, 'Versnellingen worden opnieuw geleerd');
+    },
     _rapportWeg: function () {
       var r = _st.rapport; if (!r || !confirm('Dit rapport verwijderen?')) return;
       doe(function () { return api('rapport_verwijder', { id: r.id }); }, 'Rapport verwijderd').then(function () { delete cacheVan(_st.vid).rapporten; _st.view = 'voertuig'; _st.tab = 'rapporten'; teken(); });
     },
     // pure kern — voor test-garage.js
     _kern: { status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar,
-      rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst, cfg: CFG }
+      rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
+      waakDelen: waakDelen, labelSom: labelSom, cfg: CFG }
   };
 
   // Eén keer per sessie: APK of onderhoud dat eraan komt of verlopen is.
@@ -1116,11 +1321,12 @@
         // Een kopie van een andere klant op dit toestel: weg, vóór er iets getekend wordt.
         if (_st.stand && _st.stand.__u !== wie()) { _st.stand = null; _st.actiefId = null; schrijf(OPSLAG.stand, null); schrijf(OPSLAG.actief, null); schrijf(OPSLAG.wachtrij, null); schrijf(OPSLAG.rit, null); }
         ververs(); if (!_bootKlaar) { _bootKlaar = true; ritHerstel(); } }
-      if (!k && _wasKlant) { _st.stand = null; schrijf(OPSLAG.stand, null); _st.cache = {}; tekenKaart(); }
+      if (!k && _wasKlant) { _st.stand = null; schrijf(OPSLAG.stand, null); _st.cache = {}; tekenKaart(); gearKoppel(); }
       _wasKlant = k;
       if (!k) return;
       ritTikNu();
       if (isVerbonden()) herkenAuto(); else _vinGezien = null;
+      gearKoppel();
       eerderHalen();
       apkMelding();
     } catch (e) { console.warn('PLGarage: lus', e); }

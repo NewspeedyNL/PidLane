@@ -196,6 +196,31 @@ async function laadWorker() {
   const ps = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, pid_selectie: ['010c', '010D', '010C', '0105'] } });
   toets('sensorselectie per voertuig: hoofdletters, uniek, als lijst terug', ps.ok && JSON.stringify(ps.voertuig.pid_selectie) === JSON.stringify(['010C', '010D', '0105']), JSON.stringify(ps.voertuig && ps.voertuig.pid_selectie));
   toets('een selectie met iets anders dan PIDs wordt geweigerd', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, pid_selectie: ['010C', 'DROP'] } }))._status === 400);
+  console.log('\n4c. Versnellingen, het geleerde model en ritlabels (27-09-2026)');
+  const vs = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, transmissie: 'Automaat', versnellingen: 8 } });
+  toets('handbak/automaat en het aantal versnellingen worden bewaard', vs.ok && vs.voertuig.transmissie === 'automaat' && vs.voertuig.versnellingen === 8, JSON.stringify(vs).slice(0, 200));
+  toets('elf versnellingen is geen auto', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, versnellingen: 11 } }))._status === 400);
+  toets('het model gaat niet via voertuig_opslaan de tabel in', !((await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, gear_model: { hist: {} } } })).voertuig || {}).gear_model);
+  const gm = { v: 1, hist: { '150': 40, '171': 55 }, totaal: 95, gears: [9.5, 13.1], ankers: [{ k: 2, r: 13.1, t: 1 }], offset: 0 };
+  toets('versnellingsmodel bewaard', (await roep(tokA, { actie: 'versnelling_opslaan', voertuig_id: v1.voertuig.id, model: gm })).ok);
+  st = await roep(tokA, { actie: 'stand' });
+  const mg = st.voertuigen.find((v) => v.id === v1.voertuig.id);
+  toets('en in de stand terug als object', mg.gear_model && mg.gear_model.totaal === 95 && mg.gear_model.ankers[0].k === 2, JSON.stringify(mg.gear_model));
+  toets('geen model maar een lijst: 400', (await roep(tokA, { actie: 'versnelling_opslaan', voertuig_id: v1.voertuig.id, model: [1, 2] }))._status === 400);
+  const groot = { v: 1, hist: {}, totaal: 1, gears: [] };
+  for (let i = 0; i < 3000; i++) groot.hist[String(i)] = i;
+  toets('een model boven 16 kB: 413', (await roep(tokA, { actie: 'versnelling_opslaan', voertuig_id: v1.voertuig.id, model: groot }))._status === 413);
+  toets('Bert kan Anna\'s model niet zetten', (await roep(tokB, { actie: 'versnelling_opslaan', voertuig_id: v1.voertuig.id, model: gm }))._status === 404);
+  toets('model wissen (opnieuw leren) mag', (await roep(tokA, { actie: 'versnelling_opslaan', voertuig_id: v1.voertuig.id, model: null })).ok &&
+    db.prepare('SELECT gear_model FROM kp_voertuig WHERE id = ?').get(v1.voertuig.id).gear_model === null);
+  const ritId = rr.ritten[0].id;
+  const lb = await roep(tokA, { actie: 'rit_label', id: ritId, label: '  Caravan naar Frankrijk, heen en terug, met de hele familie erbij  ' });
+  toets('ritlabel bewaard, ingekort tot 40 tekens', lb.ok && lb.label === 'Caravan naar Frankrijk, heen en terug, m', JSON.stringify(lb));
+  toets('en terug in de ritten', (await roep(tokA, { actie: 'ritten', voertuig_id: v1.voertuig.id })).ritten.some((r) => r.id === ritId && r.label === lb.label));
+  toets('Bert kan het label niet zetten', (await roep(tokB, { actie: 'rit_label', id: ritId, label: 'x' }))._status === 404);
+  toets('leeg label = weg', (await roep(tokA, { actie: 'rit_label', id: ritId, label: '' })).label === null &&
+    db.prepare('SELECT label FROM kp_rit WHERE id = ?').get(ritId).label === null);
+
   await roep(tokV, { actie: 'alles_wissen' });
   toets('alles wissen neemt de voorkeuren mee', Object.keys((await roep(tokV, { actie: 'voorkeuren' })).voorkeur).length === 0);
 

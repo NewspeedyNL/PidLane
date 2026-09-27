@@ -239,6 +239,31 @@ function laad(opties) {
   L = laad({ rol: 'user' });
   eis(L.G.dossier() === null, 'geen klant → geen koppeling, het overzicht werkt zoals voorheen');
 
+  console.log('\n10. Een bewaard waakrapport wordt weer een overzicht (27-09-2026)');
+  {
+    const K = laad({ rol: 'klant' }).G._kern;
+    const hist2 = [
+      { pid: '0105', n: 12, ok: 9, let: 3, stil: 0, waarde: 112.4, min: 88, max: 112.4, reden: 'boven het bereik' },
+      { pid: '0142', n: 8, ok: 8, let: 0, stil: 0, waarde: 14.1, min: 13.9, max: 14.3 },
+      { pid: '015C', n: 4, ok: 0, let: 0, stil: 4 }
+    ];
+    const nm2 = (p) => ({ '0105': { naam: 'Koelwater', eenheid: '°C' }, '0142': { naam: 'Accuspanning', eenheid: 'V' }, '015C': { naam: 'Motorolie', eenheid: '°C' } }[p]);
+    const w = K.waakDelen(K.waakTekst(hist2, nm2, Date.UTC(2026, 8, 27)));
+    eis(w && w.bevindingen.length === 1 && w.bevindingen[0].naam === 'Koelwater' && w.bevindingen[0].let === 3 && w.bevindingen[0].n === 12 && w.bevindingen[0].eenheid === '°C',
+      'de bevinding komt terug met naam, telling en eenheid', JSON.stringify(w && w.bevindingen));
+    eis(w && w.normaal.length === 1 && w.normaal[0].naam === 'Accuspanning' && w.normaal[0].n === 8 && w.normaal[0].min === '13,9',
+      'de normale sensor komt terug met bereik', JSON.stringify(w && w.normaal));
+    eis(w && w.stil.length === 1 && w.stil[0] === 'Motorolie', 'zonder antwoord komt terug', JSON.stringify(w && w.stil));
+    eis(w && w.overig.length === 0, 'geen regel blijft onherkend over — anders past de lezer niet meer bij de schrijver', JSON.stringify(w && w.overig));
+    eis(K.waakDelen('PidLane — Rapport\nwat anders') === null, 'een ander rapport is geen waakrapport');
+    const w2 = K.waakDelen('PidLane — Waakronde\n=== NORMAAL ===\n een regel die anders is');
+    eis(w2 && w2.overig.length === 1, 'een onbekende regel gaat niet verloren maar komt onder overig');
+
+    console.log('\n11. Ritlabels');
+    const som = K.labelSom([{ label: 'Woon-werk', km: 20.5 }, { label: 'Caravan', km: 310 }, { label: 'Woon-werk', km: 19.5 }, { km: 3 }]);
+    eis(som.length === 2 && som[0].label === 'Caravan' && som[1].ritten === 2 && som[1].km === 40, 'per label opgeteld, grootste eerst, zonder label telt niet mee', JSON.stringify(som));
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });
