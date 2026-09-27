@@ -1,6 +1,8 @@
 # PLAY-INZENDING.md — alle tekst die de Play Console vraagt
 
-Opgesteld 03-09-2026, bijgewerkt 10-09-2026 (§7, §16 en de taalkeuze). Dit bestand is
+Opgesteld 03-09-2026, bijgewerkt 10-09-2026 (§7, §16 en de taalkeuze) en
+27-09-2026 (versie 3.1.0: Mijn voertuigen en Mijn voorkeuren in §3, §11, §12
+en §14; beeld-in-beeld in §13 en §16b). Dit bestand is
 **kopieerwerk**: elk kopje hieronder is
 een veld in de Play Console, en wat eronder staat gaat er letterlijk in.
 
@@ -115,6 +117,10 @@ WAT PIDLANE DOET
   zelf een adapter nodig te hebben.
 • Kenteken invullen (Nederland) — haalt merk, model en bouwjaar op bij de
   open data van de RDW.
+• Mijn voertuigen — bewaar tot drie auto's in je account, met hun rapporten,
+  ritten en open punten, op elk toestel waarop je inlogt.
+• Meting in beeld — schakel je tijdens het meten naar een andere app, dan
+  loopt de meting door in een klein venster.
 • Rapporten opslaan en delen als PDF.
 
 WAT JE NODIG HEBT
@@ -149,6 +155,10 @@ Je naam, e-mailadres en kenteken gaan daar niet mee. Deel je meetdata voor
 referentiewaarden, dan gaat je chassisnummer niet mee maar een daaruit
 berekende code — dat is pseudonimisering, geen anonimisering, en we
 behandelen die gegevens dan ook als persoonsgegevens.
+
+Zet je Mijn voertuigen aan, dan bewaren we je voertuigen, rapporten en ritten
+bij je account. Dat vraagt je eigen akkoord; het kenteken staat versleuteld
+opgeslagen.
 
 Je account verwijder je zelf in de app, of via app.pidlane.nl/verwijderen.html.
 
@@ -381,7 +391,11 @@ kinderen, geen bewuste verzameling onder de 16.
 Dit is de vaakst genoemde afwijzingsgrond: een formulier dat afwijkt van wat
 de app doet. Onderstaande antwoorden zijn nagelopen tegen de code
 (`pidlane-veldlab.js`, `worker.js`, `pidlane-klant.js`) en tegen
-`privacy.html`.
+`privacy.html`. Opnieuw nagelopen op 27-09-2026 voor versie 3.1.0: Mijn
+voertuigen en Mijn voorkeuren bewaren sindsdien gegevens bij het account, in
+D1 (`kp_*` in `schema.sql`, `handleKlantPlatform` in `worker.js`). Wat alleen
+in `localStorage` op het toestel blijft, hoort níét in dit formulier: Google
+vraagt naar wat de app verlaat.
 
 ### Algemene vragen
 
@@ -418,17 +432,21 @@ de app doet. Onderstaande antwoorden zijn nagelopen tegen de code
 | Doel | Account management, App functionality |
 
 **Personal info → Other info** — voertuiggegevens: chassisnummer (als
-pseudoniem), sensorwaarden, foutcodes
+pseudoniem), sensorwaarden, foutcodes, en sinds 3.1.0 het voertuigprofiel van
+Mijn voertuigen: kenteken (versleuteld), merk, model, kilometerstand, APK- en
+onderhoudsdatum
 
 | veld | antwoord |
 |---|---|
 | Verzameld | Ja |
-| **Gedeeld** | **Ja** — met de aanbieder van het taalmodel (Anthropic), die het rapport schrijft |
-| Verplicht of optioneel | Optioneel — alleen als de gebruiker om een analyse vraagt of meetdata deelt |
+| **Gedeeld** | **Ja** — met de aanbieder van het taalmodel (Anthropic), die het rapport schrijft. Het kenteken gaat daar niet mee |
+| Verplicht of optioneel | Optioneel — alleen als de gebruiker om een analyse vraagt, meetdata deelt of Mijn voertuigen aanzet |
 | Doel | App functionality |
 
-**App activity → Other user-generated content** — diagnoserapporten en
-opgeslagen meetsessies
+**App activity → Other user-generated content** — diagnoserapporten,
+opgeslagen meetsessies, en sinds 3.1.0 wat Mijn voertuigen bewaart:
+ritsamenvattingen, open punten, eigen notities en de voorkeuren van Mijn
+voorkeuren
 
 | veld | antwoord |
 |---|---|
@@ -451,7 +469,18 @@ opgeslagen meetsessies
 | Calendar, Contacts | — |
 | Web browsing history | — |
 | App info and performance → Crash logs / Diagnostics | Er gaat geen crashrapportage naar een dienst |
-| **Device or other IDs** | Nagekeken: er gaat geen toestel-id mee. Het veldlab stuurt alleen de grofste soort (`telefoon` / `tablet` / `laptop`), en dat is geen identificatie. |
+| **Device or other IDs** | Zie het kader hieronder: sinds 3.1.0 is dit een besluit en geen vanzelfsprekend "nee". |
+
+> **Device or other IDs — besluit bij 3.1.0: aanvinken.** Van het toestel
+> zelf gaat nog steeds geen id mee; het veldlab stuurt alleen de grofste soort
+> (`telefoon` / `tablet` / `laptop`). Maar Mijn voorkeuren bewaart, als de
+> gebruiker een vaste adapter vastlegt, de naam en het **Bluetooth-adres van
+> de adapter** bij het account (`privacy.html`, kopje *Mijn voertuigen*). Een
+> Bluetooth-adres is een MAC-adres, en dat is Google's eigen voorbeeld in deze
+> categorie. Of een adapter "het toestel van de gebruiker" is, valt te
+> betwisten — maar te veel aanvinken is geen afkeurgrond en te weinig wel, en
+> `privacy.html` noemt het al. Invullen: Verzameld **ja**, Gedeeld **nee**,
+> **Optioneel**, doel **App functionality**.
 
 ---
 
@@ -468,6 +497,11 @@ reden dat Google hem apart vraagt: iemand die de app al gewist heeft moet er
 nog bij kunnen. `public/verwijderen.html` is daar precies voor gemaakt en
 bevat bewust geen formulier: verwijderen vraagt een ingelogde sessie plus het
 wachtwoord, en dat hoort in de app.
+
+Mijn voertuigen en Mijn voorkeuren gaan mee: de nachtelijke opruimer
+(`klantWachtrijOpruimen` in `worker.js`) wist eerst de `kp_*`-rijen van een
+verwijderd account en pas daarna het account zelf. Mislukt het eerste, dan
+blijft het tweede staan en probeert hij het de volgende nacht opnieuw.
 
 De termijn die je hier noemt (30 dagen) staat op één plek in de code:
 `KLANT_BEWAARDAGEN` in `worker.js`. Verandert die, dan verandert deze regel
@@ -488,6 +522,7 @@ mee, plus `privacy.html` en `verwijderen.html`.
 | Advertising ID | **Niet gebruikt** — de app vraagt hem niet op en er zit geen SDK in die dat doet |
 | Photo and Video permissions | Niet van toepassing — geen `READ_MEDIA_*` in het manifest |
 | Foreground service permissions | **Ja, één type: `connectedDevice`** — zie hieronder |
+| Beeld-in-beeld (sinds 3.1.0) | **Geen verklaring** — picture-in-picture is een manifestattribuut (`supportsPictureInPicture`), geen permissie. Hij staat hier zodat je niet gaat zoeken |
 
 
 ### De foreground service-verklaring (sinds 11-09-2026)
@@ -535,31 +570,39 @@ vraagt als hij hem ziet.
 Maximaal 500 tekens per taal. `test-playteksten.js` telt dat mee, dus korten
 gebeurt hier en niet tijdens het plakken.
 
-**Dit wordt de eerste inzending**, en dat maakt dit veld iets anders dan een
-changelog: er is niets "nieuw", dus de tekst beschrijft wat de app ís. Dat
-betekent ook dat hij dezelfde belofte doet als §3 — en twee velden die met de
+**Sinds 3.1.0 is dit een update**, geen eerste inzending meer: de gesloten
+test loopt. Tot 27-09-2026 stond hier "Eerste versie in de Play Store" en een
+beschrijving van wat de app ís; nu zegt het veld wat er nieuw is. De regel
+eronder blijft: dit veld doet dezelfde belofte als §3 — en twee velden die met de
 hand hetzelfde beschrijven, lopen hier uit de pas. Dat is de fout die §16 op
 10-09 de kop kostte en die §11 twee keer eerder maakte. **`test-playteksten.js`
 controleert daarom dat elke functie die dit veld noemt óók in §3 staat**; noem
 je hier iets nieuws, dan hoort het daar eerst.
 
-**Nagelezen tegen build #432, 10-09-2026.** De drie functies die hieronder bij
-naam genoemd worden bestaan als eigen module (`pidlane-monitor.js`,
-`pidlane-koopcheck.js`, `pidlane-remote.js`), en de demobelofte op de laatste
-regel wordt woordelijk bewaakt door `test-demo-toegang.js` — dat is de zin die
-een reviewer zonder auto als eerste probeert.
+**Nagelezen tegen de code op 27-09-2026, voor 3.1.0.** De functies die
+hieronder bij naam genoemd worden bestaan als eigen module: Mijn voertuigen is
+`pidlane-garage.js` met `handleKlantPlatform` in `worker.js` (maximaal drie
+actieve voertuigen: `KP_MAX_ACTIEF`), Mijn voorkeuren is `pidlane-voorkeur.js`,
+meting in beeld is `pidlane-pip.js` met `native/PLPip.java`. De demoregel
+onderaan blijft staan: dat is de zin die een reviewer zonder auto als eerste
+probeert. De knoppen erachter bewaakt `test-demo-toegang.js`; de zin zelf
+toetst hij niet.
 
 **Eén taal, en dat is een besluit** — zie de regel onder §0. Dit veld had tot
 10-09-2026 ook een en-US-blok, net als §2, terwijl §3 er geen had (#177).
 
 ```
-Eerste versie in de Play Store.
+Versie 3.1
+Met Mijn voertuigen en meting in beeld.
 
-Verbindt via Bluetooth met een OBD2-adapter en leest de boordcomputer van je
-auto uit: foutcodes, live sensorwaarden, grafieken en een diagnoserapport in
-gewone taal. Met ritmonitor, koopcheck en diagnose op afstand.
+- Mijn voertuigen: bewaar tot drie auto's in je account, met rapporten,
+  ritten en open punten. Het kenteken staat versleuteld.
+- Mijn voorkeuren: je vaste instellingen gaan mee naar elk toestel.
+- Meting in beeld: schakel je tijdens het meten weg, dan loopt de meting
+  door in een klein venster.
+- Sneller opnieuw verbinden, veel verbeteringen aan meten.
 
-Geen adapter? Probeer de demomodus op het startscherm — geen account nodig.
+Geen adapter? Probeer de demomodus op het startscherm.
 ```
 
 ---
@@ -621,7 +664,7 @@ zijn.
 
 | punt | bewaakt door |
 |---|---|
-| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.0.0) | `test-playteksten.js` |
+| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.1.0) | `test-playteksten.js` |
 | Geen locatie: manifest, code en de drie verklaringen zeggen hetzelfde | `test-geen-gps.js` |
 | Foutpagina in de schil als de app niet laadt (`server.errorPath`) | `test-foutpagina.js` |
 | `feat_demo` dekt beide demoknoppen — geen dode knop op het loginscherm | `test-demo-toegang.js` |
@@ -663,6 +706,15 @@ want hij gaat over één bepaalde bundel. Vul hem dus bij, tik hem niet af.
 | De begeleide run opent en loopt door — dit is het scherm dat een reviewer als eerste ziet na de demo | nog niet bewezen |
 | De meetdienst-melding verschijnt bij het meten en verdwijnt als de meting stopt — een foreground service zonder zichtbare melding is een afkeurgrond | build #438, 11-09-2026 — melding stond er tijdens de rit |
 | Het weigeren van de meldingspermissie laat de app heel: meten gaat door, alleen zonder melding | nog niet bewezen |
+| Meting in beeld (3.1.0): tijdens het meten wegschakelen geeft het kleine venster, de meting loopt zichtbaar door, en terugkomen geeft het volle scherm terug. Ook met de sensoren pas ná het verbinden gekozen — dat was de volgorde waarin het venster tot 23-09 nooit verscheen | nog niet bewezen |
+| Meting in beeld uit via `feat_pip` in de Config: geen venster meer, zonder nieuwe build | nog niet bewezen |
+| Mijn voertuigen (3.1.0): akkoord geven, een voertuig bewaren, uitloggen en op een tweede toestel terugzien; daarna *Alles wissen* en zien dat het weg is | nog niet bewezen |
+
+**Let op bij 3.1.0.** Alle "laatst bewezen"-regels hierboven gaan over builds
+van vóór 12-09-2026. Sindsdien zijn beeld-in-beeld (#228), Mijn voertuigen,
+Mijn voorkeuren, de opstart-intro en het herverbinden verbouwd. Een oud
+buildnummer in deze tabel is dus geen bewijs voor de bundel die je nu
+uploadt — loop de regels opnieuw na op de nieuwe build.
 
 **Let op bij de demo-doorloop.** De begeleide run is op 10-09 verbouwd tot twee
 rondes (meetrit en toestelronde). Een doorloop van vóór die datum zegt niets
@@ -673,6 +725,9 @@ meer over wat een reviewer nu ziet.
 Hier kan de code niets aan doen; dit is handwerk in andere systemen.
 
 - [ ] `info@pidlane.nl` bestaat en wordt gelezen — een reviewer mag erop mailen
+- [ ] `support@pidlane.nl` bestaat óók en wordt gelezen — `verwijderen.html` stuurt
+      verwijderverzoeken daarheen, niet naar `info@`. Een verwijderverzoek dat
+      in een lege bus valt, is precies wat §12 belooft te voorkomen
 - [ ] `https://app.pidlane.nl/privacy.html` opent in een private venster
 - [ ] `https://app.pidlane.nl/verwijderen.html` opent in een private venster
 - [ ] `feat_demo` staat AAN in de AppConfig-tabel (Airtable) — staat hij uit,
