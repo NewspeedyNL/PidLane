@@ -323,7 +323,7 @@ MUTATIES=(
 # dode link in een verplicht veld, een afvinklijst die een oude versie
 # bevestigt, en het woord dat de hele Data safety-form onjuist maakt.
 "PLAY-INZENDING.md@@\`\`\`\nhttps://app.pidlane.nl/privacy.html\n\`\`\`@@\`\`\`\nhttps://pidlane.nl/privacy.html\n\`\`\`@@test-playteksten.js@@de privacy-URL wijst naar een andere host dan de app zelf gebruikt"
-"package.json@@  \"version\": \"3.0.0\",@@  \"version\": \"3.1.0\",@@test-playteksten.js@@de afvinklijst bevestigt een versienummer dat niet meer gebouwd wordt"
+"package.json@@  \"version\": \"3.1.0\",@@  \"version\": \"3.2.0\",@@test-playteksten.js@@de afvinklijst bevestigt een versienummer dat niet meer gebouwd wordt"
 "PLAY-INZENDING.md@@| URL | \`https://app.pidlane.nl/verwijderen.html\` |@@| URL | \`https://pidlane.nl/verwijderen.html\` |@@test-playteksten.js@@de verwijder-URL wijst naar een andere host dan de app zelf gebruikt"
 "PLAY-INZENDING.md@@## 8. Ads@@De gedeelde meetdata is geanonimiseerd.\n\n## 8. Ads@@test-playteksten.js@@het inzenddocument noemt de meetdata weer anoniem in plaats van gepseudonimiseerd"
 # ── de poort voor automerge (03-09-2026) ──
@@ -570,11 +570,11 @@ MUTATIES=(
 # zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop
 # kostte: twee velden die een reviewer allebei leest, met verschillende
 # beloftes. Het valt niemand op tot het in de Console staat.
-"PLAY-INZENDING.md@@Met ritmonitor, koopcheck en diagnose op afstand.@@Met ritmonitor, koopcheck en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
+"PLAY-INZENDING.md@@Met Mijn voertuigen en meting in beeld.@@Met Mijn voertuigen en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
 # En andersom: §3 hernoemt een functie, §14 blijft de oude naam beloven. Dat is
 # de stillere van de twee — je verbetert de beschrijving en raakt het veld
 # ernaast niet aan.
-"PLAY-INZENDING.md@@• Koopcheck — een vaste doorloop@@• Aankoopkeuring — een vaste doorloop@@test-playteksten.js@@§3 hernoemt een functie en §14 belooft de oude naam nog"
+"PLAY-INZENDING.md@@• Meting in beeld — schakel je@@• Klein venster — schakel je@@test-playteksten.js@@§3 hernoemt een functie en §14 belooft de oude naam nog"
 # ── Inloggen kost geen credit meer (#179, 10-09-2026) ──
 # Vijf fouten die deze reparatie ongedaan maken, en ze zijn geen van vijven
 # verzonnen: de eerste is precies hoe het er tot vandaag in stond, en de

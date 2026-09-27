@@ -28,6 +28,20 @@
  - Leest alleen `pidHist`; stuurt zelf niets naar de adapter.
  - Getoetst in simulatie (`test-gear.js`), niet in een auto. Hoe snel en
    hoe goed hij op een echte bus leert, is een vraag voor een rit.
+ 27-09-2026 — versie 3.1.0 voor de Play Console
+ ═══════════════════════════════════════════════════════════
+
+ - package.json en APP_VERSION naar 3.1.0. De push naar main start de
+   APK- en AAB-build; versionCode loopt mee met run_number.
+ - PLAY-INZENDING.md bijgewerkt voor wat sinds de vorige bundel bij het
+   account bewaard wordt: §3 en §14 noemen Mijn voertuigen en meting in
+   beeld, §11 dekt het voertuigprofiel, de ritten en de voorkeuren, en
+   "Device or other IDs" gaat aan vanwege het Bluetooth-adres van de
+   adapter in Mijn voorkeuren. §13 zegt dat beeld-in-beeld geen
+   verklaring vraagt; §16b heeft toestelregels voor PiP en Mijn
+   voertuigen.
+ - verwijderen.html noemt nu ook Mijn voertuigen en Mijn voorkeuren. De
+   opruimer wiste die al; de pagina zei het niet.
 
  ═══════════════════════════════════════════════════════════
  27-09-2026 — Mijn voorkeuren: standaardinstellingen per klantaccount
