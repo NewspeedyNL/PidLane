@@ -396,6 +396,9 @@ function pidPollInterval(pid){
   // mode-21-PID de pollklasse én het EV-filter van een wildvreemde
   // mode-01-PID erven. Ze meten allemaal traag (olietemp, kleptiming),
   // dus één vaste trage klasse volstaat.
+  // Een eigen PID (dealercode, pidlane-uitgebreid.js): het tempo dat de
+  // klant erbij koos (snel 1 s, normaal 2 s, traag 10 s).
+  try{ if(window.PLEigen && PLEigen.is(pid)) return PLEigen.interval(pid); }catch(e){ console.warn('PLEigen.interval mislukt:', e); }
   if(!/^01/i.test(String(pid))) return 10000;
   const suf=pid.slice(2).toUpperCase();
   // EV-modus: verbrandingsmotor-PIDs effectief uitschakelen. De ankers
@@ -706,7 +709,7 @@ function startPoll(){
         // deze weigeren batches maar antwoorden solo prima.
         for(const pid of soloPids){
           if(!connected) break;
-          const resp=parsePID(pid,await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),2500));
+          const resp=parsePID(pid,await plVraagSolo(pid));
           if(resp!=null){ markPidData(pid); updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); feedSessionStat(pid,resp); }
           else markPidNoData(pid);
         }
@@ -714,7 +717,7 @@ function startPoll(){
         // Sequentieel: één PID per request, '1'-suffix voor snelle terugkeer
         for(const pid of due){
           if(!connected) break;
-          const resp=parsePID(pid,await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),2500));
+          const resp=parsePID(pid,await plVraagSolo(pid));
           if(resp!=null){ markPidData(pid); updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); feedSessionStat(pid,resp); }
           else markPidNoData(pid);
         }
@@ -727,6 +730,13 @@ function startPoll(){
       try{ PLLoad.tick(); }catch(e){ console.warn('PLLoad.tick mislukt:', e); }
     });
   },100);
+}
+
+// Eén PID solo opvragen. Een eigen PID gaat via PLEigen.vraag(): die zet zo
+// nodig het ECU-adres en daarna het functionele adres terug.
+async function plVraagSolo(pid){
+  if(window.PLEigen && PLEigen.is(pid)) return PLEigen.vraag(pid);
+  return sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),2500);
 }
 
 // ── P8: batch-uitval met herstel i.p.v. permanent uitschakelen ──

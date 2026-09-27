@@ -256,6 +256,9 @@ CREATE INDEX IF NOT EXISTS idx_kp_rit_vt ON kp_rit (voertuig_id, start DESC);
 CREATE TABLE IF NOT EXISTS kp_issue (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, sleutel TEXT NOT NULL, soort TEXT NOT NULL, titel TEXT, ernst TEXT, status TEXT NOT NULL DEFAULT 'open', eerst_gezien TEXT NOT NULL, laatst_gezien TEXT NOT NULL, aantal INTEGER NOT NULL DEFAULT 1, gesloten_op TEXT, notitie TEXT);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_issue_sleutel ON kp_issue (voertuig_id, sleutel);
 CREATE TABLE IF NOT EXISTS kp_voorkeur (klant_id TEXT PRIMARY KEY, data TEXT NOT NULL, bijgewerkt TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS kp_pid_bib (id TEXT PRIMARY KEY, merk TEXT NOT NULL, model TEXT NOT NULL DEFAULT '', code TEXT NOT NULL, ecu TEXT NOT NULL DEFAULT '', naam TEXT NOT NULL, formule TEXT NOT NULL, eenheid TEXT, bron TEXT NOT NULL, url TEXT, aangemaakt TEXT NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_pid_bib_code ON kp_pid_bib (merk, model, code, ecu);
+CREATE TABLE IF NOT EXISTS kp_pid_stem (bib_id TEXT NOT NULL, klant_id TEXT NOT NULL, uitkomst TEXT NOT NULL, op TEXT NOT NULL, PRIMARY KEY (bib_id, klant_id));
 -- Later bijgekomen kolommen (KP_MIGRATIES in worker.js). De Worker voert ze
 -- zelf uit; "duplicate column" betekent dat ze er al staan.
 ALTER TABLE kp_voertuig ADD COLUMN onderhoud_laatst TEXT;
@@ -269,3 +272,4 @@ ALTER TABLE kp_voertuig ADD COLUMN brandstofprijs REAL;
 ALTER TABLE kp_voertuig ADD COLUMN carrosserie TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN kleur TEXT;
 UPDATE kp_voertuig SET carrosserie = NULL, kleur = NULL WHERE carrosserie IS NOT NULL OR kleur IS NOT NULL;
+ALTER TABLE kp_voertuig ADD COLUMN eigen_pids TEXT;

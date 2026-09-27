@@ -10,6 +10,44 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-09-2026 — Eigen PIDs per voertuig, rustiger Slim visueel, direct opslaan
+ ═══════════════════════════════════════════════════════════
+
+ - Mijn voertuigen → Sensoren (nieuw tabblad per voertuig): berekende
+   sensoren aan- of uitvinken, en eigen sensoren toevoegen — een code van
+   de dealer of uit een forum (alleen leescodes 21xx en 22xxxx), met een
+   naam, eenheid en een formule over de antwoordbytes (A, B, …). "Test op
+   de auto" vraagt de code één keer op. Wat hier staat zet de app aan
+   zodra die auto verbonden en herkend is. Codes die schrijven, wissen of
+   iets aansturen weigert de app én de server.
+ - Slim visueel: de versnelling staat in het midden, op de plek van het
+   logo (dat blijft zolang de versnelling niet bekend is). Koelwater en
+   brandstof hebben een klein staand metertje, zodat de boog onderin
+   duidelijk bij het getal eronder hoort.
+ - Slim visueel zet zelf de sensoren aan die de meter nodig heeft (niet
+   wat je zelf verborgen hebt).
+ - De trekstrook komt vanzelf bij de rijsituatie caravan of beladen, of
+   een lopende Caravanrit. De knop "Caravan of beladen?", de knop
+   "+ Sensoren voor trekken" en de snelkoppeling naar de Caravanrit zijn
+   weg. De versnellingstegel ook: die staat nu in het midden.
+ - Voertuigoverzicht: voor een voertuig uit Mijn voertuigen staan de
+   gegevens er alleen ter inzage, met een knop "Profiel aanpassen". Geen
+   tweede formulier meer voor dezelfde gegevens. De rijsituatie blijft.
+ - Eigen sensoren: per code een ECU-adres (bijv. 7E1 voor de automaat;
+   de app zet na de vraag het algemene adres terug) en hoe vaak hij
+   gevraagd wordt (elke seconde, 2 s of 10 s).
+ - 📚 Codes voor dit model (in Sensoren): een gedeelde lijst per merk en
+   model. Een code die bij jou werkt kun je na een geslaagde test delen;
+   "Zoek online" laat de AI (met de zoektool, op tegoed) forums en
+   PID-lijsten doorzoeken en zet wat door de controle komt erbij, met de
+   bron. Elke test op je auto telt mee als "werkt" of "werkt niet" —
+   zonder naam, kenteken of VIN, alleen merk en model.
+ - Opslaan: een PDF-rapport (AI, dossier) gaat rechtstreeks naar
+   Documenten/PidLane, zonder het venster "Delen / Opslaan in map". Ook
+   de CSV van de PID-recorder en de remote-opname en het survey-bestand
+   gaan rechtstreeks. Delen kan nog via ↗ Deel.
+
+ ═══════════════════════════════════════════════════════════
  27-09-2026 — Auto-icoon weer weg
  ═══════════════════════════════════════════════════════════
 

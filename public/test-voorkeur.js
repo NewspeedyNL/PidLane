@@ -108,6 +108,13 @@ function laad(extra) {
   eis(gemeld[0] === 'de vaste selectie van Blauwe Mazda', 'de wijziging gaat via de gedeelde melder (logboek)');
   const L2 = laad({ activePIDs: new Set(['0104']), manualPIDs: new Set(), supportedPIDs: new Set(['010C']), pidGate: () => true });
   eis(L2.V.selectieToepassen(['0199'], 'x') === 0 && L2.s.activePIDs.has('0104'), 'past er niets van, dan blijft de huidige selectie staan');
+  // Berekende en eigen PIDs meldt de auto niet, maar ze staan wel in de
+  // keuzelijst (27-09-2026): die horen er dan ook bij.
+  const L3 = laad({ activePIDs: new Set(), manualPIDs: new Set(), supportedPIDs: new Set(['010C']), pidGate: () => true,
+    discoveredPIDDefs: [{ pid: '010C' }, { pid: 'CA03' }, { pid: '221E1C' }] });
+  const n3 = L3.V.selectieToepassen(['010C', 'CA03', '221E1C', '229999'], 'x');
+  eis(n3 === 3 && L3.s.activePIDs.has('221E1C') && L3.s.activePIDs.has('CA03') && !L3.s.activePIDs.has('229999'),
+    'eigen en berekende PIDs uit de keuzelijst gaan mee, een onbekende code niet', JSON.stringify([...L3.s.activePIDs]));
 
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);

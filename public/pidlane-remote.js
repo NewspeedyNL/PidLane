@@ -733,13 +733,11 @@ window.PLRemote=(function(){
     return h+'</table>';
   }
   function _csvDone(){
+    // Via download(): rechtstreeks naar Documenten/PidLane/ (27-09-2026).
     try{
-      const blob=new Blob([S.csvBuf||''],{type:'text/csv'});const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');a.href=url;a.download='pidlane_opname_remote_'+Date.now()+'.csv';
-      document.body.appendChild(a);a.click();document.body.removeChild(a);
-      setTimeout(()=>URL.revokeObjectURL(url),1000);
-      expLog('⬇ CSV gedownload ('+(S.csvBuf||'').length+' tekens)');
-    }catch(e){expLog('✖ CSV-download mislukt');}
+      download('pidlane_opname_remote_'+Date.now()+'.csv', S.csvBuf||'');
+      expLog('💾 CSV opgeslagen ('+(S.csvBuf||'').length+' tekens)');
+    }catch(e){ console.warn('CSV opslaan mislukt', e); expLog('✖ CSV opslaan mislukt'); }
     S.csvBuf='';
   }
   function expertDisconnect(){S.expStop=true;clearTimeout(S.recTE);

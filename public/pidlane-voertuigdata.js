@@ -261,6 +261,23 @@ function openVehicleOverview(){
   const inp=(id,val,ph)=>`<input id="${id}" value="${esc(val)}" placeholder="${ph||''}" style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:13px;padding:8px 10px">`;
   const row=(lbl,html)=>`<div style="margin-bottom:9px"><div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:3px">${lbl}</div>${html}</div>`;
   const pct=dossierPct();
+  /* VOOR EEN KLANT GEEN TWEEDE FORMULIER (27-09-2026). Merk, model, km-stand,
+     onderhoud en bijzonderheden stonden hier én in Mijn voertuigen → Profiel:
+     twee plekken om hetzelfde in te vullen. Met een gekoppeld voertuig toont
+     dit venster die gegevens nu alleen, en de knop onderaan opent het profiel.
+     De rijsituatie blijft hier: die hoort bij deze rit, niet bij de auto. */
+  function _uvInfo(g){
+    const a=(window.PLGarage&&PLGarage.actief)?PLGarage.actief():null;
+    const w=a||{};
+    const r=(l,x)=>x==null||x===''?'':`<div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--bd);font-size:13px"><span style="flex:1;color:var(--tx3)">${l}</span><b style="text-align:right">${esc(x)}</b></div>`;
+    const km=w.kmstand!=null?Number(w.kmstand).toLocaleString('nl')+' km':'';
+    return `<div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.35);border-radius:10px;padding:10px 12px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:800;margin-bottom:4px">🔗 ${esc(g.naam)} — uit Mijn voertuigen</div>
+      ${r('Kenteken',w.kenteken)}${r('Merk en model',[w.merk,w.model].filter(Boolean).join(' '))}${r('Bouwjaar',w.bouwjaar)}
+      ${r('Brandstof',w.brandstof)}${r('Motor',w.motor)}${r('Handbak of automaat',w.transmissie)}
+      ${r('Kilometerstand',km)}${r('APK tot',w.apk_tot)}${r('Laatste onderhoud',w.onderhoud_laatst)}${r('Distributie',w.distributie)}${r('Notities',w.notities)}
+      <div style="font-size:11px;color:var(--tx3);margin-top:6px">Aanpassen doe je op één plek: de knop onderaan opent het profiel.</div></div>`;
+  }
   let gd=null;
   try{ gd=(window.PLGarage&&PLGarage.dossier)?PLGarage.dossier():null; }catch(e){ console.warn('Voertuigdossier: Mijn voertuigen niet te lezen', e); }
   const kern=k=>(gd&&gd[k])||v[k]||'';
@@ -275,25 +292,26 @@ function openVehicleOverview(){
     </div>
     <div style="overflow-y:auto;padding:14px 16px">
       <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">Alle data die de app nu kent (RDW + VIN + eerdere invoer). Pas aan of vul aan — <b>jouw invoer is leidend</b> en weegt mee in elke AI-analyse.</div>
-      ${koppeling}${plVoertuigWaarschuwingen()}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
+      ${gd?'':koppeling}${plVoertuigWaarschuwingen()}
+      ${gd?_uvInfo(gd):`<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
         ${row('Merk',inp('uvMerk',kern('merk')))}${row('Model',inp('uvModel',kern('model')))}
         ${row('Bouwjaar',inp('uvYear',kern('year')))}${row('Brandstof',inp('uvBrand',kern('brandstof'),'benzine / diesel / hybride / elektrisch'))}
-      </div>
+      </div>`}
       ${row('VIN (uitgelezen)',`<div style="font-family:monospace;font-size:12px;color:var(--tx2);word-break:break-all">${esc(v.vin)||'—'}</div>`)}
       <div style="border-top:1px solid var(--bd);margin:6px 0 12px"></div>
       <div id="sitBlok"></div>
-      <div style="border-top:1px solid var(--bd);margin:12px 0"></div>
+      ${gd?'':`<div style="border-top:1px solid var(--bd);margin:12px 0"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 10px">
         ${row('KM-stand (teller)',inp('uvKm',userVehicleData.km,'bv. 142500'))}
         ${row('Laatste onderhoudsbeurt',inp('uvBeurt',userVehicleData.beurt,'bv. 03-2026 / 135.000 km'))}
       </div>
       ${row('Distributieriem/-ketting',inp('uvDistr',userVehicleData.distributie,'bv. vervangen bij 120.000 km / n.v.t.'))}
-      ${row('Bijzonderheden',`<textarea id="uvBijz" rows="2" style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:13px;padding:8px 10px;resize:vertical" placeholder="bv. schade linksvoor, nieuwe accu 2025">${esc(userVehicleData.bijz)}</textarea>`)}
+      ${row('Bijzonderheden',`<textarea id="uvBijz" rows="2" style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:13px;padding:8px 10px;resize:vertical" placeholder="bv. schade linksvoor, nieuwe accu 2025">${esc(userVehicleData.bijz)}</textarea>`)}`}
     </div>
     <div style="display:flex;gap:8px;padding:12px 16px calc(12px + var(--pl-sab));border-top:1px solid var(--bd)">
       <button onclick="document.getElementById('vehOverview').style.display='none'" style="flex:1;padding:11px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer">Sluiten</button>
-      <button onclick="saveVehicleOverview()" style="flex:2;padding:11px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">💾 Opslaan</button>
+      ${gd?`<button onclick="document.getElementById('vehOverview').style.display='none';PLGarage.open('${esc(gd.id)}');PLGarage._bewerk('${esc(gd.id)}')" style="flex:2;padding:11px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">✏️ Profiel aanpassen</button>`
+        :`<button onclick="saveVehicleOverview()" style="flex:2;padding:11px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">💾 Opslaan</button>`}
     </div>
   </div>`;
   m.style.display='flex';

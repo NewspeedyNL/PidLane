@@ -148,6 +148,14 @@ var KRITIEK = [
   // versnellingsindicator met openGearInstellingen; zonder die twee valt het
   // venster terug op kale tekst of doet de knop niets.
   'plBerekendDefs','plIsBerekend','_aiReportHtml','openGearInstellingen',
+  // Eigen PIDs per voertuig (pidlane-uitgebreid.js) in de keuzelijst. Ontbreekt
+  // hij, dan staan de dealercodes van de klant stil niet meer in de lijst.
+  'plEigenDefs',
+  // Slim visueel zet de trekstrook aan bij rijsituatie caravan of beladen
+  // (27-09-2026). Valt hij weg, dan blijft de strook stil weg.
+  'situatieActief',
+  // Mijn voertuigen → Sensoren → online zoeken naar codes (PLEigen.zoekOnline).
+  'apiFetch',
   // Mijn voertuigen → rapport of ritten → 📕 PDF, rechtstreeks zonder de keuze
   // tekst/PDF (pidlane-export.js). Ontbreekt hij, dan doet de knop niets.
   'plOpslaanPdf',

@@ -4824,7 +4824,10 @@ var KP_SCHEMA = [
   "CREATE INDEX IF NOT EXISTS idx_kp_rit_vt ON kp_rit (voertuig_id, start DESC)",
   "CREATE TABLE IF NOT EXISTS kp_issue (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, sleutel TEXT NOT NULL, soort TEXT NOT NULL, titel TEXT, ernst TEXT, status TEXT NOT NULL DEFAULT 'open', eerst_gezien TEXT NOT NULL, laatst_gezien TEXT NOT NULL, aantal INTEGER NOT NULL DEFAULT 1, gesloten_op TEXT, notitie TEXT)",
   "CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_issue_sleutel ON kp_issue (voertuig_id, sleutel)",
-  "CREATE TABLE IF NOT EXISTS kp_voorkeur (klant_id TEXT PRIMARY KEY, data TEXT NOT NULL, bijgewerkt TEXT NOT NULL)"
+  "CREATE TABLE IF NOT EXISTS kp_voorkeur (klant_id TEXT PRIMARY KEY, data TEXT NOT NULL, bijgewerkt TEXT NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS kp_pid_bib (id TEXT PRIMARY KEY, merk TEXT NOT NULL, model TEXT NOT NULL DEFAULT '', code TEXT NOT NULL, ecu TEXT NOT NULL DEFAULT '', naam TEXT NOT NULL, formule TEXT NOT NULL, eenheid TEXT, bron TEXT NOT NULL, url TEXT, aangemaakt TEXT NOT NULL)",
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_pid_bib_code ON kp_pid_bib (merk, model, code, ecu)",
+  "CREATE TABLE IF NOT EXISTS kp_pid_stem (bib_id TEXT NOT NULL, klant_id TEXT NOT NULL, uitkomst TEXT NOT NULL, op TEXT NOT NULL, PRIMARY KEY (bib_id, klant_id))"
 ];
 // Kolommen die er later bij kwamen. CREATE TABLE IF NOT EXISTS voegt op een
 // bestaande tabel niets toe, dus die gaan er met ALTER bij. "duplicate column"
@@ -4845,7 +4848,8 @@ var KP_MIGRATIES = [
   // (weghalen kan D1 niet zonder de tabel te herbouwen), maar wat erin kwam
   // wordt gewist: gegevens bewaren waar geen functie meer bij hoort, is precies
   // wat de akkoordtekst niet belooft. Idempotent, dus veilig bij elke start.
-  "UPDATE kp_voertuig SET carrosserie = NULL, kleur = NULL WHERE carrosserie IS NOT NULL OR kleur IS NOT NULL"
+  "UPDATE kp_voertuig SET carrosserie = NULL, kleur = NULL WHERE carrosserie IS NOT NULL OR kleur IS NOT NULL",
+  "ALTER TABLE kp_voertuig ADD COLUMN eigen_pids TEXT"
 ];
 var _kpSchemaKlaar = false;
 
@@ -4944,8 +4948,46 @@ var KP_VELDEN = {
   distributie: { soort: "tekst", max: 80 },
   notities: { soort: "tekst", max: 1000 },
   pid_selectie: { soort: "pidlijst", max: 200 },
+  // Eigen PIDs van de klant (dealercodes): alleen LEES-diensten 21xx en
+  // 22xxxx, een formule met alleen A–H, getallen, + - * / en haakjes. Zelfde
+  // regels als PLEigen.controleer() in pidlane-uitgebreid.js.
+  eigen_pids: { soort: "eigenpids", max: 20 },
   vin_pseudo: { soort: "tekst", max: 32, patroon: /^[0-9a-f]{8,32}$/ }
 };
+
+// Eén eigen PID, voor het voertuig én voor de bibliotheek: dezelfde regels
+// als PLEigen.controleer() in pidlane-uitgebreid.js. Alleen LEES-diensten
+// (21xx, 22xxxx); de formule alleen A–H, getallen, + - * / en haakjes; het
+// ECU-adres (optioneel) een fysiek adres, 7xx of 18DAxxF1.
+var KP_EIGEN_CODE = /^(21[0-9A-F]{2}|22[0-9A-F]{4})$/;
+var KP_EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1)$/;
+var KP_EIGEN_TEMPO = ["snel", "normaal", "traag"];
+function kpEigenPid(e) {
+  e = e || {};
+  const code = String(e.code || "").toUpperCase().replace(/\s+/g, "");
+  if (!KP_EIGEN_CODE.test(code)) return { fout: "alleen leescodes 21xx of 22xxxx, niet: " + code.slice(0, 10) };
+  const ecu = String(e.ecu || "").toUpperCase().replace(/\s+/g, "");
+  if (ecu && !KP_EIGEN_ECU.test(ecu)) return { fout: "ECU-adres van " + code + " moet 7xx of 18DAxxF1 zijn" };
+  const f = String(e.formule || "A").replace(/\s+/g, "").toUpperCase();
+  if (f.length > 80 || !/^[A-H0-9.,+\-*/()]+$/.test(f)) return { fout: "formule van " + code + " mag alleen A–H, getallen, + - * / en haakjes bevatten" };
+  const naamE = String(e.naam || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 40);
+  if (!naamE) return { fout: "eigen PID " + code + " heeft geen naam" };
+  const o = { code, naam: naamE, formule: f, eenheid: String(e.eenheid || "").trim().slice(0, 12) };
+  if (ecu) o.ecu = ecu;
+  if (e.tempo && KP_EIGEN_TEMPO.indexOf(e.tempo) >= 0 && e.tempo !== "normaal") o.tempo = e.tempo;
+  const mn = Number(e.min), mx = Number(e.max);
+  if (e.min !== "" && e.min != null && e.max !== "" && e.max != null && isFinite(mn) && isFinite(mx) && mx > mn) { o.min = mn; o.max = mx; }
+  return o;
+}
+__name(kpEigenPid, "kpEigenPid");
+
+// Merk en model als sleutel voor de bibliotheek: kleine letters, alleen
+// letters en cijfers, van het model alleen het eerste woord. "CX-5 2.2
+// Skyactiv-D" en "cx5" zijn dan hetzelfde model; "Golf VII" wordt "golf".
+function kpMerkSleutel(m) { return String(m || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 30); }
+__name(kpMerkSleutel, "kpMerkSleutel");
+function kpModelSleutel(m) { return String(m || "").toLowerCase().trim().split(/\s+/)[0].replace(/[^a-z0-9]/g, "").slice(0, 30); }
+__name(kpModelSleutel, "kpModelSleutel");
 
 function kpVeld(naam, waarde) {
   const d = KP_VELDEN[naam];
@@ -4977,6 +5019,20 @@ function kpVeld(naam, waarde) {
       const p = String(x || "").toUpperCase();
       if (!/^[0-9A-F]{4,6}$/.test(p)) return { fout: naam + " bevat geen geldige PID: " + p.slice(0, 10) };
       if (l.indexOf(p) < 0) l.push(p);
+    }
+    return { waarde: JSON.stringify(l) };
+  }
+  if (d.soort === "eigenpids") {
+    if (!Array.isArray(waarde)) return { fout: naam + " moet een lijst zijn" };
+    if (waarde.length > d.max) return { fout: "hoogstens " + d.max + " eigen PIDs" };
+    const l = [], gezien = {};
+    for (const e of waarde) {
+      const r = kpEigenPid(e);
+      if (r.fout) return r;
+      const sleutel = r.code + "@" + (r.ecu || "");
+      if (gezien[sleutel]) continue;
+      gezien[sleutel] = 1;
+      l.push(r);
     }
     return { waarde: JSON.stringify(l) };
   }
@@ -5016,13 +5072,34 @@ async function kpVoertuigPubliek(v, sleutel, klantId) {
   uit.gezondheid = kpLees(v.gezondheid);
   uit.pid_selectie = kpLees(v.pid_selectie);
   uit.gear_model = kpLees(v.gear_model);
+  uit.eigen_pids = kpLees(v.eigen_pids);
   return uit;
 }
 __name(kpVoertuigPubliek, "kpVoertuigPubliek");
 
+async function kpBibErbij(db, merk, model, e, bron, url) {
+  const al = await db.prepare("SELECT id FROM kp_pid_bib WHERE merk = ? AND model = ? AND code = ? AND ecu = ?").bind(merk, model, e.code, e.ecu || "").first();
+  if (al) {
+    // Een online kandidaat die een klant bewezen heeft, wordt een klantcode.
+    if (bron === "klant") await db.prepare("UPDATE kp_pid_bib SET bron = 'klant' WHERE id = ?").bind(al.id).run();
+    return al.id;
+  }
+  const id = kpId();
+  await db.prepare("INSERT INTO kp_pid_bib (id, merk, model, code, ecu, naam, formule, eenheid, bron, url, aangemaakt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(id, merk, model, e.code, e.ecu || "", e.naam, e.formule, e.eenheid || null, bron, url, kpNu()).run();
+  return id;
+}
+__name(kpBibErbij, "kpBibErbij");
+
+async function kpBibStem(db, id, klantId, uitkomst) {
+  await db.prepare("INSERT INTO kp_pid_stem (bib_id, klant_id, uitkomst, op) VALUES (?, ?, ?, ?) ON CONFLICT(bib_id, klant_id) DO UPDATE SET uitkomst = excluded.uitkomst, op = excluded.op")
+    .bind(id, klantId, uitkomst, kpNu()).run();
+}
+__name(kpBibStem, "kpBibStem");
+
 async function kpAlleWissen(db, klantId) {
   const uit = {};
-  for (const t of ["kp_rapport", "kp_rit", "kp_issue", "kp_voertuig", "kp_voorkeur", "kp_akkoord"]) {
+  for (const t of ["kp_rapport", "kp_rit", "kp_issue", "kp_voertuig", "kp_voorkeur", "kp_pid_stem", "kp_akkoord"]) {
     const r = await db.prepare("DELETE FROM " + t + " WHERE klant_id = ?").bind(klantId).run();
     uit[t] = (r && r.meta && r.meta.changes) || 0;
   }
@@ -5295,6 +5372,71 @@ var KP_ACTIES = {
         getal(r.verbruik_l100, 0, 60), getal(r.liters, 0, 500), getal(r.max_koelwater, -40, 215), getal(r.min_accu, 0, 20),
         getal(r.stationair_pct, 0, 100), kpJson(r.codes, 2000), kpJson(r.bevindingen, 4000), kpJson(r.extra, 4000), kpNu()).run();
     return { ok: true, id };
+  },
+
+  // ── De PID-bibliotheek (27-09-2026) ──────────────────────────────
+  // Per merk en model: eigen PIDs die een klant heeft gedeeld (bron "klant")
+  // en kandidaten die online gevonden zijn (bron "online", met de URL). Elke
+  // klant stemt hoogstens één keer per code: werkt of werkt niet, de uitkomst
+  // van een test op zijn auto. In de bibliotheek staat geen klant, geen
+  // voertuig en geen kenteken — alleen merk, model en de code. De stem draagt
+  // de klant-hash (om dubbel stemmen te voorkomen) en gaat mee met alles_wissen.
+  async pidbib_lijst(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model);
+    if (!merk) return { ok: true, merk: "", model: "", lijst: [] };
+    const r = await c.db.prepare(
+      "SELECT b.id, b.model, b.code, b.ecu, b.naam, b.formule, b.eenheid, b.bron, b.url, " +
+      "SUM(CASE WHEN s.uitkomst = 'werkt' THEN 1 ELSE 0 END) AS werkt, " +
+      "SUM(CASE WHEN s.uitkomst = 'werkt_niet' THEN 1 ELSE 0 END) AS werkt_niet, " +
+      "MAX(CASE WHEN s.klant_id = ? THEN s.uitkomst ELSE NULL END) AS mijn " +
+      "FROM kp_pid_bib b LEFT JOIN kp_pid_stem s ON s.bib_id = b.id " +
+      "WHERE b.merk = ? AND (b.model = ? OR b.model = '') GROUP BY b.id " +
+      "ORDER BY werkt DESC, werkt_niet ASC, b.aangemaakt ASC LIMIT 100").bind(c.klantId, merk, model).all();
+    return { ok: true, merk, model, lijst: (r && r.results) || [] };
+  },
+  async pidbib_deel(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model);
+    if (!merk || !model) return { ok: false, error: "Vul eerst merk en model in bij het profiel.", code: 400 };
+    // Alleen wat bij dit voertuig staat: de server neemt de definitie uit het
+    // voertuig, niet uit het verzoek.
+    const code = String(b.code || "").toUpperCase(), ecu = String(b.ecu || "").toUpperCase();
+    const e = (kpLees(v.eigen_pids) || []).find((x) => x.code === code && (x.ecu || "") === ecu);
+    if (!e) return { ok: false, error: "Deze code staat niet bij dit voertuig.", code: 404 };
+    const id = await kpBibErbij(c.db, merk, model, e, "klant", null);
+    await kpBibStem(c.db, id, c.klantId, "werkt");
+    return { ok: true, id };
+  },
+  async pidbib_stem(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const uitkomst = String(b.uitkomst || "");
+    if (uitkomst !== "werkt" && uitkomst !== "werkt_niet") return { ok: false, error: "Uitkomst is werkt of werkt_niet.", code: 400 };
+    const e = await c.db.prepare("SELECT id FROM kp_pid_bib WHERE id = ? AND merk = ?").bind(String(b.id || ""), kpMerkSleutel(v.merk)).first();
+    if (!e) return { ok: false, error: "Niet in de bibliotheek van dit merk.", code: 404 };
+    await kpBibStem(c.db, e.id, c.klantId, uitkomst);
+    return { ok: true };
+  },
+  async pidbib_kandidaten(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model);
+    if (!merk || !model) return { ok: false, error: "Vul eerst merk en model in bij het profiel.", code: 400 };
+    if (!Array.isArray(b.lijst) || b.lijst.length > 20) return { ok: false, error: "Een lijst van hoogstens 20 kandidaten.", code: 400 };
+    let erbij = 0, geweigerd = 0;
+    for (const k of b.lijst) {
+      const e = kpEigenPid(k);
+      const url = String((k && k.url) || "").trim().slice(0, 300);
+      if (e.fout || !/^https?:\/\/[^\s"<>]+$/.test(url)) { geweigerd++; continue; }
+      const al = await c.db.prepare("SELECT id FROM kp_pid_bib WHERE merk = ? AND model = ? AND code = ? AND ecu = ?").bind(merk, model, e.code, e.ecu || "").first();
+      if (al) continue;
+      await kpBibErbij(c.db, merk, model, e, "online", url);
+      erbij++;
+    }
+    return { ok: true, erbij, geweigerd };
   },
 
   // Het label dat de klant aan een rit geeft ("woon-werk", "caravan naar

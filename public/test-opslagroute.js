@@ -35,6 +35,10 @@ if (van < 0 || tot < 0 || tot <= van) {
   process.exit(1);
 }
 const stuk = bron.slice(van, tot);
+const fuel = fs.readFileSync(__dirname + '/pidlane-fuel.js', 'utf8');
+const pv = fuel.indexOf('async function pdfBewaar(){');
+if (pv < 0) { console.log('FOUT: pdfBewaar() is niet meer te vinden in pidlane-fuel.js — anker versleten'); process.exit(1); }
+const pdfStuk = fuel.slice(pv, fuel.indexOf('\n}\n', pv) + 3);
 
 function maak(opties) {
   const gedaan = { direct: null, gedeeld: null, webLink: null, toast: [], log: [] };
@@ -50,7 +54,9 @@ function maak(opties) {
       this.readAsDataURL = () => { this.result = 'data:text/plain;base64,QUJD'; setImmediate(() => this.onload()); };
     },
     URL: { createObjectURL: () => 'blob:proef' },
-    document: { createElement: () => ({ click() { gedaan.webLink = true; }, set href(v) {}, set download(v) {} }) },
+    document: { createElement: () => ({ click() { gedaan.webLink = true; }, remove() {}, set href(v) {}, set download(v) {} }),
+                body: { appendChild() {} } },
+    setTimeout: () => 0,
     Capacitor: {
       isNativePlatform: () => !!opties.native,
       Plugins: {
@@ -71,6 +77,8 @@ function maak(opties) {
   ctx.globalThis = ctx; ctx.window = ctx;
   vm.createContext(ctx);
   vm.runInContext(stuk, ctx, { filename: 'opslagroute' });
+  // pdfBewaar() uit pidlane-fuel.js: wat er na een PDF-export gebeurt.
+  vm.runInContext(pdfStuk, ctx, { filename: 'pdfBewaar' });
   return { ctx, gedaan };
 }
 
@@ -120,6 +128,18 @@ console.log('\n— in de browser (geen Capacitor) blijft het een gewone download
   await ctx.download('rit.txt', 'inhoud');
   toets('gewone downloadlink gebruikt', gedaan.webLink, true);
   toets('geen deelkaart', gedaan.gedeeld, null);
+}
+
+console.log('\n— een PDF-export slaat ook rechtstreeks op, zonder keuzevenster (27-09-2026) —');
+{
+  const { ctx, gedaan } = maak({ connected: false, native: true });
+  ctx._lastPdf = { blob: new ctx.Blob(['%PDF']), fname: 'PidLane_Mazda_2026-09-27.pdf' };
+  const ok = await ctx.pdfBewaar();
+  toets('de PDF staat rechtstreeks in de map', gedaan.direct, 'PidLane/PidLane_Mazda_2026-09-27.pdf');
+  toets('zonder deelkaart', gedaan.gedeeld, null);
+  toets('en meldt dat het gelukt is', ok, true);
+  const leeg = maak({ connected: false, native: true });
+  toets('zonder PDF gebeurt er niets', await leeg.ctx.pdfBewaar(), false);
 }
 
 console.log('\n' + n + ' toetsen, ' + fout + ' fout');

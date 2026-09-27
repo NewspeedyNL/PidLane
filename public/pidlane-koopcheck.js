@@ -959,13 +959,10 @@ function pidRecShare(){
 }
 function pidRecDownload(){
   var csv=pidRecCSV(); if(!csv){ showToast?.('Geen data'); return; }
-  try{
-    var blob=new Blob([csv],{type:'text/csv'}); var url=URL.createObjectURL(blob);
-    var a=document.createElement('a'); a.href=url; a.download='pidlane_opname_'+Date.now()+'.csv';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(url); },1000);
-    showToast?.('CSV gedownload');
-  }catch(e){ showToast?.('Download mislukt'); }
+  // Via download(): rechtstreeks naar Documenten/PidLane/. Een losse
+  // <a download> landt in de Android-app nergens (27-09-2026).
+  try{ download('pidlane_opname_'+Date.now()+'.csv', csv); }
+  catch(e){ console.warn('CSV opslaan mislukt', e); showToast?.('Opslaan mislukt'); }
 }
 function pidRecToAI(){
   var out=document.getElementById('pidRecOut'); if(!out) return;

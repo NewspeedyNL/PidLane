@@ -1408,6 +1408,13 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vis-plek.warn .vis-icoon, .vis-plek.warn .vis-klein { color:var(--or); fill:var(--or); }
 .vis-plek.danger .vis-icoon, .vis-plek.danger .vis-klein { color:var(--rd); fill:var(--rd); }
 .vis-plek.geen { opacity:.45; }
+/* Staafjes van koelwater en brandstof, en de versnelling in het midden (27-09-2026). */
+.vis-staaf { fill:none; stroke:var(--bd2); stroke-width:1; }
+.vis-staaf-vul { fill:var(--tx2); }
+.vis-plek.koud .vis-staaf-vul { fill:var(--bl); }
+.vis-plek.warn .vis-staaf-vul { fill:var(--or); }
+.vis-plek.danger .vis-staaf-vul { fill:var(--rd); }
+.vis-gear { fill:var(--tx); font-weight:800; }
 .vis-plek.oud { opacity:.5; }
 #visg-onder.warn .vis-klein { fill:var(--or); }
 #visg-onder.danger .vis-klein { fill:var(--rd); }
@@ -2552,7 +2559,4 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .vis-tt.geen { opacity:.55; }
 .vis-tt.warn { border-color:var(--or); } .vis-tt.warn b { color:var(--or); }
 .vis-tt.danger { border-color:var(--rd); } .vis-tt.danger b { color:var(--rd); }
-.vis-trekerbij { grid-column:1/-1; min-height:36px; border-radius:10px; border:1px dashed var(--bd2); background:transparent; color:var(--tx2); font:700 12px var(--f); cursor:pointer; }
-.vis-trekknop { min-height:36px; padding:6px 14px; border-radius:18px; border:1px solid var(--bd); background:var(--sur); color:var(--tx2); font:700 12px var(--f); cursor:pointer; }
-.vis-trekknop.aan { border-color:var(--or); color:var(--tx); }
 #plGearOv .plg-r.plg-r2 { width:118px; }

@@ -229,6 +229,22 @@ async function laadWorker() {
   toets('een rit draagt het histogram van de versnellingsindicator mee', gr.ok &&
     (await roep(tokA, { actie: 'ritten', voertuig_id: v1.voertuig.id })).ritten.some((r) => r.extra && r.extra.gear && r.extra.gear.n === 300));
   toets('een literprijs van € 50 is een tikfout: 400', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, brandstofprijs: 50 } }))._status === 400);
+  // Eigen PIDs per voertuig (27-09-2026): alleen leescodes, formule zonder code.
+  const ep = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, eigen_pids: [
+    { code: '221e1c', naam: 'Temperatuur automaat', formule: 'A - 40', eenheid: '°C', min: -40, max: 150 },
+    { code: '221E1C', naam: 'dubbel', formule: 'A' }, { code: '2101', naam: 'Blok 01', formule: '(A*256+B)/10' }] } });
+  toets('eigen PIDs: bewaard als lijst, code in hoofdletters, dubbele eruit', ep.ok && Array.isArray(ep.voertuig.eigen_pids) &&
+    ep.voertuig.eigen_pids.length === 2 && ep.voertuig.eigen_pids[0].code === '221E1C' && ep.voertuig.eigen_pids[0].formule === 'A-40' &&
+    ep.voertuig.eigen_pids[0].max === 150, JSON.stringify(ep).slice(0, 300));
+  const epFout = async (e) => (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, eigen_pids: [Object.assign({ naam: 'x', formule: 'A' }, e)] } }))._status;
+  toets('eigen PIDs: een schrijfcode (2E) is 400', await epFout({ code: '2E1E1C' }) === 400);
+  toets('eigen PIDs: een routine (31) is 400', await epFout({ code: '31010203' }) === 400);
+  toets('eigen PIDs: mode 01 hoort er niet in (400)', await epFout({ code: '0105' }) === 400);
+  toets('eigen PIDs: code in een formule is 400', await epFout({ code: '221E1C', formule: 'fetch(1)' }) === 400);
+  toets('eigen PIDs: zonder naam is 400', await epFout({ code: '221E1C', naam: '' }) === 400);
+  toets('eigen PIDs: 21 stuks is er één te veel (400)', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id,
+    eigen_pids: Array.from({ length: 21 }, (_, i) => ({ code: '2210' + String(i).padStart(2, '0'), naam: 'x' })) } }))._status === 400);
+  toets('eigen PIDs: na de weigeringen staat de goede lijst er nog', (await roep(tokA, { actie: 'stand' })).voertuigen.find((v) => v.id === v1.voertuig.id).eigen_pids.length === 2);
   const ra = await roep(tokA, { actie: 'rapport_opslaan', voertuig_id: v1.voertuig.id, soort: 'waak', tekst: 'een' });
   const rb = await roep(tokA, { actie: 'rapport_opslaan', voertuig_id: v1.voertuig.id, soort: 'waak', tekst: 'twee' });
   const rBert = await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { naam: 'Bert2' } });
@@ -237,6 +253,43 @@ async function laadWorker() {
   toets('meerdere rapporten tegelijk wissen, en die van een ander tellen niet mee', weg.ok && weg.gewist === 2 &&
     db.prepare('SELECT COUNT(*) AS n FROM kp_rapport WHERE id = ?').get(rbx.id).n === 1, JSON.stringify(weg));
   toets('een lege lijst: 400', (await roep(tokA, { actie: 'rapport_verwijder', ids: [] }))._status === 400);
+
+  // ECU-adres en tempo per eigen PID, en de gedeelde bibliotheek (27-09-2026).
+  const ecuFout = async (e) => (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, eigen_pids: [Object.assign({ code: '221E1C', naam: 'x' }, e)] } }))._status;
+  toets('ECU-adres: 7E1 en 18DA18F1 mogen', await ecuFout({ ecu: '7e1' }) === 200 && await ecuFout({ ecu: '18DA18F1' }) === 200);
+  toets('ECU-adres: 7DF (functioneel) of rommel is 400', await ecuFout({ ecu: 'ATZ' }) === 400 && await ecuFout({ ecu: '18DB33F1' }) === 400);
+  await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, merk: 'Mazda', model: 'CX-5 2.2 Skyactiv-D', eigen_pids: [
+    { code: '221E1C', ecu: '7E1', naam: 'Temperatuur automaat', formule: 'A-40', eenheid: '°C', tempo: 'traag' }] } });
+  const epT = (await roep(tokA, { actie: 'stand' })).voertuigen.find((v) => v.id === v1.voertuig.id).eigen_pids[0];
+  toets('ECU-adres en tempo worden bewaard', epT.ecu === '7E1' && epT.tempo === 'traag', JSON.stringify(epT));
+  toets('bibliotheek: delen kan alleen wat bij het voertuig staat', (await roep(tokA, { actie: 'pidbib_deel', voertuig_id: v1.voertuig.id, code: '229999' }))._status === 404);
+  const deel = await roep(tokA, { actie: 'pidbib_deel', voertuig_id: v1.voertuig.id, code: '221E1C', ecu: '7E1' });
+  toets('bibliotheek: Anna deelt haar bewezen code', deel.ok && !!deel.id, JSON.stringify(deel));
+  await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { id: rBert.voertuig.id, merk: 'MAZDA', model: 'cx5' } });
+  let bl = await roep(tokB, { actie: 'pidbib_lijst', voertuig_id: rBert.voertuig.id });
+  toets('bibliotheek: Bert (MAZDA cx5) ziet hem, met één "werkt"', bl.ok && bl.merk === 'mazda' && bl.model === 'cx5' && bl.lijst.length === 1 &&
+    bl.lijst[0].code === '221E1C' && bl.lijst[0].ecu === '7E1' && bl.lijst[0].werkt === 1 && bl.lijst[0].bron === 'klant', JSON.stringify(bl));
+  toets('bibliotheek: zonder klant, voertuig of kenteken erin', !('klant_id' in bl.lijst[0]) && !('voertuig_id' in bl.lijst[0]) &&
+    db.prepare("SELECT COUNT(*) AS n FROM pragma_table_info('kp_pid_bib') WHERE name LIKE '%klant%' OR name LIKE '%voertuig%'").get().n === 0);
+  await roep(tokB, { actie: 'pidbib_stem', voertuig_id: rBert.voertuig.id, id: deel.id, uitkomst: 'werkt_niet' });
+  await roep(tokB, { actie: 'pidbib_stem', voertuig_id: rBert.voertuig.id, id: deel.id, uitkomst: 'werkt_niet' });
+  bl = await roep(tokB, { actie: 'pidbib_lijst', voertuig_id: rBert.voertuig.id });
+  toets('bibliotheek: twee keer stemmen telt één keer, en de eigen stem komt terug', bl.lijst[0].werkt === 1 && bl.lijst[0].werkt_niet === 1 && bl.lijst[0].mijn === 'werkt_niet', JSON.stringify(bl.lijst[0]));
+  toets('bibliotheek: stemmen met een verzonnen uitkomst is 400', (await roep(tokB, { actie: 'pidbib_stem', voertuig_id: rBert.voertuig.id, id: deel.id, uitkomst: 'geweldig' }))._status === 400);
+  const kand = await roep(tokB, { actie: 'pidbib_kandidaten', voertuig_id: rBert.voertuig.id, lijst: [
+    { code: '220202', naam: 'Olietemperatuur', formule: 'A-40', eenheid: '°C', url: 'https://forum.voorbeeld.nl/cx5-pids' },
+    { code: '2E0202', naam: 'schrijven', formule: 'A', url: 'https://x.nl' },
+    { code: '220303', naam: 'zonder bron', formule: 'A' },
+    { code: '220404', naam: 'script', formule: 'A', url: 'javascript:alert(1)' },
+    { code: '221E1C', ecu: '7E1', naam: 'dubbel', formule: 'A', url: 'https://x.nl' }] });
+  toets('kandidaten: alleen leescodes met een echte bron-URL, geen dubbele', kand.ok && kand.erbij === 1 && kand.geweigerd === 3, JSON.stringify(kand));
+  bl = await roep(tokA, { actie: 'pidbib_lijst', voertuig_id: v1.voertuig.id });
+  const online = bl.lijst.find((x) => x.code === '220202');
+  toets('kandidaten: Anna ziet de online kandidaat, met de bron en nog niet getest', !!online && online.bron === 'online' && /forum/.test(online.url) && online.werkt === 0, JSON.stringify(bl.lijst));
+  toets('kandidaten: meer dan 20 in één keer is 400', (await roep(tokB, { actie: 'pidbib_kandidaten', voertuig_id: rBert.voertuig.id,
+    lijst: Array.from({ length: 21 }, () => ({ code: '220505', naam: 'x', url: 'https://x.nl' })) }))._status === 400);
+  const vKia = await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { naam: 'Kia', merk: 'Kia', model: 'Ceed' } });
+  toets('een ander merk ziet de Mazda-codes niet', vKia.ok && (await roep(tokB, { actie: 'pidbib_lijst', voertuig_id: vKia.voertuig.id })).lijst.length === 0);
 
   await roep(tokV, { actie: 'alles_wissen' });
   toets('alles wissen neemt de voorkeuren mee', Object.keys((await roep(tokV, { actie: 'voorkeuren' })).voorkeur).length === 0);
@@ -290,12 +343,14 @@ async function laadWorker() {
   op = await W.klantWachtrijOpruimen(envOp, new Date('2026-09-27'));
   global.fetch = oudFetch;
   const annaId = await W.kpKlantId('anna@voorbeeld.nl');
-  const rest = ['kp_voertuig', 'kp_rapport', 'kp_rit', 'kp_issue', 'kp_akkoord'].map((t) => db.prepare('SELECT COUNT(*) AS n FROM ' + t + ' WHERE klant_id = ?').get(annaId).n);
+  const rest = ['kp_voertuig', 'kp_rapport', 'kp_rit', 'kp_issue', 'kp_pid_stem', 'kp_akkoord'].map((t) => db.prepare('SELECT COUNT(*) AS n FROM ' + t + ' WHERE klant_id = ?').get(annaId).n);
   toets('na de opruimer staat er van Anna niets meer in D1', rest.every((x) => x === 0), rest.join(','));
   toets('en is het Airtable-record daarna gewist', gewist.length === 1);
   toets('Bert is ongemoeid gebleven', db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig WHERE klant_id != ?').get(annaId).n > 0);
   toets('alles_wissen door de klant zelf', (await roep(tokB, { actie: 'alles_wissen' })).ok &&
     db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig').get().n === 0);
+  toets('alles_wissen neemt de stemmen in de PID-bibliotheek mee; de gedeelde codes blijven',
+    db.prepare('SELECT COUNT(*) AS n FROM kp_pid_stem').get().n === 0 && db.prepare('SELECT COUNT(*) AS n FROM kp_pid_bib').get().n === 2);
 
   console.log('\n7. Migratie op een tabel van vóór de nieuwe kolommen');
   {

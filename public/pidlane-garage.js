@@ -686,6 +686,7 @@
       // De vaste sensorselectie van deze auto (Mijn voorkeuren). Alleen na een
       // herkenning op het chassisnummer: de set van een diesel hoort niet op
       // een andere auto terecht te komen.
+      try { if (window.PLEigen) PLEigen.zet(hit.eigen_pids, hit.naam); } catch (e) { console.warn('PLGarage: eigen PIDs niet gezet', e); }
       try { if (Array.isArray(hit.pid_selectie) && hit.pid_selectie.length && window.PLVoorkeur) PLVoorkeur.selectieToepassen(hit.pid_selectie, hit.naam || hit.merk); }
       catch (e) { console.warn('PLGarage: vaste sensorselectie niet toegepast', e); }
       return;
@@ -711,9 +712,12 @@
     try {
       if (!window.PLGear || typeof PLGear.koppel !== 'function') return;
       var v = versnellingsVoertuig();
-      var sleutel = v ? [v.id, v.versnellingen || '', v.transmissie || '', v.naam || '', v.tankinhoud || '', v.brandstofprijs || '', v.verbruik_opgegeven || '', v.vermogen_kw || '', v.brandstof || ''].join('|') : '';
+      var sleutel = v ? [v.id, v.versnellingen || '', v.transmissie || '', v.naam || '', v.tankinhoud || '', v.brandstofprijs || '', v.verbruik_opgegeven || '', v.vermogen_kw || '', v.brandstof || '', JSON.stringify(v.eigen_pids || [])].join('|') : '';
       if (sleutel === _gearSleutel) return;
       _gearSleutel = sleutel;
+      // De eigen PIDs van dit voertuig (dealercodes) horen bij deze auto en
+      // bij geen andere: bij ontkoppelen gaan ze weer weg.
+      try { if (window.PLEigen) PLEigen.zet(v ? v.eigen_pids : null, v && v.naam); } catch (e) { console.warn('PLGarage: eigen PIDs niet gezet', e); }
       // De berekende PIDs krijgen uit hetzelfde voertuig de literprijs, de
       // tankinhoud, het opgegeven verbruik en het vermogen (voor blok 5).
       try {
@@ -883,6 +887,10 @@
     '#plGarOv .gr-lab small{font-weight:600;opacity:.8}' +
     '#plGarOv .gr-lab.klein{padding:2px 8px;font-size:11px;cursor:default}' +
     '#plGarOv .gr-labin{margin-top:6px}' +
+    '#plGarOv .gr-sens{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--bd);font-size:13px;color:var(--tx);cursor:pointer}' +
+    '#plGarOv .gr-sens input{width:20px;height:20px;flex:0 0 20px;margin-top:1px;accent-color:var(--bl,#3b82f6)}' +
+    '#plGarOv .gr-sens small{color:var(--tx3);font-size:11px}' +
+    '#plGarOv .gr-bib small{color:var(--tx3);font-size:11px}#plGarOv .gr-bib a{color:var(--bl,#3b82f6)}' +
     '#plGarOv .gr-kies{width:20px;height:20px;flex:0 0 20px;accent-color:var(--bl,#3b82f6)}' +
     '#plGarOv .gr-vgl{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:6px;padding:6px 0;border-top:1px solid var(--bd);font-size:12px;color:var(--tx2)}' +
     '#plGarOv .gr-vgl-kop{border-top:0;font-weight:800;color:var(--tx3)} #plGarOv .gr-vgl.anders{color:var(--tx)}' +
@@ -1010,7 +1018,7 @@
   }
 
   function tekenVoertuig(v) {
-    var tabs = [['overzicht', 'Overzicht'], ['issues', 'Open punten'], ['ritten', 'Ritten'], ['rapporten', 'Rapporten'], ['profiel', 'Profiel']];
+    var tabs = [['overzicht', 'Overzicht'], ['issues', 'Open punten'], ['ritten', 'Ritten'], ['rapporten', 'Rapporten'], ['sensoren', 'Sensoren'], ['profiel', 'Profiel']];
     var h = '<div class="gr-knoppen" style="margin:0 0 10px"><button class="gr-k klein" onclick="PLGarage._terug()">← Alle voertuigen</button>' +
       (v.status === 'actief' && v.id !== _st.actiefId ? '<button class="gr-k klein" onclick="PLGarage._actief(\'' + esc(v.id) + '\')">Maak actief</button>' : '') + '</div>';
     h += '<div class="gr-blok">' + tekenKentekenEnNaam(v) + '</div>';
@@ -1101,6 +1109,8 @@
           '<div class="klik" style="flex:1;min-width:0" onclick="' + (_st.kiesModus ? 'PLGarage._kies(\'' + esc(r.id) + '\')' : 'PLGarage._rapport(\'' + esc(r.id) + '\')') + '"><b>' + (r.soort === 'ai' ? '🔬 ' : r.soort === 'dtc' ? '🔴 ' : r.soort === 'waak' ? '👁 ' : '📄 ') + esc(r.titel || r.soort) + '</b><div class="gr-klein">' + datumNl(r.aangemaakt, true) + '</div></div>' +
           '<button class="gr-k klein gevaar" aria-label="Rapport wissen" title="Rapport wissen" onclick="PLGarage._rapportWegId(\'' + esc(r.id) + '\')">🗑</button></div>';
       }).join('') : '<div class="gr-klein">Nog geen rapporten. Elk AI-rapport, elke foutcode-uitlezing en elke waakronde met dit voertuig actief komt hier vanzelf terecht.</div>') : '<div class="gr-klein">⏳</div>') + '</div>';
+    } else if (_st.tab === 'sensoren') {
+      h += tekenSensoren(v);
     } else if (_st.tab === 'profiel') {
       var rijProf = function (l, w) { return '<div>' + l + '</div><div><b>' + (w == null || w === '' ? '—' : esc(w)) + '</b></div>'; };
       h += '<div class="gr-blok"><div class="gr-rij">' +
@@ -1218,6 +1228,117 @@
     if (w.overig.length) h += '<pre class="gr-tekst" style="margin-top:8px">' + esc(w.overig.join('\n')) + '</pre>';
     return h;
   }
+
+  /* ── Sensoren per voertuig (27-09-2026) ─────────────────────────────
+     De vaste selectie van dit voertuig (kp_voertuig.pid_selectie), met twee
+     dingen die elders niet kunnen: berekende PIDs per voertuig aanzetten, en
+     eigen PIDs toevoegen — een code van de dealer of uit een forum, met een
+     formule. Wat hier staat wordt toegepast zodra de auto op zijn
+     chassisnummer herkend wordt (herkenAuto → selectieToepassen). */
+  function sensState(v) {
+    if (!_st.sens || _st.sens.vid !== v.id) {
+      _st.sens = { vid: v.id, sel: (v.pid_selectie || []).slice(), eigen: JSON.parse(JSON.stringify(v.eigen_pids || [])), test: {}, ok: {}, fout: '', gewijzigd: false, bib: null, zoek: '' };
+    }
+    return _st.sens;
+  }
+  function tekenSensoren(v) {
+    var S = sensState(v);
+    // Wat er in het toevoegformulier stond blijft staan na elke herteken
+    // (een foutmelding, een vinkje elders, een test).
+    var F = function (k) { var x = S.form && S.form[k]; return x ? ' value="' + esc(x) + '"' : ''; };
+    var B = (window.PLBerekend && PLBerekend.DEFS) || {};
+    var koppel = versnellingsVoertuig(), nu = koppel && koppel.id === v.id && isVerbonden();
+    var h = '<div class="gr-sub">Wat hier aan staat, zet de app aan zodra deze auto verbonden en herkend is.</div>';
+    h += '<div class="gr-blok"><div class="gr-bh">🧮 Berekende sensoren<span class="gr-r">rekent de app uit</span></div>' +
+      Object.keys(B).map(function (pid) {
+        var aan = S.sel.indexOf(pid) >= 0;
+        return '<label class="gr-sens"><input type="checkbox" ' + (aan ? 'checked ' : '') + 'onchange="PLGarage._sensKies(\'' + pid + '\',this.checked)">' +
+          '<span><b>' + esc(String(B[pid].name).replace(' (berekend)', '')) + '</b> <small>' + esc(B[pid].unit) + '</small><br><small>' + esc(B[pid].uitleg || '') + '</small></span></label>';
+      }).join('') + '<div class="gr-klein" style="margin-top:6px">Een berekende sensor verschijnt alleen als de auto de bronnen ervoor geeft.</div></div>';
+    h += '<div class="gr-blok"><div class="gr-bh">🔧 Eigen sensoren<span class="gr-r">' + S.eigen.length + ' / ' + ((window.PLEigen && PLEigen.MAX) || 20) + '</span></div>' +
+      (S.eigen.length ? S.eigen.map(function (e, i) {
+        var t = S.test[e.code];
+        return '<div class="gr-item"><label class="gr-sens" style="padding:0"><input type="checkbox" ' + (S.sel.indexOf(e.code) >= 0 ? 'checked ' : '') + 'onchange="PLGarage._sensKies(\'' + esc(e.code) + '\',this.checked)">' +
+          '<span><b>' + esc(e.naam) + '</b> <small>' + esc(e.eenheid || '') + '</small><br><small>' + sensRegel(e) + '</small></span></label>' +
+          (t ? '<div class="gr-klein" style="margin-top:4px">' + esc(t) + '</div>' : '') +
+          '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="PLGarage._sensTest(' + i + ')">▶ Test</button>' : '') +
+          (S.ok[e.code] ? '<button class="gr-k klein" onclick="PLGarage._sensDeel(' + i + ')">📤 Deel met rijders van dit model</button>' : '') +
+          '<button class="gr-k klein gevaar" onclick="PLGarage._sensWeg(' + i + ')">Weghalen</button></div></div>';
+      }).join('') : '<div class="gr-klein">Nog geen eigen sensoren.</div>') +
+      '<div class="gr-labin" style="margin-top:10px"><div class="gr-bh" style="margin:0">Toevoegen</div>' +
+      '<div class="gr-2"><label class="gr-veld">Naam<input id="grsNaam" maxlength="40" placeholder="bijv. Temperatuur automaat"' + F('naam') + '></label>' +
+      '<label class="gr-veld">Code<input id="grsCode" maxlength="6" autocapitalize="characters" placeholder="bijv. 221E1C"' + F('code') + '></label></div>' +
+      '<div class="gr-2"><label class="gr-veld">Formule<input id="grsFormule" maxlength="80" placeholder="A-40  of  (A*256+B)/10"' + F('formule') + '></label>' +
+      '<label class="gr-veld">Eenheid<input id="grsEenheid" maxlength="12" placeholder="°C"' + F('eenheid') + '></label></div>' +
+      '<div class="gr-2"><label class="gr-veld">Minimum (mag leeg)<input id="grsMin" type="number"' + F('min') + '></label><label class="gr-veld">Maximum (mag leeg)<input id="grsMax" type="number"' + F('max') + '></label></div>' +
+      '<div class="gr-2"><label class="gr-veld">ECU-adres (mag leeg)<input id="grsEcu" maxlength="8" autocapitalize="characters" placeholder="bijv. 7E1"' + F('ecu') + '></label>' +
+      '<label class="gr-veld">Hoe vaak<select id="grsTempo">' + ['snel', 'normaal', 'traag'].map(function (k) {
+        return '<option value="' + k + '"' + (((S.form && S.form.tempo) || 'normaal') === k ? ' selected' : '') + '>' + SENS_TEMPO[k] + '</option>'; }).join('') + '</select></label></div>' +
+      '<div class="gr-klein" style="margin-top:4px">Alleen leescodes: 21xx of 22xxxx. A is het eerste antwoordbyte, B het tweede, enzovoort. Codes die iets aansturen of wissen weigert de app. ' +
+      'Het ECU-adres is nodig als de code bij één regeleenheid hoort (7E1 is meestal de automaat); leeg = alle regeleenheden.</div>' +
+      '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="PLGarage._sensTest(-1)">▶ Test op de auto</button>' : '<span class="gr-klein">Testen kan als deze auto verbonden is.</span>') +
+      '<button class="gr-k klein hoofd" onclick="PLGarage._sensErbij()">➕ Toevoegen</button></div>' +
+      (S.test.nieuw ? '<div class="gr-klein" style="margin-top:4px">' + esc(S.test.nieuw) + '</div>' : '') + '</div></div>';
+    h += tekenBib(v, S, nu);
+    var standaard = S.sel.filter(function (p) { return !(B[p]) && !S.eigen.some(function (e) { return e.code === p; }); });
+    h += '<div class="gr-blok"><div class="gr-bh">🎛️ Vaste selectie<span class="gr-r">' + standaard.length + ' sensoren van de auto</span></div>' +
+      '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._sensLive()">Neem de huidige live-selectie over</button></div></div>';
+    if (S.fout) h += '<div class="gr-melding rood">' + esc(S.fout) + '</div>';
+    h += '<div class="gr-knoppen"><button class="gr-k hoofd" ' + (S.gewijzigd ? '' : 'disabled') + ' onclick="PLGarage._sensBewaar()">Bewaren</button></div>';
+    return h;
+  }
+  function sensNieuw() {
+    var w = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
+    var e = { naam: w('grsNaam'), code: String(w('grsCode')).toUpperCase().replace(/\s+/g, ''), formule: w('grsFormule') || 'A', eenheid: w('grsEenheid'), min: w('grsMin'), max: w('grsMax'),
+      ecu: String(w('grsEcu')).toUpperCase().replace(/\s+/g, ''), tempo: w('grsTempo') || 'normaal' };
+    if (_st.sens && document.getElementById('grsNaam')) _st.sens.form = { naam: e.naam, code: e.code, formule: w('grsFormule'), eenheid: e.eenheid, min: e.min, max: e.max, ecu: e.ecu, tempo: e.tempo };
+    return e;
+  }
+  var SENS_TEMPO = { snel: 'Snel (elke seconde)', normaal: 'Normaal (elke 2 s)', traag: 'Traag (elke 10 s)' };
+  function sensRegel(e) {
+    return esc(e.code) + (e.ecu ? ' @ ' + esc(e.ecu) : '') + ' · ' + esc(e.formule || 'A') + (e.tempo && e.tempo !== 'normaal' ? ' · ' + esc(e.tempo) : '');
+  }
+
+  /* De bibliotheek per merk en model: codes die andere klanten bewezen
+     hebben, en kandidaten die online gevonden zijn. Testen op de eigen auto
+     telt als stem (werkt / werkt niet) — anoniem, alleen merk en model. */
+  function tekenBib(v, S, nu) {
+    if (S.bib === null) { S.bib = 'laden'; sensBibLaad(v.id); }
+    var titel = [v.merk, (v.model || '').split(/\s+/)[0]].filter(Boolean).join(' ') || 'dit model';
+    var h = '<div class="gr-blok"><div class="gr-bh">📚 Codes voor ' + esc(titel) + '<span class="gr-r">gedeeld door rijders</span></div>';
+    if (!v.merk || !v.model) return h + '<div class="gr-klein">Vul merk en model in bij het profiel; dan zie je hier wat anderen met dezelfde auto gevonden hebben.</div></div>';
+    if (S.bib === 'laden') h += '<div class="gr-klein">⏳ Laden…</div>';
+    else if (S.bib && S.bib.fout) h += '<div class="gr-melding rood">' + esc(S.bib.fout) + '</div>';
+    else if (S.bib && S.bib.lijst) {
+      if (!S.bib.lijst.length) h += '<div class="gr-klein">Nog niets voor dit model. Zoek online, of deel een code die bij jou werkt.</div>';
+      S.bib.lijst.forEach(function (b) {
+        var al = S.eigen.some(function (e) { return e.code === b.code; });
+        var t = S.test['bib:' + b.id];
+        var stand = (b.werkt ? '✓ werkt bij ' + b.werkt : '') + (b.werkt_niet ? (b.werkt ? ' · ' : '') + '✗ niet bij ' + b.werkt_niet : '') +
+          (!b.werkt && !b.werkt_niet ? (b.bron === 'online' ? 'online gevonden, nog door niemand getest' : 'nog niet getest') : '') +
+          (b.mijn ? ' · jij: ' + (b.mijn === 'werkt' ? 'werkt' : 'werkt niet') : '');
+        h += '<div class="gr-item gr-bib"><b>' + esc(b.naam) + '</b> <small>' + esc(b.eenheid || '') + '</small><br><small>' + sensRegel(b) + '</small>' +
+          '<div class="gr-klein">' + esc(stand) + (b.url ? ' · <a href="' + esc(b.url) + '" target="_blank" rel="noopener noreferrer">bron</a>' : '') + '</div>' +
+          (t ? '<div class="gr-klein" style="margin-top:4px">' + esc(t) + '</div>' : '') +
+          '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="PLGarage._bibTest(\'' + esc(b.id) + '\')">▶ Test</button>' : '') +
+          (al ? '<span class="gr-klein">staat bij je sensoren</span>' : '<button class="gr-k klein" onclick="PLGarage._bibErbij(\'' + esc(b.id) + '\')">➕ Toevoegen</button>') + '</div></div>';
+      });
+    }
+    h += '<div class="gr-knoppen"><button class="gr-k klein" ' + (S.zoek === 'bezig' ? 'disabled' : '') + ' onclick="PLGarage._bibZoek()">' +
+      (S.zoek === 'bezig' ? '⏳ Zoeken…' : '🔎 Zoek online naar codes voor dit model') + '</button></div>' +
+      (S.zoek && S.zoek !== 'bezig' ? '<div class="gr-klein">' + esc(S.zoek) + '</div>' : '') +
+      '<div class="gr-klein" style="margin-top:4px">Zoeken gebruikt AI-tegoed. Wat gevonden wordt komt in deze lijst, voor iedereen met dit model, met de bron erbij. ' +
+      'Een test op je auto telt mee als "werkt" of "werkt niet" — zonder naam, kenteken of VIN, alleen merk en model.' +
+      (nu ? '' : ' Testen kan als deze auto verbonden is.') + '</div></div>';
+    return h;
+  }
+  async function sensBibLaad(vid) {
+    var S = _st.sens;
+    try { var d = await api('pidbib_lijst', { voertuig_id: vid }); if (_st.sens === S) S.bib = { lijst: d.lijst || [] }; }
+    catch (x) { if (_st.sens === S) S.bib = { fout: 'Bibliotheek niet te laden: ' + x.message }; }
+    if (_st.sens === S) teken();
+  }
+  function bibItem(id) { var S = _st.sens; return S && S.bib && S.bib.lijst ? S.bib.lijst.find(function (b) { return b.id === id; }) : null; }
 
   // De literprijs uit het profiel, anders de standaardprijs van PLBerekend.
   function literprijs(v) {
@@ -1370,7 +1491,9 @@
     tekenKaart: tekenKaart,
     _akkoord: function () { doe(function () { return api('akkoord', { versie: _st.stand && _st.stand.akkoordVersie }); }, 'Mijn voertuigen staat aan'); },
     _open: function (id) { _st.view = 'voertuig'; _st.vid = id; _st.tab = 'overzicht'; teken(); },
-    _tab: function (t) { _st.tab = t; _st.labelRit = null; _st.kiesModus = false; _st.kies = {}; teken(); },
+    _tab: function (t) { _st.tab = t; _st.labelRit = null; _st.kiesModus = false; _st.kies = {}; // Sensoren opnieuw openen = verse stand uit het voertuig en de bibliotheek,
+      // behalve als er nog iets onbewaards staat.
+      if (t !== 'sensoren' || !(_st.sens && _st.sens.gewijzigd)) _st.sens = null; teken(); },
     _terug: function () { _st.view = _st.view === 'formulier' && _st.vid ? 'voertuig' : 'lijst'; if (_st.view === 'lijst') _st.vid = null; teken(); },
     _terugNaar: function (t) { _st.view = 'voertuig'; _st.tab = t; teken(); },
     _actief: function (id) { zetActief(id); melding('Actief voertuig gewijzigd'); teken(); },
@@ -1419,6 +1542,124 @@
       if (!id || !confirm('Dit rapport wissen? Dat kan niet ongedaan gemaakt worden.')) return;
       var vid = _st.vid;
       doe(function () { return api('rapport_verwijder', { id: id }); }, 'Rapport gewist').then(function () { delete cacheVan(vid).rapporten; teken(); });
+    },
+    _sensKies: function (pid, aan) {
+      var S = _st.sens; if (!S) return;
+      sensNieuw();
+      var i = S.sel.indexOf(pid);
+      if (aan && i < 0) S.sel.push(pid); else if (!aan && i >= 0) S.sel.splice(i, 1);
+      S.gewijzigd = true; teken();
+    },
+    _sensErbij: function () {
+      var S = _st.sens; if (!S) return;
+      var e = sensNieuw();
+      var r = window.PLEigen ? PLEigen.controleer(e) : { ok: false, fout: 'module ontbreekt' };
+      if (!r.ok) { S.test.nieuw = '⚠️ ' + r.fout; teken(); return; }
+      if (S.eigen.some(function (x) { return x.code === r.code; })) { S.test.nieuw = '⚠️ ' + r.code + ' staat er al'; teken(); return; }
+      if (S.eigen.length >= PLEigen.MAX) { S.test.nieuw = '⚠️ Hoogstens ' + PLEigen.MAX + ' eigen sensoren'; teken(); return; }
+      e.code = r.code;
+      S.eigen.push(e); if (S.sel.indexOf(r.code) < 0) S.sel.push(r.code);
+      S.test.nieuw = ''; S.form = null; S.gewijzigd = true; teken();
+    },
+    _sensWeg: function (i) {
+      var S = _st.sens; if (!S || !S.eigen[i]) return;
+      sensNieuw();
+      var c = S.eigen[i].code;
+      S.eigen.splice(i, 1); S.sel = S.sel.filter(function (p) { return p !== c; });
+      S.gewijzigd = true; teken();
+    },
+    _sensTest: async function (i) {
+      var S = _st.sens; if (!S || !window.PLEigen) return;
+      var nieuw = sensNieuw(), e = i < 0 ? nieuw : S.eigen[i];
+      var sleutel = i < 0 ? 'nieuw' : e.code;
+      S.test[sleutel] = '⏳ Vragen aan de auto…'; teken();
+      try {
+        var r = await PLEigen.test(e);
+        if (i >= 0) S.ok[e.code] = !!(r.ok && r.waarde !== null);
+        S.test[sleutel] = r.ok ? '✓ Antwoord ' + r.raw + ' → ' + (r.waarde === null ? 'formule past niet op ' + r.bytes.length + ' byte(s)' : String(r.waarde).replace('.', ',') + ' ' + (r.eenheid || ''))
+          : '✗ ' + r.fout + (r.raw ? ' (' + r.raw + ')' : '');
+      } catch (x) { S.test[sleutel] = '✗ ' + x.message; }
+      teken();
+    },
+    _sensDeel: async function (i) {
+      var S = _st.sens; if (!S || !S.eigen[i]) return;
+      var e = S.eigen[i];
+      if (S.gewijzigd) { S.test[e.code] = '⚠️ Bewaar eerst; delen gaat uit wat er bij het voertuig staat.'; teken(); return; }
+      try {
+        await api('pidbib_deel', { voertuig_id: S.vid, code: e.code, ecu: e.ecu || '' });
+        S.test[e.code] = '📤 Gedeeld — rijders van dit model zien hem nu in de bibliotheek.';
+        S.bib = null;
+      } catch (x) { S.test[e.code] = '✗ ' + x.message; }
+      teken();
+    },
+    _bibErbij: function (id) {
+      var S = _st.sens, b = bibItem(id); if (!S || !b) return;
+      sensNieuw();
+      if (S.eigen.some(function (e) { return e.code === b.code; })) return;
+      if (S.eigen.length >= PLEigen.MAX) { S.test['bib:' + id] = '⚠️ Hoogstens ' + PLEigen.MAX + ' eigen sensoren'; teken(); return; }
+      var e = { code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid || '', ecu: b.ecu || '', tempo: 'normaal' };
+      S.eigen.push(e); if (S.sel.indexOf(b.code) < 0) S.sel.push(b.code);
+      S.gewijzigd = true; teken();
+    },
+    _bibTest: async function (id) {
+      var S = _st.sens, b = bibItem(id); if (!S || !b || !window.PLEigen) return;
+      sensNieuw();
+      S.test['bib:' + id] = '⏳ Vragen aan de auto…'; teken();
+      var r;
+      try { r = await PLEigen.test({ code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid, ecu: b.ecu }); }
+      catch (x) { r = { ok: false, fout: x.message }; }
+      S.test['bib:' + id] = r.ok ? '✓ Antwoord ' + r.raw + ' → ' + (r.waarde === null ? 'formule past niet op ' + r.bytes.length + ' byte(s)' : String(r.waarde).replace('.', ',') + ' ' + (r.eenheid || ''))
+        : '✗ ' + r.fout + (r.raw ? ' (' + r.raw + ')' : '');
+      // Alleen een echte uitkomst telt: antwoord met een waarde, of de auto
+      // weigert / zwijgt. Niet verbonden of een busprobleem is geen stem.
+      var uitkomst = (r.ok && r.waarde !== null) ? 'werkt' : (/weigert|Geen antwoord/.test(r.fout || '') ? 'werkt_niet' : null);
+      if (uitkomst) {
+        try { await api('pidbib_stem', { voertuig_id: S.vid, id: id, uitkomst: uitkomst }); b.mijn = uitkomst; }
+        catch (x) { console.warn('PLGarage: stem niet bewaard', x); }
+      }
+      teken();
+    },
+    _bibZoek: async function () {
+      var S = _st.sens, v = S && voertuig(S.vid); if (!S || !v || S.zoek === 'bezig' || !window.PLEigen) return;
+      sensNieuw();
+      S.zoek = 'bezig'; teken();
+      var r = await PLEigen.zoekOnline(v);
+      if (!r.ok) S.zoek = '✗ ' + r.fout;
+      else if (!r.kandidaten.length) S.zoek = 'Niets gevonden dat door de controle komt (alleen leescodes met een bron).';
+      else {
+        try {
+          var d = await api('pidbib_kandidaten', { voertuig_id: S.vid, lijst: r.kandidaten });
+          S.zoek = '✓ ' + d.erbij + ' nieuwe kandidaat' + (d.erbij === 1 ? '' : 'en') + ' in de lijst' + (r.kandidaten.length > d.erbij ? ' (' + (r.kandidaten.length - d.erbij) + ' stonden er al of vielen af)' : '') + '. Test ze op je auto.';
+          S.bib = null;
+        } catch (x) { S.zoek = '✗ ' + x.message; }
+      }
+      teken();
+    },
+    _sensLive: function () {
+      var S = _st.sens; if (!S) return;
+      sensNieuw();
+      var live = [];
+      try { live = Array.from(activePIDs || []); } catch (x) { console.warn('PLGarage: live-selectie onleesbaar', x); }
+      var B = (window.PLBerekend && PLBerekend.DEFS) || {};
+      var houd = S.sel.filter(function (p) { return B[p] || S.eigen.some(function (e) { return e.code === p; }); });
+      S.sel = houd.concat(live.filter(function (p) { return houd.indexOf(p) < 0 && /^[0-9A-F]{4,6}$/.test(p); }));
+      S.gewijzigd = true; melding(live.length + ' sensoren overgenomen — druk op Bewaren'); teken();
+    },
+    _sensBewaar: async function () {
+      var S = _st.sens; if (!S) return;
+      try {
+        var d = await api('voertuig_opslaan', { voertuig: { id: S.vid, pid_selectie: S.sel, eigen_pids: S.eigen } });
+        var v = voertuig(S.vid); if (v && d.voertuig) { v.pid_selectie = d.voertuig.pid_selectie; v.eigen_pids = d.voertuig.eigen_pids; }
+        S.gewijzigd = false; S.fout = '';
+        // Hangt deze auto nu aan de adapter, dan meteen toepassen.
+        var k = versnellingsVoertuig();
+        if (k && k.id === S.vid && isVerbonden()) {
+          try { if (window.PLEigen) PLEigen.zet(v.eigen_pids, v.naam); } catch (x) { console.warn('PLGarage: eigen PIDs', x); }
+          try { if (window.PLVoorkeur) PLVoorkeur.selectieToepassen(v.pid_selectie, v.naam); } catch (x) { console.warn('PLGarage: selectie', x); }
+        }
+        melding('🎛️ Sensoren van ' + (v && v.naam || 'dit voertuig') + ' bewaard');
+      } catch (x) { S.fout = x.message; }
+      teken();
     },
     _kiesModus: function (aan) { _st.kiesModus = !!aan; _st.kies = {}; teken(); },
     _kies: function (id, aan) {

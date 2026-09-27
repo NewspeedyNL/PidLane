@@ -6388,6 +6388,24 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── eigen PIDs per voertuig: antwoordt de auto op de code van de dealer? ──
+  {
+    issue: '—',
+    naam: 'Eigen PIDs van het voertuig geven antwoord tijdens de rit',
+    waarom: 'Of een mode-22-code van de dealer op deze ECU antwoordt, en of de formule klopt, weet alleen de auto; de browserproef rekent met een nepantwoord.',
+    proef: async function () {
+      if (!window.PLEigen || typeof PLEigen.oordeel !== 'function')
+        return { staat: 'FOUT', detail: 'PLEigen.oordeel ontbreekt' };
+      const echt = (typeof connected !== 'undefined' && connected) && !(typeof demoMode !== 'undefined' && demoMode);
+      const defs = PLEigen.defs();
+      const o = PLEigen.oordeel({ echt: echt, defs: defs, nu: Date.now(),
+        actief: (typeof activePIDs !== 'undefined' && activePIDs) ? Array.from(activePIDs) : [],
+        laatst: (typeof _pidLastUpd !== 'undefined' && _pidLastUpd) ? _pidLastUpd : {},
+        waarden: (typeof pidVals !== 'undefined' && pidVals) ? pidVals : {} });
+      return o.staat === 'ok' ? o.detail : o;
+    }
+  },
+
   // ── de berekende PIDs: nooit de bus op, en plausibel ──
   {
     issue: '—',
@@ -8737,17 +8755,18 @@ const CAMPAGNE = {
   vragen: [
     '── WAAROM DEZE RONDE ────────',
     'DE PROEVEN OORDELEN OVER DE HELE RIT. Tot nu toe keek blok 5 naar het moment waarop de testrun draaide; wat er daarvoor gebeurde telde niet, en dan moest een rit over. Nu houden de modules zelf bij wat er deze sessie gebeurde, en oordeelt blok 5 daar aan het eind over. Elke proef zegt ok, FOUT met het waarom, of LET OP met precies wat de rit nog nodig had.',
-    'NIEUW IN DE APP. Versnelling bij het voertuig met een knop Fout (ook R), tijd per versnelling met rijstijladvies, zeventien berekende PIDs (onder "Berekend"), een trekmodus met waarschuwingstoon, ritlabels met voorstel, export en kosten, rapporten vergelijken en in één keer wissen.',
+    'NIEUW IN DE APP. Versnelling bij het voertuig met een knop Fout (ook R), tijd per versnelling met rijstijladvies, zeventien berekende PIDs (onder "Berekend"), een trekmodus met waarschuwingstoon, ritlabels met voorstel, export en kosten, rapporten vergelijken en in één keer wissen. Daarna: eigen PIDs per voertuig (Mijn voertuigen → Sensoren), de versnelling in het midden van Slim visueel, en opslaan zonder keuzevenster.',
     '── WAT ÉÉN RIT DEZE RONDE MOET LATEN ZIEN ────────',
     'MINSTENS 30 MINUTEN ONAFGEBROKEN VERBONDEN (#302). Niet tussendoor verbreken. Verschijnt in het verbindingspaneel de oranje melding "De responstijd is opgelopen", laat die staan: de testrun doet aan het eind zelf het experiment (eerst de ELM opnieuw, dan eventueel een nieuwe verbinding).',
     'ALLE VERSNELLINGEN, TIEN MINUTEN. Rij door alle versnellingen heen. Klopt het cijfer in de topbalk een keer niet: tik erop → Fout → de juiste. Rij één keer een stukje achteruit en tik dan Fout → R.',
     'EEN MINUUT BEELD-IN-BEELD (#319). Tijdens het rijden (als passagier, of stilstaand met draaiende motor en de adapter verbonden) een minuut naar een andere app, bijvoorbeeld de navigatie. Daarna terug.',
     'SLIM VISUEEL DRIE MINUTEN RIJDEND (#294), waarvan dertig seconden constant boven 50 km/u. Noteer wat de boordcomputer als verbruik zegt.',
-    'TREKMODUS VIJF MINUTEN. Onder de meter: "Caravan of beladen? Zet de trekmodus aan". Met een caravan of volle auto het liefst een klim.',
+    'TREKMODUS VIJF MINUTEN. Tik in het Voertuigoverzicht de rijsituatie caravan of beladen aan (of start de Caravanrit); de strook onder de meter verschijnt vanzelf. Met een caravan of volle auto het liefst een klim.',
     'EÉN KEER VOL GAS in de 2e of 3e, als het veilig kan. Dat is de enige manier om het berekende vermogen tegen het profiel te houden.',
+    'EEN EIGEN PID. Mijn voertuigen → Sensoren. Heb je een code van de dealer: vul hem in (met ECU-adres als je dat weet, bijv. 7E1 voor de automaat), Test op de auto, Toevoegen, Bewaren. Zo niet: 📚 Codes voor dit model → Zoek online, test de kandidaten (elke test telt mee als werkt/werkt niet) en voeg er een toe die antwoordt. Laat hem de rit meelopen; werkt hij, tik dan Deel.',
     '── STAP VOOR STAP ────────',
     'STAP 0 — VOORAF. Nieuwste versie laden (☰ → Nieuwste versie laden). Mijn voertuigen: vul bij Profiel handbak of automaat, het aantal versnellingen, de tankinhoud, de literprijs en het vermogen in. Een nieuwe APK is niet nodig.',
-    'STAP 1 — VERBINDEN EN WEGRIJDEN. Eén keer verbinden, dan niet meer verbreken tot na de testrun. Kies Slim visueel en zet de trekmodus aan.',
+    'STAP 1 — VERBINDEN EN WEGRIJDEN. Eén keer verbinden, dan niet meer verbreken tot na de testrun. Tik de rijsituatie caravan of beladen aan en kies Slim visueel.',
     'STAP 2 — RIJDEN, 30 MINUTEN OF MEER. Doe onderweg de punten hierboven: alle versnellingen, één keer Fout, één keer R, een minuut beeld-in-beeld, dertig seconden constant, één keer vol gas.',
     'STAP 3 — DRAAI AAN HET EIND DE TESTRUN, nog steeds verbonden. De #302-proef staat achteraan en kan twee minuten duren als hij de drift ziet: dan meet hij, initialiseert de ELM opnieuw, meet weer en verbindt zo nodig opnieuw.',
     'NA AFLOOP. Plak uit het ruwe verslag de FOUT- en LET OP-regels met hun blokkop, plus het verbruik van de boordcomputer uit punt 5. Staat er een LET OP, dan zegt die regel wat er ontbrak.',

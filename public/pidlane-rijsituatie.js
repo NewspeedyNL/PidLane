@@ -977,6 +977,9 @@ function buildDiscoveredPIDList(){
   // de sweeps en de waakronde bij de auto opvragen.
   try{ if(typeof plBerekendDefs==='function') plBerekendDefs().forEach(d=>{ if(!discoveredPIDDefs.some(x=>x.pid===d.pid)) discoveredPIDDefs.push(d); }); }
   catch(e){ console.warn('Berekende PIDs niet in de keuzelijst gezet', e); }
+  // Eigen PIDs van het voertuig dat aan de adapter hangt (pidlane-uitgebreid.js).
+  try{ if(typeof plEigenDefs==='function') plEigenDefs().forEach(d=>{ if(!discoveredPIDDefs.some(x=>x.pid===d.pid)) discoveredPIDDefs.push(d); }); }
+  catch(e){ console.warn('Eigen PIDs niet in de keuzelijst gezet', e); }
 
   // Sorteer: eerst per onderdeel (Motor voorop, Overig achteraan), daarbinnen
   // in de samengestelde volgorde van ALL_PID_DEFS (toerental eerst) i.p.v.

@@ -134,6 +134,10 @@ function icoonVak(naam, x, y, s) { return { naam, x0: x - s / 2, x1: x + s / 2, 
 const vakken = cijfers.map(c => tekstVak('cijfer ' + c.t, c.x, c.y, G.FS_CIJFER, c.t))
   .concat([
     logoVak(),
+    // De versnelling staat op de plek van het embleem (nooit samen): op zijn breedste.
+    tekstVak('versnelling', G.C, G.Y_LOGO, G.FS_GEAR, '10'),
+    { naam: 'koelwaterstaaf', x0: G.X_STAAF_KOEL - G.STAAF_B / 2, x1: G.X_STAAF_KOEL + G.STAAF_B / 2, y0: G.Y_STAAF, y1: G.Y_STAAF + G.STAAF_H },
+    { naam: 'brandstofstaaf', x0: G.X_STAAF_TANK - G.STAAF_B / 2, x1: G.X_STAAF_TANK + G.STAAF_B / 2, y0: G.Y_STAAF, y1: G.Y_STAAF + G.STAAF_H },
     tekstVak('snelheid', G.C, G.Y_SNEL, G.FS_SNEL, '999'),
     tekstVak('km/h', G.C, G.Y_KMH, G.FS_EENHEID, 'km/h'),
     icoonVak('koelwatericoon', G.X_LINKS, G.Y_ICOON, G.ICOON),
@@ -152,10 +156,12 @@ const onderVakken = [
   tekstVak('onderbooggetal', G.X_ONDER_TEKST, G.Y_ONDER, G.FS_KLEIN, '≈+1,5 bar', true)
 ];
 function raakt(a, b) { return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1; }
+// Embleem en versnelling wisselen elkaar af (gearBij): die twee mogen dezelfde plek hebben.
+function samen(a, b) { const n = [a.naam, b.naam].sort().join('|'); return n === 'embleem|versnelling'; }
 const botsing = [];
 for (let i = 0; i < vakken.length; i++)
   for (let j = i + 1; j < vakken.length; j++)
-    if (raakt(vakken[i], vakken[j])) botsing.push(vakken[i].naam + ' × ' + vakken[j].naam);
+    if (raakt(vakken[i], vakken[j]) && !samen(vakken[i], vakken[j])) botsing.push(vakken[i].naam + ' × ' + vakken[j].naam);
 waar('geen tekstvak of icoon raakt een ander (' + vakken.length + ' vakken)', botsing.length === 0, botsing.join(', '));
 
 function hoeken(v) { return [[v.x0, v.y0], [v.x1, v.y0], [v.x0, v.y1], [v.x1, v.y1]]; }
@@ -342,11 +348,11 @@ function run(over) {
 }
 let m = V.meldingen(run(), [], true);
 waar('niets actief: geen chips, geen regels, wel snelkoppelingen', m.lopend.length === 0 && m.regels.length === 0 && m.snel.length > 0);
-waar('de snelkoppelingen voor een beheerder: rit-monitor, caravanrit, bulk-recorder en waakronde',
-  m.snel.map(s => s.id).join(',') === 'monitor,caravan,bulk,waak', m.snel.map(s => s.id).join(','));
+waar('de snelkoppelingen voor een beheerder: rit-monitor, bulk-recorder en waakronde (caravanrit niet meer, 27-09)',
+  m.snel.map(s => s.id).join(',') === 'monitor,bulk,waak', m.snel.map(s => s.id).join(','));
 m = V.meldingen(run(), [], false);
 waar('voor een gewone gebruiker geen bulk-recorder (die weigert daar toch)',
-  m.snel.map(s => s.id).join(',') === 'monitor,caravan,waak', m.snel.map(s => s.id).join(','));
+  m.snel.map(s => s.id).join(',') === 'monitor,waak', m.snel.map(s => s.id).join(','));
 m = V.meldingen(run({ caravan: { aan: true, draait: true, detail: 'rit loopt' } }), [], true);
 waar('caravanrit loopt: die staat op de rail, met de status uit PLRun', m.lopend[0] && m.lopend[0].id === 'caravan' && m.lopend[0].kort === 'rit loopt');
 waar('caravanrit loopt: geen snelkoppeling naar rit-monitor of bulk-recorder (één tegelijk)',
@@ -495,11 +501,61 @@ console.log('\n— trekmodus: caravan of beladen (27-09-2026) —');
   const heeft = new Set(['0105', '0104', '010F', 'CA03']);
   const ind = V.trekIndeling(p => heeft.has(p), false);
   const rol = r => ind.find(x => x.rol === r);
-  waar('trekstrook: versnelling staat erop zonder PID (PLGear)', rol('gear') && rol('gear').gear === true);
+  waar('trekstrook: geen versnellingstegel meer — die staat in het midden van de meter', !rol('gear'), JSON.stringify(ind.map(x => x.rol)));
   waar('trekstrook: koelwater met trend, belasting 0104, verbruik uit CA03',
     rol('koel').pid === '0105' && rol('koel').trend && rol('last').pid === '0104' && rol('verbruik').pid === 'CA03', JSON.stringify(ind));
   waar('trekstrook: olie die de auto niet geeft blijft leeg (null, geen andere PID)', rol('olie').pid === null);
   waar('trekstrook: laaddruk alleen met bewezen turbo', !rol('laaddruk') && V.trekIndeling(p => heeft.has(p), true).some(x => x.rol === 'laaddruk'));
+}
+
+console.log('\n— 27-09-2026: trekmodus vanzelf, versnelling, staafjes, sensoren aanzetten —');
+{
+  const c = maak({ actief: ['010C', '010D'] }), V = c.PLVisueel;
+  c.userVehicleData = { sit: [] };
+  c.situatieActief = function () { return c.userVehicleData.sit.map(id => c.SITUATIES.find(s => s.id === id)).filter(Boolean); };
+  waar('geen rijsituatie en geen Caravanrit: geen trekmodus', V.trekAan() === false);
+  c.userVehicleData.sit = ['bergachtig'];
+  waar('een andere rijsituatie (bergachtig) zet hem niet aan', V.trekAan() === false);
+  c.userVehicleData.sit = ['beladen'];
+  waar('rijsituatie beladen zet de trekmodus aan', V.trekAan() === true);
+  c.userVehicleData.sit = ['caravan'];
+  waar('rijsituatie caravan zet de trekmodus aan', V.trekAan() === true);
+  waar('de situaties bestaan echt in SITUATIES', V.TREK_SITUATIES.every(id => c.SITUATIES.some(s => s.id === id)));
+  c.userVehicleData.sit = [];
+  c.PLRun = { staat: function () { return { caravan: { aan: true } }; } };
+  waar('een lopende Caravanrit zet hem aan, ook zonder rijsituatie', V.trekAan() === true);
+  waar('het oude handmatige vinkje (pl_vis_trek) bestaat niet meer', typeof V.trek === 'undefined' && typeof V.trekSensoren === 'undefined');
+  waar('de caravanrit heeft geen snelkoppeling meer', !V.meldingen({ monitor: { aan: false }, caravan: { aan: false }, waak: { aan: false } }, [], true).snel.some(s => s.id === 'caravan'));
+
+  waar('versnelling: 3 → "3", 0 → "N", −1 → "R", onbekend → ""',
+    V.gearTekst(3) === '3' && V.gearTekst(0) === 'N' && V.gearTekst(-1) === 'R' && V.gearTekst(null) === '' && V.gearTekst(undefined) === '');
+  waar('koelwaterstaaf: 40 °C leeg, 85 half, 130 vol, 150 blijft vol',
+    V.staafDeel('koel', 40) === 0 && V.staafDeel('koel', 85) === 50 && V.staafDeel('koel', 130) === 100 && V.staafDeel('koel', 150) === 100);
+  waar('brandstofstaaf: 30% is 30, −5 is 0, geen waarde is null',
+    V.staafDeel('tank', 30) === 30 && V.staafDeel('tank', -5) === 0 && V.staafDeel('tank', 'NO DATA') === null);
+
+  const N = (heeft, actief, verb, trek) => V.nodigePids(new Set(heeft), new Set(actief || []), new Set(verb || []), trek);
+  let k = N(['010C', '010D', '0105', '0167', '0142', '012F', '015C', '0149', '0104', '010F'], [], [], false);
+  waar('sensoren aanzetten: per keten de eerste die de auto heeft', JSON.stringify(k) === JSON.stringify(['010C', '010D', '015C', '0105', '0142', '012F']), JSON.stringify(k));
+  k = N(['010C', '010D', '0167', '0149'], ['010C', '010D'], [], false);
+  waar('zonder 0105 wordt het 0167, zonder olie het pedaal', JSON.stringify(k) === JSON.stringify(['0149', '0167']), JSON.stringify(k));
+  k = N(['010C', '010D', '0105', '0167'], ['0167'], [], false);
+  waar('staat er al een uit de keten aan, dan komt er niets bij', k.indexOf('0105') < 0, JSON.stringify(k));
+  k = N(['010C', '010D', '0105'], [], ['0105'], false);
+  waar('een verborgen sensor zet hij nooit terug', k.indexOf('0105') < 0, JSON.stringify(k));
+  k = N(['010C', '0104', '010F', 'CA04'], ['010C'], [], true);
+  waar('trekmodus: belasting en inlaatlucht erbij, laaddruk niet (pas na bewezen turbo)',
+    k.indexOf('0104') >= 0 && k.indexOf('010F') >= 0 && k.indexOf('CA04') < 0, JSON.stringify(k));
+  waar('zonder trekmodus geen treksensoren', N(['010C', '0104', '010F'], ['010C'], [], false).indexOf('0104') < 0);
+  // De echte aanroep: via pidToevoegen, niet handmatig.
+  let gevraagd = null;
+  c.discoveredPIDDefs = [{ pid: '010C' }, { pid: '010D' }, { pid: '0105' }];
+  c.pidToevoegen = function (p, o) { gevraagd = { p: p, o: o }; p.forEach(x => c.activePIDs.add(x)); return { ok: p, weg: [] }; };
+  c.PLRun = null;
+  const r = V.zorgPids();
+  waar('zorgPids: vraagt 0105 aan via pidToevoegen, als geen handmatige keuze',
+    JSON.stringify(r) === '["0105"]' && gevraagd.o.handmatig === false, JSON.stringify(gevraagd));
+  waar('zorgPids: een tweede keer komt er niets meer bij', V.zorgPids().length === 0);
 }
 
 console.log('\n— sessiebewijs en oordelen voor blok 5 (#294, trekmodus) —');
