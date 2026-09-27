@@ -261,19 +261,6 @@ function openVehicleOverview(){
   const inp=(id,val,ph)=>`<input id="${id}" value="${esc(val)}" placeholder="${ph||''}" style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:13px;padding:8px 10px">`;
   const row=(lbl,html)=>`<div style="margin-bottom:9px"><div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:3px">${lbl}</div>${html}</div>`;
   const pct=dossierPct();
-  // Het auto-icoon (27-09-2026): carrosserie en kleur uit Mijn voertuigen, of
-  // uit de RDW-rij die bij het kenteken al opgehaald is.
-  function _uvIcoon(g,k){
-    try{
-      if(!window.PLGarage||typeof PLGarage.icoon!=='function') return '';
-      const a=g&&PLGarage.actief?PLGarage.actief():null;
-      const r=(typeof _koopRdwData!=='undefined'&&_koopRdwData)||{};
-      const K=PLGarage._kern;
-      const car=(a&&a.carrosserie)||K.carrosserieUitRdw(r.inrichting), kl=(a&&a.kleur)||K.kleurUitRdw(r.eerste_kleur);
-      if(!car&&!kl) return '';
-      return PLGarage.icoon({carrosserie:car,kleur:kl},44);
-    }catch(e){ console.warn('Voertuigoverzicht: icoon niet getekend', e); return ''; }
-  }
   let gd=null;
   try{ gd=(window.PLGarage&&PLGarage.dossier)?PLGarage.dossier():null; }catch(e){ console.warn('Voertuigdossier: Mijn voertuigen niet te lezen', e); }
   const kern=k=>(gd&&gd[k])||v[k]||'';
@@ -282,7 +269,7 @@ function openVehicleOverview(){
     : '';
   m.innerHTML=`<div style="background:var(--sur);width:100%;max-width:560px;max-height:92vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--bd)">
-      ${_uvIcoon(gd,kern)}<b style="font-size:14px">${_uvIcoon(gd,kern)?'':'🚗 '}Voertuigoverzicht</b>
+      <b style="font-size:14px">🚗 Voertuigoverzicht</b>
       <span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:5px;background:${pct>=80?'rgba(0,168,107,.15)':'rgba(247,127,0,.15)'};color:${pct>=80?'var(--gn)':'var(--or)'}">📋 ${pct}% compleet</span>
       <button onclick="document.getElementById('vehOverview').style.display='none'" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">✕</button>
     </div>

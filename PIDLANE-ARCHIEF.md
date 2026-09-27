@@ -14,6 +14,24 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 27-09-2026 — Het auto-icoon, en waarom het weer weg is
+
+**Wat er was.** Een zijaanzicht in acht carrosserievormen, in de RDW-kleur, met
+het bouwjaar. Getoetst op vorm, kleur en binnen de tekening blijven.
+
+**Wat er misging.** Op de telefoon stond een Mazda CX-5 (RDW: stationwagen, wit)
+als een wit busje met ramen. De tests toetsten of de tekening klopte met de
+invoer, niet of hij leek op de auto. Dat laatste is met een generieke vorm per
+carrosseriesoort niet te halen: de RDW-inrichting van een SUV is vaak
+"stationwagen", en acht silhouetten dekken geen enkel echt model.
+
+**Besluit.** Weg in plaats van beter tekenen. Een merk- en modeltrouwe afbeelding
+vraagt een beeldbank per model, en die is er niet. De kolommen `carrosserie` en
+`kleur` blijven in D1 staan (weghalen vraagt een tabelherbouw) maar worden bij
+elke start leeggemaakt en niet meer beschreven.
+
+---
+
 ## 27-09-2026 — De terugknop en een weggescrold ✕
 
 **Waarneming.** In de nieuwe vensters (Mijn voertuigen, versnellingsindicator,
