@@ -4745,6 +4745,17 @@ async function handleKlantVerwijder(request, env) {
     await klantAudit(env, rec.id,
       `account verwijderd op verzoek van de gebruiker; definitief weg na ${KLANT_BEWAARDAGEN} dagen`,
       "klant zelf");
+    // Mijn voertuigen meteen dicht, niet pas als het sessietoken verloopt:
+    // privacy.html belooft dat het account direct onbruikbaar is.
+    if (env.LOGDB) {
+      try {
+        await kpSchema(env.LOGDB);
+        await env.LOGDB.prepare("INSERT INTO kp_akkoord (klant_id, versie, op) VALUES (?, 'verwijderd', ?) ON CONFLICT(klant_id) DO UPDATE SET versie = 'verwijderd', op = excluded.op")
+          .bind(await kpKlantId(p.u), nu.toISOString()).run();
+      } catch (e) {
+        console.error("[klant] Mijn voertuigen niet geblokkeerd na verwijderen :: " + String(e && e.message || e));
+      }
+    }
 
     const weg = new Date(nu.getTime() + KLANT_BEWAARDAGEN * 864e5);
     return json({
@@ -4758,6 +4769,521 @@ async function handleKlantVerwijder(request, env) {
   }
 }
 __name(handleKlantVerwijder, "handleKlantVerwijder");
+
+// ══════════════════════════════════════════════════════════════════
+//  KLANTPLATFORM — "Mijn voertuigen" (27-09-2026)
+// ──────────────────────────────────────────────────────────────────
+//  Eén klant, hoogstens drie actieve voertuigen, en per voertuig een
+//  profiel, een status, bewaarde rapporten, vastgelegde ritten en de
+//  issues die erop openstaan. Alles in D1 (env.LOGDB), gekoppeld aan de
+//  klant — niet aan het toestel en niet aan een gebruiker.
+//
+//  WAAROM D1 EN NIET AIRTABLE. De klantaccounts staan in Airtable en
+//  blijven daar (inloggen, saldo, akkoord). Maar die base liep op
+//  22-09-2026 vol op 1.000 rijen, en een rit of rapport per klant per dag
+//  haalt dat in een week. D1 heeft die muur niet en draait al (#262).
+//
+//  DE KLANTSLEUTEL IS GEEN E-MAILADRES. klant_id = SHA-256 van
+//  "pidlane-klant:" + e-mail in kleine letters. Zo staat er in D1 geen
+//  adres, is er per verzoek geen Airtable-opvraging nodig, en kan de
+//  opruimer bij het wissen van een account dezelfde sleutel narekenen.
+//
+//  HET KENTEKEN IS VERSLEUTELD. Een kenteken is via het RDW herleidbaar
+//  tot een persoon, net als een VIN. Het staat hier AES-GCM-versleuteld
+//  met de secret KENTEKEN_SLEUTEL (32 bytes, base64). Ontbreekt die, dan
+//  wordt het kenteken NIET bewaard en zegt het antwoord dat — nooit
+//  stilletjes onversleuteld. De VIN komt hier alleen als het pseudoniem
+//  dat de app al maakt (_vlVinPseudoniem, §7 van PIDLANE.md).
+//
+//  EERST AKKOORD. Zonder een eigen akkoord op het bewaren (kp_akkoord)
+//  weigert elke schrijf- en leesactie behalve `stand` en `akkoord`. Dat
+//  akkoord staat los van het akkoord bij registratie: dit is een nieuwe
+//  verwerking, en wie hem niet wil hoeft hem niet.
+//
+//  HET SCHEMA STAAT HIER ÉÉN KEER. KP_SCHEMA wordt bij de eerste aanroep
+//  per isolate uitgevoerd (CREATE ... IF NOT EXISTS), dus er is geen
+//  handwerk in de D1-console nodig. schema.sql draagt dezelfde tekst;
+//  test-klantplatform.js eist dat die twee gelijk zijn.
+// ══════════════════════════════════════════════════════════════════
+var KP_MAX_ACTIEF = 3;
+var KP_MAX_TOTAAL = 10;          // actief + archief: een vangnet, geen productregel
+var KP_MAX_RAPPORTEN = 500;      // per voertuig
+var KP_MAX_RITTEN = 5000;        // per voertuig
+var KP_MAX_TEKST = 120000;       // tekens per rapport
+var KP_AKKOORD_VERSIE = "2026-09-27";
+
+var KP_SCHEMA = [
+  "CREATE TABLE IF NOT EXISTS kp_akkoord (klant_id TEXT PRIMARY KEY, versie TEXT NOT NULL, op TEXT NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS kp_voertuig (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'actief', naam TEXT, kenteken_enc TEXT, vin_pseudo TEXT, merk TEXT, model TEXT, bouwjaar INTEGER, brandstof TEXT, motor TEXT, cilinderinhoud INTEGER, vermogen_kw INTEGER, turbo TEXT, transmissie TEXT, rijprofiel TEXT, verbruik_opgegeven REAL, kmstand INTEGER, kmstand_op TEXT, apk_tot TEXT, onderhoud_km INTEGER, onderhoud_datum TEXT, notities TEXT, gezondheid TEXT, laatst_gezien TEXT, aangemaakt TEXT NOT NULL, bijgewerkt TEXT NOT NULL, gearchiveerd_op TEXT)",
+  "CREATE INDEX IF NOT EXISTS idx_kp_voertuig_klant ON kp_voertuig (klant_id, status)",
+  "CREATE TABLE IF NOT EXISTS kp_rapport (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, soort TEXT NOT NULL, titel TEXT, tekst TEXT NOT NULL, aangemaakt TEXT NOT NULL)",
+  "CREATE INDEX IF NOT EXISTS idx_kp_rapport_vt ON kp_rapport (voertuig_id, aangemaakt DESC)",
+  "CREATE TABLE IF NOT EXISTS kp_rit (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, start TEXT NOT NULL, eind TEXT, duur_s INTEGER, km REAL, gem_kmh REAL, max_kmh REAL, verbruik_l100 REAL, liters REAL, max_koelwater REAL, min_accu REAL, stationair_pct REAL, codes TEXT, bevindingen TEXT, extra TEXT, aangemaakt TEXT NOT NULL)",
+  "CREATE INDEX IF NOT EXISTS idx_kp_rit_vt ON kp_rit (voertuig_id, start DESC)",
+  "CREATE TABLE IF NOT EXISTS kp_issue (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, sleutel TEXT NOT NULL, soort TEXT NOT NULL, titel TEXT, ernst TEXT, status TEXT NOT NULL DEFAULT 'open', eerst_gezien TEXT NOT NULL, laatst_gezien TEXT NOT NULL, aantal INTEGER NOT NULL DEFAULT 1, gesloten_op TEXT, notitie TEXT)",
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_issue_sleutel ON kp_issue (voertuig_id, sleutel)"
+];
+var _kpSchemaKlaar = false;
+
+async function kpSchema(db) {
+  if (_kpSchemaKlaar) return;
+  for (const s of KP_SCHEMA) await db.prepare(s).run();
+  _kpSchemaKlaar = true;
+}
+__name(kpSchema, "kpSchema");
+
+async function kpKlantId(email) {
+  const d = await crypto.subtle.digest("SHA-256", _enc.encode("pidlane-klant:" + String(email || "").trim().toLowerCase()));
+  return Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+__name(kpKlantId, "kpKlantId");
+
+function kpNu() { return new Date().toISOString(); }
+__name(kpNu, "kpNu");
+
+function kpId() { return crypto.randomUUID(); }
+__name(kpId, "kpId");
+
+// ── Kenteken: normaliseren en versleutelen ─────────────────────────
+function kpKentekenNorm(k) {
+  const s = String(k || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return /^[A-Z0-9]{1,8}$/.test(s) ? s : "";
+}
+__name(kpKentekenNorm, "kpKentekenNorm");
+
+async function kpSleutel(env) {
+  const b64 = String(env && env.KENTEKEN_SLEUTEL || "").trim();
+  if (!b64) return null;
+  let ruw;
+  try { ruw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)); }
+  catch (e) { console.error("[klantplatform] KENTEKEN_SLEUTEL is geen base64"); return null; }
+  if (ruw.length !== 32) { console.error("[klantplatform] KENTEKEN_SLEUTEL is geen 32 bytes maar " + ruw.length); return null; }
+  return crypto.subtle.importKey("raw", ruw, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+__name(kpSleutel, "kpSleutel");
+
+function kpB64(bytes) { let s = ""; bytes.forEach((b) => { s += String.fromCharCode(b); }); return btoa(s); }
+__name(kpB64, "kpB64");
+
+async function kpVersleutel(sleutel, tekst, klantId) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  // De klant-id als extra gegeven: een versleuteld kenteken dat naar een
+  // andere klant gekopieerd wordt, is daar niet te ontsleutelen.
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: _enc.encode(klantId) }, sleutel, _enc.encode(tekst));
+  return "v1:" + kpB64(iv) + ":" + kpB64(new Uint8Array(ct));
+}
+__name(kpVersleutel, "kpVersleutel");
+
+async function kpOntsleutel(sleutel, waarde, klantId) {
+  const m = /^v1:([^:]+):(.+)$/.exec(String(waarde || ""));
+  if (!m || !sleutel) return null;
+  try {
+    const iv = Uint8Array.from(atob(m[1]), (c) => c.charCodeAt(0));
+    const ct = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv, additionalData: _enc.encode(klantId) }, sleutel, ct);
+    return new TextDecoder().decode(pt);
+  } catch (e) {
+    console.error("[klantplatform] kenteken niet te ontsleutelen — andere sleutel of andere klant");
+    return null;
+  }
+}
+__name(kpOntsleutel, "kpOntsleutel");
+
+// ── Velden: wat een klant mag zetten, en hoe ──────────────────────
+// Eén lijst. Wat hier niet staat, komt de tabel niet in.
+var KP_VELDEN = {
+  naam: { soort: "tekst", max: 40 },
+  merk: { soort: "tekst", max: 40 },
+  model: { soort: "tekst", max: 60 },
+  bouwjaar: { soort: "geheel", min: 1950, max: 2100 },
+  brandstof: { soort: "keuze", uit: ["benzine", "diesel", "hybride", "plug-in hybride", "elektrisch", "lpg", "cng", "onbekend"] },
+  motor: { soort: "tekst", max: 60 },
+  cilinderinhoud: { soort: "geheel", min: 0, max: 10000 },
+  vermogen_kw: { soort: "geheel", min: 0, max: 2000 },
+  turbo: { soort: "keuze", uit: ["ja", "nee", "onbekend"] },
+  transmissie: { soort: "keuze", uit: ["handgeschakeld", "automaat", "onbekend"] },
+  rijprofiel: { soort: "keuze", uit: ["stad", "gemengd", "snelweg", "korte ritten", "aanhanger of caravan"] },
+  verbruik_opgegeven: { soort: "getal", min: 0, max: 50 },
+  kmstand: { soort: "geheel", min: 0, max: 2000000 },
+  apk_tot: { soort: "datum" },
+  onderhoud_km: { soort: "geheel", min: 0, max: 2000000 },
+  onderhoud_datum: { soort: "datum" },
+  notities: { soort: "tekst", max: 1000 },
+  vin_pseudo: { soort: "tekst", max: 32, patroon: /^[0-9a-f]{8,32}$/ }
+};
+
+function kpVeld(naam, waarde) {
+  const d = KP_VELDEN[naam];
+  if (!d) return { fout: "onbekend veld: " + naam };
+  if (waarde === null || waarde === undefined || waarde === "") return { waarde: null };
+  if (d.soort === "tekst") {
+    const s = String(waarde).trim().slice(0, d.max);
+    if (d.patroon && !d.patroon.test(s)) return { fout: naam + " heeft niet de verwachte vorm" };
+    return { waarde: s };
+  }
+  if (d.soort === "keuze") {
+    const s = String(waarde).trim().toLowerCase();
+    return d.uit.indexOf(s) >= 0 ? { waarde: s } : { fout: naam + " moet een van " + d.uit.join(", ") + " zijn" };
+  }
+  if (d.soort === "geheel" || d.soort === "getal") {
+    const n = Number(waarde);
+    if (!isFinite(n) || n < d.min || n > d.max) return { fout: naam + " ligt buiten " + d.min + "–" + d.max };
+    return { waarde: d.soort === "geheel" ? Math.round(n) : Math.round(n * 10) / 10 };
+  }
+  if (d.soort === "datum") {
+    const s = String(waarde).slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(new Date(s)) ? { waarde: s } : { fout: naam + " is geen datum (JJJJ-MM-DD)" };
+  }
+  return { fout: "veld " + naam + " zonder soort" };
+}
+__name(kpVeld, "kpVeld");
+
+function kpJson(v, max) {
+  if (v === undefined || v === null) return null;
+  const s = JSON.stringify(v);
+  return s.length > (max || 8000) ? null : s;
+}
+__name(kpJson, "kpJson");
+
+function kpLees(s) {
+  if (!s) return null;
+  try { return JSON.parse(s); } catch (e) { console.error("[klantplatform] kapotte JSON in de database"); return null; }
+}
+__name(kpLees, "kpLees");
+
+async function kpVoertuigVan(db, klantId, id) {
+  if (!id) return null;
+  return db.prepare("SELECT * FROM kp_voertuig WHERE id = ? AND klant_id = ?").bind(String(id), klantId).first();
+}
+__name(kpVoertuigVan, "kpVoertuigVan");
+
+async function kpVoertuigPubliek(v, sleutel, klantId) {
+  const uit = Object.assign({}, v);
+  delete uit.klant_id;
+  delete uit.kenteken_enc;
+  uit.kenteken = v.kenteken_enc ? await kpOntsleutel(sleutel, v.kenteken_enc, klantId) : null;
+  uit.kentekenLeesbaar = !v.kenteken_enc || uit.kenteken !== null;
+  uit.gezondheid = kpLees(v.gezondheid);
+  return uit;
+}
+__name(kpVoertuigPubliek, "kpVoertuigPubliek");
+
+async function kpAlleWissen(db, klantId) {
+  const uit = {};
+  for (const t of ["kp_rapport", "kp_rit", "kp_issue", "kp_voertuig", "kp_akkoord"]) {
+    const r = await db.prepare("DELETE FROM " + t + " WHERE klant_id = ?").bind(klantId).run();
+    uit[t] = (r && r.meta && r.meta.changes) || 0;
+  }
+  return uit;
+}
+__name(kpAlleWissen, "kpAlleWissen");
+
+// ── De acties ──────────────────────────────────────────────────────
+var KP_ACTIES = {
+  async stand(c) {
+    const ak = await c.db.prepare("SELECT versie, op FROM kp_akkoord WHERE klant_id = ?").bind(c.klantId).first();
+    const akkoord = !!(ak && ak.versie === KP_AKKOORD_VERSIE);
+    if (!akkoord) return { ok: true, akkoord: false, akkoordVersie: KP_AKKOORD_VERSIE, eerderAkkoord: ak ? ak.versie : null, voertuigen: [] };
+    const rijen = (await c.db.prepare("SELECT * FROM kp_voertuig WHERE klant_id = ? ORDER BY status, aangemaakt").bind(c.klantId).all()).results || [];
+    const telling = async (sql, id) => ((await c.db.prepare(sql).bind(id).first()) || {}).n || 0;
+    const voertuigen = [];
+    for (const v of rijen) {
+      const p = await kpVoertuigPubliek(v, c.sleutel, c.klantId);
+      p.aantal = {
+        rapporten: await telling("SELECT COUNT(*) AS n FROM kp_rapport WHERE voertuig_id = ?", v.id),
+        ritten: await telling("SELECT COUNT(*) AS n FROM kp_rit WHERE voertuig_id = ?", v.id),
+        openIssues: await telling("SELECT COUNT(*) AS n FROM kp_issue WHERE voertuig_id = ? AND status = 'open'", v.id)
+      };
+      p.laatsteRit = await c.db.prepare("SELECT id, start, km, verbruik_l100 FROM kp_rit WHERE voertuig_id = ? ORDER BY start DESC LIMIT 1").bind(v.id).first();
+      voertuigen.push(p);
+    }
+    return { ok: true, akkoord: true, akkoordOp: ak.op, akkoordVersie: KP_AKKOORD_VERSIE, maxActief: KP_MAX_ACTIEF, kentekenBewaarbaar: !!c.sleutel, voertuigen };
+  },
+
+  async akkoord(c, b) {
+    if (String(b.versie || "") !== KP_AKKOORD_VERSIE)
+      return { ok: false, error: "Deze tekst is niet meer de actuele. Laad de app opnieuw.", code: 409 };
+    await c.db.prepare("INSERT INTO kp_akkoord (klant_id, versie, op) VALUES (?, ?, ?) ON CONFLICT(klant_id) DO UPDATE SET versie = excluded.versie, op = excluded.op")
+      .bind(c.klantId, KP_AKKOORD_VERSIE, kpNu()).run();
+    return { ok: true };
+  },
+
+  async alles_wissen(c) {
+    return { ok: true, gewist: await kpAlleWissen(c.db, c.klantId) };
+  },
+
+  async voertuig_opslaan(c, b) {
+    const inv = b.voertuig || {};
+    const zet = {}, fouten = [];
+    Object.keys(inv).forEach((k) => {
+      if (k === "id" || k === "kenteken") return;
+      if (!KP_VELDEN[k]) return;                          // onbekende velden negeren, niet opslaan
+      const r = kpVeld(k, inv[k]);
+      if (r.fout) fouten.push(r.fout); else zet[k] = r.waarde;
+    });
+    if (fouten.length) return { ok: false, error: fouten.join("; "), code: 400 };
+
+    let kentekenOpgeslagen = null;
+    if ("kenteken" in inv) {
+      const k = kpKentekenNorm(inv.kenteken);
+      if (inv.kenteken && !k) return { ok: false, error: "Dit is geen kenteken.", code: 400 };
+      if (!k) { zet.kenteken_enc = null; kentekenOpgeslagen = false; }
+      else if (!c.sleutel) kentekenOpgeslagen = false;   // niet bewaren is beter dan onversleuteld
+      else { zet.kenteken_enc = await kpVersleutel(c.sleutel, k, c.klantId); kentekenOpgeslagen = true; }
+    }
+    if ("kmstand" in zet) zet.kmstand_op = zet.kmstand == null ? null : kpNu();
+    const nu = kpNu();
+
+    if (inv.id) {
+      const v = await kpVoertuigVan(c.db, c.klantId, inv.id);
+      if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+      const kol = Object.keys(zet);
+      if (kol.length) {
+        await c.db.prepare("UPDATE kp_voertuig SET " + kol.map((k) => k + " = ?").join(", ") + ", bijgewerkt = ? WHERE id = ? AND klant_id = ?")
+          .bind(...kol.map((k) => zet[k]), nu, v.id, c.klantId).run();
+      }
+      const na = await kpVoertuigVan(c.db, c.klantId, v.id);
+      return { ok: true, voertuig: await kpVoertuigPubliek(na, c.sleutel, c.klantId), kentekenOpgeslagen };
+    }
+
+    const tel = await c.db.prepare("SELECT SUM(status = 'actief') AS actief, COUNT(*) AS totaal FROM kp_voertuig WHERE klant_id = ?").bind(c.klantId).first() || {};
+    if ((tel.actief || 0) >= KP_MAX_ACTIEF)
+      return { ok: false, error: "Je hebt al " + KP_MAX_ACTIEF + " voertuigen. Archiveer er eerst een.", code: 409, limiet: "actief" };
+    if ((tel.totaal || 0) >= KP_MAX_TOTAAL)
+      return { ok: false, error: "Je archief is vol (" + KP_MAX_TOTAAL + "). Verwijder eerst een gearchiveerd voertuig.", code: 409, limiet: "totaal" };
+    const id = kpId();
+    const kol = Object.keys(zet);
+    await c.db.prepare("INSERT INTO kp_voertuig (id, klant_id, status, aangemaakt, bijgewerkt" + kol.map((k) => ", " + k).join("") +
+      ") VALUES (?, ?, 'actief', ?, ?" + kol.map(() => ", ?").join("") + ")")
+      .bind(id, c.klantId, nu, nu, ...kol.map((k) => zet[k])).run();
+    const na = await kpVoertuigVan(c.db, c.klantId, id);
+    return { ok: true, voertuig: await kpVoertuigPubliek(na, c.sleutel, c.klantId), kentekenOpgeslagen };
+  },
+
+  async voertuig_archiveer(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    await c.db.prepare("UPDATE kp_voertuig SET status = 'archief', gearchiveerd_op = ?, bijgewerkt = ? WHERE id = ?").bind(kpNu(), kpNu(), v.id).run();
+    return { ok: true };
+  },
+
+  async voertuig_herstel(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    if (v.status === "actief") return { ok: true };
+    const tel = await c.db.prepare("SELECT COUNT(*) AS n FROM kp_voertuig WHERE klant_id = ? AND status = 'actief'").bind(c.klantId).first() || {};
+    if ((tel.n || 0) >= KP_MAX_ACTIEF)
+      return { ok: false, error: "Je hebt al " + KP_MAX_ACTIEF + " actieve voertuigen. Archiveer er eerst een.", code: 409, limiet: "actief" };
+    await c.db.prepare("UPDATE kp_voertuig SET status = 'actief', gearchiveerd_op = NULL, bijgewerkt = ? WHERE id = ?").bind(kpNu(), v.id).run();
+    return { ok: true };
+  },
+
+  async voertuig_verwijder(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    // Alleen een gearchiveerd voertuig. Zo gaat historie nooit weg met één
+    // tik op het verkeerde voertuig: eerst archiveren, dan pas wissen.
+    if (v.status !== "archief") return { ok: false, error: "Archiveer het voertuig eerst.", code: 409 };
+    await c.db.batch([
+      c.db.prepare("DELETE FROM kp_rapport WHERE voertuig_id = ? AND klant_id = ?").bind(v.id, c.klantId),
+      c.db.prepare("DELETE FROM kp_rit WHERE voertuig_id = ? AND klant_id = ?").bind(v.id, c.klantId),
+      c.db.prepare("DELETE FROM kp_issue WHERE voertuig_id = ? AND klant_id = ?").bind(v.id, c.klantId),
+      c.db.prepare("DELETE FROM kp_voertuig WHERE id = ? AND klant_id = ?").bind(v.id, c.klantId)
+    ]);
+    return { ok: true };
+  },
+
+  async status_opslaan(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const g = kpJson(b.gezondheid, 8000);
+    if (b.gezondheid && !g) return { ok: false, error: "Status te groot.", code: 413 };
+    // Alleen meegestuurde velden: een kilometerstand alleen mag de laatst
+    // bekende gezondheid niet leegmaken.
+    const zet = { laatst_gezien: kpNu() };
+    if (b.gezondheid !== undefined) zet.gezondheid = g;
+    if (b.kmstand != null) {
+      const r = kpVeld("kmstand", b.kmstand);
+      // Een gemeten stand mag de opgegeven niet naar beneden halen: dat is
+      // precies het patroon van een teruggedraaide teller, en dat hoort een
+      // bevinding te zijn en geen stille correctie.
+      if (!r.fout && (v.kmstand == null || r.waarde >= v.kmstand)) { zet.kmstand = r.waarde; zet.kmstand_op = kpNu(); }
+    }
+    const kol = Object.keys(zet);
+    await c.db.prepare("UPDATE kp_voertuig SET " + kol.map((k) => k + " = ?").join(", ") + " WHERE id = ?").bind(...kol.map((k) => zet[k]), v.id).run();
+    return { ok: true };
+  },
+
+  async rapport_opslaan(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const soort = String(b.soort || "").slice(0, 20);
+    if (!/^[a-z0-9-]{2,20}$/.test(soort)) return { ok: false, error: "Onbekende rapportsoort.", code: 400 };
+    const tekst = String(b.tekst || "");
+    if (!tekst.trim()) return { ok: false, error: "Leeg rapport.", code: 400 };
+    if (tekst.length > KP_MAX_TEKST) return { ok: false, error: "Rapport te groot om te bewaren.", code: 413 };
+    const n = (await c.db.prepare("SELECT COUNT(*) AS n FROM kp_rapport WHERE voertuig_id = ?").bind(v.id).first() || {}).n || 0;
+    if (n >= KP_MAX_RAPPORTEN) return { ok: false, error: "Dit voertuig heeft " + KP_MAX_RAPPORTEN + " rapporten. Verwijder er eerst een paar.", code: 409 };
+    // Hetzelfde rapport twee keer (opnieuw openen, opnieuw exporteren) wordt
+    // niet dubbel bewaard.
+    const zelfde = await c.db.prepare("SELECT id FROM kp_rapport WHERE voertuig_id = ? AND soort = ? AND tekst = ? LIMIT 1").bind(v.id, soort, tekst).first();
+    if (zelfde) return { ok: true, id: zelfde.id, dubbel: true };
+    const id = kpId();
+    await c.db.prepare("INSERT INTO kp_rapport (id, klant_id, voertuig_id, soort, titel, tekst, aangemaakt) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .bind(id, c.klantId, v.id, soort, String(b.titel || "").slice(0, 120), tekst, kpNu()).run();
+    return { ok: true, id };
+  },
+
+  async rapporten(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const lim = Math.min(Math.max(parseInt(b.limiet, 10) || 50, 1), 200);
+    const r = await c.db.prepare("SELECT id, soort, titel, aangemaakt, LENGTH(tekst) AS lengte FROM kp_rapport WHERE voertuig_id = ? AND klant_id = ? ORDER BY aangemaakt DESC LIMIT ?")
+      .bind(v.id, c.klantId, lim).all();
+    return { ok: true, rapporten: r.results || [] };
+  },
+
+  async rapport(c, b) {
+    const r = await c.db.prepare("SELECT id, voertuig_id, soort, titel, tekst, aangemaakt FROM kp_rapport WHERE id = ? AND klant_id = ?").bind(String(b.id || ""), c.klantId).first();
+    return r ? { ok: true, rapport: r } : { ok: false, error: "Rapport niet gevonden.", code: 404 };
+  },
+
+  async rapport_verwijder(c, b) {
+    const r = await c.db.prepare("DELETE FROM kp_rapport WHERE id = ? AND klant_id = ?").bind(String(b.id || ""), c.klantId).run();
+    return (r && r.meta && r.meta.changes) ? { ok: true } : { ok: false, error: "Rapport niet gevonden.", code: 404 };
+  },
+
+  async rit_opslaan(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const r = b.rit || {};
+    const start = String(r.start || "");
+    if (isNaN(new Date(start))) return { ok: false, error: "Rit zonder starttijd.", code: 400 };
+    const n = (await c.db.prepare("SELECT COUNT(*) AS n FROM kp_rit WHERE voertuig_id = ?").bind(v.id).first() || {}).n || 0;
+    if (n >= KP_MAX_RITTEN) return { ok: false, error: "Dit voertuig heeft " + KP_MAX_RITTEN + " ritten.", code: 409 };
+    const dezelfde = await c.db.prepare("SELECT id FROM kp_rit WHERE voertuig_id = ? AND start = ?").bind(v.id, start).first();
+    if (dezelfde) return { ok: true, id: dezelfde.id, dubbel: true };   // opnieuw verstuurd na een wegvallende verbinding
+    const getal = (x, min, max) => { const g = Number(x); return isFinite(g) && g >= min && g <= max ? Math.round(g * 10) / 10 : null; };
+    const id = kpId();
+    await c.db.prepare("INSERT INTO kp_rit (id, klant_id, voertuig_id, start, eind, duur_s, km, gem_kmh, max_kmh, verbruik_l100, liters, max_koelwater, min_accu, stationair_pct, codes, bevindingen, extra, aangemaakt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(id, c.klantId, v.id, start, isNaN(new Date(r.eind)) ? null : String(r.eind),
+        getal(r.duur_s, 0, 172800), getal(r.km, 0, 5000), getal(r.gem_kmh, 0, 300), getal(r.max_kmh, 0, 300),
+        getal(r.verbruik_l100, 0, 60), getal(r.liters, 0, 500), getal(r.max_koelwater, -40, 215), getal(r.min_accu, 0, 20),
+        getal(r.stationair_pct, 0, 100), kpJson(r.codes, 2000), kpJson(r.bevindingen, 4000), kpJson(r.extra, 4000), kpNu()).run();
+    return { ok: true, id };
+  },
+
+  async ritten(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const lim = Math.min(Math.max(parseInt(b.limiet, 10) || 50, 1), 500);
+    const r = await c.db.prepare("SELECT * FROM kp_rit WHERE voertuig_id = ? AND klant_id = ? ORDER BY start DESC LIMIT ?").bind(v.id, c.klantId, lim).all();
+    return { ok: true, ritten: (r.results || []).map((x) => {
+      const o = Object.assign({}, x); delete o.klant_id;
+      o.codes = kpLees(x.codes); o.bevindingen = kpLees(x.bevindingen); o.extra = kpLees(x.extra);
+      return o;
+    }) };
+  },
+
+  async issues(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const r = await c.db.prepare("SELECT id, sleutel, soort, titel, ernst, status, eerst_gezien, laatst_gezien, aantal, gesloten_op, notitie FROM kp_issue WHERE voertuig_id = ? AND klant_id = ? ORDER BY status = 'open' DESC, laatst_gezien DESC")
+      .bind(v.id, c.klantId).all();
+    return { ok: true, issues: r.results || [] };
+  },
+
+  /* ops: [{ sleutel, soort, titel, ernst, actie }] — actie is
+       gezien    : open houden of openen; aantal +1 bij een nieuwe waarneming
+       opgelost  : dicht, door de app (niet meer gezien bij een volledige uitlezing)
+       genegeerd : dicht, door de klant
+       heropend  : weer open, door de klant
+     Wat de app beslist staat in PLGarage.issueOps() — hier alleen of het mag. */
+  async issues_bijwerken(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const ops = Array.isArray(b.ops) ? b.ops.slice(0, 100) : [];
+    const nu = kpNu();
+    const stmts = [];
+    for (const o of ops) {
+      const sleutel = String(o.sleutel || "").slice(0, 60);
+      if (!/^[A-Za-z0-9:_.-]{2,60}$/.test(sleutel)) continue;
+      const soort = ["dtc", "bevinding", "onderhoud", "keuring"].indexOf(o.soort) >= 0 ? o.soort : "bevinding";
+      const ernst = ["laag", "midden", "hoog"].indexOf(o.ernst) >= 0 ? o.ernst : "midden";
+      const titel = String(o.titel || sleutel).slice(0, 160);
+      if (o.actie === "gezien") {
+        stmts.push(c.db.prepare("INSERT INTO kp_issue (id, klant_id, voertuig_id, sleutel, soort, titel, ernst, status, eerst_gezien, laatst_gezien, aantal) VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, 1) " +
+          "ON CONFLICT(voertuig_id, sleutel) DO UPDATE SET laatst_gezien = excluded.laatst_gezien, aantal = kp_issue.aantal + 1, titel = excluded.titel, ernst = excluded.ernst, " +
+          "status = CASE WHEN kp_issue.status = 'genegeerd' THEN 'genegeerd' ELSE 'open' END, gesloten_op = CASE WHEN kp_issue.status = 'genegeerd' THEN kp_issue.gesloten_op ELSE NULL END")
+          .bind(kpId(), c.klantId, v.id, sleutel, soort, titel, ernst, nu, nu));
+      } else if (o.actie === "opgelost" || o.actie === "genegeerd") {
+        stmts.push(c.db.prepare("UPDATE kp_issue SET status = ?, gesloten_op = ?, notitie = COALESCE(?, notitie) WHERE voertuig_id = ? AND sleutel = ? AND klant_id = ? AND status = 'open'")
+          .bind(o.actie, nu, o.notitie ? String(o.notitie).slice(0, 300) : null, v.id, sleutel, c.klantId));
+      } else if (o.actie === "heropend") {
+        stmts.push(c.db.prepare("UPDATE kp_issue SET status = 'open', gesloten_op = NULL WHERE voertuig_id = ? AND sleutel = ? AND klant_id = ?")
+          .bind(v.id, sleutel, c.klantId));
+      }
+    }
+    if (stmts.length) await c.db.batch(stmts);
+    return { ok: true, verwerkt: stmts.length };
+  }
+};
+
+// ── POST /klant/platform  { actie, ... }  (ingelogd als klant) ──────
+async function handleKlantPlatform(request, env) {
+  const p = await klantAuth(request, env);
+  if (!p) return json({ ok: false, error: "Niet ingelogd." }, 401);
+  if (!env.LOGDB) return json({ ok: false, error: "Opslag niet beschikbaar.", detail: "geen LOGDB-binding" }, 503);
+
+  let body = {};
+  try { body = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — body blijft {}, de actie hieronder valideert */ }
+  const actie = String(body.actie || "");
+  const fn = Object.prototype.hasOwnProperty.call(KP_ACTIES, actie) ? KP_ACTIES[actie] : null;
+  if (!fn) return json({ ok: false, error: "Onbekende actie." }, 400);
+
+  const klantId = await kpKlantId(p.u);
+  const rl = await rateLimit(env, "klant-platform", klantId, { limit: 600, windowMs: 36e5 }, true);
+  if (rl.limited) return rateLimitResponse(rl);
+
+  try {
+    const db = env.LOGDB;
+    await kpSchema(db);
+    const c = { db, klantId, sleutel: await kpSleutel(env) };
+    let ak = await db.prepare("SELECT versie FROM kp_akkoord WHERE klant_id = ?").bind(klantId).first();
+
+    // Bij het openen (stand) de accountstatus in Airtable: geblokkeerd of
+    // verwijderd = dicht. Is het account intussen hersteld, dan gaat de
+    // blokkade van het verwijderen eraf (het akkoord moet dan opnieuw).
+    // Airtable onbereikbaar = doorgaan en melden: een storing daar mag de
+    // eigen voertuigen niet onbereikbaar maken.
+    if (actie === "stand" && env.AIRTABLE_TOKEN) {
+      try {
+        const rec = await klantZoek(env, p.u);
+        const pr = rec ? klantToegangProbleem(rec.fields) : { status: 403, code: "onbekend", bericht: "Account niet gevonden." };
+        if (pr) return json({ ok: false, error: pr.bericht, code: pr.code }, pr.status);
+        if (ak && ak.versie === "verwijderd") {
+          await db.prepare("DELETE FROM kp_akkoord WHERE klant_id = ?").bind(klantId).run();
+          ak = null;
+        }
+      } catch (e) {
+        console.error("[klantplatform] accountstatus niet te controleren :: " + String(e && e.message || e));
+      }
+    }
+    if (ak && ak.versie === "verwijderd")
+      return json({ ok: false, error: "Dit account is op eigen verzoek verwijderd en kan niet meer gebruikt worden.", code: "verwijderd" }, 403);
+    if (actie !== "stand" && actie !== "akkoord" && actie !== "alles_wissen") {
+      if (!ak || ak.versie !== KP_AKKOORD_VERSIE)
+        return json({ ok: false, error: "Eerst akkoord op het bewaren van je voertuiggegevens.", akkoordNodig: true }, 403);
+    }
+    const uit = await fn(c, body);
+    const code = uit.code || (uit.ok ? 200 : 400);
+    delete uit.code;
+    return json(uit, code);
+  } catch (e) {
+    return klantFout(e, "Opslaan of ophalen mislukt.");
+  }
+}
+__name(handleKlantPlatform, "handleKlantPlatform");
 
 // ── De opruimer ─────────────────────────────────────────────────────
 // Draait uit de cron (zie scheduled() onderaan) en uit de adminpagina, zodat
@@ -4781,6 +5307,7 @@ async function klantWachtrijOpruimen(env, nu) {
   uit.bekeken = rijen.length;
 
   const rijp = [];
+  const emailVan = {};
   for (const rec of rijen) {
     const f = rec.fields || {};
     const weg = klantOpruimMoment(f);
@@ -4792,7 +5319,28 @@ async function klantWachtrijOpruimen(env, nu) {
       continue;
     }
     if (weg > grens) { uit.wacht.push({ id: rec.id, definitiefOp: weg.toISOString() }); continue; }
+    emailVan[rec.id] = f.Email || "";
     rijp.push(rec.id);
+  }
+
+  // EERST HET KLANTPLATFORM, DAN HET ACCOUNT. Voertuigen, ritten en rapporten
+  // staan in D1 onder een sleutel die uit het e-mailadres volgt. Is het
+  // Airtable-record eenmaal weg, dan is dat adres er niet meer en kan niemand
+  // die rijen nog vinden. Mislukt het wissen in D1, dan blijft het account
+  // dus óók staan — de volgende nacht probeert hij het opnieuw.
+  if (rijp.length && env.LOGDB) {
+    for (let i = rijp.length - 1; i >= 0; i--) {
+      const id = rijp[i];
+      try {
+        await kpSchema(env.LOGDB);
+        const w = await kpAlleWissen(env.LOGDB, await kpKlantId(emailVan[id]));
+        uit.platform = uit.platform || [];
+        uit.platform.push({ id, gewist: w });
+      } catch (e) {
+        uit.mislukt.push({ id, reden: "d1_platform: " + String(e && e.message || e).slice(0, 120) });
+        rijp.splice(i, 1);
+      }
+    }
   }
 
   // Airtable wist maximaal 10 records per aanroep.
@@ -4917,6 +5465,8 @@ var worker_default = {
         return lockOrigin(request, await handleKlantMij(request, env));
       if (url.pathname === "/klant/verwijder" && request.method === "POST")
         return lockOrigin(request, await handleKlantVerwijder(request, env));
+      if (url.pathname === "/klant/platform" && request.method === "POST")
+        return lockOrigin(request, await handleKlantPlatform(request, env));
       if (url.pathname === "/klant/wachtwoord" && request.method === "POST")
         return lockOrigin(request, await handleKlantWachtwoord(request, env));
       if (url.pathname === "/klant/reset-aanvraag" && request.method === "POST")

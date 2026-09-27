@@ -236,3 +236,22 @@ SELECT id, ontvangen, Timestamp, SessionId, RecordType, Type,
 FROM logregels
 WHERE Type IN ('error', 'opvallend', 'bug')
    OR (Outcome IS NOT NULL AND Outcome <> '');
+
+-- ══════════════════════════════════════════════════════════════════
+--  KLANTPLATFORM — "Mijn voertuigen" (27-09-2026)
+--  De Worker voert deze statements zelf uit bij de eerste aanroep
+--  (kpSchema in worker.js); hier staan ze om terug te kunnen lezen wat er
+--  staat. De tekst is gelijk aan KP_SCHEMA in worker.js, en
+--  test-klantplatform.js eist dat — één schema, niet twee.
+--  kenteken_enc is AES-GCM-versleuteld (KENTEKEN_SLEUTEL), vin_pseudo is
+--  het pseudoniem uit de app; een e-mailadres staat hier nergens.
+-- ══════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS kp_akkoord (klant_id TEXT PRIMARY KEY, versie TEXT NOT NULL, op TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS kp_voertuig (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'actief', naam TEXT, kenteken_enc TEXT, vin_pseudo TEXT, merk TEXT, model TEXT, bouwjaar INTEGER, brandstof TEXT, motor TEXT, cilinderinhoud INTEGER, vermogen_kw INTEGER, turbo TEXT, transmissie TEXT, rijprofiel TEXT, verbruik_opgegeven REAL, kmstand INTEGER, kmstand_op TEXT, apk_tot TEXT, onderhoud_km INTEGER, onderhoud_datum TEXT, notities TEXT, gezondheid TEXT, laatst_gezien TEXT, aangemaakt TEXT NOT NULL, bijgewerkt TEXT NOT NULL, gearchiveerd_op TEXT);
+CREATE INDEX IF NOT EXISTS idx_kp_voertuig_klant ON kp_voertuig (klant_id, status);
+CREATE TABLE IF NOT EXISTS kp_rapport (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, soort TEXT NOT NULL, titel TEXT, tekst TEXT NOT NULL, aangemaakt TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_kp_rapport_vt ON kp_rapport (voertuig_id, aangemaakt DESC);
+CREATE TABLE IF NOT EXISTS kp_rit (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, start TEXT NOT NULL, eind TEXT, duur_s INTEGER, km REAL, gem_kmh REAL, max_kmh REAL, verbruik_l100 REAL, liters REAL, max_koelwater REAL, min_accu REAL, stationair_pct REAL, codes TEXT, bevindingen TEXT, extra TEXT, aangemaakt TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_kp_rit_vt ON kp_rit (voertuig_id, start DESC);
+CREATE TABLE IF NOT EXISTS kp_issue (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, sleutel TEXT NOT NULL, soort TEXT NOT NULL, titel TEXT, ernst TEXT, status TEXT NOT NULL DEFAULT 'open', eerst_gezien TEXT NOT NULL, laatst_gezien TEXT NOT NULL, aantal INTEGER NOT NULL DEFAULT 1, gesloten_op TEXT, notitie TEXT);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_issue_sleutel ON kp_issue (voertuig_id, sleutel);

@@ -281,6 +281,9 @@ async function scanDTC(){
   log(`Scan: ${dtcCodes.length} code(s)`,dtcCodes.length?'warn':'ok');
   try{ PidLaneEvalLog.log('dtc','uitgelezen',{codes:[...dtcCodes]}); }catch(e){ /* stil: eigen telemetrielog (PidLaneEvalLog) — mag de scan nooit blokkeren */ }
   // Uitlezing bewaren in het sessie-rapportarchief (📄 Rapporten-knop + AI-context)
+  // Mijn voertuigen: alleen toevoegen. Dit tabblad leest geen 07, dus het
+  // mag niets als opgelost sluiten — dat doet alleen een volledige uitlezing.
+  try{ if(!demoMode && window.PLGarage && PLGarage.foutcodes) PLGarage.foutcodes({bevestigd:[...dtcCodes], gelezen:{bevestigd:true, pending:false}}); }catch(e){ console.warn('PLGarage: codes niet doorgegeven', e); }
   try{ registerSessionReport({type:'dtc', title:'Foutcode-uitlezing — '+(dtcCodes.length?dtcCodes.length+' code'+(dtcCodes.length===1?'':'s'):'geen codes'), text:_srDtcText()}); }catch(e){ console.warn('_srDtcText mislukt:', e); }
 }
 async function realScanDTC(){

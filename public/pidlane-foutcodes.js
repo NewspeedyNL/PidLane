@@ -554,6 +554,9 @@
       _st.scan = s;
       try { if (typeof registerSessionReport === 'function') registerSessionReport({ type: 'dtc', title: 'Foutcodes & keuringsstatus', text: alsTekst(s) }); }
       catch (e) { console.warn('PLFoutcodes: archiveren faalde', e); }
+      // Mijn voertuigen: codes worden issues, keuringsstatus gaat in de status.
+      try { if (window.PLGarage && PLGarage.foutcodes) PLGarage.foutcodes({ bevestigd: s.codes.bevestigd, pending: s.codes.pending, permanent: s.codes.permanent, gelezen: s.gelezen, readiness: s.readiness }); }
+      catch (e) { console.warn('PLFoutcodes: doorgeven aan Mijn voertuigen faalde', e); }
       return s;
     } catch (e) {
       _st.fout = 'Uitlezen mislukt: ' + (e.message || e);
