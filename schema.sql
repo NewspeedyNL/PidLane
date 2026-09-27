@@ -255,7 +255,9 @@ CREATE TABLE IF NOT EXISTS kp_rit (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, 
 CREATE INDEX IF NOT EXISTS idx_kp_rit_vt ON kp_rit (voertuig_id, start DESC);
 CREATE TABLE IF NOT EXISTS kp_issue (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, sleutel TEXT NOT NULL, soort TEXT NOT NULL, titel TEXT, ernst TEXT, status TEXT NOT NULL DEFAULT 'open', eerst_gezien TEXT NOT NULL, laatst_gezien TEXT NOT NULL, aantal INTEGER NOT NULL DEFAULT 1, gesloten_op TEXT, notitie TEXT);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_issue_sleutel ON kp_issue (voertuig_id, sleutel);
+CREATE TABLE IF NOT EXISTS kp_voorkeur (klant_id TEXT PRIMARY KEY, data TEXT NOT NULL, bijgewerkt TEXT NOT NULL);
 -- Later bijgekomen kolommen (KP_MIGRATIES in worker.js). De Worker voert ze
 -- zelf uit; "duplicate column" betekent dat ze er al staan.
 ALTER TABLE kp_voertuig ADD COLUMN onderhoud_laatst TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN distributie TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN pid_selectie TEXT;

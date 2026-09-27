@@ -348,6 +348,7 @@ function plVoorAnalyse(heeftRapporten, opties){
 
     const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     const n=(window._sessionReports||[]).filter(r=>r.text&&r.type!=='pdf').length;
+    let nVt=0; try{ nVt=(window.PLGarage&&PLGarage.eerderAantal)?PLGarage.eerderAantal():0; }catch(e){ console.warn('Aantal voertuigrapporten niet leesbaar', e); }
 
     const vraagHtml=v=>{
       const knoppen=v.opties.map(o=>
@@ -365,7 +366,7 @@ function plVoorAnalyse(heeftRapporten, opties){
     const rapportBlok = vraagRapporten
       ? '<div style="border:1px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:10px;background:var(--sur2)">'+
           '<div style="font-size:12px;font-weight:700;color:var(--tx);margin-bottom:2px">📄 Eerdere rapporten meenemen?</div>'+
-          '<div style="font-size:11px;color:var(--tx3);margin-bottom:7px">Er '+(n===1?'is 1 eerder rapport':'zijn '+n+' eerdere rapporten')+' in deze sessie. De AI kan daarmee melden of een eerdere bevinding is verbeterd of verslechterd.</div>'+
+          '<div style="font-size:11px;color:var(--tx3);margin-bottom:7px">'+(n?'Er '+(n===1?'is 1 eerder rapport':'zijn '+n+' eerdere rapporten')+' in deze sessie'+(nVt?', plus '+nVt+' van je voertuig uit eerdere sessies':'')+'.':'Er '+(nVt===1?'is 1 rapport':'zijn '+nVt+' rapporten')+' van je voertuig uit eerdere sessies.')+' De AI kan daarmee melden of een eerdere bevinding is verbeterd of verslechterd.</div>'+
           '<div style="display:flex;gap:5px">'+
             '<button type="button" class="pl-vk on" data-vraag="_rap" data-waarde="ja">Ja, neem mee</button>'+
             '<button type="button" class="pl-vk" data-vraag="_rap" data-waarde="nee">Nee, alleen deze meting</button>'+

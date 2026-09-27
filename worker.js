@@ -4821,7 +4821,8 @@ var KP_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS kp_rit (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, start TEXT NOT NULL, eind TEXT, duur_s INTEGER, km REAL, gem_kmh REAL, max_kmh REAL, verbruik_l100 REAL, liters REAL, max_koelwater REAL, min_accu REAL, stationair_pct REAL, codes TEXT, bevindingen TEXT, extra TEXT, aangemaakt TEXT NOT NULL)",
   "CREATE INDEX IF NOT EXISTS idx_kp_rit_vt ON kp_rit (voertuig_id, start DESC)",
   "CREATE TABLE IF NOT EXISTS kp_issue (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, sleutel TEXT NOT NULL, soort TEXT NOT NULL, titel TEXT, ernst TEXT, status TEXT NOT NULL DEFAULT 'open', eerst_gezien TEXT NOT NULL, laatst_gezien TEXT NOT NULL, aantal INTEGER NOT NULL DEFAULT 1, gesloten_op TEXT, notitie TEXT)",
-  "CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_issue_sleutel ON kp_issue (voertuig_id, sleutel)"
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_issue_sleutel ON kp_issue (voertuig_id, sleutel)",
+  "CREATE TABLE IF NOT EXISTS kp_voorkeur (klant_id TEXT PRIMARY KEY, data TEXT NOT NULL, bijgewerkt TEXT NOT NULL)"
 ];
 // Kolommen die er later bij kwamen. CREATE TABLE IF NOT EXISTS voegt op een
 // bestaande tabel niets toe, dus die gaan er met ALTER bij. "duplicate column"
@@ -4829,7 +4830,8 @@ var KP_SCHEMA = [
 // andere fout gaat gewoon naar boven.
 var KP_MIGRATIES = [
   "ALTER TABLE kp_voertuig ADD COLUMN onderhoud_laatst TEXT",
-  "ALTER TABLE kp_voertuig ADD COLUMN distributie TEXT"
+  "ALTER TABLE kp_voertuig ADD COLUMN distributie TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN pid_selectie TEXT"
 ];
 var _kpSchemaKlaar = false;
 
@@ -4923,6 +4925,7 @@ var KP_VELDEN = {
   onderhoud_laatst: { soort: "tekst", max: 80 },
   distributie: { soort: "tekst", max: 80 },
   notities: { soort: "tekst", max: 1000 },
+  pid_selectie: { soort: "pidlijst", max: 200 },
   vin_pseudo: { soort: "tekst", max: 32, patroon: /^[0-9a-f]{8,32}$/ }
 };
 
@@ -4943,6 +4946,16 @@ function kpVeld(naam, waarde) {
     const n = Number(waarde);
     if (!isFinite(n) || n < d.min || n > d.max) return { fout: naam + " ligt buiten " + d.min + "–" + d.max };
     return { waarde: d.soort === "geheel" ? Math.round(n) : Math.round(n * 10) / 10 };
+  }
+  if (d.soort === "pidlijst") {
+    if (!Array.isArray(waarde)) return { fout: naam + " moet een lijst zijn" };
+    const l = [];
+    for (const x of waarde.slice(0, d.max)) {
+      const p = String(x || "").toUpperCase();
+      if (!/^[0-9A-F]{4,6}$/.test(p)) return { fout: naam + " bevat geen geldige PID: " + p.slice(0, 10) };
+      if (l.indexOf(p) < 0) l.push(p);
+    }
+    return { waarde: JSON.stringify(l) };
   }
   if (d.soort === "datum") {
     const s = String(waarde).slice(0, 10);
@@ -4978,13 +4991,14 @@ async function kpVoertuigPubliek(v, sleutel, klantId) {
   uit.kenteken = v.kenteken_enc ? await kpOntsleutel(sleutel, v.kenteken_enc, klantId) : null;
   uit.kentekenLeesbaar = !v.kenteken_enc || uit.kenteken !== null;
   uit.gezondheid = kpLees(v.gezondheid);
+  uit.pid_selectie = kpLees(v.pid_selectie);
   return uit;
 }
 __name(kpVoertuigPubliek, "kpVoertuigPubliek");
 
 async function kpAlleWissen(db, klantId) {
   const uit = {};
-  for (const t of ["kp_rapport", "kp_rit", "kp_issue", "kp_voertuig", "kp_akkoord"]) {
+  for (const t of ["kp_rapport", "kp_rit", "kp_issue", "kp_voertuig", "kp_voorkeur", "kp_akkoord"]) {
     const r = await db.prepare("DELETE FROM " + t + " WHERE klant_id = ?").bind(klantId).run();
     uit[t] = (r && r.meta && r.meta.changes) || 0;
   }
@@ -4992,8 +5006,73 @@ async function kpAlleWissen(db, klantId) {
 }
 __name(kpAlleWissen, "kpAlleWissen");
 
+// ── Voorkeuren: wat een klant standaard wil bij het inloggen ────────
+// Eén object per klant. Alleen wat hier staat komt de tabel in; een sleutel
+// die ontbreekt betekent "laat het toestel het bepalen". Dezelfde lijst staat
+// als VOORKEUR_SPEC in public/pidlane-voorkeur.js; test-voorkeur.js eist dat
+// de sleutels en keuzes gelijk zijn.
+var KP_VOORKEUR = {
+  weergave: { soort: "keuze", uit: ["full", "numbers", "dots", "slim", "visueel"] },
+  thema: { soort: "keuze", uit: ["donker", "licht"] },
+  tekst: { soort: "keuze", uit: ["s", "m", "l"] },
+  letter: { soort: "geheel", min: 10, max: 18 },
+  waakronde: { soort: "janee" },
+  ritmonitor: { soort: "janee" },
+  bulk: { soort: "janee" },
+  autoVerbinden: { soort: "janee" },
+  favorieten: { soort: "lijst", patroon: /^wc-[a-z0-9-]{1,40}$/, max: 12 },
+  start: { soort: "keuze", uit: ["start", "live"] },
+  foutcodesNaVerbinden: { soort: "janee" },
+  meldingApk: { soort: "janee" },
+  meldingRit: { soort: "janee" },
+  meldingPunten: { soort: "janee" },
+  rapport: { soort: "keuze", uit: ["kort", "normaal", "uitgebreid"] },
+  verbruik: { soort: "keuze", uit: ["l100", "kml"] },
+  adapterType: { soort: "keuze", uit: ["mxplus", "elm327", "ble", "onbekend"] },
+  adapterNaam: { soort: "tekst", max: 60 },
+  adapterAdres: { soort: "tekst", max: 17, patroon: /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/ },
+  scanBekend: { soort: "keuze", uit: ["vragen", "overslaan", "altijd"] },
+  samenvatting: { soort: "janee" },
+  oudeData: { soort: "keuze", uit: ["vragen", "ja", "nee"] }
+};
+
+function kpVoorkeurSchoon(inv) {
+  const uit = {}, fouten = [];
+  Object.keys(inv || {}).forEach((k) => {
+    const d = KP_VOORKEUR[k];
+    const w = inv[k];
+    if (!d || w === null || w === undefined || w === "") return;   // onbekend of leeg: niet bewaren
+    if (d.soort === "keuze") { if (d.uit.indexOf(w) >= 0) uit[k] = w; else fouten.push(k); }
+    else if (d.soort === "janee") { if (w === true || w === false) uit[k] = w; else fouten.push(k); }
+    else if (d.soort === "geheel") { const n = Number(w); if (Number.isInteger(n) && n >= d.min && n <= d.max) uit[k] = n; else fouten.push(k); }
+    else if (d.soort === "tekst") { const t = String(w).slice(0, d.max); if (!d.patroon || d.patroon.test(t)) uit[k] = t; else fouten.push(k); }
+    else if (d.soort === "lijst") {
+      if (!Array.isArray(w)) { fouten.push(k); return; }
+      const l = w.map(String).filter((x) => d.patroon.test(x));
+      if (l.length !== w.length) { fouten.push(k); return; }
+      uit[k] = l.filter((x, i) => l.indexOf(x) === i).slice(0, d.max);
+    }
+  });
+  return { voorkeur: uit, fouten };
+}
+__name(kpVoorkeurSchoon, "kpVoorkeurSchoon");
+
 // ── De acties ──────────────────────────────────────────────────────
 var KP_ACTIES = {
+  async voorkeuren(c) {
+    const r = await c.db.prepare("SELECT data, bijgewerkt FROM kp_voorkeur WHERE klant_id = ?").bind(c.klantId).first();
+    return { ok: true, voorkeur: r ? (kpLees(r.data) || {}) : {}, bijgewerkt: r ? r.bijgewerkt : null };
+  },
+
+  async voorkeuren_opslaan(c, b) {
+    const s = kpVoorkeurSchoon(b.voorkeur);
+    if (s.fouten.length) return { ok: false, error: "Ongeldige voorkeur: " + s.fouten.join(", "), code: 400 };
+    const nu = kpNu();
+    await c.db.prepare("INSERT INTO kp_voorkeur (klant_id, data, bijgewerkt) VALUES (?, ?, ?) ON CONFLICT(klant_id) DO UPDATE SET data = excluded.data, bijgewerkt = excluded.bijgewerkt")
+      .bind(c.klantId, JSON.stringify(s.voorkeur), nu).run();
+    return { ok: true, voorkeur: s.voorkeur, bijgewerkt: nu };
+  },
+
   async stand(c) {
     const ak = await c.db.prepare("SELECT versie, op FROM kp_akkoord WHERE klant_id = ?").bind(c.klantId).first();
     const akkoord = !!(ak && ak.versie === KP_AKKOORD_VERSIE);
@@ -5285,7 +5364,9 @@ async function handleKlantPlatform(request, env) {
     }
     if (ak && ak.versie === "verwijderd")
       return json({ ok: false, error: "Dit account is op eigen verzoek verwijderd en kan niet meer gebruikt worden.", code: "verwijderd" }, 403);
-    if (actie !== "stand" && actie !== "akkoord" && actie !== "alles_wissen") {
+    // Voorkeuren (tekstgrootte, weergave, …) zijn geen voertuiggegevens en
+    // vragen dus niet om het akkoord van Mijn voertuigen.
+    if (actie !== "stand" && actie !== "akkoord" && actie !== "alles_wissen" && actie !== "voorkeuren" && actie !== "voorkeuren_opslaan") {
       if (!ak || ak.versie !== KP_AKKOORD_VERSIE)
         return json({ ok: false, error: "Eerst akkoord op het bewaren van je voertuiggegevens.", akkoordNodig: true }, 403);
     }

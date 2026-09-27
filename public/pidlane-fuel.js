@@ -416,11 +416,15 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
   // via het 📄 Rapporten-overzicht; daar staat ook de meetcontext.
   try{
     const _srBlok=_sessionReportsPromptBlock(String(prompt||''));
-    const _ant=await plVoorAnalyse(!!_srBlok);
+    // Mijn voertuigen: de laatste rapporten van het actieve voertuig uit
+    // eerdere sessies tellen mee als "eerdere rapporten".
+    let _vtBlok=''; try{ _vtBlok=(window.PLGarage&&PLGarage.eerderBlok)?PLGarage.eerderBlok():''; }catch(e){ console.warn('Eerdere voertuigrapporten niet leesbaar', e); }
+    const _ant=await plVoorAnalyse(!!(_srBlok||_vtBlok));
     if(_ant && _ant.geannuleerd){
       const _af=new Error('Analyse geannuleerd'); _af.plAfgebroken=true; throw _af;
     }
     if(_srBlok && _ant && _ant.rapporten) sys += _srBlok;
+    if(_vtBlok && _ant && _ant.rapporten) sys += _vtBlok;
   }catch(e){
     if(e && e.plAfgebroken) throw e;                 // bewuste keuze van de gebruiker
     console.warn('Eerdere rapporten niet meegestuurd als context', e);
@@ -428,6 +432,9 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
   // De meetcontext geldt voor ELKE AI-rol, net als de rijsituatie hierboven —
   // ook bij een eigen systemPrompt of een admin-override. Zonder deze regel
   // leest de AI een start/stop-motor als een motor die afslaat.
+  // Mijn voorkeuren: kort of uitgebreid rapport. Leeg zonder voorkeur.
+  try{ if(window.PLVoorkeur) sys += PLVoorkeur.promptRegel(); }
+  catch(e){ console.warn('Rapportvoorkeur niet aan de AI-prompt toegevoegd', e); }
   try{ sys += plMeetcontextPromptLine(); }
   catch(e){ console.warn('Meetcontext niet aan de AI-prompt toegevoegd — start/stop kan dan als afslaan gelezen worden', e); }
   // ── De aanlevering (#188) ────────────────────────────────────────

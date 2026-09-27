@@ -280,12 +280,17 @@ var KRITIEK = [
   'connectSerial',
   // Erbij op 26-09-2026: het foutcodevenster (pidlane-foutcodes.js) zet zijn
   // uitlezing in het sessiearchief, zoals scanDTC() dat doet.
-  'registerSessionReport'
+  'registerSessionReport',
+  // Erbij op 27-09-2026: Mijn voorkeuren (pidlane-voorkeur.js) past de
+  // standaard van het account toe met de functies die de app al heeft.
+  'buildPIDList','favBarSync','favGet','favSet','fontSize','openLiveView',
+  'plThemaZet','rebuildGSel','renderGauges','setUiScale'
 ];
 // Namen die in de bron als `typeof X==='function'` voorkomen maar géén globale
 // functie zijn — met reden, want de test vraagt erom.
 var GEEN_GLOBALE = {
   'onAnnuleer': 'parameter van showBusyPill(), geen globale functie',
+  'fn': 'parameter van zet() in PLVoorkeur.toepassen(), geen globale functie',
   // Erbij op 04-09-2026 met de kaartmaker. `confirm` is een browserfunctie en
   // geen eigen code, dus hij hoort niet in KRITIEK — maar de guard eromheen is
   // wél terecht: in een WebView kan de host dialogen uitzetten, en dan bestaat
