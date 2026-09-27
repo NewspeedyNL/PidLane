@@ -223,6 +223,12 @@ async function laadWorker() {
 
   const tp = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, tankinhoud: 56, brandstofprijs: '1,959' } });
   toets('tankinhoud en literprijs, met drie decimalen', tp.ok && tp.voertuig.tankinhoud === 56 && tp.voertuig.brandstofprijs === 1.959, JSON.stringify(tp).slice(0, 300));
+  const ck = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, carrosserie: 'SUV', kleur: 'Rood' } });
+  toets('carrosserie en kleur voor het icoon', ck.ok && ck.voertuig.carrosserie === 'suv' && ck.voertuig.kleur === 'rood');
+  toets('een kleur die niet in de lijst staat: 400', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, kleur: '#ff0000' } }))._status === 400);
+  const gr = await roep(tokA, { actie: 'rit_opslaan', voertuig_id: v1.voertuig.id, rit: { start: '2026-09-27T12:00:00.000Z', km: 12, extra: { gear: { v: 1, bin: 0.015, n: 300, h: { '171': 150, '199': 150 } } } } });
+  toets('een rit draagt het histogram van de versnellingsindicator mee', gr.ok &&
+    (await roep(tokA, { actie: 'ritten', voertuig_id: v1.voertuig.id })).ritten.some((r) => r.extra && r.extra.gear && r.extra.gear.n === 300));
   toets('een literprijs van € 50 is een tikfout: 400', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, brandstofprijs: 50 } }))._status === 400);
   const ra = await roep(tokA, { actie: 'rapport_opslaan', voertuig_id: v1.voertuig.id, soort: 'waak', tekst: 'een' });
   const rb = await roep(tokA, { actie: 'rapport_opslaan', voertuig_id: v1.voertuig.id, soort: 'waak', tekst: 'twee' });

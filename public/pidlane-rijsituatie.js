@@ -147,12 +147,26 @@ function renderSituatie(hostId){
     sinds='<div style="font-size:11px;color:var(--tx3);margin-top:8px">Ingesteld om '+hh+' — vervalt automatisch na '+uren+' uur, zodat een oude vlag geen nieuwe analyse kleurt.</div>';
   }
 
-  host.innerHTML=
-    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'+
-      '<b style="font-size:13px">🎒 Rijsituatie &amp; bijzonderheden</b>'+
+  // INGEKLAPT IN HET VOERTUIGOVERZICHT (27-09-2026). Daar stonden elf chips,
+  // een tekstveld en de uitleg altijd open, midden in het formulier: "te
+  // druk". Dicht zie je alleen wat er aan staat; één tik klapt hem open. Het
+  // eigen venster (☰ → Rijsituatie) staat altijd open: daar kom je voor.
+  const inklap = hostId==='sitBlok';
+  const open = !inklap || window._sitBlokOpen===true;
+  const kop='<div style="display:flex;align-items:center;gap:8px;margin-bottom:'+(open?'5px':'0')+'">'+
+      (inklap?'<button type="button" onclick="situatieKlap()" aria-expanded="'+open+'" style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;background:none;border:0;padding:4px 0;color:var(--tx);font-family:var(--f);cursor:pointer;text-align:left">'+
+        '<span style="font-size:11px;color:var(--tx3)">'+(open?'▾':'▸')+'</span><b style="font-size:13px">🎒 Rijsituatie &amp; bijzonderheden</b></button>'
+        :'<b style="font-size:13px">🎒 Rijsituatie &amp; bijzonderheden</b>')+
       (act.length?'<span style="font-size:11px;font-weight:800;padding:2px 7px;border-radius:5px;background:rgba(94,124,255,.18);color:var(--bl)">'+act.length+' actief</span>':'')+
-      '<button type="button" onclick="situatieWis()" style="margin-left:auto;padding:5px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">Wissen</button>'+
-    '</div>'+
+      (open?'<button type="button" onclick="situatieWis()" style="margin-left:auto;padding:5px 9px;border-radius:7px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-family:var(--f);font-size:11px;font-weight:700;cursor:pointer">Wissen</button>':'')+
+    '</div>';
+  if(!open){
+    host.innerHTML=kop+'<div style="font-size:11px;color:var(--tx3);margin-top:2px">'+
+      (act.length?act.map(function(s){ return s.icon+' '+esc(s.label); }).join(' · '):'Niets aangetikt. Tik om te kiezen wat er nu speelt (caravan, beladen, bergachtig…).')+'</div>';
+    return;
+  }
+  host.innerHTML=
+    kop+
     '<div style="font-size:11px;color:var(--tx3);margin-bottom:8px">Tik aan wat er <b>nu</b> speelt. Elke analyse rekent hiermee: wat logisch is bij deze situatie telt niet als defect, en wat juist kritisch wordt (koeling, laaddruk, laden) weegt zwaarder.</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px">'+chips+'</div>'+
     velden+
@@ -185,6 +199,7 @@ function openSituatie(){
   m.style.display='flex';
   renderSituatie('sitSheetBody');
 }
+function situatieKlap(){ window._sitBlokOpen=!window._sitBlokOpen; renderSituatie('sitBlok'); }
 function closeSituatie(){ const m=document.getElementById('situatieSheet'); if(m) m.style.display='none'; }
 
 // ── Promptblok: gaat mee met ELKE AI-rol (zie apiFetch) ──
@@ -212,7 +227,7 @@ function _situatiePromptLine(){
 try{
   window.situatieActief=situatieActief; window.situatieKort=situatieKort;
   window.openSituatie=openSituatie;     window.closeSituatie=closeSituatie;
-  window.toggleSituatie=toggleSituatie; window.situatieWis=situatieWis;
+  window.toggleSituatie=toggleSituatie; window.situatieWis=situatieWis; window.situatieKlap=situatieKlap;
   window.sitSetVeld=sitSetVeld;         window.renderSituatie=renderSituatie;
   window._situatiePromptLine=_situatiePromptLine;
 }catch(e){ console.warn('situatie-functies exporteren naar window mislukt:', e); }

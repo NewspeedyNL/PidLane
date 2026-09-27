@@ -335,6 +335,58 @@
     }).sort(function (x, y) { return (y.veranderd - x.veranderd) || (x.naam < y.naam ? -1 : 1); });
   }
 
+  /* ── Het auto-icoon (27-09-2026) ─────────────────────────────────
+     Een zijaanzicht in de vorm van de carrosserie en de kleur van de auto,
+     allebei uit het RDW (inrichting, eerste_kleur) of zelf gekozen in het
+     profiel. Het bouwjaar staat ernaast. Geen merkafbeelding: die kennen we
+     niet voor elke auto, en een verkeerd merk is erger dan een neutrale
+     vorm. Puur: test-garage.js toetst de vertaling en de tekening. */
+  var CARROSSERIE = ['hatchback', 'sedan', 'stationwagen', 'suv', 'mpv', 'coupe', 'cabrio', 'bestel'];
+  var KLEUREN = { zwart: '#1f2328', wit: '#f2f2f2', grijs: '#8a8f98', zilver: '#c3c7cd', blauw: '#2f6fd6', rood: '#d23b3b', groen: '#2f9e57',
+    geel: '#f0c419', oranje: '#f08a24', bruin: '#7a5230', beige: '#d9c7a3', paars: '#7b4bc4', roze: '#e58fb5' };
+  function carrosserieUitRdw(inrichting) {
+    var t = String(inrichting || '').toLowerCase();
+    if (!t) return null;
+    if (/hatch/.test(t)) return 'hatchback';
+    if (/station|combi|touring|estate/.test(t)) return 'stationwagen';
+    if (/sedan|saloon|limousine/.test(t)) return 'sedan';
+    if (/terrein|suv|crossover/.test(t)) return 'suv';
+    if (/mpv|multi/.test(t)) return 'mpv';
+    if (/cabrio|roadster|open/.test(t)) return 'cabrio';
+    if (/coup/.test(t)) return 'coupe';
+    if (/gesloten opbouw|bestel|kast|van\b/.test(t)) return 'bestel';
+    return null;
+  }
+  function kleurUitRdw(k) {
+    var t = String(k || '').toLowerCase().trim();
+    return Object.prototype.hasOwnProperty.call(KLEUREN, t) ? t : (t === 'creme' ? 'beige' : t === 'rose' ? 'roze' : null);
+  }
+  var VORM = {
+    hatchback:    { body: 'M11 36V25Q12 15 22 13L28 12H52Q58 12 63 16L71 22Q86 23 88 27V36Z', raam: 'M18 21Q20 16 25 15H37V21ZM40 21V15H52Q57 15 61 18L64 21Z' },
+    sedan:        { body: 'M7 36V25Q8 23 20 23L30 14Q34 12 40 12H57Q62 12 66 16L73 22Q86 23 89 27V36Z', raam: 'M31 22L36 16H47V22ZM50 22V16H57Q61 16 64 19L66 22Z' },
+    stationwagen: { body: 'M7 36V16Q7 12 12 12H58Q63 12 67 16L74 22Q86 23 89 27V36Z', raam: 'M11 22V16H32V22ZM35 22V16H57Q61 16 64 19L66 22Z' },
+    suv:          { body: 'M8 36V12Q8 7 14 7H58Q63 7 67 11L75 18Q87 19 89 24V36Z', raam: 'M12 18V11H34V18ZM37 18V11H57Q61 11 64 14L67 18Z' },
+    mpv:          { body: 'M9 36V11Q9 6 15 6H52Q58 6 63 10L80 21Q88 22 89 26V36Z', raam: 'M13 18V10H32V18ZM35 18V10H51Q56 10 60 13L66 18Z' },
+    coupe:        { body: 'M7 36V27Q8 24 14 23L30 15Q35 13 42 13H55Q60 13 64 16L72 22Q86 23 89 27V36Z', raam: 'M28 22L37 17H48V22ZM51 22V17H55Q59 17 62 19L64 22Z' },
+    cabrio:       { body: 'M7 36V26Q8 23 14 23H62L66 15H68L66 23Q86 23 89 27V36Z', raam: 'M20 23Q26 19 34 19Q40 19 44 23Z' },
+    bestel:       { body: 'M6 36V9Q6 5 11 5H63Q68 5 71 9L78 19Q88 20 89 25V36Z', raam: 'M54 18V10H63Q67 10 69 13L72 18Z' }
+  };
+  function autoIcoonSvg(v, maat) {
+    v = v || {};
+    var vorm = VORM[v.carrosserie] || VORM.hatchback;
+    var kl = KLEUREN[v.kleur] || '#6b7280';
+    var donker = v.kleur === 'zwart' || v.kleur === 'blauw' || v.kleur === 'paars' || v.kleur === 'bruin';
+    var lijn = donker ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.35)';
+    var w = maat || 56, h = Math.round(w / 2);
+    return '<svg class="gr-icoon" width="' + w + '" height="' + h + '" viewBox="0 0 96 48" role="img" aria-label="' +
+      (v.carrosserie || 'auto') + (v.kleur ? ', ' + v.kleur : '') + '">' +
+      '<path d="' + vorm.body + '" fill="' + kl + '" stroke="' + lijn + '" stroke-width="1.5" stroke-linejoin="round"/>' +
+      '<path d="' + vorm.raam + '" fill="rgba(160,200,235,.55)" stroke="' + lijn + '" stroke-width="1"/>' +
+      '<circle cx="24" cy="37" r="7.5" fill="#15181e" stroke="#9aa3ad" stroke-width="2"/><circle cx="24" cy="37" r="2.5" fill="#9aa3ad"/>' +
+      '<circle cx="73" cy="37" r="7.5" fill="#15181e" stroke="#9aa3ad" stroke-width="2"/><circle cx="73" cy="37" r="2.5" fill="#9aa3ad"/>' +
+      '</svg>';
+  }
+
   // ── De ritwaarnemer: een rit als optelsom van monsters ─────────────
   function ritNieuw(t) {
     return { start: new Date(t).toISOString(), t0: t, tLaatst: t, tBeweeg: t, km: 0, s: 0, sStat: 0, sBeweeg: 0,
@@ -401,6 +453,8 @@
     var apk = dat(rij.vervaldatum_apk);
     if (apk) p.apk_tot = apk;
     if (rij.cilinderinhoud) p.cilinderinhoud = parseInt(rij.cilinderinhoud, 10) || null;
+    var ca = carrosserieUitRdw(rij.inrichting); if (ca) p.carrosserie = ca;
+    var kl = kleurUitRdw(rij.eerste_kleur); if (kl) p.kleur = kl;
     var oms = (brandstoffen || []).map(function (b) { return String(b.brandstof_omschrijving || '').toLowerCase(); });
     var kw = (brandstoffen || []).map(function (b) { return parseFloat(b.nettomaximumvermogen); }).filter(function (x) { return x > 0; });
     if (kw.length) p.vermogen_kw = Math.round(Math.max.apply(null, kw));
@@ -728,6 +782,31 @@
     } catch (e) { console.warn('PLGarage: versnellingsindicator niet gekoppeld', e); }
   }
 
+  /* Voertuigen van vóór het icoon (27-09-2026) hebben een kenteken maar geen
+     carrosserie of kleur. Eén keer per voertuig per sessie stil bij het RDW
+     navragen en alleen die twee velden aanvullen — nooit iets overschrijven
+     wat de klant zelf koos. */
+  var _icoonGevraagd = {};
+  async function icoonAanvullen() {
+    if (!magBewaren()) return;
+    var v = voertuigen(true).filter(function (x) { return x.kenteken && (!x.carrosserie || !x.kleur) && !_icoonGevraagd[x.id]; })[0];
+    if (!v || typeof plFetch !== 'function') return;
+    _icoonGevraagd[v.id] = true;
+    try {
+      var r = await plFetch('/proxy?url=' + encodeURIComponent('https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=' + String(v.kenteken).replace(/[^A-Z0-9]/gi, '').toUpperCase()));
+      if (!r.ok) return;
+      var rij = (await r.json())[0];
+      if (!rij) return;
+      var w = { id: v.id };
+      if (!v.carrosserie) { var c = carrosserieUitRdw(rij.inrichting); if (c) w.carrosserie = c; }
+      if (!v.kleur) { var k = kleurUitRdw(rij.eerste_kleur); if (k) w.kleur = k; }
+      if (Object.keys(w).length < 2) return;
+      await api('voertuig_opslaan', { voertuig: w });
+      Object.assign(v, w);
+      teken(); tekenKaart();
+    } catch (e) { console.warn('PLGarage: carrosserie en kleur niet aangevuld uit het RDW', e); }
+  }
+
   // Mijn voorkeuren: of een melding mag (met de standaard van vóór de
   // voorkeuren als die niets zegt) en hoe verbruik getoond wordt.
   function voorkeurMelding(soort, standaard) {
@@ -752,6 +831,8 @@
       var kmh = pv('010D');
       if (!r && typeof kmh === 'number' && kmh >= CFG.ritStartKmh) {
         r = _st.rit = ritNieuw(nu); r.vid = v.id;
+        // Een nieuwe rit: het rit-histogram van de versnellingsindicator leeg.
+        try { if (window.PLGear) PLGear.ritHist(true); } catch (e) { console.warn('PLGarage: rit-histogram niet geleegd', e); }
       }
       if (r) {
         ritTik(r, { kmh: kmh, rpm: pv('010C'), koelwater: pv('0105'), accu: pv('0142'), lph: pv('015E'), maf: pv('0110'), trim: pv('0107') }, nu, v.brandstof);
@@ -775,6 +856,13 @@
     var sam = ritKlaar(r);
     if (!sam) return;
     sam.extra = Object.assign({}, sam.extra || {}, { einde: reden });
+    // Wat de versnellingsindicator deze rit zag, zodat het model later uit de
+    // ritten opnieuw op te bouwen is. Past het niet in de ruimte voor `extra`
+    // (4 kB op de server), dan niet: de rit zelf gaat altijd voor.
+    try {
+      var gh = window.PLGear ? PLGear.ritHist(true) : null;
+      if (gh && JSON.stringify(Object.assign({}, sam.extra, { gear: gh })).length <= 3800) sam.extra.gear = gh;
+    } catch (e) { console.warn('PLGarage: rit-histogram niet meegegeven', e); }
     var v = voertuig(r.vid);
     try {
       await schrijfOfWacht('rit_opslaan', { voertuig_id: r.vid, rit: sam });
@@ -874,6 +962,10 @@
     '#plGarOv .gr-lab small{font-weight:600;opacity:.8}' +
     '#plGarOv .gr-lab.klein{padding:2px 8px;font-size:11px;cursor:default}' +
     '#plGarOv .gr-labin{margin-top:6px}' +
+    '.gr-metic{display:flex;align-items:center;gap:10px}' +
+    '.gr-icw{display:flex;flex-direction:column;align-items:center;flex:0 0 auto}' +
+    '.gr-jaar{font:700 10px var(--f);color:var(--tx3);margin-top:-2px}' +
+    '.gr-icoon{display:block}' +
     '#plGarOv .gr-kies{width:20px;height:20px;flex:0 0 20px;accent-color:var(--bl,#3b82f6)}' +
     '#plGarOv .gr-vgl{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:6px;padding:6px 0;border-top:1px solid var(--bd);font-size:12px;color:var(--tx2)}' +
     '#plGarOv .gr-vgl-kop{border-top:0;font-weight:800;color:var(--tx3)} #plGarOv .gr-vgl.anders{color:var(--tx)}' +
@@ -930,7 +1022,7 @@
   function tekenAkkoord(st) {
     return '<div class="gr-sub">Bewaar je auto’s, rapporten en ritten in je account — op elk toestel en in de browser.</div>' +
       '<div class="gr-blok"><div class="gr-bh">Wat we bewaren</div><ul>' +
-      '<li><b>Per voertuig</b> het profiel dat je invult: naam, kenteken, merk, model, motor, brandstof, rijprofiel, verbruik, tankinhoud, literprijs, handbak of automaat, kilometerstand, APK en onderhoud.</li>' +
+      '<li><b>Per voertuig</b> het profiel dat je invult: naam, kenteken, merk, model, carrosserie, kleur, motor, brandstof, rijprofiel, verbruik, tankinhoud, literprijs, handbak of automaat, kilometerstand, APK en onderhoud.</li>' +
       '<li><b>Je kenteken versleuteld.</b> Het chassisnummer (VIN) alleen als een uit dat nummer berekende code, zoals elders in de app. Dat is pseudonimisering: wie je VIN kent, kan die code narekenen.</li>' +
       '<li><b>Rapporten</b> die de app voor dit voertuig maakt (AI-rapporten en foutcode-uitlezingen).</li>' +
       '<li><b>Ritten als samenvatting:</b> datum, duur, afstand, snelheid, verbruik, temperatuur en accuspanning, en het label dat je er zelf aan geeft. Geen locatie, geen route. De meting per seconde blijft op je telefoon.</li>' +
@@ -945,6 +1037,9 @@
   }
 
   function tekenKentekenEnNaam(v) {
+    return '<div class="gr-metic"><div class="gr-icw">' + autoIcoonSvg(v) + (v.bouwjaar ? '<span class="gr-jaar">' + esc(v.bouwjaar) + '</span>' : '') + '</div><div style="min-width:0">' + tekenKentekenEnNaamKaal(v) + '</div></div>';
+  }
+  function tekenKentekenEnNaamKaal(v) {
     return '<div class="gr-naam">' + esc(v.naam || [v.merk, v.model].filter(Boolean).join(' ') || 'Voertuig') + '</div>' +
       '<div class="gr-klein">' + (v.kenteken ? '<span class="gr-kent">' + esc(kentekenNl(v.kenteken)) + '</span> ' : '') +
       esc([v.merk, v.model, v.bouwjaar].filter(Boolean).join(' ')) + '</div>';
@@ -1097,6 +1192,7 @@
       h += '<div class="gr-blok"><div class="gr-rij">' +
         rijProf('Kenteken', v.kenteken ? kentekenNl(v.kenteken) : (v.kentekenLeesbaar === false ? 'onleesbaar' : null)) +
         rijProf('Merk en model', [v.merk, v.model].filter(Boolean).join(' ')) + rijProf('Bouwjaar', v.bouwjaar) +
+        rijProf('Carrosserie', v.carrosserie) + rijProf('Kleur', v.kleur) +
         rijProf('Motor', v.motor) + rijProf('Brandstof', v.brandstof) + rijProf('Turbo', v.turbo) + rijProf('Handbak of automaat', v.transmissie) + rijProf('Aantal versnellingen', v.versnellingen) +
         rijProf('Rijprofiel', v.rijprofiel) + rijProf('Verbruik (opgegeven)', v.verbruik_opgegeven ? v.verbruik_opgegeven.toLocaleString('nl') + ' l/100 km' : null) +
         rijProf('Tankinhoud', v.tankinhoud ? v.tankinhoud + ' liter' : null) + rijProf('Literprijs', v.brandstofprijs ? '€ ' + String(v.brandstofprijs).replace('.', ',') : null) +
@@ -1115,6 +1211,7 @@
     brandstof: ['benzine', 'diesel', 'hybride', 'plug-in hybride', 'elektrisch', 'lpg', 'cng', 'onbekend'],
     turbo: ['onbekend', 'ja', 'nee'], transmissie: ['handgeschakeld', 'automaat', 'onbekend'],
     versnellingen: ['4', '5', '6', '7', '8', '9', '10'],
+    carrosserie: CARROSSERIE, kleur: Object.keys(KLEUREN),
     rijprofiel: ['gemengd', 'stad', 'snelweg', 'korte ritten', 'aanhanger of caravan']
   };
   function tekenFormulier(v) {
@@ -1135,6 +1232,8 @@
       '<div class="gr-2">' + inv('merk', 'Merk', v.merk) + inv('model', 'Model', v.model) + '</div>' +
       '<div class="gr-2">' + inv('bouwjaar', 'Bouwjaar', v.bouwjaar, 'number', 'min="1950" max="2100"') + inv('motor', 'Motor', v.motor, 'text', 'placeholder="bijv. 2,0 liter, 121 kW"') + '</div>' +
       '<div class="gr-2">' + kies('brandstof', 'Brandstof', v.brandstof) + kies('turbo', 'Turbo', v.turbo) + '</div>' +
+      '<div class="gr-2">' + kies('carrosserie', 'Carrosserie', v.carrosserie) + kies('kleur', 'Kleur', v.kleur) + '</div>' +
+      '<div class="gr-klein">Voor het icoontje bij je auto. Met het kenteken vult het RDW ze in.</div>' +
       '<div class="gr-2">' + kies('transmissie', 'Handbak of automaat?', v.transmissie) + kies('versnellingen', 'Hoeveel versnellingen?', v.versnellingen) + '</div>' +
       '<div class="gr-klein">Voor de versnellingsindicator: met het aantal weet hij zeker welke de 1e is. Achteruit telt niet mee.</div>' +
       kies('rijprofiel', 'Hoe rijd je meestal?', v.rijprofiel) +
@@ -1242,6 +1341,7 @@
       tekenRijstijl(nu, m) +
       '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._versnelling()">⚙️ Versnellingsindicator</button>' +
       (!n || !v.transmissie ? '<button class="gr-k klein" onclick="PLGarage._bewerk(\'' + esc(v.id) + '\')">✏️ Handbak/automaat invullen</button>' : '') +
+      (nu ? '<button class="gr-k klein" onclick="PLGarage._versnellingUitRitten(\'' + esc(v.id) + '\')">↻ Opnieuw opbouwen uit ritten</button>' : '') +
       ((m || nu) ? '<button class="gr-k klein gevaar" onclick="PLGarage._versnellingWis(\'' + esc(v.id) + '\')">Opnieuw laten leren</button>' : '') + '</div></div>';
     return h;
   }
@@ -1283,8 +1383,9 @@
     if (!st || !st.akkoord) { t = '🚗 Mijn voertuigen'; d = 'Bewaar je auto’s, rapporten en ritten in je account.'; }
     else if (!v) { t = '🚗 Mijn voertuigen'; d = 'Voeg je eerste voertuig toe.'; }
     else { var s = status(v); kleur = s.kleur; t = v.naam || [v.merk, v.model].filter(Boolean).join(' ') || 'Mijn voertuig'; d = s.punten.length ? s.punten[0].tekst : 'Niets bekend dat aandacht vraagt'; }
+    var ic = v ? autoIcoonSvg(v, 48) : '';
     el.innerHTML = '<div class="gk" onclick="PLGarage.open(' + (v ? '\'' + esc(v.id) + '\'' : '') + ')">' +
-      (kleur ? '<span class="gr-dot ' + kleur + '" style="width:12px;height:12px;border-radius:50%;flex:0 0 12px"></span>' : '') +
+      ic + (kleur ? '<span class="gr-dot ' + kleur + '" style="width:12px;height:12px;border-radius:50%;flex:0 0 12px"></span>' : '') +
       '<div><div class="gk-t">' + esc(t) + '</div><div class="gk-d">' + esc(d) + '</div></div><span class="gk-pijl">→</span></div>';
   }
 
@@ -1296,7 +1397,7 @@
   }
 
   function formWaarden() {
-    var velden = ['naam', 'kenteken', 'merk', 'model', 'bouwjaar', 'motor', 'brandstof', 'turbo', 'transmissie', 'versnellingen', 'rijprofiel', 'verbruik_opgegeven', 'kmstand', 'tankinhoud', 'brandstofprijs', 'apk_tot', 'onderhoud_datum', 'onderhoud_km', 'onderhoud_laatst', 'distributie', 'notities', 'cilinderinhoud', 'vermogen_kw', 'vin_pseudo'];
+    var velden = ['naam', 'kenteken', 'merk', 'model', 'bouwjaar', 'motor', 'brandstof', 'turbo', 'transmissie', 'versnellingen', 'rijprofiel', 'verbruik_opgegeven', 'kmstand', 'tankinhoud', 'brandstofprijs', 'carrosserie', 'kleur', 'apk_tot', 'onderhoud_datum', 'onderhoud_km', 'onderhoud_laatst', 'distributie', 'notities', 'cilinderinhoud', 'vermogen_kw', 'vin_pseudo'];
     var uit = {};
     velden.forEach(function (k) { var el = document.getElementById('grf_' + k); if (el) uit[k] = el.value === '' ? null : el.value; });
     return uit;
@@ -1358,6 +1459,7 @@
     actief: actief,
     staat: function () { return _st; },
     tekenKaart: tekenKaart,
+    icoon: function (v, maat) { return autoIcoonSvg(v, maat); },
     _akkoord: function () { doe(function () { return api('akkoord', { versie: _st.stand && _st.stand.akkoordVersie }); }, 'Mijn voertuigen staat aan'); },
     _open: function (id) { _st.view = 'voertuig'; _st.vid = id; _st.tab = 'overzicht'; teken(); },
     _tab: function (t) { _st.tab = t; _st.labelRit = null; _st.kiesModus = false; _st.kies = {}; teken(); },
@@ -1469,6 +1571,17 @@
       try { if (typeof openGearInstellingen === 'function') openGearInstellingen(); }
       catch (e) { console.warn('PLGarage: versnellingsindicator openen', e); }
     },
+    _versnellingUitRitten: async function (id) {
+      try {
+        var rs = (await api('ritten', { voertuig_id: id, limiet: 100 })).ritten || [];
+        var met = rs.filter(function (r) { return r.extra && r.extra.gear && r.extra.gear.n; }).map(function (r) { return { id: 'rit:' + r.id, h: r.extra.gear }; });
+        if (!met.length) { melding('Nog geen ritten met versnellingsgegevens — die komen er vanaf nu bij elke rit bij'); return; }
+        if (!confirm('Het geleerde model vervangen door wat ' + met.length + ' eerdere rit' + (met.length === 1 ? '' : 'ten') + ' lieten zien? Je correcties blijven staan.')) return;
+        var r = PLGear.bouwUitRitten(met);
+        melding('⚙️ Opgebouwd uit ' + r.ritten + ' ritten: ' + r.versnellingen + ' versnellingen');
+      } catch (e) { melding('⚠️ ' + e.message); console.warn('PLGarage: opbouwen uit ritten', e); }
+      teken();
+    },
     _versnellingWis: function (id) {
       if (!confirm('De geleerde versnellingen van dit voertuig wissen en opnieuw laten leren?')) return;
       doe(async function () {
@@ -1485,7 +1598,7 @@
     // pure kern — voor test-garage.js
     _kern: { status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar,
       rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
-      waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, cfg: CFG }
+      waakDelen: waakDelen, labelSom: labelSom, autoIcoonSvg: autoIcoonSvg, carrosserieUitRdw: carrosserieUitRdw, kleurUitRdw: kleurUitRdw, CARROSSERIE: CARROSSERIE, KLEUREN: KLEUREN, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, cfg: CFG }
   };
 
   // Eén keer per sessie: APK of onderhoud dat eraan komt of verlopen is.
@@ -1517,6 +1630,7 @@
       ritTikNu();
       if (isVerbonden()) herkenAuto(); else _vinGezien = null;
       gearKoppel();
+      icoonAanvullen();
       eerderHalen();
       apkMelding();
     } catch (e) { console.warn('PLGarage: lus', e); }

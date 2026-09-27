@@ -46,6 +46,18 @@
 //     dan de wielen in de getoonde versnelling vragen. Voedt CA16.
 //   • Tijd per versnelling: model.tijd telt per versnelling de seconden en de
 //     seconden boven het "hoge" toerental; rijstijl() maakt daar advies van.
+//   • Uit = niet tonen. Ook met de indicator uit leert hij door (sinds
+//     27-09-2026): wie hem later aanzet, heeft dan meteen een model.
+//   • Per rit een klein histogram (ritHist()), dat PLGarage bij de rit op de
+//     server zet. bouwUitRitten() maakt daar een nieuw model van — handig na
+//     een verkeerd geleerde auto, zonder opnieuw te hoeven rijden. De
+//     correcties (ankers, achteruit) blijven staan.
+//   • Leren uit opnames van de bulk-recorder: histUitRegels() haalt uit
+//     1 Hz-regels de stukken waarin de verhouding drie seconden stabiel blijft
+//     (bij 1 Hz is dat het enige dat telt: snelheid en toerental in één regel
+//     kunnen van verschillende momenten zijn, en in een stabiel stuk maakt
+//     dat niet uit). leerUitHist() voegt dat toe aan het model en onthoudt de
+//     bron, zodat dezelfde opname nooit twee keer telt.
 //   • sessie(): wat deze sessie gemeten is (stabiele metingen, hoeveel daarvan
 //     bij een versnelling pasten, correcties), voor de blok-5-proef.
 //
@@ -146,6 +158,31 @@ function rijstijl(tijd, motor){
   return uit;
 }
 
+/* Uit regels van de bulk-recorder ({t, v:{'010D','010C'}}, 1 Hz) een
+   histogram van stabiele verhoudingen. Een regel telt als hij en de drie
+   ervoor (samen minstens drie seconden, geen gat groter dan 2,5 s) binnen de
+   stabiliteitsgrens liggen. Puur: test-gear.js toetst hem los. */
+function histUitRegels(regels){
+  const h={}; let n=0, reeks=[];
+  const rs=(regels||[]).slice().sort((a,b)=>(a.t||0)-(b.t||0));
+  rs.forEach(x=>{
+    const v=(x && x.v) || {}, kmh=v['010D'], rpm=v['010C'];
+    const ok=typeof kmh==='number' && typeof rpm==='number' && kmh>=CFG.minKmh && rpm>=CFG.minRpm && rpm<=CFG.maxRpm;
+    const r=ok ? kmh/(rpm/1000) : null;
+    const vorige=reeks.length ? reeks[reeks.length-1] : null;
+    if (!ok || r<CFG.rMin || r>CFG.rMax || (vorige && x.t-vorige.t>2500)){ reeks=ok&&r>=CFG.rMin&&r<=CFG.rMax ? [{t:x.t, r}] : []; return; }
+    reeks.push({t:x.t, r}); if (reeks.length>4) reeks.shift();
+    if (reeks.length<4 || reeks[3].t-reeks[0].t<2500) return;
+    let mn=Infinity, mx=-Infinity, som=0;
+    reeks.forEach(y=>{ mn=Math.min(mn,y.r); mx=Math.max(mx,y.r); som+=y.r; });
+    const gem=som/reeks.length;
+    if ((mx-mn)/gem>CFG.stabielTol) return;
+    const b=Math.round(Math.log(r)/CFG.binLog);
+    h[b]=(h[b]||0)+1; n++;
+  });
+  return { v:MODEL_V, bin:CFG.binLog, n, h };
+}
+
 const PLGear = {
   cfg: CFG,
   uit: lsGet(LS_UIT)==='1',
@@ -166,6 +203,7 @@ const PLGear = {
   _laatsteR: null, _laatsteRT: 0,   // laatste stabiele verhouding en wanneer
   _naarServer: 0, _serverSleutel: '',
   _paarNu: null,          // laatste verse, uitgelijnde meting {t, kmh, rpm}
+  _ritHist: {}, _ritN: 0, // wat deze rit aan stabiele verhoudingen opleverde
   _tijdT: 0,
   _sessie: { sinds: Date.now(), stabiel:0, pasten:0, correcties:0, achteruit:0, tijd:{} },
 
@@ -285,6 +323,7 @@ const PLGear = {
   // histogram in log-ruimte
   _voegToe(r){
     const m=this.model, b=Math.round(Math.log(r)/CFG.binLog);
+    this._ritHist[b]=(this._ritHist[b]||0)+1; this._ritN++;
     m.hist[b]=(m.hist[b]||0)+1; m.totaal++;
     if (m.totaal>CFG.histMax){
       let t=0;
@@ -466,6 +505,48 @@ const PLGear = {
       x.s+=dt/1000; if (hoog) x.hoog+=dt/1000;
     });
   },
+  // Het histogram van deze rit, voor de ritsamenvatting. `pak` = daarna leeg
+  // (de rit is afgerond). null als er niets stabiels was.
+  ritHist(pak){
+    const uit=this._ritN ? { v:MODEL_V, bin:CFG.binLog, n:this._ritN, h:Object.assign({}, this._ritHist) } : null;
+    if (pak){ this._ritHist={}; this._ritN=0; }
+    return uit;
+  },
+  /* Een histogram erbij, uit een rit of een opname. `bron` = een sleutel
+     (rit-id of opnamesessie): die telt maar één keer. */
+  leerUitHist(h, bron){
+    if (!h || typeof h.h!=='object' || h.bin!==CFG.binLog) return { ok:false, reden:'geen bruikbaar histogram' };
+    if (!this.model) this._laad(this.sleutel||'onbekend');
+    const m=this.model;
+    m.bronnen=m.bronnen||{};
+    if (bron && m.bronnen[bron]) return { ok:false, reden:'deze bron is al meegeteld', dubbel:true };
+    let n=0;
+    Object.keys(h.h).forEach(b=>{ const c=Math.max(0, Math.round(Number(h.h[b])||0)); if (c){ m.hist[b]=(m.hist[b]||0)+c; n+=c; } });
+    m.totaal+=n;
+    if (bron) m.bronnen[bron]=n;
+    this._herbereken(); this._vuil=true; this._opslaan(true);
+    return { ok:true, n, versnellingen:m.gears.length };
+  },
+  /* Een nieuw model uit de histogrammen van eerdere ritten. De correcties
+     van de klant (ankers, achteruit) en de tijd per versnelling blijven. */
+  bouwUitRitten(lijst){
+    if (!this.model) this._laad(this.sleutel||'onbekend');
+    const oud=this.model, m=this._leegModel(this.sleutel);
+    m.ankers=oud.ankers||[]; m.achteruit=oud.achteruit; m.tijd=oud.tijd||{};
+    this.model=m; this._recentMatch=[]; this.afwijking=false;
+    let ritten=0;
+    (lijst||[]).forEach(x=>{
+      const h=x && x.h;
+      if (!h || typeof h.h!=='object' || h.bin!==CFG.binLog) return;
+      Object.keys(h.h).forEach(b=>{ const c=Math.max(0, Math.round(Number(h.h[b])||0)); if (c){ m.hist[b]=(m.hist[b]||0)+c; m.totaal+=c; } });
+      if (x.id) (m.bronnen=m.bronnen||{})[x.id]=h.n||0;
+      ritten++;
+    });
+    this._herbereken(); this._vuil=true; this._opslaan(true); this._naarVoertuig(true);
+    logI(`⚙️ Versnellingen opnieuw opgebouwd uit ${ritten} ritten: ${m.gears.length} gevonden`);
+    this._render();
+    return { ok:true, ritten, metingen:m.totaal, versnellingen:m.gears.length };
+  },
   rijstijl(tijd){ return rijstijl(tijd || (this.model && this.model.tijd) || {}, this._motor()); },
   sessie(){ return JSON.parse(JSON.stringify(this._sessie)); },
   nummeringZeker(){
@@ -529,7 +610,7 @@ const PLGear = {
       this._volgVoertuig();
       if (!this.model) this._laad('onbekend');
 
-      if (this.uit || !verbonden()){ this._zet(null); this._buf=[]; return; }
+      if (!verbonden()){ this._zet(null); this._buf=[]; return; }
 
       const p=this._paar(), t=nu();
       if (!p || p.oud){ this._zet(null); return; }
@@ -673,7 +754,7 @@ function openGearInstellingen(){
     ov.addEventListener('click',e=>{ if(e.target===ov) sluitGearInstellingen(); });
     document.body.appendChild(ov);
   }
-  _wisBevestig=0; _foutOpen=false; _foutMelding='';
+  _wisBevestig=0; _foutOpen=false; _foutMelding=''; _opnames=null; _opnameMelding='';
   tekenInstellingen();
   ov.style.display='flex';
   if (!ov._ververs) ov._ververs=setInterval(()=>{
@@ -707,7 +788,7 @@ function tekenInstellingen(){
     if (!st.nummeringZeker) lijst+=`<p class="plg-klein" style="margin:8px 0 0">
       De 1e versnelling is nog niet gezien, dus de nummering is voorlopig (herkenbaar aan het vraagteken). Die klopt vanzelf zodra je even in de 1e rijdt.</p>`;
   }
-  const stTxt = st.uit ? 'Staat uit. Het PidLane-logo blijft gewoon staan.'
+  const stTxt = st.uit ? 'Staat uit: het PidLane-logo blijft staan. Hij leert wel door, zodat hij meteen klopt als je hem weer aanzet.'
     : st.leren ? `Aan het leren: rij normaal door, in zoveel mogelijk versnellingen.`
     : `Tik op het cijfer in de topbalk om hier terug te komen.`;
   const wisTxt = _wisBevestig && nu()-_wisBevestig<4000 ? 'Tik nogmaals om te wissen' : 'Leer opnieuw';
@@ -747,6 +828,7 @@ function tekenInstellingen(){
     ${tijdBlok()}
     ${autoTxt}
     <div class="plg-klein" style="margin-top:12px">Voertuig: ${vTxt} · ${st.metingen} metingen${st.ankers?` · ${st.ankers} correctie${st.ankers===1?'':'s'}`:''}</div>
+    ${opnameBlok()}
     <button type="button" class="plg-wis${st.afwijking?' let':''}" onclick="plGearWis()">${wisTxt}</button>
   </div>`;
 }
@@ -760,6 +842,52 @@ function tijdBlok(){
       <span class="plg-balk"><span style="width:${Math.round(x.pct/max*100)}%"></span></span>
       <span class="plg-r plg-r2">${x.pct}%${x.hoogPct?` · ${x.hoogPct}% hoog`:''}</span></div>`).join('')+
     rs.advies.map(a=>`<p class="plg-uitleg">💡 ${a}</p>`).join('');
+}
+// ── Leren uit opnames van de bulk-recorder ──
+let _opnames=null, _opnameMelding='';
+async function plGearOpnames(){
+  _opnames='laden'; _opnameMelding=''; tekenInstellingen();
+  try{
+    if (!window.PLBulk || typeof PLBulk.lees!=='function') throw new Error('de bulk-recorder is er op dit toestel niet');
+    const blokken=await PLBulk.lees();
+    const per={};
+    (blokken||[]).forEach(b=>{
+      const k=b.sessie||'onbekend';
+      const s=per[k]=per[k]||{ id:k, van:b.van, tot:b.tot, regels:[], voertuigen:{} };
+      s.van=Math.min(s.van, b.van); s.tot=Math.max(s.tot, b.tot);
+      (b.regels||[]).forEach(r=>s.regels.push(r));
+      s.voertuigen[b.voertuig||'?']=true;
+    });
+    _opnames=Object.keys(per).map(k=>{
+      const s=per[k], h=histUitRegels(s.regels), vs=Object.keys(s.voertuigen);
+      return { id:k, van:s.van, tot:s.tot, h, voertuig: vs.length===1 ? vs[0] : '?' };
+    }).filter(x=>x.h.n>0).sort((a,b)=>b.van-a.van);
+  }catch(e){ _opnames=null; _opnameMelding='⚠️ '+e.message; console.warn('PLGear: opnames lezen', e); }
+  tekenInstellingen();
+}
+function plGearLeerOpname(id){
+  const o=(_opnames||[]).find(x=>x.id===id); if (!o) return;
+  const r=PLGear.leerUitHist(o.h, 'opname:'+id);
+  _opnameMelding = r.ok ? `✓ ${r.n} stabiele metingen uit de opname geleerd — nu ${r.versnellingen} versnellingen` : (r.dubbel ? 'Deze opname is al meegeteld.' : '⚠️ '+r.reden);
+  tekenInstellingen();
+}
+function opnameBlok(){
+  let h=`<button type="button" class="plg-wis" style="margin-top:10px" onclick="plGearOpnames()">📂 Leren uit opnames van de bulk-recorder</button>`;
+  if (_opnames==='laden') h+=`<p class="plg-klein">⏳ Opnames lezen…</p>`;
+  else if (Array.isArray(_opnames)){
+    if (!_opnames.length) h+=`<p class="plg-klein">Geen opname met stabiel rijden gevonden.</p>`;
+    const bronnen=(PLGear.model && PLGear.model.bronnen) || {};
+    _opnames.forEach(o=>{
+      const d=new Date(o.van), dat=isNaN(d)?'':d.toLocaleDateString('nl',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('nl',{hour:'2-digit',minute:'2-digit'});
+      const zelfde = o.voertuig===PLGear.sleutel ? '✓ deze auto' : o.voertuig==='?' ? '? voertuig onbekend (opname van vóór 27-09)' : '✗ een andere auto';
+      const al=!!bronnen['opname:'+o.id];
+      h+=`<div class="plg-rij" style="align-items:flex-start"><span style="flex:1" class="plg-klein">${dat} · ${Math.round((o.tot-o.van)/60000)} min · ${o.h.n} stabiel<br>${zelfde}</span>
+        <button type="button" class="plg-k" style="width:auto;padding:0 12px;font-size:13px;height:36px" ${al||o.voertuig!==PLGear.sleutel&&o.voertuig!=='?'?'disabled':''} onclick="plGearLeerOpname('${String(o.id).replace(/[^\w:.-]/g,'')}')">${al?'geteld':'Leer'}</button></div>`;
+    });
+    h+=`<p class="plg-klein">Alleen een opname van deze auto helpt; een andere auto of andere banden vervuilt het model. Een opname telt maar één keer.</p>`;
+  }
+  if (_opnameMelding) h+=`<p class="plg-uitleg">${_opnameMelding}</p>`;
+  return h;
 }
 function plGearWis(){
   if (_wisBevestig && nu()-_wisBevestig<4000){ _wisBevestig=0; PLGear.leerOpnieuw(); }
@@ -792,9 +920,12 @@ function gearOordeel(se, st){
   return { staat:'ok', detail:kop };
 }
 PLGear._rijstijl = rijstijl;
+PLGear.histUitRegels = histUitRegels;
 PLGear.oordeel = gearOordeel;
 window.PLGear = PLGear;
 window.plGearFout = plGearFout;
+window.plGearOpnames = plGearOpnames;
+window.plGearLeerOpname = plGearLeerOpname;
 window.plGearKies = plGearKies;
 window.openGearInstellingen = openGearInstellingen;
 window.sluitGearInstellingen = sluitGearInstellingen;

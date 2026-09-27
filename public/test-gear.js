@@ -345,6 +345,54 @@ console.log('\n— privacy: de ruwe VIN gaat nergens in (§7, #102) —');
     ok(echt.staat === 'ok', `de gesimuleerde rit zelf is ok (${echt.detail})`);
   }
 
+  console.log('\n— leren uit opnames en uit eerdere ritten (ronde 3) —');
+  {
+    const a = nieuweApp();
+    // Een opname van 1 Hz: 20 minuten door de zes versnellingen, met regels
+    // waarin snelheid en toerental van verschillende momenten zijn.
+    // Per versnelling 12 s optrekken (daar lopen snelheid en toerental uit de
+    // pas) en 25 s constant rijden. Snelheid 400 ms ouder dan het toerental.
+    const volg = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1];
+    const prof = function (t) {
+      const seg = Math.floor(t / 37000) % volg.length, in_ = t % 37000, g = volg[seg];
+      const rpm = in_ < 12000 ? 1500 + in_ / 12000 * 1500 : 2600 + 20 * Math.sin(t / 900);
+      return { rpm, kmh: Math.round(RATIO[g] * rpm / 1000) };
+    };
+    const regels = [];
+    let t = 5e6;
+    for (let i = 0; i < 1200; i++) {
+      t += 1000;
+      regels.push({ t, v: { '010C': prof(t).rpm, '010D': prof(t - 400).kmh } });
+    }
+    const h = a.G.histUitRegels(regels);
+    ok(h.n > 250 && h.bin === a.G.cfg.binLog, `uit 20 min opname ${h.n} stabiele metingen`);
+    const r = a.G.leerUitHist(h, 'opname:x');
+    const g = a.G.model.gears;
+    ok(r.ok && g.length === 6 && g.every((x, i) => Math.abs(x - RATIO[i]) / RATIO[i] < 0.03), `zonder te rijden alle 6 versnellingen geleerd (${g.join(', ')})`);
+    ok(a.G.leerUitHist(h, 'opname:x').dubbel === true && a.G.model.totaal === h.n, 'dezelfde opname telt geen tweede keer');
+    const gat = regels.filter((x, i) => i % 5 === 0);                     // één regel per 5 s: elk stuk heeft een gat
+    ok(a.G.histUitRegels(gat).n === 0, 'een opname met gaten van 5 s levert niets op: een gat is geen stabiel stuk');
+    ok(a.G.histUitRegels([{ t: 1, v: { '010C': 800, '010D': 0 } }]).n === 0, 'stilstand levert niets');
+
+    // Uit = niet tonen, wel leren; en het rit-histogram.
+    const b = nieuweApp();
+    b.G.zetUit(true);
+    b.G.ritHist(true);
+    b.rij(180000, profielMaker(RATIO));
+    ok(b.G.model.gears.length === 6 && b.G.waarde() === null && b.G.status().uit, 'uitgezet: niets in beeld (ook CA01 niet), maar wel 6 versnellingen geleerd');
+    const rh = b.G.ritHist(true);
+    ok(rh && rh.n === b.G.model.totaal && b.G.ritHist(false) === null, `het rit-histogram draagt precies wat deze rit leerde (${rh && rh.n}) en is daarna leeg`);
+    ok(JSON.stringify(rh).length < 3000, `klein genoeg voor de rit op de server (${JSON.stringify(rh).length} tekens)`);
+
+    // Opnieuw opbouwen uit ritten: een vervuild model wordt weer goed, en de correcties blijven.
+    const c = nieuweApp();
+    c.rij(180000, profielMaker(RATIO, 1.12));                          // verkeerde banden / andere auto
+    c.G.model.ankers = [{ k: 3, r: 19.6, t: 1 }];
+    const o = c.G.bouwUitRitten([{ id: 'rit:1', h: rh }, { id: 'rit:2', h: null }]);
+    ok(o.ritten === 1 && c.G.model.gears.length === 6 && Math.abs(c.G.model.gears[0] - RATIO[0]) / RATIO[0] < 0.03, `opgebouwd uit de rit: ${c.G.model.gears.join(', ')}`);
+    ok(c.G.model.ankers.length === 1 && c.G.model.bronnen['rit:1'] > 0, 'de correctie bleef staan en de rit staat als bron genoteerd');
+  }
+
   console.log(fouten ? `\n${fouten} fout(en)` : '\nAlles goed');
   process.exit(fouten ? 1 : 0);
 })();

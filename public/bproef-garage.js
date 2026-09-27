@@ -135,6 +135,14 @@ const NEPSERVER = `(function(){
     const ov = await app.ev(`({ t: document.getElementById('vehOverview').textContent, km: document.getElementById('uvKm').value, beurt: document.getElementById('uvBeurt').value })`);
     toets('het overzicht zegt dat het gekoppeld is', /Gekoppeld aan Blauwe Mazda/.test(ov.t), ov.t.slice(0, 200));
     toets('km-stand en laatste beurt komen uit het voertuig', ov.km === '84210' && ov.beurt === '03-2026 / 80.000 km', JSON.stringify(ov));
+    const sit = await app.ev(`(function(){ const b = document.getElementById('sitBlok');
+      const dicht = { chips: b.querySelectorAll('button[onclick^="toggleSituatie"]').length, tekst: b.textContent };
+      situatieKlap();
+      const open = b.querySelectorAll('button[onclick^="toggleSituatie"]').length;
+      situatieKlap();
+      return { dicht: dicht, open: open, weerDicht: b.querySelectorAll('button[onclick^="toggleSituatie"]').length }; })()`);
+    toets('rijsituatie staat standaard dicht: geen chips, wel een regel', sit.dicht.chips === 0 && /Rijsituatie/.test(sit.dicht.tekst), JSON.stringify(sit));
+    toets('één tik klapt hem open, nog een tik weer dicht', sit.open >= 8 && sit.weerDicht === 0, JSON.stringify(sit));
     await app.ev(`document.getElementById('uvKm').value = '85.100'; document.getElementById('uvDistr').value = 'ketting'; saveVehicleOverview(); 'ok'`);
     toets('opslaan schrijft naar het voertuig in Mijn voertuigen',
       await wacht(`(function(){ const v = window._nepPlatform.voertuigen[0]; return v.kmstand === 85100 && v.distributie === 'ketting'; })()`));
@@ -168,6 +176,32 @@ const NEPSERVER = `(function(){
     await app.ev(`PLGarage._labelFilter(''); PLGarage._labelOpen('c'); 'ok'`);
     toets('labelvoorstel: de derde rit krijgt Woon-werk voorgesteld', await wacht(`(document.getElementById('grLabel')||{}).value === 'Woon-werk' && /Voorstel/.test(document.getElementById('plGarBody').textContent)`));
     await app.ev(`PLGarage.sluit(); 'ok'`);
+
+    console.log('\n── 4e. het auto-icoon en leren uit opnames (27-09) ──');
+    await app.ev(`(function(){ const v = window._nepPlatform.voertuigen[0]; v.carrosserie = 'stationwagen'; v.kleur = 'blauw'; v.bouwjaar = 2018; })(); PLGarage.ververs(); PLGarage.open(); 'ok'`);
+    toets('het icoon staat in de lijst, in de kleur van de auto', await wacht(`(function(){ const i=document.querySelector('#plGarBody .gr-icoon'); return !!i && /#2f6fd6/.test(i.outerHTML) && /stationwagen/.test(i.getAttribute('aria-label')) && /2018/.test(document.getElementById('plGarBody').textContent); })()`));
+    toets('en op het startscherm', await wacht(`!!document.querySelector('#plGarageKaart .gr-icoon')`));
+    await app.ev(`PLGarage.sluit(); 'ok'`);
+    const opn = await app.ev(`(async function(){
+      const R = [7.4, 13.1, 19.6, 25.8, 31.9, 38.2], regels = [];
+      let t = 1e12;
+      for (let i = 0; i < 900; i++) { t += 1000; const g = Math.floor(i / 37) % 6, rpm = (i % 37) < 12 ? 1500 + (i % 37) * 100 : 2600;
+        regels.push({ t: t, v: { '010C': rpm, '010D': Math.round(R[g] * rpm / 1000) } }); }
+      const echt = PLBulk.lees;
+      PLBulk.lees = async function () { return [{ sessie: 'S1', voertuig: PLGear.sleutel, van: regels[0].t, tot: t, regels: regels }]; };
+      try {
+        const voor = PLGear.model.gears.length;
+        openGearInstellingen(); await plGearOpnames();
+        const lijst = document.getElementById('plGearOv').textContent;
+        plGearLeerOpname('S1');
+        const na = PLGear.model.gears.length, tekst = document.getElementById('plGearOv').textContent;
+        plGearLeerOpname('S1');
+        return { voor: voor, na: na, deze: /deze auto/.test(lijst), geleerd: /stabiele metingen uit de opname geleerd/.test(tekst), dubbel: /al meegeteld/.test(document.getElementById('plGearOv').textContent) };
+      } finally { PLBulk.lees = echt; sluitGearInstellingen(); }
+    })()`);
+    toets('leren uit opnames: de opname staat erin als "deze auto"', opn.deze, JSON.stringify(opn));
+    toets('en levert zonder rijden de versnellingen op', opn.voor === 0 && opn.na === 6 && opn.geleerd, JSON.stringify(opn));
+    toets('een tweede keer telt niet', opn.dubbel, JSON.stringify(opn));
 
     console.log('\n── 5. de terugknop en het startscherm ──');
     await app.ev(`PLGarage.open(); 'ok'`);

@@ -323,8 +323,14 @@ function tick() {
 
 async function flush() {
   if (!_blkS.buf.length) return;
+  /* Welke auto (27-09-2026): de voertuigsleutel van de versnellingsindicator
+     (het voertuig in Mijn voertuigen, of het VIN-pseudoniem — nooit de ruwe
+     VIN). Zo weet "Leren uit opnames" of een opname van deze auto is. */
+  var voertuig = null;
+  try { voertuig = (window.PLGear && window.PLGear.sleutel) || null; } catch (e) { console.warn('bulk: voertuigsleutel onleesbaar', e); }
   var blok = {
     sessie : _blkS.sessieId,
+    voertuig : voertuig,
     van    : _blkS.buf[0].t,
     tot    : _blkS.buf[_blkS.buf.length - 1].t,
     regels : _blkS.buf

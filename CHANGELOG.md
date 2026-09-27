@@ -10,6 +10,28 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-09-2026 — Versnellingen leren uit eerdere data, auto-icoon, rustiger overzicht
+ ═══════════════════════════════════════════════════════════
+
+ - Versnellingsindicator: "📂 Leren uit opnames" haalt de versnellingen
+   uit opnames van de bulk-recorder, zonder opnieuw te rijden. Alleen de
+   stukken waarin de verhouding drie seconden stabiel is tellen; een
+   opname telt maar één keer, en een opname van een andere auto is niet
+   te kiezen. Nieuwe opnames dragen daarvoor het voertuig mee.
+ - Uit is voortaan alleen "niet tonen": hij leert door, zodat hij klopt
+   zodra je hem aanzet.
+ - Elke rit draagt een klein histogram mee naar de server. In Mijn
+   voertuigen → Overzicht → ⚙️ Versnellingen: "Opnieuw opbouwen uit
+   ritten" maakt daar een nieuw model van; je correcties blijven staan.
+ - Auto-icoon: een zijaanzicht in de carrosserie en kleur van je auto,
+   met het bouwjaar. Carrosserie en kleur komen uit het RDW (bestaande
+   voertuigen met een kenteken worden één keer stil aangevuld) of kies je
+   in het profiel. In Mijn voertuigen, op het startscherm en in het
+   Voertuigoverzicht.
+ - Voertuigoverzicht: "Rijsituatie & bijzonderheden" staat standaard
+   ingeklapt; dicht zie je alleen wat er aan staat.
+
+ ═══════════════════════════════════════════════════════════
  27-09-2026 — Alle voorstellen, en meetproeven die één rit nodig hebben
  ═══════════════════════════════════════════════════════════
 

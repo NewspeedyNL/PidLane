@@ -1175,6 +1175,15 @@ MUTATIES=(
 "public/pidlane-garage.js@@String(r.label || '').replace(/;/g, ',')].join(';'));@@String(r.label || '')].join(';'));@@test-garage.js@@een puntkomma in een ritlabel breekt de CSV-export"
 "worker.js@@\"DELETE FROM kp_rapport WHERE klant_id = ? AND id IN (\"@@\"DELETE FROM kp_rapport WHERE (klant_id = ? OR 1) AND id IN (\"@@test-klantplatform.js@@meerdere rapporten wissen raakt ook die van een andere klant"
 "worker.js@@    return { waarde: Math.round(n * 1000) / 1000 };@@    return { waarde: Math.round(n * 10) / 10 };@@test-klantplatform.js@@een literprijs van 1,959 wordt 2,0"
+
+# ── 27-09-2026, ronde 3: leren uit opnames en ritten, uit = alleen niet tonen,
+# het auto-icoon en de ingeklapte rijsituatie.
+"public/pidlane-gear.js@@(vorige && x.t-vorige.t>2500)@@(false)@@test-gear.js@@een gat in de opname telt als doorlopend stabiel stuk"
+"public/pidlane-gear.js@@    if (bron && m.bronnen[bron]) return@@    if (false) return@@test-gear.js@@dezelfde opname telt twee keer: het model gaat scheef naar die ene rit"
+"public/pidlane-gear.js@@    m.ankers=oud.ankers||[]; m.achteruit=oud.achteruit;@@    m.ankers=[]; m.achteruit=oud.achteruit;@@test-gear.js@@opnieuw opbouwen uit ritten gooit de correcties van de klant weg"
+"public/pidlane-gear.js@@      if (!verbonden()){ this._zet(null); this._buf=[]; return; }@@      if (this.uit || !verbonden()){ this._zet(null); this._buf=[]; return; }@@test-gear.js@@met de indicator uit leert hij niet meer, en is hij bij aanzetten weer leeg"
+"public/pidlane-garage.js@@    return null;\n  }\n  function kleurUitRdw(k) {@@    return 'hatchback';\n  }\n  function kleurUitRdw(k) {@@test-garage.js@@een onbekende carrosserie wordt stil een hatchback"
+"public/pidlane-rijsituatie.js@@  const open = !inklap || window._sitBlokOpen===true;@@  const open = true;@@bproef-garage.js@@de rijsituatie staat weer altijd open in het Voertuigoverzicht"
 )
 
 echo
