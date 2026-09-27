@@ -140,6 +140,15 @@ head_sampling_rate = 1
 #     USERS_JSON          nood-admin buiten Airtable om
 #     ANTHROPIC_API_KEY   AI-calls via de AI Gateway
 #
+#   NIEUW (27-09-2026) — Mijn voertuigen
+#     KENTEKEN_SLEUTEL    32 willekeurige bytes als base64; versleutelt de
+#                         kentekens in kp_voertuig (AES-GCM). Maken:
+#                           openssl rand -base64 32
+#                         Zonder deze secret worden kentekens NIET bewaard
+#                         (de rest van Mijn voertuigen werkt wel). Kwijt of
+#                         vervangen = bestaande kentekens onleesbaar; de klant
+#                         vult ze dan opnieuw in.
+#
 #   NIEUW — nodig voor wachtwoordherstel per mail
 #     MAIL_API_KEY        sleutel van je mailprovider (bv. Resend)
 #     MAIL_FROM           afzender, bv. noreply@pidlane.nl

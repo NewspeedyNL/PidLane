@@ -10,6 +10,36 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-09-2026 — Mijn voertuigen: het klantplatform
+ ═══════════════════════════════════════════════════════════
+
+ - Klantaccounts krijgen "🚗 Mijn voertuigen" (☰ en een kaartje boven de
+   deuren op het startscherm). Eén klant heeft hoogstens drie actieve
+   voertuigen plus een archief.
+ - Per voertuig:
+   - een profiel met naam, kenteken, merk, model, motor, brandstof, turbo,
+     transmissie, rijprofiel, verbruik, kilometerstand, APK en onderhoud.
+     Met het kenteken vult het RDW het meeste in.
+   - een status (groen, oranje of rood) met de punten die hem bepalen.
+   - condities: accu, laadspanning, koelwater, trims en keuringsstatus.
+   - advies zonder AI: verbruik tegen opgave, korte ritten, turbo, koeling,
+     laadspanning en APK.
+ - Rapporten blijven bewaard. Elk AI-rapport en elke foutcode-uitlezing gaat
+   naar het actieve voertuig.
+ - Ritten worden vanzelf vastgelegd als samenvatting (afstand, duur,
+   verbruik, koelwater, accu, stationair). Er gaat geen extra verkeer over de
+   bus.
+ - Foutcodes worden open punten. Ze gaan vanzelf dicht als ze bij een
+   volledige uitlezing niet meer terugkomen. De klant kan ze negeren of
+   heropenen.
+ - Opslag in D1 via /klant/platform. Het kenteken wordt versleuteld opgeslagen
+   (secret KENTEKEN_SLEUTEL). Eerst een eigen akkoord. De telefoon houdt een
+   kopie en een wachtrij voor als er geen netwerk is.
+ - privacy.html heeft een eigen hoofdstuk "Mijn voertuigen" gekregen.
+ - test-klantplatform.js (55), test-garage.js (41), bproef-garage.js en
+   dertien mutaties in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  26-09-2026 — Testrun 8.2: foutcodes & keuringsstatus als eigen venster (#304)
  ═══════════════════════════════════════════════════════════
 

@@ -599,6 +599,8 @@ function closeConnOv(){
     <!-- 27-07-2026 — de wizard als hoofdingang. De deuren eronder blijven
          bestaan voor wie precies weet wat hij zoekt; zo kan één fout in de
          routering de app niet onbruikbaar maken. -->
+    <!-- Mijn voertuigen: het actieve voertuig met zijn status. Leeg voor wie geen klant is (PLGarage.tekenKaart). -->
+    <div id="plGarageKaart"></div>
     <button class="wz-ingang" onclick="try{PLWizard.open()}catch(e){}">
       <span class="wz-ingang-ic">🧭</span>
       <span class="wz-ingang-tx">
@@ -912,6 +914,7 @@ function closeConnOv(){
              waardoor de dagelijkse items (Rapporten, Bug melden, Tekstgrootte)
              ondersneeuwden. Ze staan nu gegroepeerd; de groep klapt open/dicht
              en onthoudt niets — hij start altijd dicht. -->
+        <button class="kebab-item" id="kbGarage" style="display:none" onclick="closeKebab();PLGarage.open()">🚗 Mijn voertuigen</button>
         <button class="kebab-item" id="kbAccount" onclick="closeKebab();PLKlant.openMijnTokens()">👤 Mijn account</button>
         <button class="kebab-item kebab-group" id="admGroupBtn" onclick="toggleAdmGroup(event)" aria-expanded="false" aria-controls="admGroup">🛠️ Admin<span class="kb-caret" id="admCaret">▸</span></button>
         <div class="kebab-sub" id="admGroup">
@@ -1857,6 +1860,7 @@ function closeConnOv(){
 <script src="pidlane-mode06.js"></script><!-- on-board monitortests (PLM06) — vereist sendCmd + PLBus -->
 <script src="pidlane-kmcheck.js"></script><!-- kilometerstand-check (PLKm) — vereist sendCmd + withBus -->
 <script src="pidlane-foutcodes.js"></script><!-- foutcodes &amp; keuringsstatus (PLFoutcodes) — vereist sendCmd + withBus + ALL_PID_DEFS -->
+<script src="pidlane-garage.js"></script><!-- Mijn voertuigen (PLGarage) — het klantplatform; vereist plFetch, registerSessionReport, _vlVinPseudoniem -->
 <script src="pidlane-kaart.js"></script><!-- datapuntenkaart (PLKaart) — neemt de verbinding over; vereist sendCmd + PLBus -->
 <script src="pidlane-demo.js"></script>
 <script src="pidlane-uihelpers.js"></script>

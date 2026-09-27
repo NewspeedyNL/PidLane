@@ -14,6 +14,48 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 27-09-2026 — Mijn voertuigen: waarom D1, waarom een eigen akkoord
+
+**De keuzes, gemaakt met de eigenaar:**
+
+- D1 als bron en een kopie op de telefoon.
+- Het kenteken versleuteld op de server.
+- Ritten als samenvatting op de server, de ruwe meting lokaal.
+- De accounts blijven in Airtable.
+- Alleen voor klanten, archiveren in plaats van weggooien, en bewaren
+  zolang het account bestaat.
+- De bevriezing tot v1.0 is voor dit onderwerp opzijgezet.
+
+**Waarom niet Airtable.** Die base liep op 22-09 vol (1.159 van de 1.000
+rijen). Een rit of rapport per klant per dag haalt dat in een week.
+
+**Waarom een eigen akkoord en geen nieuwe versie van het
+registratie-akkoord.** Het registratie-akkoord gaat over uitlezen en delen
+onder een pseudoniem. Bewaren per voertuig is een nieuwe verwerking, en wie
+die niet wil hoeft hem niet. Een nieuwe versie van dat akkoord zou elke
+bestaande klant opnieuw laten tekenen voor iets waar hij misschien nooit om
+vroeg.
+
+**Wat bij het bouwen boven kwam:**
+
+- `status_opslaan` zonder gezondheid maakte de laatst bekende gezondheid
+  leeg. `test-klantplatform.js` ving dat bij de eerste run.
+- privacy.html belooft dat een verwijderd account meteen onbruikbaar is.
+  Mijn voertuigen keek alleen naar het token, dus met een lopende sessie kon
+  je er nog in. Daarom komt er nu bij het verwijderen meteen een blokkade in
+  D1.
+- De tegenproef "rapport zonder akkoord" glipte eerst door. De toets had geen
+  actief voertuig, dus "niets verstuurd" bewees daar niets.
+
+**Nog open, bewust:**
+
+- Een account dat in Airtable geblokkeerd wordt, gaat pas dicht bij de
+  volgende `stand` (het openen van Mijn voertuigen), niet bij elke
+  schrijfactie. Elke actie langs Airtable sturen zou de platformroute aan
+  dezelfde limiet hangen waar we net vanaf gingen.
+- De beheerder kan via de SQL-console in `/admin/d1` de `kp_*`-tabellen
+  lezen. Kentekens zijn daar versleuteld, de rest niet.
+
 ## 26-09-2026 — Het DTC-tabblad was het dunste scherm van de app (#304)
 
 **Gevonden bij een doorlichting op basisfuncties, niet bij een rit.** Het

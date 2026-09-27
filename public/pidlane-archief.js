@@ -63,6 +63,8 @@ function registerSessionReport(entry){
     };
     list.push(rec);
     _srUpdateBadge();
+    // Mijn voertuigen: het rapport ook bij het actieve voertuig bewaren.
+    try{ if(window.PLGarage && PLGarage.rapport) PLGarage.rapport(rec); }catch(e){ console.warn('PLGarage: rapport niet doorgegeven', e); }
     try{ logUsage?.('sessie_rapport','type='+rec.type+';n='+list.length); }catch(e){ console.warn('logUsage mislukt:', e); }
     return rec;
   }catch(e){ return null; }
