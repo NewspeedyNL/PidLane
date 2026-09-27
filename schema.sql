@@ -266,3 +266,5 @@ ALTER TABLE kp_voertuig ADD COLUMN gear_model TEXT;
 ALTER TABLE kp_rit ADD COLUMN label TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN tankinhoud INTEGER;
 ALTER TABLE kp_voertuig ADD COLUMN brandstofprijs REAL;
+ALTER TABLE kp_voertuig ADD COLUMN carrosserie TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN kleur TEXT;

@@ -291,6 +291,29 @@ function laad(opties) {
     const vg = K.waakVergelijk(w1, w2b);
     eis(vg[0].naam === 'Koelwater' && vg[0].veranderd && vg[0].a.staat === 'let' && vg[0].b.staat === 'ok', 'vergelijken: wat veranderde staat bovenaan (koelwater: bevinding → normaal)', JSON.stringify(vg[0]));
     eis(vg.filter((x) => !x.veranderd).length === 2, 'wat gelijk bleef staat eronder');
+
+    console.log('\n13. Het auto-icoon');
+    eis(K.carrosserieUitRdw('Hatchback') === 'hatchback' && K.carrosserieUitRdw('stationwagen') === 'stationwagen' && K.carrosserieUitRdw('MPV') === 'mpv' &&
+      K.carrosserieUitRdw('terreinvoertuig') === 'suv' && K.carrosserieUitRdw('gesloten opbouw') === 'bestel' && K.carrosserieUitRdw('Sedan') === 'sedan' &&
+      K.carrosserieUitRdw('cabriolet') === 'cabrio' && K.carrosserieUitRdw('coupe') === 'coupe', 'RDW-inrichting → carrosserie');
+    eis(K.carrosserieUitRdw('Niet geregistreerd') === null && K.carrosserieUitRdw('') === null, 'onbekend blijft onbekend (geen gok)');
+    eis(K.kleurUitRdw('BLAUW') === 'blauw' && K.kleurUitRdw('CREME') === 'beige' && K.kleurUitRdw('DIVERSEN') === null && K.kleurUitRdw('N.v.t.') === null, 'RDW-kleur → kleur');
+    const pr = K.rdwNaarProfiel({ merk: 'MAZDA', inrichting: 'stationwagen', eerste_kleur: 'ROOD' }, []);
+    eis(pr.carrosserie === 'stationwagen' && pr.kleur === 'rood', 'het RDW vult carrosserie en kleur in het profiel', JSON.stringify(pr));
+    const svg = K.autoIcoonSvg({ carrosserie: 'suv', kleur: 'rood' });
+    eis(/<svg/.test(svg) && /#d23b3b/.test(svg) && /suv, rood/.test(svg), 'het icoon draagt vorm en kleur');
+    eis(K.CARROSSERIE.every((c) => K.autoIcoonSvg({ carrosserie: c }) !== K.autoIcoonSvg({ carrosserie: c === 'suv' ? 'sedan' : 'suv' })), 'elke carrosserie heeft een eigen vorm');
+    eis(/#6b7280/.test(K.autoIcoonSvg({})), 'zonder gegevens een neutraal grijs icoon, geen kleur verzonnen');
+    const buiten = [];
+    K.CARROSSERIE.forEach((c) => {
+      const d = (K.autoIcoonSvg({ carrosserie: c }).match(/ d="([^"]+)"/g) || []).join(' ');
+      const g = (d.match(/-?\d+(\.\d+)?/g) || []).map(Number);
+      if (!g.length || g.some((x) => x < 0 || x > 96)) buiten.push(c);
+      // Hoogte: elk V-commando en het tweede getal van elk puntenpaar na M/L/Q.
+      (d.match(/V(\d+(\.\d+)?)/g) || []).forEach((v) => { if (+v.slice(1) > 44) buiten.push(c + ' V'); });
+      (d.match(/[MLQ ]\d+(\.\d+)? (\d+(\.\d+)?)/g) || []).forEach((v) => { if (+v.trim().split(' ')[1] > 44) buiten.push(c + ' y'); });
+    });
+    eis(buiten.length === 0, 'elke tekening blijft binnen 96×48', buiten.join(','));
   }
 
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
