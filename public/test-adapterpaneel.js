@@ -396,6 +396,38 @@ console.log('\n── de aanwijzing "opnieuw verbinden" (26-09-2026) ──');
 }
 
 // ══════════════════════════════════════════════════════════════════
+console.log('\n── het sessiebewijs van #302: oploopt, waardoor, en wat herstelt ──');
+{
+  const s = bouw();
+  const P = s.PLAdapter;
+  const t0 = 1e12, m = (i, ms, extra) => Object.assign({ t: t0 + i * 30000, nr: 1, ms: ms, rps: 5, bezet: 90, pids: 26, weergave: 'slim', modules: [], koel: 90 }, extra || {});
+  // 40 minuten: 150 ms, en vanaf minuut 20 (monster 40) 270 ms, precies bij het wisselen naar Slim visueel.
+  const reeks = [];
+  for (let i = 0; i < 80; i++) reeks.push(m(i, i < 40 ? 150 : 270, i >= 40 ? { weergave: 'visueel' } : {}));
+  // opnieuw verbonden: 80 ms
+  for (let i = 82; i < 90; i++) reeks.push(m(i, 80, { nr: 2 }));
+  const a = P.driftAnalyse(reeks, [{ t: t0 + 81 * 30000, soort: 'herverbind-knop' }]);
+  const g = a.groepen[0];
+  toets('begin en eind van de verbinding', [g.begin, g.eind, g.factor], [150, 270, 1.8]);
+  toets('één stap, rond minuut 20, bij het wisselen van weergave', [g.stappen.length, g.stappen[0].minuut, g.stappen[0].wat[0]], [1, 20, 'weergave slim → visueel']);
+  toets('de nieuwe verbinding zet hem terug, via de knop', [Math.round(a.herstel[0].van), Math.round(a.herstel[0].naar), a.herstel[0].knop], [270, 80, true]);
+  const o = P.driftOordeel(a, 25);
+  toets('het oordeel: FOUT met het patroon en het herstel erin', [o.staat, o.drift, /stapsgewijs/.test(o.detail), /weergave slim → visueel/.test(o.detail), /270 → 80/.test(o.detail)], ['FOUT', true, true, true, true]);
+  // geleidelijk: 150 → 260 in kleine stapjes
+  const glad = [];
+  for (let i = 0; i < 70; i++) glad.push(m(i, Math.round(150 + i * 1.6)));
+  const og = P.driftOordeel(P.driftAnalyse(glad, []), 25);
+  toets('geleidelijk oplopen heet ook zo, zonder verzonnen stap', [og.staat, /geleidelijk/.test(og.detail), P.driftAnalyse(glad, []).groepen[0].stappen.length], ['FOUT', true, 0]);
+  const vlak = [];
+  for (let i = 0; i < 70; i++) vlak.push(m(i, 150 + (i % 3) * 5));
+  toets('vlak over 35 min: ok, "trad niet op"', [P.driftOordeel(P.driftAnalyse(vlak, []), 25).staat], ['ok']);
+  toets('korter dan 25 min verbonden: LET OP met wat nodig is', [P.driftOordeel(P.driftAnalyse(vlak.slice(0, 30), []), 25).staat], ['LET OP']);
+  // één uitschieter is geen stap
+  const piek = vlak.map((x, i) => i === 30 ? Object.assign({}, x, { ms: 600 }) : x);
+  toets('één uitschieter van 600 ms is geen stap', [P.driftAnalyse(piek, []).groepen[0].stappen.length], [0]);
+}
+
+// ══════════════════════════════════════════════════════════════════
 console.log('\n─────────────────────────────────────────');
 console.log(n + ' controles, ' + fout + ' fout');
 if (fout) { console.log('test-adapterpaneel: FOUT\n'); process.exit(1); }

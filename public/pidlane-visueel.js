@@ -69,6 +69,30 @@
 // niet op staan (klasse ≤300 ms in PID_POLL_CLASS) teruggeschroefd naar
 // VIS_REM_MS — zie remt() en de aanroep in pidPollInterval(). Ze worden nog
 // gemeten, alleen minder vaak; terug naar "Slim" en het oude tempo geldt weer.
+//
+// ── TREKMODUS: CARAVAN OF BELADEN (27-09-2026) ─────────────────────
+// Met een caravan, aanhanger of volle auto tellen andere dingen dan het
+// toerental: hoe warm koelwater en olie worden, hoe zwaar de motor werkt en in
+// welke versnelling je dat doet. De trekmodus zet onder de meter een strook
+// tegels met precies die sensoren (TREK hieronder). Hij staat aan zolang de
+// Caravanrit loopt, of als je hem zelf aanzet met de knop onder de meter; die
+// keuze blijft bewaard (pl_vis_trek). De meter zelf verandert niet — een
+// wijzerplaat die van betekenis wisselt, leest niemand meer blind af.
+// Koelwater krijgt een trend (°C per minuut): bij een lange klim is "hij
+// stijgt nog" belangrijker dan het getal, want dan is er nog tijd om terug
+// te schakelen of te stoppen. Stijgt hij snel terwijl hij al warm is, dan
+// klinkt er een toon en trilt de telefoon (hoogstens eens per drie minuten):
+// wie een caravan trekt, kijkt op de weg en niet naar een tegel. Een
+// terugschakeladvies geeft de app bewust NIET — op de top van een klim is dat
+// precies verkeerd, en dat kan de app niet zien aankomen.
+//
+// ── SESSIEBEWIJS (#294 en de trekmodus) ─────────────────────────────
+// sessie() telt over de hele sessie, alleen met een echte auto: hoe lang
+// deze weergave open stond en hoe lang daarvan gereden werd, het traagste
+// gemeten tempo per PID op de meter, welke soort onderboog er stond, of de
+// turbo herkend werd, het verbruik bij constant rijden, en de trekmodus
+// (minuten, hoogste koelwatertrend, waarschuwingen). De blok-5-proef
+// oordeelt daarmee over de rit, niet over het moment van de testrun.
 // ══════════════════════════════════════════════════════════════════
 (function(){
 'use strict';
@@ -110,6 +134,55 @@ const PLEKKEN = [
 // Nooit remmen, ook niet als de indeling nog niet bekend is: zonder deze twee
 // is er geen meter, en ze horen altijd op het snelste tempo.
 const ANKERS = new Set(['010C','010D']);
+
+// De trekstrook. `keten` = de eerste bruikbare telt; `gear` leest PLGear
+// rechtstreeks (geen PID nodig); `turbo` alleen met bewezen turbo.
+const TREK = [
+  { rol:'gear',     naam:'Versnelling', gear:true },
+  { rol:'koel',     naam:'Koelwater',   keten:['0105','0167'], eenheid:'°C', trend:true },
+  { rol:'olie',     naam:'Motorolie',   keten:['015C'],        eenheid:'°C' },
+  { rol:'last',     naam:'Belasting',   keten:['0104','0143'], eenheid:'%'  },
+  { rol:'inlaat',   naam:'Inlaatlucht', keten:['010F'],        eenheid:'°C' },
+  { rol:'verbruik', naam:'Verbruik nu', keten:['CA03','015E'], eenheid:'' },
+  { rol:'laaddruk', naam:'Laaddruk',    keten:['CA04'],        eenheid:'bar', turbo:true }
+];
+const TREK_LS = 'pl_vis_trek';
+const KOEL_TREND_MS = 60000;   // venster voor de trend
+const KOEL_TREND_WARN = 1.5;   // °C per minuut: daarboven, en warm, is het een waarschuwing
+const KOEL_WARM = 90;
+const ALARM_MS = 180000;       // hoogstens eens per drie minuten een toon
+
+/* Koelwatertrend in °C per minuut uit de historie (lineaire regressie over
+   het laatste venster). null = te weinig om iets te zeggen: minder dan vijf
+   metingen of minder dan twintig seconden. */
+function koelTrend(hist, nu){
+  if(!Array.isArray(hist)) return null;
+  const van=(nu||Date.now())-KOEL_TREND_MS;
+  const p=hist.filter(function(x){ return x && typeof x.v==='number' && isFinite(x.v) && typeof x.t==='number' && x.t>=van; });
+  if(p.length<5 || p[p.length-1].t-p[0].t<20000) return null;
+  const t0=p[0].t;
+  let sx=0, sy=0, sxx=0, sxy=0;
+  p.forEach(function(x){ const t=(x.t-t0)/60000; sx+=t; sy+=x.v; sxx+=t*t; sxy+=t*x.v; });
+  const n=p.length, d=n*sxx-sx*sx;
+  if(!(Math.abs(d)>1e-9)) return null;
+  return Math.round((n*sxy-sx*sy)/d*10)/10;
+}
+/* Welke PID staat op welke tegel? `mag(pid)` = bruikbaar; turbo = bewezen.
+   Geeft voor elke tegel {rol, naam, pid|null, gear?}. */
+function trekIndeling(mag, turbo){
+  return TREK.filter(function(t){ return !t.turbo || turbo; }).map(function(t){
+    if(t.gear) return { rol:t.rol, naam:t.naam, gear:true, pid:null };
+    let pid=null;
+    for(let i=0;i<t.keten.length;i++){ if(mag(t.keten[i])){ pid=t.keten[i]; break; } }
+    return { rol:t.rol, naam:t.naam, pid:pid, eenheid:t.eenheid, trend:!!t.trend };
+  });
+}
+function trekHandmatig(){ try{ return localStorage.getItem(TREK_LS)==='1'; }catch(e){ console.warn('PLVisueel: trekmodus onleesbaar', e); return false; } }
+function caravanLoopt(){
+  try{ const r=(window.PLRun && typeof window.PLRun.staat==='function') ? window.PLRun.staat() : null; return !!(r && r.caravan && r.caravan.aan); }
+  catch(e){ console.warn('PLVisueel: PLRun.staat() mislukt', e); return false; }
+}
+function trekAan(){ return trekHandmatig() || caravanLoopt(); }
 
 // ── DE GEOMETRIE ──────────────────────────────────────────────────
 // Alles in één viewBox van 320×320 rond (160,160). Hoeken in graden met de
@@ -336,6 +409,11 @@ function wijzerplaat(wH, olieWH, olieDH, max){
 }
 
 // ── DE INDELING ───────────────────────────────────────────────────
+function leegSessie(){
+  return { sinds:Date.now(), openMs:0, rijdendMs:0, trekMs:0, maxTrend:null, alarmen:0, tempo:{}, onder:{}, turbo:false,
+           traag:[], constant:{ n:0, som:0, kmhSom:0 } };
+}
+let _sessie = leegSessie(), _sessieT = 0, _snelheden = [], _laatsteAlarm = 0;
 const _staat = { aan:false, start:0, traag:new Set(), turboVast:false, handtekening:'', gebruik:new Set(), ind:null, timer:null,
                  meldSleutel:'', lampSleutel:'' };
 
@@ -414,6 +492,7 @@ function indeling(){
               lamp:{ belasting:bruikbaar('0104')?'0104':null, accu:bruikbaar('015B')?'015B':null },
               schaal:schaalVoor(motor, d10 && d10.wH) };
   PLEKKEN.forEach(function(r){ ind.plekken[r.rol]=eerste(r.keten); });
+  ind.trek = trekAan() ? trekIndeling(bruikbaar, turboBewezen()) : null;
   return ind;
 }
 function gebruiktePids(ind){
@@ -424,12 +503,14 @@ function gebruiktePids(ind){
   if(ind.onder){ s.add(ind.onder.pid); if(ind.onder.soort==='laaddruk') s.add('0133'); }
   if(ind.lamp){ if(ind.lamp.belasting) s.add(ind.lamp.belasting); if(ind.lamp.accu) s.add(ind.lamp.accu); }
   Object.keys(ind.plekken).forEach(function(k){ if(ind.plekken[k]) s.add(ind.plekken[k]); });
+  if(ind.trek) ind.trek.forEach(function(t){ if(t.pid) s.add(t.pid); if(t.gear){ s.add('010C'); s.add('010D'); } });
   return s;
 }
 function handtekening(ind){
   return [ind.naald, ind.midden, ind.onder?ind.onder.soort+ind.onder.pid:'', ind.schaal?ind.schaal.max:'',
           ind.lamp?(ind.lamp.belasting||'')+(ind.lamp.accu||''):'',
-          PLEKKEN.map(function(r){ return ind.plekken[r.rol]||''; }).join(',')].join('|');
+          PLEKKEN.map(function(r){ return ind.plekken[r.rol]||''; }).join(','),
+          ind.trek ? 'trek:'+ind.trek.map(function(t){ return t.pid||(t.gear?'g':'-'); }).join(',') : ''].join('|');
 }
 function naamVan(pid){
   try{ const d=(typeof getPidDef==='function')?getPidDef(pid):null; return (d && d.name) || pid; }
@@ -734,6 +815,9 @@ function bouw(g){
       '<svg class="vis-meter" viewBox="0 0 320 '+G.VB_H+'" role="img" aria-label="Toerental, snelheid, koelwater, accu en brandstof">'+
         wijzerplaat(ind.schaal.rood, dOlie && dOlie.wH, dOlie && dOlie.dH, ind.schaal.max)+'</svg>'+
     '</div>'+
+    (ind.trek ? '<div class="vis-trek" id="visTrek" aria-label="Trekmodus: caravan of beladen"></div>' : '')+
+    '<button class="vis-trekknop'+(ind.trek?' aan':'')+'" type="button" onclick="PLVisueel.trek()" aria-pressed="'+(ind.trek?'true':'false')+'">🚐 '+
+      (ind.trek ? (caravanLoopt() && !trekHandmatig() ? 'Trekmodus (Caravanrit loopt)' : 'Trekmodus aan — tik om uit te zetten') : 'Caravan of beladen? Zet de trekmodus aan')+'</button>'+
     '<div class="vis-meldingen" id="visMeld"></div>'+
     '<button class="vis-voet" type="button" onclick="setPidView(\'slim\')">Overige sensoren staan in <b>Slim →</b></button></div>';
   // Onderboog: soort, icoon en titel.
@@ -755,7 +839,179 @@ function bouw(g){
   // Wat er al binnen is meteen tonen: een herbouw midden in een rit hoort
   // niet eerst een lege meter te laten zien.
   _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
-  meldBij(); lampjesBij();
+  meldBij(); lampjesBij(); trekBij();
+}
+
+// ── DE WAARSCHUWINGSTOON ──────────────────────────────────────────
+// Twee korte piepjes via WebAudio en een trilling. Geen geluidsbestand: niets
+// om te laden, en het werkt ook zonder internet.
+function piep(){
+  try{
+    const AC=window.AudioContext || window.webkitAudioContext;
+    if(AC){
+      const ctx=piep._ctx || (piep._ctx=new AC());
+      [0, 0.32].forEach(function(t0){
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.frequency.value=880; o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.0001, ctx.currentTime+t0);
+        g.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime+t0+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+t0+0.25);
+        o.start(ctx.currentTime+t0); o.stop(ctx.currentTime+t0+0.27);
+      });
+    }
+  }catch(e){ console.warn('PLVisueel: waarschuwingstoon niet af te spelen', e); }
+  try{ if(navigator.vibrate) navigator.vibrate([200,120,200]); }catch(e){ console.warn('PLVisueel: trillen niet mogelijk', e); }
+}
+function koelAlarm(temp, trend, nu){
+  if(nu-_laatsteAlarm<ALARM_MS) return false;
+  _laatsteAlarm=nu; _sessie.alarmen++;
+  piep();
+  const t='🌡 Koelwater '+Math.round(temp)+' °C en stijgt '+String(trend).replace('.',',')+' °C/min — rustiger aan, en bij rood: stoppen';
+  try{ showToast(t); }catch(e){ console.warn('PLVisueel: melding', e); }
+  try{ log(t,'warn'); }catch(e){ console.warn('PLVisueel: logregel', e); }
+  return true;
+}
+
+// ── SESSIEBEWIJS ──────────────────────────────────────────────────
+function echtVerbonden(){
+  try{ return (typeof connected!=='undefined' && connected) && !(typeof demoMode!=='undefined' && demoMode); }
+  catch(e){ return false; }
+}
+function sessieTik(nu){
+  const dt=_sessieT ? Math.min(3000, nu-_sessieT) : 0;
+  _sessieT=nu;
+  if(!_staat.aan || !echtVerbonden() || !(dt>0)) return;
+  const S=_sessie, ind=_staat.ind;
+  S.openMs+=dt;
+  const kmh=(typeof pidVals!=='undefined') ? pidVals['010D'] : undefined;
+  const rijdt=typeof kmh==='number' && kmh>=5;
+  if(rijdt) S.rijdendMs+=dt;
+  if(ind && ind.trek) S.trekMs+=dt;
+  if(ind && ind.onder) S.onder[ind.onder.soort]=(S.onder[ind.onder.soort]||0)+dt;
+  if(_staat.turboVast) S.turbo=true;
+  _staat.traag.forEach(function(p){ if(S.traag.indexOf(p)<0) S.traag.push(p); });
+  // Het gemeten tempo van wat er op de meter staat, alleen tijdens het rijden:
+  // stilstaand vraagt de bus minder en zegt het tempo niets over de weg.
+  if(rijdt && ind) gebruiktePids(ind).forEach(function(p){
+    const t=gemetenTempo(p);
+    if(t===null) return;
+    const x=S.tempo[p]=S.tempo[p]||{ max:0, laatste:0, n:0 };
+    x.max=Math.max(x.max, t); x.laatste=t; x.n++;
+  });
+  // Verbruik bij constant rijden (#294 vraag 3): dertig seconden binnen 4 km/u
+  // en boven 50 km/u. Dat getal leg je naast de boordcomputer.
+  if(typeof kmh==='number'){ _snelheden.push({ t:nu, v:kmh }); }
+  _snelheden=_snelheden.filter(function(x){ return nu-x.t<=30000; });
+  if(_snelheden.length>=10 && nu-_snelheden[0].t>=25000){
+    const vs=_snelheden.map(function(x){ return x.v; });
+    const mn=Math.min.apply(null,vs), mx=Math.max.apply(null,vs);
+    if(mx-mn<=4 && mn>=50){
+      let l100=null;
+      try{
+        if(window.PLBerekend) l100=window.PLBerekend.bereken('CA03',
+          { '015E':pidVals['015E'], '0110':pidVals['0110'], '010D':kmh }, { diesel:leesMotor()==='diesel' });
+      }catch(e){ console.warn('PLVisueel: verbruik bij constant rijden', e); }
+      if(typeof l100==='number'){ S.constant.n++; S.constant.som+=l100; S.constant.kmhSom+=kmh; }
+    }
+  }
+}
+function sessie(){ return JSON.parse(JSON.stringify(_sessie)); }
+/* Oordelen voor blok 5, puur. #294: minstens drie minuten rijdend in deze
+   weergave; een pedaal of laaddruk die van de meter viel is de bevinding. */
+const RIJ_MIN_MS = 180000, TREK_MIN_MS = 300000;
+function ritOordeel(S){
+  S=S||{};
+  const min=function(ms){ return Math.round((ms||0)/60000); };
+  if(!(S.rijdendMs>=RIJ_MIN_MS))
+    return { staat:'LET OP', detail:'Slim visueel stond '+min(S.rijdendMs)+' min open tijdens het rijden; nodig: 3 min' };
+  const viel=(S.traag||[]).filter(function(p){ return PEDAAL_KETEN.indexOf(p)>=0 || p==='010B'; });
+  const tempo=Object.keys(S.tempo||{}).map(function(p){ return p+' '+Math.round(S.tempo[p].max)+' ms'; }).join(', ');
+  const onder=Object.keys(S.onder||{}).sort(function(a,b){ return S.onder[b]-S.onder[a]; });
+  const c=S.constant||{};
+  const verbruik=c.n>=10 ? ' · ≈ '+(Math.round(c.som/c.n*10)/10).toString().replace('.',',')+' l/100 km bij constant '+Math.round(c.kmhSom/c.n)+' km/u — leg dit naast de boordcomputer'
+    : ' · geen 30 s constant boven 50 km/u gereden, dus geen verbruik om te vergelijken';
+  const kop=min(S.rijdendMs)+' min rijdend; traagste tempo op de meter: '+(tempo||'niets gemeten')+'; onderboog: '+(onder.join(' → ')||'geen')+'; turbo '+(S.turbo?'herkend':'niet herkend');
+  if(viel.length) return { staat:'FOUT', detail:kop+' — van de meter gevallen (te traag): '+viel.join(', ')+verbruik };
+  return { staat:'ok', detail:kop+verbruik };
+}
+function trekOordeel(S){
+  S=S||{};
+  if(!(S.trekMs>=TREK_MIN_MS))
+    return { staat:'LET OP', detail:'de trekmodus stond '+Math.round((S.trekMs||0)/60000)+' min aan met een verbonden auto; nodig: 5 min (knop onder de meter)' };
+  return { staat:'ok', detail:Math.round(S.trekMs/60000)+' min trekmodus; hoogste koelwatertrend '+(S.maxTrend===null?'niet gemeten':String(S.maxTrend).replace('.',',')+' °C/min')+
+    '; '+(S.alarmen||0)+' waarschuwing'+(S.alarmen===1?'':'en') };
+}
+
+// ── DE TREKSTROOK ─────────────────────────────────────────────────
+function trekTekst(t, v){
+  const n=Number(v);
+  if(v===null || v===undefined || v==='' || !isFinite(n)) return '—';
+  if(t.rol==='verbruik') return n.toFixed(1).replace('.',',');
+  if(t.rol==='laaddruk') return (n>0.04?'+':'')+n.toFixed(2).replace('.',',');
+  return String(Math.round(n));
+}
+function trekBij(){
+  const ind=_staat.ind, e=el('visTrek');
+  if(!ind || !ind.trek || !e) return;
+  const nu=Date.now();
+  let mist=0;
+  const h=ind.trek.map(function(t){
+    let waarde='—', eenheid=t.eenheid||'', st='geen', sub='';
+    if(t.gear){
+      let g=null;
+      try{ g=(window.PLGear && typeof window.PLGear.waarde==='function') ? window.PLGear.waarde() : null; }
+      catch(x){ console.warn('PLVisueel: PLGear.waarde() mislukt', x); }
+      if(g!==null){ waarde=g===0?'N':String(g); st='ok'; }
+      sub=g===null ? 'leert of stilstand' : '';
+    } else if(t.pid){
+      const v=(typeof pidVals!=='undefined') ? pidVals[t.pid] : undefined;
+      if(v!==undefined && !isOud(t.pid, nu)){
+        waarde=trekTekst(t, v); st=oordeel(t.pid, v);
+        if(t.rol==='verbruik') eenheid=(t.pid==='CA03')?'l/100':'l/u';
+      }
+      if(t.trend){
+        const tr=koelTrend((typeof pidHist!=='undefined' && pidHist) ? pidHist[t.pid] : null, nu);
+        if(tr!==null){
+          sub=(tr>0.2?'↑ ':tr<-0.2?'↓ ':'→ ')+String(Math.abs(tr)).replace('.',',')+' °C/min';
+          const koel=Number(v);
+          if(echtVerbonden() && (_sessie.maxTrend===null || tr>_sessie.maxTrend)) _sessie.maxTrend=tr;
+          if(tr>=KOEL_TREND_WARN && isFinite(koel) && koel>=KOEL_WARM){
+            if(st==='ok') st='warn';
+            if(st==='warn' || st==='danger') koelAlarm(koel, tr, nu);
+          }
+        }
+      }
+    } else { mist++; sub='niet geselecteerd'; }
+    return '<div class="vis-tt '+st+'"><small>'+esc(t.naam)+'</small><b>'+esc(waarde)+(waarde!=='—' && eenheid?'<i>'+esc(eenheid)+'</i>':'')+'</b>'+
+      (sub?'<span>'+esc(sub)+'</span>':'')+'</div>';
+  }).join('');
+  const knop = mist ? '<button type="button" class="vis-trekerbij" onclick="PLVisueel.trekSensoren()">+ Sensoren voor trekken aanzetten</button>' : '';
+  const sleutel=h+knop;
+  if(e._sleutel!==sleutel){ e.innerHTML=h+knop; e._sleutel=sleutel; }
+}
+// De ontbrekende sensoren van de strook erbij: via de toevoegpoort, alleen wat
+// deze auto heeft (pidToevoegen keurt de rest af).
+function trekSensoren(){
+  const want=[];
+  TREK.forEach(function(t){ if(t.keten) t.keten.forEach(function(p){ want.push(p); }); });
+  want.push('010C','010D');
+  let heeft=[];
+  try{ heeft=(typeof discoveredPIDDefs!=='undefined' && discoveredPIDDefs) ? discoveredPIDDefs.map(function(d){ return d.pid; }) : []; }
+  catch(e){ console.warn('PLVisueel: keuzelijst onleesbaar', e); }
+  const kies=want.filter(function(p, i){ return want.indexOf(p)===i && heeft.indexOf(p)>=0 && !activePIDs.has(p); });
+  const voor=(typeof plSelectieVoor==='function') ? plSelectieVoor() : null;
+  const r=(typeof pidToevoegen==='function') ? pidToevoegen(kies, {}) : { ok:[] };
+  try{ if(voor) plSelectieMeld(voor, 'trekmodus'); }catch(e){ console.warn('PLVisueel: selectiemelding', e); }
+  try{ showToast(r.ok.length ? '🚐 '+r.ok.length+' sensor'+(r.ok.length===1?'':'en')+' voor trekken aangezet' : 'Deze auto heeft geen extra sensoren voor de trekstrook'); }
+  catch(e){ console.warn('PLVisueel: melding', e); }
+  try{ if(typeof renderGauges==='function') renderGauges(); }catch(e){ console.warn('PLVisueel: renderGauges', e); }
+}
+function trek(){
+  const nu=!trekHandmatig();
+  try{ localStorage.setItem(TREK_LS, nu?'1':'0'); }catch(e){ console.warn('PLVisueel: trekmodus niet bewaard', e); }
+  if(!nu && caravanLoopt()){ try{ showToast('De Caravanrit loopt nog — de trekmodus blijft tot je die stopt'); }catch(e){ console.warn('PLVisueel: melding', e); } }
+  const g=el('gGrid');
+  if(g && typeof pidViewMode!=='undefined' && pidViewMode==='visueel'){ _staat.handtekening=''; bouw(g); }
 }
 
 function zetDash(id, d){ const e=el(id); if(e) e.setAttribute('stroke-dasharray', (Math.round(d*10)/10)+' 200'); }
@@ -829,6 +1085,7 @@ function plekBij(rol, val){
 // als de indeling werkelijk veranderde. Dat laatste gebeurt zelden en maar
 // één kant op: een PID die te traag bleek of een turbo die bewezen werd.
 function tik(){
+  try{ sessieTik(Date.now()); }catch(e){ console.warn('PLVisueel: sessiebewijs', e); }
   if(!_staat.aan) return;
   const ind=_staat.ind;
   if(ind && ind.onder) beoordeelTempo(ind.onder.pid);
@@ -843,7 +1100,7 @@ function tik(){
     const e=el(x[0]); if(e && x[1]) e.classList.toggle('oud', isOud(x[1], nu));
   });
   PLEKKEN.forEach(function(r){ const p=el('visp-'+r.rol), pid=I.plekken[r.rol]; if(p && pid) p.classList.toggle('oud', isOud(pid, nu)); });
-  meldBij(); lampjesBij();
+  meldBij(); lampjesBij(); trekBij();
 }
 
 // De bevindingenbalk bovenaan de live view verhuist naar het meldingenvak
@@ -888,6 +1145,8 @@ window.PLVisueel = {
   wijzerplaat:wijzerplaat, boogPad:boogPad, hoekOnder:hoekOnder, hoekLaaddrukNul:hoekLaaddrukNul,
   indeling:indeling, gebruiktePids:gebruiktePids, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,
   meldingen:meldingen, schakel:schakel,
+  TREK:TREK, trekIndeling:trekIndeling, koelTrend:koelTrend, trek:trek, trekSensoren:trekSensoren, trekAan:trekAan,
+  sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
   remt:remt, isOud:isOud, bouw:bouw, bij:bij, tik:tik, start:start, stop:stop,
   staat:function(){ return { aan:_staat.aan, start:_staat.start, traag:Array.from(_staat.traag),
                              turboVast:_staat.turboVast, gebruik:Array.from(_staat.gebruik), ind:_staat.ind }; }

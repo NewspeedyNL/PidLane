@@ -1132,6 +1132,49 @@ MUTATIES=(
 "public/pidlane-gear.js@@    if (Math.abs(ts-tr)>CFG.alignMaxMs) return {los:true, kmh:s.v, rpm:r.v};@@@@test-gear.js@@snelheid en toerental van verschillende momenten tellen als één paar"
 "public/pidlane-gear.js@@    if (t-ts>CFG.versMaxMs || t-tr>CFG.versMaxMs) return {oud:true};@@@@test-gear.js@@een oude cachewaarde levert nog een versnelling op"
 "public/pidlane-gear.js@@      this._wissel(ps ? 'v_'+ps : 'onbekend');@@      this._wissel(ps ? 'v_'+vin : 'onbekend');@@test-gear.js@@het model wordt onder de ruwe VIN opgeslagen"
+
+# ── 27-09-2026: versnelling aan het voertuig, de knop Fout, berekende PIDs,
+# de trekmodus, ritlabels, nette rapporten en de terugknop op een gescrold
+# venster. Elk een fout die stil blijft: een correctie die niets verschuift, een
+# servermodel dat een verder gekomen model overschrijft, een CA-PID op de bus.
+"public/pidlane-gear.js@@    m.offset=a.k-(idx+1);@@    m.offset=0;@@test-gear.js@@de knop Fout onthoudt het anker maar de nummering schuift niet mee"
+"public/pidlane-gear.js@@    if (r===null || nu()-this._laatsteRT>CFG.ankerVersMs)\n      return { ok:false, reden:'Rij eerst een paar seconden rustig in die@@    if (r===null)\n      return { ok:false, reden:'Rij eerst een paar seconden rustig in die@@test-gear.js@@een correctie pakt een verouderde verhouding van een schakelmoment of stilstand"
+"public/pidlane-gear.js@@    if (daar>hier || (daar===hier && ankersDaar>ankersHier)){@@    if (true){@@test-gear.js@@een kleiner model van de server overschrijft wat dit toestel al geleerd had"
+"public/pidlane-plload.js@@    if(typeof plIsBerekend==='function' && plIsBerekend(pid)) continue;@@@@bproef-berekend.js@@de pollus stuurt een berekende PID (CA01) als commando naar de auto"
+"public/pidlane-bt.js@@  if(/^CA[0-9A-F]{2}1?$/i.test(String(cmd||'').trim())){@@  if(false){@@bproef-berekend.js@@sendCmd laat een berekende PID door naar de adapter"
+"public/pidlane-berekend.js@@    if (isDiesel && set.indexOf('0110')>=0) continue;@@@@test-berekend.js@@een dieselverbruik uit de luchtmassa (een diesel loopt arm)"
+"public/pidlane-berekend.js@@      if (l===null || typeof kmh!=='number' || kmh<5) return null;@@      if (l===null || typeof kmh!=='number' || kmh<=0) return null;@@test-berekend.js@@liters per 100 km bij stapvoets rijden: delen door bijna nul"
+"public/pidlane-berekend.js@@  return (nu-(x.t||0))<=max ? x.v : undefined;@@  return x.v;@@bproef-berekend.js@@een berekende PID rekent door op bronwaarden van tien seconden oud"
+"public/pidlane-visueel.js@@  if(p.length<5 || p[p.length-1].t-p[0].t<20000) return null;@@  if(p.length<2) return null;@@test-visueel.js@@de koelwatertrend spreekt zich uit op vier metingen"
+"public/pidlane-visueel.js@@  return TREK.filter(function(t){ return !t.turbo || turbo; }).map(function(t){@@  return TREK.map(function(t){@@test-visueel.js@@de laaddruk staat in de trekstrook van een auto zonder turbo"
+"public/pidlane-garage.js@@    if (!/^PidLane — Waakronde/.test(regels[0] || '')) return null;@@@@test-garage.js@@elk rapport wordt als waakrapport gelezen"
+"public/pidlane-garage.js@@      if (!l) return;\n      var s = som[l]@@      var s = som[l]@@test-garage.js@@ritten zonder label tellen als een label \"null\""
+"worker.js@@    const s = m === null ? null : kpJson(m, 16000);@@    const s = m === null ? null : JSON.stringify(m);@@test-klantplatform.js@@een versnellingsmodel zonder groottegrens"
+"worker.js@@    const r = await c.db.prepare(\"UPDATE kp_rit SET label = ? WHERE id = ? AND klant_id = ?\")@@    const r = await c.db.prepare(\"UPDATE kp_rit SET label = ? WHERE id = ? AND klant_id = klant_id\")@@test-klantplatform.js@@een klant kan het label van andermans rit zetten"
+"public/pidlane-archief.js@@  if(!weg) return false;@@  return false;@@bproef-terugknop.js@@terug doet niets op Mijn voertuigen zodra het ✕ weggescrold is"
+
+# ── 27-09-2026, ronde 2: de voorstellen en de sluitende meetproeven. De
+# gevaarlijkste is de eerste: een schakeladvies dat ooit TERUG adviseert, op de
+# top van een klim. Daarna de meetproeven zelf: een oordeel dat een fout niet
+# meer ziet is erger dan geen proef, want dan staat er "ok" onder een rit.
+"public/pidlane-berekend.js@@  if (rpm<g.vanaf) return gear;@@  if (rpm<g.vanaf) return Math.max(1, gear-1);@@test-berekend.js@@het schakeladvies zegt terugschakelen bij laag toerental (op de top van een klim precies verkeerd)"
+"public/pidlane-berekend.js@@  const heet=typeof m.temp==='number' && m.temp>=DPF.heet && !(typeof m.belasting==='number' && m.belasting>DPF.maxBelasting);@@  const heet=typeof m.temp==='number' && m.temp>=DPF.heet;@@test-berekend.js@@een hete uitlaat bij het trekken telt als roetfilterregeneratie"
+"public/pidlane-berekend.js@@  if ((s.geweigerd||[]).length) fout.push(@@  if (false) fout.push(@@test-berekend.js@@de blok-5-proef ziet niet meer dat een CA-PID naar de adapter ging"
+"public/pidlane-berekend.js@@      if (k===null || l===null || !(e>0) || l<0.5 || k<=0) return null;@@      if (k===null || l===null || !(e>0) || l<=0 || k<=0) return null;@@test-berekend.js@@rendement bij bijna nul debiet: delen door bijna nul"
+"public/pidlane-gear.js@@      if (achteruit){\n        doel='R';@@      if (achteruit){\n        doel=undefined;@@test-gear.js@@een geleerde achteruit wordt nooit getoond: de klant ziet geen R"
+"public/pidlane-gear.js@@    if (een && Math.abs(r-een)/een<=CFG.matchTol)@@    if (false)@@test-gear.js@@R met dezelfde verhouding als de 1e wordt geaccepteerd en maakt de 1e tot achteruit"
+"public/pidlane-gear.js@@    return s>60 ? null : Math.max(0, Math.round(s*10)/10);@@    return s>60 ? null : Math.round(s*10)/10;@@test-gear.js@@koppelomvormer-slip wordt negatief bij uitrollen"
+"public/pidlane-gear.js@@  if (pct<70) return { staat:'FOUT'@@  if (pct<0) return { staat:'FOUT'@@test-gear.js@@de blok-5-proef keurt een indicator goed die bij 60% van de metingen niet past"
+"public/pidlane-pip.js@@    _open.maxGat = Math.max(_open.maxGat, nu - _open.laatste);\n    _open.laatste = nu; _open.n++;@@    _open.laatste = nu; _open.n++;@@test-pip.js@@een stilgevallen meetlus in beeld-in-beeld wordt niet gemeten (#319)"
+"public/pidlane-pip.js@@    var slecht = lang.filter(function (p) { return p.maxGat > PIP_GAT_MS; });@@    var slecht = [];@@test-pip.js@@de #319-proef zegt ok bij een meetlus die acht seconden stillag"
+"public/pidlane-adapter.js@@        for (let j = i - 3; j <= i + 3; j++)@@        for (let j = i; j < i; j++)@@test-adapterpaneel.js@@de stap ligt een paar monsters te vroeg en noemt de verkeerde oorzaak (#302)"
+"public/pidlane-adapter.js@@    if (!(g.factor >= 1.3)) return@@    if (!(g.factor >= 3)) return@@test-adapterpaneel.js@@de drift van 150 naar 270 ms heet deze rit niet opgetreden (#302)"
+"public/pidlane-visueel.js@@  if(nu-_laatsteAlarm<ALARM_MS) return false;@@@@bproef-visueel.js@@de koelwaterwaarschuwing piept elke tik op een lange klim"
+"public/pidlane-visueel.js@@  const viel=(S.traag||[]).filter(function(p){ return PEDAAL_KETEN.indexOf(p)>=0 || p==='010B'; });@@  const viel=[];@@test-visueel.js@@de #294-proef ziet niet dat het pedaal van de meter viel"
+"public/pidlane-garage.js@@    Object.keys(tel).forEach(function (l) { if (tel[l] >= 2 &&@@    Object.keys(tel).forEach(function (l) { if (tel[l] >= 1 &&@@test-garage.js@@één toevallig gelijkende rit geeft al een labelvoorstel"
+"public/pidlane-garage.js@@String(r.label || '').replace(/;/g, ',')].join(';'));@@String(r.label || '')].join(';'));@@test-garage.js@@een puntkomma in een ritlabel breekt de CSV-export"
+"worker.js@@\"DELETE FROM kp_rapport WHERE klant_id = ? AND id IN (\"@@\"DELETE FROM kp_rapport WHERE (klant_id = ? OR 1) AND id IN (\"@@test-klantplatform.js@@meerdere rapporten wissen raakt ook die van een andere klant"
+"worker.js@@    return { waarde: Math.round(n * 1000) / 1000 };@@    return { waarde: Math.round(n * 10) / 10 };@@test-klantplatform.js@@een literprijs van 1,959 wordt 2,0"
 )
 
 echo

@@ -1138,6 +1138,14 @@ async function sppReconnectGuard(spp,address,cmd,force){
 }
 
 async function sendCmd(cmd, timeoutMs){
+  // Vangrail: een berekende PID (CA.., pidlane-berekend.js) gaat nooit de bus
+  // op. Vóór PLBus.note(): een weigering is geen busfout.
+  if(/^CA[0-9A-F]{2}1?$/i.test(String(cmd||'').trim())){
+    btDiag(`"${cmd}" geweigerd: berekende PID, niet voor de auto`,'warn');
+    // Tellen met het pad erbij: blok 5 zegt dan welke module het probeerde.
+    try{ if(window.PLBerekend) window.PLBerekend.weiger(cmd); }catch(e){ console.warn('weigering berekende PID niet geteld', e); }
+    return '';
+  }
   if(demoMode){ btDiag(`sendCmd "${cmd}" geblokkeerd: demoMode staat AAN`,'warn'); return ''; }
   // Doorlaatbewijs synchroon lezen én wissen: één aanroep, geen await ertussen.
   const _pas = _elmPas; _elmPas = false;

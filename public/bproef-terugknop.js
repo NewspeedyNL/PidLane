@@ -114,6 +114,41 @@ const HULP = `
     toets('bij gelijke z-index sluit de terugknop het laatst geopende venster',
       gelijk.bulk === false && gelijk.waak === true, JSON.stringify(gelijk));
 
+    // 27-09-2026: Mijn voertuigen, de versnellingsindicator en Mijn voorkeuren
+    // scrollen. Wie omlaag schuift, schuift het ✕ uit beeld; toen vond de
+    // zoeker het venster niet meer en deed terug niets.
+    console.log('\n2c. Venster omlaag gescrold, ✕ uit beeld: terug sluit het toch');
+    const scrol = await app.ev(`(async function(){
+      window.currentUser = { user:'proef@x.nl', role:'klant', label:'proef' };
+      const st = PLGarage.staat();
+      st.stand = { akkoord:true, __u:'proef@x.nl', maxActief:3, voertuigen:[{ id:'v1', status:'actief', naam:'Proefauto', merk:'Mazda', model:'CX-5' }] };
+      PLGarage.open('v1'); await __wacht(200);
+      st.view = 'rapport';
+      st.rapport = { id:'r1', soort:'waak', titel:'Waakronde', aangemaakt:new Date().toISOString(),
+        tekst: 'PidLane — Waakronde\\nDatum: nu\\n40 sensoren\\n\\n=== BEVINDINGEN (0) ===\\n geen\\n\\n=== ZONDER ANTWOORD (0) ===\\n geen\\n\\n=== NORMAAL ===\\n' +
+          Array.from({length:60}, (_, i) => ' Sensor ' + i + ': 1,0 V (3×, 0,9–1,1)').join('\\n') };
+      PLGarage._tab('overzicht'); st.view = 'rapport';
+      const ov = document.getElementById('plGarOv');
+      document.getElementById('plGarBody').innerHTML += '<div style="height:3000px"></div>';
+      ov.scrollTop = 2500; await __wacht(150);
+      const x = ov.querySelector('.gr-x').getBoundingClientRect();
+      const uitBeeld = x.bottom < 0;
+      _plBackHandler(); await __wacht(250);
+      const garDicht = !__zicht('plGarOv');
+      // de versnellingsindicator: het vel zelf scrolt
+      openGearInstellingen(); await __wacht(150);
+      const vel = document.querySelector('#plGearOv .plg-vel');
+      vel.insertAdjacentHTML('beforeend', '<div style="height:3000px"></div>');
+      vel.scrollTop = 2500; await __wacht(150);
+      _plBackHandler(); await __wacht(250);
+      const gearDicht = !__zicht('plGearOv');
+      window.currentUser = { user:'proef', role:'admin', label:'proef' };
+      return { uitBeeld: uitBeeld, garDicht: garDicht, gearDicht: gearDicht };
+    })()`);
+    toets('het ✕ van Mijn voertuigen staat uit beeld (anders toetst dit niets)', scrol.uitBeeld, JSON.stringify(scrol));
+    toets('terug sluit Mijn voertuigen ook als het ✕ weggescrold is', scrol.garDicht, JSON.stringify(scrol));
+    toets('terug sluit de versnellingsindicator ook als het vel gescrold is', scrol.gearDicht, JSON.stringify(scrol));
+
     console.log('\n3. TEGENPROEF — zonder de ✕-zoeker blijft het venster staan');
     const tegen = await app.ev(`(async function(){
       const echt = window._plBovensteSluitKnop;

@@ -376,7 +376,16 @@ function plOpslaan(basisnaam, tekst, opties) {
   };
 }
 
+// Rechtstreeks als PDF, zonder de keuze tekst/PDF ervoor (Mijn voertuigen →
+// rapport → 📕 PDF). Zelfde opmaak en dezelfde uitgang als de PDF-knop hierboven.
+async function plOpslaanPdf(basisnaam, tekst, opties) {
+  const naam = _veiligeNaam(basisnaam, 'PidLane-rapport');
+  const blob = await plMaakPdf(naam + '.pdf', tekst, opties || {});
+  await _bewaar(blob, naam + '.pdf', null);
+}
+
 window.plOpslaan = plOpslaan;
+window.plOpslaanPdf = plOpslaanPdf;
 window.plMaakPdf = plMaakPdf;
 // Los ontsloten zodat test-export.js de schoonmaak op de echte functie kan
 // toetsen in plaats van op een kopie ervan.

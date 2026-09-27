@@ -957,6 +957,12 @@ function buildDiscoveredPIDList(){
     }
   });
 
+  // Berekende PIDs (pidlane-berekend.js): alleen die waarvan de bronnen op
+  // deze auto bestaan. Ze staan NIET in supportedPIDs — dat is de lijst die
+  // de sweeps en de waakronde bij de auto opvragen.
+  try{ if(typeof plBerekendDefs==='function') plBerekendDefs().forEach(d=>{ if(!discoveredPIDDefs.some(x=>x.pid===d.pid)) discoveredPIDDefs.push(d); }); }
+  catch(e){ console.warn('Berekende PIDs niet in de keuzelijst gezet', e); }
+
   // Sorteer: eerst per onderdeel (Motor voorop, Overig achteraan), daarbinnen
   // in de samengestelde volgorde van ALL_PID_DEFS (toerental eerst) i.p.v.
   // alfabetisch — dat is de volgorde die een monteur verwacht.

@@ -559,6 +559,8 @@ function pidsDueNow(){
   const now=Date.now();
   const due=[];
   for(const pid of activePIDs){
+    // Een berekende PID (CA..) rekent de app uit; de auto kent hem niet.
+    if(typeof plIsBerekend==='function' && plIsBerekend(pid)) continue;
     if(_pidDead.has(pid)){
       // Dode PID: alleen elke PID_REPROBE_MS één herkansing toelaten
       if(now-(_pidDeadSince[pid]||0) < PID_REPROBE_MS) continue;

@@ -6312,6 +6312,147 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ══ RONDE 27-09 — sluitende meetproeven ══════════════════════════
+  // Elke proef hieronder oordeelt over de HELE rit, niet over het moment van
+  // de testrun: de modules houden hun eigen sessiebewijs bij (sessie(),
+  // stats(), perioden(), sessieOordeel()) en het oordeel zelf is een pure
+  // functie in die module (oordeel()), getoetst in node. Er zijn drie uitkomsten
+  // en elk zegt iets bruikbaars:
+  //   ok      — de vraag is beantwoord en het klopt;
+  //   FOUT    — de vraag is beantwoord en het klopt niet, met het waarom;
+  //   LET OP  — de situatie deed zich niet voor, met PRECIES wat de rit nodig
+  //             had. CAMPAGNE zet die situaties allemaal in één rit, zodat een
+  //             rit niet drie keer over hoeft.
+
+  // ── #319: loopt de meetlus door in beeld-in-beeld? ──
+  {
+    issue: '#319',
+    naam: 'De meetlus loopt door in beeld-in-beeld',
+    waarom: 'Of Android de timers van een gepauzeerde activiteit afknijpt, bestaat niet in headless Chromium — dat weet alleen de telefoon in de auto.',
+    proef: async function () {
+      if (!window.PLPip || typeof PLPip.oordeel !== 'function')
+        return { staat: 'FOUT', detail: 'PLPip.oordeel ontbreekt — dan is #319 niet te beoordelen' };
+      const o = PLPip.oordeel(PLPip.perioden(), PLPip.laatste());
+      let extra = '';
+      try {
+        if (window.PLAchtergrond) {
+          const st = PLAchtergrond.stilsteS(0);
+          if (st) extra = ' · langste gemeten stilte buiten beeld: ' + st + ' s';
+        }
+      } catch (e) { console.warn('proef #319: achtergrond onleesbaar', e); }
+      return o.staat === 'ok' ? o.detail + extra : { staat: o.staat, detail: o.detail + extra };
+    }
+  },
+
+  // ── #294: haalt Slim visueel het tempo op een echte auto? ──
+  {
+    issue: '#294',
+    naam: 'Slim visueel houdt pedaal en laaddruk op de meter tijdens het rijden',
+    waarom: 'Het tempo hangt af van wat de ECU en de adapter onder belasting doen; de nep-adapter van de browserproef heeft geen busvertraging.',
+    proef: async function () {
+      if (!window.PLVisueel || typeof PLVisueel.ritOordeel !== 'function')
+        return { staat: 'FOUT', detail: 'PLVisueel.ritOordeel ontbreekt' };
+      const o = PLVisueel.ritOordeel(PLVisueel.sessie());
+      return o.staat === 'ok' ? o.detail : o;
+    }
+  },
+
+  // ── de trekmodus (caravan of beladen) ──
+  {
+    issue: '—',
+    naam: 'De trekmodus toont koelwater, olie en belasting tijdens het rijden',
+    waarom: 'De trend in °C per minuut en de waarschuwing hebben een echte klim nodig; de browserproef toetst alleen de tekening.',
+    proef: async function () {
+      if (!window.PLVisueel || typeof PLVisueel.trekOordeel !== 'function')
+        return { staat: 'FOUT', detail: 'PLVisueel.trekOordeel ontbreekt' };
+      const o = PLVisueel.trekOordeel(PLVisueel.sessie());
+      return o.staat === 'ok' ? o.detail : o;
+    }
+  },
+
+  // ── de versnellingsindicator op deze bak ──
+  {
+    issue: '—',
+    naam: 'De versnellingsindicator herkent de versnellingen van deze auto',
+    waarom: 'Hoeveel pieken een echte bak geeft en of ze stabiel blijven (slip, banden) is in simulatie niet na te bootsen.',
+    proef: async function () {
+      if (!window.PLGear || typeof PLGear.oordeel !== 'function')
+        return { staat: 'FOUT', detail: 'PLGear.oordeel ontbreekt' };
+      const st = PLGear.status();
+      const o = PLGear.oordeel(PLGear.sessie(), st);
+      let rs = '';
+      try { const r = PLGear.rijstijl(PLGear.sessie().tijd); if (r.verdeling.length) rs = ' · deze rit: ' + r.verdeling.map(function (x) { return x.k + 'e ' + x.pct + '%'; }).join(' '); }
+      catch (e) { console.warn('proef versnelling: rijstijl onleesbaar', e); }
+      const d = o.detail + rs + (st.voertuig ? ' · bij ' + st.voertuig : ' · niet aan een voertuig gekoppeld');
+      return o.staat === 'ok' ? d : { staat: o.staat, detail: d };
+    }
+  },
+
+  // ── de berekende PIDs: nooit de bus op, en plausibel ──
+  {
+    issue: '—',
+    naam: 'Berekende PIDs gaan niet de bus op en blijven binnen hun bereik',
+    waarom: 'Welke bronnen de ECU levert (015E, 0162/0163, 0133, 017C) en of het vermogen klopt met het profiel, weet alleen de auto.',
+    proef: async function () {
+      if (!window.PLBerekend || typeof PLBerekend.oordeel !== 'function')
+        return { staat: 'FOUT', detail: 'PLBerekend.oordeel ontbreekt' };
+      if (typeof plIsBerekend !== 'function' || !plIsBerekend('CA01'))
+        return { staat: 'FOUT', detail: 'plIsBerekend ontbreekt — dan vraagt de pollus CA01 bij de auto op' };
+      const o = PLBerekend.oordeel(PLBerekend.stats());
+      return o.staat === 'ok' ? o.detail : o;
+    }
+  },
+
+  // ── #302: loopt de responstijd op, waardoor, en wat zet hem terug? ──
+  // Staat bewust ACHTERAAN: als de drift er is, voert deze proef zelf het
+  // experiment uit dat #302 vraagt, en dat raakt de verbinding aan.
+  //   1. dezelfde meting ervoor en erna: 15× 010C solo, de mediaan;
+  //   2. eerst alleen de ELM opnieuw initialiseren (ATWS, de socket blijft);
+  //   3. helpt dat niet, dan een nieuwe verbinding (de socket opnieuw).
+  // Zo zegt één rit of het de adapter-toestand is of de Bluetooth-socket.
+  {
+    issue: '#302',
+    naam: 'De responstijd van de adapter blijft vlak over een hele verbinding',
+    waarom: 'De drift kwam na een half uur op een echte adapter; de browser heeft geen socket die trager kan worden.',
+    proef: async function () {
+      if (!window.PLAdapter || typeof PLAdapter.driftOordeel !== 'function')
+        return { staat: 'FOUT', detail: 'PLAdapter.driftOordeel ontbreekt' };
+      const o = PLAdapter.driftOordeel(PLAdapter.sessieOordeel(), 25);
+      if (!o.drift) return o.staat === 'ok' ? o.detail : o;
+      const echt = (typeof connected !== 'undefined' && connected) && !(typeof demoMode !== 'undefined' && demoMode);
+      if (!echt) return { staat: 'FOUT', detail: o.detail + ' — niet meer verbonden, dus niet na te gaan welke reset helpt' };
+      const wacht = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+      const meet = async function () {
+        const ms = [];
+        await withBus('proef #302', async function () {
+          for (let i = 0; i < 15; i++) { const t = _nu(); await sendCmd('010C', 1500); ms.push(_nu() - t); }
+        }, 8000);
+        ms.sort(function (a, b) { return a - b; });
+        return ms.length ? ms[ms.length >> 1] : null;
+      };
+      const a = await meet();
+      if (typeof initELM327 !== 'function') return { staat: 'FOUT', detail: o.detail + ' — initELM327 ontbreekt, experiment niet uitgevoerd' };
+      await initELM327({ herstelProtocol: true });
+      await wacht(3000);
+      const b = await meet();
+      let c = null;
+      if (a && b && b > a / 1.3) {
+        await PLAdapter.herverbind();
+        // herverbind() bewaarde de sweepselectie van de testrun als "jouw"
+        // selectie; zet die van vóór de run terug in de hervatstand.
+        try { if (_trHerstel && _trHerstel.actief) localStorage.setItem('pl_selectie', JSON.stringify({ pids: _trHerstel.actief, t: _nu() })); }
+        catch (e) { console.warn('proef #302: selectie niet teruggezet in de hervatstand', e); }
+        await wacht(5000);
+        c = await meet();
+      }
+      const conclusie = !(a && b) ? 'meting mislukt'
+        : b <= a / 1.3 ? 'de ELM opnieuw initialiseren (ATWS) herstelt het — het zit in de adapter, niet in de socket'
+        : (c && c <= a / 1.3) ? 'ATWS helpt niet, een nieuwe verbinding wel — het zit in de Bluetooth-socket'
+        : 'ook een nieuwe verbinding helpt niet — dan ligt het niet aan de adapter-toestand of de socket';
+      return { staat: 'FOUT', detail: o.detail + ' · experiment 010C solo: ' + a + ' ms → na ATWS ' + b + ' ms' + (c !== null ? ' → na nieuwe verbinding ' + c + ' ms' : '') + ' · ' + conclusie };
+    }
+  },
+
 ];
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
@@ -8592,27 +8733,28 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 26-09 (veertiende) — tien punten uit de proefrit: terugknop, systeemtest, grafiek (#300)',
+  titel: 'OPLEVERING 27-09 (vijftiende) — één rit die alles beantwoordt: versnelling, berekende PIDs, trekmodus, #294, #302, #319',
   vragen: [
-    '\u2500\u2500 WAAROM DEZE RONDE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-    'TIEN DINGEN DIE IN DE AUTO IN DE WEG ZATEN. Het Veldlab-vel na een AI-rapport, de zwevende tokenteller, "Sluit de app" die de verbinding liet hangen, een terugknop die de helft van de vensters niet kende, de scenariobalk achter de Android-knoppen, een losse kaart voor de bulk-analyse, bevindingen die één seconde in beeld stonden, een onleesbare grafiek en een systeemtest die tijdens het rijden de stationair-tests liet mislukken.',
-    'DE SYSTEEMTEST IS NU EEN CHECKLIST. Alle tests staan tegelijk klaar en meten alleen in hun eigen situatie: stilstaand, constant rijden, optrekken, uitrollen, motor uit, koude start. Tijdens het rijden wachten de stationair-tests; ze falen niet meer. Bovenaan staat wat de volgende kans is.',
-    '\u2500\u2500 WAT ÉÉN RIT DEZE RONDE MOET LATEN ZIEN \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-    'DE SYSTEEMTEST VINKT ZICH AF OP DE WEG. Start hem stilstaand met een warme motor, rij daarna een stuk constant boven 40 km/u, trek een keer op en laat uitrollen. Elke groep hoort zich af te vinken zonder dat je iets aanraakt. Blijft een rijgroep op "wacht" staan terwijl je die situatie rijdt, dan herkent de rijfase de weg niet.',
-    'DE TERUGKNOP. Open de waakronde, de bulk-recorder en een AI-rapport en druk telkens op de Android-terugknop: het bovenste venster gaat dicht, de app niet.',
-    'SLUIT DE APP. Verbonden met de adapter: ☰ → Sluit de app. Het lampje op de adapter hoort binnen een paar seconden te stoppen met knipperen, en er hoort geen PidLane-melding in de balk te blijven staan.',
-    '\u2500\u2500 STAP VOOR STAP \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-    'STAP 0 \u2014 VOORAF. Zet de app op de nieuwste versie (\u2630 \u2192 Nieuwste versie laden). Deze ronde zit volledig in de webpagina; een nieuwe APK is niet nodig.',
-    'STAP 1 \u2014 SYSTEEMTEST STILSTAAND. Motor warm, auto stil: start de systeemtest en wacht tot de stilstandgroep groen is. Noteer wat er onder "Volgende kans" staat.',
-    'STAP 2 \u2014 SYSTEEMTEST RIJDEND. Rij constant, trek op, laat uitrollen. Druk aan het eind op "Stop en maak rapport" en noteer hoeveel tests "niet getest" zijn en waarom.',
-    'STAP 3 \u2014 GRAFIEK. Tabblad Grafiek \u2192 Temperatuur. Drie banen, elk met een eigen schaal, en ze lopen mee zonder dat je iets aanraakt.',
-    'STAP 3b \u2014 FOUTCODES & KEURINGSSTATUS (#304). Startscherm \u2192 de eerste deur. Staan er codes, vergelijk ze met het oude tabblad Foutcodes: het nieuwe venster hoort er minstens dezelfde te tonen, plus pending en permanent. Druk op "Foutcodes wissen\u2026" met draaiende motor: "Nu wissen" moet dicht blijven. Wis alleen als er een code staat die je kwijt wilt, met de motor uit.',
-    'STAP 4 \u2014 DRAAI AAN HET EIND DE TESTRUN. Blok 5 meet op dit toestel of de scenariobalk boven de knoppenbalk staat, of de terugknop het bovenste venster vindt en welke rijsituatie de systeemtest herkent.',
-    'NA AFLOOP. Plak uit het ruwe verslag alleen de FOUT- en LET OP-regels met hun blokkop, plus de uitkomst van stap 2.',
-    '\u2500\u2500 WAT DEZE RONDE NIET OPLOST \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-    'DE RIJFASE IS NOG DE OUDE. "Constant", "optrekken" en "remmen" komen uit PLMon._state(): de snelheidsverandering over drie seconden. Of dat op een echte weg vaak genoeg "constant" zegt, is precies wat stap 2 moet laten zien.',
-    'DE KOUDE-STARTTEST HEEFT ÉÉN KANS. Is de motor warm als je de systeemtest start, dan is hij "niet getest". Dat is eerlijk, maar betekent dat hij alleen bij de eerste rit van de dag meedoet.',
-    '#255, #256 EN #257 STAAN NOG STEEDS OPEN. Die sluiten zodra er één volledige testrun draait.',
+    '── WAAROM DEZE RONDE ────────',
+    'DE PROEVEN OORDELEN OVER DE HELE RIT. Tot nu toe keek blok 5 naar het moment waarop de testrun draaide; wat er daarvoor gebeurde telde niet, en dan moest een rit over. Nu houden de modules zelf bij wat er deze sessie gebeurde, en oordeelt blok 5 daar aan het eind over. Elke proef zegt ok, FOUT met het waarom, of LET OP met precies wat de rit nog nodig had.',
+    'NIEUW IN DE APP. Versnelling bij het voertuig met een knop Fout (ook R), tijd per versnelling met rijstijladvies, zeventien berekende PIDs (onder "Berekend"), een trekmodus met waarschuwingstoon, ritlabels met voorstel, export en kosten, rapporten vergelijken en in één keer wissen.',
+    '── WAT ÉÉN RIT DEZE RONDE MOET LATEN ZIEN ────────',
+    'MINSTENS 30 MINUTEN ONAFGEBROKEN VERBONDEN (#302). Niet tussendoor verbreken. Verschijnt in het verbindingspaneel de oranje melding "De responstijd is opgelopen", laat die staan: de testrun doet aan het eind zelf het experiment (eerst de ELM opnieuw, dan eventueel een nieuwe verbinding).',
+    'ALLE VERSNELLINGEN, TIEN MINUTEN. Rij door alle versnellingen heen. Klopt het cijfer in de topbalk een keer niet: tik erop → Fout → de juiste. Rij één keer een stukje achteruit en tik dan Fout → R.',
+    'EEN MINUUT BEELD-IN-BEELD (#319). Tijdens het rijden (als passagier, of stilstaand met draaiende motor en de adapter verbonden) een minuut naar een andere app, bijvoorbeeld de navigatie. Daarna terug.',
+    'SLIM VISUEEL DRIE MINUTEN RIJDEND (#294), waarvan dertig seconden constant boven 50 km/u. Noteer wat de boordcomputer als verbruik zegt.',
+    'TREKMODUS VIJF MINUTEN. Onder de meter: "Caravan of beladen? Zet de trekmodus aan". Met een caravan of volle auto het liefst een klim.',
+    'EÉN KEER VOL GAS in de 2e of 3e, als het veilig kan. Dat is de enige manier om het berekende vermogen tegen het profiel te houden.',
+    '── STAP VOOR STAP ────────',
+    'STAP 0 — VOORAF. Nieuwste versie laden (☰ → Nieuwste versie laden). Mijn voertuigen: vul bij Profiel handbak of automaat, het aantal versnellingen, de tankinhoud, de literprijs en het vermogen in. Een nieuwe APK is niet nodig.',
+    'STAP 1 — VERBINDEN EN WEGRIJDEN. Eén keer verbinden, dan niet meer verbreken tot na de testrun. Kies Slim visueel en zet de trekmodus aan.',
+    'STAP 2 — RIJDEN, 30 MINUTEN OF MEER. Doe onderweg de punten hierboven: alle versnellingen, één keer Fout, één keer R, een minuut beeld-in-beeld, dertig seconden constant, één keer vol gas.',
+    'STAP 3 — DRAAI AAN HET EIND DE TESTRUN, nog steeds verbonden. De #302-proef staat achteraan en kan twee minuten duren als hij de drift ziet: dan meet hij, initialiseert de ELM opnieuw, meet weer en verbindt zo nodig opnieuw.',
+    'NA AFLOOP. Plak uit het ruwe verslag de FOUT- en LET OP-regels met hun blokkop, plus het verbruik van de boordcomputer uit punt 5. Staat er een LET OP, dan zegt die regel wat er ontbrak.',
+    '── WAT DEZE RONDE NIET OPLOST ────────',
+    'GEEN TERUGSCHAKELADVIES EN GEEN AUTOMATISCHE BELADEN-HERKENNING. Bewust niet (besluit 27-09): op de top van een klim is terugschakelen precies verkeerd, en dat ziet de app niet aankomen.',
+    'DE ROETFILTERTELLER IS EEN SCHATTING. Hij telt pas vanaf de eerste regeneratie die hij zelf ziet, en alleen op een diesel die 017C of 0178 geeft.',
+    '#309 (Engelse versie) EN #264 (AI stuurt een test aan) HEBBEN GEEN MEETPROEF. Er is daar nog niets in de app om te meten.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
 };

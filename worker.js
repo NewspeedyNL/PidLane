@@ -4810,7 +4810,9 @@ var KP_MAX_TOTAAL = 10;          // actief + archief: een vangnet, geen productr
 var KP_MAX_RAPPORTEN = 500;      // per voertuig
 var KP_MAX_RITTEN = 5000;        // per voertuig
 var KP_MAX_TEKST = 120000;       // tekens per rapport
-var KP_AKKOORD_VERSIE = "2026-09-27";
+// 2026-09-27b: ritlabels en het geleerde versnellingsmodel kwamen erbij. Een
+// nieuwe verwerking = een nieuwe tekst = opnieuw akkoord (CLAUDE.md, Privacy).
+var KP_AKKOORD_VERSIE = "2026-09-27b";
 
 var KP_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS kp_akkoord (klant_id TEXT PRIMARY KEY, versie TEXT NOT NULL, op TEXT NOT NULL)",
@@ -4831,7 +4833,12 @@ var KP_SCHEMA = [
 var KP_MIGRATIES = [
   "ALTER TABLE kp_voertuig ADD COLUMN onderhoud_laatst TEXT",
   "ALTER TABLE kp_voertuig ADD COLUMN distributie TEXT",
-  "ALTER TABLE kp_voertuig ADD COLUMN pid_selectie TEXT"
+  "ALTER TABLE kp_voertuig ADD COLUMN pid_selectie TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN versnellingen INTEGER",
+  "ALTER TABLE kp_voertuig ADD COLUMN gear_model TEXT",
+  "ALTER TABLE kp_rit ADD COLUMN label TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN tankinhoud INTEGER",
+  "ALTER TABLE kp_voertuig ADD COLUMN brandstofprijs REAL"
 ];
 var _kpSchemaKlaar = false;
 
@@ -4916,6 +4923,10 @@ var KP_VELDEN = {
   vermogen_kw: { soort: "geheel", min: 0, max: 2000 },
   turbo: { soort: "keuze", uit: ["ja", "nee", "onbekend"] },
   transmissie: { soort: "keuze", uit: ["handgeschakeld", "automaat", "onbekend"] },
+  versnellingen: { soort: "geheel", min: 1, max: 10 },
+  tankinhoud: { soort: "geheel", min: 10, max: 200 },
+  // Een literprijs heeft drie decimalen (1,959): "getal" rondt op één af.
+  brandstofprijs: { soort: "prijs", min: 0.1, max: 5 },
   rijprofiel: { soort: "keuze", uit: ["stad", "gemengd", "snelweg", "korte ritten", "aanhanger of caravan"] },
   verbruik_opgegeven: { soort: "getal", min: 0, max: 50 },
   kmstand: { soort: "geheel", min: 0, max: 2000000 },
@@ -4946,6 +4957,11 @@ function kpVeld(naam, waarde) {
     const n = Number(waarde);
     if (!isFinite(n) || n < d.min || n > d.max) return { fout: naam + " ligt buiten " + d.min + "–" + d.max };
     return { waarde: d.soort === "geheel" ? Math.round(n) : Math.round(n * 10) / 10 };
+  }
+  if (d.soort === "prijs") {
+    const n = Number(String(waarde).replace(",", "."));
+    if (!isFinite(n) || n < d.min || n > d.max) return { fout: naam + " ligt buiten " + d.min + "–" + d.max };
+    return { waarde: Math.round(n * 1000) / 1000 };
   }
   if (d.soort === "pidlijst") {
     if (!Array.isArray(waarde)) return { fout: naam + " moet een lijst zijn" };
@@ -4992,6 +5008,7 @@ async function kpVoertuigPubliek(v, sleutel, klantId) {
   uit.kentekenLeesbaar = !v.kenteken_enc || uit.kenteken !== null;
   uit.gezondheid = kpLees(v.gezondheid);
   uit.pid_selectie = kpLees(v.pid_selectie);
+  uit.gear_model = kpLees(v.gear_model);
   return uit;
 }
 __name(kpVoertuigPubliek, "kpVoertuigPubliek");
@@ -5240,7 +5257,15 @@ var KP_ACTIES = {
     return r ? { ok: true, rapport: r } : { ok: false, error: "Rapport niet gevonden.", code: 404 };
   },
 
+  // Eén rapport (id) of meerdere tegelijk (ids, hoogstens 50). Alleen van
+  // deze klant: een vreemd id telt gewoon niet mee in `gewist`.
   async rapport_verwijder(c, b) {
+    if (Array.isArray(b.ids)) {
+      const ids = b.ids.slice(0, 50).map((x) => String(x || "")).filter((x) => x);
+      if (!ids.length) return { ok: false, error: "Geen rapporten gekozen.", code: 400 };
+      const r = await c.db.prepare("DELETE FROM kp_rapport WHERE klant_id = ? AND id IN (" + ids.map(() => "?").join(", ") + ")").bind(c.klantId, ...ids).run();
+      return { ok: true, gewist: (r && r.meta && r.meta.changes) || 0 };
+    }
     const r = await c.db.prepare("DELETE FROM kp_rapport WHERE id = ? AND klant_id = ?").bind(String(b.id || ""), c.klantId).run();
     return (r && r.meta && r.meta.changes) ? { ok: true } : { ok: false, error: "Rapport niet gevonden.", code: 404 };
   },
@@ -5263,6 +5288,30 @@ var KP_ACTIES = {
         getal(r.verbruik_l100, 0, 60), getal(r.liters, 0, 500), getal(r.max_koelwater, -40, 215), getal(r.min_accu, 0, 20),
         getal(r.stationair_pct, 0, 100), kpJson(r.codes, 2000), kpJson(r.bevindingen, 4000), kpJson(r.extra, 4000), kpNu()).run();
     return { ok: true, id };
+  },
+
+  // Het label dat de klant aan een rit geeft ("woon-werk", "caravan naar
+  // Frankrijk"). Leeg = weg. Alleen tekst, hoogstens 40 tekens.
+  async rit_label(c, b) {
+    const label = String(b.label == null ? "" : b.label).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 40);
+    const r = await c.db.prepare("UPDATE kp_rit SET label = ? WHERE id = ? AND klant_id = ?").bind(label || null, String(b.id || ""), c.klantId).run();
+    return (r && r.meta && r.meta.changes) ? { ok: true, label: label || null } : { ok: false, error: "Rit niet gevonden.", code: 404 };
+  },
+
+  // Wat de versnellingsindicator op deze auto geleerd heeft (PLGear), zodat
+  // het na een herinstallatie of op een ander toestel niet opnieuw hoeft.
+  // Het model is een histogram van verhoudingen plus de correcties van de
+  // klant; geen locatie, geen tijdreeks. Hoogstens 16 kB.
+  async versnelling_opslaan(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const m = b.model;
+    if (m !== null && (typeof m !== "object" || Array.isArray(m) || typeof m.hist !== "object"))
+      return { ok: false, error: "Geen versnellingsmodel.", code: 400 };
+    const s = m === null ? null : kpJson(m, 16000);
+    if (m !== null && !s) return { ok: false, error: "Versnellingsmodel te groot.", code: 413 };
+    await c.db.prepare("UPDATE kp_voertuig SET gear_model = ? WHERE id = ? AND klant_id = ?").bind(s, v.id, c.klantId).run();
+    return { ok: true };
   },
 
   async ritten(c, b) {

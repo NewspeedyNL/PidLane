@@ -261,3 +261,8 @@ CREATE TABLE IF NOT EXISTS kp_voorkeur (klant_id TEXT PRIMARY KEY, data TEXT NOT
 ALTER TABLE kp_voertuig ADD COLUMN onderhoud_laatst TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN distributie TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN pid_selectie TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN versnellingen INTEGER;
+ALTER TABLE kp_voertuig ADD COLUMN gear_model TEXT;
+ALTER TABLE kp_rit ADD COLUMN label TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN tankinhoud INTEGER;
+ALTER TABLE kp_voertuig ADD COLUMN brandstofprijs REAL;

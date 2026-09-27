@@ -516,6 +516,7 @@ function openReportsOverview(){
       if(r.type==='pdf'){ acts='<button class="ai-act pri" style="padding:6px 12px;font-size:11px" onclick="srShare(\''+r.id+'\')">💾 Delen / Download</button>'; }
       else { acts='<button class="ai-act pri" style="padding:6px 12px;font-size:11px" onclick="srOpen(\''+r.id+'\')">👁 Bekijk</button>'+
                   '<button class="ai-act" style="padding:6px 12px;font-size:11px" onclick="srShare(\''+r.id+'\')">↗ Deel</button>'; }
+      acts+='<button class="ai-act" style="padding:6px 10px;font-size:11px" aria-label="Rapport wissen" title="Rapport wissen" onclick="srWis(\''+r.id+'\')">🗑</button>';
       return '<div style="display:flex;gap:10px;align-items:center;padding:11px 2px;border-bottom:1px solid var(--bd)">'+
         '<div style="font-size:20px;flex:none">'+m.ic+'</div>'+
         '<div style="flex:1;min-width:0">'+
@@ -555,6 +556,16 @@ function openReportsOverview(){
   ov.style.display='flex';
 }
 function closeReportsOverview(){ const o=document.getElementById('reportsOverviewSheet'); if(o) o.style.display='none'; }
+// Een rapport uit deze sessie wissen (27-09-2026). Alleen uit de lijst van
+// deze sessie: wat al in Mijn voertuigen bewaard is, wis je daar.
+function srWis(id){
+  const l=window._sessionReports||[];
+  const i=l.findIndex(x=>x.id===id); if(i<0) return;
+  if(!confirm('Dit rapport uit de lijst van deze sessie wissen?')) return;
+  l.splice(i,1);
+  try{ showToast?.('Rapport gewist'); }catch(e){ console.warn('melding na wissen', e); }
+  openReportsOverview();
+}
 function srOpen(id){
   const r=(window._sessionReports||[]).find(x=>x.id===id); if(!r) return;
   if(r.type==='ai'){
@@ -680,24 +691,63 @@ function _plIsSluitKnop(b){
   if(t.length<=2 && (_PL_SLUIT_NAAM.test(b.id||'') || String(b.className||'').split(/\s+/).some(c=>_PL_SLUIT_NAAM.test(c)))) return true;
   return false;
 }
+// WEGGESCROLD (27-09-2026). Mijn voertuigen, de versnellingsindicator en
+// Mijn voorkeuren scrollen: wie een lang rapport of een lange ritlijst
+// omlaag schuift, schuift het ✕ bovenin mee uit beeld. Dan raakte
+// elementFromPoint() de knop niet meer, de zoeker sloeg het venster over, en
+// omdat die vensters niet in de vaste lijst staan deed terug niets. Nu: ligt
+// het ✕ buiten beeld, dan telt of het VENSTER zelf bovenop ligt — gemeten op
+// het midden van zijn zichtbare deel. Een venster ónder een ander venster
+// raakt daar nog steeds niet, dus de volgorde blijft een waarneming.
+function _plVensterVan(b){
+  let v=b.parentElement, z=0;
+  while(v && v!==document.body){
+    const cs=getComputedStyle(v);
+    if(cs.position==='fixed'){ z=parseInt(cs.zIndex,10)||0; break; }
+    v=v.parentElement;
+  }
+  return (!v || v===document.body) ? null : {v, z};
+}
+function _plBovenop(b, venster){
+  const r=b.getBoundingClientRect();
+  if(r.width<1 || r.height<1) return false;
+  const x=r.left+r.width/2, y=r.top+r.height/2;
+  const inBeeld=!(x<0 || y<0 || x>innerWidth || y>innerHeight);
+  if(inBeeld){
+    const raak=document.elementFromPoint(x,y);
+    if(raak && (raak===b || b.contains(raak))) return true;
+    // In beeld maar niet te raken: afgedekt door een ander venster, of
+    // weggescrold binnen een eigen scrollvak — dat laatste telt hieronder.
+  }
+  // Is het ✕ weggescrold binnen het venster (of het venster zelf)? Dan telt
+  // of het venster bovenop ligt. Een knop die gewoon afgedekt is door een
+  // ander venster valt hier alsnog af: het midden van het venster raakt dan
+  // dat andere venster.
+  let p=b.parentElement, weg=!inBeeld;
+  while(!weg && p && p!==venster.v.parentElement){
+    const cs=getComputedStyle(p);
+    if(/(auto|scroll)/.test(cs.overflowY) && p.scrollTop>0){
+      const pr=p.getBoundingClientRect();
+      if(r.bottom<=pr.top+1) weg=true;
+    }
+    p=p.parentElement;
+  }
+  if(!weg) return false;
+  const vr=venster.v.getBoundingClientRect();
+  const l=Math.max(0,vr.left), t=Math.max(0,vr.top), rr=Math.min(innerWidth,vr.right), bb=Math.min(innerHeight,vr.bottom);
+  if(rr-l<1 || bb-t<1) return false;
+  const raak=document.elementFromPoint((l+rr)/2,(t+bb)/2);
+  return !!raak && (raak===venster.v || venster.v.contains(raak));
+}
 function _plBovensteSluitKnop(){
   let beste=null, besteZ=-Infinity;
   for(const b of document.querySelectorAll('button, [role="button"]')){
     if(!_plIsSluitKnop(b)) continue;
-    const r=b.getBoundingClientRect();
-    if(r.width<1 || r.height<1) continue;
-    const x=r.left+r.width/2, y=r.top+r.height/2;
-    if(x<0 || y<0 || x>innerWidth || y>innerHeight) continue;
-    const raak=document.elementFromPoint(x,y);
-    if(!raak || (raak!==b && !b.contains(raak))) continue;
     // Het venster waar de knop bij hoort: de dichtstbijzijnde fixed voorouder.
-    let v=b.parentElement, z=0;
-    while(v && v!==document.body){
-      const cs=getComputedStyle(v);
-      if(cs.position==='fixed'){ z=parseInt(cs.zIndex,10)||0; break; }
-      v=v.parentElement;
-    }
-    if(!v || v===document.body) continue;              // geen venster, maar een knop op de pagina
+    const venster=_plVensterVan(b);
+    if(!venster) continue;                             // geen venster, maar een knop op de pagina
+    if(!_plBovenop(b, venster)) continue;
+    const v=venster.v, z=venster.z;
     if(_PL_EIGEN_TERUG.some(id=>v.id===id || !!v.closest('#'+id))) continue;
     if(z>=besteZ){ beste=b; besteZ=z; }                  // gelijk: de laatste in de DOM ligt bovenop
   }

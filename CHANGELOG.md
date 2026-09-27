@@ -10,6 +10,77 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-09-2026 — Alle voorstellen, en meetproeven die één rit nodig hebben
+ ═══════════════════════════════════════════════════════════
+
+ - Berekende PIDs erbij: koppel, brandstofkosten per uur en per rit,
+   bereik met de tank, rendement, schakeladvies (alleen opschakelen),
+   km sinds roetfilterregeneratie, koelwater min buiten, trim bank 2 en
+   het verschil tussen de banken, koppelomvormer-slip bij een automaat.
+   Profiel: tankinhoud en literprijs (anders een standaardprijs, en dat
+   staat erbij). Nieuwe sensordefinitie 017C (DPF-temperatuur).
+ - Versnelling: achteruit leren via Fout → R (geweigerd als R niet van
+   de 1e te onderscheiden is), tijd per versnelling en rijstijladvies in
+   het venster en in Mijn voertuigen.
+ - Trekmodus: toon en trilling als het koelwater warm is en snel stijgt,
+   hoogstens eens per drie minuten.
+ - Ritten: labelvoorstel uit eerdere ritten, verbruik en kosten per
+   label, export als CSV of PDF (per label of alles), kosten per rit.
+ - Rapporten: 📕 PDF rechtstreeks, selecteren om twee te vergelijken
+   (waakrondes per sensor, wat veranderde bovenaan) of meerdere tegelijk
+   te wissen.
+ - Bewust niet: automatische herkenning van een beladen rit en een
+   terugschakeladvies (op de top van een klim is dat verkeerd).
+ - Blok 5 oordeelt over de hele rit: zes nieuwe meetproeven (#319, #302,
+   #294, trekmodus, versnelling, berekende PIDs), elk met sessiebewijs
+   uit de module zelf en een getoetst oordeel. De #302-proef doet bij
+   drift zelf het experiment: ATWS, en zo nodig een nieuwe verbinding.
+   CAMPAGNE beschrijft één rit die alles dekt.
+
+ ═══════════════════════════════════════════════════════════
+ 27-09-2026 — Versnelling bij het voertuig, berekende PIDs, trekmodus
+ ═══════════════════════════════════════════════════════════
+
+ - Versnellingsindicator hoort bij het voertuig. Voor een klant met Mijn
+   voertuigen leert hij per voertuig en bewaart hij het geleerde op de
+   server (nieuwe actie `versnelling_opslaan`, kolom `gear_model`). Een
+   herinstallatie of ander toestel begint niet opnieuw.
+ - Knop ✋ Fout in het venster van de indicator: kies welke versnelling
+   er écht in zit. Dat wordt een anker; de rest van de nummering schuift
+   mee. Ook als snelle start van de leercurve.
+ - Profiel: "Handbak of automaat?" en "Hoeveel versnellingen?" (kolom
+   `versnellingen`). Met het aantal is de nummering zeker zodra ze alle
+   geleerd zijn. Mijn voertuigen → Overzicht heeft een blok ⚙️
+   Versnellingen met de knop naar de indicator.
+ - Berekende PIDs (nieuw: `pidlane-berekend.js`), kiesbaar onder
+   "Berekend": versnelling (CA01), brandstofdebiet (CA02), verbruik nu
+   l/100 km (CA03), laaddruk (CA04), totale brandstoftrim B1 (CA05) en
+   motorvermogen (CA06). Ze gaan nooit de bus op: de pollus slaat ze over
+   en `sendCmd` weigert ze.
+ - Slim visueel: trekmodus voor caravan of beladen rijden. Een strook met
+   versnelling, koelwater (met trend in °C/min), olie, belasting,
+   inlaatlucht, verbruik en laaddruk. Aan zolang de Caravanrit loopt, of
+   met de knop onder de meter.
+ - Mijn voertuigen → Ritten: een label per rit (met voorstellen), en
+   een telling per label met filter (kolom `kp_rit.label`, actie
+   `rit_label`).
+ - Mijn voertuigen → Rapporten: 🗑 per rapport in de lijst. Een
+   waakronde toont weer het overzicht (tegels, bevindingen, normaal)
+   en een AI-rapport de secties van het AI-venster, in plaats van kale
+   tekst. Ook "Rapporten deze sessie" heeft nu een 🗑.
+ - Privacy: ritlabels en het versnellingsmodel zijn nieuwe gegevens op de
+   server. De akkoordtekst van Mijn voertuigen noemt ze nu, en de
+   akkoordversie is `2026-09-27b`: elke klant bevestigt één keer opnieuw.
+ - Terugknop: een venster waarvan het ✕ weggescrold is (Mijn voertuigen,
+   versnellingsindicator, Mijn voorkeuren) gaat nu ook dicht.
+ - Tests: `test-berekend.js`, `bproef-berekend.js`, uitbreidingen van
+   `test-gear.js`, `test-garage.js`, `test-klantplatform.js`,
+   `test-visueel.js`, `bproef-visueel.js`, `bproef-terugknop.js`; vijftien
+   mutaties in `plmutate.sh`.
+ - Niet in een auto getoetst: de Fout-knop en de trekstrook tijdens een
+   echte rit, en of CA06 (vermogen) op een echte ECU een zinnig getal geeft.
+
+ ═══════════════════════════════════════════════════════════
  27-09-2026 — Opslaan zonder venster, ook zonder verbinding
  ═══════════════════════════════════════════════════════════
 

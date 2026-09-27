@@ -239,6 +239,60 @@ function laad(opties) {
   L = laad({ rol: 'user' });
   eis(L.G.dossier() === null, 'geen klant → geen koppeling, het overzicht werkt zoals voorheen');
 
+  console.log('\n10. Een bewaard waakrapport wordt weer een overzicht (27-09-2026)');
+  {
+    const K = laad({ rol: 'klant' }).G._kern;
+    const hist2 = [
+      { pid: '0105', n: 12, ok: 9, let: 3, stil: 0, waarde: 112.4, min: 88, max: 112.4, reden: 'boven het bereik' },
+      { pid: '0142', n: 8, ok: 8, let: 0, stil: 0, waarde: 14.1, min: 13.9, max: 14.3 },
+      { pid: '015C', n: 4, ok: 0, let: 0, stil: 4 }
+    ];
+    const nm2 = (p) => ({ '0105': { naam: 'Koelwater', eenheid: '°C' }, '0142': { naam: 'Accuspanning', eenheid: 'V' }, '015C': { naam: 'Motorolie', eenheid: '°C' } }[p]);
+    const w = K.waakDelen(K.waakTekst(hist2, nm2, Date.UTC(2026, 8, 27)));
+    eis(w && w.bevindingen.length === 1 && w.bevindingen[0].naam === 'Koelwater' && w.bevindingen[0].let === 3 && w.bevindingen[0].n === 12 && w.bevindingen[0].eenheid === '°C',
+      'de bevinding komt terug met naam, telling en eenheid', JSON.stringify(w && w.bevindingen));
+    eis(w && w.normaal.length === 1 && w.normaal[0].naam === 'Accuspanning' && w.normaal[0].n === 8 && w.normaal[0].min === '13,9',
+      'de normale sensor komt terug met bereik', JSON.stringify(w && w.normaal));
+    eis(w && w.stil.length === 1 && w.stil[0] === 'Motorolie', 'zonder antwoord komt terug', JSON.stringify(w && w.stil));
+    eis(w && w.overig.length === 0, 'geen regel blijft onherkend over — anders past de lezer niet meer bij de schrijver', JSON.stringify(w && w.overig));
+    eis(K.waakDelen('PidLane — Rapport\nwat anders') === null, 'een ander rapport is geen waakrapport');
+    const w2 = K.waakDelen('PidLane — Waakronde\n=== NORMAAL ===\n een regel die anders is');
+    eis(w2 && w2.overig.length === 1, 'een onbekende regel gaat niet verloren maar komt onder overig');
+
+    console.log('\n11. Ritlabels');
+    const som = K.labelSom([{ label: 'Woon-werk', km: 20.5 }, { label: 'Caravan', km: 310 }, { label: 'Woon-werk', km: 19.5 }, { km: 3 }]);
+    eis(som.length === 2 && som[0].label === 'Caravan' && som[1].ritten === 2 && som[1].km === 40, 'per label opgeteld, grootste eerst, zonder label telt niet mee', JSON.stringify(som));
+
+    console.log('\n12. Verbruik en kosten per label, voorstel, export, vergelijken');
+    const rs = [
+      { id: 'a', start: '2026-09-21T07:40:00', km: 21, liters: 1.26, verbruik_l100: 6, label: 'Woon-werk' },
+      { id: 'b', start: '2026-09-22T07:55:00', km: 20, liters: 1.2, verbruik_l100: 6, label: 'Woon-werk' },
+      { id: 'c', start: '2026-09-20T10:00:00', km: 310, liters: 31, verbruik_l100: 10, label: 'Caravan' },
+      { id: 'd', start: '2026-09-23T08:10:00', km: 20.5 },
+      { id: 'e', start: '2026-09-27T08:05:00', km: 20 }                  // zaterdag
+    ];
+    const s2 = K.labelSom(rs, 2);
+    const ww = s2.find((x) => x.label === 'Woon-werk'), cv = s2.find((x) => x.label === 'Caravan');
+    eis(ww.verbruik === 6 && ww.kosten === 4.92 && cv.verbruik === 10 && cv.kosten === 62, 'verbruik (gewogen) en kosten per label', JSON.stringify(s2));
+    eis(K.labelSom([{ label: 'Kort', km: 5, liters: 1, verbruik_l100: 20 }], 2)[0].verbruik === null, 'onder 20 km geen verbruiksoordeel per label');
+    eis(K.labelSuggestie(rs[3], rs) === 'Woon-werk', 'dinsdag 08:10, 20,5 km: voorstel Woon-werk (twee gelijkende ritten)');
+    eis(K.labelSuggestie(rs[4], rs) === null, 'zaterdag op hetzelfde tijdstip: geen voorstel (andere soort dag)');
+    eis(K.labelSuggestie({ id: 'x', start: '2026-09-24T07:50:00', km: 80 }, rs) === null, 'zelfde tijd maar 80 km: geen voorstel');
+    eis(K.labelSuggestie({ id: 'x', start: '2026-09-24T07:50:00', km: 20 }, rs.slice(0, 1)) === null, 'één gelijkende rit is geen patroon');
+    const ex = K.ritExport(rs, 'Woon-werk', 2);
+    const r = ex.csv.split('\n');
+    eis(r.length === 3 && /^datum;vertrek;km/.test(r[0]) && /;21,0;/.test(r[1]) && /;2,52;Woon-werk$/.test(r[1]), 'CSV: puntkomma, komma als decimaal, kosten per rit', ex.csv);
+    eis(/Totaal: 2 ritten, 41,0 km/.test(ex.tekst) && /€ 4,92/.test(ex.tekst), 'de tekst (voor de PDF) telt op', ex.tekst);
+    eis(K.ritExport(rs, null, null).n === 5 && !/€/.test(K.ritExport(rs, null, null).tekst), 'zonder label alle ritten; zonder prijs geen bedragen');
+    eis(!/;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;[^;]*;/.test(K.ritExport([{ start: '2026-09-21T07:40:00', km: 1, label: 'a;b' }], null, 1).csv.split('\n')[1]), 'een puntkomma in een label breekt de CSV niet');
+    const w1 = K.waakDelen(K.waakTekst(hist2, nm2));
+    const hist3 = hist2.map((h) => h.pid === '0105' ? Object.assign({}, h, { let: 0, ok: 12, waarde: 91 }) : h);
+    const w2b = K.waakDelen(K.waakTekst(hist3, nm2));
+    const vg = K.waakVergelijk(w1, w2b);
+    eis(vg[0].naam === 'Koelwater' && vg[0].veranderd && vg[0].a.staat === 'let' && vg[0].b.staat === 'ok', 'vergelijken: wat veranderde staat bovenaan (koelwater: bevinding → normaal)', JSON.stringify(vg[0]));
+    eis(vg.filter((x) => !x.veranderd).length === 2, 'wat gelijk bleef staat eronder');
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });

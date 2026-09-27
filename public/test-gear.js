@@ -209,6 +209,142 @@ console.log('\n— privacy: de ruwe VIN gaat nergens in (§7, #102) —');
   await new Promise(r => setImmediate(r));
   ok(c.G.sleutel === a.G.sleutel, 'na herstart hetzelfde model gekozen');
 
+  // ── De knop Fout (27-09-2026) ──
+  console.log('\n— Fout: de klant zegt welke versnelling het is —');
+  {
+    // Een rit zonder de 1e: de laagste geleerde piek is dan eigenlijk de 2e,
+    // en de nummering is dus één te laag — precies waar de knop voor is.
+    const volg = [1,2,3,4,5,4,3,2];
+    const prof2 = (function(){
+      const seg = 14000, schakel = 1200; let T0 = null;
+      const g = t => { const i = Math.floor((t - T0) / seg) % volg.length; return { gear: volg[i], inSeg: (t - T0) % seg }; };
+      const f = t => {
+        if (T0 === null) T0 = t;
+        const { gear, inSeg } = g(t);
+        if (inSeg < schakel) return { rpm: 1000 + 60 * Math.sin(t / 97), kmh: Math.round(RATIO[gear] * 1.9) };
+        const fase = (inSeg - schakel) / (seg - schakel);
+        const rpm = (1500 + 2300 * Math.sin(fase * Math.PI)) * (1 + 0.004 * Math.sin(t / 13));
+        return { rpm, kmh: Math.round(RATIO[gear] * rpm / 1000) };
+      };
+      f.echt = t => { const { gear, inSeg } = g(t); return inSeg < schakel + 1600 ? null : gear + 1; };
+      f.segStart = t => T0 === null ? 0 : (t - T0) % seg;
+      return f;
+    })();
+    const a = nieuweApp();
+    a.rij(200000, prof2);
+    ok(a.G.model.gears.length === 5 && !a.G.nummeringZeker(), `zonder de 1e: 5 geleerd, nummering voorlopig (${a.G.model.gears.length})`);
+    const fout = a.rij(60000, prof2, { score: prof2.echt });
+    ok(fout !== null && fout < 0.2, `vóór de correctie klopt het cijfer bijna nooit (${(fout * 100).toFixed(1)}%)`);
+    // Rij tot midden in een stabiel stuk en zeg welke het is.
+    let echt = null;
+    for (let i = 0; i < 400 && echt === null; i++) { a.rij(200, prof2); if (prof2.segStart(a.T) > 5000 && prof2.segStart(a.T) < 9000) echt = prof2.echt(a.T); }
+    const r = a.G.corrigeer(echt);
+    ok(r.ok && a.G.toon === echt, `corrigeer(${echt}) wordt meteen getoond (${JSON.stringify(r)})`);
+    ok(a.G.nummeringZeker(), 'na een correctie is de nummering zeker');
+    const goed = a.rij(120000, prof2, { score: prof2.echt });
+    ok(goed >= 0.95, `daarna het juiste cijfer in ≥95% (${(goed * 100).toFixed(1)}%) — de rest schoof mee`);
+    a.rij(8000, () => null);
+    const weiger = a.G.corrigeer(2);
+    ok(!weiger.ok && /Rij eerst/.test(weiger.reden), 'zonder verse stabiele meting weigert hij, met de reden erbij');
+    ok(!a.G.corrigeer(0).ok && !a.G.corrigeer(11).ok, 'buiten 1–10 weigert hij');
+
+    // Een anker is ook een snelle start: nog niets geleerd, 10 s in de 3e.
+    const b = nieuweApp();
+    b.rij(10000, () => ({ rpm: 2200 + 5 * Math.sin(b.T / 50), kmh: Math.round(RATIO[2] * 2.2) }));
+    ok(b.G.model.gears.length === 0, 'na 10 s nog niets geleerd (anders toetst dit niets)');
+    const rb = b.G.corrigeer(3);
+    b.rij(2000, () => ({ rpm: 2200 + 5 * Math.sin(b.T / 50), kmh: Math.round(RATIO[2] * 2.2) }));
+    ok(rb.ok && b.G.toon === 3, `met een anker staat er meteen een 3 (${b.G.toon})`);
+  }
+
+  console.log('\n— gekoppeld aan het voertuig (Mijn voertuigen) —');
+  {
+    const a = nieuweApp();
+    a.rij(180000, profielMaker(RATIO));
+    const model = JSON.parse(JSON.stringify(a.G.model));
+    const b = nieuweApp();                          // ander toestel: lege opslag
+    const bewaard = [];
+    b.G.koppel({ id: 'v1', naam: 'Proefauto', versnellingen: 6, transmissie: 'handgeschakeld', model, bewaar: m => { bewaard.push(m); return Promise.resolve(); } });
+    b.rij(400, () => null);
+    ok(b.G.sleutel === 'kp_v1', `sleutel is het voertuig (${b.G.sleutel})`);
+    ok(b.G.model.gears.length === 6 && b.G.model.totaal === model.totaal, `het model van de server is overgenomen (${b.G.model.gears.length})`);
+    const pb = profielMaker(RATIO);
+    const score = b.rij(60000, pb, { score: pb.echt });
+    ok(score !== null && score >= 0.9, `rijdt meteen goed zonder opnieuw te leren (${score && (score * 100).toFixed(1)}%)`);
+    b.G._opslaan(true);
+    ok(bewaard.length >= 1 && typeof bewaard[bewaard.length - 1].hist === 'object', `het model gaat terug naar het voertuig (${bewaard.length}×)`);
+    ok(b.G.status().verwacht === 6, 'het aantal versnellingen komt uit het profiel');
+    // Een kleiner servermodel overschrijft niet wat hier al verder is.
+    const c = nieuweApp({ opslag: b.opslag });
+    c.G.koppel({ id: 'v1', model: { v: 1, hist: {}, totaal: 3, gears: [] }, bewaar: () => Promise.resolve() });
+    ok(c.G.model.totaal >= model.totaal, `een kleiner servermodel wint niet (${c.G.model.totaal})`);
+    c.G.koppel(null);
+    c.rij(400, () => null);
+    ok(c.G.sleutel === 'onbekend', 'ontkoppeld: terug naar de sleutel zonder voertuig');
+  }
+
+  console.log('\n— achteruit, slip, tijd per versnelling (ronde 2) —');
+  {
+    const a = nieuweApp();
+    a.rij(180000, profielMaker(RATIO));
+    const achter = () => ({ rpm: 1500 + 5 * Math.sin(a.T / 40), kmh: Math.round(6.2 * 1.5) });   // R ≈ 6,2
+    a.rij(6000, achter);
+    const r = a.G.corrigeer('R');
+    ok(r.ok && a.G.toon === 'R' && a.G.status().achteruit > 5.5, `Fout → R wordt onthouden (${JSON.stringify(r)})`);
+    const vooruit = profielMaker(RATIO);
+    a.rij(20000, vooruit);
+    const tussen = a.G.toon;
+    a.rij(4000, achter);
+    ok(typeof tussen === 'number' && a.G.toon === 'R' && a.G.waarde() === -1, `na vooruit rijden (${tussen}) weer achteruit: er staat R, en CA01 is -1`);
+    const g = a.G.model.gears.length;
+    a.rij(60000, achter);
+    ok(a.G.model.gears.length === g && a.G.model.gears.every(x => Math.abs(x - 6.2) / 6.2 > 0.07), 'een minuut achteruit wordt geen extra versnelling');
+    const pf = profielMaker(RATIO);
+    const s1 = a.rij(60000, pf, { score: pf.echt });
+    ok(s1 !== null && s1 >= 0.9, `vooruit blijft goed (${(s1 * 100).toFixed(1)}%)`);
+    // R gelijk aan de 1e: niet te onderscheiden, dus weigeren.
+    const b = nieuweApp();
+    b.rij(180000, profielMaker(RATIO));
+    b.rij(6000, () => ({ rpm: 1500 + 5 * Math.sin(b.T / 40), kmh: Math.round(RATIO[0] * 1.5) }));
+    const rb = b.G.corrigeer('R');
+    ok(!rb.ok && /niet uit elkaar/.test(rb.reden), 'R met dezelfde verhouding als de 1e: weigert, met de reden');
+
+    // Slip: alleen bij een automaat.
+    const c = nieuweApp();
+    c.rij(180000, profielMaker(RATIO));
+    c.rij(8000, profielMaker(RATIO));
+    ok(c.G.slip() === null, 'handbak: geen slip');
+    c.G.koppel({ id: 'v9', transmissie: 'automaat', bewaar: () => Promise.resolve() });
+    c.G.model = JSON.parse(JSON.stringify(b.G.model)); c.G.model.offset = 0; c.G.model.ankers = [];
+    c.G.toon = 3; c.G._paarNu = { t: c.T, kmh: Math.round(RATIO[2] * 2.5 * 0.9), rpm: 2500 };
+    const sl = c.G.slip();
+    ok(sl !== null && Math.abs(sl - 10) < 2, `automaat: motor 10% sneller dan de wielen ≈ 10% slip (${sl})`);
+    c.G._paarNu = { t: c.T, kmh: 200, rpm: 2500 };
+    ok(c.G.slip() === 0, 'wielen sneller dan de motor (uitrollen): 0, niet negatief');
+
+    // Tijd per versnelling en het advies.
+    const d = nieuweApp();
+    d.rij(180000, profielMaker(RATIO));
+    d.rij(480000, profielMaker(RATIO));
+    const rs = d.G.rijstijl();
+    const tot = rs.verdeling.reduce((x, y) => x + y.pct, 0);
+    ok(rs.verdeling.length === 6 && tot >= 97 && tot <= 103, `tijd over zes versnellingen verdeeld (${rs.verdeling.map(x => x.k + ':' + x.pct).join(' ')})`);
+    ok(rs.totaalS >= 300 && rs.advies.length >= 1, `er is een advies (${rs.totaalS} s gereden: ${rs.advies.join(' ')})`);
+    const R2 = d.G.rijstijl({ 1: { s: 50, hoog: 40 }, 2: { s: 250, hoog: 200 }, 3: { s: 100, hoog: 20 } });
+    ok(R2.hoogPct >= 25 && /opschakelen/.test(R2.advies.join(' ')), `veel hoogtoerig: advies eerder opschakelen (${R2.hoogPct}%)`);
+    ok(d.G.rijstijl({ 3: { s: 60, hoog: 60 } }).advies.length === 0, 'onder 5 minuten rijtijd: geen advies');
+    ok(d.G.sessie().stabiel > 0 && d.G.sessie().tijd['3'], 'de sessie telt stabiele metingen en tijd');
+
+    console.log('\n— oordeel voor blok 5 —');
+    const O = d.G.oordeel;
+    ok(O({ stabiel: 100, pasten: 100 }, {}).staat === 'LET OP', 'te weinig metingen: LET OP met wat nodig is');
+    ok(O({ stabiel: 500, pasten: 480 }, { versnellingen: [1, 2, 3, 4, 5, 6], verwacht: 6 }).staat === 'ok', '96% past, 6 van 6: ok');
+    ok(O({ stabiel: 500, pasten: 300 }, { versnellingen: [1, 2, 3], verwacht: 6 }).staat === 'FOUT', '60% past: FOUT');
+    ok(O({ stabiel: 500, pasten: 490 }, { versnellingen: [1, 2, 3, 4, 5, 6, 7], verwacht: 6 }).staat === 'FOUT', 'meer versnellingen dan het profiel: FOUT');
+    const echt = O(d.G.sessie(), d.G.status());
+    ok(echt.staat === 'ok', `de gesimuleerde rit zelf is ok (${echt.detail})`);
+  }
+
   console.log(fouten ? `\n${fouten} fout(en)` : '\nAlles goed');
   process.exit(fouten ? 1 : 0);
 })();
