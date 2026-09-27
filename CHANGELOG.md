@@ -10,6 +10,26 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-09-2026 — Testrun 8.2: foutcodes & keuringsstatus als eigen venster (#304)
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuwe eerste deur op het startscherm: "🩺 Foutcodes & keuringsstatus"
+   (pidlane-foutcodes.js). Leest bevestigd (03), pending (07) en permanent
+   (0A), ook bij drie of meer codes (multiframe). Toont het freeze frame
+   en per monitor of hij klaar is, plus afstand en warmdraaien sinds wissen.
+ - Wissen gaat in stappen: eerst wat er verloren gaat, met een knop om te
+   bewaren, en een vinkje. Alleen met motor uit, bij stilstand, niet op
+   afstand en met een uitlezing van hooguit 5 minuten oud. Het antwoord op
+   04 wordt gelezen. Daarna wordt opnieuw uitgelezen, met voor en na naast
+   elkaar.
+ - Het oude DTC-tabblad blijft ongewijzigd. Overstappen komt na een rit.
+ - De sessieteller van de admin ("🪙 n tok · €…") zweeft niet meer
+   linksonder over de inhoud. De stand staat in ☰ → Admin → "AI-kosten deze
+   sessie".
+ - test-foutcodes.js (64 eisen), bproef-foutcodes.js, zes mutaties in
+   plmutate.sh, één proef in blok 5 en stap 3b in CAMPAGNE.
+
+ ═══════════════════════════════════════════════════════════
  26-09-2026 — "🔄 Opnieuw verbinden" in het verbindingspaneel (#302)
  ═══════════════════════════════════════════════════════════
 

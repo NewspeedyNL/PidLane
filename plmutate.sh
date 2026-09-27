@@ -1087,6 +1087,15 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  return !_staat.gebruik.has(pid);@@  return true;@@test-visueel.js@@de rem raakt ook wat op de meter staat"
 "public/pidlane-plload.js@@  try{ if(window.PLVisueel && PLVisueel.remt(pid)) ms=Math.max(ms, PLVisueel.REM_MS); }@@  try{ }@@test-visueel.js@@de rem is losgekoppeld: de dubbele gasklep- en belasting-PIDs blijven de bus vullen"
 "public/pidlane-correlatie.js@@  if(!_bevAan || !hits.length || inVak){@@  if(!_bevAan || !hits.length){@@bproef-visueel.js@@de bevindingen staan in Slim visueel twee keer: in het vak én in de balk erboven"
+# ── Het foutcodevenster (PLFoutcodes, 26-09-2026). Vijf van de zes zijn de
+#    fouten van het oude DTC-scherm, hier teruggezet; de zesde is de poort
+#    op het laatste moment voor een motor die na de uitlezing gestart is.
+"public/pidlane-foutcodes.js@@if (fr && huidig) { huidig.hex +=@@if (fr && huidig) { return; huidig.hex +=@@test-foutcodes.js@@multiframe: alles na frame 0 valt weg, zoals in realScanDTC()"
+"public/pidlane-foutcodes.js@@    return gezien ? codes : null;@@    return codes;@@test-foutcodes.js@@geen antwoord op 03 leest als \"geen foutcodes\" (#218)"
+"public/pidlane-foutcodes.js@@return (b[2] & (1 << bit)) && (b[3] & (1 << bit));@@return (b[3] & (1 << bit));@@test-foutcodes.js@@een niet-klaar-bit telt ook voor een monitor die de auto niet heeft"
+"public/pidlane-foutcodes.js@@if (ok && weiger == null) return@@if (weiger == null) return@@test-foutcodes.js@@geen antwoord op 04 leest als gewist, zoals in clearDTC()"
+"public/pidlane-foutcodes.js@@if (typeof ctx.rpm === 'number' && ctx.rpm > 0) blok.push(@@if (false) blok.push(@@test-foutcodes.js@@wissen mag terwijl de motor draait"
+"public/pidlane-foutcodes.js@@        if (typeof rpm === 'number' && rpm > 0) {@@        if (false) {@@test-foutcodes.js@@de motor is na de uitlezing gestart en er gaat toch 04 de bus op"
 )
 
 echo

@@ -149,7 +149,8 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 > (21-08: `pidlane-gps.js` eruit, `pidlane-run.js` erbij — telling ongewijzigd.
 > 16-09: `pidlane-adapter.js` erbij, één tag meer.
 > 24-09: `pidlane-intro.js` erbij, als eerste script in de body.
-> 25-09: `pidlane-visueel.js` erbij, direct na `pidlane-pids.js`.)
+> 25-09: `pidlane-visueel.js` erbij, direct na `pidlane-pids.js`.
+> 26-09: `pidlane-foutcodes.js` erbij, direct na `pidlane-kmcheck.js`.)
 > `plcheck.sh` controleert dat elke module in `index.html` hangt en dat
 > `pidlane-bedrading.js` achteraan staat.
 
@@ -225,6 +226,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 46 | `pidlane-run.js` | 15 | `PLRun` — de Run-chip in de topbar: één plek waar staat wat er op de achtergrond draait (rit-monitor, bulk-recorder, waakronde, caravan, rit-analyse) en waar het uit kan. Leest de staat bij het tekenen uit de bron; wrapt niets. Caravan en rit-analyse vragen bevestiging bij stoppen. **Let op:** `caravanActive` en `ritActive` staan in script-scope, niet op `window` — zie `test-run.js` |
 | 47 | `pidlane-mode06.js` | 16 | mode 06 — testresultaten van de boordmonitors |
 | 47b | `pidlane-kmcheck.js` | 26 | `PLKm` — de kilometerstand-check. Vraagt 01A6 en 0131 functioneel, en mode 22 per stuurapparaat met een eigen `ATSH`/`ATCRA` (7E0 PCM, 720 IPC, 726 BCM, 760/7B0 ABS). Kruist de antwoorden op **CAN-adres**, niet op identifier: twee DIDs uit dezelfde doos bevestigen elkaar niet. Zet de adapter in een `finally` terug op 7DF. Vereist `sendCmd` + `withBus`; hangt in `index.html` direct ná `pidlane-mode06.js`. Knop in stap 2 van de koopcheck |
+| 47d | `pidlane-foutcodes.js` | 44 | `PLFoutcodes` — **foutcodes en keuringsstatus in één venster** (#304, 26-09-2026). Eerste deur op het startscherm. Leest 03, 07 en 0A (ook multiframe; "niet gelezen" is geen "geen codes"), het freeze frame van mode 02 en de readiness per monitor uit 0101, plus 0121/0130/0131/014E. **Wissen** gaat alleen na een verse uitlezing, met motor uit, bij stilstand en niet op afstand; het toerental wordt vlak voor `04` opnieuw gemeten en het antwoord gelezen (`44` / `7F 04 xx` / niets), daarna wordt altijd opnieuw uitgelezen. Staat **naast** het oude DTC-tabblad (`scanDTC`/`clearDTC` in `pidlane-graph.js`), dat nog ongewijzigd is. Alle busverkeer via één `stuur()`, zodat test en demo een nep-ECU geven. Vereist `sendCmd` + `withBus` + `ALL_PID_DEFS`; hangt direct ná `pidlane-kmcheck.js`. Tests: `test-foutcodes.js`, `bproef-foutcodes.js`, blok 5 |
 | 47c | `pidlane-kaart.js` | 27 | `PLKaart` — de datapuntenkaart. **Neemt de verbinding over**: busslot met `PLBus.raak()`-hartslag, `ATH1`, `ATAT0`, korte `ATST`, en zet alles in een `finally` terug. Ontdekt stuurapparaten door de sweep 700-7FF (of 18DAxxF1 bij 29-bit) en leest het antwoordadres **uit de header**, niet uit zender+8. Enumereert daarna per module de mode 01/06/09-bitmaps, de mode 22-identifiers uit een getrapte lijst, en mode 21. Tweede pas markeert wat beweegt. `magVerzenden()` is één leespoort: niets dat schrijft komt erdoor. Knop in het testrunpaneel (blok 15) |
 | 48 | `pidlane-export.js` | 20 | `plOpslaan`/`plMaakPdf` — jsPDF in huisstijl |
 | 49 | `pidlane-testrun.js` | 76 | één knop, één rit, één logboek. Vervangt busdiag/zelftest/opdracht/diagbundel/logscherm/copiloot — zie §20 |

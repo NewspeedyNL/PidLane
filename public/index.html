@@ -610,6 +610,11 @@ function closeConnOv(){
     <div class="wz-of">of kies zelf</div>
     <div id="wmDoors">
       <div class="wm-doors">
+        <div class="wm-door dr-dtc" onclick="try{PLFoutcodes.open()}catch(e){console.error('Foutcodevenster opent niet:', e)}">
+          <div class="wm-door-ic">🩺</div>
+          <div class="wm-door-t">Foutcodes &amp; keuringsstatus</div>
+          <div class="wm-door-d">Alle foutcodes, het freeze frame en welke zelftests klaar staan — en veilig wissen.</div>
+        </div>
         <div class="wm-door dr-live" onclick="openDoor('live')">
           <div class="wm-door-ic" aria-hidden="true">
             <svg class="dr-live-ic" viewBox="0 0 48 48" width="34" height="34" fill="none">
@@ -913,6 +918,7 @@ function closeConnOv(){
           <button class="kebab-item" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
           <button class="kebab-item" id="frisBtn" onclick="closeKebab();plHardReload(this)">🔄 Nieuwste versie laden</button>
           <button class="kebab-item" id="testrunBtn" onclick="closeKebab();openTestrun()">🔬 Testrun</button>
+          <button class="kebab-item" id="kbSessie" onclick="closeKebab();showTokenDetail()">🪙 AI-kosten deze sessie</button>
         </div>
         <div class="kebab-sep"></div>
         <button class="kebab-item adminOnly" onclick="closeKebab();openLiveView()">📊 Live view</button>
@@ -1850,6 +1856,7 @@ function closeConnOv(){
 <script src="pidlane-recall.js"></script><!-- terugroepacties met detail (PLRecall) -->
 <script src="pidlane-mode06.js"></script><!-- on-board monitortests (PLM06) — vereist sendCmd + PLBus -->
 <script src="pidlane-kmcheck.js"></script><!-- kilometerstand-check (PLKm) — vereist sendCmd + withBus -->
+<script src="pidlane-foutcodes.js"></script><!-- foutcodes &amp; keuringsstatus (PLFoutcodes) — vereist sendCmd + withBus + ALL_PID_DEFS -->
 <script src="pidlane-kaart.js"></script><!-- datapuntenkaart (PLKaart) — neemt de verbinding over; vereist sendCmd + PLBus -->
 <script src="pidlane-demo.js"></script>
 <script src="pidlane-uihelpers.js"></script>
