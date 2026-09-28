@@ -1247,6 +1247,14 @@ MUTATIES=(
 "public/pidlane-motortype.js@@  if(_plOpslagFout){@@  if(false){@@test-opslagroute.js@@het deelvenster gaat open zonder dat de klant hoort waarom"
 "public/pidlane-motortype.js@@  if(m.length) return { staat:'FOUT'@@  if(false) return { staat:'FOUT'@@test-opslagroute.js@@blok 5 noemt een mislukte opslag goed"
 "public/pidlane-fuel.js@@  return plBewaarBestand(blob,fname);@@  return nativeShareFile(blob,fname);@@test-opslagroute.js@@een PDF-export opent weer het deelmenu in plaats van op te slaan"
+
+# ── 28-09-2026: de Users-tabel niet bij elke login uit Airtable (#327). De
+# besparing zelf, en de drie plekken die voorkomen dat de cache iemand
+# buitensluit of binnenlaat die dat zonder cache niet was.
+"worker.js@@  if (!vers && _usersCache && _usersCache.url === url@@  if (false && _usersCache && _usersCache.url === url@@test-inlogcache.js@@elke login leest de Users-tabel weer vers uit Airtable"
+"worker.js@@    if (res.ok || !uitCache) break;@@    break;@@test-inlogcache.js@@een net gewijzigd wachtwoord werkt pas na vijf minuten"
+"worker.js@@  _usersCache = null;\n  return json({ ok: true, user, created: !hit@@  return json({ ok: true, user, created: !hit@@test-inlogcache.js@@een gebruiker die via /admin/users uit staat, komt er nog vijf minuten in"
+"worker.js@@    _usersCache = null;\n    const job = rehashAirtablePassword@@    const job = rehashAirtablePassword@@test-inlogcache.js@@na het herhashen blijft de oude hash onthouden en herhasht elke login opnieuw"
 )
 
 echo

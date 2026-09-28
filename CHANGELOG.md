@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-09-2026 — Inloggen leest de gebruikerstabel niet meer elke keer uit Airtable (#327)
+ ═══════════════════════════════════════════════════════════
+
+ - De Worker onthoudt de Users-tabel vijf minuten. De Airtable-werkruimte
+   zat op 2.525 van de 1.000 calls per maand, en elke login was er één.
+ - Een net gewijzigd wachtwoord of een nieuwe gebruiker werkt meteen: een
+   mislukte login leest de tabel één keer vers. Uitzetten via Beheer →
+   Gebruikers werkt ook meteen. Alleen wie rechtstreeks in Airtable op
+   Active=uit gaat, kan nog hoogstens vijf minuten inloggen.
+ - Dit is de kleinste stap uit #327; de AI-afboeking (tot drie calls per
+   aanvraag) en het beheerpaneel staan daar nog open.
+
+ ═══════════════════════════════════════════════════════════
  28-09-2026 — Sensoren blijven na een herstart, dieper zoeken, ontwikkelaar, VIN als master
  ═══════════════════════════════════════════════════════════
 

@@ -369,14 +369,25 @@ function rateLimitResponse(rl) {
   return json({ error: "rate_limited", retryAfter: secs }, 429, { "Retry-After": String(secs) });
 }
 __name(rateLimitResponse, "rateLimitResponse");
-async function airtableUsers(env) {
-  if (!env.AIRTABLE_TOKEN) return {};
+// De Users-tabel per isolate onthouden (#327). Tot 28-09-2026 las elke login
+// hem vers uit Airtable, in een werkruimte met een plafond van 1.000 calls per
+// maand. Een mislukte login leest alsnog vers (nieuw wachtwoord, nieuwe
+// gebruiker), en /admin/users en het herhashen gooien hem weg. Wie in Airtable
+// zelf op Active=uit gaat, komt hoogstens USERS_CACHE_MS nog binnen — een al
+// uitgegeven sessietoken bleef ook zonder cache gewoon geldig. Alleen in het
+// geheugen en niet in caches.default: dit zijn wachtwoordhashes.
+var USERS_CACHE_MS = 5 * 6e4;
+var _usersCache = null;
+async function airtableUsers(env, vers = false) {
+  if (!env.AIRTABLE_TOKEN) return { users: {}, uitCache: false };
   const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
   const table = cfg(env, "AIRTABLE_USERS_TABLE");
   const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}?pageSize=100`;
+  if (!vers && _usersCache && _usersCache.url === url && Date.now() - _usersCache.t < USERS_CACHE_MS)
+    return { users: _usersCache.users, uitCache: true };
   try {
     const r = await fetch(url, { headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}` } });
-    if (!r.ok) return {};
+    if (!r.ok) return { users: {}, uitCache: false };
     const data = await r.json();
     const out = {};
     for (const rec of data.records || []) {
@@ -391,21 +402,23 @@ async function airtableUsers(env) {
         _id: rec.id
       };
     }
-    return out;
-  } catch (_) {
-    return {};
+    _usersCache = { url, t: Date.now(), users: out };
+    return { users: out, uitCache: false };
+  } catch (e) {
+    try { console.error("[auth] Users-tabel niet leesbaar :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+    return { users: {}, uitCache: false };
   }
 }
 __name(airtableUsers, "airtableUsers");
-async function allUsers(env) {
-  const fromAirtable = await airtableUsers(env);
+async function allUsers(env, vers = false) {
+  const { users: fromAirtable, uitCache } = await airtableUsers(env, vers);
   let fromSecret = {};
   try {
     fromSecret = JSON.parse(env.USERS_JSON || "{}");
   } catch (_) {
     /* stil: USERS_JSON leeg of kapot — dan gewoon geen secret-users erbij, alleen Airtable telt */
   }
-  return { ...fromAirtable, ...fromSecret };
+  return { users: { ...fromAirtable, ...fromSecret }, uitCache };
 }
 __name(allUsers, "allUsers");
 async function rehashAirtablePassword(env, recId, pass) {
@@ -452,10 +465,16 @@ async function handleLogin(request, env, ctx) {
   ]);
   if (rlAcc.limited) return rateLimitResponse(rlAcc);
   if (rlIp.limited) return rateLimitResponse(rlIp);
-  const users = await allUsers(env);
-  const key = Object.keys(users).find((k) => k === user) || Object.keys(users).find((k) => norm(k) === norm(user)) || Object.keys(users).find((k) => norm(users[k].label || "") === norm(user));
-  const acc = key ? users[key] : null;
-  const res = acc ? await verifyPassword(pass, acc.passHash) : { ok: false, legacy: false };
+  let key = null, acc = null, res = { ok: false, legacy: false };
+  for (const vers of [false, true]) {
+    const { users, uitCache } = await allUsers(env, vers);
+    key = Object.keys(users).find((k) => k === user) || Object.keys(users).find((k) => norm(k) === norm(user)) || Object.keys(users).find((k) => norm(users[k].label || "") === norm(user));
+    acc = key ? users[key] : null;
+    res = acc ? await verifyPassword(pass, acc.passHash) : { ok: false, legacy: false };
+    // Mislukt op de onthouden tabel: misschien een net gewijzigd wachtwoord of
+    // een nieuwe gebruiker. Eén keer vers lezen, niet vaker (#327).
+    if (res.ok || !uitCache) break;
+  }
   if (!res.ok) {
     await Promise.all([
       rateLimit(env, "login-account", acctId, RL.loginAccount, true),
@@ -465,6 +484,7 @@ async function handleLogin(request, env, ctx) {
     return json({ error: "invalid_credentials" }, 401);
   }
   if (res.legacy && acc._id) {
+    _usersCache = null;
     const job = rehashAirtablePassword(env, acc._id, pass);
     if (ctx && ctx.waitUntil) ctx.waitUntil(job);
     else await job;
@@ -1435,6 +1455,7 @@ async function handleUsersPost(request, env) {
       const t = await dr.text().catch(() => "");
       return json({ error: "airtable_delete_failed", detail: t.slice(0, 300) }, 502);
     }
+    _usersCache = null;
     return json({ ok: true, deleted: user }, 200);
   }
   const pass = String(body.pass || "");
@@ -1461,6 +1482,7 @@ async function handleUsersPost(request, env) {
     const t = await r.text().catch(() => "");
     return json({ error: "airtable_write_failed", detail: t.slice(0, 300) }, 502);
   }
+  _usersCache = null;
   return json({ ok: true, user, created: !hit, passChanged: !!pass }, 200);
 }
 __name(handleUsersPost, "handleUsersPost");
