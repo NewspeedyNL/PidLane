@@ -390,7 +390,11 @@ const NEPSERVER = `(function(){
       const vel = () => document.querySelector('#plGearOv .plg-vel');
       const v = vel();
       v.scrollTop = 120; const gezet = v.scrollTop;
-      await new Promise(r => setTimeout(r, 2300));             // twee verversrondes
+      // Een verversronde met nieuwe inhoud afdwingen (onderweg verandert er
+      // elke seconde iets); zonder dat slaat het venster het tekenen over en
+      // bewijst deze proef niets over de scrollpositie.
+      document.getElementById('plGearOv')._html = '';
+      await new Promise(r => setTimeout(r, 1300));
       const na = vel().scrollTop;
       const knoppen = document.querySelectorAll('#plGearOv .plg-krij .plg-k').length;
       sluitGearInstellingen();
