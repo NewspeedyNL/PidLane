@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-09-2026 — Terug sluit ook een venster met een knop "Sluiten"
+ ═══════════════════════════════════════════════════════════
+
+ - De Android-terugknop sluit nu ook vensters die geen ✕ hebben maar een knop
+   "Sluiten": het Run-venster, het logboek, Mijn tokens, de privacyuitleg en
+   zeven andere. Het Run-venster bleef tot nu toe staan terwijl het scherm
+   eronder wisselde.
+ - De testrunproef voor de terugknop zet het testrunpaneel even opzij. Anders
+   opende het waakvenster eronder en stond de proef altijd op FOUT
+   (testrun 8.3).
+
+ ═══════════════════════════════════════════════════════════
  28-09-2026 — De groepsproef als meetopdracht (#333)
  ═══════════════════════════════════════════════════════════
 

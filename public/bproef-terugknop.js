@@ -63,6 +63,8 @@ const HULP = `
       ['waakronde',      'PLWaakUI.open()',  'wkvOv'],
       ['bulk-analyse',   'PLBulkUI.open()',  'blvOv'],
       ['bulk-recorder',  'PLBulk.open()',    'blkOverlay'],
+      // Geen ✕ maar een knop "Sluiten" (testrun 8.3, 28-09-2026): bleef staan.
+      ['Run-venster',    'PLRun.open()',     'runOv'],
     ];
     for (const [naam, open, id] of vensters) {
       const r = await app.ev(`(async function(){

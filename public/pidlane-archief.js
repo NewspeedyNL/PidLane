@@ -683,9 +683,14 @@ const _PL_SLUIT_NAAM=/(^|[-_])(x|close|sluit|sluiten)$|Close$|X$/;
 // Deze vensters hebben een eigen terugregel verderop (minimaliseren tijdens
 // een rit, of alleen sluiten als er verbinding is).
 const _PL_EIGEN_TERUG=['ritDash','caravanDash','connOv','welcomeScreen','kebabMenu'];
+// "Sluiten" als knoptekst telt ook (28-09-2026). Testrun 8.3: het Run-venster,
+// het logboek, het testrunpaneel en acht andere vensters hebben geen ✕ maar
+// een knop met dat woord. De zoeker sloeg ze over, ze staan niet in de vaste
+// lijst, en terug viel door naar goHome() — onder het venster, dat bleef staan.
+const _PL_SLUIT_WOORD=/^(sluit|sluiten|close)$/i;
 function _plIsSluitKnop(b){
   const t=(b.textContent||'').trim();
-  if(_PL_SLUIT_TEKST.test(t)) return true;
+  if(_PL_SLUIT_TEKST.test(t) || _PL_SLUIT_WOORD.test(t)) return true;
   const label=(b.getAttribute('aria-label')||b.getAttribute('title')||'').trim();
   if(/^(sluit|sluiten|close)\b/i.test(label)) return true;
   if(t.length<=2 && (_PL_SLUIT_NAAM.test(b.id||'') || String(b.className||'').split(/\s+/).some(c=>_PL_SLUIT_NAAM.test(c)))) return true;

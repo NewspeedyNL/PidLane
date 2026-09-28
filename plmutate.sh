@@ -1169,6 +1169,8 @@ MUTATIES=(
 "worker.js@@    const s = m === null ? null : kpJson(m, 16000);@@    const s = m === null ? null : JSON.stringify(m);@@test-klantplatform.js@@een versnellingsmodel zonder groottegrens"
 "worker.js@@    const r = await c.db.prepare(\"UPDATE kp_rit SET label = ? WHERE id = ? AND klant_id = ?\")@@    const r = await c.db.prepare(\"UPDATE kp_rit SET label = ? WHERE id = ? AND klant_id = klant_id\")@@test-klantplatform.js@@een klant kan het label van andermans rit zetten"
 "public/pidlane-archief.js@@  if(!weg) return false;@@  return false;@@bproef-terugknop.js@@terug doet niets op Mijn voertuigen zodra het ✕ weggescrold is"
+# 28-09-2026, testrun 8.3: zo stond hij er, en het Run-venster bleef staan.
+"public/pidlane-archief.js@@  if(_PL_SLUIT_TEKST.test(t) || _PL_SLUIT_WOORD.test(t)) return true;@@  if(_PL_SLUIT_TEKST.test(t)) return true;@@bproef-terugknop.js@@een knop \"Sluiten\" telt niet als sluitknop: terug laat het Run-venster staan"
 
 # ── 27-09-2026, ronde 2: de voorstellen en de sluitende meetproeven. De
 # gevaarlijkste is de eerste: een schakeladvies dat ooit TERUG adviseert, op de
