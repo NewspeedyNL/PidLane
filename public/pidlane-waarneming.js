@@ -86,6 +86,11 @@
 
   function _autoSleutel() {
     try {
+      // Demo: geen auto om een profiel van bij te houden. Zonder sleutel
+      // leeft het register alleen deze sessie. Een kentekendemo draagt echte
+      // RDW-gegevens, dus merk|model|jaar zou het profiel van een echte auto
+      // van hetzelfde type raken.
+      if (typeof demoMode !== 'undefined' && demoMode) return null;
       var v = (typeof vehicleInfo !== 'undefined' && vehicleInfo) || {};
       return v.vin || [v.merk, v.model, v.year].filter(Boolean).join('|') || null;
     } catch (e) {

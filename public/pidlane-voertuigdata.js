@@ -149,6 +149,9 @@ function loadUserVehicleData(){
   // gemerged: had auto B nog geen eigen opslag, dan bleven km, onderhoud en
   // bijzonderheden van auto A gewoon staan en gingen die mee de AI-prompt in.
   userVehicleData=_uvdDefault();
+  // Demo: begint leeg. Bij een kentekendemo is de VIN leeg en viel _uvKey()
+  // terug op pl_kenteken — het dossier van je eigen auto ging dan mee de demo in.
+  if(typeof demoMode!=='undefined' && demoMode) return;
   try{ const s=localStorage.getItem(_uvKey()); if(s) userVehicleData={...userVehicleData,...JSON.parse(s)}; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
   if(!Array.isArray(userVehicleData.sit)) userVehicleData.sit=[];
   // Klant met een actief voertuig in Mijn voertuigen: dáár staat het dossier.
@@ -170,6 +173,9 @@ function loadUserVehicleData(){
   }catch(e){ console.warn('saveUserVehicleData mislukt:', e); }
 }
 function saveUserVehicleData(){
+  // Demo: wat je invult geldt voor deze sessie. De sleutel is de demo-VIN of,
+  // bij een kentekendemo, het kenteken dat je intikte — mogelijk je eigen.
+  if(typeof demoMode!=='undefined' && demoMode) return;
   try{ localStorage.setItem(_uvKey(), JSON.stringify(userVehicleData)); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 function applyUserOverrides(){

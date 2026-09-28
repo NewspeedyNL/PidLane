@@ -1112,7 +1112,7 @@ MUTATIES=(
 "public/pidlane-garage.js@@    else if (typeof m.maf === 'number' && brandstof !== 'diesel')@@    else if (typeof m.maf === 'number')@@test-garage.js@@een dieselverbruik uit de luchtmassa"
 "public/pidlane-garage.js@@    if (r.sLiters >= r.s * 0.7 && r.km >= 1)@@    if (r.sLiters > 0 && r.km >= 1)@@test-garage.js@@verbruik over een stukje van de rit geldt als ritverbruik"
 "public/pidlane-garage.js@@    var volledig = u.gelezen ? (u.gelezen.bevestigd && u.gelezen.pending !== false) : !!u.volledig;@@    var volledig = true;@@test-garage.js@@een issue gaat dicht na een uitlezing die niet volledig was (#218)"
-"public/pidlane-garage.js@@      if (!rec || !isKlant() || !(_st.stand && _st.stand.akkoord)) return;@@      if (!rec) return;@@test-garage.js@@een rapport gaat zonder akkoord de server op"
+"public/pidlane-garage.js@@      if (!rec || !magBewaren()) return;@@      if (!rec) return;@@test-garage.js@@een rapport gaat zonder akkoord de server op"
 "public/pidlane-garage.js@@    return km >= 20 ? {@@    return km >= 0 ? {@@test-garage.js@@een verbruiksoordeel op één korte rit"
 "worker.js@@    if (ak && ak.versie === \"verwijderd\")\n      return json(@@    if (false)\n      return json(@@test-klantplatform.js@@een verwijderd account houdt met zijn lopende token toegang tot Mijn voertuigen"
 "worker.js@@    catch (e) { if (!/duplicate column/i.test(String(e && e.message || e))) throw e; }@@    catch (e) { }@@test-klantplatform.js@@een migratie die om een andere reden faalt, wordt stil ingeslikt"
@@ -1265,6 +1265,20 @@ MUTATIES=(
 "worker.js@@      if (f.TegoedUit === true && b.ontwikkelaar !== true) {@@      if (false) {@@test-tegoeduit.js@@Tegoed uit is te zetten bij een klant zonder Ontwikkelaar"
 "worker.js@@    tegoedUit: klantTegoedUit(f)@@    tegoedUit: f.TegoedUit === true@@test-tegoeduit.js@@/klant/mij meldt tegoed uit terwijl de Worker wel afboekt"
 "public/pidlane-credits.js@@    try { return window.currentUser.tegoedUit === true; }@@    try { return !!window.currentUser.tegoedUit; }@@test-tokenchip.js@@een vlag \"ja\" zet in de app de kostencontrole uit"
+
+# ── 28-09-2026: een demo-auto laat niets achter. Elke mutatie haalt één
+# demotoets weg; de fout die dan stil gebeurt staat erachter.
+"public/pidlane-garage.js@@  function magBewaren() { return !isDemo() && isKlant()@@  function magBewaren() { return isKlant()@@test-garage.js@@demo-foutcodes, -rapporten en -waakrondes komen bij het echte actieve voertuig"
+"public/pidlane-pids.js@@  if(typeof demoMode!=='undefined' && demoMode) return; // een demo-auto heeft geen dossier\n@@@@test-demoopslag.js@@een demosessie komt in het voertuigdossier van de demo-VIN"
+"public/pidlane-waarneming.js@@      if (typeof demoMode !== 'undefined' && demoMode) return null;\n@@@@test-demoopslag.js@@een kentekendemo schrijft in het profiel van een echte auto van hetzelfde type"
+"public/pidlane-berekend.js@@  if (typeof demoMode!=='undefined' && demoMode) return;   // demo: de teller@@  void 0;   // demo: de teller@@test-demoopslag.js@@de roetfilterteller van een demo-diesel wordt bewaard"
+"public/pidlane-voertuigdata.js@@  if(typeof demoMode!=='undefined' && demoMode) return;\n  try{ localStorage.setItem(_uvKey()@@  try{ localStorage.setItem(_uvKey()@@test-demoopslag.js@@wat je in een demo invult, komt in het dossier onder je eigen kenteken"
+"public/pidlane-voertuigdata.js@@  if(typeof demoMode!=='undefined' && demoMode) return;\n  try{ const s=localStorage.getItem(_uvKey())@@  try{ const s=localStorage.getItem(_uvKey())@@test-demoopslag.js@@een kentekendemo neemt het dossier van je eigen auto over"
+"public/pidlane-diagnose.js@@function _diagDemo(){ try{ return typeof demoMode!=='undefined' && !!demoMode; }@@function _diagDemo(){ try{ return false; }@@test-demoopslag.js@@een AI-antwoord op demowaarden wordt veertien dagen aan echte auto's van dat type gegeven"
+"public/pidlane-pidgate.js@@  if(!(typeof demoMode!=='undefined' && demoMode)){\n    try{ localStorage.setItem('pl_selectie'@@  if(true){\n    try{ localStorage.setItem('pl_selectie'@@test-demoopslag.js@@na een crash krijgt de echte auto de sensorselectie van de demo terug"
+"public/pidlane-gear.js@@    if (typeof demoMode!=='undefined' && demoMode) return;\n    lsSet(LS_MODEL+this.sleutel@@    lsSet(LS_MODEL+this.sleutel@@test-demoopslag.js@@een ingetikte versnelling in demo komt in het model van het echte voertuig"
+"public/pidlane-auth.js@@const demo=(typeof demoMode!=='undefined' && !!demoMode);@@const demo=false;@@test-demoopslag.js@@demologregels komen als echte ritten met merk en VIN in de logtabel"
+"public/pidlane-demo.js@@  vehicleInfo={ merk:'Onbekend', model:'', year:'', vin:'', brandstof:'', motor:'' };\n  try{ resetVehicleSources(); }catch(e){ console.warn('Demo stoppen@@  try{ resetVehicleSources(); }catch(e){ console.warn('Demo stoppen@@test-demoopslag.js@@na de demo meet een echte auto zonder VIN door als de demo-auto"
 )
 
 echo

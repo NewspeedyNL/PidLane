@@ -464,9 +464,12 @@ function plSelectieMeld(voor, aanleiding){
   try{ if(typeof log==='function') log(tekst,'info'); }
   catch(e){ console.warn('Selectiewijziging niet in het log gezet:', e); }
   // Bewaren voor een hervatting na een crash (#229). Hier en niet bij de vijf
-  // aanroepers: dit is de plek waar elke wijziging al langskomt.
-  try{ localStorage.setItem('pl_selectie', JSON.stringify({ pids:[...nu], t:Date.now() })); }
-  catch(e){ console.warn('Sensorselectie niet bewaard — na een crash komt de standaardset terug (#229):', e); }
+  // aanroepers: dit is de plek waar elke wijziging al langskomt. Niet in demo:
+  // na een crash hoort je echte auto niet de selectie van een demo-auto terug.
+  if(!(typeof demoMode!=='undefined' && demoMode)){
+    try{ localStorage.setItem('pl_selectie', JSON.stringify({ pids:[...nu], t:Date.now() })); }
+    catch(e){ console.warn('Sensorselectie niet bewaard — na een crash komt de standaardset terug (#229):', e); }
+  }
   return {erbij, eraf, tekst};
 }
 

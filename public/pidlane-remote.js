@@ -649,7 +649,7 @@ window.PLRemote=(function(){
     try{if(typeof connected!=='undefined'&&connected&&!window._remoteVehicleMode){
       expLog('✖ Verbreek eerst je eigen Bluetooth-verbinding');return;}}catch(_){ console.warn('Eigen-verbinding-check bij het starten van remote-modus mislukt', _); }
     window._remoteVehicleMode=true;
-    try{connected=true;demoMode=false;}catch(_){ console.warn('Verbindingsstatus niet op actief gezet voor remote-modus', _); }
+    try{if(demoMode) plDemoStop(); connected=true;demoMode=false;}catch(_){ console.warn('Verbindingsstatus niet op actief gezet voor remote-modus', _); }
     try{setConn(true);}catch(_){ console.warn('Verbindingsindicator niet bijgewerkt voor remote-modus', _); }
     try{document.getElementById('connOv').classList.add('hidden');}catch(_){ /* stil: element kan al weg zijn */ }
     try{if(typeof goHome==='function')goHome();}catch(_){ console.warn('Niet naar het beginscherm genavigeerd bij het starten van remote-modus', _); }

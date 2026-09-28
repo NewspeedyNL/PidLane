@@ -1226,6 +1226,7 @@ function feedSessionStat(pid,val){
 function sessionsKey(vin){ return 'pl_sessions_'+String(vin||'').toUpperCase(); }
 
 function saveSession(){
+  if(typeof demoMode!=='undefined' && demoMode) return; // een demo-auto heeft geen dossier
   const vin=vehicleInfo?.vin;
   if(!/^[A-HJ-NPR-Z0-9]{17}$/.test(String(vin||''))) return; // alleen per bekend VIN
   if(!Object.keys(_sessionStats).length) return;

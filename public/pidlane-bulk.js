@@ -289,6 +289,7 @@ function bepaalSegment() {
 
 function tick() {
   if (!_blkS.actief || _blkS.gepauzeerd) return;
+  if (typeof demoMode !== 'undefined' && demoMode) return;   // demo midden in een opname: die seconden niet
   try {
     var t = _blkNu();
     var seg = bepaalSegment();
@@ -422,6 +423,7 @@ function chipWeg() {
 async function start(stil) {
   if (!magIk()) { toast('Alleen voor ontwikkelaars'); return false; }
   if (_blkS.actief) { toast('Recorder loopt al'); return false; }
+  if (typeof demoMode !== 'undefined' && demoMode) { toast('De recorder neemt geen demo op — verbind een echte auto'); return false; }
   try { await dbKlaar(); }
   catch (e) { toast('Opslag niet beschikbaar: ' + (e && e.message || e)); return false; }
 

@@ -334,6 +334,7 @@ setTimeout(()=>{ try{checkAiReachable();}catch(e){ console.warn('checkAiReachabl
 async function handleConnect(){
   if(connected){
     saveSession();   // idee 2: sessie-stats in voertuigdossier bewaren vóór verbreken
+    if(demoMode) plDemoStop();
     connected=false; demoMode=false; clearInterval(pollTimer);
     // Test-scenario opheffen wanneer demo/verbinding stopt
     _scenario={ enabled:false, pids:{}, dtcs:[], vehicle:null };

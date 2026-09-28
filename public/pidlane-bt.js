@@ -383,7 +383,7 @@ async function doSPPConnect(spp, address, name){
   try { localStorage.setItem('spp_address', address); localStorage.setItem('spp_name', name); localStorage.setItem('pl_lastTransport', 'spp'); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 
   window._sppConn = { spp, address, name };     // read()-polling gebruikt dit in sendBT
-  connected = true; demoMode = false;
+  if (demoMode) plDemoStop(); connected = true; demoMode = false;
   btDiag(`SPP actief: ${name}`, 'ok');
   log(`SPP verbonden: ${name}`, 'ok');
   try { logToSheets('connect', `SPP verbonden: ${name}`, { address }); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
@@ -493,7 +493,7 @@ async function connectBLE(ble){
       // ── ELM-VERIFICATIE — bewijs dat dit écht een OBD2-adapter is ──
       // Stuur ATI/ATZ en eis een ELM/OBD-achtig antwoord. Zonder dit zou
       // PidLane "verbonden" melden met een willekeurig BLE-apparaat.
-      connected = true; demoMode = false; // tijdelijk, zodat sendCmd werkt
+      if (demoMode) plDemoStop(); connected = true; demoMode = false; // tijdelijk, zodat sendCmd werkt
       const ok = await bleVerifyELM();
       if (!ok){
         connected = false;
@@ -670,7 +670,7 @@ async function connectWebSerial(){
     disconnectWebSerial();
   });
 
-  connected = true; demoMode = false;
+  if (demoMode) plDemoStop(); connected = true; demoMode = false;
   log('Web Serial verbonden', 'ok');
   setConn(true);
   await initELM327Serial();   // bewezen ELM327-init voor de COM-poort
@@ -869,7 +869,7 @@ async function connectWebBluetooth(){
   });
 
   window._webBtWrite = writeChar;
-  connected = true; demoMode = false;
+  if (demoMode) plDemoStop(); connected = true; demoMode = false;
   log('Web BT verbonden: ' + device.name, 'ok');
   setConn(true);
   await initELM327();
@@ -1886,7 +1886,7 @@ async function startDiscovery(){
         window._btGen=(window._btGen||0)+1;
         await spp.connect({address:sa});
         window._sppConn={spp,address:sa,name:localStorage.getItem('spp_name')||'OBDLink'};
-        connected=true; demoMode=false;
+        if(demoMode) plDemoStop(); connected=true; demoMode=false;
         setConn(true);
         btDiag('Herverbonden ✓ — ELM opnieuw initialiseren','ok');
         await initELM327();
@@ -2257,7 +2257,7 @@ async function rdwLookup(showOverview, opties){
     // wél goed stond. Op de rit van 16-08 leek dat op een niet-gevulde
     // brandstof; het was alleen de logregel. Nu uit de echte bron lezen.
     const brandstof=vehicleInfo.brandstof||f.brandstof||'';
-    localStorage.setItem('pl_kenteken',kent);
+    if(!demoMode) localStorage.setItem('pl_kenteken',kent);   // een demo-kenteken is niet jouw auto
     // PLRecall haakt hierop in en haalt de terugroepdetails op (welke actie,
     // welk risico, welke status) bovenop de ja/nee-vlag die we al hadden.
     try{ window.dispatchEvent(new CustomEvent('pl:kenteken-geladen',{detail:{kenteken:kent}})); }catch(e){ /* stil: element kan weg zijn */ }
