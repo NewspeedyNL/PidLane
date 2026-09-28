@@ -45,6 +45,15 @@ function loadDemoVehicle(key){
   try{ initialHealthScan(); }catch(e){ console.warn('initialHealthScan mislukt:', e); }
   renderDemoBar();
 }
+/* De demo stopt (Verbreken, of een echte verbinding terwijl de demo nog
+   liep): de demo-auto moet dan uit vehicleInfo. Anders loopt een echte auto
+   die geen VIN geeft door als "Mazda CX-5" met de demo-VIN, en bewaart alles
+   wat per auto bewaard wordt het onder die verzonnen auto. Aanroepen vóór
+   demoMode=false, en alleen als demoMode aan stond. */
+function plDemoStop(){
+  vehicleInfo={ merk:'Onbekend', model:'', year:'', vin:'', brandstof:'', motor:'' };
+  try{ resetVehicleSources(); }catch(e){ console.warn('Demo stoppen: voertuigbronnen niet geleegd — de demo-auto kan blijven doorwerken', e); }
+}
 function demoRefresh(){
   const sel=document.getElementById('demoVehSel');
   loadDemoVehicle(sel?sel.value:'benzine');
@@ -192,8 +201,9 @@ function _startDemoCore(car, kent){
 
   // Kenteken als demo-auto: echte RDW-opzoeking vult merk/model/brandstof in
   // en het fantoomfilter draait mee — net als bij een echte verbinding.
+  // Het kenteken gaat alleen het invoerveld in, niet in pl_kenteken: dat is
+  // de sleutel van je eigen auto (voertuigoverzicht, koopcheck).
   if(kent){
-    try{ localStorage.setItem('pl_kenteken', kent); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
     setTimeout(()=>{ try{
       const i=document.getElementById('kentInput'); if(i) i.value=kent;
       rdwLookup(false);

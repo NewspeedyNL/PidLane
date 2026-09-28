@@ -59,10 +59,16 @@ function diagCacheGet(sig){
     return Array.isArray(o.causes)?o.causes:null;
   }catch(e){ return null; }
 }
+// Demo: het antwoord steunt op verzonnen sensorwaarden. De cache is op
+// merk/model/jaar gesleuteld, dus hij zou dat antwoord veertien dagen lang
+// aan een echte auto van hetzelfde type geven.
+function _diagDemo(){ try{ return typeof demoMode!=='undefined' && !!demoMode; }catch(e){ return false; } }
 function diagCacheSet(sig, causes){
+  if(_diagDemo()) return;
   try{ localStorage.setItem(_diagKey(sig), JSON.stringify({sig, ts:Date.now(), causes})); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 function diagHistoryAdd(v, desc, causes){
+  if(_diagDemo()) return;
   try{
     const id=_diagNorm((v&&(v.vin||v.merk))||'algemeen').replace(/\s+/g,'');
     const key='pl_diaghist_'+id;

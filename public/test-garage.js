@@ -239,6 +239,40 @@ function laad(opties) {
   L = laad({ rol: 'user' });
   eis(L.G.dossier() === null, 'geen klant → geen koppeling, het overzicht werkt zoals voorheen');
 
+  // Een demo is een verzonnen auto, en de klant heeft intussen een echt
+  // voertuig actief staan. Elk geval draait twee keer met exact dezelfde
+  // opzet: eerst in demo (niets naar de server), dan zonder (wél). Zonder die
+  // tweede helft zegt "niets verstuurd" alleen dat de opzet niets deed.
+  console.log('\n9b. Een demo schrijft niets bij het echte voertuig (28-09-2026)');
+  {
+    const klaar = () => new Promise((r2) => setImmediate(r2));
+    const opzet = () => {
+      const X = laad({ rol: 'klant', server: { issues: { ok: true, issues: [] }, stand: { ok: true, akkoord: true, voertuigen: [] }, voertuig_opslaan: (b2) => ({ ok: true, voertuig: b2.voertuig }) } });
+      X.G.staat().stand = { akkoord: true, voertuigen: [{ id: 'v1', status: 'actief', naam: 'Echte auto', kmstand: 84210 }] };
+      X.G.staat().actiefId = 'v1';
+      return X;
+    };
+    const gevallen = [
+      ['een AI-rapport', (X) => { X.G.rapport({ type: 'ai', title: 'AI-monteur', text: 'Mager mengsel.' }); }],
+      ['een foutcode-uitlezing', (X) => X.G.foutcodes({ bevestigd: ['P0171'], pending: [], permanent: [], gelezen: { bevestigd: true, pending: true } })],
+      ['een waakbevinding', (X) => { X.G.waakBevinding('0105', 'Koelwater te warm'); }],
+      ['een waakrapport', (X) => { X.G.waakKlaar(hist, nm); }],
+      ['het voertuigdossier bewaren', (X) => X.G.dossierBewaar({ km: '1000', merk: 'Mazda', model: 'CX-5', year: '2018', brandstof: 'benzine' })]
+    ];
+    for (const [wat, doe] of gevallen) {
+      const D = opzet(); D.s.demoMode = true;
+      await doe(D); await klaar();
+      const E = opzet(); E.s.demoMode = false;
+      await doe(E); await klaar();
+      const schrijft = (x) => x.actie !== 'issues' && x.actie !== 'rapporten' && x.actie !== 'rapport' && x.actie !== 'stand';
+      eis(D.verzoeken.filter(schrijft).length === 0 && E.verzoeken.filter(schrijft).length > 0,
+        wat + ': in demo niets naar de server, zonder demo wel',
+        'demo: ' + JSON.stringify(D.verzoeken.map((x) => x.actie)) + ' · echt: ' + JSON.stringify(E.verzoeken.map((x) => x.actie)));
+    }
+    const D = opzet(); D.s.demoMode = true;
+    eis(D.G.dossier() === null, 'in demo geeft het voertuigoverzicht het dossier van de echte auto niet');
+  }
+
   console.log('\n10. Een bewaard waakrapport wordt weer een overzicht (27-09-2026)');
   {
     const K = laad({ rol: 'klant' }).G._kern;

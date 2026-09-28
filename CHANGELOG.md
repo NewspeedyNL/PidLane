@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-09-2026 — Een demo-auto laat niets meer achter
+ ═══════════════════════════════════════════════════════════
+
+ - Demo-foutcodes, AI-rapporten en waakrondes komen niet meer bij je echte
+   voertuig in Mijn voertuigen terecht, en het voertuigoverzicht toont in
+   demo niet meer het dossier van je echte auto.
+ - Een demo bewaart geen sessie in het voertuigdossier, geen profiel per auto,
+   geen roetfilterteller, geen diagnosecache, geen versnellingen en geen
+   sensorselectie voor hervatten.
+ - Een kentekendemo schrijft dat kenteken niet meer als jouw kenteken weg, en
+   leest het dossier van je eigen auto niet meer in.
+ - Na het stoppen van de demo is de demo-auto weg; een echte auto zonder VIN
+   gaat niet meer door als de demo-auto.
+ - Logregels uit een demo gaan als "demo" de logtabel in, zonder merk,
+   bouwjaar of VIN.
+ - De bulk-recorder neemt geen demo op.
+
+ ═══════════════════════════════════════════════════════════
  28-09-2026 — Tegoed uit voor een klant met Ontwikkelaar aan
  ═══════════════════════════════════════════════════════════
 

@@ -301,6 +301,9 @@ const PLGear = {
   },
   _opslaan(force){
     if (!this.model || (!this._vuil && !force)) return;
+    // Demo: het model hangt aan het actieve (echte) voertuig. Een ingetikte
+    // versnelling op een demo-auto hoort daar niet in, lokaal noch op de server.
+    if (typeof demoMode!=='undefined' && demoMode) return;
     lsSet(LS_MODEL+this.sleutel, JSON.stringify(this.model));
     this._opgeslagen=nu(); this._vuil=false;
     this._naarVoertuig(!!force);

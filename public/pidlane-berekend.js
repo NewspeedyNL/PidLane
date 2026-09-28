@@ -352,7 +352,10 @@ function dpfLees(k){
   try{ const r=localStorage.getItem(DPF_LS+k); return r ? JSON.parse(r) : { kmSinds:null, laatste:null, heetSinds:null }; }
   catch(e){ console.warn('PLBerekend: roetfilterteller onleesbaar', e); return { kmSinds:null, laatste:null, heetSinds:null }; }
 }
-function dpfSchrijf(k, s){ try{ localStorage.setItem(DPF_LS+k, JSON.stringify(s)); }catch(e){ console.warn('PLBerekend: roetfilterteller niet bewaard', e); } }
+function dpfSchrijf(k, s){
+  if (typeof demoMode!=='undefined' && demoMode) return;   // demo: de teller loopt mee op het scherm, niet in de opslag
+  try{ localStorage.setItem(DPF_LS+k, JSON.stringify(s)); }catch(e){ console.warn('PLBerekend: roetfilterteller niet bewaard', e); }
+}
 let _dpfK=null, _dpf=null, _dpfOpgeslagen=0;
 
 let _tikFout='', _wasAan=false;

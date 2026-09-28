@@ -543,10 +543,10 @@
      foutcode-uitlezingen; txt/pdf zijn een ander jasje om hetzelfde. */
   function rapport(rec) {
     try {
-      if (!rec || !isKlant() || !(_st.stand && _st.stand.akkoord)) return;
+      if (!rec || !magBewaren()) return;
       if (rec.type !== 'ai' && rec.type !== 'dtc') return;
       var v = actief();
-      if (!v || !rec.text) return;
+      if (!rec.text) return;
       schrijfOfWacht('rapport_opslaan', { voertuig_id: v.id, soort: rec.type, titel: rec.title || '', tekst: String(rec.text).slice(0, 120000) })
         .then(function () { if (_st.cache[v.id]) delete _st.cache[v.id].rapporten; })
         .catch(function (e) { console.warn('PLGarage: rapport niet bewaard', e); });
@@ -558,9 +558,8 @@
      readiness? } */
   async function foutcodes(u) {
     try {
-      if (!u || !isKlant() || !(_st.stand && _st.stand.akkoord)) return;
+      if (!u || !magBewaren()) return;
       var v = actief();
-      if (!v) return;
       var info = function (c) { try { return (typeof dtcInfo === 'function') ? dtcInfo(c) : {}; } catch (e) { return {}; } };
       var bestaand = [];
       try { bestaand = ((await api('issues', { voertuig_id: v.id })).issues || []).filter(function (i) { return i.status === 'open'; }).map(function (i) { return i.sleutel; }); }
@@ -600,10 +599,15 @@
         blok: delen.length ? '\n\nEERDERE RAPPORTEN VAN DIT VOERTUIG (uit eerdere sessies, nieuwste eerst — vergelijk: wat is verbeterd, verslechterd of nieuw; herhaal ze niet):\n' + delen.join('\n') : '' };
     } catch (e) { _eerder.bezig = false; console.warn('PLGarage: eerdere rapporten niet opgehaald', e); }
   }
-  function eerderBlok() { var v = actief(); return (v && _eerder.vid === v.id) ? _eerder.blok : ''; }
-  function eerderAantal() { var v = actief(); return (v && _eerder.vid === v.id) ? _eerder.n : 0; }
+  function eerderBlok() { var v = actief(); return (v && !isDemo() && _eerder.vid === v.id) ? _eerder.blok : ''; }
+  function eerderAantal() { var v = actief(); return (v && !isDemo() && _eerder.vid === v.id) ? _eerder.n : 0; }
 
-  function magBewaren() { return isKlant() && !!(_st.stand && _st.stand.akkoord) && !!actief(); }
+  /* Een demo is een verzonnen auto. Wat daar gemeten, uitgelezen of
+     geanalyseerd wordt, hoort nooit bij het actieve (echte) voertuig: geen
+     rapport, geen open punt, geen gezondheid, geen dossier, en ook geen
+     eerdere rapporten van de echte auto als context voor een demo-analyse. */
+  function isDemo() { try { return typeof demoMode !== 'undefined' && !!demoMode; } catch (e) { return false; } }
+  function magBewaren() { return !isDemo() && isKlant() && !!(_st.stand && _st.stand.akkoord) && !!actief(); }
 
   /* De waakronde vond iets buiten bereik → een open punt bij het voertuig.
      Eén keer per sensor per sessie: een volgende sessie met dezelfde

@@ -14,6 +14,66 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 28-09-2026 — Een demo-auto liet overal sporen achter
+
+**De regel.** Een demo (demo-auto of kentekendemo) is verzonnen. Er hoort
+niets van bewaard te worden: geen voertuigdossier, geen foutcodes, geen rit,
+geen profiel, geen leerdata. Alles wat blijft staan, duikt later op als
+afwijking bij een echte auto.
+
+**Waarom het misging.** `loadDemoVehicle()` en `_startDemoCore()` zetten
+`connected = true`. Elke module die alleen op "verbonden" toetste, zag dus
+een echte auto. De modules die het wél goed deden (garage-ritten, veldlab,
+kaart, eigen PIDs, het versnellingsmodel bij leren) hadden elk hun eigen
+`&& !demoMode`; de rest had hem niet. Er was geen centrale regel, alleen
+losse plekken die er wel of niet aan dachten.
+
+**Wat er gerepareerd is**, telkens in de opslagfunctie zelf en niet bij de
+aanroepers:
+- *Mijn voertuigen* (`magBewaren()`): demo-foutcodes werden open punten en
+  gezondheid bij het **echte actieve voertuig** van de klant. Hetzelfde gold
+  voor AI-rapporten, waakbevindingen, waakrapporten en het dossier. Ook de
+  eerdere rapporten van de echte auto gingen als context een demo-analyse in.
+- `saveSession()`: de knop Verbreken bewaarde de demosessie in het
+  voertuigdossier; alleen de andere aanroeper toetste op demo.
+- `waarneming` (profiel per auto): een kentekendemo draagt echte RDW-gegevens,
+  en het profiel valt zonder VIN terug op merk|model|jaar. Daarmee schreef hij
+  in het profiel van een echte auto van hetzelfde type.
+- `dpfSchrijf()`: de roetfilterteller van de demo-diesels werd bewaard.
+- `saveUserVehicleData()` / `loadUserVehicleData()`: de sleutel valt zonder VIN
+  terug op `pl_kenteken`. Een kentekendemo schreef dat kenteken daar zelf weg,
+  en las dus het dossier van je eigen auto in, of overschreef het.
+- `pl_kenteken` zelf: `_startDemoCore()` en `rdwLookup()` schreven het
+  demokenteken weg.
+- `diagCacheSet()` / `diagHistoryAdd()`: het antwoord op demowaarden bleef
+  veertien dagen gecachet op merk/model/jaar.
+- `plSelectieMeld()`: de demoselectie werd de hervatselectie na een crash.
+- `PLGear._opslaan()`: een ingetikte versnelling in demo ging naar het model
+  van het echte voertuig.
+- `logToSheets()`: demoregels kwamen als `RecordType: 'app'` binnen, met merk,
+  jaar en VIN-pseudoniem, en zonder de kolom `Demo`, die al bestond.
+- `plDemoStop()`: na de demo bleef de demo-auto in `vehicleInfo`. Een echte
+  auto die geen VIN geeft, liep dan door als de demo-auto.
+- De bulk-recorder neemt geen demo meer op.
+
+**Wat níét gerepareerd is, en waarom.**
+- De koopcheck schrijft het kenteken van de auto die je overweegt ook in
+  `pl_kenteken`, en dat is de sleutel van je *eigen* auto. Dat staat los van
+  demo en hoort in een eigen issue.
+- De demo-VIN's in `DEMO_VEHICLES`/`DEMO_CARS` zien eruit als echte VIN's.
+  Met de toetsen hierboven wordt er niets meer onder bewaard. Een VIN die
+  aantoonbaar niet kan bestaan, zou nog een laag extra zijn, maar
+  WMI-herkenning leunt erop.
+- Het niet wegschrijven van `pl_kenteken` in `rdwLookup()`/`_startDemoCore()` en
+  de weigering van de bulk-recorder hebben geen eigen test. Er is geen losse
+  functie om aan te roepen zonder de hele verbinding of DOM na te bouwen.
+
+`test-demoopslag.js` en deel 9b van `test-garage.js` draaien elk geval twee
+keer: in demo (niets bewaard) en zonder demo (wel). Elf mutaties in
+`plmutate.sh` houden de toetsen scherp.
+
+---
+
 ## 28-09-2026 — Eigen sensoren weg na een herstart: te vroeg, en nooit opnieuw
 
 **Wat er gemeten werd.** Het logboek van 28-09 (sessies 10:58 en 12:09): na

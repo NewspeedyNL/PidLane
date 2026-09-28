@@ -942,7 +942,11 @@ async function logToSheets(type, message, extra={}){
     // maar een paar milliseconden aan, en het pseudonimiseren duurt een tick —
     // daarna is de vlag alweer uit en zou de regel als gewone meting binnenkomen.
     const soort=_plLogSoort(), sessie=_plSessieId(), adapter=_plLogAdapter();
-    const vinId=await _plVinVoorLog(v.vin);
+    // Demo: de regel mag er zijn (hij zegt iets over de app), maar hij gaat
+    // niet over een auto. Geen merk, jaar of VIN-pseudoniem, en de kolom Demo
+    // aan — anders is hij in de logtabel niet van een echte rit te scheiden.
+    const demo=(typeof demoMode!=='undefined' && !!demoMode);
+    const vinId=demo ? '' : await _plVinVoorLog(v.vin);
     // Het derde argument uitpakken: bekende kolommen als veld, de rest als
     // staart achter het bericht. Zie AT_KOLOMMEN hierboven.
     const velden={}, staart=[];
@@ -960,8 +964,8 @@ async function logToSheets(type, message, extra={}){
         Timestamp:  ts,
         Type:       String(type||'info'),
         Message:    bericht.slice(0,500),
-        Merk:       String(v.merk||''),
-        Year:       String(v.year||''),
+        Merk:       demo ? '' : String(v.merk||''),
+        Year:       demo ? '' : String(v.year||''),
         VIN:        vinId,
         Protocol:   String(selectedNetwork?.name||''),
         ActivePIDs: [...(activePIDs||[])].join(' '),
@@ -971,10 +975,11 @@ async function logToSheets(type, message, extra={}){
         AppVersion: String(typeof APP_VERSION!=='undefined'?APP_VERSION:'?'),
         User:       String(currentUser?.name||''),
         Role:       String(currentUser?.role||''),
-        RecordType: soort,
+        RecordType: demo ? 'demo' : soort,
         SessionId:  sessie,
         Adapter:    adapter,
         ...velden,
+        ...(demo ? { Demo:true } : {}),
       }
     });
     clearTimeout(_atTimer);
