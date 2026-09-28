@@ -68,7 +68,7 @@
   }
 
   function magWisselen() {
-    try { if (typeof isAdmin === 'function' && !isAdmin()) return false; }
+    try { if (typeof isAdmin === 'function' && !(typeof magOntwikkelen === 'function' ? magOntwikkelen() : isAdmin())) return false; }
     catch (e) { console.warn('Bron: isAdmin niet leesbaar (#242)', e); return false; }
     return !!preview() || !isProductie();
   }

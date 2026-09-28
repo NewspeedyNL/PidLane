@@ -340,5 +340,5 @@ async function clearDTC(){
 function exportReport(){
   const v=getVehicle();
   const lines=['PidLane — Rapport',`Datum: ${new Date().toLocaleString('nl')}`,v.merk?`Voertuig: ${v.merk} ${v.model} ${v.year}`:'','=== DTC ===',...(dtcCodes.length?dtcCodes.map(c=>{const i=dtcInfo(c);return`${c} — ${i?i.desc:'?'}`;}):[' Geen']),'','=== LIVE DATA ===',...[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean)];
-  download('rapport.txt',lines.join('\n'));
+  download(plBestandsnaam('rapport','txt'),lines.join('\n'));   // #326: geen vaste naam
 }

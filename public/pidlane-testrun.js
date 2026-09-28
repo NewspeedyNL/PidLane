@@ -6357,6 +6357,44 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── #326: opslaan landt in Documenten, zonder deelvenster ──
+  {
+    issue: '#326',
+    naam: 'Opslaan schrijft rechtstreeks in Documenten/PidLane, ook de tweede keer',
+    waarom: 'Of Android het schrijven in Documenten toestaat (ook na een herinstallatie) weet alleen het toestel; de browser heeft geen Documenten-map.',
+    proef: async function () {
+      if (typeof plOpslagOordeel !== 'function') return { staat: 'FOUT', detail: 'plOpslagOordeel ontbreekt' };
+      const o = plOpslagOordeel(window._plOpslag);
+      return o.staat === 'ok' ? o.detail : o;
+    }
+  },
+
+  // ── de vaste sensoren van het voertuig na het verbinden (28-09-2026) ──
+  {
+    issue: '—',
+    naam: 'De vaste sensoren van het voertuig staan aan na het verbinden, ook na een herstart',
+    waarom: 'Het ging mis op de volgorde van een echte verbinding na een herstart (VIN van de vorige keer, PID-lijst nog niet klaar); de browserproef bootst die na, de rit bewijst hem.',
+    proef: async function () {
+      if (!window.PLGarage || typeof PLGarage.selectieOordeel !== 'function') return { staat: 'FOUT', detail: 'PLGarage.selectieOordeel ontbreekt' };
+      const lijst = (typeof discoveredPIDDefs !== 'undefined' && discoveredPIDDefs) ? discoveredPIDDefs.map(function (d) { return d.pid; }) : [];
+      const o = PLGarage.selectieOordeel(PLGarage.gekoppeld(), (typeof activePIDs !== 'undefined') ? Array.from(activePIDs) : [], lijst);
+      return o.staat === 'ok' ? o.detail : o;
+    }
+  },
+
+  // ── Slim visueel knippert niet (28-09-2026) ──
+  {
+    issue: '—',
+    naam: 'De meter van Slim visueel knippert niet tijdens het rijden',
+    waarom: 'Het knipperen kwam van haperingen op een echte bus (acht banden via ECU-adres 720); in de browser is er geen bus die hapert.',
+    proef: async function () {
+      if (!window.PLVisueel || typeof PLVisueel.rustOordeel !== 'function')
+        return { staat: 'FOUT', detail: 'PLVisueel.rustOordeel ontbreekt' };
+      const o = PLVisueel.rustOordeel(PLVisueel.sessie());
+      return o.staat === 'ok' ? o.detail : o;
+    }
+  },
+
   // ── de trekmodus (caravan of beladen) ──
   {
     issue: '—',
@@ -7230,7 +7268,7 @@ async function _blok11() {
 // ══════════════════════════════════════════════════════════════════
 async function startTestrun(blokken) {
   if (_trBezig) { try { showToast('Testrun loopt al'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } return; }
-  if (typeof isAdmin === 'function' && !isAdmin()) { try { showToast('Alleen voor admin'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } return; }
+  if (typeof isAdmin === 'function' && !(typeof magOntwikkelen === 'function' ? magOntwikkelen() : isAdmin())) { try { showToast('Alleen voor ontwikkelaars'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } return; }
   // b8 zat hier tot 24-08 in. Dat is de olietemperatuur-jacht (mode 21/22), en
   // die is losgelaten. Hem in de standaardset laten staan zou betekenen dat elke
   // volle run alsnog scant naar iets waar we niet meer naar zoeken — inclusief
@@ -8203,7 +8241,7 @@ function _bgLijst(soort) {
 }
 
 function begeleidStart(soort) {
-  if (typeof isAdmin === 'function' && !isAdmin()) { try { showToast('Alleen voor admin'); } catch (e) { console.warn('toast mislukt', e); } return; }
+  if (typeof isAdmin === 'function' && !(typeof magOntwikkelen === 'function' ? magOntwikkelen() : isAdmin())) { try { showToast('Alleen voor ontwikkelaars'); } catch (e) { console.warn('toast mislukt', e); } return; }
   const s = _RONDES[soort] ? soort : 'rit';
   _BG.soort = s; _BG.lijst = _bgLijst(s);
   _BG.aan = true; _BG.i = 0; _BG.gepauzeerd = false; _BG.gestart = _nu(); _BG.gedaan = []; _BG.laatsteActie = '';
@@ -8464,7 +8502,7 @@ function _bgTeken() {
 // SCHERM
 // ══════════════════════════════════════════════════════════════════
 function openTestrun() {
-  if (typeof isAdmin === 'function' && !isAdmin()) { try { showToast('Alleen voor admin'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } return; }
+  if (typeof isAdmin === 'function' && !(typeof magOntwikkelen === 'function' ? magOntwikkelen() : isAdmin())) { try { showToast('Alleen voor ontwikkelaars'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } return; }
   let ov = document.getElementById('testrunOv');
   if (!ov) {
     ov = document.createElement('div');
@@ -8777,6 +8815,10 @@ const CAMPAGNE = {
     'SLIM VISUEEL DRIE MINUTEN RIJDEND (#294), waarvan dertig seconden constant boven 50 km/u. Noteer wat de boordcomputer als verbruik zegt.',
     'TREKMODUS VIJF MINUTEN. Tik in het Voertuigoverzicht de rijsituatie caravan of beladen aan (of start de Caravanrit); de strook onder de meter verschijnt vanzelf. Met een caravan of volle auto het liefst een klim.',
     'EÉN KEER VOL GAS in de 2e of 3e, als het veilig kan. Dat is de enige manier om het berekende vermogen tegen het profiel te houden.',
+    'HERSTART EN SENSOREN. Sluit de app helemaal af, open hem weer en verbind: je eigen sensoren (banden, olie) en de berekende moeten er meteen weer bij staan, naast de standaardset.',
+    'OPSLAAN (#326). Foutcodes → twee keer Bewaren (tekst). Er mag geen deelvenster komen; in Documenten/PidLane staan dan twee bestanden met datum en tijd.',
+    'VERSNELLINGEN. Tik tijdens het rijden een paar keer in welke versnelling je zit (Versnellingsindicator → "In welke versnelling zit je nu?"). In Slim visueel staat hij in het midden van de meter en niet meer in de topbalk.',
+    'BUURSCAN (alleen als je wilt, kost een halve minuut per blok). Sensoren → Scan 222Axx @ 720: noteer welke nieuwe codes antwoorden.',
     'BANDEN (als je auto ze via een eigen PID geeft). Rij minstens vijf minuten; de banden worden elke minuut gevraagd. Tik op het bandenlampje boven Slim visueel: staan alle vier de drukken er, in bar?',
     'EEN EIGEN PID. Mijn voertuigen → Sensoren. Heb je een code van de dealer: vul hem in (met ECU-adres als je dat weet, bijv. 7E1 voor de automaat), Test op de auto, Toevoegen, Bewaren. Zo niet: 📚 Codes voor dit model → Zoek online, test de kandidaten (elke test telt mee als werkt/werkt niet) en voeg er een toe die antwoordt. Laat hem de rit meelopen; werkt hij, tik dan Deel.',
     '── STAP VOOR STAP ────────',

@@ -610,8 +610,10 @@
     if (!s) return;
     var tekst = alsTekst(s);
     try {
-      if (typeof plOpslaan === 'function') { plOpslaan('foutcodes', tekst, { titel: 'Foutcodes & keuringsstatus' }); return; }
-      if (typeof download === 'function') { download('foutcodes.txt', tekst); return; }
+      // Elke keer een andere naam (#326): zie plBestandsnaam().
+      var basis = (typeof plBestandsnaam === 'function') ? plBestandsnaam('foutcodes') : 'PidLane-foutcodes-' + Date.now();
+      if (typeof plOpslaan === 'function') { plOpslaan(basis, tekst, { titel: 'Foutcodes & keuringsstatus' }); return; }
+      if (typeof download === 'function') { download(basis + '.txt', tekst); return; }
     } catch (e) { console.warn('PLFoutcodes: opslaan faalde', e); }
     try { if (typeof showToast === 'function') showToast('Opslaan is hier niet beschikbaar'); } catch (e) { console.warn(e); }
   }

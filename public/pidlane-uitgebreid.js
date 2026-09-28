@@ -511,12 +511,25 @@
      zoektool van de API. Weigert de API die tool, dan zegt de uitkomst dat
      er niet online gezocht is — dan komt er niets in de bibliotheek, want
      een code uit het geheugen van een taalmodel is geen bron. */
-  async function zoekOnline(v) {
+  /* `bewezen` (optioneel): codes die op deze auto al antwoorden
+     [{code, ecu, naam}]. Dan zoekt de AI DIEPER (28-09-2026): verwante codes
+     op dezelfde regeleenheden en uit dezelfde familie (andere modellen op
+     hetzelfde platform delen vaak hun codes), en niet nog eens wat er al is. */
+  function dieperVraag(auto, bewezen) {
+    const lijst = bewezen.slice(0, 30).map(b => b.code + (b.ecu ? '@' + b.ecu : '') + ' (' + String(b.naam || '').slice(0, 40) + ')').join(', ');
+    const ecus = Array.from(new Set(bewezen.map(b => b.ecu).filter(Boolean)));
+    return 'Auto: ' + auto + '. Deze leescodes werken op deze auto al: ' + lijst + '. ' +
+      'Zoek VERDER: andere codes op dezelfde regeleenheden' + (ecus.length ? ' (' + ecus.join(', ') + ')' : '') +
+      ', codes uit dezelfde reeks (buren van de werkende codes), en codes die bij andere modellen van hetzelfde merk en platform gedocumenteerd zijn. ' +
+      'Noem geen codes die hierboven al staan.';
+  }
+  async function zoekOnline(v, bewezen) {
     v = v || {};
     if (!v.merk || !v.model) return { ok: false, fout: 'Vul eerst merk en model in bij het profiel' };
     if (typeof apiFetch !== 'function') return { ok: false, fout: 'De AI-route ontbreekt' };
     const auto = [v.merk, v.model, v.bouwjaar, v.motor, v.brandstof].filter(Boolean).join(' ');
-    const vraag = 'Auto: ' + auto + '. Zoek leescodes (mode 21/22) voor sensoren die voor een eigenaar nuttig zijn: temperatuur van de automaat, ' +
+    const dieper = Array.isArray(bewezen) && bewezen.length > 0;
+    const vraag = dieper ? dieperVraag(auto, bewezen) : 'Auto: ' + auto + '. Zoek leescodes (mode 21/22) voor sensoren die voor een eigenaar nuttig zijn: temperatuur van de automaat, ' +
       'olietemperatuur en -druk, roetfilter (beladen, regeneratie), AdBlue, accu-toestand, bandenspanning, laaddruk, kilometerstand van het instrumentenpaneel.';
     let tekst;
     try {
@@ -526,8 +539,90 @@
       if (/web_search|tool/i.test(String(x && x.message || x))) return { ok: false, fout: 'Online zoeken is op dit account niet beschikbaar (de zoektool van de AI staat uit)' };
       return { ok: false, fout: String(x && x.message || x) };
     }
-    return { ok: true, kandidaten: kandidatenUitTekst(tekst) };
+    const al = new Set((bewezen || []).map(b => String(b.code).toUpperCase() + '@' + String(b.ecu || '').toUpperCase()));
+    return { ok: true, dieper, kandidaten: kandidatenUitTekst(tekst).filter(k => !al.has(k.code + '@' + (k.ecu || ''))) };
   }
+
+  /* ── BUURSCAN (28-09-2026) ───────────────────────────────────────
+     Rond een code die werkt, liggen vaak meer: 222A05 is bandenspanning
+     voor-links, 222A06…08 de andere drie. De buurscan vraagt elke code in
+     hetzelfde blok (222A00…222AFF) één keer op, bij hetzelfde ECU-adres, en
+     houdt bij welke antwoorden. Alleen LEESdiensten (22xxxx of 21xx):
+     dezelfde regel als elke eigen PID.
+
+     De bus: per zestien codes één keer het busslot, zodat de gewone meting
+     ertussendoor blijft lopen, en per zestien één ATSH heen en terug. Een
+     code zonder antwoord kost de wachttijd (SCAN_MS); een heel blok duurt
+     zo een halve minuut. Stoppen kan tussen elke twee codes. */
+  const SCAN_MS = 600, SCAN_PORTIE = 16;
+  // De blokken om te scannen: per ECU-adres en codevoorvoegsel één, uit
+  // codes die bewezen werken. Puur.
+  function scanBlokken(lijst) {
+    const uit = [], gezien = {};
+    (lijst || []).forEach(b => {
+      const code = String(b && b.code || '').toUpperCase();
+      if (!EIGEN_CODE.test(code)) return;
+      const prefix = code.slice(0, code.length - 2);
+      let ecu = String(b.ecu || '').toUpperCase();
+      if (ecu === '7DF') ecu = '';                  // het functionele adres: hetzelfde als geen adres
+      if (ecu && !EIGEN_ECU.test(ecu)) return;
+      const k = prefix + '@' + ecu;
+      if (gezien[k]) { gezien[k].bekend.push(code); return; }
+      gezien[k] = { prefix, ecu, bekend: [code] };
+      uit.push(gezien[k]);
+    });
+    return uit;
+  }
+  function scanCodes(prefix) {
+    const uit = [];
+    for (let i = 0; i < 256; i++) uit.push(prefix + (i < 16 ? '0' : '') + i.toString(16).toUpperCase());
+    return uit;
+  }
+  // Positief antwoord op `code` in de ruwe tekst → de bytes, anders null.
+  function antwoordBytes(code, raw) {
+    const schoon = String(raw || '').replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+    const echo = ((parseInt(code.slice(0, 2), 16) + 0x40).toString(16).toUpperCase()) + code.slice(2);
+    const at = schoon.indexOf(echo);
+    if (at < 0) return null;
+    const bytes = [];
+    for (let k = at + echo.length; k + 1 < schoon.length; k += 2) bytes.push(parseInt(schoon.slice(k, k + 2), 16));
+    return bytes;
+  }
+  let _scan = null;
+  async function buurScan(blok, opties) {
+    opties = opties || {};
+    const prefix = String(blok && blok.prefix || '').toUpperCase(), ecu = String(blok && blok.ecu || '').toUpperCase();
+    if (!/^(21|22[0-9A-F]{2})$/.test(prefix)) return { ok: false, fout: 'Alleen leesblokken: 21 of 22xx' };
+    if (ecu && !EIGEN_ECU.test(ecu)) return { ok: false, fout: 'Ongeldig ECU-adres' };
+    if (typeof connected === 'undefined' || !connected || (typeof demoMode !== 'undefined' && demoMode)) return { ok: false, fout: 'Niet verbonden met een auto' };
+    if (typeof sendCmd !== 'function' || typeof withBus !== 'function') return { ok: false, fout: 'Busfuncties ontbreken' };
+    if (_scan && _scan.bezig) return { ok: false, fout: 'Er loopt al een scan' };
+    const st = _scan = { bezig: true, stop: false, gedaan: 0, totaal: 256, gevonden: [] };
+    const codes = scanCodes(prefix), functioneel = 'ATSH' + (ecu.length === 8 ? '18DB33F1' : '7DF');
+    try {
+      for (let i = 0; i < codes.length && !st.stop; i += SCAN_PORTIE) {
+        await withBus('buurscan ' + prefix + (ecu ? '@' + ecu : ''), async () => {
+          if (ecu) await sendCmd('ATSH' + ecu, 1500);
+          try {
+            for (let j = i; j < Math.min(i + SCAN_PORTIE, codes.length) && !st.stop; j++) {
+              if (!connected) { st.stop = true; break; }
+              const raw = await sendCmd(codes[j] + '1', SCAN_MS);
+              const b = antwoordBytes(codes[j], raw);
+              if (b && b.length) st.gevonden.push({ code: codes[j], ecu, bytes: b, raw: String(raw || '').trim().slice(0, 60) });
+              st.gedaan = j + 1;
+              if (typeof opties.voortgang === 'function') { try { opties.voortgang(st); } catch (x) { console.warn('PLEigen: voortgang', x); } }
+            }
+          } finally {
+            if (ecu) { try { await sendCmd(functioneel, 1500); } catch (x) { _terug = functioneel; btDiagSafe('Buurscan: header terugzetten mislukt — volgende vraag probeert het opnieuw'); } }
+          }
+        }, 8000);
+      }
+    } finally { st.bezig = false; }
+    btDiagSafe('Buurscan ' + prefix + 'xx' + (ecu ? ' @ ' + ecu : '') + ': ' + st.gedaan + ' codes gevraagd, ' + st.gevonden.length + ' antwoorden' + (st.stop ? ' (gestopt)' : ''));
+    return { ok: true, gedaan: st.gedaan, gestopt: st.stop, gevonden: st.gevonden };
+  }
+  function buurScanStop() { if (_scan) _scan.stop = true; }
+  function buurScanStaat() { return _scan ? { bezig: _scan.bezig, gedaan: _scan.gedaan, totaal: _scan.totaal, gevonden: _scan.gevonden.length } : null; }
 
   /* Blok 5: geven de eigen PIDs van dit voertuig antwoord tijdens de rit?
      Puur, zodat test-mode21.js hem los toetst. `m` = { echt, defs:[{pid,name}],
@@ -554,7 +649,8 @@
   }
 
   window.PLEigen = { CODE: EIGEN_CODE, MAX: EIGEN_MAX, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
-    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, herzet: eigenHerzet, bandRol, drukOmrekening, vraag: eigenVraag, kandidatenUitTekst, zoekOnline };
+    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, herzet: eigenHerzet, bandRol, drukOmrekening,
+    scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, dieperVraag, vraag: eigenVraag, kandidatenUitTekst, zoekOnline };
   window.plEigenDefs = eigenDefs;
 
   btDiagSafe('pidlane-uitgebreid.js geladen — mode 21/22 pad actief');

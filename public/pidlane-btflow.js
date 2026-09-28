@@ -359,7 +359,7 @@ function fallbackCopyBtLog(txt){
 // Alles wat hier gezet wordt, telt als MANUEEL en wordt zo gelabeld.
 // ══════════════════════════════════════════════════════
 function openScenarioModal(){
-  if(!isAdmin()){ showToast?.('Alleen voor admin'); return; }
+  if(!(typeof magOntwikkelen === 'function' ? magOntwikkelen() : isAdmin())){ showToast?.('Alleen voor ontwikkelaars'); return; }
   if(!demoMode){ showToast?.('Start eerst de demo-modus om een scenario te testen'); return; }
   let ov=document.getElementById('scenarioModal');
   if(!ov){

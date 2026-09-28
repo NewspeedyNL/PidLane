@@ -2704,7 +2704,11 @@ function klantPubliek(rec) {
     // eerder akkoord, óf een akkoord op de inmiddels achterhaalde tekst.
     startTegoed: f.StartTegoedGegeven === true,
     akkoordActueel,
-    akkoorden: Array.isArray(f.Akkoorden) ? f.Akkoorden.slice() : []
+    akkoorden: Array.isArray(f.Akkoorden) ? f.Akkoorden.slice() : [],
+    // Ontwikkelaar (28-09-2026): een klant die van de beheerder de
+    // ontwikkeltools krijgt (testrun, bulk-recorder, survey). Blijft klant:
+    // eigen voertuigen, eigen tegoed, geen beheer en geen andere klanten.
+    ontwikkelaar: f.Ontwikkelaar === true
   };
 }
 __name(klantPubliek, "klantPubliek");
@@ -3166,6 +3170,7 @@ async function handleAdminKlantenGet(request, env) {
         aangemaakt: f.Aangemaakt || "",
         laatsteLogin: f.LaatsteLogin || "",
         heeftReset: !!f.ResetToken,
+        ontwikkelaar: f.Ontwikkelaar === true,
         // De verwijderwachtrij. definitiefOp is afgeleid en niet opgeslagen:
         // één bron (VerwijderdOp) plus één termijn (KLANT_BEWAARDAGEN), zodat
         // de pagina niet zelf kan gaan rekenen en er twee antwoorden ontstaan.
@@ -3412,6 +3417,12 @@ async function handleAdminKlantenPost(request, env, ctx) {
         f.VerwijderdOp = null;
       }
       if (b.naam !== undefined) f.Naam = String(b.naam).slice(0, 80);
+      // Alleen echt true of false: een "ja" of 1 uit een kapotte pagina zet
+      // niemand stil ontwikkelaar. Komt in de auditregel zoals elke wijziging.
+      if (b.ontwikkelaar !== undefined) {
+        if (b.ontwikkelaar !== true && b.ontwikkelaar !== false) return json({ ok: false, error: "ontwikkelaar is true of false." }, 400);
+        f.Ontwikkelaar = b.ontwikkelaar;
+      }
       if (b.opmerking !== undefined) f.Opmerking = String(b.opmerking).slice(0, 2000);
       if (saldoNieuw === null && !Object.keys(f).length)
         return json({ ok: false, error: "Niets om te wijzigen." }, 400);
@@ -4812,7 +4823,7 @@ var KP_MAX_RITTEN = 5000;        // per voertuig
 var KP_MAX_TEKST = 120000;       // tekens per rapport
 // 2026-09-27b: ritlabels en het geleerde versnellingsmodel kwamen erbij. Een
 // nieuwe verwerking = een nieuwe tekst = opnieuw akkoord (CLAUDE.md, Privacy).
-var KP_AKKOORD_VERSIE = "2026-09-27b";
+var KP_AKKOORD_VERSIE = "2026-09-28";
 
 var KP_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS kp_akkoord (klant_id TEXT PRIMARY KEY, versie TEXT NOT NULL, op TEXT NOT NULL)",
@@ -5079,6 +5090,38 @@ async function kpVoertuigPubliek(v, sleutel, klantId) {
 }
 __name(kpVoertuigPubliek, "kpVoertuigPubliek");
 
+// ── De VIN is de master voor de techniek (28-09-2026) ─────────────
+// Twee accounts met dezelfde auto (hetzelfde VIN-pseudoniem) delen de
+// technische gegevens: wat de een zet, staat ook bij de ander, en wie de auto
+// later koppelt krijgt wat er al bekend is. Ritten, rapporten, km-stand,
+// onderhoud, notities, kenteken en APK blijven per account — die staan hier
+// dus niet in. Alleen accounts met het akkoord van deze versie doen mee, in
+// beide richtingen: die tekst noemt het delen.
+var KP_VIN_TECHNIEK = ["merk", "model", "bouwjaar", "brandstof", "motor", "cilinderinhoud", "vermogen_kw", "turbo",
+  "transmissie", "versnellingen", "tankinhoud", "eigen_pids", "gear_model"];
+async function kpVinDelen(c, v, zet, nieuwKoppel) {
+  if (!v || !v.vin_pseudo) return 0;
+  const mee = "klant_id IN (SELECT klant_id FROM kp_akkoord WHERE versie = ?)";
+  // 1 — pas gekoppeld: wat hier nog leeg is, uit de laatst bijgewerkte
+  // zusterauto. Wat de klant in dezelfde opslag zelf invulde, wint.
+  if (nieuwKoppel) {
+    const bron = await c.db.prepare("SELECT * FROM kp_voertuig WHERE vin_pseudo = ? AND id != ? AND " + mee + " ORDER BY bijgewerkt DESC LIMIT 1")
+      .bind(v.vin_pseudo, v.id, KP_AKKOORD_VERSIE).first();
+    if (bron) {
+      const vul = KP_VIN_TECHNIEK.filter((k) => !(k in zet) && (v[k] === null || v[k] === undefined || v[k] === "") && bron[k] !== null && bron[k] !== undefined && bron[k] !== "");
+      if (vul.length) await c.db.prepare("UPDATE kp_voertuig SET " + vul.map((k) => k + " = ?").join(", ") + " WHERE id = ?")
+        .bind(...vul.map((k) => bron[k]), v.id).run();
+    }
+  }
+  // 2 — wat deze opslag aan techniek zette, naar de andere auto's met dit VIN.
+  const kol = KP_VIN_TECHNIEK.filter((k) => k in zet);
+  if (!kol.length) return 0;
+  const r = await c.db.prepare("UPDATE kp_voertuig SET " + kol.map((k) => k + " = ?").join(", ") + ", bijgewerkt = ? WHERE vin_pseudo = ? AND id != ? AND " + mee)
+    .bind(...kol.map((k) => zet[k]), kpNu(), v.vin_pseudo, v.id, KP_AKKOORD_VERSIE).run();
+  return (r && r.meta && r.meta.changes) || 0;
+}
+__name(kpVinDelen, "kpVinDelen");
+
 async function kpBibErbij(db, merk, model, e, bron, url) {
   const al = await db.prepare("SELECT id FROM kp_pid_bib WHERE merk = ? AND model = ? AND code = ? AND ecu = ?").bind(merk, model, e.code, e.ecu || "").first();
   if (al) {
@@ -5238,7 +5281,9 @@ var KP_ACTIES = {
         await c.db.prepare("UPDATE kp_voertuig SET " + kol.map((k) => k + " = ?").join(", ") + ", bijgewerkt = ? WHERE id = ? AND klant_id = ?")
           .bind(...kol.map((k) => zet[k]), nu, v.id, c.klantId).run();
       }
-      const na = await kpVoertuigVan(c.db, c.klantId, v.id);
+      let na = await kpVoertuigVan(c.db, c.klantId, v.id);
+      await kpVinDelen(c, na, zet, !!zet.vin_pseudo && zet.vin_pseudo !== v.vin_pseudo);
+      na = await kpVoertuigVan(c.db, c.klantId, v.id);
       return { ok: true, voertuig: await kpVoertuigPubliek(na, c.sleutel, c.klantId), kentekenOpgeslagen };
     }
 
@@ -5252,6 +5297,7 @@ var KP_ACTIES = {
     await c.db.prepare("INSERT INTO kp_voertuig (id, klant_id, status, aangemaakt, bijgewerkt" + kol.map((k) => ", " + k).join("") +
       ") VALUES (?, ?, 'actief', ?, ?" + kol.map(() => ", ?").join("") + ")")
       .bind(id, c.klantId, nu, nu, ...kol.map((k) => zet[k])).run();
+    await kpVinDelen(c, await kpVoertuigVan(c.db, c.klantId, id), zet, !!zet.vin_pseudo);
     const na = await kpVoertuigVan(c.db, c.klantId, id);
     return { ok: true, voertuig: await kpVoertuigPubliek(na, c.sleutel, c.klantId), kentekenOpgeslagen };
   },
@@ -5463,6 +5509,7 @@ var KP_ACTIES = {
     const s = m === null ? null : kpJson(m, 16000);
     if (m !== null && !s) return { ok: false, error: "Versnellingsmodel te groot.", code: 413 };
     await c.db.prepare("UPDATE kp_voertuig SET gear_model = ? WHERE id = ? AND klant_id = ?").bind(s, v.id, c.klantId).run();
+    await kpVinDelen(c, v, { gear_model: s }, false);
     return { ok: true };
   },
 

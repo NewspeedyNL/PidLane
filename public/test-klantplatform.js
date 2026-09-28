@@ -297,6 +297,29 @@ async function laadWorker() {
     lijst: Array.from({ length: 21 }, () => ({ code: '220505', naam: 'x', url: 'https://x.nl' })) }))._status === 400);
   const vKia = await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { naam: 'Kia', merk: 'Kia', model: 'Ceed' } });
   toets('een ander merk ziet de Mazda-codes niet', vKia.ok && (await roep(tokB, { actie: 'pidbib_lijst', voertuig_id: vKia.voertuig.id })).lijst.length === 0);
+  // De VIN als master voor de techniek (28-09-2026).
+  const VINP = 'aaaabbbbccccdddd';
+  await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, vin_pseudo: VINP, transmissie: 'automaat', versnellingen: 6, kmstand: 84000, notities: 'van Anna' } });
+  // Een derde account met dezelfde auto maar een akkoord van een oudere versie: doet niet mee.
+  db.prepare("INSERT INTO kp_voertuig (id, klant_id, status, vin_pseudo, merk, aangemaakt, bijgewerkt) VALUES ('oud1', 'klant-oud', 'actief', ?, 'Oud', '2026-01-01', '2026-01-01')").run(VINP);
+  db.prepare("INSERT INTO kp_akkoord (klant_id, versie, op) VALUES ('klant-oud', '2026-09-01', '2026-09-01')").run();
+  await roep(tokB, { actie: 'voertuig_archiveer', id: vKia.voertuig.id });   // Bert zit anders op zijn drie actieve voertuigen
+  const vinB = await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { naam: 'Bert CX', vin_pseudo: VINP } });
+  toets('VIN: een tweede account dat dezelfde auto koppelt, krijgt de techniek (automaat, 6, eigen PIDs)', vinB.ok &&
+    vinB.voertuig.transmissie === 'automaat' && vinB.voertuig.versnellingen === 6 && Array.isArray(vinB.voertuig.eigen_pids) && vinB.voertuig.eigen_pids.length === 1,
+    JSON.stringify(vinB.voertuig));
+  toets('VIN: maar niet de km-stand, de notities of het kenteken van de ander', vinB.voertuig.kmstand == null && !vinB.voertuig.notities && !vinB.voertuig.kenteken, JSON.stringify(vinB.voertuig));
+  await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { id: vinB.voertuig.id, motor: '2.0 Skyactiv-G', kmstand: 5000 } });
+  const annaNa = (await roep(tokA, { actie: 'stand' })).voertuigen.find((v) => v.id === v1.voertuig.id);
+  toets('VIN: wat Bert aan techniek zet, staat ook bij Anna — zijn km-stand niet', annaNa.motor === '2.0 Skyactiv-G' && annaNa.kmstand === 84000, JSON.stringify({ m: annaNa.motor, km: annaNa.kmstand }));
+  await roep(tokA, { actie: 'versnelling_opslaan', voertuig_id: v1.voertuig.id, model: { hist: { '171': 40 }, ankers: [] } });
+  const bertGear = (await roep(tokB, { actie: 'stand' })).voertuigen.find((v) => v.id === vinB.voertuig.id).gear_model;
+  toets('VIN: het geleerde versnellingsmodel volgt de auto', bertGear && bertGear.hist && bertGear.hist['171'] === 40, JSON.stringify(bertGear));
+  const oud = db.prepare("SELECT motor, transmissie, gear_model FROM kp_voertuig WHERE id = 'oud1'").get();
+  toets('VIN: een account met een ouder akkoord krijgt niets (het delen staat pas in de nieuwe tekst)', !oud.motor && !oud.transmissie && !oud.gear_model, JSON.stringify(oud));
+  await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { id: vinB.voertuig.id, merk: 'Mazda' } });
+  toets('VIN: en geeft ook niets door (het oude account staat niet bij de bron)', db.prepare("SELECT merk FROM kp_voertuig WHERE id = 'oud1'").get().merk === 'Oud');
+  db.prepare("DELETE FROM kp_voertuig WHERE id = 'oud1'").run(); db.prepare("DELETE FROM kp_akkoord WHERE klant_id = 'klant-oud'").run();
 
   await roep(tokV, { actie: 'alles_wissen' });
   toets('alles wissen neemt de voorkeuren mee', Object.keys((await roep(tokV, { actie: 'voorkeuren' })).voorkeur).length === 0);

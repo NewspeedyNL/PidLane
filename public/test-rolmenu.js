@@ -44,7 +44,7 @@ function pak(van, tot) {
 }
 const PASMENU = pak('function pasMenuAan() {', '\n  }');
 
-function maakMenu(rol) {
+function maakMenu(rol, mag) {
   const el = {};
   ['admGroupBtn', 'admGroup', 'kbAccount'].forEach(function (id) {
     el[id] = { style: { display: '' }, classList: { remove: function () {} } };
@@ -52,9 +52,9 @@ function maakMenu(rol) {
   const document_ = { getElementById: function (id) { return el[id] || null; } };
   const isAdmin = function () { return rol === 'admin'; };
   const isKlant = function () { return rol === 'klant'; };
-  const fn = new Function('document', 'isAdmin', 'isKlant', 'console',
+  const fn = new Function('document', 'isAdmin', 'isKlant', 'console', 'magOntwikkelen',
     PASMENU + '\nreturn pasMenuAan;');
-  fn(document_, isAdmin, isKlant, { warn: function () {} })();
+  fn(document_, isAdmin, isKlant, { warn: function () {} }, mag)();
   return el;
 }
 function zichtbaar(el, id) { return el[id].style.display !== 'none'; }
@@ -73,6 +73,26 @@ console.log('\n2. Een beheerder ziet beheer, maar geen tegoedscherm');
   eis('het adminblok staat er', zichtbaar(m, 'admGroup') && zichtbaar(m, 'admGroupBtn'));
   eis('"Mijn account" is weg  <- dit was de waarneming in #49',
       !zichtbaar(m, 'kbAccount'));
+}
+
+console.log('\n2b. Een klant met de ontwikkelaarsvlag (28-09-2026): account én het ontwikkelmenu');
+{
+  // De echte isOntwikkelaar()/magOntwikkelen() uit pidlane-auth.js.
+  const auth = fs.readFileSync(__dirname + '/pidlane-auth.js', 'utf8');
+  const i = auth.indexOf('function isOntwikkelaar(){'), j = auth.indexOf('window.isOntwikkelaar = isOntwikkelaar;');
+  if (i < 0 || j < 0) throw new Error('isOntwikkelaar niet gevonden in pidlane-auth.js');
+  const maakMag = (gebruiker) => new Function('window', 'currentUser', 'isAdmin', 'console',
+    auth.slice(i, j) + '\nreturn { isOntwikkelaar, magOntwikkelen };')({ currentUser: gebruiker }, gebruiker,
+      function () { return !!gebruiker && gebruiker.role === 'admin'; }, { warn: function () {} });
+  const ontw = maakMag({ role: 'klant', ontwikkelaar: true });
+  const m = maakMenu('klant', ontw.magOntwikkelen);
+  eis('het ontwikkelmenu staat er', zichtbaar(m, 'admGroup') && zichtbaar(m, 'admGroupBtn'));
+  eis('en "Mijn account" blijft: hij is nog steeds klant', zichtbaar(m, 'kbAccount'));
+  eis('isOntwikkelaar: klant met vlag ja, klant zonder vlag nee, admin nee (die is admin)',
+    ontw.isOntwikkelaar() && !maakMag({ role: 'klant' }).isOntwikkelaar() && !maakMag({ role: 'admin', ontwikkelaar: true }).isOntwikkelaar());
+  eis('een vlag "ja" in plaats van true telt niet', !maakMag({ role: 'klant', ontwikkelaar: 'ja' }).magOntwikkelen());
+  const gewoon = maakMenu('klant', maakMag({ role: 'klant' }).magOntwikkelen);
+  eis('TEGENPROEF: een klant zonder vlag ziet het ontwikkelmenu niet', !zichtbaar(gewoon, 'admGroup'));
 }
 
 console.log('\n3. Een demo-account ziet geen van beide');

@@ -10,6 +10,34 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-09-2026 — Sensoren blijven na een herstart, dieper zoeken, ontwikkelaar, VIN als master
+ ═══════════════════════════════════════════════════════════
+
+ - Je eigen sensoren (banden, olie) en de berekende staan na een herstart
+   van de app weer aan, bovenop de standaardset. Ze werden te vroeg
+   toegepast en daarna nooit opnieuw geprobeerd.
+ - Sensoren → Codes voor dit model: "Dieper zoeken" geeft de AI de codes
+   mee die bij jou werken en zoekt verwante codes; de "Buurscan" vraagt op
+   de auto elke code rond een werkende code één keer op (alleen lezen,
+   met een stopknop) en toont wat antwoordt.
+ - Beheer → Klanten → "Ontwikkelaar aan": een klant krijgt de
+   ontwikkeltools (testrun, bulk-recorder, survey, test-scenario) en blijft
+   klant. Beheer en andere klanten blijven dicht.
+ - Twee accounts met dezelfde auto delen de techniek (merk, model, motor,
+   versnellingen, eigen sensoren, het geleerde versnellingsmodel); ritten,
+   km-stand, notities en kenteken blijven van jezelf. Het akkoord van Mijn
+   voertuigen noemt dat; iedereen bevestigt één keer opnieuw.
+ - Versnellingsindicator: het venster springt niet meer naar boven;
+   "In welke versnelling zit je nu?" staat altijd in beeld en elke tik
+   telt mee; alle tikken samen bepalen de nummering. In Slim visueel staat
+   de versnelling niet meer ook in de topbalk.
+ - Slim visueel: de staafjes staan aan de binnenkant van koelwater en
+   brandstof; de meter knippert niet meer bij een korte hapering, en de
+   banden worden niet meer allemaal tegelijk gevraagd.
+ - Opslaan (#326): elk bestand krijgt datum en tijd in de naam; lukt het
+   schrijven in Documenten niet, dan zegt de app eerst waarom.
+
+ ═══════════════════════════════════════════════════════════
  28-09-2026 — Banden: venster, bar of psi, elke minuut
  ═══════════════════════════════════════════════════════════
 

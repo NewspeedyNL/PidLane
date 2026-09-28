@@ -1937,6 +1937,9 @@ async function startDiscovery(){
   // Gebaseerd op PiOBDII aanpak: per lijn strippen, chained discovery
   supportedPIDs=new Set();
   discoveredPIDDefs=[];
+  // Het verbinden loopt: wat erna de selectie zet (PLGarage → de vaste
+  // selectie van het voertuig) wacht tot "Verbinding compleet" hieronder.
+  window._plVerbindingKlaar=0;
 
   // ── IDEE 1: bekend voertuig? Laad PID-profiel en sla discovery over ──
   const knownVin = vinInfo?.vin && /^[A-HJ-NPR-Z0-9]{17}$/.test(vinInfo.vin);
@@ -2111,6 +2114,10 @@ async function startDiscovery(){
   } else {
     wizShow();
   }
+  // Vanaf hier staan de PID-lijst en de standaardset (of de hervatte
+  // selectie). Mijn voertuigen zet de vaste selectie van de auto pas nu:
+  // eerder paste er niets en werd het nooit opnieuw geprobeerd (28-09-2026).
+  window._plVerbindingKlaar=Date.now();
   log(`Verbinding compleet — ${discoveredPIDDefs.length} PIDs beschikbaar`,'ok');
   showWelcome(vehicleInfo&&vehicleInfo.merk?vehicleInfo:null);  // land op de hub, niet op live view
   // Fabrikant-PIDs (mode 21) staan niet in de mode-01 bitmap en kunnen dus

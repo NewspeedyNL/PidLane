@@ -356,6 +356,22 @@ const ID = 'rec0123456789abcd';   // rec + precies 14 tekens, zoals de handler e
   // om de hele update leggen "omdat het veiliger klinkt". Dan kun je een klant
   // niet meer deblokkeren terwijl hij een analyse draait, en een klant zónder
   // e-mailadres krijgt nooit meer een nieuwe naam.
+  console.log('\n13b. Ontwikkelaar aan en uit (28-09-2026)');
+  {
+    const { staat, roep } = bouw(180);
+    const r = await roep({ actie: 'update', id: ID, ontwikkelaar: true, door: 'nico' });
+    toets('ontwikkelaar aan: ok, geschreven als echt true, buiten het saldoslot', r.body.ok === true &&
+      staat.geschreven.length === 1 && staat.geschreven[0].Ontwikkelaar === true && staat.slotOp === null && staat.geschreven[0].Saldo === undefined,
+      JSON.stringify(staat.geschreven));
+    toets('en het komt in de auditregel, met wie het deed', staat.audits.length === 1 && /Ontwikkelaar=true/.test(staat.audits[0].tekst) && staat.audits[0].door === 'nico',
+      JSON.stringify(staat.audits));
+  }
+  {
+    const { staat, roep } = bouw(180);
+    const r = await roep({ actie: 'update', id: ID, ontwikkelaar: 'ja' });
+    toets('ontwikkelaar "ja" (geen echte true/false): 400, en er wordt niets geschreven', r.status === 400 && staat.geschreven.length === 0, JSON.stringify(r));
+  }
+
   console.log('\n14. Naam en status gaan buiten het slot om');
   {
     const { staat, roep } = bouw(180);

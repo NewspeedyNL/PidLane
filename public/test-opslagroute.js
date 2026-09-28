@@ -118,8 +118,10 @@ console.log('\n— mislukt het rechtstreeks schrijven, dan gaat het bestand niet
   const { ctx, gedaan } = maak({ connected: true, native: true, directFaalt: true });
   await ctx.download('rit.txt', 'inhoud');
   toets('terugval naar de deelkaart', gedaan.gedeeld, 'rit.txt');
-  toets('en de reden staat in het logboek',
-        gedaan.log.some(l => /Rechtstreeks opslaan mislukt/.test(l)), true);
+  toets('en de reden staat in het logboek, met de bestandsnaam (#326)',
+        gedaan.log.some(l => /Rechtstreeks opslaan van rit\.txt .*mislukt \(geen toestemming\)/.test(l)), true);
+  toets('en de klant hoort waarom, vóór het deelvenster opengaat (#326)',
+        gedaan.toast.some(t => /Opslaan in Documenten lukte niet \(geen toestemming\)/.test(t)), true);
 }
 
 console.log('\n— in de browser (geen Capacitor) blijft het een gewone download —');
@@ -140,6 +142,21 @@ console.log('\n— een PDF-export slaat ook rechtstreeks op, zonder keuzevenster
   toets('en meldt dat het gelukt is', ok, true);
   const leeg = maak({ connected: false, native: true });
   toets('zonder PDF gebeurt er niets', await leeg.ctx.pdfBewaar(), false);
+}
+
+console.log('\n— blok 5: kwam alles in Documenten? (#326) —');
+{
+  const { ctx } = maak({ connected: false, native: true });
+  const O = ctx.plOpslagOordeel;
+  toets('niets opgeslagen: LET OP', O({ gelukt: 0, mislukt: [] }).staat, 'LET OP');
+  toets('twee keer gelukt: ok', O({ gelukt: 2, mislukt: [] }).staat, 'ok');
+  const f = O({ gelukt: 1, mislukt: [{ naam: 'x.txt', reden: 'EACCES' }] });
+  toets('een keer mislukt: FOUT met naam en reden', f.staat + ' ' + /x\.txt \(EACCES\)/.test(f.detail), 'FOUT true');
+  await ctx.plBewaarBestand(new ctx.Blob(['a']), 'a.txt');
+  toets('een geslaagde opslag telt mee', ctx._plOpslag.gelukt, 1);
+  const g = maak({ connected: false, native: true, directFaalt: true });
+  await g.ctx.plBewaarBestand(new g.ctx.Blob(['a']), 'b.txt');
+  toets('een mislukte ook, met de reden', JSON.stringify(g.ctx._plOpslag.mislukt), JSON.stringify([{ naam: 'b.txt', reden: 'geen toestemming' }]));
 }
 
 console.log('\n' + n + ' toetsen, ' + fout + ' fout');

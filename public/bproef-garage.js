@@ -296,6 +296,70 @@ const NEPSERVER = `(function(){
     toets('en zegt hoeveel er nieuw in de lijst kwamen', bib.zoekMelding, JSON.stringify(bib));
     await app.ev(`PLEigen.zet(null); PLGarage.sluit(); 'ok'`);
 
+    console.log('\n── 4i. dieper zoeken en de buurscan (28-09) ──');
+    const diep = await app.ev(`(async function(){
+      const S = window._nepPlatform, v = S.voertuigen[0];
+      S.bib = [{ id: 'b9', code: '222A05', ecu: '720', naam: 'Bandenspanning voor-links', formule: 'A', eenheid: 'psi', bron: 'online', url: 'https://x.nl', werkt: 1, werkt_niet: 0, mijn: 'werkt' }];
+      const wacht = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise(r => setTimeout(r, 50)); return f(); };
+      PLGarage.open(v.id); PLGarage._tab('sensoren');
+      const body = () => document.getElementById('plGarBody').textContent;
+      const uit = { knop: await wacht(() => body().indexOf('Dieper zoeken (1 werkende') >= 0), blok: /Scan 222Axx @ 720/.test(body()) };
+      const echtApi = window.apiFetch; let vraag = '';
+      window.apiFetch = async (q) => { vraag = q; return '{"kandidaten":[]}'; };
+      await PLGarage._bibZoek(true);
+      window.apiFetch = echtApi;
+      uit.vraag = /222A05@720/.test(vraag);
+      const echtScan = PLEigen.buurScan;
+      PLEigen.buurScan = async (b) => ({ ok: true, gedaan: 256, gestopt: false, gevonden: [
+        { code: '222A05', ecu: '720', bytes: [170] }, { code: '222A21', ecu: '720', bytes: [1, 2] }] });
+      await PLGarage._scan(0);
+      PLEigen.buurScan = echtScan;
+      uit.lijst = /2 codes antwoorden, 1 daarvan nieuw/.test(body()) && /222A21/.test(body()) && /01 02/.test(body());
+      PLGarage._scanErbij('222A21');
+      uit.form = document.getElementById('grsCode').value + '@' + document.getElementById('grsEcu').value;
+      PLGarage.sluit();
+      return uit;
+    })()`);
+    toets('met een werkende code: knoppen "Dieper zoeken" en "Scan 222Axx @ 720"', diep.knop && diep.blok, JSON.stringify(diep));
+    toets('dieper zoeken geeft de werkende code met ECU-adres aan de AI mee', diep.vraag, JSON.stringify(diep));
+    toets('buurscan: alleen de nieuwe code staat erbij, met zijn bytes', diep.lijst, JSON.stringify(diep));
+    toets('"In het formulier" zet code en ECU-adres klaar', diep.form === '222A21@720', JSON.stringify(diep));
+
+    console.log('\n── 4h. de vaste sensoren komen terug na een herstart (28-09) ──');
+    // Precies de volgorde van 28-09: de app start met de VIN van de vorige
+    // sessie (restoreAppState), verbindt, en herkent de auto al vóór de
+    // PID-lijst er is. Toen paste er niets en bleef het daarbij.
+    const herstart = await app.ev(`(async function(){
+      const S = window._nepPlatform, v = S.voertuigen[0], vin = 'JMZKFGWLA00123456';
+      const wacht = ms => new Promise(r => setTimeout(r, ms));
+      const ps = await _vlVinPseudoniem(vin);
+      const eigen = [{ code: '222A05', naam: 'Bandenspanning voor-links', formule: 'A', eenheid: 'psi', ecu: '720' },
+                     { code: '221310', naam: 'Motorolietemperatuur', formule: 'A-40', eenheid: '°C' }];
+      [v].concat((PLGarage.staat().stand || {}).voertuigen || []).forEach(x => { if (x.id === v.id) {
+        x.vin_pseudo = ps; x.eigen_pids = eigen; x.pid_selectie = ['222A05', '221310', 'CA01']; } });
+      PLGarage.zetActief && PLGarage.zetActief(v.id);
+      // De herstart: VIN van de vorige keer staat er al, de PID-lijst niet.
+      vehicleInfo.vin = vin; supportedPIDs = new Set(); discoveredPIDDefs = []; activePIDs.clear();
+      window._plVerbindingKlaar = 0;
+      connected = true; demoMode = false;
+      await wacht(4500);                                   // twee tikken van de garagelus
+      const vroeg = [...activePIDs];
+      // Nu het verbinden: PID-lijst, standaardset, en "Verbinding compleet".
+      supportedPIDs = new Set(['010C','010D','0105','0104','010B','0111','012F','0142','015E','0110']);
+      buildDiscoveredPIDList();
+      selectStandardSet();
+      const standaard = [...activePIDs];
+      window._plVerbindingKlaar = Date.now();
+      await wacht(4500);
+      const na = [...activePIDs];
+      connected = false; await wacht(2500);
+      return { vroeg, standaard, na, eigenDef: !!getPidDef('222A05') };
+    })()`);
+    toets('vóór "Verbinding compleet" zet Mijn voertuigen nog niets (de PID-lijst is er niet)', herstart.vroeg.length === 0, JSON.stringify(herstart.vroeg));
+    toets('daarna: de standaardset blijft staan, met de eigen en berekende sensoren erbij',
+      herstart.standaard.length > 3 && herstart.standaard.every(p => herstart.na.indexOf(p) >= 0) &&
+      ['222A05', '221310', 'CA01'].every(p => herstart.na.indexOf(p) >= 0), JSON.stringify(herstart));
+
     console.log('\n── 4e. leren uit opnames (27-09) ──');
     const opn = await app.ev(`(async function(){
       const R = [7.4, 13.1, 19.6, 25.8, 31.9, 38.2], regels = [];
@@ -317,6 +381,24 @@ const NEPSERVER = `(function(){
     toets('leren uit opnames: de opname staat erin als "deze auto"', opn.deze, JSON.stringify(opn));
     toets('en levert zonder rijden de versnellingen op', opn.voor === 0 && opn.na === 6 && opn.geleerd, JSON.stringify(opn));
     toets('een tweede keer telt niet', opn.dubbel, JSON.stringify(opn));
+
+    console.log('\n── 4j. het versnellingsvenster blijft staan waar je scrollt (28-09) ──');
+    await app.venster(412, 360);                               // klein genoeg om te moeten scrollen
+    const scroll = await app.ev(`(async function(){
+      openGearInstellingen();
+      await new Promise(r => setTimeout(r, 300));              // na de focus op de schakelaar, zoals een mens
+      const vel = () => document.querySelector('#plGearOv .plg-vel');
+      const v = vel();
+      v.scrollTop = 120; const gezet = v.scrollTop;
+      await new Promise(r => setTimeout(r, 2300));             // twee verversrondes
+      const na = vel().scrollTop;
+      const knoppen = document.querySelectorAll('#plGearOv .plg-krij .plg-k').length;
+      sluitGearInstellingen();
+      return { gezet, na, knoppen };
+    })()`);
+    await app.venster(412, 915);
+    toets('na twee verversrondes staat het venster nog waar je het liet', scroll.gezet > 0 && Math.abs(scroll.na - scroll.gezet) <= 1, JSON.stringify(scroll));
+    toets('"In welke versnelling zit je nu?" staat er altijd, met cijfers en R', scroll.knoppen >= 7, JSON.stringify(scroll));
 
     console.log('\n── 5. de terugknop en het startscherm ──');
     await app.ev(`PLGarage.open(); 'ok'`);

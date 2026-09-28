@@ -150,6 +150,17 @@ function wereld(bewaard) {
   const W = wereld(null);
   toets('TEGENPROEF: niets bewaard geeft nul — dan moet de aanroeper iets anders kiezen', W.plSelectieHerstel() === 0);
 }
+{
+  // Eigen en berekende PIDs meldt de auto nooit; ze staan wel in de
+  // keuzelijst. Tot 28-09-2026 vielen ze bij elke hervatting weg.
+  const W = wereld({ pids: ['010C', '222A05', 'CA01', '229999'], t: NU - 60000 });
+  W.discoveredPIDDefs.push({ pid: '010C' }, { pid: '222A05' }, { pid: 'CA01' });
+  W.ALL_PID_DEFS['222A05'] = { name: 'Bandenspanning voor-links', cat: 'Eigen', eigen: true };
+  W.ALL_PID_DEFS.CA01 = { name: 'Vermogen (berekend)', cat: 'Berekend' };
+  const n = W.plSelectieHerstel();
+  toets('hervatten: een eigen en een berekende PID uit de keuzelijst komen terug, een onbekende code niet',
+    W.activePIDs.has('222A05') && W.activePIDs.has('CA01') && !W.activePIDs.has('229999') && n === 3, [...W.activePIDs].join() + ' n=' + n);
+}
 
 console.log('\n4. Het slot van een hervatting zet altijd sensoren aan');
 const SLOT = knip('pidlane-bt.js', '/* Het slot van een hervatting.', 'async function connectSerial(opt){');

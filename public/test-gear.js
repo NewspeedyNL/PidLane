@@ -257,6 +257,29 @@ console.log('\n— privacy: de ruwe VIN gaat nergens in (§7, #102) —');
     ok(rb.ok && b.G.toon === 3, `met een anker staat er meteen een 3 (${b.G.toon})`);
   }
 
+  console.log('\n— zelf aangeven: elke tik telt, alle ankers samen (28-09-2026) —');
+  {
+    const c = nieuweApp();
+    const in_ = (k, rpm) => () => ({ rpm: rpm + 5 * Math.sin(c.T / 50), kmh: Math.round(RATIO[k - 1] * rpm / 1000) });
+    c.rij(6000, in_(2, 2400)); c.G.corrigeer(2);
+    c.rij(6000, in_(4, 2200)); c.G.corrigeer(4);
+    c.rij(6000, in_(5, 2100)); c.G.corrigeer(5);
+    ok(c.G.model.totaal < 250 + 3 * 40 && c.G.model.gears.length >= 3,
+      `drie keer aangegeven, nog lang niet uitgeleerd: toch drie versnellingen (${c.G.model.gears.map(g => g.toFixed(1)).join(' · ')})`);
+    c.rij(4000, in_(2, 2400));
+    ok(c.G.toon === 2, `terug in de 2e: hij toont 2, ook al was het laatste anker de 5e (${c.G.toon})`);
+    c.rij(4000, in_(4, 2000));
+    ok(c.G.toon === 4, `en de 4e herkent hij ook zonder nieuwe tik (${c.G.toon})`);
+    ok(c.G.model.hist[Math.round(Math.log(RATIO[3] * 1) / 0.015)] >= 40 || Object.values(c.G.model.hist).some(n => n >= 40),
+      'een tik telt in het histogram als 40 metingen');
+    // De meerderheid wint: twee ankers zeggen offset 0, een verkeerde tik zegt +1.
+    const d = nieuweApp();
+    d.G.koppel({ id: 'v1', model: { v: 1, hist: {}, totaal: 0, gears: [7.4, 13.1, 19.6, 25.8], ankers: [
+      { k: 1, r: 7.4, t: 1 }, { k: 3, r: 19.6, t: 2 }, { k: 3, r: 13.1, t: 3 }] }, bewaar: () => Promise.resolve() });
+    d.G._pasAnkers();
+    ok(d.G.model.offset === 0, `twee ankers tegen één: de nummering van de meerderheid (offset ${d.G.model.offset})`);
+  }
+
   console.log('\n— gekoppeld aan het voertuig (Mijn voertuigen) —');
   {
     const a = nieuweApp();

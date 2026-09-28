@@ -159,8 +159,15 @@
     try {
       const r = await plFetch('/klant/mij');
       const d = await r.json();
-      return (r.ok && d && d.ok) ? d.klant : null;
-    } catch (e) { return null; }
+      const k = (r.ok && d && d.ok) ? d.klant : null;
+      // De ontwikkelaarsvlag (beheer → Klanten) op de ingelogde gebruiker, en
+      // het menu meteen bijwerken als hij veranderde.
+      try {
+        const u = window.currentUser;
+        if (k && u && isKlant() && u.ontwikkelaar !== (k.ontwikkelaar === true)) { u.ontwikkelaar = k.ontwikkelaar === true; pasMenuAan(); }
+      } catch (e) { console.warn('PLKlant: ontwikkelaarsvlag niet gezet', e); }
+      return k;
+    } catch (e) { console.warn('PLKlant: /klant/mij mislukt', e); return null; }
   }
 
   // ── Overlay-hulp — gebruikt de bestaande .ov/.modal-stijl ─────────────
@@ -791,7 +798,8 @@
   function pasMenuAan() {
     try {
       let admin = false;
-      try { admin = (typeof isAdmin === 'function') && isAdmin(); } catch(e){ console.warn('isAdmin mislukt:', e); }
+      // Het ontwikkelmenu: de beheerder, of een klant met de ontwikkelaarsvlag.
+      try { admin = (typeof magOntwikkelen === 'function') ? magOntwikkelen() : ((typeof isAdmin === 'function') && isAdmin()); } catch(e){ console.warn('magOntwikkelen mislukt:', e); }
       // De bulk-kaarten zijn beheergereedschap en stonden tot #286 in het
       // Admin-menu; in de deur "Live data" gelden dezelfde regels.
       ['admGroupBtn', 'admGroup', 'wc-bulkrec'].forEach(function (id) {

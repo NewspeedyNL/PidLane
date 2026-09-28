@@ -106,6 +106,7 @@ const CFG = {
   opslaanMs: 15000,
   serverMs: 120000,       // zo vaak hoogstens naar het voertuig op de server
   ankerVersMs: 5000,      // een stabiele verhouding van hoogstens zo oud mag een anker worden
+  ankerGewicht: 40,       // een aangegeven versnelling telt als zoveel stabiele metingen
   maxGear: 10
 };
 
@@ -415,20 +416,51 @@ const PLGear = {
     const gear=this.nummer(best);
     return gear>=1 ? {gear, idx:best, fout} : null;
   },
-  nummer(idx){ return idx+1+((this.model&&this.model.offset)||0); },
+  // Het nummer van plek `idx`. Met ankers: vanaf het dichtstbijzijnde
+  // aangegeven anker geteld (28-09-2026). Eén verschuiving voor de hele rij
+  // klopt niet zolang er een versnelling ontbreekt: 2e, 4e en 5e aangegeven
+  // en de 3e nog niet gezien, dan is plek 0 de 2e en plek 1 de 4e.
+  nummer(idx){
+    const m=this.model, a=(m && m._ankerPlek) || [];
+    if (!a.length) return idx+1+((m&&m.offset)||0);
+    let best=a[0];
+    a.forEach(x=>{ if (Math.abs(x.idx-idx)<Math.abs(best.idx-idx)) best=x; });
+    return best.k+(idx-best.idx);
+  },
   // De correcties (ankers) van de klant toepassen: het nieuwste anker bepaalt
   // de verschuiving. Staat zijn verhouding niet in de lijst, dan komt hij erin.
+  // Sinds 28-09-2026 tellen ALLE ankers, niet alleen het nieuwste:
+  //  • elke aangegeven verhouding is een versnelling — staat hij niet in de
+  //    lijst, dan komt hij erin (ook vóór er genoeg metingen zijn: wie drie
+  //    keer aangeeft waar hij zit, heeft meteen drie versnellingen);
+  //  • de nummering is die waar de meeste ankers het over eens zijn; bij
+  //    gelijke stand wint het nieuwste.
   _pasAnkers(){
     const m=this.model; if (!m) return;
-    if (!Array.isArray(m.ankers) || !m.ankers.length){ m.offset=0; return; }
-    const a=m.ankers[m.ankers.length-1];
-    let idx=-1, fout=Infinity;
-    m.gears.forEach((r,i)=>{ const f=Math.abs(a.r-r)/r; if (f<fout){ fout=f; idx=i; } });
-    if (idx<0 || fout>CFG.matchTol){
-      m.gears=m.gears.concat([a.r]).sort((x,y)=>x-y);
-      idx=m.gears.indexOf(a.r);
-    }
-    m.offset=a.k-(idx+1);
+    if (!Array.isArray(m.ankers) || !m.ankers.length){ m.offset=0; m._ankerPlek=[]; return; }
+    const plek=(r)=>{ let idx=-1, fout=Infinity; m.gears.forEach((g,i)=>{ const f=Math.abs(r-g)/g; if (f<fout){ fout=f; idx=i; } }); return fout<=CFG.matchTol ? idx : -1; };
+    m.ankers.forEach(a=>{ if (plek(a.r)<0) m.gears=m.gears.concat([a.r]).sort((x,y)=>x-y); });
+    // Per plek het nummer waar de meeste ankers het over eens zijn (gelijk:
+    // het nieuwste). Een verkeerde tik wordt zo door twee goede overstemd.
+    const perPlek={};
+    m.ankers.forEach((a,i)=>{ const p=plek(a.r); if (p<0) return; const s=perPlek[p]=perPlek[p]||{}; s[a.k]=s[a.k]||{ n:0, laatst:-1 }; s[a.k].n++; s[a.k].laatst=i; });
+    const lijst=[];
+    Object.keys(perPlek).forEach(p=>{
+      let best=null; Object.keys(perPlek[p]).forEach(k=>{ const x=perPlek[p][k]; if (!best || x.n>best.n || (x.n===best.n && x.laatst>best.laatst)) best={ k:Number(k), n:x.n, laatst:x.laatst }; });
+      lijst.push({ idx:Number(p), k:best.k, n:best.n, laatst:best.laatst });
+    });
+    // Twee plekken met ankers die elkaar tegenspreken (plek 1 = 3e, plek 2 =
+    // 3e): eerst de ankers die precies met andere kloppen (dezelfde
+    // verschuiving: 1e op plek 0 en 3e op plek 2), dan de sterkste, dan de
+    // nieuwste. Wat daarna nog tegenspreekt, valt weg.
+    lijst.forEach(x=>{ x.steun=lijst.filter(y=>y!==x && y.k-y.idx===x.k-x.idx).length; });
+    lijst.sort((a,b)=>(b.steun-a.steun)||(b.n-a.n)||(b.laatst-a.laatst));
+    const ok=[];
+    lijst.forEach(x=>{ if (ok.every(y=>(x.k-y.k)*(x.idx-y.idx)>0 && Math.abs(x.k-y.k)>=Math.abs(x.idx-y.idx))) ok.push(x); });
+    m._ankerPlek=ok.sort((a,b)=>a.idx-b.idx).map(x=>({ idx:x.idx, k:x.k }));
+    // De oude verschuiving blijft voor wie er nog naar kijkt (status, test).
+    const sterk=ok.slice().sort((a,b)=>(b.n-a.n)||(b.laatst-a.laatst))[0];
+    m.offset=sterk ? sterk.k-(sterk.idx+1) : 0;
   },
   // De knop Fout: "nu zit hij in de k-de". Gebruikt de laatste stabiele
   // verhouding (hoogstens ankerVersMs oud); zonder die weigert hij met een
@@ -445,7 +477,11 @@ const PLGear = {
     m.ankers=(m.ankers||[]).filter(a=>a.k!==k && Math.abs(a.r-r)/r>CFG.matchTol);
     m.ankers.push({ k, r:Math.round(r*100)/100, t:nu() });
     if (m.ankers.length>CFG.maxGear) m.ankers.shift();
-    this._pasAnkers();
+    // Een aangegeven versnelling is zekerder dan een meting: hij telt in het
+    // histogram als ankerGewicht metingen, zodat het leren sneller rond is.
+    const b=Math.round(Math.log(r)/CFG.binLog);
+    m.hist[b]=(m.hist[b]||0)+CFG.ankerGewicht; m.totaal+=CFG.ankerGewicht;
+    this._herbereken();
     this.toon=k; this._kand=null; this._sessie.correcties++;
     this._vuil=true; this._opslaan(true); this._naarVoertuig(true);
     logI(`⚙️ Versnellingsindicator gecorrigeerd: dit is de ${k}e (${nl(r,1)} km/u per 1000 tpm)`);
@@ -477,8 +513,9 @@ const PLGear = {
   },
   // De verhouding van versnelling k (met de verschuiving uit de correcties).
   ratioVan(k){
-    const g=(this.model&&this.model.gears)||[], i=k-1-((this.model&&this.model.offset)||0);
-    return (i>=0 && i<g.length) ? g[i] : null;
+    const g=(this.model&&this.model.gears)||[];
+    for (let i=0;i<g.length;i++) if (this.nummer(i)===k) return g[i];
+    return null;
   },
   /* Koppelomvormer-slip in %, alleen bij een automaat met een getoonde
      versnelling en een verse meting. Negatief (de wielen drijven de motor)
@@ -744,7 +781,7 @@ const PLGear = {
 };
 
 // ═══════════════ instellingenvenster ═══════════════
-let _wisBevestig=0, _foutOpen=false, _foutMelding='';
+let _wisBevestig=0, _foutMelding='';
 function openGearInstellingen(){
   let ov=document.getElementById('plGearOv');
   if (!ov){
@@ -754,7 +791,7 @@ function openGearInstellingen(){
     ov.addEventListener('click',e=>{ if(e.target===ov) sluitGearInstellingen(); });
     document.body.appendChild(ov);
   }
-  _wisBevestig=0; _foutOpen=false; _foutMelding=''; _opnames=null; _opnameMelding='';
+  _wisBevestig=0; _foutMelding=''; _opnames=null; _opnameMelding='';
   tekenInstellingen();
   ov.style.display='flex';
   if (!ov._ververs) ov._ververs=setInterval(()=>{
@@ -800,18 +837,17 @@ function tekenInstellingen(){
   const maxK = Math.min(10, Math.max(st.verwacht||0, g.length, 6));
   let fout='';
   if (!st.uit){
-    fout=`<button type="button" class="plg-fout" onclick="plGearFout()" aria-expanded="${_foutOpen}">✋ Fout — dit is niet de juiste versnelling</button>`;
-    if (_foutOpen){
-      let k='';
-      for (let i=1;i<=maxK;i++) k+=`<button type="button" class="plg-k${st.toon===i?' nu':''}" onclick="plGearKies(${i})">${i}</button>`;
-      k+=`<button type="button" class="plg-k${st.toon==='R'?' nu':''}" onclick="plGearKies('R')" aria-label="Achteruit">R</button>`;
-      fout+=`<div class="plg-kies"><div class="plg-klein">In welke versnelling zit de auto nu? ${st.kanCorrigeren?'':'<b>Rij eerst een paar seconden rustig door in die versnelling.</b>'}</div>
-        <div class="plg-krij">${k}</div></div>`;
-    }
+    // Altijd in beeld (28-09-2026): zelf aangeven waar je in zit is geen
+    // foutmelding maar de snelste manier van leren. Elke tik is een anker.
+    let k='';
+    for (let i=1;i<=maxK;i++) k+=`<button type="button" class="plg-k${st.toon===i?' nu':''}" onclick="plGearKies(${i})">${i}</button>`;
+    k+=`<button type="button" class="plg-k${st.toon==='R'?' nu':''}" onclick="plGearKies('R')" aria-label="Achteruit">R</button>`;
+    fout=`<div class="plg-kies"><div class="plg-klein"><b>In welke versnelling zit je nu?</b> Klopt het cijfer niet, of leert hij nog: tik hem aan. Elke tik leert hem je auto sneller. ${st.kanCorrigeren?'':'<b>Rij eerst een paar seconden rustig door in die versnelling, koppeling los.</b>'}</div>
+      <div class="plg-krij">${k}</div></div>`;
     if (_foutMelding) fout+=`<p class="plg-uitleg">${_foutMelding}</p>`;
   }
   const autoTxt = st.automaat ? `<p class="plg-klein" style="margin:8px 0 0">Automaat: tijdens het schakelen en zolang de koppelomvormer slipt staat er geen cijfer. Dat is geen fout.</p>` : '';
-  ov.innerHTML=`<div class="plg-vel">
+  const html=`<div class="plg-vel">
     <div style="display:flex;align-items:center;gap:12px">
       <h2 id="plGearTtl">Versnellingsindicator</h2>
       <button type="button" class="plg-sluit" onclick="sluitGearInstellingen()" aria-label="Sluiten">✕</button></div>
@@ -831,6 +867,14 @@ function tekenInstellingen(){
     ${opnameBlok()}
     <button type="button" class="plg-wis${st.afwijking?' let':''}" onclick="plGearWis()">${wisTxt}</button>
   </div>`;
+  // Het venster ververst elke seconde. Tot 28-09-2026 zette dat het hele
+  // venster opnieuw neer, en daarmee sprong het terug naar boven: omlaag
+  // scrollen kon niet. Nu: niets doen als er niets veranderde, en anders de
+  // scrollpositie meenemen.
+  if (ov._html===html) return;
+  const oud=ov.querySelector('.plg-vel'), top=oud ? oud.scrollTop : 0;
+  ov.innerHTML=html; ov._html=html;
+  const nieuw=ov.querySelector('.plg-vel'); if (nieuw && top) nieuw.scrollTop=top;
 }
 // Tijd per versnelling en het rijstijladvies, onder de geleerde verhoudingen.
 function tijdBlok(){
@@ -895,11 +939,9 @@ function plGearWis(){
   tekenInstellingen();
 }
 
-function plGearFout(){ _foutOpen=!_foutOpen; _foutMelding=''; tekenInstellingen(); }
 function plGearKies(k){
   const r=PLGear.corrigeer(k);
   _foutMelding = r.ok ? (k==='R' ? '✓ Onthouden: dit is achteruit.' : `✓ Onthouden: dit is de ${k}e. De rest schuift mee.`) : '⚠️ '+r.reden;
-  if (r.ok) _foutOpen=false;
   toast(r.ok ? (k==='R' ? '⚙️ Achteruit onthouden' : `⚙️ Versnelling ${k} onthouden`) : r.reden);
   tekenInstellingen();
 }
@@ -923,7 +965,6 @@ PLGear._rijstijl = rijstijl;
 PLGear.histUitRegels = histUitRegels;
 PLGear.oordeel = gearOordeel;
 window.PLGear = PLGear;
-window.plGearFout = plGearFout;
 window.plGearOpnames = plGearOpnames;
 window.plGearLeerOpname = plGearLeerOpname;
 window.plGearKies = plGearKies;
