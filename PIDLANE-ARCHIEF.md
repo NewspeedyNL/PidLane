@@ -14,6 +14,57 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 28-09-2026 — Testrun 8.3: vier keer FOUT, één gerepareerd
+
+Mazda CX-5 2018 benzine, OBDLink MX+, 17 min gereden. 161 ok, 4 fout, 46 let op.
+
+**1. Terug laat het Run-venster staan (gerepareerd).** De blok-5-proef "De
+terugknop sluit een venster dat niet in de vaste lijst staat" meldde "de
+zoeker koos geen enkele ✕". In Chromium precies nagebouwd: open het
+testrunpaneel en dan het waakvenster, en `_plBovensteSluitKnop()` geeft
+`null`. Twee oorzaken op elkaar:
+- `_plIsSluitKnop()` kende een ✕ of een `aria-label`/`title` "Sluiten", maar
+  geen knop waarvan de **tekst** "Sluiten" is. Elf vensters hebben zo'n knop,
+  waaronder het Run-venster achter de chip in de topbalk. Dat staat ook niet
+  in de vaste lijst, dus terug viel door naar `goHome()`: het scherm eronder
+  wisselde en het venster bleef bovenop liggen. Dat is de productbug, en die
+  treft klanten.
+- De proef opende het waakvenster (z 9800) onder het testrunpaneel (z 9980).
+  Daar kon hij nooit slagen, en met de reparatie hierboven had terug juist
+  het testrunpaneel gesloten. De proef zet het testrunpaneel en het
+  Run-venster nu even opzij en daarna terug.
+
+**2. Het pedaal viel van de meter, maar niet tijdens het rijden (niet
+gerepareerd).** "Van de meter gevallen (te traag): 0111", terwijl het
+traagste tempo van 0111 *tijdens het rijden* 786 ms was, onder de grens van
+800. `beoordeelTempo()` neemt de mediaan over alles sinds het openen van de
+weergave, ook stilstand en de 157 s op de achtergrond (tweede PiP-periode:
+765 waarden in 154 s, tegen 5387 in 353 s daarvoor). En `_staat.traag` is
+een Set die in de sessie nooit leeg wordt: één trage periode en het pedaal
+is voor de rest van de rit weg. `sessieTik()` zegt zelf al dat stilstaand
+tempo "niets zegt over de weg"; het oordeel over de onderboog volgt die
+regel niet.
+
+**3. "De meter knippert" is vooral herbouwen, en de oorzaak staat nergens
+(niet gerepareerd).** 0,7 keer dof per minuut, onder de grens. Wat de FOUT
+maakt is 15 herbouwen tegen een grens van 6. Maar `bouw()` telt élke
+herbouw, ook die uit `renderPidGrid()`, en die draait bij elke wijziging van
+de selectie. In deze rit veranderde de selectie door de begeleide run (9
+meet-PIDs erbij), het laden van de meetopdracht (twee keer) en de sweep. Of
+een klant het ziet knipperen of dat de testrun het veroorzaakte, is uit het
+verslag niet te halen: de teller legt geen reden vast.
+
+**4. Rendement tot 96,7% en verbruik tot 99 l/100 km (niet gerepareerd).**
+Een berekende PID telt elke bron die niet ouder is dan `VERS_MS` = 3000 ms.
+Bronnen van verschillende momenten worden dus gecombineerd alsof ze
+tegelijk gemeten zijn. Bij gas loslaten zakt de luchtmassa (0110, snel
+gepold) binnen een tel, terwijl 0162 (koppel) nog de waarde van twee
+seconden eerder heeft: veel vermogen op weinig brandstof, dus een rendement
+boven wat een motor haalt. CA03 heeft hetzelfde van de andere kant: 010D
+stond op de meter op 2273 ms. Bij optrekken rond 5 km/u komt er een oude
+lage snelheid bij een verse hoge luchtmassa. Daarnaast klemt `bereken()`
+CA03 op 99 terwijl `DEFS.CA03.max` 50 is. Die twee zeggen niet hetzelfde.
+
 ## 28-09-2026 — Van 3 naar 6 PIDs per verzoek: eerst meten (#333)
 
 **De vraag.** Heeft het nut om van 3 naar 6 PIDs per verzoek te gaan? Het

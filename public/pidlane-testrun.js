@@ -6263,15 +6263,26 @@ const PROEVEN_B5 = [
         return { staat: 'FOUT', detail: 'de ✕-zoeker of de terugknop-handler ontbreekt' };
       if (!window.PLWaakUI || typeof PLWaakUI.open !== 'function')
         return { staat: 'LET OP', detail: 'het waakvenster is niet geladen — dan is er geen venster buiten de lijst om te openen' };
-      PLWaakUI.open();
-      const ov = document.getElementById('wkvOv');
-      const open = !!ov && getComputedStyle(ov).display !== 'none';
+      // Het testrunpaneel (z 9980) en het Run-venster (9976) liggen boven het
+      // waakvenster (9800). Laten staan betekent dat het waakvenster eronder
+      // opengaat en terug het testrunpaneel sluit (testrun 8.3). Even opzij.
+      const opzij = ['testrunOv', 'runOv'].map(function (id) { return document.getElementById(id); })
+        .filter(function (e) { return e && getComputedStyle(e).display !== 'none'; })
+        .map(function (e) { const d = e.style.display; e.style.display = 'none'; return function () { e.style.display = d; }; });
+      let ov, open, knop, zijn, dicht;
+      try {
+        PLWaakUI.open();
+        ov = document.getElementById('wkvOv');
+        open = !!ov && getComputedStyle(ov).display !== 'none';
+        if (open) {
+          knop = _plBovensteSluitKnop();
+          zijn = !!knop && ov.contains(knop);
+          _plBackHandler();
+          dicht = getComputedStyle(ov).display === 'none' || !ov.isConnected;
+          if (!dicht) { try { PLWaakUI.sluit(); } catch (e) { console.warn('Testrun: waakvenster niet gesloten na de proef', e); } }
+        }
+      } finally { opzij.forEach(function (terug) { terug(); }); }
       if (!open) return { staat: 'LET OP', detail: 'het waakvenster ging niet open — er valt niets te sluiten' };
-      const knop = _plBovensteSluitKnop();
-      const zijn = !!knop && ov.contains(knop);
-      _plBackHandler();
-      const dicht = getComputedStyle(ov).display === 'none' || !ov.isConnected;
-      if (!dicht) { try { PLWaakUI.sluit(); } catch (e) { console.warn('Testrun: waakvenster niet gesloten na de proef', e); } }
       if (!zijn) return { staat: 'FOUT', detail: 'de zoeker koos ' + (knop ? 'een ✕ buiten het waakvenster (' + (knop.id || knop.className) + ')' : 'geen enkele ✕') + ' terwijl dat venster bovenop lag' };
       if (!dicht) return { staat: 'FOUT', detail: 'de terugknop liet het waakvenster openstaan' };
       return 'waakvenster open, de zoeker vond zijn ✕ en de terugknop sloot het';
