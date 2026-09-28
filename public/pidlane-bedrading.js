@@ -87,6 +87,11 @@ var KRITIEK = [
   // valt de pollus niet om maar telt hij een onvolledig antwoord weer als
   // goed -- de stille vorm van #211 waarvoor deze lijst bestaat.
   'plGroepOordeel',
+  // De groepsproef zet een markering als hij klaar is (#333, 28-09-2026), en
+  // de meetopdracht voor #333 wacht op die stap. Het woont in de testrun, dus
+  // het adapterpaneel roept het achter een guard aan. Ontbreekt het, dan blijft
+  // de meetopdracht op nog niet staan zonder dat iemand ziet waarom.
+  'plMarkeer',
   'magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
   'openCaravan','openLogboek','openRitAnalyse',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',

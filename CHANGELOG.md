@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-09-2026 — De groepsproef als meetopdracht (#333)
+ ═══════════════════════════════════════════════════════════
+
+ - Een groepsproef die helemaal doorloopt zet de markering "groepsproef
+   klaar". Een afgebroken proef zet niets.
+ - De meetopdracht "Helpen 4 tot 6 PIDs per verzoek?" (in D1) wacht op die
+   stap. Zonder gedraaide proef blijft hij op "nog niet", ook als de rest
+   klopt. Daarnaast vraagt hij het advies op van A, B en C.
+
+ ═══════════════════════════════════════════════════════════
  28-09-2026 — Groepsproef: helpen 4–6 PIDs per verzoek? (#333) — testrun 8.3
  ═══════════════════════════════════════════════════════════
 
