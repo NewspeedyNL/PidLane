@@ -891,6 +891,7 @@
     '#plGarOv .gr-sens input{width:20px;height:20px;flex:0 0 20px;margin-top:1px;accent-color:var(--bl,#3b82f6)}' +
     '#plGarOv .gr-sens small{color:var(--tx3);font-size:11px}' +
     '#plGarOv .gr-bib small{color:var(--tx3);font-size:11px}#plGarOv .gr-bib a{color:var(--bl,#3b82f6)}' +
+    '#plGarOv .gr-tempo{display:flex;align-items:center;gap:8px;margin:6px 0 0;font-size:12px}#plGarOv .gr-tempo select{width:auto;padding:5px 8px;font-size:13px}' +
     '#plGarOv .gr-kies{width:20px;height:20px;flex:0 0 20px;accent-color:var(--bl,#3b82f6)}' +
     '#plGarOv .gr-vgl{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:6px;padding:6px 0;border-top:1px solid var(--bd);font-size:12px;color:var(--tx2)}' +
     '#plGarOv .gr-vgl-kop{border-top:0;font-weight:800;color:var(--tx3)} #plGarOv .gr-vgl.anders{color:var(--tx)}' +
@@ -1261,10 +1262,13 @@
         return '<div class="gr-item"><label class="gr-sens" style="padding:0"><input type="checkbox" ' + (S.sel.indexOf(e.code) >= 0 ? 'checked ' : '') + 'onchange="PLGarage._sensKies(\'' + esc(e.code) + '\',this.checked)">' +
           '<span><b>' + esc(e.naam) + '</b> <small>' + esc(e.eenheid || '') + '</small><br><small>' + sensRegel(e) + '</small></span></label>' +
           (t ? '<div class="gr-klein" style="margin-top:4px">' + esc(t) + '</div>' : '') +
+          '<label class="gr-veld gr-tempo">Hoe vaak' + tempoKeuze('onchange="PLGarage._sensTempo(' + i + ',this.value)"', e.tempo) + '</label>' +
           '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="PLGarage._sensTest(' + i + ')">▶ Test</button>' : '') +
           (S.ok[e.code] ? '<button class="gr-k klein" onclick="PLGarage._sensDeel(' + i + ')">📤 Deel met rijders van dit model</button>' : '') +
           '<button class="gr-k klein gevaar" onclick="PLGarage._sensWeg(' + i + ')">Weghalen</button></div></div>';
       }).join('') : '<div class="gr-klein">Nog geen eigen sensoren.</div>') +
+      (window.PLBanden && window.PLEigen && S.eigen.some(function (e) { return PLEigen.bandRol(e.naam); })
+        ? '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLBanden.open()">🛞 Banden bekijken</button></div>' : '') +
       '<div class="gr-labin" style="margin-top:10px"><div class="gr-bh" style="margin:0">Toevoegen</div>' +
       '<div class="gr-2"><label class="gr-veld">Naam<input id="grsNaam" maxlength="40" placeholder="bijv. Temperatuur automaat"' + F('naam') + '></label>' +
       '<label class="gr-veld">Code<input id="grsCode" maxlength="6" autocapitalize="characters" placeholder="bijv. 221E1C"' + F('code') + '></label></div>' +
@@ -1272,8 +1276,7 @@
       '<label class="gr-veld">Eenheid<input id="grsEenheid" maxlength="12" placeholder="°C"' + F('eenheid') + '></label></div>' +
       '<div class="gr-2"><label class="gr-veld">Minimum (mag leeg)<input id="grsMin" type="number"' + F('min') + '></label><label class="gr-veld">Maximum (mag leeg)<input id="grsMax" type="number"' + F('max') + '></label></div>' +
       '<div class="gr-2"><label class="gr-veld">ECU-adres (mag leeg)<input id="grsEcu" maxlength="8" autocapitalize="characters" placeholder="bijv. 7E1"' + F('ecu') + '></label>' +
-      '<label class="gr-veld">Hoe vaak<select id="grsTempo">' + ['snel', 'normaal', 'traag'].map(function (k) {
-        return '<option value="' + k + '"' + (((S.form && S.form.tempo) || 'normaal') === k ? ' selected' : '') + '>' + SENS_TEMPO[k] + '</option>'; }).join('') + '</select></label></div>' +
+      '<label class="gr-veld">Hoe vaak' + tempoKeuze('id="grsTempo"', S.form && S.form.tempo) + '</label></div>' +
       '<div class="gr-klein" style="margin-top:4px">Alleen leescodes: 21xx of 22xxxx. A is het eerste antwoordbyte, B het tweede, enzovoort. Codes die iets aansturen of wissen weigert de app. ' +
       'Het ECU-adres is nodig als de code bij één regeleenheid hoort (7E1 is meestal de automaat); leeg = alle regeleenheden.</div>' +
       '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="PLGarage._sensTest(-1)">▶ Test op de auto</button>' : '<span class="gr-klein">Testen kan als deze auto verbonden is.</span>') +
@@ -1290,13 +1293,18 @@
   function sensNieuw() {
     var w = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
     var e = { naam: w('grsNaam'), code: String(w('grsCode')).toUpperCase().replace(/\s+/g, ''), formule: w('grsFormule') || 'A', eenheid: w('grsEenheid'), min: w('grsMin'), max: w('grsMax'),
-      ecu: String(w('grsEcu')).toUpperCase().replace(/\s+/g, ''), tempo: w('grsTempo') || 'normaal' };
+      ecu: String(w('grsEcu')).toUpperCase().replace(/\s+/g, ''), tempo: w('grsTempo') || '' };
     if (_st.sens && document.getElementById('grsNaam')) _st.sens.form = { naam: e.naam, code: e.code, formule: w('grsFormule'), eenheid: e.eenheid, min: e.min, max: e.max, ecu: e.ecu, tempo: e.tempo };
     return e;
   }
-  var SENS_TEMPO = { snel: 'Snel (elke seconde)', normaal: 'Normaal (elke 2 s)', traag: 'Traag (elke 10 s)' };
+  // '' = de app kiest: een band elke minuut, de rest elke 2 s (PLEigen).
+  var SENS_TEMPO = { '': 'Standaard', snel: 'Elke seconde', normaal: 'Elke 2 s', traag: 'Elke 10 s', minuut: 'Elke minuut' };
+  function tempoKeuze(attr, nu) {
+    return '<select ' + attr + '>' + Object.keys(SENS_TEMPO).map(function (k) {
+      return '<option value="' + k + '"' + ((nu || '') === k ? ' selected' : '') + '>' + SENS_TEMPO[k] + '</option>'; }).join('') + '</select>';
+  }
   function sensRegel(e) {
-    return esc(e.code) + (e.ecu ? ' @ ' + esc(e.ecu) : '') + ' · ' + esc(e.formule || 'A') + (e.tempo && e.tempo !== 'normaal' ? ' · ' + esc(e.tempo) : '');
+    return esc(e.code) + (e.ecu ? ' @ ' + esc(e.ecu) : '') + ' · ' + esc(e.formule || 'A');
   }
 
   /* De bibliotheek per merk en model: codes die andere klanten bewezen
@@ -1581,6 +1589,12 @@
       } catch (x) { S.test[sleutel] = '✗ ' + x.message; }
       teken();
     },
+    _sensTempo: function (i, t) {
+      var S = _st.sens; if (!S || !S.eigen[i]) return;
+      sensNieuw();
+      if (t && SENS_TEMPO[t]) S.eigen[i].tempo = t; else delete S.eigen[i].tempo;
+      S.gewijzigd = true; teken();
+    },
     _sensDeel: async function (i) {
       var S = _st.sens; if (!S || !S.eigen[i]) return;
       var e = S.eigen[i];
@@ -1597,7 +1611,7 @@
       sensNieuw();
       if (S.eigen.some(function (e) { return e.code === b.code; })) return;
       if (S.eigen.length >= PLEigen.MAX) { S.test['bib:' + id] = '⚠️ Hoogstens ' + PLEigen.MAX + ' eigen sensoren'; teken(); return; }
-      var e = { code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid || '', ecu: b.ecu || '', tempo: 'normaal' };
+      var e = { code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid || '', ecu: b.ecu || '' };
       S.eigen.push(e); if (S.sel.indexOf(b.code) < 0) S.sel.push(b.code);
       S.gewijzigd = true; teken();
     },

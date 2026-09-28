@@ -4961,7 +4961,7 @@ var KP_VELDEN = {
 // ECU-adres (optioneel) een fysiek adres, 7xx of 18DAxxF1.
 var KP_EIGEN_CODE = /^(21[0-9A-F]{2}|22[0-9A-F]{4})$/;
 var KP_EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1)$/;
-var KP_EIGEN_TEMPO = ["snel", "normaal", "traag"];
+var KP_EIGEN_TEMPO = ["snel", "normaal", "traag", "minuut"];
 function kpEigenPid(e) {
   e = e || {};
   const code = String(e.code || "").toUpperCase().replace(/\s+/g, "");
@@ -4974,7 +4974,9 @@ function kpEigenPid(e) {
   if (!naamE) return { fout: "eigen PID " + code + " heeft geen naam" };
   const o = { code, naam: naamE, formule: f, eenheid: String(e.eenheid || "").trim().slice(0, 12) };
   if (ecu) o.ecu = ecu;
-  if (e.tempo && KP_EIGEN_TEMPO.indexOf(e.tempo) >= 0 && e.tempo !== "normaal") o.tempo = e.tempo;
+  // Een gekozen tempo blijft staan, ook "normaal": zonder keuze kiest de app
+  // zelf (een band elke minuut), en dan moet "normaal" daar iets tegen zeggen.
+  if (e.tempo && KP_EIGEN_TEMPO.indexOf(e.tempo) >= 0) o.tempo = e.tempo;
   const mn = Number(e.min), mx = Number(e.max);
   if (e.min !== "" && e.min != null && e.max !== "" && e.max != null && isFinite(mn) && isFinite(mx) && mx > mn) { o.min = mn; o.max = mx; }
   return o;
@@ -5128,6 +5130,7 @@ var KP_VOORKEUR = {
   meldingPunten: { soort: "janee" },
   rapport: { soort: "keuze", uit: ["kort", "normaal", "uitgebreid"] },
   verbruik: { soort: "keuze", uit: ["l100", "kml"] },
+  druk: { soort: "keuze", uit: ["bar", "psi"] },
   adapterType: { soort: "keuze", uit: ["mxplus", "elm327", "ble", "onbekend"] },
   adapterNaam: { soort: "tekst", max: 60 },
   adapterAdres: { soort: "tekst", max: 17, patroon: /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/ },

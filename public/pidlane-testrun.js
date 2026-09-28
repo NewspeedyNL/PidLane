@@ -6406,6 +6406,20 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── de banden: komen ze elke minuut binnen via ECU-adres 720? ──
+  {
+    issue: '—',
+    naam: 'De vier banden komen binnen en staan in het bandenvenster',
+    waarom: 'Of de bandensensoren via hun eigen ECU-adres elke minuut antwoorden zonder de rest van de bus te storen, weet alleen een rit.',
+    proef: async function () {
+      if (!window.PLBanden || typeof PLBanden.oordeel !== 'function')
+        return { staat: 'FOUT', detail: 'PLBanden.oordeel ontbreekt' };
+      const n = PLBanden.nu();
+      const o = PLBanden.oordeel(n.ind, n.st);
+      return o.staat === 'ok' ? o.detail : o;
+    }
+  },
+
   // ── de berekende PIDs: nooit de bus op, en plausibel ──
   {
     issue: '—',
@@ -8763,6 +8777,7 @@ const CAMPAGNE = {
     'SLIM VISUEEL DRIE MINUTEN RIJDEND (#294), waarvan dertig seconden constant boven 50 km/u. Noteer wat de boordcomputer als verbruik zegt.',
     'TREKMODUS VIJF MINUTEN. Tik in het Voertuigoverzicht de rijsituatie caravan of beladen aan (of start de Caravanrit); de strook onder de meter verschijnt vanzelf. Met een caravan of volle auto het liefst een klim.',
     'EÉN KEER VOL GAS in de 2e of 3e, als het veilig kan. Dat is de enige manier om het berekende vermogen tegen het profiel te houden.',
+    'BANDEN (als je auto ze via een eigen PID geeft). Rij minstens vijf minuten; de banden worden elke minuut gevraagd. Tik op het bandenlampje boven Slim visueel: staan alle vier de drukken er, in bar?',
     'EEN EIGEN PID. Mijn voertuigen → Sensoren. Heb je een code van de dealer: vul hem in (met ECU-adres als je dat weet, bijv. 7E1 voor de automaat), Test op de auto, Toevoegen, Bewaren. Zo niet: 📚 Codes voor dit model → Zoek online, test de kandidaten (elke test telt mee als werkt/werkt niet) en voeg er een toe die antwoordt. Laat hem de rit meelopen; werkt hij, tik dan Deel.',
     '── STAP VOOR STAP ────────',
     'STAP 0 — VOORAF. Nieuwste versie laden (☰ → Nieuwste versie laden). Mijn voertuigen: vul bij Profiel handbak of automaat, het aantal versnellingen, de tankinhoud, de literprijs en het vermogen in. Een nieuwe APK is niet nodig.',

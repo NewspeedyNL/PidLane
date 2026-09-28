@@ -49,6 +49,7 @@
     meldingPunten: { soort: 'janee' },
     rapport: { soort: 'keuze', uit: ['kort', 'normaal', 'uitgebreid'] },
     verbruik: { soort: 'keuze', uit: ['l100', 'kml'] },
+    druk: { soort: 'keuze', uit: ['bar', 'psi'] },
     adapterType: { soort: 'keuze', uit: ['mxplus', 'elm327', 'ble', 'onbekend'] },
     adapterNaam: { soort: 'tekst' },
     adapterAdres: { soort: 'tekst' },
@@ -223,6 +224,7 @@
       if (k && k.u === wie()) { _pref = schoon(k.p); _bron = 'kopie'; }
       console.warn('PLVoorkeur: voorkeuren niet opgehaald' + (_pref ? ' — de bewaarde kopie wordt gebruikt' : ''), e);
     }
+    drukHerzet();
     if (!_pref) return [];
     var gedaan = toepassen(_pref, DOE, { adapterAdres: lees('spp_address') });
     if (gedaan.length) try { if (typeof log === 'function') log('Voorkeuren uit je account toegepast: ' + gedaan.join(', '), 'info'); } catch (e) { console.warn(e); }
@@ -285,6 +287,7 @@
     start: { start: 'Startscherm', live: 'Meteen Live' },
     rapport: { kort: 'Kort', normaal: 'Normaal', uitgebreid: 'Uitgebreid' },
     verbruik: { l100: 'l/100 km', kml: 'km/l' },
+    druk: { bar: 'bar', psi: 'psi' },
     adapterType: { mxplus: 'OBDLink MX+', elm327: 'ELM327 (Bluetooth)', ble: 'Bluetooth LE', onbekend: 'Weet ik niet' },
     scanBekend: { vragen: 'Vragen', overslaan: 'Overslaan (snel)', altijd: 'Altijd scannen' },
     oudeData: { vragen: 'Vragen', ja: 'Ja, altijd', nee: 'Nee, alleen deze meting' }
@@ -363,7 +366,8 @@
           '<button class="vk-b' + (_form.letter === undefined ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'letter\',null)">Geen voorkeur</button>' +
           [11, 13, 15, 17].map(function (n) { return '<button class="vk-b' + (_form.letter === n ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'letter\',' + n + ')">' + n + '</button>'; }).join('') +
         '</div></div>' +
-        keuzeRij('verbruik', 'Verbruik tonen als') + '</div>' +
+        keuzeRij('verbruik', 'Verbruik tonen als') +
+        keuzeRij('druk', 'Druk tonen als', 'Voor eigen sensoren met een druk, zoals de bandenspanning. Zonder voorkeur: bar.') + '</div>' +
       '<div class="vk-blok"><div class="vk-bh">Na het inloggen en verbinden</div>' +
         keuzeRij('start', 'Waar je landt na het verbinden') +
         janeeRij('autoVerbinden', 'Automatisch opnieuw verbinden', 'Met de laatst gebruikte adapter, zodra de app opent.') +
@@ -400,9 +404,16 @@
       _pref = schoon(d.voorkeur); _bron = 'account';
       schrijf(OPSLAG, JSON.stringify({ u: wie(), p: _pref }));
       toepassen(_pref, DOE, { adapterAdres: lees('spp_address') });
+      drukHerzet();
       melding('✓ Voorkeuren bewaard in je account');
       sluit();
     } catch (e) { melding('⚠️ ' + e.message); console.warn('PLVoorkeur.bewaar', e); }
+  }
+
+  // Een andere drukeenheid geldt meteen voor de eigen sensoren die er staan.
+  function drukHerzet() {
+    try { if (window.PLEigen && typeof PLEigen.herzet === 'function') PLEigen.herzet(); }
+    catch (e) { console.warn('PLVoorkeur: eigen sensoren niet omgerekend naar de nieuwe drukeenheid', e); }
   }
 
   async function selectieVast(weg) {
@@ -427,6 +438,7 @@
     scanBekend: function () { return (_pref && _pref.scanBekend) || 'vragen'; },
     samenvatting: function () { return !(_pref && _pref.samenvatting === false); },
     verbruik: function (l100) { return verbruikTekst(l100, _pref && _pref.verbruik); },
+    druk: function () { return (_pref && _pref.druk) || 'bar'; },
     melding: function (soort) { return !(_pref && _pref[soort] === false); },
     promptRegel: function () { return _pref ? promptRegel(_pref) : ''; },
     _zet: function (k, w) { if (w === null) delete _form[k]; else _form[k] = w; teken(); },

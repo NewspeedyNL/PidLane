@@ -288,7 +288,37 @@
   // 7E1 automaat, …), 18DAxxF1 op 29-bit. Het functionele 7DF/18DB33F1 is
   // de standaard en hoeft niet ingevuld; het na afloop terugzetten zit in vraag().
   const EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1)$/;
-  const EIGEN_TEMPO = { snel: 1000, normaal: 2000, traag: 10000 };
+  const EIGEN_TEMPO = { snel: 1000, normaal: 2000, traag: 10000, minuut: 60000 };
+
+  /* Welke band, en druk of temperatuur? Uit de naam — "Bandenspanning
+     voor-links", "Bandtemperatuur achter-rechts", "Tire pressure RR". null
+     als het geen band is. Puur: test-mode21.js toetst hem los. Een naam is
+     een zwakke bron, maar de enige die er is: de code zegt niets over de
+     plek, en die verschilt per merk. */
+  function bandRol(naam) {
+    const n = String(naam || '').toLowerCase();
+    if (!/\b(band|banden|bandenspanning|bandendruk|bandspanning|banddruk|bandtemperatuur|tire|tyre|tpms)/.test(n)) return null;
+    const soort = /(temp)/.test(n) ? 'temp' : /(spanning|druk|pressure|psi|bar\b|tpms)/.test(n) ? 'druk' : null;
+    if (!soort) return null;
+    const voor = /(voor|front|\bf[lr]\b|\bv[lr]\b)/.test(n), achter = /(achter|rear|\br[lr]\b|\ba[lr]\b)/.test(n);
+    const links = /(links|left|\b[fvra]l\b)/.test(n), rechts = /(rechts|right|\b[fvra]r\b)/.test(n);
+    if (voor === achter || links === rechts) return null;
+    return { pos: (voor ? 'V' : 'A') + (links ? 'L' : 'R'), soort };
+  }
+
+  /* Druk in de eenheid die de klant koos (Mijn voorkeuren → Druk tonen
+     als). Een eigen PID met eenheid psi, bar of kPa wordt omgerekend; de
+     formule en wat er bewaard is veranderen niet. */
+  const DRUK_KPA = { psi: 6.894757, bar: 100, kpa: 1 };
+  function drukVoorkeur() {
+    try { const d = window.PLVoorkeur && PLVoorkeur.druk ? PLVoorkeur.druk() : 'bar'; return DRUK_KPA[d] ? d : 'bar'; }
+    catch (x) { console.warn('PLEigen: drukvoorkeur onleesbaar', x); return 'bar'; }
+  }
+  function drukOmrekening(eenheid, doel) {
+    const van = String(eenheid || '').trim().toLowerCase();
+    if (!DRUK_KPA[van] || !DRUK_KPA[doel] || van === doel) return null;
+    return { factor: DRUK_KPA[van] / DRUK_KPA[doel], eenheid: doel === 'kpa' ? 'kPa' : doel, decimalen: doel === 'bar' ? 2 : 1 };
+  }
 
   /* Formule → functie(bytes). Toegestaan: getallen, A t/m H, + - * / en
      haakjes. Ontbreekt een byte in het antwoord, dan is de uitkomst null. */
@@ -341,17 +371,30 @@
     if (!naam) return { ok: false, fout: 'Geef de sensor een naam' };
     const ecu = String(e.ecu || '').toUpperCase().replace(/\s+/g, '');
     if (ecu && !EIGEN_ECU.test(ecu)) return { ok: false, fout: 'ECU-adres: 7xx (bijv. 7E1) of 18DAxxF1, of leeg laten' };
-    const tempo = EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal';
+    // Geen tempo gekozen: een band elke minuut (de druk verandert niet per
+    // seconde, en acht vragen via een ander ECU-adres kosten de bus wat),
+    // al het andere elke 2 s.
+    const band = bandRol(naam);
+    const tempo = EIGEN_TEMPO[e.tempo] ? e.tempo : (band ? 'minuut' : 'normaal');
     let parse;
     try { parse = formule(e.formule || 'A'); } catch (x) { return { ok: false, fout: 'Formule: ' + x.message }; }
-    const min = Number(e.min), max = Number(e.max);
+    let min = Number(e.min), max = Number(e.max), unit = String(e.eenheid || '').slice(0, 12);
     const heeftBereik = isFinite(min) && isFinite(max) && max > min;
-    return { ok: true, code, ecu, def: { name: naam, unit: String(e.eenheid || '').slice(0, 12), cat: 'Eigen', eigen: true, ecu, tempo,
+    const om = drukOmrekening(unit, drukVoorkeur());
+    if (om) {
+      const ruw = parse, m = Math.pow(10, om.decimalen);
+      parse = (b) => { const v = ruw(b); return v === null ? null : Math.round(v * om.factor * m) / m; };
+      if (heeftBereik) { min = min * om.factor; max = max * om.factor; }
+      unit = om.eenheid;
+    }
+    return { ok: true, code, ecu, def: { name: naam, unit, cat: 'Eigen', eigen: true, ecu, tempo, band,
       min: heeftBereik ? min : -1e9, max: heeftBereik ? max : 1e9, formule: String(e.formule || 'A'), parse } };
   }
 
   let _eigen = {};                     // code → def, van het voertuig dat nu aan de adapter hangt
-  function eigenZet(lijst, voertuig) {
+  let _laatst = { lijst: null, voertuig: '' };
+  function eigenZet(lijst, voertuig, opnieuw) {
+    _laatst = { lijst: lijst, voertuig: voertuig };
     const oud = Object.keys(_eigen);
     _eigen = {};
     (Array.isArray(lijst) ? lijst : []).slice(0, EIGEN_MAX).forEach(e => {
@@ -367,7 +410,7 @@
       }
     } catch (x) { console.warn('Eigen PIDs niet geregistreerd', x); }
     const nieuw = Object.keys(_eigen).join(',');
-    if (nieuw !== oud.join(',')) {
+    if (opnieuw || nieuw !== oud.join(',')) {
       try { if (typeof buildDiscoveredPIDList === 'function' && typeof supportedPIDs !== 'undefined' && supportedPIDs.size) buildDiscoveredPIDList(); }
       catch (x) { console.warn('keuzelijst niet herbouwd na eigen PIDs', x); }
       if (Object.keys(_eigen).length) btDiagSafe('Eigen PIDs van ' + (voertuig || 'dit voertuig') + ': ' + nieuw);
@@ -375,6 +418,17 @@
     return Object.keys(_eigen).length;
   }
   function eigenInterval(pid) { const d = _eigen[String(pid || '').toUpperCase()]; return d ? EIGEN_TEMPO[d.tempo] || EIGEN_TEMPO.normaal : null; }
+  /* Opnieuw zetten na een andere drukvoorkeur. Waarden in de oude eenheid
+     gaan weg: met een band die eens per minuut gevraagd wordt stond er
+     anders tot een minuut lang "2,3 psi". */
+  function eigenHerzet() {
+    if (!_laatst.lijst) return 0;
+    try {
+      if (typeof pidVals !== 'undefined' && pidVals)
+        Object.keys(_eigen).forEach(c => { if (DRUK_KPA[String((_laatst.lijst.find(e => String(e.code).toUpperCase() === c) || {}).eenheid || '').toLowerCase()]) delete pidVals[c]; });
+    } catch (x) { console.warn('PLEigen: oude drukwaarden niet gewist', x); }
+    return eigenZet(_laatst.lijst, _laatst.voertuig, true);
+  }
 
   /* Eén eigen PID opvragen, met zijn ECU-adres als hij dat heeft. Wordt
      aangeroepen vanuit de pollus (die het busslot al heeft) en vanuit test().
@@ -489,16 +543,18 @@
     if (!aan.length) return { staat: 'LET OP', detail: defs.length + ' eigen sensor(en) bij dit voertuig, maar geen enkele aangezet' };
     const ok = [], stil = [];
     aan.forEach(d => {
-      const t = (m.laatst || {})[d.pid];
-      if (typeof t === 'number' && nu - t < 30000) ok.push(d.name + ' = ' + String((m.waarden || {})[d.pid]).replace('.', ',') + (d.unit ? ' ' + d.unit : ''));
+      // Vers = binnen tweeënhalf keer het tempo, minstens 30 s: een band die
+      // elke minuut gevraagd wordt is na 50 s niet stil.
+      const t = (m.laatst || {})[d.pid], grens = Math.max(30000, 2.5 * (EIGEN_TEMPO[d.tempo] || EIGEN_TEMPO.normaal));
+      if (typeof t === 'number' && nu - t < grens) ok.push(d.name + ' = ' + String((m.waarden || {})[d.pid]).replace('.', ',') + (d.unit ? ' ' + d.unit : ''));
       else stil.push(d.name + ' (' + d.pid + ')');
     });
-    if (stil.length) return { staat: 'LET OP', detail: 'geen antwoord in de laatste 30 s van: ' + stil.join(', ') + (ok.length ? ' — wel van: ' + ok.join(', ') : '') + '. Klopt de code voor deze auto? Test hem in Mijn voertuigen → Sensoren.' };
+    if (stil.length) return { staat: 'LET OP', detail: 'geen vers antwoord (binnen 2,5× het tempo) van: ' + stil.join(', ') + (ok.length ? ' — wel van: ' + ok.join(', ') : '') + '. Klopt de code voor deze auto? Test hem in Mijn voertuigen → Sensoren.' };
     return { staat: 'ok', detail: ok.length + ' eigen sensor(en) geven antwoord: ' + ok.join(', ') };
   }
 
   window.PLEigen = { CODE: EIGEN_CODE, MAX: EIGEN_MAX, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
-    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, vraag: eigenVraag, kandidatenUitTekst, zoekOnline };
+    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, herzet: eigenHerzet, bandRol, drukOmrekening, vraag: eigenVraag, kandidatenUitTekst, zoekOnline };
   window.plEigenDefs = eigenDefs;
 
   btDiagSafe('pidlane-uitgebreid.js geladen — mode 21/22 pad actief');

@@ -263,6 +263,10 @@ function haalZeef(isMode01) {
     t('oordeel: antwoord binnen 30 s is ok, met de waarde', oo.staat + ' ' + /71,5 °C/.test(oo.detail), 'ok true');
     const os = O({ echt: true, defs: d1, actief: ['221E1C'], laatst: { '221E1C': 50000 }, waarden: {}, nu: 100000 });
     t('oordeel: een minuut stil is LET OP met de code erbij', os.staat + ' ' + /221E1C/.test(os.detail), 'LET OP true');
+    const ob = O({ echt: true, defs: [{ pid: '222A05', name: 'Band', unit: 'bar', tempo: 'minuut' }], actief: ['222A05'], laatst: { '222A05': 50000 }, waarden: { '222A05': 2.33 }, nu: 100000 });
+    t('oordeel: een band (elke minuut) die 50 s geleden antwoordde is vers', ob.staat, 'ok');
+    const ob2 = O({ echt: true, defs: [{ pid: '222A05', name: 'Band', unit: 'bar', tempo: 'minuut' }], actief: ['222A05'], laatst: { '222A05': 0 }, waarden: {}, nu: 200000 });
+    t('oordeel: maar 200 s stil is ook voor een band te lang', ob2.staat, 'LET OP');
     s.lezen('connected=false');
     const y = await E.test({ code: '2101', naam: 'T', formule: 'B' });
     t('test: zonder verbinding niets versturen', !y.ok && !s._verzonden.some(c => /^2101/.test(c)), true);
@@ -323,6 +327,45 @@ function haalZeef(isMode01) {
     const z2 = await E.zoekOnline({ merk: 'Mazda', model: 'CX-5' });
     t('zonder zoektool: een melding, en geen kandidaten uit het geheugen', !z2.ok && /niet beschikbaar/.test(z2.fout) && !z2.kandidaten, true);
     t('zonder merk of model: niet zoeken', (await E.zoekOnline({ merk: 'Mazda' })).ok, false);
+  }
+
+  console.log('\n— banden: herkennen, elke minuut, druk in bar of psi (28-09-2026) —');
+  {
+    const s = bouw();
+    const E = s.PLEigen, R = (n) => JSON.stringify(E.bandRol(n));
+    t('Bandenspanning voor-links = VL druk', R('Bandenspanning voor-links'), '{"pos":"VL","soort":"druk"}');
+    t('Bandtemperatuur achter-rechts = AR temp', R('Bandtemperatuur achter-rechts'), '{"pos":"AR","soort":"temp"}');
+    t('Tire pressure RR = AR druk', R('Tire pressure RR'), '{"pos":"AR","soort":"druk"}');
+    t('TPMS FL = VL druk', R('TPMS FL'), '{"pos":"VL","soort":"druk"}');
+    t('Motorolietemperatuur is geen band', R('Motorolietemperatuur'), 'null');
+    t('Bandenspanning zonder plek is geen band (welke?)', R('Bandenspanning'), 'null');
+    t('voor én achter in één naam: geen band', R('Bandenspanning voor-achter links'), 'null');
+    // Wat er echt bij de CX-5 staat (28-09-2026): psi-formule, ECU 720.
+    const psi = '((A*1373)/1000)*0.145037738';
+    s.PLVoorkeur = { druk: () => 'bar' };
+    E.zet([{ code: '222A05', naam: 'Bandenspanning voor-links', formule: psi, eenheid: 'psi', ecu: '720' },
+           { code: '222A0A', naam: 'Bandtemperatuur voor-links', formule: 'A-50', eenheid: '°C', ecu: '720' },
+           { code: '222A06', naam: 'Bandenspanning voor-rechts', formule: psi, eenheid: 'psi', ecu: '720', tempo: 'normaal' },
+           { code: '221310', naam: 'Motorolietemperatuur', formule: '((A*256)+B)/100-40', eenheid: '°C' }], 'Mazda');
+    t('een band zonder gekozen tempo: elke minuut', E.interval('222A05') + ',' + E.interval('222A0A'), '60000,60000');
+    t('een band met tempo "normaal" blijft elke 2 s (de keuze wint)', E.interval('222A06'), 2000);
+    t('geen band: elke 2 s', E.interval('221310'), 2000);
+    const d = s.ALL_PID_DEFS['222A05'];
+    t('psi wordt bar: eenheid', d.unit, 'bar');
+    t('170 = 1,373 × 170 kPa = 2,33 bar', d.parse([170]), 2.33);
+    t('de temperatuur verandert niet', s.ALL_PID_DEFS['222A0A'].unit + ' ' + s.ALL_PID_DEFS['222A0A'].parse([75]), '°C 25');
+    t('de band staat erbij voor PLBanden', JSON.stringify(E.defs().find(x => x.pid === '222A05').band), '{"pos":"VL","soort":"druk"}');
+    s.pidVals = { '222A05': 2.33, '222A0A': 25 };
+    s.PLVoorkeur = { druk: () => 'psi' };
+    E.herzet();
+    t('voorkeur psi: dezelfde code weer in psi, precies zoals de formule rekent', s.ALL_PID_DEFS['222A05'].unit + ' ' + s.ALL_PID_DEFS['222A05'].parse([170]), 'psi 33.853');
+    t('de oude drukwaarde (in bar) is weg, de temperatuur blijft', String(s.pidVals['222A05']) + ',' + s.pidVals['222A0A'], 'undefined,25');
+    t('kPa naar bar met bereik: 100–300 kPa wordt 1–3 bar', (function () {
+      s.PLVoorkeur = { druk: () => 'bar' };
+      const r = E.controleer({ code: '220909', naam: 'Oliedruk', formule: 'A', eenheid: 'kPa', min: 100, max: 300 });
+      return r.def.unit + ' ' + r.def.min + '-' + r.def.max + ' ' + r.def.parse([250]);
+    })(), 'bar 1-3 2.5');
+    t('zonder PLVoorkeur: bar', (delete s.PLVoorkeur, E.controleer({ code: '220909', naam: 'x', formule: 'A', eenheid: 'psi' }).def.unit), 'bar');
   }
 
   console.log('\n─────────────────────────────────────────');

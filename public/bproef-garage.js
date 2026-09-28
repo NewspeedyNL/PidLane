@@ -249,6 +249,12 @@ const NEPSERVER = `(function(){
       document.getElementById('grsFormule').value = 'A*4'; document.getElementById('grsEcu').value = '7e0'; document.getElementById('grsTempo').value = 'traag';
       PLGarage._sensErbij();
       uit.eigen = _st_eigen().find(e => e.code === '220303');
+      // Het tempo per sensor in de lijst aanpassen (28-09): elke minuut.
+      PLGarage._sensTempo(_st_eigen().findIndex(e => e.code === '220303'), 'minuut');
+      uit.tempoLijst = _st_eigen().find(e => e.code === '220303').tempo;
+      PLGarage._sensTempo(_st_eigen().findIndex(e => e.code === '220303'), '');
+      uit.tempoStandaard = 'tempo' in _st_eigen().find(e => e.code === '220303');
+      PLGarage._sensTempo(_st_eigen().findIndex(e => e.code === '220303'), 'traag');
       // Een test telt als stem — maar alleen een echte uitkomst.
       const echtTest = PLEigen.test;
       PLEigen.test = async () => ({ ok: true, raw: '62 02 02 5A', bytes: [90], waarde: 50, eenheid: '°C' });
@@ -282,6 +288,7 @@ const NEPSERVER = `(function(){
     toets('de bibliotheek van dit model staat in Sensoren, met stand en bron', bib.lijst && bib.bron, JSON.stringify(bib));
     toets('uit de bibliotheek toevoegen neemt het ECU-adres mee', bib.erbij, JSON.stringify(bib));
     toets('een eigen code met ECU-adres (7e0 → 7E0) en tempo traag', bib.eigen && bib.eigen.ecu === '7E0' && bib.eigen.tempo === 'traag', JSON.stringify(bib.eigen));
+    toets('tempo in de lijst: elke minuut, en "Standaard" haalt de keuze weg', bib.tempoLijst === 'minuut' && bib.tempoStandaard === false, JSON.stringify(bib));
     toets('een test telt als stem: werkt en 7F tellen, "niet verbonden" niet', JSON.stringify(bib.stemmen) === '["b1:werkt","b2:werkt_niet"]', JSON.stringify(bib.stemmen));
     toets('delen kan pas na een geslaagde test', !bib.deelVoor && bib.deelNa, JSON.stringify(bib));
     toets('delen stuurt code en ECU-adres naar de server', bib.gedeeld === '221E1C@7E1', JSON.stringify(bib.gedeeld));
