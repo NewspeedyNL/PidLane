@@ -58,6 +58,24 @@ const echteD1Kolommen = (() => {
   return bron.slice(a, b) + '\nreturn d1Kolommen;';
 })();
 
+// Het kasboek (#327): de bron maakt zijn tabel zelf aan (kasboekSchema) en
+// zoekt op de klantcode van een e-mailadres (kpKlantId). Allebei staan buiten
+// het blok; allebei uit de bron, niet nagebouwd.
+// Eén exemplaar per bouw(): de vlag _kasboekKlaar hoort bij één isolaat met
+// één database, en een gedeeld exemplaar zou de tweede nep-D1 overslaan.
+const srcKasboekSchema = (() => {
+  const a = bron.indexOf('var KASBOEK_SCHEMA = [');
+  const b = bron.indexOf('__name(kasboekSchema, "kasboekSchema");');
+  if (a < 0 || b < 0) { console.error('FOUT: kasboekSchema() niet gevonden in worker.js.'); process.exit(1); }
+  return bron.slice(a, b) + '\nreturn kasboekSchema;';
+})();
+const kpKlantId = (() => {
+  const a = bron.indexOf('async function kpKlantId(email) {');
+  const b = bron.indexOf('__name(kpKlantId, "kpKlantId");');
+  if (a < 0 || b < 0) { console.error('FOUT: kpKlantId() niet gevonden in worker.js.'); process.exit(1); }
+  return new Function('crypto', '_enc', bron.slice(a, b) + '\nreturn kpKlantId;')(globalThis.crypto, new TextEncoder());
+})();
+
 /* Het stukje D1-oppervlak dat deze routes aanraken: prepare(), bind(), en
    dan all() / first() / run(). Elke SQL-tekst wordt onthouden, want een deel
    van de toetsen gaat over wat er NIET in die tekst mag staan. */
@@ -91,7 +109,9 @@ function bouw(opties) {
     fetch: async () => { throw new Error('een D1-bron hoort nooit naar Airtable te fetchen'); },
     formuleTekst: (s) => String(s),
     __name: () => { },
-    d1Kolommen: new Function(echteD1Kolommen)()
+    d1Kolommen: new Function(echteD1Kolommen)(),
+    kasboekSchema: new Function(srcKasboekSchema)(),
+    kpKlantId
   };
   const maak = new Function(...Object.keys(omg),
     src + '\nreturn { get: handleAdminTabelGet, post: handleAdminTabelPost, bronnen: ADMIN_BRONNEN };');
@@ -299,6 +319,36 @@ const T = (d) => new Date(Date.now() - d * 864e5).toISOString();
     toets('zonder regel wordt er niets gewist', rl.status === 400 && /minstens één/.test(rl.body.error),
       JSON.stringify(rl.body));
     toets('en de tabel is nog heel', leeg.db.prepare('SELECT COUNT(*) n FROM logregels').get().n === 3);
+  }
+
+  // ── 6b. het kasboek (#327) ──────────────────────────────────────
+  // In D1 staat geen e-mailadres, alleen de klantcode. Beheer moet tóch op
+  // een adres kunnen zoeken, en dat mag alleen de regels van dát adres geven.
+  console.log('\n6b. Het kasboek: zoeken op e-mailadres via de klantcode');
+  {
+    const t = bouw();
+    const anna = await kpKlantId('anna@voorbeeld.nl'), bert = await kpKlantId('bert@voorbeeld.nl');
+    const zet = t.db.prepare('INSERT INTO kasboek (Moment, KlantId, Soort, Credits, SaldoNa, Details) VALUES (?,?,?,?,?,?)');
+    zet.run(T(0), anna, 'ai-call', -6, 174, 'analyse afgeboekt');
+    zet.run(T(1), bert, 'ai-call', -4, 96, 'analyse afgeboekt');
+    zet.run(T(2), 'anoniem', 'code-ingewisseld', 50, null, 'code PIDL-TEST-000001 ingewisseld');
+    const r = await t.get('bron=kasboek&q=' + encodeURIComponent('Anna@Voorbeeld.NL'));
+    toets('op een e-mailadres zoeken geeft alleen de regels van dat adres',
+      r.body.ok === true && r.body.records.length === 1 && r.body.records[0].fields.KlantId === anna, JSON.stringify(r.body));
+    toets('het adres zelf komt niet in de SQL (alleen de code, als parameter)',
+      !t.staat.sqls.some((q) => /anna@/i.test(q)), t.staat.sqls.filter((q) => /kasboek/.test(q)).join(' | '));
+    const r2 = await t.get('bron=kasboek&q=ai-call');
+    toets('op soort zoeken werkt zoals bij elke D1-bron', r2.body.records.length === 2, JSON.stringify(r2.body.records.length));
+    const rw = await t.post({ bron: 'kasboek', actie: 'wis', id: '1' });
+    toets('het kasboek is niet schrijfbaar', rw.body.ok === false && t.db.prepare('SELECT COUNT(*) n FROM kasboek').get().n === 3, JSON.stringify(rw.body));
+
+    const leeg = bouw();
+    leeg.db.exec('DROP TABLE kasboek');
+    const rl = await leeg.get('bron=kasboek');
+    toets('bestaat de tabel nog niet, dan maakt de bron hem aan: een lege lijst, geen fout',
+      rl.body.ok === true && rl.body.records.length === 0, JSON.stringify(rl.body));
+    toets('het archief van vóór 28-09 blijft een Airtable-bron', t.api.bronnen.kasboekarchief && !t.api.bronnen.kasboekarchief.motor,
+      JSON.stringify(t.api.bronnen.kasboekarchief));
   }
 
   // ── 7. de poort ─────────────────────────────────────────────────

@@ -272,12 +272,19 @@ MUTATIES=(
 # vanaf de beheerpagina kunt bijstellen bewijst alleen nog wat erin staat.
 "worker.js@@credits: -afgeboekt, saldoNa, details: \"analyse afgeboekt\" + tekort@@credits: -kosten, saldoNa, details: \"analyse afgeboekt\" + tekort@@test-kasboek.js@@het kasboek boekt de volle prijs terwijl er minder van het saldo af ging (#83)"
 "worker.js@@credits: 0, saldoNa: saldoVoor,@@credits: -kosten, saldoNa: saldoVoor,@@test-kasboek.js@@een mislukte afboeking wordt geboekt alsof hij gelukt is (#83)"
-"worker.js@@if (na !== null) velden.SaldoNa = na;@@velden.SaldoNa = na || 0;@@test-kasboek.js@@een onbekend saldo komt als 0 in het kasboek en leest later als een leeg account (#83)"
-"worker.js@@    } catch (e) {\n      try {\n        console.error(\"[kasboek] regel niet weggeschreven :: \" + String(e && e.message || e));\n      } catch (_) { /* stil: melden mag de stroom nooit breken */ }\n    }\n  })();@@    } catch (e) {\n      throw e;\n    }\n  })();@@test-kasboek.js@@een kapot kasboek sleurt de analyse mee: administratie kost de klant zijn antwoord (#83)"
+"worker.js@@        na,\n        getal(r.tokensIn) || 0,@@        na || 0,\n        getal(r.tokensIn) || 0,@@test-kasboek.js@@een onbekend saldo komt als 0 in het kasboek en leest later als een leeg account (#83)"
+"worker.js@@    } catch (e) {\n      try {\n        console.error(\"[kasboek] regel niet weggeschreven (\" + soort + \") :: \" + String(e && e.message || e));\n      } catch (_) { /* stil: melden mag de stroom nooit breken */ }\n    }\n  })();@@    } catch (e) {\n      throw e;\n    }\n  })();@@test-kasboek.js@@een kapot kasboek sleurt de analyse mee: administratie kost de klant zijn antwoord (#83)"
 "worker.js@@if (uit && uit.kasboek) await tegoedLog(env, ctx, uit.kasboek);@@@@test-kasboek.js@@de AI-afboeking laat geen spoor meer na — precies de toestand van vóór #83"
 "worker.js@@if (res && res.body && res.body.ok && Number(res.body.toegekend) > 0)@@if (res && res.body && res.body.ok && Number(res.body.toegekend) >= 0)@@test-kasboek.js@@elke tweede onboarding schrijft een lege regel van 0 credits (#83)"
-"worker.js@@Regels komen uitsluitend uit tegoedLog().\n    schrijven: false,@@Regels komen uitsluitend uit tegoedLog().\n    schrijven: true,@@test-adminbron.js@@het kasboek is vanaf de beheerpagina te bewerken (#83)"
-"worker.js@@tableKey: \"AIRTABLE_TOKENLOG_TABLE\", sorteer: \"Moment\",@@tableKey: \"AIRTABLE_KLANTEN_TABLE\", sorteer: \"Moment\",@@test-adminbron.js@@de kasboekbron leest de Klanten-tabel; \"leeg\" ziet er hetzelfde uit als \"niets gebeurd\" (#83)"
+"worker.js@@Regels komen uitsluitend uit tegoedLog().\n    schrijven: false,@@Regels komen uitsluitend uit tegoedLog().\n    schrijven: true,@@test-adminbron-d1.js@@het kasboek is vanaf de beheerpagina te bewerken (#83)"
+"worker.js@@tableKey: \"AIRTABLE_TOKENLOG_TABLE\", sorteer: \"Moment\",@@tableKey: \"AIRTABLE_KLANTEN_TABLE\", sorteer: \"Moment\",@@test-adminbron.js@@het kasboekarchief leest de Klanten-tabel; \"leeg\" ziet er hetzelfde uit als \"niets gebeurd\" (#83)"
+# ── 28-09-2026: het kasboek in D1 (#327). Een e-mailadres hoort er niet in
+# (privacy.html), beheer moet er toch op kunnen zoeken, en een ontbrekende
+# binding mag niet stil blijven.
+"worker.js@@  if (k.indexOf(\"@\") >= 0) return await kpKlantId(k);@@  if (k.indexOf(\"@\") >= 0) return k;@@test-kasboek.js@@het e-mailadres gaat onversleuteld de D1-database in, tegen wat privacy.html belooft"
+"worker.js@@      waarden.push(await kpKlantId(q));@@      waarden.push(q);@@test-adminbron-d1.js@@zoeken op een e-mailadres vindt niets meer, want in het kasboek staat alleen de klantcode"
+"worker.js@@  if (typeof b.def.schema === \"function\") await b.def.schema(b.db);@@@@test-adminbron-d1.js@@wie als eerste het kasboek opent, krijgt een foutmelding in plaats van een lege lijst"
+"worker.js@@        try { console.error(\"[kasboek] regel niet weggeschreven (\" + soort + \") :: geen LOGDB-binding\"); } catch (_) { /* stil: melden mag de stroom nooit breken */ }@@@@test-kasboek.js@@zonder D1-binding schrijft er niemand meer iets weg, en niemand hoort het"
 "worker.js@@if (a.length !== b.length) return false;@@if (a.length !== b.length) return true;@@test-token.js@@safeEqual keurt ongelijke lengtes goed"
 "worker.js@@if (!safeEqual(sig, await hmacSign(env.SESSION_SECRET, payload))) return null;\\n    const p = JSON.parse(b64urlToString(payload));\\n    if (!p.exp@@const p = JSON.parse(b64urlToString(payload));\\n    if (!p.exp@@test-token.js@@verifyToken controleert de handtekening niet meer"
 "worker.js@@if (!p.exp || Math.floor(Date.now() / 1e3) >= p.exp) return null;@@@@test-token.js@@een verlopen sessietoken blijft geldig"

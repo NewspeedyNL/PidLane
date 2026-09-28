@@ -716,6 +716,7 @@
               <option value="klanten">Klanten</option>
               <option value="codes">Activatiecodes</option>
               <option value="kasboek">Kasboek (tokenmutaties, alleen-lezen)</option>
+              <option value="kasboekarchief">Kasboek tot 28-09-2026 (archief, alleen-lezen)</option>
               <option value="users">Gebruikers</option>
               <option value="veldlab">Veldlab (meetwaarden)</option>
               <option value="referentie">Referentiewaarden</option>
@@ -1223,7 +1224,24 @@ function oefenReset(){
      gebouwd is — AI verbruikt terwijl de afboeking mislukte (Credits 0). Wie
      hier oefent, moet die regel een keer gezien hebben; hij is de reden dat
      een verdwenen token nu geen leesklus meer is (#83). */
+  /* Het kasboek in D1 (sinds 28-09-2026, #327): KlantId is de klantcode uit
+     het e-mailadres, geen adres. Dezelfde vijf regels als het archief hieronder,
+     in de vorm die de Worker nu teruggeeft. */
   OEFEN_DATA.kasboek = [
+    { id:'5', fields:{ id:5, Moment:'2026-09-28T14:02:11Z', KlantId:'9f2c41d7e0b3a86f5d1c2e4b7a90f36d18e5c2b4a7d9e0f1c3b5a7d9e1f3a5c7', Soort:'ai-call',
+      Credits:0, SaldoNa:0, TokensIn:9120, TokensUit:1450, Model:'claude-sonnet-4-6',
+      Details:'afboeken van 11 credits MISLUKT, AI wel verbruikt :: airtable_patch_502' } },
+    { id:'4', fields:{ id:4, Moment:'2026-09-28T13:55:40Z', KlantId:'9f2c41d7e0b3a86f5d1c2e4b7a90f36d18e5c2b4a7d9e0f1c3b5a7d9e1f3a5c7', Soort:'ai-call',
+      Credits:-8, SaldoNa:0, TokensIn:6300, TokensUit:980, Model:'claude-sonnet-4-6',
+      Details:'analyse afgeboekt — kosten waren 8, saldo stond op 8 en is afgekapt op 0' } },
+    { id:'3', fields:{ id:3, Moment:'2026-09-28T10:31:02Z', KlantId:'4b7e2a9c1d5f8036e2b4c6a8d0f1e3b5c7a9d1e3f5b7c9a1e3d5f7b9c1a3e5d7', Soort:'ai-call',
+      Credits:-6, SaldoNa:174, TokensIn:4880, TokensUit:720, Model:'claude-sonnet-4-6', Details:'analyse afgeboekt' } },
+    { id:'2', fields:{ id:2, Moment:'2026-09-28T09:12:00Z', KlantId:'4b7e2a9c1d5f8036e2b4c6a8d0f1e3b5c7a9d1e3f5b7c9a1e3d5f7b9c1a3e5d7', Soort:'code-ingewisseld',
+      Credits:100, SaldoNa:180, TokensIn:0, TokensUit:0, Model:'', Details:'code PIDL-1QA9-5RT4 ingewisseld' } },
+    { id:'1', fields:{ id:1, Moment:'2026-09-28T08:04:19Z', KlantId:'anoniem', Soort:'code-ingewisseld',
+      Credits:25, TokensIn:0, TokensUit:0, Model:'', Details:'code PIDL-7XK2-9PL3 ingewisseld' } }
+  ];
+  OEFEN_DATA.kasboekarchief = [
     { id:'recK000000000005', fields:{ Moment:'2026-08-27T14:02:11Z', Klant:'garage.pieters@ziggo.nl', Soort:'ai-call',
       Credits:0, SaldoNa:0, TokensIn:9120, TokensUit:1450, Model:'claude-sonnet-4-6',
       Details:'afboeken van 11 credits MISLUKT, AI wel verbruikt :: airtable_patch_502' } },
@@ -1440,7 +1458,7 @@ function oefenAntwoord(path, opts){
   if(path.indexOf('/admin/tabel') === 0){
     const naar = { log:'log', klanten:'klanten', codes:'codes', users:'users',
                    veldlab:'veldlab', referentie:'referentie', config:'appconfig',
-                   kasboek:'kasboek', sessies:'sessies', bevindingen:'bevindingen',
+                   kasboek:'kasboek', kasboekarchief:'kasboekarchief', sessies:'sessies', bevindingen:'bevindingen',
                    opdracht:'opdracht' };
     /* Twee bronnen zijn alleen-lezen, elk om zijn eigen reden: AppConfig omdat
        schrijven daar de randcache moet wissen, het kasboek omdat een
@@ -1450,7 +1468,7 @@ function oefenAntwoord(path, opts){
     /* Sessies en bevindingen zijn views in D1: ze bewaren niets maar worden
        berekend uit logregels. Met de hand bijstellen zou betekenen dat je een
        uitkomst verzint, en live weigert de Worker het ook. */
-    const alleenLezen = ['config','kasboek','sessies','bevindingen'];
+    const alleenLezen = ['config','kasboek','kasboekarchief','sessies','bevindingen'];
     const bron = sp.get('bron') || (b && b.bron) || '';
     if(!naar[bron]) return { ok:false, error:'Onbekende bron.' };
     const rijen = () => {
@@ -1502,7 +1520,7 @@ function oefenAntwoord(path, opts){
                beschermd:beschermd[bron] || [], geheim:bron === 'klanten' || bron === 'users' ? ['PassHash'] : [] };
     }
     if(alleenLezen.indexOf(bron) >= 0){
-      const naamVan = { config:'AppConfig', kasboek:'Kasboek (tokenmutaties)',
+      const naamVan = { config:'AppConfig', kasboek:'Kasboek (tokenmutaties)', kasboekarchief:'Kasboek tot 28-09-2026 (archief)',
                         sessies:'Ritten (afgeleid)', bevindingen:'Bevindingen (afgeleid)' };
       return { ok:false, error:'De bron "' + (naamVan[bron] || bron) + '" is alleen-lezen.' };
     }

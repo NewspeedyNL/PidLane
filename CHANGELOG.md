@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-09-2026 — Kasboek naar D1: één Airtable-call minder per AI-aanvraag (#327)
+ ═══════════════════════════════════════════════════════════
+
+ - Elke tokenmutatie (afboeking, aankoop, bonus, correctie) gaat nu naar de
+   D1-tabel `kasboek` in plaats van naar Airtable `TokenLog`. Een AI-aanvraag
+   kost daarmee 2 Airtable-calls in plaats van 3; saldo en racebescherming
+   blijven zoals ze waren.
+ - In D1 staat geen e-mailadres: de klant is `KlantId` = dezelfde hash als
+   bij Mijn voertuigen. Beheer zoekt nog steeds op e-mailadres; de pagina
+   rekent het eerst om.
+ - Beheer → "Kasboek tot 28-09-2026 (archief)" toont de oude TokenLog-regels,
+   alleen-lezen.
+ - Lukt het wegschrijven niet (of ontbreekt LOGDB), dan staat dat in de
+   Worker-log met de soort mutatie erbij; het verzoek zelf gaat gewoon door.
+
+ ═══════════════════════════════════════════════════════════
  28-09-2026 — Groepsproef: helpen 4–6 PIDs per verzoek? (#333) — testrun 8.3
  ═══════════════════════════════════════════════════════════
 

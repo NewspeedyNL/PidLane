@@ -273,3 +273,16 @@ ALTER TABLE kp_voertuig ADD COLUMN carrosserie TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN kleur TEXT;
 UPDATE kp_voertuig SET carrosserie = NULL, kleur = NULL WHERE carrosserie IS NOT NULL OR kleur IS NOT NULL;
 ALTER TABLE kp_voertuig ADD COLUMN eigen_pids TEXT;
+
+-- ══════════════════════════════════════════════════════════════════
+--  KASBOEK — één regel per saldomutatie (28-09-2026, #327)
+--  Tot deze datum de Airtable-tabel TokenLog; die blijft als archief staan.
+--  De Worker voert deze statements zelf uit bij de eerste regel
+--  (kasboekSchema in worker.js). De tekst is gelijk aan KASBOEK_SCHEMA, en
+--  test-kasboek.js eist dat — één schema, niet twee.
+--  KlantId is kpKlantId(email), dezelfde code als in Mijn voertuigen; een
+--  e-mailadres staat hier niet (privacy.html). Zonder account: 'anoniem'.
+--  Het saldo zelf staat in Airtable (Klanten.Saldo); dit is administratie.
+-- ══════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS kasboek (id INTEGER PRIMARY KEY AUTOINCREMENT, Moment TEXT NOT NULL, KlantId TEXT NOT NULL, Soort TEXT NOT NULL, Credits INTEGER NOT NULL, SaldoNa INTEGER, TokensIn INTEGER, TokensUit INTEGER, Model TEXT, Details TEXT);
+CREATE INDEX IF NOT EXISTS idx_kasboek_klant ON kasboek (KlantId, Moment DESC);

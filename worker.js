@@ -618,10 +618,23 @@ __name(tegoedKosten, "tegoedKosten");
 // Klanten.Saldo en nergens anders; deze tabel legt alleen vast wat eraan
 // gebeurd is. Daaruit volgt de belangrijkste eigenschap van deze functie: ze
 // mag nooit iets laten stranden. Alles staat in een try, en het wegschrijven
-// gaat via ctx.waitUntil zodat het antwoord niet op Airtable wacht. Ontbreekt
-// ctx, dan wordt er wél gewacht — een fetch die na het antwoord nog loopt
-// wordt door de runtime afgekapt, en een kasboekregel die "misschien" geschreven
-// is, is erger dan een die traag is.
+// gaat via ctx.waitUntil zodat het antwoord niet op het kasboek wacht.
+// Ontbreekt ctx, dan wordt er wél gewacht — werk dat na het antwoord nog loopt
+// wordt door de runtime afgekapt, en een kasboekregel die "misschien"
+// geschreven is, is erger dan een die traag is.
+//
+// IN D1 SINDS 28-09-2026 (#327). Tot dan was dit een POST naar de
+// Airtable-tabel TokenLog: één van de drie Airtable-calls bij elke
+// AI-aanvraag van een klant, in een werkruimte met 1.000 calls per maand. Het
+// saldo blijft in Airtable, dus de afboeking en haar racebeveiliging
+// veranderen niet. De oude regels blijven in TokenLog staan als archief.
+//
+// GEEN E-MAILADRES IN D1. privacy.html belooft over die database: "onder een
+// code die uit je e-mailadres berekend is. Je e-mailadres zelf staat niet in
+// die database." Het kasboek houdt zich daaraan: KlantId is kpKlantId(email),
+// dezelfde code als in Mijn voertuigen. Zonder account (een code die anoniem
+// wordt ingewisseld) staat er letterlijk 'anoniem' of 'onbekend'. Beheer zoekt
+// op e-mailadres door dat eerst om te rekenen (adminD1Lees, klantZoekveld).
 //
 // EEN MISLUKTE MUTATIE KRIJGT ÓÓK EEN REGEL, met Credits 0 en een Details die
 // zegt wat er niet gelukt is. Dat is precies het geval waarin er AI verbruikt
@@ -630,44 +643,60 @@ __name(tegoedKosten, "tegoedKosten");
 //
 // NIET STIL BIJ EEN MISLUKKING. Een kasboek dat zwijgend niets wegschrijft is
 // een kasboek dat liegt: je leest er later "geen mutaties" in waar er wel
-// degelijk iets gebeurd is. Vandaar de console.error in beide takken.
+// degelijk iets gebeurd is. Vandaar de console.error in elke tak — ook als de
+// D1-binding ontbreekt, want dan schrijft er niemand meer iets weg.
+//
+// Het schema maakt de Worker zelf aan, net als kpSchema(). schema.sql draagt
+// dezelfde tekst; test-kasboek.js eist dat die twee gelijk zijn.
+var KASBOEK_SCHEMA = [
+  "CREATE TABLE IF NOT EXISTS kasboek (id INTEGER PRIMARY KEY AUTOINCREMENT, Moment TEXT NOT NULL, KlantId TEXT NOT NULL, Soort TEXT NOT NULL, Credits INTEGER NOT NULL, SaldoNa INTEGER, TokensIn INTEGER, TokensUit INTEGER, Model TEXT, Details TEXT)",
+  "CREATE INDEX IF NOT EXISTS idx_kasboek_klant ON kasboek (KlantId, Moment DESC)"
+];
+var _kasboekKlaar = false;
+async function kasboekSchema(db) {
+  if (_kasboekKlaar) return;
+  for (const s of KASBOEK_SCHEMA) await db.prepare(s).run();
+  _kasboekKlaar = true;
+}
+__name(kasboekSchema, "kasboekSchema");
+// Een e-mailadres wordt de klantcode; al het andere ('anoniem', 'onbekend')
+// is geen persoonsgegeven en blijft staan zoals het is.
+async function kasboekKlantId(klant) {
+  const k = String(klant || "").trim().toLowerCase();
+  if (k.indexOf("@") >= 0) return await kpKlantId(k);
+  return (k || "onbekend").slice(0, 40);
+}
+__name(kasboekKlantId, "kasboekKlantId");
 async function tegoedLog(env, ctx, regel) {
   const job = (async () => {
+    const r = regel || {};
+    const soort = String(r.soort || "onbekend").slice(0, 40);
     try {
-      if (!env || !env.AIRTABLE_TOKEN) return;
-      const r = regel || {};
+      if (!env || !env.LOGDB) {
+        try { console.error("[kasboek] regel niet weggeschreven (" + soort + ") :: geen LOGDB-binding"); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+        return;
+      }
       const getal = (v) => Number.isFinite(Number(v)) ? Math.round(Number(v)) : null;
-      const velden = {
-        Moment: new Date().toISOString(),
-        Klant: String(r.klant || "onbekend").trim().toLowerCase().slice(0, 120),
-        Soort: String(r.soort || "onbekend").slice(0, 40),
-        Credits: getal(r.credits) || 0,
-        TokensIn: getal(r.tokensIn) || 0,
-        TokensUit: getal(r.tokensUit) || 0,
-        Model: String(r.model || "").slice(0, 80),
-        Details: String(r.details || "").slice(0, 500)
-      };
       // SaldoNa alleen als het bekend is. Een 0 die "onbekend" betekent leest
       // later als een leeg account, en dat is de verkeerde conclusie.
       const na = getal(r.saldoNa);
-      if (na !== null) velden.SaldoNa = na;
-
-      const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
-      const table = cfg(env, "AIRTABLE_TOKENLOG_TABLE");
-      const resp = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ records: [{ fields: velden }], typecast: true })
-      });
-      if (!resp.ok) {
-        const t = await resp.text().catch(() => "");
-        try {
-          console.error("[kasboek] regel niet weggeschreven (" + velden.Soort + ", " + velden.Klant + ") :: " + resp.status + " " + t.slice(0, 200));
-        } catch (_) { /* stil: melden mag de stroom nooit breken */ }
-      }
+      await kasboekSchema(env.LOGDB);
+      await env.LOGDB.prepare(
+        "INSERT INTO kasboek (Moment, KlantId, Soort, Credits, SaldoNa, TokensIn, TokensUit, Model, Details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      ).bind(
+        new Date().toISOString(),
+        await kasboekKlantId(r.klant),
+        soort,
+        getal(r.credits) || 0,
+        na,
+        getal(r.tokensIn) || 0,
+        getal(r.tokensUit) || 0,
+        String(r.model || "").slice(0, 80),
+        String(r.details || "").slice(0, 500)
+      ).run();
     } catch (e) {
       try {
-        console.error("[kasboek] regel niet weggeschreven :: " + String(e && e.message || e));
+        console.error("[kasboek] regel niet weggeschreven (" + soort + ") :: " + String(e && e.message || e));
       } catch (_) { /* stil: melden mag de stroom nooit breken */ }
     }
   })();
@@ -3836,14 +3865,28 @@ var ADMIN_BRONNEN = {
     schrijven: true, beschermd: [], geheim: []
   },
   kasboek: {
-    naam: "Kasboek (tokenmutaties)", baseKey: "AIRTABLE_CONFIG_BASE",
-    tableKey: "AIRTABLE_TOKENLOG_TABLE", sorteer: "Moment",
-    zoekvelden: ["Klant", "Soort", "Model", "Details"],
+    // Sinds 28-09-2026 in D1 (#327, zie tegoedLog). `schema` maakt de tabel
+    // aan als er nog nooit iets in geschreven is: anders geeft een beheerder
+    // die als eerste kijkt een foutmelding in plaats van een lege lijst.
+    naam: "Kasboek (tokenmutaties)", motor: "d1", d1: "kasboek", idveld: "id",
+    sorteer: "Moment", schema: kasboekSchema,
+    zoekvelden: ["Soort", "Model", "Details"],
+    // Er staat geen e-mailadres in, alleen de klantcode. Een zoekterm met een @
+    // wordt daarom eerst omgerekend (kpKlantId) en op deze kolom gezocht.
+    klantZoekveld: "KlantId",
     // BEWUST NIET SCHRIJFBAAR, en dat is geen netheid. Het kasboek bestaat om
     // één vraag te beantwoorden: waar zijn die tokens gebleven (#83). Een
     // tabel waarin je met de hand een regel kunt bijstellen of weghalen kan
     // die vraag per definitie niet meer beantwoorden — dan bewijst hij alleen
     // nog wat er in staat. Regels komen uitsluitend uit tegoedLog().
+    schrijven: false, beschermd: [], geheim: []
+  },
+  kasboekarchief: {
+    // De regels van vóór 28-09-2026, in Airtable (TokenLog). Er komt niets meer
+    // bij; ze blijven leesbaar zodat de geschiedenis niet uit beeld verdwijnt.
+    naam: "Kasboek tot 28-09-2026 (archief)", baseKey: "AIRTABLE_CONFIG_BASE",
+    tableKey: "AIRTABLE_TOKENLOG_TABLE", sorteer: "Moment",
+    zoekvelden: ["Klant", "Soort", "Model", "Details"],
     schrijven: false, beschermd: [], geheim: []
   },
   users: {
@@ -3948,6 +3991,7 @@ function d1Zoekterm(q) {
 __name(d1Zoekterm, "d1Zoekterm");
 
 async function adminD1Lees(b, sp) {
+  if (typeof b.def.schema === "function") await b.def.schema(b.db);
   const kol = await d1Kolommen(b.db, b.def.d1);
   const limiet = Math.min(100, Math.max(1, Math.round(Number(sp.get("limiet")) || 50)));
   const offset = Math.max(0, Math.round(Number(sp.get("offset")) || 0));
@@ -3962,9 +4006,18 @@ async function adminD1Lees(b, sp) {
     // Alleen zoeken in kolommen die er werkelijk zijn. Een zoekveld dat in de
     // lijst staat maar niet in de tabel zou anders de hele query breken.
     const zoekIn = (veld ? [veld] : (b.def.zoekvelden || [])).filter((v) => kol.has(v));
-    if (zoekIn.length) {
-      waar = " WHERE " + zoekIn.map((v) => `LOWER(COALESCE(${v},'')) LIKE ? ESCAPE '\\'`).join(" OR ");
-      for (const _ of zoekIn) waarden.push(d1Zoekterm(q));
+    const delen = zoekIn.map((v) => `LOWER(COALESCE(${v},'')) LIKE ? ESCAPE '\\'`);
+    for (const _ of zoekIn) waarden.push(d1Zoekterm(q));
+    // Een e-mailadres staat niet in deze tabel, zijn klantcode wel. Dus niet
+    // op het adres zoeken maar op wat eruit berekend wordt — exact, want een
+    // halve hash betekent niets.
+    const kz = b.def.klantZoekveld;
+    if (kz && !veld && q.indexOf("@") >= 0 && kol.has(kz)) {
+      delen.push(`${kz} = ?`);
+      waarden.push(await kpKlantId(q));
+    }
+    if (delen.length) {
+      waar = " WHERE " + delen.join(" OR ");
     } else if (veld) {
       return { fout: `Het veld "${veld.slice(0, 40)}" bestaat niet in deze bron.` };
     }

@@ -74,6 +74,10 @@ function bouw(opties) {
       return { ok: true, status: 200, json: async () => ({ records: [] }), text: async () => '{}' };
     },
     __name: () => {},
+    // De D1-kant van het kasboek (#327) toetst test-adminbron-d1.js. Hier
+    // hoort hij niet te draaien: gebeurt dat toch, dan is dat een fout.
+    kasboekSchema: async () => { throw new Error('de D1-kant van het kasboek hoort in deze test niet te draaien'); },
+    kpKlantId: async () => { throw new Error('de D1-kant van het kasboek hoort in deze test niet te draaien'); },
     // formuleTekst() staat buiten het geknipte blok maar wordt er wél door
     // aangeroepen. Niet nabouwen maar dezelfde functie uit worker.js knippen:
     // een nagemaakte escaper zou hier precies het gat verbergen dat #142 was.
@@ -181,11 +185,13 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
   // boek dat je vanaf een pagina kunt bijstellen bewijst alleen nog wat erin
   // staat. Beide grendels zitten in dezelfde `schrijven: false`, dus beide
   // horen hier getoetst — anders dekt deze toets straks de helft.
-  console.log('\n4. AppConfig en het kasboek zijn hier alleen-lezen');
+  // Sinds 28-09-2026 staat het kasboek in D1 (test-adminbron-d1.js, 6b); de
+  // Airtable-kant is het archief van daarvoor, en dat hoort net zo dicht.
+  console.log('\n4. AppConfig en het kasboekarchief zijn hier alleen-lezen');
   {
     for (const geval of [
       { bron: 'config', veld: 'Value', rij: { Key: 'banner_active' } },
-      { bron: 'kasboek', veld: 'Credits', rij: { Klant: 'a@b.nl', Soort: 'ai-call', Credits: -6 } }
+      { bron: 'kasboekarchief', veld: 'Credits', rij: { Klant: 'a@b.nl', Soort: 'ai-call', Credits: -6 } }
     ]) {
       const t = bouw();
       const r = await t.post({ bron: geval.bron, actie: 'wijzig', id: 'rec0123456789abcd', velden: { [geval.veld]: 'x' } });
@@ -202,13 +208,13 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
       toets(geval.bron + ': lezen mag wel', rl.body.ok === true && rl.body.schrijven === false,
         JSON.stringify(rl.body).slice(0, 120));
     }
-    // En het kasboek moet wél de TokenLog-tabel lezen. Zonder deze toets zou
+    // En het archief moet wél de TokenLog-tabel lezen. Zonder deze toets zou
     // een verwisselde tableKey een lege of totaal andere tabel opleveren en
     // toch groen blijven staan: "leest niets" ziet er hetzelfde uit als "er is
     // niets gebeurd", en dat is precies de verwarring die #83 opheft.
     const k = bouw({ antwoorden: [okAntwoord([])] });
-    await k.get('bron=kasboek');
-    toets('het kasboek leest de TokenLog-tabel',
+    await k.get('bron=kasboekarchief');
+    toets('het kasboekarchief leest de TokenLog-tabel',
       (k.staat.verzoeken[0] || {}).url && k.staat.verzoeken[0].url.indexOf('tbl_AIRTABLE_TOKENLOG_TABLE') >= 0,
       (k.staat.verzoeken[0] || {}).url);
   }

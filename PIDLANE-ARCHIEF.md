@@ -14,6 +14,37 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 28-09-2026 — Het kasboek gaat naar D1 (#327)
+
+**De aanleiding.** De Config-base zat op 1.302 van de 1.000 calls per maand.
+Elke AI-aanvraag kostte er drie: `klantZoek` (saldo lezen), `klantPatch`
+(afboeken) en een POST naar `TokenLog`. Het eerste deel van #327, de
+Users-cache, staat sinds PR #329.
+
+**Wat er gekozen is.** Alleen de kasboekregel verhuist. Die is een logregel:
+er leest niets in de app op terug, en een regel die mislukt kost geen geld.
+Het saldo blijft in Airtable. Dat heeft de racebescherming van
+`metSaldoSlot`, en een verhuizing daarvan is een ander soort werk. Zo'n
+verhuizing zou ook de tweede call weghalen, maar dan zit het risico precies
+op de plek waar het geld is.
+
+**Waarom `KlantId` en geen e-mailadres.** privacy.html belooft dat er in de
+D1-database geen e-mailadres staat. `TokenLog` had een kolom `Klant` met het
+adres erin; in Airtable mocht dat, want daar staan de accounts toch al. In D1
+wordt het `kpKlantId(email)`, dezelfde hash als bij Mijn voertuigen. Zo kun
+je het kasboek naast de voertuigen leggen zonder dat er een adres bijkomt.
+Beheer zoekt nog steeds op e-mailadres: `adminD1Lees` herkent een `@` en
+zoekt op de hash. `test-adminbron-d1.js` laat zien dat het adres nooit in de
+SQL terechtkomt.
+
+**Wat bleef liggen.** De oude regels staan nog in `TokenLog` en worden niet
+overgezet. Ze zijn te zien als de bron `kasboekarchief`. Een eenmalige
+overzetting zou betekenen dat je honderden adressen omrekent, voor een lijst
+die niemand doorzoekt. De tabelweergave in beheer kost nog steeds
+Airtable-calls: dat is stap 2 van #327.
+
+---
+
 ## 28-09-2026 — Van 3 naar 6 PIDs per verzoek: eerst meten (#333)
 
 **De vraag.** Heeft het nut om van 3 naar 6 PIDs per verzoek te gaan? Het

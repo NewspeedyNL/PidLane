@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════
-// test-kasboek.js — TokenLog: elke saldomutatie laat een spoor na (#83)
+// test-kasboek.js — het kasboek: elke saldomutatie laat een spoor na (#83)
 // ──────────────────────────────────────────────────────────────────
 // WAAROM DEZE TEST BESTAAT
 // Op 31-07-2026 verdwenen er tokens zonder analyses. De oorzaak was alleen te
@@ -14,7 +14,7 @@
 // alle drie fout doet:
 //
 //   1. HET KASBOEK MAG NOOIT IETS BREKEN. Het is administratie, geen bron van
-//      waarheid: het saldo staat in Klanten.Saldo. Valt Airtable weg terwijl
+//      waarheid: het saldo staat in Klanten.Saldo. Valt D1 weg terwijl
 //      er net een analyse liep, dan hoort de klant zijn antwoord gewoon te
 //      krijgen. Deel 4 en 9 zijn die tegenproef — één keer op tegoedLog zelf,
 //      één keer end-to-end door handleMessages heen.
@@ -31,6 +31,13 @@
 // De vier bronnen uit #83 komen alle vier langs: ai-call (deel 5-9),
 // code-ingewisseld (10), proeftegoed (11) en admin-mutatie (12). Deel 13 telt
 // ze na, zodat het wegvallen van een bron niet stilletjes doorglipt.
+//
+// SINDS 28-09-2026 STAAT HET KASBOEK IN D1 (#327), niet meer in de
+// Airtable-tabel TokenLog. Twee dingen die daarbij horen en hier getoetst
+// worden: er staat geen e-mailadres in (KlantId is kpKlantId(email), zoals
+// privacy.html belooft), en schema.sql zegt hetzelfde als KASBOEK_SCHEMA
+// (deel 14). De D1 is hier een echte SQLite (node:sqlite), zodat ook de SQL
+// zelf gedraaid wordt en niet alleen een tekst vergeleken.
 //
 // De echte functies worden uit worker.js geknipt met ankers, niet overgetypt:
 // verdwijnt of hernoemt er iets, dan stopt deze test in plaats van groen te
@@ -77,16 +84,45 @@ const srcTegoed = knip('function tegoedTarief(env) {', '__name(handleMessages, "
 const srcAdmin = knip('async function handleAdminKlantenPost', '__name(handleAdminKlantenPost', 'handleAdminKlantenPost');
 const srcOnboard = knip('async function handleKlantOnboarding', '__name(handleKlantOnboarding', 'handleKlantOnboarding');
 const srcRedeem = knip('async function handleCreditsRedeem', '__name(handleCreditsRedeem', 'handleCreditsRedeem');
+// kpKlantId staat buiten de tegoedketen (bij het klantplatform), maar tegoedLog
+// rekent er de klantcode mee uit. Uit de bron, niet nagebouwd: een eigen hash
+// zou hier groen kunnen staan terwijl de Worker een andere code schrijft.
+const srcKlantId = knip('async function kpKlantId(email) {', '__name(kpKlantId, "kpKlantId");', 'kpKlantId');
+const kpKlantId = new Function('crypto', '_enc', srcKlantId + '\nreturn kpKlantId;')(globalThis.crypto, new TextEncoder());
+const { DatabaseSync } = require('node:sqlite');
 
 // ── nagemaakte omgeving voor de tegoedketen ───────────────────────
-// `staat.posts` legt vast wat er werkelijk naar Airtable ging; daar kijkt deze
-// test naar, niet naar wat de functie teruggeeft. base en tabel komen uit
-// resolveBase/cfg met de SLEUTELNAAM erin verwerkt, zodat de test kan zien of
-// er om de TokenLog-tabel gevraagd wordt en niet om Klanten.
+// `staat.posts` legt vast welke kasboekregels er werkelijk in D1 kwamen: de rij
+// zoals SQLite hem teruggeeft, niet wat de functie teruggeeft. Een poging die
+// stukloopt komt er óók in (met velden null) — anders kan deel 4 niet
+// onderscheiden tussen "hij probeerde het en faalde" en "hij deed niets".
+// `kasboekGooit` laat prepare() gooien, `kasboekStuk` laat run() weigeren.
+function maakD1(staat, o) {
+  const db = new DatabaseSync(':memory:');
+  staat.db = db;
+  const stmt = (sql, args) => ({
+    bind: (...a) => stmt(sql, a),
+    async run() {
+      const kb = /^INSERT INTO kasboek/.test(sql);
+      if (kb && o.kasboekStuk) { staat.posts.push({ sql, velden: null }); throw new Error('D1_ERROR: database is locked'); }
+      const r = db.prepare(sql).run(...args);
+      if (kb) staat.posts.push({ sql, velden: db.prepare('SELECT * FROM kasboek WHERE id = ?').get(Number(r.lastInsertRowid)) });
+      return { meta: { changes: Number(r.changes) } };
+    },
+    async all() { return { results: db.prepare(sql).all(...args) }; },
+    async first() { return db.prepare(sql).get(...args) || null; }
+  });
+  return {
+    prepare: (sql) => {
+      if (/^INSERT INTO kasboek/.test(sql) && o.kasboekGooit) { staat.posts.push({ sql, velden: null }); throw new Error('D1 onbereikbaar'); }
+      return stmt(sql, []);
+    }
+  };
+}
 function bouwTegoed(opties) {
   const o = opties || {};
   const staat = {
-    posts: [], patches: [], meldingen: [], jobs: [], aiCalls: 0,
+    posts: [], patches: [], meldingen: [], jobs: [], aiCalls: 0, fetchAnders: [],
     saldo: o.saldo === undefined ? 180 : o.saldo
   };
   const aiAntwoord = JSON.stringify({
@@ -113,6 +149,7 @@ function bouwTegoed(opties) {
       fields: { Email: 'klant@voorbeeld.nl', Saldo: staat.saldo, Status: 'actief' }
     }),
     klantToegangProbleem: () => null,
+    kpKlantId,
     klantPatch: async (env, id, f) => {
       if (o.patchFaalt) throw new Error('airtable_patch_502');
       staat.patches.push(f);
@@ -126,14 +163,9 @@ function bouwTegoed(opties) {
         const st = o.aiStatus || 200;
         return { ok: st < 400, status: st, text: async () => aiAntwoord };
       }
-      // Alles wat hier binnenkomt is een kasboekregel. Eerst vastleggen dát
-      // het geprobeerd is, dan pas eventueel stukgaan: anders kan deel 4 niet
-      // onderscheiden tussen "hij probeerde het en faalde" en "hij deed niets".
-      let velden = null;
-      try { velden = JSON.parse(init.body).records[0].fields; } catch (e) { velden = { onleesbaar: String(init && init.body) }; }
-      staat.posts.push({ url: u, method: (init && init.method) || 'GET', velden });
-      if (o.kasboekGooit) throw new Error('airtable onbereikbaar');
-      if (o.kasboekStuk) return { ok: false, status: 502, text: async () => 'INVALID_REQUEST_UNKNOWN' };
+      // Het kasboek gaat niet meer via fetch. Komt er toch iets langs, dan is
+      // dat een Airtable-call die er niet hoort te zijn (#327).
+      staat.fetchAnders.push(u);
       return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
     },
     console: { error: (m) => staat.meldingen.push(String(m)), warn() {}, log() {} }
@@ -141,7 +173,7 @@ function bouwTegoed(opties) {
   const maak = new Function(...Object.keys(omg),
     srcTegoed + '\nreturn { tegoedLog, handleMessages, tegoedKosten, tegoedTarief };');
   const api = maak(...Object.values(omg));
-  const env = { AIRTABLE_TOKEN: 'x' };
+  const env = { AIRTABLE_TOKEN: 'x', LOGDB: maakD1(staat, o) };
   const ctx = { waitUntil: (p) => { staat.jobs.push(p); } };
   const verzoek = {
     headers: { get: (n) => (String(n).toLowerCase() === 'content-length' ? '400' : null) },
@@ -164,7 +196,7 @@ const gezien = new Set();
 (async function () {
 
   // ── 1. tegoedLog schrijft één regel, in de goede tabel ──────────
-  console.log('\n1. Eén regel per mutatie, in de TokenLog-tabel van de Config-base');
+  console.log('\n1. Eén regel per mutatie, in de D1-tabel kasboek');
   {
     const t = bouwTegoed();
     await t.api.tegoedLog(t.env, undefined, {
@@ -173,10 +205,8 @@ const gezien = new Set();
     });
     toets('er is precies één regel weggeschreven', t.staat.posts.length === 1, t.staat.posts.length + ' regel(s)');
     const p = t.staat.posts[0];
-    toets('als POST', p.method === 'POST', p.method);
-    toets('naar de Config-base', p.url.indexOf('app_AIRTABLE_CONFIG_BASE') > -1, p.url);
-    toets('en naar de TokenLog-tabel', p.url.indexOf('tbl_AIRTABLE_TOKENLOG_TABLE') > -1,
-          p.url + ' — een kasboek in de verkeerde tabel is geen kasboek');
+    toets('in de D1-tabel kasboek', /^INSERT INTO kasboek /.test(p.sql), p.sql + ' — een kasboek in de verkeerde tabel is geen kasboek');
+    toets('en er ging geen enkele Airtable-call uit (#327)', t.staat.fetchAnders.length === 0, JSON.stringify(t.staat.fetchAnders));
     const v = p.velden;
     toets('Soort', v.Soort === 'ai-call', String(v.Soort));
     toets('Credits is negatief bij afboeken', v.Credits === -6, String(v.Credits));
@@ -186,9 +216,15 @@ const gezien = new Set();
     toets('Model', v.Model === 'claude-sonnet-4-6', String(v.Model));
     toets('Details', v.Details === 'analyse afgeboekt', String(v.Details));
     toets('Moment is een leesbare ISO-tijd', /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(String(v.Moment)), String(v.Moment));
-    // Het e-mailadres is de sleutel waarop je later zoekt; twee schrijfwijzen
-    // van hetzelfde account maken die zoekactie stilletjes onvolledig.
-    toets('Klant staat in kleine letters', v.Klant === 'klant@voorbeeld.nl', String(v.Klant));
+    // De klantcode is de sleutel waarop je later zoekt. Twee schrijfwijzen van
+    // hetzelfde adres moeten dezelfde code geven, anders wordt die zoekactie
+    // stilletjes onvolledig — en een e-mailadres hoort er niet in (privacy.html).
+    const code = await kpKlantId('klant@voorbeeld.nl');
+    toets('KlantId is de klantcode van het adres, ongeacht hoofdletters', v.KlantId === code, String(v.KlantId));
+    toets('het e-mailadres staat nergens in de regel', JSON.stringify(v).indexOf('@') < 0, JSON.stringify(v));
+    const a = bouwTegoed();
+    await a.api.tegoedLog(a.env, undefined, { klant: 'anoniem', soort: 'code-ingewisseld', credits: 50 });
+    toets('zonder account staat er letterlijk "anoniem"', a.staat.posts[0].velden.KlantId === 'anoniem', String(a.staat.posts[0].velden.KlantId));
   }
 
   // ── 2. SaldoNa: bekend of afwezig, nooit een verzonnen nul ──────
@@ -196,8 +232,8 @@ const gezien = new Set();
   {
     const t = bouwTegoed();
     await t.api.tegoedLog(t.env, undefined, { klant: 'a@b.nl', soort: 'code-ingewisseld', credits: 0 });
-    toets('zonder saldoNa staat het veld er niet in',
-          !('SaldoNa' in t.staat.posts[0].velden),
+    toets('zonder saldoNa blijft het veld leeg (NULL)',
+          t.staat.posts[0].velden.SaldoNa === null,
           'een 0 die "onbekend" betekent leest later als een leeg account');
 
     const u = bouwTegoed();
@@ -207,9 +243,9 @@ const gezien = new Set();
   }
 
   // ── 3. ctx.waitUntil, en wat er gebeurt als die er niet is ──────
-  // Met ctx hoort het antwoord niet op Airtable te wachten. Zónder ctx moet er
-  // juist wél gewacht worden: een fetch die na het antwoord nog loopt wordt
-  // door de runtime afgekapt, en dan is de regel "misschien" geschreven.
+  // Met ctx hoort het antwoord niet op het kasboek te wachten. Zónder ctx moet
+  // er juist wél gewacht worden: werk dat na het antwoord nog loopt wordt door
+  // de runtime afgekapt, en dan is de regel "misschien" geschreven.
   console.log('\n3. Wegschrijven via ctx.waitUntil, en anders afgewacht');
   {
     const t = bouwTegoed();
@@ -226,11 +262,11 @@ const gezien = new Set();
   }
 
   // ── 4. TEGENPROEF — een kapot kasboek breekt niets, en zwijgt niet ──
-  console.log('\n4. Tegenproef: Airtable weg, en tegoedLog gaat niet over de kop');
+  console.log('\n4. Tegenproef: D1 weg, en tegoedLog gaat niet over de kop');
   {
     for (const geval of [{ kasboekGooit: true }, { kasboekStuk: true }]) {
       const t = bouwTegoed(geval);
-      const naam = geval.kasboekGooit ? 'fetch gooit' : 'Airtable antwoordt 502';
+      const naam = geval.kasboekGooit ? 'D1 gooit bij prepare' : 'D1 weigert bij run';
       let gegooid = null;
       try {
         await t.api.tegoedLog(t.env, undefined, { klant: 'a@b.nl', soort: 'ai-call', credits: -6, saldoNa: 174 });
@@ -243,11 +279,14 @@ const gezien = new Set();
             t.staat.meldingen.some((m) => m.indexOf('[kasboek]') >= 0),
             JSON.stringify(t.staat.meldingen));
     }
-    // Zonder token is er niets om mee te schrijven; dan hoort er ook geen
-    // poging te zijn (en geen uitzondering).
+    // Zonder D1-binding is er niets om in te schrijven; dan hoort er geen
+    // poging te zijn en geen uitzondering — maar wél een melding, want dan
+    // schrijft er niemand meer iets weg.
     const z = bouwTegoed();
-    await z.api.tegoedLog({}, undefined, { klant: 'a@b.nl', soort: 'ai-call', credits: -1 });
-    toets('zonder AIRTABLE_TOKEN wordt er niets geprobeerd', z.staat.posts.length === 0);
+    let zg = null;
+    try { await z.api.tegoedLog({}, undefined, { klant: 'a@b.nl', soort: 'ai-call', credits: -1 }); } catch (e) { zg = e; }
+    toets('zonder LOGDB wordt er niets geprobeerd en niets gegooid', z.staat.posts.length === 0 && zg === null, String(zg));
+    toets('maar het wordt wél gemeld', z.staat.meldingen.some((m) => /\[kasboek\].*LOGDB/.test(m)), JSON.stringify(z.staat.meldingen));
   }
 
   // ── 5. ai-call: de gewone afboeking ─────────────────────────────
@@ -330,7 +369,7 @@ const gezien = new Set();
   console.log('\n9. Tegenproef: het kasboek valt om, de analyse merkt er niets van');
   {
     for (const geval of [{ kasboekGooit: true }, { kasboekStuk: true }]) {
-      const naam = geval.kasboekGooit ? 'fetch gooit' : 'Airtable 502';
+      const naam = geval.kasboekGooit ? 'D1 gooit' : 'D1 weigert';
       const t = bouwTegoed(Object.assign({ saldo: 180 }, geval));
       let r = null, gegooid = null;
       try { r = await t.analyse(false); } catch (e) { gegooid = e; }
@@ -524,6 +563,20 @@ const gezien = new Set();
     for (const soort of ['ai-call', 'code-ingewisseld', 'proeftegoed', 'admin-mutatie'])
       toets('bron "' + soort + '" heeft een regel geschreven', gezien.has(soort),
             'gezien: ' + JSON.stringify([...gezien]) + ' — zonder deze bron is het kasboek blind voor die mutatie');
+  }
+
+  // ── 14. één schema, niet twee ───────────────────────────────────
+  // De Worker maakt de tabel zelf aan (KASBOEK_SCHEMA); schema.sql is waar je
+  // leest wat er staat. Lopen die uit elkaar, dan beschrijft het ene bestand
+  // een tabel die het andere niet maakt.
+  console.log('\n14. schema.sql zegt hetzelfde als KASBOEK_SCHEMA');
+  {
+    const code = new Function(knip('var KASBOEK_SCHEMA = [', 'var _kasboekKlaar', 'KASBOEK_SCHEMA') + '\nreturn KASBOEK_SCHEMA;')();
+    const sql = fs.readFileSync(path.join(__dirname, '..', 'schema.sql'), 'utf8').split('\n')
+      .filter((r) => /^CREATE (TABLE|INDEX) IF NOT EXISTS (kasboek|idx_kasboek)/.test(r))
+      .map((r) => r.replace(/;\s*$/, ''));
+    toets('twee statements, in dezelfde volgorde en letterlijk gelijk',
+      code.length === 2 && JSON.stringify(sql) === JSON.stringify(code), JSON.stringify({ sql, code }));
   }
 
   console.log('\n' + (fouten ? fouten + ' FOUT(en)' : 'alles goed'));

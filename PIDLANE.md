@@ -513,9 +513,10 @@ solo-project. Als er ooit echt SQL nodig is: **Cloudflare D1**, niet MariaDB.
 Tabellen: Referentie `tblkfxKcjR6gf0Ahe`, Sessies `tblwbyWN1L6AKwgoy`,
 en in de Config-base `Users`, `Klanten`, `TokenCodes` en `TokenLog`
 (`tblCrXVqEbaPTQQ2S`, aangemaakt 31-07-2026). Die laatste stond hier tot
-08-09-2026 als "staat er wel, maar er schrijft niets in"; sinds #83 schrijft
-`tegoedLog()` er bij elke saldomutatie een regel in — zie het kasboek-kader
-in §8.
+08-09-2026 als "staat er wel, maar er schrijft niets in"; van #83 tot
+28-09-2026 schreef `tegoedLog()` er bij elke saldomutatie een regel in. Sinds
+28-09-2026 (#327) staat het kasboek in D1 en is `TokenLog` een archief waar
+niets meer bij komt — zie het kasboek-kader in §8.
 
 **Twee soorten accounts, bewust gescheiden.** `Users` zijn logins op
 gebruikersnaam voor **personeel** — de beheerder, een monteur, de noodingang.
@@ -730,17 +731,25 @@ het dat wél doen, dan betaalt de klant dubbel.
 voor de echte afboeking. Wijzig je er één, pas de ander aan — of zet de tarieven
 via Worker-variabelen zodat alleen de schatting nog in de app staat.
 
-### Kasboek — TokenLog
+### Kasboek — D1 `kasboek` (tot 28-09-2026: Airtable `TokenLog`)
 
 **Gebouwd op 08-09-2026 (#83), en deze alinea staat nu terecht in de
-tegenwoordige tijd.** Elke mutatie op een tokensaldo krijgt een regel in
-`TokenLog` (Config-base), geschreven door `tegoedLog()` in `worker.js`. Vier
+tegenwoordige tijd.** Elke mutatie op een tokensaldo krijgt een regel in de
+D1-tabel `kasboek`, geschreven door `tegoedLog()` in `worker.js`. De Worker
+maakt die tabel zelf aan (`kasboekSchema`, dezelfde tekst als in `schema.sql`).
+Tot 28-09-2026 was dit een POST naar `TokenLog` in de Config-base: één van de
+drie Airtable-calls per AI-aanvraag (#327). Die regels blijven daar staan, en
+beheer toont ze als de bron *Kasboek tot 28-09-2026 (archief)*. Vier
 bronnen, zes aanroepen: `ai-call` (afgeboekt én mislukt), `code-ingewisseld`
 (bijgeboekt én afgestempeld-maar-niet-bijgeboekt), `proeftegoed` en
 `admin-mutatie` (bijboeken en zetten).
 
-Velden: `Moment`, `Klant`, `Soort`, `Credits` (negatief bij afboeken),
-`SaldoNa`, `TokensIn`, `TokensUit`, `Model`, `Details`.
+Kolommen: `id`, `Moment`, `KlantId`, `Soort`, `Credits` (negatief bij
+afboeken), `SaldoNa` (leeg als onbekend), `TokensIn`, `TokensUit`, `Model`,
+`Details`. **`KlantId` is `kpKlantId(email)`**, dezelfde code als in Mijn
+voertuigen, want privacy.html belooft dat er in de D1-database geen
+e-mailadres staat. Zonder account staat er `anoniem`. Beheer zoekt op een
+e-mailadres door het eerst om te rekenen (`klantZoekveld` in `ADMIN_BRONNEN`).
 
 **Drie regels die vastliggen**, en die alle drie in `test-kasboek.js` een
 tegenproef hebben:
@@ -766,7 +775,7 @@ dus géén regel op. Bij de AI-call en de activatiecode is er iets verbruikt
 terwijl het saldo stil bleef staan — dáár valt iets recht te zetten. Bij het
 toekennen is de patch zelf de mutatie: lukt hij niet, dan is er niets gebeurd.
 
-**Te lezen zonder Airtable open te doen.** `ADMIN_BRONNEN.kasboek` zet de tabel
+**Te lezen op de beheerpagina.** `ADMIN_BRONNEN.kasboek` zet de tabel
 op de beheerpagina onder Tabellen, **alleen-lezen** — en dat is geen netheid.
 Een boek dat je vanaf een pagina kunt bijstellen of waar je een regel uit kunt
 halen, bewijst alleen nog wat erin staat, en dan is de enige vraag die je eraan
@@ -788,8 +797,9 @@ en het uitlezen van `X-PidLane-Saldo` (punt 3 hierboven), dat sinds juli
 beschreven stond en pas op 02-09-2026 gebouwd is. **Wat nog niet bestaat, staat
 als issue met een vooruitwijzing hier — niet als alinea in de tegenwoordige
 tijd.** Dat het bovenstaande er nu weer in staat, is alleen goed omdat
-`test-kasboek.js` het waar houdt: acht mutaties in `plmutate.sh` maken deze
-alinea rood zodra ze niet meer klopt.
+`test-kasboek.js` het waar houdt, samen met `test-adminbron-d1.js` voor de
+beheerkant: twaalf mutaties in `plmutate.sh` maken deze alinea rood zodra ze
+niet meer klopt.
 
 **Achtergrondcalls kosten geld.** Sinds de Worker afrekent is élke call naar
 `/v1/messages` billable, ook calls die nooit langs `PLCredits.preflight` gaan
