@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-09-2026 — Groepsproef: helpen 4–6 PIDs per verzoek? (#333) — testrun 8.3
+ ═══════════════════════════════════════════════════════════
+
+ - Verbindingspaneel → "📦 Start de groepsproef": meet groep 1 t/m 6 en
+   weer terug op deze auto en adapter (± 2 minuten, de bus vast). Per groep:
+   metingen per seconde, responstijd, verloren en lege antwoorden, herhaalde
+   frames, met een advies erbij. Elke stap gaat naar de logtabel
+   (RecordType groepsproef).
+ - ✋ Handmatig: PIDs per verzoek nu 1 t/m 6. De automaat blijft op
+   hoogstens 3; terug naar de automaat zet de groep weer op 3.
+ - Een groepsantwoord waarin een sensor ontbreekt die kort daarvoor nog
+   antwoordde, telt niet meer als geslaagd. Gebeurt dat bij 4 van de laatste
+   20 verzoeken, dan maakt de automaat de groep kleiner (niet onder de 2) en
+   zegt hij waarom.
+ - Campagne: de groepsproef drie keer per rit (stil koud, stil warm, rijdend
+   met bijrijder). Blok 5 zet de uitslag in het verslag.
+
+ ═══════════════════════════════════════════════════════════
  28-09-2026 — Een demo-auto laat niets meer achter
  ═══════════════════════════════════════════════════════════
 

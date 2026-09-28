@@ -199,8 +199,11 @@ function splitBatchResponse(raw, expectPids){
   // gevraagd zijn, proberen we per PID meerdere plausibele lengtes
   // (tabelwaarde eerst, dan 1/2/4) en kiezen de segmentatie die de meeste
   // gevraagde PIDs verklaart — met voorkeur voor een parse die netjes eindigt
-  // op padding of het einde van de respons. Max 3 PIDs per batch → hoogut
-  // enkele tientallen paden, verwaarloosbaar qua rekenwerk.
+  // op padding of het einde van de respons. Een tak gaat alleen verder als de
+  // volgende byte een gevraagde PID is, dus het aantal paden blijft klein.
+  // Sinds 28-09-2026 kan een groep met de hand op 6 staan; gemeten op een
+  // antwoord van zes PIDs over drie frames: 0,1 ms per parse, en 0,3 ms als
+  // de databytes expres de gevraagde PID-nummers zijn (test-groepsgrootte.js).
   if(expect.size){
     let best=null;
     const exact=(eind!=null);

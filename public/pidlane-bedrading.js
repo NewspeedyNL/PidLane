@@ -82,6 +82,11 @@ var KRITIEK = [
   'flushAirtable','plLiveLogStatus',
   // De adapternaam voor de adapter-voorwaarde van een meetopdracht (#277).
   '_plLogAdapter',
+  // Het oordeel over een groepsantwoord (#333, 28-09-2026). Blok 5 vraagt het
+  // achter een guard, want het woont in pidlane-plload.js. Ontbreekt het, dan
+  // valt de pollus niet om maar telt hij een onvolledig antwoord weer als
+  // goed -- de stille vorm van #211 waarvoor deze lijst bestaat.
+  'plGroepOordeel',
   'magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
   'openCaravan','openLogboek','openRitAnalyse',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',

@@ -339,7 +339,7 @@
   }
 
   async function meet() {
-    if (_meetBezig) return null;
+    if (_meetBezig || _gpBezig) return null;
     if (!_verbonden()) { _melding('Verbind eerst een adapter'); return null; }
     try { if (typeof demoMode !== 'undefined' && demoMode) { _melding('In demomodus meet dit de app, niet de adapter'); return null; } }
     catch (e) { console.warn('demoMode niet leesbaar — de snelheidstest gaat door alsof er een echte adapter hangt', e); }
@@ -427,6 +427,287 @@
   }
 
   function laatsteMeting() { return _meting; }
+
+  // ══════════════════════════════════════════════════════════════════
+  // DE GROEPSPROEF — hoeveel PIDs per verzoek (28-09-2026)
+  // ══════════════════════════════════════════════════════════════════
+  /* DE VRAAG. De app vraagt tot 3 PIDs per verzoek; J1979 staat op CAN tot 6
+     toe. De bus zat bij 10,9 verzoeken/s op zo'n 84% bezet, en de vaste kosten
+     per verzoek (Bluetooth heen en terug, de adapter) wegen zwaarder dan een
+     paar extra CAN-frames. Groter kan dus meer PIDs per seconde opleveren —
+     of meer verlies, want boven de 3 is elk antwoord multiframe, en precies
+     daarop struikelt een goedkope kloon (#211). Dat is een vraag voor een
+     echte auto, en deze proef is de meting.
+
+     WAT HIJ DOET
+       1. De bus vasthouden. Lukt dat niet binnen 8 s, dan stopt hij: een
+          meting dwars door de pollus heen meet twee dingen tegelijk.
+       2. IJkronde: elke kandidaat-PID één keer solo. Alleen wat antwoordt
+          doet mee, zodat "onvolledig" betekent: een BEWEZEN PID ontbrak —
+          niet: deze auto heeft hem niet.
+       3. Groep 1 t/m 6 en weer terug (6 t/m 1), 8 s per stap, verzoeken
+          direct achter elkaar. Heen én terug omdat de responstijd binnen een
+          sessie kan oplopen (#302): zo middelt die drift uit, en het verschil
+          tussen heen en terug laat zien of hij er was.
+       4. Per stap: verzoeken/s, PIDs/s die werkelijk binnenkwamen, mediaan en
+          90e percentiel van de responstijd, onvolledige en lege antwoorden, en
+          herhaalde frames (echo).
+       5. Een advies (groepAdvies, puur) en de ruwe stappen als logregels met
+          RecordType 'groepsproef' naar de logtabel, zodat de meting ook zonder
+          dit toestel terug te lezen is.
+
+     WAT HIJ NIET IS. Geen regelkring: hij zet niets. Een advies boven de 3
+     neem je met de hand over; de automaat blijft op hoogstens 3 tot er genoeg
+     ritten zijn die het bewijzen. */
+  const GP_VERSIE = 'groepsproef 1 (28-09-2026)';
+  const GP_GROEPEN = [1, 2, 3, 4, 5, 6];
+  const GP_STAP_SEC = 8;
+  const GP_BUS_WACHT_MS = 8000;
+  let _gp = null, _gpBezig = false, _gpStand = '';
+
+  function _p90(a) {
+    if (!a.length) return 0;
+    const s = a.slice().sort(function (x, y) { return x - y; });
+    return s[Math.min(s.length - 1, Math.floor(s.length * 0.9))];
+  }
+
+  // Kandidaten: mode 01, geen bitmap, eerst de actieve selectie, aangevuld
+  // met wat de auto ondersteunt. Twaalf is genoeg om een groep van zes twee
+  // keer te vullen zonder dat dezelfde PID erin herhaald wordt.
+  function _gpKandidaten() {
+    const uit = [];
+    const erbij = function (bron) {
+      try {
+        if (!bron || !bron.size) return;
+        Array.from(bron).forEach(function (p) {
+          const s = String(p).toUpperCase();
+          if (/^01[0-9A-F]{2}$/.test(s) && !/^01(00|20|40|60|80|A0|C0)$/.test(s) && uit.indexOf(s) < 0) uit.push(s);
+        });
+      } catch (e) { console.warn('Groepsproef: PID-lijst niet leesbaar', e); }
+    };
+    try { erbij(typeof activePIDs !== 'undefined' ? activePIDs : null); } catch (e) { console.warn('Groepsproef: activePIDs niet leesbaar', e); }
+    try { erbij(typeof supportedPIDs !== 'undefined' ? supportedPIDs : null); } catch (e) { console.warn('Groepsproef: supportedPIDs niet leesbaar', e); }
+    return uit.slice(0, 12);
+  }
+
+  function _isCAN() {
+    try { return /^[6-9A-Ca-c]/.test(String((typeof selectedNetwork !== 'undefined' && selectedNetwork && selectedNetwork.id) || '')); }
+    catch (e) { return false; }
+  }
+
+  async function _gpStap(g, pids, rit, stapSec) {
+    const tijden = [];
+    let n = 0, gevraagd = 0, gekregen = 0, onvol = 0, leeg = 0, k = 0;
+    const echoVoor = (_stats() || {}).echoTot || 0;
+    const t0 = Date.now(), eind = t0 + stapSec * 1000;
+    while (Date.now() < eind) {
+      if (!_echt()) break;
+      const grp = [];
+      for (let j = 0; j < g; j++) grp.push(pids[(k + j) % pids.length]);
+      k = (k + g) % pids.length;
+      const uniek = grp.filter(function (p, i) { return grp.indexOf(p) === i; });
+      // Dezelfde vorm als de pollus: '01' + de PID-nummers achter elkaar, ook
+      // bij een groep van één — zo meet stap 1 wat de pollus bij groep 1 doet.
+      const cmd = '01' + uniek.map(function (p) { return p.slice(2); }).join('');
+      const ts = Date.now();
+      let raw = '';
+      try { raw = await sendCmd(cmd, 2500); } catch (e) { raw = ''; }
+      tijden.push(Date.now() - ts);
+      n++; gevraagd += uniek.length;
+      let got = {};
+      try { got = splitBatchResponse(raw, uniek) || {}; } catch (e) { got = {}; }
+      const mist = uniek.filter(function (p) { return !Object.prototype.hasOwnProperty.call(got, p); }).length;
+      gekregen += uniek.length - mist;
+      if (mist === uniek.length) leeg++;
+      else if (mist) onvol++;
+    }
+    const sec = Math.max(0.001, (Date.now() - t0) / 1000);
+    return {
+      groep: g, rit: rit, n: n, sec: +sec.toFixed(1),
+      perSec: +(n / sec).toFixed(1), pidsPerSec: +(gekregen / sec).toFixed(1),
+      gevraagd: gevraagd, gekregen: gekregen,
+      medMs: _mediaan(tijden), p90Ms: _p90(tijden),
+      onvol: onvol, leeg: leeg,
+      onvolPct: n ? Math.round(onvol / n * 100) : 0,
+      leegPct: n ? Math.round(leeg / n * 100) : 0,
+      echo: Math.max(0, ((_stats() || {}).echoTot || 0) - echoVoor)
+    };
+  }
+
+  /* HET ADVIES — puur, dus zonder adapter te toetsen (test-groepsgrootte.js).
+
+     1. Heen en terug per groep samenvoegen tot één cijfer.
+     2. Schoon = hoogstens 2% onvolledig, geen lege antwoorden, geen echo.
+        Onvolledig telt alleen bewezen PIDs (zie de ijkronde), dus dit is
+        verlies en geen "deze auto heeft hem niet".
+     3. Van klein naar groot: een grotere schone groep wint alleen bij minstens
+        5% meer PIDs/s. Bij een gelijkspel blijft de kleinere groep staan,
+        want die past vaker in één frame en heeft minder te verliezen.
+     4. Drift: verschilt de mediane responstijd van één groep heen en terug
+        meer dan 25%, dan veranderde de verbinding tijdens de proef en staat
+        dat erbij — het advies geldt dan onder voorbehoud. */
+  function groepAdvies(stappen) {
+    const st = (Array.isArray(stappen) ? stappen : []).filter(function (x) { return x && !x.overgeslagen && x.n > 0; });
+    if (!st.length) return { groep: null, groepen: [], drift: null, kop: 'Geen meting', reden: 'er is geen enkele stap gemeten' };
+    const per = {};
+    st.forEach(function (x) {
+      const p = per[x.groep] || (per[x.groep] = { groep: x.groep, n: 0, sec: 0, gekregen: 0, onvol: 0, leeg: 0, echo: 0, med: [] });
+      p.n += x.n; p.sec += x.sec; p.gekregen += x.gekregen;
+      p.onvol += x.onvol || 0; p.leeg += x.leeg || 0; p.echo += x.echo || 0;
+      p.med.push({ rit: x.rit, ms: x.medMs });
+    });
+    const groepen = Object.keys(per).map(Number).sort(function (a, b) { return a - b; }).map(function (g) {
+      const p = per[g];
+      const onvolPct = p.n ? Math.round(p.onvol / p.n * 100) : 0;
+      const leegPct = p.n ? Math.round(p.leeg / p.n * 100) : 0;
+      return {
+        groep: g, n: p.n,
+        pidsPerSec: p.sec ? +(p.gekregen / p.sec).toFixed(1) : 0,
+        perSec: p.sec ? +(p.n / p.sec).toFixed(1) : 0,
+        medMs: Math.round(p.med.reduce(function (a, m) { return a + m.ms; }, 0) / p.med.length),
+        onvolPct: onvolPct, leegPct: leegPct, echo: p.echo,
+        schoon: onvolPct <= 2 && leegPct === 0 && p.echo === 0,
+        heenTerug: p.med
+      };
+    });
+
+    let drift = null;
+    groepen.forEach(function (x) {
+      const h = x.heenTerug.filter(function (m) { return m.rit === 'heen'; })[0];
+      const t = x.heenTerug.filter(function (m) { return m.rit === 'terug'; })[0];
+      if (!h || !t || !(h.ms > 0) || !(t.ms > 0)) return;
+      const r = Math.max(h.ms, t.ms) / Math.min(h.ms, t.ms);
+      if (r > 1.25 && (!drift || r > drift.factor)) drift = { groep: x.groep, heenMs: h.ms, terugMs: t.ms, factor: +r.toFixed(2) };
+    });
+    const driftTekst = drift
+      ? ' Let op: bij groep ' + drift.groep + ' was de responstijd heen ' + drift.heenMs + ' ms en terug ' + drift.terugMs +
+        ' ms — de verbinding veranderde tijdens de proef. Herhaal hem voordat je hier iets op zet.'
+      : '';
+
+    const ref = groepen.filter(function (x) { return x.groep === 3; })[0] || null;
+    const schoon = groepen.filter(function (x) { return x.schoon; });
+    if (!schoon.length) {
+      const g1 = groepen[0];
+      return {
+        groep: null, groepen: groepen, drift: drift, winstPct: null,
+        kop: 'Geen enkele groepsgrootte bleef schoon',
+        reden: 'ook groep ' + g1.groep + ' verloor ' + g1.onvolPct + '% (onvolledig) en ' + g1.leegPct + '% (leeg)' +
+               (g1.echo ? ', met ' + g1.echo + ' herhaalde frames' : '') + '. Dat is geen groepskwestie maar een verbinding die hapert.' + driftTekst
+      };
+    }
+    let best = schoon[0];
+    for (let i = 1; i < schoon.length; i++) if (schoon[i].pidsPerSec >= best.pidsPerSec * 1.05) best = schoon[i];
+    const winst = (ref && ref.pidsPerSec > 0) ? Math.round((best.pidsPerSec / ref.pidsPerSec - 1) * 100) : null;
+    let kop;
+    if (best.groep > 3) kop = 'Groep ' + best.groep + ' haalt ' + (winst === null ? 'meer' : winst + '% meer') + ' PIDs/s dan groep 3';
+    else if (best.groep === 3) kop = 'Groep 3 is hier het beste';
+    else kop = 'Kleiner is hier beter: groep ' + best.groep;
+    const reden = 'groep ' + best.groep + ': ' + best.pidsPerSec + ' PIDs/s bij ' + best.medMs + ' ms, ' + best.onvolPct + '% onvolledig' +
+      (ref ? '; groep 3: ' + ref.pidsPerSec + ' PIDs/s bij ' + ref.medMs + ' ms, ' + ref.onvolPct + '% onvolledig' + (ref.echo ? ', ' + ref.echo + ' echo' : '') : '') +
+      '.' + driftTekst;
+    return { groep: best.groep, winstPct: winst, groepen: groepen, drift: drift, kop: kop, reden: reden };
+  }
+
+  // Elke stap als eigen logregel, plus de uitslag. Asynchroon en zonder erop
+  // te wachten: de proef is klaar, of de log er nu of over drie seconden is.
+  function _gpNaarLog(uit) {
+    if (typeof logToSheets !== 'function') return;
+    const extra = {
+      RecordType: 'groepsproef',
+      Adapter: String(uit.adapter || '').slice(0, 80),
+      PIDs: uit.ijk ? uit.ijk.bewezen.join(' ') : ''
+    };
+    const stuur = function (tekst) {
+      try { Promise.resolve(logToSheets('groepsproef', tekst, extra)).catch(function (e) { console.warn('Groepsproef: logregel niet verstuurd', e); }); }
+      catch (e) { console.warn('Groepsproef: logregel niet verstuurd', e); }
+    };
+    uit.stappen.forEach(function (x, i) {
+      stuur('stap ' + (i + 1) + ' ' + x.rit + ' groep ' + x.groep + (x.overgeslagen ? ' overgeslagen: ' + x.overgeslagen :
+        ': ' + x.n + ' verzoeken in ' + x.sec + ' s, ' + x.perSec + ' verz/s, ' + x.pidsPerSec + ' PIDs/s, ' +
+        'med ' + x.medMs + ' ms, p90 ' + x.p90Ms + ' ms, onvolledig ' + x.onvol + ' (' + x.onvolPct + '%), leeg ' + x.leeg +
+        ' (' + x.leegPct + '%), echo ' + x.echo));
+    });
+    const a = uit.advies || {};
+    stuur(GP_VERSIE + ' · ' + (uit.afgebroken ? 'AFGEBROKEN: ' + uit.afgebroken + ' · ' : '') +
+      'protocol ' + uit.protocol + ' · ijk ' + (uit.ijk ? uit.ijk.bewezen.length + '/' + uit.ijk.kandidaten : '?') +
+      ' · advies groep ' + (a.groep === null || a.groep === undefined ? '-' : a.groep) + ': ' + (a.kop || '') + ' — ' + (a.reden || ''));
+  }
+
+  function _gpKlaar(uit) {
+    uit.advies = groepAdvies(uit.stappen);
+    _gp = uit;
+    try {
+      if (typeof btDiag === 'function') {
+        if (uit.afgebroken) btDiag('Groepsproef afgebroken: ' + uit.afgebroken, 'warn');
+        uit.advies.groepen.forEach(function (x) {
+          btDiag('Groepsproef groep ' + x.groep + ': ' + x.pidsPerSec + ' PIDs/s, ' + x.perSec + ' verz/s, ' + x.medMs +
+                 ' ms, onvolledig ' + x.onvolPct + '%, leeg ' + x.leegPct + '%, echo ' + x.echo, x.schoon ? 'ok' : 'warn');
+        });
+        btDiag('Groepsproef-advies: ' + uit.advies.kop + ' — ' + uit.advies.reden, 'ok');
+      }
+    } catch (e) { console.warn('De uitkomst van de groepsproef kwam niet in het BT-log:', e); }
+    _gpNaarLog(uit);
+    _teken();
+    return uit;
+  }
+
+  // `opties.stapSec` bestaat voor de browserproef: twaalf stappen van 8 s is
+  // anderhalve minuut CI per run. Op het toestel is het altijd 8.
+  async function groepsproef(opties) {
+    const stapSec = (opties && opties.stapSec > 0 && opties.stapSec <= GP_STAP_SEC) ? opties.stapSec : GP_STAP_SEC;
+    if (_gpBezig || _meetBezig) return null;
+    if (!_echt()) { _melding('Groepsproef: verbind eerst een echte auto (niet in demo)'); return null; }
+    if (typeof sendCmd !== 'function' || typeof splitBatchResponse !== 'function' || typeof parsePID !== 'function') {
+      _melding('Groepsproef: de meetketen is niet geladen — er valt niets te meten'); return null;
+    }
+    if (!window.PLBus || typeof PLBus.wait !== 'function') { _melding('Groepsproef: PLBus ontbreekt'); return null; }
+    if (!_isCAN()) { _melding('Groepsproef: alleen op CAN — dit protocol kent geen meervoudige verzoeken'); return null; }
+
+    _gpBezig = true; _gpStand = 'wachten tot de bus vrij is…'; _teken();
+    const uit = { t: Date.now(), versie: GP_VERSIE, adapter: adapterNaam(), protocol: protocol(), stappen: [], ijk: null, afgebroken: null };
+    let tok = 0;
+    try {
+      tok = await PLBus.wait('groepsproef', GP_BUS_WACHT_MS);
+      if (!tok) uit.afgebroken = 'de bus kwam niet vrij binnen ' + (GP_BUS_WACHT_MS / 1000) + ' s';
+      else {
+        _gpStand = 'ijkronde — welke PIDs antwoorden solo…'; _teken();
+        const kand = _gpKandidaten(), bewezen = [];
+        for (let i = 0; i < kand.length; i++) {
+          if (!_echt()) break;
+          let raw = '';
+          try { raw = await sendCmd(kand[i], 2000); } catch (e) { raw = ''; }
+          let w = null;
+          try { w = parsePID(kand[i], raw); } catch (e) { w = null; }
+          if (w !== null && w !== undefined && !(typeof w === 'number' && isNaN(w))) bewezen.push(kand[i]);
+        }
+        uit.ijk = { kandidaten: kand.length, bewezen: bewezen };
+        if (bewezen.length < 2) uit.afgebroken = 'maar ' + bewezen.length + ' van ' + kand.length + ' PIDs antwoorden solo — daar valt geen groep mee te maken';
+        else {
+          const volgorde = GP_GROEPEN.concat(GP_GROEPEN.slice().reverse());
+          for (let s = 0; s < volgorde.length; s++) {
+            const g = volgorde[s], rit = s < GP_GROEPEN.length ? 'heen' : 'terug';
+            if (!_echt()) { uit.afgebroken = 'de verbinding viel weg bij stap ' + (s + 1); break; }
+            if (g > bewezen.length) { uit.stappen.push({ groep: g, rit: rit, overgeslagen: 'maar ' + bewezen.length + ' PIDs antwoorden solo' }); continue; }
+            try { PLBus.raak(tok); } catch (e) { console.warn('PLBus.raak mislukt — bij een lange proef kan het slot worden afgebroken', e); }
+            _gpStand = 'stap ' + (s + 1) + ' van ' + volgorde.length + ' (' + rit + ') — ' + g + ' PID' + (g === 1 ? '' : 's') + ' per verzoek';
+            _teken();
+            uit.stappen.push(await _gpStap(g, bewezen, rit, stapSec));
+            await _wacht(300);
+          }
+        }
+      }
+    } catch (e) {
+      uit.afgebroken = 'fout tijdens de proef: ' + ((e && e.message) || e);
+    } finally {
+      if (tok) { try { PLBus.release(tok); } catch (e) { console.warn('PLBus.release mislukt na de groepsproef', e); } }
+      try { if (window.PLLoad && typeof PLLoad.echoBijwerken === 'function') PLLoad.echoBijwerken(); }
+      catch (e) { console.warn('PLLoad.echoBijwerken mislukt — de automaat kan op echo\'s van de proef krimpen', e); }
+      _gpBezig = false; _gpStand = '';
+    }
+    return _gpKlaar(uit);
+  }
+
+  function laatsteGroepsproef() { return _gp; }
 
   // ══════════════════════════════════════════════════════════════════
   // WIE HANGT ER AAN DE LIJN
@@ -621,7 +902,7 @@
         '</div>' +
         '<div style="font:700 10px var(--f);color:var(--tx3);margin:9px 0 4px">PIDS PER VERZOEK — kleiner past vaker in één CAN-frame</div>' +
         '<div style="display:flex;gap:4px">' +
-          [1, 2, 3].map(function (g) {
+          [1, 2, 3, 4, 5, 6].map(function (g) {
             let nuG = 3; try { nuG = PLBus.batchGroep(); } catch (e) { console.warn('PLBus.batchGroep mislukt:', e); }
             const aan = nuG === g;
             return '<button onclick="PLAdapter.zetGroep(' + g + ')" style="flex:1;border-radius:7px;padding:13px 4px;' +
@@ -631,6 +912,9 @@
           }).join('') +
         '</div>' +
         '<div style="font:400 10px var(--f);color:var(--tx3);margin-top:6px">' +
+          '4–6 is om te meten: de automaat gaat niet boven 3 tot een rit laat zien dat meer goed gaat ' +
+          '(groepsproef hieronder). Terug naar 🤖 Automaat zet de groep weer op hoogstens 3.</div>' +
+        '<div style="font:400 10px var(--f);color:var(--tx3);margin-top:4px">' +
           'De automaat meet ondertussen door — je ziet hierboven wat hij van de bus vindt, ' +
           'hij grijpt alleen niet in.</div>' +
       '</div>';
@@ -684,6 +968,54 @@
       '<button onclick="PLAdapter.meet()" style="width:100%;border:1px solid var(--bd);background:var(--sur);' +
         'color:var(--tx);border-radius:9px;padding:11px;font:800 12px var(--f);cursor:pointer">' +
         '⏱ Meet wat deze verbinding aankan (40 s)</button>' +
+      uitslag +
+    '</div>';
+  }
+
+  function _groepsproefBlok() {
+    const kop = '<div style="font:800 11px var(--f);color:var(--tx3);letter-spacing:.4px;margin-bottom:6px">GROEPSPROEF — HOEVEEL PIDS PER VERZOEK</div>';
+    if (_gpBezig) {
+      return '<div style="margin-top:12px">' + kop +
+        '<div style="background:var(--bls);border:1px solid var(--bl);border-radius:9px;padding:11px">' +
+          '<div style="font:800 12px var(--f);color:var(--bl)">📦 Groepsproef loopt — ' + _gpStand + '</div>' +
+          '<div style="font:400 11px var(--f);color:var(--tx2);margin-top:2px">Ongeveer twee minuten. De meters staan zolang stil; ' +
+            'laat de app open staan en de motor draaien.</div>' +
+        '</div></div>';
+    }
+    let uitslag = '';
+    if (_gp) {
+      const a = _gp.advies || {};
+      let nuG = 3; try { nuG = PLBus.batchGroep(); } catch (e) { console.warn('PLBus.batchGroep mislukt:', e); }
+      uitslag = '<div style="margin-top:8px;background:var(--sur);border:1px solid var(--bd);border-radius:9px;padding:10px">' +
+        (_gp.afgebroken ? '<div style="font:700 11px var(--f);color:var(--or);margin-bottom:4px">⚠ ' + _gp.afgebroken + '</div>' : '') +
+        '<div style="font:800 12px var(--f);color:var(--tx)">' + (a.kop || '') + '</div>' +
+        '<div style="font:400 11px var(--f);color:var(--tx2);margin-top:3px">' + (a.reden || '') + '</div>' +
+        (a.groep && a.groep !== nuG ? '<button onclick="PLAdapter.zetGroep(' + a.groep + ')" style="margin-top:8px;width:100%;border:0;' +
+          'background:var(--blv);color:#fff;border-radius:8px;padding:9px;font:800 12px var(--f);cursor:pointer">' +
+          'Zet ' + a.groep + ' PIDs per verzoek (handmatig)</button>' : '') +
+        '<table style="width:100%;margin-top:9px;border-collapse:collapse;font:600 10px var(--m);color:var(--tx2)">' +
+          '<tr style="color:var(--tx3)"><td>groep</td><td>PIDs/s</td><td>verz/s</td><td>ms</td><td>onvol</td><td>leeg</td><td>echo</td></tr>' +
+          (a.groepen || []).map(function (x) {
+            const kl = function (slecht) { return slecht ? 'var(--or)' : 'var(--tx2)'; };
+            return '<tr style="' + (x.groep === a.groep ? 'font-weight:800;color:var(--tx)' : '') + '"><td>' + x.groep + '</td><td>' + x.pidsPerSec + '</td>' +
+              '<td>' + x.perSec + '</td><td>' + x.medMs + '</td>' +
+              '<td style="color:' + kl(x.onvolPct > 2) + '">' + x.onvolPct + '%</td>' +
+              '<td style="color:' + kl(x.leegPct > 0) + '">' + x.leegPct + '%</td>' +
+              '<td style="color:' + kl(x.echo > 0) + '">' + x.echo + '</td></tr>';
+          }).join('') +
+        '</table>' +
+        '<div style="font:400 10px var(--f);color:var(--tx3);margin-top:5px">' +
+          'heen en terug samengevoegd · ' + (_gp.ijk ? _gp.ijk.bewezen.length + ' PIDs die solo antwoorden' : '') +
+          ' · gemeten om ' + _tijd(_gp.t) + ' · staat ook in de logtabel (groepsproef)</div>' +
+      '</div>';
+    }
+    return '<div style="margin-top:12px">' + kop +
+      '<div style="font:400 11px var(--f);color:var(--tx2);margin-bottom:7px">' +
+        'Meet groep 1 t/m 6 en weer terug op deze auto en deze adapter. Motor aan, auto stil, geen andere meting open. ' +
+        'Onderweg alleen als iemand anders de telefoon bedient. Zie de campagne in de testrun voor de volledige rit.</div>' +
+      '<button onclick="PLAdapter.groepsproef()" style="width:100%;border:1px solid var(--bd);background:var(--sur);' +
+        'color:var(--tx);border-radius:9px;padding:11px;font:800 12px var(--f);cursor:pointer">' +
+        '📦 Start de groepsproef (± 2 min)</button>' +
       uitslag +
     '</div>';
   }
@@ -748,6 +1080,7 @@
       '</div>' +
       _regelingBlok() +
       _meetBlok() +
+      _groepsproefBlok() +
       _actieBlok() +
       _foutBlok() +
       '<div style="margin-top:14px;display:flex;gap:6px">' +
@@ -844,9 +1177,9 @@
       if (window.PLLoad && typeof PLLoad.isHandmatig === 'function' && !PLLoad.isHandmatig()) {
         PLLoad.handmatig(true, 'groepsgrootte met de hand gezet');
       }
-      PLBus.batchZet(n, true);
+      const naar = PLBus.batchZet(n, true);
       if (window.PLLoad && typeof PLLoad.boekActie === 'function') {
-        PLLoad.boekActie('groep', van, n, 'met de hand gezet via het adapterpaneel');
+        PLLoad.boekActie('groep', van, naar, 'met de hand gezet via het adapterpaneel');
       }
     } catch (e) { _melding('Groepsgrootte zetten mislukt: ' + ((e && e.message) || e)); }
     _teken();
@@ -997,6 +1330,9 @@
     meet: meet,
     advies: advies,
     laatsteMeting: laatsteMeting,
+    groepsproef: groepsproef,
+    groepAdvies: groepAdvies,
+    laatsteGroepsproef: laatsteGroepsproef,
     historie: historie,
     monster: monster,
     zetModus: zetModus,

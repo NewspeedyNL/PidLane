@@ -1642,7 +1642,14 @@ window.PLBus={
     try{ window.PLPidVorm && window.PLPidVorm.wis(); }catch(e){ console.warn('PLPidVorm.wis mislukt:', e); }
   },
 
-  /* ── adaptieve batchgrootte (fase 2) ── */
+  /* ── adaptieve batchgrootte (fase 2) ──
+     Twee plafonds (28-09-2026). J1979 staat op CAN tot zes PIDs per verzoek
+     toe; de automaat blijft op hoogstens 3, want dat hij hoger mag moet eerst
+     een rit bewijzen (de groepsproef in het adapterpaneel, zie CAMPAGNE). Met
+     de hand mag 4–6 wel: dat is een keuze met een naam eronder, en de meting
+     zelf heeft die stand nodig. */
+  GROEP_AUTO_MAX:3,
+  GROEP_HAND_MAX:6,
   batchGroep(){ return S.batchGroep; },
   /* Staat de groep met de hand vast (#211, 16-09-2026), dan houdt de automaat
      zijn handen eraf. Zonder deze vlag zou een handmatige keuze binnen twee
@@ -1651,11 +1658,13 @@ window.PLBus={
   batchVast(){ return !!S.batchVast; },
   batchZet(n, vast){
     // `Number(n)||3` stond hier, en dat maakte van groep 0 een groep 3: nul is
-    // falsy. Buiten 1..3 bestaat er geen groep, dus afkappen is goed — maar
+    // falsy. Buiten het bereik bestaat er geen groep, dus afkappen is goed — maar
     // afkappen naar de MAXIMUMwaarde bij een te lage invoer is het tegendeel
     // van wat er gevraagd werd. Gevonden door test-adapterpaneel.js.
+    // Het bereik hangt aan `vast`: met de hand tot 6, de automaat tot 3.
     const ruw=Number(n);
-    const g=Math.max(1,Math.min(3,Math.round(isFinite(ruw)?ruw:3)));
+    const max=vast ? this.GROEP_HAND_MAX : this.GROEP_AUTO_MAX;
+    const g=Math.max(1,Math.min(max,Math.round(isFinite(ruw)?ruw:3)));
     S.batchGroep=g; S.batchGoed=0; S.batchVast=!!vast;
     diag('Multi-PID groep '+(vast?'handmatig':'automatisch')+' op '+g,'info');
     return g;
@@ -1668,11 +1677,11 @@ window.PLBus={
   },
   batchGroter(){
     if(S.batchVast) return false;
-    if(S.batchGroep>=3) return false;
+    if(S.batchGroep>=this.GROEP_AUTO_MAX) return false;
     if(++S.batchGoed<25) return false;
     S.batchGoed=0; S.batchGroep++; diag('Multi-PID groep terug omhoog naar '+S.batchGroep,'ok'); return true;
   },
-  batchReset(){ if(S.batchVast) return; S.batchGroep=3; S.batchGoed=0; }
+  batchReset(){ if(S.batchVast) return; S.batchGroep=this.GROEP_AUTO_MAX; S.batchGoed=0; }
 };
 
 /* Handige wrapper: alles binnen fn() draait met de bus geclaimd. Lukt het
