@@ -161,6 +161,15 @@ function beoordeel(m) {
       PLGear.waarde = function(){ return -1; };   PLVisueel.tik(); uit.achteruit = gear();
       PLGear.waarde = function(){ return 0; };    PLVisueel.tik(); uit.neutraal = gear();
       PLGear.waarde = echt;
+      // De topbalk: in Slim visueel geen tweede versnelling (28-09-2026).
+      const toonWas = PLGear.toon, uitWas = PLGear.uit;
+      PLGear.uit = false; PLGear.toon = 3; PLGear._render();
+      const pg = document.getElementById('plGear');
+      uit.topbalk = { visueel: getComputedStyle(pg).display, logo: getComputedStyle(document.querySelector('.topbar .logo')).display };
+      document.body.classList.remove('pl-visueel');
+      uit.topbalk.slim = getComputedStyle(pg).display;
+      document.body.classList.add('pl-visueel');
+      PLGear.toon = toonWas; PLGear.uit = uitWas; PLGear._render();
       const h = function(id){ return +document.getElementById(id).getAttribute('height'); };
       PLVisueel.bij('0105', 130); uit.koelVol = h('viss-koel');
       PLVisueel.bij('0105', 40);  uit.koelLeeg = h('viss-koel');
@@ -173,6 +182,8 @@ function beoordeel(m) {
     })()`);
     toets('zonder bekende versnelling staat het embleem er', mid.onbekend.logo && mid.onbekend.gear === '', JSON.stringify(mid.onbekend));
     toets('met een versnelling staat die in het midden, het embleem is weg', !mid.drie.logo && mid.drie.gear === '3', JSON.stringify(mid.drie));
+    toets('in Slim visueel staat de versnelling niet ook nog in de topbalk (daarbuiten wel)',
+      mid.topbalk.visueel === 'none' && mid.topbalk.slim !== 'none', JSON.stringify(mid.topbalk));
     toets('achteruit is R en neutraal N (niet "-1" en "0")', mid.achteruit === 'R' && mid.neutraal === 'N', JSON.stringify(mid));
     toets('koelwaterstaafje: 130 °C vol, 40 °C leeg', mid.koelVol === mid.H && mid.koelLeeg === 0, JSON.stringify(mid));
     toets('brandstofstaafje: 50% is half', Math.abs(mid.tankHalf - mid.H / 2) < 0.05, JSON.stringify(mid));

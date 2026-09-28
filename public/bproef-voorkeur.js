@@ -84,6 +84,9 @@ const NEPSERVER = `(async function(){
       activePIDs.clear(); activePIDs.add('0104'); activePIDs.add('010D');
       vehicleInfo = Object.assign(vehicleInfo || {}, { vin: '${vin}', merk: 'Mazda' });
       connected = true; demoMode = false;
+      // Wat de echte verbindingsflow aan het eind doet: "Verbinding compleet".
+      // Pas daarna zet Mijn voertuigen de vaste selectie (28-09-2026).
+      window._plVerbindingKlaar = Date.now();
     })(); 'ok'`);
     toets('de waakronde gaat vanzelf aan', await wacht(`PLWaak.actief() === true`, 8000));
     toets('de auto wordt herkend en krijgt zijn vaste selectie', await wacht(`JSON.stringify([...activePIDs].sort()) === '["0105","010C"]'`, 10000),

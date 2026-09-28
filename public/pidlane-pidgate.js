@@ -484,8 +484,12 @@ function plSelectieHerstel(){
   if(!bewaard || !Array.isArray(bewaard.pids) || !bewaard.pids.length) return 0;
   const voor=plSelectieVoor();
   let n=0;
+  // Ook wat in de keuzelijst staat zonder dat de auto het meldt: eigen PIDs
+  // en berekende PIDs (28-09-2026). Die meldt een auto nooit, dus vielen ze
+  // bij elke hervatting weg.
+  const inLijst=new Set((typeof discoveredPIDDefs!=='undefined' && discoveredPIDDefs ? discoveredPIDDefs : []).map(function(d){ return d.pid; }));
   bewaard.pids.forEach(function(pid){
-    if(!supportedPIDs.has(pid)) return;
+    if(!supportedPIDs.has(pid) && !inLijst.has(pid)) return;
     if(!pidGate(pid,'kiesbaar')) return;
     activePIDs.add(pid); manualPIDs.add(pid); n++;
   });

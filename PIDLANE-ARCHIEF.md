@@ -14,6 +14,34 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 28-09-2026 — Eigen sensoren weg na een herstart: te vroeg, en nooit opnieuw
+
+**Wat er gemeten werd.** Het logboek van 28-09 (sessies 10:58 en 12:09): na
+elke verbinding precies de standaardset van 26 PIDs, terwijl bij de CX-5 in D1
+13 vaste sensoren stonden (9 eigen, 4 berekende) en de VIN gelezen werd.
+
+**Waarom.** Drie dingen samen:
+1. `restoreAppState()` zet bij het opstarten de VIN van de vorige sessie terug
+   (tot 6 uur). `herkenAuto()` in `pidlane-garage.js` herkende de auto daarop
+   zodra `connected` true werd — dat is vóór de PID-lijst. Er paste niets, en
+   omdat de VIN als "gezien" gold, werd het nooit opnieuw geprobeerd.
+2. De vinkjes in Sensoren schrijven in dezelfde `pid_selectie` als
+   "Vastleggen" in Mijn voorkeuren, en die VERVING de hele selectie. Met alleen
+   eigen en berekende PIDs erin was er dan geen toerental meer — een ontwerpfout
+   van 27-09.
+3. `plSelectieHerstel()` (hervatten na een crash) nam alleen wat de auto meldt;
+   eigen en berekende PIDs meldt een auto nooit.
+
+**Hoe het nu is.** "Verbinding compleet" zet `window._plVerbindingKlaar`; pas
+daarna past Mijn voertuigen de selectie toe, en paste er niets, dan nog vier
+keer. Eigen en berekende PIDs komen erbij (`{erbij:true}`); gewone PIDs in de
+vaste selectie vervangen de rest zoals voorheen. Hervatten neemt ook wat in de
+keuzelijst staat. `bproef-garage.js` 4h bootst de volgorde na.
+
+**De les.** "Herkend" en "klaar" zijn twee momenten. Een eenmalige actie aan
+het eerste hangen, met een grendel ertegen, faalt stil zodra het tweede later
+komt — en een herstart met een onthouden VIN maakt dat verschil groot.
+
 ## 27-09-2026 — De versnellingstegel liet achteruit zien als "-1"
 
 **Wat er stond.** De trekstrook schreef de versnelling als

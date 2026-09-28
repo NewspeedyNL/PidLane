@@ -39,6 +39,17 @@ function plStempelLokaal(ms){
 // '2026-09-02' — voor een bestandsnaam waar alleen de dag in hoort. Met
 // toISOString() geeft die om 00:30 lokaal nog de dag ervóór, en dan lijkt een
 // export van vannacht van gisteren te zijn.
+/* Een bestandsnaam die elke keer anders is (#326, 28-09-2026):
+   PidLane-foutcodes-2026-09-28_11-07. Een vaste naam ("foutcodes.txt") moest
+   de tweede keer een bestaand bestand in Documenten overschrijven, en dat mag
+   een app op Android 11+ alleen als hij dat bestand zelf maakte — na een
+   herinstallatie niet meer. Dan viel het opslaan terug op het deelvenster. */
+function plBestandsnaam(basis, ext, ms){
+  const s=plStempelLokaal(ms).slice(0,16).replace('T','_');
+  return 'PidLane-'+String(basis||'bestand').replace(/[^A-Za-z0-9_-]+/g,'-')+'-'+s+(ext?'.'+ext:'');
+}
+window.plBestandsnaam=plBestandsnaam;
+
 function plDatumLokaal(ms){
   const d = (ms===undefined || ms===null) ? new Date() : new Date(ms);
   return d.getFullYear() + '-' + _plTweeCijfers(d.getMonth()+1) + '-' + _plTweeCijfers(d.getDate());
@@ -84,6 +95,9 @@ document.addEventListener('DOMContentLoaded', function(){
 // "bezig"-staat tijdens de ~12 sec scan, zodat gebruikers niet herhaald
 // kunnen klikken terwijl het verbindscript al loopt.
 function setConnectingUI(busy){
+  // Een nieuwe verbinding begint: wat na "Verbinding compleet" hoort
+  // (PLGarage → de vaste selectie) wacht weer op die melding (28-09-2026).
+  if(busy) window._plVerbindingKlaar=0;
   const cbtn = document.getElementById('cbtn');
   // Álle Verbinden-knoppen (hub + verbind-overlay delen dezelfde id).
   const mbtns = document.querySelectorAll('[id="btnConnect"]');
@@ -97,6 +111,7 @@ function setConnectingUI(busy){
   }
 }
 function setConn(on){
+  if(!on) window._plVerbindingKlaar=0;   // zie setConnectingUI()
   const dot=document.getElementById('sdot'),txt=document.getElementById('stxt'),btn=document.getElementById('cbtn');
   const pill=document.querySelector('.pill');
   if(pill){ pill.classList.remove('attn'); if(pill.dataset.origTitle) pill.title=pill.dataset.origTitle; }

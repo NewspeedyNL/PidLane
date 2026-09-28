@@ -1815,6 +1815,7 @@ function tekenKlanten(){
     const merk = [];
     if(k.heeftReset) merk.push('<span class="pill p-wacht">herstel open</span>');
     if(k.verwijderdOp) merk.push('<span class="pill p-uit">wordt gewist ' + esc(dt(k.definitiefOp)) + '</span>');
+    if(k.ontwikkelaar) merk.push('<span class="pill p-wacht">ontwikkelaar</span>');
     return `<div class="klantrij">
       <div class="kop">
         <div>
@@ -1828,6 +1829,7 @@ function tekenKlanten(){
         <button class="btn-sec btn-sm" onclick="kSaldo('${k.id}',${k.saldo})">Saldo zetten</button>
         <button class="btn-sec btn-sm" onclick="kStatus('${k.id}','${esc(k.status)}')">Status</button>
         <button class="btn-sec btn-sm" onclick="kWachtwoord('${k.id}','${esc(k.email)}')">Wachtwoord</button>
+        <button class="btn-sec btn-sm" onclick="kOntwikkelaar('${k.id}','${esc(k.email)}',${k.ontwikkelaar ? 'true' : 'false'})">${k.ontwikkelaar ? 'Ontwikkelaar uit' : 'Ontwikkelaar aan'}</button>
         <button class="btn-sec btn-sm" onclick="kDetail('${k.id}')">Details</button>
         <button class="btn-del btn-sm" onclick="kVerwijder('${k.id}','${esc(k.email)}')">Wissen</button>
       </div>
@@ -1931,6 +1933,19 @@ function kStatus(id, huidig){
     return;
   }
   kPost({ actie:'update', id, status:s }, () => 'Status is nu ' + s + '.');
+}
+/* Ontwikkelaar (28-09-2026): de klant krijgt in de app de ontwikkeltools
+   (testrun, bulk-recorder, survey, test-scenario). Hij blijft klant: eigen
+   voertuigen en tegoed, geen beheer en geen gegevens van andere klanten. Het
+   veld Ontwikkelaar (selectievakje) staat in de tabel Klanten; de wijziging
+   komt in de auditregel. De app ziet het bij de volgende /klant/mij, dus na
+   opnieuw openen of inloggen. */
+function kOntwikkelaar(id, email, nu){
+  const naar = !nu;
+  if(!confirm((naar ? 'Ontwikkeltools AANZETTEN voor ' : 'Ontwikkeltools UITZETTEN voor ') + email + '?\n\n' +
+    (naar ? 'Testrun, bulk-recorder, full survey en test-scenario worden zichtbaar. Beheer en de gegevens van andere klanten blijven dicht.'
+          : 'De ontwikkeltools verdwijnen bij de volgende keer openen van de app.'))) return;
+  kPost({ actie:'update', id, ontwikkelaar:naar }, () => 'Ontwikkelaar ' + (naar ? 'aan' : 'uit') + ' voor ' + email + '.');
 }
 function kWachtwoord(id, email){
   const p = prompt('Nieuw wachtwoord voor ' + email + ':\nMinimaal 8 tekens. De klant kan dit daarna zelf wijzigen.');

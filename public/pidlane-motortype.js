@@ -395,10 +395,24 @@ async function nativeSchrijfDirect(blob,fname){
                          directory:'DOCUMENTS', recursive:true });
     return 'Documenten/'+PL_OPSLAGMAP+'/'+fname;
   }catch(e){
-    log('Rechtstreeks opslaan mislukt ('+(e.message||e)+') — terug naar de deelkaart','warn');
+    // De reden vasthouden (#326): plBewaarBestand zegt hem tegen de klant
+    // vóór het deelvenster opengaat, en hij staat met de naam in het logboek.
+    _plOpslagFout = String(e && e.message || e);
+    log('Rechtstreeks opslaan van '+fname+' in Documenten/'+PL_OPSLAGMAP+' mislukt ('+_plOpslagFout+') — terug naar de deelkaart','warn');
     return null;
   }
 }
+let _plOpslagFout = '';
+/* Blok 5 (#326): kwam elke opslag deze sessie rechtstreeks in Documenten?
+   Puur. `st` = { gelukt, mislukt:[{naam, reden}] }. */
+function plOpslagOordeel(st){
+  st=st||{ gelukt:0, mislukt:[] };
+  const m=st.mislukt||[];
+  if(!st.gelukt && !m.length) return { staat:'LET OP', detail:'deze sessie niets opgeslagen — druk bij de foutcodes twee keer op Bewaren' };
+  if(m.length) return { staat:'FOUT', detail:m.length+' van '+(m.length+st.gelukt)+' keer niet in Documenten/PidLane: '+m.slice(0,3).map(x=>x.naam+' ('+x.reden+')').join('; ') };
+  return { staat:'ok', detail:st.gelukt+' keer rechtstreeks in Documenten/PidLane, zonder deelvenster' };
+}
+window.plOpslagOordeel=plOpslagOordeel;
 
 async function nativeShareFile(blob,fname){
   const C=window.Capacitor;
@@ -439,13 +453,26 @@ async function download(name,content){
 /* Elk bestand, niet alleen tekst (27-09-2026): ook een PDF of CSV gaat
    rechtstreeks naar Documenten/PidLane/, zonder keuzescherm waarheen. De
    deelkaart blijft alleen de terugval als het schrijven mislukt. */
+// Wat er deze sessie met opslaan gebeurde, voor blok 5 (#326).
+window._plOpslag = window._plOpslag || { gelukt:0, mislukt:[] };
 async function plBewaarBestand(blob,name){
   const pad=await nativeSchrijfDirect(blob,name);
+  try{
+    if(pad) window._plOpslag.gelukt++;
+    else if(window.Capacitor?.Plugins?.Filesystem) window._plOpslag.mislukt.push({ naam:name, reden:_plOpslagFout||'onbekend' });
+  }catch(e){ console.warn('Opslagtelling niet bijgewerkt:', e); }
   if(pad){
     const waarom=_plVerbindingStaat()?' — geen deelvenster, dus de verbinding blijft staan (#132)':'';
     log('💾 Opgeslagen in '+pad+waarom,'ok');
     try{ showToast?.('💾 Opgeslagen in '+pad); }catch(e){ console.warn('Opslagmelding niet getoond:', e); }
     return true;
+  }
+  // Mislukt het rechtstreeks schrijven, dan eerst zeggen waarom (#326), en
+  // pas daarna het deelvenster — anders lijkt het alsof de knop iets anders
+  // doet dan beloofd.
+  if(_plOpslagFout){
+    try{ showToast?.('Opslaan in Documenten lukte niet ('+_plOpslagFout+') — kies waar het heen moet'); }catch(e){ console.warn('Opslagmelding niet getoond:', e); }
+    _plOpslagFout='';
   }
   if(await nativeShareFile(blob,name)) return true;
   if(window.Capacitor?.isNativePlatform?.()){ showNeedsUpdate(); return false; }

@@ -64,6 +64,16 @@ ctx.window = ctx;
 vm.createContext(ctx);
 vm.runInContext(HULP, ctx, { filename: 'pidlane-uihelpers.js (klok)' });
 
+console.log('\n1b. plBestandsnaam(): elke keer een andere naam, op de klok van het scherm (#326)');
+eis('plBestandsnaam bestaat', typeof ctx.plBestandsnaam === 'function');
+if (typeof ctx.plBestandsnaam === 'function') {
+  const n = ctx.plBestandsnaam('foutcodes', 'txt', zomer.getTime());
+  eis('21:16 UTC wordt PidLane-foutcodes-2026-09-02_23-16.txt', n === 'PidLane-foutcodes-2026-09-02_23-16.txt', 'kreeg "' + n + '"');
+  eis('een minuut later: een andere naam, dus nooit een bestaand bestand overschrijven',
+    ctx.plBestandsnaam('foutcodes', 'txt', zomer.getTime() + 60000) !== n);
+  eis('rare tekens in de basis worden streepjes', ctx.plBestandsnaam('rapport / AI', '', zomer.getTime()) === 'PidLane-rapport-AI-2026-09-02_23-16');
+}
+
 console.log('\n2. plStempelLokaal() geeft de klok van het scherm, niet die van UTC');
 eis('de helpers zijn geladen',
     typeof ctx.plStempelLokaal === 'function' && typeof ctx.plDatumLokaal === 'function',

@@ -253,7 +253,7 @@ function exportCheckReport(){
   const v=getVehicle();
   const lines=[`PidLane — Totaalcheck`,`Datum: ${new Date().toLocaleString('nl')}`,v.merk?`Voertuig: ${v.merk} ${v.model} ${v.year}`:'',''];
   checkResults.forEach(i=>lines.push(`[${i.status.toUpperCase()}] ${i.name}: ${i.display}\n  ${i.detail}\n`));
-  download('totaalcheck.txt',lines.join('\n'));
+  download(plBestandsnaam('totaalcheck','txt'),lines.join('\n'));   // #326: geen vaste naam
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -862,7 +862,7 @@ function bscExport(){
   const lines=['PidLane — Basic System Check', 'Datum: '+new Date().toLocaleString('nl'),
     v.merk?`Voertuig: ${v.merk} ${v.model||''} ${v.year||''}`:'',''];
   R.forEach(r=>lines.push(`[${(r.status||'').toUpperCase()}] ${r.naam}: ${r.waarde!==undefined?r.waarde+' '+r.unit:'geen data'}${r.reden?' — '+r.reden:''}`));
-  try{ download('basic-system-check.txt', lines.join('\n')); }catch(e){ console.warn('download mislukt:', e); }
+  try{ download(plBestandsnaam('basic-system-check','txt'), lines.join('\n')); }catch(e){ console.warn('download mislukt:', e); }
 }
 
 /* ---- weergave ---- */

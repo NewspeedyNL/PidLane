@@ -166,6 +166,23 @@ function isAdmin(){
 }
 window.isAdmin = isAdmin;
 
+/* Ontwikkelaar (28-09-2026): een klant die van de beheerder de ontwikkeltools
+   kreeg (beheer → Klanten → Ontwikkelaar aan). Blijft klant: isAdmin() blijft
+   false, dus Mijn voertuigen, tegoed en afrekenen werken zoals voor elke
+   klant. De vlag komt uit /klant/mij (PLKlant.mij), niet uit het toestel. */
+function isOntwikkelaar(){
+  try{
+    const u = window.currentUser || currentUser;
+    return !!(u && String(u.role||'').toLowerCase()==='klant' && u.ontwikkelaar===true);
+  }catch(e){ console.warn('isOntwikkelaar: gebruiker onleesbaar', e); return false; }
+}
+/* Mag deze gebruiker de ontwikkeltools zien? De beheerder of een klant met de
+   vlag. Beheer zelf (beheer.html, Copiloot) blijft alleen voor admin: dat
+   toetst de Worker, niet deze functie. */
+function magOntwikkelen(){ return isAdmin() || isOntwikkelaar(); }
+window.isOntwikkelaar = isOntwikkelaar;
+window.magOntwikkelen = magOntwikkelen;
+
 async function doLogin(){
   let user = document.getElementById('loginUser').value.trim();
   const pass = document.getElementById('loginPass').value;

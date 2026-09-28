@@ -122,7 +122,8 @@ function logg(m, lvl) {
 }
 
 function magIk() {
-  try { if (typeof isAdmin === 'function') return !!isAdmin(); } catch(e){ console.warn('isAdmin mislukt:', e); }
+  // De beheerder, of een klant met de ontwikkelaarsvlag (28-09-2026).
+  try { if (typeof magOntwikkelen === 'function') return !!magOntwikkelen(); if (typeof isAdmin === 'function') return !!isAdmin(); } catch(e){ console.warn('magOntwikkelen mislukt:', e); }
   return false;
 }
 
@@ -419,7 +420,7 @@ function chipWeg() {
 /* ═══════════════════ PUBLIEKE BEDIENING ═══════════════════ */
 
 async function start(stil) {
-  if (!magIk()) { toast('Alleen voor admin'); return false; }
+  if (!magIk()) { toast('Alleen voor ontwikkelaars'); return false; }
   if (_blkS.actief) { toast('Recorder loopt al'); return false; }
   try { await dbKlaar(); }
   catch (e) { toast('Opslag niet beschikbaar: ' + (e && e.message || e)); return false; }
@@ -559,7 +560,7 @@ async function wisAlles() {
 /* ═══════════════════ DASHBOARD ═══════════════════ */
 
 function openDash() {
-  if (!magIk()) { toast('Alleen voor admin'); return; }
+  if (!magIk()) { toast('Alleen voor ontwikkelaars'); return; }
   var o = _blkEl('blkOverlay');
   if (!o) { o = bouwDash(); }
   o.style.display = 'flex';

@@ -368,6 +368,58 @@ function haalZeef(isMode01) {
     t('zonder PLVoorkeur: bar', (delete s.PLVoorkeur, E.controleer({ code: '220909', naam: 'x', formule: 'A', eenheid: 'psi' }).def.unit), 'bar');
   }
 
+  console.log('\n— dieper zoeken: AI met werkende codes en de buurscan (28-09-2026) —');
+  {
+    const ant = { '222A051': '62 2A 05 AA', '222A061': '62 2A 06 AB', '222A101': '62 2A 10 01 02', '222A111': '7F 22 31' };
+    const s = bouw({ antwoorden: ant });
+    const E = s.PLEigen;
+    const bl = E.scanBlokken([{ code: '222A05', ecu: '720' }, { code: '222A0A', ecu: '720' }, { code: '221310', ecu: '' }, { code: '2E1234', ecu: '720' }, { code: '222A05', ecu: '7DF' }]);
+    t('blokken: één per voorvoegsel en ECU-adres; geen schrijfcodes; 7DF telt als geen adres', bl.map(b => b.prefix + '@' + b.ecu).join(','), '222A@720,2213@,222A@');
+    t('een blok is 256 codes, van 00 tot FF', [E.scanCodes('222A').length, E.scanCodes('222A')[0], E.scanCodes('222A')[255]].join(','), '256,222A00,222AFF');
+    t('antwoord: bytes achter de echo, ook met header', JSON.stringify(E.antwoordBytes('222A05', '72A 04 62 2A 05 AA')), '[170]');
+    t('antwoord: 7F is geen antwoord', E.antwoordBytes('222A11', '7F 22 31'), null);
+    s._verzonden.length = 0;
+    const r = await E.buurScan({ prefix: '222A', ecu: '720' });
+    t('buurscan: vindt de drie codes die antwoorden, niet de 7F', r.ok && r.gevonden.map(g => g.code).join(','), '222A05,222A06,222A10');
+    t('buurscan: alle 256 gevraagd', r.gedaan, 256);
+    const heen = s._verzonden.filter(c => c === 'ATSH720').length, terug = s._verzonden.filter(c => c === 'ATSH7DF').length;
+    t('buurscan: per zestien codes één keer ATSH720 en altijd weer terug naar 7DF', heen + '/' + terug, '16/16');
+    t('buurscan: het laatste commando zet het functionele adres terug', s._verzonden[s._verzonden.length - 1], 'ATSH7DF');
+    t('buurscan: alleen leesblokken — 2E niet', (await E.buurScan({ prefix: '2E12', ecu: '720' })).ok, false);
+    t('buurscan: een blok van 3 hextekens (22A) niet', (await E.buurScan({ prefix: '22A', ecu: '' })).ok, false);
+    // Stoppen: na de eerste portie.
+    s._verzonden.length = 0;
+    const p = E.buurScan({ prefix: '222A', ecu: '' }, { voortgang: (st) => { if (st.gedaan === 5) E.buurScanStop(); } });
+    const r2 = await p;
+    t('stoppen: stopt na de lopende code, en zegt dat', r2.gestopt + ' ' + r2.gedaan, 'true 5');
+    s.lezen('connected=false');
+    t('niet verbonden: geen scan', (await E.buurScan({ prefix: '222A', ecu: '' })).ok, false);
+
+    const vraag = E.dieperVraag('Mazda CX-5 2018', [{ code: '222A05', ecu: '720', naam: 'Bandenspanning voor-links' }, { code: '221310', ecu: '', naam: 'Olie' }]);
+    t('dieper: de vraag noemt de werkende codes en hun ECU-adres', /222A05@720/.test(vraag) && /221310/.test(vraag) && /\(720\)/.test(vraag), true);
+    let gevraagd = null;
+    s.apiFetch = async (q) => { gevraagd = q; return '{"kandidaten":[{"code":"222A05","ecu":"720","naam":"Band","formule":"A","bron":"https://x.nl"},{"code":"222A20","ecu":"720","naam":"Nieuw","formule":"A","bron":"https://x.nl"}]}'; };
+    const z = await E.zoekOnline({ merk: 'Mazda', model: 'CX-5' }, [{ code: '222A05', ecu: '720', naam: 'Band' }]);
+    t('dieper: de AI krijgt de werkende codes mee', /Deze leescodes werken/.test(gevraagd), true);
+    t('dieper: wat er al is komt niet terug als kandidaat', z.dieper + ' ' + z.kandidaten.map(k => k.code).join(','), 'true 222A20');
+  }
+
+  console.log('\n— de pollus vraagt hoogstens twee eigen PIDs per ronde (28-09-2026) —');
+  {
+    const s = bouw();
+    const bron = lees('pidlane-plload.js');
+    const i = bron.indexOf('function pidsDueNow(){'), j = bron.indexOf('const EIGEN_PER_RONDE=2;');
+    if (i < 0 || j < 0) { console.error('FOUT: pidsDueNow of EIGEN_PER_RONDE niet gevonden in pidlane-plload.js'); process.exit(1); }
+    const banden = ['222A05', '222A06', '222A07', '222A08', '222A0A', '222A0B', '222A0C', '222A0D'];
+    s.PLEigen.zet(banden.map(c => ({ code: c, naam: 'Bandenspanning ' + c, formule: 'A', ecu: '720' })), 'x');
+    const actief = new Set(['010C', '010D'].concat(banden));
+    const due = new Function('activePIDs', '_pidDead', '_pidDeadSince', '_pidNextPoll', 'pidPollInterval', 'plIsBerekend', 'window', 'PID_REPROBE_MS',
+      bron.slice(i, j) + 'const EIGEN_PER_RONDE=2;\nreturn pidsDueNow;')(actief, new Set(), {}, {}, p => /^01/.test(p) ? 100 : 60000, () => false, s, 30000);
+    const r = due();
+    t('toerental en snelheid gaan altijd mee', r.indexOf('010C') >= 0 && r.indexOf('010D') >= 0, true);
+    t('van de acht banden maar twee in deze ronde', r.filter(p => banden.indexOf(p) >= 0).length, 2);
+  }
+
   console.log('\n─────────────────────────────────────────');
   console.log(ok + ' toetsen, ' + fout + ' fout');
   process.exit(fout ? 1 : 0);

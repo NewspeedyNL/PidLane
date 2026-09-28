@@ -294,6 +294,18 @@ function laad(opties) {
 
   }
 
+  console.log('\nBlok 5: staan de vaste sensoren aan na het verbinden? (28-09-2026)');
+  {
+    const O = laad().G.selectieOordeel;
+    const v = { naam: 'CX-5', pid_selectie: ['222A05', '221310', 'CA01', '229999'] };
+    eis(O(null, [], []).staat === 'LET OP', 'geen gekoppeld voertuig: LET OP');
+    eis(O({ naam: 'x', pid_selectie: [] }, [], []).staat === 'LET OP', 'niets vastgelegd: LET OP');
+    const ok = O(v, ['010C', '222A05', '221310', 'CA01'], ['010C', '222A05', '221310', 'CA01']);
+    eis(ok.staat === 'ok' && /3 van de 4/.test(ok.detail), 'drie die kunnen, drie aan: ok (een onbekende code telt niet mee)', ok.detail);
+    const fout = O(v, ['010C'], ['010C', '222A05', '221310', 'CA01']);
+    eis(fout.staat === 'FOUT' && /222A05, 221310, CA01/.test(fout.detail), 'de bug van 28-09 (alleen de standaardset): FOUT met de namen', fout.detail);
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });

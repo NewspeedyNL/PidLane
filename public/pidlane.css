@@ -844,7 +844,10 @@ body {
   color:var(--tx); font-family:var(--f); line-height:1; font-variant-numeric:tabular-nums; cursor:pointer;
   -webkit-tap-highlight-color:transparent; }
 #plGear[hidden] { display:none; }
-body.pl-gear-aan .topbar .logo { display:none; }
+body.pl-gear-aan:not(.pl-visueel) .topbar .logo { display:none; }
+/* In Slim visueel staat de versnelling midden in de meter (28-09-2026): niet
+   ook nog in de topbalk. Het logo komt daar dan terug. */
+body.pl-visueel #plGear { display:none; }
 .pl-gear-cijfer { font-size:22px; font-weight:800; letter-spacing:-.02em; }
 .pl-gear-cijfer.wissel { animation:plGearIn .22s ease; }
 .pl-gear-cijfer.n { color:var(--or); }
@@ -1455,6 +1458,10 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
    afwezig = deze auto of selectie heeft er niets voor. De naald blijft in
    alle drie staan waar hij stond; alleen de kleur zegt dat het niet vers is. */
 .vis-slot.leeg, .vis-slot.oud { opacity:.45; }
+/* Dof worden gaat langzaam, helder worden meteen: een korte hapering leest zo
+   als een meter die even wacht, niet als een knipperlicht (28-09-2026). */
+.vis-slot, .vis-plek { transition:opacity .15s ease-out; }
+.vis-slot.oud, .vis-plek.oud { transition:opacity 1.2s ease-in; }
 .vis-slot.afwezig { opacity:.3; }
 .vis-slot.afwezig .vis-vul { display:none; }
 /* Het meldingenvak: wat er op de achtergrond loopt, of snelkoppelingen. */
@@ -2574,8 +2581,6 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .pl-m06-note { margin-top: 6px; padding: 0 2px; font-size: 11px; opacity: .6; }
 /* De knop Fout in de versnellingsindicator (27-09-2026): de klant zegt welke
    versnelling er écht in zit. */
-#plGearOv .plg-fout { margin-top:14px; width:100%; padding:11px; border-radius:12px; border:1px solid var(--or);
-  background:transparent; color:var(--tx); font:700 14px var(--f); cursor:pointer; }
 #plGearOv .plg-kies { margin-top:10px; }
 #plGearOv .plg-krij { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
 #plGearOv .plg-k { width:44px; height:44px; border-radius:10px; border:1px solid var(--bd2); background:var(--sur2);

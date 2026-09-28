@@ -36,7 +36,7 @@ function downloadScanLog(){
 // Deze helper blijft omdat de crash-bestendige live-log erop leunt.
 function hasTesterConsent(){
   // Admins zijn de bouwer/tester zelf → impliciet consent, geen vinkje nodig.
-  if(isAdmin()) return true;
+  if((typeof magOntwikkelen === 'function' ? magOntwikkelen() : isAdmin())) return true;
   try { return localStorage.getItem('pl_tester_consent') === '1'; } catch(e){ return false; }
 }
 

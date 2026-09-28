@@ -189,47 +189,16 @@ async function plMaakPdf(bestandsnaam, tekst, opties) {
   return doc.output('blob');
 }
 
-// ── standaardmap ───────────────────────────────────────────────────
-// Rechtstreeks naar Documenten/PidLane/ schrijven — dezelfde map die
-// savePdfToFolder() (pidlane-fuel.js) al gebruikte voor het caravan-
-// eindrapport. Vindbaar in de bestandsbeheerder, geen deelmenu nodig.
-// recursive:true maakt de map PidLane aan als die nog niet bestaat.
-async function _naarStandaardMap(blob, naam) {
-  const FS = window.Capacitor?.Plugins?.Filesystem;
-  if (!FS) return false; // plugin niet aanwezig (desktop-browser) → fallback
-  const b64 = await new Promise(function (res, rej) {
-    const r = new FileReader();
-    r.onload = function () { res(String(r.result).split(',')[1]); };
-    r.onerror = function () { rej(new Error('Lezen mislukt')); };
-    r.readAsDataURL(blob);
-  });
-  await FS.writeFile({ path: 'PidLane/' + naam, data: b64, directory: 'DOCUMENTS', recursive: true });
-  return true;
-}
-
 // ── opslaan zelf ───────────────────────────────────────────────────
 async function _bewaar(blob, naam, tekstAlsFallback) {
+  // Eén opslagweg (#326, 28-09-2026): dezelfde als download() en de PDF-
+  // exports, plBewaarBestand() in pidlane-motortype.js. Die schrijft naar
+  // Documenten/PidLane, zet de reden in het logboek als dat mislukt, zegt
+  // hem tegen de klant en valt dan terug op het deelvenster. Hier stond een
+  // tweede versie die de reden alleen in de console zette.
   try {
-    if (await _naarStandaardMap(blob, naam)) {
-      try { showToast('Opgeslagen: Documenten/PidLane/' + naam); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
-      return true;
-    }
-  } catch(e){ console.warn('Opslaan in standaardmap mislukt:', e); }
-  try {
-    if (typeof nativeShareFile === 'function' && await nativeShareFile(blob, naam)) {
-      try { showToast('Opgeslagen: ' + naam); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
-      return true;
-    }
-  } catch(e){ console.warn('nativeShareFile mislukt:', e); }
-  try {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = naam;
-    document.body.appendChild(a); a.click();
-    setTimeout(function () { try { URL.revokeObjectURL(a.href); a.remove(); } catch(e){ /* stil: element kan al weg zijn */ } }, 1500);
-    try { showToast('Opgeslagen: ' + naam); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
-    return true;
-  } catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ }
+    if (typeof plBewaarBestand === 'function' && await plBewaarBestand(blob, naam)) return true;
+  } catch(e){ console.warn('Opslaan mislukt:', e); }
   try {
     if (tekstAlsFallback && navigator.clipboard) {
       await navigator.clipboard.writeText(tekstAlsFallback);

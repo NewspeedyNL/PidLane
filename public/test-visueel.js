@@ -333,9 +333,12 @@ console.log('\n── een oud antwoord ──');
 const o = maak({ actief: ['010C'] });
 o._pidLastUpd['010C'] = 1000000;
 waar('net binnen: niet oud', !o.PLVisueel.isOud('010C', 1000000 + 500));
-waar('3,5 s zonder antwoord bij een 120 ms-PID: oud', o.PLVisueel.isOud('010C', 1000000 + 3500));
+// Sinds 28-09-2026 is de ondergrens 5 s: een hapering van 3 à 4 s (acht
+// banden via een ander ECU-adres) gaf een flits op het toerental.
+waar('3,5 s zonder antwoord bij een 120 ms-PID: nog niet oud (geen flits bij een korte hapering)', !o.PLVisueel.isOud('010C', 1000000 + 3500));
+waar('5,5 s zonder antwoord: oud', o.PLVisueel.isOud('010C', 1000000 + 5500));
 o.__pauze = 5000; o._pidLastUpdPause['010C'] = 0;
-waar('dezelfde 3,5 s maar de bus was bezet door een andere lezer: niet oud', !o.PLVisueel.isOud('010C', 1000000 + 3500));
+waar('dezelfde 5,5 s maar de bus was bezet door een andere lezer: niet oud', !o.PLVisueel.isOud('010C', 1000000 + 5500));
 waar('nog nooit iets binnen is leeg, niet oud', !o.PLVisueel.isOud('010D', 1000000 + 99999));
 
 // ══ 4. HET MELDINGENVAK ════════════════════════════════════════════
@@ -529,6 +532,10 @@ console.log('\n— 27-09-2026: trekmodus vanzelf, versnelling, staafjes, sensore
 
   waar('versnelling: 3 → "3", 0 → "N", −1 → "R", onbekend → ""',
     V.gearTekst(3) === '3' && V.gearTekst(0) === 'N' && V.gearTekst(-1) === 'R' && V.gearTekst(null) === '' && V.gearTekst(undefined) === '');
+  const GG = V.G;
+  waar('de staafjes staan aan de binnenkant: tussen het icoon en de accu (28-09-2026)',
+    GG.X_LINKS < GG.X_STAAF_KOEL && GG.X_STAAF_KOEL < GG.X_MIDDEN && GG.X_MIDDEN < GG.X_STAAF_TANK && GG.X_STAAF_TANK < GG.X_RECHTS,
+    [GG.X_LINKS, GG.X_STAAF_KOEL, GG.X_MIDDEN, GG.X_STAAF_TANK, GG.X_RECHTS].join(' < '));
   waar('koelwaterstaaf: 40 °C leeg, 85 half, 130 vol, 150 blijft vol',
     V.staafDeel('koel', 40) === 0 && V.staafDeel('koel', 85) === 50 && V.staafDeel('koel', 130) === 100 && V.staafDeel('koel', 150) === 100);
   waar('brandstofstaaf: 30% is 30, −5 is 0, geen waarde is null',
@@ -569,6 +576,10 @@ console.log('\n— sessiebewijs en oordelen voor blok 5 (#294, trekmodus) —');
   waar('#294: olie is van nature traag en telt niet als gevallen', V.ritOordeel(S({ rijdendMs: 400000, traag: ['015C'] })).staat === 'ok');
   waar('#294: zonder constant stuk zegt het dat', /geen 30 s constant/.test(V.ritOordeel(S({ rijdendMs: 400000 })).detail));
   waar('trekmodus: drie minuten is te weinig (LET OP)', V.trekOordeel(S({ trekMs: 180000 })).staat === 'LET OP');
+  waar('rust: twee minuten rijden is te weinig (LET OP)', V.rustOordeel(S({ rijdendMs: 120000, openMs: 120000 })).staat === 'LET OP');
+  waar('rust: tien minuten, drie keer dof, twee herbouwen: ok', V.rustOordeel(S({ rijdendMs: 600000, openMs: 600000, dof: 3, herbouw: 2 })).staat === 'ok');
+  waar('rust: dertig keer dof in tien minuten is knipperen (FOUT)', V.rustOordeel(S({ rijdendMs: 600000, openMs: 600000, dof: 30, herbouw: 2 })).staat === 'FOUT');
+  waar('rust: tien herbouwen in tien minuten is knipperen (FOUT)', V.rustOordeel(S({ rijdendMs: 600000, openMs: 600000, dof: 0, herbouw: 10 })).staat === 'FOUT');
   const tr = V.trekOordeel(S({ trekMs: 600000, maxTrend: 2.4, alarmen: 1 }));
   waar('trekmodus: tien minuten, trend en waarschuwing in het verslag', tr.staat === 'ok' && /2,4 °C\/min/.test(tr.detail) && /1 waarschuwing\b/.test(tr.detail), tr.detail);
 }

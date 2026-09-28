@@ -250,7 +250,8 @@
   /* De sensorselectie van een voertuig aanzetten (vanuit PLGarage zodra de
      verbonden auto herkend is). Alleen wat deze auto meldt en de poort
      kiesbaar vindt, net als elke andere manier van toevoegen. */
-  function selectieToepassen(pids, naam) {
+  function selectieToepassen(pids, naam, opties) {
+    var erbij = !!(opties && opties.erbij);
     if (!Array.isArray(pids) || !pids.length) return 0;
     if (typeof activePIDs === 'undefined' || typeof supportedPIDs === 'undefined') return 0;
     // Eerst bepalen wat er past, dán pas wissen: past er niets (andere auto,
@@ -263,8 +264,12 @@
     });
     if (!passend.length) return 0;
     var voor = (typeof plSelectieVoor === 'function') ? plSelectieVoor() : null;
-    activePIDs.clear();
-    try { if (typeof manualPIDs !== 'undefined') manualPIDs.clear(); } catch (e) { console.warn('PLVoorkeur: manualPIDs', e); }
+    // `erbij`: bovenop wat er staat (eigen en berekende sensoren uit Mijn
+    // voertuigen → Sensoren), anders vervangt de vaste selectie alles.
+    if (!erbij) {
+      activePIDs.clear();
+      try { if (typeof manualPIDs !== 'undefined') manualPIDs.clear(); } catch (e) { console.warn('PLVoorkeur: manualPIDs', e); }
+    }
     passend.forEach(function (pid) {
       activePIDs.add(pid);
       try { if (typeof manualPIDs !== 'undefined') manualPIDs.add(pid); } catch (e) { console.warn(e); }

@@ -399,7 +399,7 @@ function _vlSvUI(msg, done){
   document.getElementById('vlSvBtn').textContent=done?'Sluiten':'Afbreken';
 }
 async function vlFullSurvey(){
-  if(!isAdmin()){ showToast('Alleen voor admin'); return; }
+  if(!(typeof magOntwikkelen === 'function' ? magOntwikkelen() : isAdmin())){ showToast('Alleen voor ontwikkelaars'); return; }
   if(!connected || demoMode){ showToast('Eerst verbinden met een echte auto (geen demo)'); return; }
   if(_vlSvBusy) return;
   _vlSvBusy=true; _vlSvAbort=false;
@@ -785,7 +785,7 @@ function vlAnalyse(st){
 
 /* ---- dashboard (in-app, admin) ---- */
 function vlOpenDash(){
-  if(!isAdmin()){ showToast?.('Alleen voor admin'); return; }
+  if(!(typeof magOntwikkelen === 'function' ? magOntwikkelen() : isAdmin())){ showToast?.('Alleen voor ontwikkelaars'); return; }
   const st=vlLoad(), A=vlAnalyse(st), S=st.sessies;
   let ov=document.getElementById('vlDash'); if(ov) ov.remove();
   ov=document.createElement('div'); ov.id='vlDash';

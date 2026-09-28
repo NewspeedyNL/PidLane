@@ -582,8 +582,18 @@ function pidsDueNow(){
     if(d) return d;
     return (_pidNextPoll[a]||0)-(_pidNextPoll[b]||0);
   });
-  return due;
+  // Hoogstens EIGEN_PER_RONDE eigen PIDs per ronde (28-09-2026). Acht banden
+  // met hetzelfde tempo werden anders in één ronde gevraagd, elk met ATSH heen
+  // en terug: vier seconden zonder toerental, en de meter van Slim visueel
+  // werd dof en weer helder. De rest blijft due en komt de volgende tik.
+  let eigen=0;
+  return due.filter(pid=>{
+    try{ if(window.PLEigen && window.PLEigen.is(pid)) return ++eigen<=EIGEN_PER_RONDE; }
+    catch(e){ console.warn('PLEigen.is mislukt in pidsDueNow:', e); }
+    return true;
+  });
 }
+const EIGEN_PER_RONDE=2;
 
 function startPoll(){
   clearInterval(pollTimer);

@@ -108,7 +108,7 @@
 const VIS_TRAAG_MS   = 800;    // mediaan tussen twee metingen: daarboven is het geen vloeiende meter meer
 const VIS_MIN_N      = 8;      // zoveel metingen voordat "te traag" een uitspraak is
 const VIS_AANLOOP_MS = 3000;   // metingen van vóór het openen (ander tempo) tellen niet mee
-const VIS_OUD_MIN_MS = 3000;   // ondergrens voor "dit antwoord is oud"
+const VIS_OUD_MIN_MS = 5000;   // ondergrens voor "dit antwoord is oud" (was 3000 tot 28-09: elke korte hapering gaf een flits)
 const VIS_REM_MS     = 2000;   // tempo voor snelle PIDs die niet op het scherm staan
 const VIS_SNEL_MS    = 300;    // wat "snel" is in PID_POLL_CLASS
 const VIS_TIK_MS     = 1000;   // herbeoordeling: tempo, ouderdom, indeling, meldingen
@@ -268,10 +268,11 @@ const G = {
   VB_H: 346, ICOON_ONDER: 20, X_ONDER_ICOON: 136, X_ONDER_TEKST: 150, Y_ONDER: 330,
   // De versnelling, in het midden op de plek van het embleem (27-09-2026).
   FS_GEAR: 34,
-  // Koelwater en brandstof krijgen een staafje aan de buitenkant van hun
-  // plekje: zo is de onderboog onmiskenbaar van het getal eronder, en niet
-  // van een van de drie plekjes. De accu blijft een getal.
-  STAAF_B: 5, STAAF_H: 36, Y_STAAF: 236, X_STAAF_KOEL: 70, X_STAAF_TANK: 250,
+  // Koelwater en brandstof krijgen een staafje naast hun icoon: zo is de
+  // onderboog onmiskenbaar van het getal eronder, en niet van een van de
+  // drie plekjes. De accu blijft een getal. Sinds 28-09-2026 aan de
+  // BINNENkant (naar de accu toe), niet meer tegen de ring aan.
+  STAAF_B: 5, STAAF_H: 36, Y_STAAF: 236, X_STAAF_KOEL: 117, X_STAAF_TANK: 203,
   KOEL_LO: 40, KOEL_HI: 130
 };
 
@@ -699,7 +700,7 @@ function leesBevindingen(){
   }catch(e){ console.warn('PLVisueel: bevindingen onleesbaar', e); return null; }
 }
 function leesAdmin(){
-  try{ return !!isAdmin(); }catch(e){ console.warn('PLVisueel: isAdmin() mislukt', e); return false; }
+  try{ return !!(typeof magOntwikkelen === 'function' ? magOntwikkelen() : isAdmin()); }catch(e){ console.warn('PLVisueel: magOntwikkelen() mislukt', e); return false; }
 }
 function duur(ms){
   const m=Math.max(0, Math.floor(ms/60000));
@@ -891,6 +892,7 @@ const ONDER_ICOON = { olie:'olie', laaddruk:'turbo', pedaal:'pedaal' };
 
 function bouw(g){
   try{ zorgPids(); }catch(e){ console.warn('PLVisueel: sensoren aanzetten mislukt', e); }
+  _sessie.herbouw=(_sessie.herbouw||0)+1;          // een herbouw is een zichtbare flits
   const ind=indeling();
   _staat.ind=ind; _staat.handtekening=handtekening(ind); _staat.gebruik=gebruiktePids(ind); _staat.meldSleutel=''; _staat.lampSleutel='';
   if(!ind.naald){
@@ -1026,6 +1028,21 @@ function ritOordeel(S){
   if(viel.length) return { staat:'FOUT', detail:kop+' — van de meter gevallen (te traag): '+viel.join(', ')+verbruik };
   return { staat:'ok', detail:kop+verbruik };
 }
+/* Blok 5, 28-09-2026: knippert de meter? Elke keer dat een plek of de naald
+   dof wordt (dof()) en elke herbouw (bouw()) is een zichtbare wisseling.
+   Meer dan één keer dof per minuut, of meer herbouwen dan er redenen voor
+   zijn (openen, turbo herkend, trekmodus aan/uit: ruim drie plus één per tien
+   minuten), is knipperen. Puur. */
+function rustOordeel(S){
+  S=S||{};
+  const min=(S.openMs||0)/60000;
+  if(!(S.rijdendMs>=RIJ_MIN_MS))
+    return { staat:'LET OP', detail:'Slim visueel stond '+Math.round((S.rijdendMs||0)/60000)+' min open tijdens het rijden; nodig: 3 min om knipperen te kunnen zien' };
+  const perMin=Math.round((S.dof||0)/Math.max(min,1)*10)/10, herbouwMax=3+Math.floor(min/10);
+  const d=(S.dof||0)+'× dof in '+Math.round(min)+' min ('+String(perMin).replace('.',',')+' per minuut), '+(S.herbouw||0)+'× opnieuw opgebouwd';
+  if(perMin>1 || (S.herbouw||0)>herbouwMax) return { staat:'FOUT', detail:'de meter knippert: '+d+' (grens: 1 per minuut, '+herbouwMax+' herbouwen)' };
+  return { staat:'ok', detail:d };
+}
 function trekOordeel(S){
   S=S||{};
   if(!(S.trekMs>=TREK_MIN_MS))
@@ -1147,6 +1164,12 @@ function plekBij(rol, val){
 // De tik: tempo beoordelen, ouderdom tonen, meldingen bijwerken, en herbouwen
 // als de indeling werkelijk veranderde. Dat laatste gebeurt zelden en maar
 // één kant op: een PID die te traag bleek of een turbo die bewezen werd.
+// Dof zetten, en tellen hoe vaak dat gebeurt: voor het sessiebewijs van
+// "de meter knippert niet" (28-09-2026).
+function dof(e, oud){
+  if(oud && !e.classList.contains('oud')) _sessie.dof=(_sessie.dof||0)+1;
+  e.classList.toggle('oud', oud);
+}
 function tik(){
   try{ sessieTik(Date.now()); }catch(e){ console.warn('PLVisueel: sessiebewijs', e); }
   if(!_staat.aan) return;
@@ -1160,9 +1183,9 @@ function tik(){
   }
   const nu=Date.now(), I=_staat.ind; if(!I) return;
   [['visg-naald',I.naald],['visg-onder',I.onder&&I.onder.pid]].forEach(function(x){
-    const e=el(x[0]); if(e && x[1]) e.classList.toggle('oud', isOud(x[1], nu));
+    const e=el(x[0]); if(e && x[1]) dof(e, isOud(x[1], nu));
   });
-  PLEKKEN.forEach(function(r){ const p=el('visp-'+r.rol), pid=I.plekken[r.rol]; if(p && pid) p.classList.toggle('oud', isOud(pid, nu)); });
+  PLEKKEN.forEach(function(r){ const p=el('visp-'+r.rol), pid=I.plekken[r.rol]; if(p && pid) dof(p, isOud(pid, nu)); });
   meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
 }
 
@@ -1210,7 +1233,7 @@ window.PLVisueel = {
   meldingen:meldingen, schakel:schakel,
   TREK:TREK, TREK_SITUATIES:TREK_SITUATIES, trekIndeling:trekIndeling, koelTrend:koelTrend, trekAan:trekAan,
   nodigePids:nodigePids, zorgPids:zorgPids, bandenBij:bandenBij, staafDeel:staafDeel, gearTekst:gearTekst,
-  sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
+  sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
   remt:remt, isOud:isOud, bouw:bouw, bij:bij, tik:tik, start:start, stop:stop,
   staat:function(){ return { aan:_staat.aan, start:_staat.start, traag:Array.from(_staat.traag),
                              turboVast:_staat.turboVast, gebruik:Array.from(_staat.gebruik), ind:_staat.ind }; }

@@ -156,6 +156,16 @@ var KRITIEK = [
   'situatieActief',
   // Mijn voertuigen → Sensoren → online zoeken naar codes (PLEigen.zoekOnline).
   'apiFetch',
+  // De ontwikkeltools voor de beheerder én voor een klant met de
+  // ontwikkelaarsvlag (28-09-2026). Valt hij weg, dan zien die klanten ze
+  // stil niet meer.
+  'magOntwikkelen',
+  // Een bestandsnaam met datum en tijd (#326). Valt hij weg, dan wordt het
+  // weer een vaste naam en komt het deelvenster terug.
+  'plBestandsnaam',
+  // Eén opslagweg (#326): _bewaar() gaat via plBewaarBestand. Valt hij weg,
+  // dan slaat de exportdialoog niets meer op. En het blok-5-oordeel erover.
+  'plBewaarBestand', 'plOpslagOordeel',
   // Mijn voertuigen → rapport of ritten → 📕 PDF, rechtstreeks zonder de keuze
   // tekst/PDF (pidlane-export.js). Ontbreekt hij, dan doet de knop niets.
   'plOpslaanPdf',
