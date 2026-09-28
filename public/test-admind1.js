@@ -99,7 +99,11 @@ function bouw(opties) {
     // Allebei uit hetzelfde geknipte stuk: de naamzeef hoort bij de
     // kolomlijst, en het overzicht gebruikt hem voor de tabelnamen.
     d1Kolommen: kolBlok.d1Kolommen,
-    D1_NAAM_OK: kolBlok.D1_NAAM_OK
+    D1_NAAM_OK: kolBlok.D1_NAAM_OK,
+    // ADMIN_BRONNEN noemt ze sinds het kasboek in D1 staat (#327); het
+    // kasboek zelf toetst test-adminbron-d1.js.
+    kasboekSchema: async () => { throw new Error('het kasboek hoort in deze test niet te draaien'); },
+    kpKlantId: async () => { throw new Error('het kasboek hoort in deze test niet te draaien'); }
   };
   const code = (o.bewerk ? o.bewerk(src) : src) + '\n' + appSrc;
   const maak = new Function(...Object.keys(omg),
