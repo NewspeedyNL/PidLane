@@ -1112,7 +1112,7 @@ MUTATIES=(
 "public/pidlane-garage.js@@    else if (typeof m.maf === 'number' && brandstof !== 'diesel')@@    else if (typeof m.maf === 'number')@@test-garage.js@@een dieselverbruik uit de luchtmassa"
 "public/pidlane-garage.js@@    if (r.sLiters >= r.s * 0.7 && r.km >= 1)@@    if (r.sLiters > 0 && r.km >= 1)@@test-garage.js@@verbruik over een stukje van de rit geldt als ritverbruik"
 "public/pidlane-garage.js@@    var volledig = u.gelezen ? (u.gelezen.bevestigd && u.gelezen.pending !== false) : !!u.volledig;@@    var volledig = true;@@test-garage.js@@een issue gaat dicht na een uitlezing die niet volledig was (#218)"
-"public/pidlane-garage.js@@      if (!rec || !isKlant() || !(_st.stand && _st.stand.akkoord)) return;@@      if (!rec) return;@@test-garage.js@@een rapport gaat zonder akkoord de server op"
+"public/pidlane-garage.js@@      if (!rec || !magBewaren()) return;@@      if (!rec) return;@@test-garage.js@@een rapport gaat zonder akkoord de server op"
 "public/pidlane-garage.js@@    return km >= 20 ? {@@    return km >= 0 ? {@@test-garage.js@@een verbruiksoordeel op één korte rit"
 "worker.js@@    if (ak && ak.versie === \"verwijderd\")\n      return json(@@    if (false)\n      return json(@@test-klantplatform.js@@een verwijderd account houdt met zijn lopende token toegang tot Mijn voertuigen"
 "worker.js@@    catch (e) { if (!/duplicate column/i.test(String(e && e.message || e))) throw e; }@@    catch (e) { }@@test-klantplatform.js@@een migratie die om een andere reden faalt, wordt stil ingeslikt"
