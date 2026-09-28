@@ -718,6 +718,21 @@ MUTATIES=(
 "public/pidlane-adapter.js@@    if (metEcho.length === st.length) {@@    if (false) {@@test-adapterpaneel.js@@het advies negeert herhaalde frames en adviseert harder pollen — precies de verkeerde kant op"
 "public/pidlane-data.js@@  batchKleiner(){\n    if(S.batchVast) return false;@@  batchKleiner(){@@test-adapterpaneel.js@@een vastgezette groep wordt alsnog door de automaat verkleind"
 
+# ── 28-09-2026: groep 4–6 en onvolledige antwoorden (#333). De fouten die de
+# automaat stil boven de 3 laten komen, een onvolledig antwoord weer als goed
+# laten tellen, of de groepsproef iets anders laten meten dan hij zegt.
+"public/pidlane-plload.js@@    oordeel: gekregen===0 ? 'leeg' : (mistBekend.length ? 'onvolledig' : 'goed')@@    oordeel: gekregen===0 ? 'leeg' : 'goed'@@test-groepsgrootte.js@@een antwoord met 4 van de 6 PIDs telt weer als geslaagd (#211)"
+"public/pidlane-plload.js@@    return typeof w==='number' && w>0 && (t-w)<GROEP_BEKEND_MS;@@    return typeof w==='number' && w>0;@@test-groepsgrootte.js@@een PID van de auto van een uur geleden telt bij deze auto als bekend en laat de groep krimpen"
+"public/pidlane-plload.js@@  if(n<GROEP_ONVOL_DREMPEL || groep<=GROEP_ONVOL_BODEM) return false;@@  if(n<GROEP_ONVOL_DREMPEL) return false;@@test-groepsgrootte.js@@onvolledige antwoorden laten de groep doorzakken naar 1 en verdrievoudigen het aantal verzoeken"
+"public/pidlane-plload.js@@  if(groep!==_groepVensterN){ _groepVenster=[]; _groepVensterN=groep; }@@  _groepVensterN=groep;@@test-groepsgrootte.js@@groep 3 krimpt op wat groep 4 misdeed"
+"public/pidlane-plload.js@@  if(Date.now()>=_groepHoudTot) PLBus.batchGroter();@@  PLBus.batchGroter();@@test-groepsgrootte.js@@na een krimp klimt de groep binnen seconden terug en schommelt hij op een kloon tussen 2 en 3"
+"public/pidlane-plload.js@@          if(oordeel.oordeel==='onvolledig') _groepTel(true, oordeel);@@          if(false) _groepTel(true, oordeel);@@bproef-groepsproef.js@@de pollus ziet onvolledige antwoorden niet en blijft op groep 3 met een kloon die de laatste PID laat vallen"
+"public/pidlane-data.js@@    const max=vast ? this.GROEP_HAND_MAX : this.GROEP_AUTO_MAX;@@    const max=this.GROEP_HAND_MAX;@@test-groepsgrootte.js@@terug naar de automaat laat de groep op 6 staan"
+"public/pidlane-data.js@@    if(S.batchGroep>=this.GROEP_AUTO_MAX) return false;@@    if(S.batchGroep>=this.GROEP_HAND_MAX) return false;@@test-groepsgrootte.js@@de automaat klimt zelf naar groep 6 zonder dat een rit dat bewees"
+"public/pidlane-adapter.js@@    for (let i = 1; i < schoon.length; i++) if (schoon[i].pidsPerSec >= best.pidsPerSec * 1.05) best = schoon[i];@@    for (let i = 1; i < schoon.length; i++) if (schoon[i].pidsPerSec >= best.pidsPerSec) best = schoon[i];@@test-groepsgrootte.js@@de groepsproef adviseert een grotere groep voor een winst binnen de meetruis"
+"public/pidlane-adapter.js@@        schoon: onvolPct <= 2 && leegPct === 0 && p.echo === 0,@@        schoon: leegPct === 0,@@test-groepsgrootte.js@@de groepsproef adviseert een groep die PIDs verliest of frames herhaalt"
+"public/pidlane-adapter.js@@      tok = await PLBus.wait('groepsproef', GP_BUS_WACHT_MS);@@      tok = -1;@@bproef-groepsproef.js@@de groepsproef meet dwars door de pollus heen in plaats van met de bus vast"
+
 # En de laatste meter van die keten: van PLLoad.mult() naar het interval dat de
 # scheduler werkelijk gebruikt. Blok 5 dacht op 17-09-2026 dat die meter stuk
 # was en meldde FOUT; in werkelijkheid mat de proef tegen de automaat in plaats

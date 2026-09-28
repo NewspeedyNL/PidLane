@@ -14,6 +14,47 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 28-09-2026 — Van 3 naar 6 PIDs per verzoek: eerst meten (#333)
+
+**De vraag.** Heeft het nut om van 3 naar 6 PIDs per verzoek te gaan? Het
+adapterpaneel telt verzoeken per seconde, niet PIDs. Bij 10,9 verzoeken/s en
+77 ms per verzoek is de bus zo'n 84% bezet, net onder de rem van 85%. De
+vraag van het schema is groter dan wat er binnenkomt: zeven PIDs elke 120 ms
+en zeven elke 300 ms. De vaste kosten per verzoek wegen zwaarder dan een paar
+extra CAN-frames, dus groter kán helpen.
+
+**Waarom niet meteen.** Drie dingen stonden ervoor:
+1. `batchOk()` gold al zodra er één PID terugkwam. Bij 3 was dat het bekende
+   gat van #211 (2-van-3 = succes); bij 6 wordt het 4-van-6, twee sensoren
+   die stil hun meting verliezen. Dat is gerepareerd met `plGroepOordeel()`.
+   Het signaal is niet "er ontbreekt iets" maar "er ontbreekt een PID die in
+   de laatste vijf minuten nog antwoordde". Een PID die de auto niet heeft,
+   laat de groep zo met rust. `_pidLastOk` wordt nooit gewist; zonder die
+   vijf minuten zou een PID van de vorige auto bij deze meetellen.
+2. Boven de 3 is elk antwoord multiframe, en daarop struikelt de kloon van
+   16-09. De automaat blijft daarom op 3; 4–6 kan alleen met de hand.
+3. Wat een ECU met zes PIDs doet, is een vraag voor een rit. Daarvoor is de
+   groepsproef gebouwd.
+
+**Nagemeten voordat er iets veranderde.** De parser was geschreven voor
+"max 3 PIDs per batch → enkele tientallen paden". Op een antwoord van zes
+PIDs over drie frames, ook op één regel zoals de kloon het geeft, leest hij
+alle zes goed. Dat kost 0,1 ms per parse, en 0,3 ms als de databytes expres
+de gevraagde PID-nummers zijn. Een tak gaat alleen verder als de volgende
+byte een gevraagde PID is; daarom blijft het klein.
+
+**Een fout in mijn eigen test, en waarom die leerzaam is.** De eerste versie
+van de venstertoets zette de groep op 2 en terug op 3 zónder een verzoek
+ertussen, en verwachtte een nieuw venster. Dat kan in de app niet: het venster
+ziet een groepsgrootte pas bij een verzoek. De toets vraagt nu wat er echt kan
+gebeuren: drie missers bij groep 4, dan groep 3, dan één misser. Zonder de
+reset zou die de vierde zijn.
+
+**Nog open, in #333.** De uitslagen per adapter en per omstandigheid, en de
+grens waarop de automaat hoger mag.
+
+---
+
 ## 28-09-2026 — Een demo-auto liet overal sporen achter
 
 **De regel.** Een demo (demo-auto of kentekendemo) is verzonnen. Er hoort

@@ -335,6 +335,16 @@ const PLLoad={
     }
   },
 
+  /* Echo's tot nu toe niet meer meerekenen. Voor een meting die zelf de bus
+     had (de groepsproef in het adapterpaneel): die jaagt expres op groepen
+     van 6, en de echo's die dat oplevert zeggen niets over de groep waar de
+     automaat op staat. Zonder dit zag de eerste tick na de proef ze allemaal
+     als "erbij" en kromp hij de groep om iets wat hij zelf nooit stuurde. */
+  echoBijwerken(){
+    try{ const s=PLBus.stats(); this._vorigEcho=(s && typeof s.echoTot==='number') ? s.echoTot : this._vorigEcho; }
+    catch(e){ console.warn('PLLoad.echoBijwerken: echoteller niet leesbaar — de volgende tick kan op oude echo\'s krimpen', e); }
+  },
+
   _bepaalStaat(s){
     const m=this.mult();
     if(s.foutPct>=this.cfg.doodPct || (s.perSec===0&&connected)) return 'dood';
@@ -688,7 +698,10 @@ function startPoll(){
           // terugkwam, dus dit is de enige plek waar `mis` betrouwbaar te
           // tellen valt (zie PLBus.notePids).
           try{ PLBus.notePids(grp, null, parsed); }catch(e){ console.warn('PLBus.notePids mislukt:', e); }
-          const got=Object.keys(parsed).length;
+          // Vóór markPidData hieronder: het oordeel gaat over wat er eerder al
+          // eens binnenkwam, niet over deze ronde.
+          const oordeel=plGroepOordeel(grp, parsed, _pidLastOk);
+          const got=oordeel.gekregen;
           if(got===0){
             // Zit er wél een 41-payload in de respons? Dan kwam de data goed
             // binnen en is dit een parse-probleem aan ónze kant — batch niet
@@ -702,9 +715,11 @@ function startPoll(){
             continue;
           }
           // ≥1 PID terug = batch wérkt. Verwerk wat binnenkwam; ontbrekende PIDs
-          // zijn op dit voertuig NO DATA → tel mee voor snoei (NIET sequentieel
-          // herhalen — dat was de grote tijdverspilling).
-          batchOk();
+          // tellen mee voor snoei (NIET sequentieel herhalen — dat was de grote
+          // tijdverspilling). Maar een PID die eerder wél antwoordde en nu
+          // ontbreekt, maakt dit antwoord onvolledig, en dat is geen succes.
+          if(oordeel.oordeel==='onvolledig') _groepTel(true, oordeel);
+          else { batchOk(); _groepTel(false, oordeel); }
           for(const pid of grp){
             if(parsed[pid]){
               const r=applyParsedBytes(pid,parsed[pid]);
@@ -765,7 +780,86 @@ function batchDip(){
 }
 function batchOk(){
   if(_batchDips>0) _batchDips--;
-  PLBus.batchGroter();   // 25 schone rondes = een trapje terug omhoog
+  // 25 schone rondes = een trapje terug omhoog — maar niet vlak na een krimp
+  // op onvolledige antwoorden (zie _groepTel): dan eerst GROEP_HOUD_MS rust.
+  if(Date.now()>=_groepHoudTot) PLBus.batchGroter();
+}
+
+/* ── WAT IS EEN ONVOLLEDIG GROEPSANTWOORD (28-09-2026) ─────────────────
+   Tot vandaag gold "er kwam minstens één PID terug" als succes. Dat liet
+   2-van-3 door als goed (zie PIDLANE-ARCHIEF.md, #211), en bij een grotere
+   groep wordt dat gat groter: 4-van-6 is een antwoord waarin twee sensoren
+   stil hun meting kwijtraken.
+
+   Het onderscheid dat ertoe doet: een PID die in het antwoord ontbreekt kan
+   óók een PID zijn die deze auto niet heeft. Die mag de groep niet laten
+   krimpen — hij levert solo net zo goed niets. Het signaal is daarom: deze
+   PID gaf kort geleden nog data (`eerderOk`, dat is _pidLastOk) en ontbreekt
+   nu. Dan ligt het aan het antwoord, niet aan de auto.
+
+   "Kort geleden" is vijf minuten. _pidLastOk wordt nooit gewist — hij leeft
+   zo lang als de pagina — en zonder die grens telt een PID van de auto van
+   een uur geleden bij deze auto nog als bekend. Vijf minuten is ruim boven
+   de traagste pollklasse (60 s), dus een gezonde trage PID valt er niet uit.
+
+   Puur, zodat hij zonder adapter te toetsen is: test-groepsgrootte.js. */
+const GROEP_BEKEND_MS=300000;
+function plGroepOordeel(grp, parsed, eerderOk, nu){
+  const lijst=Array.isArray(grp)?grp:[];
+  const t=(typeof nu==='number')?nu:Date.now();
+  const mist=lijst.filter(p=>!(parsed && Object.prototype.hasOwnProperty.call(parsed,p)));
+  const mistBekend=mist.filter(p=>{
+    const w=eerderOk ? eerderOk[p] : 0;
+    return typeof w==='number' && w>0 && (t-w)<GROEP_BEKEND_MS;
+  });
+  const gekregen=lijst.length-mist.length;
+  return {
+    gekregen, mist, mistBekend,
+    oordeel: gekregen===0 ? 'leeg' : (mistBekend.length ? 'onvolledig' : 'goed')
+  };
+}
+
+/* ── DE GROEP KRIMPT OP ONVOLLEDIGE ANTWOORDEN ──────────────────────────
+   Over de laatste 20 verzoeken bij de huidige groepsgrootte: zijn er 4 of
+   meer onvolledig (20%), dan één stap kleiner. Een venster en geen teller die
+   op en neer loopt: bij de kloon van 16-09 viel 35% weg, en een +1/−1-teller
+   drijft dan nog steeds naar nul en grijpt nooit in. Eén sensor die af en toe
+   hapert (onder de 20%) laat de groep met rust.
+
+   Niet onder de 2, om dezelfde reden als de echo-krimp: groep 1 verdrievoudigt
+   het aantal verzoeken, en een groep van één die niets teruggeeft is een
+   `leeg` antwoord — dat pakt batchDip() al op. Een vastgezette groep (met de
+   hand, adapterpaneel) blijft staan: batchKleiner() weigert dan, en dat is de
+   bedoeling van vastzetten.
+
+   NA EEN KRIMP TWEE MINUTEN NIET TERUG OMHOOG. batchGroter() klimt na 25
+   schone rondes, en bij tien verzoeken per seconde is dat een paar seconden.
+   Op de kloon van 16-09 zou de groep dan elke paar seconden van 2 naar 3 en
+   terug gaan: onrust in het logboek en elke keer verlies bij de stap omhoog.
+   De echo-krimp wacht om dezelfde reden een minuut (echoRustTikken). */
+const GROEP_ONVOL_VENSTER=20, GROEP_ONVOL_DREMPEL=4, GROEP_ONVOL_BODEM=2, GROEP_HOUD_MS=120000;
+let _groepVenster=[], _groepVensterN=0, _groepHoudTot=0;
+function _groepTel(onvol, oordeel){
+  let groep=0;
+  try{ groep=PLBus.batchGroep(); }catch(e){ console.warn('PLBus.batchGroep mislukt — het onvolledig-venster telt niet mee', e); return false; }
+  // Andere groepsgrootte dan waar het venster over ging (echo-krimp, met de
+  // hand, een stap omhoog): opnieuw beginnen. Anders krimpt groep 2 op wat
+  // groep 3 misdeed.
+  if(groep!==_groepVensterN){ _groepVenster=[]; _groepVensterN=groep; }
+  _groepVenster.push(!!onvol);
+  if(_groepVenster.length>GROEP_ONVOL_VENSTER) _groepVenster.shift();
+  if(!onvol) return false;
+  const n=_groepVenster.filter(Boolean).length;
+  if(n<GROEP_ONVOL_DREMPEL || groep<=GROEP_ONVOL_BODEM) return false;
+  let ok=false;
+  try{ ok=PLBus.batchKleiner(); }catch(e){ console.warn('PLBus.batchKleiner mislukt:', e); }
+  if(!ok) return false;
+  const mist=(oordeel && oordeel.mistBekend) ? oordeel.mistBekend.join(', ') : '?';
+  const reden=n+' van de laatste '+_groepVenster.length+' antwoorden misten een PID die eerder wél antwoordde (laatst: '+mist+')';
+  _groepVenster=[]; _groepVensterN=groep-1; _groepHoudTot=Date.now()+GROEP_HOUD_MS;
+  try{ btDiag('Multi-PID groep '+groep+' → '+(groep-1)+': '+reden,'warn'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
+  try{ PLLoad.boekActie('groep', groep, groep-1, reden); }catch(e){ console.warn('PLLoad.boekActie mislukt — de groepsstap staat niet in het actielogboek', e); }
+  return true;
 }
 
 // ── Herstel na een opgeloste protocolstoring ──────────────────────────────
@@ -779,6 +873,9 @@ function batchOk(){
 function _herstelNaProtocolLock(){
   _batchDips=0;
   _batchOffSince=0;
+  _groepVenster=[];
+  _groepVensterN=0;
+  _groepHoudTot=0;
   window._batchSupported=undefined;        // undefined = weer toegestaan
   try{ PLBus.batchReset(); }catch(e){ console.warn('PLBus.batchReset mislukt:', e); }
   try{ PLLoad.reset(); }catch(e){ console.warn('PLLoad.reset mislukt:', e); }

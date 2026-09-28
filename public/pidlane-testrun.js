@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '8.2 (26-09-2026)';
+const TESTRUN_VERSIE = '8.3 (28-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -6010,6 +6010,60 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── Groep 4–6 en de groepsproef (#333, 28-09-2026) ──
+  // Drie dingen in de draaiende app: de plafonds (met de hand 6, automaat 3),
+  // het oordeel over een onvolledig antwoord, en of de groepsproef deze
+  // sessie gedraaid heeft. Die laatste is geen controle maar de uitslag van
+  // de rit: hij zet het advies in het verslag, naast de rest.
+  {
+    issue: '#333',
+    naam: 'Groep 4–6 met de hand, de automaat blijft op 3, en de groepsproef',
+    waarom: 'Een automaat die ongemerkt boven de 3 komt, stuurt elke auto multiframe-verzoeken waar geen meting achter staat; en een groepsproef die niet in het verslag staat, is een rit zonder antwoord op #333.',
+    proef: function () {
+      if (!window.PLBus || typeof PLBus.batchZet !== 'function')
+        return { staat: 'FOUT', detail: 'PLBus.batchZet ontbreekt — de groepsgrootte is dan niet te zetten' };
+      if (typeof plGroepOordeel !== 'function')
+        return { staat: 'FOUT', detail: 'plGroepOordeel() ontbreekt — de pollus telt een onvolledig antwoord dan weer als goed (#211)' };
+      if (!window.PLAdapter || typeof PLAdapter.laatsteGroepsproef !== 'function')
+        return { staat: 'FOUT', detail: 'PLAdapter.laatsteGroepsproef() ontbreekt — de groepsproef is niet geladen' };
+
+      var oudGroep = 3, oudVast = false, fout = null, gemeten = '';
+      try { oudGroep = PLBus.batchGroep(); oudVast = PLBus.batchVast(); } catch (e) { /* stil: dan blijft de terugzet-stand de standaard */ }
+      if (!oudVast && oudGroep > PLBus.GROEP_AUTO_MAX)
+        return { staat: 'FOUT', detail: 'de automaat staat op groep ' + oudGroep + ', boven zijn plafond van ' + PLBus.GROEP_AUTO_MAX };
+      try {
+        if (PLBus.batchZet(6, true) !== 6) fout = 'met de hand komt de groep niet op 6';
+        else if (PLBus.batchZet(6, false) !== PLBus.GROEP_AUTO_MAX) fout = 'de automaat mag naar ' + PLBus.batchGroep() + ', boven zijn plafond';
+        else gemeten = 'met de hand tot 6, de automaat tot ' + PLBus.GROEP_AUTO_MAX + '; ';
+      } catch (e) {
+        fout = 'de proef zelf viel om: ' + ((e && e.message) || e);
+      } finally {
+        try { PLBus.batchZet(oudGroep, oudVast); } catch (e) { console.warn('Blok 5 kon de groep niet terugzetten:', e); }
+      }
+      if (fout) return { staat: 'FOUT', detail: fout };
+
+      // Het onderscheid waar het om draait: een PID die zojuist nog
+      // antwoordde en nu ontbreekt, tegen een PID die nooit antwoordde.
+      var nu = Date.now();
+      var o1 = plGroepOordeel(['010C', '010D'], { '010C': [1] }, { '010C': nu, '010D': nu - 1000 }, nu);
+      var o2 = plGroepOordeel(['010C', '010D'], { '010C': [1] }, { '010C': nu }, nu);
+      if (o1.oordeel !== 'onvolledig' || o2.oordeel !== 'goed')
+        return { staat: 'FOUT', detail: 'het oordeel onderscheidt niet: bekende PID weg gaf "' + o1.oordeel + '", onbekende gaf "' + o2.oordeel + '"' };
+      gemeten += 'een bekende PID die ontbreekt telt als onvolledig. ';
+
+      var gp = PLAdapter.laatsteGroepsproef();
+      if (!gp) return { staat: 'LET OP', detail: gemeten + 'De groepsproef is deze sessie niet gedraaid — adapterpaneel → 📦 Start de groepsproef (zie de campagne en #333).' };
+      if (gp.afgebroken) return { staat: 'LET OP', detail: gemeten + 'De groepsproef brak af: ' + gp.afgebroken };
+      var a = gp.advies || {};
+      var tabel = (a.groepen || []).map(function (x) {
+        return x.groep + ':' + x.pidsPerSec + '/s' + (x.onvolPct ? ' ' + x.onvolPct + '%mis' : '') + (x.echo ? ' echo' + x.echo : '');
+      }).join(' · ');
+      var tekst = gemeten + 'Groepsproef ' + gp.adapter + ': ' + (a.kop || '?') + ' — ' + tabel;
+      if (a.drift) return { staat: 'LET OP', detail: tekst + '. De responstijd verschoof tijdens de proef (groep ' + a.drift.groep + '); herhaal hem.' };
+      return tekst;
+    }
+  },
+
   // ── wijst het advies de goede kant op? ──
   // De meting zelf heeft een adapter nodig, het oordeel niet. Dit voert het
   // geval van 16-09 in — een verbinding die op elke trap frames herhaalt — en
@@ -8803,12 +8857,16 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 27-09 (vijftiende) — één rit die alles beantwoordt: versnelling, berekende PIDs, trekmodus, #294, #302, #319',
+  titel: 'OPLEVERING 28-09 (zestiende) — de rit van de vijftiende, plus de groepsproef: helpen 4–6 PIDs per verzoek? (#333)',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
+    'NIEUW 28-09: DE GROEPSPROEF (#333). De app vraagt tot 3 PIDs per verzoek; een CAN-auto kan er 6 aan. Groter kan meer metingen per seconde geven, of meer verlies op een goedkope adapter. De groepsproef in het verbindingspaneel meet het: groep 1 t/m 6 en terug, met de bus vast. Elke stap gaat als logregel naar de logtabel (RecordType groepsproef). De automaat blijft op 3 tot deze metingen zeggen dat meer goed gaat.',
+    'OOK NIEUW: een groepsantwoord waarin een sensor ontbreekt die kort daarvoor nog antwoordde, telt niet meer als geslaagd. Gebeurt dat vaak (4 van de laatste 20), dan maakt de automaat de groep kleiner en schrijft hij in het verbindingspaneel waarom.',
     'DE PROEVEN OORDELEN OVER DE HELE RIT. Tot nu toe keek blok 5 naar het moment waarop de testrun draaide; wat er daarvoor gebeurde telde niet, en dan moest een rit over. Nu houden de modules zelf bij wat er deze sessie gebeurde, en oordeelt blok 5 daar aan het eind over. Elke proef zegt ok, FOUT met het waarom, of LET OP met precies wat de rit nog nodig had.',
     'NIEUW IN DE APP. Versnelling bij het voertuig met een knop Fout (ook R), tijd per versnelling met rijstijladvies, zeventien berekende PIDs (onder "Berekend"), een trekmodus met waarschuwingstoon, ritlabels met voorstel, export en kosten, rapporten vergelijken en in één keer wissen. Daarna: eigen PIDs per voertuig (Mijn voertuigen → Sensoren), de versnelling in het midden van Slim visueel, en opslaan zonder keuzevenster.',
     '── WAT ÉÉN RIT DEZE RONDE MOET LATEN ZIEN ────────',
+    'DE GROEPSPROEF, DRIE KEER (#333). Tik op de OBD-chip → 📦 Start de groepsproef. Hij duurt ongeveer twee minuten en de meters staan zolang stil; laat de app open. (A) direct na het starten, auto stil; (B) na minstens tien minuten rijden, auto stil; (C) rijdend op constante snelheid, ALLEEN als een bijrijder de telefoon bedient. Meldt hij dat de verbinding veranderde tijdens de proef, doe hem dan meteen nog één keer. Zet het advies of een schermafbeelding van de tabel als reactie in #333, met de adapter erbij.',
+    'ALLEEN ALS HET ADVIES BOVEN DE 3 UITKOMT: ✋ Handmatig → PIDs per verzoek op het advies, tien minuten rijden, en kijk in het paneel naar "onvolledig" en "herhaald". Daarna terug naar 🤖 Automaat.',
     'MINSTENS 30 MINUTEN ONAFGEBROKEN VERBONDEN (#302). Niet tussendoor verbreken. Verschijnt in het verbindingspaneel de oranje melding "De responstijd is opgelopen", laat die staan: de testrun doet aan het eind zelf het experiment (eerst de ELM opnieuw, dan eventueel een nieuwe verbinding).',
     'ALLE VERSNELLINGEN, TIEN MINUTEN. Rij door alle versnellingen heen. Klopt het cijfer in de topbalk een keer niet: tik erop → Fout → de juiste. Rij één keer een stukje achteruit en tik dan Fout → R.',
     'EEN MINUUT BEELD-IN-BEELD (#319). Tijdens het rijden (als passagier, of stilstaand met draaiende motor en de adapter verbonden) een minuut naar een andere app, bijvoorbeeld de navigatie. Daarna terug.',
@@ -8825,9 +8883,11 @@ const CAMPAGNE = {
     'STAP 0 — VOORAF. Nieuwste versie laden (☰ → Nieuwste versie laden). Mijn voertuigen: vul bij Profiel handbak of automaat, het aantal versnellingen, de tankinhoud, de literprijs en het vermogen in. Een nieuwe APK is niet nodig.',
     'STAP 1 — VERBINDEN EN WEGRIJDEN. Eén keer verbinden, dan niet meer verbreken tot na de testrun. Tik de rijsituatie caravan of beladen aan en kies Slim visueel.',
     'STAP 2 — RIJDEN, 30 MINUTEN OF MEER. Doe onderweg de punten hierboven: alle versnellingen, één keer Fout, één keer R, een minuut beeld-in-beeld, dertig seconden constant, één keer vol gas.',
+    'STAP 1b — GROEPSPROEF A, meteen na het verbinden en vóór het wegrijden. Proef B bij de eerste stop na tien minuten; proef C onderweg als er een bijrijder is.',
     'STAP 3 — DRAAI AAN HET EIND DE TESTRUN, nog steeds verbonden. De #302-proef staat achteraan en kan twee minuten duren als hij de drift ziet: dan meet hij, initialiseert de ELM opnieuw, meet weer en verbindt zo nodig opnieuw.',
     'NA AFLOOP. Plak uit het ruwe verslag de FOUT- en LET OP-regels met hun blokkop, plus het verbruik van de boordcomputer uit punt 5. Staat er een LET OP, dan zegt die regel wat er ontbrak.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
+    'DE AUTOMAAT GAAT NIET BOVEN DE 3. Dat mag pas als de groepsproef op twee adapters, in A, B en C, een groep van 4 of meer adviseert met minstens 15% meer metingen per seconde en zonder verlies (de grens staat in #333). Deze ronde verzamelt die metingen; hij beslist nog niets.',
     'GEEN TERUGSCHAKELADVIES EN GEEN AUTOMATISCHE BELADEN-HERKENNING. Bewust niet (besluit 27-09): op de top van een klim is terugschakelen precies verkeerd, en dat ziet de app niet aankomen.',
     'DE ROETFILTERTELLER IS EEN SCHATTING. Hij telt pas vanaf de eerste regeneratie die hij zelf ziet, en alleen op een diesel die 017C of 0178 geeft.',
     '#309 (Engelse versie) EN #264 (AI stuurt een test aan) HEBBEN GEEN MEETPROEF. Er is daar nog niets in de app om te meten.',
