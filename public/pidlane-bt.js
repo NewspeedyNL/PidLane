@@ -378,6 +378,7 @@ async function connectSPP(spp){
 async function doSPPConnect(spp, address, name){
   btDiag(`Verbinden met ${name}...`, 'info');
   await spp.connect({ address });               // gooit bij fout
+  _sppNieuweSocket();                           // events staan per socket aan
   btDiag('Verbonden ✓', 'ok');
 
   try { localStorage.setItem('spp_address', address); localStorage.setItem('spp_name', name); localStorage.setItem('pl_lastTransport', 'spp'); } catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
@@ -914,6 +915,131 @@ async function _sendBTRaw(cmd, timeoutMs){
   return res;
 }
 
+/* ── SPP: ANTWOORDEN PER EVENT IN PLAATS VAN POLLEN (#302, 28-09-2026) ──
+   WAAROM. De SPP-plugin heeft een eigen leesdraad die alles wat binnenkomt in
+   een buffer zet. Wij haalden die buffer op met delay(50) + read() tot er een
+   '>' in stond. Elk commando kostte daardoor minstens 50 ms, ook als het
+   antwoord er na 20 ms al was, plus gemiddeld 25 ms wachten op de volgende
+   poll. De plugin kan het ook zelf zeggen: startNotifications({delimiter:'>'})
+   laat de leesdraad elk compleet antwoord als 'onRead'-event afleveren, zodra
+   de '>' binnen is.
+
+   WAT ER ANDERS KAN GAAN, EN WAT ER DAN GEBEURT
+   - De events staan per socket aan, niet per app. Na elke spp.connect (ook de
+     stille herverbinding in sppReconnectGuard) moeten ze opnieuw aan: daarom
+     het teken `_sppTeken()` met de generatie en een socketteller.
+   - Events en read() delen één buffer. In eventstand leest read() daarom
+     alleen nog wat er NIET met een '>' eindigt: de opruimread vóór het
+     schrijven, en een half antwoord als de tijd om is. Dat laatste is ook hoe
+     SEARCHING... nog steeds de deadline oprekt tot 13 s.
+   - Een antwoord dat binnenkomt terwijl er niets gevraagd is (te laat, na
+     een time-out aan onze kant) wordt weggegooid en gelogd, niet aan het
+     volgende commando geplakt.
+   - Drie time-outs op rij in eventstand: terug naar pollen voor deze socket,
+     met de reden in het BT-log. Weigert de plugin startNotifications: idem.
+   - localStorage 'pl_spp_poll' = '1' dwingt pollen af, zonder deploy. */
+const SPP_EV_MISSERS=3;
+const _sppEv={ aan:false, teken:null, uitVoor:null, handle:null, wacht:null, missers:0, reden:'' };
+function _sppTeken(address){ return (window._btGen||0)+':'+(window._sppSocketNr||0)+':'+address; }
+function _sppNieuweSocket(){ window._sppSocketNr=(window._sppSocketNr||0)+1; _sppEv.aan=false; }
+function plSppModus(){
+  return { modus:(_sppEv.aan && window._sppConn && _sppEv.teken===_sppTeken(window._sppConn.address)) ? 'event' : 'poll',
+           reden:_sppEv.reden, missers:_sppEv.missers };
+}
+window.plSppModus=plSppModus;
+
+function _sppOntvang(r){
+  const v=(r&&r.value!=null)?String(r.value):'';
+  const w=_sppEv.wacht;
+  if(!w){ if(v.trim()) btDiag(`RX zonder vraag weggegooid (te laat antwoord): "${v.replace(/[\r\n]+/g,' ').slice(0,40)}"`,'warn'); return; }
+  _sppEv.wacht=null;
+  w(v);
+}
+
+async function _sppEventsUit(spp, reden){
+  const teken=_sppEv.teken;
+  _sppEv.aan=false; _sppEv.wacht=null;
+  if(reden){ _sppEv.uitVoor=teken; _sppEv.reden=reden; btDiag(`SPP: terug naar read()-polling — ${reden}`,'warn'); }
+  const h=_sppEv.handle; _sppEv.handle=null;
+  try{ if(h) await h.remove(); }catch(e){ console.warn('SPP: onRead-luisteraar niet verwijderd', e); }
+  try{ if(teken && spp) await spp.stopNotifications({ address:String(teken).split(':').slice(2).join(':') }); }
+  catch(e){ console.warn('SPP: stopNotifications mislukt — de socket is waarschijnlijk al weg', e); }
+}
+
+// Staan de events aan voor déze socket? Zo niet, één poging per socket.
+async function _sppEventsKlaar(spp, address){
+  const teken=_sppTeken(address);
+  if(_sppEv.aan && _sppEv.teken===teken) return true;
+  if(_sppEv.uitVoor===teken) return false;
+  try{ if(localStorage.getItem('pl_spp_poll')==='1'){ _sppEv.uitVoor=teken; _sppEv.reden='pl_spp_poll staat aan'; return false; } }
+  catch(e){ console.warn('SPP: pl_spp_poll niet leesbaar — events worden geprobeerd', e); }
+  if(typeof spp.startNotifications!=='function' || typeof spp.addListener!=='function'){
+    _sppEv.uitVoor=teken; _sppEv.reden='de plugin kent geen startNotifications'; return false;
+  }
+  if(_sppEv.handle || _sppEv.teken) await _sppEventsUit(spp);
+  try{
+    _sppEv.handle=await spp.addListener('onRead', _sppOntvang);
+    await spp.startNotifications({ address, delimiter:'>' });
+    // Wat er nog half in de buffer stond, hoort bij niets meer.
+    try{ await spp.read({address}); }catch(e){ console.warn('SPP: opruimread na startNotifications mislukt', e); }
+    _sppEv.aan=true; _sppEv.teken=teken; _sppEv.missers=0; _sppEv.reden='';
+    btDiag('SPP: antwoorden komen nu per event binnen, niet meer per 50 ms-poll','ok');
+    return true;
+  }catch(e){
+    _sppEv.teken=teken;
+    await _sppEventsUit(spp, 'startNotifications geweigerd: '+((e&&e.message)||e));
+    return false;
+  }
+}
+
+async function _sppVraagEvent(spp, address, cmd, str, TIMEOUT, myGen){
+  // Half antwoord uit een vorige ronde (zonder '>') weghalen, zoals de polltak.
+  try{
+    const stale=await spp.read({address});
+    const s=(stale?.value!=null)?String(stale.value):'';
+    if(s) btDiag(`RX flush: "${s.slice(0,40)}"`,'warn');
+  }catch(e){ btDiag(`flush read() fout: ${e.message}`,'warn'); }
+  btDiag(`TX: ${cmd}`,'info');
+  const start=Date.now();
+  let klaar=null;
+  const antwoord=new Promise(r=>{ klaar=r; });
+  _sppEv.wacht=klaar;
+  try{ await spp.write({address, value:str}); }
+  catch(we){
+    _sppEv.wacht=null;
+    btDiag(`write() fout na ${Date.now()-start}ms: ${we.message}`,'err');
+    await sppReconnectGuard(spp,address,cmd,true);
+    return '';
+  }
+  let buf='', deadline=start+TIMEOUT, searchExtended=false, v=null;
+  for(;;){
+    let t=null;
+    v=await Promise.race([antwoord, new Promise(r=>{ t=setTimeout(()=>r(null), Math.max(0,deadline-Date.now())); })]);
+    clearTimeout(t);
+    if(v!==null) break;
+    if((window._btGen||0)!==myGen){ _sppEv.wacht=null; btDiag(`"${cmd}" afgebroken: nieuwe verbindsessie gestart`,'warn'); return ''; }
+    // Tijd om zonder '>'. Wat er half binnen is, staat nog in de plugin.
+    try{
+      const r=await spp.read({address});
+      const c=(r?.value!=null)?String(r.value):'';
+      if(c){ buf+=c; btDiag(`RX zonder prompt: "${c.slice(0,60)}"`,'info'); }
+    }catch(re){ btDiag(`read() fout na time-out: ${re.message}`,'err'); }
+    if(!searchExtended && buf.includes('SEARCHING')){ searchExtended=true; deadline=start+13000; continue; }
+    break;
+  }
+  _sppEv.wacht=null;
+  if(v===null){
+    _sppEv.missers++;
+    if(_sppEv.missers>=SPP_EV_MISSERS) await _sppEventsUit(spp, `${_sppEv.missers} time-outs op rij in eventstand`);
+  } else _sppEv.missers=0;
+  const ruw=buf+(v||'');
+  btDiag(`${cmd} klaar: ${Date.now()-start}ms, ${ruw.length} tekens, event`,'info');
+  if(!ruw) await sppReconnectGuard(spp,address,cmd);
+  let out=ruw.replace(/>/g,'').trim();
+  if(out.toUpperCase().startsWith(cmd.toUpperCase())) out=out.slice(cmd.length).trim();
+  return out;
+}
+
 async function _sendBTOnce(cmd, timeoutMs){
   if(!window._sppConn&&!window._bleConn&&!window._webBtWrite&&!window._webSerialWrite){
     btDiag(`sendBT "${cmd}" geblokkeerd: GEEN actieve verbinding (spp=${!!window._sppConn} ble=${!!window._bleConn} web=${!!window._webBtWrite} serial=${!!window._webSerialWrite})`,'err');
@@ -941,6 +1067,7 @@ async function _sendBTOnce(cmd, timeoutMs){
   try{
     if(window._sppConn){
       const {spp,address}=window._sppConn;
+      if(await _sppEventsKlaar(spp,address)) return await _sppVraagEvent(spp,address,cmd,str,TIMEOUT,myGen);
 
       // Oude data wegspoelen zodat vorige (late) responses niet meegelezen worden
       try{
@@ -1100,7 +1227,7 @@ async function sppReconnectGuard(spp,address,cmd,force){
       let _rcOk=false,_rcErr=null;
       for(let _a=1;_a<=3&&!_rcOk;_a++){
         await delay(_a===1?500:1500);
-        try{ await spp.connect({address}); _rcOk=true; }
+        try{ await spp.connect({address}); _rcOk=true; _sppNieuweSocket(); }
         catch(_e){ _rcErr=_e; btDiag(`Herverbindpoging ${_a}/3 mislukt: ${_e.message}`,'warn'); }
       }
       if(!_rcOk) throw (_rcErr||new Error('herverbinden mislukt'));
@@ -1191,7 +1318,9 @@ function trackBtQuality(cmd, r){
   // Alleen data-PIDs tellen. LET OP: echte polls zijn '010C1' ('1'-suffix voor
   // snelle terugkeer) en batches '010C0D05...' — de oude regex /^01XX$/ matchte
   // die nooit, waardoor kwaliteitspill én dode-socket-detectie nooit draaiden.
-  if(!/^01([0-9A-F]{2})+1?$/i.test(cmd)) return;
+  // Sinds #302 dragen batches ook een antwoordcijfer ('010C0D052', zie
+  // PLAntwoordtal): één hexcijfer achteraan, niet alleen een '1'.
+  if(!/^01([0-9A-F]{2})+[0-9A-F]?$/i.test(cmd)) return;
   // Stille socketdood: een dode socket geeft NIETS terug (geen bytes), terwijl
   // 'NO DATA' juist betekent dat de adapter wél leeft. Tel daarom alleen écht
   // lege responses. Meerdere achter elkaar = verbinding feitelijk weg.
@@ -1885,6 +2014,7 @@ async function startDiscovery(){
       try{
         window._btGen=(window._btGen||0)+1;
         await spp.connect({address:sa});
+        _sppNieuweSocket();
         window._sppConn={spp,address:sa,name:localStorage.getItem('spp_name')||'OBDLink'};
         if(demoMode) plDemoStop(); connected=true; demoMode=false;
         setConn(true);

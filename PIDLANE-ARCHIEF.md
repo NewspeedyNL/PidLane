@@ -14,6 +14,74 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 28-09-2026 — De drift van #302 is de wachttijd van de adapter, niet de verbinding
+
+**De klacht:** "hoe langer de verbinding duurt, hoe langzamer". Dat is #302:
+77 → 270 ms per verzoek in een half uur, in stappen, zonder fouten, en
+opnieuw verbinden zet het terug.
+
+**Wat de ELM327-datasheet zegt** (hoofdstuk "Setting Timeouts – AT ST and AT
+AT"): na elk antwoord wacht de adapter nog even of er meer komt. Met `ATAT1`,
+wat wij bij het verbinden zetten, *leert* hij die wachttijd, van de
+**traagste** antwoorder die hij zag. Het maximum is `ATST64`, 400 ms. In het
+voorbeeld van de datasheet antwoordt de motor na 4 ms en de automaat na 58 ms.
+De adapter kiest dan zo'n 90 ms, en dat voor élk verzoek. `ATZ` bij het
+opnieuw verbinden wist die geleerde waarde. Dat past op alle drie de kenmerken
+van #302.
+
+**Waarom alleen de groepsverzoeken last hadden.** Losse verzoeken gingen al
+met het antwoordcijfer (`010C1`, `pidCmd`): de adapter stopt dan na één
+antwoord. Groepsverzoeken (`010C0D11`) gingen zonder, en dat is het grootste
+deel van het verkeer. python-OBD (`__build_command_string`) en ELMduino
+(`specifyNumResponses`) zetten dat cijfer standaard. AndrOBD heeft een eigen
+timingregeling die de wachttijd na een time-out verhoogt en in de sessie niet
+meer onder die grens laat zakken. Het oplopen is daar dus bekend gedrag.
+
+**De oplossing: `PLAntwoordtal` in `pidlane-plload.js`.** Per verzoek tellen
+hoeveel frames er zonder cijfer terugkomen, en na drie keer hetzelfde aantal
+het hoogste aantal als cijfer meesturen. Geleerd en niet uit de PID-lengtes
+berekend: een tweede ECU die meeantwoordt, maakt het aantal hoger, en een te
+laag cijfer kapt af. Of de adapter op CAN frames of berichten telt, zegt de
+datasheet niet. Een frameaantal is in beide gevallen nooit te laag.
+Nagebouwd in `test-antwoordtal.js` en `bproef-antwoordtal.js`, met een
+nep-ELM die zijn wachttijd leert zoals de datasheet het beschrijft.
+**Niet in een auto gemeten.** Blok 5 van testrun 8.4 zegt het na de volgende
+rit.
+
+**Bijvangst die blijft staan: twee ECU's zonder headers leest de parser
+verkeerd.** Met `ATH0` zijn twee antwoorden op hetzelfde groepsverzoek niet
+van elkaar te onderscheiden. `splitBatchResponse('410D32\r410C1AF80D32',
+['010C','010D','0111'])` geeft `010C` vier bytes (`[26,248,13,50]`), omdat de
+tweede regel aan de eerste wordt geplakt. Dat is ouder dan het antwoordcijfer
+en verandert er niet door: met cijfer komt precies hetzelfde binnen als
+zonder (toets 5 in `test-antwoordtal.js`). Of de CX-5 een tweede ECU heeft
+die op mode 01 meepraat, is niet bekend.
+
+**De volgende stap zit in het transport, niet in de adapter.** De SPP-plugin
+(`@ascentio-it/capacitor-bluetooth-serial` 8.0.1) heeft een native leesdraad
+die alles in een buffer zet. `_sendBTOnce` doet eerst een losse `read()` om
+op te ruimen, dan de `write()`, en daarna `delay(50)` + `read()` tot er een `>`
+is. Elk commando kost daardoor minstens 50 ms, ook als het antwoord er na
+20 ms al is, en gemiddeld komt er zo'n 25 ms wachten op de volgende poll bij.
+De plugin kan het ook zonder polling: `startNotifications({ delimiter: '>' })`
+plus `addListener('onRead')` levert elk compleet antwoord zodra het binnen
+is. **Op dezelfde dag ingebouwd** (`_sppVraagEvent()` in `pidlane-bt.js`),
+met een terugval naar pollen na drie time-outs op rij of een weigering van de
+plugin. Het is de laag waar "readUntil gaf lege responses" ooit maanden
+kostte, en hij is alleen op een toestel te toetsen. `test-sppevents.js`
+bootst de native buffer van de plugin na, maar geen echte socket.
+
+**Mogelijk de verklaring van "readUntil gaf lege responses".** In de plugin
+haalt `readUntil()` één teken te veel uit de buffer (`delete(0, index + 1)`,
+terwijl `index` het scheidingsteken al meetelt). Na een ELM-prompt komt er
+niets meer, dus dat teken is er meestal niet. Staat er toch al iets van het
+volgende antwoord, dan verdwijnt het eerste teken ervan. Het eventpad leunt
+op dezelfde `readUntil()`. Omdat de adapter pas na ons volgende commando weer
+iets stuurt, raakt het hier niets. Het blijft een aandachtspunt bij een
+adapter die ongevraagd tekst stuurt.
+
+---
+
 ## 28-09-2026 — Testrun 8.3: vier keer FOUT, één gerepareerd
 
 Mazda CX-5 2018 benzine, OBDLink MX+, 17 min gereden. 161 ok, 4 fout, 46 let op.

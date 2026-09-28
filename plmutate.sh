@@ -735,6 +735,29 @@ MUTATIES=(
 "public/pidlane-adapter.js@@        if (typeof plMarkeer === 'function') plMarkeer('groepsproef klaar',@@        if (typeof plMarkeer === 'function') plMarkeer('groepsproef',@@bproef-groepsproef.js@@de groepsproef zet een andere markering dan de meetopdracht voor #333 verwacht, en die blijft voor altijd op nog niet"
 "public/pidlane-adapter.js@@    if (!uit.afgebroken) {\n      try {\n        if (typeof plMarkeer@@    if (true) {\n      try {\n        if (typeof plMarkeer@@bproef-groepsproef.js@@een afgebroken groepsproef telt voor de meetopdracht als gedraaid"
 
+# Het antwoordcijfer op groepsverzoeken (#302). Een ELM met ATAT1 zit na elk
+# groepsantwoord zijn geleerde wachttijd uit; het cijfer slaat die over. De
+# fouten die ertoe doen: het cijfer te vroeg of te laag zetten (dan kapt de
+# adapter een antwoord af), het niet meer bijleren, of het niet meer sturen —
+# dat laatste is precies de toestand van vóór 28-09 en die is onzichtbaar.
+"public/pidlane-plload.js@@      if(!e || e.zeker<ANTWOORDTAL_LEER || !(e.n>=1 && e.n<=15)) return basis;@@      if(!e || !(e.n>=1 && e.n<=15)) return basis;@@test-antwoordtal.js@@het cijfer gaat mee na één antwoord, voordat bekend is of er een tweede ECU meepraat"
+"public/pidlane-plload.js@@      else if(f>e.n){ e.n=f; e.zeker=1; }@@      else { e.n=f; e.zeker=1; }@@test-antwoordtal.js@@één antwoord met een ontbrekende PID verlaagt het cijfer, en het volgende antwoord wordt afgekapt"
+"public/pidlane-plload.js@@        if(e && oordeel!=='goed' && /41[0-9A-F]{2}/i.test(String(raw||''))){@@        if(false){@@test-antwoordtal.js@@een cijfer dat antwoorden afkapt blijft staan"
+"public/pidlane-plload.js@@      if(++e.sinds>=ANTWOORDTAL_HERIJK){ e.sinds=0; return basis; }@@      ++e.sinds;@@test-antwoordtal.js@@het cijfer wordt nooit meer nagemeten, en een ECU die later meepraat wordt afgekapt"
+"public/pidlane-plload.js@@    if(/^[0-9A-Fa-f]{4,}$/.test(hex)) n++;       // data; \"008\" (3 tekens) is een lengte@@    if(/^[0-9A-Fa-f]{3,}$/.test(hex)) n++;@@test-antwoordtal.js@@de lengteregel telt als frame en het cijfer is één te hoog, zodat de adapter alsnog zijn wachttijd uitzit"
+"public/pidlane-plload.js@@          const cmd=PLAntwoordtal.cmd(basis);@@          const cmd=basis;@@bproef-antwoordtal.js@@de pollus stuurt het geleerde cijfer niet mee en de responstijd loopt weer op zoals in #302"
+
+# SPP-antwoorden per event (#302). De browserproeven vervangen _sendBTOnce
+# helemaal, dus alleen test-sppevents.js ziet deze laag. De fouten die ertoe
+# doen: het eventpad niet gebruiken (terug op 50 ms per commando), na een
+# herverbinding op een socket blijven wachten die geen events meer stuurt, een
+# SEARCHING afkappen, of nooit terugvallen naar pollen.
+"public/pidlane-bt.js@@      if(await _sppEventsKlaar(spp,address)) return await _sppVraagEvent(spp,address,cmd,str,TIMEOUT,myGen);\n@@@@test-sppevents.js@@de SPP-tak pollt weer elke 50 ms en elk commando kost minstens 50 ms"
+"public/pidlane-bt.js@@function _sppNieuweSocket(){ window._sppSocketNr=(window._sppSocketNr||0)+1; _sppEv.aan=false; }@@function _sppNieuweSocket(){ }@@test-sppevents.js@@na een herverbinding wacht de app op events van een socket waar ze niet aan staan"
+"public/pidlane-bt.js@@    if(!searchExtended && buf.includes('SEARCHING')){ searchExtended=true; deadline=start+13000; continue; }@@    if(false){ }@@test-sppevents.js@@een protocolzoektocht wordt na de gewone deadline afgekapt en het antwoord erna gaat verloren"
+"public/pidlane-bt.js@@    if(_sppEv.missers>=SPP_EV_MISSERS) await _sppEventsUit(@@    if(false) await _sppEventsUit(@@test-sppevents.js@@een toestel dat geen events aflevert valt nooit terug naar pollen en elk commando loopt in de time-out"
+"public/pidlane-bt.js@@  if(_sppEv.uitVoor===teken) return false;@@  if(false) return false;@@test-sppevents.js@@een plugin die startNotifications weigert, krijgt die vraag vóór elk commando opnieuw"
+
 # En de laatste meter van die keten: van PLLoad.mult() naar het interval dat de
 # scheduler werkelijk gebruikt. Blok 5 dacht op 17-09-2026 dat die meter stuk
 # was en meldde FOUT; in werkelijkheid mat de proef tegen de automaat in plaats
