@@ -1415,6 +1415,39 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vis-plek.warn .vis-staaf-vul { fill:var(--or); }
 .vis-plek.danger .vis-staaf-vul { fill:var(--rd); }
 .vis-gear { fill:var(--tx); font-weight:800; }
+/* Het bandenlampje boven de meter (28-09-2026): opent PLBanden. */
+.vis-lamp-banden { pointer-events:auto; align-self:flex-start; display:inline-flex; align-items:center; justify-content:center; width:38px; height:34px; padding:0;
+  border-radius:10px; border:1px solid var(--bd); background:var(--sur); color:var(--tx2); cursor:pointer; }
+.vis-lamp-banden svg { width:20px; height:20px; overflow:visible; }
+.vis-lamp-banden.warn { color:var(--or); border-color:var(--or); background:var(--ors); }
+.vis-lamp-banden.danger { color:var(--rd); border-color:var(--rd); background:var(--rds); }
+.vis-lamp-banden.geen { opacity:.55; }
+/* PLBanden — het venster. */
+#plBandenOv { position:fixed; inset:0; z-index:var(--z-modal); display:flex; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.5); }
+#plBandenOv .plb-vel { width:100%; max-width:480px; max-height:85vh; overflow:auto; background:var(--sur); color:var(--tx); border-radius:16px 16px 0 0;
+  padding:14px 16px calc(16px + var(--pl-sab, 0px)); box-sizing:border-box; }
+#plBandenOv .plb-kop { display:flex; align-items:center; }
+#plBandenOv h2 { flex:1; margin:0; font-size:18px; }
+#plBandenOv .plb-sluit { background:none; border:0; color:inherit; font-size:20px; padding:4px 8px; cursor:pointer; }
+#plBandenOv .plb-rooster { display:grid; grid-template-columns:1fr 96px 1fr; grid-template-rows:auto auto; gap:10px 8px; align-items:center; margin-top:12px; }
+#plBandenOv .plb-auto { grid-column:2; grid-row:1 / span 2; width:96px; height:176px; }
+#plBandenOv .plb-romp { fill:var(--sur2); stroke:var(--bd2); stroke-width:1.5; }
+#plBandenOv .plb-ruit { fill:none; stroke:var(--bd2); stroke-width:1.2; }
+#plBandenOv .plb-band { fill:var(--tx3); }
+#plBandenOv .plb-band.warn { fill:var(--or); }
+#plBandenOv .plb-band.danger { fill:var(--rd); }
+#plBandenOv .plb-tegel { display:flex; flex-direction:column; gap:2px; padding:9px 10px; border:1px solid var(--bd); border-radius:12px; background:var(--sur2); min-width:0; }
+#plBandenOv .plb-tegel small { font-size:11px; color:var(--tx3); font-weight:700; }
+#plBandenOv .plb-tegel b { font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; }
+#plBandenOv .plb-tegel b i { font-style:normal; font-size:12px; font-weight:600; color:var(--tx3); margin-left:3px; }
+#plBandenOv .plb-tegel span { font-size:12px; color:var(--tx2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#plBandenOv .plb-tegel.warn { border-color:var(--or); background:var(--ors); }
+#plBandenOv .plb-tegel.danger { border-color:var(--rd); background:var(--rds); }
+#plBandenOv .plb-tegel.oud, #plBandenOv .plb-tegel.geen { opacity:.5; }
+#plBandenOv .plb-oordeel { margin:12px 0 0; font-size:14px; font-weight:700; }
+#plBandenOv .plb-oordeel.warn { color:var(--or); }
+#plBandenOv .plb-oordeel.danger { color:var(--rd); }
+#plBandenOv .plb-uitleg { font-size:12px; color:var(--tx3); margin:8px 0 0; }
 .vis-plek.oud { opacity:.5; }
 #visg-onder.warn .vis-klein { fill:var(--or); }
 #visg-onder.danger .vis-klein { fill:var(--rd); }

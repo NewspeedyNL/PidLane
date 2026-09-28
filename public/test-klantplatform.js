@@ -262,6 +262,13 @@ async function laadWorker() {
     { code: '221E1C', ecu: '7E1', naam: 'Temperatuur automaat', formule: 'A-40', eenheid: '°C', tempo: 'traag' }] } });
   const epT = (await roep(tokA, { actie: 'stand' })).voertuigen.find((v) => v.id === v1.voertuig.id).eigen_pids[0];
   toets('ECU-adres en tempo worden bewaard', epT.ecu === '7E1' && epT.tempo === 'traag', JSON.stringify(epT));
+  const tmp = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, eigen_pids: [
+    { code: '222A05', naam: 'Bandenspanning voor-links', ecu: '720', tempo: 'minuut' }, { code: '222A06', naam: 'Bandenspanning voor-rechts', ecu: '720', tempo: 'normaal' },
+    { code: '222A07', naam: 'Bandenspanning achter-links', ecu: '720' }, { code: '222A08', naam: 'x', tempo: 'elke eeuw' }] } });
+  toets('tempo: minuut en een gekozen "normaal" blijven staan, niets of onzin = geen tempo (de app kiest)', tmp.ok &&
+    JSON.stringify(tmp.voertuig.eigen_pids.map((e) => e.tempo || '')) === '["minuut","normaal","",""]', JSON.stringify(tmp.voertuig && tmp.voertuig.eigen_pids));
+  await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, eigen_pids: [
+    { code: '221E1C', ecu: '7E1', naam: 'Temperatuur automaat', formule: 'A-40', eenheid: '°C', tempo: 'traag' }] } });
   toets('bibliotheek: delen kan alleen wat bij het voertuig staat', (await roep(tokA, { actie: 'pidbib_deel', voertuig_id: v1.voertuig.id, code: '229999' }))._status === 404);
   const deel = await roep(tokA, { actie: 'pidbib_deel', voertuig_id: v1.voertuig.id, code: '221E1C', ecu: '7E1' });
   toets('bibliotheek: Anna deelt haar bewezen code', deel.ok && !!deel.id, JSON.stringify(deel));

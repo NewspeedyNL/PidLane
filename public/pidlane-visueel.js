@@ -857,6 +857,17 @@ function lampGetal(pid){
   if(!pid || typeof pidVals==='undefined' || pidVals[pid]===undefined) return null;
   return isOud(pid) ? null : pidVals[pid];
 }
+/* Het bandenlampje: alleen als deze auto bandensensoren heeft (PLBanden),
+   gekleurd met het oordeel over de vier banden. Tikken opent het venster. */
+function bandenBij(){
+  const e=el('vis-banden'); if(!e) return;
+  let l={ toon:false };
+  try{ if(window.PLBanden) l=PLBanden.lamp(); }catch(x){ console.warn('PLVisueel: bandenlampje', x); }
+  e.style.display=l.toon ? '' : 'none';
+  const k='vis-lamp-banden '+(l.ernst||'geen');
+  if(e.className!==k) e.className=k;
+  if(l.titel && e.title!==l.titel) e.title=l.titel;
+}
 function lampjesBij(){
   const I=_staat.ind;
   const res=leesAandrijving(), L=aandrijfLampjes(res, I ? I.motor : leesMotor(),
@@ -891,7 +902,10 @@ function bouw(g){
   const dOlie=defVan('015C');
   g.innerHTML='<div class="vis">'+
     '<div class="vis-bak">'+
-      '<div class="vis-lampen"><span class="vis-lamp leeg" id="vis-lamp-motor"></span><span class="vis-lamp leeg" id="vis-lamp-hybride"></span></div>'+
+      '<div class="vis-lampen"><span class="vis-lamp leeg" id="vis-lamp-motor"></span>'+
+        '<button type="button" class="vis-lamp-banden geen" id="vis-banden" style="display:none" onclick="PLBanden.open()" aria-label="Banden">'+
+          '<svg viewBox="0 0 24 24">'+icoonHtml('band')+'</svg></button>'+
+        '<span class="vis-lamp leeg" id="vis-lamp-hybride"></span></div>'+
       '<svg class="vis-meter" viewBox="0 0 320 '+G.VB_H+'" role="img" aria-label="Toerental, snelheid, koelwater, accu en brandstof">'+
         wijzerplaat(ind.schaal.rood, dOlie && dOlie.wH, dOlie && dOlie.dH, ind.schaal.max)+'</svg>'+
     '</div>'+
@@ -917,7 +931,7 @@ function bouw(g){
   // Wat er al binnen is meteen tonen: een herbouw midden in een rit hoort
   // niet eerst een lege meter te laten zien.
   _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
-  meldBij(); lampjesBij(); trekBij(); gearBij();
+  meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
 }
 
 // ── DE WAARSCHUWINGSTOON ──────────────────────────────────────────
@@ -1149,7 +1163,7 @@ function tik(){
     const e=el(x[0]); if(e && x[1]) e.classList.toggle('oud', isOud(x[1], nu));
   });
   PLEKKEN.forEach(function(r){ const p=el('visp-'+r.rol), pid=I.plekken[r.rol]; if(p && pid) p.classList.toggle('oud', isOud(pid, nu)); });
-  meldBij(); lampjesBij(); trekBij(); gearBij();
+  meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
 }
 
 // De bevindingenbalk bovenaan de live view verhuist naar het meldingenvak
@@ -1195,7 +1209,7 @@ window.PLVisueel = {
   indeling:indeling, gebruiktePids:gebruiktePids, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,
   meldingen:meldingen, schakel:schakel,
   TREK:TREK, TREK_SITUATIES:TREK_SITUATIES, trekIndeling:trekIndeling, koelTrend:koelTrend, trekAan:trekAan,
-  nodigePids:nodigePids, zorgPids:zorgPids, staafDeel:staafDeel, gearTekst:gearTekst,
+  nodigePids:nodigePids, zorgPids:zorgPids, bandenBij:bandenBij, staafDeel:staafDeel, gearTekst:gearTekst,
   sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
   remt:remt, isOud:isOud, bouw:bouw, bij:bij, tik:tik, start:start, stop:stop,
   staat:function(){ return { aan:_staat.aan, start:_staat.start, traag:Array.from(_staat.traag),

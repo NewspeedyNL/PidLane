@@ -10,6 +10,23 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-09-2026 — Banden: venster, bar of psi, elke minuut
+ ═══════════════════════════════════════════════════════════
+
+ - 🛞 Banden: een venster met de vier banden van bovenaf, per band de
+   druk en de temperatuur. De app vergelijkt de banden met elkaar: een
+   band die 10% zachter is dan de rest wordt oranje, 20% rood. Openen met
+   het bandenlampje boven Slim visueel (dat meekleurt) of in Mijn
+   voertuigen → Sensoren. Welke sensor bij welke band hoort, leest de app
+   uit de naam ("Bandenspanning voor-links").
+ - Mijn voorkeuren → Druk tonen als: bar (standaard) of psi. Eigen
+   sensoren in psi, bar of kPa worden omgerekend; wat er bewaard is, blijft
+   hetzelfde.
+ - Eigen sensoren: "Hoe vaak" kent nu ook "Elke minuut", en is per sensor
+   in de lijst aan te passen. Zonder keuze wordt een band elke minuut
+   gevraagd en de rest elke 2 seconden.
+
+ ═══════════════════════════════════════════════════════════
  27-09-2026 — Eigen PIDs per voertuig, rustiger Slim visueel, direct opslaan
  ═══════════════════════════════════════════════════════════
 

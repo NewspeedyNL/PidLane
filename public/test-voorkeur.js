@@ -95,6 +95,8 @@ function laad(extra) {
   eis(K.verbruikTekst(0, 'kml') === '—', 'nul is geen verbruik');
   eis(/kort/.test(K.promptRegel({ rapport: 'kort' })) && K.promptRegel({ rapport: 'normaal' }) === '' && K.promptRegel({}) === '', 'rapportvorm alleen als er iets gekozen is');
   eis(V.scanBekend() === 'vragen' && V.samenvatting() === true && V.promptRegel() === '', 'zonder voorkeur: vragen, samenvatting tonen, geen promptregel');
+  eis(V.druk() === 'bar', 'zonder voorkeur: druk in bar');
+  eis(JSON.stringify(K.schoon({ druk: 'psi' })) === '{"druk":"psi"}' && !('druk' in K.schoon({ druk: 'atm' })), 'druk: bar of psi, niets anders', JSON.stringify(K.schoon({ druk: 'atm' })));
 
   console.log('\n6. De vaste sensorselectie van een voertuig');
   const gemeld = [];
