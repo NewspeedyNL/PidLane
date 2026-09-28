@@ -166,6 +166,15 @@
         const u = window.currentUser;
         if (k && u && isKlant() && u.ontwikkelaar !== (k.ontwikkelaar === true)) { u.ontwikkelaar = k.ontwikkelaar === true; pasMenuAan(); }
       } catch (e) { console.warn('PLKlant: ontwikkelaarsvlag niet gezet', e); }
+      // Tegoed uit (beheer → Klanten): de Worker boekt dan niets af, dus de
+      // tokenchip en de kostencontrole vooraf horen weg.
+      try {
+        const u = window.currentUser;
+        if (k && u && isKlant() && u.tegoedUit !== (k.tegoedUit === true)) {
+          u.tegoedUit = k.tegoedUit === true;
+          if (window.PLCredits && PLCredits.chip) PLCredits.chip();
+        }
+      } catch (e) { console.warn('PLKlant: tegoed-uit-vlag niet gezet', e); }
       return k;
     } catch (e) { console.warn('PLKlant: /klant/mij mislukt', e); return null; }
   }

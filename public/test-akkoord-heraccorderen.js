@@ -42,7 +42,16 @@ if (van < 0 || tot < 0 || tot < van) {
   console.error('      Verwacht AKKOORD_TEKST_SINDS ... __name(klantPubliek, ...).');
   process.exit(1);
 }
-const klantPubliek = new Function(src.slice(van, tot) + '\nreturn klantPubliek;')();
+// klantPubliek() vraagt klantTegoedUit() of het tegoed uit staat; die staat
+// elders in worker.js en komt dus ook uit de bron, niet uit een kopie.
+const tu0 = src.indexOf('function klantTegoedUit(f) {');
+const tu1 = src.indexOf('__name(klantTegoedUit, "klantTegoedUit");');
+if (tu0 < 0 || tu1 < tu0) {
+  console.error('FOUT: klantTegoedUit niet gevonden in worker.js.');
+  process.exit(1);
+}
+const klantTegoedUit = new Function(src.slice(tu0, tu1) + '\nreturn klantTegoedUit;')();
+const klantPubliek = new Function('klantTegoedUit', src.slice(van, tot) + '\nreturn klantPubliek;')(klantTegoedUit);
 
 // De grens zelf uit de bron trekken in plaats van hardcoden — anders toetst
 // deze test straks tegen een datum die niet meer is wat worker.js gebruikt.

@@ -1816,6 +1816,7 @@ function tekenKlanten(){
     if(k.heeftReset) merk.push('<span class="pill p-wacht">herstel open</span>');
     if(k.verwijderdOp) merk.push('<span class="pill p-uit">wordt gewist ' + esc(dt(k.definitiefOp)) + '</span>');
     if(k.ontwikkelaar) merk.push('<span class="pill p-wacht">ontwikkelaar</span>');
+    if(k.ontwikkelaar && k.tegoedUit) merk.push('<span class="pill p-wacht">tegoed uit</span>');
     return `<div class="klantrij">
       <div class="kop">
         <div>
@@ -1830,6 +1831,7 @@ function tekenKlanten(){
         <button class="btn-sec btn-sm" onclick="kStatus('${k.id}','${esc(k.status)}')">Status</button>
         <button class="btn-sec btn-sm" onclick="kWachtwoord('${k.id}','${esc(k.email)}')">Wachtwoord</button>
         <button class="btn-sec btn-sm" onclick="kOntwikkelaar('${k.id}','${esc(k.email)}',${k.ontwikkelaar ? 'true' : 'false'})">${k.ontwikkelaar ? 'Ontwikkelaar uit' : 'Ontwikkelaar aan'}</button>
+        ${k.ontwikkelaar ? `<button class="btn-sec btn-sm" onclick="kTegoedUit('${k.id}','${esc(k.email)}',${k.tegoedUit ? 'true' : 'false'})">${k.tegoedUit ? 'Tegoed aan' : 'Tegoed uit'}</button>` : ''}
         <button class="btn-sec btn-sm" onclick="kDetail('${k.id}')">Details</button>
         <button class="btn-del btn-sm" onclick="kVerwijder('${k.id}','${esc(k.email)}')">Wissen</button>
       </div>
@@ -1946,6 +1948,16 @@ function kOntwikkelaar(id, email, nu){
     (naar ? 'Testrun, bulk-recorder, full survey en test-scenario worden zichtbaar. Beheer en de gegevens van andere klanten blijven dicht.'
           : 'De ontwikkeltools verdwijnen bij de volgende keer openen van de app.'))) return;
   kPost({ actie:'update', id, ontwikkelaar:naar }, () => 'Ontwikkelaar ' + (naar ? 'aan' : 'uit') + ' voor ' + email + '.');
+}
+/* Tegoed uit (28-09-2026): alleen bij een klant met Ontwikkelaar aan. De
+   Worker boekt dan geen tokens af; de AI-kosten komen bij jou, zonder teller.
+   Ontwikkelaar uitzetten zet het tegoed vanzelf weer aan. */
+function kTegoedUit(id, email, nu){
+  const naar = !nu;
+  if(!confirm((naar ? 'Tegoed UITZETTEN voor ' : 'Tegoed weer AANZETTEN voor ') + email + '?\n\n' +
+    (naar ? 'Deze klant betaalt dan geen tokens meer voor AI. De kosten komen bij jou, zonder plafond en zonder kasboekregel.'
+          : 'AI kost deze klant weer tokens van het eigen saldo.'))) return;
+  kPost({ actie:'update', id, tegoedUit:naar }, () => 'Tegoed ' + (naar ? 'uit' : 'aan') + ' voor ' + email + '.');
 }
 function kWachtwoord(id, email){
   const p = prompt('Nieuw wachtwoord voor ' + email + ':\nMinimaal 8 tekens. De klant kan dit daarna zelf wijzigen.');

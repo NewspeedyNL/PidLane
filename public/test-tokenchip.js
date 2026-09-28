@@ -204,6 +204,20 @@ const deel7 = (async function () {
     toets('rol ' + (g[0] || 'niemand') + ': ' + (g[1] ? 'wel' : 'geen') + ' boeking',
           rekent === g[1], 'preflight gaf: ' + JSON.stringify(res));
   }
+  // Sinds 28-09-2026: een klant bij wie de beheerder Tegoed uit zette (de vlag
+  // komt uit /klant/mij). Alleen een echte true telt.
+  for (const g of [[true, false], ['ja', true]]) {
+    const a = laad();
+    a.login('klant');
+    global.window.currentUser.tegoedUit = g[0];
+    a.PLC.zetSaldo(500);
+    a.PLC.stil(true);
+    const res = await a.PLC.preflight('x'.repeat(400), 'systeem', 2048, 'claude-sonnet-5')
+      .catch(() => null);
+    const rekent = !!(res && res.credits > 0);
+    toets('klant met tegoedUit=' + JSON.stringify(g[0]) + ': ' + (g[1] ? 'wel' : 'geen') + ' boeking',
+          rekent === g[1], 'preflight gaf: ' + JSON.stringify(res));
+  }
 })();
 
 deel7.then(function () {
