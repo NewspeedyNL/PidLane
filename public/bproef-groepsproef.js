@@ -115,6 +115,26 @@ const DRAAI = `(async function(){
     await app.ev(`PLBus.batchZet(3, false); 'ok'`);
 
     console.log('\n── 2. een schone ECU ──');
+    const MARK = `PLBegeleid.markeringen().filter(function(m){ return m.tekst === 'groepsproef klaar'; }).length`;
+    // De meetopdracht voor #333 staat in D1 en wacht op de stap "groepsproef
+    // klaar". Hier gaat een opdracht met alleen die voorwaarde door de échte
+    // keten: lijst() (met een nagemaakt antwoord van de Worker), kies(), en
+    // het oordeel van de testrun met zijn eigen stapcontrole.
+    const STAP = `(async function(){
+      const echt = window.plFetch;
+      const o = { schema: 2, naam: 'groepsproef', sensoren: ['010C'], duurS: 60,
+                  voorwaarden: [{ wat: 'de groepsproef is gedraaid', stap: 'groepsproef klaar' }] };
+      window.plFetch = async function () { return { ok: true, status: 200,
+        json: async function () { return { opdrachten: [{ id: 'gp', naam: 'groepsproef', opdracht: JSON.stringify(o) }] }; } }; };
+      try { await PLOpdracht.lijst(); } finally { window.plFetch = echt; }
+      if (!PLOpdracht.kies('gp')) return 'niet gekozen: ' + PLOpdracht.reden();
+      const n = PLTestrunLive.oordeelNu();
+      const v = ((n.vonnis && n.vonnis.voorwaarden) || []).filter(function (x) { return x.soort === 'stap'; })[0];
+      return v ? v.vervuld : 'geen stap-voorwaarde: ' + n.reden;
+    })()`;
+    toets('vóór de proef: geen markering groepsproef klaar', await app.ev(MARK) === 0);
+    const stapVoor = await app.ev(STAP);
+    toets('en de meetopdracht ziet de stap nog niet', stapVoor === false, String(stapVoor));
     const a = JSON.parse(await app.ev(DRAAI));
     toets('de proef liep door', !a.uit.afgebroken, a.uit.afgebroken);
     toets('hij hield de bus vast terwijl hij mat', a.eigenaar === 'groepsproef', 'eigenaar: ' + a.eigenaar);
@@ -130,6 +150,11 @@ const DRAAI = `(async function(){
       a.regels.length === 13 && a.regels.every((r) => r.extra.RecordType === 'groepsproef'), a.regels.length + ' regels');
     toets('de laatste logregel draagt de versie en het advies',
       /groepsproef 1/.test(a.regels[12] && a.regels[12].bericht) && /advies groep/.test(a.regels[12].bericht), a.regels[12] && a.regels[12].bericht);
+    // De meetopdracht voor #333 wacht op deze stap (voorwaarde `stap`). Via de
+    // echte _stapGezet, zodat een andere tekst hier ook rood wordt.
+    toets('na de proef: één markering groepsproef klaar', await app.ev(MARK) === 1, 'aantal: ' + await app.ev(MARK));
+    const stapNa = await app.ev(STAP);
+    toets('en de meetopdracht ziet de stap nu wel', stapNa === true, String(stapNa));
     toets('de proef zette zelf niets: groep 3, niet vastgezet', a.groep === 3 && a.vast === false, 'groep ' + a.groep + ', vast ' + a.vast);
     await app.ev(`PLAdapter.open(); 'ok'`);
     const tekst = await app.ev(`document.getElementById('plAdapterBody').textContent`);
@@ -142,6 +167,22 @@ const DRAAI = `(async function(){
     const k3 = b.uit.advies.groepen.filter((x) => x.groep === 3)[0] || {};
     toets('groep 3 verliest nu PIDs', k3.onvolPct > 2, JSON.stringify(k3));
     toets('en het advies slaat om naar groep 2', b.uit.advies.groep === 2, b.uit.advies.kop + ' — ' + b.uit.advies.reden);
+    toets('een tweede volledige proef: een tweede markering', await app.ev(MARK) === 2, 'aantal: ' + await app.ev(MARK));
+
+    console.log('\n── 3b. TEGENPROEF — een afgebroken proef telt niet voor de meetopdracht ──');
+    const e = JSON.parse(await app.ev(`(async function(){
+      const echt = logToSheets; logToSheets = function(){};
+      _nepEcu.kloon = false;
+      try {
+        const bezig = PLAdapter.groepsproef({ stapSec: 0.4 });
+        await new Promise((r) => setTimeout(r, 1500));
+        connected = false;
+        const uit = await bezig;
+        return JSON.stringify({ afgebroken: uit && uit.afgebroken });
+      } finally { connected = true; logToSheets = echt; }
+    })()`));
+    toets('de proef brak af op de weggevallen verbinding', /verbinding viel weg/.test(e.afgebroken || ''), e.afgebroken);
+    toets('en zette geen markering', await app.ev(MARK) === 2, 'aantal: ' + await app.ev(MARK));
 
     console.log('\n── 4. de regelkring in de pollus ──');
     // De automaat, groep 3, de kloon aan. De pollus zelf draaien en kijken of

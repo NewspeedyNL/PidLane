@@ -647,6 +647,15 @@
       }
     } catch (e) { console.warn('De uitkomst van de groepsproef kwam niet in het BT-log:', e); }
     _gpNaarLog(uit);
+    // DE STAP VOOR DE MEETOPDRACHT (#333). Een meetopdracht kan niet zien of
+    // er een groepsproef gedraaid heeft; een markering wel. Alleen een proef
+    // die helemaal doorliep telt: een afgebroken proef heeft geen advies.
+    if (!uit.afgebroken) {
+      try {
+        if (typeof plMarkeer === 'function') plMarkeer('groepsproef klaar', uit.advies.kop + ' (' + (uit.adapter || 'adapter onbekend') + ')');
+        else console.warn('Groepsproef: plMarkeer ontbreekt — de meetopdracht voor #333 ziet deze proef niet');
+      } catch (e) { console.warn('Groepsproef: de markering is niet gezet', e); }
+    }
     _teken();
     return uit;
   }

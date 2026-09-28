@@ -732,6 +732,8 @@ MUTATIES=(
 "public/pidlane-adapter.js@@    for (let i = 1; i < schoon.length; i++) if (schoon[i].pidsPerSec >= best.pidsPerSec * 1.05) best = schoon[i];@@    for (let i = 1; i < schoon.length; i++) if (schoon[i].pidsPerSec >= best.pidsPerSec) best = schoon[i];@@test-groepsgrootte.js@@de groepsproef adviseert een grotere groep voor een winst binnen de meetruis"
 "public/pidlane-adapter.js@@        schoon: onvolPct <= 2 && leegPct === 0 && p.echo === 0,@@        schoon: leegPct === 0,@@test-groepsgrootte.js@@de groepsproef adviseert een groep die PIDs verliest of frames herhaalt"
 "public/pidlane-adapter.js@@      tok = await PLBus.wait('groepsproef', GP_BUS_WACHT_MS);@@      tok = -1;@@bproef-groepsproef.js@@de groepsproef meet dwars door de pollus heen in plaats van met de bus vast"
+"public/pidlane-adapter.js@@        if (typeof plMarkeer === 'function') plMarkeer('groepsproef klaar',@@        if (typeof plMarkeer === 'function') plMarkeer('groepsproef',@@bproef-groepsproef.js@@de groepsproef zet een andere markering dan de meetopdracht voor #333 verwacht, en die blijft voor altijd op nog niet"
+"public/pidlane-adapter.js@@    if (!uit.afgebroken) {\n      try {\n        if (typeof plMarkeer@@    if (true) {\n      try {\n        if (typeof plMarkeer@@bproef-groepsproef.js@@een afgebroken groepsproef telt voor de meetopdracht als gedraaid"
 
 # En de laatste meter van die keten: van PLLoad.mult() naar het interval dat de
 # scheduler werkelijk gebruikt. Blok 5 dacht op 17-09-2026 dat die meter stuk
