@@ -1255,6 +1255,16 @@ MUTATIES=(
 "worker.js@@    if (res.ok || !uitCache) break;@@    break;@@test-inlogcache.js@@een net gewijzigd wachtwoord werkt pas na vijf minuten"
 "worker.js@@  _usersCache = null;\n  return json({ ok: true, user, created: !hit@@  return json({ ok: true, user, created: !hit@@test-inlogcache.js@@een gebruiker die via /admin/users uit staat, komt er nog vijf minuten in"
 "worker.js@@    _usersCache = null;\n    const job = rehashAirtablePassword@@    const job = rehashAirtablePassword@@test-inlogcache.js@@na het herhashen blijft de oude hash onthouden en herhasht elke login opnieuw"
+
+# ── 28-09-2026: Tegoed uit voor een klant met Ontwikkelaar aan. De fouten die
+# gratis AI geven aan wie dat niet hoort te krijgen, of de schakelaar stil
+# laten staan terwijl de ontwikkelaarsrechten al weg zijn.
+"worker.js@@  return !!(f && f.Ontwikkelaar === true && f.TegoedUit === true);@@  return !!(f && f.TegoedUit === true);@@test-tegoeduit.js@@Tegoed uit geeft gratis AI zonder Ontwikkelaar"
+"worker.js@@        if (klantTegoedUit(kf)) {@@        if (false) {@@test-tegoeduit.js@@Tegoed uit boekt toch af"
+"worker.js@@      if (b.ontwikkelaar === false) f.TegoedUit = false;@@@@test-tegoeduit.js@@Ontwikkelaar uit laat Tegoed uit in Airtable staan"
+"worker.js@@      if (f.TegoedUit === true && b.ontwikkelaar !== true) {@@      if (false) {@@test-tegoeduit.js@@Tegoed uit is te zetten bij een klant zonder Ontwikkelaar"
+"worker.js@@    tegoedUit: klantTegoedUit(f)@@    tegoedUit: f.TegoedUit === true@@test-tegoeduit.js@@/klant/mij meldt tegoed uit terwijl de Worker wel afboekt"
+"public/pidlane-credits.js@@    try { return window.currentUser.tegoedUit === true; }@@    try { return !!window.currentUser.tegoedUit; }@@test-tokenchip.js@@een vlag \"ja\" zet in de app de kostencontrole uit"
 )
 
 echo

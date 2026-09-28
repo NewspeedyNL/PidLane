@@ -223,9 +223,15 @@
   // Demomodus en "ingelogd als personeel" hoeven niet meer apart genoemd: geen
   // van beide is een klant, dus ze vallen onder dezelfde regel. Drie takken die
   // hetzelfde antwoord geven zijn drie plekken om een fout te maken.
+  //
+  // Sinds 28-09-2026 één uitzondering binnen die regel: een klant bij wie de
+  // beheerder Tegoed uit zette. De Worker beslist dat (klantTegoedUit); de
+  // app volgt alleen de vlag die /klant/mij teruggaf.
   function _vrijgesteld() {
     if (_testModus()) return false;                  // testmodus wint
-    return !_isKlant();                              // alleen een klant betaalt
+    if (!_isKlant()) return true;                    // alleen een klant betaalt
+    try { return window.currentUser.tegoedUit === true; }
+    catch (e) { console.warn('PLCredits: tegoed-uit-vlag onleesbaar — er wordt gewoon betaald', e); return false; }
   }
 
   // ── Kalibratie tekens → tokens ───────────────────────────────────────

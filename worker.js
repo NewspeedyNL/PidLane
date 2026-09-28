@@ -678,6 +678,14 @@ async function tegoedLog(env, ctx, regel) {
   await job;
 }
 __name(tegoedLog, "tegoedLog");
+// Betaalt deze klant geen tokens? Alleen als de beheerder bij een klant met
+// Ontwikkelaar aan óók Tegoed uit zette. Twee vlaggen, geen één: ontwikkeltools
+// zijn geen gratis AI, en Ontwikkelaar uitzetten moet het tegoed vanzelf weer
+// aanzetten, ook als TegoedUit in Airtable blijft staan.
+function klantTegoedUit(f) {
+  return !!(f && f.Ontwikkelaar === true && f.TegoedUit === true);
+}
+__name(klantTegoedUit, "klantTegoedUit");
 async function handleMessages(request, env, ctx) {
   const session = await auth(request, env);
   if (!session) return json({ error: "unauthorized" }, 401);
@@ -774,6 +782,13 @@ async function handleMessages(request, env, ctx) {
         const bezwaar = klantToegangProbleem(kf);
         if (bezwaar)
           return { status: bezwaar.status, body: { ok: false, code: bezwaar.code, error: { message: bezwaar.bericht } } };
+        // Tegoed uit: geen saldocontrole, geen afboeking en dus ook geen
+        // kasboekregel — het kasboek telt mutaties, en er muteert niets. De
+        // rekening komt bij de beheerder, net als bij personeel (#49).
+        if (klantTegoedUit(kf)) {
+          const { r, text } = await doAnthropicCall();
+          return { raw: new Response(text, { status: r.status, headers: { "Content-Type": "application/json", ...CORS } }), kasboek: null };
+        }
         const saldoVoor = Number(kf.Saldo || 0);
         if (saldoVoor < tarief.min)
           return {
@@ -2730,7 +2745,8 @@ function klantPubliek(rec) {
     // Ontwikkelaar (28-09-2026): een klant die van de beheerder de
     // ontwikkeltools krijgt (testrun, bulk-recorder, survey). Blijft klant:
     // eigen voertuigen, eigen tegoed, geen beheer en geen andere klanten.
-    ontwikkelaar: f.Ontwikkelaar === true
+    ontwikkelaar: f.Ontwikkelaar === true,
+    tegoedUit: klantTegoedUit(f)
   };
 }
 __name(klantPubliek, "klantPubliek");
@@ -3193,6 +3209,7 @@ async function handleAdminKlantenGet(request, env) {
         laatsteLogin: f.LaatsteLogin || "",
         heeftReset: !!f.ResetToken,
         ontwikkelaar: f.Ontwikkelaar === true,
+        tegoedUit: f.TegoedUit === true,
         // De verwijderwachtrij. definitiefOp is afgeleid en niet opgeslagen:
         // één bron (VerwijderdOp) plus één termijn (KLANT_BEWAARDAGEN), zodat
         // de pagina niet zelf kan gaan rekenen en er twee antwoorden ontstaan.
@@ -3444,6 +3461,20 @@ async function handleAdminKlantenPost(request, env, ctx) {
       if (b.ontwikkelaar !== undefined) {
         if (b.ontwikkelaar !== true && b.ontwikkelaar !== false) return json({ ok: false, error: "ontwikkelaar is true of false." }, 400);
         f.Ontwikkelaar = b.ontwikkelaar;
+      }
+      // Tegoed uit: zelfde eis van een echte true/false. Aan kan alleen bij een
+      // klant die ontwikkelaar is of het in dit verzoek wordt; Ontwikkelaar
+      // uit zet het tegoed meteen weer aan.
+      if (b.tegoedUit !== undefined) {
+        if (b.tegoedUit !== true && b.tegoedUit !== false) return json({ ok: false, error: "tegoedUit is true of false." }, 400);
+        f.TegoedUit = b.tegoedUit;
+      }
+      if (b.ontwikkelaar === false) f.TegoedUit = false;
+      if (f.TegoedUit === true && b.ontwikkelaar !== true) {
+        const t0 = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`, { headers: hdr });
+        if (!t0.ok) return json({ ok: false, error: "Klant niet gevonden." }, 404);
+        if (((await t0.json()).fields || {}).Ontwikkelaar !== true)
+          return json({ ok: false, error: "Tegoed uit kan alleen bij een klant met Ontwikkelaar aan." }, 409);
       }
       if (b.opmerking !== undefined) f.Opmerking = String(b.opmerking).slice(0, 2000);
       if (saldoNieuw === null && !Object.keys(f).length)

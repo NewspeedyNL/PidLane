@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-09-2026 — Tegoed uit voor een klant met Ontwikkelaar aan
+ ═══════════════════════════════════════════════════════════
+
+ - Beheer → Klanten: bij een klant met Ontwikkelaar aan staat nu de knop
+   "Tegoed uit". AI kost die klant dan geen tokens; de kosten komen bij de
+   beheerder, zonder kasboekregel. Zo werk je met één klantaccount met alle
+   klantopties (Mijn voertuigen, account, voorkeuren) én de ontwikkeltools,
+   zonder te betalen.
+ - Ontwikkelaar uitzetten zet het tegoed vanzelf weer aan. Een geblokkeerd
+   account krijgt ook met Tegoed uit geen AI.
+ - Airtable: nieuw selectievakje TegoedUit in de tabel Klanten.
+
+ ═══════════════════════════════════════════════════════════
  28-09-2026 — Inloggen leest de gebruikerstabel niet meer elke keer uit Airtable (#327)
  ═══════════════════════════════════════════════════════════
 
