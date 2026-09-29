@@ -1393,6 +1393,7 @@ MUTATIES=(
 "public/pidlane-fuel.js@@  door_saving_active: 'tg-rit',@@  door_saving_active: 'tg-onderweg',@@bproef-navigatie.js@@de beheerschakelaar voor Rit starten wijst naar een tegel die er niet is"
 "admin/beheer.html@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], true));@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], false));@@bproef-beheerpagina.js@@beheer toont een nooit opgeslagen tegel als uit, en Alles opslaan zet hem dan echt uit"
 "public/pidlane.css@@.pl-live-acties { display:flex; gap:6px; margin:0 0 10px; }@@.pl-live-acties { display:flex; gap:6px; margin:0 0 10px; }\nbody:not(.pl-garage) #pidViewSwitch { display:none !important; }@@bproef-navigatie.js@@de weergavekeuze in Live staat alleen in de garagemodus: een klant zit vast in Slim"
+"public/pidlane-uihelpers.js@@  if(t && !isVin) return t;@@  if(t) return t;@@test-nav.js@@de statusregel bovenin toont het chassisnummer (VIN) in plaats van merk en model"
 "public/pidlane-uihelpers.js@@  if(!s.ai) return 'AI niet bereikbaar';\n  return s.naam || 'Verbonden';@@  return s.naam || 'Verbonden';@@test-nav.js@@de statusregel toont de autonaam terwijl de AI weg is"
 )
 

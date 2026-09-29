@@ -85,6 +85,22 @@ console.log('\n6. De statusregel (pidlane-uihelpers.js)');
   }
 }
 
+console.log('\n6b. Nooit een VIN in de statusregel');
+{
+  const bron = fs.readFileSync(__dirname + '/pidlane-uihelpers.js', 'utf8');
+  const i = bron.indexOf('function sysNaam(tag, merk, model){');
+  if (i < 0) { eis('sysNaam() bestaat', false); }
+  else {
+    const j = bron.indexOf('\n}', i);
+    const sysNaam = new Function(bron.slice(i, j + 2) + '\nreturn sysNaam;')();
+    eis('een VIN wordt merk en model  <- gezien op 29-09-2026: JMZKF6W7600766507 bovenin',
+      sysNaam('JMZKF6W7600766507', 'Mazda', 'CX-5') === 'Mazda CX-5', sysNaam('JMZKF6W7600766507', 'Mazda', 'CX-5'));
+    eis('een VIN zonder merk wordt leeg, niet de VIN', sysNaam('JMZKF6W7600766507', '', '') === '');
+    eis('een gewone naam blijft staan', sysNaam('DEMO — Mazda CX-5', 'Mazda', 'CX-5') === 'DEMO — Mazda CX-5');
+    eis('geen naam → merk en model', sysNaam('', 'Mazda', 'CX-5') === 'Mazda CX-5');
+  }
+}
+
 console.log('\n7. Elke tab in index.html hoort bij een tab die welkeTab() kan geven');
 {
   const html = fs.readFileSync(__dirname + '/index.html', 'utf8');

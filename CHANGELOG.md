@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 29-09-2026 — Geen chassisnummer meer in de statusregel
+ ═══════════════════════════════════════════════════════════
+
+ - De statusregel rechtsboven toonde na het verbinden het chassisnummer
+   (bijv. JMZKF6W7600766507) in plaats van de auto. Het voertuigchipje krijgt
+   bij het verbinden eerst de VIN mee, en de nieuwe statusregel nam die
+   letterlijk over. Nu staat er merk en model; een VIN komt er niet meer in
+   (`sysNaam()`, getoetst in test-nav.js, tegenproef in plmutate.sh).
+
+ ═══════════════════════════════════════════════════════════
  29-09-2026 — De weergavekeuze in Live is terug voor iedereen
  ═══════════════════════════════════════════════════════════
 
