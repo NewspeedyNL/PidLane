@@ -56,15 +56,24 @@ const DEKKING = {
   FOREGROUND_SERVICE:                 ['achtergrond'],
   FOREGROUND_SERVICE_CONNECTED_DEVICE:['achtergrond'],
   POST_NOTIFICATIONS:                 ['melding'],
-  WAKE_LOCK:                          ['wakker', 'slaapstand', 'scherm uit']
+  WAKE_LOCK:                          ['wakker', 'slaapstand', 'scherm uit'],
+  RECEIVE_BOOT_COMPLETED:             ['herstart']
 };
 
 // Wat zet de workflow er werkelijk in? Uit de bron lezen, niet overschrijven:
 // een lijst die met de hand bijgehouden wordt is de fout die deze test juist
 // moet vangen.
+// Een regel met tools:node="remove" haalt een permissie die een plugin
+// meebrengt juist wég (SCHEDULE_EXACT_ALARM, 29-09-2026). Die hoeft niet in de
+// verklaring — hij zit niet in de bundel — en telt dus apart.
+const weg = new Set(
+  yml.split('\n').filter(r => /tools:node=\\?"remove/.test(r))
+    .map(r => (r.match(/android\.permission\.([A-Z_]+)/) || [])[1]).filter(Boolean)
+);
 const gevonden = new Set(
   (yml.match(/android\.permission\.([A-Z_]+)/g) || [])
     .map(s => s.replace('android.permission.', ''))
+    .filter(p => !weg.has(p))
 );
 
 // De regex hierboven vindt ook de opruim-regex in de workflow zelf. Die
@@ -95,6 +104,13 @@ for (const perm of Object.keys(DEKKING)) {
     toets('de dekkingstabel kent geen permissie die de build niet meer zet (' + perm + ')',
           false, 'weggehaald uit build-apk.yml? Haal hem dan hier ook weg');
   }
+}
+
+// Play staat exacte alarmen alleen toe voor wekker- en agenda-apps. Brengt
+// een plugin ze mee, dan moeten ze er in de injectiestap weer uit.
+for (const p of ['SCHEDULE_EXACT_ALARM']) {
+  toets(p + ' gaat er met tools:node="remove" weer uit', weg.has(p),
+        'de meldingenplugin brengt hem mee; zonder deze regel vraagt de bundel een permissie die Play afkeurt');
 }
 
 console.log('');

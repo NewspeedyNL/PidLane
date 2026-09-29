@@ -172,7 +172,7 @@
     st = st || {};
     if (st.verbonden) return [];
     if (st.demo) return ['demoStop'];
-    var k = ['kenteken', 'foutcode'];
+    var k = ['kenteken', 'lampje', 'foutcode'];
     if (st.demoMag) k.push('simuleer');
     if (st.klant) k.push('garage');
     return k;
@@ -263,7 +263,10 @@
     _verversBezig = true;
     try {
       var d = await haal(m.kent);
-      if (d) { bewaarMijn(m.kent, d.overzicht); teken(true); }
+      if (d) {
+        bewaarMijn(m.kent, d.overzicht); teken(true);
+        try { if (window.PLHerinner) PLHerinner.synchroniseer(false); } catch (e) { console.warn('PLZonder: herinneringen niet bijgewerkt', e); }
+      }
     } catch (e) { console.warn('PLZonder: APK van je auto niet ververst — de vorige stand blijft staan', e); }
     finally { _verversBezig = false; }
   }
@@ -313,16 +316,22 @@
 
   var KNOP = {
     kenteken: { ic: '🔎', t: 'Kenteken-check', d: 'APK, verzekering, NAP, terugroep', on: 'PLZonder.kenteken()' },
+    lampje: { ic: '💡', t: 'Lampje brandt?', d: 'Mag ik doorrijden?', on: 'PLLampjes.open()' },
     foutcode: { ic: '🔧', t: 'Foutcode opzoeken', d: 'Wat betekent P0301?', on: 'PLZonder.foutcode()' },
     simuleer: { ic: '▷', t: 'Simuleer verbinding', d: 'Alles proberen, niets bewaard', on: 'PLZonder.simuleer()' },
     garage: { ic: '📄', t: 'Mijn rapporten & ritten', d: 'Mijn voertuigen', on: 'PLGarage.open()' }
   };
 
+  function herinnerRegel() {
+    try { return window.PLHerinner ? PLHerinner.regel() : null; }
+    catch (e) { console.warn('PLZonder: herinneringsstand onleesbaar', e); return null; }
+  }
+
   var _laatst = '';
   function teken(forceer) {
     var doel = el('plZonderKaart');
     if (!doel) return;
-    var st = { verbonden: isVerbonden(), demo: isDemo(), klant: isKlant(), demoMag: demoMag(), mijn: mijn() };
+    var st = { verbonden: isVerbonden(), demo: isDemo(), klant: isKlant(), demoMag: demoMag(), mijn: mijn(), herinner: herinnerRegel() };
     var sleutel = JSON.stringify(st);
     if (!forceer && sleutel === _laatst) return;
     _laatst = sleutel;
@@ -343,6 +352,9 @@
         '<span style="flex:1"><b>' + esc([m.merk, m.model].filter(Boolean).join(' ') || m.kent) + '</b> · ' +
         (regel ? 'APK ' + esc(regel.tekst) : 'tik voor APK, verzekering en terugroepacties') + '</span><span aria-hidden="true">→</span></div>';
     }
+    var hr = herinnerRegel();
+    if (hr) h += '<div class="plz-mijn" data-plz="herinner" onclick="PLHerinner.zet(' + (hr.aan ? 'false' : 'true') + ')"><span aria-hidden="true">' + (hr.aan ? '🔔' : '🔕') + '</span>' +
+      '<span style="flex:1">' + (hr.aan ? '<b>Herinnering aan</b> · APK en onderhoud, 30 en 7 dagen vooraf' : '<b>Herinner me</b> aan de APK en het onderhoud') + '</span><span style="font-weight:800;color:var(--bl)">' + (hr.aan ? 'Uit' : 'Aan') + '</span></div>';
     h += '<div class="plz-rij">' + knoppen.map(function (k) {
       var b = KNOP[k];
       return '<button type="button" class="plz-k" data-plz="' + k + '" onclick="' + b.on + '"><span>' + b.ic + ' ' + esc(b.t) + '</span><small>' + esc(b.d) + '</small></button>';
@@ -403,6 +415,7 @@
     h += '<div id="plzRecall"></div>';
     h += '<div class="plz-knoppen">';
     if (!isMijn && !isDemo()) h += '<button type="button" class="plz-kn hoofd" onclick="PLZonder._mijn()">📌 Dit is mijn auto</button>';
+    if (isMijn && !isDemo() && window.PLHerinner && !PLHerinner.aan()) h += '<button type="button" class="plz-kn hoofd" onclick="PLHerinner.zet(true)">🔔 Herinner me aan de APK</button>';
     if (demoMag()) h += '<button type="button" class="plz-kn" onclick="PLZonder._simuleerKent()">▷ Simuleer deze auto</button>';
     h += '</div><div class="plz-klein" style="margin-top:10px">Bron: RDW open data. Het verbruik is dat van de typekeuring, geen meting. Een NAP-oordeel zegt iets over de geregistreerde standen, niet over de teller zelf.</div>';
     if (uit) uit.innerHTML = h;
@@ -428,6 +441,7 @@
     try { localStorage.setItem('pl_kenteken', c.kent); } catch (e) { console.warn('PLZonder: kenteken niet bewaard', e); melding('Het kenteken kon niet bewaard worden'); return; }
     bewaarMijn(c.kent, c.overzicht);
     melding('📌 ' + (c.overzicht.naam || c.kent) + ' is nu je auto — de APK staat op het startscherm');
+    try { if (window.PLHerinner) PLHerinner.synchroniseer(true); } catch (e) { console.warn('PLZonder: herinneringen niet bijgewerkt', e); }
     teken(true);
     zoek();
   }

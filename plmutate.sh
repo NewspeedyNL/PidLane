@@ -1421,6 +1421,19 @@ MUTATIES=(
 "public/pidlane-zonder.js@@    if (/^[0-9][0-9A-F]{3}$/.test(s)) s = 'P' + s;@@    void 0;@@test-zonder.js@@een foutcode zonder letter (0301, zoals op een werkbon) wordt niet gevonden"
 "public/pidlane-zonder.js@@    if (st.verbonden) return [];@@    if (false) return [];@@test-zonder.js@@de kaart zonder adapter staat er ook als de auto verbonden is"
 "public/pidlane-zonder.js@@    var onbekend = !info.desc || /^Onbekende code/.test(info.desc);@@    var onbekend = !info.desc;@@test-zonder.js@@een onbekende foutcode krijgt de standaardernst van dtcInfo als oordeel"
+# ── Herinneringen en de lampjesgids (29-09-2026) ──
+# Een herinnering die op de verkeerde dag komt, dubbel, of vanuit de demo, is
+# erger dan geen; een lampjesgids die bij rood "doorrijden" zegt, is gevaarlijk.
+"public/pidlane-herinner.js@@  var TREDEN = [30, 7, 0];@@  var TREDEN = [30, 7];@@test-herinner.js@@op de dag zelf komt er geen herinnering meer"
+"public/pidlane-herinner.js@@        if (isNaN(d) || d.getTime() <= nu) return;@@        if (isNaN(d)) return;@@test-herinner.js@@herinneringen voor een datum die al voorbij is, worden toch ingepland"
+"public/pidlane-herinner.js@@    if (mijn && mijn.kent && datum8(mijn.keuring) && !gehad[kent(mijn.kent)]) {@@    if (mijn && mijn.kent && datum8(mijn.keuring)) {@@test-herinner.js@@een kenteken dat ook in Mijn voertuigen staat, krijgt twee APK-herinneringen"
+"public/pidlane-herinner.js@@    if (isDemo() || _bezig) return { gedaan: false, reden: isDemo() ? 'demo' : 'bezig' };@@    if (_bezig) return { gedaan: false, reden: 'bezig' };@@test-herinner.js@@de demo plant echte Android-meldingen voor een verzonnen auto"
+"public/pidlane-herinner.js@@        if (perm && perm.display === 'granted') {@@        if (true) {@@test-herinner.js@@zonder toestemming wordt er toch ingepland (en Android gooit een fout die niemand ziet)"
+"public/pidlane-herinner.js@@    return (h >>> 1) || 1;@@    return h | 0;@@test-herinner.js@@een melding-id kan negatief zijn: Android weigert hem"
+"public/pidlane-lampjes.js@@      doorrijden: 'nee', obd: null, zoek: 'olie oliepeil smering kannetje' },@@      doorrijden: 'voorzichtig', obd: null, zoek: 'olie oliepeil smering kannetje' },@@test-lampjes.js@@bij het oliedruklampje zegt de gids dat je voorzichtig door kunt rijden"
+"public/pidlane-lampjes.js@@      doorrijden: 'nadat', obd: null, zoek: 'gordel riem piepen' },@@      doorrijden: 'ja', obd: null, zoek: 'gordel riem piepen' },@@test-lampjes.js@@een rood lampje zegt \"je kunt doorrijden\""
+"public/pidlane-lampjes.js@@      return (l.naam + ' ' + l.vorm + ' ' + (l.zoek || '')).toLowerCase().indexOf(t) >= 0;@@      return l.naam.toLowerCase().indexOf(t) >= 0;@@test-lampjes.js@@zoeken op wat je ziet (schildpad, spiraaltje) vindt niets meer"
+".github/workflows/build-apk.yml@@<uses-permission android:name=\"android.permission.SCHEDULE_EXACT_ALARM\" tools:node=\"remove\" />'@@'@@test-privacydekking.js@@de bundel vraagt SCHEDULE_EXACT_ALARM, een permissie die Play alleen wekker- en agenda-apps toestaat"
 )
 
 echo
