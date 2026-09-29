@@ -36,11 +36,46 @@
 # niet "kan ik deze code stukmaken" maar "welke stille fout hoort gevangen
 # te worden". Zet de vervangtekst tussen @@ en houd hem uniek in het bestand.
 #
-# Draaien:  bash plmutate.sh          (vanuit de repo-root)
+# Draaien:  bash plmutate.sh                      (vanuit de repo-root)
 #           bash plmutate.sh ~/PidLane
+#           bash plmutate.sh . --sinds origin/main   alleen wat je branch raakte
+#           bash plmutate.sh . --parallel 4          vier tegelijk (standaard:
+#                                                    het aantal kernen, hoogstens 4)
+#
+# SNELLER SINDS 29-09-2026. De tabel telde 732 mutaties en een volledige run
+# duurde zo'n 16 minuten. De tijd zat bijna helemaal in de 49 mutaties op een
+# browserproef: elk daarvan start Chromium en de hele app (15–20 s), terwijl
+# de 683 op een node-test samen twee à drie minuten kosten. Twee dingen:
+#
+#   --parallel N  elke werker krijgt een eigen `git worktree` van HEAD en pakt
+#                 de volgende mutatie uit een gedeelde rij. Jouw werkmap wordt
+#                 dus nooit meer aangeraakt, ook niet halverwege een Ctrl-C.
+#                 De uitvoer blijft in tabelvolgorde. De browserproeven kunnen
+#                 naast elkaar: plbrowser.js kiest zelf een vrije poort en een
+#                 eigen profielmap.
+#   --sinds REF   alleen de mutaties waarvan het bronbestand of de test sinds
+#                 de splitsing met REF veranderde, plus de tabelregels die er
+#                 sindsdien bij kwamen of veranderden. Dat is de vraag die je
+#                 lokaal hebt: vangt mijn test iets? Het is GEEN vervanging van
+#                 de volle run — een wijziging in bestand A kan een test op
+#                 bestand B stil stukmaken, en dat ziet alleen de volle run.
+#                 Daarom draait CI hem altijd helemaal, en zegt een deelrun dat
+#                 in zijn laatste regel.
 # ══════════════════════════════════════════════════════════════════
 
-REPO="${1:-$(cd "$(dirname "$0")" && pwd)}"
+REPO=""; SINDS=""; PARALLEL=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --sinds)      SINDS="$2"; shift 2 ;;
+    --sinds=*)    SINDS="${1#*=}"; shift ;;
+    --parallel|-j) PARALLEL="$2"; shift 2 ;;
+    --parallel=*) PARALLEL="${1#*=}"; shift ;;
+    -*)           echo "Onbekende optie: $1 (bekend: --sinds REF, --parallel N)"; exit 2 ;;
+    *)            REPO="$1"; shift ;;
+  esac
+done
+[ -n "$REPO" ] || REPO="$(cd "$(dirname "$0")" && pwd)"
+REPO="$(cd "$REPO" && pwd)"
 PUB="$REPO/public"
 [ -d "$PUB" ] || { echo "Geen public/ in $REPO"; exit 2; }
 
@@ -1364,49 +1399,97 @@ echo
 echo "PidLane — tegenproef op de testreeks"
 echo "─────────────────────────────────────────"
 
-# Een vuile werkmap zou hier onherstelbaar beschadigd raken: het script zet
-# bestanden terug naar hun opgeslagen inhoud, niet naar jouw wijzigingen.
+# Een vuile werkmap wordt niet meer beschadigd (de werkers draaien in hun eigen
+# worktree), maar hij zou ook niet getoetst worden: een worktree is HEAD. Wie
+# net een test verbouwde en niet committe, zou "gevangen" lezen over de oude.
 if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
   echo "${ROOD}  De werkmap heeft niet-vastgelegde wijzigingen.${UIT}"
-  echo "  Dit script wijzigt bronbestanden en zet ze daarna terug. Commit of"
-  echo "  stash je werk eerst, anders raak je het kwijt."
+  echo "  De tegenproef toetst wat er in HEAD staat, niet wat er in je werkmap"
+  echo "  staat. Commit of stash je werk eerst, anders toets je de vorige versie."
   echo
   exit 2
 fi
 
-gevangen=0; ontsnapt=0; overgeslagen=0
-ONTSNAPT_LIJST=""
-OVERGESLAGEN_LIJST=""
+# ── Welke mutaties ────────────────────────────────────────────────
+veld() {   # veld <regel> <n>: het n-de veld (0 = bestand … 4 = omschrijving)
+  local r="$1" i
+  for ((i=0; i<$2; i++)); do r="${r#*@@}"; done
+  [ "$2" -lt 4 ] && r="${r%%@@*}"
+  printf '%s' "$r"
+}
 
-herstel() { [ -n "$HUIDIG" ] && [ -f "$RESERVE" ] && cp "$RESERVE" "$REPO/$HUIDIG" && rm -f "$RESERVE"; }
-trap 'herstel; echo; echo "${GEEL}Afgebroken — bronbestand teruggezet.${UIT}"; exit 130' INT TERM
+KEUZE=()
+if [ -n "$SINDS" ]; then
+  basis=$(git -C "$REPO" merge-base "$SINDS" HEAD 2>/dev/null) || {
+    echo "${ROOD}  --sinds $SINDS: geen gemeenschappelijke basis met HEAD gevonden.${UIT}"
+    echo "  Haal hem eerst binnen (git fetch origin main) of noem een andere ref."
+    exit 2
+  }
+  GEWIJZIGD=$'\n'"$(git -C "$REPO" diff --name-only "$basis" HEAD)"$'\n'
+  # Tabelregels die sinds de basis bij kwamen of veranderden. Bash leest ze
+  # zelf in, net als de tabel hierboven: dan is \" in de diff hetzelfde als "
+  # in de array, en vergelijk je dezelfde vorm.
+  eval "NIEUWE=( $(git -C "$REPO" diff -U0 "$basis" HEAD -- plmutate.sh | sed -n 's/^+"/"/p') )"
+  NIEUW=$'\n'; for m in "${NIEUWE[@]}"; do NIEUW+="$m"$'\n'; done
+  for i in "${!MUTATIES[@]}"; do
+    m="${MUTATIES[$i]}"
+    b=$(veld "$m" 0); t=$(veld "$m" 3)
+    if [[ "$GEWIJZIGD" == *$'\n'"$b"$'\n'* || "$GEWIJZIGD" == *$'\n'"public/$t"$'\n'* || "$NIEUW" == *$'\n'"$m"$'\n'* ]]; then
+      KEUZE+=("$i")
+    fi
+  done
+  echo "${GRIJS}  deelrun: ${#KEUZE[@]} van ${#MUTATIES[@]} mutaties raken wat sinds $SINDS veranderde${UIT}"
+else
+  KEUZE=("${!MUTATIES[@]}")
+fi
 
-for regel in "${MUTATIES[@]}"; do
-  bestand="${regel%%@@*}";        rest="${regel#*@@}"
-  zoek="${rest%%@@*}";            rest="${rest#*@@}"
-  vervang="${rest%%@@*}";         rest="${rest#*@@}"
-  test="${rest%%@@*}"
-  omschrijving="${rest#*@@}"
+if [ -z "$PARALLEL" ]; then
+  PARALLEL=$( (nproc || getconf _NPROCESSORS_ONLN || echo 1) 2>/dev/null | head -1 )
+  [ "$PARALLEL" -gt 4 ] 2>/dev/null && PARALLEL=4
+fi
+[[ "$PARALLEL" =~ ^[1-9][0-9]*$ ]] || { echo "--parallel verwacht een getal vanaf 1, niet '$PARALLEL'"; exit 2; }
+[ "$PARALLEL" -gt "${#KEUZE[@]}" ] && PARALLEL=${#KEUZE[@]}
 
-  doel="$REPO/$bestand"
-  if [ ! -f "$doel" ]; then
-    echo "${GEEL}  OVERGESLAGEN${UIT}  $bestand bestaat niet"
-    OVERGESLAGEN_LIJST="$OVERGESLAGEN_LIJST\n    - $omschrijving ($bestand bestaat niet)"
-    overgeslagen=$((overgeslagen+1)); continue
-  fi
-  if [ ! -f "$PUB/$test" ]; then
-    echo "${GEEL}  OVERGESLAGEN${UIT}  $test bestaat niet"
-    OVERGESLAGEN_LIJST="$OVERGESLAGEN_LIJST\n    - $omschrijving ($test bestaat niet)"
-    overgeslagen=$((overgeslagen+1)); continue
-  fi
+if [ "${#KEUZE[@]}" -eq 0 ]; then
+  echo "  Niets te doen: geen enkele mutatie raakt wat sinds $SINDS veranderde."
+  echo
+  echo "${GEEL}Deelrun zonder mutaties — dit zegt niets over de volle tabel.${UIT}"
+  exit 0
+fi
+echo "${GRIJS}  ${#KEUZE[@]} mutaties, $PARALLEL tegelijk${UIT}"
 
-  HUIDIG="$bestand"; RESERVE="$(mktemp)"
-  cp "$doel" "$RESERVE"
+# ── De werkers ────────────────────────────────────────────────────
+WERK="$(mktemp -d "${TMPDIR:-/tmp}/plmutate.XXXXXX")"
+WERKERS=()
+opruimen() {
+  for p in "${WERKERS[@]}"; do kill "$p" 2>/dev/null; done
+  wait 2>/dev/null
+  for ((k=1; k<=PARALLEL; k++)); do
+    [ -d "$WERK/w$k" ] && git -C "$REPO" worktree remove --force "$WERK/w$k" >/dev/null 2>&1
+  done
+  git -C "$REPO" worktree prune >/dev/null 2>&1
+  rm -rf "$WERK"
+}
+trap 'opruimen; echo; echo "${GEEL}Afgebroken — de werkmap is niet aangeraakt.${UIT}"; exit 130' INT TERM
+
+mkdir -p "$WERK/rij" "$WERK/uit"
+for ((k=1; k<=PARALLEL; k++)); do
+  git -C "$REPO" worktree add --detach --quiet "$WERK/w$k" HEAD || { echo "${ROOD}  git worktree add mislukte${UIT}"; opruimen; exit 2; }
+done
+
+# Eén mutatie in één worktree. Schrijft de uitslag naar $WERK/uit/<i>:
+# regel 1 is gevangen/ontsnapt/overgeslagen, regel 2 de toelichting.
+draai() {
+  local w="$1" i="$2" regel="${MUTATIES[$2]}"
+  local bestand zoek vervang test uit="$WERK/uit/$2" raak uitkomst
+  bestand=$(veld "$regel" 0); zoek=$(veld "$regel" 1); vervang=$(veld "$regel" 2); test=$(veld "$regel" 3)
+  if [ ! -f "$w/$bestand" ]; then printf 'overgeslagen\n%s bestaat niet\n' "$bestand" > "$uit.tmp"; mv "$uit.tmp" "$uit"; return; fi
+  if [ ! -f "$w/public/$test" ]; then printf 'overgeslagen\n%s bestaat niet\n' "$test" > "$uit.tmp"; mv "$uit.tmp" "$uit"; return; fi
 
   # Vervangen met python: de zoektekst bevat regex-tekens en aanhalingstekens
   # die sed zouden laten struikelen. count=1 dwingt af dat het anker uniek
   # genoeg is; is het dat niet, dan moet de tabel scherper.
-  raak=$(ZOEK="$zoek" VERVANG="$vervang" python3 - "$doel" <<'PY'
+  raak=$(ZOEK="$zoek" VERVANG="$vervang" python3 - "$w/$bestand" <<'PY'
 import os, sys
 pad = sys.argv[1]
 # \n in de tabel is een echte nieuwe regel: zo blijft elke mutatie op
@@ -1422,36 +1505,71 @@ open(pad, 'w', encoding='utf8').write(bron.replace(zoek, vervang, 1))
 print(1)
 PY
 )
-
   if [ "$raak" != "1" ]; then
-    herstel
-    echo "${GEEL}  OVERGESLAGEN${UIT}  $omschrijving"
-    echo "                ${GRIJS}anker $raak× gevonden in $bestand (moet 1× zijn)${UIT}"
-    OVERGESLAGEN_LIJST="$OVERGESLAGEN_LIJST\n    - $omschrijving (anker $raak× in $bestand)"
-    overgeslagen=$((overgeslagen+1)); continue
+    git -C "$w" checkout --quiet -- "$bestand"
+    printf 'overgeslagen\nanker %s× gevonden in %s (moet 1× zijn)\n' "$raak" "$bestand" > "$uit.tmp"; mv "$uit.tmp" "$uit"; return
   fi
-
-  ( cd "$PUB" && node "$test" >/dev/null 2>&1 )
+  ( cd "$w/public" && node "$test" >/dev/null 2>&1 )
   uitkomst=$?
-  herstel
+  git -C "$w" checkout --quiet -- "$bestand"
+  if [ $uitkomst -ne 0 ]; then printf 'gevangen\n%s werd rood\n' "$test" > "$uit.tmp"
+  else printf 'ontsnapt\n%s bleef groen — die test dekt dit niet\n' "$test" > "$uit.tmp"; fi
+  mv "$uit.tmp" "$uit"
+}
 
-  if [ $uitkomst -ne 0 ]; then
-    echo "${GROEN}  gevangen${UIT}      $omschrijving"
-    echo "                ${GRIJS}$test werd rood${UIT}"
-    gevangen=$((gevangen+1))
-  else
-    echo "${ROOD}  ONTSNAPT${UIT}      $omschrijving"
-    echo "                ${GRIJS}$test bleef groen — die test dekt dit niet${UIT}"
-    ontsnapt=$((ontsnapt+1))
-    ONTSNAPT_LIJST="$ONTSNAPT_LIJST\n    - $omschrijving ($test)"
-  fi
+# Een werker loopt de rij af en claimt elke mutatie met mkdir: dat is atomair,
+# dus twee werkers pakken nooit dezelfde. De trage (browserproeven) verdelen
+# zich zo vanzelf.
+werker() {
+  local w="$1" i
+  for i in "${KEUZE[@]}"; do
+    mkdir "$WERK/rij/$i" 2>/dev/null || continue
+    draai "$w" "$i"
+  done
+}
+for ((k=1; k<=PARALLEL; k++)); do
+  werker "$WERK/w$k" &
+  WERKERS+=($!)
 done
+
+# ── Het verslag, in tabelvolgorde ─────────────────────────────────
+gevangen=0; ontsnapt=0; overgeslagen=0
+ONTSNAPT_LIJST=""
+OVERGESLAGEN_LIJST=""
+for i in "${KEUZE[@]}"; do
+  while [ ! -f "$WERK/uit/$i" ]; do
+    # Een werker die stierf laat zijn mutatie nooit af: niet eeuwig wachten.
+    levend=0; for p in "${WERKERS[@]}"; do kill -0 "$p" 2>/dev/null && levend=1; done
+    [ $levend -eq 0 ] && [ ! -f "$WERK/uit/$i" ] && { echo "${ROOD}  werkers gestopt vóór mutatie $i klaar was${UIT}"; opruimen; exit 2; }
+    sleep 0.2
+  done
+  omschrijving=$(veld "${MUTATIES[$i]}" 4)
+  { read -r soort; read -r uitleg; } < "$WERK/uit/$i"
+  case "$soort" in
+    gevangen)
+      echo "${GROEN}  gevangen${UIT}      $omschrijving"
+      echo "                ${GRIJS}$uitleg${UIT}"
+      gevangen=$((gevangen+1)) ;;
+    ontsnapt)
+      echo "${ROOD}  ONTSNAPT${UIT}      $omschrijving"
+      echo "                ${GRIJS}$uitleg${UIT}"
+      ontsnapt=$((ontsnapt+1))
+      ONTSNAPT_LIJST="$ONTSNAPT_LIJST\n    - $omschrijving ($(veld "${MUTATIES[$i]}" 3))" ;;
+    *)
+      echo "${GEEL}  OVERGESLAGEN${UIT}  $omschrijving"
+      echo "                ${GRIJS}$uitleg${UIT}"
+      overgeslagen=$((overgeslagen+1))
+      OVERGESLAGEN_LIJST="$OVERGESLAGEN_LIJST\n    - $omschrijving ($uitleg)" ;;
+  esac
+done
+wait
 trap - INT TERM
+opruimen
 
 echo "─────────────────────────────────────────"
 echo "$gevangen gevangen, $ontsnapt ontsnapt, $overgeslagen overgeslagen"
 
-# Laatste zekerheid: de werkmap moet weer zijn zoals hij was.
+# Laatste zekerheid: de werkmap moet zijn zoals hij was.
 if [ -n "$(git -C "$REPO" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
   echo "${ROOD}  LET OP: de werkmap is niet schoon achtergelaten.${UIT}"
   git -C "$REPO" status --short
@@ -1485,6 +1603,11 @@ if [ $ontsnapt -gt 0 ]; then
   exit 1
 fi
 
-echo "${GROEN}Elke nagebouwde fout is gevangen.${UIT}"
+if [ -n "$SINDS" ]; then
+  echo "${GROEN}Elke nagebouwde fout in deze deelrun is gevangen.${UIT}"
+  echo "${GEEL}Deelrun: ${#KEUZE[@]} van ${#MUTATIES[@]}. De volle tabel draait in CI.${UIT}"
+else
+  echo "${GROEN}Elke nagebouwde fout is gevangen.${UIT}"
+fi
 echo
 exit 0

@@ -6,18 +6,6 @@
 > in het instructieveld van het Claude-project). Bij verschil wint dit bestand,
 > want dit is de kant die de code raakt.
 
-## Bevriezing tot v1.0 (22-09-2026)
-
-**Geen nieuwe proeven, geen nieuwe testrun-blokken en geen nieuwe
-meetkamer-functies — tenzij een productbug erom vraagt.** Issues met het
-label `na-1.0` pak je niet op, ook niet "even erbij". v1.0 is: de gesloten
-test op Play loopt door naar productie; de acceptatiecriteria staan in de
-milestone. Deze regel vervalt met de tag `v1.0.0`.
-
-Waarom: het instrument was zichzelf aan het meten. Van de 25 open issues
-op 22-09 gingen er 13 over de testmachinerie en niet over wat een klant
-ziet.
-
 ## Oriëntatie — in deze volgorde
 
 | bestand | waarvoor |
@@ -115,7 +103,8 @@ verandert niet mee. Zie §20 van `PIDLANE.md`.
 ## Als je aan tests werkt
 
 ```
-bash plmutate.sh .
+bash plmutate.sh . --sinds origin/main    # lokaal: alleen wat je branch raakte
+bash plmutate.sh .                        # de volle tabel, zoals CI hem draait
 ```
 
 Geen commit-poort — `plcheck.sh` blijft dat. Dit is de vraag eronder: *stelt
@@ -125,9 +114,17 @@ bestand terug. Exit 0 = alles gevangen. Exit 1 = er kwam er een doorheen, en
 dan dekt die test minder dan zijn naam belooft.
 
 Draai hem als je een test toevoegt of verbouwt, en als je wilt weten of een
-groene reeks nog iets betekent. Hij weigert op een werkmap met niet-vastgelegde
-wijzigingen: hij schrijft in je bronbestanden. In CI draait hij als eigen job,
-dus vergeten kan niet — daar is de checkout altijd schoon.
+groene reeks nog iets betekent. Lokaal is `--sinds origin/main` genoeg: dan
+draaien alleen de mutaties op bestanden en tests die je branch raakte, plus de
+tabelregels die erbij kwamen. De volle tabel draait in CI als eigen job, dus
+vergeten kan niet. Een deelrun zegt dat in zijn laatste regel; lees hem niet
+als volle run, want een wijziging in bestand A kan een test op B stil breken.
+
+Hij werkt in een eigen `git worktree` per werker (`--parallel N`, standaard
+het aantal kernen tot 4) en raakt je werkmap dus niet aan. Hij weigert wel op
+niet-vastgelegde wijzigingen: een worktree is HEAD, dus je zou de vorige versie
+toetsen. Sinds 29-09-2026; daarvóór duurde de volle tabel (732 mutaties) zo'n
+16 minuten, waarvan 13 op de 49 mutaties met een browserproef.
 
 **Verandert er gedrag dat in de tabel staat, dan verandert de mutatie mee.**
 Een anker dat niet meer past bouwt niets na, en dat is óók exit 1 — met de
