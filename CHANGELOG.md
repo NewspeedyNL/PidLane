@@ -10,6 +10,29 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-09-2026 — De verbinding blijft snel over een hele rit (#302)
+ ═══════════════════════════════════════════════════════════
+
+ - Groepsverzoeken krijgen het antwoordcijfer uit de ELM327-datasheet mee
+   ('010C0D112'). De adapter geeft dan de prompt zodra alle frames binnen
+   zijn, in plaats van zijn geleerde wachttijd uit te zitten. Die wachttijd
+   leerde hij van de traagste module, tot 400 ms, en daardoor liep de
+   responstijd in een sessie op van 77 naar 270 ms.
+ - Het cijfer wordt per verzoek geleerd (drie keer hetzelfde aantal frames),
+   niet berekend, zodat een tweede ECU die meeantwoordt niet wordt afgekapt.
+   Elke 200e keer gaat het verzoek zonder cijfer, om bij te leren en om het
+   verschil te meten. Ontbreekt er met cijfer een PID, dan gaat het cijfer
+   voor dat verzoek vijf minuten uit.
+ - Een SPP-antwoord komt nu binnen via het onRead-event van de plugin, zodra
+   de prompt er is. Tot nu toe keek de app elke 50 ms in de buffer, en kostte
+   elk commando daardoor minstens 50 ms. Valt de plugin drie keer op rij stil,
+   of weigert hij de events, dan gaat de app terug naar pollen en staat dat in
+   het BT-log. `pl_spp_poll = 1` in localStorage dwingt pollen af.
+ - Testrun 8.4: blok 5 zegt hoeveel sneller groepsverzoeken met cijfer waren,
+   of de antwoorden per event binnenkwamen, en de #302-proef meet 010C met en
+   zonder cijfer.
+
+ ═══════════════════════════════════════════════════════════
  28-09-2026 — Terug sluit ook een venster met een knop "Sluiten"
  ═══════════════════════════════════════════════════════════
 

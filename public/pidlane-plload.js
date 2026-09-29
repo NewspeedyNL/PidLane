@@ -690,8 +690,14 @@ function startPoll(){
         for(let g=0;g<batchable.length;g+=_grpN){
           if(!connected) break;
           const grp=batchable.slice(g,g+_grpN);
-          const cmd='01'+grp.map(p=>p.slice(2)).join('');   // grp is nu gegarandeerd mode 01
+          const basis='01'+grp.map(p=>p.slice(2)).join('');   // grp is nu gegarandeerd mode 01
+          // Met het antwoordcijfer erachter zodra het geleerd is (#302): dan
+          // stopt de adapter na het laatste frame in plaats van zijn geleerde
+          // wachttijd uit te zitten. Zie PLAntwoordtal hieronder.
+          const cmd=PLAntwoordtal.cmd(basis);
+          const _tx=Date.now();
           const raw=await sendCmd(cmd,2500);
+          const _ms=Date.now()-_tx;
           const parsed=splitBatchResponse(raw,grp);
           _diagNote(cmd, raw, grp, parsed);
           // Per-PID telemetrie: hier weten we exact wat gevraagd is en wat
@@ -702,6 +708,7 @@ function startPoll(){
           // eens binnenkwam, niet over deze ronde.
           const oordeel=plGroepOordeel(grp, parsed, _pidLastOk);
           const got=oordeel.gekregen;
+          PLAntwoordtal.leer(basis, cmd, raw, oordeel.oordeel, _ms);
           if(got===0){
             // Zit er wél een 41-payload in de respons? Dan kwam de data goed
             // binnen en is dit een parse-probleem aan ónze kant — batch niet
@@ -763,6 +770,124 @@ async function plVraagSolo(pid){
   if(window.PLEigen && PLEigen.is(pid)) return PLEigen.vraag(pid);
   return sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),2500);
 }
+
+/* ── HET ANTWOORDCIJFER OP GROEPSVERZOEKEN (#302, 28-09-2026) ───────────
+   WAAROM. Na elk antwoord wacht een ELM327 nog even of er meer komt; pas als
+   er binnen zijn wachttijd niets meer komt, geeft hij de prompt. Met ATAT1
+   (bij het verbinden gezet) LEERT hij die wachttijd uit de traagste
+   antwoorder, tot het maximum van ATST64 = 400 ms. Datasheet, "Setting
+   Timeouts": een motor-ECU van 4 ms en een automaat van 58 ms geven samen
+   een wachttijd van ±90 ms op élk verzoek. Die geleerde waarde blijft staan
+   tot de adapter opnieuw geïnitialiseerd wordt — en dat is precies het beeld
+   van #302: in stappen van 77 naar 270 ms, nul fouten, en opnieuw verbinden
+   (ATZ) zet hem terug.
+
+   DE UITWEG staat in dezelfde datasheet: zet achter het verzoek één
+   hexcijfer met het aantal antwoorden, dan stopt de adapter zodra die binnen
+   zijn en slaat hij de laatste wachttijd over. Losse verzoeken deden dat al
+   ('010C1', pidCmd). De groepsverzoeken — het grootste deel van het verkeer —
+   gingen zonder, en betaalden die wachttijd dus elke keer.
+
+   HET CIJFER WORDT GELEERD, NIET BEREKEND. Uit de PID-lengtes volgt hoeveel
+   frames één ECU stuurt, maar antwoordt er een tweede ECU mee (een automaat
+   op 010D), dan komen er meer. Met een te laag cijfer kapt de adapter af, en
+   komt het antwoord van de tweede ECU toevallig eerst, dan mist het dat van
+   de motor. Dus zoals python-OBD het doet: per verzoek tellen hoeveel frames
+   er zonder cijfer terugkomen, en pas na ANTWOORDTAL_LEER keer hetzelfde
+   aantal het cijfer gebruiken — het hoogste dat gezien is.
+
+   Of de adapter "antwoorden" als frames of als berichten telt, zegt de
+   datasheet voor CAN niet. Voor de veiligheid maakt dat niet uit: er zijn
+   nooit meer berichten dan frames, dus een frameaantal is nooit te laag. Telt
+   hij berichten, dan wacht hij met dit cijfer gewoon zijn wachttijd uit, en
+   dat is wat er zonder cijfer al gebeurde.
+
+   ZELFCONTROLE. Elke ANTWOORDTAL_HERIJK-ste keer gaat hetzelfde verzoek
+   zónder cijfer: zo blijft het geleerde aantal bij als er een ECU bijkomt, en
+   zo meet de app zelf het verschil (msMet tegen msZonder in stand()). Mist
+   er met cijfer een PID die er eerder wél was, dan gaat het cijfer voor dat
+   verzoek ANTWOORDTAL_BLOK_MS uit — terug naar het oude gedrag. */
+const ANTWOORDTAL_LEER=3, ANTWOORDTAL_HERIJK=200, ANTWOORDTAL_BLOK_MS=300000, ANTWOORDTAL_MAX=200;
+
+// Hoeveel CAN-frames staan er in een ruw antwoord? Een frame is een "N:"-
+// marker (multiframe, ook als ze op één regel staan) of een losse regel met
+// data (single frame, per ECU één). De lengteregel ("008") is geen eigen
+// frame: hij hoort bij frame 0. Puur, zie test-antwoordtal.js.
+function plFrames(raw){
+  const s=String(raw||'');
+  if(!s.trim() || /NO DATA|UNABLE|ERROR|STOPPED|BUFFER|SEARCHING|CAN ERROR|\?/i.test(s)) return 0;
+  let n=0;
+  for(const regel of s.split(/[\r\n]+/)){
+    const r=regel.trim();
+    if(!r) continue;
+    const markers=r.match(/[0-9A-Fa-f]\s*:/g);
+    if(markers){ n+=markers.length; continue; }
+    const hex=r.replace(/\s+/g,'');
+    if(/^[0-9A-Fa-f]{4,}$/.test(hex)) n++;       // data; "008" (3 tekens) is een lengte
+  }
+  return n;
+}
+
+const PLAntwoordtal={
+  _m:new Map(), _gen:null, _met:[], _zonder:[], _nMet:0, _nZonder:0, _nBlok:0,
+  _fris(){
+    // Een nieuwe verbinding kan een andere auto of adapter zijn: opnieuw leren.
+    const g=window._btGen||0;
+    if(g!==this._gen){ this._m.clear(); this._gen=g; }
+  },
+  // Het verzoek zoals het de bus op gaat: met cijfer als het geleerd is.
+  cmd(basis){
+    try{
+      this._fris();
+      const e=this._m.get(basis);
+      if(!e || e.zeker<ANTWOORDTAL_LEER || !(e.n>=1 && e.n<=15)) return basis;
+      if(Date.now()<e.blokTot) return basis;
+      if(++e.sinds>=ANTWOORDTAL_HERIJK){ e.sinds=0; return basis; }
+      return basis+e.n.toString(16).toUpperCase();
+    }catch(x){ console.warn('PLAntwoordtal.cmd mislukt — verzoek gaat zonder cijfer', x); return basis; }
+  },
+  leer(basis, verstuurd, raw, oordeel, ms){
+    try{
+      this._fris();
+      const metCijfer=verstuurd!==basis;
+      const rij=metCijfer?this._met:this._zonder;
+      if(oordeel==='goed' && ms>0){ rij.push(ms); if(rij.length>60) rij.shift(); }
+      if(metCijfer) this._nMet++; else this._nZonder++;
+      let e=this._m.get(basis);
+      if(metCijfer){
+        // Kwam er een 41-antwoord maar mist er iets dat eerder wél kwam, dan
+        // kan het cijfer te laag zijn. Geen gok: uit voor dit verzoek.
+        if(e && oordeel!=='goed' && /41[0-9A-F]{2}/i.test(String(raw||''))){
+          e.blokTot=Date.now()+ANTWOORDTAL_BLOK_MS; e.zeker=0; this._nBlok++;
+          try{ btDiag(`Antwoordcijfer ${e.n} op ${basis} uit voor ${ANTWOORDTAL_BLOK_MS/60000} min: antwoord ${oordeel} met cijfer`,'warn'); }catch(x){ /* stil: melding mag nooit de stroom breken */ }
+        }
+        return;
+      }
+      if(oordeel!=='goed') return;                   // alleen leren van volledige antwoorden
+      const f=plFrames(raw);
+      if(f<1) return;
+      if(!e){
+        if(this._m.size>=ANTWOORDTAL_MAX) this._m.delete(this._m.keys().next().value);
+        this._m.set(basis,{ n:f, zeker:1, sinds:0, blokTot:0 });
+        return;
+      }
+      if(f===e.n) e.zeker++;
+      else if(f>e.n){ e.n=f; e.zeker=1; }            // er kwam meer: dat is het nieuwe aantal
+      // f<e.n: een PID ontbrak deze keer; het hoogste aantal blijft staan.
+    }catch(x){ console.warn('PLAntwoordtal.leer mislukt — dit antwoord telt niet mee', x); }
+  },
+  reset(){ this._m.clear(); this._met=[]; this._zonder=[]; this._nMet=this._nZonder=this._nBlok=0; },
+  // Voor het adapterpaneel en blok 5: werkt het, en wat levert het op?
+  stand(){
+    const med=a=>{ if(!a.length) return null; const s=a.slice().sort((x,y)=>x-y); return s[s.length>>1]; };
+    let geleerd=0, geblokt=0; const nu=Date.now();
+    this._m.forEach(e=>{ if(e.zeker>=ANTWOORDTAL_LEER) geleerd++; if(nu<e.blokTot) geblokt++; });
+    return { verzoeken:this._m.size, geleerd, geblokt, met:this._nMet, zonder:this._nZonder,
+             blokkades:this._nBlok, msMet:med(this._met), msZonder:med(this._zonder) };
+  }
+};
+window.PLAntwoordtal=PLAntwoordtal;
+window.plFrames=plFrames;
 
 // ── P8: batch-uitval met herstel i.p.v. permanent uitschakelen ──
 let _batchDips=0, _batchOffSince=0;
@@ -876,6 +1001,7 @@ function _herstelNaProtocolLock(){
   _groepVenster=[];
   _groepVensterN=0;
   _groepHoudTot=0;
+  try{ PLAntwoordtal.reset(); }catch(e){ console.warn('PLAntwoordtal.reset mislukt — het oude antwoordcijfer blijft staan', e); }
   window._batchSupported=undefined;        // undefined = weer toegestaan
   try{ PLBus.batchReset(); }catch(e){ console.warn('PLBus.batchReset mislukt:', e); }
   try{ PLLoad.reset(); }catch(e){ console.warn('PLLoad.reset mislukt:', e); }

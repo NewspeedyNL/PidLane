@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '8.3 (28-09-2026)';
+const TESTRUN_VERSIE = '8.4 (28-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -6538,6 +6538,51 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── #302: het antwoordcijfer op groepsverzoeken (28-09-2026) ──
+  // Een ELM327 met ATAT1 zit na elk groepsantwoord zijn geleerde wachttijd
+  // uit, en leert die van de traagste antwoorder: de drift van #302. Sinds
+  // 28-09 dragen groepsverzoeken een geleerd antwoordcijfer (PLAntwoordtal in
+  // pidlane-plload.js) en slaat de adapter die wachttijd over. Of dat in de
+  // auto zo werkt kan alleen een rit zeggen: de browser heeft geen ELM. Deze
+  // proef leest wat PLAntwoordtal de hele sessie zag; hij stuurt zelf niets.
+  {
+    issue: '#302',
+    naam: 'Groepsverzoeken dragen het antwoordcijfer en zijn daarmee sneller',
+    waarom: 'Zonder cijfer betaalt elk groepsverzoek de geleerde wachttijd van de adapter; of het cijfer die op deze adapter echt overslaat, kan alleen een echte ELM laten zien.',
+    proef: async function () {
+      if (!window.PLAntwoordtal || typeof PLAntwoordtal.stand !== 'function')
+        return { staat: 'FOUT', detail: 'PLAntwoordtal ontbreekt — groepsverzoeken gaan zonder antwoordcijfer de bus op' };
+      const st = PLAntwoordtal.stand();
+      const kop = st.met + ' groepsverzoeken met cijfer, ' + st.zonder + ' zonder, ' + st.geleerd + ' van ' + st.verzoeken + ' verzoekvormen geleerd';
+      if (!(st.met + st.zonder)) return { staat: 'LET OP', detail: 'geen groepsverzoeken deze sessie — niet verbonden, of geen CAN; de proef heeft een rit met de pollus nodig' };
+      if (!st.met) return { staat: 'FOUT', detail: kop + ' — er is nooit een cijfer meegestuurd' };
+      if (st.blokkades) return { staat: 'LET OP', detail: kop + ' — ' + st.blokkades + ' keer ging het cijfer uit omdat er met cijfer een PID ontbrak; staat in het BT-log ("Antwoordcijfer … uit")' };
+      if (st.msMet === null || st.msZonder === null) return { staat: 'LET OP', detail: kop + ' — te weinig metingen om met en zonder te vergelijken' };
+      if (st.msMet >= st.msZonder) return { staat: 'LET OP', detail: kop + ' — geen winst: met cijfer ' + st.msMet + ' ms, zonder ' + st.msZonder + ' ms. Telt deze adapter antwoorden anders dan frames?' };
+      return kop + ' · met cijfer ' + st.msMet + ' ms, zonder ' + st.msZonder + ' ms (' + Math.round((1 - st.msMet / st.msZonder) * 100) + '% sneller)';
+    }
+  },
+
+  // ── #302: SPP-antwoorden per event in plaats van per 50 ms-poll (28-09-2026) ──
+  // Of de plugin op een echt toestel events aflevert, en of dat sneller is,
+  // kan alleen een rit zeggen: de browserproeven vervangen _sendBTOnce.
+  {
+    issue: '#302',
+    naam: 'SPP-antwoorden komen per event binnen, niet per poll',
+    waarom: 'Pollen kostte minstens 50 ms per commando; een event is er zodra de prompt binnen is. Of de plugin dat op dit toestel doet, weet alleen een echte socket.',
+    proef: async function () {
+      if (typeof window.plSppModus !== 'function') return { staat: 'FOUT', detail: 'plSppModus ontbreekt — het eventpad is niet geladen' };
+      if (!window._sppConn) return { staat: 'LET OP', detail: 'geen SPP-verbinding deze sessie (BLE, Web Serial of demo) — deze proef gaat alleen over SPP' };
+      const m = plSppModus();
+      let ms = null;
+      try { const s = PLBus.stats(); ms = s && s.gemMs; } catch (e) { console.warn('proef SPP-events: PLBus.stats onleesbaar', e); }
+      const tijd = (typeof ms === 'number') ? ' · gemiddeld ' + ms + ' ms per commando' : '';
+      if (m.modus === 'event') return 'antwoorden per event' + tijd;
+      if (/pl_spp_poll/.test(m.reden)) return { staat: 'LET OP', detail: 'pollen staat met de hand aan (pl_spp_poll = 1)' + tijd };
+      return { staat: 'FOUT', detail: 'terug op pollen: ' + (m.reden || 'onbekende reden') + tijd + ' — het BT-log zegt wanneer ("SPP: terug naar read()-polling")' };
+    }
+  },
+
   // ── #302: loopt de responstijd op, waardoor, en wat zet hem terug? ──
   // Staat bewust ACHTERAAN: als de drift er is, voert deze proef zelf het
   // experiment uit dat #302 vraagt, en dat raakt de verbinding aan.
@@ -6557,15 +6602,20 @@ const PROEVEN_B5 = [
       const echt = (typeof connected !== 'undefined' && connected) && !(typeof demoMode !== 'undefined' && demoMode);
       if (!echt) return { staat: 'FOUT', detail: o.detail + ' — niet meer verbonden, dus niet na te gaan welke reset helpt' };
       const wacht = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
-      const meet = async function () {
+      const meet = async function (cmd) {
         const ms = [];
         await withBus('proef #302', async function () {
-          for (let i = 0; i < 15; i++) { const t = _nu(); await sendCmd('010C', 1500); ms.push(_nu() - t); }
+          for (let i = 0; i < 15; i++) { const t = _nu(); await sendCmd(cmd || '010C', 1500); ms.push(_nu() - t); }
         }, 8000);
         ms.sort(function (a, b) { return a - b; });
         return ms.length ? ms[ms.length >> 1] : null;
       };
       const a = await meet();
+      // Hetzelfde verzoek met antwoordcijfer: het verschil is de wachttijd die
+      // de adapter na het laatste antwoord uitzit (ATAT1). Is dat het grootste
+      // deel, dan is dit de drift die PLAntwoordtal wegneemt (28-09-2026).
+      const aMet = await meet('010C1');
+      const wachttijd = (a && aMet) ? a - aMet : null;
       if (typeof initELM327 !== 'function') return { staat: 'FOUT', detail: o.detail + ' — initELM327 ontbreekt, experiment niet uitgevoerd' };
       await initELM327({ herstelProtocol: true });
       await wacht(3000);
@@ -6584,7 +6634,9 @@ const PROEVEN_B5 = [
         : b <= a / 1.3 ? 'de ELM opnieuw initialiseren (ATWS) herstelt het — het zit in de adapter, niet in de socket'
         : (c && c <= a / 1.3) ? 'ATWS helpt niet, een nieuwe verbinding wel — het zit in de Bluetooth-socket'
         : 'ook een nieuwe verbinding helpt niet — dan ligt het niet aan de adapter-toestand of de socket';
-      return { staat: 'FOUT', detail: o.detail + ' · experiment 010C solo: ' + a + ' ms → na ATWS ' + b + ' ms' + (c !== null ? ' → na nieuwe verbinding ' + c + ' ms' : '') + ' · ' + conclusie };
+      const wt = wachttijd === null ? '' : ' · 010C1 met antwoordcijfer: ' + aMet + ' ms, dus ' + wachttijd + ' ms wachttijd na het laatste antwoord' +
+        (wachttijd >= a / 2 ? ' — het grootste deel; de groepsverzoeken dragen dat cijfer nu (zie PLAntwoordtal), dus hun drift hoort weg te zijn' : '');
+      return { staat: 'FOUT', detail: o.detail + ' · experiment 010C solo: ' + a + ' ms → na ATWS ' + b + ' ms' + (c !== null ? ' → na nieuwe verbinding ' + c + ' ms' : '') + ' · ' + conclusie + wt };
     }
   },
 
@@ -8871,6 +8923,7 @@ const CAMPAGNE = {
   titel: 'OPLEVERING 28-09 (zestiende) — de rit van de vijftiende, plus de groepsproef: helpen 4–6 PIDs per verzoek? (#333)',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
+    'NIEUW 28-09 (AVOND): DE VERBINDING WERD TRAGER HOE LANGER HIJ DUURDE (#302). De adapter wacht na elk antwoord nog even of er meer komt, en leert die wachttijd van de traagste module die ooit antwoordde. Groepsverzoeken betaalden die wachttijd elke keer. Ze krijgen nu een cijfer mee met het aantal antwoorden, zodat de adapter meteen terugkomt. De app leert dat cijfer zelf per verzoek en zet het uit als er dan iets ontbreekt. Daarnaast komt elk antwoord van de adapter nu binnen zodra het er is, in plaats van dat de app om de 50 ms gaat kijken. Je hoeft er niets voor te doen; blok 5 zegt aan het eind hoeveel sneller het was. Gaat het mis, dan valt de app zelf terug op de oude manier en staat dat in het BT-log.',
     'NIEUW 28-09: DE GROEPSPROEF (#333). De app vraagt tot 3 PIDs per verzoek; een CAN-auto kan er 6 aan. Groter kan meer metingen per seconde geven, of meer verlies op een goedkope adapter. De groepsproef in het verbindingspaneel meet het: groep 1 t/m 6 en terug, met de bus vast. Elke stap gaat als logregel naar de logtabel (RecordType groepsproef). De automaat blijft op 3 tot deze metingen zeggen dat meer goed gaat.',
     'OOK NIEUW: een groepsantwoord waarin een sensor ontbreekt die kort daarvoor nog antwoordde, telt niet meer als geslaagd. Gebeurt dat vaak (4 van de laatste 20), dan maakt de automaat de groep kleiner en schrijft hij in het verbindingspaneel waarom.',
     'DE PROEVEN OORDELEN OVER DE HELE RIT. Tot nu toe keek blok 5 naar het moment waarop de testrun draaide; wat er daarvoor gebeurde telde niet, en dan moest een rit over. Nu houden de modules zelf bij wat er deze sessie gebeurde, en oordeelt blok 5 daar aan het eind over. Elke proef zegt ok, FOUT met het waarom, of LET OP met precies wat de rit nog nodig had.',

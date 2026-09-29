@@ -51,9 +51,9 @@ const NEP_ECU = `(function(){
     const c = String(cmd || '').toUpperCase().replace(/\\s+/g, '');
     E.log.push(c);
     if (/^AT/.test(c)) return 'OK';
-    if (!/^01(?:[0-9A-F]{2})+1?$/.test(c)) return 'NO DATA';
+    if (!/^01(?:[0-9A-F]{2})+[0-9A-F]?$/.test(c)) return 'NO DATA';   // + antwoordcijfer (#302)
     let body = c.slice(2);
-    if (body.length % 2 === 1) body = body.slice(0, -1);        // '010C1' → snelle terugkeer
+    if (body.length % 2 === 1) body = body.slice(0, -1);        // '010C1', '010C0D2' → antwoordcijfer
     const pids = body.match(/../g).filter((p) => E.len[p]);
     if (!pids.length) { await new Promise((r) => setTimeout(r, 6)); return 'NO DATA'; }
     const delen = pids.map((p) => { const b = [p]; for (let i = 0; i < E.len[p]; i++) b.push(hx(0x20 + i + p.charCodeAt(1))); return b; });

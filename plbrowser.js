@@ -98,7 +98,9 @@ function nepAdapterCode(tabel, vertraagMs) {
       window._plNepLog.push(c);
       ${vertraagMs ? `await new Promise(r=>setTimeout(r,${vertraagMs}));` : ''}
       if (Object.prototype.hasOwnProperty.call(T, c)) return T[c];
-      const kaal = c.replace(/1$/, '');            // '010C1' → '010C': snelle-terugkeer-suffix
+      // '010C1' → '010C', en sinds #302 ook '010C0D2' → '010C0D': een oneven
+      // aantal hextekens betekent één antwoordcijfer achteraan.
+      const kaal = (/^[0-9A-F]+$/.test(c) && c.length % 2 === 1) ? c.slice(0, -1) : c;
       if (Object.prototype.hasOwnProperty.call(T, kaal)) return T[kaal];
       return 'NO DATA';
     };
