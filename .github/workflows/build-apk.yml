@@ -49,6 +49,10 @@ on:
      - 'icon-512.png'
      - 'public/icon-512.png'
      - 'icon-1024.png'
+     # De drie lagen van het adaptieve icoon (Aurora, 29-09-2026).
+     - 'public/icon-voorgrond.png'
+     - 'public/icon-achtergrond.png'
+     - 'public/icon-mono.png'
      - '.github/workflows/build-apk.yml'
      # De native meetdienst (#18). Zonder deze regel bouwt een wijziging aan
      # de Java-kant niets, en staat de oude dienst in de volgende APK terwijl
@@ -655,11 +659,36 @@ jobs:
                  -draw "circle $((size/2)),$((size/2)) $((size/2)),0" \) \
               -alpha off -compose CopyOpacity -composite "$dir/ic_launcher_round.png"
           done
-          for d in mdpi:108 hdpi:162 xhdpi:216 xxhdpi:324 xxxhdpi:432; do
-            dir="$RES/mipmap-${d%%:*}"; size="${d##*:}"; inner=$(( size * 64 / 100 ))
-            convert /tmp/icon_src.png -resize ${inner}x${inner} -background none \
-              -gravity center -extent ${size}x${size} "$dir/ic_launcher_foreground.png"
-          done
+          # ── Adaptief icoon (Android 8+). Met losse lagen vult het teken de
+          #    veilige zone; zonder lagen viel het hele icoon (met eigen donker
+          #    vierkant) op 64% in de vorm, en dat oogde klein (29-09-2026).
+          #    De lagen beslaan het volle 108dp-canvas en worden alleen geschaald.
+          VG=public/icon-voorgrond.png; AG=public/icon-achtergrond.png; MO=public/icon-mono.png
+          if [ -f "$VG" ] && [ -f "$AG" ] && [ -f "$MO" ]; then
+            echo "Adaptieve lagen gevonden: $VG, $AG, $MO"
+            for d in mdpi:108 hdpi:162 xhdpi:216 xxhdpi:324 xxxhdpi:432; do
+              dir="$RES/mipmap-${d%%:*}"; size="${d##*:}"
+              convert "$VG" -resize ${size}x${size} "$dir/ic_launcher_foreground.png"
+              convert "$AG" -resize ${size}x${size} "$dir/ic_launcher_background.png"
+              convert "$MO" -resize ${size}x${size} "$dir/ic_launcher_monochrome.png"
+            done
+            mkdir -p "$RES/mipmap-anydpi-v26"
+            for f in ic_launcher ic_launcher_round; do
+              printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' \
+                '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">' \
+                '    <background android:drawable="@mipmap/ic_launcher_background"/>' \
+                '    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>' \
+                '    <monochrome android:drawable="@mipmap/ic_launcher_monochrome"/>' \
+                '</adaptive-icon>' > "$RES/mipmap-anydpi-v26/$f.xml"
+            done
+          else
+            echo "WAARSCHUWING: adaptieve lagen ontbreken — heel icoon op 64% als voorgrond (oogt klein)"
+            for d in mdpi:108 hdpi:162 xhdpi:216 xxhdpi:324 xxxhdpi:432; do
+              dir="$RES/mipmap-${d%%:*}"; size="${d##*:}"; inner=$(( size * 64 / 100 ))
+              convert /tmp/icon_src.png -resize ${inner}x${inner} -background none \
+                -gravity center -extent ${size}x${size} "$dir/ic_launcher_foreground.png"
+            done
+          fi
           BG="$RES/values/ic_launcher_background.xml"
           if [ -f "$BG" ]; then
             sed -i 's|<color name="ic_launcher_background">[^<]*</color>|<color name="ic_launcher_background">#0F141A</color>|' "$BG"

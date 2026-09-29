@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 29-09-2026 — Nieuw app-icoon: Aurora
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw logo: donker glazen scherm met een hartslag die uitloopt in een
+   vonk, op een verloop van groen via cyaan naar violet. Vervangt het oude
+   icoon in public/ (PWA, iOS, favicon) en icon-512.png in de wortel.
+ - Android: het icoon was klein in de app-lijst, omdat het hele logo met
+   zijn eigen donkere vierkant op 64% in de vorm viel. build-apk.yml bouwt
+   het adaptieve icoon nu uit drie lagen (icon-voorgrond, icon-achtergrond,
+   icon-mono). Het teken vult de veilige zone, en thema-iconen (Android 13+)
+   krijgen een eenkleurige versie.
+
+ ═══════════════════════════════════════════════════════════
  29-09-2026 — Herinneringen voor APK en onderhoud, en de lampjesgids
  ═══════════════════════════════════════════════════════════
 
