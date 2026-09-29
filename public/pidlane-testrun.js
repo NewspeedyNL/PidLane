@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '8.4 (28-09-2026)';
+const TESTRUN_VERSIE = '8.5 (29-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -6563,6 +6563,31 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── #341: motor uit is een pauze, geen einde (29-09-2026) ──
+  // De garage sloot een rit af zodra de verbinding wegviel, en na drie minuten
+  // stil. Een tankstop maakte er twee ritten van. Of een stop onderweg nu één
+  // rit met een pauze oplevert, zegt alleen een echte stop met de motor uit.
+  {
+    issue: '#341',
+    naam: 'Een stop onderweg is een pauze in de rit, geen tweede rit',
+    waarom: 'Motor uit, adapter zonder stroom of de app even dicht: op het moment zelf niet van aankomen te onderscheiden. Pas het wegrijden zegt welke van de twee het was.',
+    proef: async function () {
+      if (!window.PLGarage || typeof PLGarage.ritVerslag !== 'function' || typeof PLGarage.ritNu !== 'function')
+        return { staat: 'FOUT', detail: 'PLGarage.ritVerslag/ritNu ontbreekt — de ritgrens is niet te zien' };
+      if (typeof plBusVrijgeven !== 'function') return { staat: 'FOUT', detail: 'plBusVrijgeven ontbreekt — verbreken laat de bus bezet' };
+      const u = window.currentUser;
+      if (!(u && String(u.role || '').toLowerCase() === 'klant'))
+        return { staat: 'LET OP', detail: 'geen klantaccount — de ritwaarnemer loopt alleen voor klanten met een actief voertuig' };
+      const vs = PLGarage.ritVerslag(), nu = PLGarage.ritNu();
+      const pauzes = vs.reduce(function (n, r) { return n + (r.pauzes || 0); }, 0) + ((nu && nu.sam && nu.sam.extra && nu.sam.extra.pauzes) || 0);
+      const kop = vs.length + ' rit(ten) afgesloten' + (vs.length ? ' (' + vs.map(function (r) { return r.km + ' km, ' + r.einde + (r.pauzes ? ', ' + r.pauzes + ' pauze' : ''); }).join('; ') + ')' : '') +
+        (nu ? ' · lopende rit: ' + nu.stand + (nu.sam ? ', ' + nu.sam.km + ' km' : '') : '');
+      if (!vs.length && !nu) return { staat: 'LET OP', detail: 'geen rit deze sessie — rij minstens 0,3 km met een actief voertuig in Mijn voertuigen' };
+      if (!pauzes) return { staat: 'LET OP', detail: kop + ' — nog geen pauze gezien: stop onderweg, motor uit, drie minuten, en rij door (CAMPAGNE)' };
+      return kop + ' · ' + pauzes + ' pauze(s) doorgelopen in dezelfde rit';
+    }
+  },
+
   // ── #302: SPP-antwoorden per event in plaats van per 50 ms-poll (28-09-2026) ──
   // Of de plugin op een echt toestel events aflevert, en of dat sneller is,
   // kan alleen een rit zeggen: de browserproeven vervangen _sendBTOnce.
@@ -8928,7 +8953,9 @@ const CAMPAGNE = {
     'OOK NIEUW: een groepsantwoord waarin een sensor ontbreekt die kort daarvoor nog antwoordde, telt niet meer als geslaagd. Gebeurt dat vaak (4 van de laatste 20), dan maakt de automaat de groep kleiner en schrijft hij in het verbindingspaneel waarom.',
     'DE PROEVEN OORDELEN OVER DE HELE RIT. Tot nu toe keek blok 5 naar het moment waarop de testrun draaide; wat er daarvoor gebeurde telde niet, en dan moest een rit over. Nu houden de modules zelf bij wat er deze sessie gebeurde, en oordeelt blok 5 daar aan het eind over. Elke proef zegt ok, FOUT met het waarom, of LET OP met precies wat de rit nog nodig had.',
     'NIEUW IN DE APP. Versnelling bij het voertuig met een knop Fout (ook R), tijd per versnelling met rijstijladvies, zeventien berekende PIDs (onder "Berekend"), een trekmodus met waarschuwingstoon, ritlabels met voorstel, export en kosten, rapporten vergelijken en in één keer wissen. Daarna: eigen PIDs per voertuig (Mijn voertuigen → Sensoren), de versnelling in het midden van Slim visueel, en opslaan zonder keuzevenster.',
+    'NIEUW 29-09: RIT BEËINDIGEN (#341). Onderin het menu staan "Uitloggen" en "Sluit de app" niet meer. Daar staat nu één knop: "Rit beëindigen" als er een rit loopt, anders "Afsluiten". Hij toont de rit, laat je hem een naam geven en vraagt wat er daarna gebeurt: verbonden blijven, verbreken of de app sluiten, met uitloggen als vinkje. Verbreken geeft de bus eerst vrij met ATPC. En motor uit is geen einde van de rit meer: pas na vijftien minuten zonder rijden sluit de app hem zelf af.',
     '── WAT ÉÉN RIT DEZE RONDE MOET LATEN ZIEN ────────',
+    'EEN STOP MET DE MOTOR UIT (#341). Ergens onderweg: stoppen, motor uit, drie minuten wachten (of even de app dichtdoen), en weer rijden. Blok 5 hoort aan het eind één rit met één pauze te zien, niet twee ritten.',
     'DE GROEPSPROEF, DRIE KEER (#333). Tik op de OBD-chip → 📦 Start de groepsproef. Hij duurt ongeveer twee minuten en de meters staan zolang stil; laat de app open. (A) direct na het starten, auto stil; (B) na minstens tien minuten rijden, auto stil; (C) rijdend op constante snelheid, ALLEEN als een bijrijder de telefoon bedient. Meldt hij dat de verbinding veranderde tijdens de proef, doe hem dan meteen nog één keer. Zet het advies of een schermafbeelding van de tabel als reactie in #333, met de adapter erbij.',
     'ALLEEN ALS HET ADVIES BOVEN DE 3 UITKOMT: ✋ Handmatig → PIDs per verzoek op het advies, tien minuten rijden, en kijk in het paneel naar "onvolledig" en "herhaald". Daarna terug naar 🤖 Automaat.',
     'MINSTENS 30 MINUTEN ONAFGEBROKEN VERBONDEN (#302). Niet tussendoor verbreken. Verschijnt in het verbindingspaneel de oranje melding "De responstijd is opgelopen", laat die staan: de testrun doet aan het eind zelf het experiment (eerst de ELM opnieuw, dan eventueel een nieuwe verbinding).',
@@ -8949,6 +8976,7 @@ const CAMPAGNE = {
     'STAP 2 — RIJDEN, 30 MINUTEN OF MEER. Doe onderweg de punten hierboven: alle versnellingen, één keer Fout, één keer R, een minuut beeld-in-beeld, dertig seconden constant, één keer vol gas.',
     'STAP 1b — GROEPSPROEF A, meteen na het verbinden en vóór het wegrijden. Proef B bij de eerste stop na tien minuten; proef C onderweg als er een bijrijder is.',
     'STAP 3 — DRAAI AAN HET EIND DE TESTRUN, nog steeds verbonden. De #302-proef staat achteraan en kan twee minuten duren als hij de drift ziet: dan meet hij, initialiseert de ELM opnieuw, meet weer en verbindt zo nodig opnieuw.',
+    'STAP 4 — RIT BEËINDIGEN (#341), ná de testrun. ☰ → Rit beëindigen: klopt de samenvatting met wat je reed? Geef de rit een naam en kies Verbinding verbreken. In het BT-log hoort daarna "ATPC (bus vrijgeven) → "OK"" te staan; staat er "?" of geen antwoord, noteer dan de adapter in #341. Kijk in Mijn voertuigen → Ritten of de rit met die naam erin staat.',
     'NA AFLOOP. Plak uit het ruwe verslag de FOUT- en LET OP-regels met hun blokkop, plus het verbruik van de boordcomputer uit punt 5. Staat er een LET OP, dan zegt die regel wat er ontbrak.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
     'DE AUTOMAAT GAAT NIET BOVEN DE 3. Dat mag pas als de groepsproef op twee adapters, in A, B en C, een groep van 4 of meer adviseert met minstens 15% meer metingen per seconde en zonder verlies (de grens staat in #333). Deze ronde verzamelt die metingen; hij beslist nog niets.',
