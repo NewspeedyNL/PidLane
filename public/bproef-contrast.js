@@ -178,11 +178,7 @@ function zeg(m) {
 
     const opzet = await app.ev(`(function(){
       const w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
-      /* De weergavewissel (#pidViewSwitch), waar blok 3 zijn fout op zet, staat
-         sinds 29-09-2026 alleen in de garagemodus. Zonder die modus meet blok 3
-         een knop die er niet is — precies wat zijn eigen poort dan meldt. */
-      if (!window.PLNav) return 'PLNav bestaat niet';
-      PLNav.zetGarage(true);
+
       const tab = document.querySelector('.tabs .tab');
       if (!tab) return 'de tabbalk staat er niet: .tabs .tab vond niets';
       if (typeof sw !== 'function') return 'sw() bestaat niet in de app';

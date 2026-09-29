@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 29-09-2026 — De weergavekeuze in Live is terug voor iedereen
+ ═══════════════════════════════════════════════════════════
+
+ - Reparatie op de oplevering hieronder: de keuze Trends · Getallen ·
+   Puntjes · Slim · Visueel stond alleen nog in de garagemodus. Een klant
+   kon vanuit Slim nergens meer heen. Hij staat weer voor iedereen, bovenaan
+   Live.
+ - Opnemen, Deel live en Meekijken staan eronder op één regel in plaats van
+   twee.
+
+ ═══════════════════════════════════════════════════════════
  29-09-2026 — Een nieuw startscherm en een onderbalk
  ═══════════════════════════════════════════════════════════
 

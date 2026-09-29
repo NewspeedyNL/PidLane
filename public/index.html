@@ -1103,15 +1103,6 @@ function closeConnOv(){
              pidlane-aandrijving.js. Staat leeg tot er verbinding is, want een
              toestandsregel zonder meting eronder hoort er niet te staan. -->
         <div id="aandrijfBalk" style="display:none"></div>
-        <!-- Live-acties (29-09-2026): opnemen, delen en meekijken stonden als
-             kaarten in de deur "Live data" op het startscherm. Nu staan ze waar
-             de live data staat. Bewaken (de waakronde) is vakgereedschap. -->
-        <div class="pl-live-acties" id="plLiveActies">
-          <button type="button" id="plLiveRec" onclick="openPidRecorder()">⏺ Opnemen</button>
-          <button type="button" id="plLiveDeel" onclick="try{PLRemote.openShare()}catch(e){console.warn('Delen opent niet:',e)}">📡 Deel live</button>
-          <button type="button" id="plLiveMee" onclick="try{PLRemote.openExpert()}catch(e){console.warn('Meekijken opent niet:',e)}">🔭 Meekijken</button>
-          <button type="button" id="plLiveWaak" class="alleen-garage" onclick="openWaakvenster()">◉ Bewaken</button>
-        </div>
         <div class="pidview-switch" id="pidViewSwitch" style="display:none">
           <!-- Eén regel (26-09-2026): vijf gelijke vakken met het icoon boven
                een kort woord, als een tabbalk. Het label "Weergave:" en de
@@ -1133,6 +1124,17 @@ function closeConnOv(){
                met een rustige rand voor koelwater, olie, tank en accu. Zie
                pidlane-visueel.js. -->
           <button class="pidview-btn" data-mode="visueel" onclick="setPidView('visueel')" title="Slim visueel"><i>🎯</i>Visueel</button>
+        </div>
+        <!-- Live-acties (29-09-2026): opnemen, delen en meekijken stonden als
+             kaarten in de deur "Live data" op het startscherm. Nu staan ze waar
+             de live data staat, in één smalle regel ónder de weergavekeuze:
+             kiezen hoe je kijkt gaat vóór wat je met de data doet. Bewaken (de
+             waakronde) is vakgereedschap. -->
+        <div class="pl-live-acties" id="plLiveActies">
+          <button type="button" id="plLiveRec" onclick="openPidRecorder()">⏺ Opnemen</button>
+          <button type="button" id="plLiveDeel" onclick="try{PLRemote.openShare()}catch(e){console.warn('Delen opent niet:',e)}">📡 Deel live</button>
+          <button type="button" id="plLiveMee" onclick="try{PLRemote.openExpert()}catch(e){console.warn('Meekijken opent niet:',e)}">🔭 Meekijken</button>
+          <button type="button" id="plLiveWaak" class="alleen-garage" onclick="openWaakvenster()">◉ Bewaken</button>
         </div>
         <!-- Vaste/code-PIDs (brandstoftype, OBD-norm, …) in gewone woorden.
              Een sparkline of 32px-cijfer is zonde van de ruimte bij een waarde
