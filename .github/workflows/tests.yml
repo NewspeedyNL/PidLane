@@ -97,8 +97,8 @@ jobs:
       # plmutate.sh toetst HEAD, in een eigen git worktree per werker, en
       # weigert op een werkmap met niet-vastgelegde wijzigingen; na een verse
       # checkout is die schoon. Altijd de VOLLE tabel: --sinds is voor lokaal.
-      # Vier tegelijk, zoveel kernen heeft de runner (29-09-2026: van zo'n 16
-      # naar een kwart daarvan).
+      # Vier tegelijk, zoveel kernen heeft de runner. Nagemeten op 29-09-2026
+      # op vier kernen: 732 mutaties in 261 s, één tegelijk 944 s.
       - name: Draai plmutate
         run: bash plmutate.sh . --parallel 4
 
