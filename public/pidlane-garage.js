@@ -1488,12 +1488,16 @@
       rs.advies.map(function (a) { return '<div class="gr-klein" style="margin-top:4px">💡 ' + esc(a) + '</div>'; }).join('');
   }
 
+  // De labels om uit te kiezen: eerst wat de klant zelf al gebruikte, dan de vaste voorstellen.
+  function labelKeuzes(rs) {
+    return labelSom(rs).map(function (x) { return x.label; }).filter(function (l) { return LABEL_VOORSTEL.indexOf(l) < 0; }).concat(LABEL_VOORSTEL);
+  }
+
   function tekenLabelInvoer(r, rs) {
     var voorstel = r.label ? null : labelSuggestie(r, rs);
-    var eigen = labelSom(rs).map(function (x) { return x.label; }).filter(function (l) { return LABEL_VOORSTEL.indexOf(l) < 0; });
     return '<div class="gr-labin"><label class="gr-veld">Label voor deze rit<input id="grLabel" maxlength="40" value="' + esc(r.label || voorstel || '') + '" placeholder="bijv. Woon-werk"></label>' +
       (voorstel ? '<div class="gr-klein">💡 Voorstel: <b>' + esc(voorstel) + '</b> — eerdere ritten op dit tijdstip met deze afstand hadden dit label.</div>' : '') +
-      '<div class="gr-labels">' + eigen.concat(LABEL_VOORSTEL).map(function (l) {
+      '<div class="gr-labels">' + labelKeuzes(rs).map(function (l) {
         return '<button class="gr-lab" onclick="document.getElementById(\'grLabel\').value=' + esc(JSON.stringify(l)) + '">' + esc(l) + '</button>';
       }).join('') + '</div>' +
       '<div class="gr-knoppen"><button class="gr-k klein hoofd" onclick="PLGarage._labelBewaar(\'' + esc(r.id) + '\')">Bewaren</button>' +
