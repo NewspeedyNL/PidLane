@@ -274,7 +274,20 @@ function updateTopbarStatus(){
   // (29-09-2026): met welke auto je verbonden bent, of wat er ontbreekt. De
   // kleur van de stip blijft het oordeel; de tekst zegt waarover.
   const txt=document.getElementById('sysTxt');
-  if(txt) txt.textContent=sysTekst({ verbonden:!!connected, demo:!!demoMode, naam:naam, ai:aSev===0 });
+  let vi={}; try{ vi=(typeof vehicleInfo!=='undefined' && vehicleInfo) || {}; }catch(e){ console.warn('vehicleInfo niet leesbaar voor de statusregel', e); }
+  if(txt) txt.textContent=sysTekst({ verbonden:!!connected, demo:!!demoMode, naam:sysNaam(naam, vi.merk, vi.model), ai:aSev===0 });
+}
+/* Een leesbare naam voor de statusregel (29-09-2026). #vtag krijgt bij het
+   verbinden als eerste de VIN mee (showVtag(vin||merk) in pidlane-bt.js), en
+   de statusregel toonde die dan letterlijk: 17 tekens die niemand leest en
+   die bij elke gedeelde schermafdruk meegaan. Een VIN-vorm wordt hier merk en
+   model; is dat er niet, dan geen naam. */
+function sysNaam(tag, merk, model){
+  const t=String(tag||'').trim();
+  const isVin=/^[A-HJ-NPR-Z0-9]{17}$/i.test(t.replace(/\s+/g,''));
+  if(t && !isVin) return t;
+  const mm=[merk, model].filter(Boolean).join(' ').trim();
+  return mm && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(mm) ? mm : '';
 }
 // Pure regel voor de statustekst — test-nav.js toetst hem.
 function sysTekst(s){
