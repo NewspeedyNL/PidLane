@@ -65,9 +65,16 @@ function nepPlugin(opties) {
     },
     async connect() {}, async disconnect() {},
     async isConnected() { return { isConnected: true }; },
-    async read() { const v = P.buf; P.buf = ''; return { value: v }; },
+    // naSchrijven telt hoe vaak er ná het laatste commando gepold is. Dat is
+    // wat de eventstand onderscheidt van de pollstand, en het is geen tijd:
+    // tot 29-09-2026 stond hier `a.ms < 40`, en op een drukke CI-runner (de
+    // tests draaien daar naast elkaar) liep een antwoord van 12 ms soms over
+    // die grens — rood zonder dat er iets mis was (PR #343 en #344).
+    naSchrijven: 0,
+    async read() { P.naSchrijven++; const v = P.buf; P.buf = ''; return { value: v }; },
     async write({ value }) {
       const c = String(value).replace(/\r$/, '');
+      P.naSchrijven = 0;
       P.geschreven.push(c);
       (P.antwoorden[c] || []).forEach((x) => setTimeout(() => P._append(x.stuk), x.na));
     },
@@ -121,7 +128,7 @@ async function vraag(s, cmd, ms) {
     antw(P, '010C1', [{ na: 6, stuk: '410C1A' }, { na: 12, stuk: 'F8\r\r>' }]);
     const a = await vraag(s, '010C1');
     toets('het antwoord klopt', a.r === '410C1AF8', JSON.stringify(a.r));
-    toets('en was er ruim binnen 50 ms (' + a.ms + ' ms)', a.ms < 40, a.ms + ' ms');
+    toets('en kwam per event, zonder één poll (' + a.ms + ' ms)', P.naSchrijven === 0, P.naSchrijven + ' keer gepold na het schrijven');
     toets('de stand is event', s.plSppModus().modus === 'event', JSON.stringify(s.plSppModus()));
     const b = await vraag(s, '010C1');
     toets('een tweede keer: de events blijven aan, één startNotifications', b.r === '410C1AF8' && P.starts === 1, 'starts ' + P.starts);
@@ -133,7 +140,7 @@ async function vraag(s, cmd, ms) {
     antw(P, '010C1', [{ na: 6, stuk: '410C1A' }, { na: 12, stuk: 'F8\r\r>' }]);
     const a = await vraag(s, '010C1');
     toets('hetzelfde antwoord', a.r === '410C1AF8', JSON.stringify(a.r));
-    toets('maar pas na de eerste poll (' + a.ms + ' ms)', a.ms >= 50, a.ms + ' ms');
+    toets('maar pas na de eerste poll (' + a.ms + ' ms)', a.ms >= 50 && P.naSchrijven >= 1, a.ms + ' ms, ' + P.naSchrijven + ' poll(s)');
     toets('zonder startNotifications', P.starts === 0 && s.plSppModus().modus === 'poll');
   }
 
@@ -192,7 +199,7 @@ async function vraag(s, cmd, ms) {
     P.notif = false;                                  // nieuwe BluetoothConnection: notificaties uit
     s._sppNieuweSocket();
     const a = await vraag(s, '010C1');
-    toets('startNotifications opnieuw, en het antwoord komt per event', a.r === '410C1AF8' && P.starts === 2 && a.ms < 40, 'starts ' + P.starts + ', ' + a.ms + ' ms');
+    toets('startNotifications opnieuw, en het antwoord komt per event', a.r === '410C1AF8' && P.starts === 2 && P.naSchrijven === 0, 'starts ' + P.starts + ', ' + P.naSchrijven + ' keer gepold');
     toets('één luisteraar, niet twee', P.luisteraars.length === 1, P.luisteraars.length + ' luisteraars');
   }
 
