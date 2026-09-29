@@ -456,6 +456,12 @@ async function download(name,content){
 // Wat er deze sessie met opslaan gebeurde, voor blok 5 (#326).
 window._plOpslag = window._plOpslag || { gelukt:0, mislukt:[] };
 async function plBewaarBestand(blob,name){
+  // Demo: niets vastleggen, ook geen bestand (de zandbak in pidlane-demo.js).
+  if(window.PLDemo && PLDemo.actief()){
+    log('Demo: '+name+' niet opgeslagen — in de demo wordt niets bewaard','info');
+    try{ showToast?.('🧪 Demo — er wordt niets opgeslagen. Met je eigen auto komt hier het bestand.'); }catch(e){ console.warn('Demomelding niet getoond:', e); }
+    return false;
+  }
   const pad=await nativeSchrijfDirect(blob,name);
   try{
     if(pad) window._plOpslag.gelukt++;

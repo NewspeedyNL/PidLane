@@ -10,6 +10,33 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 29-09-2026 — Demo op de schop, en de app zonder adapter
+ ═══════════════════════════════════════════════════════════
+
+ - De demo heet in het verbindscherm "Simuleer verbinding — bekijk je
+   gegevens". Alles werkt zoals met een adapter, maar er wordt niets bewaard:
+   geen instelling, geen rapport in je account, geen rit, geen bestand. Wat de
+   demo schrijft, staat in een laag in het geheugen en is weg als hij stopt
+   (de zandbak, `PLDemo` in pidlane-demo.js).
+ - Geen echte rapporten in de demo: de AI-analyse geeft een voorbeeldrapport
+   met de gesimuleerde waarden, kost geen tegoed en verdwijnt bij het stoppen
+   uit het rapportenoverzicht.
+ - Je eigen auto als demo-auto: de kiezer toont eerst je voertuigen uit Mijn
+   voertuigen. Je rapporten, ritten en open punten kun je tijdens de demo
+   gewoon bekijken (lezen mag, schrijven niet).
+ - Elke demo-auto krijgt de sensoren bij zijn brandstof; een diesel-demo had
+   tot nu toe de lambdasondes van een benzine.
+ - Een demo zonder login eindigt weer op het loginscherm.
+ - Nieuw: "Verder zonder adapter" in het verbindscherm, en op het startscherm
+   de kaart "Niet in de auto?": kenteken-check bij het RDW (APK met de dagen
+   die nog over zijn, WAM-verzekerd, NAP-oordeel, terugroepacties, import,
+   trekgewicht, verbruik en CO2 volgens de typekeuring, emissieklasse),
+   "Dit is mijn auto" met de APK-regel op het startscherm, en foutcodes
+   opzoeken zonder net en zonder auto (pidlane-zonder.js).
+ - Het loginscherm houdt "Try demo — no adapter needed": dat is de tekst die
+   de Play-reviewnotitie letterlijk belooft.
+
+ ═══════════════════════════════════════════════════════════
  29-09-2026 — Geen chassisnummer meer in de statusregel
  ═══════════════════════════════════════════════════════════
 

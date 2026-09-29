@@ -65,6 +65,18 @@ function plFetchUrl(pad){
    Error mét het pad erin, zodat de catch van de aanroeper iets te melden
    heeft in plaats van "Failed to fetch". */
 window.plFetch = async function(pad, opties){
+  // ── de demo-zandbak (29-09-2026) ──
+  // In de demo mag lezen wél (je eigen voertuigen en rapporten bekijken), maar
+  // gaat er niets de deur uit dat iets bewaart of iets kost. Het besluit staat
+  // in PLDemo.netBesluit() (pidlane-demo.js); hier alleen de poort. Het
+  // antwoord is een gewone 403 met demo:true, zodat elke aanroeper hem als
+  // een weigering leest en niets in een wachtrij zet om later te versturen.
+  try{
+    if(window.PLDemo && PLDemo.actief()){
+      const besluit = PLDemo.netBesluit(pad, opties);
+      if(besluit !== 'door') return PLDemo.weigerAntwoord(besluit);
+    }
+  }catch(e){ console.warn('plFetch: demopoort niet te bepalen voor '+pad+' — het verzoek gaat door', e); }
   const o = Object.assign({}, opties||{});
   const url = plFetchUrl(pad);
   const kop = Object.assign({}, o.headers||{});

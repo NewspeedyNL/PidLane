@@ -51,10 +51,14 @@ function registerSessionReport(entry){
         break;
       }
     }
+    // Demo: het rapport staat in het overzicht (zo zie je hoe het werkt), met
+    // DEMO ervoor, en verdwijnt als de demo stopt (PLDemo.stop()).
+    const _demo=!!(window.PLDemo && PLDemo.actief());
     const rec={
       id:'sr'+(++_srSeq)+'_'+Date.now(),
       type:entry.type||'ai',
-      title:entry.title||_srAutoTitle(entry),
+      demo:_demo,
+      title:(_demo?'🧪 DEMO · ':'')+(entry.title||_srAutoTitle(entry)),
       text:txt,
       html:entry.html||null,
       blob:entry.blob||null,

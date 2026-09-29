@@ -367,6 +367,10 @@ function extractAIText(data){
 // welke daarvan ontbreken. {meet:false} zet het blok uit voor een call die niets
 // met sensordata te maken heeft.
 async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, aanlevering=null, extra=null){
+  // Demo: een voorbeeldrapport uit de gesimuleerde waarden, geen AI-call en
+  // geen tegoed. Een rapport over een verzonnen auto is geen echt rapport.
+  // Zie de zandbak in pidlane-demo.js.
+  if(window.PLDemo && PLDemo.actief()) return PLDemo.aiVoorbeeld(prompt, extra);
   // Key ophalen — prioriteit: login account → window → localStorage
   let key = '';
   try{

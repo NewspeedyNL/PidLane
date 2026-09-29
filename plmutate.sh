@@ -1395,6 +1395,32 @@ MUTATIES=(
 "public/pidlane.css@@.pl-live-acties { display:flex; gap:6px; margin:0 0 10px; }@@.pl-live-acties { display:flex; gap:6px; margin:0 0 10px; }\nbody:not(.pl-garage) #pidViewSwitch { display:none !important; }@@bproef-navigatie.js@@de weergavekeuze in Live staat alleen in de garagemodus: een klant zit vast in Slim"
 "public/pidlane-uihelpers.js@@  if(t && !isVin) return t;@@  if(t) return t;@@test-nav.js@@de statusregel bovenin toont het chassisnummer (VIN) in plaats van merk en model"
 "public/pidlane-uihelpers.js@@  if(!s.ai) return 'AI niet bereikbaar';\n  return s.naam || 'Verbonden';@@  return s.naam || 'Verbonden';@@test-nav.js@@de statusregel toont de autonaam terwijl de AI weg is"
+# ── De demo-zandbak (29-09-2026) ──
+# In de demo wordt niets bewaard, en toch werkt alles. Elke mutatie hieronder
+# is een manier waarop dat stil stukgaat: er gaat weer iets naar de AI of het
+# account, een demorapport blijft staan, een echte instelling verdwijnt in de
+# laag, of een demo zonder login eindigt achter de login.
+"public/pidlane-plfetch.js@@      if(besluit !== 'door') return PLDemo.weigerAntwoord(besluit);@@      if(false) return PLDemo.weigerAntwoord(besluit);@@test-demozandbak.js@@de demopoort in plFetch staat open: de AI rekent weer op een verzonnen auto"
+"public/pidlane-fuel.js@@  if(window.PLDemo && PLDemo.actief()) return PLDemo.aiVoorbeeld(prompt, extra);@@  void 0;@@test-demozandbak.js@@apiFetch geeft in de demo geen voorbeeldrapport maar vraagt de echte AI (en rekent tegoed af)"
+"public/pidlane-motortype.js@@  if(window.PLDemo && PLDemo.actief()){@@  if(false){@@test-demozandbak.js@@de demo schrijft weer bestanden naar Documenten/PidLane"
+"public/pidlane-archief.js@@      demo:_demo,@@      demo:false,@@test-demozandbak.js@@een demorapport is niet als demo gemerkt en blijft na de demo in het overzicht staan"
+"public/pidlane-demo.js@@      return LEES_ACTIES.indexOf(actie) >= 0 ? 'door' :@@      return true ? 'door' :@@test-demozandbak.js@@de demo mag weer schrijven naar het klantplatform: rapporten, ritten en open punten van een verzonnen auto"
+"public/pidlane-demo.js@@    function vangt(self, k) { return self === opslag && actief() &&@@    function vangt(self, k) { return self === opslag &&@@test-demozandbak.js@@demoMode uit zonder plDemoStop: een echte instelling verdwijnt stil in de demolaag"
+"public/pidlane-demo.js@@  var DOORLAAT = ['pl_session', 'pl_sessie', 'ns_api_key'];@@  var DOORLAAT = ['ns_api_key'];@@test-demozandbak.js@@wie tijdens de demo inlogt, is na het herladen weer uitgelogd"
+"public/pidlane-demo.js@@      if (Array.isArray(l)) for (var i = l.length - 1; i >= 0; i--) if (l[i] && l[i].demo) l.splice(i, 1);@@      void 0;@@test-demozandbak.js@@demorapporten blijven na de demo in het overzicht — en gaan als eerdere rapporten mee naar de AI"
+"public/pidlane-demo.js@@  demoMode=true; connected=true; dataStable=true;\n  plDemoAan();\n  closeConnOv();@@  demoMode=true; connected=true; dataStable=true;\n  closeConnOv();@@test-demozandbak.js@@de gewone demostart zet de zandbak niet aan"
+"public/pidlane-demo.js@@    if(!ingelogd) setTimeout(()=>{ try{@@    if(false) setTimeout(()=>{ try{@@bproef-demozandbak.js@@een demo zonder login eindigt op een verbindscherm achter de login"
+"public/pidlane-demo.js@@  const demoPIDs=demoPIDsForFuel(demoVin.brandstof);@@  const demoPIDs=demoPIDsForFuel('benzine');@@bproef-demozandbak.js@@elke demo-auto krijgt weer de sensoren van een benzine: lambdasondes op een diesel"
+# ── Zonder adapter (29-09-2026) ──
+# De kenteken-check zegt dingen waar iemand op handelt. Een verkeerde kleur
+# hier is geen cosmetiek: "verzekerd" op een onverzekerde auto, of "logisch"
+# op een onlogische tellerstand, is een verkeerd koopadvies.
+"public/pidlane-zonder.js@@    else if (nee(rij.wam_verzekerd)) r('🛡️', 'WAM-verzekerd', 'nee — volgens het RDW niet verzekerd', 'rood');@@    else if (nee(rij.wam_verzekerd)) r('🛡️', 'WAM-verzekerd', 'nee — volgens het RDW niet verzekerd', null);@@test-zonder.js@@een onverzekerde auto staat niet in het rood"
+"public/pidlane-zonder.js@@      var onlog = /onlogisch/i.test(teller), logisch = !onlog && /logisch/i.test(teller);@@      var onlog = false, logisch = /logisch/i.test(teller);@@test-zonder.js@@een onlogische tellerstand wordt als logisch gelezen (\"onlogisch\" bevat \"logisch\")"
+"public/pidlane-zonder.js@@    if (dagen <= 30) return { ernst: 'oranje'@@    if (dagen <= 3) return { ernst: 'oranje'@@test-zonder.js@@een APK die over drie weken verloopt, staat in het groen"
+"public/pidlane-zonder.js@@    if (/^[0-9][0-9A-F]{3}$/.test(s)) s = 'P' + s;@@    void 0;@@test-zonder.js@@een foutcode zonder letter (0301, zoals op een werkbon) wordt niet gevonden"
+"public/pidlane-zonder.js@@    if (st.verbonden) return [];@@    if (false) return [];@@test-zonder.js@@de kaart zonder adapter staat er ook als de auto verbonden is"
+"public/pidlane-zonder.js@@    var onbekend = !info.desc || /^Onbekende code/.test(info.desc);@@    var onbekend = !info.desc;@@test-zonder.js@@een onbekende foutcode krijgt de standaardernst van dtcInfo als oordeel"
 )
 
 echo

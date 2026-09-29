@@ -2771,6 +2771,41 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de demo-zandbak en de app zonder adapter (29-09-2026) ──
+  // In de demo wordt niets bewaard: localStorage gaat naar een laag in het
+  // geheugen, plFetch houdt de AI en het schrijven naar het account binnen.
+  // Het gevaar in een ECHTE rit is het omgekeerde: een zandbak die na een
+  // demo is blijven openstaan. De laag vangt alleen zolang demoMode aan staat,
+  // dus dan gaat er nog niets verloren — maar dan is plDemoStop() ergens
+  // overgeslagen, en hangt het bewaren van deze rit aan die ene vlag. Deze
+  // proef kijkt daarnaar, en of de kaart "Niet in de auto?" weg is nu de auto
+  // verbonden is. Hij schrijft één proefsleutel en haalt hem weer weg.
+  {
+    issue: '—',
+    naam: 'De demo-zandbak is dicht en bewaren werkt echt',
+    waarom: 'Een zandbak die na een demo openstaat, betekent dat plDemoStop() is overgeslagen; dan hangt het bewaren van deze rit aan één vlag, en gaat het mis zonder één foutmelding.',
+    proef: async function () {
+      if (!window.PLDemo || !window.PLZonder)
+        return { staat: 'FOUT', detail: 'PLDemo of PLZonder ontbreekt — de demo bewaart dan weer alles, of de app is zonder adapter leeg' };
+      var demo = (typeof demoMode !== 'undefined' && demoMode);
+      if (demo) return { staat: 'LET OP', detail: 'de testrun draait in de demo — dit toetst een echte rit' };
+      var st = PLDemo.stand();
+      if (st.aan) return { staat: 'FOUT', detail: 'de zandbak staat nog open na een demo (' + st.inLaag + ' sleutels in de laag): plDemoStop() is overgeslagen — de opslag gaat nu alleen door omdat demoMode uit staat' };
+      var k = 'pl_b5_zandbak', ok = false;
+      try { localStorage.setItem(k, '1'); ok = localStorage.getItem(k) === '1'; localStorage.removeItem(k); }
+      catch (e) { return { staat: 'FOUT', detail: 'localStorage weigert: ' + (e && e.message || e) }; }
+      if (!ok) return { staat: 'FOUT', detail: 'een proefsleutel kwam niet terug uit localStorage' };
+      if (PLDemo.netBesluit('/v1/messages', {}) === 'door')
+        return { staat: 'FOUT', detail: 'de demopoort laat de AI door — in een demo gaat er dan een analyse over een verzonnen auto de deur uit' };
+      var verbonden = typeof connected !== 'undefined' && connected;
+      var kaart = document.getElementById('plZonderKaart');
+      PLZonder.teken(true);
+      if (verbonden && kaart && kaart.innerHTML.trim())
+        return { staat: 'FOUT', detail: 'de auto is verbonden, maar de kaart "Niet in de auto?" staat er nog' };
+      return { staat: 'OK', detail: 'zandbak dicht, opslag schrijft echt, de AI blijft in de demo binnen' + (verbonden ? ', geen zonder-adapterkaart tijdens de rit' : '') };
+    }
+  },
+
   // ── de onderbalk en het nieuwe startscherm (29-09-2026) ──
   // Vier tabs, één hoofdknop en vier tegels vervangen ☰, 🏠 en zes deuren.
   // Wat in de auto stuk kan zijn en in de browserproef niet: de balk staat er
