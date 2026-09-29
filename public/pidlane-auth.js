@@ -510,7 +510,8 @@ async function logout(){
 }
 
 // ── Sluit de app (#261) ─────────────────────────────────────────────
-// Een bewuste handeling uit het menu, en daarom wél toegestaan waar de
+// Een bewuste handeling uit het menu (sinds 29-09-2026 via "Rit beëindigen"
+// in pidlane-afsluiten.js), en daarom wél toegestaan waar de
 // terugknop het niet mag (zie _plBackHandler in pidlane-archief.js). Eerst de
 // verbinding netjes verbreken, zodat de sessie bewaard wordt en de adapter
 // vrijkomt; dan App.exitApp(). In de browser bestaat afsluiten niet — daar
@@ -544,14 +545,8 @@ async function plSluitApp(){
 }
 const _PL_SLUIT_MS=3000;
 window.plSluitApp=plSluitApp;
-// De knop alleen in de APK tonen. Dit script staat onderaan de body, dus het
-// menu bestaat al; de Capacitor-bridge wordt vóór de pagina geladen.
-try{
-  if(window.Capacitor?.isNativePlatform?.()){
-    const b=document.getElementById('kebabSluitApp');
-    if(b) b.style.display='';
-  }
-}catch(e){ console.warn('knop "Sluit de app" niet getoond:', e); }
+// De eigen menuknop "Sluit de app" is op 29-09-2026 opgegaan in het venster
+// "Rit beëindigen" (pidlane-afsluiten.js). Dat toont de keuze alleen in de APK.
 
 // ══════════════════════════════════════════════════════
 // ⚙️ CONFIGURATIE — zie config.js

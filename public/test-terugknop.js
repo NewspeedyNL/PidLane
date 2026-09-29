@@ -291,6 +291,11 @@ console.log('\n  — één luisteraar, niet twee —');
   // anders, dan staat exitApp() weer in de rest van het bestand en wordt dit
   // rood. En niemand anders mag hem aanroepen: anders zit de terugknop via een
   // omweg alsnog aan de uitgang.
+  // Sinds 29-09-2026 zit de menuknop in het venster "Rit beëindigen"
+  // (pidlane-afsluiten.js). Dat is dezelfde bewuste handeling, alleen een
+  // venster verder; bproef-afsluiten.js toetst dat de terugknop dat venster
+  // sluit en de app niet. Het is de enige module die hem mag aanroepen.
+  const SLUIT_MENU = ['pidlane-afsluiten.js'];
   const SLUIT_BEGIN = 'async function plSluitApp(){';
   const SLUIT_EIND = 'window.plSluitApp=plSluitApp;';
   const wegschakelaars = [], sluitRoepers = [];
@@ -299,7 +304,7 @@ console.log('\n  — één luisteraar, niet twee —');
     if (f === 'pidlane-auth.js') {
       const i = src.indexOf(SLUIT_BEGIN), j = src.indexOf(SLUIT_EIND);
       if (i > -1 && j > i) src = src.slice(0, i) + src.slice(j + SLUIT_EIND.length);
-    } else if (/plSluitApp/.test(src)) sluitRoepers.push(f);
+    } else if (/plSluitApp/.test(src) && SLUIT_MENU.indexOf(f) < 0) sluitRoepers.push(f);
     // Aanroep op de App-plugin (App.exitApp(), AppPlugin.minimizeApp?.()), dus met
     // punt ervoor. Zonder die eis slaat de toets ook aan op de naam in een
     // campagnetekst of op een verklikker die de functie juist ONDERSCHEPT.

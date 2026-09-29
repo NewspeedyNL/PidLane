@@ -132,6 +132,8 @@ function toggleKebab(e){
   const m=document.getElementById('kebabMenu');
   if(!m) return;
   if(m.classList.contains('open')){ m.classList.remove('open'); return; }
+  // Het onderste item zegt wat het doet: "Rit beëindigen" als er een rit loopt.
+  try{ if(window.PLAfsluiten) PLAfsluiten.verversMenu(); }catch(err){ console.warn('menu-item Afsluiten niet ververst:', err); }
   // Port het menu naar <body> en plaats het fixed onder de knop -> altijd bovenop,
   // ook boven het keuzescherm (voorheen viel het in een lagere stapelcontext).
   const btn=document.getElementById('kebabBtn');

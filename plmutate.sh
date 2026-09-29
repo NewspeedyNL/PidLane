@@ -218,7 +218,10 @@ MUTATIES=(
 "public/pidlane-testrun.js@@    issue: '#29',@@    issue: '',@@test-blok5lijst.js@@een proef in blok 5 is zijn issue kwijt en valt daarmee uit de dekking"
 "public/pidlane-testrun.js@@'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ')@@'BLOK 5 DEKT DEZE RONDE: #19, #15'@@test-blok5lijst.js@@de dekkingsregel in CAMPAGNE is weer met de hand overgeschreven"
 "public/pidlane-uitgebreid.js@@schoon.indexOf(hdr) >= 0;@@true;@@test-mode21.js@@de uitgebreide probe accepteert elk antwoord"
+"public/pidlane-uihelpers.js@@'T' + _plTweeCijfers(d.getHours())@@'T' + _plTweeCijfers(d.getUTCHours())@@test-tijdklok.js@@de stempel valt terug op het UTC-uur (#17)"
 "public/pidlane-privacy.js@@    if (klant)@@    if (true)@@test-account-verwijderen.js@@personeel wordt weer naar een knop gestuurd die het niet heeft (#69)"
+"public/pidlane-uihelpers.js@@'-' + String(d.getMilliseconds()).padStart(3,'0');@@'-' + String(d.getMilliseconds());@@test-tijdklok.js@@milliseconden verliezen hun voorloopnullen en sorteren verkeerd (#17)"
+"public/pidlane-uihelpers.js@@function plDatumLokaal(ms){\n  const d = (ms===undefined || ms===null) ? new Date() : new Date(ms);\n  return d.getFullYear() + '-' + _plTweeCijfers(d.getMonth()+1) + '-' + _plTweeCijfers(d.getDate());@@function plDatumLokaal(ms){\n  const d = (ms===undefined || ms===null) ? new Date() : new Date(ms);\n  return d.toISOString().slice(0,10);@@test-tijdklok.js@@de exportdatum staat weer op de UTC-dag (#17)"
 # ── de ronde van 08-09-2026 (#112, #140) ──
 "public/pidlane-veldlab.js@@    try{ download('pidlane-survey-'+plDatumLokaal(t0)+'.json',@@    try{ download('pidlane-survey-'+new Date(t0).toISOString().slice(0,10)+'.json',@@test-tijdklok.js@@een exportnaam bouwt zichzelf weer op de UTC-klok (#112)"
 "public/pidlane-logboek.js@@    met.sort(function (a, b) { return a.ms - b.ms; });@@    met.sort(function (a, b) { return a.t < b.t ? -1 : a.t > b.t ? 1 : 0; });@@test-logboeksort.js@@het logboek sorteert weer op de kloktijd en keert de nacht om (#140)"
@@ -655,6 +658,7 @@ MUTATIES=(
 # want het slot in localStorage staat dan dicht. Beide fouten hieronder zijn
 # stil: de tip verschijnt gewoon niet.
 "public/pidlane-pids.js@@  var g = document.getElementById('gGrid');@@  var g = document.getElementById('gauges');@@test-tegeltip.js@@de tip zoekt een container die niet bestaat en verschijnt stil nooit meer"
+"public/pidlane-uihelpers.js@@  if(name==='live'){ try{ _tegelTipEenmalig(); }catch(e){ console.warn('Dubbeltik-tip niet getoond:', e); } }@@@@test-tegeltip.js@@de haak op de Live view is weg en niets roept de tip nog aan"
 
 # ── Geld en privacy hadden geen tegenproef (11-09-2026) ──
 # Vier van de zwaarste tests in deze repo stonden groen zonder dat iemand ooit
@@ -1005,6 +1009,7 @@ MUTATIES=(
 # het schema en vergeet de app. Beide keren raakt er data stil weg.
 "public/pidlane-auth.js@@  'Demo','Repro','Device']);@@  'Demo','Repro','Device','Koelwater']);@@test-logschema.js@@een nieuw logveld in de app zonder kolom in D1: die waarde belandt stil in \`onbekend\`"
 "public/pidlane-bt.js@@          try{ localStorage.setItem('pl_autoconn','1'); }@@          try{ }@@test-herverbinden.js@@niets zet de herverbindvlag: na elke rendercrash weer met de hand op Verbinden, zoals tot 24-09 (#229)"
+"public/pidlane-uihelpers.js@@    try{ localStorage.removeItem('pl_autoconn'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } // bewust verbroken@@    // bewust verbroken@@test-herverbinden.js@@bewust verbreken wist de wens niet: de app verbindt opnieuw terwijl je hem net losmaakte (#229)"
 "public/pidlane-bt.js@@    if(vorig && _hervatActief()){@@    if(false){@@test-hervatten.js@@na een crash vraagt de app weer het kenteken: een tik tijdens het rijden (#229)"
 "public/pidlane-bt.js@@  if(heeftAuto && selectedNetwork && selectedNetwork.auto && _hervatActief() && !window._plHervat.protocol){@@  if(false){@@test-hervatten.js@@na een crash moet het protocol weer met de hand bevestigd worden (#229)"
 "public/pidlane-bt.js@@    window._plHervat.protocol = true;@@    void 0;@@test-hervatten.js@@elke hertekening start de protocolscan opnieuw: twee scans door elkaar op de bus (#229)"
@@ -1280,6 +1285,7 @@ MUTATIES=(
 "public/pidlane-visueel.js@@const VIS_OUD_MIN_MS = 5000;@@const VIS_OUD_MIN_MS = 3000;@@test-visueel.js@@elke hapering van 3 s maakt de meter dof: knipperen"
 "public/pidlane-visueel.js@@  if(perMin>1 || @@  if(perMin>100 || @@test-visueel.js@@blok 5 ziet een knipperende meter niet"
 "public/pidlane-visueel.js@@X_STAAF_KOEL: 117, X_STAAF_TANK: 203,@@X_STAAF_KOEL: 70, X_STAAF_TANK: 250,@@test-visueel.js@@de staafjes staan weer aan de buitenkant, tegen de ring"
+"public/pidlane-uihelpers.js@@  const s=plStempelLokaal(ms).slice(0,16).replace('T','_');@@  const s=plStempelLokaal(ms).slice(0,10);@@test-tijdklok.js@@een bestandsnaam met alleen de datum: de tweede keer dezelfde naam en het deelvenster"
 "public/pidlane-motortype.js@@  if(_plOpslagFout){@@  if(false){@@test-opslagroute.js@@het deelvenster gaat open zonder dat de klant hoort waarom"
 "public/pidlane-motortype.js@@  if(m.length) return { staat:'FOUT'@@  if(false) return { staat:'FOUT'@@test-opslagroute.js@@blok 5 noemt een mislukte opslag goed"
 "public/pidlane-fuel.js@@  return plBewaarBestand(blob,fname);@@  return nativeShareFile(blob,fname);@@test-opslagroute.js@@een PDF-export opent weer het deelmenu in plaats van op te slaan"
@@ -1326,6 +1332,14 @@ MUTATIES=(
 "public/pidlane-garage.js@@    if (ritStand(r, Date.now(), false) === 'af') ritAf('app gesloten tijdens de rit');@@    ritAf('app gesloten tijdens de rit');@@test-garage.js@@de app even dicht bij de pomp splitst de rit in tweeën"
 "public/pidlane-garage.js@@    if (r && r.vid !== v.id) { ritAf('ander voertuig'); r = null; }\n@@@@test-garage.js@@een geparkeerde rit loopt door op een ander voertuig"
 "worker.js@@kpJson(r.extra, 4000), label, kpNu()).run();@@kpJson(r.extra, 4000), null, kpNu()).run();@@test-klantplatform.js@@de naam van een rit gaat op de server verloren"
+"public/pidlane-afsluiten.js@@    if (ctx.rit) st.push('rit');\n    var sluit = keuze.na === 'sluit' && !!ctx.schil;\n    if (ctx.verbonden && (keuze.na === 'verbreek' || sluit || keuze.uitloggen)) st.push('verbreek');@@    var sluit = keuze.na === 'sluit' && !!ctx.schil;\n    if (ctx.verbonden && (keuze.na === 'verbreek' || sluit || keuze.uitloggen)) st.push('verbreek');\n    if (ctx.rit) st.push('rit');@@test-afsluiten.js@@de verbinding gaat weg vóór de rit af is, en de garage parkeert hem"
+"public/pidlane-afsluiten.js@@    var sluit = keuze.na === 'sluit' && !!ctx.schil;@@    var sluit = keuze.na === 'sluit';@@test-afsluiten.js@@\"App sluiten\" in de browser, waar afsluiten niet bestaat"
+"public/pidlane-afsluiten.js@@    return vlagVooraf === '1' && stappen.indexOf('sluit') >= 0 && stappen.indexOf('uitlog') < 0;@@    return false;@@test-afsluiten.js@@na \"App sluiten\" verbindt de app de volgende keer niet meer vanzelf"
+"public/pidlane-afsluiten.js@@          if (!dicht) { schrijf('pl_autoconn', null); gedaan.push@@          if (!dicht) { gedaan.push@@test-afsluiten.js@@na een mislukte exitApp() verbindt de app vanzelf weer terwijl je net losmaakte"
+"public/pidlane-afsluiten.js@@    return Promise.race([Promise.resolve(p), new Promise(function (r) { setTimeout(function () { r('tijd'); }, AFSLUIT_STAP_MS); })]);@@    return Promise.resolve(p);@@test-afsluiten.js@@een adapter die niet antwoordt houdt het venster vast"
+"public/pidlane-afsluiten.js@@    var dicht = _bezig || ctx.lopend.length > 0 || !stappen.length;@@    var dicht = _bezig || !stappen.length;@@bproef-afsluiten.js@@een caravanrit die nog loopt wordt bij afsluiten stil weggegooid"
+"public/pidlane-uihelpers.js@@    if(!_wasDemo && typeof plBusVrijgeven==='function') await plBusVrijgeven();@@    void 0;@@bproef-afsluiten.js@@bij verbreken blijft de bus bezet: geen ATPC"
+"public/pidlane-uihelpers.js@@  try{ if(window.PLAfsluiten) PLAfsluiten.verversMenu(); }@@  try{ if(false) PLAfsluiten.verversMenu(); }@@bproef-afsluiten.js@@het menu zegt \"Afsluiten\" terwijl er een rit loopt"
 )
 
 echo
