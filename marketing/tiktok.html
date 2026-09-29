@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>PidLane TikTok-animatie</title>
+<!-- Bron van de TikTok-video (1080x1920, 15,5 s). Elk beeld wordt getekend door
+     render(t) met t in seconden, zonder CSS-animaties: zo is elk frame exact
+     reproduceerbaar. Maak de video met: node marketing/render-video.mjs
+     In de browser openen speelt hem gewoon af (requestAnimationFrame). -->
+<style>
+@font-face{font-family:"Bricolage";src:url(fonts/bricolage.woff2) format("woff2");font-weight:200 800}
+@font-face{font-family:"Serif";src:url(fonts/instrument-serif-italic.woff2) format("woff2");font-style:italic}
+@font-face{font-family:"DM Sans";src:url(fonts/dmsans.woff2) format("woff2");font-weight:100 1000}
+@font-face{font-family:"DM Mono";src:url(fonts/dmmono-500.woff2) format("woff2");font-weight:500}
+:root{--ink:#07090d;--sur:#10151e;--ink2:#0c1017;--line:rgba(255,255,255,.1);--tx:#eef2f8;--mu:#8d97a8;--gn:#1fd189;--cy:#4fd6f0;--am:#ffb020;--rd:#ff5a5a;--grad:linear-gradient(95deg,var(--gn),var(--cy))}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--ink);overflow:hidden}
+#v{position:relative;width:1080px;height:1920px;overflow:hidden;color:var(--tx);font-family:"DM Sans",sans-serif;background:
+  radial-gradient(60% 40% at 80% 10%,rgba(79,214,240,.14),transparent 70%),radial-gradient(60% 40% at 10% 95%,rgba(31,209,137,.14),transparent 70%),var(--ink)}
+#grid{position:absolute;inset:0;opacity:.5;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:72px 72px;-webkit-mask-image:radial-gradient(70% 60% at 50% 45%,#000 30%,transparent 85%)}
+.sc{position:absolute;inset:0;opacity:0}
+.kop{position:absolute;left:90px;right:90px;top:250px;text-align:center}
+.kop h1{font:800 118px/.98 "Bricolage";letter-spacing:-4px}
+.kop p{font:italic 72px/1.05 "Serif";margin-top:18px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.mid{position:absolute;left:0;right:0;display:flex;justify-content:center}
+.mono{font-family:"DM Mono",monospace}
+
+/* scène 1: lampje */
+#lamp{top:820px}
+#lamp svg{width:520px;height:340px;overflow:visible}
+/* scène 2: poort en adapter */
+#poort{top:760px;height:720px}
+.dash{position:absolute;left:140px;right:140px;top:0;height:250px;border-radius:0 0 60px 60px;background:linear-gradient(180deg,#1a202c,#11151e);box-shadow:inset 0 -2px 0 rgba(255,255,255,.06)}
+.port{position:absolute;left:50%;top:170px;width:300px;height:120px;margin-left:-150px;background:#05070b;clip-path:polygon(0 0,100% 0,90% 100%,10% 100%);border-radius:8px}
+.port i{position:absolute;top:26px;width:14px;height:22px;border-radius:3px;background:#c9a650}
+.adp{position:absolute;left:50%;width:280px;height:250px;margin-left:-140px;border-radius:22px 22px 40px 40px;background:linear-gradient(180deg,#1d2433,#0f131b);box-shadow:inset 0 0 0 2px rgba(255,255,255,.08),0 40px 80px rgba(0,0,0,.6)}
+.adp b{position:absolute;left:50%;top:70px;margin-left:-60px;width:120px;text-align:center;font:700 26px "Bricolage";color:#c3cad6;letter-spacing:1px}
+.led{position:absolute;left:50%;top:150px;width:22px;height:22px;margin-left:-11px;border-radius:50%;background:#1b2130}
+.ring{position:absolute;left:50%;top:230px;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;border:4px solid var(--cy);opacity:0}
+/* scène 3 en 4: telefoon */
+.tel{position:absolute;left:50%;width:640px;margin-left:-320px;border-radius:70px;padding:16px;background:#05070b;box-shadow:inset 0 0 0 2px rgba(255,255,255,.12),0 60px 120px rgba(0,0,0,.7)}
+.tel .in{border-radius:56px;background:var(--sur);padding:44px 36px;min-height:100%;box-shadow:inset 0 0 0 1px var(--line)}
+.row{display:flex;gap:16px;font:500 26px "DM Mono";white-space:nowrap;line-height:1.7}
+.row .t{color:var(--cy)}.row .r{color:#aab3c2}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:18px 0 22px}
+.bar i{display:block;height:100%;width:0;background:var(--grad)}
+.oord{display:flex;align-items:center;gap:26px;padding:28px;border-radius:30px;background:var(--ink2);box-shadow:inset 0 0 0 2px rgba(255,176,32,.35)}
+.oord i{flex:none;width:86px;height:86px;border-radius:50%;background:var(--am);box-shadow:0 0 50px var(--am)}
+.oord b{display:block;font:800 44px/1.05 "Bricolage";letter-spacing:-1px}
+.oord small{font-size:26px;color:var(--mu)}
+.item{display:flex;gap:18px;align-items:flex-start;font-size:30px;line-height:1.3;padding:20px 4px;border-bottom:1px solid var(--line)}
+.item::before{content:"";flex:none;width:16px;height:16px;border-radius:50%;margin-top:12px;background:var(--c)}
+.uitleg{margin-top:22px;padding:24px 26px;border-radius:26px;font-size:30px;line-height:1.35;background:rgba(79,214,240,.08);box-shadow:inset 0 0 0 2px rgba(79,214,240,.3)}
+.uitleg b{color:var(--cy);font-weight:600}
+/* scène 4 */
+.kaart{position:absolute;left:130px;right:130px;border-radius:40px;background:linear-gradient(180deg,#151b27,var(--sur));box-shadow:inset 0 0 0 2px rgba(255,255,255,.12),0 40px 90px rgba(0,0,0,.6);padding:34px 36px}
+.wie{font:500 24px "DM Mono";letter-spacing:2px;color:var(--mu);text-transform:uppercase;display:flex;align-items:center;gap:14px}
+.wie::before{content:"";width:14px;height:14px;border-radius:50%;background:var(--gn);box-shadow:0 0 16px var(--gn)}
+.m{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px}
+.m div{padding:20px;border-radius:22px;background:var(--ink2);box-shadow:inset 0 0 0 1px var(--line)}
+.m small{font-size:22px;color:var(--mu)}
+.m b{display:block;font:500 46px "DM Mono";margin-top:4px}
+.code{position:absolute;z-index:2;left:50%;transform:translateX(-50%);padding:18px 34px;border-radius:999px;background:var(--ink);box-shadow:inset 0 0 0 2px rgba(79,214,240,.5);font:500 36px "DM Mono";white-space:nowrap;text-align:center}
+.code small{display:block;font-size:18px;letter-spacing:3px;color:var(--mu)}
+.pk{position:absolute;left:50%;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--cy);box-shadow:0 0 18px var(--cy)}
+.tag{margin-top:22px;display:inline-block;font:500 26px "DM Mono";padding:12px 20px;border-radius:16px;color:var(--cy);background:rgba(79,214,240,.1)}
+/* scène 5 */
+#eind{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:0}
+#eind svg{width:260px;height:260px}
+#eind h2{font:800 150px/1 "Bricolage";letter-spacing:-6px;margin-top:20px}
+#eind .sl{font:italic 64px "Serif";color:var(--mu);margin-top:10px}
+#eind .cta{margin-top:70px;font:700 54px "Bricolage";color:#04110c;background:var(--grad);padding:30px 64px;border-radius:999px;box-shadow:0 20px 70px rgba(31,209,137,.5)}
+#eind .sm{margin-top:34px;font-size:34px;color:var(--mu)}
+</style>
+</head>
+<body>
+<div id="v">
+  <div id="grid"></div>
+
+  <!-- 1 · het lampje -->
+  <section class="sc" id="s1">
+    <div class="kop"><h1>Brandt dit lampje?</h1><p>En geen idee wat het is?</p></div>
+    <div class="mid" id="lamp">
+      <svg viewBox="0 0 120 80" aria-hidden="true"><defs><filter id="gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+        <g id="mil" fill="none" stroke="#2a3040" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M22 30h10v-6h12v-8h26v8h12l8 8h8v-8h8v34h-8v-8h-8l-10 12H46l-8-8h-6v10H22z"/>
+          <path d="M8 36h14M8 30v12M50 16h18"/>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 2 · adapter erin -->
+  <section class="sc" id="s2">
+    <div class="kop"><h1>Steek er een adapter in.</h1><p>Onder het stuur. Dertig seconden.</p></div>
+    <div class="mid" id="poort" style="left:0;right:0;position:absolute">
+      <div class="dash"></div>
+      <div class="port"><i style="left:44px"></i><i style="left:84px"></i><i style="left:124px"></i><i style="left:164px"></i><i style="left:204px"></i><i style="left:244px"></i></div>
+      <div class="adp" id="adp"><b>OBD2</b><div class="led" id="led"></div></div>
+      <div class="ring" id="ring"></div>
+    </div>
+  </section>
+
+  <!-- 3 · uitleg in gewone taal -->
+  <section class="sc" id="s3">
+    <div class="kop" style="top:200px"><h1>PidLane vertaalt het.</h1><p>In gewone taal.</p></div>
+    <div class="tel" id="tel3" style="top:640px;height:1060px"><div class="in">
+      <div id="log" style="height:230px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end"></div>
+      <div class="bar"><i id="bar"></i></div>
+      <div id="uit" style="opacity:0">
+        <div class="oord"><i></i><div><b>Let op, vraag door</b><small>één foutcode, verder in orde</small></div></div>
+        <div class="item" style="--c:var(--am)">P0420 · katalysator werkt onder de norm</div>
+        <div class="item" style="--c:var(--gn)">Zelftests doorlopen, teller klopt</div>
+        <div class="uitleg"><b>Wat nu?</b> Onderhandel over de prijs, of laat je monteur even meekijken.</div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 4 · meekijken op afstand -->
+  <section class="sc" id="s4">
+    <div class="kop" style="top:200px"><h1>Twijfel je?</h1><p>Je monteur kijkt live mee.</p></div>
+    <div class="kaart" id="k-garage" style="top:620px">
+      <div class="wie">Jouw garage · op afstand</div>
+      <div class="m" data-m><div><small>Toeren</small><b>—</b></div><div><small>Koelw. °C</small><b>—</b></div><div><small>Accu V</small><b>—</b></div></div>
+      <div class="tag" id="tag">📋 Foutcodes opgevraagd: P0420</div>
+    </div>
+    <div class="code" id="code" style="top:1000px"><small>MEEKIJK-CODE</small>715 204 9936</div>
+    <div id="lijn" style="position:absolute;left:50%;top:960px;height:190px;border-left:3px dashed rgba(79,214,240,.35)"></div><div class="pk" id="pk1"></div><div class="pk" id="pk2"></div><div class="pk" id="pk3"></div>
+    <div class="kaart" id="k-jij" style="top:1150px">
+      <div class="wie">Jij · bij de verkoper</div>
+      <div class="m" data-m><div><small>Toeren</small><b>—</b></div><div><small>Koelw. °C</small><b>—</b></div><div><small>Accu V</small><b>—</b></div></div>
+    </div>
+  </section>
+
+  <!-- 5 · afsluiter -->
+  <section class="sc" id="s5">
+    <div id="eind" style="position:absolute;inset:0;padding-bottom:180px">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#1fd189"/><stop offset="1" stop-color="#4fd6f0"/></linearGradient></defs><rect x="6" y="12" width="52" height="34" rx="11" fill="none" stroke="url(#lg)" stroke-width="4.5"/><path id="hart" d="M14 29h10l5-10 7 18 5-8h9" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></svg>
+      <h2>PidLane</h2>
+      <div class="sl">Your car talks. We translate.</div>
+      <div class="cta">pidlane.nl</div>
+      <div class="sm">Probeer het met je eigen kenteken</div>
+    </div>
+  </section>
+</div>
+
+<script>
+// Tijdlijn in seconden. Alles hangt aan render(t); niets beweegt uit zichzelf.
+window.DUUR=15.5;
+const $=id=>document.getElementById(id);
+const cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const uit=x=>1-Math.pow(1-cl(x),3);                    // ease-out
+const inuit=x=>{x=cl(x);return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;};
+const zicht=(t,a,b,f=.35)=>cl((t-a)/f)*cl((b-t)/f);      // in- en uitfaden van een scène
+// Vaste 'ruis' per tijdstip, zodat hetzelfde frame altijd hetzelfde beeld geeft
+const ruis=(t,k)=>{const x=Math.sin(Math.floor(t*3)*12.9898+k*78.233)*43758.5453;return x-Math.floor(x);};
+
+const SC=[['s1',0,2.9],['s2',2.7,5.8],['s3',5.6,10.3],['s4',10.1,13.4],['s5',13.2,15.6]];
+const LOG=[['ATZ','ELM327 v1.4b'],['0100','41 00 BE 3F A8 13'],['03','43 01 04 20'],['0101','41 01 81 07 65 00'],['0105','41 05 82'],['01A6','41 A6 00 0D 7E 2C']];
+
+function scene(t,id,a,b){
+  const el=$(id), v=zicht(t,a,b);
+  el.style.opacity=v;
+  const k=el.querySelector('.kop');
+  if(k) k.style.transform='translateY('+((1-uit((t-a)/.6))*40)+'px)';
+  return v>0;
+}
+
+function render(t){
+  SC.forEach(s=>scene(t,s[0],s[1],s[2]));
+
+  // 1 · lampje knippert en gloeit op
+  const aan=t>.5 && (t%0.7)<0.45;
+  const mil=$('mil');
+  mil.setAttribute('stroke',aan?'#ffb020':'#3a3120');
+  mil.setAttribute('filter',aan?'url(#gl)':'');
+  $('lamp').style.transform='scale('+(0.85+0.15*uit(t/.8))+')';
+
+  // 2 · adapter schuift omhoog de poort in, led gaat aan
+  const p=inuit((t-3.2)/1.1);
+  $('adp').style.top=(600-p*330)+'px';
+  const vast=t>4.3;
+  $('led').style.background=vast?((t%0.5)<0.3?'#4fd6f0':'#1d6f80'):'#1b2130';
+  $('led').style.boxShadow=vast?'0 0 26px #4fd6f0':'none';
+  const r=cl((t-4.3)/.8);
+  $('ring').style.opacity=r>0&&r<1?1-r:0;
+  $('ring').style.transform='scale('+(1+r*7)+')';
+
+  // 3 · regels lopen binnen, balk vult, oordeel verschijnt
+  const n=Math.floor(cl((t-6.0)/2.2)*LOG.length+ (t>6?1:0));
+  const log=$('log'), nu=Math.min(n,LOG.length);
+  if(log.dataset.n!=String(nu)){
+    log.innerHTML=LOG.slice(0,nu).map(l=>'<div class="row"><span class="t">&gt; '+l[0]+'</span><span class="r">'+l[1]+'</span></div>').join('');
+    log.dataset.n=nu;
+  }
+  $('bar').style.width=(cl((t-6.0)/2.4)*100)+'%';
+  const o=uit((t-8.4)/.5);
+  $('uit').style.opacity=o; $('uit').style.transform='translateY('+(1-o)*30+'px)';
+  $('tel3').style.transform='translateY('+(1-uit((t-5.6)/.7))*120+'px)';
+
+  // 4 · twee schermen met dezelfde waarden, pakketjes van onder naar boven
+  const w=[Math.round(790+ruis(t,1)*80), Math.round(88+ruis(t,2)*3), (14+ruis(t,3)*.4).toFixed(1).replace('.',',')];
+  document.querySelectorAll('[data-m]').forEach((m,i)=>{
+    const vv=i===0?[Math.round(790+ruis(t-.15,1)*80),Math.round(88+ruis(t-.15,2)*3),(14+ruis(t-.15,3)*.4).toFixed(1).replace('.',',')]:w; // de meekijker loopt een fractie achter
+    m.querySelectorAll('b').forEach((b,j)=>b.textContent=vv[j].toLocaleString?vv[j].toLocaleString('nl-NL'):vv[j]);
+  });
+  [1,2,3].forEach(i=>{ const f=((t*0.9+i/3)%1), y=1140-f*185; const e=$('pk'+i); e.style.top=y+'px'; e.style.opacity=t>10.4?Math.sin(f*Math.PI):0; });
+  $('tag').style.opacity=uit((t-11.8)/.4);
+  $('k-garage').style.transform='translateY('+(1-uit((t-10.1)/.6))*-80+'px)';
+  $('k-jij').style.transform='translateY('+(1-uit((t-10.1)/.6))*80+'px)';
+
+  // 5 · hartslag in het logo tekent zichzelf, dan de rest
+  $('hart').setAttribute('stroke-dashoffset',1-uit((t-13.4)/.8));
+  const e5=uit((t-13.7)/.6);
+  document.querySelectorAll('#eind h2,#eind .sl,#eind .cta,#eind .sm').forEach((el,i)=>{ const x=uit((t-13.7-i*.15)/.5); el.style.opacity=x; el.style.transform='translateY('+(1-x)*30+'px)'; });
+}
+window.render=render;
+
+// Afspelen in de browser; de opname roept render(t) zelf aan (?opname).
+if(!/opname/.test(location.search)){
+  const t0=performance.now();
+  (function loop(){ render(((performance.now()-t0)/1000)%DUUR); requestAnimationFrame(loop); })();
+} else render(0);
+</script>
+</body>
+</html>
