@@ -522,7 +522,7 @@ jobs:
           # herhaalbaar is en niet stilletjes verdubbelt.
           xml = re.sub(r'\s*<!-- PidLane meetdienst \(#18\).*?-->', '', xml)
           xml = re.sub(r'\s*<uses-permission[^>]*android\.permission\.'
-                       r'(FOREGROUND_SERVICE[A-Z_]*|POST_NOTIFICATIONS|WAKE_LOCK)[^>]*/>', '', xml)
+                       r'(FOREGROUND_SERVICE[A-Z_]*|POST_NOTIFICATIONS|WAKE_LOCK|RECEIVE_BOOT_COMPLETED|SCHEDULE_EXACT_ALARM)[^>]*/>', '', xml)
           xml = re.sub(r'\s*<service[^>]*PLMeetdienst[^>]*/>', '', xml)
 
           perms = (
@@ -541,10 +541,26 @@ jobs:
               # hapert de hartslag pas na minuten -- gemeten op 11-09-2026: 373
               # van de ~485 slagen over een afwezigheid van acht minuten.
               '\n    <uses-permission android:name="android.permission.WAKE_LOCK" />'
+              # De herinneringen voor APK en onderhoud (PLHerinner, 29-09-2026)
+              # via @capacitor/local-notifications. RECEIVE_BOOT_COMPLETED brengt
+              # de plugin zelf mee: na een herstart plant hij de herinneringen
+              # opnieuw in. Hier staat hij zodat hij zichtbaar is en in
+              # test-privacydekking.js meetelt.
+              '\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />'
+              # SCHEDULE_EXACT_ALARM brengt de plugin ook mee, en die gaat er
+              # weer uit. Play staat hem alleen toe voor wekker- en agenda-apps;
+              # zonder plant Android de melding een paar minuten ruimer in, en
+              # voor een APK-datum is dat geen verlies.
+              '\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />'
           )
           m = re.search(r'<manifest\b[^>]*>', xml)
           if not m:
               print("FOUT: <manifest> tag niet gevonden"); sys.exit(1)
+          # tools:node="remove" hierboven vraagt de tools-namespace op <manifest>.
+          if 'xmlns:tools=' not in m.group(0):
+              tag = m.group(0)[:-1].rstrip() + ' xmlns:tools="http://schemas.android.com/tools">'
+              xml = xml[:m.start()] + tag + xml[m.end():]
+              m = re.search(r'<manifest\b[^>]*>', xml)
           xml = xml[:m.end()] + perms + xml[m.end():]
 
           dienst = (
@@ -913,8 +929,12 @@ jobs:
           #    permissies waar een reviewer een reden voor wil die deze app
           #    niet heeft. Een plugin kan ze via manifest-merge meebrengen —
           #    dat is nu juist wat hier zichtbaar wordt.
+          # SCHEDULE_EXACT_ALARM en USE_EXACT_ALARM (29-09-2026): Play staat ze
+          # alleen toe voor wekker- en agenda-apps. De meldingenplugin brengt de
+          # eerste mee; de injectiestap haalt hem weg, en dit ziet of dat lukte.
           for verboden in ('ACCESS_BACKGROUND_LOCATION', 'READ_PHONE_STATE',
-                           'QUERY_ALL_PACKAGES', 'REQUEST_INSTALL_PACKAGES'):
+                           'QUERY_ALL_PACKAGES', 'REQUEST_INSTALL_PACKAGES',
+                           'SCHEDULE_EXACT_ALARM', 'USE_EXACT_ALARM'):
               for k in knopen:
                   if verboden in k:
                       print("FOUT: %s staat in de bundel en hoort er niet in" % verboden)
@@ -1008,6 +1028,7 @@ jobs:
               ('android.permission.FOREGROUND_SERVICE', 'de meetdienst mag op de voorgrond draaien (#18)'),
               ('android.permission.POST_NOTIFICATIONS', 'de melding die bij een foreground service hoort (#18)'),
               ('android.permission.WAKE_LOCK', 'de partial wake lock van de meetdienst (#18)'),
+              ('android.permission.RECEIVE_BOOT_COMPLETED', 'de APK-herinneringen overleven een herstart (PLHerinner)'),
           ]:
               if not any(naam in k for k in knopen):
                   print("FOUT: %s ontbreekt in de bundel (%s)" % (naam, waarvoor)); fout += 1

@@ -563,6 +563,20 @@ melding terwijl de service doorloopt. Dat is geen aparte verklaring waard, maar
 het is wél de reden dat de permissie er staat — en dat is wat een reviewer
 vraagt als hij hem ziet.
 
+**Sinds 29-09-2026 ook: APK- en onderhoudsherinneringen.** Via
+`@capacitor/local-notifications`, alleen als de gebruiker zelf "Herinner me"
+kiest. Twee gevolgen voor de permissielijst:
+
+- `RECEIVE_BOOT_COMPLETED` (normal permission, geen verklaring): na een herstart
+  plant de plugin de herinneringen opnieuw in. `POST_NOTIFICATIONS` wordt nu
+  óók voor deze meldingen gebruikt; de runtime-vraag komt pas bij "Herinner me".
+- `SCHEDULE_EXACT_ALARM` brengt de plugin mee en gaat er in `build-apk.yml` met
+  `tools:node="remove"` weer uit. Play staat hem alleen toe voor wekker- en
+  agenda-apps; de bundelcontrole faalt als hij er toch in zit.
+
+Data safety verandert niet: de herinneringen worden alleen op het toestel
+ingepland, er gaat niets naar een server.
+
 ---
 
 ## 14. Release notes
