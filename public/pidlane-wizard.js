@@ -77,7 +77,7 @@ var BOOM = {
       {t:'🚗 Kopen, verkopen of inruilen',d:'Ik wil weten wat hij waard is — en wat hij verbergt', set:{doel:'handel'},       next:'handel_rol'},
       {t:'⛽ Verbruik en besparen',       d:'Wat kost hij echt, en hoe kan het zuiniger',          set:{doel:'verbruik'},     next:'verbruik_wat'},
       {t:'🩺 Gewoon een controle',        d:'Geen klacht — ik wil weten hoe hij ervoor staat',     set:{doel:'conditie'},     next:'conditie_diep'},
-      {t:'🧳 Ergens klaar voor maken',    d:'Winter, lange rit, caravan of een onderhoudsbeurt',   set:{doel:'voorbereiding'},next:'voorb_wat'}
+      {t:'🧳 Ergens klaar voor maken',    d:'Winter, zomer, lange rit of een onderhoudsbeurt',     set:{doel:'voorbereiding'},next:'voorb_wat'}
     ]
   },
 
@@ -140,6 +140,23 @@ var BOOM = {
     next:null
   },
 
+  /* ── Onderweg (29-09-2026) ── de tegel "Rit starten" op het startscherm.
+       Twee keuzes zijn geen onderzoek maar een meting die meteen begint: de
+       rit-monitor en de caravancoach. Die dragen `direct` in plaats van
+       `next` — er valt voor hen geen plan samen te stellen, en een planscherm
+       met één regel erin is een extra tik die niets toevoegt. De andere twee
+       lopen door naar de verbruikstak, die bestond al. */
+  onderweg_wat: {
+    v:'Wat wil je onderweg?',
+    sub:'De app rijdt met je mee.',
+    opt:[
+      {t:'🛡️ Meekijken en waarschuwen',  d:'Waakt de hele rit en meldt wat opvalt', set:{doel:'rit'},                          direct:'monitor'},
+      {t:'⛽ Zuiniger rijden',            d:'Advies op je eigen rijstijl',          set:{doel:'verbruik', vraag:'rijstijl'},   next:'verbruik_nu'},
+      {t:'🚐 Met caravan of aanhanger',   d:'Live verbruik en tips bij trekken',    set:{doel:'rit'},                          direct:'trekken'},
+      {t:'📊 Wat verbruikt hij écht',     d:'Gemeten, niet de boordcomputer',       set:{doel:'verbruik', vraag:'werkelijk'},  next:'verbruik_nu'}
+    ]
+  },
+
   /* ── Verbruik ── */
   verbruik_wat: {
     v:'Wat wil je weten?',
@@ -180,7 +197,6 @@ var BOOM = {
       {t:'❄️ De winter',              d:'Accu, koelsysteem, verwarming',      set:{voorb:'winter',    meting:'stil'},  next:null},
       {t:'☀️ Warm weer en airco',     d:'Aircoprestatie en koeling',          set:{voorb:'airco',     meting:'stil'},  next:null},
       {t:'🛣️ Een lange rit',          d:'Alles wat onderweg kan opbreken',    set:{voorb:'langerit',  meting:'rit10'}, next:null},
-      {t:'🚚 Caravan of aanhanger',   d:'Trekken en de belasting die dat geeft', set:{voorb:'caravan', meting:'rit10'}, next:null},
       {t:'🔧 Een onderhoudsbeurt',    d:'Wat is er nodig, en wanneer',        set:{voorb:'onderhoud', meting:'stil'},  next:null}
     ]
   }
@@ -232,6 +248,24 @@ var MODULE_PROFIEL = {
   accu:'accu', evaccu:'accu', trekken:'rit', klimaat:'basis', onderhoud:'basis'
 };
 
+/* Welke functieschakelaar uit beheer.html hoort bij welke module (29-09-2026).
+   Die schakelaars (feat_*, FEATURE_TOGGLES in pidlane-fuel.js) verborgen
+   alleen de kaart op het startscherm. Nu de tegels via deze wizard lopen, zou
+   een uitgezette functie hier gewoon in het plan blijven staan — de schakelaar
+   deed dan niets meer. Geen vermelding = altijd aan. */
+var MODULE_FEAT = {
+  aimonteur:'feat_ai_monteur', diep:'feat_deepdiag', recorder:'feat_pidrecorder',
+  conditie:'feat_conditiecheck', systeem:'feat_basiccheck', onderhoud:'feat_onderhoud',
+  markt:'feat_koopcheck', verbruik:'feat_verbruik', monitor:'feat_monitor',
+  trekken:'feat_caravan', langerit:'feat_langerit', klimaat:'feat_seizoen',
+  accu:'feat_ev', evaccu:'feat_ev'
+};
+function moduleAan(k){
+  var f = MODULE_FEAT[k];
+  if(!f || typeof featOn!=='function') return true;
+  return veilig(function(){ return featOn(f); }, true);
+}
+
 var METING = {
   stil:    {n:'Stilstaand meten',  d:'Contact aan, motor stationair',  tijd:'±2 min'},
   rit2:    {n:'Korte rit',         d:'±2 minuten rijden',              tijd:'±2 min',  start:function(){ openRitAnalyse('2min'); }},
@@ -280,7 +314,28 @@ function bouwPlan(j){
   if(ev) voeg('evaccu'); else voeg('accu');
 
   if(j.meting==='monitor') voeg('monitor');
-  return m;
+  return m.filter(moduleAan);
+}
+
+/* ── Takken ─────────────────────────────────────────────────────────────
+   De vier tegels op het startscherm (29-09-2026) openen de wizard niet op de
+   eerste vraag maar meteen op hun eigen tak: wie op "Er is iets mis" tikt,
+   heeft die vraag al beantwoord. `conditie` is de vervolgstap vanuit Check
+   mijn auto ("grondiger laten kijken"). Zonder tak begint hij bij start. */
+var TAKKEN = {
+  storing:       {nu:'storing_wanneer', set:{doel:'storing'}},
+  handel:        {nu:'handel_rol',      set:{doel:'handel'}},
+  onderweg:      {nu:'onderweg_wat',    set:{}},
+  voorbereiding: {nu:'voorb_wat',       set:{doel:'voorbereiding'}},
+  conditie:      {nu:'conditie_diep',   set:{doel:'conditie'}}
+};
+var tak = null;
+function beginVan(t){
+  var T = TAKKEN[t];
+  tak = T ? t : null;
+  job = {}; pad = [];
+  if(T){ Object.keys(T.set).forEach(function(k){ job[k]=T.set[k]; }); nu = T.nu; }
+  else nu = 'start';
 }
 
 /* ── Toestand ───────────────────────────────────────────────────────────
@@ -389,6 +444,7 @@ function toonVraag(){
 
   h += '<div class="wz-opts">';
   (k.opt||[]).forEach(function(o,i){
+    if(o.direct && !moduleAan(o.direct)) return;   // uitgezet in beheer: keuze weg, index blijft kloppen
     h += '<button class="wz-opt" onclick="PLWizard.kies('+i+')">'+
            '<span class="wz-opt-t">'+o.t+'</span>'+
            (o.d?'<span class="wz-opt-d">'+o.d+'</span>':'')+
@@ -450,7 +506,7 @@ function toonPlan(){
 
 /* ── Publiek ────────────────────────────────────────────────────────────*/
 window.PLWizard = {
-  open: function(){
+  open: function(t){
     var ov = el('wizardNieuwOv');
     if(!ov){
       ov = document.createElement('div');
@@ -458,7 +514,7 @@ window.PLWizard = {
       ov.innerHTML = scherm();
       document.body.appendChild(ov);
     }
-    job={}; pad=[]; nu='start';
+    beginVan(t);
     gedaan={}; metingGestart=false; actief=true;
     ov.style.display='flex';
     veilig(function(){ el('welcomeScreen').classList.add('hidden'); });
@@ -474,7 +530,7 @@ window.PLWizard = {
     veilig(function(){ goHome(); });
   },
   opnieuw: function(){
-    job={}; pad=[]; nu='start';
+    beginVan(tak);
     gedaan={}; metingGestart=false;
     toonVraag();
   },
@@ -486,6 +542,14 @@ window.PLWizard = {
   kies: function(i){
     var k=BOOM[nu], o=(k.opt||[])[i]; if(!o) return;
     Object.keys(o.set||{}).forEach(function(s){ job[s]=o.set[s]; });
+    if(o.direct){
+      // Een meting die meteen begint: geen plan, dus ook geen chip "Mijn plan".
+      var M = MODULES[o.direct];
+      if(!M){ console.warn('PLWizard: onbekende directe module', o.direct); return; }
+      actief=false; this.sluitStil();
+      veilig(function(){ M.run(job); });
+      return;
+    }
     pad.push(nu);
     nu = o.next;
     if(nu) toonVraag(); else toonPlan();
@@ -579,7 +643,7 @@ window.PLWizard = {
   _job:  function(){ return JSON.parse(JSON.stringify(job)); },
   _actief: function(){ return actief; },
   _gedaan: function(){ return Object.keys(gedaan); },
-  _boom: BOOM, _modules: MODULES
+  _boom: BOOM, _modules: MODULES, _takken: TAKKEN, _feat: MODULE_FEAT
 };
 
 })();

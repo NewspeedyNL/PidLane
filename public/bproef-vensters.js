@@ -76,7 +76,8 @@ function toets(naam, waar, uitleg) {
     });
     toets('de rit-monitor staat niet meer bij de live data', indeling.live.indexOf('wc-monitor') < 0);
     toets('de PID-recorder niet meer bij de diagnose', indeling.diag.indexOf('wc-pidrec') < 0);
-    toets('de deur heet nu "Onderweg"', /Onderweg/.test(indeling.titel), indeling.titel);
+    // 29-09-2026: de deur is de tegel "Rit starten" geworden.
+    toets('de deur heet nu "Rit starten"', /Rit starten/.test(indeling.titel), indeling.titel);
     toets('het menu noemt de waakronde niet meer', !indeling.menuWaak);
     toets('en de bulk-knoppen niet meer', !indeling.menuBulk);
     toets('en de proefcrash niet meer', !indeling.menuCrash);

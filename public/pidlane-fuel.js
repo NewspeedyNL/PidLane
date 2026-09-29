@@ -248,7 +248,7 @@ async function loadRemoteConfig(){
 const FEATURE_TOGGLES = {
   feat_ai_monteur:   ['#wc-diag'],
   feat_deepdiag:     ['#wc-deepdiag'],
-  feat_pidrecorder:  ['#wc-pidrec'],
+  feat_pidrecorder:  ['#wc-pidrec','#plLiveRec'],
   feat_conditiecheck:['#wc-check'],
   feat_foutcodes:    ['#wc-dtc'],
   feat_rijtest:      ['#wc-rit10','#wc-rit10b'],
@@ -278,6 +278,13 @@ const FEATURE_TOGGLES = {
   feat_demo:         ['[id="btnDemo"]','[id="btnDemoLogin"]'],
   feat_tokens:       ['#tokPill']
 };
+// Config-sleutel → tegel op het startscherm (29-09-2026). "Er is iets mis" en
+// Check mijn auto hebben geen sleutel: dat zijn de basis, net als deur 1 was.
+const TEGEL_SLEUTELS = {
+  door_saving_active: 'tg-rit',
+  door_deal_active:   'tg-handel',
+  door_prep_active:   'tg-voorb'
+};
 function featOn(key){ try{ return _cfgBool((window.PID_CONFIG||{})[key], true); }catch(e){ return true; } }
 function applyFeatureToggles(){
   let css='';
@@ -291,11 +298,12 @@ function applyFeatureToggles(){
 
 function applyConfigToUI(){
   const c=window.PID_CONFIG||{};
-  // Deuren tonen/verbergen op de hub
-  const setDoor=(cls,on)=>{ const el=document.querySelector('.wm-door.'+cls); if(el) el.style.display=on?'':'none'; };
-  setDoor('dr-saving', _cfgBool(c.door_saving_active,true));
-  setDoor('dr-deal',   _cfgBool(c.door_deal_active,true));
-  setDoor('dr-prep',   _cfgBool(c.door_prep_active,true));
+  // Tegels tonen/verbergen op het startscherm. De sleutels heten nog door_*:
+  // dat zijn opgeslagen regels in de Config-tabel, en een nieuwe naam zou elke
+  // bestaande instelling stil laten vervallen. Welke tegel bij welke sleutel
+  // hoort staat in TEGEL_SLEUTELS; beheer.html toont dezelfde koppeling.
+  const setTegel=(cls,on)=>{ const el=document.querySelector('.pl-tegel.'+cls); if(el) el.style.display=on?'':'none'; };
+  Object.keys(TEGEL_SLEUTELS).forEach(k=>setTegel(TEGEL_SLEUTELS[k], _cfgBool(c[k],true)));
   // Banner bovenin de hub
   try{
     let b=document.getElementById('cfgBanner');

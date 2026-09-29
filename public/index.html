@@ -567,8 +567,8 @@ function closeConnOv(){
   <div class="welcome-header">
     <div class="welcome-header-row">
       <div>
-        <div class="welcome-title" id="welcomeTitle">Wat ga je vandaag doen?</div>
-        <div style="font-size:12px;color:var(--tx3)" id="welcomeSub">Kies je situatie — de app past zich aan.</div>
+        <div class="welcome-title" id="welcomeTitle">Mijn auto</div>
+        <div class="welcome-sub" id="welcomeSub">Begin met een check, of kies wat je wilt doen.</div>
       </div>
       <div class="fav-wrap">
         <button class="fav-btn" id="favBtn" type="button" aria-expanded="false" aria-controls="favOv" title="Favorieten — snel starten">
@@ -595,68 +595,48 @@ function closeConnOv(){
   </div>
   <div class="welcome-scroll">
 
-    <!-- ═══ INTENT-DEUREN (progressive disclosure) ═══ -->
-    <!-- 27-07-2026 — de wizard als hoofdingang. De deuren eronder blijven
-         bestaan voor wie precies weet wat hij zoekt; zo kan één fout in de
-         routering de app niet onbruikbaar maken. -->
+    <!-- ═══ MIJN AUTO — het startscherm (29-09-2026) ═══
+         Eén hoofdknop en vier tegels, in plaats van een wizard-ingang, zes
+         deuren en achttien kaarten naast elkaar. De check komt eerst omdat
+         iedereen hem nodig heeft en hij binnen een halve minuut iets oplevert.
+         Een tegel opent de wizard op zijn eigen tak (PLWizard.open), zodat de
+         keuze tussen Conditiecheck en Systeemtest een vraag wordt die de app
+         stelt, niet een kaart die de klant moet begrijpen.
+         Het id #wmDoors is gebleven: openDoor()/backToDoors() en de banner uit
+         de externe config (pidlane-fuel.js) hangen eraan. -->
     <!-- Mijn voertuigen: het actieve voertuig met zijn status. Leeg voor wie geen klant is (PLGarage.tekenKaart). -->
     <div id="plGarageKaart"></div>
-    <button class="wz-ingang" onclick="try{PLWizard.open()}catch(e){}">
-      <span class="wz-ingang-ic">🧭</span>
-      <span class="wz-ingang-tx">
-        <span class="wz-ingang-t">Help me kiezen</span>
-        <span class="wz-ingang-d">Een paar vragen, daarna stel ik het onderzoek samen en zet ik alles goed klaar.</span>
-      </span>
-      <span class="wz-ingang-pijl">→</span>
-    </button>
-    <div class="wz-of">of kies zelf</div>
-    <div id="wmDoors">
-      <div class="wm-doors">
-        <div class="wm-door dr-dtc" onclick="try{PLFoutcodes.open()}catch(e){console.error('Foutcodevenster opent niet:', e)}">
-          <div class="wm-door-ic">🩺</div>
-          <div class="wm-door-t">Foutcodes &amp; keuringsstatus</div>
-          <div class="wm-door-d">Alle foutcodes, het freeze frame en welke zelftests klaar staan — en veilig wissen.</div>
-        </div>
-        <div class="wm-door dr-live" onclick="openDoor('live')">
-          <div class="wm-door-ic" aria-hidden="true">
-            <svg class="dr-live-ic" viewBox="0 0 48 48" width="34" height="34" fill="none">
-              <circle cx="24" cy="24" r="4.5" fill="currentColor"/>
-              <path d="M15 33a13 13 0 0 1 0-18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-              <path d="M33 15a13 13 0 0 1 0 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-              <path d="M9 39a21 21 0 0 1 0-30" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".55"/>
-              <path d="M39 9a21 21 0 0 1 0 30" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".55"/>
-            </svg>
-          </div>
-          <div class="wm-door-t">Live data bekijken, opnemen &amp; delen</div>
-          <div class="wm-door-d">Sensoren realtime volgen of opnemen, je data delen met iemand op afstand, of meekijken met een ander.</div>
-        </div>
-        <div class="wm-door dr-diag" onclick="openDoor('diag')">
-          <div class="wm-door-ic">🔧</div>
-          <div class="wm-door-t">Wat is er met mijn auto?</div>
-          <div class="wm-door-d">Klacht, foutcodes of gewoon de staat — AI zoekt de oorzaak.</div>
-        </div>
-        <div class="wm-door dr-deal" onclick="openDoor('deal')">
-          <div class="wm-door-ic">🚗</div>
-          <div class="wm-door-t">Kopen of verkopen?</div>
-          <div class="wm-door-d">Koop, verkoop, inruil of inkoop — historie, staat en waarde.</div>
-        </div>
-        <div class="wm-door dr-saving" onclick="openDoor('saving')">
-          <div class="wm-door-ic">🛣️</div>
-          <div class="wm-door-t">Onderweg: veilig &amp; zuinig</div>
-          <div class="wm-door-d">Tijdens de rit: meekijken en waarschuwen, coaching met caravan of aanhanger, en wat je verbruik kost.</div>
-        </div>
-        <div class="wm-door dr-prep" onclick="openDoor('prep')">
-          <div class="wm-door-ic">📅</div>
-          <div class="wm-door-t">Voorbereiden op rit of seizoen</div>
-          <div class="wm-door-d">Winter of airco, een lange rit, of een controle specifiek voor EV en hybride.</div>
-        </div>
+    <div id="wmDoors" class="pl-home">
+      <button type="button" class="pl-check" id="plCheckBtn" onclick="PLNav.check()">
+        <span class="pl-check-ic" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 1 16 0"/><path d="M12 12l4-4"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M6 18h12"/></svg>
+        </span>
+        <span class="pl-check-tx">
+          <span class="pl-check-t">Check mijn auto</span>
+          <span class="pl-check-d">Foutcodes en keuringsstatus · ±30 seconden</span>
+        </span>
+        <span class="pl-check-pijl" aria-hidden="true">→</span>
+      </button>
+      <div class="pl-kop">Ik wil…</div>
+      <div class="pl-tegels">
+        <button type="button" class="pl-tegel tg-storing" onclick="PLNav.tegel('storing')">
+          <span class="pl-tegel-ic" aria-hidden="true">🔧</span><span class="pl-tegel-t">Er is iets mis</span><span class="pl-tegel-d">Klacht, lampje of geluid</span></button>
+        <button type="button" class="pl-tegel tg-handel" onclick="PLNav.tegel('handel')">
+          <span class="pl-tegel-ic" aria-hidden="true">🚗</span><span class="pl-tegel-t">Kopen of verkopen</span><span class="pl-tegel-d">Staat, historie en waarde</span></button>
+        <button type="button" class="pl-tegel tg-rit" onclick="PLNav.tegel('onderweg')">
+          <span class="pl-tegel-ic" aria-hidden="true">🛣️</span><span class="pl-tegel-t">Rit starten</span><span class="pl-tegel-d">Meekijken, zuinig, caravan</span></button>
+        <button type="button" class="pl-tegel tg-voorb" onclick="PLNav.tegel('voorbereiding')">
+          <span class="pl-tegel-ic" aria-hidden="true">📅</span><span class="pl-tegel-t">Voorbereiden</span><span class="pl-tegel-d">Winter, lange rit, onderhoud</span></button>
       </div>
+      <!-- Alle losse functies op een rij, voor wie precies weet wat hij zoekt.
+           Alleen in de garagemodus: dat is de plek voor vakgereedschap. -->
+      <button type="button" class="pl-alles alleen-garage" id="plAllesBtn" onclick="openDoor('alle')">Alle functies<span aria-hidden="true">→</span></button>
     </div>
 
     <!-- ═══ DEUR: LIVE PID-DATA (bekijken · delen · ontvangen) ═══ -->
     <div class="wm-door-panel" id="dp-live" style="display:none">
-      <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
-      <div class="wm-door-h">📡 Live data bekijken, opnemen &amp; delen</div>
+      <button class="wm-back" onclick="backToDoors()">← Terug naar Mijn auto</button>
+      <div class="wm-door-h">📡 Live data</div>
       <div class="welcome-choices" style="margin-top:4px">
 
         <div class="choice-card hl full" id="wc-live">
@@ -712,8 +692,8 @@ function closeConnOv(){
 
     <!-- ═══ DEUR: DIAGNOSE ═══ -->
     <div class="wm-door-panel" id="dp-diag" style="display:none">
-      <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
-      <div class="wm-door-h">🔧 Wat is er met mijn auto?</div>
+      <button class="wm-back" onclick="backToDoors()">← Terug naar Mijn auto</button>
+      <div class="wm-door-h">🔧 Er is iets mis</div>
       <div class="welcome-choices" style="margin-top:4px">
 
         <div class="choice-card hl full" id="wc-diag">
@@ -764,20 +744,14 @@ function closeConnOv(){
 
 
 
-        <div class="choice-card" id="wc-onderhoud">
-          <div class="choice-head"><span class="choice-icon">🛠️</span><span class="choice-time">⏱ ±2 min</span></div>
-          <div class="choice-title">Onderhoud plannen</div>
-          <div class="choice-desc">Is onderhoud écht nodig? Schema + sensordata, optioneel met rit.</div>
-          <div class="choice-out"><b>Je krijgt:</b> wat nu nodig is, wat kan wachten, en gevonden gebreken.</div>
-        </div>
 
       </div>
     </div><!-- dp-diag -->
 
     <!-- ═══ DEUR: VERBRUIK & BESPAREN ═══ -->
     <div class="wm-door-panel" id="dp-saving" style="display:none">
-      <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
-      <div class="wm-door-h">🛣️ Onderweg: veilig &amp; zuinig</div>
+      <button class="wm-back" onclick="backToDoors()">← Terug naar Mijn auto</button>
+      <div class="wm-door-h">🛣️ Rit starten</div>
       <div class="welcome-choices" style="margin-top:4px">
         <!-- 24-09-2026 — deze deur heette "Verbruik & besparen" en had twee
              kaarten, waarvan de caravan-rit er vooral stond omdat hij
@@ -812,8 +786,8 @@ function closeConnOv(){
 
     <!-- ═══ DEUR: KOPEN OF VERKOPEN ═══ -->
     <div class="wm-door-panel" id="dp-deal" style="display:none">
-      <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
-      <div class="wm-door-h">🚗 Kopen of verkopen?</div>
+      <button class="wm-back" onclick="backToDoors()">← Terug naar Mijn auto</button>
+      <div class="wm-door-h">🚗 Kopen of verkopen</div>
       <div class="welcome-choices" style="margin-top:4px">
 
         <div class="choice-card full" id="wc-koop" style="border-color:#a78bfa;background:linear-gradient(135deg,var(--pus),var(--sur))">
@@ -841,8 +815,8 @@ function closeConnOv(){
 
     <!-- ═══ DEUR: VOORBEREIDEN OP… ═══ -->
     <div class="wm-door-panel" id="dp-prep" style="display:none">
-      <button class="wm-back" onclick="backToDoors()">← Terug naar keuze</button>
-      <div class="wm-door-h">📅 Voorbereiden op…</div>
+      <button class="wm-back" onclick="backToDoors()">← Terug naar Mijn auto</button>
+      <div class="wm-door-h">📅 Voorbereiden</div>
       <div class="welcome-choices" style="margin-top:4px">
 
         <div class="choice-card full" id="wc-langerit">
@@ -866,6 +840,15 @@ function closeConnOv(){
           <div class="choice-title">EV- of hybridecheck</div>
           <div class="choice-desc">Verkorte analyse stilstaand + 2 min, focus op accu en systemen.</div>
           <div class="choice-out"><b>Je krijgt:</b> accuconditie, laadgedrag en oordeel elektrisch systeem.</div>
+        </div>
+
+        <!-- 29-09-2026 — stond bij de diagnose; onderhoud plannen is voorbereiden,
+             en in de wizard stond hij al onder "Ergens klaar voor maken". -->
+        <div class="choice-card" id="wc-onderhoud">
+          <div class="choice-head"><span class="choice-icon">🛠️</span><span class="choice-time">⏱ ±2 min</span></div>
+          <div class="choice-title">Onderhoud plannen</div>
+          <div class="choice-desc">Is onderhoud écht nodig? Schema + sensordata, optioneel met rit.</div>
+          <div class="choice-out"><b>Je krijgt:</b> wat nu nodig is, wat kan wachten, en gevonden gebreken.</div>
         </div>
 
 
@@ -904,49 +887,50 @@ function closeConnOv(){
 <!-- ══ TOPBAR ══ -->
 <div id="appScale">
 <div class="topbar">
-  <!-- ☰ menu links -->
+  <!-- ☰ en 🏠 zijn op 29-09-2026 naar de onderbalk verhuisd (#plNav onderaan
+       deze pagina): 🏠 werd "Mijn auto", ☰ werd "Meer". Het menu hieronder is
+       het venster achter Meer; het hangt nog in #kebabWrap omdat toggleKebab()
+       en de klikluisteraar in pidlane-uihelpers.js die houder kennen. De
+       item-id's zijn gebleven: pasMenuAan(), PLAfsluiten en de testrun zoeken
+       ze op. -->
   <div style="display:flex;align-items:center;gap:6px">
     <div class="kebab-wrap" id="kebabWrap">
-      <button class="kebab-btn" id="kebabBtn" onclick="toggleKebab(event)" title="Menu" aria-label="Menu">☰</button>
-      <div class="kebab-menu" id="kebabMenu">
-        <!-- 🛠️ ADMIN — één uitklapbare topregel (2026-07-26).
-             Alle bouw-/diagnosegereedschappen zaten los door het menu heen,
-             waardoor de dagelijkse items (Rapporten, Bug melden, Tekstgrootte)
-             ondersneeuwden. Ze staan nu gegroepeerd; de groep klapt open/dicht
-             en onthoudt niets — hij start altijd dicht. -->
+      <div class="kebab-menu pl-meer" id="kebabMenu" role="dialog" aria-label="Meer">
+        <div class="kebab-kop">Account</div>
+        <button class="kebab-item" id="kbAccount" style="display:none" onclick="closeKebab();PLKlant.openMijnTokens()">👤 Mijn account en tegoed</button>
         <button class="kebab-item" id="kbGarage" style="display:none" onclick="closeKebab();PLGarage.open()">🚗 Mijn voertuigen</button>
+        <div class="kebab-kop">Instellingen</div>
         <button class="kebab-item" id="kbVoorkeur" style="display:none" onclick="closeKebab();PLVoorkeur.open()">⚙️ Mijn voorkeuren</button>
+        <!-- Garagemodus (29-09-2026): dezelfde plekken, met de vakgereedschappen
+             erbij. Staat vanzelf aan voor een account dat geen klant is. -->
+        <button class="kebab-item kebab-schakel" id="kbGarageModus" role="switch" aria-checked="false" onclick="PLNav.wisselGarage()">🔧 Garagemodus<span class="kb-sw" aria-hidden="true"></span></button>
+        <button class="kebab-item kebab-schakel" id="kbAutoCheck" role="switch" aria-checked="true" onclick="PLNav.wisselAutoCheck()">🩺 Check na verbinden<span class="kb-sw" aria-hidden="true"></span></button>
         <button class="kebab-item" onclick="closeKebab();openGearInstellingen()">🔢 Versnellingsindicator</button>
-        <button class="kebab-item" id="kbAccount" onclick="closeKebab();PLKlant.openMijnTokens()">👤 Mijn account</button>
-        <button class="kebab-item kebab-group" id="admGroupBtn" onclick="toggleAdmGroup(event)" aria-expanded="false" aria-controls="admGroup">🛠️ Admin<span class="kb-caret" id="admCaret">▸</span></button>
+        <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
+        <!-- De schakelaar voor de bevindingenbalk (issue #60) stond hier tot
+             08-09-2026 en zit nu in het Run-venster rechtsboven (#123). -->
+        <div class="kebab-kop">Hulp</div>
+        <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
+        <button class="kebab-item" onclick="closeKebab();openLogboek()">📜 Logboek</button>
+        <button class="kebab-item" onclick="closeKebab();openPrivacy()">🔒 Privacy</button>
+        <div class="kebab-sep"></div>
+        <!-- 🛠️ ADMIN — één uitklapbare regel (2026-07-26). "Live view" stond
+             hier los voor beheer; dat is sinds 29-09 de tab Live. -->
+        <button class="kebab-item kebab-group" id="admGroupBtn" style="display:none" onclick="toggleAdmGroup(event)" aria-expanded="false" aria-controls="admGroup">🛠️ Admin<span class="kb-caret" id="admCaret">▸</span></button>
         <div class="kebab-sub" id="admGroup">
           <button class="kebab-item" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
           <button class="kebab-item" id="frisBtn" onclick="closeKebab();plHardReload(this)">🔄 Nieuwste versie laden</button>
           <button class="kebab-item" id="testrunBtn" onclick="closeKebab();openTestrun()">🔬 Testrun</button>
           <button class="kebab-item" id="kbSessie" onclick="closeKebab();showTokenDetail()">🪙 AI-kosten deze sessie</button>
+          <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
         </div>
         <div class="kebab-sep"></div>
-        <button class="kebab-item adminOnly" onclick="closeKebab();openLiveView()">📊 Live view</button>
-      <button class="kebab-item" onclick="closeKebab();reportNav()" style="position:relative">📄 Rapporten<span id="bnRepCnt" style="display:none;position:absolute;top:50%;transform:translateY(-50%);right:10px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--bl);color:#fff;font-size:9px;font-weight:800;line-height:16px;text-align:center"></span></button>
-      <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
-      <button class="kebab-item" onclick="closeKebab();openLogboek()">📜 Logboek</button>
-      <button class="kebab-item" onclick="closeKebab();openPrivacy()">🔒 Privacy</button>
-      <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
-      <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
-      <!-- De schakelaar voor de bevindingenbalk (issue #60) stond hier tot
-           08-09-2026 en zit nu in het Run-venster rechtsboven (#123). Reden: hij
-           gaat over wat er in de LIVE VIEW verschijnt, en dat venster is de plek
-           waar de rest van dat soort schakelaars al staat. De knop-id's
-           (bevAanBtn/bevUitBtn) zijn meeverhuisd, zodat bevindingenMenuBij() in
-           pidlane-correlatie.js onveranderd blijft werken. -->
-      <div class="kebab-sep"></div>
-      <!-- Rit beëindigen (29-09-2026) vervangt "Uitloggen" en "Sluit de app": één
-           venster dat de rit afrondt en vraagt wat er daarna gebeurt, met
-           uitloggen en afsluiten als keuze. Zie pidlane-afsluiten.js. -->
-      <button class="kebab-item" id="kbAfsluiten" onclick="closeKebab();PLAfsluiten.open()">⏏ Afsluiten</button>
+        <!-- Rit beëindigen (29-09-2026) vervangt "Uitloggen" en "Sluit de app": één
+             venster dat de rit afrondt en vraagt wat er daarna gebeurt, met
+             uitloggen en afsluiten als keuze. Zie pidlane-afsluiten.js. -->
+        <button class="kebab-item" id="kbAfsluiten" onclick="closeKebab();PLAfsluiten.open()">⏏ Afsluiten</button>
       </div>
     </div>
-    <button class="kebab-btn" onclick="goHome()" title="Home" aria-label="Home">🏠</button>
   </div>
   <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:26px;height:26px"><defs><linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bgC)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="440" stroke-width="14"/><line x1="256" y1="418" x2="256" y2="392" stroke-width="12"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grC)" stroke-width="18" stroke-linejoin="round"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spC)"/></svg></div>Pid<em>Lane</em></div>
   <button type="button" id="plGear" hidden aria-live="polite" onclick="openGearInstellingen()"></button>
@@ -960,8 +944,8 @@ function closeConnOv(){
          niet mee in de kleur — "niets draait op de achtergrond" is geen
          probleem — maar krijgt hier wél zijn telbadge door, anders is een
          actieve achtergrondtaak bij het inklappen onzichtbaar. -->
-    <div class="tchip sys" id="sysChip" onclick="toggleSysStatus(event)" title="Systeemstatus — tik voor details">
-      <div class="tdot" id="sysdot"></div><span>Systeem</span><span id="sysTel" style="font-weight:800;color:var(--gn)"></span>
+    <div class="tchip sys" id="sysChip" onclick="toggleSysStatus(event)" title="Verbinding — tik voor details">
+      <div class="tdot" id="sysdot"></div><span id="sysTxt">Niet verbonden</span><span id="sysTel" style="font-weight:800;color:var(--gn)"></span>
     </div>
     <div class="sys-drop" id="tprDetail">
       <!-- 1️⃣ Voertuig-chip: dot (rood=geen auto, oranje=dossier onvolledig, groen=compleet) + naam -->
@@ -1025,7 +1009,7 @@ function closeConnOv(){
         <div class="wiz-icon" style="font-size:48px">🚀</div>
         <div class="wiz-title">Klaar voor gebruik!</div>
         <div class="wiz-summary" id="wizSummary"></div>
-        <button class="wiz-btn-pri" style="width:100%;margin-top:16px;font-size:14px;padding:13px" onclick="wizFinish()">Start analyse →</button>
+        <button class="wiz-btn-pri" style="width:100%;margin-top:16px;font-size:14px;padding:13px" onclick="wizFinish();try{PLNav.naVerbinding()}catch(e){console.warn('Automatische check niet gestart:',e)}">Verder →</button>
       </div>
 
     </div>
@@ -1105,7 +1089,7 @@ function closeConnOv(){
     <div class="tabs">
       <button class="tab active" onclick="sw('live',this)">📊 Live</button>
       <button class="tab" id="tabGraph" onclick="sw('graph',this)">📈 Grafiek</button>
-      <button class="tab tab-action" onclick="openPidChoice()" title="Sensoren kiezen">🎛️ PID-keuze</button>
+      <button class="tab tab-action" onclick="openPidChoice()" title="Sensoren kiezen">🎛️ Sensoren</button>
     </div>
     <div class="tb">
 
@@ -1119,6 +1103,15 @@ function closeConnOv(){
              pidlane-aandrijving.js. Staat leeg tot er verbinding is, want een
              toestandsregel zonder meting eronder hoort er niet te staan. -->
         <div id="aandrijfBalk" style="display:none"></div>
+        <!-- Live-acties (29-09-2026): opnemen, delen en meekijken stonden als
+             kaarten in de deur "Live data" op het startscherm. Nu staan ze waar
+             de live data staat. Bewaken (de waakronde) is vakgereedschap. -->
+        <div class="pl-live-acties" id="plLiveActies">
+          <button type="button" id="plLiveRec" onclick="openPidRecorder()">⏺ Opnemen</button>
+          <button type="button" id="plLiveDeel" onclick="try{PLRemote.openShare()}catch(e){console.warn('Delen opent niet:',e)}">📡 Deel live</button>
+          <button type="button" id="plLiveMee" onclick="try{PLRemote.openExpert()}catch(e){console.warn('Meekijken opent niet:',e)}">🔭 Meekijken</button>
+          <button type="button" id="plLiveWaak" class="alleen-garage" onclick="openWaakvenster()">◉ Bewaken</button>
+        </div>
         <div class="pidview-switch" id="pidViewSwitch" style="display:none">
           <!-- Eén regel (26-09-2026): vijf gelijke vakken met het icoon boven
                een kort woord, als een tabbalk. Het label "Weergave:" en de
@@ -1663,8 +1656,27 @@ function closeConnOv(){
 <!-- ══ CONTROL BAR ══ -->
 <!-- (Zwevende zoom/tekstgrootte-balk verwijderd op verzoek — tekstgrootte S/M/L zit in het ☰-menu) -->
 
-<!-- ══ (Onderbalk verwijderd — navigatie loopt nu via ☰-menu, de 4 deuren
-     en de Live/Grafiek-balk met PID-keuze. Zie openLiveView().) ══ -->
+<!-- ══ ONDERBALK (29-09-2026) — vier bestemmingen die altijd zichtbaar zijn.
+     Er stond hier tot juni al eens een onderbalk (Start · Live data · Rapport);
+     die verdween bij het opnieuw opzetten van de algemene weergave, niet om
+     een reden die nu nog geldt. Welke tab oplicht volgt uit wat er in beeld
+     staat, niet uit de laatste tik: zie welkeTab() in pidlane-nav.js.
+     #bnRepCnt stond op het menu-item Rapporten; _srUpdateBadge() in
+     pidlane-archief.js vult hem nog altijd op dat id. ══ -->
+<nav class="pl-nav" id="plNav" aria-label="Hoofdnavigatie">
+  <button type="button" class="pl-nav-tab" data-tab="auto" onclick="PLNav.tab('auto',event)">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17h14l-1.5-5.5A2 2 0 0 0 15.6 10H8.4a2 2 0 0 0-1.9 1.5z"/><circle cx="8" cy="17.5" r="1.5"/><circle cx="16" cy="17.5" r="1.5"/></svg>
+    <span>Mijn auto</span></button>
+  <button type="button" class="pl-nav-tab" data-tab="live" onclick="PLNav.tab('live',event)">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>
+    <span>Live</span></button>
+  <button type="button" class="pl-nav-tab" data-tab="rapporten" onclick="PLNav.tab('rapporten',event)">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M10 12h5M10 16h5"/></svg>
+    <span>Rapporten</span><b class="pl-nav-tel" id="bnRepCnt" style="display:none"></b></button>
+  <button type="button" class="pl-nav-tab" data-tab="meer" onclick="PLNav.tab('meer',event)" aria-controls="kebabMenu">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/></svg>
+    <span>Meer</span></button>
+</nav>
 
 <!-- ══ NEON DASHBOARD OVERLAY ══ -->
 <div id="neonDash" style="display:none;position:fixed;inset:0;z-index:9600;background:radial-gradient(ellipse at 50% 42%,#0e1420 0%,#06080d 78%);overflow:hidden;font-family:'DM Sans',sans-serif;">
@@ -2046,6 +2058,7 @@ function closeConnOv(){
 <script src="pidlane-run.js"></script><!-- run-chip: één plek waar staat wat er op de achtergrond draait -->
 <script src="pidlane-voorkeur.js"></script><!-- Mijn voorkeuren (PLVoorkeur) — standaardinstellingen per klantaccount; vereist PLRun, PLGarage, plFetch -->
 <script src="pidlane-afsluiten.js"></script><!-- Rit beëindigen (PLAfsluiten) — rit afronden, verbreken, uitloggen, app sluiten; vereist PLGarage, handleConnect, logout, plSluitApp -->
+<script src="pidlane-nav.js"></script><!-- PLNav: onderbalk, startscherm (Check mijn auto + tegels) en garagemodus; vereist ná datalog, archief, uihelpers, wizard, foutcodes en afsluiten -->
 <script src="pidlane-adapter.js"></script><!-- PLAdapter (#210/#211/#212): het verbindingspaneel achter de OBD-chip; vereist ná pidlane-data.js (PLBus), pidlane-plload.js (PLLoad) en pidlane-uihelpers.js (obdChipTap) -->
 <script src="pidlane-waarneming.js"></script><!-- wat er op DEZE auto is waargenomen (PLWaarneming) — de autolaag, blijft over ritten heen — vereist vóór pidlane-aandrijving.js -->
 <script src="pidlane-aandrijving.js"></script><!-- aandrijfstatus: de toestandsmachine (PLAandrijving) — zuiver, kent het scherm niet -->

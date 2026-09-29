@@ -10,6 +10,48 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 29-09-2026 — Een nieuw startscherm en een onderbalk
+ ═══════════════════════════════════════════════════════════
+
+ Aanleiding: een evaluatie zei dat de klant te veel wegen naar dezelfde
+ functies kreeg en dat juist de belangrijke verstopt zaten. Nageteld: 59
+ ingangen op tien plekken, vijf wegen naar foutcodes, en de rapporten
+ alleen achter ☰. Voorstel en onderzoek: zie PIDLANE-ARCHIEF.md, 29-09-2026.
+
+ - Onderbalk met vier tabs: Mijn auto · Live · Rapporten · Meer. ☰ en 🏠 zijn
+   weg; Meer is het oude menu, nu met kopjes (Account, Instellingen, Hulp).
+   De balk staat er pas na inloggen of in de demo. Nieuw: pidlane-nav.js.
+ - Startscherm: één hoofdknop "Check mijn auto" (foutcodes en keuringsstatus)
+   en vier tegels — Er is iets mis, Kopen of verkopen, Rit starten,
+   Voorbereiden. Een tegel opent de wizard meteen op zijn eigen vraag.
+ - Check mijn auto na het verbinden vanzelf, één keer per sessie (niet in de
+   demo, niet bij hervatten, niet op afstand; uit te zetten in Meer).
+ - Check mijn auto geeft een stoplicht bovenaan, de codes in één regel per
+   stuk en drie vervolgstappen. De volledige uitlezing en het wissen staan
+   onder "Alle details voor de monteur".
+ - Wizard: nieuwe tak Onderweg (rit-monitor en caravancoach starten meteen);
+   caravan staat niet meer ook onder Voorbereiden. Het wizardplan volgt nu de
+   functieschakelaars uit beheer.html — voorheen verborg een schakelaar
+   alleen de kaart.
+ - Garagemodus (Meer → Instellingen): vanzelf aan voor een account dat geen
+   klant is. Geeft "Alle functies" (de oude kaarten, onder elkaar), de
+   weergavewissel in Live en de regel "Je krijgt" op de kaarten.
+ - Live: Opnemen, Deel live en Meekijken staan in het live-scherm zelf;
+   "PID-keuze" heet "Sensoren".
+ - Rapporten: de lijst staat boven de AI-instellingen; klanten zien een
+   knop naar de bewaarde rapporten in Mijn voertuigen.
+ - De chip "Systeem" zegt nu in gewone taal wat er is: de autonaam,
+   "Niet verbonden", "AI niet bereikbaar" of "Demo".
+ - Leesbaarheid: zwakke tekst in het lichte thema donkerder, grijze tekst op
+   het startscherm lichter, een minimum tekstgrootte in vensters.
+ - beheer.html: tien tabbladen worden vijf groepen; de instellingen heten
+   zoals het startscherm (de oude deurlabels klopten niet). Reparatie: een
+   tegelsleutel die nooit was opgeslagen toonde beheer als uit, en "Alles
+   opslaan" zette hem dan echt uit.
+ - Testrun 8.6: blok 5 kijkt of de onderbalk, de check en de vier tegels er
+   staan en of elke tegel een wizardtak heeft.
+
+ ═══════════════════════════════════════════════════════════
  29-09-2026 — Rit beëindigen, en motor uit is geen einde van de rit (#341)
  ═══════════════════════════════════════════════════════════
 

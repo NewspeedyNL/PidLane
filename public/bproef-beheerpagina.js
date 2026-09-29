@@ -65,8 +65,14 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('het dashboard staat open', await app.ev('!document.getElementById("app").classList.contains("hidden")'));
     toets('de oefenbalk is zichtbaar en niet weg te klikken zonder herladen',
       await app.ev('!document.getElementById("oefenBalk").classList.contains("hidden")'));
+    // Sinds 29-09-2026 vijf groepen met een tweede regel; de tien panelen
+    // zijn gebleven en elk moet via zijn groep bereikbaar zijn.
     const tabs = await app.ev('document.querySelectorAll("#tabs .tab").length');
-    toets('alle tien tabbladen staan er', tabs === 10, 'gevonden: ' + tabs);
+    toets('de vijf groepen staan er', tabs === 5, 'gevonden: ' + tabs);
+    const bereik = await app.ev(`TABBLADEN.map(t => { toon(t[0]); return t[0] + ':' + (document.getElementById('p-' + t[0]).classList.contains('aan') &&
+      !!document.querySelector('#tabs .tab.aan')) + ':' + (groepVan(t[0])[2].length < 2 || !!document.querySelector('#tab-' + t[0] + '.aan')); }).filter(x => /false/.test(x))`);
+    toets('elk van de tien panelen opent via zijn groep, en de goede knop licht op', bereik.length === 0, bereik.join(', '));
+    await app.ev('toon("overzicht")');
     const kpi = await app.ev('document.querySelectorAll("#kpiGrid .kpi").length');
     toets('de kerncijfers zijn getekend', kpi === 8, 'gevonden: ' + kpi);
 
@@ -159,6 +165,14 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
       'schakelaar staat op ' + nieuw + ', config op ' + bewaardeSchakelaar + ' — saveAll stuurde vermoedelijk geen items:[...]');
     toets('ook een tekstveld gaat mee', await app.ev('OEFEN_DATA.config.banner_text') === 'proefbanner 146',
       'config.banner_text: ' + await app.ev('JSON.stringify(OEFEN_DATA.config.banner_text)'));
+
+    // Een tegelsleutel die nooit is opgeslagen staat in de app AAN. Beheer
+    // toonde hem als uit, en één keer "Alles opslaan" zette hem dan echt uit
+    // (29-09-2026). De oefenconfig heeft door_deal_active niet.
+    await app.ev('delete OEFEN_DATA.config.door_deal_active; OEFEN_DATA.config.door_prep_active = "false"; loadConfig()');
+    await rust(400);
+    toets('een ontbrekende tegelsleutel staat aan, net als in de app', await app.ev('document.getElementById("t_door_deal_active").checked'));
+    toets('en een uitgezette blijft uit  <- tegenproef', !(await app.ev('document.getElementById("t_door_prep_active").checked')));
 
     // ── 7. de database als geheel ───────────────────────────────
     // Het overzicht wordt bij de start al geteld. De oefenregels hebben met

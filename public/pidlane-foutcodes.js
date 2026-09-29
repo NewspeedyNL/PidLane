@@ -242,6 +242,38 @@
     return { niveau: 'let-op', kop: rd.nietKlaar.length + ' monitor' + (rd.nietKlaar.length === 1 ? '' : 's') + ' niet klaar', tekst: t, vers: vers };
   }
 
+  /* Eén oordeel over de hele uitlezing: het stoplicht bovenaan Check mijn auto
+     (29-09-2026). De details eronder blijven wat ze waren; dit is de regel die
+     een klant leest voordat hij besluit of hij verder moet kijken.
+       rood   — een bevestigde of permanente code, of het motorlampje brandt
+       oranje — een code in afwachting, een zelftest die niet klaar is, of een
+                soort code die niet gelezen kon worden
+       groen  — alles gelezen, niets gevonden, alle zelftests klaar
+     "Niet gelezen" is nooit groen: dat is dezelfde regel als in tekenCodes(). */
+  function uniek(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+  function stoplicht(s) {
+    if (!s) return { kleur: 'grijs', kop: 'Nog niet uitgelezen', tekst: '' };
+    var c = s.codes || {}, g = s.gelezen || {}, rd = s.readiness;
+    // Eén code kan bevestigd én permanent zijn (P0420 in de demo): tel hem één keer.
+    var vast = uniek([].concat(c.bevestigd || [], c.permanent || [])).length;
+    var wacht = (c.pending || []).length;
+    var nietKlaar = rd && rd.nietKlaar ? rd.nietKlaar.length : 0;
+    var ongelezen = ['bevestigd', 'pending', 'permanent'].filter(function (k) { return !g[k]; }).length;
+    var mv = function (n, een, meer) { return n + ' ' + (n === 1 ? een : meer); };
+    if (vast || (rd && rd.mil)) {
+      return { kleur: 'rood', kop: vast ? mv(vast, 'storing gevonden', 'storingen gevonden') : 'Het motorlampje brandt',
+        tekst: 'Hieronder staat wat de auto meldt. Laat de oorzaak zoeken voordat je er lang mee doorrijdt.' };
+    }
+    if (wacht || nietKlaar || ongelezen) {
+      var d = [];
+      if (wacht) d.push(mv(wacht, 'code die zich nog moet bevestigen', 'codes die zich nog moeten bevestigen'));
+      if (nietKlaar) d.push(mv(nietKlaar, 'zelftest is nog niet klaar', 'zelftests zijn nog niet klaar'));
+      if (ongelezen) d.push(mv(ongelezen, 'soort code kon niet gelezen worden', 'soorten codes konden niet gelezen worden'));
+      return { kleur: 'oranje', kop: 'Let op', tekst: d.join('; ') + '.' };
+    }
+    return { kleur: 'groen', kop: 'Alles in orde', tekst: 'Geen foutcodes' + (rd && rd.ondersteund ? ' en alle zelftests zijn klaar.' : '.') };
+  }
+
   /* Antwoord op 04 → wat er gebeurd is. Géén antwoord is NIET "gewist". */
   function wisUitslag(raw) {
     var t = String(raw || '').toUpperCase();
@@ -484,30 +516,48 @@
     '#plFcOv .fc-kop{display:flex;align-items:center;gap:9px}' +
     '#plFcOv .fc-t{font:800 16px var(--f);color:var(--tx)}' +
     '#plFcOv .fc-x{margin-left:auto;background:var(--sur);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;width:34px;height:34px;font:700 15px var(--f);cursor:pointer}' +
-    '#plFcOv .fc-sub{font-size:12px;color:var(--tx3);margin:2px 0 12px}' +
+    '#plFcOv .fc-sub{font-size:13.5px;color:var(--tx2);margin:2px 0 12px}' +
     '#plFcOv .fc-blok{background:var(--sur);border:1px solid var(--bd);border-radius:11px;padding:11px 12px;margin-bottom:10px}' +
-    '#plFcOv .fc-bh{display:flex;align-items:center;gap:8px;font:800 13px var(--f);color:var(--tx);margin-bottom:6px}' +
-    '#plFcOv .fc-bh .fc-n{margin-left:auto;font:700 11px var(--f);color:var(--tx3)}' +
-    '#plFcOv .fc-uitleg{font-size:11px;color:var(--tx3);margin-bottom:7px}' +
+    '#plFcOv .fc-bh{display:flex;align-items:center;gap:8px;font:800 14px var(--f);color:var(--tx);margin-bottom:6px}' +
+    '#plFcOv .fc-bh .fc-n{margin-left:auto;font:700 12px var(--f);color:var(--tx3)}' +
+    '#plFcOv .fc-uitleg{font-size:12.5px;color:var(--tx2);margin-bottom:7px}' +
     '#plFcOv .fc-code{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--bd)}' +
     '#plFcOv .fc-code:first-of-type{border-top:0}' +
     '#plFcOv .fc-cc{font:800 14px ui-monospace,monospace;color:var(--tx);min-width:56px}' +
-    '#plFcOv .fc-cd{font-size:12px;color:var(--tx2)} #plFcOv .fc-cb{font-size:11px;color:var(--tx3);margin-top:2px}' +
-    '#plFcOv .fc-leeg{font-size:12px;color:var(--tx3)} #plFcOv .fc-ok{color:var(--gr,#22c55e)} #plFcOv .fc-let{color:var(--or,#f59e0b)} #plFcOv .fc-rood{color:var(--rd,#ef4444)}' +
-    '#plFcOv .fc-mon{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:12px;color:var(--tx2)}' +
+    '#plFcOv .fc-cd{font-size:13.5px;color:var(--tx)} #plFcOv .fc-cb{font-size:12.5px;color:var(--tx2);margin-top:2px}' +
+    '#plFcOv .fc-leeg{font-size:13px;color:var(--tx2)} #plFcOv .fc-ok{color:var(--gr,#22c55e)} #plFcOv .fc-let{color:var(--or,#f59e0b)} #plFcOv .fc-rood{color:var(--rd,#ef4444)}' +
+    '#plFcOv .fc-mon{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-size:13px;color:var(--tx2)}' +
     '#plFcOv .fc-mon .fc-nvt{color:var(--tx3)}' +
-    '#plFcOv .fc-ff{display:grid;grid-template-columns:1fr auto;gap:3px 10px;font-size:12px;color:var(--tx2)}' +
+    '#plFcOv .fc-ff{display:grid;grid-template-columns:1fr auto;gap:3px 10px;font-size:13px;color:var(--tx2)}' +
     '#plFcOv .fc-knoppen{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}' +
-    '#plFcOv .fc-k{flex:1 1 140px;padding:11px 12px;border-radius:9px;border:1px solid var(--bd);background:var(--sur);color:var(--tx);font:700 13px var(--f);cursor:pointer}' +
+    '#plFcOv .fc-k{flex:1 1 140px;padding:12px 12px;border-radius:10px;border:1px solid var(--bd);background:var(--sur);color:var(--tx);font:700 14px var(--f);cursor:pointer}' +
     '#plFcOv .fc-k.hoofd{background:var(--bl,#3b82f6);border-color:var(--bl,#3b82f6);color:#fff}' +
     '#plFcOv .fc-k.gevaar{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.5);color:var(--rd,#ef4444)}' +
     '#plFcOv .fc-k:disabled{opacity:.45;cursor:not-allowed}' +
-    '#plFcOv ul{margin:4px 0 0 18px;padding:0;font-size:12px;color:var(--tx2)} #plFcOv li{margin:3px 0}' +
-    '#plFcOv .fc-vink{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:var(--tx2);margin:10px 0}' +
+    '#plFcOv ul{margin:4px 0 0 18px;padding:0;font-size:13px;color:var(--tx2)} #plFcOv li{margin:3px 0}' +
+    '#plFcOv .fc-vink{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:var(--tx2);margin:10px 0}' +
     '#plFcOv .fc-vink input{width:18px;height:18px;margin-top:1px}' +
-    '#plFcOv .fc-melding{font-size:12px;padding:9px 11px;border-radius:9px;margin-bottom:10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.4);color:var(--tx2)}' +
+    '#plFcOv .fc-melding{font-size:13px;padding:9px 11px;border-radius:9px;margin-bottom:10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.4);color:var(--tx2)}' +
     '#plFcOv .fc-melding.rood{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.45)}' +
-    '#plFcOv .fc-melding.groen{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.45)}';
+    '#plFcOv .fc-melding.groen{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.45)}' +
+    // Check mijn auto (29-09-2026): het oordeel bovenaan en de details eronder.
+    '#plFcOv .fc-oordeel{display:flex;gap:12px;align-items:flex-start;border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid var(--bd);background:var(--sur)}' +
+    '#plFcOv .fc-lamp{flex:0 0 18px;width:18px;height:18px;border-radius:50%;margin-top:3px;background:var(--tx3)}' +
+    '#plFcOv .fc-oordeel.groen .fc-lamp{background:var(--gn,#22c55e);box-shadow:0 0 0 4px var(--gns,rgba(34,197,94,.18))}' +
+    '#plFcOv .fc-oordeel.oranje .fc-lamp{background:var(--or,#f59e0b);box-shadow:0 0 0 4px var(--ors,rgba(245,158,11,.18))}' +
+    '#plFcOv .fc-oordeel.rood .fc-lamp{background:var(--rd,#ef4444);box-shadow:0 0 0 4px var(--rds,rgba(239,68,68,.18))}' +
+    '#plFcOv .fc-oordeel.groen{border-color:var(--gn,#22c55e)} #plFcOv .fc-oordeel.oranje{border-color:var(--or,#f59e0b)} #plFcOv .fc-oordeel.rood{border-color:var(--rd,#ef4444)}' +
+    '#plFcOv .fc-ok-kop{font:800 17px var(--f);color:var(--tx);margin-bottom:3px}' +
+    '#plFcOv .fc-ok-tekst{font-size:14px;line-height:1.45;color:var(--tx2)}' +
+    '#plFcOv .fc-kort{margin:0 0 12px;padding:0;list-style:none}' +
+    '#plFcOv .fc-kort li{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--bd);font-size:14px;color:var(--tx)}' +
+    '#plFcOv .fc-kort li:first-child{border-top:0}' +
+    '#plFcOv .fc-kort b{font:800 14px ui-monospace,monospace;min-width:58px}' +
+    '#plFcOv .fc-nu{font:800 12px var(--f);letter-spacing:.06em;text-transform:uppercase;color:var(--tx2);margin:4px 0 8px}' +
+    '#plFcOv details.fc-det{margin:12px 0}' +
+    '#plFcOv details.fc-det>summary{cursor:pointer;font:700 14px var(--f);color:var(--tx2);padding:10px 2px;list-style-position:inside}' +
+    '#plFcOv details.fc-det[open]>summary{margin-bottom:8px}' +
+    '#plFcOv .fc-soort{font-style:normal;color:var(--tx2)}';
 
   function zorgCss() {
     if (document.getElementById('plFcCss')) return;
@@ -523,9 +573,9 @@
     if (!ov) {
       ov = document.createElement('div');
       ov.id = 'plFcOv';
-      ov.innerHTML = '<div class="fc-doos"><div class="fc-kop"><div class="fc-t">🩺 Foutcodes &amp; keuringsstatus</div>' +
+      ov.innerHTML = '<div class="fc-doos"><div class="fc-kop"><div class="fc-t">🩺 Check mijn auto</div>' +
         '<button class="fc-x" aria-label="Sluiten" onclick="PLFoutcodes.sluit()">✕</button></div>' +
-        '<div class="fc-sub">Alle soorten foutcodes, het freeze frame en welke zelftests de auto heeft afgerond.</div>' +
+        '<div class="fc-sub">Foutcodes en keuringsstatus, in ongeveer een halve minuut.</div>' +
         '<div id="plFcBody"></div></div>';
       document.body.appendChild(ov);
       ov.addEventListener('click', function (e) { if (e.target === ov) sluit(); });
@@ -702,6 +752,51 @@
     return h + '</div>';
   }
 
+  function isGarage() {
+    try { return !!(window.PLNav && PLNav.garage()); } catch (e) { console.warn('PLFoutcodes: garagemodus onbekend', e); return false; }
+  }
+
+  // Het stoplicht, de codes in één regel per stuk, en wat je nu kunt doen.
+  function tekenOordeel(s) {
+    var o = stoplicht(s);
+    var h = '<div class="fc-oordeel ' + o.kleur + '"><span class="fc-lamp" aria-hidden="true"></span><div>' +
+      '<div class="fc-ok-kop">' + esc(o.kop) + '</div><div class="fc-ok-tekst">' + esc(o.tekst) + '</div></div></div>';
+    var alle = uniek([].concat(s.codes.bevestigd || [], s.codes.permanent || [], s.codes.pending || []));
+    if (alle.length) {
+      h += '<ul class="fc-kort">';
+      // Een code die nog moet bevestigen telt niet mee in de kop ("2 storingen"),
+      // dus hij krijgt hier zijn eigen label — anders telt de klant er drie.
+      alle.forEach(function (c) {
+        var soort = (s.codes.bevestigd || []).indexOf(c) > -1 ? '' :
+          (s.codes.permanent || []).indexOf(c) > -1 ? 'blijft staan tot na reparatie' : 'nog niet bevestigd';
+        h += '<li><b>' + esc(c) + '</b><span>' + esc(info(c).desc || 'Onbekende code') +
+          (soort ? ' <em class="fc-soort">· ' + soort + '</em>' : '') + '</span></li>';
+      });
+      h += '</ul>';
+    }
+    h += '<div class="fc-nu">Wat nu?</div><div class="fc-knoppen">';
+    if (o.kleur === 'rood' || o.kleur === 'oranje') {
+      h += '<button class="fc-k hoofd" onclick="PLFoutcodes._vervolg(\'oorzaak\')">🔧 Oorzaak laten zoeken</button>';
+      if (alle.length) h += '<button class="fc-k" onclick="PLFoutcodes._vervolg(\'onderdeel\')">🔩 Welk onderdeel?</button>';
+    }
+    h += '<button class="fc-k" onclick="PLFoutcodes._vervolg(\'grondig\')">🩺 Grondiger laten kijken</button></div>';
+    return h;
+  }
+
+  // De vervolgstappen openen elk hun eigen scherm; dit venster gaat eerst dicht.
+  function vervolg(wat) {
+    sluit();
+    try {
+      if (wat === 'oorzaak') PLWizard.open('storing');
+      else if (wat === 'grondig') PLWizard.open('conditie');
+      else if (wat === 'onderdeel') {
+        var w = document.getElementById('welcomeScreen'); if (w) w.classList.add('hidden');
+        openOnderdeelCheck();
+      }
+    } catch (e) { console.warn('PLFoutcodes: vervolgstap ' + wat + ' opent niet', e);
+      if (typeof showToast === 'function') showToast('Dit opent nu niet — probeer het via het startscherm'); }
+  }
+
   function tekenLijst() {
     var s = _st.scan;
     var h = '';
@@ -714,17 +809,25 @@
     if (_st.fout) h += '<div class="fc-melding rood">' + esc(_st.fout) + '</div>';
     if (_st.bezig) h += '<div class="fc-melding">⏳ Bezig: ' + esc(_st.stap) + '</div>';
     if (s) {
-      h += '<div class="fc-uitleg">Uitgelezen om ' + new Date(s.tijd).toLocaleTimeString('nl', { hour: '2-digit', minute: '2-digit' }) + '</div>';
+      h += tekenOordeel(s);
+      // De volledige uitlezing staat ingeklapt voor een klant en open in de
+      // garagemodus: vijf blokken uitleg is voor een monteur informatie en
+      // voor een consument een muur van tekst (evaluatie 29-09-2026).
+      h += '<details class="fc-det"' + (isGarage() ? ' open' : '') + '><summary>Alle details voor de monteur</summary>' +
+        '<div class="fc-uitleg">Uitgelezen om ' + new Date(s.tijd).toLocaleTimeString('nl', { hour: '2-digit', minute: '2-digit' }) + '</div>';
       BRONNEN.forEach(function (b) { h += tekenCodes(s, b); });
       h += tekenFreeze(s) + tekenReadiness(s);
+      // Wissen is de enige schrijfactie van de app. Hij staat bij de details,
+      // niet naast "Wat nu?": wissen is geen vervolgstap voor wie net hoort
+      // dat er iets mis is, en een rode knop onder een rood oordeel nodigt uit.
+      h += '<div class="fc-knoppen" style="margin-top:8px"><button class="fc-k gevaar" ' + (_st.bezig ? 'disabled' : '') +
+        ' onclick="PLFoutcodes.naarWissen()">🗑 Foutcodes wissen…</button></div></details>';
     }
     var kan = (isVerbonden() || isDemo()) && !isRemote() && !_st.bezig;
     h += '<div class="fc-knoppen">' +
       '<button class="fc-k hoofd" ' + (kan ? '' : 'disabled') + ' onclick="PLFoutcodes.scan()">' + (s ? '🔄 Opnieuw uitlezen' : '🔍 Uitlezen') + '</button>' +
       (s ? '<button class="fc-k" onclick="PLFoutcodes.bewaar()">💾 Bewaren</button>' : '') +
       '</div>';
-    if (s) h += '<div class="fc-knoppen" style="margin-top:8px"><button class="fc-k gevaar" ' + (_st.bezig ? 'disabled' : '') +
-      ' onclick="PLFoutcodes.naarWissen()">🗑 Foutcodes wissen…</button></div>';
     return h;
   }
 
@@ -800,6 +903,8 @@
     staat: function () { return _st; },
     _akkoord: function (v) { _st.akkoord = !!v; teken(); },
     _terug: function () { if (_st.bezig) return; _st.fase = 'lijst'; teken(); },
+    _vervolg: vervolg,
+    stoplicht: stoplicht,
     // pure kern en bus — voor test-foutcodes.js
     parseDtc: parseDtc,
     parseReadiness: parseReadiness,

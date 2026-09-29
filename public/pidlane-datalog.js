@@ -344,16 +344,23 @@ function closeApiDialog(){document.getElementById('apiDialog').classList.remove(
 // ════════════════════════════════════════
 // WELCOME SCREEN
 // ════════════════════════════════════════
-// 3 tabs vervangen door 4 intent-deuren
+// Sinds 29-09-2026 staan er geen deuren meer op het startscherm maar een
+// hoofdknop en vier tegels (pidlane-nav.js). De vijf panelen met kaarten zijn
+// gebleven voor de garagemodus: openDoor('alle') zet ze onder elkaar ("Alle
+// functies"), openDoor(sleutel) toont er één. #wmDoors is nu het startscherm.
 function openDoor(key){
   const d=document.getElementById('wmDoors'); if(d) d.style.display='none';
-  document.querySelectorAll('.wm-door-panel').forEach(p=>p.style.display='none');
-  const p=document.getElementById('dp-'+key); if(p) p.style.display='block';
+  const ws=document.getElementById('welcomeScreen');
+  const alle=key==='alle';
+  if(ws) ws.classList.toggle('pl-alle', alle);
+  document.querySelectorAll('.wm-door-panel').forEach(p=>p.style.display=alle?'block':'none');
+  if(!alle){ const p=document.getElementById('dp-'+key); if(p) p.style.display='block'; }
   try{ document.querySelector('.welcome-scroll')?.scrollTo(0,0); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
   logUsage('deur_open', key);
 }
 function backToDoors(){
   document.querySelectorAll('.wm-door-panel').forEach(p=>p.style.display='none');
+  const ws=document.getElementById('welcomeScreen'); if(ws) ws.classList.remove('pl-alle');
   const d=document.getElementById('wmDoors'); if(d) d.style.display='block';
 }
 

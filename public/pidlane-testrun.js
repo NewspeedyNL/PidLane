@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '8.5 (29-09-2026)';
+const TESTRUN_VERSIE = '8.6 (29-09-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2770,6 +2770,43 @@ function _zonderSporen(naam, fn) {
 }
 
 const PROEVEN_B5 = [
+
+  // ── de onderbalk en het nieuwe startscherm (29-09-2026) ──
+  // Vier tabs, één hoofdknop en vier tegels vervangen ☰, 🏠 en zes deuren.
+  // Wat in de auto stuk kan zijn en in de browserproef niet: de balk staat er
+  // niet na een echte login, een tegel wijst naar een wizardtak die in deze
+  // build ontbreekt, of de oplichtende tab zegt iets anders dan wat er in beeld
+  // staat. Deze proef LEEST alleen: hij tikt niets aan, want hij draait midden
+  // in een testrun en mag die niet wegnavigeren.
+  {
+    issue: '—',
+    naam: 'Onderbalk, Check mijn auto en de vier tegels staan er',
+    waarom: 'Het startscherm is de eerste indruk en de enige weg naar de rest; een tegel die niets opent of een balk die ontbreekt, merkt de klant voor jij het doet.',
+    proef: async function () {
+      if (!window.PLNav || !window.PLWizard)
+        return { staat: 'FOUT', detail: 'PLNav of PLWizard ontbreekt — geen onderbalk of geen tegels' };
+      PLNav.ververs();
+      var nav = document.getElementById('plNav');
+      var tabs = nav ? nav.querySelectorAll('.pl-nav-tab').length : 0;
+      if (tabs !== 4) return { staat: 'FOUT', detail: 'de onderbalk heeft ' + tabs + ' tabs, verwacht 4' };
+      if (!document.body.classList.contains('pl-nav-aan'))
+        return { staat: 'FOUT', detail: 'ingelogd, maar de onderbalk staat niet aan (body.pl-nav-aan ontbreekt)' };
+      if (!document.getElementById('plCheckBtn'))
+        return { staat: 'FOUT', detail: 'de knop Check mijn auto staat niet op het startscherm' };
+      var takken = PLWizard._takken || {}, mis = [];
+      document.querySelectorAll('.pl-tegel').forEach(function (t) {
+        var m = String(t.getAttribute('onclick') || '').match(/PLNav\.tegel\('([a-z]+)'\)/);
+        if (!m || !takken[m[1]]) mis.push(m ? m[1] : '(geen tak)');
+      });
+      if (mis.length) return { staat: 'FOUT', detail: 'tegel zonder wizardtak: ' + mis.join(', ') };
+      var ws = document.getElementById('welcomeScreen');
+      var aan = nav.querySelector('.pl-nav-tab.aan');
+      var verwacht = ws && !ws.classList.contains('hidden') ? 'auto' : null;
+      if (verwacht && (!aan || aan.getAttribute('data-tab') !== verwacht) && !document.getElementById('kebabMenu').classList.contains('open'))
+        return { staat: 'FOUT', detail: 'het startscherm staat open maar tab "' + (aan ? aan.getAttribute('data-tab') : 'geen') + '" licht op' };
+      return { staat: 'OK', detail: '4 tabs, Check mijn auto, ' + document.querySelectorAll('.pl-tegel').length + ' tegels met een tak; garagemodus ' + (PLNav.garage() ? 'aan' : 'uit') };
+    }
+  },
 
   // ── de meetopdracht van buiten (#241, 17-09-2026) ──
   // De lus: de testrun schrijft tijdens de rit naar de logtabel, die tabel
@@ -8954,7 +8991,9 @@ const CAMPAGNE = {
     'DE PROEVEN OORDELEN OVER DE HELE RIT. Tot nu toe keek blok 5 naar het moment waarop de testrun draaide; wat er daarvoor gebeurde telde niet, en dan moest een rit over. Nu houden de modules zelf bij wat er deze sessie gebeurde, en oordeelt blok 5 daar aan het eind over. Elke proef zegt ok, FOUT met het waarom, of LET OP met precies wat de rit nog nodig had.',
     'NIEUW IN DE APP. Versnelling bij het voertuig met een knop Fout (ook R), tijd per versnelling met rijstijladvies, zeventien berekende PIDs (onder "Berekend"), een trekmodus met waarschuwingstoon, ritlabels met voorstel, export en kosten, rapporten vergelijken en in één keer wissen. Daarna: eigen PIDs per voertuig (Mijn voertuigen → Sensoren), de versnelling in het midden van Slim visueel, en opslaan zonder keuzevenster.',
     'NIEUW 29-09: RIT BEËINDIGEN (#341). Onderin het menu staan "Uitloggen" en "Sluit de app" niet meer. Daar staat nu één knop: "Rit beëindigen" als er een rit loopt, anders "Afsluiten". Hij toont de rit, laat je hem een naam geven en vraagt wat er daarna gebeurt: verbonden blijven, verbreken of de app sluiten, met uitloggen als vinkje. Verbreken geeft de bus eerst vrij met ATPC. En motor uit is geen einde van de rit meer: pas na vijftien minuten zonder rijden sluit de app hem zelf af.',
+    'NIEUW 29-09: EEN NIEUW STARTSCHERM EN EEN ONDERBALK. ☰ en 🏠 zijn weg; onderin staan Mijn auto, Live, Rapporten en Meer (het oude menu). Het startscherm heeft één grote knop, Check mijn auto, en vier tegels die de wizard op hun eigen vraag openen. Na het verbinden draait de check vanzelf (uit te zetten in Meer). De oude kaarten staan onder Alle functies, alleen in de garagemodus — die staat voor een beheeraccount vanzelf aan.',
     '── WAT ÉÉN RIT DEZE RONDE MOET LATEN ZIEN ────────',
+    'HET NIEUWE STARTSCHERM. Direct na het verbinden hoort Check mijn auto vanzelf open te gaan. Klopt het stoplicht met wat de auto heeft? Tik daarna één keer elke tab aan, en open elke tegel tot de eerste vraag. Wat niet klopt of onduidelijk is: noteer het woord voor woord.',
     'EEN STOP MET DE MOTOR UIT (#341). Ergens onderweg: stoppen, motor uit, drie minuten wachten (of even de app dichtdoen), en weer rijden. Blok 5 hoort aan het eind één rit met één pauze te zien, niet twee ritten.',
     'DE GROEPSPROEF, DRIE KEER (#333). Tik op de OBD-chip → 📦 Start de groepsproef. Hij duurt ongeveer twee minuten en de meters staan zolang stil; laat de app open. (A) direct na het starten, auto stil; (B) na minstens tien minuten rijden, auto stil; (C) rijdend op constante snelheid, ALLEEN als een bijrijder de telefoon bedient. Meldt hij dat de verbinding veranderde tijdens de proef, doe hem dan meteen nog één keer. Zet het advies of een schermafbeelding van de tabel als reactie in #333, met de adapter erbij.',
     'ALLEEN ALS HET ADVIES BOVEN DE 3 UITKOMT: ✋ Handmatig → PIDs per verzoek op het advies, tien minuten rijden, en kijk in het paneel naar "onvolledig" en "herhaald". Daarna terug naar 🤖 Automaat.',
@@ -8971,12 +9010,12 @@ const CAMPAGNE = {
     'BANDEN (als je auto ze via een eigen PID geeft). Rij minstens vijf minuten; de banden worden elke minuut gevraagd. Tik op het bandenlampje boven Slim visueel: staan alle vier de drukken er, in bar?',
     'EEN EIGEN PID. Mijn voertuigen → Sensoren. Heb je een code van de dealer: vul hem in (met ECU-adres als je dat weet, bijv. 7E1 voor de automaat), Test op de auto, Toevoegen, Bewaren. Zo niet: 📚 Codes voor dit model → Zoek online, test de kandidaten (elke test telt mee als werkt/werkt niet) en voeg er een toe die antwoordt. Laat hem de rit meelopen; werkt hij, tik dan Deel.',
     '── STAP VOOR STAP ────────',
-    'STAP 0 — VOORAF. Nieuwste versie laden (☰ → Nieuwste versie laden). Mijn voertuigen: vul bij Profiel handbak of automaat, het aantal versnellingen, de tankinhoud, de literprijs en het vermogen in. Een nieuwe APK is niet nodig.',
+    'STAP 0 — VOORAF. Nieuwste versie laden (Meer → Admin → Nieuwste versie laden). Mijn voertuigen: vul bij Profiel handbak of automaat, het aantal versnellingen, de tankinhoud, de literprijs en het vermogen in. Een nieuwe APK is niet nodig.',
     'STAP 1 — VERBINDEN EN WEGRIJDEN. Eén keer verbinden, dan niet meer verbreken tot na de testrun. Tik de rijsituatie caravan of beladen aan en kies Slim visueel.',
     'STAP 2 — RIJDEN, 30 MINUTEN OF MEER. Doe onderweg de punten hierboven: alle versnellingen, één keer Fout, één keer R, een minuut beeld-in-beeld, dertig seconden constant, één keer vol gas.',
     'STAP 1b — GROEPSPROEF A, meteen na het verbinden en vóór het wegrijden. Proef B bij de eerste stop na tien minuten; proef C onderweg als er een bijrijder is.',
     'STAP 3 — DRAAI AAN HET EIND DE TESTRUN, nog steeds verbonden. De #302-proef staat achteraan en kan twee minuten duren als hij de drift ziet: dan meet hij, initialiseert de ELM opnieuw, meet weer en verbindt zo nodig opnieuw.',
-    'STAP 4 — RIT BEËINDIGEN (#341), ná de testrun. ☰ → Rit beëindigen: klopt de samenvatting met wat je reed? Geef de rit een naam en kies Verbinding verbreken. In het BT-log hoort daarna "ATPC (bus vrijgeven) → "OK"" te staan; staat er "?" of geen antwoord, noteer dan de adapter in #341. Kijk in Mijn voertuigen → Ritten of de rit met die naam erin staat.',
+    'STAP 4 — RIT BEËINDIGEN (#341), ná de testrun. Meer → Rit beëindigen: klopt de samenvatting met wat je reed? Geef de rit een naam en kies Verbinding verbreken. In het BT-log hoort daarna "ATPC (bus vrijgeven) → "OK"" te staan; staat er "?" of geen antwoord, noteer dan de adapter in #341. Kijk in Mijn voertuigen → Ritten of de rit met die naam erin staat.',
     'NA AFLOOP. Plak uit het ruwe verslag de FOUT- en LET OP-regels met hun blokkop, plus het verbruik van de boordcomputer uit punt 5. Staat er een LET OP, dan zegt die regel wat er ontbrak.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
     'DE AUTOMAAT GAAT NIET BOVEN DE 3. Dat mag pas als de groepsproef op twee adapters, in A, B en C, een groep van 4 of meer adviseert met minstens 15% meer metingen per seconde en zonder verlies (de grens staat in #333). Deze ronde verzamelt die metingen; hij beslist nog niets.',

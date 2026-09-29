@@ -588,7 +588,7 @@ MUTATIES=(
 "public/pidlane-totalcheck.js@@  if(!nu.has(sit)) mis.push(@@  if(false) mis.push(@@bproef-systeemtest.js@@de systeemtest kijkt niet meer naar de situatie: rijtests meten en falen tijdens stilstand"
 "public/pidlane-totalcheck.js@@if(t.sit==='koud' && koudBijStart===false)@@if(false)@@bproef-systeemtest.js@@de koude-starttest blijft op een warme motor eeuwig wachten in plaats van eerlijk niet getest te heten"
 "public/pidlane-bulk.js@@  _blkEl('blkAna').onclick   = function () {@@  _blkEl('blkAna').onclick   = function () { return;@@bproef-vensters.js@@de knop Analyse in de bulk-recorder doet niets: de bulk-analyse is dan nergens meer te openen"
-"public/pidlane-btflow.js@@b.style.cssText='position:fixed;bottom:calc(10px + var(--pl-sab,0px));@@b.style.cssText='position:fixed;bottom:10px;@@bproef-schermranden.js@@de balk van de scenariotest valt weer achter de Android-knoppen"
+"public/pidlane-btflow.js@@b.style.cssText='position:fixed;bottom:calc(10px + var(--pl-sab,0px) + var(--pl-nav-h,0px));@@b.style.cssText='position:fixed;bottom:10px;@@bproef-schermranden.js@@de balk van de scenariotest valt weer achter de Android-knoppen"
 # ── De tests gaan mee naar app.pidlane.nl (26-09-2026) ──
 # public/.assetsignore houdt 2,3 MB aan tests van de site af. Te smal en een
 # testsoort staat alsnog openbaar; te breed en een module van de app wordt niet
@@ -1376,6 +1376,23 @@ MUTATIES=(
 "public/pidlane-uihelpers.js@@    if(!_wasDemo && typeof plBusVrijgeven==='function') await plBusVrijgeven();@@    void 0;@@bproef-afsluiten.js@@bij verbreken blijft de bus bezet: geen ATPC"
 "public/pidlane-uihelpers.js@@  try{ if(window.PLAfsluiten) PLAfsluiten.verversMenu(); }@@  try{ if(false) PLAfsluiten.verversMenu(); }@@bproef-afsluiten.js@@het menu zegt \"Afsluiten\" terwijl er een rit loopt"
 "public/pidlane-uihelpers.js@@    try{ if(window._webSerialWrite && typeof disconnectWebSerial==='function') await disconnectWebSerial(); }@@    try{ if(false) await disconnectWebSerial(); }@@bproef-afsluiten.js@@bewust verbreken laat een Web Serial-poort open: de volgende verbinding stuit op \"port already open\""
+
+# ── De navigatie (29-09-2026). Fouten die je maakt bij het verbouwen van een
+# startscherm: de volgorde van de tabs, wie de garagemodus krijgt, een tegel
+# die naar een knoop wijst die er niet is, een beheerschakelaar die niets meer
+# doet, en een stoplicht dat "niet gelezen" als groen telt.
+"public/pidlane-nav.js@@    if (st.rapporten) return 'rapporten';\n    if (st.welkom) return 'auto';@@    if (st.welkom) return 'auto';\n    if (st.rapporten) return 'rapporten';@@test-nav.js@@het startscherm wint van het rapportenoverzicht: Rapporten licht nooit op"
+"public/pidlane-nav.js@@    return !!ingelogd && !isKlant;@@    return !isKlant;@@test-nav.js@@de demo zonder login krijgt de garagemodus (en de reviewer het vakgereedschap)"
+"public/pidlane-nav.js@@    if (opgeslagen === '0') return false;@@    if (opgeslagen === '0') return !!standaard;@@test-nav.js@@wie de garagemodus uitzet, krijgt hem terug zodra de standaard aan is"
+"public/pidlane-nav.js@@    return !!(st.ingelogd || st.demo) && !st.dashboard;@@    return !st.dashboard;@@test-nav.js@@de balk staat er al op het inlogscherm"
+"public/pidlane-wizard.js@@  voorbereiding: {nu:'voorb_wat',       set:{doel:'voorbereiding'}},@@  voorbereiding: {nu:'voorb_klaar',      set:{doel:'voorbereiding'}},@@test-wizardtakken.js@@de tegel Voorbereiden wijst naar een knoop die niet bestaat"
+"public/pidlane-wizard.js@@  return m.filter(moduleAan);@@  return m;@@test-wizardtakken.js@@een functie die beheer uitzet, blijft in het wizardplan staan"
+"public/pidlane-foutcodes.js@@    var ongelezen = ['bevestigd', 'pending', 'permanent'].filter(function (k) { return !g[k]; }).length;@@    var ongelezen = 0;@@test-foutcodes.js@@het stoplicht telt een niet-gelezen soort code als \"geen codes\" en wordt groen"
+"public/pidlane-foutcodes.js@@    var vast = uniek([].concat(c.bevestigd || [], c.permanent || [])).length;@@    var vast = [].concat(c.bevestigd || [], c.permanent || []).length;@@test-foutcodes.js@@een code die bevestigd én permanent is, telt twee keer in de kop"
+"public/pidlane-nav.js@@    _gecheckt = true;       // één keer per sessie@@    void 0;                 // één keer per sessie@@bproef-navigatie.js@@de automatische check springt bij elke herverbinding opnieuw open"
+"public/pidlane-fuel.js@@  door_saving_active: 'tg-rit',@@  door_saving_active: 'tg-onderweg',@@bproef-navigatie.js@@de beheerschakelaar voor Rit starten wijst naar een tegel die er niet is"
+"admin/beheer.html@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], true));@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], false));@@bproef-beheerpagina.js@@beheer toont een nooit opgeslagen tegel als uit, en Alles opslaan zet hem dan echt uit"
+"public/pidlane-uihelpers.js@@  if(!s.ai) return 'AI niet bereikbaar';\n  return s.naam || 'Verbonden';@@  return s.naam || 'Verbonden';@@test-nav.js@@de statusregel toont de autonaam terwijl de AI weg is"
 )
 
 echo

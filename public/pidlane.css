@@ -4,7 +4,8 @@
 :root {
   --bg:#eef1f6; --sur:#ffffff; --sur2:#f4f6fb;
   --bd:#e4e8f0; --bd2:#cfd6e3;
-  --tx:#10151f; --tx2:#475067; --tx3:#5f6a7d;
+  /* --tx2/--tx3 op 29-09-2026 donkerder: zie LEESBAARHEID onderaan. */
+  --tx:#10151f; --tx2:#343d51; --tx3:#465064;
   --bl:#2563ff; --bl2:#1a4fe0; --bls:#e8efff;
   /* --blv: blauw waar WIT bovenop komt (een gevulde knop). --bl zelf moet in
      het donkere thema juist lícht zijn, want daar staat hij als tekst op een
@@ -468,7 +469,7 @@ body:has(#welcomeScreen:not(.hidden)) .cc { visibility:hidden; }
 
 .wm-door-ic { font-size:30px; }
 .wm-door-t { color:#fff; font-size:16px; margin-top:12px; }
-.wm-door-d { color:#8a93a6; opacity:1; font-size:12.5px; margin-top:5px; }
+.wm-door-d { color:#c3cee2; opacity:1; font-size:13.5px; margin-top:5px; }
 .wm-door-h { color:#fff; }
 .wm-back { background:#11151f; border:1px solid #232c40; color:#cdd5e5; }
 .wm-spec { color:#8a93a6; border:1px dashed #2a3550; }
@@ -477,9 +478,9 @@ body:has(#welcomeScreen:not(.hidden)) .cc { visibility:hidden; }
 .choice-card:hover { border-color:#2f6bff; box-shadow:none; }
 .choice-card.hl { background:linear-gradient(135deg,#2f6bff,#1a4fe0); border-color:#2f6bff; }
 .choice-title { color:#fff; }
-.choice-desc { color:#8a93a6; }
-.choice-time { background:#0a0e17; color:#8a93a6; border:1px solid #232c40; }
-.choice-out { color:#8a93a6; border-top:1px dashed #2a3550; }
+.choice-desc { color:#c3cee2; }
+.choice-time { background:#0a0e17; color:#c3cee2; border:1px solid #232c40; }
+.choice-out { color:#b2bed6; border-top:1px dashed #2a3550; }
 .choice-out b { color:#cdd5e5; }
 
 /* ══ DESKTOP-LAAG (≥1024px) — comfortabel testen op een breed scherm ══ */
@@ -2301,7 +2302,7 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 
 .wz-body{ flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 18px 6px; }
 .wz-vraag{ font-size:25px; font-weight:800; line-height:1.22; margin-bottom:8px; }
-.wz-sub{ font-size:13.5px; line-height:1.55; color:var(--tx3); margin-bottom:20px; }
+.wz-sub{ font-size:14px; line-height:1.55; color:var(--tx2); margin-bottom:20px; }
 
 .wz-opts{ display:flex; flex-direction:column; gap:10px; }
 .wz-opt{
@@ -2311,7 +2312,7 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 }
 .wz-opt:active{ transform:scale(.99); border-color:rgba(0,255,136,.5); }
 .wz-opt-t{ font-size:15.5px; font-weight:700; }
-.wz-opt-d{ font-size:12.5px; line-height:1.45; color:var(--tx3); }
+.wz-opt-d{ font-size:13.5px; line-height:1.45; color:var(--tx2); }
 
 .wz-tekst{
   width:100%; box-sizing:border-box; padding:14px; border-radius:13px;
@@ -2598,3 +2599,119 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .vis-tt.warn { border-color:var(--or); } .vis-tt.warn b { color:var(--or); }
 .vis-tt.danger { border-color:var(--rd); } .vis-tt.danger b { color:var(--rd); }
 #plGearOv .plg-r.plg-r2 { width:118px; }
+
+/* ══ NAVIGATIE (29-09-2026) — onderbalk, startscherm, Meer, garagemodus ══
+   Zie pidlane-nav.js voor het waarom. --pl-nav-h is de hoogte die de balk
+   inneemt, en 0 zolang hij er niet staat (niet ingelogd, of een dashboard
+   dat hem nodig heeft). Alles wat vast onderaan zweeft telt hem mee, anders
+   ligt het er precies onder. */
+:root { --pl-nav-h:0px; }
+body.pl-nav-aan { --pl-nav-h:62px; padding-bottom:calc(var(--pl-sab) + var(--pl-nav-h)); }
+body.pl-nav-aan #welcomeScreen .welcome-scroll { padding-bottom:calc(24px + var(--pl-sab) + var(--pl-nav-h)); }
+#fabLane { bottom:calc(14px + var(--pl-sab) + var(--pl-nav-h)); }
+
+.pl-nav { display:none; position:fixed; left:0; right:0; bottom:0; z-index:9550;
+  grid-template-columns:repeat(4,1fr); padding:0 max(6px, env(safe-area-inset-left,0px)) var(--pl-sab);
+  background:var(--sur); border-top:1px solid var(--bd); box-shadow:0 -6px 18px rgba(0,0,0,.18); }
+body.pl-nav-aan .pl-nav { display:grid; }
+.pl-nav-tab { position:relative; height:62px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  border:0; background:transparent; color:var(--tx2); font:700 12.5px var(--f); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.pl-nav-tab svg { width:23px; height:23px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.pl-nav-tab.aan { color:var(--bl); }
+.pl-nav-tab.aan::before { content:""; position:absolute; top:0; left:28%; right:28%; height:3px; border-radius:0 0 3px 3px; background:var(--bl); }
+.pl-nav-tab:focus-visible { outline:2px solid var(--bl); outline-offset:-4px; border-radius:10px; }
+.pl-nav-tel { position:absolute; top:7px; left:calc(50% + 7px); min-width:18px; height:18px; padding:0 5px; border-radius:9px;
+  background:var(--rd); color:#fff; font:800 11px/18px var(--f); text-align:center; }
+
+/* Het Meer-venster: het oude ☰-menu, nu een blad boven de balk. De schaduw
+   dimt de rest zonder kliks te vangen — een tik op een andere tab werkt dus
+   gewoon, en de klikluisteraar in pidlane-uihelpers.js sluit het blad. */
+.kebab-menu.pl-meer { position:fixed !important; left:50% !important; right:auto !important; top:auto !important;
+  bottom:calc(var(--pl-nav-h) + var(--pl-sab) + 8px); transform:translateX(-50%);
+  width:min(440px, calc(100vw - 20px)); max-height:calc(var(--pl-vh) - var(--pl-top) - var(--pl-nav-h) - var(--pl-sab) - 24px);
+  z-index:9540 !important; border-radius:16px; padding:8px 8px 10px; gap:1px;
+  box-shadow:0 0 0 100vmax rgba(4,8,14,.5), 0 18px 48px rgba(0,0,0,.4); }
+body:not(.pl-nav-aan) .kebab-menu.pl-meer { bottom:calc(var(--pl-sab) + 12px); }
+.kebab-menu.pl-meer .kebab-item { font-size:15px; padding:12px 12px; color:var(--tx); border-radius:10px; }
+.kebab-menu.pl-meer .kebab-sub .kebab-item { font-size:14px; color:var(--tx2); }
+.kebab-kop { font:800 11.5px var(--f); letter-spacing:.08em; text-transform:uppercase; color:var(--tx2); padding:12px 12px 4px; }
+.kebab-kop:first-child { padding-top:6px; }
+.kebab-schakel { display:flex; align-items:center; gap:8px; }
+.kb-sw { margin-left:auto; flex:0 0 40px; width:40px; height:24px; border-radius:12px; background:var(--bd2); position:relative; transition:background .15s; }
+.kb-sw::after { content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:transform .15s; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+.kebab-schakel[aria-checked="true"] .kb-sw { background:var(--gn); }
+.kebab-schakel[aria-checked="true"] .kb-sw::after { transform:translateX(16px); }
+
+/* Alleen in de garagemodus: vakgereedschap op dezelfde plekken. */
+body:not(.pl-garage) .alleen-garage { display:none !important; }
+body:not(.pl-garage) #pidViewSwitch { display:none !important; }
+
+/* Startscherm: de check, vier tegels, en voor de garage "Alle functies". */
+.welcome-sub { font-size:14px; color:#c3cee2; margin-top:2px; }
+.pl-home { max-width:720px; margin:0 auto; }
+.pl-check { width:100%; display:flex; align-items:center; gap:14px; text-align:left; cursor:pointer;
+  padding:20px 18px; border-radius:18px; border:0; color:#fff; font-family:var(--f);
+  background:linear-gradient(135deg,#1f5eff 0%,#0a8fb8 100%); box-shadow:0 12px 30px -10px rgba(31,94,255,.65);
+  -webkit-tap-highlight-color:transparent; transition:transform .12s; }
+.pl-check:active { transform:scale(.98); }
+.pl-check:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+.pl-check-ic { flex:0 0 48px; height:48px; border-radius:14px; background:rgba(255,255,255,.16); display:flex; align-items:center; justify-content:center; }
+.pl-check-tx { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+.pl-check-t { font-size:21px; font-weight:800; letter-spacing:.01em; }
+.pl-check-d { font-size:14px; color:rgba(255,255,255,.9); }
+.pl-check-pijl { font-size:22px; font-weight:800; }
+.pl-kop { font-size:12.5px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:#c3cee2; margin:24px 2px 10px; }
+.pl-tegels { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.pl-tegel { position:relative; overflow:hidden; display:flex; flex-direction:column; align-items:flex-start; gap:4px; min-height:112px;
+  text-align:left; padding:15px 14px 14px 16px; border-radius:16px; cursor:pointer; font-family:var(--f);
+  background:#131a28; border:1px solid #273249; color:#fff; -webkit-tap-highlight-color:transparent; transition:border-color .15s, transform .12s; }
+.pl-tegel::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--tg,#2f6bff); }
+.pl-tegel:active { transform:scale(.97); }
+.pl-tegel:hover, .pl-tegel:focus-visible { border-color:var(--tg,#2f6bff); outline:none; }
+.pl-tegel.tg-storing { --tg:#ff6b4a; } .pl-tegel.tg-handel { --tg:#a78bfa; }
+.pl-tegel.tg-rit { --tg:#22c55e; }     .pl-tegel.tg-voorb { --tg:#38bdf8; }
+.pl-tegel-ic { font-size:26px; line-height:1; margin-bottom:6px; }
+.pl-tegel-t { font-size:16px; font-weight:800; }
+.pl-tegel-d { font-size:13.5px; color:#c3cee2; line-height:1.35; }
+.pl-alles { width:100%; margin-top:16px; display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px; border-radius:14px; border:1px dashed #3a4663; background:transparent; color:#dbe3f2;
+  font:700 15px var(--f); cursor:pointer; }
+.pl-alles span { font-size:18px; }
+@media (max-width:360px){ .pl-tegels { grid-template-columns:1fr; } .pl-tegel { min-height:0; } }
+@media (min-width:900px){ .pl-tegels { grid-template-columns:repeat(4,1fr); } }
+/* "Alle functies": de vijf panelen onder elkaar, in de volgorde van de tegels.
+   Eén terugknop bovenaan is genoeg. */
+#welcomeScreen.pl-alle .welcome-scroll { display:flex; flex-direction:column; }
+#welcomeScreen.pl-alle #dp-diag { order:1; } #welcomeScreen.pl-alle #dp-deal { order:2; }
+#welcomeScreen.pl-alle #dp-saving { order:3; } #welcomeScreen.pl-alle #dp-prep { order:4; }
+#welcomeScreen.pl-alle #dp-live { order:5; }
+#welcomeScreen.pl-alle .wm-door-panel { margin-bottom:18px; }
+#welcomeScreen.pl-alle .wm-door-panel:not(#dp-diag) .wm-back { display:none; }
+
+/* Live: de acties die vroeger in de deur "Live data" stonden. */
+.pl-live-acties { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 10px; }
+.pl-live-acties button { flex:1 1 120px; display:flex; align-items:center; justify-content:center; gap:7px; padding:11px 10px;
+  border-radius:10px; border:1px solid var(--bd); background:var(--sur); color:var(--tx); font:700 14px var(--f); cursor:pointer; }
+.pl-live-acties button:active { transform:scale(.98); }
+
+/* ══ LEESBAARHEID (29-09-2026) ══
+   Uit de evaluatie: letters te licht, te klein, te veel tekst per venster.
+   Het lichte thema zette zwakke tekst op #5f6a7d (5,5:1 op wit); dat haalt de
+   norm, maar de klacht gaat boven het getal — zie de uitleg bij html.dark,
+   waar hetzelfde op 11-09 gebeurde. Nu #465064 (--tx3) en #343d51 (--tx2),
+   bovenaan dit bestand, nog steeds zichtbaar lichter dan --tx.
+   De vloer eronder is de andere helft: honderden inline font-size:10/11px in
+   vensters. Eén voor één aanpassen is maanden werk en loopt weer uit de pas;
+   een vloer binnen de vensters vangt ze allemaal, en laat chips en badges in
+   de topbalk (waar ruimte schaars is) met rust. */
+.ai-sheet-b [style*="font-size:10px"], .ai-sheet-b [style*="font-size:10.5px"], .ai-sheet-b [style*="font-size:11px"],
+.modal-scroll [style*="font-size:10px"], .modal-scroll [style*="font-size:10.5px"], .modal-scroll [style*="font-size:11px"],
+.welcome-choices [style*="font-size:11px"], #plGarOv [style*="font-size:11px"], .wz-body [style*="font-size:11px"] { font-size:12.5px !important; }
+.ai-sheet-b [style*="font-size:11.5px"], .ai-sheet-b [style*="font-size:12px"],
+.modal-scroll [style*="font-size:11.5px"], .modal-scroll [style*="font-size:12px"] { font-size:13px !important; }
+.ai-sheet-b [style*="opacity:.5"], .ai-sheet-b [style*="opacity:.55"], .ai-sheet-b [style*="opacity:.6"] { opacity:.85 !important; }
+.choice-desc { font-size:13.5px; line-height:1.45; }
+.choice-out { font-size:13px; }
+/* Te veel tekst per kaart: voor een klant is titel plus één zin genoeg. De
+   regel "Je krijgt:" staat er voor wie vergelijkt — de garagemodus. */
+body:not(.pl-garage) .choice-out { display:none; }
