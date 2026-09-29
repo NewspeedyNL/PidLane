@@ -67,6 +67,14 @@ laten vervallen. De kaarten (`wc-…`) en de deurpanelen staan nog in
 `index.html`, onder "Alle functies": hun id's dragen de featureflags, de
 favorieten en de tests. Er is geen functie verdwenen.
 
+**Herzien, dezelfde avond.** De weergavekeuze in Live (Trends · Getallen ·
+Puntjes · Slim · Visueel) was als "vakgereedschap" achter de garagemodus
+gezet, met het argument dat een klant in Mijn voorkeuren een weergave kan
+kiezen. Dat klopte niet in het gebruik: wie in Slim stond kon nergens meer
+heen, en niemand zoekt een weergave in een voorkeurenscherm. Kiezen hoe je
+kijkt is geen vakgereedschap. De keuze staat weer voor iedereen, en
+`bproef-navigatie.js` toetst het als klant.
+
 **Een open vraag.** Er stond tot juni al een onderbalk (Start · Live data ·
 Rapport). Die verdween bij het opnieuw opzetten van de algemene weergave, niet
 om een reden die nu nog geldt (navraag 29-09-2026).
