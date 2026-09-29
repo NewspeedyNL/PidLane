@@ -6,7 +6,8 @@
 <!-- Bron voor de social-advertenties. Render: bash marketing/render.sh
      ?f=vierkant (1080x1080, Facebook/Instagram-feed)
      ?f=staand   (1080x1920, TikTok/Reels/Stories)
-     ?f=breed    (1200x628, Facebook-linkpost) -->
+     ?f=breed    (1200x628, Facebook-linkpost)
+     &doel=garage geeft de zakelijke versie (standaard: consument) -->
 <style>
 /* DM Sans en DM Mono (SIL Open Font License) lokaal, zodat het renderen geen internet vraagt */
 @font-face { font-family:"DM Sans"; src:url(fonts/dmsans.woff2) format("woff2"); font-weight:100 1000; }
@@ -92,16 +93,25 @@ body { font-family:'DM Sans',sans-serif; color:var(--tx); overflow:hidden; }
 .breed .tel { width:360px; height:740px; right:60px; top:60px; transform:rotate(5deg); }
 .breed .scherm { padding:28px 20px; gap:14px; }
 .breed .lijst, .breed .haak, .vierkant .haak, .staand .lijst { display:none; }
+/* garageversie: de doelgroep staat er in elk formaat boven, als label */
+.garage .haak { display:inline-block; color:var(--cy); font-weight:800; letter-spacing:.5px; text-transform:uppercase;
+  border:2px solid rgba(79,214,240,.4); border-radius:999px; background:rgba(79,214,240,.08); }
+.vierkant.garage .haak { font-size:22px; padding:8px 20px; margin-top:52px; }
+.vierkant.garage .kop { margin-top:22px; font-size:86px; }
+.breed.garage .haak { font-size:17px; padding:6px 16px; margin-top:30px; }
+.breed.garage .kop { margin-top:16px; font-size:60px; }
+.breed.garage .sub { font-size:23px; }
+.staand.garage .haak { font-size:32px; padding:12px 28px; }
 </style>
 </head>
 <body>
 <div class="ad" id="ad">
   <div class="merk" style="position:relative"><img src="icon.png" alt=""> PidLane</div>
   <div style="position:relative">
-    <div class="haak">Brandt er een lampje op je dashboard?</div>
-    <h1 class="kop">Weet wat je auto <em>mankeert.</em></h1>
-    <p class="sub">Lees je auto uit met een OBD2-adapter en krijg een diagnose in gewone taal.</p>
-    <ul class="lijst">
+    <div class="haak" id="t-haak">Brandt er een lampje op je dashboard?</div>
+    <h1 class="kop" id="t-kop">Weet wat je auto <em>mankeert.</em></h1>
+    <p class="sub" id="t-sub">Lees je auto uit met een OBD2-adapter en krijg een diagnose in gewone taal.</p>
+    <ul class="lijst" id="t-lijst">
       <li>Foutcodes uitlezen</li>
       <li>Live sensorwaarden</li>
       <li>Koopcheck voor occasions</li>
@@ -121,8 +131,8 @@ body { font-family:'DM Sans',sans-serif; color:var(--tx); overflow:hidden; }
       <p>Motorlampje aan · opgeslagen code</p>
     </div>
     <div class="kaart ai">
-      <div class="lbl">✦ IN GEWONE TAAL</div>
-      <p style="color:#d6dcea;margin-top:8px">De motor krijgt te veel lucht of te weinig brandstof. Eerste verdachte: een lek in de aanzuigslang.</p>
+      <div class="lbl" id="t-lbl">✦ IN GEWONE TAAL</div>
+      <p style="color:#d6dcea;margin-top:8px" id="t-ai">De motor krijgt te veel lucht of te weinig brandstof. Eerste verdachte: een lek in de aanzuigslang.</p>
     </div>
     <div class="meters">
       <div class="meter"><span>Toerental</span><b>812</b><div class="balk"><i style="width:18%"></i></div></div>
@@ -140,6 +150,17 @@ body { font-family:'DM Sans',sans-serif; color:var(--tx); overflow:hidden; }
 <script>
   var f = new URLSearchParams(location.search).get('f') || 'vierkant';
   document.getElementById('ad').classList.add(f);
+  // Zakelijke tekst. Alleen claims die de app waarmaakt: zie README.md en PLAY-INZENDING.md §3.
+  if (new URLSearchParams(location.search).get('doel') === 'garage') {
+    document.getElementById('ad').classList.add('garage');
+    var t = function (id, html) { document.getElementById(id).innerHTML = html; };
+    t('t-haak', 'Voor garages en autobedrijven');
+    t('t-kop', 'Van foutcode naar <em>oorzaak.</em>');
+    t('t-sub', 'Lees de auto uit via OBD2 en geef je klant een diagnoserapport dat hij ook begrijpt.');
+    t('t-lijst', '<li>Foutcodes met freeze frame</li><li>Koopcheck voor inruil en occasions</li><li>Rapport als PDF voor de klant</li>');
+    t('t-lbl', '✦ RAPPORT VOOR DE KLANT · PDF');
+    t('t-ai', 'Eerste verdachte: lek in de aanzuigslang. Brandstoftrims staan beide ruim positief, dus eerst op valse lucht controleren.');
+  }
 </script>
 </body>
 </html>
