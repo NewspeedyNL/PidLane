@@ -53,6 +53,10 @@ var KRITIEK = [
   // Ontbreekt die functie, dan doet de knop niets en zegt niets -- precies de
   // stille vorm waarvoor deze lijst bestaat.
   'handleConnect',
+  // Erbij op 29-09-2026. handleConnect() geeft de bus vrij (ATPC) voordat de
+  // socket dichtgaat, achter een guard omdat pidlane-bt.js ook los getest
+  // wordt. Ontbreekt hij, dan blijft een K-lijn-ECU op een tester wachten.
+  'plBusVrijgeven',
   'ecuSteunt','hasTesterConsent','healthUitProfiel',
   // De twee helften van #78 (02-09-2026). plHealthHerzien() laat een negatief
   // gezondheidsoordeel vervallen zodra er alsnog een geldige meting binnenkomt;

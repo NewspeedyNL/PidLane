@@ -156,6 +156,8 @@ async function laadWorker() {
   toets('rit terug met codes als lijst', rr.ritten.length === 1 && rr.ritten[0].codes[0] === 'P0171' && rr.ritten[0].km === 24.3);
   toets('een onzinwaarde wordt null, niet opgeslagen', (await roep(tokA, { actie: 'rit_opslaan', voertuig_id: v1.voertuig.id, rit: { start: '2026-09-27T09:00:00.000Z', max_kmh: 9999 } })).ok &&
     db.prepare("SELECT max_kmh FROM kp_rit WHERE start = '2026-09-27T09:00:00.000Z'").get().max_kmh === null);
+  toets('een naam uit "Rit beëindigen" gaat mee, schoongemaakt en ingekort', (await roep(tokA, { actie: 'rit_opslaan', voertuig_id: v1.voertuig.id, rit: { start: '2026-09-27T10:00:00.000Z', km: 3, label: '  Naar de bakker\n en terug, via de lange weg langs het kanaal  ' } })).ok &&
+    db.prepare("SELECT label FROM kp_rit WHERE start = '2026-09-27T10:00:00.000Z'").get().label === 'Naar de bakker  en terug, via de lange w');
 
   await roep(tokA, { actie: 'status_opslaan', voertuig_id: v1.voertuig.id, gezondheid: { accu: 12.6 }, kmstand: 85000 });
   await roep(tokA, { actie: 'status_opslaan', voertuig_id: v1.voertuig.id, kmstand: 60000 });
@@ -179,7 +181,7 @@ async function laadWorker() {
   toets('een sleutel met SQL erin wordt overgeslagen', (await roep(tokA, { actie: 'issues_bijwerken', voertuig_id: v1.voertuig.id, ops: [{ sleutel: "x'; DROP TABLE kp_issue;--", actie: 'gezien' }] })).verwerkt === 0);
   st = await roep(tokA, { actie: 'stand' });
   const mz = st.voertuigen.find((v) => v.id === v1.voertuig.id);
-  toets('stand telt rapporten, ritten en open issues', mz.aantal.rapporten === 1 && mz.aantal.ritten === 2 && mz.aantal.openIssues === 0, JSON.stringify(mz.aantal));
+  toets('stand telt rapporten, ritten en open issues', mz.aantal.rapporten === 1 && mz.aantal.ritten === 3 && mz.aantal.openIssues === 0, JSON.stringify(mz.aantal));
 
   console.log('\n4b. Voorkeuren en de sensorselectie per voertuig');
   const tokV = (await W.makeToken(env, 'vera@voorbeeld.nl', 'klant', 'Vera')).token;

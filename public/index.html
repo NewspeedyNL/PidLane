@@ -940,8 +940,10 @@ function closeConnOv(){
            (bevAanBtn/bevUitBtn) zijn meeverhuisd, zodat bevindingenMenuBij() in
            pidlane-correlatie.js onveranderd blijft werken. -->
       <div class="kebab-sep"></div>
-      <button class="kebab-item kebab-danger" onclick="closeKebab();logout()">⏏ Uitloggen</button>
-      <button class="kebab-item" id="kebabSluitApp" style="display:none" onclick="closeKebab();plSluitApp()">✕ Sluit de app</button>
+      <!-- Rit beëindigen (29-09-2026) vervangt "Uitloggen" en "Sluit de app": één
+           venster dat de rit afrondt en vraagt wat er daarna gebeurt, met
+           uitloggen en afsluiten als keuze. Zie pidlane-afsluiten.js. -->
+      <button class="kebab-item" id="kbAfsluiten" onclick="closeKebab();PLAfsluiten.open()">⏏ Afsluiten</button>
       </div>
     </div>
     <button class="kebab-btn" onclick="goHome()" title="Home" aria-label="Home">🏠</button>
@@ -2043,6 +2045,7 @@ function closeConnOv(){
 <script src="pidlane-start.js"></script><!-- startscherm: adapterprofielen, geheugen, cascade-voortgang -->
 <script src="pidlane-run.js"></script><!-- run-chip: één plek waar staat wat er op de achtergrond draait -->
 <script src="pidlane-voorkeur.js"></script><!-- Mijn voorkeuren (PLVoorkeur) — standaardinstellingen per klantaccount; vereist PLRun, PLGarage, plFetch -->
+<script src="pidlane-afsluiten.js"></script><!-- Rit beëindigen (PLAfsluiten) — rit afronden, verbreken, uitloggen, app sluiten; vereist PLGarage, handleConnect, logout, plSluitApp -->
 <script src="pidlane-adapter.js"></script><!-- PLAdapter (#210/#211/#212): het verbindingspaneel achter de OBD-chip; vereist ná pidlane-data.js (PLBus), pidlane-plload.js (PLLoad) en pidlane-uihelpers.js (obdChipTap) -->
 <script src="pidlane-waarneming.js"></script><!-- wat er op DEZE auto is waargenomen (PLWaarneming) — de autolaag, blijft over ritten heen — vereist vóór pidlane-aandrijving.js -->
 <script src="pidlane-aandrijving.js"></script><!-- aandrijfstatus: de toestandsmachine (PLAandrijving) — zuiver, kent het scherm niet -->

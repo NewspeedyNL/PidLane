@@ -10,6 +10,31 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 29-09-2026 — Rit beëindigen, en motor uit is geen einde van de rit (#341)
+ ═══════════════════════════════════════════════════════════
+
+ - Onderin het menu staan "Uitloggen" en "Sluit de app" niet meer. Er staat
+   één knop: "Rit beëindigen" als er een rit loopt, anders "Afsluiten". Het
+   venster toont de rit (km, duur, verbruik, koelwater, accu, foutcodes,
+   pauzes) en laat je hem een naam geven, met de labels en het voorstel uit
+   Mijn voertuigen. Daarna kies je: verbonden blijven, verbinding verbreken of
+   de app sluiten (alleen in de APK), met uitloggen als vinkje. Loopt er nog
+   een caravanrit of rit-analyse, dan moet die eerst af.
+ - De rit eindigt niet meer als de verbinding wegvalt, en niet meer na drie
+   minuten stil. Motor uit, even tanken of de app dichtdoen is een pauze; rijd
+   je binnen vijftien minuten verder, dan is het dezelfde rit. De eindtijd is
+   het moment dat de auto stilviel, niet het moment dat de app dat zeker wist.
+ - De naam uit "Rit beëindigen" gaat mee bij het opslaan (worker.js:
+   `rit_opslaan` bewaart `label`).
+ - Verbinding verbreken geeft de bus eerst vrij met ATPC (Protocol Close),
+   vóór de socket dichtgaat. Nooit langer dan anderhalve seconde.
+ - Na "App sluiten" verbindt de app de volgende keer weer vanzelf, als dat aan
+   stond. Verbreken in de app blijft betekenen: niet vanzelf herverbinden.
+ - Reparatie: verbreken sloot een Web Serial-poort (desktop) niet. De volgende
+   verbinding gaf dan "The port is already open".
+ - Testrun 8.5: blok 5 zegt of een stop onderweg één rit met een pauze bleef.
+
+ ═══════════════════════════════════════════════════════════
  28-09-2026 — De verbinding blijft snel over een hele rit (#302)
  ═══════════════════════════════════════════════════════════
 

@@ -5,7 +5,8 @@
 //    verbindingsscherm. Na het afmelden stond dat dan open, en de app leek
 //    gewoon door te gaan.
 // 2. plSluitApp() verbreekt eerst de verbinding en roept dan App.exitApp();
-//    in de browser bestaat afsluiten niet en blijft de knop verborgen.
+//    in de browser bestaat afsluiten niet en doet hij niets. De menuknop zelf
+//    staat sinds 29-09-2026 in "Rit beëindigen" (test-afsluiten.js).
 //
 // Laadt de echte functies uit pidlane-auth.js; de rest van de app is
 // nagebootst, handleConnect() ook, zodat we zien wanneer hij geroepen wordt.
@@ -24,7 +25,7 @@ function toets(naam, waar, uitleg) {
 
 const bron = fs.readFileSync('pidlane-auth.js', 'utf8');
 const begin = bron.indexOf('async function logout(){');
-const EIND = 'niet getoond:\', e); }\n';
+const EIND = 'window.plSluitApp=plSluitApp;\n';
 const eind = bron.indexOf(EIND, begin);
 if (begin < 0 || eind < 0) {
   console.log('  FOUT  logout() of plSluitApp() niet gevonden in pidlane-auth.js — anker verdwenen');
@@ -90,8 +91,6 @@ function laad(opt) {
   console.log('\n2. Sluit de app');
   {
     const s = laad({ verbonden: true, schil: true });
-    toets('in de APK staat de knop zichtbaar',
-      s.els.kebabSluitApp && s.els.kebabSluitApp.style.display === '');
     const r = await s.plSluitApp();
     toets('hij sluit de app', r === true && s._exit === 1);
     toets('en verbreekt eerst de verbinding',
@@ -106,11 +105,8 @@ function laad(opt) {
   }
   {
     const s = laad({ verbonden: false, schil: false });
-    const knop = s.els.kebabSluitApp;
-    toets('in de browser blijft de knop verborgen',
-      !knop || knop.style.display === 'none');
     const r = await s.plSluitApp();
-    toets('en doet hij niets', r === false && s._exit === 0 && s._handleConnect === 0);
+    toets('in de browser doet hij niets', r === false && s._exit === 0 && s._handleConnect === 0);
   }
 
   console.log('\n3. Sluit de app laat niets achter (26-09-2026)');

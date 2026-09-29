@@ -132,6 +132,8 @@ function toggleKebab(e){
   const m=document.getElementById('kebabMenu');
   if(!m) return;
   if(m.classList.contains('open')){ m.classList.remove('open'); return; }
+  // Het onderste item zegt wat het doet: "Rit beëindigen" als er een rit loopt.
+  try{ if(window.PLAfsluiten) PLAfsluiten.verversMenu(); }catch(err){ console.warn('menu-item Afsluiten niet ververst:', err); }
   // Port het menu naar <body> en plaats het fixed onder de knop -> altijd bovenop,
   // ook boven het keuzescherm (voorheen viel het in een lagere stapelcontext).
   const btn=document.getElementById('kebabBtn');
@@ -334,12 +336,18 @@ setTimeout(()=>{ try{checkAiReachable();}catch(e){ console.warn('checkAiReachabl
 async function handleConnect(){
   if(connected){
     saveSession();   // idee 2: sessie-stats in voertuigdossier bewaren vóór verbreken
+    const _wasDemo=demoMode;
     if(demoMode) plDemoStop();
     connected=false; demoMode=false; clearInterval(pollTimer);
     // Test-scenario opheffen wanneer demo/verbinding stopt
     _scenario={ enabled:false, pids:{}, dtcs:[], vehicle:null };
     try{ updateScenarioBadge(); }catch(e){ console.warn('updateScenarioBadge mislukt:', e); }
     try{ localStorage.removeItem('pl_autoconn'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } // bewust verbroken — niet auto-herverbinden
+    // De bus netjes vrijgeven vóór de socket dichtgaat (29-09-2026). Pas ná
+    // connected=false, de pollus uit en de vlag weg: dan komt er achter ATPC
+    // niets meer in de rij dat het protocol weer opent, en herverbindt niets
+    // vanzelf terwijl we wachten. Zie plBusVrijgeven in pidlane-bt.js.
+    if(!_wasDemo && typeof plBusVrijgeven==='function') await plBusVrijgeven();
     try{
       if(window._sppConn){
         await window._sppConn.spp.disconnect({address:window._sppConn.address}).catch(()=>{});
@@ -349,6 +357,11 @@ async function handleConnect(){
     // naar exitApp() terwijl de BLE-verbinding nog openstond.
     try{ if(window._bleConn) await window._bleConn.ble?.disconnect?.(window._bleConn.id); }
     catch(e){ console.warn('BLE verbreken mislukt (verbinding kan al weg zijn):', e); }
+    // Web Serial (desktop) ook (29-09-2026). Tot dan sloot alleen pagehide de
+    // COM-poort; na bewust verbreken bleef hij open, met een draaiende lezer,
+    // en gaf de volgende verbinding "The port is already open".
+    try{ if(window._webSerialWrite && typeof disconnectWebSerial==='function') await disconnectWebSerial(); }
+    catch(e){ console.warn('Web Serial-poort niet gesloten bij verbreken:', e); }
     window._sppConn=null; window._bleConn=null; window._webBtWrite=null;
     setConn(false);
     try{ const _vt=document.getElementById('vtag'); if(_vt){ _vt.style.display='none'; _vt.dataset.naam=''; } }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }

@@ -1150,7 +1150,7 @@ MUTATIES=(
 "worker.js@@(v.kmstand == null || r.waarde >= v.kmstand)@@true@@test-klantplatform.js@@een gemeten kilometerstand zet de opgegeven stil lager"
 "public/pidlane-garage.js@@    if (dt > CFG.ritGatMaxS) dt = 0;@@@@test-garage.js@@een meetgat telt als afgelegde weg"
 "public/pidlane-garage.js@@    else if (typeof m.maf === 'number' && brandstof !== 'diesel')@@    else if (typeof m.maf === 'number')@@test-garage.js@@een dieselverbruik uit de luchtmassa"
-"public/pidlane-garage.js@@    if (r.sLiters >= r.s * 0.7 && r.km >= 1)@@    if (r.sLiters > 0 && r.km >= 1)@@test-garage.js@@verbruik over een stukje van de rit geldt als ritverbruik"
+"public/pidlane-garage.js@@    if (b.sLiters >= b.s * 0.7 && r.km >= 1)@@    if (b.sLiters > 0 && r.km >= 1)@@test-garage.js@@verbruik over een stukje van de rit geldt als ritverbruik"
 "public/pidlane-garage.js@@    var volledig = u.gelezen ? (u.gelezen.bevestigd && u.gelezen.pending !== false) : !!u.volledig;@@    var volledig = true;@@test-garage.js@@een issue gaat dicht na een uitlezing die niet volledig was (#218)"
 "public/pidlane-garage.js@@      if (!rec || !magBewaren()) return;@@      if (!rec) return;@@test-garage.js@@een rapport gaat zonder akkoord de server op"
 "public/pidlane-garage.js@@    return km >= 20 ? {@@    return km >= 0 ? {@@test-garage.js@@een verbruiksoordeel op één korte rit"
@@ -1321,6 +1321,26 @@ MUTATIES=(
 "public/pidlane-gear.js@@    if (typeof demoMode!=='undefined' && demoMode) return;\n    lsSet(LS_MODEL+this.sleutel@@    lsSet(LS_MODEL+this.sleutel@@test-demoopslag.js@@een ingetikte versnelling in demo komt in het model van het echte voertuig"
 "public/pidlane-auth.js@@const demo=(typeof demoMode!=='undefined' && !!demoMode);@@const demo=false;@@test-demoopslag.js@@demologregels komen als echte ritten met merk en VIN in de logtabel"
 "public/pidlane-demo.js@@  vehicleInfo={ merk:'Onbekend', model:'', year:'', vin:'', brandstof:'', motor:'' };\n  try{ resetVehicleSources(); }catch(e){ console.warn('Demo stoppen@@  try{ resetVehicleSources(); }catch(e){ console.warn('Demo stoppen@@test-demoopslag.js@@na de demo meet een echte auto zonder VIN door als de demo-auto"
+# ── 29-09-2026: Rit beëindigen. Motor uit is een pauze, geen einde; het
+# venster rondt de rit af vóór de verbinding weg is; ATPC geeft de bus vrij.
+"public/pidlane-garage.js@@    if (stil > CFG.ritPauzeMs) return 'af';@@    if (stil > 3 * 60 * 1000) return 'af';@@test-garage.js@@drie minuten stil is weer het einde van de rit: één rit met een tankstop wordt er twee"
+"public/pidlane-garage.js@@    if (!verbonden || stil > CFG.pauzeMinMs) return 'pauze';@@    if (!verbonden) return 'af';\n    if (stil > CFG.pauzeMinMs) return 'pauze';@@test-garage.js@@verbinding weg beëindigt de rit meteen"
+"public/pidlane-garage.js@@    } else if (r && !r._weg) {@@    } else if (r) { ritAf('verbinding weg'); } else if (false) {@@test-garage.js@@de lus rondt de rit af zodra de verbinding wegvalt"
+"public/pidlane-garage.js@@    if (kmh != null && kmh >= 2) r.bij = {@@    if (false) r.bij = {@@test-garage.js@@de rit eindigt een kwartier na aankomst in plaats van bij de laatste beweging"
+"public/pidlane-garage.js@@if (t - r.tBeweeg > CFG.pauzeMinMs && r.sBeweeg > 0)@@if (t - r.tBeweeg > 0 && r.sBeweeg > 0)@@test-garage.js@@elk stoplicht telt als pauze in de rit"
+"public/pidlane-garage.js@@    if (label) sam.label = String(label).slice(0, 40);\n@@@@test-garage.js@@de naam uit Rit beëindigen gaat niet mee de server op"
+"public/pidlane-garage.js@@    if (ritStand(r, Date.now(), false) === 'af') ritAf('app gesloten tijdens de rit');@@    ritAf('app gesloten tijdens de rit');@@test-garage.js@@de app even dicht bij de pomp splitst de rit in tweeën"
+"public/pidlane-garage.js@@    if (r && r.vid !== v.id) { ritAf('ander voertuig'); r = null; }\n@@@@test-garage.js@@een geparkeerde rit loopt door op een ander voertuig"
+"worker.js@@kpJson(r.extra, 4000), label, kpNu()).run();@@kpJson(r.extra, 4000), null, kpNu()).run();@@test-klantplatform.js@@de naam van een rit gaat op de server verloren"
+"public/pidlane-afsluiten.js@@    if (ctx.rit) st.push('rit');\n    var sluit = keuze.na === 'sluit' && !!ctx.schil;\n    if (ctx.verbonden && (keuze.na === 'verbreek' || sluit || keuze.uitloggen)) st.push('verbreek');@@    var sluit = keuze.na === 'sluit' && !!ctx.schil;\n    if (ctx.verbonden && (keuze.na === 'verbreek' || sluit || keuze.uitloggen)) st.push('verbreek');\n    if (ctx.rit) st.push('rit');@@test-afsluiten.js@@de verbinding gaat weg vóór de rit af is, en de garage parkeert hem"
+"public/pidlane-afsluiten.js@@    var sluit = keuze.na === 'sluit' && !!ctx.schil;@@    var sluit = keuze.na === 'sluit';@@test-afsluiten.js@@\"App sluiten\" in de browser, waar afsluiten niet bestaat"
+"public/pidlane-afsluiten.js@@    return vlagVooraf === '1' && stappen.indexOf('sluit') >= 0 && stappen.indexOf('uitlog') < 0;@@    return false;@@test-afsluiten.js@@na \"App sluiten\" verbindt de app de volgende keer niet meer vanzelf"
+"public/pidlane-afsluiten.js@@          if (!dicht) { schrijf('pl_autoconn', null); gedaan.push@@          if (!dicht) { gedaan.push@@test-afsluiten.js@@na een mislukte exitApp() verbindt de app vanzelf weer terwijl je net losmaakte"
+"public/pidlane-afsluiten.js@@    return Promise.race([Promise.resolve(p), new Promise(function (r) { setTimeout(function () { r('tijd'); }, AFSLUIT_STAP_MS); })]);@@    return Promise.resolve(p);@@test-afsluiten.js@@een adapter die niet antwoordt houdt het venster vast"
+"public/pidlane-afsluiten.js@@    var dicht = _bezig || ctx.lopend.length > 0 || !stappen.length;@@    var dicht = _bezig || !stappen.length;@@bproef-afsluiten.js@@een caravanrit die nog loopt wordt bij afsluiten stil weggegooid"
+"public/pidlane-uihelpers.js@@    if(!_wasDemo && typeof plBusVrijgeven==='function') await plBusVrijgeven();@@    void 0;@@bproef-afsluiten.js@@bij verbreken blijft de bus bezet: geen ATPC"
+"public/pidlane-uihelpers.js@@  try{ if(window.PLAfsluiten) PLAfsluiten.verversMenu(); }@@  try{ if(false) PLAfsluiten.verversMenu(); }@@bproef-afsluiten.js@@het menu zegt \"Afsluiten\" terwijl er een rit loopt"
+"public/pidlane-uihelpers.js@@    try{ if(window._webSerialWrite && typeof disconnectWebSerial==='function') await disconnectWebSerial(); }@@    try{ if(false) await disconnectWebSerial(); }@@bproef-afsluiten.js@@bewust verbreken laat een Web Serial-poort open: de volgende verbinding stuit op \"port already open\""
 )
 
 echo

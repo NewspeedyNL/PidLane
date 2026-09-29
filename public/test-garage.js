@@ -116,6 +116,114 @@ function laad(opties) {
   for (let i = 1; i <= 100; i++) K.ritTik(r, { kmh: i <= 50 ? 0 : 30, rpm: 800 }, t0 + i * 2000);
   eis(K.ritKlaar(r).stationair_pct === 50, 'half stilstaan met draaiende motor = 50% stationair', String(K.ritKlaar(r).stationair_pct));
 
+  console.log('\n3b. Pauze of einde (29-09-2026)');
+  // Motor uit, drie minuten later weer rijden: dat is één rit, geen twee.
+  const P = K.cfg.ritPauzeMs, M = K.cfg.pauzeMinMs;
+  eis(P === 15 * 60 * 1000, 'de pauzegrens is vijftien minuten', String(P));
+  r = K.ritNieuw(t0);
+  for (let i = 1; i <= 150; i++) K.ritTik(r, { kmh: 50, rpm: 1800 }, t0 + i * 2000);   // 5 min rijden
+  const stop = r.tBeweeg;
+  eis(K.ritStand(r, stop + 2000, true) === 'rijdt', 'net gestopt, verbonden: rijdt nog');
+  eis(K.ritStand(r, stop + 3 * 60000, true) === 'pauze', 'drie minuten stil: pauze, geen einde');
+  eis(K.ritStand(r, stop + 3 * 60000, false) === 'pauze', 'drie minuten zonder verbinding: ook pauze');
+  eis(K.ritStand(r, stop + 10000, false) === 'pauze', 'verbinding weg is meteen pauze, nooit meteen einde');
+  eis(K.ritStand(r, stop + P - 1000, false) === 'pauze', 'net onder de grens: nog pauze');
+  eis(K.ritStand(r, stop + P + 1000, true) === 'af', 'na vijftien minuten stil: af');
+  eis(K.ritStand(null, stop, true) === null, 'geen rit: geen stand');
+  // Weer rijden na drie minuten: de pauze telt, de weg niet.
+  const kmVoor = r.km;
+  for (let i = 1; i <= 150; i++) K.ritTik(r, { kmh: 50, rpm: 1800 }, stop + 3 * 60000 + i * 2000);
+  sam = K.ritKlaar(r);
+  eis(sam.extra && sam.extra.pauzes === 1 && Math.abs(sam.extra.pauze_s - 180) <= 2, 'één pauze van drie minuten in de samenvatting', JSON.stringify(sam.extra));
+  eis(Math.abs(sam.km - 2 * kmVoor) < 0.1, 'de pauze is geen afgelegde weg', sam.km + ' km, vóór de pauze ' + kmVoor);
+  // Een stoplicht (korter dan pauzeMinMs) is geen pauze.
+  r = K.ritNieuw(t0);
+  for (let i = 1; i <= 100; i++) K.ritTik(r, { kmh: (i > 40 && i <= 60) ? 0 : 40, rpm: 800 }, t0 + i * 2000);   // 40 s stil
+  eis(!(K.ritKlaar(r).extra && K.ritKlaar(r).extra.pauzes), 'veertig seconden voor een stoplicht is geen pauze', JSON.stringify(K.ritKlaar(r).extra));
+  // Het einde ligt bij de laatste beweging, niet een kwartier later.
+  r = K.ritNieuw(t0);
+  for (let i = 1; i <= 150; i++) K.ritTik(r, { kmh: 50, rpm: 1800, maf: 8 }, t0 + i * 2000);
+  const eindEcht = r.tBeweeg, duurEcht = K.ritKlaar(r).duur_s, litersEcht = K.ritKlaar(r).liters;
+  for (let i = 1; i <= 400; i++) K.ritTik(r, { kmh: 0, rpm: 800, maf: 3 }, eindEcht + i * 2000);   // 13 min stationair na aankomst
+  sam = K.ritKlaar(r);
+  eis(sam.eind === new Date(eindEcht).toISOString(), 'de eindtijd is de laatste beweging', sam.eind);
+  eis(sam.duur_s === duurEcht && sam.liters === litersEcht, 'de staart na aankomst telt niet mee in duur en liters', sam.duur_s + ' s, ' + sam.liters + ' l');
+
+  console.log('\n3c. Rit beëindigen met een naam');
+  {
+    const L = laad({ rol: 'klant' });
+    L.G.staat().stand = { akkoord: true, voertuigen: [{ id: 'v1', status: 'actief', naam: 'Blauwe Mazda' }] };
+    L.G.staat().actiefId = 'v1';
+    eis(L.G.ritNu() === null, 'zonder lopende rit: niets te beëindigen');
+    const nu0 = Date.now() - 10 * 60000;
+    const rr = L.K.ritNieuw(nu0); rr.vid = 'v1';
+    for (let i = 1; i <= 150; i++) L.K.ritTik(rr, { kmh: 60, rpm: 2000 }, nu0 + i * 2000);
+    L.G.staat().rit = rr;
+    const nu = L.G.ritNu();
+    eis(nu && nu.sam && nu.sam.km === 5 && nu.voertuig === 'Blauwe Mazda' && nu.pauzeMin === 15, 'ritNu() toont de rit zoals hij bewaard zou worden', JSON.stringify(nu && { km: nu.sam && nu.sam.km, v: nu.voertuig, p: nu.pauzeMin }));
+    eis(nu.stand === 'pauze' && nu.stilMin === 5, 'vijf minuten stil en niet verbonden: pauze sinds 5 min', nu.stand + ' / ' + nu.stilMin);
+    eis(Array.isArray(nu.labels) && nu.labels.indexOf('Woon-werk') >= 0, 'met de vaste labels om uit te kiezen');
+    eis(L.G.staat().rit === rr, 'ritNu() sluit de rit niet af');
+    const uit = await L.G.ritBeeindig('Naar de bakker');
+    const opgeslagen = L.verzoeken.filter((b) => b.actie === 'rit_opslaan')[0];
+    eis(uit && opgeslagen && opgeslagen.rit.label === 'Naar de bakker' && opgeslagen.rit.extra.einde === 'handmatig', 'de rit gaat met naam en reden de server op', JSON.stringify(opgeslagen && opgeslagen.rit.extra));
+    eis(L.G.staat().rit === null && L.G.ritNu() === null, 'en is daarna weg');
+  }
+
+  console.log('\n3d. Verbinding weg, app dicht: de rit wacht');
+  {
+    const L = laad({ rol: 'klant' });
+    L.G.staat().stand = { akkoord: true, voertuigen: [{ id: 'v1', status: 'actief' }] };
+    L.G.staat().actiefId = 'v1';
+    L.s.pidVals = { '010D': 50, '010C': 1800 };
+    L.s.connected = true; L.s.demoMode = false;
+    L.G._ritTikNu();
+    const rr = L.G.staat().rit;
+    eis(!!rr, 'rijden met verbinding start een rit');
+    rr.km = 4; rr.tBeweeg = Date.now() - 3 * 60000;          // vier km gereden, drie minuten geleden gestopt
+    L.s.connected = false;
+    L.G._ritTikNu();
+    eis(L.G.staat().rit === rr && !L.verzoeken.some((b) => b.actie === 'rit_opslaan'), 'verbinding weg na drie minuten stil: de rit loopt nog, er is niets opgeslagen');
+    eis(JSON.parse(L.opslag.pl_garage_rit || 'null') !== null, 'en hij staat veilig op het toestel');
+    L.s.connected = true;
+    L.G._ritTikNu();
+    eis(L.G.staat().rit === rr, 'weer verbonden en rijden: dezelfde rit loopt door');
+    rr.tBeweeg = Date.now() - 16 * 60000;
+    L.s.pidVals = { '010D': 0, '010C': 0 };
+    L.G._ritTikNu();
+    eis(L.G.staat().rit === null && L.verzoeken.some((b) => b.actie === 'rit_opslaan' && b.rit.extra.einde === 'stil'), 'na zestien minuten stil: af, met reden "stil"');
+  }
+  {
+    // App dicht bij de pomp, drie minuten later weer open.
+    const L = laad({ rol: 'klant' });
+    L.G.staat().stand = { akkoord: true, voertuigen: [{ id: 'v1', status: 'actief' }] };
+    const oud = L.K.ritNieuw(Date.now() - 20 * 60000); oud.vid = 'v1'; oud.km = 12; oud.tBeweeg = oud.tLaatst = Date.now() - 3 * 60000;
+    L.opslag.pl_garage_rit = JSON.stringify(oud);
+    L.G._ritHerstel();
+    eis(L.G.staat().rit && L.G.staat().rit.km === 12 && !L.verzoeken.some((b) => b.actie === 'rit_opslaan'), 'app drie minuten dicht: bij de start loopt de rit door');
+  }
+  {
+    const L = laad({ rol: 'klant' });
+    L.G.staat().stand = { akkoord: true, voertuigen: [{ id: 'v1', status: 'actief' }] };
+    const oud = L.K.ritNieuw(Date.now() - 60 * 60000); oud.vid = 'v1'; oud.km = 12; oud.tBeweeg = oud.tLaatst = Date.now() - 40 * 60000;
+    L.opslag.pl_garage_rit = JSON.stringify(oud);
+    L.G._ritHerstel();
+    await new Promise((r) => setImmediate(r));
+    eis(L.G.staat().rit === null && L.verzoeken.some((b) => b.actie === 'rit_opslaan' && b.rit.extra.einde === 'app gesloten tijdens de rit'), 'app veertig minuten dicht: bij de start afgerond');
+  }
+  {
+    // Een ander voertuig actief: de geparkeerde rit van het vorige is voorbij.
+    const L = laad({ rol: 'klant' });
+    L.G.staat().stand = { akkoord: true, voertuigen: [{ id: 'v1', status: 'actief' }, { id: 'v2', status: 'actief' }] };
+    L.G.staat().actiefId = 'v2';
+    const oud = L.K.ritNieuw(Date.now() - 20 * 60000); oud.vid = 'v1'; oud.km = 8; oud.tBeweeg = oud.tLaatst = Date.now() - 2 * 60000;
+    L.G.staat().rit = oud;
+    L.s.connected = true; L.s.demoMode = false; L.s.pidVals = {};
+    L.G._ritTikNu();
+    await new Promise((r) => setImmediate(r));
+    eis(L.verzoeken.some((b) => b.actie === 'rit_opslaan' && b.voertuig_id === 'v1' && b.rit.extra.einde === 'ander voertuig'), 'een ander voertuig actief: de rit van het vorige wordt afgerond');
+  }
+
   console.log('\n4. Advies');
   const ritten = [1, 2, 3, 4, 5, 6].map((i) => ({ km: 10, verbruik_l100: 8.4, max_kmh: 80, max_koelwater: 92, min_accu: 14.0, stationair_pct: 10 }));
   let adv = K.advies({ verbruik_opgegeven: 7, brandstof: 'benzine' }, ritten, nu);
