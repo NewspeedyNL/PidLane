@@ -64,6 +64,17 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('Live: het startscherm is weg', await app.ev(`document.getElementById('welcomeScreen').classList.contains('hidden')`));
     toets('Live licht op', (await app.ev(tab)) === 'live', await app.ev(tab));
     toets('de live-acties staan in beeld', await app.ev(toon('plLiveActies')));
+    // 29-09-2026, gemeld uit het gebruik: de weergavekeuze stond alleen in de
+    // garagemodus, en een klant kon vanuit Slim nergens meer heen.
+    await app.ev(`PLNav.zetGarage(false); renderGauges(); 'ok'`);
+    toets('een klant ziet de weergavekeuze in Live  <- zonder: vast in Slim', await app.ev(toon('pidViewSwitch')));
+    toets('met alle vijf de weergaven', (await app.ev(`[...document.querySelectorAll('#pidViewSwitch .pidview-btn[data-mode]')].filter(b=>getComputedStyle(b).display!=='none').length`)) === 5);
+    await app.ev(`document.querySelector('#pidViewSwitch [data-mode="numbers"]').click(); 'ok'`);
+    toets('en schakelt: Getallen staat aan', (await app.ev(`pidViewMode`)) === 'numbers');
+    await app.ev(`document.querySelector('#pidViewSwitch [data-mode="slim"]').click(); 'ok'`);
+    const rij = await app.ev(`(function(){ const b=[...document.querySelectorAll('#plLiveActies button')].filter(x=>getComputedStyle(x).display!=='none');
+      return new Set(b.map(x=>Math.round(x.getBoundingClientRect().top))).size; })()`);
+    toets('de live-acties staan op één regel', rij === 1, rij + ' regels');
     await app.ev(`PLNav.tab('rapporten'); 'ok'`);
     toets('Rapporten opent het overzicht', await app.ev(toon('reportsOverviewSheet')));
     toets('Rapporten licht op', (await app.ev(tab)) === 'rapporten', await app.ev(tab));
