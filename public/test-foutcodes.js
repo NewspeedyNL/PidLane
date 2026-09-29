@@ -203,6 +203,26 @@ function nepEcu(antwoorden) {
   eis(v2.codes.bevestigd.length === 0 && lijst(v2.codes.permanent) === lijst(['P0420']), 'demo na: bevestigd leeg, permanent blijft');
   eis(v2.readiness.nietKlaar.length === 4 && v2.sinds.km === 0, 'demo na: alle monitors niet klaar, teller op 0');
 
+  // Het stoplicht bovenaan Check mijn auto (29-09-2026). Toetst op echte
+  // uitlezingen uit de demo-ECU, niet op een zelfgebouwd object: dan loopt de
+  // vorm van de scan en die van het oordeel niet stil uit elkaar.
+  console.log('\n10. Het stoplicht van Check mijn auto');
+  eis(F.stoplicht(v1).kleur === 'rood', 'bevestigde codes → rood', F.stoplicht(v1).kop);
+  eis(/2 storingen/.test(F.stoplicht(v1).kop), 'rood noemt het aantal', F.stoplicht(v1).kop);
+  eis(F.stoplicht(v2).kleur === 'rood', 'alleen een permanente code over → nog steeds rood');
+  const schoon = JSON.parse(JSON.stringify(v2));
+  schoon.codes.permanent = []; schoon.readiness.nietKlaar = []; schoon.readiness.mil = false;
+  eis(F.stoplicht(schoon).kleur === 'groen', 'niets gevonden en alles klaar → groen', F.stoplicht(schoon).tekst);
+  const wacht = JSON.parse(JSON.stringify(schoon)); wacht.codes.pending = ['P0133'];
+  eis(F.stoplicht(wacht).kleur === 'oranje' && /nog moet bevestigen/.test(F.stoplicht(wacht).tekst), 'één code in afwachting → oranje, en dat staat erbij');
+  const halfKlaar = JSON.parse(JSON.stringify(v2)); halfKlaar.codes.permanent = []; halfKlaar.readiness.mil = false;
+  eis(F.stoplicht(halfKlaar).kleur === 'oranje' && /4 zelftests/.test(F.stoplicht(halfKlaar).tekst), 'net gewist: zelftests niet klaar → oranje, niet groen');
+  const blind = JSON.parse(JSON.stringify(schoon)); blind.gelezen.pending = false;
+  eis(F.stoplicht(blind).kleur === 'oranje', 'een soort code niet gelezen → nooit groen  <- "niet gelezen" is geen "geen codes"');
+  const lamp = JSON.parse(JSON.stringify(schoon)); lamp.readiness.mil = true;
+  eis(F.stoplicht(lamp).kleur === 'rood' && /motorlampje/.test(F.stoplicht(lamp).kop), 'motorlampje aan zonder gelezen code → rood');
+  eis(F.stoplicht(null).kleur === 'grijs', 'nog niets uitgelezen → grijs, geen oordeel');
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });
