@@ -14,6 +14,50 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 29-09-2026 — De demo: negen poorten, en de tiende die niemand kende
+
+**De vraag.** "Tijdens de demo niets vastleggen, geen echte rapporten, maar wel
+functionaliteit" — en een klant moet via de demo zijn eigen gegevens kunnen
+inzien terwijl hij niet verbonden is.
+
+**Wat er al was.** Op 28-09 waren negen opslagplekken gevonden die een demo-auto
+bewaarden (dossier, profiel, roetfilterteller, voertuigoverzicht, diagnosecache,
+selectie, versnellingsmodel, logregels, vehicleInfo), elk met een eigen
+`if(demoMode) return`. `test-demoopslag.js` toetst ze. Die negen kloppen, maar
+het is een lijst: de tiende module die iets bewaart weet niet dat ze bestaan.
+Nageteld op 29-09 lekten er nog steeds dingen: de AI-analyse draaide in de demo
+gewoon (met tegoed, als je ingelogd was), het rapport kwam in het overzicht en
+ging als "eerder rapport" mee naar de volgende analyse, een export schreef een
+bestand naar Documenten/PidLane, en `koopRdwLookup()` zette een demo-kenteken
+als `pl_kenteken` — de sleutel van je eigen auto.
+
+**Wat er nu staat.** Een zandbak op de plekken waar álles langskomt:
+`Storage.prototype` (alleen voor `localStorage`, alleen tussen `plDemoAan()` en
+`plDemoStop()`, en alleen zolang `demoMode` aan staat), `plFetch()`,
+`apiFetch()`, `plBewaarBestand()` en `registerSessionReport()`. De negen poorten
+blijven: ze houden de demo ook uit sessionStorage, IndexedDB en de server.
+
+**Twee keuzes die anders hadden gekund.**
+- *De laag vangt alleen als demoMode aan staat.* De andere kant van de munt:
+  zet iets demoMode uit zonder `plDemoStop()`, dan gaat een demowaarde alsnog
+  naar het toestel. Dat is met opzet — liever één demowaarde te veel bewaard dan
+  een echte instelling stil in een laag die straks wordt weggegooid.
+- *Lezen uit het account mag in de demo.* Het klantplatform krijgt alleen de
+  zeven leesacties door (`LEES_ACTIES`); `test-demozandbak.js` legt die lijst
+  naast `KP_ACTIES` in worker.js en eist dat geen van de zeven `.run(`,
+  `INSERT`/`UPDATE`/`DELETE` of een schrijvende helper bevat.
+
+**Onderweg gevonden.** `_startDemoCore()` gaf elke demo-auto de sensorlijst van
+een Mazda CX-5 benzine; een Volvo D2 had lambdasondes. Hij gebruikt nu
+`demoPIDsForFuel()`, net als de brandstofwissel in de demobalk al deed. En een
+demo zonder login eindigde na Verbreken op het verbindscherm — achter de login,
+zonder weg terug.
+
+**Niet gedaan.** De knop op het loginscherm heet nog "Try demo — no adapter
+needed": dat is de tekst die de Play-reviewnotitie (PLAY-INZENDING.md)
+letterlijk belooft, en `test-demo-toegang.js` houdt die twee gelijk. Hernoemen
+kan, maar dan in dezelfde PR als de reviewnotitie.
+
 ## 29-09-2026 — Het startscherm: 59 ingangen, en het rapport achter ☰
 
 **De bevinding.** Een evaluatie van de app zei dat de klant te veel wegen naar
