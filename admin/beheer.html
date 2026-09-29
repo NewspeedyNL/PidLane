@@ -37,7 +37,10 @@
   :root{
     --bg:#080b12; --sur:#111826; --sur2:#18202f; --sur3:#1f293b;
     --bd:#26304a; --bd2:#334063;
-    --tx:#e8edf6; --tx2:#98a4bb; --tx3:#6b7794;
+    /* --tx2/--tx3 op 29-09-2026 lichter (op deze donkere grond: beter
+       leesbaar). --tx3 haalde 3,8:1 op --sur, onder de norm. Zelfde klacht
+       als in de app: letters te licht. */
+    --tx:#e8edf6; --tx2:#bcc6d8; --tx3:#9eaac0;
     --bl:#2563ff; --bl2:#4c82ff; --gn:#06b36b; --or:#f2820c; --rd:#ef4444; --pp:#a855f7;
     --r:12px; --f:system-ui,-apple-system,'Segoe UI',sans-serif;
     --mono:ui-monospace,'DM Mono','SF Mono',Menlo,Consolas,monospace;
@@ -67,6 +70,12 @@
        cursor:pointer;white-space:nowrap;border-radius:0}
   .tab:hover{color:var(--tx)}
   .tab.aan{color:var(--tx);border-bottom-color:var(--bl2)}
+  /* Tweede regel: de onderdelen van de gekozen groep (29-09-2026). */
+  .subtabs{max-width:1080px;margin:0 auto;padding:6px 12px 8px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+  .subtabs:empty{display:none}
+  .subtab{padding:6px 12px;font-size:13px;font-weight:600;color:var(--tx2);background:var(--sur2);
+          border:1px solid var(--bd);border-radius:999px;cursor:pointer;white-space:nowrap}
+  .subtab.aan{color:#fff;background:var(--bl);border-color:var(--bl)}
   .wrap{max-width:1080px;margin:0 auto;padding:18px 16px 80px}
   .paneel{display:none}
   .paneel.aan{display:block}
@@ -247,6 +256,7 @@
       <button class="btn-sec btn-sm" onclick="logout()">Uitloggen</button>
     </div>
     <div class="tabs" id="tabs"></div>
+    <div class="subtabs" id="subtabs"></div>
   </div>
 
   <div class="wrap">
@@ -788,15 +798,21 @@
     <!-- ══ INSTELLINGEN ═══════════════════════════════════════ -->
     <div class="paneel" id="p-instellingen">
       <div class="card">
-        <div class="card-kop"><h2>🚪 Deuren aan/uit</h2></div>
-        <div class="rij"><div><div class="lbl">Deur 1 — Diagnose &amp; onderhoud</div>
-          <div class="desc"><code>door_saving_active</code></div></div>
-          <label class="switch"><input type="checkbox" id="t_door_saving_active"><span class="slider"></span></label></div>
-        <div class="rij"><div><div class="lbl">Deur 2 — Koop &amp; verkoop</div>
+        <!-- Startscherm van de app (29-09-2026). Hier stonden "Deur 1/2/3" met
+             labels die niet klopten: door_saving_active heette "Diagnose &amp;
+             onderhoud" en schakelde Onderweg. De sleutels zijn gebleven — het zijn
+             opgeslagen regels — de namen zijn nu wat de klant ziet. -->
+        <div class="card-kop"><h2>🏠 Startscherm van de app</h2>
+          <span class="hint" style="margin:0">Ontbrekende sleutel = aan</span></div>
+        <div class="hint" style="margin-bottom:8px">Check mijn auto en de tegel <b>Er is iets mis</b> staan er altijd: dat is de basis.</div>
+        <div class="rij"><div><div class="lbl">Tegel “Kopen of verkopen”</div>
           <div class="desc"><code>door_deal_active</code></div></div>
           <label class="switch"><input type="checkbox" id="t_door_deal_active"><span class="slider"></span></label></div>
-        <div class="rij"><div><div class="lbl">Deur 3 — Verbruik &amp; rit</div>
-          <div class="desc"><code>door_prep_active</code></div></div>
+        <div class="rij"><div><div class="lbl">Tegel “Rit starten”</div>
+          <div class="desc"><code>door_saving_active</code> — rit-monitor, zuinig rijden, caravan</div></div>
+          <label class="switch"><input type="checkbox" id="t_door_saving_active"><span class="slider"></span></label></div>
+        <div class="rij"><div><div class="lbl">Tegel “Voorbereiden”</div>
+          <div class="desc"><code>door_prep_active</code> — winter, zomer, lange rit, onderhoud</div></div>
           <label class="switch"><input type="checkbox" id="t_door_prep_active"><span class="slider"></span></label></div>
       </div>
 
@@ -1553,20 +1569,37 @@ const TABBLADEN = [
   ['overzicht','🩺 Overzicht'], ['klanten','👥 Klanten'], ['codes','🎟️ Codes'],
   ['gebruikers','👤 Gebruikers'], ['logboek','📜 Logboek'], ['database','🗄️ Database'],
   ['opdrachten','🎯 Meetopdrachten'], ['tabellen','🗂️ Tabellen'],
-  ['instellingen','⚙️ Instellingen'], ['gereedschap','🧰 Gereedschap']
+  ['instellingen','📱 App-instellingen'], ['gereedschap','🧰 Gereedschap']
+];
+/* Tien tabbladen naast elkaar was dezelfde vorm als het oude startscherm van
+   de app: alles even belangrijk, dus niets vindbaar (29-09-2026). Nu vijf
+   groepen, en binnen een groep een tweede regel. De panelen en hun namen zijn
+   gebleven — toon('klanten') werkt nog, net als een #hash in een bladwijzer. */
+const GROEPEN = [
+  ['overzicht','🩺 Overzicht',['overzicht']],
+  ['mensen','👥 Klanten',['klanten','codes','gebruikers']],
+  ['app','📱 App',['instellingen']],
+  ['data','🗄️ Data',['logboek','database','opdrachten','tabellen']],
+  ['gereedschap','🧰 Gereedschap',['gereedschap']]
 ];
 let TAB = 'overzicht';
+function groepVan(naam){ return GROEPEN.find(g => g[2].indexOf(naam) > -1) || GROEPEN[0]; }
 function tekenTabs(){
-  $('tabs').innerHTML = TABBLADEN.map(t =>
-    `<button class="tab${t[0] === TAB ? ' aan' : ''}" id="tab-${t[0]}" onclick="toon('${t[0]}')">${t[1]}</button>`).join('');
+  const g = groepVan(TAB);
+  $('tabs').innerHTML = GROEPEN.map(x =>
+    `<button class="tab${x === g ? ' aan' : ''}" id="groep-${x[0]}" onclick="toon('${x[2][0]}')">${x[1]}</button>`).join('');
+  $('subtabs').innerHTML = g[2].length < 2 ? '' : g[2].map(n => {
+    const t = TABBLADEN.find(t => t[0] === n) || [n, n];
+    return `<button class="subtab${n === TAB ? ' aan' : ''}" id="tab-${n}" onclick="toon('${n}')">${t[1]}</button>`;
+  }).join('');
 }
 function toon(naam){
   TAB = naam;
   TABBLADEN.forEach(t => {
-    const p = $('p-' + t[0]), k = $('tab-' + t[0]);
+    const p = $('p-' + t[0]);
     if(p) p.classList.toggle('aan', t[0] === naam);
-    if(k) k.classList.toggle('aan', t[0] === naam);
   });
+  tekenTabs();
   try{ location.hash = naam; }catch(e){ /* stil: hash zetten mag nooit de pagina breken */ }
   window.scrollTo(0, 0);
   // Pas ophalen als je er komt: de opdrachtenlijst is klein, maar wie alleen
@@ -3060,41 +3093,49 @@ async function opdWis(id){
 /* ════════════════════════════════════════════════════════════════
    ⚙️ INSTELLINGEN
    ════════════════════════════════════════════════════════════════ */
+/* Per plek in de app, in de volgorde van het startscherm (29-09-2026). Een
+   functie die hier uitgaat, verdwijnt uit het wizardplan van zijn tegel én uit
+   "Alle functies" — zie MODULE_FEAT in pidlane-wizard.js en FEATURE_TOGGLES in
+   pidlane-fuel.js; test-wizardtakken.js houdt die drie gelijk. */
 const FEATURES = [
-  ['feat_ai_monteur','AI-Monteur','Deur 1 — klachtdiagnose met live data'],
-  ['feat_deepdiag','Diepe storingsanalyse','Deur 1 — uitgebreide intake + datalog'],
-  ['feat_pidrecorder','PID-recorder','Deur 1 — zelf sensoren opnemen tijdens rijden'],
-  ['feat_conditiecheck','Conditiecheck','Deur 1 — foutcodes + sensoren in één foto'],
-  ['feat_foutcodes','Foutcodes uitlezen','Deur 1 — DTC-lijst met uitleg en wissen'],
-  ['feat_rijtest','Zelf rijden & analyseren','Deur 1 + 3 — ±10 min rijden, volledig rapport'],
-  ['feat_onderhoud','Onderhoud plannen','Deur 1 — onderhoudsschema + sensordata'],
-  ['feat_koopcheck','Koopcheck','Deur 2 — historie, staat en waarde'],
-  ['feat_proefrit','Proefrit-check','Deur 2 — meten tijdens proefrit'],
-  ['feat_verbruik','Verbruiksanalyse','Deur 3 — waar gaat brandstof/energie verloren'],
-  ['feat_caravan','Caravan-rittracker','Deur 3/4 — live brandstofcoach tijdens de rit'],
-  ['feat_basiccheck','Basic system check','Deur 1 — live trendtests met slaag-banden'],
-  ['feat_monitor','Passieve foutbewaking','Achtergrond — monitor + watchers tijdens de rit'],
-  ['feat_langerit','Lange rit-voorbereiding','Deur 4'],
-  ['feat_seizoen','Seizoenscheck (winter/airco)','Deur 4'],
-  ['feat_ev','EV/hybride-check','Deur 4'],
-  ['feat_live_spec','Live PID-data (hub-regel)','Snelkoppeling voor de specialist op de hub'],
-  ['feat_grafiek','Grafiek-tab','Groepstrends en grafieken in Live view'],
-  ['feat_pid_keuze','PID-keuze-knop','Onderbalk — sensorkeuze-paneel'],
-  ['feat_dossier','Voertuigoverzicht & dossier-%','Badge naast voertuignaam + invulscherm'],
-  ['feat_situatie','Rijsituatie / bijzonderheden','Caravan, belading e.d. — corrigeert de AI-beoordeling'],
-  ['feat_pdf','PDF-export','Download PDF-knop + PDF-venster'],
-  ['feat_ai_reply','Herzie rapport','Reageer-op-rapport-blok onder AI-rapporten'],
-  ['feat_opdracht','Meetopdracht ophalen','Testrun — haalt de opdracht (sensoren, duur, vragen, drempels) uit de tabel Meetopdracht (#241). Uit = de testrun draait zoals hij in de build staat'],
-  ['feat_pip','Meting in beeld houden (PiP)','Achtergrond — klein venster bij wegschakelen, zodat de meetlus doorloopt (#228). Uit = de app gaat gewoon naar de achtergrond'],
-  ['feat_demo','Demo-modus','Demo-knoppen (zonder adapter)'],
-  ['feat_tokens','Token/kosten-teller','Kosten-pil linksonder']
+  ['feat_foutcodes','Foutcodes uitlezen (oude weergave)','Alle functies — de lijst met uitleg; Check mijn auto zelf heeft geen schakelaar','Check en Er is iets mis'],
+  ['feat_conditiecheck','Conditiecheck','Stoplicht per systeem, met de meetwaarde eronder','Check en Er is iets mis'],
+  ['feat_basiccheck','Systeemtest','Live tests die zichzelf afvinken','Check en Er is iets mis'],
+  ['feat_ai_monteur','AI-monteur','Klacht beschrijven, AI zoekt de oorzaak','Check en Er is iets mis'],
+  ['feat_deepdiag','Diepe storingsanalyse','Uitgebreide intake plus datalog','Check en Er is iets mis'],
+  ['feat_koopcheck','Koop- en verkoopcheck','Historie, staat en waarde','Kopen of verkopen'],
+  ['feat_proefrit','Rijtest onder belasting','2 of 10 minuten meten tijdens een proefrit','Kopen of verkopen'],
+  ['feat_rijtest','Zelf rijden en analyseren','±10 minuten rijden, volledig rapport','Kopen of verkopen'],
+  ['feat_monitor','Rit-monitor','Waakt de hele rit mee en waarschuwt','Rit starten'],
+  ['feat_caravan','Caravan- en aanhangercoach','Live verbruik en tips tijdens het trekken','Rit starten'],
+  ['feat_verbruik','Verbruiksanalyse','Waar gaat brandstof verloren, in euro per jaar','Rit starten'],
+  ['feat_seizoen','Seizoenscheck','Winter of airco','Voorbereiden'],
+  ['feat_langerit','Lange rit','Techniek en paklijst vóór vertrek','Voorbereiden'],
+  ['feat_onderhoud','Onderhoud plannen','Wat is nu nodig, wat kan wachten','Voorbereiden'],
+  ['feat_ev','EV- en accucheck','Draait vanzelf mee bij een EV of hybride','Voorbereiden'],
+  ['feat_live_spec','Live weergave (kaart)','De kaart onder Alle functies; de tab Live zelf heeft geen schakelaar','Live'],
+  ['feat_pidrecorder','PID-recorder','Knop Opnemen in Live en de kaart onder Alle functies','Live'],
+  ['feat_grafiek','Grafiek-tab','Groepstrends en grafieken in Live','Live'],
+  ['feat_pid_keuze','Sensoren kiezen','De knop Sensoren in de Live-balk','Live'],
+  ['feat_pdf','PDF-export','Download PDF-knop + PDF-venster','Rapporten'],
+  ['feat_ai_reply','Herzie rapport','Reageer-op-rapport-blok onder AI-rapporten','Rapporten'],
+  ['feat_dossier','Voertuigoverzicht en dossier-%','Badge naast de voertuignaam + invulscherm','Rapporten'],
+  ['feat_situatie','Rijsituatie en bijzonderheden','Caravan, belading e.d. — corrigeert de AI-beoordeling','Rapporten'],
+  ['feat_demo','Demo-modus','Demo-knoppen (zonder adapter)','Overig'],
+  ['feat_tokens','Tegoedteller','Kosten-pil linksonder','Overig'],
+  ['feat_pip','Meting in beeld houden (PiP)','Klein venster bij wegschakelen, zodat de meetlus doorloopt (#228). Uit = de app gaat gewoon naar de achtergrond','Overig'],
+  ['feat_opdracht','Meetopdracht ophalen','Testrun — haalt de opdracht uit de tabel Meetopdracht (#241). Uit = de testrun draait zoals hij in de build staat','Overig']
 ];
 function renderFeatures(){
   const g = $('featGrid'); if(!g || g.children.length) return;
-  g.innerHTML = FEATURES.map(f =>
-    `<div class="rij"><div><div class="lbl">${esc(f[1])}</div>
+  let groep = null;
+  g.innerHTML = FEATURES.map(f => {
+    const kop = f[3] !== groep ? `<h3 style="margin:14px 0 4px">${esc(f[3])}</h3>` : '';
+    groep = f[3];
+    return kop + `<div class="rij"><div><div class="lbl">${esc(f[1])}</div>
       <div class="desc"><code>${esc(f[0])}</code> — ${esc(f[2])}</div></div>
-     <label class="switch"><input type="checkbox" id="t_${esc(f[0])}"><span class="slider"></span></label></div>`).join('');
+     <label class="switch"><input type="checkbox" id="t_${esc(f[0])}"><span class="slider"></span></label></div>`;
+  }).join('');
 }
 function zetToggle(id, val, standaardAan){
   const el = $('t_' + id); if(!el) return;
@@ -3123,9 +3164,9 @@ async function saveAll(){
   // Waarden zijn strings, want GET geeft ze ook als string terug en zetToggle
   // leest 'true'/'false'.
   const items = [
-    { Key:'door_saving_active', Value:String($('t_door_saving_active').checked), Description:'Deur Verbruik & besparen aan/uit' },
-    { Key:'door_deal_active',   Value:String($('t_door_deal_active').checked),   Description:'Deur Kopen of verkopen aan/uit' },
-    { Key:'door_prep_active',   Value:String($('t_door_prep_active').checked),   Description:'Deur Voorbereiden op… aan/uit' },
+    { Key:'door_saving_active', Value:String($('t_door_saving_active').checked), Description:'Tegel Rit starten aan/uit' },
+    { Key:'door_deal_active',   Value:String($('t_door_deal_active').checked),   Description:'Tegel Kopen of verkopen aan/uit' },
+    { Key:'door_prep_active',   Value:String($('t_door_prep_active').checked),   Description:'Tegel Voorbereiden aan/uit' },
     { Key:'banner_active',      Value:String($('t_banner_active').checked),      Description:'Banner tonen ja/nee' },
     { Key:'banner_text',        Value:$('banner_text').value,                    Description:'Banner-tekst' },
     { Key:'ai_system_override', Value:$('ai_system_override').value,             Description:'AI system-instructie override (leeg = standaard)' },
