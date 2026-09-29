@@ -312,6 +312,13 @@ async function startApp(opties) {
                 { width: breedte, height: hoogte, deviceScaleFactor: 2, mobile: true });
       return await ev('window.innerHeight');
     },
+    /* Een schermafdruk als PNG, om een UI-wijziging met eigen ogen te zien
+       (29-09-2026). Geen toets: een proef oordeelt met ev(), niet met pixels. */
+    async schermafdruk(pad) {
+      const r = await cmd('Page.captureScreenshot', { format: 'png' });
+      fs.writeFileSync(pad, Buffer.from((r.result || r).data, 'base64'));
+      return pad;
+    },
     async stop() {
       try { sock.close(); } catch (e) { console.warn('plbrowser: socket sluiten mislukt — ' + e.message); }
       // Wachten tot Chromium echt weg is voordat de profielmap weggaat: hij

@@ -1526,7 +1526,7 @@ function updateConnGate(){
   if(!g){
     if(!need) return;
     g=document.createElement('div'); g.id='connGate';
-    g.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + var(--pl-sab,0px));z-index:var(--z-zwevend,9400);background:#1a6fff;color:#fff;font:800 13px/1 var(--f,sans-serif);padding:11px 16px;border-radius:24px;cursor:pointer;box-shadow:0 4px 16px rgba(26,111,255,.45);border:none;transition:transform .15s';
+    g.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + var(--pl-sab,0px) + var(--pl-nav-h,0px));z-index:var(--z-zwevend,9400);background:#1a6fff;color:#fff;font:800 13px/1 var(--f,sans-serif);padding:11px 16px;border-radius:24px;cursor:pointer;box-shadow:0 4px 16px rgba(26,111,255,.45);border:none;transition:transform .15s';
     g.textContent='\ud83d\udd0c Check connectie';
     g.onclick=async()=>{ g.textContent='\u23f3 Checken\u2026'; const ok=await runConnectionCheck(); if(ok){ showToast?.('\u2705 Klaar voor analyse'); } else { g.textContent='\ud83d\udd0c Check connectie'; } };
     document.body.appendChild(g);
@@ -2267,6 +2267,10 @@ async function startDiscovery(){
     // Mijn voorkeuren: geen samenvatting. De standaardset staat al aan
     // (wizGo(6) hierboven); wizFinish() doet de rest zonder scherm.
     try{ wizFinish(); }catch(e){ btDiag('Zonder samenvatting afronden mislukt — open de PID-lijst één keer met de hand: '+(e.message||e),'warn'); }
+    // Check mijn auto draait vanzelf (29-09-2026). Met samenvatting gebeurt dat
+    // pas als die weggetikt is (de knop in #wizS6): twee vensters tegelijk is
+    // precies de drukte die het nieuwe startscherm weg moest nemen.
+    try{ if(window.PLNav) PLNav.naVerbinding(); }catch(e){ btDiag('Automatische check niet gestart — tik zelf op Check mijn auto: '+(e.message||e),'warn'); }
   } else {
     wizShow();
   }

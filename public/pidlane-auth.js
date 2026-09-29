@@ -706,7 +706,7 @@ function showToast(msg, duration=3000){
   document.getElementById('pidToast')?.remove();
   const t=document.createElement('div');
   t.id='pidToast';
-  t.style.cssText='position:fixed;bottom:calc(100px + var(--pl-sab,0px));left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:12px 20px;border-radius:10px;font-family:var(--f);font-size:13px;z-index:9999;max-width:80%;text-align:center;white-space:pre-line;box-shadow:0 4px 20px rgba(0,0,0,.3);';
+  t.style.cssText='position:fixed;bottom:calc(100px + var(--pl-sab,0px) + var(--pl-nav-h,0px));left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:12px 20px;border-radius:10px;font-family:var(--f);font-size:13px;z-index:9999;max-width:80%;text-align:center;white-space:pre-line;box-shadow:0 4px 20px rgba(0,0,0,.3);';
   t.textContent=msg;
   document.body.appendChild(t);
   setTimeout(()=>t.remove(), duration);

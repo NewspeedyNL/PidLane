@@ -1341,6 +1341,22 @@ MUTATIES=(
 "public/pidlane-uihelpers.js@@    if(!_wasDemo && typeof plBusVrijgeven==='function') await plBusVrijgeven();@@    void 0;@@bproef-afsluiten.js@@bij verbreken blijft de bus bezet: geen ATPC"
 "public/pidlane-uihelpers.js@@  try{ if(window.PLAfsluiten) PLAfsluiten.verversMenu(); }@@  try{ if(false) PLAfsluiten.verversMenu(); }@@bproef-afsluiten.js@@het menu zegt \"Afsluiten\" terwijl er een rit loopt"
 "public/pidlane-uihelpers.js@@    try{ if(window._webSerialWrite && typeof disconnectWebSerial==='function') await disconnectWebSerial(); }@@    try{ if(false) await disconnectWebSerial(); }@@bproef-afsluiten.js@@bewust verbreken laat een Web Serial-poort open: de volgende verbinding stuit op \"port already open\""
+
+# ── De navigatie (29-09-2026). Fouten die je maakt bij het verbouwen van een
+# startscherm: de volgorde van de tabs, wie de garagemodus krijgt, een tegel
+# die naar een knoop wijst die er niet is, een beheerschakelaar die niets meer
+# doet, en een stoplicht dat "niet gelezen" als groen telt.
+"public/pidlane-nav.js@@    if (st.rapporten) return 'rapporten';\n    if (st.welkom) return 'auto';@@    if (st.welkom) return 'auto';\n    if (st.rapporten) return 'rapporten';@@test-nav.js@@het startscherm wint van het rapportenoverzicht: Rapporten licht nooit op"
+"public/pidlane-nav.js@@    return !!ingelogd && !isKlant;@@    return !isKlant;@@test-nav.js@@de demo zonder login krijgt de garagemodus (en de reviewer het vakgereedschap)"
+"public/pidlane-nav.js@@    if (opgeslagen === '0') return false;@@    if (opgeslagen === '0') return !!standaard;@@test-nav.js@@wie de garagemodus uitzet, krijgt hem terug zodra de standaard aan is"
+"public/pidlane-nav.js@@    return !!(st.ingelogd || st.demo) && !st.dashboard;@@    return !st.dashboard;@@test-nav.js@@de balk staat er al op het inlogscherm"
+"public/pidlane-wizard.js@@  voorbereiding: {nu:'voorb_wat',       set:{doel:'voorbereiding'}},@@  voorbereiding: {nu:'voorb_klaar',      set:{doel:'voorbereiding'}},@@test-wizardtakken.js@@de tegel Voorbereiden wijst naar een knoop die niet bestaat"
+"public/pidlane-wizard.js@@  return m.filter(moduleAan);@@  return m;@@test-wizardtakken.js@@een functie die beheer uitzet, blijft in het wizardplan staan"
+"public/pidlane-foutcodes.js@@    var ongelezen = ['bevestigd', 'pending', 'permanent'].filter(function (k) { return !g[k]; }).length;@@    var ongelezen = 0;@@test-foutcodes.js@@het stoplicht telt een niet-gelezen soort code als \"geen codes\" en wordt groen"
+"public/pidlane-foutcodes.js@@    var vast = uniek([].concat(c.bevestigd || [], c.permanent || [])).length;@@    var vast = [].concat(c.bevestigd || [], c.permanent || []).length;@@test-foutcodes.js@@een code die bevestigd én permanent is, telt twee keer in de kop"
+"public/pidlane-nav.js@@    _gecheckt = true;       // één keer per sessie@@    void 0;                 // één keer per sessie@@bproef-navigatie.js@@de automatische check springt bij elke herverbinding opnieuw open"
+"public/pidlane-fuel.js@@  door_saving_active: 'tg-rit',@@  door_saving_active: 'tg-onderweg',@@bproef-navigatie.js@@de beheerschakelaar voor Rit starten wijst naar een tegel die er niet is"
+"public/pidlane-uihelpers.js@@  if(!s.ai) return 'AI niet bereikbaar';\n  return s.naam || 'Verbonden';@@  return s.naam || 'Verbonden';@@test-nav.js@@de statusregel toont de autonaam terwijl de AI weg is"
 )
 
 echo

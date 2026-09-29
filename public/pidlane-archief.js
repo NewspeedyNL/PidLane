@@ -507,7 +507,7 @@ function openReportsOverview(){
   const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   let rows='';
   if(!list.length){
-    rows='<div class="emp" style="padding:26px 0"><div class="ei">📄</div><h3>Nog geen rapporten</h3><p>Start een analyse of scan foutcodes — alles verschijnt hier.</p></div>';
+    rows='<div class="emp" style="padding:26px 0"><div class="ei">📄</div><h3>Nog geen rapporten deze sessie</h3><p>Begin met Check mijn auto — de uitslag komt hier te staan.</p></div>';
   }else{
     rows=list.map(r=>{
       const m=_srTypeMeta(r.type);
@@ -530,9 +530,17 @@ function openReportsOverview(){
   const mode=window._srUseContext===true?'on':window._srUseContext===false?'off':'ask';
   const seg=(id,lbl)=>{const act=mode===id;return '<button onclick="srSetCtxMode(\''+id+'\')" style="flex:1;padding:6px 4px;border-radius:8px;border:1px solid '+(act?'var(--bl)':'var(--bd)')+';background:'+(act?'rgba(26,111,255,.12)':'var(--sur2)')+';color:'+(act?'var(--bl)':'var(--tx3)')+';font-size:11px;font-weight:800;cursor:pointer;font-family:var(--f)">'+lbl+'</button>';};
   ov.innerHTML='<div class="ai-sheet">'+
-    '<div class="ai-sheet-h"><b>📄 Rapporten deze sessie ('+list.length+')</b><button class="ai-sheet-x" onclick="closeReportsOverview()">✕</button></div>'+
+    '<div class="ai-sheet-h"><b>📄 Rapporten ('+list.length+')</b><button class="ai-sheet-x" onclick="closeReportsOverview()">✕</button></div>'+
     '<div class="ai-sheet-b">'+
-      '<div style="font-size:11px;color:var(--tx3);margin-bottom:6px">Bewaard tot de app wordt gesloten.</div>'+
+      // Sinds 29-09-2026 is dit de tab Rapporten, niet meer een menu-item. Een
+      // tab die na elke herstart leeg is terwijl de rapporten in Mijn
+      // voertuigen gewoon bewaard staan, zou zeggen dat ze weg zijn.
+      _srBewaardRegel()+
+      '<div style="font-size:12.5px;color:var(--tx2);margin-bottom:6px">Hieronder: deze sessie. Bewaard tot de app wordt gesloten.</div>'+
+      rows+
+      // De rapporten zelf eerst (29-09-2026); de twee AI-instellingen stonden
+      // erboven en duwden de lijst op een telefoon half uit beeld.
+      '<div style="margin-top:14px"></div>'+
       '<div style="border:1px solid var(--bd);border-radius:10px;padding:9px 10px;margin-bottom:10px;background:var(--sur2)">'+
         '<div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:2px">🤖 Meenemen in nieuwe analyse</div>'+
         '<div style="font-size:11px;color:var(--tx3);margin-bottom:7px">Gebruikt de AI eerdere rapporten als context bij een volgende analyse?</div>'+
@@ -550,10 +558,17 @@ function openReportsOverview(){
           '<button class="ai-act" style="flex:none;padding:6px 12px;font-size:11px" onclick="plMeetcontextReset()">Opnieuw vragen</button>'+
         '</div>'+
       '</div>'+
-      rows+
     '</div>'+
   '</div>';
   ov.style.display='flex';
+}
+function _srBewaardRegel(){
+  try{
+    if(!(window.PLKlant && PLKlant.isKlant() && window.PLGarage)) return '';
+    return '<button onclick="closeReportsOverview();PLGarage.open()" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;'+
+      'padding:12px 12px;margin-bottom:10px;border-radius:10px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);'+
+      'font:700 14px var(--f);cursor:pointer;text-align:left">🚗 Bewaarde rapporten in Mijn voertuigen<span>→</span></button>';
+  }catch(e){ console.warn('Regel naar bewaarde rapporten niet getekend', e); return ''; }
 }
 function closeReportsOverview(){ const o=document.getElementById('reportsOverviewSheet'); if(o) o.style.display='none'; }
 // Een rapport uit deze sessie wissen (27-09-2026). Alleen uit de lijst van

@@ -48,18 +48,19 @@ const ECU = {
   };
 
   try {
-    console.log('\n── 1. de app start met de module, de deur staat op het startscherm ──');
+    console.log('\n── 1. de app start met de module, de check staat op het startscherm ──');
     toets('geen JS-fouten tijdens de boot', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
     toets('PLFoutcodes staat er', await app.ev(`typeof PLFoutcodes === 'object'`));
-    toets('de deur "Foutcodes & keuringsstatus" is de eerste op het startscherm',
-      await app.ev(`(function(){ const d=document.querySelector('#wmDoors .wm-door'); return !!d && d.classList.contains('dr-dtc'); })()`));
+    // Sinds 29-09-2026 is de deur de hoofdknop "Check mijn auto" geworden.
+    toets('"Check mijn auto" is het eerste op het startscherm',
+      await app.ev(`(function(){ const d=document.querySelector('#wmDoors button'); return !!d && d.id === 'plCheckBtn'; })()`));
 
-    console.log('\n── 2. de deur opent het venster en leest uit via de echte keten ──');
+    console.log('\n── 2. de knop opent het venster en leest uit via de echte keten ──');
     toets('nep-adapter staat aan', await app.nepAdapter(ECU) > 0);
     // De app leest een BARE binding (let connected in auth.js), niet
     // window.connected — die fout uit #186 maken we hier niet.
     await app.ev(`connected = true; demoMode = false; 'ok'`);
-    await app.ev(`document.querySelector('#wmDoors .dr-dtc').click(); 'ok'`);
+    await app.ev(`document.getElementById('plCheckBtn').click(); 'ok'`);
     toets('het venster staat open', await app.ev(`getComputedStyle(document.getElementById('plFcOv')).display === 'flex'`));
     const klaar = await wacht(`!!(PLFoutcodes.staat().scan && !PLFoutcodes.staat().bezig)`, 15000);
     toets('de uitlezing is afgerond', klaar);

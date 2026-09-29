@@ -248,6 +248,24 @@ var MODULE_PROFIEL = {
   accu:'accu', evaccu:'accu', trekken:'rit', klimaat:'basis', onderhoud:'basis'
 };
 
+/* Welke functieschakelaar uit beheer.html hoort bij welke module (29-09-2026).
+   Die schakelaars (feat_*, FEATURE_TOGGLES in pidlane-fuel.js) verborgen
+   alleen de kaart op het startscherm. Nu de tegels via deze wizard lopen, zou
+   een uitgezette functie hier gewoon in het plan blijven staan — de schakelaar
+   deed dan niets meer. Geen vermelding = altijd aan. */
+var MODULE_FEAT = {
+  aimonteur:'feat_ai_monteur', diep:'feat_deepdiag', recorder:'feat_pidrecorder',
+  conditie:'feat_conditiecheck', systeem:'feat_basiccheck', onderhoud:'feat_onderhoud',
+  markt:'feat_koopcheck', verbruik:'feat_verbruik', monitor:'feat_monitor',
+  trekken:'feat_caravan', langerit:'feat_langerit', klimaat:'feat_seizoen',
+  accu:'feat_ev', evaccu:'feat_ev'
+};
+function moduleAan(k){
+  var f = MODULE_FEAT[k];
+  if(!f || typeof featOn!=='function') return true;
+  return veilig(function(){ return featOn(f); }, true);
+}
+
 var METING = {
   stil:    {n:'Stilstaand meten',  d:'Contact aan, motor stationair',  tijd:'±2 min'},
   rit2:    {n:'Korte rit',         d:'±2 minuten rijden',              tijd:'±2 min',  start:function(){ openRitAnalyse('2min'); }},
@@ -296,7 +314,7 @@ function bouwPlan(j){
   if(ev) voeg('evaccu'); else voeg('accu');
 
   if(j.meting==='monitor') voeg('monitor');
-  return m;
+  return m.filter(moduleAan);
 }
 
 /* ── Takken ─────────────────────────────────────────────────────────────
@@ -426,6 +444,7 @@ function toonVraag(){
 
   h += '<div class="wz-opts">';
   (k.opt||[]).forEach(function(o,i){
+    if(o.direct && !moduleAan(o.direct)) return;   // uitgezet in beheer: keuze weg, index blijft kloppen
     h += '<button class="wz-opt" onclick="PLWizard.kies('+i+')">'+
            '<span class="wz-opt-t">'+o.t+'</span>'+
            (o.d?'<span class="wz-opt-d">'+o.d+'</span>':'')+
@@ -624,7 +643,7 @@ window.PLWizard = {
   _job:  function(){ return JSON.parse(JSON.stringify(job)); },
   _actief: function(){ return actief; },
   _gedaan: function(){ return Object.keys(gedaan); },
-  _boom: BOOM, _modules: MODULES, _takken: TAKKEN
+  _boom: BOOM, _modules: MODULES, _takken: TAKKEN, _feat: MODULE_FEAT
 };
 
 })();

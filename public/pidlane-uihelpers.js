@@ -134,6 +134,15 @@ function toggleKebab(e){
   if(m.classList.contains('open')){ m.classList.remove('open'); return; }
   // Het onderste item zegt wat het doet: "Rit beëindigen" als er een rit loopt.
   try{ if(window.PLAfsluiten) PLAfsluiten.verversMenu(); }catch(err){ console.warn('menu-item Afsluiten niet ververst:', err); }
+  // Sinds 29-09-2026 is dit het venster achter de tab Meer (.pl-meer): een blad
+  // boven de onderbalk, geplaatst door pidlane.css. Alleen naar <body> porten,
+  // anders valt het in de stapelcontext van de topbalk.
+  if(m.classList.contains('pl-meer')){
+    if(m.parentElement!==document.body) document.body.appendChild(m);
+    m.classList.add('open');
+    try{ if(window.PLNav) PLNav.ververs(); }catch(err){ console.warn('Meer-venster niet ververst:', err); }
+    return;
+  }
   // Port het menu naar <body> en plaats het fixed onder de knop -> altijd bovenop,
   // ook boven het keuzescherm (voorheen viel het in een lagere stapelcontext).
   const btn=document.getElementById('kebabBtn');
@@ -261,6 +270,18 @@ function updateTopbarStatus(){
   // niet in mee — "niets draait op de achtergrond" is geen probleem, dat is
   // de normale staat — Run krijgt zijn eigen telbadge via PLRun.verversDot().
   updateSysDot(Math.max(vSev, sSev, aSev));
+  // De chip heette "Systeem" en zei daarmee niets. Nu één regel in gewone taal
+  // (29-09-2026): met welke auto je verbonden bent, of wat er ontbreekt. De
+  // kleur van de stip blijft het oordeel; de tekst zegt waarover.
+  const txt=document.getElementById('sysTxt');
+  if(txt) txt.textContent=sysTekst({ verbonden:!!connected, demo:!!demoMode, naam:naam, ai:aSev===0 });
+}
+// Pure regel voor de statustekst — test-nav.js toetst hem.
+function sysTekst(s){
+  if(s.demo) return 'Demo';
+  if(!s.verbonden) return 'Niet verbonden';
+  if(!s.ai) return 'AI niet bereikbaar';
+  return s.naam || 'Verbonden';
 }
 // Kleur + tooltip van de samengevoegde systeem-chip. Losgetrokken van
 // updateTopbarStatus() zodat de ernst-berekening op één plek staat i.p.v.
