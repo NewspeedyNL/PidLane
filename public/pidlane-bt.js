@@ -903,6 +903,32 @@ async function sendBT(cmd, timeoutMs){
   return run;
 }
 
+/* ── DE BUS VRIJGEVEN BIJ VERBREKEN (29-09-2026) ──────────────────────
+   ATPC = Protocol Close. Op een K-lijn (ISO 9141, KWP2000) houdt de ELM de
+   sessie met de ECU zelf open met keep-alives; ATPC stopt die, zodat de ECU
+   niet op een tester blijft wachten die er niet meer is. Op CAN houdt een
+   tester de bus niet vast en is het vooral netjes. Het volgende commando na
+   een herverbinding opent het protocol vanzelf weer.
+
+   WAAROM NIET ATZ OF ATLP. ATZ reset op OBDLink ook de Bluetooth-module (zie
+   de init hieronder); ATLP (slaapstand) doen klonen elk op hun eigen manier.
+   ATPC is een gewoon ELM-commando dat een kloon hoogstens met "?" beantwoordt.
+
+   Nooit blijven hangen: hoogstens PL_ATPC_MS, ook als er nog een groepsverzoek
+   voor in de rij staat. Wat de ECU er werkelijk van merkt is een vraag voor
+   een rit (CAMPAGNE), niet voor een browserproef. */
+const PL_ATPC_MS=1500;
+async function plBusVrijgeven(){
+  let r=null;
+  try{
+    r=await Promise.race([sendBT('ATPC', PL_ATPC_MS), new Promise(res=>setTimeout(()=>res(null), PL_ATPC_MS+500))]);
+  }catch(e){ console.warn('ATPC bij verbreken mislukt:', e); return false; }
+  const ok=/OK/i.test(String(r||''));
+  btDiag(`ATPC (bus vrijgeven) → ${r==null?'geen antwoord binnen '+PL_ATPC_MS+' ms':'"'+String(r).trim().slice(0,30)+'"'}`, ok?'ok':'warn');
+  return ok;
+}
+window.plBusVrijgeven=plBusVrijgeven;
+
 async function _sendBTRaw(cmd, timeoutMs){
   let res=await _sendBTOnce(cmd,timeoutMs);
   // STOPPED = ons commando onderbrak een lopende protocol search.

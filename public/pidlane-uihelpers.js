@@ -334,12 +334,18 @@ setTimeout(()=>{ try{checkAiReachable();}catch(e){ console.warn('checkAiReachabl
 async function handleConnect(){
   if(connected){
     saveSession();   // idee 2: sessie-stats in voertuigdossier bewaren vóór verbreken
+    const _wasDemo=demoMode;
     if(demoMode) plDemoStop();
     connected=false; demoMode=false; clearInterval(pollTimer);
     // Test-scenario opheffen wanneer demo/verbinding stopt
     _scenario={ enabled:false, pids:{}, dtcs:[], vehicle:null };
     try{ updateScenarioBadge(); }catch(e){ console.warn('updateScenarioBadge mislukt:', e); }
     try{ localStorage.removeItem('pl_autoconn'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ } // bewust verbroken — niet auto-herverbinden
+    // De bus netjes vrijgeven vóór de socket dichtgaat (29-09-2026). Pas ná
+    // connected=false, de pollus uit en de vlag weg: dan komt er achter ATPC
+    // niets meer in de rij dat het protocol weer opent, en herverbindt niets
+    // vanzelf terwijl we wachten. Zie plBusVrijgeven in pidlane-bt.js.
+    if(!_wasDemo && typeof plBusVrijgeven==='function') await plBusVrijgeven();
     try{
       if(window._sppConn){
         await window._sppConn.spp.disconnect({address:window._sppConn.address}).catch(()=>{});
