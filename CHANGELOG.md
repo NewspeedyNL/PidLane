@@ -10,6 +10,23 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 29-09-2026 — Herinneringen voor APK en onderhoud, en de lampjesgids
+ ═══════════════════════════════════════════════════════════
+
+ - "Herinner me" op de kaart "Niet in de auto?" en bij de kenteken-check:
+   een melding op je telefoon 30 dagen en 7 dagen vóór de APK-datum en het
+   geplande onderhoud, en op de dag zelf, om 09:00. Ook als de app dicht is
+   en na een herstart. Alleen op het toestel, niets via een server
+   (pidlane-herinner.js, @capacitor/local-notifications).
+ - Werkt pas volledig met een nieuwe APK: de oude schil heeft de
+   meldingenplugin niet en toont de herinnering dan in de app.
+ - "Lampje brandt?": 25 dashboardlampjes met wat ze betekenen, of je mag
+   doorrijden, wat je doet, en wat de adapter erbij kan meten. Zoeken op
+   naam of op wat je ziet ("schildpad", "spiraaltje") (pidlane-lampjes.js).
+ - privacy.html: een alinea over de herinneringen. build-apk.yml haalt de
+   permissie voor exacte alarmen die de plugin meebrengt er weer uit.
+
+ ═══════════════════════════════════════════════════════════
  29-09-2026 — Demo op de schop, en de app zonder adapter
  ═══════════════════════════════════════════════════════════
 

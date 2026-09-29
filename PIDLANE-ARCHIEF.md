@@ -14,6 +14,29 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 29-09-2026 — Herinneringen: de plugin brengt een permissie mee die Play weigert
+
+**De keuze voor lokale meldingen.** Een APK-herinnering moet komen als de app
+dicht is. Een pushdienst (FCM) zou een server, een token per toestel en een
+Data safety-wijziging vragen voor iets dat de telefoon zelf weet: de datum.
+`@capacitor/local-notifications` plant de melding op het toestel in en zet hem
+na een herstart terug (`RECEIVE_BOOT_COMPLETED`).
+
+**De val.** Het manifest van de plugin (8.3.1, nagekeken in het pakket zelf)
+declareert ook `SCHEDULE_EXACT_ALARM`. Play staat exacte alarmen alleen toe
+voor apps waarvan ze de kern zijn (wekker, agenda); een andere app met die
+permissie krijgt een verklaringsformulier en loopt het risico op een afwijzing. Hij gaat er in
+`build-apk.yml` met `tools:node="remove"` uit, en de bundelcontrole faalt als hij
+er na de manifest-merge toch in staat. Zonder exacte alarmen verschuift Android
+de melding een paar minuten; voor een APK-datum maakt dat niets uit.
+
+**Niet getoetst.** Een Android-build kan hier niet draaien. Wat wel getoetst is:
+de injectie op een Capacitor-sjabloonmanifest (geldige XML, tools-namespace
+erbij), `test-privacydekking.js` (de weggehaalde permissie telt niet mee, de
+nieuwe wel), en PLHerinner zelf met een nep-plugin in node en in de browser.
+De eerste APK-build is de echte proef; faalt de bundelcontrole op
+`SCHEDULE_EXACT_ALARM`, dan heeft de merge de `remove` niet toegepast.
+
 ## 29-09-2026 — De demo: negen poorten, en de tiende die niemand kende
 
 **De vraag.** "Tijdens de demo niets vastleggen, geen echte rapporten, maar wel
