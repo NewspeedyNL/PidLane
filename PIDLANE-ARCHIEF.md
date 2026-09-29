@@ -14,6 +14,65 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 29-09-2026 — Het startscherm: 59 ingangen, en het rapport achter ☰
+
+**De bevinding.** Een evaluatie van de app zei dat de klant te veel wegen naar
+dezelfde functies kreeg en dat juist de belangrijke verstopt zaten. Nageteld in
+`index.html` van die dag, alleen wat een ingelogde klant kan aantikken om ergens
+heen te gaan: **59 ingangen op tien plekken**. Het startscherm had negen
+gelijkwaardige keuzes (voertuigkaart, "Help me kiezen", favorieten en zes
+deuren), achter de deuren 21 kaarten, in ☰ tien regels, in de topbalk zes. Vijf
+wegen leidden naar foutcodes, elk met een andere naam. De wizard en de deuren
+waren twee bomen naast elkaar die dezelfde doelen anders indeelden. En het
+rapport — waar de klant voor betaalt — stond alleen in ☰, tussen Privacy en
+Meld een bug.
+
+**Wat het onderzoek zei.** Nielsen Norman Group (179 deelnemers): zichtbare
+navigatie wordt op mobiel anderhalf keer zo vaak gebruikt als een hamburger-
+menu; verborgen navigatie maakt taken ongeveer 15% trager. Material Design en
+Apple komen los van elkaar op drie tot vijf vaste tabs. Het jamonderzoek
+(Iyengar & Lepper: 30% kocht bij 6 soorten, 3% bij 24) is later afgezwakt —
+een meta-analyse zet het gemiddelde effect rond nul — maar het effect blijft
+sterk precies waar een consument met een brandend lampje zit: opties die op
+elkaar lijken, iets op het spel, geen expertise. Daarom een garagemodus en
+geen eenheidsworst: een monteur heeft geen last van veel knoppen. FIXD, de
+bekendste consumenten-OBD-app, opent op één knop en een stoplicht.
+
+**Wat er gebouwd is.** Zie `pidlane-nav.js` en de CHANGELOG van vandaag. De
+wizard bleek al de motor die het voorstel nodig had: hij bouwde uit antwoorden
+een plan van modules. De tegels openen hem nu op hun eigen tak.
+
+**Wat bij het ombouwen boven kwam — en gerepareerd is:**
+
+- *Een functieschakelaar in beheer deed na de ombouw niets meer.*
+  `FEATURE_TOGGLES` verborg alleen de kaart op het startscherm; het wizardplan
+  kende de schakelaars niet. Zolang de kaarten de hoofdingang waren viel dat
+  niet op. Nu volgt `bouwPlan()` ze (`MODULE_FEAT`).
+- *Beheer toonde een nooit opgeslagen tegelsleutel als uit.* `loadConfig()`
+  gaf de drie `door_*`-sleutels `false` als standaard; de app gebruikt `true`.
+  Eén keer "Alles opslaan" op een lege Config zette de tegels dan echt uit.
+- *De deurlabels in beheer klopten niet.* `door_saving_active` heette
+  "Deur 1 — Diagnose & onderhoud" en schakelde Onderweg; `door_prep_active`
+  heette "Verbruik & rit" en schakelde Voorbereiden.
+- *Het stoplicht telde een code dubbel.* Een code die bevestigd én permanent
+  is (P0420 in de demo) kwam twee keer in de kop. Gevonden doordat de test
+  tegen de echte demo-uitlezing liep en niet tegen een zelfgebouwd object.
+- *Admin en Mijn account stonden in het menu van de demo zonder login.*
+  `pasMenuAan()` draait pas bij een login; de items stonden standaard aan.
+  Sinds dit ook het menu is dat een Play-reviewer ziet, staan ze standaard uit.
+
+**Wat bewust níét veranderd is.** De configsleutels heten nog `door_*`: het
+zijn opgeslagen regels, en een nieuwe naam zou elke bestaande instelling stil
+laten vervallen. De kaarten (`wc-…`) en de deurpanelen staan nog in
+`index.html`, onder "Alle functies": hun id's dragen de featureflags, de
+favorieten en de tests. Er is geen functie verdwenen.
+
+**Een open vraag.** Er stond tot juni al een onderbalk (Start · Live data ·
+Rapport). Die verdween bij het opnieuw opzetten van de algemene weergave, niet
+om een reden die nu nog geldt (navraag 29-09-2026).
+
+---
+
 ## 29-09-2026 — Motor uit is geen einde van de rit (#341)
 
 **De bevinding.** De ritwaarnemer van Mijn voertuigen (`pidlane-garage.js`)
