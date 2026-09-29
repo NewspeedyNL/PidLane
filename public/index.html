@@ -407,12 +407,18 @@ function closeConnOv(){
     </div>
     <div class="mact" id="connActions">
       <button class="mbtn p" id="btnConnect" onclick="connectSerial()">⚡ Plug in. Let's go.</button>
-      <button class="mbtn s" id="btnDemo" onclick="startDemo()">▷ Try demo — no adapter needed</button>
+      <!-- 29-09-2026: de demo heet hier wat hij doet. Het loginscherm houdt
+           "Try demo — no adapter needed": dat is de tekst die de Play-
+           reviewnotitie letterlijk belooft (test-demo-toegang.js). De knop
+           zonder id eronder bestaat ook in de template van resetToStep1();
+           zonder id kan hij daar geen dubbel id worden (test-dubbele-ids.js). -->
+      <button class="mbtn s" id="btnDemo" onclick="startDemo()">▷ Simuleer verbinding — bekijk je gegevens</button>
+      <button class="mbtn s" data-pl="zonder" onclick="PLZonder.verder()">🚗 Verder zonder adapter</button>
       <button class="mbtn s" id="btnExpertJoin" onclick="PLRemote.openExpert()">🔭 Meekijken met sessie (expert)</button>
     </div>
   </div>
   <div class="lg-foot">
-    Nog geen adapter? Start de demo — die werkt zonder auto.<br>
+    Niet in de auto? Kenteken-check, APK, foutcodes en je rapporten werken ook zonder adapter.<br>
     <a href="https://www.pidlane.nl" target="_blank" rel="noopener" class="lg-site">🌐 www.pidlane.nl</a>
   </div>
 </div>
@@ -606,6 +612,7 @@ function closeConnOv(){
          de externe config (pidlane-fuel.js) hangen eraan. -->
     <!-- Mijn voertuigen: het actieve voertuig met zijn status. Leeg voor wie geen klant is (PLGarage.tekenKaart). -->
     <div id="plGarageKaart"></div>
+    <div id="plZonderKaart"></div>
     <div id="wmDoors" class="pl-home">
       <button type="button" class="pl-check" id="plCheckBtn" onclick="PLNav.check()">
         <span class="pl-check-ic" aria-hidden="true">
@@ -1037,7 +1044,7 @@ function closeConnOv(){
         <div id="vehicleBody">
         <div id="demoBar" style="display:none;margin-bottom:8px;padding:8px;background:var(--pus);border:1px solid var(--pu);border-radius:8px">
           <div onclick="toggleDemoBarBody()" style="font-size:11px;font-weight:700;color:var(--pu);margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
-            <span>🧪 DEMO-VOERTUIG — wissel brandstoftype</span><span id="demoBarChev">▾</span>
+            <span>🧪 DEMO — niets wordt bewaard · wissel brandstoftype</span><span id="demoBarChev">▾</span>
           </div>
           <div id="demoBarBody">
             <select id="demoVehSel" onchange="loadDemoVehicle(this.value)" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--bd);background:var(--sur);color:var(--tx);font-size:12px;font-weight:600;margin-bottom:6px">
@@ -2061,6 +2068,7 @@ function closeConnOv(){
 <script src="pidlane-voorkeur.js"></script><!-- Mijn voorkeuren (PLVoorkeur) — standaardinstellingen per klantaccount; vereist PLRun, PLGarage, plFetch -->
 <script src="pidlane-afsluiten.js"></script><!-- Rit beëindigen (PLAfsluiten) — rit afronden, verbreken, uitloggen, app sluiten; vereist PLGarage, handleConnect, logout, plSluitApp -->
 <script src="pidlane-nav.js"></script><!-- PLNav: onderbalk, startscherm (Check mijn auto + tegels) en garagemodus; vereist ná datalog, archief, uihelpers, wizard, foutcodes en afsluiten -->
+<script src="pidlane-zonder.js"></script><!-- PLZonder: zonder adapter — kenteken-check (RDW), foutcode opzoeken, simulatie; vereist plFetch, PLRecall, dtcInfo, PLGarage -->
 <script src="pidlane-adapter.js"></script><!-- PLAdapter (#210/#211/#212): het verbindingspaneel achter de OBD-chip; vereist ná pidlane-data.js (PLBus), pidlane-plload.js (PLLoad) en pidlane-uihelpers.js (obdChipTap) -->
 <script src="pidlane-waarneming.js"></script><!-- wat er op DEZE auto is waargenomen (PLWaarneming) — de autolaag, blijft over ritten heen — vereist vóór pidlane-aandrijving.js -->
 <script src="pidlane-aandrijving.js"></script><!-- aandrijfstatus: de toestandsmachine (PLAandrijving) — zuiver, kent het scherm niet -->

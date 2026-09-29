@@ -2017,7 +2017,8 @@ function resetToStep1(){
   document.getElementById('step3').style.display='none';
   document.getElementById('connActions').innerHTML=`
     <button class="mbtn p" id="btnConnect">📡 Verbinden via Bluetooth</button>
-    <button class="mbtn s" id="btnDemo">▷ Demo modus (zonder adapter)</button>`;
+    <button class="mbtn s" id="btnDemo">▷ Simuleer verbinding — bekijk je gegevens</button>
+    <button class="mbtn s" data-pl="zonder" onclick="PLZonder.verder()">🚗 Verder zonder adapter</button>`;
   // Scoped bedraden: er bestaat óók een #btnConnect/#btnDemo op de hub
   // (dubbele id) — getElementById pakt de eerste en liet deze knoppen dood.
   const _ca=document.getElementById('connActions');

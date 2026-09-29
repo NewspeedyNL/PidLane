@@ -29,6 +29,7 @@ function loadDemoVehicle(key){
   const dv=DEMO_VEHICLES[key]||DEMO_VEHICLES.benzine;
   try{ if(window.PidLaneEvalLog&&PidLaneEvalLog.active) log('🚫 DEMO geactiveerd tijdens evaluatie — deze sessiedata is ongeldig','err'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   demoMode=true; connected=true; dataStable=true;
+  plDemoAan();
   const pids=demoPIDsForFuel(dv.brandstof);
   supportedPIDs=new Set(pids);
   activePIDs.clear(); manualPIDs.clear();
@@ -53,6 +54,24 @@ function loadDemoVehicle(key){
 function plDemoStop(){
   vehicleInfo={ merk:'Onbekend', model:'', year:'', vin:'', brandstof:'', motor:'' };
   try{ resetVehicleSources(); }catch(e){ console.warn('Demo stoppen: voertuigbronnen niet geleegd — de demo-auto kan blijven doorwerken', e); }
+  // De zandbak dicht: wat de demo schreef is weg, demorapporten ook.
+  try{ if(window.PLDemo) PLDemo.stop(); }catch(e){ console.warn('Demo stoppen: zandbak niet gesloten — demowaarden kunnen tot het herladen blijven staan', e); }
+  // Een demo zonder login (Play-reviewer, of wie nog geen account heeft)
+  // eindigt op het loginscherm, niet op een verbindscherm achter de login.
+  try{
+    const ingelogd=!!(window.currentUser && (window.currentUser.user || window.currentUser.name));
+    if(!ingelogd) setTimeout(()=>{ try{
+      const c=document.getElementById('connOv'); if(c) c.classList.add('hidden');
+      const lo=document.getElementById('loginOv'); if(lo) lo.classList.remove('hidden');
+    }catch(e){ console.warn('Loginscherm niet teruggezet na de demo', e); } }, 50);
+  }catch(e){ console.warn('Loginstand onleesbaar na de demo', e); }
+}
+/* Het ene punt waar elke demo begint: direct ná demoMode=true. Zet de
+   zandbak aan en zegt één keer wat dat betekent. */
+function plDemoAan(){
+  const al=!!(window.PLDemo && PLDemo.stand().aan);
+  try{ if(window.PLDemo) PLDemo.start(); }catch(e){ console.warn('Demo: zandbak niet aangezet — de losse demopoorten blijven de enige bescherming', e); }
+  if(!al) try{ showToast?.('🧪 Demo — gesimuleerde verbinding. Er wordt niets bewaard.',3600); }catch(e){ console.warn('Demomelding niet getoond', e); }
 }
 function demoRefresh(){
   const sel=document.getElementById('demoVehSel');
@@ -79,6 +98,28 @@ function startDemo(){
   if(apiVal&&apiVal.startsWith('sk-ant-')){window.anthropicKey=apiVal;try{localStorage.setItem('ns_api_key',apiVal);}catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }updateApiPill();}
   openDemoCarChooser();   // eerst kiezen — niet automatisch één vaste auto
 }
+/* Je eigen auto('s) als demo-auto (29-09-2026). Een klant die niet in de
+   auto zit, wil zíjn auto zien — met zijn rapporten, ritten en open punten
+   ernaast — niet een Mazda van iemand anders. Bron: de actieve voertuigen uit
+   Mijn voertuigen; zonder die het kenteken dat de app als "jouw auto" kent.
+   Alleen lezen: in de demo gaat er niets terug naar het account. */
+function _demoEigenAutos(){
+  const uit=[];
+  try{
+    if(window.PLKlant && PLKlant.isKlant() && window.PLGarage && PLGarage.staat){
+      const st=PLGarage.staat()||{};
+      ((st.stand && st.stand.voertuigen)||[]).filter(v=>v && v.status==='actief').forEach(v=>uit.push({
+        bron:'garage', merk:v.merk||'', model:v.model||'', year:String(v.bouwjaar||''), brandstof:v.brandstof||'',
+        motortype:v.motor||'', naam:v.naam||'', kenteken:v.kenteken||'', vin:'', wmi:'', icon:'🚗'
+      }));
+    }
+  }catch(e){ console.warn('Demo: eigen voertuigen niet leesbaar — de kiezer toont alleen de demo-auto\'s', e); }
+  if(!uit.length){
+    try{ const k=localStorage.getItem('pl_kenteken'); if(k) uit.push({ bron:'kenteken', kenteken:k }); }
+    catch(e){ console.warn('Demo: bewaard kenteken onleesbaar', e); }
+  }
+  return uit;
+}
 function openDemoCarChooser(){
   let m=document.getElementById('demoCarModal');
   if(!m){
@@ -87,29 +128,48 @@ function openDemoCarChooser(){
     m.addEventListener('click',e=>{ if(e.target===m) m.style.display='none'; });
     document.body.appendChild(m);
   }
-  const cards=DEMO_CARS.map((c,i)=>`
-    <button onclick="startDemoCar(${i})" style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);cursor:pointer;margin-bottom:8px">
-      <span style="font-size:22px">${c.icon}</span>
-      <span style="flex:1"><b style="font-size:14px">${c.merk} ${c.model} ${c.year}</b><br><span style="font-size:11px;color:var(--tx3)">${c.motortype} · ${c.brandstof} · gezond ✅</span></span>
+  const knop=(onclick,icon,titel,sub)=>`
+    <button onclick="${onclick}" style="display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);cursor:pointer;margin-bottom:8px">
+      <span style="font-size:22px">${icon}</span>
+      <span style="flex:1"><b style="font-size:14px">${titel}</b><br><span style="font-size:11px;color:var(--tx3)">${sub}</span></span>
       <span style="color:var(--tx3)">›</span>
-    </button>`).join('');
+    </button>`;
+  const esc=t=>String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const eigen=_demoEigenAutos();
+  window._demoEigen=eigen;
+  const eigenKaarten=eigen.map((c,i)=>c.bron==='garage'
+    ? knop(`startDemoEigen(${i})`, c.icon, esc(c.naam||[c.merk,c.model].filter(Boolean).join(' ')||'Mijn voertuig'), esc([c.merk,c.model,c.year,c.brandstof].filter(Boolean).join(' · ')||'uit Mijn voertuigen'))
+    : knop(`startDemoEigen(${i})`, '🚗', 'Mijn auto — '+esc(c.kenteken), 'Merk, model en brandstof uit het RDW')).join('');
+  const cards=DEMO_CARS.map((c,i)=>knop(`startDemoCar(${i})`, c.icon, `${c.merk} ${c.model} ${c.year}`, `${c.motortype} · ${c.brandstof} · gezond ✅`)).join('');
+  const kop=t=>`<div style="font-size:11px;font-weight:800;color:var(--tx2);margin:4px 0 6px">${t}</div>`;
   m.innerHTML=`<div style="background:var(--sur);width:100%;max-width:560px;max-height:90vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--bd)">
-      <b style="font-size:14px">▷ Demo — kies een auto</b>
+      <b style="font-size:14px">▷ Simuleer verbinding</b>
       <button onclick="document.getElementById('demoCarModal').style.display='none'" style="width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">✕</button>
     </div>
     <div style="overflow-y:auto;padding:14px 16px calc(14px + var(--pl-sab))">
-      <div style="font-size:11px;color:var(--tx3);margin-bottom:10px">Alle demo-auto's zijn gezond en in orde. RDW-opzoeking en PID-selectie werken gewoon.</div>
+      <div style="font-size:12px;color:var(--tx2);line-height:1.5;margin-bottom:12px;padding:9px 11px;border-radius:10px;background:var(--pus,rgba(123,97,255,.1));border:1px solid var(--pu,#7b61ff)">
+        🧪 Alles werkt zoals met een adapter: live meters, foutcodes, rit en rapport. <b>Er wordt niets bewaard</b> — geen rapport, geen rit, geen instelling. Je eigen voertuigen, rapporten en ritten kun je intussen gewoon bekijken.
+      </div>
+      ${eigen.length?kop('Jouw auto')+eigenKaarten:''}
+      ${kop('Of een voorbeeldauto')}
       ${cards}
       <div style="border-top:1px solid var(--bd);margin:12px 0 10px"></div>
-      <div style="font-size:11px;font-weight:800;color:var(--tx2);margin-bottom:6px">Of gebruik een echt kenteken als demo-auto (RDW)</div>
+      ${kop('Of een ander kenteken (RDW)')}
       <div style="display:flex;gap:8px">
         <input id="demoKentInput" placeholder="bv. KF660K" maxlength="8" style="flex:1;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:9px;color:var(--tx);font-family:var(--f);font-size:14px;padding:10px 12px;text-transform:uppercase">
         <button onclick="startDemoKenteken()" style="padding:10px 16px;border-radius:9px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">Start</button>
       </div>
+      ${window.PLZonder?`<button onclick="document.getElementById('demoCarModal').style.display='none';PLZonder.verder()" style="margin-top:14px;width:100%;padding:10px;border-radius:10px;border:1px dashed var(--bd);background:none;color:var(--tx2);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">Liever niets simuleren? Kenteken-check, foutcodes en je gegevens zonder adapter →</button>`:''}
     </div>
   </div>`;
   m.style.display='flex';
+}
+function startDemoEigen(i){
+  const c=(window._demoEigen||[])[i]; if(!c) return;
+  const m=document.getElementById('demoCarModal'); if(m) m.style.display='none';
+  if(c.bron==='kenteken'){ _startDemoCore(null, String(c.kenteken).toUpperCase().replace(/[^A-Z0-9]/g,'')); return; }
+  _startDemoCore(c, null);
 }
 function startDemoCar(i){
   const m=document.getElementById('demoCarModal'); if(m) m.style.display='none';
@@ -124,6 +184,7 @@ function startDemoKenteken(){
 function _startDemoCore(car, kent){
   try{ if(window.PidLaneEvalLog&&PidLaneEvalLog.active) log('🚫 DEMO geactiveerd tijdens evaluatie — deze sessiedata is ongeldig','err'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   demoMode=true; connected=true; dataStable=true;
+  plDemoAan();
   closeConnOv();
   resetToStep1();
   setConn(true);
@@ -136,50 +197,23 @@ function _startDemoCore(car, kent){
   // direct mee — dus een diesel-demo toont diesel-sensoren, benzine niet, enz.
   try{ resetVehicleSources(); mergeVehicleData('vin', { merk:demoVin.merk, model:demoVin.model, year:demoVin.year, brandstof:demoVin.brandstof }); }catch(e){ console.warn('mergeVehicleData mislukt:', e); }
 
-  // Alle PIDs die een Mazda CX-5 2018 typisch ondersteunt
-  const demoPIDs=[
-    // Motor
-    '010C', // RPM
-    '010D', // Snelheid
-    '0104', // Motorbelasting
-    '0111', // Gasklep positie
-    '0149', // Gaspedaal
-    '010E', // Ontstekingstiming
-    '010B', // Inlaatdruk (MAP)
-    '010F', // Inlaatlucht temp
-    '0110', // MAF
-    // Temperatuur
-    '0105', // Koelwater temp
-    '015C', // Olie temp
-    '0146', // Omgevingstemperatuur
-    // Brandstof
-    '012F', // Brandstofpeil
-    '015E', // Verbruik L/h
-    '0106', // STFT bank 1
-    '0107', // LTFT bank 1
-    '010A', // Brandstofdruk
-    // O2 sensoren
-    '0114', // O2 B1S1 (smalband — dood op breedband-auto)
-    '0124', // Lambda B1S1 breedband (de échte B1S1-bron)
-    '0134', // Lambda B1S1 breedband (stroom-variant)
-    '0115', // O2 B1S2
-    // Electrisch
-    '0142', // Accuspanning
-    '0143', // Absolute motorbelasting
-    // Emissie
-    '0133', // Barometerdruk
-    '012C', // EGR
-  ];
+  // De sensoren bij de brandstof van déze demo-auto (29-09-2026). Tot dan
+  // kreeg elke auto de lijst van een Mazda CX-5 benzine: een diesel-demo had
+  // lambdasondes, een elektrische een toerental. Een kentekendemo kent de
+  // brandstof pas na het RDW; tot dan geldt benzine, en het fantoomfilter van
+  // mergeVehicleData() haalt weg wat niet past zodra de brandstof binnen is.
+  const demoPIDs=demoPIDsForFuel(demoVin.brandstof);
   supportedPIDs=new Set(demoPIDs);
   buildDiscoveredPIDList();
 
   updateVehicleCard(demoVin);
-  const _dNaam=[demoVin.merk,demoVin.model,demoVin.year].filter(Boolean).join(' ')||'demo-auto';
+  const _eigen=!!(car && car.bron==='garage');
+  const _dNaam=(_eigen && car.naam) || [demoVin.merk,demoVin.model,demoVin.year].filter(Boolean).join(' ')||'demo-auto';
   showVtag('DEMO — '+_dNaam);
   log('Demo modus — '+_dNaam+(demoVin.motortype?(' '+demoVin.motortype):'')+' gesimuleerd','warn');
 
   // Toon auto info in welcome title
-  document.getElementById('welcomeTitle').textContent = kent ? ('Demo met kenteken '+kent) : (_dNaam+' herkend ✅');
+  document.getElementById('welcomeTitle').textContent = kent ? ('Simulatie met kenteken '+kent) : (_dNaam+(_eigen?' — gesimuleerd':' herkend ✅'));
 
   // Selecteer een uitgebreide standaard set voor directe weergave
   [
@@ -187,7 +221,7 @@ function _startDemoCore(car, kent){
     '012F','015E','0104','0111',  // Brandstof & belasting
     '0106','0107','0110','010F',  // Brandstoftrim & MAF
     '015C','0114','0124','010B','0146',  // Temp, O2 smalband+breedband, druk
-  ].forEach(pid=>{ activePIDs.add(pid); manualPIDs.add(pid); });
+  ].filter(pid=>supportedPIDs.has(pid)).forEach(pid=>{ activePIDs.add(pid); manualPIDs.add(pid); });
 
   buildPIDList();
   document.getElementById('pidCnt').textContent=discoveredPIDDefs.length;
@@ -244,3 +278,245 @@ function plDemoZonderLogin(){
   setTimeout(()=>{ try{ openDemoCarChooser(); }catch(e){ showToast?.('Demo kon niet starten'); } }, 300);
 }
 window.plDemoZonderLogin = plDemoZonderLogin;
+
+/* ══════════════════════════════════════════════════════════════════
+   PLDemo — DE ZANDBAK: in de demo wordt niets bewaard (29-09-2026)
+   ──────────────────────────────────────────────────────────────────
+   WAAROM EEN MECHANISME EN GEEN LIJST
+   test-demoopslag.js telt negen plekken die op 28-09 elk een eigen
+   `if(demoMode) return` kregen: dossier, profiel, roetfilterteller,
+   voertuigoverzicht, diagnosecache, selectie, versnellingsmodel, logregels,
+   vehicleInfo. Die negen kloppen. Maar de tiende module die iets bewaart,
+   weet niet dat ze bestaan — en dat is precies de vorm waarin het oude §11
+   en PIDLANE-WERK.md de kop kostten: een lijst die bijgehouden moet worden.
+
+   De zandbak doet het op het ene punt waar alles langskomt:
+     • localStorage — setItem/removeItem/clear gaan tijdens de demo naar een
+       laag in het geheugen. Lezen ziet eerst die laag, dan de echte opslag.
+       De demo WERKT dus (wat je instelt blijft staan zolang de demo loopt),
+       en bij het stoppen is de laag weg. Alleen DOORLAAT gaat echt: inloggen
+       hoort bij het account, niet bij de demo-auto.
+     • het net — plFetch() vraagt netBesluit(). Het klantplatform mag in de
+       demo LEZEN (je eigen voertuigen, rapporten, ritten en open punten
+       bekijken is juist het punt), niet schrijven. De AI, het inwisselen van
+       tegoed en de referentiemetingen gaan niet de deur uit.
+     • de AI — apiFetch() geeft een voorbeeldrapport terug uit de gesimuleerde
+       waarden: zo ziet een rapport eruit, zonder tegoed en zonder dat er een
+       rapport over een verzonnen auto ergens terechtkomt.
+     • bestanden — plBewaarBestand() weigert in de demo.
+     • het rapportenoverzicht — een demorapport draagt `demo` en verdwijnt
+       bij het stoppen.
+
+   De negen losse poorten blijven staan: ze zijn de eerste lijn, en ze
+   houden de demo ook uit sessionStorage, IndexedDB en de server. Dit is de
+   tweede lijn, die de volgende vergeten poort vangt.
+
+   ALLEEN TUSSEN aan() EN uit(), EN ALLEEN ALS demoMode AAN STAAT
+   Beide voorwaarden, met opzet. Zet iets demoMode uit zonder plDemoStop()
+   (een pad dat nog niemand kent), dan gaat de opslag gewoon weer door naar
+   het echte toestel: liever een demowaarde te veel bewaard dan een echte
+   instelling stil in een laag die straks weggegooid wordt. En een browser-
+   proef die demoMode met de hand aanzet, merkt van de zandbak niets.
+
+   Test: test-demozandbak.js (laadt dit bestand, niet een kopie).
+   ══════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  // Gaat ook in de demo echt naar het toestel: de sessie en de sleutel van
+  // wie er inlogt. Niets dat over een auto gaat.
+  var DOORLAAT = ['pl_session', 'pl_sessie', 'ns_api_key'];
+
+  // /klant/platform: de acties die alleen lezen. worker.js (KP_ACTIES) is de
+  // bron; test-demozandbak.js legt deze lijst ernaast en eist dat geen van
+  // deze acties INSERT, UPDATE of DELETE bevat.
+  var LEES_ACTIES = ['stand', 'rapporten', 'rapport', 'ritten', 'issues', 'pidbib_lijst', 'voorkeuren'];
+
+  // Paden die in de demo nooit de deur uit gaan, met de reden erbij.
+  var WEIGER = [
+    { re: /^\/v1\/messages\b/, reden: 'de AI rekent niet op een verzonnen auto' },
+    { re: /^\/credits\//, reden: 'tegoed inwisselen hoort niet bij een demo' },
+    { re: /\/airtable\/veldlab\b/, reden: 'een demo is geen referentiemeting' }
+  ];
+
+  function isDemo() {
+    try { return typeof demoMode !== 'undefined' && !!demoMode; }
+    catch (e) { console.warn('PLDemo: demoMode onleesbaar — de zandbak laat alles door', e); return false; }
+  }
+
+  /* Puur. Mag dit verzoek in de demo naar buiten? 'door' of de reden van nee.
+     `pad` zoals plFetch hem krijgt (relatief of absoluut), `opties` met json
+     of body. */
+  function netBesluit(pad, opties) {
+    var p = String(pad || '');
+    try { p = p.replace(/^https?:\/\/[^/]+/i, ''); } catch (e) { console.warn('PLDemo: pad niet te ontleden', e); }
+    for (var i = 0; i < WEIGER.length; i++) if (WEIGER[i].re.test(p)) return WEIGER[i].reden;
+    if (/^\/klant\/platform\b/.test(p)) {
+      var o = opties || {}, actie = '';
+      if (o.json && typeof o.json === 'object') actie = String(o.json.actie || '');
+      else if (typeof o.body === 'string') { try { actie = String((JSON.parse(o.body) || {}).actie || ''); } catch (e) { actie = ''; } }
+      return LEES_ACTIES.indexOf(actie) >= 0 ? 'door' : 'in de demo wordt niets in je account bewaard (' + (actie || 'onbekende actie') + ')';
+    }
+    return 'door';
+  }
+
+  function doorlaat(k) { return DOORLAAT.indexOf(String(k)) >= 0; }
+
+  /* De laag. `echt` = de originele Storage-methoden, `opslag` = het object
+     waarvoor de laag geldt (localStorage), `actief()` = mag hij nu vangen.
+     Geeft de vier vervangers terug; puur genoeg om met een nep-Storage te
+     toetsen. */
+  function maakLaag(echt, opslag, actief) {
+    var laag = new Map();   // sleutel → tekst, of null = in de demo verwijderd
+    var telling = { geschreven: 0 };
+    function vangt(self, k) { return self === opslag && actief() && (k === undefined || !doorlaat(k)); }
+    return {
+      laag: laag, telling: telling,
+      getItem: function (k) {
+        if (vangt(this, k) && laag.has(String(k))) return laag.get(String(k));
+        return echt.getItem.apply(this, arguments);
+      },
+      setItem: function (k, v) {
+        if (vangt(this, k)) { laag.set(String(k), String(v)); telling.geschreven++; return; }
+        return echt.setItem.apply(this, arguments);
+      },
+      removeItem: function (k) {
+        if (vangt(this, k)) { laag.set(String(k), null); return; }
+        return echt.removeItem.apply(this, arguments);
+      },
+      clear: function () {
+        if (!vangt(this)) return echt.clear.apply(this, arguments);
+        // Alles als verwijderd markeren, behalve wat door mag.
+        var n = 0;
+        try { n = this.length; } catch (e) { console.warn('PLDemo: opslaglengte onleesbaar', e); }
+        for (var i = 0; i < n; i++) {
+          var k = echt.key ? echt.key.call(this, i) : null;
+          if (k != null && !doorlaat(k)) laag.set(k, null);
+        }
+        laag.forEach(function (v, k) { laag.set(k, null); });
+      }
+    };
+  }
+
+  var _zb = null;   // { proto, echt, laag }
+  var METHODEN = ['getItem', 'setItem', 'removeItem', 'clear'];
+
+  function aan() {
+    if (_zb) return true;   // wisselen van demo-auto: dezelfde demo, dezelfde laag
+    var P, ls;
+    try { P = window.Storage && window.Storage.prototype; ls = window.localStorage; }
+    catch (e) { console.warn('PLDemo: geen localStorage — de zandbak staat niet aan (en er valt ook niets te bewaren)', e); return false; }
+    if (!P || !ls) { console.warn('PLDemo: Storage ontbreekt — de zandbak staat niet aan'); return false; }
+    var echt = { key: P.key };
+    METHODEN.forEach(function (m) { echt[m] = P[m]; });
+    var laag = maakLaag(echt, ls, isDemo);
+    METHODEN.forEach(function (m) { P[m] = laag[m]; });
+    _zb = { proto: P, echt: echt, laag: laag };
+    return true;
+  }
+
+  function uit() {
+    if (!_zb) return 0;
+    var n = _zb.laag.telling.geschreven;
+    var P = _zb.proto, echt = _zb.echt;
+    METHODEN.forEach(function (m) { P[m] = echt[m]; });
+    _zb = null;
+    return n;
+  }
+
+  function stand() {
+    return { aan: !!_zb, demo: isDemo(), inLaag: _zb ? _zb.laag.laag.size : 0, geschreven: _zb ? _zb.laag.telling.geschreven : 0 };
+  }
+
+  function naam(p) {
+    try { var d = (typeof getPidDef === 'function') ? getPidDef(p) : null; return (d && (d.naam || d.name || d.n)) || p; }
+    catch (e) { return p; }
+  }
+  function eenheid(p) {
+    try { var d = (typeof getPidDef === 'function') ? getPidDef(p) : null; return (d && (d.unit || d.eenheid || d.u)) || ''; }
+    catch (e) { return ''; }
+  }
+
+  /* Puur. Het voorbeeldrapport uit wat de demo op dit moment meet. */
+  function voorbeeldTekst(vi, waarden, metZoektool) {
+    vi = vi || {};
+    var auto = [vi.merk, vi.model, vi.year].filter(function (x) { return x && x !== 'Onbekend'; }).join(' ') || 'de demo-auto';
+    var L = [
+      '🧪 VOORBEELDRAPPORT — DEMO',
+      '',
+      'Dit is geen echte analyse. In de demo gaat er niets naar de AI, kost het geen tegoed en wordt dit rapport nergens bewaard.',
+      '',
+      'Voertuig: ' + auto + (vi.brandstof ? ' (' + vi.brandstof + ')' : '') + ' — gesimuleerd'
+    ];
+    if (metZoektool) {
+      L.push('', 'Online zoeken naar leescodes gebeurt alleen in een echte sessie, met je eigen auto aan de adapter.');
+      return L.join('\n');
+    }
+    var regels = (waarden || []).filter(function (w) { return typeof w.waarde === 'number' && isFinite(w.waarde); }).slice(0, 12);
+    if (regels.length) {
+      L.push('', 'Gemeten waarden (gesimuleerd):');
+      regels.forEach(function (w) {
+        var v = Math.abs(w.waarde) >= 100 ? Math.round(w.waarde) : Math.round(w.waarde * 10) / 10;
+        L.push('• ' + w.naam + ': ' + String(v).replace('.', ',') + (w.eenheid ? ' ' + w.eenheid : ''));
+      });
+    }
+    L.push('',
+      'Oordeel: 🟢 Geen urgente problemen gevonden — de demo-auto is gezond.',
+      '',
+      'Zo werkt het in een echte sessie: de AI-monteur legt elke sensor naast de referentie die bij de toestand hoort (koud of warm, stationair of rijdend), noemt wat opvalt met de gemeten waarde erbij, geeft mogelijke oorzaken en een concreet advies. Het rapport komt bij je voertuig in Mijn voertuigen.');
+    return L.join('\n');
+  }
+
+  async function aiVoorbeeld(prompt, extra) {
+    var vi = {}, w = [];
+    try { if (typeof vehicleInfo !== 'undefined' && vehicleInfo) vi = vehicleInfo; } catch (e) { console.warn('PLDemo: voertuig onleesbaar voor het voorbeeldrapport', e); }
+    try {
+      if (typeof pidVals !== 'undefined' && pidVals) Object.keys(pidVals).forEach(function (p) { w.push({ pid: p, naam: naam(p), eenheid: eenheid(p), waarde: pidVals[p] }); });
+    } catch (e) { console.warn('PLDemo: meetwaarden onleesbaar voor het voorbeeldrapport', e); }
+    try { if (typeof aiBusyBegin === 'function') aiBusyBegin(); } catch (e) { console.warn('PLDemo: bezig-teken niet gezet', e); }
+    try {
+      await new Promise(function (r) { setTimeout(r, 900); });   // een rapport dat er meteen staat, leest als een fout
+      return voorbeeldTekst(vi, w, !!(extra && Array.isArray(extra.tools) && extra.tools.length));
+    } finally {
+      try { if (typeof aiBusyEnd === 'function') aiBusyEnd(); } catch (e) { console.warn('PLDemo: bezig-teken niet weggehaald', e); }
+    }
+  }
+
+  function weigerAntwoord(reden) {
+    var tekst = 'Demo: ' + reden;
+    try { if (typeof btDiag === 'function') btDiag('Demo-zandbak: verzoek niet verstuurd — ' + reden, 'info'); } catch (e) { console.warn('PLDemo: melding niet gelogd', e); }
+    return new Response(JSON.stringify({ ok: false, demo: true, error: tekst }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+  }
+
+  /* Bij het begin en het eind van elke demo. start() vanuit plDemoAan(),
+     stop() vanuit plDemoStop() — de twee plekken waar elke demo langskomt. */
+  function start() {
+    var ok = aan();
+    try { if (typeof btDiag === 'function') btDiag('Demo-zandbak ' + (ok ? 'aan: er wordt niets bewaard' : 'NIET aan — opslag onbereikbaar'), ok ? 'info' : 'warn'); }
+    catch (e) { console.warn('PLDemo: melding niet gelogd', e); }
+    return ok;
+  }
+  function stop() {
+    var n = uit();
+    // Demorapporten uit het overzicht: ze gingen over een verzonnen auto.
+    try {
+      var l = window._sessionReports;
+      if (Array.isArray(l)) for (var i = l.length - 1; i >= 0; i--) if (l[i] && l[i].demo) l.splice(i, 1);
+      if (typeof _srUpdateBadge === 'function') _srUpdateBadge();
+    } catch (e) { console.warn('PLDemo: demorapporten niet uit het overzicht gehaald', e); }
+    try { if (typeof btDiag === 'function') btDiag('Demo-zandbak uit: ' + n + ' schrijfactie(s) weggegooid', 'info'); }
+    catch (e) { console.warn('PLDemo: melding niet gelogd', e); }
+    return n;
+  }
+
+  window.PLDemo = {
+    actief: isDemo,
+    start: start,
+    stop: stop,
+    stand: stand,
+    netBesluit: netBesluit,
+    weigerAntwoord: weigerAntwoord,
+    aiVoorbeeld: aiVoorbeeld,
+    _kern: { netBesluit: netBesluit, maakLaag: maakLaag, voorbeeldTekst: voorbeeldTekst, aan: aan, uit: uit, DOORLAAT: DOORLAAT, LEES_ACTIES: LEES_ACTIES }
+  };
+})();

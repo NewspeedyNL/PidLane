@@ -35,7 +35,7 @@
 // Namen die modules van elkaar verwachten. Afgeleid uit élke plek waar de code
 // `typeof X === 'function'` doet: dat zijn precies de aanroepen die stil falen.
 var KRITIEK = [
-  '_niceReportName','_noteMap','_recStats',
+  '_niceReportName','aiBusyBegin','aiBusyEnd','_srUpdateBadge','_noteMap','_recStats',
   'appBack','btDiag','buildDiscoveredPIDList',
   'clearDTC','clearSLAutoHide','closeCaravanDash','closeKebab','closeLades','closeRitAnalyse',
   'demo','detectEngineType','disconnectWebSerial','doLogin','download','dtcInfo',
@@ -69,7 +69,7 @@ var KRITIEK = [
   // niet te zien: precies de stille vorm waarvoor deze lijst bestaat.
   'assessPidQuality','plHealthHerzien',
   'initialHealthScan','isAdmin','isMode01','isPIDOkVal',
-  'log',
+  'log','logUsage','validateRdwVehicle',
   // De live-log van de testrun (17-09-2026). pidlane-testrun.js schrijft elke
   // bevinding tijdens de rit weg via logToSheets, achter een typeof-guard,
   // want die functie woont in pidlane-auth.js en dat bestand laadt eerder.
