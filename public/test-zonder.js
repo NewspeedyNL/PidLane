@@ -98,8 +98,8 @@ console.log('\n6. De kaart op het startscherm');
 const kk = (st) => JSON.stringify(K.kaartKnoppen(st));
 toets('verbonden: geen kaart', kk({ verbonden: true, klant: true, demoMag: true }) === '[]');
 toets('demo: alleen stoppen', kk({ demo: true, klant: true, demoMag: true }) === '["demoStop"]');
-toets('niet verbonden, klant: kenteken, foutcode, simuleer, garage', kk({ klant: true, demoMag: true }) === '["kenteken","foutcode","simuleer","garage"]');
-toets('demo uitgezet door beheer: geen simuleerknop', kk({ klant: false, demoMag: false }) === '["kenteken","foutcode"]');
+toets('niet verbonden, klant: kenteken, lampje, foutcode, simuleer, garage', kk({ klant: true, demoMag: true }) === '["kenteken","lampje","foutcode","simuleer","garage"]');
+toets('demo uitgezet door beheer: geen simuleerknop', kk({ klant: false, demoMag: false }) === '["kenteken","lampje","foutcode"]');
 
 console.log('\n7. Foutcodes tegen de echte tabellen');
 {

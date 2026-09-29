@@ -2806,6 +2806,33 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── herinneringen en de lampjesgids (29-09-2026) ──
+  // De herinneringen hangen aan een native plugin (@capacitor/local-notifications)
+  // die pas in de schil zit na een nieuwe APK. Zonder plugin werkt het wel, maar
+  // alleen in de app — en dat is precies het geval dat niemand merkt, want er
+  // gaat niets mis, er komt alleen nooit een melding.
+  {
+    issue: '—',
+    naam: 'Herinneringen: de schil kan meldingen inplannen',
+    waarom: 'Een APK-herinnering die alleen in de app verschijnt, mist het hele punt: je opent de app niet als je er niet aan denkt.',
+    proef: async function () {
+      if (!window.PLHerinner || !window.PLLampjes)
+        return { staat: 'FOUT', detail: 'PLHerinner of PLLampjes ontbreekt' };
+      var C = window.Capacitor, LN = C && C.Plugins && C.Plugins.LocalNotifications;
+      var rood = PLLampjes._kern.LAMPJES.filter(function (l) { return l.kleur === 'rood' && l.doorrijden === 'ja'; });
+      if (rood.length) return { staat: 'FOUT', detail: 'de lampjesgids zegt "doorrijden" bij rood: ' + rood.map(function (l) { return l.id; }).join(', ') };
+      if (!LN) return { staat: 'LET OP', detail: 'deze schil heeft de meldingenplugin niet (browser of een APK van vóór 29-09) — herinneringen komen alleen in de app' };
+      var p = null;
+      try { p = await LN.checkPermissions(); } catch (e) { return { staat: 'FOUT', detail: 'checkPermissions faalt: ' + (e && e.message || e) }; }
+      var aan = PLHerinner.aan(), regel = PLHerinner.regel();
+      if (aan && (!p || p.display !== 'granted'))
+        return { staat: 'LET OP', detail: 'herinneringen staan aan, maar Android staat meldingen voor PidLane niet toe (' + (p && p.display) + ') — ze komen alleen in de app' };
+      var gepland = [];
+      try { var r = await LN.getPending(); gepland = (r && r.notifications) || []; } catch (e) { console.warn('Testrun: ingeplande meldingen niet leesbaar', e); }
+      return { staat: 'OK', detail: 'plugin aanwezig, toestemming ' + (p && p.display) + ', herinneringen ' + (aan ? 'aan' : 'uit') + (regel ? ' (' + regel.aantal + ' datum/data)' : '') + ', ' + gepland.length + ' ingepland bij Android' };
+    }
+  },
+
   // ── de onderbalk en het nieuwe startscherm (29-09-2026) ──
   // Vier tabs, één hoofdknop en vier tegels vervangen ☰, 🏠 en zes deuren.
   // Wat in de auto stuk kan zijn en in de browserproef niet: de balk staat er

@@ -103,6 +103,44 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('P0301 wordt uitgelegd, zonder net en zonder auto', /P0301/.test(uit) && !/Onbekende code/.test(uit), uit.slice(0, 90));
     await app.ev(`PLZonder.sluit(); 'ok'`);
 
+    console.log('\n7. De lampjesgids');
+    toets('de kaart heeft de knop "Lampje brandt?"', /lampje/.test(knoppen), knoppen);
+    await app.ev(`document.querySelector('#plZonderKaart [data-plz="lampje"]').click(); 'ok'`);
+    const tegels = await app.ev(`document.querySelectorAll('#plLampOv [data-lamp]').length`);
+    toets('de gids opent met de lampjes als tegels', tegels >= 20, String(tegels));
+    await app.ev(`PLLampjes.toon('olie'); 'ok'`);
+    toets('oliedruk: "Niet doorrijden" bovenaan', /Niet doorrijden/.test(await app.ev(`document.querySelector('#plLampOv .pll-band').textContent`)));
+    await app.ev(`PLLampjes.toon('motor'); 'ok'`);
+    toets('motorlampje, niet verbonden: de knop is "Verbind de adapter"', /Verbind de adapter/.test(await app.ev(`document.getElementById('plLampOv').textContent`)));
+    await app.ev(`PLLampjes.sluit(); 'ok'`);
+
+    console.log('\n8. De herinneringen');
+    await app.ev(`(function(){
+      window.__gepland = []; window.__weg = [];
+      window.Capacitor = window.Capacitor || {}; Capacitor.Plugins = Capacitor.Plugins || {};
+      Capacitor.Plugins.LocalNotifications = {
+        checkPermissions: async function(){ return { display:'granted' }; },
+        requestPermissions: async function(){ return { display:'granted' }; },
+        schedule: async function(o){ window.__gepland = window.__gepland.concat(o.notifications); },
+        cancel: async function(o){ window.__weg = window.__weg.concat(o.notifications); }
+      };
+      localStorage.setItem('pl_kenteken','AB123C');
+      localStorage.setItem('pl_zonder_mijn', JSON.stringify({ kent:'AB123C', keuring:'20991215', merk:'Mazda', model:'CX-5', t:Date.now() }));
+      PLZonder.teken(true); return 'ok'; })()`);
+    toets('met een APK-datum staat "Herinner me" op de kaart', /Herinner me/.test(await app.ev(`document.getElementById('plZonderKaart').textContent`)));
+    await app.ev(`document.querySelector('#plZonderKaart [data-plz="herinner"]').click(); 'ok'`);
+    toets('aan: drie meldingen bij Android ingepland', await wacht(`window.__gepland.length === 3`, 3000), String(await app.ev(`window.__gepland.length`)));
+    toets('de kaart zegt dat hij aan staat', await wacht(`/Herinnering aan/.test(document.getElementById('plZonderKaart').textContent)`, 3000));
+    await app.ev(`window.__gepland = []; plDemoZonderLogin(); setTimeout(function(){ startDemoCar(0); }, 700); 'ok'`);
+    await wacht(`demoMode===true`, 15000);
+    await app.ev(`PLHerinner.synchroniseer(true)`);
+    await app.ev(`PLHerinner.zet(true)`);
+    toets('in de demo wordt er niets ingepland', (await app.ev(`window.__gepland.length`)) === 0);
+    await app.ev(`handleConnect(); 'ok'`);
+    await wacht(`demoMode===false`, 5000);
+    await app.ev(`PLHerinner.zet(false)`);
+    toets('uit: de ingeplande meldingen worden weggehaald', (await app.ev(`window.__weg.length`)) >= 3);
+
     toets('de hele rit zonder JS-fouten', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     await app.stop();
