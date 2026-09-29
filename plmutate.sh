@@ -553,7 +553,7 @@ MUTATIES=(
 "public/pidlane-totalcheck.js@@  if(!nu.has(sit)) mis.push(@@  if(false) mis.push(@@bproef-systeemtest.js@@de systeemtest kijkt niet meer naar de situatie: rijtests meten en falen tijdens stilstand"
 "public/pidlane-totalcheck.js@@if(t.sit==='koud' && koudBijStart===false)@@if(false)@@bproef-systeemtest.js@@de koude-starttest blijft op een warme motor eeuwig wachten in plaats van eerlijk niet getest te heten"
 "public/pidlane-bulk.js@@  _blkEl('blkAna').onclick   = function () {@@  _blkEl('blkAna').onclick   = function () { return;@@bproef-vensters.js@@de knop Analyse in de bulk-recorder doet niets: de bulk-analyse is dan nergens meer te openen"
-"public/pidlane-btflow.js@@b.style.cssText='position:fixed;bottom:calc(10px + var(--pl-sab,0px));@@b.style.cssText='position:fixed;bottom:10px;@@bproef-schermranden.js@@de balk van de scenariotest valt weer achter de Android-knoppen"
+"public/pidlane-btflow.js@@b.style.cssText='position:fixed;bottom:calc(10px + var(--pl-sab,0px) + var(--pl-nav-h,0px));@@b.style.cssText='position:fixed;bottom:10px;@@bproef-schermranden.js@@de balk van de scenariotest valt weer achter de Android-knoppen"
 # ── De tests gaan mee naar app.pidlane.nl (26-09-2026) ──
 # public/.assetsignore houdt 2,3 MB aan tests van de site af. Te smal en een
 # testsoort staat alsnog openbaar; te breed en een module van de app wordt niet
