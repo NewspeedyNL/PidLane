@@ -49,7 +49,8 @@
   var CFG = {
     tikMs: 2000,               // hoe vaak de ritwaarnemer pidVals leest
     ritStartKmh: 3,            // een rit begint bij de eerste echte beweging
-    ritStilMs: 3 * 60 * 1000,  // zo lang stil (motor uit of stilstand) = rit voorbij
+    ritPauzeMs: 15 * 60 * 1000, // zo lang geen beweging (stilstand, motor uit of geen verbinding) = rit voorbij
+    pauzeMinMs: 60 * 1000,     // korter stil is verkeer, langer is een pauze in de rit
     ritMinKm: 0.3,             // korter is geen rit maar verplaatsen op de oprit
     ritGatMaxS: 10,            // een gat in de meting telt niet als afgelegde weg
     ritBewaarMs: 30000,        // lopende rit zo vaak veilig stellen
@@ -353,7 +354,12 @@
     if (kmh != null) {
       r.km += kmh * dt / 3600;
       r.maxKmh = Math.max(r.maxKmh, kmh);
-      if (kmh >= 2) { r.sBeweeg += dt; r.tBeweeg = t; }
+      if (kmh >= 2) {
+        // Weer rijden na een pauze (tanken, motor uit, even weg): dezelfde
+        // rit, met de pauze erin geteld. Of het een pauze wás, weet je pas nu.
+        if (t - r.tBeweeg > CFG.pauzeMinMs && r.sBeweeg > 0) { r.pauzes = (r.pauzes || 0) + 1; r.pauzeS = (r.pauzeS || 0) + (t - r.tBeweeg) / 1000; }
+        r.sBeweeg += dt; r.tBeweeg = t;
+      }
       else if (typeof m.rpm === 'number' && m.rpm > 300) r.sStat += dt;
     }
     r.s += dt;
@@ -364,7 +370,28 @@
     else if (typeof m.maf === 'number' && brandstof !== 'diesel') lph = m.maf * 3600 / (14.7 * 745);
     if (lph != null && dt > 0) { r.liters += lph * dt / 3600; r.sLiters += dt; }
     if (typeof m.trim === 'number') { r.trimSom += m.trim; r.trimN++; }
+    // De stand bij de laatste beweging. Een rit eindigt waar de auto stilviel,
+    // niet een kwartier later toen de app dat pas zeker wist: ritKlaar() knipt
+    // de staart eraf.
+    if (kmh != null && kmh >= 2) r.bij = { t: t, s: r.s, sStat: r.sStat, liters: r.liters, sLiters: r.sLiters };
     return r;
+  }
+
+  /* Waar staat een lopende rit? Eén vraag, drie antwoorden, en de enige plek
+     die hem beantwoordt:
+       'rijdt'  er was beweging in de laatste pauzeMinMs, en er is verbinding;
+       'pauze'  stil of geen verbinding, maar korter dan ritPauzeMs: rijdt de
+                auto daarna weer, dan is het dezelfde rit;
+       'af'     ritPauzeMs geen beweging: voorbij.
+     Motor uit is dus géén einde. Stilvallen en eindigen zijn op het moment
+     zelf niet te onderscheiden; pas het wegrijden (of het uitblijven ervan)
+     zegt welke van de twee het was. */
+  function ritStand(r, nu, verbonden) {
+    if (!r) return null;
+    var stil = nu - (r.tBeweeg || r.t0 || nu);
+    if (stil > CFG.ritPauzeMs) return 'af';
+    if (!verbonden || stil > CFG.pauzeMinMs) return 'pauze';
+    return 'rijdt';
   }
 
   function nl1(x) { return (Math.round(x * 10) / 10).toFixed(1).replace('.', ','); }
@@ -376,15 +403,21 @@
      gemeten is — anders is het een getal over een stukje. */
   function ritKlaar(r) {
     if (!r || r.km < CFG.ritMinKm) return null;
+    // Tot de laatste beweging; zie r.bij in ritTik(). Een rit van vóór die
+    // regel heeft hem niet, en loopt dan tot de laatste tik zoals voorheen.
+    var b = r.bij || { t: r.tLaatst, s: r.s, sStat: r.sStat, liters: r.liters, sLiters: r.sLiters };
+    var extra = {};
+    if (r.trimN) extra.trimLang = rond(r.trimSom / r.trimN, 1);
+    if (r.pauzes) { extra.pauzes = r.pauzes; extra.pauze_s = Math.round(r.pauzeS || 0); }
     var uit = {
-      start: r.start, eind: new Date(r.tLaatst).toISOString(), duur_s: Math.round(r.s), km: rond(r.km, 1),
+      start: r.start, eind: new Date(b.t).toISOString(), duur_s: Math.round(b.s), km: rond(r.km, 1),
       gem_kmh: r.sBeweeg > 0 ? rond(r.km / (r.sBeweeg / 3600), 1) : null, max_kmh: rond(r.maxKmh, 0),
       max_koelwater: r.maxKoel, min_accu: r.minAccu != null ? rond(r.minAccu, 2) : null,
-      stationair_pct: r.s > 0 ? rond(r.sStat / r.s * 100, 0) : null,
+      stationair_pct: b.s > 0 ? rond(b.sStat / b.s * 100, 0) : null,
       liters: null, verbruik_l100: null, codes: r.codes.slice(0, 20),
-      extra: r.trimN ? { trimLang: rond(r.trimSom / r.trimN, 1) } : null
+      extra: Object.keys(extra).length ? extra : null
     };
-    if (r.sLiters >= r.s * 0.7 && r.km >= 1) { uit.liters = rond(r.liters, 2); uit.verbruik_l100 = rond(r.liters / r.km * 100, 1); }
+    if (b.sLiters >= b.s * 0.7 && r.km >= 1) { uit.liters = rond(b.liters, 2); uit.verbruik_l100 = rond(b.liters / r.km * 100, 1); }
     return uit;
   }
 
@@ -803,6 +836,10 @@
     if (!isKlant() || !(_st.stand && _st.stand.akkoord) || !v) return;
     var verbonden = isVerbonden();
     var r = _st.rit;
+    // Een geparkeerde rit hoort bij het voertuig waarmee hij begon. Een ander
+    // voertuig actief = die rit is voorbij, hoe kort de pauze ook was.
+    if (r && r.vid !== v.id) { ritAf('ander voertuig'); r = null; }
+    if (r && ritStand(r, nu, verbonden) === 'af') { ritAf('stil'); r = null; }
     if (verbonden) {
       var kmh = pv('010D');
       if (!r && typeof kmh === 'number' && kmh >= CFG.ritStartKmh) {
@@ -814,7 +851,7 @@
         ritTik(r, { kmh: kmh, rpm: pv('010C'), koelwater: pv('0105'), accu: pv('0142'), lph: pv('015E'), maf: pv('0110'), trim: pv('0107') }, nu, v.brandstof);
         try { (typeof dtcCodes !== 'undefined' && Array.isArray(dtcCodes) ? dtcCodes : []).forEach(function (c) { if (r.codes.indexOf(c) < 0) r.codes.push(c); }); }
         catch (e) { console.warn('PLGarage: codes van de rit', e); }
-        if (nu - r.tBeweeg > CFG.ritStilMs) return ritAf('stil');
+        r._weg = false;
         if (!r._bewaard || nu - r._bewaard > CFG.ritBewaarMs) { r._bewaard = nu; schrijf(OPSLAG.rit, r); }
       }
       // Rust- en laadspanning voor de status, ook zonder rit.
@@ -823,15 +860,27 @@
         var g = (v.gezondheid = v.gezondheid || {});
         if (typeof rpm === 'number' && rpm < 100) g.accuRust = accu; else if (typeof rpm === 'number' && rpm > 600) g.accuLopend = accu;
       }
-    } else if (r) ritAf('verbinding weg');
+    } else if (r && !r._weg) {
+      // Verbinding weg is géén einde (tot 29-09-2026 wel, en dan werd één rit
+      // met een tankstop er twee). De rit blijft staan, veilig op het toestel;
+      // ritStand() beslist hierboven wanneer het wachten voorbij is.
+      r._weg = true; schrijf(OPSLAG.rit, r);
+    }
   }
 
-  async function ritAf(reden) {
+  /* Rondt de lopende rit af. `label` (optioneel) is de naam die de klant hem
+     bij "Rit beëindigen" gaf. Geeft de samenvatting terug, of null als er
+     geen rit was of hij te kort was om te bewaren. */
+  async function ritAf(reden, label) {
     var r = _st.rit; _st.rit = null; schrijf(OPSLAG.rit, null);
-    if (!r) return;
+    if (!r) return null;
     var sam = ritKlaar(r);
-    if (!sam) return;
+    // Wat er deze sessie met ritten gebeurde, voor blok 5 (#341): ook de ritten
+    // die te kort waren om te bewaren.
+    (_st.ritVerslag = _st.ritVerslag || []).push({ einde: reden, km: sam ? sam.km : rond(r.km, 1), pauzes: r.pauzes || 0, bewaard: !!sam });
+    if (!sam) return null;
     sam.extra = Object.assign({}, sam.extra || {}, { einde: reden });
+    if (label) sam.label = String(label).slice(0, 40);
     // Wat de versnellingsindicator deze rit zag, zodat het model later uit de
     // ritten opnieuw op te bouwen is. Past het niet in de ruimte voor `extra`
     // (4 kB op de server), dan niet: de rit zelf gaat altijd voor.
@@ -852,12 +901,20 @@
       if (_st.cache[r.vid]) delete _st.cache[r.vid];
       ververs();
     } catch (e) { console.warn('PLGarage: rit niet bewaard', e); }
+    return sam;
   }
 
-  // Een rit die bij het afsluiten van de app nog liep: afronden bij de start.
+  /* Een rit die bij het afsluiten van de app nog liep. Tot 29-09-2026 werd
+     die bij de start altijd afgerond, ook na twee minuten: app dicht bij de
+     pomp, weer open, en de rit stond in tweeën. Nu beslist ritStand(): nog
+     binnen de pauze = hij loopt door, anders af met de laatste beweging als
+     eindtijd. */
   function ritHerstel() {
     var r = lees(OPSLAG.rit, null);
-    if (r && r.vid && r.tLaatst) { _st.rit = r; ritAf('app gesloten tijdens de rit'); }
+    if (!(r && r.vid && r.tLaatst)) return;
+    _st.rit = r;
+    if (ritStand(r, Date.now(), false) === 'af') ritAf('app gesloten tijdens de rit');
+    else r._weg = true;
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -1592,6 +1649,26 @@
     gekoppeld: function () { return versnellingsVoertuig(); },
     selectieOordeel: selectieOordeel,
     staat: function () { return _st; },
+    /* Voor "Rit beëindigen" (pidlane-afsluiten.js): de lopende rit zoals hij
+       nu zou worden vastgelegd, zonder hem af te sluiten. null = geen rit. */
+    ritNu: function () {
+      var r = _st.rit;
+      if (!r || !isKlant()) return null;
+      var c = cacheVan(r.vid);
+      if (!c.ritten) laad(r.vid, 'ritten');   // voor het labelvoorstel; komt er later bij
+      var rs = c.ritten || [];
+      var sam = ritKlaar(r), v = voertuig(r.vid), nu = Date.now();
+      return {
+        stand: ritStand(r, nu, isVerbonden()), sam: sam, voertuig: v ? (v.naam || v.merk || '') : '',
+        stilMin: Math.floor((nu - (r.tBeweeg || nu)) / 60000), pauzeMin: Math.round(CFG.ritPauzeMs / 60000),
+        voorstel: sam ? labelSuggestie({ id: null, start: r.start, km: sam.km }, rs) : null, labels: labelKeuzes(rs)
+      };
+    },
+    ritBeeindig: function (label) { return ritAf('handmatig', label); },
+    ritVerslag: function () { return (_st.ritVerslag || []).slice(); },
+    // Voor test-garage.js: de tik en het herstel bij de start, met de echte staat.
+    _ritTikNu: function () { return ritTikNu(); },
+    _ritHerstel: function () { return ritHerstel(); },
     tekenKaart: tekenKaart,
     _akkoord: function () { doe(function () { return api('akkoord', { versie: _st.stand && _st.stand.akkoordVersie }); }, 'Mijn voertuigen staat aan'); },
     _open: function (id) { _st.view = 'voertuig'; _st.vid = id; _st.tab = 'overzicht'; teken(); },
@@ -1880,7 +1957,7 @@
       doe(function () { return api('rapport_verwijder', { id: r.id }); }, 'Rapport verwijderd').then(function () { delete cacheVan(_st.vid).rapporten; _st.view = 'voertuig'; _st.tab = 'rapporten'; teken(); });
     },
     // pure kern — voor test-garage.js
-    _kern: { status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar,
+    _kern: { status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar, ritStand: ritStand,
       rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
       waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, cfg: CFG }
   };

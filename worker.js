@@ -5468,11 +5468,13 @@ var KP_ACTIES = {
     if (dezelfde) return { ok: true, id: dezelfde.id, dubbel: true };   // opnieuw verstuurd na een wegvallende verbinding
     const getal = (x, min, max) => { const g = Number(x); return isFinite(g) && g >= min && g <= max ? Math.round(g * 10) / 10 : null; };
     const id = kpId();
-    await c.db.prepare("INSERT INTO kp_rit (id, klant_id, voertuig_id, start, eind, duur_s, km, gem_kmh, max_kmh, verbruik_l100, liters, max_koelwater, min_accu, stationair_pct, codes, bevindingen, extra, aangemaakt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    // Een naam die de klant bij "Rit beëindigen" gaf; zelfde schoonmaak als rit_label.
+    const label = String(r.label == null ? "" : r.label).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 40) || null;
+    await c.db.prepare("INSERT INTO kp_rit (id, klant_id, voertuig_id, start, eind, duur_s, km, gem_kmh, max_kmh, verbruik_l100, liters, max_koelwater, min_accu, stationair_pct, codes, bevindingen, extra, label, aangemaakt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
       .bind(id, c.klantId, v.id, start, isNaN(new Date(r.eind)) ? null : String(r.eind),
         getal(r.duur_s, 0, 172800), getal(r.km, 0, 5000), getal(r.gem_kmh, 0, 300), getal(r.max_kmh, 0, 300),
         getal(r.verbruik_l100, 0, 60), getal(r.liters, 0, 500), getal(r.max_koelwater, -40, 215), getal(r.min_accu, 0, 20),
-        getal(r.stationair_pct, 0, 100), kpJson(r.codes, 2000), kpJson(r.bevindingen, 4000), kpJson(r.extra, 4000), kpNu()).run();
+        getal(r.stationair_pct, 0, 100), kpJson(r.codes, 2000), kpJson(r.bevindingen, 4000), kpJson(r.extra, 4000), label, kpNu()).run();
     return { ok: true, id };
   },
 
