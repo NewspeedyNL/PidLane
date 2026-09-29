@@ -556,7 +556,8 @@
     '#plFcOv .fc-nu{font:800 12px var(--f);letter-spacing:.06em;text-transform:uppercase;color:var(--tx2);margin:4px 0 8px}' +
     '#plFcOv details.fc-det{margin:12px 0}' +
     '#plFcOv details.fc-det>summary{cursor:pointer;font:700 14px var(--f);color:var(--tx2);padding:10px 2px;list-style-position:inside}' +
-    '#plFcOv details.fc-det[open]>summary{margin-bottom:8px}';
+    '#plFcOv details.fc-det[open]>summary{margin-bottom:8px}' +
+    '#plFcOv .fc-soort{font-style:normal;color:var(--tx2)}';
 
   function zorgCss() {
     if (document.getElementById('plFcCss')) return;
@@ -763,7 +764,14 @@
     var alle = uniek([].concat(s.codes.bevestigd || [], s.codes.permanent || [], s.codes.pending || []));
     if (alle.length) {
       h += '<ul class="fc-kort">';
-      alle.forEach(function (c) { h += '<li><b>' + esc(c) + '</b><span>' + esc(info(c).desc || 'Onbekende code') + '</span></li>'; });
+      // Een code die nog moet bevestigen telt niet mee in de kop ("2 storingen"),
+      // dus hij krijgt hier zijn eigen label — anders telt de klant er drie.
+      alle.forEach(function (c) {
+        var soort = (s.codes.bevestigd || []).indexOf(c) > -1 ? '' :
+          (s.codes.permanent || []).indexOf(c) > -1 ? 'blijft staan tot na reparatie' : 'nog niet bevestigd';
+        h += '<li><b>' + esc(c) + '</b><span>' + esc(info(c).desc || 'Onbekende code') +
+          (soort ? ' <em class="fc-soort">· ' + soort + '</em>' : '') + '</span></li>';
+      });
       h += '</ul>';
     }
     h += '<div class="fc-nu">Wat nu?</div><div class="fc-knoppen">';
@@ -808,15 +816,18 @@
       h += '<details class="fc-det"' + (isGarage() ? ' open' : '') + '><summary>Alle details voor de monteur</summary>' +
         '<div class="fc-uitleg">Uitgelezen om ' + new Date(s.tijd).toLocaleTimeString('nl', { hour: '2-digit', minute: '2-digit' }) + '</div>';
       BRONNEN.forEach(function (b) { h += tekenCodes(s, b); });
-      h += tekenFreeze(s) + tekenReadiness(s) + '</details>';
+      h += tekenFreeze(s) + tekenReadiness(s);
+      // Wissen is de enige schrijfactie van de app. Hij staat bij de details,
+      // niet naast "Wat nu?": wissen is geen vervolgstap voor wie net hoort
+      // dat er iets mis is, en een rode knop onder een rood oordeel nodigt uit.
+      h += '<div class="fc-knoppen" style="margin-top:8px"><button class="fc-k gevaar" ' + (_st.bezig ? 'disabled' : '') +
+        ' onclick="PLFoutcodes.naarWissen()">🗑 Foutcodes wissen…</button></div></details>';
     }
     var kan = (isVerbonden() || isDemo()) && !isRemote() && !_st.bezig;
     h += '<div class="fc-knoppen">' +
       '<button class="fc-k hoofd" ' + (kan ? '' : 'disabled') + ' onclick="PLFoutcodes.scan()">' + (s ? '🔄 Opnieuw uitlezen' : '🔍 Uitlezen') + '</button>' +
       (s ? '<button class="fc-k" onclick="PLFoutcodes.bewaar()">💾 Bewaren</button>' : '') +
       '</div>';
-    if (s) h += '<div class="fc-knoppen" style="margin-top:8px"><button class="fc-k gevaar" ' + (_st.bezig ? 'disabled' : '') +
-      ' onclick="PLFoutcodes.naarWissen()">🗑 Foutcodes wissen…</button></div>';
     return h;
   }
 
