@@ -105,7 +105,8 @@ const ADAPTER = { '010C': '41 0C 1C 20', '010D': '41 0D 32', '0105': '41 05 7B',
     console.log('\n── 4. beëindigen ──');
     await app.ev(TX_VOLG);
     await app.ev(`PLAfsluiten.open(); [...document.querySelectorAll('#plAfOv .af-lab')].find(b => b.textContent === 'Woon-werk').click(); 'ok'`);
-    await app.ev(`document.getElementById('plAfDoe').click(); 'ok'`);
+    // Een Web Serial-poort (desktop) hoort bij verbreken ook dicht te gaan.
+    await app.ev(`window._webSerialWrite = async function(){}; document.getElementById('plAfDoe').click(); 'ok'`);
     toets('de rit gaat met naam de server op', await wacht(`window._nepPlatform.ritten.some(r => r.label === 'Woon-werk' && r.extra && r.extra.einde === 'handmatig')`),
       await app.ev(`JSON.stringify(window._nepPlatform.ritten)`));
     toets('de verbinding is verbroken en het venster dicht', await wacht(`connected === false && !(${zichtbaar('plAfOv')})`));
@@ -114,6 +115,7 @@ const ADAPTER = { '010C': '41 0C 1C 20', '010D': '41 0D 32', '0105': '41 05 7B',
     toets('ATPC gaat naar de adapter', iAtpc >= 0, volg.join(' '));
     toets('de rit is opgeslagen vóór de bus vrijgegeven wordt', iRit >= 0 && iRit < iAtpc, volg.join(' '));
     toets('na ATPC komt er niets meer op de bus', !volg.slice(iAtpc + 1).some(x => /^tx:/.test(x)), volg.slice(iAtpc).join(' '));
+    toets('een Web Serial-poort gaat bij verbreken ook dicht', await app.ev(`window._webSerialWrite === null`));
     toets('bewust verbroken en in de app: niet vanzelf herverbinden', await app.ev(`localStorage.getItem('pl_autoconn') === null`));
 
     console.log('\n── 5. verbinding weg is een pauze ──');

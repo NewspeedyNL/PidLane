@@ -1340,6 +1340,7 @@ MUTATIES=(
 "public/pidlane-afsluiten.js@@    var dicht = _bezig || ctx.lopend.length > 0 || !stappen.length;@@    var dicht = _bezig || !stappen.length;@@bproef-afsluiten.js@@een caravanrit die nog loopt wordt bij afsluiten stil weggegooid"
 "public/pidlane-uihelpers.js@@    if(!_wasDemo && typeof plBusVrijgeven==='function') await plBusVrijgeven();@@    void 0;@@bproef-afsluiten.js@@bij verbreken blijft de bus bezet: geen ATPC"
 "public/pidlane-uihelpers.js@@  try{ if(window.PLAfsluiten) PLAfsluiten.verversMenu(); }@@  try{ if(false) PLAfsluiten.verversMenu(); }@@bproef-afsluiten.js@@het menu zegt \"Afsluiten\" terwijl er een rit loopt"
+"public/pidlane-uihelpers.js@@    try{ if(window._webSerialWrite && typeof disconnectWebSerial==='function') await disconnectWebSerial(); }@@    try{ if(false) await disconnectWebSerial(); }@@bproef-afsluiten.js@@bewust verbreken laat een Web Serial-poort open: de volgende verbinding stuit op \"port already open\""
 )
 
 echo

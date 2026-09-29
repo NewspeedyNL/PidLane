@@ -357,6 +357,11 @@ async function handleConnect(){
     // naar exitApp() terwijl de BLE-verbinding nog openstond.
     try{ if(window._bleConn) await window._bleConn.ble?.disconnect?.(window._bleConn.id); }
     catch(e){ console.warn('BLE verbreken mislukt (verbinding kan al weg zijn):', e); }
+    // Web Serial (desktop) ook (29-09-2026). Tot dan sloot alleen pagehide de
+    // COM-poort; na bewust verbreken bleef hij open, met een draaiende lezer,
+    // en gaf de volgende verbinding "The port is already open".
+    try{ if(window._webSerialWrite && typeof disconnectWebSerial==='function') await disconnectWebSerial(); }
+    catch(e){ console.warn('Web Serial-poort niet gesloten bij verbreken:', e); }
     window._sppConn=null; window._bleConn=null; window._webBtWrite=null;
     setConn(false);
     try{ const _vt=document.getElementById('vtag'); if(_vt){ _vt.style.display='none'; _vt.dataset.naam=''; } }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
