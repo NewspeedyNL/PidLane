@@ -94,11 +94,13 @@ jobs:
         with:
           node-version: '24'
 
-      # plmutate.sh wijzigt bronbestanden en zet ze daarna terug. Hij weigert
-      # te draaien op een werkmap met niet-vastgelegde wijzigingen; na een
-      # verse checkout is die schoon, dus dat is hier geen bezwaar.
+      # plmutate.sh toetst HEAD, in een eigen git worktree per werker, en
+      # weigert op een werkmap met niet-vastgelegde wijzigingen; na een verse
+      # checkout is die schoon. Altijd de VOLLE tabel: --sinds is voor lokaal.
+      # Vier tegelijk, zoveel kernen heeft de runner (29-09-2026: van zo'n 16
+      # naar een kwart daarvan).
       - name: Draai plmutate
-        run: bash plmutate.sh .
+        run: bash plmutate.sh . --parallel 4
 
   browserproeven:
     name: browserproeven (de echte app in een echte browser)
