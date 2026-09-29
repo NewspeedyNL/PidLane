@@ -14,6 +14,52 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 29-09-2026 — Motor uit is geen einde van de rit (#341)
+
+**De bevinding.** De ritwaarnemer van Mijn voertuigen (`pidlane-garage.js`)
+sloot een rit op drie manieren af, en alle drie te vroeg:
+
+- `ritTikNu()`: `else if (r) ritAf('verbinding weg')`. De verbinding valt weg
+  bij motor uit als de adapter op contactstroom zit, en ook als Android de
+  socket op de achtergrond opruimt (#18). Eén tik zonder verbinding, en de rit
+  was af.
+- `ritStilMs: 3 min`. Wie drie minuten tankt, rijdt daarna een tweede rit.
+- `ritHerstel()` bij de start van de app: een bewaarde rit werd altijd
+  afgerond, ook als de app maar twee minuten dicht was geweest.
+
+Daarbij lag de eindtijd op de laatste tik, niet op de laatste beweging. Een
+rit die na drie minuten stil afging, duurde drie minuten te lang.
+
+**Waarom je het op het moment zelf niet kunt weten.** Motor uit bij de pomp
+en motor uit op de oprit zijn voor de app hetzelfde: rpm 0, 0 km/h of geen
+verbinding. Pas het wegrijden, of het uitblijven daarvan, zegt welke van de
+twee het was. Daarom beslist `ritStand()` niet bij het stilvallen maar bij de
+volgende beweging, met een wachttijd van vijftien minuten. De grens is een
+keuze (29-09, na overleg), geen meting. Dat hij klopt, moet een rit laten zien.
+
+**Wat hier níét gerepareerd is.**
+
+- `pl_autoconn` heeft twee betekenissen. Het is de voorkeur "Automatisch
+  verbinden" (`pidlane-voorkeur.js`) én de vlag "niet bewust verbroken" die
+  `handleConnect()` wist. Wie in de app op verbreken tikt, zet daarmee ook zijn
+  voorkeur uit, tot de volgende handmatige verbinding hem weer aanzet. "Rit
+  beëindigen → App sluiten" zet de vlag terug zoals hij stond. De twee
+  betekenissen uit elkaar halen raakt `pidlane-bt.js`, `pidlane-neon.js`,
+  `pidlane-theme.js`, `pidlane-voorkeur.js` en de testrun, en hoort in een
+  eigen PR.
+- `pidVals` houdt de laatste waarde vast als een PID `NO DATA` geeft. De
+  ritwaarnemer ziet na motor uit dus de laatste snelheid. In de praktijk is dat
+  0, want je stopt vóór je de motor uitzet. Een adapter die midden in het
+  rijden stroom verliest laat de laatste snelheid staan, maar dan valt ook de
+  verbinding weg, en dat is nu een pauze.
+
+**Onderweg gerepareerd.** `handleConnect()` sloot een Web Serial-poort
+(desktop) niet. Alleen `pagehide` deed dat. Na bewust verbreken bleef de
+COM-poort open, met een lezer die doorliep, en de volgende verbinding gaf
+"The port is already open".
+
+---
+
 ## 28-09-2026 — De drift van #302 is de wachttijd van de adapter, niet de verbinding
 
 **De klacht:** "hoe langer de verbinding duurt, hoe langzamer". Dat is #302:
