@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>PidLane advertentie</title>
+<!-- Bron voor de social-advertenties. Render: bash marketing/render.sh
+     ?f=vierkant (1080x1080, Facebook/Instagram-feed)
+     ?f=staand   (1080x1920, TikTok/Reels/Stories)
+     ?f=breed    (1200x628, Facebook-linkpost) -->
+<style>
+/* DM Sans en DM Mono (SIL Open Font License) lokaal, zodat het renderen geen internet vraagt */
+@font-face { font-family:"DM Sans"; src:url(fonts/dmsans.woff2) format("woff2"); font-weight:100 1000; }
+@font-face { font-family:"DM Mono"; src:url(fonts/dmmono-500.woff2) format("woff2"); font-weight:500; }
+:root { --bg:#0a0e17; --sur:#131926; --bd:#28324a; --tx:#eef2fa; --mu:#9aa6bd;
+        --gn:#1fd189; --cy:#4fd6f0; --bl:#4d82ff; --pu:#9a78ff; --or:#ff9f2e; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { background:var(--bg); }
+body { font-family:'DM Sans',sans-serif; color:var(--tx); overflow:hidden; }
+.ad { position:relative; overflow:hidden; background:
+  radial-gradient(circle at 85% 10%, rgba(154,120,255,.28), transparent 45%),
+  radial-gradient(circle at 5% 95%, rgba(31,209,137,.22), transparent 50%),
+  linear-gradient(160deg,#0d1322 0%,#0a0e17 60%); }
+.ad::before { content:""; position:absolute; inset:0; opacity:.5;
+  background-image:linear-gradient(rgba(77,130,255,.07) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(77,130,255,.07) 1px,transparent 1px);
+  background-size:54px 54px; }
+.merk { display:flex; align-items:center; gap:18px; font-weight:800; letter-spacing:.3px; }
+.merk img { border-radius:22%; box-shadow:0 0 40px rgba(31,209,137,.35); }
+.kop { font-weight:800; line-height:1.02; letter-spacing:-1.5px; }
+.kop em { font-style:normal; background:linear-gradient(90deg,var(--gn),var(--cy));
+  -webkit-background-clip:text; background-clip:text; color:transparent; }
+.sub { color:var(--mu); font-weight:500; line-height:1.35; }
+.lijst { list-style:none; display:grid; }
+.lijst li { display:flex; align-items:center; gap:.6em; font-weight:500; }
+.lijst li::before { content:"✓"; flex:none; display:grid; place-items:center; width:1.5em; height:1.5em;
+  border-radius:50%; background:rgba(31,209,137,.15); color:var(--gn); font-weight:800; font-size:.8em; }
+.cta { display:inline-flex; align-items:center; gap:.6em; font-weight:800; color:#06121a;
+  background:linear-gradient(90deg,var(--gn),var(--cy)); border-radius:999px; box-shadow:0 10px 40px rgba(31,209,137,.35); }
+.url { color:var(--tx); font-weight:700; opacity:.9; }
+
+/* telefoon met voorbeeldrapport */
+.tel { position:absolute; background:#05080f; border:3px solid #2a3450; border-radius:54px; padding:16px;
+  box-shadow:0 40px 90px rgba(0,0,0,.6), 0 0 0 10px rgba(255,255,255,.02); }
+.scherm { height:100%; border-radius:40px; background:var(--sur); padding:34px 26px; display:flex; flex-direction:column; gap:18px; overflow:hidden; }
+.sch-top { display:flex; justify-content:space-between; align-items:center; font-size:22px; font-weight:700; }
+.chip { font-size:17px; font-weight:700; padding:6px 14px; border-radius:999px; background:rgba(31,209,137,.15); color:var(--gn); }
+.kaart { background:#0f1420; border:1px solid var(--bd); border-radius:22px; padding:20px; }
+.dtc { font-family:'DM Mono',monospace; font-size:30px; color:var(--or); }
+.kaart h4 { font-size:22px; margin:6px 0 8px; }
+.kaart p { font-size:18px; color:var(--mu); line-height:1.4; }
+.ai { border-color:rgba(154,120,255,.45); background:linear-gradient(160deg,rgba(154,120,255,.14),#0f1420 70%); }
+.ai .lbl { font-size:16px; font-weight:800; color:var(--pu); letter-spacing:.5px; }
+.meters { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.meter { background:#0f1420; border:1px solid var(--bd); border-radius:18px; padding:14px 16px; }
+.meter b { display:block; font-family:'DM Mono',monospace; font-size:30px; }
+.meter span { font-size:15px; color:var(--mu); }
+.balk { height:6px; border-radius:3px; background:#232b40; margin-top:8px; overflow:hidden; }
+.balk i { display:block; height:100%; background:linear-gradient(90deg,var(--gn),var(--cy)); }
+.pulse { width:100%; height:60px; }
+
+/* ---------- vierkant 1080x1080 ---------- */
+.vierkant { width:1080px; height:1080px; padding:78px; }
+.vierkant .merk { font-size:40px; } .vierkant .merk img { width:74px; height:74px; }
+.vierkant .kop { font-size:92px; margin-top:64px; max-width:580px; }
+.vierkant .sub { font-size:30px; margin-top:28px; max-width:520px; }
+.vierkant .lijst { font-size:28px; gap:16px; margin-top:40px; }
+.vierkant .onder { position:absolute; left:78px; bottom:72px; display:flex; align-items:center; gap:28px; }
+.vierkant .cta { font-size:30px; padding:22px 38px; }
+.vierkant .url { font-size:28px; }
+.vierkant .tel { width:430px; height:880px; right:-30px; top:120px; transform:rotate(6deg); }
+
+/* ---------- staand 1080x1920 ---------- */
+.staand { width:1080px; height:1920px; padding:150px 80px 0; }  /* boven/onder vrij voor TikTok-UI */
+.staand .merk { font-size:46px; } .staand .merk img { width:86px; height:86px; }
+.staand .haak { margin-top:70px; font-size:44px; font-weight:700; color:var(--or); }
+.staand .kop { font-size:124px; margin-top:18px; }
+.staand .sub { font-size:38px; margin-top:34px; max-width:880px; }
+.staand .tel { width:520px; height:640px; left:50%; top:860px; transform:translateX(-50%) rotate(-3deg); }
+.staand .scherm { padding:40px 32px; gap:22px; }
+.staand .onder { position:absolute; left:0; right:0; bottom:250px; text-align:center; }
+.staand .cta { font-size:42px; padding:30px 56px; }
+.staand .url { display:block; margin-top:22px; font-size:34px; }
+
+/* ---------- breed 1200x628 ---------- */
+.breed { width:1200px; height:628px; padding:64px 70px; }
+.breed .merk { font-size:32px; } .breed .merk img { width:60px; height:60px; }
+.breed .kop { font-size:68px; margin-top:40px; max-width:640px; }
+.breed .sub { font-size:25px; margin-top:22px; max-width:600px; }
+.breed .onder { position:absolute; left:70px; bottom:58px; display:flex; align-items:center; gap:24px; }
+.breed .cta { font-size:25px; padding:17px 30px; }
+.breed .url { font-size:24px; }
+.breed .tel { width:360px; height:740px; right:60px; top:60px; transform:rotate(5deg); }
+.breed .scherm { padding:28px 20px; gap:14px; }
+.breed .lijst, .breed .haak, .vierkant .haak, .staand .lijst { display:none; }
+</style>
+</head>
+<body>
+<div class="ad" id="ad">
+  <div class="merk" style="position:relative"><img src="icon.png" alt=""> PidLane</div>
+  <div style="position:relative">
+    <div class="haak">Brandt er een lampje op je dashboard?</div>
+    <h1 class="kop">Weet wat je auto <em>mankeert.</em></h1>
+    <p class="sub">Lees je auto uit met een OBD2-adapter en krijg een diagnose in gewone taal.</p>
+    <ul class="lijst">
+      <li>Foutcodes uitlezen</li>
+      <li>Live sensorwaarden</li>
+      <li>Koopcheck voor occasions</li>
+    </ul>
+  </div>
+
+  <div class="tel"><div class="scherm">
+    <div class="sch-top"><span>Diagnose</span><span class="chip">● Verbonden</span></div>
+    <svg class="pulse" viewBox="0 0 400 60" preserveAspectRatio="none">
+      <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#1fd189"/><stop offset="1" stop-color="#4fd6f0"/></linearGradient></defs>
+      <polyline fill="none" stroke="url(#g)" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"
+        points="0,32 120,32 140,32 160,8 182,54 204,22 222,32 400,32"/>
+    </svg>
+    <div class="kaart">
+      <div class="dtc">P0171</div>
+      <h4>Mengsel te arm (bank 1)</h4>
+      <p>Motorlampje aan · opgeslagen code</p>
+    </div>
+    <div class="kaart ai">
+      <div class="lbl">✦ IN GEWONE TAAL</div>
+      <p style="color:#d6dcea;margin-top:8px">De motor krijgt te veel lucht of te weinig brandstof. Eerste verdachte: een lek in de aanzuigslang.</p>
+    </div>
+    <div class="meters">
+      <div class="meter"><span>Toerental</span><b>812</b><div class="balk"><i style="width:18%"></i></div></div>
+      <div class="meter"><span>Koelwater °C</span><b>89</b><div class="balk"><i style="width:62%"></i></div></div>
+      <div class="meter"><span>Korte trim %</span><b>+14</b><div class="balk"><i style="width:74%;background:linear-gradient(90deg,#ff9f2e,#ff5a5a)"></i></div></div>
+      <div class="meter"><span>Lange trim %</span><b>+11</b><div class="balk"><i style="width:68%;background:linear-gradient(90deg,#ff9f2e,#ff5a5a)"></i></div></div>
+    </div>
+  </div></div>
+
+  <div class="onder">
+    <span class="cta">Probeer PidLane →</span>
+    <span class="url">pidlane.nl</span>
+  </div>
+</div>
+<script>
+  var f = new URLSearchParams(location.search).get('f') || 'vierkant';
+  document.getElementById('ad').classList.add(f);
+</script>
+</body>
+</html>
