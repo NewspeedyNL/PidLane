@@ -3105,7 +3105,11 @@ async function loadConfig(){
   const r = await veilig(m, () => callWorker('read','/api/config',{ headers:H({ 'X-App-Token':TOKEN }) }));
   if(!r.ok) return;
   const c = r.uit.data || {};
-  ['door_saving_active','door_deal_active','door_prep_active','banner_active'].forEach(k => zetToggle(k, c[k], false));
+  // De tegels staan in de app AAN als de sleutel ontbreekt (_cfgBool(…, true) in
+  // pidlane-fuel.js). Hier stond `false`: een lege Config liet ze uit zien, en
+  // één keer "Alles opslaan" zette ze dan ook echt uit (gevonden 29-09-2026).
+  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], true));
+  zetToggle('banner_active', c.banner_active, false);
   // Ontbrekende functiesleutel = AAN. Dat is de afspraak met FEATURE_TOGGLES in
   // index.html: een functie die nog nooit is uitgezet, staat aan.
   FEATURES.forEach(f => zetToggle(f[0], c[f[0]], true));

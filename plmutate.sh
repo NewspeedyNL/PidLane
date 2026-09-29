@@ -1356,6 +1356,7 @@ MUTATIES=(
 "public/pidlane-foutcodes.js@@    var vast = uniek([].concat(c.bevestigd || [], c.permanent || [])).length;@@    var vast = [].concat(c.bevestigd || [], c.permanent || []).length;@@test-foutcodes.js@@een code die bevestigd én permanent is, telt twee keer in de kop"
 "public/pidlane-nav.js@@    _gecheckt = true;       // één keer per sessie@@    void 0;                 // één keer per sessie@@bproef-navigatie.js@@de automatische check springt bij elke herverbinding opnieuw open"
 "public/pidlane-fuel.js@@  door_saving_active: 'tg-rit',@@  door_saving_active: 'tg-onderweg',@@bproef-navigatie.js@@de beheerschakelaar voor Rit starten wijst naar een tegel die er niet is"
+"admin/beheer.html@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], true));@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], false));@@bproef-beheerpagina.js@@beheer toont een nooit opgeslagen tegel als uit, en Alles opslaan zet hem dan echt uit"
 "public/pidlane-uihelpers.js@@  if(!s.ai) return 'AI niet bereikbaar';\n  return s.naam || 'Verbonden';@@  return s.naam || 'Verbonden';@@test-nav.js@@de statusregel toont de autonaam terwijl de AI weg is"
 )
 
