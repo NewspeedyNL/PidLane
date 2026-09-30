@@ -1488,6 +1488,13 @@ MUTATIES=(
 "public/pidlane-sppproef.js@@      if (_procesNu) localStorage.setItem(SLEUTEL, JSON.stringify(a));@@      if (false) localStorage.setItem(SLEUTEL, JSON.stringify(a));@@test-sppproef.js@@de markering staat weer in sessionStorage: wegvegen wist hem terwijl de draad blijft draaien"
 "public/pidlane-sppproef.js@@    if (p && typeof p.beeindig === 'function') { await p.beeindig(); return true; }@@    /* beeindig weg */@@test-sppproef.js@@de knop beëindigt het proces niet en sluit alleen af — de draden blijven"
 "public/pidlane-snelproef.js@@    if (nu && was) return nu !== was;@@    /* proces-ID weg */@@test-snelproef.js@@stap 6 telt wegvegen weer als herstart zolang sessionStorage leeg is"
+"public/pidlane-plload.js@@  return Math.max(POLL_WACHT_MIN, Math.min(POLL_WACHT_MAX, eerste-now));@@  return POLL_WACHT_MAX;@@test-pollritme.js@@de pollus tikt weer vast om de 100 ms: de snelle klasse zakt naar 5 Hz en de bus staat half leeg"
+"public/pidlane-plload.js@@  if(!connected||!activePIDs.size) return POLL_WACHT_MAX;@@@@test-pollritme.js@@zonder verbinding blijft alles aan de beurt en wordt de pollus 250 keer per seconde wakker"
+"public/pidlane-plload.js@@    if(gen!==_pollGen) return;   // intussen gestopt of opnieuw gestart@@@@test-pollritme.js@@een stop tijdens een ronde plant toch de volgende: de app pollt door na het verbreken"
+"public/pidlane-plload.js@@bezet?POLL_BEZET_MS:_pollWacht(Date.now())@@_pollWacht(Date.now())@@test-pollritme.js@@een bezette bus wordt elke paar ms opnieuw geprobeerd"
+"public/pidlane-plload.js@@    const t=_pidDead.has(pid) ? (_pidDeadSince[pid]||0)+PID_REPROBE_MS : (_pidNextPoll[pid]||0);@@    const t=(_pidNextPoll[pid]||0);@@test-pollritme.js@@een gesnoeide PID staat altijd aan de beurt en houdt de pollus wakker voor niets"
+"public/pidlane-data.js@@  if(!tok && naam!=='poll' && window.PLBus.owner()==='poll')@@  if(false)@@test-busslot.js@@de monitor grijpt naast het gat tussen twee pollrondes en komt er vrijwel nooit meer tussen"
+"public/pidlane-data.js@@  if(!tok && naam!=='poll' && window.PLBus.owner()==='poll')@@  if(!tok && naam!=='poll')@@test-busslot.js@@ook achter een zware lezer gaat iedereen in de rij staan"
 )
 
 echo

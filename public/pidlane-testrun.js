@@ -2771,6 +2771,41 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de pollus plant op de eerste PID die aan de beurt is (30-09-2026) ──
+  // Met een vaste tik van 100 ms kwam een PID van 120 ms op 200 ms, en stond
+  // de bus bij acht PIDs half leeg: 10 verzoeken/s bij 54 ms per verzoek.
+  // Deze proef telt drie seconden lang hoe vaak de snelste PID echt gevraagd
+  // wordt, naast wat pidPollInterval() belooft (met het tempo van PLLoad erin).
+  {
+    issue: '#302',
+    naam: 'De snelle sensoren komen op hun eigen tempo',
+    waarom: 'Het adapterpaneel stond op 10 verzoeken/s en 53% bezet: de adapter had ruimte, de pollus vroeg er niet om, en toerental kwam op 5 Hz in plaats van 8.',
+    proef: async function () {
+      if (typeof _pollWacht !== 'function') return { staat: 'FOUT', detail: '_pollWacht ontbreekt — de pollus tikt weer vast' };
+      if (!connected || demoMode) return { staat: 'LET OP', detail: 'niet verbonden met een auto — niets gemeten' };
+      var snelste = null;
+      Array.from(activePIDs).forEach(function (p) {
+        if (window.PLSched.dood(p)) return;
+        if (!snelste || pidPollInterval(p) < pidPollInterval(snelste)) snelste = p;
+      });
+      if (!snelste) return { staat: 'LET OP', detail: 'geen actieve PID om te tellen' };
+      var iv = pidPollInterval(snelste), vorige = window.PLSched.laatstePoging(snelste), n = 0, t0 = Date.now();
+      while (Date.now() - t0 < 3000) {
+        await new Promise(function (r) { setTimeout(r, 10); });
+        var nu = window.PLSched.laatstePoging(snelste);
+        if (nu !== vorige) { n++; vorige = nu; }
+      }
+      var hz = n / 3, belofte = 1000 / iv;
+      var st = null; try { st = PLBus.stats(); } catch (e) { console.warn('PLBus.stats mislukt in blok 5:', e); }
+      var bezet = st ? Math.round(st.belasting) : null;
+      var tekst = snelste + ' ' + hz.toFixed(1) + ' Hz van de beloofde ' + belofte.toFixed(1) + ' (' + iv + ' ms)' + (bezet !== null ? ', bus ' + bezet + '% bezet' : '');
+      if (hz >= belofte * 0.8) return { staat: 'OK', detail: tekst };
+      // Traag bij een volle bus is de bus. Traag bij een halflege bus is de pollus.
+      if (bezet !== null && bezet < 70) return { staat: 'FOUT', detail: tekst + ' — de bus heeft ruimte, de pollus vraagt er niet om' };
+      return { staat: 'LET OP', detail: tekst + ' — de bus is vol; dat is de adapter of de ECU, niet de planning' };
+    }
+  },
+
   // ── een socket die nog openstaat eerst dicht (30-09-2026) ──
   // Een herlaad (update, hervatting) sloot de Bluetooth-socket niet; de MX+
   // weigerde dan de nieuwe verbinding tot iemand op zijn knop drukte.

@@ -195,6 +195,33 @@ ctx.window._pollBusy = false;
     await ctx.withBusOfNiets('poll', async function () { return 'nooit'; }) === undefined, true);
   B.release(houder3);
 
+  // ── wie de POLLUS bezig treft, gaat in de rij (30-09-2026) ──
+  // De pollus plant zijn volgende ronde op de eerste PID die aan de beurt is;
+  // de bus is tussen twee rondes dan maar een paar ms vrij. Een monitor die om
+  // de 20 s één keer grijpt, mist dat gat vrijwel altijd. Hij hoort te wachten
+  // tot de ronde klaar is, en dan vóór de volgende ronde te gaan.
+  {
+    const pollTok = B.claim('poll');
+    let liep5 = 0;
+    const monitor = ctx.withBusOfNiets('monitor', async function () { liep5++; return 'gemeten'; },
+      function () { return 'overgeslagen'; });
+    await new Promise(function (r) { setTimeout(r, 120); });
+    toets('de monitor staat in de rij achter de pollronde', B.wachtenden(), ['monitor']);
+    B.release(pollTok);
+    toets('en de volgende pollronde gaat niet voor', B.claim('poll'), 0);
+    toets('de monitor krijgt de vrije beurt', await metGrens(monitor, 3000), 'gemeten');
+    toets('zijn werk draaide één keer', liep5, 1);
+    toets('en daarna is het slot vrij', B.busy(), false);
+
+    // Tegenproef: een zware lezer is geen pollronde. Daar wacht niemand op —
+    // anders houdt een sweep van een minuut de monitor een minuut vast.
+    const zwaar = B.claim('survey');
+    const uit6 = await metGrens(ctx.withBusOfNiets('monitor', async function () { return 'gemeten'; },
+      function () { return 'overgeslagen'; }), 3000);
+    toets('achter een zware lezer slaat hij over zonder wachten', [uit6, B.wachtenden()], ['overgeslagen', []]);
+    B.release(zwaar);
+  }
+
   // ── DE KERN: een fout in het werk mag het slot niet gijzelen ──
   let geknald = false;
   try { await ctx.withBusOfNiets('poll', async function () { throw new Error('bus-hik'); }); }

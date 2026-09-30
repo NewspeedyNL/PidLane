@@ -620,18 +620,74 @@ function _pollHerplan(due, now){
   });
 }
 
+/* ── DE TIK VAN DE POLLUS (30-09-2026) ─────────────────────────────────
+   Tot vandaag was dit een setInterval van 100 ms. Twee dingen gingen daarmee
+   verloren, en ze kosten samen de helft van de bus:
+
+   1. Een PID van 120 ms wordt pas gevraagd op de eerstvolgende tik NA zijn
+      deadline, dus op 200 ms.
+   2. Duurt een ronde langer dan 100 ms, dan vallen de tikken die erin vallen
+      weg (de bus is van de pollus zelf) en wacht de volgende ronde tot de
+      tik daarna — gemiddeld een halve tik niets.
+
+   Gemeten in test-pollritme.js met de echte functies: acht PIDs, 54 ms per
+   verzoek, gaf 10 verzoeken/s bij 54% bus bezet, en de snelle klasse kwam op
+   5 Hz in plaats van 8,3 — precies het beeld van het adapterpaneel op
+   30-09. De adapter had ruimte, de pollus vroeg er niet om.
+
+   Nu plant de pollus zijn volgende ronde op het moment dat de eerste PID aan
+   de beurt is: niet vroeger dan POLL_WACHT_MIN (de bus is even vrij voor een
+   ander), niet later dan POLL_WACHT_MAX (zodat een nieuwe PID, een herstelde
+   verbinding of een ander tempo binnen een tik gezien wordt). Een bezette bus
+   is een andere zaak: dan komt hij over POLL_BEZET_MS terug.
+
+   De rem blijft waar hij was: PLLoad rekt de intervallen zelf op via
+   pidPollInterval(). Deze tik vraagt alleen niet minder dan dat interval. */
+const POLL_WACHT_MIN=4, POLL_WACHT_MAX=100, POLL_BEZET_MS=25;
+// Wie de keten nog mag voortzetten. startPoll() en stopPoll() hogen hem op,
+// zodat een ronde die nog loopt na afloop géén nieuwe plant.
+let _pollGen=0;
+function _pollWacht(now){
+  if(!connected||!activePIDs.size) return POLL_WACHT_MAX;
+  let eerste=Infinity;
+  for(const pid of activePIDs){
+    if(typeof plIsBerekend==='function' && plIsBerekend(pid)) continue;
+    const t=_pidDead.has(pid) ? (_pidDeadSince[pid]||0)+PID_REPROBE_MS : (_pidNextPoll[pid]||0);
+    if(t<eerste) eerste=t;
+  }
+  return Math.max(POLL_WACHT_MIN, Math.min(POLL_WACHT_MAX, eerste-now));
+}
+function stopPoll(){
+  _pollGen++;
+  clearTimeout(pollTimer);
+  pollTimer=null;
+}
+
 function startPoll(){
-  clearInterval(pollTimer);
+  stopPoll();
+  const gen=_pollGen;
   dataStable=false; stabilityCount={}; outlierCount={}; window._stabilityT0=null;
   _pidNextPoll={};
   try{ PLLoad.reset(); }catch(e){ console.warn('PLLoad.reset mislukt:', e); }   // nieuwe PID-set = budget opnieuw ijken
   document.getElementById('aiContent').innerHTML=`<div class="ai-ph"><div class="pi">📡</div><p>Data valideren...<br><br>Even geduld — outliers worden gefilterd voor betrouwbare analyse.</p></div>`;
 
-  // Scheduler-tick: 100ms. Per tick worden alleen de PIDs gepolld die volgens
-  // hun klasse "due" zijn. Zo blijft toerental vloeiend terwijl temperatuur
-  // het kanaal niet onnodig bezet houdt.
-  pollTimer=setInterval(async()=>{
-    if(!connected||!activePIDs.size) return;
+  // Per ronde worden alleen de PIDs gepolld die volgens hun klasse "due"
+  // zijn. Zo blijft toerental vloeiend terwijl temperatuur het kanaal niet
+  // onnodig bezet houdt. Wanneer de volgende ronde komt: zie _pollWacht().
+  const ronde=async()=>{
+    let bezet=false;
+    try{ if(connected&&activePIDs.size) await _pollRonde(()=>{ bezet=true; }); }
+    catch(e){ console.warn('Pollronde mislukt:', e); }
+    if(gen!==_pollGen) return;   // intussen gestopt of opnieuw gestart
+    pollTimer=setTimeout(ronde, bezet?POLL_BEZET_MS:_pollWacht(Date.now()));
+  };
+  pollTimer=setTimeout(ronde, POLL_WACHT_MIN);
+}
+
+// Eén ronde, met het werk van vóór 30-09 ongewijzigd erin; de inspringing
+// is die van de oude setInterval gebleven zodat de diff het werk laat zien
+// en niet de verhuizing.
+async function _pollRonde(alsBezet){
     // Echt busslot (fase 1): geen kale boolean meer. Houdt een zware lezer
     // (sweep/survey/verificatie) de bus vast, dan slaan we deze tik over —
     // en geven we NOOIT per ongeluk hún slot vrij.
@@ -763,8 +819,7 @@ function startPoll(){
       // Regelkring: meet de verzadiging en stel het pollbudget bij (fase 4).
       // Zelf-afgeregeld op cfg.tickMs, dus elke ronde aanroepen is prima.
       try{ PLLoad.tick(); }catch(e){ console.warn('PLLoad.tick mislukt:', e); }
-    });
-  },100);
+    }, alsBezet);
 }
 
 // Eén PID solo opvragen. Een eigen PID gaat via PLEigen.vraag(): die zet zo
