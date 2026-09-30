@@ -52,6 +52,11 @@
 
   let _bezig = false, _laatste = null;
   const _uitslagen = [];
+  /* Wat een meetopdracht kan opvragen (#352): de laatste patchstand, de
+     laatste draadmeting, en per volle proef hoeveel draden erbij kwamen. In
+     het geheugen: een uitslag van een vorige app-sessie zegt niets over nu. */
+  let _patchNu = null, _dradenNu = null;
+  const _volle = [];
 
   function _diag(m, n) {
     try { if (typeof btDiag === 'function') btDiag(m, n || 'info'); }
@@ -142,10 +147,11 @@
   async function patchStatus() {
     const spp = _spp();
     if (!spp) return { patch: null, reden: 'geen SPP-plugin (browser of BLE)' };
-    if (typeof spp.plPatch !== 'function') return { patch: null, reden: 'deze APK heeft de patch van #352 niet' };
+    if (typeof spp.plPatch !== 'function') { _patchNu = { patch: null, reden: 'deze APK heeft de patch van #352 niet' }; return _patchNu; }
     try {
       const r = await spp.plPatch();
-      return { patch: r && r.patch || null, aan: !(r && r.aan === false), leesdraden: r && r.leesdraden, verbindingen: r && r.verbindingen };
+      _patchNu = { patch: r && r.patch || null, aan: !(r && r.aan === false), leesdraden: r && r.leesdraden, verbindingen: r && r.verbindingen };
+      return _patchNu;
     } catch (e) {
       console.warn('SPP-proef: plPatch faalt', e);
       return { patch: null, reden: 'plPatch faalt: ' + ((e && e.message) || e) };
@@ -155,7 +161,7 @@
   async function meetDraden(ms) {
     const p = _plDraden();
     if (!p || typeof p.meet !== 'function') return null;
-    try { return await p.meet({ ms: ms || 1000 }); }
+    try { const d = await p.meet({ ms: ms || 1000 }); if (d) _dradenNu = d; return d; }
     catch (e) { console.warn('SPP-proef: draadmeting faalt', e); _diag('SPP-proef: draadmeting faalt — ' + ((e && e.message) || e), 'warn'); return null; }
   }
 
@@ -304,6 +310,8 @@
       await _wacht(1500);
       const na = { draden: await meetDraden(1000), respons: await meetRespons() };
       const o = oordeel(voor, na, patch);
+      _volle.push({ t: Date.now(), patch: !!patch.patch, aan: !!(patch.patch && patch.aan !== false),
+                    erbij: (voor.draden && na.draden) ? na.draden.sppDraait - voor.draden.sppDraait : null });
       if (patch.patch && na.draden && na.draden.sppDraait > 0) _markeer('draaiende leesdraad ondanks de patch');
       if (patch.patch && patch.aan === false && na.draden && na.draden.sppDraait > 0) _markeer('patch voor de proef uitgezet');
       o.regels.push('nabootsen: ' + p.uitkomst + ' in ' + p.ms + ' ms; patch: ' + _patchTekst(patch));
@@ -362,6 +370,24 @@
         patch: r
       };
     });
+  }
+
+  /* De app-maten voor PLOpdracht (#352). Null = niet gemeten, en dat is geen 0:
+     een meetopdracht maakt daar "nog niet" van in plaats van een oordeel. */
+  function maat(naam) {
+    const erbij = function (aan) {
+      const l = _volle.filter(function (v) { return v.patch && v.aan === aan && typeof v.erbij === 'number'; });
+      return l.length ? Math.max.apply(null, l.map(function (v) { return v.erbij; })) : null;
+    };
+    switch (naam) {
+      case 'spp-patch': return _patchNu ? (_patchNu.patch ? 1 : 0) : null;
+      case 'spp-draaiend': return _dradenNu ? _dradenNu.sppDraait : null;
+      case 'spp-proeven-aan': return _volle.filter(function (v) { return v.patch && v.aan; }).length;
+      case 'spp-proeven-uit': return _volle.filter(function (v) { return v.patch && !v.aan; }).length;
+      case 'spp-erbij-aan': return erbij(true);
+      case 'spp-erbij-uit': return erbij(false);
+      default: return null;
+    }
   }
 
   // ── het venster ───────────────────────────────────────────────────
@@ -427,7 +453,14 @@
     return n;
   }
 
-  try { document.addEventListener('DOMContentLoaded', menu); }
+  try {
+    document.addEventListener('DOMContentLoaded', function () {
+      menu();
+      // De patchstand één keer opvragen, zodat een meetopdracht meteen weet of
+      // de patch in deze APK zit — zonder dat eerst iemand op een knop drukt.
+      patchStatus().catch(function (e) { console.warn('SPP-proef: patchstand bij het opstarten niet opgevraagd', e); });
+    });
+  }
   catch (e) { console.warn('SPP-proef: menuknoppen niet ingehaakt', e); }
 
   window.PLSppProef = {
@@ -445,6 +478,7 @@
     volle: knopVolle,
     dodeSocket: knopDodeSocket,
     menu: menu,
+    maat: maat,
     laatste: function () { return _laatste; },
     uitslagen: function () { return _uitslagen.slice(); }
   };

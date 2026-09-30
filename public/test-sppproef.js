@@ -186,6 +186,18 @@ function bouw(opt) {
     toets('de proef staat als gebeurtenis bij PLAdapter', s.gebeurt.indexOf('spp-proef') > -1, true);
     toets('en de uitkomst staat in het logboek', s.logs.some((l) => /SPP-proef volle proef/.test(l[0])), true);
 
+    // De maten voor de meetopdracht van #352: een volle proef met de patch
+    // aan telt als "aan", met de patch voor de proef uit als "uit".
+    const ma = bouw({ draden: true, patch: true });
+    await ma.P.volle();
+    const mu = bouw({ draden: true, patch: true, patchUit: true });
+    await mu.P.volle();
+    toets('maat: een volle proef met de patch aan telt als aan, zonder draad erbij',
+      [ma.P.maat('spp-patch'), ma.P.maat('spp-proeven-aan'), ma.P.maat('spp-proeven-uit'), ma.P.maat('spp-erbij-aan'), ma.P.maat('spp-erbij-uit')], [1, 1, 0, 0, null]);
+    toets('maat: met de patch uit telt hij als uit, en de patch zit er nog steeds in',
+      [mu.P.maat('spp-patch'), mu.P.maat('spp-proeven-aan'), mu.P.maat('spp-proeven-uit')], [1, 0, 1]);
+    toets('maat: zonder meting is het null, geen 0', bouw().P.maat('spp-draaiend'), null);
+
     const d = bouw({ draden: true, patch: true });
     await d.P.dodeSocket();
     const iConn = d.spoor.findIndex((x) => /^connectSerial /.test(x));

@@ -1033,7 +1033,7 @@ MUTATIES=(
 "public/pidlane-opdracht.js@@    var stil = uit.filter(function (u) { return u.staat === 'LET OP'; });@@    var stil = [];@@test-opdrachtvoorwaarden.js@@een PID die niet gemeten is heet weer een bevinding: niet-gemeten en buiten-de-band zijn weer één ding"
 "public/pidlane-opdracht.js@@          catch (e) { console.warn('Opdracht: de stapcontrole gaf een fout (#257)', e); gezien = null; }@@          catch (e) { console.warn('Opdracht: de stapcontrole gaf een fout (#257)', e); gezien = false; }@@test-opdrachtvoorwaarden.js@@een stapcontrole die stukgaat leest als \"de stap is niet gezet\" — niet-na-te-gaan wordt weer stil niet-gedaan (#227)"
 "public/pidlane-opdracht.js@@    if (SCHEMAS.indexOf(o.schema) === -1)@@    if (o.schema !== SCHEMA)@@test-opdrachtvoorwaarden.js@@de hele voorraad van schema 1 wordt afgekeurd en elke rit kost eerst een nieuwe rij in de tabel"
-"public/pidlane-opdracht.js@@(isAdapter ? 1 : 0) !== 1) {@@(isAdapter ? 1 : 0) === 0) {@@test-opdrachtvoorwaarden.js@@een voorwaarde met pid én stap komt erdoor, en dan meet de rit iets anders dan er op papier staat"
+"public/pidlane-opdracht.js@@(isApp ? 1 : 0) !== 1) {@@(isApp ? 1 : 0) === 0) {@@test-opdrachtvoorwaarden.js@@een voorwaarde met pid én stap komt erdoor, en dan meet de rit iets anders dan er op papier staat"
 
 # ── De logtabel staat sinds #262 in D1 en niet meer in Airtable, en dat
 # verandert één ding wezenlijk: Airtable maakte een onbekend veld vanzelf aan,
@@ -1448,7 +1448,14 @@ MUTATIES=(
 "public/pidlane-adapter.js@@    if (g.proef) return@@    if (false) return@@test-adapterpaneel.js@@de oploop door de SPP-proef telt als de drift van #302"
 ".github/workflows/build-apk.yml@@(PLDradenPlugin.class)@@(PLDraden.class)@@test-nativeschil.js@@de draadmeting wordt niet geregistreerd: Capacitor.Plugins.PLDraden bestaat niet in de APK"
 ".github/workflows/build-apk.yml@@run: node plspppatch.js node_modules/@ascentio-it/capacitor-bluetooth-serial@@run: echo overgeslagen@@test-nativeschil.js@@de APK wordt gebouwd zonder de SPP-patch, zonder dat iets rood wordt"
-"public/pidlane-sppproef.js@@  try { document.addEventListener('DOMContentLoaded', menu); }@@  try { void menu; }@@bproef-sppproef.js@@de SPP-knoppen komen nooit in het Admin-menu: de module laadt, en niets zegt dat er iets ontbreekt"
+"public/pidlane-sppproef.js@@      menu();\n      // De patchstand één keer opvragen@@      // De patchstand één keer opvragen@@bproef-sppproef.js@@de SPP-knoppen komen nooit in het Admin-menu: de module laadt, en niets zegt dat er iets ontbreekt"
+# ── een meetopdracht over de app zelf, en twee schermfouten (#352, 30-09-2026) ──
+"public/pidlane-opdracht.js@@            if (!Object.prototype.hasOwnProperty.call(APPMATEN, String(p.app)))@@            if (false)@@test-opdrachtappmaat.js@@een meetopdracht mag elke naam als app-maat opvragen: de witte lijst is geen grens meer"
+"public/pidlane-opdracht.js@@                 vervuld: w === null ? null : (w >= v.tussen[0] && w <= v.tussen[1]),@@                 vervuld: w === null ? false : (w >= v.tussen[0] && w <= v.tussen[1]),@@test-opdrachtappmaat.js@@niet gemeten telt als niet vervuld — het verschil uit #227, nu voor app-maten"
+"public/pidlane-opdracht.js@@    return (w >= lo && w <= hi) ? _uit('ok', staart, p, w, 1)@@    return true ? _uit('ok', staart, p, w, 1)@@test-opdrachtappmaat.js@@een app-maat buiten de band heet toch in orde: de opdracht van #352 kan niet rood worden"
+"public/pidlane-sppproef.js@@      _volle.push({ t: Date.now(), patch: !!patch.patch, aan: !!(patch.patch && patch.aan !== false),@@      _volle.push({ t: Date.now(), patch: !!patch.patch, aan: !!patch.patch,@@test-sppproef.js@@een volle proef met de patch uit telt als proef met de patch aan: de tegenproef verdwijnt uit de meetopdracht"
+"public/pidlane-archief.js@@display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:11px 2px@@display:flex;gap:6px 10px;align-items:center;padding:11px 2px@@bproef-regelruimte.js@@de knoppen van een rapport staan weer naast de titel, en op een telefoon met grote tekst valt alles over elkaar"
+"public/pidlane-garage.js@@flex:0 1 auto;max-width:100%;min-width:0;white-space:normal;@@flex:0 0 auto;@@bproef-garage.js@@een lange knoptekst loopt de kaart uit"
 )
 
 echo

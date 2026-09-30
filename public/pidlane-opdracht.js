@@ -83,6 +83,39 @@
   // Een PID zoals de rest van de app hem schrijft: mode + code, hex.
   var PID_VORM = /^0[1-9A-F][0-9A-F]{2}$/i;
 
+  /* ── APP-MATEN (#352, 30-09-2026) ─────────────────────────────────
+     Sommige vragen gaan niet over de auto maar over de app zelf: laat de
+     SPP-plugin een draad achter na een mislukte verbindpoging? Dat stond als
+     lap tekst in CAMPAGNE, en de wens was een meetopdracht, met een kaart,
+     voorwaarden en een oordeel, zoals de rest.
+
+     Een app-maat is een GETAL dat een module van de app zelf bijhoudt. Het is
+     een witte lijst, net als de sleutels: een opdracht kan geen willekeurige
+     functie aanroepen, alleen een van deze namen opvragen. Elke naam hoort bij
+     precies één module, die hem met `maat(naam)` teruggeeft, of null als er
+     niets gemeten is. Null is "niet gemeten", en dat is geen 0. */
+  var APPMATEN = {
+    'spp-patch':       ['PLSppProef', 'de SPP-patch zit in deze APK (1) of niet (0), aan of voor de proef uit'],
+    'spp-draaiend':    ['PLSppProef', 'draaiende SPP-leesdraden bij de laatste draadmeting'],
+    'spp-proeven-aan': ['PLSppProef', 'volle SPP-proeven met de patch aan, deze sessie'],
+    'spp-proeven-uit': ['PLSppProef', 'volle SPP-proeven met de patch voor de proef uit, deze sessie'],
+    'spp-erbij-aan':   ['PLSppProef', 'meeste draaiende draden erbij in een volle proef met de patch aan'],
+    'spp-erbij-uit':   ['PLSppProef', 'meeste draaiende draden erbij in een volle proef met de patch uit']
+  };
+  function _appMaat(naam) {
+    var bron = APPMATEN[naam];
+    if (!bron) return null;
+    var mod = window[bron[0]];
+    if (!mod || typeof mod.maat !== 'function') return null;
+    try {
+      var w = mod.maat(naam);
+      return (typeof w === 'number' && isFinite(w)) ? w : null;
+    } catch (e) { console.warn('Opdracht: app-maat ' + naam + ' onleesbaar (#352)', e); return null; }
+  }
+  function _band(t) {
+    return Array.isArray(t) && t.length === 2 && typeof t[0] === 'number' && typeof t[1] === 'number' && t[0] <= t[1];
+  }
+
   var _actief = null;      // de laatst goedgekeurde opdracht
   var _herkomst = null;    // waar hij vandaan kwam: id, naam, hash
   var _laatsteFout = null; // waarom er geen opdracht is
@@ -230,6 +263,16 @@
           if (!p || typeof p !== 'object') { fouten.push('proef ' + i + ' is geen object'); return; }
           if (p.issue !== undefined && !_tekst(p.issue, GRENZEN.issueMax)) fouten.push('proef ' + i + ': issue is te lang');
           if (!_tekst(p.naam, GRENZEN.proefNaamMax)) fouten.push('proef ' + i + ': naam ontbreekt of is te lang');
+          // Een proef op een app-maat (#352): geen PID, alleen een naam uit de
+          // witte lijst en een band. `meet` is dan altijd de laatste waarde.
+          if (p.app !== undefined) {
+            if (p.pid !== undefined) fouten.push('proef ' + i + ': geef `pid` of `app`, niet allebei');
+            if (!Object.prototype.hasOwnProperty.call(APPMATEN, String(p.app)))
+              fouten.push('proef ' + i + ': app-maat `' + p.app + '` kent deze app niet');
+            if (p.meet !== undefined && p.meet !== 'laatst') fouten.push('proef ' + i + ': een app-maat meet alleen `laatst`');
+            if (!_band(p.tussen)) fouten.push('proef ' + i + ': tussen moet [laag, hoog] zijn met laag <= hoog');
+            return;
+          }
           if (!PID_VORM.test(String(p.pid))) fouten.push('proef ' + i + ': `' + p.pid + '` is geen PID-code');
           if (MATEN.indexOf(String(p.meet)) === -1)
             fouten.push('proef ' + i + ': meet moet een van ' + MATEN.join(', ') + ' zijn');
@@ -262,8 +305,15 @@
           var isMeting = (v.pid !== undefined);
           var isGebeurtenis = (v.gebeurtenis !== undefined);
           var isAdapter = (v.adapter !== undefined);
-          if ((isStap ? 1 : 0) + (isMeting ? 1 : 0) + (isGebeurtenis ? 1 : 0) + (isAdapter ? 1 : 0) !== 1) {
-            fouten.push('voorwaarde ' + i + ': geef precies één van `stap`, `pid`, `gebeurtenis` of `adapter`');
+          var isApp = (v.app !== undefined);
+          if ((isStap ? 1 : 0) + (isMeting ? 1 : 0) + (isGebeurtenis ? 1 : 0) + (isAdapter ? 1 : 0) + (isApp ? 1 : 0) !== 1) {
+            fouten.push('voorwaarde ' + i + ': geef precies één van `stap`, `pid`, `gebeurtenis`, `adapter` of `app`');
+            return;
+          }
+          if (isApp) {
+            if (!Object.prototype.hasOwnProperty.call(APPMATEN, String(v.app)))
+              fouten.push('voorwaarde ' + i + ': app-maat `' + v.app + '` kent deze app niet');
+            if (!_band(v.tussen)) fouten.push('voorwaarde ' + i + ': tussen moet [laag, hoog] zijn met laag <= hoog');
             return;
           }
           /* De twee soorten van 23-09-2026 (#277). "De adapter er even uit"
@@ -319,6 +369,8 @@
           return { pid: String(d.pid).toUpperCase(), onder: d.onder, boven: d.boven, melding: d.melding };
         }),
         proeven: (o.proeven || []).map(function (p) {
+          if (p.app !== undefined)
+            return { issue: p.issue || '—', naam: p.naam, app: String(p.app), meet: 'laatst', tussen: [p.tussen[0], p.tussen[1]] };
           return { issue: p.issue || '—', naam: p.naam, pid: String(p.pid).toUpperCase(),
                    meet: String(p.meet), tussen: [p.tussen[0], p.tussen[1]] };
         }),
@@ -327,6 +379,7 @@
           if (v.gebeurtenis !== undefined)
             return { wat: v.wat, gebeurtenis: String(v.gebeurtenis), minS: v.minS === undefined ? 5 : v.minS };
           if (v.adapter !== undefined) return { wat: v.wat, adapter: String(v.adapter), niet: v.niet === true };
+          if (v.app !== undefined) return { wat: v.wat, app: String(v.app), tussen: [v.tussen[0], v.tussen[1]] };
           return { wat: v.wat, pid: String(v.pid).toUpperCase(),
                    meet: String(v.meet), tussen: [v.tussen[0], v.tussen[1]] };
         })
@@ -554,6 +607,7 @@
      `waarde` is null als er niets te meten viel; dat is iets anders dan 0 en
      het scherm hoort dat verschil te tonen. */
   function meet(proef) {
+    if (proef && proef.app !== undefined) return _appMeet(proef);
     /* De hele rit, en dat is met opzet (#277). Wat er gemeten is, is
        gemeten: tien minuten rijden of drie keer vol gas tellen voor elke
        opdracht die dat vraagt, niet alleen voor de gekozen. Wat een opdracht
@@ -579,6 +633,19 @@
     var staart = proef.pid + ' ' + proef.meet + ' = ' + w + ' (verwacht ' + lo + '–' + hi + ', ' + r.n + ' monster(s))';
     return binnen ? _uit('ok', staart, proef, w, r.n)
                   : _uit('FOUT', staart + ' — buiten de band die de opdracht noemt', proef, w, r.n);
+  }
+
+  /* Een proef op een app-maat (#352). Dezelfde uitslagvorm als een PID-proef,
+     zodat het scherm er dezelfde balk van tekent; de naam van de maat staat
+     waar anders de PID staat. */
+  function _appMeet(proef) {
+    var p = { pid: proef.app, meet: 'laatst', tussen: proef.tussen };
+    var w = _appMaat(proef.app);
+    if (w === null) return _uit('LET OP', proef.app + ' is deze sessie niet gemeten — ' + (APPMATEN[proef.app] || ['', ''])[1], p, null, 0);
+    var lo = proef.tussen[0], hi = proef.tussen[1];
+    var staart = proef.app + ' = ' + w + ' (verwacht ' + lo + '–' + hi + ')';
+    return (w >= lo && w <= hi) ? _uit('ok', staart, p, w, 1)
+                                : _uit('FOUT', staart + ' — buiten de band die de opdracht noemt', p, w, 1);
   }
 
   /* De uitslagvorm op één plek. Elke uitgang van meet() loopt hierlangs, zodat
@@ -615,6 +682,14 @@
     return lijst.map(function (v) {
       if (v.gebeurtenis !== undefined) return _gebeurtenis(v);
       if (v.adapter !== undefined) return _adapterVoorwaarde(v);
+      if (v.app !== undefined) {
+        // Niet gemeten is niet na te gaan (null), niet "niet vervuld".
+        var w = _appMaat(v.app);
+        return { wat: v.wat, soort: 'app', app: v.app, waarde: w,
+                 vervuld: w === null ? null : (w >= v.tussen[0] && w <= v.tussen[1]),
+                 detail: w === null ? 'nog niet gemeten (' + (APPMATEN[v.app] || ['', ''])[1] + ')'
+                                    : v.app + ' = ' + w + ' (nodig ' + v.tussen[0] + '–' + v.tussen[1] + ')' };
+      }
       if (v.stap !== undefined) {
         var gezien = null;
         if (stapGezien) {
@@ -758,6 +833,7 @@
     herkomst: function () { return _herkomst ? Object.assign({}, _herkomst) : null; },
     reden: function () { return _laatsteFout; },
     _grenzen: function () { return JSON.parse(JSON.stringify(GRENZEN)); },
+    appMaten: function () { return Object.keys(APPMATEN); },
     _maten: function () { return MATEN.slice(); },
     _schemas: function () { return SCHEMAS.slice(); },
     _sleutel: function () { return SLEUTEL; },
