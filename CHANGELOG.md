@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Snelheidsproef: stap voor stap zoeken wat de verbinding snel maakt
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw in het Admin-menu: 🚦 Snelheidsproef. Een paneel met zes
+   genummerde knoppen die je op volgorde indrukt. Elke stap is één ingreep
+   (verse verbinding, andere leesmanier, Bluetooth van de auto uit, adapter
+   los en weer vast, app herstarten), met een meting ervoor en erna.
+ - Doel: 10 verzoeken per seconde of meer. Na elke stap staat erbij of het
+   hielp, en onderaan welke ingreep het was en wat dat betekent.
+ - Alles gaat ook als regel naar het logboek.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — De BT-log houdt na een herlaad het begin van déze sessie vast
  ═══════════════════════════════════════════════════════════
 

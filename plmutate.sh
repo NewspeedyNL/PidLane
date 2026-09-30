@@ -1460,6 +1460,14 @@ MUTATIES=(
 "public/pidlane-btflow.js@@Object.assign({},e,{vorige:true})@@Object.assign({},e)@@test-btlogcap.js@@teruggezette regels zijn niet meer herkenbaar: na een herlaad houdt het anker weer de vorige sessie vast en valt de VIN weg"
 "public/pidlane-btflow.js@@const eigen=log.filter(r=>r && !r.vorige && !r.cap);@@const eigen=log.filter(r=>r && !r.cap);@@test-btlogcap.js@@de cap telt de vorige sessie mee als eigen regels: het anker is weer het pollverkeer van vóór de herlaad"
 "public/pidlane-btflow.js@@  stand.weg+=eigen.length-kop.length-staart.length;@@  stand.weg=eigen.length-kop.length-staart.length;@@test-btlogcap.js@@de markering telt alleen de laatste ronde: \"301 regels weggelaten\" na tien minuten pollen"
+# ── de snelheidsproef, stap voor stap (30-09-2026) ──
+"public/pidlane-snelproef.js@@    if (nr !== verwacht) {@@    if (false) {@@test-snelproef.js@@een stap die niet aan de beurt is meet toch: stap 3 vóór stap 1 vergelijkt met niets"
+"public/pidlane-snelproef.js@@      _zetPoll(was);\n      _zetStand('leesmanier terugzetten…');@@      _zetStand('leesmanier terugzetten…');@@test-snelproef.js@@na stap 3 blijft de app op de proefstand lezen, zonder dat iemand het weet"
+"public/pidlane-snelproef.js@@    if (stap.actie === 'herstart' && !_herstartGezien()) {@@    if (false) {@@test-snelproef.js@@stap 6 telt zonder herstart: de uitslag zegt dat een herstart hielp terwijl er niets herstart is"
+"public/pidlane-snelproef.js@@    window._lastSppReconnect = Date.now();\n    connected = false;@@    connected = false;@@test-snelproef.js@@de bewaker van de socket herverbindt mee tijdens het verversen: twee verbindingen door elkaar"
+"public/pidlane-snelproef.js@@      try { await spp.disconnect({ address: adres }); }@@      try { }@@test-snelproef.js@@stap 2 opent een nieuwe socket zonder de oude te sluiten — dat is het pad van 01:11, geen verse verbinding"
+"public/pidlane-snelproef.js@@    if (haalt && vorige.perSec < DOEL) return@@    if (haalt) return@@test-snelproef.js@@elke stap na de oplossing zegt ook \"dit hielp\": de uitslag wijst de verkeerde ingreep aan"
+"public/pidlane-snelproef.js@@  try { document.addEventListener('DOMContentLoaded', menu); }@@  try { }@@bproef-snelproef.js@@de snelheidsproef laadt maar staat nergens in het menu"
 )
 
 echo

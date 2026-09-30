@@ -2771,6 +2771,31 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de snelheidsproef, stap voor stap (30-09-2026) ──
+  // Om 08:53 was de verbinding weer traag terwijl de patch van #352 aan stond
+  // en er geen draad draaide. De snelheidsproef (Admin-menu) zoekt met zes
+  // genummerde stappen welke ingreep de verbinding terugbrengt boven de 10
+  // verzoeken/s. Deze proef kijkt of hij er staat, of het rekenwerk het
+  // verschil ziet, en geeft de uitslag van een proef die al gedaan is.
+  {
+    issue: '#352',
+    naam: 'De snelheidsproef staat klaar en wijst de goede stap aan',
+    waarom: 'Een uitslag die de verkeerde ingreep aanwijst, stuurt de volgende fix de verkeerde kant op — en na een rit valt dat niet meer na te gaan.',
+    proef: async function () {
+      if (!window.PLSnelProef) return { staat: 'FOUT', detail: 'PLSnelProef ontbreekt — pidlane-snelproef.js is niet geladen' };
+      if (!document.getElementById('plSnelMenu')) return { staat: 'FOUT', detail: 'de knop "Snelheidsproef" staat niet in het Admin-menu' };
+      var P = PLSnelProef;
+      var proef = { stappen: { 1: { m: { perSec: 4 }, oordeel: {} },
+        2: { m: { perSec: 11 }, oordeel: P.oordeelStap({ perSec: 11 }, { perSec: 4 }, { perSec: 4 }) },
+        3: { m: { perSec: 11 }, oordeel: P.oordeelStap({ perSec: 11 }, { perSec: 4 }, { perSec: 11 }) } } };
+      if (!/Gevonden: stap 2/.test(P.uitslag(proef)))
+        return { staat: 'FOUT', detail: 'van 4 naar 11 verzoeken/s bij stap 2 wijst de uitslag niet stap 2 aan: ' + P.uitslag(proef) };
+      var st = P.stand(), n = Object.keys(st.stappen).length;
+      if (!n) return { staat: 'OK', detail: 'klaar voor gebruik; in deze sessie nog geen stap gedaan' };
+      return { staat: 'OK', detail: n + ' van de ' + P.STAPPEN.length + ' stappen gedaan — ' + P.uitslag(st) };
+    }
+  },
+
   // ── het anker van de BT-log na een herlaad (30-09-2026) ──
   // Na een herlaad hield de cap van de BT-log de 300 teruggezette regels van
   // de vorige sessie vast als "begin", en rolde deze sessie eruit: in het
