@@ -576,6 +576,7 @@ onthouden, want de eerste fix wekte de indruk dat het klaar was:
 | Veldlab-sessies → `Sessies` | `_vlSchoonVoorVerzending()` in `pidlane-veldlab.js` | 25-08-2026 |
 | Logregels → `Logs` | `_plVinVoorLog()` in `pidlane-auth.js` | 27-08-2026 |
 | App-logbuffer → testrunverslag | `_plVinVoorLog()` op de schrijvers | 03-09-2026 |
+| Bugmelding → `Logs` (Type=bug) | `_bugDiagMetVin()` → `_plVinVoorLog()` in `pidlane-auth.js` | 30-09-2026 |
 
 Het tweede pad was het ergere van de twee en werd bij de eerste ronde gemist:
 `logToSheets()` schreef de volledige VIN in een **eigen kolom**, op élke

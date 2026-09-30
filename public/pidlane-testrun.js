@@ -2829,6 +2829,26 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── de bugmelding stuurt het VIN-pseudoniem (30-09-2026) ──
+  // submitBugReport() zette vehicleInfo.vin ruw in het veld VIN naar
+  // /airtable/log, en het venster toonde het chassisnummer. Nu loopt het via
+  // _plVinVoorLog(), net als de logkolom. Deze proef vraagt de echte gegevens
+  // op die de melder zou versturen, met de VIN van de auto die er nu hangt.
+  {
+    issue: '—',
+    naam: 'Een bugmelding stuurt het VIN-pseudoniem, niet het chassisnummer',
+    waarom: 'De bugmelding was een vierde uitgaand pad voor de VIN, naast de drie in §7 van PIDLANE.md, en stuurde hem ruw.',
+    proef: async function () {
+      if (typeof _bugDiagMetVin !== 'function') return { staat: 'FOUT', detail: '_bugDiagMetVin ontbreekt in pidlane-auth.js — de bugmelding pakt de VIN weer zelf' };
+      var ruw = String((typeof vehicleInfo !== 'undefined' && vehicleInfo && vehicleInfo.vin) || '');
+      if (!ruw) return { staat: 'LET OP', detail: 'geen VIN bekend in deze sessie — niets te toetsen' };
+      var d = await _bugDiagMetVin();
+      if (String(d.vin).indexOf(ruw) >= 0) return { staat: 'FOUT', detail: 'de bugmelding stuurt het chassisnummer ruw mee' };
+      var vorm = /^[A-HJ-NPR-Z0-9]{3}:[0-9a-f]{16}$/.test(d.vin);
+      return { staat: vorm ? 'OK' : 'LET OP', detail: 'meegestuurd als ' + d.vin + (vorm ? '' : ' — geen pseudoniem, alleen de WMI (geen crypto.subtle?)') };
+    }
+  },
+
   // ── een socket die nog openstaat eerst dicht (30-09-2026) ──
   // Een herlaad (update, hervatting) sloot de Bluetooth-socket niet; de MX+
   // weigerde dan de nieuwe verbinding tot iemand op zijn knop drukte.

@@ -718,6 +718,11 @@ MUTATIES=(
 "public/pidlane-veldlab.js@@    delete v.vin;@@@@test-vin-anoniem.js@@het chassisnummer blijft in het verzonden record staan"
 "public/pidlane-veldlab.js@@  const buf=new TextEncoder().encode(VL_VIN_ZOUT+':'+schoon);@@  const buf=new TextEncoder().encode(schoon);@@test-vin-anoniem.js@@het zout valt weg: het pseudoniem is een kale SHA-256 van de VIN en dus terug te rekenen"
 
+# De bugmelding (30-09-2026). Het record en de mail gaan buiten _plVinVoorLog
+# om de deur uit; een "handige" VIN erbij voor support is de fout die past.
+"public/pidlane-auth.js@@  d.vin=await _plVinVoorLog(v.vin);@@  d.vin=String(v.vin||'');@@test-bugmelding-vin.js@@de bugmelding stuurt en toont het chassisnummer ruw in plaats van het pseudoniem"
+"public/pidlane-auth.js@@'Voertuig: '+d.voertuig+@@'Voertuig: '+d.voertuig+' '+String((vehicleInfo||{}).vin||'')+@@test-bugmelding-vin.js@@de mail-terugval zet het chassisnummer achter het voertuig"
+
 # De toestemmingstekst. Beide zijn een redactionele verbetering die de
 # juridische lading omgooit — en een eerder gegeven akkoord ongeldig maakt.
 "public/pidlane-klant.js@@Dat is pseudonimisering en geen anonimisering: wie ' +@@Dat is volledig anoniem: wie ' +@@test-toestemmingstekst.js@@het akkoordscherm belooft anonimisering die de app niet levert"

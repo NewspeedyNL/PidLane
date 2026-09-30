@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Bugmelding stuurt het VIN-pseudoniem
+ ═══════════════════════════════════════════════════════════
+
+ - Een bugmelding (🐞 Meld een bug) stuurde het chassisnummer
+   ruw mee naar de logtabel, en het venster toonde het volledige nummer
+   bij "Automatisch meegestuurd". Nu gaat er hetzelfde WMI:pseudoniem
+   mee als in de logkolom, en het venster toont precies dat.
+ - De e-mailknop in dat venster stuurde nooit een chassisnummer mee; dat
+   blijft zo.
+ - Nieuwe test: test-bugmelding-vin.js, met twee mutaties in plmutate.sh
+   en een proef in blok 5.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — Een handleiding in de app
  ═══════════════════════════════════════════════════════════
 
