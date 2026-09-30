@@ -14,6 +14,30 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-09-2026 — De vertraging kwam terug zonder draad: een snelheidsproef
+
+**Gezien in het logboek van 08:59.** Om 08:34 ATRV 30 ms; om 08:53 152 ms, en
+de pollus haalde nog maar een paar verzoeken per seconde. De patch van #352
+stond aan, er draaide geen enkele leesdraad, en de app gebruikte minder
+processor dan om 08:34. Opnieuw verbinden met de knop (08:54) hielp niet. De
+draad-hypothese van #352 verklaart dit geval dus niet. Tussen snel en traag
+lagen: de automatische herverbinding van 08:41:30, 291 s op de achtergrond, en
+het begin van een rit.
+
+**Wat er niet werkte in de aanpak.** De losse knoppen van de SPP-proef meten
+goed, maar vragen een volgorde die in de auto niet te doen is: drie keer ging
+de patch uit en weer aan zonder volle proef ertussen. Dat is geen fout van
+degene die drukte, maar van een knop die er als proef uitziet en een
+schakelaar is.
+
+**Daarom de snelheidsproef.** Zes genummerde stappen, van licht naar zwaar;
+alleen de volgende knop is te drukken. Elke stap meet het getal waar het om
+gaat (verzoeken/s, doel 10) en zegt of déze ingreep het verschil maakte. De
+kandidaten zijn de verklaringen die nog openstaan: de socket zelf (verse
+verbinding), de leesmanier van 28-09 (events ↔ pollen), de radio die de
+telefoon deelt met de Bluetooth van de auto, de adapter zelf, en iets in de
+app dat tot een herstart blijft hangen.
+
 ## 30-09-2026 — De BT-log verloor na een herlaad precies de regels van #352
 
 **Gezien in het logboek van 08:41** (CX-5, MX+). De BT-regels sprongen van
