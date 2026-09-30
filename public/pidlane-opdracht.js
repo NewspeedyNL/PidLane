@@ -100,7 +100,9 @@
     'spp-proeven-aan': ['PLSppProef', 'volle SPP-proeven met de patch aan, deze sessie'],
     'spp-proeven-uit': ['PLSppProef', 'volle SPP-proeven met de patch voor de proef uit, deze sessie'],
     'spp-erbij-aan':   ['PLSppProef', 'meeste draaiende draden erbij in een volle proef met de patch aan'],
-    'spp-erbij-uit':   ['PLSppProef', 'meeste draaiende draden erbij in een volle proef met de patch uit']
+    'spp-erbij-uit':   ['PLSppProef', 'meeste draaiende draden erbij in een volle proef met de patch uit'],
+    'pip-langst-s':    ['PLPip', 'langste periode beeld-in-beeld met een verbonden auto, in seconden'],
+    'pip-gat-s':       ['PLPip', 'langste gat tussen twee waarden in een PiP-periode van minstens een minuut, in seconden']
   };
   function _appMaat(naam) {
     var bron = APPMATEN[naam];
@@ -834,6 +836,7 @@
     reden: function () { return _laatsteFout; },
     _grenzen: function () { return JSON.parse(JSON.stringify(GRENZEN)); },
     appMaten: function () { return Object.keys(APPMATEN); },
+    appMaatModule: function (naam) { return APPMATEN[naam] ? APPMATEN[naam][0] : null; },
     _maten: function () { return MATEN.slice(); },
     _schemas: function () { return SCHEMAS.slice(); },
     _sleutel: function () { return SLEUTEL; },

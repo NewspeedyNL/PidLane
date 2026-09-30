@@ -271,6 +271,28 @@ console.log('\n4. de vlag gaat naar native, en alleen als hij verandert');
   toets('in de browser (geen schil) is dat geen fout maar een LET OP',
     m.PLPip.oordeel([], { aan: false, sleutel: 'geen-schil', reden: 'x' }).staat === 'LET OP');
 
+  // ══════════════════════════════════════════════════════════════════
+  console.log('\n8. de app-maten voor de meetopdracht van #319');
+  // ══════════════════════════════════════════════════════════════════
+  // Dezelfde periode als in 7: 70 s beeld-in-beeld met één gat van 8 s.
+  toets('pip-langst-s is de duur van de langste verbonden periode (70 s)', m.PLPip.maat('pip-langst-s') === 70,
+    'gaf: ' + m.PLPip.maat('pip-langst-s'));
+  toets('pip-gat-s is het langste gat daarin (8 s)', m.PLPip.maat('pip-gat-s') === 8,
+    'gaf: ' + m.PLPip.maat('pip-gat-s'));
+  const nooit = laad({ connected: true, demoMode: false, activePIDs: new Set(['010C']), updPID: function () { }, Date: tijd });
+  toets('nooit in beeld-in-beeld: 0 seconden, want dat is gemeten', nooit.PLPip.maat('pip-langst-s') === 0);
+  toets('en dan is er geen gat te beoordelen: null, niet 0', nooit.PLPip.maat('pip-gat-s') === null,
+    'een 0 hier zou "de meting liep door" zeggen over een periode die er niet was');
+  const kort = laad({ connected: true, demoMode: false, activePIDs: new Set(['010C']), updPID: function () { }, Date: tijd });
+  kort.PLPip.modus(true); T += 20000; kort.updPID('010C', 800); kort.PLPip.modus(false);
+  toets('een periode korter dan een minuut telt niet mee voor het gat', kort.PLPip.maat('pip-gat-s') === null,
+    'gaf: ' + kort.PLPip.maat('pip-gat-s'));
+  const los = laad({ connected: false, demoMode: false, activePIDs: new Set(['010C']), updPID: function () { }, Date: tijd });
+  los.PLPip.modus(true); T += 180000; los.PLPip.modus(false);
+  toets('3 min klein zonder verbonden auto telt niet: 0 s', los.PLPip.maat('pip-langst-s') === 0,
+    'gaf: ' + los.PLPip.maat('pip-langst-s') + ' — dan haalt een opdracht zijn voorwaarde op de oprit');
+  toets('een onbekende naam is null', m.PLPip.maat('pip-bestaat-niet') === null);
+
   console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles'
                             : 'goed: alle ' + n + ' controles') + '\n');
   process.exit(fout ? 1 : 0);
