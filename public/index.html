@@ -167,6 +167,7 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
          leest en die hoort v3.0.0 te tonen, niet "testrun 4.9". -->
     <span id="loginBuild" style="font-size:10px;opacity:.55;letter-spacing:.3px"></span><br>
     <a href="https://www.pidlane.nl" target="_blank" rel="noopener" class="lg-site">🌐 www.pidlane.nl</a>
+    · <a href="#" class="lg-site" id="lgHandleiding" onclick="event.preventDefault();PLHelp.open()">📘 Handleiding</a>
     <div style="padding-top:11px">
       <button id="plFrisBtn" class="lg-fris" onclick="plHardReload(this)">🔄 Nieuwste versie laden</button>
     </div>
@@ -420,6 +421,7 @@ function closeConnOv(){
   <div class="lg-foot">
     Niet in de auto? Kenteken-check, APK, foutcodes en je rapporten werken ook zonder adapter.<br>
     <a href="https://www.pidlane.nl" target="_blank" rel="noopener" class="lg-site">🌐 www.pidlane.nl</a>
+    · <a href="#" class="lg-site" onclick="event.preventDefault();PLHelp.open('verbinden')">📘 Hulp bij verbinden</a>
   </div>
 </div>
 
@@ -912,11 +914,14 @@ function closeConnOv(){
              erbij. Staat vanzelf aan voor een account dat geen klant is. -->
         <button class="kebab-item kebab-schakel" id="kbGarageModus" role="switch" aria-checked="false" onclick="PLNav.wisselGarage()">🔧 Garagemodus<span class="kb-sw" aria-hidden="true"></span></button>
         <button class="kebab-item kebab-schakel" id="kbAutoCheck" role="switch" aria-checked="true" onclick="PLNav.wisselAutoCheck()">🩺 Check na verbinden<span class="kb-sw" aria-hidden="true"></span></button>
+        <button class="kebab-item kebab-schakel" id="kbHelpTips" role="switch" aria-checked="true" onclick="PLHelp.wisselTips()">❗ Uitleg bij knoppen<span class="kb-sw" aria-hidden="true"></span></button>
         <button class="kebab-item" onclick="closeKebab();openGearInstellingen()">🔢 Versnellingsindicator</button>
         <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
         <!-- De schakelaar voor de bevindingenbalk (issue #60) stond hier tot
              08-09-2026 en zit nu in het Run-venster rechtsboven (#123). -->
         <div class="kebab-kop">Hulp</div>
+        <!-- Handleiding (30-09-2026): pidlane-help.js, tekst in pidlane-help-inhoud.js. -->
+        <button class="kebab-item" id="kbHandleiding" onclick="closeKebab();PLHelp.open()">📘 Handleiding</button>
         <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
         <button class="kebab-item" onclick="closeKebab();openLogboek()">📜 Logboek</button>
         <button class="kebab-item" onclick="closeKebab();openPrivacy()">🔒 Privacy</button>
@@ -2085,6 +2090,8 @@ function closeConnOv(){
 <script src="pidlane-opdracht.js"></script><!-- PLOpdracht (#241): de meetopdracht voor de volgende testrun, als DATA uit Airtable; keurt zelf wat er binnenkomt en wordt alleen door de testrun gebruikt -->
 <script src="pidlane-bron.js"></script><!-- PLBron (#242): op welke bron draait deze app — banner bij een preview, wisselknop in het Admin-menu -->
 <script src="pidlane-meetkamer.js"></script><!-- PLMeetkamer (#246): de lus in beeld in het testrunscherm; moet ná pidlane-testrun.js, pidlane-opdracht.js en pidlane-bron.js — hij leest die drie en meet zelf niets -->
+<script src="pidlane-help-inhoud.js"></script><!-- PL_HULP: de tekst van de handleiding — alleen data, bijhouden zie de kop van het bestand -->
+<script src="pidlane-help.js"></script><!-- PLHelp: het handleidingvenster en de uitroeptekens bij knoppen; leest PL_HULP -->
 <script src="pidlane-bedrading.js"></script><!-- bedradingscontrole: bestaat alles wat modules van elkaar verwachten — MOET als laatste -->
 
 <script>

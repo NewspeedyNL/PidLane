@@ -10,6 +10,25 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Een handleiding in de app
+ ═══════════════════════════════════════════════════════════
+
+ - Meer → 📘 Handleiding opent een venster met de uitleg van de app:
+   beginnen, verbinden, het startscherm, Check mijn auto, Live, delen en
+   meekijken, rapporten, het menu Meer, account en privacy. Met een
+   zoekveld, een inhoudsopgave en veelgestelde vragen.
+ - Op het inlogscherm en in het verbindscherm staat een link ernaartoe:
+   wie niet kan inloggen of verbinden, heeft het menu nog niet.
+ - Bij elf knoppen staat een klein geel uitroepteken. Een tik erop geeft
+   een korte uitleg en drukt de knop zelf niet in. Uit te zetten met
+   Meer → ❗ Uitleg bij knoppen.
+ - Contact loopt via de bestaande "Meld een bug"; er is geen tweede
+   melder bijgekomen.
+ - De tekst staat los van de code in pidlane-help-inhoud.js. test-help.js
+   wordt rood als een knop met een uitroepteken hernoemd wordt, als een
+   menulabel in de tekst niet meer bestaat, of als er een prijs in komt.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — Snelle sensoren op hun eigen tempo
  ═══════════════════════════════════════════════════════════
 

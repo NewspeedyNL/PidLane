@@ -1497,6 +1497,13 @@ MUTATIES=(
 "public/pidlane-plload.js@@    const t=_pidDead.has(pid) ? (_pidDeadSince[pid]||0)+PID_REPROBE_MS : (_pidNextPoll[pid]||0);@@    const t=(_pidNextPoll[pid]||0);@@test-pollritme.js@@een gesnoeide PID staat altijd aan de beurt en houdt de pollus wakker voor niets"
 "public/pidlane-data.js@@  if(!tok && naam!=='poll' && window.PLBus.owner()==='poll')@@  if(false)@@test-busslot.js@@de monitor grijpt naast het gat tussen twee pollrondes en komt er vrijwel nooit meer tussen"
 "public/pidlane-data.js@@  if(!tok && naam!=='poll' && window.PLBus.owner()==='poll')@@  if(!tok && naam!=='poll')@@test-busslot.js@@ook achter een zware lezer gaat iedereen in de rij staan"
+
+# De handleiding (30-09-2026). Drie fouten die gewoon gebeuren: een knop krijgt
+# een andere id, een menuregel een andere tekst, en er sluipt een prijs in de
+# tekst. De eerste twee laten een ! of een beschrijving stil verouderen.
+"public/index.html@@id=\"plLiveDeel\"@@id=\"plLiveDelen\"@@test-help.js@@een knop met een uitroepteken is hernoemd en de tip vindt hem niet meer"
+"public/index.html@@🩺 Check na verbinden<span@@🩺 Check na het verbinden<span@@test-help.js@@een menuregel is hernoemd en de handleiding noemt de oude tekst"
+"public/pidlane-help-inhoud.js@@Codes worden met de hand verstuurd.@@Codes kosten € 4,99.@@test-help.js@@er staat een prijs in de handleiding"
 )
 
 echo

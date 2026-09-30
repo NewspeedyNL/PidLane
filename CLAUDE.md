@@ -354,6 +354,10 @@ zetten; hij wordt dan rood met de gemeten waarde erbij.
   blijft staan — zie §19 van `PIDLANE.md` (626 stille catches).
 - Geen buildstap, geen frameworks, geen `src/`-map. Onderhoudslast is een harde
   ontwerprandvoorwaarde: dit is een soloproject naast een baan.
+- **Raak je een knop, menuregel of venster aan dat in de handleiding staat, pas dan
+  `public/pidlane-help-inhoud.js` in dezelfde commit aan.** `test-help.js` vangt een
+  hernoemd anker of knoplabel; wat een knop *doet* ziet hij niet — dat lees je na.
+  Zet daarna `gecontroleerd` op de datum en de versie. Geen prijzen in die tekst.
 - Eén ding heeft één betekenis. Een class, een vlag of een element met twee
   rollen is hier al drie keer een bug geweest.
 
