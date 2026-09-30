@@ -141,10 +141,12 @@ var PL_HULP = {
         '<li><b>Getallen</b> — alleen de waarden.</li>' +
         '<li><b>Puntjes</b> — compact.</li>' +
         '<li><b>Slim</b> — de standaard: dashboardwaarden groot, trends alleen waar iets beweegt.</li>' +
-        '<li><b>Visueel</b> — één vaste meter met een rand voor koelwater, olie, tank en accu.</li>' +
+        '<li><b>Visueel</b> — één vaste meter. Onder de snelheid staan koelwater, gaspedaal en brandstof als balkjes; ' +
+        'rechtsboven de accu (bij een hybride de aandrijfaccu én de 12V-accu), rechtsonder een autootje met de vier banden.</li>' +
         '</ul>' +
         '<p>Een dubbeltik op een tegel verbergt hem. Hij wordt wel gewoon gemeten en staat daarna in een strook om terug te halen.</p>' +
-        '<p>Onder de meters staan <b>⏺ Opnemen</b>, <b>📡 Deel live</b> en <b>🔭 Meekijken</b>. In de garagemodus ook <b>◉ Bewaken</b>.</p>',
+        '<p>Onder de meters staan <b>⏺ Opnemen</b>, <b>📡 Deel live</b> en <b>🔭 Meekijken</b>. In de garagemodus ook <b>◉ Bewaken</b>. ' +
+        'Bij Visueel staan Opnemen en Bewaken er niet: daar start je de bulk-recorder en de waakronde vanuit het vak onder de meter.</p>',
       zie: ['opnemen', 'delen'] },
 
     { id: 'opnemen', groep: 'gebruik', titel: 'Opnemen',

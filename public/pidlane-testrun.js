@@ -2771,6 +2771,34 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Slim visueel volgens #371: balkjes, acculampje, autootje (30-09-2026) ──
+  // Eerst de functies (die gelden altijd), dan het scherm zelf — dat laatste
+  // alleen als Slim visueel open staat, anders LET OP met wat je moet doen.
+  {
+    issue: '#371',
+    naam: 'Slim visueel: drie balkjes onder de snelheid, de accu rechtsboven, een autootje voor de banden',
+    waarom: 'De accu stond als getal tussen koelwater en brandstof en het pedaal op de onderboog; Opnemen en Bewaken stonden dubbel naast het vak.',
+    proef: async function () {
+      if (!window.PLVisueel || typeof PLVisueel.aandrijfLampjes !== 'function') return { staat: 'FOUT', detail: 'PLVisueel.aandrijfLampjes ontbreekt' };
+      var rollen = PLVisueel.PLEKKEN.map(function (r) { return r.rol; }).join(',');
+      if (rollen !== 'koel,pedaal,tank') return { staat: 'FOUT', detail: 'de rijen zijn ' + rollen + ', verwacht koel,pedaal,tank' };
+      var b = PLVisueel.aandrijfLampjes(null, 'benzine', { volt: 12.4, rpm: 800 }).accu;
+      if (!b || b.waarde !== '12,4 V' || !/warn/.test(b.soort)) return { staat: 'FOUT', detail: 'benzine, 12,4 V bij 800 rpm hoort een oranje acculampje te geven — kreeg ' + JSON.stringify(b) };
+      var h = PLVisueel.aandrijfLampjes(null, 'hybride', { accu: 60, volt: 12.6 }).accu;
+      if (!h || !h.dubbel || h.hv !== '60%' || h.volt !== '12,6 V') return { staat: 'FOUT', detail: 'een hybride hoort twee accu\'s te tonen — kreeg ' + JSON.stringify(h) };
+      if (!window.PLBanden || typeof PLBanden.mini !== 'function') return { staat: 'FOUT', detail: 'PLBanden.mini ontbreekt — het bandenlampje heeft geen autootje' };
+      if (typeof pidViewMode === 'undefined' || pidViewMode !== 'visueel' || !document.querySelector('#gGrid .vis-meter'))
+        return { staat: 'LET OP', detail: 'de functies kloppen, maar Slim visueel staat niet open — open Live → Visueel en draai opnieuw om het scherm zelf te zien' };
+      var balk = document.querySelectorAll('#gGrid .vis-balk').length;
+      if (balk !== 3) return { staat: 'FOUT', detail: balk + ' balkjes onder de snelheid, verwacht 3' };
+      var knop = ['plLiveRec', 'plLiveWaak'].filter(function (id) { var e = document.getElementById(id); return e && getComputedStyle(e).display !== 'none'; });
+      if (knop.length) return { staat: 'FOUT', detail: 'onder Slim visueel staat nog ' + knop.join(' en ') };
+      var a = document.getElementById('vis-lamp-accu');
+      var tekst = a && !/leeg/.test(a.className) ? a.textContent : 'leeg (nog geen spanning binnen)';
+      return { staat: 'OK', detail: '3 balkjes, Opnemen en Bewaken weg; acculampje: ' + tekst };
+    }
+  },
+
   // ── de uitleg bij knoppen is een glazen i, geen oranje ! (30-09-2026) ──
   {
     issue: '—',

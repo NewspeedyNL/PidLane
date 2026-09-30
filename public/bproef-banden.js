@@ -78,12 +78,14 @@ function toets(naam, waar, uitleg) {
       setPidView('visueel');
       await new Promise(r => setTimeout(r, 1500));
       const e = document.getElementById('vis-banden');
-      const r = { er: !!e && e.style.display !== 'none', k: e && e.className, titel: e && e.title };
+      const wielen = function(){ return Array.from(e.querySelectorAll('.vbm-wiel')).map(function(w){ return w.getAttribute('class').replace('vbm-wiel ',''); }).join(','); };
+      const r = { er: !!e && e.style.display !== 'none', k: e && e.className, titel: e && e.title, lek: wielen() };
       // Rechtsonder in de hoek van de meter (30-09-2026), niet meer bovenaan.
       const kb = e.getBoundingClientRect(), mb = document.querySelector('.vis-meter').getBoundingClientRect();
       r.plek = { rechts: Math.round(mb.right - kb.right), onder: Math.round(mb.bottom - kb.bottom), boven: Math.round(kb.top - mb.top), h: Math.round(mb.height) };
       updPID('222A06', 2.33); PLVisueel.tik();
-      r.ok = e.className;
+      r.ok = e.className; r.heel = wielen();
+      r.groen = getComputedStyle(e.querySelector('.vbm-wiel')).fill;
       e.click();
       r.opent = document.getElementById('plBandenOv').style.display === 'flex';
       PLBanden.sluit();
@@ -94,6 +96,8 @@ function toets(naam, waar, uitleg) {
     toets('het lampje staat er, rood bij de lekke band, met de uitleg als titel', lamp.er && /danger/.test(lamp.k) && /voor rechts/.test(lamp.titel || ''), JSON.stringify(lamp));
     toets('het lampje staat rechtsonder bij de meter', lamp.plek && Math.abs(lamp.plek.rechts) <= 4 && lamp.plek.onder >= -4 && lamp.plek.boven > lamp.plek.h / 2, JSON.stringify(lamp.plek));
     toets('weer gelijk: het lampje wordt ok', /\bok\b/.test(lamp.ok), JSON.stringify(lamp));
+    toets('erin het autootje (#371): bij de lekke band alleen voor rechts rood', lamp.lek === 'ok,danger,ok,ok', lamp.lek);
+    toets('…en weer gelijk: vier groene wielen', lamp.heel === 'ok,ok,ok,ok' && /rgb\(\s*(6, 179, 107|31, 209, 137)\)/.test(lamp.groen), JSON.stringify({ w: lamp.heel, kleur: lamp.groen }));
     toets('tikken opent het bandenvenster', lamp.opent, JSON.stringify(lamp));
     toets('een auto zonder bandensensoren: geen lampje', lamp.weg, JSON.stringify(lamp));
 

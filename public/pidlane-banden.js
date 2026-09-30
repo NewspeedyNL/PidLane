@@ -20,8 +20,8 @@
 // TEMPO. De banden worden standaard elke minuut gevraagd (PLEigen: geen tempo
 // gekozen + een band = minuut). Een meting ouder dan drie minuten is dof.
 //
-// Slim visueel toont bovenaan een lampje (PLVisueel → bandenBij) dat dit
-// venster opent en kleurt met het oordeel. Tests: test-banden.js (de pure
+// Slim visueel toont rechtsonder een lampje (PLVisueel → bandenBij) dat dit
+// venster opent: het autootje in het klein (mini()), per wiel gekleurd. Tests: test-banden.js (de pure
 // functies), bproef-banden.js (venster, lampje, terugknop).
 // ══════════════════════════════════════════════════════════════════
 (function () {
@@ -157,13 +157,38 @@
     return { staat: 'LET OP', detail: d + ' — ' + st.uitleg + ' Controleer de band.' };
   }
 
-  /* Voor het lampje in Slim visueel: {toon, ernst, titel}. */
+  /* Per wiel de kleur voor het autootje: het oordeel van die band, of
+     'geen' als er geen verse druk is of de vier nog niet te vergelijken
+     zijn. Groen betekent dus echt "gemeten en gelijk", niet "niets gezien". */
+  function wielKleuren(st) {
+    const uit = {};
+    POS.forEach(p => {
+      const w = st && st.wielen[p], d = w && w.druk;
+      uit[p] = (!st || st.ernst === 'geen' || !d || d.waarde === null || d.oud) ? 'geen' : w.ernst;
+    });
+    return uit;
+  }
+
+  /* Voor het lampje in Slim visueel: {toon, ernst, titel, wielen}. */
   function lamp() {
     const n = nu();
     if (!n.ind) return { toon: false };
-    return { toon: true, ernst: n.st.ernst, titel: 'Banden — ' + n.st.uitleg };
+    return { toon: true, ernst: n.st.ernst, titel: 'Banden — ' + n.st.uitleg, wielen: wielKleuren(n.st) };
   }
 
-  window.PLBanden = { POS, OUD_MS, WARN, GEVAAR, indeling, stand, oordeel, open, sluit, lamp, teken,
+  /* Het autootje van het venster in het klein, voor het lampje in Slim
+     visueel (#371): dezelfde romp van bovenaf, met dikkere wielen zodat de
+     kleur op 20 px breed nog te zien is. `wielen` = {VL:'ok'|'warn'|
+     'danger'|'geen', …}. */
+  function mini(wielen) {
+    const k = p => (wielen && wielen[p]) || 'geen';
+    const wiel = (p, x, y) => '<rect class="vbm-wiel ' + k(p) + '" x="' + x + '" y="' + y + '" width="22" height="46" rx="8"/>';
+    return '<svg class="vbm" viewBox="0 0 120 220" aria-hidden="true">' +
+      wiel('VL', 2, 30) + wiel('VR', 96, 30) + wiel('AL', 2, 146) + wiel('AR', 96, 146) +
+      '<rect class="vbm-romp" x="20" y="8" width="80" height="204" rx="32"/>' +
+      '<path class="vbm-ruit" d="M33 64q27-13 54 0l-5 24q-22-8-44 0z"/></svg>';
+  }
+
+  window.PLBanden = { POS, OUD_MS, WARN, GEVAAR, indeling, stand, oordeel, open, sluit, lamp, teken, wielKleuren, mini,
     nu: function () { return nu(); } };
 })();
