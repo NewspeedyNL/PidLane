@@ -1249,6 +1249,8 @@ MUTATIES=(
 "public/pidlane-gear.js@@  if (pct<70) return { staat:'FOUT'@@  if (pct<0) return { staat:'FOUT'@@test-gear.js@@de blok-5-proef keurt een indicator goed die bij 60% van de metingen niet past"
 "public/pidlane-pip.js@@    _open.maxGat = Math.max(_open.maxGat, nu - _open.laatste);\n    _open.laatste = nu; _open.n++;@@    _open.laatste = nu; _open.n++;@@test-pip.js@@een stilgevallen meetlus in beeld-in-beeld wordt niet gemeten (#319)"
 "public/pidlane-pip.js@@    var slecht = lang.filter(function (p) { return p.maxGat > PIP_GAT_MS; });@@    var slecht = [];@@test-pip.js@@de #319-proef zegt ok bij een meetlus die acht seconden stillag"
+"public/pidlane-pip.js@@        return tellen.length ? Math.round(Math.max.apply(null, tellen.map(function (p) { return p.maxGat; })) / 100) / 10 : null;@@        return tellen.length ? 0 : null;@@test-pip.js@@de meetopdracht van #319 hoort nooit een stil venster: pip-gat-s zegt altijd 0"
+"public/pidlane-pip.js@@    var lang = perioden().filter(function (p) { return p.verbonden; });@@    var lang = perioden();@@test-pip.js@@een PiP-periode zonder verbinding haalt de voorwaarde van #319: 2 minuten klein op de oprit telt als meting"
 "public/pidlane-adapter.js@@        for (let j = i - 3; j <= i + 3; j++)@@        for (let j = i; j < i; j++)@@test-adapterpaneel.js@@de stap ligt een paar monsters te vroeg en noemt de verkeerde oorzaak (#302)"
 "public/pidlane-adapter.js@@    if (!(g.factor >= 1.3)) return@@    if (!(g.factor >= 3)) return@@test-adapterpaneel.js@@de drift van 150 naar 270 ms heet deze rit niet opgetreden (#302)"
 "public/pidlane-visueel.js@@  if(nu-_laatsteAlarm<ALARM_MS) return false;@@@@bproef-visueel.js@@de koelwaterwaarschuwing piept elke tik op een lange klim"

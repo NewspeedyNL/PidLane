@@ -295,6 +295,23 @@
     return { staat: 'ok', detail: lang.length + ' periode' + (lang.length === 1 ? '' : 's') + ' in beeld-in-beeld, de meetlus liep door: ' + lang.map(kort).join(' | ') };
   }
 
+  /* De app-maten voor PLOpdracht (#319, 30-09-2026). De opdracht vroeg om een
+     stap "PiP 2 min aan", en die markering zet niets in de app: vier ritten
+     bleven op "nog niet" staan terwijl de meting doorliep. Wat hij wilde
+     weten staat hierboven al in de perioden. Null = niet gemeten, geen 0. */
+  function maat(naam) {
+    var lang = perioden().filter(function (p) { return p.verbonden; });
+    switch (naam) {
+      case 'pip-langst-s':
+        return lang.length ? Math.round(Math.max.apply(null, lang.map(function (p) { return p.duurMs; })) / 1000) : 0;
+      case 'pip-gat-s': {
+        var tellen = lang.filter(function (p) { return p.duurMs >= PIP_MIN_MS; });
+        return tellen.length ? Math.round(Math.max.apply(null, tellen.map(function (p) { return p.maxGat; })) / 100) / 10 : null;
+      }
+      default: return null;
+    }
+  }
+
   function modus(inPip) {
     var was = _inPip;
     _inPip = !!inPip;
@@ -418,6 +435,7 @@
     inPip: function () { return _inPip; },
     perioden: perioden,
     oordeel: oordeel,
+    maat: maat,
     laatste: function () { return _laatsteBesluit; },
     _sleutel: function () { return SLEUTEL; }
   };

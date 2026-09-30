@@ -15,8 +15,10 @@
 //   1. keur(): een app-maat mag in een proef en in een voorwaarde; een naam
 //      buiten de lijst, `pid` én `app` samen, of een andere maat dan `laatst`
 //      wordt afgewezen — de witte lijst is de grens
-//   2. elke naam op de lijst geeft in PLSppProef.maat() een getal of null,
-//      en PLSppProef kent geen naam die de lijst niet heeft
+//   2. elke naam op de lijst geeft in de maat() van zijn module (PLSppProef,
+//      PLPip) een getal of null, en geen module kent een naam die de lijst
+//      niet heeft
+//   4. de opdracht van #319 op de PiP-maten: nog niet, gesloten, bevinding
 //   3. het oordeel: niet gemeten is "nog niet" en geen bevinding; binnen de
 //      band is gesloten; buiten de band is een bevinding
 //
@@ -48,6 +50,7 @@ function laad() {
   vm.createContext(s);
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-opdracht.js'), 'utf8'), s, { filename: 'pidlane-opdracht.js' });
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-sppproef.js'), 'utf8'), s, { filename: 'pidlane-sppproef.js' });
+  vm.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-pip.js'), 'utf8'), s, { filename: 'pidlane-pip.js' });
   return s;
 }
 
@@ -97,14 +100,22 @@ console.log('── 2. de lijst en de module lopen gelijk ──');
   const s = laad();
   const namen = s.PLOpdracht.appMaten();
   eis(namen.length > 0, 'de witte lijst is niet leeg (' + namen.join(', ') + ')');
-  const kapot = namen.filter(function (n) { const w = s.PLSppProef.maat(n); return !(w === null || typeof w === 'number'); });
-  eis(kapot.length === 0, 'elke naam geeft een getal of null in PLSppProef.maat()' + (kapot.length ? ' — niet: ' + kapot.join(', ') : ''));
-  // Andersom: een naam die de module wel kent maar de lijst niet, is een maat
+  // Per naam de module die de lijst noemt, niet één vaste module: sinds #319
+  // levert ook PLPip maten.
+  const kapot = namen.filter(function (n) {
+    const mod = s[s.PLOpdracht.appMaatModule(n)];
+    const w = mod && typeof mod.maat === 'function' ? mod.maat(n) : undefined;
+    return !(w === null || typeof w === 'number');
+  });
+  eis(kapot.length === 0, 'elke naam geeft een getal of null in de maat() van zijn module' + (kapot.length ? ' — niet: ' + kapot.join(', ') : ''));
+  // Andersom: een naam die een module wel kent maar de lijst niet, is een maat
   // die geen opdracht ooit kan vragen. Afgelezen uit de switch in de bron.
-  const bron = fs.readFileSync(path.join(__dirname, 'pidlane-sppproef.js'), 'utf8');
-  const inModule = (bron.match(/case '(spp-[a-z-]+)'/g) || []).map(function (x) { return x.slice(6, -1); });
-  const vergeten = inModule.filter(function (n) { return namen.indexOf(n) < 0; });
-  eis(inModule.length > 0 && vergeten.length === 0, 'PLSppProef kent geen maat die de lijst niet heeft' + (vergeten.length ? ' — wel: ' + vergeten.join(', ') : ''));
+  [['pidlane-sppproef.js', 'PLSppProef', /case '(spp-[a-z-]+)'/g], ['pidlane-pip.js', 'PLPip', /case '(pip-[a-z-]+)'/g]].forEach(function (m) {
+    const bron = fs.readFileSync(path.join(__dirname, m[0]), 'utf8');
+    const inModule = (bron.match(m[2]) || []).map(function (x) { return x.slice(6, -1); });
+    const vergeten = inModule.filter(function (n) { return namen.indexOf(n) < 0 || s.PLOpdracht.appMaatModule(n) !== m[1]; });
+    eis(inModule.length > 0 && vergeten.length === 0, m[1] + ' kent geen maat die de lijst niet (bij hem) heeft' + (vergeten.length ? ' — wel: ' + vergeten.join(', ') : ''));
+  });
 }
 
 console.log('── 3. het oordeel ──');
@@ -132,6 +143,28 @@ console.log('── 3. het oordeel ──');
   waarden = { 'spp-patch': 1, 'spp-proeven-aan': 1, 'spp-proeven-uit': 0, 'spp-erbij-aan': 0, 'spp-erbij-uit': null };
   const half = O.oordeel(k.opdracht);
   eis(half.staat === 'nog niet' && /patch uit/.test(half.reden), 'zonder de tegenproef: nog niet, met de reden erbij (' + half.reden + ')');
+}
+
+console.log('── 4. de opdracht van #319 kan nu gesloten worden ──');
+{
+  // Opdracht 17 vroeg om een stap "PiP 2 min aan" die niets in de app zet:
+  // vier ritten bleven op "nog niet". Met de app-maten meet hij het zelf.
+  const s = laad();
+  const O = s.PLOpdracht;
+  const k = O.keur({
+    schema: 2, naam: 'Meet de app door in beeld-in-beeld? (#319)', sensoren: ['010C'], duurS: 600,
+    voorwaarden: [{ wat: 'minstens 2 minuten in het kleine venster', app: 'pip-langst-s', tussen: [120, 86400] }],
+    proeven: [{ issue: '#319', naam: 'de meetlus lag nergens langer dan 5 s stil', app: 'pip-gat-s', tussen: [0, 5] }]
+  });
+  eis(k.ok, 'de opdracht met de PiP-maten wordt goedgekeurd' + (k.ok ? '' : ' — ' + k.fouten.join('; ')));
+  let w = { 'pip-langst-s': 0, 'pip-gat-s': null };
+  s.PLPip.maat = function (n) { return Object.prototype.hasOwnProperty.call(w, n) ? w[n] : null; };
+  eis(O.oordeel(k.opdracht).staat === 'nog niet', 'geen beeld-in-beeld gehad: nog niet');
+  w = { 'pip-langst-s': 180, 'pip-gat-s': 1.2 };
+  const goed = O.oordeel(k.opdracht);
+  eis(goed.staat === 'gesloten', '3 min PiP, langste gat 1,2 s: gesloten (' + goed.staat + ' — ' + goed.reden + ')');
+  w = { 'pip-langst-s': 180, 'pip-gat-s': 40 };
+  eis(O.oordeel(k.opdracht).staat === 'bevinding', 'TEGENPROEF: 40 s stil in PiP is een bevinding — dat is #319');
 }
 
 if (fouten) { console.log('FOUT — ' + fouten + ' eis(en) niet gehaald'); process.exit(1); }
