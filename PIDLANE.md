@@ -480,7 +480,9 @@ volle proef met de patch aan). Het is een witte lijst (`APPMATEN` in
 null is "niet gemeten": een voorwaarde is dan niet na te gaan en een proef
 "nog niet". Een app-maat meet altijd `laatst`. Zo kan een vraag over de app
 zelf een kaart met voorwaarden en een oordeel krijgen, in plaats van tekst in
-`CAMPAGNE`. Test: `test-opdrachtappmaat.js`.
+`CAMPAGNE`. Test: `test-opdrachtappmaat.js`. Sinds #319 levert ook `PLPip`
+maten (`pip-langst-s`, `pip-gat-s`): een module per naam, via
+`PLOpdracht.appMaatModule()`.
 
 **Secrets** (nooit in de repo): `AIRTABLE_TOKEN`, `ADMIN_TOKEN`,
 `SESSION_SECRET`, `USERS_JSON`, `ANTHROPIC_API_KEY`, en voor wachtwoordherstel

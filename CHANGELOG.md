@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — De meetopdracht van #319 meet beeld-in-beeld zelf
+ ═══════════════════════════════════════════════════════════
+
+ - De opdracht "Meet de app door in beeld-in-beeld?" wachtte op een stap
+   "PiP 2 min aan" die niets in de app zet. Vier ritten met beeld-in-beeld
+   bleven daardoor op "nog niet" staan, terwijl de meting doorliep.
+ - Twee nieuwe app-maten uit PLPip: pip-langst-s (langste periode klein met
+   een verbonden auto) en pip-gat-s (langste stilte daarin). De opdracht in
+   D1 gaat daarop over zodra dit live staat.
+ - Tests: test-pip.js deel 8, test-opdrachtappmaat.js deel 2 en 4, twee
+   mutaties in plmutate.sh en een proef in blok 5.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — Bugmelding stuurt het VIN-pseudoniem
  ═══════════════════════════════════════════════════════════
 

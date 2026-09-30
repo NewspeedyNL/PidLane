@@ -2771,6 +2771,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de meetopdracht van #319 meet beeld-in-beeld zelf (30-09-2026) ──
+  // De opdracht vroeg om een stap "PiP 2 min aan" die niets in de app zet.
+  // Nu vraagt hij PLPip om de langste periode en het langste gat daarin.
+  {
+    issue: '#319',
+    naam: 'De meetopdracht kan beeld-in-beeld zelf aflezen',
+    waarom: 'Vier ritten met beeld-in-beeld bleven op "nog niet" staan: de voorwaarde was een stap die geen knop zet.',
+    proef: async function () {
+      if (!window.PLPip || typeof PLPip.maat !== 'function') return { staat: 'FOUT', detail: 'PLPip.maat ontbreekt — de opdracht van #319 blijft op nog niet' };
+      if (!window.PLOpdracht || PLOpdracht.appMaten().indexOf('pip-gat-s') < 0) return { staat: 'FOUT', detail: 'pip-gat-s staat niet op de witte lijst van PLOpdracht' };
+      var langst = PLPip.maat('pip-langst-s'), gat = PLPip.maat('pip-gat-s');
+      if (typeof langst !== 'number') return { staat: 'FOUT', detail: 'pip-langst-s geeft ' + langst + ' in plaats van een getal' };
+      if (gat === null) return { staat: 'LET OP', detail: 'nog geen minuut beeld-in-beeld met een verbonden auto (langste ' + langst + ' s) — het gat is nog niet te beoordelen' };
+      return { staat: gat <= 5 ? 'OK' : 'FOUT', detail: 'langste periode ' + langst + ' s, langste gat ' + gat + ' s (grens 5 s)' };
+    }
+  },
+
   // ── de handleiding en de uitroeptekens (30-09-2026) ──
   // Een ! hangt aan een knop via een selector uit pidlane-help-inhoud.js.
   // test-help.js zoekt die selectors in de bron; deze proef kijkt of ze in de
