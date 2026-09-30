@@ -1468,6 +1468,7 @@ MUTATIES=(
 "public/pidlane-snelproef.js@@      try { await spp.disconnect({ address: adres }); }@@      try { }@@test-snelproef.js@@stap 2 opent een nieuwe socket zonder de oude te sluiten — dat is het pad van 01:11, geen verse verbinding"
 "public/pidlane-snelproef.js@@    if (haalt && vorige.perSec < DOEL) return@@    if (haalt) return@@test-snelproef.js@@elke stap na de oplossing zegt ook \"dit hielp\": de uitslag wijst de verkeerde ingreep aan"
 "public/pidlane-snelproef.js@@  try { document.addEventListener('DOMContentLoaded', menu); }@@  try { }@@bproef-snelproef.js@@de snelheidsproef laadt maar staat nergens in het menu"
+"public/pidlane-sppproef.js@@      for (let i = 0; i < 120 && !klaar; i++) {@@      for (let i = 0; i < 0 && !klaar; i++) {@@test-sppproef.js@@de dode-socketknop meet weer midden in het opzetten van de verbinding, en noemt de duur van connectSerial"
 )
 
 echo
