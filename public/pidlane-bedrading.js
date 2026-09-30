@@ -97,7 +97,7 @@ var KRITIEK = [
   // de meetopdracht op nog niet staan zonder dat iemand ziet waarom.
   'plMarkeer',
   'magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
-  'openCaravan','openLogboek','openRitAnalyse',
+  'openCaravan','openLogboek','openBugReport','openPrivacy','openRitAnalyse',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
   'brandstofPoort','plBevestig','plDemoZonderLogin','plHerijkTick','plLokaalLog','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
   // Blok 5 vraagt het begin van een analyse achter een guard (#290).
