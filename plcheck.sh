@@ -70,6 +70,14 @@ for f in test-*.js; do
   t=$((t+1))
   if ! node "$f" >/tmp/plcheck_$$.log 2>&1; then
     echo "${ROOD}  TEST FAALT${UIT}  $f"
+    # Eerst de FOUT-regels zelf, dan de staart (30-09-2026). Met alleen de
+    # staart viel de rode toets van test-sppevents.js op CI drie keer buiten
+    # beeld: "21 toetsen, 1 fout", en nergens welke. Een flake die niet te
+    # benoemen is, is niet te repareren.
+    if grep -qE '(^|[[:space:]])FOUT([[:space:]]|$)' /tmp/plcheck_$$.log; then
+      grep -E -A2 '(^|[[:space:]])FOUT([[:space:]]|$)' /tmp/plcheck_$$.log | head -24 | sed 's/^/              /'
+      echo "              …"
+    fi
     tail -12 /tmp/plcheck_$$.log | sed 's/^/              /'
     gefaald=$((gefaald+1))
   fi
