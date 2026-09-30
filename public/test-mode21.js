@@ -366,6 +366,31 @@ function haalZeef(isMode01) {
       return r.def.unit + ' ' + r.def.min + '-' + r.def.max + ' ' + r.def.parse([250]);
     })(), 'bar 1-3 2.5');
     t('zonder PLVoorkeur: bar', (delete s.PLVoorkeur, E.controleer({ code: '220909', naam: 'x', formule: 'A', eenheid: 'psi' }).def.unit), 'bar');
+
+    // Standaardbereik (30-09-2026, uit het gebruik): zonder bereik stond
+    // alles op −1e9…1e9, en dan is de balk in Slim gearceerd en leeg.
+    const C = (e) => { s.PLVoorkeur = { druk: () => 'bar' }; return E.controleer(Object.assign({ code: '222A0A', formule: 'A' }, e)).def; };
+    let b = C({ naam: 'Bandtemperatuur voor-links', eenheid: '°C' });
+    t('bandtemperatuur: schaal tot 80, waarschuwing vanaf 65, gevaar bij 80', [b.max, b.wH, b.dH].join(','), '80,65,80');
+    t('…en 0 °C is geen minimum (anders leest een winterband als dummy)', b.min < 0, true);
+    {
+      const bron = lees('pidlane-pids.js'), i = bron.indexOf('function slimTempSchaal(d){'), j = bron.indexOf('function slimBeweegt(', i);
+      if (i < 0 || j < 0) { console.error('FOUT: slimTempSchaal niet te knippen uit pidlane-pids.js'); process.exit(1); }
+      const schaal = new Function(bron.slice(i, j) + 'return slimTempSchaal;')();
+      t('…dus in Slim loopt de balk vol op 80, niet op een miljard', schaal(b), 80);
+    }
+    b = C({ naam: 'Bandenspanning voor-links', eenheid: 'psi' });
+    t('bandenspanning in psi, getoond in bar: schaal 0–3,5 bar', b.unit + ' ' + b.min + '-' + b.max, 'bar 0-3.5');
+    t('…zonder grens: het oordeel over een band is relatief', b.wH === undefined && b.dH === undefined, true);
+    s.PLVoorkeur = { druk: () => 'psi' };
+    b = E.controleer({ code: '222A05', naam: 'Bandenspanning voor-links', formule: 'A', eenheid: 'psi' }).def;
+    t('voorkeur psi: dezelfde schaal in psi', b.unit + ' ' + b.max, 'psi 50.76');
+    b = C({ naam: 'Motorolietemperatuur', eenheid: '°C' });
+    t('motorolietemperatuur: dezelfde grenzen als 015C', [b.min, b.max, b.wH, b.dH].join(','), [-40, 150, s.ALL_PID_DEFS['015C'].wH, s.ALL_PID_DEFS['015C'].dH].join(','));
+    b = C({ naam: 'Bandtemperatuur voor-links', eenheid: '°C', min: -50, max: 200 });
+    t('een eigen bereik wint van de schaal, de grenzen blijven', [b.min, b.max, b.wH].join(','), '-50,200,65');
+    b = C({ naam: 'Inlaatnokkenas', eenheid: '°' });
+    t('wat niet herkend wordt houdt het open bereik', b.max + ' ' + b.wH, '1000000000 undefined');
   }
 
   console.log('\n— dieper zoeken: AI met werkende codes en de buurscan (28-09-2026) —');

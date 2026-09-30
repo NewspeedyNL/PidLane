@@ -1493,6 +1493,11 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  } else if(volt){@@  } else if(volt && m){@@test-visueel.js@@het acculampje brandt alleen als er ook een motoroordeel is: zonder PLAandrijving geen spanning"
 "public/pidlane-banden.js@@      uit[p] = (!st || st.ernst === 'geen' || !d || d.waarde === null || d.oud) ? 'geen' : w.ernst;@@      uit[p] = w ? w.ernst : 'geen';@@test-banden.js@@het autootje kleurt een band van een kwartier geleden groen"
 "public/pidlane.css@@body.pl-visueel #plLiveWaak, body.pl-visueel #plLiveRec { display:none !important; }@@@@bproef-visueel.js@@Bewaken en Opnemen staan weer onder Slim visueel, naast de waakronde en de recorder in het vak"
+# ── eigen PIDs krijgen een standaardbereik: banden en olie (30-09-2026) ──
+"public/pidlane-uitgebreid.js@@    if (std && typeof std.wH === 'number') def.wH = std.wH;\n@@@@test-mode21.js@@een bandtemperatuur van 70 °C blijft groen: de waarschuwingsgrens gaat niet mee"
+"public/pidlane-uitgebreid.js@@      min: heeftBereik ? min : std ? std.min : -1e9, max: heeftBereik ? max : std ? std.max : 1e9,@@      min: heeftBereik ? min : -1e9, max: heeftBereik ? max : 1e9,@@test-mode21.js@@de banden en de olie staan weer op −1e9…1e9 en de balk in Slim blijft leeg"
+"public/pidlane-uitgebreid.js@@return DRUK_KPA[u] ? { min: 0, max: Math.round(350 / DRUK_KPA[u] * 100) / 100 } : null;@@return DRUK_KPA[u] ? { min: 0, max: 350 } : null;@@test-mode21.js@@de bandenspanning in bar krijgt een schaal tot 350"
+"public/pidlane-uitgebreid.js@@{ min: -40, max: 80, wH: 65, dH: 80 }@@{ min: 0, max: 80, wH: 65, dH: 80 }@@test-mode21.js@@een winterband van precies 0 °C leest als dummywaarde"
 # ── geen ruwe VIN in een profielmelding (30-09-2026) ──
 "public/pidlane-pids.js@@btDiag('Geen profiel onder '+_vinSleutelVoorLog(vin)+' — volle discovery','warn')@@btDiag('Geen profiel onder '+sleutel+' — volle discovery','warn')@@test-vin-meldingen.js@@de VIN staat weer voluit in het BT-log, en daarmee in elk gedeeld logboek"
 "public/pidlane-pids.js@@function _vinSleutelVoorLog(vin){ return 'pl_vinprof_…'+String(vin||'').toUpperCase().slice(-6); }@@function _vinSleutelVoorLog(vin){ return vinProfileKey(vin); }@@test-vin-meldingen.js@@de maskerfunctie geeft de hele sleutel terug: elke melding lekt de VIN zonder dat de aanroepen veranderen"
