@@ -2771,6 +2771,29 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de handleiding en de uitroeptekens (30-09-2026) ──
+  // Een ! hangt aan een knop via een selector uit pidlane-help-inhoud.js.
+  // test-help.js zoekt die selectors in de bron; deze proef kijkt of ze in de
+  // draaiende app ook echt een knop vinden, en of het venster opent en sluit.
+  {
+    issue: '—',
+    naam: 'De handleiding opent en elk uitroepteken vindt zijn knop',
+    waarom: 'Er was geen handleiding of hulpfunctie in de app. Een ! waarvan de knop hernoemd is, verdwijnt zonder foutmelding.',
+    proef: async function () {
+      if (!window.PLHelp || !window.PL_HULP) return { staat: 'FOUT', detail: 'PLHelp of PL_HULP ontbreekt — pidlane-help.js of pidlane-help-inhoud.js laadt niet' };
+      var weg = window.PL_HULP.tips.filter(function (t) { return !document.querySelector(t.anker); }).map(function (t) { return t.id; });
+      PLHelp.open('check');
+      var ov = document.getElementById('plHelpOv');
+      var open = !!ov && getComputedStyle(ov).display !== 'none';
+      PLHelp.sluit();
+      var dicht = !ov || getComputedStyle(ov).display === 'none';
+      if (!open || !dicht) return { staat: 'FOUT', detail: 'het venster ' + (!open ? 'opent niet' : 'sluit niet') };
+      if (weg.length) return { staat: 'FOUT', detail: 'geen knop voor: ' + weg.join(', ') };
+      var n = document.querySelectorAll('.plh-i').length;
+      return { staat: 'OK', detail: window.PL_HULP.tips.length + ' ankers gevonden, ' + n + ' uitroeptekens geplaatst' + (PLHelp.tipsAan() ? '' : ' (staan uit in Meer)') };
+    }
+  },
+
   // ── de pollus plant op de eerste PID die aan de beurt is (30-09-2026) ──
   // Met een vaste tik van 100 ms kwam een PID van 120 ms op 200 ms, en stond
   // de bus bij acht PIDs half leeg: 10 verzoeken/s bij 54 ms per verzoek.
