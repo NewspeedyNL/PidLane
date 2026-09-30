@@ -605,6 +605,21 @@ function pidsDueNow(){
 }
 const EIGEN_PER_RONDE=2;
 
+// Herplannen vanaf de DEADLINE, niet vanaf nu. 'now' wordt vastgelegd
+// vóór alle I/O, maar een ronde duurt honderden ms — vanaf now tellen
+// betekende dus stilzwijgend "ingesteld interval + rondeduur", waardoor
+// 10s in de praktijk 14s werd. Loopt een PID te ver achter (survey hield
+// de bus vast), dan ijken we opnieuw vanaf nu in plaats van in te halen:
+// een inhaalstorm belast de ECU precies op het verkeerde moment.
+function _pollHerplan(due, now){
+  due.forEach(pid=>{
+    const iv=pidPollInterval(pid);
+    const vorige=_pidNextPoll[pid]||0;
+    const vanafDeadline=vorige+iv;
+    _pidNextPoll[pid] = (vorige && vanafDeadline>now) ? vanafDeadline : now+iv;
+  });
+}
+
 function startPoll(){
   clearInterval(pollTimer);
   dataStable=false; stabilityCount={}; outlierCount={}; window._stabilityT0=null;
@@ -641,19 +656,7 @@ function startPoll(){
 
       const due=pidsDueNow();
       if(!due.length) return;   // niets aan de beurt deze tick
-      const now=Date.now();
-      // Herplannen vanaf de DEADLINE, niet vanaf nu. 'now' wordt vastgelegd
-      // vóór alle I/O, maar een ronde duurt honderden ms — vanaf now tellen
-      // betekende dus stilzwijgend "ingesteld interval + rondeduur", waardoor
-      // 10s in de praktijk 14s werd. Loopt een PID te ver achter (survey hield
-      // de bus vast), dan ijken we opnieuw vanaf nu in plaats van in te halen:
-      // een inhaalstorm belast de ECU precies op het verkeerde moment.
-      due.forEach(pid=>{
-        const iv=pidPollInterval(pid);
-        const vorige=_pidNextPoll[pid]||0;
-        const vanafDeadline=vorige+iv;
-        _pidNextPoll[pid] = (vorige && vanafDeadline>now) ? vanafDeadline : now+iv;
-      });
+      _pollHerplan(due, Date.now());
 
       // Multi-PID batch alleen op CAN (ISO 15765). Andere protocollen
       // ondersteunen geen meervoudige PID-requests → sequentieel.
