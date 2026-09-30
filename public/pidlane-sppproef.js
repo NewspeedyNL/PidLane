@@ -332,8 +332,19 @@
          ging het om 01:11:40. */
       connected = false; setConn(false);
       await connectSerial({ hervat: 'dode socket (SPP-proef)' });
-      const duur = Math.round((Date.now() - t) / 1000);
+      /* connectSerial() keert terug na "Verbonden"; kenteken, protocol en
+         profiel lopen daarna nog door. Op 30-09 zei de knop daardoor
+         "herverbonden in 2 s" terwijl de hervatting 11 s duurde, en mat hij
+         zijn na-waarden midden in het opzetten. Wachten tot _hervatAfronden()
+         (pidlane-bt.js) zijn stempel zet, hoogstens een minuut. */
+      let klaar = null;
+      for (let i = 0; i < 120 && !klaar; i++) {
+        const h = window._plLaatsteHervat;
+        if (h && h.t >= t) klaar = h; else await _wacht(500);
+      }
+      const duur = klaar ? klaar.s : Math.round((Date.now() - t) / 1000);
       if (!_verbonden()) return { staat: 'FOUT', kop: 'Herverbinden lukte niet binnen de keten', regels: ['na ' + duur + ' s niet verbonden — tik op Verbinden'] };
+      if (!klaar) return { staat: 'LET OP', kop: 'Verbonden, maar de hervatting meldde zich niet binnen een minuut', regels: ['geen na-meting: die zou midden in het opzetten vallen'] };
       await _wacht(3000);
       const na = { draden: await meetDraden(1000), respons: await meetRespons() };
       const patch = await patchStatus();

@@ -77,7 +77,13 @@ function bouw(opt) {
       return Promise.resolve(cmd === 'ATRV' ? '12.4V' : '410C0A3C');
     },
     setConn: function (v) { spoor.push('setConn ' + v); },
-    connectSerial: function (o) { spoor.push('connectSerial ' + (o && o.hervat)); ctx.connected = true; return Promise.resolve(); }
+    // Zoals pidlane-bt.js: connectSerial keert terug na "Verbonden", en de
+    // hervatting zet zijn stempel pas later (_hervatAfronden).
+    connectSerial: function (o) {
+      spoor.push('connectSerial ' + (o && o.hervat)); ctx.connected = true;
+      if (!opt.geenHervat) setImmediate(function () { setImmediate(function () { spoor.push('hervat klaar'); w._plLaatsteHervat = { t: Date.now(), s: 11 }; }); });
+      return Promise.resolve();
+    }
   };
   const spp = {
     connect: function (o) {
@@ -199,11 +205,14 @@ function bouw(opt) {
     toets('maat: zonder meting is het null, geen 0', bouw().P.maat('spp-draaiend'), null);
 
     const d = bouw({ draden: true, patch: true });
-    await d.P.dodeSocket();
+    const dsU = await d.P.dodeSocket();
     const iConn = d.spoor.findIndex((x) => /^connectSerial /.test(x));
     toets('de dode-socketknop: setConn(false) en dan connectSerial met de hervatstand',
       [d.spoor.indexOf('setConn false') > -1 && d.spoor.indexOf('setConn false') < iConn, d.spoor[iConn]],
       [true, 'connectSerial dode socket (SPP-proef)']);
+    toets('de na-meting wacht op de hervatting, en de duur is die van de hervatting (11 s, niet de 0 s van connectSerial)',
+      [d.spoor.indexOf('hervat klaar') > -1 && d.spoor.indexOf('hervat klaar') < d.spoor.lastIndexOf('slot'), /Herverbonden in 11 s/.test(dsU && dsU.kop)],
+      [true, true]);
     toets('zonder eerst de oude socket te sluiten — zo ging het om 01:11:40',
       d.spoor.slice(0, iConn).some((x) => /^disconnect /.test(x)), false);
   }

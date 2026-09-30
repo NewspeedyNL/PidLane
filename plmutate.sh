@@ -1477,6 +1477,7 @@ MUTATIES=(
 "public/pidlane-visueel.js@@window.PLGear.toonbaar() : null; }@@window.PLGear.waarde() : null; }@@bproef-visueel.js@@de meter vraagt weer waarde(): een onzeker cijfer in plaats van het embleem"
 # ── live-acties onder de meter, bandenlampje rechtsonder (30-09-2026) ──
 "public/pidlane.css@@.vis-lamp-banden { position:absolute; right:0; bottom:0; z-index:1; pointer-events:auto;@@.vis-lamp-banden { pointer-events:auto;@@bproef-banden.js@@het bandenlampje staat niet meer rechtsonder in de hoek van de meter"
+"public/pidlane-sppproef.js@@      for (let i = 0; i < 120 && !klaar; i++) {@@      for (let i = 0; i < 0 && !klaar; i++) {@@test-sppproef.js@@de dode-socketknop meet weer midden in het opzetten van de verbinding, en noemt de duur van connectSerial"
 )
 
 echo
