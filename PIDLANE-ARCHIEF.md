@@ -14,6 +14,82 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-09-2026 — De SPP-plugin laat bij elke mislukte verbindpoging een draaiende draad achter (#352)
+
+**De waarneming.** Twee logboeken van de rit van 30-09 (01:15 en 01:24). Na
+*Hervat na dode socket* om 01:12 was de hele verbinding traag: `ATH0` 166 ms,
+één PID 65–130 ms, een groep van drie 80–160 ms. Vóór de herlaad om 00:28 was
+een groep 20–45 ms; na afsluiten en opnieuw starten om 01:24 was `ATH0` 6 ms en
+`010C1` 16 ms. De auto stond alle drie de keren stationair. Het pollbudget zakte
+in zeven minuten van 95% naar ~20%, met 0% fout. De telefoon werd warm en het
+batterijverbruik was hoog. Alleen een herstart van het proces hielp, geen herlaad
+van de pagina.
+
+**De oorzaak, in de plugin.** `@ascentio-it/capacitor-bluetooth-serial` 8.0.1,
+`BluetoothSerialService.java`: `connect()` bouwt een `BluetoothConnection` (de
+constructor doet de blokkerende `socket.connect()`), en roept daarna **altijd**
+`start()` aan, ook als de poging mislukte. `run()` is
+`while (true) { if (status == CONNECTED) { … } }`: bij `NOT_CONNECTED` een lege
+lus zonder pauze en zonder uitgang. `disconnect()` doet voor zo'n verbinding
+alleen `interrupt()`, en daar kijkt de lus niet naar. Nagebouwd in een JVM met
+nagemaakte Android-klassen (`test-spppatch.js`): één mislukte poging, één
+draaiende draad; twee pogingen, twee; na `disconnect()` draaien ze door.
+
+**Online niets.** De upstream-repo (laatste commit: podspec-fix na Capacitor 8)
+heeft dezelfde lus en geen issue erover. Hij zit ook in alle forks uit dezelfde
+stamboom (`@e-is`, `@fmesasc`, `@speedengineering`, `@bintangf`, `@shoerofi`).
+De herschreven `@brmaschio` 1.5.0 heeft dezelfde vorm (`while (true) { if
+(this.connected) … }`). `@yesprasoon/capacitor-bluetooth-communication` is
+anders gebouwd, maar is één release voor Capacitor 6 en richt zich op
+client/server. Overstappen lost het dus niet op.
+
+**Wat er gebouwd is.** `plspppatch.js` patcht de kopie in `node_modules` vóór de
+APK-build. Een mislukte poging krijgt geen draad, een oude verbinding op
+hetzelfde adres wordt eerst gesloten, de lus stopt zodra de status niet meer
+`CONNECTED` is, en `-1` van `read()` telt als een gesloten socket. Daarnaast een
+teller, `plPatch()`, en een schakelaar die het oude gedrag tot de volgende
+herstart terugzet. Die schakelaar is er omdat de nieuwe APK anders geen
+tegenproef meer op dezelfde telefoon toelaat. `PLDraden` meet per draad de
+processortijd. De adminknoppen (`pidlane-sppproef.js`) doen de proef op de
+telefoon.
+
+**Met opzet niet in deze stap: `write()` slikt een `IOException`.** Daardoor ziet
+de app een dode socket pas na zes lege antwoorden. Dat doorgeven verandert
+wanneer er herverbonden wordt, en dat is gedrag van de herverbinding, geen deel
+van deze fout.
+
+**Wat dit NIET verklaart: #302.** Op 26-09 zette een gewone herverbinding
+(de knop) de responstijd terug van 270 naar 77 ms. Een draaiende draad overleeft
+een herverbinding; alleen een herstart van het proces ruimt hem op. De traagheid
+van 26-09 had dus waarschijnlijk een andere oorzaak, of niet alleen deze. De
+blok-5-proef van #352 kijkt aan het eind van elke rit of er draden rondlopen;
+staat die op 0 terwijl #302 toch optreedt, dan is dat het bewijs.
+
+**Niet getoetst.** Of Android een mislukte `socket.connect()` precies zo
+afhandelt als de nagebouwde klasse. De knop "volle proef" meet dat op de
+telefoon, en met de schakelaar ook de tegenkant.
+
+**Bijvangst uit dezelfde twee logboeken, niet gerepareerd:**
+- De geheugen-cap van de BT-log (`pidlane-btflow.js`) meldt altijd "301 regels
+  weggelaten", ongeacht het werkelijke verlies. Elke ronde valt de vorige
+  markering uit het midden weg. En het anker van 300 regels vulde zich na een
+  herlaad met teruggezette regels van vóór de herlaad, in plaats van met het
+  verbinden van de nieuwe sessie.
+- `relevantSupportedPIDs()` zet als bijwerking het pollprofiel. Tijdens het
+  afronden van een verbinding springt het daardoor van Basis naar Rit-monitor
+  en terug, en het eindigt op Rit-monitor, ook als de gebruiker de rit-monitor
+  uit had gezet.
+- PID-regels in het logboek tonen `… 1790723688445 ms`: `pidlane-logboek.js`
+  zet ` ms` achter het tijdstip van de diagbundel alsof het een duur is.
+- "Pollbudget vastgehouden op 76%" en "op 95%" volgden op "verlaagd naar 74%":
+  het terugklimmen komt niet in de log, omdat stappen onder 0,5 niet gelogd
+  worden.
+- Na een herverbinding bij een dode socket gaat de waakronde niet vanzelf weer
+  aan. En de melding zegt "uit de selectie van vóór de herlaad" terwijl er geen
+  herlaad was.
+- De preset van 26 PIDs filtert de 7 PIDs die de auto niet heeft wel na een
+  dode socket, maar niet na een herlaad met herstelde sessiestaat.
+
 ## 29-09-2026 — Herinneringen: de plugin brengt een permissie mee die Play weigert
 
 **De keuze voor lokale meldingen.** Een APK-herinnering moet komen als de app

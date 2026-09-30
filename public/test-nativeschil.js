@@ -67,6 +67,8 @@ const pipJs     = lees('public/pidlane-pip.js');
 const render       = lees('native/PLRender.java');
 const renderPlugin = lees('native/PLRenderPlugin.java');
 const renderJs     = lees('public/pidlane-render.js');
+const draden       = lees('native/PLDradenPlugin.java');
+const sppJs        = lees('public/pidlane-sppproef.js');
 const cfg    = JSON.parse(lees('capacitor.config.json'));
 
 console.log('\n── het pakket is één pakket ──');
@@ -252,7 +254,8 @@ console.log('\n── geen stille catch in de native code ──');
      dat de meting niet loopt en dat niemand weet waarom. */
   [['PLMeetdienst.java', dienst], ['PLMeetdienstPlugin.java', plugin],
    ['PLPip.java', pip], ['PLPipPlugin.java', pipPlugin],
-   ['PLRender.java', render], ['PLRenderPlugin.java', renderPlugin]].forEach(function (paar) {
+   ['PLRender.java', render], ['PLRenderPlugin.java', renderPlugin],
+   ['PLDradenPlugin.java', draden]].forEach(function (paar) {
     const src = paar[1];
     const stil = [];
     const re = /catch\s*\(([^)]*)\)\s*\{([\s\S]*?)\n(\s*)\}/g;
@@ -405,6 +408,55 @@ console.log('\n── de derde: een rendercrash neemt het proces niet mee (#229)
   toets('ná pidlane-auth.js (log) en vóór de bedradingscontrole',
     html.indexOf('src="pidlane-render.js"') > html.indexOf('src="pidlane-auth.js"') &&
     html.indexOf('src="pidlane-render.js"') < html.indexOf('src="pidlane-bedrading.js"'), true);
+}
+
+console.log('\n── de vierde: de draadmeting van de SPP-proef (#352) ──');
+{
+  /* Zonder registratie bestaat Capacitor.Plugins.PLDraden niet, en zegt de
+     proef "deze APK meet geen draden" — niet te onderscheiden van een oude
+     APK. Dezelfde koppelingen als bij de andere drie. */
+  toets('PLDraden zit in het pakket van de appId',
+    (draden.match(/^\s*package\s+([\w.]+)\s*;/m) || [])[1], cfg.appId);
+  const naam = (draden.match(/@CapacitorPlugin\s*\(\s*name\s*=\s*"([^"]+)"/) || [])[1];
+  toets('@CapacitorPlugin draagt een naam', typeof naam, 'string');
+  bevat('en de app zoekt exact die naam op', sppJs, 'Plugins.' + naam);
+  toets('de klassenaam volgt de pluginnaam', draden.indexOf('class ' + naam + 'Plugin ') !== -1, true);
+
+  const inJava = [];
+  const reJava = /@PluginMethod\s+public\s+void\s+(\w+)\s*\(/g;
+  let mj;
+  while ((mj = reJava.exec(draden))) inJava.push(mj[1]);
+  // In de proef heet de plugin `p` binnen meetDraden(); alleen daar wordt hij aangeroepen.
+  const fn = (sppJs.match(/async function meetDraden\([\s\S]*?\n  \}/) || [''])[0];
+  toets('meetDraden() staat in de proef', fn.length > 0, true);
+  const inJs = Array.from(new Set((fn.match(/\bp\.(\w+)\(/g) || []).map(function (m) { return m.slice(2, -1); })));
+  toets('er staan @PluginMethod-methoden in PLDradenPlugin', inJava.length > 0, true);
+  toets('de app roept niets aan wat niet bestaat', inJs.filter(function (m) { return inJava.indexOf(m) === -1; }), []);
+  toets('en java biedt niets aan wat niemand gebruikt', inJava.filter(function (m) { return inJs.indexOf(m) === -1; }), []);
+
+  // Eén seconde slapen op de plugindraad zet ook de SPP-verbinding stil.
+  toets('de meting draait op een eigen draad', /new Thread\(/.test(draden) && /\.start\(\);/.test(draden), true);
+  toets('en importeert geen java.nio.file (pas vanaf API 26)', /import\s+java\.nio\.file/.test(draden), false);
+
+  [['Java', '"        registerPlugin(PLDradenPlugin.class);",', '"        super.onCreate(savedInstanceState);",'],
+   ['Kotlin', '"        registerPlugin(PLDradenPlugin::class.java)",', '"        super.onCreate(savedInstanceState)",']
+  ].forEach(function (t) {
+    const reg = wf.indexOf(t[1]), sup = wf.indexOf(t[2], reg);
+    toets(t[0] + ': registreert PLDraden vóór super.onCreate()', reg > -1 && sup > reg, true);
+  });
+  bevat('de registratie faalt hard als hij ontbreekt', wf, '("registerPlugin(PLDradenPlugin", "de draadmeting registreren (#352)")');
+
+  // En de patch op de plugin zelf: vóór de build, ná npm install.
+  const inst = wf.indexOf('npm install --legacy-peer-deps'), patch = wf.indexOf('node plspppatch.js node_modules/@ascentio-it/capacitor-bluetooth-serial');
+  const sync = wf.indexOf('npx cap sync android');
+  toets('de SPP-patch draait ná npm install en vóór cap sync', inst > -1 && patch > inst && sync > patch, true);
+  bevat('en plspppatch.js start een APK-build', wf, "- 'plspppatch.js'");
+
+  const html = lees('public/index.html');
+  bevat('pidlane-sppproef.js hangt in index.html', html, 'src="pidlane-sppproef.js"');
+  toets('ná pidlane-scanslot.js (PLScanSlot) en pidlane-bt.js (getSPP)',
+    html.indexOf('src="pidlane-sppproef.js"') > html.indexOf('src="pidlane-scanslot.js"') &&
+    html.indexOf('src="pidlane-sppproef.js"') > html.indexOf('src="pidlane-bt.js"'), true);
 }
 
 console.log('\n── de melding na de herstart (#229) ──');

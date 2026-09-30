@@ -134,6 +134,11 @@
     } catch (e) { console.warn('adapter-sessie: lopende modules onleesbaar', e); }
     try { const k = (typeof pidVals !== 'undefined') ? pidVals['0105'] : undefined; c.koel = typeof k === 'number' ? Math.round(k) : null; }
     catch (e) { console.warn('adapter-sessie: koelwater onleesbaar', e); }
+    // De SPP-proef (#352) kan een draad achterlaten die de rest van de sessie
+    // trager maakt. Dat is geen eigenschap van de auto of de adapter, en het
+    // oordeel over #302 hoort het te weten.
+    try { c.proef = !!(window.PLSppProef && typeof PLSppProef.aangetast === 'function' && PLSppProef.aangetast()); }
+    catch (e) { console.warn('adapter-sessie: SPP-proefmarkering onleesbaar', e); c.proef = false; }
     return c;
   }
   function _sessieTik() {
@@ -167,6 +172,9 @@
       return { staat: 'LET OP', drift: false, detail: 'langste onafgebroken verbinding ' + (g ? g.minuten : 0) + ' min; nodig: ' + minMin + ' min zonder verbreken' };
     const kop = g.minuten + ' min verbonden: responstijd ' + g.begin + ' → ' + g.eind + ' ms (×' + String(g.factor).replace('.', ',') + ')';
     if (!(g.factor >= 1.3)) return { staat: 'ok', drift: false, groep: g, detail: kop + ' — de drift van #302 trad deze rit niet op' };
+    // Een oploop op een verbinding die de SPP-proef (#352) met opzet aantastte,
+    // is de proef en niet #302. Geen FOUT dus, en geen uitspraak.
+    if (g.proef) return { staat: 'LET OP', drift: false, groep: g, detail: kop + ' — maar de SPP-proef (#352) tastte deze verbinding aan; geen uitspraak over #302' };
     const patroon = g.stappen.length
       ? 'stapsgewijs: ' + g.stappen.map(function (s) { return 'min ' + s.minuut + ' ' + s.van + '→' + s.naar + ' ms' + (s.wat.length ? ' bij ' + s.wat.join(', ') : ' zonder gebeurtenis'); }).join('; ')
       : 'geleidelijk, zonder stap';
@@ -185,6 +193,7 @@
     groepen.forEach(function (g) {
       const ms = g.monsters, t0 = ms[0].t, t1 = ms[ms.length - 1].t;
       g.van = t0; g.tot = t1; g.minuten = Math.round((t1 - t0) / 60000);
+      g.proef = ms.some(function (m) { return !!m.proef; });
       const eerste = ms.filter(function (m) { return m.t - t0 <= 5 * 60000; }).map(function (m) { return m.ms; });
       const laatste = ms.filter(function (m) { return t1 - m.t <= 5 * 60000; }).map(function (m) { return m.ms; });
       g.begin = _sesMediaan(eerste); g.eind = _sesMediaan(laatste);
@@ -207,6 +216,7 @@
         if (bij.length) wat.push('gestart: ' + bij.join(', '));
         if (af.length) wat.push('gestopt: ' + af.join(', '));
         if (typeof a.koel === 'number' && typeof b.koel === 'number' && a.koel < 80 && b.koel >= 80) wat.push('motor warm (koelwater ' + b.koel + ' °C)');
+        if (b.proef && !a.proef) wat.push('SPP-proef (#352)');
         const vorige = g.stappen[g.stappen.length - 1];
         if (vorige && b.t - vorige.t < 3 * 60000) continue;       // dezelfde stap, een monster later
         g.stappen.push({ t: b.t, minuut: Math.round((b.t - t0) / 60000), van: Math.round(voor), naar: Math.round(na), wat: wat });
@@ -1299,6 +1309,15 @@
   function _driftBlok() {
     const d = drift();
     if (!d) return '';
+    // Na de SPP-proef (#352) zit de vertraging in een draad van dit proces:
+    // opnieuw verbinden haalt die niet weg, alleen de app herstarten.
+    let proef = null;
+    try { proef = window.PLSppProef && typeof PLSppProef.aangetast === 'function' ? PLSppProef.aangetast() : null; }
+    catch (e) { console.warn('adapterpaneel: SPP-proefmarkering onleesbaar', e); }
+    if (proef) return '<div id="plAdDrift" style="margin:0 0 12px;padding:10px 12px;border:1px solid var(--or);background:var(--ors);' +
+      'border-radius:10px;font:600 12px/1.45 var(--f);color:var(--tx)">' +
+      'De responstijd is opgelopen van ' + d.van + ' naar ' + d.naar + ' ms, maar de SPP-proef (#352) heeft deze sessie aangetast. ' +
+      'Opnieuw verbinden helpt dan niet — herstart de app.</div>';
     return '<div id="plAdDrift" style="margin:0 0 12px;padding:10px 12px;border:1px solid var(--or);background:var(--ors);' +
       'border-radius:10px;font:600 12px/1.45 var(--f);color:var(--tx)">' +
       'De responstijd is opgelopen van ' + d.van + ' naar ' + d.naar + ' ms. Opnieuw verbinden zet dat meestal terug.' +
@@ -1354,6 +1373,8 @@
     drift: drift,
     sessie: function () { return _sessie.slice(); },
     gebeurtenissen: function () { return _gebeurt.slice(); },
+    // Een gebeurtenis van buiten dit paneel, voor de sessiereeks (#352).
+    noteer: function (soort) { _gebeurt.push({ t: Date.now(), soort: String(soort || '') }); },
     driftAnalyse: driftAnalyse,
     sessieOordeel: function () { return driftAnalyse(_sessie, _gebeurt); },
     driftOordeel: driftOordeel,

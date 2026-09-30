@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — De SPP-plugin laat geen draaiende draden meer achter (#352)
+ ═══════════════════════════════════════════════════════════
+
+ - De Bluetooth-plugin startte bij elke mislukte verbindpoging toch een
+   leesdraad, en die draaide leeg rond tot de app herstartte. Gevolg na
+   een herverbinding: alles 10 tot 25 keer trager, telefoon warm, accu
+   leeg. De APK-build patcht de plugin nu (plspppatch.js).
+ - Meer → Admin heeft zeven SPP-knoppen: draden meten, responstijd meten,
+   een mislukte verbinding nabootsen, de volle proef, herverbinden als bij
+   een dode socket, patchstatus, en de patch voor de proef aan/uit.
+ - Tijdens zo'n proef staat de bus op slot en telt niets als storing. Na
+   een proef zonder patch weet het verbindingspaneel dat de sessie
+   aangetast is: "herstart de app" in plaats van "opnieuw verbinden", en
+   de testrun rekent de oploop niet als #302.
+
+ ═══════════════════════════════════════════════════════════
  29-09-2026 — Nieuw app-icoon: Aurora
  ═══════════════════════════════════════════════════════════
 

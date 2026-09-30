@@ -1434,6 +1434,21 @@ MUTATIES=(
 "public/pidlane-lampjes.js@@      doorrijden: 'nadat', obd: null, zoek: 'gordel riem piepen' },@@      doorrijden: 'ja', obd: null, zoek: 'gordel riem piepen' },@@test-lampjes.js@@een rood lampje zegt \"je kunt doorrijden\""
 "public/pidlane-lampjes.js@@      return (l.naam + ' ' + l.vorm + ' ' + (l.zoek || '')).toLowerCase().indexOf(t) >= 0;@@      return l.naam.toLowerCase().indexOf(t) >= 0;@@test-lampjes.js@@zoeken op wat je ziet (schildpad, spiraaltje) vindt niets meer"
 ".github/workflows/build-apk.yml@@<uses-permission android:name=\"android.permission.SCHEDULE_EXACT_ALARM\" tools:node=\"remove\" />'@@'@@test-privacydekking.js@@de bundel vraagt SCHEDULE_EXACT_ALARM, een permissie die Play alleen wekker- en agenda-apps toestaat"
+# ── de SPP-plugin laat geen draaiende leesdraden achter (#352, 30-09-2026) ──
+# Een mislukte verbindpoging kostte een processorkern tot de app herstartte.
+# De patch, zijn schakelaar voor de proef, en de proef die de bus bewerkt
+# zonder dat de app het voor een storing aanziet.
+"plspppatch.js@@if (!connection.verbonden())@@if (false)@@test-spppatch.js@@een mislukte poging komt als verbinding in de lijst en krijgt een draad — alleen de nieuwe lus houdt hem dan nog tegen"
+"plspppatch.js@@private static volatile boolean PATCH_AAN = true;@@private static volatile boolean PATCH_AAN = false;@@test-spppatch.js@@de patch zit in de APK maar staat standaard uit"
+"plspppatch.js@@oudGedrag || (status == ConnectionStatus.CONNECTED && !isInterrupted())@@oudGedrag || true@@test-spppatch.js@@de leesdraad stopt niet meer na disconnect(): de lege lus is terug, alleen later"
+"public/pidlane-sppproef.js@@    if (_verbonden() && window.PLScanSlot) {@@    if (false) {@@test-sppproef.js@@de nep-connect blokkeert de plugindraad buiten het busslot: de pollus ziet zes lege antwoorden en herverbindt"
+"public/pidlane-sppproef.js@@    if (!p.patch) _markeer(@@    if (false) _markeer(@@test-sppproef.js@@na een nabootsing zonder patch weet de app niet dat de bus aangetast is — het drift-oordeel geeft FOUT op de proef"
+"public/pidlane-sppproef.js@@      if (erbij !== null && erbij > 0) { r.staat = 'FOUT';@@      if (erbij !== null && erbij > 0) { r.staat = 'OK';@@test-sppproef.js@@een patch-APK die toch een draad achterlaat heet in orde"
+"public/pidlane-sppproef.js@@    const heeftPatch = !!(patch && patch.patch && patch.aan !== false);@@    const heeftPatch = !!(patch && patch.patch);@@test-sppproef.js@@een patch die voor de proef uitstaat telt als patch: de A/B-proef oordeelt verkeerd om"
+"public/pidlane-adapter.js@@    if (g.proef) return@@    if (false) return@@test-adapterpaneel.js@@de oploop door de SPP-proef telt als de drift van #302"
+".github/workflows/build-apk.yml@@(PLDradenPlugin.class)@@(PLDraden.class)@@test-nativeschil.js@@de draadmeting wordt niet geregistreerd: Capacitor.Plugins.PLDraden bestaat niet in de APK"
+".github/workflows/build-apk.yml@@run: node plspppatch.js node_modules/@ascentio-it/capacitor-bluetooth-serial@@run: echo overgeslagen@@test-nativeschil.js@@de APK wordt gebouwd zonder de SPP-patch, zonder dat iets rood wordt"
+"public/pidlane-sppproef.js@@  try { document.addEventListener('DOMContentLoaded', menu); }@@  try { void menu; }@@bproef-sppproef.js@@de SPP-knoppen komen nooit in het Admin-menu: de module laadt, en niets zegt dat er iets ontbreekt"
 )
 
 echo
