@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — De BT-log houdt na een herlaad het begin van déze sessie vast
+ ═══════════════════════════════════════════════════════════
+
+ - Na een herlaad bewaarde de BT-log als "begin" de laatste 300 regels van
+   de vorige sessie. Verbinden, VIN en de SPP-proef van deze sessie rolden
+   er in het midden uit. Die teruggezette regels zijn nu gemerkt en vallen
+   bij de eerste afkapping weg; ze staan ook in de spiegel op schijf.
+ - De regel "… regels weggelaten (geheugen-cap)" telt nu alles wat er deze
+   sessie wegviel, en niet alleen de laatste ronde (die zei altijd ~301).
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — De SPP-proef als meetopdracht, en twee schermfouten
  ═══════════════════════════════════════════════════════════
 
