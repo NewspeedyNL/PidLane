@@ -10,6 +10,26 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Slim visueel: balkjes, een acculampje en een autootje (#371)
+ ═══════════════════════════════════════════════════════════
+
+ - Onder de snelheid staan nu drie rijen onder elkaar: koelwater,
+   gaspedaal en brandstof, elk met een icoon, een liggend balkje en het
+   getal erachter. Groen als het goed is, blauw bij een koude motor,
+   oranje en rood bij de grens; het pedaal vult blauw.
+ - De accu staat rechtsboven als lampje, net als de motor links: icoon,
+   spanning en een balkje. Op een hybride twee accu's in één lampje — de
+   aandrijfaccu met zijn percentage en het 12V-net met zijn spanning.
+ - De onderboog is alleen nog olie of laaddruk. Heeft de auto geen van
+   beide, dan is er geen onderboog en is de meter zo hoog als de cirkel.
+ - Het bandenlampje rechtsonder is het autootje uit het bandenvenster in
+   het klein: vier groene wielen als alles goed is, per wiel oranje of rood.
+ - Onder Slim visueel staan Opnemen en Bewaken niet meer: de waakronde en
+   de bulk-recorder staan al in het vak onder de meter. In de andere
+   weergaven blijven ze staan.
+ - Proef in blok 5: de rijen, het acculampje (ook dubbel) en het scherm.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — Uitleg bij knoppen: een glazen i in plaats van een oranje !
  ═══════════════════════════════════════════════════════════
 

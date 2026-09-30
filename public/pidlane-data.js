@@ -1374,6 +1374,9 @@ window.HUD_LABEL_DICT ={
     motor:     '<path d="M7 8h7l2 2h2.5V8.5H21v7h-2.5V14H16l-2 3H8.5L7 15H4.5v-5H7z"/><path d="M9.5 8V5.5h5M12 5.5V8"/><path d="M2.5 10.5v4"/>',
     startstop: '<path d="M19.5 9A8 8 0 1 0 20 13"/><path d="M20.5 4.5V9H16"/><path d="M9.5 15.5 12 8.5l2.5 7M10.4 13h3.2"/>',
     hybride:   '<path d="M13 2.5 5.5 13.5H11l-1 8 8-11h-5.5z"/>',
+    // Twee accu's naast elkaar (#371): links de hoge, met de bliksem, voor de
+    // aandrijving; rechts de lage met een plus voor het 12V-net.
+    accudubbel:'<rect x="2" y="6" width="9.5" height="14" rx="1.5"/><path d="M5 6V4.2h3.5V6"/><path d="M7.6 9 5.4 13.2h2.8L6.2 17"/><rect x="13.5" y="10" width="8.5" height="10" rx="1.5"/><path d="M15.5 10V8.4h1.8M18.5 10V8.4h1.5"/><path d="M15.8 15h3.9M17.75 13.1v3.8"/>',
     // Band (27-09-2026): de band met velg, en profielstreepjes op de buitenkant.
     band:      '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6 18 18M6 18l1.4-1.4M16.6 7.4 18 6"/>'
   };

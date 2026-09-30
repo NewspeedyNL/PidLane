@@ -39,7 +39,7 @@ const WACHT = ms => new Promise(r => setTimeout(r, ms));
 // De teksten eerst op hun breedste inhoud, zodat "past net" niet groen staat
 // omdat er toevallig een smal getal stond.
 const MEET = `(function(){
-  const zet = { 'vis-snel':'999', 'visv-koel':'118°', 'visv-accu':'14,8 V',
+  const zet = { 'vis-snel':'999', 'visv-koel':'118°', 'visv-pedaal':'100%',
                 'visv-tank':'100%', 'vis-ondertekst':'≈+1,5 bar', 'vis-gear':'10' };
   Object.keys(zet).forEach(function(id){ const e=document.getElementById(id); if(e) e.textContent=zet[id]; });
   // Versnelling en embleem delen één plek en staan nooit samen: meet de
@@ -48,13 +48,15 @@ const MEET = `(function(){
   const svg = document.querySelector('.vis-meter');
   if (!svg) return { fout: 'geen .vis-meter in het rooster' };
   const G = PLVisueel.G, uit = [];
-  svg.querySelectorAll('text, svg.vis-icoon, svg.vis-logo, rect.vis-staaf').forEach(function(e){
+  svg.querySelectorAll('text, svg.vis-icoon, svg.vis-logo, path.vis-balk-spoor').forEach(function(e){
     if (e.closest('.afwezig') || e.closest('[style*="display: none"], [style*="display:none"]')) return;
     let b;
     if (e.tagName.toLowerCase() === 'svg') b = { x:+e.getAttribute('x'), y:+e.getAttribute('y'), width:+e.getAttribute('width'), height:+e.getAttribute('height') };
     else b = e.getBBox();
     if (!b.width) return;
-    uit.push({ naam: e.id || (e.classList.contains('vis-logo') ? 'embleem' : e.classList.contains('vis-staaf') ? 'staaf in '+e.parentNode.id : e.textContent), x0:b.x, y0:b.y, x1:b.x+b.width, y1:b.y+b.height });
+    // Een balkje is een lijn: getBBox() kent zijn dikte niet, die komt erbij.
+    const dik = e.classList.contains('vis-balk-spoor') ? (+e.getAttribute('stroke-width') || 0) / 2 : 0;
+    uit.push({ naam: e.id || (e.classList.contains('vis-logo') ? 'embleem' : dik ? 'balkje in '+e.parentNode.id : e.textContent), x0:b.x, y0:b.y-dik, x1:b.x+b.width, y1:b.y+b.height+dik });
   });
   return { vakken: uit, C: G.C, R: G.R_RING,
            streepjes: svg.querySelectorAll('.vis-streep').length };
@@ -105,12 +107,27 @@ function beoordeel(m) {
       koel: document.getElementById('visv-koel').textContent, tank: document.getElementById('visv-tank').textContent,
       snel: document.querySelectorAll('#visMeld .vis-snelk button').length,
       snelTekst: document.getElementById('visMeld').textContent,
-      knoppen: document.querySelectorAll('.vis-trekknop, .vis-trekerbij').length }; })()`);
+      knoppen: document.querySelectorAll('.vis-trekknop, .vis-trekerbij').length,
+      balkjes: document.querySelectorAll('#gGrid .vis-balk').length,
+      accuLamp: (document.getElementById('vis-lamp-accu')||{}).textContent || '', accuKlasse: (document.getElementById('vis-lamp-accu')||{}).className || '',
+      knop: (function(){
+        const was=document.body.classList.contains('pl-garage'); document.body.classList.add('pl-garage');
+        const d=function(){ return { rec:getComputedStyle(document.getElementById('plLiveRec')).display, waak:getComputedStyle(document.getElementById('plLiveWaak')).display }; };
+        const uit={ visueel:d() }; setPidView('slim'); uit.slim=d(); setPidView('visueel');
+        if(!was) document.body.classList.remove('pl-garage');
+        return uit; })() }; })()`);
     toets('setPidView("visueel") bouwt de meter', staat.modus === 'visueel' && staat.meter, JSON.stringify(staat));
     toets('de rem staat aan zolang de weergave open is', staat.aan === true);
     toets('olie staat op de onderboog', staat.onder && staat.onder.pid === '015C', JSON.stringify(staat.onder));
-    toets('koelwater, accu en brandstof hebben hun plek', staat.plekken && staat.plekken.koel === '0105' &&
-      staat.plekken.accu === '0142' && staat.plekken.tank === '012F', JSON.stringify(staat.plekken));
+    toets('koelwater, gaspedaal en brandstof hebben hun rij (#371)', staat.plekken && staat.plekken.koel === '0105' &&
+      staat.plekken.pedaal === '0149' && staat.plekken.tank === '012F', JSON.stringify(staat.plekken));
+    toets('drie balkjes onder de snelheid', staat.balkjes === 3, 'gevonden: ' + staat.balkjes);
+    toets('de accuspanning staat rechtsboven als lampje, met V erachter', /Accu/.test(staat.accuLamp) && /\d,\d V/.test(staat.accuLamp) && !/leeg/.test(staat.accuKlasse),
+      JSON.stringify({ t: staat.accuLamp, k: staat.accuKlasse }));
+    toets('Opnemen en Bewaken staan niet onder Slim visueel, ook niet in de garagemodus (#371)',
+      staat.knop.visueel.rec === 'none' && staat.knop.visueel.waak === 'none', JSON.stringify(staat.knop));
+    toets('…en in Slim staan ze er allebei (de PID-recorder blijft een eigen functie)',
+      staat.knop.slim.rec !== 'none' && staat.knop.slim.waak !== 'none', JSON.stringify(staat.knop));
     toets('de plekjes tonen een getal, geen streepje', /°$/.test(staat.koel) && /%$/.test(staat.tank), staat.koel + ' / ' + staat.tank);
     toets('niets actief: snelkoppelingen in het meldingenvak', staat.snel >= 2, 'knoppen: ' + staat.snel);
     toets('geen snelkoppeling, knop of tekst voor de caravanrit of trekmodus (27-09)',
@@ -174,11 +191,12 @@ function beoordeel(m) {
       uit.topbalk.slim = getComputedStyle(pg).display;
       document.body.classList.add('pl-visueel');
       PLGear.toon = toonWas; PLGear.uit = uitWas; PLGear._render();
-      const h = function(id){ return +document.getElementById(id).getAttribute('height'); };
+      const h = function(id){ return +String(document.getElementById(id).getAttribute('stroke-dasharray')).split(' ')[0]; };
       PLVisueel.bij('0105', 130); uit.koelVol = h('viss-koel');
       PLVisueel.bij('0105', 40);  uit.koelLeeg = h('viss-koel');
       PLVisueel.bij('012F', 50);  uit.tankHalf = h('viss-tank');
-      uit.H = PLVisueel.G.STAAF_H;
+      uit.H = 100;
+      PLVisueel.bij('0149', 37); uit.pedaal = { h: h('viss-pedaal'), tekst: document.getElementById('visv-pedaal').textContent };
       activePIDs.delete('0105'); manualPIDs.delete('0105'); setPidView('slim'); setPidView('visueel');
       await new Promise(function(r){ setTimeout(r, 500); });
       uit.koelWeer = activePIDs.has('0105'); uit.handmatig = manualPIDs.has('0105');
@@ -190,8 +208,9 @@ function beoordeel(m) {
     toets('in Slim visueel staat de versnelling niet ook nog in de topbalk (daarbuiten wel)',
       mid.topbalk.visueel === 'none' && mid.topbalk.slim !== 'none', JSON.stringify(mid.topbalk));
     toets('achteruit is R en neutraal N (niet "-1" en "0")', mid.achteruit === 'R' && mid.neutraal === 'N', JSON.stringify(mid));
-    toets('koelwaterstaafje: 130 °C vol, 40 °C leeg', mid.koelVol === mid.H && mid.koelLeeg === 0, JSON.stringify(mid));
-    toets('brandstofstaafje: 50% is half', Math.abs(mid.tankHalf - mid.H / 2) < 0.05, JSON.stringify(mid));
+    toets('koelwaterbalkje: 130 °C vol, 40 °C leeg', mid.koelVol === mid.H && mid.koelLeeg === 0, JSON.stringify(mid));
+    toets('brandstofbalkje: 50% is half', Math.abs(mid.tankHalf - mid.H / 2) < 0.05, JSON.stringify(mid));
+    toets('pedaalbalkje: 37% vult 37, met het getal erachter', mid.pedaal.h === 37 && mid.pedaal.tekst === '37%', JSON.stringify(mid.pedaal));
     toets('Slim visueel openen zet een uitgezette sensor van de meter weer aan, niet als handmatige keuze', mid.koelWeer && !mid.handmatig, JSON.stringify(mid));
     const alarm = await app.ev(`(function(){
       PLVisueel._nieuweSessie();
@@ -294,8 +313,8 @@ function beoordeel(m) {
       setPidView('visueel');
       return { open:open, dicht:dicht, rem:PLVisueel.REM_MS };
     })()`);
-    toets('open: gasklep en (met olie op de onderboog) het pedaal geremd',
-      rem.open.klep >= rem.rem && rem.open.pedaal >= rem.rem, JSON.stringify(rem));
+    toets('open: de gasklep geremd, het pedaal in zijn rij niet (#371)',
+      rem.open.klep >= rem.rem && rem.open.pedaal < rem.rem, JSON.stringify(rem));
     toets('open: de motorbelasting staat bij het motorlampje en wordt niet geremd', rem.open.belasting < rem.rem, JSON.stringify(rem));
     toets('open: toerental ongemoeid', rem.open.rpm < rem.rem, JSON.stringify(rem));
     toets('terug naar Slim: de rem is eraf', rem.dicht.aan === false && rem.dicht.klep < rem.rem, JSON.stringify(rem));

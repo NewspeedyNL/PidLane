@@ -90,5 +90,18 @@ const og = B.oordeel(ind, B.stand(ind, druk(2.3, 2.3, 2.4, 2.4), tijden, NU));
 t('vier gelijk: ok, met de vier drukken', [og.staat, /VL 2,3, VR 2,3, AL 2,4, AR 2,4/.test(og.detail)], ['ok', true]);
 t('een zachte band: LET OP, controleer de band', /Controleer/.test(B.oordeel(ind, B.stand(ind, druk(2.3, 1.7, 2.3, 2.3), tijden, NU)).detail), true);
 
+// Het autootje in het lampje van Slim visueel (#371): per wiel de kleur.
+// Groen alleen voor een band die gemeten én vergeleken is.
+const W = x => JSON.stringify(B.wielKleuren(x));
+t('vier gelijk: vier groene wielen', W(B.stand(ind, druk(2.3, 2.3, 2.4, 2.4), tijden, NU)), JSON.stringify({ VL: 'ok', VR: 'ok', AL: 'ok', AR: 'ok' }));
+t('één zachte band: alleen dat wiel rood', W(B.stand(ind, druk(2.3, 1.7, 2.3, 2.3), tijden, NU)), JSON.stringify({ VL: 'ok', VR: 'danger', AL: 'ok', AR: 'ok' }));
+t('een oude meting: dat wiel grijs, niet groen', B.wielKleuren(B.stand(ind, druk(2.3, 1.2, 2.3, 2.3), oud, NU)).VR, 'geen');
+t('twee oud, dus niet te vergelijken: geen enkel wiel groen', Object.values(B.wielKleuren(B.stand(ind, druk(2.3, 2.3, 2.3, 2.3), tweeOud, NU))).every(k => k === 'geen'), true);
+t('niets gemeten: vier grijze wielen', Object.values(B.wielKleuren(B.stand(ind, {}, {}, NU))).every(k => k === 'geen'), true);
+const mini = B.mini({ VL: 'ok', VR: 'danger', AL: 'ok', AR: 'warn' });
+t('het autootje heeft vier wielen, elk met zijn eigen kleur', [...mini.matchAll(/class="vbm-wiel (\w+)"/g)].map(m => m[1]).join(','), 'ok,danger,ok,warn');
+t('…en een romp', /class="vbm-romp"/.test(mini), true);
+t('zonder wielen: vier grijze', (B.mini(null).match(/vbm-wiel geen/g) || []).length, 4);
+
 console.log('\n' + (fout ? fout + ' van ' + (ok + fout) + ' FOUT' : 'Alle ' + ok + ' goed'));
 process.exit(fout ? 1 : 0);

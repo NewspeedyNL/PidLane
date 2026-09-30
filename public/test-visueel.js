@@ -136,18 +136,35 @@ const vakken = cijfers.map(c => tekstVak('cijfer ' + c.t, c.x, c.y, G.FS_CIJFER,
     logoVak(),
     // De versnelling staat op de plek van het embleem (nooit samen): op zijn breedste.
     tekstVak('versnelling', G.C, G.Y_LOGO, G.FS_GEAR, '10'),
-    { naam: 'koelwaterstaaf', x0: G.X_STAAF_KOEL - G.STAAF_B / 2, x1: G.X_STAAF_KOEL + G.STAAF_B / 2, y0: G.Y_STAAF, y1: G.Y_STAAF + G.STAAF_H },
-    { naam: 'brandstofstaaf', x0: G.X_STAAF_TANK - G.STAAF_B / 2, x1: G.X_STAAF_TANK + G.STAAF_B / 2, y0: G.Y_STAAF, y1: G.Y_STAAF + G.STAAF_H },
     tekstVak('snelheid', G.C, G.Y_SNEL, G.FS_SNEL, '999'),
     tekstVak('km/h', G.C, G.Y_KMH, G.FS_EENHEID, 'km/h'),
-    icoonVak('koelwatericoon', G.X_LINKS, G.Y_ICOON, G.ICOON),
-    tekstVak('koelwatergetal', G.X_LINKS, G.Y_WAARDE, G.FS_KLEIN, '118°'),
-    icoonVak('accu-icoon', G.X_MIDDEN, G.Y_ICOON, G.ICOON),
-    tekstVak('accugetal', G.X_MIDDEN, G.Y_WAARDE, G.FS_KLEIN, '14,8 V'),
-    icoonVak('brandstoficoon', G.X_RECHTS, G.Y_ICOON, G.ICOON),
-    tekstVak('brandstofgetal', G.X_RECHTS, G.Y_WAARDE, G.FS_KLEIN, '100%'),
     { naam: 'naaf', x0: G.C - G.R_NAAF, x1: G.C + G.R_NAAF, y0: G.C - G.R_NAAF, y1: G.C + G.R_NAAF }
-  ]);
+  ])
+  // De drie rijen (#371): per rij icoon, balkje en getal — uit de TEKENING
+  // gelezen, niet uit G overgenomen, zodat een rij die ergens anders
+  // getekend wordt dan G zegt hier ook meetelt.
+  .concat(rijVakken(plaat));
+function rijVakken(pl) {
+  const uit = [];
+  [...pl.matchAll(/<g id="visp-(\w+)" class="vis-plek vis-rij[^"]*">([\s\S]*?)<\/g>/g)].forEach(m => {
+    const rol = m[1], b = m[2];
+    const ic = /<svg id="visi-\w+" class="vis-icoon" x="([-\d.]+)" y="([-\d.]+)" width="([-\d.]+)" height="([-\d.]+)"/.exec(b);
+    const sp = /<path class="vis-balk-spoor" d="M([-\d.]+) ([-\d.]+)H([-\d.]+)" stroke-width="([-\d.]+)"/.exec(b);
+    const tx = /<text id="visv-\w+" class="vis-klein" x="([-\d.]+)" y="([-\d.]+)" style="font-size:([-\d.]+)px;text-anchor:start"/.exec(b);
+    if (!ic || !sp || !tx) throw new Error('rij ' + rol + ' is niet te lezen — is de tekening veranderd?');
+    uit.push({ naam: rol + '-icoon', x0: +ic[1], y0: +ic[2], x1: +ic[1] + +ic[3], y1: +ic[2] + +ic[4] });
+    uit.push({ naam: rol + '-balkje', x0: +sp[1], x1: +sp[3], y0: +sp[2] - sp[4] / 2, y1: +sp[2] + sp[4] / 2 });
+    // Op zijn breedste: "118°" en "100%" zijn allebei vier tekens.
+    uit.push(tekstVak(rol + '-getal', +tx[1], +tx[2], +tx[3], rol === 'koel' ? '118°' : '100%', true));
+  });
+  return uit;
+}
+waar('drie rijen onder de snelheid: koelwater, gaspedaal, brandstof (#371)',
+  vakken.filter(v => /-balkje$/.test(v.naam)).map(v => v.naam).join(',') === 'koel-balkje,pedaal-balkje,tank-balkje',
+  vakken.filter(v => /-balkje$/.test(v.naam)).map(v => v.naam).join(','));
+waar('de rijen staan onder elkaar, onder km/h', G.RIJ_Y[0] - G.FS_RIJ > G.Y_KMH && G.RIJ_Y[0] < G.RIJ_Y[1] && G.RIJ_Y[1] < G.RIJ_Y[2],
+  JSON.stringify(G.RIJ_Y));
+waar('geen accu meer in de rij: die is een lampje (#371)', !/visv-accu|visp-accu/.test(plaat));
 // Het getal van de onderboog staat met opzet BUITEN de cirkel, eronder. Voor
 // die twee vakken geldt dus een andere regel: helemaal onder de ring (met zijn
 // lijndikte), en binnen de tekening zelf.
@@ -212,6 +229,10 @@ waar('de onderboog raakt de toerenboog niet (tussen 120° en 240° is het gat)',
   waar('tegenproef: een cijfer op de streepjes wordt gezien', bogen.some(b => vakRaaktBoog(fout1, b[1], b[2], b[3], b[4])));
   waar('tegenproef: de snelheid op de naaf wordt gezien', raakt(fout2, vakken.find(v => v.naam === 'naaf')));
   waar('tegenproef: een getal op de onderboog wordt gezien', vakRaaktBoog(fout3, G.R_BOOG, G.B_BOOG, G.O0, G.O1));
+  // Een rij tien eenheden lager ligt met zijn getal op de onderboog.
+  const laag = rijVakken(plaat.replace(/y="272"/g, 'y="284"').replace(/ 272H/g, ' 284H').replace(/y="265"/g, 'y="277"'));
+  waar('tegenproef: een rij die op de onderboog zakt wordt gezien',
+    laag.some(v => bogen.some(b => vakRaaktBoog(v, b[1], b[2], b[3], b[4]))), JSON.stringify(laag.slice(-3)));
 }
 
 // ══ 2. DE AANSTURING ═══════════════════════════════════════════════
@@ -230,8 +251,9 @@ raar.forEach(v => {
   const l = V.stand('laaddruk', v);
   if (!(l.vac >= 0 && l.vac <= 100 && l.boost >= 0 && l.boost <= 100 && (l.vac === 0 || l.boost === 0) && l.tekst.length <= 4))
     buitenLaad.push(String(v) + ' → ' + JSON.stringify(l));
-  // De plekjes: nooit langer dan hun vak (koel 3, tank 3, accu 4 tekens).
-  [['koel', 3], ['tank', 3], ['accu', 4], ['snel', 3]].forEach(x => {
+  // De rijen en het lampje: nooit langer dan hun vak (koel 3, pedaal 3,
+  // tank 3, accu 4 tekens).
+  [['koel', 3], ['pedaal', 3], ['tank', 3], ['accu', 4], ['snel', 3]].forEach(x => {
     const t = V.tekst(x[0], v); if (t.length > x[1]) buitenTekst.push(x[0] + ' ' + String(v) + ' → "' + t + '"');
   });
 });
@@ -239,7 +261,7 @@ waar('toeren: hoek binnen de schaal, vulling 0–100, tekst ≤ 4 tekens', buite
 waar('pedaal: vulling 0–100, tekst ≤ 3 tekens', buitenPedaal.length === 0, buitenPedaal.join(' | '));
 waar('olie: vulling 0–100, tekst ≤ 3 tekens', buitenOlie.length === 0, buitenOlie.join(' | '));
 waar('laaddruk: vacuüm óf druk, nooit allebei, elk 0–100', buitenLaad.length === 0, buitenLaad.join(' | '));
-waar('de plekjes en de snelheid blijven binnen hun vak', buitenTekst.length === 0, buitenTekst.join(' | '));
+waar('de rijen, de accu en de snelheid blijven binnen hun vak', buitenTekst.length === 0, buitenTekst.join(' | '));
 
 waar('4000 rpm staat midden op de schaal (0°)', Math.abs(V.stand('toeren', 4000).hoek) < 0.01, V.stand('toeren', 4000).hoek);
 waar('99999 rpm staat op het laatste streepje, niet erachter', V.stand('toeren', 99999).hoek === G.A1);
@@ -255,7 +277,7 @@ waar('laaddruk met gemeten omgevingsdruk: 180 − 100 kPa = 0,8 bar', Math.abs(V
 waar('laaddruk zonder omgevingsdruk: tegen 101,3 kPa', Math.abs(V.laaddrukNu(180, null) - 0.787) < 1e-9);
 waar('zonder inlaatdruk geen laaddruk', V.laaddrukNu(undefined, 100) === null);
 
-console.log('\n── de kleuren van de plekjes ──');
+console.log('\n── de kleuren van de rijen en het acculampje ──');
 const DK = A.ALL_PID_DEFS['0105'];
 waar('koelwater 45 °C is blauw (koud)', V.plekOordeel('koel', 45, DK) === 'koud');
 waar('koelwater 90 °C is gewoon', V.plekOordeel('koel', 90, DK) === 'ok');
@@ -275,13 +297,16 @@ console.log('\n── 3. welke PID waar staat ──');
 function ind(o) { const c = maak(o); return { c: c, i: c.PLVisueel.indeling() }; }
 let r = ind({ actief: ['010C', '010D', '0149', '015A', '0111', '0104', '0105', '015C', '012F', '0142', '0110', '010B'] });
 waar('de basis: toerental en snelheid', r.i.naald === '010C' && r.i.midden === '010D', JSON.stringify(r.i));
-waar('de plekjes: koelwater, accu, brandstof', r.i.plekken.koel === '0105' && r.i.plekken.accu === '0142' && r.i.plekken.tank === '012F', JSON.stringify(r.i.plekken));
+waar('de rijen: koelwater, gaspedaal, brandstof', r.i.plekken.koel === '0105' && r.i.plekken.pedaal === '0149' && r.i.plekken.tank === '012F' &&
+  Object.keys(r.i.plekken).join() === 'koel,pedaal,tank', JSON.stringify(r.i.plekken));
+waar('de accuspanning hoort bij het lampje rechtsboven (#371)', r.i.lamp.volt === '0142', JSON.stringify(r.i.lamp));
+waar('…en wordt dus niet geremd', r.c.PLVisueel.gebruiktePids(r.i).has('0142'));
 waar('met olie staat olie op de onderboog', r.i.onder && r.i.onder.soort === 'olie' && r.i.onder.pid === '015C', JSON.stringify(r.i.onder));
 waar('luchtmassa staat nergens op de meter', JSON.stringify(r.i).indexOf('0110') < 0);
 waar('motorbelasting staat alleen bij het motorlampje (sinds 26-09)', r.i.lamp.belasting === '0104' &&
   JSON.stringify(Object.assign({}, r.i, { lamp: null })).indexOf('0104') < 0, JSON.stringify(r.i));
 r = ind({ actief: ['010C', '0149', '010B'] });
-waar('zonder olie en zonder bewezen turbo: het gaspedaal', r.i.onder && r.i.onder.soort === 'pedaal' && r.i.onder.pid === '0149', JSON.stringify(r.i.onder));
+waar('zonder olie en zonder bewezen turbo: geen onderboog, het pedaal staat in zijn rij (#371)', r.i.onder === null && r.i.plekken.pedaal === '0149', JSON.stringify(r.i));
 r = ind({ actief: ['010C', '0149', '010B'], turbo: true });
 waar('zonder olie met bewezen turbo: laaddruk', r.i.onder && r.i.onder.soort === 'laaddruk', JSON.stringify(r.i.onder));
 r.c.__turbo = false;
@@ -289,19 +314,19 @@ waar('eenmaal turbo, altijd turbo (de boog wisselt niet van betekenis)', r.c.PLV
 r = ind({ actief: ['010C', '015C', '0149', '010B'], turbo: true });
 waar('olie gaat ook bij een turbo vóór', r.i.onder.soort === 'olie');
 r = ind({ actief: ['010C', '015A', '0111'] });
-waar('zonder 0149 wordt het 015A', r.i.onder && r.i.onder.pid === '015A', JSON.stringify(r.i.onder));
+waar('zonder 0149 wordt het 015A', r.i.plekken.pedaal === '015A', JSON.stringify(r.i.plekken));
 r = ind({ actief: ['010C', '0149', '015A'], dood: ['0149'] });
-waar('een dode 0149 valt door naar 015A', r.i.onder && r.i.onder.pid === '015A');
+waar('een dode 0149 valt door naar 015A', r.i.plekken.pedaal === '015A');
 r = ind({ actief: ['010C', '0149', '015A'], verborgen: ['0149'] });
-waar('een verborgen 0149 valt door naar 015A', r.i.onder && r.i.onder.pid === '015A');
+waar('een verborgen 0149 valt door naar 015A', r.i.plekken.pedaal === '015A');
 r = ind({ actief: ['010C', '015C', '0149'], dood: ['015C'] });
-waar('een dode olie valt door naar het pedaal', r.i.onder && r.i.onder.pid === '0149');
+waar('een dode olie: geen onderboog, het pedaal blijft in zijn rij', r.i.onder === null && r.i.plekken.pedaal === '0149');
 r = ind({ actief: ['010D', '0149'] });
 waar('zonder toerental geen naald (het scherm zegt dat dan)', r.i.naald === null);
 r = ind({ actief: ['010C'] });
-waar('niets voor onderboog of plekjes: die blijven leeg', r.i.onder === null && !r.i.plekken.koel && !r.i.plekken.accu && !r.i.plekken.tank);
+waar('niets voor onderboog, rijen of accu: die blijven leeg', r.i.onder === null && !r.i.plekken.koel && !r.i.plekken.pedaal && !r.i.plekken.tank && !r.i.lamp.volt);
 
-console.log('\n── het gemeten tempo laat een trage onderboog doorvallen ──');
+console.log('\n── het gemeten tempo laat een traag pedaal doorvallen ──');
 function metTempo(actief, pid, stap, n, voorStart) {
   const c = maak({ actief: actief });
   c.PLVisueel.start();
@@ -313,21 +338,34 @@ function metTempo(actief, pid, stap, n, voorStart) {
   return c;
 }
 let c1 = metTempo(['010C', '0149', '0111'], '0149', 1000, 12);
-waar('pedaal elke seconde: valt door naar de volgende (0111)', c1.PLVisueel.indeling().onder.pid === '0111', JSON.stringify(c1.PLVisueel.indeling().onder));
+waar('pedaal elke seconde: valt door naar de volgende (0111)', c1.PLVisueel.indeling().plekken.pedaal === '0111', JSON.stringify(c1.PLVisueel.indeling().plekken));
 c1 = metTempo(['010C', '0149'], '0149', 1000, 12);
-waar('pedaal elke seconde en niets anders: de onderboog blijft leeg', c1.PLVisueel.indeling().onder === null);
+waar('pedaal elke seconde en niets anders: de rij blijft leeg', c1.PLVisueel.indeling().plekken.pedaal === null);
 c1 = metTempo(['010C', '0149'], '0149', 250, 12);
-waar('pedaal elke 250 ms: blijft staan', c1.PLVisueel.indeling().onder.pid === '0149');
+waar('pedaal elke 250 ms: blijft staan', c1.PLVisueel.indeling().plekken.pedaal === '0149');
 c1 = metTempo(['010C', '0149'], '0149', 1000, 5);
-waar('te weinig metingen: nog geen oordeel, blijft staan', c1.PLVisueel.indeling().onder.pid === '0149');
+waar('te weinig metingen: nog geen oordeel, blijft staan', c1.PLVisueel.indeling().plekken.pedaal === '0149');
 c1 = metTempo(['010C', '0149'], '0149', 250, 3, [9000, 8000, 7000, 6000, 5000, 4000, 3000, 2000, 1000]);
-waar('trage metingen van vóór het openen tellen niet mee', c1.PLVisueel.indeling().onder.pid === '0149');
+waar('trage metingen van vóór het openen tellen niet mee', c1.PLVisueel.indeling().plekken.pedaal === '0149');
 c1 = metTempo(['010C', '015C'], '015C', 10000, 12);
 waar('olie om de 10 s blijft staan: die is van nature traag', c1.PLVisueel.indeling().onder.pid === '015C');
 c1 = metTempo(['010C', '0149'], '0149', 1000, 12);
 c1.pidHist['0149'] = c1.pidHist['0149'].map((x, k) => ({ t: x.t - 1000 * k + 200 * k, v: 20 }));
 c1.PLVisueel.beoordeelTempo('0149');
-waar('eenmaal te traag, blijft hij eraf (geen heen-en-weer)', c1.PLVisueel.indeling().onder === null);
+waar('eenmaal te traag, blijft hij eraf (geen heen-en-weer)', c1.PLVisueel.indeling().plekken.pedaal === null);
+// De tik beoordeelt het pedaal zelf: zonder die aanroep blijft een traag
+// pedaal in zijn rij staan, hoe traag het ook binnenkomt.
+{
+  const c = maak({ actief: ['010C', '0149', '0111'] });
+  c.document = { getElementById: function () { return null; }, body: null };
+  c.PLVisueel.start();
+  const t0 = c.PLVisueel.staat().start + c.PLVisueel.AANLOOP_MS;
+  c.pidHist['0149'] = [];
+  for (let k = 0; k < 12; k++) c.pidHist['0149'].push({ t: t0 + k * 1000, v: 20 });
+  c.PLVisueel.tik();
+  waar('de tik beoordeelt het tempo van het pedaal in zijn rij', c.PLVisueel.staat().traag.indexOf('0149') >= 0 && c.PLVisueel.indeling().plekken.pedaal === '0111',
+    JSON.stringify(c.PLVisueel.staat().traag));
+}
 
 console.log('\n── een oud antwoord ──');
 const o = maak({ actief: ['010C'] });
@@ -424,19 +462,12 @@ waar('diesel: 9000 rpm blijft op het laatste streepje', V.stand('toeren', 9000, 
 
 const L = V.aandrijfLampjes;
 waar('het embleem staat in het midden, boven de naaf', /class="vis-logo"/.test(plaat) && !/×1000|vis-rpm/.test(plaat));
-waar('geen aandrijfoordeel: beide lampjes uit', !L(null, 'benzine').motor && !L(null, 'benzine').hybride);
-waar('onbekend: beide lampjes uit', !L({ toestand: 'ONBEKEND' }, 'benzine').motor);
+waar('geen aandrijfoordeel en geen spanning: beide lampjes uit', !L(null, 'benzine').motor && !L(null, 'benzine').accu);
+waar('onbekend: geen motorlampje', !L({ toestand: 'ONBEKEND' }, 'benzine').motor);
 let l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'benzine');
-waar('benzine, motor draait: links "Motor aan", rechts niets', l.motor && l.motor.soort === 'aan' && !l.hybride, JSON.stringify(l));
+waar('benzine, motor draait, geen spanning: links "Motor aan", rechts niets', l.motor && l.motor.soort === 'aan' && !l.accu, JSON.stringify(l));
 l = L({ toestand: 'STARTSTOP', zekerheid: 'hoog' }, 'benzine');
-waar('start/stop-stop: links "Start/stop actief"', l.motor && l.motor.kop === 'Start/stop' && l.motor.waarde === 'actief' && !l.hybride, JSON.stringify(l));
-l = L({ toestand: 'ACCU_RIJDT', zekerheid: 'hoog', bewijstHybride: true }, 'benzine');
-waar('rijden met stille motor bewijst een hybride, ook met "benzine" op het kenteken',
-  l.hybride && l.hybride.soort === 'ev' && l.hybride.waarde === 'elektrisch' && l.motor.soort === 'uit', JSON.stringify(l));
-l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'hybride');
-waar('hybride met draaiende motor: rechts "Hybride actief"', l.hybride && l.hybride.soort === 'hyb', JSON.stringify(l));
-l = L({ toestand: 'ACCU_RIJDT', zekerheid: 'hoog' }, 'ev');
-waar('een volledig elektrische auto krijgt geen motorlampje', !l.motor && l.hybride, JSON.stringify(l));
+waar('start/stop-stop: links "Start/stop actief"', l.motor && l.motor.kop === 'Start/stop' && l.motor.waarde === 'actief', JSON.stringify(l));
 l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'benzine', { belasting: 34.4 });
 waar('motor draait met belasting: "Motor aan" als kop, 34% als waarde, balkje op 34',
   l.motor.kop === 'Motor aan' && l.motor.waarde === '34%' && l.motor.balk === 34, JSON.stringify(l));
@@ -444,20 +475,44 @@ l = L({ toestand: 'STARTSTOP', zekerheid: 'hoog' }, 'benzine', { belasting: 34 }
 waar('in een start/stop-stop geen belasting (de motor staat stil)', l.motor.waarde === 'actief' && l.motor.balk === null, JSON.stringify(l));
 l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'benzine', { belasting: 'NO DATA' });
 waar('onleesbare belasting: gewoon "aan", geen balkje', l.motor.waarde === 'aan' && l.motor.balk === null, JSON.stringify(l));
-l = L({ toestand: 'ACCU_RIJDT', zekerheid: 'hoog' }, 'hybride', { belasting: 20, accu: 61.7 });
-waar('elektrisch rijden: rechts "Elektrisch" met 62% accu, links geen belasting',
-  l.hybride.kop === 'Elektrisch' && l.hybride.waarde === '62%' && l.hybride.balk === 62 && l.motor.balk === null, JSON.stringify(l));
-l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'hybride', { belasting: 48, accu: 55 });
-waar('samen aan: links de belasting, rechts de accu',
-  l.motor.waarde === '48%' && l.hybride.kop === 'Hybride actief' && l.hybride.waarde === '55%', JSON.stringify(l));
-l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'hybride', { accu: 180 });
-waar('een accupercentage buiten 0–100 blijft binnen zijn vak', l.hybride.waarde === '100%' && l.hybride.balk === 100, JSON.stringify(l));
-const Al = maak({ actief: ['010C', '0104', '015B'] });
-const indL = Al.PLVisueel.indeling();
-waar('belasting en accu horen bij de indeling', indL.lamp.belasting === '0104' && indL.lamp.accu === '015B', JSON.stringify(indL.lamp));
-waar('…en worden dus niet geremd', Al.PLVisueel.gebruiktePids(indL).has('0104') && Al.PLVisueel.gebruiktePids(indL).has('015B'));
 l = L({ toestand: 'UIT_VOOR_START', zekerheid: 'laag' }, 'benzine');
 waar('lage zekerheid staat op het lampje (twijfel), niet als feit', l.motor && l.motor.twijfel, JSON.stringify(l));
+
+// De accu rechtsboven (#371): een gewone auto één accu met de spanning.
+l = L({ toestand: 'STARTSTOP', zekerheid: 'hoog' }, 'benzine', { volt: 12.2, rpm: 0 });
+waar('benzine: rechts één accu met "12,2 V", icoon accu, net als het motorlampje een kop en een balkje',
+  l.accu && !l.accu.dubbel && l.accu.icoon === 'accu' && l.accu.kop === 'Accu' && l.accu.waarde === '12,2 V' && l.accu.balk === 30, JSON.stringify(l.accu));
+waar('…groen: 12,2 V bij een stilstaande motor is goed', /\bok\b/.test(l.accu.soort), l.accu.soort);
+l = L({ toestand: 'DRAAIT_STIL', zekerheid: 'hoog' }, 'benzine', { volt: 12.4, rpm: 800 });
+waar('12,4 V met draaiende motor: oranje, de dynamo laadt niet', /\bwarn\b/.test(l.accu.soort), JSON.stringify(l.accu));
+l = L(null, 'benzine', { volt: 11.2 });
+waar('de accu brandt ook zonder oordeel over de motor — en 11,2 V is rood', !l.motor && l.accu && /\bdanger\b/.test(l.accu.soort), JSON.stringify(l));
+l = L(null, 'benzine', { volt: 99 });
+waar('een spanning buiten de schaal: balkje hooguit vol, tekst in zijn vak', l.accu.balk === 100 && l.accu.waarde.length <= 6, JSON.stringify(l.accu));
+l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'benzine', { volt: 'NO DATA' });
+waar('onleesbare spanning op een benzineauto: geen acculampje', !l.accu, JSON.stringify(l));
+
+// Een hybride: twee accu's in één lampje.
+l = L({ toestand: 'ACCU_RIJDT', zekerheid: 'hoog', bewijstHybride: true }, 'benzine', { accu: 61.7, volt: 14.1 });
+waar('rijden met stille motor bewijst een hybride, ook met "benzine" op het kenteken: twee accu\'s',
+  l.accu && l.accu.dubbel && l.accu.icoon === 'accudubbel' && l.accu.soort === 'ev' && l.accu.kop === 'Elektrisch' && l.motor.soort === 'uit', JSON.stringify(l));
+waar('…aandrijfaccu 62% met het balkje, 12V-net 14,1 V', l.accu.hv === '62%' && l.accu.balk === 62 && l.accu.volt === '14,1 V', JSON.stringify(l.accu));
+l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'hybride', { belasting: 48, accu: 55, volt: 12.5, rpm: 1800 });
+waar('hybride, samen aan: links de belasting, rechts "Hybride actief" met 55% en de 12 V oranje (laadt niet)',
+  l.motor.waarde === '48%' && l.accu.kop === 'Hybride actief' && l.accu.soort === 'hyb' && l.accu.hv === '55%' && l.accu.ernst12 === 'warn', JSON.stringify(l));
+l = L({ toestand: 'ACCU_RIJDT', zekerheid: 'hoog' }, 'hybride', { belasting: 20, accu: 61.7 });
+waar('elektrisch rijden: links geen belasting', l.motor.balk === null, JSON.stringify(l));
+l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'hybride', { accu: 180 });
+waar('een accupercentage buiten 0–100 blijft binnen zijn vak', l.accu.hv === '100%' && l.accu.balk === 100, JSON.stringify(l));
+l = L(null, 'hybride', {});
+waar('hybride zonder getallen: toch het dubbele lampje, met streepjes in plaats van nullen',
+  l.accu && l.accu.dubbel && l.accu.hv === '—' && l.accu.volt === '—' && l.accu.balk === null, JSON.stringify(l.accu));
+l = L({ toestand: 'ACCU_RIJDT', zekerheid: 'hoog' }, 'ev', { accu: 80 });
+waar('een volledig elektrische auto: geen motorlampje, wel de twee accu\'s', !l.motor && l.accu && l.accu.dubbel, JSON.stringify(l));
+const Al = maak({ actief: ['010C', '0104', '015B', '0142'] });
+const indL = Al.PLVisueel.indeling();
+waar('belasting, aandrijfaccu en spanning horen bij de indeling', indL.lamp.belasting === '0104' && indL.lamp.accu === '015B' && indL.lamp.volt === '0142', JSON.stringify(indL.lamp));
+waar('…en worden dus niet geremd', ['0104', '015B', '0142'].every(p => Al.PLVisueel.gebruiktePids(indL).has(p)));
 
 // ══ 5. HET TEMPO ═══════════════════════════════════════════════════
 console.log('\n── 5. trager opvragen wat niet op de meter staat ──');
@@ -476,8 +531,9 @@ waar('dicht: niets geremd', ['0104', '0111', '015A', '010E', '0149', '0110'].eve
 R.PLVisueel.start();
 const na = {};
 ALLE.forEach(p => { na[p] = R.pidPollInterval(p); });
-waar('open met olie: gasklep, pedalen, ontsteking en luchtmassa geremd',
-  ['0111', '015A', '010E', '0149', '0110'].every(p => na[p] >= R.PLVisueel.REM_MS), JSON.stringify(na));
+waar('open: gasklep, tweede pedaalsensor, ontsteking en luchtmassa geremd',
+  ['0111', '015A', '010E', '0110'].every(p => na[p] >= R.PLVisueel.REM_MS), JSON.stringify(na));
+waar('open: het pedaal staat in zijn rij en blijft op tempo, ook met olie op de onderboog (#371)', na['0149'] === voor['0149'], JSON.stringify(na));
 waar('open: de motorbelasting staat bij het lampje en blijft op tempo', na['0104'] === voor['0104'], JSON.stringify(na));
 waar('open: toerental en snelheid ongemoeid', ['010C', '010D'].every(p => na[p] === voor[p]), JSON.stringify(na));
 waar('open: koelwater en olie waren al traag en blijven zoals ze waren', na['0105'] === voor['0105'] && na['015C'] === voor['015C']);
@@ -487,7 +543,7 @@ const R2 = maak({ actief: ['010C', '0149', '0111'] });
 R2._focusPIDs = new Set(); R2._pollMult = 1; R2.actiefPollProfiel = () => 'monitor'; R2.PLLoad = { mult: () => 1, cfg: {} };
 vm.runInContext(knip(lees('pidlane-plload.js'), 'function pidPollInterval(pid){', '// Welke PIDs zijn NU "due"', 'pidPollInterval') + '\nwindow.pidPollInterval = pidPollInterval;', R2);
 R2.PLVisueel.start();
-waar('zonder olie staat het pedaal op de onderboog en wordt het níét geremd', R2.pidPollInterval('0149') < R2.PLVisueel.REM_MS && R2.pidPollInterval('0111') >= R2.PLVisueel.REM_MS);
+waar('zonder olie: het pedaal in zijn rij niet geremd, de gasklep wel', R2.pidPollInterval('0149') < R2.PLVisueel.REM_MS && R2.pidPollInterval('0111') >= R2.PLVisueel.REM_MS);
 
 console.log('\n— trekmodus: caravan of beladen (27-09-2026) —');
 {
@@ -533,19 +589,21 @@ console.log('\n— 27-09-2026: trekmodus vanzelf, versnelling, staafjes, sensore
   waar('versnelling: 3 → "3", 0 → "N", −1 → "R", onbekend → ""',
     V.gearTekst(3) === '3' && V.gearTekst(0) === 'N' && V.gearTekst(-1) === 'R' && V.gearTekst(null) === '' && V.gearTekst(undefined) === '');
   const GG = V.G;
-  waar('de staafjes staan aan de binnenkant: tussen het icoon en de accu (28-09-2026)',
-    GG.X_LINKS < GG.X_STAAF_KOEL && GG.X_STAAF_KOEL < GG.X_MIDDEN && GG.X_MIDDEN < GG.X_STAAF_TANK && GG.X_STAAF_TANK < GG.X_RECHTS,
-    [GG.X_LINKS, GG.X_STAAF_KOEL, GG.X_MIDDEN, GG.X_STAAF_TANK, GG.X_RECHTS].join(' < '));
-  waar('koelwaterstaaf: 40 °C leeg, 85 half, 130 vol, 150 blijft vol',
+  waar('per rij van links naar rechts: icoon, balkje, getal (#371)',
+    GG.X_RIJ_ICOON + GG.RIJ_ICOON / 2 < GG.X_BALK0 && GG.X_BALK0 < GG.X_BALK1 && GG.X_BALK1 < GG.X_RIJ_TEKST,
+    [GG.X_RIJ_ICOON, GG.X_BALK0, GG.X_BALK1, GG.X_RIJ_TEKST].join(' < '));
+  waar('pedaalbalkje: 0–100% rechtstreeks, "NO DATA" is null', V.staafDeel('pedaal', 37) === 37 && V.staafDeel('pedaal', 140) === 100 && V.staafDeel('pedaal', 'NO DATA') === null);
+  waar('koelwaterbalkje: 40 °C leeg, 85 half, 130 vol, 150 blijft vol',
     V.staafDeel('koel', 40) === 0 && V.staafDeel('koel', 85) === 50 && V.staafDeel('koel', 130) === 100 && V.staafDeel('koel', 150) === 100);
-  waar('brandstofstaaf: 30% is 30, −5 is 0, geen waarde is null',
+  waar('brandstofbalkje: 30% is 30, −5 is 0, geen waarde is null',
     V.staafDeel('tank', 30) === 30 && V.staafDeel('tank', -5) === 0 && V.staafDeel('tank', 'NO DATA') === null);
 
   const N = (heeft, actief, verb, trek) => V.nodigePids(new Set(heeft), new Set(actief || []), new Set(verb || []), trek);
   let k = N(['010C', '010D', '0105', '0167', '0142', '012F', '015C', '0149', '0104', '010F'], [], [], false);
-  waar('sensoren aanzetten: per keten de eerste die de auto heeft', JSON.stringify(k) === JSON.stringify(['010C', '010D', '015C', '0105', '0142', '012F']), JSON.stringify(k));
+  waar('sensoren aanzetten: per keten de eerste die de auto heeft — ook het pedaal naast de olie en de accuspanning voor het lampje',
+    JSON.stringify(k) === JSON.stringify(['010C', '010D', '015C', '0105', '0149', '012F', '0142']), JSON.stringify(k));
   k = N(['010C', '010D', '0167', '0149'], ['010C', '010D'], [], false);
-  waar('zonder 0105 wordt het 0167, zonder olie het pedaal', JSON.stringify(k) === JSON.stringify(['0149', '0167']), JSON.stringify(k));
+  waar('zonder 0105 wordt het 0167', JSON.stringify(k) === JSON.stringify(['0167', '0149']), JSON.stringify(k));
   k = N(['010C', '010D', '0105', '0167'], ['0167'], [], false);
   waar('staat er al een uit de keten aan, dan komt er niets bij', k.indexOf('0105') < 0, JSON.stringify(k));
   k = N(['010C', '010D', '0105'], [], ['0105'], false);

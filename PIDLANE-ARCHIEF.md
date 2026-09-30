@@ -14,6 +14,49 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-09-2026 — Slim visueel opnieuw ingedeeld (#371)
+
+**De vraag.** Uit het gebruik, met een schermafbeelding van een Mazda CX-5:
+de accuspanning hoort eruit te zien als de motorbelasting (een lampje), op
+een hybride als twee accu's; de drie getallen onderin mogen balkjes worden,
+met het gaspedaal erbij; het bandenlampje een autootje met vier groene
+wielen; en Bewaken en Opnemen stonden dubbel naast de waakronde en de
+bulk-recorder in het vak.
+
+**Wat er gekozen is, en waarom.**
+
+- *Het pedaal verhuist van de onderboog naar een rij.* Twee keer het pedaal
+  (onderboog én rij) zou "één ding, één betekenis" breken, en een onderboog
+  die per auto tussen olie en pedaal wisselt was al lastig te lezen. De
+  onderboog is nu olie of laaddruk; zonder die twee is er géén onderboog,
+  en krimpt de viewBox naar de cirkel (`VB_KORT`) in plaats van een lege
+  strook te laten staan. De tempoproef (800 ms, één keer doorvallen) gaat
+  mee naar de rij: een haperend balkje leest als een haperend pedaal.
+  Gevolg voor de rem: het pedaal staat nu altijd op het scherm en wordt dus
+  nooit meer geremd, ook niet met olie op de onderboog. Dat is bedoeld.
+- *De balkjes zijn paden met `pathLength=100`*, hetzelfde trucje als de
+  bogen, en geen `<rect>` met een breedte: zo kan een waarde het balkje
+  nooit langer maken dan zijn spoor, en blijft "de wijzerplaat is een vaste
+  tekening" waar.
+- *De onderste rij zit krap.* Op y 272 ligt het getal met zijn marge net
+  binnen de onderboog; `test-visueel.js` leest de rijen uit de tekening en
+  rekent dat na, met een tegenproef die de rij twaalf eenheden laat zakken.
+  Wie de rijen verschuift, ziet het daar.
+- *Het acculampje brandt zonder `PLAandrijving`.* Het motorlampje heeft een
+  oordeel over de motor nodig; de accu niet — een spanning is een meting.
+  Op een hybride staat de oude hybride-toestand (elektrisch, actief) in de
+  kop en de kleur van het dubbele lampje; een eigen lampje ervoor was er
+  één te veel in een hoek die maar plaats heeft voor één.
+- *Groen op het autootje betekent gemeten én vergeleken.* `wielKleuren()`
+  geeft een wiel pas een oordeel als zijn druk vers is en er drie verse
+  banden zijn; anders grijs. Een groen wiel dat niets gezien heeft, zou de
+  vorm zijn die een lekke band verstopt.
+- *Opnemen en Bewaken verdwijnen alleen in Slim visueel*, via
+  `body.pl-visueel` in de CSS. De PID-recorder is een andere functie dan de
+  bulk-recorder en blijft in de andere weergaven gewoon staan.
+
+---
+
 ## 30-09-2026 — de bugmelding stuurde het chassisnummer ruw
 
 **De waarneming.** `submitBugReport()` in `pidlane-auth.js` zette

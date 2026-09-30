@@ -1369,6 +1369,18 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vis-lamp.ev    { color:var(--gn); border-color:var(--gn); background:var(--gns); }
 .vis-lamp.hyb   { color:var(--bl); border-color:var(--bl); background:rgba(26,111,255,.12); }
 .vis-lamp.twijfel { opacity:.6; border-style:dashed; }
+/* Het acculampje rechtsboven (#371): groen als de spanning goed is, oranje
+   als een draaiende dynamo niet laadt, rood buiten 12–15 V. Op een hybride
+   twee regels — aandrijfaccu en 12 V — met elk een eigen label ervoor, en
+   zonder kop, zodat het lampje even hoog blijft als het motorlampje. */
+.vis-lamp.accu.ok     { color:var(--gn); border-color:var(--gn); background:var(--gns); }
+.vis-lamp.accu.warn   { color:var(--or); border-color:var(--or); background:var(--ors); }
+.vis-lamp.accu.danger { color:var(--rd); border-color:var(--rd); background:var(--rds); }
+.vis-lamp-tx.vis-lamp-duo { display:grid; grid-template-columns:auto auto; column-gap:7px; row-gap:1px; align-items:baseline; }
+.vis-lamp-duo i { font-style:normal; font-size:9px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; opacity:.7; }
+.vis-lamp-duo b { font-size:12px; text-align:right; }
+.vis-lamp-duo b.warn { color:var(--or); }
+.vis-lamp-duo b.danger { color:var(--rd); }
 /* Het balkje onderin: motorbelasting links, accupercentage rechts. */
 .vis-lamp-balk { position:absolute; left:0; bottom:0; height:3px; background:currentColor; opacity:.75; transition:width .3s linear; }
 .vis-plaat { fill:var(--sur); stroke:var(--bd2); stroke-width:2; }
@@ -1404,26 +1416,39 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 #visg-onder:not(.laaddruk) #vis-vacboog, #visg-onder:not(.laaddruk) #vis-boostboog,
 #visg-onder:not(.laaddruk) .vis-nul, #visg-onder.laaddruk #vis-onderboog,
 #visg-onder:not(.olie) .vis-zone { display:none; }
-#visg-onder.pedaal #vis-onderboog { stroke:var(--gn); }
-/* De plekjes: grijs als het goed is, blauw bij een koude motor, oranje en
-   rood bij de grens, en een streepje zonder icoonkleur als er niets is. */
+/* Zonder olie of bewezen turbo is er geen onderboog (#371): dan ook geen
+   leeg spoor en geen streepje onder de cirkel. */
+#visg-onder.afwezig { display:none; }
+/* De rijen onder de snelheid (#371): grijs icoon, een balkje dat groen vult
+   zolang het goed is, blauw bij een koude motor, oranje en rood bij de
+   grens. Het pedaal is geen toestand maar een voet: dat vult blauw, net als
+   de toerenboog. */
 .vis-plek .vis-icoon { color:var(--tx2); }
 .vis-plek.koud .vis-icoon { color:var(--bl); }
 .vis-plek.warn .vis-icoon, .vis-plek.warn .vis-klein { color:var(--or); fill:var(--or); }
 .vis-plek.danger .vis-icoon, .vis-plek.danger .vis-klein { color:var(--rd); fill:var(--rd); }
 .vis-plek.geen { opacity:.45; }
-/* Staafjes van koelwater en brandstof, en de versnelling in het midden (27-09-2026). */
-.vis-staaf { fill:none; stroke:var(--bd2); stroke-width:1; }
-.vis-staaf-vul { fill:var(--tx2); }
-.vis-plek.koud .vis-staaf-vul { fill:var(--bl); }
-.vis-plek.warn .vis-staaf-vul { fill:var(--or); }
-.vis-plek.danger .vis-staaf-vul { fill:var(--rd); }
+.vis-balk-spoor { fill:none; stroke:var(--sur2); stroke-linecap:butt; }
+.vis-balk { fill:none; stroke:var(--gn); stroke-linecap:butt; transition:stroke-dasharray .3s linear, stroke .3s; }
+.vis-rij.pedaal .vis-balk { stroke:var(--bl); transition:stroke-dasharray .12s linear; }
+.vis-plek.koud .vis-balk { stroke:var(--bl); }
+.vis-plek.warn .vis-balk { stroke:var(--or); }
+.vis-plek.danger .vis-balk { stroke:var(--rd); }
+/* De versnelling in het midden (27-09-2026). */
 .vis-gear { fill:var(--tx); font-weight:800; }
 /* Het bandenlampje (28-09-2026): opent PLBanden. Sinds 30-09 rechtsonder
    in de hoek van de meter, waar de cirkel de ruimte vrijlaat. */
-.vis-lamp-banden { position:absolute; right:0; bottom:0; z-index:1; pointer-events:auto; display:inline-flex; align-items:center; justify-content:center; width:38px; height:34px; padding:0;
+.vis-lamp-banden { position:absolute; right:0; bottom:0; z-index:1; pointer-events:auto; display:inline-flex; align-items:center; justify-content:center; width:40px; height:60px; padding:0;
   border-radius:10px; border:1px solid var(--bd); background:var(--sur); color:var(--tx2); cursor:pointer; }
-.vis-lamp-banden svg { width:20px; height:20px; overflow:visible; }
+/* Het autootje erin (#371, PLBanden.mini): de romp in de kleur van de
+   plaat, de wielen groen als die band gemeten en gelijk is. */
+.vis-lamp-banden .vbm { width:27px; height:50px; overflow:visible; }
+.vis-lamp-banden .vbm-romp { fill:var(--sur2); stroke:var(--bd2); stroke-width:5; }
+.vis-lamp-banden .vbm-ruit { fill:none; stroke:var(--bd2); stroke-width:5; }
+.vis-lamp-banden .vbm-wiel { fill:var(--tx3); opacity:.6; }
+.vis-lamp-banden .vbm-wiel.ok { fill:var(--gn); opacity:1; }
+.vis-lamp-banden .vbm-wiel.warn { fill:var(--or); opacity:1; }
+.vis-lamp-banden .vbm-wiel.danger { fill:var(--rd); opacity:1; }
 .vis-lamp-banden.warn { color:var(--or); border-color:var(--or); background:var(--ors); }
 .vis-lamp-banden.danger { color:var(--rd); border-color:var(--rd); background:var(--rds); }
 .vis-lamp-banden.geen { opacity:.55; }
@@ -1500,6 +1525,10 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
    nóg eens ergens anders. De pillen hangen buiten #pane-live (in #fabLane),
    dus alleen verbergen zolang de live view echt openstaat. */
 body.pl-visueel #wkStrook, body.pl-visueel #aandrijfBalk { display:none !important; }
+/* #371: in Slim visueel staat de waakronde al op de rail en de bulk-recorder
+   in het meldingenvak. Bewaken is dezelfde waakronde, en de PID-recorder
+   (Opnemen) is een aparte functie die bij de andere weergaven blijft. */
+body.pl-visueel #plLiveWaak, body.pl-visueel #plLiveRec { display:none !important; }
 body.pl-visueel:has(#pane-live.active) #monChipFab,
 body.pl-visueel:has(#pane-live.active) #blkChipFab { display:none !important; }
 .vis-leeg { display:flex; flex-direction:column; align-items:flex-start; gap:10px; padding:16px; border:1px solid var(--bd); border-radius:var(--r); background:var(--sur); color:var(--tx2); font-size:13px; }
