@@ -1,0 +1,1097 @@
+From 2a28ac8e5391febea29ab410491a357ec1312059 Mon Sep 17 00:00:00 2001
+From: Claude <claude@pidlane.nl>
+Date: Wed, 30 Sep 2026 15:46:19 +0000
+Subject: [PATCH] =?UTF-8?q?Handleiding=20in=20de=20app:=20Meer=20=E2=86=92?=
+ =?UTF-8?q?=20Handleiding,=20uitroeptekens=20met=20uitleg=20bij=20knoppen?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Tekst los in pidlane-help-inhoud.js; test-help.js vangt een hernoemd anker, knoplabel of een prijs.
+---
+ CHANGELOG.md                  |  19 ++
+ CLAUDE.md                     |   4 +
+ PIDLANE.md                    |   3 +
+ plmutate.sh                   |   7 +
+ public/index.html             |   7 +
+ public/pidlane-bedrading.js   |   2 +-
+ public/pidlane-help-inhoud.js | 295 ++++++++++++++++++++++++++++
+ public/pidlane-help.js        | 356 ++++++++++++++++++++++++++++++++++
+ public/pidlane-testrun.js     |  23 +++
+ public/pidlane.css            |  53 +++++
+ public/test-help.js           | 162 ++++++++++++++++
+ 11 files changed, 930 insertions(+), 1 deletion(-)
+ create mode 100644 public/pidlane-help-inhoud.js
+ create mode 100644 public/pidlane-help.js
+ create mode 100644 public/test-help.js
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 6654a92..4fa44d2 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -9,6 +9,25 @@
+ > Nieuwste boven, zoals het al was. Bijwerken hoort nog steeds bij elke
+ > oplevering (zie CLAUDE.md), alleen voortaan hier.
+ 
++ ═══════════════════════════════════════════════════════════
++ 30-09-2026 — Een handleiding in de app
++ ═══════════════════════════════════════════════════════════
++
++ - Meer → 📘 Handleiding opent een venster met de uitleg van de app:
++   beginnen, verbinden, het startscherm, Check mijn auto, Live, delen en
++   meekijken, rapporten, het menu Meer, account en privacy. Met een
++   zoekveld, een inhoudsopgave en veelgestelde vragen.
++ - Op het inlogscherm en in het verbindscherm staat een link ernaartoe:
++   wie niet kan inloggen of verbinden, heeft het menu nog niet.
++ - Bij elf knoppen staat een klein geel uitroepteken. Een tik erop geeft
++   een korte uitleg en drukt de knop zelf niet in. Uit te zetten met
++   Meer → ❗ Uitleg bij knoppen.
++ - Contact loopt via de bestaande "Meld een bug"; er is geen tweede
++   melder bijgekomen.
++ - De tekst staat los van de code in pidlane-help-inhoud.js. test-help.js
++   wordt rood als een knop met een uitroepteken hernoemd wordt, als een
++   menulabel in de tekst niet meer bestaat, of als er een prijs in komt.
++
+  ═══════════════════════════════════════════════════════════
+  30-09-2026 — Snelle sensoren op hun eigen tempo
+  ═══════════════════════════════════════════════════════════
+diff --git a/CLAUDE.md b/CLAUDE.md
+index fe6d107..7ba1fb7 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -354,6 +354,10 @@ zetten; hij wordt dan rood met de gemeten waarde erbij.
+   blijft staan — zie §19 van `PIDLANE.md` (626 stille catches).
+ - Geen buildstap, geen frameworks, geen `src/`-map. Onderhoudslast is een harde
+   ontwerprandvoorwaarde: dit is een soloproject naast een baan.
++- **Raak je een knop, menuregel of venster aan dat in de handleiding staat, pas dan
++  `public/pidlane-help-inhoud.js` in dezelfde commit aan.** `test-help.js` vangt een
++  hernoemd anker of knoplabel; wat een knop *doet* ziet hij niet — dat lees je na.
++  Zet daarna `gecontroleerd` op de datum en de versie. Geen prijzen in die tekst.
+ - Eén ding heeft één betekenis. Een class, een vlag of een element met twee
+   rollen is hier al drie keer een bug geweest.
+ 
+diff --git a/PIDLANE.md b/PIDLANE.md
+index c8af675..03eef77 100644
+--- a/PIDLANE.md
++++ b/PIDLANE.md
+@@ -146,6 +146,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
+ 
+ > **De volgorde is functioneel, niet cosmetisch.** Zie §5.
+ > 53 script-tags: `capacitor.js`, `config.js` en 51 `pidlane-*.js`-modules.
++> 30-09: `pidlane-help-inhoud.js` en `pidlane-help.js` erbij, direct vóór `pidlane-bedrading.js`.
+ > (21-08: `pidlane-gps.js` eruit, `pidlane-run.js` erbij — telling ongewijzigd.
+ > 16-09: `pidlane-adapter.js` erbij, één tag meer.
+ > 24-09: `pidlane-intro.js` erbij, als eerste script in de body.
+@@ -262,6 +263,8 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
+ | 58 | `pidlane-render.js` | 3 | `PLRender` — **meldt na een herstart of er een rendercrash aan voorafging** (#229, 22-09-2026). De native kant (`native/PLRender.java`) vangt `onRenderProcessGone` af, houdt het proces in leven en bouwt de activiteit opnieuw op; deze module vraagt daarna één keer `PLRender.laatste()` op en zet het moment plus de oorzaak (interne fout of geheugen) als fout in het logboek, en dus in D1. Zonder die regel leest een rendercrash als "het proces was bevroren". Test: `test-nativeschil.js` |
+ | 59 | `pidlane-sppproef.js` | 7 | `PLSppProef` — **laat de SPP-plugin draden achter?** (#352, 30-09-2026). Acht knoppen in het Admin-menu: draden meten (native `PLDraden`), responstijd meten (15× `ATRV` en `010C1`), een mislukte verbinding nabootsen (connect naar een adres dat niet bestaat), de volle proef met oordeel, herverbinden langs het dode-socketpad, patchstatus, de patch voor de proef aan/uit, en 🧹 proces beëindigen. Elke busproef loopt via `PLScanSlot.doe()`. Na een nabootsing zonder patch zet hij `pl_spp_aangetast` met het proces-ID (pid + starttijd van `PLDraden`) in localStorage — hij geldt zo lang als dát proces leeft, niet de pagina: wegvegen terwijl de meetdienst draait laat het proces staan — en dan geeft `PLAdapter` voor #302 LET OP in plaats van FOUT. Tests: `test-sppproef.js`, `test-spppatch.js`, `test-nativeschil.js` |
+ | 60 | `pidlane-snelproef.js` | 3 | `PLSnelProef` — **welke ingreep maakt de verbinding weer snel?** (#352/#302, 30-09-2026). Eén knop in het Admin-menu opent een paneel met zes genummerde stappen: nulmeting, verse socket, andere leesmanier (events ↔ pollen, altijd teruggezet), Bluetooth van de auto uit, adapter los en weer vast, app herstarten. Elke stap meet 15 s gewoon pollen (`PLBus.stats()`) plus de responstijd via `PLSppProef`, en vergelijkt met de stap ervóór. Het oordeel gaat over de responstijd (ATRV, anders de tijd per verzoek; doel 80 ms); verzoeken/s en bus bezet staan erbij als context, want dat tempo komt uit de pollus en niet uit de verbinding. De uitslag noemt de eerste stap die de responstijd onder de 80 ms bracht. Stand in localStorage (`pl_snelproef`), zodat stap 6 een herstart overleeft; een sessionStorage-markering stelt vast dát er herstart is. Tests: `test-snelproef.js`, `bproef-snelproef.js` |
++| 61 | `pidlane-help-inhoud.js` | 19 | `PL_HULP` — **de tekst van de handleiding**, alleen data (30-09-2026): onderwerpen, veelgestelde vragen en de uitroeptekens met hun anker. Bijwerken = alleen dit bestand; hoe staat in de kop. `test-help.js` zoekt elk anker en elk knoplabel in de app en weigert prijzen en "anoniem" |
++| 62 | `pidlane-help.js` | 16 | `PLHelp` — **de handleiding in de app**: venster met inhoud, zoeken en vragen (Meer → 📘 Handleiding, plus een link op het inlog- en verbindscherm), en kleine uitroeptekens op knoppen met een korte uitleg. Een tik op een ! wordt in de capture-fase afgevangen en bereikt de knop niet. Uit te zetten met Meer → ❗ Uitleg bij knoppen. Geen eigen contactformulier: "Meld een bug" opent `openBugReport()` |
+ | — | `pidlane-bedrading.js` | 20 | `PLBedrading` — moet ALTIJD achteraan; controleert dat elke `typeof X === 'function'`-guard een geregistreerde naam is. Zie §19 |
+ 
+ ### `native/` — de enige map met code die niet in de browser draait (11-09-2026)
+diff --git a/plmutate.sh b/plmutate.sh
+index d8f7c35..102c735 100755
+--- a/plmutate.sh
++++ b/plmutate.sh
+@@ -1497,6 +1497,13 @@ MUTATIES=(
+ "public/pidlane-plload.js@@    const t=_pidDead.has(pid) ? (_pidDeadSince[pid]||0)+PID_REPROBE_MS : (_pidNextPoll[pid]||0);@@    const t=(_pidNextPoll[pid]||0);@@test-pollritme.js@@een gesnoeide PID staat altijd aan de beurt en houdt de pollus wakker voor niets"
+ "public/pidlane-data.js@@  if(!tok && naam!=='poll' && window.PLBus.owner()==='poll')@@  if(false)@@test-busslot.js@@de monitor grijpt naast het gat tussen twee pollrondes en komt er vrijwel nooit meer tussen"
+ "public/pidlane-data.js@@  if(!tok && naam!=='poll' && window.PLBus.owner()==='poll')@@  if(!tok && naam!=='poll')@@test-busslot.js@@ook achter een zware lezer gaat iedereen in de rij staan"
++
++# De handleiding (30-09-2026). Drie fouten die gewoon gebeuren: een knop krijgt
++# een andere id, een menuregel een andere tekst, en er sluipt een prijs in de
++# tekst. De eerste twee laten een ! of een beschrijving stil verouderen.
++"public/index.html@@id=\"plLiveDeel\"@@id=\"plLiveDelen\"@@test-help.js@@een knop met een uitroepteken is hernoemd en de tip vindt hem niet meer"
++"public/index.html@@🩺 Check na verbinden<span@@🩺 Check na het verbinden<span@@test-help.js@@een menuregel is hernoemd en de handleiding noemt de oude tekst"
++"public/pidlane-help-inhoud.js@@Codes worden met de hand verstuurd.@@Codes kosten € 4,99.@@test-help.js@@er staat een prijs in de handleiding"
+ )
+ 
+ echo
+diff --git a/public/index.html b/public/index.html
+index 3243bd0..cac9677 100644
+--- a/public/index.html
++++ b/public/index.html
+@@ -167,6 +167,7 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
+          leest en die hoort v3.0.0 te tonen, niet "testrun 4.9". -->
+     <span id="loginBuild" style="font-size:10px;opacity:.55;letter-spacing:.3px"></span><br>
+     <a href="https://www.pidlane.nl" target="_blank" rel="noopener" class="lg-site">🌐 www.pidlane.nl</a>
++    · <a href="#" class="lg-site" id="lgHandleiding" onclick="event.preventDefault();PLHelp.open()">📘 Handleiding</a>
+     <div style="padding-top:11px">
+       <button id="plFrisBtn" class="lg-fris" onclick="plHardReload(this)">🔄 Nieuwste versie laden</button>
+     </div>
+@@ -420,6 +421,7 @@ function closeConnOv(){
+   <div class="lg-foot">
+     Niet in de auto? Kenteken-check, APK, foutcodes en je rapporten werken ook zonder adapter.<br>
+     <a href="https://www.pidlane.nl" target="_blank" rel="noopener" class="lg-site">🌐 www.pidlane.nl</a>
++    · <a href="#" class="lg-site" onclick="event.preventDefault();PLHelp.open('verbinden')">📘 Hulp bij verbinden</a>
+   </div>
+ </div>
+ 
+@@ -912,11 +914,14 @@ function closeConnOv(){
+              erbij. Staat vanzelf aan voor een account dat geen klant is. -->
+         <button class="kebab-item kebab-schakel" id="kbGarageModus" role="switch" aria-checked="false" onclick="PLNav.wisselGarage()">🔧 Garagemodus<span class="kb-sw" aria-hidden="true"></span></button>
+         <button class="kebab-item kebab-schakel" id="kbAutoCheck" role="switch" aria-checked="true" onclick="PLNav.wisselAutoCheck()">🩺 Check na verbinden<span class="kb-sw" aria-hidden="true"></span></button>
++        <button class="kebab-item kebab-schakel" id="kbHelpTips" role="switch" aria-checked="true" onclick="PLHelp.wisselTips()">❗ Uitleg bij knoppen<span class="kb-sw" aria-hidden="true"></span></button>
+         <button class="kebab-item" onclick="closeKebab();openGearInstellingen()">🔢 Versnellingsindicator</button>
+         <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
+         <!-- De schakelaar voor de bevindingenbalk (issue #60) stond hier tot
+              08-09-2026 en zit nu in het Run-venster rechtsboven (#123). -->
+         <div class="kebab-kop">Hulp</div>
++        <!-- Handleiding (30-09-2026): pidlane-help.js, tekst in pidlane-help-inhoud.js. -->
++        <button class="kebab-item" id="kbHandleiding" onclick="closeKebab();PLHelp.open()">📘 Handleiding</button>
+         <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
+         <button class="kebab-item" onclick="closeKebab();openLogboek()">📜 Logboek</button>
+         <button class="kebab-item" onclick="closeKebab();openPrivacy()">🔒 Privacy</button>
+@@ -2085,6 +2090,8 @@ function closeConnOv(){
+ <script src="pidlane-opdracht.js"></script><!-- PLOpdracht (#241): de meetopdracht voor de volgende testrun, als DATA uit Airtable; keurt zelf wat er binnenkomt en wordt alleen door de testrun gebruikt -->
+ <script src="pidlane-bron.js"></script><!-- PLBron (#242): op welke bron draait deze app — banner bij een preview, wisselknop in het Admin-menu -->
+ <script src="pidlane-meetkamer.js"></script><!-- PLMeetkamer (#246): de lus in beeld in het testrunscherm; moet ná pidlane-testrun.js, pidlane-opdracht.js en pidlane-bron.js — hij leest die drie en meet zelf niets -->
++<script src="pidlane-help-inhoud.js"></script><!-- PL_HULP: de tekst van de handleiding — alleen data, bijhouden zie de kop van het bestand -->
++<script src="pidlane-help.js"></script><!-- PLHelp: het handleidingvenster en de uitroeptekens bij knoppen; leest PL_HULP -->
+ <script src="pidlane-bedrading.js"></script><!-- bedradingscontrole: bestaat alles wat modules van elkaar verwachten — MOET als laatste -->
+ 
+ <script>
+diff --git a/public/pidlane-bedrading.js b/public/pidlane-bedrading.js
+index 560af48..180fb34 100644
+--- a/public/pidlane-bedrading.js
++++ b/public/pidlane-bedrading.js
+@@ -97,7 +97,7 @@ var KRITIEK = [
+   // de meetopdracht op nog niet staan zonder dat iemand ziet waarom.
+   'plMarkeer',
+   'magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
+-  'openCaravan','openLogboek','openRitAnalyse',
++  'openCaravan','openLogboek','openBugReport','openPrivacy','openRitAnalyse',
+   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
+   'brandstofPoort','plBevestig','plDemoZonderLogin','plHerijkTick','plLokaalLog','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
+   // Blok 5 vraagt het begin van een analyse achter een guard (#290).
+diff --git a/public/pidlane-help-inhoud.js b/public/pidlane-help-inhoud.js
+new file mode 100644
+index 0000000..a5783d3
+--- /dev/null
++++ b/public/pidlane-help-inhoud.js
+@@ -0,0 +1,295 @@
++/* ══════════════════════════════════════════════════════════════════
++   pidlane-help-inhoud.js — PL_HULP: de tekst van de handleiding
++   ──────────────────────────────────────────────────────────────────
++   Alleen data. De weergave staat in pidlane-help.js (PLHelp). Tekst
++   bijwerken = alleen dit bestand aanraken.
++
++   HOE DIT BIJ TE HOUDEN
++   1. Verander je een knop, een label of een venster dat hieronder genoemd
++      wordt, pas dan in dezelfde commit de tekst hier aan.
++   2. Een uitroepteken (tips[]) hangt aan een echte knop via `anker` (een
++      CSS-selector). `bron` zegt in welk bestand dat element staat.
++      test-help.js zoekt elk anker in die bron op: hernoem of verwijder je de
++      knop, dan wordt de test rood met de naam van de tip erbij.
++   3. Zet `gecontroleerd` op de datum en de appversie waartegen je de tekst
++      hebt nagelopen. De handleiding toont die onderaan; staat daar een oude
++      versie, dan weet de lezer dat hij voorzichtig moet zijn.
++   4. Afbeeldingen en video's: zet het bestand in public/handleiding/ en
++      noem het in `media` van een onderwerp. test-help.js controleert dat het
++      bestand bestaat.
++   5. Geen prijzen in deze tekst, en nooit "anoniem" voor wat een pseudoniem
++      is (CLAUDE.md, privacy). test-help.js bewaakt beide.
++
++   OPMAAK VAN `tekst`
++   Gewone HTML. Twee eigen attributen:
++     <a data-hulp="verbinden">…</a>      — springt naar een ander onderwerp
++     <button data-hulp-doe="bug">…</button> — opent iets in de app;
++                                            zie DOE in pidlane-help.js
++   ══════════════════════════════════════════════════════════════════ */
++var PL_HULP = {
++
++  gecontroleerd: { datum: '2026-09-30', app: '3.1.0' },
++
++  groepen: [
++    { id: 'start', titel: 'Beginnen' },
++    { id: 'gebruik', titel: 'Gebruiken' },
++    { id: 'account', titel: 'Account en gegevens' },
++    { id: 'hulp', titel: 'Hulp en contact' }
++  ],
++
++  onderwerpen: [
++
++    /* ─────────────── BEGINNEN ─────────────── */
++    { id: 'wat', groep: 'start', titel: 'Wat doet PidLane?',
++      tekst:
++        '<p>PidLane leest je auto uit via een OBD2-adapter in de diagnosepoort: foutcodes, keuringsstatus en live metingen. ' +
++        'Daarnaast kun je zonder adapter een kenteken opzoeken, een foutcode opzoeken of een dashboardlampje nakijken.</p>' +
++        '<p>Nog geen adapter? Probeer alles met de demo: op het inlogscherm <b>Try demo — no adapter needed</b>, ' +
++        'of in het verbindscherm <b>Simuleer verbinding</b>. In de demo wordt niets bewaard.</p>',
++      zie: ['verbinden', 'zonder'] },
++
++    { id: 'navigatie', groep: 'start', titel: 'De onderbalk',
++      tekst:
++        '<p>Na het inloggen (of in de demo) staat onderin een balk met vier tabs:</p>' +
++        '<ul>' +
++        '<li><b>Mijn auto</b> — het startscherm, met <a data-hulp="check">Check mijn auto</a> en vier tegels.</li>' +
++        '<li><b>Live</b> — de metingen van de auto op dit moment. Zie <a data-hulp="live">Live</a>.</li>' +
++        '<li><b>Rapporten</b> — wat PidLane heeft vastgelegd. Een getal op de tab zegt hoeveel.</li>' +
++        '<li><b>Meer</b> — account, instellingen en hulp. Nog eens tikken sluit het menu. Zie <a data-hulp="meer">Meer</a>.</li>' +
++        '</ul>',
++      zie: ['startscherm', 'meer'] },
++
++    { id: 'startscherm', groep: 'start', titel: 'Het startscherm',
++      tekst:
++        '<p>Bovenaan staat <a data-hulp="check">Check mijn auto</a>: foutcodes en keuringsstatus in ongeveer 30 seconden.</p>' +
++        '<p>Daaronder, onder <b>Ik wil…</b>, vier tegels. Elke tegel opent een korte wizard voor die vraag:</p>' +
++        '<ul>' +
++        '<li><b>Er is iets mis</b> — een klacht, lampje of geluid.</li>' +
++        '<li><b>Kopen of verkopen</b> — staat, historie en waarde.</li>' +
++        '<li><b>Rit starten</b> — meekijken, zuinig rijden, caravan.</li>' +
++        '<li><b>Voorbereiden</b> — winter, lange rit, onderhoud.</li>' +
++        '</ul>' +
++        '<p>In de <a data-hulp="garagemodus">garagemodus</a> staat er ook <b>Alle functies</b>, voor wie precies weet wat hij zoekt.</p>',
++      zie: ['check', 'zonder'] },
++
++    { id: 'zonder', groep: 'start', titel: 'Zonder adapter',
++      tekst:
++        '<p>Op het startscherm staat een kaart voor als je niet in de auto zit. Daarop:</p>' +
++        '<ul>' +
++        '<li><b>Kenteken-check</b> — APK, verzekering, NAP en terugroepacties uit het RDW.</li>' +
++        '<li><b>Lampje brandt?</b> — wat een dashboardlampje betekent en of je mag doorrijden.</li>' +
++        '<li><b>Foutcode opzoeken</b> — bijvoorbeeld P0301. Dit staat in de app zelf.</li>' +
++        '<li><b>Simuleer verbinding</b> — alles proberen, er wordt niets bewaard.</li>' +
++        '</ul>' +
++        '<p>Na een kenteken-check kun je <b>Dit is mijn auto</b> kiezen. Staat er een APK-datum bij, dan verschijnt ook <b>Herinner me</b>.</p>' +
++        '<p>In het verbindscherm brengt <b>Verder zonder adapter</b> je hier ook.</p>',
++      zie: ['wat', 'verbinden'] },
++
++    { id: 'verbinden', groep: 'start', titel: 'Verbinden met de auto',
++      tekst:
++        '<ol>' +
++        '<li>Steek de adapter in de OBD-poort. Die zit meestal onder het dashboard aan de bestuurderskant.</li>' +
++        '<li>Zet het contact aan.</li>' +
++        '<li>Zet Bluetooth aan op je telefoon.</li>' +
++        '<li>Tik op <b>⚡ Plug in. Let\'s go.</b> De eerste keer legt PidLane eerst uit waarvoor Bluetooth nodig is.</li>' +
++        '<li>PidLane zoekt de adapter en daarna de auto. Na afloop zie je de sensoren van jouw auto.</li>' +
++        '</ol>' +
++        '<p>Staat <b>Check na verbinden</b> aan (in Meer), dan opent <a data-hulp="check">Check mijn auto</a> daarna één keer vanzelf.</p>' +
++        '<p>In hetzelfde scherm: <b>Simuleer verbinding</b> (demo), <b>Verder zonder adapter</b> en ' +
++        '<b>Meekijken met sessie (expert)</b> voor wie op afstand wil meekijken. Zie <a data-hulp="delen">Delen en meekijken</a>.</p>',
++      zie: ['verbinden-mislukt', 'status'] },
++
++    { id: 'verbinden-mislukt', groep: 'start', titel: 'Verbinden lukt niet',
++      tekst:
++        '<ul>' +
++        '<li>Staat Bluetooth aan? Staat het contact aan? Brandt er een lampje op de adapter?</li>' +
++        '<li>Gebruikt een andere app de adapter? Sluit die eerst.</li>' +
++        '<li>Trek de adapter even los, wacht tien seconden en steek hem terug.</li>' +
++        '<li>Probeer opnieuw met <b>⚡ Plug in. Let\'s go.</b></li>' +
++        '</ul>' +
++        '<p>Lukt het nog steeds niet? <button type="button" data-hulp-doe="bug">🐞 Meld een bug</button> — ' +
++        'de melding neemt je toestel, appversie en de laatste foutmeldingen van de verbinding vanzelf mee.</p>',
++      zie: ['verbinden', 'contact'] },
++
++    /* ─────────────── GEBRUIKEN ─────────────── */
++    { id: 'check', groep: 'gebruik', titel: 'Check mijn auto',
++      tekst:
++        '<p>Leest de foutcodes en de keuringsstatus uit en zet de uitkomst in één stoplicht. Daaronder staan de codes en drie vervolgstappen:</p>' +
++        '<ul>' +
++        '<li><b>🔧 Oorzaak laten zoeken</b></li>' +
++        '<li><b>🔩 Welk onderdeel?</b></li>' +
++        '<li><b>🩺 Grondiger laten kijken</b></li>' +
++        '</ul>' +
++        '<p><b>💾 Bewaren</b> legt de uitlezing vast.</p>' +
++        '<p><b>Foutcodes wissen</b> kan alleen als de voorwaarden kloppen: een verse uitlezing, contact aan, motor uit en de auto staat stil. ' +
++        'Niet op afstand. Klopt er iets niet, dan zegt het venster wat. Bewaar de codes eerst: na wissen zijn ze weg.</p>',
++      zie: ['startscherm', 'rapporten'] },
++
++    { id: 'status', groep: 'gebruik', titel: 'De statusknop bovenin',
++      tekst:
++        '<p>Rechtsboven staat één knop met een gekleurde stip en de naam van de auto, of <b>Niet verbonden</b>. ' +
++        'De kleur is de ernstigste van voertuig, OBD en AI samen.</p>' +
++        '<p>Tik erop voor vier losse knoppen: <b>Voertuig</b> (wat PidLane over de auto weet), <b>OBD</b> (hoe de verbinding het doet), ' +
++        '<b>AI</b> en <b>Run</b> (wat er op de achtergrond draait). Een getal bij de statusknop zegt hoeveel dingen er draaien.</p>',
++      zie: ['verbinden'] },
++
++    { id: 'live', groep: 'gebruik', titel: 'Live',
++      tekst:
++        '<p>De tab <b>Live</b> toont de metingen van de auto op dit moment. Bovenaan kies je hoe je kijkt:</p>' +
++        '<ul>' +
++        '<li><b>Trends</b> — met grafiek.</li>' +
++        '<li><b>Getallen</b> — alleen de waarden.</li>' +
++        '<li><b>Puntjes</b> — compact.</li>' +
++        '<li><b>Slim</b> — de standaard: dashboardwaarden groot, trends alleen waar iets beweegt.</li>' +
++        '<li><b>Visueel</b> — één vaste meter met een rand voor koelwater, olie, tank en accu.</li>' +
++        '</ul>' +
++        '<p>Een dubbeltik op een tegel verbergt hem. Hij wordt wel gewoon gemeten en staat daarna in een strook om terug te halen.</p>' +
++        '<p>Onder de meters staan <b>⏺ Opnemen</b>, <b>📡 Deel live</b> en <b>🔭 Meekijken</b>. In de garagemodus ook <b>◉ Bewaken</b>.</p>',
++      zie: ['opnemen', 'delen'] },
++
++    { id: 'opnemen', groep: 'gebruik', titel: 'Opnemen',
++      tekst:
++        '<p><b>⏺ Opnemen</b> opent de recorder. Kies de sensoren, tik op <b>● Start opname</b>, rijd en laat het probleem gebeuren. ' +
++        'Stop daarna de opname.</p>',
++      zie: ['live', 'rapporten'] },
++
++    { id: 'delen', groep: 'gebruik', titel: 'Delen en meekijken',
++      tekst:
++        '<p><b>📡 Deel live</b> laat een expert op afstand meekijken. De expert ziet je sensordata en kan zelf waarden en foutcodes opvragen — ' +
++        'alleen lezen: op afstand kan er niets aan de auto veranderd worden.</p>' +
++        '<ol>' +
++        '<li>Tik op <b>Start delen</b>.</li>' +
++        '<li>Geef de expert de <b>meekijk-code</b>, laat hem de QR scannen of stuur de link.</li>' +
++        '<li>Je ziet hoeveel experts meekijken. Klaar? Tik op <b>Stop delen</b>.</li>' +
++        '</ol>' +
++        '<p>Ben jij de expert? Tik op <b>🔭 Meekijken</b> en typ de code, of plak de link die je kreeg.</p>' +
++        '<p>De data loopt via de beveiligde PidLane-server. De link verloopt vanzelf met de sessie.</p>',
++      zie: ['live'] },
++
++    { id: 'rapporten', groep: 'gebruik', titel: 'Rapporten',
++      tekst:
++        '<p>De tab <b>Rapporten</b> toont wat PidLane in deze sessie heeft vastgelegd, zoals bewaarde uitlezingen en analyses.</p>' +
++        '<p>Met een klantaccount staan je rapporten en ritten ook bij je auto: <b>Meer → Mijn voertuigen</b>.</p>',
++      zie: ['check', 'account'] },
++
++    { id: 'afsluiten', groep: 'gebruik', titel: 'Rit beëindigen en afsluiten',
++      tekst:
++        '<p>Onderaan het menu Meer staat <b>⏏ Afsluiten</b>. Loopt er een rit, dan heet de knop <b>🏁 Rit beëindigen</b>.</p>' +
++        '<p>Je kiest daarna wat er gebeurt: <b>Verbonden blijven</b>, <b>Verbinding verbreken</b> of <b>App sluiten</b>. Uitloggen zit er ook bij.</p>',
++      zie: ['meer'] },
++
++    { id: 'meer', groep: 'gebruik', titel: 'Het menu Meer',
++      tekst:
++        '<p><b>Account</b></p>' +
++        '<ul><li><b>👤 Mijn account en tegoed</b></li><li><b>🚗 Mijn voertuigen</b></li></ul>' +
++        '<p><b>Instellingen</b></p>' +
++        '<ul>' +
++        '<li><b>⚙️ Mijn voorkeuren</b></li>' +
++        '<li><b>🔧 Garagemodus</b> — zie <a data-hulp="garagemodus">Garagemodus</a>.</li>' +
++        '<li><b>🩺 Check na verbinden</b> — opent Check mijn auto vanzelf, één keer per sessie.</li>' +
++        '<li><b>🔢 Versnellingsindicator</b></li>' +
++        '<li><b>📖 Tekstgrootte</b> — S, M of L.</li>' +
++        '<li><b>❗ Uitleg bij knoppen</b> — zet de kleine uitroeptekens aan of uit.</li>' +
++        '</ul>' +
++        '<p><b>Hulp</b></p>' +
++        '<ul><li><b>📘 Handleiding</b> — dit scherm.</li><li><b>🐞 Meld een bug</b></li><li><b>📜 Logboek</b></li><li><b>🔒 Privacy</b></li></ul>' +
++        '<p>Onderaan: <a data-hulp="afsluiten">Afsluiten</a>. Welke regels je ziet hangt af van je account.</p>',
++      zie: ['uitroeptekens', 'garagemodus'] },
++
++    { id: 'garagemodus', groep: 'gebruik', titel: 'Garagemodus',
++      tekst:
++        '<p>Zet de vakgereedschappen erbij, zoals <b>Alle functies</b> op het startscherm en <b>◉ Bewaken</b> bij Live. ' +
++        'Voor een account dat geen klant is staat hij vanzelf aan. Aan- en uitzetten doe je in Meer.</p>',
++      zie: ['meer'] },
++
++    { id: 'uitroeptekens', groep: 'gebruik', titel: 'De uitroeptekens',
++      tekst:
++        '<p>Bij sommige knoppen staat een klein geel <b>!</b>. Tik erop voor een korte uitleg; de knop zelf wordt dan niet ingedrukt. ' +
++        'Onder de uitleg staat een link naar het onderwerp in deze handleiding.</p>' +
++        '<p>Ken je de app? Zet ze uit met <b>Meer → ❗ Uitleg bij knoppen</b>. Deze handleiding blijft altijd bereikbaar.</p>',
++      zie: ['meer'] },
++
++    /* ─────────────── ACCOUNT EN GEGEVENS ─────────────── */
++    { id: 'account', groep: 'account', titel: 'Account en tegoed',
++      tekst:
++        '<p><b>Meer → 👤 Mijn account en tegoed</b> toont je tokens. Tokens zijn tegoed voor AI-analyses; uitlezen en live meten gebruiken geen tokens.</p>' +
++        '<p>Heb je een activatiecode gekregen? Tik op <b>Activatiecode invullen</b>. Staat er <b>Tokens aanvragen</b>, dan opent je mailprogramma ' +
++        'met je account erin. Codes worden met de hand verstuurd.</p>' +
++        '<p>Een beheeraccount heeft geen tegoed.</p>',
++      zie: ['privacy'] },
++
++    { id: 'privacy', groep: 'account', titel: 'Privacy en je gegevens',
++      tekst:
++        '<p>Wat PidLane opslaat, waar, en wat er met je chassisnummer gebeurt, staat in het privacyscherm. ' +
++        'Dat is de tekst die telt; deze handleiding herhaalt hem niet, zodat er geen twee versies uit elkaar kunnen lopen.</p>' +
++        '<p><button type="button" data-hulp-doe="privacy">🔒 Open Privacy</button></p>' +
++        '<p>In de demo wordt niets bewaard.</p>',
++      zie: ['account'] },
++
++    /* ─────────────── HULP EN CONTACT ─────────────── */
++    { id: 'contact', groep: 'hulp', titel: 'Een bug melden of contact',
++      tekst:
++        '<p><button type="button" data-hulp-doe="bug">🐞 Meld een bug</button></p>' +
++        '<p>Beschrijf wat er misging en, als het kan, hoe je het kunt nadoen. Wat automatisch meegaat staat bovenin het venster, zodat je het ziet vóór je verstuurt.</p>' +
++        '<p>Lukt versturen niet, gebruik dan de knop <b>✉ E-mail</b> in hetzelfde venster. Je mailprogramma opent dan met je melding erin.</p>',
++      zie: ['logboek'] },
++
++    { id: 'logboek', groep: 'hulp', titel: 'Logboek',
++      tekst:
++        '<p><b>Meer → 📜 Logboek</b> toont wat de app deed, op tijd gesorteerd. Handig bij een bugmelding.</p>' +
++        '<p><button type="button" data-hulp-doe="logboek">📜 Open Logboek</button></p>',
++      zie: ['contact'] }
++  ],
++
++  /* De uitroeptekens. `anker` is een CSS-selector, `bron` het bestand
++     waar dat element staat (relatief aan public/). */
++  tips: [
++    { id: 'check', anker: '#plCheckBtn', bron: 'index.html', onderwerp: 'check',
++      tekst: 'Leest foutcodes en keuringsstatus. Wissen kan pas na een verse uitlezing, met contact aan, motor uit en de auto stil. Bewaar de codes eerst.' },
++    { id: 'verbinden', anker: '#btnConnect', bron: 'index.html', onderwerp: 'verbinden',
++      tekst: 'Adapter in de OBD-poort, contact aan, Bluetooth aan. Daarna zoekt PidLane zelf de adapter en de auto.' },
++    { id: 'demo', anker: '#btnDemo', bron: 'index.html', onderwerp: 'wat',
++      tekst: 'Gesimuleerde data, zonder adapter. In de demo wordt niets bewaard.' },
++    { id: 'zonder', anker: '[data-pl="zonder"]', bron: 'index.html', onderwerp: 'zonder',
++      tekst: 'Kenteken-check, lampjes en foutcodes opzoeken werken ook zonder adapter.' },
++    { id: 'status', anker: '#sysChip', bron: 'index.html', onderwerp: 'status',
++      tekst: 'De kleur is de ernstigste van voertuig, OBD en AI samen. Tik voor de losse onderdelen.' },
++    { id: 'opnemen', anker: '#plLiveRec', bron: 'index.html', onderwerp: 'opnemen',
++      tekst: 'Kies sensoren, start de opname, rijd en laat het probleem gebeuren. Stop daarna de opname.' },
++    { id: 'deel', anker: '#plLiveDeel', bron: 'index.html', onderwerp: 'delen',
++      tekst: 'Een expert kijkt live mee en kan waarden en foutcodes opvragen — alleen lezen. Deel de code alleen met iemand die je vertrouwt en tik op Stop delen als je klaar bent.' },
++    { id: 'meekijken', anker: '#plLiveMee', bron: 'index.html', onderwerp: 'delen',
++      tekst: 'Voor de expert: typ de meekijk-code of plak de link die je kreeg.' },
++    { id: 'garagemodus', anker: '#kbGarageModus', bron: 'index.html', onderwerp: 'garagemodus',
++      tekst: 'Zet de vakgereedschappen erbij, zoals Alle functies en Bewaken. Voor een account dat geen klant is staat hij vanzelf aan.' },
++    { id: 'autocheck', anker: '#kbAutoCheck', bron: 'index.html', onderwerp: 'check',
++      tekst: 'Opent Check mijn auto vanzelf na het verbinden, één keer per sessie. Niet bij hervatten, meekijken of in de demo.' },
++    { id: 'afsluiten', anker: '#kbAfsluiten', bron: 'index.html', onderwerp: 'afsluiten',
++      tekst: 'Loopt er een rit, dan heet dit Rit beëindigen. Daarna kies je: verbonden blijven, verbinding verbreken of de app sluiten.' }
++  ],
++
++  faq: [
++    { v: 'Werkt het zonder adapter?',
++      a: 'Deels. Kenteken-check, lampjes en foutcodes opzoeken werken zonder adapter. Voor uitlezen en live meten heb je een adapter nodig. De demo laat alles zien met gesimuleerde data.',
++      zie: 'zonder' },
++    { v: 'Verbinden lukt niet. Wat nu?',
++      a: 'Controleer Bluetooth, het contact en de adapter, en sluit andere apps die de adapter gebruiken. Helpt dat niet, meld dan een bug: toestel en verbindingsfouten gaan vanzelf mee.',
++      zie: 'verbinden-mislukt' },
++    { v: 'Waarom kan ik foutcodes niet wissen?',
++      a: 'Wissen kan alleen na een verse uitlezing, met contact aan, motor uit en de auto stil, en niet op afstand. Het venster zegt welke voorwaarde niet klopt.',
++      zie: 'check' },
++    { v: 'Kan een expert op afstand iets aan mijn auto veranderen?',
++      a: 'Nee. Meekijken is alleen lezen: de expert ziet je data en kan waarden en foutcodes opvragen, maar niets veranderen.',
++      zie: 'delen' },
++    { v: 'Waar vind ik mijn rapporten?',
++      a: 'In de tab Rapporten. Met een klantaccount ook in Meer → Mijn voertuigen.',
++      zie: 'rapporten' },
++    { v: 'Wat zijn tokens?',
++      a: 'Tokens zijn tegoed voor AI-analyses. Uitlezen en live meten kosten geen tokens. Je saldo staat in Meer → Mijn account en tegoed.',
++      zie: 'account' },
++    { v: 'Die uitroeptekens zitten in de weg.',
++      a: 'Zet ze uit met Meer → Uitleg bij knoppen. De handleiding blijft bereikbaar via Meer → Handleiding.',
++      zie: 'uitroeptekens' }
++  ]
++};
++window.PL_HULP = PL_HULP;
+diff --git a/public/pidlane-help.js b/public/pidlane-help.js
+new file mode 100644
+index 0000000..126dde8
+--- /dev/null
++++ b/public/pidlane-help.js
+@@ -0,0 +1,356 @@
++/* ══════════════════════════════════════════════════════════════════
++   pidlane-help.js — PLHelp: de handleiding in de app
++   ──────────────────────────────────────────────────────────────────
++   Twee dingen:
++   1. Een venster met de handleiding: inhoudsopgave, zoeken, onderwerpen en
++      veelgestelde vragen. Openen met PLHelp.open() of PLHelp.open('check').
++      Menu: Meer → 📘 Handleiding; ook een link op het inlog- en verbindscherm.
++   2. Kleine uitroeptekens (!) op knoppen. Tik erop voor een korte uitleg;
++      de knop zelf wordt niet ingedrukt. Uit te zetten in Meer.
++
++   De tekst staat NIET hier maar in pidlane-help-inhoud.js (PL_HULP). Dit
++   bestand weet niets over de app behalve drie knoppen in DOE hieronder.
++
++   CONTACT
++   Er is geen eigen formulier. "Meld een bug" opent de bestaande melder
++   (openBugReport in pidlane-auth.js). Eén melder, één plek waar meldingen
++   binnenkomen.
++
++   HOE DE UITROEPTEKENS AAN HUN KNOP KOMEN
++   Elke 1,5 s (alleen als het tabblad zichtbaar is en de tips aanstaan) zoekt
++   deze module de ankers uit PL_HULP.tips op en zet er een ! in als die er nog
++   niet in zit. Bewust geen MutationObserver: de live meters herschrijven de
++   DOM vele keren per seconde, en dan zou elke meterstand hier een ronde
++   kosten. Elf querySelectors per 1,5 s kosten niets.
++   Een tik op een ! wordt in de capture-fase op document afgevangen. Daardoor
++   komt hij nooit bij de onclick van de knop aan.
++
++   TERUGKNOP
++   Het venster en de uitleg hebben elk een ✕ in een position:fixed houder;
++   appBack() (pidlane-archief.js) vindt die vanzelf.
++   ══════════════════════════════════════════════════════════════════ */
++(function () {
++  'use strict';
++
++  var OPSLAG_TIPS = 'pl_help_tips';   // '0' = uit; anders aan
++  var INTERVAL_MS = 1500;
++
++  /* Wat een knop in de handleiding mag openen. Het venster gaat eerst
++     dicht: die vensters liggen niet allemaal boven dit venster. */
++  var DOE = {
++    bug: function () { if (typeof openBugReport === 'function') openBugReport(); else melding('De bugmelder is niet geladen'); },
++    privacy: function () { if (typeof openPrivacy === 'function') openPrivacy(); else melding('Het privacyscherm is niet geladen'); },
++    logboek: function () { if (typeof openLogboek === 'function') openLogboek(); else melding('Het logboek is niet geladen'); }
++  };
++
++  var _ov = null, _tip = null, _vorigeFocus = null, _timer = null;
++
++  function inhoud() { return window.PL_HULP || null; }
++
++  function melding(t) {
++    console.warn('PLHelp: ' + t);
++    if (typeof showToast === 'function') showToast(t);
++  }
++
++  function esc(s) {
++    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
++      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
++    });
++  }
++
++  function onderwerp(id) {
++    var h = inhoud();
++    if (!h) return null;
++    for (var i = 0; i < h.onderwerpen.length; i++) if (h.onderwerpen[i].id === id) return h.onderwerpen[i];
++    return null;
++  }
++
++  // ════════════════════════════════════════════════════════════════
++  //  HET VENSTER
++  // ════════════════════════════════════════════════════════════════
++  function mediaHtml(m) {
++    var bij = m.tekst ? '<figcaption>' + esc(m.tekst) + '</figcaption>' : '';
++    if (m.soort === 'video') {
++      return '<figure class="plh-media"><video src="' + esc(m.src) + '" controls playsinline preload="metadata"></video>' + bij + '</figure>';
++    }
++    return '<figure class="plh-media"><img src="' + esc(m.src) + '" alt="' + esc(m.tekst || '') + '" loading="lazy">' + bij + '</figure>';
++  }
++
++  function onderwerpHtml(o) {
++    var zie = (o.zie || []).map(function (id) {
++      var z = onderwerp(id);
++      return z ? '<a data-hulp="' + esc(id) + '">' + esc(z.titel) + '</a>' : '';
++    }).filter(Boolean);
++    return '<section class="plh-ond" id="plh-o-' + esc(o.id) + '" data-plh-ond="' + esc(o.id) + '">' +
++      '<h3>' + esc(o.titel) + '</h3>' +
++      o.tekst +
++      (o.media || []).map(mediaHtml).join('') +
++      (zie.length ? '<p class="plh-zie">Zie ook: ' + zie.join(' · ') + '</p>' : '') +
++      '</section>';
++  }
++
++  function bouw() {
++    var h = inhoud();
++    if (!h) { melding('De handleiding is niet geladen'); return null; }
++
++    var toc = h.groepen.map(function (g) {
++      var items = h.onderwerpen.filter(function (o) { return o.groep === g.id; }).map(function (o) {
++        return '<li><a data-hulp="' + esc(o.id) + '">' + esc(o.titel) + '</a></li>';
++      }).join('');
++      return '<div class="plh-toc-g"><div class="plh-toc-k">' + esc(g.titel) + '</div><ul>' + items + '</ul></div>';
++    }).join('');
++
++    var body = h.groepen.map(function (g) {
++      var ond = h.onderwerpen.filter(function (o) { return o.groep === g.id; });
++      if (!ond.length) return '';
++      return '<div class="plh-groep" data-plh-groep="' + esc(g.id) + '"><h2>' + esc(g.titel) + '</h2>' +
++        ond.map(onderwerpHtml).join('') + '</div>';
++    }).join('');
++
++    var faq = '<div class="plh-groep" data-plh-groep="faq" id="plh-o-faq"><h2>Veelgestelde vragen</h2>' +
++      h.faq.map(function (f) {
++        return '<details class="plh-faq"><summary>' + esc(f.v) + '</summary><p>' + esc(f.a) +
++          (f.zie && onderwerp(f.zie) ? ' <a data-hulp="' + esc(f.zie) + '">Meer hierover</a>' : '') + '</p></details>';
++      }).join('') + '</div>';
++
++    var versie = (typeof APP_VERSION !== 'undefined') ? String(APP_VERSION) : '';
++    var gc = h.gecontroleerd || {};
++    var oud = versie && gc.app && versie !== gc.app;
++    var voet = '<p class="plh-voet">Deze handleiding is nagelopen op ' + esc(gc.datum || '?') + ' tegen versie ' + esc(gc.app || '?') + '.' +
++      (oud ? ' Je gebruikt versie ' + esc(versie) + ': er kan iets anders zijn dan hier staat.' : '') + '</p>';
++
++    var ov = document.createElement('div');
++    ov.id = 'plHelpOv';
++    ov.className = 'plh-ov';
++    ov.setAttribute('role', 'dialog');
++    ov.setAttribute('aria-modal', 'true');
++    ov.setAttribute('aria-labelledby', 'plhTitel');
++    ov.innerHTML =
++      '<div class="plh-kop">' +
++        '<button type="button" class="plh-x" data-plh-sluit aria-label="Sluiten">✕</button>' +
++        '<h1 id="plhTitel">📘 Handleiding</h1>' +
++      '</div>' +
++      '<div class="plh-zoekrij"><input type="search" id="plhZoek" class="plh-zoek" placeholder="Zoek, bijvoorbeeld: wissen, bluetooth, tokens" aria-label="Zoeken in de handleiding" autocomplete="off"></div>' +
++      '<div class="plh-body" id="plhBody">' +
++        '<nav class="plh-toc" aria-label="Inhoud">' + toc +
++          '<div class="plh-toc-g"><div class="plh-toc-k">Vragen</div><ul><li><a data-hulp="faq">Veelgestelde vragen</a></li></ul></div></nav>' +
++        '<p class="plh-geen" id="plhGeen" hidden>Niets gevonden. Probeer een ander woord, of <a data-hulp="contact">neem contact op</a>.</p>' +
++        body + faq + voet +
++      '</div>';
++
++    ov.addEventListener('click', klikInVenster);
++    ov.addEventListener('input', function (e) { if (e.target && e.target.id === 'plhZoek') zoek(e.target.value); });
++    ov.addEventListener('keydown', function (e) { if (e.key === 'Escape') sluit(); });
++    document.body.appendChild(ov);
++    return ov;
++  }
++
++  function klikInVenster(e) {
++    var t = e.target && e.target.closest ? e.target : null;
++    if (!t) return;
++    if (t.closest('[data-plh-sluit]')) { sluit(); return; }
++    var doe = t.closest('[data-hulp-doe]');
++    if (doe) {
++      var f = DOE[doe.getAttribute('data-hulp-doe')];
++      if (!f) { melding('Onbekende actie: ' + doe.getAttribute('data-hulp-doe')); return; }
++      sluit();
++      f();
++      return;
++    }
++    var link = t.closest('[data-hulp]');
++    if (link) { e.preventDefault(); naar(link.getAttribute('data-hulp')); }
++  }
++
++  function naar(id) {
++    var z = document.getElementById('plhZoek');
++    if (z && z.value) { z.value = ''; zoek(''); }
++    var doel = document.getElementById('plh-o-' + id);
++    if (!doel) { melding('Onderwerp niet gevonden: ' + id); return; }
++    doel.scrollIntoView({ block: 'start' });
++    doel.classList.add('plh-flits');
++    setTimeout(function () { doel.classList.remove('plh-flits'); }, 1200);
++  }
++
++  function zoek(waarde) {
++    var v = String(waarde || '').trim().toLowerCase();
++    var ov = _ov; if (!ov) return;
++    var raak = 0;
++    var blokken = ov.querySelectorAll('.plh-ond, .plh-faq');
++    for (var i = 0; i < blokken.length; i++) {
++      var b = blokken[i];
++      var ok = !v || b.textContent.toLowerCase().indexOf(v) !== -1;
++      b.hidden = !ok;
++      if (ok && v) raak++;
++      if (b.tagName === 'DETAILS') b.open = !!(v && ok);
++    }
++    var groepen = ov.querySelectorAll('.plh-groep');
++    for (var g = 0; g < groepen.length; g++) {
++      groepen[g].hidden = !!v && !groepen[g].querySelector('.plh-ond:not([hidden]), .plh-faq:not([hidden])');
++    }
++    var toc = ov.querySelector('.plh-toc'); if (toc) toc.hidden = !!v;
++    var geen = document.getElementById('plhGeen'); if (geen) geen.hidden = !(v && !raak);
++  }
++
++  function open(id) {
++    sluitTip();
++    try { if (typeof closeKebab === 'function') closeKebab(); } catch (e) { console.warn('PLHelp: menu niet gesloten', e); }
++    if (!_ov) _ov = bouw();
++    if (!_ov) return;
++    _vorigeFocus = document.activeElement;
++    _ov.classList.add('plh-aan');
++    var b = document.getElementById('plhBody'); if (b) b.scrollTop = 0;
++    if (id) naar(id);
++    var x = _ov.querySelector('[data-plh-sluit]'); if (x) x.focus();
++  }
++
++  function sluit() {
++    if (!_ov || !_ov.classList.contains('plh-aan')) return;
++    _ov.classList.remove('plh-aan');
++    if (_vorigeFocus && _vorigeFocus.focus && document.contains(_vorigeFocus)) _vorigeFocus.focus();
++  }
++
++  function isOpen() { return !!(_ov && _ov.classList.contains('plh-aan')); }
++
++  // ════════════════════════════════════════════════════════════════
++  //  DE UITROEPTEKENS
++  // ════════════════════════════════════════════════════════════════
++  function tipsAan() {
++    try { return localStorage.getItem(OPSLAG_TIPS) !== '0'; }
++    catch (e) { /* stil: opslag kan geblokkeerd zijn; dan staan ze aan */ return true; }
++  }
++
++  function zetTips(aan) {
++    try { localStorage.setItem(OPSLAG_TIPS, aan ? '1' : '0'); }
++    catch (e) { console.warn('PLHelp: keuze voor de uitroeptekens niet op te slaan', e); }
++    if (aan) plaats(); else haalWeg();
++    verversSchakelaar();
++    if (typeof showToast === 'function') showToast(aan ? 'Uitleg bij knoppen aan' : 'Uitleg bij knoppen uit — de handleiding staat in Meer');
++  }
++
++  function wissel() { zetTips(!tipsAan()); }
++
++  function verversSchakelaar() {
++    var s = document.getElementById('kbHelpTips');
++    if (s) s.setAttribute('aria-checked', tipsAan() ? 'true' : 'false');
++  }
++
++  function plaats() {
++    var h = inhoud();
++    if (!h || !tipsAan()) return 0;
++    var n = 0;
++    for (var i = 0; i < h.tips.length; i++) {
++      var tip = h.tips[i], el = null;
++      try { el = document.querySelector(tip.anker); }
++      catch (e) { console.warn('PLHelp: ongeldig anker voor tip ' + tip.id, e); continue; }
++      if (!el || el.querySelector(':scope > .plh-i')) continue;
++      // In een menuregel staat het ! in de tekstregel, vóór een schakelaar;
++      // elders klein in de hoek, zodat de knop zijn vorm houdt.
++      var inRegel = el.classList.contains('kebab-item');
++      if (!inRegel && getComputedStyle(el).position === 'static') el.classList.add('plh-houder');
++      var i2 = document.createElement('span');
++      i2.className = 'plh-i' + (inRegel ? ' plh-i-regel' : '');
++      i2.setAttribute('data-plh-tip', tip.id);
++      i2.setAttribute('aria-hidden', 'true');   // de uitleg staat ook in de handleiding
++      i2.textContent = '!';
++      var sw = inRegel ? el.querySelector(':scope > .kb-sw') : null;
++      if (sw) el.insertBefore(i2, sw); else el.appendChild(i2);
++      n++;
++    }
++    return n;
++  }
++
++  function haalWeg() {
++    var al = document.querySelectorAll('.plh-i');
++    for (var i = 0; i < al.length; i++) al[i].remove();
++    sluitTip();
++  }
++
++  function tipVan(id) {
++    var h = inhoud(); if (!h) return null;
++    for (var i = 0; i < h.tips.length; i++) if (h.tips[i].id === id) return h.tips[i];
++    return null;
++  }
++
++  function toonTip(badge) {
++    var tip = tipVan(badge.getAttribute('data-plh-tip'));
++    if (!tip) return;
++    sluitTip();
++    var z = onderwerp(tip.onderwerp);
++    var t = document.createElement('div');
++    t.id = 'plHelpTip';
++    t.className = 'plh-tip';
++    t.setAttribute('role', 'dialog');
++    t.setAttribute('aria-label', 'Uitleg');
++    t.innerHTML =
++      '<button type="button" class="plh-tip-x" data-plh-tip-sluit aria-label="Sluiten">✕</button>' +
++      '<p>' + esc(tip.tekst) + '</p>' +
++      (z ? '<button type="button" class="plh-tip-meer" data-plh-tip-meer="' + esc(z.id) + '">Meer in de handleiding →</button>' : '');
++    document.body.appendChild(t);
++
++    // Onder de knop als dat past, anders erboven; nooit buiten beeld.
++    var r = badge.getBoundingClientRect();
++    var w = t.offsetWidth, hgt = t.offsetHeight, m = 8;
++    var x = Math.min(Math.max(m, r.right - w), window.innerWidth - w - m);
++    var y = r.bottom + 6;
++    if (y + hgt > window.innerHeight - m) y = Math.max(m, r.top - hgt - 6);
++    t.style.left = x + 'px';
++    t.style.top = y + 'px';
++    _tip = t;
++    var x2 = t.querySelector('.plh-tip-x'); if (x2) x2.focus();
++  }
++
++  function sluitTip() {
++    if (_tip) { _tip.remove(); _tip = null; }
++  }
++
++  /* Capture-fase op document: een tik op een ! bereikt de knop eronder
++     nooit. pointerdown en mousedown ook tegenhouden, want sommige knoppen
++     reageren op ingedrukt houden. */
++  function vang(e) {
++    var t = e.target;
++    if (!t || !t.closest) return;
++    var badge = t.closest('.plh-i');
++    if (badge) {
++      e.preventDefault();
++      e.stopPropagation();
++      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
++      if (e.type === 'click') toonTip(badge);
++      return;
++    }
++    if (e.type !== 'click' || !_tip) return;
++    if (t.closest('[data-plh-tip-sluit]')) { sluitTip(); return; }
++    var meer = t.closest('[data-plh-tip-meer]');
++    if (meer) { var id = meer.getAttribute('data-plh-tip-meer'); sluitTip(); open(id); return; }
++    if (!_tip.contains(t)) sluitTip();   // tik ernaast sluit de uitleg; die tik gaat gewoon door
++  }
++
++  function tik() {
++    if (document.hidden) return;
++    plaats();
++  }
++
++  function start() {
++    document.addEventListener('click', vang, true);
++    document.addEventListener('pointerdown', vang, true);
++    document.addEventListener('mousedown', vang, true);
++    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && _tip) sluitTip(); });
++    window.addEventListener('scroll', sluitTip, true);
++    verversSchakelaar();
++    plaats();
++    if (!_timer) _timer = setInterval(tik, INTERVAL_MS);
++  }
++
++  window.PLHelp = {
++    open: open,
++    sluit: sluit,
++    isOpen: isOpen,
++    wisselTips: wissel,
++    zetTips: zetTips,
++    tipsAan: tipsAan,
++    plaatsTips: plaats,
++    _doe: DOE
++  };
++
++  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
++  else start();
++})();
+diff --git a/public/pidlane-testrun.js b/public/pidlane-testrun.js
+index 0da496b..95ef776 100644
+--- a/public/pidlane-testrun.js
++++ b/public/pidlane-testrun.js
+@@ -2771,6 +2771,29 @@ function _zonderSporen(naam, fn) {
+ 
+ const PROEVEN_B5 = [
+ 
++  // ── de handleiding en de uitroeptekens (30-09-2026) ──
++  // Een ! hangt aan een knop via een selector uit pidlane-help-inhoud.js.
++  // test-help.js zoekt die selectors in de bron; deze proef kijkt of ze in de
++  // draaiende app ook echt een knop vinden, en of het venster opent en sluit.
++  {
++    issue: '—',
++    naam: 'De handleiding opent en elk uitroepteken vindt zijn knop',
++    waarom: 'Er was geen handleiding of hulpfunctie in de app. Een ! waarvan de knop hernoemd is, verdwijnt zonder foutmelding.',
++    proef: async function () {
++      if (!window.PLHelp || !window.PL_HULP) return { staat: 'FOUT', detail: 'PLHelp of PL_HULP ontbreekt — pidlane-help.js of pidlane-help-inhoud.js laadt niet' };
++      var weg = window.PL_HULP.tips.filter(function (t) { return !document.querySelector(t.anker); }).map(function (t) { return t.id; });
++      PLHelp.open('check');
++      var ov = document.getElementById('plHelpOv');
++      var open = !!ov && getComputedStyle(ov).display !== 'none';
++      PLHelp.sluit();
++      var dicht = !ov || getComputedStyle(ov).display === 'none';
++      if (!open || !dicht) return { staat: 'FOUT', detail: 'het venster ' + (!open ? 'opent niet' : 'sluit niet') };
++      if (weg.length) return { staat: 'FOUT', detail: 'geen knop voor: ' + weg.join(', ') };
++      var n = document.querySelectorAll('.plh-i').length;
++      return { staat: 'OK', detail: window.PL_HULP.tips.length + ' ankers gevonden, ' + n + ' uitroeptekens geplaatst' + (PLHelp.tipsAan() ? '' : ' (staan uit in Meer)') };
++    }
++  },
++
+   // ── de pollus plant op de eerste PID die aan de beurt is (30-09-2026) ──
+   // Met een vaste tik van 100 ms kwam een PID van 120 ms op 200 ms, en stond
+   // de bus bij acht PIDs half leeg: 10 verzoeken/s bij 54 ms per verzoek.
+diff --git a/public/pidlane.css b/public/pidlane.css
+index 095f86c..4f65894 100644
+--- a/public/pidlane.css
++++ b/public/pidlane.css
+@@ -2725,3 +2725,56 @@ body:not(.pl-garage) .alleen-garage { display:none !important; }
+ /* Te veel tekst per kaart: voor een klant is titel plus één zin genoeg. De
+    regel "Je krijgt:" staat er voor wie vergelijkt — de garagemodus. */
+ body:not(.pl-garage) .choice-out { display:none; }
++
++/* ══════════════════════════════════════════════════════════════════
++   Handleiding en uitroeptekens (pidlane-help.js, 30-09-2026)
++   Het venster ligt boven de onderbalk (9550) en onder de bugmelder (9700):
++   vanuit de handleiding gaat het venster eerst dicht, maar zo valt niets
++   eronder als dat ooit anders loopt. De uitleg bij een ! ligt bovenop alles,
++   want een ! kan in elk venster staan.
++   ══════════════════════════════════════════════════════════════════ */
++.plh-ov { display:none; position:fixed; inset:0; z-index:9650; flex-direction:column;
++  background:var(--bg); color:var(--tx); padding-top:var(--pl-sat,0px); }
++.plh-ov.plh-aan { display:flex; }
++.plh-kop { flex:none; display:flex; align-items:center; gap:10px; padding:8px 12px 4px; }
++.plh-kop h1 { font-size:18px; font-weight:800; margin:0; }
++.plh-x { flex:none; width:44px; height:44px; border-radius:10px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx); font-size:18px; cursor:pointer; }
++.plh-zoekrij { flex:none; padding:4px 12px 8px; border-bottom:1px solid var(--bd); }
++.plh-zoek { width:100%; min-height:44px; box-sizing:border-box; padding:0 14px; border:1.5px solid var(--bd2); border-radius:10px; background:var(--sur2); color:var(--tx); font:inherit; font-size:15px; }
++.plh-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:12px 14px calc(28px + var(--pl-sab,0px)); max-width:720px; width:100%; box-sizing:border-box; margin:0 auto; font-size:15px; line-height:1.6; }
++.plh-body a[data-hulp] { color:var(--bl); text-decoration:underline; cursor:pointer; }
++.plh-toc { background:var(--sur); border:1px solid var(--bd); border-radius:12px; padding:10px 14px; margin-bottom:18px; }
++.plh-toc-k { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--tx3); margin-top:8px; }
++.plh-toc ul { list-style:none; margin:4px 0 0; padding:0; }
++.plh-toc li { padding:5px 0; }
++.plh-groep h2 { font-size:17px; font-weight:800; margin:22px 0 8px; }
++.plh-ond { background:var(--sur); border:1px solid var(--bd); border-radius:12px; padding:12px 14px; margin-bottom:10px; scroll-margin-top:8px; transition:box-shadow .3s; }
++.plh-ond h3 { font-size:16px; margin:0 0 6px; }
++.plh-ond p { margin:6px 0; }
++.plh-ond ul, .plh-ond ol { margin:6px 0 6px 20px; padding:0; }
++.plh-ond li { margin:3px 0; }
++.plh-ond button[data-hulp-doe] { min-height:44px; padding:0 14px; border-radius:9px; border:1px solid var(--bd2); background:var(--sur2); color:var(--tx); font:inherit; font-weight:700; cursor:pointer; }
++.plh-flits { box-shadow:0 0 0 3px var(--bl); }
++.plh-zie { font-size:13px; color:var(--tx3); }
++.plh-media { margin:10px 0; }
++.plh-media img, .plh-media video { max-width:100%; border-radius:8px; border:1px solid var(--bd); display:block; }
++.plh-media figcaption { font-size:13px; color:var(--tx3); margin-top:4px; }
++.plh-faq { background:var(--sur); border:1px solid var(--bd); border-radius:12px; margin-bottom:8px; }
++.plh-faq summary { cursor:pointer; padding:12px 14px; font-weight:700; min-height:44px; box-sizing:border-box; }
++.plh-faq p { margin:0; padding:0 14px 12px; }
++.plh-geen { color:var(--tx3); }
++.plh-voet { font-size:13px; color:var(--tx3); margin-top:24px; }
++.plh-body [hidden] { display:none !important; }
++
++.plh-houder { position:relative; }
++.plh-i { position:absolute; top:3px; right:3px; z-index:2; width:18px; height:18px; border-radius:50%;
++  display:inline-flex; align-items:center; justify-content:center; background:var(--or); color:#1a1000;
++  font:800 12px/1 system-ui,sans-serif; cursor:help; box-shadow:0 0 0 2px var(--sur); }
++.plh-i::after { content:''; position:absolute; inset:-5px; }   /* iets groter tikvlak; niet groter, anders raakt het de knop ernaast */
++.plh-i-regel { position:relative; top:auto; right:auto; margin-left:8px; flex:none; }
++.plh-tip { position:fixed; z-index:10050; max-width:min(320px, calc(100vw - 16px)); box-sizing:border-box;
++  background:var(--sur); color:var(--tx); border:1px solid var(--bd2); border-left:4px solid var(--or);
++  border-radius:10px; padding:10px 40px 10px 12px; box-shadow:0 8px 28px rgba(0,0,0,.35); font-size:14px; line-height:1.5; }
++.plh-tip p { margin:0 0 8px; }
++.plh-tip-x { position:absolute; top:4px; right:4px; width:34px; height:34px; border:none; background:none; color:var(--tx3); font-size:16px; cursor:pointer; }
++.plh-tip-meer { border:none; background:none; color:var(--bl); font:inherit; font-weight:700; padding:6px 0; cursor:pointer; }
+diff --git a/public/test-help.js b/public/test-help.js
+new file mode 100644
+index 0000000..809466c
+--- /dev/null
++++ b/public/test-help.js
+@@ -0,0 +1,162 @@
++// ══════════════════════════════════════════════════════════════════
++// test-help.js — de handleiding moet over deze app gaan, niet over een oude
++// ──────────────────────────────────────────────────────────────────
++// WAAROM
++// Een handleiding veroudert stil. Een knop wordt hernoemd, een menuregel
++// verhuist, en de tekst blijft vol vertrouwen iets beschrijven dat er niet
++// meer is. Het uitroepteken bij die knop verdwijnt zonder foutmelding: de
++// selector vindt niets meer en er gebeurt gewoon niets.
++//
++// WAT DEZE TEST EIST
++//   1. PL_HULP laadt en heeft de vorm die pidlane-help.js verwacht
++//   2. elke verwijzing naar een onderwerp (zie, data-hulp, faq, tip) bestaat
++//   3. elke data-hulp-doe is een actie die pidlane-help.js kent
++//   4. elk anker van een uitroepteken staat in zijn bronbestand
++//   5. elk knoplabel in de tekst (vet, beginnend met een emoji) staat letterlijk
++//      in de app — een hernoemde knop maakt deze test rood
++//   6. elk media-bestand bestaat
++//   7. geen prijzen, en nooit "anoniem" (CLAUDE.md, privacy)
++//   8. het menu heeft de ingang, en beide bestanden hangen vóór de
++//      bedradingscontrole
++// De controle op de appversie (gecontroleerd.app) is een LET OP, geen FOUT:
++// een versiesprong maakt de tekst niet fout, alleen ongecontroleerd.
++//
++// Draaien vanuit public/:  node test-help.js   (exit 0 = goed)
++// ══════════════════════════════════════════════════════════════════
++'use strict';
++const fs = require('fs');
++const path = require('path');
++const vm = require('vm');
++
++const DIR = __dirname;
++let fout = 0, n = 0;
++function toets(naam, ok, detail) {
++  n++;
++  if (ok) console.log('  ok    ' + naam);
++  else { fout++; console.log('  FOUT  ' + naam + (detail ? '\n        ' + detail : '')); }
++}
++const lees = (f) => fs.readFileSync(path.join(DIR, f), 'utf8');
++
++// ── 1. laden ──
++console.log('1. PL_HULP laadt');
++const ctx = { window: {} };
++vm.createContext(ctx);
++vm.runInContext(lees('pidlane-help-inhoud.js'), ctx, { filename: 'pidlane-help-inhoud.js' });
++const H = ctx.window.PL_HULP;
++toets('window.PL_HULP bestaat', !!H);
++if (!H) { console.log('\n' + fout + ' fout(en)'); process.exit(1); }
++toets('onderwerpen, groepen, tips en faq zijn lijsten',
++  [H.onderwerpen, H.groepen, H.tips, H.faq].every(Array.isArray));
++toets('gecontroleerd heeft een datum (JJJJ-MM-DD) en een versie',
++  !!(H.gecontroleerd && /^\d{4}-\d{2}-\d{2}$/.test(H.gecontroleerd.datum) && H.gecontroleerd.app));
++
++const ids = H.onderwerpen.map(o => o.id);
++const dubbel = ids.filter((id, i) => ids.indexOf(id) !== i);
++toets('onderwerp-ids zijn uniek', !dubbel.length, dubbel.join(', '));
++toets('"faq" is geen onderwerp-id (het is het anker van de vragen)', ids.indexOf('faq') === -1);
++const groepIds = H.groepen.map(g => g.id);
++const losseGroep = H.onderwerpen.filter(o => groepIds.indexOf(o.groep) === -1).map(o => o.id + '→' + o.groep);
++toets('elk onderwerp hoort bij een bestaande groep', !losseGroep.length, losseGroep.join(', '));
++const leeg = H.onderwerpen.filter(o => !o.titel || !o.tekst).map(o => o.id);
++toets('elk onderwerp heeft een titel en tekst', !leeg.length, leeg.join(', '));
++const tipIds = H.tips.map(t => t.id);
++toets('tip-ids zijn uniek', tipIds.length === new Set(tipIds).size);
++
++// ── 2. verwijzingen ──
++console.log('\n2. verwijzingen naar onderwerpen');
++const bestaat = (id) => id === 'faq' || ids.indexOf(id) !== -1;
++const kapot = [];
++H.onderwerpen.forEach(o => {
++  (o.zie || []).forEach(z => { if (!bestaat(z)) kapot.push(o.id + ' zie ' + z); });
++  [...o.tekst.matchAll(/data-hulp="([^"]+)"/g)].forEach(m => { if (!bestaat(m[1])) kapot.push(o.id + ' link ' + m[1]); });
++});
++H.faq.forEach((f, i) => { if (f.zie && !bestaat(f.zie)) kapot.push('faq ' + i + ' zie ' + f.zie); });
++H.tips.forEach(t => { if (!bestaat(t.onderwerp)) kapot.push('tip ' + t.id + ' → ' + t.onderwerp); });
++toets('elke verwijzing wijst naar een bestaand onderwerp', !kapot.length, kapot.join(' | '));
++
++// ── 3. acties ──
++console.log('\n3. knoppen in de tekst die iets openen');
++const helpBron = lees('pidlane-help.js');
++const doeBlok = helpBron.match(/var DOE = \{([\s\S]*?)\n  \};/);
++toets('pidlane-help.js heeft een DOE-lijst', !!doeBlok);
++const doeKeys = doeBlok ? [...doeBlok[1].matchAll(/^\s*([a-z]+):\s*function/gm)].map(m => m[1]) : [];
++const onbekend = [];
++H.onderwerpen.forEach(o => [...o.tekst.matchAll(/data-hulp-doe="([^"]+)"/g)].forEach(m => {
++  if (doeKeys.indexOf(m[1]) === -1) onbekend.push(o.id + ': ' + m[1]);
++}));
++toets('elke data-hulp-doe staat in DOE (' + doeKeys.join(', ') + ')', !onbekend.length, onbekend.join(', '));
++
++// ── 4. ankers ──
++console.log('\n4. elk uitroepteken vindt zijn knop in de bron');
++function ankerDelen(sel) {
++  // Wat er letterlijk in de bron moet staan: id="x", class="… x …", of attr="waarde".
++  const delen = [];
++  [...sel.matchAll(/#([\w-]+)/g)].forEach(m => delen.push({ soort: 'id', w: m[1] }));
++  [...sel.matchAll(/\[([\w-]+)="([^"]+)"\]/g)].forEach(m => delen.push({ soort: 'attr', a: m[1], w: m[2] }));
++  return delen;
++}
++H.tips.forEach(t => {
++  let bron = null;
++  try { bron = lees(t.bron); } catch (e) { toets('tip ' + t.id + ': bron ' + t.bron + ' bestaat', false, e.message); return; }
++  const delen = ankerDelen(t.anker);
++  if (!delen.length) { toets('tip ' + t.id + ': anker ' + t.anker + ' heeft een id of attribuut om op te zoeken', false); return; }
++  const mis = delen.filter(d => d.soort === 'id'
++    ? !new RegExp('\\bid=(["\'])' + d.w + '\\1').test(bron)
++    : !new RegExp('\\b' + d.a + '=(["\'])' + d.w + '\\1').test(bron));
++  toets('tip ' + t.id + ': ' + t.anker + ' staat in ' + t.bron, !mis.length,
++    'niet gevonden: ' + mis.map(d => d.soort === 'id' ? 'id="' + d.w + '"' : d.a + '="' + d.w + '"').join(', ') +
++    ' — hernoemd of weg? Pas het anker in pidlane-help-inhoud.js aan');
++});
++
++// ── 5. knoplabels ──
++console.log('\n5. knoplabels in de tekst bestaan in de app');
++const appBron = ['index.html'].concat(fs.readdirSync(DIR).filter(f => /^pidlane-.*\.js$/.test(f) && f !== 'pidlane-help-inhoud.js'))
++  .map(lees).join('\n')
++  .replace(/\\u([0-9a-fA-F]{4})/g, (m, h) => String.fromCharCode(parseInt(h, 16)))
++  .replace(/&amp;/g, '&').replace(/\\'/g, "'");
++const EMOJI = /^[\u2190-\u2BFF\u25A0-\u27BF\u{1F000}-\u{1FAFF}]/u;
++const labels = new Set();
++H.onderwerpen.forEach(o => [...o.tekst.matchAll(/<b>([^<]+)<\/b>/g)].forEach(m => {
++  const l = m[1].split('→').pop().trim();
++  if (EMOJI.test(l)) labels.add(l);
++}));
++const weg = [...labels].filter(l => appBron.indexOf(l) === -1);
++toets('elk knoplabel (' + labels.size + ') staat letterlijk in de app', !weg.length,
++  'niet gevonden: ' + weg.join(' | ') + ' — knop hernoemd? Pas de tekst in pidlane-help-inhoud.js aan');
++
++// ── 6. media ──
++console.log('\n6. afbeeldingen en video\'s');
++const media = [];
++H.onderwerpen.forEach(o => (o.media || []).forEach(m => media.push({ o: o.id, m })));
++const mediaMis = media.filter(x => !x.m.src || !/^handleiding\//.test(x.m.src) || !fs.existsSync(path.join(DIR, x.m.src)));
++toets('elk media-bestand staat in public/handleiding/ (' + media.length + ')', !mediaMis.length,
++  mediaMis.map(x => x.o + ': ' + x.m.src).join(', '));
++const soortFout = media.filter(x => ['afbeelding', 'video'].indexOf(x.m.soort) === -1);
++toets('media-soort is afbeelding of video', !soortFout.length, soortFout.map(x => x.o).join(', '));
++
++// ── 7. wat er niet in mag ──
++console.log('\n7. geen prijzen, geen "anoniem"');
++const alleTekst = JSON.stringify(H);
++const prijs = alleTekst.match(/€|\\u20ac|\beuro\b|\b\d+[,.]\d{2}\b|tikkie/i);
++toets('geen prijs of betaalroute in de handleiding', !prijs, prijs && prijs[0]);
++const anon = alleTekst.match(/anonie?m|geanonimiseerd/i);
++toets('nergens "anoniem" (het is een pseudoniem — CLAUDE.md)', !anon, anon && anon[0]);
++
++// ── 8. bedrading ──
++console.log('\n8. de ingang en de laadvolgorde');
++const html = lees('index.html');
++toets('Meer heeft de regel Handleiding', /id="kbHandleiding"[^>]*onclick="[^"]*PLHelp\.open\(\)/.test(html));
++toets('Meer heeft de schakelaar voor de uitroeptekens', /id="kbHelpTips"[^>]*role="switch"[^>]*onclick="PLHelp\.wisselTips\(\)"/.test(html));
++toets('het inlogscherm linkt naar de handleiding', /id="lgHandleiding"/.test(html));
++const pi = html.indexOf('src="pidlane-help-inhoud.js"'), ph = html.indexOf('src="pidlane-help.js"'), pb = html.indexOf('src="pidlane-bedrading.js"');
++toets('inhoud laadt vóór de weergave, beide vóór de bedradingscontrole', pi > 0 && ph > pi && pb > ph);
++
++// ── versie: LET OP, geen FOUT ──
++const cfg = lees('config.js').match(/APP_VERSION\s*=\s*'([^']+)'/);
++if (cfg && cfg[1] !== H.gecontroleerd.app) {
++  console.log('\n  LET OP  de app is ' + cfg[1] + ', de handleiding is nagelopen tegen ' + H.gecontroleerd.app +
++    '. Loop de tekst na en zet gecontroleerd in pidlane-help-inhoud.js bij.');
++}
++
++console.log('\n' + n + ' controles, ' + fout + ' fout');
++process.exit(fout ? 1 : 0);
+-- 
+2.43.0
+
