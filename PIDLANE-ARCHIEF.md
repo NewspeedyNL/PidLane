@@ -14,6 +14,18 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-09-2026 — De VIN lekte via de sleutel van het voertuigprofiel
+
+In het logboek van 08:18 stond "Geen profiel onder pl_vinprof_" met de volledige
+VIN erachter. De opslagsleutel is `'pl_vinprof_' + VIN`, en vier
+`btDiag`-meldingen in `pidlane-pids.js` zetten die sleutel erin. #102 had de
+`log()`-regels gemaskeerd en keek naar waar de VIN als waarde stond. Deze vorm,
+de VIN verstopt in een sleutelnaam, viel daarbuiten. De sleutel zelf blijft
+ongewijzigd, want daar staan bestaande profielen onder. Alleen wat erover gemeld
+wordt, is nu `pl_vinprof_…` plus de laatste zes tekens. De RX van `0902`, waarin
+de VIN als hex staat, komt niet in het logboek: de BT-log noemt alleen de lengte.
+Getoetst in `test-vin-meldingen.js`.
+
 ## 30-09-2026 — De vertraging kwam terug zonder draad: een snelheidsproef
 
 **Gezien in het logboek van 08:59.** Om 08:34 ATRV 30 ms; om 08:53 152 ms, en
