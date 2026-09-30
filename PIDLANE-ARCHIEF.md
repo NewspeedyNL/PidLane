@@ -14,6 +14,27 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-09-2026 — Van CAMPAGNE-tekst naar een meetopdracht, en twee schermfouten
+
+**Waarom de SPP-proef geen tekst meer is.** De eerste oplevering van #352 zette
+de stappen als twee lange regels in `CAMPAGNE`. Op het scherm van de testrun
+staat dat onder "Waar deze run over gaat" als een genummerde lap tekst, en de
+wens was dezelfde vorm als de andere vragen: een meetopdracht-kaart met "nodig:"
+en een oordeel. Een opdracht kon alleen PID's beoordelen, dus zijn er
+app-maten bijgekomen (zie `PIDLANE.md`, bij de meetopdrachten). De opdracht zelf
+is data en staat in D1, niet in de repo.
+
+**De rapportregel.** Icoon, titel en drie knoppen stonden met `flex:none` op één
+regel. Op 360 px breed met tekstgrootte L bleef er voor de titel 0 px over
+(gemeten in `bproef-regelruimte.js` met de oude opmaak); het icoon en de knop
+"Bekijk" lagen over wat er van de titel over was. De knoppen staan nu op een
+eigen regel.
+
+**De knop "Dieper zoeken".** `.gr-k.klein` had `flex:0 0 auto` en geen
+maximale breedte: een lange knoptekst nam zijn eigen breedte en liep de kaart
+uit. Hetzelfde gold voor elke kleine knop in de garage; de proef in
+`bproef-garage.js` meet ze allemaal op tekstgrootte L.
+
 ## 30-09-2026 — De SPP-plugin laat bij elke mislukte verbindpoging een draaiende draad achter (#352)
 
 **De waarneming.** Twee logboeken van de rit van 30-09 (01:15 en 01:24). Na

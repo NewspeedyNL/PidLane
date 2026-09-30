@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — De SPP-proef als meetopdracht, en twee schermfouten
+ ═══════════════════════════════════════════════════════════
+
+ - De stappen van de SPP-proef (#352) staan niet meer als tekst in de
+   testrun. Er is een meetopdracht voor: "Laat een mislukte verbindpoging
+   een draad achter?", met drie voorwaarden en twee proeven die de app zelf
+   beoordeelt. Een meetopdracht kan daarvoor ook getallen van de app zelf
+   opvragen, niet alleen PID's.
+ - Rapporten: het rode bolletje en de knoppen vielen op een telefoon met
+   grote tekst over de titel. De knoppen staan nu op een eigen regel.
+ - Mijn voertuigen → Sensoren: "Dieper zoeken (… werkende codes als
+   aanwijzing)" liep buiten de kaart. Kleine knoppen breken nu af.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — De SPP-plugin laat geen draaiende draden meer achter (#352)
  ═══════════════════════════════════════════════════════════
 

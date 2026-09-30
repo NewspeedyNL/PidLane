@@ -467,6 +467,16 @@ vóór het activeren. Gedekt door `test-admind1.js` (69 controles, op echte
 SQLite uit `schema.sql`, met de leesroute van de app erbij geknipt), zes
 mutaties in `plmutate.sh`, en deel 7 en 8 van `bproef-beheerpagina.js`.
 
+**App-maten in een opdracht (#352, 30-09-2026).** Een proef of voorwaarde
+kan in plaats van `pid` een `app` noemen: een getal dat een module van de
+app zelf bijhoudt, zoals `spp-erbij-aan` (draaiende SPP-draden erbij in een
+volle proef met de patch aan). Het is een witte lijst (`APPMATEN` in
+`pidlane-opdracht.js`); elke naam hoort bij één module met `maat(naam)`, en
+null is "niet gemeten": een voorwaarde is dan niet na te gaan en een proef
+"nog niet". Een app-maat meet altijd `laatst`. Zo kan een vraag over de app
+zelf een kaart met voorwaarden en een oordeel krijgen, in plaats van tekst in
+`CAMPAGNE`. Test: `test-opdrachtappmaat.js`.
+
 **Secrets** (nooit in de repo): `AIRTABLE_TOKEN`, `ADMIN_TOKEN`,
 `SESSION_SECRET`, `USERS_JSON`, `ANTHROPIC_API_KEY`, en voor wachtwoordherstel
 per mail `MAIL_API_KEY` + `MAIL_FROM`. Zonder die laatste twee antwoordt

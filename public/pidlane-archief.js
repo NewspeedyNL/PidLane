@@ -521,13 +521,16 @@ function openReportsOverview(){
       else { acts='<button class="ai-act pri" style="padding:6px 12px;font-size:11px" onclick="srOpen(\''+r.id+'\')">👁 Bekijk</button>'+
                   '<button class="ai-act" style="padding:6px 12px;font-size:11px" onclick="srShare(\''+r.id+'\')">↗ Deel</button>'; }
       acts+='<button class="ai-act" style="padding:6px 10px;font-size:11px" aria-label="Rapport wissen" title="Rapport wissen" onclick="srWis(\''+r.id+'\')">🗑</button>';
-      return '<div style="display:flex;gap:10px;align-items:center;padding:11px 2px;border-bottom:1px solid var(--bd)">'+
-        '<div style="font-size:20px;flex:none">'+m.ic+'</div>'+
-        '<div style="flex:1;min-width:0">'+
-          '<div style="font-size:12px;font-weight:800;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.title)+'</div>'+
-          '<div style="font-size:11px;color:var(--tx3)">'+m.lbl+' · '+tijd+(r.fname?' · '+esc(r.fname):'')+'</div>'+
+      // De knoppen op een eigen regel (30-09-2026). Op één lijn met icoon en
+      // titel hielden ze op een telefoon met grote tekst geen ruimte over: de
+      // titel kromp tot een paar letters, en icoon en knoppen vielen eroverheen.
+      return '<div class="srRegel" style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:11px 2px;border-bottom:1px solid var(--bd)">'+
+        '<div class="srIc" style="font-size:20px;flex:none;line-height:1">'+m.ic+'</div>'+
+        '<div class="srTekst" style="flex:1 1 0;min-width:0">'+
+          '<div style="font-size:12px;font-weight:800;color:var(--tx);overflow-wrap:anywhere">'+esc(r.title)+'</div>'+
+          '<div style="font-size:11px;color:var(--tx3);overflow-wrap:anywhere">'+m.lbl+' · '+tijd+(r.fname?' · '+esc(r.fname):'')+'</div>'+
         '</div>'+
-        '<div style="display:flex;gap:5px;flex:none">'+acts+'</div>'+
+        '<div class="srActs" style="display:flex;flex-wrap:wrap;gap:5px;flex:1 0 100%;justify-content:flex-end">'+acts+'</div>'+
       '</div>';
     }).join('');
   }

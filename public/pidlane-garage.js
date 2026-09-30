@@ -965,7 +965,10 @@
     '#plGarOv .gr-knoppen{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}' +
     '#plGarOv .gr-k{flex:1 1 130px;padding:10px 12px;border-radius:9px;border:1px solid var(--bd);background:var(--sur);color:var(--tx);font:700 13px var(--f);cursor:pointer}' +
     '#plGarOv .gr-k.hoofd{background:var(--bl,#3b82f6);border-color:var(--bl,#3b82f6);color:#fff}' +
-    '#plGarOv .gr-k.klein{flex:0 0 auto;padding:6px 10px;font-size:12px}' +
+    // max-width + normale regelafbreking: met flex:0 0 auto nam een lange
+    // knoptekst ("Dieper zoeken (9 werkende codes als aanwijzing)") zijn eigen
+    // breedte en liep hij de kaart uit (30-09-2026). Nu breekt hij af.
+    '#plGarOv .gr-k.klein{flex:0 1 auto;max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:left;padding:6px 10px;font-size:12px}' +
     '#plGarOv .gr-k.gevaar{color:#ef4444;border-color:rgba(239,68,68,.5)}' +
     '#plGarOv .gr-k:disabled{opacity:.45;cursor:not-allowed}' +
     '#plGarOv label.gr-veld{display:block;font-size:11px;color:var(--tx3);margin:8px 0 3px}' +
