@@ -54,8 +54,9 @@ function el() {
   return e;
 }
 
-/* opt.perSec: functie die per meting het getal geeft (mag afhangen van het
-   spoor); opt.ls / opt.ss: bestaande opslag (voor de herstart). */
+/* opt.atrv: functie die per meting de ATRV geeft (mag afhangen van het
+   spoor en de opslag); opt.perSec idem voor verzoeken/s; opt.ls / opt.ss:
+   bestaande opslag (voor de herstart). */
 function bouw(opt) {
   opt = opt || {};
   const spoor = [], logs = [];
@@ -92,7 +93,7 @@ function bouw(opt) {
     return { perSec: p, venGemMs: 150, belasting: 90, foutPct: 0 };
   } };
   ctx.window.PLSppProef = {
-    meetRespons: async function () { spoor.push('respons'); return { at: { mediaan: 150 }, ecu: { mediaan: 148 }, modus: ls.getItem('pl_spp_poll') === '1' ? 'poll' : 'event' }; },
+    meetRespons: async function () { spoor.push('respons'); const a = opt.atrv ? opt.atrv(spoor, ls) : 150; return { at: { mediaan: a }, ecu: { mediaan: a - 2 }, modus: ls.getItem('pl_spp_poll') === '1' ? 'poll' : 'event' }; },
     meetDraden: async function () { return { sppDraait: 0, totaalPct: 90 }; }
   };
   // Het proces-ID van PLDraden, als de proef het meegeeft (30-09-2026).
@@ -104,35 +105,51 @@ function bouw(opt) {
 }
 
 (async function () {
-  console.log('\n1. Het oordeel per stap');
+  console.log('\n1. Het oordeel per stap — op responstijd, niet op verzoeken/s');
   {
     const P = bouw().P;
     const o = P.oordeelStap;
-    toets('stap 1 onder het doel is het vertrekpunt', o({ perSec: 4 }, null, null).staat, 'LET OP');
-    toets('stap 1 boven het doel haalt het al', o({ perSec: 11 }, null, null).staat, 'OK');
-    toets('van 4 naar 11 = dit hielp', o({ perSec: 11 }, { perSec: 4 }, { perSec: 4 }).hielp, true);
-    toets('boven het doel en de vorige ook = niet opnieuw "hielp"', !!o({ perSec: 11 }, { perSec: 4 }, { perSec: 10.5 }).hielp, false);
-    toets('van 4 naar 6 = sneller maar nog onder', o({ perSec: 6 }, { perSec: 4 }, { perSec: 4 }).beter, true);
-    toets('van 6 naar 4 = trager', /trager/.test(o({ perSec: 4 }, { perSec: 4 }, { perSec: 6 }).tekst), true);
-    toets('van 4 naar 4,4 = geen duidelijk verschil', /geen duidelijk/.test(o({ perSec: 4.4 }, { perSec: 4 }, { perSec: 4 }).tekst), true);
-    toets('precies 10 haalt het doel', o({ perSec: 10 }, { perSec: 4 }, { perSec: 4 }).hielp, true);
+    toets('het doel is 80 ms', P.DOEL_MS, 80);
+    toets('stap 1 traag is het vertrekpunt', o({ atrv: 150 }, null, null).staat, 'LET OP');
+    toets('stap 1 snel haalt het al', o({ atrv: 30 }, null, null).staat, 'OK');
+    toets('van 150 naar 30 ms = dit hielp', o({ atrv: 30 }, { atrv: 150 }, { atrv: 150 }).hielp, true);
+    toets('snel en de vorige ook = niet opnieuw "hielp"', !!o({ atrv: 30 }, { atrv: 150 }, { atrv: 40 }).hielp, false);
+    toets('van 150 naar 100 = sneller maar nog boven', o({ atrv: 100 }, { atrv: 150 }, { atrv: 150 }).beter, true);
+    toets('van 100 naar 150 = trager', /trager/.test(o({ atrv: 150 }, { atrv: 150 }, { atrv: 100 }).tekst), true);
+    toets('van 150 naar 140 = geen duidelijk verschil', /geen duidelijk/.test(o({ atrv: 140 }, { atrv: 150 }, { atrv: 150 }).tekst), true);
+    toets('precies 80 ms haalt het doel', o({ atrv: 80 }, { atrv: 150 }, { atrv: 150 }).hielp, true);
+    // DE KERN (30-09-2026). Het adapterpaneel: 9,7/s, 54 ms, 53% bezet. Onder
+    // het oude doel van 10/s was dat "traag", en een stap die niets aan de
+    // verbinding veranderde maar toevallig 10,1/s mat, "hielp". Verzoeken/s
+    // mogen het oordeel dus niet bepalen — alleen de responstijd.
+    toets('9,7/s bij 54 ms is snel', o({ perSec: 9.7, ms: 54, bezet: 53 }, null, null).staat, 'OK');
+    toets('van 4 naar 11/s bij gelijke traagheid hielp niet',
+      !!o({ perSec: 11, atrv: 150 }, { perSec: 4, atrv: 150 }, { perSec: 4, atrv: 150 }).hielp, false);
+    toets('zonder ATRV telt de tijd per verzoek', o({ ms: 200 }, null, null).staat, 'LET OP');
+    toets('en de ATRV gaat voor als hij er is', o({ atrv: 30, ms: 200 }, null, null).staat, 'OK');
+    toets('twee stappen op dezelfde maat: ATRV tegen ATRV',
+      o({ atrv: 30, ms: 200 }, { atrv: 150, ms: 50 }, { atrv: 150, ms: 50 }).hielp, true);
+    toets('de bezetting zegt of er ruimte is', /ruimte \(53% bezet\)/.test(P.ruimte({ bezet: 53 })), true);
+    toets('en wanneer niet', /vol \(90% bezet\)/.test(P.ruimte({ bezet: 90 })), true);
   }
 
   console.log('\n2. De uitslag');
   {
     const P = bouw().P;
     toets('niets gemeten', /Begin met stap 1/.test(P.uitslag({ stappen: {} })), true);
-    toets('al snel bij het begin', /Er valt nu niets op te lossen/.test(P.uitslag({ stappen: { 1: { m: { perSec: 11 } } } })), true);
+    const snel = P.uitslag({ stappen: { 1: { m: { atrv: 30, perSec: 9.7, bezet: 53 } } } });
+    toets('al snel bij het begin', /verbinding is niet traag/.test(snel), true);
+    toets('en het lage tempo wordt de planning aangerekend', /planning van de app/.test(snel), true);
     const s = { stappen: {
-      1: { m: { perSec: 4 }, oordeel: {} }, 2: { m: { perSec: 4.2 }, oordeel: {} },
-      3: { m: { perSec: 4.1 }, oordeel: {} }, 4: { m: { perSec: 11 }, oordeel: { hielp: true } } } };
+      1: { m: { atrv: 150 }, oordeel: {} }, 2: { m: { atrv: 148 }, oordeel: {} },
+      3: { m: { atrv: 149 }, oordeel: {} }, 4: { m: { atrv: 30 }, oordeel: { hielp: true } } } };
     const u = P.uitslag(s);
-    toets('gevonden: stap 4', /Gevonden: stap 4 \(bluetooth van de auto uit\)/.test(u), true);
+    toets('gevonden: stap 4', /Gevonden: stap 4 \(bluetooth van de auto uit\) bracht de responstijd van 150 naar 30 ms/.test(u), true);
     toets('en wat het betekent', /deelt de radio/.test(u), true);
     const alles = { stappen: {} };
-    [1, 2, 3, 4, 5, 6].forEach(function (i) { alles.stappen[i] = { m: { perSec: 4 + i / 10 }, oordeel: {} }; });
-    toets('niets hielp na zes stappen', /Geen enkele stap/.test(P.uitslag(alles)) && /beste stap 6/.test(P.uitslag(alles)), true);
-    toets('halverwege: ga door met de volgende', /Ga door met stap 3/.test(P.uitslag({ stappen: { 1: { m: { perSec: 4 } }, 2: { m: { perSec: 4 }, oordeel: {} } } })), true);
+    [1, 2, 3, 4, 5, 6].forEach(function (i) { alles.stappen[i] = { m: { atrv: 150 - i }, oordeel: {} }; });
+    toets('niets hielp na zes stappen', /Geen enkele stap/.test(P.uitslag(alles)) && /beste stap 6 met 144 ms/.test(P.uitslag(alles)), true);
+    toets('halverwege: ga door met de volgende', /Ga door met stap 3/.test(P.uitslag({ stappen: { 1: { m: { atrv: 150 } }, 2: { m: { atrv: 150 }, oordeel: {} } } })), true);
   }
 
   console.log('\n3. De volgorde');
@@ -145,7 +162,8 @@ function bouw(opt) {
     toets('stap 1 meet één keer', b.spoor.filter(function (x) { return /^stats/.test(x); }).length, 1);
     toets('stap 1 bewaard', b.P.stand().stappen[1].m.perSec, 4);
     toets('volgende is 2', b.P.volgende(b.P.stand()), 2);
-    toets('het logboek krijgt één regel met het getal', b.logs.filter(function (l) { return /stap 1 \(nulmeting\): 4 verzoeken\/s/.test(l[1]); }).length, 1);
+    toets('het logboek krijgt één regel met de responstijd voorop en het tempo als context',
+      b.logs.filter(function (l) { return /stap 1 \(nulmeting\): adapter 150 ms · ECU 148 ms · 4 verzoeken\/s bij 90% bezet/.test(l[1]); }).length, 1);
   }
 
   console.log('\n4. Stap 2: de socket echt dicht, de bewaker koest, hervatten');
@@ -167,11 +185,11 @@ function bouw(opt) {
 
   console.log('\n5. Stap 3: de leesmanier gaat om en altijd terug');
   {
-    const b = bouw({ perSec: function (sp, ls) { return ls.getItem('pl_spp_poll') === '1' ? 12 : 4; } });
+    const b = bouw({ atrv: function (sp, ls) { return ls.getItem('pl_spp_poll') === '1' ? 30 : 150; } });
     await b.P.doeStap(1); await b.P.doeStap(2);
     await b.P.doeStap(3);
     const st = b.P.stand().stappen[3];
-    toets('gemeten in de pollstand', st.m.perSec, 12);
+    toets('gemeten in de pollstand', st.m.atrv, 30);
     toets('en dat hielp', st.oordeel.hielp, true);
     toets('pl_spp_poll staat weer zoals hij was (leeg)', b.ls.getItem('pl_spp_poll'), null);
     toets('twee verse sockets: omzetten en terugzetten',

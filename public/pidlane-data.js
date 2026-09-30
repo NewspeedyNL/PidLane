@@ -1710,9 +1710,20 @@ window.withBus=async function(naam,fn,maxWachtMs){
    wachters, niet over houders. Deze helper kan het niet vergeten.
    Ze wachten bewust NIET: dit zijn ronde-lussen die elke tik terugkomen.
    Wachten zou de bus voor een zware lezer dichthouden voor werk dat over
-   100 ms net zo goed kan. */
+   100 ms net zo goed kan.
+
+   UITZONDERING: DE POLLUS (30-09-2026). Sinds de pollus zijn volgende ronde
+   plant op de eerste PID die aan de beurt is (pidlane-plload.js,
+   _pollWacht), is de bus tussen twee rondes soms maar een paar ms vrij. Een
+   monitor die om de 20 s één keer probeert, zou er dan vrijwel altijd naast
+   grijpen. Een ronde van de pollus is kort, dus wie hém bezig treft gaat in
+   de rij van #98 staan en krijgt de eerstvolgende vrije beurt. Een zware
+   lezer blijft een reden om over te slaan, zoals hierboven. */
+window.WACHT_OP_POLL_MS=1500;
 window.withBusOfNiets=async function(naam,fn,alsBezet){
-  const tok=window.PLBus.claim(naam);
+  let tok=window.PLBus.claim(naam);
+  if(!tok && naam!=='poll' && window.PLBus.owner()==='poll')
+    tok=await window.PLBus.wait(naam, window.WACHT_OP_POLL_MS);
   if(!tok) return (typeof alsBezet==='function')?await alsBezet():undefined;
   try{ return await fn(); }
   finally{ window.PLBus.release(tok); }

@@ -119,7 +119,7 @@ async function connectSerial(opt){
     return;
   }
   // Zombie poll-loop van vorige sessie stoppen
-  clearInterval(pollTimer);
+  stopPoll();
   try{ PLBus.breek('nieuwe verbinding'); }catch(e){ window._pollBusy=false; }
   // Een poort uit de vorige sessie zou de init van déze verbinding blokkeren.
   // Bewust ná PLBus.breek(): dezelfde plek, dezelfde reden.

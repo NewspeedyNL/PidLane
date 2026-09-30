@@ -1215,7 +1215,7 @@ MUTATIES=(
 "public/pidlane-gear.js@@    return best.k+(idx-best.idx);@@    return idx+1;@@test-gear.js@@de knop Fout onthoudt het anker maar de nummering schuift niet mee"
 "public/pidlane-gear.js@@    if (r===null || nu()-this._laatsteRT>CFG.ankerVersMs)\n      return { ok:false, reden:'Rij eerst een paar seconden rustig in die@@    if (r===null)\n      return { ok:false, reden:'Rij eerst een paar seconden rustig in die@@test-gear.js@@een correctie pakt een verouderde verhouding van een schakelmoment of stilstand"
 "public/pidlane-gear.js@@    if (daar>hier || (daar===hier && ankersDaar>ankersHier)){@@    if (true){@@test-gear.js@@een kleiner model van de server overschrijft wat dit toestel al geleerd had"
-"public/pidlane-plload.js@@    if(typeof plIsBerekend==='function' && plIsBerekend(pid)) continue;@@@@bproef-berekend.js@@de pollus stuurt een berekende PID (CA01) als commando naar de auto"
+"public/pidlane-plload.js@@    // Een berekende PID (CA..) rekent de app uit; de auto kent hem niet.\n    if(typeof plIsBerekend==='function' && plIsBerekend(pid)) continue;@@    // Een berekende PID (CA..) rekent de app uit; de auto kent hem niet.@@bproef-berekend.js@@de pollus stuurt een berekende PID (CA01) als commando naar de auto"
 "public/pidlane-bt.js@@  if(/^CA[0-9A-F]{2}1?$/i.test(String(cmd||'').trim())){@@  if(false){@@bproef-berekend.js@@sendCmd laat een berekende PID door naar de adapter"
 "public/pidlane-berekend.js@@    if (isDiesel && set.indexOf('0110')>=0) continue;@@@@test-berekend.js@@een dieselverbruik uit de luchtmassa (een diesel loopt arm)"
 "public/pidlane-berekend.js@@      if (l===null || typeof kmh!=='number' || kmh<5) return null;@@      if (l===null || typeof kmh!=='number' || kmh<=0) return null;@@test-berekend.js@@liters per 100 km bij stapvoets rijden: delen door bijna nul"
@@ -1466,7 +1466,9 @@ MUTATIES=(
 "public/pidlane-snelproef.js@@    if (stap.actie === 'herstart' && !(await _herstartGezien())) {@@    if (false) {@@test-snelproef.js@@stap 6 telt zonder herstart: de uitslag zegt dat een herstart hielp terwijl er niets herstart is"
 "public/pidlane-snelproef.js@@    window._lastSppReconnect = Date.now();\n    connected = false;@@    connected = false;@@test-snelproef.js@@de bewaker van de socket herverbindt mee tijdens het verversen: twee verbindingen door elkaar"
 "public/pidlane-snelproef.js@@      try { await spp.disconnect({ address: adres }); }@@      try { }@@test-snelproef.js@@stap 2 opent een nieuwe socket zonder de oude te sluiten — dat is het pad van 01:11, geen verse verbinding"
-"public/pidlane-snelproef.js@@    if (haalt && vorige.perSec < DOEL) return@@    if (haalt) return@@test-snelproef.js@@elke stap na de oplossing zegt ook \"dit hielp\": de uitslag wijst de verkeerde ingreep aan"
+"public/pidlane-snelproef.js@@    if (snel && ervoor > DOEL_MS) return@@    if (snel) return@@test-snelproef.js@@elke stap na de oplossing zegt ook \"dit hielp\": de uitslag wijst de verkeerde ingreep aan"
+"public/pidlane-snelproef.js@@    if (typeof m.atrv === 'number') return m.atrv;\n    if (typeof m.ms === 'number') return m.ms;@@    if (typeof m.ms === 'number') return m.ms;\n    if (typeof m.atrv === 'number') return m.atrv;@@test-snelproef.js@@de tijd per groepsverzoek gaat voor de ATRV: een snelle adapter met een drukke bus heet traag"
+"public/pidlane-snelproef.js@@    const rt = _rt(m);\n    if (rt === null)@@    const rt = (m && m.perSec >= 10) ? 1 : 999;\n    if (rt === null)@@test-snelproef.js@@het oordeel gaat weer over verzoeken/s: 9,7/s bij 54 ms heet traag, en een tempowissel heet een oplossing"
 "public/pidlane-snelproef.js@@  try { document.addEventListener('DOMContentLoaded', menu); }@@  try { }@@bproef-snelproef.js@@de snelheidsproef laadt maar staat nergens in het menu"
 # ── een socket die nog openstaat eerst dicht (30-09-2026) ──
 "public/pidlane-bt.js@@  await sppOudeSluiten(spp, address);\n  await spp.connect({ address });@@  await spp.connect({ address });@@test-sppoudsluiten.js@@na een herlaad verbindt de app over een socket heen die nog openstaat: de MX+ weigert tot iemand op zijn knop drukt"
@@ -1488,6 +1490,13 @@ MUTATIES=(
 "public/pidlane-sppproef.js@@      if (_procesNu) localStorage.setItem(SLEUTEL, JSON.stringify(a));@@      if (false) localStorage.setItem(SLEUTEL, JSON.stringify(a));@@test-sppproef.js@@de markering staat weer in sessionStorage: wegvegen wist hem terwijl de draad blijft draaien"
 "public/pidlane-sppproef.js@@    if (p && typeof p.beeindig === 'function') { await p.beeindig(); return true; }@@    /* beeindig weg */@@test-sppproef.js@@de knop beëindigt het proces niet en sluit alleen af — de draden blijven"
 "public/pidlane-snelproef.js@@    if (nu && was) return nu !== was;@@    /* proces-ID weg */@@test-snelproef.js@@stap 6 telt wegvegen weer als herstart zolang sessionStorage leeg is"
+"public/pidlane-plload.js@@  return Math.max(POLL_WACHT_MIN, Math.min(POLL_WACHT_MAX, eerste-now));@@  return POLL_WACHT_MAX;@@test-pollritme.js@@de pollus tikt weer vast om de 100 ms: de snelle klasse zakt naar 5 Hz en de bus staat half leeg"
+"public/pidlane-plload.js@@  if(!connected||!activePIDs.size) return POLL_WACHT_MAX;@@@@test-pollritme.js@@zonder verbinding blijft alles aan de beurt en wordt de pollus 250 keer per seconde wakker"
+"public/pidlane-plload.js@@    if(gen!==_pollGen) return;   // intussen gestopt of opnieuw gestart@@@@test-pollritme.js@@een stop tijdens een ronde plant toch de volgende: de app pollt door na het verbreken"
+"public/pidlane-plload.js@@bezet?POLL_BEZET_MS:_pollWacht(Date.now())@@_pollWacht(Date.now())@@test-pollritme.js@@een bezette bus wordt elke paar ms opnieuw geprobeerd"
+"public/pidlane-plload.js@@    const t=_pidDead.has(pid) ? (_pidDeadSince[pid]||0)+PID_REPROBE_MS : (_pidNextPoll[pid]||0);@@    const t=(_pidNextPoll[pid]||0);@@test-pollritme.js@@een gesnoeide PID staat altijd aan de beurt en houdt de pollus wakker voor niets"
+"public/pidlane-data.js@@  if(!tok && naam!=='poll' && window.PLBus.owner()==='poll')@@  if(false)@@test-busslot.js@@de monitor grijpt naast het gat tussen twee pollrondes en komt er vrijwel nooit meer tussen"
+"public/pidlane-data.js@@  if(!tok && naam!=='poll' && window.PLBus.owner()==='poll')@@  if(!tok && naam!=='poll')@@test-busslot.js@@ook achter een zware lezer gaat iedereen in de rij staan"
 )
 
 echo

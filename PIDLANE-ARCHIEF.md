@@ -14,6 +14,53 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-09-2026 — 10 verzoeken/s bij 54 ms: de pollus, niet de adapter (#302)
+
+**De waarneming.** Het adapterpaneel stond op 9,7 verzoeken/s, 54 ms per
+verzoek, 53% bus bezet, tempo 100% automaat, staat "snel — ruimte over". De
+vraag erbij: bij 54 ms per verzoek kan de bus er 18 per seconde aan, dus waar
+blijft de rest?
+
+**Een eerste uitleg die half klopte.** Ik zei eerst dat een interval van
+120 ms door de tik van 100 ms 200 ms werd. Dat is maar de helft: de pollus
+plant al vanaf de *deadline* (`_pollHerplan`), dus een PID die
+één tik te laat komt, haalt dat de volgende keer in. Wat de uitleg miste is
+wat er gebeurt als een ronde langer duurt dan een tik. Dan is de bus van de
+pollus zelf, vallen de tikken erin weg, en is de PID bij de volgende tik
+méér dan één interval te laat — en dan ijkt `_pollHerplan` terecht opnieuw
+vanaf nu in plaats van in te halen. Het gat na elke ronde (gemiddeld een
+halve tik) zit er dan elke ronde in.
+
+**Nagemeten, niet geschat.** `test-pollritme.js` draait de echte
+`startPoll()`, `_pollRonde()`, `pidsDueNow()`, `_pollHerplan()` en
+`pidPollInterval()` op een nagemaakte klok met 54 ms per verzoek. Met acht
+PIDs (vier uit de snelle klasse) gaf de oude tik 10,1 verzoeken/s, 54%
+bezet en de snelle klasse op 4,8–5,0 Hz: precies het paneel. Met de nieuwe
+tik (`_pollWacht`: de volgende ronde op de eerste PID die aan de beurt is,
+tussen 4 en 100 ms) 17,5 verzoeken/s, 95% bezet, snelle klasse 8,3 Hz. Bij
+31 PIDs (de standaardset) was het verschil kleiner — 15 → 18 verzoeken/s —
+omdat de bus daar ook met de oude tik al vol zat.
+
+**Wat erbij moest.** Een bus die tussen twee rondes maar een paar ms vrij
+is, laat de monitor (om de 20 s één poging) en de waakronde (12 s) vrijwel
+nooit meer toe; die sloegen hun beurt over als het slot bezet was.
+`withBusOfNiets()` laat wie de *pollus* bezig treft nu in de rij van #98
+staan (hoogstens 1,5 s); een zware lezer blijft een reden om over te slaan.
+
+**De snelheidsproef mat het verkeerde.** Zijn doel was "10 verzoeken/s", en
+dat getal bleek dus over de planning te gaan, niet over de verbinding. Een
+stap die niets aan de verbinding veranderde maar toevallig 10,1/s mat, zou
+als oplossing zijn aangewezen. Hij oordeelt nu op de responstijd (ATRV, doel
+80 ms; op een goede dag ±30, op de trage ochtend van 30-09 152).
+
+**Wat nog open is.** Of 95% bezet op een echte bus goed gaat: PLLoad schroeft
+terug als de responstijd daarbij oploopt, maar dat moet een rit laten zien.
+En #302 zelf — de responstijd die in stappen oploopt — gaat over de andere
+helft van dezelfde som: 54 ms per verzoek is al beter dan de 270 ms van
+toen, maar niet de 30 van de ATRV.
+
+---
+
 ## 30-09-2026 — Wegvegen is geen herstart, en een telling per naam
 
 **De waarneming (logboek 12:31).** Stap 6 van de snelheidsproef ("app helemaal

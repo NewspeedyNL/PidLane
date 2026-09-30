@@ -92,7 +92,7 @@ function RIT(ms) {
     await new Promise((r) => setTimeout(r, 2000));
     _nepElm.traagNog = 1;
     await new Promise((r) => setTimeout(r, ${ms}));
-    clearInterval(pollTimer);
+    stopPoll();
     await new Promise((r) => setTimeout(r, 400));
     const batches = _nepElm.log.filter((c) => /^01(?:[0-9A-F]{2}){2,}[0-9A-F]?$/.test(c));
     const staart = _nepElm.verzoekMs.slice(-20).map((x) => x.ms).sort((a, b) => a - b);

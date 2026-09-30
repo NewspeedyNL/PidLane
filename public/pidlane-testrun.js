@@ -2771,6 +2771,41 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de pollus plant op de eerste PID die aan de beurt is (30-09-2026) ──
+  // Met een vaste tik van 100 ms kwam een PID van 120 ms op 200 ms, en stond
+  // de bus bij acht PIDs half leeg: 10 verzoeken/s bij 54 ms per verzoek.
+  // Deze proef telt drie seconden lang hoe vaak de snelste PID echt gevraagd
+  // wordt, naast wat pidPollInterval() belooft (met het tempo van PLLoad erin).
+  {
+    issue: '#302',
+    naam: 'De snelle sensoren komen op hun eigen tempo',
+    waarom: 'Het adapterpaneel stond op 10 verzoeken/s en 53% bezet: de adapter had ruimte, de pollus vroeg er niet om, en toerental kwam op 5 Hz in plaats van 8.',
+    proef: async function () {
+      if (typeof _pollWacht !== 'function') return { staat: 'FOUT', detail: '_pollWacht ontbreekt — de pollus tikt weer vast' };
+      if (!connected || demoMode) return { staat: 'LET OP', detail: 'niet verbonden met een auto — niets gemeten' };
+      var snelste = null;
+      Array.from(activePIDs).forEach(function (p) {
+        if (window.PLSched.dood(p)) return;
+        if (!snelste || pidPollInterval(p) < pidPollInterval(snelste)) snelste = p;
+      });
+      if (!snelste) return { staat: 'LET OP', detail: 'geen actieve PID om te tellen' };
+      var iv = pidPollInterval(snelste), vorige = window.PLSched.laatstePoging(snelste), n = 0, t0 = Date.now();
+      while (Date.now() - t0 < 3000) {
+        await new Promise(function (r) { setTimeout(r, 10); });
+        var nu = window.PLSched.laatstePoging(snelste);
+        if (nu !== vorige) { n++; vorige = nu; }
+      }
+      var hz = n / 3, belofte = 1000 / iv;
+      var st = null; try { st = PLBus.stats(); } catch (e) { console.warn('PLBus.stats mislukt in blok 5:', e); }
+      var bezet = st ? Math.round(st.belasting) : null;
+      var tekst = snelste + ' ' + hz.toFixed(1) + ' Hz van de beloofde ' + belofte.toFixed(1) + ' (' + iv + ' ms)' + (bezet !== null ? ', bus ' + bezet + '% bezet' : '');
+      if (hz >= belofte * 0.8) return { staat: 'OK', detail: tekst };
+      // Traag bij een volle bus is de bus. Traag bij een halflege bus is de pollus.
+      if (bezet !== null && bezet < 70) return { staat: 'FOUT', detail: tekst + ' — de bus heeft ruimte, de pollus vraagt er niet om' };
+      return { staat: 'LET OP', detail: tekst + ' — de bus is vol; dat is de adapter of de ECU, niet de planning' };
+    }
+  },
+
   // ── een socket die nog openstaat eerst dicht (30-09-2026) ──
   // Een herlaad (update, hervatting) sloot de Bluetooth-socket niet; de MX+
   // weigerde dan de nieuwe verbinding tot iemand op zijn knop drukte.
@@ -2790,9 +2825,10 @@ const PROEVEN_B5 = [
   // ── de snelheidsproef, stap voor stap (30-09-2026) ──
   // Om 08:53 was de verbinding weer traag terwijl de patch van #352 aan stond
   // en er geen draad draaide. De snelheidsproef (Admin-menu) zoekt met zes
-  // genummerde stappen welke ingreep de verbinding terugbrengt boven de 10
-  // verzoeken/s. Deze proef kijkt of hij er staat, of het rekenwerk het
-  // verschil ziet, en geeft de uitslag van een proef die al gedaan is.
+  // genummerde stappen welke ingreep de responstijd terugbrengt onder de
+  // 80 ms (tot 30-09 middag: boven de 10 verzoeken/s — dat was de pollus).
+  // Deze proef kijkt of hij er staat, of het rekenwerk het verschil ziet, en
+  // geeft de uitslag van een proef die al gedaan is.
   {
     issue: '#352',
     naam: 'De snelheidsproef staat klaar en wijst de goede stap aan',
@@ -2801,11 +2837,14 @@ const PROEVEN_B5 = [
       if (!window.PLSnelProef) return { staat: 'FOUT', detail: 'PLSnelProef ontbreekt — pidlane-snelproef.js is niet geladen' };
       if (!document.getElementById('plSnelMenu')) return { staat: 'FOUT', detail: 'de knop "Snelheidsproef" staat niet in het Admin-menu' };
       var P = PLSnelProef;
-      var proef = { stappen: { 1: { m: { perSec: 4 }, oordeel: {} },
-        2: { m: { perSec: 11 }, oordeel: P.oordeelStap({ perSec: 11 }, { perSec: 4 }, { perSec: 4 }) },
-        3: { m: { perSec: 11 }, oordeel: P.oordeelStap({ perSec: 11 }, { perSec: 4 }, { perSec: 11 }) } } };
+      var proef = { stappen: { 1: { m: { atrv: 150 }, oordeel: {} },
+        2: { m: { atrv: 30 }, oordeel: P.oordeelStap({ atrv: 30 }, { atrv: 150 }, { atrv: 150 }) },
+        3: { m: { atrv: 30 }, oordeel: P.oordeelStap({ atrv: 30 }, { atrv: 150 }, { atrv: 30 }) } } };
       if (!/Gevonden: stap 2/.test(P.uitslag(proef)))
-        return { staat: 'FOUT', detail: 'van 4 naar 11 verzoeken/s bij stap 2 wijst de uitslag niet stap 2 aan: ' + P.uitslag(proef) };
+        return { staat: 'FOUT', detail: 'van 150 naar 30 ms bij stap 2 wijst de uitslag niet stap 2 aan: ' + P.uitslag(proef) };
+      // Het tempo is geen oordeel: 9,7/s bij 54 ms is een snelle verbinding.
+      if (P.oordeelStap({ perSec: 9.7, ms: 54, bezet: 53 }, null, null).staat !== 'OK')
+        return { staat: 'FOUT', detail: '9,7 verzoeken/s bij 54 ms heet traag — de proef oordeelt weer op verzoeken/s' };
       var st = P.stand(), n = Object.keys(st.stappen).length;
       if (!n) return { staat: 'OK', detail: 'klaar voor gebruik; in deze sessie nog geen stap gedaan' };
       return { staat: 'OK', detail: n + ' van de ' + P.STAPPEN.length + ' stappen gedaan — ' + P.uitslag(st) };

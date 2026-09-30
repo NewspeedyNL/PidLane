@@ -58,7 +58,7 @@ function toets(naam, waar, uitleg) {
     })()`));
     toets('het paneel staat er', p.open, JSON.stringify(p).slice(0, 200));
     toets('knop 1 is te drukken, 2 en 6 niet', p.k1 === true && p.k2 === false && p.k6 === false, JSON.stringify(p).slice(0, 200));
-    toets('het doel van 10 verzoeken/s staat erbij', /10 verzoeken per seconde/.test(p.tekst), p.tekst.slice(0, 200));
+    toets('het doel is de responstijd, het tempo is context', /antwoordt binnen 80 ms/.test(p.tekst) && /context/.test(p.tekst), p.tekst.slice(0, 200));
     toets('het paneel past op het scherm', p.breedte > 0 && p.breedte <= p.scherm, p.breedte + ' van ' + p.scherm);
 
     console.log('\n3. Stap 1 zonder verbinding zegt dat, zonder fout in de console');

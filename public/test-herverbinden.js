@@ -54,7 +54,7 @@ function laad(o) {
     connectSPP: () => Promise.reject(new Error('geen adapter in de scan')),
     showConnError: (m) => { s.fouten.push(m); },
     resetConnectBtn() {},
-    clearInterval() {},
+    stopPoll() {},
     console: { warn() {}, log() {}, error() {} }
   };
   s.window = s;

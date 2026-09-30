@@ -372,7 +372,7 @@ async function handleConnect(){
     saveSession();   // idee 2: sessie-stats in voertuigdossier bewaren vóór verbreken
     const _wasDemo=demoMode;
     if(demoMode) plDemoStop();
-    connected=false; demoMode=false; clearInterval(pollTimer);
+    connected=false; demoMode=false; stopPoll();
     // Test-scenario opheffen wanneer demo/verbinding stopt
     _scenario={ enabled:false, pids:{}, dtcs:[], vehicle:null };
     try{ updateScenarioBadge(); }catch(e){ console.warn('updateScenarioBadge mislukt:', e); }

@@ -10,6 +10,25 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Snelle sensoren op hun eigen tempo
+ ═══════════════════════════════════════════════════════════
+
+ - De app vroeg de snelle sensoren (toerental, snelheid, gas) minder
+   vaak dan beloofd: 5 keer per seconde in plaats van 8. De adapter had
+   ruimte over — het adapterpaneel stond op 10 verzoeken/s bij 53% bus
+   bezet. De app plant nu elke ronde op het moment dat de eerste sensor
+   aan de beurt is, in plaats van op een vaste tik van 100 ms. Met
+   dezelfde adapter gaat dat naar ±17 verzoeken/s.
+ - Wie de bus even wil (monitor, waakronde) terwijl de app sensoren
+   leest, wacht nu tot die ronde klaar is en gaat dan voor. Daarvoor
+   sloeg hij zijn beurt over, en met de drukkere bus zou dat bijna
+   altijd gebeuren.
+ - De snelheidsproef (Admin-menu) oordeelt nu op de responstijd van de
+   adapter (doel: binnen 80 ms) in plaats van op 10 verzoeken/s. Het
+   aantal verzoeken en de bezetting staan erbij als context: dat tempo
+   komt uit de app, niet uit de verbinding.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — Wegvegen is geen herstart
  ═══════════════════════════════════════════════════════════
 
