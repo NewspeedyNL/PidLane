@@ -140,7 +140,9 @@ async function vraag(s, cmd, ms) {
     antw(P, '010C1', [{ na: 6, stuk: '410C1A' }, { na: 12, stuk: 'F8\r\r>' }]);
     const a = await vraag(s, '010C1');
     toets('hetzelfde antwoord', a.r === '410C1AF8', JSON.stringify(a.r));
-    toets('maar pas na de eerste poll (' + a.ms + ' ms)', a.ms >= 50 && P.naSchrijven >= 1, a.ms + ' ms, ' + P.naSchrijven + ' poll(s)');
+    // Polls tellen, geen milliseconden (zoals 1125a9f): een timer van 50 ms
+    // meet met Date.now() soms 49 ms, en dat was op CI vals rood (30-09-2026).
+    toets('maar pas na de eerste poll (' + a.ms + ' ms)', P.naSchrijven >= 1, a.ms + ' ms, ' + P.naSchrijven + ' poll(s)');
     toets('zonder startNotifications', P.starts === 0 && s.plSppModus().modus === 'poll');
   }
 
