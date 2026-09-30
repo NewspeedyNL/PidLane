@@ -304,6 +304,14 @@ const NEPSERVER = `(function(){
       PLGarage.open(v.id); PLGarage._tab('sensoren');
       const body = () => document.getElementById('plGarBody').textContent;
       const uit = { knop: await wacht(() => body().indexOf('Dieper zoeken (1 werkende') >= 0), blok: /Scan 222Axx @ 720/.test(body()) };
+      // 30-09-2026: de knoptekst liep de kaart uit op tekstgrootte L. Elke
+      // kleine knop in deze tab hoort binnen de rechterrand van het venster.
+      setUiScale('l'); await new Promise(r => setTimeout(r, 100));
+      const rand = document.getElementById('plGarBody').getBoundingClientRect().right;
+      const buiten = Array.prototype.filter.call(document.querySelectorAll('#plGarBody .gr-k.klein'), function (k) {
+        return k.offsetParent && k.getBoundingClientRect().right > rand + 1; }).map(function (k) { return k.textContent.trim().slice(0, 40); });
+      setUiScale('m');
+      uit.buiten = buiten;
       const echtApi = window.apiFetch; let vraag = '';
       window.apiFetch = async (q) => { vraag = q; return '{"kandidaten":[]}'; };
       await PLGarage._bibZoek(true);
@@ -321,6 +329,7 @@ const NEPSERVER = `(function(){
       return uit;
     })()`);
     toets('met een werkende code: knoppen "Dieper zoeken" en "Scan 222Axx @ 720"', diep.knop && diep.blok, JSON.stringify(diep));
+    toets('op tekstgrootte L blijft elke kleine knop binnen het venster', Array.isArray(diep.buiten) && diep.buiten.length === 0, JSON.stringify(diep.buiten));
     toets('dieper zoeken geeft de werkende code met ECU-adres aan de AI mee', diep.vraag, JSON.stringify(diep));
     toets('buurscan: alleen de nieuwe code staat erbij, met zijn bytes', diep.lijst, JSON.stringify(diep));
     toets('"In het formulier" zet code en ECU-adres klaar', diep.form === '222A21@720', JSON.stringify(diep));
