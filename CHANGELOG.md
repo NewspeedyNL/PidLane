@@ -10,6 +10,33 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Live: knoppen onder de meter, bandenlampje rechtsonder
+ ═══════════════════════════════════════════════════════════
+
+ - Opnemen, Deel live, Meekijken (en Bewaken in de garagemodus) staan nu
+   onder de meter en de tegels, niet meer ertussen.
+ - Het bandenlampje van Slim visueel staat rechtsonder in de hoek van de
+   meter.
+
+ ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Slim visueel: geen N meer bij optrekken, en alleen een zekere versnelling
+ ═══════════════════════════════════════════════════════════
+
+ - Bij optrekken rond 1000 tpm stond er soms N op de meter. N komt er nu
+   alleen nog als geen enkele versnelling dit toerental bij deze snelheid
+   kan geven, zoals bij uitrollen in z'n vrij.
+ - De meter toont alleen een versnelling die zeker is. Twijfelt de app,
+   dan staat het PidLane-embleem er.
+
+ ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Na een update niet meer op de knop van de adapter drukken
+ ═══════════════════════════════════════════════════════════
+
+ - Een update of herlaad van de app sloot de Bluetooth-verbinding met de
+   adapter niet. De OBDLink MX+ neemt maar één verbinding tegelijk aan, en
+   weigerde de nieuwe tot je op zijn knop drukte. Vóór elk verbinden vraagt
+   de app nu of er nog een verbinding openstaat, en sluit die eerst.
+ - Gebeurt dat, dan staat er een regel met 🔌 in het logboek.
  30-09-2026 — Geen ruwe VIN meer in het logboek
  ═══════════════════════════════════════════════════════════
 

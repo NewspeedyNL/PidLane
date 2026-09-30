@@ -375,8 +375,42 @@ async function connectSPP(spp){
   await doSPPConnect(spp, target.address || target.id, target.name || 'OBDLink');
 }
 
+/* EEN VERBINDING DIE NOG OPENSTAAT, EERST DICHT (30-09-2026)
+   Een herlaad van de pagina (een update, een hervatting na een crash) sluit
+   de Bluetooth-socket NIET: die leeft in de plugin, in het Android-proces,
+   en dat draait door. De nieuwe pagina weet er niets van en verbindt
+   opnieuw. Een OBDLink MX+ neemt maar één verbinding tegelijk aan, dus die
+   poging mislukt zolang de oude hem vasthoudt — tot iemand op de knop van de
+   adapter drukt. Een plugin zonder de patch van #352 sloot de oude ook bij
+   het opnieuw verbinden niet, en liet dan nog een draaiende draad achter.
+   Hier dus eerst vragen of er nog iets openstaat, en zo ja: dicht, en in het
+   logboek, zodat te zien is hoe vaak het gebeurt. Nooit langer dan
+   SPP_OPRUIM_MS: een plugin die niet antwoordt mag het verbinden niet
+   ophouden. */
+const SPP_OPRUIM_MS=1500;
+async function sppOudeSluiten(spp, address){
+  const binnen=(p)=>Promise.race([p, new Promise(res=>setTimeout(()=>res('__traag'), SPP_OPRUIM_MS))]);
+  if(!spp || typeof spp.isConnected!=='function' || !address) return false;
+  let c=null;
+  try{ c=await binnen(spp.isConnected({address})); }
+  catch(e){ console.warn('SPP: isConnected vóór verbinden mislukt — gewoon verbinden', e); return false; }
+  if(c==='__traag'){ btDiag('SPP: isConnected antwoordt niet binnen '+SPP_OPRUIM_MS+' ms — gewoon verbinden','warn'); return false; }
+  if(!(c && (c.connected===true || c.isConnected===true))) return false;
+  try{ await binnen(spp.disconnect({address})); }
+  catch(e){ console.warn('SPP: oude verbinding sluiten mislukt — de plugin probeert het bij connect() zelf', e); }
+  btDiag('SPP: er stond nog een verbinding open met '+address+' — eerst gesloten','warn');
+  const waar=window._sppConn ? 'van de vorige verbinding' : 'van vóór de herlaad';
+  log('🔌 Er stond nog een Bluetooth-verbinding met de adapter open ('+waar+') — eerst gesloten, anders moet je op de knop van de adapter drukken','warn');
+  await delay(300);
+  return true;
+}
+window.sppOudeSluiten=sppOudeSluiten;
+
 async function doSPPConnect(spp, address, name){
   btDiag(`Verbinden met ${name}...`, 'info');
+  // Altijd: ook binnen één pagina laat het dode-socketpad van
+  // trackBtQuality() de oude socket open (#352).
+  await sppOudeSluiten(spp, address);
   await spp.connect({ address });               // gooit bij fout
   _sppNieuweSocket();                           // events staan per socket aan
   btDiag('Verbonden ✓', 'ok');

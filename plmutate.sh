@@ -1392,7 +1392,7 @@ MUTATIES=(
 "public/pidlane-nav.js@@    _gecheckt = true;       // één keer per sessie@@    void 0;                 // één keer per sessie@@bproef-navigatie.js@@de automatische check springt bij elke herverbinding opnieuw open"
 "public/pidlane-fuel.js@@  door_saving_active: 'tg-rit',@@  door_saving_active: 'tg-onderweg',@@bproef-navigatie.js@@de beheerschakelaar voor Rit starten wijst naar een tegel die er niet is"
 "admin/beheer.html@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], true));@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], false));@@bproef-beheerpagina.js@@beheer toont een nooit opgeslagen tegel als uit, en Alles opslaan zet hem dan echt uit"
-"public/pidlane.css@@.pl-live-acties { display:flex; gap:6px; margin:0 0 10px; }@@.pl-live-acties { display:flex; gap:6px; margin:0 0 10px; }\nbody:not(.pl-garage) #pidViewSwitch { display:none !important; }@@bproef-navigatie.js@@de weergavekeuze in Live staat alleen in de garagemodus: een klant zit vast in Slim"
+"public/pidlane.css@@.pl-live-acties { display:flex; gap:6px; margin:12px 0 calc(64px + var(--pl-sab, 0px)); }@@.pl-live-acties { display:flex; gap:6px; margin:12px 0 calc(64px + var(--pl-sab, 0px)); }\nbody:not(.pl-garage) #pidViewSwitch { display:none !important; }@@bproef-navigatie.js@@de weergavekeuze in Live staat alleen in de garagemodus: een klant zit vast in Slim"
 "public/pidlane-uihelpers.js@@  if(t && !isVin) return t;@@  if(t) return t;@@test-nav.js@@de statusregel bovenin toont het chassisnummer (VIN) in plaats van merk en model"
 "public/pidlane-uihelpers.js@@  if(!s.ai) return 'AI niet bereikbaar';\n  return s.naam || 'Verbonden';@@  return s.naam || 'Verbonden';@@test-nav.js@@de statusregel toont de autonaam terwijl de AI weg is"
 # ── De demo-zandbak (29-09-2026) ──
@@ -1468,6 +1468,15 @@ MUTATIES=(
 "public/pidlane-snelproef.js@@      try { await spp.disconnect({ address: adres }); }@@      try { }@@test-snelproef.js@@stap 2 opent een nieuwe socket zonder de oude te sluiten — dat is het pad van 01:11, geen verse verbinding"
 "public/pidlane-snelproef.js@@    if (haalt && vorige.perSec < DOEL) return@@    if (haalt) return@@test-snelproef.js@@elke stap na de oplossing zegt ook \"dit hielp\": de uitslag wijst de verkeerde ingreep aan"
 "public/pidlane-snelproef.js@@  try { document.addEventListener('DOMContentLoaded', menu); }@@  try { }@@bproef-snelproef.js@@de snelheidsproef laadt maar staat nergens in het menu"
+# ── een socket die nog openstaat eerst dicht (30-09-2026) ──
+"public/pidlane-bt.js@@  await sppOudeSluiten(spp, address);\n  await spp.connect({ address });@@  await spp.connect({ address });@@test-sppoudsluiten.js@@na een herlaad verbindt de app over een socket heen die nog openstaat: de MX+ weigert tot iemand op zijn knop drukt"
+"public/pidlane-bt.js@@  if(!(c && (c.connected===true || c.isConnected===true))) return false;@@  if(c===false) return false;@@test-sppoudsluiten.js@@een onduidelijk antwoord van isConnected telt als open: de app sluit op een gok een verbinding die er niet is"
+# ── versnelling: N alleen als het zeker is, de meter alleen een zeker cijfer (30-09-2026) ──
+"public/pidlane-gear.js@@        doel = this._neutraal(r, p.rpm) ? 'N' : undefined;@@        doel = this._match(r) ? undefined : 'N';@@test-gear.js@@bij optrekken rond 1000 tpm staat er weer N terwijl je gas geeft"
+"public/pidlane-gear.js@@    if (w===null || this.afwijking || !this.nummeringZeker()) return null;@@    if (w===null) return null;@@test-gear.js@@de meter toont een versnelling die bij afwijking of onzekere nummering niet klopt"
+"public/pidlane-visueel.js@@window.PLGear.toonbaar() : null; }@@window.PLGear.waarde() : null; }@@bproef-visueel.js@@de meter vraagt weer waarde(): een onzeker cijfer in plaats van het embleem"
+# ── live-acties onder de meter, bandenlampje rechtsonder (30-09-2026) ──
+"public/pidlane.css@@.vis-lamp-banden { position:absolute; right:0; bottom:0; z-index:1; pointer-events:auto;@@.vis-lamp-banden { pointer-events:auto;@@bproef-banden.js@@het bandenlampje staat niet meer rechtsonder in de hoek van de meter"
 # ── geen ruwe VIN in een profielmelding (30-09-2026) ──
 "public/pidlane-pids.js@@btDiag('Geen profiel onder '+_vinSleutelVoorLog(vin)+' — volle discovery','warn')@@btDiag('Geen profiel onder '+sleutel+' — volle discovery','warn')@@test-vin-meldingen.js@@de VIN staat weer voluit in het BT-log, en daarmee in elk gedeeld logboek"
 "public/pidlane-pids.js@@function _vinSleutelVoorLog(vin){ return 'pl_vinprof_…'+String(vin||'').toUpperCase().slice(-6); }@@function _vinSleutelVoorLog(vin){ return vinProfileKey(vin); }@@test-vin-meldingen.js@@de maskerfunctie geeft de hele sleutel terug: elke melding lekt de VIN zonder dat de aanroepen veranderen"

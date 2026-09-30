@@ -157,6 +157,36 @@ console.log('\n— oude cachewaarden tonen niets —');
   ok(n === 'N' && a.G.toon === null, `N verdwijnt als de adapter wegvalt (was ${n}, nu ${a.G.toon})`);
 }
 
+console.log('\n— optrekken rond 1000 tpm is geen N (30-09-2026) —');
+{
+  const a = nieuweApp();
+  const prof = profielMaker(RATIO);
+  a.rij(180000, prof);
+  // 12 km/u bij ~1000 tpm: r = 12, tussen de 1e (7,4) en de 2e (13,1) en bij
+  // geen van beide binnen 7%. Het toerental schommelt, dus geen stabiele ratio.
+  let gezien = false;
+  a.rij(4000, t => ({ kmh: 12, rpm: 1000 + 30 * Math.sin(t / 40) }), { score: () => { if (a.G.toon === 'N') gezien = true; return null; } });
+  ok(!gezien, 'geen N terwijl er een versnelling in zit die net niet past');
+  ok(a.G.toon === null, `dan het embleem (toon ${a.G.toon})`);
+  // Uitrollen in z'n vrij blijft N: 50 km/u bij 800 tpm kan geen enkele versnelling.
+  a.rij(4000, t => ({ kmh: 50, rpm: 800 + 20 * Math.sin(t / 50) }));
+  ok(a.G.toon === 'N', `uitrollen in z'n vrij is nog steeds N (toon ${a.G.toon})`);
+}
+
+console.log('\n— toonbaar(): alleen een cijfer dat klopt —');
+{
+  const a = nieuweApp();
+  const prof = profielMaker(RATIO);
+  a.rij(188000, prof);
+  const w = a.G.waarde();
+  ok(w !== null && a.G.toonbaar() === w, `zeker en passend: toonbaar() = waarde() (${w})`);
+  a.G.afwijking = true;
+  ok(a.G.toonbaar() === null && a.G.waarde() === w, 'bij afwijking: toonbaar() geeft niets, waarde() nog wel (voor CA01)');
+  a.G.afwijking = false;
+  a.G.model.offset = 0; a.G.model.gears = a.G.model.gears.slice(1);  // de 1e nog niet gezien
+  ok(!a.G.nummeringZeker() && a.G.toonbaar() === null, 'nummering niet zeker: niets');
+}
+
 console.log('\n— geen verbinding of demo: logo terug —');
 {
   const a = nieuweApp();

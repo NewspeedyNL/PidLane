@@ -408,6 +408,22 @@ const PLGear = {
   // welke versnelling past bij ratio r? → {gear, idx, fout} of null. `gear`
   // is het nummer dat getoond wordt: de plek in de lijst plus de verschuiving
   // uit de correcties van de klant. Onder de 1 = niet te nummeren.
+  /* N ALLEEN ALS GEEN ENKELE VERSNELLING DIT KAN (30-09-2026). Hier stond:
+     laag toerental en geen passende versnelling = N. Bij optrekken in de
+     tweede rond 1000 tpm, of met een paar waarvan snelheid en toerental net
+     niet van hetzelfde moment zijn, past er even niets — en dan stond er N
+     terwijl je gas gaf. N is pas zeker als de motor langzamer draait dan de
+     HOOGSTE versnelling bij deze snelheid zou geven: dan zit er geen
+     versnelling tussen motor en wielen. Kent het model nog niet alle
+     versnellingen die er verwacht worden, dan is de hoogste niet bekend en
+     is het dus nooit zeker. Onzeker betekent: het embleem, geen letter. */
+  _neutraal(r, rpm){
+    const g=(this.model&&this.model.gears)||[];
+    if (!g.length || !(rpm<CFG.neutraalRpm) || !(r>0)) return false;
+    const n=this.verwacht();
+    if (n && g.length<n) return false;
+    return r > Math.max.apply(null, g)*(1+CFG.matchTol);
+  },
   _match(r){
     const g=(this.model&&this.model.gears)||[];
     let best=-1, fout=Infinity;
@@ -602,6 +618,15 @@ const PLGear = {
     if (this.uit || this.toon===null) return null;
     return this.toon==='N' ? 0 : this.toon==='R' ? -1 : this.toon;
   },
+  /* Voor een weergave die liever niets toont dan iets onzekers (Slim
+     visueel, 30-09-2026): alleen een cijfer als de nummering zeker is en de
+     metingen bij het model passen. Anders null, en dan staat het embleem er.
+     waarde() blijft voor CA01 en de topbalk, die een "?" kunnen tonen. */
+  toonbaar(){
+    const w=this.waarde();
+    if (w===null || this.afwijking || !this.nummeringZeker()) return null;
+    return w;
+  },
   status(){
     const m=this.model||{totaal:0,gears:[]};
     return {
@@ -697,11 +722,12 @@ const PLGear = {
       } else if (stabiel!==null){
         const m=this._match(stabiel);
         if (geldig){ this._afwijkRegistreer(!!m); this._sessie.stabiel++; if (m) this._sessie.pasten++; }
-        doel = m ? m.gear : (p.rpm<CFG.neutraalRpm ? 'N' : undefined);
+        doel = m ? m.gear : (this._neutraal(stabiel, p.rpm) ? 'N' : undefined);
       } else if (p.kmh>=CFG.minKmh && p.rpm<CFG.neutraalRpm && !p.los){
-        // rijden met toerental rond stationair en geen stabiele ratio → N
+        // rijden met toerental rond stationair en geen stabiele ratio: N
+        // alleen als geen enkele versnelling dit kan (zie _neutraal)
         const r=p.kmh/(Math.max(p.rpm,1)/1000);
-        doel = this._match(r) ? undefined : 'N';
+        doel = this._neutraal(r, p.rpm) ? 'N' : undefined;
       }
       if (doel===undefined){
         // schakelmoment / onzeker: laatste cijfer even vasthouden
