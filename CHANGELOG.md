@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Geen ruwe VIN meer in het logboek
+ ═══════════════════════════════════════════════════════════
+
+ - "Geen profiel onder pl_vinprof_…" zette de volledige VIN in de BT-log,
+   en daarmee in elk gedeeld logboek. Vier meldingen over het
+   voertuigprofiel tonen nu alleen de laatste zes tekens.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — Snelheidsproef: stap voor stap zoeken wat de verbinding snel maakt
  ═══════════════════════════════════════════════════════════
 
