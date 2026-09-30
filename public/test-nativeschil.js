@@ -426,9 +426,12 @@ console.log('\n── de vierde: de draadmeting van de SPP-proef (#352) ──')
   const reJava = /@PluginMethod\s+public\s+void\s+(\w+)\s*\(/g;
   let mj;
   while ((mj = reJava.exec(draden))) inJava.push(mj[1]);
-  // In de proef heet de plugin `p` binnen meetDraden(); alleen daar wordt hij aangeroepen.
-  const fn = (sppJs.match(/async function meetDraden\([\s\S]*?\n  \}/) || [''])[0];
-  toets('meetDraden() staat in de proef', fn.length > 0, true);
+  // In de proef heet de plugin `p` binnen meetDraden() en knopBeeindig();
+  // alleen daar wordt hij aangeroepen (sinds 30-09-2026 ook beeindig()).
+  const fn = ['meetDraden', 'knopBeeindig'].map(function (f) {
+    return (sppJs.match(new RegExp('async function ' + f + '\\([\\s\\S]*?\\n  \\}')) || [''])[0];
+  }).join('\n');
+  toets('meetDraden() en knopBeeindig() staan in de proef', /async function meetDraden/.test(fn) && /async function knopBeeindig/.test(fn), true);
   const inJs = Array.from(new Set((fn.match(/\bp\.(\w+)\(/g) || []).map(function (m) { return m.slice(2, -1); })));
   toets('er staan @PluginMethod-methoden in PLDradenPlugin', inJava.length > 0, true);
   toets('de app roept niets aan wat niet bestaat', inJs.filter(function (m) { return inJava.indexOf(m) === -1; }), []);

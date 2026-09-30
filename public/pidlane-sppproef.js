@@ -21,7 +21,8 @@
      🔬 volle proef        meten → nabootsen → meten, met een oordeel
      🔁 dode socket        herverbinden langs precies het pad van 01:11
      ℹ️ patchstatus        zit plspppatch.js in deze APK?
-     🔀 patch aan/uit      zet het oude gedrag terug tot de app herstart, zodat
+     🧹 proces beëindigen   ruimt draaiende draden op; wegvegen doet dat niet
+     🔀 patch aan/uit      zet het oude gedrag terug tot het proces stopt, zodat
                           dezelfde APK beide kanten meet (A/B op één toestel)
 
    DE BUS WORDT BEWERKT, EN DE APP WEET DAT
@@ -31,11 +32,20 @@
       valt — en houdt een eigen ATI-hartslag bij.
    2. Ná een nabootsing zonder patch: de draad die achterblijft maakt de rest
       van de sessie trager, en dat is geen eigenschap van de auto. De proef
-      zet daarom een markering in sessionStorage. Die overleeft een herlaad
-      van de pagina en geen proceskill — precies zo lang als zo'n draad.
-      PLAdapter leest hem: het drift-oordeel van #302 wordt LET OP in plaats
-      van FOUT, en de aanwijzing in het paneel zegt "herstart de app" in
-      plaats van "opnieuw verbinden".
+      zet daarom een markering, met de identiteit van het PROCES erbij (pid
+      en starttijd, van PLDraden). Die markering geldt precies zo lang als
+      dat proces leeft — zo lang als zo'n draad. PLAdapter leest hem: het
+      drift-oordeel van #302 wordt LET OP in plaats van FOUT, en de
+      aanwijzing in het paneel zegt "proces beëindigen" in plaats van
+      "opnieuw verbinden".
+
+      Tot 30-09-2026 stond hij in sessionStorage, met de gedachte dat die
+      met het proces verdwijnt. Dat klopt niet: veeg je de app weg terwijl de
+      meetdienst draait, dan blijft het proces leven en krijgt alleen de
+      pagina een nieuwe WebView — sessionStorage leeg, draden nog aan het
+      draaien. Gemeten om 12:31: "5 draaiende draad" direct na zo'n
+      herstart. Daarom nu localStorage plus het proces-ID, en een knop die
+      het proces echt beëindigt.
 
    Alle uitkomsten gaan naar log() en btDiag(), dus ze staan in het logboek
    dat je deelt. Eén regel per proef, met de getallen erin.
@@ -48,6 +58,7 @@
   // dus hier antwoordt nooit een echt apparaat.
   const NEP_ADRES = '02:00:00:35:20:01';
   const SLEUTEL = 'pl_spp_aangetast';
+  let _procesNu = null;   // "pid:starttijd" van dit proces, zodra PLDraden het zei
   const N_RESPONS = 15;
 
   let _bezig = false, _laatste = null;
@@ -85,18 +96,39 @@
   function _nu() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
 
   // ── de markering ──────────────────────────────────────────────────
+  /* Aangetast = er is een markering van DIT proces. Een markering van een
+     ander proces (het proces is echt herstart) is vervallen en wordt
+     opgeruimd. Is het huidige proces nog niet bekend, dan telt hij: liever
+     een onterechte LET OP dan een onterechte FOUT. Een APK zonder PLDraden
+     schrijft hem zonder proces in sessionStorage, zoals vóór 30-09. */
   function aangetast() {
     try {
-      const r = sessionStorage.getItem(SLEUTEL);
-      return r ? JSON.parse(r) : null;
+      const r = localStorage.getItem(SLEUTEL);
+      if (r) {
+        const a = JSON.parse(r);
+        if (a && a.proces && _procesNu && a.proces !== _procesNu) { localStorage.removeItem(SLEUTEL); }
+        else if (a) return a;
+      }
+      const s2 = sessionStorage.getItem(SLEUTEL);
+      return s2 ? JSON.parse(s2) : null;
     } catch (e) { console.warn('SPP-proef: markering onleesbaar', e); return null; }
   }
   function _markeer(reden) {
-    const a = { t: Date.now(), reden: reden };
-    try { sessionStorage.setItem(SLEUTEL, JSON.stringify(a)); }
+    const a = { t: Date.now(), reden: reden, proces: _procesNu };
+    try {
+      if (_procesNu) localStorage.setItem(SLEUTEL, JSON.stringify(a));
+      else sessionStorage.setItem(SLEUTEL, JSON.stringify(a));
+    }
     catch (e) { console.warn('SPP-proef: markering niet bewaard — een herlaad vergeet dat de bus aangetast is', e); }
-    _log('⚠ Bus aangetast door de SPP-proef (' + reden + ') — responstijden zijn tot een herstart van de app geen meting van de auto (#352)', 'warn');
+    _log('⚠ Bus aangetast door de SPP-proef (' + reden + ') — responstijden zijn geen meting van de auto tot het proces beëindigd is (🧹 in het Admin-menu; wegvegen is niet genoeg) (#352)', 'warn');
     return a;
+  }
+  function procesNu() { return _procesNu; }
+  /* Het proces-ID, en meet het zo nodig (een draadmeting van 200 ms). Null
+     in een schil zonder PLDraden. */
+  async function proces() {
+    if (!_procesNu) await meetDraden(200);
+    return _procesNu;
   }
 
   // ── statistiek, puur ──────────────────────────────────────────────
@@ -161,7 +193,14 @@
   async function meetDraden(ms) {
     const p = _plDraden();
     if (!p || typeof p.meet !== 'function') return null;
-    try { const d = await p.meet({ ms: ms || 1000 }); if (d) _dradenNu = d; return d; }
+    try {
+      const d = await p.meet({ ms: ms || 1000 });
+      if (d) {
+        _dradenNu = d;
+        if (d.pid) _procesNu = d.pid + ':' + d.procesStart;
+      }
+      return d;
+    }
     catch (e) { console.warn('SPP-proef: draadmeting faalt', e); _diag('SPP-proef: draadmeting faalt — ' + ((e && e.message) || e), 'warn'); return null; }
   }
 
@@ -266,7 +305,7 @@
       _laatste = u; _uitslagen.push(u);
       if (_uitslagen.length > 20) _uitslagen.shift();
       const a = aangetast();
-      const regels = u.regels.concat(a ? ['⚠ bus aangetast sinds ' + new Date(a.t).toTimeString().slice(0, 8) + ' (' + a.reden + ') — herstart de app om dat op te heffen'] : []);
+      const regels = u.regels.concat(a ? ['⚠ bus aangetast sinds ' + new Date(a.t).toTimeString().slice(0, 8) + ' (' + a.reden + ') — 🧹 proces beëindigen heft dat op (wegvegen is niet genoeg)'] : []);
       _log('🧪 SPP-proef ' + naam + ': ' + (u.kop ? u.kop + ' — ' : '') + u.regels.join('; '), u.staat === 'FOUT' ? 'warn' : 'ok');
       _toon(naam, (u.kop ? [u.kop] : []).concat(regels));
       return u;
@@ -373,11 +412,11 @@
       const nu = await patchStatus();
       if (!nu.patch) throw new Error(nu.reden || 'geen patch in deze APK');
       const r = await zetPatch(!nu.aan);
-      _log('🧪 SPP-proef: patch ' + (r.aan ? 'weer AAN' : 'UIT — het oude gedrag geldt tot de app herstart (#352)'), 'warn');
+      _log('🧪 SPP-proef: patch ' + (r.aan ? 'weer AAN' : 'UIT — het oude gedrag geldt tot het proces stopt (#352)'), 'warn');
       return {
         staat: 'OK',
-        regels: [r.aan ? 'De patch staat weer aan. Draden die al rondliepen, blijven tot een herstart.'
-                       : 'De patch staat UIT tot de app herstart. Een mislukte poging laat nu weer een draad achter — doe de volle proef, en herstart daarna de app.'],
+        regels: [r.aan ? 'De patch staat weer aan. Draden die al rondliepen, blijven tot 🧹 proces beëindigen.'
+                       : 'De patch staat UIT tot het proces stopt. Een mislukte poging laat nu weer een draad achter — doe de volle proef, en daarna 🧹 proces beëindigen (wegvegen is niet genoeg: de meetdienst houdt het proces in leven).'],
         patch: r
       };
     });
@@ -399,6 +438,29 @@
       case 'spp-erbij-uit': return erbij(false);
       default: return null;
     }
+  }
+
+  /* Het proces beëindigen (30-09-2026). Wegvegen bij "recente apps" laat
+     het proces leven zolang de meetdienst draait, en Afsluiten (exitApp)
+     garandeert het ook niet. Dit wel: eerst de verbinding netjes dicht en de
+     meetdienst uit, dan stopt PLDraden het proces. Een schil zonder PLDraden
+     krijgt alleen de verwijzing naar Meer → Afsluiten, met die kanttekening. */
+  async function knopBeeindig() {
+    const p = _plDraden();
+    const tekst = 'De app wordt helemaal afgesloten, en daarmee elke draad die nog ronddraait. Open hem daarna opnieuw.';
+    try { if (typeof confirm === 'function' && !confirm(tekst)) return false; }
+    catch (e) { console.warn('SPP-proef: bevestiging niet gevraagd', e); }
+    _log('🧹 SPP-proef: proces beëindigen op verzoek' + (_procesNu ? ' (' + _procesNu + ')' : ''), 'warn');
+    try { if (typeof connected !== 'undefined' && connected && typeof handleConnect === 'function') await handleConnect(); }
+    catch (e) { console.warn('SPP-proef: verbreken vóór het beëindigen mislukt', e); }
+    try { if (window.PLMeetdienst && typeof window.PLMeetdienst.stop === 'function') await window.PLMeetdienst.stop(); }
+    catch (e) { console.warn('SPP-proef: meetdienst niet gestopt vóór het beëindigen', e); }
+    if (p && typeof p.beeindig === 'function') { await p.beeindig(); return true; }
+    // Afsluiten hoort bij het menu en niet bij een module (test-terugknop.js);
+    // zonder PLDraden zegt deze knop dus alleen wat er wél kan.
+    _log('🧹 Deze schil kan het proces niet beëindigen (geen PLDraden, een APK van vóór 30-09) — gebruik Meer → Afsluiten; dat houdt het proces mogelijk in leven', 'warn');
+    _toon('proces beëindigen', ['Deze APK kan het proces niet beëindigen. Gebruik Meer → Afsluiten — en weet dat dat het proces niet altijd stopt.']);
+    return false;
   }
 
   // ── het venster ───────────────────────────────────────────────────
@@ -440,7 +502,8 @@
     ['plSppVolle', '🔬 SPP: volle proef', knopVolle],
     ['plSppDode', '🔁 SPP: herverbinden als bij dode socket', knopDodeSocket],
     ['plSppPatch', 'ℹ️ SPP: patchstatus', knopPatch],
-    ['plSppSchakel', '🔀 SPP: patch aan/uit (proef)', knopSchakel]
+    ['plSppSchakel', '🔀 SPP: patch aan/uit (proef)', knopSchakel],
+    ['plSppBeeindig', '🧹 SPP: proces beëindigen (draden weg)', knopBeeindig]
   ];
   function menu() {
     const groep = document.getElementById('admGroup');
@@ -470,6 +533,9 @@
       // De patchstand één keer opvragen, zodat een meetopdracht meteen weet of
       // de patch in deze APK zit — zonder dat eerst iemand op een knop drukt.
       patchStatus().catch(function (e) { console.warn('SPP-proef: patchstand bij het opstarten niet opgevraagd', e); });
+      // En welk proces dit is, zodat een markering van een vorig proces
+      // meteen vervalt en die van dit proces meteen telt.
+      proces().catch(function (e) { console.warn('SPP-proef: proces-ID bij het opstarten niet opgevraagd', e); });
     });
   }
   catch (e) { console.warn('SPP-proef: menuknoppen niet ingehaakt', e); }
@@ -478,6 +544,9 @@
     versie: VERSIE,
     NEP_ADRES: NEP_ADRES,
     aangetast: aangetast,
+    proces: proces,
+    procesNu: procesNu,
+    beeindig: knopBeeindig,
     stat: stat,
     oordeel: oordeel,
     patchStatus: patchStatus,

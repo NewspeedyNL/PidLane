@@ -95,6 +95,8 @@ function bouw(opt) {
     meetRespons: async function () { spoor.push('respons'); return { at: { mediaan: 150 }, ecu: { mediaan: 148 }, modus: ls.getItem('pl_spp_poll') === '1' ? 'poll' : 'event' }; },
     meetDraden: async function () { return { sppDraait: 0, totaalPct: 90 }; }
   };
+  // Het proces-ID van PLDraden, als de proef het meegeeft (30-09-2026).
+  if (opt.proces) ctx.window.PLSppProef.proces = async function () { return opt.proces; };
   vm.createContext(ctx);
   vm.runInContext(BRON, ctx);
   if (ctx._dcl) ctx._dcl();
@@ -202,6 +204,20 @@ function bouw(opt) {
     toets('de proef is klaar', na.P.volgende(na.P.stand()), null);
     na.P.reset();
     toets('opnieuw beginnen wist alles', na.P.volgende(na.P.stand()), 1);
+  }
+
+  console.log('\n6b. Wegvegen is geen herstart als het proces blijft leven');
+  {
+    /* Op 30-09 om 12:31: de app weggeveegd terwijl de meetdienst liep. Nieuwe
+       WebView, dus sessionStorage leeg — maar hetzelfde proces, met zijn
+       draaiende draden. Het proces-ID beslist. */
+    const b = bouw({ proces: '4242:1000' });
+    for (let i = 1; i <= 5; i++) await b.P.doeStap(i);
+    const geveegd = bouw({ ls: b.ls, ss: opslag(), proces: '4242:1000' });
+    toets('zelfde proces, lege sessionStorage: stap 6 geweigerd', await geveegd.P.doeStap(6), null);
+    const echt = bouw({ ls: b.ls, ss: opslag(), proces: '5151:2000' });
+    const r = await echt.P.doeStap(6);
+    toets('een ander proces: stap 6 meet', !!(r && r.m), true);
   }
 
   console.log('\n7. De menuknop');
