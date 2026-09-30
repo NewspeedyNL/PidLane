@@ -2825,9 +2825,10 @@ const PROEVEN_B5 = [
   // ── de snelheidsproef, stap voor stap (30-09-2026) ──
   // Om 08:53 was de verbinding weer traag terwijl de patch van #352 aan stond
   // en er geen draad draaide. De snelheidsproef (Admin-menu) zoekt met zes
-  // genummerde stappen welke ingreep de verbinding terugbrengt boven de 10
-  // verzoeken/s. Deze proef kijkt of hij er staat, of het rekenwerk het
-  // verschil ziet, en geeft de uitslag van een proef die al gedaan is.
+  // genummerde stappen welke ingreep de responstijd terugbrengt onder de
+  // 80 ms (tot 30-09 middag: boven de 10 verzoeken/s — dat was de pollus).
+  // Deze proef kijkt of hij er staat, of het rekenwerk het verschil ziet, en
+  // geeft de uitslag van een proef die al gedaan is.
   {
     issue: '#352',
     naam: 'De snelheidsproef staat klaar en wijst de goede stap aan',
@@ -2836,11 +2837,14 @@ const PROEVEN_B5 = [
       if (!window.PLSnelProef) return { staat: 'FOUT', detail: 'PLSnelProef ontbreekt — pidlane-snelproef.js is niet geladen' };
       if (!document.getElementById('plSnelMenu')) return { staat: 'FOUT', detail: 'de knop "Snelheidsproef" staat niet in het Admin-menu' };
       var P = PLSnelProef;
-      var proef = { stappen: { 1: { m: { perSec: 4 }, oordeel: {} },
-        2: { m: { perSec: 11 }, oordeel: P.oordeelStap({ perSec: 11 }, { perSec: 4 }, { perSec: 4 }) },
-        3: { m: { perSec: 11 }, oordeel: P.oordeelStap({ perSec: 11 }, { perSec: 4 }, { perSec: 11 }) } } };
+      var proef = { stappen: { 1: { m: { atrv: 150 }, oordeel: {} },
+        2: { m: { atrv: 30 }, oordeel: P.oordeelStap({ atrv: 30 }, { atrv: 150 }, { atrv: 150 }) },
+        3: { m: { atrv: 30 }, oordeel: P.oordeelStap({ atrv: 30 }, { atrv: 150 }, { atrv: 30 }) } } };
       if (!/Gevonden: stap 2/.test(P.uitslag(proef)))
-        return { staat: 'FOUT', detail: 'van 4 naar 11 verzoeken/s bij stap 2 wijst de uitslag niet stap 2 aan: ' + P.uitslag(proef) };
+        return { staat: 'FOUT', detail: 'van 150 naar 30 ms bij stap 2 wijst de uitslag niet stap 2 aan: ' + P.uitslag(proef) };
+      // Het tempo is geen oordeel: 9,7/s bij 54 ms is een snelle verbinding.
+      if (P.oordeelStap({ perSec: 9.7, ms: 54, bezet: 53 }, null, null).staat !== 'OK')
+        return { staat: 'FOUT', detail: '9,7 verzoeken/s bij 54 ms heet traag — de proef oordeelt weer op verzoeken/s' };
       var st = P.stand(), n = Object.keys(st.stappen).length;
       if (!n) return { staat: 'OK', detail: 'klaar voor gebruik; in deze sessie nog geen stap gedaan' };
       return { staat: 'OK', detail: n + ' van de ' + P.STAPPEN.length + ' stappen gedaan — ' + P.uitslag(st) };

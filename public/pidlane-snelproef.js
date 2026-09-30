@@ -10,8 +10,19 @@
    maar niet zeggen wat het oplost, en de volgorde was te ingewikkeld om
    in de auto goed te doen. Deze proef is één paneel met genummerde knoppen:
    druk 1, dan 2, dan 3. Elke stap is één ingreep die de traagheid zou kunnen
-   opheffen, met ervoor en erna dezelfde meting. Het doel is wat de app op
-   een goede dag haalt: 10 verzoeken per seconde of meer.
+   opheffen, met ervoor en erna dezelfde meting. Het doel is wat de adapter
+   op een goede dag doet: antwoorden binnen DOEL_MS.
+
+   WAAROM RESPONSTIJD EN NIET VERZOEKEN PER SECONDE (30-09-2026)
+   Tot vandaag was het doel "10 verzoeken per seconde". Dat getal bleek niet
+   over de verbinding te gaan maar over de pollus: op 30-09 stond het
+   adapterpaneel op 9,7/s bij 54 ms per verzoek en 53% bus bezet. De adapter
+   was snel; de pollus vroeg er niet vaker om (zie _pollWacht in
+   pidlane-plload.js). Met dat doel zou de proef een snelle verbinding als
+   traag aanwijzen, en de "oplossing" die hij vond ging dan over iets anders.
+   De responstijd is wat traag wordt als de verbinding traag wordt (ATRV 152
+   ms om 08:53, 30 ms op een goede dag). Verzoeken per seconde en de
+   bezetting staan er als context bij: samen zeggen ze of er ruimte is.
 
    DE STAPPEN, VAN LICHT NAAR ZWAAR
      1  nulmeting                 niets veranderen
@@ -26,16 +37,17 @@
    al oplost, zegt stap 3 "geen verschil", en dat is dan ook zo.
 
    DE METING
-   15 s gewoon pollen, en dan PLBus.stats(): verzoeken per seconde over de
-   laatste 10 s, precies wat het adapterpaneel ook toont. Daarna de
-   responstijd van de adapter (ATRV) en de ECU (010C1), en de draden, via
-   PLSppProef als die er is. De stand staat in localStorage, zodat stap 6 een
+   15 s gewoon pollen, en dan PLBus.stats(): verzoeken per seconde, de
+   gemiddelde tijd per verzoek en de bezetting over de laatste 10 s, precies
+   wat het adapterpaneel ook toont. Daarna de responstijd van de adapter
+   (ATRV) en de ECU (010C1), en de draden, via PLSppProef als die er is. Het
+   oordeel gaat over de ATRV; zonder PLSppProef over de tijd per verzoek. De stand staat in localStorage, zodat stap 6 een
    herstart van de app overleeft.
    ═══════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  const VERSIE = '1.0 (30-09-2026)';
+  const VERSIE = '1.1 (30-09-2026)';
   const SLEUTEL = 'pl_snelproef';
   // Staat in sessionStorage zolang dit proces leeft. Een herstart van de app
   // (proces weg) wist hem; een herlaad van de pagina niet. Zo ziet stap 6 of
@@ -49,7 +61,13 @@
      PLDraden (pid + starttijd), in localStorage; waar dat bekend is, beslist
      het. */
   const PROCES_ID = 'pl_snelproef_proces_id';
-  const DOEL = 10;            // verzoeken per seconde
+  // Responstijd die nog "snel" heet. Een goede dag: ATRV ±30 ms, 54 ms per
+  // groepsverzoek. De trage ochtend van 30-09: ATRV 152 ms. 80 ligt daar
+  // ruim tussen, zodat ruis geen stap als "hielp" of "trager" aanwijst.
+  const DOEL_MS = 80;
+  // Onder deze bezetting heeft de bus ruimte over: een laag tempo komt dan uit
+  // de planning van de app, niet uit de verbinding.
+  const RUIMTE_PCT = 70;
   const WACHT_MS = 15000;     // gewoon pollen vóór de meting: het venster is 10 s
 
   const STAPPEN = [
@@ -114,21 +132,48 @@
   }
 
   // ── het oordeel, puur ─────────────────────────────────────────────
-  /* m, basis en vorige zijn metingen { perSec, atrv, … }. basis is stap 1,
-     vorige de stap ervóór. Het oordeel gaat over de stap ervóór: dat is wat
-     déze ingreep veranderde. */
+  /* De responstijd van een meting: de ATRV als die gemeten is, anders de
+     gemiddelde tijd per verzoek van de bus. Twee metingen worden alleen op
+     dezelfde maat vergeleken — zie _rtPaar. */
+  function _rt(m) {
+    if (!m) return null;
+    if (typeof m.atrv === 'number') return m.atrv;
+    if (typeof m.ms === 'number') return m.ms;
+    return null;
+  }
+  function _rtPaar(m, v) {
+    if (m && v && typeof m.atrv === 'number' && typeof v.atrv === 'number') return [m.atrv, v.atrv];
+    if (m && v && typeof m.ms === 'number' && typeof v.ms === 'number') return [m.ms, v.ms];
+    return [_rt(m), _rt(v)];
+  }
+  /* Wat verzoeken/s en bezetting samen zeggen. Alleen context: het oordeel
+     hangt er niet aan. */
+  function ruimte(m) {
+    if (!m || typeof m.bezet !== 'number') return '';
+    const b = Math.round(m.bezet);
+    return b < RUIMTE_PCT
+      ? 'de bus heeft ruimte (' + b + '% bezet): een laag tempo komt uit de planning van de app, niet uit de verbinding'
+      : 'de bus is vol (' + b + '% bezet): meer tempo kan alleen met een snellere verbinding of minder sensoren';
+  }
+
+  /* m, basis en vorige zijn metingen { atrv, ms, perSec, bezet, … }. basis
+     is stap 1, vorige de stap ervóór. Het oordeel gaat over de stap ervóór:
+     dat is wat déze ingreep veranderde. */
   function oordeelStap(m, basis, vorige) {
-    if (!m || typeof m.perSec !== 'number') return { staat: 'LET OP', tekst: 'niet gemeten' };
-    const haalt = m.perSec >= DOEL;
+    const rt = _rt(m);
+    if (rt === null) return { staat: 'LET OP', tekst: 'niet gemeten' };
+    const snel = rt <= DOEL_MS;
     if (!basis || !vorige) {
-      return haalt ? { staat: 'OK', tekst: 'haalt het doel al (' + DOEL + '/s of meer)' }
-                   : { staat: 'LET OP', tekst: 'onder het doel van ' + DOEL + '/s — dit is het vertrekpunt' };
+      return snel ? { staat: 'OK', tekst: 'reageert al snel (' + rt + ' ms, doel ' + DOEL_MS + ' ms of minder)' }
+                  : { staat: 'LET OP', tekst: 'reageert traag (' + rt + ' ms, doel ' + DOEL_MS + ' ms of minder) — dit is het vertrekpunt' };
     }
-    const fv = vorige.perSec > 0 ? Math.round(m.perSec / vorige.perSec * 10) / 10 : null;
-    if (haalt && vorige.perSec < DOEL) return { staat: 'OK', tekst: '✅ dit hielp: nu boven de ' + DOEL + '/s', hielp: true };
-    if (haalt) return { staat: 'OK', tekst: 'boven het doel, net als de stap ervoor' };
-    if (fv !== null && fv >= 1.3) return { staat: 'LET OP', tekst: 'sneller dan de stap ervoor (×' + _komma(fv) + '), maar nog onder ' + DOEL + '/s', beter: true };
-    if (fv !== null && fv <= 0.8) return { staat: 'LET OP', tekst: 'trager dan de stap ervoor (×' + _komma(fv) + ')' };
+    const paar = _rtPaar(m, vorige), nu = paar[0], ervoor = paar[1];
+    // Hoeveel keer sneller dan de stap ervoor: 2 = de helft van de tijd.
+    const fv = (nu > 0 && ervoor > 0) ? Math.round(ervoor / nu * 10) / 10 : null;
+    if (snel && ervoor > DOEL_MS) return { staat: 'OK', tekst: '✅ dit hielp: van ' + ervoor + ' naar ' + nu + ' ms', hielp: true };
+    if (snel) return { staat: 'OK', tekst: 'snel, net als de stap ervoor' };
+    if (fv !== null && fv >= 1.3) return { staat: 'LET OP', tekst: 'sneller dan de stap ervoor (' + ervoor + ' → ' + nu + ' ms), maar nog boven ' + DOEL_MS + ' ms', beter: true };
+    if (fv !== null && fv <= 0.8) return { staat: 'LET OP', tekst: 'trager dan de stap ervoor (' + ervoor + ' → ' + nu + ' ms)' };
     return { staat: 'LET OP', tekst: 'geen duidelijk verschil met de stap ervoor' };
   }
 
@@ -137,37 +182,43 @@
     const st = (s && s.stappen) || {};
     const b = st[1] && st[1].m;
     if (!b) return 'Nog niets gemeten. Begin met stap 1.';
-    if (b.perSec >= DOEL) {
-      return 'Bij het begin haalde de verbinding al ' + _komma(b.perSec) + ' verzoeken/s. Er valt nu niets op te lossen: ' +
-             'doe de proef opnieuw op een moment dat het traag is.';
+    const rb = _rt(b);
+    if (rb !== null && rb <= DOEL_MS) {
+      const r = ruimte(b);
+      return 'Bij het begin reageerde de adapter al in ' + rb + ' ms: de verbinding is niet traag. ' +
+             (r ? 'Bij ' + _komma(b.perSec) + ' verzoeken/s ' + r + '. ' : '') +
+             'Doe de proef opnieuw op een moment dat de adapter traag reageert.';
     }
     let hielp = null, beste = null;
     STAPPEN.forEach(function (x) {
       const r = st[x.nr];
       if (!r || x.nr === 1) return;
       if (!hielp && r.oordeel && r.oordeel.hielp) hielp = x;
-      if (r.m && (!beste || r.m.perSec > st[beste.nr].m.perSec)) beste = x;
+      if (_rt(r.m) !== null && (!beste || _rt(r.m) < _rt(st[beste.nr].m))) beste = x;
     });
     if (hielp) {
       const m = st[hielp.nr].m;
-      let t = 'Gevonden: stap ' + hielp.nr + ' (' + hielp.kop.toLowerCase() + ') bracht het van ' + _komma(b.perSec) +
-              ' naar ' + _komma(m.perSec) + ' verzoeken/s. ' + BETEKENIS[hielp.nr];
+      let t = 'Gevonden: stap ' + hielp.nr + ' (' + hielp.kop.toLowerCase() + ') bracht de responstijd van ' + rb +
+              ' naar ' + _rt(m) + ' ms. ' + BETEKENIS[hielp.nr];
       if (hielp.nr === 3 && m.modus) t += ' Gemeten in de stand "' + m.modus + '"; de app staat weer op de oude stand.';
       return t;
     }
     const n = Object.keys(st).length;
     if (n < STAPPEN.length) return 'Nog niet gevonden na ' + n + ' van de ' + STAPPEN.length + ' stappen. Ga door met stap ' + volgende(s) + '.';
-    return 'Geen enkele stap bracht het boven de ' + DOEL + '/s (begin ' + _komma(b.perSec) + '/s' +
-           (beste ? ', beste stap ' + beste.nr + ' met ' + _komma(st[beste.nr].m.perSec) + '/s' : '') +
+    return 'Geen enkele stap bracht de responstijd onder de ' + DOEL_MS + ' ms (begin ' + rb + ' ms' +
+           (beste ? ', beste stap ' + beste.nr + ' met ' + _rt(st[beste.nr].m) + ' ms' : '') +
            '). Stuur het logboek op: dan zit de oorzaak ergens anders.';
   }
 
   function _regel(m) {
     if (!m) return '';
-    return _komma(m.perSec) + ' verzoeken/s' +
-      (m.atrv != null ? ' · adapter ' + m.atrv + ' ms' : '') +
-      (m.ecu != null ? ' · ECU ' + m.ecu + ' ms' : '') +
-      (m.draait ? ' · ' + m.draait + ' draaiende draad' : '');
+    const delen = [];
+    if (m.atrv != null) delen.push('adapter ' + m.atrv + ' ms');
+    if (m.ecu != null) delen.push('ECU ' + m.ecu + ' ms');
+    if (m.atrv == null && typeof m.ms === 'number') delen.push(m.ms + ' ms per verzoek');
+    delen.push(_komma(m.perSec) + ' verzoeken/s' + (typeof m.bezet === 'number' ? ' bij ' + Math.round(m.bezet) + '% bezet' : ''));
+    if (m.draait) delen.push(m.draait + ' draaiende draad');
+    return delen.join(' · ');
   }
 
   // ── de ingrepen ───────────────────────────────────────────────────
@@ -334,7 +385,7 @@
       v.innerHTML = '';
       v.appendChild(_el('div', 'font-weight:800;font-size:15px;margin-bottom:2px', '🚦 Snelheidsproef'));
       v.appendChild(_el('div', 'color:var(--tx2);margin-bottom:10px',
-        'Doel: ' + DOEL + ' verzoeken per seconde of meer. Druk de knoppen op volgorde; elke stap duurt ±20 s.'));
+        'Doel: de adapter antwoordt binnen ' + DOEL_MS + ' ms. Verzoeken per seconde en bus bezet staan erbij als context. Druk de knoppen op volgorde; elke stap duurt ±20 s.'));
       const s = stand(), nu = volgende(s);
       STAPPEN.forEach(function (x) {
         const r = s.stappen[x.nr];
@@ -402,7 +453,8 @@
 
   window.PLSnelProef = {
     versie: VERSIE,
-    DOEL: DOEL,
+    DOEL_MS: DOEL_MS,
+    ruimte: ruimte,
     STAPPEN: STAPPEN,
     oordeelStap: oordeelStap,
     uitslag: uitslag,
