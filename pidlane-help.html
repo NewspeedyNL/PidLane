@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PidLane – Handleiding &amp; hulp</title>
+<meta name="color-scheme" content="light dark">
+<style>
+:root{
+  --bg:#f5f6f3; --panel:#ffffff; --ink:#15211f; --ink2:#4a5754; --line:#d9ded9;
+  --brand:#0a6b5f; --brand-ink:#ffffff; --brand-soft:#e1f0ed;
+  --warn:#8a4b00; --warn-bg:#fff1d6; --warn-line:#e8b45a;
+  --ok:#1b6b32; --err:#a11d1d;
+  --radius:10px;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#101614; --panel:#18211e; --ink:#e9efec; --ink2:#a9b8b3; --line:#2b3733;
+    --brand:#4fd1bd; --brand-ink:#06201c; --brand-soft:#173530;
+    --warn:#ffd07a; --warn-bg:#3a2a0c; --warn-line:#7a5a1c;
+    --ok:#7fd99a; --err:#ff9a9a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101614; --panel:#18211e; --ink:#e9efec; --ink2:#a9b8b3; --line:#2b3733;
+  --brand:#4fd1bd; --brand-ink:#06201c; --brand-soft:#173530;
+  --warn:#ffd07a; --warn-bg:#3a2a0c; --warn-line:#7a5a1c;
+  --ok:#7fd99a; --err:#ff9a9a;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 120px);scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-text-size-adjust:100%}
+a{color:var(--brand)}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px;border-radius:4px}
+
+/* Kop */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);
+  border-bottom:1px solid var(--line)}
+.top-in{max-width:980px;margin:0 auto;padding:10px 16px 8px}
+.brandrow{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.brand{font-weight:800;font-size:19px;letter-spacing:-.01em}
+.brand span{color:var(--brand)}
+.tools{display:flex;gap:8px}
+.tbtn{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;
+  min-height:36px;min-width:36px;padding:0 10px;font:inherit;font-size:14px;cursor:pointer}
+.search{margin-top:8px;position:relative}
+.search input{width:100%;min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:var(--radius);
+  background:var(--panel);color:var(--ink);font:inherit}
+nav.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 2px;scrollbar-width:thin}
+nav.chips a{flex:none;text-decoration:none;color:var(--ink);background:var(--panel);
+  border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:14px}
+nav.chips a:hover{border-color:var(--brand)}
+
+main{max-width:980px;margin:0 auto;padding:20px 16px 60px}
+.hero{padding:18px 0 8px}
+.hero h1{font-size:clamp(26px,5vw,38px);line-height:1.15;margin:0 0 8px;letter-spacing:-.02em}
+.hero p{margin:0;color:var(--ink2);max-width:60ch}
+
+section.sec{margin-top:36px}
+section.sec>h2{font-size:24px;line-height:1.25;margin:0 0 4px;letter-spacing:-.01em}
+section.sec>.lead{color:var(--ink2);margin:0 0 16px;max-width:65ch}
+h3{font-size:18px;margin:0 0 6px;line-height:1.3;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sub{font-size:14px;font-weight:700;color:var(--ink2);margin:22px 0 8px}
+
+.f{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin:0 0 10px}
+.f p{margin:6px 0}
+.f ul,.f ol{margin:6px 0 6px 20px;padding:0}
+.f li{margin:3px 0}
+.badge{font-size:12px;font-weight:600;color:var(--brand);background:var(--brand-soft);
+  border-radius:999px;padding:1px 9px}
+.badge.tok{color:var(--warn);background:var(--warn-bg)}
+
+/* Info-uitroepteken */
+.i{display:inline-grid;place-items:center;width:22px;height:22px;flex:none;border-radius:50%;
+  border:2px solid var(--warn-line);background:var(--warn-bg);color:var(--warn);
+  font:800 13px/1 system-ui,sans-serif;padding:0;cursor:pointer}
+.i[aria-expanded="true"]{background:var(--warn);color:var(--warn-bg);border-color:var(--warn)}
+.tip{background:var(--warn-bg);color:var(--ink);border:1px solid var(--warn-line);
+  border-left:4px solid var(--warn-line);border-radius:8px;padding:9px 12px;margin:8px 0;font-size:15px}
+.tip[hidden]{display:none}
+
+/* Stappen */
+.steps{counter-reset:s;list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.steps li{counter-increment:s;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:12px 14px 12px 54px;position:relative}
+.steps li::before{content:counter(s);position:absolute;left:14px;top:12px;width:28px;height:28px;border-radius:50%;
+  background:var(--brand);color:var(--brand-ink);font-weight:800;display:grid;place-items:center}
+.steps b{display:block}
+
+/* Tabel */
+.tw{overflow-x:auto;margin:8px 0}
+table{border-collapse:collapse;width:100%;min-width:520px;background:var(--panel);font-size:15px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--brand-soft)}
+
+/* FAQ */
+details{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin:0 0 8px}
+summary{cursor:pointer;padding:12px 14px;font-weight:600;list-style:none;display:flex;gap:10px;justify-content:space-between;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:20px;color:var(--brand);flex:none}
+details[open] summary::after{content:"–"}
+details .a{padding:0 14px 12px;color:var(--ink)}
+details .a p{margin:6px 0}
+
+/* Formulier */
+form{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;display:grid;gap:14px}
+.row{display:grid;gap:14px;grid-template-columns:1fr}
+@media(min-width:640px){.row{grid-template-columns:1fr 1fr}}
+.fld label,.lbl{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;margin-bottom:4px}
+.fld input,.fld select,.fld textarea{width:100%;min-height:44px;padding:9px 12px;border:1px solid var(--line);
+  border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.fld textarea{min-height:140px;resize:vertical}
+.opt{font-weight:400;color:var(--ink2);font-size:13px}
+.chk{display:flex;gap:10px;align-items:flex-start;font-size:15px}
+.chk input{width:20px;height:20px;margin-top:3px;flex:none}
+.hp{position:absolute;left:-9999px;height:0;overflow:hidden}
+button.go{background:var(--brand);color:var(--brand-ink);border:0;border-radius:8px;min-height:46px;padding:0 22px;
+  font:700 16px inherit;font-family:inherit;cursor:pointer;justify-self:start}
+button.go:disabled{opacity:.6;cursor:wait}
+.status{min-height:24px;font-weight:600}
+.status.ok{color:var(--ok)} .status.err{color:var(--err)}
+.err-t{color:var(--err);font-size:13px;margin-top:3px}
+
+.none{display:none;padding:14px;border:1px dashed var(--line);border-radius:var(--radius);color:var(--ink2)}
+kbd,code{background:var(--brand-soft);border-radius:4px;padding:0 5px;font-size:.92em}
+footer{border-top:1px solid var(--line);margin-top:40px;padding-top:16px;color:var(--ink2);font-size:14px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+@media print{header.top,.tools,.i{display:none}.tip{display:block!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brandrow">
+      <div class="brand">Pid<span>Lane</span> · Hulp</div>
+      <div class="tools">
+        <button class="tbtn" id="themeBtn" type="button" aria-label="Donker of licht thema wisselen">◐</button>
+      </div>
+    </div>
+    <div class="search">
+      <input id="q" type="search" placeholder="Zoek in de handleiding, bijv. ‘bluetooth’ of ‘tokens’" aria-label="Zoeken in de handleiding" autocomplete="off">
+    </div>
+    <nav class="chips" aria-label="Onderdelen">
+      <a href="#start">Snel starten</a>
+      <a href="#verbinden">Verbinden</a>
+      <a href="#gebruiken">Functies</a>
+      <a href="#opslag">Opslag</a>
+      <a href="#account">Account &amp; tokens</a>
+      <a href="#bedrijven">Bedrijven</a>
+      <a href="#faq">FAQ</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Handleiding voor PidLane</h1>
+    <p>Van je eerste verbinding met de auto tot rapporten, tokens en hulp op afstand. Tik op een <button class="i" type="button" style="pointer-events:none" tabindex="-1" aria-hidden="true">!</button> voor een korte toelichting of waarschuwing bij een functie.</p>
+  </div>
+  <div class="none" id="none">Niets gevonden. Probeer een ander woord, of stel je vraag via het <a href="#contact">contactformulier</a>.</div>
+
+  <!-- ============ SNEL STARTEN ============ -->
+  <section class="sec" id="start">
+    <h2>Snel starten</h2>
+    <p class="lead">Vijf stappen van uitpakken tot eerste uitlezing.</p>
+    <ol class="steps">
+      <li><b>Steek de OBD2-adapter in de auto</b>De diagnoseaansluiting zit meestal onder het dashboard aan de bestuurderskant. Zet het contact aan (motor hoeft niet te draaien voor storingscodes).</li>
+      <li><b>Koppel de adapter via Bluetooth</b>Ga naar de Bluetooth-instellingen van je telefoon en koppel de adapter (vaak pincode <code>1234</code> of <code>0000</code>). Sla deze stap over als je de webversie in Chrome gebruikt: die koppelt via het scherm van de app zelf.</li>
+      <li><b>Open PidLane</b>Gebruik de Android-app (APK) of open <code>app.pidlane.nl</code> in Chrome op Android of op een computer.</li>
+      <li><b>Tik op Verbinden</b>Kies je adapter in de lijst. PidLane herkent zelf het protocol van de auto en onthoudt dat voor de volgende keer.</li>
+      <li><b>Kies wat je wilt doen</b>Bijvoorbeeld storingscodes lezen, live data bekijken of een volledige scan draaien.</li>
+    </ol>
+  </section>
+
+  <!-- ============ VERBINDEN ============ -->
+  <section class="sec" id="verbinden">
+    <h2>Verbinden</h2>
+    <p class="lead">Wat je nodig hebt en hoe je de verbinding opzet.</p>
+
+    <div class="f">
+      <h3>Welke adapter heb ik nodig?
+        <button class="i" type="button" data-tip="Adapters die alleen Bluetooth Low Energy (BLE) ondersteunen werken niet in de webversie. Kies een adapter met Bluetooth Classic (SPP)."></button>
+      </h3>
+      <p>PidLane werkt met adapters die het ELM327- of STN-protocol spreken over <b>Bluetooth Classic (SPP)</b>. Getest zijn onder andere:</p>
+      <div class="tw"><table>
+        <tr><th>Adapter</th><th>Opmerking</th></tr>
+        <tr><td>OBDLink MX+</td><td>Snelste en meest stabiele optie. Prijsklasse ruim € 140.</td></tr>
+        <tr><td>Vgate vLinker MC+</td><td>Beste prijs-kwaliteit voor werkplaatsgebruik.</td></tr>
+        <tr><td>Vgate iCar Pro BT 3.0</td><td>Werkt, maar is trager (ELM327-kloon). Prima voor storingscodes en rustige live data.</td></tr>
+      </table></div>
+    </div>
+
+    <div class="f">
+      <h3>Verbinden op Android (app of Chrome)
+        <button class="i" type="button" data-tip="Krijg je geen lijst met apparaten? Controleer of Bluetooth aan staat, de adapter gekoppeld is en PidLane toestemming heeft voor ‘apparaten in de buurt’."></button>
+      </h3>
+      <ol>
+        <li>Zet Bluetooth aan en koppel de adapter in de instellingen van je telefoon.</li>
+        <li>Open PidLane en tik op <b>Verbinden</b>.</li>
+        <li>Geef toestemming voor Bluetooth als daarom gevraagd wordt en kies de adapter.</li>
+        <li>Wacht tot PidLane meldt dat de auto is herkend. Dit duurt meestal een paar seconden.</li>
+      </ol>
+      <p>Na de verbinding leest PidLane in de achtergrond welke extra metingen (uitgebreide PID’s) jouw auto ondersteunt.</p>
+    </div>
+
+    <div class="f">
+      <h3>Verbinden op computer of laptop</h3>
+      <p>Open <code>app.pidlane.nl</code> in Chrome of Edge. De verbinding loopt via Web Serial: koppel eerst de adapter in de Bluetooth-instellingen van het besturingssysteem, tik daarna in PidLane op Verbinden en kies de bijbehorende seriële poort.</p>
+    </div>
+
+    <div class="f">
+      <h3>iPhone en iPad
+        <button class="i" type="button" data-tip="Safari en andere iOS-browsers ondersteunen Web Serial niet. Op een iPhone kun je de webversie dus niet met een adapter verbinden."></button>
+      </h3>
+      <p>Op iOS is er op dit moment geen ondersteunde manier om een adapter te verbinden. Gebruik een Android-toestel of een computer met Chrome.</p>
+    </div>
+
+    <div class="f">
+      <h3>Automatisch herverbinden en protocol onthouden</h3>
+      <p>PidLane onthoudt welk protocol jouw auto gebruikt. Bij de volgende verbinding wordt dat direct ingesteld en gecontroleerd, zodat het sneller gaat en er minder mis kan gaan. Verbreek je de verbinding of valt Bluetooth weg, dan sluit PidLane de poort netjes af en kun je meteen opnieuw verbinden.</p>
+    </div>
+
+    <div class="f">
+      <h3>Lukt het verbinden niet?</h3>
+      <ul>
+        <li>Zet het contact aan en controleer of de adapter een lampje heeft.</li>
+        <li>Trek de adapter even los, wacht 10 seconden en steek hem opnieuw in.</li>
+        <li>Verwijder de koppeling in de Bluetooth-instellingen en koppel opnieuw.</li>
+        <li>Sluit andere apps die de adapter gebruiken (bijvoorbeeld een andere OBD-app).</li>
+        <li>Herstart PidLane en probeer opnieuw.</li>
+      </ul>
+      <p>Blijft het misgaan? Zie de <a href="#faq">FAQ</a> of <a href="#contact">neem contact op</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ FUNCTIES ============ -->
+  <section class="sec" id="gebruiken">
+    <h2>Functies en gebruik</h2>
+    <p class="lead">Alle onderdelen van PidLane, gegroepeerd op wat je ermee wilt doen. Welke metingen beschikbaar zijn hangt af van jouw auto en adapter.</p>
+
+    <div class="sub">Storingen</div>
+
+    <div class="f">
+      <h3>Storingscodes lezen en wissen
+        <button class="i" type="button" data-tip="Wissen zet ook de freeze frame en de readiness monitors terug. Lees en bewaar (exporteer) de codes eerst. Na wissen kan de auto even niet door de APK komen."></button>
+      </h3>
+      <p>Toont de opgeslagen, actieve en in behandeling zijnde storingscodes (DTC’s) met uitleg. Je kunt ze wissen nadat de oorzaak is verholpen. Blijft een code terugkomen, dan is het probleem er nog.</p>
+    </div>
+
+    <div class="f">
+      <h3>Freeze frame</h3>
+      <p>Een momentopname van de motorgegevens op het moment dat de storing optrad: toeren, snelheid, koelvloeistoftemperatuur en meer. Handig om te achterhalen onder welke omstandigheden het misging.</p>
+    </div>
+
+    <div class="f">
+      <h3>Permanente codes en readiness
+        <button class="i" type="button" data-tip="Permanente codes verdwijnen niet met wissen, maar pas zodra de auto zelf ziet dat het probleem weg is. Readiness is belangrijk voor de APK."></button>
+      </h3>
+      <p>Bekijk de permanente storingscodes en de status van de readiness monitors (of de auto alle zelftests heeft afgerond).</p>
+    </div>
+
+    <div class="sub">Live meten</div>
+
+    <div class="f">
+      <h3>Live data
+        <button class="i" type="button" data-tip="Meer metingen tegelijk betekent een lagere verversingssnelheid. PidLane past het aantal metingen per verzoek automatisch aan de adapter aan."></button>
+      </h3>
+      <p>Toont in real time metingen (PID’s) zoals toerental, snelheid, motortemperatuur, inlaatdruk, lambda en brandstoftrim. Kies zelf welke metingen je wilt zien. Waarden buiten het fysiek mogelijke bereik worden gemarkeerd, met een korte waarschuwing waar dat nuttig is.</p>
+    </div>
+
+    <div class="f">
+      <h3>Rit-monitor
+        <span class="badge">zwevend</span>
+      </h3>
+      <p>Houdt een rit of meting in de gaten terwijl je door de app navigeert. Je kunt de monitor minimaliseren tot een klein zwevend bolletje en later weer openen.</p>
+    </div>
+
+    <div class="f">
+      <h3>Mode 06: zelftests van de motor
+        <button class="i" type="button" data-tip="Resultaten zijn technisch. Een waarde dicht bij de grens is nog geen defect, maar kan wel een vroege waarschuwing zijn."></button>
+      </h3>
+      <p>Leest de testresultaten die de auto zelf bijhoudt (bijvoorbeeld misfire- en katalysatortests) met de bijbehorende min- en maxgrenzen.</p>
+    </div>
+
+    <div class="f">
+      <h3>Uitgebreide metingen (fabrikantspecifiek)</h3>
+      <p>Na het verbinden zoekt PidLane naar extra metingen die niet in de standaard-OBD2-lijst staan. Ondersteuning verschilt per merk en model, dus niet elke auto toont extra waarden.</p>
+    </div>
+
+    <div class="sub">Scannen</div>
+
+    <div class="f">
+      <h3>Volledige scan
+        <span class="badge">uitgebreid</span>
+        <button class="i" type="button" data-tip="Een volledige scan duurt langer dan een gewone uitlezing. Laat het contact aan en de adapter aangesloten tot de scan klaar is."></button>
+      </h3>
+      <p>Een complete inventarisatie van de auto: voertuigidentificatie, software-kalibratie en -controlegetal, alle codes (ook permanente), readiness en alle stuurapparaten die reageren. Meetpunten die eerst niet reageren worden opnieuw geprobeerd en gemarkeerd als wisselvallig.</p>
+    </div>
+
+    <div class="f">
+      <h3>Systeemtest</h3>
+      <p>Controleert onder meer de accu, de lambdasondes (voor en achter de katalysator) en of de gemeten waarden logisch bij elkaar passen.</p>
+    </div>
+
+    <div class="sub">Slimme hulp</div>
+
+    <div class="f">
+      <h3>AI-diagnose
+        <span class="badge tok">kost tokens</span>
+        <button class="i" type="button" data-tip="De AI geeft een onderbouwde aanwijzing, geen garantie. Bevestig altijd met een meting of inspectie voordat je onderdelen vervangt."></button>
+      </h3>
+      <p>Laat de meetgegevens en codes analyseren. Je krijgt in het Nederlands een uitleg van de waarschijnlijke oorzaak en de volgende stap. Elke AI-actie gebruikt tokens, zie <a href="#account">Account &amp; tokens</a>.</p>
+    </div>
+
+    <div class="f">
+      <h3>Wizard</h3>
+      <p>Een stap-voor-stap route voor als je niet precies weet waar je moet beginnen. Beantwoord een paar vragen over de klacht en PidLane kiest de juiste metingen en tests.</p>
+    </div>
+
+    <div class="f">
+      <h3>Onderdeel-zoeker</h3>
+      <p>Kies een onderdeel of een klacht en PidLane laat zien welke storingen en metingen daarbij horen, zodat je gerichter zoekt.</p>
+    </div>
+
+    <div class="f">
+      <h3>Passieve bewaking en Waakronde
+        <button class="i" type="button" data-tip="Werkt alleen zolang de verbinding actief is en de app openstaat. Op de achtergrond meekijken is beperkt tot wat het besturingssysteem toestaat."></button>
+      </h3>
+      <p>Terwijl je verbonden bent kijkt PidLane rustig mee: verandert de status van de auto, dan worden nieuwe storingscodes opgehaald inclusief freeze frame. Aanvullend wordt op vaste momenten gecontroleerd op meetwaarden die wegvallen, blijven hangen of onmogelijk hoog uitvallen, en op een te hoge brandstoftrim bij warme motor.</p>
+      <p>De Waakronde toont bevindingen als kaarten. <b>Tik kort</b> op een kaart om hem als ‘gezien’ te markeren. <b>Houd lang ingedrukt</b> (ongeveer een halve seconde) om hem te negeren (🔕). Genegeerde kaarten kun je later terugzetten.</p>
+    </div>
+
+    <div class="f">
+      <h3>Caravan-coach</h3>
+      <p>Tips tijdens het rijden met een aanhanger of caravan, zoals waarschuwingen bij te hoge belasting of temperatuur. Na de rit maakt de AI een kort eindrapport. Elke tip heeft een eigen wachttijd zodat je niet steeds dezelfde melding krijgt.</p>
+    </div>
+
+    <div class="sub">Voertuig en ritten</div>
+
+    <div class="f">
+      <h3>Kenteken opzoeken (RDW)</h3>
+      <p>Vul een Nederlands kenteken in en PidLane haalt merk, type, brandstof en bouwjaar op bij de RDW, zodat de diagnose beter aansluit op de auto.</p>
+    </div>
+
+    <div class="f">
+      <h3>Terugroepacties
+        <button class="i" type="button" data-tip="Een openstaande terugroepactie is niet altijd urgent, maar wel gratis te verhelpen bij de merkdealer. Controleer het kenteken altijd ook bij de RDW."></button>
+      </h3>
+      <p>Toont openstaande terugroepacties voor het voertuig, met de details uit het RDW-register.</p>
+    </div>
+
+    <div class="f">
+      <h3>GPS-ritlog
+        <button class="i" type="button" data-tip="Vraagt toegang tot je locatie. Je kunt dit altijd weigeren; de overige functies blijven werken."></button>
+      </h3>
+      <p>Registreert de route en de bijbehorende metingen tijdens een rit, zodat je een probleem achteraf op de kaart kunt terugvinden.</p>
+    </div>
+
+    <div class="sub">Samenwerken</div>
+
+    <div class="f">
+      <h3>Hulp op afstand (expert-sessie)
+        <button class="i" type="button" data-tip="De expert ziet je meetgegevens, maar bedient je auto niet. Deel de code of QR alleen met iemand die je vertrouwt en beëindig de sessie als je klaar bent."></button>
+      </h3>
+      <ol>
+        <li>Tik op <b>Hulp op afstand</b> en start een sessie.</li>
+        <li>Je krijgt een <b>10-cijferige code</b> en een QR-code. Geef die door aan de expert, of laat de expert de QR scannen (dit werkt ook andersom).</li>
+        <li>De expert ziet een live kopie van je metingen en kan een opname of AI-analyse starten. De analyse draait op jouw eigen toestel.</li>
+      </ol>
+    </div>
+
+    <div class="sub">Rapporten</div>
+
+    <div class="f">
+      <h3>Sessierapport en export
+        <button class="i" type="button" data-tip="Rapporten staan alleen in het geheugen van de app. Sluit je PidLane af zonder te exporteren, dan zijn ze weg."></button>
+      </h3>
+      <p>PidLane verzamelt tijdens een sessie automatisch de AI-rapporten, storingscodes en bevindingen. Exporteer het rapport om het te bewaren, te delen of aan een klant mee te geven.</p>
+    </div>
+  </section>
+
+  <!-- ============ OPSLAG ============ -->
+  <section class="sec" id="opslag">
+    <h2>Opslag en privacy</h2>
+    <p class="lead">Waar je gegevens staan en hoe je ze bewaart.</p>
+
+    <div class="f">
+      <h3>Op je toestel
+        <button class="i" type="button" data-tip="Wis je de browsergegevens of verwijder je de app, dan verdwijnen deze instellingen. Je kunt gewoon opnieuw verbinden."></button>
+      </h3>
+      <ul>
+        <li>Het protocol van je auto (zodat opnieuw verbinden sneller gaat).</li>
+        <li>Instellingen zoals het thema en gekozen metingen.</li>
+      </ul>
+    </div>
+
+    <div class="f">
+      <h3>Tijdelijk in de app</h3>
+      <ul>
+        <li>Sessierapporten, AI-rapporten en bevindingen van de huidige sessie.</li>
+        <li>Live meetgeschiedenis voor grafieken en bewaking.</li>
+      </ul>
+      <p><b>Exporteer</b> wat je wilt bewaren voordat je de app sluit.</p>
+    </div>
+
+    <div class="f">
+      <h3>Online (account en diensten)</h3>
+      <ul>
+        <li>Je account en tokensaldo, als je een account hebt.</li>
+        <li>Bedrijfsaccounts (B2B) voor werkplaatsen, dealers en wagenparken.</li>
+        <li>Gegevens voor een AI-analyse: die worden verstuurd naar de AI-dienst via de PidLane-server en niet direct vanuit je browser.</li>
+        <li>Een hulpsessie op afstand deelt de metingen alleen zolang de sessie loopt.</li>
+      </ul>
+      <p>Wachtwoorden worden versleuteld opgeslagen. Verzoeken om inzage of verwijdering van je gegevens kun je indienen via het <a href="#contact">contactformulier</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ ACCOUNT ============ -->
+  <section class="sec" id="account">
+    <h2>Account en tokens</h2>
+    <p class="lead">Voor AI-functies gebruik je tokens.</p>
+
+    <div class="f">
+      <h3>Registreren</h3>
+      <p>Maak een account met je e-mailadres. Je ontvangt een bevestigingsmail. Bij registratie krijg je <b>20 gratis tokens</b> om PidLane uit te proberen.</p>
+    </div>
+
+    <div class="f">
+      <h3>Wat kosten tokens?
+        <button class="i" type="button" data-tip="Tijdens de pilot betaal je via Tikkie en ontvang je een tokencode. Betalen via iDEAL volgt later."></button>
+      </h3>
+      <ul>
+        <li>Een AI-actie kost ongeveer <b>1 token</b> (circa € 0,05).</li>
+        <li>Een pakket van <b>100 tokens</b> kost € 4,99.</li>
+        <li>Gewone uitlezingen (codes, live data, scans) kosten geen tokens.</li>
+      </ul>
+    </div>
+
+    <div class="f">
+      <h3>Een tokencode inwisselen</h3>
+      <ol>
+        <li>Open je account en kies <b>Tokencode inwisselen</b>.</li>
+        <li>Vul de code in die je hebt ontvangen.</li>
+        <li>Het saldo wordt direct bijgewerkt.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ BEDRIJVEN ============ -->
+  <section class="sec" id="bedrijven">
+    <h2>Voor bedrijven</h2>
+    <p class="lead">PidLane is gebouwd voor garages, dealers en wagenparkbeheerders.</p>
+    <div class="f">
+      <h3>Inloggen met een bedrijfsaccount
+        <button class="i" type="button" data-tip="Bedrijfsaccounts worden aangemaakt door de beheerder van PidLane. Wil je er een? Neem contact op via het formulier."></button>
+      </h3>
+      <p>Log in met de gegevens van je organisatie. De inlogsessie wordt beveiligd en verloopt vanzelf. Medewerkers gebruiken zo dezelfde instellingen en rapportages.</p>
+    </div>
+    <div class="f">
+      <h3>Klantrapport meegeven</h3>
+      <p>Exporteer het sessierapport na een scan en geef het mee aan de klant, zodat de bevindingen en de gemeten waarden zwart op wit staan.</p>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section class="sec" id="faq">
+    <h2>Veelgestelde vragen</h2>
+    <p class="lead">Snel antwoord op de meest voorkomende vragen.</p>
+
+    <details><summary>Welke auto’s worden ondersteund?</summary><div class="a"><p>Vrijwel alle benzineauto’s vanaf 2001 en dieselauto’s vanaf 2004 met een standaard OBD2-aansluiting. Fabrikantspecifieke extra’s verschillen per merk en model.</p></div></details>
+
+    <details><summary>Werkt PidLane op een iPhone?</summary><div class="a"><p>Nee, op dit moment niet met een adapter. iOS ondersteunt de benodigde Bluetooth-verbinding in de browser niet. Gebruik een Android-toestel of een computer met Chrome.</p></div></details>
+
+    <details><summary>Mijn adapter verschijnt niet in de lijst.</summary><div class="a"><p>Controleer of Bluetooth aan staat, de adapter gekoppeld is en PidLane toestemming heeft voor apparaten in de buurt. Adapters die alleen BLE ondersteunen, werken niet in de webversie.</p></div></details>
+
+    <details><summary>Verbinding verbroken tijdens het meten.</summary><div class="a"><p>Bluetooth kan wegvallen als de adapter loskomt of de telefoon in stroombesparing gaat. Tik opnieuw op Verbinden. PidLane onthoudt je auto, dus het herstel gaat snel. Zet stroombesparing voor PidLane uit als het vaker gebeurt.</p></div></details>
+
+    <details><summary>Sommige metingen ontbreken of staan op ‘geen data’.</summary><div class="a"><p>Niet elke auto ondersteunt elke meting. PidLane probeert onbeantwoorde metingen opnieuw en markeert ze als wisselvallig. Blijft een meting leeg, dan geeft de auto die niet vrij.</p></div></details>
+
+    <details><summary>Is het veilig om storingscodes te wissen?</summary><div class="a"><p>Ja, maar de readiness monitors worden dan ook teruggezet en de auto heeft enkele ritten nodig om ze opnieuw te doorlopen. Kom je voor de APK, wis dan niet vlak van tevoren. Lees en exporteer de codes altijd eerst.</p></div></details>
+
+    <details><summary>Hoe bewaar ik een rapport?</summary><div class="a"><p>Gebruik de exportfunctie in het rapport. Rapporten worden niet automatisch permanent bewaard en verdwijnen als je de app sluit.</p></div></details>
+
+    <details><summary>Wat kost het gebruik van de AI?</summary><div class="a"><p>Een AI-actie kost ongeveer 1 token (circa € 0,05). Bij registratie krijg je 20 gratis tokens. Zie <a href="#account">Account en tokens</a>.</p></div></details>
+
+    <details><summary>Is mijn auto veilig als ik hem uitlees?</summary><div class="a"><p>Uitlezen is alleen lezen. PidLane verandert niets aan de instellingen van de auto. Het wissen van codes is de enige schrijfactie en vraagt altijd om bevestiging.</p></div></details>
+
+    <details><summary>Waarom geeft de AI een ander antwoord dan mijn garage?</summary><div class="a"><p>De AI baseert zich op de meetgegevens en codes die PidLane aanlevert en is een hulpmiddel. Een monteur kan fysiek controleren. Gebruik beide naast elkaar.</p></div></details>
+
+    <details><summary>Hoe start ik hulp op afstand?</summary><div class="a"><p>Ga naar Hulp op afstand, start een sessie en deel de 10-cijferige code of de QR-code met de expert. Zie <a href="#gebruiken">Functies</a>.</p></div></details>
+
+    <details><summary>Kan ik mijn gegevens laten verwijderen?</summary><div class="a"><p>Ja. Stuur een verzoek via het <a href="#contact">contactformulier</a> met het onderwerp ‘Privacy / gegevens’.</p></div></details>
+
+    <details><summary>Ik heb een fout gevonden of een idee.</summary><div class="a"><p>Graag! Beschrijf wat je deed en wat er gebeurde via het <a href="#contact">contactformulier</a>. Vermeld je adapter en toestel als je dat weet.</p></div></details>
+  </section>
+
+  <!-- ============ CONTACT ============ -->
+  <section class="sec" id="contact">
+    <h2>Contact</h2>
+    <p class="lead">Kom je er niet uit? Stuur een bericht, dan reageren we zo snel mogelijk.</p>
+
+    <form id="cf" novalidate>
+      <div class="hp" aria-hidden="true"><label>Laat leeg <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+
+      <div class="row">
+        <div class="fld">
+          <label for="naam">Naam</label>
+          <input id="naam" name="naam" type="text" autocomplete="name" required>
+          <div class="err-t" id="e-naam"></div>
+        </div>
+        <div class="fld">
+          <label for="email">E-mailadres</label>
+          <input id="email" name="email" type="email" autocomplete="email" required>
+          <div class="err-t" id="e-email"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="fld">
+          <label for="onderwerp">Onderwerp</label>
+          <select id="onderwerp" name="onderwerp" required>
+            <option value="">Kies een onderwerp…</option>
+            <option>Verbinden / adapter</option>
+            <option>Storingscodes of metingen</option>
+            <option>AI-diagnose</option>
+            <option>Account, tokens of betaling</option>
+            <option>Bedrijfsaccount (B2B)</option>
+            <option>Hulp op afstand</option>
+            <option>Fout melden</option>
+            <option>Idee of verbetering</option>
+            <option>Privacy / gegevens</option>
+            <option>Anders</option>
+          </select>
+          <div class="err-t" id="e-onderwerp"></div>
+        </div>
+        <div class="fld">
+          <label for="kenteken">Kenteken <span class="opt">(optioneel)</span>
+            <button class="i" type="button" data-tip="Handig als je vraag over een specifieke auto gaat. We gebruiken het alleen om je vraag te beantwoorden."></button>
+          </label>
+          <input id="kenteken" name="kenteken" type="text" autocapitalize="characters" maxlength="10" placeholder="AB-123-C">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="fld">
+          <label for="adapter">Adapter <span class="opt">(optioneel)</span></label>
+          <select id="adapter" name="adapter">
+            <option value="">Weet ik niet / n.v.t.</option>
+            <option>OBDLink MX+</option>
+            <option>Vgate vLinker MC+</option>
+            <option>Vgate iCar Pro BT 3.0</option>
+            <option>Andere adapter</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label for="bedrijf">Bedrijf <span class="opt">(optioneel)</span></label>
+          <input id="bedrijf" name="bedrijf" type="text" autocomplete="organization">
+        </div>
+      </div>
+
+      <div class="fld">
+        <label for="bericht">Bericht</label>
+        <textarea id="bericht" name="bericht" required placeholder="Wat wilde je doen, wat gebeurde er, en wat verwachtte je?"></textarea>
+        <div class="err-t" id="e-bericht"></div>
+      </div>
+
+      <label class="chk">
+        <input type="checkbox" id="tech" name="tech" checked>
+        <span>Stuur technische info mee (browser, schermgrootte, taal). Dit helpt ons je probleem sneller te vinden. Er worden geen meetgegevens of locatie meegestuurd.</span>
+      </label>
+
+      <button class="go" type="submit" id="send">Bericht versturen</button>
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+    </form>
+  </section>
+
+  <footer>
+    PidLane handleiding · Voor de meest recente versie: <a href="https://app.pidlane.nl">app.pidlane.nl</a>
+  </footer>
+</main>
+
+<script>
+/* ===== Instellingen: pas deze twee waarden aan ===== */
+const CONFIG = {
+  // Vul hier de URL in van je eigen endpoint (bijv. een route op de pidlane-proxy Worker).
+  // Verwacht: POST met JSON. Leeg laten = het formulier opent de mailapp.
+  contactEndpoint: '',
+  contactEmail: 'info@pidlane.nl'
+};
+
+/* ===== Uitroeptekens: informatie-tips ===== */
+document.querySelectorAll('button.i[data-tip]').forEach(btn=>{
+  btn.textContent='!';
+  btn.setAttribute('aria-label','Meer informatie');
+  btn.setAttribute('aria-expanded','false');
+  const host=btn.parentElement;
+  const tip=document.createElement('div');
+  tip.className='tip'; tip.hidden=true; tip.setAttribute('role','note');
+  tip.textContent=btn.dataset.tip;
+  tip.id='tip-'+Math.random().toString(36).slice(2,8);
+  btn.setAttribute('aria-controls',tip.id);
+  host.after(tip);
+  btn.addEventListener('click',()=>{
+    const open=tip.hidden;
+    tip.hidden=!open;
+    btn.setAttribute('aria-expanded',String(open));
+  });
+});
+
+/* ===== Zoeken ===== */
+const q=document.getElementById('q'), none=document.getElementById('none');
+const items=[...document.querySelectorAll('.f, details')];
+items.forEach(el=>{
+  el._t=(el.textContent+' '+[...el.querySelectorAll('[data-tip]')].map(b=>b.dataset.tip).join(' ')).toLowerCase();
+});
+q.addEventListener('input',()=>{
+  const v=q.value.trim().toLowerCase();
+  let hits=0;
+  items.forEach(el=>{
+    const ok=!v||el._t.includes(v);
+    el.style.display=ok?'':'none';
+    if(ok&&v) hits++;
+    if(v&&ok&&el.tagName==='DETAILS') el.open=true;
+    if(!v&&el.tagName==='DETAILS') el.open=false;
+  });
+  document.querySelectorAll('section.sec').forEach(s=>{
+    if(s.id==='contact'||s.id==='start') return;
+    const any=[...s.querySelectorAll('.f, details')].some(e=>e.style.display!=='none');
+    s.style.display=(!v||any)?'':'none';
+  });
+  document.querySelectorAll('.sub').forEach(h=>{
+    if(!v){h.style.display='';return;}
+    let n=h.nextElementSibling, any=false;
+    while(n&&!n.classList.contains('sub')&&n.classList.contains('f')){ if(n.style.display!=='none') any=true; n=n.nextElementSibling; }
+    h.style.display=any?'':'none';
+  });
+  none.style.display=(v&&hits===0)?'block':'none';
+});
+
+/* ===== Thema ===== */
+const root=document.documentElement;
+try{ const s=localStorage.getItem('pl-help-theme'); if(s) root.setAttribute('data-theme',s); }catch(e){}
+document.getElementById('themeBtn').addEventListener('click',()=>{
+  const dark=getComputedStyle(root).getPropertyValue('--bg').trim()==='#101614';
+  const next=dark?'light':'dark';
+  root.setAttribute('data-theme',next);
+  try{ localStorage.setItem('pl-help-theme',next); }catch(e){}
+});
+
+/* ===== Contactformulier ===== */
+const form=document.getElementById('cf'), status=document.getElementById('status'), send=document.getElementById('send');
+const setErr=(id,msg)=>{ document.getElementById('e-'+id).textContent=msg||''; };
+function validate(){
+  let ok=true;
+  const naam=form.naam.value.trim(), email=form.email.value.trim(), ond=form.onderwerp.value, msg=form.bericht.value.trim();
+  setErr('naam', naam?'':(ok=false,'Vul je naam in.'));
+  setErr('email', /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)?'':(ok=false,'Vul een geldig e-mailadres in.'));
+  setErr('onderwerp', ond?'':(ok=false,'Kies een onderwerp.'));
+  setErr('bericht', msg.length>=10?'':(ok=false,'Beschrijf je vraag in minimaal 10 tekens.'));
+  return ok;
+}
+form.addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  status.className='status'; status.textContent='';
+  if(form.website.value) return; // spam-val
+  if(!validate()){ status.className='status err'; status.textContent='Controleer de gemarkeerde velden.'; return; }
+
+  const data={
+    naam:form.naam.value.trim(), email:form.email.value.trim(),
+    onderwerp:form.onderwerp.value, kenteken:form.kenteken.value.trim().toUpperCase(),
+    adapter:form.adapter.value, bedrijf:form.bedrijf.value.trim(),
+    bericht:form.bericht.value.trim(), verzonden:new Date().toISOString()
+  };
+  if(form.tech.checked){
+    data.tech={ browser:navigator.userAgent, taal:navigator.language,
+      scherm:screen.width+'x'+screen.height, pagina:location.href };
+  }
+
+  if(CONFIG.contactEndpoint){
+    send.disabled=true; status.textContent='Bezig met versturen…';
+    try{
+      const r=await fetch(CONFIG.contactEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      status.className='status ok';
+      status.textContent='Bedankt! Je bericht is verstuurd. We reageren zo snel mogelijk op '+data.email+'.';
+      form.reset();
+    }catch(e){
+      status.className='status err';
+      status.textContent='Versturen is niet gelukt. Probeer het later opnieuw of mail naar '+CONFIG.contactEmail+'.';
+    }finally{ send.disabled=false; }
+  }else{
+    const lines=[data.bericht,'','—','Naam: '+data.naam,'E-mail: '+data.email];
+    if(data.bedrijf) lines.push('Bedrijf: '+data.bedrijf);
+    if(data.kenteken) lines.push('Kenteken: '+data.kenteken);
+    if(data.adapter) lines.push('Adapter: '+data.adapter);
+    if(data.tech) lines.push('Techniek: '+data.tech.browser+' | '+data.tech.scherm+' | '+data.tech.taal);
+    location.href='mailto:'+CONFIG.contactEmail+'?subject='+encodeURIComponent('PidLane hulp: '+data.onderwerp)+'&body='+encodeURIComponent(lines.join('\n'));
+    status.className='status ok';
+    status.textContent='Je mailapp wordt geopend met je bericht. Verstuur de mail om af te ronden.';
+  }
+});
+</script>
+</body>
+</html>
