@@ -1,0 +1,222 @@
+// ══════════════════════════════════════════════════════════════════
+// test-sppproef.js — de adminknoppen van #352 bewerken de bus netjes
+// ──────────────────────────────────────────────────────────────────
+// WAT HIER GETOETST WORDT, met de echte pidlane-sppproef.js en de echte
+// pidlane-scanslot.js in een vm, en een nagemaakte SPP-plugin:
+//
+//   1. stat() en oordeel() — het rekenwerk, met elk van de uitkomsten, en
+//      de tegenproef dat een patch-APK met een draad erbij FOUT is
+//   2. DE BUS WORDT BEWERKT, EN DE APP WEET HET. Op het moment van de
+//      mislukte connect() en van elk meetcommando staat _plScanActief aan
+//      — dan tellen PLBus.note() en de dode-socket-detectie niet mee — en
+//      is het busslot geclaimd, zodat de pollus stilstaat
+//   3. na een nabootsing ZONDER patch staat de markering in sessionStorage;
+//      MET patch niet — anders wordt elke patch-APK voor altijd "aangetast"
+//   4. de dode-socketknop volgt het pad van trackBtQuality(): connectSerial
+//      met de hervatstand, zonder eerst de oude socket te sluiten
+//   5. de knoppen staan in het Admin-menu, één keer
+//
+// Wat hier NIET getoetst wordt: of een echte telefoon een draad achterlaat.
+// Dat is de knop zelf; het nagebouwde gedrag van de plugin staat in
+// test-spppatch.js.
+//
+// Draaien vanuit public/:  node test-sppproef.js   (exit 0 = goed)
+// ══════════════════════════════════════════════════════════════════
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+let n = 0, fout = 0;
+function toets(naam, kreeg, verwacht) {
+  n++;
+  const a = JSON.stringify(kreeg), b = JSON.stringify(verwacht);
+  if (a === b) { console.log('  ok    ' + naam); return; }
+  fout++;
+  console.log('  FOUT  ' + naam + '\n        kreeg    ' + a + '\n        verwacht ' + b);
+}
+
+const BRON = fs.readFileSync(path.join(__dirname, 'pidlane-sppproef.js'), 'utf8');
+const SLOT = fs.readFileSync(path.join(__dirname, 'pidlane-scanslot.js'), 'utf8');
+
+function bouw(opt) {
+  opt = opt || {};
+  const opslag = {}, logs = [], diags = [], gebeurt = [], spoor = [];
+  const knoppen = [];
+  const els = {};
+  const groep = { appendChild: function (k) { knoppen.push(k); els[k.id] = k; } };
+  const w = {};
+  const ctx = {
+    window: w, console: { warn: function () {}, error: function () {}, log: function () {} },
+    Promise: Promise, Date: Date, JSON: JSON, Math: Math, String: String, Object: Object, Array: Array, Error: Error,
+    setTimeout: function (f) { setImmediate(f); return 1; },
+    setInterval: function () { return 1; }, clearInterval: function () {},
+    performance: { now: function () { return Date.now(); } },
+    sessionStorage: {
+      getItem: function (k) { return Object.prototype.hasOwnProperty.call(opslag, k) ? opslag[k] : null; },
+      setItem: function (k, v) { opslag[k] = String(v); }
+    },
+    document: {
+      getElementById: function (id) { return id === 'admGroup' ? groep : (els[id] || null); },
+      createElement: function () {
+        const e = { style: {}, children: [], appendChild: function (c) { this.children.push(c); },
+          addEventListener: function (t, f) { this['on' + t] = f; }, remove: function () {} };
+        return e;
+      },
+      addEventListener: function () {},
+      body: { appendChild: function (e) { els[e.id] = e; } }
+    },
+    btDiag: function (m, t) { diags.push([m, t]); },
+    log: function (m, t) { logs.push([m, t]); },
+    connected: opt.verbonden !== false, demoMode: false,
+    plSppModus: function () { return { modus: 'event' }; },
+    PLBus: { wait: function () { spoor.push('slot'); return Promise.resolve(7); }, raak: function () {}, release: function () { spoor.push('vrij'); } },
+    sendCmd: function (cmd) {
+      spoor.push('cmd ' + cmd + ' scan=' + !!w._plScanActief);
+      return Promise.resolve(cmd === 'ATRV' ? '12.4V' : '410C0A3C');
+    },
+    setConn: function (v) { spoor.push('setConn ' + v); },
+    connectSerial: function (o) { spoor.push('connectSerial ' + (o && o.hervat)); ctx.connected = true; return Promise.resolve(); }
+  };
+  const spp = {
+    connect: function (o) {
+      spoor.push('connect ' + o.address + ' scan=' + !!w._plScanActief);
+      return Promise.reject(new Error('read failed, socket might closed'));
+    },
+    disconnect: function (o) { spoor.push('disconnect ' + o.address); return Promise.resolve(); }
+  };
+  let patchAan = opt.patchUit ? false : true;
+  if (opt.patch) spp.plPatch = function (o) {
+    if (o && typeof o.aan === 'boolean') { patchAan = o.aan; spoor.push('plPatch aan=' + o.aan); }
+    return Promise.resolve({ patch: 'PIDLANE-352-1', aan: patchAan, leesdraden: 1, verbindingen: 1 });
+  };
+  ctx.getSPP = function () { return spp; };
+  let dradenStand = 0;
+  if (opt.draden) w.Capacitor = { Plugins: { PLDraden: { meet: function () {
+    return Promise.resolve({ ms: 1000, hz: 100, kernen: 8, totaalPct: 20 + dradenStand * 100, aantal: 40, draden: [], sppLevend: 1 + dradenStand, sppDraait: dradenStand, spp: [] });
+  } } } };
+  w.PLAdapter = { noteer: function (s) { gebeurt.push(s); } };
+  w.PLBus = ctx.PLBus;
+  vm.createContext(ctx);
+  // De twee modules delen `window`: zo leest de proef de echte PLScanSlot.
+  ctx.window = w;
+  vm.runInContext('var window = this.window;', ctx);
+  vm.runInContext(SLOT, ctx);
+  ctx.PLScanSlot = w.PLScanSlot;
+  vm.runInContext(BRON, ctx);
+  return { ctx: ctx, P: w.PLSppProef, w: w, opslag: opslag, logs: logs, diags: diags, spoor: spoor, knoppen: knoppen, gebeurt: gebeurt,
+    zetDraden: function (d) { dradenStand = d; } };
+}
+
+(async function () {
+  console.log('── 1. het rekenwerk ──');
+  {
+    const P = bouw().P;
+    toets('stat: mediaan, p90, max', P.stat([10, 30, 20, 40, 1000]), { n: 5, mediaan: 30, p90: 1000, max: 1000 });
+    toets('stat van niets', P.stat([]), { n: 0, mediaan: null, p90: null, max: null });
+    const r = (at) => ({ at: { mediaan: at }, ecu: { mediaan: at * 2 } });
+    const d = (draait) => ({ sppDraait: draait, totaalPct: 10 + draait * 100 });
+    toets('zonder patch, draad erbij: fout nagebouwd',
+      [P.oordeel({ draden: d(0), respons: r(10) }, { draden: d(1), respons: r(160) }, { patch: null }).staat,
+       /nagebouwd/.test(P.oordeel({ draden: d(0), respons: r(10) }, { draden: d(1), respons: r(160) }, { patch: null }).kop)], ['OK', true]);
+    toets('zonder patch, geen draad erbij: het vermoeden klopt hier niet',
+      /klopt op dit toestel niet/.test(P.oordeel({ draden: d(0), respons: r(10) }, { draden: d(0), respons: r(10) }, { patch: null }).kop), true);
+    toets('met patch, geen draad erbij: houdt stand',
+      P.oordeel({ draden: d(0), respons: r(10) }, { draden: d(0), respons: r(11) }, { patch: 'PIDLANE-352-1' }).staat, 'OK');
+    // De tegenproef: een patch-APK die toch een draad achterlaat is FOUT.
+    toets('TEGENPROEF met patch, draad erbij: FOUT',
+      P.oordeel({ draden: d(0), respons: r(10) }, { draden: d(1), respons: r(10) }, { patch: 'PIDLANE-352-1' }).staat, 'FOUT');
+    toets('met patch, geen draadmeting maar ×3 trager: FOUT',
+      P.oordeel({ draden: null, respons: r(10) }, { draden: null, respons: r(30) }, { patch: 'PIDLANE-352-1' }).staat, 'FOUT');
+    toets('zonder patch en zonder draadmeting: de factor staat erin',
+      /×16/.test(P.oordeel({ draden: null, respons: r(10) }, { draden: null, respons: r(160) }, { patch: null }).kop), true);
+  }
+
+  console.log('── 2. de bus wordt bewerkt, en de app weet het ──');
+  {
+    const s = bouw();
+    const p = await s.P.nabootsen();
+    toets('de nep-connect() gaat naar het nepadres, met de scanvlag aan',
+      s.spoor.filter((x) => /^connect /.test(x)), ['connect ' + s.P.NEP_ADRES + ' scan=true']);
+    toets('binnen een geclaimd busslot, dat daarna weer vrij is',
+      [s.spoor.indexOf('slot') > -1 && s.spoor.indexOf('slot') < s.spoor.findIndex((x) => /^connect /.test(x)),
+       s.spoor.lastIndexOf('vrij') > s.spoor.findIndex((x) => /^connect /.test(x))], [true, true]);
+    toets('en daarna staat de scanvlag weer uit', !!s.w._plScanActief, false);
+    toets('het nepadres wordt opgeruimd', s.spoor.indexOf('disconnect ' + s.P.NEP_ADRES) > -1, true);
+    toets('de poging mislukte, zoals bedoeld', [p.gelukt, /mislukt zoals bedoeld/.test(p.uitkomst)], [false, true]);
+
+    const r = await s.P.meetRespons();
+    const cmds = s.spoor.filter((x) => /^cmd /.test(x));
+    toets('de responstijdmeting: 15× ATRV en 15× 010C1', [cmds.filter((x) => /ATRV/.test(x)).length, cmds.filter((x) => /010C1/.test(x)).length], [15, 15]);
+    toets('allemaal met de scanvlag aan', cmds.every((x) => /scan=true$/.test(x)), true);
+    toets('met de modus erbij en zonder lege antwoorden', [r.modus, r.leeg, r.at.n], ['event', 0, 15]);
+
+    const los = bouw({ verbonden: false });
+    await los.P.nabootsen();
+    toets('niet verbonden: nabootsen kan ook (thuis, zonder auto), zonder busslot',
+      [los.spoor.filter((x) => /^connect /.test(x)).length, los.spoor.indexOf('slot')], [1, -1]);
+    toets('en meten kan dan niet', await los.P.meetRespons(), null);
+  }
+
+  console.log('── 3. de markering ──');
+  {
+    const zonder = bouw();
+    toets('vóór de proef: niet aangetast', zonder.P.aangetast(), null);
+    await zonder.P.nabootsen();
+    const a = zonder.P.aangetast();
+    toets('zonder patch: aangetast, met de reden', [!!a, /zonder patch/.test(a && a.reden)], [true, true]);
+    toets('en dat staat als waarschuwing in het logboek', zonder.logs.some((l) => l[1] === 'warn' && /Bus aangetast/.test(l[0]) && /#352/.test(l[0])), true);
+    const met = bouw({ patch: true });
+    await met.P.nabootsen();
+    toets('TEGENPROEF met patch: niet aangetast', met.P.aangetast(), null);
+    const uit = bouw({ patch: true, patchUit: true });
+    await uit.P.nabootsen();
+    toets('patch voor de proef uitgezet: wél aangetast, en dat staat erbij', /voor de proef uitgezet/.test((uit.P.aangetast() || {}).reden), true);
+    toets('een uitgezette patch telt in het oordeel als geen patch',
+      uit.P.oordeel({ draden: { sppDraait: 0 } }, { draden: { sppDraait: 1 } }, { patch: 'PIDLANE-352-1', aan: false }).staat, 'OK');
+  }
+
+  console.log('── 4. de volle proef en de dode socket ──');
+  {
+    const s = bouw({ draden: true });
+    const u = await s.P.volle();
+    toets('de volle proef levert een oordeel met regels', [!!u, typeof (u && u.kop), Array.isArray(u && u.regels)], [true, 'string', true]);
+    toets('zonder patch en zonder draad erbij: het vermoeden klopt hier niet', /klopt op dit toestel niet/.test(u && u.kop), true);
+    toets('de proef staat als gebeurtenis bij PLAdapter', s.gebeurt.indexOf('spp-proef') > -1, true);
+    toets('en de uitkomst staat in het logboek', s.logs.some((l) => /SPP-proef volle proef/.test(l[0])), true);
+
+    const d = bouw({ draden: true, patch: true });
+    await d.P.dodeSocket();
+    const iConn = d.spoor.findIndex((x) => /^connectSerial /.test(x));
+    toets('de dode-socketknop: setConn(false) en dan connectSerial met de hervatstand',
+      [d.spoor.indexOf('setConn false') > -1 && d.spoor.indexOf('setConn false') < iConn, d.spoor[iConn]],
+      [true, 'connectSerial dode socket (SPP-proef)']);
+    toets('zonder eerst de oude socket te sluiten — zo ging het om 01:11:40',
+      d.spoor.slice(0, iConn).some((x) => /^disconnect /.test(x)), false);
+  }
+
+  console.log('── 5. de schakelaar ──');
+  {
+    const s = bouw({ patch: true });
+    const u = await s.P.schakel();
+    toets('de knop zet de patch uit via plPatch({ aan: false })', [s.spoor.indexOf('plPatch aan=false') > -1, /UIT tot de app herstart/.test(u.regels[0])], [true, true]);
+    await s.P.schakel();
+    toets('en een tweede tik weer aan', s.spoor.indexOf('plPatch aan=true') > -1, true);
+    const oud = bouw();
+    let fout = null;
+    try { await oud.P.zetPatch(false); } catch (e) { fout = e; }
+    toets('zonder patch-APK valt er niets te schakelen, en dat zegt hij', !!(fout && /niets te schakelen/.test(fout.message)), true);
+  }
+
+  console.log('── 6. het Admin-menu ──');
+  {
+    const s = bouw();
+    const eerst = s.P.menu(), dan = s.P.menu();
+    toets('zeven knoppen in het Admin-menu, en een tweede keer niet nog eens', [eerst, dan, s.knoppen.length], [7, 0, 7]);
+    toets('met een eigen id en klasse', s.knoppen.every((k) => /^plSpp/.test(k.id) && k.className === 'kebab-item'), true);
+  }
+
+  console.log('\n' + n + ' toetsen, ' + (fout ? fout + ' FOUT' : 'alles goed'));
+  process.exit(fout ? 1 : 0);
+})();

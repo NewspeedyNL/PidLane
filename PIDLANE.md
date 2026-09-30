@@ -158,7 +158,8 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 > 29-09: `pidlane-zonder.js` erbij, direct na `pidlane-nav.js`.
 > 29-09: `pidlane-herinner.js` en `pidlane-lampjes.js` erbij, direct na `pidlane-zonder.js`.
 > 27-09: `pidlane-gear.js` erbij, direct na `pidlane-watchers.js`.
-> 27-09: `pidlane-berekend.js` erbij, direct na `pidlane-gear.js`.)
+> 27-09: `pidlane-berekend.js` erbij, direct na `pidlane-gear.js`.
+> 30-09: `pidlane-sppproef.js` erbij, direct na `pidlane-adapter.js`.)
 > `plcheck.sh` controleert dat elke module in `index.html` hangt en dat
 > `pidlane-bedrading.js` achteraan staat.
 
@@ -258,6 +259,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 56 | `pidlane-adapter.js` | 10 | `PLAdapter` — **het verbindingspaneel achter de OBD-chip** (#210/#211/#212, 16-09-2026). Toont wat de app al wist maar nergens liet zien: verzoeken/s, responstijd, bezetting, foutgraad, onvolledige antwoorden, herhaalde frames, twee grafieken over twaalf minuten, en het actielogboek van `PLLoad` mét de reden per stap. Kan het tempo en de groepsgrootte laten overnemen door een mens (`PLLoad.handmatig()`, `PLBus.batchZet()`), en heeft een eigen snelheidstest van 40 s die **solo én batch** meet — dat verschil is precies wat blok 10 niet ziet. Regelt zelf niets: de automaat blijft `PLLoad`, de statistiek blijft `PLBus`. `advies()` is een pure functie en staat los van de meting. Tests: `test-adapterpaneel.js`, `bproef-adapterpaneel.js`, `bproef-schermranden.js` |
 | 57 | `pidlane-waarneming.js` | 8 | `PLWaarneming` — **de autolaag** (#225, 17-09-2026): wat er op DÉZE auto is waargenomen, over ritten heen. `meld()` kan maar één ding zeggen — *gezien* — want "gemeten dat het er niet is" bestaat niet; `weerleg()` is de enige bron die *nee* mag zeggen en dat is een mens. Bij tegenspraak beslist het moment: een waarneming van vóór een weerlegging is juist wat er weerlegd is, een van erná is nieuw bewijs. Sleutel als `PLPidLen` (`vin \|\| merk\|model\|jaar`); geen sleutel = geen opslag, en dan zegt `reikwijdte` `sessie`. `PLAandrijving.tik()` promoveert de start/stop-stop erheen. Tests: `test-waarneming.js`, `test-meetcontext.js`, blok 5 |
 | 58 | `pidlane-render.js` | 3 | `PLRender` — **meldt na een herstart of er een rendercrash aan voorafging** (#229, 22-09-2026). De native kant (`native/PLRender.java`) vangt `onRenderProcessGone` af, houdt het proces in leven en bouwt de activiteit opnieuw op; deze module vraagt daarna één keer `PLRender.laatste()` op en zet het moment plus de oorzaak (interne fout of geheugen) als fout in het logboek, en dus in D1. Zonder die regel leest een rendercrash als "het proces was bevroren". Test: `test-nativeschil.js` |
+| 59 | `pidlane-sppproef.js` | 7 | `PLSppProef` — **laat de SPP-plugin draden achter?** (#352, 30-09-2026). Zeven knoppen in het Admin-menu: draden meten (native `PLDraden`), responstijd meten (15× `ATRV` en `010C1`), een mislukte verbinding nabootsen (connect naar een adres dat niet bestaat), de volle proef met oordeel, herverbinden langs het dode-socketpad, patchstatus, en de patch voor de proef aan/uit. Elke busproef loopt via `PLScanSlot.doe()`. Na een nabootsing zonder patch zet hij `pl_spp_aangetast` in sessionStorage — zo lang als zo'n draad leeft — en dan geeft `PLAdapter` voor #302 LET OP in plaats van FOUT. Tests: `test-sppproef.js`, `test-spppatch.js`, `test-nativeschil.js` |
 | — | `pidlane-bedrading.js` | 20 | `PLBedrading` — moet ALTIJD achteraan; controleert dat elke `typeof X === 'function'`-guard een geregistreerde naam is. Zie §19 |
 
 ### `native/` — de enige map met code die niet in de browser draait (11-09-2026)
@@ -276,6 +278,8 @@ nakijkt, en native code die niemand ooit terugleest. `public/test-nativeschil.js
 legt deze bestanden naast de workflow en naast `pidlane-meetdienst.js`.
 
 Sinds 22-09-2026 (#229) staat er ook `PLRender.java` plus `PLRenderPlugin.java`: een `WebViewListener` die `true` teruggeeft bij een rendercrash, zodat Android het proces — en daarmee de meetdienst — niet afschiet. Hij wordt ná `super.onCreate()` gekoppeld, want pas dan bestaat de bridge.
+
+Sinds 30-09-2026 (#352) twee dingen erbij. `PLDradenPlugin.java` meet per draad de processortijd uit `/proc/self/task`, op een eigen draad (Capacitor draait alle plugin-aanroepen na elkaar op één draad). En `plspppatch.js` in de wortel patcht de SPP-plugin in `node_modules` vóór de build: die startte bij elke mislukte `connect()` een leesdraad die leeg ronddraaide tot het proces stopte. Het script werkt op vaste ankers en stopt met exit 1 als er een niet past. `native/spp-plugin-8.0.1/` bevat de twee originele bestanden als proefmateriaal voor `test-spppatch.js`; de injectiestap kopieert alleen `native/*.java` en raakt die submap niet.
 
 Dit is géén buildstap voor de web-app — die heeft er nog steeds geen. Het is de
 enige plek in de repo waar code staat die op Android draait in plaats van in de

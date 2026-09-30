@@ -330,7 +330,11 @@ var KRITIEK = [
   // Erbij op 27-09-2026: Mijn voorkeuren (pidlane-voorkeur.js) past de
   // standaard van het account toe met de functies die de app al heeft.
   'buildPIDList','favBarSync','favGet','favSet','fontSize','openLiveView',
-  'plThemaZet','rebuildGSel','renderGauges','setUiScale'
+  'plThemaZet','rebuildGSel','renderGauges','setUiScale',
+  // Erbij op 30-09-2026 (#352): de SPP-proef (pidlane-sppproef.js) zoekt de
+  // plugin met getSPP en noemt de leesmodus met plSppModus. Ontbreekt getSPP,
+  // dan zegt elke knop "geen SPP-plugin" terwijl die er wel is.
+  'getSPP','plSppModus'
 ];
 // Namen die in de bron als `typeof X==='function'` voorkomen maar géén globale
 // functie zijn — met reden, want de test vraagt erom.

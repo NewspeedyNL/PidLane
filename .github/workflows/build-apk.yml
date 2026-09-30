@@ -58,6 +58,8 @@ on:
      # de Java-kant niets, en staat de oude dienst in de volgende APK terwijl
      # de diff iets anders laat zien.
      - 'native/**'
+     # De patch op de SPP-plugin (#352) zit in de APK, niet in public/.
+     - 'plspppatch.js'
   workflow_dispatch:
 
 # Annuleer lopende builds als er een nieuwe push komt — voorkomt 4x builden
@@ -173,6 +175,15 @@ jobs:
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
+
+      # De SPP-plugin start bij elke connect() een leesdraad, ook als de poging
+      # mislukt, en die draait dan leeg rond tot het proces stopt (#352). Het
+      # script patcht de kopie in node_modules op vaste ankers en stopt met
+      # exit 1 als er een niet past — een plugin-update breekt de build dus
+      # hardop in plaats van stil zonder patch. Zie plspppatch.js en
+      # public/test-spppatch.js.
+      - name: Patch de SPP-plugin (#352)
+        run: node plspppatch.js node_modules/@ascentio-it/capacitor-bluetooth-serial
 
       - name: Add Android platform
         run: npx cap add android || echo "Already added"
@@ -438,6 +449,8 @@ jobs:
                   "        registerPlugin(PLMeetdienstPlugin.class);",
                   "        registerPlugin(PLPipPlugin.class);",
                   "        registerPlugin(PLRenderPlugin.class);",
+                  # De draadmeting (#352): welke draad gebruikt de processor.
+                  "        registerPlugin(PLDradenPlugin.class);",
                   "        super.onCreate(savedInstanceState);",
                   # Ná super.onCreate(): pas dan bestaat de bridge (#229).
                   "        PLRender.koppel(this, getBridge());",
@@ -476,6 +489,7 @@ jobs:
                   "        registerPlugin(PLMeetdienstPlugin::class.java)",
                   "        registerPlugin(PLPipPlugin::class.java)",
                   "        registerPlugin(PLRenderPlugin::class.java)",
+                  "        registerPlugin(PLDradenPlugin::class.java)",
                   "        super.onCreate(savedInstanceState)",
                   "        PLRender.koppel(this, bridge)",
                   "    }",
@@ -514,6 +528,9 @@ jobs:
               # en schiet Android het proces af, meetdienst en al (#229).
               ("registerPlugin(PLRenderPlugin", "de rendercrash-plugin registreren (#229)"),
               ("PLRender.koppel(this", "de luisteraar op onRenderProcessGone (#229)"),
+              # Zonder registratie bestaat Capacitor.Plugins.PLDraden niet en
+              # zegt de SPP-proef "deze schil meet geen draden" (#352).
+              ("registerPlugin(PLDradenPlugin", "de draadmeting registreren (#352)"),
           ]:
               if stuk not in src:
                   print("FOUT: %s ontbreekt in MainActivity (%s)" % (stuk, waarvoor)); sys.exit(1)

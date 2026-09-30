@@ -425,6 +425,26 @@ console.log('\n── het sessiebewijs van #302: oploopt, waardoor, en wat herst
   // één uitschieter is geen stap
   const piek = vlak.map((x, i) => i === 30 ? Object.assign({}, x, { ms: 600 }) : x);
   toets('één uitschieter van 600 ms is geen stap', [P.driftAnalyse(piek, []).groepen[0].stappen.length], [0]);
+
+  /* De SPP-proef (#352): dezelfde stap van 150 naar 270 ms, maar nu op het
+     moment dat de proef de verbinding aantastte. Dat is de proef en niet
+     #302 — het oordeel mag geen FOUT geven, en de stap noemt de oorzaak. De
+     tegenproef is de reeks hierboven: zonder markering blijft het FOUT. */
+  const geproefd = [];
+  for (let i = 0; i < 80; i++) geproefd.push(m(i, i < 40 ? 150 : 270, i >= 40 ? { proef: true } : {}));
+  const ap = P.driftAnalyse(geproefd, []);
+  toets('de stap noemt de SPP-proef als oorzaak', [ap.groepen[0].stappen.length, ap.groepen[0].stappen[0].wat.indexOf('SPP-proef (#352)') > -1], [1, true]);
+  const op = P.driftOordeel(ap, 25);
+  toets('een door de proef aangetaste verbinding: LET OP, geen drift', [op.staat, op.drift, /SPP-proef/.test(op.detail)], ['LET OP', false, true]);
+  toets('zonder markering is dezelfde reeks FOUT', [P.driftOordeel(P.driftAnalyse(reeks, []), 25).staat], ['FOUT']);
+}
+
+// ══════════════════════════════════════════════════════════════════
+console.log('\n── de SPP-proef boekt een gebeurtenis (#352) ──');
+{
+  const s = bouw();
+  waar('PLAdapter.noteer bestaat en boekt een gebeurtenis',
+    typeof s.PLAdapter.noteer === 'function' && (s.PLAdapter.noteer('spp-proef'), s.PLAdapter.gebeurtenissen().some((e) => e.soort === 'spp-proef')));
 }
 
 // ══════════════════════════════════════════════════════════════════

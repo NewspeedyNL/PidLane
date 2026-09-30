@@ -2771,6 +2771,32 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de SPP-plugin en zijn leesdraden (#352, 30-09-2026) ──
+  // Een mislukte verbindpoging liet in de plugin een leesdraad achter die leeg
+  // ronddraaide tot de app herstartte: alles werd trager, de telefoon warm.
+  // Deze proef kijkt aan het eind van de rit of dat in DEZE sessie gebeurd
+  // is — ook zonder dat iemand op een proefknop drukte — en of de patch in
+  // de APK zit. Een door de proefknoppen aangetaste sessie zegt hij erbij.
+  {
+    issue: '#352',
+    naam: 'Geen draaiende leesdraden van de SPP-plugin',
+    waarom: 'Eén mislukte verbindpoging kostte een processorkern tot de app herstartte; de meting werd 10 tot 25 keer trager zonder één foutmelding.',
+    proef: async function () {
+      if (!window.PLSppProef) return { staat: 'FOUT', detail: 'PLSppProef ontbreekt — pidlane-sppproef.js is niet geladen' };
+      var patch = await PLSppProef.patchStatus();
+      var d = await PLSppProef.meetDraden(1500);
+      var a = PLSppProef.aangetast();
+      var pt = patch.patch ? patch.patch + (patch.aan === false ? ' (uit voor de proef)' : '') : 'geen patch (' + patch.reden + ')';
+      var na = a ? '; de sessie is aangetast door de proefknoppen (' + a.reden + ')' : '';
+      if (!d) return { staat: 'LET OP', detail: 'deze APK meet geen draden (PLDraden ontbreekt — een APK van vóór 30-09); patch: ' + pt + na };
+      var kern = d.sppLevend + ' SPP-leesdraad/-draden, ' + d.sppDraait + ' draaiend; app ' + d.totaalPct + '% van één kern; patch: ' + pt;
+      if (d.sppDraait > 0 && a) return { staat: 'LET OP', detail: kern + na + ' — verwacht na de proef; herstart de app om ze op te ruimen' };
+      if (d.sppDraait > 0) return { staat: 'FOUT', detail: kern + ' — zonder proefknop: een mislukte verbindpoging tijdens de rit liet een draad achter (#352)' };
+      if (!patch.patch) return { staat: 'LET OP', detail: kern + ' — geen draad nu, maar de patch zit niet in deze APK' + na };
+      return { staat: 'OK', detail: kern + na };
+    }
+  },
+
   // ── de demo-zandbak en de app zonder adapter (29-09-2026) ──
   // In de demo wordt niets bewaard: localStorage gaat naar een laag in het
   // geheugen, plFetch houdt de AI en het schrijven naar het account binnen.
@@ -9054,6 +9080,7 @@ const CAMPAGNE = {
     'NIEUW IN DE APP. Versnelling bij het voertuig met een knop Fout (ook R), tijd per versnelling met rijstijladvies, zeventien berekende PIDs (onder "Berekend"), een trekmodus met waarschuwingstoon, ritlabels met voorstel, export en kosten, rapporten vergelijken en in één keer wissen. Daarna: eigen PIDs per voertuig (Mijn voertuigen → Sensoren), de versnelling in het midden van Slim visueel, en opslaan zonder keuzevenster.',
     'NIEUW 29-09: RIT BEËINDIGEN (#341). Onderin het menu staan "Uitloggen" en "Sluit de app" niet meer. Daar staat nu één knop: "Rit beëindigen" als er een rit loopt, anders "Afsluiten". Hij toont de rit, laat je hem een naam geven en vraagt wat er daarna gebeurt: verbonden blijven, verbreken of de app sluiten, met uitloggen als vinkje. Verbreken geeft de bus eerst vrij met ATPC. En motor uit is geen einde van de rit meer: pas na vijftien minuten zonder rijden sluit de app hem zelf af.',
     'NIEUW 29-09: EEN NIEUW STARTSCHERM EN EEN ONDERBALK. ☰ en 🏠 zijn weg; onderin staan Mijn auto, Live, Rapporten en Meer (het oude menu). Het startscherm heeft één grote knop, Check mijn auto, en vier tegels die de wizard op hun eigen vraag openen. Na het verbinden draait de check vanzelf (uit te zetten in Meer). De oude kaarten staan onder Alle functies, alleen in de garagemodus — die staat voor een beheeraccount vanzelf aan.',
+    'NIEUW 30-09: DE SPP-PLUGIN LAAT DRADEN ACHTER (#352). Na een herverbinding bij een dode socket werd de hele verbinding 10 tot 25 keer trager (ATH0 6 → 166 ms) en de telefoon warm; alleen de app afsluiten hielp. De plugin start bij elke MISLUKTE verbindpoging toch een leesdraad, en die draait leeg rond tot het proces stopt. De nieuwe APK heeft een patch, en een schakelaar om het oude gedrag voor de proef terug te zetten. Onder Meer → Admin staan zeven SPP-knoppen; de uitkomsten staan in het logboek.',
     '── WAT ÉÉN RIT DEZE RONDE MOET LATEN ZIEN ────────',
     'HET NIEUWE STARTSCHERM. Direct na het verbinden hoort Check mijn auto vanzelf open te gaan. Klopt het stoplicht met wat de auto heeft? Tik daarna één keer elke tab aan, en open elke tegel tot de eerste vraag. Wat niet klopt of onduidelijk is: noteer het woord voor woord.',
     'EEN STOP MET DE MOTOR UIT (#341). Ergens onderweg: stoppen, motor uit, drie minuten wachten (of even de app dichtdoen), en weer rijden. Blok 5 hoort aan het eind één rit met één pauze te zien, niet twee ritten.',
@@ -9071,6 +9098,7 @@ const CAMPAGNE = {
     'BUURSCAN (alleen als je wilt, kost een halve minuut per blok). Sensoren → Scan 222Axx @ 720: noteer welke nieuwe codes antwoorden.',
     'BANDEN (als je auto ze via een eigen PID geeft). Rij minstens vijf minuten; de banden worden elke minuut gevraagd. Tik op het bandenlampje boven Slim visueel: staan alle vier de drukken er, in bar?',
     'EEN EIGEN PID. Mijn voertuigen → Sensoren. Heb je een code van de dealer: vul hem in (met ECU-adres als je dat weet, bijv. 7E1 voor de automaat), Test op de auto, Toevoegen, Bewaren. Zo niet: 📚 Codes voor dit model → Zoek online, test de kandidaten (elke test telt mee als werkt/werkt niet) en voeg er een toe die antwoordt. Laat hem de rit meelopen; werkt hij, tik dan Deel.',
+    'DE SPP-PROEF (#352), STILSTAAND, MET DE NIEUWE APK. (1) ℹ️ patchstatus: staat er PIDLANE-352-1? (2) 🔬 volle proef: hoort "de patch houdt stand" te zeggen. (3) 🔀 patch aan/uit → uit, en nog eens 🔬 volle proef: hoort "fout nagebouwd, +1 draaiende leesdraad" te zeggen. Dat is de tegenproef op hetzelfde toestel. (4) Sluit de app helemaal af (niet alleen herladen) en open hem weer: 🧵 draden meten hoort 0 draaiend te geven, en de patch staat vanzelf weer aan. Met de OUDE APK kan alleen (2): dan telt de responstijd, want die meet geen draden.',
     '── STAP VOOR STAP ────────',
     'STAP 0 — VOORAF. Nieuwste versie laden (Meer → Admin → Nieuwste versie laden). Mijn voertuigen: vul bij Profiel handbak of automaat, het aantal versnellingen, de tankinhoud, de literprijs en het vermogen in. Een nieuwe APK is niet nodig.',
     'STAP 1 — VERBINDEN EN WEGRIJDEN. Eén keer verbinden, dan niet meer verbreken tot na de testrun. Tik de rijsituatie caravan of beladen aan en kies Slim visueel.',
