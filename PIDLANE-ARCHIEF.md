@@ -14,6 +14,34 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-09-2026 — eigen PIDs zonder bereik: een lege, gearceerde balk
+
+**De waarneming.** Uit het gebruik, CX-5: in Slim stonden de vier
+bandtemperaturen en de motorolietemperatuur met een gearceerde, lege balk,
+en de vier bandenspanningen onder "beweegt" terwijl ze 2,29–2,49 bar
+stonden.
+
+**Waarom.** `eigenControleer()` gaf een sensor zonder ingevuld bereik
+`min −1e9, max 1e9` en geen grenzen. `slimTempSchaal()` valt dan terug op
+`max`, dus de balk deelt door een miljard, en de arcering van #66 zegt
+terecht "geen bekende grens". De bandenspanning ging onder "beweegt"
+omdat de sparkline zich op de eigen 24 metingen schaalt: een verschil van
+0,01 bar vult de hele hoogte.
+
+**Wat er gedaan is.** `standaardBereik()` in `pidlane-uitgebreid.js`
+herkent uit de naam (`bandRol()`, en "olie…temp") drie soorten en geeft ze
+een schaal; zie de kop van die functie. De onderkant van de bandtemperatuur
+is −40 en niet 0: `pidlane-kwaliteit.js` leest in de scanmodus een waarde
+op precies het minimum als dummy, en een winterband van 0 °C is echt.
+Een eigen bereik gaat voor, maar de grenzen (wH/dH) gaan altijd mee — het
+bereik zegt waar de schaal loopt, niet wanneer het te warm is.
+
+**Wat het níét oplost.** Een eigen sensor die we niet uit de naam
+herkennen, houdt het open bereik. Dat is bewust: een verzonnen schaal is
+erger dan een gearceerde, en de klant kan zelf een bereik invullen.
+
+---
+
 ## 30-09-2026 — Slim visueel opnieuw ingedeeld (#371)
 
 **De vraag.** Uit het gebruik, met een schermafbeelding van een Mazda CX-5:
