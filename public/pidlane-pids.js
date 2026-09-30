@@ -1131,6 +1131,12 @@ function b1s1Line(){
 // discovery overslaan bij een bekend voertuig.
 // ══════════════════════════════════════════════════════
 function vinProfileKey(vin){ return 'pl_vinprof_'+String(vin||'').toUpperCase(); }
+// De opslagsleutel bevát de ruwe VIN, dus hij hoort in geen enkele melding.
+// Op 30-09-2026 stond "Geen profiel onder pl_vinprof_JMZ…507" voluit in een
+// gedeeld logboek: #102 maskeerde de log()-regels, maar vier btDiag-regels
+// met de sleutel erin vielen erbuiten. In een melding dus alleen de staart —
+// dezelfde zes tekens die de app overal laat zien.
+function _vinSleutelVoorLog(vin){ return 'pl_vinprof_…'+String(vin||'').toUpperCase().slice(-6); }
 
 // async sinds 03-09-2026 (#102): de slotregel maskeert de VIN via
 // _plVinVoorLog(), en dat is een SHA-256 en dus asynchroon. Alle opslag hierin
@@ -1163,7 +1169,7 @@ async function saveVinProfile(vin){
     const terug=localStorage.getItem(sleutel);
     if(!terug){
       log('⚠️ Voertuigprofiel NIET bewaard — opslag weigerde stil','warn');
-      try{ btDiag('setItem('+sleutel+') gooide niet, maar getItem geeft null','err'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
+      try{ btDiag('setItem('+_vinSleutelVoorLog(vin)+') gooide niet, maar getItem geeft null','err'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
       return;
     }
     // Niet de ruwe VIN (#102) — deze regel belandt in de logbuffer en die
@@ -1193,9 +1199,9 @@ function applyVinProfileIfKnown(vin){
   const sleutel=vinProfileKey(vin);
   try{
     const raw=localStorage.getItem(sleutel);
-    if(!raw){ btDiag('Geen profiel onder '+sleutel+' — volle discovery','warn'); return false; }
+    if(!raw){ btDiag('Geen profiel onder '+_vinSleutelVoorLog(vin)+' — volle discovery','warn'); return false; }
     const prof=JSON.parse(raw);
-    if(!prof?.pids?.length){ btDiag('Profiel '+sleutel+' bevat geen PIDs — volle discovery','warn'); return false; }
+    if(!prof?.pids?.length){ btDiag('Profiel '+_vinSleutelVoorLog(vin)+' bevat geen PIDs — volle discovery','warn'); return false; }
     supportedPIDs=new Set(prof.pids);
     if(prof.brandstof) vehicleInfo.brandstof=prof.brandstof;
     if(prof.motor) vehicleInfo.motor=prof.motor;
@@ -1207,7 +1213,7 @@ function applyVinProfileIfKnown(vin){
     return true;
   }catch(e){
     // Nooit stil: dit is een aanroep van eigen opslag, geen verwachte fout.
-    try{ btDiag('Profiel '+sleutel+' onbruikbaar: '+(e.message||e),'err'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
+    try{ btDiag('Profiel '+_vinSleutelVoorLog(vin)+' onbruikbaar: '+(e.message||e),'err'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
     return false;
   }
 }

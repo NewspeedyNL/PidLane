@@ -37,6 +37,12 @@
    weigerde de nieuwe tot je op zijn knop drukte. Vóór elk verbinden vraagt
    de app nu of er nog een verbinding openstaat, en sluit die eerst.
  - Gebeurt dat, dan staat er een regel met 🔌 in het logboek.
+ 30-09-2026 — Geen ruwe VIN meer in het logboek
+ ═══════════════════════════════════════════════════════════
+
+ - "Geen profiel onder pl_vinprof_…" zette de volledige VIN in de BT-log,
+   en daarmee in elk gedeeld logboek. Vier meldingen over het
+   voertuigprofiel tonen nu alleen de laatste zes tekens.
 
  ═══════════════════════════════════════════════════════════
  30-09-2026 — Snelheidsproef: stap voor stap zoeken wat de verbinding snel maakt
