@@ -2776,14 +2776,14 @@ const PROEVEN_B5 = [
   // Nu vraagt hij PLPip om de langste periode en het langste gat daarin.
   {
     issue: '#319',
-    naam: 'De meetopdracht kan beeld-in-beeld zelf aflezen',
+    naam: 'De meetopdracht leest het kleine venster zelf af (PiP-maten)',
     waarom: 'Vier ritten met beeld-in-beeld bleven op "nog niet" staan: de voorwaarde was een stap die geen knop zet.',
     proef: async function () {
       if (!window.PLPip || typeof PLPip.maat !== 'function') return { staat: 'FOUT', detail: 'PLPip.maat ontbreekt — de opdracht van #319 blijft op nog niet' };
       if (!window.PLOpdracht || PLOpdracht.appMaten().indexOf('pip-gat-s') < 0) return { staat: 'FOUT', detail: 'pip-gat-s staat niet op de witte lijst van PLOpdracht' };
       var langst = PLPip.maat('pip-langst-s'), gat = PLPip.maat('pip-gat-s');
       if (typeof langst !== 'number') return { staat: 'FOUT', detail: 'pip-langst-s geeft ' + langst + ' in plaats van een getal' };
-      if (gat === null) return { staat: 'LET OP', detail: 'nog geen minuut beeld-in-beeld met een verbonden auto (langste ' + langst + ' s) — het gat is nog niet te beoordelen' };
+      if (gat === null) return { staat: 'LET OP', detail: 'nog geen minuut in het kleine venster met een verbonden auto (langste ' + langst + ' s). Nodig: tijdens het rijden minstens 2 minuten naar een andere app.' };
       return { staat: gat <= 5 ? 'OK' : 'FOUT', detail: 'langste periode ' + langst + ' s, langste gat ' + gat + ' s (grens 5 s)' };
     }
   },
