@@ -2771,6 +2771,27 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── het anker van de BT-log na een herlaad (30-09-2026) ──
+  // Na een herlaad hield de cap van de BT-log de 300 teruggezette regels van
+  // de vorige sessie vast als "begin", en rolde deze sessie eruit: in het
+  // logboek van 08:41 ontbraken verbinden, VIN en de hele SPP-proef. Deze
+  // proef kijkt in de echte buffer of het anker nu van deze sessie is.
+  {
+    issue: '—',
+    naam: 'De BT-log bewaart het begin van déze sessie',
+    waarom: 'Na een herlaad verdween de BT-kant van verbinden, VIN en elke proef uit het logboek, terwijl de markering "301 regels weggelaten" zei.',
+    proef: async function () {
+      if (typeof _btLog === 'undefined' || typeof btLogAfkappen !== 'function')
+        return { staat: 'FOUT', detail: '_btLog of btLogAfkappen ontbreekt — pidlane-btflow.js is niet (goed) geladen' };
+      var cap = _btLog.filter(function (r) { return r && r.cap; });
+      var vorige = _btLog.filter(function (r) { return r && r.vorige && !r.cap; }).length;
+      if (!cap.length) return { staat: 'OK', detail: _btLog.length + ' regels, nog niet tegen de cap gelopen' + (vorige ? '; ' + vorige + ' uit de vorige sessie staan er nog' : '') };
+      if (cap.length > 1) return { staat: 'FOUT', detail: cap.length + ' markeringen in de BT-log — er hoort er één te staan die alles telt' };
+      if (vorige) return { staat: 'FOUT', detail: 'afgekapt, maar ' + vorige + ' regels uit de vorige sessie staan er nog — het anker is niet van deze sessie' };
+      return { staat: 'OK', detail: _btLog.length + ' regels; ' + cap[0].msg };
+    }
+  },
+
   // ── de SPP-plugin en zijn leesdraden (#352, 30-09-2026) ──
   // Een mislukte verbindpoging liet in de plugin een leesdraad achter die leeg
   // ronddraaide tot de app herstartte: alles werd trager, de telefoon warm.

@@ -14,6 +14,32 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-09-2026 — De BT-log verloor na een herlaad precies de regels van #352
+
+**Gezien in het logboek van 08:41** (CX-5, MX+). De BT-regels sprongen van
+08:28:21 naar 08:39:54. Daartussen stonden verbinden, VIN, de preset en alle
+regels van de SPP-proef — en juist die had #352 nodig. De markering zei
+"301 regels weggelaten".
+
+**Twee functies die elk apart goed leken.** `restoreBtLog()` zette na een
+herlaad de laatste 300 regels van de vorige sessie terug, achteraan in `_btLog`
+(na wat de modules bij het laden al schreven). De cap in `btDiag()` hield de
+eerste 300 regels vast als anker, om protocol, VIN en discovery te bewaren.
+Na een herlaad waren die eerste 300 dus het pollverkeer van vóór de herlaad.
+Een herlaad is precies het geval van #229, en dan wil je die regels het meest.
+
+**De teller loog ook.** Bij elke ronde verdween de vorige markering in het
+midden, en de nieuwe telde alleen die ronde: altijd ~301, ook na duizenden.
+
+**De zin in #352** — *"De BT-regels van dat stuk zijn door de geheugen-cap
+weg"* — past bij dezelfde oorzaak; ook daar ging een herlaad aan vooraf.
+
+**Wat er nu staat.** Teruggezette regels krijgen `vorige: true` en komen
+vooraan. `btLogAfkappen()` kiest het anker uit de eigen regels van deze sessie,
+laat de vorige sessie bij de eerste afkapping vallen (hij staat in de spiegel)
+en telt cumulatief. `test-btlogcap.js` speelt de herlaad na; drie mutaties in
+`plmutate.sh`; een proef in blok 5 kijkt in de echte buffer.
+
 ## 30-09-2026 — Van CAMPAGNE-tekst naar een meetopdracht, en twee schermfouten
 
 **Waarom de SPP-proef geen tekst meer is.** De eerste oplevering van #352 zette

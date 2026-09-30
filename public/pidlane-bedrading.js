@@ -36,7 +36,7 @@
 // `typeof X === 'function'` doet: dat zijn precies de aanroepen die stil falen.
 var KRITIEK = [
   '_niceReportName','aiBusyBegin','aiBusyEnd','_srUpdateBadge','_noteMap','_recStats',
-  'appBack','btDiag','buildDiscoveredPIDList',
+  'appBack','btDiag','btLogAfkappen','buildDiscoveredPIDList',
   'clearDTC','clearSLAutoHide','closeCaravanDash','closeKebab','closeLades','closeRitAnalyse',
   'demo','detectEngineType','disconnectWebSerial','doLogin','download','dtcInfo',
   'ensurePIDListActive','ensurePIDsActive',

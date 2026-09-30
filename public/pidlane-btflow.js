@@ -66,8 +66,12 @@ function restoreBtLog(){
     logEl.innerHTML='';
     const colors={info:'var(--tx2)',ok:'var(--gn)',warn:'var(--or)',err:'var(--rd)',proto:'#a78bfa',device:'#00f5ff'};
     const icons={info:'·',ok:'✓',warn:'⚠',err:'✗',proto:'⚡',device:'📱'};
+    // Vooraan en gemerkt (30-09-2026). Ze werden achteraan geduwd, ná de
+    // regels die de modules bij het laden al schreven, en vulden dan het
+    // anker van de cap in btDiag(): na een herlaad hield de BT-log het
+    // pollverkeer van de vorige sessie vast en rolde deze sessie eruit.
+    _btLog.unshift(...saved.map(e=>Object.assign({},e,{vorige:true})));
     saved.forEach(e=>{
-      _btLog.push(e);
       const line=document.createElement('div'); line.style.cssText=`color:${colors[e.type]||'var(--tx2)'};display:flex;gap:5px;`;
       const tsEl=document.createElement('span'); tsEl.style.cssText='color:var(--tx3);flex-shrink:0'; tsEl.textContent=e.ts;
       const icEl=document.createElement('span'); icEl.style.color=colors[e.type]||'var(--tx2)'; icEl.textContent=icons[e.type]||'·';
@@ -91,6 +95,37 @@ function _btPersistNow(){
   try{ const snap=JSON.stringify(_btLog.slice(-300)); sessionStorage.setItem('pl_btlog',snap); localStorage.setItem('pl_btlog',snap); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 try{ window.addEventListener('pagehide',_btPersistNow); document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') _btPersistNow(); }); }catch(e){ console.warn('pagehide/visibilitychange niet gekoppeld — de BT-log wordt niet geflusht bij een proces-kill', e); }
+// Geheugen-cap MET ANKER: de eerste regels van een sessie (protocol, VIN,
+// discovery) blijven altijd staan. Die rolden er vroeger binnen een minuut
+// uit — daardoor was de VIN-poging bij het exporteren telkens al weg en
+// kostte dezelfde vraag drie extra rondes. De staart rolt gewoon door.
+//
+// Het anker is de eerste regels van DEZE sessie (30-09-2026). Het was de
+// eerste 300 van de buffer, en na een herlaad zijn dat de 300 regels die
+// restoreBtLog() uit de vorige sessie terugzette: in het logboek van 08:41
+// stond het pollverkeer van vóór de herlaad vast, en ontbraken verbinden,
+// VIN en de hele SPP-proef van #352. Die teruggezette regels (`vorige`)
+// vallen bij de eerste afkapping weg — ze staan ook in de spiegel op schijf.
+//
+// De markering telt alles wat er deze sessie wegviel. Hij zei "301": wat de
+// laatste ronde weghaalde, terwijl de vorige markering zelf ook in het midden
+// verdween. Na tien minuten pollen waren het er duizenden.
+const BTLOG_CAP=1400, BTLOG_KOP=300, BTLOG_STAART=800;
+const _btCapStand={ weg:0, vorige:0 };
+function btLogAfkappen(log, stand, ts){
+  if(log.length<=BTLOG_CAP) return false;
+  const eigen=log.filter(r=>r && !r.vorige && !r.cap);
+  const vorige=log.filter(r=>r && r.vorige && !r.cap).length;
+  const ruimte=eigen.length>BTLOG_KOP+BTLOG_STAART;
+  const kop=ruimte?eigen.slice(0,BTLOG_KOP):eigen, staart=ruimte?eigen.slice(-BTLOG_STAART):[];
+  stand.weg+=eigen.length-kop.length-staart.length;
+  stand.vorige+=vorige;
+  const msg=`… ${stand.weg} regels weggelaten (geheugen-cap)`+
+            (stand.vorige?`, plus ${stand.vorige} uit de sessie van vóór de herlaad`:'')+' …';
+  log.length=0;
+  log.push(...kop,{ts,t:Date.now(),msg,type:'info',cap:true},...staart);
+  return true;
+}
 function btDiag(msg, type='info'){
   const box=document.getElementById('btDiagBox'); if(box) box.style.display=(window._connDetails?'block':'none');
   const ts=new Date().toTimeString().slice(0,8);
@@ -101,16 +136,7 @@ function btDiag(msg, type='info'){
   // Regels die uit de opslag zijn teruggezet (restoreBtLog) hebben geen `t`;
   // die zijn per definitie van een vorige sessie.
   _btLog.push({ts,t:Date.now(),msg,type});
-  // Geheugen-cap MET ANKER: de eerste regels van een sessie (protocol, VIN,
-  // discovery) blijven altijd staan. Die rolden er vroeger binnen een minuut
-  // uit — daardoor was de VIN-poging bij het exporteren telkens al weg en
-  // kostte dezelfde vraag drie extra rondes. De staart rolt gewoon door.
-  if(_btLog.length>1400){
-    const kop=_btLog.slice(0,300), staart=_btLog.slice(-800);
-    const weg=_btLog.length-kop.length-staart.length;
-    _btLog.length=0;
-    _btLog.push(...kop,{ts,t:Date.now(),msg:`… ${weg} regels weggelaten (geheugen-cap) …`,type:'info'},...staart);
-  }
+  btLogAfkappen(_btLog, _btCapStand, ts);
   try{ liveLogWrite(`[BT][${ts}] [${(type||'info').toUpperCase()}] ${msg}`); }catch(e){ console.warn('liveLogWrite() faalde — deze regel ontbreekt in het live logbestand', e); }
   if(!_btPersistT) _btPersistT=setTimeout(_btPersistNow,2000);
   const colors={info:'var(--tx2)',ok:'var(--gn)',warn:'var(--or)',err:'var(--rd)',proto:'#a78bfa',device:'#00f5ff'};
