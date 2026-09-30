@@ -14,6 +14,24 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-09-2026 — N op de meter terwijl je optrekt
+
+**Waarneming van de rijder:** de versnelling gaat te vaak mis; bij accelereren
+staat er N.
+
+**Waarom.** `_tick()` in `pidlane-gear.js` zette N zodra het toerental onder
+`neutraalRpm` (1200) lag en er geen versnelling paste, óók zonder stabiele
+verhouding. Bij optrekken in de tweede rond 1000 tpm is de verhouding niet
+stabiel, en met een traag gepolde snelheid (010D stond op 28-09 op 2,3 s) past
+het paar net niet bij een versnelling. Dan N, terwijl er gas gegeven werd.
+
+**Wat er nu staat.** `_neutraal()`: N alleen als de motor langzamer draait dan
+de hoogste bekende versnelling bij deze snelheid zou geven — dan kan er geen
+versnelling tussen zitten. Kent het model nog niet alle verwachte
+versnellingen, dan nooit. Anders: onzeker, dus het embleem. Slim visueel vraagt
+`toonbaar()`: geen cijfer bij een onzekere nummering of een afwijking. De
+topbalk en CA01 houden `waarde()`, met hun "?".
+
 ## 30-09-2026 — Na elke update op de knop van de adapter drukken
 
 **De waarneming van de rijder.** De eerste rit gaat vaak goed. Na een update

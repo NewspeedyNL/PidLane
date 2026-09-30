@@ -1471,6 +1471,10 @@ MUTATIES=(
 # ── een socket die nog openstaat eerst dicht (30-09-2026) ──
 "public/pidlane-bt.js@@  await sppOudeSluiten(spp, address);\n  await spp.connect({ address });@@  await spp.connect({ address });@@test-sppoudsluiten.js@@na een herlaad verbindt de app over een socket heen die nog openstaat: de MX+ weigert tot iemand op zijn knop drukt"
 "public/pidlane-bt.js@@  if(!(c && (c.connected===true || c.isConnected===true))) return false;@@  if(c===false) return false;@@test-sppoudsluiten.js@@een onduidelijk antwoord van isConnected telt als open: de app sluit op een gok een verbinding die er niet is"
+# ── versnelling: N alleen als het zeker is, de meter alleen een zeker cijfer (30-09-2026) ──
+"public/pidlane-gear.js@@        doel = this._neutraal(r, p.rpm) ? 'N' : undefined;@@        doel = this._match(r) ? undefined : 'N';@@test-gear.js@@bij optrekken rond 1000 tpm staat er weer N terwijl je gas geeft"
+"public/pidlane-gear.js@@    if (w===null || this.afwijking || !this.nummeringZeker()) return null;@@    if (w===null) return null;@@test-gear.js@@de meter toont een versnelling die bij afwijking of onzekere nummering niet klopt"
+"public/pidlane-visueel.js@@window.PLGear.toonbaar() : null; }@@window.PLGear.waarde() : null; }@@bproef-visueel.js@@de meter vraagt weer waarde(): een onzeker cijfer in plaats van het embleem"
 )
 
 echo

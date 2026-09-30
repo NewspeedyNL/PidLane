@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Slim visueel: geen N meer bij optrekken, en alleen een zekere versnelling
+ ═══════════════════════════════════════════════════════════
+
+ - Bij optrekken rond 1000 tpm stond er soms N op de meter. N komt er nu
+   alleen nog als geen enkele versnelling dit toerental bij deze snelheid
+   kan geven, zoals bij uitrollen in z'n vrij.
+ - De meter toont alleen een versnelling die zeker is. Twijfelt de app,
+   dan staat het PidLane-embleem er.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — Na een update niet meer op de knop van de adapter drukken
  ═══════════════════════════════════════════════════════════
 

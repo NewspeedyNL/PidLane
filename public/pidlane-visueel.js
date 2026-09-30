@@ -436,8 +436,10 @@ function gearTekst(g){
 }
 function gearBij(){
   let g=null;
-  try{ g=(window.PLGear && typeof window.PLGear.waarde==='function') ? window.PLGear.waarde() : null; }
-  catch(x){ console.warn('PLVisueel: PLGear.waarde() mislukt', x); }
+  // toonbaar() en niet waarde() (30-09-2026): op de meter liever het embleem
+  // dan een versnelling die nog niet zeker is.
+  try{ g=(window.PLGear && typeof window.PLGear.toonbaar==='function') ? window.PLGear.toonbaar() : null; }
+  catch(x){ console.warn('PLVisueel: PLGear.toonbaar() mislukt', x); }
   const t=gearTekst(g), lg=el('visg-logo');
   zetTekst('vis-gear', t);
   if(lg) lg.style.display = t ? 'none' : '';
