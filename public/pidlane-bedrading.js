@@ -146,6 +146,9 @@ var KRITIEK = [
   // valt _plVinVoorLog terug op alleen de WMI en gaat er stil minder mee dan
   // bedoeld -- daarom hoort hij hier en niet in GEEN_GLOBALE.
   '_vlVinPseudoniem',
+  // De bugmelder in pidlane-auth.js haalt de VIN via deze functie op, als
+  // pseudoniem. Blok 5 toetst hem; verdwijnt hij, dan is dat een FOUT.
+  '_bugDiagMetVin',
   // Deze twee stonden in PIDLANE.md als bedraad maar waren dat niet. Ze staan
   // hier zodat dat niet nog eens ongemerkt kan gebeuren.
   'herijkPidGate','pidToevoegen','pidOpruimen','pidOpgeruimdLijst',

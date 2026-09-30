@@ -1048,17 +1048,28 @@ function _bugDiag(){
     app:String(typeof APP_VERSION!=='undefined'?APP_VERSION:'?'),
     user:String((typeof currentUser!=='undefined'&&currentUser?.name)||''),
     role:String((typeof currentUser!=='undefined'&&currentUser?.role)||''),
-    merk:String(v.merk||''), model:String(v.model||''), year:String(v.year||''), vin:String(v.vin||''),
+    merk:String(v.merk||''), model:String(v.model||''), year:String(v.year||''),
     voertuig:[v.merk,v.model,v.year].filter(Boolean).join(' ')||'—',
     protocol:String((typeof selectedNetwork!=='undefined'&&selectedNetwork?.name)||'—'),
     conn, lastErr
   };
 }
 
-function openBugReport(){
+/* De VIN gaat met de bugmelding mee als WMI:pseudoniem, precies zoals in de
+   logkolom (_plVinVoorLog, §7 van PIDLANE.md) — nooit ruw. _bugDiag() zelf
+   draagt de VIN niet meer, zodat een nieuw veld of een nieuwe weergave hem
+   niet per ongeluk ruw kan oppakken. Async: het pseudoniem is een SHA-256. */
+async function _bugDiagMetVin(){
+  const d=_bugDiag();
+  const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
+  d.vin=await _plVinVoorLog(v.vin);
+  return d;
+}
+
+async function openBugReport(){
   try{ const m=document.getElementById('btLogModal'); if(m) m.style.display='none'; }catch(e){ /* stil: element kan al weg zijn */ }
   try{ if(typeof closeKebab==='function') closeKebab(); }catch(e){ console.warn('Kebabmenu niet gesloten bij het openen van de bugmelding', e); }
-  const d=_bugDiag();
+  const d=await _bugDiagMetVin();
   let ov=document.getElementById('bugModal');
   if(!ov){ ov=document.createElement('div'); ov.id='bugModal';
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9700;display:flex;align-items:center;justify-content:center;padding:16px';
@@ -1071,7 +1082,7 @@ function openBugReport(){
       </div>
       <div style="overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
         <div style="font-size:12px;color:var(--tx3);line-height:1.5;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;padding:8px 10px">
-          📎 Automatisch meegestuurd: ${d.device} · app ${d.app} · ${d.voertuig} · ${d.protocol} · ${d.conn}${d.user?' · je account ('+d.user+')':''}${d.vin?' · chassisnummer '+d.vin:''}
+          📎 Automatisch meegestuurd: ${d.device} · app ${d.app} · ${d.voertuig} · ${d.protocol} · ${d.conn}${d.user?' · je account ('+d.user+')':''}${d.vin?' · voertuig-ID '+d.vin+' (pseudoniem van het chassisnummer, niet het nummer zelf)':''}
         </div>
         <div>
           <label style="font-size:13px;font-weight:700;display:block;margin-bottom:5px">Wat ging er mis? *</label>
@@ -1097,7 +1108,7 @@ async function submitBugReport(btn){
   const repro=(document.getElementById('bugRepro')?.value||'').trim();
   const msgEl=document.getElementById('bugMsg');
   if(!desc){ if(msgEl){ msgEl.style.color='var(--rd)'; msgEl.textContent='Vul eerst een korte beschrijving in.'; } return; }
-  const d=_bugDiag();
+  const d=await _bugDiagMetVin();
   if(btn){ btn.disabled=true; btn.textContent='Versturen…'; }
   const rec={ fields:{
     Timestamp:new Date().toISOString(), Type:'bug', Message:desc.slice(0,500),

@@ -14,6 +14,32 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-09-2026 — de bugmelding stuurde het chassisnummer ruw
+
+**De waarneming.** `submitBugReport()` in `pidlane-auth.js` zette
+`vehicleInfo.vin` ongewijzigd in het veld `VIN` van het record naar
+`/airtable/log`, en het venster toonde het volledige nummer bij "Automatisch
+meegestuurd". De Worker pseudonimiseert op die route niet. Dat botst met de
+privacyregel in `CLAUDE.md`, en het was een pad dat de tabel in §7 van
+`PIDLANE.md` niet noemde — weer een tabel die compleet leek.
+
+**Waarom het er doorheen glipte.** `test-vin-anoniem.js` toetst
+`_plVinVoorLog()` zelf, niet wie hem wel of niet aanroept. De bugmelder
+bouwde zijn eigen record naast `logToSheets()` en kwam dus nergens langs een
+controle.
+
+**Een aanname in de opdracht die niet klopte.** De opdracht noemde ook
+`bugEmailFallback()` als lek. De mailtekst bevatte de VIN niet: alleen merk,
+model en jaar. Dat pad is niet veranderd; de test en een mutatie bewaken wel
+dat er geen VIN in komt.
+
+**De vorm van de fix.** `_bugDiag()` draagt de VIN niet meer.
+`_bugDiagMetVin()` voegt hem toe via `_plVinVoorLog()` — `WMI:pseudoniem`,
+hetzelfde staartje als de logkolom, zodat een melding te koppelen blijft aan
+de logregels van die auto. Het venster toont die waarde, niet het nummer.
+
+---
+
 ## 30-09-2026 — 10 verzoeken/s bij 54 ms: de pollus, niet de adapter (#302)
 
 **De waarneming.** Het adapterpaneel stond op 9,7 verzoeken/s, 54 ms per
