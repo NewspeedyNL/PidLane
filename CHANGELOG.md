@@ -245,6 +245,19 @@
    wordt vanzelf Overzicht. worker.js accepteert 'overzicht' (KP_VOORKEUR).
  - Tests: test-overzicht.js (nieuw), test-slimmeweergave.js,
    test-verbergen.js, drie browserproeven, vier mutaties, blok 5.
+ 30-09-2026 — Banden en olie (eigen PIDs) krijgen een schaal
+ ═══════════════════════════════════════════════════════════
+
+ - Een eigen PID zonder bereik stond op −1e9…1e9. In Slim werd de balk
+   dan gearceerd ("grove schaal") en bleef hij leeg.
+ - Bandtemperatuur: schaal tot 80 °C, oranje vanaf 65, rood bij 80.
+ - Bandenspanning: schaal 0–3,5 bar (of het equivalent in psi of kPa),
+   zonder vaste grens — het oordeel blijft de vergelijking van de vier
+   banden. Kleine schommelingen tellen daardoor niet meer als "beweegt".
+ - Motorolietemperatuur: dezelfde schaal en grenzen als de standaard-PID
+   015C (tot 150 °C, oranje vanaf 130).
+ - Een zelf ingevuld bereik gaat voor; de grenzen blijven dan gelden.
+ - Proef in blok 5.
 
  ═══════════════════════════════════════════════════════════
  30-09-2026 — Slim visueel: balkjes, een acculampje en een autootje (#371)
