@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Na een update niet meer op de knop van de adapter drukken
+ ═══════════════════════════════════════════════════════════
+
+ - Een update of herlaad van de app sloot de Bluetooth-verbinding met de
+   adapter niet. De OBDLink MX+ neemt maar één verbinding tegelijk aan, en
+   weigerde de nieuwe tot je op zijn knop drukte. Vóór elk verbinden vraagt
+   de app nu of er nog een verbinding openstaat, en sluit die eerst.
+ - Gebeurt dat, dan staat er een regel met 🔌 in het logboek.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — Snelheidsproef: stap voor stap zoeken wat de verbinding snel maakt
  ═══════════════════════════════════════════════════════════
 

@@ -2771,6 +2771,22 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── een socket die nog openstaat eerst dicht (30-09-2026) ──
+  // Een herlaad (update, hervatting) sloot de Bluetooth-socket niet; de MX+
+  // weigerde dan de nieuwe verbinding tot iemand op zijn knop drukte.
+  // doSPPConnect() sluit nu eerst wat er nog openstaat, en zegt dat in het
+  // logboek. Deze proef telt hoe vaak dat deze sessie nodig was.
+  {
+    issue: '#352',
+    naam: 'Een Bluetooth-verbinding die nog openstaat gaat eerst dicht',
+    waarom: 'Na elke update moest de knop van de adapter ingedrukt worden, omdat de oude socket de enige plek op de MX+ bezet hield.',
+    proef: async function () {
+      if (typeof sppOudeSluiten !== 'function') return { staat: 'FOUT', detail: 'sppOudeSluiten ontbreekt in pidlane-bt.js — een herlaad laat de oude socket weer openstaan' };
+      var n = _appLogRegels().filter(function (r) { return /nog een Bluetooth-verbinding met de adapter open/.test((r && r.msg) || ''); }).length;
+      return { staat: 'OK', detail: n ? n + '× een oude verbinding gesloten vóór het verbinden — dat was vóór deze versie een druk op de adapterknop' : 'deze sessie stond er bij het verbinden niets meer open' };
+    }
+  },
+
   // ── de snelheidsproef, stap voor stap (30-09-2026) ──
   // Om 08:53 was de verbinding weer traag terwijl de patch van #352 aan stond
   // en er geen draad draaide. De snelheidsproef (Admin-menu) zoekt met zes

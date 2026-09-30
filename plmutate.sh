@@ -1468,6 +1468,9 @@ MUTATIES=(
 "public/pidlane-snelproef.js@@      try { await spp.disconnect({ address: adres }); }@@      try { }@@test-snelproef.js@@stap 2 opent een nieuwe socket zonder de oude te sluiten — dat is het pad van 01:11, geen verse verbinding"
 "public/pidlane-snelproef.js@@    if (haalt && vorige.perSec < DOEL) return@@    if (haalt) return@@test-snelproef.js@@elke stap na de oplossing zegt ook \"dit hielp\": de uitslag wijst de verkeerde ingreep aan"
 "public/pidlane-snelproef.js@@  try { document.addEventListener('DOMContentLoaded', menu); }@@  try { }@@bproef-snelproef.js@@de snelheidsproef laadt maar staat nergens in het menu"
+# ── een socket die nog openstaat eerst dicht (30-09-2026) ──
+"public/pidlane-bt.js@@  await sppOudeSluiten(spp, address);\n  await spp.connect({ address });@@  await spp.connect({ address });@@test-sppoudsluiten.js@@na een herlaad verbindt de app over een socket heen die nog openstaat: de MX+ weigert tot iemand op zijn knop drukt"
+"public/pidlane-bt.js@@  if(!(c && (c.connected===true || c.isConnected===true))) return false;@@  if(c===false) return false;@@test-sppoudsluiten.js@@een onduidelijk antwoord van isConnected telt als open: de app sluit op een gok een verbinding die er niet is"
 )
 
 echo

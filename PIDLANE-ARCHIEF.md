@@ -14,6 +14,29 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-09-2026 — Na elke update op de knop van de adapter drukken
+
+**De waarneming van de rijder.** De eerste rit gaat vaak goed. Na een update
+opnieuw verbinden, dan nog een fix en weer verbinden: telkens moest de knop op
+de OBDLink MX+ ingedrukt worden, en daarna was het vaak traag.
+
+**Waarom dat kan.** Een update of herlaad vervangt alleen de pagina. De
+Bluetooth-socket leeft in de SPP-plugin, in het Android-proces, en blijft
+open. De nieuwe pagina weet er niets van en roept `spp.connect()` opnieuw aan.
+Een MX+ neemt één SPP-verbinding tegelijk aan; zolang de oude er staat,
+mislukt de nieuwe, en de knop maakt de adapter weer vrij. Zonder de patch van
+#352 verving de plugin de oude verbinding bovendien zonder hem te sluiten, en
+liet elke mislukte poging een draaiende draad achter. `connectSerial()` en
+`doSPPConnect()` sloten nergens eerst af; alleen `sppReconnectGuard()` en de
+knop Verbreken deden dat.
+
+**Wat er nu staat.** `sppOudeSluiten()` vraagt vóór elke `spp.connect()` met
+`isConnected` of er nog iets openstaat, sluit het, en zet een 🔌-regel in het
+logboek. Alleen een expliciet `connected: true` telt; een plugin die niet
+binnen 1,5 s antwoordt houdt het verbinden niet op. Of dit de knop overbodig
+maakt, zegt de volgende rit: staat de 🔌-regel na een update in het logboek en
+hoefde de knop niet, dan was dit het.
+
 ## 30-09-2026 — De vertraging kwam terug zonder draad: een snelheidsproef
 
 **Gezien in het logboek van 08:59.** Om 08:34 ATRV 30 ms; om 08:53 152 ms, en
