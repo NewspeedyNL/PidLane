@@ -189,7 +189,7 @@ var PL_HULP = {
         '<li><b>🩺 Check na verbinden</b> — opent Check mijn auto vanzelf, één keer per sessie.</li>' +
         '<li><b>🔢 Versnellingsindicator</b></li>' +
         '<li><b>📖 Tekstgrootte</b> — S, M of L.</li>' +
-        '<li><b>❗ Uitleg bij knoppen</b> — zet de kleine uitroeptekens aan of uit.</li>' +
+        '<li><b>ⓘ Uitleg bij knoppen</b> — zet de kleine <b>i</b>-rondjes aan of uit.</li>' +
         '</ul>' +
         '<p><b>Hulp</b></p>' +
         '<ul><li><b>📘 Handleiding</b> — dit scherm.</li><li><b>🐞 Meld een bug</b></li><li><b>📜 Logboek</b></li><li><b>🔒 Privacy</b></li></ul>' +
@@ -202,11 +202,11 @@ var PL_HULP = {
         'Voor een account dat geen klant is staat hij vanzelf aan. Aan- en uitzetten doe je in Meer.</p>',
       zie: ['meer'] },
 
-    { id: 'uitroeptekens', groep: 'gebruik', titel: 'De uitroeptekens',
+    { id: 'uitroeptekens', groep: 'gebruik', titel: 'De i-rondjes',
       tekst:
-        '<p>Bij sommige knoppen staat een klein geel <b>!</b>. Tik erop voor een korte uitleg; de knop zelf wordt dan niet ingedrukt. ' +
+        '<p>Bij sommige knoppen staat een klein glazen rondje met een <b>i</b>. Tik erop voor een korte uitleg; de knop zelf wordt dan niet ingedrukt. ' +
         'Onder de uitleg staat een link naar het onderwerp in deze handleiding.</p>' +
-        '<p>Ken je de app? Zet ze uit met <b>Meer → ❗ Uitleg bij knoppen</b>. Deze handleiding blijft altijd bereikbaar.</p>',
+        '<p>Ken je de app? Zet ze uit met <b>Meer → ⓘ Uitleg bij knoppen</b>. Deze handleiding blijft altijd bereikbaar.</p>',
       zie: ['meer'] },
 
     /* ─────────────── ACCOUNT EN GEGEVENS ─────────────── */
@@ -287,7 +287,7 @@ var PL_HULP = {
     { v: 'Wat zijn tokens?',
       a: 'Tokens zijn tegoed voor AI-analyses. Uitlezen en live meten kosten geen tokens. Je saldo staat in Meer → Mijn account en tegoed.',
       zie: 'account' },
-    { v: 'Die uitroeptekens zitten in de weg.',
+    { v: 'Die i-rondjes zitten in de weg.',
       a: 'Zet ze uit met Meer → Uitleg bij knoppen. De handleiding blijft bereikbaar via Meer → Handleiding.',
       zie: 'uitroeptekens' }
   ]

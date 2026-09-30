@@ -2767,9 +2767,18 @@ body:not(.pl-garage) .choice-out { display:none; }
 .plh-body [hidden] { display:none !important; }
 
 .plh-houder { position:relative; }
-.plh-i { position:absolute; top:3px; right:3px; z-index:2; width:18px; height:18px; border-radius:50%;
-  display:inline-flex; align-items:center; justify-content:center; background:var(--or); color:#1a1000;
-  font:800 12px/1 system-ui,sans-serif; cursor:help; box-shadow:0 0 0 2px var(--sur); }
+/* Een glazen knikker met een i (30-09-2026, keuze B uit vijf voorbeelden). Het
+   oranje ! vloekte met elke knop. Glas neemt de kleur van de knop eronder over;
+   in het lichte thema is het glas donker getint, anders valt het weg. */
+.plh-i { --plh-glans:rgba(255,255,255,.75); --plh-glas:rgba(30,42,68,.10); --plh-rand:rgba(30,42,68,.35); --plh-kleur:#1e2a44;
+  position:absolute; top:4px; right:4px; z-index:2; width:18px; height:18px; border-radius:50%; box-sizing:border-box;
+  display:inline-flex; align-items:center; justify-content:center; color:var(--plh-kleur);
+  font:italic 700 11px/1 Georgia,'Times New Roman',serif; text-transform:none; letter-spacing:0; cursor:help;
+  background:radial-gradient(circle at 30% 25%, var(--plh-glans), var(--plh-glas) 45%, var(--plh-glas) 100%);
+  border:1px solid var(--plh-rand); box-shadow:inset 0 -1px 2px rgba(0,0,0,.2), 0 1px 3px rgba(0,0,0,.2);
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+html.dark .plh-i, #loginOv .plh-i, .mbtn.p > .plh-i, .pl-check > .plh-i {
+  --plh-glans:rgba(255,255,255,.55); --plh-glas:rgba(255,255,255,.08); --plh-rand:rgba(255,255,255,.45); --plh-kleur:#fff; }
 .plh-i::after { content:''; position:absolute; inset:-5px; }   /* iets groter tikvlak; niet groter, anders raakt het de knop ernaast */
 .plh-i-regel { position:relative; top:auto; right:auto; margin-left:8px; flex:none; }
 .plh-tip { position:fixed; z-index:10050; max-width:min(320px, calc(100vw - 16px)); box-sizing:border-box;

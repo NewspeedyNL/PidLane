@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Uitleg bij knoppen: een glazen i in plaats van een oranje !
+ ═══════════════════════════════════════════════════════════
+
+ - Het kleine oranje uitroepteken op knoppen is een doorzichtig glazen
+   rondje met een schuine i geworden (gekozen uit vijf voorbeelden).
+   Op donkere en gekleurde knoppen wit glas, in het lichte thema donker
+   getint glas.
+ - Het menu-item heet nu "ⓘ Uitleg bij knoppen"; de handleiding spreekt
+   van i-rondjes in plaats van uitroeptekens.
+ - Proef in blok 5: elk rondje draagt een kleine i met glans.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — De meetopdracht van #319 meet beeld-in-beeld zelf
  ═══════════════════════════════════════════════════════════
 

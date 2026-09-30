@@ -5,7 +5,7 @@
    1. Een venster met de handleiding: inhoudsopgave, zoeken, onderwerpen en
       veelgestelde vragen. Openen met PLHelp.open() of PLHelp.open('check').
       Menu: Meer → 📘 Handleiding; ook een link op het inlog- en verbindscherm.
-   2. Kleine uitroeptekens (!) op knoppen. Tik erop voor een korte uitleg;
+   2. Kleine glazen rondjes met een i op knoppen (tot 30-09-2026 een oranje !). Tik erop voor een korte uitleg;
       de knop zelf wordt niet ingedrukt. Uit te zetten in Meer.
 
    De tekst staat NIET hier maar in pidlane-help-inhoud.js (PL_HULP). Dit
@@ -251,7 +251,7 @@
       i2.className = 'plh-i' + (inRegel ? ' plh-i-regel' : '');
       i2.setAttribute('data-plh-tip', tip.id);
       i2.setAttribute('aria-hidden', 'true');   // de uitleg staat ook in de handleiding
-      i2.textContent = '!';
+      i2.textContent = 'i';
       var sw = inRegel ? el.querySelector(':scope > .kb-sw') : null;
       if (sw) el.insertBefore(i2, sw); else el.appendChild(i2);
       n++;

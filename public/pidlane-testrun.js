@@ -2771,6 +2771,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de uitleg bij knoppen is een glazen i, geen oranje ! (30-09-2026) ──
+  {
+    issue: '—',
+    naam: 'De uitleg bij knoppen staat als glazen i, niet als oranje uitroepteken',
+    waarom: 'Het oranje ! vloekte met elke knop; gekozen is een klein glazen rondje met een i (voorbeeld B).',
+    proef: async function () {
+      var al = Array.from(document.querySelectorAll('.plh-i'));
+      if (!al.length) return { staat: 'LET OP', detail: 'geen enkel i-rondje geplaatst — staat Uitleg bij knoppen uit in Meer? Nodig: zet hem aan en draai opnieuw' };
+      var fout = al.filter(function (e) {
+        var cs = getComputedStyle(e);
+        return e.textContent !== 'i' || cs.textTransform !== 'none' || cs.backgroundImage.indexOf('radial-gradient') < 0;
+      });
+      if (fout.length) return { staat: 'FOUT', detail: fout.length + ' van ' + al.length + ' rondjes wijken af, bijv. bij #' + (fout[0].parentElement.id || '?') + ': "' + fout[0].textContent + '"' };
+      return { staat: 'OK', detail: al.length + ' glazen i-rondjes, allemaal met kleine i en glans' };
+    }
+  },
+
   // ── de meetopdracht van #319 meet beeld-in-beeld zelf (30-09-2026) ──
   // De opdracht vroeg om een stap "PiP 2 min aan" die niets in de app zet.
   // Nu vraagt hij PLPip om de langste periode en het langste gat daarin.
