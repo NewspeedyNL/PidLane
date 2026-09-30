@@ -14,6 +14,32 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-09-2026 — Wegvegen is geen herstart, en een telling per naam
+
+**De waarneming (logboek 12:31).** Stap 6 van de snelheidsproef ("app helemaal
+herstarten") meldde direct na de herstart "5 draaiende draad". Na een herstart
+van het proces kan dat niet. De app was weggeveegd bij "recente apps", en
+misschien stond de patch nog uit na de tegenproef.
+
+**Twee conclusies die niet klopten.**
+1. *"sessionStorage leeft zo lang als het proces"* stond in `pidlane-sppproef.js`
+   (de markering "aangetast") en in `pidlane-snelproef.js` (stap 6). Met de
+   meetdienst (#18) aan houdt Android het proces in leven. Wegvegen sluit alleen
+   de activiteit, en de volgende start krijgt een nieuwe WebView in hetzelfde
+   proces: `sessionStorage` is leeg, maar de Java-draden, de schakelaar
+   `PATCH_AAN` en de spinnende leesdraden zijn er nog. Nu beslist het proces-ID
+   (pid + starttijd uit `PLDraden`), en `PLDraden.beeindig()` stopt het proces
+   echt, na verbreken en het stoppen van de meetdienst.
+2. *De telling van `PLDraden`* telde processortijd per draadnaam op. Met de
+   patch heten alle leesdraden `PLSpp-lees`, dus één spinnende draad maakte ze
+   allemaal "draaiend". Met de oude code gaf de proef 3 van 3, nu 1 van 3
+   (`test-pldraden.js`). Het getal 5 van 12:31 is dus niet te vertrouwen. Het
+   echte aantal kan kleiner zijn geweest.
+
+**Advies herzien.** "Herstart de app" in de meldingen van #352 was te los.
+Wegvegen helpt niet zolang de meetdienst draait, en *Afsluiten* (`exitApp`)
+garandeert het ook niet. De meldingen wijzen nu naar 🧹 proces beëindigen.
+
 ## 30-09-2026 — N op de meter terwijl je optrekt
 
 **Waarneming van de rijder:** de versnelling gaat te vaak mis; bij accelereren

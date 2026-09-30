@@ -84,13 +84,11 @@ public class PLDradenPlugin extends Plugin {
                 }
 
                 // De Java-kant: draden in BluetoothConnection.run() van de plugin.
-                Map<String, Double> perNaam = new HashMap<>();
-                for (String tid : tids) {
-                    String n = naamVan(tid);
-                    perNaam.put(n, (perNaam.containsKey(n) ? perNaam.get(n) : 0) + pct.get(tid));
-                }
-                JSArray spp = new JSArray();
-                int levend = 0, draait = 0;
+                // Tellen PER DRAAD, niet per naam (30-09-2026): met de patch heten
+                // alle leesdraden "PLSpp-lees", en optellen per naam maakte van één
+                // ronddraaiende draad er evenveel als er leesdraden waren.
+                java.util.Set<String> namen = new java.util.HashSet<>();
+                int levend = 0;
                 for (Map.Entry<Thread, StackTraceElement[]> e : Thread.getAllStackTraces().entrySet()) {
                     boolean lees = false;
                     for (StackTraceElement s : e.getValue()) {
@@ -99,13 +97,19 @@ public class PLDradenPlugin extends Plugin {
                     if (!lees) continue;
                     levend++;
                     String n = e.getKey().getName();
-                    String kort = n.length() > 15 ? n.substring(0, 15) : n;
-                    Double p = perNaam.get(kort);
-                    boolean rond = p != null && p >= 50;
+                    namen.add(n.length() > 15 ? n.substring(0, 15) : n);
+                }
+                JSArray spp = new JSArray();
+                int draait = 0;
+                for (String tid : tids) {
+                    if (!namen.contains(naamVan(tid))) continue;
+                    double p = pct.get(tid);
+                    boolean rond = p >= 50;
                     if (rond) draait++;
                     JSObject d = new JSObject();
-                    d.put("naam", n);
-                    d.put("pct", p == null ? null : Math.round(p));
+                    d.put("tid", tid);
+                    d.put("naam", naamVan(tid));
+                    d.put("pct", Math.round(p));
                     d.put("draait", rond);
                     spp.put(d);
                 }
@@ -120,12 +124,36 @@ public class PLDradenPlugin extends Plugin {
                 r.put("sppLevend", levend);
                 r.put("sppDraait", draait);
                 r.put("spp", spp);
+                // Welk proces dit is. Een nieuwe WebView in hetzelfde proces (de app
+                // weggeveegd terwijl de meetdienst hem in leven hield) leegt de
+                // sessionStorage, maar niet de draden. Alleen pid + starttijd zeggen
+                // of het proces werkelijk nieuw is.
+                r.put("pid", android.os.Process.myPid());
+                r.put("procesStart", android.os.Process.getStartElapsedRealtime());
                 call.resolve(r);
             } catch (Exception e) {
                 Log.e(TAG, "draadmeting mislukt", e);
                 call.reject("draadmeting mislukt: " + e.getMessage());
             }
         }, "PLDraden-meet").start();
+    }
+
+    /* Het proces beëindigen (30-09-2026). Wegvegen bij "recente apps" is
+       niet genoeg: de meetdienst houdt het proces in leven, en daarmee elke
+       draad die er ronddraait. Eerst antwoorden, dan stoppen — na het stoppen
+       is er geen bridge meer om te antwoorden. */
+    @PluginMethod
+    public void beeindig(PluginCall call) {
+        call.resolve();
+        new Thread(() -> {
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                Log.w(TAG, "wachten vóór het beëindigen onderbroken", e);
+            }
+            Log.i(TAG, "proces wordt beëindigd op verzoek (#352)");
+            android.os.Process.killProcess(android.os.Process.myPid());
+        }, "PLDraden-stop").start();
     }
 
     private final Map<String, String> _namen = new java.util.concurrent.ConcurrentHashMap<>();

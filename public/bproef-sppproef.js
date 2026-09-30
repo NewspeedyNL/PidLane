@@ -4,7 +4,7 @@
 // WAAROM DEZE PROEF NIET IN node KAN
 //
 // test-sppproef.js toetst de proef zelf, met een nagemaakt menu. Wat het niet
-// toetst is of de zeven knoppen werkelijk in het Admin-menu van de app komen
+// toetst is of de acht knoppen werkelijk in het Admin-menu van de app komen
 // (#admGroup bestaat pas na de echte boot), en of een tik erop in de browser
 // — waar geen SPP-plugin is — netjes zegt dat er niets te meten valt in
 // plaats van een fout in de console te gooien.
@@ -42,7 +42,7 @@ function toets(naam, waar, uitleg) {
     console.log('\n1. De knoppen hangen in het echte Admin-menu');
     const k = JSON.parse(await app.ev(`(function(){
       var groep = document.getElementById('admGroup');
-      var ids = ['plSppDraden','plSppRespons','plSppNabootsen','plSppVolle','plSppDode','plSppPatch','plSppSchakel'];
+      var ids = ['plSppDraden','plSppRespons','plSppNabootsen','plSppVolle','plSppDode','plSppPatch','plSppSchakel','plSppBeeindig'];
       return JSON.stringify({
         module: !!window.PLSppProef,
         inMenu: ids.filter(function (id) { var el = document.getElementById(id); return el && groep && groep.contains(el); }).length,
@@ -51,7 +51,7 @@ function toets(naam, waar, uitleg) {
       });
     })()`));
     toets('PLSppProef bestaat na een echte boot', k.module, JSON.stringify(k));
-    toets('alle zeven knoppen hangen in #admGroup', k.inMenu === 7, JSON.stringify(k));
+    toets('alle acht knoppen hangen in #admGroup', k.inMenu === 8, JSON.stringify(k));
     toets('met de opmaak van de andere menuknoppen', k.klasse, JSON.stringify(k));
     toets('en elk één keer', k.uniek, JSON.stringify(k));
 

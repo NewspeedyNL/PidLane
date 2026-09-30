@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Wegvegen is geen herstart
+ ═══════════════════════════════════════════════════════════
+
+ - Met de meetdienst aan blijft de app na wegvegen bij "recente apps"
+   gewoon draaien; alleen het scherm begint opnieuw. Draaiende draden
+   van #352 bleven daardoor bestaan, en de snelheidsproef telde het als
+   herstart. De app kent nu het proces zelf (pid en starttijd).
+ - Nieuwe knop onder Meer → Admin: 🧹 SPP: proces beëindigen. Die sluit
+   de verbinding en de meetdienst netjes en stopt dan het proces echt.
+ - De draadmeting telde bij de patch-APK één draaiende draad als
+   evenveel draaiende als er leesdraden waren; nu per draad.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — Live: knoppen onder de meter, bandenlampje rechtsonder
  ═══════════════════════════════════════════════════════════
 

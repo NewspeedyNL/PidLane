@@ -1463,7 +1463,7 @@ MUTATIES=(
 # ── de snelheidsproef, stap voor stap (30-09-2026) ──
 "public/pidlane-snelproef.js@@    if (nr !== verwacht) {@@    if (false) {@@test-snelproef.js@@een stap die niet aan de beurt is meet toch: stap 3 vóór stap 1 vergelijkt met niets"
 "public/pidlane-snelproef.js@@      _zetPoll(was);\n      _zetStand('leesmanier terugzetten…');@@      _zetStand('leesmanier terugzetten…');@@test-snelproef.js@@na stap 3 blijft de app op de proefstand lezen, zonder dat iemand het weet"
-"public/pidlane-snelproef.js@@    if (stap.actie === 'herstart' && !_herstartGezien()) {@@    if (false) {@@test-snelproef.js@@stap 6 telt zonder herstart: de uitslag zegt dat een herstart hielp terwijl er niets herstart is"
+"public/pidlane-snelproef.js@@    if (stap.actie === 'herstart' && !(await _herstartGezien())) {@@    if (false) {@@test-snelproef.js@@stap 6 telt zonder herstart: de uitslag zegt dat een herstart hielp terwijl er niets herstart is"
 "public/pidlane-snelproef.js@@    window._lastSppReconnect = Date.now();\n    connected = false;@@    connected = false;@@test-snelproef.js@@de bewaker van de socket herverbindt mee tijdens het verversen: twee verbindingen door elkaar"
 "public/pidlane-snelproef.js@@      try { await spp.disconnect({ address: adres }); }@@      try { }@@test-snelproef.js@@stap 2 opent een nieuwe socket zonder de oude te sluiten — dat is het pad van 01:11, geen verse verbinding"
 "public/pidlane-snelproef.js@@    if (haalt && vorige.perSec < DOEL) return@@    if (haalt) return@@test-snelproef.js@@elke stap na de oplossing zegt ook \"dit hielp\": de uitslag wijst de verkeerde ingreep aan"
@@ -1481,6 +1481,13 @@ MUTATIES=(
 "public/pidlane-pids.js@@btDiag('Geen profiel onder '+_vinSleutelVoorLog(vin)+' — volle discovery','warn')@@btDiag('Geen profiel onder '+sleutel+' — volle discovery','warn')@@test-vin-meldingen.js@@de VIN staat weer voluit in het BT-log, en daarmee in elk gedeeld logboek"
 "public/pidlane-pids.js@@function _vinSleutelVoorLog(vin){ return 'pl_vinprof_…'+String(vin||'').toUpperCase().slice(-6); }@@function _vinSleutelVoorLog(vin){ return vinProfileKey(vin); }@@test-vin-meldingen.js@@de maskerfunctie geeft de hele sleutel terug: elke melding lekt de VIN zonder dat de aanroepen veranderen"
 "public/pidlane-sppproef.js@@      for (let i = 0; i < 120 && !klaar; i++) {@@      for (let i = 0; i < 0 && !klaar; i++) {@@test-sppproef.js@@de dode-socketknop meet weer midden in het opzetten van de verbinding, en noemt de duur van connectSerial"
+# ── het proces, niet de pagina (30-09-2026, 12:31) ──
+"native/PLDradenPlugin.java@@                    boolean rond = p >= 50;@@                    boolean rond = true;@@test-pldraden.js@@elke leesdraad telt als draaiend: de telling van 12:31 met \"5 draaiende draad\" is terug"
+"native/PLDradenPlugin.java@@                r.put(\"pid\", android.os.Process.myPid());@@// pid weg@@test-pldraden.js@@het proces-ID ontbreekt: een nieuwe WebView in hetzelfde proces telt weer als herstart"
+"public/pidlane-sppproef.js@@        if (a && a.proces && _procesNu && a.proces !== _procesNu) { localStorage.removeItem(SLEUTEL); }@@        if (false) { }@@test-sppproef.js@@een markering van een vorig proces blijft gelden: na een echte herstart blijft de bus \"aangetast\""
+"public/pidlane-sppproef.js@@      if (_procesNu) localStorage.setItem(SLEUTEL, JSON.stringify(a));@@      if (false) localStorage.setItem(SLEUTEL, JSON.stringify(a));@@test-sppproef.js@@de markering staat weer in sessionStorage: wegvegen wist hem terwijl de draad blijft draaien"
+"public/pidlane-sppproef.js@@    if (p && typeof p.beeindig === 'function') { await p.beeindig(); return true; }@@    /* beeindig weg */@@test-sppproef.js@@de knop beëindigt het proces niet en sluit alleen af — de draden blijven"
+"public/pidlane-snelproef.js@@    if (nu && was) return nu !== was;@@    /* proces-ID weg */@@test-snelproef.js@@stap 6 telt wegvegen weer als herstart zolang sessionStorage leeg is"
 )
 
 echo

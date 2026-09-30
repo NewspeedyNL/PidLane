@@ -1310,14 +1310,15 @@
     const d = drift();
     if (!d) return '';
     // Na de SPP-proef (#352) zit de vertraging in een draad van dit proces:
-    // opnieuw verbinden haalt die niet weg, alleen de app herstarten.
+    // opnieuw verbinden haalt die niet weg, en wegvegen ook niet (de meetdienst
+    // houdt het proces in leven) — alleen het proces beëindigen.
     let proef = null;
     try { proef = window.PLSppProef && typeof PLSppProef.aangetast === 'function' ? PLSppProef.aangetast() : null; }
     catch (e) { console.warn('adapterpaneel: SPP-proefmarkering onleesbaar', e); }
     if (proef) return '<div id="plAdDrift" style="margin:0 0 12px;padding:10px 12px;border:1px solid var(--or);background:var(--ors);' +
       'border-radius:10px;font:600 12px/1.45 var(--f);color:var(--tx)">' +
       'De responstijd is opgelopen van ' + d.van + ' naar ' + d.naar + ' ms, maar de SPP-proef (#352) heeft deze sessie aangetast. ' +
-      'Opnieuw verbinden helpt dan niet — herstart de app.</div>';
+      'Opnieuw verbinden en wegvegen helpen dan niet — Admin → 🧹 SPP: proces beëindigen.</div>';
     return '<div id="plAdDrift" style="margin:0 0 12px;padding:10px 12px;border:1px solid var(--or);background:var(--ors);' +
       'border-radius:10px;font:600 12px/1.45 var(--f);color:var(--tx)">' +
       'De responstijd is opgelopen van ' + d.van + ' naar ' + d.naar + ' ms. Opnieuw verbinden zet dat meestal terug.' +

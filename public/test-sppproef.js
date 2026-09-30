@@ -57,6 +57,15 @@ function bouw(opt) {
       getItem: function (k) { return Object.prototype.hasOwnProperty.call(opslag, k) ? opslag[k] : null; },
       setItem: function (k, v) { opslag[k] = String(v); }
     },
+    // localStorage overleeft een nieuwe WebView; opt.ls geeft hem mee van
+    // een vorige "sessie" in dezelfde test.
+    localStorage: (function (m) { return {
+      getItem: function (k) { return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : null; },
+      setItem: function (k, v) { m[k] = String(v); },
+      removeItem: function (k) { delete m[k]; },
+      _m: m }; })(opt.ls || {}),
+    confirm: function () { spoor.push('confirm'); return opt.weiger !== true; },
+    handleConnect: function () { spoor.push('handleConnect'); ctx.connected = false; return Promise.resolve(); },
     document: {
       getElementById: function (id) { return id === 'admGroup' ? groep : (els[id] || null); },
       createElement: function () {
@@ -100,8 +109,10 @@ function bouw(opt) {
   ctx.getSPP = function () { return spp; };
   let dradenStand = 0;
   if (opt.draden) w.Capacitor = { Plugins: { PLDraden: { meet: function () {
-    return Promise.resolve({ ms: 1000, hz: 100, kernen: 8, totaalPct: 20 + dradenStand * 100, aantal: 40, draden: [], sppLevend: 1 + dradenStand, sppDraait: dradenStand, spp: [] });
-  } } } };
+    return Promise.resolve({ ms: 1000, hz: 100, kernen: 8, totaalPct: 20 + dradenStand * 100, aantal: 40, draden: [], sppLevend: 1 + dradenStand, sppDraait: dradenStand, spp: [],
+      pid: opt.pid || 4242, procesStart: opt.start || 1000 });
+  }, beeindig: function () { spoor.push('beeindig'); return Promise.resolve(); } } } };
+  w.PLMeetdienst = { stop: function () { spoor.push('meetdienst stop'); return Promise.resolve(); } };
   w.PLAdapter = { noteer: function (s) { gebeurt.push(s); } };
   w.PLBus = ctx.PLBus;
   vm.createContext(ctx);
@@ -221,7 +232,7 @@ function bouw(opt) {
   {
     const s = bouw({ patch: true });
     const u = await s.P.schakel();
-    toets('de knop zet de patch uit via plPatch({ aan: false })', [s.spoor.indexOf('plPatch aan=false') > -1, /UIT tot de app herstart/.test(u.regels[0])], [true, true]);
+    toets('de knop zet de patch uit via plPatch({ aan: false })', [s.spoor.indexOf('plPatch aan=false') > -1, /UIT tot het proces stopt/.test(u.regels[0])], [true, true]);
     await s.P.schakel();
     toets('en een tweede tik weer aan', s.spoor.indexOf('plPatch aan=true') > -1, true);
     const oud = bouw();
@@ -230,11 +241,46 @@ function bouw(opt) {
     toets('zonder patch-APK valt er niets te schakelen, en dat zegt hij', !!(fout && /niets te schakelen/.test(fout.message)), true);
   }
 
-  console.log('── 6. het Admin-menu ──');
+  console.log('── 6. het proces, en niet de pagina (30-09-2026) ──');
+  {
+    /* 12:31: de app weggeveegd terwijl de meetdienst liep. Nieuwe WebView,
+       lege sessionStorage, zelfde proces met zijn draaiende draden. */
+    const a = bouw({ draden: true, pid: 4242, start: 1000 });
+    await a.P.proces();
+    await a.P.nabootsen();
+    const m = a.P.aangetast();
+    toets('de markering draagt het proces', m && m.proces, '4242:1000');
+    const geveegd = bouw({ draden: true, pid: 4242, start: 1000, ls: a.ctx.localStorage._m });
+    await geveegd.P.proces();
+    toets('weggeveegd, zelfde proces: nog steeds aangetast', !!geveegd.P.aangetast(), true);
+    const nieuw = bouw({ draden: true, pid: 5151, start: 2000, ls: a.ctx.localStorage._m });
+    await nieuw.P.proces();
+    toets('echt nieuw proces: niet meer aangetast, en de markering is opgeruimd',
+      [nieuw.P.aangetast(), nieuw.ctx.localStorage.getItem('pl_spp_aangetast')], [null, null]);
+    const oud = bouw();
+    await oud.P.nabootsen();
+    toets('zonder PLDraden (oude APK): de markering staat in sessionStorage, zoals vroeger',
+      [!!oud.P.aangetast(), oud.ctx.localStorage.getItem('pl_spp_aangetast')], [true, null]);
+
+    const b = bouw({ draden: true });
+    await b.P.beeindig();
+    toets('🧹 beëindigen: eerst vragen, dan verbreken, meetdienst uit, en dan pas het proces',
+      b.spoor.filter(function (x) { return /^(confirm|handleConnect|meetdienst stop|beeindig)$/.test(x); }),
+      ['confirm', 'handleConnect', 'meetdienst stop', 'beeindig']);
+    const nee = bouw({ draden: true, weiger: true });
+    await nee.P.beeindig();
+    toets('wie nee zegt, houdt de app', nee.spoor.indexOf('beeindig'), -1);
+    const kaal = bouw();
+    const k = await kaal.P.beeindig();
+    toets('zonder PLDraden: niets beëindigd, en de verwijzing naar Meer → Afsluiten staat in het logboek',
+      [k, kaal.spoor.indexOf('plSluitApp'), kaal.logs.some(function (l) { return /Meer → Afsluiten/.test(l[0]); })], [false, -1, true]);
+  }
+
+  console.log('── 7. het Admin-menu ──');
   {
     const s = bouw();
     const eerst = s.P.menu(), dan = s.P.menu();
-    toets('zeven knoppen in het Admin-menu, en een tweede keer niet nog eens', [eerst, dan, s.knoppen.length], [7, 0, 7]);
+    toets('acht knoppen in het Admin-menu, en een tweede keer niet nog eens', [eerst, dan, s.knoppen.length], [8, 0, 8]);
     toets('met een eigen id en klasse', s.knoppen.every((k) => /^plSpp/.test(k.id) && k.className === 'kebab-item'), true);
   }
 

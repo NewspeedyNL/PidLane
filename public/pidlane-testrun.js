@@ -2852,7 +2852,7 @@ const PROEVEN_B5 = [
       var na = a ? '; de sessie is aangetast door de proefknoppen (' + a.reden + ')' : '';
       if (!d) return { staat: 'LET OP', detail: 'deze APK meet geen draden (PLDraden ontbreekt — een APK van vóór 30-09); patch: ' + pt + na };
       var kern = d.sppLevend + ' SPP-leesdraad/-draden, ' + d.sppDraait + ' draaiend; app ' + d.totaalPct + '% van één kern; patch: ' + pt;
-      if (d.sppDraait > 0 && a) return { staat: 'LET OP', detail: kern + na + ' — verwacht na de proef; herstart de app om ze op te ruimen' };
+      if (d.sppDraait > 0 && a) return { staat: 'LET OP', detail: kern + na + ' — verwacht na de proef; Admin → 🧹 SPP: proces beëindigen ruimt ze op (wegvegen niet)' };
       if (d.sppDraait > 0) return { staat: 'FOUT', detail: kern + ' — zonder proefknop: een mislukte verbindpoging tijdens de rit liet een draad achter (#352)' };
       if (!patch.patch) return { staat: 'LET OP', detail: kern + ' — geen draad nu, maar de patch zit niet in deze APK' + na };
       return { staat: 'OK', detail: kern + na };

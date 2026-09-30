@@ -41,6 +41,14 @@
   // (proces weg) wist hem; een herlaad van de pagina niet. Zo ziet stap 6 of
   // de app echt herstart is.
   const PROCES = 'pl_snelproef_proces';
+  /* Dat bleek op 30-09-2026 niet genoeg. Veeg je de app weg terwijl de
+     meetdienst draait, dan blijft het proces leven en krijgt alleen de pagina
+     een nieuwe WebView: sessionStorage is leeg, maar alles wat in het proces
+     hing — de draaiende draden van #352 — hangt er nog. Stap 6 telde dat als
+     herstart ("5 draaiende draad" om 12:31). Daarom ook het proces-ID van
+     PLDraden (pid + starttijd), in localStorage; waar dat bekend is, beslist
+     het. */
+  const PROCES_ID = 'pl_snelproef_proces_id';
   const DOEL = 10;            // verzoeken per seconde
   const WACHT_MS = 15000;     // gewoon pollen vóór de meting: het venster is 10 s
 
@@ -56,7 +64,7 @@
     { nr: 5, kop: 'Adapter los en weer vast', actie: 'vers',
       doe: 'Trek de adapter uit de auto, tel tot 10 en steek hem terug. Wacht tot het lampje weer knippert en druk op 5.' },
     { nr: 6, kop: 'App helemaal herstarten', actie: 'herstart',
-      doe: 'Veeg de app weg bij "recente apps", open hem opnieuw en laat hem verbinden. Open deze proef weer via het menu en druk op 6.' }
+      doe: 'Meer → Admin → 🧹 SPP: proces beëindigen (wegvegen is niet genoeg: de meetdienst houdt het proces in leven). Open de app opnieuw, laat hem verbinden, open deze proef weer en druk op 6.' }
   ];
 
   /* Wat een stap betekent als hij het was. Dit is het antwoord waar de
@@ -240,13 +248,28 @@
     return m;
   }
 
-  function _herstartGezien() {
+  async function _procesId() {
+    try {
+      const p = window.PLSppProef;
+      if (p && typeof p.proces === 'function') return await p.proces();
+    } catch (e) { console.warn('Snelheidsproef: proces-ID niet op te vragen', e); }
+    return null;
+  }
+  async function _herstartGezien() {
+    const nu = await _procesId();
+    let was = null;
+    try { was = localStorage.getItem(PROCES_ID); }
+    catch (e) { console.warn('Snelheidsproef: vorig proces-ID onleesbaar', e); }
+    if (nu && was) return nu !== was;
     try { return sessionStorage.getItem(PROCES) !== '1'; }
     catch (e) { console.warn('Snelheidsproef: procesmarkering onleesbaar', e); return true; }
   }
-  function _markeerProces() {
+  async function _markeerProces() {
     try { sessionStorage.setItem(PROCES, '1'); }
     catch (e) { console.warn('Snelheidsproef: procesmarkering niet gezet — stap 6 kan een herstart niet vaststellen', e); }
+    const nu = await _procesId();
+    try { if (nu) localStorage.setItem(PROCES_ID, nu); }
+    catch (e) { console.warn('Snelheidsproef: proces-ID niet bewaard — stap 6 valt terug op sessionStorage', e); }
   }
 
   async function doeStap(nr) {
@@ -255,8 +278,8 @@
     const verwacht = volgende(s);
     if (nr !== verwacht) { _zetStand(verwacht ? 'Druk eerst op ' + verwacht + '.' : 'De proef is klaar — begin opnieuw als je wilt.'); return null; }
     const stap = STAPPEN[nr - 1];
-    if (stap.actie === 'herstart' && !_herstartGezien()) {
-      _zetStand('De app is nog niet herstart. Veeg hem weg bij "recente apps", open hem opnieuw en druk dan op 6.');
+    if (stap.actie === 'herstart' && !(await _herstartGezien())) {
+      _zetStand('Het proces draait nog — wegvegen is niet genoeg zolang de meetdienst loopt. Kies Meer → Admin → 🧹 SPP: proces beëindigen, open de app opnieuw en druk dan op 6.');
       return null;
     }
     _bezig = true; _teken();
@@ -270,7 +293,7 @@
       if (!s.begon) s.begon = Date.now();
       s.stappen[nr] = { m: m, oordeel: o };
       _bewaar(s);
-      _markeerProces();
+      await _markeerProces();
       _log('🚦 Snelheidsproef stap ' + nr + ' (' + stap.kop.toLowerCase() + '): ' + _regel(m) + ' — ' + o.tekst,
            o.staat === 'OK' ? 'ok' : 'info');
       if (o.hielp || !volgende(s)) _log('🚦 Snelheidsproef: ' + uitslag(s), 'ok');
