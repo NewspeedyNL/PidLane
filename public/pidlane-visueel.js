@@ -907,11 +907,13 @@ function bouw(g){
   g.innerHTML='<div class="vis">'+
     '<div class="vis-bak">'+
       '<div class="vis-lampen"><span class="vis-lamp leeg" id="vis-lamp-motor"></span>'+
-        '<button type="button" class="vis-lamp-banden geen" id="vis-banden" style="display:none" onclick="PLBanden.open()" aria-label="Banden">'+
-          '<svg viewBox="0 0 24 24">'+icoonHtml('band')+'</svg></button>'+
         '<span class="vis-lamp leeg" id="vis-lamp-hybride"></span></div>'+
       '<svg class="vis-meter" viewBox="0 0 320 '+G.VB_H+'" role="img" aria-label="Toerental, snelheid, koelwater, accu en brandstof">'+
         wijzerplaat(ind.schaal.rood, dOlie && dOlie.wH, dOlie && dOlie.dH, ind.schaal.max)+'</svg>'+
+      // Het bandenlampje rechtsonder, in de lege hoek naast de cirkel
+      // (30-09-2026, uit het gebruik): bovenaan zat het tussen de lampjes.
+      '<button type="button" class="vis-lamp-banden geen" id="vis-banden" style="display:none" onclick="PLBanden.open()" aria-label="Banden">'+
+        '<svg viewBox="0 0 24 24">'+icoonHtml('band')+'</svg></button>'+
     '</div>'+
     (ind.trek ? '<div class="vis-trek" id="visTrek" aria-label="Trekmodus: caravan of beladen"></div>' : '')+
     '<div class="vis-meldingen" id="visMeld"></div>'+

@@ -1132,17 +1132,6 @@ function closeConnOv(){
                pidlane-visueel.js. -->
           <button class="pidview-btn" data-mode="visueel" onclick="setPidView('visueel')" title="Slim visueel"><i>🎯</i>Visueel</button>
         </div>
-        <!-- Live-acties (29-09-2026): opnemen, delen en meekijken stonden als
-             kaarten in de deur "Live data" op het startscherm. Nu staan ze waar
-             de live data staat, in één smalle regel ónder de weergavekeuze:
-             kiezen hoe je kijkt gaat vóór wat je met de data doet. Bewaken (de
-             waakronde) is vakgereedschap. -->
-        <div class="pl-live-acties" id="plLiveActies">
-          <button type="button" id="plLiveRec" onclick="openPidRecorder()">⏺ Opnemen</button>
-          <button type="button" id="plLiveDeel" onclick="try{PLRemote.openShare()}catch(e){console.warn('Delen opent niet:',e)}">📡 Deel live</button>
-          <button type="button" id="plLiveMee" onclick="try{PLRemote.openExpert()}catch(e){console.warn('Meekijken opent niet:',e)}">🔭 Meekijken</button>
-          <button type="button" id="plLiveWaak" class="alleen-garage" onclick="openWaakvenster()">◉ Bewaken</button>
-        </div>
         <!-- Vaste/code-PIDs (brandstoftype, OBD-norm, …) in gewone woorden.
              Een sparkline of 32px-cijfer is zonde van de ruimte bij een waarde
              die niet beweegt of die eigenlijk een code is. Gevuld door
@@ -1159,6 +1148,20 @@ function closeConnOv(){
              renderVerborgenStrook(); blijft leeg en verborgen zolang er niets
              weggeklikt is. -->
         <div class="verbstrook" id="verborgenStrook" style="display:none"></div>
+        <!-- Live-acties (29-09-2026): opnemen, delen en meekijken stonden als
+             kaarten in de deur "Live data" op het startscherm. Nu staan ze waar
+             de live data staat, in één smalle regel ónder de weergavekeuze:
+             kiezen hoe je kijkt gaat vóór wat je met de data doet. Bewaken (de
+             waakronde) is vakgereedschap.
+             30-09-2026: onder de meter en de tegels, op verzoek uit het
+             gebruik. Bovenaan drukte de regel de meter van Slim visueel naar
+             beneden, en je kijkt vaker dan je opneemt of deelt. -->
+        <div class="pl-live-acties" id="plLiveActies">
+          <button type="button" id="plLiveRec" onclick="openPidRecorder()">⏺ Opnemen</button>
+          <button type="button" id="plLiveDeel" onclick="try{PLRemote.openShare()}catch(e){console.warn('Delen opent niet:',e)}">📡 Deel live</button>
+          <button type="button" id="plLiveMee" onclick="try{PLRemote.openExpert()}catch(e){console.warn('Meekijken opent niet:',e)}">🔭 Meekijken</button>
+          <button type="button" id="plLiveWaak" class="alleen-garage" onclick="openWaakvenster()">◉ Bewaken</button>
+        </div>
         <!-- (Correlatie-weergave verwijderd op verzoek; de correlatie-ENGINE voor AI-bevindingen blijft bestaan) -->
       </div>
 

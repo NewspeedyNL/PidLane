@@ -75,6 +75,11 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     const rij = await app.ev(`(function(){ const b=[...document.querySelectorAll('#plLiveActies button')].filter(x=>getComputedStyle(x).display!=='none');
       return new Set(b.map(x=>Math.round(x.getBoundingClientRect().top))).size; })()`);
     toets('de live-acties staan op één regel', rij === 1, rij + ' regels');
+    // Onder de meter en de tegels (30-09-2026), niet meer tussen de
+    // weergavekeuze en de meter.
+    const onder = await app.ev(`(function(){ const a=document.getElementById('plLiveActies').getBoundingClientRect(), g=document.getElementById('gGrid').getBoundingClientRect();
+      return JSON.stringify({ acties: Math.round(a.top), grid: Math.round(g.bottom) }); })()`);
+    toets('de live-acties staan onder de meter en de tegels', JSON.parse(onder).acties >= JSON.parse(onder).grid, onder);
     await app.ev(`PLNav.tab('rapporten'); 'ok'`);
     toets('Rapporten opent het overzicht', await app.ev(toon('reportsOverviewSheet')));
     toets('Rapporten licht op', (await app.ev(tab)) === 'rapporten', await app.ev(tab));

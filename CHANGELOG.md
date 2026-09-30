@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-09-2026 — Live: knoppen onder de meter, bandenlampje rechtsonder
+ ═══════════════════════════════════════════════════════════
+
+ - Opnemen, Deel live, Meekijken (en Bewaken in de garagemodus) staan nu
+   onder de meter en de tegels, niet meer ertussen.
+ - Het bandenlampje van Slim visueel staat rechtsonder in de hoek van de
+   meter.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — Slim visueel: geen N meer bij optrekken, en alleen een zekere versnelling
  ═══════════════════════════════════════════════════════════
 
