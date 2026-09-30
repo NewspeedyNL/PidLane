@@ -1471,6 +1471,7 @@ MUTATIES=(
 # ── geen ruwe VIN in een profielmelding (30-09-2026) ──
 "public/pidlane-pids.js@@btDiag('Geen profiel onder '+_vinSleutelVoorLog(vin)+' — volle discovery','warn')@@btDiag('Geen profiel onder '+sleutel+' — volle discovery','warn')@@test-vin-meldingen.js@@de VIN staat weer voluit in het BT-log, en daarmee in elk gedeeld logboek"
 "public/pidlane-pids.js@@function _vinSleutelVoorLog(vin){ return 'pl_vinprof_…'+String(vin||'').toUpperCase().slice(-6); }@@function _vinSleutelVoorLog(vin){ return vinProfileKey(vin); }@@test-vin-meldingen.js@@de maskerfunctie geeft de hele sleutel terug: elke melding lekt de VIN zonder dat de aanroepen veranderen"
+"public/pidlane-sppproef.js@@      for (let i = 0; i < 120 && !klaar; i++) {@@      for (let i = 0; i < 0 && !klaar; i++) {@@test-sppproef.js@@de dode-socketknop meet weer midden in het opzetten van de verbinding, en noemt de duur van connectSerial"
 )
 
 echo
