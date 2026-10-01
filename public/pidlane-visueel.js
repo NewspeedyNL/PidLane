@@ -117,6 +117,13 @@ const VIS_OUD_MIN_MS = 5000;   // ondergrens voor "dit antwoord is oud" (was 300
 const VIS_REM_MS     = 2000;   // tempo voor snelle PIDs die niet op het scherm staan
 const VIS_SNEL_MS    = 300;    // wat "snel" is in PID_POLL_CLASS
 const VIS_TIK_MS     = 1000;   // herbeoordeling: tempo, ouderdom, indeling, meldingen
+/* Het tempo-oordeel kijkt alleen naar RIJDEN (#338, 01-10-2026): de laatste
+   minuut, en alleen het stuk sinds de auto onafgebroken rijdt met de app in
+   beeld en de bus vrij. Testrun 8.3 haalde het pedaal voor de hele rit weg om
+   157 s op de achtergrond en een stilstand, terwijl het rijdend 786 ms haalde
+   (grens 800). Stilstaand vraagt de bus minder; dat zegt niets over de weg. */
+const VIS_VENSTER_MS = 60000;
+const VIS_RIJDT_KMH  = 5;      // dezelfde grens als sessieTik()
 
 // De plekjes. Koelwater is blauw zolang de motor koud is, zoals op een echt
 // dashboard. De accu kijkt naar het toerental: 12,5 V is goed bij een
@@ -507,11 +514,11 @@ function wijzerplaat(wH, olieWH, olieDH, max){
 // ── DE INDELING ───────────────────────────────────────────────────
 function leegSessie(){
   return { sinds:Date.now(), openMs:0, rijdendMs:0, trekMs:0, maxTrend:null, alarmen:0, tempo:{}, onder:{}, turbo:false,
-           traag:[], constant:{ n:0, som:0, kmhSom:0 } };
+           traag:[], constant:{ n:0, som:0, kmhSom:0 }, herbouwReden:{} };
 }
 let _sessie = leegSessie(), _sessieT = 0, _snelheden = [], _laatsteAlarm = 0;
 const _staat = { aan:false, start:0, traag:new Set(), turboVast:false, handtekening:'', gebruik:new Set(), ind:null, timer:null,
-                 meldSleutel:'', lampSleutel:'' };
+                 meldSleutel:'', lampSleutel:'', rijdtSinds:0, laatsteTik:0, pauze:null, gebouwd:false, selectie:'' };
 
 function bruikbaar(pid){
   try{
@@ -556,10 +563,10 @@ function kiesPedaal(){
 
 // Mediaan van de tijd tussen twee metingen, alleen over metingen van ná het
 // openen plus de aanloop. null = nog te weinig om iets te zeggen.
-function gemetenTempo(pid){
+function gemetenTempo(pid, vanafMin){
   const h=(typeof pidHist!=='undefined' && pidHist) ? pidHist[pid] : null;
   if(!h || !h.length) return null;
-  const vanaf=_staat.start+VIS_AANLOOP_MS;
+  const vanaf=Math.max(_staat.start+VIS_AANLOOP_MS, vanafMin||0);
   const t=[];
   for(let i=0;i<h.length;i++){ if(h[i] && typeof h[i].t==='number' && h[i].t>=vanaf) t.push(h[i].t); }
   if(t.length<VIS_MIN_N) return null;
@@ -569,9 +576,28 @@ function gemetenTempo(pid){
   const m=d.length>>1;
   return d.length%2 ? d[m] : (d[m-1]+d[m])/2;
 }
+function rijdtNu(){
+  const kmh=(typeof pidVals!=='undefined' && pidVals) ? pidVals['010D'] : undefined;
+  return typeof kmh==='number' && kmh>=VIS_RIJDT_KMH;
+}
+/* Sinds wanneer telt het tempo (#338)? Opnieuw vanaf nu bij stilstand, na een
+   gat tussen twee tikken (de app stond op de achtergrond of het scherm was
+   uit: dan vriezen de timers en lijkt elke PID traag), en als een andere
+   lezer de bus had (groepsproef, waakronde, Check mijn auto). */
+function rijVenster(nu){
+  let pauze=0;
+  try{ pauze=(window.PLBus && typeof window.PLBus.pausedTotal==='function') ? window.PLBus.pausedTotal() : 0; }
+  catch(e){ console.warn('PLVisueel: PLBus.pausedTotal onleesbaar — het rijvenster begint niet opnieuw na een buspauze', e); }
+  const gat=_staat.laatsteTik>0 && nu-_staat.laatsteTik>3*VIS_TIK_MS;
+  const bus=_staat.pauze!==null && pauze!==_staat.pauze;
+  if(!rijdtNu()) _staat.rijdtSinds=0;
+  else if(!_staat.rijdtSinds || gat || bus) _staat.rijdtSinds=nu;
+  _staat.laatsteTik=nu; _staat.pauze=pauze;
+}
 function beoordeelTempo(pid){
   if(!pid || pid==='015C' || _staat.traag.has(pid)) return;
-  const t=gemetenTempo(pid);
+  if(!rijdtNu()) return;
+  const t=gemetenTempo(pid, Math.max(_staat.rijdtSinds||0, Date.now()-VIS_VENSTER_MS));
   if(t!==null && t>VIS_TRAAG_MS) _staat.traag.add(pid);
 }
 
@@ -943,9 +969,37 @@ function icoonHtml(naam){ return '<g fill="none" stroke="currentColor" stroke-wi
 function el(id){ return document.getElementById(id); }
 const ONDER_ICOON = { olie:'olie', laaddruk:'turbo' };
 
-function bouw(g){
+/* WAAROM ER OPNIEUW GEBOUWD WORDT (#338). De teller zei 15× in 39 minuten,
+   maar een paar daarvan deed de testrun zelf (begeleide run, meetopdracht,
+   sweep): zonder reden viel niet te zeggen wat een klant ziet knipperen.
+     openen    de weergave ging open
+     selectie  de sensorkeuze veranderde (een mens of de testrun koos)
+     testrun   de testrun liep, met dezelfde keuze
+     indeling  de tik zag een andere indeling (traag pedaal, turbo, trekmodus)
+     scherm    niets van dat alles: een hertekening die niemand vroeg
+   Alleen de laatste twee ziet een klant zonder dat hij er zelf om vroeg. */
+const HERBOUW_KLANT = ['indeling', 'scherm'];
+function selectieSleutel(){
+  try{
+    const a=(typeof activePIDs!=='undefined' && activePIDs) ? Array.from(activePIDs).sort().join(',') : '';
+    const v=(typeof hiddenPIDs!=='undefined' && hiddenPIDs) ? Array.from(hiddenPIDs).sort().join(',') : '';
+    return a+'|'+v;
+  }catch(e){ console.warn('PLVisueel: selectie onleesbaar', e); return ''; }
+}
+function herbouwReden(gegeven){
+  if(gegeven) return gegeven;
+  if(!_staat.gebouwd) return 'openen';
+  if(selectieSleutel()!==_staat.selectie) return 'selectie';
+  try{ if(window.PLTestrunLive && typeof window.PLTestrunLive.bezig==='function' && window.PLTestrunLive.bezig()) return 'testrun'; }
+  catch(e){ console.warn('PLVisueel: testrunstand onleesbaar', e); }
+  return 'scherm';
+}
+function bouw(g, reden){
+  const r=herbouwReden(reden);
   try{ zorgPids(); }catch(e){ console.warn('PLVisueel: sensoren aanzetten mislukt', e); }
   _sessie.herbouw=(_sessie.herbouw||0)+1;          // een herbouw is een zichtbare flits
+  _sessie.herbouwReden[r]=(_sessie.herbouwReden[r]||0)+1;
+  _staat.gebouwd=true; _staat.selectie=selectieSleutel();
   const ind=indeling();
   _staat.ind=ind; _staat.handtekening=handtekening(ind); _staat.gebruik=gebruiktePids(ind); _staat.meldSleutel=''; _staat.lampSleutel='';
   if(!ind.naald){
@@ -1095,9 +1149,36 @@ function rustOordeel(S){
   if(!(S.rijdendMs>=RIJ_MIN_MS))
     return { staat:'LET OP', detail:'Slim visueel stond '+Math.round((S.rijdendMs||0)/60000)+' min open tijdens het rijden; nodig: 3 min om knipperen te kunnen zien' };
   const perMin=Math.round((S.dof||0)/Math.max(min,1)*10)/10, herbouwMax=3+Math.floor(min/10);
-  const d=(S.dof||0)+'× dof in '+Math.round(min)+' min ('+String(perMin).replace('.',',')+' per minuut), '+(S.herbouw||0)+'× opnieuw opgebouwd';
-  if(perMin>1 || (S.herbouw||0)>herbouwMax) return { staat:'FOUT', detail:'de meter knippert: '+d+' (grens: 1 per minuut, '+herbouwMax+' herbouwen)' };
+  const klant=herbouwKlant(S), R=S.herbouwReden||{};
+  const waarom=Object.keys(R).sort().map(function(k){ return k+' '+R[k]; }).join(', ');
+  const d=(S.dof||0)+'× dof in '+Math.round(min)+' min ('+String(perMin).replace('.',',')+' per minuut), '+(S.herbouw||0)+'× opnieuw opgebouwd'+
+    (!waarom ? '' : ' ('+waarom+'), waarvan '+klant+' zonder vraag');
+  if(perMin>1 || klant>herbouwMax) return { staat:'FOUT', detail:'de meter knippert: '+d+' (grens: 1 per minuut, '+herbouwMax+' herbouwen)' };
   return { staat:'ok', detail:d };
+}
+/* Herbouwen die een klant ziet zonder dat hij erom vroeg (#338). Een sessie
+   van vóór de redenen (geen herbouwReden) telt alles: dan is niet te zeggen
+   welke van hemzelf waren. */
+function herbouwKlant(S){
+  S=S||{};
+  const R=S.herbouwReden;
+  if(!R || !Object.keys(R).length) return S.herbouw||0;
+  return HERBOUW_KLANT.reduce(function(a,k){ return a+(R[k]||0); }, 0);
+}
+/* De app-maten voor PLOpdracht (#338). Opdracht 20 vroeg "bleef het pedaal
+   op de meter?" en kreeg "ja" op een rit zonder de trigger van 28-09: een
+   antwoord, geen meting. Onder drie minuten rijdend is er niets gemeten
+   (null), zoals ritOordeel() ook LET OP zegt. */
+function maat(naam){
+  const S=_sessie;
+  const genoeg=S.rijdendMs>=RIJ_MIN_MS;
+  switch(naam){
+    case 'visueel-rijdend-min': return Math.round((S.rijdendMs||0)/60000);
+    case 'visueel-van-meter':
+      return genoeg ? (S.traag||[]).filter(function(p){ return PEDAAL_KETEN.indexOf(p)>=0 || p==='010B'; }).length : null;
+    case 'visueel-herbouw-klant': return genoeg ? herbouwKlant(S) : null;
+    default: return null;
+  }
 }
 function trekOordeel(S){
   S=S||{};
@@ -1225,6 +1306,7 @@ function dof(e, oud){
 function tik(){
   try{ sessieTik(Date.now()); }catch(e){ console.warn('PLVisueel: sessiebewijs', e); }
   if(!_staat.aan) return;
+  rijVenster(Date.now());
   const ind=_staat.ind;
   if(ind && ind.onder) beoordeelTempo(ind.onder.pid);
   if(ind && ind.plekken.pedaal) beoordeelTempo(ind.plekken.pedaal);
@@ -1232,7 +1314,7 @@ function tik(){
   _staat.gebruik=gebruiktePids(nieuw);
   if(handtekening(nieuw)!==_staat.handtekening){
     const g=el('gGrid');
-    if(g && typeof pidViewMode!=='undefined' && pidViewMode==='visueel'){ bouw(g); return; }
+    if(g && typeof pidViewMode!=='undefined' && pidViewMode==='visueel'){ bouw(g, 'indeling'); return; }
   }
   const nu=Date.now(), I=_staat.ind; if(!I) return;
   [['visg-naald',I.naald],['visg-onder',I.onder&&I.onder.pid]].forEach(function(x){
@@ -1261,6 +1343,7 @@ function start(){
   if(_staat.aan) return;
   lichaam(true);
   _staat.aan=true; _staat.start=Date.now(); _staat.traag=new Set(); _staat.handtekening='';
+  _staat.rijdtSinds=0; _staat.laatsteTik=0; _staat.pauze=null; _staat.gebouwd=false;
   // Meteen de indeling kennen: remt() leest hem, en een lege set zou in de
   // eerste pollronde ook de PIDs remmen die er straks wél op staan.
   _staat.ind=indeling(); _staat.gebruik=gebruiktePids(_staat.ind);
@@ -1286,9 +1369,10 @@ window.PLVisueel = {
   meldingen:meldingen, schakel:schakel,
   TREK:TREK, TREK_SITUATIES:TREK_SITUATIES, trekIndeling:trekIndeling, koelTrend:koelTrend, trekAan:trekAan,
   nodigePids:nodigePids, zorgPids:zorgPids, bandenBij:bandenBij, staafDeel:staafDeel, gearTekst:gearTekst,
-  sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
+  sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, herbouwKlant:herbouwKlant, maat:maat,
+  rijVenster:rijVenster, VENSTER_MS:VIS_VENSTER_MS, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
   remt:remt, isOud:isOud, bouw:bouw, bij:bij, tik:tik, start:start, stop:stop,
   staat:function(){ return { aan:_staat.aan, start:_staat.start, traag:Array.from(_staat.traag),
-                             turboVast:_staat.turboVast, gebruik:Array.from(_staat.gebruik), ind:_staat.ind }; }
+                             turboVast:_staat.turboVast, gebruik:Array.from(_staat.gebruik), ind:_staat.ind, rijdtSinds:_staat.rijdtSinds }; }
 };
 })();
