@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-10-2026 — Na #381: namen opgeruimd
+ ═══════════════════════════════════════════════════════════
+
+ - Functies in de Worker die nog naar Airtable heetten, hebben een naam die
+   zegt wat ze doen. De routes /airtable/… blijven: oudere APK's kennen ze.
+ - Het saldo blijft via het slot lopen; afboeken in één SQL-bewerking levert
+   geen extra veiligheid op (uitleg in het archief).
+
+ ═══════════════════════════════════════════════════════════
  01-10-2026 — Alles uit Airtable naar Cloudflare D1 (#327)
  ═══════════════════════════════════════════════════════════
 

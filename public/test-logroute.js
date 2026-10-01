@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────────────────
 // WAT HIER GETOETST WORDT.
 //
-// `handleAirtableLog()` is de enige weg waarlangs een rit iets vastlegt.
+// `handleLog()` is de enige weg waarlangs een rit iets vastlegt.
 // Hij hoort vier dingen te doen: de tokenpoort dicht houden, elk veld in
 // de juiste kolom zetten, een veld dat hij niet kent bewaren in plaats
 // van weg te gooien, en bij een mislukking een FOUT teruggeven.
@@ -45,7 +45,7 @@ const bron = fs.readFileSync(path.join(wortel, 'worker.js'), 'utf8');
 const schemaTekst = fs.readFileSync(path.join(wortel, 'schema.sql'), 'utf8');
 
 const van = bron.indexOf('var LOG_MAX_REGELS =');
-const tot = bron.indexOf('__name(handleAirtableLog, "handleAirtableLog");');
+const tot = bron.indexOf('__name(handleLog, "handleLog");');
 if (van < 0 || tot < 0 || tot < van) {
   console.error('FOUT: de logroute is niet gevonden in worker.js — hernoemd of weg.');
   process.exit(1);
@@ -91,7 +91,7 @@ function bouw(o) {
     json: (body, status) => ({ body, status: status || 200 }),
     __name: () => {}
   };
-  const maak = new Function(...Object.keys(omg), src + '\nreturn handleAirtableLog;');
+  const maak = new Function(...Object.keys(omg), src + '\nreturn handleLog;');
   const fn = maak(...Object.values(omg));
   const d1 = o.geenDb ? null : maakD1(o);
   const env = { LOGDB: d1 };
