@@ -126,6 +126,18 @@ function btLogAfkappen(log, stand, ts){
   log.push(...kop,{ts,t:Date.now(),msg,type:'info',cap:true},...staart);
   return true;
 }
+// De cap hierboven geldt de array; het element #btLog kreeg er bij elke
+// regel een div bij en werd nooit ingekort (#302, 01-10-2026). Bij twee à
+// drie regels per verzoek stonden er na tien minuten pollen 30.000 regels in,
+// en elke nieuwe regel kostte dan in Chromium 10 ms in plaats van 0,3 —
+// lineair met de lengte, op de hoofddraad die ook de antwoorden afhandelt.
+// Opnieuw verbinden leegt het element niet; alleen de knop "wis" deed dat.
+// Het volledige logboek staat in _btLog; het venster toont de staart.
+const BTLOG_DOM=300;
+function btLogDomAfkappen(el){
+  let weg=el.childElementCount-BTLOG_DOM;
+  while(weg-- >0 && el.firstElementChild) el.removeChild(el.firstElementChild);
+}
 function btDiag(msg, type='info'){
   const box=document.getElementById('btDiagBox'); if(box) box.style.display=(window._connDetails?'block':'none');
   const ts=new Date().toTimeString().slice(0,8);
@@ -148,7 +160,7 @@ function btDiag(msg, type='info'){
   const icEl=document.createElement('span'); icEl.style.color=colors[type]||'var(--tx2)'; icEl.textContent=icons[type]||'·';
   const msgEl=document.createElement('span'); msgEl.textContent=msg;
   line.appendChild(tsEl); line.appendChild(icEl); line.appendChild(msgEl);
-  logEl.appendChild(line); logEl.scrollTop=logEl.scrollHeight;
+  logEl.appendChild(line); btLogDomAfkappen(logEl); logEl.scrollTop=logEl.scrollHeight;
   // Badge in statusrij
   const row=document.getElementById('btStatusRow'); if(!row) return;
   const badge=document.createElement('div');

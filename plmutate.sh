@@ -1481,6 +1481,9 @@ MUTATIES=(
 "public/pidlane-btflow.js@@Object.assign({},e,{vorige:true})@@Object.assign({},e)@@test-btlogcap.js@@teruggezette regels zijn niet meer herkenbaar: na een herlaad houdt het anker weer de vorige sessie vast en valt de VIN weg"
 "public/pidlane-btflow.js@@const eigen=log.filter(r=>r && !r.vorige && !r.cap);@@const eigen=log.filter(r=>r && !r.cap);@@test-btlogcap.js@@de cap telt de vorige sessie mee als eigen regels: het anker is weer het pollverkeer van vóór de herlaad"
 "public/pidlane-btflow.js@@  stand.weg+=eigen.length-kop.length-staart.length;@@  stand.weg=eigen.length-kop.length-staart.length;@@test-btlogcap.js@@de markering telt alleen de laatste ronde: \"301 regels weggelaten\" na tien minuten pollen"
+# ── het element #btLog blijft begrensd (#302, 01-10-2026) ──
+"public/pidlane-btflow.js@@logEl.appendChild(line); btLogDomAfkappen(logEl); @@logEl.appendChild(line); @@test-btlogdom.js@@het element #btLog groeit weer met elke regel mee: na tien minuten pollen kost elke btDiag 10 ms op de hoofddraad"
+"public/pidlane-btflow.js@@  let weg=el.childElementCount-BTLOG_DOM;@@  let weg=0;@@test-btlogdom.js@@de afkapping staat erin maar haalt nooit iets weg"
 # ── de snelheidsproef, stap voor stap (30-09-2026) ──
 "public/pidlane-snelproef.js@@    if (nr !== verwacht) {@@    if (false) {@@test-snelproef.js@@een stap die niet aan de beurt is meet toch: stap 3 vóór stap 1 vergelijkt met niets"
 "public/pidlane-snelproef.js@@      _zetPoll(was);\n      _zetStand('leesmanier terugzetten…');@@      _zetStand('leesmanier terugzetten…');@@test-snelproef.js@@na stap 3 blijft de app op de proefstand lezen, zonder dat iemand het weet"
