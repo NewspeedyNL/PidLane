@@ -990,7 +990,8 @@ async function _sendBTRaw(cmd, timeoutMs){
      het teken `_sppTeken()` met de generatie en een socketteller.
    - Events en read() delen één buffer. In eventstand leest read() daarom
      alleen nog wat er NIET met een '>' eindigt: de opruimread vóór het
-     schrijven, en een half antwoord als de tijd om is. Dat laatste is ook hoe
+     schrijven (sinds 01-10-2026 alleen na een onnette ronde, zie
+     _sppAltijdFlush), en een half antwoord als de tijd om is. Dat laatste is ook hoe
      SEARCHING... nog steeds de deadline oprekt tot 13 s.
    - Een antwoord dat binnenkomt terwijl er niets gevraagd is (te laat, na
      een time-out aan onze kant) wordt weggegooid en gelogd, niet aan het
@@ -999,7 +1000,7 @@ async function _sendBTRaw(cmd, timeoutMs){
      met de reden in het BT-log. Weigert de plugin startNotifications: idem.
    - localStorage 'pl_spp_poll' = '1' dwingt pollen af, zonder deploy. */
 const SPP_EV_MISSERS=3;
-const _sppEv={ aan:false, teken:null, uitVoor:null, handle:null, wacht:null, missers:0, reden:'' };
+const _sppEv={ aan:false, teken:null, uitVoor:null, handle:null, wacht:null, missers:0, reden:'', vuil:false };
 function _sppTeken(address){ return (window._btGen||0)+':'+(window._sppSocketNr||0)+':'+address; }
 function _sppNieuweSocket(){ window._sppSocketNr=(window._sppSocketNr||0)+1; _sppEv.aan=false; }
 function plSppModus(){
@@ -1011,7 +1012,11 @@ window.plSppModus=plSppModus;
 function _sppOntvang(r){
   const v=(r&&r.value!=null)?String(r.value):'';
   const w=_sppEv.wacht;
-  if(!w){ if(v.trim()) btDiag(`RX zonder vraag weggegooid (te laat antwoord): "${v.replace(/[\r\n]+/g,' ').slice(0,40)}"`,'warn'); return; }
+  if(!w){
+    _sppEv.vuil=true;   // zo'n ronde is niet netjes geëindigd; volgende keer ruimen
+    if(v.trim()) btDiag(`RX zonder vraag weggegooid (te laat antwoord): "${v.replace(/[\r\n]+/g,' ').slice(0,40)}"`,'warn');
+    return;
+  }
   _sppEv.wacht=null;
   w(v);
 }
@@ -1052,13 +1057,39 @@ async function _sppEventsKlaar(spp, address){
   }
 }
 
+/* ── DE OPRUIMREAD ALLEEN NOG ALS ER IETS TE RUIMEN KAN ZIJN (01-10-2026) ──
+   Vóór elk commando stond hier een read() die een half antwoord uit de vorige
+   ronde weghaalde. In eventstand kan daar alleen iets liggen als de vorige
+   ronde niet netjes eindigde: een time-out (de rest kan na onze read nog
+   binnenkomen), een mislukte write, of een antwoord waar niemand op wachtte.
+   Een compleet antwoord haalt de plugin zelf al weg; dat wordt het event.
+
+   Die read is een rondgang over de Capacitor-brug, en die loopt terug via de
+   JS-draad: hoe drukker die is, hoe duurder. Op 01-10-2026 (CX-5, 32
+   sensoren) zat er tussen twee verzoeken 70–100 ms terwijl de adapter in
+   27–34 ms antwoordde, en in ~900 verzoeken vond de flush nooit iets: geen
+   enkele "RX flush"-regel. Hij kostte dus elke keer, en ving niets.
+
+   Daarom staat `_sppEv.vuil` aan na zo'n onnette afloop, en alleen dan wordt
+   er geruimd. Een nieuwe socket ruimt zelf al (opruimread in
+   _sppEventsKlaar). localStorage 'pl_spp_flush' = '1' zet de oude
+   elke-keer-flush terug, zonder deploy — om het verschil te meten. */
+function _sppAltijdFlush(){
+  try{ return localStorage.getItem('pl_spp_flush')==='1'; }
+  catch(e){ console.warn('SPP: pl_spp_flush niet leesbaar — alleen flushen na een onnette ronde', e); return false; }
+}
+
 async function _sppVraagEvent(spp, address, cmd, str, TIMEOUT, myGen){
-  // Half antwoord uit een vorige ronde (zonder '>') weghalen, zoals de polltak.
-  try{
-    const stale=await spp.read({address});
-    const s=(stale?.value!=null)?String(stale.value):'';
-    if(s) btDiag(`RX flush: "${s.slice(0,40)}"`,'warn');
-  }catch(e){ btDiag(`flush read() fout: ${e.message}`,'warn'); }
+  // Half antwoord uit een vorige ronde (zonder '>') weghalen — alleen als die
+  // ronde niet netjes eindigde, of als de oude stand afgedwongen is.
+  if(_sppEv.vuil || _sppAltijdFlush()){
+    _sppEv.vuil=false;
+    try{
+      const stale=await spp.read({address});
+      const s=(stale?.value!=null)?String(stale.value):'';
+      if(s) btDiag(`RX flush: "${s.slice(0,40)}"`,'warn');
+    }catch(e){ btDiag(`flush read() fout: ${e.message}`,'warn'); }
+  }
   btDiag(`TX: ${cmd}`,'info');
   const start=Date.now();
   let klaar=null;
@@ -1066,7 +1097,7 @@ async function _sppVraagEvent(spp, address, cmd, str, TIMEOUT, myGen){
   _sppEv.wacht=klaar;
   try{ await spp.write({address, value:str}); }
   catch(we){
-    _sppEv.wacht=null;
+    _sppEv.wacht=null; _sppEv.vuil=true;
     btDiag(`write() fout na ${Date.now()-start}ms: ${we.message}`,'err');
     await sppReconnectGuard(spp,address,cmd,true);
     return '';
@@ -1089,6 +1120,7 @@ async function _sppVraagEvent(spp, address, cmd, str, TIMEOUT, myGen){
   }
   _sppEv.wacht=null;
   if(v===null){
+    _sppEv.vuil=true;   // de rest van dit antwoord kan nog onderweg zijn
     _sppEv.missers++;
     if(_sppEv.missers>=SPP_EV_MISSERS) await _sppEventsUit(spp, `${_sppEv.missers} time-outs op rij in eventstand`);
   } else _sppEv.missers=0;

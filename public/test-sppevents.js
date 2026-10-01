@@ -23,6 +23,9 @@
 //   5. drie time-outs op rij: terug naar pollen, met de reden erbij
 //   6. een plugin die startNotifications weigert: pollen, en het werkt
 //   7. een nieuwe socket zet de events opnieuw aan
+//   8. de opruimread vóór het schrijven alleen na een onnette ronde
+//      (01-10-2026): in de nette stand geen enkele read(), na een time-out
+//      wél — anders plakt een half laat antwoord aan het volgende
 //
 // Draaien vanuit public/:  node test-sppevents.js   (exit 0 = goed)
 // ══════════════════════════════════════════════════════════════════
@@ -71,7 +74,8 @@ function nepPlugin(opties) {
     // tests draaien daar naast elkaar) liep een antwoord van 12 ms soms over
     // die grens — rood zonder dat er iets mis was (PR #343 en #344).
     naSchrijven: 0,
-    async read() { P.naSchrijven++; const v = P.buf; P.buf = ''; return { value: v }; },
+    reads: 0,
+    async read() { P.reads++; P.naSchrijven++; const v = P.buf; P.buf = ''; return { value: v }; },
     async write({ value }) {
       const c = String(value).replace(/\r$/, '');
       P.naSchrijven = 0;
@@ -93,7 +97,7 @@ function nepPlugin(opties) {
   return P;
 }
 
-function bouw(plugin, poll) {
+function bouw(plugin, poll, flush) {
   const s = {
     console: { log() {}, warn() {}, error() {} },
     Object, Array, Math, Number, String, Promise, JSON, Date,
@@ -105,7 +109,7 @@ function bouw(plugin, poll) {
     async sppReconnectGuard() { s.guards++; },
     async _webSerialSend() { throw new Error('niet in deze test'); },
     btBuffer: '',
-    localStorage: { getItem: (k) => (k === 'pl_spp_poll' && poll ? '1' : null), setItem() {}, removeItem() {} }
+    localStorage: { getItem: (k) => ((k === 'pl_spp_poll' && poll) || (k === 'pl_spp_flush' && flush) ? '1' : null), setItem() {}, removeItem() {} }
   };
   s.window = s; s.globalThis = s;
   s._btGen = 1;
@@ -203,6 +207,36 @@ async function vraag(s, cmd, ms) {
     const a = await vraag(s, '010C1');
     toets('startNotifications opnieuw, en het antwoord komt per event', a.r === '410C1AF8' && P.starts === 2 && P.naSchrijven === 0, 'starts ' + P.starts + ', ' + P.naSchrijven + ' keer gepold');
     toets('één luisteraar, niet twee', P.luisteraars.length === 1, P.luisteraars.length + ' luisteraars');
+  }
+
+  console.log('\n8. De opruimread alleen na een onnette ronde');
+  {
+    const P = nepPlugin(), s = bouw(P);
+    antw(P, '010C1', [{ na: 5, stuk: '410C1AF8\r\r>' }]);
+    await vraag(s, '010C1');                          // events aan, met hun eigen opruimread
+    P.reads = 0;
+    for (let i = 0; i < 5; i++) await vraag(s, '010C1');
+    toets('vijf nette rondes: geen enkele read()', P.reads === 0, P.reads + ' reads');
+
+    // Een time-out, en daarna komt er nog een half antwoord zonder '>' binnen.
+    antw(P, '010D1', [{ na: 60, stuk: '410D' }]);
+    const a = await vraag(s, '010D1', 30);
+    toets('eerst: tijd om, leeg', a.r === '', JSON.stringify(a.r));
+    await new Promise((r) => setTimeout(r, 100));
+    const b = await vraag(s, '010C1');
+    toets('het volgende commando krijgt alleen zijn eigen antwoord', b.r === '410C1AF8', JSON.stringify(b.r));
+    toets('en het restje staat als geflusht in het BT-log', s.diags.some((d) => /RX flush: "410D"/.test(d)), s.diags.slice(-4).join(' | '));
+    P.reads = 0;
+    await vraag(s, '010C1');
+    toets('daarna weer zonder read()', P.reads === 0, P.reads + ' reads');
+  }
+  {
+    const P = nepPlugin(), s = bouw(P, false, true);
+    antw(P, '010C1', [{ na: 5, stuk: '410C1AF8\r\r>' }]);
+    await vraag(s, '010C1');
+    P.reads = 0;
+    for (let i = 0; i < 3; i++) await vraag(s, '010C1');
+    toets('pl_spp_flush = 1: de oude stand, één read() per commando', P.reads === 3, P.reads + ' reads');
   }
 
   console.log('\n' + n + ' toetsen, ' + fout + ' fout');

@@ -798,6 +798,11 @@ MUTATIES=(
 "public/pidlane-bt.js@@    if(!searchExtended && buf.includes('SEARCHING')){ searchExtended=true; deadline=start+13000; continue; }@@    if(false){ }@@test-sppevents.js@@een protocolzoektocht wordt na de gewone deadline afgekapt en het antwoord erna gaat verloren"
 "public/pidlane-bt.js@@    if(_sppEv.missers>=SPP_EV_MISSERS) await _sppEventsUit(@@    if(false) await _sppEventsUit(@@test-sppevents.js@@een toestel dat geen events aflevert valt nooit terug naar pollen en elk commando loopt in de time-out"
 "public/pidlane-bt.js@@  if(_sppEv.uitVoor===teken) return false;@@  if(false) return false;@@test-sppevents.js@@een plugin die startNotifications weigert, krijgt die vraag vóór elk commando opnieuw"
+# De opruimread alleen na een onnette ronde (01-10-2026): weer elke keer
+# flushen kost een brugrondgang per commando, nooit meer flushen laat een half
+# laat antwoord aan het volgende plakken.
+"public/pidlane-bt.js@@  if(_sppEv.vuil || _sppAltijdFlush()){@@  if(true){@@test-sppevents.js@@vóór elk commando weer een read() over de brug, ook als er niets te ruimen is"
+"public/pidlane-bt.js@@    _sppEv.vuil=true;   // de rest van dit antwoord kan nog onderweg zijn@@    // weg@@test-sppevents.js@@na een time-out wordt er niet geruimd en plakt de rest van het late antwoord aan het volgende commando"
 
 # En de laatste meter van die keten: van PLLoad.mult() naar het interval dat de
 # scheduler werkelijk gebruikt. Blok 5 dacht op 17-09-2026 dat die meter stuk
