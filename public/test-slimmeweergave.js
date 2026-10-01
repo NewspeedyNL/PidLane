@@ -457,7 +457,9 @@ function maakViewOmgeving(opgeslagen, bron) {
     },
     renderGauges: function () {},
     startStaleWatchdog: function () {},
-    stopStaleWatchdog: function () {}
+    stopStaleWatchdog: function () {},
+    trendStart: function () {},
+    trendStop: function () {}
   };
   ctx.window = ctx;
   vm.createContext(ctx);
@@ -480,15 +482,23 @@ function keurStandaardWeergave(bron) {
     uit.push('plPidViewHerstel() zet de app in "' + ctx.__mode() + '" in plaats van in de standaard');
   // Wél iets opgeslagen: dan wint die keuze. Dit is de kern van #68 — tot nu
   // toe werd pl_pidview geschreven en nooit teruggelezen.
-  ctx = mk({ pl_pidview: 'dots' });
-  if (ctx.plPidViewHerstel() !== 'dots')
-    uit.push('een opgeslagen voorkeur "dots" wordt genegeerd; de app start in "' + ctx.__mode() + '"');
+  ctx = mk({ pl_pidview: 'overzicht' });
+  if (ctx.plPidViewHerstel() !== 'overzicht')
+    uit.push('een opgeslagen voorkeur "overzicht" wordt genegeerd; de app start in "' + ctx.__mode() + '"');
+  // Trends, Getallen en Puntjes zijn op 01-10-2026 Overzicht geworden (#302).
+  // Wie een van die drie had opgeslagen, komt in Overzicht en niet op de
+  // standaard: het was een keuze voor een tegelrooster, en dat is Overzicht.
+  ['full', 'numbers', 'dots'].forEach(function (oud) {
+    const c = mk({ pl_pidview: oud });
+    if (c.plPidViewHerstel() !== 'overzicht')
+      uit.push('een opgeslagen "' + oud + '" geeft "' + c.__mode() + '" in plaats van "overzicht"');
+  });
   // Rommel in de opslag zet de app niet in een modus die niet bestaat.
   ctx = mk({ pl_pidview: 'kleuren' });
   if (ctx.plPidViewHerstel() !== 'slim')
     uit.push('een onbekende opgeslagen waarde zet de app in "' + ctx.__mode() + '" in plaats van in de standaard');
   // De verwijderde correlatie-weergave is precies zo'n onbekende waarde. Hij
-  // komt bij het herstellen dus op de standaard uit en niet op de 'dots' waar
+  // komt bij het herstellen dus op de standaard uit en niet op Overzicht waar
   // setPidView() hem heen stuurt — dat vangnet is er voor een aanroeper die
   // nú om die modus vraagt, en dit is een voorkeur van maanden geleden die
   // over een weergave gaat die niet meer bestaat.
@@ -501,14 +511,20 @@ function keurStandaardWeergave(bron) {
   // view-correlate en is er geen enkele opmaak die daarbij hoort.
   ctx = mk(null);
   ctx.setPidView('correlate');
-  if (ctx.__mode() !== 'dots')
-    uit.push('setPidView("correlate") geeft "' + ctx.__mode() + '" in plaats van "dots"');
+  if (ctx.__mode() !== 'overzicht')
+    uit.push('setPidView("correlate") geeft "' + ctx.__mode() + '" in plaats van "overzicht"');
   // Een keuze wordt ook echt bewaard, anders valt er de volgende keer niets
   // te herstellen.
   ctx = mk(null);
-  ctx.setPidView('numbers');
-  if (ctx.geschreven.pl_pidview !== 'numbers')
+  ctx.setPidView('overzicht');
+  if (ctx.geschreven.pl_pidview !== 'overzicht')
     uit.push('een gekozen weergave wordt niet opgeslagen (pl_pidview = ' + ctx.geschreven.pl_pidview + ')');
+  // Een directe aanroep met een oude naam bewaart de nieuwe, zodat de oude
+  // waarde niet blijft hangen in de opslag.
+  ctx = mk(null);
+  ctx.setPidView('numbers');
+  if (ctx.geschreven.pl_pidview !== 'overzicht')
+    uit.push('setPidView("numbers") bewaart "' + ctx.geschreven.pl_pidview + '" in plaats van "overzicht"');
   return uit;
 }
 

@@ -1055,13 +1055,13 @@ function closeConnOv(){
              toestandsregel zonder meting eronder hoort er niet te staan. -->
         <div id="aandrijfBalk" style="display:none"></div>
         <div class="pidview-switch" id="pidViewSwitch" style="display:none">
-          <!-- Eén regel (26-09-2026): vijf gelijke vakken met het icoon boven
+          <!-- Eén regel (26-09-2026): gelijke vakken met het icoon boven
                een kort woord, als een tabbalk. Het label "Weergave:" en de
                waakronde-knop zijn eruit — de waakronde staat al in het
                run-paneel en in het meldingenvak van Slim visueel. -->
-          <button class="pidview-btn" data-mode="full" onclick="setPidView('full')" title="Trends"><i>📈</i>Trends</button>
-          <button class="pidview-btn" data-mode="numbers" onclick="setPidView('numbers')" title="Getallen"><i>🔢</i>Getallen</button>
-          <button class="pidview-btn" data-mode="dots" onclick="setPidView('dots')" title="Puntjes"><i>🟢</i>Puntjes</button>
+          <!-- Overzicht (01-10-2026, #302): vervangt Trends, Getallen en Puntjes.
+               Getal en statuspuntje per sensor, hoogstens vier trendlijnen. -->
+          <button class="pidview-btn" data-mode="overzicht" onclick="setPidView('overzicht')" title="Overzicht"><i>📋</i>Overzicht</button>
           <!-- Slimme weergave (#61, #68) en sinds 01-09-2026 de STANDAARD:
                dashboardwaarden groot, een tellerplaat met verticale meters
                voor toerental/pedaal/klep/belasting, alle temperaturen als één

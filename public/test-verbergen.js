@@ -370,11 +370,11 @@ function keurAllesVerborgen(verbergBron, renderBron) {
 
 // ── 6. het werkt in élke weergave ────────────────────────────────
 // De strook hoort bij de live view en niet bij één modus. Zou hij aan de
-// slimme weergave hangen, dan is een tegel wegklikken in "Puntjes" een
+// slimme weergave hangen, dan is een tegel wegklikken in "Overzicht" een
 // eenrichtingsweg.
 function keurAlleWeergaven(verbergBron, renderBron) {
   const uit = [];
-  ['full', 'numbers', 'dots', 'slim'].forEach(function (modus) {
+  ['overzicht', 'slim'].forEach(function (modus) {
     const ctx = maakOmgeving(['010D', '012F'], modus, verbergBron, renderBron);
     ctx.renderGauges();
     ctx.dubbeltik('012F');

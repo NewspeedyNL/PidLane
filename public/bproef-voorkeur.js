@@ -65,7 +65,8 @@ const NEPSERVER = `(async function(){
     await app.ev(`localStorage.setItem('pl_uiscale','s'); setUiScale('s'); window.currentUser = { user:'anna@voorbeeld.nl', role:'klant' }; 'ok'`);
     toets('het menu-item verschijnt', await wacht(`document.getElementById('kbVoorkeur').style.display === ''`, 5000));
     toets('tekstgrootte groot uit het account (was klein op dit toestel)', await wacht(`document.body.classList.contains('uiL')`, 5000));
-    toets('de weergave staat op Getallen', await wacht(`typeof pidViewMode !== 'undefined' && pidViewMode === 'numbers'`));
+    // Het account draagt nog 'numbers' van vóór 01-10-2026; dat is Overzicht geworden.
+    toets('de oude weergave Getallen uit het account wordt Overzicht', await wacht(`typeof pidViewMode !== 'undefined' && pidViewMode === 'overzicht'`));
     toets('de favorieten komen uit het account', await app.ev(`JSON.stringify(favGet()) === '["wc-live"]'`));
     toets('eerdere rapporten: "nee" staat vast voor de analyse', await app.ev(`window._srUseContext === false`));
 

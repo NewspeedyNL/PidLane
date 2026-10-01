@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-09-30', app: '3.1.0' },
+  gecontroleerd: { datum: '2026-10-01', app: '3.1.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -137,9 +137,8 @@ var PL_HULP = {
       tekst:
         '<p>De tab <b>Live</b> toont de metingen van de auto op dit moment. Bovenaan kies je hoe je kijkt:</p>' +
         '<ul>' +
-        '<li><b>Trends</b> — met grafiek.</li>' +
-        '<li><b>Getallen</b> — alleen de waarden.</li>' +
-        '<li><b>Puntjes</b> — compact.</li>' +
+        '<li><b>Overzicht</b> — elke sensor als getal met een gekleurd puntje. Hoogstens vier krijgen een trendlijn: ' +
+        'wat je zelf vastzet met <b>📈</b> op de tegel, en verder wat op dat moment het meest beweegt.</li>' +
         '<li><b>Slim</b> — de standaard: dashboardwaarden groot, trends alleen waar iets beweegt.</li>' +
         '<li><b>Visueel</b> — één vaste meter. Onder de snelheid staan koelwater, gaspedaal en brandstof als balkjes; ' +
         'rechtsboven de accu (bij een hybride de aandrijfaccu én de 12V-accu), rechtsonder een autootje met de vier banden.</li>' +

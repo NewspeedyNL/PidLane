@@ -5211,7 +5211,8 @@ __name(kpAlleWissen, "kpAlleWissen");
 // als VOORKEUR_SPEC in public/pidlane-voorkeur.js; test-voorkeur.js eist dat
 // de sleutels en keuzes gelijk zijn.
 var KP_VOORKEUR = {
-  weergave: { soort: "keuze", uit: ["full", "numbers", "dots", "slim", "visueel"] },
+  // full/numbers/dots blijven geldig: een account kan ze dragen van vóór 01-10-2026 (de app zet ze om naar overzicht).
+  weergave: { soort: "keuze", uit: ["overzicht", "slim", "visueel", "full", "numbers", "dots"] },
   tekst: { soort: "keuze", uit: ["s", "m", "l"] },
   letter: { soort: "geheel", min: 10, max: 18 },
   waakronde: { soort: "janee" },
