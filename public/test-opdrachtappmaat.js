@@ -180,5 +180,54 @@ console.log('── 4. de opdracht van #319 kan nu gesloten worden ──');
   eis(O.oordeel(k.opdracht).staat === 'bevinding', 'TEGENPROEF: 40 s stil in PiP is een bevinding — dat is #319');
 }
 
+console.log('── 5. de meetrit van 01-10-2026: #333 en #302 kunnen dicht, en rood ──');
+{
+  const s = laad();
+  const O = s.PLOpdracht;
+  // De opdracht voor #333 zoals hij in D1 komt, op de adapternaam na: die
+  // voorwaarde leest _plLogAdapter() uit de app en is hier niet het onderwerp.
+  const k = O.keur({
+    schema: 2, naam: 'Meetrit 1 · groepsproef A (koud) en B (warm), stilstaand (#333)', sensoren: ['010D', '0105'], duurS: 1800,
+    voorwaarden: [{ wat: 'proef A liep zonder drift', app: 'groep-a-drift', tussen: [0, 0] },
+                  { wat: 'proef B liep zonder drift', app: 'groep-b-drift', tussen: [0, 0] }],
+    proeven: [{ issue: '#333', naam: 'A advies', app: 'groep-a-advies', tussen: [4, 6] },
+              { issue: '#333', naam: 'A winst', app: 'groep-a-winst', tussen: [15, 1000] },
+              { issue: '#333', naam: 'B advies', app: 'groep-b-advies', tussen: [4, 6] },
+              { issue: '#333', naam: 'B winst', app: 'groep-b-winst', tussen: [15, 1000] }]
+  });
+  eis(k.ok, 'de opdracht voor #333 keurt' + (k.ok ? '' : ' — ' + k.fouten.join('; ')));
+  let w = { 'groep-a-drift': 0, 'groep-a-advies': 6, 'groep-a-winst': 79 };
+  s.PLAdapter.maat = function (n) { return Object.prototype.hasOwnProperty.call(w, n) ? w[n] : null; };
+  const half = O.oordeel(k.opdracht);
+  eis(half.staat === 'nog niet' && /proef B/.test(half.reden), 'alleen A gedaan: nog niet, en de reden noemt B (' + half.reden + ')');
+  w = { 'groep-a-drift': 0, 'groep-a-advies': 6, 'groep-a-winst': 79, 'groep-b-drift': 0, 'groep-b-advies': 6, 'groep-b-winst': 70 };
+  eis(O.oordeel(k.opdracht).staat === 'gesloten', 'A en B allebei groep 6 met ruim 15% winst: gesloten');
+  w['groep-b-advies'] = 3; w['groep-b-winst'] = 0;
+  eis(O.oordeel(k.opdracht).staat === 'bevinding', 'TEGENPROEF: warm adviseert de proef 3 — een bevinding, de automaat blijft op 3');
+  w['groep-b-drift'] = 1;
+  eis(O.oordeel(k.opdracht).staat === 'nog niet', 'een proef met drift telt niet: nog niet, herhalen');
+
+  const k2 = O.keur({
+    schema: 2, naam: 'Meetrit 1 · blijft de responstijd vlak over een half uur? (#302)', sensoren: ['010C'], duurS: 1800,
+    voorwaarden: [{ wat: '25 min', app: 'adapter-sessie-min', tussen: [25, 100000] },
+                  { wat: 'Slim visueel', app: 'adapter-visueel-pct', tussen: [80, 100] },
+                  { wat: 'geen SPP-proef', app: 'adapter-proef', tussen: [0, 0] }],
+    proeven: [{ issue: '#302', naam: 'hoogstens ×1,3', app: 'adapter-drift-pct', tussen: [0, 129] }]
+  });
+  eis(k2.ok, 'de opdracht voor #302 keurt');
+  // De maten komen hier uit de echte sessieMaat(), met de reeks van 26-09:
+  // 150 → 270 ms in Slim visueel. Dat moet een bevinding zijn.
+  const t0 = 1e12, m = (i, ms) => ({ t: t0 + i * 30000, nr: 1, ms: ms, rps: 5, bezet: 90, pids: 26, weergave: 'visueel', modules: [], koel: 90 });
+  const reeks = [];
+  for (let i = 0; i < 70; i++) reeks.push(m(i, i < 35 ? 150 : 270));
+  const echt = s.PLAdapter.sessieMaat;
+  s.PLAdapter.maat = function (n) { return echt(n, reeks, []); };
+  eis(O.oordeel(k2.opdracht).staat === 'bevinding', 'de drift van 26-09 (150 → 270 ms, 35 min in Slim visueel): bevinding');
+  for (let i = 35; i < 70; i++) reeks[i].ms = 155;
+  eis(O.oordeel(k2.opdracht).staat === 'gesloten', 'dezelfde 35 minuten vlak: gesloten — #302 kan dicht');
+  reeks.length = 30;
+  eis(O.oordeel(k2.opdracht).staat === 'nog niet', 'een kwartier verbonden: nog niet, geen uitspraak');
+}
+
 if (fouten) { console.log('FOUT — ' + fouten + ' eis(en) niet gehaald'); process.exit(1); }
 console.log('Alles goed — een meetopdracht kan over de app zelf gaan');
