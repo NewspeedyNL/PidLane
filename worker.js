@@ -2647,6 +2647,40 @@ async function klantPatch(env, id, fields) {
 }
 __name(klantPatch, "klantPatch");
 
+// De accountstatus voor `stand` per isolate onthouden (#327, 01-10-2026).
+// Mijn voertuigen ververst bij het opstarten, bij het openen en na elk
+// opgeslagen rapport of rit, en elke keer was dat een zoekvraag aan Airtable
+// in een werkruimte met een plafond van 1.000 calls per maand. Op 01-10 stond
+// de teller na één dag op 139.
+//
+// Alleen het oordeel (geblokkeerd, verwijderd, onbekend of niets) wordt
+// onthouden, niet het record: daar staan PassHash en Saldo in. Elke
+// schrijfactie uit beheer (/admin/klanten en /admin/tabel, in de router)
+// gooit alles weg, dus wie via beheer blokkeert, is in deze isolate meteen
+// dicht. Niet in klantPatch(): de klant zelf verandert zijn status nooit
+// anders dan door verwijderen, en dat staat al in kp_akkoord. Wie in Airtable zelf op
+// geblokkeerd zet, of een andere isolate treft, kijkt hoogstens
+// KLANT_STATUS_MS nog naar zijn eigen voertuigen. Verwijderd blijft meteen
+// dicht: dat staat in kp_akkoord, en dan wordt er altijd vers gelezen.
+// Saldo en AI lezen niet hieruit; die kijken altijd vers.
+var KLANT_STATUS_MS = 5 * 6e4;
+var _klantStatus = new Map();
+function klantStatusVergeet() {
+  _klantStatus.clear();
+}
+__name(klantStatusVergeet, "klantStatusVergeet");
+async function klantStatusVoorStand(env, email, vers = false) {
+  const k = String(email || "").trim().toLowerCase();
+  const h = _klantStatus.get(k);
+  if (!vers && h && Date.now() - h.t < KLANT_STATUS_MS) return { pr: h.pr, uitCache: true };
+  const rec = await klantZoek(env, k);
+  const pr = rec ? klantToegangProbleem(rec.fields) : { status: 403, code: "onbekend", bericht: "Account niet gevonden." };
+  if (_klantStatus.size >= 500) _klantStatus.clear();
+  _klantStatus.set(k, { t: Date.now(), pr });
+  return { pr, uitCache: false };
+}
+__name(klantStatusVoorStand, "klantStatusVoorStand");
+
 // Verifieert een klanttoken uit X-App-Token of Authorization: Bearer.
 async function klantAuth(request, env) {
   const tok = request.headers.get("X-App-Token") ||
@@ -5654,8 +5688,7 @@ async function handleKlantPlatform(request, env) {
     // eigen voertuigen niet onbereikbaar maken.
     if (actie === "stand" && env.AIRTABLE_TOKEN) {
       try {
-        const rec = await klantZoek(env, p.u);
-        const pr = rec ? klantToegangProbleem(rec.fields) : { status: 403, code: "onbekend", bericht: "Account niet gevonden." };
+        const { pr } = await klantStatusVoorStand(env, p.u, !!(ak && ak.versie === "verwijderd"));
         if (pr) return json({ ok: false, error: pr.bericht, code: pr.code }, pr.status);
         if (ak && ak.versie === "verwijderd") {
           await db.prepare("DELETE FROM kp_akkoord WHERE klant_id = ?").bind(klantId).run();
@@ -5839,16 +5872,24 @@ var worker_default = {
         return lockOrigin(request, await handleCodeResolve(request, env));
       if (url.pathname === "/admin/klanten" && request.method === "GET")
         return lockOrigin(request, await handleAdminKlantenGet(request, env));
-      if (url.pathname === "/admin/klanten" && request.method === "POST")
-        return lockOrigin(request, await handleAdminKlantenPost(request, env, ctx));
+      if (url.pathname === "/admin/klanten" && request.method === "POST") {
+        // Een klant die hier geblokkeerd of gewist wordt, is meteen dicht (#327).
+        const rk = await handleAdminKlantenPost(request, env, ctx);
+        klantStatusVergeet();
+        return lockOrigin(request, rk);
+      }
       if (url.pathname === "/admin/codes" && request.method === "GET")
         return lockOrigin(request, await handleAdminCodesGet(request, env));
       if (url.pathname === "/admin/codes" && request.method === "POST")
         return lockOrigin(request, await handleAdminCodesPost(request, env));
       if (url.pathname === "/admin/tabel" && request.method === "GET")
         return lockOrigin(request, await handleAdminTabelGet(request, env));
-      if (url.pathname === "/admin/tabel" && request.method === "POST")
-        return lockOrigin(request, await handleAdminTabelPost(request, env));
+      if (url.pathname === "/admin/tabel" && request.method === "POST") {
+        // Een klant die hier geblokkeerd of gewist wordt, is meteen dicht (#327).
+        const rt = await handleAdminTabelPost(request, env);
+        klantStatusVergeet();
+        return lockOrigin(request, rt);
+      }
       if (url.pathname === "/admin/d1" && request.method === "GET")
         return lockOrigin(request, await handleAdminD1Get(request, env));
       if (url.pathname === "/admin/d1" && request.method === "POST")

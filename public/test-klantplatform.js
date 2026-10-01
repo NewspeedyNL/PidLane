@@ -60,7 +60,7 @@ async function laadWorker() {
   const i = bron.lastIndexOf('export {');
   if (i < 0) throw new Error('export-blok niet gevonden in worker.js');
   const mod = bron.slice(0, i) +
-    'export { worker_default as default, makeToken, hashPassword, klantWachtrijOpruimen, KP_SCHEMA, KP_MIGRATIES, kpKlantId };\n';
+    'export { worker_default as default, makeToken, hashPassword, klantWachtrijOpruimen, KP_SCHEMA, KP_MIGRATIES, kpKlantId, KLANT_STATUS_MS, klantStatusVergeet };\n';
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'kp-')), 'worker.mjs');
   fs.writeFileSync(f, mod);
   return import('file://' + f);
@@ -348,7 +348,15 @@ async function laadWorker() {
     toets('hersteld account: blokkade eraf, akkoord opnieuw nodig', terug.ok && terug.akkoord === false, JSON.stringify(terug).slice(0, 200));
     await roep(tokA, { actie: 'akkoord', versie: st.akkoordVersie });
     status = 'geblokkeerd';
-    toets('geblokkeerd in Airtable: stand geeft 403', (await roep(tokA, { actie: 'stand' }, envAt))._status === 403);
+    // Rechtstreeks in Airtable geblokkeerd, buiten beheer om: de Worker
+    // onthoudt de status hoogstens KLANT_STATUS_MS (#327). Via beheer is het
+    // meteen dicht; dat toetst test-klantstatus.js.
+    toets('geblokkeerd in Airtable: binnen de bewaartijd nog de onthouden status', (await roep(tokA, { actie: 'stand' }, envAt)).ok === true);
+    const echtNu = Date.now;
+    Date.now = () => echtNu() + W.KLANT_STATUS_MS + 1;
+    toets('geblokkeerd in Airtable: na de bewaartijd geeft stand 403', (await roep(tokA, { actie: 'stand' }, envAt))._status === 403);
+    Date.now = echtNu;
+    W.klantStatusVergeet();                                // de storing hieronder moet echt een verse lezing zijn
     global.fetch = async () => { throw new Error('Airtable weg'); };
     toets('Airtable onbereikbaar: de eigen voertuigen blijven bereikbaar', (await roep(tokA, { actie: 'stand' }, envAt)).ok === true);
     global.fetch = oud;

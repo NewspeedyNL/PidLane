@@ -1481,6 +1481,10 @@ MUTATIES=(
 "public/pidlane-btflow.js@@Object.assign({},e,{vorige:true})@@Object.assign({},e)@@test-btlogcap.js@@teruggezette regels zijn niet meer herkenbaar: na een herlaad houdt het anker weer de vorige sessie vast en valt de VIN weg"
 "public/pidlane-btflow.js@@const eigen=log.filter(r=>r && !r.vorige && !r.cap);@@const eigen=log.filter(r=>r && !r.cap);@@test-btlogcap.js@@de cap telt de vorige sessie mee als eigen regels: het anker is weer het pollverkeer van vóór de herlaad"
 "public/pidlane-btflow.js@@  stand.weg+=eigen.length-kop.length-staart.length;@@  stand.weg=eigen.length-kop.length-staart.length;@@test-btlogcap.js@@de markering telt alleen de laatste ronde: \"301 regels weggelaten\" na tien minuten pollen"
+# ── de accountstatus van stand onthouden (#327, 01-10-2026) ──
+"worker.js@@  if (!vers && h && Date.now() - h.t < KLANT_STATUS_MS)@@  if (false && h && Date.now() - h.t < KLANT_STATUS_MS)@@test-klantstatus.js@@elke stand zoekt de klant weer op in Airtable: het plafond van 1.000 calls is na een week op"
+"worker.js@@        klantStatusVergeet();\n        return lockOrigin(request, rk);@@        return lockOrigin(request, rk);@@test-klantstatus.js@@een klant die via beheer geblokkeerd wordt, ziet nog vijf minuten zijn voertuigen"
+"worker.js@@        klantStatusVergeet();\n        return lockOrigin(request, rt);@@        return lockOrigin(request, rt);@@test-klantstatus.js@@blokkeren via de adminbrowser laat de onthouden status staan"
 # ── het element #btLog blijft begrensd (#302, 01-10-2026) ──
 "public/pidlane-btflow.js@@logEl.appendChild(line); btLogDomAfkappen(logEl); @@logEl.appendChild(line); @@test-btlogdom.js@@het element #btLog groeit weer met elke regel mee: na tien minuten pollen kost elke btDiag 10 ms op de hoofddraad"
 "public/pidlane-btflow.js@@  let weg=el.childElementCount-BTLOG_DOM;@@  let weg=0;@@test-btlogdom.js@@de afkapping staat erin maar haalt nooit iets weg"
