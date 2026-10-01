@@ -1088,7 +1088,7 @@ MUTATIES=(
 # stond hier van 20-09 17:12 tot 22-09 live — `{ok:true}` met HTTP 200 terwijl
 # er niets werd weggeschreven — en de proef in blok 5 die juist dat kanaal
 # bewaakt keurde het goed. Een kanaal dat stil faalt is erger dan geen kanaal.
-"worker.js@@async function handleAirtableLog(request, env) {\n  if (!await appTokenOk(request, env)) return json({ error: \"unauthorized\" }, 401);@@async function handleAirtableLog(request, env) {\n  return json({ ok: true, status: \"logging_paused\" }, 200);\n  if (!await appTokenOk(request, env)) return json({ error: \"unauthorized\" }, 401);@@test-logroute.js@@de logstop van 20-09 is terug: de route meldt 200 ok en schrijft niets — precies wat blok 5 niet zag"
+"worker.js@@async function handleLog(request, env) {\n  if (!await appTokenOk(request, env)) return json({ error: \"unauthorized\" }, 401);@@async function handleLog(request, env) {\n  return json({ ok: true, status: \"logging_paused\" }, 200);\n  if (!await appTokenOk(request, env)) return json({ error: \"unauthorized\" }, 401);@@test-logroute.js@@de logstop van 20-09 is terug: de route meldt 200 ok en schrijft niets — precies wat blok 5 niet zag"
 "worker.js@@    return json({ error: \"schrijven_mislukt\", detail: String(e && e.message || e) }, 502);@@    return json({ ok: true }, 200);@@test-logroute.js@@een mislukte schrijfactie heet weer geslaagd: de app gooit de batch weg en niemand mist de regels"
 "worker.js@@    if (Object.keys(rest).length && kolommen.has(\"onbekend\")) {@@    if (false) {@@test-logroute.js@@het vangnet is weg: een veld zonder kolom verdwijnt stil in plaats van in \`onbekend\` te landen"
 

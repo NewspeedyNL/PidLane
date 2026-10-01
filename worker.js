@@ -374,7 +374,7 @@ __name(rateLimitResponse, "rateLimitResponse");
 // was in een werkruimte met een plafond van 1.000 per maand. Lezen uit D1 kost
 // niets, dus dat onthouden is weg: een gewijzigd wachtwoord of een uitgezette
 // gebruiker geldt bij de volgende login.
-async function airtableUsers(env) {
+async function gebruikersLijst(env) {
   try {
     const out = {};
     for (const rec of await atAlle(env, "gebruikers")) {
@@ -395,9 +395,9 @@ async function airtableUsers(env) {
     return { users: {} };
   }
 }
-__name(airtableUsers, "airtableUsers");
+__name(gebruikersLijst, "gebruikersLijst");
 async function allUsers(env) {
-  const { users: fromAirtable } = await airtableUsers(env);
+  const { users: fromAirtable } = await gebruikersLijst(env);
   let fromSecret = {};
   try {
     fromSecret = JSON.parse(env.USERS_JSON || "{}");
@@ -407,7 +407,7 @@ async function allUsers(env) {
   return { users: { ...fromAirtable, ...fromSecret } };
 }
 __name(allUsers, "allUsers");
-async function rehashAirtablePassword(env, recId, pass) {
+async function herhashGebruiker(env, recId, pass) {
   if (!recId) return;
   // Faalt dit, dan blijft het account op het oude (legacy) hashformaat staan
   // en probeert de volgende inlog het gewoon opnieuw — niet catastrofaal.
@@ -418,7 +418,7 @@ async function rehashAirtablePassword(env, recId, pass) {
     try { console.error("[auth] herhashen gaf een fout voor " + recId + " :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
   }
 }
-__name(rehashAirtablePassword, "rehashAirtablePassword");
+__name(herhashGebruiker, "herhashGebruiker");
 async function handleLogin(request, env, ctx) {
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
   if (!env.SESSION_SECRET) return json({ error: "no_session_secret" }, 500);
@@ -451,7 +451,7 @@ async function handleLogin(request, env, ctx) {
     return json({ error: "invalid_credentials" }, 401);
   }
   if (res.legacy && acc._id) {
-    const job = rehashAirtablePassword(env, acc._id, pass);
+    const job = herhashGebruiker(env, acc._id, pass);
     if (ctx && ctx.waitUntil) ctx.waitUntil(job);
     else await job;
   }
@@ -975,7 +975,7 @@ function logWaarde(v) {
 }
 __name(logWaarde, "logWaarde");
 
-async function handleAirtableLog(request, env) {
+async function handleLog(request, env) {
   if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
   if (!env.LOGDB) return json({ error: "no_logdb" }, 500);
   let payload;
@@ -1043,8 +1043,8 @@ async function handleAirtableLog(request, env) {
   // `afgekapt` staat er zodat wegvallen zichtbaar is in plaats van stil.
   return json({ ok: true, geschreven: stmts.length, afgekapt });
 }
-__name(handleAirtableLog, "handleAirtableLog");
-async function handleAirtableVeldlab(request, env) {
+__name(handleLog, "handleLog");
+async function handleVeldlab(request, env) {
   if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
   if (!env.LOGDB) return json({ error: "no_logdb" }, 500);
   let payload;
@@ -1077,7 +1077,7 @@ async function handleAirtableVeldlab(request, env) {
   }
   return json({ records: gemaakt }, 200);
 }
-__name(handleAirtableVeldlab, "handleAirtableVeldlab");
+__name(handleVeldlab, "handleVeldlab");
 // ═════════════════════════════════════════════════════════════════
 //  DE MEETOPDRACHT VOOR DE VOLGENDE TESTRUN (#241)
 // ──────────────────────────────────────────────────────────────────
@@ -1168,7 +1168,7 @@ async function handleOpdracht(request, env) {
   });
 }
 __name(handleOpdracht, "handleOpdracht");
-async function handleAirtableReference(request, env) {
+async function handleReferentie(request, env) {
   if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
   if (!env.LOGDB) return json({ error: "no_logdb" }, 500);
   let payload;
@@ -1204,7 +1204,7 @@ async function handleAirtableReference(request, env) {
   }
   return json({ records: gemaakt }, 200);
 }
-__name(handleAirtableReference, "handleAirtableReference");
+__name(handleReferentie, "handleReferentie");
 var PROXY_ALLOWED_HOSTS = ["opendata.rdw.nl", "vpic.nhtsa.dot.gov"];
 async function handleProxy(request, env) {
   if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
@@ -5757,11 +5757,11 @@ var worker_default = {
       if (url.pathname === "/copilot" && request.method === "POST")
         return lockOrigin(request, await handleCopilot(request, env));
       if (url.pathname === "/airtable/log" && request.method === "POST")
-        return lockOrigin(request, await handleAirtableLog(request, env));
+        return lockOrigin(request, await handleLog(request, env));
       if (url.pathname === "/airtable/veldlab" && request.method === "POST")
-        return lockOrigin(request, await handleAirtableVeldlab(request, env));
+        return lockOrigin(request, await handleVeldlab(request, env));
       if (url.pathname === "/airtable/reference" && request.method === "POST")
-        return lockOrigin(request, await handleAirtableReference(request, env));
+        return lockOrigin(request, await handleReferentie(request, env));
       if (url.pathname === "/airtable/opdracht" && request.method === "GET")
         return lockOrigin(request, await handleOpdracht(request, env));
       if (url.pathname === "/session/create" && request.method === "POST")
