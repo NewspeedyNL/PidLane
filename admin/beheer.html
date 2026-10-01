@@ -566,6 +566,34 @@
       </div>
 
       <div class="card">
+        <div class="card-kop"><h2>📦 Logarchief</h2>
+          <div class="bar">
+            <label class="hint" style="margin:0">ouder dan</label>
+            <input type="number" id="arDagen" value="7" min="1" max="3650" style="width:80px">
+            <span class="hint" style="margin:0">dagen</span>
+            <button class="btn-sec btn-sm" onclick="arProef()">🔍 Proefdraaien</button>
+            <button class="btn-del btn-sm" id="arKnop" onclick="arUitvoeren()" disabled>📦 Archiveren en wissen</button>
+            <button class="btn-sec btn-sm" onclick="arLaden()">↻ Archief</button>
+          </div></div>
+        <details class="uitleg"><summary>Wat archiveren doet, en wat er blijft</summary><div class="body">
+          Logregels ouder dan de termijn worden <b>per rit samengevat</b> in de tabel <code>log_archief</code>:
+          tijdvak, aantal regels, fouten, LET OP en bugs, de soorten regels, de issues uit de uitkomsten,
+          merk, versie en adapter, en de foutmeldingen <b>ontdubbeld met hun aantal</b> (de 25 meest
+          voorkomende per rit). Regels zonder rit worden per dag gebundeld. <b>Daarna</b> worden de ruwe
+          regels gewist — in één transactie, dus nooit het een zonder het ander.<br><br>
+          <b>Uitkomstregels blijven altijd staan</b> in <code>logregels</code>: dat is het antwoord op een issue.
+          <b>Geen e-mail, VIN of gebruikers-id</b> in het archief.<br><br>
+          Hoogstens 5000 regels per keer, de oudste eerst; staat er "nog te gaan", druk dan nog eens.
+          's Nachts doet de Worker hetzelfde als <code>LOG_BEWAARDAGEN</code> is ingesteld
+          (Cloudflare → Workers → pidlane-proxy → Settings → Variables). Zonder die var doet de nacht niets.<br><br>
+          Archiveren staat pas aan na een proefdraai met dezelfde termijn: je ziet eerst wat er gebeurt.
+        </div></details>
+        <div id="arMsg" class="msg"></div>
+        <div class="grid4" id="arKpi" style="margin-top:8px"></div>
+        <div class="tabelbox" id="arLijst" style="max-height:40vh;margin-top:8px"><div class="leeg">Klik op Archief.</div></div>
+      </div>
+
+      <div class="card">
         <div class="card-kop"><h2>🚗 Ritten</h2>
           <button class="btn-sec btn-sm" onclick="rittenLaden()">↻ Recente ritten</button></div>
         <details class="uitleg"><summary>Wat je hier ziet</summary><div class="body">
@@ -1374,7 +1402,14 @@ function oefenAntwoord(path, opts){
         const s = sp.get('sessie') || '';
         if(!s) return { ok:false, error:'Geef een SessionId op (hoogstens 80 tekens).' };
         const rijen = log.filter(r => r.SessionId === s).sort((a,b) => a.ontvangen < b.ontvangen ? -1 : 1);
-        return { ok:true, sessie:s, rijen, aantal:rijen.length, afgekapt:false, max:5000 };
+        const archief = (D.archief || []).find(a => a.sleutel === s) || null;
+        return { ok:true, sessie:s, rijen, aantal:rijen.length, afgekapt:false, max:5000, archief };
+      }
+      if(actie === 'archief'){
+        const a = (D.archief || []).slice().sort((x,y) => x.geeindigd < y.geeindigd ? 1 : -1);
+        return { ok:true, rijen:a, limiet:200, totaal:{ rijen:a.length, regels:a.reduce((t,x) => t + x.regels, 0),
+          fouten:a.reduce((t,x) => t + x.fouten, 0), oudste:a.reduce((m,x) => !m || x.begonnen < m ? x.begonnen : m, ''),
+          nieuwste:a.reduce((m,x) => x.geeindigd > m ? x.geeindigd : m, ''), laatst:a.reduce((m,x) => x.gearchiveerd > m ? x.gearchiveerd : m, '') } };
       }
       if(actie !== 'overzicht') return { ok:false, error:'Onbekende actie.' };
       const dagen = Math.min(90, Math.max(1, Number(sp.get('dagen')) || 30));
@@ -1417,6 +1452,30 @@ function oefenAntwoord(path, opts){
         opdrachten:{ totaal:opd.length, actief:opd.filter(o => Number(o.Actief) === 1)
           .sort((a,b) => String(b.Gewijzigd).localeCompare(String(a.Gewijzigd)))
           .map(o => ({ id:String(o.id), naam:o.Naam || '', gewijzigd:o.Gewijzigd || '' })) } };
+    }
+    /* Archiveren in oefenmodus: dezelfde vorm als de Worker, eenvoudig
+       nagebouwd op de voorbeeldregels — geen samenvoegen met oude rijen. */
+    if(b.actie === 'archiveer'){
+      const dagen = Math.round(Number(b.dagen));
+      if(!(dagen >= 1 && dagen <= 3650)) return { ok:false, error:'Bewaartermijn tussen 1 en 3650 dagen.' };
+      const grens = new Date(Date.now() - dagen*864e5).toISOString();
+      const oud = log.filter(r => String(r.ontvangen) < grens);
+      const weg = oud.filter(r => !r.Outcome);
+      const groep = {};
+      weg.forEach(r => { const k = r.SessionId || 'dag:' + String(r.ontvangen).slice(0,10);
+        const g = groep[k] || (groep[k] = { sleutel:k, SessionId:r.SessionId || null, begonnen:r.ontvangen, geeindigd:r.ontvangen,
+          dag:String(r.ontvangen).slice(0,10), regels:0, fouten:0, opvallend:0, bugs:0, uitkomsten:0, versie:r.AppVersion || '', issues:'', bevindingen:null, gearchiveerd:nu });
+        g.regels++; if(r.Type === 'error') g.fouten++; if(r.Type === 'opvallend') g.opvallend++; if(r.Type === 'bug') g.bugs++;
+        if(r.ontvangen < g.begonnen) g.begonnen = r.ontvangen; if(r.ontvangen > g.geeindigd) g.geeindigd = r.ontvangen; });
+      const rijen = Object.values(groep);
+      const uit = { ok:true, proef:b.proef !== false, dagen, grens, regels:weg.length, groepen:rijen.length,
+        gewist:0, behouden:oud.length - weg.length, rest:0, voorbeeld:rijen.slice(0,5) };
+      if(uit.proef) return uit;
+      const wegIds = new Set(weg.map(r => r.id));
+      D.log = (D.log || []).filter(r => !wegIds.has(r.id));
+      D.archief = (D.archief || []).filter(a => !groep[a.sleutel]).concat(rijen);
+      uit.gewist = weg.length;
+      return uit;
     }
     if(b.actie === 'sql'){
       const kolommen = ['id','ontvangen','Type','SessionId','Message'];
@@ -2684,6 +2743,80 @@ function d1Bladeren(naam){
   toon('tabellen'); $('tbBron').value = bron; tbBronGewisseld(); tbLaden(true);
 }
 
+/* ── Logarchief (01-10-2026) ─────────────────────────────────────
+   Proefdraaien eerst: de knop Archiveren gaat pas aan na een proef met
+   dezelfde termijn, en vraagt dan nog om bevestiging. Het tellen, samenvatten
+   en wissen doet de Worker (logArchiveren); hier wordt alleen getekend. */
+let AR = { proefDagen:null };
+function arBev(a){
+  try { return a && a.bevindingen ? JSON.parse(a.bevindingen) : { lijst:[], meer:0 }; }
+  catch(e){ console.warn('archief: bevindingen onleesbaar', e); return { lijst:[], meer:0 }; }
+}
+function arTekst(a){
+  const b = arBev(a);
+  return '📦 Gearchiveerd op ' + dtu(a.gearchiveerd) + ': ' + a.regels + ' regels van ' + dtu(a.begonnen) + ' tot ' + dtu(a.geeindigd) +
+    ', ' + a.fouten + ' fout, ' + a.opvallend + ' LET OP, ' + a.uitkomsten + ' uitkomst(en)' + (a.issues ? ' — ' + a.issues : '') +
+    (b.lijst.length ? '\n' + b.lijst.slice(0, 8).map(x => '  ' + (x[0] === 'error' ? 'FOUT' : x[0] === 'opvallend' ? 'LET OP' : 'BUG') + ' ×' + x[2] + '  ' + x[1]).join('\n') : '');
+}
+function arDagen(){ return Math.round(Number($('arDagen').value)); }
+async function arProef(){
+  const m = $('arMsg'), dagen = arDagen();
+  if(!(dagen >= 1)){ toon_msg(m, 'err', 'Vul een termijn van minstens 1 dag in.'); return; }
+  const r = await veilig(m, () => callWorker('d1','/admin/d1',{ method:'POST', headers:HJ(),
+    body:JSON.stringify({ actie:'archiveer', dagen, proef:true }) }), 'Bezig met tellen…');
+  if(!r.ok) return;
+  const u = r.uit.data;
+  AR.proefDagen = u.regels ? dagen : null;
+  $('arKnop').disabled = !u.regels;
+  toon_msg(m, u.regels ? 'warn' : 'ok', u.regels
+    ? 'Proef: ' + u.regels + ' regel(s) ouder dan ' + dagen + ' dagen (vóór ' + dtu(u.grens) + ') gaan in ' + u.groepen +
+      ' archiefrij(en); ' + u.behouden + ' uitkomst(en) blijven staan.' + (u.rest ? ' Daarna nog ' + u.rest + ' te gaan.' : '') +
+      ' Er is nog niets veranderd.'
+    : '✓ Niets ouder dan ' + dagen + ' dagen om te archiveren.');
+  arLijst(u.voorbeeld || [], 'voorbeeld — zo komt het in het archief');
+}
+async function arUitvoeren(){
+  const m = $('arMsg'), dagen = arDagen();
+  if(AR.proefDagen !== dagen){ toon_msg(m, 'warn', 'Draai eerst een proef met deze termijn.'); $('arKnop').disabled = true; return; }
+  if(!confirm('Logregels ouder dan ' + dagen + ' dagen samenvatten in het archief en daarna wissen?\nUitkomsten blijven staan. Dit is niet terug te draaien.')) return;
+  const r = await veilig(m, () => callWorker('d1','/admin/d1',{ method:'POST', headers:HJ(),
+    body:JSON.stringify({ actie:'archiveer', dagen, proef:false }) }), 'Bezig met archiveren…');
+  AR.proefDagen = null; $('arKnop').disabled = true;
+  if(!r.ok) return;
+  const u = r.uit.data;
+  toon_msg(m, u.rest ? 'warn' : 'ok', '✓ ' + u.gewist + ' regel(s) gearchiveerd in ' + u.groepen + ' rij(en) en gewist; ' +
+    u.behouden + ' uitkomst(en) bleven staan.' + (u.rest ? ' Nog ' + u.rest + ' te gaan — proefdraai en druk nog eens.' : ''));
+  arLaden(true);
+}
+async function arLaden(stil){
+  const m = $('arMsg');
+  const r = await veilig(m, () => callWorker('d1','/admin/d1?actie=archief&limiet=200', { headers:H() }), stil ? '' : 'Bezig…');
+  if(r.ok && !stil) toon_msg(m, 'info', '');
+  if(!r.ok) return;
+  const d = r.uit.data, t = d.totaal || {};
+  $('arKpi').innerHTML = [
+    ['Archiefrijen', t.rijen], ['Regels samengevat', t.regels], ['Fouten daarin', t.fouten],
+    ['Loopt van', t.oudste ? dt(t.oudste) : '—', t.nieuwste ? 'tot ' + dtu(t.nieuwste) : ''],
+    ['Laatst gearchiveerd', t.laatst ? dtu(t.laatst) : '—']
+  ].map(x => `<div class="kpi"><div class="n">${esc(x[1] == null ? '—' : x[1])}</div><div class="l">${esc(x[0])}</div>
+     ${x[2] ? '<div class="l" style="opacity:.7">' + esc(x[2]) + '</div>' : ''}</div>`).join('');
+  arLijst(d.rijen || [], '');
+}
+function arLijst(rijen, kop){
+  if(!rijen.length){ $('arLijst').innerHTML = '<div class="leeg">' + (kop ? 'Niets om te tonen.' : 'Het archief is leeg.') + '</div>'; return; }
+  $('arLijst').innerHTML = (kop ? '<div class="hint" style="margin:6px 0">' + esc(kop) + '</div>' : '') +
+    '<table><thead><tr><th>rit / dag</th><th>van</th><th>tot</th><th>regels</th><th>fouten</th><th>LET OP</th><th>uitkomsten</th><th>issues</th><th>versie</th><th>meest gezien</th></tr></thead><tbody>' +
+    rijen.map(a => { const b = arBev(a), top = b.lijst[0];
+      return `<tr title="${esc(arTekst(a))}"><td class="mono">${esc(a.sleutel)}${Number(a.demo) ? ' <span class="pill p-wacht">demo</span>' : ''}</td>
+      <td class="mono">${esc(dtu(a.begonnen))}</td><td class="mono">${esc(dtu(a.geeindigd))}</td>
+      <td class="mono">${esc(a.regels)}</td>
+      <td>${Number(a.fouten) ? '<span class="pill p-uit">' + esc(a.fouten) + '</span>' : '0'}</td>
+      <td>${Number(a.opvallend) ? '<span class="pill p-wacht">' + esc(a.opvallend) + '</span>' : '0'}</td>
+      <td>${Number(a.uitkomsten) ? '<span class="pill p-ok">' + esc(a.uitkomsten) + '</span>' : '0'}</td>
+      <td>${esc(a.issues || '')}</td><td>${esc(a.versie || '')}</td>
+      <td>${top ? esc('×' + top[2] + ' ' + String(top[1]).slice(0, 60)) : ''}</td></tr>`; }).join('') + '</tbody></table>';
+}
+
 /* ── Ritten ────────────────────────────────────────────────────── */
 let RITTEN = [];
 async function rittenLaden(){
@@ -2716,7 +2849,12 @@ async function ritOpen(id){
   const d = r.uit.data;
   DB.ritId = sid; DB.ritRijen = d.rijen || [];
   toon_msg(m, d.afgekapt ? 'warn' : 'info', d.afgekapt ? '⚠ Afgekapt op ' + d.max + ' regels: de rit is langer. Gebruik de SQL-console voor de rest.' : '');
-  if(!DB.ritRijen.length){ $('ritKaart').classList.add('hidden'); toon_msg(m, 'warn', 'Geen regels met SessionId "' + sid + '".'); return; }
+  if(!DB.ritRijen.length){
+    $('ritKaart').classList.add('hidden');
+    toon_msg(m, d.archief ? 'info' : 'warn', d.archief ? arTekst(d.archief) : 'Geen regels met SessionId "' + sid + '".');
+    return;
+  }
+  if(d.archief) toon_msg(m, 'info', 'Deze rit is deels gearchiveerd — hieronder alleen wat er nog staat.\n' + arTekst(d.archief));
   $('ritKaart').classList.remove('hidden');
   ritTeken();
   $('ritKaart').scrollIntoView({ behavior:'smooth', block:'start' });
@@ -3240,8 +3378,8 @@ function tekenRoutes(){
     ['POST /admin/users','opslaan en verwijderen'],
     ['GET /admin/tabel','ruwe records uit een van de bekende tabellen'],
     ['POST /admin/tabel','één record wijzigen, wissen, of (D1) opruimen na eerst tellen'],
-    ['GET /admin/d1','het overzicht over de hele database, of één rit van begin tot eind'],
-    ['POST /admin/d1','de SQL-console (alleen lezen), en meetopdrachten aanmaken, bewaren, activeren, uitzetten'],
+    ['GET /admin/d1','het overzicht over de hele database, één rit van begin tot eind, of het logarchief'],
+    ['POST /admin/d1','de SQL-console (alleen lezen), logregels archiveren (eerst proef), en meetopdrachten aanmaken, bewaren, activeren, uitzetten'],
     ['POST /v1/messages','de AI-route — alleen voor de statuscheck en de testvraag']
   ];
   $('routeLijst').innerHTML = routes.map(r =>

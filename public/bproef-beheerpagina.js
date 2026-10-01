@@ -229,6 +229,46 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
       'er staat: ' + await app.ev('document.getElementById("sqlMsg").textContent'));
     toets('en tekent de voorbeeldrijen', await app.ev('document.querySelectorAll("#sqlUit tbody tr").length') > 0);
 
+    // ── 7b. het logarchief (01-10-2026) ─────────────────────────
+    // Proefdraaien verandert niets en zet pas dan de knop aan; archiveren
+    // vraagt om bevestiging, en een gearchiveerde rit zegt dat hij er was.
+    // De oefenregels lopen tot 14 dagen terug, dus 7 dagen raakt er altijd een
+    // deel — en toch niet alles.
+    console.log('\n7b. Het logarchief: eerst proefdraaien, dan pas archiveren');
+    await app.ev('toon("database")');
+    const arVoor = await app.ev('OEFEN_DATA.log.length');
+    toets('de knop Archiveren staat uit vóór een proef', await app.ev('document.getElementById("arKnop").disabled'));
+    await app.ev('document.getElementById("arDagen").value="7";arProef()');
+    await rust(400);
+    toets('de proef zegt wat er zou gebeuren en wist niets',
+      await app.ev('/Proef:.*nog niets veranderd/s.test(document.getElementById("arMsg").textContent)') && await app.ev('OEFEN_DATA.log.length') === arVoor,
+      'er staat: ' + await app.ev('document.getElementById("arMsg").textContent'));
+    toets('en zet dan de knop aan', !(await app.ev('document.getElementById("arKnop").disabled')));
+    await app.ev('document.getElementById("arDagen").value="8"');
+    const dlgA = app.dialogen.length;
+    await app.ev('arUitvoeren()');
+    await rust(300);
+    toets('een andere termijn dan de proef: niets, en geen vraag', app.dialogen.length === dlgA && await app.ev('OEFEN_DATA.log.length') === arVoor);
+    await app.ev('document.getElementById("arDagen").value="7";arProef()');
+    await rust(400);
+    const dlgB = app.dialogen.length;
+    await app.ev('arUitvoeren()');
+    await rust(600);
+    toets('archiveren vraagt eerst om bevestiging', app.dialogen.length === dlgB + 1, app.dialogen.slice(dlgB).join(' | '));
+    // Deze vraag was verwacht; deel 10 telt alleen de onverwachte.
+    app.dialogen.splice(dlgB, 1);
+    const arNa = await app.ev('OEFEN_DATA.log.length');
+    toets('en wist daarna de oude regels, niet allemaal', arNa < arVoor && arNa > 0, arVoor + ' → ' + arNa);
+    toets('het archief staat in beeld', await app.ev('document.querySelectorAll("#arLijst tbody tr").length') > 0 &&
+      await app.ev('document.querySelectorAll("#arKpi .kpi").length') === 5);
+    const oudeRit = await app.ev('((OEFEN_DATA.archief||[]).find(a => a.SessionId) || {}).SessionId || ""');
+    if (oudeRit) {
+      await app.ev('ritOpen(' + JSON.stringify(oudeRit) + ')');
+      await rust(400);
+      toets('een gearchiveerde rit zegt dat hij gearchiveerd is', await app.ev('/Gearchiveerd op/.test(document.getElementById("ritMsg").textContent)'),
+        'er staat: ' + await app.ev('document.getElementById("ritMsg").textContent'));
+    }
+
     // ── 8. meetopdrachten ───────────────────────────────────────
     console.log('\n8. Meetopdrachten keuren met de echte keurder en er staat er één aan');
     await app.ev('toon("opdrachten")');

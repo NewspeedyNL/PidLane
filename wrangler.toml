@@ -125,9 +125,12 @@ head_sampling_rate = 1
 # LOG_BEWAARDAGEN — de nachtelijke opruimronde van de logtabel (#260).
 # STAAT STANDAARD UIT, en dat is een besluit en geen vergetelheid: een ronde
 # die elke nacht rijen weggooit hoort aangezet te worden door een mens. Zonder
-# deze var meldt de cron dat hij niets doet; mét een getal wist hij logregels
-# die ouder zijn dan zoveel dagen. Regels met een Outcome blijven áltijd
-# staan — dat is het antwoord op een issue, en daar is een rit voor gereden.
+# deze var meldt de cron dat hij niets doet; mét een getal vat hij logregels
+# die ouder zijn dan zoveel dagen per rit samen in log_archief en wist ze
+# daarna (sinds 01-10-2026; zie logArchiveren in worker.js). Regels met een
+# Outcome blijven áltijd staan — dat is het antwoord op een issue, en daar is
+# een rit voor gereden. Zet hem in het dashboard, niet hier: een [vars]-blok
+# in dit bestand overschrijft bij elke deploy wat daar staat.
 
 # ── Secrets — NOOIT in dit bestand ─────────────────────────────────────
 # Zet ze met `wrangler secret put NAAM` of via het dashboard onder

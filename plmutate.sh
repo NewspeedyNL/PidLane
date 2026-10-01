@@ -1127,6 +1127,7 @@ MUTATIES=(
 "worker.js@@  const BINNEN = \`ontvangen < ? AND (id <= ? OR NOT \${LA_WEG})\`;@@  const BINNEN = \`ontvangen < ? AND id <= ?\`;@@test-logarchief.js@@een uitkomst na de laatste gewiste regel van een rit valt buiten het archief: issues en uitkomsten ontbreken"
 "worker.js@@  const res = await db.batch(stmts);@@  const res = []; for (const st of stmts) res.push(await st.run());@@test-logarchief.js@@archiveren en wissen in losse stappen: faalt het wissen, dan blijft er een archiefrij die de volgende ronde dubbel telt"
 "worker.js@@proef: b0.proef !== false@@proef: b0.proef === true@@test-logarchief.js@@de beheerknop wist zonder proef:false — een klik zonder proefdraaien gooit regels weg"
+"admin/beheer.html@@  if(AR.proefDagen !== dagen){@@  if(false){@@bproef-beheerpagina.js@@archiveren met een andere termijn dan de proef: je wist iets anders dan je net hebt gezien"
 # De beheerpagina zelf (bproef-beheerpagina.js). Drie stille fouten die er
 # allemaal goed uitzien: een afgekeurde opdracht gaat tóch aan (de app wijst
 # hem bij de start af en de rit rijdt zonder dat iemand het weet), het vangnet
