@@ -1046,7 +1046,7 @@ async function handleAirtableLog(request, env) {
 __name(handleAirtableLog, "handleAirtableLog");
 async function handleAirtableVeldlab(request, env) {
   if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
-  if (!env.AIRTABLE_TOKEN) return json({ error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ error: "no_logdb" }, 500);
   let payload;
   try {
     payload = await request.json();
@@ -1060,22 +1060,22 @@ async function handleAirtableVeldlab(request, env) {
     if (typeof r2.fields.JSON === "string" && r2.fields.JSON.length > 95e3)
       r2.fields.JSON = r2.fields.JSON.slice(0, 95e3);
   }
-  const base = resolveBase(env, "AIRTABLE_VL_BASE");
-  const table = cfg(env, "AIRTABLE_VL_TABLE");
-  const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`;
-  const r = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.AIRTABLE_TOKEN}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ records: clean, typecast: true })
-  });
-  const text = await r.text();
-  return new Response(text, {
-    status: r.status,
-    headers: { "Content-Type": "application/json", ...CORS }
-  });
+  // Sinds 01-10-2026 in D1 (#327). Een onbekend veld geeft 422, zoals
+  // Airtable dat deed; de app houdt de batch dan in zijn wachtrij.
+  // Eerst de hele batch nakijken: Airtable weigerde hem als geheel, en de
+  // app stuurt een geweigerde batch opnieuw. Half wegschrijven gaf dan dubbels.
+  const onbekend = [...new Set(clean.flatMap((r2) => Object.keys(r2.fields).filter((k) => !D1_TABELLEN.veldlab.velden[k])))];
+  if (onbekend.length) return json({ error: "invalid_field", detail: "onbekend veld: " + onbekend.slice(0, 5).join(", ") }, 422);
+  const gemaakt = [];
+  for (const r2 of clean) {
+    try {
+      gemaakt.push(await atMaak(env, "veldlab", r2.fields));
+    } catch (e) {
+      const m = String(e && e.message || e);
+      return json({ error: /d1_onbekend_veld|d1_veld_geen_getal/.test(m) ? "invalid_field" : "d1_write_failed", detail: m.slice(0, 200), records: gemaakt }, /d1_onbekend_veld|d1_veld_geen_getal/.test(m) ? 422 : 502);
+    }
+  }
+  return json({ records: gemaakt }, 200);
 }
 __name(handleAirtableVeldlab, "handleAirtableVeldlab");
 // ═════════════════════════════════════════════════════════════════
@@ -1170,7 +1170,7 @@ async function handleOpdracht(request, env) {
 __name(handleOpdracht, "handleOpdracht");
 async function handleAirtableReference(request, env) {
   if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
-  if (!env.AIRTABLE_TOKEN) return json({ error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ error: "no_logdb" }, 500);
   let payload;
   try {
     payload = await request.json();
@@ -1187,27 +1187,22 @@ async function handleAirtableReference(request, env) {
     clean.push({ fields: f });
   }
   if (!clean.length) return json({ error: "no_valid_records", hint: "RefID ontbreekt" }, 400);
-  const base = resolveBase(env, "AIRTABLE_VL_BASE");
-  const table = cfg(env, "AIRTABLE_REF_TABLE");
-  const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`;
-  const r = await fetch(url, {
-    method: "PATCH",
-    // PATCH + performUpsert = upsert
-    headers: {
-      Authorization: `Bearer ${env.AIRTABLE_TOKEN}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      performUpsert: { fieldsToMergeOn: ["RefID"] },
-      records: clean,
-      typecast: true
-    })
-  });
-  const text = await r.text();
-  return new Response(text, {
-    status: r.status,
-    headers: { "Content-Type": "application/json", ...CORS }
-  });
+  // Bijwerken op RefID, of aanmaken: wat Airtable `performUpsert` deed. In
+  // D1 sinds 01-10-2026 (#327); RefID heeft daar een UNIQUE-index.
+  // Eerst de hele batch nakijken: Airtable weigerde hem als geheel, en de
+  // app stuurt een geweigerde batch opnieuw. Half wegschrijven gaf dan dubbels.
+  const onbekend = [...new Set(clean.flatMap((r2) => Object.keys(r2.fields).filter((k) => !D1_TABELLEN.referentie.velden[k])))];
+  if (onbekend.length) return json({ error: "invalid_field", detail: "onbekend veld: " + onbekend.slice(0, 5).join(", ") }, 422);
+  const gemaakt = [];
+  for (const r2 of clean) {
+    try {
+      gemaakt.push(await atUpsert(env, "referentie", "RefID", r2.fields));
+    } catch (e) {
+      const m = String(e && e.message || e);
+      return json({ error: /d1_onbekend_veld|d1_veld_geen_getal/.test(m) ? "invalid_field" : "d1_write_failed", detail: m.slice(0, 200), records: gemaakt }, /d1_onbekend_veld|d1_veld_geen_getal/.test(m) ? 422 : 502);
+    }
+  }
+  return json({ records: gemaakt }, 200);
 }
 __name(handleAirtableReference, "handleAirtableReference");
 var PROXY_ALLOWED_HOSTS = ["opendata.rdw.nl", "vpic.nhtsa.dot.gov"];
@@ -2781,30 +2776,10 @@ function klantWachtwoordProbleem(pass, email) {
 }
 __name(klantWachtwoordProbleem, "klantWachtwoordProbleem");
 
-// Een tekst veilig als letterlijke waarde in een Airtable-formule zetten.
-//
-// DE VOLGORDE IS DE HELE FIX. Er stond op vier plekken `.replace(/'/g, "\\'")`
-// en verder niets. Die vervanging is globaal, dus de klassieke "alleen het
-// eerste voorkomen"-fout is het niet — het gat zit een laag dieper: de
-// backslash zelf werd niet ontsnapt. Typt iemand `a\` en dan een quote, dan
-// maakt de oude regel er `a\\'` van. In de formule is `\\` een ontsnapte
-// backslash, en de quote dáárna sluit de string alsnog:
-//
-//   q = a\'  →  SEARCH('a\\'  ,LOWER({Email}))   ← string dicht na de \\
-//
-// Daarmee staat de rest van de zoekterm als formule-syntax in de vraag aan
-// Airtable. Schrijven kan een formule niet, maar filteren wel: je bouwt er
-// een orakel mee dat per verzoek één ja/nee over een willekeurig veld
-// prijsgeeft. Backslash eerst, quote daarna — dan is er geen volgorde meer
-// waarin de escape zichzelf opheft. Zie #142.
-// In twee stappen en niet in één geketende regel, zodat de volgorde te zien
-// is én los na te bouwen valt: plmutate.sh laat de tweede stap op de ruwe
-// tekst werken en dan hoort test-formule-escape.js rood te worden.
-function formuleTekst(s) {
-  const metBackslash = String(s == null ? "" : s).replace(/\\/g, "\\\\");
-  return metBackslash.replace(/'/g, "\\'");
-}
-__name(formuleTekst, "formuleTekst");
+// Hier stond formuleTekst(): een tekst veilig als letterlijke waarde in een
+// Airtable-formule zetten (#142). Sinds 01-10-2026 staat alles in D1 en
+// zoekt elke route met een gebonden parameter (d1Zoekterm voor LIKE); er
+// wordt geen formule meer gebouwd. De uitleg van #142 staat in het archief.
 
 
 // Sinds 01-10-2026 in D1 (#327). Bij dubbele adressen (Airtable dwong
@@ -3013,12 +2988,13 @@ async function handleKlantLogin(request, env, ctx) {
   };
 
   try {
-    // Eerst het formaat controleren, pas daarna zoeken. klantZoek bouwt een
-    // filterByFormula met de invoer erin, en de \'-escaping die daar gebruikt
-    // wordt kent Airtable niet echt: een adres met een apostrof maakte er een
-    // kapotte formule van. Dat gaf een 500 in plaats van een nette afwijzing —
-    // en verraadde meteen dat je invoer iets deed. Nu valt het net als een
-    // onbekend adres door naar misser(), inclusief dezelfde vertraging.
+    // Eerst het formaat controleren, pas daarna zoeken. Toen klantZoek nog
+    // een Airtable-formule bouwde, maakte een adres met een apostrof daar een
+    // kapotte formule van: een 500 in plaats van een nette afwijzing, en een
+    // teken dat je invoer iets deed. Sinds 01-10-2026 zoekt klantZoek in D1
+    // met een gebonden parameter (#327); de formaatcontrole blijft, zodat een
+    // ongeldig adres net als een onbekend adres door naar misser() valt,
+    // inclusief dezelfde vertraging.
     const rec = klantEmailOk(email) ? await klantZoek(env, email) : null;
     if (!rec) return await misser();
 
@@ -3931,33 +3907,41 @@ var ADMIN_BRONNEN = {
     zoekvelden: ["Naam", "Reden", "Opdracht"],
     schrijven: true, beschermd: ["id"], geheim: []
   },
+  // ── Sinds 01-10-2026 ook in D1 (#327) ─────────────────────────────
+  // Tot dan Airtable-bronnen. `at` is de sleutel in D1_TABELLEN: de handler
+  // laat d1Tabel() de tabel aanmaken en eenmalig overzetten, ook als beheer
+  // hem opent vóór er een klant langs is geweest. `recId`: het id is een
+  // Airtable-rec-id (tekst), geen oplopend getal. `id` en `rij_gemaakt` zijn
+  // overal beschermd: dat zijn de sleutel en het aanmaakmoment van de rij.
   veldlab: {
-    naam: "Veldlab (meetwaarden)", baseKey: "AIRTABLE_VL_BASE",
-    tableKey: "AIRTABLE_VL_TABLE", sorteer: "",
-    zoekvelden: [], schrijven: true, beschermd: [], geheim: []
+    naam: "Veldlab (meetwaarden)", motor: "d1", d1: "veldlab_sessies", at: "veldlab",
+    idveld: "id", recId: true, sorteer: "Datum",
+    zoekvelden: ["SessieID", "Merk", "Model", "Verdict", "Quality"],
+    schrijven: true, beschermd: ["id", "rij_gemaakt"], geheim: []
   },
   referentie: {
-    naam: "Referentiewaarden", baseKey: "AIRTABLE_VL_BASE",
-    tableKey: "AIRTABLE_REF_TABLE", sorteer: "",
-    zoekvelden: [], schrijven: true, beschermd: [], geheim: []
+    naam: "Referentiewaarden", motor: "d1", d1: "referentie", at: "referentie",
+    idveld: "id", recId: true, sorteer: "Bijgewerkt",
+    zoekvelden: ["RefID", "Merk", "Model"],
+    schrijven: true, beschermd: ["id", "rij_gemaakt"], geheim: []
   },
   klanten: {
-    naam: "Klanten", baseKey: "AIRTABLE_CONFIG_BASE",
-    tableKey: "AIRTABLE_KLANTEN_TABLE", sorteer: "Aangemaakt",
+    naam: "Klanten", motor: "d1", d1: "klanten", at: "klanten",
+    idveld: "id", recId: true, sorteer: "Aangemaakt",
     zoekvelden: ["Email", "Naam", "Status"],
     schrijven: true,
-    beschermd: ["Saldo", "PassHash", "ResetToken", "ResetVerloopt", "Email"],
+    beschermd: ["id", "rij_gemaakt", "Saldo", "PassHash", "ResetToken", "ResetVerloopt", "Email"],
     geheim: ["PassHash", "ResetToken"]
   },
   codes: {
-    naam: "Activatiecodes", baseKey: "AIRTABLE_CONFIG_BASE",
-    tableKey: "AIRTABLE_CODES_TABLE", sorteer: "Aangemaakt",
+    naam: "Activatiecodes", motor: "d1", d1: "tegoedcodes", at: "codes",
+    idveld: "id", recId: true, sorteer: "Aangemaakt",
     zoekvelden: ["Code", "Batch", "GebruiktDoor"],
-    schrijven: true, beschermd: [], geheim: []
+    schrijven: true, beschermd: ["id", "rij_gemaakt"], geheim: []
   },
   kasboek: {
-    naam: "Kasboek (tokenmutaties)", baseKey: "AIRTABLE_CONFIG_BASE",
-    tableKey: "AIRTABLE_TOKENLOG_TABLE", sorteer: "Moment",
+    naam: "Kasboek (tokenmutaties)", motor: "d1", d1: "kasboek", at: "kasboek",
+    idveld: "id", recId: true, sorteer: "Moment",
     zoekvelden: ["Klant", "Soort", "Model", "Details"],
     // BEWUST NIET SCHRIJFBAAR, en dat is geen netheid. Het kasboek bestaat om
     // één vraag te beantwoorden: waar zijn die tokens gebleven (#83). Een
@@ -3967,10 +3951,10 @@ var ADMIN_BRONNEN = {
     schrijven: false, beschermd: [], geheim: []
   },
   users: {
-    naam: "Gebruikers", baseKey: "AIRTABLE_CONFIG_BASE",
-    tableKey: "AIRTABLE_USERS_TABLE", sorteer: "",
+    naam: "Gebruikers", motor: "d1", d1: "gebruikers", at: "gebruikers",
+    idveld: "id", recId: true, sorteer: "",
     zoekvelden: ["User", "Label", "Role"],
-    schrijven: true, beschermd: ["PassHash", "User"], geheim: ["PassHash"]
+    schrijven: true, beschermd: ["id", "rij_gemaakt", "PassHash", "User"], geheim: ["PassHash"]
   },
   config: {
     naam: "AppConfig", motor: "d1", d1: "app_config", idveld: "sleutel",
@@ -3984,25 +3968,13 @@ var ADMIN_BRONNEN = {
   }
 };
 
-// Airtable-veldnamen mogen van alles bevatten, maar wat hier binnenkomt gaat
-// ongewijzigd in een formule of een sort-parameter. Alles buiten deze tekenset
-// weigeren is goedkoper dan achteraf ontsnappen.
-var VELDNAAM_OK = /^[A-Za-z0-9 _.\-]{1,60}$/;
-
 function adminBron(env, sleutel) {
   const def = ADMIN_BRONNEN[String(sleutel || "")];
   if (!def) return null;
-  // Een D1-bron heeft geen base, geen tabelnaam uit de config en geen
-  // Airtable-kop. `table` blijft gevuld omdat het antwoord van /admin/tabel
-  // hem noemt en beheer.html hem toont — daar staat dan de D1-tabelnaam.
-  if (def.motor === "d1") return { def, motor: "d1", db: env.LOGDB, table: def.d1 };
-  return {
-    def,
-    motor: "airtable",
-    base: resolveBase(env, def.baseKey, def.baseFallback),
-    table: cfg(env, def.tableKey),
-    hdr: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" }
-  };
+  // Sinds 01-10-2026 (#327) is elke bron een D1-bron; de Airtable-motor die
+  // hier naast stond is weg. `table` blijft gevuld omdat het antwoord van
+  // /admin/tabel hem noemt en beheer.html hem toont.
+  return { def, motor: "d1", db: env.LOGDB, table: def.d1 };
 }
 __name(adminBron, "adminBron");
 
@@ -4024,24 +3996,9 @@ function bronMasker(def, fields) {
 }
 __name(bronMasker, "bronMasker");
 
-// Wat er in een PATCH mag. Geeft een foutmelding terug (string) of null.
-// De naam van het geweigerde veld staat erbij: "niet toegestaan" zonder te
-// zeggen wát maakt van een grendel een raadsel.
-function bronSchrijfProbleem(def, velden) {
-  if (!def.schrijven) return `De bron "${def.naam}" is alleen-lezen.`;
-  if (!velden || typeof velden !== "object" || Array.isArray(velden)) return "Geen velden om te schrijven.";
-  const namen = Object.keys(velden);
-  if (!namen.length) return "Geen velden om te schrijven.";
-  if (namen.length > 40) return "Te veel velden in één bewerking (maximaal 40).";
-  const verboden = (def.beschermd || []).concat(def.geheim || []);
-  for (const n of namen) {
-    if (!VELDNAAM_OK.test(n)) return `Ongeldige veldnaam: ${String(n).slice(0, 40)}`;
-    if (verboden.indexOf(n) >= 0)
-      return `Het veld "${n}" is hier afgeschermd en wordt via zijn eigen route gewijzigd.`;
-  }
-  return null;
-}
-__name(bronSchrijfProbleem, "bronSchrijfProbleem");
+// Wat er geschreven mag worden, staat in adminD1Schrijf(): alleen kolommen
+// die in de tabel bestaan, en niets uit `beschermd` of `geheim`. Hier stond
+// tot 01-10-2026 bronSchrijfProbleem() voor de Airtable-motor (#327).
 
 // ═════════════════════════════════════════════════════════════════
 //  DE D1-KANT VAN /admin/tabel (#262, #260)
@@ -4109,7 +4066,7 @@ async function adminD1Lees(b, sp) {
     }
     return {
       id: String(rij[idveld] === undefined || rij[idveld] === null ? "" : rij[idveld]),
-      createdTime: rij.ontvangen || rij.Gewijzigd || rij.begonnen || "",
+      createdTime: rij.ontvangen || rij.Gewijzigd || rij.begonnen || rij.rij_gemaakt || "",
       fields: bronMasker(b.def, velden)
     };
   });
@@ -4127,7 +4084,9 @@ __name(adminD1Lees, "adminD1Lees");
 // Een id uit een D1-tabel is een geheel getal (of, bij de afgeleide ritten, de
 // SessionId). Alleen het eerste geval is schrijfbaar, dus hier volstaat een
 // getalcontrole — en die is streng, want dit getal gaat in een WHERE.
-function d1Id(v) {
+function d1Id(v, def) {
+  // De tabellen die uit Airtable kwamen (#327) houden hun rec-id als sleutel.
+  if (def && def.recId) return /^rec[A-Za-z0-9]{14}$/.test(String(v)) ? String(v) : null;
   const n = Number(v);
   return Number.isInteger(n) && n > 0 ? n : null;
 }
@@ -4150,7 +4109,7 @@ async function adminD1Schrijf(b, actie, body) {
   const verboden = (b.def.beschermd || []).concat(b.def.geheim || []);
 
   if (actie === "wijzig") {
-    const id = d1Id(body.id);
+    const id = d1Id(body.id, b.def);
     if (id === null) return json({ ok: false, error: "Ongeldig record-id." }, 400);
     const velden = body.velden;
     if (!velden || typeof velden !== "object" || Array.isArray(velden))
@@ -4187,7 +4146,7 @@ async function adminD1Schrijf(b, actie, body) {
     if (ruw.length > 200) return json({ ok: false, error: "Maximaal 200 rijen per keer wissen; gebruik Opruimen voor meer." }, 400);
     const ids = [];
     for (const v of ruw) {
-      const n = d1Id(v);
+      const n = d1Id(v, b.def);
       if (n === null) return json({ ok: false, error: "Ongeldig record-id: " + String(v).slice(0, 24) }, 400);
       ids.push(n);
     }
@@ -4248,90 +4207,21 @@ async function handleAdminTabelGet(request, env) {
   const sleutel = String(sp.get("bron") || "");
   const b = adminBron(env, sleutel);
   if (!b) return json({ ok: false, error: "Onbekende bron.", bronnen: Object.keys(ADMIN_BRONNEN) }, 400);
-  // De sleutelcontrole hoort bij de motor die hem nodig heeft. Stond hier
-  // eerder bovenaan, en dat zou een D1-bron laten struikelen op een Airtable
-  // die er niets mee te maken heeft.
-  if (b.motor === "airtable" && !env.AIRTABLE_TOKEN)
-    return json({ ok: false, error: "no_airtable_token" }, 500);
-  if (b.motor === "d1") {
-    if (!b.db) return json({ ok: false, error: "no_logdb" }, 500);
-    try {
-      const uit = await adminD1Lees(b, sp);
-      if (uit.fout) return json({ ok: false, error: uit.fout }, 400);
-      return json({
-        ok: true, bron: sleutel, naam: b.def.naam, tabel: b.table, motor: "d1",
-        records: uit.records, velden: uit.velden, offset: uit.offset,
-        gesorteerd: uit.gesorteerd, sorteer: uit.sorteer,
-        schrijven: !!b.def.schrijven, beschermd: b.def.beschermd || [], geheim: b.def.geheim || []
-      });
-    } catch (e) {
-      return json({ ok: false, error: "d1_lezen_mislukt", detail: String(e && e.message || e) }, 502);
-    }
-  }
-
-  const limiet = Math.min(100, Math.max(1, Math.round(Number(sp.get("limiet")) || 50)));
-  const offset = String(sp.get("offset") || "");
-  const q = String(sp.get("q") || "").trim().toLowerCase();
-  const veld = String(sp.get("veld") || "").trim();
-  const sorteer = String(sp.get("sorteer") || b.def.sorteer || "").trim();
-  const richting = String(sp.get("richting") || "desc") === "asc" ? "asc" : "desc";
-  if (veld && !VELDNAAM_OK.test(veld)) return json({ ok: false, error: "Ongeldige veldnaam." }, 400);
-  if (sorteer && !VELDNAAM_OK.test(sorteer)) return json({ ok: false, error: "Ongeldig sorteerveld." }, 400);
-
-  const stam = `https://api.airtable.com/v0/${b.base}/${encodeURIComponent(b.table)}?pageSize=${limiet}`;
-  let vraag = stam;
-  if (offset) vraag += `&offset=${encodeURIComponent(offset)}`;
-  if (q) {
-    const zoekIn = veld ? [veld] : (b.def.zoekvelden || []);
-    if (zoekIn.length) {
-      const e = formuleTekst(q);
-      // &'' erachter: LOWER() op een getal- of datumveld geeft anders een
-      // formulefout, en dan valt de hele lijst weg in plaats van dat ene veld.
-      const formule = zoekIn.length === 1
-        ? `SEARCH('${e}',LOWER({${zoekIn[0]}}&''))`
-        : `OR(${zoekIn.map((v) => `SEARCH('${e}',LOWER({${v}}&''))`).join(",")})`;
-      vraag += `&filterByFormula=${encodeURIComponent(formule)}`;
-    }
-  }
-  const sortDeel = sorteer
-    ? `&sort%5B0%5D%5Bfield%5D=${encodeURIComponent(sorteer)}&sort%5B0%5D%5Bdirection%5D=${richting}`
-    : "";
-
+  if (!b.db) return json({ ok: false, error: "no_logdb" }, 500);
   try {
-    let gesorteerd = !!sorteer;
-    let r = await fetch(vraag + sortDeel, { headers: b.hdr });
-    // Een sorteerveld dat in deze tabel niet bestaat geeft 422 en dus een lege
-    // pagina. Dat is de verkeerde uitkomst: de gegevens zijn er wel, alleen de
-    // volgorde niet. Eén keer opnieuw zonder sortering, en de pagina krijgt te
-    // horen dat er niet gesorteerd is.
-    if (!r.ok && sortDeel) {
-      r = await fetch(vraag, { headers: b.hdr });
-      gesorteerd = false;
-    }
-    if (!r.ok) {
-      const t = await r.text().catch(() => "");
-      return json({ ok: false, error: "airtable_" + r.status, detail: t.slice(0, 300) }, 502);
-    }
-    const d = await r.json();
-    const records = (d.records || []).map((rec) => ({
-      id: rec.id,
-      createdTime: rec.createdTime || "",
-      fields: bronMasker(b.def, rec.fields || {})
-    }));
-    // De unie van alle veldnamen in deze pagina. Airtable geeft per record
-    // alleen de gevulde velden terug, dus zonder deze unie mist de tabelkop
-    // precies de kolommen die maar bij een deel van de rijen staan.
-    const velden = [];
-    for (const rec of records)
-      for (const k of Object.keys(rec.fields))
-        if (velden.indexOf(k) < 0) velden.push(k);
+    // Een tabel die uit Airtable komt, bestaat pas na zijn eerste aanroep.
+    // Opent beheer hem eerder, dan wordt hij hier aangemaakt en overgezet.
+    if (b.def.at) await d1Tabel(env, b.def.at);
+    const uit = await adminD1Lees(b, sp);
+    if (uit.fout) return json({ ok: false, error: uit.fout }, 400);
     return json({
-      ok: true, bron: sleutel, naam: b.def.naam, tabel: b.table, records, velden,
-      offset: d.offset || "", gesorteerd, sorteer: gesorteerd ? sorteer : "",
+      ok: true, bron: sleutel, naam: b.def.naam, tabel: b.table, motor: "d1",
+      records: uit.records, velden: uit.velden, offset: uit.offset,
+      gesorteerd: uit.gesorteerd, sorteer: uit.sorteer,
       schrijven: !!b.def.schrijven, beschermd: b.def.beschermd || [], geheim: b.def.geheim || []
     });
   } catch (e) {
-    return klantFout(e, "Ophalen mislukt.");
+    return json({ ok: false, error: "d1_lezen_mislukt", detail: String(e && e.message || e) }, 502);
   }
 }
 __name(handleAdminTabelGet, "handleAdminTabelGet");
@@ -4349,66 +4239,14 @@ async function handleAdminTabelPost(request, env) {
   const b = adminBron(env, sleutel);
   if (!b) return json({ ok: false, error: "Onbekende bron.", bronnen: Object.keys(ADMIN_BRONNEN) }, 400);
   if (!b.def.schrijven) return json({ ok: false, error: `De bron "${b.def.naam}" is alleen-lezen.` }, 403);
-  if (b.motor === "airtable" && !env.AIRTABLE_TOKEN)
-    return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!b.db) return json({ ok: false, error: "no_logdb" }, 500);
 
   const actie = String(b0.actie || "");
-  if (b.motor === "d1") {
-    if (!b.db) return json({ ok: false, error: "no_logdb" }, 500);
-    try {
-      return await adminD1Schrijf(b, actie, b0);
-    } catch (e) {
-      return json({ ok: false, error: "d1_schrijven_mislukt", detail: String(e && e.message || e) }, 502);
-    }
-  }
-  const stam = `https://api.airtable.com/v0/${b.base}/${encodeURIComponent(b.table)}`;
-
   try {
-    if (actie === "wijzig") {
-      const id = String(b0.id || "");
-      if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return json({ ok: false, error: "Ongeldig record-id." }, 400);
-      const velden = b0.velden;
-      const probleem = bronSchrijfProbleem(b.def, velden);
-      if (probleem) return json({ ok: false, error: probleem }, 400);
-      // Airtable neemt geen tekstwaarde boven de 100k aan; afkappen op 95k is
-      // wat /airtable/log ook doet, zodat één te lange plakactie geen 422 geeft.
-      const schoon = {};
-      for (const k of Object.keys(velden))
-        schoon[k] = typeof velden[k] === "string" && velden[k].length > 95e3 ? velden[k].slice(0, 95e3) : velden[k];
-      const r = await fetch(stam, {
-        method: "PATCH", headers: b.hdr,
-        body: JSON.stringify({ records: [{ id, fields: schoon }], typecast: true })
-      });
-      if (!r.ok) {
-        const t = await r.text().catch(() => "");
-        return json({ ok: false, error: "airtable_" + r.status, detail: t.slice(0, 300) }, 502);
-      }
-      const d = await r.json();
-      const rec = (d.records || [])[0] || {};
-      return json({ ok: true, id, velden: bronMasker(b.def, rec.fields || {}) });
-    }
-
-    if (actie === "wis") {
-      // Eén id of een lijstje: de pagina wist een selectie in één klik, en
-      // Airtable neemt er maximaal tien per verzoek. Meer dan tien weigeren in
-      // plaats van stil afkappen — half wissen is het ergste antwoord.
-      const ids = Array.isArray(b0.ids) ? b0.ids.map(String) : (b0.id ? [String(b0.id)] : []);
-      if (!ids.length) return json({ ok: false, error: "Geen record-id opgegeven." }, 400);
-      if (ids.length > 10) return json({ ok: false, error: "Maximaal 10 records per keer wissen." }, 400);
-      for (const id of ids)
-        if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return json({ ok: false, error: "Ongeldig record-id: " + id.slice(0, 24) }, 400);
-      const qs = ids.map((id) => `records[]=${encodeURIComponent(id)}`).join("&");
-      const r = await fetch(`${stam}?${qs}`, { method: "DELETE", headers: b.hdr });
-      if (!r.ok) {
-        const t = await r.text().catch(() => "");
-        return json({ ok: false, error: "airtable_" + r.status, detail: t.slice(0, 300) }, 502);
-      }
-      return json({ ok: true, gewist: ids });
-    }
-
-    return json({ ok: false, error: "Onbekende actie." }, 400);
+    if (b.def.at) await d1Tabel(env, b.def.at);
+    return await adminD1Schrijf(b, actie, b0);
   } catch (e) {
-    return klantFout(e, "Bewerking mislukt.");
+    return json({ ok: false, error: "d1_schrijven_mislukt", detail: String(e && e.message || e) }, 502);
   }
 }
 __name(handleAdminTabelPost, "handleAdminTabelPost");

@@ -38,15 +38,6 @@ function toets(naam, waar, uitleg) {
 // ── de handler uit worker.js knippen ──────────────────────────────
 const bron = fs.readFileSync(path.join(__dirname, '..', 'worker.js'), 'utf8');
 
-// formuleTekst() staat buiten het geknipte blok maar wordt er wél door
-// aangeroepen (#142). Dezelfde functie uit worker.js knippen en niet
-// nabouwen: een nagemaakte escaper zou hier een echt gat kunnen verbergen.
-const formuleTekst = (() => {
-  const a = bron.indexOf('function formuleTekst(s) {');
-  const b = bron.indexOf('__name(formuleTekst, "formuleTekst");');
-  if (a < 0 || b < 0) { console.error('FOUT: formuleTekst() niet gevonden in worker.js.'); process.exit(1); }
-  return new Function(bron.slice(a, b) + '\nreturn formuleTekst;')();
-})();
 const van = bron.indexOf('async function handleCreditsRedeem');
 const tot = bron.indexOf('__name(handleCreditsRedeem');
 if (van < 0 || tot < 0 || tot < van) {
@@ -107,7 +98,6 @@ function bouw(opties) {
     },
     console: { error() {}, warn() {}, log() {} },
     __name: () => {},
-    formuleTekst
   };
 
   const maak = new Function(...Object.keys(omg), src + '\nreturn handleCreditsRedeem;');
