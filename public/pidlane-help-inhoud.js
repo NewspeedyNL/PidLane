@@ -94,7 +94,8 @@ var PL_HULP = {
         '<li>Tik op <b>⚡ Plug in. Let\'s go.</b> De eerste keer legt PidLane eerst uit waarvoor Bluetooth nodig is.</li>' +
         '<li>PidLane zoekt de adapter en daarna de auto. Na afloop zie je de sensoren van jouw auto.</li>' +
         '</ol>' +
-        '<p>Staat <b>Check na verbinden</b> aan (in Meer), dan opent <a data-hulp="check">Check mijn auto</a> daarna één keer vanzelf.</p>' +
+        '<p>Staat <b>Check na verbinden</b> aan (in Meer), dan opent <a data-hulp="check">Check mijn auto</a> daarna één keer vanzelf. ' +
+        'Vindt hij niets, dan gaat de app na 5 seconden door naar Live; tik in het venster of op <b>Blijf hier</b> om te blijven.</p>' +
         '<p>In hetzelfde scherm: <b>Simuleer verbinding</b> (demo), <b>Verder zonder adapter</b> en ' +
         '<b>Meekijken met sessie (expert)</b> voor wie op afstand wil meekijken. Zie <a data-hulp="delen">Delen en meekijken</a>.</p>',
       zie: ['verbinden-mislukt', 'status'] },

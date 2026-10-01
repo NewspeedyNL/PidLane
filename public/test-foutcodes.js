@@ -223,6 +223,18 @@ function nepEcu(antwoorden) {
   eis(F.stoplicht(lamp).kleur === 'rood' && /motorlampje/.test(F.stoplicht(lamp).kop), 'motorlampje aan zonder gelezen code → rood');
   eis(F.stoplicht(null).kleur === 'grijs', 'nog niets uitgelezen → grijs, geen oordeel');
 
+  // Door naar Live na de automatische check (01-10-2026): alleen als er
+  // niets te lezen valt. Zelfde echte uitlezingen als hierboven.
+  console.log('\n11. Vanzelf door naar Live');
+  eis(F.magDoor(schoon) === true, 'niets gevonden, alles klaar → door naar Live');
+  eis(F.magDoor(halfKlaar) === true, 'geen codes, alleen zelftests niet klaar → óók door  <- readiness is geen landingsscherm');
+  eis(F.magDoor(v1) === false, 'bevestigde codes → blijven staan');
+  eis(F.magDoor(v2) === false, 'alleen een permanente code → blijven staan');
+  eis(F.magDoor(wacht) === false, 'een code in afwachting → blijven staan');
+  eis(F.magDoor(blind) === false, 'een soort code niet gelezen → blijven staan  <- "niet gelezen" is geen "geen codes"');
+  eis(F.magDoor(lamp) === false, 'motorlampje aan → blijven staan');
+  eis(F.magDoor(null) === false, 'geen uitlezing → nergens heen');
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });

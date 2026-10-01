@@ -59,7 +59,8 @@
     wisTimeoutMs: 8000,     // 04: sommige ECU's doen er seconden over
     naWissenMs: 1500,       // de ECU even laten bijkomen vóór het na-uitlezen
     busWachtMs: 6000,
-    scanGeldigMs: 5 * 60 * 1000   // ouder dan dit: eerst opnieuw uitlezen
+    scanGeldigMs: 5 * 60 * 1000,  // ouder dan dit: eerst opnieuw uitlezen
+    doorMs: 5000                  // niets gevonden na verbinden: zo lang tot Live
   };
 
   var BRONNEN = [
@@ -274,6 +275,20 @@
     return { kleur: 'groen', kop: 'Alles in orde', tekst: 'Geen foutcodes' + (rd && rd.ondersteund ? ' en alle zelftests zijn klaar.' : '.') };
   }
 
+  /* Mag de automatische check na het verbinden vanzelf door naar Live
+     (01-10-2026)? Alleen als er niets te lezen valt dat de klant moet zien:
+     alle drie de soorten gelezen, geen enkele code, geen motorlampje. Een
+     zelftest die nog niet klaar is houdt hem níét tegen — dat is na een
+     losgekoppelde accu heel gewoon, staat in de details en in het rapport, en
+     is geen reden om de klant op een readinesslijst te laten landen. */
+  function magDoor(s) {
+    if (!s || !s.gelezen || !s.codes) return false;
+    var g = s.gelezen, c = s.codes;
+    if (!g.bevestigd || !g.pending || !g.permanent) return false;
+    if ((c.bevestigd || []).length || (c.pending || []).length || (c.permanent || []).length) return false;
+    return !(s.readiness && s.readiness.mil);
+  }
+
   /* Antwoord op 04 → wat er gebeurd is. Géén antwoord is NIET "gewist". */
   function wisUitslag(raw) {
     var t = String(raw || '').toUpperCase();
@@ -480,7 +495,7 @@
   //  VENSTER
   // ════════════════════════════════════════════════════════════════
 
-  var _st = { scan: null, voor: null, na: null, uitslag: null, bezig: false, stap: '', fout: null, akkoord: false, fase: 'lijst' };
+  var _st = { door: null, doorGewild: false, scan: null, voor: null, na: null, uitslag: null, bezig: false, stap: '', fout: null, akkoord: false, fase: 'lijst' };
   var _demo = null;
 
   function isDemo() { try { return typeof demoMode !== 'undefined' && !!demoMode; } catch (e) { return false; } }
@@ -557,7 +572,14 @@
     '#plFcOv details.fc-det{margin:12px 0}' +
     '#plFcOv details.fc-det>summary{cursor:pointer;font:700 14px var(--f);color:var(--tx2);padding:10px 2px;list-style-position:inside}' +
     '#plFcOv details.fc-det[open]>summary{margin-bottom:8px}' +
-    '#plFcOv .fc-soort{font-style:normal;color:var(--tx2)}';
+    '#plFcOv .fc-soort{font-style:normal;color:var(--tx2)}' +
+    // Door naar Live (01-10-2026): de balk loopt leeg in CFG.doorMs.
+    '#plFcOv .fc-door{border:1px solid var(--bd);border-radius:12px;padding:11px 12px 12px;margin-bottom:12px;background:var(--sur)}' +
+    '#plFcOv .fc-door-t{font:700 14px var(--f);color:var(--tx);margin-bottom:8px}' +
+    '#plFcOv .fc-door-balk{height:6px;border-radius:3px;background:var(--bd);overflow:hidden;margin-bottom:10px}' +
+    '#plFcOv .fc-door-balk>i{display:block;height:100%;width:100%;background:var(--bl,#3b82f6);transform-origin:left;animation:plFcDoor linear forwards}' +
+    '@keyframes plFcDoor{from{transform:scaleX(1)}to{transform:scaleX(0)}}' +
+    '@media (prefers-reduced-motion:reduce){#plFcOv .fc-door-balk>i{animation:none}}';
 
   function zorgCss() {
     if (document.getElementById('plFcCss')) return;
@@ -567,7 +589,11 @@
     document.head.appendChild(st);
   }
 
-  function open() {
+  /* opties.auto: geopend door PLNav.naVerbinding(), niet door een tik op de
+     knop. Alleen dan mag het venster zelf weer weg — wie zelf op Check mijn
+     auto tikt, wil de uitslag lezen. */
+  function open(opties) {
+    opties = opties || {};
     zorgCss();
     var ov = document.getElementById('plFcOv');
     if (!ov) {
@@ -579,7 +605,14 @@
         '<div id="plFcBody"></div></div>';
       document.body.appendChild(ov);
       ov.addEventListener('click', function (e) { if (e.target === ov) sluit(); });
+      // Elke aanraking in het venster — scrollen, details openen, een knop —
+      // betekent "ik kijk hier": dan gaat het aftellen niet door.
+      ov.addEventListener('pointerdown', function (e) {
+        if (_st.door && !(e.target.closest && e.target.closest('.fc-door'))) stopDoor();
+      });
     }
+    stopDoor(true);
+    _st.doorGewild = !!opties.auto && !isGarage();
     ov.style.display = 'flex';
     _st.fase = 'lijst';
     teken();
@@ -589,12 +622,14 @@
   }
 
   function sluit() {
+    stopDoor(true);
     var ov = document.getElementById('plFcOv');
     if (ov) ov.style.display = 'none';
   }
 
   async function scan() {
     if (_st.bezig) return;
+    stopDoor(true);
     _st.bezig = true; _st.fout = null; _st.stap = 'verbinden…';
     teken();
     try {
@@ -607,6 +642,8 @@
       // Mijn voertuigen: codes worden issues, keuringsstatus gaat in de status.
       try { if (window.PLGarage && PLGarage.foutcodes) PLGarage.foutcodes({ bevestigd: s.codes.bevestigd, pending: s.codes.pending, permanent: s.codes.permanent, gelezen: s.gelezen, readiness: s.readiness }); }
       catch (e) { console.warn('PLFoutcodes: doorgeven aan Mijn voertuigen faalde', e); }
+      if (_st.doorGewild && magDoor(s)) startDoor();
+      _st.doorGewild = false;   // één keer: opnieuw uitlezen is een eigen keuze
       return s;
     } catch (e) {
       _st.fout = 'Uitlezen mislukt: ' + (e.message || e);
@@ -618,7 +655,41 @@
     }
   }
 
+  // ── Door naar Live ─────────────────────────────────────────────────
+  var _doorTimer = null;
+  function startDoor() {
+    _st.door = { start: Date.now(), ms: CFG.doorMs };
+    _doorTimer = setTimeout(naarLive, CFG.doorMs);
+  }
+  // stil: alleen opruimen, niet opnieuw tekenen (het venster gaat dicht of
+  // wordt toch al opnieuw getekend).
+  function stopDoor(stil) {
+    if (_doorTimer) { clearTimeout(_doorTimer); _doorTimer = null; }
+    if (!_st.door) return;
+    _st.door = null;
+    if (!stil) teken();
+  }
+  function naarLive() {
+    stopDoor(true);
+    sluit();
+    try {
+      openLiveView();
+      setPidView('visueel');
+    } catch (e) { console.warn('PLFoutcodes: door naar Live mislukt', e);
+      if (typeof showToast === 'function') showToast('Live opent nu niet — tik onderin op Live'); }
+  }
+  function tekenDoor() {
+    var d = _st.door;
+    // Na een hertekening loopt de balk verder waar hij was, niet opnieuw vol.
+    var al = Math.min(d.ms, Date.now() - d.start);
+    return '<div class="fc-door" role="status"><div class="fc-door-t">Je gaat zo door naar Live</div>' +
+      '<div class="fc-door-balk"><i style="animation-duration:' + d.ms + 'ms;animation-delay:-' + al + 'ms"></i></div>' +
+      '<div class="fc-knoppen"><button class="fc-k hoofd" onclick="PLFoutcodes._naarLive()">Nu naar Live</button>' +
+      '<button class="fc-k" onclick="PLFoutcodes._blijf()">Blijf hier</button></div></div>';
+  }
+
   function naarWissen() {
+    stopDoor(true);
     _st.fase = 'wissen'; _st.akkoord = false; _st.uitslag = null; _st.voor = null; _st.na = null;
     teken();
   }
@@ -809,6 +880,7 @@
     if (_st.fout) h += '<div class="fc-melding rood">' + esc(_st.fout) + '</div>';
     if (_st.bezig) h += '<div class="fc-melding">⏳ Bezig: ' + esc(_st.stap) + '</div>';
     if (s) {
+      if (_st.door) h += tekenDoor();
       h += tekenOordeel(s);
       // De volledige uitlezing staat ingeklapt voor een klant en open in de
       // garagemodus: vijf blokken uitleg is voor een monteur informatie en
@@ -904,7 +976,10 @@
     _akkoord: function (v) { _st.akkoord = !!v; teken(); },
     _terug: function () { if (_st.bezig) return; _st.fase = 'lijst'; teken(); },
     _vervolg: vervolg,
+    _naarLive: naarLive,
+    _blijf: function () { stopDoor(); },
     stoplicht: stoplicht,
+    magDoor: magDoor,
     // pure kern en bus — voor test-foutcodes.js
     parseDtc: parseDtc,
     parseReadiness: parseReadiness,

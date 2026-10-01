@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-10-2026 — Check na verbinden: niets gevonden → vanzelf naar Live
+ ═══════════════════════════════════════════════════════════
+
+ - Na het verbinden bleef Check mijn auto staan, ook bij "Alles in orde";
+   de klant landde op de keuringsstatus (#376).
+ - Opende de check vanzelf en is de uitlezing schoon (alles gelezen, geen
+   codes, geen motorlampje), dan loopt een balk 5 s leeg en gaat de app
+   naar Live in Slim visueel. Zelftests die niet klaar zijn houden dat
+   niet tegen. "Nu naar Live", "Blijf hier", of een tik in het venster.
+ - Niet bij codes, niet in de garagemodus, niet als je zelf op de knop
+   tikte. test-foutcodes.js, bproef-foutcodes.js, blok 5 en drie mutaties.
+
+ ═══════════════════════════════════════════════════════════
  01-10-2026 — Startscherm: vaste achtergrond in plaats van animatie
  ═══════════════════════════════════════════════════════════
 

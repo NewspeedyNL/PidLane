@@ -1183,6 +1183,9 @@ MUTATIES=(
 "public/pidlane-foutcodes.js@@if (ok && weiger == null) return@@if (weiger == null) return@@test-foutcodes.js@@geen antwoord op 04 leest als gewist, zoals in clearDTC()"
 "public/pidlane-foutcodes.js@@if (typeof ctx.rpm === 'number' && ctx.rpm > 0) blok.push(@@if (false) blok.push(@@test-foutcodes.js@@wissen mag terwijl de motor draait"
 "public/pidlane-foutcodes.js@@        if (typeof rpm === 'number' && rpm > 0) {@@        if (false) {@@test-foutcodes.js@@de motor is na de uitlezing gestart en er gaat toch 04 de bus op"
+"public/pidlane-foutcodes.js@@    if ((c.bevestigd || []).length || (c.pending || []).length || (c.permanent || []).length) return false;@@    if ((c.bevestigd || []).length || (c.permanent || []).length) return false;@@test-foutcodes.js@@een code in afwachting en de check gaat toch vanzelf door naar Live"
+"public/pidlane-foutcodes.js@@    return !(s.readiness && s.readiness.mil);@@    return true;@@test-foutcodes.js@@het motorlampje brandt en de check gaat toch vanzelf door naar Live"
+"public/pidlane-foutcodes.js@@        if (_st.door && !(e.target.closest && e.target.closest('.fc-door'))) stopDoor();@@        if (false) stopDoor();@@bproef-foutcodes.js@@de klant tikt in het venster en wordt toch naar Live gestuurd"
 # ── Mijn voertuigen (klantplatform, 27-09-2026). Worker: de fouten die een
 #    klant bij een ander laten binnenkijken of een persoonsgegeven onversleuteld
 #    laten staan. App: de fouten die een rit, een issue of een rapport stil

@@ -2771,6 +2771,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Check na verbinden: niets gevonden → vanzelf naar Live (01-10-2026) ──
+  // Toetst de beslissing op een echte uitlezing van de demo-ECU (met codes)
+  // en dezelfde uitlezing schoongemaakt; geen bus nodig.
+  {
+    issue: '#376',
+    naam: 'Check na verbinden gaat bij een schone auto na vijf seconden door naar Slim visueel',
+    waarom: 'Na het verbinden bleef het venster met de keuringsstatus staan, ook als alles in orde was: dat was het eerste scherm van de klant.',
+    proef: async function () {
+      if (!window.PLFoutcodes || typeof PLFoutcodes.magDoor !== 'function') return { staat: 'FOUT', detail: 'PLFoutcodes.magDoor ontbreekt' };
+      var s = await PLFoutcodes.leesUit(PLFoutcodes.demoStuur());
+      if (PLFoutcodes.magDoor(s)) return { staat: 'FOUT', detail: 'de demo-auto heeft codes en zou toch door naar Live gaan' };
+      var schoon = JSON.parse(JSON.stringify(s));
+      schoon.codes = { bevestigd: [], pending: [], permanent: [] };
+      if (schoon.readiness) schoon.readiness.mil = false;
+      if (!PLFoutcodes.magDoor(schoon)) return { staat: 'FOUT', detail: 'een uitlezing zonder codes gaat niet door naar Live' };
+      return { staat: 'OK', detail: 'met codes blijft het venster staan, zonder codes telt het ' + (PLFoutcodes.cfg.doorMs / 1000) + ' s af naar Live' };
+    }
+  },
+
   // ── Overzicht vervangt Trends, Getallen en Puntjes (01-10-2026) ──
   // In Trends liep de responstijd op de telefoon in tien minuten op van 43
   // naar 120 ms; de teken-draden stonden bovenaan. Nu hoogstens vier lijnen.

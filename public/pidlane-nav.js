@@ -210,7 +210,7 @@
     if (window._remoteVehicleMode) return false;   // meekijken: deze telefoon hangt niet aan de auto
     _gecheckt = true;       // één keer per sessie; opnieuw verbinden is geen nieuwe vraag
     logGebruik('check', 'na_verbinden');
-    setTimeout(function () { try { PLFoutcodes.open(); } catch (e) { console.warn('PLNav: automatische check opent niet', e); } }, 350);
+    setTimeout(function () { try { PLFoutcodes.open({ auto: true }); } catch (e) { console.warn('PLNav: automatische check opent niet', e); } }, 350);
     return true;
   }
 
