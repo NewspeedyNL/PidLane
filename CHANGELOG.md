@@ -30,7 +30,7 @@
  - Blok 5: één proef dat elke app-maat in de draaiende app een getal of
    null geeft. CAMPAGNE beschrijft de meetrit.
  - Tests: test-berekend, test-visueel, test-adapterpaneel, test-foutcodes en
-   test-opdrachtappmaat uitgebreid; 22 mutaties erbij.
+   test-opdrachtappmaat uitgebreid; 16 mutaties erbij.
 
  ═══════════════════════════════════════════════════════════
  01-10-2026 — Na #381: namen opgeruimd
