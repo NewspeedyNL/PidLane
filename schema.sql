@@ -273,3 +273,16 @@ ALTER TABLE kp_voertuig ADD COLUMN carrosserie TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN kleur TEXT;
 UPDATE kp_voertuig SET carrosserie = NULL, kleur = NULL WHERE carrosserie IS NOT NULL OR kleur IS NOT NULL;
 ALTER TABLE kp_voertuig ADD COLUMN eigen_pids TEXT;
+
+-- ══════════════════════════════════════════════════════════════════
+--  APPCONFIG (#327, 01-10-2026)
+-- ──────────────────────────────────────────────────────────────────
+--  Stond in de Airtable-base Config; elke opstart van de app was een call
+--  in een werkruimte met een plafond van 1.000 per maand. De Worker maakt
+--  deze tabellen zelf aan (CONFIG_SCHEMA in worker.js, letterlijk gelijk —
+--  test-appconfig.js bewaakt dat) en zet AppConfig één keer vanzelf over.
+--  `waarde` is JSON, zodat "true" en true niet hetzelfde worden.
+--  d1_overzet noteert per tabel dat de overzet uit Airtable gedaan is.
+-- ══════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS app_config (sleutel TEXT PRIMARY KEY, waarde TEXT NOT NULL, omschrijving TEXT, bijgewerkt TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS d1_overzet (naam TEXT PRIMARY KEY, op TEXT NOT NULL, aantal INTEGER NOT NULL);

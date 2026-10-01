@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-10-2026 — Minder Airtable-calls: AppConfig in D1, accountstatus onthouden (#327)
+ ═══════════════════════════════════════════════════════════
+
+ - De werkruimte stond op dag 1 van de maand al op 139 van de 1.000 calls.
+   De vaste posten waren /api/config bij elke opstart en de klantcontrole
+   bij elke verversing van Mijn voertuigen, niet de AI (één analyse per week).
+ - AppConfig staat nu in D1. De Worker zet de Airtable-tabel één keer zelf
+   over; daarna leest hij hem niet meer. Wijzigen gaat via beheer, niet
+   meer in Airtable. test-appconfig.js, vijf mutaties.
+ - De accountstatus bij "stand" wordt vijf minuten onthouden. Blokkeren via
+   beheer werkt meteen; direct in Airtable binnen vijf minuten. Verwijderd
+   blijft meteen dicht. test-klantstatus.js, drie mutaties.
+
+ ═══════════════════════════════════════════════════════════
  01-10-2026 — BT-logvenster begrensd: logregels worden niet meer duurder (#302)
  ═══════════════════════════════════════════════════════════
 

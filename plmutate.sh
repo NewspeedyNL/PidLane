@@ -452,7 +452,7 @@ MUTATIES=(
 # Het anker draagt de laatste commentaarregel mee: sinds het kasboek erbij
 # kwam (#83) staat "schrijven: false" twee keer in ADMIN_BRONNEN, en dan bouwt
 # een korter anker niets meer na.
-"worker.js@@tabel zegt. Wijzigen doe je op de configkaart.\n    schrijven: false,@@tabel zegt. Wijzigen doe je op de configkaart.\n    schrijven: true,@@test-adminbron.js@@AppConfig is hierlangs te schrijven, langs de cacheverversing van /api/config heen"
+"worker.js@@bedoeld. Wijzigen doe je op de configkaart.\n    schrijven: false,@@bedoeld. Wijzigen doe je op de configkaart.\n    schrijven: true,@@test-adminbron.js@@AppConfig is hierlangs te schrijven, langs de sleutelkeuring en de JSON-opslag van /api/config heen"
 "worker.js@@      if (ids.length > 10) return json({ ok: false, error: \"Maximaal 10 records per keer wissen.\" }, 400);@@@@test-adminbron.js@@meer dan tien records tegelijk wissen wordt stil half uitgevoerd"
 "worker.js@@  if (veld && !VELDNAAM_OK.test(veld)) return json({ ok: false, error: \"Ongeldige veldnaam.\" }, 400);@@@@test-adminbron.js@@een veldnaam met formuletekens gaat ongefilterd de Airtable-formule in"
 
@@ -1481,6 +1481,16 @@ MUTATIES=(
 "public/pidlane-btflow.js@@Object.assign({},e,{vorige:true})@@Object.assign({},e)@@test-btlogcap.js@@teruggezette regels zijn niet meer herkenbaar: na een herlaad houdt het anker weer de vorige sessie vast en valt de VIN weg"
 "public/pidlane-btflow.js@@const eigen=log.filter(r=>r && !r.vorige && !r.cap);@@const eigen=log.filter(r=>r && !r.cap);@@test-btlogcap.js@@de cap telt de vorige sessie mee als eigen regels: het anker is weer het pollverkeer van vóór de herlaad"
 "public/pidlane-btflow.js@@  stand.weg+=eigen.length-kop.length-staart.length;@@  stand.weg=eigen.length-kop.length-staart.length;@@test-btlogcap.js@@de markering telt alleen de laatste ronde: \"301 regels weggelaten\" na tien minuten pollen"
+# ── de accountstatus van stand onthouden (#327, 01-10-2026) ──
+"worker.js@@  if (!vers && h && Date.now() - h.t < KLANT_STATUS_MS)@@  if (false && h && Date.now() - h.t < KLANT_STATUS_MS)@@test-klantstatus.js@@elke stand zoekt de klant weer op in Airtable: het plafond van 1.000 calls is na een week op"
+"worker.js@@        klantStatusVergeet();\n        return lockOrigin(request, rk);@@        return lockOrigin(request, rk);@@test-klantstatus.js@@een klant die via beheer geblokkeerd wordt, ziet nog vijf minuten zijn voertuigen"
+"worker.js@@        klantStatusVergeet();\n        return lockOrigin(request, rt);@@        return lockOrigin(request, rt);@@test-klantstatus.js@@blokkeren via de adminbrowser laat de onthouden status staan"
+# ── AppConfig in D1, één keer overgezet (#327, 01-10-2026) ──
+"worker.js@@  if (await db.prepare(\"SELECT 1 AS j FROM d1_overzet WHERE naam = 'appconfig'\").first()) return db;@@@@test-appconfig.js@@elke opstart leest AppConfig weer uit Airtable, ook na de overzet"
+"worker.js@@      if (f.Key) rijen.push([String(f.Key), JSON.stringify(f.Value ?? \"\"),@@      if (f.Key) rijen.push([String(f.Key), String(f.Value ?? \"\"),@@test-appconfig.js@@een vinkje uit Airtable komt als tekst \"false\" terug, en dat leest de app als waar"
+"worker.js@@    if (!r.ok) throw new Error(\"airtable_config_\" + r.status);@@@@test-appconfig.js@@een mislukte overzet wordt als gelukt genoteerd: de tabel blijft voorgoed leeg"
+"worker.js@@    offset = d.offset || \"\";@@    offset = \"\";@@test-appconfig.js@@de tweede pagina uit Airtable valt weg bij de overzet"
+"worker.js@@omschrijving = COALESCE(excluded.omschrijving, app_config.omschrijving)@@omschrijving = excluded.omschrijving@@test-appconfig.js@@opslaan in beheer zonder omschrijving wist de omschrijving"
 # ── het element #btLog blijft begrensd (#302, 01-10-2026) ──
 "public/pidlane-btflow.js@@logEl.appendChild(line); btLogDomAfkappen(logEl); @@logEl.appendChild(line); @@test-btlogdom.js@@het element #btLog groeit weer met elke regel mee: na tien minuten pollen kost elke btDiag 10 ms op de hoofddraad"
 "public/pidlane-btflow.js@@  let weg=el.childElementCount-BTLOG_DOM;@@  let weg=0;@@test-btlogdom.js@@de afkapping staat erin maar haalt nooit iets weg"

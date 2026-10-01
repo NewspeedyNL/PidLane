@@ -197,6 +197,10 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
       toets(geval.bron + ': wissen ook niet', rw.body.ok === false && schrijf(w.staat.verzoeken).length === 0,
         'status ' + rw.status + ' — een regel die je kunt weghalen maakt het boek waardeloos');
 
+      // AppConfig staat sinds 01-10-2026 in D1 (#327); lezen gaat daar via
+      // adminD1Lees, en die heeft hier geen database. Weigeren blijft hier
+      // getoetst, want dat gebeurt vóór de motor gekozen wordt.
+      if (geval.bron === 'config') continue;
       const l = bouw({ antwoorden: [okAntwoord([{ id: 'rec1', fields: geval.rij }])] });
       const rl = await l.get('bron=' + geval.bron);
       toets(geval.bron + ': lezen mag wel', rl.body.ok === true && rl.body.schrijven === false,
@@ -386,9 +390,9 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
       }
       return { syntax, open: inStr };
     };
-    const formuleVan = async (b, q) => {
+    const formuleVan = async (b, q, veld) => {
       const t = bouw();
-      await t.get('bron=' + b + '&q=' + encodeURIComponent(q));
+      await t.get('bron=' + b + '&q=' + encodeURIComponent(q) + (veld ? '&veld=' + veld : ''));
       const url = (t.staat.verzoeken[0] || {}).url || '';
       return decodeURIComponent(String(url).split('filterByFormula=')[1] || '');
     };
@@ -406,15 +410,16 @@ const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DEL
     // hij hier om — en dat is precies de vraag, want die ene toegevoegde
     // SEARCH() over {PassHash} is het hele lek.
     //
-    // Twee bronnen: `config` heeft één zoekveld (de enkelvoudige formule),
-    // `klanten` er drie (de OR-tak). Die takken bouwen de formule apart op,
-    // dus een fix in maar één ervan wordt hier rood.
-    for (const b of ['config', 'klanten']) {
-      const ijk = ontleed(await formuleVan(b, 'onschuldig')).syntax;
+    // Twee takken: met `veld=` één zoekveld (de enkelvoudige formule), zonder
+    // de drie van `klanten` (de OR-tak). Die takken bouwen de formule apart
+    // op, dus een fix in maar één ervan wordt hier rood. Tot 01-10-2026 nam
+    // de enkelvoudige tak `config`, die één zoekveld had; die staat nu in D1.
+    for (const [b, veld] of [['klanten', 'Email'], ['klanten', '']]) {
+      const ijk = ontleed(await formuleVan(b, 'onschuldig', veld)).syntax;
       for (const q of kwaad) {
-        const formule = await formuleVan(b, q);
+        const formule = await formuleVan(b, q, veld);
         const d = ontleed(formule);
-        toets(b + ' — ' + JSON.stringify(q),
+        toets(b + (veld ? ' (veld=' + veld + ')' : '') + ' — ' + JSON.stringify(q),
           formule !== '' && !d.open && d.syntax === ijk,
           'skelet: ' + d.syntax + (d.open ? ' [string blijft open]' : '') + ' · formule: ' + formule);
       }

@@ -14,6 +14,49 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 01-10-2026 — Airtable-plafond: de belasting zat niet waar #327 hem zocht
+
+**De waarneming.** Dag 1 van de maand, en de werkruimte stond al op 139 van
+de 1.000 calls. De stap van 28-09 (de Users-tabel onthouden bij het inloggen)
+was dus niet genoeg.
+
+**Wat #327 dacht.** De AI-afboeking kost tot drie calls per aanvraag, en
+stond daar als het grote resterende lek. Nagekeken in D1: in de week van
+24-09 tot 01-10 staat er **één** AI-rapport, tegen 6–31 sessies per dag en
+4–17 opgeslagen rapporten en ritten per dag. De AI is dus niet de belasting.
+
+**Waar het wel zat.** Twee vaste posten per gewoon gebruik:
+- `/api/config` bij elke opstart. De randcache van 60 s ving alleen
+  opstarts die binnen een minuut op elkaar volgden.
+- `stand` van Mijn voertuigen, die bij elke aanroep de klant in Airtable
+  opzocht. De app ververst bij het opstarten, bij het openen, en na elk
+  opgeslagen rapport of rit.
+
+**Wat er veranderd is.** AppConfig staat in D1 (`app_config`); de Worker
+zet de Airtable-tabel één keer zelf over en noteert dat in `d1_overzet`.
+De waarde is JSON, omdat er in Airtable ook een vinkje of getal kan staan
+en de app `"true"` en `true` allebei leest. De accountstatus bij `stand`
+wordt vijf minuten per isolate onthouden; elke schrijfactie uit beheer
+vergeet hem.
+
+**De keuze die erbij hoort.** Wie rechtstreeks in Airtable op geblokkeerd
+wordt gezet, ziet nog hoogstens vijf minuten zijn eigen voertuigen. Saldo
+en AI kijken altijd vers, dus uitgeven kan hij dan niet. Verwijderd staat
+in `kp_akkoord` en blijft meteen dicht. `test-klantplatform.js` beloofde
+"geblokkeerd in Airtable: meteen dicht"; die toets zegt nu "na de
+bewaartijd".
+
+**Eerst niet gedaan, en waarom.** Het vergeten zat eerst óók in
+`klantPatch()`. Twee lagen die hetzelfde doen, betekenen dat geen enkele
+mutatie op één ervan rood wordt. De router dekt alle schrijfacties uit
+beheer, ook de twee die buiten `klantPatch()` om schrijven; die is gebleven.
+
+**Wat nog in Airtable staat:** Users, Klanten (met saldo), TokenCodes,
+TokenLog en het veldlab. Of dit genoeg is, laat de teller aan het eind van
+de maand zien.
+
+---
+
 ## 01-10-2026 — Het BT-logvenster groeide zonder grens: elke logregel werd duurder (#302)
 
 **De vraag.** "Bij een schone opstart haal je 20 per seconde, daarna zakt

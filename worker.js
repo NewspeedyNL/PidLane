@@ -1281,36 +1281,86 @@ async function handleProxy(request, env) {
   });
 }
 __name(handleProxy, "handleProxy");
-var CONFIG_CACHE_TTL = 60;
-async function handleConfigGet(request, env, ctx) {
-  if (!await auth(request, env)) return json({ error: "unauthorized" }, 401);
-  const cache = caches.default;
-  const cacheKey = new Request(new URL("/api/config", request.url).toString(), { method: "GET" });
-  const cached = await cache.match(cacheKey);
-  if (cached) return cached;
+// ── AppConfig in D1 (#327, 01-10-2026) ──────────────────────────────
+// Stond in de Airtable-base Config, en elke opstart van de app was een call
+// in een werkruimte met een plafond van 1.000 per maand: de randcache van
+// 60 s ving alleen opstarts die vlak na elkaar kwamen. Nu staat de tabel in
+// D1, naast de logregels en Mijn voertuigen.
+//
+// OVERZETTEN GEBEURT EEN KEER, VANZELF. Is `appconfig` nog niet in
+// d1_overzet genoteerd, dan leest de Worker de Airtable-tabel één keer en
+// zet elke rij erin met INSERT OR IGNORE: een waarde die intussen via beheer
+// in D1 kwam, wint. Mislukt Airtable, dan wordt er niets genoteerd en
+// probeert de volgende aanvraag het opnieuw; de app krijgt dan {} en draait
+// op zijn standaardwaarden, zoals vroeger bij een Airtable-storing.
+//
+// WAAROM `waarde` JSON IS. Beheer stuurt strings, maar wat er al in Airtable
+// stond kan een getal of vinkje zijn. Als tekst opgeslagen zou "true" niet
+// meer hetzelfde zijn als true, en de app leest beide. JSON geeft precies
+// terug wat erin ging.
+//
+// Na de overzet leest de Worker de Airtable-tabel niet meer. Wie daar nog
+// iets wijzigt, ziet dat dus niet in de app: wijzigen doe je in beheer.
+var CONFIG_SCHEMA = [
+  "CREATE TABLE IF NOT EXISTS app_config (sleutel TEXT PRIMARY KEY, waarde TEXT NOT NULL, omschrijving TEXT, bijgewerkt TEXT NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS d1_overzet (naam TEXT PRIMARY KEY, op TEXT NOT NULL, aantal INTEGER NOT NULL)"
+];
+var _configSchemaKlaar = false;
+async function configKlaar(env) {
+  const db = env.LOGDB;
+  if (!_configSchemaKlaar) {
+    for (const st of CONFIG_SCHEMA) await db.prepare(st).run();
+    _configSchemaKlaar = true;
+  }
+  if (await db.prepare("SELECT 1 AS j FROM d1_overzet WHERE naam = 'appconfig'").first()) return db;
+  if (!env.AIRTABLE_TOKEN) return db;
   const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
   const table = cfg(env, "AIRTABLE_CONFIG_TABLE");
-  const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}?pageSize=100`;
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}` } });
-  if (!r.ok) {
+  const rijen = [];
+  let offset = "";
+  do {
+    const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}?pageSize=100` +
+      (offset ? `&offset=${encodeURIComponent(offset)}` : "");
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}` } });
+    if (!r.ok) throw new Error("airtable_config_" + r.status);
+    const d = await r.json();
+    for (const rec of d.records || []) {
+      const f = rec.fields || {};
+      if (f.Key) rijen.push([String(f.Key), JSON.stringify(f.Value ?? ""), f.Description == null ? null : String(f.Description)]);
+    }
+    offset = d.offset || "";
+  } while (offset);
+  const nu = new Date().toISOString();
+  await db.batch([
+    ...rijen.map((x) => db.prepare(
+      "INSERT OR IGNORE INTO app_config (sleutel, waarde, omschrijving, bijgewerkt) VALUES (?, ?, ?, ?)"
+    ).bind(x[0], x[1], x[2], nu)),
+    db.prepare("INSERT OR IGNORE INTO d1_overzet (naam, op, aantal) VALUES ('appconfig', ?, ?)").bind(nu, rijen.length)
+  ]);
+  try { console.log(`[config] ${rijen.length} sleutels uit Airtable overgezet naar D1`); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+  return db;
+}
+__name(configKlaar, "configKlaar");
+async function handleConfigGet(request, env, ctx) {
+  if (!await auth(request, env)) return json({ error: "unauthorized" }, 401);
+  if (!env.LOGDB) {
+    try { console.error("[config] geen LOGDB-binding: de app draait op zijn standaardwaarden"); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
     return json({}, 200);
   }
-  const data = await r.json();
-  const out = {};
-  for (const rec of data.records || []) {
-    const k = rec.fields?.Key;
-    if (k) out[k] = rec.fields?.Value ?? "";
+  let rijen;
+  try {
+    const db = await configKlaar(env);
+    rijen = (await db.prepare("SELECT sleutel, waarde FROM app_config").all()).results || [];
+  } catch (e) {
+    try { console.error("[config] niet te lezen :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+    return json({}, 200);
   }
-  const resp = new Response(JSON.stringify(out), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": `public, max-age=${CONFIG_CACHE_TTL}`,
-      ...CORS
-    }
-  });
-  ctx.waitUntil(cache.put(cacheKey, resp.clone()));
-  return resp;
+  const out = {};
+  for (const x of rijen) {
+    try { out[x.sleutel] = JSON.parse(x.waarde); }
+    catch (e) { out[x.sleutel] = x.waarde; try { console.error(`[config] ${x.sleutel}: waarde is geen JSON, als tekst doorgegeven`); } catch (_) { /* stil: melden mag de stroom nooit breken */ } }
+  }
+  return json(out, 200);
 }
 __name(handleConfigGet, "handleConfigGet");
 async function handleConfigPost(request, env, ctx) {
@@ -1319,7 +1369,7 @@ async function handleConfigPost(request, env, ctx) {
   if (rlCfg.limited) return rateLimitResponse(rlCfg);
   const adminTok = request.headers.get("X-Admin-Token") || "";
   if (!env.ADMIN_TOKEN || !safeEqual(adminTok, env.ADMIN_TOKEN)) return json({ error: "forbidden" }, 403);
-  if (!env.AIRTABLE_TOKEN) return json({ error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ error: "no_logdb" }, 500);
   let payload;
   try {
     payload = await request.json();
@@ -1333,53 +1383,21 @@ async function handleConfigPost(request, env, ctx) {
     if (!it.Key || !ALLOWED_KEYS.test(it.Key)) return json({ error: "invalid_key", key: it.Key }, 400);
     if (typeof it.Value === "string" && it.Value.length > 5e3) return json({ error: "value_too_long", key: it.Key }, 400);
   }
-  const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
-  const table = cfg(env, "AIRTABLE_CONFIG_TABLE");
-  const baseUrl = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`;
-  const lr = await fetch(`${baseUrl}?pageSize=100`, { headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}` } });
-  if (!lr.ok) {
-    const t = await lr.text().catch(() => "");
-    return json({ error: "airtable_list_failed", detail: t.slice(0, 200) }, 502);
-  }
-  const existing = await lr.json();
-  const byKey = {};
-  for (const rec of existing.records || []) {
-    if (rec.fields?.Key) byKey[rec.fields.Key] = rec.id;
-  }
-  const toUpdate = [], toCreate = [];
-  for (const it of items) {
-    const fields = { Key: it.Key, Value: it.Value ?? "" };
-    if (it.Description !== void 0) fields.Description = it.Description;
-    if (byKey[it.Key]) toUpdate.push({ id: byKey[it.Key], fields });
-    else toCreate.push({ fields });
-  }
-  const chunk = /* @__PURE__ */ __name((arr, n) => arr.length ? [arr.slice(0, n), ...chunk(arr.slice(n), n)] : [], "chunk");
-  const results = [];
-  for (const batch of chunk(toUpdate, 10)) {
-    const r = await fetch(baseUrl, {
-      method: "PATCH",
-      headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ records: batch, typecast: true })
-    });
-    results.push({ op: "update", ok: r.ok, status: r.status });
-  }
-  for (const batch of chunk(toCreate, 10)) {
-    const r = await fetch(baseUrl, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ records: batch, typecast: true })
-    });
-    results.push({ op: "create", ok: r.ok, status: r.status });
-  }
+  let db;
   try {
-    const cache = caches.default;
-    const cacheKey = new Request(new URL("/api/config", request.url).toString(), { method: "GET" });
-    ctx.waitUntil(cache.delete(cacheKey));
-  } catch (_) {
-    /* stil: cache-verversing is best-effort; een oude /api/config-cache lost zichzelf op bij de volgende TTL */
+    // Eerst overzetten: anders zet een latere overzet de oude Airtable-rijen
+    // náást deze sleutels, en dan staat er weer iets dat niemand koos.
+    db = await configKlaar(env);
+  } catch (e) {
+    return json({ error: "overzet_mislukt", detail: String(e && e.message || e).slice(0, 200) }, 502);
   }
-  const allOk = results.every((x) => x.ok);
-  return json({ ok: allOk, results }, allOk ? 200 : 502);
+  const nu = new Date().toISOString();
+  await db.batch(items.map((it) => db.prepare(
+    "INSERT INTO app_config (sleutel, waarde, omschrijving, bijgewerkt) VALUES (?, ?, ?, ?) " +
+    "ON CONFLICT(sleutel) DO UPDATE SET waarde = excluded.waarde, " +
+    "omschrijving = COALESCE(excluded.omschrijving, app_config.omschrijving), bijgewerkt = excluded.bijgewerkt"
+  ).bind(it.Key, JSON.stringify(it.Value ?? ""), it.Description === void 0 ? null : String(it.Description), nu)));
+  return json({ ok: true, results: [{ op: "d1", ok: true, status: 200, aantal: items.length }] }, 200);
 }
 __name(handleConfigPost, "handleConfigPost");
 function adminOnly(request, env) {
@@ -2647,6 +2665,40 @@ async function klantPatch(env, id, fields) {
 }
 __name(klantPatch, "klantPatch");
 
+// De accountstatus voor `stand` per isolate onthouden (#327, 01-10-2026).
+// Mijn voertuigen ververst bij het opstarten, bij het openen en na elk
+// opgeslagen rapport of rit, en elke keer was dat een zoekvraag aan Airtable
+// in een werkruimte met een plafond van 1.000 calls per maand. Op 01-10 stond
+// de teller na één dag op 139.
+//
+// Alleen het oordeel (geblokkeerd, verwijderd, onbekend of niets) wordt
+// onthouden, niet het record: daar staan PassHash en Saldo in. Elke
+// schrijfactie uit beheer (/admin/klanten en /admin/tabel, in de router)
+// gooit alles weg, dus wie via beheer blokkeert, is in deze isolate meteen
+// dicht. Niet in klantPatch(): de klant zelf verandert zijn status nooit
+// anders dan door verwijderen, en dat staat al in kp_akkoord. Wie in Airtable zelf op
+// geblokkeerd zet, of een andere isolate treft, kijkt hoogstens
+// KLANT_STATUS_MS nog naar zijn eigen voertuigen. Verwijderd blijft meteen
+// dicht: dat staat in kp_akkoord, en dan wordt er altijd vers gelezen.
+// Saldo en AI lezen niet hieruit; die kijken altijd vers.
+var KLANT_STATUS_MS = 5 * 6e4;
+var _klantStatus = new Map();
+function klantStatusVergeet() {
+  _klantStatus.clear();
+}
+__name(klantStatusVergeet, "klantStatusVergeet");
+async function klantStatusVoorStand(env, email, vers = false) {
+  const k = String(email || "").trim().toLowerCase();
+  const h = _klantStatus.get(k);
+  if (!vers && h && Date.now() - h.t < KLANT_STATUS_MS) return { pr: h.pr, uitCache: true };
+  const rec = await klantZoek(env, k);
+  const pr = rec ? klantToegangProbleem(rec.fields) : { status: 403, code: "onbekend", bericht: "Account niet gevonden." };
+  if (_klantStatus.size >= 500) _klantStatus.clear();
+  _klantStatus.set(k, { t: Date.now(), pr });
+  return { pr, uitCache: false };
+}
+__name(klantStatusVoorStand, "klantStatusVoorStand");
+
 // Verifieert een klanttoken uit X-App-Token of Authorization: Bearer.
 async function klantAuth(request, env) {
   const tok = request.headers.get("X-App-Token") ||
@@ -3853,13 +3905,13 @@ var ADMIN_BRONNEN = {
     schrijven: true, beschermd: ["PassHash", "User"], geheim: ["PassHash"]
   },
   config: {
-    naam: "AppConfig", baseKey: "AIRTABLE_CONFIG_BASE",
-    tableKey: "AIRTABLE_CONFIG_TABLE", sorteer: "",
-    zoekvelden: ["Key"],
-    // Bewust niet schrijfbaar: /api/config schrijft hier én gooit daarna de
-    // randcache weg. Een PATCH langs deze route heen laat een oude waarde
-    // achter in die cache, en dan staat er dagen iets anders live dan wat de
-    // tabel zegt. Wijzigen doe je op de configkaart.
+    naam: "AppConfig", motor: "d1", d1: "app_config", idveld: "sleutel",
+    sorteer: "bijgewerkt",
+    zoekvelden: ["sleutel", "omschrijving"],
+    // Bewust niet schrijfbaar: /api/config keurt de sleutel en de lengte en
+    // bewaart de waarde als JSON. Een wijziging hierlangs slaat die keuring
+    // over, en een kale tekst in `waarde` leest de app dan niet meer zoals
+    // bedoeld. Wijzigen doe je op de configkaart.
     schrijven: false, beschermd: [], geheim: []
   }
 };
@@ -5654,8 +5706,7 @@ async function handleKlantPlatform(request, env) {
     // eigen voertuigen niet onbereikbaar maken.
     if (actie === "stand" && env.AIRTABLE_TOKEN) {
       try {
-        const rec = await klantZoek(env, p.u);
-        const pr = rec ? klantToegangProbleem(rec.fields) : { status: 403, code: "onbekend", bericht: "Account niet gevonden." };
+        const { pr } = await klantStatusVoorStand(env, p.u, !!(ak && ak.versie === "verwijderd"));
         if (pr) return json({ ok: false, error: pr.bericht, code: pr.code }, pr.status);
         if (ak && ak.versie === "verwijderd") {
           await db.prepare("DELETE FROM kp_akkoord WHERE klant_id = ?").bind(klantId).run();
@@ -5839,16 +5890,24 @@ var worker_default = {
         return lockOrigin(request, await handleCodeResolve(request, env));
       if (url.pathname === "/admin/klanten" && request.method === "GET")
         return lockOrigin(request, await handleAdminKlantenGet(request, env));
-      if (url.pathname === "/admin/klanten" && request.method === "POST")
-        return lockOrigin(request, await handleAdminKlantenPost(request, env, ctx));
+      if (url.pathname === "/admin/klanten" && request.method === "POST") {
+        // Een klant die hier geblokkeerd of gewist wordt, is meteen dicht (#327).
+        const rk = await handleAdminKlantenPost(request, env, ctx);
+        klantStatusVergeet();
+        return lockOrigin(request, rk);
+      }
       if (url.pathname === "/admin/codes" && request.method === "GET")
         return lockOrigin(request, await handleAdminCodesGet(request, env));
       if (url.pathname === "/admin/codes" && request.method === "POST")
         return lockOrigin(request, await handleAdminCodesPost(request, env));
       if (url.pathname === "/admin/tabel" && request.method === "GET")
         return lockOrigin(request, await handleAdminTabelGet(request, env));
-      if (url.pathname === "/admin/tabel" && request.method === "POST")
-        return lockOrigin(request, await handleAdminTabelPost(request, env));
+      if (url.pathname === "/admin/tabel" && request.method === "POST") {
+        // Een klant die hier geblokkeerd of gewist wordt, is meteen dicht (#327).
+        const rt = await handleAdminTabelPost(request, env);
+        klantStatusVergeet();
+        return lockOrigin(request, rt);
+      }
       if (url.pathname === "/admin/d1" && request.method === "GET")
         return lockOrigin(request, await handleAdminD1Get(request, env));
       if (url.pathname === "/admin/d1" && request.method === "POST")
