@@ -3016,8 +3016,13 @@ function opdKeurLive(){
       ${esc(o.vragen.length)} vragen · ${esc(o.drempels.length)} drempels · ${esc(o.proeven.length)} proeven ·
       ${esc(o.voorwaarden.length)} voorwaarden</div>` +
     (o.proeven.length ? '<div class="hint">' + o.proeven.map(p =>
-      `• ${esc(p.issue)} ${esc(p.naam)}: <code>${esc(p.pid)}</code> ${esc(p.meet)} tussen ${esc(p.tussen[0])} en ${esc(p.tussen[1])}` +
-      (o.sensoren.indexOf(p.pid) < 0 ? ' <span style="color:var(--or)">— staat niet in sensoren, wordt niet gemeten</span>' : '')).join('<br>') + '</div>' : '');
+      // Een app-maat (#352) heeft geen pid en hoort niet in `sensoren`: de app
+      // meet hem zelf. Tot 01-10-2026 stond hier bij elke app-proef "undefined
+      // — staat niet in sensoren", en dat leest als een opdracht die niets meet.
+      p.app
+        ? `• ${esc(p.issue)} ${esc(p.naam)}: app-maat <code>${esc(p.app)}</code> tussen ${esc(p.tussen[0])} en ${esc(p.tussen[1])}`
+        : `• ${esc(p.issue)} ${esc(p.naam)}: <code>${esc(p.pid)}</code> ${esc(p.meet)} tussen ${esc(p.tussen[0])} en ${esc(p.tussen[1])}` +
+          (o.sensoren.indexOf(p.pid) < 0 ? ' <span style="color:var(--or)">— staat niet in sensoren, wordt niet gemeten</span>' : '')).join('<br>') + '</div>' : '');
 }
 
 /* De keurdrempel voor activeren. Met keurder: een afgekeurde opdracht gaat
