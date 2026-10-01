@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-10-2026 — Logarchief: oude logregels per rit samengevat, dan gewist
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuwe tabel log_archief: per rit (of per dag zonder rit) één rij met
+   tijdvak, aantallen, soorten, issues, versie/adapter en de fouten en
+   LET OP's ontdubbeld met hun aantal. Daarna gaan de ruwe regels weg, in
+   dezelfde transactie. Uitkomsten blijven staan; geen e-mail of VIN.
+ - beheer.html → Database → 📦 Logarchief: proefdraaien, dan archiveren
+   (standaard ouder dan 7 dagen), en het archief bekijken. Een gearchiveerde
+   rit openen toont zijn samenvatting.
+ - De nachtronde doet hetzelfde zodra LOG_BEWAARDAGEN in het dashboard staat.
+ - test-logarchief.js (32 toetsen, echte SQLite), deel 7b van
+   bproef-beheerpagina.js, zeven mutaties.
  01-10-2026 — De meetrit: elke rit-vraag een getal (testrun 8.7)
  ═══════════════════════════════════════════════════════════
 
