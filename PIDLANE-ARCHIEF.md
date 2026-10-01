@@ -14,6 +14,55 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 01-10-2026 — De rest van Airtable naar D1, en wat er daardoor weg kon (#327)
+
+**De vraag.** Na AppConfig "doe de rest nu ook maar": Users, Klanten,
+TokenCodes, TokenLog en het veldlab.
+
+**De vorm die gekozen is, en waarom.** Eén laag (`D1_TABELLEN` en de
+`at*`-functies) die records teruggeeft in de vorm van Airtable, met dezelfde
+veldnamen en de oude rec-id's. Zo bleef de logica van ruim dertig plekken
+(saldoslot, inwisselen, beheer, opruimer) wat hij was; alleen de opslag
+eronder veranderde. Een eigen relationeel schema per tabel was netter geweest,
+maar dan was elke regel tegelijk een vertaling geworden, en dat is de vorm
+waarin hier eerder stil velden verdwenen.
+
+**De overzet gebeurt per tabel, bij de eerste aanroep.** Zoals AppConfig, dat
+op 01-10 om 15:31 zijn 36 sleutels zelf overzette. Met paginering, met
+INSERT OR IGNORE (twee gelijktijdige eerste aanroepen zetten hetzelfde
+neer), in stukken van 25 (een veldlabsessie draagt tot 95 KB) en met de
+notitie in het laatste stuk. Mislukt de overzet, dan geeft de aanroep een
+fout in plaats van een lege tabel: een lege klantentabel zou betekenen dat
+niemand meer kan inloggen en dat ook niemand ziet waarom.
+
+**Wat er weg kon.** Drie dingen bestonden alleen om Airtable-calls te sparen:
+het onthouden van de gebruikerstabel (28-09), het onthouden van de
+accountstatus bij `stand` (vanochtend, PR #380, dezelfde dag weer weg) en de
+Airtable-motor van `/admin/tabel`. Met de motor ging ook `formuleTekst()`;
+de uitleg van #142 staat verderop in dit archief, en
+`test-formule-escape.js` toetst nu de opvolger: een `%` of `_` in het
+zoekvak van beheer is een gewoon teken (`d1Zoekterm`, op echte SQLite).
+
+**Een gedrag dat verandert, en terecht.** Airtable gaf een uitgevinkt vakje
+niet terug als `false` maar helemaal niet. `if (f.Active === false)` in de
+login kon daardoor nooit waar zijn: een gebruiker uitzetten in beheer deed
+niets. Na de overzet staat een vakje dat in Airtable leeg was als NULL (er
+was niets), en pas een uitzetten in beheer maakt het `false`.
+
+**Nog niet gedaan.** De routes heten nog `/airtable/log`, `/airtable/veldlab`
+en `/airtable/reference`, en `airtableUsers()` heet nog zo: hernoemen is
+mechanisch werk voor een eigen commit, en de app kent die adressen. Het
+saldo loopt nog via het slot in de Durable Object; D1 kan dat met één
+`UPDATE … WHERE Saldo >= ?`, maar dat is een eigen stap, met de racetest
+van #82 erbij.
+
+**Niet getoetst.** De overzet tegen de echte Airtable. Na de deploy staat per
+tabel één regel `[d1] <tabel>: N records uit Airtable overgezet` in de
+Worker-log, en `SELECT * FROM d1_overzet` in D1 laat zien wat er is
+overgezet.
+
+---
+
 ## 01-10-2026 — Airtable-plafond: de belasting zat niet waar #327 hem zocht
 
 **De waarneming.** Dag 1 van de maand, en de werkruimte stond al op 139 van
