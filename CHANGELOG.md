@@ -30,6 +30,15 @@
  - Proef in blok 5: de rijen, het acculampje (ook dubbel) en het scherm.
 
  ═══════════════════════════════════════════════════════════
+ 01-10-2026 — De SPP-proefkaart valt niet meer achter de knoppenbalk
+ ═══════════════════════════════════════════════════════════
+
+ - De uitslag van "🧵 SPP: draden meten" stond met bottom:12px tegen de
+   onderrand; de regel met de drukste draden viel achter de Android-
+   knoppenbalk (#302). Nu met dezelfde ondergrens als de rest (--pl-sab).
+ - De kaart staat in bproef-schermranden.js, met een mutatie in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — Uitleg bij knoppen: een glazen i in plaats van een oranje !
  ═══════════════════════════════════════════════════════════
 
