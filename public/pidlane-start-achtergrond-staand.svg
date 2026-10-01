@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1600" preserveAspectRatio="xMidYMax slice">
+  <!-- Staande versie van pidlane-start-achtergrond.svg (01-10-2026), voor de
+       telefoon. Op een staand scherm valt van het liggende plaatje bijna alles
+       buiten beeld of achter de tegels; hier staat de beeldtaal in de onderste
+       strook, onder "Ik wil…", waar hij ook te zien is. Vast plaatje, geen
+       animatie, geen filter. -->
+  <defs>
+    <pattern id="fijn" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#4f7cff" stroke-opacity=".05" stroke-width="1"/>
+    </pattern>
+    <pattern id="grof" width="140" height="140" patternUnits="userSpaceOnUse">
+      <rect width="140" height="140" fill="url(#fijn)"/>
+      <path d="M 140 0 L 0 0 0 140" fill="none" stroke="#4f7cff" stroke-opacity=".10" stroke-width="1"/>
+    </pattern>
+    <radialGradient id="vervaag" cx=".5" cy=".45" r=".7">
+      <stop offset=".25" stop-color="#fff"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="rastermasker"><rect width="900" height="1600" fill="url(#vervaag)"/></mask>
+    <radialGradient id="gloedBlauw" cx=".5" cy=".4" r=".55">
+      <stop offset="0" stop-color="#4f7cff" stop-opacity=".13"/>
+      <stop offset="1" stop-color="#4f7cff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gloedPaars" cx=".9" cy=".97" r=".45">
+      <stop offset="0" stop-color="#8b5cf6" stop-opacity=".10"/>
+      <stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gloedGroen" cx=".08" cy=".97" r=".42">
+      <stop offset="0" stop-color="#22c55e" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#22c55e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="hartslag" x1="0" y1="0" x2="900" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2f63ff" stop-opacity="0"/>
+      <stop offset=".15" stop-color="#2f63ff" stop-opacity=".55"/>
+      <stop offset=".5" stop-color="#00d4ff" stop-opacity=".7"/>
+      <stop offset=".85" stop-color="#00e0a0" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#00e0a0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- gloed en raster over het hele scherm -->
+  <rect width="900" height="1600" fill="url(#gloedBlauw)"/>
+  <rect width="900" height="1600" fill="url(#gloedPaars)"/>
+  <rect width="900" height="1600" fill="url(#gloedGroen)"/>
+  <rect width="900" height="1600" fill="url(#grof)" mask="url(#rastermasker)"/>
+
+  <!-- toerenteller in de hoek rechtsonder, naald op kruissnelheid -->
+  <g transform="translate(800 1600)" fill="none">
+    <path d="M -270 0 A 270 270 0 0 1 0 -270" stroke="#22c55e" stroke-opacity=".30" stroke-width="5"/>
+    <path d="M 0 -270 A 270 270 0 0 1 206.8 -173.6" stroke="#f59e0b" stroke-opacity=".34" stroke-width="5"/>
+    <path d="M 206.8 -173.6 A 270 270 0 0 1 270 0" stroke="#ef4444" stroke-opacity=".42" stroke-width="5"/>
+    <path d="M -215 0 A 215 215 0 0 1 215 0" stroke="#8b5cf6" stroke-opacity=".14" stroke-width="1"/>
+    <g stroke="#8b5cf6" stroke-opacity=".30" stroke-width="2">
+      <line x1="-270" y1="0" x2="-248" y2="0" transform="rotate(15)"/>
+      <line x1="-270" y1="0" x2="-248" y2="0" transform="rotate(45)"/>
+      <line x1="-270" y1="0" x2="-248" y2="0" transform="rotate(75)"/>
+      <line x1="-270" y1="0" x2="-248" y2="0" transform="rotate(105)"/>
+    </g>
+    <g transform="rotate(58)" stroke-linecap="round">
+      <line x1="0" y1="0" x2="-235" y2="0" stroke="#f59e0b" stroke-opacity=".12" stroke-width="11"/>
+      <line x1="0" y1="0" x2="-235" y2="0" stroke="#f59e0b" stroke-opacity=".55" stroke-width="3.5"/>
+    </g>
+    <circle r="14" fill="#f59e0b" fill-opacity=".10"/>
+    <circle r="7" fill="#f59e0b" fill-opacity=".45"/>
+  </g>
+
+  <!-- OBD2-stekker linksonder, 2×8 pinnen -->
+  <g transform="translate(100 1500)" stroke="#8b94a7" stroke-opacity=".16" fill="none" stroke-width="2">
+    <path d="M 0 0 L 220 0 L 200 64 L 20 64 Z"/>
+    <g fill="#8b94a7" fill-opacity=".16" stroke="none">
+      <rect x="26" y="14" width="14" height="10" rx="2"/><rect x="49" y="14" width="14" height="10" rx="2"/>
+      <rect x="72" y="14" width="14" height="10" rx="2"/><rect x="95" y="14" width="14" height="10" rx="2"/>
+      <rect x="118" y="14" width="14" height="10" rx="2"/><rect x="141" y="14" width="14" height="10" rx="2"/>
+      <rect x="164" y="14" width="14" height="10" rx="2"/><rect x="187" y="14" width="14" height="10" rx="2"/>
+      <rect x="32" y="38" width="14" height="10" rx="2"/><rect x="55" y="38" width="14" height="10" rx="2"/>
+      <rect x="78" y="38" width="14" height="10" rx="2"/><rect x="101" y="38" width="14" height="10" rx="2"/>
+      <rect x="124" y="38" width="14" height="10" rx="2"/><rect x="147" y="38" width="14" height="10" rx="2"/>
+      <rect x="170" y="38" width="14" height="10" rx="2"/><rect x="193" y="38" width="14" height="10" rx="2"/>
+    </g>
+  </g>
+
+  <!-- CAN-sporen van de stekker naar de hartslag -->
+  <g fill="none" stroke="#4f7cff" stroke-opacity=".12" stroke-width="1.5">
+    <path d="M 174 1500 L 174 1460 L 330 1460 L 330 1430"/>
+    <path d="M 224 1500 L 224 1478 L 480 1478"/>
+  </g>
+  <g fill="#4f7cff" fill-opacity=".30">
+    <circle cx="330" cy="1430" r="4"/><circle cx="480" cy="1478" r="4"/>
+  </g>
+
+  <!-- hex-frames: vraag en antwoord -->
+  <g font-family="ui-monospace,'Roboto Mono','DM Mono',monospace" font-size="15" letter-spacing="2" fill="#8b94a7" fill-opacity=".18">
+    <text x="110" y="1330">01 0C 0D 05 04</text>
+    <text x="110" y="1356" fill="#4f7cff" fill-opacity=".26">41 0C 1A F8 0D 3C</text>
+    <text x="500" y="1330" fill="#4f7cff" fill-opacity=".26">P0000 — geen fouten</text>
+  </g>
+
+  <!-- de hartslag, helemaal getekend: brede zachte gloed, dan de lijn -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M -20 1400 L 150 1400 L 175 1390 L 200 1400 L 330 1400 L 345 1400 L 358 1352 L 374 1446 L 390 1400 L 560 1400 L 585 1392 L 610 1400 L 700 1400 L 712 1400 L 724 1362 L 738 1436 L 752 1400 L 920 1400" stroke="url(#hartslag)" stroke-opacity=".18" stroke-width="10"/>
+    <path d="M -20 1400 L 150 1400 L 175 1390 L 200 1400 L 330 1400 L 345 1400 L 358 1352 L 374 1446 L 390 1400 L 560 1400 L 585 1392 L 610 1400 L 700 1400 L 712 1400 L 724 1362 L 738 1436 L 752 1400 L 920 1400" stroke="url(#hartslag)" stroke-width="2"/>
+  </g>
+</svg>

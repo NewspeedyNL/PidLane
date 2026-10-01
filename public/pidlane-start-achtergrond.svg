@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice">
+  <!-- De achtergrond van het startscherm (01-10-2026). Tot die datum was dit
+       een levende SVG in index.html met drie oneindige animaties en twee
+       drop-shadow-filters: de telefoon hertekende hem bij elk beeldje. Nu één
+       vast plaatje, als achtergrondafbeelding geladen en dus één keer getekend.
+       Dezelfde beeldtaal, stilgezet: raster, gloed, toerenteller, OBD-stekker,
+       CAN-sporen, hex-frames en de hartslag. Gloed is een brede zachte streek,
+       geen filter. -->
+  <defs>
+    <pattern id="fijn" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#4f7cff" stroke-opacity=".05" stroke-width="1"/>
+    </pattern>
+    <pattern id="grof" width="140" height="140" patternUnits="userSpaceOnUse">
+      <rect width="140" height="140" fill="url(#fijn)"/>
+      <path d="M 140 0 L 0 0 0 140" fill="none" stroke="#4f7cff" stroke-opacity=".10" stroke-width="1"/>
+    </pattern>
+    <radialGradient id="vervaag" cx=".5" cy=".4" r=".62">
+      <stop offset=".3" stop-color="#fff"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="rastermasker"><rect width="1440" height="900" fill="url(#vervaag)"/></mask>
+    <radialGradient id="gloedBlauw" cx=".5" cy=".38" r=".5">
+      <stop offset="0" stop-color="#4f7cff" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#4f7cff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gloedPaars" cx=".8" cy=".88" r=".35">
+      <stop offset="0" stop-color="#8b5cf6" stop-opacity=".09"/>
+      <stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gloedGroen" cx=".14" cy=".92" r=".32">
+      <stop offset="0" stop-color="#22c55e" stop-opacity=".07"/>
+      <stop offset="1" stop-color="#22c55e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="hartslag" x1="0" y1="0" x2="1440" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2f63ff" stop-opacity="0"/>
+      <stop offset=".18" stop-color="#2f63ff" stop-opacity=".55"/>
+      <stop offset=".5" stop-color="#00d4ff" stop-opacity=".7"/>
+      <stop offset=".82" stop-color="#00e0a0" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#00e0a0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- gloed en raster -->
+  <rect width="1440" height="900" fill="url(#gloedBlauw)"/>
+  <rect width="1440" height="900" fill="url(#gloedPaars)"/>
+  <rect width="1440" height="900" fill="url(#gloedGroen)"/>
+  <rect width="1440" height="900" fill="url(#grof)" mask="url(#rastermasker)"/>
+
+  <!-- toerenteller rechtsonder: zones, schaal, en een naald die op kruissnelheid staat -->
+  <g transform="translate(1190 900)" fill="none">
+    <path d="M -340 0 A 340 340 0 0 1 0 -340" stroke="#22c55e" stroke-opacity=".30" stroke-width="6"/>
+    <path d="M 0 -340 A 340 340 0 0 1 260.5 -218.6" stroke="#f59e0b" stroke-opacity=".34" stroke-width="6"/>
+    <path d="M 260.5 -218.6 A 340 340 0 0 1 340 0" stroke="#ef4444" stroke-opacity=".42" stroke-width="6"/>
+    <path d="M -270 0 A 270 270 0 0 1 270 0" stroke="#8b5cf6" stroke-opacity=".14" stroke-width="1"/>
+    <g stroke="#8b5cf6" stroke-opacity=".30" stroke-width="2">
+      <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(15)"/>
+      <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(45)"/>
+      <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(75)"/>
+      <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(105)"/>
+      <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(135)"/>
+      <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(165)"/>
+    </g>
+    <g transform="rotate(58)" stroke-linecap="round">
+      <line x1="0" y1="0" x2="-300" y2="0" stroke="#f59e0b" stroke-opacity=".12" stroke-width="12"/>
+      <line x1="0" y1="0" x2="-300" y2="0" stroke="#f59e0b" stroke-opacity=".55" stroke-width="4"/>
+    </g>
+    <circle r="16" fill="#f59e0b" fill-opacity=".10"/>
+    <circle r="8" fill="#f59e0b" fill-opacity=".45"/>
+  </g>
+
+  <!-- OBD2-stekker linksonder, 2×8 pinnen -->
+  <g transform="translate(90 790)" stroke="#8b94a7" stroke-opacity=".14" fill="none" stroke-width="2">
+    <path d="M 0 0 L 220 0 L 200 64 L 20 64 Z"/>
+    <g fill="#8b94a7" fill-opacity=".14" stroke="none">
+      <rect x="26" y="14" width="14" height="10" rx="2"/><rect x="49" y="14" width="14" height="10" rx="2"/>
+      <rect x="72" y="14" width="14" height="10" rx="2"/><rect x="95" y="14" width="14" height="10" rx="2"/>
+      <rect x="118" y="14" width="14" height="10" rx="2"/><rect x="141" y="14" width="14" height="10" rx="2"/>
+      <rect x="164" y="14" width="14" height="10" rx="2"/><rect x="187" y="14" width="14" height="10" rx="2"/>
+      <rect x="32" y="38" width="14" height="10" rx="2"/><rect x="55" y="38" width="14" height="10" rx="2"/>
+      <rect x="78" y="38" width="14" height="10" rx="2"/><rect x="101" y="38" width="14" height="10" rx="2"/>
+      <rect x="124" y="38" width="14" height="10" rx="2"/><rect x="147" y="38" width="14" height="10" rx="2"/>
+      <rect x="170" y="38" width="14" height="10" rx="2"/><rect x="193" y="38" width="14" height="10" rx="2"/>
+    </g>
+  </g>
+
+  <!-- CAN-sporen met knooppunten -->
+  <g fill="none" stroke="#4f7cff" stroke-opacity=".10" stroke-width="1.5">
+    <path d="M 200 790 L 200 700 L 420 700 L 420 620"/>
+    <path d="M 240 790 L 240 660 L 640 660"/>
+    <path d="M 1250 620 L 1250 520 L 1050 520"/>
+  </g>
+  <g fill="#4f7cff" fill-opacity=".28">
+    <circle cx="420" cy="620" r="4"/><circle cx="640" cy="660" r="4"/><circle cx="1050" cy="520" r="4"/>
+  </g>
+
+  <!-- hex-frames: vraag en antwoord -->
+  <g font-family="ui-monospace,'Roboto Mono','DM Mono',monospace" font-size="13" letter-spacing="2" fill="#8b94a7" fill-opacity=".16">
+    <text x="120" y="620">01 0C 0D 05 04</text>
+    <text x="120" y="648" fill="#4f7cff" fill-opacity=".24">41 0C 1A F8 0D 3C</text>
+    <text x="1010" y="480">09 02 · VIN</text>
+    <text x="660" y="720">7E8 06 41 05 6E</text>
+    <text x="1120" y="440" fill="#4f7cff" fill-opacity=".24">P0000 — geen fouten</text>
+  </g>
+
+  <!-- de hartslag, helemaal getekend: eerst een brede zachte gloed, dan de lijn -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M -20 560 L 260 560 L 300 548 L 340 560 L 560 560 L 585 560 L 600 505 L 618 610 L 636 560 L 900 560 L 940 550 L 980 560 L 1160 560 L 1180 560 L 1196 515 L 1214 600 L 1232 560 L 1460 560" stroke="url(#hartslag)" stroke-opacity=".18" stroke-width="10"/>
+    <path d="M -20 560 L 260 560 L 300 548 L 340 560 L 560 560 L 585 560 L 600 505 L 618 610 L 636 560 L 900 560 L 940 550 L 980 560 L 1160 560 L 1180 560 L 1196 515 L 1214 600 L 1232 560 L 1460 560" stroke="url(#hartslag)" stroke-width="2"/>
+  </g>
+</svg>

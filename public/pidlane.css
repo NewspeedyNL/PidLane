@@ -352,57 +352,18 @@ body:has(#welcomeScreen:not(.hidden)) .cc { visibility:hidden; }
 .wm-door-h { font-weight:800; font-size:15px; margin:6px 0 2px; }
 @media (max-width:760px){ .wm-doors { grid-template-columns:1fr; } }
 
-/* ════ AMBIENT BACKGROUND — OBD-hartslag + toerenteller (welcome screen) ════ */
-#plAmbient { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; }
+/* ════ ACHTERGROND STARTSCHERM — één vast plaatje (01-10-2026) ════
+   Tot deze datum stond hier een levende SVG met drie oneindige animaties
+   (ademende gloed, lopende hartslag, sweepende naald) en twee drop-shadow-
+   filters. Op de telefoon hertekende dat het scherm bij elk beeldje, en de
+   RenderThread en GPU-draad stonden bovenaan in de draadmeting van #302.
+   Nu één SVG als achtergrondafbeelding: de browser tekent hem één keer en
+   houdt hem vast. Zelfde beeldtaal, stilgezet. */
+#plAmbient { position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden;
+  background:url('pidlane-start-achtergrond-staand.svg') center bottom / cover no-repeat; contain:strict; }
+/* Liggend (tablet, liggende telefoon): het brede plaatje. */
+@media (min-aspect-ratio: 1/1){ #plAmbient { background-image:url('pidlane-start-achtergrond.svg'); } }
 #welcomeScreen > .welcome-header, #welcomeScreen > .welcome-scroll { position:relative; z-index:1; }
-/* blauwdruk-grid, vervaagt naar de randen */
-#plAmbient .pl-grid { position:absolute; inset:0;
-  background-image:
-    linear-gradient(rgba(79,124,255,.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(79,124,255,.045) 1px, transparent 1px),
-    linear-gradient(rgba(79,124,255,.09) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(79,124,255,.09) 1px, transparent 1px);
-  background-size: 28px 28px, 28px 28px, 140px 140px, 140px 140px;
-  -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, black 30%, transparent 100%);
-  mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, black 30%, transparent 100%);
-}
-/* AI-glow die langzaam ademt */
-#plAmbient .pl-glow { position:absolute; inset:0;
-  background:
-    radial-gradient(ellipse 60% 45% at 50% 38%, rgba(79,124,255,.10), transparent 70%),
-    radial-gradient(ellipse 40% 35% at 78% 85%, rgba(139,92,246,.07), transparent 70%),
-    radial-gradient(ellipse 35% 30% at 15% 90%, rgba(34,197,94,.05), transparent 70%);
-  animation: plBreathe 9s ease-in-out infinite;
-}
-@keyframes plBreathe { 0%,100%{opacity:.75} 50%{opacity:1} }
-#plAmbient svg { position:absolute; inset:0; width:100%; height:100%; }
-/* hartslag tekent zichzelf als live datastream */
-#plAmbient .pl-pulse { fill:none; stroke:rgba(79,124,255,.55); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
-  filter:drop-shadow(0 0 6px rgba(79,124,255,.45)); stroke-dasharray:260 1740; animation:plPulseTravel 8s linear infinite; }
-#plAmbient .pl-pulse-echo { fill:none; stroke:rgba(79,124,255,.10); stroke-width:2; }
-@keyframes plPulseTravel { from{stroke-dashoffset:2000} to{stroke-dashoffset:0} }
-/* toerenteller: gekleurde zones + sweeperende naald */
-#plAmbient .pl-tacho    { stroke:rgba(139,92,246,.14); fill:none; }
-#plAmbient .pl-zone-g   { stroke:rgba(34,197,94,.30);  fill:none; }
-#plAmbient .pl-zone-a   { stroke:rgba(245,158,11,.34); fill:none; }
-#plAmbient .pl-zone-r   { stroke:rgba(239,68,68,.42);  fill:none; }
-#plAmbient .pl-tick     { stroke:rgba(139,92,246,.30); }
-#plAmbient .pl-needle   { stroke:rgba(245,158,11,.55); filter:drop-shadow(0 0 5px rgba(245,158,11,.4)); }
-#plAmbient .pl-hub      { fill:rgba(245,158,11,.45); }
-#plAmbient .pl-needle-g { transform-origin:1190px 900px; animation:plRev 7s ease-in-out infinite; }
-@keyframes plRev { 0%{transform:rotate(6deg)} 30%{transform:rotate(88deg)} 45%{transform:rotate(62deg)}
-  65%{transform:rotate(102deg)} 80%{transform:rotate(40deg)} 100%{transform:rotate(6deg)} }
-/* CAN-traces, hex-frames, OBD-connector */
-#plAmbient .pl-trace   { stroke:rgba(79,124,255,.10); fill:none; stroke-width:1.5; }
-#plAmbient .pl-node    { fill:rgba(79,124,255,.28); }
-#plAmbient .pl-hex     { font-family:ui-monospace,'Roboto Mono',monospace; font-size:13px; letter-spacing:2px; fill:rgba(139,148,167,.16); }
-#plAmbient .pl-hex-hot { fill:rgba(79,124,255,.22); }
-#plAmbient .pl-obd     { stroke:rgba(139,148,167,.14); fill:none; stroke-width:1.5; }
-#plAmbient .pl-obd-pin { fill:rgba(139,148,167,.14); }
-@media (prefers-reduced-motion: reduce){
-  #plAmbient .pl-pulse { animation:none; stroke-dasharray:none; }
-  #plAmbient .pl-glow, #plAmbient .pl-needle-g { animation:none; }
-}
 
 /* ════ FASE 1 — IMMERSIEVE ZWARTE STIJL (startscherm & 4 deuren) ════ */
 .welcome-header { background:#0a0e17; border-bottom:1px solid #1a2030; }

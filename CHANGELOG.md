@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-10-2026 — Startscherm: vaste achtergrond in plaats van animatie
+ ═══════════════════════════════════════════════════════════
+
+ - De achtergrond van het startscherm bewoog eindeloos (ademende gloed,
+   lopende hartslag, sweepende naald, twee drop-shadow-filters). Op de
+   telefoon hertekende dat het scherm bij elk beeldje; RenderThread en
+   GPU-draad stonden bovenaan in de draadmeting (#302).
+ - Nu een vast plaatje in dezelfde beeldtaal: pidlane-start-achtergrond-
+   staand.svg voor de telefoon, pidlane-start-achtergrond.svg liggend.
+ - bproef-navigatie.js: geen eindeloze animatie in het startscherm, met
+   een mutatie in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  30-09-2026 — Slim visueel: balkjes, een acculampje en een autootje (#371)
  ═══════════════════════════════════════════════════════════
 
