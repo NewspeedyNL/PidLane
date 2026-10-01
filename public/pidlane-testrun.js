@@ -2771,6 +2771,22 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Uitloggen tijdens de demo blijft uitgelogd (01-10-2026) ──
+  // Gedrag in de draaiende app: de sleutels die pidlane-auth.js voor het
+  // sessietoken en het uitloggen gebruikt, gaan door de demo-zandbak heen.
+  {
+    issue: 'release 3.1',
+    naam: 'Uitloggen tijdens de demo wist het sessietoken echt, ook als de demo daarna stopt',
+    waarom: 'pl_tok stond niet in de doorlaatlijst van de zandbak: uitloggen in de demo wiste het token alleen in de laag, plDemoStop() gooide die weg, en de volgende start logde je vanzelf weer in.',
+    proef: async function () {
+      if (!window.PLDemo || !PLDemo._kern || !Array.isArray(PLDemo._kern.DOORLAAT)) return { staat: 'FOUT', detail: 'PLDemo._kern.DOORLAAT ontbreekt — pidlane-demo.js is oud of niet geladen' };
+      if (typeof TOK_KEY !== 'string' || typeof UITLOG_KEY !== 'string') return { staat: 'FOUT', detail: 'TOK_KEY of UITLOG_KEY ontbreekt — pidlane-auth.js is oud of niet geladen' };
+      var mist = [TOK_KEY, UITLOG_KEY].filter(function (k) { return PLDemo._kern.DOORLAAT.indexOf(k) < 0; });
+      if (mist.length) return { staat: 'FOUT', detail: 'niet in de doorlaatlijst: ' + mist.join(', ') + ' — uitloggen in de demo wordt bij het stoppen teruggedraaid' };
+      return { staat: 'OK', detail: TOK_KEY + ' en ' + UITLOG_KEY + ' gaan door de zandbak' };
+    }
+  },
+
   // ── De meetrit van 01-10-2026: elke rit-vraag een getal ──
   // Gedrag in de draaiende app: elke naam op de witte lijst van PLOpdracht
   // geeft in zijn eigen module een getal of null, en de vijf meetopdrachten
