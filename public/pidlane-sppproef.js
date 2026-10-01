@@ -470,7 +470,11 @@
       if (!v) {
         v = document.createElement('div');
         v.id = 'plSppProef';
-        v.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:9000;max-height:60vh;overflow:auto;' +
+        // Boven de knoppenbalk, met dezelfde ondergrens als de rest van de app
+        // (--pl-sab). Met alleen bottom:12px viel de derde regel — de drukste
+        // draden — erachter (01-10-2026, #302).
+        v.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(12px + var(--pl-sab,0px));z-index:9000;' +
+          'max-height:calc(60vh - var(--pl-sab,0px));overflow:auto;' +
           'background:var(--sur);color:var(--tx);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;' +
           'box-shadow:0 8px 30px rgba(0,0,0,.35);font:500 12px/1.5 var(--f)';
         document.body.appendChild(v);
@@ -559,6 +563,7 @@
     dodeSocket: knopDodeSocket,
     menu: menu,
     maat: maat,
+    toon: _toon,
     laatste: function () { return _laatste; },
     uitslagen: function () { return _uitslagen.slice(); }
   };

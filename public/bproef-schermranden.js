@@ -247,7 +247,13 @@ const VELLEN = [
   // in zijn huidige vorm.
   { naam: 'Balk "AI analyseert"',  open: 'aiBusyBegin',         id: 'aiBusyBar',
     geenKnop: true, sluit: `aiBusyEnd();` },
-  { naam: 'Meetscherm vóór een analyse', open: 'plMeetPoortVraag', id: 'meetGateOv' }
+  { naam: 'Meetscherm vóór een analyse', open: 'plMeetPoortVraag', id: 'meetGateOv' },
+  // Erbij op 01-10-2026: de uitslag van "🧵 SPP: draden meten" (#302) viel
+  // met zijn derde regel onder de knoppenbalk — "drukst:" stond er, de draden
+  // erachter niet. Gevuld zoals een echte meting hem vult: kop plus drie regels.
+  { naam: 'SPP-proefkaart (#302)', id: 'plSppProef',
+    open: `(function(){ PLSppProef.toon('draden meten', ['draden: app 112% van één kern (10 kernen), SPP-leesdraden 1 waarvan 0 draaiend; drukst: Chrome_InProcRendererThread 61%, PLSpp-lees 3%, RenderThread 22%, CrRendererMain 18%', '⚠ bus aangetast sinds 21:22:34 (herverbinding) — 🧹 proces beëindigen heft dat op (wegvegen is niet genoeg)']); })`,
+    sluit: `e.remove();` }
 ];
 
 /* De twee vellen van de deel-module staan in index.html en gaan open met een
