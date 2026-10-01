@@ -14,6 +14,49 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 01-10-2026 — Het BT-logvenster groeide zonder grens: elke logregel werd duurder (#302)
+
+**De vraag.** "Bij een schone opstart haal je 20 per seconde, daarna zakt
+het naar 8 à 10." Het verloop van 08:43–08:51 stond al in #302: 43 → ~120
+ms per verzoek in tien minuten, nul busfouten, app ruim één kern bezig.
+Gezocht is naar iets dat per commando groeit.
+
+**Wat er groeide.** `btDiag()` kapt `_btLog` af op 1400 regels
+(`btLogAfkappen`), maar hing in het element `#btLog` bij elke regel een
+`div` bij die er nooit meer uitging. Per verzoek zijn dat minstens twee
+regels (`TX:` en `… klaar:`). Bij ~20 verzoeken per seconde staan er na tien
+minuten 25.000–30.000 in. Daarna zet `btDiag()` `scrollTop=scrollHeight`,
+en dat dwingt een lay-out van een element dat steeds langer is.
+
+**Gemeten, in Chromium met de echte app** (1000 aanroepen van `btDiag()` per
+blok, venster dicht):
+
+| regels in het element | per regel, ervoor | per regel, erna |
+|---|---|---|
+| 1.000 | 0,32 ms | 0,28 ms |
+| 11.000 | 3,5 ms | 0,26 ms |
+| 31.000 | 9,9 ms | 0,21 ms |
+
+Met het venster open is het hetzelfde. Op een telefoon is een kern trager
+dan deze desktop, dus de getallen daar zijn hoger. Bij twee à drie regels per
+verzoek is dat na tien minuten 20–30 ms per verzoek op deze machine: de
+orde van de stap van 43 naar 120 ms.
+
+**Waarom de browserproef van vanochtend dit niet zag.** Daar stond de DOM
+na een minuut op 2163 elementen. Dat was de demo-auto: die stuurt niets
+over `_sendBTOnce`, dus de `TX`- en `klaar`-regels komen er niet. Met een
+echte adapter wel.
+
+**Wat dit niet verklaart.** Opnieuw verbinden leegt het element níét (alleen
+de knop "wis" doet dat), en toch zette de knop op 08:54 ATRV terug naar
+25 ms. Op 30-09 bleef `ATSH` na de knop wél trager (11 → 21 ms): dat past
+er wel op. Er kan dus nog iets anders meegroeien dat bij het verbinden
+geleegd wordt. Of dit het hele verloop is, laat de volgende rit zien:
+30 minuten verbonden, en blok 5 zegt hoeveel regels er deze sessie
+geschreven zijn.
+
+---
+
 ## 01-10-2026 — De opruimread vóór elk SPP-commando
 
 **De waarneming.** Twee logboeken van 01-10 (CX-5, OBDLink MX+, stationair,

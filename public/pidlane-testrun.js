@@ -2771,6 +2771,26 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Het element #btLog blijft begrensd (01-10-2026) ──
+  // Gedrag in de draaiende app: na een regel erbij staat het venster op
+  // hoogstens BTLOG_DOM regels, hoe lang de sessie ook liep.
+  {
+    issue: '#302',
+    naam: 'Het BT-logvenster houdt hoogstens 300 regels vast, ook na een lange sessie',
+    waarom: 'Het venster kreeg bij elke regel een div die er nooit meer uitging; na tien minuten pollen kostte elke logregel 10 ms in plaats van 0,3 op de draad die de antwoorden afhandelt.',
+    proef: async function () {
+      if (typeof btLogDomAfkappen !== 'function' || typeof BTLOG_DOM !== 'number') return { staat: 'FOUT', detail: 'btLogDomAfkappen of BTLOG_DOM ontbreekt — pidlane-btflow.js is oud of niet geladen' };
+      var el = document.getElementById('btLog');
+      if (!el) return { staat: 'FOUT', detail: 'het element #btLog bestaat niet' };
+      btDiag('Blok 5: het BT-logvenster wordt geteld', 'info');
+      var n = el.childElementCount;
+      var sessie = _btLog.length + (_btCapStand ? _btCapStand.weg : 0);
+      if (n > BTLOG_DOM) return { staat: 'FOUT', detail: n + ' regels in het venster, hoogstens ' + BTLOG_DOM + ' (deze sessie ' + sessie + ' regels geschreven)' };
+      if (sessie <= BTLOG_DOM) return { staat: 'LET OP', detail: 'deze sessie schreef pas ' + sessie + ' regels, de grens van ' + BTLOG_DOM + ' is nog niet geraakt. Nodig: een paar minuten pollen en opnieuw draaien' };
+      return { staat: 'OK', detail: n + ' regels in het venster na ' + sessie + ' geschreven deze sessie' };
+    }
+  },
+
   // ── Check na verbinden: niets gevonden → vanzelf naar Live (01-10-2026) ──
   // Toetst de beslissing op een echte uitlezing van de demo-ECU (met codes)
   // en dezelfde uitlezing schoongemaakt; geen bus nodig.

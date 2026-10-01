@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-10-2026 — BT-logvenster begrensd: logregels worden niet meer duurder (#302)
+ ═══════════════════════════════════════════════════════════
+
+ - btDiag() kapte de array af op 1400 regels, maar het element #btLog
+   groeide met elke regel mee en werd nooit ingekort. Gemeten in Chromium:
+   0,3 ms per regel bij 1.000 regels, 10 ms bij 31.000 — tien minuten
+   pollen. Nu houdt het venster de laatste 300 (BTLOG_DOM); per regel
+   blijft het ~0,25 ms. test-btlogdom.js, blok 5, twee mutaties.
+
+ ═══════════════════════════════════════════════════════════
  01-10-2026 — SPP: geen opruimread meer vóór elk commando
  ═══════════════════════════════════════════════════════════
 
