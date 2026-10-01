@@ -94,6 +94,21 @@ const echt = (ctx, k) => vm.runInContext('localStorage._m[' + JSON.stringify(k) 
     c.localStorage.setItem('pl_session', 'nico');
     c.localStorage.setItem('pl_sessie', '{"t":1}');
     toets('inloggen tijdens de demo blijft bewaard (DOORLAAT)', echt(c, 'pl_session') === 'nico' && echt(c, 'pl_sessie') === '{"t":1}');
+
+    // Uitloggen tijdens de demo (01-10-2026): logout() wist pl_tok, en daarna
+    // sluit handleConnect() de demo. Zat pl_tok in de laag, dan stond het
+    // token na plDemoStop() weer op het toestel en logde de app je bij de
+    // volgende start vanzelf in.
+    const auth = bron('pidlane-auth.js');
+    const sleutel = (naam) => { const m = auth.match(new RegExp('const ' + naam + "\\s*=\\s*'([^']+)'")); return m ? m[1] : null; };
+    const tok = sleutel('TOK_KEY'), uitlog = sleutel('UITLOG_KEY');
+    if (!tok || !uitlog) { console.log('FOUT TOK_KEY of UITLOG_KEY niet gevonden in pidlane-auth.js (anker verschoven?)'); process.exit(1); }
+    toets('de sleutels van inloggen en uitloggen gaan door de zandbak (' + tok + ', ' + uitlog + ')',
+      c.PLDemo._kern.DOORLAAT.indexOf(tok) >= 0 && c.PLDemo._kern.DOORLAAT.indexOf(uitlog) >= 0,
+      'DOORLAAT = ' + JSON.stringify(c.PLDemo._kern.DOORLAAT));
+    vm.runInContext('localStorage._m[' + JSON.stringify(tok) + "]='{\"token\":\"x\"}'", c);
+    c.localStorage.removeItem(tok);
+    toets('uitloggen tijdens de demo wist het sessietoken op het toestel zelf', echt(c, tok) === undefined);
     c.sessionStorage.setItem('s', '1');
     toets('sessionStorage merkt niets van de zandbak', vm.runInContext('sessionStorage._m.s', c) === '1');
     c.localStorage.clear();

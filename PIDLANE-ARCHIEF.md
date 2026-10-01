@@ -14,6 +14,61 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 01-10-2026 — Releasecontrole: drie beloften die de code niet hield
+
+**De vraag.** De gesloten test was af; vóór de productierelease nalopen op
+dubbelingen, stomme fouten en fixes die iets anders stuk maakten.
+
+**De zandbak brak uitloggen (29-09 → 01-10).** `DOORLAAT` in
+`pidlane-demo.js` noemde `pl_session` en `pl_sessie`, maar het sessietoken
+staat onder `pl_tok` (`TOK_KEY`). Uitloggen tijdens de demo wiste dat token
+alleen in de laag; `logout()` roept via `handleConnect()` `plDemoStop()` aan,
+de laag verdween, en het echte token stond er weer. De volgende start logde
+vanzelf in, op een gedeeld werkplaatstoestel. De lijst noemde twee namen die
+er bijna op leken; `test-demozandbak.js` legt de lijst nu naast de echte
+constanten in `pidlane-auth.js` in plaats van naast een naam die iemand
+overtikte.
+
+**Het e-mailadres ging mee, al sinds het veldlab en de logtabel bestaan.**
+Bij een klant is `currentUser.name` het e-mailadres. Dat werd `Tester` in
+elk veldlabrecord (los veld en in het JSON-blob) en `User` in elke logregel.
+Het akkoordscherm, `privacy.html` en de Play-beschrijving zeiden alle drie
+"zonder je naam, e-mailadres of kenteken". De VIN was in augustus al
+afgevangen op het ene punt waar alles langskomt (`_vlSchoonVoorVerzending`);
+het e-mailadres staat nu op dezelfde plek, en `logToSheets()` gebruikt
+dezelfde functie. Dicht bij twijfel: ontbreekt `pidlane-veldlab.js`, dan gaat
+er geen gebruiker mee.
+
+**Wat er al stond, gaat mee weg bij verwijderen.** De opruimer wiste Mijn
+voertuigen en het klantrecord, niet de logregels en veldlabrecords met het
+adres. Nu wel (`klantSporenWissen`), vóór het klantrecord, in dezelfde
+try: mislukt het, dan blijft het account staan en probeert hij het de
+volgende nacht. **Niet gedaan:** de bestaande rijen van klanten die níét
+verwijderd zijn, staan nog met hun adres in `logregels` en
+`veldlab_sessies`. Dat is een eenmalige SQL in de D1-console, geen code:
+`UPDATE logregels SET User = '' WHERE User LIKE '%@%';` en
+`UPDATE veldlab_sessies SET Tester = '' WHERE Tester LIKE '%@%';` (het
+JSON-blob van oude veldlabrecords bevat het adres dan nog).
+
+**Data safety.** §11 zei "Diagnostics: niet aanvinken, er gaat geen
+crashrapportage naar een dienst". Dat was een redenering over crashrapporten;
+de logregels zijn diagnostiek die naar de eigen server gaat, en dat telt.
+
+**De reviewnotitie liep achter op de zandbak.** §7 beloofde een echt
+AI-rapport via de demo; sinds 29-09 geeft de demo een voorbeeldrapport en
+heet de knop na inloggen anders. Bewust niet veranderd: de AI blijft in de
+demo dicht (blok 5 bewaakt dat). Daarmee ziet een reviewer zonder auto geen
+echte analyse; de notitie zegt dat nu en raadt een schermopname aan.
+
+**Gezien en niet aangeraakt.** Het akkoordscherm maakt delen voor
+referentiedata verplicht en koppelt het aan het proeftegoed, terwijl
+`privacy.html` zegt dat die toestemming apart gevraagd wordt en in te trekken
+is. Het veldlab staat bovendien standaard aan (`pl_veldlab_uit`), los van dat
+akkoord. Dat is een keuze over toestemming, geen fout in code — en een
+gewijzigde toestemmingstekst maakt eerdere akkoorden ongeldig.
+
+---
+
 ## 01-10-2026 — De meetrit: waarom vier "gesloten" niets sloten (#302 #333 #337 #338 #376)
 
 **Wat er misging met de opdrachten van 27–29 september.** Opdracht 21 (#337)

@@ -221,11 +221,27 @@ async function _vlVinPseudoniem(vin){
   return [...new Uint8Array(dig)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16);
 }
 
+/* ── Een e-mailadres gaat NOOIT mee (01-10-2026) ──────────────────
+   Bij een klant is currentUser.name zijn e-mailadres. Dat kwam als `Tester`
+   in elk veldlabrecord (los veld én in het JSON-blob) en als `User` in elke
+   logregel, terwijl het akkoordscherm, privacy.html en de Play-beschrijving
+   beloven: "zonder je naam, e-mailadres of kenteken". Een beheerder- of
+   testernaam zonder @ blijft staan; die is nodig om een rit terug te vinden.
+   logToSheets() in pidlane-auth.js gebruikt dezelfde twee functies. */
+const VL_EMAIL_RE=/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+function _vlGeenEmail(s){
+  const t=String(s==null?'':s);
+  return t.indexOf('@')>=0 ? '' : t;
+}
+function _vlEmailUitTekst(s){
+  return String(s==null?'':s).replace(VL_EMAIL_RE,'[e-mail]');
+}
+
 /* Maakt een verzendbare kopie: raakt het origineel niet aan, zodat de app
    zelf de VIN gewoon blijft tonen en gebruiken. */
 async function _vlSchoonVoorVerzending(rec){
   let kopie;
-  try{ kopie=JSON.parse(JSON.stringify(rec)); }
+  try{ kopie=JSON.parse(_vlEmailUitTekst(JSON.stringify(rec))); }
   catch(e){
     // NIET het origineel teruggeven: dat bevat de VIN nog. Doorgooien, zodat
     // vlAtPush hieronder besluit om niets te versturen. Een record dat niet te
@@ -243,6 +259,9 @@ async function _vlSchoonVoorVerzending(rec){
     v.wmi=ruw.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'').slice(0,3);
     delete v.vin;
   }
+  // Uit het origineel: in de kopie is een adres al "[e-mail]" geworden.
+  if(kopie && 'tester' in kopie) kopie.tester=_vlGeenEmail(rec.tester);
+  if(kopie && kopie.survey && 'tester' in kopie.survey) kopie.survey.tester=_vlGeenEmail(rec.survey.tester);
   return kopie;
 }
 

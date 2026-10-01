@@ -84,6 +84,12 @@ var KRITIEK = [
   // de proef dat en zwijgt hij niet -- maar zonder deze regels zou die guard
   // zelf de stille fout zijn, en dat is precies wat deze lijst moet vangen.
   'flushAirtable','plLiveLogStatus',
+  // Geen e-mailadres naar de server (01-10-2026). logToSheets() vraagt ze
+  // achter een guard (ze wonen in pidlane-veldlab.js, dat later laadt) en
+  // valt dicht als ze ontbreken: dan gaat er geen gebruiker mee. Dicht is
+  // niet stil genoeg om te negeren — de logtabel verliest dan elke
+  // beheerdernaam — dus ze horen hier. Blok 5 vraagt de schoonmaker ook.
+  '_vlGeenEmail','_vlEmailUitTekst','_vlSchoonVoorVerzending',
   // De adapternaam voor de adapter-voorwaarde van een meetopdracht (#277).
   '_plLogAdapter',
   // Het oordeel over een groepsantwoord (#333, 28-09-2026). Blok 5 vraagt het

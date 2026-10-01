@@ -10,6 +10,27 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-10-2026 — Vóór de productierelease: demo, e-mailadres, verwijderen
+ ═══════════════════════════════════════════════════════════
+
+ - Demo-zandbak: pl_tok en pl_uitloggen gaan door de laag. Uitloggen tijdens
+   de demo wiste het sessietoken alleen in de laag; plDemoStop() gooide die
+   weg, en bij de volgende start was je vanzelf weer ingelogd.
+ - Geen e-mailadres meer naar de server: Tester (veldlab) en User (logregels)
+   zijn leeg voor een klant, en een adres in de tekst wordt "[e-mail]".
+   Beheerder- en testernamen zonder @ blijven staan.
+ - Account verwijderen: de nachtelijke opruimer wist ook de logregels en
+   veldlabrecords met het e-mailadres van die klant (klantSporenWissen),
+   vóór het klantrecord.
+ - privacy.html noemt de technische logregels en waar het account staat; de
+   zin "je e-mailadres staat niet in die database" klopte sinds #381 niet.
+ - PLAY-INZENDING.md: de reviewnotitie (§7) beschrijft de demo zoals hij is
+   (voorbeeldrapport, knopnaam na inloggen), Diagnostics staat in Data safety
+   (§11), §12 en §16c bijgewerkt.
+ - Blok 5: twee proeven (doorlaatlijst van de zandbak, geen e-mailadres in
+   een veldlabrecord).
+
+ ═══════════════════════════════════════════════════════════
  01-10-2026 — De meetrit: elke rit-vraag een getal (testrun 8.7)
  ═══════════════════════════════════════════════════════════
 

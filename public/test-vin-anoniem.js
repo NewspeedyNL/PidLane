@@ -173,6 +173,22 @@ const VIN = 'JM3KFBCL8J0123456';          // Mazda CX-5, het testvoertuig
   toets('crypto-fout valt niet terug op de ruwe VIN',
         String(naFout).indexOf(VIN) < 0 && naFout === 'JM3', 'kreeg ' + naFout);
 
+  // ── 8. het e-mailadres (01-10-2026) ──
+  // Bij een klant is de tester zijn e-mailadres. Het akkoordscherm belooft
+  // "zonder je naam, e-mailadres of kenteken" — dus ook niet als Tester, en
+  // ook niet ergens anders in het JSON-blob.
+  const MAIL = 'anna.devries@voorbeeld.nl';
+  const klantRec = { type: 'sessie', t: 1, tester: MAIL,
+    errs: ['Sessie hersteld: ' + MAIL], survey: { tester: MAIL, pids: { ok: 3 } },
+    veh: { merk: 'Mazda', vin: VIN } };
+  const kUit = await _vlSchoonVoorVerzending(klantRec);
+  const kBlob = JSON.stringify(kUit);
+  toets('het e-mailadres staat nergens in het verzonden record', kBlob.indexOf(MAIL) < 0 && kBlob.indexOf('@') < 0,
+        'blob = ' + kBlob.slice(0, 200));
+  toets('Tester van een klant is leeg', kUit.tester === '' && kUit.survey.tester === '', 'tester = ' + kUit.tester + ' / ' + kUit.survey.tester);
+  toets('een testernaam zonder @ blijft staan', (await _vlSchoonVoorVerzending({ tester: 'Nico', t: 1 })).tester === 'Nico');
+  toets('het origineel houdt het adres (de app zelf mag het tonen)', klantRec.tester === MAIL);
+
   console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'alle ' + n + ' tests geslaagd') + '\n');
   process.exit(fout ? 1 : 0);
 })().catch(e => { console.error('FOUT: test wierp een exception:', e); process.exit(1); });
