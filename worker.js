@@ -5651,6 +5651,33 @@ __name(handleKlantPlatform, "handleKlantPlatform");
 // resultaat én in de log terecht: een opruimer die zwijgend niets doet is
 // hier het gevaarlijkst van alles, want dan blijft er persoonsgegeven staan
 // terwijl de verklaring zegt dat het weg is.
+// De sporen van een klant buiten Mijn voertuigen (01-10-2026). Tot die dag
+// stond het e-mailadres als User in elke logregel en als Tester in elk
+// veldlabrecord. De app stuurt het sindsdien niet meer mee, maar wat er al
+// stond hoort bij het account en gaat mee weg: privacy.html belooft dat het
+// account met bijbehorende gegevens binnen de termijn gewist is. Alleen
+// tabellen die er al zijn: een opruimronde maakt niets aan en zet niets over.
+async function klantSporenWissen(db, email) {
+  const adres = String(email || "").trim();
+  const uit = { logregels: 0, veldlab: 0 };
+  if (!adres || adres.indexOf("@") < 0) return uit;
+  const r = await db.prepare(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('logregels', 'veldlab_sessies')"
+  ).all();
+  const er = new Set(((r && r.results) || []).map((x) => x.name));
+  if (er.has("logregels")) {
+    const w = await db.prepare('DELETE FROM logregels WHERE LOWER("User") = LOWER(?)').bind(adres).run();
+    uit.logregels = Number((w && w.meta && w.meta.changes) || 0);
+  }
+  if (er.has("veldlab_sessies")) {
+    const w = await db.prepare(
+      'DELETE FROM veldlab_sessies WHERE LOWER("Tester") = LOWER(?) OR INSTR(LOWER("JSON"), LOWER(?)) > 0'
+    ).bind(adres, adres).run();
+    uit.veldlab = Number((w && w.meta && w.meta.changes) || 0);
+  }
+  return uit;
+}
+__name(klantSporenWissen, "klantSporenWissen");
 async function klantWachtrijOpruimen(env, nu) {
   const grens = (nu || new Date());
   const uit = { bekeken: 0, verwijderd: [], mislukt: [], wacht: [] };
@@ -5686,8 +5713,9 @@ async function klantWachtrijOpruimen(env, nu) {
       try {
         await kpSchema(env.LOGDB);
         const w = await kpAlleWissen(env.LOGDB, await kpKlantId(emailVan[id]));
+        const sporen = await klantSporenWissen(env.LOGDB, emailVan[id]);
         uit.platform = uit.platform || [];
-        uit.platform.push({ id, gewist: w });
+        uit.platform.push({ id, gewist: w, sporen });
       } catch (e) {
         uit.mislukt.push({ id, reden: "d1_platform: " + String(e && e.message || e).slice(0, 120) });
         rijp.splice(i, 1);
