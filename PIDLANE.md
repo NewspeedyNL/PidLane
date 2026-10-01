@@ -417,13 +417,14 @@ als een routingfout):
 | `/klant/wachtwoord` | wachtwoord wijzigen (ingelogd) |
 | `/klant/reset-aanvraag`, `/klant/reset-uitvoeren` | wachtwoordherstel per mail (token-hash in Airtable) |
 | `/klant/admin-wachtwoord` | noodklep: admin zet handmatig een klantwachtwoord |
-| `/klant/platform` | **Mijn voertuigen** (27-09-2026). POST `{actie, …}`, alleen voor klanten. Acties: `stand`, `akkoord`, `alles_wissen`, `voorkeuren`, `voorkeuren_opslaan` (die twee zonder akkoord: geen voertuiggegevens), `voertuig_opslaan/archiveer/herstel/verwijder`, `status_opslaan`, `rapport_opslaan`, `rapporten`, `rapport`, `rapport_verwijder`, `rit_opslaan`, `ritten`, `rit_label`, `versnelling_opslaan`, `issues`, `issues_bijwerken`. Akkoordversie `2026-09-27b` sinds ritlabels en het versnellingsmodel erbij kwamen. Opslag in D1 (`LOGDB`, tabellen `kp_*`, schema `KP_SCHEMA` + `KP_MIGRATIES` = `schema.sql`, dat de Worker zelf aanmaakt; een migratie mag alleen met "duplicate column" falen). Sleutel = SHA-256 van het e-mailadres, **niet** het adres. Het kenteken is AES-GCM-versleuteld met `KENTEKEN_SLEUTEL`; zonder die secret wordt het niet bewaard. De VIN staat er alleen als pseudoniem. Eerst een eigen akkoord (`kp_akkoord`). Hoogstens 3 actief en 10 in totaal. Wordt het account verwijderd, dan komt er meteen een blokkade in `kp_akkoord`; de nachtelijke opruimer wist eerst D1 en dan pas het Airtable-record. Test: `test-klantplatform.js` |
+| `/klant/platform` | **Mijn voertuigen** (27-09-2026). POST `{actie, …}`, alleen voor klanten. Acties: `stand`, `akkoord`, `alles_wissen`, `voorkeuren`, `voorkeuren_opslaan` (die twee zonder akkoord: geen voertuiggegevens), `voertuig_opslaan/archiveer/herstel/verwijder`, `status_opslaan`, `rapport_opslaan`, `rapporten`, `rapport`, `rapport_verwijder`, `rit_opslaan`, `ritten`, `rit_label`, `versnelling_opslaan`, `issues`, `issues_bijwerken`. Akkoordversie `2026-09-27b` sinds ritlabels en het versnellingsmodel erbij kwamen. Bij `stand` wordt de accountstatus uit Airtable `KLANT_STATUS_MS` (5 min) per isolate onthouden; elke POST op `/admin/klanten` en `/admin/tabel` vergeet hem (#327, `test-klantstatus.js`). Opslag in D1 (`LOGDB`, tabellen `kp_*`, schema `KP_SCHEMA` + `KP_MIGRATIES` = `schema.sql`, dat de Worker zelf aanmaakt; een migratie mag alleen met "duplicate column" falen). Sleutel = SHA-256 van het e-mailadres, **niet** het adres. Het kenteken is AES-GCM-versleuteld met `KENTEKEN_SLEUTEL`; zonder die secret wordt het niet bewaard. De VIN staat er alleen als pseudoniem. Eerst een eigen akkoord (`kp_akkoord`). Hoogstens 3 actief en 10 in totaal. Wordt het account verwijderd, dan komt er meteen een blokkade in `kp_akkoord`; de nachtelijke opruimer wist eerst D1 en dan pas het Airtable-record. Test: `test-klantplatform.js` |
 | `/credits/redeem` | activatiecode inwisselen (tabel `TokenCodes`), atomair via een Durable-Object-slot; **vraagt een klantsessie** — zonder account wordt er niets afgestempeld (02-09-2026) |
 | `/admin/klanten` | klantbeheer voor beheer.html (GET/POST) |
 | `/admin/codes` | activatiecodes genereren en beheren (GET/POST) |
 | `/admin/users` | zakelijk gebruikersbeheer |
 | `/admin/tabel` | de bekende bronnen lezen (GET) — Airtable én D1 — één record wijzigen, wissen, of (D1) opruimen na tellen (POST) — zie **De adminbrowser** hieronder |
 | `/admin/d1` | de logdatabase als geheel: overzicht over álle rijen en één rit compleet (GET); SQL-console die alleen leest, en meetopdrachten aanmaken, bewaren, activeren, uitzetten (POST) — zie **De databasekant** hieronder |
+| `/api/config` | de app-instellingen: GET voor elke ingelogde sessie, POST alleen beheer. Sinds 01-10-2026 in D1 (`app_config`, `CONFIG_SCHEMA` = `schema.sql`); de Worker zette AppConfig één keer zelf over uit Airtable en noteert dat in `d1_overzet`. Test: `test-appconfig.js` |
 | `/proxy` | generieke uitgaande proxy (RDW/NHTSA), whitelist op host |
 | `/download/*`, `/version.json` | APK uit R2 |
 | `/health` | statuscheck |
@@ -444,9 +445,9 @@ Drie ontwerpkeuzes, en alle drie zijn ze een grendel en geen netheid:
 | **`beschermd`** | die velden zijn hier niet te schrijven: `Saldo`, `PassHash`, `ResetToken`, `ResetVerloopt`, `Email` (klanten) en `PassHash`, `User` (gebruikers) | `Saldo` hoort door `metSaldoSlot()` (#82, #93) — een PATCH hierlangs brengt precies die race terug. `PassHash` hoort door `hashPassword()`: een met de hand ingetikte waarde is een hash die op niets slaat, en dan kan niemand meer inloggen |
 | **`geheim`** | die velden verlaten de Worker niet; er komt `••• verborgen` voor in de plaats | een hash en een resettoken zijn genoeg om een account over te nemen. `••• verborgen` in plaats van leeg, zodat je wél ziet dát er een wachtwoord staat |
 
-`AppConfig` staat bewust op alleen-lezen: `/api/config` schrijft daar én gooit
-daarna de randcache weg. Een PATCH langs die route heen laat een oude waarde in
-de cache achter, en dan staat er dagen iets anders live dan wat de tabel zegt.
+`AppConfig` staat bewust op alleen-lezen: `/api/config` keurt de sleutel en de
+lengte en bewaart de waarde als JSON. Een wijziging langs die route heen slaat
+dat over. Sinds 01-10-2026 is het een D1-bron (`app_config`), zie §7.
 
 Gedekt door `test-adminbron.js` (witte lijst, masker, grendels, wisgrenzen,
 zoekformule-ontsnapping, de terugval bij een onbekend sorteerveld) en door vijf
@@ -546,7 +547,9 @@ solo-project. Als er ooit echt SQL nodig is: **Cloudflare D1**, niet MariaDB.
 
 Tabellen: Referentie `tblkfxKcjR6gf0Ahe`, Sessies `tblwbyWN1L6AKwgoy`,
 en in de Config-base `Users`, `Klanten`, `TokenCodes` en `TokenLog`
-(`tblCrXVqEbaPTQQ2S`, aangemaakt 31-07-2026). Die laatste stond hier tot
+(`tblCrXVqEbaPTQQ2S`, aangemaakt 31-07-2026). `AppConfig` stond daar tot
+01-10-2026 en staat nu in D1 (`app_config`); de Airtable-tabel wordt niet meer
+gelezen, dus wijzigen daar heeft geen effect (#327). Die laatste stond hier tot
 08-09-2026 als "staat er wel, maar er schrijft niets in"; sinds #83 schrijft
 `tegoedLog()` er bij elke saldomutatie een regel in — zie het kasboek-kader
 in §8.
