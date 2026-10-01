@@ -396,8 +396,10 @@ console.log('\n── #338: alleen het rijden telt, en de reden van elke herbouw
     k.PLVisueel.tik();
     return k;
   }
-  c = achtergrond(157000);
-  waar('na 157 s op de achtergrond telt alleen het stuk erna: het pedaal blijft', c.PLVisueel.indeling().plekken.pedaal === '0149',
+  // 30 s en niet 157: dat valt binnen het venster van een minuut, zodat
+  // alleen de gatdetectie het verschil maakt en niet het venster zelf.
+  c = achtergrond(30000);
+  waar('na 30 s op de achtergrond telt alleen het stuk erna: het pedaal blijft', c.PLVisueel.indeling().plekken.pedaal === '0149',
     JSON.stringify(c.PLVisueel.staat()));
   c = achtergrond(1000);
   waar('TEGENPROEF: zonder gat (één tik later) tellen de trage metingen wel en valt het pedaal', c.PLVisueel.indeling().plekken.pedaal === '0111');
@@ -409,13 +411,20 @@ console.log('\n── #338: alleen het rijden telt, en de reden van elke herbouw
   c.PLVisueel.start();
   let s0 = c.PLVisueel.staat().start + c.PLVisueel.AANLOOP_MS;
   c.pidHist['0149'] = [];
-  for (let i = 0; i < 12; i++) c.pidHist['0149'].push({ t: s0 + i * 1000, v: 20 });
-  c.T.t = s0 + 11000; c.PLVisueel.rijVenster(c.T.t);
-  c.__pauze = 120000;                                                                     // de bus was twee minuten bezet
+  for (let i = 0; i < 20; i++) { c.pidHist['0149'].push({ t: s0 + i * 1000, v: 20 }); c.T.t = s0 + i * 1000; c.PLVisueel.rijVenster(c.T.t); }
+  c.__pauze = 8000;                                                                     // de bus was twee minuten bezet
   for (let i = 1; i <= 12; i++) c.pidHist['0149'].push({ t: c.T.t + i * 250, v: 20 });
   c.T.t += 1000; c.PLVisueel.rijVenster(c.T.t);
   c.T.t += 2500; c.PLVisueel.tik();
   waar('na een buspauze telt alleen het stuk erna: het pedaal blijft', c.PLVisueel.indeling().plekken.pedaal === '0149');
+  // TEGENPROEF: precies hetzelfde zonder pauze, dan tellen de trage metingen.
+  c.PLVisueel.stop(); c.__pauze = 8000;
+  c.PLVisueel.start(); c.pidHist['0149'] = []; s0 = c.T.t;
+  for (let i = 0; i < 20; i++) { c.pidHist['0149'].push({ t: s0 + i * 1000, v: 20 }); c.T.t = s0 + i * 1000; c.PLVisueel.rijVenster(c.T.t); }
+  for (let i = 1; i <= 12; i++) c.pidHist['0149'].push({ t: c.T.t + 1000 + i * 250, v: 20 });
+  c.T.t += 1000; c.PLVisueel.rijVenster(c.T.t);
+  c.T.t += 2500; c.PLVisueel.tik();
+  waar('TEGENPROEF: zonder buspauze vallen dezelfde metingen wel van de meter', c.PLVisueel.indeling().plekken.pedaal === '0111');
 
   // Het venster is de laatste minuut: een traag stuk van lang geleden telt niet.
   c = maak({ actief: ['010C', '0149', '0111'] });
