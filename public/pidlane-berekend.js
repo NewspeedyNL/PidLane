@@ -44,6 +44,12 @@
 'use strict';
 
 const VERS_MS = 3000;          // bronwaarde ouder dan dit telt niet
+/* …en de bronnen van ÉÉN berekening mogen onderling hoogstens zoveel uit
+   elkaar liggen (#337, 01-10-2026). Vers per bron was niet genoeg: bij gas
+   loslaten zakt 0110 meteen terwijl 0162 nog het koppel van een seconde
+   eerder draagt, en dan stond er 96,7% rendement op de tegel. Statische
+   grootheden (STATISCH) tellen hier niet mee: die bewegen niet. */
+const SAMEN_MS = 1000;
 const STATISCH_MS = 600000;    // …behalve voor grootheden die niet bewegen
 const STATISCH = new Set(['0163','0133','012F','0146']);
 const TIK_MS = 400;
@@ -162,7 +168,10 @@ function bereken(pid, v, o){
     case 'CA03': {
       const l=lph(v, o.diesel), kmh=v['010D'];
       if (l===null || typeof kmh!=='number' || kmh<5) return null;
-      return r1(Math.min(99, Math.max(0, l/kmh*100)));
+      // Geklemd op het bereik van de tegel (#337). Bij 5–10 km/u is 60 l/100 km
+      // echt, maar het zegt niets; tot 01-10 stond hier 99, en dan telde elk
+      // optrekken als "buiten bereik" terwijl de rekensom klopte.
+      return r1(Math.min(DEFS.CA03.max, Math.max(0, l/kmh*100)));
     }
     case 'CA04': {
       const map=v['010B'];
@@ -291,12 +300,22 @@ function defs(){
   });
   return uit;
 }
-function vers(pid, nu){
+/* De laatste verse meting van een bron, met zijn tijd erbij: { v, t } of
+   undefined. De tijd is voor samen() hieronder. */
+function versMeting(pid, nu){
   const h=(typeof pidHist!=='undefined' && pidHist) ? pidHist[pid] : null;
   const x=h && h.length ? h[h.length-1] : null;
   if (!x || typeof x.v!=='number' || !isFinite(x.v)) return undefined;
   const max=STATISCH.has(pid) ? STATISCH_MS : VERS_MS;
-  return (nu-(x.t||0))<=max ? x.v : undefined;
+  return (nu-(x.t||0))<=max ? { v:x.v, t:x.t||0 } : undefined;
+}
+function vers(pid, nu){ const m=versMeting(pid, nu); return m ? m.v : undefined; }
+/* Puur (#337): liggen de meettijden van de bewegende bronnen van één
+   berekening dicht genoeg bij elkaar? Eén bron of geen: altijd ja. */
+function samen(tijden){
+  const t=(tijden||[]).filter(x=>typeof x==='number' && isFinite(x));
+  if (t.length<2) return true;
+  return Math.max.apply(null, t)-Math.min.apply(null, t)<=SAMEN_MS;
 }
 function baroNu(){
   try{ const s=window.PLGate ? window.PLGate.stats() : null; return (s && typeof s.omgevingsdruk==='number') ? s.omgevingsdruk : null; }
@@ -328,7 +347,7 @@ function bronnenErbij(pid, set){
 // ── de sessie: liters en km van deze verbinding, en het bewijs voor blok 5 ──
 function leegSessie(){
   return { sinds:Date.now(), liters:0, km:0, sBrandstof:0, laatsteT:0,
-           pids:{}, geweigerd:[], vermogen:{ max:null, volgas:null, volgasN:0 }, dpfRegens:0 };
+           pids:{}, geweigerd:[], vermogen:{ max:null, volgas:null, volgasN:0 }, dpfRegens:0, scheef:{} };
 }
 let _s = leegSessie();
 function boek(pid, v){
@@ -370,7 +389,8 @@ function tik(){
     if (!_wasAan){ _wasAan=true; _s.liters=0; _s.km=0; _s.sBrandstof=0; }
     const m=motor(), d=m==='diesel', gi=gearInfo();
     const cache={};
-    const waarde=p=>{ if(!(p in cache)) cache[p]=vers(p, nu); return cache[p]; };
+    const meting=p=>{ if(!(p in cache)) cache[p]=versMeting(p, nu); return cache[p]; };
+    const waarde=p=>{ const m=meting(p); return m ? m.v : undefined; };
 
     // Liters en km van deze sessie, ook als geen enkele berekende PID gekozen
     // is: de kosten per rit en het bereik hebben ze nodig.
@@ -414,6 +434,11 @@ function tik(){
       if (gekozen) bronnenErbij(pid, set);
       const v={};
       set.concat(['0133','0104']).forEach(p=>{ const x=waarde(p); if (x!==undefined) v[p]=x; });
+      // Bronnen van verschillende momenten: deze tik niet rekenen, en tellen
+      // hoe vaak (#337). De tegel houdt zijn vorige waarde en wordt vanzelf
+      // oud; een verkeerde waarde tonen is erger dan een seconde wachten.
+      const tijden=set.filter(p=>!STATISCH.has(p)).map(p=>{ const m=meting(p); return m ? m.t : null; });
+      if (!samen(tijden)){ if (echtVerbonden()) _s.scheef[pid]=(_s.scheef[pid]||0)+1; return; }
       const uit=bereken(pid, v, o);
       if (uit===null || !isFinite(uit)) return;
       if (echtVerbonden()){
@@ -459,6 +484,23 @@ function oordeel(s){
   return { staat:'ok', detail:kop };
 }
 
+/* De app-maten voor PLOpdracht (#337, 01-10-2026). De meetopdracht kan geen
+   CA-code noemen (PID_VORM laat alleen 01.. toe), en "zag je een rendement
+   boven 50%?" als vraag gaf op 29-09 "niet gekeken": een gesloten opdracht
+   die niets over de berekende waarden zei. Null = niets gerekend, geen 0. */
+function maat(naam){
+  const p=_s.pids, namen=Object.keys(p);
+  switch(naam){
+    case 'berekend-n':
+      return namen.length ? namen.reduce((a,k)=>a+p[k].n, 0) : null;
+    case 'berekend-buiten':
+      return namen.length ? namen.reduce((a,k)=>a+p[k].buiten, 0) : null;
+    case 'berekend-rendement-max':
+      return (p.CA10 && typeof p.CA10.max==='number') ? p.CA10.max : null;
+    default: return null;
+  }
+}
+
 /* Wat blok 5 leest. Een kopie: wie hem leest kan de teller niet veranderen. */
 function stats(){
   const s=JSON.parse(JSON.stringify(_s));
@@ -476,7 +518,7 @@ try{
 }catch(e){ console.warn('PLBerekend: ALL_PID_DEFS aanvullen mislukt', e); }
 
 window.PLBerekend = { DEFS, SCHAKEL, DPF, PRIJS_STANDAARD, KWH_PER_L, bereken, bronset, schakelAdvies, dpfTik, defs, isBerekend,
-  tik, stats, oordeel, weiger, voertuig, prijs, VERS_MS, _nieuweSessie:function(){ _s=leegSessie(); } };
+  tik, stats, oordeel, weiger, voertuig, prijs, VERS_MS, SAMEN_MS, samen, maat, _nieuweSessie:function(){ _s=leegSessie(); } };
 window.plIsBerekend = isBerekend;
 window.plBerekendDefs = defs;
 if (typeof setInterval==='function') setInterval(tik, TIK_MS);

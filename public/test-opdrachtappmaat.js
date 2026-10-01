@@ -41,9 +41,13 @@ function laad() {
   const s = {
     console: { warn: function () {}, log: function () {} },
     Promise: Promise, Date: Date, JSON: JSON, Math: Math,
-    setTimeout: function (f) { setImmediate(f); return 1; },
+    setTimeout: function (f) { setImmediate(f); return 1; }, clearTimeout: function () {},
+    setInterval: function () { return 1; }, clearInterval: function () {},
     sessionStorage: { getItem: function () { return null; }, setItem: function () {} },
-    document: { getElementById: function () { return null; }, addEventListener: function () {} },
+    localStorage: { getItem: function () { return null; }, setItem: function () {} },
+    navigator: { userAgent: 'node' },
+    document: { readyState: 'complete', getElementById: function () { return null; }, addEventListener: function () {},
+                querySelector: function () { return null; }, head: { appendChild: function () {} }, body: { appendChild: function () {} } },
     btDiag: function () {}, log: function () {}
   };
   s.window = s;
@@ -51,6 +55,11 @@ function laad() {
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-opdracht.js'), 'utf8'), s, { filename: 'pidlane-opdracht.js' });
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-sppproef.js'), 'utf8'), s, { filename: 'pidlane-sppproef.js' });
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-pip.js'), 'utf8'), s, { filename: 'pidlane-pip.js' });
+  // De meetrit van 01-10-2026: #302 en #333 (PLAdapter), #337 (PLBerekend),
+  // #338 (PLVisueel), #376 (PLFoutcodes).
+  ['pidlane-adapter.js', 'pidlane-berekend.js', 'pidlane-visueel.js', 'pidlane-foutcodes.js'].forEach(function (f) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, f), 'utf8'), s, { filename: f });
+  });
   return s;
 }
 
@@ -110,7 +119,11 @@ console.log('── 2. de lijst en de module lopen gelijk ──');
   eis(kapot.length === 0, 'elke naam geeft een getal of null in de maat() van zijn module' + (kapot.length ? ' — niet: ' + kapot.join(', ') : ''));
   // Andersom: een naam die een module wel kent maar de lijst niet, is een maat
   // die geen opdracht ooit kan vragen. Afgelezen uit de switch in de bron.
-  [['pidlane-sppproef.js', 'PLSppProef', /case '(spp-[a-z-]+)'/g], ['pidlane-pip.js', 'PLPip', /case '(pip-[a-z-]+)'/g]].forEach(function (m) {
+  [['pidlane-sppproef.js', 'PLSppProef', /case '(spp-[a-z-]+)'/g], ['pidlane-pip.js', 'PLPip', /case '(pip-[a-z-]+)'/g],
+   ['pidlane-adapter.js', 'PLAdapter', /case '((?:adapter|groep)-[a-z-]+)'/g],
+   ['pidlane-berekend.js', 'PLBerekend', /case '(berekend-[a-z-]+)'/g],
+   ['pidlane-visueel.js', 'PLVisueel', /case '(visueel-[a-z-]+)'/g],
+   ['pidlane-foutcodes.js', 'PLFoutcodes', /case '(check-[a-z-]+)'/g]].forEach(function (m) {
     const bron = fs.readFileSync(path.join(__dirname, m[0]), 'utf8');
     const inModule = (bron.match(m[2]) || []).map(function (x) { return x.slice(6, -1); });
     const vergeten = inModule.filter(function (n) { return namen.indexOf(n) < 0 || s.PLOpdracht.appMaatModule(n) !== m[1]; });
@@ -165,6 +178,55 @@ console.log('── 4. de opdracht van #319 kan nu gesloten worden ──');
   eis(goed.staat === 'gesloten', '3 min PiP, langste gat 1,2 s: gesloten (' + goed.staat + ' — ' + goed.reden + ')');
   w = { 'pip-langst-s': 180, 'pip-gat-s': 40 };
   eis(O.oordeel(k.opdracht).staat === 'bevinding', 'TEGENPROEF: 40 s stil in PiP is een bevinding — dat is #319');
+}
+
+console.log('── 5. de meetrit van 01-10-2026: #333 en #302 kunnen dicht, en rood ──');
+{
+  const s = laad();
+  const O = s.PLOpdracht;
+  // De opdracht voor #333 zoals hij in D1 komt, op de adapternaam na: die
+  // voorwaarde leest _plLogAdapter() uit de app en is hier niet het onderwerp.
+  const k = O.keur({
+    schema: 2, naam: 'Meetrit 1 · groepsproef A (koud) en B (warm), stilstaand (#333)', sensoren: ['010D', '0105'], duurS: 1800,
+    voorwaarden: [{ wat: 'proef A liep zonder drift', app: 'groep-a-drift', tussen: [0, 0] },
+                  { wat: 'proef B liep zonder drift', app: 'groep-b-drift', tussen: [0, 0] }],
+    proeven: [{ issue: '#333', naam: 'A advies', app: 'groep-a-advies', tussen: [4, 6] },
+              { issue: '#333', naam: 'A winst', app: 'groep-a-winst', tussen: [15, 1000] },
+              { issue: '#333', naam: 'B advies', app: 'groep-b-advies', tussen: [4, 6] },
+              { issue: '#333', naam: 'B winst', app: 'groep-b-winst', tussen: [15, 1000] }]
+  });
+  eis(k.ok, 'de opdracht voor #333 keurt' + (k.ok ? '' : ' — ' + k.fouten.join('; ')));
+  let w = { 'groep-a-drift': 0, 'groep-a-advies': 6, 'groep-a-winst': 79 };
+  s.PLAdapter.maat = function (n) { return Object.prototype.hasOwnProperty.call(w, n) ? w[n] : null; };
+  const half = O.oordeel(k.opdracht);
+  eis(half.staat === 'nog niet' && /proef B/.test(half.reden), 'alleen A gedaan: nog niet, en de reden noemt B (' + half.reden + ')');
+  w = { 'groep-a-drift': 0, 'groep-a-advies': 6, 'groep-a-winst': 79, 'groep-b-drift': 0, 'groep-b-advies': 6, 'groep-b-winst': 70 };
+  eis(O.oordeel(k.opdracht).staat === 'gesloten', 'A en B allebei groep 6 met ruim 15% winst: gesloten');
+  w['groep-b-advies'] = 3; w['groep-b-winst'] = 0;
+  eis(O.oordeel(k.opdracht).staat === 'bevinding', 'TEGENPROEF: warm adviseert de proef 3 — een bevinding, de automaat blijft op 3');
+  w['groep-b-drift'] = 1;
+  eis(O.oordeel(k.opdracht).staat === 'nog niet', 'een proef met drift telt niet: nog niet, herhalen');
+
+  const k2 = O.keur({
+    schema: 2, naam: 'Meetrit 1 · blijft de responstijd vlak over een half uur? (#302)', sensoren: ['010C'], duurS: 1800,
+    voorwaarden: [{ wat: '25 min', app: 'adapter-sessie-min', tussen: [25, 100000] },
+                  { wat: 'Slim visueel', app: 'adapter-visueel-pct', tussen: [80, 100] },
+                  { wat: 'geen SPP-proef', app: 'adapter-proef', tussen: [0, 0] }],
+    proeven: [{ issue: '#302', naam: 'hoogstens ×1,3', app: 'adapter-drift-pct', tussen: [0, 129] }]
+  });
+  eis(k2.ok, 'de opdracht voor #302 keurt');
+  // De maten komen hier uit de echte sessieMaat(), met de reeks van 26-09:
+  // 150 → 270 ms in Slim visueel. Dat moet een bevinding zijn.
+  const t0 = 1e12, m = (i, ms) => ({ t: t0 + i * 30000, nr: 1, ms: ms, rps: 5, bezet: 90, pids: 26, weergave: 'visueel', modules: [], koel: 90 });
+  const reeks = [];
+  for (let i = 0; i < 70; i++) reeks.push(m(i, i < 35 ? 150 : 270));
+  const echt = s.PLAdapter.sessieMaat;
+  s.PLAdapter.maat = function (n) { return echt(n, reeks, []); };
+  eis(O.oordeel(k2.opdracht).staat === 'bevinding', 'de drift van 26-09 (150 → 270 ms, 35 min in Slim visueel): bevinding');
+  for (let i = 35; i < 70; i++) reeks[i].ms = 155;
+  eis(O.oordeel(k2.opdracht).staat === 'gesloten', 'dezelfde 35 minuten vlak: gesloten — #302 kan dicht');
+  reeks.length = 30;
+  eis(O.oordeel(k2.opdracht).staat === 'nog niet', 'een kwartier verbonden: nog niet, geen uitspraak');
 }
 
 if (fouten) { console.log('FOUT — ' + fouten + ' eis(en) niet gehaald'); process.exit(1); }

@@ -1234,7 +1234,7 @@ MUTATIES=(
 "public/pidlane-bt.js@@  if(/^CA[0-9A-F]{2}1?$/i.test(String(cmd||'').trim())){@@  if(false){@@bproef-berekend.js@@sendCmd laat een berekende PID door naar de adapter"
 "public/pidlane-berekend.js@@    if (isDiesel && set.indexOf('0110')>=0) continue;@@@@test-berekend.js@@een dieselverbruik uit de luchtmassa (een diesel loopt arm)"
 "public/pidlane-berekend.js@@      if (l===null || typeof kmh!=='number' || kmh<5) return null;@@      if (l===null || typeof kmh!=='number' || kmh<=0) return null;@@test-berekend.js@@liters per 100 km bij stapvoets rijden: delen door bijna nul"
-"public/pidlane-berekend.js@@  return (nu-(x.t||0))<=max ? x.v : undefined;@@  return x.v;@@bproef-berekend.js@@een berekende PID rekent door op bronwaarden van tien seconden oud"
+"public/pidlane-berekend.js@@  return (nu-(x.t||0))<=max ? { v:x.v, t:x.t||0 } : undefined;@@  return { v:x.v, t:x.t||0 };@@bproef-berekend.js@@een berekende PID rekent door op bronwaarden van tien seconden oud"
 "public/pidlane-visueel.js@@  if(p.length<5 || p[p.length-1].t-p[0].t<20000) return null;@@  if(p.length<2) return null;@@test-visueel.js@@de koelwatertrend spreekt zich uit op vier metingen"
 "public/pidlane-visueel.js@@  return TREK.filter(function(t){ return !t.turbo || turbo; }).map(function(t){@@  return TREK.map(function(t){@@test-visueel.js@@de laaddruk staat in de trekstrook van een auto zonder turbo"
 "public/pidlane-garage.js@@    if (!/^PidLane — Waakronde/.test(regels[0] || '')) return null;@@@@test-garage.js@@elk rapport wordt als waakrapport gelezen"
@@ -1553,6 +1553,25 @@ MUTATIES=(
 "public/index.html@@id=\"plLiveDeel\"@@id=\"plLiveDelen\"@@test-help.js@@een knop met een uitroepteken is hernoemd en de tip vindt hem niet meer"
 "public/index.html@@🩺 Check na verbinden<span@@🩺 Check na het verbinden<span@@test-help.js@@een menuregel is hernoemd en de handleiding noemt de oude tekst"
 "public/pidlane-help-inhoud.js@@Codes worden met de hand verstuurd.@@Codes kosten € 4,99.@@test-help.js@@er staat een prijs in de handleiding"
+# ── berekende PIDs uit bronnen van één moment (#337, 01-10-2026) ──
+"public/pidlane-berekend.js@@      if (!samen(tijden)){@@      if (false){@@test-berekend.js@@bronnen van verschillende momenten rekenen weer samen: 96,7% rendement bij gas los"
+"public/pidlane-berekend.js@@  return Math.max.apply(null, t)-Math.min.apply(null, t)<=SAMEN_MS;@@  return Math.max.apply(null, t)-Math.min.apply(null, t)<=VERS_MS;@@test-berekend.js@@de bronnen van één berekening mogen weer 3 s uit elkaar liggen"
+"public/pidlane-berekend.js@@      return r1(Math.min(DEFS.CA03.max, Math.max(0, l/kmh*100)));@@      return r1(Math.min(99, Math.max(0, l/kmh*100)));@@test-berekend.js@@CA03 klemt weer op 99 en elk optrekken telt als buiten bereik"
+"public/pidlane-berekend.js@@      return namen.length ? namen.reduce((a,k)=>a+p[k].buiten, 0) : null;@@      return namen.length ? 0 : null;@@test-berekend.js@@de app-maat berekend-buiten ziet een waarde buiten bereik niet"
+# ── Slim visueel: tempo alleen rijdend, herbouw met reden (#338, 01-10-2026) ──
+"public/pidlane-visueel.js@@  if(!rijdtNu() || !inBeeld()) return;\n  const t=gemetenTempo(pid,@@  if(!inBeeld()) return;\n  const t=gemetenTempo(pid,@@test-visueel.js@@een stilstand haalt het pedaal weer voor de hele rit van de meter"
+"public/pidlane-visueel.js@@  const gat=_staat.laatsteTik>0 && nu-_staat.laatsteTik>3*VIS_TIK_MS;@@  const gat=false;@@test-visueel.js@@157 s op de achtergrond telt weer mee in het tempo van het pedaal"
+"public/pidlane-visueel.js@@  const bus=_staat.pauze!==null && pauze!==_staat.pauze;@@  const bus=false;@@test-visueel.js@@een groepsproef of waakronde die de bus had, laat het pedaal van de meter vallen"
+"public/pidlane-visueel.js@@  const t=gemetenTempo(pid, Math.max(_staat.rijdtSinds||0, Date.now()-VIS_VENSTER_MS));@@  const t=gemetenTempo(pid);@@test-visueel.js@@het tempo-oordeel kijkt weer over de hele sessie in plaats van het rijvenster"
+"public/pidlane-visueel.js@@  if(selectieSleutel()!==_staat.selectie) return 'selectie';@@@@test-visueel.js@@een herbouw door een nieuwe sensorkeuze telt als knipperen dat de klant niet vroeg"
+"public/pidlane-visueel.js@@  if(!rijdtNu() || !inBeeld()) return;\n  const t=gemetenTempo(pid,@@  if(!rijdtNu()) return;\n  const t=gemetenTempo(pid,@@test-visueel.js@@in beeld-in-beeld of op de achtergrond, met de meetdienst wakker, valt het pedaal van de meter"
+"public/pidlane-visueel.js@@  if(perMin>1 || klant>herbouwMax) return@@  if(perMin>1 || (S.herbouw||0)>herbouwMax) return@@test-visueel.js@@de herbouwen van de testrun zelf maken de knipperproef weer rood"
+# ── app-maten voor de meetrit: #302, #333, #376 (01-10-2026) ──
+"public/pidlane-adapter.js@@    if (!uit.afgebroken && uit.situatie) _gpPer[uit.situatie] = uit;@@    if (uit.situatie) _gpPer[uit.situatie] = uit;@@test-adapterpaneel.js@@een afgebroken groepsproef telt als uitslag voor A, B of C"
+"public/pidlane-adapter.js@@    if (koel >= 75) return 'b';@@    if (koel >= 50) return 'b';@@test-adapterpaneel.js@@een lauwe motor telt als warm, en proef B zegt dan iets over een koude bus"
+"public/pidlane-adapter.js@@    if (kmh >= 50) return 'c';@@    if (kmh >= 5) return 'c';@@test-adapterpaneel.js@@stapvoets rijden telt als proef C op constante snelheid"
+"public/pidlane-adapter.js@@    const g = (a.groepen || []).slice().sort(function (x, y) { return y.minuten - x.minuten; })[0] || null;\n    if (!g) return null;\n    switch (naam) {@@    const g = (a.groepen || []).slice(-1)[0] || null;\n    if (!g) return null;\n    switch (naam) {@@test-adapterpaneel.js@@de #302-maat kijkt naar de laatste verbinding in plaats van de langste, en een herverbinding wist de drift"
+"public/pidlane-foutcodes.js@@    _door[hoe === 'vanzelf' || hoe === 'knop' ? hoe : 'gestopt']++;@@    _door.vanzelf++;@@test-foutcodes.js@@Blijf hier telt als vanzelf doorgegaan, en de meetopdracht van #376 sluit op ingrijpen"
 )
 
 echo
