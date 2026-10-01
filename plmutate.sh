@@ -841,7 +841,7 @@ MUTATIES=(
 # batch van tien terugkomt in de buffer en elke vijftien seconden opnieuw
 # faalt. Dan legt één verkeerde sleutel de hele log plat en niet één regel.
 "public/pidlane-auth.js@@        if(AT_KOLOMMEN.has(k)) velden[k]=(typeof w==='boolean'||typeof w==='number')?w:String(w);\n        else staart.push(k+'='+(typeof w==='object'?JSON.stringify(w):String(w)));@@        velden[k]=w;@@test-livelog.js@@elke sleutel gaat als veld naar Airtable: één onbekende naam legt de hele log plat"
-"public/pidlane-auth.js@@    const bericht=String(message||'')+(staart.length?' · '+staart.join(' '):'');@@    const bericht=String(message||'');@@test-livelog.js@@de context achter het bericht valt weer weg — precies de stille fout van vóór vandaag"
+"public/pidlane-auth.js@@    const bericht=mailUit(String(message||'')+(staart.length?' · '+staart.join(' '):''));@@    const bericht=mailUit(String(message||''));@@test-livelog.js@@de context achter het bericht valt weer weg — precies de stille fout van vóór vandaag"
 "public/pidlane-auth.js@@        Message:    bericht.slice(0,500),@@        Message:    bericht,@@test-livelog.js@@een lange staart omzeilt de grens van 500 tekens"
 "public/pidlane-testrun.js@@  if (st === 'FOUT' || st === 'LET OP' || st === 'LETOP') {@@  if (true) {@@test-livelog.js@@elke stap gaat naar de live-log: vijftig regels per rit en de tabel loopt vol"
 "public/pidlane-testrun.js@@    _liveSchrijf(st === 'FOUT' ? 'error' : 'opvallend',@@    if (st === 'FOUT') _liveSchrijf('error',@@test-livelog.js@@een LET OP komt onderweg niet meer naar buiten"
