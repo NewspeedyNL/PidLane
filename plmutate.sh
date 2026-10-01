@@ -285,14 +285,14 @@ MUTATIES=(
 "public/pidlane-pids.js@@    if(hiddenPIDs.has(pid)) return;@@@@test-verbergen.js@@een verborgen PID krijgt tóch een tegel"
 "public/pidlane-pids.js@@  hiddenPIDs.forEach(function(p){ if(!activePIDs.has(p)) hiddenPIDs.delete(p); });@@@@test-verbergen.js@@een opnieuw aangevinkte sensor blijft onzichtbaar door een achtergebleven verborgen-stand"
 "public/pidlane-pids.js@@weg.onclick=function(ev){ if(ev&&ev.stopPropagation) ev.stopPropagation(); pidDeselect(pid); };@@weg.onclick=function(ev){ if(ev&&ev.stopPropagation) ev.stopPropagation(); pidVerberg(pid); };@@test-verbergen.js@@het kruisje in de verborgen-strook zet niets uit"
-"worker.js@@          const r1 = await fetch(recUrl, { headers: hdr });\n          if (!r1.ok) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const r1 = r0;\n          const huidig@@test-bijboeken.js@@bijboeken rekent met de lezing van vóór het slot in plaats van een verse"
+"worker.js@@          const r1 = await atHaal(env, \"klanten\", id);\n          if (!r1) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const r1 = r0;\n          const huidig@@test-bijboeken.js@@bijboeken rekent met de lezing van vóór het slot in plaats van een verse"
 "worker.js@@      if (uitkomst.bezet)\n        return json({ ok: false, code: \"saldo_bezet\", error: \"Er loopt al een andere tegoedwijziging voor deze klant. Probeer het zo nog eens.\" }, 409);@@@@test-bijboeken.js@@een bezet saldo-slot laat het bijboeken toch doorlopen"
 "worker.js@@      if (!email)\n        return json({ ok: false, code: \"saldo_geen_email\", error: \"Deze klant heeft geen e-mailadres; het tegoed kan niet veilig gewijzigd worden.\" }, 409);@@@@test-bijboeken.js@@bijboeken zet het slot op een leeg e-mailadres in plaats van te weigeren"
 "admin/beheer.html@@  if(code === 'saldo_bezet')@@  if(code === 'saldo_bezet_oud')@@test-bijboeken.js@@beheer.html kent de code voor een bezet saldo-slot niet meer"
 
 # ── saldo ZETTEN door hetzelfde slot (03-09-2026, #93) ──
 "worker.js@@          if (saldoWas !== null && huidig !== saldoWas)@@          if (saldoWas !== null && huidig === saldoWas)@@test-bijboeken.js@@de voorwaarde bij saldo zetten staat omgekeerd: een verschoven saldo wordt juist overschreven"
-"worker.js@@          const z1 = await fetch(zetUrl, { headers: hdr });\n          if (!z1.ok) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const z1 = z0;\n          const huidig@@test-bijboeken.js@@saldo zetten vergelijkt met de lezing van vóór het slot in plaats van een verse"
+"worker.js@@          const z1 = await atHaal(env, \"klanten\", id);\n          if (!z1) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const z1 = z0;\n          const huidig@@test-bijboeken.js@@saldo zetten vergelijkt met de lezing van vóór het slot in plaats van een verse"
 "admin/beheer.html@@saldo:n, saldoWas:huidig }@@saldo:n }@@test-bijboeken.js@@de knop stuurt de voorwaarde niet mee, dus de Worker vergelijkt niets"
 "admin/beheer.html@@  if(code === 'saldo_verschoven')@@  if(code === 'saldo_verschoven_oud')@@test-bijboeken.js@@beheer.html kent de code voor een verschoven saldo niet"
 "admin/beheer.html@@  const code = (body && (body.code || body.error)) || '';@@  const code = (body && body.error) || '';@@test-bijboeken.js@@beheer.html leest de foutcode uit de leesbare tekst: de afhandeling staat er, maar wordt nooit bereikt"
@@ -1480,10 +1480,11 @@ MUTATIES=(
 "public/pidlane-btflow.js@@Object.assign({},e,{vorige:true})@@Object.assign({},e)@@test-btlogcap.js@@teruggezette regels zijn niet meer herkenbaar: na een herlaad houdt het anker weer de vorige sessie vast en valt de VIN weg"
 "public/pidlane-btflow.js@@const eigen=log.filter(r=>r && !r.vorige && !r.cap);@@const eigen=log.filter(r=>r && !r.cap);@@test-btlogcap.js@@de cap telt de vorige sessie mee als eigen regels: het anker is weer het pollverkeer van vóór de herlaad"
 "public/pidlane-btflow.js@@  stand.weg+=eigen.length-kop.length-staart.length;@@  stand.weg=eigen.length-kop.length-staart.length;@@test-btlogcap.js@@de markering telt alleen de laatste ronde: \"301 regels weggelaten\" na tien minuten pollen"
-# ── de accountstatus van stand onthouden (#327, 01-10-2026) ──
-"worker.js@@  if (!vers && h && Date.now() - h.t < KLANT_STATUS_MS)@@  if (false && h && Date.now() - h.t < KLANT_STATUS_MS)@@test-klantstatus.js@@elke stand zoekt de klant weer op in Airtable: het plafond van 1.000 calls is na een week op"
-"worker.js@@        klantStatusVergeet();\n        return lockOrigin(request, rk);@@        return lockOrigin(request, rk);@@test-klantstatus.js@@een klant die via beheer geblokkeerd wordt, ziet nog vijf minuten zijn voertuigen"
-"worker.js@@        klantStatusVergeet();\n        return lockOrigin(request, rt);@@        return lockOrigin(request, rt);@@test-klantstatus.js@@blokkeren via de adminbrowser laat de onthouden status staan"
+# ── de accountstatus bij stand, elke keer vers uit D1 (#327, 01-10-2026) ──
+# Hier stonden drie mutaties op de bewaartijd van PR #380; die is dezelfde
+# dag weer weggehaald toen de klantentabel naar D1 ging.
+"worker.js@@        if (pr) return json({ ok: false, error: pr.bericht, code: pr.code }, pr.status);\n        if (ak && ak.versie === \"verwijderd\") {@@        if (ak && ak.versie === \"verwijderd\") {@@test-klantstatus.js@@een geblokkeerde klant ziet gewoon zijn voertuigen: stand kijkt niet meer naar de status"
+"worker.js@@  return await atZoek(env, \"klanten\", \"Email\", String(email || \"\").trim(), { lower: true });@@  return await atZoek(env, \"klanten\", \"Email\", String(email || \"\").trim());@@test-klantstatus.js@@een klant die zich met hoofdletters registreerde, wordt niet meer gevonden"
 # ── AppConfig in D1, één keer overgezet (#327, 01-10-2026) ──
 "worker.js@@  if (await db.prepare(\"SELECT 1 AS j FROM d1_overzet WHERE naam = 'appconfig'\").first()) return db;@@@@test-appconfig.js@@elke opstart leest AppConfig weer uit Airtable, ook na de overzet"
 "worker.js@@      if (f.Key) rijen.push([String(f.Key), JSON.stringify(f.Value ?? \"\"),@@      if (f.Key) rijen.push([String(f.Key), String(f.Value ?? \"\"),@@test-appconfig.js@@een vinkje uit Airtable komt als tekst \"false\" terug, en dat leest de app als waar"

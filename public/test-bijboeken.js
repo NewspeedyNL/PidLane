@@ -56,7 +56,8 @@ if (van < 0 || tot < 0 || tot < van) {
 const src = bron.slice(van, tot);
 
 // ── nagemaakte omgeving ───────────────────────────────────────────
-// Eén klant in een nagemaakte Airtable. `gelezen` en `geschreven` leggen vast
+// Eén klant in een nagemaakte klantentabel (sinds 01-10-2026 in D1, gelezen
+// via atHaal; #327). `gelezen` en `geschreven` leggen vast
 // wat de handler werkelijk deed — dat is waar de test op kijkt, niet op wat
 // hij teruggeeft.
 // `slotStand` stuurt hoe het nagemaakte slot zich gedraagt:
@@ -92,10 +93,11 @@ function bouw(saldoInAirtable, opties) {
     klantFout: (e, m) => ({ body: { ok: false, error: m }, status: 500 }),
     hashPassword: async () => 'hash',
     klantWachtwoordProbleem: () => '',
-    fetch: async () => {
+    atHaal: async (env, sleutel, id) => {
+      if (sleutel !== 'klanten') throw new Error('onverwachte tabel in deze test: ' + sleutel);
       staat.gelezen++;
       staat.stappen.push(staat.binnenSlot ? 'lees-binnen' : 'lees-buiten');
-      return { ok: true, json: async () => ({ fields: { Saldo: staat.saldo, Email: email } }) };
+      return { id, fields: { Saldo: staat.saldo, Email: email } };
     },
     metSaldoSlot: async (env, adres, fn) => {
       if (slotStand === 'stuk') throw new Error('geen REMOTE_SESSION-binding');
@@ -110,7 +112,7 @@ function bouw(saldoInAirtable, opties) {
   };
   const maak = new Function(...Object.keys(omg), src + '\nreturn handleAdminKlantenPost;');
   const fn = maak(...Object.values(omg));
-  const roep = (body) => fn({ json: async () => body }, { AIRTABLE_TOKEN: 'x' });
+  const roep = (body) => fn({ json: async () => body }, { LOGDB: {} });
   return { staat, roep };
 }
 

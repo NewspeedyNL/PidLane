@@ -133,14 +133,18 @@ console.log('\n4. Geen enkele formuleplek escapet nog met de hand');
     toets('nergens meer een handmatige quote-escape', achterblijvers === 0,
       achterblijvers + ' plek(ken) over');
     // Buiten het helperblok geteld, dus zonder de declaratie: dit zijn de
-    // aanroepplekken zelf. Vier, en dat getal hoort mee te veranderen als er
-    // een vijfde formuleplek bij komt — anders glipt die er ongemerkt langs.
+    // aanroepplekken zelf. Tot 01-10-2026 waren het er vier; sinds Klanten
+    // en TokenCodes in D1 staan (#327) zoeken klantZoek(), de inwisselcode en
+    // /admin/klanten met een gebonden parameter en is alleen de Airtable-tak
+    // van /admin/tabel over. Dat getal hoort mee te veranderen als er een
+    // formuleplek bij komt — anders glipt die er ongemerkt langs.
     const aanroepen = (rest.match(/formuleTekst\(/g) || []).length;
-    toets('alle vier de formuleplekken gaan door de helper', aanroepen === 4,
+    toets('de enige formuleplek gaat door de helper', aanroepen === 1,
       aanroepen + ' aanroep(en)');
   }
-  toets('elke filterByFormula met een variabele gebruikt e of esc uit de helper',
-    bron.indexOf("UPPER({Code})='${esc}'") > 0 && bron.indexOf("LOWER({Email})='${e}'") > 0);
+  // En de plekken die naar D1 gingen, bouwen geen formule meer.
+  toets('klantZoek en de inwisselcode bouwen geen Airtable-formule meer',
+    bron.indexOf("UPPER({Code})=") < 0 && bron.indexOf("LOWER({Email})=") < 0);
 }
 
 console.log('\n' + (fouten ? fouten + ' FOUT(EN)' : 'Alles goed'));

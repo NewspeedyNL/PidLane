@@ -143,7 +143,7 @@ function bouwTegoed(opties) {
   const maak = new Function(...Object.keys(omg),
     srcTegoed + '\nreturn { tegoedLog, handleMessages, tegoedKosten, tegoedTarief };');
   const api = maak(...Object.values(omg));
-  const env = { LOGDB: {}, AIRTABLE_TOKEN: 'x' };
+  const env = { LOGDB: {} };
   const ctx = { waitUntil: (p) => { staat.jobs.push(p); } };
   const verzoek = {
     headers: { get: (n) => (String(n).toLowerCase() === 'content-length' ? '400' : null) },
@@ -375,18 +375,16 @@ const gezien = new Set();
         },
         metSaldoSlot: async (env, email, fn) => ({ bezet: false, result: await fn() }),
         tegoedLog: async (env, ctx, regel) => { staat.kasboek.push(regel); },
-        fetch: async (url, init) => {
-          if (!init || init.method !== 'PATCH')
-            return { ok: true, json: async () => (String(url).indexOf(codeRec.id) > -1 ? { fields: codeRec.fields } : { records: [codeRec] }) };
-          staat.afgestempeld = true;
-          return { ok: true, text: async () => '', json: async () => ({}) };
-        },
+        // De codetabel staat sinds 01-10-2026 in D1 (#327).
+        atZoek: async () => codeRec,
+        atHaal: async (env, sleutel, id) => (id === codeRec.id ? { id, fields: codeRec.fields } : null),
+        atPatch: async (env, sleutel, id, f) => { staat.afgestempeld = true; return { id, fields: f }; },
         console: { error() {}, warn() {}, log() {} }
       };
       const maak = new Function(...Object.keys(omg), srcRedeem + '\nreturn handleCreditsRedeem;');
       const fn = maak(...Object.values(omg));
       return { staat, roep: () => fn({ json: async () => ({ code: 'PIDL-TEST-000001' }), headers: { get: () => '1.2.3.4' } },
-        { AIRTABLE_TOKEN: 'x', REMOTE_SESSION: {} }, { waitUntil() {} }) };
+        { LOGDB: {}, REMOTE_SESSION: {} }, { waitUntil() {} }) };
     };
 
     const g = bouwRedeem();
@@ -434,7 +432,7 @@ const gezien = new Set();
       const fn = maak(...Object.values(omg));
       return { staat, roep: () => fn(
         { json: async () => ({ survey: true, anon: true }), headers: { get: () => '1.2.3.4' } },
-        { AIRTABLE_TOKEN: 'x', KLANT_START_SALDO: 25 }, { waitUntil() {} }) };
+        { LOGDB: {}, KLANT_START_SALDO: 25 }, { waitUntil() {} }) };
     };
 
     const e = bouwOnboard(false);
@@ -477,12 +475,12 @@ const gezien = new Set();
         KLANT_BEWAARDAGEN: 30,
         tegoedLog: async (env, ctx, regel) => { staat.kasboek.push(regel); },
         metSaldoSlot: async (env, adres, fn) => ({ bezet: false, result: await fn() }),
-        fetch: async () => ({ ok: true, json: async () => ({ fields: { Saldo: staat.saldo, Email: 'klant@example.com' } }) }),
+        atHaal: async (env, sleutel, id) => ({ id, fields: { Saldo: staat.saldo, Email: 'klant@example.com' } }),
         console: { error() {}, warn() {}, log() {} }
       };
       const maak = new Function(...Object.keys(omg), srcAdmin + '\nreturn handleAdminKlantenPost;');
       const fn = maak(...Object.values(omg));
-      return { staat, roep: (body) => fn({ json: async () => body }, { AIRTABLE_TOKEN: 'x' }, { waitUntil() {} }) };
+      return { staat, roep: (body) => fn({ json: async () => body }, { LOGDB: {} }, { waitUntil() {} }) };
     };
     const ID = 'rec0123456789abcd';
 

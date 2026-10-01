@@ -59,16 +59,20 @@ function bouw(opties) {
     // kasboekregel — het record bestaat op dat moment nog niet — maar de andere
     // acties in dezelfde functie wel, en zonder deze naam valt de hele slice om.
     tegoedLog: async () => {},
-    fetch: async (url, init) => {
-      staat.verzoeken.push({ url: String(url), method: (init && init.method) || 'GET', body: init && init.body });
-      if (o.airtableStuk) return { ok: false, status: 422, text: async () => 'INVALID_VALUE_FOR_COLUMN', json: async () => ({}) };
-      return { ok: true, status: 200, json: async () => ({ records: [{ id: 'recNieuw12345678', fields: {} }] }), text: async () => '{}' };
+    // Sinds 01-10-2026 staat de klantentabel in D1 (#327) en maakt de handler
+    // een record met atMaak(). Vastgelegd in dezelfde vorm als het oude
+    // Airtable-verzoek, zodat de toetsen hieronder kijken naar wat er werkelijk
+    // weggeschreven werd, niet naar wat de handler teruggeeft.
+    atMaak: async (env, sleutel, fields) => {
+      staat.verzoeken.push({ url: 'd1:' + sleutel, method: 'POST', body: JSON.stringify({ records: [{ fields }] }) });
+      if (o.airtableStuk) throw new Error('d1_veld_geen_getal_Saldo');
+      return { id: 'recNieuw12345678', fields };
     },
     __name: () => {}
   };
   const maak = new Function(...Object.keys(omg), src + '\nreturn handleAdminKlantenPost;');
   const fn = maak(...Object.values(omg));
-  return { staat, roep: (body) => fn({ json: async () => body }, { AIRTABLE_TOKEN: 'x' }) };
+  return { staat, roep: (body) => fn({ json: async () => body }, { LOGDB: {} }) };
 }
 const posts = (v) => v.filter((x) => x.method === 'POST');
 const basis = { actie: 'aanmaken', email: 'nieuw@klant.nl', naam: 'Nieuwe Klant' };
@@ -163,13 +167,13 @@ const basis = { actie: 'aanmaken', email: 'nieuw@klant.nl', naam: 'Nieuwe Klant'
     toets('wachtwoord zetten zonder id ook', rw.body.ok === false && rw.status === 400);
   }
 
-  // ── 6. Airtable weigert ─────────────────────────────────────────
-  console.log('\n6. Als Airtable de rij weigert');
+  // ── 6. De database weigert ──────────────────────────────────────
+  console.log('\n6. Als de database de rij weigert');
   {
     const t = bouw({ airtableStuk: true });
     const r = await t.roep(basis);
     toets('dat wordt gemeld en niet stil geslikt', r.body.ok === false && r.status === 502, 'status ' + r.status);
-    toets('met de reden van Airtable erbij', /INVALID_VALUE_FOR_COLUMN/.test(String(r.body.detail || '')), JSON.stringify(r.body).slice(0, 160));
+    toets('met de reden erbij', /d1_veld_geen_getal_Saldo/.test(String(r.body.detail || '')), JSON.stringify(r.body).slice(0, 160));
     toets('en er wordt geen auditregel verzonnen', t.staat.audits.length === 0);
   }
 

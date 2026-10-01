@@ -75,7 +75,7 @@ function bouw(record, opties) {
   };
   const maak = new Function(...Object.keys(omg), src + '\nreturn handleKlantOnboarding;');
   const fn = maak(...Object.values(omg));
-  const env = { AIRTABLE_TOKEN: 'x', KLANT_START_SALDO: o.startSaldo };
+  const env = { LOGDB: {}, KLANT_START_SALDO: o.startSaldo };
   const roep = (body) => fn(
     { headers: { get: () => 'ip' }, json: async () => body },
     env, {}

@@ -93,18 +93,17 @@ function bouw(opties) {
     // bijgeboekt — een kasboekregel vast. Hier alleen opvangen; de inhoud van
     // die regel toetst test-kasboek.js.
     tegoedLog: async (env, ctx, regel) => { staat.kasboek.push(regel); },
-    // Alles wat rechtstreeks naar Airtable gaat: het opzoeken van de code, het
-    // teruglezen binnen het slot, en de PATCH die hem afstempelt.
-    fetch: async (url, init) => {
-      if (!init || init.method !== 'PATCH') {
-        return { ok: true, json: async () => (String(url).indexOf(codeRec.id) > -1
-          ? { fields: Object.assign({}, codeRec.fields, staat.afgestempeld ? { Gebruikt: true } : {}) }
-          : { records: [codeRec] }) };
-      }
-      const f = JSON.parse(init.body).records[0].fields;
+    // De codetabel staat sinds 01-10-2026 in D1 (#327): het opzoeken van de
+    // code, het teruglezen binnen het slot en het afstempelen gaan via de
+    // D1-laag. Alle drie nagebouwd op dezelfde codeRec.
+    atZoek: async (env, sleutel) => (sleutel === 'codes' ? codeRec : null),
+    atHaal: async (env, sleutel, id) => (id === codeRec.id
+      ? { id, fields: Object.assign({}, codeRec.fields, staat.afgestempeld ? { Gebruikt: true } : {}) }
+      : null),
+    atPatch: async (env, sleutel, id, f) => {
       if (f.Gebruikt === true) staat.afgestempeld = true;
       if (f.GebruiktDoor !== undefined) staat.gebruiktDoor = f.GebruiktDoor;
-      return { ok: true, text: async () => '', json: async () => ({}) };
+      return { id, fields: f };
     },
     console: { error() {}, warn() {}, log() {} },
     __name: () => {},
@@ -115,7 +114,7 @@ function bouw(opties) {
   const fn = maak(...Object.values(omg));
   const roep = (body) => fn(
     { json: async () => body, headers: { get: () => '1.2.3.4' } },
-    { AIRTABLE_TOKEN: 'x', REMOTE_SESSION: {} }
+    { LOGDB: {}, REMOTE_SESSION: {} }
   );
   return { staat, roep };
 }

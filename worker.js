@@ -700,7 +700,7 @@ async function handleMessages(request, env, ctx) {
   // die tegen het slot aanloopt krijgt een nette "wacht even"-melding
   // (tegoed_bezet) in plaats van gratis AI of een verdwenen afboeking.
   if (session.r === "klant" && !clientKey) {
-    if (!env.AIRTABLE_TOKEN) return json({ error: "no_airtable_token" }, 500);
+    if (!env.LOGDB) return json({ error: "no_logdb" }, 500);
     const tarief = tegoedTarief(env);
     let uitkomst;
     try {
@@ -1568,7 +1568,7 @@ async function atZoek(env, sleutel, veld, waarde, o = {}) {
   const { db, def } = await d1Tabel(env, sleutel);
   const kol = d1Veld(def, veld);
   const rij = await db.prepare(
-    o.lower ? `SELECT * FROM ${def.d1} WHERE LOWER(${kol}) = LOWER(?) LIMIT 1` : `SELECT * FROM ${def.d1} WHERE ${kol} = ? LIMIT 1`
+    `SELECT * FROM ${def.d1} WHERE ${o.lower ? `LOWER(${kol}) = LOWER(?)` : `${kol} = ?`} ORDER BY rij_gemaakt, id LIMIT 1`
   ).bind(waarde).first();
   return d1Record(def, rij);
 }
@@ -2556,7 +2556,7 @@ var RemoteSessionDO = class {
 // terug, en boeken ALLEEN bij wanneer onze eigen stempel er nog staat. Bij een
 // race wint precies één verzoek; de ander ziet een vreemde stempel en stopt.
 async function handleCreditsRedeem(request, env, ctx) {
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
 
   // Brute-force-rem: een code is kort, dus raden moet duur zijn.
   const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
@@ -2579,11 +2579,6 @@ async function handleCreditsRedeem(request, env, ctx) {
     return json({ ok: false, error: "Log eerst in met je account — een code wordt daarop bijgeschreven. Zo raakt hij niet verloren." }, 401);
   const door = String(klant.u || "").trim().toLowerCase() || "onbekend";
 
-  const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
-  const table = cfg(env, "AIRTABLE_CODES_TABLE");
-  const hdr = { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" };
-  const esc = formuleTekst(code);
-
   // Zonder Durable Object geen atomair slot, en zonder slot kan dezelfde code
   // bij twee gelijktijdige verzoeken twee keer worden ingewisseld. Bewust
   // dichtklappen: bij geld is niets doen beter dan misschien dubbel boeken.
@@ -2593,12 +2588,13 @@ async function handleCreditsRedeem(request, env, ctx) {
   let slot = null;
   try {
     // 1. Code opzoeken
-    const zoek = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}` +
-      `?maxRecords=1&filterByFormula=${encodeURIComponent(`UPPER({Code})='${esc}'`)}`;
-    const r1 = await fetch(zoek, { headers: hdr });
-    if (!r1.ok) return json({ ok: false, error: "Controle mislukt, probeer later opnieuw." }, 502);
-    const d1 = await r1.json();
-    const rec = d1 && d1.records && d1.records[0];
+    let rec;
+    try {
+      rec = await atZoek(env, "codes", "Code", code, { lower: true });
+    } catch (e) {
+      try { console.error("[credits] code niet te controleren :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+      return json({ ok: false, error: "Controle mislukt, probeer later opnieuw." }, 502);
+    }
     if (!rec) return json({ ok: false, error: "Code niet gevonden. Controleer de spelling." }, 404);
 
     const f = rec.fields || {};
@@ -2638,13 +2634,9 @@ async function handleCreditsRedeem(request, env, ctx) {
     //    een tweede verzoek komt hier pas als het eerste klaar is en ziet
     //    Gebruikt dan al aanstaan. De controle bij stap 1 blijft staan omdat
     //    die de meeste verzoeken al afvangt zonder slot te pakken.
-    const rc = await fetch(
-      `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${rec.id}`,
-      { headers: hdr }
-    );
-    if (!rc.ok) return json({ ok: false, error: "Controle mislukt, probeer later opnieuw." }, 502);
-    const dc = await rc.json();
-    if ((dc && dc.fields || {}).Gebruikt === true)
+    const dc = await atHaal(env, "codes", rec.id);
+    if (!dc) return json({ ok: false, error: "Controle mislukt, probeer later opnieuw." }, 502);
+    if ((dc.fields || {}).Gebruikt === true)
       return json({ ok: false, error: "Deze code is zojuist al gebruikt." }, 409);
 
     // 4. Afstempelen. GebruiktOp is een dateTime-veld, dus hier hoort een
@@ -2654,25 +2646,15 @@ async function handleCreditsRedeem(request, env, ctx) {
     //    met 422 — inwisselen werkte dus vermoedelijk helemaal niet. typecast
     //    staat nu aan zodat het ook goed blijft gaan als het veld ooit naar
     //    tekst wordt omgezet.
-    const r2 = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
-      method: "PATCH",
-      headers: hdr,
-      body: JSON.stringify({
-        records: [{
-          id: rec.id,
-          fields: {
-            Gebruikt: true,
-            GebruiktOp: new Date().toISOString(),
-            GebruiktDoor: door
-          }
-        }],
-        typecast: true
-      })
-    });
-    if (!r2.ok) {
-      const t2 = await r2.text().catch(() => "");
+    try {
+      await atPatch(env, "codes", rec.id, {
+        Gebruikt: true,
+        GebruiktOp: new Date().toISOString(),
+        GebruiktDoor: door
+      });
+    } catch (e2) {
       try {
-        console.error("[credits] afstempelen mislukt :: " + r2.status + " " + t2.slice(0, 200));
+        console.error("[credits] afstempelen mislukt :: " + String(e2 && e2.message || e2));
       } catch (_) {
         /* stil: melden mag de stroom nooit breken */
       }
@@ -2704,11 +2686,9 @@ async function handleCreditsRedeem(request, env, ctx) {
           Saldo: nieuwSaldo,
           TotaalGekocht: Number(kf.TotaalGekocht || 0) + credits
         });
-        await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
-          method: "PATCH",
-          headers: hdr,
-          body: JSON.stringify({ records: [{ id: rec.id, fields: { GebruiktDoor: kf.Email || door } }] })
-        }).catch(() => {});
+        await atPatch(env, "codes", rec.id, { GebruiktDoor: kf.Email || door }).catch((e3) => {
+          try { console.error("[credits] GebruiktDoor niet bijgewerkt :: " + String(e3 && e3.message || e3)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+        });
         return nieuwSaldo;
       });
       if (uitkomst.bezet)
@@ -2826,72 +2806,19 @@ function formuleTekst(s) {
 }
 __name(formuleTekst, "formuleTekst");
 
-function klantTabel(env) {
-  return {
-    base: resolveBase(env, "AIRTABLE_CONFIG_BASE"),
-    table: cfg(env, "AIRTABLE_KLANTEN_TABLE"),
-    hdr: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" }
-  };
-}
-__name(klantTabel, "klantTabel");
 
+// Sinds 01-10-2026 in D1 (#327). Bij dubbele adressen (Airtable dwong
+// uniekheid niet af) wint de oudste, zoals bij Airtable de eerste rij won.
 async function klantZoek(env, email) {
-  const { base, table, hdr } = klantTabel(env);
-  const e = formuleTekst(String(email || "").trim().toLowerCase());
-  const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}` +
-    `?maxRecords=1&filterByFormula=${encodeURIComponent(`LOWER({Email})='${e}'`)}`;
-  const r = await fetch(url, { headers: hdr });
-  if (!r.ok) throw new Error("airtable_zoek_" + r.status);
-  const d = await r.json();
-  return d && d.records && d.records[0] || null;
+  return await atZoek(env, "klanten", "Email", String(email || "").trim(), { lower: true });
 }
 __name(klantZoek, "klantZoek");
 
 async function klantPatch(env, id, fields) {
-  const { base, table, hdr } = klantTabel(env);
-  const r = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
-    method: "PATCH",
-    headers: hdr,
-    body: JSON.stringify({ records: [{ id, fields }], typecast: true })
-  });
-  if (!r.ok) throw new Error("airtable_patch_" + r.status);
-  return await r.json();
+  return { records: [await atPatch(env, "klanten", id, fields)] };
 }
 __name(klantPatch, "klantPatch");
 
-// De accountstatus voor `stand` per isolate onthouden (#327, 01-10-2026).
-// Mijn voertuigen ververst bij het opstarten, bij het openen en na elk
-// opgeslagen rapport of rit, en elke keer was dat een zoekvraag aan Airtable
-// in een werkruimte met een plafond van 1.000 calls per maand. Op 01-10 stond
-// de teller na één dag op 139.
-//
-// Alleen het oordeel (geblokkeerd, verwijderd, onbekend of niets) wordt
-// onthouden, niet het record: daar staan PassHash en Saldo in. Elke
-// schrijfactie uit beheer (/admin/klanten en /admin/tabel, in de router)
-// gooit alles weg, dus wie via beheer blokkeert, is in deze isolate meteen
-// dicht. Niet in klantPatch(): de klant zelf verandert zijn status nooit
-// anders dan door verwijderen, en dat staat al in kp_akkoord. Wie in Airtable zelf op
-// geblokkeerd zet, of een andere isolate treft, kijkt hoogstens
-// KLANT_STATUS_MS nog naar zijn eigen voertuigen. Verwijderd blijft meteen
-// dicht: dat staat in kp_akkoord, en dan wordt er altijd vers gelezen.
-// Saldo en AI lezen niet hieruit; die kijken altijd vers.
-var KLANT_STATUS_MS = 5 * 6e4;
-var _klantStatus = new Map();
-function klantStatusVergeet() {
-  _klantStatus.clear();
-}
-__name(klantStatusVergeet, "klantStatusVergeet");
-async function klantStatusVoorStand(env, email, vers = false) {
-  const k = String(email || "").trim().toLowerCase();
-  const h = _klantStatus.get(k);
-  if (!vers && h && Date.now() - h.t < KLANT_STATUS_MS) return { pr: h.pr, uitCache: true };
-  const rec = await klantZoek(env, k);
-  const pr = rec ? klantToegangProbleem(rec.fields) : { status: 403, code: "onbekend", bericht: "Account niet gevonden." };
-  if (_klantStatus.size >= 500) _klantStatus.clear();
-  _klantStatus.set(k, { t: Date.now(), pr });
-  return { pr, uitCache: false };
-}
-__name(klantStatusVoorStand, "klantStatusVoorStand");
 
 // Verifieert een klanttoken uit X-App-Token of Authorization: Bearer.
 async function klantAuth(request, env) {
@@ -3000,7 +2927,7 @@ __name(klantPubliek, "klantPubliek");
 // ── POST /klant/registreer  { email, pass, naam? } ──────────────────
 async function handleKlantRegistreer(request, env) {
   if (!env.SESSION_SECRET) return json({ ok: false, error: "no_session_secret" }, 500);
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
 
   const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
   // Ruim genoeg voor een garage met meerdere medewerkers achter één
@@ -3028,32 +2955,25 @@ async function handleKlantRegistreer(request, env) {
     if (await klantZoek(env, email))
       return json({ ok: false, error: "Dit e-mailadres is al geregistreerd." }, 409);
 
-    const { base, table, hdr } = klantTabel(env);
     const nu = new Date().toISOString();
-    const r = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
-      method: "POST",
-      headers: hdr,
-      body: JSON.stringify({
-        records: [{
-          fields: {
-            Email: email,
-            PassHash: await hashPassword(pass, env),
-            Naam: naam,
-            // Nog geen tegoed: dat wordt uitgekeerd via /klant/onboarding,
-            // pas nadat de klant de akkoorden heeft gegeven.
-            Saldo: 0,
-            TotaalGekocht: 0,
-            Status: "actief",
-            Aangemaakt: nu,
-            LaatsteLogin: nu
-          }
-        }],
-        typecast: true
-      })
-    });
-    if (!r.ok) return json({ ok: false, error: "Aanmaken mislukt, probeer later opnieuw." }, 502);
-    const d = await r.json();
-    const rec = d && d.records && d.records[0];
+    let rec;
+    try {
+      rec = await atMaak(env, "klanten", {
+        Email: email,
+        PassHash: await hashPassword(pass, env),
+        Naam: naam,
+        // Nog geen tegoed: dat wordt uitgekeerd via /klant/onboarding,
+        // pas nadat de klant de akkoorden heeft gegeven.
+        Saldo: 0,
+        TotaalGekocht: 0,
+        Status: "actief",
+        Aangemaakt: nu,
+        LaatsteLogin: nu
+      });
+    } catch (e) {
+      try { console.error("[klant] aanmaken mislukt :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+      return json({ ok: false, error: "Aanmaken mislukt, probeer later opnieuw." }, 502);
+    }
 
     const t = await makeToken(env, email, "klant", naam || email);
     return json({ ok: true, ...t, klant: klantPubliek(rec) }, 201);
@@ -3066,7 +2986,7 @@ __name(handleKlantRegistreer, "handleKlantRegistreer");
 // ── POST /klant/login  { email, pass } ──────────────────────────────
 async function handleKlantLogin(request, env, ctx) {
   if (!env.SESSION_SECRET) return json({ ok: false, error: "no_session_secret" }, 500);
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
 
   const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
   let body = {};
@@ -3128,7 +3048,7 @@ __name(handleKlantLogin, "handleKlantLogin");
 async function handleKlantMij(request, env) {
   const p = await klantAuth(request, env);
   if (!p) return json({ ok: false, error: "Niet ingelogd." }, 401);
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
   try {
     const rec = await klantZoek(env, p.u);
     if (!rec) return json({ ok: false, error: "Account niet gevonden." }, 404);
@@ -3181,7 +3101,7 @@ __name(handleKlantWachtwoord, "handleKlantWachtwoord");
 // Stuurt een herstelmail. In Airtable komt alleen de HASH van het token te
 // staan: lekt de base ooit uit, dan kan niemand daarmee een account kapen.
 async function handleKlantResetAanvraag(request, env) {
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
 
   const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
   let body = {};
@@ -3290,7 +3210,7 @@ __name(klantMailVersturen, "klantMailVersturen");
 
 // ── POST /klant/reset-uitvoeren  { token, pass } ────────────────────
 async function handleKlantResetUitvoeren(request, env) {
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
 
   const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
   const rl = await rateLimit(env, "klant-reset-doe", ip, { limit: 10, windowMs: 36e5 }, true);
@@ -3306,13 +3226,13 @@ async function handleKlantResetUitvoeren(request, env) {
 
   try {
     const hash = await sha256hex(token);
-    const { base, table, hdr } = klantTabel(env);
-    const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}` +
-      `?maxRecords=1&filterByFormula=${encodeURIComponent(`{ResetToken}='${hash}'`)}`;
-    const r = await fetch(url, { headers: hdr });
-    if (!r.ok) return json({ ok: false, error: "Controle mislukt." }, 502);
-    const d = await r.json();
-    const rec = d && d.records && d.records[0];
+    let rec;
+    try {
+      rec = await atZoek(env, "klanten", "ResetToken", hash);
+    } catch (e) {
+      try { console.error("[klant] resettoken niet te controleren :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+      return json({ ok: false, error: "Controle mislukt." }, 502);
+    }
     if (!rec) return json({ ok: false, error: "Herstellink is ongeldig of verlopen." }, 400);
 
     const f = rec.fields || {};
@@ -3344,7 +3264,7 @@ __name(handleKlantResetUitvoeren, "handleKlantResetUitvoeren");
 // nieuw wachtwoord en geeft dat door. Ook bruikbaar als een klant vastloopt.
 async function handleKlantAdminWachtwoord(request, env) {
   if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
 
   let body = {};
   try { body = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — body blijft {}, code hieronder valideert */ }
@@ -3400,14 +3320,9 @@ async function klantAudit(env, id, tekst, door) {
   const wie = String(door || "").trim().slice(0, 40) || "onbekend";
   const regel = `[${new Date().toISOString().slice(0, 16).replace("T", " ")}] ${wie}: ${tekst}`;
   try {
-    const { base, table, hdr } = klantTabel(env);
-    // Eerst lezen: Airtable kan niet aanvullen, alleen overschrijven.
-    const r = await fetch(
-      `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`,
-      { headers: hdr }
-    );
-    if (!r.ok) return false;
-    const rec = await r.json();
+    // Eerst lezen: een veld kan niet aanvullen, alleen overschrijven.
+    const rec = await atHaal(env, "klanten", id);
+    if (!rec) return false;
     const oud = String((rec.fields || {}).Audit || "");
     // Nieuwste bovenaan, en afkappen op 4000 tekens: een lange-tekstveld in
     // Airtable is niet oneindig en de oudste regels zijn het minst waard.
@@ -3424,25 +3339,19 @@ __name(klantAudit, "klantAudit");
 // ── GET /admin/klanten?q=zoekterm ───────────────────────────────────
 async function handleAdminKlantenGet(request, env) {
   if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
 
   const q = String(new URL(request.url).searchParams.get("q") || "").trim().toLowerCase();
-  const { base, table, hdr } = klantTabel(env);
-
-  let url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}?pageSize=100` +
-    `&sort%5B0%5D%5Bfield%5D=Aangemaakt&sort%5B0%5D%5Bdirection%5D=desc`;
-  if (q) {
-    const e = formuleTekst(q);
-    url += `&filterByFormula=${encodeURIComponent(
-      `OR(SEARCH('${e}',LOWER({Email})),SEARCH('${e}',LOWER({Naam})))`
-    )}`;
-  }
 
   try {
-    const r = await fetch(url, { headers: hdr });
-    if (!r.ok) return json({ ok: false, error: "airtable_" + r.status }, 502);
-    const d = await r.json();
-    const klanten = (d.records || []).map((rec) => {
+    // Zoeken met LIKE en een ontsnapte term (d1Zoekterm), niet met een
+    // samengeplakte formule: dat was bij Airtable het gat van #142.
+    const recs = await atAlle(env, "klanten", {
+      waar: q ? `LOWER(COALESCE("Email",'')) LIKE ? ESCAPE '\\' OR LOWER(COALESCE("Naam",'')) LIKE ? ESCAPE '\\'` : "",
+      waarden: q ? [d1Zoekterm(q), d1Zoekterm(q)] : [],
+      orde: '"Aangemaakt" DESC'
+    });
+    const klanten = recs.map((rec) => {
       const f = rec.fields || {};
       return {
         id: rec.id,
@@ -3478,7 +3387,7 @@ __name(handleAdminKlantenGet, "handleAdminKlantenGet");
 // ── POST /admin/klanten  { actie, ... } ─────────────────────────────
 async function handleAdminKlantenPost(request, env, ctx) {
   if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
 
   let b = {};
   try { b = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — b blijft {}, code hieronder valideert */ }
@@ -3490,8 +3399,6 @@ async function handleAdminKlantenPost(request, env, ctx) {
   // record worden.
   if (actie !== "opruimen" && actie !== "aanmaken" && !/^rec[A-Za-z0-9]{14}$/.test(id))
     return json({ ok: false, error: "Ongeldig record-id." }, 400);
-
-  const { base, table, hdr } = klantTabel(env);
 
   try {
     // ── aanmaken: een klantaccount vanuit het beheer ───────────────
@@ -3541,16 +3448,12 @@ async function handleAdminKlantenPost(request, env, ctx) {
         Status: status, Aangemaakt: nu
       };
       if (pass) velden.PassHash = await hashPassword(pass, env);
-      const r = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
-        method: "POST", headers: hdr,
-        body: JSON.stringify({ records: [{ fields: velden }], typecast: true })
-      });
-      if (!r.ok) {
-        const t = await r.text().catch(() => "");
-        return json({ ok: false, error: "Aanmaken mislukt.", detail: t.slice(0, 300) }, 502);
+      let nieuwId = "";
+      try {
+        nieuwId = (await atMaak(env, "klanten", velden)).id;
+      } catch (e) {
+        return json({ ok: false, error: "Aanmaken mislukt.", detail: String(e && e.message || e).slice(0, 300) }, 502);
       }
-      const d = await r.json();
-      const nieuwId = ((d.records || [])[0] || {}).id || "";
       const vast = nieuwId
         ? await klantAudit(env, nieuwId,
             `account aangemaakt door beheerder (saldo ${saldo}, status ${status}, ` +
@@ -3595,10 +3498,9 @@ async function handleAdminKlantenPost(request, env, ctx) {
       if (!isFinite(d) || d === 0) return json({ ok: false, error: "Bijboeking moet een getal zijn dat niet 0 is." }, 400);
       if (Math.abs(d) > 1e5) return json({ ok: false, error: "Bijboeking buiten bereik." }, 400);
 
-      const recUrl = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`;
-      const r0 = await fetch(recUrl, { headers: hdr });
-      if (!r0.ok) return json({ ok: false, error: "Klant niet gevonden." }, 404);
-      const email = String(((await r0.json()).fields || {}).Email || "").trim();
+      const r0 = await atHaal(env, "klanten", id);
+      if (!r0) return json({ ok: false, error: "Klant niet gevonden." }, 404);
+      const email = String((r0.fields || {}).Email || "").trim();
       // Zonder adres is er geen naamruimte om het slot op te zetten, en dan
       // zou een bijboeking langs de klant heen kunnen schrijven. Weigeren en
       // niet stilletjes buitenom gaan: dat is de fout die hier net weg is.
@@ -3610,9 +3512,9 @@ async function handleAdminKlantenPost(request, env, ctx) {
         uitkomst = await metSaldoSlot(env, email, async () => {
           // Verse lezing binnen het slot — dat is de eigenlijke
           // racebeveiliging, niet het slot op zich (zie metSaldoSlot).
-          const r1 = await fetch(recUrl, { headers: hdr });
-          if (!r1.ok) return { fout: "Klant niet gevonden.", status: 404 };
-          const huidig = Number(((await r1.json()).fields || {}).Saldo || 0);
+          const r1 = await atHaal(env, "klanten", id);
+          if (!r1) return { fout: "Klant niet gevonden.", status: 404 };
+          const huidig = Number((r1.fields || {}).Saldo || 0);
           const nieuw = huidig + d;
           if (nieuw < 0) return { fout: `Saldo zou ${nieuw} worden; het staat nu op ${huidig}.`, status: 400 };
           if (nieuw > 1e6) return { fout: "Saldo buiten bereik.", status: 400 };
@@ -3717,9 +3619,9 @@ async function handleAdminKlantenPost(request, env, ctx) {
       }
       if (b.ontwikkelaar === false) f.TegoedUit = false;
       if (f.TegoedUit === true && b.ontwikkelaar !== true) {
-        const t0 = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`, { headers: hdr });
-        if (!t0.ok) return json({ ok: false, error: "Klant niet gevonden." }, 404);
-        if (((await t0.json()).fields || {}).Ontwikkelaar !== true)
+        const t0 = await atHaal(env, "klanten", id);
+        if (!t0) return json({ ok: false, error: "Klant niet gevonden." }, 404);
+        if ((t0.fields || {}).Ontwikkelaar !== true)
           return json({ ok: false, error: "Tegoed uit kan alleen bij een klant met Ontwikkelaar aan." }, 409);
       }
       if (b.opmerking !== undefined) f.Opmerking = String(b.opmerking).slice(0, 2000);
@@ -3747,10 +3649,9 @@ async function handleAdminKlantenPost(request, env, ctx) {
           return json({ ok: false, error: "Het meegestuurde oude saldo is geen bruikbaar getal." }, 400);
       }
 
-      const zetUrl = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`;
-      const z0 = await fetch(zetUrl, { headers: hdr });
-      if (!z0.ok) return json({ ok: false, error: "Klant niet gevonden." }, 404);
-      const zetEmail = String(((await z0.json()).fields || {}).Email || "").trim();
+      const z0 = await atHaal(env, "klanten", id);
+      if (!z0) return json({ ok: false, error: "Klant niet gevonden." }, 404);
+      const zetEmail = String((z0.fields || {}).Email || "").trim();
       if (!zetEmail)
         return json({ ok: false, code: "saldo_geen_email", error: "Deze klant heeft geen e-mailadres; het tegoed kan niet veilig gewijzigd worden." }, 409);
 
@@ -3760,9 +3661,9 @@ async function handleAdminKlantenPost(request, env, ctx) {
           // Verse lezing binnen het slot — hier hetzelfde als bij
           // bijboeken, alleen wordt er niet mee gerekend maar tegenaan
           // vergeleken.
-          const z1 = await fetch(zetUrl, { headers: hdr });
-          if (!z1.ok) return { fout: "Klant niet gevonden.", status: 404 };
-          const huidig = Number(((await z1.json()).fields || {}).Saldo || 0);
+          const z1 = await atHaal(env, "klanten", id);
+          if (!z1) return { fout: "Klant niet gevonden.", status: 404 };
+          const huidig = Number((z1.fields || {}).Saldo || 0);
           if (saldoWas !== null && huidig !== saldoWas)
             return {
               fout: `Het saldo staat inmiddels op ${huidig} en niet meer op ${saldoWas}. Er is niets gewijzigd.`,
@@ -3822,11 +3723,7 @@ async function handleAdminKlantenPost(request, env, ctx) {
     }
 
     if (actie === "verwijder") {
-      const r = await fetch(
-        `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`,
-        { method: "DELETE", headers: hdr }
-      );
-      if (!r.ok) return json({ ok: false, error: "Verwijderen mislukt." }, 502);
+      if (!await atWis(env, "klanten", id)) return json({ ok: false, error: "Klant niet gevonden." }, 404);
       return json({ ok: true });
     }
 
@@ -3840,24 +3737,17 @@ __name(handleAdminKlantenPost, "handleAdminKlantenPost");
 // ── GET /admin/codes?status=alle|open|gebruikt ───────────────────────
 async function handleAdminCodesGet(request, env) {
   if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
 
   const sp = new URL(request.url).searchParams;
   const status = String(sp.get("status") || "alle");
-  const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
-  const table = cfg(env, "AIRTABLE_CODES_TABLE");
-  const hdr = { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" };
-
-  let url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}?pageSize=100` +
-    `&sort%5B0%5D%5Bfield%5D=Aangemaakt&sort%5B0%5D%5Bdirection%5D=desc`;
-  if (status === "open") url += `&filterByFormula=${encodeURIComponent("NOT({Gebruikt})")}`;
-  if (status === "gebruikt") url += `&filterByFormula=${encodeURIComponent("{Gebruikt}")}`;
 
   try {
-    const r = await fetch(url, { headers: hdr });
-    if (!r.ok) return json({ ok: false, error: "airtable_" + r.status }, 502);
-    const d = await r.json();
-    const codes = (d.records || []).map((rec) => {
+    const recs = await atAlle(env, "codes", {
+      waar: status === "open" ? 'COALESCE("Gebruikt",0) = 0' : status === "gebruikt" ? '"Gebruikt" = 1' : "",
+      orde: '"Aangemaakt" DESC'
+    });
+    const codes = recs.map((rec) => {
       const f = rec.fields || {};
       return {
         id: rec.id,
@@ -3906,24 +3796,17 @@ __name(maakActivatieCode, "maakActivatieCode");
 // ── POST /admin/codes  { actie:'genereer'|'verwijder', ... } ─────────
 async function handleAdminCodesPost(request, env) {
   if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
 
   let b = {};
   try { b = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — b blijft {}, code hieronder valideert */ }
   const actie = String(b.actie || "");
-  const base = resolveBase(env, "AIRTABLE_CONFIG_BASE");
-  const table = cfg(env, "AIRTABLE_CODES_TABLE");
-  const hdr = { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" };
 
   try {
     if (actie === "verwijder") {
       const id = String(b.id || "");
       if (!/^rec[A-Za-z0-9]{14}$/.test(id)) return json({ ok: false, error: "Ongeldig record-id." }, 400);
-      const r = await fetch(
-        `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}/${id}`,
-        { method: "DELETE", headers: hdr }
-      );
-      if (!r.ok) return json({ ok: false, error: "Verwijderen mislukt." }, 502);
+      if (!await atWis(env, "codes", id)) return json({ ok: false, error: "Code niet gevonden." }, 404);
       return json({ ok: true });
     }
 
@@ -3954,31 +3837,22 @@ async function handleAdminCodesPost(request, env) {
       // create; we doen 10 per keer zodat een grote batch niet halverwege
       // afbreekt op een limiet.
       const gemaakt = [];
-      for (let i = 0; i < nieuw.length; i += 10) {
-        const deel = nieuw.slice(i, i + 10).map((code) => ({
-          fields: Object.assign(
+      for (const code of nieuw) {
+        try {
+          const rec = await atMaak(env, "codes", Object.assign(
             { Code: code, Credits: credits, Gebruikt: false, Batch: batch, Aangemaakt: nu },
             prijs > 0 ? { Waarde: prijs } : {},
             vervalt ? { Vervalt: vervalt } : {}
-          )
-        }));
-        const r = await fetch(`https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}`, {
-          method: "POST",
-          headers: hdr,
-          body: JSON.stringify({ records: deel, typecast: true })
-        });
-        if (!r.ok) {
-          const tekst = await r.text().catch(() => "");
+          ));
+          gemaakt.push((rec.fields || {}).Code);
+        } catch (e) {
           return json({
             ok: false,
-            error: `Aanmaken gestopt na ${gemaakt.length} codes (Airtable ${r.status}). ` +
-              `De al aangemaakte codes zijn geldig.`,
+            error: `Aanmaken gestopt na ${gemaakt.length} codes. De al aangemaakte codes zijn geldig.`,
             codes: gemaakt,
-            detail: tekst.slice(0, 300)
+            detail: String(e && e.message || e).slice(0, 300)
           }, 502);
         }
-        const d = await r.json();
-        (d.records || []).forEach((rec) => gemaakt.push((rec.fields || {}).Code));
       }
 
       return json({ ok: true, aantal: gemaakt.length, batch, credits, prijs, codes: gemaakt });
@@ -4928,7 +4802,7 @@ __name(handleAdminD1Post, "handleAdminD1Post");
 async function handleKlantOnboarding(request, env, ctx) {
   const p = await klantAuth(request, env);
   if (!p) return json({ ok: false, error: "Niet ingelogd." }, 401);
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
 
   const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
   const rl = await rateLimit(env, "klant-onboarding", ip, { limit: 20, windowMs: 36e5 }, true);
@@ -5011,7 +4885,7 @@ __name(handleKlantOnboarding, "handleKlantOnboarding");
 async function handleKlantVerwijder(request, env) {
   const p = await klantAuth(request, env);
   if (!p) return json({ ok: false, error: "Niet ingelogd." }, 401);
-  if (!env.AIRTABLE_TOKEN) return json({ ok: false, error: "no_airtable_token" }, 500);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
 
   const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
   const rl = await rateLimit(env, "klant-verwijder", ip, { limit: 10, windowMs: 36e5 }, true);
@@ -5893,14 +5767,17 @@ async function handleKlantPlatform(request, env) {
     const c = { db, klantId, sleutel: await kpSleutel(env) };
     let ak = await db.prepare("SELECT versie FROM kp_akkoord WHERE klant_id = ?").bind(klantId).first();
 
-    // Bij het openen (stand) de accountstatus in Airtable: geblokkeerd of
-    // verwijderd = dicht. Is het account intussen hersteld, dan gaat de
-    // blokkade van het verwijderen eraf (het akkoord moet dan opnieuw).
-    // Airtable onbereikbaar = doorgaan en melden: een storing daar mag de
-    // eigen voertuigen niet onbereikbaar maken.
-    if (actie === "stand" && env.AIRTABLE_TOKEN) {
+    // Bij het openen (stand) de accountstatus: geblokkeerd of verwijderd =
+    // dicht. Is het account intussen hersteld, dan gaat de blokkade van het
+    // verwijderen eraf (het akkoord moet dan opnieuw). Klantentabel
+    // onleesbaar = doorgaan en melden: een storing daar mag de eigen
+    // voertuigen niet onbereikbaar maken. Sinds 01-10-2026 staat de tabel in
+    // D1 en wordt hij bij elke stand gelezen; de vijf minuten van PR #380
+    // waren er alleen om Airtable-calls te sparen (#327).
+    if (actie === "stand") {
       try {
-        const { pr } = await klantStatusVoorStand(env, p.u, !!(ak && ak.versie === "verwijderd"));
+        const rec = await klantZoek(env, p.u);
+        const pr = rec ? klantToegangProbleem(rec.fields) : { status: 403, code: "onbekend", bericht: "Account niet gevonden." };
         if (pr) return json({ ok: false, error: pr.bericht, code: pr.code }, pr.status);
         if (ak && ak.versie === "verwijderd") {
           await db.prepare("DELETE FROM kp_akkoord WHERE klant_id = ?").bind(klantId).run();
@@ -5937,16 +5814,10 @@ __name(handleKlantPlatform, "handleKlantPlatform");
 // hier het gevaarlijkst van alles, want dan blijft er persoonsgegeven staan
 // terwijl de verklaring zegt dat het weg is.
 async function klantWachtrijOpruimen(env, nu) {
-  const { base, table, hdr } = klantTabel(env);
   const grens = (nu || new Date());
   const uit = { bekeken: 0, verwijderd: [], mislukt: [], wacht: [] };
 
-  const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}` +
-    `?pageSize=100&filterByFormula=${encodeURIComponent(`{Status}='verwijderd'`)}`;
-  const r = await fetch(url, { headers: hdr });
-  if (!r.ok) throw new Error("airtable_wachtrij_" + r.status);
-  const d = await r.json();
-  const rijen = (d && d.records) || [];
+  const rijen = await atAlle(env, "klanten", { waar: '"Status" = ?', waarden: ["verwijderd"] });
   uit.bekeken = rijen.length;
 
   const rijp = [];
@@ -5968,7 +5839,7 @@ async function klantWachtrijOpruimen(env, nu) {
 
   // EERST HET KLANTPLATFORM, DAN HET ACCOUNT. Voertuigen, ritten en rapporten
   // staan in D1 onder een sleutel die uit het e-mailadres volgt. Is het
-  // Airtable-record eenmaal weg, dan is dat adres er niet meer en kan niemand
+  // klantrecord eenmaal weg, dan is dat adres er niet meer en kan niemand
   // die rijen nog vinden. Mislukt het wissen in D1, dan blijft het account
   // dus óók staan — de volgende nacht probeert hij het opnieuw.
   if (rijp.length && env.LOGDB) {
@@ -5986,21 +5857,14 @@ async function klantWachtrijOpruimen(env, nu) {
     }
   }
 
-  // Airtable wist maximaal 10 records per aanroep.
-  for (let i = 0; i < rijp.length; i += 10) {
-    const groep = rijp.slice(i, i + 10);
-    const qs = groep.map((id) => `records[]=${encodeURIComponent(id)}`).join("&");
-    const rd = await fetch(
-      `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}?${qs}`,
-      { method: "DELETE", headers: hdr }
-    );
-    if (rd.ok) {
-      groep.forEach((id) => uit.verwijderd.push(id));
-    } else {
-      const tekst = await rd.text().catch(() => "");
-      groep.forEach((id) => uit.mislukt.push({ id, reden: "airtable_" + rd.status }));
+  for (const id of rijp) {
+    try {
+      if (await atWis(env, "klanten", id)) uit.verwijderd.push(id);
+      else uit.mislukt.push({ id, reden: "niet gevonden" });
+    } catch (e) {
+      uit.mislukt.push({ id, reden: "d1_" + String(e && e.message || e).slice(0, 120) });
       try {
-        console.error("[opruimen] wissen mislukt :: " + rd.status + " " + tekst.slice(0, 200));
+        console.error("[opruimen] wissen mislukt :: " + String(e && e.message || e));
       } catch (_) { /* stil: melden mag de stroom nooit breken */ }
     }
   }
@@ -6084,24 +5948,16 @@ var worker_default = {
         return lockOrigin(request, await handleCodeResolve(request, env));
       if (url.pathname === "/admin/klanten" && request.method === "GET")
         return lockOrigin(request, await handleAdminKlantenGet(request, env));
-      if (url.pathname === "/admin/klanten" && request.method === "POST") {
-        // Een klant die hier geblokkeerd of gewist wordt, is meteen dicht (#327).
-        const rk = await handleAdminKlantenPost(request, env, ctx);
-        klantStatusVergeet();
-        return lockOrigin(request, rk);
-      }
+      if (url.pathname === "/admin/klanten" && request.method === "POST")
+        return lockOrigin(request, await handleAdminKlantenPost(request, env, ctx));
       if (url.pathname === "/admin/codes" && request.method === "GET")
         return lockOrigin(request, await handleAdminCodesGet(request, env));
       if (url.pathname === "/admin/codes" && request.method === "POST")
         return lockOrigin(request, await handleAdminCodesPost(request, env));
       if (url.pathname === "/admin/tabel" && request.method === "GET")
         return lockOrigin(request, await handleAdminTabelGet(request, env));
-      if (url.pathname === "/admin/tabel" && request.method === "POST") {
-        // Een klant die hier geblokkeerd of gewist wordt, is meteen dicht (#327).
-        const rt = await handleAdminTabelPost(request, env);
-        klantStatusVergeet();
-        return lockOrigin(request, rt);
-      }
+      if (url.pathname === "/admin/tabel" && request.method === "POST")
+        return lockOrigin(request, await handleAdminTabelPost(request, env));
       if (url.pathname === "/admin/d1" && request.method === "GET")
         return lockOrigin(request, await handleAdminD1Get(request, env));
       if (url.pathname === "/admin/d1" && request.method === "POST")
@@ -6170,10 +6026,6 @@ var worker_default = {
     // op een sleutel waar het niets mee te maken heeft.
     const werk = (async () => {
       await logRondeOpruimen(env);
-      if (!env.AIRTABLE_TOKEN) {
-        try { console.error("[opruimen] klantwachtrij overgeslagen: geen AIRTABLE_TOKEN"); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
-        return;
-      }
       try {
         const uit = await klantWachtrijOpruimen(env, new Date());
         console.log(
