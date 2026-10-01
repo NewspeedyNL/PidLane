@@ -3178,8 +3178,7 @@ async function saveAll(){
   const r = await veilig(m, () => callWorker('config','/api/config',{
     method:'POST', headers:HJ(), body:JSON.stringify({ items }) }), 'Bezig met opslaan…');
   if(!r.ok) return;
-  toon_msg(m, 'ok', '✓ Opgeslagen. De app haalt dit op bij de volgende start; ' +
-    'op een toestel dat al open staat kan het even duren door de randcache.');
+  toon_msg(m, 'ok', '✓ Opgeslagen. De app haalt dit op bij de volgende start.');
   toast('Instellingen opgeslagen');
 }
 async function testPrompt(){
@@ -3231,7 +3230,7 @@ async function opruimNu(){
 function tekenRoutes(){
   const routes = [
     ['GET /api/config','de app-instellingen die deze pagina beheert'],
-    ['POST /api/config','opslaan van diezelfde instellingen (gooit ook de randcache weg)'],
+    ['POST /api/config','opslaan van diezelfde instellingen (in D1)'],
     ['GET /admin/klanten','klantaccounts met saldo'],
     ['POST /admin/klanten','aanmaken, bijboeken, zetten, status, wachtwoord, wissen, opruimen'],
     ['GET /admin/codes','activatiecodes'],
