@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-10-2026 — SPP: geen opruimread meer vóór elk commando
+ ═══════════════════════════════════════════════════════════
+
+ - In eventstand ging er vóór elk commando een read() over de brug om een
+   half antwoord weg te halen. In ~900 verzoeken vond hij nooit iets, en
+   tussen twee verzoeken zat 70–100 ms bij een adapter van 27–34 ms.
+ - Nu alleen na een onnette ronde: een time-out, een mislukte write of een
+   antwoord waar niemand op wachtte. pl_spp_flush = 1 zet de oude stand
+   terug om het verschil te meten. test-sppevents.js, blok 5, twee mutaties.
+
+ ═══════════════════════════════════════════════════════════
  01-10-2026 — Check na verbinden: niets gevonden → vanzelf naar Live
  ═══════════════════════════════════════════════════════════
 

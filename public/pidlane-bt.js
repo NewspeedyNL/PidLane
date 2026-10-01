@@ -1000,12 +1000,15 @@ async function _sendBTRaw(cmd, timeoutMs){
      met de reden in het BT-log. Weigert de plugin startNotifications: idem.
    - localStorage 'pl_spp_poll' = '1' dwingt pollen af, zonder deploy. */
 const SPP_EV_MISSERS=3;
-const _sppEv={ aan:false, teken:null, uitVoor:null, handle:null, wacht:null, missers:0, reden:'', vuil:false };
+const _sppEv={ aan:false, teken:null, uitVoor:null, handle:null, wacht:null, missers:0, reden:'', vuil:false, vragen:0, flushes:0, flushVond:0 };
 function _sppTeken(address){ return (window._btGen||0)+':'+(window._sppSocketNr||0)+':'+address; }
 function _sppNieuweSocket(){ window._sppSocketNr=(window._sppSocketNr||0)+1; _sppEv.aan=false; }
 function plSppModus(){
   return { modus:(_sppEv.aan && window._sppConn && _sppEv.teken===_sppTeken(window._sppConn.address)) ? 'event' : 'poll',
-           reden:_sppEv.reden, missers:_sppEv.missers };
+           reden:_sppEv.reden, missers:_sppEv.missers,
+           // De opruimread (01-10-2026): hoeveel commando's er per event gingen,
+           // hoe vaak er vooraf geruimd werd, en hoe vaak dat iets opleverde.
+           vragen:_sppEv.vragen, flushes:_sppEv.flushes, flushVond:_sppEv.flushVond, altijdFlush:_sppAltijdFlush() };
 }
 window.plSppModus=plSppModus;
 
@@ -1082,11 +1085,13 @@ function _sppAltijdFlush(){
 async function _sppVraagEvent(spp, address, cmd, str, TIMEOUT, myGen){
   // Half antwoord uit een vorige ronde (zonder '>') weghalen — alleen als die
   // ronde niet netjes eindigde, of als de oude stand afgedwongen is.
+  _sppEv.vragen++;
   if(_sppEv.vuil || _sppAltijdFlush()){
-    _sppEv.vuil=false;
+    _sppEv.vuil=false; _sppEv.flushes++;
     try{
       const stale=await spp.read({address});
       const s=(stale?.value!=null)?String(stale.value):'';
+      if(s) _sppEv.flushVond++;
       if(s) btDiag(`RX flush: "${s.slice(0,40)}"`,'warn');
     }catch(e){ btDiag(`flush read() fout: ${e.message}`,'warn'); }
   }

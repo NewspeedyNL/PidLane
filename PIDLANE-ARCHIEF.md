@@ -14,6 +14,37 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 01-10-2026 — De opruimread vóór elk SPP-commando
+
+**De waarneming.** Twee logboeken van 01-10 (CX-5, OBDLink MX+, stationair,
+32 sensoren). Om 13:17 zat er 70 ms tussen twee verzoeken, om 13:23 100 ms;
+de adapter antwoordde in 26–28 en 30–38 ms. De automaat noemde 57–59 en
+86–92 ms per commando: dat meet heel `sendCmd`, de "klaar"-regel alleen van
+write tot antwoord. Het verschil zat dus in de app, niet in de bus. Het
+pollbudget stond op 100% en de draadmeting zei 0 draaiend, dus het was
+niet de automaat en niet #352.
+
+**Wat daar zat.** `_sppVraagEvent` deed vóór elke write een `spp.read()` om
+een half antwoord weg te halen. Dat is een rondgang over de Capacitor-brug
+die terugkomt via de JS-draad, en die draad had het druk (app 88% van één
+kern, RenderThread 34%). In beide logboeken samen: nul "RX flush"-regels.
+
+**Waarom hij weg kon.** In eventstand haalt de plugin elk compleet antwoord
+zelf uit de buffer. Er kan alleen iets blijven liggen na een time-out (de
+rest komt later), een mislukte write, of een antwoord waar niemand op
+wachtte. Dáárna wordt er nu geruimd (`_sppEv.vuil`); een nieuwe socket
+ruimt al in `_sppEventsKlaar`.
+
+**Wat dit níét oplost.** Een laat maar compleet antwoord dat binnenkomt
+nádat het volgende commando al wacht, wordt aan dat commando gegeven. Dat
+kon met de oude flush ook: die liep vóór de write, het late antwoord erna.
+
+**Nog niet gemeten.** Hoeveel tempo dit oplevert hangt af van hoe druk de
+JS-draad is; dat zegt alleen een rit. `pl_spp_flush = 1` zet de oude stand
+terug, zodat het verschil in één sessie te zien is.
+
+---
+
 ## 30-09-2026 — Slim visueel opnieuw ingedeeld (#371)
 
 **De vraag.** Uit het gebruik, met een schermafbeelding van een Mazda CX-5:

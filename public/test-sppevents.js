@@ -229,6 +229,8 @@ async function vraag(s, cmd, ms) {
     P.reads = 0;
     await vraag(s, '010C1');
     toets('daarna weer zonder read()', P.reads === 0, P.reads + ' reads');
+    const m = s.plSppModus();
+    toets('en plSppModus telt het: één opruimread, één keer met een restje', m.flushes === 1 && m.flushVond === 1 && m.vragen === 9, JSON.stringify(m));
   }
   {
     const P = nepPlugin(), s = bouw(P, false, true);
