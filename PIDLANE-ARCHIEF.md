@@ -49,12 +49,20 @@ login kon daardoor nooit waar zijn: een gebruiker uitzetten in beheer deed
 niets. Na de overzet staat een vakje dat in Airtable leeg was als NULL (er
 was niets), en pas een uitzetten in beheer maakt het `false`.
 
-**Nog niet gedaan.** De routes heten nog `/airtable/log`, `/airtable/veldlab`
-en `/airtable/reference`, en `airtableUsers()` heet nog zo: hernoemen is
-mechanisch werk voor een eigen commit, en de app kent die adressen. Het
-saldo loopt nog via het slot in de Durable Object; D1 kan dat met één
-`UPDATE … WHERE Saldo >= ?`, maar dat is een eigen stap, met de racetest
-van #82 erbij.
+**Wat daarna nog gebeurde (dezelfde dag, na de merge van #381).** De
+functies die nog naar Airtable heetten zijn hernoemd (`gebruikersLijst`,
+`herhashGebruiker`, `handleLog`, `handleVeldlab`, `handleReferentie`), in een
+eigen commit zonder gedragswijziging. **De routes heten nog `/airtable/…`, en
+dat blijft zo:** oudere APK's op Play roepen precies die adressen aan, en een
+nieuwe naam zou betekenen dat de oude naast de nieuwe moet blijven bestaan.
+
+**Bewust niet gedaan: het saldo atomair in D1.** D1 kan afboeken met één
+`UPDATE … WHERE Saldo >= ?`, en dat leek de volgende stap. Het slot in de
+Durable Object doet hetzelfde werk al, is getoetst tegen de races van #82 en
+#93, en geldt voor alle vijf de schrijvers. Het vervangen levert geen
+veiligheid op, alleen een herbouw van de betaalstroom. Komt er ooit een reden
+(het slot wordt een knelpunt, of de Durable Object gaat weg), dan is dit de
+plek om te beginnen.
 
 **Niet getoetst.** De overzet tegen de echte Airtable. Na de deploy staat per
 tabel één regel `[d1] <tabel>: N records uit Airtable overgezet` in de
