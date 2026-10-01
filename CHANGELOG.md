@@ -23,6 +23,81 @@
  - De nachtronde doet hetzelfde zodra LOG_BEWAARDAGEN in het dashboard staat.
  - test-logarchief.js (32 toetsen, echte SQLite), deel 7b van
    bproef-beheerpagina.js, zeven mutaties.
+ 01-10-2026 — De meetrit: elke rit-vraag een getal (testrun 8.7)
+ ═══════════════════════════════════════════════════════════
+
+ - #337: een berekende PID rekent alleen nog met bronnen die hoogstens 1 s
+   uit elkaar liggen (SAMEN_MS); anders slaat hij die tik over en telt dat.
+   Verbruik nu (CA03) klemt op het bereik van zijn tegel (50), niet op 99.
+ - #338: Slim visueel oordeelt over het tempo van het pedaal alleen over
+   de laatste minuut onafgebroken rijden met de meter in beeld; stilstand,
+   achtergrond, beeld-in-beeld en een buspauze beginnen het venster opnieuw.
+   Elke herbouw krijgt een reden (openen, selectie, testrun, indeling,
+   scherm); de knipperproef telt alleen indeling en scherm.
+ - App-maten voor de meetopdracht (witte lijst in pidlane-opdracht.js):
+   adapter-* (#302), groep-a/b/c-* (#333, de groepsproef legt nu zelf vast
+   of hij koud, warm of rijdend liep), berekend-* (#337), visueel-* (#338),
+   check-door-* (#376).
+ - Beheer: een app-maat in een opdracht staat er niet meer als "undefined —
+   staat niet in sensoren".
+ - Blok 5: één proef dat elke app-maat in de draaiende app een getal of
+   null geeft. CAMPAGNE beschrijft de meetrit.
+ - Tests: test-berekend, test-visueel, test-adapterpaneel, test-foutcodes en
+   test-opdrachtappmaat uitgebreid; 16 mutaties erbij.
+
+ ═══════════════════════════════════════════════════════════
+ 01-10-2026 — Na #381: namen opgeruimd
+ ═══════════════════════════════════════════════════════════
+
+ - Functies in de Worker die nog naar Airtable heetten, hebben een naam die
+   zegt wat ze doen. De routes /airtable/… blijven: oudere APK's kennen ze.
+ - Het saldo blijft via het slot lopen; afboeken in één SQL-bewerking levert
+   geen extra veiligheid op (uitleg in het archief).
+
+ ═══════════════════════════════════════════════════════════
+ 01-10-2026 — Alles uit Airtable naar Cloudflare D1 (#327)
+ ═══════════════════════════════════════════════════════════
+
+ - Gebruikers, Klanten (met saldo), activatiecodes, het kasboek, de
+   veldlab-sessies en de referentiewaarden staan nu in D1. Elke tabel zet
+   zichzelf bij de eerste aanroep één keer over uit Airtable; daarna leest
+   de Worker Airtable niet meer. Wijzigen gaat via beheer.html.
+ - Eén laag in worker.js (D1_TABELLEN, d1Tabel, atZoek/atPatch/…) met
+   records in dezelfde vorm als Airtable en de oude rec-id's.
+ - Weg, omdat ze er alleen waren om Airtable-calls te sparen: het onthouden
+   van de gebruikerstabel (28-09) en van de accountstatus bij stand (vanochtend,
+   PR #380). Blokkeren is weer meteen dicht.
+ - Een uitgevinkte gebruiker (Active uit) komt er nu echt niet meer in; bij
+   Airtable kwam een uitgevinkt vakje nooit als false terug.
+ - De Airtable-motor van /admin/tabel en formuleTekst() zijn weg: elke
+   zoekterm gaat als gebonden parameter mee.
+ - Tests: test-d1laag.js, test-veldlabroute.js (nieuw); test-inlogcache,
+   test-klantstatus, test-adminbron en test-formule-escape herschreven op de
+   echte laag (pltest-d1.js). Mutaties bijgewerkt.
+
+ ═══════════════════════════════════════════════════════════
+ 01-10-2026 — Minder Airtable-calls: AppConfig in D1, accountstatus onthouden (#327)
+ ═══════════════════════════════════════════════════════════
+
+ - De werkruimte stond op dag 1 van de maand al op 139 van de 1.000 calls.
+   De vaste posten waren /api/config bij elke opstart en de klantcontrole
+   bij elke verversing van Mijn voertuigen, niet de AI (één analyse per week).
+ - AppConfig staat nu in D1. De Worker zet de Airtable-tabel één keer zelf
+   over; daarna leest hij hem niet meer. Wijzigen gaat via beheer, niet
+   meer in Airtable. test-appconfig.js, vijf mutaties.
+ - De accountstatus bij "stand" wordt vijf minuten onthouden. Blokkeren via
+   beheer werkt meteen; direct in Airtable binnen vijf minuten. Verwijderd
+   blijft meteen dicht. test-klantstatus.js, drie mutaties.
+
+ ═══════════════════════════════════════════════════════════
+ 01-10-2026 — BT-logvenster begrensd: logregels worden niet meer duurder (#302)
+ ═══════════════════════════════════════════════════════════
+
+ - btDiag() kapte de array af op 1400 regels, maar het element #btLog
+   groeide met elke regel mee en werd nooit ingekort. Gemeten in Chromium:
+   0,3 ms per regel bij 1.000 regels, 10 ms bij 31.000 — tien minuten
+   pollen. Nu houdt het venster de laatste 300 (BTLOG_DOM); per regel
+   blijft het ~0,25 ms. test-btlogdom.js, blok 5, twee mutaties.
 
  ═══════════════════════════════════════════════════════════
  01-10-2026 — SPP: geen opruimread meer vóór elk commando

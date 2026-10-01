@@ -74,7 +74,7 @@ const blokOpruimen = knip(
 const PRELUDE = 'function __name(){}\n';
 
 const M = new Function(
-  'klantTabel', 'fetch', 'console',
+  'atAlle', 'atWis', 'console',
   PRELUDE + blokToegang + '\n' + blokOpruimen + '\n' +
   'return { KLANT_BEWAARDAGEN, klantOpruimMoment, klantToegangProbleem, klantWachtrijOpruimen };'
 );
@@ -150,22 +150,27 @@ console.log('\n3. Wanneer mag een record definitief weg?');
 }
 
 // ══════════════════════════════════════════════════════════════════
-// De opruimronde met een nagebootste Airtable. De fetch-stub telt wat er
-// gevraagd wordt, zodat we kunnen zien dat er niet méér gewist wordt dan mag.
+// De opruimronde met een nagebootste klantentabel. Sinds 01-10-2026 staat die
+// in D1 (#327) en leest/wist de ronde via atAlle/atWis. De stub telt wat er
+// gewist wordt, zodat we kunnen zien dat er niet méér gewist wordt dan mag.
 function nepAirtable(records, opties) {
   const o = opties || {};
   const gewist = [];
-  const fetch = async (url, init) => {
-    if (init && init.method === 'DELETE') {
-      if (o.deleteFaalt) return { ok: false, status: 500, text: async () => 'nee' };
-      const ids = (String(url).split('records[]=').slice(1)).map((x) => decodeURIComponent(x.split('&')[0]));
-      ids.forEach((id) => gewist.push(id));
-      return { ok: true, status: 200, json: async () => ({}) };
-    }
-    if (o.lezenFaalt) return { ok: false, status: 502, text: async () => 'nee' };
-    return { ok: true, status: 200, json: async () => ({ records: records }) };
+  const atWis = async (env, sleutel, id) => {
+    if (sleutel !== 'klanten') throw new Error('onverwachte tabel: ' + sleutel);
+    if (o.deleteFaalt) throw new Error('D1_ERROR: disk I/O error');
+    gewist.push(id);
+    return true;
   };
-  return { fetch, gewist };
+  const atAlle = async (env, sleutel, opt) => {
+    if (sleutel !== 'klanten') throw new Error('onverwachte tabel: ' + sleutel);
+    if (o.lezenFaalt) throw new Error('D1_ERROR: database onbereikbaar (502)');
+    // De ronde vraagt alleen Status = verwijderd; de stub geeft wat er staat
+    // en kijkt of die voorwaarde er werkelijk bij zit.
+    if (!opt || (opt.waarden || []).indexOf('verwijderd') < 0) throw new Error('de ronde vroeg niet om Status = verwijderd');
+    return records;
+  };
+  return { atAlle, atWis, gewist };
 }
 
 function rec(id, status, verwijderdOp) {
@@ -184,7 +189,7 @@ const deel4 = (async function () {
     rec('recCCCCCCCCCCCCCC', 'verwijderd', '')
   ]);
   const { klantWachtrijOpruimen } = M(
-    () => ({ base: 'appX', table: 'Klanten', hdr: {} }), nep.fetch, console);
+    nep.atAlle, nep.atWis, console);
 
   const uit = await klantWachtrijOpruimen({}, NU);
 
@@ -215,21 +220,21 @@ const deel5 = deel4.then(async function () {
                           { deleteFaalt: true });
   const stil = { log() {}, error() {} };
   const { klantWachtrijOpruimen } = M(
-    () => ({ base: 'appX', table: 'Klanten', hdr: {} }), nep.fetch, stil);
+    nep.atAlle, nep.atWis, stil);
 
   const uit = await klantWachtrijOpruimen({}, NU);
   toets('niets gemeld als verwijderd', uit.verwijderd.length === 0, JSON.stringify(uit.verwijderd));
   toets('het staat in de mislukt-lijst', uit.mislukt.length === 1, JSON.stringify(uit.mislukt));
-  toets('met de reden erbij', /airtable_500/.test(JSON.stringify(uit.mislukt)),
+  toets('met de reden erbij', /disk I\/O error/.test(JSON.stringify(uit.mislukt)),
         JSON.stringify(uit.mislukt));
 });
 
 const deel6 = deel5.then(async function () {
-  console.log('\n6. Een onbereikbare Airtable is een fout, geen lege ronde');
+  console.log('\n6. Een onbereikbare klantentabel is een fout, geen lege ronde');
   const nep = nepAirtable([], { lezenFaalt: true });
   const stil = { log() {}, error() {} };
   const { klantWachtrijOpruimen } = M(
-    () => ({ base: 'appX', table: 'Klanten', hdr: {} }), nep.fetch, stil);
+    nep.atAlle, nep.atWis, stil);
 
   let gooide = null;
   try { await klantWachtrijOpruimen({}, NU); } catch (e) { gooide = e; }
@@ -238,7 +243,7 @@ const deel6 = deel5.then(async function () {
   // weken niets doet.
   toets('de ronde gooit in plaats van 0 te melden', !!gooide,
         'er kwam een normaal resultaat terug');
-  toets('met de status van Airtable erin', !!gooide && /502/.test(gooide.message),
+  toets('met de reden erin', !!gooide && /502/.test(gooide.message),
         gooide && gooide.message);
 });
 

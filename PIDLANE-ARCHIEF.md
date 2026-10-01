@@ -37,6 +37,200 @@ lukt het archief en faalt het wissen, dan staat er een archiefrij en blijven
 de regels staan — en telt de volgende ronde ze nog eens. Daarom één batch.
 Een test die alleen het archief laat falen zag dat verschil niet; hij laat
 nu het wissen falen.
+## 01-10-2026 — De meetrit: waarom vier "gesloten" niets sloten (#302 #333 #337 #338 #376)
+
+**Wat er misging met de opdrachten van 27–29 september.** Opdracht 21 (#337)
+gaf "gesloten" op *de snelheid bleef binnenkomen* en *de luchtmassa bleef
+binnenkomen*; of CA03 en CA10 binnen hun bereik bleven stond er niet in, en de
+vraag daarover kreeg "niet gekeken". Opdracht 23 (#302) sloot op *de meting
+liep door*, terwijl de responstijd een vraag aan de bestuurder was. Opdracht
+18 (#333) kon niet zien welke groep de proef adviseerde, en drie groepsproeven
+in D1 (28-09, 30-09, 01-10) zeggen niet of ze koud, warm of rijdend liepen.
+Opdracht 17 (#319) bleef vier keer "nog niet" op een stap die de app nooit
+zette. De vorm is telkens dezelfde: de proef mat iets dat wél te meten was,
+in plaats van het ding waar het issue over ging.
+
+**Wat er nu staat.** Een app-maat per vraag, uit de module die het al wist:
+`driftAnalyse()` voor #302, `groepAdvies()` plus de omstandigheid bij de start
+van de proef voor #333, het sessiebewijs van `PLBerekend` voor #337, dat van
+`PLVisueel` voor #338, en een teller op de balk van #376. "Niet gemeten" is
+null, en dan zegt de opdracht "nog niet" en geen "gesloten".
+
+**#337, de oorzaak.** Elke bron hoefde alleen vers te zijn (≤ 3 s). Bij gas
+loslaten zakt 0110 meteen, terwijl 0162 nog het koppel van tot 3 s eerder
+draagt: rendement 96,7%. Nu moeten de bewegende bronnen van één berekening
+binnen 1 s van elkaar liggen. De prijs: een tegel met een trage bron (010D op
+2,3 s) ververst minder vaak. Een seconde wachten is beter dan een verkeerd
+getal. CA03 klemde op 99 terwijl de tegel tot 50 gaat: bij 5–10 km/u is 60
+l/100 km echt, en dan telde elk optrekken als "buiten bereik". De klem staat
+nu op 50, en het oordeel over #337 leunt op CA10 (rendement), dat wél kan
+ontsporen.
+
+**#338, en wat er níét veranderde.** `_staat.traag` wordt in een sessie nog
+steeds niet leeg. Dat was het voorstel van 30-09, en het is bewust niet
+gedaan: een PID die van de meter valt wordt door `remt()` naar 2 s geremd en
+kan daarna niet meer laten zien dat hij snel is. Een herkansing zou dus een
+herbouw heen en een herbouw terug kosten, en dat is precies het knipperen uit
+hetzelfde issue. De fout zat niet in het "eens traag, altijd traag", maar in
+wát traag heette: de mediaan over alles sinds het openen, inclusief 157 s
+achtergrond en een stilstand. Nu telt alleen de laatste minuut onafgebroken
+rijden met de meter in beeld. Bij een gat tussen twee tikken (timers
+bevroren), een buspauze (een andere lezer) of een stilstand begint die minuut
+opnieuw. Beeld-in-beeld en `document.hidden` tellen ook als "niet in beeld":
+de meetdienst houdt de JavaScript dan wakker, dus er valt geen gat.
+
+De eerste versie van de test toetste de gat- en buspauzedetectie niet: het
+venster van een minuut gooide de trage metingen al weg na 157 s. `plmutate.sh`
+liet ze allebei ontsnappen. De proef gebruikt nu een gat van 30 s, binnen het
+venster, zodat alleen de detectie het verschil maakt.
+
+**Wat de rit nog moet zeggen.** Of de fixes van vanochtend (#302: het
+BT-logvenster op 300 regels, Overzicht, de vaste achtergrond) de drift
+wegnamen; of 4–6 PIDs per verzoek ook warm en rijdend winst geven; en of 5 s
+lang genoeg is voor de balk. De opdrachten en de volgorde staan in het
+meetrit-issue.
+
+
+## 01-10-2026 — De rest van Airtable naar D1, en wat er daardoor weg kon (#327)
+
+**De vraag.** Na AppConfig "doe de rest nu ook maar": Users, Klanten,
+TokenCodes, TokenLog en het veldlab.
+
+**De vorm die gekozen is, en waarom.** Eén laag (`D1_TABELLEN` en de
+`at*`-functies) die records teruggeeft in de vorm van Airtable, met dezelfde
+veldnamen en de oude rec-id's. Zo bleef de logica van ruim dertig plekken
+(saldoslot, inwisselen, beheer, opruimer) wat hij was; alleen de opslag
+eronder veranderde. Een eigen relationeel schema per tabel was netter geweest,
+maar dan was elke regel tegelijk een vertaling geworden, en dat is de vorm
+waarin hier eerder stil velden verdwenen.
+
+**De overzet gebeurt per tabel, bij de eerste aanroep.** Zoals AppConfig, dat
+op 01-10 om 15:31 zijn 36 sleutels zelf overzette. Met paginering, met
+INSERT OR IGNORE (twee gelijktijdige eerste aanroepen zetten hetzelfde
+neer), in stukken van 25 (een veldlabsessie draagt tot 95 KB) en met de
+notitie in het laatste stuk. Mislukt de overzet, dan geeft de aanroep een
+fout in plaats van een lege tabel: een lege klantentabel zou betekenen dat
+niemand meer kan inloggen en dat ook niemand ziet waarom.
+
+**Wat er weg kon.** Drie dingen bestonden alleen om Airtable-calls te sparen:
+het onthouden van de gebruikerstabel (28-09), het onthouden van de
+accountstatus bij `stand` (vanochtend, PR #380, dezelfde dag weer weg) en de
+Airtable-motor van `/admin/tabel`. Met de motor ging ook `formuleTekst()`;
+de uitleg van #142 staat verderop in dit archief, en
+`test-formule-escape.js` toetst nu de opvolger: een `%` of `_` in het
+zoekvak van beheer is een gewoon teken (`d1Zoekterm`, op echte SQLite).
+
+**Een gedrag dat verandert, en terecht.** Airtable gaf een uitgevinkt vakje
+niet terug als `false` maar helemaal niet. `if (f.Active === false)` in de
+login kon daardoor nooit waar zijn: een gebruiker uitzetten in beheer deed
+niets. Na de overzet staat een vakje dat in Airtable leeg was als NULL (er
+was niets), en pas een uitzetten in beheer maakt het `false`.
+
+**Wat daarna nog gebeurde (dezelfde dag, na de merge van #381).** De
+functies die nog naar Airtable heetten zijn hernoemd (`gebruikersLijst`,
+`herhashGebruiker`, `handleLog`, `handleVeldlab`, `handleReferentie`), in een
+eigen commit zonder gedragswijziging. **De routes heten nog `/airtable/…`, en
+dat blijft zo:** oudere APK's op Play roepen precies die adressen aan, en een
+nieuwe naam zou betekenen dat de oude naast de nieuwe moet blijven bestaan.
+
+**Bewust niet gedaan: het saldo atomair in D1.** D1 kan afboeken met één
+`UPDATE … WHERE Saldo >= ?`, en dat leek de volgende stap. Het slot in de
+Durable Object doet hetzelfde werk al, is getoetst tegen de races van #82 en
+#93, en geldt voor alle vijf de schrijvers. Het vervangen levert geen
+veiligheid op, alleen een herbouw van de betaalstroom. Komt er ooit een reden
+(het slot wordt een knelpunt, of de Durable Object gaat weg), dan is dit de
+plek om te beginnen.
+
+**Niet getoetst.** De overzet tegen de echte Airtable. Na de deploy staat per
+tabel één regel `[d1] <tabel>: N records uit Airtable overgezet` in de
+Worker-log, en `SELECT * FROM d1_overzet` in D1 laat zien wat er is
+overgezet.
+
+---
+
+## 01-10-2026 — Airtable-plafond: de belasting zat niet waar #327 hem zocht
+
+**De waarneming.** Dag 1 van de maand, en de werkruimte stond al op 139 van
+de 1.000 calls. De stap van 28-09 (de Users-tabel onthouden bij het inloggen)
+was dus niet genoeg.
+
+**Wat #327 dacht.** De AI-afboeking kost tot drie calls per aanvraag, en
+stond daar als het grote resterende lek. Nagekeken in D1: in de week van
+24-09 tot 01-10 staat er **één** AI-rapport, tegen 6–31 sessies per dag en
+4–17 opgeslagen rapporten en ritten per dag. De AI is dus niet de belasting.
+
+**Waar het wel zat.** Twee vaste posten per gewoon gebruik:
+- `/api/config` bij elke opstart. De randcache van 60 s ving alleen
+  opstarts die binnen een minuut op elkaar volgden.
+- `stand` van Mijn voertuigen, die bij elke aanroep de klant in Airtable
+  opzocht. De app ververst bij het opstarten, bij het openen, en na elk
+  opgeslagen rapport of rit.
+
+**Wat er veranderd is.** AppConfig staat in D1 (`app_config`); de Worker
+zet de Airtable-tabel één keer zelf over en noteert dat in `d1_overzet`.
+De waarde is JSON, omdat er in Airtable ook een vinkje of getal kan staan
+en de app `"true"` en `true` allebei leest. De accountstatus bij `stand`
+wordt vijf minuten per isolate onthouden; elke schrijfactie uit beheer
+vergeet hem.
+
+**De keuze die erbij hoort.** Wie rechtstreeks in Airtable op geblokkeerd
+wordt gezet, ziet nog hoogstens vijf minuten zijn eigen voertuigen. Saldo
+en AI kijken altijd vers, dus uitgeven kan hij dan niet. Verwijderd staat
+in `kp_akkoord` en blijft meteen dicht. `test-klantplatform.js` beloofde
+"geblokkeerd in Airtable: meteen dicht"; die toets zegt nu "na de
+bewaartijd".
+
+**Eerst niet gedaan, en waarom.** Het vergeten zat eerst óók in
+`klantPatch()`. Twee lagen die hetzelfde doen, betekenen dat geen enkele
+mutatie op één ervan rood wordt. De router dekt alle schrijfacties uit
+beheer, ook de twee die buiten `klantPatch()` om schrijven; die is gebleven.
+
+**Wat nog in Airtable staat:** Users, Klanten (met saldo), TokenCodes,
+TokenLog en het veldlab. Of dit genoeg is, laat de teller aan het eind van
+de maand zien.
+
+---
+
+## 01-10-2026 — Het BT-logvenster groeide zonder grens: elke logregel werd duurder (#302)
+
+**De vraag.** "Bij een schone opstart haal je 20 per seconde, daarna zakt
+het naar 8 à 10." Het verloop van 08:43–08:51 stond al in #302: 43 → ~120
+ms per verzoek in tien minuten, nul busfouten, app ruim één kern bezig.
+Gezocht is naar iets dat per commando groeit.
+
+**Wat er groeide.** `btDiag()` kapt `_btLog` af op 1400 regels
+(`btLogAfkappen`), maar hing in het element `#btLog` bij elke regel een
+`div` bij die er nooit meer uitging. Per verzoek zijn dat minstens twee
+regels (`TX:` en `… klaar:`). Bij ~20 verzoeken per seconde staan er na tien
+minuten 25.000–30.000 in. Daarna zet `btDiag()` `scrollTop=scrollHeight`,
+en dat dwingt een lay-out van een element dat steeds langer is.
+
+**Gemeten, in Chromium met de echte app** (1000 aanroepen van `btDiag()` per
+blok, venster dicht):
+
+| regels in het element | per regel, ervoor | per regel, erna |
+|---|---|---|
+| 1.000 | 0,32 ms | 0,28 ms |
+| 11.000 | 3,5 ms | 0,26 ms |
+| 31.000 | 9,9 ms | 0,21 ms |
+
+Met het venster open is het hetzelfde. Op een telefoon is een kern trager
+dan deze desktop, dus de getallen daar zijn hoger. Bij twee à drie regels per
+verzoek is dat na tien minuten 20–30 ms per verzoek op deze machine: de
+orde van de stap van 43 naar 120 ms.
+
+**Waarom de browserproef van vanochtend dit niet zag.** Daar stond de DOM
+na een minuut op 2163 elementen. Dat was de demo-auto: die stuurt niets
+over `_sendBTOnce`, dus de `TX`- en `klaar`-regels komen er niet. Met een
+echte adapter wel.
+
+**Wat dit niet verklaart.** Opnieuw verbinden leegt het element níét (alleen
+de knop "wis" doet dat), en toch zette de knop op 08:54 ATRV terug naar
+25 ms. Op 30-09 bleef `ATSH` na de knop wél trager (11 → 21 ms): dat past
+er wel op. Er kan dus nog iets anders meegroeien dat bij het verbinden
+geleegd wordt. Of dit het hele verloop is, laat de volgende rit zien:
+30 minuten verbonden, en blok 5 zegt hoeveel regels er deze sessie
+geschreven zijn.
 
 ---
 

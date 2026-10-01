@@ -50,15 +50,6 @@ function toets(naam, waar, uitleg) {
 
 const bron = fs.readFileSync(path.join(__dirname, '..', 'worker.js'), 'utf8');
 
-// formuleTekst() staat buiten het geknipte blok maar wordt er wél door
-// aangeroepen (#142). Dezelfde functie uit worker.js knippen en niet
-// nabouwen: een nagemaakte escaper zou hier een echt gat kunnen verbergen.
-const formuleTekst = (() => {
-  const a = bron.indexOf('function formuleTekst(s) {');
-  const b = bron.indexOf('__name(formuleTekst, "formuleTekst");');
-  if (a < 0 || b < 0) { console.error('FOUT: formuleTekst() niet gevonden in worker.js.'); process.exit(1); }
-  return new Function(bron.slice(a, b) + '\nreturn formuleTekst;')();
-})();
 function knip(vanAnker, totAnker, wat) {
   const van = bron.indexOf(vanAnker);
   const tot = bron.indexOf(totAnker);
@@ -79,10 +70,11 @@ const srcOnboard = knip('async function handleKlantOnboarding', '__name(handleKl
 const srcRedeem = knip('async function handleCreditsRedeem', '__name(handleCreditsRedeem', 'handleCreditsRedeem');
 
 // ── nagemaakte omgeving voor de tegoedketen ───────────────────────
-// `staat.posts` legt vast wat er werkelijk naar Airtable ging; daar kijkt deze
-// test naar, niet naar wat de functie teruggeeft. base en tabel komen uit
-// resolveBase/cfg met de SLEUTELNAAM erin verwerkt, zodat de test kan zien of
-// er om de TokenLog-tabel gevraagd wordt en niet om Klanten.
+// `staat.posts` legt vast wat er werkelijk naar het kasboek ging; daar kijkt
+// deze test naar, niet naar wat de functie teruggeeft. Sinds 01-10-2026 staat
+// het kasboek in D1 (#327) en schrijft tegoedLog via atMaak(); de sleutel van
+// de tabel gaat mee in `url`, zodat de test kan zien of er in het kasboek
+// geschreven wordt en niet in Klanten.
 function bouwTegoed(opties) {
   const o = opties || {};
   const staat = {
@@ -119,6 +111,15 @@ function bouwTegoed(opties) {
       if (f.Saldo !== undefined) staat.saldo = f.Saldo;
     },
     metSaldoSlot: async (env, email, fn) => ({ bezet: false, result: await fn() }),
+    atMaak: async (env, sleutel, velden) => {
+      // Eerst vastleggen dát het geprobeerd is, dan pas eventueel stukgaan:
+      // anders kan deel 4 niet onderscheiden tussen "hij probeerde het en
+      // faalde" en "hij deed niets".
+      staat.posts.push({ url: 'd1:' + sleutel, method: 'POST', velden: Object.assign({}, velden) });
+      if (o.kasboekGooit) throw new Error('D1 onbereikbaar');
+      if (o.kasboekStuk) throw new Error('d1_onbekend_veld_kasboek_Onzin');
+      return { id: 'recKASBOEK0000001', fields: velden };
+    },
     fetch: async (url, init) => {
       const u = String(url);
       if (u.indexOf('api.anthropic.com') >= 0) {
@@ -126,22 +127,14 @@ function bouwTegoed(opties) {
         const st = o.aiStatus || 200;
         return { ok: st < 400, status: st, text: async () => aiAntwoord };
       }
-      // Alles wat hier binnenkomt is een kasboekregel. Eerst vastleggen dát
-      // het geprobeerd is, dan pas eventueel stukgaan: anders kan deel 4 niet
-      // onderscheiden tussen "hij probeerde het en faalde" en "hij deed niets".
-      let velden = null;
-      try { velden = JSON.parse(init.body).records[0].fields; } catch (e) { velden = { onleesbaar: String(init && init.body) }; }
-      staat.posts.push({ url: u, method: (init && init.method) || 'GET', velden });
-      if (o.kasboekGooit) throw new Error('airtable onbereikbaar');
-      if (o.kasboekStuk) return { ok: false, status: 502, text: async () => 'INVALID_REQUEST_UNKNOWN' };
-      return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
+      throw new Error('onverwachte fetch in deze test: ' + u);
     },
     console: { error: (m) => staat.meldingen.push(String(m)), warn() {}, log() {} }
   };
   const maak = new Function(...Object.keys(omg),
     srcTegoed + '\nreturn { tegoedLog, handleMessages, tegoedKosten, tegoedTarief };');
   const api = maak(...Object.values(omg));
-  const env = { AIRTABLE_TOKEN: 'x' };
+  const env = { LOGDB: {} };
   const ctx = { waitUntil: (p) => { staat.jobs.push(p); } };
   const verzoek = {
     headers: { get: (n) => (String(n).toLowerCase() === 'content-length' ? '400' : null) },
@@ -164,7 +157,7 @@ const gezien = new Set();
 (async function () {
 
   // ── 1. tegoedLog schrijft één regel, in de goede tabel ──────────
-  console.log('\n1. Eén regel per mutatie, in de TokenLog-tabel van de Config-base');
+  console.log('\n1. Eén regel per mutatie, in het kasboek');
   {
     const t = bouwTegoed();
     await t.api.tegoedLog(t.env, undefined, {
@@ -174,8 +167,7 @@ const gezien = new Set();
     toets('er is precies één regel weggeschreven', t.staat.posts.length === 1, t.staat.posts.length + ' regel(s)');
     const p = t.staat.posts[0];
     toets('als POST', p.method === 'POST', p.method);
-    toets('naar de Config-base', p.url.indexOf('app_AIRTABLE_CONFIG_BASE') > -1, p.url);
-    toets('en naar de TokenLog-tabel', p.url.indexOf('tbl_AIRTABLE_TOKENLOG_TABLE') > -1,
+    toets('en naar het kasboek', p.url === 'd1:kasboek',
           p.url + ' — een kasboek in de verkeerde tabel is geen kasboek');
     const v = p.velden;
     toets('Soort', v.Soort === 'ai-call', String(v.Soort));
@@ -226,11 +218,11 @@ const gezien = new Set();
   }
 
   // ── 4. TEGENPROEF — een kapot kasboek breekt niets, en zwijgt niet ──
-  console.log('\n4. Tegenproef: Airtable weg, en tegoedLog gaat niet over de kop');
+  console.log('\n4. Tegenproef: D1 weg, en tegoedLog gaat niet over de kop');
   {
     for (const geval of [{ kasboekGooit: true }, { kasboekStuk: true }]) {
       const t = bouwTegoed(geval);
-      const naam = geval.kasboekGooit ? 'fetch gooit' : 'Airtable antwoordt 502';
+      const naam = geval.kasboekGooit ? 'D1 onbereikbaar' : 'D1 weigert de regel';
       let gegooid = null;
       try {
         await t.api.tegoedLog(t.env, undefined, { klant: 'a@b.nl', soort: 'ai-call', credits: -6, saldoNa: 174 });
@@ -243,11 +235,12 @@ const gezien = new Set();
             t.staat.meldingen.some((m) => m.indexOf('[kasboek]') >= 0),
             JSON.stringify(t.staat.meldingen));
     }
-    // Zonder token is er niets om mee te schrijven; dan hoort er ook geen
-    // poging te zijn (en geen uitzondering).
+    // Zonder database is er niets om in te schrijven; dan hoort er ook geen
+    // poging te zijn (en geen uitzondering), maar wel een melding.
     const z = bouwTegoed();
     await z.api.tegoedLog({}, undefined, { klant: 'a@b.nl', soort: 'ai-call', credits: -1 });
-    toets('zonder AIRTABLE_TOKEN wordt er niets geprobeerd', z.staat.posts.length === 0);
+    toets('zonder LOGDB wordt er niets geprobeerd', z.staat.posts.length === 0);
+    toets('maar het wordt wel gemeld', z.staat.meldingen.some((m) => m.indexOf('[kasboek]') >= 0), JSON.stringify(z.staat.meldingen));
   }
 
   // ── 5. ai-call: de gewone afboeking ─────────────────────────────
@@ -357,7 +350,6 @@ const gezien = new Set();
       const codeRec = { id: 'recCODE0000000001', fields: { Code: 'PIDL-TEST-000001', Credits: 100, Gebruikt: false } };
       const omg = {
         __name: () => {},
-        formuleTekst,
         json: (body, status) => ({ body, status: status || 200 }),
         rateLimit: async () => ({ limited: false }),
         rateLimitResponse: () => ({ body: { ok: false }, status: 429 }),
@@ -373,18 +365,16 @@ const gezien = new Set();
         },
         metSaldoSlot: async (env, email, fn) => ({ bezet: false, result: await fn() }),
         tegoedLog: async (env, ctx, regel) => { staat.kasboek.push(regel); },
-        fetch: async (url, init) => {
-          if (!init || init.method !== 'PATCH')
-            return { ok: true, json: async () => (String(url).indexOf(codeRec.id) > -1 ? { fields: codeRec.fields } : { records: [codeRec] }) };
-          staat.afgestempeld = true;
-          return { ok: true, text: async () => '', json: async () => ({}) };
-        },
+        // De codetabel staat sinds 01-10-2026 in D1 (#327).
+        atZoek: async () => codeRec,
+        atHaal: async (env, sleutel, id) => (id === codeRec.id ? { id, fields: codeRec.fields } : null),
+        atPatch: async (env, sleutel, id, f) => { staat.afgestempeld = true; return { id, fields: f }; },
         console: { error() {}, warn() {}, log() {} }
       };
       const maak = new Function(...Object.keys(omg), srcRedeem + '\nreturn handleCreditsRedeem;');
       const fn = maak(...Object.values(omg));
       return { staat, roep: () => fn({ json: async () => ({ code: 'PIDL-TEST-000001' }), headers: { get: () => '1.2.3.4' } },
-        { AIRTABLE_TOKEN: 'x', REMOTE_SESSION: {} }, { waitUntil() {} }) };
+        { LOGDB: {}, REMOTE_SESSION: {} }, { waitUntil() {} }) };
     };
 
     const g = bouwRedeem();
@@ -432,7 +422,7 @@ const gezien = new Set();
       const fn = maak(...Object.values(omg));
       return { staat, roep: () => fn(
         { json: async () => ({ survey: true, anon: true }), headers: { get: () => '1.2.3.4' } },
-        { AIRTABLE_TOKEN: 'x', KLANT_START_SALDO: 25 }, { waitUntil() {} }) };
+        { LOGDB: {}, KLANT_START_SALDO: 25 }, { waitUntil() {} }) };
     };
 
     const e = bouwOnboard(false);
@@ -475,12 +465,12 @@ const gezien = new Set();
         KLANT_BEWAARDAGEN: 30,
         tegoedLog: async (env, ctx, regel) => { staat.kasboek.push(regel); },
         metSaldoSlot: async (env, adres, fn) => ({ bezet: false, result: await fn() }),
-        fetch: async () => ({ ok: true, json: async () => ({ fields: { Saldo: staat.saldo, Email: 'klant@example.com' } }) }),
+        atHaal: async (env, sleutel, id) => ({ id, fields: { Saldo: staat.saldo, Email: 'klant@example.com' } }),
         console: { error() {}, warn() {}, log() {} }
       };
       const maak = new Function(...Object.keys(omg), srcAdmin + '\nreturn handleAdminKlantenPost;');
       const fn = maak(...Object.values(omg));
-      return { staat, roep: (body) => fn({ json: async () => body }, { AIRTABLE_TOKEN: 'x' }, { waitUntil() {} }) };
+      return { staat, roep: (body) => fn({ json: async () => body }, { LOGDB: {} }, { waitUntil() {} }) };
     };
     const ID = 'rec0123456789abcd';
 

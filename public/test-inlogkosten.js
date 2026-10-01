@@ -121,6 +121,9 @@ function bouwWorker(opties) {
       staat.airtable.push(u);
       return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
     },
+    // Het kasboek staat sinds 01-10-2026 in D1 (#327); tegoedLog schrijft via
+    // atMaak. Meegeteld onder `airtable`: dat is "er ging iets naar de opslag".
+    atMaak: async (env, sleutel, velden) => { staat.airtable.push('d1:' + sleutel); return { id: 'recKASBOEK0000001', fields: velden }; },
     isRestrictedPath: () => true,
     lockOrigin: (request, resp) => resp,
     console: { error() {}, warn() {}, log() {} }
@@ -129,7 +132,7 @@ function bouwWorker(opties) {
     srcKeten + '\n__name(handlePing, "handlePing");\n' + srcRouter +
     '\nreturn { handleMessages, handlePing, router: worker_default, tegoedTarief };');
   const api = maak(...Object.values(omg));
-  const env = { AIRTABLE_TOKEN: 'x' };
+  const env = { LOGDB: {} };
   const ctx = { waitUntil: (p) => p };
 
   // Een verzoek zoals de router het krijgt. Meer heeft geen van beide
@@ -241,7 +244,7 @@ function plFetchNaar(w, staat) {
     toets('de ping slaagt', resp.status === 200 && resp.body.ok === true, JSON.stringify(resp.body));
     toets('er is geen enkele call naar api.anthropic.com gedaan', w.staat.aiCalls === 0,
           w.staat.aiCalls + ' call(s) — dan kost de ping alsnog een credit');
-    toets('er is niets naar Airtable geschreven', w.staat.airtable.length === 0 && w.staat.patches.length === 0,
+    toets('er is niets naar de opslag geschreven', w.staat.airtable.length === 0 && w.staat.patches.length === 0,
           JSON.stringify(w.staat.airtable));
     toets('het saldo staat er nog', w.staat.saldo === 40, String(w.staat.saldo));
     toets('en de ping zegt zelf dat hij niets kost', resp.body.kosten === 0, String(resp.body.kosten));

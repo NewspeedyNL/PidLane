@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '8.6 (29-09-2026)';
+const TESTRUN_VERSIE = '8.7 (01-10-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2770,6 +2770,52 @@ function _zonderSporen(naam, fn) {
 }
 
 const PROEVEN_B5 = [
+
+  // ── De meetrit van 01-10-2026: elke rit-vraag een getal ──
+  // Gedrag in de draaiende app: elke naam op de witte lijst van PLOpdracht
+  // geeft in zijn eigen module een getal of null, en de vijf meetopdrachten
+  // van deze ronde keuren. Een maat die "undefined" geeft of een module die
+  // ontbreekt, laat een opdracht stil op "nog niet" staan, rit na rit.
+  {
+    issue: '#302 #333 #337 #338 #376',
+    naam: 'Elke app-maat van de meetrit geeft in de draaiende app een getal of "niet gemeten"',
+    waarom: 'Opdracht 17 bleef vier ritten op "nog niet" omdat hij een stap vroeg die niets in de app zet; een app-maat die niet bestaat doet hetzelfde, en dat zie je pas na de rit.',
+    proef: async function () {
+      if (!window.PLOpdracht || typeof PLOpdracht.appMaten !== 'function') return { staat: 'FOUT', detail: 'PLOpdracht.appMaten ontbreekt — pidlane-opdracht.js is oud of niet geladen' };
+      const namen = PLOpdracht.appMaten(), kapot = [], gemeten = [];
+      namen.forEach(function (n) {
+        const mod = window[PLOpdracht.appMaatModule(n)];
+        let w;
+        try { w = (mod && typeof mod.maat === 'function') ? mod.maat(n) : undefined; }
+        catch (e) { w = undefined; console.warn('Blok 5: app-maat ' + n + ' gooide', e); }
+        if (w === null) return;
+        if (typeof w === 'number' && isFinite(w)) gemeten.push(n + ' ' + w);
+        else kapot.push(n + ' (' + PLOpdracht.appMaatModule(n) + ': ' + (mod ? String(w) : 'module ontbreekt') + ')');
+      });
+      if (kapot.length) return { staat: 'FOUT', detail: kapot.length + ' van ' + namen.length + ' app-maten geven geen getal of null: ' + kapot.join(', ') };
+      return namen.length + ' app-maten, ' + gemeten.length + ' deze sessie gemeten' + (gemeten.length ? ': ' + gemeten.join(', ') : '');
+    }
+  },
+
+  // ── Het element #btLog blijft begrensd (01-10-2026) ──
+  // Gedrag in de draaiende app: na een regel erbij staat het venster op
+  // hoogstens BTLOG_DOM regels, hoe lang de sessie ook liep.
+  {
+    issue: '#302',
+    naam: 'Het BT-logvenster houdt hoogstens 300 regels vast, ook na een lange sessie',
+    waarom: 'Het venster kreeg bij elke regel een div die er nooit meer uitging; na tien minuten pollen kostte elke logregel 10 ms in plaats van 0,3 op de draad die de antwoorden afhandelt.',
+    proef: async function () {
+      if (typeof btLogDomAfkappen !== 'function' || typeof BTLOG_DOM !== 'number') return { staat: 'FOUT', detail: 'btLogDomAfkappen of BTLOG_DOM ontbreekt — pidlane-btflow.js is oud of niet geladen' };
+      var el = document.getElementById('btLog');
+      if (!el) return { staat: 'FOUT', detail: 'het element #btLog bestaat niet' };
+      btDiag('Blok 5: het BT-logvenster wordt geteld', 'info');
+      var n = el.childElementCount;
+      var sessie = _btLog.length + (_btCapStand ? _btCapStand.weg : 0);
+      if (n > BTLOG_DOM) return { staat: 'FOUT', detail: n + ' regels in het venster, hoogstens ' + BTLOG_DOM + ' (deze sessie ' + sessie + ' regels geschreven)' };
+      if (sessie <= BTLOG_DOM) return { staat: 'LET OP', detail: 'deze sessie schreef pas ' + sessie + ' regels, de grens van ' + BTLOG_DOM + ' is nog niet geraakt. Nodig: een paar minuten pollen en opnieuw draaien' };
+      return { staat: 'OK', detail: n + ' regels in het venster na ' + sessie + ' geschreven deze sessie' };
+    }
+  },
 
   // ── Check na verbinden: niets gevonden → vanzelf naar Live (01-10-2026) ──
   // Toetst de beslissing op een echte uitlezing van de demo-ECU (met codes)
@@ -9340,46 +9386,29 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 28-09 (zestiende) — de rit van de vijftiende, plus de groepsproef: helpen 4–6 PIDs per verzoek? (#333)',
+  titel: 'OPLEVERING 01-10 (zeventiende) — de meetrit: zes issues met een getal in plaats van een vraag (#302 #319 #333 #337 #338 #376)',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
-    'NIEUW 28-09 (AVOND): DE VERBINDING WERD TRAGER HOE LANGER HIJ DUURDE (#302). De adapter wacht na elk antwoord nog even of er meer komt, en leert die wachttijd van de traagste module die ooit antwoordde. Groepsverzoeken betaalden die wachttijd elke keer. Ze krijgen nu een cijfer mee met het aantal antwoorden, zodat de adapter meteen terugkomt. De app leert dat cijfer zelf per verzoek en zet het uit als er dan iets ontbreekt. Daarnaast komt elk antwoord van de adapter nu binnen zodra het er is, in plaats van dat de app om de 50 ms gaat kijken. Je hoeft er niets voor te doen; blok 5 zegt aan het eind hoeveel sneller het was. Gaat het mis, dan valt de app zelf terug op de oude manier en staat dat in het BT-log.',
-    'NIEUW 28-09: DE GROEPSPROEF (#333). De app vraagt tot 3 PIDs per verzoek; een CAN-auto kan er 6 aan. Groter kan meer metingen per seconde geven, of meer verlies op een goedkope adapter. De groepsproef in het verbindingspaneel meet het: groep 1 t/m 6 en terug, met de bus vast. Elke stap gaat als logregel naar de logtabel (RecordType groepsproef). De automaat blijft op 3 tot deze metingen zeggen dat meer goed gaat.',
-    'OOK NIEUW: een groepsantwoord waarin een sensor ontbreekt die kort daarvoor nog antwoordde, telt niet meer als geslaagd. Gebeurt dat vaak (4 van de laatste 20), dan maakt de automaat de groep kleiner en schrijft hij in het verbindingspaneel waarom.',
-    'DE PROEVEN OORDELEN OVER DE HELE RIT. Tot nu toe keek blok 5 naar het moment waarop de testrun draaide; wat er daarvoor gebeurde telde niet, en dan moest een rit over. Nu houden de modules zelf bij wat er deze sessie gebeurde, en oordeelt blok 5 daar aan het eind over. Elke proef zegt ok, FOUT met het waarom, of LET OP met precies wat de rit nog nodig had.',
-    'NIEUW IN DE APP. Versnelling bij het voertuig met een knop Fout (ook R), tijd per versnelling met rijstijladvies, zeventien berekende PIDs (onder "Berekend"), een trekmodus met waarschuwingstoon, ritlabels met voorstel, export en kosten, rapporten vergelijken en in één keer wissen. Daarna: eigen PIDs per voertuig (Mijn voertuigen → Sensoren), de versnelling in het midden van Slim visueel, en opslaan zonder keuzevenster.',
-    'NIEUW 29-09: RIT BEËINDIGEN (#341). Onderin het menu staan "Uitloggen" en "Sluit de app" niet meer. Daar staat nu één knop: "Rit beëindigen" als er een rit loopt, anders "Afsluiten". Hij toont de rit, laat je hem een naam geven en vraagt wat er daarna gebeurt: verbonden blijven, verbreken of de app sluiten, met uitloggen als vinkje. Verbreken geeft de bus eerst vrij met ATPC. En motor uit is geen einde van de rit meer: pas na vijftien minuten zonder rijden sluit de app hem zelf af.',
-    'NIEUW 29-09: EEN NIEUW STARTSCHERM EN EEN ONDERBALK. ☰ en 🏠 zijn weg; onderin staan Mijn auto, Live, Rapporten en Meer (het oude menu). Het startscherm heeft één grote knop, Check mijn auto, en vier tegels die de wizard op hun eigen vraag openen. Na het verbinden draait de check vanzelf (uit te zetten in Meer). De oude kaarten staan onder Alle functies, alleen in de garagemodus — die staat voor een beheeraccount vanzelf aan.',
-    '── WAT ÉÉN RIT DEZE RONDE MOET LATEN ZIEN ────────',
-    'HET NIEUWE STARTSCHERM. Direct na het verbinden hoort Check mijn auto vanzelf open te gaan. Klopt het stoplicht met wat de auto heeft? Tik daarna één keer elke tab aan, en open elke tegel tot de eerste vraag. Wat niet klopt of onduidelijk is: noteer het woord voor woord.',
-    'EEN STOP MET DE MOTOR UIT (#341). Ergens onderweg: stoppen, motor uit, drie minuten wachten (of even de app dichtdoen), en weer rijden. Blok 5 hoort aan het eind één rit met één pauze te zien, niet twee ritten.',
-    'DE GROEPSPROEF, DRIE KEER (#333). Tik op de OBD-chip → 📦 Start de groepsproef. Hij duurt ongeveer twee minuten en de meters staan zolang stil; laat de app open. (A) direct na het starten, auto stil; (B) na minstens tien minuten rijden, auto stil; (C) rijdend op constante snelheid, ALLEEN als een bijrijder de telefoon bedient. Meldt hij dat de verbinding veranderde tijdens de proef, doe hem dan meteen nog één keer. Zet het advies of een schermafbeelding van de tabel als reactie in #333, met de adapter erbij.',
-    'ALLEEN ALS HET ADVIES BOVEN DE 3 UITKOMT: ✋ Handmatig → PIDs per verzoek op het advies, tien minuten rijden, en kijk in het paneel naar "onvolledig" en "herhaald". Daarna terug naar 🤖 Automaat.',
-    'MINSTENS 30 MINUTEN ONAFGEBROKEN VERBONDEN (#302). Niet tussendoor verbreken. Verschijnt in het verbindingspaneel de oranje melding "De responstijd is opgelopen", laat die staan: de testrun doet aan het eind zelf het experiment (eerst de ELM opnieuw, dan eventueel een nieuwe verbinding).',
-    'ALLE VERSNELLINGEN, TIEN MINUTEN. Rij door alle versnellingen heen. Klopt het cijfer in de topbalk een keer niet: tik erop → Fout → de juiste. Rij één keer een stukje achteruit en tik dan Fout → R.',
-    'EEN MINUUT BEELD-IN-BEELD (#319). Tijdens het rijden (als passagier, of stilstaand met draaiende motor en de adapter verbonden) een minuut naar een andere app, bijvoorbeeld de navigatie. Daarna terug.',
-    'SLIM VISUEEL DRIE MINUTEN RIJDEND (#294), waarvan dertig seconden constant boven 50 km/u. Noteer wat de boordcomputer als verbruik zegt.',
-    'TREKMODUS VIJF MINUTEN. Tik in het Voertuigoverzicht de rijsituatie caravan of beladen aan (of start de Caravanrit); de strook onder de meter verschijnt vanzelf. Met een caravan of volle auto het liefst een klim.',
-    'EÉN KEER VOL GAS in de 2e of 3e, als het veilig kan. Dat is de enige manier om het berekende vermogen tegen het profiel te houden.',
-    'HERSTART EN SENSOREN. Sluit de app helemaal af, open hem weer en verbind: je eigen sensoren (banden, olie) en de berekende moeten er meteen weer bij staan, naast de standaardset.',
-    'OPSLAAN (#326). Foutcodes → twee keer Bewaren (tekst). Er mag geen deelvenster komen; in Documenten/PidLane staan dan twee bestanden met datum en tijd.',
-    'VERSNELLINGEN. Tik tijdens het rijden een paar keer in welke versnelling je zit (Versnellingsindicator → "In welke versnelling zit je nu?"). In Slim visueel staat hij in het midden van de meter en niet meer in de topbalk.',
-    'BUURSCAN (alleen als je wilt, kost een halve minuut per blok). Sensoren → Scan 222Axx @ 720: noteer welke nieuwe codes antwoorden.',
-    'BANDEN (als je auto ze via een eigen PID geeft). Rij minstens vijf minuten; de banden worden elke minuut gevraagd. Tik op het bandenlampje boven Slim visueel: staan alle vier de drukken er, in bar?',
-    'EEN EIGEN PID. Mijn voertuigen → Sensoren. Heb je een code van de dealer: vul hem in (met ECU-adres als je dat weet, bijv. 7E1 voor de automaat), Test op de auto, Toevoegen, Bewaren. Zo niet: 📚 Codes voor dit model → Zoek online, test de kandidaten (elke test telt mee als werkt/werkt niet) en voeg er een toe die antwoordt. Laat hem de rit meelopen; werkt hij, tik dan Deel.',
-    '── STAP VOOR STAP ────────',
-    'STAP 0 — VOORAF. Nieuwste versie laden (Meer → Admin → Nieuwste versie laden). Mijn voertuigen: vul bij Profiel handbak of automaat, het aantal versnellingen, de tankinhoud, de literprijs en het vermogen in. Een nieuwe APK is niet nodig.',
-    'STAP 1 — VERBINDEN EN WEGRIJDEN. Eén keer verbinden, dan niet meer verbreken tot na de testrun. Tik de rijsituatie caravan of beladen aan en kies Slim visueel.',
-    'STAP 2 — RIJDEN, 30 MINUTEN OF MEER. Doe onderweg de punten hierboven: alle versnellingen, één keer Fout, één keer R, een minuut beeld-in-beeld, dertig seconden constant, één keer vol gas.',
-    'STAP 1b — GROEPSPROEF A, meteen na het verbinden en vóór het wegrijden. Proef B bij de eerste stop na tien minuten; proef C onderweg als er een bijrijder is.',
-    'STAP 3 — DRAAI AAN HET EIND DE TESTRUN, nog steeds verbonden. De #302-proef staat achteraan en kan twee minuten duren als hij de drift ziet: dan meet hij, initialiseert de ELM opnieuw, meet weer en verbindt zo nodig opnieuw.',
-    'STAP 4 — RIT BEËINDIGEN (#341), ná de testrun. Meer → Rit beëindigen: klopt de samenvatting met wat je reed? Geef de rit een naam en kies Verbinding verbreken. In het BT-log hoort daarna "ATPC (bus vrijgeven) → "OK"" te staan; staat er "?" of geen antwoord, noteer dan de adapter in #341. Kijk in Mijn voertuigen → Ritten of de rit met die naam erin staat.',
-    'NA AFLOOP. Plak uit het ruwe verslag de FOUT- en LET OP-regels met hun blokkop, plus het verbruik van de boordcomputer uit punt 5. Staat er een LET OP, dan zegt die regel wat er ontbrak.',
+    'ELKE VRAAG IS NU EEN METING. De ritten van 27–29 september gaven "gesloten" op proeven die niet over het issue gingen ("de meting liep door"), of "nog niet" op een stap die de app nooit zet. De app meet nu zelf wat de vraag is: de responstijd per verbinding (#302), welke groep de groepsproef adviseert onder welke omstandigheid (#333), berekende waarden buiten hun bereik (#337), een pedaal dat van de meter valt en elke herbouw met de reden erbij (#338), en of de balk na de check vanzelf doorging (#376).',
+    'TWEE FIXES ZONDER RIT, DIE DE RIT ALLEEN NOG BEVESTIGT. #337: een berekende waarde rekent alleen nog met bronnen van hetzelfde moment (hoogstens een seconde uit elkaar), en verbruik nu klemt op 50 l/100 km. #338: Slim visueel oordeelt over het tempo van het pedaal alleen tijdens het rijden met de meter in beeld, niet bij stilstand, op de achtergrond of terwijl een andere lezer de bus heeft.',
+    '── DE OPDRACHTEN ────────',
+    'Zet ze vooraf in beheer → 🎯 Meetopdrachten (de tekst staat in het issue van de meetrit). Kies in de app "Meetrit 1 · berekende waarden" als opdracht: die zet alle sensoren van meetrit 1 aan. De andere worden aan het eind op dezelfde rit beoordeeld.',
+    '── MEETRIT 1, ALLEEN, ±45 MINUTEN ────────',
+    'STAP 0 — VOORAF, MOTOR KOUD. Nieuwste versie laden (Meer → Admin). De MX+ erin. Een nieuwe APK is niet nodig.',
+    'STAP 1 — VERBINDEN (#376). Check mijn auto opent vanzelf. Vindt hij niets, dan loopt er een balk van vijf seconden: raak niets aan en kijk of je "Alles in orde" kunt lezen voordat hij naar Live gaat.',
+    'STAP 2 — GROEPSPROEF A, KOUD EN STIL (#333). Tik op de OBD-chip → 📦 Start de groepsproef. Twee minuten, de meters staan stil, laat de app open. Meldt hij drift, doe hem dan meteen nog eens.',
+    'STAP 3 — 🔄 OPNIEUW VERBINDEN in hetzelfde paneel. Vanaf hier telt het half uur van #302; de groepsproef zit dan niet in die meting.',
+    'STAP 4 — DERTIG MINUTEN RIJDEN IN SLIM VISUEEL, ZONDER TE VERBREKEN (#302, #337, #338). Onderweg: een paar keer vanuit stilstand stevig optrekken en daarna het gas helemaal los, een stuk boven 50 km/u, en één keer stilstaan. Laat waakronde en bulk-recorder zoals je ze normaal hebt.',
+    'STAP 5 — TWEE MINUTEN BEELD-IN-BEELD (#319, #338). Onderweg, met de navigatie: thuisknop, PidLane staat klein; minstens twee minuten, dan terug naar de app.',
+    'STAP 6 — GROEPSPROEF B, WARM EN STIL (#333). Na het half uur stilstaan op een veilige plek, motor draaiend. Eerst 🔄 Opnieuw verbinden, dan 📦 Start de groepsproef.',
+    'STAP 7 — VERZENDEN. Meetkamer → alle afgeronde opdrachten verzenden, en beantwoord de vragen. Daarna eventueel de testrun.',
+    '── MEETRIT 2, MET BIJRIJDER, ±10 MINUTEN ────────',
+    'GROEPSPROEF C, RIJDEND (#333). Constante snelheid boven 50 km/u, de bijrijder start de groepsproef. Alleen met een bijrijder.',
+    '── RESERVE ────────',
+    'ALLEEN ALS #302 IN MEETRIT 1 EEN BEVINDING GAF: dezelfde dertig minuten in Overzicht in plaats van Slim visueel (opdracht "Reserve"). Dan zegt het verschil of het in het tekenen van de meter zit of in de sessie zelf.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
-    'DE AUTOMAAT GAAT NIET BOVEN DE 3. Dat mag pas als de groepsproef op twee adapters, in A, B en C, een groep van 4 of meer adviseert met minstens 15% meer metingen per seconde en zonder verlies (de grens staat in #333). Deze ronde verzamelt die metingen; hij beslist nog niets.',
-    'GEEN TERUGSCHAKELADVIES EN GEEN AUTOMATISCHE BELADEN-HERKENNING. Bewust niet (besluit 27-09): op de top van een klim is terugschakelen precies verkeerd, en dat ziet de app niet aankomen.',
-    'DE ROETFILTERTELLER IS EEN SCHATTING. Hij telt pas vanaf de eerste regeneratie die hij zelf ziet, en alleen op een diesel die 017C of 0178 geeft.',
-    '#309 (Engelse versie) EN #264 (AI stuurt een test aan) HEBBEN GEEN MEETPROEF. Er is daar nog niets in de app om te meten.',
+    'DE AUTOMAAT GAAT NOG NIET BOVEN DE 3. Geven A, B en C op de MX+ "gesloten", dan is dat een eigen wijziging: hoger alleen op een adapter die geen echo gaf, met deze metingen als bewijs.',
+    '#331, #359, #360 EN #370 HEBBEN GEEN RIT NODIG maar code met een test; #371 is ontwerpwerk; #327 is werk aan de Worker; #309 en #264 hebben nog niets in de app om te meten.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
 };

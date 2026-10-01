@@ -60,7 +60,7 @@ async function laadWorker() {
   const i = bron.lastIndexOf('export {');
   if (i < 0) throw new Error('export-blok niet gevonden in worker.js');
   const mod = bron.slice(0, i) +
-    'export { worker_default as default, makeToken, hashPassword, klantWachtrijOpruimen, KP_SCHEMA, KP_MIGRATIES, kpKlantId };\n';
+    'export { worker_default as default, makeToken, hashPassword, klantWachtrijOpruimen, KP_SCHEMA, KP_MIGRATIES, kpKlantId, D1_SCHEMA };\n';
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'kp-')), 'worker.mjs');
   fs.writeFileSync(f, mod);
   return import('file://' + f);
@@ -72,6 +72,14 @@ async function laadWorker() {
   const sleutel = Buffer.alloc(32, 7).toString('base64');
   const env = { LOGDB: maakD1(db), SESSION_SECRET: 'test-geheim-dat-lang-genoeg-is-0123456789', KENTEKEN_SLEUTEL: sleutel };
 
+  // Elke klant met een token heeft in productie een record in de
+  // klantentabel; stand kijkt daar sinds 01-10-2026 altijd in (#327).
+  W.D1_SCHEMA.forEach((st) => db.exec(st));
+  const zaaiKlant = (d, id, email, extra) => d.prepare('INSERT INTO klanten (id, rij_gemaakt, "Email", "Status", "PassHash") VALUES (?, ?, ?, ?, ?)')
+    .run(id, '2026-01-01T00:00:00.000Z', email, 'actief', extra || null);
+  zaaiKlant(db, 'recAnna0000000001', 'anna@voorbeeld.nl');
+  zaaiKlant(db, 'recBert0000000002', 'bert@voorbeeld.nl');
+  zaaiKlant(db, 'recVera0000000003', 'vera@voorbeeld.nl');
   const tokA = (await W.makeToken(env, 'anna@voorbeeld.nl', 'klant', 'Anna')).token;
   const tokB = (await W.makeToken(env, 'bert@voorbeeld.nl', 'klant', 'Bert')).token;
   const tokAdmin = (await W.makeToken(env, 'beheer', 'admin', 'Beheer')).token;
@@ -327,31 +335,32 @@ async function laadWorker() {
   toets('alles wissen neemt de voorkeuren mee', Object.keys((await roep(tokV, { actie: 'voorkeuren' })).voorkeur).length === 0);
 
   console.log('\n5. Account verwijderd of geblokkeerd: meteen dicht');
+  // De klantentabel staat sinds 01-10-2026 in D1 (#327), in dezelfde database
+  // als het klantplatform. Anna krijgt daar een echte rij; haar status zetten
+  // we met SQL, zoals een beheerder het in de tabel zou doen.
+  const hash = await W.hashPassword('geheim-wachtwoord-123', env);
+  db.prepare('UPDATE klanten SET "PassHash" = ? WHERE id = ?').run(hash, 'recAnna0000000001');
+  const zetStatus = (st) => db.prepare('UPDATE klanten SET "Status" = ? WHERE id = ?').run(st, 'recAnna0000000001');
   {
-    const oud = global.fetch;
-    const hash = await W.hashPassword('geheim-wachtwoord-123', env);
-    let status = 'actief';
-    global.fetch = async (url, opt) => {
-      if (!opt || !opt.method || opt.method === 'GET')
-        return new Response(JSON.stringify({ records: [{ id: 'recAnna', fields: { Email: 'anna@voorbeeld.nl', PassHash: hash, Status: status } }] }), { status: 200 });
-      return new Response('{"records":[{"id":"x"}]}', { status: 200 });
-    };
-    const envAt = Object.assign({}, env, { AIRTABLE_TOKEN: 'x' });
     const vw = await W.default.fetch(new Request('https://app.pidlane.nl/klant/verwijder', { method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-App-Token': tokA, Origin: 'https://app.pidlane.nl' }, body: JSON.stringify({ pass: 'geheim-wachtwoord-123' }) }), envAt, {});
+      headers: { 'Content-Type': 'application/json', 'X-App-Token': tokA, Origin: 'https://app.pidlane.nl' }, body: JSON.stringify({ pass: 'geheim-wachtwoord-123' }) }), env, {});
     toets('account verwijderen lukt', vw.status === 200, String(vw.status));
+    toets('in de klantentabel staat ze op verwijderd', db.prepare('SELECT "Status" AS s FROM klanten WHERE id = ?').get('recAnna0000000001').s === 'verwijderd');
     const na = await roep(tokA, { actie: 'rapporten', voertuig_id: v1.voertuig.id });
     toets('met hetzelfde token: Mijn voertuigen meteen dicht (403, verwijderd)', na._status === 403 && na.code === 'verwijderd', JSON.stringify(na));
     toets('ook opnieuw akkoord geven helpt niet', (await roep(tokA, { actie: 'akkoord', versie: st.akkoordVersie }))._status === 403);
-    status = 'actief';                                     // de beheerder zet het account terug
-    const terug = await roep(tokA, { actie: 'stand' }, envAt);
+    zetStatus('actief');                                   // de beheerder zet het account terug
+    const terug = await roep(tokA, { actie: 'stand' });
     toets('hersteld account: blokkade eraf, akkoord opnieuw nodig', terug.ok && terug.akkoord === false, JSON.stringify(terug).slice(0, 200));
     await roep(tokA, { actie: 'akkoord', versie: st.akkoordVersie });
-    status = 'geblokkeerd';
-    toets('geblokkeerd in Airtable: stand geeft 403', (await roep(tokA, { actie: 'stand' }, envAt))._status === 403);
-    global.fetch = async () => { throw new Error('Airtable weg'); };
-    toets('Airtable onbereikbaar: de eigen voertuigen blijven bereikbaar', (await roep(tokA, { actie: 'stand' }, envAt)).ok === true);
-    global.fetch = oud;
+    zetStatus('geblokkeerd');
+    // Meteen, niet na vijf minuten: die bewaartijd (PR #380) was er alleen om
+    // Airtable-calls te sparen, en is weg sinds de tabel in D1 staat.
+    toets('geblokkeerd in de klantentabel: stand geeft meteen 403', (await roep(tokA, { actie: 'stand' }))._status === 403);
+    const envKapot = Object.assign({}, env, { LOGDB: new Proxy(env.LOGDB, { get: (t, k) => k === 'prepare'
+      ? (sql) => { if (/FROM klanten/.test(sql)) throw new Error('D1 weg'); return t.prepare(sql); } : t[k] }) });
+    toets('klantentabel onleesbaar: de eigen voertuigen blijven bereikbaar', (await roep(tokA, { actie: 'stand' }, envKapot)).ok === true);
+    zetStatus('actief');
   }
 
   console.log('\n6. Verwijderen');
@@ -359,25 +368,23 @@ async function laadWorker() {
   toets('een gearchiveerd voertuig verwijderen neemt zijn rapporten mee', weg3.ok &&
     !db.prepare('SELECT 1 FROM kp_voertuig WHERE id = ?').get(v3.voertuig.id), JSON.stringify(weg3));
 
-  // De nachtelijke opruimer: Anna's account is rijp. Eerst D1, dan Airtable.
-  const oudFetch = global.fetch;
-  const gewist = [];
+  // De nachtelijke opruimer: Anna's account is rijp. Eerst het klantplatform,
+  // dan het klantrecord — allebei in D1 sinds 01-10-2026 (#327).
+  db.prepare('UPDATE klanten SET "Status" = ?, "VerwijderdOp" = ? WHERE id = ?')
+    .run('verwijderd', '2026-01-01T00:00:00.000Z', 'recAnna0000000001');
   let d1Kapot = false;
-  global.fetch = async (url, opt) => {
-    if (opt && opt.method === 'DELETE') { gewist.push(url); return new Response('{}', { status: 200 }); }
-    return new Response(JSON.stringify({ records: [{ id: 'recAnna', fields: { Email: 'Anna@Voorbeeld.nl', Status: 'verwijderd', VerwijderdOp: '2026-01-01T00:00:00.000Z' } }] }), { status: 200 });
-  };
-  const envOp = Object.assign({}, env, { AIRTABLE_TOKEN: 'x', LOGDB: new Proxy(env.LOGDB, { get: (t, k) => (k === 'prepare' && d1Kapot) ? () => { throw new Error('D1 weg'); } : t[k] }) });
+  const envOp = Object.assign({}, env, { LOGDB: new Proxy(env.LOGDB, { get: (t, k) => (k === 'prepare' && d1Kapot)
+    ? (sql) => { if (/kp_/.test(sql)) throw new Error('D1 weg'); return t.prepare(sql); } : t[k] }) });
+  const annaStaat = () => !!db.prepare('SELECT 1 FROM klanten WHERE id = ?').get('recAnna0000000001');
   d1Kapot = true;
   let op = await W.klantWachtrijOpruimen(envOp, new Date('2026-09-27'));
-  toets('D1 onbereikbaar: het account blijft staan (anders is de sleutel weg)', gewist.length === 0 && op.mislukt.some((m) => /d1_platform/.test(m.reden)), JSON.stringify(op.mislukt));
+  toets('klantplatform onbereikbaar: het account blijft staan (anders is de sleutel weg)', annaStaat() && op.mislukt.some((m) => /d1_platform/.test(m.reden)), JSON.stringify(op.mislukt));
   d1Kapot = false;
   op = await W.klantWachtrijOpruimen(envOp, new Date('2026-09-27'));
-  global.fetch = oudFetch;
   const annaId = await W.kpKlantId('anna@voorbeeld.nl');
   const rest = ['kp_voertuig', 'kp_rapport', 'kp_rit', 'kp_issue', 'kp_pid_stem', 'kp_akkoord'].map((t) => db.prepare('SELECT COUNT(*) AS n FROM ' + t + ' WHERE klant_id = ?').get(annaId).n);
   toets('na de opruimer staat er van Anna niets meer in D1', rest.every((x) => x === 0), rest.join(','));
-  toets('en is het Airtable-record daarna gewist', gewist.length === 1);
+  toets('en is het klantrecord daarna gewist', !annaStaat() && op.verwijderd.indexOf('recAnna0000000001') >= 0, JSON.stringify(op));
   toets('Bert is ongemoeid gebleven', db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig WHERE klant_id != ?').get(annaId).n > 0);
   toets('alles_wissen door de klant zelf', (await roep(tokB, { actie: 'alles_wissen' })).ok &&
     db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig').get().n === 0);
@@ -390,6 +397,8 @@ async function laadWorker() {
     const db2 = new DatabaseSync(':memory:');
     const oud = W2.KP_SCHEMA.map((x) => x);
     oud.forEach((x) => db2.exec(x));                   // de tabel zoals hij op 27-09 live ging
+    W2.D1_SCHEMA.forEach((st) => db2.exec(st));
+    zaaiKlant(db2, 'recCees0000000004', 'cees@voorbeeld.nl');
     const env3 = Object.assign({}, env, { LOGDB: maakD1(db2) });
     const t3 = (await W2.makeToken(env3, 'cees@voorbeeld.nl', 'klant', 'Cees')).token;
     // Via de VERSE module: in W heeft kpSchema al gedraaid (en onthoudt dat).

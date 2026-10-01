@@ -274,7 +274,7 @@
         <details class="uitleg"><summary>Wat meet dit?</summary><div class="body">
           Drie losse vragen, zodat "het doet het niet" uiteenvalt in iets dat je kunt oplossen.
           <b>Worker bereikbaar</b> gaat over de URL en CORS. <b>Gebruikers</b> gaat over de
-          Airtable-token en de Config-base. <b>AI-route</b> gaat over de Anthropic-sleutel — die
+          gebruikerstabel in D1 (en de Airtable-token, zolang die tabel nog niet is overgezet). <b>AI-route</b> gaat over de Anthropic-sleutel — die
           kost een paar tokens per meting, dus hij draait alleen als je erom vraagt.
         </div></details>
       </div>
@@ -283,9 +283,9 @@
         <div class="card-kop"><h2>📊 Kerncijfers</h2>
           <span class="hint" id="cijfersVers" style="margin:0"></span></div>
         <div class="grid4" id="kpiGrid"></div>
-        <div class="hint">Klanten en codes komen uit de eerste 100 records die Airtable teruggeeft —
-          bij meer dan 100 zijn dit dus de meest recente, niet het totaal. De logcijfers telt de
-          database zelf, over alle regels.</div>
+        <div class="hint">Klanten, codes en logcijfers telt de database zelf, over alle rijen
+          (sinds 01-10-2026 staat alles in D1; daarvóór kwamen klanten en codes uit de eerste 100
+          records van Airtable).</div>
       </div>
 
       <div class="card">
@@ -721,28 +721,28 @@
     <!-- ══ TABELLEN ═══════════════════════════════════════════ -->
     <div class="paneel" id="p-tabellen">
       <div class="card">
-        <div class="card-kop"><h2>🗂️ Tabellen — D1 en Airtable</h2>
+        <div class="card-kop"><h2>🗂️ Tabellen</h2>
           <div class="bar">
             <button class="btn-sec btn-sm" onclick="tbCsv()">⇩ CSV</button>
             <button class="btn-pri btn-sm" onclick="tbLaden(true)">Ophalen</button>
           </div></div>
         <details class="uitleg"><summary>Wat je hier wel en niet kunt</summary><div class="body">
           Dit leest de tabellen die de Worker kent — je kunt hier geen willekeurige base of tabelnaam
-          invullen. Dat is met opzet: met één gelekte admintoken zou zo'n route een sleutel tot het
-          hele Airtable-account zijn.<br><br>
+          invullen. Dat is met opzet: met één gelekte admintoken zou zo'n route een sleutel tot de
+          hele database zijn.<br><br>
           <b>Sommige velden zijn afgeschermd</b> en staan grijs. <code>Saldo</code> hoort door het
           saldoslot (via de klantenkaart), <code>PassHash</code> door de wachtwoordroute, en
           <code>Email</code> is de sleutel waar dat slot op staat. Een wachtwoordhash en een
           resettoken worden hier niet eens getóónd — die verlaten de Worker niet.<br><br>
-          <b>AppConfig is alleen-lezen.</b> Schrijven gaat via de instellingenkaart, want die gooit
-          ook de randcache weg. Doe je het hier, dan staat er dagen iets anders live dan in de tabel.<br><br>
+          <b>AppConfig is alleen-lezen.</b> Schrijven gaat via de instellingenkaart, want die keurt
+          de sleutel en bewaart de waarde zoals de app hem leest.<br><br>
           <b>Het kasboek is ook alleen-lezen</b>, en om een andere reden: het bestaat om te kunnen
           nazoeken waar tokens gebleven zijn. Een boek dat je hier kunt bijstellen bewijst alleen nog
           wat erin staat. Regels komen uitsluitend van de Worker, bij elke saldomutatie. Staat er een
           regel met <code>Credits 0</code>, dan is er AI verbruikt of een code afgestempeld terwijl het
           saldo níét meebewoog — dat is de regel die je zoekt.<br><br>
-          <b>Wissen kan niet ongedaan gemaakt worden.</b> Airtable heeft wel een prullenbak, maar dit
-          scherm heeft geen knop terug.
+          <b>Wissen kan niet ongedaan gemaakt worden</b> vanaf dit scherm. D1 kan de hele database
+          tot 30 dagen terugzetten (Time Travel, in Cloudflare), maar dat zet álles terug.
         </div></details>
         <div class="grid4" style="margin-top:10px">
           <div><label for="tbBron">Tabel</label>
@@ -1094,7 +1094,7 @@ function diagnose(where, status, bodyText){
   if(code === 'saldo_verschoven') return { kind:'warn', title:'⚠ Het saldo is inmiddels veranderd.', detail:(body && body.error) || 'Herlaad de lijst en kijk opnieuw.' };
   if(code === 'saldo_geen_email') return { kind:'err', title:'❌ Deze klant heeft geen e-mailadres.',
     detail:'Het saldo-slot staat per e-mailadres. Zonder adres is er geen slot om het bijboeken in te zetten, ' +
-           'en dan zou het langs een gelijktijdige afboeking heen kunnen schrijven. Vul eerst het veld Email in Airtable.' };
+           'en dan zou het langs een gelijktijdige afboeking heen kunnen schrijven. Zet eerst een e-mailadres op dit record; Email is hier afgeschermd, dus dat gaat via de database zelf.' };
   if(code === 'saldo_slot_stuk') return { kind:'err', title:'❌ Het tegoedslot was niet bereikbaar.', detail:'Er is niets gewijzigd. Probeer het zo nog eens.' };
   if(status === 404) return { kind:'err', title:'❌ Niet gevonden (404).', detail:'De route bestaat niet op deze Worker — draait er een oude versie?\n' + (body.path || '') };
   if(body && body.error) return { kind:'err', title:'❌ ' + String(body.error).slice(0,200), detail: detail === String(body.error) ? '' : detail.slice(0,240) };
@@ -1804,7 +1804,7 @@ async function checkStatus(){
   const items = [
     { id:'st_worker', naam:'Worker bereikbaar', hint:'/api/config',
       run:() => callWorker('read','/api/config',{ headers:H({ 'X-App-Token':TOKEN }) }) },
-    { id:'st_users', naam:'Gebruikers (Airtable Config-base)', hint:'/admin/users',
+    { id:'st_users', naam:'Gebruikers (D1)', hint:'/admin/users',
       run:() => callWorker('users','/admin/users',{ headers:H() }) },
     { id:'st_tabel', naam:'Logdatabase (D1) via de tabelroute', hint:'/admin/tabel?bron=log',
       run:() => callWorker('tabel','/admin/tabel?bron=log&limiet=1',{ headers:H() }) },
@@ -2060,7 +2060,7 @@ function kWachtwoord(id, email){
 /* Wissen vraagt om het adres over te typen. Een ja/nee-venster klik je weg
    zonder te lezen; iets overtypen niet. */
 function kVerwijder(id, email){
-  const in_ = prompt('Dit wist het klantrecord DEFINITIEF uit Airtable — saldo, historie en auditregels gaan mee.\n\n' +
+  const in_ = prompt('Dit wist het klantrecord DEFINITIEF uit de database — saldo, historie en auditregels gaan mee.\n\n' +
     'Typ het e-mailadres over om te bevestigen:\n' + email);
   if(in_ === null) return;
   if(String(in_).trim().toLowerCase() !== String(email).trim().toLowerCase()){
@@ -2533,7 +2533,7 @@ async function tbLaden(opnieuw){
   $('tbMeer').disabled = !TB.offset;
   $('tbMeer').textContent = TB.offset ? 'Volgende ' + limiet + ' →' : 'Alles opgehaald';
   toon_msg(m, 'ok', '✓ ' + TB.records.length + ' records' +
-    (d.gesorteerd === false ? '\nLet op: er kon niet gesorteerd worden — het sorteerveld bestaat niet in deze tabel. De volgorde is die van Airtable zelf.' : '') +
+    (d.gesorteerd === false ? '\nLet op: er kon niet gesorteerd worden — het sorteerveld bestaat niet in deze tabel. De volgorde is die van de database zelf.' : '') +
     (TB.schrijven ? '' : '\nDeze tabel is alleen-lezen.'));
   tbTeken();
 }
@@ -3154,8 +3154,13 @@ function opdKeurLive(){
       ${esc(o.vragen.length)} vragen · ${esc(o.drempels.length)} drempels · ${esc(o.proeven.length)} proeven ·
       ${esc(o.voorwaarden.length)} voorwaarden</div>` +
     (o.proeven.length ? '<div class="hint">' + o.proeven.map(p =>
-      `• ${esc(p.issue)} ${esc(p.naam)}: <code>${esc(p.pid)}</code> ${esc(p.meet)} tussen ${esc(p.tussen[0])} en ${esc(p.tussen[1])}` +
-      (o.sensoren.indexOf(p.pid) < 0 ? ' <span style="color:var(--or)">— staat niet in sensoren, wordt niet gemeten</span>' : '')).join('<br>') + '</div>' : '');
+      // Een app-maat (#352) heeft geen pid en hoort niet in `sensoren`: de app
+      // meet hem zelf. Tot 01-10-2026 stond hier bij elke app-proef "undefined
+      // — staat niet in sensoren", en dat leest als een opdracht die niets meet.
+      p.app
+        ? `• ${esc(p.issue)} ${esc(p.naam)}: app-maat <code>${esc(p.app)}</code> tussen ${esc(p.tussen[0])} en ${esc(p.tussen[1])}`
+        : `• ${esc(p.issue)} ${esc(p.naam)}: <code>${esc(p.pid)}</code> ${esc(p.meet)} tussen ${esc(p.tussen[0])} en ${esc(p.tussen[1])}` +
+          (o.sensoren.indexOf(p.pid) < 0 ? ' <span style="color:var(--or)">— staat niet in sensoren, wordt niet gemeten</span>' : '')).join('<br>') + '</div>' : '');
 }
 
 /* De keurdrempel voor activeren. Met keurder: een afgekeurde opdracht gaat
@@ -3316,8 +3321,7 @@ async function saveAll(){
   const r = await veilig(m, () => callWorker('config','/api/config',{
     method:'POST', headers:HJ(), body:JSON.stringify({ items }) }), 'Bezig met opslaan…');
   if(!r.ok) return;
-  toon_msg(m, 'ok', '✓ Opgeslagen. De app haalt dit op bij de volgende start; ' +
-    'op een toestel dat al open staat kan het even duren door de randcache.');
+  toon_msg(m, 'ok', '✓ Opgeslagen. De app haalt dit op bij de volgende start.');
   toast('Instellingen opgeslagen');
 }
 async function testPrompt(){
@@ -3369,7 +3373,7 @@ async function opruimNu(){
 function tekenRoutes(){
   const routes = [
     ['GET /api/config','de app-instellingen die deze pagina beheert'],
-    ['POST /api/config','opslaan van diezelfde instellingen (gooit ook de randcache weg)'],
+    ['POST /api/config','opslaan van diezelfde instellingen (in D1)'],
     ['GET /admin/klanten','klantaccounts met saldo'],
     ['POST /admin/klanten','aanmaken, bijboeken, zetten, status, wachtwoord, wissen, opruimen'],
     ['GET /admin/codes','activatiecodes'],

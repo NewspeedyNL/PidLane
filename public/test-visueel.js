@@ -327,8 +327,10 @@ r = ind({ actief: ['010C'] });
 waar('niets voor onderboog, rijen of accu: die blijven leeg', r.i.onder === null && !r.i.plekken.koel && !r.i.plekken.pedaal && !r.i.plekken.tank && !r.i.lamp.volt);
 
 console.log('\n── het gemeten tempo laat een traag pedaal doorvallen ──');
-function metTempo(actief, pid, stap, n, voorStart) {
+// Rijdend: sinds #338 oordeelt het tempo alleen tijdens het rijden.
+function metTempo(actief, pid, stap, n, voorStart, kmh) {
   const c = maak({ actief: actief });
+  c.pidVals['010D'] = kmh === undefined ? 50 : kmh;
   c.PLVisueel.start();
   const t0 = c.PLVisueel.staat().start + c.PLVisueel.AANLOOP_MS;
   c.pidHist[pid] = [];
@@ -358,6 +360,7 @@ waar('eenmaal te traag, blijft hij eraf (geen heen-en-weer)', c1.PLVisueel.indel
 {
   const c = maak({ actief: ['010C', '0149', '0111'] });
   c.document = { getElementById: function () { return null; }, body: null };
+  c.pidVals['010D'] = 50;
   c.PLVisueel.start();
   const t0 = c.PLVisueel.staat().start + c.PLVisueel.AANLOOP_MS;
   c.pidHist['0149'] = [];
@@ -365,6 +368,117 @@ waar('eenmaal te traag, blijft hij eraf (geen heen-en-weer)', c1.PLVisueel.indel
   c.PLVisueel.tik();
   waar('de tik beoordeelt het tempo van het pedaal in zijn rij', c.PLVisueel.staat().traag.indexOf('0149') >= 0 && c.PLVisueel.indeling().plekken.pedaal === '0111',
     JSON.stringify(c.PLVisueel.staat().traag));
+}
+
+console.log('\n── #338: alleen het rijden telt, en de reden van elke herbouw ──');
+{
+  // Testrun 8.3: stilstand en 157 s op de achtergrond, en het pedaal was de
+  // hele rit weg terwijl het rijdend 786 ms haalde.
+  let c = metTempo(['010C', '0149', '0111'], '0149', 1000, 12, null, 0);
+  waar('stilstaand elke seconde: geen oordeel, het pedaal blijft (stilstand zegt niets over de weg)', c.PLVisueel.indeling().plekken.pedaal === '0149');
+  c.pidVals['010D'] = 50; c.PLVisueel.beoordeelTempo('0149');
+  waar('TEGENPROEF: dezelfde metingen rijdend: valt door naar 0111', c.PLVisueel.indeling().plekken.pedaal === '0111');
+
+  // De app op de achtergrond: de timers vriezen, de metingen ervóór zijn
+  // traag. Na de terugkeer begint het venster opnieuw.
+  function achtergrond(sprong) {
+    const k = maak({ actief: ['010C', '0149', '0111'] });
+    k.document = { getElementById: function () { return null; }, body: null };
+    k.pidVals['010D'] = 50;
+    k.PLVisueel.start();
+    const s0 = k.PLVisueel.staat().start + k.PLVisueel.AANLOOP_MS;
+    k.pidHist['0149'] = [];
+    // Twintig seconden rijden in beeld, met een tik per seconde en een traag pedaal.
+    for (let i = 0; i < 20; i++) { k.pidHist['0149'].push({ t: s0 + i * 1000, v: 20 }); k.T.t = s0 + i * 1000; k.PLVisueel.rijVenster(k.T.t); }
+    k.T.t += sprong; k.PLVisueel.rijVenster(k.T.t);                                         // de eerste tik na de sprong
+    for (let i = 1; i <= 12; i++) k.pidHist['0149'].push({ t: k.T.t + i * 250, v: 20 });  // daarna vlot
+    k.T.t += 2500;
+    k.PLVisueel.tik();
+    return k;
+  }
+  // 30 s en niet 157: dat valt binnen het venster van een minuut, zodat
+  // alleen de gatdetectie het verschil maakt en niet het venster zelf.
+  c = achtergrond(30000);
+  waar('na 30 s op de achtergrond telt alleen het stuk erna: het pedaal blijft', c.PLVisueel.indeling().plekken.pedaal === '0149',
+    JSON.stringify(c.PLVisueel.staat()));
+  c = achtergrond(1000);
+  waar('TEGENPROEF: zonder gat (één tik later) tellen de trage metingen wel en valt het pedaal', c.PLVisueel.indeling().plekken.pedaal === '0111');
+
+  // Een andere lezer nam de bus (groepsproef, waakronde): ook dan opnieuw.
+  c = maak({ actief: ['010C', '0149', '0111'] });
+  c.document = { getElementById: function () { return null; }, body: null };
+  c.pidVals['010D'] = 50;
+  c.PLVisueel.start();
+  let s0 = c.PLVisueel.staat().start + c.PLVisueel.AANLOOP_MS;
+  c.pidHist['0149'] = [];
+  for (let i = 0; i < 20; i++) { c.pidHist['0149'].push({ t: s0 + i * 1000, v: 20 }); c.T.t = s0 + i * 1000; c.PLVisueel.rijVenster(c.T.t); }
+  c.__pauze = 8000;                                                                     // de bus was twee minuten bezet
+  for (let i = 1; i <= 12; i++) c.pidHist['0149'].push({ t: c.T.t + i * 250, v: 20 });
+  c.T.t += 1000; c.PLVisueel.rijVenster(c.T.t);
+  c.T.t += 2500; c.PLVisueel.tik();
+  waar('na een buspauze telt alleen het stuk erna: het pedaal blijft', c.PLVisueel.indeling().plekken.pedaal === '0149');
+  // TEGENPROEF: precies hetzelfde zonder pauze, dan tellen de trage metingen.
+  c.PLVisueel.stop(); c.__pauze = 8000;
+  c.PLVisueel.start(); c.pidHist['0149'] = []; s0 = c.T.t;
+  for (let i = 0; i < 20; i++) { c.pidHist['0149'].push({ t: s0 + i * 1000, v: 20 }); c.T.t = s0 + i * 1000; c.PLVisueel.rijVenster(c.T.t); }
+  for (let i = 1; i <= 12; i++) c.pidHist['0149'].push({ t: c.T.t + 1000 + i * 250, v: 20 });
+  c.T.t += 1000; c.PLVisueel.rijVenster(c.T.t);
+  c.T.t += 2500; c.PLVisueel.tik();
+  waar('TEGENPROEF: zonder buspauze vallen dezelfde metingen wel van de meter', c.PLVisueel.indeling().plekken.pedaal === '0111');
+
+  // Beeld-in-beeld of achtergrond met de meetdienst aan: geen gat, wel traag.
+  for (const [naam, doc] of [['op de achtergrond (document.hidden)', { hidden: true, body: null }],
+                             ['in beeld-in-beeld (body.pl-pip)', { hidden: false, body: { classList: { contains: (k) => k === 'pl-pip' } } }]]) {
+    const k = maak({ actief: ['010C', '0149', '0111'] });
+    k.pidVals['010D'] = 50;
+    k.PLVisueel.start();
+    k.document = doc;
+    const t0k = k.PLVisueel.staat().start + k.PLVisueel.AANLOOP_MS;
+    k.pidHist['0149'] = [];
+    for (let i = 0; i < 12; i++) k.pidHist['0149'].push({ t: t0k + i * 1000, v: 20 });
+    k.PLVisueel.beoordeelTempo('0149');
+    waar('rijdend ' + naam + ', elke seconde: geen oordeel, het pedaal blijft', k.PLVisueel.indeling().plekken.pedaal === '0149');
+    k.document = { hidden: false, body: null };
+    k.PLVisueel.beoordeelTempo('0149');
+    waar('TEGENPROEF: dezelfde metingen met de meter in beeld: valt door', k.PLVisueel.indeling().plekken.pedaal === '0111');
+  }
+
+  // Het venster is de laatste minuut: een traag stuk van lang geleden telt niet.
+  c = maak({ actief: ['010C', '0149', '0111'] });
+  c.pidVals['010D'] = 50;
+  c.PLVisueel.start();
+  s0 = c.PLVisueel.staat().start + c.PLVisueel.AANLOOP_MS;
+  c.pidHist['0149'] = [];
+  for (let i = 0; i < 12; i++) c.pidHist['0149'].push({ t: s0 + i * 1000, v: 20 });
+  for (let i = 1; i <= 240; i++) c.pidHist['0149'].push({ t: s0 + 11000 + i * 250, v: 20 });
+  c.T.t = s0 + 11000 + 240 * 250;
+  c.PLVisueel.beoordeelTempo('0149');
+  waar('een traag stuk van een minuut geleden telt niet mee (venster ' + c.PLVisueel.VENSTER_MS / 1000 + ' s)', c.PLVisueel.indeling().plekken.pedaal === '0149');
+
+  // Herbouwen met een reden.
+  const h = maak({ actief: ['010C', '010D', '0149'] });
+  h.document = { getElementById: function () { return null; }, body: null };
+  h.connected = true; h.demoMode = false;
+  const g = { innerHTML: '' };
+  h.PLVisueel.start();
+  h.PLVisueel.bouw(g);                       // openen
+  h.PLVisueel.bouw(g);                       // dezelfde keuze, geen testrun: scherm
+  h.activePIDs.add('0105'); h.PLVisueel.bouw(g);   // selectie
+  h.PLTestrunLive = { bezig: function () { return true; } }; h.PLVisueel.bouw(g);   // testrun
+  delete h.PLTestrunLive;
+  h.PLVisueel.bouw(g, 'indeling');
+  const R = h.PLVisueel.sessie().herbouwReden;
+  waar('elke herbouw heeft een reden: openen, scherm, selectie, testrun, indeling',
+    R.openen === 1 && R.scherm === 1 && R.selectie === 1 && R.testrun === 1 && R.indeling === 1, JSON.stringify(R));
+  waar('een klant ziet er twee zonder dat hij erom vroeg (scherm en indeling)', h.PLVisueel.herbouwKlant(h.PLVisueel.sessie()) === 2);
+  const Sx = (o) => Object.assign({ openMs: 600000, rijdendMs: 600000, dof: 0, herbouw: 10 }, o);
+  waar('rust: tien herbouwen door de testrun en de keuze is geen knipperen',
+    V.rustOordeel(Sx({ herbouwReden: { openen: 2, selectie: 4, testrun: 4 } })).staat === 'ok');
+  waar('TEGENPROEF: tien herbouwen die niemand vroeg wel', V.rustOordeel(Sx({ herbouwReden: { scherm: 6, indeling: 4 } })).staat === 'FOUT');
+
+  // De app-maten: onder drie minuten rijdend niet gemeten (null).
+  waar('app-maten zonder rit: van-meter en herbouw null, rijdend 0',
+    h.PLVisueel.maat('visueel-van-meter') === null && h.PLVisueel.maat('visueel-herbouw-klant') === null && h.PLVisueel.maat('visueel-rijdend-min') === 0);
 }
 
 console.log('\n── een oud antwoord ──');

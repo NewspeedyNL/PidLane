@@ -1,33 +1,33 @@
 // ══════════════════════════════════════════════════════════════════
-// test-adminbron.js — /admin/tabel: de witte lijst, de grendels en het masker
+// test-adminbron.js — de grendels van /admin/tabel (witte lijst, masker, beschermd, alleen-lezen)
 // ──────────────────────────────────────────────────────────────────
 // WAAROM DEZE TEST BESTAAT
-// /admin/tabel is één route die in zeven Airtable-tabellen kan lezen en in
-// vijf ervan kan schrijven. Dat is precies het soort route waarbij een stille
-// fout duur is:
+// /admin/tabel leest en schrijft elke tabel die het beheer nodig heeft,
+// achter één ADMIN_TOKEN. Daarom staan er grendels in, en elk van die
+// grendels is een eigen manier waarop één gelekte token of één verkeerde klik
+// geld of een account kost:
+//   • alleen bronnen uit ADMIN_BRONNEN, geen vrije tabelnaam;
+//   • de wachtwoordhash en het resettoken verlaten de Worker niet;
+//   • Saldo, PassHash, Email en het id gaan hier niet doorheen (Saldo hoort
+//     door het saldoslot, #82/#93);
+//   • AppConfig en het kasboek zijn hier alleen-lezen (#83);
+//   • wissen gaat alleen op geldige id's.
 //
-//   • Zou de bron uit de URL rechtstreeks een base- en tabelnaam worden, dan
-//     is één gelekte ADMIN_TOKEN een sleutel tot het hele Airtable-account —
-//     ook tot bases die niets met PidLane te maken hebben.
-//   • Zou `beschermd` niet werken, dan schrijft een PATCH langs deze route het
-//     Saldo buiten metSaldoSlot() om, en dan is de race van #82/#93 terug via
-//     de achterdeur.
-//   • Zou `geheim` niet werken, dan staat er een wachtwoordhash en een
-//     resettoken in de JSON die de beheerpagina inleest. Dat is genoeg om een
-//     klantaccount over te nemen.
-//
-// DE TOETS MOET ONDERSCHEIDEN. Een geweigerde bewerking die tóch een 400
-// teruggeeft omdat er iets ánders misging, bewijst niets — daarom kijkt elke
-// weigering hieronder óók of er werkelijk geen PATCH of DELETE de deur uit
-// ging. En bij het masker wordt de hele JSON doorzocht op de hashwaarde zelf:
-// een masker dat het veld hernoemt in plaats van leegmaakt, valt daarmee door
-// de mand.
+// Tot 01-10-2026 liep dit voor Klanten, codes, gebruikers en het kasboek via
+// een Airtable-motor, en toetste deze test die met een nagebouwde fetch.
+// Sinds #327 staat alles in D1 en is die motor weg; de grendels zijn
+// dezelfde gebleven, en deze test toetst ze nu tegen de ECHTE worker.js op
+// een echte SQLite, door de echte router heen. Zoeken, sorteren en pagineren
+// van de D1-motor toetst test-adminbron-d1.js.
 //
 // Draaien vanuit public/:  node test-adminbron.js   (exit 0 = goed)
 // ══════════════════════════════════════════════════════════════════
 'use strict';
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const { DatabaseSync } = require('node:sqlite');
+const { maakD1 } = require(path.join(__dirname, '..', 'pltest-d1.js'));
 
 let fouten = 0;
 function toets(naam, waar, uitleg) {
@@ -35,402 +35,151 @@ function toets(naam, waar, uitleg) {
   else { console.log('  FOUT ' + naam + (uitleg ? ' — ' + uitleg : '')); fouten++; }
 }
 
-// ── de echte code uit worker.js knippen ───────────────────────────
-// Ankers en geen kopie: verdwijnt of hernoemt er iets, dan stopt deze test
-// meteen in plaats van groen te blijven staan op code die niet meer draait.
 const bron = fs.readFileSync(path.join(__dirname, '..', 'worker.js'), 'utf8');
-/* DEZE TEST GAAT OVER DE AIRTABLE-MOTOR, en gebruikt `codes` als
-   vertegenwoordiger daarvan. Dat was tot #262 `log`, maar die bron staat
-   sinds de verhuizing op D1 en heeft een eigen test (test-adminbron-d1.js).
-   `codes` is gekozen omdat hij als enige overgebleven Airtable-bron zowel
-   zoekvelden als een sorteerveld heeft én schrijfbaar is — zonder die drie
-   zouden de formule-, sorteer- en wistoetsen hieronder niets meer meten. */
-const van = bron.indexOf('var ADMIN_BRONNEN = {');
-const tot = bron.indexOf('__name(handleAdminTabelPost');
-if (van < 0 || tot < 0 || tot < van) {
-  console.error('FOUT: het adminbrowser-blok is niet gevonden in worker.js.');
-  process.exit(1);
+async function laadWorker() {
+  const i = bron.lastIndexOf('export {');
+  if (i < 0) throw new Error('export-blok niet gevonden in worker.js');
+  const mod = bron.slice(0, i) + 'export { worker_default as default, ADMIN_BRONNEN, D1_TABELLEN, D1_SCHEMA, CONFIG_SCHEMA };\n';
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'adminbron-')), 'worker.mjs');
+  fs.writeFileSync(f, mod);
+  return import('file://' + f);
 }
-const src = bron.slice(van, tot);
 
-// ── nagemaakte omgeving ───────────────────────────────────────────
-// `verzoeken` legt vast wat er werkelijk naar Airtable ging: dát is waar deze
-// test naar kijkt, niet naar wat de handler teruggeeft.
-function bouw(opties) {
-  const o = opties || {};
-  const staat = { verzoeken: [], antwoorden: (o.antwoorden || []).slice() };
-  const omg = {
-    adminOnly: () => o.admin !== false,
-    json: (body, status) => ({ body, status: status || 200 }),
-    resolveBase: (env, k) => 'app' + k.replace(/[^A-Za-z0-9]/g, '').slice(0, 12),
-    cfg: (env, k) => 'tbl_' + k,
-    klantFout: (e, m) => ({ body: { ok: false, error: m, uitzondering: String(e && e.message || e) }, status: 500 }),
-    adminWriteLimited: async () => ({ limited: false }),
-    rateLimitResponse: () => ({ body: { ok: false, error: 'rate' }, status: 429 }),
-    fetch: async (url, init) => {
-      staat.verzoeken.push({ url: String(url), method: (init && init.method) || 'GET', body: init && init.body });
-      const a = staat.antwoorden.shift();
-      if (a) return a;
-      return { ok: true, status: 200, json: async () => ({ records: [] }), text: async () => '{}' };
-    },
-    __name: () => {},
-    // formuleTekst() staat buiten het geknipte blok maar wordt er wél door
-    // aangeroepen. Niet nabouwen maar dezelfde functie uit worker.js knippen:
-    // een nagemaakte escaper zou hier precies het gat verbergen dat #142 was.
-    formuleTekst: (() => {
-      const a = bron.indexOf('function formuleTekst(s) {');
-      const b = bron.indexOf('__name(formuleTekst, "formuleTekst");');
-      if (a < 0 || b < 0) { console.error('FOUT: formuleTekst() niet gevonden in worker.js.'); process.exit(1); }
-      return new Function(bron.slice(a, b) + '\nreturn formuleTekst;')();
-    })()
-  };
-  const maak = new Function(...Object.keys(omg),
-    src + '\nreturn { get: handleAdminTabelGet, post: handleAdminTabelPost, bronnen: ADMIN_BRONNEN, masker: bronMasker, probleem: bronSchrijfProbleem };');
-  const api = maak(...Object.values(omg));
-  const env = { AIRTABLE_TOKEN: 'x' };
-  return {
-    staat, api,
-    get: (qs) => api.get({ url: 'https://w.dev/admin/tabel?' + qs, headers: { get: () => '' } }, env),
-    post: (body) => api.post({ json: async () => body, headers: { get: () => '1.2.3.4' } }, env)
-  };
-}
-const okAntwoord = (records, offset) => ({
-  ok: true, status: 200,
-  json: async () => ({ records, offset: offset || undefined }),
-  text: async () => '{}'
-});
-const foutAntwoord = (status, tekst) => ({
-  ok: false, status,
-  json: async () => ({}),
-  text: async () => tekst || 'INVALID_FILTER_BY_FORMULA'
-});
-const schrijf = (v) => v.filter((x) => x.method === 'PATCH' || x.method === 'DELETE' || x.method === 'POST');
+// Airtable mag hier niet gebeld worden: er is geen sleutel, dus geen overzet.
+global.fetch = async (url) => { throw new Error('onverwachte fetch in deze test: ' + url); };
+
+const KLANT = 'recKlant000000001';
+const GEBRUIKER = 'recGebruiker00001';
 
 (async function () {
+  const W = await laadWorker();
+  const db = new DatabaseSync(':memory:');
+  const env = { LOGDB: maakD1(db), ADMIN_TOKEN: 'beheer-token-0123456789' };
+  W.CONFIG_SCHEMA.forEach((st) => db.exec(st));
+  W.D1_SCHEMA.forEach((st) => db.exec(st));
+  db.prepare('INSERT INTO klanten (id, rij_gemaakt, "Email", "Naam", "Saldo", "PassHash", "ResetToken", "Status") VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(KLANT, '2026-01-01T00:00:00.000Z', 'jan@voorbeeld.nl', 'Jan', 40, 'pbkdf2_sha256$1$aa$bb', 'abc123', 'actief');
+  db.prepare('INSERT INTO gebruikers (id, rij_gemaakt, "User", "PassHash", "Role") VALUES (?, ?, ?, ?, ?)')
+    .run(GEBRUIKER, '2026-01-01T00:00:00.000Z', 'monteur', 'pbkdf2_sha256$1$cc$dd', 'user');
+  db.prepare('INSERT INTO kasboek (id, rij_gemaakt, "Moment", "Klant", "Soort", "Credits") VALUES (?, ?, ?, ?, ?, ?)')
+    .run('recKasboek0000001', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', 'jan@voorbeeld.nl', 'ai-call', -6);
+  db.prepare("INSERT INTO app_config (sleutel, waarde, bijgewerkt) VALUES ('banner_active', '\"true\"', '2026-01-01')").run();
+  for (const c of ['recCode0000000001', 'recCode0000000002', 'recCode0000000003'])
+    db.prepare('INSERT INTO tegoedcodes (id, rij_gemaakt, "Code", "Credits") VALUES (?, ?, ?, ?)').run(c, '2026-01-01T00:00:00.000Z', 'PIDL-' + c.slice(-4), 100);
 
-  // ── 1. de witte lijst ───────────────────────────────────────────
+  async function roep(methode, zoek, body, token) {
+    const r = await W.default.fetch(new Request('https://api.pidlane.nl/admin/tabel' + (zoek ? '?' + zoek : ''), {
+      method: methode,
+      headers: Object.assign({ Origin: 'https://app.pidlane.nl', 'CF-Connecting-IP': '10.0.0.1', 'X-Admin-Token': token === undefined ? env.ADMIN_TOKEN : token },
+        body ? { 'Content-Type': 'application/json' } : {}),
+      body: body ? JSON.stringify(body) : undefined
+    }), env, { waitUntil() {} });
+    let d = {};
+    try { d = await r.json(); } catch (e) { d = { _geenJson: true }; }
+    return { status: r.status, body: d };
+  }
+  const klantRij = () => db.prepare('SELECT * FROM klanten WHERE id = ?').get(KLANT);
+
   console.log('\n1. Alleen bronnen uit de lijst, en niets daarbuiten');
   {
-    const t = bouw();
-    const r = await t.get('bron=codes');
-    toets('een bekende bron mag', r.body.ok === true, JSON.stringify(r.body).slice(0, 120));
-
-    for (const kwaad of ['', 'appXyZ1234567', 'log/../users', 'Log', 'tblJiG83blVfRgPwi']) {
-      const u = bouw();
-      const rr = await u.get('bron=' + encodeURIComponent(kwaad));
-      toets('geweigerd: "' + kwaad + '"',
-        rr.status === 400 && rr.body.ok === false && u.staat.verzoeken.length === 0,
-        'status ' + rr.status + ', ' + u.staat.verzoeken.length + ' verzoek(en)');
-    }
-    const p = bouw();
-    const rp = await p.post({ bron: 'appXyZ1234567', actie: 'wis', id: 'rec0123456789abcd' });
-    toets('ook op de schrijfroute', rp.status === 400 && schrijf(p.staat.verzoeken).length === 0);
+    const r = await roep('GET', 'bron=sqlite_master');
+    toets('een vrije tabelnaam wordt geweigerd', r.status === 400 && r.body.ok === false, JSON.stringify(r.body).slice(0, 120));
+    toets('en het antwoord noemt de bronnen die wél mogen', Array.isArray(r.body.bronnen) && r.body.bronnen.indexOf('klanten') >= 0);
+    const w = await roep('POST', '', { bron: 'gebruikers_echt', actie: 'wis', id: GEBRUIKER });
+    toets('ook schrijven naar een onbekende bron niet', w.status === 400);
+    toets('en de gebruiker staat er nog', !!db.prepare('SELECT 1 FROM gebruikers WHERE id = ?').get(GEBRUIKER));
   }
 
-  // ── 2. het masker ───────────────────────────────────────────────
-  // De hash mag nergens in het antwoord voorkomen — ook niet onder een andere
-  // sleutel. Daarom wordt de complete JSON doorzocht.
   console.log('\n2. Wachtwoordhash en resettoken verlaten de Worker niet');
   {
-    const hash = 'v1$abcdef0123456789$geheimezoutwaarde';
-    const t = bouw({ antwoorden: [okAntwoord([
-      { id: 'rec1', fields: { Email: 'a@b.nl', Naam: 'Jan', Saldo: 40, PassHash: hash, ResetToken: 'RT-9999', ResetVerloopt: '' } }
-    ])] });
-    const r = await t.get('bron=klanten');
+    const r = await roep('GET', 'bron=klanten');
+    const f = ((r.body.records || [])[0] || {}).fields || {};
+    toets('de klant komt terug', r.body.ok === true && f.Email === 'jan@voorbeeld.nl', JSON.stringify(r.body).slice(0, 160));
+    toets('PassHash is verborgen', f.PassHash === '••• verborgen', String(f.PassHash));
+    toets('ResetToken ook', f.ResetToken === '••• verborgen', String(f.ResetToken));
+    toets('het id is het rec-id', (r.body.records || [])[0] && r.body.records[0].id === KLANT);
     const tekst = JSON.stringify(r.body);
-    toets('de hash staat niet in het antwoord', tekst.indexOf(hash) < 0, tekst.slice(0, 200));
-    toets('het resettoken evenmin', tekst.indexOf('RT-9999') < 0);
-    toets('maar je ziet dát er een hash staat',
-      r.body.records[0].fields.PassHash === '••• verborgen', JSON.stringify(r.body.records[0].fields));
-    toets('een leeg geheim veld blijft leeg', r.body.records[0].fields.ResetVerloopt === '');
-    toets('gewone velden gaan ongewijzigd mee',
-      r.body.records[0].fields.Email === 'a@b.nl' && r.body.records[0].fields.Saldo === 40);
-    toets('de veldnamen komen mee voor de tabelkop', r.body.velden.indexOf('Naam') >= 0);
+    toets('de hash staat nergens in het antwoord', tekst.indexOf('pbkdf2_sha256$1$aa$bb') < 0 && tekst.indexOf('abc123') < 0);
+    const u = await roep('GET', 'bron=users');
+    toets('ook bij de gebruikers niet', JSON.stringify(u.body).indexOf('pbkdf2_sha256$1$cc$dd') < 0 && u.body.ok === true, JSON.stringify(u.body).slice(0, 120));
   }
 
-  // ── 3. de grendels op schrijven ─────────────────────────────────
   console.log('\n3. Beschermde velden gaan hier niet doorheen');
   {
-    const ID = 'rec0123456789abcd';
-    const grendel = async (bronNaam, velden, waarom) => {
-      const t = bouw();
-      const r = await t.post({ bron: bronNaam, actie: 'wijzig', id: ID, velden });
-      toets(waarom, r.body.ok === false && schrijf(t.staat.verzoeken).length === 0,
-        'status ' + r.status + ' — ' + JSON.stringify(r.body).slice(0, 140));
-    };
-    await grendel('klanten', { Saldo: 9999 },        'Saldo hoort door het saldoslot, niet hierlangs');
-    await grendel('klanten', { PassHash: 'x' },      'PassHash hoort door hashPassword()');
-    await grendel('klanten', { Email: 'n@b.nl' },    'Email is de sleutel waarop het slot staat');
-    await grendel('klanten', { Naam: 'ok', Saldo: 1 }, 'één verboden veld blokkeert de hele bewerking');
-    await grendel('users',   { PassHash: 'x' },      'ook bij gebruikers');
-    await grendel('log',     {},                     'niets om te schrijven is geen bewerking');
-    await grendel('log',     { 'Message}) ,{': 'x' }, 'een veldnaam met formuletekens erin');
-
-    const t = bouw({ antwoorden: [{ ok: true, status: 200, json: async () => ({ records: [{ id: ID, fields: { Naam: 'Jan' } }] }), text: async () => '{}' }] });
-    const r = await t.post({ bron: 'klanten', actie: 'wijzig', id: ID, velden: { Naam: 'Jan' } });
-    const pat = t.staat.verzoeken.filter((x) => x.method === 'PATCH');
-    toets('een toegestaan veld gaat wél door', r.body.ok === true && pat.length === 1, JSON.stringify(r.body).slice(0, 140));
-    toets('en wel als PATCH op dit record',
-      pat.length === 1 && JSON.parse(pat[0].body).records[0].id === ID);
+    for (const veld of ['Saldo', 'PassHash', 'Email', 'ResetToken', 'id', 'rij_gemaakt']) {
+      const r = await roep('POST', '', { bron: 'klanten', actie: 'wijzig', id: KLANT, velden: { [veld]: veld === 'Saldo' ? 9999 : 'x' } });
+      toets('klanten.' + veld + ' wordt geweigerd', r.status === 400 && r.body.ok === false, 'status ' + r.status + ' ' + JSON.stringify(r.body).slice(0, 100));
+    }
+    const k = klantRij();
+    toets('en er veranderde niets', k.Saldo === 40 && k.Email === 'jan@voorbeeld.nl' && k.PassHash === 'pbkdf2_sha256$1$aa$bb', JSON.stringify(k));
+    const ok = await roep('POST', '', { bron: 'klanten', actie: 'wijzig', id: KLANT, velden: { Naam: 'Jan de Vries' } });
+    toets('een toegestaan veld gaat wél door', ok.body.ok === true && klantRij().Naam === 'Jan de Vries', JSON.stringify(ok.body).slice(0, 140));
+    toets('en het antwoord maskeert ook daar', ok.body.velden && ok.body.velden.PassHash === '••• verborgen');
+    const u = await roep('POST', '', { bron: 'users', actie: 'wijzig', id: GEBRUIKER, velden: { User: 'beheer' } });
+    toets('gebruikers.User wordt geweigerd', u.status === 400, 'status ' + u.status);
   }
 
-  // ── 4. alleen-lezen bronnen ─────────────────────────────────────
-  // Twee stuks, elk om zijn eigen reden. AppConfig gaat via /api/config, want
-  // die route gooit ook de randcache weg. Het kasboek (#83) is alleen-lezen
-  // omdat het bestaat om na te kunnen zoeken waar tokens gebleven zijn: een
-  // boek dat je vanaf een pagina kunt bijstellen bewijst alleen nog wat erin
-  // staat. Beide grendels zitten in dezelfde `schrijven: false`, dus beide
-  // horen hier getoetst — anders dekt deze toets straks de helft.
   console.log('\n4. AppConfig en het kasboek zijn hier alleen-lezen');
   {
-    for (const geval of [
-      { bron: 'config', veld: 'Value', rij: { Key: 'banner_active' } },
-      { bron: 'kasboek', veld: 'Credits', rij: { Klant: 'a@b.nl', Soort: 'ai-call', Credits: -6 } }
-    ]) {
-      const t = bouw();
-      const r = await t.post({ bron: geval.bron, actie: 'wijzig', id: 'rec0123456789abcd', velden: { [geval.veld]: 'x' } });
+    const voor = db.prepare('SELECT COUNT(*) AS n FROM kasboek').get().n;
+    for (const geval of [{ bron: 'config', id: 'banner_active', veld: 'waarde' }, { bron: 'kasboek', id: 'recKasboek0000001', veld: 'Credits' }]) {
+      const r = await roep('POST', '', { bron: geval.bron, actie: 'wijzig', id: geval.id, velden: { [geval.veld]: 0 } });
       toets(geval.bron + ': wijzigen wordt geweigerd', r.status === 403 && r.body.ok === false, 'status ' + r.status);
-      toets(geval.bron + ': en er ging niets naar Airtable', schrijf(t.staat.verzoeken).length === 0);
-
-      const w = bouw();
-      const rw = await w.post({ bron: geval.bron, actie: 'wis', id: 'rec0123456789abcd' });
-      toets(geval.bron + ': wissen ook niet', rw.body.ok === false && schrijf(w.staat.verzoeken).length === 0,
-        'status ' + rw.status + ' — een regel die je kunt weghalen maakt het boek waardeloos');
-
-      const l = bouw({ antwoorden: [okAntwoord([{ id: 'rec1', fields: geval.rij }])] });
-      const rl = await l.get('bron=' + geval.bron);
-      toets(geval.bron + ': lezen mag wel', rl.body.ok === true && rl.body.schrijven === false,
-        JSON.stringify(rl.body).slice(0, 120));
+      const w = await roep('POST', '', { bron: geval.bron, actie: 'wis', id: geval.id });
+      toets(geval.bron + ': wissen ook niet', w.status === 403, 'status ' + w.status);
+      const l = await roep('GET', 'bron=' + geval.bron);
+      toets(geval.bron + ': lezen mag wel', l.body.ok === true && l.body.schrijven === false, JSON.stringify(l.body).slice(0, 120));
     }
-    // En het kasboek moet wél de TokenLog-tabel lezen. Zonder deze toets zou
-    // een verwisselde tableKey een lege of totaal andere tabel opleveren en
-    // toch groen blijven staan: "leest niets" ziet er hetzelfde uit als "er is
-    // niets gebeurd", en dat is precies de verwarring die #83 opheft.
-    const k = bouw({ antwoorden: [okAntwoord([])] });
-    await k.get('bron=kasboek');
-    toets('het kasboek leest de TokenLog-tabel',
-      (k.staat.verzoeken[0] || {}).url && k.staat.verzoeken[0].url.indexOf('tbl_AIRTABLE_TOKENLOG_TABLE') >= 0,
-      (k.staat.verzoeken[0] || {}).url);
+    toets('het kasboek is ongemoeid', db.prepare('SELECT COUNT(*) AS n FROM kasboek').get().n === voor &&
+      db.prepare('SELECT "Credits" AS c FROM kasboek').get().c === -6);
+    toets('AppConfig ook', db.prepare("SELECT waarde FROM app_config WHERE sleutel = 'banner_active'").get().waarde === '"true"');
   }
 
-  // ── 5. wissen ───────────────────────────────────────────────────
-  console.log('\n5. Wissen: geldige id’s, hoogstens tien, en in één verzoek');
+  console.log('\n5. Wissen: alleen geldige id’s');
   {
-    const goed = ['rec0123456789abcd', 'recABCDEFGHIJKLMN', 'rec1111111111aaaa'];
-    const t = bouw();
-    const r = await t.post({ bron: 'codes', actie: 'wis', ids: goed });
-    const del = t.staat.verzoeken.filter((x) => x.method === 'DELETE');
-    toets('drie records in één DELETE', r.body.ok === true && del.length === 1, JSON.stringify(r.body).slice(0, 120));
-    toets('en alle drie de id’s staan erin', goed.every((i) => del[0].url.indexOf(i) >= 0), del[0] && del[0].url);
-
-    const slecht = bouw();
-    const rs = await slecht.post({ bron: 'codes', actie: 'wis', ids: ['rec0123456789abcd', 'recKORT'] });
-    toets('één ongeldig id blokkeert de hele wisactie',
-      rs.body.ok === false && schrijf(slecht.staat.verzoeken).length === 0, JSON.stringify(rs.body).slice(0, 120));
-
-    const veel = bouw();
-    const rv = await veel.post({ bron: 'codes', actie: 'wis', ids: new Array(11).fill('rec0123456789abcd') });
-    toets('elf tegelijk wordt geweigerd in plaats van afgekapt',
-      rv.body.ok === false && schrijf(veel.staat.verzoeken).length === 0, JSON.stringify(rv.body).slice(0, 120));
-
-    const leeg = bouw();
-    const rz = await leeg.post({ bron: 'codes', actie: 'wis' });
-    toets('zonder id gebeurt er niets', rz.body.ok === false && schrijf(leeg.staat.verzoeken).length === 0);
-
-    const raar = bouw();
-    const rr = await raar.post({ bron: 'codes', actie: 'sloop', id: 'rec0123456789abcd' });
-    toets('een onbekende actie doet niets', rr.body.ok === false && schrijf(raar.staat.verzoeken).length === 0);
+    const fout = await roep('POST', '', { bron: 'codes', actie: 'wis', id: '1' });
+    toets('een getal is geen id in een tabel uit Airtable', fout.status === 400, 'status ' + fout.status);
+    const sql = await roep('POST', '', { bron: 'codes', actie: 'wis', ids: ["recCode0000000001' OR '1'='1"] });
+    toets('een id met SQL erin wordt geweigerd', sql.status === 400, 'status ' + sql.status);
+    toets('en er is niets gewist', db.prepare('SELECT COUNT(*) AS n FROM tegoedcodes').get().n === 3);
+    const ok = await roep('POST', '', { bron: 'codes', actie: 'wis', ids: ['recCode0000000001', 'recCode0000000002'] });
+    toets('twee geldige id’s worden in één keer gewist', ok.body.ok === true && db.prepare('SELECT COUNT(*) AS n FROM tegoedcodes').get().n === 1,
+      JSON.stringify(ok.body));
   }
 
-  // ── 6. de zoekformule ───────────────────────────────────────────
-  // Onderscheidend: niet alleen "er staat een filterByFormula in", maar ook
-  // dat een apostrof ontsnapt is. Zonder dat is een zoekterm met ' een
-  // formulefout — en dus een lege lijst zonder uitleg.
-  console.log('\n6. Zoeken bouwt een formule over de zoekvelden van die bron');
+  console.log('\n6. Zonder geldige admin-token');
   {
-    const t = bouw();
-    await t.get('bron=codes&q=' + encodeURIComponent("d'r naast"));
-    const u = decodeURIComponent(t.staat.verzoeken[0].url);
-    toets('er wordt gefilterd', u.indexOf('filterByFormula=') >= 0, u);
-    toets('over Code én Batch', u.indexOf('{Code}') >= 0 && u.indexOf('{Batch}') >= 0, u);
-    toets('de apostrof is ontsnapt', u.indexOf("d\\'r") >= 0, u);
-    toets('en een getalveld wordt eerst tekst', u.indexOf("&''") >= 0, u);
-
-    const v = bouw();
-    await v.get('bron=codes&q=abc&veld=Merk');
-    const uv = decodeURIComponent(v.staat.verzoeken[0].url);
-    toets('een gekozen veld beperkt de zoektocht daartoe',
-      uv.indexOf('{Merk}') >= 0 && uv.indexOf('{Code}') < 0, uv);
-
-    const w = bouw();
-    const rw = await w.get('bron=codes&q=abc&veld=' + encodeURIComponent("Merk}),{"));
-    toets('een veldnaam met formuletekens wordt geweigerd',
-      rw.status === 400 && w.staat.verzoeken.length === 0, 'status ' + rw.status);
+    const r = await roep('GET', 'bron=klanten', null, 'fout-token');
+    toets('lezen geeft 403', r.status === 403, 'status ' + r.status);
+    const w = await roep('POST', '', { bron: 'klanten', actie: 'wijzig', id: KLANT, velden: { Naam: 'x' } }, 'fout-token');
+    toets('schrijven ook', w.status === 403 && klantRij().Naam === 'Jan de Vries', 'status ' + w.status);
   }
 
-  // ── 7. sorteren, en de terugval ─────────────────────────────────
-  // Een sorteerveld dat in die tabel niet bestaat geeft 422. Zonder terugval
-  // is het antwoord dan leeg terwijl de gegevens er wél zijn.
-  console.log('\n7. Sorteren, en wat er gebeurt als dat veld niet bestaat');
+  console.log('\n7. De bronlijst zelf');
   {
-    const t = bouw({ antwoorden: [okAntwoord([{ id: 'rec1', fields: { Aangemaakt: '2026-09-01T10:00:00Z' } }])] });
-    const r = await t.get('bron=codes');
-    toets('standaard op Aangemaakt aflopend',
-      decodeURIComponent(t.staat.verzoeken[0].url).indexOf('sort[0][field]=Aangemaakt') >= 0, t.staat.verzoeken[0].url);
-    toets('en dat wordt gemeld', r.body.gesorteerd === true && r.body.sorteer === 'Aangemaakt');
-
-    const f = bouw({ antwoorden: [foutAntwoord(422, 'UNKNOWN_FIELD_NAME'), okAntwoord([{ id: 'rec1', fields: { A: 1 } }])] });
-    const rf = await f.get('bron=codes');
-    toets('bij 422 wordt het nog eens zonder sortering geprobeerd', f.staat.verzoeken.length === 2);
-    toets('de tweede poging heeft geen sort meer',
-      decodeURIComponent(f.staat.verzoeken[1].url).indexOf('sort[0]') < 0, f.staat.verzoeken[1].url);
-    toets('en de records komen alsnog terug', rf.body.ok === true && rf.body.records.length === 1);
-    toets('met de eerlijke mededeling dat er niet gesorteerd is', rf.body.gesorteerd === false);
-
-    const s = bouw({ antwoorden: [foutAntwoord(500, 'SERVER_ERROR'), foutAntwoord(500, 'SERVER_ERROR')] });
-    const rs = await s.get('bron=codes');
-    toets('blijft het misgaan, dan is het een fout en geen lege lijst',
-      rs.status === 502 && rs.body.ok === false, 'status ' + rs.status);
-  }
-
-  // ── 8. de randen van de paginering ──────────────────────────────
-  console.log('\n8. Paginagrootte en offset');
-  {
-    const t = bouw({ antwoorden: [okAntwoord([], 'itrABC')] });
-    const r = await t.get('bron=codes&limiet=5000');
-    toets('een absurde limiet wordt teruggebracht naar 100',
-      t.staat.verzoeken[0].url.indexOf('pageSize=100') >= 0, t.staat.verzoeken[0].url);
-    toets('de offset van Airtable gaat door naar de pagina', r.body.offset === 'itrABC');
-
-    const n = bouw();
-    await n.get('bron=codes&limiet=0');
-    toets('0 telt als niet opgegeven en valt terug op 50',
-      n.staat.verzoeken[0].url.indexOf('pageSize=50') >= 0, n.staat.verzoeken[0].url);
-
-    const m = bouw();
-    await m.get('bron=codes&limiet=-5');
-    toets('een negatieve limiet wordt 1 en geen kapotte URL',
-      m.staat.verzoeken[0].url.indexOf('pageSize=1&') >= 0, m.staat.verzoeken[0].url);
-
-    const o = bouw();
-    await o.get('bron=codes&offset=itrXYZ');
-    toets('een meegegeven offset gaat mee', o.staat.verzoeken[0].url.indexOf('offset=itrXYZ') >= 0, o.staat.verzoeken[0].url);
-  }
-
-  // ── 9. zonder token gebeurt er niets ────────────────────────────
-  console.log('\n9. Zonder geldige admin-token');
-  {
-    const g = bouw({ admin: false });
-    const rg = await g.get('bron=codes');
-    toets('lezen wordt geweigerd', rg.status === 403 && g.staat.verzoeken.length === 0, 'status ' + rg.status);
-    const p = bouw({ admin: false });
-    const rp = await p.post({ bron: 'codes', actie: 'wis', id: 'rec0123456789abcd' });
-    toets('schrijven ook', rp.status === 403 && p.staat.verzoeken.length === 0, 'status ' + rp.status);
-  }
-
-  // ── 10. de lijst zelf ───────────────────────────────────────────
-  // Een bron erbij zetten zonder na te denken over `geheim` is de fout die
-  // deze test moet vangen: de Klanten- en Users-tabel dragen allebei een hash.
-  console.log('\n10. De bronlijst zelf');
-  {
-    const t = bouw();
-    const B = t.api.bronnen;
-    toets('klanten schermt PassHash én ResetToken af',
-      B.klanten.geheim.indexOf('PassHash') >= 0 && B.klanten.geheim.indexOf('ResetToken') >= 0);
-    toets('users schermt PassHash af', B.users.geheim.indexOf('PassHash') >= 0);
-    // Sinds #262 zijn er twee motoren, en elk heeft zijn eigen eis. Die eis
-    // laten vallen "omdat er nu ook D1 is" zou de fout die deze toets vangt
-    // — een bron erbij zetten zonder bewaarplaats — weer mogelijk maken.
-    const air = Object.keys(B).filter((k) => B[k].motor !== 'd1');
-    const d1 = Object.keys(B).filter((k) => B[k].motor === 'd1');
-    toets('er zijn bronnen van allebei de motoren', air.length > 0 && d1.length > 0,
-      'airtable=' + air.length + ' d1=' + d1.length);
-    toets('elke Airtable-bron heeft een base- en tabelsleutel',
-      air.every((k) => /^AIRTABLE_/.test(B[k].baseKey) && /^AIRTABLE_/.test(B[k].tableKey)));
-    toets('elke D1-bron noemt een tabel en een sleutelveld',
-      d1.every((k) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(String(B[k].d1)) && !!B[k].idveld),
-      d1.filter((k) => !B[k].d1 || !B[k].idveld).join(', '));
-    toets('een D1-bron heeft geen Airtable-sleutels, en andersom',
-      d1.every((k) => !B[k].baseKey && !B[k].tableKey) && air.every((k) => !B[k].d1),
-      'een bron met allebei laat in het midden waar hij vandaan komt');
-    toets('geen enkele bron noemt een base rechtstreeks',
-      air.every((k) => !/^app[A-Za-z0-9]{10,}$/.test(String(B[k].baseKey))));
-    toets('elk geheim veld is ook beschermd tegen schrijven',
-      Object.keys(B).every((k) => (B[k].geheim || []).every((v) => !B[k].schrijven || B[k].beschermd.indexOf(v) >= 0)));
-  }
-
-  // ── 11. de zoekterm wordt geen formule ──────────────────────────
-  // #142. De vorige twee delen kijken naar wat er teruggaat; dit deel kijkt
-  // naar wat er de deur UIT gaat, want daar zit het gat. De zoekterm belandt
-  // als letterlijke waarde in een filterByFormula. Sluit die string ergens
-  // open, dan staat de rest als formule-syntax in de vraag aan Airtable — en
-  // een formule kan niet schrijven, maar wel filteren, en dus per verzoek één
-  // ja/nee over een afgeschermd veld prijsgeven.
-  //
-  // Het oordeel komt niet van "staat er een backslash voor" — dat deed de oude
-  // regel ook. Er wordt gelezen zoals een formule-parser leest.
-  console.log('\n11. Een zoekterm sluit de stringliteral niet (#142)');
-  {
-    // Ontleedt een formule in wat er als SYNTAX staat en wat er binnen quotes
-    // staat. Een backslash dekt het volgende teken af, een losse quote opent
-    // of sluit een literal. `open` blijft true als de formule eindigt terwijl
-    // er nog een string openstaat.
-    const ontleed = (f) => {
-      let syntax = '', inStr = false;
-      for (let i = 0; i < f.length; i++) {
-        const c = f[i];
-        if (inStr) {
-          if (c === '\\') { i++; continue; }
-          if (c === "'") { inStr = false; continue; }
-        } else if (c === "'") { inStr = true; } else { syntax += c; }
-      }
-      return { syntax, open: inStr };
-    };
-    const formuleVan = async (b, q) => {
-      const t = bouw();
-      await t.get('bron=' + b + '&q=' + encodeURIComponent(q));
-      const url = (t.staat.verzoeken[0] || {}).url || '';
-      return decodeURIComponent(String(url).split('filterByFormula=')[1] || '');
-    };
-
-    const kwaad = [
-      "a'",
-      "a\\'",
-      "x\\',SEARCH('a',{PassHash}),'",
-      "',LOWER({PassHash}),'",
-      'a\\'
-    ];
-    // Het oordeel: het skelet dat overblijft als je de literalen weghaalt moet
-    // TEKEN VOOR TEKEN gelijk zijn aan dat van een onschuldige zoekterm. Lukt
-    // het een zoekterm om ook maar één teken syntax toe te voegen, dan valt
-    // hij hier om — en dat is precies de vraag, want die ene toegevoegde
-    // SEARCH() over {PassHash} is het hele lek.
-    //
-    // Twee bronnen: `config` heeft één zoekveld (de enkelvoudige formule),
-    // `klanten` er drie (de OR-tak). Die takken bouwen de formule apart op,
-    // dus een fix in maar één ervan wordt hier rood.
-    for (const b of ['config', 'klanten']) {
-      const ijk = ontleed(await formuleVan(b, 'onschuldig')).syntax;
-      for (const q of kwaad) {
-        const formule = await formuleVan(b, q);
-        const d = ontleed(formule);
-        toets(b + ' — ' + JSON.stringify(q),
-          formule !== '' && !d.open && d.syntax === ijk,
-          'skelet: ' + d.syntax + (d.open ? ' [string blijft open]' : '') + ' · formule: ' + formule);
-      }
+    const B = W.ADMIN_BRONNEN;
+    for (const k of Object.keys(B)) {
+      toets(k + ' is een D1-bron met een tabelnaam', B[k].motor === 'd1' && /^[a-z_]+$/.test(B[k].d1 || ''), JSON.stringify(B[k]).slice(0, 80));
+      if (B[k].at) toets(k + ' wijst naar een tabel uit D1_TABELLEN met dezelfde naam', W.D1_TABELLEN[B[k].at] && W.D1_TABELLEN[B[k].at].d1 === B[k].d1);
     }
-    // En de gewone kant: zonder dit haalt een fix die de zoekterm weggooit
-    // bovenstaande ook, en dan kan de beheerder niets meer vinden.
-    const g = bouw();
-    await g.get('bron=klanten&q=' + encodeURIComponent('jan@voorbeeld.nl'));
-    const gf = decodeURIComponent(String((g.staat.verzoeken[0] || {}).url || '').split('filterByFormula=')[1] || '');
-    toets('een gewone zoekterm staat er nog gewoon in', gf.indexOf('jan@voorbeeld.nl') > 0, gf);
-    const o = bouw();
-    await o.get('bron=klanten&q=' + encodeURIComponent("o'brien"));
-    const of_ = decodeURIComponent(String((o.staat.verzoeken[0] || {}).url || '').split('filterByFormula=')[1] || '');
-    toets('een naam met apostrof blijft zoekbaar', of_.indexOf('brien') > 0, of_);
+    toets('klanten verbergt PassHash en ResetToken', ['PassHash', 'ResetToken'].every((v) => B.klanten.geheim.indexOf(v) >= 0));
+    toets('klanten beschermt Saldo, Email en het id', ['Saldo', 'Email', 'id'].every((v) => B.klanten.beschermd.indexOf(v) >= 0));
+    toets('het kasboek en AppConfig zijn alleen-lezen', B.kasboek.schrijven === false && B.config.schrijven === false);
+  }
+
+  console.log('\n8. Een tabel die nog niet bestaat, wordt bij het openen aangemaakt');
+  {
+    const W2 = await laadWorker();
+    const db2 = new DatabaseSync(':memory:');
+    const env2 = { LOGDB: maakD1(db2), ADMIN_TOKEN: env.ADMIN_TOKEN };
+    const r = await W2.default.fetch(new Request('https://api.pidlane.nl/admin/tabel?bron=referentie', {
+      headers: { Origin: 'https://app.pidlane.nl', 'X-Admin-Token': env.ADMIN_TOKEN }
+    }), env2, { waitUntil() {} });
+    const d = await r.json();
+    toets('lezen lukt op een lege database', d.ok === true && Array.isArray(d.records) && d.records.length === 0, JSON.stringify(d).slice(0, 160));
+    toets('en de tabel staat er nu', !!db2.prepare("SELECT 1 FROM sqlite_master WHERE name = 'referentie'").get());
   }
 
   console.log('\n' + (fouten ? fouten + ' FOUT(EN)' : 'Alles goed'));
   process.exit(fouten ? 1 : 0);
-})();
+})().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });

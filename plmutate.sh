@@ -285,14 +285,14 @@ MUTATIES=(
 "public/pidlane-pids.js@@    if(hiddenPIDs.has(pid)) return;@@@@test-verbergen.js@@een verborgen PID krijgt tóch een tegel"
 "public/pidlane-pids.js@@  hiddenPIDs.forEach(function(p){ if(!activePIDs.has(p)) hiddenPIDs.delete(p); });@@@@test-verbergen.js@@een opnieuw aangevinkte sensor blijft onzichtbaar door een achtergebleven verborgen-stand"
 "public/pidlane-pids.js@@weg.onclick=function(ev){ if(ev&&ev.stopPropagation) ev.stopPropagation(); pidDeselect(pid); };@@weg.onclick=function(ev){ if(ev&&ev.stopPropagation) ev.stopPropagation(); pidVerberg(pid); };@@test-verbergen.js@@het kruisje in de verborgen-strook zet niets uit"
-"worker.js@@          const r1 = await fetch(recUrl, { headers: hdr });\n          if (!r1.ok) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const r1 = r0;\n          const huidig@@test-bijboeken.js@@bijboeken rekent met de lezing van vóór het slot in plaats van een verse"
+"worker.js@@          const r1 = await atHaal(env, \"klanten\", id);\n          if (!r1) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const r1 = r0;\n          const huidig@@test-bijboeken.js@@bijboeken rekent met de lezing van vóór het slot in plaats van een verse"
 "worker.js@@      if (uitkomst.bezet)\n        return json({ ok: false, code: \"saldo_bezet\", error: \"Er loopt al een andere tegoedwijziging voor deze klant. Probeer het zo nog eens.\" }, 409);@@@@test-bijboeken.js@@een bezet saldo-slot laat het bijboeken toch doorlopen"
 "worker.js@@      if (!email)\n        return json({ ok: false, code: \"saldo_geen_email\", error: \"Deze klant heeft geen e-mailadres; het tegoed kan niet veilig gewijzigd worden.\" }, 409);@@@@test-bijboeken.js@@bijboeken zet het slot op een leeg e-mailadres in plaats van te weigeren"
 "admin/beheer.html@@  if(code === 'saldo_bezet')@@  if(code === 'saldo_bezet_oud')@@test-bijboeken.js@@beheer.html kent de code voor een bezet saldo-slot niet meer"
 
 # ── saldo ZETTEN door hetzelfde slot (03-09-2026, #93) ──
 "worker.js@@          if (saldoWas !== null && huidig !== saldoWas)@@          if (saldoWas !== null && huidig === saldoWas)@@test-bijboeken.js@@de voorwaarde bij saldo zetten staat omgekeerd: een verschoven saldo wordt juist overschreven"
-"worker.js@@          const z1 = await fetch(zetUrl, { headers: hdr });\n          if (!z1.ok) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const z1 = z0;\n          const huidig@@test-bijboeken.js@@saldo zetten vergelijkt met de lezing van vóór het slot in plaats van een verse"
+"worker.js@@          const z1 = await atHaal(env, \"klanten\", id);\n          if (!z1) return { fout: \"Klant niet gevonden.\", status: 404 };\n          const huidig@@          const z1 = z0;\n          const huidig@@test-bijboeken.js@@saldo zetten vergelijkt met de lezing van vóór het slot in plaats van een verse"
 "admin/beheer.html@@saldo:n, saldoWas:huidig }@@saldo:n }@@test-bijboeken.js@@de knop stuurt de voorwaarde niet mee, dus de Worker vergelijkt niets"
 "admin/beheer.html@@  if(code === 'saldo_verschoven')@@  if(code === 'saldo_verschoven_oud')@@test-bijboeken.js@@beheer.html kent de code voor een verschoven saldo niet"
 "admin/beheer.html@@  const code = (body && (body.code || body.error)) || '';@@  const code = (body && body.error) || '';@@test-bijboeken.js@@beheer.html leest de foutcode uit de leesbare tekst: de afhandeling staat er, maar wordt nooit bereikt"
@@ -312,7 +312,7 @@ MUTATIES=(
 "worker.js@@if (uit && uit.kasboek) await tegoedLog(env, ctx, uit.kasboek);@@@@test-kasboek.js@@de AI-afboeking laat geen spoor meer na — precies de toestand van vóór #83"
 "worker.js@@if (res && res.body && res.body.ok && Number(res.body.toegekend) > 0)@@if (res && res.body && res.body.ok && Number(res.body.toegekend) >= 0)@@test-kasboek.js@@elke tweede onboarding schrijft een lege regel van 0 credits (#83)"
 "worker.js@@Regels komen uitsluitend uit tegoedLog().\n    schrijven: false,@@Regels komen uitsluitend uit tegoedLog().\n    schrijven: true,@@test-adminbron.js@@het kasboek is vanaf de beheerpagina te bewerken (#83)"
-"worker.js@@tableKey: \"AIRTABLE_TOKENLOG_TABLE\", sorteer: \"Moment\",@@tableKey: \"AIRTABLE_KLANTEN_TABLE\", sorteer: \"Moment\",@@test-adminbron.js@@de kasboekbron leest de Klanten-tabel; \"leeg\" ziet er hetzelfde uit als \"niets gebeurd\" (#83)"
+"worker.js@@    naam: \"Kasboek (tokenmutaties)\", motor: \"d1\", d1: \"kasboek\", at: \"kasboek\",@@    naam: \"Kasboek (tokenmutaties)\", motor: \"d1\", d1: \"klanten\", at: \"kasboek\",@@test-adminbron.js@@de kasboekbron leest de klantentabel; \"leeg\" ziet er hetzelfde uit als \"niets gebeurd\" (#83)"
 "worker.js@@if (a.length !== b.length) return false;@@if (a.length !== b.length) return true;@@test-token.js@@safeEqual keurt ongelijke lengtes goed"
 "worker.js@@if (!safeEqual(sig, await hmacSign(env.SESSION_SECRET, payload))) return null;\\n    const p = JSON.parse(b64urlToString(payload));\\n    if (!p.exp@@const p = JSON.parse(b64urlToString(payload));\\n    if (!p.exp@@test-token.js@@verifyToken controleert de handtekening niet meer"
 "worker.js@@if (!p.exp || Math.floor(Date.now() / 1e3) >= p.exp) return null;@@@@test-token.js@@een verlopen sessietoken blijft geldig"
@@ -448,13 +448,11 @@ MUTATIES=(
 # hier tellen zijn niet rekenfouten maar weggevallen grendels: ze geven geen
 # foutmelding, ze geven méér dan de bedoeling was.
 "worker.js@@    if (geheim.indexOf(k) >= 0) {@@    if (false) {@@test-adminbron.js@@de wachtwoordhash en het resettoken gaan mee naar de beheerpagina"
-"worker.js@@  const verboden = (def.beschermd || []).concat(def.geheim || []);@@  const verboden = [];@@test-adminbron.js@@Saldo en PassHash zijn hierlangs tóch te schrijven, buiten het saldoslot om"
+"worker.js@@  const verboden = (b.def.beschermd || []).concat(b.def.geheim || []);@@  const verboden = [];@@test-adminbron.js@@Saldo en PassHash zijn hierlangs tóch te schrijven, buiten het saldoslot om"
 # Het anker draagt de laatste commentaarregel mee: sinds het kasboek erbij
 # kwam (#83) staat "schrijven: false" twee keer in ADMIN_BRONNEN, en dan bouwt
 # een korter anker niets meer na.
-"worker.js@@tabel zegt. Wijzigen doe je op de configkaart.\n    schrijven: false,@@tabel zegt. Wijzigen doe je op de configkaart.\n    schrijven: true,@@test-adminbron.js@@AppConfig is hierlangs te schrijven, langs de cacheverversing van /api/config heen"
-"worker.js@@      if (ids.length > 10) return json({ ok: false, error: \"Maximaal 10 records per keer wissen.\" }, 400);@@@@test-adminbron.js@@meer dan tien records tegelijk wissen wordt stil half uitgevoerd"
-"worker.js@@  if (veld && !VELDNAAM_OK.test(veld)) return json({ ok: false, error: \"Ongeldige veldnaam.\" }, 400);@@@@test-adminbron.js@@een veldnaam met formuletekens gaat ongefilterd de Airtable-formule in"
+"worker.js@@bedoeld. Wijzigen doe je op de configkaart.\n    schrijven: false,@@bedoeld. Wijzigen doe je op de configkaart.\n    schrijven: true,@@test-adminbron.js@@AppConfig is hierlangs te schrijven, langs de sleutelkeuring en de JSON-opslag van /api/config heen"
 
 # ── een klant aanmaken vanuit het beheer (04-09-2026) ──
 "worker.js@@      if (await klantZoek(env, email))\n        return json({ ok: false, error: \"Dit e-mailadres is al geregistreerd.\" }, 409);@@@@test-klant-aanmaken.js@@hetzelfde adres levert een tweede klantrij op: login pakt de eerste, jij boekt op de tweede bij"
@@ -465,8 +463,7 @@ MUTATIES=(
 # Allebei dezelfde vorm: er stáát een wachter, maar hij dekt net niet alles af.
 # Dat is het soort fout dat groen blijft staan, want de gewone invoer gaat er
 # gewoon doorheen — alleen de rand niet.
-"worker.js@@return metBackslash.replace(/'/g@@return String(s == null ? \"\" : s).replace(/'/g@@test-formule-escape.js@@de backslash wordt niet meer ontsnapt, dus een zoekterm kan de formule-string alsnog sluiten"
-"worker.js@@const e = formuleTekst(q);\n      // &'' erachter@@const e = q;\n      // &'' erachter@@test-adminbron.js@@de zoekterm van /admin/tabel gaat ongeëscaped de filterByFormula in"
+"worker.js@@  return \"%\" + String(q).replace(/[\\\\%_]/g, (t) => \"\\\\\" + t) + \"%\";@@  return \"%\" + String(q) + \"%\";@@test-formule-escape.js@@een % of _ in het zoekvak van beheer vindt elke rij in plaats van wat er staat (sinds #327 de opvolger van #142)"
 "public/pidlane-remote.js@@+getal(r.mn)+@@+r.mn+@@test-remote-tabel.js@@een cijferkolom van de opnametabel gaat weer ruw de HTML in"
 "public/pidlane-remote.js@@+getal(r.n)+@@+r.n+@@test-remote-tabel.js@@het aantal metingen gaat weer ruw de HTML in"
 # ── het proeftegoed hangt aan het account, niet aan het toestel (#113, 08-09-2026) ──
@@ -1091,7 +1088,7 @@ MUTATIES=(
 # stond hier van 20-09 17:12 tot 22-09 live — `{ok:true}` met HTTP 200 terwijl
 # er niets werd weggeschreven — en de proef in blok 5 die juist dat kanaal
 # bewaakt keurde het goed. Een kanaal dat stil faalt is erger dan geen kanaal.
-"worker.js@@  if (!await appTokenOk(request, env)) return json({ error: \"unauthorized\" }, 401);\n  if (!env.LOGDB) return json({ error: \"no_logdb\" }, 500);\n  let payload;@@  return json({ ok: true, status: \"logging_paused\" }, 200);\n  if (!await appTokenOk(request, env)) return json({ error: \"unauthorized\" }, 401);\n  if (!env.LOGDB) return json({ error: \"no_logdb\" }, 500);\n  let payload;@@test-logroute.js@@de logstop van 20-09 is terug: de route meldt 200 ok en schrijft niets — precies wat blok 5 niet zag"
+"worker.js@@async function handleLog(request, env) {\n  if (!await appTokenOk(request, env)) return json({ error: \"unauthorized\" }, 401);@@async function handleLog(request, env) {\n  return json({ ok: true, status: \"logging_paused\" }, 200);\n  if (!await appTokenOk(request, env)) return json({ error: \"unauthorized\" }, 401);@@test-logroute.js@@de logstop van 20-09 is terug: de route meldt 200 ok en schrijft niets — precies wat blok 5 niet zag"
 "worker.js@@    return json({ error: \"schrijven_mislukt\", detail: String(e && e.message || e) }, 502);@@    return json({ ok: true }, 200);@@test-logroute.js@@een mislukte schrijfactie heet weer geslaagd: de app gooit de batch weg en niemand mist de regels"
 "worker.js@@    if (Object.keys(rest).length && kolommen.has(\"onbekend\")) {@@    if (false) {@@test-logroute.js@@het vangnet is weg: een veld zonder kolom verdwijnt stil in plaats van in \`onbekend\` te landen"
 
@@ -1250,7 +1247,7 @@ MUTATIES=(
 "public/pidlane-bt.js@@  if(/^CA[0-9A-F]{2}1?$/i.test(String(cmd||'').trim())){@@  if(false){@@bproef-berekend.js@@sendCmd laat een berekende PID door naar de adapter"
 "public/pidlane-berekend.js@@    if (isDiesel && set.indexOf('0110')>=0) continue;@@@@test-berekend.js@@een dieselverbruik uit de luchtmassa (een diesel loopt arm)"
 "public/pidlane-berekend.js@@      if (l===null || typeof kmh!=='number' || kmh<5) return null;@@      if (l===null || typeof kmh!=='number' || kmh<=0) return null;@@test-berekend.js@@liters per 100 km bij stapvoets rijden: delen door bijna nul"
-"public/pidlane-berekend.js@@  return (nu-(x.t||0))<=max ? x.v : undefined;@@  return x.v;@@bproef-berekend.js@@een berekende PID rekent door op bronwaarden van tien seconden oud"
+"public/pidlane-berekend.js@@  return (nu-(x.t||0))<=max ? { v:x.v, t:x.t||0 } : undefined;@@  return { v:x.v, t:x.t||0 };@@bproef-berekend.js@@een berekende PID rekent door op bronwaarden van tien seconden oud"
 "public/pidlane-visueel.js@@  if(p.length<5 || p[p.length-1].t-p[0].t<20000) return null;@@  if(p.length<2) return null;@@test-visueel.js@@de koelwatertrend spreekt zich uit op vier metingen"
 "public/pidlane-visueel.js@@  return TREK.filter(function(t){ return !t.turbo || turbo; }).map(function(t){@@  return TREK.map(function(t){@@test-visueel.js@@de laaddruk staat in de trekstrook van een auto zonder turbo"
 "public/pidlane-garage.js@@    if (!/^PidLane — Waakronde/.test(regels[0] || '')) return null;@@@@test-garage.js@@elk rapport wordt als waakrapport gelezen"
@@ -1358,13 +1355,12 @@ MUTATIES=(
 "public/pidlane-motortype.js@@  if(m.length) return { staat:'FOUT'@@  if(false) return { staat:'FOUT'@@test-opslagroute.js@@blok 5 noemt een mislukte opslag goed"
 "public/pidlane-fuel.js@@  return plBewaarBestand(blob,fname);@@  return nativeShareFile(blob,fname);@@test-opslagroute.js@@een PDF-export opent weer het deelmenu in plaats van op te slaan"
 
-# ── 28-09-2026: de Users-tabel niet bij elke login uit Airtable (#327). De
-# besparing zelf, en de drie plekken die voorkomen dat de cache iemand
-# buitensluit of binnenlaat die dat zonder cache niet was.
-"worker.js@@  if (!vers && _usersCache && _usersCache.url === url@@  if (false && _usersCache && _usersCache.url === url@@test-inlogcache.js@@elke login leest de Users-tabel weer vers uit Airtable"
-"worker.js@@    if (res.ok || !uitCache) break;@@    break;@@test-inlogcache.js@@een net gewijzigd wachtwoord werkt pas na vijf minuten"
-"worker.js@@  _usersCache = null;\n  return json({ ok: true, user, created: !hit@@  return json({ ok: true, user, created: !hit@@test-inlogcache.js@@een gebruiker die via /admin/users uit staat, komt er nog vijf minuten in"
-"worker.js@@    _usersCache = null;\n    const job = rehashAirtablePassword@@    const job = rehashAirtablePassword@@test-inlogcache.js@@na het herhashen blijft de oude hash onthouden en herhasht elke login opnieuw"
+# ── de login tegen de gebruikerstabel in D1 (#327). Tot 01-10-2026 stonden
+# hier vier mutaties op de cache van 28-09; die cache is weg sinds de tabel
+# in D1 staat en lezen niets meer kost.
+"worker.js@@      if (f.Active === false) continue;\n      out[name] = {@@      out[name] = {@@test-inlogcache.js@@een via beheer uitgezette gebruiker komt er gewoon in — zoals bij Airtable, waar een uitgevinkt vakje nooit false was"
+"worker.js@@    await atPatch(env, \"gebruikers\", recId, { PassHash: await hashPassword(pass, env) });@@    await hashPassword(pass, env);@@test-inlogcache.js@@een oud sha256-wachtwoord wordt nooit herhasht en blijft voorgoed op het zwakke formaat staan"
+"worker.js@@    if (hit) await atPatch(env, \"gebruikers\", hit.id, fields);\n    else await atMaak(env, \"gebruikers\", fields);@@    if (!hit) await atMaak(env, \"gebruikers\", fields);@@test-inlogcache.js@@een gewijzigd wachtwoord in beheer zegt ok maar wordt niet opgeslagen"
 
 # ── 28-09-2026: Tegoed uit voor een klant met Ontwikkelaar aan. De fouten die
 # gratis AI geven aan wie dat niet hoort te krijgen, of de schakelaar stil
@@ -1494,6 +1490,31 @@ MUTATIES=(
 "public/pidlane-btflow.js@@Object.assign({},e,{vorige:true})@@Object.assign({},e)@@test-btlogcap.js@@teruggezette regels zijn niet meer herkenbaar: na een herlaad houdt het anker weer de vorige sessie vast en valt de VIN weg"
 "public/pidlane-btflow.js@@const eigen=log.filter(r=>r && !r.vorige && !r.cap);@@const eigen=log.filter(r=>r && !r.cap);@@test-btlogcap.js@@de cap telt de vorige sessie mee als eigen regels: het anker is weer het pollverkeer van vóór de herlaad"
 "public/pidlane-btflow.js@@  stand.weg+=eigen.length-kop.length-staart.length;@@  stand.weg=eigen.length-kop.length-staart.length;@@test-btlogcap.js@@de markering telt alleen de laatste ronde: \"301 regels weggelaten\" na tien minuten pollen"
+# ── de accountstatus bij stand, elke keer vers uit D1 (#327, 01-10-2026) ──
+# Hier stonden drie mutaties op de bewaartijd van PR #380; die is dezelfde
+# dag weer weggehaald toen de klantentabel naar D1 ging.
+"worker.js@@        if (pr) return json({ ok: false, error: pr.bericht, code: pr.code }, pr.status);\n        if (ak && ak.versie === \"verwijderd\") {@@        if (ak && ak.versie === \"verwijderd\") {@@test-klantstatus.js@@een geblokkeerde klant ziet gewoon zijn voertuigen: stand kijkt niet meer naar de status"
+"worker.js@@  return await atZoek(env, \"klanten\", \"Email\", String(email || \"\").trim(), { lower: true });@@  return await atZoek(env, \"klanten\", \"Email\", String(email || \"\").trim());@@test-klantstatus.js@@een klant die zich met hoofdletters registreerde, wordt niet meer gevonden"
+# ── AppConfig in D1, één keer overgezet (#327, 01-10-2026) ──
+"worker.js@@  if (await db.prepare(\"SELECT 1 AS j FROM d1_overzet WHERE naam = 'appconfig'\").first()) return db;@@@@test-appconfig.js@@elke opstart leest AppConfig weer uit Airtable, ook na de overzet"
+"worker.js@@      if (f.Key) rijen.push([String(f.Key), JSON.stringify(f.Value ?? \"\"),@@      if (f.Key) rijen.push([String(f.Key), String(f.Value ?? \"\"),@@test-appconfig.js@@een vinkje uit Airtable komt als tekst \"false\" terug, en dat leest de app als waar"
+"worker.js@@    if (!r.ok) throw new Error(\"airtable_config_\" + r.status);@@@@test-appconfig.js@@een mislukte overzet wordt als gelukt genoteerd: de tabel blijft voorgoed leeg"
+"worker.js@@    offset = d.offset || \"\";\n  } while (offset);\n  const nu@@    offset = \"\";\n  } while (offset);\n  const nu@@test-appconfig.js@@de tweede pagina uit Airtable valt weg bij de overzet"
+# ── de D1-laag voor de rest van Airtable (#327, 01-10-2026) ──
+"worker.js@@D1_TABELLEN.veldlab.velden[k])))];\n  if (onbekend.length) return json(@@D1_TABELLEN.veldlab.velden[k])))];\n  if (false) return json(@@test-veldlabroute.js@@een batch met één fout veld wordt half weggeschreven en komt bij de volgende poging dubbel"
+"worker.js@@      gemaakt.push(await atUpsert(env, \"referentie\", \"RefID\", r2.fields));@@      gemaakt.push(await atMaak(env, \"referentie\", r2.fields));@@test-veldlabroute.js@@referentie maakt bij elke bevestiging een nieuwe rij in plaats van de oude bij te werken"
+"worker.js@@  if (def && def.recId) return /^rec[A-Za-z0-9]{14}$/.test(String(v)) ? String(v) : null;@@  if (def && def.recId) return String(v);@@test-adminbron.js@@een willekeurige tekst gaat als id de WHERE in bij wissen in beheer"
+"worker.js@@    offset = d.offset || \"\";\n  } while (offset);\n  const velden@@    offset = \"\";\n  } while (offset);\n  const velden@@test-d1laag.js@@bij de overzet van Klanten valt alles na de eerste honderd weg"
+"worker.js@@    if (!al && env.AIRTABLE_TOKEN) await d1Overzet(env, db, sleutel, def);@@    if (env.AIRTABLE_TOKEN) await d1Overzet(env, db, sleutel, def);@@test-d1laag.js@@elke nieuwe isolate leest de hele Airtable-tabel opnieuw, ook na de overzet"
+"worker.js@@    if (!r.ok) throw new Error(\`airtable_overzet_\${sleutel}_\${r.status}\`);@@@@test-d1laag.js@@een mislukte overzet wordt genoteerd als gelukt: de klantentabel blijft voorgoed leeg"
+"worker.js@@    if (!r || !r.meta || !r.meta.changes) throw new Error(\`d1_niet_gevonden_\${def.d1}_\${id}\`);@@@@test-d1laag.js@@een saldowijziging op een klant die niet bestaat zegt gelukt"
+"worker.js@@  if (soort === \"b\") return v === 1 || v === true;@@  if (soort === \"b\") return v === 1 || v === true || undefined;@@test-d1laag.js@@een uitgezet vinkje komt weer als \"geen veld\" terug, zoals bij Airtable, en uitzetten doet niets"
+"worker.js@@  if (!Object.prototype.hasOwnProperty.call(def.velden, veld)) throw@@  if (false) throw@@test-d1laag.js@@een onbekend veld gaat ongezien als kolomnaam de SQL in"
+
+"worker.js@@omschrijving = COALESCE(excluded.omschrijving, app_config.omschrijving)@@omschrijving = excluded.omschrijving@@test-appconfig.js@@opslaan in beheer zonder omschrijving wist de omschrijving"
+# ── het element #btLog blijft begrensd (#302, 01-10-2026) ──
+"public/pidlane-btflow.js@@logEl.appendChild(line); btLogDomAfkappen(logEl); @@logEl.appendChild(line); @@test-btlogdom.js@@het element #btLog groeit weer met elke regel mee: na tien minuten pollen kost elke btDiag 10 ms op de hoofddraad"
+"public/pidlane-btflow.js@@  let weg=el.childElementCount-BTLOG_DOM;@@  let weg=0;@@test-btlogdom.js@@de afkapping staat erin maar haalt nooit iets weg"
 # ── de snelheidsproef, stap voor stap (30-09-2026) ──
 "public/pidlane-snelproef.js@@    if (nr !== verwacht) {@@    if (false) {@@test-snelproef.js@@een stap die niet aan de beurt is meet toch: stap 3 vóór stap 1 vergelijkt met niets"
 "public/pidlane-snelproef.js@@      _zetPoll(was);\n      _zetStand('leesmanier terugzetten…');@@      _zetStand('leesmanier terugzetten…');@@test-snelproef.js@@na stap 3 blijft de app op de proefstand lezen, zonder dat iemand het weet"
@@ -1545,6 +1566,25 @@ MUTATIES=(
 "public/index.html@@id=\"plLiveDeel\"@@id=\"plLiveDelen\"@@test-help.js@@een knop met een uitroepteken is hernoemd en de tip vindt hem niet meer"
 "public/index.html@@🩺 Check na verbinden<span@@🩺 Check na het verbinden<span@@test-help.js@@een menuregel is hernoemd en de handleiding noemt de oude tekst"
 "public/pidlane-help-inhoud.js@@Codes worden met de hand verstuurd.@@Codes kosten € 4,99.@@test-help.js@@er staat een prijs in de handleiding"
+# ── berekende PIDs uit bronnen van één moment (#337, 01-10-2026) ──
+"public/pidlane-berekend.js@@      if (!samen(tijden)){@@      if (false){@@test-berekend.js@@bronnen van verschillende momenten rekenen weer samen: 96,7% rendement bij gas los"
+"public/pidlane-berekend.js@@  return Math.max.apply(null, t)-Math.min.apply(null, t)<=SAMEN_MS;@@  return Math.max.apply(null, t)-Math.min.apply(null, t)<=VERS_MS;@@test-berekend.js@@de bronnen van één berekening mogen weer 3 s uit elkaar liggen"
+"public/pidlane-berekend.js@@      return r1(Math.min(DEFS.CA03.max, Math.max(0, l/kmh*100)));@@      return r1(Math.min(99, Math.max(0, l/kmh*100)));@@test-berekend.js@@CA03 klemt weer op 99 en elk optrekken telt als buiten bereik"
+"public/pidlane-berekend.js@@      return namen.length ? namen.reduce((a,k)=>a+p[k].buiten, 0) : null;@@      return namen.length ? 0 : null;@@test-berekend.js@@de app-maat berekend-buiten ziet een waarde buiten bereik niet"
+# ── Slim visueel: tempo alleen rijdend, herbouw met reden (#338, 01-10-2026) ──
+"public/pidlane-visueel.js@@  if(!rijdtNu() || !inBeeld()) return;\n  const t=gemetenTempo(pid,@@  if(!inBeeld()) return;\n  const t=gemetenTempo(pid,@@test-visueel.js@@een stilstand haalt het pedaal weer voor de hele rit van de meter"
+"public/pidlane-visueel.js@@  const gat=_staat.laatsteTik>0 && nu-_staat.laatsteTik>3*VIS_TIK_MS;@@  const gat=false;@@test-visueel.js@@157 s op de achtergrond telt weer mee in het tempo van het pedaal"
+"public/pidlane-visueel.js@@  const bus=_staat.pauze!==null && pauze!==_staat.pauze;@@  const bus=false;@@test-visueel.js@@een groepsproef of waakronde die de bus had, laat het pedaal van de meter vallen"
+"public/pidlane-visueel.js@@  const t=gemetenTempo(pid, Math.max(_staat.rijdtSinds||0, Date.now()-VIS_VENSTER_MS));@@  const t=gemetenTempo(pid);@@test-visueel.js@@het tempo-oordeel kijkt weer over de hele sessie in plaats van het rijvenster"
+"public/pidlane-visueel.js@@  if(selectieSleutel()!==_staat.selectie) return 'selectie';@@@@test-visueel.js@@een herbouw door een nieuwe sensorkeuze telt als knipperen dat de klant niet vroeg"
+"public/pidlane-visueel.js@@  if(!rijdtNu() || !inBeeld()) return;\n  const t=gemetenTempo(pid,@@  if(!rijdtNu()) return;\n  const t=gemetenTempo(pid,@@test-visueel.js@@in beeld-in-beeld of op de achtergrond, met de meetdienst wakker, valt het pedaal van de meter"
+"public/pidlane-visueel.js@@  if(perMin>1 || klant>herbouwMax) return@@  if(perMin>1 || (S.herbouw||0)>herbouwMax) return@@test-visueel.js@@de herbouwen van de testrun zelf maken de knipperproef weer rood"
+# ── app-maten voor de meetrit: #302, #333, #376 (01-10-2026) ──
+"public/pidlane-adapter.js@@    if (!uit.afgebroken && uit.situatie) _gpPer[uit.situatie] = uit;@@    if (uit.situatie) _gpPer[uit.situatie] = uit;@@test-adapterpaneel.js@@een afgebroken groepsproef telt als uitslag voor A, B of C"
+"public/pidlane-adapter.js@@    if (koel >= 75) return 'b';@@    if (koel >= 50) return 'b';@@test-adapterpaneel.js@@een lauwe motor telt als warm, en proef B zegt dan iets over een koude bus"
+"public/pidlane-adapter.js@@    if (kmh >= 50) return 'c';@@    if (kmh >= 5) return 'c';@@test-adapterpaneel.js@@stapvoets rijden telt als proef C op constante snelheid"
+"public/pidlane-adapter.js@@    const g = (a.groepen || []).slice().sort(function (x, y) { return y.minuten - x.minuten; })[0] || null;\n    if (!g) return null;\n    switch (naam) {@@    const g = (a.groepen || []).slice(-1)[0] || null;\n    if (!g) return null;\n    switch (naam) {@@test-adapterpaneel.js@@de #302-maat kijkt naar de laatste verbinding in plaats van de langste, en een herverbinding wist de drift"
+"public/pidlane-foutcodes.js@@    _door[hoe === 'vanzelf' || hoe === 'knop' ? hoe : 'gestopt']++;@@    _door.vanzelf++;@@test-foutcodes.js@@Blijf hier telt als vanzelf doorgegaan, en de meetopdracht van #376 sluit op ingrijpen"
 )
 
 echo

@@ -404,26 +404,29 @@ als een routingfout):
 
 | Route | Doet |
 |---|---|
-| `/auth/login` | zakelijke login; valideert tegen Airtable `Users` + `USERS_JSON`-secret, geeft HMAC-token (12u) |
+| `/auth/login` | zakelijke login; valideert tegen `gebruikers` (D1) + `USERS_JSON`-secret, geeft HMAC-token (12u) |
 | `/v1/messages` | Anthropic-proxy **+ tegoedcontrole en afboeking voor klantaccounts** (zie §8) |
 | `/v1/ping` | dezelfde poorten als `/v1/messages` (sessie, rol, sleutel) **zonder het model aan te roepen**; GET, kost niets — de keten-test na het inloggen (#179) |
 | `/copilot` | in-app ontwikkelassistent, admin-only |
-| `/airtable/log`, `/airtable/veldlab`, `/airtable/reference` | Airtable-opslag |
+| `/airtable/log`, `/airtable/veldlab`, `/airtable/reference` | logregels, veldlab-sessies en referentie, alle drie in D1 (de namen zijn gebleven; de app kent die adressen) |
 | `/session/create,connect,state,telemetry,close` | remote-sessies (Durable Object) |
 | `/pair/create,claim,poll` + `/code/create,resolve` | QR-pairing, 10-cijferige sessiecodes |
 | `/klant/registreer`, `/klant/login` | zelfregistratie en login van consumenten (tabel `Klanten`, rol `klant`) |
 | `/klant/onboarding` | akkoorden vastleggen + eenmalig proeftegoed uitkeren |
 | `/klant/mij` | eigen account + saldo opvragen |
 | `/klant/wachtwoord` | wachtwoord wijzigen (ingelogd) |
-| `/klant/reset-aanvraag`, `/klant/reset-uitvoeren` | wachtwoordherstel per mail (token-hash in Airtable) |
+| `/klant/reset-aanvraag`, `/klant/reset-uitvoeren` | wachtwoordherstel per mail (token-hash in `klanten`) |
 | `/klant/admin-wachtwoord` | noodklep: admin zet handmatig een klantwachtwoord |
-| `/klant/platform` | **Mijn voertuigen** (27-09-2026). POST `{actie, …}`, alleen voor klanten. Acties: `stand`, `akkoord`, `alles_wissen`, `voorkeuren`, `voorkeuren_opslaan` (die twee zonder akkoord: geen voertuiggegevens), `voertuig_opslaan/archiveer/herstel/verwijder`, `status_opslaan`, `rapport_opslaan`, `rapporten`, `rapport`, `rapport_verwijder`, `rit_opslaan`, `ritten`, `rit_label`, `versnelling_opslaan`, `issues`, `issues_bijwerken`. Akkoordversie `2026-09-27b` sinds ritlabels en het versnellingsmodel erbij kwamen. Opslag in D1 (`LOGDB`, tabellen `kp_*`, schema `KP_SCHEMA` + `KP_MIGRATIES` = `schema.sql`, dat de Worker zelf aanmaakt; een migratie mag alleen met "duplicate column" falen). Sleutel = SHA-256 van het e-mailadres, **niet** het adres. Het kenteken is AES-GCM-versleuteld met `KENTEKEN_SLEUTEL`; zonder die secret wordt het niet bewaard. De VIN staat er alleen als pseudoniem. Eerst een eigen akkoord (`kp_akkoord`). Hoogstens 3 actief en 10 in totaal. Wordt het account verwijderd, dan komt er meteen een blokkade in `kp_akkoord`; de nachtelijke opruimer wist eerst D1 en dan pas het Airtable-record. Test: `test-klantplatform.js` |
+| `/klant/platform` | **Mijn voertuigen** (27-09-2026). POST `{actie, …}`, alleen voor klanten. Acties: `stand`, `akkoord`, `alles_wissen`, `voorkeuren`, `voorkeuren_opslaan` (die twee zonder akkoord: geen voertuiggegevens), `voertuig_opslaan/archiveer/herstel/verwijder`, `status_opslaan`, `rapport_opslaan`, `rapporten`, `rapport`, `rapport_verwijder`, `rit_opslaan`, `ritten`, `rit_label`, `versnelling_opslaan`, `issues`, `issues_bijwerken`. Akkoordversie `2026-09-27b` sinds ritlabels en het versnellingsmodel erbij kwamen. Bij `stand` wordt de accountstatus elke keer gelezen uit `klanten` (D1); geblokkeerd is meteen dicht (#327, `test-klantstatus.js`). Opslag in D1 (`LOGDB`, tabellen `kp_*`, schema `KP_SCHEMA` + `KP_MIGRATIES` = `schema.sql`, dat de Worker zelf aanmaakt; een migratie mag alleen met "duplicate column" falen). Sleutel = SHA-256 van het e-mailadres, **niet** het adres. Het kenteken is AES-GCM-versleuteld met `KENTEKEN_SLEUTEL`; zonder die secret wordt het niet bewaard. De VIN staat er alleen als pseudoniem. Eerst een eigen akkoord (`kp_akkoord`). Hoogstens 3 actief en 10 in totaal. Wordt het account verwijderd, dan komt er meteen een blokkade in `kp_akkoord`; de nachtelijke opruimer wist eerst D1 en dan pas het Airtable-record. Test: `test-klantplatform.js` |
 | `/credits/redeem` | activatiecode inwisselen (tabel `TokenCodes`), atomair via een Durable-Object-slot; **vraagt een klantsessie** — zonder account wordt er niets afgestempeld (02-09-2026) |
 | `/admin/klanten` | klantbeheer voor beheer.html (GET/POST) |
 | `/admin/codes` | activatiecodes genereren en beheren (GET/POST) |
 | `/admin/users` | zakelijk gebruikersbeheer |
 | `/admin/tabel` | de bekende bronnen lezen (GET) — Airtable én D1 — één record wijzigen, wissen, of (D1) opruimen na tellen (POST) — zie **De adminbrowser** hieronder |
 | `/admin/d1` | de logdatabase als geheel: overzicht over álle rijen, één rit compleet en het logarchief (GET); SQL-console die alleen leest, logregels archiveren (eerst proef), en meetopdrachten aanmaken, bewaren, activeren, uitzetten (POST) — zie **De databasekant** hieronder |
+| `/admin/tabel` | de bekende bronnen lezen (GET) — sinds 01-10-2026 allemaal D1 — één record wijzigen, wissen, of (D1) opruimen na tellen (POST) — zie **De adminbrowser** hieronder |
+| `/admin/d1` | de logdatabase als geheel: overzicht over álle rijen en één rit compleet (GET); SQL-console die alleen leest, en meetopdrachten aanmaken, bewaren, activeren, uitzetten (POST) — zie **De databasekant** hieronder |
+| `/api/config` | de app-instellingen: GET voor elke ingelogde sessie, POST alleen beheer. Sinds 01-10-2026 in D1 (`app_config`, `CONFIG_SCHEMA` = `schema.sql`); de Worker zette AppConfig één keer zelf over uit Airtable en noteert dat in `d1_overzet`. Test: `test-appconfig.js` |
 | `/proxy` | generieke uitgaande proxy (RDW/NHTSA), whitelist op host |
 | `/download/*`, `/version.json` | APK uit R2 |
 | `/health` | statuscheck |
@@ -440,13 +443,13 @@ Drie ontwerpkeuzes, en alle drie zijn ze een grendel en geen netheid:
 
 | begrip | wat het doet | waarom |
 |---|---|---|
-| **witte lijst** | `ADMIN_BRONNEN` koppelt een sleutel (`log`, `klanten`, …) aan de base- en tabelsleutels die de rest van de Worker ook gebruikt | een route die een vrije base- en tabelnaam aanneemt, is met één gelekte `ADMIN_TOKEN` een sleutel tot het hele Airtable-account — ook tot bases buiten PidLane |
+| **witte lijst** | `ADMIN_BRONNEN` koppelt een sleutel (`log`, `klanten`, …) aan een D1-tabel; `at` wijst naar `D1_TABELLEN`, zodat beheer een tabel die nog niet overgezet is meteen aanmaakt | een route die een vrije tabelnaam aanneemt, is met één gelekte `ADMIN_TOKEN` een sleutel tot de hele database. Tot 01-10-2026 was dat het hele Airtable-account, ook bases buiten PidLane |
 | **`beschermd`** | die velden zijn hier niet te schrijven: `Saldo`, `PassHash`, `ResetToken`, `ResetVerloopt`, `Email` (klanten) en `PassHash`, `User` (gebruikers) | `Saldo` hoort door `metSaldoSlot()` (#82, #93) — een PATCH hierlangs brengt precies die race terug. `PassHash` hoort door `hashPassword()`: een met de hand ingetikte waarde is een hash die op niets slaat, en dan kan niemand meer inloggen |
 | **`geheim`** | die velden verlaten de Worker niet; er komt `••• verborgen` voor in de plaats | een hash en een resettoken zijn genoeg om een account over te nemen. `••• verborgen` in plaats van leeg, zodat je wél ziet dát er een wachtwoord staat |
 
-`AppConfig` staat bewust op alleen-lezen: `/api/config` schrijft daar én gooit
-daarna de randcache weg. Een PATCH langs die route heen laat een oude waarde in
-de cache achter, en dan staat er dagen iets anders live dan wat de tabel zegt.
+`AppConfig` staat bewust op alleen-lezen: `/api/config` keurt de sleutel en de
+lengte en bewaart de waarde als JSON. Een wijziging langs die route heen slaat
+dat over. Sinds 01-10-2026 is het een D1-bron (`app_config`), zie §7.
 
 Gedekt door `test-adminbron.js` (witte lijst, masker, grendels, wisgrenzen,
 zoekformule-ontsnapping, de terugval bij een onbekend sorteerveld) en door vijf
@@ -535,22 +538,37 @@ maar tegen tegoed. Een klanttoken kan nooit voor een beheerderstoken doorgaan.
 
 ## 7. Data
 
-**Airtable** is de opslag. Definitief besluit (20 jul 2026): de
-MariaDB/Synology-pipeline is laten vallen — te veel onderhoud voor een
-solo-project. Als er ooit echt SQL nodig is: **Cloudflare D1**, niet MariaDB.
+**Cloudflare D1** (`pidlane_log_db`, binding `LOGDB`) is de opslag, sinds
+01-10-2026 voor alles (#327). Tot dan was het **Airtable**, met D1 alleen
+voor de logregels (22-09) en Mijn voertuigen (27-09); de werkruimte liep
+steeds tegen het gratis plafond van 1.000 API-calls per maand aan. Het
+besluit van 20 jul 2026 staat nog: geen MariaDB/Synology, te veel onderhoud.
 
-| Base | ID |
-|---|---|
-| PidLane Config | `appUAuyRxK18T7ImK` |
-| Veldlab | `apphsUwG4WAeWjEwH` |
-| Logs | `appdRasY8ZVJCMkPJ` |
+| tabel in D1 | was in Airtable | sleutel in `D1_TABELLEN` |
+|---|---|---|
+| `gebruikers` | Config · `Users` | `gebruikers` |
+| `klanten` | Config · `Klanten` | `klanten` |
+| `tegoedcodes` | Config · `TokenCodes` | `codes` |
+| `kasboek` | Config · `TokenLog` (`tblCrXVqEbaPTQQ2S`) | `kasboek` |
+| `veldlab_sessies` | Veldlab · Sessies (`tblwbyWN1L6AKwgoy`) | `veldlab` |
+| `referentie` | Veldlab · Referentie (`tblkfxKcjR6gf0Ahe`) | `referentie` |
+| `app_config` | Config · `AppConfig` | (eigen code, `CONFIG_SCHEMA`) |
 
-Tabellen: Referentie `tblkfxKcjR6gf0Ahe`, Sessies `tblwbyWN1L6AKwgoy`,
-en in de Config-base `Users`, `Klanten`, `TokenCodes` en `TokenLog`
-(`tblCrXVqEbaPTQQ2S`, aangemaakt 31-07-2026). Die laatste stond hier tot
-08-09-2026 als "staat er wel, maar er schrijft niets in"; sinds #83 schrijft
-`tegoedLog()` er bij elke saldomutatie een regel in — zie het kasboek-kader
-in §8.
+**Hoe het werkt.** Eén laag in `worker.js`: `D1_TABELLEN` noemt per tabel
+de velden (de Airtable-veldnamen, als kolomnamen), `d1Tabel()` maakt de
+tabel aan en zet hem bij de eerste aanroep **één keer zelf over** uit
+Airtable (genoteerd in `d1_overzet`), en `atZoek/atHaal/atPatch/atMaak/
+atWis/atAlle/atUpsert` geven records in Airtable-vorm terug
+(`{ id, createdTime, fields }`, met het oude rec-id). Daarna leest de Worker
+Airtable niet meer; **wat daar nog met de hand verandert, ziet de app niet**.
+Wijzigen gaat via `beheer.html`. Schema: `D1_SCHEMA` = `schema.sql`
+(`test-d1laag.js`). Tests gebruiken de echte laag via `pltest-d1.js`.
+
+Een vinkje komt terug als `true`/`false`; bij Airtable kwam een uitgevinkt
+vinkje als "geen veld" terug, waardoor `Active` uitzetten bij gebruikers
+niets deed. De bases bestaan nog (Config `appUAuyRxK18T7ImK`, Veldlab
+`apphsUwG4WAeWjEwH`, Logs `appdRasY8ZVJCMkPJ`) en `AIRTABLE_TOKEN` is alleen
+nog nodig zolang een tabel niet overgezet is.
 
 **Twee soorten accounts, bewust gescheiden.** `Users` zijn logins op
 gebruikersnaam voor **personeel** — de beheerder, een monteur, de noodingang.
@@ -744,9 +762,9 @@ wiste, gebruikte de AI gratis.
 Nu, in `handleMessages`:
 
 1. Is de rol `klant` én gebruikt hij onze API-sleutel, dan wordt eerst het saldo
-   uit Airtable gelezen. Te weinig → **402** vóór er iets naar Anthropic gaat.
-   Airtable onbereikbaar → **503**, bewust dicht: een storing mag geen gratis AI
-   opleveren.
+   uit `klanten` (D1, sinds 01-10-2026; daarvóór Airtable) gelezen. Te weinig →
+   **402** vóór er iets naar Anthropic gaat. Klantentabel onbereikbaar → **503**,
+   bewust dicht: een storing mag geen gratis AI opleveren.
 2. Na een geslaagd antwoord wordt afgeboekt op het **echte** verbruik uit
    `usage`, niet op de schatting. Daardoor tellen vervolgcalls bij `max_tokens`
    ook mee — die waren voorheen gratis.

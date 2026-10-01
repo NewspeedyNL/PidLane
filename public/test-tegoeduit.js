@@ -68,9 +68,10 @@ function bouwAI(velden) {
         staat.aiCalls++;
         return { ok: true, status: 200, text: async () => JSON.stringify({ model: 'm', content: [], usage: { input_tokens: 4000, output_tokens: 700 } }) };
       }
-      staat.kasboek.push(String(url));
-      return { ok: true, status: 200, text: async () => '{}', json: async () => ({}) };
+      throw new Error('onverwachte fetch in deze test: ' + url);
     },
+    // Het kasboek staat sinds 01-10-2026 in D1 (#327): tegoedLog schrijft via atMaak.
+    atMaak: async (env, sleutel, velden) => { staat.kasboek.push(sleutel); return { id: 'recKASBOEK0000001', fields: velden }; },
     console: { error() {}, warn() {}, log() {} }
   };
   const api = new Function(...Object.keys(omg), srcTegoed + '\nreturn { handleMessages };')(...Object.values(omg));
@@ -79,7 +80,7 @@ function bouwAI(velden) {
     json: async () => ({ messages: [{ role: 'user', content: 'wat is er mis' }], model: 'm' })
   };
   return { staat, analyse: async () => {
-    const r = await api.handleMessages(verzoek, { AIRTABLE_TOKEN: 'x' }, { waitUntil() {} });
+    const r = await api.handleMessages(verzoek, { LOGDB: {} }, { waitUntil() {} });
     return r.status;
   } };
 }
@@ -97,12 +98,12 @@ function bouwAdmin(ontwikkelaarInAirtable) {
     klantFout: (e, m) => ({ body: { ok: false, error: m, detail: String(e) }, status: 500 }),
     hashPassword: async () => 'hash',
     klantWachtwoordProbleem: () => '',
-    fetch: async () => { staat.gelezen++; return { ok: true, json: async () => ({ fields: { Email: 'k@x.nl', Saldo: 5, Ontwikkelaar: ontwikkelaarInAirtable } }) }; },
+    atHaal: async (env, sleutel, id) => { staat.gelezen++; return { id, fields: { Email: 'k@x.nl', Saldo: 5, Ontwikkelaar: ontwikkelaarInAirtable } }; },
     metSaldoSlot: async (env, adres, fn) => ({ bezet: false, result: await fn() }),
     __name: () => {}
   };
   const fn = new Function(...Object.keys(omg), srcAdmin + '\nreturn handleAdminKlantenPost;')(...Object.values(omg));
-  return { staat, roep: (body) => fn({ json: async () => Object.assign({ actie: 'update', id: 'rec0123456789abcd' }, body) }, { AIRTABLE_TOKEN: 'x' }) };
+  return { staat, roep: (body) => fn({ json: async () => Object.assign({ actie: 'update', id: 'rec0123456789abcd' }, body) }, { LOGDB: {} }) };
 }
 
 (async () => {
