@@ -448,6 +448,63 @@ console.log('\n── de SPP-proef boekt een gebeurtenis (#352) ──');
 }
 
 // ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+console.log('\n── de app-maten van de meetrit (#302, #333; 01-10-2026) ──');
+{
+  const s = bouw();
+  const P = s.PLAdapter;
+  // A koud en stil, B warm en stil, C rijdend; daartussen geen uitspraak.
+  toets('de omstandigheid van een groepsproef',
+    [P.gpSituatie(0, 20), P.gpSituatie(0, 90), P.gpSituatie(80, 90), P.gpSituatie(80, 20), P.gpSituatie(0, 60), P.gpSituatie(20, 90), P.gpSituatie(null, 90), P.gpSituatie(0, null)],
+    ['a', 'b', 'c', 'c', null, null, null, null]);
+
+  // Een proef zoals die van 01-10 13:01: groep 6 haalt 79% meer dan groep 3.
+  const pps = { 1: 15.5, 2: 25, 3: 42.5, 4: 56, 5: 66, 6: 75.9 };
+  function stappen(terugMs6) {
+    const uit = [];
+    ['heen', 'terug'].forEach(function (rit) {
+      [1, 2, 3, 4, 5, 6].forEach(function (g) {
+        uit.push({ groep: g, rit: rit, n: 100, sec: 8, gekregen: Math.round(pps[g] * 8), onvol: 0, leeg: 0, echo: 0,
+                   medMs: (rit === 'terug' && g === 6 && terugMs6) ? terugMs6 : 70 });
+      });
+    });
+    return uit;
+  }
+  const proef = (sit, extra) => Object.assign({ t: 1, adapter: 'OBDLink MX+', protocol: 'CAN', ijk: { bewezen: ['010C', '010D'], kandidaten: 2 },
+                                                afgebroken: null, situatie: sit, stappen: stappen() }, extra || {});
+  toets('vóór een proef: niets gemeten (null), geen 0', [P.maat('groep-b-advies'), P.maat('groep-b-winst'), P.maat('groep-b-drift')], [null, null, null]);
+  P._gpKlaar(proef('b'));
+  toets('proef B: advies 6, 79% winst, geen drift', [P.maat('groep-b-advies'), P.maat('groep-b-winst'), P.maat('groep-b-drift')], [6, 79]
+    .concat([0]));
+  toets('en A en C zijn daarmee niet gemeten', [P.maat('groep-a-advies'), P.maat('groep-c-advies')], [null, null]);
+  P._gpKlaar(proef('c', { afgebroken: 'de verbinding viel weg bij stap 4' }));
+  toets('een afgebroken proef C telt niet', [P.maat('groep-c-advies')], [null]);
+  P._gpKlaar(proef(null));
+  toets('een proef zonder omstandigheid (lauw, of 20 km/u) overschrijft B niet', [P.maat('groep-b-advies')], [6]);
+  P._gpKlaar(proef('a', { stappen: stappen(110) }));
+  toets('TEGENPROEF: groep 6 heen 70 ms, terug 110 ms is drift in A', [P.maat('groep-a-drift')], [1]);
+  // Geen schone groep: gemeten, en slecht — 0, geen null.
+  const vies = stappen().map(x => Object.assign({}, x, { leeg: 10 }));
+  P._gpKlaar(proef('c', { stappen: vies }));
+  toets('geen enkele schone groep in C: advies 0 en winst 0, gemeten', [P.maat('groep-c-advies'), P.maat('groep-c-winst')], [0, 0]);
+
+  // #302: dezelfde reeksen als driftOordeel().
+  const t0 = 1e12, m = (i, ms, extra) => Object.assign({ t: t0 + i * 30000, nr: 1, ms: ms, rps: 5, bezet: 90, pids: 26, weergave: 'slim', modules: [], koel: 90 }, extra || {});
+  const reeks = [];
+  for (let i = 0; i < 80; i++) reeks.push(m(i, i < 40 ? 150 : 270, i >= 40 ? { weergave: 'visueel' } : {}));
+  for (let i = 82; i < 90; i++) reeks.push(m(i, 80, { nr: 2 }));
+  toets('#302 op een oplopende verbinding: 40 min, ×1,8, half in Slim visueel, geen proef',
+    ['adapter-sessie-min', 'adapter-drift-pct', 'adapter-visueel-pct', 'adapter-proef'].map(k => P.sessieMaat(k, reeks, [])), [40, 180, 50, 0]);
+  const vlak = [];
+  for (let i = 0; i < 70; i++) vlak.push(m(i, 150 + (i % 3) * 5, { weergave: 'visueel' }));
+  const vl = ['adapter-sessie-min', 'adapter-drift-pct', 'adapter-visueel-pct'].map(k => P.sessieMaat(k, vlak, []));
+  toets('TEGENPROEF: een vlakke verbinding van 35 min in Slim visueel: onder de 130%',
+    [vl[0], vl[1] < 130, vl[2]], [35, true, 100]);
+  toets('een door de SPP-proef aangetaste verbinding zegt dat (adapter-proef 1)',
+    [P.sessieMaat('adapter-proef', reeks.map(x => Object.assign({}, x, { proef: true })), [])], [1]);
+  toets('zonder sessie: null', [P.sessieMaat('adapter-drift-pct', [], []), P.maat('adapter-sessie-min')], [null, null]);
+}
+
 console.log('\n─────────────────────────────────────────');
 console.log(n + ' controles, ' + fout + ' fout');
 if (fout) { console.log('test-adapterpaneel: FOUT\n'); process.exit(1); }

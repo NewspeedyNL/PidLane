@@ -657,20 +657,28 @@
 
   // ── Door naar Live ─────────────────────────────────────────────────
   var _doorTimer = null;
+  /* Wat er met de balk gebeurde, deze sessie (#376). Gestart: de check opende
+     vanzelf en vond niets. Vanzelf: de balk liep leeg en de app ging door.
+     Knop: "Nu naar Live". Gestopt: een aanraking, "Blijf hier", sluiten of
+     opnieuw uitlezen. Voor de meetopdracht: is 5 s lang genoeg om "Alles in
+     orde" te lezen, of grijpt de bestuurder steeds in? */
+  var _door = { gestart: 0, vanzelf: 0, knop: 0, gestopt: 0 };
   function startDoor() {
+    _door.gestart++;
     _st.door = { start: Date.now(), ms: CFG.doorMs };
-    _doorTimer = setTimeout(naarLive, CFG.doorMs);
+    _doorTimer = setTimeout(function () { naarLive('vanzelf'); }, CFG.doorMs);
   }
   // stil: alleen opruimen, niet opnieuw tekenen (het venster gaat dicht of
   // wordt toch al opnieuw getekend).
-  function stopDoor(stil) {
+  function stopDoor(stil, hoe) {
     if (_doorTimer) { clearTimeout(_doorTimer); _doorTimer = null; }
     if (!_st.door) return;
+    _door[hoe === 'vanzelf' || hoe === 'knop' ? hoe : 'gestopt']++;
     _st.door = null;
     if (!stil) teken();
   }
-  function naarLive() {
-    stopDoor(true);
+  function naarLive(hoe) {
+    stopDoor(true, hoe === 'vanzelf' ? 'vanzelf' : 'knop');
     sluit();
     try {
       openLiveView();
@@ -976,7 +984,18 @@
     _akkoord: function (v) { _st.akkoord = !!v; teken(); },
     _terug: function () { if (_st.bezig) return; _st.fase = 'lijst'; teken(); },
     _vervolg: vervolg,
-    _naarLive: naarLive,
+    _naarLive: function () { naarLive('knop'); },
+    // De app-maten voor PLOpdracht (#376). Null zolang de check nooit vanzelf
+    // doorging: dan is er over de balk niets gemeten.
+    maat: function (naam) {
+      switch (naam) {
+        case 'check-door-gestart': return _door.gestart;
+        case 'check-door-vanzelf': return _door.gestart ? _door.vanzelf : null;
+        case 'check-door-gestopt': return _door.gestart ? _door.gestopt + _door.knop : null;
+        default: return null;
+      }
+    },
+    _startDoor: startDoor,
     _blijf: function () { stopDoor(); },
     stoplicht: stoplicht,
     magDoor: magDoor,

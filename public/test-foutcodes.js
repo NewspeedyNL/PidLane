@@ -235,6 +235,23 @@ function nepEcu(antwoorden) {
   eis(F.magDoor(lamp) === false, 'motorlampje aan → blijven staan');
   eis(F.magDoor(null) === false, 'geen uitlezing → nergens heen');
 
+  console.log('\n12. Wat er met de balk gebeurde — de app-maten voor #376');
+  {
+    const wacht = [], naar = [];
+    const D = laad({ setTimeout: (fn) => { wacht.push(fn); return wacht.length; },
+                     openLiveView: () => naar.push('live'), setPidView: (m) => naar.push(m) }).PLFoutcodes;
+    eis(D.maat('check-door-gestart') === 0 && D.maat('check-door-vanzelf') === null && D.maat('check-door-gestopt') === null,
+        'vóór een schone check: 0 keer gestart, de rest niet gemeten (null)');
+    D._startDoor(); wacht.shift()();
+    eis(D.maat('check-door-gestart') === 1 && D.maat('check-door-vanzelf') === 1 && D.maat('check-door-gestopt') === 0 && naar.join() === 'live,visueel',
+        'de balk liep leeg: één keer vanzelf naar Live in Slim visueel', naar.join());
+    D._startDoor(); D._blijf();
+    D._startDoor(); D._naarLive();
+    eis(D.maat('check-door-gestart') === 3 && D.maat('check-door-vanzelf') === 1 && D.maat('check-door-gestopt') === 2,
+        'TEGENPROEF: "Blijf hier" en "Nu naar Live" tellen als ingrijpen, niet als vanzelf',
+        D.maat('check-door-gestart') + ' / ' + D.maat('check-door-vanzelf') + ' / ' + D.maat('check-door-gestopt'));
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });

@@ -41,9 +41,13 @@ function laad() {
   const s = {
     console: { warn: function () {}, log: function () {} },
     Promise: Promise, Date: Date, JSON: JSON, Math: Math,
-    setTimeout: function (f) { setImmediate(f); return 1; },
+    setTimeout: function (f) { setImmediate(f); return 1; }, clearTimeout: function () {},
+    setInterval: function () { return 1; }, clearInterval: function () {},
     sessionStorage: { getItem: function () { return null; }, setItem: function () {} },
-    document: { getElementById: function () { return null; }, addEventListener: function () {} },
+    localStorage: { getItem: function () { return null; }, setItem: function () {} },
+    navigator: { userAgent: 'node' },
+    document: { readyState: 'complete', getElementById: function () { return null; }, addEventListener: function () {},
+                querySelector: function () { return null; }, head: { appendChild: function () {} }, body: { appendChild: function () {} } },
     btDiag: function () {}, log: function () {}
   };
   s.window = s;
@@ -51,6 +55,11 @@ function laad() {
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-opdracht.js'), 'utf8'), s, { filename: 'pidlane-opdracht.js' });
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-sppproef.js'), 'utf8'), s, { filename: 'pidlane-sppproef.js' });
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-pip.js'), 'utf8'), s, { filename: 'pidlane-pip.js' });
+  // De meetrit van 01-10-2026: #302 en #333 (PLAdapter), #337 (PLBerekend),
+  // #338 (PLVisueel), #376 (PLFoutcodes).
+  ['pidlane-adapter.js', 'pidlane-berekend.js', 'pidlane-visueel.js', 'pidlane-foutcodes.js'].forEach(function (f) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, f), 'utf8'), s, { filename: f });
+  });
   return s;
 }
 
@@ -110,7 +119,11 @@ console.log('── 2. de lijst en de module lopen gelijk ──');
   eis(kapot.length === 0, 'elke naam geeft een getal of null in de maat() van zijn module' + (kapot.length ? ' — niet: ' + kapot.join(', ') : ''));
   // Andersom: een naam die een module wel kent maar de lijst niet, is een maat
   // die geen opdracht ooit kan vragen. Afgelezen uit de switch in de bron.
-  [['pidlane-sppproef.js', 'PLSppProef', /case '(spp-[a-z-]+)'/g], ['pidlane-pip.js', 'PLPip', /case '(pip-[a-z-]+)'/g]].forEach(function (m) {
+  [['pidlane-sppproef.js', 'PLSppProef', /case '(spp-[a-z-]+)'/g], ['pidlane-pip.js', 'PLPip', /case '(pip-[a-z-]+)'/g],
+   ['pidlane-adapter.js', 'PLAdapter', /case '((?:adapter|groep)-[a-z-]+)'/g],
+   ['pidlane-berekend.js', 'PLBerekend', /case '(berekend-[a-z-]+)'/g],
+   ['pidlane-visueel.js', 'PLVisueel', /case '(visueel-[a-z-]+)'/g],
+   ['pidlane-foutcodes.js', 'PLFoutcodes', /case '(check-[a-z-]+)'/g]].forEach(function (m) {
     const bron = fs.readFileSync(path.join(__dirname, m[0]), 'utf8');
     const inModule = (bron.match(m[2]) || []).map(function (x) { return x.slice(6, -1); });
     const vergeten = inModule.filter(function (n) { return namen.indexOf(n) < 0 || s.PLOpdracht.appMaatModule(n) !== m[1]; });

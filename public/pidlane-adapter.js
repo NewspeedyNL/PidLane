@@ -474,6 +474,27 @@
   const GP_STAP_SEC = 8;
   const GP_BUS_WACHT_MS = 8000;
   let _gp = null, _gpBezig = false, _gpStand = '';
+  /* DE OMSTANDIGHEID VAN EEN PROEF (#333, 01-10-2026). Het protocol vraagt A
+     (koud, stil), B (warm, stil) en C (rijdend), en drie proeven op 28-09,
+     29-09 en 01-10 staan in D1 zonder dat te zeggen: "A koud" was een antwoord
+     op een vraag, geen meting. Nu legt de proef zelf vast onder welke
+     omstandigheid hij liep, en bewaart hij per omstandigheid de laatste
+     volledige uitslag, zodat één rit A, B en C kan beantwoorden. Snelheid en
+     koelwater zijn de laatst bekende waarden van vóór de proef: tijdens de
+     proef ligt de pollus stil. */
+  const _gpPer = {};
+  function gpSituatie(kmh, koel) {
+    if (typeof kmh !== 'number' || !isFinite(kmh)) return null;
+    if (kmh >= 50) return 'c';
+    if (kmh > 2 || typeof koel !== 'number' || !isFinite(koel)) return null;
+    if (koel >= 75) return 'b';
+    if (koel <= 50) return 'a';
+    return null;                                       // lauw: geen van de drie
+  }
+  function _pidNu(pid) {
+    try { const v = (typeof pidVals !== 'undefined' && pidVals) ? pidVals[pid] : undefined; return typeof v === 'number' && isFinite(v) ? v : null; }
+    catch (e) { console.warn('Groepsproef: ' + pid + ' onleesbaar — de omstandigheid blijft onbekend (#333)', e); return null; }
+  }
 
   function _p90(a) {
     if (!a.length) return 0;
@@ -639,13 +660,15 @@
     });
     const a = uit.advies || {};
     stuur(GP_VERSIE + ' · ' + (uit.afgebroken ? 'AFGEBROKEN: ' + uit.afgebroken + ' · ' : '') +
-      'protocol ' + uit.protocol + ' · ijk ' + (uit.ijk ? uit.ijk.bewezen.length + '/' + uit.ijk.kandidaten : '?') +
+      'situatie ' + (uit.situatie ? uit.situatie.toUpperCase() : '-') + ' (' + (uit.kmh === null || uit.kmh === undefined ? '?' : uit.kmh) + ' km/u, koelwater ' +
+      (uit.koel === null || uit.koel === undefined ? '?' : uit.koel) + ' °C) · protocol ' + uit.protocol + ' · ijk ' + (uit.ijk ? uit.ijk.bewezen.length + '/' + uit.ijk.kandidaten : '?') +
       ' · advies groep ' + (a.groep === null || a.groep === undefined ? '-' : a.groep) + ': ' + (a.kop || '') + ' — ' + (a.reden || ''));
   }
 
   function _gpKlaar(uit) {
     uit.advies = groepAdvies(uit.stappen);
     _gp = uit;
+    if (!uit.afgebroken && uit.situatie) _gpPer[uit.situatie] = uit;
     try {
       if (typeof btDiag === 'function') {
         if (uit.afgebroken) btDiag('Groepsproef afgebroken: ' + uit.afgebroken, 'warn');
@@ -683,7 +706,9 @@
     if (!_isCAN()) { _melding('Groepsproef: alleen op CAN — dit protocol kent geen meervoudige verzoeken'); return null; }
 
     _gpBezig = true; _gpStand = 'wachten tot de bus vrij is…'; _teken();
-    const uit = { t: Date.now(), versie: GP_VERSIE, adapter: adapterNaam(), protocol: protocol(), stappen: [], ijk: null, afgebroken: null };
+    const uit = { t: Date.now(), versie: GP_VERSIE, adapter: adapterNaam(), protocol: protocol(), stappen: [], ijk: null, afgebroken: null,
+                  kmh: _pidNu('010D'), koel: _pidNu('0105') };
+    uit.situatie = gpSituatie(uit.kmh, uit.koel);
     let tok = 0;
     try {
       tok = await PLBus.wait('groepsproef', GP_BUS_WACHT_MS);
@@ -727,6 +752,50 @@
   }
 
   function laatsteGroepsproef() { return _gp; }
+
+  /* ── DE APP-MATEN (#302, #333; 01-10-2026) ───────────────────────────
+     Voor PLOpdracht. Opdracht 23 (#302) gaf op 29-09 "gesloten" op "de meting
+     liep door", terwijl de responstijd zelf een vraag was; opdracht 18 (#333)
+     kon niet zien welke groep de proef adviseerde. Het oordeel stond al in
+     deze module (driftOordeel, groepAdvies); hier wordt het een getal.
+     Null = niet gemeten, geen 0.
+
+     De #302-maten kijken naar de LANGSTE onafgebroken verbinding, net als
+     driftOordeel() voor blok 5. */
+  /* Puur: een #302-maat uit een sessiereeks. test-adapterpaneel.js voert
+     hem dezelfde reeksen als driftOordeel(). */
+  function sessieMaat(naam, sessie, gebeurt) {
+    const a = driftAnalyse(sessie, gebeurt);
+    const g = (a.groepen || []).slice().sort(function (x, y) { return y.minuten - x.minuten; })[0] || null;
+    if (!g) return null;
+    switch (naam) {
+      case 'adapter-sessie-min': return g.minuten;
+      case 'adapter-drift-pct': return typeof g.factor === 'number' ? Math.round(g.factor * 100) : null;
+      case 'adapter-proef': return g.proef ? 1 : 0;
+      case 'adapter-visueel-pct': {
+        const m = (sessie || []).filter(function (x) { return x.nr === g.nr; });
+        return m.length ? Math.round(m.filter(function (x) { return x.weergave === 'visueel'; }).length / m.length * 100) : null;
+      }
+      default: return null;
+    }
+  }
+  function maat(naam) {
+    switch (naam) {
+      case 'adapter-sessie-min': case 'adapter-drift-pct': case 'adapter-proef': case 'adapter-visueel-pct':
+        return sessieMaat(naam, _sessie, _gebeurt);
+      case 'groep-a-advies': case 'groep-b-advies': case 'groep-c-advies':
+      case 'groep-a-winst': case 'groep-b-winst': case 'groep-c-winst':
+      case 'groep-a-drift': case 'groep-b-drift': case 'groep-c-drift': {
+        const d = naam.split('-'), u = _gpPer[d[1]];
+        if (!u || !u.advies) return null;
+        // Geen schone groep: advies 0, winst 0 — gemeten, en slecht.
+        if (d[2] === 'advies') return typeof u.advies.groep === 'number' ? u.advies.groep : 0;
+        if (d[2] === 'winst') return typeof u.advies.winstPct === 'number' ? u.advies.winstPct : 0;
+        return u.advies.drift ? 1 : 0;
+      }
+      default: return null;
+    }
+  }
 
   // ══════════════════════════════════════════════════════════════════
   // WIE HANGT ER AAN DE LIJN
@@ -1362,6 +1431,11 @@
     groepsproef: groepsproef,
     groepAdvies: groepAdvies,
     laatsteGroepsproef: laatsteGroepsproef,
+    gpSituatie: gpSituatie,
+    sessieMaat: sessieMaat,
+    maat: maat,
+    // Alleen voor de test: een uitslag neerzetten zoals _gpKlaar() dat doet.
+    _gpKlaar: function (uit) { return _gpKlaar(uit); },
     historie: historie,
     monster: monster,
     zetModus: zetModus,

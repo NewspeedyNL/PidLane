@@ -102,7 +102,37 @@
     'spp-erbij-aan':   ['PLSppProef', 'meeste draaiende draden erbij in een volle proef met de patch aan'],
     'spp-erbij-uit':   ['PLSppProef', 'meeste draaiende draden erbij in een volle proef met de patch uit'],
     'pip-langst-s':    ['PLPip', 'langste periode beeld-in-beeld met een verbonden auto, in seconden'],
-    'pip-gat-s':       ['PLPip', 'langste gat tussen twee waarden in een PiP-periode van minstens een minuut, in seconden']
+    'pip-gat-s':       ['PLPip', 'langste gat tussen twee waarden in een PiP-periode van minstens een minuut, in seconden'],
+    /* De meetrit van 01-10-2026: elke open rit-vraag een getal in plaats van
+       een vraag aan de bestuurder. Een vraag als "zag je een rendement boven
+       50%?" kreeg "niet gekeken", en dan sloot de opdracht op iets anders. */
+    // #302 — de langste onafgebroken verbinding, dezelfde als blok 5 beoordeelt
+    'adapter-sessie-min':  ['PLAdapter', 'minuten van de langste verbinding zonder verbreken'],
+    'adapter-drift-pct':   ['PLAdapter', 'responstijd aan het eind van die verbinding als % van het begin (130 = ×1,3)'],
+    'adapter-proef':       ['PLAdapter', 'de SPP-proef tastte die verbinding aan (1) of niet (0)'],
+    'adapter-visueel-pct': ['PLAdapter', '% van die verbinding met Slim visueel in beeld'],
+    // #333 — de laatste volledige groepsproef per omstandigheid
+    'groep-a-advies': ['PLAdapter', 'adviesgroep van de groepsproef koud en stil (A); 0 = geen schone groep'],
+    'groep-a-winst':  ['PLAdapter', '% meer PIDs/s van de adviesgroep dan groep 3, koud en stil (A)'],
+    'groep-a-drift':  ['PLAdapter', 'de verbinding veranderde tijdens proef A (1) of niet (0)'],
+    'groep-b-advies': ['PLAdapter', 'adviesgroep van de groepsproef warm en stil (B); 0 = geen schone groep'],
+    'groep-b-winst':  ['PLAdapter', '% meer PIDs/s van de adviesgroep dan groep 3, warm en stil (B)'],
+    'groep-b-drift':  ['PLAdapter', 'de verbinding veranderde tijdens proef B (1) of niet (0)'],
+    'groep-c-advies': ['PLAdapter', 'adviesgroep van de groepsproef rijdend boven 50 km/u (C); 0 = geen schone groep'],
+    'groep-c-winst':  ['PLAdapter', '% meer PIDs/s van de adviesgroep dan groep 3, rijdend (C)'],
+    'groep-c-drift':  ['PLAdapter', 'de verbinding veranderde tijdens proef C (1) of niet (0)'],
+    // #337 — de berekende PIDs van deze sessie
+    'berekend-n':             ['PLBerekend', 'aantal berekende waarden deze sessie'],
+    'berekend-buiten':        ['PLBerekend', 'berekende waarden buiten het bereik van hun tegel'],
+    'berekend-rendement-max': ['PLBerekend', 'hoogste rendement (CA10) deze sessie, in %'],
+    // #338 — Slim visueel tijdens het rijden
+    'visueel-rijdend-min':   ['PLVisueel', 'minuten rijdend met Slim visueel in beeld'],
+    'visueel-van-meter':     ['PLVisueel', 'pedaal- of laaddruk-PIDs die tijdens het rijden van de meter vielen'],
+    'visueel-herbouw-klant': ['PLVisueel', 'herbouwen van de meter waar geen keuze, testrun of opening achter zat'],
+    // #376 — de balk na een schone check
+    'check-door-gestart': ['PLFoutcodes', 'keren dat de check vanzelf opende, niets vond en de balk startte'],
+    'check-door-vanzelf': ['PLFoutcodes', 'keren dat de balk leegliep en de app zelf naar Live ging'],
+    'check-door-gestopt': ['PLFoutcodes', 'keren dat iemand de balk stopte of zelf op Nu naar Live tikte']
   };
   function _appMaat(naam) {
     var bron = APPMATEN[naam];

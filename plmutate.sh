@@ -1565,6 +1565,12 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  const t=gemetenTempo(pid, Math.max(_staat.rijdtSinds||0, Date.now()-VIS_VENSTER_MS));@@  const t=gemetenTempo(pid);@@test-visueel.js@@het tempo-oordeel kijkt weer over de hele sessie in plaats van het rijvenster"
 "public/pidlane-visueel.js@@  if(selectieSleutel()!==_staat.selectie) return 'selectie';@@@@test-visueel.js@@een herbouw door een nieuwe sensorkeuze telt als knipperen dat de klant niet vroeg"
 "public/pidlane-visueel.js@@  if(perMin>1 || klant>herbouwMax) return@@  if(perMin>1 || (S.herbouw||0)>herbouwMax) return@@test-visueel.js@@de herbouwen van de testrun zelf maken de knipperproef weer rood"
+# ── app-maten voor de meetrit: #302, #333, #376 (01-10-2026) ──
+"public/pidlane-adapter.js@@    if (!uit.afgebroken && uit.situatie) _gpPer[uit.situatie] = uit;@@    if (uit.situatie) _gpPer[uit.situatie] = uit;@@test-adapterpaneel.js@@een afgebroken groepsproef telt als uitslag voor A, B of C"
+"public/pidlane-adapter.js@@    if (koel >= 75) return 'b';@@    if (koel >= 50) return 'b';@@test-adapterpaneel.js@@een lauwe motor telt als warm, en proef B zegt dan iets over een koude bus"
+"public/pidlane-adapter.js@@    if (kmh >= 50) return 'c';@@    if (kmh >= 5) return 'c';@@test-adapterpaneel.js@@stapvoets rijden telt als proef C op constante snelheid"
+"public/pidlane-adapter.js@@    const g = (a.groepen || []).slice().sort(function (x, y) { return y.minuten - x.minuten; })[0] || null;\n    if (!g) return null;\n    switch (naam) {@@    const g = (a.groepen || []).slice(-1)[0] || null;\n    if (!g) return null;\n    switch (naam) {@@test-adapterpaneel.js@@de #302-maat kijkt naar de laatste verbinding in plaats van de langste, en een herverbinding wist de drift"
+"public/pidlane-foutcodes.js@@    _door[hoe === 'vanzelf' || hoe === 'knop' ? hoe : 'gestopt']++;@@    _door.vanzelf++;@@test-foutcodes.js@@Blijf hier telt als vanzelf doorgegaan, en de meetopdracht van #376 sluit op ingrijpen"
 )
 
 echo
