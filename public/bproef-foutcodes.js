@@ -117,6 +117,38 @@ const ECU = {
     await app.ev(`PLFoutcodes._terug(); appBack(); 'ok'`);
     toets('het venster is dicht', await app.ev(`getComputedStyle(document.getElementById('plFcOv')).display === 'none'`));
     toets('de app draait nog zonder fouten', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
+
+    // Na het verbinden opent de check vanzelf (PLNav.naVerbinding). Is er
+    // niets te zien, dan loopt een balk leeg en gaat de app door naar Slim
+    // visueel; de readinesslijst is geen landingsscherm (01-10-2026).
+    console.log('\n── 7. na het verbinden: niets gevonden → vanzelf naar Live ──');
+    const SCHOON = { '0101': '41 01 00 07 65 00', '03': '43 00', '07': '47 00', '0A': '4A 00', '010C': '41 0C 00 00', '010D': '41 0D 00' };
+    await app.nepAdapter(SCHOON);
+    await app.ev(`setPidView('overzicht'); PLFoutcodes.staat().scan = null; PLNav.naVerbinding(); 'ok'`);
+    toets('de balk staat er na de uitlezing', await wacht(`!!document.querySelector('#plFcOv .fc-door')`, 15000));
+    toets('het oordeel is groen', await app.ev(`!!document.querySelector('#plFcOv .fc-oordeel.groen')`));
+    toets('na het aftellen is het venster dicht', await wacht(`getComputedStyle(document.getElementById('plFcOv')).display === 'none'`, 8000));
+    toets('en staat Live open in Slim visueel', await app.ev(`pidViewMode === 'visueel' && document.getElementById('welcomeScreen').classList.contains('hidden')`),
+      await app.ev(`pidViewMode`));
+
+    console.log('\n── 8. aanraken = blijven; codes = geen balk; zelf geopend = geen balk ──');
+    await app.ev(`setPidView('overzicht'); PLFoutcodes.staat().scan = null; PLFoutcodes.open({ auto: true }); 'ok'`);
+    await wacht(`!!document.querySelector('#plFcOv .fc-door')`, 15000);
+    await app.ev(`document.querySelector('#plFcOv .fc-oordeel').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); 'ok'`);
+    toets('een tik in het venster haalt de balk weg', await app.ev(`!document.querySelector('#plFcOv .fc-door')`));
+    await new Promise(r => setTimeout(r, 6000));
+    toets('en het venster blijft staan', await app.ev(`getComputedStyle(document.getElementById('plFcOv')).display === 'flex' && pidViewMode === 'overzicht'`));
+
+    await app.ev(`PLFoutcodes.sluit(); PLFoutcodes.staat().scan = null; PLFoutcodes.open(); 'ok'`);
+    await wacht(`!!(PLFoutcodes.staat().scan && !PLFoutcodes.staat().bezig)`, 15000);
+    toets('zelf op Check mijn auto getikt → geen balk', await app.ev(`!document.querySelector('#plFcOv .fc-door')`));
+
+    await app.nepAdapter(ECU);
+    await app.ev(`PLFoutcodes.sluit(); PLFoutcodes.staat().scan = null; PLFoutcodes.open({ auto: true }); 'ok'`);
+    await wacht(`!!(PLFoutcodes.staat().scan && !PLFoutcodes.staat().bezig)`, 15000);
+    toets('codes gevonden → geen balk, het venster blijft', await app.ev(`!document.querySelector('#plFcOv .fc-door') && getComputedStyle(document.getElementById('plFcOv')).display === 'flex'`));
+    await app.ev(`PLFoutcodes.sluit(); 'ok'`);
+    toets('de app draait nog zonder fouten', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     await app.stop();
   }
