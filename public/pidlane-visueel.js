@@ -580,6 +580,16 @@ function rijdtNu(){
   const kmh=(typeof pidVals!=='undefined' && pidVals) ? pidVals['010D'] : undefined;
   return typeof kmh==='number' && kmh>=VIS_RIJDT_KMH;
 }
+/* Staat de meter in beeld? Niet op de achtergrond en niet in beeld-in-beeld:
+   de meetdienst houdt dan de JavaScript wakker, dus er valt geen gat tussen
+   twee tikken, maar de pollus vraagt minder en niemand kijkt naar de meter. */
+function inBeeld(){
+  try{
+    if(typeof document==='undefined' || !document) return true;
+    if(document.hidden) return false;
+    return !(document.body && document.body.classList && document.body.classList.contains('pl-pip'));
+  }catch(e){ console.warn('PLVisueel: zichtbaarheid onleesbaar — het tempo telt gewoon door', e); return true; }
+}
 /* Sinds wanneer telt het tempo (#338)? Opnieuw vanaf nu bij stilstand, na een
    gat tussen twee tikken (de app stond op de achtergrond of het scherm was
    uit: dan vriezen de timers en lijkt elke PID traag), en als een andere
@@ -590,13 +600,13 @@ function rijVenster(nu){
   catch(e){ console.warn('PLVisueel: PLBus.pausedTotal onleesbaar — het rijvenster begint niet opnieuw na een buspauze', e); }
   const gat=_staat.laatsteTik>0 && nu-_staat.laatsteTik>3*VIS_TIK_MS;
   const bus=_staat.pauze!==null && pauze!==_staat.pauze;
-  if(!rijdtNu()) _staat.rijdtSinds=0;
+  if(!rijdtNu() || !inBeeld()) _staat.rijdtSinds=0;
   else if(!_staat.rijdtSinds || gat || bus) _staat.rijdtSinds=nu;
   _staat.laatsteTik=nu; _staat.pauze=pauze;
 }
 function beoordeelTempo(pid){
   if(!pid || pid==='015C' || _staat.traag.has(pid)) return;
-  if(!rijdtNu()) return;
+  if(!rijdtNu() || !inBeeld()) return;
   const t=gemetenTempo(pid, Math.max(_staat.rijdtSinds||0, Date.now()-VIS_VENSTER_MS));
   if(t!==null && t>VIS_TRAAG_MS) _staat.traag.add(pid);
 }

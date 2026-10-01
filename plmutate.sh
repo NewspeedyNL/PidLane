@@ -1559,11 +1559,12 @@ MUTATIES=(
 "public/pidlane-berekend.js@@      return r1(Math.min(DEFS.CA03.max, Math.max(0, l/kmh*100)));@@      return r1(Math.min(99, Math.max(0, l/kmh*100)));@@test-berekend.js@@CA03 klemt weer op 99 en elk optrekken telt als buiten bereik"
 "public/pidlane-berekend.js@@      return namen.length ? namen.reduce((a,k)=>a+p[k].buiten, 0) : null;@@      return namen.length ? 0 : null;@@test-berekend.js@@de app-maat berekend-buiten ziet een waarde buiten bereik niet"
 # ── Slim visueel: tempo alleen rijdend, herbouw met reden (#338, 01-10-2026) ──
-"public/pidlane-visueel.js@@  if(!rijdtNu()) return;\n  const t=gemetenTempo(pid,@@  const t=gemetenTempo(pid,@@test-visueel.js@@een stilstand haalt het pedaal weer voor de hele rit van de meter"
+"public/pidlane-visueel.js@@  if(!rijdtNu() || !inBeeld()) return;\n  const t=gemetenTempo(pid,@@  if(!inBeeld()) return;\n  const t=gemetenTempo(pid,@@test-visueel.js@@een stilstand haalt het pedaal weer voor de hele rit van de meter"
 "public/pidlane-visueel.js@@  const gat=_staat.laatsteTik>0 && nu-_staat.laatsteTik>3*VIS_TIK_MS;@@  const gat=false;@@test-visueel.js@@157 s op de achtergrond telt weer mee in het tempo van het pedaal"
 "public/pidlane-visueel.js@@  const bus=_staat.pauze!==null && pauze!==_staat.pauze;@@  const bus=false;@@test-visueel.js@@een groepsproef of waakronde die de bus had, laat het pedaal van de meter vallen"
 "public/pidlane-visueel.js@@  const t=gemetenTempo(pid, Math.max(_staat.rijdtSinds||0, Date.now()-VIS_VENSTER_MS));@@  const t=gemetenTempo(pid);@@test-visueel.js@@het tempo-oordeel kijkt weer over de hele sessie in plaats van het rijvenster"
 "public/pidlane-visueel.js@@  if(selectieSleutel()!==_staat.selectie) return 'selectie';@@@@test-visueel.js@@een herbouw door een nieuwe sensorkeuze telt als knipperen dat de klant niet vroeg"
+"public/pidlane-visueel.js@@  if(!rijdtNu() || !inBeeld()) return;\n  const t=gemetenTempo(pid,@@  if(!rijdtNu()) return;\n  const t=gemetenTempo(pid,@@test-visueel.js@@in beeld-in-beeld of op de achtergrond, met de meetdienst wakker, valt het pedaal van de meter"
 "public/pidlane-visueel.js@@  if(perMin>1 || klant>herbouwMax) return@@  if(perMin>1 || (S.herbouw||0)>herbouwMax) return@@test-visueel.js@@de herbouwen van de testrun zelf maken de knipperproef weer rood"
 # ── app-maten voor de meetrit: #302, #333, #376 (01-10-2026) ──
 "public/pidlane-adapter.js@@    if (!uit.afgebroken && uit.situatie) _gpPer[uit.situatie] = uit;@@    if (uit.situatie) _gpPer[uit.situatie] = uit;@@test-adapterpaneel.js@@een afgebroken groepsproef telt als uitslag voor A, B of C"

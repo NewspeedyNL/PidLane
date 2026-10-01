@@ -426,6 +426,23 @@ console.log('\n── #338: alleen het rijden telt, en de reden van elke herbouw
   c.T.t += 2500; c.PLVisueel.tik();
   waar('TEGENPROEF: zonder buspauze vallen dezelfde metingen wel van de meter', c.PLVisueel.indeling().plekken.pedaal === '0111');
 
+  // Beeld-in-beeld of achtergrond met de meetdienst aan: geen gat, wel traag.
+  for (const [naam, doc] of [['op de achtergrond (document.hidden)', { hidden: true, body: null }],
+                             ['in beeld-in-beeld (body.pl-pip)', { hidden: false, body: { classList: { contains: (k) => k === 'pl-pip' } } }]]) {
+    const k = maak({ actief: ['010C', '0149', '0111'] });
+    k.pidVals['010D'] = 50;
+    k.PLVisueel.start();
+    k.document = doc;
+    const t0k = k.PLVisueel.staat().start + k.PLVisueel.AANLOOP_MS;
+    k.pidHist['0149'] = [];
+    for (let i = 0; i < 12; i++) k.pidHist['0149'].push({ t: t0k + i * 1000, v: 20 });
+    k.PLVisueel.beoordeelTempo('0149');
+    waar('rijdend ' + naam + ', elke seconde: geen oordeel, het pedaal blijft', k.PLVisueel.indeling().plekken.pedaal === '0149');
+    k.document = { hidden: false, body: null };
+    k.PLVisueel.beoordeelTempo('0149');
+    waar('TEGENPROEF: dezelfde metingen met de meter in beeld: valt door', k.PLVisueel.indeling().plekken.pedaal === '0111');
+  }
+
   // Het venster is de laatste minuut: een traag stuk van lang geleden telt niet.
   c = maak({ actief: ['010C', '0149', '0111'] });
   c.pidVals['010D'] = 50;
