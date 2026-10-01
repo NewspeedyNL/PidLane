@@ -21,6 +21,20 @@
    staand.svg voor de telefoon, pidlane-start-achtergrond.svg liggend.
  - bproef-navigatie.js: geen eindeloze animatie in het startscherm, met
    een mutatie in plmutate.sh.
+ 01-10-2026 — Live: Overzicht vervangt Trends, Getallen en Puntjes
+ ═══════════════════════════════════════════════════════════
+
+ - Eén weergave Overzicht: elke sensor als getal met een gekleurd puntje,
+   en hoogstens vier trendlijnen. Met 📈 op een tegel zet je er zelf een
+   vast; de vrije plekken krijgen de sensoren die het meest bewegen.
+ - Trendlijnen worden gebundeld getekend, hoogstens vier keer per seconde
+   en alleen als ze in beeld zijn (ook in Slim). In Trends hertekende elke
+   meetwaarde een lijn; op de telefoon liep de responstijd daarop in tien
+   minuten op van 43 naar 120 ms (#302).
+ - Een opgeslagen voorkeur Trends/Getallen/Puntjes (toestel of account)
+   wordt vanzelf Overzicht. worker.js accepteert 'overzicht' (KP_VOORKEUR).
+ - Tests: test-overzicht.js (nieuw), test-slimmeweergave.js,
+   test-verbergen.js, drie browserproeven, vier mutaties, blok 5.
 
  ═══════════════════════════════════════════════════════════
  30-09-2026 — Slim visueel: balkjes, een acculampje en een autootje (#371)

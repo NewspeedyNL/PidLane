@@ -34,7 +34,9 @@
   'use strict';
 
   var VOORKEUR_SPEC = {
-    weergave: { soort: 'keuze', uit: ['full', 'numbers', 'dots', 'slim', 'visueel'] },
+    // full/numbers/dots staan er nog in omdat een account ze kan dragen van
+    // vóór 01-10-2026; setPidView() zet ze om naar 'overzicht'.
+    weergave: { soort: 'keuze', uit: ['overzicht', 'slim', 'visueel', 'full', 'numbers', 'dots'], toon: ['overzicht', 'slim', 'visueel'] },
     tekst: { soort: 'keuze', uit: ['s', 'm', 'l'] },
     letter: { soort: 'geheel', min: 10, max: 18 },
     waakronde: { soort: 'janee' },
@@ -287,7 +289,7 @@
   var _form = null;
 
   var LABELS = {
-    weergave: { full: 'Trends', numbers: 'Getallen', dots: 'Puntjes', slim: 'Slim', visueel: 'Visueel' },
+    weergave: { overzicht: 'Overzicht', slim: 'Slim', visueel: 'Visueel' },
     tekst: { s: 'Klein', m: 'Normaal', l: 'Groot' },
     start: { start: 'Startscherm', live: 'Meteen Live' },
     rapport: { kort: 'Kort', normaal: 'Normaal', uitgebreid: 'Uitgebreid' },
@@ -300,9 +302,11 @@
 
   function keuzeRij(k, titel, uitleg) {
     var w = _form[k];
+    // Een oude weergave uit het account (Trends/Getallen/Puntjes) is nu Overzicht.
+    if (k === 'weergave' && (w === 'full' || w === 'numbers' || w === 'dots')) w = 'overzicht';
     return '<div class="vk-rij"><div class="vk-t">' + titel + '</div>' + (uitleg ? '<div class="vk-u">' + uitleg + '</div>' : '') +
       '<div class="vk-kn">' + ['<button class="vk-b' + (w === undefined ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'' + k + '\',null)">Geen voorkeur</button>']
-        .concat(VOORKEUR_SPEC[k].uit.map(function (o) {
+        .concat((VOORKEUR_SPEC[k].toon || VOORKEUR_SPEC[k].uit).map(function (o) {
           return '<button class="vk-b' + (w === o ? ' aan' : '') + '" onclick="PLVoorkeur._zet(\'' + k + '\',\'' + o + '\')">' + esc((LABELS[k] || {})[o] || o) + '</button>';
         })).join('') + '</div></div>';
   }

@@ -2771,6 +2771,24 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Overzicht vervangt Trends, Getallen en Puntjes (01-10-2026) ──
+  // In Trends liep de responstijd op de telefoon in tien minuten op van 43
+  // naar 120 ms; de teken-draden stonden bovenaan. Nu hoogstens vier lijnen.
+  {
+    issue: '#302',
+    naam: 'Overzicht toont hoogstens vier trendlijnen en tekent ze gebundeld',
+    waarom: 'Trends hertekende bij elke meetwaarde de trendlijn van elke tegel; op de telefoon kostte dat de helft van een kern aan tekenen.',
+    proef: async function () {
+      if (!window.PLTrend || typeof PLTrend.kies !== 'function') return { staat: 'FOUT', detail: 'PLTrend ontbreekt — de trendkeuze van Overzicht is er niet' };
+      if (PID_VIEW_MODI.indexOf('overzicht') < 0 || PID_VIEW_MODI.indexOf('full') > -1) return { staat: 'FOUT', detail: 'de weergaven zijn ' + PID_VIEW_MODI.join(', ') };
+      if (typeof pidViewMode === 'undefined' || pidViewMode !== 'overzicht') return { staat: 'LET OP', detail: 'Live staat niet op Overzicht (' + (typeof pidViewMode === 'undefined' ? '?' : pidViewMode) + '). Nodig: zet Live op 📋 Overzicht en draai opnieuw' };
+      var lijnen = Array.prototype.filter.call(document.querySelectorAll('#gGrid .gspark'), function (e) { return e.getClientRects().length > 0; }).length;
+      var tegels = document.querySelectorAll('#gGrid .gc').length;
+      if (lijnen > PLTrend.MAX) return { staat: 'FOUT', detail: lijnen + ' trendlijnen in beeld, hoogstens ' + PLTrend.MAX };
+      return { staat: 'OK', detail: lijnen + ' van ' + tegels + ' tegels met een trendlijn (vast: ' + (PLTrend.vast().join(', ') || 'geen') + '), ' + PLTrend.getekend() + ' tekenbeurten deze sessie' };
+    }
+  },
+
   // ── Slim visueel volgens #371: balkjes, acculampje, autootje (30-09-2026) ──
   // Eerst de functies (die gelden altijd), dan het scherm zelf — dat laatste
   // alleen als Slim visueel open staat, anders LET OP met wat je moet doen.

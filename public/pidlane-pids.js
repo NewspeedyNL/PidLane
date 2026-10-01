@@ -300,6 +300,14 @@ function renderGauges(){
       <svg class="gspark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline id="gs-${pid}" points=""/></svg>`;
     c.style.cursor='pointer'; c.title='Dubbeltik = tegel verbergen, er wordt dan nog gemeten';
     c.onclick=function(){ pidTileTap(pid); };
+    // De 📈-knop (Overzicht): zet de trendlijn van deze tegel vast. Alleen in
+    // die weergave zichtbaar; de tik gaat niet door naar de dubbeltik.
+    const tk=document.createElement('button');
+    tk.type='button'; tk.className='gc-trendknop'; tk.id='gt-'+pid; tk.textContent='📈';
+    tk.setAttribute('aria-label','Trendlijn vastzetten');
+    tk.title='Trendlijn vastzetten (hoogstens '+TREND_MAX+')';
+    tk.onclick=function(ev){ ev.stopPropagation(); trendWissel(pid); };
+    c.appendChild(tk);
     if(slim){
       const groep=(typeof slimGroep==='function')?slimGroep(pid,d):'rest';
       // Een temperatuur krijgt er een liggende balk bij, een meter een
@@ -342,7 +350,8 @@ function renderGauges(){
     try{ slimHerweegPlannen(); }catch(e){ console.warn('slimHerweegPlannen mislukt:', e); }
   }
   // Herstel actieve weergavemodus op de nieuwe grid
-  if(pidViewMode!=='full'){ g.classList.add('view-'+pidViewMode); }
+  g.classList.add('view-'+pidViewMode);
+  if(pidViewMode==='overzicht'){ try{ trendHerkies(); }catch(e){ console.warn('trendkeuze mislukt:', e); } }
   // Tekstblok alleen tonen als er ook echt code-PIDs geselecteerd zijn
   if(vast) vast.style.display = vastAantal ? 'grid' : 'none';
   const verborgen = renderVerborgenStrook();
@@ -569,7 +578,16 @@ function fv(v, pidOfDef){
   return Number(v).toFixed(fvDec(unit,v));
 }
 
-// ── PID weergavemodus: 'full' | 'numbers' | 'dots' | 'slim' | 'visueel' ──
+// ── PID weergavemodus: 'overzicht' | 'slim' | 'visueel' ──
+//
+// OVERZICHT (01-10-2026, #302). Trends, Getallen en Puntjes waren drie
+// weergaven van hetzelfde rooster. Trends hertekende bij elke meetwaarde een
+// trendlijn voor élke tegel, en op de telefoon liep de responstijd daarop in
+// tien minuten op van 43 naar 120 ms. De meeste sensoren liggen stil; een lijn
+// die recht loopt zegt niets. Nu één weergave: getal plus statuspuntje per
+// sensor, en hoogstens TREND_MAX trendlijnen — vastgezet met 📈, de vrije
+// plekken voor wat het meest beweegt. Een oude voorkeur (full/numbers/dots)
+// komt via PID_VIEW_OUD vanzelf hier uit.
 //
 // DE STANDAARD IS 'slim' (01-09-2026, na #61 en #68). Daarvoor stond hier
 // 'dots' en werd de opgeslagen voorkeur bij het opstarten OVERSCHREVEN — de
@@ -582,7 +600,8 @@ function fv(v, pidOfDef){
 // anders zeiden: deze regel ('dots'), de active-klasse in index.html
 // ('full') en de aanroep in pidlane-theme.js ('dots'). Nu is er één bron:
 // PID_VIEW_STANDAARD, met plPidViewHerstel() als enige die hem toepast.
-const PID_VIEW_MODI = ['full','numbers','dots','slim','visueel'];
+const PID_VIEW_MODI = ['overzicht','slim','visueel'];
+const PID_VIEW_OUD = { full:'overzicht', numbers:'overzicht', dots:'overzicht' };
 // Weergaven met een EIGEN opbouw van het rooster: wisselen van of naar zo'n
 // modus vraagt een herbouw, klassen wisselen is dan niet genoeg.
 const PID_VIEW_EIGEN = ['slim','visueel'];
@@ -593,7 +612,8 @@ let _pidLastUpdPause={};     // pid -> PLBus.pausedTotal() ten tijde van die upd
 let _staleWatchdog=null;
 const PID_STALE_MS=4000;     // geen verse waarde binnen 4s = "stale"
 function setPidView(mode){
-  if(mode==='correlate') mode='dots';   // correlatie-weergave verwijderd; oude opgeslagen voorkeur netjes opvangen
+  if(mode==='correlate') mode='overzicht';          // correlatie-weergave verwijderd; een directe aanroeper komt op Overzicht
+  if(PID_VIEW_OUD[mode]) mode=PID_VIEW_OUD[mode];   // Trends/Getallen/Puntjes zijn Overzicht geworden
   // De slimme weergave is de enige modus met een ANDERE DOM (drie vakken in
   // plaats van één rooster). Klassen wisselen is daar niet genoeg: het
   // rooster moet opnieuw opgebouwd worden. Alleen bij een echte overgang,
@@ -605,7 +625,7 @@ function setPidView(mode){
   try{ if(window.PLVisueel){ if(mode==='visueel') PLVisueel.start(); else PLVisueel.stop(); } }
   catch(e){ console.warn('PLVisueel starten/stoppen mislukt:', e); }
   const g=document.getElementById('gGrid');
-  if(g){ g.style.display=''; g.classList.remove('view-numbers','view-dots','view-slim','view-visueel'); if(mode!=='full') g.classList.add('view-'+mode); }
+  if(g){ g.style.display=''; g.classList.remove('view-overzicht','view-slim','view-visueel'); g.classList.add('view-'+mode); }
   if(herbouw){ try{ renderGauges(); }catch(e){ console.warn('renderGauges mislukt bij het wisselen van weergave:', e); } }
   // Alleen de knoppen MET een data-mode zijn weergaveknoppen. #waakBtn droeg
   // tot 26-09-2026 dezelfde klasse (hij stond in dezelfde rij) zonder data-mode, dus
@@ -616,8 +636,8 @@ function setPidView(mode){
   // in de weg. De attribuutselector zet de grens bij "heeft een modus".
   document.querySelectorAll('.pidview-btn[data-mode]').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
   try{ localStorage.setItem('pl_pidview', mode); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
-  // Stale-watchdog alleen nodig in puntjes-modus
-  if(mode==='dots') startStaleWatchdog(); else stopStaleWatchdog();
+  // Stale-watchdog en trendkeuze alleen in het overzicht
+  if(mode==='overzicht'){ startStaleWatchdog(); trendStart(); } else { stopStaleWatchdog(); trendStop(); }
 }
 
 // Bij het opstarten: de opgeslagen voorkeur, anders de standaard. Eén plek,
@@ -627,6 +647,7 @@ function setPidView(mode){
 function plPidViewHerstel(){
   let m=null;
   try{ m=localStorage.getItem('pl_pidview'); }catch(e){ console.warn('pl_pidview lezen mislukt:', e); }
+  if(m && PID_VIEW_OUD[m]) m=PID_VIEW_OUD[m];
   setPidView(PID_VIEW_MODI.indexOf(m)>-1 ? m : PID_VIEW_STANDAARD);
   return pidViewMode;
 }
@@ -636,7 +657,7 @@ function plPidViewHerstel(){
 function startStaleWatchdog(){
   stopStaleWatchdog();
   _staleWatchdog=setInterval(()=>{
-    if(pidViewMode!=='dots') return;
+    if(pidViewMode!=='overzicht') return;
     const now=Date.now();
     activePIDs.forEach(pid=>{
       const card=document.getElementById('gc-'+pid); if(!card) return;
@@ -749,19 +770,10 @@ function applyG(pid,val){
     if(st!=='ok') dot.classList.add(st);
     dot.removeAttribute('title');
   }
-  // Puntjes-modus: laat het puntje knipperen bij elke nieuwe waarde
-  if(pidViewMode==='dots' && dot && st==='ok'){
-    dot.classList.remove('flash'); void dot.offsetWidth; dot.classList.add('flash');
-  }
   const gv=document.getElementById('gv-'+pid); if(gv) gv.textContent=fv(val);
-  // Sparkline uit de laatste ~24 metingen
-  const sl=document.getElementById('gs-'+pid);
-  if(sl&&pidHist[pid]&&pidHist[pid].length>1){
-    const h=pidHist[pid].slice(-24).map(x=>x.v);
-    const mn=Math.min(...h), mx=Math.max(...h), rg=(mx-mn)||1;
-    sl.setAttribute('points',h.map((y,i)=>`${(i/(h.length-1))*100},${26-((y-mn)/rg)*24}`).join(' '));
-    sl.style.stroke=st==='danger'?'var(--rd)':st==='warn'?'var(--or)':'var(--bl)';
-  }
+  // Sparkline: niet hier tekenen maar aanmelden. sparkTeken() tekent ze
+  // gebundeld, hoogstens SPARK_MS per keer en alleen als ze in beeld zijn.
+  sparkVraag(pid, st);
   if(pidViewMode==='slim'){ try{ slimBij(pid,val,d,st,card); }catch(e){ console.warn('slimBij mislukt:', e); } }
 }
 
@@ -814,6 +826,128 @@ function slimBeweegt(pid,d){
   const drempel = span>0 ? span*SLIM_BEWEEG_DEEL : Math.abs(gem)*SLIM_BEWEEG_DEEL;
   return rg > Math.max(drempel, 1e-9);
 }
+// ══ OVERZICHT: WELKE TRENDLIJNEN, EN RUSTIG TEKENEN (01-10-2026, #302) ══
+// Twee dingen die samen de tekenlast omlaag brengen:
+//   • hoogstens TREND_MAX tegels krijgen een trendlijn: eerst wat je zelf
+//     met 📈 vastzet, de vrije plekken voor wat het hardst beweegt. Een
+//     gekozen lijn houdt zijn plek tot een andere TREND_HOUD keer zo hard
+//     beweegt, anders springt de indeling bij elke herkeuze.
+//   • een trendlijn wordt niet bij elke meetwaarde getekend maar aangemeld;
+//     sparkTeken() tekent alles wat klaarstaat in één keer, hoogstens elke
+//     SPARK_MS, en slaat lijnen over die niet in beeld zijn.
+// Gemeten op de telefoon vóór deze wijziging: RenderThread 31% en de GPU-draad
+// 15–24% van één kern, en de responstijd van 43 naar 120 ms in tien minuten
+// Trends. trendKies() is puur, zodat test-overzicht.js hem los kan toetsen.
+const TREND_MAX = 4;
+const TREND_HERKIES_MS = 3000;
+const TREND_HOUD = 1.5;
+const SPARK_MS = 250;
+let _trendVast = trendVastLees();
+let _trendAuto = [];
+let _trendTimer = null;
+
+function trendVastLees(){
+  try{
+    const v=JSON.parse(localStorage.getItem('pl_trendvast')||'[]');
+    return Array.isArray(v) ? v.filter(x=>typeof x==='string').slice(0,TREND_MAX) : [];
+  }catch(e){ console.warn('pl_trendvast lezen mislukt:', e); return []; }
+}
+// Hoeveel beweegt een sensor, als deel van zijn eigen bereik. Over de laatste
+// 60 metingen: een gaspedaal dat net los is, telt nog even mee.
+function trendBeweging(pid){
+  const h=pidHist[pid];
+  if(!h || h.length<SLIM_BEWEEG_MIN) return 0;
+  const v=h.slice(-60).map(x=>x.v).filter(x=>typeof x==='number' && isFinite(x));
+  if(v.length<SLIM_BEWEEG_MIN) return 0;
+  const d=getPidDef(pid);
+  const span=(d && typeof d.max==='number' && typeof d.min==='number' && d.max>d.min) ? (d.max-d.min) : 0;
+  const gem=Math.abs(v.reduce((a,b)=>a+b,0)/v.length);
+  return (Math.max(...v)-Math.min(...v)) / (span>0 ? span : (gem||1));
+}
+// Puur: kandidaten [{pid, score}], de vastgezette pids, de vorige automatische
+// keuze en het maximum. Vast gaat voor; daarna wat beweegt (boven dezelfde 2%
+// als Slim), met een voorsprong voor wat er al stond.
+function trendKies(kand, vast, huidig, max){
+  const actief=kand.map(k=>k.pid);
+  const uit=vast.filter(p=>actief.indexOf(p)>-1).slice(0,max);
+  const vrij=max-uit.length;
+  if(vrij<=0) return uit;
+  const pool=kand.filter(k=>uit.indexOf(k.pid)<0 && k.score>SLIM_BEWEEG_DEEL)
+    .map(k=>({pid:k.pid, w:k.score*(huidig.indexOf(k.pid)>-1 ? TREND_HOUD : 1)}))
+    .sort((a,b)=>b.w-a.w);
+  return uit.concat(pool.slice(0,vrij).map(k=>k.pid));
+}
+function trendHerkies(){
+  if(pidViewMode!=='overzicht') return [];
+  const kand=[...activePIDs]
+    .filter(p=>!hiddenPIDs.has(p) && !(typeof pidIsTekst==='function' && pidIsTekst(p)) && document.getElementById('gc-'+p))
+    .map(p=>({pid:p, score:trendBeweging(p)}));
+  const keuze=trendKies(kand, _trendVast, _trendAuto, TREND_MAX);
+  _trendAuto=keuze.filter(p=>_trendVast.indexOf(p)<0);
+  kand.forEach(function(k){
+    const c=document.getElementById('gc-'+k.pid); if(!c) return;
+    const aan=keuze.indexOf(k.pid)>-1, vast=_trendVast.indexOf(k.pid)>-1;
+    // Alleen bij een echte wissel aanraken: een klasse zetten die er al
+    // staat kost niets, maar een span-wissel kost een herindeling.
+    if(c.classList.contains('gc-trend')!==aan){ c.classList.toggle('gc-trend', aan); if(aan) sparkVraag(k.pid, null, true); }
+    if(c.classList.contains('gc-trend-vast')!==vast) c.classList.toggle('gc-trend-vast', vast);
+    const knop=document.getElementById('gt-'+k.pid);
+    if(knop) knop.setAttribute('aria-pressed', vast ? 'true' : 'false');
+  });
+  return keuze;
+}
+function trendStart(){
+  trendStop();
+  _trendTimer=setInterval(function(){ try{ trendHerkies(); }catch(e){ console.warn('trendkeuze mislukt:', e); } }, TREND_HERKIES_MS);
+}
+function trendStop(){ if(_trendTimer){ clearInterval(_trendTimer); _trendTimer=null; } }
+function trendWissel(pid){
+  const i=_trendVast.indexOf(pid);
+  if(i>-1) _trendVast.splice(i,1);
+  else if(_trendVast.length>=TREND_MAX){
+    showToast?.('📈 Hoogstens '+TREND_MAX+' trendlijnen vast — zet er eerst één los');
+    return false;
+  } else _trendVast.push(pid);
+  try{ localStorage.setItem('pl_trendvast', JSON.stringify(_trendVast)); }catch(e){ console.warn('pl_trendvast opslaan mislukt:', e); }
+  try{ trendHerkies(); }catch(e){ console.warn('trendkeuze mislukt:', e); }
+  return _trendVast.indexOf(pid)>-1;
+}
+
+// De planner. sparkVraag() meldt een lijn aan; de eerste aanmelding plant één
+// tekenbeurt, de rest wacht daarop mee.
+const _sparkVuil={};
+let _sparkGepland=false, _sparkLaatst=0, _sparkGetekend=0;
+function sparkVraag(pid, st, meteen){
+  _sparkVuil[pid] = (st===null || st===undefined) ? (_sparkVuil[pid]||'ok') : st;
+  if(_sparkGepland) return;
+  _sparkGepland=true;
+  const wacht = meteen ? 0 : Math.max(0, SPARK_MS-(Date.now()-_sparkLaatst));
+  setTimeout(function(){ requestAnimationFrame(sparkTeken); }, wacht);
+}
+function sparkTeken(){
+  _sparkGepland=false; _sparkLaatst=Date.now();
+  Object.keys(_sparkVuil).forEach(function(pid){
+    const st=_sparkVuil[pid]; delete _sparkVuil[pid];
+    const sl=document.getElementById('gs-'+pid);
+    if(!sl || !pidHist[pid] || pidHist[pid].length<2) return;
+    // Niet in beeld (een tegel zonder trend, een verborgen vak): niet tekenen.
+    const svg=sl.ownerSVGElement || sl.parentNode;
+    if(!svg || !svg.getClientRects || svg.getClientRects().length===0) return;
+    const h=pidHist[pid].slice(-24).map(x=>x.v);
+    const mn=Math.min(...h), mx=Math.max(...h), rg=(mx-mn)||1;
+    sl.setAttribute('points', h.map((y,i)=>`${(i/(h.length-1))*100},${26-((y-mn)/rg)*24}`).join(' '));
+    const kl = st==='danger' ? 'var(--rd)' : st==='warn' ? 'var(--or)' : 'var(--bl)';
+    if(sl.getAttribute('data-kl')!==kl){ sl.style.stroke=kl; sl.setAttribute('data-kl', kl); }
+    _sparkGetekend++;
+  });
+}
+window.PLTrend = {
+  MAX: TREND_MAX, SPARK_MS: SPARK_MS,
+  kies: trendKies, beweging: trendBeweging, herkies: trendHerkies, wissel: trendWissel,
+  vast: function(){ return _trendVast.slice(); },
+  getekend: function(){ return _sparkGetekend; }
+};
+
 // ── DE TELLERPLAAT (issue #68) ────────────────────────────────────
 // Waar de temperatuurbalk de MARGE TOT DE GRENS toont, toont de meter het
 // BEREIK VAN HET SIGNAAL: 0-100% voor een pedaal, 0-8000 voor het toerental.

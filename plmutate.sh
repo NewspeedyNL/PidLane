@@ -872,6 +872,10 @@ MUTATIES=(
 # stil laten uitvallen of juist stil laten opkomen. Geen ervan geeft een
 # foutmelding: het enige symptoom is dat de meetlus tijdens een rit alsnog
 # stilvalt, en dat merk je pas bij het lezen van het verslag.
+"public/pidlane-pids.js@@  return uit.concat(pool.slice(0,vrij).map(k=>k.pid));@@  return uit.concat(pool.map(k=>k.pid));@@test-overzicht.js@@Overzicht geeft elke bewegende tegel een trendlijn: het maximum van vier is weg en het tekenwerk van Trends terug (#302)"
+"public/pidlane-pids.js@@  const pool=kand.filter(k=>uit.indexOf(k.pid)<0 && k.score>SLIM_BEWEEG_DEEL)@@  const pool=kand.filter(k=>uit.indexOf(k.pid)<0)@@test-overzicht.js@@een sensor die stil ligt krijgt toch een trendlijn: een rechte streep die een plek van vier inneemt"
+"public/pidlane-pids.js@@  if(_sparkGepland) return;\n  _sparkGepland=true;@@  _sparkGepland=true;@@test-overzicht.js@@elke meetwaarde plant zijn eigen tekenbeurt: zestig per seconde in plaats van vier (#302)"
+"public/pidlane-pids.js@@    if(!svg || !svg.getClientRects || svg.getClientRects().length===0) return;@@    if(!svg) return;@@test-overzicht.js@@trendlijnen die niet in beeld zijn worden toch getekend"
 "public/pidlane-pip.js@@    if (!f.toggleAan)@@    if (false)@@test-pip.js@@de uitzetknop in de Config doet niets meer: de beheerder zet hem om en het venster komt toch op"
 "public/pidlane-pip.js@@      if (v === undefined || v === null || v === '') return true;@@      if (v === undefined || v === null || v === '') return false;@@test-pip.js@@een Config zonder de sleutel leest als UIT: de functie staat nergens aan tot iemand hem expliciet inschakelt"
 "public/pidlane-pip.js@@    if (_laatsteVlag === b.aan) return Promise.resolve(b);@@    if (false) return Promise.resolve(b);@@test-pip.js@@elke sync stuurt opnieuw naar de bridge, ook als er niets veranderd is"
