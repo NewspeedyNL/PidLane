@@ -6976,6 +6976,33 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── de opruimread vóór elk SPP-commando (01-10-2026) ──
+  // In eventstand ging er vóór elk commando een read() over de Capacitor-brug
+  // om een half antwoord weg te halen. In ~900 verzoeken vond hij nooit iets,
+  // en tussen twee verzoeken zat 70–100 ms bij een adapter van 27–34 ms. Nu
+  // wordt er alleen na een onnette ronde geruimd. Of dat op een echte socket
+  // ook zo zelden is, en wat het tempo dan doet, zegt alleen een rit.
+  {
+    issue: '#302',
+    naam: 'De opruimread vóór een SPP-commando alleen na een onnette ronde',
+    waarom: 'Elke read() is een rondgang via de JS-draad; als hij elke keer gaat kost hij tempo, als hij nooit gaat plakt een half laat antwoord aan het volgende.',
+    proef: async function () {
+      if (typeof window.plSppModus !== 'function') return { staat: 'FOUT', detail: 'plSppModus ontbreekt — het eventpad is niet geladen' };
+      if (!window._sppConn) return { staat: 'LET OP', detail: 'geen SPP-verbinding deze sessie — deze proef gaat alleen over SPP' };
+      const m = plSppModus();
+      if (typeof m.vragen !== 'number') return { staat: 'FOUT', detail: 'plSppModus telt de opruimread niet — oude pidlane-bt.js in de cache?' };
+      let s = null;
+      try { s = PLBus.stats(); } catch (e) { console.warn('proef opruimread: PLBus.stats onleesbaar', e); }
+      const tempo = s ? ' · ' + s.perSec + ' verzoeken/s, ' + s.venGemMs + ' ms per commando (laatste 10 s)' : '';
+      const kern = m.flushes + ' opruimread(s) op ' + m.vragen + ' commando\'s per event, ' + m.flushVond + ' keer met een restje' + tempo;
+      if (m.modus !== 'event') return { staat: 'LET OP', detail: 'niet in eventstand (' + (m.reden || 'pollen') + ') — de opruimread hoort bij de eventstand; ' + kern };
+      if (m.altijdFlush) return { staat: 'LET OP', detail: 'oude stand afgedwongen (pl_spp_flush = 1): ' + kern };
+      if (m.vragen < 50) return { staat: 'LET OP', detail: 'te weinig commando\'s om iets te zeggen: ' + kern };
+      if (m.flushes > m.vragen * 0.1) return { staat: 'LET OP', detail: 'meer dan één op de tien rondes onnet: ' + kern + ' — het BT-log zegt waarom (time-outs, "RX zonder vraag")' };
+      return kern;
+    }
+  },
+
   // ── #302: loopt de responstijd op, waardoor, en wat zet hem terug? ──
   // Staat bewust ACHTERAAN: als de drift er is, voert deze proef zelf het
   // experiment uit dat #302 vraagt, en dat raakt de verbinding aan.
