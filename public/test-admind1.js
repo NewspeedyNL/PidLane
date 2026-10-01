@@ -48,6 +48,8 @@ function knip(vanAnker, totAnker, wat) {
 const src = knip('var ADMIN_BRONNEN = {', '__name(handleAdminD1Post', 'het /admin/d1-blok');
 const kolSrc = knip('var _d1Kolommen = ', '__name(d1Kolommen, "d1Kolommen");', 'd1Kolommen()');
 // De leesroute van de app. Niet nagebouwd: de vraag is wat de APP krijgt.
+// Het logarchief (01-10-2026): de routes archief/archiveer roepen het aan.
+const archSrc = knip('// ── Het logarchief (01-10-2026)', '// ── De dagelijkse logronde (#260)', 'logArchiveren()');
 const appSrc = knip('async function handleOpdracht(', '__name(handleOpdracht, "handleOpdracht");', 'handleOpdracht()');
 
 /* Het D1-oppervlak dat deze routes raken: prepare/bind/all/first/run en
@@ -101,7 +103,7 @@ function bouw(opties) {
     d1Kolommen: kolBlok.d1Kolommen,
     D1_NAAM_OK: kolBlok.D1_NAAM_OK
   };
-  const code = (o.bewerk ? o.bewerk(src) : src) + '\n' + appSrc;
+  const code = (o.bewerk ? o.bewerk(src) : src) + '\n' + archSrc + '\n' + appSrc;
   const maak = new Function(...Object.keys(omg),
     code + '\nreturn { get: handleAdminD1Get, post: handleAdminD1Post, app: handleOpdracht, probleem: d1SqlProbleem };');
   const api = maak(...Object.values(omg));

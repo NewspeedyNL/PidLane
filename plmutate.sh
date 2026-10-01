@@ -1115,6 +1115,18 @@ MUTATIES=(
 "worker.js@@      db.prepare(\"UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1 AND id <> ?\").bind(id),\n@@@@test-admind1.js@@een opdracht aanzetten laat de andere aan staan: de app kiest er dan zelf een, zoals op 22-09"
 "worker.js@@      ? await db.batch([db.prepare(\"UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1\"), invoeg])@@      ? [await invoeg.run()]@@test-admind1.js@@een nieuwe actieve opdracht zet de oude niet uit"
 "worker.js@@var D1_OPDRACHT_VELDEN = [\"Naam\", \"Reden\", \"Opdracht\", \"Notitie\"];@@var D1_OPDRACHT_VELDEN = [\"Naam\", \"Reden\", \"Opdracht\", \"Notitie\", \"Gewijzigd\"];@@test-admind1.js@@Gewijzigd is met de hand te zetten: dan kies je stil welke opdracht er rijdt"
+# ── het logarchief (01-10-2026) ──
+# Oude logregels worden samengevat en dan gewist. De fouten die ertoe doen:
+# uitkomsten mee wissen, bij een tweede ronde het archief overschrijven of
+# dubbel tellen, archiveren en wissen los van elkaar (dan kan een halve ronde
+# een archiefrij achterlaten die de volgende ronde nog eens telt), en een
+# beheerknop die zonder te vragen wist.
+"worker.js@@  stmts.push(db.prepare(\`DELETE FROM logregels WHERE \${BINNEN} AND \${LA_WEG}\`)@@  stmts.push(db.prepare(\`DELETE FROM logregels WHERE \${BINNEN}\`)@@test-logarchief.js@@de archiefronde wist ook de uitkomstregels: het antwoord op een issue is weg"
+"worker.js@@      regels: (Number(a && a.regels) || 0) + (Number(g.regels) || 0),@@      regels: (Number(g.regels) || 0),@@test-logarchief.js@@een tweede ronde op dezelfde rit overschrijft het aantal regels in plaats van op te tellen"
+"worker.js@@      uitkomsten: Math.max(Number(a && a.uitkomsten) || 0, Number(g.uitkomsten) || 0),@@      uitkomsten: (Number(a && a.uitkomsten) || 0) + (Number(g.uitkomsten) || 0),@@test-logarchief.js@@de uitkomsten die blijven staan worden elke ronde opnieuw bij het archief opgeteld"
+"worker.js@@  const BINNEN = \`ontvangen < ? AND (id <= ? OR NOT \${LA_WEG})\`;@@  const BINNEN = \`ontvangen < ? AND id <= ?\`;@@test-logarchief.js@@een uitkomst na de laatste gewiste regel van een rit valt buiten het archief: issues en uitkomsten ontbreken"
+"worker.js@@  const res = await db.batch(stmts);@@  const res = []; for (const st of stmts) res.push(await st.run());@@test-logarchief.js@@archiveren en wissen in losse stappen: faalt het wissen, dan blijft er een archiefrij die de volgende ronde dubbel telt"
+"worker.js@@proef: b0.proef !== false@@proef: b0.proef === true@@test-logarchief.js@@de beheerknop wist zonder proef:false — een klik zonder proefdraaien gooit regels weg"
 # De beheerpagina zelf (bproef-beheerpagina.js). Drie stille fouten die er
 # allemaal goed uitzien: een afgekeurde opdracht gaat tóch aan (de app wijst
 # hem bij de start af en de rit rijdt zonder dat iemand het weet), het vangnet
