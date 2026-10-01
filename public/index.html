@@ -509,68 +509,7 @@ function closeConnOv(){
   </style>
 
   <!-- ── Ambient background: OBD-hartslag, toerenteller, CAN-bus ── -->
-  <div id="plAmbient" aria-hidden="true">
-    <div class="pl-grid"></div>
-    <div class="pl-glow"></div>
-    <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice">
-
-      <!-- Toerenteller rechtsonder: gekleurde zones + redline -->
-      <g transform="translate(1190, 900)">
-        <path class="pl-zone-g" stroke-width="6" d="M -340 0 A 340 340 0 0 1 0 -340"/>
-        <path class="pl-zone-a" stroke-width="6" d="M 0 -340 A 340 340 0 0 1 260.5 -218.6"/>
-        <path class="pl-zone-r" stroke-width="6" d="M 260.5 -218.6 A 340 340 0 0 1 340 0"/>
-        <path class="pl-tacho" stroke-width="1" d="M -270 0 A 270 270 0 0 1 270 0"/>
-        <g class="pl-tacho pl-tick" stroke-width="2">
-          <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(15)"/>
-          <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(45)"/>
-          <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(75)"/>
-          <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(105)"/>
-          <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(135)"/>
-          <line x1="-340" y1="0" x2="-312" y2="0" transform="rotate(165)"/>
-        </g>
-      </g>
-      <!-- Naald sweept mee met de toeren (transform-origin via CSS) -->
-      <g class="pl-needle-g">
-        <line class="pl-needle" x1="1190" y1="900" x2="930" y2="750" stroke-width="4" stroke-linecap="round"/>
-      </g>
-      <circle class="pl-hub" cx="1190" cy="900" r="8"/>
-
-      <!-- OBD2-connector silhouet linksonder (2x8 pinnen) -->
-      <g transform="translate(90, 790)">
-        <path class="pl-obd" d="M 0 0 L 220 0 L 200 64 L 20 64 Z" stroke-width="2"/>
-        <g class="pl-obd-pin">
-          <rect x="26"  y="14" width="14" height="10" rx="2"/><rect x="49"  y="14" width="14" height="10" rx="2"/>
-          <rect x="72"  y="14" width="14" height="10" rx="2"/><rect x="95"  y="14" width="14" height="10" rx="2"/>
-          <rect x="118" y="14" width="14" height="10" rx="2"/><rect x="141" y="14" width="14" height="10" rx="2"/>
-          <rect x="164" y="14" width="14" height="10" rx="2"/><rect x="187" y="14" width="14" height="10" rx="2"/>
-          <rect x="32"  y="38" width="14" height="10" rx="2"/><rect x="55"  y="38" width="14" height="10" rx="2"/>
-          <rect x="78"  y="38" width="14" height="10" rx="2"/><rect x="101" y="38" width="14" height="10" rx="2"/>
-          <rect x="124" y="38" width="14" height="10" rx="2"/><rect x="147" y="38" width="14" height="10" rx="2"/>
-          <rect x="170" y="38" width="14" height="10" rx="2"/><rect x="193" y="38" width="14" height="10" rx="2"/>
-        </g>
-      </g>
-
-      <!-- CAN-bus traces met knooppunten -->
-      <path class="pl-trace" d="M 200 790 L 200 700 L 420 700 L 420 620"/>
-      <path class="pl-trace" d="M 240 790 L 240 660 L 640 660"/>
-      <path class="pl-trace" d="M 1250 620 L 1250 520 L 1050 520"/>
-      <circle class="pl-node" cx="420" cy="620" r="4"/>
-      <circle class="pl-node" cx="640" cy="660" r="4"/>
-      <circle class="pl-node" cx="1050" cy="520" r="4"/>
-
-      <!-- Zwevende hex-frames: request → response -->
-      <text class="pl-hex" x="120" y="620">01 0C 0D 05 04</text>
-      <text class="pl-hex pl-hex-hot" x="120" y="648">41 0C 1A F8 0D 3C</text>
-      <text class="pl-hex" x="1010" y="480">09 02 · VIN</text>
-      <text class="pl-hex" x="660" y="720">7E8 06 41 05 6E</text>
-      <text class="pl-hex pl-hex-hot" x="1120" y="440">P0000 — geen fouten</text>
-
-      <!-- De hartslag: idle-lijn met QRS-pieken -->
-      <path class="pl-pulse-echo" d="M -20 560 L 260 560 L 300 548 L 340 560 L 560 560 L 585 560 L 600 505 L 618 610 L 636 560 L 900 560 L 940 550 L 980 560 L 1160 560 L 1180 560 L 1196 515 L 1214 600 L 1232 560 L 1460 560"/>
-      <path class="pl-pulse" pathLength="2000" d="M -20 560 L 260 560 L 300 548 L 340 560 L 560 560 L 585 560 L 600 505 L 618 610 L 636 560 L 900 560 L 940 550 L 980 560 L 1160 560 L 1180 560 L 1196 515 L 1214 600 L 1232 560 L 1460 560"/>
-
-    </svg>
-  </div>
+  <div id="plAmbient" aria-hidden="true"></div>
 
   <div class="welcome-header">
     <div class="welcome-header-row">

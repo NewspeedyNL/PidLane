@@ -57,6 +57,12 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('Mijn auto licht op', (await app.ev(tab)) === 'auto', await app.ev(tab));
     toets('de statusregel zegt Demo, niet "Systeem"', (await app.ev(`document.getElementById('sysTxt').textContent`)) === 'Demo');
     toets('de demo zonder login is geen garage', !(await app.ev(`document.body.classList.contains('pl-garage')`)));
+    // Het startscherm hertekende zich bij elk beeldje (01-10-2026, #302): de
+    // achtergrond had drie oneindige animaties. Nu een vast plaatje; een
+    // animatie die toch weer in het startscherm loopt, is hier rood.
+    const bewegend = await app.ev(`document.getAnimations().filter(function(a){ var t=a.effect&&a.effect.target; return a.playState==='running' && a.effect.getTiming().iterations===Infinity && t && document.getElementById('welcomeScreen').contains(t); }).map(function(a){ return a.animationName; })`);
+    toets('het startscherm heeft geen eindeloos bewegende achtergrond', bewegend.length === 0, bewegend.join(', '));
+    toets('de achtergrond is een vast plaatje', /pidlane-start-achtergrond/.test(await app.ev(`getComputedStyle(document.getElementById('plAmbient')).backgroundImage`)));
     toets('Admin staat niet in Meer voor de demo', !(await app.ev(toon('admGroupBtn'))));
 
     console.log('\n3. De tabs gaan waar ze zeggen');
