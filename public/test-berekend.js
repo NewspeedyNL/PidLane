@@ -126,5 +126,42 @@ ok(B.oordeel(Object.assign({}, vmo, { vermogen: { volgas: 140, volgasN: 5 } })).
 ok(B.oordeel(Object.assign({}, vmo, { vermogen: { volgas: 104, volgasN: 5 } })).staat === 'ok', '104 kW bij 110 kW: ok');
 ok(B.oordeel({ pids: {}, geweigerd: [], vermogen: {} }).staat === 'LET OP', 'niets gerekend: LET OP');
 
+console.log('\n— bronnen van één moment (#337) —');
+// De echte tik(), in een eigen context: pidHist met tijden, een verbonden
+// auto, en de bronnen die de CX-5 geeft. Testrun 8.3 zag CA10 tot 96,7%:
+// 0110 al gezakt na gas los, 0162 nog van een seconde eerder.
+function rit(hist, geenTik){
+  const nu = Date.now();
+  const c = { console: { log(){}, warn(){} }, Math, JSON, Object, Array, String, Number, Set, Date, isFinite,
+    ALL_PID_DEFS: {}, connected: true, demoMode: false,
+    supportedPIDs: new Set(['010C', '010D', '0110', '0162', '0163']), activePIDs: new Set(), pidHist: {} };
+  c.window = c;
+  vm.createContext(c);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-berekend.js'), 'utf8'), c, { filename: 'pidlane-berekend.js' });
+  Object.keys(hist).forEach(p => { c.pidHist[p] = [{ t: nu - hist[p][1], v: hist[p][0] }]; });
+  if (!geenTik) c.PLBerekend.tik();
+  return c.PLBerekend;
+}
+// Gas los: 0110 vers en laag (2 g/s), 0162 nog 60% van 2,5 s eerder.
+let Q = rit({ '010C': [2500, 50], '010D': [80, 100], '0110': [2, 50], '0162': [60, 2500], '0163': [250, 50] });
+let st = Q.stats();
+ok(!st.pids.CA10, 'gas los: 0162 van 2,5 s eerder naast een verse 0110 geeft geen rendement', st.pids.CA10);
+ok(st.scheef && st.scheef.CA10 === 1, 'en dat wordt geteld als overgeslagen', st.scheef);
+ok(st.pids.CA03 && st.pids.CA03.n === 1, 'CA03 (0110 en 010D binnen 50 ms) rekent gewoon door', st.pids.CA03);
+// TEGENPROEF: dezelfde waarden, nu van één moment — dan rekent hij wel, en
+// het rendement is dan hoog: de klem ervoor bestaat en blijft rood melden.
+Q = rit({ '010C': [2500, 50], '010D': [80, 100], '0110': [2, 50], '0162': [60, 300], '0163': [250, 50] });
+ok(Q.stats().pids.CA10 && Q.stats().pids.CA10.n === 1, 'TEGENPROEF: dezelfde bronnen binnen 1 s: CA10 wordt wel gerekend', Q.stats().pids);
+ok(Q.maat('berekend-buiten') >= 1 && Q.maat('berekend-rendement-max') > 45,
+   'en dan meldt de app-maat het onmogelijke rendement (buiten ' + Q.maat('berekend-buiten') + ', max ' + Q.maat('berekend-rendement-max') + ')');
+ok(Q.samen([0, 1000]) && !Q.samen([0, 1001]) && Q.samen([5]) && Q.samen([]), 'samen(): grens op precies ' + Q.SAMEN_MS + ' ms');
+ok(rit({}, true).maat('berekend-buiten') === null && rit({}, true).maat('berekend-n') === null && rit({}, true).maat('berekend-rendement-max') === null,
+   'vóór de eerste berekening: de app-maten zijn null (niet gemeten), niet 0');
+// Optrekken rond 5 km/u: CA03 kan echt boven 50 komen, en dat is de rand van
+// de tegel en geen fout in de som.
+ok(B.bereken('CA03', { '015E': 6, '010D': 6 }, {}) === B.DEFS.CA03.max, 'CA03 klemt op het bereik van de tegel (' + B.DEFS.CA03.max + '), niet op 99', B.bereken('CA03', { '015E': 6, '010D': 6 }, {}));
+Q = rit({ '010C': [1500, 50], '010D': [6, 100], '0110': [30, 50] });
+ok(Q.stats().pids.CA03 && Q.stats().pids.CA03.buiten === 0, 'optrekken bij 6 km/u telt niet meer als buiten bereik', Q.stats().pids.CA03);
+
 console.log(fouten ? `\n${fouten} van ${n} FOUT` : `\nAlle ${n} goed`);
 process.exit(fouten ? 1 : 0);

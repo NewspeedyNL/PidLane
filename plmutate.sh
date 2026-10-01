@@ -1234,7 +1234,7 @@ MUTATIES=(
 "public/pidlane-bt.js@@  if(/^CA[0-9A-F]{2}1?$/i.test(String(cmd||'').trim())){@@  if(false){@@bproef-berekend.js@@sendCmd laat een berekende PID door naar de adapter"
 "public/pidlane-berekend.js@@    if (isDiesel && set.indexOf('0110')>=0) continue;@@@@test-berekend.js@@een dieselverbruik uit de luchtmassa (een diesel loopt arm)"
 "public/pidlane-berekend.js@@      if (l===null || typeof kmh!=='number' || kmh<5) return null;@@      if (l===null || typeof kmh!=='number' || kmh<=0) return null;@@test-berekend.js@@liters per 100 km bij stapvoets rijden: delen door bijna nul"
-"public/pidlane-berekend.js@@  return (nu-(x.t||0))<=max ? x.v : undefined;@@  return x.v;@@bproef-berekend.js@@een berekende PID rekent door op bronwaarden van tien seconden oud"
+"public/pidlane-berekend.js@@  return (nu-(x.t||0))<=max ? { v:x.v, t:x.t||0 } : undefined;@@  return { v:x.v, t:x.t||0 };@@bproef-berekend.js@@een berekende PID rekent door op bronwaarden van tien seconden oud"
 "public/pidlane-visueel.js@@  if(p.length<5 || p[p.length-1].t-p[0].t<20000) return null;@@  if(p.length<2) return null;@@test-visueel.js@@de koelwatertrend spreekt zich uit op vier metingen"
 "public/pidlane-visueel.js@@  return TREK.filter(function(t){ return !t.turbo || turbo; }).map(function(t){@@  return TREK.map(function(t){@@test-visueel.js@@de laaddruk staat in de trekstrook van een auto zonder turbo"
 "public/pidlane-garage.js@@    if (!/^PidLane — Waakronde/.test(regels[0] || '')) return null;@@@@test-garage.js@@elk rapport wordt als waakrapport gelezen"
@@ -1553,6 +1553,11 @@ MUTATIES=(
 "public/index.html@@id=\"plLiveDeel\"@@id=\"plLiveDelen\"@@test-help.js@@een knop met een uitroepteken is hernoemd en de tip vindt hem niet meer"
 "public/index.html@@🩺 Check na verbinden<span@@🩺 Check na het verbinden<span@@test-help.js@@een menuregel is hernoemd en de handleiding noemt de oude tekst"
 "public/pidlane-help-inhoud.js@@Codes worden met de hand verstuurd.@@Codes kosten € 4,99.@@test-help.js@@er staat een prijs in de handleiding"
+# ── berekende PIDs uit bronnen van één moment (#337, 01-10-2026) ──
+"public/pidlane-berekend.js@@      if (!samen(tijden)){@@      if (false){@@test-berekend.js@@bronnen van verschillende momenten rekenen weer samen: 96,7% rendement bij gas los"
+"public/pidlane-berekend.js@@  return Math.max.apply(null, t)-Math.min.apply(null, t)<=SAMEN_MS;@@  return Math.max.apply(null, t)-Math.min.apply(null, t)<=VERS_MS;@@test-berekend.js@@de bronnen van één berekening mogen weer 3 s uit elkaar liggen"
+"public/pidlane-berekend.js@@      return r1(Math.min(DEFS.CA03.max, Math.max(0, l/kmh*100)));@@      return r1(Math.min(99, Math.max(0, l/kmh*100)));@@test-berekend.js@@CA03 klemt weer op 99 en elk optrekken telt als buiten bereik"
+"public/pidlane-berekend.js@@      return namen.length ? namen.reduce((a,k)=>a+p[k].buiten, 0) : null;@@      return namen.length ? 0 : null;@@test-berekend.js@@de app-maat berekend-buiten ziet een waarde buiten bereik niet"
 )
 
 echo
