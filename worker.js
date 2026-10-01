@@ -1400,6 +1400,264 @@ async function handleConfigPost(request, env, ctx) {
   return json({ ok: true, results: [{ op: "d1", ok: true, status: 200, aantal: items.length }] }, 200);
 }
 __name(handleConfigPost, "handleConfigPost");
+
+// ── De rest van Airtable in D1 (#327, 01-10-2026) ────────────────────
+// Na AppConfig de overige tabellen: Users, Klanten, TokenCodes, TokenLog en
+// het veldlab. Eén laag voor allemaal, zodat de logica eromheen blijft wat
+// hij was: een record heeft hier dezelfde vorm als bij Airtable,
+// `{ id, createdTime, fields }`, met dezelfde veldnamen en dezelfde rec-id's.
+//
+// ELKE TABEL ZET ZICHZELF EEN KEER OVER, zoals AppConfig: bij de eerste
+// aanroep leest de Worker de Airtable-tabel helemaal (met paginering), zet
+// alles erin met INSERT OR IGNORE en noteert het in d1_overzet. Mislukt dat,
+// dan wordt er niets genoteerd en probeert de volgende aanroep het opnieuw.
+// Daarna komt Airtable er voor die tabel niet meer aan te pas; wat iemand
+// daar nog met de hand wijzigt, ziet de app niet.
+//
+// DE VELDEN STAAN HIER EEN KEER. Een veld dat niet in de lijst staat wordt
+// geweigerd (zoals Airtable een onbekend veld weigert) en bij de overzet
+// overgeslagen en gemeld: "Salt (ongebruikt)" in Klanten is zo'n veld, met
+// opzet. De kolomnamen zijn de Airtable-veldnamen, zodat de adminbrowser en
+// beheer.html dezelfde namen blijven zien.
+//
+//   t = tekst · n = getal · b = vinkje (0/1, terug als true/false)
+//   j = lijst als JSON (meerkeuzevelden, zoals Akkoorden)
+//
+// EEN VINKJE KOMT TERUG ALS true OF false. Airtable gaf een uitgevinkt veld
+// helemaal niet terug, waardoor `f.Active === false` nooit waar kon zijn: een
+// gebruiker uitzetten deed niets. Na de overzet staat een uitgevinkt veld als
+// NULL (er was niets), en pas een expliciete false maakt hem false.
+var D1_TABELLEN = {
+  gebruikers: {
+    d1: "gebruikers", base: "AIRTABLE_CONFIG_BASE", tabel: "AIRTABLE_USERS_TABLE",
+    velden: { User: "t", PassHash: "t", Role: "t", Label: "t", Active: "b" },
+    indexen: ['CREATE INDEX IF NOT EXISTS idx_gebruikers_user ON gebruikers (LOWER("User"))']
+  },
+  klanten: {
+    d1: "klanten", base: "AIRTABLE_CONFIG_BASE", tabel: "AIRTABLE_KLANTEN_TABLE",
+    velden: {
+      Email: "t", PassHash: "t", Saldo: "n", TotaalGekocht: "n", Naam: "t", Status: "t",
+      ResetToken: "t", ResetVerloopt: "t", Aangemaakt: "t", LaatsteLogin: "t", Opmerking: "t",
+      Akkoorden: "j", Audit: "t", AkkoordOp: "t", StartTegoedGegeven: "b", VerwijderdOp: "t",
+      Ontwikkelaar: "b", TegoedUit: "b"
+    },
+    indexen: [
+      'CREATE INDEX IF NOT EXISTS idx_klanten_email ON klanten (LOWER("Email"))',
+      'CREATE INDEX IF NOT EXISTS idx_klanten_status ON klanten ("Status")'
+    ]
+  },
+  codes: {
+    d1: "tegoedcodes", base: "AIRTABLE_CONFIG_BASE", tabel: "AIRTABLE_CODES_TABLE",
+    velden: {
+      Code: "t", Credits: "n", Gebruikt: "b", GebruiktOp: "t", GebruiktDoor: "t", Batch: "t",
+      Waarde: "n", Aangemaakt: "t", Vervalt: "t", Opmerking: "t"
+    },
+    indexen: ['CREATE INDEX IF NOT EXISTS idx_tegoedcodes_code ON tegoedcodes ("Code")']
+  },
+  kasboek: {
+    d1: "kasboek", base: "AIRTABLE_CONFIG_BASE", tabel: "AIRTABLE_TOKENLOG_TABLE",
+    velden: {
+      Moment: "t", Klant: "t", Soort: "t", Credits: "n", SaldoNa: "n", TokensIn: "n",
+      TokensUit: "n", Model: "t", Details: "t"
+    },
+    indexen: ['CREATE INDEX IF NOT EXISTS idx_kasboek_moment ON kasboek ("Moment")']
+  },
+  veldlab: {
+    d1: "veldlab_sessies", base: "AIRTABLE_VL_BASE", tabel: "AIRTABLE_VL_TABLE",
+    velden: {
+      SessieID: "t", Datum: "t", Type: "t", Tester: "t", Device: "t", Merk: "t", Model: "t",
+      Jaar: "t", Cell: "t", Verdict: "t", PidsOk: "n", PidsFail: "n", AvgMs: "n", DTC: "t",
+      JSON: "t", Quality: "t", QualityReden: "t", Supported: "n", PidsMissing: "n",
+      PidsUnsupported: "n", PidsImplausible: "n"
+    },
+    indexen: ['CREATE INDEX IF NOT EXISTS idx_veldlab_sessieid ON veldlab_sessies ("SessieID")']
+  },
+  referentie: {
+    d1: "referentie", base: "AIRTABLE_VL_BASE", tabel: "AIRTABLE_REF_TABLE",
+    velden: {
+      RefID: "t", Merk: "t", Model: "t", Jaar: "t", CALID: "t", Bevestigingen: "n",
+      PidsVerwacht: "n", Bijgewerkt: "t", JSON: "t"
+    },
+    indexen: ['CREATE UNIQUE INDEX IF NOT EXISTS idx_referentie_refid ON referentie ("RefID")']
+  }
+};
+var D1_SOORT = { t: "TEXT", n: "REAL", b: "INTEGER", j: "TEXT" };
+function d1TabelSchema(def) {
+  const kol = Object.keys(def.velden).map((v) => `"${v}" ${D1_SOORT[def.velden[v]]}`);
+  return [
+    `CREATE TABLE IF NOT EXISTS ${def.d1} (id TEXT PRIMARY KEY, rij_gemaakt TEXT NOT NULL, ${kol.join(", ")})`,
+    ...(def.indexen || [])
+  ];
+}
+__name(d1TabelSchema, "d1TabelSchema");
+var D1_SCHEMA = Object.keys(D1_TABELLEN).flatMap((k) => d1TabelSchema(D1_TABELLEN[k]));
+
+function d1Naar(soort, v, veld) {
+  if (v === undefined || v === null) return null;
+  if (soort === "t") return v === "" ? null : String(v);
+  if (soort === "n") {
+    if (v === "") return null;
+    const g = Number(v);
+    if (!Number.isFinite(g)) throw new Error(`d1_veld_geen_getal_${veld}`);
+    return g;
+  }
+  if (soort === "b") return v === true || v === 1 || v === "true" || v === "1" ? 1 : 0;
+  if (soort === "j") return JSON.stringify(Array.isArray(v) ? v : [v]);
+  throw new Error(`d1_onbekende_soort_${soort}`);
+}
+__name(d1Naar, "d1Naar");
+function d1Uit(soort, v) {
+  if (v === null || v === undefined) return undefined;
+  if (soort === "n") return Number(v);
+  if (soort === "b") return v === 1 || v === true;
+  if (soort === "j") {
+    try { return JSON.parse(v); }
+    catch (e) { try { console.error("[d1] lijstveld is geen JSON, als tekst doorgegeven"); } catch (_) { /* stil: melden mag de stroom nooit breken */ } return v; }
+  }
+  return String(v);
+}
+__name(d1Uit, "d1Uit");
+function d1Record(def, rij) {
+  if (!rij) return null;
+  const fields = {};
+  for (const v of Object.keys(def.velden)) {
+    const w = d1Uit(def.velden[v], rij[v]);
+    if (w !== undefined) fields[v] = w;
+  }
+  return { id: String(rij.id), createdTime: rij.rij_gemaakt || "", fields };
+}
+__name(d1Record, "d1Record");
+function d1Veld(def, veld) {
+  if (!Object.prototype.hasOwnProperty.call(def.velden, veld)) throw new Error(`d1_onbekend_veld_${def.d1}_${veld}`);
+  return `"${veld}"`;
+}
+__name(d1Veld, "d1Veld");
+function d1NieuwId() {
+  const t = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const b = crypto.getRandomValues(new Uint8Array(14));
+  let s = "rec";
+  for (const x of b) s += t[x % t.length];
+  return s;
+}
+__name(d1NieuwId, "d1NieuwId");
+
+async function d1Overzet(env, db, sleutel, def) {
+  const base = resolveBase(env, def.base);
+  const table = cfg(env, def.tabel);
+  const recs = [];
+  let offset = "";
+  do {
+    const url = `https://api.airtable.com/v0/${base}/${encodeURIComponent(table)}?pageSize=100` +
+      (offset ? `&offset=${encodeURIComponent(offset)}` : "");
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}` } });
+    if (!r.ok) throw new Error(`airtable_overzet_${sleutel}_${r.status}`);
+    const d = await r.json();
+    for (const rec of d.records || []) recs.push(rec);
+    offset = d.offset || "";
+  } while (offset);
+  const velden = Object.keys(def.velden);
+  const overgeslagen = new Set();
+  const stmts = recs.map((rec) => {
+    const f = rec.fields || {};
+    for (const k of Object.keys(f)) if (!def.velden[k]) overgeslagen.add(k);
+    return db.prepare(
+      `INSERT OR IGNORE INTO ${def.d1} (id, rij_gemaakt, ${velden.map((v) => `"${v}"`).join(", ")}) ` +
+      `VALUES (?, ?, ${velden.map(() => "?").join(", ")})`
+    ).bind(String(rec.id), rec.createdTime || new Date().toISOString(), ...velden.map((v) => d1Naar(def.velden[v], f[v], v)));
+  });
+  stmts.push(db.prepare("INSERT OR IGNORE INTO d1_overzet (naam, op, aantal) VALUES (?, ?, ?)")
+    .bind(sleutel, new Date().toISOString(), recs.length));
+  // In stukken: een veldlabsessie draagt tot 95 KB JSON, en één batch met
+  // alles erin wordt voor D1 te groot. De notitie staat in het laatste stuk;
+  // gaat er halverwege iets mis, dan doet de volgende aanroep het opnieuw en
+  // slaat INSERT OR IGNORE over wat er al stond.
+  for (let i = 0; i < stmts.length; i += 25) await db.batch(stmts.slice(i, i + 25));
+  try {
+    console.log(`[d1] ${sleutel}: ${recs.length} records uit Airtable overgezet` +
+      (overgeslagen.size ? `, velden overgeslagen: ${[...overgeslagen].join(", ")}` : ""));
+  } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+}
+__name(d1Overzet, "d1Overzet");
+
+var _d1TabelKlaar = new Set();
+async function d1Tabel(env, sleutel) {
+  const def = D1_TABELLEN[sleutel];
+  if (!def) throw new Error("d1_onbekende_tabel_" + sleutel);
+  const db = env && env.LOGDB;
+  if (!db) throw new Error("d1_geen_logdb");
+  if (!_d1TabelKlaar.has(sleutel)) {
+    for (const st of [...CONFIG_SCHEMA, ...d1TabelSchema(def)]) await db.prepare(st).run();
+    const al = await db.prepare("SELECT 1 AS j FROM d1_overzet WHERE naam = ?").bind(sleutel).first();
+    if (!al && env.AIRTABLE_TOKEN) await d1Overzet(env, db, sleutel, def);
+    _d1TabelKlaar.add(sleutel);
+  }
+  return { db, def };
+}
+__name(d1Tabel, "d1Tabel");
+
+// De bewerkingen. Elk geeft een record in Airtable-vorm terug (of een lijst
+// daarvan), en elk gooit bij een onbekend veld: liever een fout dan een
+// waarde die stil verdwijnt.
+async function atAlle(env, sleutel, o = {}) {
+  const { db, def } = await d1Tabel(env, sleutel);
+  const r = await db.prepare(
+    `SELECT * FROM ${def.d1}${o.waar ? " WHERE " + o.waar : ""}${o.orde ? " ORDER BY " + o.orde : ""}` +
+    (o.limiet ? ` LIMIT ${Math.max(1, Math.floor(o.limiet))}` : "")
+  ).bind(...(o.waarden || [])).all();
+  return ((r && r.results) || []).map((x) => d1Record(def, x));
+}
+__name(atAlle, "atAlle");
+async function atZoek(env, sleutel, veld, waarde, o = {}) {
+  const { db, def } = await d1Tabel(env, sleutel);
+  const kol = d1Veld(def, veld);
+  const rij = await db.prepare(
+    o.lower ? `SELECT * FROM ${def.d1} WHERE LOWER(${kol}) = LOWER(?) LIMIT 1` : `SELECT * FROM ${def.d1} WHERE ${kol} = ? LIMIT 1`
+  ).bind(waarde).first();
+  return d1Record(def, rij);
+}
+__name(atZoek, "atZoek");
+async function atHaal(env, sleutel, id) {
+  const { db, def } = await d1Tabel(env, sleutel);
+  return d1Record(def, await db.prepare(`SELECT * FROM ${def.d1} WHERE id = ?`).bind(String(id)).first());
+}
+__name(atHaal, "atHaal");
+async function atPatch(env, sleutel, id, fields) {
+  const { db, def } = await d1Tabel(env, sleutel);
+  const namen = Object.keys(fields || {});
+  if (namen.length) {
+    const zet = namen.map((v) => `${d1Veld(def, v)} = ?`).join(", ");
+    const r = await db.prepare(`UPDATE ${def.d1} SET ${zet} WHERE id = ?`)
+      .bind(...namen.map((v) => d1Naar(def.velden[v], fields[v], v)), String(id)).run();
+    if (!r || !r.meta || !r.meta.changes) throw new Error(`d1_niet_gevonden_${def.d1}_${id}`);
+  }
+  return atHaal(env, sleutel, id);
+}
+__name(atPatch, "atPatch");
+async function atMaak(env, sleutel, fields) {
+  const { db, def } = await d1Tabel(env, sleutel);
+  const namen = Object.keys(fields || {});
+  namen.forEach((v) => d1Veld(def, v));
+  const id = d1NieuwId();
+  await db.prepare(
+    `INSERT INTO ${def.d1} (id, rij_gemaakt${namen.map((v) => `, "${v}"`).join("")}) VALUES (?, ?${namen.map(() => ", ?").join("")})`
+  ).bind(id, new Date().toISOString(), ...namen.map((v) => d1Naar(def.velden[v], fields[v], v))).run();
+  return atHaal(env, sleutel, id);
+}
+__name(atMaak, "atMaak");
+async function atWis(env, sleutel, id) {
+  const { db, def } = await d1Tabel(env, sleutel);
+  const r = await db.prepare(`DELETE FROM ${def.d1} WHERE id = ?`).bind(String(id)).run();
+  return !!(r && r.meta && r.meta.changes);
+}
+__name(atWis, "atWis");
+// Bijwerken op een sleutelveld, of aanmaken als hij er niet is: wat Airtable
+// `performUpsert` noemde. Alleen voor velden met een UNIQUE-index.
+async function atUpsert(env, sleutel, opVeld, fields) {
+  const bestaand = await atZoek(env, sleutel, opVeld, fields[opVeld]);
+  if (bestaand) return atPatch(env, sleutel, bestaand.id, fields);
+  return atMaak(env, sleutel, fields);
+}
+__name(atUpsert, "atUpsert");
 function adminOnly(request, env) {
   const t = request.headers.get("X-Admin-Token") || "";
   return !!(env.ADMIN_TOKEN && t && safeEqual(t, env.ADMIN_TOKEN));

@@ -286,3 +286,26 @@ ALTER TABLE kp_voertuig ADD COLUMN eigen_pids TEXT;
 -- ══════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS app_config (sleutel TEXT PRIMARY KEY, waarde TEXT NOT NULL, omschrijving TEXT, bijgewerkt TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS d1_overzet (naam TEXT PRIMARY KEY, op TEXT NOT NULL, aantal INTEGER NOT NULL);
+
+-- ══════════════════════════════════════════════════════════════════
+--  DE REST VAN AIRTABLE (#327, 01-10-2026)
+-- ──────────────────────────────────────────────────────────────────
+--  Users, Klanten, TokenCodes, TokenLog, veldlab-Sessies en Referentie.
+--  De Worker maakt deze tabellen zelf aan (D1_SCHEMA in worker.js, gemaakt
+--  uit D1_TABELLEN; letterlijk gelijk, test-d1laag.js bewaakt dat) en zet
+--  elke tabel één keer vanzelf over uit Airtable (notitie in d1_overzet).
+--  Kolomnamen = de Airtable-veldnamen; id = het rec-id van Airtable.
+-- ══════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS gebruikers (id TEXT PRIMARY KEY, rij_gemaakt TEXT NOT NULL, "User" TEXT, "PassHash" TEXT, "Role" TEXT, "Label" TEXT, "Active" INTEGER);
+CREATE INDEX IF NOT EXISTS idx_gebruikers_user ON gebruikers (LOWER("User"));
+CREATE TABLE IF NOT EXISTS klanten (id TEXT PRIMARY KEY, rij_gemaakt TEXT NOT NULL, "Email" TEXT, "PassHash" TEXT, "Saldo" REAL, "TotaalGekocht" REAL, "Naam" TEXT, "Status" TEXT, "ResetToken" TEXT, "ResetVerloopt" TEXT, "Aangemaakt" TEXT, "LaatsteLogin" TEXT, "Opmerking" TEXT, "Akkoorden" TEXT, "Audit" TEXT, "AkkoordOp" TEXT, "StartTegoedGegeven" INTEGER, "VerwijderdOp" TEXT, "Ontwikkelaar" INTEGER, "TegoedUit" INTEGER);
+CREATE INDEX IF NOT EXISTS idx_klanten_email ON klanten (LOWER("Email"));
+CREATE INDEX IF NOT EXISTS idx_klanten_status ON klanten ("Status");
+CREATE TABLE IF NOT EXISTS tegoedcodes (id TEXT PRIMARY KEY, rij_gemaakt TEXT NOT NULL, "Code" TEXT, "Credits" REAL, "Gebruikt" INTEGER, "GebruiktOp" TEXT, "GebruiktDoor" TEXT, "Batch" TEXT, "Waarde" REAL, "Aangemaakt" TEXT, "Vervalt" TEXT, "Opmerking" TEXT);
+CREATE INDEX IF NOT EXISTS idx_tegoedcodes_code ON tegoedcodes ("Code");
+CREATE TABLE IF NOT EXISTS kasboek (id TEXT PRIMARY KEY, rij_gemaakt TEXT NOT NULL, "Moment" TEXT, "Klant" TEXT, "Soort" TEXT, "Credits" REAL, "SaldoNa" REAL, "TokensIn" REAL, "TokensUit" REAL, "Model" TEXT, "Details" TEXT);
+CREATE INDEX IF NOT EXISTS idx_kasboek_moment ON kasboek ("Moment");
+CREATE TABLE IF NOT EXISTS veldlab_sessies (id TEXT PRIMARY KEY, rij_gemaakt TEXT NOT NULL, "SessieID" TEXT, "Datum" TEXT, "Type" TEXT, "Tester" TEXT, "Device" TEXT, "Merk" TEXT, "Model" TEXT, "Jaar" TEXT, "Cell" TEXT, "Verdict" TEXT, "PidsOk" REAL, "PidsFail" REAL, "AvgMs" REAL, "DTC" TEXT, "JSON" TEXT, "Quality" TEXT, "QualityReden" TEXT, "Supported" REAL, "PidsMissing" REAL, "PidsUnsupported" REAL, "PidsImplausible" REAL);
+CREATE INDEX IF NOT EXISTS idx_veldlab_sessieid ON veldlab_sessies ("SessieID");
+CREATE TABLE IF NOT EXISTS referentie (id TEXT PRIMARY KEY, rij_gemaakt TEXT NOT NULL, "RefID" TEXT, "Merk" TEXT, "Model" TEXT, "Jaar" TEXT, "CALID" TEXT, "Bevestigingen" REAL, "PidsVerwacht" REAL, "Bijgewerkt" TEXT, "JSON" TEXT);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_referentie_refid ON referentie ("RefID");
