@@ -1345,13 +1345,12 @@ MUTATIES=(
 "public/pidlane-motortype.js@@  if(m.length) return { staat:'FOUT'@@  if(false) return { staat:'FOUT'@@test-opslagroute.js@@blok 5 noemt een mislukte opslag goed"
 "public/pidlane-fuel.js@@  return plBewaarBestand(blob,fname);@@  return nativeShareFile(blob,fname);@@test-opslagroute.js@@een PDF-export opent weer het deelmenu in plaats van op te slaan"
 
-# ── 28-09-2026: de Users-tabel niet bij elke login uit Airtable (#327). De
-# besparing zelf, en de drie plekken die voorkomen dat de cache iemand
-# buitensluit of binnenlaat die dat zonder cache niet was.
-"worker.js@@  if (!vers && _usersCache && _usersCache.url === url@@  if (false && _usersCache && _usersCache.url === url@@test-inlogcache.js@@elke login leest de Users-tabel weer vers uit Airtable"
-"worker.js@@    if (res.ok || !uitCache) break;@@    break;@@test-inlogcache.js@@een net gewijzigd wachtwoord werkt pas na vijf minuten"
-"worker.js@@  _usersCache = null;\n  return json({ ok: true, user, created: !hit@@  return json({ ok: true, user, created: !hit@@test-inlogcache.js@@een gebruiker die via /admin/users uit staat, komt er nog vijf minuten in"
-"worker.js@@    _usersCache = null;\n    const job = rehashAirtablePassword@@    const job = rehashAirtablePassword@@test-inlogcache.js@@na het herhashen blijft de oude hash onthouden en herhasht elke login opnieuw"
+# ── de login tegen de gebruikerstabel in D1 (#327). Tot 01-10-2026 stonden
+# hier vier mutaties op de cache van 28-09; die cache is weg sinds de tabel
+# in D1 staat en lezen niets meer kost.
+"worker.js@@      if (f.Active === false) continue;\n      out[name] = {@@      out[name] = {@@test-inlogcache.js@@een via beheer uitgezette gebruiker komt er gewoon in — zoals bij Airtable, waar een uitgevinkt vakje nooit false was"
+"worker.js@@    await atPatch(env, \"gebruikers\", recId, { PassHash: await hashPassword(pass, env) });@@    await hashPassword(pass, env);@@test-inlogcache.js@@een oud sha256-wachtwoord wordt nooit herhasht en blijft voorgoed op het zwakke formaat staan"
+"worker.js@@    if (hit) await atPatch(env, \"gebruikers\", hit.id, fields);\n    else await atMaak(env, \"gebruikers\", fields);@@    if (!hit) await atMaak(env, \"gebruikers\", fields);@@test-inlogcache.js@@een gewijzigd wachtwoord in beheer zegt ok maar wordt niet opgeslagen"
 
 # ── 28-09-2026: Tegoed uit voor een klant met Ontwikkelaar aan. De fouten die
 # gratis AI geven aan wie dat niet hoort te krijgen, of de schakelaar stil
@@ -1489,7 +1488,15 @@ MUTATIES=(
 "worker.js@@  if (await db.prepare(\"SELECT 1 AS j FROM d1_overzet WHERE naam = 'appconfig'\").first()) return db;@@@@test-appconfig.js@@elke opstart leest AppConfig weer uit Airtable, ook na de overzet"
 "worker.js@@      if (f.Key) rijen.push([String(f.Key), JSON.stringify(f.Value ?? \"\"),@@      if (f.Key) rijen.push([String(f.Key), String(f.Value ?? \"\"),@@test-appconfig.js@@een vinkje uit Airtable komt als tekst \"false\" terug, en dat leest de app als waar"
 "worker.js@@    if (!r.ok) throw new Error(\"airtable_config_\" + r.status);@@@@test-appconfig.js@@een mislukte overzet wordt als gelukt genoteerd: de tabel blijft voorgoed leeg"
-"worker.js@@    offset = d.offset || \"\";@@    offset = \"\";@@test-appconfig.js@@de tweede pagina uit Airtable valt weg bij de overzet"
+"worker.js@@    offset = d.offset || \"\";\n  } while (offset);\n  const nu@@    offset = \"\";\n  } while (offset);\n  const nu@@test-appconfig.js@@de tweede pagina uit Airtable valt weg bij de overzet"
+# ── de D1-laag voor de rest van Airtable (#327, 01-10-2026) ──
+"worker.js@@    offset = d.offset || \"\";\n  } while (offset);\n  const velden@@    offset = \"\";\n  } while (offset);\n  const velden@@test-d1laag.js@@bij de overzet van Klanten valt alles na de eerste honderd weg"
+"worker.js@@    if (!al && env.AIRTABLE_TOKEN) await d1Overzet(env, db, sleutel, def);@@    if (env.AIRTABLE_TOKEN) await d1Overzet(env, db, sleutel, def);@@test-d1laag.js@@elke nieuwe isolate leest de hele Airtable-tabel opnieuw, ook na de overzet"
+"worker.js@@    if (!r.ok) throw new Error(\`airtable_overzet_\${sleutel}_\${r.status}\`);@@@@test-d1laag.js@@een mislukte overzet wordt genoteerd als gelukt: de klantentabel blijft voorgoed leeg"
+"worker.js@@    if (!r || !r.meta || !r.meta.changes) throw new Error(\`d1_niet_gevonden_\${def.d1}_\${id}\`);@@@@test-d1laag.js@@een saldowijziging op een klant die niet bestaat zegt gelukt"
+"worker.js@@  if (soort === \"b\") return v === 1 || v === true;@@  if (soort === \"b\") return v === 1 || v === true || undefined;@@test-d1laag.js@@een uitgezet vinkje komt weer als \"geen veld\" terug, zoals bij Airtable, en uitzetten doet niets"
+"worker.js@@  if (!Object.prototype.hasOwnProperty.call(def.velden, veld)) throw@@  if (false) throw@@test-d1laag.js@@een onbekend veld gaat ongezien als kolomnaam de SQL in"
+
 "worker.js@@omschrijving = COALESCE(excluded.omschrijving, app_config.omschrijving)@@omschrijving = excluded.omschrijving@@test-appconfig.js@@opslaan in beheer zonder omschrijving wist de omschrijving"
 # ── het element #btLog blijft begrensd (#302, 01-10-2026) ──
 "public/pidlane-btflow.js@@logEl.appendChild(line); btLogDomAfkappen(logEl); @@logEl.appendChild(line); @@test-btlogdom.js@@het element #btLog groeit weer met elke regel mee: na tien minuten pollen kost elke btDiag 10 ms op de hoofddraad"

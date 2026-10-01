@@ -1,23 +1,22 @@
 // ══════════════════════════════════════════════════════════════════
-// test-inlogcache.js — de Users-tabel niet bij elke login opnieuw (#327)
+// test-inlogcache.js — inloggen tegen de gebruikerstabel in D1 (#327)
 // ──────────────────────────────────────────────────────────────────
-// WAAROM. De Airtable-werkruimte zat op 28-09-2026 op 2.525 van de 1.000
-// calls per maand, en elke login las de hele Users-tabel vers uit. Nu
-// onthoudt de Worker die tabel een paar minuten per isolate.
+// WAAROM. Tot 28-09-2026 las elke login de Users-tabel vers uit Airtable, in
+// een werkruimte met een plafond van 1.000 calls per maand. Toen kwam er een
+// cache van vijf minuten bij; daar ging deze test over. Sinds 01-10-2026 staat
+// de tabel in D1 en is lezen gratis, dus de cache is weg. De naam van dit
+// bestand is gebleven; wat hij toetst is de login zelf:
+//   • de tabel wordt één keer uit Airtable overgezet, daarna nooit meer;
+//   • een gewijzigd wachtwoord geldt meteen, het oude niet meer;
+//   • een via /admin/users uitgezette gebruiker komt er meteen niet meer in
+//     (bij Airtable deed dat niets: een uitgevinkt vinkje kwam daar als
+//     "geen veld" terug, nooit als false);
+//   • een oud sha256-wachtwoord wordt bij de login herhasht, in D1;
+//   • een gewiste gebruiker kan niet meer inloggen.
 //
-// Een cache die "werkt" is de halve uitspraak. De andere helft is dat er
-// niemand buitengesloten of binnengelaten wordt die dat zonder cache niet
-// was. Dus naast "twee logins, één lezing":
-//   • een net gewijzigd wachtwoord en een net toegevoegde gebruiker werken
-//     meteen — een mislukte login op een onthouden tabel leest één keer vers;
-//   • een fout wachtwoord kost hoogstens die ene verse lezing, niet meer;
-//   • na een Airtable-storing kan er meteen weer ingelogd worden;
-//   • na /admin/users (bv. Active uit) en na het herhashen van een oud
-//     wachtwoord leest de volgende login vers;
-//   • na de bewaartijd wordt er weer gelezen.
-//
-// De ECHTE worker.js, als module geladen, door de echte router heen. Alleen
-// fetch naar Airtable is nagebouwd, en die telt mee.
+// De ECHTE worker.js, als module geladen, door de echte router heen, met
+// een echte SQLite als D1. Alleen fetch naar Airtable is nagebouwd, voor de
+// overzet, en die telt mee.
 //
 // Draaien vanuit public/:  node test-inlogcache.js   (exit 0 = goed)
 // ══════════════════════════════════════════════════════════════════
@@ -25,6 +24,8 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
+const { DatabaseSync } = require('node:sqlite');
 
 let fout = 0, n = 0;
 function toets(naam, waar, uitleg) {
@@ -39,58 +40,48 @@ const bron = fs.readFileSync(path.join(__dirname, '..', 'worker.js'), 'utf8');
 async function laadWorker() {
   const i = bron.lastIndexOf('export {');
   if (i < 0) throw new Error('export-blok niet gevonden in worker.js');
-  const mod = bron.slice(0, i) +
-    'export { worker_default as default, hashPassword, USERS_CACHE_MS };\n';
+  const mod = bron.slice(0, i) + 'export { worker_default as default, hashPassword };\n';
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'inlog-')), 'worker.mjs');
   fs.writeFileSync(f, mod);
   return import('file://' + f);
 }
 
-// ── Airtable, nagebouwd: alleen de Users-tabel, en elke GET telt ──────
-const at = { rijen: [], lezingen: 0, kapot: false };
-function atAntwoord(obj, status) {
-  return new Response(JSON.stringify(obj), { status: status || 200, headers: { 'Content-Type': 'application/json' } });
-}
-global.fetch = async (url, opt) => {
-  const u = String(url);
-  const m = (opt && opt.method) || 'GET';
-  if (!/api\.airtable\.com\/v0\/[^/]+\/Users/.test(u)) throw new Error('onverwachte fetch in deze test: ' + m + ' ' + u);
-  if (m === 'GET') {
-    at.lezingen++;
-    if (at.kapot) return atAntwoord({ error: 'kapot' }, 503);
-    return atAntwoord({ records: at.rijen.map((r) => ({ id: r.id, fields: Object.assign({}, r.fields) })) });
-  }
-  const body = opt && opt.body ? JSON.parse(opt.body) : {};
-  if (m === 'PATCH') {
-    for (const rec of body.records || []) {
-      const rij = at.rijen.find((r) => r.id === rec.id);
-      if (rij) Object.assign(rij.fields, rec.fields);
+function maakD1(db) {
+  const stmt = (sql, args) => ({
+    bind: (...a) => stmt(sql, a),
+    async all() { return { results: db.prepare(sql).all(...args) }; },
+    async first() { return db.prepare(sql).get(...args) || null; },
+    async run() { const r = db.prepare(sql).run(...args); return { meta: { changes: Number(r.changes) } }; },
+    _sync() { const r = db.prepare(sql).run(...args); return { meta: { changes: Number(r.changes) } }; }
+  });
+  return {
+    prepare: (sql) => stmt(sql, []),
+    async batch(lijst) {
+      db.exec('BEGIN');
+      try { const uit = lijst.map((s) => s._sync()); db.exec('COMMIT'); return uit; }
+      catch (e) { db.exec('ROLLBACK'); throw e; }
     }
-    return atAntwoord({ records: body.records });
-  }
-  if (m === 'POST') {
-    for (const rec of body.records || []) at.rijen.push({ id: 'rec' + (at.rijen.length + 100), fields: Object.assign({}, rec.fields) });
-    return atAntwoord({ records: body.records });
-  }
-  return atAntwoord({ deleted: true });
+  };
+}
+
+// ── Airtable, nagebouwd: alleen de Users-tabel voor de overzet ────────
+const at = { rijen: [], lezingen: 0 };
+global.fetch = async (url) => {
+  const u = String(url);
+  if (!/api\.airtable\.com\/v0\/[^/]+\/Users/.test(u)) throw new Error('onverwachte fetch in deze test: ' + u);
+  at.lezingen++;
+  return new Response(JSON.stringify({ records: at.rijen }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 };
 
-// De klok is van de test: de bewaartijd moet te overschrijden zijn zonder te wachten.
-let klok = Date.parse('2026-09-28T12:00:00Z');
-Date.now = () => klok;
-
-const env = { SESSION_SECRET: 'test-geheim', AIRTABLE_TOKEN: 'x', ADMIN_TOKEN: 'beheer-token-test' };
+const db = new DatabaseSync(':memory:');
+const env = { SESSION_SECRET: 'test-geheim', AIRTABLE_TOKEN: 'x', ADMIN_TOKEN: 'beheer-token-test', LOGDB: maakD1(db) };
 const ctx = { taken: [], waitUntil(p) { this.taken.push(p); } };
 let ipTeller = 0;
 
 (async () => {
   const W = await laadWorker();
-  toets('USERS_CACHE_MS is een bewaartijd van minuten, niet van uren',
-    typeof W.USERS_CACHE_MS === 'number' && W.USERS_CACHE_MS >= 6e4 && W.USERS_CACHE_MS <= 15 * 6e4,
-    'USERS_CACHE_MS = ' + W.USERS_CACHE_MS);
 
   async function login(user, pass) {
-    klok += 1000;
     const r = await W.default.fetch(new Request('https://api.pidlane.nl/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Origin: 'https://app.pidlane.nl', 'CF-Connecting-IP': '10.0.0.' + (++ipTeller) },
@@ -107,71 +98,55 @@ let ipTeller = 0;
     }), env, ctx);
     return r.status;
   }
-  function tel() { const x = at.lezingen; at.lezingen = 0; return x; }
+  const passHash = (user) => (db.prepare('SELECT "PassHash" AS h FROM gebruikers WHERE "User" = ?').get(user) || {}).h;
 
   at.rijen = [
-    { id: 'recA', fields: { User: 'anna', Role: 'user', Label: 'Anna', Active: true, PassHash: await W.hashPassword('wachtwoord-anna', env) } }
+    { id: 'recAnna0000000001', createdTime: '2026-07-01T00:00:00.000Z',
+      fields: { User: 'anna', Role: 'user', Label: 'Anna', Active: true, PassHash: await W.hashPassword('wachtwoord-anna', env) } },
+    { id: 'recCees0000000003', createdTime: '2026-07-01T00:00:00.000Z',
+      fields: { User: 'cees', Role: 'user', Label: 'Cees', Active: true,
+        PassHash: crypto.createHash('sha256').update('wachtwoord-cees').digest('hex') } }
   ];
 
-  // 1. De besparing zelf.
-  tel();
+  console.log('\n1. De gebruikers komen één keer uit Airtable');
   const s1 = await login('anna', 'wachtwoord-anna');
   const s2 = await login('anna', 'wachtwoord-anna');
-  toets('twee logins kort na elkaar lezen de Users-tabel één keer', s1 === 200 && s2 === 200 && tel() === 1,
-    'status ' + s1 + '/' + s2);
+  toets('twee logins lukken', s1 === 200 && s2 === 200, 'status ' + s1 + '/' + s2);
+  toets('en Airtable werd één keer gelezen (de overzet)', at.lezingen === 1, at.lezingen + ' lezingen');
 
-  // 2. Wachtwoord in Airtable gewijzigd: de onthouden tabel heeft de oude hash.
-  at.rijen[0].fields.PassHash = await W.hashPassword('nieuw-wachtwoord', env);
+  console.log('\n2. Een gewijzigd wachtwoord geldt meteen');
+  const sw = await beheer({ action: 'save', user: 'anna', role: 'user', label: 'Anna', pass: 'nieuw-wachtwoord' });
   const s3 = await login('anna', 'nieuw-wachtwoord');
-  toets('een net gewijzigd wachtwoord werkt meteen (één verse lezing)', s3 === 200 && tel() === 1, 'status ' + s3);
+  const s4 = await login('anna', 'wachtwoord-anna');
+  toets('beheer slaat het op', sw === 200, 'status ' + sw);
+  toets('het nieuwe wachtwoord werkt', s3 === 200, 'status ' + s3);
+  toets('het oude niet meer', s4 === 401, 'status ' + s4);
 
-  // 3. Nieuwe gebruiker, niet in de onthouden tabel.
-  at.rijen.push({ id: 'recB', fields: { User: 'bert', Role: 'user', Label: 'Bert', Active: true, PassHash: await W.hashPassword('wachtwoord-bert', env) } });
-  const s4 = await login('bert', 'wachtwoord-bert');
-  toets('een net toegevoegde gebruiker kan meteen inloggen', s4 === 200, 'status ' + s4);
-  tel();
+  console.log('\n3. Een nieuwe gebruiker kan meteen inloggen');
+  const sn = await beheer({ action: 'save', user: 'bert', role: 'user', label: 'Bert', pass: 'wachtwoord-bert' });
+  toets('beheer maakt hem aan', sn === 200, 'status ' + sn);
+  toets('en hij komt erin', await login('bert', 'wachtwoord-bert') === 200);
 
-  // 4. Fout wachtwoord: begrensd.
-  const s5 = await login('anna', 'fout-wachtwoord');
-  toets('een fout wachtwoord kost hoogstens één verse lezing', s5 === 401 && tel() <= 1, 'status ' + s5);
+  console.log('\n4. Uitzetten via /admin/users werkt meteen');
+  const su = await beheer({ action: 'save', user: 'anna', role: 'user', label: 'Anna', active: false });
+  toets('beheer zet Active uit', su === 200, 'status ' + su);
+  toets('in D1 staat Active op 0, niet leeg', (db.prepare('SELECT "Active" AS a FROM gebruikers WHERE "User" = ?').get('anna') || {}).a === 0);
+  toets('en anna komt er niet meer in', await login('anna', 'nieuw-wachtwoord') === 401);
+  await beheer({ action: 'save', user: 'anna', role: 'user', label: 'Anna', active: true });
+  toets('weer aan: ze komt er weer in', await login('anna', 'nieuw-wachtwoord') === 200);
 
-  // 5. Bewaartijd voorbij.
-  await login('anna', 'nieuw-wachtwoord'); tel();
-  klok += W.USERS_CACHE_MS + 1000;
-  const s6 = await login('anna', 'nieuw-wachtwoord');
-  toets('na de bewaartijd leest een login weer vers', s6 === 200 && tel() === 1, 'status ' + s6);
+  console.log('\n5. Een oud sha256-wachtwoord wordt bij de login herhasht');
+  toets('cees logt in met zijn oude hash', await login('cees', 'wachtwoord-cees') === 200);
+  toets('daarna staat er een pbkdf2-hash in D1', /^pbkdf2_sha256\$/.test(String(passHash('cees'))), String(passHash('cees')).slice(0, 20));
+  toets('en hij komt er nog steeds in', await login('cees', 'wachtwoord-cees') === 200);
 
-  // 6. Een Airtable-storing sluit niemand langer buiten dan hij duurt.
-  klok += W.USERS_CACHE_MS + 1000;
-  at.kapot = true;
-  const s7 = await login('anna', 'nieuw-wachtwoord');
-  at.kapot = false;
-  const s8 = await login('anna', 'nieuw-wachtwoord');
-  toets('tijdens een Airtable-storing lukt inloggen niet (zoals zonder cache)', s7 === 401, 'status ' + s7);
-  toets('na de storing kan er meteen weer ingelogd worden', s8 === 200, 'status ' + s8);
-  tel();
+  console.log('\n6. Een gewiste gebruiker kan niet meer inloggen');
+  const sd = await beheer({ action: 'delete', user: 'bert' });
+  toets('beheer wist hem', sd === 200, 'status ' + sd);
+  toets('en hij komt er niet meer in', await login('bert', 'wachtwoord-bert') === 401);
 
-  // 7. Uitzetten via /admin/users werkt meteen, niet pas na de bewaartijd.
-  await login('anna', 'nieuw-wachtwoord');
-  const sb = await beheer({ action: 'save', user: 'anna', role: 'user', label: 'Anna', active: false });
-  const s9 = await login('anna', 'nieuw-wachtwoord');
-  toets('na Active uit via /admin/users komt die gebruiker er meteen niet meer in', sb === 200 && s9 === 401,
-    'beheer ' + sb + ', login ' + s9);
-  tel();
-
-  // 8. Na het herhashen van een oud (sha256) wachtwoord leest de volgende login vers.
-  const crypto = require('crypto');
-  at.rijen.push({ id: 'recC', fields: { User: 'cees', Role: 'user', Label: 'Cees', Active: true,
-    PassHash: crypto.createHash('sha256').update('wachtwoord-cees').digest('hex') } });
-  klok += W.USERS_CACHE_MS + 1000;
-  const sc1 = await login('cees', 'wachtwoord-cees');
-  const naEerste = tel();
-  const sc2 = await login('cees', 'wachtwoord-cees');
-  const naTweede = tel();
-  toets('het herhashte wachtwoord staat in Airtable', /^pbkdf2_sha256\$/.test(at.rijen.find((r) => r.id === 'recC').fields.PassHash));
-  toets('na het herhashen leest de volgende login vers',
-    sc1 === 200 && sc2 === 200 && naEerste === 1 && naTweede === 1,
-    'status ' + sc1 + '/' + sc2 + ', lezingen ' + naEerste + '/' + naTweede);
+  console.log('\n7. En in al die tijd is Airtable maar één keer gelezen');
+  toets('één lezing', at.lezingen === 1, at.lezingen + ' lezingen');
 
   console.log('\n' + n + ' toetsen, ' + fout + ' fout');
   process.exit(fout ? 1 : 0);
