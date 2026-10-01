@@ -212,6 +212,31 @@ async function eersteRij(s, roep) {
     eis(gestuurd.length === 2 && /^error/.test(gestuurd[1]), 'en een err-regel blijft gewoon gaan');
   }
 
+  console.log('9. GEEN E-MAILADRES IN DE LOGTABEL (01-10-2026)');
+  {
+    // De regel zelf staat in pidlane-veldlab.js; die wordt hier echt geladen.
+    const vl = fs.readFileSync('pidlane-veldlab.js', 'utf8');
+    const a = vl.indexOf('const VL_EMAIL_RE='), b = vl.indexOf('/* Maakt een verzendbare kopie', a);
+    if (a < 0 || b < 0) throw new Error('anker weg in pidlane-veldlab.js: VL_EMAIL_RE … verzendbare kopie');
+    const s = omgeving({ rit: null });
+    vm.runInContext(vl.slice(a, b), s, { filename: 'veldlab-email' });
+    s.currentUser = { name: 'anna@voorbeeld.nl', role: 'klant' };
+    const f = await eersteRij(s, function () { return s.logToSheets('error', 'inloggen als anna@voorbeeld.nl mislukt'); });
+    eis(f.User === '', 'een klant staat er zonder e-mailadres in (User = "' + f.User + '")');
+    eis(f.Role === 'klant', 'de rol blijft staan: wel te zien dát het een klant was');
+    eis(String(f.Message).indexOf('@') < 0 && /\[e-mail\]/.test(f.Message), 'een adres in de tekst wordt vervangen (' + f.Message + ')');
+
+    const t = omgeving({ rit: null });
+    vm.runInContext(vl.slice(a, b), t, { filename: 'veldlab-email' });
+    const g = await eersteRij(t, function () { return t.logToSheets('info', 'gewone regel'); });
+    eis(g.User === 'tester', 'een beheerdernaam zonder @ blijft staan (' + g.User + ')');
+
+    const z = omgeving({ rit: null });            // pidlane-veldlab.js niet geladen
+    z.currentUser = { name: 'anna@voorbeeld.nl', role: 'klant' };
+    const h = await eersteRij(z, function () { return z.logToSheets('info', 'mail anna@voorbeeld.nl'); });
+    eis(h.User === '' && String(h.Message).indexOf('@') < 0, 'zonder de module gaat er ook geen adres mee (dicht, niet open)');
+  }
+
   console.log(fouten === 0 ? '\nAlles goed.' : '\n' + fouten + ' fout(en).');
   process.exit(fouten ? 1 : 0);
 })().catch(function (e) { console.error('FOUT: ' + (e && e.stack || e)); process.exit(1); });

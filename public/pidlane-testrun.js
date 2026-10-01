@@ -2771,6 +2771,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Geen e-mailadres naar de server (01-10-2026) ──
+  // Gedrag in de draaiende app: het veldlabrecord van een klant gaat zonder
+  // e-mailadres de deur uit, ook als het in een foutregel staat.
+  {
+    issue: 'release 3.1',
+    naam: 'Een veldlabrecord van een klant gaat zonder e-mailadres de deur uit',
+    waarom: 'Het e-mailadres van een klant ging mee als Tester en als User in elke logregel, terwijl het akkoordscherm "zonder je naam, e-mailadres of kenteken" belooft.',
+    proef: async function () {
+      if (typeof _vlSchoonVoorVerzending !== 'function' || typeof _vlGeenEmail !== 'function') return { staat: 'FOUT', detail: '_vlSchoonVoorVerzending of _vlGeenEmail ontbreekt — pidlane-veldlab.js is oud of niet geladen' };
+      var uit = await _vlSchoonVoorVerzending({ t: 1, tester: 'proef@voorbeeld.nl', errs: ['Sessie hersteld: proef@voorbeeld.nl'] });
+      var blob = JSON.stringify(uit);
+      if (blob.indexOf('@') >= 0) return { staat: 'FOUT', detail: 'er staat nog een e-mailadres in het record: ' + blob.slice(0, 160) };
+      if (_vlGeenEmail('beheer') !== 'beheer') return { staat: 'FOUT', detail: 'een gebruikersnaam zonder @ wordt ook weggehaald' };
+      return { staat: 'OK', detail: 'Tester leeg, adres in de tekst vervangen door [e-mail]' };
+    }
+  },
+
   // ── Uitloggen tijdens de demo blijft uitgelogd (01-10-2026) ──
   // Gedrag in de draaiende app: de sleutels die pidlane-auth.js voor het
   // sessietoken en het uitloggen gebruikt, gaan door de demo-zandbak heen.
