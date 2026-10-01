@@ -10,6 +10,27 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-10-2026 — Alles uit Airtable naar Cloudflare D1 (#327)
+ ═══════════════════════════════════════════════════════════
+
+ - Gebruikers, Klanten (met saldo), activatiecodes, het kasboek, de
+   veldlab-sessies en de referentiewaarden staan nu in D1. Elke tabel zet
+   zichzelf bij de eerste aanroep één keer over uit Airtable; daarna leest
+   de Worker Airtable niet meer. Wijzigen gaat via beheer.html.
+ - Eén laag in worker.js (D1_TABELLEN, d1Tabel, atZoek/atPatch/…) met
+   records in dezelfde vorm als Airtable en de oude rec-id's.
+ - Weg, omdat ze er alleen waren om Airtable-calls te sparen: het onthouden
+   van de gebruikerstabel (28-09) en van de accountstatus bij stand (vanochtend,
+   PR #380). Blokkeren is weer meteen dicht.
+ - Een uitgevinkte gebruiker (Active uit) komt er nu echt niet meer in; bij
+   Airtable kwam een uitgevinkt vakje nooit als false terug.
+ - De Airtable-motor van /admin/tabel en formuleTekst() zijn weg: elke
+   zoekterm gaat als gebonden parameter mee.
+ - Tests: test-d1laag.js, test-veldlabroute.js (nieuw); test-inlogcache,
+   test-klantstatus, test-adminbron en test-formule-escape herschreven op de
+   echte laag (pltest-d1.js). Mutaties bijgewerkt.
+
+ ═══════════════════════════════════════════════════════════
  01-10-2026 — Minder Airtable-calls: AppConfig in D1, accountstatus onthouden (#327)
  ═══════════════════════════════════════════════════════════
 
