@@ -14,6 +14,60 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 01-10-2026 — De meetrit: waarom vier "gesloten" niets sloten (#302 #333 #337 #338 #376)
+
+**Wat er misging met de opdrachten van 27–29 september.** Opdracht 21 (#337)
+gaf "gesloten" op *de snelheid bleef binnenkomen* en *de luchtmassa bleef
+binnenkomen*; of CA03 en CA10 binnen hun bereik bleven stond er niet in, en de
+vraag daarover kreeg "niet gekeken". Opdracht 23 (#302) sloot op *de meting
+liep door*, terwijl de responstijd een vraag aan de bestuurder was. Opdracht
+18 (#333) kon niet zien welke groep de proef adviseerde, en drie groepsproeven
+in D1 (28-09, 30-09, 01-10) zeggen niet of ze koud, warm of rijdend liepen.
+Opdracht 17 (#319) bleef vier keer "nog niet" op een stap die de app nooit
+zette. De vorm is telkens dezelfde: de proef mat iets dat wél te meten was,
+in plaats van het ding waar het issue over ging.
+
+**Wat er nu staat.** Een app-maat per vraag, uit de module die het al wist:
+`driftAnalyse()` voor #302, `groepAdvies()` plus de omstandigheid bij de start
+van de proef voor #333, het sessiebewijs van `PLBerekend` voor #337, dat van
+`PLVisueel` voor #338, en een teller op de balk van #376. "Niet gemeten" is
+null, en dan zegt de opdracht "nog niet" en geen "gesloten".
+
+**#337, de oorzaak.** Elke bron hoefde alleen vers te zijn (≤ 3 s). Bij gas
+loslaten zakt 0110 meteen, terwijl 0162 nog het koppel van tot 3 s eerder
+draagt: rendement 96,7%. Nu moeten de bewegende bronnen van één berekening
+binnen 1 s van elkaar liggen. De prijs: een tegel met een trage bron (010D op
+2,3 s) ververst minder vaak. Een seconde wachten is beter dan een verkeerd
+getal. CA03 klemde op 99 terwijl de tegel tot 50 gaat: bij 5–10 km/u is 60
+l/100 km echt, en dan telde elk optrekken als "buiten bereik". De klem staat
+nu op 50, en het oordeel over #337 leunt op CA10 (rendement), dat wél kan
+ontsporen.
+
+**#338, en wat er níét veranderde.** `_staat.traag` wordt in een sessie nog
+steeds niet leeg. Dat was het voorstel van 30-09, en het is bewust niet
+gedaan: een PID die van de meter valt wordt door `remt()` naar 2 s geremd en
+kan daarna niet meer laten zien dat hij snel is. Een herkansing zou dus een
+herbouw heen en een herbouw terug kosten, en dat is precies het knipperen uit
+hetzelfde issue. De fout zat niet in het "eens traag, altijd traag", maar in
+wát traag heette: de mediaan over alles sinds het openen, inclusief 157 s
+achtergrond en een stilstand. Nu telt alleen de laatste minuut onafgebroken
+rijden met de meter in beeld. Bij een gat tussen twee tikken (timers
+bevroren), een buspauze (een andere lezer) of een stilstand begint die minuut
+opnieuw. Beeld-in-beeld en `document.hidden` tellen ook als "niet in beeld":
+de meetdienst houdt de JavaScript dan wakker, dus er valt geen gat.
+
+De eerste versie van de test toetste de gat- en buspauzedetectie niet: het
+venster van een minuut gooide de trage metingen al weg na 157 s. `plmutate.sh`
+liet ze allebei ontsnappen. De proef gebruikt nu een gat van 30 s, binnen het
+venster, zodat alleen de detectie het verschil maakt.
+
+**Wat de rit nog moet zeggen.** Of de fixes van vanochtend (#302: het
+BT-logvenster op 300 regels, Overzicht, de vaste achtergrond) de drift
+wegnamen; of 4–6 PIDs per verzoek ook warm en rijdend winst geven; en of 5 s
+lang genoeg is voor de balk. De opdrachten en de volgorde staan in het
+meetrit-issue.
+
+
 ## 01-10-2026 — De rest van Airtable naar D1, en wat er daardoor weg kon (#327)
 
 **De vraag.** Na AppConfig "doe de rest nu ook maar": Users, Klanten,

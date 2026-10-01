@@ -10,6 +10,29 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-10-2026 — De meetrit: elke rit-vraag een getal (testrun 8.7)
+ ═══════════════════════════════════════════════════════════
+
+ - #337: een berekende PID rekent alleen nog met bronnen die hoogstens 1 s
+   uit elkaar liggen (SAMEN_MS); anders slaat hij die tik over en telt dat.
+   Verbruik nu (CA03) klemt op het bereik van zijn tegel (50), niet op 99.
+ - #338: Slim visueel oordeelt over het tempo van het pedaal alleen over
+   de laatste minuut onafgebroken rijden met de meter in beeld; stilstand,
+   achtergrond, beeld-in-beeld en een buspauze beginnen het venster opnieuw.
+   Elke herbouw krijgt een reden (openen, selectie, testrun, indeling,
+   scherm); de knipperproef telt alleen indeling en scherm.
+ - App-maten voor de meetopdracht (witte lijst in pidlane-opdracht.js):
+   adapter-* (#302), groep-a/b/c-* (#333, de groepsproef legt nu zelf vast
+   of hij koud, warm of rijdend liep), berekend-* (#337), visueel-* (#338),
+   check-door-* (#376).
+ - Beheer: een app-maat in een opdracht staat er niet meer als "undefined —
+   staat niet in sensoren".
+ - Blok 5: één proef dat elke app-maat in de draaiende app een getal of
+   null geeft. CAMPAGNE beschrijft de meetrit.
+ - Tests: test-berekend, test-visueel, test-adapterpaneel, test-foutcodes en
+   test-opdrachtappmaat uitgebreid; 22 mutaties erbij.
+
+ ═══════════════════════════════════════════════════════════
  01-10-2026 — Na #381: namen opgeruimd
  ═══════════════════════════════════════════════════════════
 
