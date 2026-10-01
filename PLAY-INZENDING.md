@@ -279,10 +279,11 @@ diagnosepoort. De hoofdfunctie vereist die hardware en een voertuig, en is
 daarom niet volledig te beoordelen zonder beide.
 
 Voor de review is er een demomodus die zonder adapter en zonder auto werkt.
-Op het startscherm staat de knop "Try demo — no adapter needed", direct
-onder de verbindknop. Daarna kies je een voorbeeldvoertuig (of vult een
+Op het inlogscherm staat de knop "Try demo — no adapter needed", direct
+onder de knop Inloggen. Daarna kies je een voorbeeldvoertuig (of vult een
 Nederlands kenteken in) en draait de app op opgenomen meetdata: live
-sensorwaarden, foutcodes, grafieken en het diagnoserapport.
+sensorwaarden, foutcodes, grafieken en een voorbeeld van het
+diagnoserapport.
 
 Er is geen account nodig voor de demo.
 
@@ -315,13 +316,32 @@ Instructions:
 ```
 Dit account heeft tegoed voor circa 10 AI-analyses.
 
-Zo kom je bij de analyse: log in > "Try demo — no adapter needed" >
-voorbeeldvoertuig kiezen > tabblad Diagnose > "Analyseer". Het rapport wordt
-door een taalmodel geschreven en verschijnt na enkele seconden.
+De AI-analyse draait op metingen uit een echte auto, via een OBD2-adapter.
+In de demomodus gaat er bewust niets naar het taalmodel: daar toont de app
+een voorbeeldrapport, gemarkeerd als "VOORBEELDRAPPORT — DEMO". Zo gaat er
+geen tegoed op aan een gesimuleerde auto en wordt er geen rapport over een
+verzonnen voertuig bewaard.
+
+Met dit account zie je na het inloggen het tegoed, Mijn voertuigen en, via
+"Simuleer verbinding — bekijk je gegevens", de demo met dat voorbeeldrapport.
 
 Het account bevat geen persoonsgegevens en is uitsluitend voor de review
 aangemaakt.
 ```
+
+> **Herzien op 01-10-2026.** Tot die dag stond hier dat de reviewer via de
+> demo een echt AI-rapport kreeg (inloggen > "Try demo" > "Analyseer"). Sinds
+> de demo-zandbak van 29-09 klopte dat niet meer: de demo geeft een
+> voorbeeldrapport, en na het inloggen heet de demoknop "Simuleer verbinding —
+> bekijk je gegevens". Een reviewer die de beloofde stap volgt en iets anders
+> ziet, is precies de afwijzing op "incomplete access" die deze regel moest
+> voorkomen.
+>
+> **Wat de reviewer nu niet ziet: een echte analyse.** Dat kan zonder auto
+> niet, en dat is een besluit, geen vergissing. Zet er daarom in het veld
+> *Any other instructions* een link bij naar een korte schermopname van een
+> echte analyse (verbinden, meten, Analyseer, rapport). Google accepteert dat
+> voor functies die hardware vragen; zonder opname is het een gok.
 
 > **Zet het wachtwoord nooit in deze repo — deze repository is PUBLIEK.**
 > Een wachtwoord in een gecommit bestand staat binnen een minuut wereldwijd
@@ -455,6 +475,21 @@ voorkeuren
 | Verplicht of optioneel | Optioneel |
 | Doel | App functionality |
 
+**App info and performance → Diagnostics** — sinds 01-10-2026 aangevinkt.
+Een ingelogde app stuurt technische logregels naar de eigen server
+(`logToSheets()` in `pidlane-auth.js` → `/airtable/log` → D1 `logregels`):
+foutmeldingen, verbinden, uitschieters, met appversie, adapter, merk/bouwjaar
+en het VIN-pseudoniem. Dat stond hier tot die dag als "niet aangevinkt", en
+dat was onjuist: het verzamelen naar je eigen server telt voor Google ook. Het
+e-mailadres gaat sinds dezelfde dag niet meer mee (`_vlGeenEmail()`).
+
+| veld | antwoord |
+|---|---|
+| Verzameld | Ja |
+| Gedeeld | Nee |
+| Verplicht of optioneel | Verplicht (zolang je ingelogd bent) |
+| Doel | App functionality, Analytics |
+
 ### Wat je NIET aanvinkt, en waarom
 
 | categorie | waarom niet |
@@ -468,7 +503,7 @@ voorkeuren
 | Files and docs | Rapporten schrijft de app naar `Documents/PidLane/` op het toestel zelf. Ze gaan nergens heen tot de gebruiker ze deelt, en de app leest geen bestanden die hij niet zelf geschreven heeft |
 | Calendar, Contacts | — |
 | Web browsing history | — |
-| App info and performance → Crash logs / Diagnostics | Er gaat geen crashrapportage naar een dienst |
+| App info and performance → Crash logs | Er gaat geen crashrapportage naar een dienst |
 | **Device or other IDs** | Zie het kader hieronder: sinds 3.1.0 is dit een besluit en geen vanzelfsprekend "nee". |
 
 > **Device or other IDs — besluit bij 3.1.0: aanvinken.** Van het toestel
@@ -502,6 +537,10 @@ Mijn voertuigen en Mijn voorkeuren gaan mee: de nachtelijke opruimer
 (`klantWachtrijOpruimen` in `worker.js`) wist eerst de `kp_*`-rijen van een
 verwijderd account en pas daarna het account zelf. Mislukt het eerste, dan
 blijft het tweede staan en probeert hij het de volgende nacht opnieuw.
+Sinds 01-10-2026 wist hij in dezelfde stap ook de logregels en
+veldlabrecords waar het e-mailadres van die klant in staat
+(`klantSporenWissen`); tot die dag bleven die staan, en dan was "Beide" hier
+niet waar.
 
 De termijn die je hier noemt (30 dagen) staat op één plek in de code:
 `KLANT_BEWAARDAGEN` in `worker.js`. Verandert die, dan verandert deze regel
@@ -744,7 +783,7 @@ Hier kan de code niets aan doen; dit is handwerk in andere systemen.
       in een lege bus valt, is precies wat §12 belooft te voorkomen
 - [ ] `https://app.pidlane.nl/privacy.html` opent in een private venster
 - [ ] `https://app.pidlane.nl/verwijderen.html` opent in een private venster
-- [ ] `feat_demo` staat AAN in de AppConfig-tabel (Airtable) — staat hij uit,
+- [ ] `feat_demo` staat AAN in de AppConfig (sinds 01-10-2026 in D1, tabel `app_config`) — staat hij uit,
       dan klopt §7 niet meer
 - [ ] Het reviewaccount `demo@pidlane.nl` bestaat, heeft tegoed, en is
       **niet** je eigen inlog — zie §7
