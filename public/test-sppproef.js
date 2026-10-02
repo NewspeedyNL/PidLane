@@ -280,8 +280,9 @@ function bouw(opt) {
   {
     const s = bouw();
     const eerst = s.P.menu(), dan = s.P.menu();
-    toets('acht knoppen in het Admin-menu, en een tweede keer niet nog eens', [eerst, dan, s.knoppen.length], [8, 0, 8]);
-    toets('met een eigen id en klasse', s.knoppen.every((k) => /^plSpp/.test(k.id) && k.className === 'kebab-item'), true);
+    // Sinds 02-10-2026 één regel, "SPP-controle"; de acht staan in de kaart die hij opent.
+    toets('één knop in het Admin-menu, en een tweede keer niet nog eens', [eerst, dan, s.knoppen.length], [1, 0, 1]);
+    toets('met een eigen id en klasse', s.knoppen.every((k) => k.id === 'plSppMenu' && k.className === 'kebab-item'), true);
   }
 
   console.log('\n' + n + ' toetsen, ' + (fout ? fout + ' FOUT' : 'alles goed'));

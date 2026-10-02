@@ -10,6 +10,34 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 02-10-2026 — UI-ronde uit het gebruik: rustiger, en vijf weergaven
+ ═══════════════════════════════════════════════════════════
+
+ - Slim visueel: vijf weergaven met een knop Volgende boven de meter —
+   basis (ongewijzigd), temperatuur (glas), emissie (licht), verbruik
+   (digitaal), motor (neon). Nieuw: pidlane-visprofiel.js, test-visprofiel.js.
+ - Bevindingen: per bevinding verbergen met ✕ of een dubbeltik, ook in Slim
+   visueel; terughalen in "bekijk alles". De AI krijgt ze gewoon mee.
+ - Instellingen: garagemodus, Check na verbinden en Uitleg bij knoppen staan
+   standaard uit; Check na verbinden gaat na één keer vanzelf weer uit.
+ - Live: de deel-chip staat in de topbalk; de aandrijfregel ("Rijdt op
+   motor") is een rustige regel met stipje en icoon in plaats van een oranje
+   blok; vier actieknoppen twee bij twee; snelkoppelingen onder de meter op
+   één regel.
+ - Statusmenu: Auto-dossier, Adapter (OBD), AI-uitleg en Achtergrond, elk met
+   een regel uitleg en de stand van nu.
+ - Diagnose delen: eerst kiezen hoe (code, QR, link, plakcode), dan staat
+   alleen die manier in beeld.
+ - Verbindingsvenster: alle knoppen in één vak onderaan dat blijft plakken.
+ - Admin-menu: de acht SPP-proeven onder één regel SPP-controle.
+ - Startscherm: de vier tegels hebben hun achtergrondbeelden terug.
+ - Verbindscherm en loginpagina rustiger: één hoofdknop, kleiner logo; de
+   login is een glazen kaart in plaats van de overvolle cirkel.
+ - Sensorkeuze: voertuigblok ingeklapt met de autonaam in de kop, doelen als
+   chips die bij de motorsoort passen, een teller die waarschuwt bij te veel.
+ - Blok 5: twee proeven (rondgang van de weergaven, de zeef van verbergen).
+
+ ═══════════════════════════════════════════════════════════
  01-10-2026 — Vóór de productierelease: demo, e-mailadres, verwijderen
  ═══════════════════════════════════════════════════════════
 

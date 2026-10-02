@@ -2771,6 +2771,55 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Slim visueel: vijf weergaven met een knop Volgende (02-10-2026) ──
+  // Basis, temperatuur, emissie, verbruik en motor. Deze proef loopt de
+  // rondgang af en telt per profiel hoeveel plekken deze auto kan vullen; een
+  // profiel waar niets op komt is op deze auto een lege kaart.
+  {
+    issue: '—',
+    naam: 'Slim visueel heeft vijf weergaven en Volgende loopt ze rond',
+    waarom: 'Een weergave die op deze auto geen enkele sensor vindt, toont een lege kaart — en dat zie je pas als je er tijdens het rijden naartoe tikt.',
+    proef: async function () {
+      var P = window.PLVisProfiel;
+      if (!P) return { staat: 'FOUT', detail: 'PLVisProfiel ontbreekt — pidlane-visprofiel.js is niet geladen' };
+      var id = 'basis', rond = [id];
+      for (var i = 0; i < P.PROFIELEN.length; i++) { id = P.volgende(id); rond.push(id); }
+      if (rond.join(',') !== 'basis,temp,emissie,verbruik,motor,basis') return { staat: 'FOUT', detail: 'de rondgang is ' + rond.join(' → ') };
+      var mag = function (p) { return typeof activePIDs !== 'undefined' && activePIDs.has(p) || (typeof discoveredPIDDefs !== 'undefined' && (discoveredPIDDefs || []).some(function (d) { return d.pid === p; })); };
+      var leeg = [], tel = [];
+      P.PROFIELEN.forEach(function (pr) {
+        if (!pr.plekken) return;
+        var ind = P.indeling(pr.id, mag), n = Object.keys(ind.plekken).filter(function (k) { return ind.plekken[k]; }).length;
+        tel.push(pr.naam.toLowerCase() + ' ' + n + '/' + pr.plekken.length);
+        if (!n) leeg.push(pr.naam);
+      });
+      if (typeof connected === 'undefined' || !connected) return { staat: 'LET OP', detail: 'niet verbonden — rondgang goed, de plekken zijn niet te tellen (' + tel.join(', ') + ')' };
+      return { staat: leeg.length ? 'LET OP' : 'OK', detail: 'nu: ' + (PLVisueel.profiel ? PLVisueel.profiel() : '?') + '; plekken op deze auto: ' + tel.join(', ') + (leeg.length ? ' — leeg op deze auto: ' + leeg.join(', ') : '') };
+    }
+  },
+
+  // ── Eén bevinding verbergen (02-10-2026) ──
+  // Met ✕ of een dubbeltik. Verbergen is alleen het scherm: de AI krijgt hem
+  // nog mee. De proef verbergt een nep-id en kijkt of de zeef hem weghaalt en
+  // de rest laat staan, en zet daarna alles terug.
+  {
+    issue: '—',
+    naam: 'Een verborgen bevinding verdwijnt uit beeld en de rest blijft staan',
+    waarom: 'Een zeef die te veel weghaalt, verbergt een waarschuwing die niemand wegklikte.',
+    proef: async function () {
+      if (typeof bevindingZichtbaar !== 'function' || typeof _bevVerborgen === 'undefined')
+        return { staat: 'FOUT', detail: 'bevindingZichtbaar/_bevVerborgen ontbreken in pidlane-correlatie.js' };
+      var nep = [{ id: '__b5_weg' }, { id: '__b5_blijft' }];
+      var had = _bevVerborgen.has('__b5_weg');
+      _bevVerborgen.add('__b5_weg');
+      var over = bevindingZichtbaar(nep).map(function (h) { return h.id; });
+      if (!had) _bevVerborgen.delete('__b5_weg');
+      if (over.join(',') !== '__b5_blijft') return { staat: 'FOUT', detail: 'na verbergen van één staat er: ' + (over.join(',') || 'niets') };
+      var n = _bevVerborgen.size;
+      return { staat: 'OK', detail: 'de zeef haalt alleen de verborgen bevinding weg' + (n ? '; deze sessie ' + n + ' verborgen door de bestuurder' : '') };
+    }
+  },
+
   // ── Geen e-mailadres naar de server (01-10-2026) ──
   // Gedrag in de draaiende app: het veldlabrecord van een klant gaat zonder
   // e-mailadres de deur uit, ook als het in een foutregel staat.
@@ -6499,7 +6548,7 @@ const PROEVEN_B5 = [
       gemeten += 'een bekende PID die ontbreekt telt als onvolledig. ';
 
       var gp = PLAdapter.laatsteGroepsproef();
-      if (!gp) return { staat: 'LET OP', detail: gemeten + 'De groepsproef is deze sessie niet gedraaid — adapterpaneel → 📦 Start de groepsproef (zie de campagne en #333).' };
+      if (!gp) return { staat: 'LET OP', detail: gemeten + 'De groepsproef is deze sessie niet gedraaid — adapterpaneel → 📦 Groepsproef (zie de campagne en #333).' };
       if (gp.afgebroken) return { staat: 'LET OP', detail: gemeten + 'De groepsproef brak af: ' + gp.afgebroken };
       var a = gp.advies || {};
       var tabel = (a.groepen || []).map(function (x) {
@@ -9429,11 +9478,11 @@ const CAMPAGNE = {
     '── MEETRIT 1, ALLEEN, ±45 MINUTEN ────────',
     'STAP 0 — VOORAF, MOTOR KOUD. Nieuwste versie laden (Meer → Admin). De MX+ erin. Een nieuwe APK is niet nodig.',
     'STAP 1 — VERBINDEN (#376). Check mijn auto opent vanzelf. Vindt hij niets, dan loopt er een balk van vijf seconden: raak niets aan en kijk of je "Alles in orde" kunt lezen voordat hij naar Live gaat.',
-    'STAP 2 — GROEPSPROEF A, KOUD EN STIL (#333). Tik op de OBD-chip → 📦 Start de groepsproef. Twee minuten, de meters staan stil, laat de app open. Meldt hij drift, doe hem dan meteen nog eens.',
+    'STAP 2 — GROEPSPROEF A, KOUD EN STIL (#333). Tik op de OBD-chip → 📦 Groepsproef. Twee minuten, de meters staan stil, laat de app open. Meldt hij drift, doe hem dan meteen nog eens.',
     'STAP 3 — 🔄 OPNIEUW VERBINDEN in hetzelfde paneel. Vanaf hier telt het half uur van #302; de groepsproef zit dan niet in die meting.',
     'STAP 4 — DERTIG MINUTEN RIJDEN IN SLIM VISUEEL, ZONDER TE VERBREKEN (#302, #337, #338). Onderweg: een paar keer vanuit stilstand stevig optrekken en daarna het gas helemaal los, een stuk boven 50 km/u, en één keer stilstaan. Laat waakronde en bulk-recorder zoals je ze normaal hebt.',
     'STAP 5 — TWEE MINUTEN BEELD-IN-BEELD (#319, #338). Onderweg, met de navigatie: thuisknop, PidLane staat klein; minstens twee minuten, dan terug naar de app.',
-    'STAP 6 — GROEPSPROEF B, WARM EN STIL (#333). Na het half uur stilstaan op een veilige plek, motor draaiend. Eerst 🔄 Opnieuw verbinden, dan 📦 Start de groepsproef.',
+    'STAP 6 — GROEPSPROEF B, WARM EN STIL (#333). Na het half uur stilstaan op een veilige plek, motor draaiend. Eerst 🔄 Opnieuw verbinden, dan 📦 Groepsproef.',
     'STAP 7 — VERZENDEN. Meetkamer → alle afgeronde opdrachten verzenden, en beantwoord de vragen. Daarna eventueel de testrun.',
     '── MEETRIT 2, MET BIJRIJDER, ±10 MINUTEN ────────',
     'GROEPSPROEF C, RIJDEND (#333). Constante snelheid boven 50 km/u, de bijrijder start de groepsproef. Alleen met een bijrijder.',

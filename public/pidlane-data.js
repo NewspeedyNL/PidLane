@@ -1112,22 +1112,24 @@ window.PLPidVorm = (function(){
 // Elke voorinstelling is daarom "basis + focus": de tien kern-PIDs blijven
 // altijd staan, en daar komt een blok bovenop dat bij de vraag past.
 // Niet-ondersteunde PIDs worden er bij het toepassen uitgefilterd.
+// `kort` en `ico` staan op de doel-chips in de sensorkeuze (02-10-2026);
+// `alleen` = alleen tonen bij deze motorsoorten (detectEngineType()).
 window.PID_PRESETS = [
-  {id:'basis', naam:'Basis', tip:'De tien kernwaarden die je bij elke rit wilt zien.',
+  {id:'basis', naam:'Basis', kort:'Basis', ico:'🧭', tip:'De tien kernwaarden die je bij elke rit wilt zien.',
    extra:[]},
-  {id:'plus', naam:'Basis plus', tip:'Kern plus de meest gebruikte extra sensoren — goed startpunt.',
+  {id:'plus', naam:'Basis plus', kort:'Aanbevolen', ico:'⭐', tip:'Kern plus de meest gebruikte extra sensoren — goed startpunt.',
    extra:['0110','010E','0143','015C','0146','0133','014C']},
-  {id:'verbruik', naam:'Basis + focus verbruik', tip:'Alles wat meeweegt in brandstofverbruik en rijstijl.',
+  {id:'verbruik', naam:'Basis + focus verbruik', kort:'Verbruik', ico:'⛽', tip:'Alles wat meeweegt in brandstofverbruik en rijstijl.',
    extra:['0110','0166','015E','0123','016D','0162','0163','0145','0149','014C','012F','0131']},
-  {id:'elektrisch', naam:'Basis + focus elektrisch', tip:'Boordnet, accu en aandrijving van EV of hybride.',
+  {id:'elektrisch', naam:'Basis + focus elektrisch', kort:'Elektrisch', ico:'🔋', alleen:['hybride','ev'], tip:'Boordnet, accu en aandrijving van EV of hybride.',
    extra:['0142','015B','0146','0105','0104','0162','0163']},
-  {id:'motor', naam:'Basis + focus motor & belasting', tip:'Vullingsgraad, koppel en belasting onder alle omstandigheden.',
+  {id:'motor', naam:'Basis + focus motor & belasting', kort:'Motor', ico:'⚙️', tip:'Vullingsgraad, koppel en belasting onder alle omstandigheden.',
    extra:['0143','0144','0162','0163','0164','010E','0110','0166','0187','0170','010B','0133']},
-  {id:'temp', naam:'Basis + focus temperatuur', tip:'Alle temperaturen die de app kan uitlezen, in één beeld.',
+  {id:'temp', naam:'Basis + focus temperatuur', kort:'Temperatuur', ico:'🌡️', tip:'Alle temperaturen die de app kan uitlezen, in één beeld.',
    extra:['0105','010F','0146','015C','0167','0168','013C','013D','013E','013F','0178','0179','016B','0177','0184']},
-  {id:'emissie', naam:'Basis + focus emissie & lambda', tip:'Brandstoftrim, lambda en nabehandeling — voor APK en storingzoeken.',
+  {id:'emissie', naam:'Basis + focus emissie & lambda', kort:'Emissie', ico:'💨', tip:'Brandstoftrim, lambda en nabehandeling — voor APK en storingzoeken.',
    extra:['0106','0107','0108','0109','0113','0114','0115','0124','0134','0135','012E','012F','013C','013D','0169','016B','017A','017C']},
-  {id:'diesel', naam:'Basis + focus diesel & roetfilter', tip:'Raildruk, EGR en roetfilter — alleen zinvol op een diesel.',
+  {id:'diesel', naam:'Basis + focus diesel & roetfilter', kort:'Diesel', ico:'🛢️', alleen:['diesel'], tip:'Raildruk, EGR en roetfilter — alleen zinvol op een diesel.',
    extra:['0123','016D','0169','016A','016B','016C','017A','017C','0178','0179','0185','0170','015E']}
 ];
 

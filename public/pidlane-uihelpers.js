@@ -79,12 +79,15 @@ function toggleDemoBarBody(){
 }
 document.addEventListener('DOMContentLoaded', function(){
   try{
-    if(localStorage.getItem('pl_vehsec_collapsed')==='1'){
+    // Standaard ingeklapt sinds 02-10-2026 (uit het gebruik: "teveel tekst"):
+    // de kop toont dan in één regel welke auto het is. Alleen wie hem zelf
+    // openklapt (opgeslagen '0') ziet het hele blok.
+    if(localStorage.getItem('pl_vehsec_collapsed')!=='0'){
       const body=document.getElementById('vehicleBody'), chev=document.getElementById('vehSecChev');
       if(body) body.style.display='none';
       if(chev) chev.textContent=_vehKlapTekst(true);
     }
-    if(localStorage.getItem('pl_demobar_collapsed')==='1'){
+    if(localStorage.getItem('pl_demobar_collapsed')!=='0'){
       const body=document.getElementById('demoBarBody'), chev=document.getElementById('demoBarChev');
       if(body) body.style.display='none';
       if(chev) chev.textContent='▸';
@@ -236,9 +239,16 @@ function updateTopbarStatus(){
   const known=!!(vt && vt.style.display!=='none' && naam);
   let pct=0; try{ pct=dossierPct(); }catch(e){ console.warn('dossierPct mislukt:', e); }
   if(vd) vd.className='tdot '+(known ? (pct>=80?'g':'o') : 'r');
-  if(vl) vl.style.display=known?'none':'inline';
+  if(vl) vl.style.display='none';
+  // Wat elke regel in het uitklapmenu dóet, in gewone woorden (02-10-2026):
+  // "OBD", "AI" en "Run" waren namen voor wie de code kent.
+  const zetSub=function(id, t){ const e=document.getElementById(id); if(e && e.textContent!==t) e.textContent=t; };
+  zetSub('vSub', known ? 'wat de app van je auto weet — tik voor alles' : 'nog geen auto herkend');
   const vc=document.getElementById('vchip');
   if(vc) vc.title=known?(naam+' — dossier '+pct+'%, tik voor overzicht'):'Nog geen voertuig herkend — verbind eerst';
+  // De ingeklapte voertuigkop in de sensorkeuze: welke auto, in één regel.
+  const vs=document.getElementById('vehSecSam');
+  if(vs){ const t=known ? naam.replace(/^DEMO\s*[—-]\s*/i,'') : ''; if(vs.textContent!==t) vs.textContent=t; }
   // Ernst voor de systeem-dot: 0=groen, 1=oranje, 2=rood — dezelfde regel als
   // hierboven voor vd, maar ook bruikbaar buiten de className-string.
   const vSev = known ? (pct>=80?0:1) : 2;
@@ -250,6 +260,8 @@ function updateTopbarStatus(){
     else if(demoMode){ sd.className='dot demo'; sSev=1; }
     else if(_connSpeed && _connSpeed.readsPerSec<12){ sd.className='dot slow'; sSev=1; }
     else { sd.className='dot on'; sSev=0; }
+    zetSub('obdSub', (!connected && !demoMode) ? 'niet verbonden — tik om te verbinden'
+      : demoMode ? 'demo — gesimuleerde auto' : (sSev ? 'verbonden, maar traag — tik voor details' : 'verbonden — tik voor details'));
   }
   // Tooltip = de bestaande (verborgen) statusregel, zolang er geen kwaliteitswaarschuwing actief is
   const oc=document.getElementById('obdChip'), st=document.getElementById('stxt');
@@ -265,6 +277,7 @@ function updateTopbarStatus(){
     aSev=ok?0:2;
     const ac=document.getElementById('aiChip');
     if(ac) ac.title=ok?'AI-verbinding actief':'Geen AI-verbinding — tik voor instellingen';
+    zetSub('aiSub', ok ? 'beschikbaar voor uitleg en rapporten' : 'geen AI-verbinding — tik voor instellingen');
   }
   // 4️⃣ Systeem-dot: de ernstigste van voertuig/OBD/AI. Run telt hier bewust
   // niet in mee — "niets draait op de achtergrond" is geen probleem, dat is

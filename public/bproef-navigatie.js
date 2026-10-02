@@ -136,8 +136,12 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     console.log('\n9. De automatische check na verbinden');
     toets('in de demo niet  <- daar kiest de reviewer zelf', (await app.ev(`PLNav.naVerbinding()`)) === false);
     await app.ev(`demoMode = false; 'ok'`);
-    toets('bij hervatten niet', (await app.ev(`PLNav.naVerbinding({hervat:true})`)) === false);
-    toets('een gewone verbinding wel', (await app.ev(`PLNav.naVerbinding()`)) === true);
+    // Sinds 02-10-2026 standaard uit, en na één keer vanzelf weer uit.
+    toets('standaard uit: een gewone verbinding niet', (await app.ev(`PLNav.naVerbinding()`)) === false);
+    await app.ev(`PLNav.wisselAutoCheck(); 'ok'`);
+    toets('aangezet: bij hervatten niet', (await app.ev(`PLNav.naVerbinding({hervat:true})`)) === false);
+    toets('aangezet: een gewone verbinding wel', (await app.ev(`PLNav.naVerbinding()`)) === true);
+    toets('daarna staat de schakelaar weer uit', (await app.ev(`PLNav.autoCheck()`)) === false);
     toets('en daarna in dezelfde sessie niet nog eens  <- tegenproef', (await app.ev(`PLNav.naVerbinding()`)) === false);
     toets('het Check-venster opent vanzelf', await wacht(toon('plFcOv'), 3000));
     await app.ev(`PLFoutcodes.sluit(); demoMode = true; 'ok'`);

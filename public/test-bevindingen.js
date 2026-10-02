@@ -271,6 +271,25 @@ function keurToontijd(bron) {
 }
 toetsSchoon('een bevinding blijft minstens 5 s in beeld, ook als de waarde weer goed is', keurToontijd());
 
+// Eén bevinding verbergen (02-10-2026): weg uit de balk, wél nog bij de AI,
+// en terug te halen. De plek komt vrij voor de volgende.
+function keurVerbergen(bron) {
+  const ctx = maakOmgeving(bron || BRON);
+  vulZesBevindingen(ctx);
+  ctx.showToast = function () {};
+  ctx.runCorrelationEngine();
+  const uit = [];
+  ctx.bevindingVerberg('regel1');
+  const na = merkenIn(banner(ctx).innerHTML);
+  if (na.indexOf('MERK-REGEL') >= 0) uit.push('de verborgen bevinding staat nog in de balk');
+  if (na.join(',') !== 'MERK-p1,MERK-p2') uit.push('na verbergen staat er ' + na.join(',') + ' — verwacht MERK-p1,MERK-p2');
+  if (!/MERK-REGEL/.test(String(ctx.correlationLines()))) uit.push('de AI krijgt de verborgen bevinding niet meer mee');
+  ctx.bevindingToon('regel1');
+  if (merkenIn(banner(ctx).innerHTML)[0] !== 'MERK-REGEL') uit.push('na terughalen staat hij niet weer bovenaan');
+  return uit;
+}
+toetsSchoon('een bevinding verbergen haalt hem uit de balk, niet uit de analyse', keurVerbergen());
+
 // ── tegenproef ───────────────────────────────────────────────────
 // Zonder plafond moet de eerste controle rood worden. Zo niet, dan telt hij
 // iets anders dan wat er in de balk staat.
@@ -282,6 +301,10 @@ toetsMeldt('zonder plafond loopt de balk weer vol (tegenproef)',
 toetsMeldt('zonder toontijd verdwijnt hij weer na één ronde (tegenproef)',
   keurToontijd(BRON.replace('const BEV_MIN_MS = 5000;', 'const BEV_MIN_MS = 0;')),
   'na 1 s en een goede waarde is de bevinding al weg');
+
+toetsMeldt('zonder zeef blijft een verborgen bevinding staan (tegenproef)',
+  keurVerbergen(BRON.replace('h && !_bevVerborgen.has(h.id)', 'h')),
+  'de verborgen bevinding staat nog in de balk');
 
 console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);

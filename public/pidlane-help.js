@@ -215,8 +215,9 @@
   //  DE UITROEPTEKENS
   // ════════════════════════════════════════════════════════════════
   function tipsAan() {
-    try { return localStorage.getItem(OPSLAG_TIPS) !== '0'; }
-    catch (e) { /* stil: opslag kan geblokkeerd zijn; dan staan ze aan */ return true; }
+    // Standaard uit sinds 02-10-2026: alleen wie ze zelf aanzet ziet de rondjes.
+    try { return localStorage.getItem(OPSLAG_TIPS) === '1'; }
+    catch (e) { /* stil: opslag kan geblokkeerd zijn; dan staan ze uit */ return false; }
   }
 
   function zetTips(aan) {

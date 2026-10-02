@@ -233,8 +233,9 @@ console.log('\n3. De app-schil zelf — issue #58 (29-08-2026)');
         /#slPanel\.lade-open, #logLade\.lade-open \{ padding-bottom:var\(--pl-sab\)/.test(css) &&
         /#slPanel\.lade-open > \.lade-bar[^{]*\{ padding-top:calc\(9px \+ var\(--pl-sat\)\)/.test(css));
 
-  toets('#remPill hangt onder de topbalk',
-        /#remPill\{position:fixed;top:calc\(6px \+ var\(--pl-top\)\)/.test(html));
+  // 02-10-2026: de deel-chip staat in de topbalk zelf en zweeft niet meer.
+  toets('#remPill staat in de topbalk, niet zwevend eroverheen',
+        /<div class="tpr">[\s\S]*?id="remPill"[\s\S]*?id="sysChip"/.test(html) && !/#remPill\{[^}]*position:fixed/.test(html));
   toets('#busyPill hangt onder de topbalk',
         /#busyPill\{position:fixed;top:calc\(8px \+ var\(--pl-top\)\)/.test(css));
 

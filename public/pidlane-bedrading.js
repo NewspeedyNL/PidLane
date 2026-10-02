@@ -285,6 +285,10 @@ var KRITIEK = [
   // #60 t/m #68 staan er nog bij: hun eigen guards staan verspreid door de
   // modules, ook nu blok 5 over #74 en de begeleide rit gaat.
   'renderCorrelationBanner','bevindingenAan',     // pidlane-correlatie.js — #60
+  // Erbij op 02-10-2026: Slim visueel zeeft de bevindingen die de bestuurder
+  // verborg (✕ of dubbeltik). Ontbreekt de zeef, dan staat een weggeklikte
+  // kaart er stil weer — niet erg, maar de guard hoort hier.
+  'bevindingZichtbaar',
   // De schakelaar zelf plus de knop-synchronisatie. Sinds #123 (08-09-2026)
   // tekent pidlane-run.js dat knopje in het Run-venster in plaats van het
   // ☰-menu, en dus staat de aanroep nu in een andere module dan de definitie.
