@@ -1608,7 +1608,10 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 @media (prefers-reduced-motion: reduce){ .vpf * { transition:none !important; } }
 
 .vis-meld.meer { justify-content:flex-start; font-size:12px; font-weight:700; color:var(--bl); background:var(--sur2); }
-.vis-snelk { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
+/* De snelkoppelingen op één regel, even breed (02-10-2026): twee boven en één
+   eronder zag eruit als een losse knop die er niet bij hoorde. */
+.vis-snelk { display:flex; flex-wrap:nowrap; justify-content:center; gap:6px; width:100%; }
+.vis-snelk .pidview-btn { flex:1 1 0; min-width:0; padding:8px 6px; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* De rail: één chip per lopende module. Een chip is een lampje, geen kaart —
    een kaart is voor wat je moet lezen (de bevindingen eronder). */
 .vis-rail { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
@@ -2845,6 +2848,10 @@ body:not(.pl-garage) .alleen-garage { display:none !important; }
   border-radius:10px; border:1px solid var(--bd); background:var(--sur); color:var(--tx); font:700 12.5px var(--f); cursor:pointer;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .pl-live-acties button:active { transform:scale(.98); }
+/* Vier knoppen (garagemodus) pasten niet op één regel: "Opnemer", "Meekijker"
+   (02-10-2026, uit het gebruik). Dan twee bij twee, met de volle tekst. */
+body.pl-garage .pl-live-acties { flex-wrap:wrap; }
+body.pl-garage .pl-live-acties button { flex:1 1 calc(50% - 3px); }
 
 /* ══ LEESBAARHEID (29-09-2026) ══
    Uit de evaluatie: letters te licht, te klein, te veel tekst per venster.
