@@ -574,8 +574,9 @@ body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
    Eén mechanisme, dus een volgend element dat daar komt heeft genoeg aan één
    regel erbij. Gemeten op een tablet (DPR 1.5) bezet de chip ~135 CSS px vanaf
    de rechterrand; 150px geeft marge voor een driecijferige kijkersteller. */
-html.rem-pill-on .tabs { padding-right:var(--rempill-gap,150px); }
-html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
+/* 02-10-2026: de chip staat nu IN de topbalk (index.html, .tpr) en zweeft
+   niet meer. Er hoeft dus niets meer opzij; de klasse blijft bestaan voor wie
+   wil weten of er gedeeld wordt. */
 /* Op smalle schermen liever afbreken dan de titel platdrukken. */
 .welcome-header-row { flex-wrap:wrap; gap:8px; }
 
@@ -1629,6 +1630,13 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 /* Slim visueel in beeld: wat de rail en de lampjes al tonen, staat niet
    nóg eens ergens anders. De pillen hangen buiten #pane-live (in #fabLane),
    dus alleen verbergen zolang de live view echt openstaat. */
+/* De aandrijfregel bovenin Live (pidlane-aandrijfbalk.js, rustiger sinds 02-10-2026):
+   geen gekleurd blok meer, een smalle regel met een stipje in de toestandskleur. */
+#aandrijfBalk.ab-regel { align-items:center; gap:7px; margin:0 0 8px; padding:4px 10px 4px 8px; border-radius:999px;
+  border:1px solid var(--bd); background:var(--sur); color:var(--tx2); font-size:12px; font-weight:600; line-height:1.25; width:max-content; max-width:100%; }
+#aandrijfBalk .ab-stip { flex:none; width:8px; height:8px; border-radius:50%; background:var(--ab-kleur); box-shadow:0 0 0 3px color-mix(in srgb, var(--ab-kleur) 22%, transparent); }
+#aandrijfBalk .ab-ic { flex:none; width:15px; height:15px; color:var(--ab-kleur); }
+#aandrijfBalk .ab-tx { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 body.pl-visueel #wkStrook, body.pl-visueel #aandrijfBalk { display:none !important; }
 /* #371: in Slim visueel staat de waakronde al op de rail en de bulk-recorder
    in het meldingenvak. Bewaken is dezelfde waakronde, en de PID-recorder

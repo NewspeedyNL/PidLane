@@ -895,6 +895,10 @@ function closeConnOv(){
          niet mee in de kleur — "niets draait op de achtergrond" is geen
          probleem — maar krijgt hier wél zijn telbadge door, anders is een
          actieve achtergrondtaak bij het inklappen onzichtbaar. -->
+    <!-- 📡 Diagnose delen loopt (02-10-2026): in de topbalk, naast de status.
+         Tot die datum zweefde hij position:fixed onder de topbalk en dekte hij
+         de tab Sensoren af. showPill() in pidlane-remote.js zet hem aan. -->
+    <button type="button" id="remPill" onclick="PLRemote.openShare()" title="Diagnose delen loopt — tik voor de code en het aantal meekijkers">📡<span class="rem-pill-tx">delen</span>👁 <span id="remPillN">0</span></button>
     <div class="tchip sys" id="sysChip" onclick="toggleSysStatus(event)" title="Verbinding — tik voor details">
       <div class="tdot" id="sysdot"></div><span id="sysTxt">Niet verbonden</span><span id="sysTel" style="font-weight:800;color:var(--gn)"></span>
     </div>
@@ -1869,7 +1873,8 @@ function closeConnOv(){
      er wordt niets in de bestaande code gewijzigd.
      ════════════════════════════════════════════════════════════════════ -->
 <style>
-#remPill{position:fixed;top:calc(6px + var(--pl-top));right:10px;z-index:9600;display:none;align-items:center;gap:6px;background:var(--sur,#151b24);border:1px solid var(--bl,#00d4ff);color:var(--tx,#e6e9ef);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer}
+#remPill{display:none;flex:none;align-items:center;gap:4px;background:var(--bls,rgba(77,130,255,.16));border:1px solid var(--bl,#4d82ff);color:var(--tx,#e6e9ef);border-radius:999px;padding:4px 10px;font-family:var(--f);font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer}
+@media (max-width:370px){#remPill .rem-pill-tx{display:none}}
 .rem-ov{position:fixed;inset:0;z-index:9700;background:rgba(5,8,12,.72);display:none;align-items:flex-end;justify-content:center}
 .rem-ov.open{display:flex}
 /* De veilige marge onderin (08-09-2026). .rem-ov staat op align-items:flex-end,
@@ -1901,7 +1906,6 @@ function closeConnOv(){
 .rem-note{font-size:11px;opacity:.6;margin-top:8px}
 </style>
 
-<div id="remPill" onclick="PLRemote.openShare()">📡 delen · 👁 <span id="remPillN">0</span></div>
 
 <!-- ══ GERESERVEERDE BAAN RECHTSONDER ══
      Zwevende status-chips stapelen hier automatisch op (kolom, van onder naar
