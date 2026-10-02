@@ -755,7 +755,9 @@ function leesRun(){
 function leesBevindingen(){
   try{
     if(!bevindingenAan()) return null;          // uitgezet in ☰: dan ook hier niet
-    return (typeof _bevToon!=='undefined' && _bevToon) ? _bevToon.slice() : [];
+    const alle=(typeof _bevToon!=='undefined' && _bevToon) ? _bevToon.slice() : [];
+    // Weggeklikt (✕ of dubbeltik, pidlane-correlatie.js): niet in het vak.
+    return (typeof bevindingZichtbaar==='function') ? bevindingZichtbaar(alle) : alle;
   }catch(e){ console.warn('PLVisueel: bevindingen onleesbaar', e); return null; }
 }
 function leesAdmin(){
@@ -792,7 +794,7 @@ function meldingen(run, bev, admin, nu){
   hoofd.forEach(function(h){ uit.lopend.push(chip(h.id, h.icoon, h.kort, run[h.id], nu)); });
   if(run.waak && run.waak.aan) uit.lopend.push(chip('waak', '👁', 'Waakronde', run.waak, nu));
   if(bev && bev.length){
-    bev.slice(0, BEV_IN_VAK).forEach(function(b){ uit.regels.push({ soort:'bevinding', ernst:b.ernst, naam:b.naam, detail:b.uitleg||'' }); });
+    bev.slice(0, BEV_IN_VAK).forEach(function(b){ uit.regels.push({ soort:'bevinding', id:b.id, ernst:b.ernst, naam:b.naam, detail:b.uitleg||'' }); });
     if(bev.length>BEV_IN_VAK) uit.regels.push({ soort:'meer', naam:'nog '+(bev.length-BEV_IN_VAK)+' bevinding'+(bev.length-BEV_IN_VAK===1?'':'en') });
   }
   if(!hoofd.length) HOOFD.forEach(function(h){ if(h.snel && run[h.id] && (!h.admin || admin)) uit.snel.push({ id:h.id, icoon:h.icoon, naam:h.naam }); });
@@ -811,8 +813,13 @@ function meldHtml(m){
   if(m.lopend.length) h+='<div class="vis-rail">'+m.lopend.map(chipHtml).join('')+'</div>';
   m.regels.forEach(function(r){
     if(r.soort==='bevinding'){
-      h+='<button type="button" class="vis-meld bev'+(r.ernst>=2?' ernstig':'')+'" onclick="openBevindingen()"><span class="vis-meld-ic">🔗</span>'+
-         '<span class="vis-meld-tx"><b>'+esc(r.naam)+'</b><small>'+esc(r.detail)+'</small></span></button>';
+      // Eén tik opent alle bevindingen, twee tikken of het ✕ verbergen deze
+      // (bevindingTik in pidlane-correlatie.js) — net als bij de tegels.
+      const id=String(r.id||'').replace(/[^A-Za-z0-9_\-]/g,'');
+      h+='<div class="vis-meld bev'+(r.ernst>=2?' ernstig':'')+'" role="button" tabindex="0" data-bev="'+id+'" onclick="bevindingTik(\''+id+'\')"'+
+         ' title="Tik: alle bevindingen · dubbeltik: verbergen"><span class="vis-meld-ic">🔗</span>'+
+         '<span class="vis-meld-tx"><b>'+esc(r.naam)+'</b><small>'+esc(r.detail)+'</small></span>'+
+         '<button type="button" class="vis-meld-x" onclick="event.stopPropagation();bevindingVerberg(\''+id+'\')" aria-label="Verbergen" title="Verbergen — de AI krijgt hem nog mee">✕</button></div>';
     } else if(r.soort==='meer'){
       h+='<button type="button" class="vis-meld meer" onclick="openBevindingen()">'+esc(r.naam)+' — bekijk alles →</button>';
     }
@@ -1382,6 +1389,7 @@ window.PLVisueel = {
   sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, herbouwKlant:herbouwKlant, maat:maat,
   rijVenster:rijVenster, VENSTER_MS:VIS_VENSTER_MS, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
   remt:remt, isOud:isOud, bouw:bouw, bij:bij, tik:tik, start:start, stop:stop,
+  ververs:function(){ if(!_staat.aan) return; _staat.meldSleutel=''; meldBij(); },
   staat:function(){ return { aan:_staat.aan, start:_staat.start, traag:Array.from(_staat.traag),
                              turboVast:_staat.turboVast, gebruik:Array.from(_staat.gebruik), ind:_staat.ind, rijdtSinds:_staat.rijdtSinds }; }
 };

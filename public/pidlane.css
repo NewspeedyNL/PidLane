@@ -1460,6 +1460,15 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vis-meld-tx small { font-size:12px; color:var(--tx2); overflow-wrap:anywhere; }
 .vis-meld.bev { border-color:var(--or); background:var(--ors); }
 .vis-meld.bev.ernstig { border-color:var(--rd); background:var(--rds); }
+.vis-meld.bev { position:relative; padding-right:40px; }
+.vis-meld-x { position:absolute; top:6px; right:6px; width:28px; height:28px; border-radius:8px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); font-size:12px; font-weight:800; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.vis-meld-x:active { transform:scale(.94); }
+/* Eén bevinding in de balk en in het venster (pidlane-correlatie.js). */
+.bev-regel { display:flex; align-items:flex-start; gap:8px; padding:8px 10px; border-top:1px solid var(--bd); font-size:12px; }
+.bev-regel-tx { flex:1; min-width:0; }
+.bev-regel.verborgen { opacity:.55; }
+.bev-x { flex:none; min-width:24px; height:24px; padding:0 7px; border-radius:6px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); font-family:var(--f); font-size:11px; font-weight:800; cursor:pointer; line-height:1; }
+.bev-x.bev-terug { color:var(--bl); border-color:var(--bl); }
 .vis-meld.meer { justify-content:flex-start; font-size:12px; font-weight:700; color:var(--bl); background:var(--sur2); }
 .vis-snelk { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
 /* De rail: één chip per lopende module. Een chip is een lampje, geen kaart —
