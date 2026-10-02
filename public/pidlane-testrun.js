@@ -6499,7 +6499,7 @@ const PROEVEN_B5 = [
       gemeten += 'een bekende PID die ontbreekt telt als onvolledig. ';
 
       var gp = PLAdapter.laatsteGroepsproef();
-      if (!gp) return { staat: 'LET OP', detail: gemeten + 'De groepsproef is deze sessie niet gedraaid — adapterpaneel → 📦 Start de groepsproef (zie de campagne en #333).' };
+      if (!gp) return { staat: 'LET OP', detail: gemeten + 'De groepsproef is deze sessie niet gedraaid — adapterpaneel → 📦 Groepsproef (zie de campagne en #333).' };
       if (gp.afgebroken) return { staat: 'LET OP', detail: gemeten + 'De groepsproef brak af: ' + gp.afgebroken };
       var a = gp.advies || {};
       var tabel = (a.groepen || []).map(function (x) {
@@ -9429,11 +9429,11 @@ const CAMPAGNE = {
     '── MEETRIT 1, ALLEEN, ±45 MINUTEN ────────',
     'STAP 0 — VOORAF, MOTOR KOUD. Nieuwste versie laden (Meer → Admin). De MX+ erin. Een nieuwe APK is niet nodig.',
     'STAP 1 — VERBINDEN (#376). Check mijn auto opent vanzelf. Vindt hij niets, dan loopt er een balk van vijf seconden: raak niets aan en kijk of je "Alles in orde" kunt lezen voordat hij naar Live gaat.',
-    'STAP 2 — GROEPSPROEF A, KOUD EN STIL (#333). Tik op de OBD-chip → 📦 Start de groepsproef. Twee minuten, de meters staan stil, laat de app open. Meldt hij drift, doe hem dan meteen nog eens.',
+    'STAP 2 — GROEPSPROEF A, KOUD EN STIL (#333). Tik op de OBD-chip → 📦 Groepsproef. Twee minuten, de meters staan stil, laat de app open. Meldt hij drift, doe hem dan meteen nog eens.',
     'STAP 3 — 🔄 OPNIEUW VERBINDEN in hetzelfde paneel. Vanaf hier telt het half uur van #302; de groepsproef zit dan niet in die meting.',
     'STAP 4 — DERTIG MINUTEN RIJDEN IN SLIM VISUEEL, ZONDER TE VERBREKEN (#302, #337, #338). Onderweg: een paar keer vanuit stilstand stevig optrekken en daarna het gas helemaal los, een stuk boven 50 km/u, en één keer stilstaan. Laat waakronde en bulk-recorder zoals je ze normaal hebt.',
     'STAP 5 — TWEE MINUTEN BEELD-IN-BEELD (#319, #338). Onderweg, met de navigatie: thuisknop, PidLane staat klein; minstens twee minuten, dan terug naar de app.',
-    'STAP 6 — GROEPSPROEF B, WARM EN STIL (#333). Na het half uur stilstaan op een veilige plek, motor draaiend. Eerst 🔄 Opnieuw verbinden, dan 📦 Start de groepsproef.',
+    'STAP 6 — GROEPSPROEF B, WARM EN STIL (#333). Na het half uur stilstaan op een veilige plek, motor draaiend. Eerst 🔄 Opnieuw verbinden, dan 📦 Groepsproef.',
     'STAP 7 — VERZENDEN. Meetkamer → alle afgeronde opdrachten verzenden, en beantwoord de vragen. Daarna eventueel de testrun.',
     '── MEETRIT 2, MET BIJRIJDER, ±10 MINUTEN ────────',
     'GROEPSPROEF C, RIJDEND (#333). Constante snelheid boven 50 km/u, de bijrijder start de groepsproef. Alleen met een bijrijder.',

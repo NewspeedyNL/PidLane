@@ -1006,12 +1006,10 @@
           'De automaat meet ondertussen door — je ziet hierboven wat hij van de bus vindt, ' +
           'hij grijpt alleen niet in.</div>' +
       '</div>';
-    } else {
-      stuur = '<div style="font:400 11px var(--f);color:var(--tx3);margin-top:7px">' +
-        'De automaat regelt het tempo op bezetting, foutgraad en responstijd, en verkleint de groep ' +
-        'als de adapter frames herhaalt. Wat hij deed en waarom staat hieronder.</div>';
     }
-    return '<div style="margin-top:12px">' +
+    // Bij de automaat geen uitleg meer onder de knoppen (02-10-2026): wat hij
+    // deed en waarom staat in het blok erboven, en dit vak is voor knoppen.
+    return '<div>' +
       '<div style="font:800 11px var(--f);color:var(--tx3);letter-spacing:.4px;margin-bottom:6px">WIE REGELT HET TEMPO</div>' +
       '<div style="display:flex;gap:5px">' + knop(false, '🤖 Automaat') + knop(true, '✋ Handmatig') + '</div>' +
       stuur +
@@ -1051,11 +1049,9 @@
           'gemeten om ' + _tijd(_meting.t) + '</div>' +
       '</div>';
     }
+    if (!uitslag) return '';
     return '<div style="margin-top:12px">' +
       '<div style="font:800 11px var(--f);color:var(--tx3);letter-spacing:.4px;margin-bottom:6px">SNELHEIDSTEST</div>' +
-      '<button onclick="PLAdapter.meet()" style="width:100%;border:1px solid var(--bd);background:var(--sur);' +
-        'color:var(--tx);border-radius:9px;padding:11px;font:800 12px var(--f);cursor:pointer">' +
-        '⏱ Meet wat deze verbinding aankan (40 s)</button>' +
       uitslag +
     '</div>';
   }
@@ -1097,15 +1093,8 @@
           ' · gemeten om ' + _tijd(_gp.t) + ' · staat ook in de logtabel (groepsproef)</div>' +
       '</div>';
     }
-    return '<div style="margin-top:12px">' + kop +
-      '<div style="font:400 11px var(--f);color:var(--tx2);margin-bottom:7px">' +
-        'Meet groep 1 t/m 6 en weer terug op deze auto en deze adapter. Motor aan, auto stil, geen andere meting open. ' +
-        'Onderweg alleen als iemand anders de telefoon bedient. Zie de campagne in de testrun voor de volledige rit.</div>' +
-      '<button onclick="PLAdapter.groepsproef()" style="width:100%;border:1px solid var(--bd);background:var(--sur);' +
-        'color:var(--tx);border-radius:9px;padding:11px;font:800 12px var(--f);cursor:pointer">' +
-        '📦 Start de groepsproef (± 2 min)</button>' +
-      uitslag +
-    '</div>';
+    if (!uitslag) return '';
+    return '<div style="margin-top:12px">' + kop + uitslag + '</div>';
   }
 
   function _actieBlok() {
@@ -1166,19 +1155,44 @@
         _grafiek('perSec', 'Verzoeken per seconde', '/s', 'var(--bl)') +
         _grafiek('venMs', 'Responstijd', 'ms', 'var(--bl)') +
       '</div>' +
-      _regelingBlok() +
       _meetBlok() +
       _groepsproefBlok() +
       _actieBlok() +
       _foutBlok() +
-      '<div style="margin-top:14px;display:flex;gap:6px">' +
+      _bedieningBlok();
+  }
+
+  /* ALLE KNOPPEN ONDERIN (02-10-2026, uit het gebruik: "niet verspreid over
+     de pagina"). Tot die datum stonden de tempokeuze, de snelheidstest en de
+     groepsproef tussen de getallen in, en de drie verbindingsknoppen helemaal
+     onderaan. Nu staat alles wat je kunt indrukken in één vak dat onderaan
+     het venster blijft plakken; erboven staat alleen wat je leest. Een advies
+     uit een meting houdt zijn knop bij zijn uitslag: die hoort bij dat getal. */
+  function _bedieningBlok() {
+    const proef = function (fn, tekst, sub) {
+      return '<button onclick="PLAdapter.' + fn + '()" style="flex:1;min-width:0;border:1px solid var(--bd);background:var(--sur);' +
+        'color:var(--tx);border-radius:9px;padding:9px 6px;font:800 12px var(--f);cursor:pointer;line-height:1.25">' +
+        tekst + '<br><span style="font:600 10px var(--f);color:var(--tx3)">' + sub + '</span></button>';
+    };
+    const bezig = _meetBezig || _gpBezig;
+    return '<div id="plAdapterBediening" style="position:sticky;bottom:calc(-16px - var(--pl-sab,0px));margin:14px -14px -14px;' +
+        'padding:12px 14px calc(14px + var(--pl-sab,0px));background:var(--sur2);border-top:1px solid var(--bd);' +
+        'border-radius:0 0 14px 14px;box-shadow:0 -10px 24px rgba(0,0,0,.25)">' +
+      _regelingBlok() +
+      '<div style="font:800 11px var(--f);color:var(--tx3);letter-spacing:.4px;margin:12px 0 6px">METEN — motor aan, auto stil</div>' +
+      '<div style="display:flex;gap:6px' + (bezig ? ';opacity:.5;pointer-events:none' : '') + '">' +
+        proef('meet', '⏱ Snelheidstest', '± 40 s') +
+        proef('groepsproef', '📦 Groepsproef', 'groep 1–6, ± 2 min') +
+      '</div>' +
+      '<div style="margin-top:8px;display:flex;gap:6px">' +
         '<button onclick="PLAdapter.reset()" style="flex:1;border:1px solid var(--bd);background:var(--sur);' +
           'color:var(--tx2);border-radius:8px;padding:10px;font:700 11px var(--f);cursor:pointer">↺ Reset meting</button>' +
         '<button onclick="PLAdapter.herverbind()" style="flex:1;border:1px solid var(--bl);background:var(--bls);' +
           'color:var(--bl);border-radius:8px;padding:10px;font:700 11px var(--f);cursor:pointer">🔄 Opnieuw verbinden</button>' +
         '<button onclick="PLAdapter.verbreek()" style="flex:1;border:1px solid var(--rd);background:var(--rds);' +
           'color:var(--rd);border-radius:8px;padding:10px;font:700 11px var(--f);cursor:pointer">Verbreken</button>' +
-      '</div>';
+      '</div>' +
+    '</div>';
   }
 
   function _melding(t) {
