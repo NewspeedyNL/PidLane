@@ -1875,6 +1875,12 @@ function closeConnOv(){
 <style>
 #remPill{display:none;flex:none;align-items:center;gap:4px;background:var(--bls,rgba(77,130,255,.16));border:1px solid var(--bl,#4d82ff);color:var(--tx,#e6e9ef);border-radius:999px;padding:4px 10px;font-family:var(--f);font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer}
 @media (max-width:370px){#remPill .rem-pill-tx{display:none}}
+.rem-kies{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 10px}
+.rem-kies-k{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px;border-radius:10px;border:1px solid var(--bd,#2a3344);background:var(--sur2,#1b2333);color:var(--tx2,#c3cee2);font:700 12px var(--f);cursor:pointer;font-size:18px}
+.rem-kies-k span{font-size:12px}
+.rem-kies-k.aan{border-color:var(--bl,#4d82ff);background:var(--bls,rgba(77,130,255,.16));color:var(--tx,#fff)}
+.rem-deel{display:none}
+.rem-deel.aan{display:block}
 .rem-ov{position:fixed;inset:0;z-index:9700;background:rgba(5,8,12,.72);display:none;align-items:flex-end;justify-content:center}
 .rem-ov.open{display:flex}
 /* De veilige marge onderin (08-09-2026). .rem-ov staat op align-items:flex-end,
@@ -1930,19 +1936,37 @@ function closeConnOv(){
   </div>
   <div id="remShareOn" style="display:none">
     <div class="rem-stat" id="remShareStat">—</div>
-    <div class="rem-row" id="remShortRow"><div class="rem-lbl">🔑 Meekijk-code — lees voor of app door aan de expert</div>
-      <div class="rem-flex"><input class="rem-in" id="remShort" readonly style="font-size:22px;letter-spacing:3px;text-align:center;font-weight:800" placeholder="··· ··· ····"><button class="rem-btn" onclick="PLRemote.copy('remShort')">Kopieer</button></div>
-      <div class="rem-stat" id="remShortStat">De expert kiest “Meekijken” en typt deze code.</div></div>
-    <div class="rem-row"><div class="rem-lbl">Sessie-ID</div><div class="rem-code" id="remSid">—</div></div>
-    <div class="rem-row" id="remQrRow" style="text-align:center">
-      <div class="rem-lbl">Scan met de camera van het expert-toestel</div>
-      <div id="remQr" style="display:inline-block;background:#fff;padding:10px;border-radius:10px;margin-top:6px;min-width:180px;min-height:180px"></div>
-      <div class="rem-stat" id="remQrStat"></div>
+    <!-- Eén manier tegelijk (02-10-2026, uit het gebruik: "niet allemaal in
+         één keer in beeld"). De knoppen kiezen; PLRemote.deelMethode() toont
+         alleen het blok dat erbij hoort en onthoudt de keuze. -->
+    <div class="rem-lbl" style="margin-top:6px">Hoe geef je de expert toegang?</div>
+    <div class="rem-kies" role="tablist">
+      <button type="button" class="rem-kies-k" data-deel="code" onclick="PLRemote.deelMethode('code')">🔑<span>Code</span></button>
+      <button type="button" class="rem-kies-k" data-deel="qr" onclick="PLRemote.deelMethode('qr')">📷<span>QR</span></button>
+      <button type="button" class="rem-kies-k" data-deel="link" onclick="PLRemote.deelMethode('link')">🔗<span>Link</span></button>
+      <button type="button" class="rem-kies-k" data-deel="los" onclick="PLRemote.deelMethode('los')">📋<span>Plakcode</span></button>
     </div>
-    <div class="rem-row"><div class="rem-lbl">Link voor de expert (stuur via WhatsApp of mail)</div>
-      <div class="rem-flex"><input class="rem-in" id="remLink" readonly><button class="rem-btn" onclick="PLRemote.copy('remLink')">Kopieer</button></div></div>
-    <div class="rem-row"><div class="rem-lbl">Of losse code (plakken bij “Meekijken”)</div>
-      <div class="rem-flex"><input class="rem-in" id="remCode" readonly><button class="rem-btn" onclick="PLRemote.copy('remCode')">Kopieer</button></div></div>
+    <div class="rem-deel" data-deel="code">
+      <div class="rem-row" id="remShortRow"><div class="rem-lbl">🔑 Meekijk-code — lees voor of app door aan de expert</div>
+        <div class="rem-flex"><input class="rem-in" id="remShort" readonly style="font-size:22px;letter-spacing:3px;text-align:center;font-weight:800" placeholder="··· ··· ····"><button class="rem-btn" onclick="PLRemote.copy('remShort')">Kopieer</button></div>
+        <div class="rem-stat" id="remShortStat">De expert kiest “Meekijken” en typt deze code.</div></div>
+    </div>
+    <div class="rem-deel" data-deel="qr">
+      <div class="rem-row" id="remQrRow" style="text-align:center">
+        <div class="rem-lbl">Scan met de camera van het expert-toestel</div>
+        <div id="remQr" style="display:inline-block;background:#fff;padding:10px;border-radius:10px;margin-top:6px;min-width:180px;min-height:180px"></div>
+        <div class="rem-stat" id="remQrStat"></div>
+      </div>
+    </div>
+    <div class="rem-deel" data-deel="link">
+      <div class="rem-row"><div class="rem-lbl">Link voor de expert (stuur via WhatsApp of mail)</div>
+        <div class="rem-flex"><input class="rem-in" id="remLink" readonly><button class="rem-btn" onclick="PLRemote.copy('remLink')">Kopieer</button></div></div>
+    </div>
+    <div class="rem-deel" data-deel="los">
+      <div class="rem-row"><div class="rem-lbl">Losse code (de expert plakt hem bij “Meekijken”)</div>
+        <div class="rem-flex"><input class="rem-in" id="remCode" readonly><button class="rem-btn" onclick="PLRemote.copy('remCode')">Kopieer</button></div></div>
+      <div class="rem-row"><div class="rem-lbl">Sessie-ID</div><div class="rem-code" id="remSid">—</div></div>
+    </div>
     <div class="rem-stat">👁 <span id="remExpN">0</span> expert(s) kijkt mee</div>
     <button class="rem-btn danger" style="width:100%;margin-top:8px" onclick="PLRemote.shareStop()">Stop delen</button>
   </div>

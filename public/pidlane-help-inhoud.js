@@ -165,7 +165,8 @@ var PL_HULP = {
         'alleen lezen: op afstand kan er niets aan de auto veranderd worden.</p>' +
         '<ol>' +
         '<li>Tik op <b>Start delen</b>.</li>' +
-        '<li>Geef de expert de <b>meekijk-code</b>, laat hem de QR scannen of stuur de link.</li>' +
+        '<li>Kies hoe de expert binnenkomt: <b>Code</b> (voorlezen), <b>QR</b> (scannen), <b>Link</b> (WhatsApp of mail) of <b>Plakcode</b>. ' +
+        'Alleen die manier staat dan in beeld; de app onthoudt je keuze.</li>' +
         '<li>Je ziet hoeveel experts meekijken. Klaar? Tik op <b>Stop delen</b>.</li>' +
         '</ol>' +
         '<p>Ben jij de expert? Tik op <b>🔭 Meekijken</b> en typ de code, of plak de link die je kreeg.</p>' +
