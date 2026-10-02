@@ -2825,6 +2825,20 @@ body:not(.pl-garage) .alleen-garage { display:none !important; }
 .pl-tegel:hover, .pl-tegel:focus-visible { border-color:var(--tg,#2f6bff); outline:none; }
 .pl-tegel.tg-storing { --tg:#ff6b4a; } .pl-tegel.tg-handel { --tg:#a78bfa; }
 .pl-tegel.tg-rit { --tg:#22c55e; }     .pl-tegel.tg-voorb { --tg:#38bdf8; }
+/* De achtergrondfoto's terug (02-10-2026, uit het gebruik: "ik mis de mooie
+   achtergrondafbeeldingen die er in de vier deuren zaten"). Dezelfde vier
+   beelden als de oude deuren (--door-bg-*, bovenaan dit bestand), met een
+   scrim van links naar rechts zodat de tekst leesbaar blijft. Eén laag
+   (::after, z 0); de accentbalk (::before) en de tekst liggen erboven. */
+.pl-tegel > * { position:relative; z-index:1; }
+.pl-tegel::before { z-index:2; }
+.pl-tegel::after { content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background-size:cover; background-repeat:no-repeat; opacity:.6; transition:opacity .25s ease; }
+.pl-tegel.tg-storing::after { background-image:linear-gradient(100deg, rgba(19,26,40,.94) 0%, rgba(19,26,40,.72) 50%, rgba(19,26,40,.30) 100%), var(--door-bg-diag); background-position:78% center; }
+.pl-tegel.tg-handel::after  { background-image:linear-gradient(100deg, rgba(19,26,40,.94) 0%, rgba(19,26,40,.72) 50%, rgba(19,26,40,.30) 100%), var(--door-bg-deal); background-position:center 68%; }
+.pl-tegel.tg-rit::after     { background-image:linear-gradient(100deg, rgba(19,26,40,.94) 0%, rgba(19,26,40,.72) 50%, rgba(19,26,40,.30) 100%), var(--door-bg-saving); background-position:72% center; }
+.pl-tegel.tg-voorb::after   { background-image:linear-gradient(100deg, rgba(19,26,40,.94) 0%, rgba(19,26,40,.72) 50%, rgba(19,26,40,.30) 100%), var(--door-bg-prep); background-position:74% center; }
+@media (hover:hover){ .pl-tegel:hover::after { opacity:.75; } }
 .pl-tegel-ic { font-size:26px; line-height:1; margin-bottom:6px; }
 .pl-tegel-t { font-size:16px; font-weight:800; }
 .pl-tegel-d { font-size:13.5px; color:#c3cee2; line-height:1.35; }
