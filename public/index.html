@@ -852,8 +852,8 @@ function closeConnOv(){
         <!-- Garagemodus (29-09-2026): dezelfde plekken, met de vakgereedschappen
              erbij. Staat vanzelf aan voor een account dat geen klant is. -->
         <button class="kebab-item kebab-schakel" id="kbGarageModus" role="switch" aria-checked="false" onclick="PLNav.wisselGarage()">🔧 Garagemodus<span class="kb-sw" aria-hidden="true"></span></button>
-        <button class="kebab-item kebab-schakel" id="kbAutoCheck" role="switch" aria-checked="true" onclick="PLNav.wisselAutoCheck()">🩺 Check na verbinden<span class="kb-sw" aria-hidden="true"></span></button>
-        <button class="kebab-item kebab-schakel" id="kbHelpTips" role="switch" aria-checked="true" onclick="PLHelp.wisselTips()">ⓘ Uitleg bij knoppen<span class="kb-sw" aria-hidden="true"></span></button>
+        <button class="kebab-item kebab-schakel" id="kbAutoCheck" role="switch" aria-checked="false" onclick="PLNav.wisselAutoCheck()">🩺 Check na verbinden<span class="kb-sw" aria-hidden="true"></span></button>
+        <button class="kebab-item kebab-schakel" id="kbHelpTips" role="switch" aria-checked="false" onclick="PLHelp.wisselTips()">ⓘ Uitleg bij knoppen<span class="kb-sw" aria-hidden="true"></span></button>
         <button class="kebab-item" onclick="closeKebab();openGearInstellingen()">🔢 Versnellingsindicator</button>
         <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
         <!-- De schakelaar voor de bevindingenbalk (issue #60) stond hier tot

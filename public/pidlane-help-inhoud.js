@@ -94,7 +94,7 @@ var PL_HULP = {
         '<li>Tik op <b>⚡ Plug in. Let\'s go.</b> De eerste keer legt PidLane eerst uit waarvoor Bluetooth nodig is.</li>' +
         '<li>PidLane zoekt de adapter en daarna de auto. Na afloop zie je de sensoren van jouw auto.</li>' +
         '</ol>' +
-        '<p>Staat <b>Check na verbinden</b> aan (in Meer), dan opent <a data-hulp="check">Check mijn auto</a> daarna één keer vanzelf. ' +
+        '<p>Zet je <b>Check na verbinden</b> aan (in Meer), dan opent <a data-hulp="check">Check mijn auto</a> bij de volgende verbinding één keer vanzelf; daarna staat de schakelaar weer uit. ' +
         'Vindt hij niets, dan gaat de app na 5 seconden door naar Live; tik in het venster of op <b>Blijf hier</b> om te blijven.</p>' +
         '<p>In hetzelfde scherm: <b>Simuleer verbinding</b> (demo), <b>Verder zonder adapter</b> en ' +
         '<b>Meekijken met sessie (expert)</b> voor wie op afstand wil meekijken. Zie <a data-hulp="delen">Delen en meekijken</a>.</p>',
@@ -188,10 +188,10 @@ var PL_HULP = {
         '<ul>' +
         '<li><b>⚙️ Mijn voorkeuren</b></li>' +
         '<li><b>🔧 Garagemodus</b> — zie <a data-hulp="garagemodus">Garagemodus</a>.</li>' +
-        '<li><b>🩺 Check na verbinden</b> — opent Check mijn auto vanzelf, één keer per sessie.</li>' +
+        '<li><b>🩺 Check na verbinden</b> — opent Check mijn auto bij de volgende verbinding één keer vanzelf en gaat dan weer uit. Standaard uit.</li>' +
         '<li><b>🔢 Versnellingsindicator</b></li>' +
         '<li><b>📖 Tekstgrootte</b> — S, M of L.</li>' +
-        '<li><b>ⓘ Uitleg bij knoppen</b> — zet de kleine <b>i</b>-rondjes aan of uit.</li>' +
+        '<li><b>ⓘ Uitleg bij knoppen</b> — zet de kleine <b>i</b>-rondjes aan of uit. Standaard uit.</li>' +
         '</ul>' +
         '<p><b>Hulp</b></p>' +
         '<ul><li><b>📘 Handleiding</b> — dit scherm.</li><li><b>🐞 Meld een bug</b></li><li><b>📜 Logboek</b></li><li><b>🔒 Privacy</b></li></ul>' +
@@ -201,14 +201,14 @@ var PL_HULP = {
     { id: 'garagemodus', groep: 'gebruik', titel: 'Garagemodus',
       tekst:
         '<p>Zet de vakgereedschappen erbij, zoals <b>Alle functies</b> op het startscherm en <b>◉ Bewaken</b> bij Live. ' +
-        'Voor een account dat geen klant is staat hij vanzelf aan. Aan- en uitzetten doe je in Meer.</p>',
+        'Hij staat standaard uit; aanzetten doe je in Meer.</p>',
       zie: ['meer'] },
 
     { id: 'uitroeptekens', groep: 'gebruik', titel: 'De i-rondjes',
       tekst:
         '<p>Bij sommige knoppen staat een klein glazen rondje met een <b>i</b>. Tik erop voor een korte uitleg; de knop zelf wordt dan niet ingedrukt. ' +
         'Onder de uitleg staat een link naar het onderwerp in deze handleiding.</p>' +
-        '<p>Ken je de app? Zet ze uit met <b>Meer → ⓘ Uitleg bij knoppen</b>. Deze handleiding blijft altijd bereikbaar.</p>',
+        '<p>Ze staan standaard uit. Aanzetten doe je met <b>Meer → ⓘ Uitleg bij knoppen</b>. Deze handleiding blijft altijd bereikbaar.</p>',
       zie: ['meer'] },
 
     /* ─────────────── ACCOUNT EN GEGEVENS ─────────────── */
@@ -290,7 +290,7 @@ var PL_HULP = {
       a: 'Tokens zijn tegoed voor AI-analyses. Uitlezen en live meten kosten geen tokens. Je saldo staat in Meer → Mijn account en tegoed.',
       zie: 'account' },
     { v: 'Die i-rondjes zitten in de weg.',
-      a: 'Zet ze uit met Meer → Uitleg bij knoppen. De handleiding blijft bereikbaar via Meer → Handleiding.',
+      a: 'Ze staan standaard uit; aan- of uitzetten doe je met Meer → Uitleg bij knoppen. De handleiding blijft bereikbaar via Meer → Handleiding.',
       zie: 'uitroeptekens' }
   ]
 };
