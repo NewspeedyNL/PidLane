@@ -142,7 +142,9 @@ var PL_HULP = {
         'wat je zelf vastzet met <b>📈</b> op de tegel, en verder wat op dat moment het meest beweegt.</li>' +
         '<li><b>Slim</b> — de standaard: dashboardwaarden groot, trends alleen waar iets beweegt.</li>' +
         '<li><b>Visueel</b> — één vaste meter. Onder de snelheid staan koelwater, gaspedaal en brandstof als balkjes; ' +
-        'rechtsboven de accu (bij een hybride de aandrijfaccu én de 12V-accu), rechtsonder een autootje met de vier banden.</li>' +
+        'rechtsboven de accu (bij een hybride de aandrijfaccu én de 12V-accu), rechtsonder een autootje met de vier banden. ' +
+        'Met <b>Volgende</b> boven de meter wissel je tussen vijf weergaven: Basis, Temperatuur (glas), Emissie (licht), Verbruik (digitaal) en Motor (neon). ' +
+        'De app onthoudt je keuze.</li>' +
         '</ul>' +
         '<p>Een dubbeltik op een tegel verbergt hem. Hij wordt wel gewoon gemeten en staat daarna in een strook om terug te halen.</p>' +
         '<p>Een automatische bevinding verberg je met het <b>✕</b> of een dubbeltik. De AI krijgt hem nog mee; terughalen doe je via <b>bekijk alles</b>.</p>' +

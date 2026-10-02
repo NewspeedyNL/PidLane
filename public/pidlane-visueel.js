@@ -218,11 +218,13 @@ function trekAan(){ return caravanLoopt() || trekSituatie(); }
 /* Welke sensoren moet deze weergave erbij zetten? Per keten de eerste die de
    auto heeft (`heeft`), tenzij er uit die keten al een aanstaat of de klant
    hem verborgen heeft. Puur: test-visueel.js toetst hem los. */
-function nodigePids(heeft, actief, verborgen, trek){
+function nodigePids(heeft, actief, verborgen, trek, extra){
   const ketens=[['010C'],['010D'],['015C']];
   PLEKKEN.forEach(function(r){ ketens.push(r.keten); });
   ketens.push([ACCU_PID]);
   if(trek) TREK.forEach(function(t){ if(t.keten && !t.turbo) ketens.push(t.keten); });
+  // De ketens van het gekozen profiel (pidlane-visprofiel.js, 02-10-2026).
+  (extra||[]).forEach(function(k){ if(Array.isArray(k) && k.length) ketens.push(k); });
   const uit=[];
   ketens.forEach(function(k){
     if(k.some(function(p){ return actief.has(p) && !verborgen.has(p); })) return;
@@ -240,7 +242,7 @@ function zorgPids(){
   catch(e){ console.warn('PLVisueel: keuzelijst onleesbaar', e); }
   try{ if(typeof hiddenPIDs!=='undefined' && hiddenPIDs) verborgen=hiddenPIDs; }
   catch(e){ console.warn('PLVisueel: verborgen sensoren onleesbaar', e); }
-  const kies=nodigePids(heeft, activePIDs, verborgen, trekAan());
+  const kies=nodigePids(heeft, activePIDs, verborgen, trekAan(), profielKetens());
   if(!kies.length) return [];
   const voor=(typeof plSelectieVoor==='function') ? plSelectieVoor() : null;
   const r=(typeof pidToevoegen==='function') ? pidToevoegen(kies, { handmatig:false }) : { ok:[] };
@@ -518,7 +520,31 @@ function leegSessie(){
 }
 let _sessie = leegSessie(), _sessieT = 0, _snelheden = [], _laatsteAlarm = 0;
 const _staat = { aan:false, start:0, traag:new Set(), turboVast:false, handtekening:'', gebruik:new Set(), ind:null, timer:null,
-                 meldSleutel:'', lampSleutel:'', rijdtSinds:0, laatsteTik:0, pauze:null, gebouwd:false, selectie:'' };
+                 meldSleutel:'', lampSleutel:'', rijdtSinds:0, laatsteTik:0, pauze:null, gebouwd:false, selectie:'', profiel:'basis' };
+
+// ── DE VIJF WEERGAVEN (02-10-2026) ────────────────────────────────
+// Basis is de meter hieronder; temperatuur, emissie, verbruik en motor zijn
+// eigen tekeningen uit pidlane-visprofiel.js. Het kader (lampjes, meldingen,
+// trekstrook) blijft bij elk profiel hetzelfde. De knop "Volgende" boven het
+// vak wisselt rond; de keuze wordt per toestel onthouden.
+function PF(){ return window.PLVisProfiel || null; }
+function profielNu(){ return (PF() && _staat.profiel && PF().geldig(_staat.profiel)) ? _staat.profiel : 'basis'; }
+function profielKetens(){ const p=profielNu(); return (p!=='basis' && PF()) ? PF().ketens(p) : []; }
+function profielKnop(){
+  const P=PF(); if(!P) return '';
+  const nu=profielNu(), z=P.zoek(nu), vlg=P.zoek(P.volgende(nu));
+  return '<div class="vis-profiel" role="group" aria-label="Weergave">'+
+    '<span class="vis-profiel-stip" aria-hidden="true">'+P.PROFIELEN.map(function(x){ return '<i'+(x.id===nu?' class="aan"':'')+'></i>'; }).join('')+'</span>'+
+    '<span class="vis-profiel-naam"><b>'+esc(z.naam)+'</b><small>'+esc(z.ondertitel)+'</small></span>'+
+    '<button type="button" class="vis-profiel-volgende" onclick="PLVisueel.volgende()" title="Volgende weergave: '+esc(vlg.naam)+'">Volgende <span aria-hidden="true">›</span></button></div>';
+}
+function volgende(){
+  const P=PF(); if(!P) return;
+  _staat.profiel=P.volgende(profielNu());
+  P.bewaar(_staat.profiel);
+  const g=el('gGrid');
+  if(g && typeof pidViewMode!=='undefined' && pidViewMode==='visueel') bouw(g, 'profiel');
+}
 
 function bruikbaar(pid){
   try{
@@ -632,6 +658,8 @@ function indeling(){
               schaal:schaalVoor(motor, d10 && d10.wH) };
   PLEKKEN.forEach(function(r){ ind.plekken[r.rol]=(r.rol==='pedaal') ? kiesPedaal() : eerste(r.keten); });
   ind.trek = trekAan() ? trekIndeling(bruikbaar, turboBewezen()) : null;
+  const pr=profielNu();
+  ind.profiel = (pr!=='basis' && PF()) ? PF().indeling(pr, bruikbaar) : null;
   return ind;
 }
 function gebruiktePids(ind){
@@ -643,13 +671,15 @@ function gebruiktePids(ind){
   if(ind.lamp){ if(ind.lamp.belasting) s.add(ind.lamp.belasting); if(ind.lamp.accu) s.add(ind.lamp.accu); if(ind.lamp.volt) s.add(ind.lamp.volt); }
   Object.keys(ind.plekken).forEach(function(k){ if(ind.plekken[k]) s.add(ind.plekken[k]); });
   if(ind.trek) ind.trek.forEach(function(t){ if(t.pid) s.add(t.pid); });
+  if(ind.profiel && PF()) PF().pids(ind.profiel).forEach(function(p){ s.add(p); });
   return s;
 }
 function handtekening(ind){
   return [ind.naald, ind.midden, ind.onder?ind.onder.soort+ind.onder.pid:'', ind.schaal?ind.schaal.max:'',
           ind.lamp?(ind.lamp.belasting||'')+(ind.lamp.accu||'')+(ind.lamp.volt||''):'',
           PLEKKEN.map(function(r){ return ind.plekken[r.rol]||''; }).join(','),
-          ind.trek ? 'trek:'+ind.trek.map(function(t){ return t.pid||'-'; }).join(',') : ''].join('|');
+          ind.trek ? 'trek:'+ind.trek.map(function(t){ return t.pid||'-'; }).join(',') : '',
+          ind.profiel ? 'profiel:'+ind.profiel.id+':'+Object.keys(ind.profiel.plekken).map(function(k){ return ind.profiel.plekken[k]||'-'; }).join(',') : ''].join('|');
 }
 function naamVan(pid){
   try{ const d=(typeof getPidDef==='function')?getPidDef(pid):null; return (d && d.name) || pid; }
@@ -993,6 +1023,7 @@ const ONDER_ICOON = { olie:'olie', laaddruk:'turbo' };
      selectie  de sensorkeuze veranderde (een mens of de testrun koos)
      testrun   de testrun liep, met dezelfde keuze
      indeling  de tik zag een andere indeling (traag pedaal, turbo, trekmodus)
+     profiel   de klant tikte op "Volgende" (een andere weergave, 02-10-2026)
      scherm    niets van dat alles: een hertekening die niemand vroeg
    Alleen de laatste twee ziet een klant zonder dat hij er zelf om vroeg. */
 const HERBOUW_KLANT = ['indeling', 'scherm'];
@@ -1019,6 +1050,21 @@ function bouw(g, reden){
   _staat.gebouwd=true; _staat.selectie=selectieSleutel();
   const ind=indeling();
   _staat.ind=ind; _staat.handtekening=handtekening(ind); _staat.gebruik=gebruiktePids(ind); _staat.meldSleutel=''; _staat.lampSleutel='';
+  if(ind.profiel){
+    // Een profiel: hetzelfde kader, een andere tekening in het vak.
+    g.innerHTML='<div class="vis">'+profielKnop()+
+      '<div class="vis-bak">'+
+        '<div class="vis-lampen"><span class="vis-lamp leeg" id="vis-lamp-motor"></span>'+
+          '<span class="vis-lamp leeg" id="vis-lamp-accu"></span></div>'+
+        PF().html(ind.profiel.id, ind.profiel)+
+      '</div>'+
+      (ind.trek ? '<div class="vis-trek" id="visTrek" aria-label="Trekmodus: caravan of beladen"></div>' : '')+
+      '<div class="vis-meldingen" id="visMeld"></div>'+
+      '<button class="vis-voet" type="button" onclick="setPidView(\'slim\')">Overige sensoren staan in <b>Slim →</b></button></div>';
+    _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
+    meldBij(); lampjesBij(); trekBij();
+    return;
+  }
   if(!ind.naald){
     g.innerHTML='<div class="vis-leeg"><p><b>Slim visueel heeft het toerental nodig.</b> '+
       '010C is niet geselecteerd, verborgen, of deze auto geeft hem niet.</p>'+
@@ -1026,7 +1072,7 @@ function bouw(g, reden){
     return;
   }
   const dOlie=defVan('015C');
-  g.innerHTML='<div class="vis">'+
+  g.innerHTML='<div class="vis">'+profielKnop()+
     '<div class="vis-bak">'+
       '<div class="vis-lampen"><span class="vis-lamp leeg" id="vis-lamp-motor"></span>'+
         '<span class="vis-lamp leeg" id="vis-lamp-accu"></span></div>'+
@@ -1277,6 +1323,10 @@ function onderBij(){
    weergave open staat; zoekt zelf uit welke plek(ken) ervan afhangen. */
 function bij(pid, val){
   const ind=_staat.ind; if(!ind) return;
+  if(ind.profiel && PF()){
+    try{ PF().bij(ind.profiel.id, ind.profiel, pid, val, oordeel(pid, val)); }
+    catch(e){ console.warn('PLVisueel: profiel '+ind.profiel.id+' bijwerken mislukt', e); }
+  }
   if(pid===ind.naald){
     const max=ind.schaal.max, s=stand('toeren', val, max), st=oordeel(pid, val);
     const n=el('vis-naald'); if(n) n.style.transform='rotate('+s.hoek.toFixed(2)+'deg)';
@@ -1338,6 +1388,7 @@ function tik(){
     const e=el(x[0]); if(e && x[1]) dof(e, isOud(x[1], nu));
   });
   PLEKKEN.forEach(function(r){ const p=el('visp-'+r.rol), pid=I.plekken[r.rol]; if(p && pid) dof(p, isOud(pid, nu)); });
+  if(I.profiel && PF()){ try{ PF().dof(I.profiel.id, I.profiel, function(p){ return isOud(p, nu); }); }catch(e){ console.warn('PLVisueel: profiel dof zetten', e); } }
   meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
 }
 
@@ -1360,6 +1411,7 @@ function start(){
   if(_staat.aan) return;
   lichaam(true);
   _staat.aan=true; _staat.start=Date.now(); _staat.traag=new Set(); _staat.handtekening='';
+  try{ _staat.profiel=PF() ? PF().lees() : 'basis'; }catch(e){ console.warn('PLVisueel: profielkeuze onleesbaar', e); _staat.profiel='basis'; }
   _staat.rijdtSinds=0; _staat.laatsteTik=0; _staat.pauze=null; _staat.gebouwd=false;
   // Meteen de indeling kennen: remt() leest hem, en een lege set zou in de
   // eerste pollronde ook de PIDs remmen die er straks wél op staan.
@@ -1389,6 +1441,7 @@ window.PLVisueel = {
   sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, herbouwKlant:herbouwKlant, maat:maat,
   rijVenster:rijVenster, VENSTER_MS:VIS_VENSTER_MS, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
   remt:remt, isOud:isOud, bouw:bouw, bij:bij, tik:tik, start:start, stop:stop,
+  volgende:volgende, profiel:profielNu,
   ververs:function(){ if(!_staat.aan) return; _staat.meldSleutel=''; meldBij(); },
   staat:function(){ return { aan:_staat.aan, start:_staat.start, traag:Array.from(_staat.traag),
                              turboVast:_staat.turboVast, gebruik:Array.from(_staat.gebruik), ind:_staat.ind, rijdtSinds:_staat.rijdtSinds }; }
