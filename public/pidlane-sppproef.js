@@ -495,6 +495,15 @@
       dicht.style.cssText = 'margin-top:10px;width:100%;padding:9px;border-radius:8px;border:1px solid var(--bd);' +
         'background:var(--sur2);color:var(--tx);font:700 12px var(--f);cursor:pointer';
       dicht.addEventListener('click', function () { v.remove(); });
+      if (regels.length) {
+        // Na een uitslag: terug naar de lijst met proeven.
+        const terug = document.createElement('button');
+        terug.type = 'button';
+        terug.textContent = '← Andere proef';
+        terug.style.cssText = dicht.style.cssText;
+        terug.addEventListener('click', function () { controle(); });
+        v.appendChild(terug);
+      }
       v.appendChild(dicht);
     } catch (e) { console.warn('SPP-proef: venster niet getekend — de uitkomst staat wel in het logboek', e); }
   }
@@ -509,26 +518,47 @@
     ['plSppSchakel', '🔀 SPP: patch aan/uit (proef)', knopSchakel],
     ['plSppBeeindig', '🧹 SPP: proces beëindigen (draden weg)', knopBeeindig]
   ];
-  function menu() {
-    const groep = document.getElementById('admGroup');
-    if (!groep) return 0;
-    let n = 0;
+  /* ÉÉN KNOP IN HET MENU (02-10-2026, uit het gebruik: "lijst is te lang").
+     Tot die datum stonden de acht proeven als acht regels in het Admin-menu.
+     Nu één regel, "SPP-controle", die een kaart opent met de acht knoppen —
+     zelfde ids, zelfde handelingen. Zijn de proeven van #352 klaar, dan gaat
+     alleen deze ene regel weg. */
+  function controle() {
+    _toon('kies een proef', []);
+    const v = document.getElementById('plSppProef');
+    if (!v) return 0;
+    const lijst = document.createElement('div');
+    lijst.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:4px';
     KNOPPEN.forEach(function (k) {
-      if (document.getElementById(k[0])) return;
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'kebab-item';
       b.id = k[0];
-      b.textContent = k[1];
-      b.addEventListener('click', function () {
-        try { if (typeof closeKebab === 'function') closeKebab(); }
-        catch (e) { console.warn('SPP-proef: kebabmenu niet gesloten', e); }
-        k[2]();
-      });
-      groep.appendChild(b);
-      n++;
+      b.className = 'spp-knop';
+      b.textContent = k[1].replace('SPP: ', '');
+      b.style.cssText = 'text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--bd);' +
+        'background:var(--sur2);color:var(--tx);font:700 13px var(--f);cursor:pointer';
+      b.addEventListener('click', function () { k[2](); });
+      lijst.appendChild(b);
     });
-    return n;
+    // Vóór de knop Sluiten, die _toon() als laatste neerzet.
+    v.insertBefore(lijst, v.lastChild);
+    return KNOPPEN.length;
+  }
+  function menu() {
+    const groep = document.getElementById('admGroup');
+    if (!groep || document.getElementById('plSppMenu')) return 0;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'kebab-item';
+    b.id = 'plSppMenu';
+    b.textContent = '🧵 SPP-controle';
+    b.addEventListener('click', function () {
+      try { if (typeof closeKebab === 'function') closeKebab(); }
+      catch (e) { console.warn('SPP-proef: kebabmenu niet gesloten', e); }
+      controle();
+    });
+    groep.appendChild(b);
+    return 1;
   }
 
   try {
@@ -553,6 +583,7 @@
     beeindig: knopBeeindig,
     stat: stat,
     oordeel: oordeel,
+    controle: controle,
     patchStatus: patchStatus,
     meetDraden: meetDraden,
     meetRespons: meetRespons,
