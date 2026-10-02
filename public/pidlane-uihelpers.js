@@ -79,12 +79,15 @@ function toggleDemoBarBody(){
 }
 document.addEventListener('DOMContentLoaded', function(){
   try{
-    if(localStorage.getItem('pl_vehsec_collapsed')==='1'){
+    // Standaard ingeklapt sinds 02-10-2026 (uit het gebruik: "teveel tekst"):
+    // de kop toont dan in één regel welke auto het is. Alleen wie hem zelf
+    // openklapt (opgeslagen '0') ziet het hele blok.
+    if(localStorage.getItem('pl_vehsec_collapsed')!=='0'){
       const body=document.getElementById('vehicleBody'), chev=document.getElementById('vehSecChev');
       if(body) body.style.display='none';
       if(chev) chev.textContent=_vehKlapTekst(true);
     }
-    if(localStorage.getItem('pl_demobar_collapsed')==='1'){
+    if(localStorage.getItem('pl_demobar_collapsed')!=='0'){
       const body=document.getElementById('demoBarBody'), chev=document.getElementById('demoBarChev');
       if(body) body.style.display='none';
       if(chev) chev.textContent='▸';
@@ -243,6 +246,9 @@ function updateTopbarStatus(){
   zetSub('vSub', known ? 'wat de app van je auto weet — tik voor alles' : 'nog geen auto herkend');
   const vc=document.getElementById('vchip');
   if(vc) vc.title=known?(naam+' — dossier '+pct+'%, tik voor overzicht'):'Nog geen voertuig herkend — verbind eerst';
+  // De ingeklapte voertuigkop in de sensorkeuze: welke auto, in één regel.
+  const vs=document.getElementById('vehSecSam');
+  if(vs){ const t=known ? naam.replace(/^DEMO\s*[—-]\s*/i,'') : ''; if(vs.textContent!==t) vs.textContent=t; }
   // Ernst voor de systeem-dot: 0=groen, 1=oranje, 2=rood — dezelfde regel als
   // hierboven voor vd, maar ook bruikbaar buiten de className-string.
   const vSev = known ? (pct>=80?0:1) : 2;

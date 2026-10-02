@@ -987,7 +987,7 @@ function closeConnOv(){
            ruimte op dat de PID-lijst eronder nauwelijks nog hoogte overhoudt
            om te scrollen. Zie toggleVehicleSection() in pidlane-uihelpers.js. -->
       <div class="slsec" id="vehicleSection">
-        <div class="slttl" onclick="toggleVehicleSection()" style="cursor:pointer">Voertuig<span id="vehSecChev" class="sl-klap" role="button" aria-label="Voertuiggegevens in- of uitklappen">Inklappen ▴</span></div>
+        <div class="slttl" onclick="toggleVehicleSection()" style="cursor:pointer">Voertuig<span id="vehSecSam" class="sl-sam"></span><span id="vehSecChev" class="sl-klap" role="button" aria-label="Voertuiggegevens in- of uitklappen">Inklappen ▴</span></div>
         <div id="vehicleBody">
         <div id="demoBar" style="display:none;margin-bottom:8px;padding:8px;background:var(--pus);border:1px solid var(--pu);border-radius:8px">
           <div onclick="toggleDemoBarBody()" style="font-size:11px;font-weight:700;color:var(--pu);margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
@@ -1014,21 +1014,21 @@ function closeConnOv(){
       <!-- PID LIST — dynamisch na discovery -->
       <div class="slsec">
         <div class="slttl">
-          Beschikbare PIDs <span class="cnt" id="pidCnt">0</span>
+          Sensoren <span class="cnt" id="pidCnt">0</span>
           <button id="showAllPidBtn" onclick="toggleShowAllPIDs()" title="Ook ongezonde/uitgegrijsde PIDs tonen" style="margin-left:auto;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">👁 Toon alles</button>
           <button id="pidRefreshBtn" onclick="deepRefreshPIDs()" title="Dieper zoeken + namen opzoeken" style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid rgba(0,212,255,.3);background:rgba(0,212,255,.08);color:#00b4cc;cursor:pointer">🔄 Diep zoeken</button>
         </div>
         <div id="pidRefreshStatus" style="font-size:11px;color:var(--tx3);padding:2px 2px 0;min-height:12px"></div>
         <!-- Voorinstellingen: altijd "basis + focus", nooit een setje van drie
-             sensoren zonder context. Zie PID_PRESETS in pidlane-data.js. -->
+             sensoren zonder context. Zie PID_PRESETS in pidlane-data.js.
+             Sinds 02-10-2026 tikbare doelen in plaats van een keuzelijst, en
+             alleen de doelen die bij deze auto passen (_pidDoelen() in
+             pidlane-rijsituatie.js); de teller zegt of het er te veel worden. -->
         <div class="pid-preset">
-          <select id="pidPresetSel" onchange="applyPidPreset(this.value)" title="Kies een samenstelling">
-            <option value="">🎚️ Voorinstelling kiezen…</option>
-          </select>
+          <div class="pid-doelen" id="pidDoelen" role="group" aria-label="Wat wil je zien?"></div>
           <div class="pid-preset-tip" id="pidPresetTip"></div>
         </div>
-        <div class="sw"><span style="color:var(--tx3)">🔍</span><input type="text" placeholder="Zoek PID..." oninput="filterPIDs(this.value)" id="psrch"></div>
-        <div style="font-size:11px;color:var(--tx3);padding:4px 2px 0">Vink aan om te monitoren</div>
+        <div class="sw"><span style="color:var(--tx3)">🔍</span><input type="text" placeholder="Zoek een sensor of PID…" oninput="filterPIDs(this.value)" id="psrch"></div>
       </div>
       <div class="pscr" id="pidList">
         <div style="padding:16px;text-align:center;color:var(--tx3);font-size:12px">
