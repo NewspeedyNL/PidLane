@@ -82,7 +82,7 @@ var PL_HULP = {
         '<li><b>Simuleer verbinding</b> — alles proberen, er wordt niets bewaard.</li>' +
         '</ul>' +
         '<p>Na een kenteken-check kun je <b>Dit is mijn auto</b> kiezen. Staat er een APK-datum bij, dan verschijnt ook <b>Herinner me</b>.</p>' +
-        '<p>In het verbindscherm brengt <b>Verder zonder adapter</b> je hier ook.</p>',
+        '<p>In het verbindscherm brengt <b>Zonder adapter</b> je hier ook.</p>',
       zie: ['wat', 'verbinden'] },
 
     { id: 'verbinden', groep: 'start', titel: 'Verbinden met de auto',
@@ -96,8 +96,8 @@ var PL_HULP = {
         '</ol>' +
         '<p>Zet je <b>Check na verbinden</b> aan (in Meer), dan opent <a data-hulp="check">Check mijn auto</a> bij de volgende verbinding één keer vanzelf; daarna staat de schakelaar weer uit. ' +
         'Vindt hij niets, dan gaat de app na 5 seconden door naar Live; tik in het venster of op <b>Blijf hier</b> om te blijven.</p>' +
-        '<p>In hetzelfde scherm: <b>Simuleer verbinding</b> (demo), <b>Verder zonder adapter</b> en ' +
-        '<b>Meekijken met sessie (expert)</b> voor wie op afstand wil meekijken. Zie <a data-hulp="delen">Delen en meekijken</a>.</p>',
+        '<p>In hetzelfde scherm: <b>Simuleer verbinding</b> (demo), <b>Zonder adapter</b> en, als regel eronder, ' +
+        '<b>Meekijken met een sessie</b> voor de expert die op afstand meekijkt. Zie <a data-hulp="delen">Delen en meekijken</a>.</p>',
       zie: ['verbinden-mislukt', 'status'] },
 
     { id: 'verbinden-mislukt', groep: 'start', titel: 'Verbinden lukt niet',

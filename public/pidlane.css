@@ -2349,6 +2349,27 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 }
 .ov#connOv .lg-site{ color:#00D4FF; text-decoration:none; font-weight:600; }
 
+/* ── RUSTIGER (02-10-2026, uit het gebruik: "minder vol, gewoon netjes") ──
+   Eén hoofdknop valt op; de rest is kleiner en staat naast elkaar. Het logo
+   en de titel staan er voor de herkenning, niet als hoofdzaak. De
+   verbindingsdetails zijn voor wie iets zoekt: een tekstlink, geen knop. */
+.ov#connOv .mh{ padding:18px 20px 4px; }
+.ov#connOv .lg-logo{ width:52px; height:52px; border-radius:14px; margin:0 auto 8px; box-shadow:0 6px 18px rgba(0,255,136,.18) !important; }
+.ov#connOv .mttl{ font-size:21px; }
+.ov#connOv .msub{ font-size:12px; }
+.ov#connOv .msteps{ gap:5px; }
+.ov#connOv .mstep{ padding:8px 11px; }
+.ov#connOv #connDetailsBtn{ width:auto !important; display:block; margin:0 auto; padding:6px 8px !important; border:0 !important;
+  background:none !important; color:var(--tx3) !important; font-size:11.5px !important; font-weight:600 !important; text-decoration:underline; text-underline-offset:3px; }
+/* In de compacte kaart staat de link al op de regel met de andere twee. */
+.ov#connOv #step1:has(#startVak [onclick="toggleConnDetails()"]) #connDetailsBtn{ display:none; }
+.ov#connOv .mact{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.ov#connOv .mact > .mbtn.p{ grid-column:1 / -1; }
+.ov#connOv .mact > .mbtn.s{ padding:10px 6px; border-radius:12px; font-size:12.5px; }
+/* Meekijken is voor de expert, niet voor de bestuurder: een regel eronder. */
+.ov#connOv .mact > #btnExpertJoin{ grid-column:1 / -1; background:none; border:0; padding:4px; color:var(--tx3); font-size:12px; font-weight:600; }
+.ov#connOv .lg-foot{ margin-top:12px; font-size:11.5px; line-height:1.6; }
+
 /* ── Rit-monitor: uitleg vervalt, meetwaarden en rijtips komen ervoor terug ── */
 .mon-intro-txt{
   overflow:hidden; max-height:220px; opacity:1;

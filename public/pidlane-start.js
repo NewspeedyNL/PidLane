@@ -21,7 +21,7 @@
      eerste keer     → "Welke adapter heb je?" met vier keuzes, daarna de
                        stappen die bij díé adapter horen
      al eens verbonden → compacte kaart met je adapter en één knop; de
-                       instructies zitten achter "Hoe werkt het ook alweer"
+                       instructies zitten achter "Uitleg" (tot 02-10-2026: "Hoe werkt het ook alweer")
      bezig met verbinden → de cascade, live
 
    Genummerde stappen zijn gebleven waar het écht een volgorde is: het
@@ -236,11 +236,15 @@
               (wanneer ? 'laatst verbonden ' + _esc(wanneer) : _esc(a.transport)) + '</span>' +
           '</span>' +
         '</div>' +
-        '<div style="display:flex;gap:14px;margin-top:8px;padding-left:2px">' +
+        // Gecentreerd, en de verbindingsdetails staan op dezelfde regel
+        // (02-10-2026): drie kleine links in plaats van twee plus een knop.
+        '<div style="display:flex;justify-content:center;flex-wrap:wrap;gap:6px 16px;margin-top:8px">' +
           '<button onclick="PLStart.terugNaarKiezer()" style="background:none;border:none;color:var(--bl);' +
             'font:600 11.5px var(--f);cursor:pointer;padding:0">Andere adapter</button>' +
           '<button onclick="PLStart.toonHulp()" style="background:none;border:none;color:var(--tx3);' +
-            'font:600 11.5px var(--f);cursor:pointer;padding:0">Hoe werkt het ook alweer</button>' +
+            'font:600 11.5px var(--f);cursor:pointer;padding:0">Uitleg</button>' +
+          '<button onclick="toggleConnDetails()" style="background:none;border:none;color:var(--tx3);' +
+            'font:600 11.5px var(--f);cursor:pointer;padding:0">Verbindingsdetails</button>' +
         '</div>' +
       '</div>';
   }
