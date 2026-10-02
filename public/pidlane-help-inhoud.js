@@ -129,9 +129,10 @@ var PL_HULP = {
     { id: 'status', groep: 'gebruik', titel: 'De statusknop bovenin',
       tekst:
         '<p>Rechtsboven staat één knop met een gekleurde stip en de naam van de auto, of <b>Niet verbonden</b>. ' +
-        'De kleur is de ernstigste van voertuig, OBD en AI samen.</p>' +
-        '<p>Tik erop voor vier losse knoppen: <b>Voertuig</b> (wat PidLane over de auto weet), <b>OBD</b> (hoe de verbinding het doet), ' +
-        '<b>AI</b> en <b>Run</b> (wat er op de achtergrond draait). Een getal bij de statusknop zegt hoeveel dingen er draaien.</p>',
+        'De kleur is de ernstigste van auto-dossier, adapter en AI samen.</p>' +
+        '<p>Tik erop voor vier regels, elk met een korte uitleg en hoe het nu staat: <b>Auto-dossier</b> (wat PidLane over de auto weet, met het percentage), ' +
+        '<b>Adapter (OBD)</b> (hoe de verbinding met de auto het doet), <b>AI-uitleg</b> (of de AI bereikbaar is) en <b>Achtergrond</b> (wat er op de achtergrond loopt). ' +
+        'Een getal bij de statusknop zegt hoeveel dingen er lopen.</p>',
       zie: ['verbinden'] },
 
     { id: 'live', groep: 'gebruik', titel: 'Live',
@@ -258,7 +259,7 @@ var PL_HULP = {
     { id: 'zonder', anker: '[data-pl="zonder"]', bron: 'index.html', onderwerp: 'zonder',
       tekst: 'Kenteken-check, lampjes en foutcodes opzoeken werken ook zonder adapter.' },
     { id: 'status', anker: '#sysChip', bron: 'index.html', onderwerp: 'status',
-      tekst: 'De kleur is de ernstigste van voertuig, OBD en AI samen. Tik voor de losse onderdelen.' },
+      tekst: 'De kleur is de ernstigste van auto-dossier, adapter en AI samen. Tik voor de vier regels met uitleg.' },
     { id: 'opnemen', anker: '#plLiveRec', bron: 'index.html', onderwerp: 'opnemen',
       tekst: 'Kies sensoren, start de opname, rijd en laat het probleem gebeuren. Stop daarna de opname.' },
     { id: 'deel', anker: '#plLiveDeel', bron: 'index.html', onderwerp: 'delen',

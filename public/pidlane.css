@@ -880,6 +880,13 @@ body.pl-visueel #plGear { display:none; }
   flex-direction:column; gap:6px; z-index:9560; }
 .sys-drop.open { display:flex; }
 .sys-drop .tchip { width:100%; justify-content:flex-start; }
+/* Elke regel zegt wat hij is en hoe het staat (02-10-2026). */
+.sys-drop { min-width:250px; max-width:calc(100vw - 20px); }
+.sys-drop .tchip { height:auto; min-height:44px; padding:7px 12px; border-radius:12px; align-items:center; }
+.sys-naam { display:flex; flex-direction:column; min-width:0; flex:1; line-height:1.2; text-align:left; }
+.sys-naam b { font-size:13px; font-weight:800; color:var(--tx); }
+.sys-naam small { font-size:11px; font-weight:500; color:var(--tx3); white-space:normal; }
+.sys-drop #vtag { flex:none; }
 /* Smalle schermen: logo-tekst weg, chips compacter, autonaam korter */
 @media (max-width:480px){
   .topbar{ padding:var(--pl-sat) 8px 0; }

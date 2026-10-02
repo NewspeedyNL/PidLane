@@ -236,7 +236,11 @@ function updateTopbarStatus(){
   const known=!!(vt && vt.style.display!=='none' && naam);
   let pct=0; try{ pct=dossierPct(); }catch(e){ console.warn('dossierPct mislukt:', e); }
   if(vd) vd.className='tdot '+(known ? (pct>=80?'g':'o') : 'r');
-  if(vl) vl.style.display=known?'none':'inline';
+  if(vl) vl.style.display='none';
+  // Wat elke regel in het uitklapmenu dóet, in gewone woorden (02-10-2026):
+  // "OBD", "AI" en "Run" waren namen voor wie de code kent.
+  const zetSub=function(id, t){ const e=document.getElementById(id); if(e && e.textContent!==t) e.textContent=t; };
+  zetSub('vSub', known ? 'wat de app van je auto weet — tik voor alles' : 'nog geen auto herkend');
   const vc=document.getElementById('vchip');
   if(vc) vc.title=known?(naam+' — dossier '+pct+'%, tik voor overzicht'):'Nog geen voertuig herkend — verbind eerst';
   // Ernst voor de systeem-dot: 0=groen, 1=oranje, 2=rood — dezelfde regel als
@@ -250,6 +254,8 @@ function updateTopbarStatus(){
     else if(demoMode){ sd.className='dot demo'; sSev=1; }
     else if(_connSpeed && _connSpeed.readsPerSec<12){ sd.className='dot slow'; sSev=1; }
     else { sd.className='dot on'; sSev=0; }
+    zetSub('obdSub', (!connected && !demoMode) ? 'niet verbonden — tik om te verbinden'
+      : demoMode ? 'demo — gesimuleerde auto' : (sSev ? 'verbonden, maar traag — tik voor details' : 'verbonden — tik voor details'));
   }
   // Tooltip = de bestaande (verborgen) statusregel, zolang er geen kwaliteitswaarschuwing actief is
   const oc=document.getElementById('obdChip'), st=document.getElementById('stxt');
@@ -265,6 +271,7 @@ function updateTopbarStatus(){
     aSev=ok?0:2;
     const ac=document.getElementById('aiChip');
     if(ac) ac.title=ok?'AI-verbinding actief':'Geen AI-verbinding — tik voor instellingen';
+    zetSub('aiSub', ok ? 'beschikbaar voor uitleg en rapporten' : 'geen AI-verbinding — tik voor instellingen');
   }
   // 4️⃣ Systeem-dot: de ernstigste van voertuig/OBD/AI. Run telt hier bewust
   // niet in mee — "niets draait op de achtergrond" is geen probleem, dat is
