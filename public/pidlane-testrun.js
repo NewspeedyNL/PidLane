@@ -2771,6 +2771,55 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Slim visueel: vijf weergaven met een knop Volgende (02-10-2026) ──
+  // Basis, temperatuur, emissie, verbruik en motor. Deze proef loopt de
+  // rondgang af en telt per profiel hoeveel plekken deze auto kan vullen; een
+  // profiel waar niets op komt is op deze auto een lege kaart.
+  {
+    issue: '—',
+    naam: 'Slim visueel heeft vijf weergaven en Volgende loopt ze rond',
+    waarom: 'Een weergave die op deze auto geen enkele sensor vindt, toont een lege kaart — en dat zie je pas als je er tijdens het rijden naartoe tikt.',
+    proef: async function () {
+      var P = window.PLVisProfiel;
+      if (!P) return { staat: 'FOUT', detail: 'PLVisProfiel ontbreekt — pidlane-visprofiel.js is niet geladen' };
+      var id = 'basis', rond = [id];
+      for (var i = 0; i < P.PROFIELEN.length; i++) { id = P.volgende(id); rond.push(id); }
+      if (rond.join(',') !== 'basis,temp,emissie,verbruik,motor,basis') return { staat: 'FOUT', detail: 'de rondgang is ' + rond.join(' → ') };
+      var mag = function (p) { return typeof activePIDs !== 'undefined' && activePIDs.has(p) || (typeof discoveredPIDDefs !== 'undefined' && (discoveredPIDDefs || []).some(function (d) { return d.pid === p; })); };
+      var leeg = [], tel = [];
+      P.PROFIELEN.forEach(function (pr) {
+        if (!pr.plekken) return;
+        var ind = P.indeling(pr.id, mag), n = Object.keys(ind.plekken).filter(function (k) { return ind.plekken[k]; }).length;
+        tel.push(pr.naam.toLowerCase() + ' ' + n + '/' + pr.plekken.length);
+        if (!n) leeg.push(pr.naam);
+      });
+      if (typeof connected === 'undefined' || !connected) return { staat: 'LET OP', detail: 'niet verbonden — rondgang goed, de plekken zijn niet te tellen (' + tel.join(', ') + ')' };
+      return { staat: leeg.length ? 'LET OP' : 'OK', detail: 'nu: ' + (PLVisueel.profiel ? PLVisueel.profiel() : '?') + '; plekken op deze auto: ' + tel.join(', ') + (leeg.length ? ' — leeg op deze auto: ' + leeg.join(', ') : '') };
+    }
+  },
+
+  // ── Eén bevinding verbergen (02-10-2026) ──
+  // Met ✕ of een dubbeltik. Verbergen is alleen het scherm: de AI krijgt hem
+  // nog mee. De proef verbergt een nep-id en kijkt of de zeef hem weghaalt en
+  // de rest laat staan, en zet daarna alles terug.
+  {
+    issue: '—',
+    naam: 'Een verborgen bevinding verdwijnt uit beeld en de rest blijft staan',
+    waarom: 'Een zeef die te veel weghaalt, verbergt een waarschuwing die niemand wegklikte.',
+    proef: async function () {
+      if (typeof bevindingZichtbaar !== 'function' || typeof _bevVerborgen === 'undefined')
+        return { staat: 'FOUT', detail: 'bevindingZichtbaar/_bevVerborgen ontbreken in pidlane-correlatie.js' };
+      var nep = [{ id: '__b5_weg' }, { id: '__b5_blijft' }];
+      var had = _bevVerborgen.has('__b5_weg');
+      _bevVerborgen.add('__b5_weg');
+      var over = bevindingZichtbaar(nep).map(function (h) { return h.id; });
+      if (!had) _bevVerborgen.delete('__b5_weg');
+      if (over.join(',') !== '__b5_blijft') return { staat: 'FOUT', detail: 'na verbergen van één staat er: ' + (over.join(',') || 'niets') };
+      var n = _bevVerborgen.size;
+      return { staat: 'OK', detail: 'de zeef haalt alleen de verborgen bevinding weg' + (n ? '; deze sessie ' + n + ' verborgen door de bestuurder' : '') };
+    }
+  },
+
   // ── Geen e-mailadres naar de server (01-10-2026) ──
   // Gedrag in de draaiende app: het veldlabrecord van een klant gaat zonder
   // e-mailadres de deur uit, ook als het in een foutregel staat.
