@@ -1398,7 +1398,7 @@ MUTATIES=(
 # die naar een knoop wijst die er niet is, een beheerschakelaar die niets meer
 # doet, en een stoplicht dat "niet gelezen" als groen telt.
 "public/pidlane-nav.js@@    if (st.rapporten) return 'rapporten';\n    if (st.welkom) return 'auto';@@    if (st.welkom) return 'auto';\n    if (st.rapporten) return 'rapporten';@@test-nav.js@@het startscherm wint van het rapportenoverzicht: Rapporten licht nooit op"
-"public/pidlane-nav.js@@    return !!ingelogd && !isKlant;@@    return !isKlant;@@test-nav.js@@de demo zonder login krijgt de garagemodus (en de reviewer het vakgereedschap)"
+"public/pidlane-nav.js@@  function garageStandaard(ingelogd, isKlant) {\n    return false;@@  function garageStandaard(ingelogd, isKlant) {\n    return !isKlant;@@test-nav.js@@de demo zonder login krijgt de garagemodus (en de reviewer het vakgereedschap)"
 "public/pidlane-nav.js@@    if (opgeslagen === '0') return false;@@    if (opgeslagen === '0') return !!standaard;@@test-nav.js@@wie de garagemodus uitzet, krijgt hem terug zodra de standaard aan is"
 "public/pidlane-nav.js@@    return !!(st.ingelogd || st.demo) && !st.dashboard;@@    return !st.dashboard;@@test-nav.js@@de balk staat er al op het inlogscherm"
 "public/pidlane-wizard.js@@  voorbereiding: {nu:'voorb_wat',       set:{doel:'voorbereiding'}},@@  voorbereiding: {nu:'voorb_klaar',      set:{doel:'voorbereiding'}},@@test-wizardtakken.js@@de tegel Voorbereiden wijst naar een knoop die niet bestaat"
