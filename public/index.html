@@ -131,18 +131,15 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
         <!-- Inlog-vinkje 'Extra logfunctie' vervallen: een admin krijgt bij
              uitloggen nu altijd de vraag of de volledige log bewaard moet
              worden (zie logout()). -->
+        <!-- 02-10-2026: "Wachtwoord vergeten?" hoort bij het wachtwoordveld, en
+             "Nog geen account?" staat onder de knoppen: eerst wat de meeste
+             mensen doen (inloggen), dan de rest. -->
+        <a href="#" class="lg-vergeten" onclick="event.preventDefault();PLKlant.openHerstelAanvraag()">Wachtwoord vergeten?</a>
         <div id="loginErr" style="font-size:12px;color:var(--rd);min-height:16px;text-align:center"></div>
         <!-- Tweede deur: bezoekers kunnen zichzelf gratis registreren en
              krijgen proeftegoed. Zakelijke logins gebruiken gewoon het
              formulier hierboven. -->
-        <div style="text-align:center;margin-top:2px;line-height:2">
-          <a href="#" onclick="event.preventDefault();PLKlant.openRegistratie()"
-             style="font-size:12.5px;color:var(--bl);text-decoration:none;font-weight:700">
-            Nog geen account? Gratis aanmaken</a><br>
-          <a href="#" onclick="event.preventDefault();PLKlant.openHerstelAanvraag()"
-             style="font-size:11.5px;color:var(--tx3,#7c8aa5);text-decoration:none">
-            Wachtwoord vergeten?</a>
-        </div>
+
       </div>
     </div>
     <div class="mact">
@@ -157,7 +154,9 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
            Geen tussenvraag "met of zonder adapter": verbinden hoort achter de
            login, dus die keuze bestaat hier niet en elke extra klik is een plek
            om af te haken. -->
+      <div class="lg-of" aria-hidden="true"><span>of</span></div>
       <button class="mbtn s" id="btnDemoLogin" onclick="plDemoZonderLogin()">▷ Try demo — no adapter needed</button>
+      <a href="#" class="lg-nieuw" onclick="event.preventDefault();PLKlant.openRegistratie()">Nog geen account? <b>Gratis aanmaken</b></a>
     </div>
   </div>
   <div class="lg-foot">
