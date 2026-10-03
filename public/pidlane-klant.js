@@ -369,7 +369,10 @@
             'berekende code mee, zodat metingen van dezelfde auto bij elkaar ' +
             'blijven horen. Daarmee bouwen we referentiewaarden per merk en ' +
             'model op \u2014 daar wordt de diagnose voor iedereen scherper van, ' +
-            'ook voor jou. Dat is pseudonimisering en geen anonimisering: wie ' +
+            'ook voor jou. Onder diezelfde code gaat ook mee hoe de verbinding met ' +
+            'jouw auto is ingemeten (protocol, wachttijd, hoeveel sensoren per ' +
+            'vraag), zodat PidLane leert hoe het elk merk het best uitleest. ' +
+            'Dat is pseudonimisering en geen anonimisering: wie ' +
             'jouw chassisnummer al kent, kan die code narekenen. Onder de AVG ' +
             'blijven het dus persoonsgegevens \u2014 je kunt ze laten verwijderen.') +
 
