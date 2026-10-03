@@ -784,6 +784,12 @@ async function _webSerialSend(cmd, timeoutMs){
 const ELM_POORT_MAX_MS = 15000;
 let _elmPoortTot = 0;    // 0 = open; anders het tijdstip waarop hij vanzelf opengaat
 let _elmPas      = false; // eenmalig doorlaatbewijs voor de init-reeks zelf
+// Hoeveel commando's de poort sinds het laden weigerde (#388). Een geweigerd
+// commando komt terug als '' — dezelfde lege string als een uitgebleven
+// antwoord. De poll-lus kan die twee alleen uit elkaar houden door deze teller
+// vóór en na een verzoek te lezen: verschilt hij, dan ging het verzoek nooit de
+// bus op en zegt het lege antwoord niets over de auto.
+let _elmWeigeringen = 0;
 
 function _elmPoortDicht(reden){
   _elmPoortTot = Date.now() + ELM_POORT_MAX_MS;
@@ -808,6 +814,7 @@ function _elmPoortDicht_(){    // interne lezer: regelt ook het vanzelf opengaan
 // werkt hier niet: pidlane-remote.js wrapt sendCmd, dus je leest de wrapper.
 window.PLElm = {
   poortDicht: function(){ try{ return _elmPoortDicht_(); }catch(e){ return null; } },
+  weigeringen: function(){ return _elmWeigeringen; },
   heeftPoort: true
 };
 
@@ -929,6 +936,7 @@ async function sendBT(cmd, timeoutMs){
   // check ziet alleen nog écht ongelokt verkeer.
   const _pas = _elmPas; _elmPas = false;
   if(!_pas && _elmPoortDicht_()){
+    _elmWeigeringen++;
     btDiag(`sendBT "${cmd}" geweigerd: ELM-herinitialisatie bezig`,'warn');
     return '';
   }
@@ -1374,6 +1382,7 @@ async function sendCmd(cmd, timeoutMs){
   // Doorlaatbewijs synchroon lezen én wissen: één aanroep, geen await ertussen.
   const _pas = _elmPas; _elmPas = false;
   if(!_pas && _elmPoortDicht_()){
+    _elmWeigeringen++;
     btDiag(`"${cmd}" geweigerd: ELM-herinitialisatie bezig`,'warn');
     // BEWUST vóór PLBus.note() en trackBtQuality(): een geweigerd commando is
     // geen busfout en al helemaal geen lege respons. Zou het wél meetellen,
@@ -1676,6 +1685,246 @@ function _bekendProtocolId(){
   return v;
 }
 
+// ══════════════════════════════════════════════════════════════════
+// VERBINDPROFIEL (#388) — de app meet per auto wat adapter en ECU aankunnen
+// ──────────────────────────────────────────────────────────────────
+// Ontwerp en afwegingen: PIDLANE-VERBINDPROFIEL.md. Kort:
+//
+// ATST stond voor élke auto op 64 (400 ms). Op de CX-5 antwoordt de ECU in
+// 25 ms en merk je dat nooit; een verzoek dat via een gateway gerouteerd wordt
+// (VAG) kan erlangs, en dan is het antwoord niet traag maar weg. Van de acht
+// knoppen die het tempo bepalen was dit de enige zonder eigenaar.
+//
+// De koude poort meet daarom direct na het vergrendelen van het protocol, vóór
+// het VIN uitlezen (dat zelf al een zwaar mode-22-verzoek is):
+//   - ATST: acht solo-verzoeken met ATSTFF open, plafond = twee keer de op één
+//     na traagste rondrit, geklemd op 48…1020 ms;
+//   - de groepsgrootte: lukt een groep van 2, dan 3? Dat wordt het startpunt
+//     én het plafond van PLBus, in plaats van optimistisch op 3 te beginnen.
+// De bestaande regelkringen (groep krimpen, batch uit, PLAntwoordtal, PLLoad)
+// houden het gezag en mogen altijd omlaag. Een merknaam raakt geen knop.
+//
+// Daarna: het profiel gaat mee in het voertuigprofiel (geheugen: ATST gaat bij
+// een bekende auto nooit lager dan de vorige keer nodig bleek) en, onder het
+// pseudoniem, naar D1 (verbindprofielen). Zo vult de kennis per merk zich uit
+// echte verbindingen in plaats van uit een tabel die niemand gemeten heeft.
+// ══════════════════════════════════════════════════════════════════
+const ST_BODEM_MS=48, ST_TOP_MS=1020, ST_STANDAARD_HEX='64';
+const ST_GEHEUGEN_MAX_MS=180*24*3600*1000;   // een half jaar
+let _plSt={ hex:ST_STANDAARD_HEX, bron:'standaard' };
+function plStHex(){ return _plSt.hex; }
+window.plStHex=plStHex;
+
+// Puur, zie test-verbindprofiel.js. Uit de rondrittijden (ms) van geslaagde
+// solo-verzoeken het ATST-plafond. null = te weinig metingen, niets zetten.
+function plStUitMetingen(ms){
+  const ok=(Array.isArray(ms)?ms:[]).filter(x=>typeof x==='number'&&isFinite(x)&&x>0).sort((a,b)=>a-b);
+  if(ok.length<3) return null;
+  // De op één na traagste, niet de traagste: één haper van de Bluetooth-
+  // verbinding (een rondrit van 600 ms tussen zeven van 40) is geen ECU die zo
+  // traag antwoordt, en zou op een snelle auto élke misser een seconde laten
+  // kosten. Onder de vijf metingen telt wel de traagste: dan is er te weinig
+  // om een uitschieter van een patroon te onderscheiden.
+  const ref = ok.length>=5 ? ok[ok.length-2] : ok[ok.length-1];
+  const doel=Math.min(ST_TOP_MS, Math.max(ST_BODEM_MS, ref*2));
+  const eenheden=Math.min(255, Math.ceil(doel/4));   // ATST telt in stappen van 4 ms
+  return { n:ok.length, traagstMs:Math.round(ok[ok.length-1]), refMs:Math.round(ref),
+           ms:eenheden*4, hex:eenheden.toString(16).toUpperCase().padStart(2,'0') };
+}
+
+// Puur. 11- of 29-bits CAN uit het ELM-protocolnummer; 0 = geen CAN (K-lijn,
+// J1850). 'A6' is automatisch gevonden protocol 6. B en C zijn door de
+// gebruiker in te stellen en staan standaard op 11 bits.
+function plProtocolBits(id){
+  const v=String(id||'').trim().toUpperCase().replace(/^A(?=.)/,'');
+  if(v==='6'||v==='8'||v==='B'||v==='C') return 11;
+  if(v==='7'||v==='9'||v==='A') return 29;
+  return 0;
+}
+
+// Puur. De CAN-adressen die bij deze bus horen. Voorbereiding op mode 22
+// (PIDLANE-VERBINDPROFIEL.md §5.8): een fabrikant-PID gaat fysiek naar één
+// ECU, en dat adres verschilt tussen 11 en 29 bits. Mode 01 gebruikt het
+// functionele adres; mode 22 straks het motoradres. null = geen CAN.
+function plAdressen(bits){
+  if(bits===11) return { functioneel:'7DF', motor:'7E0', motorAntwoord:'7E8' };
+  if(bits===29) return { functioneel:'18DB33F1', motor:'18DA10F1', motorAntwoord:'18DAF110' };
+  return null;
+}
+
+// Puur. Kwam er op een solo-verzoek een echt antwoord op déze PID?
+// '010C' → zoekt 410C. Een foutmelding met toevallig 41 erin telt niet.
+function plSoloAntwoord(raw, pid){
+  const r=String(raw||'').replace(/\s+/g,'').toUpperCase();
+  if(!r || /NODATA|ERROR|UNABLE|STOPPED|SEARCHING|BUFFER|\?/.test(r)) return false;
+  return r.indexOf('4'+String(pid||'').slice(1).toUpperCase())!==-1;
+}
+
+// Puur. Kwam elke gevraagde PID terug in het ontlede groepsantwoord?
+function plGroepCompleet(parsed, grp){
+  return Array.isArray(grp) && grp.length>0 && grp.every(p=>parsed && Object.prototype.hasOwnProperty.call(parsed,p));
+}
+
+// Puur. Mag een bewaard profiel de ATST van nu verhogen? Alleen als het
+// gemeten is, op dezelfde bus (protocol) en via hetzelfde soort adapter, en
+// niet ouder dan een half jaar. Het geheugen verlaagt nooit: een auto die
+// eerder trager bleek dan vandaag, krijgt de ruimte van toen.
+function plStUitGeheugen(nu, bewaard, protoId, adapter, tijd){
+  const b=bewaard && bewaard.st;
+  if(!b || b.bron==='standaard' || !/^[0-9A-F]{2}$/.test(String(b.hex||''))) return null;
+  const zelfde=v=>String(v||'').toUpperCase().replace(/^A(?=.)/,'');
+  if(zelfde(bewaard.protocol && bewaard.protocol.id)!==zelfde(protoId)) return null;
+  if(String(bewaard.adapter||'')!==String(adapter||'')) return null;
+  const t=(typeof tijd==='number')?tijd:Date.now();
+  if(!(bewaard.gemetenOp>0) || t-bewaard.gemetenOp>ST_GEHEUGEN_MAX_MS) return null;
+  const msNu = (nu && nu.bron==='gemeten') ? nu.ms : null;
+  if(msNu!=null && !(b.ms>msNu)) return null;
+  return { hex:b.hex, ms:b.ms, bron:'geheugen', traagstMs:b.traagstMs, refMs:b.refMs, n:b.n };
+}
+
+// De PIDs waarmee de groepsproef werkt: data-PIDs die vrijwel elke auto heeft.
+// Geen bitmaps — die weigeren op de CX-5 elke groep (zie _pollRonde).
+const PL_PROEF_PIDS=['010C','010D','0105','0104','0111','010B','010F'];
+
+const PLVerbind={
+  profiel:null,
+  _oogstGen:-1,
+  vergeet(){
+    _plSt={ hex:ST_STANDAARD_HEX, bron:'standaard' };
+    this.profiel=null;
+    try{ if(window.PLBus && PLBus.batchPlafondWis) PLBus.batchPlafondWis(); }
+    catch(e){ console.warn('PLBus.batchPlafondWis mislukt — het plafond van de vorige verbinding blijft staan', e); }
+  },
+  adapter(){
+    return window._webSerialWrite?'serial':window._sppConn?'spp':window._bleConn?'ble':window._webBtWrite?'webbt':'?';
+  },
+  // Direct na ATSP<id>, vóór het VIN. Kost op een snelle auto onder een
+  // seconde: acht keer ~40 ms, een handvol solo's en twee à vier groepen.
+  async koudePoort(protoId){
+    if(demoMode || !connected) return null;
+    const run=async()=>{
+      const bits=plProtocolBits(protoId);
+
+      // ── ATST ──
+      const metingen=[]; let meetPid=null;
+      await sendCmd('ATSTFF',1500);
+      for(const pid of ['010C','0100']){
+        metingen.length=0;
+        for(let i=0;i<8 && connected;i++){
+          const t0=performance.now();
+          const raw=await sendCmd(pid+'1',2500);
+          const ms=performance.now()-t0;
+          if(plSoloAntwoord(raw,pid)) metingen.push(ms);
+          else if(i>=3 && !metingen.length) break;   // deze PID antwoordt hier niet
+        }
+        if(metingen.length>=3){ meetPid=pid; break; }
+      }
+      const st=plStUitMetingen(metingen);
+      _plSt = st ? { hex:st.hex, ms:st.ms, traagstMs:st.traagstMs, refMs:st.refMs, n:st.n, bron:'gemeten' }
+                 : { hex:ST_STANDAARD_HEX, bron:'standaard' };
+      await sendCmd('ATST'+_plSt.hex,1500);
+      if(!st) btDiag('Verbindprofiel: te weinig antwoorden om ATST te meten ('+metingen.length+') — blijft 0x'+ST_STANDAARD_HEX,'warn');
+
+      // ── groepsgrootte, alleen op CAN ──
+      let groep=null;
+      if(bits){
+        const leeft=[];
+        for(const pid of PL_PROEF_PIDS){
+          if(leeft.length>=3 || !connected) break;
+          if(pid===meetPid){ leeft.push(pid); continue; }
+          if(plSoloAntwoord(await sendCmd(pid+'1',2500),pid)) leeft.push(pid);
+        }
+        if(leeft.length>=2){
+          let start=1, plafond=null;
+          for(const n of [2,3]){
+            if(leeft.length<n) break;          // niet te toetsen: geen plafond op grond van gebrek
+            const grp=leeft.slice(0,n);
+            let gelukt=false;
+            for(let poging=0;poging<2 && !gelukt && connected;poging++){
+              const raw=await sendCmd('01'+grp.map(p=>p.slice(2)).join(''),2500);
+              gelukt=plGroepCompleet(splitBatchResponse(raw,grp),grp);
+            }
+            if(gelukt) start=n; else { plafond=start; break; }
+          }
+          groep={ start, plafond };
+          try{ PLBus.batchStart(start, plafond); }
+          catch(e){ console.warn('PLBus.batchStart mislukt — de groep start op de oude stand', e); }
+        }
+      }
+
+      this.profiel={
+        bron: st ? 'gemeten' : 'standaard',
+        protocol:{ id:String(protoId||''), bits, adressen:plAdressen(bits) },
+        st:Object.assign({}, _plSt),
+        groep,
+        adapter:this.adapter(),
+        gemetenOp:Date.now()
+      };
+      btDiag(`🔧 Verbindprofiel: protocol ${protoId} (${bits?bits+'-bit CAN':'geen CAN'}) · ATST 0x${_plSt.hex}`+
+        (st?` (${st.ms} ms; traagste antwoord ${st.traagstMs} ms over ${st.n})`:' (standaard)')+
+        ` · groep ${groep?groep.start+(groep.plafond!=null?' (plafond '+groep.plafond+')':''):'niet gemeten'}`,'ok');
+      return this.profiel;
+    };
+    try{
+      return (typeof withBus==='function') ? await withBus('verbindprofiel', run, 8000) : await run();
+    }catch(e){
+      btDiag('Verbindprofiel: koude poort mislukt ('+(e.message||e)+') — ATST 0x'+plStHex(),'warn');
+      return null;
+    }
+  },
+  // Na het VIN: het geheugen raadplegen. Verhoogt ATST hoogstens, zie
+  // plStUitGeheugen. Raakt de groep niet: die is net gemeten.
+  async naVin(vin){
+    if(demoMode || !this.profiel || typeof vinProfileKey!=='function') return;
+    let bewaard=null;
+    try{ const r=localStorage.getItem(vinProfileKey(vin)); bewaard=r?(JSON.parse(r).verbind||null):null; }
+    catch(e){ btDiag('Verbindprofiel: bewaard profiel onleesbaar ('+(e.message||e)+')','warn'); return; }
+    const g=plStUitGeheugen(_plSt, bewaard, this.profiel.protocol.id, this.profiel.adapter);
+    if(!g) return;
+    _plSt=g;
+    this.profiel.st=Object.assign({}, g);
+    await sendCmd('ATST'+g.hex,1500);
+    btDiag(`🔧 Verbindprofiel: ATST naar 0x${g.hex} (${g.ms} ms) — deze auto had die ruimte de vorige keer nodig`,'info');
+  },
+  // In het bestaande voertuigprofiel bijschrijven. Na saveVinProfile(), dat het
+  // profiel zonder dit veld opnieuw opbouwt.
+  bewaar(vin){
+    if(demoMode || !this.profiel || typeof vinProfileKey!=='function') return;
+    try{
+      const k=vinProfileKey(vin), r=localStorage.getItem(k);
+      if(!r) return;                       // geen voertuigprofiel: dan ook geen geheugen
+      const prof=JSON.parse(r);
+      prof.verbind=JSON.parse(JSON.stringify(this.profiel));
+      localStorage.setItem(k, JSON.stringify(prof));
+    }catch(e){ btDiag('Verbindprofiel niet bewaard: '+(e.message||e),'warn'); }
+  },
+  // Eén record per verbinding naar D1, onder het pseudoniem. Nooit de VIN of
+  // het kenteken: de VIN gaat door _vlVinPseudoniem() zoals elk uitgaand pad.
+  async oogst(vin){
+    const gen=window._btGen||0;
+    if(demoMode || !this.profiel || this._oogstGen===gen) return;
+    if(typeof window.plFetch!=='function' || typeof _vlVinPseudoniem!=='function') return;
+    this._oogstGen=gen;
+    try{
+      const p=this.profiel, schoon=String(vin||'').toUpperCase();
+      const rec={
+        vin_pseudo: schoon.length===17 ? await _vlVinPseudoniem(schoon) : null,
+        wmi: schoon.length===17 ? schoon.slice(0,3) : null,
+        merk:String(vehicleInfo.merk||''), model:String(vehicleInfo.model||''),
+        jaar:String(vehicleInfo.year||''), brandstof:String(vehicleInfo.brandstof||''),
+        adapter:p.adapter, protocol:p.protocol.id, bits:p.protocol.bits,
+        st_hex:p.st.hex, st_ms:p.st.ms||null, traagst_ms:p.st.traagstMs||null, st_bron:p.st.bron,
+        groep:p.groep?p.groep.start:null, groep_plafond:p.groep?p.groep.plafond:null,
+        pids_ondersteund:(typeof supportedPIDs!=='undefined'&&supportedPIDs)?supportedPIDs.size:null,
+        reads_per_sec:(typeof _connSpeed!=='undefined'&&_connSpeed)?_connSpeed.readsPerSec:null
+      };
+      const res=await window.plFetch('/verbind/profiel',{ method:'POST', json:rec });
+      if(!res || !res.ok) btDiag('Verbindprofiel niet naar de kennisbank: HTTP '+(res?res.status:'?'),'warn');
+    }catch(e){ btDiag('Verbindprofiel niet naar de kennisbank: '+(e.message||e),'warn'); }
+  }
+};
+window.PLVerbind=PLVerbind;
+
 // ── BLUETOOTH SEND/RECEIVE ──
 // opts.herstelProtocol : vergrendel na de init het eerder gedetecteerde
 //                        protocol i.p.v. ATSP0. Gebruikt door het
@@ -1699,7 +1948,16 @@ async function initELM327(opts){
     await _elmSend('ATS0');  // Spaties uit
     await _elmSend('ATH0');  // Headers uit (standaard)
     await _elmSend('ATAT1'); // Adaptive timing
-    await _elmSend('ATST64');// 400ms timeout per commando
+    // Het plafond komt uit het verbindprofiel (#388). Vóór de eerste meting
+    // van deze verbinding is dat 64 (400 ms), het oude vaste getal; na de
+    // koude poort is het wat deze auto en deze adapter nodig bleken te hebben.
+    // Een herverbinding houdt dus de gemeten waarde in plaats van terug te
+    // vallen op 400 ms.
+    // Een nieuwe verbinding kan een andere auto zijn: dan eerst weer het
+    // vertrekpunt. Een kort plafond van de vorige auto zou de protocoldetectie
+    // hieronder kunnen afkappen. Alleen het herverbindpad houdt de meting.
+    if(!_herstel) PLVerbind.vergeet();
+    await _elmSend('ATST'+plStHex());
 
     // Stap 3: Protocol instellen
     const _proto = _herstel ? _bekendProtocolId() : null;
@@ -2151,9 +2409,22 @@ async function startDiscovery(){
   _onthoudProtocol(protoId);   // herverbindpad kan hier straks op terugvallen
   addProg('✅',`Protocol ingesteld: ${net.name}`);
 
+  // Koude poort (#388): meten wat deze auto en adapter aankunnen vóórdat er
+  // ander verkeer de bus op gaat — ook vóór het VIN, dat zelf al een zwaar
+  // verzoek is. Zie PLVerbind hierboven en PIDLANE-VERBINDPROFIEL.md.
+  if(!demoMode){
+    addProg('📏','Verbinding inmeten...');
+    const _vp=await PLVerbind.koudePoort(protoId==='0' ? (_bekendProtocolId()||'0') : protoId);   // AUTO gekozen: het gevonden protocol
+    if(_vp) addProg('✅',`Ingemeten: ATST ${_vp.st.ms?_vp.st.ms+' ms':'standaard'}${_vp.groep?', groep '+_vp.groep.start:''}`);
+  }
+
   // VIN uitlezen
   addProg('🔍','VIN uitlezen...');
   const vinInfo=await tryReadVIN();
+  if(vinInfo?.vin){
+    try{ await PLVerbind.naVin(vinInfo.vin); }
+    catch(e){ btDiag('Verbindprofiel-geheugen overgeslagen: '+(e.message||e),'warn'); }
+  }
   if(vinInfo?.vin){
     addProg('✅',`VIN: ${vinInfo.vin}`);
     if(vinInfo.merk) addProg('🚗',`${vinInfo.merk}${vinInfo.year?' '+vinInfo.year:''}`);
@@ -2319,6 +2590,9 @@ async function startDiscovery(){
   }
 
   if(knownVin && supportedPIDs.size>0 && _rdwOk && (!usedProfile || !_slaScanOver)) saveVinProfile(vinInfo.vin);
+  // Na saveVinProfile(): dat bouwt het profiel opnieuw op zonder dit veld.
+  if(knownVin) PLVerbind.bewaar(vinInfo.vin);
+  PLVerbind.oogst(knownVin?vinInfo.vin:'');   // niet afwachten: de kennisbank mag de flow niet ophouden
   // Nieuwe sessie-stats beginnen
   _sessionStats={};
 
