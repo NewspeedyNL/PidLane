@@ -132,7 +132,18 @@
     // #376 — de balk na een schone check
     'check-door-gestart': ['PLFoutcodes', 'keren dat de check vanzelf opende, niets vond en de balk startte'],
     'check-door-vanzelf': ['PLFoutcodes', 'keren dat de balk leegliep en de app zelf naar Live ging'],
-    'check-door-gestopt': ['PLFoutcodes', 'keren dat iemand de balk stopte of zelf op Nu naar Live tikte']
+    'check-door-gestopt': ['PLFoutcodes', 'keren dat iemand de balk stopte of zelf op Nu naar Live tikte'],
+    // #394 — het verbindprofiel van de koude poort, en hoe het de sessie doorkwam
+    'verbind-gemeten':       ['PLAdapter', 'de koude poort mat ATST (1) of viel terug op de standaard 400 ms (0)'],
+    'verbind-st-ms':         ['PLAdapter', 'het ATST-plafond van deze verbinding, in ms'],
+    'verbind-traagst-ms':    ['PLAdapter', 'traagste antwoord in de ATST-meting, in ms'],
+    'verbind-groep':         ['PLAdapter', 'groepsgrootte uit de groepsproef bij het verbinden; 0 = niet gemeten'],
+    'verbind-groep-nu':      ['PLAdapter', 'groepsgrootte op dit moment'],
+    'verbind-fout-pct':      ['PLAdapter', '% verzoeken deze sessie zonder bruikbaar antwoord'],
+    'verbind-onvol-pct':     ['PLAdapter', '% groepsverzoeken deze sessie waarin een PID ontbrak'],
+    'verbind-weigeringen':   ['PLAdapter', 'verzoeken die de ELM-poort deze sessie weigerde'],
+    'antwoordtal-winst-pct': ['PLAdapter', '% sneller met antwoordcijfer dan zonder (mediaan); 0 of minder = het cijfer bespaart niets'],
+    'antwoordtal-blokkades': ['PLAdapter', 'keren dat een antwoordcijfer werd uitgezet omdat er met cijfer iets ontbrak']
   };
   function _appMaat(naam) {
     var bron = APPMATEN[naam];
