@@ -152,6 +152,10 @@ var KRITIEK = [
   // valt _plVinVoorLog terug op alleen de WMI en gaat er stil minder mee dan
   // bedoeld -- daarom hoort hij hier en niet in GEEN_GLOBALE.
   '_vlVinPseudoniem',
+  // PLVerbind (pidlane-bt.js, #388) leest en schrijft het verbindgeheugen in
+  // het voertuigprofiel via deze sleutel. Verdwijnt hij, dan onthoudt de app
+  // stil niets meer en begint elke verbinding weer op de standaard-ATST.
+  'vinProfileKey',
   // De bugmelder in pidlane-auth.js haalt de VIN via deze functie op, als
   // pseudoniem. Blok 5 toetst hem; verdwijnt hij, dan is dat een FOUT.
   '_bugDiagMetVin',

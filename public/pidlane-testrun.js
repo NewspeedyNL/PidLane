@@ -2771,6 +2771,43 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Verbindprofiel: de koude poort meet, en de CX-5 blijft op tempo (#388) ──
+  // Sinds 03-10-2026 meet de app bij elke verbinding ATST en de groepsgrootte
+  // in plaats van 400 ms en groep 3 aan te nemen. Weken werk zit in de 31,7
+  // verzoeken/s van de CX-5; die mogen er niet stil uit verdwijnen. Op een
+  // Mazda (WMI JM…) is dit dus een harde grens, op elke andere auto een
+  // verslag van wat er gemeten is — dat is de kennis die naar D1 gaat.
+  {
+    issue: '#388',
+    naam: 'Verbindprofiel ingemeten — en op de Mazda geen tempo kwijt',
+    waarom: 'Een koude poort die te krap meet maakt een gezonde auto stil; een groepsproef die te snel opgeeft verdrievoudigt het aantal verzoeken. Op de CX-5 zou je dat pas merken als de meters trager lopen.',
+    proef: async function () {
+      if (typeof connected === 'undefined' || !connected || (typeof demoMode !== 'undefined' && demoMode))
+        return { staat: 'LET OP', detail: 'niet verbonden met een echte auto — er is niets ingemeten' };
+      var V = window.PLVerbind;
+      if (!V) return { staat: 'FOUT', detail: 'PLVerbind ontbreekt — pidlane-bt.js is niet (volledig) geladen' };
+      var p = V.profiel;
+      if (!p) return { staat: 'FOUT', detail: 'verbonden, maar geen verbindprofiel — de koude poort is niet gedraaid of mislukte (zie BT-log: "Verbindprofiel")' };
+      var st = p.st || {}, gr = p.groep;
+      var sp = (typeof _connSpeed !== 'undefined' && _connSpeed) ? _connSpeed.readsPerSec : null;
+      var at = (window.PLAntwoordtal && PLAntwoordtal.stand) ? PLAntwoordtal.stand() : null;
+      var wat = 'protocol ' + p.protocol.id + (p.protocol.bits ? ' (' + p.protocol.bits + '-bit)' : '') +
+        ' · ATST 0x' + st.hex + (st.ms ? ' (' + st.ms + ' ms, ' + st.bron + ')' : ' (' + st.bron + ')') +
+        ' · groep ' + (gr ? gr.start + (gr.plafond != null ? ' plafond ' + gr.plafond : '') : 'niet gemeten') +
+        (sp != null ? ' · ' + sp + ' verzoeken/s' : '') + (at ? ' · antwoordcijfer ' + at.geleerd + ' geleerd' : '');
+      var vin = (typeof vehicleInfo !== 'undefined' && vehicleInfo && vehicleInfo.vin) ? String(vehicleInfo.vin).toUpperCase() : '';
+      if (vin.indexOf('JM') !== 0) return { staat: st.bron === 'standaard' ? 'LET OP' : 'OK', detail: wat + (st.bron === 'standaard' ? ' — ATST kon niet gemeten worden, de oude 400 ms staat' : '') };
+      var mis = [];
+      if (st.bron === 'standaard') mis.push('ATST niet gemeten');
+      if (parseInt(st.hex, 16) > 0x64) mis.push('ATST 0x' + st.hex + ' is trager dan de oude 0x64');
+      if (!gr || gr.start !== 3) mis.push('groep ' + (gr ? gr.start : '?') + ' in plaats van 3');
+      if (sp != null && sp < 25) mis.push(sp + ' verzoeken/s, onder de 25');
+      if (mis.length) return { staat: 'FOUT', detail: 'Mazda (referentie): ' + mis.join('; ') + ' — ' + wat };
+      if (at && at.verzoeken > 0 && !at.geleerd) return { staat: 'LET OP', detail: wat + ' — nog geen antwoordcijfer geleerd; rij een minuut en draai opnieuw' };
+      return { staat: 'OK', detail: 'Mazda (referentie) op tempo: ' + wat };
+    }
+  },
+
   // ── Slim visueel: vijf weergaven met een knop Volgende (02-10-2026) ──
   // Basis, temperatuur, emissie, verbruik en motor. Deze proef loopt de
   // rondgang af en telt per profiel hoeveel plekken deze auto kan vullen; een

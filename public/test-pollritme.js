@@ -272,6 +272,41 @@ function hz(tijden, van, tot) {
     s.stopPoll();
   }
 
+  // ── 7. een geweigerd verzoek is geen busmeting (#388) ──
+  // Staat de ELM-poort dicht, dan komt elk verzoek als '' terug. Dat mag geen
+  // dip worden en geen PID als stil boeken. Tegenproef in dezelfde opzet: een
+  // lege string zónder weigering (de auto antwoordde echt niet) moet wél een
+  // dip geven — anders bewijst de eerste helft niets.
+  console.log('— geweigerd door de ELM-poort —');
+  for (const geweigerd of [true, false]) {
+    const { s, loop } = bouw();
+    ['010C', '010D', '0104', '0111'].forEach((p) => s.activePIDs.add(p));
+    let w = 0;
+    s.PLElm = { weigeringen: () => w, poortDicht: () => false };
+    s.sendCmd = (cmd) => { s.verzoeken.push({ cmd }); if (geweigerd) w++; return Promise.resolve(''); };
+    vm.runInContext('var _dips = 0, _stil = 0; batchDip = function(){ _dips++; }; markPidNoData = function(){ _stil++; };' +
+      'splitBatchResponse = function(){ return {}; }; plGroepOordeel = function(grp){ return { gekregen: 0, mist: grp, mistBekend: [], oordeel: "leeg" }; };', s);
+    s.startPoll();
+    await loop(3000);
+    s.stopPoll();
+    if (geweigerd) {
+      eis(s.verzoeken.length > 0, 'de ronde probeerde het wel (' + s.verzoeken.length + ' verzoeken)');
+      eis(s._dips === 0, 'geweigerd: geen enkele dip (' + s._dips + ')');
+      eis(s._stil === 0, 'geweigerd: geen PID als stil geboekt (' + s._stil + ')');
+    } else {
+      eis(s._dips > 0, 'tegenproef — echt leeg antwoord: wél een dip (' + s._dips + ')');
+    }
+  }
+  {
+    const { s, loop } = bouw();
+    ['010C', '010D'].forEach((p) => s.activePIDs.add(p));
+    s.PLElm = { weigeringen: () => 0, poortDicht: () => true };
+    s.startPoll();
+    await loop(3000);
+    s.stopPoll();
+    eis(s.verzoeken.length === 0, 'poort dicht: de ronde stuurt niets (' + s.verzoeken.length + ')');
+  }
+
   if (fouten) { console.log('FOUT — ' + fouten + ' eis(en) niet gehaald'); process.exit(1); }
   console.log('Alles goed — de pollus vraagt wat zijn klassen beloven');
 })().catch((e) => { console.log('FOUT ' + (e && e.stack || e)); process.exit(1); });

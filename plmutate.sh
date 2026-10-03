@@ -145,7 +145,7 @@ MUTATIES=(
 "public/pidlane-kaart.js@@        if ((p & 0xF0) === 0x20) uit += fr.slice(2);@@        if ((p & 0xF0) === 0x20) uit += fr;@@test-kaart.js@@de ISO-TP-teller gaat als databyte mee en verschuift elk lang antwoord"
 "public/pidlane-kaart.js@@        if (nr % 0x20 === 0) continue;@@        if (false) continue;@@test-kaart.js@@de bitmap-PID zelf wordt als datapunt geteld"
 "public/pidlane-kaart.js@@    if (LEZEND.indexOf(sid) < 0) return { mag: false, reden: 'service ' + sid + ' staat niet op de leeslijst' };@@    if (false) return { mag: false, reden: 'service ' + sid + ' staat niet op de leeslijst' };@@test-kaart.js@@de leeslijst beslist niet meer: een onbekende service mag de bus op"
-"public/pidlane-kaart.js@@      var herstel = ['ATSH' + (K.bits === 29 ? '18DB33F1' : '7DF'), 'ATCRA', 'ATH0', 'ATAT1', 'ATST' + CFG.stHerstel];@@      var herstel = ['ATCRA'];@@test-kaart.js@@de adapter blijft na de scan in scanstand staan"
+"public/pidlane-kaart.js@@      var herstel = ['ATSH' + (K.bits === 29 ? '18DB33F1' : '7DF'), 'ATCRA', 'ATH0', 'ATAT1', @@      var herstel = ['ATCRA']; void [@@test-kaart.js@@de adapter blijft na de scan in scanstand staan"
 "public/pidlane-kaart.js@@        if (!levend) throw new Error('verbinding weg: ATI gaf twee keer niets terug');@@        if (false) throw new Error('verbinding weg: ATI gaf twee keer niets terug');@@test-kaart.js@@een dode adapter wordt niet meer opgemerkt: de scan draait door op niets"
 "public/pidlane-kaart.js@@          for (var di = 0; di < tredeDids.length && !_stop; di++) {@@          for (var di = 0; di < tredeDids.length; di++) {@@test-kaart.js@@de stopknop doet niets meer tijdens de DID-sweep"
 "public/pidlane-bt.js@@  if(window._plScanActief) return;@@  if(false) return;@@test-elmpoort.js@@een scan telt zijn eigen lege antwoorden weer als een dode socket"
@@ -766,7 +766,7 @@ MUTATIES=(
 "public/pidlane-plload.js@@  if(Date.now()>=_groepHoudTot) PLBus.batchGroter();@@  PLBus.batchGroter();@@test-groepsgrootte.js@@na een krimp klimt de groep binnen seconden terug en schommelt hij op een kloon tussen 2 en 3"
 "public/pidlane-plload.js@@          if(oordeel.oordeel==='onvolledig') _groepTel(true, oordeel);@@          if(false) _groepTel(true, oordeel);@@bproef-groepsproef.js@@de pollus ziet onvolledige antwoorden niet en blijft op groep 3 met een kloon die de laatste PID laat vallen"
 "public/pidlane-data.js@@    const max=vast ? this.GROEP_HAND_MAX : this.GROEP_AUTO_MAX;@@    const max=this.GROEP_HAND_MAX;@@test-groepsgrootte.js@@terug naar de automaat laat de groep op 6 staan"
-"public/pidlane-data.js@@    if(S.batchGroep>=this.GROEP_AUTO_MAX) return false;@@    if(S.batchGroep>=this.GROEP_HAND_MAX) return false;@@test-groepsgrootte.js@@de automaat klimt zelf naar groep 6 zonder dat een rit dat bewees"
+"public/pidlane-data.js@@    if(S.batchGroep>=this.batchPlafond()) return false;@@    if(S.batchGroep>=this.GROEP_HAND_MAX) return false;@@test-groepsgrootte.js@@de automaat klimt zelf naar groep 6 zonder dat een rit dat bewees"
 "public/pidlane-adapter.js@@    for (let i = 1; i < schoon.length; i++) if (schoon[i].pidsPerSec >= best.pidsPerSec * 1.05) best = schoon[i];@@    for (let i = 1; i < schoon.length; i++) if (schoon[i].pidsPerSec >= best.pidsPerSec) best = schoon[i];@@test-groepsgrootte.js@@de groepsproef adviseert een grotere groep voor een winst binnen de meetruis"
 "public/pidlane-adapter.js@@        schoon: onvolPct <= 2 && leegPct === 0 && p.echo === 0,@@        schoon: leegPct === 0,@@test-groepsgrootte.js@@de groepsproef adviseert een groep die PIDs verliest of frames herhaalt"
 "public/pidlane-adapter.js@@      tok = await PLBus.wait('groepsproef', GP_BUS_WACHT_MS);@@      tok = -1;@@bproef-groepsproef.js@@de groepsproef meet dwars door de pollus heen in plaats van met de bus vast"
@@ -1579,6 +1579,16 @@ MUTATIES=(
 "public/pidlane-adapter.js@@    if (kmh >= 50) return 'c';@@    if (kmh >= 5) return 'c';@@test-adapterpaneel.js@@stapvoets rijden telt als proef C op constante snelheid"
 "public/pidlane-adapter.js@@    const g = (a.groepen || []).slice().sort(function (x, y) { return y.minuten - x.minuten; })[0] || null;\n    if (!g) return null;\n    switch (naam) {@@    const g = (a.groepen || []).slice(-1)[0] || null;\n    if (!g) return null;\n    switch (naam) {@@test-adapterpaneel.js@@de #302-maat kijkt naar de laatste verbinding in plaats van de langste, en een herverbinding wist de drift"
 "public/pidlane-foutcodes.js@@    _door[hoe === 'vanzelf' || hoe === 'knop' ? hoe : 'gestopt']++;@@    _door.vanzelf++;@@test-foutcodes.js@@Blijf hier telt als vanzelf doorgegaan, en de meetopdracht van #376 sluit op ingrijpen"
+# ── verbindprofiel (#388, 03-10-2026) ──
+"public/pidlane-plload.js@@if(_plWeigeringen()!==_w0){ _plGeweigerdeRonde(cmd); break; }@@if(false){ _plGeweigerdeRonde(cmd); break; }@@test-pollritme.js@@een door de ELM-poort geweigerd groepsverzoek telt weer als lege batch (dip, PIDs stil) — #388"
+"public/pidlane-plload.js@@if(_plPoortDicht()) return;@@if(false) return;@@test-pollritme.js@@de pollronde loopt door terwijl de ELM-poort dicht staat — #388"
+"public/pidlane-bt.js@@const ref = ok.length>=5 ? ok[ok.length-2] : ok[ok.length-1];@@const ref = ok[ok.length-1];@@test-verbindprofiel.js@@één Bluetooth-haper bepaalt het ATST-plafond van een snelle auto"
+"public/pidlane-bt.js@@const doel=Math.min(ST_TOP_MS, Math.max(ST_BODEM_MS, ref*2));@@const doel=Math.min(ST_TOP_MS, Math.max(ST_BODEM_MS, ref));@@test-verbindprofiel.js@@ATST zonder marge: het traagste antwoord valt precies op het plafond"
+"public/pidlane-bt.js@@if(msNu!=null && !(b.ms>msNu)) return null;@@@@test-verbindprofiel.js@@het verbindgeheugen verlaagt ATST onder wat vandaag gemeten is"
+"public/pidlane-bt.js@@if(String(bewaard.adapter||'')!==String(adapter||'')) return null;@@@@test-verbindprofiel.js@@het verbindgeheugen geldt ook over een andere adapter heen"
+"public/pidlane-data.js@@if(S.batchGroep>=this.batchPlafond()) return false;@@if(S.batchGroep>=this.GROEP_AUTO_MAX) return false;@@test-verbindprofiel.js@@de groep klimt boven het plafond uit de groepsproef"
+"public/pidlane-data.js@@return ELM_BASELINE.map(c=>c==='ATST64' ? 'ATST'+st : c);@@return ELM_BASELINE.slice();@@test-verbindprofiel.js@@de terugrol zet ATST weer op 400 ms in plaats van de gemeten waarde"
+"worker.js@@vin_pseudo: vorm(b.vin_pseudo, /^[0-9a-f]{16}@@vin_pseudo: vorm(b.vin_pseudo, /^[0-9A-Za-z]{16,17}@@test-verbindprofiel.js@@een ruwe VIN komt als pseudoniem in de kennisbank (privacy)"
 )
 
 echo

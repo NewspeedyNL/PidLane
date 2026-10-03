@@ -523,6 +523,14 @@ window.FUEL_PIDS =[
 
 // ── ELM_BASELINE (was index.html regel 7992) ──
 window.ELM_BASELINE =['ATE0','ATL0','ATS0','ATH0','ATAT1','ATST64']; // bekende goede staat
+// De bekende goede staat van déze verbinding (#388): ATST zoals de koude poort
+// hem mat (plStHex, pidlane-bt.js), niet het vaste 64. Een terugrol naar 400 ms
+// zou op een trage auto precies weer de antwoorden afkappen die de meting
+// binnenhaalde. ELM_BASELINE zelf blijft het vertrekpunt van vóór de meting.
+window.plElmBaseline = function(){
+  const st=(typeof window.plStHex==='function') ? window.plStHex() : '64';
+  return ELM_BASELINE.map(c=>c==='ATST64' ? 'ATST'+st : c);
+};
 
 // ── SCENARIO_PID_SUGGEST (was index.html regel 8251) ──
 window.SCENARIO_PID_SUGGEST =['010C','010D','0105','015C','0104','0142','0106','0107','0110','010B','010F','0114','0115','012F','015E','010A','012C'];
@@ -1680,13 +1688,30 @@ window.PLBus={
     if(S.batchGroep>1){ S.batchGroep--; diag('Multi-PID groep verkleind naar '+S.batchGroep,'warn'); return true; }
     return false;
   },
+  /* Startpunt en plafond uit de koude poort (#388). De groepsproef bij het
+     verbinden zegt hoe groot een groep op deze auto werkelijk mag zijn; de
+     automaat begint daar en klimt er niet boven. null als plafond = niet
+     getoetst (de auto had te weinig PIDs voor een groep van 3), dan geldt
+     GROEP_AUTO_MAX. Een vastgezette groep blijft staan. */
+  batchStart(start, plafond){
+    const max=this.GROEP_AUTO_MAX;
+    const pl=(plafond==null) ? null : Math.max(1,Math.min(max,Math.round(Number(plafond)||1)));
+    S.batchPlafond=pl;
+    if(S.batchVast) return S.batchGroep;
+    S.batchGroep=Math.max(1,Math.min(pl==null?max:pl, Math.round(Number(start)||1)));
+    S.batchGoed=0;
+    diag('Multi-PID groep ingemeten op '+S.batchGroep+(pl!=null?' (plafond '+pl+')':''),'info');
+    return S.batchGroep;
+  },
+  batchPlafond(){ return S.batchPlafond==null ? this.GROEP_AUTO_MAX : S.batchPlafond; },
+  batchPlafondWis(){ S.batchPlafond=null; },
   batchGroter(){
     if(S.batchVast) return false;
-    if(S.batchGroep>=this.GROEP_AUTO_MAX) return false;
+    if(S.batchGroep>=this.batchPlafond()) return false;
     if(++S.batchGoed<25) return false;
     S.batchGoed=0; S.batchGroep++; diag('Multi-PID groep terug omhoog naar '+S.batchGroep,'ok'); return true;
   },
-  batchReset(){ if(S.batchVast) return; S.batchGroep=this.GROEP_AUTO_MAX; S.batchGoed=0; }
+  batchReset(){ if(S.batchVast) return; S.batchGroep=this.batchPlafond(); S.batchGoed=0; }
 };
 
 /* Handige wrapper: alles binnen fn() draait met de bus geclaimd. Lukt het

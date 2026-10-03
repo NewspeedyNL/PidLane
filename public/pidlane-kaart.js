@@ -810,7 +810,7 @@
       // alle vijf de herstelcommando's zijn stilzwijgend geweigerd. Dat de
       // adapter tóch goed stond, kwam door de ELM-herinitialisatie die
       // toevallig hetzelfde zet — geluk, geen ontwerp.
-      var herstel = ['ATSH' + (K.bits === 29 ? '18DB33F1' : '7DF'), 'ATCRA', 'ATH0', 'ATAT1', 'ATST' + CFG.stHerstel];
+      var herstel = ['ATSH' + (K.bits === 29 ? '18DB33F1' : '7DF'), 'ATCRA', 'ATH0', 'ATAT1', 'ATST' + (typeof window.plStHex === 'function' ? window.plStHex() : CFG.stHerstel)];   // #388: terug naar de gemeten ATST, niet naar 400 ms
       var mislukt = [];
       for (var h = 0; h < herstel.length; h++) {
         var antw = '';
