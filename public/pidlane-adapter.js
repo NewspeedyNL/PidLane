@@ -779,8 +779,44 @@
       default: return null;
     }
   }
+  /* ── VERBINDPROFIEL ALS APP-MAAT (#394, 03-10-2026) ───────────────
+     Wat de koude poort mat (PLVerbind, pidlane-bt.js) en wat de regelkringen
+     er de rest van de sessie van maakten, als getal voor een meetopdracht.
+     Zo kan een rit beantwoorden of ATST 0x0C (48 ms) onder belasting houdt,
+     zonder een nieuwe build per vraag. Puur: alles komt als argument binnen,
+     zodat test-opdrachtappmaat.js hem zonder de hele app kan toetsen.
+     null = niet gemeten (geen verbinding, module niet geladen), en dat is geen 0. */
+  function verbindMaat(naam, V, bus, at, elm) {
+    const p = V && V.profiel;
+    switch (naam) {
+      case 'verbind-gemeten': return p ? ((p.st && p.st.bron !== 'standaard') ? 1 : 0) : null;
+      case 'verbind-st-ms': return p ? ((p.st && p.st.ms) || 400) : null;
+      case 'verbind-traagst-ms': return (p && p.st && typeof p.st.traagstMs === 'number') ? p.st.traagstMs : null;
+      case 'verbind-groep': return p ? (p.groep ? p.groep.start : 0) : null;
+      case 'verbind-groep-nu': return (bus && typeof bus.batchGroep === 'function') ? bus.batchGroep() : null;
+      case 'verbind-fout-pct': case 'verbind-onvol-pct': {
+        const st = (bus && typeof bus.stats === 'function') ? bus.stats() : null;
+        if (!st) return null;
+        if (naam === 'verbind-onvol-pct') return st.reqTot ? st.onvolPct : null;
+        return st.totaal ? Math.round(st.bad / st.totaal * 100) : null;
+      }
+      case 'verbind-weigeringen': return (elm && typeof elm.weigeringen === 'function') ? elm.weigeringen() : null;
+      case 'antwoordtal-winst-pct': case 'antwoordtal-blokkades': {
+        const st = (at && typeof at.stand === 'function') ? at.stand() : null;
+        if (!st) return null;
+        if (naam === 'antwoordtal-blokkades') return st.blokkades;
+        return (st.msMet > 0 && st.msZonder > 0) ? Math.round((1 - st.msMet / st.msZonder) * 100) : null;
+      }
+      default: return null;
+    }
+  }
+
   function maat(naam) {
     switch (naam) {
+      case 'verbind-gemeten': case 'verbind-st-ms': case 'verbind-traagst-ms': case 'verbind-groep':
+      case 'verbind-groep-nu': case 'verbind-fout-pct': case 'verbind-onvol-pct': case 'verbind-weigeringen':
+      case 'antwoordtal-winst-pct': case 'antwoordtal-blokkades':
+        return verbindMaat(naam, window.PLVerbind, window.PLBus, window.PLAntwoordtal, window.PLElm);
       case 'adapter-sessie-min': case 'adapter-drift-pct': case 'adapter-proef': case 'adapter-visueel-pct':
         return sessieMaat(naam, _sessie, _gebeurt);
       case 'groep-a-advies': case 'groep-b-advies': case 'groep-c-advies':
@@ -1447,6 +1483,7 @@
     laatsteGroepsproef: laatsteGroepsproef,
     gpSituatie: gpSituatie,
     sessieMaat: sessieMaat,
+    verbindMaat: verbindMaat,
     maat: maat,
     // Alleen voor de test: een uitslag neerzetten zoals _gpKlaar() dat doet.
     _gpKlaar: function (uit) { return _gpKlaar(uit); },

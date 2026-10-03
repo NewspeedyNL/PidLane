@@ -120,7 +120,7 @@ console.log('── 2. de lijst en de module lopen gelijk ──');
   // Andersom: een naam die een module wel kent maar de lijst niet, is een maat
   // die geen opdracht ooit kan vragen. Afgelezen uit de switch in de bron.
   [['pidlane-sppproef.js', 'PLSppProef', /case '(spp-[a-z-]+)'/g], ['pidlane-pip.js', 'PLPip', /case '(pip-[a-z-]+)'/g],
-   ['pidlane-adapter.js', 'PLAdapter', /case '((?:adapter|groep)-[a-z-]+)'/g],
+   ['pidlane-adapter.js', 'PLAdapter', /case '((?:adapter|groep|verbind|antwoordtal)-[a-z-]+)'/g],
    ['pidlane-berekend.js', 'PLBerekend', /case '(berekend-[a-z-]+)'/g],
    ['pidlane-visueel.js', 'PLVisueel', /case '(visueel-[a-z-]+)'/g],
    ['pidlane-foutcodes.js', 'PLFoutcodes', /case '(check-[a-z-]+)'/g]].forEach(function (m) {
@@ -129,6 +129,28 @@ console.log('── 2. de lijst en de module lopen gelijk ──');
     const vergeten = inModule.filter(function (n) { return namen.indexOf(n) < 0 || s.PLOpdracht.appMaatModule(n) !== m[1]; });
     eis(inModule.length > 0 && vergeten.length === 0, m[1] + ' kent geen maat die de lijst niet (bij hem) heeft' + (vergeten.length ? ' — wel: ' + vergeten.join(', ') : ''));
   });
+}
+
+console.log('── 2b. het verbindprofiel als maat (#394) ──');
+{
+  const s = laad();
+  const vm_ = s.PLAdapter.verbindMaat;
+  eis(typeof vm_ === 'function', 'PLAdapter.verbindMaat bestaat');
+  const V = { profiel: { st: { bron: 'gemeten', ms: 48, traagstMs: 17 }, groep: { start: 3, plafond: null } } };
+  const bus = { batchGroep: () => 2, stats: () => ({ totaal: 200, bad: 3, reqTot: 50, onvolPct: 4 }) };
+  const at = { stand: () => ({ msMet: 30, msZonder: 50, blokkades: 1 }) };
+  const elm = { weigeringen: () => 0 };
+  const m = (n) => vm_(n, V, bus, at, elm);
+  eis(m('verbind-st-ms') === 48 && m('verbind-traagst-ms') === 17 && m('verbind-gemeten') === 1, 'ATST, traagste antwoord en gemeten komen uit het profiel');
+  eis(m('verbind-groep') === 3 && m('verbind-groep-nu') === 2, 'groep bij verbinden 3, nu 2 — een krimp is zichtbaar');
+  eis(m('verbind-fout-pct') === 2, 'foutpercentage over de hele sessie: 3 van 200 = 2 (' + m('verbind-fout-pct') + ')');
+  eis(m('verbind-onvol-pct') === 4, 'onvolledige groepen uit PLBus');
+  eis(m('antwoordtal-winst-pct') === 40, 'antwoordcijfer: 30 ms met tegen 50 zonder = 40% winst (' + m('antwoordtal-winst-pct') + ')');
+  eis(vm_('antwoordtal-winst-pct', V, bus, { stand: () => ({ msMet: 50, msZonder: 48, blokkades: 0 }) }, elm) <= 0, 'cijfer bespaart niets: winst 0 of minder');
+  eis(vm_('verbind-st-ms', { profiel: { st: { bron: 'standaard' }, groep: null } }, bus, at, elm) === 400, 'niet gemeten: de standaard 400 ms');
+  eis(vm_('verbind-groep', { profiel: { st: { bron: 'gemeten', ms: 100 }, groep: null } }, bus, at, elm) === 0, 'geen groepsproef (geen CAN): 0');
+  eis(vm_('verbind-st-ms', null, bus, at, elm) === null && vm_('verbind-fout-pct', V, null, at, elm) === null, 'geen verbinding of geen PLBus: null, geen 0');
+  eis(vm_('verbind-fout-pct', V, { stats: () => ({ totaal: 0, bad: 0 }) }, at, elm) === null, 'nog niets verstuurd: null');
 }
 
 console.log('── 3. het oordeel ──');
