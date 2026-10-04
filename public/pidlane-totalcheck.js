@@ -448,7 +448,23 @@ function monMinimize(){
   try{ goHome(); }catch(e){ console.warn('goHome mislukt:', e); }
   try{ _monChipTick(); }catch(e){ console.warn('_monChipTick mislukt:', e); }
 }
-const _MON_ERNSTIG=/^(ECT_HOOG|PIEK:|UITVAL:|THERMOSTAAT|TEST:x_laadspanning)/;
+// TEST:ECT_HOOG en TEST:LAADSPANNING zijn de namen die PLWatch werkelijk geeft;
+// tot 04-10-2026 stond hier alleen ECT_HOOG en x_laadspanning, en die komen in
+// de rit-monitor nooit voor — oververhitting kwam daardoor oranje binnen.
+// Welke melding staat open voor een reden (👎 Klopt niet)? Eén tegelijk.
+let _monFbOpen='';
+function monFeedbackOpen(sig){
+  _monFbOpen=(_monFbOpen===sig)?'':sig;
+  try{ _monTick(); }catch(e){ console.warn('_monTick mislukt:', e); }
+}
+function monFeedback(sig, reden){
+  _monFbOpen='';
+  let ok=false;
+  try{ ok=!!(window.PLMon&&PLMon.feedback(sig, reden)); }catch(e){ console.warn('PLMon.feedback mislukt:', e); }
+  try{ if(typeof showToast==='function') showToast(ok?'👎 Bewaard — hier leren we van':'Niet bewaard: de melding bestaat niet meer'); }catch(e){ console.warn('showToast mislukt:', e); }
+  try{ _monTick(); }catch(e){ console.warn('_monTick mislukt:', e); }
+}
+const _MON_ERNSTIG=/^(ECT_HOOG|TEST:ECT_HOOG|PIEK:|UITVAL:|THERMOSTAAT|TEST:x_laadspanning|TEST:LAADSPANNING)/;
 
 /* ── Zuinig rijden (26-07-2026) ────────────────────────────────────────
    Twee soorten advies onder elkaar. Boven een LIVE regel die op de echte
@@ -525,9 +541,9 @@ function _monTick(){
   const trim=(typeof st6==='number'&&typeof lt7==='number')?Math.round((st6+lt7)*10)/10:undefined;
   // Tegels + kleuring op basis van dezelfde grenzen als de watchers
   _monTegel('spd',spd); _monTegel('rpm',rpm!==undefined?Math.round(rpm):undefined);
-  _monTegel('ect',ect, (typeof ect==='number'&&ect>108)?'alarm':(typeof ect==='number'&&ect>100)?'warn':'');
+  _monTegel('ect',ect, (typeof ect==='number'&&ect>112)?'alarm':(typeof ect==='number'&&ect>108)?'warn':'');
   _monTegel('load',load);
-  _monTegel('volt',volt, (typeof volt==='number'&&typeof rpm==='number'&&rpm>500&&(volt<13.2||volt>15.2))?'warn':'');
+  _monTegel('volt',volt, (typeof volt==='number'&&typeof rpm==='number'&&rpm>500&&(volt<12.7||volt>15.2))?'warn':'');
   _monTegel('trim',trim, (typeof trim==='number'&&Math.abs(trim)>20&&typeof ect==='number'&&ect>=65)?'warn':'');
   _monTegel('map',map);
   // ── Extra meetwaarden ──
@@ -566,7 +582,7 @@ function _monTick(){
   // Waarschuwingsfeed alleen hertekenen als er iets veranderde
   const lijst=document.getElementById('monWarnLijst');
   const events=(M&&M.events)||{}; const orde=(M&&M._order)||[];
-  const vinger=orde.map(k=>k+':'+events[k].count+':'+(events[k].verif?events[k].verif.status:'')).join('|');
+  const vinger=orde.map(k=>k+':'+events[k].count+':'+(events[k].verif?events[k].verif.status:'')+':'+(events[k].feedback?events[k].feedback.reden:'')).join('|')+'#'+_monFbOpen;
   if(vinger===_monLaatstGetekend) return;
   _monLaatstGetekend=vinger;
   if(!orde.length) return;                              // lege-staat blijft staan
@@ -584,9 +600,19 @@ function _monTick(){
     } else if(ernstig&&connected&&!demoMode&&window.PLVerify){
       verif='<button class="btn" style="padding:3px 9px;font-size:11px" onclick="plRunVerify(this,{sig:\''+esc(sig)+'\',titel:\''+esc(e.code)+'\'})">🔍 Verifieer</button>';
     }
-    return '<div class="mon-ev'+(ernstig?' ernstig':'')+'">'
-      +'<div class="mon-ev-kop"><span>'+(ernstig?'🔴':'🟠')+' '+esc(e.code)+'</span><span style="opacity:.6;font-weight:700">'+e.count+'×</span>'+verif+'</div>'
+    // 👎 Klopt niet: één knop, daarna de reden (zie PLMon.feedback).
+    const R=(M&&M.FEEDBACK_REDENEN)||{};
+    let fb='', fbKeuze='';
+    if(e.feedback) fb='<span class="mon-verif niet" title="'+esc(R[e.feedback.reden]||e.feedback.reden)+'">👎 klopt niet</span>';
+    else if(M&&M.feedback) fb='<button class="btn" style="padding:3px 9px;font-size:11px" onclick="monFeedbackOpen(\''+esc(sig)+'\')">👎 Klopt niet</button>';
+    if(!e.feedback && _monFbOpen===sig)
+      fbKeuze='<div class="mon-ev-body" style="display:flex;flex-wrap:wrap;gap:6px">'
+        +Object.keys(R).map(k=>'<button class="btn" style="padding:3px 9px;font-size:11px" onclick="monFeedback(\''+esc(sig)+'\',\''+k+'\')">'+esc(R[k])+'</button>').join('')
+        +'</div>';
+    return '<div class="mon-ev'+(ernstig?' ernstig':'')+(e.feedback?' gemarkeerd':'')+'"'+(e.feedback?' style="opacity:.6"':'')+'>'
+      +'<div class="mon-ev-kop"><span>'+(ernstig?'🔴':'🟠')+' '+esc(e.code)+'</span><span style="opacity:.6;font-weight:700">'+e.count+'×</span>'+verif+fb+'</div>'
       +'<div class="mon-ev-body">'+redenen+(e.verif?'<br><i>'+esc(e.verif.tekst)+'</i>':'')+'</div>'
+      +fbKeuze
       +'<div class="mon-ev-meta">rij-situatie: '+esc(fasen||'onbekend')+' · laatst: '+new Date(e.laatste).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})+'</div>'
       +'</div>';
   }).join('');

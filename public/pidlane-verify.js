@@ -174,12 +174,12 @@ const PLVerify = {
       return {status:'niet gereproduceerd', tekst:'trim-PIDs gaven onvoldoende focusdata voor een oordeel'};
     }
     if (/^ECT_HOOG|^TEST:ECT_HOOG/.test(sig)){
-      if (g.max!==null && g.max>108) return {status:'bevestigd', tekst:`koelwater onder focus nog ${g.max}°C — oververhitting reëel, direct aandacht`};
+      if (g.max!==null && g.max>112) return {status:'bevestigd', tekst:`koelwater onder focus nog ${g.max}°C — oververhitting reëel, direct aandacht`};
       return {status:'niet gereproduceerd', tekst:`koelwater nu max ${g.max}°C — piek gezakt; hou temperatuur in de gaten`};
     }
     if (/laadspanning/i.test(sig)){
       const gem=d.waarden.length? d.waarden.reduce((a,b)=>a+b,0)/d.waarden.length : null;
-      if (gem!==null && gem<13.2) return {status:'bevestigd', tekst:`laadspanning onder focus gemiddeld ${gem.toFixed(1)} V — laadprobleem bevestigd`};
+      if (gem!==null && gem<12.7) return {status:'bevestigd', tekst:`laadspanning onder focus gemiddeld ${gem.toFixed(1)} V — laadprobleem bevestigd`};
       if (gem!==null && gem>15.2) return {status:'bevestigd', tekst:`laadspanning onder focus gemiddeld ${gem.toFixed(1)} V — regelaar verdacht`};
       return {status:'niet gereproduceerd', tekst:`laadspanning nu ${gem!==null?gem.toFixed(1):'?'} V — binnen norm`};
     }

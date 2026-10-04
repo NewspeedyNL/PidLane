@@ -2771,6 +2771,32 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Rit-monitor: niet melden bij schakelen, 👎 Klopt niet (#400) ──
+  // De watchers zwijgen nu vlak na een schakelmoment en bij gas los, en
+  // de drempels voor laadspanning en koelwater volgen moderne auto's. De
+  // knop 👎 Klopt niet verzamelt wat er nog vals binnenkomt. Deze proef
+  // zegt of dat alles geladen is en hoeveel markeringen er al liggen.
+  {
+    issue: '#400',
+    naam: 'Rit-monitor zwijgt bij schakelen en verzamelt 👎 Klopt niet',
+    waarom: 'Een melding tijdens gewoon schakelen leert de bestuurder de rit-monitor te negeren — en dan mist hij ook de echte.',
+    proef: async function () {
+      var W = window.PLWatch, M = window.PLMon;
+      if (!W || !M) return { staat: 'FOUT', detail: 'PLWatch of PLMon ontbreekt — pidlane-watchers.js / pidlane-monitor.js niet geladen' };
+      var mis = [];
+      if (!(W.cfg.schakelRustMs > 0)) mis.push('geen schakelrust in PLWatch.cfg');
+      var aandr = W.tests.filter(function (t) { return t.aandrijving; }).map(function (t) { return t.id; });
+      if (aandr.indexOf('RPM_CONST') < 0 || aandr.indexOf('RATIO_CONST') < 0) mis.push('RPM_CONST/RATIO_CONST hebben geen schakel-poort');
+      if (typeof M.feedback !== 'function' || typeof M.feedbackLijst !== 'function') mis.push('PLMon.feedback ontbreekt — geen 👎-knop');
+      if (typeof _MON_ERNSTIG === 'undefined' || !_MON_ERNSTIG.test('TEST:ECT_HOOG')) mis.push('TEST:ECT_HOOG telt niet als ernstig');
+      if (mis.length) return { staat: 'FOUT', detail: mis.join('; ') };
+      var L = M.feedbackLijst(), per = {};
+      L.forEach(function (r) { per[r.code] = (per[r.code] || 0) + 1; });
+      var top = Object.keys(per).sort(function (a, b) { return per[b] - per[a]; }).slice(0, 3).map(function (k) { return k + '×' + per[k]; });
+      return { staat: 'OK', detail: 'schakelrust ' + W.cfg.schakelRustMs + ' ms · ' + L.length + ' keer 👎 gemarkeerd op dit toestel' + (top.length ? ' (' + top.join(', ') + ')' : '') };
+    }
+  },
+
   // ── Verbindprofiel: de koude poort meet, en de CX-5 blijft op tempo (#388) ──
   // Sinds 03-10-2026 meet de app bij elke verbinding ATST en de groepsgrootte
   // in plaats van 400 ms en groep 3 aan te nemen. Weken werk zit in de 31,7
@@ -9518,6 +9544,7 @@ const CAMPAGNE = {
     'STAP 2 — GROEPSPROEF A, KOUD EN STIL (#333). Tik op de OBD-chip → 📦 Groepsproef. Twee minuten, de meters staan stil, laat de app open. Meldt hij drift, doe hem dan meteen nog eens.',
     'STAP 3 — 🔄 OPNIEUW VERBINDEN in hetzelfde paneel. Vanaf hier telt het half uur van #302; de groepsproef zit dan niet in die meting.',
     'STAP 4 — DERTIG MINUTEN RIJDEN IN SLIM VISUEEL, ZONDER TE VERBREKEN (#302, #337, #338). Onderweg: een paar keer vanuit stilstand stevig optrekken en daarna het gas helemaal los, een stuk boven 50 km/u, en één keer stilstaan. Laat waakronde en bulk-recorder zoals je ze normaal hebt.',
+    'STAP 4B — RIT-MONITOR AAN, EN SCHAKEL (#400). Zet vóór STAP 4 de rit-monitor aan. Schakel onderweg een paar keer op en terug bij gelijkblijvende snelheid, en rol één keer uit met het gas los. Daar hoort nu geen melding bij. Komt er tóch een melding die niet klopt: tik 👎 Klopt niet en kies de reden.',
     'STAP 5 — TWEE MINUTEN BEELD-IN-BEELD (#319, #338). Onderweg, met de navigatie: thuisknop, PidLane staat klein; minstens twee minuten, dan terug naar de app.',
     'STAP 6 — GROEPSPROEF B, WARM EN STIL (#333). Na het half uur stilstaan op een veilige plek, motor draaiend. Eerst 🔄 Opnieuw verbinden, dan 📦 Groepsproef.',
     'STAP 7 — VERZENDEN. Meetkamer → alle afgeronde opdrachten verzenden, en beantwoord de vragen. Daarna eventueel de testrun.',
