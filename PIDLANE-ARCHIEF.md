@@ -146,6 +146,29 @@ gewijzigde toestemmingstekst maakt eerdere akkoorden ongeldig.
 
 ---
 
+## 01-10-2026 — Het logarchief: samenvatten vóór wissen
+
+**De vraag.** Logregels ouder dan zeven dagen bundelen, filteren, samenvatten
+en apart wegschrijven. "Cloudflare-logs" is hier de D1-tabel `logregels`: de
+Workers Logs van het dashboard bewaart Cloudflare zelf (dagen, niet
+instelbaar) en zijn vanuit de Worker niet te lezen.
+
+**Waarom niet het bestaande `DELETE`.** De logronde van #260 wiste kaal. Dan
+is het verloop van een oude rit weg, ook de vraag "kwam deze fout vaker
+voor". Een samenvatting per rit houdt dat, voor een paar honderd bytes.
+
+**Wat de test vond terwijl hij geschreven werd.** De eerste versie nam per
+ronde de regels tot het hoogste te wissen id. Een uitkomstregel die ná de
+laatste gewone regel van zijn rit kwam, viel daar buiten — en daarmee de
+issues en het aantal uitkomsten van die rit. Nu doen uitkomstregels ouder
+dan de grens altijd mee, maar alleen in velden die je vaker kunt uitrekenen
+zonder dubbel te tellen (maximum, vereniging).
+
+**De tweede valkuil, met tegenproef.** Archiveren en wissen los van elkaar:
+lukt het archief en faalt het wissen, dan staat er een archiefrij en blijven
+de regels staan — en telt de volgende ronde ze nog eens. Daarom één batch.
+Een test die alleen het archief laat falen zag dat verschil niet; hij laat
+nu het wissen falen.
 ## 01-10-2026 — De meetrit: waarom vier "gesloten" niets sloten (#302 #333 #337 #338 #376)
 
 **Wat er misging met de opdrachten van 27–29 september.** Opdracht 21 (#337)

@@ -238,6 +238,18 @@ WHERE Type IN ('error', 'opvallend', 'bug')
    OR (Outcome IS NOT NULL AND Outcome <> '');
 
 -- ══════════════════════════════════════════════════════════════════
+--  HET LOGARCHIEF (01-10-2026)
+--  Eén rij per rit (of per dag voor regels zonder rit) met de samenvatting
+--  van logregels die ouder zijn dan de bewaartermijn. logArchiveren() in
+--  worker.js vult hem en wist de ruwe regels in dezelfde transactie; de
+--  Worker maakt de tabel zelf aan bij de eerste aanroep. De tekst is gelijk
+--  aan LOG_ARCHIEF_SCHEMA in worker.js, en test-logarchief.js eist dat.
+--  soorten = {"testrun":120,…}; bevindingen = {"lijst":[[type,melding,n],…],"meer":n}.
+--  Geen User, UserId, VIN of VinHash: het archief overleeft een gewiste klant.
+-- ══════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS log_archief (sleutel TEXT PRIMARY KEY, SessionId TEXT, dag TEXT NOT NULL, begonnen TEXT NOT NULL, geeindigd TEXT NOT NULL, regels INTEGER NOT NULL DEFAULT 0, fouten INTEGER NOT NULL DEFAULT 0, opvallend INTEGER NOT NULL DEFAULT 0, bugs INTEGER NOT NULL DEFAULT 0, uitkomsten INTEGER NOT NULL DEFAULT 0, demo INTEGER, soorten TEXT, issues TEXT, merk TEXT, bouwjaar TEXT, versie TEXT, adapter TEXT, protocol TEXT, bevindingen TEXT, gearchiveerd TEXT NOT NULL);
+
+-- ══════════════════════════════════════════════════════════════════
 --  KLANTPLATFORM — "Mijn voertuigen" (27-09-2026)
 --  De Worker voert deze statements zelf uit bij de eerste aanroep
 --  (kpSchema in worker.js); hier staan ze om terug te kunnen lezen wat er

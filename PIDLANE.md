@@ -423,6 +423,8 @@ als een routingfout):
 | `/admin/klanten` | klantbeheer voor beheer.html (GET/POST) |
 | `/admin/codes` | activatiecodes genereren en beheren (GET/POST) |
 | `/admin/users` | zakelijk gebruikersbeheer |
+| `/admin/tabel` | de bekende bronnen lezen (GET) — Airtable én D1 — één record wijzigen, wissen, of (D1) opruimen na tellen (POST) — zie **De adminbrowser** hieronder |
+| `/admin/d1` | de logdatabase als geheel: overzicht over álle rijen, één rit compleet en het logarchief (GET); SQL-console die alleen leest, logregels archiveren (eerst proef), en meetopdrachten aanmaken, bewaren, activeren, uitzetten (POST) — zie **De databasekant** hieronder |
 | `/admin/tabel` | de bekende bronnen lezen (GET) — sinds 01-10-2026 allemaal D1 — één record wijzigen, wissen, of (D1) opruimen na tellen (POST) — zie **De adminbrowser** hieronder |
 | `/admin/d1` | de logdatabase als geheel: overzicht over álle rijen en één rit compleet (GET); SQL-console die alleen leest, en meetopdrachten aanmaken, bewaren, activeren, uitzetten (POST) — zie **De databasekant** hieronder |
 | `/api/config` | de app-instellingen: GET voor elke ingelogde sessie, POST alleen beheer. Sinds 01-10-2026 in D1 (`app_config`, `CONFIG_SCHEMA` = `schema.sql`); de Worker zette AppConfig één keer zelf over uit Airtable en noteert dat in `d1_overzet`. Test: `test-appconfig.js` |
@@ -467,6 +469,7 @@ meetopdracht aanzetten zet de andere uit. Vier regels:
 | **leesconsole** | `SELECT * FROM (<vraag>) LIMIT 501`, en daarvóór een tekstkeuring zonder tekstwaarden en commentaar | in een subquery past geen schrijfstatement; de keuring is de tweede laag. Elke laag apart uitzetten is rood (`test-admind1.js`, deel 2 en 3) |
 | **één actieve opdracht** | activeren draait `Actief = 0` voor de rest en `Actief = 1` voor deze in één `batch()` | op 22-09 stonden er negen aan en won de verkeerde; een batch is in D1 één transactie |
 | **`Gewijzigd`** | zet de Worker zelf; `Actief`, `Gewijzigd` en `id` zijn niet met de hand te schrijven | de app kiest op die tijd — bijstellen is stil kiezen welke opdracht rijdt |
+| **logarchief** (01-10-2026) | `logArchiveren()`: regels ouder dan de termijn per rit (of per dag zonder rit) samengevat in `log_archief`, dan gewist — archiefrijen en `DELETE` in één `batch()`. Uitkomsten blijven in `logregels`; geen User/VIN in het archief. De nachtronde doet het met `LOG_BEWAARDAGEN`, de knop in beheer.html na een proefdraai | een kaal `DELETE` gooide het verloop van een rit weg; los archiveren en wissen kan een rij achterlaten die de volgende ronde dubbel telt (`test-logarchief.js`) |
 
 De Worker keurt geen opdracht; dat blijft op één plek, in
 `public/pidlane-opdracht.js`. `beheer.html` laadt dat bestand zelf en keurt

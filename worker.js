@@ -4547,9 +4547,30 @@ async function adminD1Rit(db, sessie) {
     for (const k of Object.keys(rij)) if (rij[k] !== null) v[k] = rij[k];
     return v;
   });
-  return json({ ok: true, sessie: s, rijen, aantal: rijen.length, afgekapt: alle.length > D1_RIT_MAX, max: D1_RIT_MAX });
+  // Een gearchiveerde rit heeft geen regels meer (op zijn uitkomsten na),
+  // maar wel een samenvatting. Zonder deze regel zegt de pagina "geen regels"
+  // over een rit die er wel was.
+  let archief = null;
+  try {
+    await logArchiefSchema(db);
+    archief = await db.prepare("SELECT * FROM log_archief WHERE sleutel = ?").bind(s).first();
+  } catch (e) { console.warn("[admin/d1] archiefrij niet gelezen :: " + String(e && e.message || e)); }
+  return json({ ok: true, sessie: s, rijen, aantal: rijen.length, afgekapt: alle.length > D1_RIT_MAX, max: D1_RIT_MAX, archief: archief || null });
 }
 __name(adminD1Rit, "adminD1Rit");
+
+// Het archief: de nieuwste rijen en de totalen eroverheen.
+async function adminD1Archief(db, limiet) {
+  const n = Math.min(500, Math.max(1, Math.round(Number(limiet)) || 100));
+  await logArchiefSchema(db);
+  const r = await db.prepare("SELECT * FROM log_archief ORDER BY geeindigd DESC LIMIT ?").bind(n).all();
+  const t = await db.prepare(
+    "SELECT COUNT(*) AS rijen, COALESCE(SUM(regels), 0) AS regels, COALESCE(SUM(fouten), 0) AS fouten, " +
+    "MIN(begonnen) AS oudste, MAX(geeindigd) AS nieuwste, MAX(gearchiveerd) AS laatst FROM log_archief"
+  ).first();
+  return json({ ok: true, rijen: (r && r.results) || [], totaal: t || {}, limiet: n });
+}
+__name(adminD1Archief, "adminD1Archief");
 
 // Wat er van een opdracht met de hand te zetten is. `id` telt zichzelf,
 // `Actief` gaat via activeer/uit (anders staan er twee aan), en `Gewijzigd`
@@ -4631,7 +4652,7 @@ async function adminD1Opdracht(db, actie, body) {
 }
 __name(adminD1Opdracht, "adminD1Opdracht");
 
-// ── GET /admin/d1?actie=overzicht&dagen=30 | ?actie=rit&sessie=… ──────
+// ── GET /admin/d1?actie=overzicht&dagen=30 | ?actie=rit&sessie=… | ?actie=archief ──
 async function handleAdminD1Get(request, env) {
   if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
   if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
@@ -4643,6 +4664,7 @@ async function handleAdminD1Get(request, env) {
       return await adminD1Overzicht(env.LOGDB, dagen);
     }
     if (actie === "rit") return await adminD1Rit(env.LOGDB, sp.get("sessie"));
+    if (actie === "archief") return await adminD1Archief(env.LOGDB, sp.get("limiet"));
     return json({ ok: false, error: "Onbekende actie." }, 400);
   } catch (e) {
     return json({ ok: false, error: "d1_lezen_mislukt", detail: String(e && e.message || e) }, 502);
@@ -4650,7 +4672,7 @@ async function handleAdminD1Get(request, env) {
 }
 __name(handleAdminD1Get, "handleAdminD1Get");
 
-// ── POST /admin/d1  { actie:'sql', sql } | { actie:'opdracht-…', … } ──
+// ── POST /admin/d1  { actie:'sql', sql } | { actie:'archiveer', dagen, proef } | { actie:'opdracht-…', … } ──
 //  De SQL-console staat achter de schrijfrem, al leest hij alleen: elke vraag
 //  is een volle tabelscan die de beheerder zelf kan uittypen, en de rem is
 //  wat voorkomt dat een lus in een pagina de database bezighoudt.
@@ -4665,6 +4687,12 @@ async function handleAdminD1Post(request, env) {
   const actie = String(b0.actie || "");
   try {
     if (actie === "sql") return await adminD1Sql(env.LOGDB, b0.sql);
+    if (actie === "archiveer") {
+      // Proefdraaien is de standaard: alleen een expliciete proef:false wist.
+      const dagen = Math.round(Number(b0.dagen));
+      if (!Number.isFinite(dagen) || dagen < 1 || dagen > 3650) return json({ ok: false, error: "Bewaartermijn tussen 1 en 3650 dagen." }, 400);
+      return json({ ok: true, ...(await logArchiveren(env.LOGDB, { dagen, proef: b0.proef !== false })) });
+    }
     if (actie.indexOf("opdracht-") === 0) return await adminD1Opdracht(env.LOGDB, actie, b0);
     return json({ ok: false, error: "Onbekende actie." }, 400);
   } catch (e) {
@@ -5805,28 +5833,216 @@ async function klantWachtrijOpruimen(env, nu) {
 }
 __name(klantWachtrijOpruimen, "klantWachtrijOpruimen");
 
+// ── Het logarchief (01-10-2026) ────────────────────────────────────
+//  WAT HET DOET. Logregels ouder dan de bewaartermijn gaan niet zomaar weg:
+//  per rit (SessionId) komt er één rij in log_archief met wat ertoe doet —
+//  wanneer, hoeveel, welke soorten, de fouten en LET OP's ontdubbeld met hun
+//  aantal, en de issues uit de uitkomsten. Regels zonder rit worden per dag
+//  gebundeld (sleutel "dag:JJJJ-MM-DD"). Dáárna worden de ruwe regels gewist.
+//
+//  ALLES OF NIETS. De archiefrijen en het wissen gaan in één batch, en een
+//  D1-batch is één transactie. Faalt het schrijven van het archief, dan
+//  blijven de regels staan; er kan dus nooit gewist zijn wat niet bewaard is.
+//
+//  UITKOMSTEN BLIJVEN IN logregels. Dat was de regel van de opruimronde
+//  (#260) en dat blijft hij: een regel met een Outcome is het antwoord op een
+//  issue. Ze tellen daarom alleen mee in de velden die je vaker kunt
+//  uitrekenen zonder dubbel te tellen (uitkomsten = het hoogste aantal,
+//  issues = de vereniging); de optellende velden (regels, fouten, …) tellen
+//  alleen wat er gewist wordt. Zo kan dezelfde rit elke nacht terugkomen —
+//  een rit die over de grens heen loopt komt in twee nachten binnen — zonder
+//  dat er iets dubbel staat.
+//
+//  GEEN PERSOONSGEGEVENS. User, UserId, VIN en VinHash gaan niet mee: het
+//  archief blijft staan nadat een klant zijn account liet wissen, en hoort
+//  dan niets meer over hem te zeggen.
+//
+//  IN STUKKEN. Hoogstens LOG_ARCHIEF_STUK regels per ronde, de oudste eerst.
+//  Een achterstand van maanden gaat zo over een paar nachten (of een paar
+//  keer de knop in beheer.html) in plaats van in één aanroep die de
+//  CPU-tijd van de Worker opmaakt.
+var LOG_ARCHIEF_SCHEMA = "CREATE TABLE IF NOT EXISTS log_archief (sleutel TEXT PRIMARY KEY, SessionId TEXT, dag TEXT NOT NULL, begonnen TEXT NOT NULL, geeindigd TEXT NOT NULL, regels INTEGER NOT NULL DEFAULT 0, fouten INTEGER NOT NULL DEFAULT 0, opvallend INTEGER NOT NULL DEFAULT 0, bugs INTEGER NOT NULL DEFAULT 0, uitkomsten INTEGER NOT NULL DEFAULT 0, demo INTEGER, soorten TEXT, issues TEXT, merk TEXT, bouwjaar TEXT, versie TEXT, adapter TEXT, protocol TEXT, bevindingen TEXT, gearchiveerd TEXT NOT NULL)";
+var LOG_ARCHIEF_STUK = 5000;
+var LOG_ARCHIEF_BEVINDINGEN = 25;   // per rij; de rest telt mee in "meer"
+var _logArchiefKlaar = false;
+
+// Eén plek voor wat "weg" en "sleutel" betekenen; elke vraag hieronder
+// gebruikt dezelfde tekst, anders telt de ene vraag een andere groep dan de
+// andere.
+var LA_WEG = "(Outcome IS NULL OR Outcome = '')";
+var LA_SLEUTEL = "CASE WHEN SessionId IS NOT NULL AND SessionId <> '' THEN SessionId ELSE 'dag:' || substr(ontvangen, 1, 10) END";
+
+async function logArchiefSchema(db) {
+  if (_logArchiefKlaar) return;
+  await db.prepare(LOG_ARCHIEF_SCHEMA).run();
+  _logArchiefKlaar = true;
+}
+__name(logArchiefSchema, "logArchiefSchema");
+
+// [[type, melding, aantal], …] samenvoegen: zelfde type + melding telt op.
+function laBevindingenSamen(oud, nieuw) {
+  const m = new Map();
+  let meer = 0;
+  for (const lijst of [oud, nieuw]) {
+    if (!lijst) continue;
+    for (const x of lijst.lijst || []) {
+      const k = x[0] + "\u0000" + x[1];
+      m.set(k, [x[0], x[1], (m.has(k) ? m.get(k)[2] : 0) + (Number(x[2]) || 0)]);
+    }
+    meer += Number(lijst.meer) || 0;
+  }
+  const alle = Array.from(m.values()).sort((a, b) => b[2] - a[2]);
+  const lijst = alle.slice(0, LOG_ARCHIEF_BEVINDINGEN);
+  for (const x of alle.slice(LOG_ARCHIEF_BEVINDINGEN)) meer += x[2];
+  return { lijst, meer };
+}
+__name(laBevindingenSamen, "laBevindingenSamen");
+
+function laJson(t, standaard) {
+  if (t === null || t === undefined || t === "") return standaard;
+  try { return JSON.parse(t); }
+  catch (e) {
+    // Niet stil: een kapotte archiefcel betekent dat hij met de hand is
+    // bewerkt. Opnieuw beginnen is dan beter dan de ronde laten vastlopen.
+    console.warn("[logarchief] onleesbare cel, opnieuw begonnen :: " + String(t).slice(0, 80));
+    return standaard;
+  }
+}
+__name(laJson, "laJson");
+
+// opties: { dagen, proef, nu }. Geeft terug wat er gebeurde (of zou gebeuren).
+async function logArchiveren(db, opties) {
+  const o = opties || {};
+  const dagen = Number(o.dagen);
+  if (!Number.isFinite(dagen) || dagen < 1) throw new Error("bewaartermijn moet minstens 1 dag zijn");
+  const nu = o.nu ? new Date(o.nu) : new Date();
+  const grens = new Date(nu.getTime() - dagen * 864e5).toISOString();
+  const uit = { proef: !!o.proef, dagen, grens, regels: 0, groepen: 0, gewist: 0, behouden: 0, rest: 0, voorbeeld: [] };
+  await logArchiefSchema(db);
+
+  // Tot welk id deze ronde gaat: de oudste LOG_ARCHIEF_STUK regels die weg mogen.
+  const top = await db.prepare(
+    `SELECT MAX(id) AS m FROM (SELECT id FROM logregels WHERE ontvangen < ? AND ${LA_WEG} ORDER BY id LIMIT ?)`
+  ).bind(grens, LOG_ARCHIEF_STUK).first();
+  const maxId = top && top.m;
+  if (maxId === null || maxId === undefined) return uit;
+  // Te wissen regels tot maxId; uitkomstregels ouder dan de grens altijd —
+  // ook als ze ná de laatste te wissen regel van hun rit kwamen. Ze tellen
+  // alleen in de herhaalbare velden, dus vaker meenemen kan geen kwaad.
+  const BINNEN = `ontvangen < ? AND (id <= ? OR NOT ${LA_WEG})`;
+
+  const groepen = ((await db.prepare(
+    `SELECT ${LA_SLEUTEL} AS sleutel, MAX(NULLIF(SessionId, '')) AS sid,
+            MIN(ontvangen) AS begonnen, MAX(ontvangen) AS geeindigd,
+            SUM(CASE WHEN ${LA_WEG} THEN 1 ELSE 0 END) AS regels,
+            SUM(CASE WHEN ${LA_WEG} AND Type = 'error' THEN 1 ELSE 0 END) AS fouten,
+            SUM(CASE WHEN ${LA_WEG} AND Type = 'opvallend' THEN 1 ELSE 0 END) AS opvallend,
+            SUM(CASE WHEN ${LA_WEG} AND Type = 'bug' THEN 1 ELSE 0 END) AS bugs,
+            SUM(CASE WHEN ${LA_WEG} THEN 0 ELSE 1 END) AS uitkomsten,
+            MAX(Demo) AS demo, MAX(Merk) AS merk, MAX(Year) AS bouwjaar, MAX(AppVersion) AS versie,
+            MAX(Adapter) AS adapter, MAX(Protocol) AS protocol
+       FROM logregels WHERE ${BINNEN} GROUP BY sleutel
+     HAVING SUM(CASE WHEN ${LA_WEG} THEN 1 ELSE 0 END) > 0`
+  ).bind(grens, maxId).all()).results) || [];
+  const soorten = ((await db.prepare(
+    `SELECT ${LA_SLEUTEL} AS sleutel, COALESCE(NULLIF(RecordType, ''), '—') AS k, COUNT(*) AS n
+       FROM logregels WHERE ${BINNEN} AND ${LA_WEG} GROUP BY sleutel, k`
+  ).bind(grens, maxId).all()).results) || [];
+  const bev = ((await db.prepare(
+    `SELECT ${LA_SLEUTEL} AS sleutel, Type AS t, substr(COALESCE(Message, ''), 1, 160) AS m, COUNT(*) AS n
+       FROM logregels WHERE ${BINNEN} AND ${LA_WEG} AND Type IN ('error', 'opvallend', 'bug')
+      GROUP BY sleutel, t, m`
+  ).bind(grens, maxId).all()).results) || [];
+  const repro = ((await db.prepare(
+    `SELECT DISTINCT ${LA_SLEUTEL} AS sleutel, Repro AS r
+       FROM logregels WHERE ${BINNEN} AND NOT ${LA_WEG} AND Repro IS NOT NULL AND Repro <> ''`
+  ).bind(grens, maxId).all()).results) || [];
+
+  // Wat er al in het archief staat voor deze sleutels, om mee samen te voegen.
+  const oud = new Map();
+  const sleutels = groepen.map((g) => g.sleutel);
+  for (let i = 0; i < sleutels.length; i += 50) {
+    const deel = sleutels.slice(i, i + 50);
+    const r = await db.prepare(
+      `SELECT * FROM log_archief WHERE sleutel IN (${deel.map(() => "?").join(",")})`
+    ).bind(...deel).all();
+    for (const x of (r && r.results) || []) oud.set(x.sleutel, x);
+  }
+
+  const gearchiveerd = nu.toISOString();
+  const rijen = groepen.map((g) => {
+    const a = oud.get(g.sleutel) || null;
+    const so = laJson(a && a.soorten, {});
+    for (const x of soorten) if (x.sleutel === g.sleutel) so[x.k] = (Number(so[x.k]) || 0) + Number(x.n);
+    const nieuweBev = { lijst: bev.filter((x) => x.sleutel === g.sleutel).map((x) => [x.t, x.m, Number(x.n)]), meer: 0 };
+    const bv = laBevindingenSamen(laJson(a && a.bevindingen, null), nieuweBev);
+    const iss = new Set(String((a && a.issues) || "").split(" ").filter(Boolean));
+    for (const x of repro) if (x.sleutel === g.sleutel) String(x.r).split(/\s+/).filter(Boolean).forEach((i) => iss.add(i));
+    const min = (p, q) => (!p ? q : !q ? p : p < q ? p : q);
+    const max = (p, q) => (!p ? q : !q ? p : p > q ? p : q);
+    const begonnen = min(a && a.begonnen, g.begonnen);
+    return {
+      sleutel: g.sleutel, SessionId: g.sid || (a && a.SessionId) || null,
+      dag: String(begonnen).slice(0, 10), begonnen, geeindigd: max(a && a.geeindigd, g.geeindigd),
+      regels: (Number(a && a.regels) || 0) + (Number(g.regels) || 0),
+      fouten: (Number(a && a.fouten) || 0) + (Number(g.fouten) || 0),
+      opvallend: (Number(a && a.opvallend) || 0) + (Number(g.opvallend) || 0),
+      bugs: (Number(a && a.bugs) || 0) + (Number(g.bugs) || 0),
+      uitkomsten: Math.max(Number(a && a.uitkomsten) || 0, Number(g.uitkomsten) || 0),
+      demo: g.demo !== null && g.demo !== undefined ? Number(g.demo) : (a ? a.demo : null),
+      soorten: JSON.stringify(so), issues: Array.from(iss).sort().join(" ") || null,
+      merk: g.merk || (a && a.merk) || null, bouwjaar: g.bouwjaar || (a && a.bouwjaar) || null,
+      versie: g.versie || (a && a.versie) || null, adapter: g.adapter || (a && a.adapter) || null,
+      protocol: g.protocol || (a && a.protocol) || null,
+      bevindingen: bv.lijst.length || bv.meer ? JSON.stringify(bv) : null,
+      gearchiveerd
+    };
+  });
+
+  uit.groepen = rijen.length;
+  uit.regels = groepen.reduce((t, g) => t + (Number(g.regels) || 0), 0);
+  uit.behouden = groepen.reduce((t, g) => t + (Number(g.uitkomsten) || 0), 0);
+  uit.voorbeeld = rijen.slice(0, 5);
+  const restQ = `SELECT COUNT(*) AS n FROM logregels WHERE ontvangen < ? AND ${LA_WEG} AND id > ?`;
+  if (uit.proef) {
+    uit.rest = Number(((await db.prepare(restQ).bind(grens, maxId).first()) || {}).n) || 0;
+    return uit;
+  }
+
+  const KOL = ["sleutel", "SessionId", "dag", "begonnen", "geeindigd", "regels", "fouten", "opvallend", "bugs",
+    "uitkomsten", "demo", "soorten", "issues", "merk", "bouwjaar", "versie", "adapter", "protocol", "bevindingen", "gearchiveerd"];
+  const stmts = rijen.map((r) => db.prepare(
+    `INSERT OR REPLACE INTO log_archief (${KOL.join(", ")}) VALUES (${KOL.map(() => "?").join(", ")})`
+  ).bind(...KOL.map((k) => (r[k] === undefined ? null : r[k]))));
+  stmts.push(db.prepare(`DELETE FROM logregels WHERE ${BINNEN} AND ${LA_WEG}`).bind(grens, maxId));
+  const res = await db.batch(stmts);
+  const laatste = res && res[res.length - 1];
+  uit.gewist = (laatste && laatste.meta && laatste.meta.changes) || 0;
+  uit.rest = Number(((await db.prepare(restQ).bind(grens, maxId).first()) || {}).n) || 0;
+  return uit;
+}
+__name(logArchiveren, "logArchiveren");
+
 // ── De dagelijkse logronde (#260) ──────────────────────────────────
 //  WAAROM DIT NIET VANZELF AAN STAAT. Een ronde die elke nacht rijen weggooit
 //  hoort een besluit te zijn en geen bijwerking van een deploy. Zonder de var
 //  LOG_BEWAARDAGEN gebeurt er niets, en dat zegt hij ook — anders zou een lege
 //  logtabel net zo goed kunnen betekenen dat er niets gemeten is.
 //
-//  EN DE UITKOMSTEN BLIJVEN. Een regel met een Outcome is het antwoord op een
-//  issue; die overleeft elke bewaartermijn. Wat weggaat is de ruis eromheen.
+//  SINDS 01-10-2026 ARCHIVEERT HIJ EERST. Wat ouder is dan de termijn komt
+//  samengevat in log_archief (zie logArchiveren hierboven) en gaat pas dan
+//  uit logregels. Uitkomsten blijven zoals altijd staan.
 async function logRondeOpruimen(env) {
   try {
     if (!env || !env.LOGDB) return;
     const dagen = Number(env.LOG_BEWAARDAGEN);
     if (!Number.isFinite(dagen) || dagen <= 0) {
-      console.log("[logronde] geen LOG_BEWAARDAGEN ingesteld — er wordt niets opgeruimd");
+      console.log("[logronde] geen LOG_BEWAARDAGEN ingesteld — er wordt niets gearchiveerd of opgeruimd");
       return;
     }
-    const grens = new Date(Date.now() - dagen * 864e5).toISOString();
-    const r = await env.LOGDB.prepare(
-      "DELETE FROM logregels WHERE ontvangen < ? AND (Outcome IS NULL OR Outcome = '')"
-    ).bind(grens).run();
-    const weg = (r && r.meta && r.meta.changes) || 0;
-    console.log(`[logronde] ${weg} regel(s) ouder dan ${dagen} dagen gewist; uitkomsten blijven staan`);
+    const u = await logArchiveren(env.LOGDB, { dagen });
+    console.log(`[logronde] ${u.gewist} regel(s) ouder dan ${dagen} dagen gearchiveerd in ${u.groepen} archiefrij(en) en gewist; ` +
+      `${u.behouden} uitkomst(en) blijven staan` + (u.rest ? `; nog ${u.rest} te gaan, volgende ronde` : ""));
   } catch (e) {
     // Niet stil: een opruimronde die zwijgend niets doet laat je in de waan
     // dat de bewaartermijn werkt terwijl de tabel doorgroeit.
