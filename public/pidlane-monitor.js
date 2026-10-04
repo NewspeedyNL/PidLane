@@ -298,6 +298,54 @@ const PLMon = {
     if (meldLuid) try{ if (window.PLVerify) window.PLVerify.consider(sig); }catch(e){ console.warn('PLVerify.consider mislukt:', e); }
   },
 
+  // ═══════════════ 👎 KLOPT NIET — de bestuurder corrigeert (04-10-2026) ═══
+  // Een melding die niet klopt ("ik was aan het schakelen") is het waardevolste
+  // wat een rit oplevert: daar zit de drempel of de voorwaarde die fout staat.
+  // Elke markering gaat drie kanten op:
+  //   1. aan het event zelf (ev.feedback) — het scherm en het rapport tonen hem;
+  //   2. een lokale lijst (FEEDBACK_SLEUTEL, hoogstens FEEDBACK_MAX) die blijft
+  //      staan na de rit, om later in één keer door te lopen;
+  //   3. de logtabel in D1 via logToSheets, Type 'melding_feedback', met de
+  //      reden in de kolom Feedback en de 5s-terugkijk erbij. Geen VIN: die
+  //      gaat als pseudoniem mee via de vaste route van logToSheets.
+  // De meting gaat gewoon door; een gemarkeerde melding telt verder mee.
+  FEEDBACK_REDENEN: {
+    schakelen:   'ik was aan het schakelen',
+    koppeling:   'koppeling in / neutraal / uitrollen',
+    airco:       'airco of een andere verbruiker schakelde',
+    rijgedrag:   'normaal rijgedrag, niets bijzonders',
+    bug:         'app-bug: de melding zelf is fout',
+    anders:      'anders'
+  },
+  FEEDBACK_SLEUTEL: 'pl_mon_feedback',
+  FEEDBACK_MAX: 200,
+
+  feedback(sig, reden){
+    const ev=this.events[sig];
+    if (!ev || !this.FEEDBACK_REDENEN[reden]) return false;
+    const st=this._state();
+    const rec={ t:Date.now(), code:ev.code, reden, fase:st.fase, temp:st.temp,
+      count:ev.count, melding:ev.redenen[ev.redenen.length-1]||'',
+      snap:this._snapshot()||ev.snap||null };
+    ev.feedback={ reden, t:rec.t };
+    try{
+      const L=this.feedbackLijst(); L.push(rec);
+      localStorage.setItem(this.FEEDBACK_SLEUTEL, JSON.stringify(L.slice(-this.FEEDBACK_MAX)));
+    }catch(e){ console.warn('Melding-feedback niet lokaal bewaard (opslag vol of geblokkeerd):', e); }
+    try{
+      if (typeof logToSheets==='function')
+        logToSheets('melding_feedback', `${ev.code} — ${this.FEEDBACK_REDENEN[reden]} · melding: ${rec.melding}`.slice(0,480),
+          { Feedback:reden, Outcome:(reden==='bug'?'bug':'vals'), PIDs:rec.snap?JSON.stringify(rec.snap):null,
+            fase:st.fase, temp:st.temp });
+    }catch(e){ console.warn('Melding-feedback niet naar de logtabel:', e); }
+    this._log(`Monitor: ${ev.code} gemarkeerd als "klopt niet" — ${this.FEEDBACK_REDENEN[reden]}`,'info');
+    return true;
+  },
+  feedbackLijst(){
+    try{ const L=JSON.parse(localStorage.getItem(this.FEEDBACK_SLEUTEL)||'[]'); return Array.isArray(L)?L:[]; }
+    catch(e){ console.warn('Melding-feedback onleesbaar, begint leeg:', e); return []; }
+  },
+
   // ═══════════════ rapportage ═══════════════
   summaryText(){
     const dur=Math.round((Date.now()-(this.startedAt||Date.now()))/60000);
@@ -317,6 +365,7 @@ const PLMon = {
       L.push(`  rij-status: ${fasen}; motortemp: ${temp}`);
       if (e.ff) L.push(`  freeze frame (ECU): ${Object.entries(e.ff).map(([p,v])=>p+'='+v).join(' ')}`);
       if (e.verif) L.push(`  verificatie (focus-hertest): ${e.verif.status.toUpperCase()} — ${e.verif.tekst}`);
+      if (e.feedback) L.push(`  bestuurder: KLOPT NIET — ${this.FEEDBACK_REDENEN[e.feedback.reden]||e.feedback.reden} (weeg deze melding niet mee als bevinding)`);
       if (e.snap) L.push(`  5s-terugkijk: ${Object.entries(e.snap).map(([p,a])=>p+'['+a.slice(-6).join(',')+']').join(' ')}`);
     }
     L.push('','Interpretatie-hint: clustering van herhalingen in één rij-fase (bijv. alleen bij accelereren) wijst op belasting-/trillingsafhankelijk falen: bedrading, connector, of een sensor die onder last wegvalt.');

@@ -28,16 +28,27 @@
 // we. Een schakeling is één STAP naar een nieuwe stabiele waarde; slip is een
 // geleidelijke DRIFT. Die twee scheiden we hier expliciet.
 function _overbrenging(rpm, spd){
+  // rpm en spd zijn óf tijd-uitgelijnde paren (zie _paren), óf twee losse
+  // reeksen van gelijke lengte (oude aanroep, nog gebruikt door tests).
   const n=Math.min(rpm.length, spd.length);
   if(n<6) return null;
   const r=rpm.slice(-n), v=spd.slice(-n), rat=[];
   for(let i=0;i<n;i++){ if(v[i]>=5) rat.push(r[i]/v[i]); }
   if(rat.length<6) return null;
   const med=a=>{ const z=a.slice().sort((x,y)=>x-y); return z[Math.floor(z.length/2)]; };
-  // grootste sprong tussen twee opeenvolgende metingen = schakelmoment
+  // 04-10-2026 — SCHAKELEN OVER MEERDERE METINGEN. Hier stond de grootste
+  // sprong tussen twee BUURmetingen. Bij een poll van 250 ms duurt een
+  // schakeling (koppeling in, toerental zakt, koppeling uit) drie tot vijf
+  // metingen; elke stap bleef dan onder 12% terwijl de verhouding in totaal
+  // 30-40% verschoof. Gevolg: "geschakeld" bleef false, en RPM_CONST en
+  // RATIO_CONST meldden onrust of slip terwijl er gewoon geschakeld werd.
+  // Nu: de grootste verandering over hoogstens schakelSpan metingen. Een
+  // misfire of slip bij constante snelheid haalt geen 12% binnen ~1 s, want
+  // de wielen houden het toerental vast.
   let stap=0;
   for(let i=1;i<rat.length;i++)
-    stap=Math.max(stap, Math.abs(rat[i]-rat[i-1])/Math.max(0.001,rat[i-1]));
+    for(let j=Math.max(0,i-_SCHAKEL_SPAN);j<i;j++)
+      stap=Math.max(stap, Math.abs(rat[i]-rat[j])/Math.max(0.001,rat[j]));
   // spreiding via IQR: ongevoelig voor de ene uitschieter van een overgang
   const q=rat.slice().sort((a,b)=>a-b), m=q.length, mid=med(rat)||1;
   const spreidPct=(q[Math.floor(3*m/4)]-q[Math.floor(m/4)])/mid*100;
@@ -46,6 +57,25 @@ function _overbrenging(rpm, spd){
   const vroeg=med(rat.slice(0,d)), laat=med(rat.slice(-d));
   const driftPct=(laat-vroeg)/Math.max(0.001,vroeg)*100;
   return { geschakeld: stap>0.12, spreidPct, driftPct, n:rat.length };
+}
+const _SCHAKEL_SPAN=4;
+const _pv=p=>[p.rpm, p.spd];
+
+// Toerental en snelheid op TIJD koppelen, niet op volgorde. Tot 04-10-2026
+// legden de tests de laatste n toerentallen naast de laatste n snelheden;
+// lopen die twee op een ander pollritme, dan hoort meting i van de een niet
+// bij meting i van de ander en is de verhouding ruis. Zelfde grens als
+// PLGear: hoogstens 800 ms uit elkaar.
+function _paren(hRpm, hSpd, vanaf){
+  const R=(hRpm||[]).filter(x=>x.t>vanaf), S=(hSpd||[]).filter(x=>x.t>vanaf-800);
+  const rpm=[], spd=[];
+  if(!S.length) return { rpm, spd };
+  let j=0;
+  for(const a of R){
+    while(j+1<S.length && Math.abs(S[j+1].t-a.t)<=Math.abs(S[j].t-a.t)) j++;
+    if(Math.abs(S[j].t-a.t)<=800){ rpm.push(a.v); spd.push(S[j].v); }
+  }
+  return { rpm, spd };
 }
 
 const PLWatch = {
@@ -59,9 +89,21 @@ const PLWatch = {
     // het einde van die pauze plús deze marge: de pollronde moet de hele
     // lijst weer rond krijgen, en de trage groep kwam op 26-09 pas na ~40 s.
     herstelMs: 20000,
-    flatMinN: 8, flatMinMs: 6000, refVarMin: 40,
+    // refVarMin was 40 rpm: dat haalt een motor bij constant rijden al op
+    // wegdek en wind, terwijl de inlaatdruk of de snelheid dan op hele
+    // eenheden terecht gelijk blijft. Een echt vastgelopen sensor staat ook
+    // stil bij 200 rpm én 8% verschil, dus de vangst kost dit niets.
+    flatMinN: 8, flatMinMs: 6000, refVarMin: 200, refVarRel: 0.08,
+    // zo lang na een schakelmoment (of koppeling in / neutraal) zwijgen de
+    // aandrijflijn-tests en de bevroren-waarde-watcher; hun vensters zijn
+    // 5-6 s, dus 8 s laat de overgang er helemaal uit lopen.
+    schakelRustMs: 8000, gasLosLoad: 15,
+    thermoRijMs: 8*60000,
     cooldownMs: 60000, testCooldownMs: 120000,
-    piekLimiet: { '0105':4, '010F':6, '0146':4, '015C':5, '0142':2 },
+    // 0142 stond op 2 V/s. Een slimme dynamo springt van 12,6 naar 14,8 V in
+    // één stap (terugwinnen bij gas los), en bij starten zakt de spanning in
+    // minder dan een seconde 3 V — allebei echt, geen bedrading.
+    piekLimiet: { '0105':4, '010F':6, '0146':4, '015C':5, '0142':4 },
     dynamisch: ['010C','010D','0104','0111','010B','0110']
   },
 
@@ -70,6 +112,7 @@ const PLWatch = {
   _fase:'onbekend', _faseSinds:0,
   _dekking:{},            // testId → { runs:n, hits:n }
   _ritStart:0, _startECT:null, _thermoGemeld:false,
+  _schakelT:0, _gearVorig:null, _rijMs:0,
 
   // ═══════ TESTBATTERIJ — elk item verklaart z'n eigen voorwaarden ═══════
   // fase: in welke rij-fase(s) de test geldig is (null = elke fase)
@@ -79,25 +122,25 @@ const PLWatch = {
   // check(c): null = geslaagd/geen bevinding; string = melding
   tests: [
     { id:'RPM_CONST', naam:'toerentalstabiliteit bij constante snelheid',
-      fase:['constant'], warm:null, pids:['010C','010D'], duurMs:5000,
+      fase:['constant'], warm:null, pids:['010C','010D'], duurMs:5000, aandrijving:true,
       // Rauwe max-min op het toerental weet niet dat een hoger toerental bij
       // een hogere snelheid gewoon klopt: bij 22->29 km/h gaf dat 558 rpm
       // "onrust" terwijl de overbrenging keurig vlak lag (4%).
       check(c){
-        const g=_overbrenging(c.win('010C',5000), c.win('010D',5000));
+        const p=c.paren(5000), g=_overbrenging(p.rpm, p.spd);
         if(!g || c.val('010D')<=30) return null;
         if(g.geschakeld) return null;              // schakelen is geen defect
         if(g.spreidPct>15) return `toerental onrustig bij constante snelheid (rpm/snelheid varieert ${Math.round(g.spreidPct)}%) — kan wijzen op overslaan of slippende koppeling/omvormer`;
         return null; } },
 
     { id:'RATIO_CONST', naam:'overbrengingsverhouding bij constante snelheid',
-      fase:['constant'], warm:null, pids:['010C','010D'], duurMs:6000,
+      fase:['constant'], warm:null, pids:['010C','010D'], duurMs:6000, aandrijving:true,
       // Slip = de verhouding DRIJFT geleidelijk weg. Schakelen = één stap naar
       // een nieuwe stabiele waarde. De oude test kende dat verschil niet en
       // vuurde op elke schakeling; bovendien was 10% veel te krap — normaal
       // rijden gaf met de oude max-min-maat al 6-9%.
       check(c){
-        const g=_overbrenging(c.win('010C',6000), c.win('010D',6000));
+        const p=c.paren(6000), g=_overbrenging(p.rpm, p.spd);
         if(!g || c.val('010D')<40) return null;
         if(g.geschakeld) return null;
         if(Math.abs(g.driftPct)>15) return `rpm/snelheid-verhouding drijft ${Math.round(g.driftPct)}% bij constante snelheid zonder schakelmoment — indicatie slip (koppeling/omvormer)`;
@@ -158,7 +201,7 @@ const PLWatch = {
         return null; } },
 
     { id:'ACCEL_LOAD', naam:'belastingrespons bij accelereren',
-      fase:['accelereren'], warm:null, pids:['0104','0111'], duurMs:2500,
+      fase:['accelereren'], warm:null, pids:['0104','0111'], duurMs:2500, aandrijving:true,
       check(c){ const th=c.win('0111',3000), ld=c.win('0104',3000);
         if(th.length<3||ld.length<3) return null;
         const thGem=th.reduce((a,b)=>a+b,0)/th.length;
@@ -167,10 +210,17 @@ const PLWatch = {
 
     { id:'LAADSPANNING', naam:'laadspanning bij draaiende motor',
       fase:null, warm:null, pids:['0142','010C'], duurMs:0,
+      // 04-10-2026 — SLIMME LAADREGELING. De grens stond op 13,2 V over 8 s.
+      // Vrijwel elke auto van na ~2010 laadt met een gestuurde dynamo: bij een
+      // volle accu en bij constant rijden zakt de spanning bewust naar
+      // 12,5-13 V, en bij gas los of remmen gaat hij omhoog (terugwinnen).
+      // 12,9 V op de snelweg is daar dus gezond. Een dynamo die écht niet laadt
+      // laat de spanning onder de rustspanning van de accu (~12,6 V) zakken en
+      // blijft daar; vandaar 12,7 V gemiddeld over 30 s.
       check(c){ if(c.val('010C')<500) return null;   // motor moet draaien
-        const v=c.win('0142',8000); if(v.length<4) return null;
+        const v=c.win('0142',30000); if(v.length<4) return null;
         const gem=v.reduce((a,b)=>a+b,0)/v.length;
-        if(gem<13.2) return `laadspanning laag: gemiddeld ${gem.toFixed(1)} V bij draaiende motor — dynamo/riem/massaverbinding controleren`;
+        if(gem<12.7) return `laadspanning laag: gemiddeld ${gem.toFixed(1)} V over 30 s bij draaiende motor (lager dan een rustende accu) — dynamo/riem/massaverbinding controleren`;
         if(gem>15.2) return `laadspanning hoog: gemiddeld ${gem.toFixed(1)} V — spanningsregelaar verdacht`;
         return null; } },
 
@@ -182,8 +232,20 @@ const PLWatch = {
 
     { id:'ECT_HOOG', naam:'oververhittingsbewaking',
       fase:null, warm:null, pids:['0105'], duurMs:0,
-      check(c){ const t=c.val('0105');
-        if(typeof t==='number' && t>108) return `koelwater ${t}°C — oververhitting, direct aandacht`;
+      // 04-10-2026 — 108 °C was te krap. VAG (G62/G83 met kenveldthermostaat)
+      // en BMW laten de motor bij deellast bewust 105-112 °C draaien; dat gaf
+      // een rode melding op een gezonde motor. Boven 112 °C moet het nu 20 s
+      // aanhouden (een korte piek na stilstaan is nawarmte), boven 118 °C is
+      // het meteen raak: daar zit je dicht bij het kookpunt onder druk.
+      check(c){ const t=c.val('0105'), GRENS=112, DIRECT=118;
+        if(typeof t!=='number' || t<=GRENS) return null;
+        // hoe lang staat hij al boven 112? Terug langs de reeks zolang dat zo
+        // is. Het venster is 90 s zodat ook een trage poll (koelwater elke
+        // 60 s) twee metingen haalt.
+        const w=c.winT('0105',90000); let i=w.length-1;
+        while(i>0 && w[i-1].v>GRENS) i--;
+        const aanhoudend = w.length>=2 && w[w.length-1].t-w[i].t>=20000;
+        if(t>DIRECT || aanhoudend) return `koelwater ${t}°C — oververhitting, direct aandacht`;
         return null; } }
   ],
 
@@ -229,7 +291,7 @@ const PLWatch = {
   _tick(){
     if (!this._actief()){ this._seen={}; this._flatCand={}; this._trimSinds=null;
       this._fase='onbekend'; this._faseSinds=0; this._ritStart=0; this._startECT=null;
-      this._thermoGemeld=false; this._dekking={}; return; }
+      this._thermoGemeld=false; this._dekking={}; this._schakelT=0; this._gearVorig=null; this._rijMs=0; return; }
     const h=(typeof pidHist!=='undefined')?pidHist:{};
     const v=(typeof pidVals!=='undefined')?pidVals:{};
     const nu=Date.now();
@@ -239,6 +301,8 @@ const PLWatch = {
     const st=(window.PLMon&&window.PLMon._state)?window.PLMon._state():{fase:'onbekend',temp:'onbekend'};
     if(st.fase!==this._fase){ this._fase=st.fase; this._faseSinds=nu; }
     const faseDuur=nu-this._faseSinds;
+    if(st.fase!=='stationair' && st.fase!=='onbekend' && this._vorigeTik && nu-this._vorigeTik<=3*this.cfg.tickMs)
+      this._rijMs+=nu-this._vorigeTik;
 
     // ── pauze: de app is bewust weggeschakeld, of de adapter herstart ──
     // Logboek 26-09-2026: wegschakelen, een paar lege multi-PID-antwoorden,
@@ -319,6 +383,22 @@ const PLWatch = {
     }
     if(this._busStil) return;
 
+    // ── schakelmoment: koppeling in, neutraal of een andere versnelling ──
+    // 04-10-2026: meldingen kwamen binnen terwijl er geschakeld werd. Twee
+    // bronnen, de ene is genoeg: de eigen verhouding over de laatste 3 s, en
+    // PLGear als die geladen is (een ander cijfer of 'N' = net geschakeld).
+    const sch=_overbrenging(..._pv(_paren(h['010C'], h['010D'], nu-3000)));
+    if(sch && sch.geschakeld) this._schakelT=nu;
+    try{
+      const G=window.PLGear, toon=G ? G.toon : null;
+      if(toon==='N' || (toon!=null && this._gearVorig!=null && toon!==this._gearVorig)) this._schakelT=nu;
+      this._gearVorig=toon;
+    }catch(e){ console.warn('PLGear.toon onleesbaar:', e); }
+    const schakelRust = this._schakelT>0 && nu-this._schakelT < this.cfg.schakelRustMs;
+    // gas los: brandstofafsluiting bij uitrollen; gasklep, belasting, MAF en
+    // inlaatdruk staan dan terecht stil terwijl het toerental zakt.
+    const gasLos = (typeof v['0104']==='number' && v['0104']<this.cfg.gasLosLoad) || st.fase==='remmen';
+
     // ── watcher 2: bevroren dynamische waarde (RPM als referentie) ──
     // STILSTANDPOORT: bij stationair IS snelheid 0 correct en staat de
     // inlaatdruk bij gesloten gasklep terecht stil. Toerentalvariatie tijdens
@@ -327,9 +407,15 @@ const PLWatch = {
     // Een echt vastzittende MAP bij stationair is werk voor STAT_MAP.
     const faseDynamisch = (st.fase!=='stationair' && st.fase!=='onbekend');
     const rpmArr=(h['010C']||[]).filter(x=>x.t>nu-this.cfg.flatMinMs).map(x=>x.v);
-    const rpmBeweegt=faseDynamisch && rpmArr.length>=4 && (Math.max(...rpmArr)-Math.min(...rpmArr))>=this.cfg.refVarMin;
+    const rpmBereik=rpmArr.length ? Math.max(...rpmArr)-Math.min(...rpmArr) : 0;
+    const rpmMid=rpmArr.length ? rpmArr.slice().sort((a,b)=>a-b)[Math.floor(rpmArr.length/2)] : 0;
+    const rpmBeweegt=faseDynamisch && !schakelRust && rpmArr.length>=4 &&
+      rpmBereik>=this.cfg.refVarMin && rpmBereik>=this.cfg.refVarRel*Math.max(1,rpmMid);
     for (const pid of this.cfg.dynamisch){
       if(pid==='010C') continue;
+      // bij gas los mogen de lucht- en lastgrootheden stilstaan; de snelheid
+      // niet, die hoort dan juist mee te zakken met het toerental.
+      if(gasLos && pid!=='010D') { delete this._flatCand[pid]; continue; }
       const recent=(h[pid]||[]).filter(x=>x.t>nu-this.cfg.flatMinMs);
       if(recent.length<this.cfg.flatMinN){ delete this._flatCand[pid]; continue; }
       const vlak=recent.every(x=>x.v===recent[0].v);
@@ -356,7 +442,10 @@ const PLWatch = {
     const ect=v['0105'];
     if(typeof ect==='number'&&ect>=65){
       const stf=v['0106'], ltf=v['0107'];
-      if(typeof stf==='number'&&typeof ltf==='number'){
+      // bij brandstofafsluiting (gas los) en vol gas is er geen gesloten
+      // regelkring; wat de trim dan zegt is geen mengselafwijking.
+      const ld=v['0104'];
+      if(typeof stf==='number'&&typeof ltf==='number'&&!(typeof ld==='number'&&(ld<this.cfg.gasLosLoad||ld>85))){
         const som=stf+ltf;
         if(Math.abs(som)>20){
           if(!this._trimSinds) this._trimSinds=nu;
@@ -370,7 +459,11 @@ const PLWatch = {
 
     // ── rit-niveau: thermostaat (koud gestart, wordt niet warm) ──
     if(!this._thermoGemeld && this._startECT!==null && this._startECT<50 &&
-       nu-this._ritStart>12*60000 && typeof ect==='number' && ect<70 && (v['010C']||0)>500){
+       nu-this._ritStart>12*60000 && this._rijMs>=this.cfg.thermoRijMs &&
+       typeof ect==='number' && ect<70 && (v['010C']||0)>500){
+      // _rijMs (04-10-2026): twaalf minuten stationair of in de file warmt
+      // een diesel in de winter ook niet op 70 °C. Pas na acht minuten echt
+      // rijden is "nog steeds koud" een thermostaat.
       this._thermoGemeld=true;
       this._meld('THERMOSTAAT', `motor na ${Math.round((nu-this._ritStart)/60000)} min rijden nog maar ${ect}°C (start ${this._startECT}°C) — thermostaat blijft vermoedelijk open hangen`, false);
     }
@@ -378,12 +471,17 @@ const PLWatch = {
     // ── TESTBATTERIJ: voorwaarde klopt niet → doorstappen naar de volgende ──
     const ctx={
       val:(pid)=>v[pid],
-      win:(pid,ms)=>((h[pid]||[]).filter(x=>x.t>nu-ms).map(x=>x.v))
+      win:(pid,ms)=>((h[pid]||[]).filter(x=>x.t>nu-ms).map(x=>x.v)),
+      winT:(pid,ms)=>((h[pid]||[]).filter(x=>x.t>nu-ms)),
+      paren:(ms)=>_paren(h['010C'], h['010D'], nu-ms)
     };
     for (const t of this.tests){
       // 1. fase-poort: verkeerde fase of nog te kort in deze fase → overslaan
       if(t.fase && (!t.fase.includes(st.fase) || faseDuur<t.duurMs)) continue;
       if(!t.fase && t.duurMs && faseDuur<t.duurMs) continue;
+      // 1b. schakel-poort: vlak na een schakelmoment, koppeling in of neutraal
+      // zegt de verhouding toerental/snelheid niets over de aandrijflijn.
+      if(t.aandrijving && schakelRust) continue;
       // 2. temp-poort
       if(t.warm===true  && st.temp!=='warm') continue;
       if(t.warm===false && st.temp!=='koud') continue;

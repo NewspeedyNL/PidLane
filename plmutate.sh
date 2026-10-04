@@ -1158,6 +1158,17 @@ MUTATIES=(
 "public/pidlane-watchers.js@@PLElm.poortDicht()) return 'adapter herstart';@@false) return 'adapter herstart';@@test-watcherpauze.js@@een ELM-herinitialisatie telt als uitval van elke snelle sensor"
 "public/pidlane-watchers.js@@((vorige && nu-vorige > 3*this.cfg.tickMs) ? 'meetlus lag stil' : null)@@null@@test-watcherpauze.js@@na een bevroren WebView staat weg() alweer op false en rolt de uitval er bij terugkomst alsnog uit"
 "public/pidlane-watchers.js@@      if(nu-Math.max(s.lastT, stilVanaf)>drempel){@@      if(nu-s.lastT>drempel){@@test-watcherpauze.js@@na een pauze telt de stilte van vóór de pauze mee: de trage groep valt 'uit' voordat hij terug kan zijn"
+# ── Rit-monitor: niet melden bij schakelen, drempels voor moderne auto's, 👎 Klopt niet (04-10-2026) ──
+"public/pidlane-watchers.js@@for(let j=Math.max(0,i-_SCHAKEL_SPAN);j<i;j++)@@for(let j=i-1;j<i;j++)@@test-watcherschakel.js@@een schakeling over vier metingen telt weer niet als schakelen, en RPM_CONST en RATIO_CONST melden onrust tijdens gewoon schakelen"
+"public/pidlane-watchers.js@@      if(t.aandrijving && schakelRust) continue;@@@@test-watcherschakel.js@@de aandrijflijn-tests draaien door vlak na een schakelmoment"
+"public/pidlane-watchers.js@@      if(gasLos && pid!=='010D') { delete this._flatCand[pid]; continue; }@@@@test-watcherschakel.js@@gasklep en belasting heten bevroren bij uitrollen met gas los"
+"public/pidlane-watchers.js@@rpmBereik>=this.cfg.refVarMin && rpmBereik>=this.cfg.refVarRel*Math.max(1,rpmMid);@@rpmBereik>=40;@@test-watcherschakel.js@@60 rpm ruis bij constant rijden maakt de snelheid weer bevroren"
+"public/pidlane-watchers.js@@        if(gem<12.7) return@@        if(gem<13.2) return@@test-watcherschakel.js@@een slimme dynamo op 12,9 V geeft weer een laadspanningsmelding"
+"public/pidlane-watchers.js@@const t=c.val('0105'), GRENS=112, DIRECT=118;@@const t=c.val('0105'), GRENS=108, DIRECT=118;@@test-watcherschakel.js@@110 °C op een VAG bij deellast geeft weer een rode oververhittingsmelding"
+"public/pidlane-watchers.js@@        const aanhoudend = w.length>=2 && w[w.length-1].t-w[i].t>=20000;@@        const aanhoudend = w.length>=2;@@test-watcherschakel.js@@een korte piek van 113 °C na stilstaan geeft al een oververhittingsmelding"
+"public/pidlane-totalcheck.js@@const _MON_ERNSTIG=/^(ECT_HOOG|TEST:ECT_HOOG|@@const _MON_ERNSTIG=/^(ECT_HOOG|@@test-watcherschakel.js@@oververhitting komt in de rit-monitor weer oranje binnen, zonder Verifieer-knop"
+"public/pidlane-monitor.js@@Outcome:(reden==='bug'?'bug':'vals')@@Outcome:'vals'@@test-watcherschakel.js@@een app-bug is in de logtabel niet meer te scheiden van een valse melding"
+"public/pidlane-monitor.js@@    if (!ev || !this.FEEDBACK_REDENEN[reden]) return false;@@    if (!ev) return false;@@test-watcherschakel.js@@een willekeurige reden komt als feedback in de logtabel"
 # ── Bulk-recorder: alleen verse metingen van PIDs die bij dit voertuig passen (26-09-2026) ──
 "public/pidlane-bulk.js@@    if (typeof pidGate === 'function' && !pidGate(k, 'kiesbaar')) return false;@@@@test-bulkrecorder.js@@de recorder schrijft NOx en AdBlue weg op een benzineauto, 600 keer hetzelfde getal"
 "public/pidlane-bulk.js@@    if (t && nu - t > VERS_MS) return false;@@@@test-bulkrecorder.js@@een PID die één keer antwoordde staat de hele rit als meting in de opname"

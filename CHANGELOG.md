@@ -10,6 +10,25 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 04-10-2026 — Rit-monitor: geen meldingen meer bij schakelen, 👎 Klopt niet (#400)
+ ═══════════════════════════════════════════════════════════
+
+ - Schakelen wordt herkend over vier metingen in plaats van één buurpaar,
+   toerental en snelheid worden op tijd gekoppeld, en de aandrijflijn-tests
+   en de bevroren-waarde-watcher zwijgen 8 s na een schakelmoment
+   (eigen verhouding of PLGear).
+ - Bevroren: referentie 200 rpm én 8% (was 40 rpm), niet bij gas los.
+ - Laadspanning laag pas onder 12,7 V over 30 s (slimme dynamo); koelwater
+   pas boven 112 °C gedurende 20 s, of meteen boven 118 °C. PIEK-limiet
+   laadspanning 4 V/s. Trim niet bij brandstofafsluiting of vol gas;
+   thermostaat pas na 8 min echt rijden.
+ - TEST:ECT_HOOG en TEST:LAADSPANNING tellen nu als ernstig in het scherm.
+ - Bij elke melding 👎 Klopt niet met een reden; bewaard aan de melding,
+   lokaal (pl_mon_feedback) en in de logtabel (Type melding_feedback).
+ - test-watcherschakel.js (25 toetsen, rood op de oude code), tien
+   mutaties, blok 5-proef #400.
+
+ ═══════════════════════════════════════════════════════════
  01-10-2026 — Logarchief: oude logregels per rit samengevat, dan gewist
  ═══════════════════════════════════════════════════════════
 

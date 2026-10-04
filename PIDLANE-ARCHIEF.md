@@ -15,6 +15,51 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 04-10-2026 — De rit-monitor meldde schakelen als defect (#400)
+
+**Waarneming.** Een melding in de rit-monitor terwijl de bestuurder aan het
+schakelen was. Nagebouwd in `test-watcherschakel.js`: 55 km/h, om de 9 s
+tussen 3e en 4e, elke wissel over 1 s. De oude code gaf `TEST:RPM_CONST` én
+`TEST:RATIO_CONST`.
+
+**Waarom.** `_overbrenging()` herkende een schakeling aan de grootste sprong
+tussen twee *buur*metingen (>12%). Dat klopte bij de poll van toen; bij 250 ms
+is een schakeling — koppeling in, toerental zakt, koppeling uit — vier metingen
+van elk ~7%. De drempel werd dus nooit gehaald en de 25% verschuiving telde als
+onrust of slip. Daarnaast legde de test de laatste *n* toerentallen naast de
+laatste *n* snelheden: op volgorde, niet op tijd. Lopen die twee op een ander
+pollritme, dan is de verhouding ruis.
+
+**Wat er nu staat.** Schakelen = ≥12% verschil binnen vier metingen. Een
+misfire of slip bij constante snelheid haalt dat niet: de wielen houden het
+toerental vast. Na een schakelmoment (eigen verhouding over 3 s, of een ander
+cijfer / `N` bij `PLGear`) zwijgen de tests met `aandrijving:true` en de
+bevroren-waarde-watcher 8 s.
+
+**Dezelfde ronde, dezelfde soort fout — een grens die bij de auto van nu
+normaal gedrag is.**
+- *Bevroren* vergeleek met 40 rpm toerentalvariatie; dat haalt een motor bij
+  constant rijden op wind en wegdek, terwijl de snelheid op hele km/h gelijk
+  blijft. Nu 200 rpm én 8%. Bij gas los (belasting <15% of remmen) staan
+  gasklep, belasting, MAF en inlaatdruk terecht stil.
+- *Laadspanning* <13,2 V: een slimme dynamo laadt bewust 12,5–13 V. Nu
+  <12,7 V gemiddeld over 30 s (onder de rustspanning van een accu = laadt niet).
+- *Koelwater* >108 °C: VAG en BMW regelen deellast op 105–112 °C. Nu >112 °C
+  gedurende 20 s, of meteen boven 118 °C.
+- `_MON_ERNSTIG` in `pidlane-totalcheck.js` kende `TEST:ECT_HOOG` niet; de
+  naam die PLWatch geeft. Oververhitting kwam oranje binnen, zonder
+  Verifieer-knop.
+
+**Niet aangeraakt, wel gezien.** `x_laadspanning` in de TotalCheck
+(`pidlane-totalcheck.js`, band 13,2–15,2) heeft hetzelfde slimme-dynamo-
+probleem; dat is een ander scherm en hoort in een eigen issue.
+
+**👎 Klopt niet.** Wat er na deze fix nog vals binnenkomt, verzamelt de
+bestuurder zelf: een reden per melding, bewaard aan het event, lokaal
+(`pl_mon_feedback`, 200 regels) en in de logtabel (`Type=melding_feedback`,
+`Feedback`=reden, `Outcome`=`vals`/`bug`, `PIDs`=de 5 s-terugkijk). Niet
+eerder drempels verschuiven dan dat er een stapel van ligt.
+
 ## 03-10-2026 — Waarom de T6 stukgaat waar de CX-5 goed loopt (#388, #389)
 
 **De vraag.** Dezelfde app, dezelfde adapter: op een Mazda CX-5 2018 31,7
