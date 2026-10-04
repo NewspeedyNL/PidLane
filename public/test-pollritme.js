@@ -307,6 +307,24 @@ function hz(tijden, van, tot) {
     eis(s.verzoeken.length === 0, 'poort dicht: de ronde stuurt niets (' + s.verzoeken.length + ')');
   }
 
+  // ── 8. de ATST-regelaar krijgt het signaal (#394) ──
+  // Mist een groep een PID die kort geleden nog antwoordde, dan hoort
+  // PLVerbind dat. Tegenproef: mist hij niets bekends, dan alleen "goed".
+  console.log('— signaal voor de ATST-regelaar —');
+  for (const bekendWeg of [true, false]) {
+    const { s, loop } = bouw();
+    ['010C', '010D', '0104', '0111'].forEach((p) => s.activePIDs.add(p));
+    const signalen = [];
+    s.PLVerbind = { noteAntwoord: (m) => signalen.push(m) };
+    vm.runInContext('plGroepOordeel = function(grp){ return { gekregen: grp.length - 1, mist: [grp[0]], mistBekend: ' +
+      (bekendWeg ? '[grp[0]]' : '[]') + ', oordeel: "' + (bekendWeg ? 'onvolledig' : 'goed') + '" }; };', s);
+    s.startPoll();
+    await loop(3000);
+    s.stopPoll();
+    if (bekendWeg) eis(signalen.length > 0 && signalen.every(Boolean), 'een bekende PID weg: de regelaar hoort "mist" (' + signalen.length + '×)');
+    else eis(signalen.length > 0 && !signalen.some(Boolean), 'tegenproef — niets bekends weg: alleen "goed" (' + signalen.length + '×)');
+  }
+
   if (fouten) { console.log('FOUT — ' + fouten + ' eis(en) niet gehaald'); process.exit(1); }
   console.log('Alles goed — de pollus vraagt wat zijn klassen beloven');
 })().catch((e) => { console.log('FOUT ' + (e && e.stack || e)); process.exit(1); });

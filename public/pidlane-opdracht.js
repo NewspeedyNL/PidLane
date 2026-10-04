@@ -142,6 +142,7 @@
     'verbind-fout-pct':      ['PLAdapter', '% verzoeken deze sessie zonder bruikbaar antwoord'],
     'verbind-onvol-pct':     ['PLAdapter', '% groepsverzoeken deze sessie waarin een PID ontbrak'],
     'verbind-weigeringen':   ['PLAdapter', 'verzoeken die de ELM-poort deze sessie weigerde'],
+    'verbind-st-stappen':    ['PLAdapter', 'keren dat ATST tijdens deze verbinding omhoog werd bijgestuurd wegens ontbrekende antwoorden'],
     'antwoordtal-winst-pct': ['PLAdapter', '% sneller met antwoordcijfer dan zonder (mediaan); 0 of minder = het cijfer bespaart niets'],
     'antwoordtal-blokkades': ['PLAdapter', 'keren dat een antwoordcijfer werd uitgezet omdat er met cijfer iets ontbrak']
   };

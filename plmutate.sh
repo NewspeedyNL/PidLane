@@ -1595,6 +1595,11 @@ MUTATIES=(
 # ── verbinding met de hand (#394, 04-10-2026) ──
 "public/pidlane-bt.js@@&& parseInt(st,16)>=0x0C) r.st=st;@@) r.st=st;@@test-verbindprofiel.js@@met de hand kan ATST onder de 48 ms-bodem — #394"
 "public/pidlane-data.js@@(c==='ATAT1' ? 'ATAT'+at : c)@@c@@test-verbindprofiel.js@@de terugrol zet een met de hand gekozen ATAT weer op 1 — #394"
+# ── ATST bijsturen tijdens de rit (#394, 04-10-2026) ──
+"public/pidlane-bt.js@@return venster.slice(-ST_VENSTER).filter(Boolean).length>=ST_DREMPEL;@@return venster.slice(-ST_VENSTER).filter(Boolean).length>=1;@@test-verbindprofiel.js@@één ontbrekende PID zet ATST al omhoog — #394"
+"public/pidlane-bt.js@@if(laatsteStap>0 && nu-laatsteStap<ST_RUST_MS) return false;@@@@test-verbindprofiel.js@@de ATST-regelaar stapt zonder rust, elke paar verzoeken een trede — #394"
+"public/pidlane-bt.js@@for(const t of ST_TRAP) if(parseInt(t,16)>nu) return t;@@for(const t of ST_TRAP) if(parseInt(t,16)!==nu) return t;@@test-verbindprofiel.js@@de ATST-regelaar kan omlaag stappen — #394"
+"public/pidlane-plload.js@@_plNoteVerbind(oordeel.mistBekend && oordeel.mistBekend.length>0);@@_plNoteVerbind(false);@@test-pollritme.js@@de pollronde meldt een verdwenen PID niet aan de ATST-regelaar — #394"
 )
 
 echo

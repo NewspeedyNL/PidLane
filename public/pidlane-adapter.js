@@ -801,6 +801,7 @@
         return st.totaal ? Math.round(st.bad / st.totaal * 100) : null;
       }
       case 'verbind-weigeringen': return (elm && typeof elm.weigeringen === 'function') ? elm.weigeringen() : null;
+      case 'verbind-st-stappen': return (p && V && typeof V.stappen === 'function') ? V.stappen() : null;
       case 'antwoordtal-winst-pct': case 'antwoordtal-blokkades': {
         const st = (at && typeof at.stand === 'function') ? at.stand() : null;
         if (!st) return null;
@@ -814,7 +815,7 @@
   function maat(naam) {
     switch (naam) {
       case 'verbind-gemeten': case 'verbind-st-ms': case 'verbind-traagst-ms': case 'verbind-groep':
-      case 'verbind-groep-nu': case 'verbind-fout-pct': case 'verbind-onvol-pct': case 'verbind-weigeringen':
+      case 'verbind-groep-nu': case 'verbind-fout-pct': case 'verbind-onvol-pct': case 'verbind-weigeringen': case 'verbind-st-stappen':
       case 'antwoordtal-winst-pct': case 'antwoordtal-blokkades':
         return verbindMaat(naam, window.PLVerbind, window.PLBus, window.PLAntwoordtal, window.PLElm);
       case 'adapter-sessie-min': case 'adapter-drift-pct': case 'adapter-proef': case 'adapter-visueel-pct':

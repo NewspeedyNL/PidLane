@@ -1820,6 +1820,35 @@ function _plHandLees(){
   catch(e){ console.warn('Handmatige verbinding onleesbaar — genegeerd', e); return {}; }
 }
 
+// ── ATST BIJSTUREN TIJDENS DE RIT (#394, 04-10-2026) ──────────────
+// De koude poort meet stationair. Onder belasting kan een ECU trager worden,
+// en een antwoord boven het ATST-plafond is weg. Deze regelaar ziet dat aan
+// het enige signaal dat over de auto gaat en niet over de PID-lijst: een PID
+// die kort geleden nog antwoordde en nu ontbreekt (mistBekend, zie
+// plGroepOordeel in pidlane-plload.js). Gebeurt dat in 3 of meer van de
+// laatste 20 verzoeken, dan één stap omhoog.
+//
+// Alleen omhoog, hoogstens één stap per minuut, nooit als de hand het stuur
+// heeft. Meer ruimte kost hooguit wat tempo; te weinig kost data. Op de CX-5
+// grijpt hij niet in: 0% verlies over 22 min met snelweg (D1, 03-10-2026).
+const ST_TRAP=['0C','19','32','64','C8','FF'];          // 48, 100, 200, 400, 800, 1020 ms
+const ST_VENSTER=20, ST_DREMPEL=3, ST_RUST_MS=60000;
+
+// Puur. De eerstvolgende trede boven de huidige ATST; null = al op de top.
+function plStVolgende(hex){
+  const nu=parseInt(String(hex||''),16);
+  if(!(nu>=0)) return ST_TRAP[0];
+  for(const t of ST_TRAP) if(parseInt(t,16)>nu) return t;
+  return null;
+}
+// Puur. Moet ATST omhoog? Alleen met een vol venster, genoeg missers en
+// genoeg rust sinds de vorige stap.
+function plStMoetOmhoog(venster, nu, laatsteStap){
+  if(!Array.isArray(venster) || venster.length<ST_VENSTER) return false;
+  if(laatsteStap>0 && nu-laatsteStap<ST_RUST_MS) return false;
+  return venster.slice(-ST_VENSTER).filter(Boolean).length>=ST_DREMPEL;
+}
+
 // De PIDs waarmee de groepsproef werkt: data-PIDs die vrijwel elke auto heeft.
 // Geen bitmaps — die weigeren op de CX-5 elke groep (zie _pollRonde).
 const PL_PROEF_PIDS=['010C','010D','0105','0104','0111','010B','010F'];
@@ -1831,6 +1860,7 @@ const PLVerbind={
     _plSt={ hex:ST_STANDAARD_HEX, bron:'standaard' };
     _plAt='1';
     this._gemeten=null;
+    this._venster=[]; this._laatsteStap=0; this._stappen=0;
     this.profiel=null;
     try{ if(window.PLBus && PLBus.batchPlafondWis) PLBus.batchPlafondWis(); }
     catch(e){ console.warn('PLBus.batchPlafondWis mislukt — het plafond van de vorige verbinding blijft staan', e); }
@@ -1913,6 +1943,29 @@ const PLVerbind={
       btDiag('Verbindprofiel: koude poort mislukt ('+(e.message||e)+') — ATST 0x'+plStHex(),'warn');
       return null;
     }
+  },
+  // ── bijsturen tijdens de rit ──
+  _venster:[], _laatsteStap:0, _stappen:0,
+  stappen(){ return this._stappen; },
+  // Eén verzoek uit de pollronde: ontbrak er een PID die kort geleden nog
+  // antwoordde? Synchroon en goedkoop; de ATST-wissel gaat erachteraan.
+  noteAntwoord(mist){
+    if(demoMode || !connected || !this.profiel || _plSt.bron==='handmatig') return;
+    this._venster.push(!!mist);
+    if(this._venster.length>ST_VENSTER) this._venster.shift();
+    if(!plStMoetOmhoog(this._venster, Date.now(), this._laatsteStap)) return;
+    const nieuw=plStVolgende(_plSt.hex);
+    const n=this._venster.filter(Boolean).length;
+    this._venster=[]; this._laatsteStap=Date.now();
+    if(!nieuw){ btDiag('🔧 ATST staat al op de top (0x'+_plSt.hex+') en toch ontbreken antwoorden ('+n+' van '+ST_VENSTER+') — dit is geen timing meer','warn'); return; }
+    const oud=_plSt.hex;
+    this._stappen++;
+    _plSt={ hex:nieuw, ms:parseInt(nieuw,16)*4, bron:'bijgestuurd', traagstMs:_plSt.traagstMs, refMs:_plSt.refMs, n:_plSt.n };
+    this.profiel.st=Object.assign({}, _plSt);
+    btDiag(`🔧 ATST bijgestuurd 0x${oud} → 0x${nieuw} (${_plSt.ms} ms): ${n} van de laatste ${ST_VENSTER} verzoeken misten een PID die kort geleden nog antwoordde`,'warn');
+    Promise.resolve(sendCmd('ATST'+nieuw,1500)).catch(e=>btDiag('ATST bijsturen: adapter niet bijgewerkt ('+(e.message||e)+')','warn'));
+    try{ if(typeof vehicleInfo!=='undefined' && vehicleInfo && vehicleInfo.vin) this.bewaar(vehicleInfo.vin); }
+    catch(e){ btDiag('Bijgestuurde ATST niet in het geheugen: '+(e.message||e),'warn'); }
   },
   // ── met de hand ──
   _gemeten:null,

@@ -145,6 +145,7 @@ console.log('── 2b. het verbindprofiel als maat (#394) ──');
   eis(m('verbind-groep') === 3 && m('verbind-groep-nu') === 2, 'groep bij verbinden 3, nu 2 — een krimp is zichtbaar');
   eis(m('verbind-fout-pct') === 2, 'foutpercentage over de hele sessie: 3 van 200 = 2 (' + m('verbind-fout-pct') + ')');
   eis(m('verbind-onvol-pct') === 4, 'onvolledige groepen uit PLBus');
+  eis(vm_('verbind-st-stappen', Object.assign({ stappen: () => 2 }, V), bus, at, elm) === 2, 'het aantal ATST-stappen komt uit PLVerbind');
   eis(m('antwoordtal-winst-pct') === 40, 'antwoordcijfer: 30 ms met tegen 50 zonder = 40% winst (' + m('antwoordtal-winst-pct') + ')');
   eis(vm_('antwoordtal-winst-pct', V, bus, { stand: () => ({ msMet: 50, msZonder: 48, blokkades: 0 }) }, elm) <= 0, 'cijfer bespaart niets: winst 0 of minder');
   eis(vm_('verbind-st-ms', { profiel: { st: { bron: 'standaard' }, groep: null } }, bus, at, elm) === 400, 'niet gemeten: de standaard 400 ms');
