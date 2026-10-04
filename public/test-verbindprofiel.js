@@ -42,7 +42,7 @@ const s = { window: {}, Date };
 vm.createContext(s);
 vm.runInContext(knip(BT, 'const ST_BODEM_MS=', '// De PIDs waarmee de groepsproef werkt', 'de verbindprofielfuncties') +
   '\nthis.plStUitMetingen=plStUitMetingen; this.plProtocolBits=plProtocolBits; this.plSoloAntwoord=plSoloAntwoord;' +
-  '\nthis.plGroepCompleet=plGroepCompleet; this.plStUitGeheugen=plStUitGeheugen; this.plAdressen=plAdressen;', s, { filename: 'pidlane-bt.js' });
+  '\nthis.plGroepCompleet=plGroepCompleet; this.plStUitGeheugen=plStUitGeheugen; this.plAdressen=plAdressen; this.plHandSchoon=plHandSchoon;', s, { filename: 'pidlane-bt.js' });
 
 console.log('\nATST uit de metingen\n');
 toets('te weinig metingen: niets zetten', s.plStUitMetingen([40, 41]) === null);
@@ -75,6 +75,15 @@ toets('een weigering (7F 01 12) is geen antwoord', s.plSoloAntwoord('7F0112', '0
 toets('groep compleet', s.plGroepCompleet({ '010C': [1], '010D': [2] }, ['010C', '010D']) === true);
 toets('groep met een gat is niet compleet', s.plGroepCompleet({ '010C': [1] }, ['010C', '010D']) === false);
 toets('lege groep is niet compleet', s.plGroepCompleet({}, []) === false);
+
+console.log('\nVerbinding met de hand: wat er door de keuring komt\n');
+toets('geldige keuze blijft heel', JSON.stringify(s.plHandSchoon({ st: '19', at: 2, proto: '6' })) === JSON.stringify({ st: '19', at: '2', proto: '6' }));
+toets('ATST onder de bodem van 48 ms (0x0C) wordt geweigerd', !('st' in s.plHandSchoon({ st: '05' })));
+toets('ATST zonder hex wordt geweigerd', !('st' in s.plHandSchoon({ st: 'ZZ' })) && !('st' in s.plHandSchoon({ st: '123' })));
+toets('ATAT alleen 0, 1 of 2', !('at' in s.plHandSchoon({ at: '3' })) && s.plHandSchoon({ at: 0 }).at === '0');
+toets('protocol alleen 0…C', !('proto' in s.plHandSchoon({ proto: 'D' })) && s.plHandSchoon({ proto: 'a' }).proto === 'A');
+toets('headers, echo en onbekende velden komen er niet door', Object.keys(s.plHandSchoon({ st: '19', ath: '1', ate: '1', cmd: 'ATZ' })).join() === 'st');
+toets('rommel geeft een leeg object', JSON.stringify(s.plHandSchoon(null)) === '{}' && JSON.stringify(s.plHandSchoon('ATZ')) === '{}');
 
 console.log('\nGeheugen: alleen omhoog, alleen op dezelfde bus en adapter\n');
 const NU = 1759500000000;
@@ -128,6 +137,8 @@ toets('terugrol zonder meting: ATST64 zoals altijd', d.plElmBaseline().indexOf('
 d.plStHex = () => 'A3';
 toets('terugrol na meting: de gemeten ATST, niet 64', d.plElmBaseline().indexOf('ATSTA3') !== -1 && d.plElmBaseline().indexOf('ATST64') === -1,
   d.plElmBaseline().join(' '));
+d.plAtStand = () => '2';
+toets('terugrol volgt ook de met de hand gekozen ATAT', d.plElmBaseline().indexOf('ATAT2') !== -1 && d.plElmBaseline().indexOf('ATAT1') === -1, d.plElmBaseline().join(' '));
 toets('ELM_BASELINE zelf blijft het vertrekpunt', d.ELM_BASELINE.indexOf('ATST64') !== -1);
 
 // ── 3. de Worker: wat er naar D1 mag ──

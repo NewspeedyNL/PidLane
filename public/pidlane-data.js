@@ -529,7 +529,8 @@ window.ELM_BASELINE =['ATE0','ATL0','ATS0','ATH0','ATAT1','ATST64']; // bekende 
 // binnenhaalde. ELM_BASELINE zelf blijft het vertrekpunt van vóór de meting.
 window.plElmBaseline = function(){
   const st=(typeof window.plStHex==='function') ? window.plStHex() : '64';
-  return ELM_BASELINE.map(c=>c==='ATST64' ? 'ATST'+st : c);
+  const at=(typeof window.plAtStand==='function') ? window.plAtStand() : '1';
+  return ELM_BASELINE.map(c=>c==='ATST64' ? 'ATST'+st : (c==='ATAT1' ? 'ATAT'+at : c));
 };
 
 // ── SCENARIO_PID_SUGGEST (was index.html regel 8251) ──

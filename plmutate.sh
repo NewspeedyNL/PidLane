@@ -1587,11 +1587,14 @@ MUTATIES=(
 "public/pidlane-bt.js@@if(msNu!=null && !(b.ms>msNu)) return null;@@@@test-verbindprofiel.js@@het verbindgeheugen verlaagt ATST onder wat vandaag gemeten is"
 "public/pidlane-bt.js@@if(String(bewaard.adapter||'')!==String(adapter||'')) return null;@@@@test-verbindprofiel.js@@het verbindgeheugen geldt ook over een andere adapter heen"
 "public/pidlane-data.js@@if(S.batchGroep>=this.batchPlafond()) return false;@@if(S.batchGroep>=this.GROEP_AUTO_MAX) return false;@@test-verbindprofiel.js@@de groep klimt boven het plafond uit de groepsproef"
-"public/pidlane-data.js@@return ELM_BASELINE.map(c=>c==='ATST64' ? 'ATST'+st : c);@@return ELM_BASELINE.slice();@@test-verbindprofiel.js@@de terugrol zet ATST weer op 400 ms in plaats van de gemeten waarde"
+"public/pidlane-data.js@@c==='ATST64' ? 'ATST'+st :@@c==='ATST64' ? 'ATST64' :@@test-verbindprofiel.js@@de terugrol zet ATST weer op 400 ms in plaats van de gemeten waarde"
 "worker.js@@vin_pseudo: vorm(b.vin_pseudo, /^[0-9a-f]{16}@@vin_pseudo: vorm(b.vin_pseudo, /^[0-9A-Za-z]{16,17}@@test-verbindprofiel.js@@een ruwe VIN komt als pseudoniem in de kennisbank (privacy)"
 # ── verbindprofiel als app-maat (#394, 03-10-2026) ──
 "public/pidlane-adapter.js@@return (st.msMet > 0 && st.msZonder > 0) ? Math.round((1 - st.msMet / st.msZonder) * 100) : null;@@return (st.msMet > 0 && st.msZonder > 0) ? Math.round((st.msMet / st.msZonder) * 100) : null;@@test-opdrachtappmaat.js@@de antwoordcijferwinst meldt de verhouding in plaats van de besparing: een cijfer dat niets doet lijkt 100% winst — #394"
 "public/pidlane-adapter.js@@return st.totaal ? Math.round(st.bad / st.totaal * 100) : null;@@return st.foutPct;@@test-opdrachtappmaat.js@@het foutpercentage van de meetopdracht kijkt naar het venster van 10 s in plaats van de hele sessie — #394"
+# ── verbinding met de hand (#394, 04-10-2026) ──
+"public/pidlane-bt.js@@&& parseInt(st,16)>=0x0C) r.st=st;@@) r.st=st;@@test-verbindprofiel.js@@met de hand kan ATST onder de 48 ms-bodem — #394"
+"public/pidlane-data.js@@(c==='ATAT1' ? 'ATAT'+at : c)@@c@@test-verbindprofiel.js@@de terugrol zet een met de hand gekozen ATAT weer op 1 — #394"
 )
 
 echo
