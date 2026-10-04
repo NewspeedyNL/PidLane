@@ -1048,9 +1048,64 @@
     return '<div>' +
       '<div style="font:800 11px var(--f);color:var(--tx3);letter-spacing:.4px;margin-bottom:6px">WIE REGELT HET TEMPO</div>' +
       '<div style="display:flex;gap:5px">' + knop(false, '🤖 Automaat') + knop(true, '✋ Handmatig') + '</div>' +
-      stuur +
+      stuur + (hand ? _verbindingBlok() : '') +
     '</div>';
   }
+
+  /* ── DE VERBINDING MET DE HAND (#394, 04-10-2026) ──────────────────
+     Onder ✋ Handmatig: protocol, ATST en adaptieve timing. Knoppen en geen
+     keuzelijsten: het paneel tekent elke seconde opnieuw, en een open
+     keuzelijst klapt dan dicht onder je vinger. Het werk zelf zit in
+     PLVerbind (pidlane-bt.js), de eigenaar van die knoppen; dit tekent en
+     geeft door. */
+  let _handBezig = '';
+  function _verbindingBlok() {
+    const V = window.PLVerbind;
+    if (!V || typeof V.nu !== 'function') return '';
+    const nu = V.nu(), hand = V.handStand() || {};
+    const chip = function (fn, waarde, tekst, aan) {
+      return '<button onclick="PLAdapter.' + fn + '(\'' + waarde + '\')" style="border-radius:7px;min-height:36px;padding:7px 9px;' +
+        'font:700 11px var(--f);cursor:pointer;border:1px solid ' +
+        (aan ? 'var(--bl);background:var(--blv);color:#fff' : 'var(--bd);background:var(--sur);color:var(--tx2)') + '">' + tekst + '</button>';
+    };
+    const rij = function (kop, uitleg, knoppen) {
+      return '<div style="margin-top:9px"><div style="font:800 10px var(--f);color:var(--tx3);letter-spacing:.3px">' + kop + '</div>' +
+        '<div style="font:400 10px var(--f);color:var(--tx3);margin:2px 0 5px">' + uitleg + '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:4px">' + knoppen + '</div></div>';
+    };
+    const actiefProto = String(nu.proto || '').replace(/^A/, '');
+    const protos = V.protocollen().map(function (p) {
+      return chip('zetProto', p[0], p[0] + ' · ' + p[1], hand.proto ? hand.proto === p[0] : p[0] === actiefProto);
+    }).join('');
+    const sts = [['0C', 48], ['19', 100], ['32', 200], ['64', 400], ['96', 600], ['C8', 800], ['FF', 1020]].map(function (x) {
+      return chip('zetSt', x[0], x[1] + ' ms', nu.st === x[0]);
+    }).join('');
+    const ats = [['0', 'uit'], ['1', 'normaal'], ['2', 'agressief']].map(function (x) {
+      return chip('zetAt', x[0], 'ATAT' + x[0] + ' ' + x[1], nu.at === x[0]);
+    }).join('');
+    return '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd)' + (_handBezig ? ';opacity:.55;pointer-events:none' : '') + '">' +
+      '<div style="font:800 11px var(--f);color:var(--tx3);letter-spacing:.4px">VERBINDING — MET DE HAND</div>' +
+      (_handBezig ? '<div style="font:700 11px var(--f);color:var(--bl);margin-top:4px">⏳ ' + _handBezig + '</div>' : '') +
+      rij('PROTOCOL', 'Nu: ' + (nu.proto || '?') + '. Wisselen test meteen met 0100; antwoordt de auto niet, dan gaat hij terug.', protos) +
+      rij('ATST — HOE LANG DE ADAPTER OP EEN ANTWOORD WACHT', 'Nu: 0x' + nu.st + ' (' + nu.stMs + ' ms, ' + nu.stBron + '). Korter is sneller, te kort mist antwoorden.', sts) +
+      rij('ADAPTIEVE TIMING', 'Laat de adapter de wachttijd zelf inkorten onder het ATST-plafond.', ats) +
+      '<div style="font:400 10px var(--f);color:var(--tx3);margin-top:8px">Baudrate: via Bluetooth niet van toepassing — de CAN-snelheid (500/250k) zit in het protocol. ' +
+        'Je keuze blijft staan tot je op 🤖 Automaat tikt.</div>' +
+    '</div>';
+  }
+  async function _handZet(veld, waarde, wat) {
+    const V = window.PLVerbind;
+    if (!V || typeof V.zetHand !== 'function') { _melding('De verbindingsmodule ontbreekt'); return; }
+    _handBezig = wat; _teken();
+    let r = null;
+    try { r = await V.zetHand(veld, waarde); }
+    catch (e) { r = { ok: false, reden: (e && e.message) || String(e) }; }
+    _handBezig = ''; _teken();
+    _melding(r && r.ok ? '✋ ' + wat.replace(/…$/, '') + ' — gedaan' : '✋ Niet gelukt: ' + ((r && r.reden) || 'onbekend'));
+  }
+  function zetSt(hex) { return _handZet('st', hex, 'ATST naar 0x' + hex + '…'); }
+  function zetAt(n) { return _handZet('at', n, 'ATAT' + n + '…'); }
+  function zetProto(id) { return _handZet('proto', id, 'protocol ' + id + ' proberen (tot 12 s)…'); }
 
   function _meetBlok() {
     if (_meetBezig) {
@@ -1290,6 +1345,11 @@
       if (!hand && window.PLBus && typeof PLBus.batchZet === 'function' && PLBus.batchVast()) {
         PLBus.batchZet(PLBus.batchGroep(), false);
       }
+      // En de verbinding zelf ook terug (#394): Handmatig is de hele verbinding.
+      if (!hand && window.PLVerbind && typeof PLVerbind.handWis === 'function') {
+        Promise.resolve(PLVerbind.handWis()).then(function () { _teken(); },
+          function (e) { _melding('Verbinding terug naar automaat mislukt: ' + ((e && e.message) || e)); });
+      }
     } catch (e) { _melding('Modus wisselen mislukt: ' + ((e && e.message) || e)); }
     _teken();
   }
@@ -1484,6 +1544,7 @@
     gpSituatie: gpSituatie,
     sessieMaat: sessieMaat,
     verbindMaat: verbindMaat,
+    zetSt: zetSt, zetAt: zetAt, zetProto: zetProto,
     maat: maat,
     // Alleen voor de test: een uitslag neerzetten zoals _gpKlaar() dat doet.
     _gpKlaar: function (uit) { return _gpKlaar(uit); },

@@ -1714,6 +1714,7 @@ const ST_GEHEUGEN_MAX_MS=180*24*3600*1000;   // een half jaar
 let _plSt={ hex:ST_STANDAARD_HEX, bron:'standaard' };
 function plStHex(){ return _plSt.hex; }
 window.plStHex=plStHex;
+window.plAtStand=function(){ return plAtStand(); };
 
 // Puur, zie test-verbindprofiel.js. Uit de rondrittijden (ms) van geslaagde
 // solo-verzoeken het ATST-plafond. null = te weinig metingen, niets zetten.
@@ -1782,6 +1783,43 @@ function plStUitGeheugen(nu, bewaard, protoId, adapter, tijd){
   return { hex:b.hex, ms:b.ms, bron:'geheugen', traagstMs:b.traagstMs, refMs:b.refMs, n:b.n };
 }
 
+// ── DE VERBINDING MET DE HAND (#394, 04-10-2026) ───────────────────
+// In het adapterpaneel, onder ✋ Handmatig: protocol, ATST en adaptieve
+// timing zelf kiezen. Eén betekenis: Handmatig is de hele verbinding met de
+// hand, 🤖 Automaat geeft alles terug (PLVerbind.handWis). De keuze blijft
+// staan over herverbinden en herstarten heen (localStorage) tot je hem
+// teruggeeft — een handmatige stand die stil verdwijnt is geen handmatige stand.
+//
+// Wat er bewust NIET bij staat: headers, spaties en echo. De hele parser gaat
+// uit van ATH0/ATS0/ATE0; die met de hand omzetten maakt elke meting stuk.
+// En baudrate: via Bluetooth bepaalt de BT-verbinding de snelheid, niet de
+// seriële baud van de chip. De CAN-snelheid (500 of 250 kbit/s) kies je met
+// het protocol.
+const PL_HAND_SLEUTEL='pl_verbind_hand';
+const PL_PROTOCOLLEN=[
+  ['0','Automatisch'],['1','J1850 PWM'],['2','J1850 VPW'],['3','ISO 9141-2'],['4','KWP 5-baud'],['5','KWP snel'],
+  ['6','CAN 11-bit 500k'],['7','CAN 29-bit 500k'],['8','CAN 11-bit 250k'],['9','CAN 29-bit 250k'],['A','J1939'],['B','CAN gebruiker 1'],['C','CAN gebruiker 2']];
+let _plAt='1';
+function plAtStand(){ return _plAt; }
+
+// Puur, zie test-verbindprofiel.js. Wat er van een handmatige keuze overblijft
+// na keuring; onbekende of foute velden vallen weg in plaats van door te gaan.
+function plHandSchoon(h){
+  const r={};
+  if(!h || typeof h!=='object') return r;
+  const st=String(h.st||'').toUpperCase();
+  if(/^[0-9A-F]{2}$/.test(st) && parseInt(st,16)>=0x0C) r.st=st;    // nooit onder de 48 ms-bodem
+  const at=String(h.at==null?'':h.at);
+  if(/^[012]$/.test(at)) r.at=at;
+  const pr=String(h.proto||'').toUpperCase();
+  if(/^[0-9A-C]$/.test(pr)) r.proto=pr;
+  return r;
+}
+function _plHandLees(){
+  try{ return plHandSchoon(JSON.parse(localStorage.getItem(PL_HAND_SLEUTEL)||'null')); }
+  catch(e){ console.warn('Handmatige verbinding onleesbaar — genegeerd', e); return {}; }
+}
+
 // De PIDs waarmee de groepsproef werkt: data-PIDs die vrijwel elke auto heeft.
 // Geen bitmaps — die weigeren op de CX-5 elke groep (zie _pollRonde).
 const PL_PROEF_PIDS=['010C','010D','0105','0104','0111','010B','010F'];
@@ -1791,6 +1829,8 @@ const PLVerbind={
   _oogstGen:-1,
   vergeet(){
     _plSt={ hex:ST_STANDAARD_HEX, bron:'standaard' };
+    _plAt='1';
+    this._gemeten=null;
     this.profiel=null;
     try{ if(window.PLBus && PLBus.batchPlafondWis) PLBus.batchPlafondWis(); }
     catch(e){ console.warn('PLBus.batchPlafondWis mislukt — het plafond van de vorige verbinding blijft staan', e); }
@@ -1860,6 +1900,8 @@ const PLVerbind={
         adapter:this.adapter(),
         gemetenOp:Date.now()
       };
+      this._gemeten=Object.assign({}, _plSt);
+      await this._handToepassen();
       btDiag(`🔧 Verbindprofiel: protocol ${protoId} (${bits?bits+'-bit CAN':'geen CAN'}) · ATST 0x${_plSt.hex}`+
         (st?` (${st.ms} ms; traagste antwoord ${st.traagstMs} ms over ${st.n})`:' (standaard)')+
         ` · groep ${groep?groep.start+(groep.plafond!=null?' (plafond '+groep.plafond+')':''):'niet gemeten'}`,'ok');
@@ -1872,6 +1914,78 @@ const PLVerbind={
       return null;
     }
   },
+  // ── met de hand ──
+  _gemeten:null,
+  handStand(){ return _plHandLees(); },
+  protocollen(){ return PL_PROTOCOLLEN.slice(); },
+  // Wat er nu in de adapter staat, voor het paneel.
+  nu(){ return { st:_plSt.hex, stMs:_plSt.ms||parseInt(_plSt.hex,16)*4, stBron:_plSt.bron, at:_plAt,
+                 proto:String((typeof selectedNetwork!=='undefined'&&selectedNetwork&&selectedNetwork.id)||'?') }; },
+  async _handToepassen(){
+    const h=_plHandLees();
+    if(h.st){ _plSt={ hex:h.st, ms:parseInt(h.st,16)*4, bron:'handmatig' }; await sendCmd('ATST'+h.st,1500); }
+    if(h.at){ _plAt=h.at; await sendCmd('ATAT'+h.at,1500); }
+    if(this.profiel){ this.profiel.st=Object.assign({}, _plSt); }
+    if(h.st||h.at) btDiag('✋ Verbinding met de hand: '+(h.st?'ATST 0x'+h.st+' ':'')+(h.at?'ATAT'+h.at:''),'info');
+  },
+  // Eén instelling zetten. Onder het busslot, zodat er geen poll tussen komt.
+  async zetHand(veld, waarde){
+    if(!connected || demoMode) return { ok:false, reden:'niet verbonden met een auto' };
+    const h=_plHandLees(); h[veld]=waarde;
+    const schoon=plHandSchoon(h);
+    if(schoon[veld]==null) return { ok:false, reden:'ongeldige waarde '+waarde };
+    if(veld==='proto') return this.zetProtocol(schoon.proto);
+    try{ localStorage.setItem(PL_HAND_SLEUTEL, JSON.stringify(schoon)); }
+    catch(e){ btDiag('Handmatige keuze niet bewaard ('+(e.message||e)+') — geldt alleen deze verbinding','warn'); }
+    const run=()=>this._handToepassen();
+    try{ (typeof withBus==='function') ? await withBus('verbind-hand', run, 8000) : await run(); }
+    catch(e){ return { ok:false, reden:e.message||String(e) }; }
+    return { ok:true };
+  },
+  // Protocol wisselen, en alleen houden als de auto erop antwoordt. Anders
+  // terug naar wat er stond: een verkeerd protocol is een stille bus, en dat
+  // ziet eruit als een auto zonder sensoren.
+  async zetProtocol(id){
+    const oud=String((typeof selectedNetwork!=='undefined'&&selectedNetwork&&selectedNetwork.id)||'0').replace(/^A/,'')||'0';
+    const run=async()=>{
+      await sendCmd('ATSP'+id,1500);
+      await delay(200);
+      const r=await sendCmd('0100',12000);
+      const ok=r && /41\s*00/.test(r) && !/UNABLE|ERROR|STOPPED|NO DATA/i.test(r);
+      if(!ok){
+        await sendCmd('ATSP'+oud,1500); await delay(200);
+        try{ await sendCmd('0100',12000); }catch(e){ btDiag('Terugzetten protocol: 0100 faalde ('+(e.message||e)+')','warn'); }
+        return { ok:false, reden:'de auto antwoordt niet op protocol '+id+' — terug naar '+oud };
+      }
+      let nieuw=id;
+      try{ nieuw=_schoonProtocolId((await sendCmd('ATDPN',1500)).replace(/[^0-9A-Fa-f]/g,''))||id; }
+      catch(e){ btDiag('ATDPN na protocolwissel faalde ('+(e.message||e)+') — ATSP-keuze wordt aangenomen','warn'); }
+      try{ if(typeof selectedNetwork!=='undefined' && selectedNetwork) selectedNetwork.id=nieuw; else window.selectedNetwork={ id:nieuw, name:'protocol '+nieuw }; }
+      catch(e){ console.warn('selectedNetwork niet bijgewerkt', e); }
+      if(id!=='0') _onthoudProtocol(nieuw);
+      const h=_plHandLees(); if(id==='0') delete h.proto; else h.proto=id;
+      try{ localStorage.setItem(PL_HAND_SLEUTEL, JSON.stringify(h)); }catch(e){ btDiag('Protocolkeuze niet bewaard ('+(e.message||e)+')','warn'); }
+      try{ if(window.PLLoad && PLLoad.herstelNaProtocolLock) PLLoad.herstelNaProtocolLock(); }
+      catch(e){ console.warn('herstelNaProtocolLock mislukt', e); }
+      btDiag('✋ Protocol met de hand: '+id+' → actief '+nieuw,'ok');
+      return { ok:true, actief:nieuw };
+    };
+    try{ return (typeof withBus==='function') ? await withBus('verbind-hand', run, 15000) : await run(); }
+    catch(e){ return { ok:false, reden:e.message||String(e) }; }
+  },
+  // Alles terug naar de automaat: de gemeten ATST, ATAT1. Het protocol blijft
+  // wat er werkt; een herverbinding detecteert opnieuw.
+  async handWis(){
+    try{ localStorage.removeItem(PL_HAND_SLEUTEL); }catch(e){ console.warn('Handmatige verbinding niet gewist', e); }
+    if(!connected || demoMode) return;
+    _plSt=this._gemeten ? Object.assign({}, this._gemeten) : { hex:ST_STANDAARD_HEX, bron:'standaard' };
+    _plAt='1';
+    if(this.profiel) this.profiel.st=Object.assign({}, _plSt);
+    const run=async()=>{ await sendCmd('ATST'+_plSt.hex,1500); await sendCmd('ATAT1',1500); };
+    try{ (typeof withBus==='function') ? await withBus('verbind-hand', run, 8000) : await run(); }
+    catch(e){ btDiag('Terug naar automaat: adapter niet bijgewerkt ('+(e.message||e)+')','warn'); }
+    btDiag('🤖 Verbinding terug naar de automaat: ATST 0x'+_plSt.hex+', ATAT1','info');
+  },
   // Na het VIN: het geheugen raadplegen. Verhoogt ATST hoogstens, zie
   // plStUitGeheugen. Raakt de groep niet: die is net gemeten.
   async naVin(vin){
@@ -1879,6 +1993,7 @@ const PLVerbind={
     let bewaard=null;
     try{ const r=localStorage.getItem(vinProfileKey(vin)); bewaard=r?(JSON.parse(r).verbind||null):null; }
     catch(e){ btDiag('Verbindprofiel: bewaard profiel onleesbaar ('+(e.message||e)+')','warn'); return; }
+    if(_plSt.bron==='handmatig') return;   // met de hand gezet: de hand wint
     const g=plStUitGeheugen(_plSt, bewaard, this.profiel.protocol.id, this.profiel.adapter);
     if(!g) return;
     _plSt=g;
@@ -1947,7 +2062,7 @@ async function initELM327(opts){
     await _elmSend('ATL0');  // Linefeeds uit
     await _elmSend('ATS0');  // Spaties uit
     await _elmSend('ATH0');  // Headers uit (standaard)
-    await _elmSend('ATAT1'); // Adaptive timing
+    await _elmSend('ATAT'+plAtStand()); // Adaptive timing — 1, tenzij met de hand anders gezet (#394)
     // Het plafond komt uit het verbindprofiel (#388). Vóór de eerste meting
     // van deze verbinding is dat 64 (400 ms), het oude vaste getal; na de
     // koude poort is het wat deze auto en deze adapter nodig bleken te hebben.
