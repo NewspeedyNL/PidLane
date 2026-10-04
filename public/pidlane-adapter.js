@@ -1064,7 +1064,7 @@
     if (!V || typeof V.nu !== 'function') return '';
     const nu = V.nu(), hand = V.handStand() || {};
     const chip = function (fn, waarde, tekst, aan) {
-      return '<button onclick="PLAdapter.' + fn + '(\'' + waarde + '\')" style="border-radius:7px;padding:6px 8px;' +
+      return '<button onclick="PLAdapter.' + fn + '(\'' + waarde + '\')" style="border-radius:7px;min-height:36px;padding:7px 9px;' +
         'font:700 11px var(--f);cursor:pointer;border:1px solid ' +
         (aan ? 'var(--bl);background:var(--blv);color:#fff' : 'var(--bd);background:var(--sur);color:var(--tx2)') + '">' + tekst + '</button>';
     };
