@@ -1115,7 +1115,7 @@ function verbindRecordSchoon(b) {
     bits: [0, 11, 29].includes(b.bits) ? b.bits : null,
     st_hex: vorm(b.st_hex, /^[0-9A-F]{2}$/),
     st_ms: geheel(b.st_ms, 4, 1020), traagst_ms: geheel(b.traagst_ms, 0, 60000),
-    st_bron: vorm(b.st_bron, /^(gemeten|geheugen|standaard)$/),
+    st_bron: vorm(b.st_bron, /^(gemeten|geheugen|standaard|bijgestuurd|handmatig)$/),
     groep: geheel(b.groep, 1, 6), groep_plafond: geheel(b.groep_plafond, 1, 6),
     pids_ondersteund: geheel(b.pids_ondersteund, 0, 1000),
     reads_per_sec: typeof b.reads_per_sec === "number" && isFinite(b.reads_per_sec) && b.reads_per_sec >= 0 && b.reads_per_sec < 1000 ? b.reads_per_sec : null

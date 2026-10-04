@@ -42,7 +42,7 @@ const s = { window: {}, Date };
 vm.createContext(s);
 vm.runInContext(knip(BT, 'const ST_BODEM_MS=', '// De PIDs waarmee de groepsproef werkt', 'de verbindprofielfuncties') +
   '\nthis.plStUitMetingen=plStUitMetingen; this.plProtocolBits=plProtocolBits; this.plSoloAntwoord=plSoloAntwoord;' +
-  '\nthis.plGroepCompleet=plGroepCompleet; this.plStUitGeheugen=plStUitGeheugen; this.plAdressen=plAdressen; this.plHandSchoon=plHandSchoon;', s, { filename: 'pidlane-bt.js' });
+  '\nthis.plGroepCompleet=plGroepCompleet; this.plStUitGeheugen=plStUitGeheugen; this.plAdressen=plAdressen; this.plHandSchoon=plHandSchoon; this.plStVolgende=plStVolgende; this.plStMoetOmhoog=plStMoetOmhoog;', s, { filename: 'pidlane-bt.js' });
 
 console.log('\nATST uit de metingen\n');
 toets('te weinig metingen: niets zetten', s.plStUitMetingen([40, 41]) === null);
@@ -75,6 +75,19 @@ toets('een weigering (7F 01 12) is geen antwoord', s.plSoloAntwoord('7F0112', '0
 toets('groep compleet', s.plGroepCompleet({ '010C': [1], '010D': [2] }, ['010C', '010D']) === true);
 toets('groep met een gat is niet compleet', s.plGroepCompleet({ '010C': [1] }, ['010C', '010D']) === false);
 toets('lege groep is niet compleet', s.plGroepCompleet({}, []) === false);
+
+console.log('\nATST bijsturen tijdens de rit: alleen omhoog, met rust\n');
+toets('trap: 48 → 100 → 200 → 400 → 800 → 1020 ms', s.plStVolgende('0C') === '19' && s.plStVolgende('19') === '32' && s.plStVolgende('32') === '64' && s.plStVolgende('64') === 'C8' && s.plStVolgende('C8') === 'FF');
+toets('een tussenwaarde (0x0E = 56 ms) gaat naar de eerstvolgende trede erboven (100 ms)', s.plStVolgende('0E') === '19');
+toets('op de top (1020 ms) is er geen volgende', s.plStVolgende('FF') === null);
+toets('nooit omlaag: elke volgende trede is hoger dan nu', ['0C','0E','19','40','64','A3','C8'].every(h => parseInt(s.plStVolgende(h), 16) > parseInt(h, 16)));
+const V20 = (n) => Array.from({ length: 20 }, (_, i) => i < n);
+toets('3 van 20 misten: omhoog', s.plStMoetOmhoog(V20(3), 1e12, 0) === true);
+toets('2 van 20 misten: niet (één haperende sensor laat ATST met rust)', s.plStMoetOmhoog(V20(2), 1e12, 0) === false);
+toets('venster nog niet vol (19): niet', s.plStMoetOmhoog(V20(3).slice(0, 19), 1e12, 0) === false);
+toets('binnen een minuut na de vorige stap: niet', s.plStMoetOmhoog(V20(10), 1e12, 1e12 - 30000) === false);
+toets('ruim een minuut later: weer wel', s.plStMoetOmhoog(V20(10), 1e12, 1e12 - 61000) === true);
+toets('de CX-5 van 03-10 (0 van 20): nooit', s.plStMoetOmhoog(V20(0), 1e12, 0) === false);
 
 console.log('\nVerbinding met de hand: wat er door de keuring komt\n');
 toets('geldige keuze blijft heel', JSON.stringify(s.plHandSchoon({ st: '19', at: 2, proto: '6' })) === JSON.stringify({ st: '19', at: '2', proto: '6' }));
@@ -159,6 +172,7 @@ toets('een e-mailadres als merk gaat er niet door', w.schoon(Object.assign({}, g
 toets('een onbekend veld (kenteken) komt niet in het record', !('kenteken' in w.schoon(Object.assign({}, goed, { kenteken: '12-ABC-3' }))));
 toets('zonder protocol is het geen profiel', w.schoon(Object.assign({}, goed, { protocol: null })) === null);
 toets('zonder ATST is het geen profiel', w.schoon(Object.assign({}, goed, { st_hex: 'XYZ' })) === null);
+toets('een bijgestuurde ATST mag als bron mee naar de kennisbank', w.schoon(Object.assign({}, goed, { st_bron: 'bijgestuurd' })).st_bron === 'bijgestuurd');
 toets('onzin-getallen worden null', w.schoon(Object.assign({}, goed, { st_ms: 99999, groep: 2.5 })).st_ms === null);
 
 const sqlW = (W.match(/var VERBIND_SCHEMA = "([^"]+)";/) || [])[1];

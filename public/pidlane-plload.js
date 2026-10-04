@@ -774,6 +774,7 @@ async function _pollRonde(alsBezet){
           // Vóór markPidData hieronder: het oordeel gaat over wat er eerder al
           // eens binnenkwam, niet over deze ronde.
           const oordeel=plGroepOordeel(grp, parsed, _pidLastOk);
+          _plNoteVerbind(oordeel.mistBekend && oordeel.mistBekend.length>0);
           const got=oordeel.gekregen;
           PLAntwoordtal.leer(basis, cmd, raw, oordeel.oordeel, _ms);
           if(got===0){
@@ -811,6 +812,7 @@ async function _pollRonde(alsBezet){
           const _w0=_plWeigeringen(), _ruw=await plVraagSolo(pid);
           if(_plWeigeringen()!==_w0){ _plGeweigerdeRonde(pid); break; }
           const resp=parsePID(pid,_ruw);
+          _plNoteVerbind(resp==null && _plKortGeledenOk(pid));
           if(resp!=null){ markPidData(pid); updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); feedSessionStat(pid,resp); }
           else markPidNoData(pid);
         }
@@ -821,6 +823,7 @@ async function _pollRonde(alsBezet){
           const _w0=_plWeigeringen(), _ruw=await plVraagSolo(pid);
           if(_plWeigeringen()!==_w0){ _plGeweigerdeRonde(pid); break; }
           const resp=parsePID(pid,_ruw);
+          _plNoteVerbind(resp==null && _plKortGeledenOk(pid));
           if(resp!=null){ markPidData(pid); updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); feedSessionStat(pid,resp); }
           else markPidNoData(pid);
         }
@@ -855,6 +858,17 @@ function _plWeigeringen(){
 function _plPoortDicht(){
   try{ return !!(window.PLElm && typeof PLElm.poortDicht==='function' && PLElm.poortDicht()); }
   catch(e){ console.warn('PLElm.poortDicht mislukt — de ronde gaat door', e); return false; }
+}
+/* Het signaal voor de ATST-regelaar (PLVerbind.noteAntwoord, #394): ontbrak
+   er een PID die de afgelopen vijf minuten nog antwoordde? Een PID die deze
+   auto nooit had telt niet — die ontbreekt bij elke ATST. */
+function _plKortGeledenOk(pid){
+  const w=_pidLastOk[pid];
+  return typeof w==='number' && w>0 && (Date.now()-w)<(typeof GROEP_BEKEND_MS!=='undefined' ? GROEP_BEKEND_MS : 300000);
+}
+function _plNoteVerbind(mist){
+  try{ if(window.PLVerbind && typeof PLVerbind.noteAntwoord==='function') PLVerbind.noteAntwoord(!!mist); }
+  catch(e){ console.warn('PLVerbind.noteAntwoord mislukt — ATST wordt niet bijgestuurd', e); }
 }
 let _plGeweigerdMeld=0;
 function _plGeweigerdeRonde(wat){
