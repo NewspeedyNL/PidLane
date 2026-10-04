@@ -76,6 +76,34 @@ toets('groep compleet', s.plGroepCompleet({ '010C': [1], '010D': [2] }, ['010C',
 toets('groep met een gat is niet compleet', s.plGroepCompleet({ '010C': [1] }, ['010C', '010D']) === false);
 toets('lege groep is niet compleet', s.plGroepCompleet({}, []) === false);
 
+/* ── DE VENSTERHAKEN IN DE ECHTE SCOPE (#399, 04-10-2026) ──────────
+   pidlane-bt.js draait in de globale scope, dus `function plAtStand(){…}` ÍS
+   al window.plAtStand. Op 04-10 stond er daarnaast
+   `window.plAtStand = function(){ return plAtStand(); }`: die overschreef de
+   functie en riep daarna zichzelf aan. "Maximum call stack size exceeded" bij
+   élke ELM-init, dus de app kon met geen enkele auto meer verbinden — live.
+
+   De test hierboven miste dat, omdat hij `window` als apart object opzette.
+   Deze draait met window === de context, net als een browser, en roept de
+   haken aan zoals initELM327() en plElmBaseline() dat doen. */
+console.log('\nDe vensterhaken, met window === globalThis\n');
+{
+  const g = { console: { warn() {}, log() {} }, Date };
+  g.window = g; g.globalThis = g;
+  vm.createContext(g);
+  vm.runInContext(knip(BT, 'const ST_BODEM_MS=', '// De PIDs waarmee de groepsproef werkt', 'de verbindprofielfuncties'), g, { filename: 'pidlane-bt.js' });
+  // Precies de twee regels waarmee pidlane-bt.js de haken naar buiten zet.
+  const haken = BT.split('\n').filter((r) => /^window\.(plStHex|plAtStand)\s*=/.test(r));
+  toets('beide haken staan in de bron (' + haken.length + ')', haken.length === 2);
+  vm.runInContext(haken.join('\n'), g, { filename: 'pidlane-bt.js (haken)' });
+  for (const [naam, verwacht] of [['plStHex', '64'], ['plAtStand', '1']]) {
+    let uit = null, fout = null;
+    try { uit = g.window[naam](); } catch (e) { fout = e; }
+    toets('window.' + naam + '() loopt niet vast', fout === null, fout ? String(fout.message || fout).slice(0, 60) : '');
+    toets('window.' + naam + '() geeft "' + verwacht + '"', uit === verwacht, 'kreeg ' + JSON.stringify(uit));
+  }
+}
+
 console.log('\nATST bijsturen tijdens de rit: alleen omhoog, met rust\n');
 toets('trap: 48 → 100 → 200 → 400 → 800 → 1020 ms', s.plStVolgende('0C') === '19' && s.plStVolgende('19') === '32' && s.plStVolgende('32') === '64' && s.plStVolgende('64') === 'C8' && s.plStVolgende('C8') === 'FF');
 toets('een tussenwaarde (0x0E = 56 ms) gaat naar de eerstvolgende trede erboven (100 ms)', s.plStVolgende('0E') === '19');

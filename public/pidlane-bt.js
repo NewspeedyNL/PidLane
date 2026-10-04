@@ -1714,7 +1714,10 @@ const ST_GEHEUGEN_MAX_MS=180*24*3600*1000;   // een half jaar
 let _plSt={ hex:ST_STANDAARD_HEX, bron:'standaard' };
 function plStHex(){ return _plSt.hex; }
 window.plStHex=plStHex;
-window.plAtStand=function(){ return plAtStand(); };
+// Rechtstreeks, niet via een wrapper die plAtStand() aanroept (#399): dit
+// bestand draait in de globale scope, dus `function plAtStand` ÍS al
+// window.plAtStand. Een wrapper overschrijft hem en roept dan zichzelf aan.
+window.plAtStand=plAtStand;
 
 // Puur, zie test-verbindprofiel.js. Uit de rondrittijden (ms) van geslaagde
 // solo-verzoeken het ATST-plafond. null = te weinig metingen, niets zetten.
