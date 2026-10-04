@@ -523,6 +523,15 @@ window.FUEL_PIDS =[
 
 // ── ELM_BASELINE (was index.html regel 7992) ──
 window.ELM_BASELINE =['ATE0','ATL0','ATS0','ATH0','ATAT1','ATST64']; // bekende goede staat
+// De bekende goede staat van déze verbinding (#388): ATST zoals de koude poort
+// hem mat (plStHex, pidlane-bt.js), niet het vaste 64. Een terugrol naar 400 ms
+// zou op een trage auto precies weer de antwoorden afkappen die de meting
+// binnenhaalde. ELM_BASELINE zelf blijft het vertrekpunt van vóór de meting.
+window.plElmBaseline = function(){
+  const st=(typeof window.plStHex==='function') ? window.plStHex() : '64';
+  const at=(typeof window.plAtStand==='function') ? window.plAtStand() : '1';
+  return ELM_BASELINE.map(c=>c==='ATST64' ? 'ATST'+st : (c==='ATAT1' ? 'ATAT'+at : c));
+};
 
 // ── SCENARIO_PID_SUGGEST (was index.html regel 8251) ──
 window.SCENARIO_PID_SUGGEST =['010C','010D','0105','015C','0104','0142','0106','0107','0110','010B','010F','0114','0115','012F','015E','010A','012C'];
@@ -1112,22 +1121,24 @@ window.PLPidVorm = (function(){
 // Elke voorinstelling is daarom "basis + focus": de tien kern-PIDs blijven
 // altijd staan, en daar komt een blok bovenop dat bij de vraag past.
 // Niet-ondersteunde PIDs worden er bij het toepassen uitgefilterd.
+// `kort` en `ico` staan op de doel-chips in de sensorkeuze (02-10-2026);
+// `alleen` = alleen tonen bij deze motorsoorten (detectEngineType()).
 window.PID_PRESETS = [
-  {id:'basis', naam:'Basis', tip:'De tien kernwaarden die je bij elke rit wilt zien.',
+  {id:'basis', naam:'Basis', kort:'Basis', ico:'🧭', tip:'De tien kernwaarden die je bij elke rit wilt zien.',
    extra:[]},
-  {id:'plus', naam:'Basis plus', tip:'Kern plus de meest gebruikte extra sensoren — goed startpunt.',
+  {id:'plus', naam:'Basis plus', kort:'Aanbevolen', ico:'⭐', tip:'Kern plus de meest gebruikte extra sensoren — goed startpunt.',
    extra:['0110','010E','0143','015C','0146','0133','014C']},
-  {id:'verbruik', naam:'Basis + focus verbruik', tip:'Alles wat meeweegt in brandstofverbruik en rijstijl.',
+  {id:'verbruik', naam:'Basis + focus verbruik', kort:'Verbruik', ico:'⛽', tip:'Alles wat meeweegt in brandstofverbruik en rijstijl.',
    extra:['0110','0166','015E','0123','016D','0162','0163','0145','0149','014C','012F','0131']},
-  {id:'elektrisch', naam:'Basis + focus elektrisch', tip:'Boordnet, accu en aandrijving van EV of hybride.',
+  {id:'elektrisch', naam:'Basis + focus elektrisch', kort:'Elektrisch', ico:'🔋', alleen:['hybride','ev'], tip:'Boordnet, accu en aandrijving van EV of hybride.',
    extra:['0142','015B','0146','0105','0104','0162','0163']},
-  {id:'motor', naam:'Basis + focus motor & belasting', tip:'Vullingsgraad, koppel en belasting onder alle omstandigheden.',
+  {id:'motor', naam:'Basis + focus motor & belasting', kort:'Motor', ico:'⚙️', tip:'Vullingsgraad, koppel en belasting onder alle omstandigheden.',
    extra:['0143','0144','0162','0163','0164','010E','0110','0166','0187','0170','010B','0133']},
-  {id:'temp', naam:'Basis + focus temperatuur', tip:'Alle temperaturen die de app kan uitlezen, in één beeld.',
+  {id:'temp', naam:'Basis + focus temperatuur', kort:'Temperatuur', ico:'🌡️', tip:'Alle temperaturen die de app kan uitlezen, in één beeld.',
    extra:['0105','010F','0146','015C','0167','0168','013C','013D','013E','013F','0178','0179','016B','0177','0184']},
-  {id:'emissie', naam:'Basis + focus emissie & lambda', tip:'Brandstoftrim, lambda en nabehandeling — voor APK en storingzoeken.',
+  {id:'emissie', naam:'Basis + focus emissie & lambda', kort:'Emissie', ico:'💨', tip:'Brandstoftrim, lambda en nabehandeling — voor APK en storingzoeken.',
    extra:['0106','0107','0108','0109','0113','0114','0115','0124','0134','0135','012E','012F','013C','013D','0169','016B','017A','017C']},
-  {id:'diesel', naam:'Basis + focus diesel & roetfilter', tip:'Raildruk, EGR en roetfilter — alleen zinvol op een diesel.',
+  {id:'diesel', naam:'Basis + focus diesel & roetfilter', kort:'Diesel', ico:'🛢️', alleen:['diesel'], tip:'Raildruk, EGR en roetfilter — alleen zinvol op een diesel.',
    extra:['0123','016D','0169','016A','016B','016C','017A','017C','0178','0179','0185','0170','015E']}
 ];
 
@@ -1678,13 +1689,30 @@ window.PLBus={
     if(S.batchGroep>1){ S.batchGroep--; diag('Multi-PID groep verkleind naar '+S.batchGroep,'warn'); return true; }
     return false;
   },
+  /* Startpunt en plafond uit de koude poort (#388). De groepsproef bij het
+     verbinden zegt hoe groot een groep op deze auto werkelijk mag zijn; de
+     automaat begint daar en klimt er niet boven. null als plafond = niet
+     getoetst (de auto had te weinig PIDs voor een groep van 3), dan geldt
+     GROEP_AUTO_MAX. Een vastgezette groep blijft staan. */
+  batchStart(start, plafond){
+    const max=this.GROEP_AUTO_MAX;
+    const pl=(plafond==null) ? null : Math.max(1,Math.min(max,Math.round(Number(plafond)||1)));
+    S.batchPlafond=pl;
+    if(S.batchVast) return S.batchGroep;
+    S.batchGroep=Math.max(1,Math.min(pl==null?max:pl, Math.round(Number(start)||1)));
+    S.batchGoed=0;
+    diag('Multi-PID groep ingemeten op '+S.batchGroep+(pl!=null?' (plafond '+pl+')':''),'info');
+    return S.batchGroep;
+  },
+  batchPlafond(){ return S.batchPlafond==null ? this.GROEP_AUTO_MAX : S.batchPlafond; },
+  batchPlafondWis(){ S.batchPlafond=null; },
   batchGroter(){
     if(S.batchVast) return false;
-    if(S.batchGroep>=this.GROEP_AUTO_MAX) return false;
+    if(S.batchGroep>=this.batchPlafond()) return false;
     if(++S.batchGoed<25) return false;
     S.batchGoed=0; S.batchGroep++; diag('Multi-PID groep terug omhoog naar '+S.batchGroep,'ok'); return true;
   },
-  batchReset(){ if(S.batchVast) return; S.batchGroep=this.GROEP_AUTO_MAX; S.batchGoed=0; }
+  batchReset(){ if(S.batchVast) return; S.batchGroep=this.batchPlafond(); S.batchGoed=0; }
 };
 
 /* Handige wrapper: alles binnen fn() draait met de bus geclaimd. Lukt het

@@ -953,7 +953,12 @@ async function logToSheets(type, message, extra={}){
         else staart.push(k+'='+(typeof w==='object'?JSON.stringify(w):String(w)));
       });
     }catch(e){ console.warn('Extra logvelden niet uitgepakt — de regel gaat zonder die context mee', e); }
-    const bericht=String(message||'')+(staart.length?' · '+staart.join(' '):'');
+    // Geen e-mailadres in de logtabel (01-10-2026): niet als gebruiker en niet
+    // in de tekst. De regel staat in pidlane-veldlab.js; ontbreekt die
+    // module, dan gaat er géén gebruiker en géén tekst met een @ mee.
+    const geenMail=(typeof _vlGeenEmail==='function') ? _vlGeenEmail : function(){ return ''; };
+    const mailUit=(typeof _vlEmailUitTekst==='function') ? _vlEmailUitTekst : function(t){ return String(t||'').indexOf('@')>=0 ? '' : String(t||''); };
+    const bericht=mailUit(String(message||'')+(staart.length?' · '+staart.join(' '):''));
     _atBuffer.push({
       fields:{
         Timestamp:  ts,
@@ -968,7 +973,7 @@ async function logToSheets(type, message, extra={}){
         // nooit heeft bestaan en zoek je bij een bugmelding in de verkeerde
         // build. '?' is eerlijk en valt op.
         AppVersion: String(typeof APP_VERSION!=='undefined'?APP_VERSION:'?'),
-        User:       String(currentUser?.name||''),
+        User:       geenMail(currentUser?.name||''),
         Role:       String(currentUser?.role||''),
         RecordType: demo ? 'demo' : soort,
         SessionId:  sessie,

@@ -779,8 +779,45 @@
       default: return null;
     }
   }
+  /* ── VERBINDPROFIEL ALS APP-MAAT (#394, 03-10-2026) ───────────────
+     Wat de koude poort mat (PLVerbind, pidlane-bt.js) en wat de regelkringen
+     er de rest van de sessie van maakten, als getal voor een meetopdracht.
+     Zo kan een rit beantwoorden of ATST 0x0C (48 ms) onder belasting houdt,
+     zonder een nieuwe build per vraag. Puur: alles komt als argument binnen,
+     zodat test-opdrachtappmaat.js hem zonder de hele app kan toetsen.
+     null = niet gemeten (geen verbinding, module niet geladen), en dat is geen 0. */
+  function verbindMaat(naam, V, bus, at, elm) {
+    const p = V && V.profiel;
+    switch (naam) {
+      case 'verbind-gemeten': return p ? ((p.st && p.st.bron !== 'standaard') ? 1 : 0) : null;
+      case 'verbind-st-ms': return p ? ((p.st && p.st.ms) || 400) : null;
+      case 'verbind-traagst-ms': return (p && p.st && typeof p.st.traagstMs === 'number') ? p.st.traagstMs : null;
+      case 'verbind-groep': return p ? (p.groep ? p.groep.start : 0) : null;
+      case 'verbind-groep-nu': return (bus && typeof bus.batchGroep === 'function') ? bus.batchGroep() : null;
+      case 'verbind-fout-pct': case 'verbind-onvol-pct': {
+        const st = (bus && typeof bus.stats === 'function') ? bus.stats() : null;
+        if (!st) return null;
+        if (naam === 'verbind-onvol-pct') return st.reqTot ? st.onvolPct : null;
+        return st.totaal ? Math.round(st.bad / st.totaal * 100) : null;
+      }
+      case 'verbind-weigeringen': return (elm && typeof elm.weigeringen === 'function') ? elm.weigeringen() : null;
+      case 'verbind-st-stappen': return (p && V && typeof V.stappen === 'function') ? V.stappen() : null;
+      case 'antwoordtal-winst-pct': case 'antwoordtal-blokkades': {
+        const st = (at && typeof at.stand === 'function') ? at.stand() : null;
+        if (!st) return null;
+        if (naam === 'antwoordtal-blokkades') return st.blokkades;
+        return (st.msMet > 0 && st.msZonder > 0) ? Math.round((1 - st.msMet / st.msZonder) * 100) : null;
+      }
+      default: return null;
+    }
+  }
+
   function maat(naam) {
     switch (naam) {
+      case 'verbind-gemeten': case 'verbind-st-ms': case 'verbind-traagst-ms': case 'verbind-groep':
+      case 'verbind-groep-nu': case 'verbind-fout-pct': case 'verbind-onvol-pct': case 'verbind-weigeringen': case 'verbind-st-stappen':
+      case 'antwoordtal-winst-pct': case 'antwoordtal-blokkades':
+        return verbindMaat(naam, window.PLVerbind, window.PLBus, window.PLAntwoordtal, window.PLElm);
       case 'adapter-sessie-min': case 'adapter-drift-pct': case 'adapter-proef': case 'adapter-visueel-pct':
         return sessieMaat(naam, _sessie, _gebeurt);
       case 'groep-a-advies': case 'groep-b-advies': case 'groep-c-advies':
@@ -1006,17 +1043,70 @@
           'De automaat meet ondertussen door — je ziet hierboven wat hij van de bus vindt, ' +
           'hij grijpt alleen niet in.</div>' +
       '</div>';
-    } else {
-      stuur = '<div style="font:400 11px var(--f);color:var(--tx3);margin-top:7px">' +
-        'De automaat regelt het tempo op bezetting, foutgraad en responstijd, en verkleint de groep ' +
-        'als de adapter frames herhaalt. Wat hij deed en waarom staat hieronder.</div>';
     }
-    return '<div style="margin-top:12px">' +
+    // Bij de automaat geen uitleg meer onder de knoppen (02-10-2026): wat hij
+    // deed en waarom staat in het blok erboven, en dit vak is voor knoppen.
+    return '<div>' +
       '<div style="font:800 11px var(--f);color:var(--tx3);letter-spacing:.4px;margin-bottom:6px">WIE REGELT HET TEMPO</div>' +
       '<div style="display:flex;gap:5px">' + knop(false, '🤖 Automaat') + knop(true, '✋ Handmatig') + '</div>' +
-      stuur +
+      stuur + (hand ? _verbindingBlok() : '') +
     '</div>';
   }
+
+  /* ── DE VERBINDING MET DE HAND (#394, 04-10-2026) ──────────────────
+     Onder ✋ Handmatig: protocol, ATST en adaptieve timing. Knoppen en geen
+     keuzelijsten: het paneel tekent elke seconde opnieuw, en een open
+     keuzelijst klapt dan dicht onder je vinger. Het werk zelf zit in
+     PLVerbind (pidlane-bt.js), de eigenaar van die knoppen; dit tekent en
+     geeft door. */
+  let _handBezig = '';
+  function _verbindingBlok() {
+    const V = window.PLVerbind;
+    if (!V || typeof V.nu !== 'function') return '';
+    const nu = V.nu(), hand = V.handStand() || {};
+    const chip = function (fn, waarde, tekst, aan) {
+      return '<button onclick="PLAdapter.' + fn + '(\'' + waarde + '\')" style="border-radius:7px;min-height:36px;padding:7px 9px;' +
+        'font:700 11px var(--f);cursor:pointer;border:1px solid ' +
+        (aan ? 'var(--bl);background:var(--blv);color:#fff' : 'var(--bd);background:var(--sur);color:var(--tx2)') + '">' + tekst + '</button>';
+    };
+    const rij = function (kop, uitleg, knoppen) {
+      return '<div style="margin-top:9px"><div style="font:800 10px var(--f);color:var(--tx3);letter-spacing:.3px">' + kop + '</div>' +
+        '<div style="font:400 10px var(--f);color:var(--tx3);margin:2px 0 5px">' + uitleg + '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:4px">' + knoppen + '</div></div>';
+    };
+    const actiefProto = String(nu.proto || '').replace(/^A/, '');
+    const protos = V.protocollen().map(function (p) {
+      return chip('zetProto', p[0], p[0] + ' · ' + p[1], hand.proto ? hand.proto === p[0] : p[0] === actiefProto);
+    }).join('');
+    const sts = [['0C', 48], ['19', 100], ['32', 200], ['64', 400], ['96', 600], ['C8', 800], ['FF', 1020]].map(function (x) {
+      return chip('zetSt', x[0], x[1] + ' ms', nu.st === x[0]);
+    }).join('');
+    const ats = [['0', 'uit'], ['1', 'normaal'], ['2', 'agressief']].map(function (x) {
+      return chip('zetAt', x[0], 'ATAT' + x[0] + ' ' + x[1], nu.at === x[0]);
+    }).join('');
+    return '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--bd)' + (_handBezig ? ';opacity:.55;pointer-events:none' : '') + '">' +
+      '<div style="font:800 11px var(--f);color:var(--tx3);letter-spacing:.4px">VERBINDING — MET DE HAND</div>' +
+      (_handBezig ? '<div style="font:700 11px var(--f);color:var(--bl);margin-top:4px">⏳ ' + _handBezig + '</div>' : '') +
+      rij('PROTOCOL', 'Nu: ' + (nu.proto || '?') + '. Wisselen test meteen met 0100; antwoordt de auto niet, dan gaat hij terug.', protos) +
+      rij('ATST — HOE LANG DE ADAPTER OP EEN ANTWOORD WACHT', 'Nu: 0x' + nu.st + ' (' + nu.stMs + ' ms, ' + nu.stBron + '). Korter is sneller, te kort mist antwoorden.', sts) +
+      rij('ADAPTIEVE TIMING', 'Laat de adapter de wachttijd zelf inkorten onder het ATST-plafond.', ats) +
+      '<div style="font:400 10px var(--f);color:var(--tx3);margin-top:8px">Baudrate: via Bluetooth niet van toepassing — de CAN-snelheid (500/250k) zit in het protocol. ' +
+        'Je keuze blijft staan tot je op 🤖 Automaat tikt.</div>' +
+    '</div>';
+  }
+  async function _handZet(veld, waarde, wat) {
+    const V = window.PLVerbind;
+    if (!V || typeof V.zetHand !== 'function') { _melding('De verbindingsmodule ontbreekt'); return; }
+    _handBezig = wat; _teken();
+    let r = null;
+    try { r = await V.zetHand(veld, waarde); }
+    catch (e) { r = { ok: false, reden: (e && e.message) || String(e) }; }
+    _handBezig = ''; _teken();
+    _melding(r && r.ok ? '✋ ' + wat.replace(/…$/, '') + ' — gedaan' : '✋ Niet gelukt: ' + ((r && r.reden) || 'onbekend'));
+  }
+  function zetSt(hex) { return _handZet('st', hex, 'ATST naar 0x' + hex + '…'); }
+  function zetAt(n) { return _handZet('at', n, 'ATAT' + n + '…'); }
+  function zetProto(id) { return _handZet('proto', id, 'protocol ' + id + ' proberen (tot 12 s)…'); }
 
   function _meetBlok() {
     if (_meetBezig) {
@@ -1051,11 +1141,9 @@
           'gemeten om ' + _tijd(_meting.t) + '</div>' +
       '</div>';
     }
+    if (!uitslag) return '';
     return '<div style="margin-top:12px">' +
       '<div style="font:800 11px var(--f);color:var(--tx3);letter-spacing:.4px;margin-bottom:6px">SNELHEIDSTEST</div>' +
-      '<button onclick="PLAdapter.meet()" style="width:100%;border:1px solid var(--bd);background:var(--sur);' +
-        'color:var(--tx);border-radius:9px;padding:11px;font:800 12px var(--f);cursor:pointer">' +
-        '⏱ Meet wat deze verbinding aankan (40 s)</button>' +
       uitslag +
     '</div>';
   }
@@ -1097,15 +1185,8 @@
           ' · gemeten om ' + _tijd(_gp.t) + ' · staat ook in de logtabel (groepsproef)</div>' +
       '</div>';
     }
-    return '<div style="margin-top:12px">' + kop +
-      '<div style="font:400 11px var(--f);color:var(--tx2);margin-bottom:7px">' +
-        'Meet groep 1 t/m 6 en weer terug op deze auto en deze adapter. Motor aan, auto stil, geen andere meting open. ' +
-        'Onderweg alleen als iemand anders de telefoon bedient. Zie de campagne in de testrun voor de volledige rit.</div>' +
-      '<button onclick="PLAdapter.groepsproef()" style="width:100%;border:1px solid var(--bd);background:var(--sur);' +
-        'color:var(--tx);border-radius:9px;padding:11px;font:800 12px var(--f);cursor:pointer">' +
-        '📦 Start de groepsproef (± 2 min)</button>' +
-      uitslag +
-    '</div>';
+    if (!uitslag) return '';
+    return '<div style="margin-top:12px">' + kop + uitslag + '</div>';
   }
 
   function _actieBlok() {
@@ -1166,19 +1247,44 @@
         _grafiek('perSec', 'Verzoeken per seconde', '/s', 'var(--bl)') +
         _grafiek('venMs', 'Responstijd', 'ms', 'var(--bl)') +
       '</div>' +
-      _regelingBlok() +
       _meetBlok() +
       _groepsproefBlok() +
       _actieBlok() +
       _foutBlok() +
-      '<div style="margin-top:14px;display:flex;gap:6px">' +
+      _bedieningBlok();
+  }
+
+  /* ALLE KNOPPEN ONDERIN (02-10-2026, uit het gebruik: "niet verspreid over
+     de pagina"). Tot die datum stonden de tempokeuze, de snelheidstest en de
+     groepsproef tussen de getallen in, en de drie verbindingsknoppen helemaal
+     onderaan. Nu staat alles wat je kunt indrukken in één vak dat onderaan
+     het venster blijft plakken; erboven staat alleen wat je leest. Een advies
+     uit een meting houdt zijn knop bij zijn uitslag: die hoort bij dat getal. */
+  function _bedieningBlok() {
+    const proef = function (fn, tekst, sub) {
+      return '<button onclick="PLAdapter.' + fn + '()" style="flex:1;min-width:0;border:1px solid var(--bd);background:var(--sur);' +
+        'color:var(--tx);border-radius:9px;padding:9px 6px;font:800 12px var(--f);cursor:pointer;line-height:1.25">' +
+        tekst + '<br><span style="font:600 10px var(--f);color:var(--tx3)">' + sub + '</span></button>';
+    };
+    const bezig = _meetBezig || _gpBezig;
+    return '<div id="plAdapterBediening" style="position:sticky;bottom:calc(-16px - var(--pl-sab,0px));margin:14px -14px -14px;' +
+        'padding:12px 14px calc(14px + var(--pl-sab,0px));background:var(--sur2);border-top:1px solid var(--bd);' +
+        'border-radius:0 0 14px 14px;box-shadow:0 -10px 24px rgba(0,0,0,.25)">' +
+      _regelingBlok() +
+      '<div style="font:800 11px var(--f);color:var(--tx3);letter-spacing:.4px;margin:12px 0 6px">METEN — motor aan, auto stil</div>' +
+      '<div style="display:flex;gap:6px' + (bezig ? ';opacity:.5;pointer-events:none' : '') + '">' +
+        proef('meet', '⏱ Snelheidstest', '± 40 s') +
+        proef('groepsproef', '📦 Groepsproef', 'groep 1–6, ± 2 min') +
+      '</div>' +
+      '<div style="margin-top:8px;display:flex;gap:6px">' +
         '<button onclick="PLAdapter.reset()" style="flex:1;border:1px solid var(--bd);background:var(--sur);' +
           'color:var(--tx2);border-radius:8px;padding:10px;font:700 11px var(--f);cursor:pointer">↺ Reset meting</button>' +
         '<button onclick="PLAdapter.herverbind()" style="flex:1;border:1px solid var(--bl);background:var(--bls);' +
           'color:var(--bl);border-radius:8px;padding:10px;font:700 11px var(--f);cursor:pointer">🔄 Opnieuw verbinden</button>' +
         '<button onclick="PLAdapter.verbreek()" style="flex:1;border:1px solid var(--rd);background:var(--rds);' +
           'color:var(--rd);border-radius:8px;padding:10px;font:700 11px var(--f);cursor:pointer">Verbreken</button>' +
-      '</div>';
+      '</div>' +
+    '</div>';
   }
 
   function _melding(t) {
@@ -1239,6 +1345,11 @@
       // drie keer een bug is geweest.
       if (!hand && window.PLBus && typeof PLBus.batchZet === 'function' && PLBus.batchVast()) {
         PLBus.batchZet(PLBus.batchGroep(), false);
+      }
+      // En de verbinding zelf ook terug (#394): Handmatig is de hele verbinding.
+      if (!hand && window.PLVerbind && typeof PLVerbind.handWis === 'function') {
+        Promise.resolve(PLVerbind.handWis()).then(function () { _teken(); },
+          function (e) { _melding('Verbinding terug naar automaat mislukt: ' + ((e && e.message) || e)); });
       }
     } catch (e) { _melding('Modus wisselen mislukt: ' + ((e && e.message) || e)); }
     _teken();
@@ -1433,6 +1544,8 @@
     laatsteGroepsproef: laatsteGroepsproef,
     gpSituatie: gpSituatie,
     sessieMaat: sessieMaat,
+    verbindMaat: verbindMaat,
+    zetSt: zetSt, zetAt: zetAt, zetProto: zetProto,
     maat: maat,
     // Alleen voor de test: een uitslag neerzetten zoals _gpKlaar() dat doet.
     _gpKlaar: function (uit) { return _gpKlaar(uit); },

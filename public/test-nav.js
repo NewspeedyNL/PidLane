@@ -47,7 +47,7 @@ eis('Meer open wint van alles', K.welkeTab({ welkom: true, rapporten: true, meer
 
 console.log('\n2. Wie krijgt de garagemodus vanzelf');
 eis('een klant niet', K.garageStandaard(true, true) === false);
-eis('beheer of personeel wel', K.garageStandaard(true, false) === true);
+eis('beheer of personeel ook niet (02-10-2026: iedereen begint rustig)', K.garageStandaard(true, false) === false);
 eis('de demo zonder login niet  <- dat ziet een Play-reviewer', K.garageStandaard(false, false) === false);
 
 console.log('\n3. Een eigen keuze wint van de standaard');

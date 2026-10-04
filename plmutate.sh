@@ -145,7 +145,7 @@ MUTATIES=(
 "public/pidlane-kaart.js@@        if ((p & 0xF0) === 0x20) uit += fr.slice(2);@@        if ((p & 0xF0) === 0x20) uit += fr;@@test-kaart.js@@de ISO-TP-teller gaat als databyte mee en verschuift elk lang antwoord"
 "public/pidlane-kaart.js@@        if (nr % 0x20 === 0) continue;@@        if (false) continue;@@test-kaart.js@@de bitmap-PID zelf wordt als datapunt geteld"
 "public/pidlane-kaart.js@@    if (LEZEND.indexOf(sid) < 0) return { mag: false, reden: 'service ' + sid + ' staat niet op de leeslijst' };@@    if (false) return { mag: false, reden: 'service ' + sid + ' staat niet op de leeslijst' };@@test-kaart.js@@de leeslijst beslist niet meer: een onbekende service mag de bus op"
-"public/pidlane-kaart.js@@      var herstel = ['ATSH' + (K.bits === 29 ? '18DB33F1' : '7DF'), 'ATCRA', 'ATH0', 'ATAT1', 'ATST' + CFG.stHerstel];@@      var herstel = ['ATCRA'];@@test-kaart.js@@de adapter blijft na de scan in scanstand staan"
+"public/pidlane-kaart.js@@      var herstel = ['ATSH' + (K.bits === 29 ? '18DB33F1' : '7DF'), 'ATCRA', 'ATH0', 'ATAT1', @@      var herstel = ['ATCRA']; void [@@test-kaart.js@@de adapter blijft na de scan in scanstand staan"
 "public/pidlane-kaart.js@@        if (!levend) throw new Error('verbinding weg: ATI gaf twee keer niets terug');@@        if (false) throw new Error('verbinding weg: ATI gaf twee keer niets terug');@@test-kaart.js@@een dode adapter wordt niet meer opgemerkt: de scan draait door op niets"
 "public/pidlane-kaart.js@@          for (var di = 0; di < tredeDids.length && !_stop; di++) {@@          for (var di = 0; di < tredeDids.length; di++) {@@test-kaart.js@@de stopknop doet niets meer tijdens de DID-sweep"
 "public/pidlane-bt.js@@  if(window._plScanActief) return;@@  if(false) return;@@test-elmpoort.js@@een scan telt zijn eigen lege antwoorden weer als een dode socket"
@@ -766,7 +766,7 @@ MUTATIES=(
 "public/pidlane-plload.js@@  if(Date.now()>=_groepHoudTot) PLBus.batchGroter();@@  PLBus.batchGroter();@@test-groepsgrootte.js@@na een krimp klimt de groep binnen seconden terug en schommelt hij op een kloon tussen 2 en 3"
 "public/pidlane-plload.js@@          if(oordeel.oordeel==='onvolledig') _groepTel(true, oordeel);@@          if(false) _groepTel(true, oordeel);@@bproef-groepsproef.js@@de pollus ziet onvolledige antwoorden niet en blijft op groep 3 met een kloon die de laatste PID laat vallen"
 "public/pidlane-data.js@@    const max=vast ? this.GROEP_HAND_MAX : this.GROEP_AUTO_MAX;@@    const max=this.GROEP_HAND_MAX;@@test-groepsgrootte.js@@terug naar de automaat laat de groep op 6 staan"
-"public/pidlane-data.js@@    if(S.batchGroep>=this.GROEP_AUTO_MAX) return false;@@    if(S.batchGroep>=this.GROEP_HAND_MAX) return false;@@test-groepsgrootte.js@@de automaat klimt zelf naar groep 6 zonder dat een rit dat bewees"
+"public/pidlane-data.js@@    if(S.batchGroep>=this.batchPlafond()) return false;@@    if(S.batchGroep>=this.GROEP_HAND_MAX) return false;@@test-groepsgrootte.js@@de automaat klimt zelf naar groep 6 zonder dat een rit dat bewees"
 "public/pidlane-adapter.js@@    for (let i = 1; i < schoon.length; i++) if (schoon[i].pidsPerSec >= best.pidsPerSec * 1.05) best = schoon[i];@@    for (let i = 1; i < schoon.length; i++) if (schoon[i].pidsPerSec >= best.pidsPerSec) best = schoon[i];@@test-groepsgrootte.js@@de groepsproef adviseert een grotere groep voor een winst binnen de meetruis"
 "public/pidlane-adapter.js@@        schoon: onvolPct <= 2 && leegPct === 0 && p.echo === 0,@@        schoon: leegPct === 0,@@test-groepsgrootte.js@@de groepsproef adviseert een groep die PIDs verliest of frames herhaalt"
 "public/pidlane-adapter.js@@      tok = await PLBus.wait('groepsproef', GP_BUS_WACHT_MS);@@      tok = -1;@@bproef-groepsproef.js@@de groepsproef meet dwars door de pollus heen in plaats van met de bus vast"
@@ -841,7 +841,7 @@ MUTATIES=(
 # batch van tien terugkomt in de buffer en elke vijftien seconden opnieuw
 # faalt. Dan legt één verkeerde sleutel de hele log plat en niet één regel.
 "public/pidlane-auth.js@@        if(AT_KOLOMMEN.has(k)) velden[k]=(typeof w==='boolean'||typeof w==='number')?w:String(w);\n        else staart.push(k+'='+(typeof w==='object'?JSON.stringify(w):String(w)));@@        velden[k]=w;@@test-livelog.js@@elke sleutel gaat als veld naar Airtable: één onbekende naam legt de hele log plat"
-"public/pidlane-auth.js@@    const bericht=String(message||'')+(staart.length?' · '+staart.join(' '):'');@@    const bericht=String(message||'');@@test-livelog.js@@de context achter het bericht valt weer weg — precies de stille fout van vóór vandaag"
+"public/pidlane-auth.js@@    const bericht=mailUit(String(message||'')+(staart.length?' · '+staart.join(' '):''));@@    const bericht=mailUit(String(message||''));@@test-livelog.js@@de context achter het bericht valt weer weg — precies de stille fout van vóór vandaag"
 "public/pidlane-auth.js@@        Message:    bericht.slice(0,500),@@        Message:    bericht,@@test-livelog.js@@een lange staart omzeilt de grens van 500 tekens"
 "public/pidlane-testrun.js@@  if (st === 'FOUT' || st === 'LET OP' || st === 'LETOP') {@@  if (true) {@@test-livelog.js@@elke stap gaat naar de live-log: vijftig regels per rit en de tabel loopt vol"
 "public/pidlane-testrun.js@@    _liveSchrijf(st === 'FOUT' ? 'error' : 'opvallend',@@    if (st === 'FOUT') _liveSchrijf('error',@@test-livelog.js@@een LET OP komt onderweg niet meer naar buiten"
@@ -1411,14 +1411,14 @@ MUTATIES=(
 # die naar een knoop wijst die er niet is, een beheerschakelaar die niets meer
 # doet, en een stoplicht dat "niet gelezen" als groen telt.
 "public/pidlane-nav.js@@    if (st.rapporten) return 'rapporten';\n    if (st.welkom) return 'auto';@@    if (st.welkom) return 'auto';\n    if (st.rapporten) return 'rapporten';@@test-nav.js@@het startscherm wint van het rapportenoverzicht: Rapporten licht nooit op"
-"public/pidlane-nav.js@@    return !!ingelogd && !isKlant;@@    return !isKlant;@@test-nav.js@@de demo zonder login krijgt de garagemodus (en de reviewer het vakgereedschap)"
+"public/pidlane-nav.js@@  function garageStandaard(ingelogd, isKlant) {\n    return false;@@  function garageStandaard(ingelogd, isKlant) {\n    return !isKlant;@@test-nav.js@@de demo zonder login krijgt de garagemodus (en de reviewer het vakgereedschap)"
 "public/pidlane-nav.js@@    if (opgeslagen === '0') return false;@@    if (opgeslagen === '0') return !!standaard;@@test-nav.js@@wie de garagemodus uitzet, krijgt hem terug zodra de standaard aan is"
 "public/pidlane-nav.js@@    return !!(st.ingelogd || st.demo) && !st.dashboard;@@    return !st.dashboard;@@test-nav.js@@de balk staat er al op het inlogscherm"
 "public/pidlane-wizard.js@@  voorbereiding: {nu:'voorb_wat',       set:{doel:'voorbereiding'}},@@  voorbereiding: {nu:'voorb_klaar',      set:{doel:'voorbereiding'}},@@test-wizardtakken.js@@de tegel Voorbereiden wijst naar een knoop die niet bestaat"
 "public/pidlane-wizard.js@@  return m.filter(moduleAan);@@  return m;@@test-wizardtakken.js@@een functie die beheer uitzet, blijft in het wizardplan staan"
 "public/pidlane-foutcodes.js@@    var ongelezen = ['bevestigd', 'pending', 'permanent'].filter(function (k) { return !g[k]; }).length;@@    var ongelezen = 0;@@test-foutcodes.js@@het stoplicht telt een niet-gelezen soort code als \"geen codes\" en wordt groen"
 "public/pidlane-foutcodes.js@@    var vast = uniek([].concat(c.bevestigd || [], c.permanent || [])).length;@@    var vast = [].concat(c.bevestigd || [], c.permanent || []).length;@@test-foutcodes.js@@een code die bevestigd én permanent is, telt twee keer in de kop"
-"public/pidlane-nav.js@@    _gecheckt = true;       // één keer per sessie@@    void 0;                 // één keer per sessie@@bproef-navigatie.js@@de automatische check springt bij elke herverbinding opnieuw open"
+"public/pidlane-nav.js@@    schrijf(OPSLAG.autocheck, '0');   // eenmalig@@    void 0;                           // eenmalig@@bproef-navigatie.js@@de automatische check blijft aan en springt bij elke volgende verbinding opnieuw open (02-10-2026: eenmalig)"
 "public/pidlane.css@@no-repeat; contain:strict; }@@no-repeat; contain:strict; animation:softblink 2.6s ease-in-out infinite; }@@bproef-navigatie.js@@de achtergrond van het startscherm beweegt weer eindeloos: de telefoon tekent hem bij elk beeldje opnieuw (#302)"
 "public/pidlane-fuel.js@@  door_saving_active: 'tg-rit',@@  door_saving_active: 'tg-onderweg',@@bproef-navigatie.js@@de beheerschakelaar voor Rit starten wijst naar een tegel die er niet is"
 "admin/beheer.html@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], true));@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], false));@@bproef-beheerpagina.js@@beheer toont een nooit opgeslagen tegel als uit, en Alles opslaan zet hem dan echt uit"
@@ -1436,7 +1436,14 @@ MUTATIES=(
 "public/pidlane-archief.js@@      demo:_demo,@@      demo:false,@@test-demozandbak.js@@een demorapport is niet als demo gemerkt en blijft na de demo in het overzicht staan"
 "public/pidlane-demo.js@@      return LEES_ACTIES.indexOf(actie) >= 0 ? 'door' :@@      return true ? 'door' :@@test-demozandbak.js@@de demo mag weer schrijven naar het klantplatform: rapporten, ritten en open punten van een verzonnen auto"
 "public/pidlane-demo.js@@    function vangt(self, k) { return self === opslag && actief() &&@@    function vangt(self, k) { return self === opslag &&@@test-demozandbak.js@@demoMode uit zonder plDemoStop: een echte instelling verdwijnt stil in de demolaag"
-"public/pidlane-demo.js@@  var DOORLAAT = ['pl_session', 'pl_sessie', 'ns_api_key'];@@  var DOORLAAT = ['ns_api_key'];@@test-demozandbak.js@@wie tijdens de demo inlogt, is na het herladen weer uitgelogd"
+"public/pidlane-demo.js@@  var DOORLAAT = ['pl_session', 'pl_sessie', 'pl_tok', 'pl_uitloggen', 'ns_api_key'];@@  var DOORLAAT = ['pl_tok', 'pl_uitloggen', 'ns_api_key'];@@test-demozandbak.js@@wie tijdens de demo inlogt, is na het herladen weer uitgelogd"
+"public/pidlane-demo.js@@  var DOORLAAT = ['pl_session', 'pl_sessie', 'pl_tok', 'pl_uitloggen', 'ns_api_key'];@@  var DOORLAAT = ['pl_session', 'pl_sessie', 'ns_api_key'];@@test-demozandbak.js@@uitloggen tijdens de demo wordt bij plDemoStop teruggedraaid: het sessietoken blijft op het toestel"
+"public/pidlane-auth.js@@        User:       geenMail(currentUser?.name||''),@@        User:       String(currentUser?.name||''),@@test-logvelden.js@@het e-mailadres van een klant staat weer als User in elke logregel"
+"public/pidlane-auth.js@@    const bericht=mailUit(String(message||'')@@    const bericht=(String(message||'')@@test-logvelden.js@@een e-mailadres in de tekst van een logregel gaat ongezien mee"
+"public/pidlane-veldlab.js@@  try{ kopie=JSON.parse(_vlEmailUitTekst(JSON.stringify(rec))); }@@  try{ kopie=JSON.parse(JSON.stringify(rec)); }@@test-vin-anoniem.js@@een e-mailadres ergens in het veldlabrecord (foutregels, survey) gaat mee in het JSON-blob"
+"public/pidlane-veldlab.js@@  if(kopie && 'tester' in kopie) kopie.tester=_vlGeenEmail(rec.tester);@@  if(kopie && 'tester' in kopie) kopie.tester=kopie.tester;@@test-vin-anoniem.js@@de Tester van een klant gaat als \"[e-mail]\" mee in plaats van leeg"
+"worker.js@@        const sporen = await klantSporenWissen(env.LOGDB, emailVan[id]);@@        const sporen = null;@@test-klantsporen.js@@een verwijderd account laat zijn logregels en veldlabrecords met zijn e-mailadres staan"
+"worker.js@@ OR INSTR(LOWER(\"JSON\"), LOWER(?)) > 0@@ OR ? IS NULL@@test-klantsporen.js@@een veldlabrecord met het adres alleen in het JSON-blob blijft na verwijderen staan"
 "public/pidlane-demo.js@@      if (Array.isArray(l)) for (var i = l.length - 1; i >= 0; i--) if (l[i] && l[i].demo) l.splice(i, 1);@@      void 0;@@test-demozandbak.js@@demorapporten blijven na de demo in het overzicht — en gaan als eerdere rapporten mee naar de AI"
 "public/pidlane-demo.js@@  demoMode=true; connected=true; dataStable=true;\n  plDemoAan();\n  closeConnOv();@@  demoMode=true; connected=true; dataStable=true;\n  closeConnOv();@@test-demozandbak.js@@de gewone demostart zet de zandbak niet aan"
 "public/pidlane-demo.js@@    if(!ingelogd) setTimeout(()=>{ try{@@    if(false) setTimeout(()=>{ try{@@bproef-demozandbak.js@@een demo zonder login eindigt op een verbindscherm achter de login"
@@ -1585,6 +1592,27 @@ MUTATIES=(
 "public/pidlane-adapter.js@@    if (kmh >= 50) return 'c';@@    if (kmh >= 5) return 'c';@@test-adapterpaneel.js@@stapvoets rijden telt als proef C op constante snelheid"
 "public/pidlane-adapter.js@@    const g = (a.groepen || []).slice().sort(function (x, y) { return y.minuten - x.minuten; })[0] || null;\n    if (!g) return null;\n    switch (naam) {@@    const g = (a.groepen || []).slice(-1)[0] || null;\n    if (!g) return null;\n    switch (naam) {@@test-adapterpaneel.js@@de #302-maat kijkt naar de laatste verbinding in plaats van de langste, en een herverbinding wist de drift"
 "public/pidlane-foutcodes.js@@    _door[hoe === 'vanzelf' || hoe === 'knop' ? hoe : 'gestopt']++;@@    _door.vanzelf++;@@test-foutcodes.js@@Blijf hier telt als vanzelf doorgegaan, en de meetopdracht van #376 sluit op ingrijpen"
+# ── verbindprofiel (#388, 03-10-2026) ──
+"public/pidlane-plload.js@@if(_plWeigeringen()!==_w0){ _plGeweigerdeRonde(cmd); break; }@@if(false){ _plGeweigerdeRonde(cmd); break; }@@test-pollritme.js@@een door de ELM-poort geweigerd groepsverzoek telt weer als lege batch (dip, PIDs stil) — #388"
+"public/pidlane-plload.js@@if(_plPoortDicht()) return;@@if(false) return;@@test-pollritme.js@@de pollronde loopt door terwijl de ELM-poort dicht staat — #388"
+"public/pidlane-bt.js@@const ref = ok.length>=5 ? ok[ok.length-2] : ok[ok.length-1];@@const ref = ok[ok.length-1];@@test-verbindprofiel.js@@één Bluetooth-haper bepaalt het ATST-plafond van een snelle auto"
+"public/pidlane-bt.js@@const doel=Math.min(ST_TOP_MS, Math.max(ST_BODEM_MS, ref*2));@@const doel=Math.min(ST_TOP_MS, Math.max(ST_BODEM_MS, ref));@@test-verbindprofiel.js@@ATST zonder marge: het traagste antwoord valt precies op het plafond"
+"public/pidlane-bt.js@@if(msNu!=null && !(b.ms>msNu)) return null;@@@@test-verbindprofiel.js@@het verbindgeheugen verlaagt ATST onder wat vandaag gemeten is"
+"public/pidlane-bt.js@@if(String(bewaard.adapter||'')!==String(adapter||'')) return null;@@@@test-verbindprofiel.js@@het verbindgeheugen geldt ook over een andere adapter heen"
+"public/pidlane-data.js@@if(S.batchGroep>=this.batchPlafond()) return false;@@if(S.batchGroep>=this.GROEP_AUTO_MAX) return false;@@test-verbindprofiel.js@@de groep klimt boven het plafond uit de groepsproef"
+"public/pidlane-data.js@@c==='ATST64' ? 'ATST'+st :@@c==='ATST64' ? 'ATST64' :@@test-verbindprofiel.js@@de terugrol zet ATST weer op 400 ms in plaats van de gemeten waarde"
+"worker.js@@vin_pseudo: vorm(b.vin_pseudo, /^[0-9a-f]{16}@@vin_pseudo: vorm(b.vin_pseudo, /^[0-9A-Za-z]{16,17}@@test-verbindprofiel.js@@een ruwe VIN komt als pseudoniem in de kennisbank (privacy)"
+# ── verbindprofiel als app-maat (#394, 03-10-2026) ──
+"public/pidlane-adapter.js@@return (st.msMet > 0 && st.msZonder > 0) ? Math.round((1 - st.msMet / st.msZonder) * 100) : null;@@return (st.msMet > 0 && st.msZonder > 0) ? Math.round((st.msMet / st.msZonder) * 100) : null;@@test-opdrachtappmaat.js@@de antwoordcijferwinst meldt de verhouding in plaats van de besparing: een cijfer dat niets doet lijkt 100% winst — #394"
+"public/pidlane-adapter.js@@return st.totaal ? Math.round(st.bad / st.totaal * 100) : null;@@return st.foutPct;@@test-opdrachtappmaat.js@@het foutpercentage van de meetopdracht kijkt naar het venster van 10 s in plaats van de hele sessie — #394"
+# ── verbinding met de hand (#394, 04-10-2026) ──
+"public/pidlane-bt.js@@&& parseInt(st,16)>=0x0C) r.st=st;@@) r.st=st;@@test-verbindprofiel.js@@met de hand kan ATST onder de 48 ms-bodem — #394"
+"public/pidlane-data.js@@(c==='ATAT1' ? 'ATAT'+at : c)@@c@@test-verbindprofiel.js@@de terugrol zet een met de hand gekozen ATAT weer op 1 — #394"
+# ── ATST bijsturen tijdens de rit (#394, 04-10-2026) ──
+"public/pidlane-bt.js@@return venster.slice(-ST_VENSTER).filter(Boolean).length>=ST_DREMPEL;@@return venster.slice(-ST_VENSTER).filter(Boolean).length>=1;@@test-verbindprofiel.js@@één ontbrekende PID zet ATST al omhoog — #394"
+"public/pidlane-bt.js@@if(laatsteStap>0 && nu-laatsteStap<ST_RUST_MS) return false;@@@@test-verbindprofiel.js@@de ATST-regelaar stapt zonder rust, elke paar verzoeken een trede — #394"
+"public/pidlane-bt.js@@for(const t of ST_TRAP) if(parseInt(t,16)>nu) return t;@@for(const t of ST_TRAP) if(parseInt(t,16)!==nu) return t;@@test-verbindprofiel.js@@de ATST-regelaar kan omlaag stappen — #394"
+"public/pidlane-plload.js@@_plNoteVerbind(oordeel.mistBekend && oordeel.mistBekend.length>0);@@_plNoteVerbind(false);@@test-pollritme.js@@de pollronde meldt een verdwenen PID niet aan de ATST-regelaar — #394"
 )
 
 echo

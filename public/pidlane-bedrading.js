@@ -84,6 +84,12 @@ var KRITIEK = [
   // de proef dat en zwijgt hij niet -- maar zonder deze regels zou die guard
   // zelf de stille fout zijn, en dat is precies wat deze lijst moet vangen.
   'flushAirtable','plLiveLogStatus',
+  // Geen e-mailadres naar de server (01-10-2026). logToSheets() vraagt ze
+  // achter een guard (ze wonen in pidlane-veldlab.js, dat later laadt) en
+  // valt dicht als ze ontbreken: dan gaat er geen gebruiker mee. Dicht is
+  // niet stil genoeg om te negeren — de logtabel verliest dan elke
+  // beheerdernaam — dus ze horen hier. Blok 5 vraagt de schoonmaker ook.
+  '_vlGeenEmail','_vlEmailUitTekst','_vlSchoonVoorVerzending',
   // De adapternaam voor de adapter-voorwaarde van een meetopdracht (#277).
   '_plLogAdapter',
   // Het oordeel over een groepsantwoord (#333, 28-09-2026). Blok 5 vraagt het
@@ -146,6 +152,10 @@ var KRITIEK = [
   // valt _plVinVoorLog terug op alleen de WMI en gaat er stil minder mee dan
   // bedoeld -- daarom hoort hij hier en niet in GEEN_GLOBALE.
   '_vlVinPseudoniem',
+  // PLVerbind (pidlane-bt.js, #388) leest en schrijft het verbindgeheugen in
+  // het voertuigprofiel via deze sleutel. Verdwijnt hij, dan onthoudt de app
+  // stil niets meer en begint elke verbinding weer op de standaard-ATST.
+  'vinProfileKey',
   // De bugmelder in pidlane-auth.js haalt de VIN via deze functie op, als
   // pseudoniem. Blok 5 toetst hem; verdwijnt hij, dan is dat een FOUT.
   '_bugDiagMetVin',
@@ -279,6 +289,10 @@ var KRITIEK = [
   // #60 t/m #68 staan er nog bij: hun eigen guards staan verspreid door de
   // modules, ook nu blok 5 over #74 en de begeleide rit gaat.
   'renderCorrelationBanner','bevindingenAan',     // pidlane-correlatie.js — #60
+  // Erbij op 02-10-2026: Slim visueel zeeft de bevindingen die de bestuurder
+  // verborg (✕ of dubbeltik). Ontbreekt de zeef, dan staat een weggeklikte
+  // kaart er stil weer — niet erg, maar de guard hoort hier.
+  'bevindingZichtbaar',
   // De schakelaar zelf plus de knop-synchronisatie. Sinds #123 (08-09-2026)
   // tekent pidlane-run.js dat knopje in het Run-venster in plaats van het
   // ☰-menu, en dus staat de aanroep nu in een andere module dan de definitie.

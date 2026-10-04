@@ -40,7 +40,7 @@
 <main>
 
   <h1>Privacyverklaring</h1>
-  <div class="sub">PidLane — laatst bijgewerkt: 29 september 2026</div>
+  <div class="sub">PidLane — laatst bijgewerkt: 1 oktober 2026</div>
 
   <p>PidLane leest de boordcomputer van je auto uit via een OBD2-adapter en maakt daar een
   diagnose van. Deze verklaring beschrijft welke gegevens daarbij worden verwerkt, waarom,
@@ -70,7 +70,16 @@
   <h2>Waar die gegevens heen gaan</h2>
   <ul>
     <li><strong>Op je toestel.</strong> Metingen, logboeken en instellingen staan lokaal opgeslagen.
-    Ze gaan niet vanzelf ergens heen.</li>
+    Ze gaan niet vanzelf ergens heen, met één uitzondering: de technische logregels hieronder.</li>
+    <li><strong>Technische logregels naar onze server</strong>, zolang je ingelogd bent. Dat zijn
+    korte meldingen over hoe de app werkt: een foutmelding, het verbinden met de adapter, een
+    meetwaarde die buiten bereik viel. Er gaan mee: de appversie, de naam van de adapter, het
+    protocol, merk en bouwjaar, de code die uit het chassisnummer berekend is (zie hieronder) en of
+    je klant of beheerder bent. Geen e-mailadres, geen naam en geen kenteken. We gebruiken ze
+    alleen om fouten in de app te vinden en te herstellen; ze gaan mee weg als je je account
+    verwijdert.</li>
+    <li><strong>Je account</strong> (e-mailadres, je wachtwoord als hash, je tegoed en je
+    akkoorden) staat in een database van Cloudflare (D1).</li>
     <li><strong>Naar onze server</strong>, als je om een AI-analyse vraagt. De meting wordt dan
     verwerkt tot een rapport en bewaard bij je account, zodat je hem later kunt teruglezen.</li>
     <li><strong>Naar Anthropic</strong>, de aanbieder van het taalmodel dat het rapport schrijft.
@@ -84,6 +93,10 @@
   per merk en model op te bouwen. Daar wordt de diagnose voor alle gebruikers scherper van. Er
   gaan geen naam, e-mailadres, kenteken of chassisnummer mee. Deze toestemming vraagt de app
   apart en je kunt hem intrekken.</p>
+  <p>Onder dezelfde code gaat ook mee hoe de verbinding met je auto is ingemeten: het
+  protocol, de wachttijd die de adapter krijgt, hoeveel sensoren er per vraag passen en het
+  soort adapter, samen met merk, model en de fabrikantcode (de eerste drie tekens van het
+  chassisnummer). Daarmee leert PidLane hoe elk merk het best uit te lezen is.</p>
 
   <div class="kader">
     <strong>Dit is pseudonimisering, geen anonimisering.</strong> In plaats van je chassisnummer
@@ -163,7 +176,7 @@
     een uit dat nummer berekende code. Dat is pseudonimisering: wie het chassisnummer kent, kan die
     code narekenen, dus het blijft een persoonsgegeven.</li>
     <li><strong>Waar:</strong> in een database van Cloudflare (D1), onder een code die uit je
-    e-mailadres berekend is. Je e-mailadres zelf staat niet in die database.</li>
+    e-mailadres berekend is. Je voertuiggegevens staan niet onder je e-mailadres, maar alleen onder die code.</li>
     <li><strong>Hoe lang:</strong> zolang je account bestaat. Een voertuig verwijder je zelf, met alles
     wat erbij hoort. Met <em>Alles wissen</em> in Mijn voertuigen gaat alles in één keer weg.
     Verwijder je je account, dan is Mijn voertuigen meteen dicht en is alles binnen 30 dagen gewist.</li>

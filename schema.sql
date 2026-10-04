@@ -321,3 +321,11 @@ CREATE TABLE IF NOT EXISTS veldlab_sessies (id TEXT PRIMARY KEY, rij_gemaakt TEX
 CREATE INDEX IF NOT EXISTS idx_veldlab_sessieid ON veldlab_sessies ("SessieID");
 CREATE TABLE IF NOT EXISTS referentie (id TEXT PRIMARY KEY, rij_gemaakt TEXT NOT NULL, "RefID" TEXT, "Merk" TEXT, "Model" TEXT, "Jaar" TEXT, "CALID" TEXT, "Bevestigingen" REAL, "PidsVerwacht" REAL, "Bijgewerkt" TEXT, "JSON" TEXT);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_referentie_refid ON referentie ("RefID");
+
+-- ── verbindprofielen (#388, 03-10-2026) ─────────────────────────────
+--  Eén rij per verbinding: wat de koude poort mat (protocol, ATST,
+--  groepsgrootte, adapter), met merk/model en de WMI. Alleen het pseudoniem
+--  van de VIN, nooit de VIN of het kenteken. De Worker maakt de tabel zelf
+--  aan (VERBIND_SCHEMA in worker.js); deze regel moet daar letterlijk gelijk
+--  aan blijven — test-verbindprofiel.js vergelijkt de twee.
+CREATE TABLE IF NOT EXISTS verbindprofielen (id INTEGER PRIMARY KEY AUTOINCREMENT, ontvangen TEXT NOT NULL, vin_pseudo TEXT, wmi TEXT, merk TEXT, model TEXT, jaar TEXT, brandstof TEXT, adapter TEXT, protocol TEXT, bits INTEGER, st_hex TEXT, st_ms INTEGER, traagst_ms INTEGER, st_bron TEXT, groep INTEGER, groep_plafond INTEGER, pids_ondersteund INTEGER, reads_per_sec REAL);

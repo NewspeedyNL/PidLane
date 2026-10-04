@@ -12,6 +12,138 @@ architectuur `PIDLANE.md`.
 
 Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
+
+---
+
+## 03-10-2026 — Waarom de T6 stukgaat waar de CX-5 goed loopt (#388, #389)
+
+**De vraag.** Dezelfde app, dezelfde adapter: op een Mazda CX-5 2018 31,7
+verzoeken/s bij 25 ms, op een VW T6 een ELM-herinitialisatielus en PIDs die
+"niet ondersteund" lijken. #388 en #389 noemen als oorzaak dat de app één
+universeel tempo heeft zonder fabrikant-check, en stellen een merktabel voor
+die batching, pauze en groepsgrootte zet.
+
+**Die diagnose klopt niet, en dat is nagekeken in de bron.** De regelkringen
+staan er al: adaptieve groepsgrootte 3→2→1 (`_groepTel`,
+`pidlane-plload.js:1025`), batch-uitval met herstel na 30 s (`batchDip`,
+`:952`), het onvolledig-oordeel dat "deze auto heeft die PID niet" onderscheidt
+van "dit antwoord miste er een" (`plGroepOordeel`, `:990`), het
+antwoordcijfer-geheugen met zelfcontrole (`PLAntwoordtal`, `:889`), batch
+alleen op CAN (`:717`) en alleen op mode 01 (`:737`), bitmaps nooit in een
+batch (`:734`), en het protocolgeheugen (`pidlane-bt.js:1632`). Een merktabel
+die dezelfde knoppen zet, is een tweede regelaar op één actuator — precies de
+vorm die in `CLAUDE.md` onder "Eén ding heeft één betekenis" als drie keer
+eerder een bug staat.
+
+**Wat er wél staat, en het is één hexgetal.** `ATST64` staat voor élke auto in
+de basisreeks (`pidlane-bt.js:1702`, `ELM_BASELINE` in
+`pidlane-data.js:525`): 0x64 × 4 ms = 400 ms. Met `ATAT1` is dat het plafond
+waarbinnen de adapter een antwoord moet zien. Op de CX-5 antwoordt de ECU in
+25 ms, zestien keer onder de limiet, dus je merkt het nooit. Een verzoek dat
+bij een VAG via de gateway naar de motor-ECU gaat, kan erlangs — en dan is het
+antwoord niet traag maar weg, en ziet de app een auto die zijn eigen PIDs niet
+ondersteunt. De voorgestelde `interPIDDelay: 30` raakt dit niet: die pauze zit
+aan onze kant, de limiet staat in de adapter.
+
+**En dan versterkt het zichzelf.** Vier plekken lezen een lege buffer als
+mogelijk dode socket (`pidlane-bt.js:1107`, `:1134`, `:1182`, `:1227`). De
+guard zelf is netjes — `isConnected` eerst, 10 s afstand, uit tijdens een scan
+— maar op een auto waar lege antwoorden het normale gevolg van die 400 ms zijn,
+is élk leeg antwoord een reden om de socket te betwijfelen. Gaat er dan
+geherinitialiseerd worden, dan gooit de harde ELM-poort dicht
+(`_elmPoortDicht`, `:788`) en komt élk geweigerd commando terug als `''`
+(`:932`, `:1377`) — dezelfde lege string als een uitgebleven antwoord. De
+poll-lus kan dat verschil niet zien en boekt het als dip
+(`pidlane-plload.js:779`). De regelkringen krimpen dus op een meting die niet
+over de auto ging maar over onze eigen poort. Het log in #388 staat er
+letterlijk: `Multi-PID leeg TX="01492" RX="" — dip`, dan `"010C2" geweigerd:
+ELM-herinitialisatie bezig`. `_herstelNaProtocolLock()` (`:1056`) is precies
+voor zulke nasleep gemaakt, maar wordt alleen na een protocolvergrendeling
+aangeroepen, niet na een re-init.
+
+**De onderliggende vorm: de regelkringen leren in de verkeerde richting.** Alle
+acht beginnen optimistisch en zakken op fouten. Die fouten kosten op de CX-5
+milliseconden en op een strakke ECU seconden: een fout antwoordcijfer is 5
+minuten blokkade (`ANTWOORDTAL_BLOK_MS`), een misgelopen protocol is `SEARCHING`
+tot 13 s per commando, een vermoede dode socket is drie pogingen plus een
+re-init met de poort tot 15 s dicht. Optimistisch beginnen is goedkoop als
+leren milliseconden kost en duur als het seconden kost. Dat is geen
+merkprobleem maar een richtingprobleem — en dat is de reden dat het ontwerp in
+`PIDLANE-VERBINDPROFIEL.md` meet in plaats van opzoekt.
+
+**Twee dingen uit #389 die niet kunnen wat ze beloven.** Een profiel op de VIN
+komt te laat: `initELM327()` zet de basis, `scanNetworks()` detecteert met
+`0100`, en pas daarna leest `startDiscovery()` de VIN — de T6 gaat stuk vóór dat
+moment. En de voorgestelde mode-22-PIDs (`222005`, `221F24`) zijn niet pollbaar:
+de PID-sleutel is vier tekens, mode plus één byte, en dat staat met de meting
+erbij in `pidlane-uitgebreid.js:37-49`.
+
+**Waar de handleiding in #389 vandaan komt.** Hij is door een taalmodel
+geschreven dat de repo niet gedraaid heeft: hij noemt
+`vinInfo.vin = "JTHBP5C2XA5034656"` als "Mazda CX-5" (`JTH` is Lexus), citeert
+"huidige code" in `pidlane-rijsituatie.js` die daar niet zo staat, en mist de
+plek waar het batchen echt gebeurt (`_pollRonde` in `pidlane-plload.js`). De
+meetgetallen erin (31,7 req/s, 25 ms, 78% busbezetting) komen uit een echte
+testrun en zijn wél bruikbaar. Bewaard omdat het de kortste illustratie is van
+de regel uit `CLAUDE.md`: een geruststellende of alarmerende tekst van een bot
+is een waarneming, geen conclusie — en een regelnummer in zo'n tekst is geen
+bewijs dat het bestand gelezen is.
+
+---
+
+## 01-10-2026 — Releasecontrole: drie beloften die de code niet hield
+
+**De vraag.** De gesloten test was af; vóór de productierelease nalopen op
+dubbelingen, stomme fouten en fixes die iets anders stuk maakten.
+
+**De zandbak brak uitloggen (29-09 → 01-10).** `DOORLAAT` in
+`pidlane-demo.js` noemde `pl_session` en `pl_sessie`, maar het sessietoken
+staat onder `pl_tok` (`TOK_KEY`). Uitloggen tijdens de demo wiste dat token
+alleen in de laag; `logout()` roept via `handleConnect()` `plDemoStop()` aan,
+de laag verdween, en het echte token stond er weer. De volgende start logde
+vanzelf in, op een gedeeld werkplaatstoestel. De lijst noemde twee namen die
+er bijna op leken; `test-demozandbak.js` legt de lijst nu naast de echte
+constanten in `pidlane-auth.js` in plaats van naast een naam die iemand
+overtikte.
+
+**Het e-mailadres ging mee, al sinds het veldlab en de logtabel bestaan.**
+Bij een klant is `currentUser.name` het e-mailadres. Dat werd `Tester` in
+elk veldlabrecord (los veld en in het JSON-blob) en `User` in elke logregel.
+Het akkoordscherm, `privacy.html` en de Play-beschrijving zeiden alle drie
+"zonder je naam, e-mailadres of kenteken". De VIN was in augustus al
+afgevangen op het ene punt waar alles langskomt (`_vlSchoonVoorVerzending`);
+het e-mailadres staat nu op dezelfde plek, en `logToSheets()` gebruikt
+dezelfde functie. Dicht bij twijfel: ontbreekt `pidlane-veldlab.js`, dan gaat
+er geen gebruiker mee.
+
+**Wat er al stond, gaat mee weg bij verwijderen.** De opruimer wiste Mijn
+voertuigen en het klantrecord, niet de logregels en veldlabrecords met het
+adres. Nu wel (`klantSporenWissen`), vóór het klantrecord, in dezelfde
+try: mislukt het, dan blijft het account staan en probeert hij het de
+volgende nacht. **Niet gedaan:** de bestaande rijen van klanten die níét
+verwijderd zijn, staan nog met hun adres in `logregels` en
+`veldlab_sessies`. Dat is een eenmalige SQL in de D1-console, geen code:
+`UPDATE logregels SET User = '' WHERE User LIKE '%@%';` en
+`UPDATE veldlab_sessies SET Tester = '' WHERE Tester LIKE '%@%';` (het
+JSON-blob van oude veldlabrecords bevat het adres dan nog).
+
+**Data safety.** §11 zei "Diagnostics: niet aanvinken, er gaat geen
+crashrapportage naar een dienst". Dat was een redenering over crashrapporten;
+de logregels zijn diagnostiek die naar de eigen server gaat, en dat telt.
+
+**De reviewnotitie liep achter op de zandbak.** §7 beloofde een echt
+AI-rapport via de demo; sinds 29-09 geeft de demo een voorbeeldrapport en
+heet de knop na inloggen anders. Bewust niet veranderd: de AI blijft in de
+demo dicht (blok 5 bewaakt dat). Daarmee ziet een reviewer zonder auto geen
+echte analyse; de notitie zegt dat nu en raadt een schermopname aan.
+
+**Gezien en niet aangeraakt.** Het akkoordscherm maakt delen voor
+referentiedata verplicht en koppelt het aan het proeftegoed, terwijl
+`privacy.html` zegt dat die toestemming apart gevraagd wordt en in te trekken
+is. Het veldlab staat bovendien standaard aan (`pl_veldlab_uit`), los van dat
+akkoord. Dat is een keuze over toestemming, geen fout in code — en een
+gewijzigde toestemmingstekst maakt eerdere akkoorden ongeldig.
+
 ---
 
 ## 01-10-2026 — Het logarchief: samenvatten vóór wissen

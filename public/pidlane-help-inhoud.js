@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-01', app: '3.1.0' },
+  gecontroleerd: { datum: '2026-10-02', app: '3.1.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -82,7 +82,7 @@ var PL_HULP = {
         '<li><b>Simuleer verbinding</b> — alles proberen, er wordt niets bewaard.</li>' +
         '</ul>' +
         '<p>Na een kenteken-check kun je <b>Dit is mijn auto</b> kiezen. Staat er een APK-datum bij, dan verschijnt ook <b>Herinner me</b>.</p>' +
-        '<p>In het verbindscherm brengt <b>Verder zonder adapter</b> je hier ook.</p>',
+        '<p>In het verbindscherm brengt <b>Zonder adapter</b> je hier ook.</p>',
       zie: ['wat', 'verbinden'] },
 
     { id: 'verbinden', groep: 'start', titel: 'Verbinden met de auto',
@@ -94,10 +94,10 @@ var PL_HULP = {
         '<li>Tik op <b>⚡ Plug in. Let\'s go.</b> De eerste keer legt PidLane eerst uit waarvoor Bluetooth nodig is.</li>' +
         '<li>PidLane zoekt de adapter en daarna de auto. Na afloop zie je de sensoren van jouw auto.</li>' +
         '</ol>' +
-        '<p>Staat <b>Check na verbinden</b> aan (in Meer), dan opent <a data-hulp="check">Check mijn auto</a> daarna één keer vanzelf. ' +
+        '<p>Zet je <b>Check na verbinden</b> aan (in Meer), dan opent <a data-hulp="check">Check mijn auto</a> bij de volgende verbinding één keer vanzelf; daarna staat de schakelaar weer uit. ' +
         'Vindt hij niets, dan gaat de app na 5 seconden door naar Live; tik in het venster of op <b>Blijf hier</b> om te blijven.</p>' +
-        '<p>In hetzelfde scherm: <b>Simuleer verbinding</b> (demo), <b>Verder zonder adapter</b> en ' +
-        '<b>Meekijken met sessie (expert)</b> voor wie op afstand wil meekijken. Zie <a data-hulp="delen">Delen en meekijken</a>.</p>',
+        '<p>In hetzelfde scherm: <b>Simuleer verbinding</b> (demo), <b>Zonder adapter</b> en, als regel eronder, ' +
+        '<b>Meekijken met een sessie</b> voor de expert die op afstand meekijkt. Zie <a data-hulp="delen">Delen en meekijken</a>.</p>',
       zie: ['verbinden-mislukt', 'status'] },
 
     { id: 'verbinden-mislukt', groep: 'start', titel: 'Verbinden lukt niet',
@@ -129,9 +129,10 @@ var PL_HULP = {
     { id: 'status', groep: 'gebruik', titel: 'De statusknop bovenin',
       tekst:
         '<p>Rechtsboven staat één knop met een gekleurde stip en de naam van de auto, of <b>Niet verbonden</b>. ' +
-        'De kleur is de ernstigste van voertuig, OBD en AI samen.</p>' +
-        '<p>Tik erop voor vier losse knoppen: <b>Voertuig</b> (wat PidLane over de auto weet), <b>OBD</b> (hoe de verbinding het doet), ' +
-        '<b>AI</b> en <b>Run</b> (wat er op de achtergrond draait). Een getal bij de statusknop zegt hoeveel dingen er draaien.</p>',
+        'De kleur is de ernstigste van auto-dossier, adapter en AI samen.</p>' +
+        '<p>Tik erop voor vier regels, elk met een korte uitleg en hoe het nu staat: <b>Auto-dossier</b> (wat PidLane over de auto weet, met het percentage), ' +
+        '<b>Adapter (OBD)</b> (hoe de verbinding met de auto het doet), <b>AI-uitleg</b> (of de AI bereikbaar is) en <b>Achtergrond</b> (wat er op de achtergrond loopt). ' +
+        'Een getal bij de statusknop zegt hoeveel dingen er lopen.</p>',
       zie: ['verbinden'] },
 
     { id: 'live', groep: 'gebruik', titel: 'Live',
@@ -142,9 +143,12 @@ var PL_HULP = {
         'wat je zelf vastzet met <b>📈</b> op de tegel, en verder wat op dat moment het meest beweegt.</li>' +
         '<li><b>Slim</b> — de standaard: dashboardwaarden groot, trends alleen waar iets beweegt.</li>' +
         '<li><b>Visueel</b> — één vaste meter. Onder de snelheid staan koelwater, gaspedaal en brandstof als balkjes; ' +
-        'rechtsboven de accu (bij een hybride de aandrijfaccu én de 12V-accu), rechtsonder een autootje met de vier banden.</li>' +
+        'rechtsboven de accu (bij een hybride de aandrijfaccu én de 12V-accu), rechtsonder een autootje met de vier banden. ' +
+        'Met <b>Volgende</b> boven de meter wissel je tussen vijf weergaven: Basis, Temperatuur (glas), Emissie (licht), Verbruik (digitaal) en Motor (neon). ' +
+        'De app onthoudt je keuze.</li>' +
         '</ul>' +
         '<p>Een dubbeltik op een tegel verbergt hem. Hij wordt wel gewoon gemeten en staat daarna in een strook om terug te halen.</p>' +
+        '<p>Een automatische bevinding verberg je met het <b>✕</b> of een dubbeltik. De AI krijgt hem nog mee; terughalen doe je via <b>bekijk alles</b>.</p>' +
         '<p>Onder de meters staan <b>⏺ Opnemen</b>, <b>📡 Deel live</b> en <b>🔭 Meekijken</b>. In de garagemodus ook <b>◉ Bewaken</b>. ' +
         'Bij Visueel staan Opnemen en Bewaken er niet: daar start je de bulk-recorder en de waakronde vanuit het vak onder de meter.</p>',
       zie: ['opnemen', 'delen'] },
@@ -161,7 +165,8 @@ var PL_HULP = {
         'alleen lezen: op afstand kan er niets aan de auto veranderd worden.</p>' +
         '<ol>' +
         '<li>Tik op <b>Start delen</b>.</li>' +
-        '<li>Geef de expert de <b>meekijk-code</b>, laat hem de QR scannen of stuur de link.</li>' +
+        '<li>Kies hoe de expert binnenkomt: <b>Code</b> (voorlezen), <b>QR</b> (scannen), <b>Link</b> (WhatsApp of mail) of <b>Plakcode</b>. ' +
+        'Alleen die manier staat dan in beeld; de app onthoudt je keuze.</li>' +
         '<li>Je ziet hoeveel experts meekijken. Klaar? Tik op <b>Stop delen</b>.</li>' +
         '</ol>' +
         '<p>Ben jij de expert? Tik op <b>🔭 Meekijken</b> en typ de code, of plak de link die je kreeg.</p>' +
@@ -188,10 +193,10 @@ var PL_HULP = {
         '<ul>' +
         '<li><b>⚙️ Mijn voorkeuren</b></li>' +
         '<li><b>🔧 Garagemodus</b> — zie <a data-hulp="garagemodus">Garagemodus</a>.</li>' +
-        '<li><b>🩺 Check na verbinden</b> — opent Check mijn auto vanzelf, één keer per sessie.</li>' +
+        '<li><b>🩺 Check na verbinden</b> — opent Check mijn auto bij de volgende verbinding één keer vanzelf en gaat dan weer uit. Standaard uit.</li>' +
         '<li><b>🔢 Versnellingsindicator</b></li>' +
         '<li><b>📖 Tekstgrootte</b> — S, M of L.</li>' +
-        '<li><b>ⓘ Uitleg bij knoppen</b> — zet de kleine <b>i</b>-rondjes aan of uit.</li>' +
+        '<li><b>ⓘ Uitleg bij knoppen</b> — zet de kleine <b>i</b>-rondjes aan of uit. Standaard uit.</li>' +
         '</ul>' +
         '<p><b>Hulp</b></p>' +
         '<ul><li><b>📘 Handleiding</b> — dit scherm.</li><li><b>🐞 Meld een bug</b></li><li><b>📜 Logboek</b></li><li><b>🔒 Privacy</b></li></ul>' +
@@ -201,14 +206,14 @@ var PL_HULP = {
     { id: 'garagemodus', groep: 'gebruik', titel: 'Garagemodus',
       tekst:
         '<p>Zet de vakgereedschappen erbij, zoals <b>Alle functies</b> op het startscherm en <b>◉ Bewaken</b> bij Live. ' +
-        'Voor een account dat geen klant is staat hij vanzelf aan. Aan- en uitzetten doe je in Meer.</p>',
+        'Hij staat standaard uit; aanzetten doe je in Meer.</p>',
       zie: ['meer'] },
 
     { id: 'uitroeptekens', groep: 'gebruik', titel: 'De i-rondjes',
       tekst:
         '<p>Bij sommige knoppen staat een klein glazen rondje met een <b>i</b>. Tik erop voor een korte uitleg; de knop zelf wordt dan niet ingedrukt. ' +
         'Onder de uitleg staat een link naar het onderwerp in deze handleiding.</p>' +
-        '<p>Ken je de app? Zet ze uit met <b>Meer → ⓘ Uitleg bij knoppen</b>. Deze handleiding blijft altijd bereikbaar.</p>',
+        '<p>Ze staan standaard uit. Aanzetten doe je met <b>Meer → ⓘ Uitleg bij knoppen</b>. Deze handleiding blijft altijd bereikbaar.</p>',
       zie: ['meer'] },
 
     /* ─────────────── ACCOUNT EN GEGEVENS ─────────────── */
@@ -255,7 +260,7 @@ var PL_HULP = {
     { id: 'zonder', anker: '[data-pl="zonder"]', bron: 'index.html', onderwerp: 'zonder',
       tekst: 'Kenteken-check, lampjes en foutcodes opzoeken werken ook zonder adapter.' },
     { id: 'status', anker: '#sysChip', bron: 'index.html', onderwerp: 'status',
-      tekst: 'De kleur is de ernstigste van voertuig, OBD en AI samen. Tik voor de losse onderdelen.' },
+      tekst: 'De kleur is de ernstigste van auto-dossier, adapter en AI samen. Tik voor de vier regels met uitleg.' },
     { id: 'opnemen', anker: '#plLiveRec', bron: 'index.html', onderwerp: 'opnemen',
       tekst: 'Kies sensoren, start de opname, rijd en laat het probleem gebeuren. Stop daarna de opname.' },
     { id: 'deel', anker: '#plLiveDeel', bron: 'index.html', onderwerp: 'delen',
@@ -290,7 +295,7 @@ var PL_HULP = {
       a: 'Tokens zijn tegoed voor AI-analyses. Uitlezen en live meten kosten geen tokens. Je saldo staat in Meer → Mijn account en tegoed.',
       zie: 'account' },
     { v: 'Die i-rondjes zitten in de weg.',
-      a: 'Zet ze uit met Meer → Uitleg bij knoppen. De handleiding blijft bereikbaar via Meer → Handleiding.',
+      a: 'Ze staan standaard uit; aan- of uitzetten doe je met Meer → Uitleg bij knoppen. De handleiding blijft bereikbaar via Meer → Handleiding.',
       zie: 'uitroeptekens' }
   ]
 };

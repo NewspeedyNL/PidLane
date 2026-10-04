@@ -996,15 +996,41 @@ function buildDiscoveredPIDList(){
 // losse sensoren zit te kijken zonder de context om ze te beoordelen.
 // PIDs die dit voertuig niet ondersteunt worden er stil uitgefilterd; wat er
 // overblijft wordt gemeld, zodat je weet waaróm je er minder ziet dan verwacht.
-function _pidPresetVulSelect(){
-  const sel=document.getElementById('pidPresetSel');
-  if(!sel || sel._gevuld || !window.PID_PRESETS) return;
-  PID_PRESETS.forEach(pr=>{
-    const o=document.createElement('option');
-    o.value=pr.id; o.textContent=pr.naam; o.title=pr.tip||'';
-    sel.appendChild(o);
-  });
-  sel._gevuld=true;
+// TIKBARE DOELEN (02-10-2026, uit het gebruik: "selectie moet slimmer,
+// user-vriendelijk"). Tot die datum een keuzelijst met acht regels die
+// allemaal met "Basis + focus" begonnen, ook diesel op een benzineauto. Nu
+// een rij chips met een korte naam, alleen de doelen die bij deze motorsoort
+// passen, en het doel dat nu geldt licht op. Onder de chips één regel: hoeveel
+// sensoren er gekozen zijn, en of dat er zoveel zijn dat de meters trager
+// verversen — de bus haalt grofweg vijftien antwoorden per seconde, verdeeld
+// over álles wat aanstaat.
+const PID_VEEL = 20;
+let _pidPresetNu = null;           // het laatst toegepaste doel (id)
+let _pidPresetSet = '';            // en welke PIDs dat toen waren
+function _pidMotor(){
+  try{ return (typeof detectEngineType==='function') ? (detectEngineType()||'benzine') : 'benzine'; }
+  catch(e){ console.warn('Motorsoort onbekend voor de doelen — alle doelen getoond', e); return ''; }
+}
+/* Welke doelen passen bij deze motorsoort? Puur: `motor` leeg = alles. */
+function _pidDoelen(presets, motor){
+  return (presets||[]).filter(pr=>!pr.alleen || !motor || pr.alleen.indexOf(motor)>=0);
+}
+function _pidSetSleutel(){ return [...activePIDs].sort().join(','); }
+function _pidDoelenBij(){
+  const vak=document.getElementById('pidDoelen');
+  if(!vak || !window.PID_PRESETS) return;
+  const nu=(_pidPresetNu && _pidPresetSet===_pidSetSleutel()) ? _pidPresetNu : null;
+  const h=_pidDoelen(PID_PRESETS, _pidMotor()).map(pr=>
+    '<button type="button" class="pid-doel'+(pr.id===nu?' aan':'')+'" data-doel="'+pr.id+'" onclick="applyPidPreset(\''+pr.id+'\')" title="'+
+      String(pr.tip||'').replace(/"/g,'&quot;')+'">'+(pr.ico||'')+' '+(pr.kort||pr.naam)+'</button>').join('');
+  if(vak._h!==h){ vak.innerHTML=h; vak._h=h; }
+  const tip=document.getElementById('pidPresetTip');
+  if(tip && !tip._vast){
+    const n=activePIDs.size;
+    tip.textContent = !n ? 'Kies een doel, of vink hieronder zelf sensoren aan.'
+      : n+' sensor'+(n===1?'':'en')+' gekozen'+(nu?'':' (eigen keuze)')+(n>PID_VEEL?' · veel: de meters verversen dan trager':'');
+    tip.classList.toggle('let', n>PID_VEEL);
+  }
 }
 function applyPidPreset(id){
   const tip=document.getElementById('pidPresetTip');
@@ -1032,16 +1058,20 @@ function applyPidPreset(id){
   try{ document.getElementById('pidCnt').textContent=activePIDs.size; }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
   try{ renderGauges(); rebuildGSel(); }catch(e){ console.warn('rebuildGSel mislukt:', e); }
   plSelectieMeld(_voor,'preset '+(pr.naam||id));
+  _pidPresetNu=id; _pidPresetSet=_pidSetSleutel();
+  try{ _pidDoelenBij(); }catch(e){ console.warn('_pidDoelenBij mislukt:', e); }
   if(tip){
     tip.textContent=pr.tip+' — '+bruikbaar.length+' sensoren actief'
       + (ontbreekt?(', '+ontbreekt+' niet beschikbaar op deze auto'):'');
+    // Deze uitleg blijft staan tot de keuze verandert; daarna weer de teller.
+    tip._vast=true; setTimeout(function(){ tip._vast=false; }, 6000);
   }
   try{ showToast?.('🎚️ '+pr.naam+' — '+bruikbaar.length+' sensoren actief'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 
 // ── PID PANEL — nu dynamisch vanuit discovery ──
 function buildPIDList(filter=''){
-  try{ _pidPresetVulSelect(); }catch(e){ console.warn('_pidPresetVulSelect mislukt:', e); }
+  try{ _pidDoelenBij(); }catch(e){ console.warn('_pidDoelenBij mislukt:', e); }
   // Onzin-sensoren horen niet eens in de keuzelijst: een benzineauto met een
   // AdBlue-regel erin ziet er kapot uit, ook als je hem nooit aanvinkt.
   const el=document.getElementById('pidList');

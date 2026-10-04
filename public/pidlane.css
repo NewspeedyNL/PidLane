@@ -574,8 +574,9 @@ body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
    Eén mechanisme, dus een volgend element dat daar komt heeft genoeg aan één
    regel erbij. Gemeten op een tablet (DPR 1.5) bezet de chip ~135 CSS px vanaf
    de rechterrand; 150px geeft marge voor een driecijferige kijkersteller. */
-html.rem-pill-on .tabs { padding-right:var(--rempill-gap,150px); }
-html.rem-pill-on .fav-wrap { margin-right:var(--rempill-gap,150px); }
+/* 02-10-2026: de chip staat nu IN de topbalk (index.html, .tpr) en zweeft
+   niet meer. Er hoeft dus niets meer opzij; de klasse blijft bestaan voor wie
+   wil weten of er gedeeld wordt. */
 /* Op smalle schermen liever afbreken dan de titel platdrukken. */
 .welcome-header-row { flex-wrap:wrap; gap:8px; }
 
@@ -879,6 +880,13 @@ body.pl-visueel #plGear { display:none; }
   flex-direction:column; gap:6px; z-index:9560; }
 .sys-drop.open { display:flex; }
 .sys-drop .tchip { width:100%; justify-content:flex-start; }
+/* Elke regel zegt wat hij is en hoe het staat (02-10-2026). */
+.sys-drop { min-width:250px; max-width:calc(100vw - 20px); }
+.sys-drop .tchip { height:auto; min-height:44px; padding:7px 12px; border-radius:12px; align-items:center; }
+.sys-naam { display:flex; flex-direction:column; min-width:0; flex:1; line-height:1.2; text-align:left; }
+.sys-naam b { font-size:13px; font-weight:800; color:var(--tx); }
+.sys-naam small { font-size:11px; font-weight:500; color:var(--tx3); white-space:normal; }
+.sys-drop #vtag { flex:none; }
 /* Smalle schermen: logo-tekst weg, chips compacter, autonaam korter */
 @media (max-width:480px){
   .topbar{ padding:var(--pl-sat) 8px 0; }
@@ -1460,8 +1468,157 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vis-meld-tx small { font-size:12px; color:var(--tx2); overflow-wrap:anywhere; }
 .vis-meld.bev { border-color:var(--or); background:var(--ors); }
 .vis-meld.bev.ernstig { border-color:var(--rd); background:var(--rds); }
+.vis-meld.bev { position:relative; padding-right:40px; }
+.vis-meld-x { position:absolute; top:6px; right:6px; width:28px; height:28px; border-radius:8px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); font-size:12px; font-weight:800; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.vis-meld-x:active { transform:scale(.94); }
+/* Eén bevinding in de balk en in het venster (pidlane-correlatie.js). */
+.bev-regel { display:flex; align-items:flex-start; gap:8px; padding:8px 10px; border-top:1px solid var(--bd); font-size:12px; }
+.bev-regel-tx { flex:1; min-width:0; }
+.bev-regel.verborgen { opacity:.55; }
+.bev-x { flex:none; min-width:24px; height:24px; padding:0 7px; border-radius:6px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); font-family:var(--f); font-size:11px; font-weight:800; cursor:pointer; line-height:1; }
+.bev-x.bev-terug { color:var(--bl); border-color:var(--bl); }
+/* ── De vijf weergaven van Slim visueel (02-10-2026, pidlane-visprofiel.js) ──
+   Boven het vak de keuzestrook: vijf stipjes, de naam, en "Volgende". Het vak
+   zelf krijgt per profiel een eigen stijl: glas, licht, digitaal, neon. De
+   maten staan hier vast; de meetwaarden zetten alleen hoogte, breedte,
+   positie of stroke-dasharray, altijd begrensd op 0–100%. */
+.vis-profiel { display:flex; align-items:center; gap:10px; width:100%; max-width:380px; padding:5px 5px 5px 12px; border:1px solid var(--bd); border-radius:999px; background:var(--sur); }
+.vis-profiel-stip { display:flex; gap:4px; flex:none; }
+.vis-profiel-stip i { width:6px; height:6px; border-radius:50%; background:var(--bd); }
+.vis-profiel-stip i.aan { background:var(--bl); width:16px; border-radius:3px; }
+.vis-profiel-naam { flex:1; min-width:0; display:flex; align-items:baseline; gap:6px; overflow:hidden; white-space:nowrap; }
+.vis-profiel-naam b { font-size:13px; font-weight:800; }
+.vis-profiel-naam small { font-size:11px; color:var(--tx3); overflow:hidden; text-overflow:ellipsis; }
+.vis-profiel-volgende { flex:none; min-height:34px; padding:0 14px; border-radius:999px; border:0; background:var(--bl); color:#fff; font-family:var(--f); font-size:13px; font-weight:800; cursor:pointer; }
+.vis-profiel-volgende span { font-size:16px; line-height:1; margin-left:2px; }
+.vis-profiel-volgende:active { transform:scale(.96); }
+
+.vpf { position:relative; width:100%; border-radius:22px; padding:30px 14px 16px; overflow:hidden; margin-top:16px; }
+.vpf .leeg { opacity:.35; }
+.vpf .oud { opacity:.5; transition:opacity 1.2s ease-in; }
+.vpf-geen { margin:12px 4px 0; font-size:12px; text-align:center; opacity:.8; }
+.vpf-w { font-variant-numeric:tabular-nums; }
+
+/* GLAS — temperatuur: thermometerbuizen achter mat glas. */
+.vpf-glas { background:linear-gradient(150deg, rgba(77,130,255,.30), rgba(46,204,113,.16) 55%, rgba(255,159,46,.22));
+            border:1px solid rgba(255,255,255,.22); }
+.vpf-glas::before { content:''; position:absolute; inset:10px; border-radius:16px; background:rgba(255,255,255,.08);
+                    -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,.18);
+                    box-shadow:inset 0 1px 0 rgba(255,255,255,.25); }
+.vpf-buizen { position:relative; display:grid; grid-template-columns:repeat(5, 1fr); gap:6px; align-items:end; padding:4px 4px 2px; }
+.vpf-buis { display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0; color:var(--tx); }
+.vpf-buis .vpf-w { font-size:17px; font-weight:800; }
+.vpf-buis small { font-size:10.5px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; color:var(--tx2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.vpf-tube { position:relative; width:16px; height:170px; border-radius:10px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.32); overflow:hidden; }
+.vpf-tube .vpf-f { position:absolute; left:2px; right:2px; bottom:2px; border-radius:8px; background:linear-gradient(0deg, #4d82ff, #2ecc71 55%, #ff9f2e); transition:height .5s ease-out; }
+.vpf-bol { width:26px; height:26px; margin-top:-12px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #8fd9a8, #2ecc71); border:1px solid rgba(255,255,255,.35); }
+.vpf-buis.warn .vpf-bol, .vpf-buis.warn .vpf-tube .vpf-f { background:var(--or); }
+.vpf-buis.danger .vpf-bol, .vpf-buis.danger .vpf-tube .vpf-f { background:var(--rd); }
+.vpf-buis.warn .vpf-w { color:var(--or); }
+.vpf-buis.danger .vpf-w { color:var(--rd); }
+
+/* LICHT — emissie: een lichte kaart, ook in het donkere thema. */
+.vpf-licht { background:#f7f8fb; color:#10151f; border:1px solid #dfe4ee; box-shadow:0 10px 30px rgba(0,0,0,.18); }
+.vpf-lambda { display:flex; flex-direction:column; align-items:center; gap:4px; padding:4px 6px 12px; border-bottom:1px solid #e3e7ef; }
+.vpf-lambda small { font-size:11px; color:#5a6478; }
+.vpf-lambda .vpf-w { font-size:44px; font-weight:800; line-height:1; letter-spacing:-1px; color:#10151f; }
+.vpf-schaal { position:relative; width:100%; max-width:300px; height:14px; margin-top:8px; border-radius:7px;
+              background:linear-gradient(90deg, #ff9f2e, #2ecc71 40%, #2ecc71 60%, #4d82ff); }
+.vpf-schaal .vpf-rijk, .vpf-schaal .vpf-arm { position:absolute; top:17px; font-style:normal; font-size:10px; font-weight:700; color:#5a6478; text-transform:uppercase; letter-spacing:.4px; }
+.vpf-schaal .vpf-rijk { left:0; } .vpf-schaal .vpf-arm { right:0; }
+.vpf-schaal .vpf-een { position:absolute; left:50%; top:-4px; bottom:-4px; width:2px; background:#10151f; opacity:.35; }
+.vpf-schaal .vpf-wijzer { position:absolute; top:-6px; width:6px; height:26px; margin-left:-3px; border-radius:3px; background:#10151f; box-shadow:0 0 0 2px #fff; transition:left .4s ease-out; }
+.vpf-rijen { display:flex; flex-direction:column; gap:10px; padding:16px 2px 0; }
+.vpf-rij { display:grid; grid-template-columns:1fr 46px 24px; grid-template-rows:auto auto; column-gap:6px; align-items:center; }
+.vpf-rij small { grid-column:1 / -1; font-size:11px; font-weight:700; color:#5a6478; }
+.vpf-baan { position:relative; height:8px; border-radius:4px; background:#e6eaf2; overflow:hidden; }
+.vpf-baan .vpf-nul { position:absolute; left:50%; top:0; bottom:0; width:2px; margin-left:-1px; background:#9aa4b8; z-index:1; }
+.vpf-baan .vpf-f { position:absolute; top:0; bottom:0; left:0; border-radius:4px; background:#2563ff; transition:width .4s ease-out, left .4s ease-out; }
+.vpf-rij .vpf-w { font-size:15px; font-weight:800; text-align:right; }
+.vpf-rij .vpf-e { font-style:normal; font-size:11px; color:#5a6478; }
+.vpf-rij.warn .vpf-f { background:#f2820c; } .vpf-rij.danger .vpf-f { background:#ef4444; }
+.vpf-rij.warn .vpf-w { color:#c25e00; } .vpf-rij.danger .vpf-w { color:#c62828; }
+
+/* DIGITAAL — verbruik: een LCD-paneel met segmentbalken. */
+.vpf-digitaal { background:#050a07; color:#5dffa0; border:2px solid #1b2a20; font-family:var(--m);
+                box-shadow:inset 0 0 40px rgba(93,255,160,.08); }
+.vpf-digitaal::after { content:''; position:absolute; inset:0; pointer-events:none;
+                       background:repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px); }
+.vpf-digitaal small { font-family:var(--f); font-size:10.5px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:#3fae6f; }
+.vpf-digitaal .vpf-e { font-style:normal; font-size:12px; color:#3fae6f; }
+.vpf-lcd-groot { display:grid; grid-template-columns:1fr auto; align-items:end; gap:2px 8px; padding:4px 4px 14px; border-bottom:1px dashed #1f3a29; }
+.vpf-lcd-groot small { grid-column:1 / -1; }
+.vpf-lcd-groot .vpf-w { font-size:58px; font-weight:500; line-height:1; text-shadow:0 0 12px rgba(93,255,160,.55); }
+.vpf-lcd-groot .vpf-seg { grid-column:1 / -1; }
+.vpf-lcd-rijen { display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; padding-top:12px; }
+.vpf-lcd-rij { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 6px; min-width:0; }
+.vpf-lcd-rij small { flex-basis:100%; }
+.vpf-lcd-rij .vpf-w { font-size:24px; text-shadow:0 0 8px rgba(93,255,160,.45); }
+.vpf-seg { display:flex; gap:2px; width:100%; margin-top:5px; }
+.vpf-seg i { flex:1; height:9px; border-radius:1px; background:#12301f; }
+.vpf-digitaal .warn .vpf-w, .vpf-digitaal .warn small { color:#ffb84d; }
+.vpf-digitaal .danger .vpf-w, .vpf-digitaal .danger small { color:#ff6464; }
+
+/* Segmenten: data-n="k" zet de eerste k blokjes aan, de laatste vijf oranje. */
+.vpf-seg[data-n="1"] i:nth-child(-n+1),
+.vpf-seg[data-n="2"] i:nth-child(-n+2),
+.vpf-seg[data-n="3"] i:nth-child(-n+3),
+.vpf-seg[data-n="4"] i:nth-child(-n+4),
+.vpf-seg[data-n="5"] i:nth-child(-n+5),
+.vpf-seg[data-n="6"] i:nth-child(-n+6),
+.vpf-seg[data-n="7"] i:nth-child(-n+7),
+.vpf-seg[data-n="8"] i:nth-child(-n+8),
+.vpf-seg[data-n="9"] i:nth-child(-n+9),
+.vpf-seg[data-n="10"] i:nth-child(-n+10),
+.vpf-seg[data-n="11"] i:nth-child(-n+11),
+.vpf-seg[data-n="12"] i:nth-child(-n+12),
+.vpf-seg[data-n="13"] i:nth-child(-n+13),
+.vpf-seg[data-n="14"] i:nth-child(-n+14),
+.vpf-seg[data-n="15"] i:nth-child(-n+15),
+.vpf-seg[data-n="16"] i:nth-child(-n+15),
+.vpf-seg[data-n="17"] i:nth-child(-n+15),
+.vpf-seg[data-n="18"] i:nth-child(-n+15),
+.vpf-seg[data-n="19"] i:nth-child(-n+15),
+.vpf-seg[data-n="20"] i:nth-child(-n+15) { background:#5dffa0; box-shadow:0 0 6px rgba(93,255,160,.6); }
+.vpf-seg[data-n="16"] i:nth-child(n+16):nth-child(-n+16),
+.vpf-seg[data-n="17"] i:nth-child(n+16):nth-child(-n+17),
+.vpf-seg[data-n="18"] i:nth-child(n+16):nth-child(-n+18),
+.vpf-seg[data-n="19"] i:nth-child(n+16):nth-child(-n+19),
+.vpf-seg[data-n="20"] i:nth-child(n+16):nth-child(-n+20) { background:#ffb84d; box-shadow:0 0 6px rgba(255,184,77,.6); }
+
+/* NEON — motor: ringen om elkaar heen op een donker raster. */
+.vpf-neon { background:radial-gradient(circle at 50% 40%, #1a0f33, #07040f 70%); color:#f2eaff; border:1px solid #2a1c4d;
+            background-image:radial-gradient(circle at 50% 40%, rgba(26,15,51,.95), rgba(7,4,15,1) 70%),
+                             linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+            background-size:auto, 22px 22px, 22px 22px; }
+.vpf-ringen { display:block; width:100%; max-width:300px; margin:0 auto; height:auto; }
+.vpf-ring-bak { fill:none; stroke:rgba(255,255,255,.08); stroke-width:11; stroke-linecap:round; }
+.vpf-ring-vul { fill:none; stroke-width:11; stroke-linecap:round; transition:stroke-dasharray .35s ease-out; }
+.vpf-ring.r-toeren .vpf-ring-vul { stroke:#ff3ea5; filter:drop-shadow(0 0 4px #ff3ea5); }
+.vpf-ring.r-last .vpf-ring-vul { stroke:#28e0ff; filter:drop-shadow(0 0 4px #28e0ff); }
+.vpf-ring.r-gasklep .vpf-ring-vul { stroke:#b7ff3c; filter:drop-shadow(0 0 4px #b7ff3c); }
+.vpf-ring.warn .vpf-ring-vul { stroke:#ffb84d; } .vpf-ring.danger .vpf-ring-vul { stroke:#ff4d4d; }
+.vpf-neon-groot { fill:#fff; font-family:var(--m); font-size:30px; font-weight:500; }
+.vpf-neon-eenheid { fill:#b9a8e6; font-family:var(--f); font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+.vpf-legenda { display:flex; justify-content:center; flex-wrap:wrap; gap:6px 14px; margin-top:4px; font-size:12px; color:#cfc2f2; }
+.vpf-legenda span { display:inline-flex; align-items:center; gap:5px; }
+.vpf-legenda i { width:10px; height:10px; border-radius:50%; }
+.vpf-legenda .r-last i { background:#28e0ff; box-shadow:0 0 6px #28e0ff; }
+.vpf-legenda .r-gasklep i { background:#b7ff3c; box-shadow:0 0 6px #b7ff3c; }
+.vpf-legenda b { color:#fff; }
+.vpf-neon-getallen { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:14px; }
+.vpf-neon-getallen > div { display:flex; flex-direction:column; align-items:center; padding:8px 4px; border-radius:12px; border:1px solid rgba(183,140,255,.28); background:rgba(255,255,255,.03); min-width:0; }
+.vpf-neon-getallen small { font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#b9a8e6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.vpf-neon-getallen .vpf-w { font-family:var(--m); font-size:20px; color:#fff; text-shadow:0 0 8px rgba(183,140,255,.7); }
+.vpf-neon-getallen .vpf-e { font-style:normal; font-size:10px; color:#b9a8e6; }
+.vpf-neon-getallen .warn .vpf-w { color:#ffb84d; } .vpf-neon-getallen .danger .vpf-w { color:#ff4d4d; }
+@media (prefers-reduced-motion: reduce){ .vpf * { transition:none !important; } }
+
 .vis-meld.meer { justify-content:flex-start; font-size:12px; font-weight:700; color:var(--bl); background:var(--sur2); }
-.vis-snelk { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
+/* De snelkoppelingen op één regel, even breed (02-10-2026): twee boven en één
+   eronder zag eruit als een losse knop die er niet bij hoorde. */
+.vis-snelk { display:flex; flex-wrap:nowrap; justify-content:center; gap:6px; width:100%; }
+.vis-snelk .pidview-btn { flex:1 1 0; min-width:0; padding:8px 6px; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* De rail: één chip per lopende module. Een chip is een lampje, geen kaart —
    een kaart is voor wat je moet lezen (de bevindingen eronder). */
 .vis-rail { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
@@ -1483,6 +1640,13 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 /* Slim visueel in beeld: wat de rail en de lampjes al tonen, staat niet
    nóg eens ergens anders. De pillen hangen buiten #pane-live (in #fabLane),
    dus alleen verbergen zolang de live view echt openstaat. */
+/* De aandrijfregel bovenin Live (pidlane-aandrijfbalk.js, rustiger sinds 02-10-2026):
+   geen gekleurd blok meer, een smalle regel met een stipje in de toestandskleur. */
+#aandrijfBalk.ab-regel { align-items:center; gap:7px; margin:0 0 8px; padding:4px 10px 4px 8px; border-radius:999px;
+  border:1px solid var(--bd); background:var(--sur); color:var(--tx2); font-size:12px; font-weight:600; line-height:1.25; width:max-content; max-width:100%; }
+#aandrijfBalk .ab-stip { flex:none; width:8px; height:8px; border-radius:50%; background:var(--ab-kleur); box-shadow:0 0 0 3px color-mix(in srgb, var(--ab-kleur) 22%, transparent); }
+#aandrijfBalk .ab-ic { flex:none; width:15px; height:15px; color:var(--ab-kleur); }
+#aandrijfBalk .ab-tx { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 body.pl-visueel #wkStrook, body.pl-visueel #aandrijfBalk { display:none !important; }
 /* #371: in Slim visueel staat de waakronde al op de rail en de bulk-recorder
    in het meldingenvak. Bewaken is dezelfde waakronde, en de PID-recorder
@@ -2092,6 +2256,34 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
   .ov#loginOv .lg-foot{ margin-top:20px; }
 }
 
+/* ══ STRAK EN NETJES (02-10-2026, uit het gebruik) ═══════════════════
+   De cirkel had een vaste hoogte, en alles wat erin moest (twee velden, twee
+   links, twee knoppen) liep er aan de onderkant uit: de demoknop stond half
+   buiten de rand en de versieregel ging door het golflint heen. Nu een
+   glazen kaart met dezelfde materiaaltaal als het verbindscherm, die met
+   zijn inhoud meegroeit. Volgorde: velden, inloggen, "of", demo, account. */
+.ov#loginOv{ --lgD:380px; }
+.ov#loginOv .modal{ width:min(92vw,400px); height:auto; border-radius:26px; padding:30px 0 22px; justify-content:flex-start; }
+.ov#loginOv .mh{ padding:0 0 18px; }
+.ov#loginOv .lg-logo{ width:68px; height:68px; border-radius:17px; margin:0 auto 12px; }
+.ov#loginOv .mttl{ font-size:28px; }
+.ov#loginOv .msub{ display:block; font-size:12.5px; color:var(--tx3); margin-top:3px; }
+.ov#loginOv .lg-form{ width:calc(100% - 48px); gap:10px; }
+.ov#loginOv .api-inp{ padding:14px 46px 14px 16px; border-radius:12px; font-size:15px; }
+.ov#loginOv .lg-field .lg-ico{ right:15px; width:19px; height:19px; }
+.ov#loginOv .lg-vergeten{ align-self:flex-end; margin-top:-2px; font-size:12px; font-weight:600; color:var(--tx3); text-decoration:none; }
+.ov#loginOv #loginErr{ font-size:12px; min-height:0; }
+.ov#loginOv #loginErr:empty{ display:none; }
+.ov#loginOv .mact{ width:calc(100% - 48px); padding:14px 0 0; gap:10px; }
+.ov#loginOv .mbtn.p{ padding:14px 0; border-radius:13px; font-size:15px; }
+.ov#loginOv .mbtn.s{ padding:12px 8px; border-radius:12px; font-size:13px; }
+.ov#loginOv .lg-of{ display:flex; align-items:center; gap:10px; color:var(--tx3); font-size:11.5px; font-weight:600; }
+.ov#loginOv .lg-of::before, .ov#loginOv .lg-of::after{ content:""; flex:1; height:1px; background:rgba(255,255,255,.12); }
+.ov#loginOv .lg-nieuw{ display:block; margin-top:6px; text-align:center; font-size:13px; color:var(--tx2); text-decoration:none; }
+.ov#loginOv .lg-nieuw b{ color:var(--bl); font-weight:800; }
+.ov#loginOv .lg-foot{ margin-top:18px; font-size:11.5px; line-height:1.65; }
+.ov#loginOv .lg-fris{ font-size:11.5px; padding:6px 14px; }
+
 /* ══════════════════════════════════════════════════════════════════
    VERBINDSCHERM IN DE VORMTAAL VAN HET INLOGSCHERM (26-07-2026)
    Het inlogscherm is een glazen kaart op het golflint; het verbindscherm
@@ -2185,6 +2377,27 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 }
 .ov#connOv .lg-site{ color:#00D4FF; text-decoration:none; font-weight:600; }
 
+/* ── RUSTIGER (02-10-2026, uit het gebruik: "minder vol, gewoon netjes") ──
+   Eén hoofdknop valt op; de rest is kleiner en staat naast elkaar. Het logo
+   en de titel staan er voor de herkenning, niet als hoofdzaak. De
+   verbindingsdetails zijn voor wie iets zoekt: een tekstlink, geen knop. */
+.ov#connOv .mh{ padding:18px 20px 4px; }
+.ov#connOv .lg-logo{ width:52px; height:52px; border-radius:14px; margin:0 auto 8px; box-shadow:0 6px 18px rgba(0,255,136,.18) !important; }
+.ov#connOv .mttl{ font-size:21px; }
+.ov#connOv .msub{ font-size:12px; }
+.ov#connOv .msteps{ gap:5px; }
+.ov#connOv .mstep{ padding:8px 11px; }
+.ov#connOv #connDetailsBtn{ width:auto !important; display:block; margin:0 auto; padding:6px 8px !important; border:0 !important;
+  background:none !important; color:var(--tx3) !important; font-size:11.5px !important; font-weight:600 !important; text-decoration:underline; text-underline-offset:3px; }
+/* In de compacte kaart staat de link al op de regel met de andere twee. */
+.ov#connOv #step1:has(#startVak [onclick="toggleConnDetails()"]) #connDetailsBtn{ display:none; }
+.ov#connOv .mact{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.ov#connOv .mact > .mbtn.p{ grid-column:1 / -1; }
+.ov#connOv .mact > .mbtn.s{ padding:10px 6px; border-radius:12px; font-size:12.5px; }
+/* Meekijken is voor de expert, niet voor de bestuurder: een regel eronder. */
+.ov#connOv .mact > #btnExpertJoin{ grid-column:1 / -1; background:none; border:0; padding:4px; color:var(--tx3); font-size:12px; font-weight:600; }
+.ov#connOv .lg-foot{ margin-top:12px; font-size:11.5px; line-height:1.6; }
+
 /* ── Rit-monitor: uitleg vervalt, meetwaarden en rijtips komen ervoor terug ── */
 .mon-intro-txt{
   overflow:hidden; max-height:220px; opacity:1;
@@ -2227,6 +2440,15 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
   font-family:var(--f); font-size:12.5px; font-weight:700; cursor:pointer;
 }
 .pid-preset-tip{ font-size:11px; line-height:1.45; color:var(--tx3); min-height:14px; }
+.pid-doelen{ display:flex; flex-wrap:wrap; gap:6px; padding:2px 0 4px; }
+.pid-doelen::-webkit-scrollbar{ display:none; }
+.pid-doel{ flex:none; padding:7px 12px; border-radius:999px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2);
+  font:700 12.5px var(--f); white-space:nowrap; cursor:pointer; }
+.pid-doel.aan{ border-color:var(--bl); background:var(--bls); color:var(--tx); }
+.pid-doel:active{ transform:scale(.96); }
+.pid-preset-tip.let{ color:var(--or); font-weight:700; }
+.sl-sam{ flex:1; min-width:0; margin:0 8px; font-size:12px; font-weight:600; color:var(--tx2); text-transform:none; letter-spacing:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right; }
 
 /* ══════════════════════════════════════════════════════════════════
    WIZARD (27-07-2026)
@@ -2661,6 +2883,20 @@ body:not(.pl-garage) .alleen-garage { display:none !important; }
 .pl-tegel:hover, .pl-tegel:focus-visible { border-color:var(--tg,#2f6bff); outline:none; }
 .pl-tegel.tg-storing { --tg:#ff6b4a; } .pl-tegel.tg-handel { --tg:#a78bfa; }
 .pl-tegel.tg-rit { --tg:#22c55e; }     .pl-tegel.tg-voorb { --tg:#38bdf8; }
+/* De achtergrondfoto's terug (02-10-2026, uit het gebruik: "ik mis de mooie
+   achtergrondafbeeldingen die er in de vier deuren zaten"). Dezelfde vier
+   beelden als de oude deuren (--door-bg-*, bovenaan dit bestand), met een
+   scrim van links naar rechts zodat de tekst leesbaar blijft. Eén laag
+   (::after, z 0); de accentbalk (::before) en de tekst liggen erboven. */
+.pl-tegel > * { position:relative; z-index:1; }
+.pl-tegel::before { z-index:2; }
+.pl-tegel::after { content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background-size:cover; background-repeat:no-repeat; opacity:.6; transition:opacity .25s ease; }
+.pl-tegel.tg-storing::after { background-image:linear-gradient(100deg, rgba(19,26,40,.94) 0%, rgba(19,26,40,.72) 50%, rgba(19,26,40,.30) 100%), var(--door-bg-diag); background-position:78% center; }
+.pl-tegel.tg-handel::after  { background-image:linear-gradient(100deg, rgba(19,26,40,.94) 0%, rgba(19,26,40,.72) 50%, rgba(19,26,40,.30) 100%), var(--door-bg-deal); background-position:center 68%; }
+.pl-tegel.tg-rit::after     { background-image:linear-gradient(100deg, rgba(19,26,40,.94) 0%, rgba(19,26,40,.72) 50%, rgba(19,26,40,.30) 100%), var(--door-bg-saving); background-position:72% center; }
+.pl-tegel.tg-voorb::after   { background-image:linear-gradient(100deg, rgba(19,26,40,.94) 0%, rgba(19,26,40,.72) 50%, rgba(19,26,40,.30) 100%), var(--door-bg-prep); background-position:74% center; }
+@media (hover:hover){ .pl-tegel:hover::after { opacity:.75; } }
 .pl-tegel-ic { font-size:26px; line-height:1; margin-bottom:6px; }
 .pl-tegel-t { font-size:16px; font-weight:800; }
 .pl-tegel-d { font-size:13.5px; color:#c3cee2; line-height:1.35; }
@@ -2691,6 +2927,10 @@ body:not(.pl-garage) .alleen-garage { display:none !important; }
   border-radius:10px; border:1px solid var(--bd); background:var(--sur); color:var(--tx); font:700 12.5px var(--f); cursor:pointer;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .pl-live-acties button:active { transform:scale(.98); }
+/* Vier knoppen (garagemodus) pasten niet op één regel: "Opnemer", "Meekijker"
+   (02-10-2026, uit het gebruik). Dan twee bij twee, met de volle tekst. */
+body.pl-garage .pl-live-acties { flex-wrap:wrap; }
+body.pl-garage .pl-live-acties button { flex:1 1 calc(50% - 3px); }
 
 /* ══ LEESBAARHEID (29-09-2026) ══
    Uit de evaluatie: letters te licht, te klein, te veel tekst per venster.

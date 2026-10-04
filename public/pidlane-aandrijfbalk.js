@@ -33,6 +33,12 @@
     ONBEKEND: '#64748b'
   };
 
+  // Het lijnicoon per toestand, uit PL_ICOON (pidlane-data.js).
+  var ICOON = {
+    DRAAIT_STIL: 'motor', DRAAIT_RIJDT: 'motor', ACCU_RIJDT: 'accu', STARTSTOP: 'startstop',
+    UIT_VOOR_START: 'motor', START: 'motor', ONBEKEND: 'motor'
+  };
+
   function _el() {
     try { return document.getElementById('aandrijfBalk'); } catch (e) { return null; }
   }
@@ -43,14 +49,30 @@
   function ververs(res) {
     var el = _el();
     if (!el) return false;
-    if (!res) { el.style.display = 'none'; el.textContent = ''; return false; }
+    if (!res) { el.style.display = 'none'; el.textContent = ''; el._ab = ''; return false; }
 
     var kleur = KLEUR[res.toestand] || KLEUR.ONBEKEND;
-    el.style.cssText =
-      'display:flex;align-items:center;gap:8px;margin:0 0 8px;padding:7px 10px;' +
-      'border-radius:8px;font-size:13px;font-weight:800;line-height:1.25;' +
-      'background:' + kleur + '22;border:1px solid ' + kleur + ';color:' + kleur + ';';
-    el.textContent = window.PLAandrijving ? window.PLAandrijving.balkTekst(res) : res.label;
+    // RUSTIGER SINDS 02-10-2026 (uit het gebruik: "te aanwezig"). Tot die datum
+    // was dit een gekleurd blok met een 🔥 en vette tekst in de toestandskleur,
+    // en dat las bij gewoon rijden als een waarschuwing. Nu een smalle regel in
+    // de gewone tekstkleur: een gekleurd stipje en een lijnicoon zeggen de
+    // toestand, de tekst zegt wat er gebeurt. Opvallen hoort bij een probleem,
+    // en "de motor draait" is er geen.
+    el.className = 'ab-regel';
+    el.style.cssText = 'display:flex;--ab-kleur:' + kleur + ';';
+    var tekst = window.PLAandrijving ? window.PLAandrijving.balkTekst(res) : res.label;
+    if (res.emoji && tekst.indexOf(res.emoji + ' ') === 0) tekst = tekst.slice(res.emoji.length + 1);
+    var ic = ICOON[res.toestand] || 'motor';
+    var svg = (window.PL_ICOON && window.PL_ICOON[ic])
+      ? '<svg class="ab-ic" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + window.PL_ICOON[ic] + '</g></svg>'
+      : '';
+    // Alleen opnieuw opbouwen als er iets veranderde: dit loopt elke pollronde.
+    var sleutel = res.toestand + '|' + tekst;
+    if (el._ab !== sleutel) {
+      el.innerHTML = '<span class="ab-stip" aria-hidden="true"></span>' + svg + '<span class="ab-tx"></span>';
+      el.querySelector('.ab-tx').textContent = tekst;
+      el._ab = sleutel;
+    }
     // De onderbouwing in de tooltip: welke getallen dit oordeel dragen.
     el.title = res.waarom ? ('Aandrijving: ' + res.label + ' — ' + res.waarom) : res.label;
     el.setAttribute('data-toestand', res.toestand);

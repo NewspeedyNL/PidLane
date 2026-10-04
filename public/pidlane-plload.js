@@ -712,6 +712,10 @@ async function _pollRonde(alsBezet){
 
       const due=pidsDueNow();
       if(!due.length) return;   // niets aan de beurt deze tick
+      // Staat de ELM-poort dicht (herverbinden, re-init), dan zou élk verzoek
+      // hieronder geweigerd worden en als '' terugkomen (#388). Deze ronde
+      // overslaan; de PIDs blijven aan de beurt.
+      if(_plPoortDicht()) return;
       _pollHerplan(due, Date.now());
 
       // Multi-PID batch alleen op CAN (ISO 15765). Andere protocollen
@@ -754,9 +758,13 @@ async function _pollRonde(alsBezet){
           // stopt de adapter na het laatste frame in plaats van zijn geleerde
           // wachttijd uit te zitten. Zie PLAntwoordtal hieronder.
           const cmd=PLAntwoordtal.cmd(basis);
-          const _tx=Date.now();
+          const _tx=Date.now(), _w0=_plWeigeringen();
           const raw=await sendCmd(cmd,2500);
           const _ms=Date.now()-_tx;
+          // Geweigerd door de ELM-poort: dit verzoek is nooit de bus op gegaan.
+          // Geen dip, geen leerles voor PLAntwoordtal, geen PID die als stil
+          // geboekt wordt — en de rest van de ronde wordt net zo goed geweigerd.
+          if(_plWeigeringen()!==_w0){ _plGeweigerdeRonde(cmd); break; }
           const parsed=splitBatchResponse(raw,grp);
           _diagNote(cmd, raw, grp, parsed);
           // Per-PID telemetrie: hier weten we exact wat gevraagd is en wat
@@ -766,6 +774,7 @@ async function _pollRonde(alsBezet){
           // Vóór markPidData hieronder: het oordeel gaat over wat er eerder al
           // eens binnenkwam, niet over deze ronde.
           const oordeel=plGroepOordeel(grp, parsed, _pidLastOk);
+          _plNoteVerbind(oordeel.mistBekend && oordeel.mistBekend.length>0);
           const got=oordeel.gekregen;
           PLAntwoordtal.leer(basis, cmd, raw, oordeel.oordeel, _ms);
           if(got===0){
@@ -799,8 +808,11 @@ async function _pollRonde(alsBezet){
         // Bitmap-PIDs één voor één ('1'-suffix voor snelle terugkeer) —
         // deze weigeren batches maar antwoorden solo prima.
         for(const pid of soloPids){
-          if(!connected) break;
-          const resp=parsePID(pid,await plVraagSolo(pid));
+          if(!connected || _plPoortDicht()) break;
+          const _w0=_plWeigeringen(), _ruw=await plVraagSolo(pid);
+          if(_plWeigeringen()!==_w0){ _plGeweigerdeRonde(pid); break; }
+          const resp=parsePID(pid,_ruw);
+          _plNoteVerbind(resp==null && _plKortGeledenOk(pid));
           if(resp!=null){ markPidData(pid); updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); feedSessionStat(pid,resp); }
           else markPidNoData(pid);
         }
@@ -808,7 +820,10 @@ async function _pollRonde(alsBezet){
         // Sequentieel: één PID per request, '1'-suffix voor snelle terugkeer
         for(const pid of due){
           if(!connected) break;
-          const resp=parsePID(pid,await plVraagSolo(pid));
+          const _w0=_plWeigeringen(), _ruw=await plVraagSolo(pid);
+          if(_plWeigeringen()!==_w0){ _plGeweigerdeRonde(pid); break; }
+          const resp=parsePID(pid,_ruw);
+          _plNoteVerbind(resp==null && _plKortGeledenOk(pid));
           if(resp!=null){ markPidData(pid); updPID(pid,resp); checkStability(pid,resp); feedDatalog(pid,resp); feedSessionStat(pid,resp); }
           else markPidNoData(pid);
         }
@@ -820,6 +835,49 @@ async function _pollRonde(alsBezet){
       // Zelf-afgeregeld op cfg.tickMs, dus elke ronde aanroepen is prima.
       try{ PLLoad.tick(); }catch(e){ console.warn('PLLoad.tick mislukt:', e); }
     }, alsBezet);
+}
+
+/* ── EEN GEWEIGERD VERZOEK IS GEEN BUSMETING (#388, 03-10-2026) ────────
+   Staat de ELM-poort dicht (pidlane-bt.js, herverbinden of re-init), dan
+   weigeren sendCmd/sendBT elk verzoek en geven ze '' terug — dezelfde lege
+   string als een uitgebleven antwoord. Tot vandaag telde de poll-lus dat als
+   een lege batch: batchDip(), een onvolledig-oordeel, en elke PID in de groep
+   als stil geboekt. Het log van de T6 (#388) staat er letterlijk:
+   `Multi-PID leeg TX="01492" RX="" — dip`, en meteen daarna `"010C2"
+   geweigerd`. De regelkringen krompen dus op een meting over onze eigen poort.
+
+   Het onderscheid: PLElm.weigeringen() telt elke weigering. Verschilt de
+   teller voor en na een verzoek, dan ging het nooit de bus op. Valt een
+   andere aanroeper in die tijd ook op de poort, dan wordt dit verzoek
+   onterecht als geweigerd gezien — en dat is de onschuldige kant: dan telt er
+   één meting niet mee, in plaats van dat er een verzonnen meting bijkomt. */
+function _plWeigeringen(){
+  try{ return (window.PLElm && typeof PLElm.weigeringen==='function') ? PLElm.weigeringen() : 0; }
+  catch(e){ console.warn('PLElm.weigeringen mislukt — weigeringen tellen nu als antwoord', e); return 0; }
+}
+function _plPoortDicht(){
+  try{ return !!(window.PLElm && typeof PLElm.poortDicht==='function' && PLElm.poortDicht()); }
+  catch(e){ console.warn('PLElm.poortDicht mislukt — de ronde gaat door', e); return false; }
+}
+/* Het signaal voor de ATST-regelaar (PLVerbind.noteAntwoord, #394): ontbrak
+   er een PID die de afgelopen vijf minuten nog antwoordde? Een PID die deze
+   auto nooit had telt niet — die ontbreekt bij elke ATST. */
+function _plKortGeledenOk(pid){
+  const w=_pidLastOk[pid];
+  return typeof w==='number' && w>0 && (Date.now()-w)<(typeof GROEP_BEKEND_MS!=='undefined' ? GROEP_BEKEND_MS : 300000);
+}
+function _plNoteVerbind(mist){
+  try{ if(window.PLVerbind && typeof PLVerbind.noteAntwoord==='function') PLVerbind.noteAntwoord(!!mist); }
+  catch(e){ console.warn('PLVerbind.noteAntwoord mislukt — ATST wordt niet bijgestuurd', e); }
+}
+let _plGeweigerdMeld=0;
+function _plGeweigerdeRonde(wat){
+  // Hoogstens eens per 5 s in het log: een re-init duurt een paar seconden en
+  // elke tik zou anders dezelfde regel schrijven.
+  if(Date.now()-_plGeweigerdMeld<5000) return;
+  _plGeweigerdMeld=Date.now();
+  try{ btDiag('Pollronde afgebroken: "'+wat+'" geweigerd door de ELM-poort — telt niet als busmeting','info'); }
+  catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 
 // Eén PID solo opvragen. Een eigen PID gaat via PLEigen.vraag(): die zet zo

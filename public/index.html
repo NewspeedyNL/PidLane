@@ -131,18 +131,15 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
         <!-- Inlog-vinkje 'Extra logfunctie' vervallen: een admin krijgt bij
              uitloggen nu altijd de vraag of de volledige log bewaard moet
              worden (zie logout()). -->
+        <!-- 02-10-2026: "Wachtwoord vergeten?" hoort bij het wachtwoordveld, en
+             "Nog geen account?" staat onder de knoppen: eerst wat de meeste
+             mensen doen (inloggen), dan de rest. -->
+        <a href="#" class="lg-vergeten" onclick="event.preventDefault();PLKlant.openHerstelAanvraag()">Wachtwoord vergeten?</a>
         <div id="loginErr" style="font-size:12px;color:var(--rd);min-height:16px;text-align:center"></div>
         <!-- Tweede deur: bezoekers kunnen zichzelf gratis registreren en
              krijgen proeftegoed. Zakelijke logins gebruiken gewoon het
              formulier hierboven. -->
-        <div style="text-align:center;margin-top:2px;line-height:2">
-          <a href="#" onclick="event.preventDefault();PLKlant.openRegistratie()"
-             style="font-size:12.5px;color:var(--bl);text-decoration:none;font-weight:700">
-            Nog geen account? Gratis aanmaken</a><br>
-          <a href="#" onclick="event.preventDefault();PLKlant.openHerstelAanvraag()"
-             style="font-size:11.5px;color:var(--tx3,#7c8aa5);text-decoration:none">
-            Wachtwoord vergeten?</a>
-        </div>
+
       </div>
     </div>
     <div class="mact">
@@ -157,7 +154,9 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
            Geen tussenvraag "met of zonder adapter": verbinden hoort achter de
            login, dus die keuze bestaat hier niet en elke extra klik is een plek
            om af te haken. -->
+      <div class="lg-of" aria-hidden="true"><span>of</span></div>
       <button class="mbtn s" id="btnDemoLogin" onclick="plDemoZonderLogin()">▷ Try demo — no adapter needed</button>
+      <a href="#" class="lg-nieuw" onclick="event.preventDefault();PLKlant.openRegistratie()">Nog geen account? <b>Gratis aanmaken</b></a>
     </div>
   </div>
   <div class="lg-foot">
@@ -413,13 +412,13 @@ function closeConnOv(){
            reviewnotitie letterlijk belooft (test-demo-toegang.js). De knop
            zonder id eronder bestaat ook in de template van resetToStep1();
            zonder id kan hij daar geen dubbel id worden (test-dubbele-ids.js). -->
-      <button class="mbtn s" id="btnDemo" onclick="startDemo()">▷ Simuleer verbinding — bekijk je gegevens</button>
-      <button class="mbtn s" data-pl="zonder" onclick="PLZonder.verder()">🚗 Verder zonder adapter</button>
-      <button class="mbtn s" id="btnExpertJoin" onclick="PLRemote.openExpert()">🔭 Meekijken met sessie (expert)</button>
+      <button class="mbtn s" id="btnDemo" onclick="startDemo()">▷ Simuleer verbinding</button>
+      <button class="mbtn s" data-pl="zonder" onclick="PLZonder.verder()">🚗 Zonder adapter</button>
+      <button class="mbtn s" id="btnExpertJoin" onclick="PLRemote.openExpert()">🔭 Meekijken met een sessie (voor de expert)</button>
     </div>
   </div>
   <div class="lg-foot">
-    Niet in de auto? Kenteken-check, APK, foutcodes en je rapporten werken ook zonder adapter.<br>
+    Niet in de auto? Kenteken, APK en foutcodes werken ook zonder adapter.<br>
     <a href="https://www.pidlane.nl" target="_blank" rel="noopener" class="lg-site">🌐 www.pidlane.nl</a>
     · <a href="#" class="lg-site" onclick="event.preventDefault();PLHelp.open('verbinden')">📘 Hulp bij verbinden</a>
   </div>
@@ -852,8 +851,8 @@ function closeConnOv(){
         <!-- Garagemodus (29-09-2026): dezelfde plekken, met de vakgereedschappen
              erbij. Staat vanzelf aan voor een account dat geen klant is. -->
         <button class="kebab-item kebab-schakel" id="kbGarageModus" role="switch" aria-checked="false" onclick="PLNav.wisselGarage()">🔧 Garagemodus<span class="kb-sw" aria-hidden="true"></span></button>
-        <button class="kebab-item kebab-schakel" id="kbAutoCheck" role="switch" aria-checked="true" onclick="PLNav.wisselAutoCheck()">🩺 Check na verbinden<span class="kb-sw" aria-hidden="true"></span></button>
-        <button class="kebab-item kebab-schakel" id="kbHelpTips" role="switch" aria-checked="true" onclick="PLHelp.wisselTips()">ⓘ Uitleg bij knoppen<span class="kb-sw" aria-hidden="true"></span></button>
+        <button class="kebab-item kebab-schakel" id="kbAutoCheck" role="switch" aria-checked="false" onclick="PLNav.wisselAutoCheck()">🩺 Check na verbinden<span class="kb-sw" aria-hidden="true"></span></button>
+        <button class="kebab-item kebab-schakel" id="kbHelpTips" role="switch" aria-checked="false" onclick="PLHelp.wisselTips()">ⓘ Uitleg bij knoppen<span class="kb-sw" aria-hidden="true"></span></button>
         <button class="kebab-item" onclick="closeKebab();openGearInstellingen()">🔢 Versnellingsindicator</button>
         <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
         <!-- De schakelaar voor de bevindingenbalk (issue #60) stond hier tot
@@ -895,27 +894,31 @@ function closeConnOv(){
          niet mee in de kleur — "niets draait op de achtergrond" is geen
          probleem — maar krijgt hier wél zijn telbadge door, anders is een
          actieve achtergrondtaak bij het inklappen onzichtbaar. -->
+    <!-- 📡 Diagnose delen loopt (02-10-2026): in de topbalk, naast de status.
+         Tot die datum zweefde hij position:fixed onder de topbalk en dekte hij
+         de tab Sensoren af. showPill() in pidlane-remote.js zet hem aan. -->
+    <button type="button" id="remPill" onclick="PLRemote.openShare()" title="Diagnose delen loopt — tik voor de code en het aantal meekijkers">📡<span class="rem-pill-tx">delen</span>👁 <span id="remPillN">0</span></button>
     <div class="tchip sys" id="sysChip" onclick="toggleSysStatus(event)" title="Verbinding — tik voor details">
       <div class="tdot" id="sysdot"></div><span id="sysTxt">Niet verbonden</span><span id="sysTel" style="font-weight:800;color:var(--gn)"></span>
     </div>
     <div class="sys-drop" id="tprDetail">
       <!-- 1️⃣ Voertuig-chip: dot (rood=geen auto, oranje=dossier onvolledig, groen=compleet) + naam -->
       <div class="tchip" id="vchip" onclick="closeSysStatus();try{openVehicleOverview()}catch(e){}" title="Voertuig &amp; gevonden informatie">
-        <div class="tdot r" id="vdot"></div><span id="vchipLbl">Auto</span><div id="vtag"></div>
+        <div class="tdot r" id="vdot"></div><span class="sys-naam"><b>Auto-dossier</b><small id="vSub">nog geen auto herkend</small></span><span id="vchipLbl" hidden></span><div id="vtag"></div>
       </div>
       <!-- 2️⃣ OBD-chip: dot (rood=niet verbonden, oranje=traag/demo, groen=snel) -->
       <div class="tchip pill" id="obdChip" onclick="closeSysStatus();obdChipTap()" title="OBD-verbinding">
-        <div class="dot" id="sdot"></div><span>OBD</span><span id="stxt" style="display:none">Niet verbonden</span>
+        <div class="dot" id="sdot"></div><span class="sys-naam"><b>Adapter (OBD)</b><small id="obdSub">niet verbonden — tik om te verbinden</small></span><span id="stxt" style="display:none">Niet verbonden</span>
       </div>
       <!-- 3️⃣ AI-chip: dot (groen=AI bereikbaar, rood=geen AI) -->
       <div class="tchip" id="aiChip" onclick="closeSysStatus();try{openApiDialog()}catch(e){}" title="AI-verbinding">
-        <div class="tdot r" id="adot"></div><span>AI</span>
+        <div class="tdot r" id="adot"></div><span class="sys-naam"><b>AI-uitleg</b><small id="aiSub">geen AI-verbinding</small></span>
       </div>
       <!-- 4️⃣ Run-chip: dot (grijs=niets draait, groen=achtergrondtaak actief).
            Vijf dingen konden aanstaan zonder dat het ergens zichtbaar was;
            hier staat wat er loopt en gaat het uit. Zie pidlane-run.js -->
       <div class="tchip" id="runChip" onclick="closeSysStatus();try{PLRun.open()}catch(e){}" title="Niets actief op de achtergrond">
-        <div class="tdot" id="rdot"></div><span>Run</span><span id="runTel" style="font-weight:800;color:var(--gn)"></span>
+        <div class="tdot" id="rdot"></div><span class="sys-naam"><b>Achtergrond</b><small id="runSub">niets loopt — tik om iets te starten</small></span><span id="runTel" style="font-weight:800;color:var(--gn)"></span>
       </div>
     </div>
   </div>
@@ -984,7 +987,7 @@ function closeConnOv(){
            ruimte op dat de PID-lijst eronder nauwelijks nog hoogte overhoudt
            om te scrollen. Zie toggleVehicleSection() in pidlane-uihelpers.js. -->
       <div class="slsec" id="vehicleSection">
-        <div class="slttl" onclick="toggleVehicleSection()" style="cursor:pointer">Voertuig<span id="vehSecChev" class="sl-klap" role="button" aria-label="Voertuiggegevens in- of uitklappen">Inklappen ▴</span></div>
+        <div class="slttl" onclick="toggleVehicleSection()" style="cursor:pointer">Voertuig<span id="vehSecSam" class="sl-sam"></span><span id="vehSecChev" class="sl-klap" role="button" aria-label="Voertuiggegevens in- of uitklappen">Inklappen ▴</span></div>
         <div id="vehicleBody">
         <div id="demoBar" style="display:none;margin-bottom:8px;padding:8px;background:var(--pus);border:1px solid var(--pu);border-radius:8px">
           <div onclick="toggleDemoBarBody()" style="font-size:11px;font-weight:700;color:var(--pu);margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
@@ -1011,21 +1014,21 @@ function closeConnOv(){
       <!-- PID LIST — dynamisch na discovery -->
       <div class="slsec">
         <div class="slttl">
-          Beschikbare PIDs <span class="cnt" id="pidCnt">0</span>
+          Sensoren <span class="cnt" id="pidCnt">0</span>
           <button id="showAllPidBtn" onclick="toggleShowAllPIDs()" title="Ook ongezonde/uitgegrijsde PIDs tonen" style="margin-left:auto;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">👁 Toon alles</button>
           <button id="pidRefreshBtn" onclick="deepRefreshPIDs()" title="Dieper zoeken + namen opzoeken" style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid rgba(0,212,255,.3);background:rgba(0,212,255,.08);color:#00b4cc;cursor:pointer">🔄 Diep zoeken</button>
         </div>
         <div id="pidRefreshStatus" style="font-size:11px;color:var(--tx3);padding:2px 2px 0;min-height:12px"></div>
         <!-- Voorinstellingen: altijd "basis + focus", nooit een setje van drie
-             sensoren zonder context. Zie PID_PRESETS in pidlane-data.js. -->
+             sensoren zonder context. Zie PID_PRESETS in pidlane-data.js.
+             Sinds 02-10-2026 tikbare doelen in plaats van een keuzelijst, en
+             alleen de doelen die bij deze auto passen (_pidDoelen() in
+             pidlane-rijsituatie.js); de teller zegt of het er te veel worden. -->
         <div class="pid-preset">
-          <select id="pidPresetSel" onchange="applyPidPreset(this.value)" title="Kies een samenstelling">
-            <option value="">🎚️ Voorinstelling kiezen…</option>
-          </select>
+          <div class="pid-doelen" id="pidDoelen" role="group" aria-label="Wat wil je zien?"></div>
           <div class="pid-preset-tip" id="pidPresetTip"></div>
         </div>
-        <div class="sw"><span style="color:var(--tx3)">🔍</span><input type="text" placeholder="Zoek PID..." oninput="filterPIDs(this.value)" id="psrch"></div>
-        <div style="font-size:11px;color:var(--tx3);padding:4px 2px 0">Vink aan om te monitoren</div>
+        <div class="sw"><span style="color:var(--tx3)">🔍</span><input type="text" placeholder="Zoek een sensor of PID…" oninput="filterPIDs(this.value)" id="psrch"></div>
       </div>
       <div class="pscr" id="pidList">
         <div style="padding:16px;text-align:center;color:var(--tx3);font-size:12px">
@@ -1815,6 +1818,7 @@ function closeConnOv(){
 <script src="pidlane-datalog.js"></script>
 <script src="pidlane-archief.js"></script><!-- module → pidlane-archief.js -->
 <script src="pidlane-pids.js"></script>
+<script src="pidlane-visprofiel.js"></script><!-- PLVisProfiel: de vier profielweergaven van Slim visueel — vóór pidlane-visueel.js, geen bus-I/O -->
 <script src="pidlane-visueel.js"></script>
 <script src="pidlane-correlatie.js"></script>
 <script src="pidlane-totalcheck.js"></script>
@@ -1868,7 +1872,14 @@ function closeConnOv(){
      er wordt niets in de bestaande code gewijzigd.
      ════════════════════════════════════════════════════════════════════ -->
 <style>
-#remPill{position:fixed;top:calc(6px + var(--pl-top));right:10px;z-index:9600;display:none;align-items:center;gap:6px;background:var(--sur,#151b24);border:1px solid var(--bl,#00d4ff);color:var(--tx,#e6e9ef);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer}
+#remPill{display:none;flex:none;align-items:center;gap:4px;background:var(--bls,rgba(77,130,255,.16));border:1px solid var(--bl,#4d82ff);color:var(--tx,#e6e9ef);border-radius:999px;padding:4px 10px;font-family:var(--f);font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer}
+@media (max-width:370px){#remPill .rem-pill-tx{display:none}}
+.rem-kies{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 10px}
+.rem-kies-k{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px;border-radius:10px;border:1px solid var(--bd,#2a3344);background:var(--sur2,#1b2333);color:var(--tx2,#c3cee2);font:700 12px var(--f);cursor:pointer;font-size:18px}
+.rem-kies-k span{font-size:12px}
+.rem-kies-k.aan{border-color:var(--bl,#4d82ff);background:var(--bls,rgba(77,130,255,.16));color:var(--tx,#fff)}
+.rem-deel{display:none}
+.rem-deel.aan{display:block}
 .rem-ov{position:fixed;inset:0;z-index:9700;background:rgba(5,8,12,.72);display:none;align-items:flex-end;justify-content:center}
 .rem-ov.open{display:flex}
 /* De veilige marge onderin (08-09-2026). .rem-ov staat op align-items:flex-end,
@@ -1900,7 +1911,6 @@ function closeConnOv(){
 .rem-note{font-size:11px;opacity:.6;margin-top:8px}
 </style>
 
-<div id="remPill" onclick="PLRemote.openShare()">📡 delen · 👁 <span id="remPillN">0</span></div>
 
 <!-- ══ GERESERVEERDE BAAN RECHTSONDER ══
      Zwevende status-chips stapelen hier automatisch op (kolom, van onder naar
@@ -1925,19 +1935,37 @@ function closeConnOv(){
   </div>
   <div id="remShareOn" style="display:none">
     <div class="rem-stat" id="remShareStat">—</div>
-    <div class="rem-row" id="remShortRow"><div class="rem-lbl">🔑 Meekijk-code — lees voor of app door aan de expert</div>
-      <div class="rem-flex"><input class="rem-in" id="remShort" readonly style="font-size:22px;letter-spacing:3px;text-align:center;font-weight:800" placeholder="··· ··· ····"><button class="rem-btn" onclick="PLRemote.copy('remShort')">Kopieer</button></div>
-      <div class="rem-stat" id="remShortStat">De expert kiest “Meekijken” en typt deze code.</div></div>
-    <div class="rem-row"><div class="rem-lbl">Sessie-ID</div><div class="rem-code" id="remSid">—</div></div>
-    <div class="rem-row" id="remQrRow" style="text-align:center">
-      <div class="rem-lbl">Scan met de camera van het expert-toestel</div>
-      <div id="remQr" style="display:inline-block;background:#fff;padding:10px;border-radius:10px;margin-top:6px;min-width:180px;min-height:180px"></div>
-      <div class="rem-stat" id="remQrStat"></div>
+    <!-- Eén manier tegelijk (02-10-2026, uit het gebruik: "niet allemaal in
+         één keer in beeld"). De knoppen kiezen; PLRemote.deelMethode() toont
+         alleen het blok dat erbij hoort en onthoudt de keuze. -->
+    <div class="rem-lbl" style="margin-top:6px">Hoe geef je de expert toegang?</div>
+    <div class="rem-kies" role="tablist">
+      <button type="button" class="rem-kies-k" data-deel="code" onclick="PLRemote.deelMethode('code')">🔑<span>Code</span></button>
+      <button type="button" class="rem-kies-k" data-deel="qr" onclick="PLRemote.deelMethode('qr')">📷<span>QR</span></button>
+      <button type="button" class="rem-kies-k" data-deel="link" onclick="PLRemote.deelMethode('link')">🔗<span>Link</span></button>
+      <button type="button" class="rem-kies-k" data-deel="los" onclick="PLRemote.deelMethode('los')">📋<span>Plakcode</span></button>
     </div>
-    <div class="rem-row"><div class="rem-lbl">Link voor de expert (stuur via WhatsApp of mail)</div>
-      <div class="rem-flex"><input class="rem-in" id="remLink" readonly><button class="rem-btn" onclick="PLRemote.copy('remLink')">Kopieer</button></div></div>
-    <div class="rem-row"><div class="rem-lbl">Of losse code (plakken bij “Meekijken”)</div>
-      <div class="rem-flex"><input class="rem-in" id="remCode" readonly><button class="rem-btn" onclick="PLRemote.copy('remCode')">Kopieer</button></div></div>
+    <div class="rem-deel" data-deel="code">
+      <div class="rem-row" id="remShortRow"><div class="rem-lbl">🔑 Meekijk-code — lees voor of app door aan de expert</div>
+        <div class="rem-flex"><input class="rem-in" id="remShort" readonly style="font-size:22px;letter-spacing:3px;text-align:center;font-weight:800" placeholder="··· ··· ····"><button class="rem-btn" onclick="PLRemote.copy('remShort')">Kopieer</button></div>
+        <div class="rem-stat" id="remShortStat">De expert kiest “Meekijken” en typt deze code.</div></div>
+    </div>
+    <div class="rem-deel" data-deel="qr">
+      <div class="rem-row" id="remQrRow" style="text-align:center">
+        <div class="rem-lbl">Scan met de camera van het expert-toestel</div>
+        <div id="remQr" style="display:inline-block;background:#fff;padding:10px;border-radius:10px;margin-top:6px;min-width:180px;min-height:180px"></div>
+        <div class="rem-stat" id="remQrStat"></div>
+      </div>
+    </div>
+    <div class="rem-deel" data-deel="link">
+      <div class="rem-row"><div class="rem-lbl">Link voor de expert (stuur via WhatsApp of mail)</div>
+        <div class="rem-flex"><input class="rem-in" id="remLink" readonly><button class="rem-btn" onclick="PLRemote.copy('remLink')">Kopieer</button></div></div>
+    </div>
+    <div class="rem-deel" data-deel="los">
+      <div class="rem-row"><div class="rem-lbl">Losse code (de expert plakt hem bij “Meekijken”)</div>
+        <div class="rem-flex"><input class="rem-in" id="remCode" readonly><button class="rem-btn" onclick="PLRemote.copy('remCode')">Kopieer</button></div></div>
+      <div class="rem-row"><div class="rem-lbl">Sessie-ID</div><div class="rem-code" id="remSid">—</div></div>
+    </div>
     <div class="rem-stat">👁 <span id="remExpN">0</span> expert(s) kijkt mee</div>
     <button class="rem-btn danger" style="width:100%;margin-top:8px" onclick="PLRemote.shareStop()">Stop delen</button>
   </div>

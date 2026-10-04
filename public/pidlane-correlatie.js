@@ -83,6 +83,54 @@ function _bevToonBij(){
   renderCorrelationBanner(_bevToon);
 }
 
+// ── Eén bevinding verbergen (02-10-2026) ─────────────────────────────
+// Dezelfde regel als bij de tegels (pidVerberg in pidlane-pids.js): verbergen
+// raakt alleen het scherm. De engine blijft de bevinding vinden, de AI krijgt
+// hem gewoon mee, en in het venster met álle bevindingen staat hij er nog,
+// met een knop om hem terug te halen. Het ✕-knopje en een dubbeltik doen
+// hetzelfde. Bewust alleen voor deze sessie, net als hiddenPIDs: een
+// waarschuwing die je een maand geleden wegklikte en niet meer kent, is
+// erger dan één kaart te veel.
+const _bevVerborgen = new Set();
+function bevindingVerborgen(id){ return _bevVerborgen.has(id); }
+function bevindingZichtbaar(hits){ return (hits||[]).filter(h=>h && !_bevVerborgen.has(h.id)); }
+function _bevNaam(id){ const h=(_bevLaatst[id]||(_bevToon||[]).find(x=>x.id===id)); return h ? h.naam : 'Bevinding'; }
+function _bevHerteken(){
+  renderCorrelationBanner(_bevToon);
+  _bevSheetBij();
+  try{ if(window.PLVisueel && typeof window.PLVisueel.ververs==='function') window.PLVisueel.ververs(); }
+  catch(e){ console.warn('Slim visueel niet bij te werken na verbergen:', e); }
+}
+function bevindingVerberg(id){
+  if(!id || _bevVerborgen.has(id)) return false;
+  _bevVerborgen.add(id);
+  _bevHerteken();
+  showToast?.('🙈 '+_bevNaam(id)+' verborgen — de AI krijgt hem nog mee. Terug via "bekijk alles".');
+  return true;
+}
+function bevindingToon(id){
+  if(!_bevVerborgen.delete(id)) return false;
+  _bevHerteken();
+  return true;
+}
+function bevindingToonAlles(){
+  const n=_bevVerborgen.size;
+  if(!n) return 0;
+  _bevVerborgen.clear();
+  _bevHerteken();
+  return n;
+}
+// Eén tik opent het venster, twee tikken verbergen. De eerste tik wacht dus
+// even: anders staat het venster al open als de tweede binnenkomt.
+const BEV_DUBBEL_MS = 300;
+let _bevTikTimer = null, _bevTikId = null;
+function bevindingTik(id){
+  if(_bevTikTimer && _bevTikId===id){ clearTimeout(_bevTikTimer); _bevTikTimer=null; _bevTikId=null; bevindingVerberg(id); return; }
+  if(_bevTikTimer) clearTimeout(_bevTikTimer);
+  _bevTikId=id;
+  _bevTikTimer=setTimeout(()=>{ _bevTikTimer=null; _bevTikId=null; openBevindingen(); }, BEV_DUBBEL_MS);
+}
+
 function bevindingenAan(){ return _bevAan; }
 function bevindingenZet(aan){
   _bevAan = !!aan;
@@ -126,8 +174,16 @@ function runCorrelationEngine(){
   _bevToonBij();
 }
 
-function _bevRegelHtml(h){
-  return `<div style="padding:8px 10px;border-top:1px solid var(--bd);font-size:12px"><b>${h.naam}</b><br><span style="color:var(--tx2)">${h.uitleg}</span></div>`;
+function _bevIdAttr(id){ return String(id).replace(/[^A-Za-z0-9_\-]/g,''); }
+/* Eén regel. In de balk met een ✕ om hem te verbergen; in het venster
+   (`inVenster`) met "toon weer" als hij verborgen is. */
+function _bevRegelHtml(h, inVenster){
+  const id=_bevIdAttr(h.id), weg=_bevVerborgen.has(h.id);
+  const knop = inVenster
+    ? (weg ? `<button type="button" class="bev-x bev-terug" onclick="bevindingToon('${id}')" title="Weer tonen in de live view">toon weer</button>` : '')
+    : `<button type="button" class="bev-x" onclick="event.stopPropagation();bevindingVerberg('${id}')" title="Deze bevinding verbergen (dubbeltik kan ook)" aria-label="Verbergen">✕</button>`;
+  return `<div class="bev-regel${weg?' verborgen':''}" data-bev="${id}"${inVenster?'':` ondblclick="bevindingVerberg('${id}')"`}>`+
+    `<div class="bev-regel-tx"><b>${h.naam}</b><br><span style="color:var(--tx2)">${h.uitleg}</span></div>${knop}</div>`;
 }
 
 function renderCorrelationBanner(hits){
@@ -139,6 +195,8 @@ function renderCorrelationBanner(hits){
   // meldingenvak onder de meter. Daar verhuizen ze naartoe, ze verdubbelen
   // niet: zolang die weergave open staat blijft de balk hier weg.
   const inVak = (typeof pidViewMode!=='undefined' && pidViewMode==='visueel');
+  const alle = hits;
+  hits = bevindingZichtbaar(hits);
   if(!_bevAan || !hits.length || inVak){ if(box) box.style.display='none'; _bevSheetBij(); return; }
   if(!box){
     box=document.createElement('div'); box.id='corrBanner';
@@ -148,15 +206,15 @@ function renderCorrelationBanner(hits){
   }
   box.style.display='block';
   const zichtbaar=hits.slice(0, BEV_MAX);
-  const rest=hits.length-zichtbaar.length;
+  const rest=alle.length-zichtbaar.length;
   box.innerHTML=
     `<div style="display:flex;align-items:center;gap:8px;background:var(--ors);color:var(--or);font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;padding:6px 10px">`+
       `<span style="flex:1;min-width:0">🔗 Automatische bevindingen (${hits.length})</span>`+
       `<button type="button" onclick="bevindingenZet(false)" title="Balk uitzetten — de AI krijgt de bevindingen wél gewoon mee" style="flex:none;width:20px;height:20px;border-radius:5px;border:1px solid var(--or);background:transparent;color:var(--or);font-size:11px;font-weight:800;cursor:pointer;line-height:1">✕</button>`+
     `</div>`+
-    zichtbaar.map(_bevRegelHtml).join('')+
+    zichtbaar.map(h=>_bevRegelHtml(h,false)).join('')+
     (rest>0
-      ? `<button type="button" onclick="openBevindingen()" style="display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-top:1px solid var(--bd);background:var(--sur2);color:var(--bl);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">nog ${rest} bevinding${rest===1?'':'en'} — bekijk alles →</button>`
+      ? `<button type="button" onclick="openBevindingen()" style="display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-top:1px solid var(--bd);background:var(--sur2);color:var(--bl);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">nog ${rest} bevinding${rest===1?'':'en'}${_bevVerborgen.size?' (waarvan '+alle.filter(h=>_bevVerborgen.has(h.id)).length+' verborgen)':''} — bekijk alles →</button>`
       : `<button type="button" onclick="openBevindingen()" style="display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-top:1px solid var(--bd);background:var(--sur2);color:var(--tx3);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">bekijk in een venster →</button>`);
   _bevSheetBij();
 }
@@ -185,7 +243,7 @@ function _bevSheetBij(forceer){
   if(!forceer && ov.style.display!=='flex') return;
   const hits=_bevToon||[];
   const rijen = hits.length
-    ? hits.map(_bevRegelHtml).join('')
+    ? hits.map(h=>_bevRegelHtml(h,true)).join('')
     : '<div class="emp" style="padding:22px 0"><div class="ei">🔗</div><h3>Geen bevindingen</h3><p>De correlatie-engine ziet op dit moment geen verdacht patroon.</p></div>';
   const seg=(aan,lbl)=>'<button type="button" class="kb-seg'+((_bevAan===aan)?' on':'')+'" onclick="bevindingenZet('+aan+')">'+lbl+'</button>';
   ov.innerHTML='<div class="ai-sheet">'+
@@ -199,7 +257,8 @@ function _bevSheetBij(forceer){
         '</div>'+
         '<div style="display:flex;gap:5px;flex:none">'+seg(true,'Aan')+seg(false,'Uit')+'</div>'+
       '</div>'+
-      '<div style="font-size:11px;color:var(--tx3);margin-bottom:4px">In de live view staan de '+BEV_MAX+' ernstigste; hieronder staat alles.</div>'+
+      '<div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--tx3);margin-bottom:4px"><span style="flex:1">In de live view staan de '+BEV_MAX+' ernstigste; hieronder staat alles. ✕ of dubbeltik in de live view verbergt er een.</span>'+
+        (_bevVerborgen.size ? '<button type="button" class="bev-x bev-terug" onclick="bevindingToonAlles()">alles weer tonen ('+_bevVerborgen.size+')</button>' : '')+'</div>'+
       '<div style="border:1px solid var(--bd);border-radius:10px;overflow:hidden">'+rijen+'</div>'+
     '</div>'+
   '</div>';

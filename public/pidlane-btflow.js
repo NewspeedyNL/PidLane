@@ -298,7 +298,7 @@ Als de verbinding al goed loopt (responstijden onder ~150ms, weinig fouten): {"o
     const after=await measureLatency();
     if(after===null||after>before*1.15){
       log(`Resultaat slechter (${before}→${after??'?'}ms) — instellingen teruggedraaid`,'warn');
-      for(const c of ELM_BASELINE) await sendCmd(c,1500);
+      for(const c of plElmBaseline()) await sendCmd(c,1500);
       showOptResult('↩️ Teruggedraaid',`De aanpassingen maakten de verbinding niet sneller (${before} → ${after??'?'} ms), dus alles is teruggezet naar de standaardinstellingen.<br><br><span style="color:var(--tx3);font-size:12px">Geprobeerd: ${cmds.join(', ')}</span>`);
       logUsage('connectie_kpi', `protocol=${selectedNetwork?.name||'?'} voor=${before}ms na=${after??'?'}ms toegepast=nee(rollback)`);
     } else {
@@ -310,7 +310,7 @@ Als de verbinding al goed loopt (responstijden onder ~150ms, weinig fouten): {"o
   }catch(e){
     log('Optimalisatie fout: '+e.message+' — baseline hersteld','err');
     showOptResult('⚠ Optimalisatie mislukt',`${e.message}<br><br>De standaardinstellingen zijn voor de zekerheid hersteld.`);
-    try{ for(const c of ELM_BASELINE) await sendCmd(c,1500); }catch(_){ log('Herstel naar de standaardinstellingen mislukt: '+(_.message||_)+' — de adapter staat mogelijk nog op de geprobeerde instellingen, verbreek en verbind opnieuw','err'); }
+    try{ for(const c of plElmBaseline()) await sendCmd(c,1500); }catch(_){ log('Herstel naar de standaardinstellingen mislukt: '+(_.message||_)+' — de adapter staat mogelijk nog op de geprobeerde instellingen, verbreek en verbind opnieuw','err'); }
   }finally{
     if(btn){btn.textContent=orig; btn.disabled=false;}
   }

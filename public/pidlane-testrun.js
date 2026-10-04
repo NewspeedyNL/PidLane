@@ -2771,6 +2771,125 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Verbindprofiel: de koude poort meet, en de CX-5 blijft op tempo (#388) ──
+  // Sinds 03-10-2026 meet de app bij elke verbinding ATST en de groepsgrootte
+  // in plaats van 400 ms en groep 3 aan te nemen. Weken werk zit in de 31,7
+  // verzoeken/s van de CX-5; die mogen er niet stil uit verdwijnen. Op een
+  // Mazda (WMI JM…) is dit dus een harde grens, op elke andere auto een
+  // verslag van wat er gemeten is — dat is de kennis die naar D1 gaat.
+  {
+    issue: '#388',
+    naam: 'Verbindprofiel ingemeten — en op de Mazda geen tempo kwijt',
+    waarom: 'Een koude poort die te krap meet maakt een gezonde auto stil; een groepsproef die te snel opgeeft verdrievoudigt het aantal verzoeken. Op de CX-5 zou je dat pas merken als de meters trager lopen.',
+    proef: async function () {
+      if (typeof connected === 'undefined' || !connected || (typeof demoMode !== 'undefined' && demoMode))
+        return { staat: 'LET OP', detail: 'niet verbonden met een echte auto — er is niets ingemeten' };
+      var V = window.PLVerbind;
+      if (!V) return { staat: 'FOUT', detail: 'PLVerbind ontbreekt — pidlane-bt.js is niet (volledig) geladen' };
+      var p = V.profiel;
+      if (!p) return { staat: 'FOUT', detail: 'verbonden, maar geen verbindprofiel — de koude poort is niet gedraaid of mislukte (zie BT-log: "Verbindprofiel")' };
+      var st = p.st || {}, gr = p.groep;
+      var sp = (typeof _connSpeed !== 'undefined' && _connSpeed) ? _connSpeed.readsPerSec : null;
+      var at = (window.PLAntwoordtal && PLAntwoordtal.stand) ? PLAntwoordtal.stand() : null;
+      var wat = 'protocol ' + p.protocol.id + (p.protocol.bits ? ' (' + p.protocol.bits + '-bit)' : '') +
+        ' · ATST 0x' + st.hex + (st.ms ? ' (' + st.ms + ' ms, ' + st.bron + ')' : ' (' + st.bron + ')') +
+        ' · groep ' + (gr ? gr.start + (gr.plafond != null ? ' plafond ' + gr.plafond : '') : 'niet gemeten') +
+        (sp != null ? ' · ' + sp + ' verzoeken/s' : '') + (at ? ' · antwoordcijfer ' + at.geleerd + ' geleerd' : '');
+      var vin = (typeof vehicleInfo !== 'undefined' && vehicleInfo && vehicleInfo.vin) ? String(vehicleInfo.vin).toUpperCase() : '';
+      if (vin.indexOf('JM') !== 0) return { staat: st.bron === 'standaard' ? 'LET OP' : 'OK', detail: wat + (st.bron === 'standaard' ? ' — ATST kon niet gemeten worden, de oude 400 ms staat' : '') };
+      var mis = [];
+      if (st.bron === 'standaard') mis.push('ATST niet gemeten');
+      if (parseInt(st.hex, 16) > 0x64) mis.push('ATST 0x' + st.hex + ' is trager dan de oude 0x64');
+      if (!gr || gr.start !== 3) mis.push('groep ' + (gr ? gr.start : '?') + ' in plaats van 3');
+      if (sp != null && sp < 25) mis.push(sp + ' verzoeken/s, onder de 25');
+      if (mis.length) return { staat: 'FOUT', detail: 'Mazda (referentie): ' + mis.join('; ') + ' — ' + wat };
+      if (at && at.verzoeken > 0 && !at.geleerd) return { staat: 'LET OP', detail: wat + ' — nog geen antwoordcijfer geleerd; rij een minuut en draai opnieuw' };
+      return { staat: 'OK', detail: 'Mazda (referentie) op tempo: ' + wat };
+    }
+  },
+
+  // ── Slim visueel: vijf weergaven met een knop Volgende (02-10-2026) ──
+  // Basis, temperatuur, emissie, verbruik en motor. Deze proef loopt de
+  // rondgang af en telt per profiel hoeveel plekken deze auto kan vullen; een
+  // profiel waar niets op komt is op deze auto een lege kaart.
+  {
+    issue: '—',
+    naam: 'Slim visueel heeft vijf weergaven en Volgende loopt ze rond',
+    waarom: 'Een weergave die op deze auto geen enkele sensor vindt, toont een lege kaart — en dat zie je pas als je er tijdens het rijden naartoe tikt.',
+    proef: async function () {
+      var P = window.PLVisProfiel;
+      if (!P) return { staat: 'FOUT', detail: 'PLVisProfiel ontbreekt — pidlane-visprofiel.js is niet geladen' };
+      var id = 'basis', rond = [id];
+      for (var i = 0; i < P.PROFIELEN.length; i++) { id = P.volgende(id); rond.push(id); }
+      if (rond.join(',') !== 'basis,temp,emissie,verbruik,motor,basis') return { staat: 'FOUT', detail: 'de rondgang is ' + rond.join(' → ') };
+      var mag = function (p) { return typeof activePIDs !== 'undefined' && activePIDs.has(p) || (typeof discoveredPIDDefs !== 'undefined' && (discoveredPIDDefs || []).some(function (d) { return d.pid === p; })); };
+      var leeg = [], tel = [];
+      P.PROFIELEN.forEach(function (pr) {
+        if (!pr.plekken) return;
+        var ind = P.indeling(pr.id, mag), n = Object.keys(ind.plekken).filter(function (k) { return ind.plekken[k]; }).length;
+        tel.push(pr.naam.toLowerCase() + ' ' + n + '/' + pr.plekken.length);
+        if (!n) leeg.push(pr.naam);
+      });
+      if (typeof connected === 'undefined' || !connected) return { staat: 'LET OP', detail: 'niet verbonden — rondgang goed, de plekken zijn niet te tellen (' + tel.join(', ') + ')' };
+      return { staat: leeg.length ? 'LET OP' : 'OK', detail: 'nu: ' + (PLVisueel.profiel ? PLVisueel.profiel() : '?') + '; plekken op deze auto: ' + tel.join(', ') + (leeg.length ? ' — leeg op deze auto: ' + leeg.join(', ') : '') };
+    }
+  },
+
+  // ── Eén bevinding verbergen (02-10-2026) ──
+  // Met ✕ of een dubbeltik. Verbergen is alleen het scherm: de AI krijgt hem
+  // nog mee. De proef verbergt een nep-id en kijkt of de zeef hem weghaalt en
+  // de rest laat staan, en zet daarna alles terug.
+  {
+    issue: '—',
+    naam: 'Een verborgen bevinding verdwijnt uit beeld en de rest blijft staan',
+    waarom: 'Een zeef die te veel weghaalt, verbergt een waarschuwing die niemand wegklikte.',
+    proef: async function () {
+      if (typeof bevindingZichtbaar !== 'function' || typeof _bevVerborgen === 'undefined')
+        return { staat: 'FOUT', detail: 'bevindingZichtbaar/_bevVerborgen ontbreken in pidlane-correlatie.js' };
+      var nep = [{ id: '__b5_weg' }, { id: '__b5_blijft' }];
+      var had = _bevVerborgen.has('__b5_weg');
+      _bevVerborgen.add('__b5_weg');
+      var over = bevindingZichtbaar(nep).map(function (h) { return h.id; });
+      if (!had) _bevVerborgen.delete('__b5_weg');
+      if (over.join(',') !== '__b5_blijft') return { staat: 'FOUT', detail: 'na verbergen van één staat er: ' + (over.join(',') || 'niets') };
+      var n = _bevVerborgen.size;
+      return { staat: 'OK', detail: 'de zeef haalt alleen de verborgen bevinding weg' + (n ? '; deze sessie ' + n + ' verborgen door de bestuurder' : '') };
+    }
+  },
+
+  // ── Geen e-mailadres naar de server (01-10-2026) ──
+  // Gedrag in de draaiende app: het veldlabrecord van een klant gaat zonder
+  // e-mailadres de deur uit, ook als het in een foutregel staat.
+  {
+    issue: 'release 3.1',
+    naam: 'Een veldlabrecord van een klant gaat zonder e-mailadres de deur uit',
+    waarom: 'Het e-mailadres van een klant ging mee als Tester en als User in elke logregel, terwijl het akkoordscherm "zonder je naam, e-mailadres of kenteken" belooft.',
+    proef: async function () {
+      if (typeof _vlSchoonVoorVerzending !== 'function' || typeof _vlGeenEmail !== 'function') return { staat: 'FOUT', detail: '_vlSchoonVoorVerzending of _vlGeenEmail ontbreekt — pidlane-veldlab.js is oud of niet geladen' };
+      var uit = await _vlSchoonVoorVerzending({ t: 1, tester: 'proef@voorbeeld.nl', errs: ['Sessie hersteld: proef@voorbeeld.nl'] });
+      var blob = JSON.stringify(uit);
+      if (blob.indexOf('@') >= 0) return { staat: 'FOUT', detail: 'er staat nog een e-mailadres in het record: ' + blob.slice(0, 160) };
+      if (_vlGeenEmail('beheer') !== 'beheer') return { staat: 'FOUT', detail: 'een gebruikersnaam zonder @ wordt ook weggehaald' };
+      return { staat: 'OK', detail: 'Tester leeg, adres in de tekst vervangen door [e-mail]' };
+    }
+  },
+
+  // ── Uitloggen tijdens de demo blijft uitgelogd (01-10-2026) ──
+  // Gedrag in de draaiende app: de sleutels die pidlane-auth.js voor het
+  // sessietoken en het uitloggen gebruikt, gaan door de demo-zandbak heen.
+  {
+    issue: 'release 3.1',
+    naam: 'Uitloggen tijdens de demo wist het sessietoken echt, ook als de demo daarna stopt',
+    waarom: 'pl_tok stond niet in de doorlaatlijst van de zandbak: uitloggen in de demo wiste het token alleen in de laag, plDemoStop() gooide die weg, en de volgende start logde je vanzelf weer in.',
+    proef: async function () {
+      if (!window.PLDemo || !PLDemo._kern || !Array.isArray(PLDemo._kern.DOORLAAT)) return { staat: 'FOUT', detail: 'PLDemo._kern.DOORLAAT ontbreekt — pidlane-demo.js is oud of niet geladen' };
+      if (typeof TOK_KEY !== 'string' || typeof UITLOG_KEY !== 'string') return { staat: 'FOUT', detail: 'TOK_KEY of UITLOG_KEY ontbreekt — pidlane-auth.js is oud of niet geladen' };
+      var mist = [TOK_KEY, UITLOG_KEY].filter(function (k) { return PLDemo._kern.DOORLAAT.indexOf(k) < 0; });
+      if (mist.length) return { staat: 'FOUT', detail: 'niet in de doorlaatlijst: ' + mist.join(', ') + ' — uitloggen in de demo wordt bij het stoppen teruggedraaid' };
+      return { staat: 'OK', detail: TOK_KEY + ' en ' + UITLOG_KEY + ' gaan door de zandbak' };
+    }
+  },
+
   // ── De meetrit van 01-10-2026: elke rit-vraag een getal ──
   // Gedrag in de draaiende app: elke naam op de witte lijst van PLOpdracht
   // geeft in zijn eigen module een getal of null, en de vijf meetopdrachten
@@ -6466,7 +6585,7 @@ const PROEVEN_B5 = [
       gemeten += 'een bekende PID die ontbreekt telt als onvolledig. ';
 
       var gp = PLAdapter.laatsteGroepsproef();
-      if (!gp) return { staat: 'LET OP', detail: gemeten + 'De groepsproef is deze sessie niet gedraaid — adapterpaneel → 📦 Start de groepsproef (zie de campagne en #333).' };
+      if (!gp) return { staat: 'LET OP', detail: gemeten + 'De groepsproef is deze sessie niet gedraaid — adapterpaneel → 📦 Groepsproef (zie de campagne en #333).' };
       if (gp.afgebroken) return { staat: 'LET OP', detail: gemeten + 'De groepsproef brak af: ' + gp.afgebroken };
       var a = gp.advies || {};
       var tabel = (a.groepen || []).map(function (x) {
@@ -9396,11 +9515,11 @@ const CAMPAGNE = {
     '── MEETRIT 1, ALLEEN, ±45 MINUTEN ────────',
     'STAP 0 — VOORAF, MOTOR KOUD. Nieuwste versie laden (Meer → Admin). De MX+ erin. Een nieuwe APK is niet nodig.',
     'STAP 1 — VERBINDEN (#376). Check mijn auto opent vanzelf. Vindt hij niets, dan loopt er een balk van vijf seconden: raak niets aan en kijk of je "Alles in orde" kunt lezen voordat hij naar Live gaat.',
-    'STAP 2 — GROEPSPROEF A, KOUD EN STIL (#333). Tik op de OBD-chip → 📦 Start de groepsproef. Twee minuten, de meters staan stil, laat de app open. Meldt hij drift, doe hem dan meteen nog eens.',
+    'STAP 2 — GROEPSPROEF A, KOUD EN STIL (#333). Tik op de OBD-chip → 📦 Groepsproef. Twee minuten, de meters staan stil, laat de app open. Meldt hij drift, doe hem dan meteen nog eens.',
     'STAP 3 — 🔄 OPNIEUW VERBINDEN in hetzelfde paneel. Vanaf hier telt het half uur van #302; de groepsproef zit dan niet in die meting.',
     'STAP 4 — DERTIG MINUTEN RIJDEN IN SLIM VISUEEL, ZONDER TE VERBREKEN (#302, #337, #338). Onderweg: een paar keer vanuit stilstand stevig optrekken en daarna het gas helemaal los, een stuk boven 50 km/u, en één keer stilstaan. Laat waakronde en bulk-recorder zoals je ze normaal hebt.',
     'STAP 5 — TWEE MINUTEN BEELD-IN-BEELD (#319, #338). Onderweg, met de navigatie: thuisknop, PidLane staat klein; minstens twee minuten, dan terug naar de app.',
-    'STAP 6 — GROEPSPROEF B, WARM EN STIL (#333). Na het half uur stilstaan op een veilige plek, motor draaiend. Eerst 🔄 Opnieuw verbinden, dan 📦 Start de groepsproef.',
+    'STAP 6 — GROEPSPROEF B, WARM EN STIL (#333). Na het half uur stilstaan op een veilige plek, motor draaiend. Eerst 🔄 Opnieuw verbinden, dan 📦 Groepsproef.',
     'STAP 7 — VERZENDEN. Meetkamer → alle afgeronde opdrachten verzenden, en beantwoord de vragen. Daarna eventueel de testrun.',
     '── MEETRIT 2, MET BIJRIJDER, ±10 MINUTEN ────────',
     'GROEPSPROEF C, RIJDEND (#333). Constante snelheid boven 50 km/u, de bijrijder start de groepsproef. Alleen met een bijrijder.',

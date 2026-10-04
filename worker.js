@@ -133,7 +133,7 @@ __name(originToegestaan, "originToegestaan");
 // twee routes die tegoed verbruiken. Een nieuwe route hoort hier standaard in;
 // laat hem er alleen uit als hij echt publiek moet zijn.
 function isRestrictedPath(pathname) {
-  return pathname.startsWith("/auth/") || pathname.startsWith("/admin/") || pathname.startsWith("/session/") || pathname.startsWith("/pair/") || pathname.startsWith("/code/") || pathname.startsWith("/klant/") || pathname.startsWith("/credits/") || pathname.startsWith("/v1/") || pathname.startsWith("/airtable/") || pathname === "/copilot" || pathname === "/proxy" || pathname === "/api/config";
+  return pathname.startsWith("/auth/") || pathname.startsWith("/admin/") || pathname.startsWith("/session/") || pathname.startsWith("/pair/") || pathname.startsWith("/code/") || pathname.startsWith("/klant/") || pathname.startsWith("/credits/") || pathname.startsWith("/v1/") || pathname.startsWith("/airtable/") || pathname.startsWith("/verbind/") || pathname === "/copilot" || pathname === "/proxy" || pathname === "/api/config";
 }
 __name(isRestrictedPath, "isRestrictedPath");
 function lockOrigin(request, resp) {
@@ -1078,6 +1078,73 @@ async function handleVeldlab(request, env) {
   return json({ records: gemaakt }, 200);
 }
 __name(handleVeldlab, "handleVeldlab");
+
+// ── VERBINDPROFIELEN: de kennisbank vult zich uit echte verbindingen (#388) ──
+// Per verbinding stuurt de app wat de koude poort mat (PLVerbind in
+// pidlane-bt.js): protocol, ATST, groepsgrootte, adaptertype, plus merk/model
+// en de fabrikantcode (WMI). Daarmee groeit per merk een beeld van wat werkt,
+// gemeten in plaats van overgeschreven uit een forumlijst. Zie
+// PIDLANE-VERBINDPROFIEL.md §5.7.
+//
+// PERSOONSGEGEVENS. Alleen het pseudoniem van de VIN (16 hex, uit
+// _vlVinPseudoniem) — nooit de VIN zelf, nooit het kenteken, nooit een naam of
+// e-mailadres. Elk veld wordt hieronder op vorm gekeurd; vrije tekst is
+// alleen merk/model/brandstof, ingekort. De toestemmingstekst noemt dit sinds
+// 03-10-2026 (AKKOORD_TEKST_SINDS).
+//
+// Het schema maakt zichzelf aan, zoals app_config; schema.sql draagt dezelfde
+// regel zodat hij ook daar terug te lezen is.
+var VERBIND_SCHEMA = "CREATE TABLE IF NOT EXISTS verbindprofielen (id INTEGER PRIMARY KEY AUTOINCREMENT, ontvangen TEXT NOT NULL, vin_pseudo TEXT, wmi TEXT, merk TEXT, model TEXT, jaar TEXT, brandstof TEXT, adapter TEXT, protocol TEXT, bits INTEGER, st_hex TEXT, st_ms INTEGER, traagst_ms INTEGER, st_bron TEXT, groep INTEGER, groep_plafond INTEGER, pids_ondersteund INTEGER, reads_per_sec REAL)";
+var _verbindSchemaKlaar = false;
+
+// Puur, zie test-verbindprofiel.js. Keurt één record; null = weigeren.
+function verbindRecordSchoon(b) {
+  if (!b || typeof b !== "object") return null;
+  // Een @ hoort niet in een merk- of modelnaam: dan is het een e-mailadres
+  // dat ergens in vehicleInfo terechtkwam, en dat gaat hier niet door.
+  const tekst = (v, max) => (typeof v === "string" && v.indexOf("@") === -1 ? v.replace(/[\u0000-\u001f]/g, "").slice(0, max) : "");
+  const geheel = (v, min, max) => (typeof v === "number" && Number.isInteger(v) && v >= min && v <= max ? v : null);
+  const vorm = (v, re) => (typeof v === "string" && re.test(v) ? v : null);
+  const r = {
+    vin_pseudo: vorm(b.vin_pseudo, /^[0-9a-f]{16}$/),
+    wmi: vorm(b.wmi, /^[A-HJ-NPR-Z0-9]{3}$/),
+    merk: tekst(b.merk, 40), model: tekst(b.model, 60),
+    jaar: vorm(b.jaar, /^(19|20)\d\d$/), brandstof: tekst(b.brandstof, 20),
+    adapter: vorm(b.adapter, /^(spp|ble|serial|webbt|\?)$/),
+    protocol: vorm(b.protocol, /^A?[0-9A-C]$/),
+    bits: [0, 11, 29].includes(b.bits) ? b.bits : null,
+    st_hex: vorm(b.st_hex, /^[0-9A-F]{2}$/),
+    st_ms: geheel(b.st_ms, 4, 1020), traagst_ms: geheel(b.traagst_ms, 0, 60000),
+    st_bron: vorm(b.st_bron, /^(gemeten|geheugen|standaard|bijgestuurd|handmatig)$/),
+    groep: geheel(b.groep, 1, 6), groep_plafond: geheel(b.groep_plafond, 1, 6),
+    pids_ondersteund: geheel(b.pids_ondersteund, 0, 1000),
+    reads_per_sec: typeof b.reads_per_sec === "number" && isFinite(b.reads_per_sec) && b.reads_per_sec >= 0 && b.reads_per_sec < 1000 ? b.reads_per_sec : null
+  };
+  // Zonder protocol en ATST is er niets gemeten: dan is het geen profiel.
+  if (!r.protocol || !r.st_hex) return null;
+  return r;
+}
+__name(verbindRecordSchoon, "verbindRecordSchoon");
+
+async function handleVerbindProfiel(request, env) {
+  if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
+  if (!env.LOGDB) return json({ error: "no_logdb" }, 500);
+  let b;
+  try { b = await request.json(); } catch { return json({ error: "bad_json" }, 400); }
+  const r = verbindRecordSchoon(b);
+  if (!r) return json({ error: "invalid_record" }, 422);
+  try {
+    if (!_verbindSchemaKlaar) { await env.LOGDB.prepare(VERBIND_SCHEMA).run(); _verbindSchemaKlaar = true; }
+    const kol = Object.keys(r);
+    await env.LOGDB.prepare(
+      "INSERT INTO verbindprofielen (ontvangen, " + kol.join(", ") + ") VALUES (?, " + kol.map(() => "?").join(", ") + ")"
+    ).bind(new Date().toISOString(), ...kol.map((k) => r[k])).run();
+  } catch (e) {
+    return json({ error: "d1_write_failed", detail: String(e && e.message || e).slice(0, 200) }, 502);
+  }
+  return json({ ok: true }, 200);
+}
+__name(handleVerbindProfiel, "handleVerbindProfiel");
 // ═════════════════════════════════════════════════════════════════
 //  DE MEETOPDRACHT VOOR DE VOLGENDE TESTRUN (#241)
 // ──────────────────────────────────────────────────────────────────
@@ -2872,7 +2939,7 @@ __name(klantToegangProbleem, "klantToegangProbleem");
 // de VIN-logregel hierboven voor waar dat al eens misging. Hergebruik van een
 // bestaand veld is hier dus niet netheid maar het verschil tussen wel en niet
 // werken.
-const AKKOORD_TEKST_SINDS = "2026-08-27T00:00:00.000Z";
+const AKKOORD_TEKST_SINDS = "2026-10-03T00:00:00.000Z";   // 03-10-2026: verbindprofielen (#388) staan in de tekst
 
 
 function klantPubliek(rec) {
@@ -5679,6 +5746,33 @@ __name(handleKlantPlatform, "handleKlantPlatform");
 // resultaat én in de log terecht: een opruimer die zwijgend niets doet is
 // hier het gevaarlijkst van alles, want dan blijft er persoonsgegeven staan
 // terwijl de verklaring zegt dat het weg is.
+// De sporen van een klant buiten Mijn voertuigen (01-10-2026). Tot die dag
+// stond het e-mailadres als User in elke logregel en als Tester in elk
+// veldlabrecord. De app stuurt het sindsdien niet meer mee, maar wat er al
+// stond hoort bij het account en gaat mee weg: privacy.html belooft dat het
+// account met bijbehorende gegevens binnen de termijn gewist is. Alleen
+// tabellen die er al zijn: een opruimronde maakt niets aan en zet niets over.
+async function klantSporenWissen(db, email) {
+  const adres = String(email || "").trim();
+  const uit = { logregels: 0, veldlab: 0 };
+  if (!adres || adres.indexOf("@") < 0) return uit;
+  const r = await db.prepare(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('logregels', 'veldlab_sessies')"
+  ).all();
+  const er = new Set(((r && r.results) || []).map((x) => x.name));
+  if (er.has("logregels")) {
+    const w = await db.prepare('DELETE FROM logregels WHERE LOWER("User") = LOWER(?)').bind(adres).run();
+    uit.logregels = Number((w && w.meta && w.meta.changes) || 0);
+  }
+  if (er.has("veldlab_sessies")) {
+    const w = await db.prepare(
+      'DELETE FROM veldlab_sessies WHERE LOWER("Tester") = LOWER(?) OR INSTR(LOWER("JSON"), LOWER(?)) > 0'
+    ).bind(adres, adres).run();
+    uit.veldlab = Number((w && w.meta && w.meta.changes) || 0);
+  }
+  return uit;
+}
+__name(klantSporenWissen, "klantSporenWissen");
 async function klantWachtrijOpruimen(env, nu) {
   const grens = (nu || new Date());
   const uit = { bekeken: 0, verwijderd: [], mislukt: [], wacht: [] };
@@ -5714,8 +5808,9 @@ async function klantWachtrijOpruimen(env, nu) {
       try {
         await kpSchema(env.LOGDB);
         const w = await kpAlleWissen(env.LOGDB, await kpKlantId(emailVan[id]));
+        const sporen = await klantSporenWissen(env.LOGDB, emailVan[id]);
         uit.platform = uit.platform || [];
-        uit.platform.push({ id, gewist: w });
+        uit.platform.push({ id, gewist: w, sporen });
       } catch (e) {
         uit.mislukt.push({ id, reden: "d1_platform: " + String(e && e.message || e).slice(0, 120) });
         rijp.splice(i, 1);
@@ -5976,6 +6071,8 @@ var worker_default = {
         return lockOrigin(request, await handleLog(request, env));
       if (url.pathname === "/airtable/veldlab" && request.method === "POST")
         return lockOrigin(request, await handleVeldlab(request, env));
+      if (url.pathname === "/verbind/profiel" && request.method === "POST")
+        return lockOrigin(request, await handleVerbindProfiel(request, env));
       if (url.pathname === "/airtable/reference" && request.method === "POST")
         return lockOrigin(request, await handleReferentie(request, env));
       if (url.pathname === "/airtable/opdracht" && request.method === "GET")

@@ -23,6 +23,55 @@
  - De nachtronde doet hetzelfde zodra LOG_BEWAARDAGEN in het dashboard staat.
  - test-logarchief.js (32 toetsen, echte SQLite), deel 7b van
    bproef-beheerpagina.js, zeven mutaties.
+ 02-10-2026 — UI-ronde uit het gebruik: rustiger, en vijf weergaven
+ ═══════════════════════════════════════════════════════════
+
+ - Slim visueel: vijf weergaven met een knop Volgende boven de meter —
+   basis (ongewijzigd), temperatuur (glas), emissie (licht), verbruik
+   (digitaal), motor (neon). Nieuw: pidlane-visprofiel.js, test-visprofiel.js.
+ - Bevindingen: per bevinding verbergen met ✕ of een dubbeltik, ook in Slim
+   visueel; terughalen in "bekijk alles". De AI krijgt ze gewoon mee.
+ - Instellingen: garagemodus, Check na verbinden en Uitleg bij knoppen staan
+   standaard uit; Check na verbinden gaat na één keer vanzelf weer uit.
+ - Live: de deel-chip staat in de topbalk; de aandrijfregel ("Rijdt op
+   motor") is een rustige regel met stipje en icoon in plaats van een oranje
+   blok; vier actieknoppen twee bij twee; snelkoppelingen onder de meter op
+   één regel.
+ - Statusmenu: Auto-dossier, Adapter (OBD), AI-uitleg en Achtergrond, elk met
+   een regel uitleg en de stand van nu.
+ - Diagnose delen: eerst kiezen hoe (code, QR, link, plakcode), dan staat
+   alleen die manier in beeld.
+ - Verbindingsvenster: alle knoppen in één vak onderaan dat blijft plakken.
+ - Admin-menu: de acht SPP-proeven onder één regel SPP-controle.
+ - Startscherm: de vier tegels hebben hun achtergrondbeelden terug.
+ - Verbindscherm en loginpagina rustiger: één hoofdknop, kleiner logo; de
+   login is een glazen kaart in plaats van de overvolle cirkel.
+ - Sensorkeuze: voertuigblok ingeklapt met de autonaam in de kop, doelen als
+   chips die bij de motorsoort passen, een teller die waarschuwt bij te veel.
+ - Blok 5: twee proeven (rondgang van de weergaven, de zeef van verbergen).
+
+ ═══════════════════════════════════════════════════════════
+ 01-10-2026 — Vóór de productierelease: demo, e-mailadres, verwijderen
+ ═══════════════════════════════════════════════════════════
+
+ - Demo-zandbak: pl_tok en pl_uitloggen gaan door de laag. Uitloggen tijdens
+   de demo wiste het sessietoken alleen in de laag; plDemoStop() gooide die
+   weg, en bij de volgende start was je vanzelf weer ingelogd.
+ - Geen e-mailadres meer naar de server: Tester (veldlab) en User (logregels)
+   zijn leeg voor een klant, en een adres in de tekst wordt "[e-mail]".
+   Beheerder- en testernamen zonder @ blijven staan.
+ - Account verwijderen: de nachtelijke opruimer wist ook de logregels en
+   veldlabrecords met het e-mailadres van die klant (klantSporenWissen),
+   vóór het klantrecord.
+ - privacy.html noemt de technische logregels en waar het account staat; de
+   zin "je e-mailadres staat niet in die database" klopte sinds #381 niet.
+ - PLAY-INZENDING.md: de reviewnotitie (§7) beschrijft de demo zoals hij is
+   (voorbeeldrapport, knopnaam na inloggen), Diagnostics staat in Data safety
+   (§11), §12 en §16c bijgewerkt.
+ - Blok 5: twee proeven (doorlaatlijst van de zandbak, geen e-mailadres in
+   een veldlabrecord).
+
+ ═══════════════════════════════════════════════════════════
  01-10-2026 — De meetrit: elke rit-vraag een getal (testrun 8.7)
  ═══════════════════════════════════════════════════════════
 

@@ -26,7 +26,22 @@ window.PLRemote=(function(){
   }
 
   /* ── LOCAL: delen ─────────────────────────────────────────────── */
-  function openShare(){$('remShareOv').classList.add('open');}
+  function openShare(){$('remShareOv').classList.add('open');deelMethode();}
+  /* Welke manier van delen in beeld staat (02-10-2026). Eén tegelijk; de
+     keuze blijft bewaard, zodat wie altijd een link stuurt niet elke keer
+     hoeft te kiezen. Zonder keuze: de meekijk-code, want die werkt ook
+     telefonisch. */
+  const DEEL_SLEUTEL='pl_deel_methode', DEEL_MANIEREN=['code','qr','link','los'];
+  function deelMethode(m){
+    if(DEEL_MANIEREN.indexOf(m)<0){
+      try{ m=localStorage.getItem(DEEL_SLEUTEL); }catch(e){ console.warn('Deelmanier niet te lezen', e); m=null; }
+      if(DEEL_MANIEREN.indexOf(m)<0) m='code';
+    } else {
+      try{ localStorage.setItem(DEEL_SLEUTEL,m); }catch(e){ console.warn('Deelmanier niet op te slaan', e); }
+    }
+    document.querySelectorAll('#remShareOn [data-deel]').forEach(function(e){ e.classList.toggle('aan', e.getAttribute('data-deel')===m); });
+    return m;
+  }
   function closeShare(){$('remShareOv').classList.remove('open');}
   function setShareStat(s){$('remShareStat').textContent=s;}
   /* 2026-07-22: naast tonen/verbergen zetten we ook .rem-pill-on op <html>.
@@ -49,7 +64,7 @@ window.PLRemote=(function(){
     }catch(e){err.textContent='⚠ Kon geen sessie starten: '+(e.message||e);return;}
     err.textContent='';
     S.sess=j;S.mode='local';S.stopFlag=false;S.backoff=1000;S.exp=j.exp||0;S.lastExpN=0;
-    $('remShareOff').style.display='none';$('remShareOn').style.display='';
+    $('remShareOff').style.display='none';$('remShareOn').style.display='';deelMethode();
     $('remSid').textContent=j.sessionId;
     $('remLink').value=shareLink(j.sessionId,j.joinToken);
     renderShareQr($('remLink').value);
@@ -888,7 +903,7 @@ window.PLRemote=(function(){
     logA('Gekopieerd naar klembord','ok');
   }
 
-  return {openShare,closeShare,shareStart,shareStop,copy,
+  return {openShare,deelMethode,closeShare,shareStart,shareStop,copy,
           openExpert,expertClose,expertConnect,expertDisconnect,reqPids,reqDtc,enterDrive,
           remRecStart,remRecStop,remRecCsv,remAnalyze,pairStart,
           stopQrScan,scanForJoin,scanForPair};

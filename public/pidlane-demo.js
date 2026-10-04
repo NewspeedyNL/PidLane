@@ -325,7 +325,12 @@ window.plDemoZonderLogin = plDemoZonderLogin;
 
   // Gaat ook in de demo echt naar het toestel: de sessie en de sleutel van
   // wie er inlogt. Niets dat over een auto gaat.
-  var DOORLAAT = ['pl_session', 'pl_sessie', 'ns_api_key'];
+  // pl_tok (TOK_KEY) en pl_uitloggen (UITLOG_KEY) in pidlane-auth.js stonden
+  // hier tot 01-10-2026 niet bij: uitloggen tijdens de demo wiste het
+  // sessietoken alleen in de laag, plDemoStop() gooide die weg, en bij de
+  // volgende start was je weer ingelogd. test-demozandbak.js legt deze lijst
+  // naast de sleutels die pidlane-auth.js echt gebruikt.
+  var DOORLAAT = ['pl_session', 'pl_sessie', 'pl_tok', 'pl_uitloggen', 'ns_api_key'];
 
   // /klant/platform: de acties die alleen lezen. worker.js (KP_ACTIES) is de
   // bron; test-demozandbak.js legt deze lijst ernaast en eist dat geen van

@@ -58,11 +58,13 @@
   //  PURE FUNCTIES
   // ════════════════════════════════════════════════════════════════
 
-  /* Wie krijgt de garagemodus zonder erom te vragen? Een ingelogd account dat
-     geen consument is: beheer en personeel van een garage (#49). Een klant en
-     de demo zonder login — die een Play-reviewer ziet — beginnen eenvoudig. */
+  /* Wie krijgt de garagemodus zonder erom te vragen? Niemand meer (02-10-2026,
+     uit het gebruik). Tot die datum kreeg een ingelogd account dat geen
+     consument is hem vanzelf (#49), maar ook een garage begint liever met het
+     rustige scherm en zet de vakgereedschappen er zelf bij. De parameters
+     blijven: wie hem aanroept hoeft niet te weten dat de regel versimpeld is. */
   function garageStandaard(ingelogd, isKlant) {
-    return !!ingelogd && !isKlant;
+    return false;
   }
 
   // Een eigen keuze wint altijd van de standaard, in beide richtingen.
@@ -122,7 +124,10 @@
   }
 
   function garage() { return garageAan(lees(OPSLAG.garage), garageStandaard(ingelogd(), isKlant())); }
-  function autoCheck() { return lees(OPSLAG.autocheck) !== '0'; }
+  /* Check na verbinden staat standaard UIT en gaat na één keer vanzelf weer
+     uit (02-10-2026): wie hem aanzet vraagt om de volgende verbinding, niet om
+     elke verbinding voortaan. */
+  function autoCheck() { return lees(OPSLAG.autocheck) === '1'; }
 
   function logGebruik(wat, detail) {
     try { logUsage(wat, detail); }
@@ -209,6 +214,8 @@
     if (opties.hervat || _gecheckt || !autoCheck() || isDemo()) return false;
     if (window._remoteVehicleMode) return false;   // meekijken: deze telefoon hangt niet aan de auto
     _gecheckt = true;       // één keer per sessie; opnieuw verbinden is geen nieuwe vraag
+    schrijf(OPSLAG.autocheck, '0');   // eenmalig: na deze keer staat hij weer uit
+    ververs();
     logGebruik('check', 'na_verbinden');
     setTimeout(function () { try { PLFoutcodes.open({ auto: true }); } catch (e) { console.warn('PLNav: automatische check opent niet', e); } }, 350);
     return true;
@@ -224,8 +231,10 @@
     if (typeof showToast === 'function') showToast(aan ? 'Garagemodus aan — alle vakgereedschappen staan erbij' : 'Garagemodus uit');
   }
   function zetAutoCheck(aan) {
-    schrijf(OPSLAG.autocheck, aan ? null : '0');
+    schrijf(OPSLAG.autocheck, aan ? '1' : '0');
+    if (aan) _gecheckt = false;       // opnieuw aangezet = opnieuw één keer
     ververs();
+    if (typeof showToast === 'function') showToast(aan ? 'Check na verbinden aan — één keer, bij de volgende verbinding' : 'Check na verbinden uit');
   }
   function verversSchakelaars() {
     var g = el('kbGarageModus'); if (g) g.setAttribute('aria-checked', garage() ? 'true' : 'false');

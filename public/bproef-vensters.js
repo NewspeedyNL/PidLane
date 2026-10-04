@@ -133,7 +133,8 @@ function toets(naam, waar, uitleg) {
       toggleVehicleSection();
       return { voor, na };
     })()`);
-    toets('de inklapknop bij "Voertuig" zegt wat hij doet', /Inklappen/.test(klap.voor) && /Uitklappen/.test(klap.na),
+    // Sinds 02-10-2026 begint het blok ingeklapt; de knop zegt dus eerst Uitklappen.
+    toets('de inklapknop bij "Voertuig" zegt wat hij doet', /Uitklappen/.test(klap.voor) && /Inklappen/.test(klap.na),
           JSON.stringify(klap));
 
     console.log('\n1. Beide modules zijn geladen en bereikbaar vanaf hun kaart');

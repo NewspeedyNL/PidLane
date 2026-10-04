@@ -124,7 +124,7 @@ const ECU = {
     console.log('\n── 7. na het verbinden: niets gevonden → vanzelf naar Live ──');
     const SCHOON = { '0101': '41 01 00 07 65 00', '03': '43 00', '07': '47 00', '0A': '4A 00', '010C': '41 0C 00 00', '010D': '41 0D 00' };
     await app.nepAdapter(SCHOON);
-    await app.ev(`setPidView('overzicht'); PLFoutcodes.staat().scan = null; PLNav.naVerbinding(); 'ok'`);
+    await app.ev(`setPidView('overzicht'); PLFoutcodes.staat().scan = null; if (!PLNav.autoCheck()) PLNav.wisselAutoCheck(); PLNav.naVerbinding(); 'ok'`);
     toets('de balk staat er na de uitlezing', await wacht(`!!document.querySelector('#plFcOv .fc-door')`, 15000));
     toets('het oordeel is groen', await app.ev(`!!document.querySelector('#plFcOv .fc-oordeel.groen')`));
     toets('na het aftellen is het venster dicht', await wacht(`getComputedStyle(document.getElementById('plFcOv')).display === 'none'`, 8000));
