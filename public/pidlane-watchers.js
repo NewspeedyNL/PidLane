@@ -237,15 +237,15 @@ const PLWatch = {
       // een rode melding op een gezonde motor. Boven 112 °C moet het nu 20 s
       // aanhouden (een korte piek na stilstaan is nawarmte), boven 118 °C is
       // het meteen raak: daar zit je dicht bij het kookpunt onder druk.
-      check(c){ const t=c.val('0105');
-        if(typeof t!=='number' || t<=112) return null;
+      check(c){ const t=c.val('0105'), GRENS=112, DIRECT=118;
+        if(typeof t!=='number' || t<=GRENS) return null;
         // hoe lang staat hij al boven 112? Terug langs de reeks zolang dat zo
         // is. Het venster is 90 s zodat ook een trage poll (koelwater elke
         // 60 s) twee metingen haalt.
         const w=c.winT('0105',90000); let i=w.length-1;
-        while(i>0 && w[i-1].v>112) i--;
+        while(i>0 && w[i-1].v>GRENS) i--;
         const aanhoudend = w.length>=2 && w[w.length-1].t-w[i].t>=20000;
-        if(t>118 || aanhoudend) return `koelwater ${t}°C — oververhitting, direct aandacht`;
+        if(t>DIRECT || aanhoudend) return `koelwater ${t}°C — oververhitting, direct aandacht`;
         return null; } }
   ],
 

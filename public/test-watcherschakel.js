@@ -91,6 +91,27 @@ console.log('\n1. Schakelen bij constante snelheid is geen defect');
   toets('geen BEVROREN snelheid tijdens schakelen', !heeft(ev, /BEVROREN:010D/), 'kreeg: ' + ev.join(', '));
 }
 
+// ── 1b. een trage schakeling die alleen PLGear ziet ────────────────
+console.log('\n1b. Een trage schakeling (3 s) die PLGear wel ziet');
+{
+  // Over 3 s verschuift de verhouding per seconde maar ~10%: de eigen
+  // herkenning (12% binnen vier metingen) mist hem. PLGear toont dan een
+  // ander cijfer, en dat moet genoeg zijn.
+  const s = nieuweApp({ PLGear: { toon: 3 } });
+  const ev = rij(s, 90, t => {
+    const fase = t % 20, r3 = 40, r4 = 30;
+    let ratio;
+    if (fase < 8) ratio = r3;
+    else if (fase < 11) ratio = r3 + (r4 - r3) * (fase - 8) / 3;
+    else if (fase < 18) ratio = r4;
+    else ratio = r4 + (r3 - r4) * (fase - 18) / 2;
+    s.PLGear.toon = ratio > 35 ? 3 : 4;
+    return Object.assign({}, warm, { '010D': 55, '010C': Math.round(55 * ratio),
+      '0104': 32 + (Math.round(t * 4) % 3), '0111': 16 + (Math.round(t * 4) % 2) });
+  });
+  toets('geen RPM_CONST of RATIO_CONST bij een trage schakeling', !heeft(ev, /TEST:(RPM|RATIO)_CONST/), 'kreeg: ' + ev.join(', '));
+}
+
 // ── 2. tegenproef: echte slip vuurt wél ───────────────────────────
 console.log('\n2. Tegenproef: een geleidelijk weglopende verhouding (slip) vuurt nog');
 {

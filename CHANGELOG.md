@@ -25,7 +25,7 @@
  - TEST:ECT_HOOG en TEST:LAADSPANNING tellen nu als ernstig in het scherm.
  - Bij elke melding 👎 Klopt niet met een reden; bewaard aan de melding,
    lokaal (pl_mon_feedback) en in de logtabel (Type melding_feedback).
- - test-watcherschakel.js (24 toetsen, rood op de oude code), tien
+ - test-watcherschakel.js (25 toetsen, rood op de oude code), tien
    mutaties, blok 5-proef #400.
 
  ═══════════════════════════════════════════════════════════
