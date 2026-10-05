@@ -1612,6 +1612,37 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vpf-neon-getallen .vpf-w { font-family:var(--m); font-size:20px; color:#fff; text-shadow:0 0 8px rgba(183,140,255,.7); }
 .vpf-neon-getallen .vpf-e { font-style:normal; font-size:10px; color:#b9a8e6; }
 .vpf-neon-getallen .warn .vpf-w { color:#ffb84d; } .vpf-neon-getallen .danger .vpf-w { color:#ff4d4d; }
+/* ── Telemetrie (05-10-2026): horizon, offroad, G-cirkel ──
+   Net als neon een vaste donkere cockpit, in beide thema's: een horizon met
+   een witte lucht leest niet. De tekening draait via transform (bij()). */
+.vpf-horizon, .vpf-offroad, .vpf-gcirkel { background:radial-gradient(circle at 50% 35%, #142233, #070b12 75%); color:#e8f1ff; border:1px solid #22364d; }
+.vpf-horizon-svg, .vpf-g-svg { display:block; width:100%; max-width:280px; margin:0 auto; height:auto; }
+.vpf-hz-lucht { fill:#2f7fd1; } .vpf-hz-grond { fill:#7a4e25; }
+.vpf-hz-lijn { stroke:#fff; stroke-width:2; }
+.vpf-hz-ladder line { stroke:rgba(255,255,255,.75); stroke-width:1.5; }
+.vpf-hz-ladder text { fill:rgba(255,255,255,.8); font-family:var(--m); font-size:8px; }
+.vpf-hz-rand { fill:none; stroke:#22364d; stroke-width:6; }
+.vpf-hz-auto { fill:none; stroke:#ffd23f; stroke-width:4; stroke-linecap:round; stroke-linejoin:round; filter:drop-shadow(0 0 3px rgba(0,0,0,.6)); }
+.vpf-hz-auto-stip { fill:#ffd23f; }
+#vpf-f-helling, #vpf-f-kanteling { transition:transform .4s ease-out; }
+.vpf-tel-getallen { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:12px; }
+.vpf-tel-getallen > div { display:flex; flex-direction:column; align-items:center; padding:8px 4px; border-radius:12px; border:1px solid #22364d; background:rgba(255,255,255,.03); min-width:0; }
+.vpf-tel-getallen small, .vpf-or-vak small { font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#8fb0d6; }
+.vpf-tel-getallen .vpf-w, .vpf-or-vak .vpf-w { font-family:var(--m); font-size:22px; color:#fff; }
+.vpf-tel-getallen .vpf-e, .vpf-or-vak .vpf-e { font-style:normal; font-size:11px; color:#8fb0d6; }
+.vpf-tel-getallen .leeg, .vpf-or-vak.leeg { opacity:.45; }
+.vpf-or { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; }
+.vpf-or-vak { display:flex; flex-direction:column; align-items:center; padding:6px 4px 10px; border-radius:12px; border:1px solid #22364d; background:rgba(255,255,255,.03); min-width:0; }
+.vpf-or-vak svg { display:block; width:100%; height:auto; }
+.vpf-or-grond { stroke:#8fb0d6; stroke-width:2; stroke-dasharray:6 5; }
+.vpf-or-auto path, .vpf-or-auto rect { fill:#3ddc97; } .vpf-or-auto circle { fill:#0d1520; stroke:#3ddc97; stroke-width:4; }
+.vpf-or-auto .vpf-or-ruit { fill:#0d1520; }
+.vpf-or-vak.warn .vpf-or-auto path, .vpf-or-vak.warn .vpf-or-auto rect { fill:#ffb84d; } .vpf-or-vak.warn .vpf-or-auto circle { stroke:#ffb84d; }
+.vpf-or-vak.danger .vpf-or-auto path, .vpf-or-vak.danger .vpf-or-auto rect { fill:#ff4d4d; } .vpf-or-vak.danger .vpf-or-auto circle { stroke:#ff4d4d; }
+.vpf-g-ring { fill:none; stroke:#2c4766; stroke-width:2; } .vpf-g-ring.half { stroke-dasharray:4 4; }
+.vpf-g-as { stroke:#1d3047; stroke-width:1; }
+.vpf-g-label { fill:#8fb0d6; font-family:var(--f); font-size:8px; }
+.vpf-g-stip { fill:#ff3ea5; filter:drop-shadow(0 0 6px #ff3ea5); transition:cx .25s ease-out, cy .25s ease-out; }
 @media (prefers-reduced-motion: reduce){ .vpf * { transition:none !important; } }
 
 .vis-meld.meer { justify-content:flex-start; font-size:12px; font-weight:700; color:var(--bl); background:var(--sur2); }

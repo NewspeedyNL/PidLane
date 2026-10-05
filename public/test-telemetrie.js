@@ -129,10 +129,15 @@ ok(bijna(h.helling, 0) && bijna(h.kanteling, 0), 'rechtop en stil, genuld: 0° e
 rij(300, [0, G, 4], 80, -4);                  // remmen met 4 m/s², vooruit = −z
 h = T.nu();
 ok(Math.abs(h.helling) < 1 && Math.abs(h.kanteling) < 1, 'hard remmen op vlakke weg: geen helling (zonder correctie −22°)', h);
+const gr = T.gNu();
+ok(gr && Math.abs(gr.lengte + 0.41) < 0.03 && Math.abs(gr.dwars) < 0.03, 'Lengte-G bij 4 m/s² remmen: −0,41 g (G-cirkel)', gr);
+ok(T.defs().length === 4, 'met devicemotion ook TL03/TL04 in de keuzelijst', T.defs().map(x => x.pid));
 ok(T.stats().situatie.hardRemmen >= 1, 'en het telt als hard remmen', T.stats().situatie);
 rij(300, [-4, G, 0], 72, 0, 0.2);             // linksaf, 20 m/s × 0,2 rad/s = 4 m/s² naar links
 h = T.nu();
 ok(Math.abs(h.kanteling) < 1 && Math.abs(h.helling) < 1, 'een bocht op vlakke weg: geen kanteling (zonder correctie +22°)', h);
+const gb = T.gNu();
+ok(gb && Math.abs(gb.dwars + 0.41) < 0.03, 'Zij-G linksaf: −0,41 g (naar links)', gb);
 ok(T.stats().situatie.scherpeBocht >= 1, 'en het telt als een scherpe bocht', T.stats().situatie);
 const hel = 6 * Math.PI / 180;
 rij(300, [0, G * Math.cos(hel), -G * Math.sin(hel)], 50, 0);   // 6° klim, constante snelheid

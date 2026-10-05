@@ -41,15 +41,15 @@ function laad(bron) {
 console.log('\n1. Volgende loopt rond');
 function keurRond(bron) {
   const P = laad(bron).PLVisProfiel, uit = [];
-  if (P.PROFIELEN.length !== 5) uit.push('er zijn ' + P.PROFIELEN.length + ' weergaven, verwacht 5');
+  if (P.PROFIELEN.length !== 8) uit.push('er zijn ' + P.PROFIELEN.length + ' weergaven, verwacht 8');
   let id = 'basis'; const gezien = [id];
-  for (let i = 0; i < 5; i++) { id = P.volgende(id); gezien.push(id); }
-  if (gezien.join(',') !== 'basis,temp,emissie,verbruik,motor,basis') uit.push('de rondgang is ' + gezien.join(' → '));
+  for (let i = 0; i < 8; i++) { id = P.volgende(id); gezien.push(id); }
+  if (gezien.join(',') !== 'basis,temp,emissie,verbruik,motor,tel-horizon,tel-offroad,tel-g,basis') uit.push('de rondgang is ' + gezien.join(' → '));
   if (P.volgende('onzin') !== 'temp') uit.push('na een onbekende keuze komt ' + P.volgende('onzin'));
   return uit;
 }
 const r1 = keurRond(BRON);
-waar('basis → temperatuur → emissie → verbruik → motor → basis', r1.length === 0, r1.join('; '));
+waar('basis → temperatuur → emissie → verbruik → motor → drie keer telemetrie → basis', r1.length === 0, r1.join('; '));
 waar('tegenproef: zonder de rond-modulo stopt hij na motor',
   keurRond(BRON.replace('% PROFIELEN.length].id', '] ? PROFIELEN[i+1].id : PROFIELEN[PROFIELEN.length-1].id')).length > 0);
 
@@ -82,10 +82,12 @@ console.log('\n4. Elke PID in een keten bestaat in de app');
 const D = { console: { log() {}, warn() {} } }; D.window = D; vm.createContext(D);
 vm.runInContext(lees('pidlane-data.js'), D, { filename: 'pidlane-data.js' });
 const berekend = lees('pidlane-berekend.js');
+const telemetrie = lees('pidlane-telemetrie.js');
 function onbekend(PP) {
   const uit = [];
   PP.PROFIELEN.forEach(p => (p.plekken || []).forEach(x => x.keten.forEach(pid => {
-    const b = /^CA/.test(pid) ? new RegExp('\\b' + pid + ':\\{').test(berekend) : !!D.ALL_PID_DEFS[pid];
+    const b = /^CA/.test(pid) ? new RegExp('\\b' + pid + ':\\{').test(berekend)
+      : /^TL/.test(pid) ? new RegExp('\\b' + pid + ':\\{').test(telemetrie) : !!D.ALL_PID_DEFS[pid];
     if (!b) uit.push(p.id + '/' + x.rol + ': ' + pid);
   })));
   return uit;
@@ -138,6 +140,30 @@ const indV = V.PLVisueel.indeling();
 waar('de indeling kent het profiel', indV.profiel && indV.profiel.plekken.last === '0104', JSON.stringify(indV.profiel));
 waar('de PIDs van het profiel worden niet geremd', V.PLVisueel.gebruiktePids(indV).has('0111'));
 V.PLVisueel.stop();
+
+console.log('\n7. Telemetrie: de tekening draait mee (05-10-2026)');
+{
+  const T = laad(BRON), els = {};
+  const nep = id => (els[id] = els[id] || { attr: {}, classList: { remove() {}, add() {}, toggle() {} }, style: {},
+    setAttribute(k, v) { this.attr[k] = String(v); }, getAttribute(k) { return this.attr[k]; } });
+  T.document = { getElementById: nep };
+  const P = T.PLVisProfiel;
+  const ind = P.indeling('tel-horizon', () => true);
+  P.bij('tel-horizon', ind, 'TL01', 10, 'ok');
+  P.bij('tel-horizon', ind, 'TL02', 5, 'ok');
+  waar('horizon: neus 10° omhoog = de horizon 30 px omlaag', els['vpf-f-helling'].attr.transform === 'translate(0 30.0)', els['vpf-f-helling'].attr.transform);
+  waar('horizon: rechts 5° omlaag = de horizon draait linksom', els['vpf-f-kanteling'].attr.transform === 'rotate(-5.0 100 100)', els['vpf-f-kanteling'].attr.transform);
+  P.bij('tel-horizon', ind, 'TL01', 400, 'ok');
+  waar('horizon: een onzinwaarde blijft binnen de schaal (30°)', els['vpf-f-helling'].attr.transform === 'translate(0 90.0)', els['vpf-f-helling'].attr.transform);
+  const indO = P.indeling('tel-offroad', () => true);
+  P.bij('tel-offroad', indO, 'TL01', 12, 'ok');
+  waar('offroad: van opzij gaat de neus (rechts) omhoog = linksom', els['vpf-f-helling'].attr.transform === 'rotate(-12.0 100 112)', els['vpf-f-helling'].attr.transform);
+  const indG = P.indeling('tel-g', () => true);
+  P.bij('tel-g', indG, 'TL03', -0.5, 'ok'); P.bij('tel-g', indG, 'TL04', 0.25, 'ok');
+  const st = els['vpf-f-gstip'].attr;
+  waar('G-cirkel: 0,5 g remmen = 40 px omlaag, 0,25 g rechts = 20 px rechts', st.cy === '140.0' && st.cx === '120.0', JSON.stringify(st));
+  waar('G-cirkel: de getallen staan eronder', els['vpf-w-lengte'] && els['vpf-w-lengte'].textContent === '−0,50', els['vpf-w-lengte'] && els['vpf-w-lengte'].textContent);
+}
 
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + (ok + fout) : 'goed: ' + ok + ' ok, 0 fout'));
 process.exit(fout ? 1 : 0);
