@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-10-2026 — Full survey wordt Full function test: één cijfer 1–10
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw pidlane-functietest.js (PLFunctieTest, puur): oordeel over
+   verbinding (fouten, tempo, spreiding, vertraagt de ECU onder belasting),
+   basisgegevens (VIN, CALID, readiness, accuspanning, brandstof ECU tegen
+   RDW), PID-dekking, weergaven en afwijkende antwoorden.
+ - Per brandstof welke weergave van Slim visueel bruikbaar is: diesel
+   zonder 015E → Verbruik ongeschikt, diesel → Emissie ongeschikt, één
+   temperatuursensor → Temperatuur ongeschikt.
+ - Per PID de categorie en de weergaven; configuratie tegen de meting
+   (strategie, groepsgrootte per PID-tijd, ATST, vast protocol, adapter).
+ - Batchtrap meet nu ook de tijd. Cijfer in survey-JSON (functietest).
+ - test-functietest.js (23 toetsen, tegenproeven), blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
  04-10-2026 — Rit-monitor: geen meldingen meer bij schakelen, 👎 Klopt niet (#400)
  ═══════════════════════════════════════════════════════════
 

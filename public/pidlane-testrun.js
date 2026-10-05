@@ -2771,6 +2771,30 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Full function test: één cijfer voor verbinding, data en weergaven ──
+  // De Full survey meet; PLFunctieTest oordeelt erover met een cijfer 1–10
+  // en zegt per brandstof welke weergaven op deze auto iets betekenen. Deze
+  // proef voert het oordeel uit op een nagebouwde diesel zonder 015E: dan
+  // hoort Verbruik ongeschikt te zijn, wat de luchtmassa ook zegt.
+  {
+    issue: '—',
+    naam: 'Full function test geeft een cijfer en kent het dieselverbruik',
+    waarom: 'Verbruik uit de luchtmassa bij λ=1 is op een diesel fout met een factor twee of meer; een weergave die dat toont is erger dan geen weergave.',
+    proef: async function () {
+      var F = window.PLFunctieTest;
+      if (!F) return { staat: 'FOUT', detail: 'PLFunctieTest ontbreekt — pidlane-functietest.js is niet geladen' };
+      var pids = { '010C': 800, '010D': 0, '0105': 85, '0104': 20, '0110': 4, '010F': 25, '0146': 12, '012F': 50 };
+      var det = Object.keys(pids).map(function (p) { return { pid: p, naam: p, val: pids[p], ms: 60, st: 'ok', q: 'ok' }; });
+      var sv = { adapter: { id: 'ELM327', volt: '14.0' }, veh: { vin: 'X' }, bitmaps: { '0100': '41 00' }, readiness: { monitors: [] },
+        pids: { total: det.length, transport: 0, detail: det }, timing: { rpm5: [60, 60, 60], avgMs: 60 } };
+      var r = F.beoordeel(sv, { brandstofOpgegeven: 'diesel', can: true });
+      var v = r.delen.weergaven.lijst.filter(function (x) { return x.id === 'verbruik'; })[0];
+      if (!v || v.oordeel !== 'ongeschikt') return { staat: 'FOUT', detail: 'diesel zonder 015E: Verbruik is ' + (v ? v.oordeel : 'onbekend') };
+      if (!(r.cijfer >= 1 && r.cijfer <= 10)) return { staat: 'FOUT', detail: 'cijfer ' + r.cijfer + ' buiten 1–10' };
+      return { staat: 'OK', detail: 'nagebouwde diesel: cijfer ' + r.cijfer + ' · Verbruik ongeschikt · ' + r.pids.length + ' PIDs ingedeeld' };
+    }
+  },
+
   // ── Rit-monitor: niet melden bij schakelen, 👎 Klopt niet (#400) ──
   // De watchers zwijgen nu vlak na een schakelmoment en bij gas los, en
   // de drempels voor laadspanning en koelwater volgen moderne auto's. De

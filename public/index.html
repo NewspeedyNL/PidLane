@@ -872,7 +872,7 @@ function closeConnOv(){
           <button class="kebab-item" id="frisBtn" onclick="closeKebab();plHardReload(this)">🔄 Nieuwste versie laden</button>
           <button class="kebab-item" id="testrunBtn" onclick="closeKebab();openTestrun()">🔬 Testrun</button>
           <button class="kebab-item" id="kbSessie" onclick="closeKebab();showTokenDetail()">🪙 AI-kosten deze sessie</button>
-          <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">📋 Full survey</button>
+          <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">🧪 Full function test</button>
         </div>
         <div class="kebab-sep"></div>
         <!-- Rit beëindigen (29-09-2026) vervangt "Uitloggen" en "Sluit de app": één
@@ -1815,6 +1815,7 @@ function closeConnOv(){
 <script src="pidlane-pidgate.js"></script><!-- PID-gate: afgesplitst uit auth (§15) — moet ná auth.js, dáár staan activePIDs/pidVals/_pidHealth -->
 <script src="pidlane-kwaliteit.js"></script><!-- datakwaliteit: afgesplitst uit auth (ronde 8) — moet ná pidgate.js, gebruikt getPidDef() -->
 <script src="pidlane-veldlab.js"></script><!-- module → pidlane-veldlab.js -->
+<script src="pidlane-functietest.js"></script><!-- PLFunctieTest: het oordeel (1–10) van de Full function test — puur, geen bus-I/O -->
 <script src="pidlane-datalog.js"></script>
 <script src="pidlane-archief.js"></script><!-- module → pidlane-archief.js -->
 <script src="pidlane-pids.js"></script>
