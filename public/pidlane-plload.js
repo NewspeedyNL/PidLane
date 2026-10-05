@@ -574,6 +574,8 @@ function pidsDueNow(){
   for(const pid of activePIDs){
     // Een berekende PID (CA..) rekent de app uit; de auto kent hem niet.
     if(typeof plIsBerekend==='function' && plIsBerekend(pid)) continue;
+    // Een telefoonsensor (TL..) evenmin.
+    if(typeof plIsTelemetrie==='function' && plIsTelemetrie(pid)) continue;
     if(_pidDead.has(pid)){
       // Dode PID: alleen elke PID_REPROBE_MS één herkansing toelaten
       if(now-(_pidDeadSince[pid]||0) < PID_REPROBE_MS) continue;
@@ -652,6 +654,7 @@ function _pollWacht(now){
   let eerste=Infinity;
   for(const pid of activePIDs){
     if(typeof plIsBerekend==='function' && plIsBerekend(pid)) continue;
+    if(typeof plIsTelemetrie==='function' && plIsTelemetrie(pid)) continue;
     const t=_pidDead.has(pid) ? (_pidDeadSince[pid]||0)+PID_REPROBE_MS : (_pidNextPoll[pid]||0);
     if(t<eerste) eerste=t;
   }

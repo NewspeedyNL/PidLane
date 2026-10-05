@@ -175,6 +175,8 @@ var KRITIEK = [
   // versnellingsindicator met openGearInstellingen; zonder die twee valt het
   // venster terug op kale tekst of doet de knop niets.
   'plBerekendDefs','plIsBerekend','_aiReportHtml','openGearInstellingen',
+  // 05-10-2026. Telefoonsensoren (pidlane-telemetrie.js), dezelfde twee guards.
+  'plTelemetrieDefs','plIsTelemetrie',
   // Eigen PIDs per voertuig (pidlane-uitgebreid.js) in de keuzelijst. Ontbreekt
   // hij, dan staan de dealercodes van de klant stil niet meer in de lijst.
   'plEigenDefs',

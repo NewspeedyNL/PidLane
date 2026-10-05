@@ -2771,6 +2771,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Telemetrie: helling en kanteling van de telefoon ──
+  // Een nieuwe groep sensoren die niet van de auto komt maar van de
+  // oriëntatiesensor van het toestel. Deze proef zegt of het toestel meet,
+  // of er een nulstand is, en of er een TL-code naar de adapter ging.
+  {
+    issue: '—',
+    naam: 'Telemetrie meet helling en kanteling en blijft van de bus af',
+    waarom: 'Een TL-code die als OBD-commando de bus op gaat telt als dode sensor en uiteindelijk als dode socket — dezelfde grens als bij de berekende PIDs.',
+    proef: async function () {
+      var T = window.PLTelemetrie;
+      if (!T) return { staat: 'FOUT', detail: 'PLTelemetrie ontbreekt — pidlane-telemetrie.js is niet geladen' };
+      var s = T.stats();
+      if (s.geweigerd.length) return { staat: 'FOUT', detail: s.geweigerd.length + '× een TL-code naar sendCmd, eerst: ' + s.geweigerd[0].cmd + ' via ' + s.geweigerd[0].waar };
+      if (!s.events) return { staat: 'LET OP', detail: 'dit toestel meldt geen oriëntatie — nodig: de app op de telefoon, niet in een desktopbrowser' };
+      if (!s.nu) return { staat: 'LET OP', detail: 'de oriëntatiesensor zweeg de laatste 2 s — nodig: app op de voorgrond' };
+      return { staat: 'OK', detail: 'helling ' + s.nu.helling + '° · kanteling ' + s.nu.kanteling + '° · ' + (s.genuld ? 'genuld' : 'nog niet genuld (ruwe hoek van de houder)') + ' · ' + s.n + ' tegelwaarden' };
+    }
+  },
+
   // ── Full function test: één cijfer voor verbinding, data en weergaven ──
   // De Full survey meet; PLFunctieTest oordeelt erover met een cijfer 1–10
   // en zegt per brandstof welke weergaven op deze auto iets betekenen. Deze
