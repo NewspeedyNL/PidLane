@@ -1632,6 +1632,9 @@ MUTATIES=(
 "public/pidlane-telemetrie.js@@  const kand=Math.abs(nul[2])<0.7 ? [0,0,-1] : [0,1,0];@@  const kand=[0,0,-1];@@test-telemetrie.js@@een plat liggende telefoon heeft geen vooruit: helling en kanteling worden onzin"
 "public/pidlane-plload.js@@    // Een telefoonsensor (TL..) evenmin.\n    if(typeof plIsTelemetrie==='function' && plIsTelemetrie(pid)) continue;@@    // Een telefoonsensor (TL..) evenmin.@@bproef-telemetrie.js@@de pollus stuurt een telefoonsensor (TL01) als commando naar de auto"
 "public/pidlane-bt.js@@  if(/^TL[0-9A-F]{2}1?$/i.test(String(cmd||'').trim())){@@  if(false){@@bproef-telemetrie.js@@sendCmd laat een telefoonsensor door naar de adapter"
+"public/pidlane-telemetrie.js@@  const u=zwaarte(ag, aL, aD, ax.voor, ax.rechts);@@  const u=zwaarte(ag, 0, aD, ax.voor, ax.rechts);@@test-telemetrie.js@@remmen leest weer als voorover hellen: de rijversnelling gaat er niet af — #404"
+"public/pidlane-telemetrie.js@@  const aD=(vers && typeof kmh==='number') ? -(kmh/3.6)*_gier : 0;@@  const aD=(vers && typeof kmh==='number') ? (kmh/3.6)*_gier : 0;@@test-telemetrie.js@@de bochtcorrectie heeft het verkeerde teken: een bocht leest als dubbele kanteling — #404"
+"public/pidlane-telemetrie.js@@  _voor=null; _leer={ som:[0,0,0], n:0 };@@  _leer={ som:[0,0,0], n:0 };@@test-telemetrie.js@@na nulstellen in een andere houder blijft de oude rijrichting staan — #404"
 )
 
 echo
