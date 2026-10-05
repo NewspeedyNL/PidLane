@@ -730,7 +730,7 @@
     var sel = Array.isArray(v.pid_selectie) ? v.pid_selectie : [];
     if (!sel.length || !window.PLVoorkeur) return 0;
     var extra = function (p) {
-      try { return (window.PLEigen && PLEigen.is(p)) || (typeof plIsBerekend === 'function' && plIsBerekend(p)); }
+      try { return (window.PLEigen && PLEigen.is(p)) || (typeof plIsBerekend === 'function' && plIsBerekend(p)) || (typeof plIsTelemetrie === 'function' && plIsTelemetrie(p)); }
       catch (e) { console.warn('PLGarage: soort sensor onbekend', e); return false; }
     };
     var basis = sel.filter(function (p) { return !extra(p); });

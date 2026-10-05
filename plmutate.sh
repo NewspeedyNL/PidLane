@@ -1626,6 +1626,12 @@ MUTATIES=(
 "public/pidlane-plload.js@@_plNoteVerbind(oordeel.mistBekend && oordeel.mistBekend.length>0);@@_plNoteVerbind(false);@@test-pollritme.js@@de pollronde meldt een verdwenen PID niet aan de ATST-regelaar — #394"
 # ── de vensterhaken (#399, 04-10-2026) ──
 "public/pidlane-bt.js@@window.plAtStand=plAtStand;@@window.plAtStand=function(){ return plAtStand(); };@@test-verbindprofiel.js@@de vensterhaak plAtStand roept zichzelf aan: stack overflow bij elke ELM-init, de app verbindt met geen enkele auto — #399"
+"public/pidlane-telemetrie.js@@  return { helling:r1(asin(dot(u, voor))), kanteling:r1(asin(-dot(u, rechts))) };@@  return { helling:r1(asin(dot(u, voor))), kanteling:r1(asin(dot(u, rechts))) };@@test-telemetrie.js@@de kanteling heeft het omgekeerde teken: rechts omlaag leest als links omlaag"
+"public/pidlane-telemetrie.js@@function beschikbaar(){ return _events>0; }@@function beschikbaar(){ return true; }@@test-telemetrie.js@@de groep Telemetrie staat in de keuzelijst van een toestel zonder sensor: tegels die altijd — zeggen"
+"public/pidlane-telemetrie.js@@function nu(){ return vers() ? @@function nu(){ return _u ? @@test-telemetrie.js@@een zwijgende sensor houdt zijn laatste hoek op de tegel alsof hij nog meet"
+"public/pidlane-telemetrie.js@@  const kand=Math.abs(nul[2])<0.7 ? [0,0,-1] : [0,1,0];@@  const kand=[0,0,-1];@@test-telemetrie.js@@een plat liggende telefoon heeft geen vooruit: helling en kanteling worden onzin"
+"public/pidlane-plload.js@@    // Een telefoonsensor (TL..) evenmin.\n    if(typeof plIsTelemetrie==='function' && plIsTelemetrie(pid)) continue;@@    // Een telefoonsensor (TL..) evenmin.@@bproef-telemetrie.js@@de pollus stuurt een telefoonsensor (TL01) als commando naar de auto"
+"public/pidlane-bt.js@@  if(/^TL[0-9A-F]{2}1?$/i.test(String(cmd||'').trim())){@@  if(false){@@bproef-telemetrie.js@@sendCmd laat een telefoonsensor door naar de adapter"
 )
 
 echo

@@ -1378,6 +1378,12 @@ async function sendCmd(cmd, timeoutMs){
     try{ if(window.PLBerekend) window.PLBerekend.weiger(cmd); }catch(e){ console.warn('weigering berekende PID niet geteld', e); }
     return '';
   }
+  // Idem voor de telefoonsensoren (TL.., pidlane-telemetrie.js).
+  if(/^TL[0-9A-F]{2}1?$/i.test(String(cmd||'').trim())){
+    btDiag(`"${cmd}" geweigerd: telefoonsensor, niet voor de auto`,'warn');
+    try{ if(window.PLTelemetrie) window.PLTelemetrie.weiger(cmd); }catch(e){ console.warn('weigering telefoonsensor niet geteld', e); }
+    return '';
+  }
   if(demoMode){ btDiag(`sendCmd "${cmd}" geblokkeerd: demoMode staat AAN`,'warn'); return ''; }
   // Doorlaatbewijs synchroon lezen én wissen: één aanroep, geen await ertussen.
   const _pas = _elmPas; _elmPas = false;

@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-10-2026 — Nieuwe sensorgroep Telemetrie: helling en kanteling van de telefoon
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw pidlane-telemetrie.js (PLTelemetrie): TL01 helling en TL02
+   kanteling uit de oriëntatiesensor van het toestel, in graden.
+ - Knop Nulstellen in de groepsbalk: auto stil op vlakke grond, de huidige
+   stand wordt 0°. Zonder nulstand de ruwe hoek van de telefoon.
+ - Alleen in de keuzelijst als het toestel oriëntatie meldt.
+ - Gaat nooit de bus op: pollus slaat TL over, sendCmd weigert en telt.
+ - test-telemetrie.js, bproef-telemetrie.js, zes mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
  05-10-2026 — Full survey wordt Full function test: één cijfer 1–10
  ═══════════════════════════════════════════════════════════
 

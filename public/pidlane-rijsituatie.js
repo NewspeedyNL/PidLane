@@ -977,6 +977,9 @@ function buildDiscoveredPIDList(){
   // de sweeps en de waakronde bij de auto opvragen.
   try{ if(typeof plBerekendDefs==='function') plBerekendDefs().forEach(d=>{ if(!discoveredPIDDefs.some(x=>x.pid===d.pid)) discoveredPIDDefs.push(d); }); }
   catch(e){ console.warn('Berekende PIDs niet in de keuzelijst gezet', e); }
+  // Telefoonsensoren (pidlane-telemetrie.js): alleen als het toestel ze heeft.
+  try{ if(typeof plTelemetrieDefs==='function') plTelemetrieDefs().forEach(d=>{ if(!discoveredPIDDefs.some(x=>x.pid===d.pid)) discoveredPIDDefs.push(d); }); }
+  catch(e){ console.warn('Telefoonsensoren niet in de keuzelijst gezet', e); }
   // Eigen PIDs van het voertuig dat aan de adapter hangt (pidlane-uitgebreid.js).
   try{ if(typeof plEigenDefs==='function') plEigenDefs().forEach(d=>{ if(!discoveredPIDDefs.some(x=>x.pid===d.pid)) discoveredPIDDefs.push(d); }); }
   catch(e){ console.warn('Eigen PIDs niet in de keuzelijst gezet', e); }
@@ -1107,7 +1110,20 @@ function buildPIDList(filter=''){
     addBtn.className='catadd'; addBtn.textContent='+ Alles';
     addBtn.title=`Alle bruikbare ${cat}-sensoren selecteren`;
     addBtn.onclick=(e)=>{ e.stopPropagation(); selectCategoryPIDs(cat); };
-    lbl.appendChild(addBtn);
+    // Telemetrie: de huidige stand van de telefoon als 0° vastleggen.
+    if(cat==='Telemetrie' && window.PLTelemetrie){
+      const nulBtn=document.createElement('button');
+      nulBtn.className='catadd'; nulBtn.textContent='Nulstellen';
+      nulBtn.title='Auto stil op vlakke grond: de huidige stand wordt 0°';
+      nulBtn.onclick=(e)=>{ e.stopPropagation();
+        const ok=PLTelemetrie.nulstellen();
+        if(typeof showToast==='function') showToast(ok?'📐 Nulstand vastgelegd':'Geen meting van de telefoon — nulstellen lukte niet');
+      };
+      const knoppen=document.createElement('span');
+      knoppen.style.display='flex'; knoppen.style.gap='6px';
+      knoppen.appendChild(nulBtn); knoppen.appendChild(addBtn);
+      lbl.appendChild(knoppen);
+    } else lbl.appendChild(addBtn);
     el.appendChild(lbl);
     if(collapsed) return;
     items.forEach(p=>{
