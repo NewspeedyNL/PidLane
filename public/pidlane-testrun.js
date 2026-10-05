@@ -2786,7 +2786,10 @@ const PROEVEN_B5 = [
       if (s.geweigerd.length) return { staat: 'FOUT', detail: s.geweigerd.length + '× een TL-code naar sendCmd, eerst: ' + s.geweigerd[0].cmd + ' via ' + s.geweigerd[0].waar };
       if (!s.events) return { staat: 'LET OP', detail: 'dit toestel meldt geen oriëntatie — nodig: de app op de telefoon, niet in een desktopbrowser' };
       if (!s.nu) return { staat: 'LET OP', detail: 'de oriëntatiesensor zweeg de laatste 2 s — nodig: app op de voorgrond' };
-      return { staat: 'OK', detail: 'helling ' + s.nu.helling + '° · kanteling ' + s.nu.kanteling + '° · ' + (s.genuld ? 'genuld' : 'nog niet genuld (ruwe hoek van de houder)') + ' · ' + s.n + ' tegelwaarden' };
+      var si = s.situatie || {};
+      return { staat: 'OK', detail: 'helling ' + s.nu.helling + '° · kanteling ' + s.nu.kanteling + '° · ' + (s.genuld ? 'genuld' : 'nog niet genuld (ruwe hoek van de houder)') +
+        ' · ' + (s.motion ? 'versnelling gecorrigeerd' : 'geen devicemotion: ongecorrigeerd') + ' · vooruit ' + (s.voorGeleerd ? 'geleerd' : 'aangenomen (' + s.leerN + ' leermomenten)') +
+        ' · klim ' + si.klimS + ' s, daal ' + si.daalS + ' s, hard remmen ' + si.hardRemmen + '×, hard optrekken ' + si.hardOptrekken + '×, scherpe bocht ' + si.scherpeBocht + '× (#404)' };
     }
   },
 
