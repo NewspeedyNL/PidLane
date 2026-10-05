@@ -431,7 +431,7 @@ async function vlFullSurvey(){
   let _svBusTok=0;
   try{ _svBusTok=await PLBus.wait('full-survey', 8000); }
   catch(_){ btDiag('Survey kreeg de bus niet exclusief — metingen lopen door ander verkeer heen','warn'); }
-  try{ showBusyPill('📋 Full Survey — bus tijdelijk zwaar belast…',15000); }
+  try{ showBusyPill('🧪 Full function test — bus tijdelijk zwaar belast…',15000); }
   catch(_){ /* stil: melding mag nooit de meting breken */ }
   const clean=s=>String(s||'').replace(/[\r\n>]+/g,' ').replace(/\s+/g,' ').trim();
   const t0=Date.now();
@@ -537,10 +537,11 @@ async function vlFullSurvey(){
         if(cand.length<n) break;
         const req='01'+cand.slice(0,n).map(p=>p.slice(2)).join('');
         let braw='';
+        const _bt0=performance.now();
         try{ braw=await sendCmd(req,3000); }
         catch(e){ /* stil: batchtest — of de adapter meerdere PIDs tegelijk aankan is juist de vraag */ }
         const ok=!!braw && /41/i.test(braw) && !/NO DATA|ERROR|UNABLE/i.test(braw);
-        sv.batch.ladder.push({n, req, ok, raw:clean(braw).slice(0,140)});
+        sv.batch.ladder.push({n, req, ok, ms:Math.round(performance.now()-_bt0), raw:clean(braw).slice(0,140)});
         if(ok){ sv.batch.maxPids=n; sv.batch.ok=true; sv.batch.req=req; }
         else break;
       }
@@ -633,6 +634,17 @@ async function vlFullSurvey(){
     sv.timing={rpm5:times, avgMs:times.length?Math.round(times.reduce((a,b)=>a+b,0)/times.length):null};
     sv.durS=Math.round((Date.now()-t0)/1000);
 
+    // ── Full function test: het oordeel over wat er gemeten is (pidlane-functietest.js) ──
+    let _ft=null;
+    try{
+      _ft=PLFunctieTest.beoordeel(sv, {
+        brandstofOpgegeven:(typeof vehicleFuelType==='function')?vehicleFuelType():'',
+        can:isCAN, strategie:(typeof _connStrategy!=='undefined')?_connStrategy:null,
+        profiel:(window.PLVerbind&&PLVerbind.profiel)||null,
+        bus:(window.PLBus&&typeof PLBus.stats==='function')?PLBus.stats():null });
+      sv.functietest=PLFunctieTest.compact(_ft);
+    }catch(e){ btDiag('Function test: oordeel niet te berekenen ('+(e.message||e)+') — de meting zelf is wel bewaard','warn'); }
+
     // → veldlab-database (JSON-export pikt survey automatisch mee)
     const fuel=vlFuel(sv.veh.brandstof), band=vlAgeBand(sv.veh.jaar), pc=vlProtoClass(sv.adapter.proto);
     const st2=vlLoad();
@@ -653,17 +665,17 @@ async function vlFullSurvey(){
     try{ download('pidlane-survey-'+plDatumLokaal(t0)+'.json', JSON.stringify(sv,null,2)); }
     catch(e){ console.warn('Survey-bestand opslaan mislukt:', e); }
 
-    try{ log('📋 Full survey v2: '+sv.pids.ok+' ok / '+sv.pids.nodata+' nodata / '+sv.pids.invalid+' ongeldig'+(sv.pids.transport?' / '+sv.pids.transport+' TRANSPORTFOUT (niet als ontbrekend geteld)':'')+' · gem. '+sv.timing.avgMs+'ms · batch max '+(sv.batch.maxPids||0)+' · DTC '+sv.dtc.actief.length+' actief / '+(sv.dtc.pending||[]).length+' pending / '+(sv.dtc.permanent||[]).length+' permanent · '+(sv.ecus?sv.ecus.n:0)+' ECU(s) — opgeslagen als veldlab-sessie #'+st2.sessies.length,'ok'); }catch(e){ /* stil: melding mag nooit de meting breken */ }
+    try{ log('🧪 Full function test'+(sv.functietest?' — cijfer '+sv.functietest.cijfer:'')+': '+sv.pids.ok+' ok / '+sv.pids.nodata+' nodata / '+sv.pids.invalid+' ongeldig'+(sv.pids.transport?' / '+sv.pids.transport+' TRANSPORTFOUT (niet als ontbrekend geteld)':'')+' · gem. '+sv.timing.avgMs+'ms · batch max '+(sv.batch.maxPids||0)+' · DTC '+sv.dtc.actief.length+' actief / '+(sv.dtc.pending||[]).length+' pending / '+(sv.dtc.permanent||[]).length+' permanent · '+(sv.ecus?sv.ecus.n:0)+' ECU(s) — opgeslagen als veldlab-sessie #'+st2.sessies.length,'ok'); }catch(e){ /* stil: melding mag nooit de meting breken */ }
     const _flaky=sv.pids.detail.filter(x=>x.flaky).length;
     const _rdy=sv.readiness?(sv.readiness.nietGereed.length?sv.readiness.nietGereed.length+' monitor(s) niet gereed':'alle monitors gereed'):'readiness onbekend';
-    _vlSvUI('✅ Survey klaar in '+sv.durS+'s<br><span style="font-weight:400;font-size:13px;opacity:.85">'+
+    _vlSvUI('✅ Function test klaar in '+sv.durS+'s<br><span style="font-weight:400;font-size:13px;opacity:.85">'+
       sv.pids.ok+' PIDs ok ('+_flaky+' flaky) · '+sv.pids.nodata+' niet aanwezig · '+sv.pids.invalid+' ongeldig'+(sv.pids.transport?' · <span style="color:#fb923c">'+sv.pids.transport+' transportfout</span>':'')+'<br>'+
       'Gem. '+sv.timing.avgMs+' ms · batch max '+(sv.batch.maxPids||0)+' PIDs · '+(sv.ecus?sv.ecus.n:0)+' ECU(s)<br>'+
       'DTC: '+sv.dtc.actief.length+' actief · '+(sv.dtc.pending||[]).length+' pending · '+(sv.dtc.permanent||[]).length+' permanent · '+_rdy+'<br>'+
       'CALID '+(sv.calid&&sv.calid.ascii?'✓':'—')+' · CVN '+(sv.cvn&&sv.cvn.hex&&sv.cvn.hex.length?'✓':'—')+' · odometer '+(sv.odoKm?sv.odoKm+' km':'—')+'<br>'+
-      'Opgeslagen in Veldlab + JSON gedownload</span>', true);
+      'Opgeslagen in Veldlab + JSON gedownload</span>'+(_ft?PLFunctieTest.html(_ft):''), true);
   }catch(e){
-    _vlSvUI('⏹ Survey gestopt: '+(e.message||e)+'<br><span style="font-weight:400;font-size:13px;opacity:.8">Deels gemeten data is niet opgeslagen.</span>', true);
+    _vlSvUI('⏹ Function test gestopt: '+(e.message||e)+'<br><span style="font-weight:400;font-size:13px;opacity:.8">Deels gemeten data is niet opgeslagen.</span>', true);
   }finally{
     _vlSvBusy=false;
     try{ if(_svBusTok){ PLBus.release(_svBusTok); _svBusTok=0; } }catch(_){ /* stil: opruimen: token was mogelijk al vrijgegeven */ }

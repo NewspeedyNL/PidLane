@@ -618,7 +618,7 @@ function bouwDash() {
       '<button id="blkWis" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:0;' +
         'background:transparent;color:#e05555;font-weight:700;font-size:12px;cursor:pointer">Opslag wissen</button>' +
       '<div style="font-size:11px;opacity:.55;line-height:1.6;margin-top:12px">' +
-        'Voor de PID-sweep, CALID/CVN en readiness: gebruik <b>📋 Full survey</b> bij stilstand, ' +
+        'Voor de PID-sweep, CALID/CVN en readiness: gebruik <b>🧪 Full function test</b> bij stilstand, ' +
         'bijvoorbeeld bij elke tankstop. Die claimt wél het busslot.' +
       '</div>' +
     '</div>';
