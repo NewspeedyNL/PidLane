@@ -140,6 +140,8 @@ function oordeelWeergaven(sv, ctx, brandstof){
   const P=ctx.profielen || [], okSet=okSetVan(sv), uit=[];
   const elektrisch=brandstof==='elektrisch';
   P.forEach(function(p){
+    // Telemetrie hangt van de telefoon af, niet van de auto: geen oordeel hier.
+    if(/^tel-/.test(p.id)) return;
     const r={ id:p.id, naam:p.naam, oordeel:'goed', gevuld:0, plekken:0, reden:'', indeling:{} };
     if(!p.plekken){   // basis: de vaste meter
       const heeft=okSet.has('010C') && okSet.has('010D');

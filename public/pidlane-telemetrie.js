@@ -54,7 +54,12 @@ const DEFS = {
   TL01:{ name:'Helling (telefoon)', unit:'°', cat:'Telemetrie', min:-45, max:45,
          uitleg:'Voorover/achterover t.o.v. de nulstand. Positief = neus omhoog. Uit de bewegingssensoren van de telefoon; remmen en optrekken worden eraf gerekend met de snelheid (010D). Traag gefilterd: een helling, geen G-meter.' },
   TL02:{ name:'Kanteling (telefoon)', unit:'°', cat:'Telemetrie', min:-45, max:45,
-         uitleg:'Zijwaarts t.o.v. de nulstand. Positief = rechterkant omlaag. Uit de bewegingssensoren van de telefoon; een bocht wordt eraf gerekend met snelheid × gyroscoop.' }
+         uitleg:'Zijwaarts t.o.v. de nulstand. Positief = rechterkant omlaag. Uit de bewegingssensoren van de telefoon; een bocht wordt eraf gerekend met snelheid × gyroscoop.' },
+  // Alleen met devicemotion (versnellingsmeter): de G-cirkel van Slim visueel.
+  TL03:{ name:'Lengte-G (telefoon)', unit:'g', cat:'Telemetrie', min:-1.5, max:1.5, motion:true,
+         uitleg:'Versnelling in de rijrichting. Positief = optrekken, negatief = remmen.' },
+  TL04:{ name:'Zij-G (telefoon)', unit:'g', cat:'Telemetrie', min:-1.5, max:1.5, motion:true,
+         uitleg:'Versnelling dwars op de rijrichting. Positief = naar rechts (een bocht naar rechts), negatief = een bocht naar links.' }
 };
 
 function isTelemetrie(pid){ return Object.prototype.hasOwnProperty.call(DEFS, String(pid||'').toUpperCase()); }
@@ -121,6 +126,8 @@ if (typeof window!=='undefined' && typeof window.addEventListener==='function')
    eraf, dan blijft de zwaartekracht over — en dus de echte helling.
    Vooruit wordt geleerd: bij remmen en optrekken in een rechte lijn wijst de
    horizontale versnelling langs de rijrichting. */
+let _g=null, _gT=0;
+const TAU_G_MS = 300;
 let _m=null, _mT=0, _mEvents=0, _gier=0, _voor=null, _leer={ som:[0,0,0], n:0 };
 try{ const r=localStorage.getItem(VOOR_LS); if (r) _voor=norm(JSON.parse(r)); }
 catch(e){ console.warn('PLTelemetrie: geleerd vooruit onleesbaar', e); _voor=null; }
@@ -174,6 +181,12 @@ function opMotion(e){
     const a=1-Math.exp(-(nu-_mT)/TAU_HELLING_MS);
     _m=norm([_m[0]+a*(u[0]-_m[0]), _m[1]+a*(u[1]-_m[1]), _m[2]+a*(u[2]-_m[2])]) || u;
   }
+  // G: wat er van ag overblijft na de (trage) zwaartekracht, langs de assen.
+  const lin=[ag[0]-G*_m[0], ag[1]-G*_m[1], ag[2]-G*_m[2]];
+  const gL=dot(lin, ax.voor)/G, gD=dot(lin, ax.rechts)/G;
+  const b=(_gT && nu-_gT<=VERS_MS) ? 1-Math.exp(-(nu-_gT)/TAU_G_MS) : 1;
+  _g={ lengte:_g ? _g.lengte+b*(gL-_g.lengte) : gL, dwars:_g ? _g.dwars+b*(gD-_g.dwars) : gD };
+  _gT=nu;
   _mT=nu; _mEvents++;
   if (_nul && aL!==null) leer(ag, aL, kmh, _gier);
   situatieTel(aL, aD, nu);
@@ -244,6 +257,7 @@ function hoekNu(){
   return vers() ? hoeken(_u, _nul || standaardNul(_u), _voor) : null;
 }
 function nu(){ return hoekNu(); }
+function gNu(){ return (_g && Date.now()-_gT<=VERS_MS) ? { lengte:Math.round(_g.lengte*100)/100, dwars:Math.round(_g.dwars*100)/100 } : null; }
 
 /* De huidige stand wordt 0°. Geeft true als dat lukte. Niet in de demo:
    die bewaart niets (PLDemo vangt localStorage al af, dit is de tweede rem). */
@@ -265,7 +279,7 @@ function genuld(){ return !!_nul; }
 
 function defs(){
   if (!beschikbaar()) return [];
-  return Object.keys(DEFS).map(pid=>Object.assign({ pid, telemetrie:true }, DEFS[pid]));
+  return Object.keys(DEFS).filter(pid=>!DEFS[pid].motion || _mEvents>0).map(pid=>Object.assign({ pid, telemetrie:true }, DEFS[pid]));
 }
 
 // ── sessiebewijs, net als PLBerekend ──
@@ -290,6 +304,9 @@ function tik(){
     if (!h) return;
     if (activePIDs.has('TL01')){ updPID('TL01', h.helling); _s.n++; }
     if (activePIDs.has('TL02')){ updPID('TL02', h.kanteling); _s.n++; }
+    const g=gNu();
+    if (g && activePIDs.has('TL03')){ updPID('TL03', g.lengte); _s.n++; }
+    if (g && activePIDs.has('TL04')){ updPID('TL04', g.dwars); _s.n++; }
     _tikFout='';
   }catch(e){
     const m=String(e && e.message || e);
@@ -301,7 +318,7 @@ if (typeof window!=='undefined' && window.ALL_PID_DEFS) Object.keys(DEFS).forEac
   if (!window.ALL_PID_DEFS[pid]) window.ALL_PID_DEFS[pid]=Object.assign({ telemetrie:true }, DEFS[pid]);
 });
 window.PLTelemetrie = { DEFS, omhoog, hoeken, standaardNul, isTelemetrie, defs, nulstellen, genuld, nu, beschikbaar,
-  tik, stats, weiger, lengteA, zwaarte, situatie, SIT, LEER, _opEvent:opEvent, _opMotion:opMotion };
+  tik, stats, weiger, gNu, lengteA, zwaarte, situatie, SIT, LEER, _opEvent:opEvent, _opMotion:opMotion };
 window.plIsTelemetrie = isTelemetrie;
 window.plTelemetrieDefs = defs;
 if (typeof setInterval==='function') setInterval(tik, TIK_MS);
