@@ -612,3 +612,11 @@ bijsturen tijdens de rit schrijft in het geheugen, en het geheugen gaat
 alleen omhoog. Dat is #414; de keuze "alleen omhoog" uit deze lijst staat
 daarmee ter discussie.
 
+**Herzien op 06-10-2026 (#414).** "Alleen omhoog" blijft, maar het geheugen
+bewaart en neemt alleen nog een **koude meting** (bron `gemeten`) over. Wat
+het bijsturen tijdens de rit of het geheugen zelf van de ATST maakt, geldt
+voor die verbinding en gaat niet het geheugen in (`plVerbindVoorGeheugen()`).
+Mat de poort een keer niets, dan blijft de vorige meting staan met haar eigen
+datum. Een eerder bewaard `bijgestuurd`- of `geheugen`-profiel telt niet meer,
+dus de CX-5 begint bij de eerstvolgende verbinding weer op zijn meting.
+

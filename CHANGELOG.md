@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — ATST-geheugen is geen ratel meer (#414)
+ ═══════════════════════════════════════════════════════════
+
+ - plStUitGeheugen() neemt alleen een bewaarde koude meting (bron
+   'gemeten') over; 'bijgestuurd' en 'geheugen' tellen niet meer.
+ - PLVerbind.bewaar() schrijft als ATST de koude meting van deze verbinding
+   (plVerbindVoorGeheugen); zonder meting blijft de vorige staan.
+ - noteAntwoord() bewaart niet meer: bijsturen geldt voor de verbinding.
+ - test-verbindprofiel.js (ook PLVerbind.bewaar uit de echte bron), vier
+   mutaties, blok 5-proef. PIDLANE-VERBINDPROFIEL.md §10 herzien.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Telemetrie telt alleen mee als de telefoon vast zit (#418)
  ═══════════════════════════════════════════════════════════
 

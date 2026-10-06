@@ -2771,6 +2771,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── ATST-geheugen is geen ratel (#414) ──
+  {
+    issue: '#414',
+    naam: 'Het verbindgeheugen bewaart alleen de koude ATST-meting; bijsturen tijdens de rit telt niet voor de volgende verbinding',
+    waarom: 'De CX-5 stond na drie dagen op 1020 ms terwijl het traagste antwoord 81 ms was: elke gemiste PID kostte een seconde busstilte.',
+    proef: async function () {
+      if (typeof plStUitGeheugen !== 'function' || typeof plVerbindVoorGeheugen !== 'function') return { staat: 'FOUT', detail: 'plVerbindVoorGeheugen ontbreekt — pidlane-bt.js is niet de nieuwe' };
+      var bew = { st: { hex: 'FF', ms: 1020, bron: 'bijgestuurd' }, protocol: { id: '6' }, adapter: 'spp', gemetenOp: Date.now() };
+      if (plStUitGeheugen({ hex: '29', ms: 164, bron: 'gemeten' }, bew, '6', 'spp') !== null) return { staat: 'FOUT', detail: 'een bijgestuurde 0xFF uit het geheugen verhoogt de meting nog' };
+      var V = window.PLVerbind;
+      if (!V || !V.profiel) return { staat: 'LET OP', detail: 'gedrag klopt; geen verbindprofiel — nodig: verbonden met een auto, en draai opnieuw' };
+      var nu = V.nu(), g = V._gemeten;
+      var d = 'ATST nu 0x' + nu.st + ' (' + nu.stBron + ', ' + nu.stMs + ' ms)' + (g ? ' · koude meting 0x' + g.hex + ' (' + g.bron + ')' : '') + ' · ' + V.stappen() + '× bijgestuurd deze verbinding';
+      return { staat: 'OK', detail: d };
+    }
+  },
+
   // ── telemetrie telt alleen mee als de telefoon vast zit (#418) ──
   {
     issue: '#418',
