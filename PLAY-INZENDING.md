@@ -717,7 +717,7 @@ zijn.
 
 | punt | bewaakt door |
 |---|---|
-| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.1.0) | `test-playteksten.js` |
+| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.2.0) | `test-playteksten.js` |
 | Geen locatie: manifest, code en de drie verklaringen zeggen hetzelfde | `test-geen-gps.js` |
 | Foutpagina in de schil als de app niet laadt (`server.errorPath`) | `test-foutpagina.js` |
 | `feat_demo` dekt beide demoknoppen — geen dode knop op het loginscherm | `test-demo-toegang.js` |
@@ -759,9 +759,9 @@ want hij gaat over één bepaalde bundel. Vul hem dus bij, tik hem niet af.
 | De begeleide run opent en loopt door — dit is het scherm dat een reviewer als eerste ziet na de demo | nog niet bewezen |
 | De meetdienst-melding verschijnt bij het meten en verdwijnt als de meting stopt — een foreground service zonder zichtbare melding is een afkeurgrond | build #438, 11-09-2026 — melding stond er tijdens de rit |
 | Het weigeren van de meldingspermissie laat de app heel: meten gaat door, alleen zonder melding | nog niet bewezen |
-| Meting in beeld (3.1.0): tijdens het meten wegschakelen geeft het kleine venster, de meting loopt zichtbaar door, en terugkomen geeft het volle scherm terug. Ook met de sensoren pas ná het verbinden gekozen — dat was de volgorde waarin het venster tot 23-09 nooit verscheen | nog niet bewezen |
+| Meting in beeld (sinds 3.1.0): tijdens het meten wegschakelen geeft het kleine venster, de meting loopt zichtbaar door, en terugkomen geeft het volle scherm terug. Ook met de sensoren pas ná het verbinden gekozen — dat was de volgorde waarin het venster tot 23-09 nooit verscheen | nog niet bewezen |
 | Meting in beeld uit via `feat_pip` in de Config: geen venster meer, zonder nieuwe build | nog niet bewezen |
-| Mijn voertuigen (3.1.0): akkoord geven, een voertuig bewaren, uitloggen en op een tweede toestel terugzien; daarna *Alles wissen* en zien dat het weg is | nog niet bewezen |
+| Mijn voertuigen (sinds 3.1.0): akkoord geven, een voertuig bewaren, uitloggen en op een tweede toestel terugzien; daarna *Alles wissen* en zien dat het weg is | nog niet bewezen |
 
 **Let op bij 3.1.0.** Alle "laatst bewezen"-regels hierboven gaan over builds
 van vóór 12-09-2026. Sindsdien zijn beeld-in-beeld (#228), Mijn voertuigen,

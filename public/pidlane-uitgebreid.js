@@ -320,6 +320,32 @@
     return { factor: DRUK_KPA[van] / DRUK_KPA[doel], eenheid: doel === 'kpa' ? 'kPa' : doel, decimalen: doel === 'bar' ? 2 : 1 };
   }
 
+  /* Standaardbereik voor een eigen PID die er zelf geen heeft (30-09-2026,
+     uit het gebruik). Zonder bereik kreeg zo'n sensor min −1e9 en max 1e9,
+     en in Slim werd de balk dan gearceerd ("grove schaal") en bleef hij
+     leeg. Alleen voor wat we uit de naam herkennen:
+       • bandtemperatuur: balk tot 80 °C, rood vanaf 65 (#370). De balk in
+         Slim loopt anders vol op de gevarengrens, dus `balkVol` zegt waar
+         hij vol is. De onderkant is −40 en niet 0: pidlane-kwaliteit.js
+         leest een waarde op precies het minimum als dummy, en 0 °C is
+         's winters echt;
+       • bandenspanning: 0…4 bar, rood onder 1,5 en vanaf 3,5 (#370), in de
+         eenheid van de sensor ná omrekening;
+       • motorolietemperatuur: hetzelfde als de standaard-PID 015C.
+     Geeft {min, max, wH?, dH?, dL?, balkVol?} in `unit`, of null. Puur. */
+  const OLIE_STANDAARD = { min: -40, max: 150, wH: 130, dH: 150 };
+  function standaardBereik(naam, band, unit) {
+    const u = String(unit || '').trim().toLowerCase();
+    if (band && band.soort === 'temp') return /°c|^c$/.test(u) ? { min: -40, max: 80, dH: 65, balkVol: 80 } : null;
+    if (band && band.soort === 'druk') {
+      if (!DRUK_KPA[u]) return null;
+      const inU = (bar) => Math.round(bar * 100 / DRUK_KPA[u] * 100) / 100;
+      return { min: 0, max: inU(4), dL: inU(1.5), dH: inU(3.5) };
+    }
+    if (/(olie|oil).*(temp)|(motorolietemp)/i.test(String(naam || '')) && /°c|^c$/.test(u)) return Object.assign({}, OLIE_STANDAARD);
+    return null;
+  }
+
   /* Formule → functie(bytes). Toegestaan: getallen, A t/m H, + - * / en
      haakjes. Ontbreekt een byte in het antwoord, dan is de uitkomst null. */
   function formule(tekst) {
@@ -387,8 +413,15 @@
       if (heeftBereik) { min = min * om.factor; max = max * om.factor; }
       unit = om.eenheid;
     }
-    return { ok: true, code, ecu, def: { name: naam, unit, cat: 'Eigen', eigen: true, ecu, tempo, band,
-      min: heeftBereik ? min : -1e9, max: heeftBereik ? max : 1e9, formule: String(e.formule || 'A'), parse } };
+    const std = standaardBereik(naam, band, unit);
+    const def = { name: naam, unit, cat: 'Eigen', eigen: true, ecu, tempo, band,
+      min: heeftBereik ? min : std ? std.min : -1e9, max: heeftBereik ? max : std ? std.max : 1e9, formule: String(e.formule || 'A'), parse };
+    // De grenzen gaan mee, ook als de klant zelf een bereik gaf: dat zegt
+    // waar de schaal loopt, niet wanneer het te warm is.
+    if (std) ['wH', 'dH', 'dL'].forEach((k) => { if (typeof std[k] === 'number') def[k] = std[k]; });
+    // balkVol hoort bij de standaardschaal; een eigen bereik heeft die niet.
+    if (std && !heeftBereik && typeof std.balkVol === 'number') def.balkVol = std.balkVol;
+    return { ok: true, code, ecu, def };
   }
 
   let _eigen = {};                     // code → def, van het voertuig dat nu aan de adapter hangt
@@ -649,7 +682,7 @@
   }
 
   window.PLEigen = { CODE: EIGEN_CODE, MAX: EIGEN_MAX, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
-    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, herzet: eigenHerzet, bandRol, drukOmrekening,
+    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, herzet: eigenHerzet, bandRol, drukOmrekening, standaardBereik,
     scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, dieperVraag, vraag: eigenVraag, kandidatenUitTekst, zoekOnline };
   window.plEigenDefs = eigenDefs;
 
