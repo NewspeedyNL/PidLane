@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Bluetooth uit: meteen een melding, geen anderhalve minuut scannen (#359)
+ ═══════════════════════════════════════════════════════════
+
+ - Vóór de keten (alleen in de app): staat Bluetooth uit, dan vraagt Android
+   om aanzetten (BLE requestEnable, anders SPP enable). Blijft hij uit, dan
+   start de keten niet en zegt de melding "Bluetooth staat uit".
+ - In de keten: een "Bluetooth is disabled" stopt hem, zonder BLE-scan en
+   zonder tweede ronde. De SPP-scan leest die fout niet meer als
+   "geen adapter gevonden".
+ - Is de stand niet te lezen, dan loopt de keten zoals altijd.
+ - test-btuit.js, zes mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Versie 3.2.0 voor de openbare release
  ═══════════════════════════════════════════════════════════
 
