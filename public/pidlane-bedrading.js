@@ -353,7 +353,11 @@ var KRITIEK = [
   // Erbij op 30-09-2026 (#352): de SPP-proef (pidlane-sppproef.js) zoekt de
   // plugin met getSPP en noemt de leesmodus met plSppModus. Ontbreekt getSPP,
   // dan zegt elke knop "geen SPP-plugin" terwijl die er wel is.
-  'getSPP','plSppModus'
+  'getSPP','plSppModus',
+  // Erbij op 06-10-2026. De blok 5-proef van #359 roept btUitFout en
+  // btAanVoorKeten achter een guard aan; ontbreken ze, dan zegt de proef FOUT
+  // maar zou de guard zelf de stille plek zijn.
+  'btUitFout','btAanVoorKeten'
 ];
 // Namen die in de bron als `typeof X==='function'` voorkomen maar géén globale
 // functie zijn — met reden, want de test vraagt erom.
