@@ -139,6 +139,42 @@ t('zonder wielen: vier grijze', (B.mini(null).match(/vbm-wiel geen/g) || []).len
   const r3 = await B.ververs();
   t('niet verbonden: geen busbeurt', [r3.ok, bus.length], [false, 2]);
 
+  // ── de ronde van vijf minuten en de ene regel in de sensorlijst ──
+  const M = B.AUTO_MS;
+  t('vijf minuten is het tempo', M, 300000);
+  t('moetVragen: aan, klaar, banden, 5 min geleden: ja', B.moetVragen(NU, NU - M, true, true, true), true);
+  t('moetVragen: 4 min geleden: nee', B.moetVragen(NU, NU - 240000, true, true, true), false);
+  t('moetVragen: vinkje uit: nee', B.moetVragen(NU, 0, false, true, true), false);
+  t('moetVragen: midden in het verbinden: nee (de koude poort heeft de bus)', B.moetVragen(NU, 0, true, false, true), false);
+  t('moetVragen: geen banden: nee', B.moetVragen(NU, 0, true, true, false), false);
+
+  const opslag = {};
+  s.localStorage = { getItem: k => (k in opslag ? opslag[k] : null), setItem: (k, v) => { opslag[k] = String(v); } };
+  t('het vinkje staat standaard aan', B.aan(), true);
+  B.zetAan(false);
+  t('uitzetten blijft bewaard op dit toestel', [B.aan(), opslag.pl_banden_auto], [false, '0']);
+  const regelUit = B.lijstRegel('');
+  t('de sensorlijst krijgt één regel voor de acht banden, met het vinkje uit', [regelUit && regelUit.naam, regelUit && regelUit.n, regelUit && regelUit.aan], ['🛞 Banden', 8, false]);
+  t('zoeken op "band" vindt de regel, op "olie" niet', [!!B.lijstRegel('band'), B.lijstRegel('olie')], [true, null]);
+  t('zoeken op een bandcode vindt hem ook', !!B.lijstRegel('222a05'), true);
+
+  // tik(): met het vinkje uit vraagt hij niets, aan wel meteen, en daarna pas na 5 min.
+  s.connected = true; s._plVerbindingKlaar = 1; s._btGen = 9;
+  const voor = gevraagd.length;
+  B.tik(); await new Promise(r => setTimeout(r, 0));
+  t('tik met het vinkje uit: niets gevraagd', gevraagd.length, voor);
+  B.zetAan(true);
+  B.tik(); await new Promise(r => setTimeout(r, 0)); await new Promise(r => setTimeout(r, 0));
+  t('vinkje aan: de volgende tik vraagt de acht banden', gevraagd.length - voor, 8);
+  B.tik(); await new Promise(r => setTimeout(r, 0));
+  t('de tik erna (binnen 5 min) vraagt niets', gevraagd.length - voor, 8);
+  s._plVerbindingKlaar = 0; B.zetAan(true);
+  B.tik(); await new Promise(r => setTimeout(r, 0));
+  t('midden in het verbinden vraagt de tik niets, ook met het vinkje aan', gevraagd.length - voor, 8);
+  E.zet([lijst[8]], 'CX-5');
+  t('een auto zonder banden: geen regel in de sensorlijst', B.lijstRegel(''), null);
+  E.zet(lijst, 'CX-5');
+
   // De pollus zelf: pidsDueNow uit de echte pidlane-plload.js.
   const PL = lees('pidlane-plload.js');
   const i = PL.indexOf('function pidsDueNow(){'), j = PL.indexOf('const EIGEN_PER_RONDE=2;');

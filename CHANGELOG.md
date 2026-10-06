@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Banden: één regel in de sensorlijst, elke vijf minuten (#396)
+ ═══════════════════════════════════════════════════════════
+
+ - De acht band-PIDs staan in de sensorlijst als één regel "🛞 Banden"
+   (PLBanden.lijstRegel). Het vinkje is een voorkeur van het toestel, geen
+   PID in activePIDs.
+ - Aangevinkt (standaard) vraagt PLBanden.tik() de banden elke vijf minuten
+   in één busbeurt, ook tijdens het rijden: zo'n 1,2 s per vijf minuten.
+   Niet midden in het verbinden (_plVerbindingKlaar).
+ - test-banden.js, bproef-banden.js, vijf mutaties.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Banden op verzoek, buiten de pollus (#396)
  ═══════════════════════════════════════════════════════════
 
