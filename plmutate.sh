@@ -1683,6 +1683,12 @@ MUTATIES=(
 "public/pidlane-visprofiel.js@@  const v=klem(val, x.lo, x.hi);@@  const v=Number(val)||0;@@test-visprofiel.js@@een onzinwaarde schuift de horizon uit het beeld"
 "public/pidlane-functietest.js@@    if(/^tel(-|emetrie$)/.test(p.id)) return;@@    void 0;@@test-functietest.js@@de Full function test rekent de auto de telefoonweergaven aan als ongeschikt"
 "public/pidlane-telemetrie.js@@  const gL=dot(lin, ax.voor)/G, gD=dot(lin, ax.rechts)/G;@@  const gL=dot(lin, ax.voor)/G, gD=-dot(lin, ax.rechts)/G;@@test-telemetrie.js@@de G-cirkel zet een bocht naar links aan de rechterkant"
+# ── diesel: eigen sensoren op dezelfde weergaven (#393) ──
+"public/pidlane-visprofiel.js@@  if(motor!=='diesel') return p.plekken;@@  return p.plekken;@@test-visprofiel.js@@een diesel krijgt weer lambda rond 1,00, de brandstoftrims en de ontsteking — #393"
+"public/pidlane-visprofiel.js@@function ketens(id, motor){\n  const p=voor(id, motor);@@function ketens(id, motor){\n  const p=zoek(id);@@test-visprofiel.js@@Slim visueel zet op een diesel de roetfilter-PIDs niet aan: het scherm blijft leeg — #393"
+"public/pidlane-visueel.js@@PF().indeling(pr, bruikbaar, motor)@@PF().indeling(pr, bruikbaar)@@test-visprofiel.js@@Slim visueel geeft de motorsoort niet door: een diesel ziet de benzinekaart — #393"
+"public/pidlane-visprofiel.js@@        diesel:{ hi:6000 } },@@        diesel:{} },@@test-visprofiel.js@@de neonring van een diesel loopt tot 8000 tpm: 3000 staat er als bijna stationair — #393"
+"public/pidlane-functietest.js@@    plekkenVan(p, brandstof).forEach(@@    p.plekken.forEach(@@test-functietest.js@@de Full function test beoordeelt een diesel op de benzinekaart — #393"
 )
 
 echo

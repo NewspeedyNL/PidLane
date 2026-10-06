@@ -89,7 +89,7 @@ const berekend = lees('pidlane-berekend.js');
 const telemetrie = lees('pidlane-telemetrie.js');
 function onbekend(PP) {
   const uit = [];
-  PP.PROFIELEN.forEach(p => (p.plekken || []).forEach(x => x.keten.forEach(pid => {
+  PP.PROFIELEN.forEach(p => (p.plekken || []).concat(PP.plekkenVan(p, 'diesel') || []).forEach(x => x.keten.forEach(pid => {
     const b = /^CA/.test(pid) ? new RegExp('\\b' + pid + ':\\{').test(berekend)
       : /^TL/.test(pid) ? new RegExp('\\b' + pid + ':\\{').test(telemetrie) : !!D.ALL_PID_DEFS[pid];
     if (!b) uit.push(p.id + '/' + x.rol + ': ' + pid);
@@ -115,6 +115,12 @@ function vakkenMis(PP) {
 }
 const vm1 = vakkenMis(P);
 waar('elke plek heeft een getalvak, elk profiel zijn stijl', vm1.length === 0, vm1.join(', '));
+const vmD = (() => { const uit = []; P.PROFIELEN.filter(p => p.plekken).forEach(p => {
+  const i = P.indeling(p.id, () => true, 'diesel'), h = P.html(p.id, i);
+  P.plekkenVan(p, 'diesel').forEach(x => { if (h.indexOf('id="vpf-w-' + x.rol + '"') < 0 && !(/^hz-/.test(x.rol) && h.indexOf('id="vpf-f-' + x.rol + '"') >= 0)) uit.push(p.id + '/' + x.rol); });
+  const ids = [...h.matchAll(/id="([^"]+)"/g)].map(m => m[1]); if (ids.length !== new Set(ids).size) uit.push(p.id + ': dubbele id');
+}); return uit; })();
+waar('ook op een diesel heeft elke plek een vak, en geen id twee keer (#393)', vmD.length === 0, vmD.join(', '));
 const leegH = P.html('emissie', P.indeling('emissie', () => false));
 waar('een auto zonder één van de sensoren krijgt een uitleg, geen lege kaart', /vpf-geen/.test(leegH));
 
@@ -190,6 +196,53 @@ console.log('\n7. Telemetrie: de tekening draait mee (05-10-2026)');
   p1 = G(p1, 0, -0.2, 3500);
   waar('gPiek: na 3 s valt hij terug naar de huidige stand', p1.y === -0.2 && p1.t === 3500, JSON.stringify(p1));
   waar('gPiek: lengte en zij tellen samen (0,6 bij 0,6 is groter dan 0,8)', G({ x: 0, y: -0.8, t: 0 }, 0.6, 0.6, 100).x === 0.6);
+}
+
+console.log('\n9. Diesel: andere sensoren op dezelfde weergaven (#393)');
+{
+  const T = laad(BRON), els = {};
+  T.document = { getElementById: id => (els[id] = els[id] || { attr: {}, classList: { remove() {}, add() {}, toggle() {} }, style: {},
+    setAttribute(k, v) { this.attr[k] = String(v); }, getAttribute(k) { return this.attr[k]; } }) };
+  const P = T.PLVisProfiel, alles = () => true;
+  const eB = P.indeling('emissie', alles, 'benzine'), eD = P.indeling('emissie', alles, 'diesel');
+  waar('benzine: emissie blijft lambda en de trims', eB.plekken.lambda === '0124' && eB.plekken.kort === '0106', JSON.stringify(eB.plekken));
+  waar('diesel: emissie toont roetfilter, NOx, AdBlue en regeneratie, geen lambda of trims',
+    eD.plekken.dpf === '017A' && eD.plekken.nox === '0183' && eD.plekken.adblue === '0185' && eD.plekken.regen === '018B'
+    && !('lambda' in eD.plekken) && !('kort' in eD.plekken) && eD.plekken.egr === '012C', JSON.stringify(eD.plekken));
+  const hD = P.html('emissie', eD);
+  waar('diesel: geen lambdaschaal "1,00 is de ideale verbranding" op het scherm', !/vpf-lambda|ideale verbranding/.test(hD));
+  const mD = P.indeling('motor', alles, 'diesel');
+  waar('diesel: motor toont laaddruk en injectie, niet de ontsteking', mD.plekken.map === '0170' && mD.plekken.timing === '015D', JSON.stringify(mD.plekken));
+  waar('diesel: de gasring volgt het pedaal, niet de gasklep', mD.plekken.gasklep === '0149', mD.plekken.gasklep);
+  waar('diesel: verbruik toont laaddruk in plaats van luchtmassa', P.indeling('verbruik', alles, 'diesel').plekken.laad === '0170');
+  waar('diesel: temperatuur toont het uitlaatgas', P.indeling('temp', alles, 'diesel').plekken.uitlaat === '0178');
+  P.html('motor', mD); P.bij('motor', mD, '010C', 3000, 'ok');
+  waar('diesel: 3000 tpm is de helft van de ring (schaal 6000)', els['vpf-f-toeren'].attr['stroke-dasharray'] === '37.5 100', els['vpf-f-toeren'].attr['stroke-dasharray']);
+  waar('diesel: de neonring zegt "Gaspedaal"', /Gaspedaal/.test(P.html('motor', mD)));
+  waar('zonder motorsoort (onbekend) is het de benzinekaart', P.indeling('emissie', alles).plekken.lambda === '0124');
+  const Tm = laad(BRON.replace("  if(motor!=='diesel') return p.plekken;", "  return p.plekken;")).PLVisProfiel;
+  waar('tegenproef: zonder dieselplekken staat er weer lambda op een diesel', 'lambda' in Tm.indeling('emissie', alles, 'diesel').plekken);
+  const Tk = laad(BRON.replace("function ketens(id, motor){\n  const p=voor(id, motor);", "function ketens(id, motor){\n  const p=zoek(id);")).PLVisProfiel;
+  waar('tegenproef: ketens zonder motor zetten de roetfilter-PIDs niet aan', !Tk.ketens('emissie', 'diesel').some(k => k.indexOf('017A') >= 0)
+    && P.ketens('emissie', 'diesel').some(k => k.indexOf('017A') >= 0));
+}
+{
+  // Gekoppeld: Slim visueel geeft de motorsoort door.
+  const c = {
+    console: { log() {}, warn() {}, error() {} }, Date: Date, setInterval: () => 1, clearInterval: () => {},
+    activePIDs: new Set(['010C', '010D', '017A', '0124']), hiddenPIDs: new Set(), pidVals: {}, pidHist: {}, _pidLastUpd: {}, _pidLastUpdPause: {},
+    PLSched: { dood: () => false, interval: () => 120 }, PLGate: { stats: () => ({ turbo: false }) },
+    detectEngineType: () => 'diesel', localStorage: { getItem: () => 'emissie', setItem() {} }
+  };
+  c.window = c; vm.createContext(c);
+  vm.runInContext(lees('pidlane-data.js'), c, { filename: 'pidlane-data.js' });
+  c.getPidDef = p => c.ALL_PID_DEFS[p] || null; c.PLBus = { pausedTotal: () => 0 };
+  vm.runInContext(BRON, c, { filename: 'pidlane-visprofiel.js' });
+  vm.runInContext(lees('pidlane-visueel.js'), c, { filename: 'pidlane-visueel.js' });
+  c.PLVisueel.start();
+  const i = c.PLVisueel.indeling();
+  waar('Slim visueel geeft "diesel" door: het emissiescherm kiest het roetfilter', i.profiel && i.profiel.motor === 'diesel' && i.profiel.plekken.dpf === '017A', JSON.stringify(i.profiel));
+  c.PLVisueel.stop();
 }
 
 console.log('\n8. Het emissiescherm is donker (06-10-2026)');

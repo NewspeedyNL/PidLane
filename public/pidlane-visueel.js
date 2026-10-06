@@ -529,7 +529,7 @@ const _staat = { aan:false, start:0, traag:new Set(), turboVast:false, handteken
 // vak wisselt rond; de keuze wordt per toestel onthouden.
 function PF(){ return window.PLVisProfiel || null; }
 function profielNu(){ return (PF() && _staat.profiel && PF().geldig(_staat.profiel)) ? _staat.profiel : 'basis'; }
-function profielKetens(){ const p=profielNu(); return (p!=='basis' && PF()) ? PF().ketens(p) : []; }
+function profielKetens(){ const p=profielNu(); return (p!=='basis' && PF()) ? PF().ketens(p, leesMotor()) : []; }
 function profielKnop(){
   const P=PF(); if(!P) return '';
   const nu=profielNu(), z=P.zoek(nu), vlg=P.zoek(P.volgende(nu));
@@ -659,7 +659,7 @@ function indeling(){
   PLEKKEN.forEach(function(r){ ind.plekken[r.rol]=(r.rol==='pedaal') ? kiesPedaal() : eerste(r.keten); });
   ind.trek = trekAan() ? trekIndeling(bruikbaar, turboBewezen()) : null;
   const pr=profielNu();
-  ind.profiel = (pr!=='basis' && PF()) ? PF().indeling(pr, bruikbaar) : null;
+  ind.profiel = (pr!=='basis' && PF()) ? PF().indeling(pr, bruikbaar, motor) : null;
   return ind;
 }
 function gebruiktePids(ind){
@@ -679,7 +679,7 @@ function handtekening(ind){
           ind.lamp?(ind.lamp.belasting||'')+(ind.lamp.accu||'')+(ind.lamp.volt||''):'',
           PLEKKEN.map(function(r){ return ind.plekken[r.rol]||''; }).join(','),
           ind.trek ? 'trek:'+ind.trek.map(function(t){ return t.pid||'-'; }).join(',') : '',
-          ind.profiel ? 'profiel:'+ind.profiel.id+':'+Object.keys(ind.profiel.plekken).map(function(k){ return ind.profiel.plekken[k]||'-'; }).join(',') : ''].join('|');
+          ind.profiel ? 'profiel:'+ind.profiel.id+':'+(ind.profiel.motor||'')+':'+Object.keys(ind.profiel.plekken).map(function(k){ return ind.profiel.plekken[k]||'-'; }).join(',') : ''].join('|');
 }
 function naamVan(pid){
   try{ const d=(typeof getPidDef==='function')?getPidDef(pid):null; return (d && d.name) || pid; }

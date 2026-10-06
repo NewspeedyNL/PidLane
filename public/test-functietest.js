@@ -6,6 +6,8 @@
 //   • een gezonde benzine-CAN-auto krijgt een hoog cijfer;
 //   • een diesel zonder 015E krijgt Verbruik en Emissie als ongeschikt, en
 //     dezelfde PIDs op een benzine niet (de luchtmassa telt daar wél);
+//   • een diesel MET roetfilter, NOx en AdBlue krijgt Emissie wél (#393):
+//     het oordeel volgt de dieselplekken van PLVisProfiel.plekkenVan();
 //   • één temperatuursensor maakt de weergave Temperatuur ongeschikt;
 //   • transportfouten begrenzen het cijfer, wat het gemiddelde ook zegt;
 //   • een waarde buiten PID_HARD_LIMITS is een afwijkend antwoord;
@@ -77,12 +79,18 @@ function keurDiesel(Fx) {
 }
 const d2 = keurDiesel(F);
 waar('diesel: Verbruik ongeschikt (luchtmassa telt niet)', d2.dV === 'ongeschikt', 'oordeel ' + d2.dV);
-waar('diesel: Emissie ongeschikt (lambda rond 1,00)', d2.dE === 'ongeschikt', 'oordeel ' + d2.dE);
+waar('diesel zonder roetfilter-PIDs: Emissie ongeschikt (lambda en trims tellen niet)', d2.dE === 'ongeschikt', 'oordeel ' + d2.dE);
 waar('benzine met dezelfde PIDs: Verbruik wél bruikbaar', d2.bV === 'goed', 'oordeel ' + d2.bV);
 waar('tegenproef: luchtmassa ook voor diesel → Verbruik niet meer ongeschikt',
   keurDiesel(laad(BRON.replace("(okSet.has('0110') && brandstof!=='diesel')", "okSet.has('0110')"))).dV !== 'ongeschikt');
-waar('tegenproef: zonder de diesel-uitzondering is Emissie niet meer ongeschikt',
-  keurDiesel(laad(BRON.replace("p.id==='emissie' && brandstof==='diesel'", "false"))).dE !== 'ongeschikt');
+// #393: een diesel met de sensoren van zijn eigen emissiescherm.
+const DPF = Object.assign({}, DIESEL, { '017A': 4.2, '017C': 310, '0183': 120, '0185': 64, '018B': 12 });
+function emDpf(Fx) { return wg(keur(Fx, survey(DPF), { brandstofOpgegeven: 'diesel' }), 'emissie'); }
+const eD = emDpf(F);
+waar('diesel met roetfilter, NOx en AdBlue: Emissie goed, met de dieselplekken (#393)',
+  eD.oordeel === 'goed' && eD.indeling.dpf === '017A' && eD.indeling.nox === '0183' && !('lambda' in eD.indeling), JSON.stringify(eD));
+waar('tegenproef: zonder de dieselplekken telt de benzinekaart en is Emissie weer ongeschikt',
+  emDpf(laad(BRON.replace("const plekkenVan=ctx.plekkenVan || ", "const plekkenVan="))).oordeel !== 'goed');
 const ecu = keur(F, survey(DIESEL, { ecuFuel: { code: 4 } }), {});
 waar('zonder opgegeven brandstof beslist de ECU (0151=4 → diesel)', ecu.brandstof === 'diesel', ecu.brandstof);
 
