@@ -3047,7 +3047,7 @@ const PROEVEN_B5 = [
 
   // ── eigen PIDs krijgen een standaardbereik: banden en olie (30-09-2026) ──
   {
-    issue: '—',
+    issue: '#370',
     naam: 'Bandtemperatuur, bandenspanning en olietemperatuur (eigen PIDs) hebben een schaal',
     waarom: 'Zonder bereik stonden ze op −1e9…1e9: in Slim een gearceerde, lege balk en een bandenspanning die altijd "beweegt".',
     proef: async function () {
@@ -3055,12 +3055,15 @@ const PROEVEN_B5 = [
       var t = PLEigen.controleer({ code: '222A0A', naam: 'Bandtemperatuur voor-links', formule: 'A', eenheid: '°C' }).def;
       var o = PLEigen.controleer({ code: '221310', naam: 'Motorolietemperatuur', formule: 'A', eenheid: '°C' }).def;
       var p = PLEigen.controleer({ code: '222A05', naam: 'Bandenspanning voor-links', formule: 'A', eenheid: 'bar' }).def;
-      if (t.max !== 80 || t.wH !== 65) return { staat: 'FOUT', detail: 'bandtemperatuur: max ' + t.max + ', waarschuwing ' + t.wH + ' — verwacht 80 en 65' };
+      if (t.balkVol !== 80 || t.dH !== 65) return { staat: 'FOUT', detail: 'bandtemperatuur: balk tot ' + t.balkVol + ', rood vanaf ' + t.dH + ' — verwacht 80 en 65 (#370)' };
       if (!(o.max <= 215) || typeof o.wH !== 'number') return { staat: 'FOUT', detail: 'olietemperatuur zonder schaal of grens: ' + o.min + '…' + o.max };
-      if (!(p.max < 10)) return { staat: 'FOUT', detail: 'bandenspanning in bar zonder schaal: max ' + p.max };
+      // De eenheid volgt de drukvoorkeur van de klant; reken terug naar bar.
+      var perBar = { bar: 1, psi: 14.5038, kPa: 100 }[p.unit], inBar = function (v) { return Math.round(v / perBar * 10) / 10; };
+      if (!perBar) return { staat: 'FOUT', detail: 'bandenspanning in onbekende eenheid ' + p.unit };
+      if (inBar(p.max) !== 4 || inBar(p.dL) !== 1.5 || inBar(p.dH) !== 3.5) return { staat: 'FOUT', detail: 'bandenspanning: schaal tot ' + p.max + ' ' + p.unit + ', rood onder ' + p.dL + ' en vanaf ' + p.dH + ' — verwacht 4, 1,5 en 3,5 bar (#370)' };
       var eigen = (PLEigen.defs() || []).filter(function (d) { return d.max >= 1e9 && (d.band || /olie|oil/i.test(d.name)); });
       if (eigen.length) return { staat: 'LET OP', detail: 'de functie klopt, maar deze sensoren van dit voertuig staan nog open: ' + eigen.map(function (d) { return d.name; }).join(', ') + ' — herlaad de app' };
-      return { staat: 'OK', detail: 'band ' + t.min + '…' + t.max + ' °C (let op vanaf ' + t.wH + '), olie ' + o.min + '…' + o.max + ' °C, druk 0…' + p.max + ' bar' };
+      return { staat: 'OK', detail: 'band ' + t.min + '…' + t.balkVol + ' °C (rood vanaf ' + t.dH + '), olie ' + o.min + '…' + o.max + ' °C, druk 0…' + p.max + ' ' + p.unit + ' (rood onder ' + p.dL + ' en vanaf ' + p.dH + ')' };
     }
   },
 
