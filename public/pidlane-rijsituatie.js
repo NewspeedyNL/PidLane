@@ -1157,6 +1157,22 @@ function buildPIDList(filter=''){
       el.appendChild(row);
     });
   });
+  // De banden als één regel (#396): acht PIDs, één vraag. Het vinkje is de
+  // ronde van vijf minuten van PLBanden, geen PID in activePIDs.
+  try{
+    const br=(window.PLBanden && PLBanden.lijstRegel) ? PLBanden.lijstRegel(f) : null;
+    if(br){
+      const lbl=document.createElement('div'); lbl.className='clbl';
+      lbl.innerHTML=`<span><span class="cchev">▼</span>Banden<span class="ccnt">${br.aan?'1/':''}1</span></span>`;
+      el.appendChild(lbl);
+      const row=document.createElement('div');
+      row.className='pr pr-banden'+(br.aan?' sel':'');
+      row.title='Druk en temperatuur van de vier banden, in één beurt. Aangevinkt: elke vijf minuten, ook tijdens het rijden. Het bandenvenster en ↻ vragen altijd.';
+      row.innerHTML=`<div class="pck"><span class="ckm">✓</span></div><span class="pn">${br.naam}</span><span class="pu2">${br.eenheid}</span>`;
+      row.onclick=()=>{ PLBanden.zetAan(!PLBanden.aan()); buildPIDList(filter); };
+      el.appendChild(row);
+    }
+  }catch(e){ console.warn('Bandenregel niet in de sensorlijst gezet', e); }
 }
 
 // ── PID PARSING — gebruikt discoveredPIDDefs parse functies ──

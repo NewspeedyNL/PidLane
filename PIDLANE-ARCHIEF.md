@@ -15,6 +15,33 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — Banden elke vijf minuten, als één regel (#396, vervolg)
+
+**Wat er gebeurde.** Op 06-10 om 21:56, vóór de testrun, stonden de acht
+banden nog als losse vinkjes in de sensorlijst ("EIGEN 8/9"). Dat had sinds
+#421 niet meer gekund. Volgens de bestuurder was de uitrol nog niet gedaan, dus de
+telefoon draaide de code van vóór #421. Dat is geen fout in #421, maar het
+laat wel zien dat een merge niet hetzelfde is als wat er op de telefoon
+staat.
+
+**De wens.** "Van mijn part mogen de 8 banden PIDs onder 1 naam, en maar 1
+keer per 5 min even meten." Het open gat van #396 was precies dit: een band
+die tijdens de rit leegloopt, zag je pas als je het venster opende.
+
+**Wat nu.** Eén regel "🛞 Banden" in de sensorlijst. Het vinkje is een
+voorkeur van het toestel (`pl_banden_auto`, standaard aan) en geen PID in
+`activePIDs`: een nep-PID daar zou elke module die `activePIDs` afloopt (de
+gezondheidscheck, PLMon, de tegels, het rapport) een sensor zonder waarde
+laten zien. `tik()` kijkt elke 30 s of het tijd is. De kosten: acht keer
+ATSH, vraag en ATSH terug is zo'n 1,2 s per vijf minuten, dus 0,4% van de
+bus.
+
+**Nog open.** Of 1,2 s klopt op de CX-5 en geen hapering van de meter geeft,
+zie je alleen tijdens een rit: het BT-log toont elke ronde als
+"🛞 Banden gevraagd".
+
+---
+
 ## 06-10-2026 — Banden op verzoek (#396)
 
 **De vraag.** "De 8 pids allemaal trenden en monitoren is onzin." Sinds

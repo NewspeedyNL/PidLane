@@ -1339,6 +1339,12 @@ MUTATIES=(
 "public/pidlane-banden.js@@    if (_gen === (window._btGen || 0)) return Promise.resolve({ ok: true, al: true });@@    if (false) return Promise.resolve({ ok: true, al: true });@@test-banden.js@@elke keer dat Slim visueel opbouwt worden de acht banden opnieuw gevraagd — #396"
 "public/pidlane-banden.js@@    if (_bezig) return _bezig;\n    const pids = vraagPids@@    const pids = vraagPids@@test-banden.js@@twee keer tikken op ↻ vraagt de banden twee keer achter elkaar — #396"
 "public/pidlane-banden.js@@  const OUD_MS = 30 * 60000;@@  const OUD_MS = 180000;@@test-banden.js@@op verzoek gevraagd en na drie minuten al dof: het lampje is grijs zolang je rijdt — #396"
+# ── banden: één regel in de sensorlijst, elke vijf minuten (#396, 06-10-2026) ──
+"public/pidlane-banden.js@@    return !!(aan && klaar && heeft && nu - (laatst || 0) >= AUTO_MS);@@    return !!(aan && klaar && heeft);@@test-banden.js@@de bandenronde draait elke tik van 30 s in plaats van elke vijf minuten — #396"
+"public/pidlane-banden.js@@!(typeof demoMode !== 'undefined' && demoMode) && !!window._plVerbindingKlaar; }@@!(typeof demoMode !== 'undefined' && demoMode); }@@test-banden.js@@de bandenronde vraagt de bus midden in het verbinden, tijdens de koude poort — #396"
+"public/pidlane-banden.js@@    if (_aan) _laatstGevraagd = 0;@@@@test-banden.js@@het vinkje aanzetten vraagt de banden pas vijf minuten later — #396"
+"public/pidlane-banden.js@@    if (f && 'banden bandenspanning bandtemperatuur tpms'.indexOf(f) < 0 && !pids@@    if (f && false && !pids@@test-banden.js@@zoeken op \"olie\" toont de bandenregel toch — #396"
+"public/pidlane-rijsituatie.js@@PLBanden.lijstRegel) ? PLBanden.lijstRegel(f) : null;@@PLBanden.lijstRegel) ? null : null;@@bproef-banden.js@@de acht banden verdwijnen uit de sensorlijst zonder dat er een regel voor terugkomt — #396"
 "public/pidlane-uitgebreid.js@@    const aan = defs.filter(d => d.tempo === 'opverzoek' || actief.indexOf(d.pid) >= 0);@@    const aan = defs.filter(d => actief.indexOf(d.pid) >= 0);@@test-banden.js@@blok 5 zegt bij banden op verzoek dat er geen enkele eigen sensor aanstaat — #396"
 "public/pidlane-uitgebreid.js@@    if (!DRUK_KPA[van] || !DRUK_KPA[doel] || van === doel) return null;@@    return null;@@test-mode21.js@@de bandenspanning blijft in psi, wat de klant ook kiest"
 "public/pidlane-uitgebreid.js@@    if (voor === achter || links === rechts) return null;@@    if (false) return null;@@test-mode21.js@@een naam zonder duidelijke plek wordt toch een band (en staat dan op de verkeerde)"

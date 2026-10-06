@@ -20,10 +20,18 @@
 // TEMPO (#396, 06-10-2026). Een band zonder gekozen tempo gaat niet meer de
 // pollus in (PLEigen: tempo 'opverzoek'). ververs() vraagt ze alle acht in één
 // beurt onder het busslot: één keer per verbinding als Slim visueel opent
-// (eenmaal()), en elke keer dat je dit venster opent of op ↻ tikt. Tot
-// 06-10 was het elke minuut, als acht losse PIDs met elk een trend — voor één
-// vraag: staan de banden op spanning, en worden ze niet te heet. Een meting
-// ouder dan een half uur is dof.
+// (eenmaal()), elke keer dat je dit venster opent of op ↻ tikt, en — zolang
+// het vinkje "🛞 Banden" in de sensorlijst aanstaat — elke vijf minuten
+// (AUTO_MS, tik()). Acht banden kosten via adres 720 samen zo'n 1,2 s bus,
+// dus 0,4% van vijf minuten. Tot 06-10 was het elke minuut, als acht losse
+// PIDs met elk een trend — voor één vraag: staan de banden op spanning, en
+// worden ze niet te heet. Een meting ouder dan een half uur is dof.
+//
+// ÉÉN REGEL IN DE SENSORLIJST. De acht staan daar niet meer los (PLEigen
+// houdt ze eruit); lijstRegel() geeft buildPIDList() één regel met het vinkje
+// voor de ronde van vijf minuten. Het vinkje is een voorkeur van dit toestel
+// (localStorage) en geen PID: het hoort niet in activePIDs, want dan zou elke
+// module die activePIDs afloopt een sensor zonder waarde zien.
 //
 // Slim visueel toont rechtsonder een lampje (PLVisueel → bandenBij) dat dit
 // venster opent: het autootje in het klein (mini()), per wiel gekleurd. Tests: test-banden.js (de pure
@@ -35,6 +43,8 @@
   const POS = ['VL', 'VR', 'AL', 'AR'];
   const POS_NAAM = { VL: 'Voor links', VR: 'Voor rechts', AL: 'Achter links', AR: 'Achter rechts' };
   const OUD_MS = 30 * 60000;      // op verzoek gevraagd: een half uur, daarna dof (#396)
+  const AUTO_MS = 5 * 60000;      // de ronde van vijf minuten, zolang het vinkje aanstaat
+  const AUTO_SLEUTEL = 'pl_banden_auto';
   const WARN = 0.10, GEVAAR = 0.20;
 
   /* Uit de eigen PIDs ({pid, name, unit, band:{pos, soort}}): per band de
@@ -108,7 +118,44 @@
     POS.forEach(p => ['druk', 'temp'].forEach(k => { if (ind[p][k] && uit.indexOf(ind[p][k].pid) < 0) uit.push(ind[p][k].pid); }));
     return uit;
   }
-  let _bezig = null, _gen = -1;
+  let _bezig = null, _gen = -1, _laatstGevraagd = 0;
+
+  /* Puur. Is het tijd voor de ronde van vijf minuten? Alleen met het vinkje
+     aan, een verbinding die klaar is (niet midden in het verbinden, dan heeft
+     de koude poort de bus) en banden om te vragen. */
+  function moetVragen(nu, laatst, aan, klaar, heeft) {
+    return !!(aan && klaar && heeft && nu - (laatst || 0) >= AUTO_MS);
+  }
+  function leesAan() {
+    try { return localStorage.getItem(AUTO_SLEUTEL) !== '0'; }
+    catch (e) { console.warn('PLBanden: voorkeur onleesbaar — de ronde van vijf minuten staat aan', e); return true; }
+  }
+  let _aan = leesAan();
+  function aan() { return _aan; }
+  function zetAan(v) {
+    _aan = !!v;
+    try { localStorage.setItem(AUTO_SLEUTEL, _aan ? '1' : '0'); }
+    catch (e) { console.warn('PLBanden: voorkeur niet bewaard — geldt tot de app sluit', e); }
+    if (_aan) _laatstGevraagd = 0;     // aangezet: bij de volgende tik meteen vragen
+    if (typeof btDiag === 'function') btDiag('🛞 Banden elke 5 minuten: ' + (_aan ? 'aan' : 'uit'), 'info');
+    return _aan;
+  }
+  function tik() {
+    let klaar = false;
+    try { klaar = typeof connected !== 'undefined' && connected && !(typeof demoMode !== 'undefined' && demoMode) && !!window._plVerbindingKlaar; }
+    catch (e) { console.warn('PLBanden: verbindstaat onleesbaar', e); }
+    if (!moetVragen(Date.now(), _laatstGevraagd, _aan, klaar, vraagPids(indeling(defs())).length > 0)) return;
+    ververs();
+  }
+  /* De regel in de sensorlijst, of null: geen banden, of het zoekfilter past
+     niet. `f` is het filter in kleine letters, zoals buildPIDList() het heeft. */
+  function lijstRegel(f) {
+    const pids = vraagPids(indeling(defs()));
+    if (!pids.length) return null;
+    // Zoeken werkt zoals in de rest van de lijst: een stukje van de naam of de code.
+    if (f && 'banden bandenspanning bandtemperatuur tpms'.indexOf(f) < 0 && !pids.some(p => p.toLowerCase().indexOf(f) >= 0)) return null;
+    return { naam: '🛞 Banden', n: pids.length, aan: _aan, eenheid: pids.length + ' sensoren · elke 5 min' };
+  }
   /* Alle banden één keer vragen, onder het busslot. Een tweede aanroep
      terwijl de eerste loopt wacht op dezelfde beurt. */
   function ververs() {
@@ -120,6 +167,7 @@
     if (typeof withBus !== 'function' || typeof parsePID !== 'function' || !window.PLEigen || typeof PLEigen.vraag !== 'function')
       return Promise.resolve({ ok: false, reden: 'busfuncties ontbreken' });
     _gen = window._btGen || 0;
+    _laatstGevraagd = Date.now();
     let goed = 0;
     _bezig = (async () => {
       try {
@@ -183,8 +231,8 @@
         tegel('AL', w.AL, n.ind.AL) + tegel('AR', w.AR, n.ind.AR) + '</div>' +
         '<p class="plb-oordeel ' + n.st.ernst + '">' + esc(n.st.uitleg) + '</p>' +
         '<p class="plb-uitleg">De app vergelijkt de vier banden met elkaar: 10% lager dan de rest is oranje, 20% rood. Of ze samen op de voorgeschreven druk staan, ' +
-        'zie je op de sticker in de deurstijl — die kent de app niet. Gevraagd bij het openen van dit venster en van Slim visueel, niet tijdens het rijden; ' +
-        'tik op ↻ om opnieuw te vragen. Een meting ouder dan een half uur is dof.</p>';
+        'zie je op de sticker in de deurstijl — die kent de app niet. Gevraagd bij het openen van dit venster en van Slim visueel' +
+        (_aan ? ', en elke vijf minuten' : '') + '; tik op ↻ om opnieuw te vragen. Een meting ouder dan een half uur is dof.</p>';
     }
     ov.innerHTML = '<div class="plb-vel"><div class="plb-kop"><h2 id="plBandenTtl">🛞 Banden</h2>' +
       (n.ind ? '<button type="button" class="plb-ververs" aria-label="Opnieuw vragen"' + (_bezig ? ' disabled' : '') + ' onclick="PLBanden.ververs()">↻</button>' : '') +
@@ -247,6 +295,9 @@
       '<path class="vbm-ruit" d="M33 64q27-13 54 0l-5 24q-22-8-44 0z"/></svg>';
   }
 
-  window.PLBanden = { POS, OUD_MS, WARN, GEVAAR, indeling, stand, oordeel, open, sluit, lamp, teken, wielKleuren, mini, vraagPids, ververs, eenmaal,
+  setInterval(tik, 30000);
+
+  window.PLBanden = { POS, OUD_MS, AUTO_MS, WARN, GEVAAR, indeling, stand, oordeel, open, sluit, lamp, teken, wielKleuren, mini, vraagPids, ververs, eenmaal,
+    moetVragen, aan, zetAan, tik, lijstRegel,
     nu: function () { return nu(); } };
 })();

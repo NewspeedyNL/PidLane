@@ -71,6 +71,30 @@ function toets(naam, waar, uitleg) {
     const terug = await app.ev(`(function(){ appBack(); return document.getElementById('plBandenOv').style.display; })()`);
     toets('de Android-terugknop sluit het venster', terug === 'none', terug);
 
+    console.log('\n2b. De sensorlijst: één regel voor de acht banden (#396)');
+    const lijstje = await app.ev(`(function(){
+      supportedPIDs = new Set(['010C','010D','0105']);
+      buildDiscoveredPIDList();
+      const el = document.getElementById('pidList');
+      const rijen = [...el.querySelectorAll('.pr')].map(r => r.querySelector('.pn').textContent);
+      const regel = el.querySelector('.pr-banden');
+      const r = { losseBanden: rijen.filter(n => /Banden(spanning)?\\b.*(links|rechts)|Bandtemperatuur/.test(n)).length,
+                  regel: regel ? regel.textContent : null, aanVoor: PLBanden.aan(), sel: regel ? regel.classList.contains('sel') : null };
+      regel && regel.click();
+      const regel2 = document.getElementById('pidList').querySelector('.pr-banden');
+      r.naKlik = PLBanden.aan(); r.selNa = regel2 ? regel2.classList.contains('sel') : null;
+      r.inActief = [...activePIDs].filter(p => /^222A/.test(p)).length;
+      regel2 && regel2.click();
+      r.terug = PLBanden.aan();
+      return r;
+    })()`);
+    toets('geen acht losse bandregels meer in de lijst', lijstje.losseBanden === 0, JSON.stringify(lijstje));
+    toets('wel één regel "🛞 Banden" met "8 sensoren · elke 5 min"', /🛞 Banden/.test(lijstje.regel || '') && /8 sensoren · elke 5 min/.test(lijstje.regel || ''), JSON.stringify(lijstje));
+    toets('standaard aangevinkt', lijstje.aanVoor === true && lijstje.sel === true, JSON.stringify(lijstje));
+    toets('tikken zet de ronde van vijf minuten uit, en de regel volgt', lijstje.naKlik === false && lijstje.selNa === false, JSON.stringify(lijstje));
+    toets('het vinkje zet geen bandcode in activePIDs', lijstje.inActief === 0, JSON.stringify(lijstje));
+    toets('nog eens tikken zet hem weer aan', lijstje.terug === true, JSON.stringify(lijstje));
+
     console.log('\n3. Het lampje boven Slim visueel');
     await app.ev(`startDemoCar(0); true`);
     await new Promise(r => setTimeout(r, 1500));
