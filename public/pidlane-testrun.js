@@ -3010,6 +3010,37 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── Banden op verzoek, buiten de pollus (#396, 06-10-2026) ──
+  // Acht band-PIDs gingen elke minuut de pollus in, elk met ATSH heen en
+  // terug, en stonden als acht tegels met een trend in de keuzelijst. Nu
+  // vraagt PLBanden.ververs() ze in één beurt, bij Slim visueel en het
+  // bandenvenster. Deze proef kijkt of ze echt uit de pollus zijn en of de
+  // beurt van deze verbinding antwoord gaf.
+  {
+    issue: '#396',
+    naam: 'Banden op verzoek: niet in de pollus, wel gemeten',
+    waarom: 'Acht PIDs via een ander ECU-adres kosten elke minuut busstilte, voor één vraag: staan de banden op spanning en worden ze niet te heet. Dat zie je niet aan een tegel, alleen aan een meter die hapert.',
+    proef: async function () {
+      if (!window.PLBanden || typeof PLBanden.ververs !== 'function' || !window.PLEigen || typeof PLEigen.opVerzoek !== 'function')
+        return { staat: 'FOUT', detail: 'PLBanden.ververs of PLEigen.opVerzoek ontbreekt — pidlane-banden.js of pidlane-uitgebreid.js is niet (volledig) geladen' };
+      var n = PLBanden.nu();
+      if (!n.ind) return { staat: 'LET OP', detail: 'geen bandensensoren bij dit voertuig — er is niets op verzoek te vragen' };
+      var pids = PLBanden.vraagPids(n.ind);
+      var inPollus = pids.filter(function (p) { return !PLEigen.opVerzoek(p) && typeof activePIDs !== 'undefined' && activePIDs.has(p); });
+      var opVerzoek = pids.filter(function (p) { return PLEigen.opVerzoek(p); });
+      var lijst = (typeof discoveredPIDDefs !== 'undefined' && discoveredPIDDefs) ? discoveredPIDDefs : [];
+      var tegels = opVerzoek.filter(function (p) { return lijst.some(function (d) { return d.pid === p; }); });
+      if (tegels.length) return { staat: 'FOUT', detail: tegels.length + ' band-PID(s) op verzoek staan toch in de keuzelijst: ' + tegels.join(', ') };
+      var wat = opVerzoek.length + ' van ' + pids.length + ' band-PIDs op verzoek' + (inPollus.length ? ', ' + inPollus.length + ' met een gekozen tempo in de pollus' : '');
+      if (typeof connected === 'undefined' || !connected || (typeof demoMode !== 'undefined' && demoMode))
+        return { staat: 'LET OP', detail: wat + ' — niet verbonden met een echte auto, niets gevraagd' };
+      var r = await PLBanden.ververs();
+      if (!r.ok) return { staat: 'LET OP', detail: wat + ' — vragen lukte niet: ' + r.reden };
+      if (!r.goed) return { staat: 'LET OP', detail: wat + ' — geen enkele band gaf antwoord op ' + r.gevraagd + ' vragen. Klopt het ECU-adres? Test een code in Mijn voertuigen → Sensoren.' };
+      return { staat: 'OK', detail: wat + ' · ' + r.goed + ' van ' + r.gevraagd + ' gaven antwoord · ' + PLBanden.oordeel(PLBanden.nu().ind, PLBanden.nu().st).detail };
+    }
+  },
+
   // ── Het verbindgeheugen is geen ratel (#414, 06-10-2026) ──
   // De CX-5 stond in drie dagen op ATST 0xFF (1020 ms) bij een traagste
   // antwoord van 81 ms: elke bijsturing ging het geheugen in en kwam er nooit

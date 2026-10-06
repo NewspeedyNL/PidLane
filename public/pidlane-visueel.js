@@ -1122,6 +1122,8 @@ function bouw(g, reden){
   // niet eerst een lege meter te laten zien.
   _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
   meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
+  // De banden gaan niet de pollus in (#396): één keer per verbinding vragen.
+  try{ if(window.PLBanden && PLBanden.eenmaal) PLBanden.eenmaal(); }catch(e){ console.warn('PLVisueel: banden niet gevraagd', e); }
 }
 
 // ── DE WAARSCHUWINGSTOON ──────────────────────────────────────────

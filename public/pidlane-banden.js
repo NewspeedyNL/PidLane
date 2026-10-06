@@ -17,8 +17,13 @@
 // één band die leegloopt — en zegt niets over vier banden die samen te zacht
 // zijn; dat staat onderaan het venster.
 //
-// TEMPO. De banden worden standaard elke minuut gevraagd (PLEigen: geen tempo
-// gekozen + een band = minuut). Een meting ouder dan drie minuten is dof.
+// TEMPO (#396, 06-10-2026). Een band zonder gekozen tempo gaat niet meer de
+// pollus in (PLEigen: tempo 'opverzoek'). ververs() vraagt ze alle acht in één
+// beurt onder het busslot: één keer per verbinding als Slim visueel opent
+// (eenmaal()), en elke keer dat je dit venster opent of op ↻ tikt. Tot
+// 06-10 was het elke minuut, als acht losse PIDs met elk een trend — voor één
+// vraag: staan de banden op spanning, en worden ze niet te heet. Een meting
+// ouder dan een half uur is dof.
 //
 // Slim visueel toont rechtsonder een lampje (PLVisueel → bandenBij) dat dit
 // venster opent: het autootje in het klein (mini()), per wiel gekleurd. Tests: test-banden.js (de pure
@@ -29,7 +34,7 @@
 
   const POS = ['VL', 'VR', 'AL', 'AR'];
   const POS_NAAM = { VL: 'Voor links', VR: 'Voor rechts', AL: 'Achter links', AR: 'Achter rechts' };
-  const OUD_MS = 180000;          // drie keer het standaardtempo van een minuut
+  const OUD_MS = 30 * 60000;      // op verzoek gevraagd: een half uur, daarna dof (#396)
   const WARN = 0.10, GEVAAR = 0.20;
 
   /* Uit de eigen PIDs ({pid, name, unit, band:{pos, soort}}): per band de
@@ -95,6 +100,56 @@
     return { ind, st: stand(ind, v, t, Date.now()) };
   }
 
+  // ── Op verzoek vragen (#396) ─────────────────────────────────────
+  /* De PIDs die ververs() vraagt: per band de druk en de temperatuur. Puur. */
+  function vraagPids(ind) {
+    const uit = [];
+    if (!ind) return uit;
+    POS.forEach(p => ['druk', 'temp'].forEach(k => { if (ind[p][k] && uit.indexOf(ind[p][k].pid) < 0) uit.push(ind[p][k].pid); }));
+    return uit;
+  }
+  let _bezig = null, _gen = -1;
+  /* Alle banden één keer vragen, onder het busslot. Een tweede aanroep
+     terwijl de eerste loopt wacht op dezelfde beurt. */
+  function ververs() {
+    if (_bezig) return _bezig;
+    const pids = vraagPids(indeling(defs()));
+    if (!pids.length) return Promise.resolve({ ok: false, reden: 'geen bandensensoren' });
+    if (typeof connected === 'undefined' || !connected || (typeof demoMode !== 'undefined' && demoMode))
+      return Promise.resolve({ ok: false, reden: 'niet verbonden met een auto' });
+    if (typeof withBus !== 'function' || typeof parsePID !== 'function' || !window.PLEigen || typeof PLEigen.vraag !== 'function')
+      return Promise.resolve({ ok: false, reden: 'busfuncties ontbreken' });
+    _gen = window._btGen || 0;
+    let goed = 0;
+    _bezig = (async () => {
+      try {
+        await withBus('banden', async () => {
+          for (const pid of pids) {
+            if (!connected) break;
+            const r = parsePID(pid, await PLEigen.vraag(pid));
+            if (r != null) { goed++; markPidData(pid); updPID(pid, r); }
+            else markPidNoData(pid);
+          }
+        }, 15000);
+        if (typeof btDiag === 'function') btDiag('🛞 Banden gevraagd: ' + goed + ' van ' + pids.length + ' gaven antwoord', goed ? 'info' : 'warn');
+        return { ok: true, gevraagd: pids.length, goed };
+      } catch (e) {
+        if (typeof btDiag === 'function') btDiag('🛞 Banden vragen mislukt: ' + (e.message || e), 'warn');
+        return { ok: false, reden: e.message || String(e) };
+      } finally {
+        _bezig = null;
+        try { teken(); } catch (e) { console.warn('PLBanden: venster niet bijgewerkt na vragen', e); }
+        try { if (window.PLVisueel && PLVisueel.bandenBij) PLVisueel.bandenBij(); } catch (e) { console.warn('PLBanden: lampje niet bijgewerkt na vragen', e); }
+      }
+    })();
+    return _bezig;
+  }
+  /* Slim visueel opent: één keer per verbinding vragen. */
+  function eenmaal() {
+    if (_gen === (window._btGen || 0)) return Promise.resolve({ ok: true, al: true });
+    return ververs();
+  }
+
   // ── Het venster ─────────────────────────────────────────────────
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   function getal(m, dec) {
@@ -128,9 +183,11 @@
         tegel('AL', w.AL, n.ind.AL) + tegel('AR', w.AR, n.ind.AR) + '</div>' +
         '<p class="plb-oordeel ' + n.st.ernst + '">' + esc(n.st.uitleg) + '</p>' +
         '<p class="plb-uitleg">De app vergelijkt de vier banden met elkaar: 10% lager dan de rest is oranje, 20% rood. Of ze samen op de voorgeschreven druk staan, ' +
-        'zie je op de sticker in de deurstijl — die kent de app niet. Gemeten elke minuut; een meting ouder dan drie minuten is dof.</p>';
+        'zie je op de sticker in de deurstijl — die kent de app niet. Gevraagd bij het openen van dit venster en van Slim visueel, niet tijdens het rijden; ' +
+        'tik op ↻ om opnieuw te vragen. Een meting ouder dan een half uur is dof.</p>';
     }
     ov.innerHTML = '<div class="plb-vel"><div class="plb-kop"><h2 id="plBandenTtl">🛞 Banden</h2>' +
+      (n.ind ? '<button type="button" class="plb-ververs" aria-label="Opnieuw vragen"' + (_bezig ? ' disabled' : '') + ' onclick="PLBanden.ververs()">↻</button>' : '') +
       '<button type="button" class="plb-sluit" aria-label="Sluiten" onclick="PLBanden.sluit()">✕</button></div>' + body + '</div>';
   }
   function open() {
@@ -143,6 +200,7 @@
     }
     teken();
     ov.style.display = 'flex';
+    ververs();
     if (!ov._ververs) ov._ververs = setInterval(() => { if (ov.style.display !== 'none' && !ov.querySelector(':active')) teken(); }, 2000);
   }
   function sluit() { const ov = document.getElementById('plBandenOv'); if (ov) ov.style.display = 'none'; }
@@ -189,6 +247,6 @@
       '<path class="vbm-ruit" d="M33 64q27-13 54 0l-5 24q-22-8-44 0z"/></svg>';
   }
 
-  window.PLBanden = { POS, OUD_MS, WARN, GEVAAR, indeling, stand, oordeel, open, sluit, lamp, teken, wielKleuren, mini,
+  window.PLBanden = { POS, OUD_MS, WARN, GEVAAR, indeling, stand, oordeel, open, sluit, lamp, teken, wielKleuren, mini, vraagPids, ververs, eenmaal,
     nu: function () { return nu(); } };
 })();

@@ -15,6 +15,33 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — Banden op verzoek (#396)
+
+**De vraag.** "De 8 pids allemaal trenden en monitoren is onzin." Sinds
+28-09 ging een band zonder gekozen tempo elke minuut de pollus in, met
+`EIGEN_PER_RONDE` = 2 als rem. Op de CX-5 zijn dat acht PIDs op ECU-adres
+720, elk met ATSH heen en terug. Ze stonden ook als acht losse tegels met
+een trend in de keuzelijst. Dat zijn acht antwoorden op één vraag: staan de
+banden op spanning, en worden ze niet te heet.
+
+**Wat nu.** Het tempo is `opverzoek`. `pidsDueNow()` slaat zo'n PID over,
+ook als hij nog in `activePIDs` staat van een eerdere keuze, en hij komt
+niet in de keuzelijst. `PLBanden.ververs()` vraagt alle druk- en
+temperatuur-PIDs in één `withBus`-beurt: bij het openen van het venster,
+met ↻, en via `eenmaal()` één keer per verbinding als Slim visueel opbouwt.
+Er gaat niets naar de datalog of de sessiestatistiek, alleen `updPID`. Een
+meting is pas na een half uur dof in plaats van na drie minuten. Anders zou
+het lampje grijs worden zodra je wegrijdt.
+
+**Bewust niet gedaan.** Het issue noemt de waakronde als optie: "die wacht
+toch op ruimte in de bus". Dat zou een band die tijdens de rit leegloopt
+alsnog vangen. De waakronde is wel van `supportedPIDs` (mode 01), en een
+eigen PID met een ander ECU-adres past daar niet zonder meer in. Dat is een
+eigen issue waard. Ook niet gedaan: één tegel "Banden" in de keuzelijst. Het
+lampje en het venster zijn nu die ene weergave.
+
+---
+
 ## 06-10-2026 — Het verbindgeheugen was een ratel (#414)
 
 **Wat de kennisbank liet zien.** De CX-5 mat bij de koude poort een ATST van

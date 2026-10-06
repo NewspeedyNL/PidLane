@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Banden op verzoek, buiten de pollus (#396)
+ ═══════════════════════════════════════════════════════════
+
+ - Een band zonder gekozen tempo staat op 'opverzoek': niet in pidsDueNow,
+   niet als acht tegels in de keuzelijst. Een gekozen tempo wint nog steeds.
+ - PLBanden.ververs() vraagt de druk- en temperatuur-PIDs in één busbeurt:
+   bij het openen van het bandenvenster, met ↻, en één keer per verbinding
+   als Slim visueel opbouwt (eenmaal()). Dof na een half uur in plaats van
+   drie minuten.
+ - test-banden.js, test-mode21.js, bproef-banden.js, zeven mutaties,
+   blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Verbindgeheugen: alleen metingen, de laatste drie (#414)
  ═══════════════════════════════════════════════════════════
 

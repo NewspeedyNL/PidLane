@@ -329,7 +329,7 @@ function haalZeef(isMode01) {
     t('zonder merk of model: niet zoeken', (await E.zoekOnline({ merk: 'Mazda' })).ok, false);
   }
 
-  console.log('\n— banden: herkennen, elke minuut, druk in bar of psi (28-09-2026) —');
+  console.log('\n— banden: herkennen, op verzoek (#396), druk in bar of psi (28-09-2026) —');
   {
     const s = bouw();
     const E = s.PLEigen, R = (n) => JSON.stringify(E.bandRol(n));
@@ -347,7 +347,7 @@ function haalZeef(isMode01) {
            { code: '222A0A', naam: 'Bandtemperatuur voor-links', formule: 'A-50', eenheid: '°C', ecu: '720' },
            { code: '222A06', naam: 'Bandenspanning voor-rechts', formule: psi, eenheid: 'psi', ecu: '720', tempo: 'normaal' },
            { code: '221310', naam: 'Motorolietemperatuur', formule: '((A*256)+B)/100-40', eenheid: '°C' }], 'Mazda');
-    t('een band zonder gekozen tempo: elke minuut', E.interval('222A05') + ',' + E.interval('222A0A'), '60000,60000');
+    t('een band zonder gekozen tempo: op verzoek, buiten de pollus (#396)', [E.opVerzoek('222A05'), E.opVerzoek('222A0A'), E.interval('222A05')].join(','), 'true,true,999999');
     t('een band met tempo "normaal" blijft elke 2 s (de keuze wint)', E.interval('222A06'), 2000);
     t('geen band: elke 2 s', E.interval('221310'), 2000);
     const d = s.ALL_PID_DEFS['222A05'];

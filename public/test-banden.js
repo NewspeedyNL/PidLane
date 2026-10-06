@@ -3,7 +3,8 @@
 // Laadt de echte pidlane-banden.js in een vm en toetst de twee pure functies:
 // indeling() (uit de eigen PIDs per band de druk en de temperatuur) en
 // stand() (de vier banden tegen elkaar: 10% onder de mediaan oranje, 20%
-// rood, een meting van meer dan drie minuten oud telt niet mee).
+// rood, een meting van meer dan een half uur oud telt niet mee — #396), en
+// ververs(): de banden op verzoek, buiten de pollus om.
 //
 // De namen komen uit PLEigen.bandRol() — ook echt geladen, uit
 // pidlane-uitgebreid.js — zodat een naam die daar niet meer herkend wordt
@@ -71,11 +72,14 @@ st = B.stand(ind, druk(2.3, 2.3, 2.3, 2.12), tijden, NU);
 t('8% lager is nog geen melding', st.ernst, 'ok');
 st = B.stand(ind, druk(2.6, 2.3, 2.3, 2.3), tijden, NU);
 t('een band die hoger staat is geen lekke band', st.ernst, 'ok');
-// Oud: een meting van vijf minuten geleden telt niet mee.
-const oud = Object.assign({}, tijden, { '222A06': NU - 300000 });
+// Oud: een meting van veertig minuten geleden telt niet mee. Vijf minuten
+// wel: de banden worden op verzoek gevraagd, niet elke minuut (#396).
+st = B.stand(ind, druk(2.3, 1.2, 2.3, 2.3), Object.assign({}, tijden, { '222A06': NU - 300000 }), NU);
+t('een meting van 5 min is nog vers: op verzoek gevraagd, niet elke minuut', [st.ernst, st.wielen.VR.druk.oud], ['danger', false]);
+const oud = Object.assign({}, tijden, { '222A06': NU - 2400000 });
 st = B.stand(ind, druk(2.3, 1.2, 2.3, 2.3), oud, NU);
-t('een oude meting (5 min) telt niet, en is dof', [st.ernst, st.wielen.VR.druk.oud, st.wielen.VR.ernst], ['ok', true, 'ok']);
-const tweeOud = Object.assign({}, oud, { '222A07': NU - 300000 });
+t('een oude meting (40 min) telt niet, en is dof', [st.ernst, st.wielen.VR.druk.oud, st.wielen.VR.ernst], ['ok', true, 'ok']);
+const tweeOud = Object.assign({}, oud, { '222A07': NU - 2400000 });
 st = B.stand(ind, druk(2.3, 2.3, 2.3, 2.3), tweeOud, NU);
 t('twee van de vier vers: geen oordeel (geen), met de reden', [st.ernst, /2 van 4/.test(st.uitleg)], ['geen', true]);
 st = B.stand(ind, {}, {}, NU);
@@ -103,5 +107,53 @@ t('het autootje heeft vier wielen, elk met zijn eigen kleur', [...mini.matchAll(
 t('…en een romp', /class="vbm-romp"/.test(mini), true);
 t('zonder wielen: vier grijze', (B.mini(null).match(/vbm-wiel geen/g) || []).length, 4);
 
-console.log('\n' + (fout ? fout + ' van ' + (ok + fout) + ' FOUT' : 'Alle ' + ok + ' goed'));
-process.exit(fout ? 1 : 0);
+// ── ververs(): op verzoek, buiten de pollus (#396) ──
+(async () => {
+  console.log('\n— op verzoek: tempo, pollus, keuzelijst en ververs() —');
+  t('een band zonder gekozen tempo: op verzoek, niet elke minuut', ['222A05', '222A0A'].map(p => E.opVerzoek(p)), [true, true]);
+  t('de motorolie (geen band) blijft in de pollus', E.opVerzoek('221310'), false);
+  E.zet(lijst.map(x => x.code === '222A06' ? Object.assign({}, x, { tempo: 'minuut' }) : x), 'CX-5');
+  t('een band met een gekozen tempo houdt dat tempo (de keuze wint)', [E.opVerzoek('222A06'), E.interval('222A06')], [false, 60000]);
+  E.zet(lijst, 'CX-5');
+  t('in het oordeel van blok 5 telt een band op verzoek mee, ook zonder vinkje',
+    E.oordeel({ echt: true, defs: E.defs().filter(d => d.pid === '222A05'), actief: [], laatst: { '222A05': NU - 3600000 }, waarden: { '222A05': 2.3 }, nu: NU }).staat, 'ok');
+
+  const gevraagd = [], bus = [], diag = [];
+  s.connected = true; s.demoMode = false; s._btGen = 7;
+  s.withBus = async (wat, f) => { bus.push(wat); return f(); };
+  s.parsePID = (pid, raw) => raw === 'NO DATA' ? null : 2.3;
+  s.markPidData = () => {}; s.markPidNoData = () => {}; s.btDiag = (m) => diag.push(m);
+  const waarden = {};
+  s.updPID = (pid, v) => { waarden[pid] = v; };
+  E.vraag = async (pid) => { gevraagd.push(pid); return pid === '222A0D' ? 'NO DATA' : '62' + pid.slice(2) + '45'; };
+  const [r1, r2] = await Promise.all([B.ververs(), B.ververs()]);
+  t('ververs vraagt de acht banden één keer, in één busbeurt', [gevraagd.length, new Set(gevraagd).size, bus.length, gevraagd.indexOf('221310')], [8, 8, 1, -1]);
+  t('een tweede ververs tijdens de eerste wacht op dezelfde beurt', r1 === r2 || JSON.stringify(r1) === JSON.stringify(r2), true);
+  t('wat antwoordt komt in pidVals, wat niet antwoordt niet', [r1.goed, '222A05' in waarden, '222A0D' in waarden], [7, true, false]);
+  await B.eenmaal();
+  t('Slim visueel opent opnieuw in dezelfde verbinding: niet nog eens vragen', gevraagd.length, 8);
+  s._btGen = 8;
+  await B.eenmaal();
+  t('nieuwe verbinding: Slim visueel vraagt de banden weer', gevraagd.length, 16);
+  s.connected = false;
+  const r3 = await B.ververs();
+  t('niet verbonden: geen busbeurt', [r3.ok, bus.length], [false, 2]);
+
+  // De pollus zelf: pidsDueNow uit de echte pidlane-plload.js.
+  const PL = lees('pidlane-plload.js');
+  const i = PL.indexOf('function pidsDueNow(){'), j = PL.indexOf('const EIGEN_PER_RONDE=2;');
+  if (i < 0 || j < 0) { console.log('FOUT: pidsDueNow niet gevonden in pidlane-plload.js'); process.exit(1); }
+  const due = new Function('activePIDs', '_pidDead', '_pidDeadSince', '_pidNextPoll', 'pidPollInterval', 'window', PL.slice(i, j) + 'const EIGEN_PER_RONDE=2;\nreturn pidsDueNow;')(
+    ['010C', '222A05', '222A0A', '221310'], new Set(), {}, {}, p => 1000, s)();
+  t('de pollus slaat de banden op verzoek over, de motorolie niet', due.join(','), '010C,221310');
+
+  // De keuzelijst: de echte regel uit pidlane-rijsituatie.js.
+  const RS = lees('pidlane-rijsituatie.js');
+  const ki = RS.indexOf('  // Eigen PIDs van het voertuig dat aan de adapter hangt'), kj = RS.indexOf("  catch(e){ console.warn('Eigen PIDs niet in de keuzelijst gezet'");
+  if (ki < 0 || kj < 0) { console.log('FOUT: de eigen PIDs in de keuzelijst niet gevonden in pidlane-rijsituatie.js'); process.exit(1); }
+  const keuze = new Function('plEigenDefs', 'discoveredPIDDefs', RS.slice(ki, kj) + "catch(e){ throw e; }\nreturn discoveredPIDDefs;")(() => E.defs(), []);
+  t('in de keuzelijst: de motorolie wel, de acht banden niet', keuze.map(d => d.pid).join(','), '221310');
+
+  console.log('\n' + (fout ? fout + ' van ' + (ok + fout) + ' FOUT' : 'Alle ' + ok + ' goed'));
+  process.exit(fout ? 1 : 0);
+})().catch(e => { console.log('FOUT: ' + (e && e.stack || e)); process.exit(1); });
