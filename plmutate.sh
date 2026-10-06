@@ -1568,6 +1568,8 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  } else if(volt){@@  } else if(volt && m){@@test-visueel.js@@het acculampje brandt alleen als er ook een motoroordeel is: zonder PLAandrijving geen spanning"
 "public/pidlane-banden.js@@      uit[p] = (!st || st.ernst === 'geen' || !d || d.waarde === null || d.oud) ? 'geen' : w.ernst;@@      uit[p] = w ? w.ernst : 'geen';@@test-banden.js@@het autootje kleurt een band van een kwartier geleden groen"
 "public/pidlane.css@@body.pl-visueel #plLiveWaak, body.pl-visueel #plLiveRec { display:none !important; }@@@@bproef-visueel.js@@Bewaken en Opnemen staan weer onder Slim visueel, naast de waakronde en de recorder in het vak"
+# ── de koopcheck laat jouw kenteken staan (#331) ──
+"public/pidlane-koopcheck.js@@_kent: kent, _val: val };\n@@_kent: kent, _val: val };\n    localStorage.setItem('pl_kenteken', kent);\n@@test-koopcheck-kenteken.js@@een koopcheck schrijft het kenteken van de gecheckte auto in pl_kenteken: je dossier hoort dan bij een vreemde auto"
 # ── Bluetooth uit is geen "adapter niet gevonden" (#359) ──
 "public/pidlane-bt.js@@    if (await btAanVoorKeten(spp, ble) === 'uit'){@@    if (false){@@test-btuit.js@@met Bluetooth uit start de keten toch: anderhalve minuut scannen en dan Contact aan?"
 "public/pidlane-bt.js@@        if (e.__plBtUit || btUitFout(e.message)){@@        if (false){@@test-btuit.js@@een Bluetooth-is-uit-fout in de keten laat BLE en een tweede ronde nog lopen"
