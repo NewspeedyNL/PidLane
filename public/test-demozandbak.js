@@ -142,7 +142,7 @@ const echt = (ctx, k) => vm.runInContext('localStorage._m[' + JSON.stringify(k) 
     toets('de AI gaat in de demo niet de deur uit', nb('/v1/messages', { method: 'POST' }) !== 'door');
     toets('tegoed inwisselen ook niet', nb('/credits/redeem', {}) !== 'door');
     toets('een referentiemeting ook niet — ook als absoluut adres', nb('https://pidlane-proxy.x.workers.dev/airtable/veldlab', {}) !== 'door');
-    toets('de applog wél (die draagt al Demo=true, zie test-demoopslag.js)', nb('https://pidlane-proxy.x.workers.dev/airtable/log', {}) === 'door');
+    toets('de applog ook niet (#360) — ook als absoluut adres', nb('https://pidlane-proxy.x.workers.dev/airtable/log', {}) !== 'door');
     toets('het RDW wél: opzoeken bewaart niets', nb('/proxy?url=' + encodeURIComponent('https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=AB123C')) === 'door');
     toets('je voertuigen lezen mag (stand, als json)', nb('/klant/platform', { method: 'POST', json: { actie: 'stand' } }) === 'door');
     toets('je rapporten lezen mag (rapport, als body)', nb('/klant/platform', { method: 'POST', body: JSON.stringify({ actie: 'rapport', id: 'x' }) }) === 'door');

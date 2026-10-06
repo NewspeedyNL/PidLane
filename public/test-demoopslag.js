@@ -185,10 +185,10 @@ const beide = (fn) => ({ demo: fn(true), echt: fn(false) });
       r[demo ? 'demo' : 'echt'] = { rij: b.s._atBuffer[0] && b.s._atBuffer[0].fields, vinGevraagd };
     }
     const d = r.demo.rij || {}, e = r.echt.rij || {};
-    toets('een demoregel draagt Demo en RecordType demo; een echte niet',
-      d.Demo === true && d.RecordType === 'demo' && e.Demo === undefined && e.RecordType === 'app', JSON.stringify({ d, e }));
-    toets('een demoregel zegt niets over een auto: geen merk, jaar of VIN — een echte wel',
-      d.Merk === '' && d.Year === '' && d.VIN === '' && r.demo.vinGevraagd === 0 && e.Merk === 'Mazda' && e.VIN === 'pseudo123', JSON.stringify({ d, e }));
+    toets('in de demo komt er geen logregel in de buffer, en de VIN wordt niet eens gepseudonimiseerd (#360)',
+      r.demo.rij === undefined && r.demo.vinGevraagd === 0, JSON.stringify(r.demo));
+    toets('TEGENPROEF: zonder demo wel, met merk en VIN-pseudoniem',
+      e.RecordType === 'app' && e.Merk === 'Mazda' && e.VIN === 'pseudo123', JSON.stringify(e));
   }
 
   console.log('\n9. Stoppen met de demo');

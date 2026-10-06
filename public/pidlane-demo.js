@@ -341,7 +341,8 @@ window.plDemoZonderLogin = plDemoZonderLogin;
   var WEIGER = [
     { re: /^\/v1\/messages\b/, reden: 'de AI rekent niet op een verzonnen auto' },
     { re: /^\/credits\//, reden: 'tegoed inwisselen hoort niet bij een demo' },
-    { re: /\/airtable\/veldlab\b/, reden: 'een demo is geen referentiemeting' }
+    { re: /\/airtable\/veldlab\b/, reden: 'een demo is geen referentiemeting' },
+    { re: /\/airtable\/log\b/, reden: 'de logregels van een verzonnen auto horen niet tussen echte ritten (#360)' }
   ];
 
   function isDemo() {

@@ -244,6 +244,8 @@ async function deel3() {
   const bron = fs.readFileSync(__dirname + '/pidlane-auth.js', 'utf8');
   const noteer = bron.match(/let _atLaatste=null;[\s\S]*?function plLiveLogStatus\(\)\{[^\n]*\n/);
   const flush = bron.match(/async function flushAirtable\(\)\{[\s\S]*?\n\}/);
+  const geweigerd = bron.match(/let _atGeweigerdToken=null;/);
+  if (!geweigerd) { console.error('FOUT: _atGeweigerdToken niet gevonden in pidlane-auth.js'); process.exit(1); }
   if (!noteer) { console.error('FOUT: _atLaatste/_atNoteer/plLiveLogStatus niet gevonden in pidlane-auth.js'); process.exit(1); }
   if (!flush) { console.error('FOUT: flushAirtable() niet gevonden in pidlane-auth.js'); process.exit(1); }
 
@@ -255,8 +257,9 @@ async function deel3() {
   s.setTimeout = function () { return 0; };
   s.clearTimeout = function () { };
   s.Object = Object;
+  s.APP_TOKEN = 'sessie-1';
   vm.createContext(s);
-  vm.runInContext(noteer[0] + '\n' + flush[0], s, { filename: 'flushAirtable' });
+  vm.runInContext(geweigerd[0] + '\n' + noteer[0] + '\n' + flush[0], s, { filename: 'flushAirtable' });
 
   const vul = function (aantal) {
     s._atBuffer.length = 0;
@@ -350,6 +353,47 @@ async function deel3() {
   toets('TEGENPROEF: een lege buffer levert geen nieuwe uitslag op',
     JSON.stringify(s.plLiveLogStatus()) === laatste,
     'anders leest "er stond niets klaar" als "het is aangekomen" — gaf: ' + s.plLiveLogStatus());
+
+  // 7. GEEN 401-LUS (#360). Zonder sessie weigert de Worker altijd; elke 15 s
+  //    opnieuw proberen gaf 25× een 401 in zes minuten demo.
+  let pogingen = 0, ingepland = 0;
+  s.setTimeout = function () { ingepland++; return 0; };
+  s.plFetch = async function () { pogingen++; return { ok: false, status: 401, json: async () => ({ error: 'unauthorized' }) }; };
+  s.APP_TOKEN = '';
+  vul(2);
+  await s.flushAirtable();
+  toets('zonder sessie gaat er niets de deur uit, en de regels blijven staan',
+    pogingen === 0 && s._atBuffer.length === 2 && ingepland === 0,
+    'pogingen ' + pogingen + ', buffer ' + s._atBuffer.length + ', ingepland ' + ingepland);
+  s.APP_TOKEN = 'sessie-verlopen';
+  await s.flushAirtable();
+  toets('een 401 wordt één keer geprobeerd, de regels blijven, en er wordt niet opnieuw ingepland',
+    pogingen === 1 && s._atBuffer.length === 2 && ingepland === 0,
+    'pogingen ' + pogingen + ', buffer ' + s._atBuffer.length + ', ingepland ' + ingepland);
+  await s.flushAirtable();
+  toets('... en met hetzelfde geweigerde token niet nog eens',
+    pogingen === 1, 'pogingen ' + pogingen + ' — dan is de lus terug');
+  s.APP_TOKEN = 'sessie-2';
+  s.plFetch = async function () { pogingen++; return { ok: true, status: 200, json: async () => ({ ok: true, geschreven: 2 }) }; };
+  await s.flushAirtable();
+  toets('TEGENPROEF: met een nieuwe sessie gaan dezelfde regels alsnog mee',
+    pogingen === 2 && s._atBuffer.length === 0,
+    'pogingen ' + pogingen + ', buffer ' + s._atBuffer.length);
+
+  // 8. DE DEMOPOORT VAN plFetch WEIGERT: die regels horen nergens heen, ook
+  //    niet terug in de buffer — anders gaan ze ná de demo alsnog mee.
+  s.plFetch = async function () { return { ok: false, status: 403, json: async () => ({ ok: false, demo: true, error: 'Demo: x' }) }; };
+  vul(2);
+  await s.flushAirtable();
+  toets('een demoweigering gooit de batch weg in plaats van hem te bewaren',
+    s._atBuffer.length === 0 && ingepland === 0,
+    'buffer ' + s._atBuffer.length + ', ingepland ' + ingepland);
+  s.plFetch = async function () { return { ok: false, status: 403, json: async () => ({ error: 'forbidden' }) }; };
+  vul(2);
+  await s.flushAirtable();
+  toets('TEGENPROEF: een gewone 403 bewaart de batch wél',
+    s._atBuffer.length === 2, 'buffer ' + s._atBuffer.length);
+  s._atBuffer.length = 0;
 
   await deel4();
 }
