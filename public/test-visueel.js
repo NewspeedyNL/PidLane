@@ -606,6 +606,23 @@ waar('een spanning buiten de schaal: balkje hooguit vol, tekst in zijn vak', l.a
 l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'benzine', { volt: 'NO DATA' });
 waar('onleesbare spanning op een benzineauto: geen acculampje', !l.accu, JSON.stringify(l));
 
+// Het acculampje flitste weg (06-10-2026): een oude spanning gaf null, en dan
+// verdween het hele lampje tot de volgende meting van 0142.
+l = L(null, 'benzine', { volt: 12.6, voltOud: true });
+waar('een oude spanning: het acculampje blijft staan, dof', l.accu && /\boud\b/.test(l.accu.soort) && l.accu.waarde === '12,6 V', JSON.stringify(l.accu));
+waar('TEGENPROEF: een verse spanning is niet dof', !/\boud\b/.test(L(null, 'benzine', { volt: 12.6 }).accu.soort));
+{
+  const Ac = maak({ actief: ['010C', '0142'] });
+  const nu = Date.now();
+  Ac.pidVals['0142'] = 12.6;
+  Ac._pidLastUpd['0142'] = nu - 8000;   // ruim boven 3× het tempo en de 5 s-grens
+  const g = Ac.PLVisueel.accuGetal('0142', nu);
+  waar('accuGetal: 8 s oud geeft de waarde terug, gemerkt als oud', g && g.v === 12.6 && g.oud === true, JSON.stringify(g));
+  waar('TEGENPROEF: lampGetal gooit dezelfde waarde weg — dáárom verdween het lampje', Ac.PLVisueel.isOud('0142', nu) === true);
+  Ac._pidLastUpd['0142'] = nu - Ac.PLVisueel.VIS_ACCU_VERGEET_MS - 1000;
+  waar('accuGetal: na een minuut zonder antwoord pas weg', Ac.PLVisueel.accuGetal('0142', nu) === null);
+}
+
 // Een hybride: twee accu's in één lampje.
 l = L({ toestand: 'ACCU_RIJDT', zekerheid: 'hoog', bewijstHybride: true }, 'benzine', { accu: 61.7, volt: 14.1 });
 waar('rijden met stille motor bewijst een hybride, ook met "benzine" op het kenteken: twee accu\'s',

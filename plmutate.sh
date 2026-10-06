@@ -1568,6 +1568,9 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  } else if(volt){@@  } else if(volt && m){@@test-visueel.js@@het acculampje brandt alleen als er ook een motoroordeel is: zonder PLAandrijving geen spanning"
 "public/pidlane-banden.js@@      uit[p] = (!st || st.ernst === 'geen' || !d || d.waarde === null || d.oud) ? 'geen' : w.ernst;@@      uit[p] = w ? w.ernst : 'geen';@@test-banden.js@@het autootje kleurt een band van een kwartier geleden groen"
 "public/pidlane.css@@body.pl-visueel #plLiveWaak, body.pl-visueel #plLiveRec { display:none !important; }@@@@bproef-visueel.js@@Bewaken en Opnemen staan weer onder Slim visueel, naast de waakronde en de recorder in het vak"
+# ── het acculampje flitst niet meer weg bij een oude spanning (06-10-2026) ──
+"public/pidlane-visueel.js@@  return { v:pidVals[pid], oud:isOud(pid, nu) };@@  return isOud(pid, nu) ? null : { v:pidVals[pid], oud:false };@@test-visueel.js@@een oude accuspanning gooit het lampje weg: de accu flitst weg tot de volgende meting"
+"public/pidlane-visueel.js@@soort:'accu '+vSt+(extra.voltOud ? ' oud' : ''),@@soort:'accu '+vSt,@@test-visueel.js@@een oude accuspanning staat er even fel als een verse"
 # ── G-cirkel: zij-G volgt het gevoel, piekballetje (#407) ──
 "public/pidlane-visprofiel.js@@function gPunt(x, y){ return { cx:(100-x*80)@@function gPunt(x, y){ return { cx:(100+x*80)@@test-visprofiel.js@@rechts sturen zet de stip weer rechts, tegen het gevoel in"
 "public/pidlane-visprofiel.js@@  if(!piek || t-piek.t > G_PIEK_MS || Math.hypot(x, y) >= Math.hypot(piek.x, piek.y)) return@@  if(true) return@@test-visprofiel.js@@het piekballetje volgt gewoon de stip: een hard remmoment is na het loslaten al weg"
