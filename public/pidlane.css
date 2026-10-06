@@ -1519,27 +1519,29 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vpf-buis.warn .vpf-w { color:var(--or); }
 .vpf-buis.danger .vpf-w { color:var(--rd); }
 
-/* LICHT — emissie: een lichte kaart, ook in het donkere thema. */
-.vpf-licht { background:#f7f8fb; color:#10151f; border:1px solid #dfe4ee; box-shadow:0 10px 30px rgba(0,0,0,.18); }
-.vpf-lambda { display:flex; flex-direction:column; align-items:center; gap:4px; padding:4px 6px 12px; border-bottom:1px solid #e3e7ef; }
-.vpf-lambda small { font-size:11px; color:#5a6478; }
-.vpf-lambda .vpf-w { font-size:44px; font-weight:800; line-height:1; letter-spacing:-1px; color:#10151f; }
+/* LICHT — emissie. Was een witte kaart, ook in het donkere thema; sinds
+   06-10-2026 donker, uit het gebruik: in de auto verblindde hij 's avonds.
+   De naam van de stijl is gebleven (profiel 'emissie', stijl 'licht'). */
+.vpf-licht { background:#0f141d; color:#e8ecf4; border:1px solid #232b3a; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+.vpf-lambda { display:flex; flex-direction:column; align-items:center; gap:4px; padding:4px 6px 12px; border-bottom:1px solid #232b3a; }
+.vpf-lambda small { font-size:11px; color:#8b95a8; }
+.vpf-lambda .vpf-w { font-size:44px; font-weight:800; line-height:1; letter-spacing:-1px; color:#e8ecf4; }
 .vpf-schaal { position:relative; width:100%; max-width:300px; height:14px; margin-top:8px; border-radius:7px;
               background:linear-gradient(90deg, #ff9f2e, #2ecc71 40%, #2ecc71 60%, #4d82ff); }
-.vpf-schaal .vpf-rijk, .vpf-schaal .vpf-arm { position:absolute; top:17px; font-style:normal; font-size:10px; font-weight:700; color:#5a6478; text-transform:uppercase; letter-spacing:.4px; }
+.vpf-schaal .vpf-rijk, .vpf-schaal .vpf-arm { position:absolute; top:17px; font-style:normal; font-size:10px; font-weight:700; color:#8b95a8; text-transform:uppercase; letter-spacing:.4px; }
 .vpf-schaal .vpf-rijk { left:0; } .vpf-schaal .vpf-arm { right:0; }
-.vpf-schaal .vpf-een { position:absolute; left:50%; top:-4px; bottom:-4px; width:2px; background:#10151f; opacity:.35; }
-.vpf-schaal .vpf-wijzer { position:absolute; top:-6px; width:6px; height:26px; margin-left:-3px; border-radius:3px; background:#10151f; box-shadow:0 0 0 2px #fff; transition:left .4s ease-out; }
+.vpf-schaal .vpf-een { position:absolute; left:50%; top:-4px; bottom:-4px; width:2px; background:#e8ecf4; opacity:.4; }
+.vpf-schaal .vpf-wijzer { position:absolute; top:-6px; width:6px; height:26px; margin-left:-3px; border-radius:3px; background:#e8ecf4; box-shadow:0 0 0 2px #0f141d; transition:left .4s ease-out; }
 .vpf-rijen { display:flex; flex-direction:column; gap:10px; padding:16px 2px 0; }
 .vpf-rij { display:grid; grid-template-columns:1fr 46px 24px; grid-template-rows:auto auto; column-gap:6px; align-items:center; }
-.vpf-rij small { grid-column:1 / -1; font-size:11px; font-weight:700; color:#5a6478; }
-.vpf-baan { position:relative; height:8px; border-radius:4px; background:#e6eaf2; overflow:hidden; }
-.vpf-baan .vpf-nul { position:absolute; left:50%; top:0; bottom:0; width:2px; margin-left:-1px; background:#9aa4b8; z-index:1; }
-.vpf-baan .vpf-f { position:absolute; top:0; bottom:0; left:0; border-radius:4px; background:#2563ff; transition:width .4s ease-out, left .4s ease-out; }
+.vpf-rij small { grid-column:1 / -1; font-size:11px; font-weight:700; color:#8b95a8; }
+.vpf-baan { position:relative; height:8px; border-radius:4px; background:#1d2532; overflow:hidden; }
+.vpf-baan .vpf-nul { position:absolute; left:50%; top:0; bottom:0; width:2px; margin-left:-1px; background:#4a556a; z-index:1; }
+.vpf-baan .vpf-f { position:absolute; top:0; bottom:0; left:0; border-radius:4px; background:#4d82ff; transition:width .4s ease-out, left .4s ease-out; }
 .vpf-rij .vpf-w { font-size:15px; font-weight:800; text-align:right; }
-.vpf-rij .vpf-e { font-style:normal; font-size:11px; color:#5a6478; }
+.vpf-rij .vpf-e { font-style:normal; font-size:11px; color:#8b95a8; }
 .vpf-rij.warn .vpf-f { background:#f2820c; } .vpf-rij.danger .vpf-f { background:#ef4444; }
-.vpf-rij.warn .vpf-w { color:#c25e00; } .vpf-rij.danger .vpf-w { color:#c62828; }
+.vpf-rij.warn .vpf-w { color:#ff9f2e; } .vpf-rij.danger .vpf-w { color:#ff5a5a; }
 
 /* DIGITAAL — verbruik: een LCD-paneel met segmentbalken. */
 .vpf-digitaal { background:#050a07; color:#5dffa0; border:2px solid #1b2a20; font-family:var(--m);

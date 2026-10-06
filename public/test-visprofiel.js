@@ -181,5 +181,19 @@ console.log('\n7. Telemetrie: de tekening draait mee (05-10-2026)');
   waar('gPiek: lengte en zij tellen samen (0,6 bij 0,6 is groter dan 0,8)', G({ x: 0, y: -0.8, t: 0 }, 0.6, 0.6, 100).x === 0.6);
 }
 
+console.log('\n8. Het emissiescherm is donker (06-10-2026)');
+{
+  // Tot 06-10 een witte kaart, ook in het donkere thema; 's avonds in de auto
+  // verblindde hij. Getoetst op de helderheid van de achtergrond en de tekst.
+  const css = lees('pidlane.css');
+  const m = css.match(/\.vpf-licht \{[^}]*background:(#[0-9a-f]{6});[^}]*color:(#[0-9a-f]{6});/i);
+  const lum = h => { const n = parseInt(h.slice(1), 16); return (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255; };
+  waar('.vpf-licht heeft een achtergrond en een tekstkleur', !!m);
+  if (m) {
+    waar('de achtergrond is donker (helderheid < 0,2)', lum(m[1]) < 0.2, m[1] + ' = ' + lum(m[1]).toFixed(2));
+    waar('…en de tekst licht, dus leesbaar', lum(m[2]) > 0.7, m[2]);
+  }
+}
+
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + (ok + fout) : 'goed: ' + ok + ' ok, 0 fout'));
 process.exit(fout ? 1 : 0);
