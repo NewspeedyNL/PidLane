@@ -70,7 +70,7 @@ const srcKeten = knip(bronWorker, 'function tegoedTarief(env) {', '__name(handle
 // uitgevoerd, dus de handlers van de andere routes hoeven niet te bestaan.
 const srcRouter = knip(bronWorker, 'var worker_default = {', '  // ── De dagelijkse opruimronde',
                        'de router', 'worker.js') + '};';
-const srcTest = knip(bronAuth, 'async function testApiKey(){', '// ── Extra logfunctie (admin-only)',
+const srcTest = knip(bronAuth, 'async function testApiKey(){', 'async function logout(){',
                      'testApiKey()', 'pidlane-auth.js');
 
 // ── de nagemaakte omgeving om de Worker heen ──────────────────────

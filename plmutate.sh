@@ -1339,6 +1339,8 @@ MUTATIES=(
 "public/pidlane-banden.js@@    if (_gen === (window._btGen || 0)) return Promise.resolve({ ok: true, al: true });@@    if (false) return Promise.resolve({ ok: true, al: true });@@test-banden.js@@elke keer dat Slim visueel opbouwt worden de acht banden opnieuw gevraagd — #396"
 "public/pidlane-banden.js@@    if (_bezig) return _bezig;\n    const pids = vraagPids@@    const pids = vraagPids@@test-banden.js@@twee keer tikken op ↻ vraagt de banden twee keer achter elkaar — #396"
 "public/pidlane-banden.js@@  const OUD_MS = 30 * 60000;@@  const OUD_MS = 180000;@@test-banden.js@@op verzoek gevraagd en na drie minuten al dof: het lampje is grijs zolang je rijdt — #396"
+# ── de regel die werkelijk wint (opruim-PR, 06-10-2026) ──
+"public/pidlane.css@@#fabLane { bottom:calc(14px + var(--pl-sab) + var(--pl-nav-h)); }@@#fabLane { bottom:calc(14px + var(--pl-sab)); }@@test-schermranden.js@@de zwevende chips vallen achter de navigatiebalk: de regel die wint vergeet --pl-nav-h"
 # ── banden: één regel in de sensorlijst, elke vijf minuten (#396, 06-10-2026) ──
 "public/pidlane-banden.js@@    return !!(aan && klaar && heeft && nu - (laatst || 0) >= AUTO_MS);@@    return !!(aan && klaar && heeft);@@test-banden.js@@de bandenronde draait elke tik van 30 s in plaats van elke vijf minuten — #396"
 "public/pidlane-banden.js@@!(typeof demoMode !== 'undefined' && demoMode) && !!window._plVerbindingKlaar; }@@!(typeof demoMode !== 'undefined' && demoMode); }@@test-banden.js@@de bandenronde vraagt de bus midden in het verbinden, tijdens de koude poort — #396"
