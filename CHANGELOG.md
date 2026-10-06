@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Koopcheck laat het kenteken van je eigen auto staan (#331)
+ ═══════════════════════════════════════════════════════════
+
+ - koopRdwLookup() schrijft niet meer in pl_kenteken. Het rapport leest het
+   gecheckte kenteken uit _koopRdwData._kent, de terugroepcheck uit het
+   event pl:kenteken-geladen.
+ - test-koopcheck-kenteken.js, één mutatie, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Bluetooth uit: meteen een melding, geen anderhalve minuut scannen (#359)
  ═══════════════════════════════════════════════════════════
 

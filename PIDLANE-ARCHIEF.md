@@ -15,6 +15,28 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — De koopcheck nam je eigen kenteken over (#331)
+
+**Wat er gebeurde.** `koopRdwLookup()` schreef het kenteken van de auto die je
+overweegt in `pl_kenteken`. Dat is de sleutel die de app als jóuw auto leest:
+`_uvKey()` valt er zonder VIN op terug, en het dossier eronder gaat mee de
+AI-prompt in (`_dossierPromptLine`). Na één koopcheck lazen en bewaarden
+km-stand, onderhoud en distributie dus onder een vreemd kenteken, ook bij de
+volgende echte verbinding zonder VIN. Gevonden op 28-09 tijdens het demowerk.
+
+**Wat er nu staat.** De regel is weg. Het rapport leest al
+`_koopRdwData._kent`, en PLRecall krijgt het kenteken uit het event, niet uit
+de opslag. Er is niets anders dat het gecheckte kenteken uit `pl_kenteken`
+las.
+
+**Niet meegenomen.** De koopcheck zet ook `vehicleInfo.merk/model/year` op
+de gecheckte auto, "voor de AI". Dat is een vluchtig object en geen opgeslagen
+sleutel, maar zolang je niet opnieuw verbindt, gaat een volgende AI-vraag
+over je eigen auto met die gegevens uit. Een eigen onderwerp, geen issue
+aangemaakt.
+
+---
+
 ## 06-10-2026 — Bluetooth uit las als "adapter niet gevonden" (#359)
 
 **Waarneming (30-09, Android 16).** `SPP scan: Bluetooth is disabled` in het
