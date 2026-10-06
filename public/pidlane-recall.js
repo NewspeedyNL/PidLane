@@ -277,7 +277,9 @@
   };
 
   // Automatisch meeliften op de bestaande kentekenlookups. Zowel pidlane-bt.js
-  // als pidlane-koopcheck.js vuren dit af nadat ze pl_kenteken hebben gezet.
+  // als pidlane-koopcheck.js vuren dit af met het kenteken in detail; alleen
+  // pidlane-bt.js zet ook pl_kenteken, want de koopcheck gaat over een
+  // andere auto dan de jouwe (#331).
   window.addEventListener('pl:kenteken-geladen', ev => {
     const kt = ev && ev.detail && ev.detail.kenteken;
     if (!kt) return;

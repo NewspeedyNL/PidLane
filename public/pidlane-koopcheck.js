@@ -273,7 +273,10 @@ async function koopRdwLookup(){
     const tellerOordeel = f.tellerstandoordeel || null;
 
     _koopRdwData = { ...v, _recall: recallActief, _teller: tellerOordeel, _kent: kent, _val: val };
-    localStorage.setItem('pl_kenteken', kent);
+    // NIET in pl_kenteken (#331): dat is de sleutel van je EIGEN auto. Tot
+    // 06-10-2026 stond hier een setItem, en na één koopcheck hoorden je
+    // km-stand, onderhoud en dossier bij de auto die je overwoog — en gingen
+    // ze zo mee de AI-prompt in. Het rapport leest _koopRdwData._kent.
     // Vlag → detail: PLRecall vult de banner met wélke actie en welk risico.
     try{ window.dispatchEvent(new CustomEvent('pl:kenteken-geladen',{detail:{kenteken:kent}})); }catch(e){ /* stil: element kan al weg zijn */ }
 

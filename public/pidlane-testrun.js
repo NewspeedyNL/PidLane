@@ -2771,6 +2771,21 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de koopcheck laat jouw kenteken staan (#331) ──
+  {
+    issue: '#331',
+    naam: 'Een koopcheck maakt de gecheckte auto niet tot jouw auto',
+    waarom: 'pl_kenteken is de sleutel van je eigen auto: zonder VIN hangen km-stand, onderhoud en dossier eraan, en die gaan mee de AI-prompt in.',
+    proef: async function () {
+      var d = (typeof _koopRdwData !== 'undefined') ? _koopRdwData : null;
+      if (!d || !d._kent) return { staat: 'LET OP', detail: 'deze sessie nog geen koopcheck — nodig: Koopcheck → een kenteken dat niet het jouwe is → RDW opzoeken, en draai opnieuw' };
+      var eigen = '';
+      try { eigen = localStorage.getItem('pl_kenteken') || ''; } catch (e) { return { staat: 'LET OP', detail: 'pl_kenteken onleesbaar: ' + (e.message || e) }; }
+      if (eigen === d._kent) return { staat: 'LET OP', detail: 'pl_kenteken is gelijk aan het gecheckte kenteken (' + d._kent + '): je checkte je eigen auto, of de oude code draait nog — herlaad en check een ander kenteken' };
+      return { staat: 'OK', detail: 'gecheckt ' + d._kent + ', jouw kenteken bleef ' + (eigen || '(leeg)') };
+    }
+  },
+
   // ── Bluetooth uit is geen "adapter niet gevonden" (#359) ──
   {
     issue: '#359',
