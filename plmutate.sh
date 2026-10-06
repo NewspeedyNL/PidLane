@@ -1559,6 +1559,13 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  } else if(volt){@@  } else if(volt && m){@@test-visueel.js@@het acculampje brandt alleen als er ook een motoroordeel is: zonder PLAandrijving geen spanning"
 "public/pidlane-banden.js@@      uit[p] = (!st || st.ernst === 'geen' || !d || d.waarde === null || d.oud) ? 'geen' : w.ernst;@@      uit[p] = w ? w.ernst : 'geen';@@test-banden.js@@het autootje kleurt een band van een kwartier geleden groen"
 "public/pidlane.css@@body.pl-visueel #plLiveWaak, body.pl-visueel #plLiveRec { display:none !important; }@@@@bproef-visueel.js@@Bewaken en Opnemen staan weer onder Slim visueel, naast de waakronde en de recorder in het vak"
+# ── Bluetooth uit is geen "adapter niet gevonden" (#359) ──
+"public/pidlane-bt.js@@    if (await btAanVoorKeten(spp, ble) === 'uit'){@@    if (false){@@test-btuit.js@@met Bluetooth uit start de keten toch: anderhalve minuut scannen en dan Contact aan?"
+"public/pidlane-bt.js@@        if (e.__plBtUit || btUitFout(e.message)){@@        if (false){@@test-btuit.js@@een Bluetooth-is-uit-fout in de keten laat BLE en een tweede ronde nog lopen"
+"public/pidlane-bt.js@@    if (btUitFout(se.message)){ const f@@    if (false){ const f@@test-btuit.js@@de SPP-scan zegt Bluetooth is disabled en de app zegt geen adapter gevonden"
+"public/pidlane-bt.js@@const BT_UIT_RX = /\\b(bluetooth|ble)\\b( adapter)? @@const BT_UIT_RX = /( adapter)? @@test-btuit.js@@locatie uit leest als Bluetooth uit: de gebruiker zet iets aan dat al aan stond"
+"public/pidlane-bt.js@@    if(ble && typeof ble.requestEnable === 'function') await ble.requestEnable();@@    if(false) await ble.requestEnable();@@test-btuit.js@@Android wordt niet gevraagd om Bluetooth aan te zetten, ook waar dat kan"
+"public/pidlane-bt.js@@— keten loopt zoals altijd', 'warn'); return 'onbekend'; }@@— keten loopt zoals altijd', 'warn'); return 'uit'; }@@test-btuit.js@@een plugin die de stand niet geeft houdt elke verbinding tegen"
 # ── eigen PIDs krijgen een standaardbereik: banden en olie (30-09-2026) ──
 "public/pidlane-uitgebreid.js@@['wH', 'dH', 'dL'].forEach@@['wH'].forEach@@test-mode21.js@@een bandtemperatuur van 70 °C en een band op 1 bar blijven groen: de gevarengrenzen gaan niet mee (#370)"
 "public/pidlane-uitgebreid.js@@      min: heeftBereik ? min : std ? std.min : -1e9, max: heeftBereik ? max : std ? std.max : 1e9,@@      min: heeftBereik ? min : -1e9, max: heeftBereik ? max : 1e9,@@test-mode21.js@@de banden en de olie staan weer op −1e9…1e9 en de balk in Slim blijft leeg"

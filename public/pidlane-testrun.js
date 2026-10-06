@@ -2771,6 +2771,21 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Bluetooth uit is geen "adapter niet gevonden" (#359) ──
+  {
+    issue: '#359',
+    naam: 'Met Bluetooth uit stopt het verbinden meteen, met een melding over Bluetooth',
+    waarom: 'Anderhalve minuut scannen en dan "Adapter in OBD-poort? Contact aan?" stuurt de gebruiker naar de auto, terwijl het aan de telefoon ligt.',
+    proef: async function () {
+      if (typeof btUitFout !== 'function' || typeof btAanVoorKeten !== 'function') return { staat: 'FOUT', detail: 'btUitFout of btAanVoorKeten ontbreekt — pidlane-bt.js is niet de nieuwe' };
+      if (!btUitFout('Bluetooth is disabled') || btUitFout('Location services are not enabled')) return { staat: 'FOUT', detail: 'de herkenning van "Bluetooth uit" klopt niet' };
+      var spp = (typeof getSPP === 'function') ? getSPP() : null;
+      if (!spp || typeof spp.isEnabled !== 'function') return { staat: 'LET OP', detail: 'de herkenning klopt; de stand zelf is alleen in de app te lezen — nodig: de APK, niet de browser' };
+      var r = await spp.isEnabled();
+      return { staat: 'OK', detail: 'herkenning klopt · Bluetooth staat nu ' + (r && r.enabled ? 'aan' : 'uit') + ' volgens de SPP-plugin' };
+    }
+  },
+
   // ── Telemetrie: helling en kanteling van de telefoon ──
   // Een nieuwe groep sensoren die niet van de auto komt maar van de
   // oriëntatiesensor van het toestel. Deze proef zegt of het toestel meet,
