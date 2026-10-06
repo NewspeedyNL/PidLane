@@ -366,6 +366,34 @@ function haalZeef(isMode01) {
       return r.def.unit + ' ' + r.def.min + '-' + r.def.max + ' ' + r.def.parse([250]);
     })(), 'bar 1-3 2.5');
     t('zonder PLVoorkeur: bar', (delete s.PLVoorkeur, E.controleer({ code: '220909', naam: 'x', formule: 'A', eenheid: 'psi' }).def.unit), 'bar');
+
+    // Standaardbereik (30-09-2026, uit het gebruik): zonder bereik stond
+    // alles op −1e9…1e9, en dan is de balk in Slim gearceerd en leeg.
+    const C = (e) => { s.PLVoorkeur = { druk: () => 'bar' }; return E.controleer(Object.assign({ code: '222A0A', formule: 'A' }, e)).def; };
+    let b = C({ naam: 'Bandtemperatuur voor-links', eenheid: '°C' });
+    t('bandtemperatuur (#370): schaal tot 80, rood vanaf 65', [b.max, b.dH, b.balkVol].join(','), '80,65,80');
+    t('…en 0 °C is geen minimum (anders leest een winterband als dummy)', b.min < 0, true);
+    const knip = (naam, tot) => {
+      const bron = lees('pidlane-pids.js'), i = bron.indexOf('function ' + naam + '('), j = bron.indexOf('function ' + tot + '(', i);
+      if (i < 0 || j < 0) { console.error('FOUT: ' + naam + ' niet te knippen uit pidlane-pids.js'); process.exit(1); }
+      return new Function(bron.slice(i, j) + 'return ' + naam + ';')();
+    };
+    const schaal = knip('slimTempSchaal', 'slimBeweegt'), oordeel = knip('pidOordeel', 'applyG');
+    t('…dus in Slim loopt de balk vol op 80, niet op 65 en niet op een miljard', schaal(b), 80);
+    t('…en 70 °C is rood, 60 °C niet', oordeel(b, 70) + ',' + oordeel(b, 60), 'danger,ok');
+    b = C({ naam: 'Bandenspanning voor-links', eenheid: 'psi' });
+    t('bandenspanning in psi, getoond in bar (#370): schaal 0–4, rood onder 1,5 en vanaf 3,5', b.unit + ' ' + b.min + '-' + b.max + ' ' + b.dL + '/' + b.dH, 'bar 0-4 1.5/3.5');
+    t('…1,2 en 3,8 bar zijn rood, 2,3 bar niet', [oordeel(b, 1.2), oordeel(b, 3.8), oordeel(b, 2.3)].join(','), 'danger,danger,ok');
+    s.PLVoorkeur = { druk: () => 'psi' };
+    b = E.controleer({ code: '222A05', naam: 'Bandenspanning voor-links', formule: 'A', eenheid: 'psi' }).def;
+    t('voorkeur psi: dezelfde schaal en grenzen in psi', [b.unit, b.max, b.dL, b.dH].join(' '), 'psi 58.02 21.76 50.76');
+    t('…en 30 psi (2,1 bar) is dan niet rood', oordeel(b, 30), 'ok');
+    b = C({ naam: 'Motorolietemperatuur', eenheid: '°C' });
+    t('motorolietemperatuur: dezelfde grenzen als 015C', [b.min, b.max, b.wH, b.dH].join(','), [-40, 150, s.ALL_PID_DEFS['015C'].wH, s.ALL_PID_DEFS['015C'].dH].join(','));
+    b = C({ naam: 'Bandtemperatuur voor-links', eenheid: '°C', min: -50, max: 200 });
+    t('een eigen bereik wint van de schaal, de grens blijft', [b.min, b.max, b.dH, b.balkVol].join(','), '-50,200,65,');
+    b = C({ naam: 'Inlaatnokkenas', eenheid: '°' });
+    t('wat niet herkend wordt houdt het open bereik', b.max + ' ' + b.wH, '1000000000 undefined');
   }
 
   console.log('\n— dieper zoeken: AI met werkende codes en de buurscan (28-09-2026) —');

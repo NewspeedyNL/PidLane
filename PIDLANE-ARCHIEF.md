@@ -15,6 +15,25 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — Bandengrenzen: absoluut, niet alleen relatief (#370)
+
+**Wat de branch van 30-09 deed.** `ccr-8e6efa44` gaf eigen band-PIDs een
+standaardbereik, maar bewust zónder grens voor de spanning: "het oordeel over
+een band is relatief (PLBanden), niet absoluut". De temperatuur kreeg oranje
+vanaf 65 en rood bij 80.
+
+**Wat het issue vroeg, en wat er nu staat.** Rood onder 1,5 en vanaf 3,5 bar
+op een balk van 0–4, en rood vanaf 65 °C op een balk tot 80. Besloten bij de
+release van 3.2.0: zoals het issue. Het relatieve oordeel van PLBanden blijft
+ernaast bestaan; een absolute grens vangt wat een vergelijking tussen vier
+banden mist, zoals vier banden die samen te zacht staan.
+
+**Waarom er een veld bij kwam.** `slimTempSchaal()` laat de temperatuurbalk
+vollopen op de gevarengrens. Rood vanaf 65 gaf dus een balk die op 65 vol
+was, niet op 80. Het nieuwe veld `balkVol` zegt waar de balk vol is, los van
+de grens. Alleen bij de standaardschaal: een eigen bereik van de klant houdt
+zijn eigen schaal.
+
 ## 04-10-2026 — De rit-monitor meldde schakelen als defect (#400)
 
 **Waarneming.** Een melding in de rit-monitor terwijl de bestuurder aan het
@@ -439,6 +458,34 @@ kon met de oude flush ook: die liep vóór de write, het late antwoord erna.
 **Nog niet gemeten.** Hoeveel tempo dit oplevert hangt af van hoe druk de
 JS-draad is; dat zegt alleen een rit. `pl_spp_flush = 1` zet de oude stand
 terug, zodat het verschil in één sessie te zien is.
+
+---
+
+## 30-09-2026 — eigen PIDs zonder bereik: een lege, gearceerde balk
+
+**De waarneming.** Uit het gebruik, CX-5: in Slim stonden de vier
+bandtemperaturen en de motorolietemperatuur met een gearceerde, lege balk,
+en de vier bandenspanningen onder "beweegt" terwijl ze 2,29–2,49 bar
+stonden.
+
+**Waarom.** `eigenControleer()` gaf een sensor zonder ingevuld bereik
+`min −1e9, max 1e9` en geen grenzen. `slimTempSchaal()` valt dan terug op
+`max`, dus de balk deelt door een miljard, en de arcering van #66 zegt
+terecht "geen bekende grens". De bandenspanning ging onder "beweegt"
+omdat de sparkline zich op de eigen 24 metingen schaalt: een verschil van
+0,01 bar vult de hele hoogte.
+
+**Wat er gedaan is.** `standaardBereik()` in `pidlane-uitgebreid.js`
+herkent uit de naam (`bandRol()`, en "olie…temp") drie soorten en geeft ze
+een schaal; zie de kop van die functie. De onderkant van de bandtemperatuur
+is −40 en niet 0: `pidlane-kwaliteit.js` leest in de scanmodus een waarde
+op precies het minimum als dummy, en een winterband van 0 °C is echt.
+Een eigen bereik gaat voor, maar de grenzen (wH/dH) gaan altijd mee — het
+bereik zegt waar de schaal loopt, niet wanneer het te warm is.
+
+**Wat het níét oplost.** Een eigen sensor die we niet uit de naam
+herkennen, houdt het open bereik. Dat is bewust: een verzonnen schaal is
+erger dan een gearceerde, en de klant kan zelf een bereik invullen.
 
 ---
 

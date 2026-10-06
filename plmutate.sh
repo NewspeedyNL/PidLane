@@ -358,7 +358,7 @@ MUTATIES=(
 # dode link in een verplicht veld, een afvinklijst die een oude versie
 # bevestigt, en het woord dat de hele Data safety-form onjuist maakt.
 "PLAY-INZENDING.md@@\`\`\`\nhttps://app.pidlane.nl/privacy.html\n\`\`\`@@\`\`\`\nhttps://pidlane.nl/privacy.html\n\`\`\`@@test-playteksten.js@@de privacy-URL wijst naar een andere host dan de app zelf gebruikt"
-"package.json@@  \"version\": \"3.1.0\",@@  \"version\": \"3.2.0\",@@test-playteksten.js@@de afvinklijst bevestigt een versienummer dat niet meer gebouwd wordt"
+"package.json@@  \"version\": \"3.2.0\",@@  \"version\": \"3.3.0\",@@test-playteksten.js@@de afvinklijst bevestigt een versienummer dat niet meer gebouwd wordt"
 "PLAY-INZENDING.md@@| URL | \`https://app.pidlane.nl/verwijderen.html\` |@@| URL | \`https://pidlane.nl/verwijderen.html\` |@@test-playteksten.js@@de verwijder-URL wijst naar een andere host dan de app zelf gebruikt"
 "PLAY-INZENDING.md@@## 8. Ads@@De gedeelde meetdata is geanonimiseerd.\n\n## 8. Ads@@test-playteksten.js@@het inzenddocument noemt de meetdata weer anoniem in plaats van gepseudonimiseerd"
 # ── de poort voor automerge (03-09-2026) ──
@@ -1559,6 +1559,12 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  } else if(volt){@@  } else if(volt && m){@@test-visueel.js@@het acculampje brandt alleen als er ook een motoroordeel is: zonder PLAandrijving geen spanning"
 "public/pidlane-banden.js@@      uit[p] = (!st || st.ernst === 'geen' || !d || d.waarde === null || d.oud) ? 'geen' : w.ernst;@@      uit[p] = w ? w.ernst : 'geen';@@test-banden.js@@het autootje kleurt een band van een kwartier geleden groen"
 "public/pidlane.css@@body.pl-visueel #plLiveWaak, body.pl-visueel #plLiveRec { display:none !important; }@@@@bproef-visueel.js@@Bewaken en Opnemen staan weer onder Slim visueel, naast de waakronde en de recorder in het vak"
+# ── eigen PIDs krijgen een standaardbereik: banden en olie (30-09-2026) ──
+"public/pidlane-uitgebreid.js@@['wH', 'dH', 'dL'].forEach@@['wH'].forEach@@test-mode21.js@@een bandtemperatuur van 70 °C en een band op 1 bar blijven groen: de gevarengrenzen gaan niet mee (#370)"
+"public/pidlane-uitgebreid.js@@      min: heeftBereik ? min : std ? std.min : -1e9, max: heeftBereik ? max : std ? std.max : 1e9,@@      min: heeftBereik ? min : -1e9, max: heeftBereik ? max : 1e9,@@test-mode21.js@@de banden en de olie staan weer op −1e9…1e9 en de balk in Slim blijft leeg"
+"public/pidlane-uitgebreid.js@@return { min: 0, max: inU(4), dL: inU(1.5), dH: inU(3.5) };@@return { min: 0, max: 4, dL: 1.5, dH: 3.5 };@@test-mode21.js@@de bandenspanning in psi krijgt de grenzen in bar: 30 psi leest als te hoog"
+"public/pidlane-pids.js@@  const top = (d && typeof d.balkVol==='number') ? d.balkVol\n            : (d && typeof d.dH==='number') ? d.dH@@  const top = (d && typeof d.dH==='number') ? d.dH@@test-mode21.js@@de balk van de bandtemperatuur loopt in Slim vol op 65 in plaats van 80 (#370)"
+"public/pidlane-uitgebreid.js@@{ min: -40, max: 80, dH: 65, balkVol: 80 }@@{ min: 0, max: 80, dH: 65, balkVol: 80 }@@test-mode21.js@@een winterband van precies 0 °C leest als dummywaarde"
 # ── geen ruwe VIN in een profielmelding (30-09-2026) ──
 "public/pidlane-pids.js@@btDiag('Geen profiel onder '+_vinSleutelVoorLog(vin)+' — volle discovery','warn')@@btDiag('Geen profiel onder '+sleutel+' — volle discovery','warn')@@test-vin-meldingen.js@@de VIN staat weer voluit in het BT-log, en daarmee in elk gedeeld logboek"
 "public/pidlane-pids.js@@function _vinSleutelVoorLog(vin){ return 'pl_vinprof_…'+String(vin||'').toUpperCase().slice(-6); }@@function _vinSleutelVoorLog(vin){ return vinProfileKey(vin); }@@test-vin-meldingen.js@@de maskerfunctie geeft de hele sleutel terug: elke melding lekt de VIN zonder dat de aanroepen veranderen"

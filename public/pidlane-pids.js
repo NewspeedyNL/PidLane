@@ -807,10 +807,13 @@ const SLIM_BEWEEG_MIN  = 4;      // minder metingen = nog niets te zeggen
 // metingen is ruim binnen de 120 die pidHist bewaart.
 const SLIM_PIEK_N = 60;
 
-// Waar loopt de balk vol? De gevarengrens als die bekend is, anders de
-// waarschuwingsgrens met 20% marge, anders het maximum uit de PID-definitie.
+// Waar loopt de balk vol? Een eigen `balkVol` als de definitie die geeft
+// (bandtemperatuur: rood vanaf 65, balk tot 80 — #370), anders de
+// gevarengrens, anders de waarschuwingsgrens met 20% marge, anders het
+// maximum uit de PID-definitie.
 function slimTempSchaal(d){
-  const top = (d && typeof d.dH==='number') ? d.dH
+  const top = (d && typeof d.balkVol==='number') ? d.balkVol
+            : (d && typeof d.dH==='number') ? d.dH
             : (d && typeof d.wH==='number') ? d.wH*1.2
             : (d && typeof d.max==='number') ? d.max : 100;
   return (isFinite(top) && top>0) ? top : 100;

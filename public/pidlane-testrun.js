@@ -3045,6 +3045,28 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── eigen PIDs krijgen een standaardbereik: banden en olie (30-09-2026) ──
+  {
+    issue: '#370',
+    naam: 'Bandtemperatuur, bandenspanning en olietemperatuur (eigen PIDs) hebben een schaal',
+    waarom: 'Zonder bereik stonden ze op −1e9…1e9: in Slim een gearceerde, lege balk en een bandenspanning die altijd "beweegt".',
+    proef: async function () {
+      if (!window.PLEigen || typeof PLEigen.controleer !== 'function') return { staat: 'FOUT', detail: 'PLEigen.controleer ontbreekt' };
+      var t = PLEigen.controleer({ code: '222A0A', naam: 'Bandtemperatuur voor-links', formule: 'A', eenheid: '°C' }).def;
+      var o = PLEigen.controleer({ code: '221310', naam: 'Motorolietemperatuur', formule: 'A', eenheid: '°C' }).def;
+      var p = PLEigen.controleer({ code: '222A05', naam: 'Bandenspanning voor-links', formule: 'A', eenheid: 'bar' }).def;
+      if (t.balkVol !== 80 || t.dH !== 65) return { staat: 'FOUT', detail: 'bandtemperatuur: balk tot ' + t.balkVol + ', rood vanaf ' + t.dH + ' — verwacht 80 en 65 (#370)' };
+      if (!(o.max <= 215) || typeof o.wH !== 'number') return { staat: 'FOUT', detail: 'olietemperatuur zonder schaal of grens: ' + o.min + '…' + o.max };
+      // De eenheid volgt de drukvoorkeur van de klant; reken terug naar bar.
+      var perBar = { bar: 1, psi: 14.5038, kPa: 100 }[p.unit], inBar = function (v) { return Math.round(v / perBar * 10) / 10; };
+      if (!perBar) return { staat: 'FOUT', detail: 'bandenspanning in onbekende eenheid ' + p.unit };
+      if (inBar(p.max) !== 4 || inBar(p.dL) !== 1.5 || inBar(p.dH) !== 3.5) return { staat: 'FOUT', detail: 'bandenspanning: schaal tot ' + p.max + ' ' + p.unit + ', rood onder ' + p.dL + ' en vanaf ' + p.dH + ' — verwacht 4, 1,5 en 3,5 bar (#370)' };
+      var eigen = (PLEigen.defs() || []).filter(function (d) { return d.max >= 1e9 && (d.band || /olie|oil/i.test(d.name)); });
+      if (eigen.length) return { staat: 'LET OP', detail: 'de functie klopt, maar deze sensoren van dit voertuig staan nog open: ' + eigen.map(function (d) { return d.name; }).join(', ') + ' — herlaad de app' };
+      return { staat: 'OK', detail: 'band ' + t.min + '…' + t.balkVol + ' °C (rood vanaf ' + t.dH + '), olie ' + o.min + '…' + o.max + ' °C, druk 0…' + p.max + ' ' + p.unit + ' (rood onder ' + p.dL + ' en vanaf ' + p.dH + ')' };
+    }
+  },
+
   // ── Slim visueel volgens #371: balkjes, acculampje, autootje (30-09-2026) ──
   // Eerst de functies (die gelden altijd), dan het scherm zelf — dat laatste
   // alleen als Slim visueel open staat, anders LET OP met wat je moet doen.
