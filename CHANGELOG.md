@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Opruimen na de brede controle (geen gedragswijziging)
+ ═══════════════════════════════════════════════════════════
+
+ - Weg: het inlogvinkje "Extra logfunctie" (refreshAdminLogRow,
+   maybeStartLiveLog), de log-export van het oude logscherm (lcSave, lcSend,
+   _lcFullText, _lcLines), selectTrendGroup, changeGraph, bevindingVerborgen,
+   de terugval op window.selectedModel en de id's monitorBtn, fontLbl, vlSheet.
+ - pidlane.css: 151 declaraties die een latere regel met dezelfde selector
+   altijd overschreef; 20 regels daardoor leeg en weg. Berekende stijl van
+   10.037 element-toestanden in licht en donker vóór en na gelijk.
+ - Elke lege catch in config.js en index.html heeft een reden; vijf knoppen
+   en vier stappen van hard herladen waarschuwen nu in de console.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Slim visueel: een lege plek zelf invullen, Nulstellen op Telemetrie
  ═══════════════════════════════════════════════════════════
 

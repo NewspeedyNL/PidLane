@@ -15,6 +15,51 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — De opruim-PR na de brede controle
+
+**Wat weg is.** Alleen code waarvan vaststond dat niets hem gebruikt: geen
+aanroep in de app, geen `onclick`, geen test, geen mutatie. Het commentaar bij
+`_lcFullText()` zei "de testrun en de bugmelder gebruiken hem allebei". Dat
+klopte niet: alleen de dode `lcSave()` en `lcSend()` deden dat. Het
+inlogvinkje "Extra logfunctie" bestaat sinds het automatische live-log voor
+beheerders niet meer; de `oninput` in `index.html` riep alleen nog een
+functie aan die direct terugkeerde. Die wijziging aan `index.html` start een
+Android-build.
+
+**De CSS, en hoe bewezen is dat er niets verandert.** Een declaratie ging
+eruit als voor élke selector van zijn regel later in het bestand, buiten
+`@media`, een regel met precies dezelfde selector dezelfde eigenschap zet, en
+hij niet `!important` is. Dan kan hij nooit winnen. In Chromium is daarna de
+berekende stijl van elk element vergeleken, vóór en na, op het inlogscherm,
+het startscherm en het verbindscherm, in licht en donker: 10.037
+element-toestanden, nul verschil. De meting zelf: de app zet tijdsafhankelijke
+CSS-variabelen, die tellen dus niet mee, en vier geanimeerde elementen
+verschillen ook tussen twee runs met dezelfde CSS. Tegenproef: één
+`font-weight` met de hand veranderd, en precies dat ene element werd gezien.
+
+**Wat de poort vond.** `test-schermranden.js` toetste dat `#fabLane` boven
+de navigatiebalk staat, maar keek naar de eerste regel
+(`bottom:calc(14px + var(--pl-sab))`). Die werd al overschreven door een
+latere regel met `+ var(--pl-nav-h)`, en dat is de regel die werkelijk wint.
+De toets bewees dus een declaratie die nooit gold, en werd rood toen die dode
+declaratie wegging. Hij kijkt nu naar de laatste `bottom` en heeft een
+mutatie die `--pl-nav-h` weghaalt. `test-inlogkosten.js` knipte `testApiKey()`
+uit tot de kop "Extra logfunctie"; dat anker is nu `async function logout(){`.
+
+**Bewust blijven staan.**
+- `apiPill` en `updateApiPill()`: het element bestaat niet, maar
+  `test-inlogkosten.js` toetst het gedrag ervan uitgebreid. Weghalen is een
+  test herschrijven, geen opruimen.
+- `kebabBtn`: de positie van het menu rekent ermee.
+- `OBDLINK_ADDRESS`/`_NAME` en `window.PUBLIC_APP_URL`: configuratiehaken (een
+  vast MAC-adres in `config.js`), geen verwijzing naar iets wat verdween.
+- `vehLabel()` in `pidlane-remote.js` leest `rdwData` en
+  `selectedDemoVehicle`, die allebei nergens bestaan, dus geeft hij altijd
+  `null` terug. Dat is geen opruimwerk maar een fout: een gedeelde sessie
+  toont nooit de naam van de auto. Hoort in een eigen PR, met een test.
+
+---
+
 ## 06-10-2026 — Lege plekken in Slim visueel
 
 **Uit het gebruik, 22:16, op de CX-5.** Op het temperatuurscherm bleven OLIE
