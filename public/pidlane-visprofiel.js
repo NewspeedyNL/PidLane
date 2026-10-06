@@ -83,20 +83,18 @@ const PROFIELEN = [
       { rol:'timing',   naam:'Ontsteking',  keten:['010E','015D'], eenheid:'°', soort:'getal', lo:-40, hi:60, dec:0 },
       { rol:'maf',      naam:'Luchtmassa',  keten:['0110'], eenheid:'g/s', soort:'getal', lo:0, hi:655, dec:1 }
     ] },
-  // Telemetrie (05-10-2026): de telefoonsensoren van pidlane-telemetrie.js,
-  // in drie tekeningen om uit te kiezen.
-  { id:'tel-horizon', naam:'Telemetrie', stijl:'horizon', ondertitel:'Horizon',
+  // Telemetrie (05-10-2026): de telefoonsensoren van pidlane-telemetrie.js.
+  // Tot 06-10-2026 drie losse schermen (Horizon, Offroad, G-kracht); nu één,
+  // uit het gebruik: helling en G-kracht horen bij hetzelfde moment, en
+  // wisselen achter het stuur kost een tik te veel. De horizon draagt de
+  // rollen hz-*: dezelfde PIDs als de autootjes, maar een eigen tekening, dus
+  // eigen element-id's. De getallen staan bij de autootjes en de G-cirkel.
+  { id:'telemetrie', naam:'Telemetrie', stijl:'telemetrie', ondertitel:'Helling en G-kracht',
     plekken:[
-      { rol:'helling',   naam:'Helling',   keten:['TL01'], eenheid:'°', soort:'schuif', lo:-30, hi:30, dec:1 },
-      { rol:'kanteling', naam:'Kanteling', keten:['TL02'], eenheid:'°', soort:'draai',  lo:-45, hi:45, dec:1 }
-    ] },
-  { id:'tel-offroad', naam:'Telemetrie', stijl:'offroad', ondertitel:'Offroad',
-    plekken:[
+      { rol:'hz-helling',   naam:'Helling',   keten:['TL01'], eenheid:'°', soort:'schuif', lo:-30, hi:30, dec:1 },
+      { rol:'hz-kanteling', naam:'Kanteling', keten:['TL02'], eenheid:'°', soort:'draai',  lo:-45, hi:45, dec:1 },
       { rol:'helling',   naam:'Helling',   keten:['TL01'], eenheid:'°', soort:'kantel', lo:-45, hi:45, dec:0, teken:-1 },
-      { rol:'kanteling', naam:'Kanteling', keten:['TL02'], eenheid:'°', soort:'kantel', lo:-45, hi:45, dec:0, teken:1 }
-    ] },
-  { id:'tel-g', naam:'Telemetrie', stijl:'gcirkel', ondertitel:'G-kracht',
-    plekken:[
+      { rol:'kanteling', naam:'Kanteling', keten:['TL02'], eenheid:'°', soort:'kantel', lo:-45, hi:45, dec:0, teken:1 },
       { rol:'lengte', naam:'Lengte-G', keten:['TL03'], eenheid:'g', soort:'gy', lo:-1.2, hi:1.2, dec:2 },
       { rol:'dwars',  naam:'Zij-G',    keten:['TL04'], eenheid:'g', soort:'gx', lo:-1.2, hi:1.2, dec:2 }
     ] }
@@ -112,8 +110,11 @@ function volgende(id){
   const i=PROFIELEN.findIndex(function(p){ return p.id===id; });
   return PROFIELEN[(i<0 ? 1 : i+1) % PROFIELEN.length].id;
 }
+// De drie losse telemetrieschermen van vóór 06-10-2026: wie er een gekozen
+// had, komt op het samengevoegde scherm uit en niet terug op Basis.
+const OUD_PROFIEL = { 'tel-horizon':'telemetrie', 'tel-offroad':'telemetrie', 'tel-g':'telemetrie' };
 function lees(){
-  try{ const v=localStorage.getItem(SLEUTEL); return geldig(v) ? v : 'basis'; }
+  try{ let v=localStorage.getItem(SLEUTEL); if(OUD_PROFIEL[v]) v=OUD_PROFIEL[v]; return geldig(v) ? v : 'basis'; }
   catch(e){ console.warn('PLVisProfiel: keuze niet te lezen, basis', e); return 'basis'; }
 }
 function bewaar(id){
@@ -231,14 +232,17 @@ function htmlNeon(p, ind){
 }
 /* ── Telemetrie ── De getallen onder elke tekening; de tekening zelf draait
    via bij() hieronder (soort schuif/draai/kantel/gx/gy). */
-function telGetallen(p, ind){
-  return '<div class="vpf-tel-getallen">'+p.plekken.map(function(x){
+function telGetallen(p, ind, rollen){
+  return '<div class="vpf-tel-getallen">'+p.plekken.filter(function(x){ return !rollen || rollen.indexOf(x.rol)>=0; }).map(function(x){
     const pid=ind.plekken[x.rol];
     return '<div class="'+(pid?'':'leeg')+'" id="vpf-p-'+x.rol+'" title="'+titel(x, pid)+'"><small>'+esc(x.naam)+'</small>'+
       '<b class="vpf-w" id="vpf-w-'+x.rol+'">—</b><i class="vpf-e">'+esc(x.eenheid)+'</i></div>';
   }).join('')+'</div>';
 }
-function htmlHorizon(p, ind){
+/* `pre` = het voorvoegsel van de rollen ('' los, 'hz-' in het samengevoegde
+   scherm); `getallen` = de getallen eronder of niet. */
+function htmlHorizon(p, ind, pre, getallen){
+  pre=pre||'';
   let ladder='';
   [-20,-10,10,20].forEach(function(d){
     const y=100-d*3, w=d%20 ? 18 : 30;
@@ -246,15 +250,15 @@ function htmlHorizon(p, ind){
   });
   return '<svg class="vpf-horizon-svg" viewBox="0 0 200 200" role="img" aria-label="Kunstmatige horizon: helling en kanteling">'+
     '<defs><clipPath id="vpf-hz-clip"><circle cx="100" cy="100" r="92"/></clipPath></defs>'+
-    '<g clip-path="url(#vpf-hz-clip)"><g class="vpf-f" id="vpf-f-kanteling" transform="rotate(0 100 100)">'+
-      '<g class="vpf-f" id="vpf-f-helling" transform="translate(0 0)">'+
+    '<g clip-path="url(#vpf-hz-clip)"><g class="vpf-f" id="vpf-f-'+pre+'kanteling" transform="rotate(0 100 100)">'+
+      '<g class="vpf-f" id="vpf-f-'+pre+'helling" transform="translate(0 0)">'+
         '<rect class="vpf-hz-lucht" x="-150" y="-260" width="500" height="360"/>'+
         '<rect class="vpf-hz-grond" x="-150" y="100" width="500" height="360"/>'+
         '<line class="vpf-hz-lijn" x1="-150" y1="100" x2="350" y2="100"/>'+
         '<g class="vpf-hz-ladder">'+ladder+'</g></g></g></g>'+
     '<circle class="vpf-hz-rand" cx="100" cy="100" r="92"/>'+
     '<path class="vpf-hz-auto" d="M60 100 H86 L92 108 H108 L114 100 H140"/><circle class="vpf-hz-auto-stip" cx="100" cy="100" r="3"/>'+
-    '</svg>'+telGetallen(p, ind);
+    '</svg>'+(getallen===false ? '' : telGetallen(p, ind));
 }
 function htmlOffroad(p, ind){
   // Van opzij (helling) en van achteren (kanteling): de auto kantelt mee,
@@ -273,7 +277,7 @@ function htmlOffroad(p, ind){
   }
   return '<div class="vpf-or">'+vak('helling', zij, 'De auto van opzij')+vak('kanteling', achter, 'De auto van achteren')+'</div>';
 }
-function htmlGcirkel(p, ind){
+function htmlGcirkel(p, ind, rollen){
   return '<svg class="vpf-g-svg" viewBox="0 0 200 200" role="img" aria-label="G-cirkel: lengte- en zij-versnelling">'+
     '<circle class="vpf-g-ring" cx="100" cy="100" r="80"/><circle class="vpf-g-ring half" cx="100" cy="100" r="40"/>'+
     '<line class="vpf-g-as" x1="100" y1="14" x2="100" y2="186"/><line class="vpf-g-as" x1="14" y1="100" x2="186" y2="100"/>'+
@@ -281,15 +285,20 @@ function htmlGcirkel(p, ind){
     '<text class="vpf-g-label" x="100" y="198" text-anchor="middle">remmen</text>'+
     '<text class="vpf-g-label" x="104" y="58">0,5 g</text><text class="vpf-g-label" x="104" y="18">1 g</text>'+
     '<circle class="vpf-g-piek weg" id="vpf-f-gpiek" cx="100" cy="100" r="9"/>'+
-    '<circle class="vpf-g-stip vpf-f" id="vpf-f-gstip" cx="100" cy="100" r="7"/></svg>'+telGetallen(p, ind);
+    '<circle class="vpf-g-stip vpf-f" id="vpf-f-gstip" cx="100" cy="100" r="7"/></svg>'+telGetallen(p, ind, rollen);
+}
+/* Het samengevoegde scherm (06-10-2026): boven de horizon en de G-cirkel naast
+   elkaar, eronder de auto van opzij en van achteren met hun graden. */
+function htmlTelemetrie(p, ind){
+  return '<div class="vpf-tel-boven"><div>'+htmlHorizon(p, ind, 'hz-', false)+'</div>'+
+    '<div>'+htmlGcirkel(p, ind, ['lengte','dwars'])+'</div></div>'+htmlOffroad(p, ind);
 }
 /* De HTML van het vak voor een profiel (niet de basis). */
 function html(id, ind){
   const p=zoek(id);
   if(!p || !p.plekken || !ind) return '';
   const binnen = p.stijl==='glas' ? htmlGlas(p, ind) : p.stijl==='licht' ? htmlLicht(p, ind)
-               : p.stijl==='digitaal' ? htmlDigitaal(p, ind) : p.stijl==='horizon' ? htmlHorizon(p, ind)
-               : p.stijl==='offroad' ? htmlOffroad(p, ind) : p.stijl==='gcirkel' ? htmlGcirkel(p, ind) : htmlNeon(p, ind);
+               : p.stijl==='digitaal' ? htmlDigitaal(p, ind) : p.stijl==='telemetrie' ? htmlTelemetrie(p, ind) : htmlNeon(p, ind);
   const geen=p.plekken.every(function(x){ return !ind.plekken[x.rol]; });
   return '<div class="vpf vpf-'+p.stijl+'" data-profiel="'+p.id+'">'+binnen+
     (geen ? '<p class="vpf-geen">Deze auto geeft geen van de sensoren voor '+esc(p.naam.toLowerCase())+'. Tik op <b>Volgende</b> voor een andere weergave.</p>' : '')+'</div>';
