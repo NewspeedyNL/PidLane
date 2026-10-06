@@ -67,6 +67,7 @@ TL04 blijft meten wat er op de auto werkt (rechts = +), zodat de data en de
 tests van de telemetrie niet omdraaien; alleen `gPunt()` spiegelt. Het
 piekballetje blijft 3 s staan op de grootste gecombineerde uitslag
 (lengte en zij samen), zodat één blik genoeg is.
+
 ---
 
 ## 06-10-2026 — De koopcheck nam je eigen kenteken over (#331)
