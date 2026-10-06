@@ -34,10 +34,10 @@ function toets(naam, waar, uitleg) {
                       '222A0A':'Bandtemperatuur voor-links', '222A0B':'Bandtemperatuur voor-rechts', '222A0C':'Bandtemperatuur achter-links', '222A0D':'Bandtemperatuur achter-rechts' };
       const lijst = Object.keys(namen).map(c => ({ code: c, naam: namen[c], ecu: '720', formule: /Bandenspanning/.test(namen[c]) ? psi : 'A-50', eenheid: /Bandenspanning/.test(namen[c]) ? 'psi' : '°C' }));
       PLEigen.zet(lijst, 'CX-5');
-      return { n: PLEigen.defs().length, eenheid: getPidDef('222A05').unit, tempo: pidPollInterval('222A05'), waarde: getPidDef('222A05').parse([170]) };
+      return { n: PLEigen.defs().length, eenheid: getPidDef('222A05').unit, tempo: pidPollInterval('222A05'), opVerzoek: PLEigen.opVerzoek('222A05'), waarde: getPidDef('222A05').parse([170]) };
     })()`);
     toets('acht bandensensoren, druk in bar (de standaard)', zet.n === 8 && zet.eenheid === 'bar', JSON.stringify(zet));
-    toets('elke minuut gevraagd', zet.tempo === 60000, JSON.stringify(zet));
+    toets('op verzoek: niet in de pollus (#396)', zet.opVerzoek === true && zet.tempo === 999999, JSON.stringify(zet));
     toets('170 wordt 2,33 bar', zet.waarde === 2.33, JSON.stringify(zet));
 
     console.log('\n2. Het venster');
@@ -47,12 +47,13 @@ function toets(naam, waar, uitleg) {
       PLBanden.open();
       const ov = document.getElementById('plBandenOv');
       const tegel = p => { const e = ov.querySelector('.plb-tegel[data-pos="' + p + '"]'); return e ? { t: e.textContent, k: e.className } : null; };
-      const r = { open: ov.style.display === 'flex', VL: tegel('VL'), AR: tegel('AR'), oordeel: (ov.querySelector('.plb-oordeel') || {}).className };
+      const r = { open: ov.style.display === 'flex', VL: tegel('VL'), AR: tegel('AR'), oordeel: (ov.querySelector('.plb-oordeel') || {}).className, ververs: !!ov.querySelector('.plb-ververs') };
       const b = ov.querySelector('.plb-vel').getBoundingClientRect();
       r.past = b.width <= innerWidth && [...ov.querySelectorAll('.plb-tegel')].every(e => { const q = e.getBoundingClientRect(); return q.left >= 0 && q.right <= innerWidth && e.scrollWidth <= e.clientWidth + 1; });
       return r;
     })()`);
     toets('het venster opent', venster.open, JSON.stringify(venster));
+    toets('met een knop ↻ om de banden opnieuw te vragen (#396)', venster.ververs, JSON.stringify(venster));
     toets('voor links: 2,33 bar en 24 °C', venster.VL && /Voor links/.test(venster.VL.t) && /2,33\s*bar/.test(venster.VL.t) && /24 °C/.test(venster.VL.t), JSON.stringify(venster.VL));
     toets('achter rechts: 2,40 bar', venster.AR && /2,40\s*bar/.test(venster.AR.t), JSON.stringify(venster.AR));
     toets('vier gelijke banden: oordeel ok', /\bok\b/.test(venster.oordeel || ''), JSON.stringify(venster));

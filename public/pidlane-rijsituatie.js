@@ -981,7 +981,9 @@ function buildDiscoveredPIDList(){
   try{ if(typeof plTelemetrieDefs==='function') plTelemetrieDefs().forEach(d=>{ if(!discoveredPIDDefs.some(x=>x.pid===d.pid)) discoveredPIDDefs.push(d); }); }
   catch(e){ console.warn('Telefoonsensoren niet in de keuzelijst gezet', e); }
   // Eigen PIDs van het voertuig dat aan de adapter hangt (pidlane-uitgebreid.js).
-  try{ if(typeof plEigenDefs==='function') plEigenDefs().forEach(d=>{ if(!discoveredPIDDefs.some(x=>x.pid===d.pid)) discoveredPIDDefs.push(d); }); }
+  // Banden op verzoek niet (#396): die acht zijn samen één vraag, en die staat
+  // in het bandenvenster — niet als acht tegels met elk een trend.
+  try{ if(typeof plEigenDefs==='function') plEigenDefs().forEach(d=>{ if(d.tempo!=='opverzoek' && !discoveredPIDDefs.some(x=>x.pid===d.pid)) discoveredPIDDefs.push(d); }); }
   catch(e){ console.warn('Eigen PIDs niet in de keuzelijst gezet', e); }
 
   // Sorteer: eerst per onderdeel (Motor voorop, Overig achteraan), daarbinnen

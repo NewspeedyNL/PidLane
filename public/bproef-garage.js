@@ -367,7 +367,11 @@ const NEPSERVER = `(function(){
     toets('vóór "Verbinding compleet" zet Mijn voertuigen nog niets (de PID-lijst is er niet)', herstart.vroeg.length === 0, JSON.stringify(herstart.vroeg));
     toets('daarna: de standaardset blijft staan, met de eigen en berekende sensoren erbij',
       herstart.standaard.length > 3 && herstart.standaard.every(p => herstart.na.indexOf(p) >= 0) &&
-      ['222A05', '221310', 'CA01'].every(p => herstart.na.indexOf(p) >= 0), JSON.stringify(herstart));
+      ['221310', 'CA01'].every(p => herstart.na.indexOf(p) >= 0), JSON.stringify(herstart));
+    // Een band zonder gekozen tempo is op verzoek (#396): bekend bij de app,
+    // maar niet in de selectie — PLBanden.ververs() vraagt hem, niet de pollus.
+    toets('de band uit de bewaarde selectie is bekend, maar op verzoek en dus niet geselecteerd (#396)',
+      herstart.eigenDef && herstart.na.indexOf('222A05') < 0, JSON.stringify(herstart));
 
     console.log('\n── 4e. leren uit opnames (27-09) ──');
     const opn = await app.ev(`(async function(){

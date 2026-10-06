@@ -576,6 +576,9 @@ function pidsDueNow(){
     if(typeof plIsBerekend==='function' && plIsBerekend(pid)) continue;
     // Een telefoonsensor (TL..) evenmin.
     if(typeof plIsTelemetrie==='function' && plIsTelemetrie(pid)) continue;
+    // Een band op verzoek ook niet: PLBanden.ververs() vraagt hem (#396).
+    try{ if(window.PLEigen && window.PLEigen.opVerzoek && window.PLEigen.opVerzoek(pid)) continue; }
+    catch(e){ console.warn('PLEigen.opVerzoek mislukt in pidsDueNow:', e); }
     if(_pidDead.has(pid)){
       // Dode PID: alleen elke PID_REPROBE_MS één herkansing toelaten
       if(now-(_pidDeadSince[pid]||0) < PID_REPROBE_MS) continue;

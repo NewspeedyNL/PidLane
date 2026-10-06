@@ -289,6 +289,9 @@
   // de standaard en hoeft niet ingevuld; het na afloop terugzetten zit in vraag().
   const EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1)$/;
   const EIGEN_TEMPO = { snel: 1000, normaal: 2000, traag: 10000, minuut: 60000 };
+  // Op verzoek is geen tempo: 999999 is hier "niet in de pollus", net als in
+  // de EV-modus van pidPollInterval, en zo leest PLMon het ook (#396).
+  const EIGEN_OPVERZOEK_MS = 999999;
 
   /* Welke band, en druk of temperatuur? Uit de naam — "Bandenspanning
      voor-links", "Bandtemperatuur achter-rechts", "Tire pressure RR". null
@@ -397,11 +400,13 @@
     if (!naam) return { ok: false, fout: 'Geef de sensor een naam' };
     const ecu = String(e.ecu || '').toUpperCase().replace(/\s+/g, '');
     if (ecu && !EIGEN_ECU.test(ecu)) return { ok: false, fout: 'ECU-adres: 7xx (bijv. 7E1) of 18DAxxF1, of leeg laten' };
-    // Geen tempo gekozen: een band elke minuut (de druk verandert niet per
-    // seconde, en acht vragen via een ander ECU-adres kosten de bus wat),
-    // al het andere elke 2 s.
+    // Geen tempo gekozen: een band op verzoek (#396) — PLBanden.ververs()
+    // vraagt de vier banden bij het openen van Slim visueel en van het
+    // bandenvenster. Acht PIDs via een ander ECU-adres die elke minuut de
+    // pollus in gaan, kosten busstilte voor één vraag: staan ze op spanning,
+    // worden ze niet te heet. Al het andere elke 2 s.
     const band = bandRol(naam);
-    const tempo = EIGEN_TEMPO[e.tempo] ? e.tempo : (band ? 'minuut' : 'normaal');
+    const tempo = EIGEN_TEMPO[e.tempo] ? e.tempo : (band ? 'opverzoek' : 'normaal');
     let parse;
     try { parse = formule(e.formule || 'A'); } catch (x) { return { ok: false, fout: 'Formule: ' + x.message }; }
     let min = Number(e.min), max = Number(e.max), unit = String(e.eenheid || '').slice(0, 12);
@@ -450,7 +455,10 @@
     }
     return Object.keys(_eigen).length;
   }
-  function eigenInterval(pid) { const d = _eigen[String(pid || '').toUpperCase()]; return d ? EIGEN_TEMPO[d.tempo] || EIGEN_TEMPO.normaal : null; }
+  function eigenInterval(pid) { const d = _eigen[String(pid || '').toUpperCase()]; return d ? (d.tempo === 'opverzoek' ? EIGEN_OPVERZOEK_MS : EIGEN_TEMPO[d.tempo] || EIGEN_TEMPO.normaal) : null; }
+  /* Gaat deze eigen PID buiten de pollus om? Dan slaat pidsDueNow hem over
+     en komt hij niet in de keuzelijst (#396). */
+  function eigenOpVerzoek(pid) { const d = _eigen[String(pid || '').toUpperCase()]; return !!(d && d.tempo === 'opverzoek'); }
   /* Opnieuw zetten na een andere drukvoorkeur. Waarden in de oude eenheid
      gaan weg: met een band die eens per minuut gevraagd wordt stond er
      anders tot een minuut lang "2,3 psi". */
@@ -667,13 +675,15 @@
     const defs = m.defs || [], actief = m.actief || [], nu = m.nu || Date.now();
     if (!m.echt) return { staat: 'LET OP', detail: 'niet verbonden met een echte auto' };
     if (!defs.length) return { staat: 'LET OP', detail: 'geen eigen sensor bij het gekoppelde voertuig — voeg er een toe in Mijn voertuigen → Sensoren' };
-    const aan = defs.filter(d => actief.indexOf(d.pid) >= 0);
+    // Een band op verzoek staat niet in de actieve lijst en hoort er toch bij (#396).
+    const aan = defs.filter(d => d.tempo === 'opverzoek' || actief.indexOf(d.pid) >= 0);
     if (!aan.length) return { staat: 'LET OP', detail: defs.length + ' eigen sensor(en) bij dit voertuig, maar geen enkele aangezet' };
     const ok = [], stil = [];
     aan.forEach(d => {
       // Vers = binnen tweeënhalf keer het tempo, minstens 30 s: een band die
       // elke minuut gevraagd wordt is na 50 s niet stil.
-      const t = (m.laatst || {})[d.pid], grens = Math.max(30000, 2.5 * (EIGEN_TEMPO[d.tempo] || EIGEN_TEMPO.normaal));
+      // Op verzoek (een band, #396): één antwoord deze verbinding is genoeg.
+      const t = (m.laatst || {})[d.pid], grens = d.tempo === 'opverzoek' ? Infinity : Math.max(30000, 2.5 * (EIGEN_TEMPO[d.tempo] || EIGEN_TEMPO.normaal));
       if (typeof t === 'number' && nu - t < grens) ok.push(d.name + ' = ' + String((m.waarden || {})[d.pid]).replace('.', ',') + (d.unit ? ' ' + d.unit : ''));
       else stil.push(d.name + ' (' + d.pid + ')');
     });
@@ -682,7 +692,7 @@
   }
 
   window.PLEigen = { CODE: EIGEN_CODE, MAX: EIGEN_MAX, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
-    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, herzet: eigenHerzet, bandRol, drukOmrekening, standaardBereik,
+    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, drukOmrekening, standaardBereik,
     scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, dieperVraag, vraag: eigenVraag, kandidatenUitTekst, zoekOnline };
   window.plEigenDefs = eigenDefs;
 
