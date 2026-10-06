@@ -720,6 +720,11 @@ function showToast(msg, duration=3000){
 // Buffer — stuur in batches van max 10 om rate limit te vermijden
 const _atBuffer=[];
 let _atTimer=null;
+// Het sessietoken waarop de Worker een 401 gaf (#360). Zonder sessie, of met
+// een token dat al geweigerd is, gaat er niets de deur uit: de regels blijven
+// in de buffer tot er een (nieuwe) sessie is. Tot 06-10-2026 werd het elke
+// 15 s opnieuw geprobeerd — 25× een 401 in zes minuten demo.
+let _atGeweigerdToken=null;
 
 /* ── WAT DE LAATSTE POGING DEED ──────────────────────────────────────
    NAGEMETEN OP 17-09-2026, EN DAT IS DE REDEN DAT DIT ER STAAT.
@@ -937,11 +942,13 @@ async function logToSheets(type, message, extra={}){
     // maar een paar milliseconden aan, en het pseudonimiseren duurt een tick —
     // daarna is de vlag alweer uit en zou de regel als gewone meting binnenkomen.
     const soort=_plLogSoort(), sessie=_plSessieId(), adapter=_plLogAdapter();
-    // Demo: de regel mag er zijn (hij zegt iets over de app), maar hij gaat
-    // niet over een auto. Geen merk, jaar of VIN-pseudoniem, en de kolom Demo
-    // aan — anders is hij in de logtabel niet van een echte rit te scheiden.
-    const demo=(typeof demoMode!=='undefined' && !!demoMode);
-    const vinId=demo ? '' : await _plVinVoorLog(v.vin);
+    // Demo: geen regel (#360). Tot 06-10-2026 ging hij mee met de kolom Demo
+    // aan en zonder merk of VIN, maar de zandbak belooft "er wordt niets
+    // bewaard", en met een sessie kwamen de regels van een verzonnen auto
+    // tóch in D1. De demopoort in pidlane-demo.js houdt /airtable/log ook
+    // tegen; dit is de eerste lijn, die het pseudonimiseren al overslaat.
+    if(typeof demoMode!=='undefined' && demoMode) return;
+    const vinId=await _plVinVoorLog(v.vin);
     // Het derde argument uitpakken: bekende kolommen als veld, de rest als
     // staart achter het bericht. Zie AT_KOLOMMEN hierboven.
     const velden={}, staart=[];
@@ -964,8 +971,8 @@ async function logToSheets(type, message, extra={}){
         Timestamp:  ts,
         Type:       String(type||'info'),
         Message:    bericht.slice(0,500),
-        Merk:       demo ? '' : String(v.merk||''),
-        Year:       demo ? '' : String(v.year||''),
+        Merk:       String(v.merk||''),
+        Year:       String(v.year||''),
         VIN:        vinId,
         Protocol:   String(selectedNetwork?.name||''),
         ActivePIDs: [...(activePIDs||[])].join(' '),
@@ -975,11 +982,10 @@ async function logToSheets(type, message, extra={}){
         AppVersion: String(typeof APP_VERSION!=='undefined'?APP_VERSION:'?'),
         User:       geenMail(currentUser?.name||''),
         Role:       String(currentUser?.role||''),
-        RecordType: demo ? 'demo' : soort,
+        RecordType: soort,
         SessionId:  sessie,
         Adapter:    adapter,
         ...velden,
-        ...(demo ? { Demo:true } : {}),
       }
     });
     clearTimeout(_atTimer);
@@ -990,6 +996,14 @@ async function logToSheets(type, message, extra={}){
 async function flushAirtable(){
   if(!_atBuffer.length) return;
   if(typeof AIRTABLE_URL==='undefined'||!AIRTABLE_URL) return;
+  // Zonder sessie weigert de Worker hoe dan ook (#360). Niet versturen, niet
+  // opnieuw inplannen; de eerstvolgende logregel ná het inloggen neemt de
+  // buffer mee. De cap geldt hier ook, anders groeit hij zonder sessie door.
+  const tok=(typeof window.APP_TOKEN==='string' && window.APP_TOKEN) || '';
+  if(!tok || tok===_atGeweigerdToken){
+    while(_atBuffer.length>200) _atBuffer.shift();
+    return;
+  }
   const batch=_atBuffer.splice(0,10);
   try{
     // AIRTABLE_URL is een absolute URL en gaat door plFetch heen zoals hij is;
@@ -1001,10 +1015,19 @@ async function flushAirtable(){
     });
     if(!resp.ok){
       const err=await resp.json().catch(()=>({}));
-      console.warn('D1-log fout:',resp.status,err?.error?.message||'');
-      _atNoteer(false,resp.status,batch.length,err?.error?.message||('HTTP '+resp.status));
+      // De demopoort van plFetch: deze regels horen nergens heen, dus ook
+      // niet terug in de buffer — anders gaan ze na de demo alsnog mee.
+      if(err && err.demo===true){
+        _atNoteer(false,resp.status,batch.length,'demo: niet verstuurd');
+        return;
+      }
+      const reden=(typeof err?.error==='string') ? err.error : (err?.error?.message||'');
+      console.warn('D1-log fout:',resp.status,reden);
+      _atNoteer(false,resp.status,batch.length,reden||('HTTP '+resp.status));
       // Zet terug in buffer bij fout
       _atBuffer.unshift(...batch);
+      // Een 401 komt niet vanzelf goed: wachten op een nieuwe sessie.
+      if(resp.status===401){ _atGeweigerdToken=tok; while(_atBuffer.length>200) _atBuffer.shift(); return; }
     }else{
       /* HTTP 200 is niet hetzelfde als "weggeschreven" — dat is precies de
          vergissing die van 20-09 tot 22-09 live stond. Sinds #262 zegt de

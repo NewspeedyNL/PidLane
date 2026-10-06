@@ -15,6 +15,27 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — De demo logde wél, en zonder sessie 25× een 401 (#360)
+
+**Waarneming (30-09).** Een demo vanaf het loginscherm, zonder sessie:
+elke 15 s `Server weigert (401) bij …/airtable/log`, zes minuten lang.
+
+**Wat er al stond.** Sinds 29-09 schreef `logToSheets()` een demoregel met
+`Demo=true` en zonder merk, jaar of VIN — een bewuste keus: "de regel zegt
+iets over de app". De demopoort liet `/airtable/log` daarom door. Met een
+sessie kwamen die regels dus in D1, terwijl de app, de handleiding en de
+Play-tekst zeggen: *in de demo wordt niets bewaard*.
+
+**Besluit bij de release van 3.2.0: niet versturen.** Een belofte aan de
+gebruiker weegt zwaarder dan de diagnosewaarde van een verzonnen rit, en een
+Play-reviewer start juist de demo. Twee lijnen: `logToSheets()` stopt in de
+demo vóór het pseudonimiseren, en `netBesluit()` weigert de route.
+
+**De 401-lus was een tweede, losse fout.** `flushAirtable()` zette elke
+mislukte batch terug en plande over 15 s opnieuw, ook bij een 401 die niet
+vanzelf overgaat. Nu: zonder token niet versturen, na een 401 niet opnieuw
+met hetzelfde token. Een demoweigering (403 met `demo:true`) gooit de batch
+weg; terugzetten zou hem ná de demo alsnog laten vertrekken.
 ## 06-10-2026 — Bandengrenzen: absoluut, niet alleen relatief (#370)
 
 **Wat de branch van 30-09 deed.** `ccr-8e6efa44` gaf eigen band-PIDs een
