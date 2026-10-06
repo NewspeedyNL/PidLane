@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Demo stuurt geen logregels meer; geen 401-lus zonder sessie (#360)
+ ═══════════════════════════════════════════════════════════
+
+ - logToSheets() schrijft in de demo niets meer; de demopoort weigert
+   /airtable/log ook. Tot nu gingen demoregels met Demo=true naar D1.
+ - flushAirtable() verstuurt niet zonder sessie, en na een 401 niet opnieuw
+   met hetzelfde token. De buffer (max 200) gaat mee met de volgende sessie.
+ - Een demoweigering gooit de batch weg in plaats van hem te bewaren.
+ - test-livelog.js, test-demoopslag.js, test-demozandbak.js, vijf mutaties.
+
+ ═══════════════════════════════════════════════════════════
  05-10-2026 — Nieuwe sensorgroep Telemetrie: helling en kanteling van de telefoon
  ═══════════════════════════════════════════════════════════
 
