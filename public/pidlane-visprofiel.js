@@ -59,9 +59,9 @@ const PROFIELEN = [
   { id:'temp', naam:'Temperatuur', stijl:'glas', ondertitel:'Glas',
     plekken:[
       { rol:'koel',   naam:'Koelwater',   kort:'Koel',    keten:['0105','0167'], eenheid:'°', soort:'thermo', lo:40, hi:130, dec:0 },
-      { rol:'olie',   naam:'Motorolie',   kort:'Olie',    keten:['015C'],        eenheid:'°', soort:'thermo', lo:40, hi:150, dec:0 },
+      { rol:'olie',   naam:'Motorolie',   kort:'Olie',    keten:['015C'],        eenheid:'°', soort:'thermo', lo:40, hi:150, dec:0, zoek:/olie|oil/i },
       { rol:'inlaat', naam:'Inlaatlucht', kort:'Inlaat',  keten:['010F'],        eenheid:'°', soort:'thermo', lo:-20, hi:80, dec:0 },
-      { rol:'buiten', naam:'Buiten',      kort:'Buiten',  keten:['0146'],        eenheid:'°', soort:'thermo', lo:-20, hi:45, dec:0 },
+      { rol:'buiten', naam:'Buiten',      kort:'Buiten',  keten:['0146'],        eenheid:'°', soort:'thermo', lo:-20, hi:45, dec:0, zoek:/buiten|omgeving|ambient|outside/i },
       { rol:'kat',    naam:'Katalysator', kort:'Kat',     keten:['013C','013E','017C'], eenheid:'°', soort:'thermo', lo:100, hi:950, dec:0,
         diesel:{ rol:'uitlaat', naam:'Uitlaatgas', kort:'Uitlaat', keten:['0178','017C','013C'], hi:700 } }
     ] },
@@ -155,23 +155,97 @@ function bewaar(id){
   catch(e){ console.warn('PLVisProfiel: keuze niet op te slaan', e); }
 }
 
-/* Welke PID staat op welke plek? Per plek de eerste uit de keten waarvoor
-   `mag(pid)` waar is, anders null. Puur. `motor` = detectEngineType(). */
-function indeling(id, mag, motor){
+/* ── EEN PLEK ZELF INVULLEN (06-10-2026) ──────────────────────────
+   Uit het gebruik, op de CX-5: "bij de 2 lege balkjes wil ik zelf een sensor
+   kiezen. 5 sensoren is vol, 2 lege balkjes is niets." Twee wegen:
+
+   AUTOMATISCH. Een plek met `zoek` neemt ook een sensor uit `opts.defs` (de
+   keuzelijst: eigen en berekende sensoren erbij) waarvan de naam past. De
+   CX-5 geeft geen 015C, maar wel een eigen "Motorolietemperatuur" (221310):
+   die hoort op OLIE, met het label en de schaal van de plek.
+
+   MET DE HAND. Tik op een plek en kies een sensor (pidlane-visueel.js tekent
+   de lijst). De keuze staat per profiel en plek in localStorage
+   (pl_vis_keuze, {"temp/buiten":"0142"}) en gaat vóór de keten. Een gekozen
+   sensor met een andere betekenis krijgt zijn eigen naam en, als de
+   definitie er een heeft, zijn eigen schaal (vervang). Is hij er op deze auto
+   niet, dan valt de plek terug op de keten: een keuze maakt nooit iets
+   leger dan automatisch. */
+const KEUZE_SLEUTEL = 'pl_vis_keuze';
+function keuzes(){
+  try{
+    const r=JSON.parse(localStorage.getItem(KEUZE_SLEUTEL)||'{}');
+    return (r && typeof r==='object' && !Array.isArray(r)) ? r : {};
+  }catch(e){ console.warn('PLVisProfiel: eigen keuzes onleesbaar — automatisch', e); return {}; }
+}
+function zetKeuze(id, rol, pid){
+  const k=keuzes(), sl=id+'/'+rol;
+  if(pid) k[sl]=String(pid).toUpperCase(); else delete k[sl];
+  try{ localStorage.setItem(KEUZE_SLEUTEL, JSON.stringify(k)); }
+  catch(e){ console.warn('PLVisProfiel: keuze niet bewaard — geldt tot de app sluit', e); }
+  return k;
+}
+/* Puur. De keten van één plek met de keuze ervoor en de naamtreffers erachter. */
+function ketenVan(id, x, opts){
+  const k=[], kz=opts && opts.keuze && opts.keuze[id+'/'+x.rol];
+  if(kz) k.push(kz);
+  x.keten.forEach(function(q){ if(k.indexOf(q)<0) k.push(q); });
+  if(x.zoek && opts && Array.isArray(opts.defs)) opts.defs.forEach(function(d){
+    if(d && d.pid && k.indexOf(d.pid)<0 && x.zoek.test(String(d.name||''))) k.push(d.pid);
+  });
+  return k;
+}
+function kortVan(naam){ const n=String(naam||''); return n.length>10 ? n.slice(0,9)+'…' : n; }
+/* Welke PID staat op welke plek? Per plek de eerste uit zijn keten (met de
+   keuze ervoor en de naamtreffers erachter) waarvoor `mag(pid)` waar is en
+   die nog niet op een andere plek staat, anders null. Puur. `motor` =
+   detectEngineType(). `opts` = { keuze, defs } en mag weg: dan is het de
+   indeling van vóór 06-10-2026. */
+function indeling(id, mag, motor, opts){
   const p=voor(id, motor);
   if(!p || !p.plekken) return null;
-  const uit={ id:p.id, motor:motor||null, plekken:{} };
+  const uit={ id:p.id, motor:motor||null, plekken:{}, vervang:{} }, bezet=[];
+  const def=function(q){ return (opts && Array.isArray(opts.defs)) ? opts.defs.filter(function(d){ return d && d.pid===q; })[0] : null; };
+  // Wat elke plek uit zijn EIGEN keten zou halen. Dezelfde PID op twee
+  // plekken mag als beide ketens hem noemen (de telemetrie zet TL01 op de
+  // horizon én op het autootje); een keuze of naamtreffer neemt nooit een
+  // PID die al ergens staat of die een andere plek uit zijn keten haalt.
+  const eigen=p.plekken.map(function(x){ for(let i=0;i<x.keten.length;i++){ if(mag(x.keten[i])) return x.keten[i]; } return null; });
   p.plekken.forEach(function(x){
+    const k=ketenVan(p.id, x, opts);
     let pid=null;
-    for(let i=0;i<x.keten.length;i++){ if(mag(x.keten[i])){ pid=x.keten[i]; break; } }
+    for(let i=0;i<k.length;i++){
+      const q=k[i];
+      if(!mag(q)) continue;
+      if(x.keten.indexOf(q)<0 && (bezet.indexOf(q)>=0 || eigen.indexOf(q)>=0)) continue;
+      pid=q; break;
+    }
     uit.plekken[x.rol]=pid;
+    if(pid) bezet.push(pid);
+    // Met de hand gekozen en niet uit de eigen keten of de naamtreffers: een
+    // andere grootheid, dus zijn eigen naam en (zo bekend) zijn eigen schaal.
+    const kz=opts && opts.keuze && opts.keuze[p.id+'/'+x.rol];
+    const zoekTreffer=pid && x.zoek && def(pid) && x.zoek.test(String(def(pid).name||''));
+    if(pid && pid===kz && x.keten.indexOf(pid)<0 && !zoekTreffer){
+      const d=def(pid) || {};
+      const v={ naam:d.name||pid, kort:kortVan(d.name||pid), eenheid:d.unit||'' };
+      if(typeof d.min==='number' && typeof d.max==='number' && isFinite(d.min) && isFinite(d.max) && d.max>d.min && d.max-d.min<1e6){ v.lo=d.min; v.hi=d.max; }
+      uit.vervang[x.rol]=v;
+    }
   });
   return uit;
 }
 /* De ketens van een profiel: wat pidlane-visueel.js erbij moet zetten. */
-function ketens(id, motor){
+function ketens(id, motor, opts){
   const p=voor(id, motor);
-  return (p && p.plekken) ? p.plekken.map(function(x){ return x.keten.slice(); }) : [];
+  return (p && p.plekken) ? p.plekken.map(function(x){ return ketenVan(p.id, x, opts); }) : [];
+}
+/* Het profiel zoals deze indeling het tekent: een vervangen plek met zijn
+   eigen naam en schaal. */
+function voorInd(id, ind){
+  const p=voor(id, ind && ind.motor);
+  if(!p || !p.plekken || !ind || !ind.vervang) return p;
+  return Object.assign({}, p, { plekken:p.plekken.map(function(x){ return ind.vervang[x.rol] ? Object.assign({}, x, ind.vervang[x.rol]) : x; }) });
 }
 /* Hoe ver gevuld, 0–100. Niet te lezen = null. */
 function deel(v, lo, hi){
@@ -325,11 +399,22 @@ function htmlGcirkel(p, ind, rollen){
    elkaar, eronder de auto van opzij en van achteren met hun graden. */
 function htmlTelemetrie(p, ind){
   return '<div class="vpf-tel-boven"><div>'+htmlHorizon(p, ind, 'hz-', false)+'</div>'+
-    '<div>'+htmlGcirkel(p, ind, ['lengte','dwars'])+'</div></div>'+htmlOffroad(p, ind);
+    '<div>'+htmlGcirkel(p, ind, ['lengte','dwars'])+'</div></div>'+htmlOffroad(p, ind)+
+    // Nulstellen hier en niet alleen in de sensorlijst (06-10-2026): je kijkt
+    // naar dit scherm als je ziet dat de auto scheef staat.
+    '<button type="button" class="vpf-tel-nul" onclick="PLVisProfiel.nulstellen()">📐 Nulstellen <small>auto stil op vlakke grond</small></button>';
+}
+function nulstellen(){
+  let ok=false;
+  try{ ok=!!(window.PLTelemetrie && window.PLTelemetrie.nulstellen()); }
+  catch(e){ console.warn('PLVisProfiel: nulstellen mislukt', e); }
+  try{ if(typeof showToast==='function') showToast(ok ? '📐 Nulstand vastgelegd' : 'Geen meting van de telefoon — nulstellen lukte niet'); }
+  catch(e){ console.warn('PLVisProfiel: melding na nulstellen', e); }
+  return ok;
 }
 /* De HTML van het vak voor een profiel (niet de basis). */
 function html(id, ind){
-  const p=voor(id, ind && ind.motor);
+  const p=voorInd(id, ind);
   if(!p || !p.plekken || !ind) return '';
   const binnen = p.stijl==='glas' ? htmlGlas(p, ind) : p.stijl==='licht' ? htmlLicht(p, ind)
                : p.stijl==='digitaal' ? htmlDigitaal(p, ind) : p.stijl==='telemetrie' ? htmlTelemetrie(p, ind) : htmlNeon(p, ind);
@@ -343,7 +428,7 @@ function el(id){ return document.getElementById(id); }
 function zetTekst(id, t){ const e=el(id); if(e && e.textContent!==t) e.textContent=t; }
 /* `st` = het oordeel (ok/warn/danger/geen), van buiten aangereikt. */
 function bij(id, ind, pid, val, st){
-  const p=voor(id, ind && ind.motor);
+  const p=voorInd(id, ind);
   if(!p || !p.plekken || !ind) return;
   p.plekken.forEach(function(x){
     if(ind.plekken[x.rol]!==pid) return;
@@ -419,7 +504,7 @@ function telBij(x, val){
 }
 /* Dof zetten wat oud is. `oud(pid)` komt uit pidlane-visueel.js. */
 function dof(id, ind, oud){
-  const p=voor(id, ind && ind.motor);
+  const p=voorInd(id, ind);
   if(!p || !p.plekken || !ind) return;
   p.plekken.forEach(function(x){
     const pid=ind.plekken[x.rol], e=el('vpf-p-'+x.rol);
@@ -441,6 +526,7 @@ window.PLVisProfiel = {
   PROFIELEN:PROFIELEN, SEG:SEG, SLEUTEL:SLEUTEL,
   zoek:zoek, geldig:geldig, plekkenVan:plekkenVan, volgende:volgende, lees:lees, bewaar:bewaar,
   indeling:indeling, ketens:ketens, deel:deel, tekst:tekst, html:html, bij:bij, dof:dof, pids:pids,
+  KEUZE_SLEUTEL:KEUZE_SLEUTEL, keuzes:keuzes, zetKeuze:zetKeuze, ketenVan:ketenVan, voorInd:voorInd, nulstellen:nulstellen,
   G_PIEK_MS:G_PIEK_MS, gPiek:gPiek, gPunt:gPunt, gWis:gWis
 };
 })();

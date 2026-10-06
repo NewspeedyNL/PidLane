@@ -222,7 +222,7 @@ console.log('\n9. Diesel: andere sensoren op dezelfde weergaven (#393)');
   waar('zonder motorsoort (onbekend) is het de benzinekaart', P.indeling('emissie', alles).plekken.lambda === '0124');
   const Tm = laad(BRON.replace("  if(motor!=='diesel') return p.plekken;", "  return p.plekken;")).PLVisProfiel;
   waar('tegenproef: zonder dieselplekken staat er weer lambda op een diesel', 'lambda' in Tm.indeling('emissie', alles, 'diesel').plekken);
-  const Tk = laad(BRON.replace("function ketens(id, motor){\n  const p=voor(id, motor);", "function ketens(id, motor){\n  const p=zoek(id);")).PLVisProfiel;
+  const Tk = laad(BRON.replace("function ketens(id, motor, opts){\n  const p=voor(id, motor);", "function ketens(id, motor, opts){\n  const p=zoek(id);")).PLVisProfiel;
   waar('tegenproef: ketens zonder motor zetten de roetfilter-PIDs niet aan', !Tk.ketens('emissie', 'diesel').some(k => k.indexOf('017A') >= 0)
     && P.ketens('emissie', 'diesel').some(k => k.indexOf('017A') >= 0));
 }
@@ -284,6 +284,46 @@ console.log('\n10. Telefoon niet vast in de houder: heel dof (06-10-2026)');
   const css = lees('pidlane.css');
   const m = css.match(/\.vpf \.los[^{]*\{[^}]*opacity:\s*([0-9.]+)/), o = css.match(/\.vpf \.oud \{[^}]*opacity:\s*([0-9.]+)/);
   waar('los is doffer dan oud', m && o && parseFloat(m[1]) < parseFloat(o[1]), (m && m[1]) + ' tegen ' + (o && o[1]));
+}
+
+// ── een plek zelf invullen (06-10-2026) ──
+console.log('\n— een plek zelf invullen: op naam, met de hand, nooit dubbel —');
+{
+  // Wat de CX-5 op 06-10 gaf: geen 015C en geen 0146, wel een eigen
+  // motorolietemperatuur en de accuspanning.
+  const cx5 = ['0105', '010F', '013C', '221310', '0142'];
+  const defs = [
+    { pid: '0105', name: 'Koelvloeistof', unit: '°C' }, { pid: '010F', name: 'Inlaatlucht', unit: '°C' },
+    { pid: '013C', name: 'Katalysator B1S1', unit: '°C' }, { pid: '221310', name: 'Motorolietemperatuur', unit: '°C', min: -40, max: 200 },
+    { pid: '0142', name: 'Accuspanning', unit: 'V', min: 0, max: 20 }];
+  let i = P.indeling('temp', mag(cx5), 'benzine', { keuze: {}, defs });
+  waar('automatisch: de eigen motorolietemperatuur vult OLIE', i.plekken.olie === '221310', JSON.stringify(i.plekken));
+  waar('…met het label en de schaal van de plek (geen vervanging)', !i.vervang.olie, JSON.stringify(i.vervang));
+  waar('BUITEN blijft leeg: er is geen sensor die zo heet', i.plekken.buiten === null, JSON.stringify(i.plekken));
+  waar('de ketens zetten 221310 erbij, zodat Slim visueel hem aanzet',
+    JSON.stringify(P.ketens('temp', 'benzine', { keuze: {}, defs })[1]) === JSON.stringify(['015C', '221310']), JSON.stringify(P.ketens('temp', 'benzine', { keuze: {}, defs })));
+  waar('zonder opts: de indeling van vóór 06-10 (OLIE leeg op de CX-5)', P.indeling('temp', mag(cx5)).plekken.olie === null);
+
+  i = P.indeling('temp', mag(cx5), 'benzine', { keuze: { 'temp/buiten': '0142' }, defs });
+  waar('met de hand: de accuspanning op BUITEN', i.plekken.buiten === '0142', JSON.stringify(i.plekken));
+  waar('…met zijn eigen naam, eenheid en schaal', i.vervang.buiten && i.vervang.buiten.eenheid === 'V' && i.vervang.buiten.lo === 0 && i.vervang.buiten.hi === 20 && i.vervang.buiten.kort === 'Accuspann…',
+    JSON.stringify(i.vervang));
+  const h = P.html('temp', i);
+  waar('de tekening toont het label van de gekozen sensor', /<small>Accuspann…<\/small>/.test(h), h.slice(0, 200));
+  i = P.indeling('temp', mag(cx5), 'benzine', { keuze: { 'temp/buiten': '0105' }, defs });
+  waar('nooit dubbel: koelwater gekozen voor BUITEN staat al op KOEL; KOEL houdt hem, BUITEN blijft leeg',
+    i.plekken.koel === '0105' && i.plekken.buiten === null, JSON.stringify(i.plekken));
+  i = P.indeling('temp', mag(cx5), 'benzine', { keuze: { 'temp/olie': '0146' }, defs });
+  waar('een keuze die deze auto niet geeft: terug naar automatisch, niet leeg', i.plekken.olie === '221310', JSON.stringify(i.plekken));
+
+  P.zetKeuze('temp', 'buiten', '0142');
+  waar('zetKeuze bewaart per profiel en plek', P.keuzes()['temp/buiten'] === '0142', JSON.stringify(P.keuzes()));
+  P.zetKeuze('temp', 'buiten', '');
+  waar('…en "Automatisch" haalt hem weg', !('temp/buiten' in P.keuzes()), JSON.stringify(P.keuzes()));
+  const tel = P.html('telemetrie', P.indeling('telemetrie', () => true));
+  waar('het telemetriescherm heeft een knop Nulstellen', /class="vpf-tel-nul"[^>]*onclick="PLVisProfiel\.nulstellen\(\)"/.test(tel));
+  C.PLTelemetrie = { nulstellen: () => true }; C.showToast = () => {};
+  waar('Nulstellen roept PLTelemetrie.nulstellen() aan', P.nulstellen() === true);
 }
 
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + (ok + fout) : 'goed: ' + ok + ' ok, 0 fout'));
