@@ -172,7 +172,6 @@ window.plBevestig=plBevestig;
 function fontSize(delta){
   currentFont=Math.min(18,Math.max(10,currentFont+delta));
   document.documentElement.style.fontSize=currentFont+'px';
-  const fl=document.getElementById('fontLbl'); if(fl) fl.textContent=currentFont;   // ctrl-bar verwijderd — label optioneel
   try{localStorage.setItem('ns_font',currentFont);}catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
 }
 // TABLET-HARDENING (2026-07-15): het transform-zoom mechanisme is VOLLEDIG
@@ -272,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function(){
   try{
     // Het thema staat hierboven (plThemaZet) en wordt uit ns_theme hersteld.
     const sf=localStorage.getItem('ns_font');
-    if(sf){currentFont=parseInt(sf)||13;document.documentElement.style.fontSize=currentFont+'px';const _fl=document.getElementById('fontLbl');if(_fl)_fl.textContent=currentFont;}
+    if(sf){currentFont=parseInt(sf)||13;document.documentElement.style.fontSize=currentFont+'px';}
     // ns_zoom NIET meer herstellen (2026-07-15): de zoombalk is verwijderd,
     // dus een oud opgeslagen zoomniveau was voor de gebruiker onzichtbaar én
     // onherstelbaar — precies de bron van de "alles staat rechts"-bug op
@@ -343,7 +342,6 @@ document.addEventListener('DOMContentLoaded', function(){
     setTimeout(()=>document.getElementById('loginUser')?.focus(),300);
   }
 
-  try{ refreshAdminLogRow(); }catch(e){ console.warn('refreshAdminLogRow mislukt:', e); }
   // Live-log hervatten als een vorige sessie nog "actief" was (crash/herlaad):
   // het bestaande bestand wordt voortgezet, vorige regels blijven behouden.
   try{

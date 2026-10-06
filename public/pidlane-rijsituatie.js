@@ -239,46 +239,6 @@ try{
 // ════════════════════════════════════════════════════════════════
 // openLogCenter() is vervallen — de testrun bevat het app-log, het BT-log en
 // de TX/RX-gevallen op één tijdlijn. Zie pidlane-testrun.js.
-function _lcLines(kind){
-  if(kind==='bt') return (typeof _btLog!=='undefined'?_btLog:[]).map(l=>`[${l.ts}][${(l.type||'info').toUpperCase()}] ${l.msg}`);
-  return (typeof localLog!=='undefined'?localLog:[]).map(l=>`[${l.ts}][${(l.type||'info').toUpperCase()}] ${l.msg}`);
-}
-// lcTab() en lcClear() waren de tabbladen van het oude logscherm en zijn met
-// dat scherm vervallen. _lcFullText() blijft: dat is het logformaat dat je al
-// gewend bent en dat de testrun en de bugmelder allebei gebruiken.
-function _lcFullText(){
-  const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
-  let ver='?'; try{ ver=(window.PID_CONFIG&&window.PID_CONFIG.app_version)||(typeof APP_VERSION!=='undefined'?APP_VERSION:'?'); }catch(e){ /* stil: versie-info kan nog niet bestaan — logregel wordt dan gewoon korter */ }
-  let usr='?'; try{ usr=(typeof currentUser!=='undefined'&&currentUser&&(currentUser.name||currentUser.user))||'?'; }catch(e){ /* stil: currentUser kan nog niet bestaan — logregel wordt dan gewoon korter */ }
-  return ['PidLane logs','Datum: '+new Date().toLocaleString('nl-NL'),'Versie: '+ver,'Gebruiker: '+usr,
-    'Toestel: '+navigator.userAgent,
-    'Verbinding: '+((typeof connected!=='undefined'&&connected)?((typeof demoMode!=='undefined'&&demoMode)?'demo':'verbonden'):'niet verbonden'),
-    'Voertuig: '+([v.merk,v.model,v.year].filter(Boolean).join(' ')||'—'),
-    '','===== APP-LOG =====',..._lcLines('app'),'','===== BT-LOG =====',..._lcLines('bt')].join('\n');
-}
-async function lcSave(btn){
-  const txt=_lcFullText();
-  const basis='PidLane_logs_'+plStempelLokaal().slice(0,16);
-  // Formaatkeuze via pidlane-export.js — zie daar waarom.
-  if(typeof plOpslaan==='function'){ plOpslaan(basis, txt, {titel:'Logboek'}); return; }
-  const o=btn?btn.textContent:''; if(btn){ btn.textContent='⏳'; btn.disabled=true; }
-  try{
-    const blob=new Blob([txt],{type:'text/plain'});
-    const ok=await nativeShareFile(blob,basis+'.txt');
-    if(!ok) download(basis+'.txt',txt);
-  }catch(e){ try{ download(basis+'.txt',txt); }catch(_){ console.warn('download mislukt:', _); } }
-  if(btn){ btn.textContent=o; btn.disabled=false; }
-}
-function lcSend(){
-  const full=_lcFullText();
-  const lines=full.split('\n');
-  // mailto heeft een praktische lengtegrens — kop + laatste ~70 regels
-  let body=lines.length>84?lines.slice(0,8).concat(['','(…ingekort — volledige log via 💾 Opslaan…)',''],lines.slice(-70)).join('\n'):full;
-  if(body.length>1500) body=body.slice(0,1500)+'\n(…afgekapt)';
-  const url='mailto:support@pidlane.nl?subject='+encodeURIComponent('PidLane log — '+new Date().toLocaleDateString('nl-NL'))+'&body='+encodeURIComponent(body);
-  try{ window.open(url,'_self'); }catch(e){ location.href=url; }
-}
-
 function decodeVIN(vin){
   const wmi=vin.slice(0,3).toUpperCase();
   const wmiMap={

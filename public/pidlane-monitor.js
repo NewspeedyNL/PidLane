@@ -428,13 +428,6 @@ window.updateMonitorBtn = function(){
     p.style.borderColor = aan ? 'var(--gn,#00a86b)' : 'var(--bd,#26303b)';
     p.style.color       = aan ? 'var(--gn,#00a86b)' : 'var(--tx,#e6e9ef)';
   }
-  // Oud menu-item: alleen nog bijwerken als het er (in een oudere build) is.
-  const b=document.getElementById('monitorBtn');
-  if(b){
-    b.innerHTML = (PLMon.userAan?'🔔':'🔕') + ' Rit-monitor'
-      + '<span style="margin-left:auto;font-size:11px;font-weight:700;opacity:.75">'+st+'</span>';
-    b.style.display='flex'; b.style.alignItems='center'; b.style.gap='6px';
-  }
 };
 setInterval(()=>{ try{ window.updateMonitorBtn(); }catch(e){ console.warn('updateMonitorBtn mislukt:', e); } }, 3000);
 
