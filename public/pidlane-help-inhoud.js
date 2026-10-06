@@ -92,7 +92,7 @@ var PL_HULP = {
         '<li>Zet het contact aan.</li>' +
         '<li>Zet Bluetooth aan op je telefoon.</li>' +
         '<li>Tik op <b>⚡ Plug in. Let\'s go.</b> De eerste keer legt PidLane eerst uit waarvoor Bluetooth nodig is.</li>' +
-        '<li>PidLane zoekt de adapter en daarna de auto. Na afloop zie je de sensoren van jouw auto.</li>' +
+        '<li>PidLane zoekt de adapter en daarna de auto. Bij <b>Verbinding inmeten…</b> meet hij hoe snel jouw auto antwoordt; dat duurt meestal minder dan een seconde. Na afloop zie je de sensoren van jouw auto.</li>' +
         '</ol>' +
         '<p>Zet je <b>Check na verbinden</b> aan (in Meer), dan opent <a data-hulp="check">Check mijn auto</a> bij de volgende verbinding één keer vanzelf; daarna staat de schakelaar weer uit. ' +
         'Vindt hij niets, dan gaat de app na 5 seconden door naar Live; tik in het venster of op <b>Blijf hier</b> om te blijven.</p>' +

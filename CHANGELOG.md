@@ -10,6 +10,42 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — G-cirkel: zij-G volgt het gevoel, piekballetje van 3 s (#407)
+ ═══════════════════════════════════════════════════════════
+
+ - Rechts sturen zet de stip links: waar je lijf heen gaat. TL04 meet nog
+   steeds de kracht op de auto; alleen de tekening (gPunt) spiegelt.
+ - Een ring blijft 3 s op de grootste gecombineerde uitslag staan, en valt
+   daarna terug. Nulstellen wist hem (event pl:telemetrie-genuld).
+ - test-visprofiel.js, vier mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Berekende PIDs houden hun bronnen (#392)
+ ═══════════════════════════════════════════════════════════
+
+ - bronnenErbij() zet een ontbrekende bron opnieuw aan, hoogstens eens per
+   5 s, in plaats van één keer per sessie. Een weigering van de poort komt
+   één keer per verbinding in het log.
+ - Gekozen maar niet te berekenen op deze auto: het log zegt welke bron de
+   auto niet meldt, in plaats van een tegel die zonder uitleg leeg blijft.
+ - test-berekendbronnen.js, vier mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
+ 03-10-2026 — Verbindprofiel: elke auto ingemeten (#388, PR #390; bijgeschreven 06-10, #391)
+ ═══════════════════════════════════════════════════════════
+
+ - Koude poort (PLVerbind.koudePoort): direct na ATSP<id> en vóór het VIN
+   gemeten ATST (2× de op één na traagste rondrit, 0x0C…0xFF) en
+   startgroep, in plaats van 400 ms en groep 3 voor iedereen.
+ - Weigerboekhouding: een door de ELM-poort geweigerd verzoek telt niet
+   meer als lege batch.
+ - Geheugen: de ATST per VIN in het voertuigprofiel (veld verbind), alleen
+   omhoog. Zie #414: dat werkt als een ratel.
+ - Kennisbank in D1: tabel verbindprofielen via /verbind/profiel, onder het
+   VIN-pseudoniem; toestemmingstekst bijgewerkt (AKKOORD_TEKST_SINDS 03-10).
+ - Handleiding: "Verbinding inmeten…" uitgelegd in Verbinden met de auto.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Koopcheck laat het kenteken van je eigen auto staan (#331)
  ═══════════════════════════════════════════════════════════
 
