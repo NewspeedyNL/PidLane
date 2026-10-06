@@ -10,6 +10,23 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Slim visueel: accu blijft staan, auto i.p.v. VIN, donker emissiescherm, één telemetriescherm; privacy en releasetekst 3.2
+ ═══════════════════════════════════════════════════════════
+
+ - Acculampje: een oude spanning (0142 wordt traag gevraagd) maakte het
+   lampje leeg tot de volgende meting. Nu blijft het staan, dof als de
+   waarde oud is; pas na een minuut zonder antwoord weg (accuGetal).
+ - Rechtsboven: showVtag() bewaart nooit een VIN als naam; updateVehicleCard
+   gaf de VIN als eerste mee (tooltip voertuigchip, ingeklapte voertuigkop).
+ - Emissiescherm (lambda, stijl licht) is donker in plaats van wit.
+ - Telemetrie: horizon, G-cirkel en de auto van opzij en achteren op één
+   scherm (profiel telemetrie); een oude keuze tel-* komt daar vanzelf uit.
+ - Privacy: telefoonsensoren, Bluetooth aanzetten en de demo in
+   privacy.html, het privacyscherm, de handleiding en PLAY-INZENDING §3/§11.
+   Akkoordteksten ongewijzigd: de referentiedata verandert niet.
+ - Releasetekst 3.2 in PLAY-INZENDING §14; §16b met de nieuwe toestelpunten.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — G-cirkel: zij-G volgt het gevoel, piekballetje van 3 s (#407)
  ═══════════════════════════════════════════════════════════
 
