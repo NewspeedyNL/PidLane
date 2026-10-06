@@ -14,7 +14,8 @@
 //   weergaven   20%  welke weergaven van Slim visueel op DEZE auto iets
 //                    betekenen — per brandstof: een diesel loopt arm, dus
 //                    lambda rond 1,00 en verbruik uit de luchtmassa zeggen
-//                    daar niets
+//                    daar niets; hij wordt op zijn eigen plekken beoordeeld
+//                    (roetfilter, NOx, AdBlue, laaddruk — #393)
 //   afwijkend   15%  ongeldig, buiten de harde grens, hapert, of veel trager
 //                    dan de rest
 // Daarnaast: per PID de categorie en de weergaven waarin hij staat, en een
@@ -139,6 +140,9 @@ function bruikbaar(pid, okSet, brandstof){
 function oordeelWeergaven(sv, ctx, brandstof){
   const P=ctx.profielen || [], okSet=okSetVan(sv), uit=[];
   const elektrisch=brandstof==='elektrisch';
+  // Een diesel krijgt de dieselplekken van een weergave (#393): dezelfde
+  // keuze die Slim visueel zelf maakt, via PLVisProfiel.plekkenVan().
+  const plekkenVan=ctx.plekkenVan || function(p){ return p.plekken; };
   P.forEach(function(p){
     // Telemetrie hangt van de telefoon af, niet van de auto: geen oordeel hier.
     if(/^tel(-|emetrie$)/.test(p.id)) return;   // telefoonsensoren: geen oordeel over de auto (één scherm sinds 06-10-2026)
@@ -149,7 +153,7 @@ function oordeelWeergaven(sv, ctx, brandstof){
       r.reden=heeft ? 'toerental en snelheid lezen' : 'toerental of snelheid ontbreekt';
       uit.push(r); return;
     }
-    p.plekken.forEach(function(x){
+    plekkenVan(p, brandstof).forEach(function(x){
       let pid=null; for(const k of x.keten){ if(bruikbaar(k, okSet, brandstof)){ pid=k; break; } }
       r.indeling[x.rol]=pid; r.plekken++; if(pid) r.gevuld++;
     });
@@ -158,10 +162,6 @@ function oordeelWeergaven(sv, ctx, brandstof){
     else if(p.id==='temp'){
       r.oordeel = r.gevuld>=3 ? 'goed' : r.gevuld===2 ? 'matig' : 'ongeschikt';
       r.reden = r.gevuld<=1 ? 'maar '+r.gevuld+' temperatuursensor — een rij thermometers met één buis zegt niets' : r.gevuld+' van '+r.plekken+' temperaturen';
-    }
-    else if(p.id==='emissie' && brandstof==='diesel'){
-      r.oordeel='ongeschikt';
-      r.reden='diesel loopt arm: lambda rond 1,00 en de brandstoftrims gelden voor benzine'+(okSet.has('012C')?' (EGR wel aanwezig)':'');
     }
     else if(p.id==='verbruik' && !r.indeling.nu){
       r.oordeel='ongeschikt';
@@ -251,7 +251,7 @@ function beoordeel(sv, ctx){
   if(!ctx.defs) ctx.defs=g('ALL_PID_DEFS')||{};
   if(!ctx.hard) ctx.hard=g('PID_HARD_LIMITS')||{};
   if(!ctx.slimGroep) ctx.slimGroep=g('slimGroep');
-  if(!ctx.profielen){ const V=g('PLVisProfiel'); ctx.profielen=(V && V.PROFIELEN) || []; }
+  if(!ctx.profielen){ const V=g('PLVisProfiel'); ctx.profielen=(V && V.PROFIELEN) || []; if(!ctx.plekkenVan && V) ctx.plekkenVan=V.plekkenVan; }
   if(ctx.can===undefined) ctx.can=!(sv.batch && sv.batch.reden==='geen CAN-protocol');
   const brandstof=brandstofVan(ctx.brandstofOpgegeven, sv.ecuFuel);
   const verbinding=oordeelVerbinding(sv, ctx);

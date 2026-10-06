@@ -2771,6 +2771,46 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de beheerdersdemo (#409) ──
+  {
+    issue: '#409',
+    naam: 'In de demo als admin rekent de AI echt en worden bestanden opgeslagen; referentiedata en applog blijven dicht',
+    waarom: 'Een beheerder heeft geen eigen voertuigen; met een demo die alleen een voorbeeldrapport geeft valt de app niet te laten zien.',
+    proef: async function () {
+      var D = window.PLDemo;
+      if (!D || typeof D.volledig !== 'function') return { staat: 'FOUT', detail: 'PLDemo.volledig ontbreekt — pidlane-demo.js is niet de nieuwe' };
+      if (D.netBesluit('/v1/messages', {}, true) !== 'door') return { staat: 'FOUT', detail: 'de beheerdersdemo houdt de AI nog tegen' };
+      if (D.netBesluit('/airtable/veldlab', {}, true) === 'door' || D.netBesluit('/airtable/log', {}, true) === 'door') return { staat: 'FOUT', detail: 'de beheerdersdemo laat referentiedata of de applog door' };
+      if (D.netBesluit('/v1/messages', {}, false) === 'door') return { staat: 'FOUT', detail: 'de gewone demo laat de AI door' };
+      var admin = typeof isAdmin === 'function' && isAdmin();
+      if (!D.actief()) return { staat: 'LET OP', detail: 'gedrag klopt; er loopt geen demo — nodig: start de demo' + (admin ? '' : ' als admin') + ' en draai opnieuw' };
+      return { staat: 'OK', detail: D.volledig() ? 'beheerdersdemo: AI en bestanden echt' : 'gewone demo (niet als admin ingelogd): voorbeeldrapport, geen bestanden' };
+    }
+  },
+
+  // ── diesel: eigen sensoren op dezelfde weergaven (#393) ──
+  {
+    issue: '#393',
+    naam: 'Op een diesel tonen de weergaven roetfilter, laaddruk en injectie in plaats van lambda en ontsteking',
+    waarom: 'Een diesel loopt arm en heeft geen ontsteking: lambda rond 1,00, de brandstoftrims en de ontstekingshoek bleven op een diesel altijd leeg.',
+    proef: async function () {
+      var P = window.PLVisProfiel, V = window.PLVisueel;
+      if (!P || typeof P.plekkenVan !== 'function') return { staat: 'FOUT', detail: 'PLVisProfiel.plekkenVan ontbreekt — pidlane-visprofiel.js is niet de nieuwe' };
+      var e = P.indeling('emissie', function () { return true; }, 'diesel');
+      if (!e || 'lambda' in e.plekken || e.plekken.dpf !== '017A') return { staat: 'FOUT', detail: 'het emissiescherm van een diesel heeft nog lambda, of geen roetfilter' };
+      var motor = (typeof detectEngineType === 'function') ? detectEngineType() : null;
+      if (motor !== 'diesel') return { staat: 'LET OP', detail: 'gedrag klopt; deze auto is geen diesel (' + (motor || 'onbekend') + ') — nodig: een diesel verbonden, en draai opnieuw' };
+      var ind = V && typeof V.indeling === 'function' ? V.indeling() : null;
+      if (ind && ind.profiel && ind.profiel.motor !== 'diesel') return { staat: 'FOUT', detail: 'Slim visueel geeft de motorsoort niet door aan de weergave ' + ind.profiel.id };
+      var gevuld = ['emissie', 'motor', 'verbruik', 'temp'].map(function (id) {
+        var i = P.indeling(id, function (p) { return typeof activePIDs !== 'undefined' && activePIDs.has(p); }, 'diesel');
+        var n = 0, t = 0; Object.keys(i.plekken).forEach(function (k) { t++; if (i.plekken[k]) n++; });
+        return id + ' ' + n + '/' + t;
+      });
+      return { staat: 'OK', detail: 'diesel · gevuld met de huidige selectie: ' + gevuld.join(', ') };
+    }
+  },
+
   // ── Slim visueel 06-10: accu blijft staan, auto i.p.v. VIN, één telemetriescherm ──
   {
     issue: '—',

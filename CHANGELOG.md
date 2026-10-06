@@ -10,6 +10,31 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Beheerdersdemo: als admin rekent de AI echt (#409)
+ ═══════════════════════════════════════════════════════════
+
+ - PLDemo.volledig(): demo én ingelogd als admin. Dan geeft apiFetch geen
+   voorbeeldrapport maar vraagt de echte AI, laat plFetch /v1/messages door
+   (netBesluit met beheer) en slaat plBewaarBestand echt op.
+ - Blijft dicht, ook voor de beheerder: referentiemetingen, de applog,
+   tegoed inwisselen, schrijven op het klantplatform en de opslag op het
+   toestel. Een demo zonder login is nooit volledig.
+ - Melding bij de start; test-demozandbak.js, zeven mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Diesel: eigen sensoren in de weergaven van Slim visueel (#393)
+ ═══════════════════════════════════════════════════════════
+
+ - Een plek in PLVisProfiel kan diesel:{…} dragen; op een diesel komen die
+   velden in de plaats (plekkenVan, indeling(id, mag, motor)).
+ - Emissie: roetfilter (drukverschil, temperatuur, regeneratie), NOx, AdBlue
+   en EGR in plaats van lambda, trims en O₂ na de kat. Motor: laaddruk,
+   injectie, gaspedaal, toerenring tot 6000. Verbruik: laaddruk in plaats van
+   luchtmassa. Temperatuur: uitlaatgas in plaats van katalysator.
+ - Full function test oordeelt op de dieselplekken.
+ - test-visprofiel.js, test-functietest.js, vijf mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Slim visueel: accu blijft staan, auto i.p.v. VIN, donker emissiescherm, één telemetriescherm; privacy en releasetekst 3.2
  ═══════════════════════════════════════════════════════════
 

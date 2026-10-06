@@ -1445,8 +1445,8 @@ MUTATIES=(
 # account, een demorapport blijft staan, een echte instelling verdwijnt in de
 # laag, of een demo zonder login eindigt achter de login.
 "public/pidlane-plfetch.js@@      if(besluit !== 'door') return PLDemo.weigerAntwoord(besluit);@@      if(false) return PLDemo.weigerAntwoord(besluit);@@test-demozandbak.js@@de demopoort in plFetch staat open: de AI rekent weer op een verzonnen auto"
-"public/pidlane-fuel.js@@  if(window.PLDemo && PLDemo.actief()) return PLDemo.aiVoorbeeld(prompt, extra);@@  void 0;@@test-demozandbak.js@@apiFetch geeft in de demo geen voorbeeldrapport maar vraagt de echte AI (en rekent tegoed af)"
-"public/pidlane-motortype.js@@  if(window.PLDemo && PLDemo.actief()){@@  if(false){@@test-demozandbak.js@@de demo schrijft weer bestanden naar Documenten/PidLane"
+"public/pidlane-fuel.js@@  if(window.PLDemo && PLDemo.actief() && !PLDemo.volledig()) return PLDemo.aiVoorbeeld(prompt, extra);@@  void 0;@@test-demozandbak.js@@apiFetch geeft in de demo geen voorbeeldrapport maar vraagt de echte AI (en rekent tegoed af)"
+"public/pidlane-motortype.js@@  if(window.PLDemo && PLDemo.actief() && !PLDemo.volledig()){@@  if(false){@@test-demozandbak.js@@de demo schrijft weer bestanden naar Documenten/PidLane"
 "public/pidlane-archief.js@@      demo:_demo,@@      demo:false,@@test-demozandbak.js@@een demorapport is niet als demo gemerkt en blijft na de demo in het overzicht staan"
 "public/pidlane-demo.js@@      return LEES_ACTIES.indexOf(actie) >= 0 ? 'door' :@@      return true ? 'door' :@@test-demozandbak.js@@de demo mag weer schrijven naar het klantplatform: rapporten, ritten en open punten van een verzonnen auto"
 "public/pidlane-demo.js@@    function vangt(self, k) { return self === opslag && actief() &&@@    function vangt(self, k) { return self === opslag &&@@test-demozandbak.js@@demoMode uit zonder plDemoStop: een echte instelling verdwijnt stil in de demolaag"
@@ -1683,6 +1683,20 @@ MUTATIES=(
 "public/pidlane-visprofiel.js@@  const v=klem(val, x.lo, x.hi);@@  const v=Number(val)||0;@@test-visprofiel.js@@een onzinwaarde schuift de horizon uit het beeld"
 "public/pidlane-functietest.js@@    if(/^tel(-|emetrie$)/.test(p.id)) return;@@    void 0;@@test-functietest.js@@de Full function test rekent de auto de telefoonweergaven aan als ongeschikt"
 "public/pidlane-telemetrie.js@@  const gL=dot(lin, ax.voor)/G, gD=dot(lin, ax.rechts)/G;@@  const gL=dot(lin, ax.voor)/G, gD=-dot(lin, ax.rechts)/G;@@test-telemetrie.js@@de G-cirkel zet een bocht naar links aan de rechterkant"
+# ── de beheerdersdemo (#409) ──
+"public/pidlane-demo.js@@    try { return typeof window.isAdmin === 'function' && !!window.isAdmin(); }@@    try { return true; }@@test-demozandbak.js@@elke demo is een beheerdersdemo: een reviewer zonder login laat de echte AI rekenen — #409"
+"public/pidlane-demo.js@@    if (!isDemo()) return false;\n    try { return typeof window.isAdmin@@    try { return typeof window.isAdmin@@test-demozandbak.js@@een beheerder buiten de demo telt als beheerdersdemo — #409"
+"public/pidlane-demo.js@@ && !(beheer && WEIGER[i].beheer)) return WEIGER[i].reden;@@ && !beheer) return WEIGER[i].reden;@@test-demozandbak.js@@de beheerdersdemo stuurt verzonnen ritten naar de referentiedata en de applog — #409"
+"public/pidlane-demo.js@@reden: 'de AI rekent niet op een verzonnen auto', beheer: true },@@reden: 'de AI rekent niet op een verzonnen auto' },@@test-demozandbak.js@@de beheerdersdemo krijgt toch het voorbeeldrapport: de AI-aanroep blijft dicht — #409"
+"public/pidlane-plfetch.js@@PLDemo.netBesluit(pad, opties, PLDemo.volledig())@@PLDemo.netBesluit(pad, opties)@@test-demozandbak.js@@plFetch geeft de beheerdersdemo niet door: apiFetch vraagt de AI en krijgt een 403 — #409"
+"public/pidlane-fuel.js@@ && !PLDemo.volledig()) return PLDemo.aiVoorbeeld(prompt, extra);@@) return PLDemo.aiVoorbeeld(prompt, extra);@@test-demozandbak.js@@de beheerdersdemo krijgt het voorbeeldrapport in plaats van de AI — #409"
+"public/pidlane-motortype.js@@  if(window.PLDemo && PLDemo.actief() && !PLDemo.volledig()){@@  if(window.PLDemo && PLDemo.actief()){@@test-demozandbak.js@@de beheerdersdemo slaat geen bestanden op — #409"
+# ── diesel: eigen sensoren op dezelfde weergaven (#393) ──
+"public/pidlane-visprofiel.js@@  if(motor!=='diesel') return p.plekken;@@  return p.plekken;@@test-visprofiel.js@@een diesel krijgt weer lambda rond 1,00, de brandstoftrims en de ontsteking — #393"
+"public/pidlane-visprofiel.js@@function ketens(id, motor){\n  const p=voor(id, motor);@@function ketens(id, motor){\n  const p=zoek(id);@@test-visprofiel.js@@Slim visueel zet op een diesel de roetfilter-PIDs niet aan: het scherm blijft leeg — #393"
+"public/pidlane-visueel.js@@PF().indeling(pr, bruikbaar, motor)@@PF().indeling(pr, bruikbaar)@@test-visprofiel.js@@Slim visueel geeft de motorsoort niet door: een diesel ziet de benzinekaart — #393"
+"public/pidlane-visprofiel.js@@        diesel:{ hi:6000 } },@@        diesel:{} },@@test-visprofiel.js@@de neonring van een diesel loopt tot 8000 tpm: 3000 staat er als bijna stationair — #393"
+"public/pidlane-functietest.js@@    plekkenVan(p, brandstof).forEach(@@    p.plekken.forEach(@@test-functietest.js@@de Full function test beoordeelt een diesel op de benzinekaart — #393"
 )
 
 echo

@@ -150,6 +150,12 @@ const echt = (ctx, k) => vm.runInContext('localStorage._m[' + JSON.stringify(k) 
       toets('schrijven naar het account wordt geweigerd: ' + a, nb('/klant/platform', { json: { actie: a } }) !== 'door');
     toets('een platformverzoek zonder actie wordt geweigerd (onbekend is schrijven)', nb('/klant/platform', { method: 'POST' }) !== 'door');
 
+    // De beheerdersdemo (#409): de AI gaat door, de rest blijft dicht.
+    toets('beheerdersdemo: de AI gaat wél de deur uit', nb('/v1/messages', { method: 'POST' }, true) === 'door');
+    toets('beheerdersdemo: referentiemeting, applog en tegoed blijven dicht',
+      nb('/airtable/veldlab', {}, true) !== 'door' && nb('/airtable/log', {}, true) !== 'door' && nb('/credits/redeem', {}, true) !== 'door');
+    toets('beheerdersdemo: schrijven naar het klantplatform blijft dicht', nb('/klant/platform', { json: { actie: 'rapport_opslaan' } }, true) !== 'door');
+
     // De leesacties naast worker.js: bestaan ze, en schrijft er geen een?
     const w = bron('../worker.js');
     const a = w.indexOf('var KP_ACTIES = {'), b = w.indexOf('\n};', a);
@@ -172,6 +178,18 @@ const echt = (ctx, k) => vm.runInContext('localStorage._m[' + JSON.stringify(k) 
     }
   }
 
+  console.log('\n2b. Wie krijgt de beheerdersdemo (#409)');
+  {
+    for (const [demo, admin, verwacht, wat] of [[true, true, true, 'demo en admin'], [true, false, false, 'demo zonder admin'],
+      [false, true, false, 'admin zonder demo'], [true, undefined, false, 'demo zonder login (geen isAdmin)']]) {
+      const c = laadDemo(admin === undefined ? {} : { isAdmin: () => admin });
+      c.demoMode = demo;
+      toets('volledig() bij ' + wat + ': ' + verwacht, c.PLDemo.volledig() === verwacht);
+    }
+    const c = laadDemo({ isAdmin: () => { throw new Error('kapot'); } }); c.demoMode = true;
+    toets('een rol die niet te lezen is geeft de gewone demo', c.PLDemo.volledig() === false);
+  }
+
   console.log('\n3. De haak in plFetch');
   {
     const c = laadDemo();
@@ -186,6 +204,12 @@ const echt = (ctx, k) => vm.runInContext('localStorage._m[' + JSON.stringify(k) 
       gehaald.length === 0 && r1.status === 403 && b1.demo === true, JSON.stringify({ gehaald, status: r1.status, b1 }));
     await c.plFetch('/klant/platform', { method: 'POST', json: { actie: 'rapporten' } });
     toets('in de demo: je rapporten lezen gaat wél naar buiten', gehaald.length === 1);
+    c.isAdmin = () => true; gehaald = [];
+    await c.plFetch('/v1/messages', { method: 'POST', json: { x: 1 } });
+    toets('beheerdersdemo: de AI-aanroep gaat naar buiten (#409)', gehaald.length === 1);
+    const r2 = await c.plFetch('/airtable/veldlab', { method: 'POST', json: {} });
+    toets('beheerdersdemo: een referentiemeting nog steeds niet', gehaald.length === 1 && r2.status === 403);
+    c.isAdmin = () => false;
     c.demoMode = false; gehaald = [];
     await c.plFetch('/v1/messages', { method: 'POST', json: { x: 1 } });
     toets('buiten de demo: de AI-aanroep gaat gewoon (tegenproef)', gehaald.length === 1);
@@ -194,17 +218,18 @@ const echt = (ctx, k) => vm.runInContext('localStorage._m[' + JSON.stringify(k) 
   console.log('\n4. De haak in apiFetch');
   {
     const src = knip('pidlane-fuel.js', 'async function apiFetch(', 'function aiVerdict(', 'apiFetch');
-    for (const demo of [true, false]) {
+    for (const [demo, beheer] of [[true, false], [false, false], [true, true]]) {
       let gevraagd = 0;
       const c = { console: { log() {}, warn() {} }, currentUser: null, USERS: {},
         log() { throw new Error('VERDER'); },
-        PLDemo: { actief: () => demo, aiVoorbeeld: async () => { gevraagd++; return 'VOORBEELD'; } } };
+        PLDemo: { actief: () => demo, volledig: () => demo && beheer, aiVoorbeeld: async () => { gevraagd++; return 'VOORBEELD'; } } };
       c.window = c;
       vm.createContext(c);
       vm.runInContext(src + '\nglobalThis.__f = apiFetch;', c);
       let uit;
       try { uit = await c.__f('vraag', 100); } catch (e) { uit = 'fout:' + e.message; }
-      if (demo) toets('in de demo geeft apiFetch het voorbeeldrapport, vóór er iets anders gebeurt', uit === 'VOORBEELD' && gevraagd === 1, String(uit));
+      if (beheer) toets('beheerdersdemo: apiFetch vraagt de echte AI, geen voorbeeldrapport (#409)', uit === 'fout:VERDER' && gevraagd === 0, String(uit));
+      else if (demo) toets('in de demo geeft apiFetch het voorbeeldrapport, vóór er iets anders gebeurt', uit === 'VOORBEELD' && gevraagd === 1, String(uit));
       else toets('buiten de demo loopt apiFetch gewoon door (tegenproef)', uit === 'fout:VERDER' && gevraagd === 0, String(uit));
     }
     const c = laadDemo();
@@ -219,17 +244,18 @@ const echt = (ctx, k) => vm.runInContext('localStorage._m[' + JSON.stringify(k) 
   console.log('\n5. De haak in plBewaarBestand');
   {
     const src = knip('pidlane-motortype.js', 'async function plBewaarBestand(', 'function delay(', 'plBewaarBestand');
-    for (const demo of [true, false]) {
+    for (const [demo, beheer] of [[true, false], [false, false], [true, true]]) {
       let geschreven = 0;
       const c = { console: { log() {}, warn() {} }, log() {}, showToast() {},
         nativeSchrijfDirect: async () => { geschreven++; return 'Documenten/PidLane/x.txt'; },
         _plVerbindingStaat: () => false, _plOpslagFout: '',
-        PLDemo: { actief: () => demo } };
+        PLDemo: { actief: () => demo, volledig: () => demo && beheer } };
       c.window = c; c.window._plOpslag = { gelukt: 0, mislukt: [] };
       vm.createContext(c);
       vm.runInContext(src + '\nglobalThis.__f = plBewaarBestand;', c);
       const uit = await c.__f({}, 'x.txt');
-      if (demo) toets('in de demo wordt er geen bestand geschreven', uit === false && geschreven === 0);
+      if (beheer) toets('beheerdersdemo: het bestand wordt wél geschreven (#409)', uit === true && geschreven === 1);
+      else if (demo) toets('in de demo wordt er geen bestand geschreven', uit === false && geschreven === 0);
       else toets('buiten de demo wel (tegenproef)', uit === true && geschreven === 1);
     }
   }

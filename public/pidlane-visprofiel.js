@@ -45,7 +45,14 @@ const SLEUTEL = 'pl_vis_profiel';
      segment  een rij van SEG blokjes (digitaal)
      ring     een cirkel om het midden (neon)
      getal    alleen het getal
-   lo/hi = het bereik van de vulling; dec = decimalen in de tekst. */
+   lo/hi = het bereik van de vulling; dec = decimalen in de tekst.
+
+   DIESEL (#393, 06-10-2026). Een diesel loopt arm en heeft geen ontsteking:
+   lambda rond 1,00, de brandstoftrims, de O₂-sprong na de kat, de
+   ontstekingshoek en verbruik uit de luchtmassa zeggen daar niets. Een plek
+   met `diesel:{…}` krijgt op een diesel die velden in de plaats (ook rol en
+   soort: het is dan een andere plek); `diesel:false` laat hem weg. Welke
+   motor het is, komt van buiten (indeling(id, mag, motor)), net als mag. */
 const SEG = 20;
 const PROFIELEN = [
   { id:'basis', naam:'Basis', stijl:'basis', ondertitel:'De vaste meter' },
@@ -55,15 +62,21 @@ const PROFIELEN = [
       { rol:'olie',   naam:'Motorolie',   kort:'Olie',    keten:['015C'],        eenheid:'°', soort:'thermo', lo:40, hi:150, dec:0 },
       { rol:'inlaat', naam:'Inlaatlucht', kort:'Inlaat',  keten:['010F'],        eenheid:'°', soort:'thermo', lo:-20, hi:80, dec:0 },
       { rol:'buiten', naam:'Buiten',      kort:'Buiten',  keten:['0146'],        eenheid:'°', soort:'thermo', lo:-20, hi:45, dec:0 },
-      { rol:'kat',    naam:'Katalysator', kort:'Kat',     keten:['013C','013E','017C'], eenheid:'°', soort:'thermo', lo:100, hi:950, dec:0 }
+      { rol:'kat',    naam:'Katalysator', kort:'Kat',     keten:['013C','013E','017C'], eenheid:'°', soort:'thermo', lo:100, hi:950, dec:0,
+        diesel:{ rol:'uitlaat', naam:'Uitlaatgas', kort:'Uitlaat', keten:['0178','017C','013C'], hi:700 } }
     ] },
   { id:'emissie', naam:'Emissie', stijl:'licht', ondertitel:'Licht',
     plekken:[
-      { rol:'lambda', naam:'Lambda',             keten:['0124','0134','0144'], eenheid:'λ', soort:'lambda', lo:0.8, hi:1.2, dec:2 },
-      { rol:'kort',   naam:'Brandstoftrim kort', keten:['0106'], eenheid:'%', soort:'midden', lo:-25, hi:25, dec:1 },
-      { rol:'lang',   naam:'Brandstoftrim lang', keten:['0107'], eenheid:'%', soort:'midden', lo:-25, hi:25, dec:1 },
-      { rol:'kat',    naam:'Katalysator',        keten:['013C','013E','017C'], eenheid:'°C', soort:'balk', lo:100, hi:950, dec:0 },
-      { rol:'o2',     naam:'O₂ na de kat',       keten:['0115'], eenheid:'V', soort:'balk', lo:0, hi:1, dec:2 },
+      { rol:'lambda', naam:'Lambda',             keten:['0124','0134','0144'], eenheid:'λ', soort:'lambda', lo:0.8, hi:1.2, dec:2,
+        diesel:{ rol:'dpf', naam:'Roetfilter drukverschil', keten:['017A','017B'], eenheid:'kPa', soort:'balk', lo:0, hi:30, dec:1 } },
+      { rol:'kort',   naam:'Brandstoftrim kort', keten:['0106'], eenheid:'%', soort:'midden', lo:-25, hi:25, dec:1,
+        diesel:{ rol:'dpftemp', naam:'Roetfilter temperatuur', keten:['017C','0178','013C'], eenheid:'°C', soort:'balk', lo:100, hi:700, dec:0 } },
+      { rol:'lang',   naam:'Brandstoftrim lang', keten:['0107'], eenheid:'%', soort:'midden', lo:-25, hi:25, dec:1,
+        diesel:{ rol:'regen', naam:'Regeneratie', keten:['018B'], eenheid:'%', soort:'balk', lo:0, hi:100, dec:0 } },
+      { rol:'kat',    naam:'Katalysator',        keten:['013C','013E','017C'], eenheid:'°C', soort:'balk', lo:100, hi:950, dec:0,
+        diesel:{ rol:'nox', naam:'NOx', keten:['0183'], eenheid:'ppm', lo:0, hi:1500 } },
+      { rol:'o2',     naam:'O₂ na de kat',       keten:['0115'], eenheid:'V', soort:'balk', lo:0, hi:1, dec:2,
+        diesel:{ rol:'adblue', naam:'AdBlue', keten:['0185'], eenheid:'%', lo:0, hi:100, dec:0 } },
       { rol:'egr',    naam:'EGR',                keten:['012C'], eenheid:'%', soort:'balk', lo:0, hi:100, dec:0 }
     ] },
   { id:'verbruik', naam:'Verbruik', stijl:'digitaal', ondertitel:'Digitaal',
@@ -71,16 +84,23 @@ const PROFIELEN = [
       { rol:'nu',     naam:'Verbruik nu', keten:['CA03','015E','CA02'], eenheid:'', soort:'segment', lo:0, hi:20, dec:1, groot:true },
       { rol:'snel',   naam:'Snelheid',    keten:['010D'], eenheid:'km/u', soort:'getal', lo:0, hi:200, dec:0 },
       { rol:'pedaal', naam:'Gaspedaal',   keten:['0149','015A','014A','0111'], eenheid:'%', soort:'segment', lo:0, hi:100, dec:0 },
-      { rol:'maf',    naam:'Luchtmassa',  keten:['0110'], eenheid:'g/s', soort:'segment', lo:0, hi:150, dec:1 },
+      { rol:'maf',    naam:'Luchtmassa',  keten:['0110'], eenheid:'g/s', soort:'segment', lo:0, hi:150, dec:1,
+        diesel:{ rol:'laad', naam:'Laaddruk', keten:['0170','0187','010B'], eenheid:'kPa', lo:0, hi:300, dec:0 } },
       { rol:'tank',   naam:'Tank',        keten:['012F'], eenheid:'%', soort:'segment', lo:0, hi:100, dec:0 }
     ] },
   { id:'motor', naam:'Motor', stijl:'neon', ondertitel:'Neon',
     plekken:[
-      { rol:'toeren',   naam:'Toerental',   keten:['010C'], eenheid:'rpm', soort:'ring', lo:0, hi:8000, dec:0, groot:true },
+      { rol:'toeren',   naam:'Toerental',   keten:['010C'], eenheid:'rpm', soort:'ring', lo:0, hi:8000, dec:0, groot:true,
+        diesel:{ hi:6000 } },
       { rol:'last',     naam:'Belasting',   keten:['0104','0143'], eenheid:'%', soort:'ring', lo:0, hi:100, dec:0 },
-      { rol:'gasklep',  naam:'Gasklep',     keten:['0111','0149'], eenheid:'%', soort:'ring', lo:0, hi:100, dec:0 },
-      { rol:'map',      naam:'Inlaatdruk',  keten:['010B'], eenheid:'kPa', soort:'getal', lo:0, hi:255, dec:0 },
-      { rol:'timing',   naam:'Ontsteking',  keten:['010E','015D'], eenheid:'°', soort:'getal', lo:-40, hi:60, dec:0 },
+      // Een diesel regelt met het pedaal, niet met de gasklep: die staat
+      // vrijwel altijd open. De rol blijft 'gasklep' (de ring en zijn kleur).
+      { rol:'gasklep',  naam:'Gasklep',     keten:['0111','0149'], eenheid:'%', soort:'ring', lo:0, hi:100, dec:0,
+        diesel:{ naam:'Gaspedaal', keten:['0149','015A','014A','0111'] } },
+      { rol:'map',      naam:'Inlaatdruk',  keten:['010B'], eenheid:'kPa', soort:'getal', lo:0, hi:255, dec:0,
+        diesel:{ naam:'Laaddruk', keten:['0170','0187','010B'], hi:300 } },
+      { rol:'timing',   naam:'Ontsteking',  keten:['010E','015D'], eenheid:'°', soort:'getal', lo:-40, hi:60, dec:0,
+        diesel:{ naam:'Injectie', keten:['015D'] } },
       { rol:'maf',      naam:'Luchtmassa',  keten:['0110'], eenheid:'g/s', soort:'getal', lo:0, hi:655, dec:1 }
     ] },
   // Telemetrie (05-10-2026): de telefoonsensoren van pidlane-telemetrie.js.
@@ -104,6 +124,19 @@ const PROFIELEN = [
 const RING_R = { toeren:86, last:68, gasklep:50 };
 
 function zoek(id){ for(let i=0;i<PROFIELEN.length;i++){ if(PROFIELEN[i].id===id) return PROFIELEN[i]; } return null; }
+/* De plekken van een profiel voor deze motor. Puur. Een diesel krijgt de
+   diesel-velden van een plek in de plaats, of de plek valt weg (false). */
+function plekkenVan(p, motor){
+  if(!p || !p.plekken) return null;
+  if(motor!=='diesel') return p.plekken;
+  return p.plekken.filter(function(x){ return x.diesel!==false; })
+    .map(function(x){ return x.diesel ? Object.assign({}, x, x.diesel) : x; });
+}
+/* Het profiel zoals deze motor het ziet: dezelfde velden, andere plekken. */
+function voor(id, motor){
+  const p=zoek(id);
+  return (p && p.plekken) ? Object.assign({}, p, { plekken:plekkenVan(p, motor) }) : p;
+}
 function geldig(id){ return !!zoek(id); }
 /* Het profiel na `id`, rond. Onbekend = het eerste na de basis. */
 function volgende(id){
@@ -123,11 +156,11 @@ function bewaar(id){
 }
 
 /* Welke PID staat op welke plek? Per plek de eerste uit de keten waarvoor
-   `mag(pid)` waar is, anders null. Puur. */
-function indeling(id, mag){
-  const p=zoek(id);
+   `mag(pid)` waar is, anders null. Puur. `motor` = detectEngineType(). */
+function indeling(id, mag, motor){
+  const p=voor(id, motor);
   if(!p || !p.plekken) return null;
-  const uit={ id:p.id, plekken:{} };
+  const uit={ id:p.id, motor:motor||null, plekken:{} };
   p.plekken.forEach(function(x){
     let pid=null;
     for(let i=0;i<x.keten.length;i++){ if(mag(x.keten[i])){ pid=x.keten[i]; break; } }
@@ -136,8 +169,8 @@ function indeling(id, mag){
   return uit;
 }
 /* De ketens van een profiel: wat pidlane-visueel.js erbij moet zetten. */
-function ketens(id){
-  const p=zoek(id);
+function ketens(id, motor){
+  const p=voor(id, motor);
   return (p && p.plekken) ? p.plekken.map(function(x){ return x.keten.slice(); }) : [];
 }
 /* Hoe ver gevuld, 0–100. Niet te lezen = null. */
@@ -172,13 +205,14 @@ function htmlGlas(p, ind){
   }).join('')+'</div>';
 }
 function htmlLicht(p, ind){
-  const l=plekVan(p, 'lambda'), lp=ind.plekken.lambda;
-  let h='<div class="vpf-lambda'+(lp?'':' leeg')+'" id="vpf-p-lambda" title="'+titel(l, lp)+'">'+
+  // Op een diesel is er geen lambdaschaal (#393): dan alleen de rijen.
+  const l=p.plekken.filter(function(x){ return x.soort==='lambda'; })[0], lp=l ? ind.plekken[l.rol] : null;
+  let h=!l ? '' : '<div class="vpf-lambda'+(lp?'':' leeg')+'" id="vpf-p-lambda" title="'+titel(l, lp)+'">'+
       '<small>Lambda — 1,00 is de ideale verbranding</small>'+
       '<b class="vpf-w" id="vpf-w-lambda">—</b>'+
       '<span class="vpf-schaal"><i class="vpf-rijk">rijk</i><i class="vpf-een"></i><i class="vpf-arm">arm</i>'+
         '<i class="vpf-wijzer" id="vpf-f-lambda" style="left:50%"></i></span></div>';
-  h+='<div class="vpf-rijen">'+p.plekken.filter(function(x){ return x.rol!=='lambda'; }).map(function(x){
+  h+='<div class="vpf-rijen">'+p.plekken.filter(function(x){ return x.soort!=='lambda'; }).map(function(x){
     const pid=ind.plekken[x.rol];
     return '<div class="vpf-rij '+x.soort+(pid?'':' leeg')+'" id="vpf-p-'+x.rol+'" title="'+titel(x, pid)+'">'+
       '<small>'+esc(x.naam)+'</small>'+
@@ -209,7 +243,7 @@ function htmlDigitaal(p, ind){
 }
 function htmlNeon(p, ind){
   const ringen=p.plekken.filter(function(x){ return x.soort==='ring'; });
-  let svg='<svg class="vpf-ringen" viewBox="0 0 200 200" role="img" aria-label="Toerental, belasting en gasklep">';
+  let svg='<svg class="vpf-ringen" viewBox="0 0 200 200" role="img" aria-label="'+esc(ringen.map(function(x){ return x.naam; }).join(', '))+'">';
   ringen.forEach(function(x){
     const r=RING_R[x.rol], pid=ind.plekken[x.rol];
     // Een cirkel als pad met pathLength=100, begin linksonder (zeven uur):
@@ -295,7 +329,7 @@ function htmlTelemetrie(p, ind){
 }
 /* De HTML van het vak voor een profiel (niet de basis). */
 function html(id, ind){
-  const p=zoek(id);
+  const p=voor(id, ind && ind.motor);
   if(!p || !p.plekken || !ind) return '';
   const binnen = p.stijl==='glas' ? htmlGlas(p, ind) : p.stijl==='licht' ? htmlLicht(p, ind)
                : p.stijl==='digitaal' ? htmlDigitaal(p, ind) : p.stijl==='telemetrie' ? htmlTelemetrie(p, ind) : htmlNeon(p, ind);
@@ -309,13 +343,13 @@ function el(id){ return document.getElementById(id); }
 function zetTekst(id, t){ const e=el(id); if(e && e.textContent!==t) e.textContent=t; }
 /* `st` = het oordeel (ok/warn/danger/geen), van buiten aangereikt. */
 function bij(id, ind, pid, val, st){
-  const p=zoek(id);
+  const p=voor(id, ind && ind.motor);
   if(!p || !p.plekken || !ind) return;
   p.plekken.forEach(function(x){
     if(ind.plekken[x.rol]!==pid) return;
     const d=deel(val, x.lo, x.hi);
-    // De ring van het toerental volgt de dieselschaal van de basismeter
-    // niet: hier is hij altijd 0–8000, want de neonringen hebben geen cijfers.
+    // De ring van het toerental: 0–8000, op een diesel 0–6000 (#393), net
+    // als de schaal van de basismeter.
     const t=tekst(val, x.dec);
     // In een buis staat de eenheid achter het getal (90°); elders heeft hij een eigen vakje.
     zetTekst('vpf-w-'+x.rol, x.soort==='thermo' && t!=='—' ? t+x.eenheid : t);
@@ -385,7 +419,7 @@ function telBij(x, val){
 }
 /* Dof zetten wat oud is. `oud(pid)` komt uit pidlane-visueel.js. */
 function dof(id, ind, oud){
-  const p=zoek(id);
+  const p=voor(id, ind && ind.motor);
   if(!p || !p.plekken || !ind) return;
   p.plekken.forEach(function(x){
     const pid=ind.plekken[x.rol], e=el('vpf-p-'+x.rol);
@@ -400,7 +434,7 @@ function pids(ind){
 
 window.PLVisProfiel = {
   PROFIELEN:PROFIELEN, SEG:SEG, SLEUTEL:SLEUTEL,
-  zoek:zoek, geldig:geldig, volgende:volgende, lees:lees, bewaar:bewaar,
+  zoek:zoek, geldig:geldig, plekkenVan:plekkenVan, volgende:volgende, lees:lees, bewaar:bewaar,
   indeling:indeling, ketens:ketens, deel:deel, tekst:tekst, html:html, bij:bij, dof:dof, pids:pids,
   G_PIEK_MS:G_PIEK_MS, gPiek:gPiek, gPunt:gPunt, gWis:gWis
 };

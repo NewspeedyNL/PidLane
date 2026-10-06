@@ -15,6 +15,58 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — De beheerdersdemo (#409)
+
+**De vraag.** "Ik heb als admin geen voertuigen en kan met de demo te weinig
+laten zien." Mijn voertuigen hangt aan het klantplatform (`klantAuth()` in
+`worker.js`), en een beheerder is geen klant: die lijst blijft voor admin dus
+leeg. De demo was de enige manier om de app te laten zien, en de zandbak gaf
+daar een voorbeeldrapport in plaats van een analyse, en weigerde bestanden.
+
+**Wat nu.** `PLDemo.volledig()` = demo én `isAdmin()`. Dan rekent de AI echt
+op de gesimuleerde waarden en worden exports echt opgeslagen. Het blijft een
+zandbak voor wat anderen raakt of blijft hangen: referentiedata en de applog
+(verzonnen ritten tussen echte), tegoed, het klantplatform en de opslag op het
+toestel. Het rapport heet in het overzicht nog steeds `🧪 DEMO`.
+
+**Wat dit níét doet.** Een beheerder krijgt geen Mijn voertuigen: dat vraagt
+om admin als klant in de worker, en dat raakt toegang en privacy. De recorder
+(`pidlane-bulk.js`) neemt een demo nog steeds niet op. De privacyregel "in de
+demo gaat er niets naar onze server" in de handleiding klopt voor klanten,
+niet voor de beheerdersdemo; die is alleen voor de eigenaar, en kost
+API-tegoed bij elke analyse.
+
+---
+
+## 06-10-2026 — Diesel in de weergaven van Slim visueel (#393)
+
+**Wat er misging.** `PLVisProfiel` had per plek één keten, voor elke motor
+dezelfde. Op een diesel bleven daardoor lambda (de schaal rond 1,00), de
+brandstoftrims, de O₂-sprong na de kat en de ontstekingshoek leeg of
+zinloos, en de neonring liep tot 8000 tpm. De Full function test wist dat al
+(emissie op een diesel = "ongeschikt") maar zette er niets tegenover.
+
+**Wat nu.** Een plek kan `diesel:{…}` dragen: die velden komen op een diesel
+in de plaats, ook rol en soort. Emissie wordt roetfilter (drukverschil,
+temperatuur, regeneratie), NOx, AdBlue en EGR; Motor laaddruk, injectie en
+het gaspedaal; Verbruik laaddruk in plaats van luchtmassa; Temperatuur het
+uitlaatgas. De motorsoort komt uit `detectEngineType()`, via
+`PLVisueel.indeling()`. De Full function test beoordeelt een diesel nu op
+díe plekken, dus een diesel met roetfilter-PIDs krijgt Emissie "goed".
+
+**Niet nagemeten.** Welke van die PIDs een echte diesel meldt (017A, 0183,
+0185, 018B zijn OBD-II-uitbreidingen die lang niet elke ECU heeft) is nog niet
+op een auto gezien. De schermafdruk in #393 kon in de sessie niet geopend
+worden; welke weergave daar precies leeg stond, is dus afgeleid uit de
+ketens, niet gezien. De bereiken (roetfilter 0–30 kPa, NOx 0–1500 ppm) zijn
+schattingen voor een balk, geen grenswaarden.
+
+**Gevonden, niet gerepareerd.** `pidlane-data.js` heeft `'017C'` twee keer in
+`ALL_PID_DEFS` (regels 826 en 827, "DPF temperatuur inlaat B1" in Emissie en
+"DPF inlaattemp B1" in Temp). In een objectliteral wint de tweede stil.
+
+---
+
 ## 06-10-2026 — Slim visueel: een accu die wegflitste en een VIN rechtsboven
 
 **Het acculampje.** `lampGetal()` geeft `null` zodra een waarde ouder is dan

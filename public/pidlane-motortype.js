@@ -457,7 +457,8 @@ async function download(name,content){
 window._plOpslag = window._plOpslag || { gelukt:0, mislukt:[] };
 async function plBewaarBestand(blob,name){
   // Demo: niets vastleggen, ook geen bestand (de zandbak in pidlane-demo.js).
-  if(window.PLDemo && PLDemo.actief()){
+  // De beheerdersdemo (#409) slaat wél op: daar wil je de export laten zien.
+  if(window.PLDemo && PLDemo.actief() && !PLDemo.volledig()){
     log('Demo: '+name+' niet opgeslagen — in de demo wordt niets bewaard','info');
     try{ showToast?.('🧪 Demo — er wordt niets opgeslagen. Met je eigen auto komt hier het bestand.'); }catch(e){ console.warn('Demomelding niet getoond:', e); }
     return false;
