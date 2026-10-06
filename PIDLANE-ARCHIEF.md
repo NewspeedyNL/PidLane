@@ -15,6 +15,25 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — Bandengrenzen: absoluut, niet alleen relatief (#370)
+
+**Wat de branch van 30-09 deed.** `ccr-8e6efa44` gaf eigen band-PIDs een
+standaardbereik, maar bewust zónder grens voor de spanning: "het oordeel over
+een band is relatief (PLBanden), niet absoluut". De temperatuur kreeg oranje
+vanaf 65 en rood bij 80.
+
+**Wat het issue vroeg, en wat er nu staat.** Rood onder 1,5 en vanaf 3,5 bar
+op een balk van 0–4, en rood vanaf 65 °C op een balk tot 80. Besloten bij de
+release van 3.2.0: zoals het issue. Het relatieve oordeel van PLBanden blijft
+ernaast bestaan; een absolute grens vangt wat een vergelijking tussen vier
+banden mist, zoals vier banden die samen te zacht staan.
+
+**Waarom er een veld bij kwam.** `slimTempSchaal()` laat de temperatuurbalk
+vollopen op de gevarengrens. Rood vanaf 65 gaf dus een balk die op 65 vol
+was, niet op 80. Het nieuwe veld `balkVol` zegt waar de balk vol is, los van
+de grens. Alleen bij de standaardschaal: een eigen bereik van de klant houdt
+zijn eigen schaal.
+
 ## 04-10-2026 — De rit-monitor meldde schakelen als defect (#400)
 
 **Waarneming.** Een melding in de rit-monitor terwijl de bestuurder aan het

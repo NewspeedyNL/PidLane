@@ -17,8 +17,10 @@
    PLAY-INZENDING.md §16 bevestigt 3.2.0, de mutatie in plmutate.sh schuift
    mee naar 3.3.0.
  - Eigen PIDs krijgen een standaardbereik (#370), van branch
-   ccr-8e6efa44 meegenomen: bandtemperatuur −40…80 °C (let op vanaf 65),
-   bandenspanning 0…3,5 bar, motorolietemperatuur als 015C.
+   ccr-8e6efa44 meegenomen en bijgesteld naar het issue: bandtemperatuur
+   rood vanaf 65 op een balk tot 80 °C (nieuw veld balkVol, gelezen door
+   slimTempSchaal), bandenspanning 0…4 bar met rood onder 1,5 en vanaf 3,5,
+   motorolietemperatuur als 015C.
 
  ═══════════════════════════════════════════════════════════
  05-10-2026 — Nieuwe sensorgroep Telemetrie: helling en kanteling van de telefoon
