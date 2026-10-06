@@ -30,6 +30,14 @@
 // zijn houder. Vooruit is de achterkant van het scherm, of de bovenkant als
 // het toestel plat ligt.
 //
+// ALLEEN MEETELLEN ALS HET TOESTEL VAST ZIT (06-10-2026)
+// Op schoot of los in een vakje meet de telefoon zijn eigen bewegingen, niet
+// die van de auto. Zolang niet zeker is dat hij vast in een houder zit, gaat
+// een waarde niet via updPID() — dus niet in pidVals, pidHist, het rapport,
+// de AI, de bevindingen of de rijsituatie — maar alleen naar het scherm, en
+// daar heel dof (klasse `los`). Zeker = genuld, binnen 15° van die nulstand,
+// geen wiebel buiten de gierrichting, en dat al 5 s achter elkaar. Zie houder().
+//
 // WAT HET NIET IS
 // De oriëntatiesensor voelt ook versnelling. Bij hard remmen of optrekken
 // wijkt de helling uit, in een bocht de kanteling. Het is een indicatie bij
@@ -49,6 +57,14 @@ const LEER = { minA:1.5, minKmh:10, maxGier:0.05, nodig:25 };
 const VOOR_LS = 'pl_telemetrie_voor';
 const VERS_MS = 2000;          // geen event in zoveel tijd: geen waarde
 const NUL_LS = 'pl_telemetrie_nul';
+/* Vast in de houder (06-10-2026). Afwijking: de hoek tussen omhoog nu en de
+   nulstand — een weg helt zelden meer dan 15° (27 %), een telefoon op schoot
+   of plat in een vakje wel. Wiebel: de draaisnelheid om de twee assen die géén
+   gieren zijn, als vector gefilterd zodat een trillende houder uitmiddelt en
+   een toestel dat gepakt of verschoven wordt niet. Rust: zo lang moet alles
+   goed zijn voordat een meting weer meetelt. Getallen uit de tafel, niet uit
+   een rit: zie het issue bij deze wijziging. */
+const HOUDER = { maxAfwijking:15, maxWiebel:8, rustMs:5000, tauWiebelMs:500 };
 
 const DEFS = {
   TL01:{ name:'Helling (telefoon)', unit:'°', cat:'Telemetrie', min:-45, max:45,
@@ -108,12 +124,20 @@ function opEvent(e){
   const u=omhoog(e && e.beta, e && e.gamma);
   if (!u) return;
   const nu=Date.now();
+  // Zonder gyroscoop: de wiebel uit de verandering van omhoog zelf. u×u'/dt
+  // is de draaiing loodrecht op omhoog, dus gieren valt er vanzelf uit.
+  if (_uRuw && nu-_uRuwT>0 && nu-_uRuwT<=VERS_MS && !(_gyroT && nu-_gyroT<=VERS_MS)){
+    const dt=(nu-_uRuwT)/1000, k=kruis(_uRuw, u);
+    wiebelBij([k[0]/dt/RAD, k[1]/dt/RAD, k[2]/dt/RAD], nu);
+  }
+  _uRuw=u; _uRuwT=nu;
   if (!_u || nu-_t>VERS_MS) _u=u;
   else {
     const a=1-Math.exp(-(nu-_t)/TAU_MS);
     _u=norm([_u[0]+a*(u[0]-_u[0]), _u[1]+a*(u[1]-_u[1]), _u[2]+a*(u[2]-_u[2])]) || u;
   }
   _t=nu; _events++;
+  houderBij(nu);
 }
 if (typeof window!=='undefined' && typeof window.addEventListener==='function')
   window.addEventListener('deviceorientation', opEvent);
@@ -168,7 +192,13 @@ function opMotion(e){
   const ax=assen(ref);
   if (!ax) return;
   const r=e.rotationRate;   // °/s: alpha om z, beta om x, gamma om y
-  if (r && typeof r.alpha==='number') _gier=dot([r.beta*RAD, r.gamma*RAD, r.alpha*RAD], ref);
+  if (r && typeof r.alpha==='number'){
+    _gier=dot([r.beta*RAD, r.gamma*RAD, r.alpha*RAD], ref);
+    const w=[r.beta, r.gamma, r.alpha], wg=dot(w, ref);
+    // Alles behalve gieren: een bocht draait de auto, geen houder.
+    wiebelBij([w[0]-wg*ref[0], w[1]-wg*ref[1], w[2]-wg*ref[2]], nu);
+    _gyroT=nu;
+  }
   const h=snelheid(), kmh=h ? h[h.length-1].v : null;
   const vers=h && nu-h[h.length-1].t<=VERS_MS;
   const aL=vers ? lengteA(h, nu) : null;
@@ -188,6 +218,9 @@ function opMotion(e){
   _g={ lengte:_g ? _g.lengte+b*(gL-_g.lengte) : gL, dwars:_g ? _g.dwars+b*(gD-_g.dwars) : gD };
   _gT=nu;
   _mT=nu; _mEvents++;
+  houderBij(nu);
+  // Los op schoot leert hij geen rijrichting en telt hij geen rijsituatie.
+  if (!houderNu().vast) return;
   if (_nul && aL!==null) leer(ag, aL, kmh, _gier);
   situatieTel(aL, aD, nu);
 }
@@ -248,6 +281,57 @@ function situatieTel(aL, aD, nu){
   _sit.nu=s;
 }
 
+/* ── ZIT HET TOESTEL VAST? (06-10-2026) ──
+   Puur: het oordeel uit wat er gemeten is. okMs = hoe lang alles al goed is.
+   De reden is voor de tooltip en het sessiebewijs; vast is het enige dat telt. */
+function houder(o){
+  if (!o || !o.vers) return { vast:false, reden:'geen-sensor' };
+  if (!o.genuld) return { vast:false, reden:'geen-nulstand' };
+  if (typeof o.afwijking!=='number' || !(o.afwijking<=HOUDER.maxAfwijking)) return { vast:false, reden:'verschoven' };
+  if (typeof o.wiebel!=='number' || !(o.wiebel<=HOUDER.maxWiebel)) return { vast:false, reden:'wiebelt' };
+  if (!(o.okMs>=HOUDER.rustMs)) return { vast:false, reden:'wacht' };
+  return { vast:true, reden:'' };
+}
+const HOUDER_UITLEG = {
+  'geen-sensor':'de telefoonsensor zwijgt',
+  'geen-nulstand':'nog niet genuld — zet de telefoon in de houder en tik bij Telemetrie op Nulstellen',
+  'verschoven':'de telefoon staat anders dan bij Nulstellen — op schoot, in een vakje of verplaatst',
+  'wiebelt':'de telefoon beweegt los van de auto',
+  'wacht':'de telefoon zit net stil; na 5 s telt hij weer mee'
+};
+let _uRuw=null, _uRuwT=0, _gyroT=0, _w=null, _wT=0, _okSinds=0;
+let _houderS={ vastMs:0, losMs:0, t:0, geweerd:0, reden:'' };
+function wiebelBij(w, nu){
+  if (!_w || nu-_wT>VERS_MS) _w=w.slice();
+  else {
+    const a=1-Math.exp(-(nu-_wT)/HOUDER.tauWiebelMs);
+    for (let k=0;k<3;k++) _w[k]+=a*(w[k]-_w[k]);
+  }
+  _wT=nu;
+}
+function houderMeting(nu){
+  const mVers=!!_m && nu-_mT<=VERS_MS, uVers=!!_u && nu-_t<=VERS_MS;
+  const v=mVers ? _m : (uVers ? _u : null);
+  const afwijking=(v && _nul) ? Math.acos(Math.max(-1, Math.min(1, dot(v, _nul))))/RAD : null;
+  const wiebel=(_w && nu-_wT<=VERS_MS) ? Math.hypot(_w[0], _w[1], _w[2]) : null;
+  return { vers:!!v, genuld:!!_nul, afwijking, wiebel };
+}
+function houderBij(nu){
+  const o=houderMeting(nu);
+  const goed=houder(Object.assign(o, { okMs:Infinity })).vast;
+  if (!goed) _okSinds=0; else if (!_okSinds) _okSinds=nu;
+}
+function houderNu(){
+  const nu=Date.now(), o=houderMeting(nu);
+  o.okMs=_okSinds ? nu-_okSinds : 0;
+  const h=houder(o);
+  return { vast:h.vast, reden:h.reden, uitleg:h.reden ? HOUDER_UITLEG[h.reden] : '',
+    afwijking:o.afwijking===null ? null : Math.round(o.afwijking*10)/10,
+    wiebel:o.wiebel===null ? null : Math.round(o.wiebel*10)/10 };
+}
+/* Voor de weergaven: is dit een telefoonsensor die nu niet meetelt? */
+function los(pid){ return isTelemetrie(pid) && !houderNu().vast; }
+
 function beschikbaar(){ return _events>0 || _mEvents>0; }
 function vers(){ return (!!_u && Date.now()-_t<=VERS_MS) || (!!_m && Date.now()-_mT<=VERS_MS); }
 /* Met devicemotion de gecorrigeerde helling, anders de oriëntatiesensor. */
@@ -266,6 +350,7 @@ function nulstellen(){
   _nul=(_m && Date.now()-_mT<=VERS_MS ? _m : _u).slice();
   // Een nieuwe nulstand is een nieuwe houder: vooruit opnieuw leren.
   _voor=null; _leer={ som:[0,0,0], n:0 };
+  _okSinds=0;   // ook net genuld eerst 5 s stil
   try{ localStorage.removeItem(VOOR_LS); }catch(e){ console.warn('PLTelemetrie: geleerd vooruit niet gewist', e); }
   if (!(typeof demoMode!=='undefined' && demoMode)){
     try{ localStorage.setItem(NUL_LS, JSON.stringify(_nul)); }
@@ -297,19 +382,27 @@ function weiger(cmd){
 function stats(){ return { events:_events, motion:_mEvents, n:_s.n, genuld:genuld(), voorGeleerd:!!_voor, leerN:_leer.n, nu:nu(),
   situatie:{ klimS:Math.round(_sit.s.klim), daalS:Math.round(_sit.s.daal), hardRemmen:_sit.n.hardRemmen,
     hardOptrekken:_sit.n.hardOptrekken, scherpeBocht:_sit.n.scherpeBocht, nu:_sit.nu.slice() },
+  houder:Object.assign(houderNu(), { vastS:Math.round(_houderS.vastMs/1000), losS:Math.round(_houderS.losMs/1000), geweerd:_houderS.geweerd }),
   geweigerd:_s.geweigerd.slice() }; }
 
 let _tikFout='';
 function tik(){
   try{
     if (typeof activePIDs==='undefined' || typeof updPID!=='function') return;
-    const h=nu();
-    if (!h) return;
-    if (activePIDs.has('TL01')){ updPID('TL01', h.helling); _s.n++; }
-    if (activePIDs.has('TL02')){ updPID('TL02', h.kanteling); _s.n++; }
-    const g=gNu();
-    if (g && activePIDs.has('TL03')){ updPID('TL03', g.lengte); _s.n++; }
-    if (g && activePIDs.has('TL04')){ updPID('TL04', g.dwars); _s.n++; }
+    const t=Date.now();
+    houderBij(t);
+    const hz=houderNu();
+    if (_houderS.t){ const dt=Math.min(2000, t-_houderS.t); if (hz.vast) _houderS.vastMs+=dt; else _houderS.losMs+=dt; }
+    _houderS.t=t; _houderS.reden=hz.reden;
+    const h=nu(), g=gNu();
+    const w={ TL01:h && h.helling, TL02:h && h.kanteling, TL03:g && g.lengte, TL04:g && g.dwars };
+    Object.keys(w).forEach(pid=>{
+      if (!activePIDs.has(pid)) return;
+      markeer(pid, hz);
+      if (typeof w[pid]!=='number') return;
+      if (hz.vast){ updPID(pid, w[pid]); _s.n++; }
+      else { toon(pid, w[pid]); _houderS.geweerd++; }
+    });
     _tikFout='';
   }catch(e){
     const m=String(e && e.message || e);
@@ -317,11 +410,25 @@ function tik(){
   }
 }
 
+/* Niet vast: alleen tekenen (applyG), niet updPID — dan komt de waarde nergens
+   anders terecht. De tegel heel dof, met de reden als tooltip. */
+function toon(pid, val){ if (typeof applyG==='function') applyG(pid, val); }
+function markeer(pid, hz){
+  if (typeof document==='undefined' || !document.getElementById) return;
+  const c=document.getElementById('gc-'+pid);
+  if (!c) return;
+  const was=c.classList.contains('los');
+  c.classList.toggle('los', !hz.vast);
+  if (!hz.vast){ c.classList.remove('stale'); c.title='Telt niet mee: '+hz.uitleg; }
+  else if (was) c.removeAttribute('title');
+}
+
 if (typeof window!=='undefined' && window.ALL_PID_DEFS) Object.keys(DEFS).forEach(pid=>{
   if (!window.ALL_PID_DEFS[pid]) window.ALL_PID_DEFS[pid]=Object.assign({ telemetrie:true }, DEFS[pid]);
 });
 window.PLTelemetrie = { DEFS, omhoog, hoeken, standaardNul, isTelemetrie, defs, nulstellen, genuld, nu, beschikbaar,
-  tik, stats, weiger, gNu, lengteA, zwaarte, situatie, SIT, LEER, _opEvent:opEvent, _opMotion:opMotion };
+  tik, stats, weiger, gNu, lengteA, zwaarte, situatie, SIT, LEER, houder, houderNu, los, HOUDER,
+  _opEvent:opEvent, _opMotion:opMotion };
 window.plIsTelemetrie = isTelemetrie;
 window.plTelemetrieDefs = defs;
 if (typeof setInterval==='function') setInterval(tik, TIK_MS);

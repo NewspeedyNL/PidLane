@@ -1683,6 +1683,11 @@ MUTATIES=(
 "public/pidlane-visprofiel.js@@  const v=klem(val, x.lo, x.hi);@@  const v=Number(val)||0;@@test-visprofiel.js@@een onzinwaarde schuift de horizon uit het beeld"
 "public/pidlane-functietest.js@@    if(/^tel(-|emetrie$)/.test(p.id)) return;@@    void 0;@@test-functietest.js@@de Full function test rekent de auto de telefoonweergaven aan als ongeschikt"
 "public/pidlane-telemetrie.js@@  const gL=dot(lin, ax.voor)/G, gD=dot(lin, ax.rechts)/G;@@  const gL=dot(lin, ax.voor)/G, gD=-dot(lin, ax.rechts)/G;@@test-telemetrie.js@@de G-cirkel zet een bocht naar links aan de rechterkant"
+"public/pidlane-telemetrie.js@@      if (hz.vast){ updPID(pid, w[pid]); _s.n++; }@@      if (true){ updPID(pid, w[pid]); _s.n++; }@@test-telemetrie.js@@een telefoon op schoot of los in een vakje telt mee in rapport, AI en bevindingen"
+"public/pidlane-telemetrie.js@@  if (!o.genuld) return { vast:false, reden:'geen-nulstand' };\n@@@@test-telemetrie.js@@zonder nulstand geldt de telefoon als vast, ook al heeft niemand gezegd dat hij in een houder zit"
+"public/pidlane-telemetrie.js@@    wiebelBij([w[0]-wg*ref[0], w[1]-wg*ref[1], w[2]-wg*ref[2]], nu);@@    wiebelBij(w, nu);@@test-telemetrie.js@@gieren telt als wiebel: elke rotonde maakt de telefoon in de houder onbetrouwbaar"
+"public/pidlane-telemetrie.js@@  if (!(o.okMs>=HOUDER.rustMs)) return { vast:false, reden:'wacht' };\n@@@@test-telemetrie.js@@een telefoon die net is teruggezet telt meteen weer mee, zonder 5 s rust"
+"public/pidlane-telemetrie.js@@  if (!houderNu().vast) return;\n  if (_nul && aL!==null)@@  if (_nul && aL!==null)@@test-telemetrie.js@@hard remmen telt als rijsituatie terwijl de telefoon los wiebelt"
 # ── de beheerdersdemo (#409) ──
 "public/pidlane-demo.js@@    try { return typeof window.isAdmin === 'function' && !!window.isAdmin(); }@@    try { return true; }@@test-demozandbak.js@@elke demo is een beheerdersdemo: een reviewer zonder login laat de echte AI rekenen — #409"
 "public/pidlane-demo.js@@    if (!isDemo()) return false;\n    try { return typeof window.isAdmin@@    try { return typeof window.isAdmin@@test-demozandbak.js@@een beheerder buiten de demo telt als beheerdersdemo — #409"

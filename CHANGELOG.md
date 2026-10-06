@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Telemetrie telt alleen mee als de telefoon vast zit (#418)
+ ═══════════════════════════════════════════════════════════
+
+ - PLTelemetrie.houder(): vast = genuld, binnen 15° van de nulstand, wiebel
+   buiten de gierrichting ≤ 8°/s (als vector gefilterd), en dat 5 s lang.
+ - Niet vast: geen updPID, dus niets in pidVals/pidHist, rapport, AI,
+   bevindingen, delen of rijsituatie; ook geen rijrichting leren. Alleen
+   applyG, met de tegel en Slim visueel als `los` (heel dof, met de reden).
+ - Zonder Nulstellen telt telemetrie dus nooit mee. De stale-watchdog slaat
+   een losse tegel over.
+ - test-telemetrie.js, test-visprofiel.js, bproef-telemetrie.js, vijf
+   mutaties, blok 5-proef en CAMPAGNE-stap 4C. Handleiding bijgewerkt.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Beheerdersdemo: als admin rekent de AI echt (#409)
  ═══════════════════════════════════════════════════════════
 

@@ -661,6 +661,9 @@ function startStaleWatchdog(){
     const now=Date.now();
     activePIDs.forEach(pid=>{
       const card=document.getElementById('gc-'+pid); if(!card) return;
+      // Een telefoonsensor die niet vast zit is al dof (pidlane-telemetrie.js);
+      // hij krijgt bewust geen updPID, dus 'stale' zou hier elke seconde knipperen.
+      if(card.classList.contains('los')){ card.classList.remove('stale'); return; }
       const last=_pidLastUpd[pid]||0;
       // Stale-drempel per PID: trage sensoren (temp/niveau, 10-60s interval)
       // mogen NIET rood knipperen zolang ze binnen hun eigen ritme verversen.

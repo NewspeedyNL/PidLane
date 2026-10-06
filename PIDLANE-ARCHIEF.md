@@ -15,6 +15,39 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — Telemetrie alleen als de telefoon vast zit (#418)
+
+**De vraag.** Telemetrie mag alleen meetellen in analyses of beoordelingen
+als zeker is dat de telefoon vast in een houder zit, niet op schoot of in
+een vakje. Anders niet meetellen en heel dof tonen.
+
+**Waarom bij updPID en niet bij elke lezer.** Rapport, AI, bevindingen, de
+deel-tap van pidlane-remote.js en de bulk-opname lezen allemaal pidVals of
+pidHist, en die worden alleen door updPID() gevuld. Eén poort vóór updPID
+dekt ze dus allemaal; een vlag per waarde had elke lezer moeten leren
+filteren, en de eerstvolgende nieuwe lezer was hem vergeten. Tekenen gaat
+rechtstreeks via applyG().
+
+**Waarom de wiebel een vector is.** Eerst lag de grootte van de draaisnelheid
+voor de hand, maar een trillende houder heeft een flinke gemiddelde
+|ω| zonder dat er iets beweegt. Eerst de vector filteren laat trillen
+uitmiddelen naar nul, en een toestel dat gepakt wordt of op schoot schommelt
+niet. Het gieren (draaien om omhoog) gaat er vooraf af: een rotonde is geen
+losse telefoon. Zonder gyroscoop komt dezelfde vector uit u×u′/dt.
+
+**Wat het niet kan.** Een telefoon die plat in een vakje ligt en dáár genuld
+is, onderscheidt de app niet van een houder: Nulstellen geldt als de
+verklaring. Een telefoon die gaat bewegen telt nog zo'n halve seconde mee,
+tot het filter de wiebel ziet. De drempels (15°, 8°/s, 5 s) komen uit de
+tafel; de rit van #418 moet zeggen of een vaste houder over drempels te vaak
+wegvalt.
+
+**Een test die op de drempel lag.** De bochttoets van #404 reed 72 km/u met
+0,2 rad/s, precies de 4 m/s² van SIT.bocht. Met een nulstand die net iets
+anders binnenkwam werd dat 3,9999999 en telde de bocht niet. Nu 0,21 rad/s.
+
+---
+
 ## 06-10-2026 — De beheerdersdemo (#409)
 
 **De vraag.** "Ik heb als admin geen voertuigen en kan met de demo te weinig
