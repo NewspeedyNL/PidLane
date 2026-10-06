@@ -857,7 +857,7 @@ MUTATIES=(
 # Blok 5 vraagt het nu aan plLiveLogStatus(). Deze vijf fouten laten die vraag
 # allemaal een geruststellend antwoord geven dat nergens op slaat.
 "public/pidlane-auth.js@@        _atNoteer(true,resp.status,batch.length,'',g);@@        void 0;@@test-livelog.js@@een geslaagde verzending laat geen spoor na: blok 5 ziet nooit een uitslag en kan niets onderscheiden"
-"public/pidlane-auth.js@@_atNoteer(false,resp.status,batch.length,err?.error?.message||('HTTP '+resp.status));@@_atNoteer(true,resp.status,batch.length,err?.error?.message||('HTTP '+resp.status));@@test-livelog.js@@een geweigerde batch wordt als geslaagd vastgelegd — precies de fout die de hele log platlegt, nu met groen ervoor"
+"public/pidlane-auth.js@@_atNoteer(false,resp.status,batch.length,reden||('HTTP '+resp.status));@@_atNoteer(true,resp.status,batch.length,reden||('HTTP '+resp.status));@@test-livelog.js@@een geweigerde batch wordt als geslaagd vastgelegd — precies de fout die de hele log platlegt, nu met groen ervoor"
 "public/pidlane-auth.js@@      if(Number.isFinite(g)&&g>=batch.length){@@      if(true){@@test-livelog.js@@de Worker mag weer ok zeggen zonder te melden dat hij iets wegschreef: logging_paused leest weer als succes"
 "public/pidlane-auth.js@@    _atNoteer(false,null,batch.length,e.message||'netwerkfout');@@    void 0;@@test-livelog.js@@een netwerkfout laat de vorige uitslag staan: de log is weg en blok 5 meldt de verzending van tien minuten geleden"
 "public/pidlane-auth.js@@function plLiveLogStatus(){ return _atLaatste?Object.assign({},_atLaatste):null; }@@function plLiveLogStatus(){ return _atLaatste; }@@test-livelog.js@@de beller krijgt de toestand zelf in handen en kan zijn eigen uitslag groen maken"
@@ -1394,7 +1394,10 @@ MUTATIES=(
 "public/pidlane-diagnose.js@@function _diagDemo(){ try{ return typeof demoMode!=='undefined' && !!demoMode; }@@function _diagDemo(){ try{ return false; }@@test-demoopslag.js@@een AI-antwoord op demowaarden wordt veertien dagen aan echte auto's van dat type gegeven"
 "public/pidlane-pidgate.js@@  if(!(typeof demoMode!=='undefined' && demoMode)){\n    try{ localStorage.setItem('pl_selectie'@@  if(true){\n    try{ localStorage.setItem('pl_selectie'@@test-demoopslag.js@@na een crash krijgt de echte auto de sensorselectie van de demo terug"
 "public/pidlane-gear.js@@    if (typeof demoMode!=='undefined' && demoMode) return;\n    lsSet(LS_MODEL+this.sleutel@@    lsSet(LS_MODEL+this.sleutel@@test-demoopslag.js@@een ingetikte versnelling in demo komt in het model van het echte voertuig"
-"public/pidlane-auth.js@@const demo=(typeof demoMode!=='undefined' && !!demoMode);@@const demo=false;@@test-demoopslag.js@@demologregels komen als echte ritten met merk en VIN in de logtabel"
+# (De mutatie "demologregels komen als echte ritten met merk en VIN in de
+# logtabel" is weg sinds #360: een demoregel wordt niet meer geschreven. De
+# fout die hij nabouwde vangt nu "logToSheets zet in de demo weer regels in
+# de buffer" hieronder.)
 "public/pidlane-demo.js@@  vehicleInfo={ merk:'Onbekend', model:'', year:'', vin:'', brandstof:'', motor:'' };\n  try{ resetVehicleSources(); }catch(e){ console.warn('Demo stoppen@@  try{ resetVehicleSources(); }catch(e){ console.warn('Demo stoppen@@test-demoopslag.js@@na de demo meet een echte auto zonder VIN door als de demo-auto"
 # ── 29-09-2026: Rit beëindigen. Motor uit is een pauze, geen einde; het
 # venster rondt de rit af vóór de verbinding weg is; ATPC geeft de bus vrij.
