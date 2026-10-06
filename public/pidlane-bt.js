@@ -1775,7 +1775,6 @@ function _bekendProtocolId(){
 // ══════════════════════════════════════════════════════════════════
 const ST_BODEM_MS=48, ST_TOP_MS=1020, ST_STANDAARD_HEX='64';
 const ST_GEHEUGEN_MAX_MS=180*24*3600*1000;   // een half jaar
-const ST_GEHEUGEN_N=3;                        // zoveel koude-poortmetingen onthoudt het geheugen (#414)
 let _plSt={ hex:ST_STANDAARD_HEX, bron:'standaard' };
 function plStHex(){ return _plSt.hex; }
 window.plStHex=plStHex;
@@ -1834,42 +1833,39 @@ function plGroepCompleet(parsed, grp){
   return Array.isArray(grp) && grp.length>0 && grp.every(p=>parsed && Object.prototype.hasOwnProperty.call(parsed,p));
 }
 
-// Puur. Mag het geheugen de ATST van nu verhogen? Het geheugen is sinds
-// 06-10-2026 (#414) de lijst `metingen`: wat de koude poort de laatste
-// ST_GEHEUGEN_N verbindingen mat, nooit wat er tijdens een rit bijgestuurd
-// werd. Daarvóór gold het bewaarde `st`, en dat was een ratel: elke
-// bijsturing ging erin, en elke verbinding nam hem weer over. De CX-5 stond
-// zo in drie dagen op 0xFF (1020 ms) bij een traagste antwoord van 81 ms.
-// Nu telt de traagste van de laatste drie metingen op dezelfde bus en
-// dezelfde soort adapter, niet ouder dan een half jaar. Drie keer sneller
-// gemeten en het geheugen is mee omlaag. Een oud profiel zonder `metingen`
-// heeft geen geheugen: dat heelt zichzelf bij de eerste verbinding.
+// Puur. Mag een bewaard profiel de ATST van nu verhogen? Alleen als het
+// gemeten is, op dezelfde bus (protocol) en via hetzelfde soort adapter, en
+// niet ouder dan een half jaar. Het geheugen verlaagt nooit: een auto die
+// eerder trager bleek dan vandaag, krijgt de ruimte van toen.
+// Alleen bron 'gemeten' (#414). 'geheugen' en 'bijgestuurd' telden tot
+// 06-10-2026 ook, en dat was een ratel: een misser tijdens de rit (motor uit,
+// een ECU die een groep overslaat) zette de ATST een trede hoger, dat ging het
+// geheugen in, en de volgende verbinding nam het over als bodem. De CX-5 kwam
+// zo op 0xFF (1020 ms) bij een traagste antwoord van 81 ms.
 function plStUitGeheugen(nu, bewaard, protoId, adapter, tijd){
-  const lijst=bewaard && Array.isArray(bewaard.metingen) ? bewaard.metingen : [];
+  const b=bewaard && bewaard.st;
+  if(!b || b.bron!=='gemeten' || !/^[0-9A-F]{2}$/.test(String(b.hex||''))) return null;
   const zelfde=v=>String(v||'').toUpperCase().replace(/^A(?=.)/,'');
+  if(zelfde(bewaard.protocol && bewaard.protocol.id)!==zelfde(protoId)) return null;
+  if(String(bewaard.adapter||'')!==String(adapter||'')) return null;
   const t=(typeof tijd==='number')?tijd:Date.now();
-  let b=null;
-  for(const m of lijst){
-    if(!m || !/^[0-9A-F]{2}$/.test(String(m.hex||'')) || !(m.ms>0)) continue;
-    if(zelfde(m.protocol)!==zelfde(protoId)) continue;
-    if(String(m.adapter||'')!==String(adapter||'')) continue;
-    if(!(m.op>0) || t-m.op>ST_GEHEUGEN_MAX_MS) continue;
-    if(!b || m.ms>b.ms) b=m;
-  }
-  if(!b) return null;
+  if(!(bewaard.gemetenOp>0) || t-bewaard.gemetenOp>ST_GEHEUGEN_MAX_MS) return null;
   const msNu = (nu && nu.bron==='gemeten') ? nu.ms : null;
   if(msNu!=null && !(b.ms>msNu)) return null;
   return { hex:b.hex, ms:b.ms, bron:'geheugen', traagstMs:b.traagstMs, refMs:b.refMs, n:b.n };
 }
 
-// Puur. De lijst metingen na deze verbinding: de nieuwe erachter, een meting
-// met hetzelfde tijdstip vervangen (bewaar() loopt per verbinding vaker dan
-// één keer), en alleen de laatste ST_GEHEUGEN_N. Geen meting (standaard,
-// handmatig, mislukt): de lijst blijft zoals hij was.
-function plStMetingenBij(oud, meting){
-  const lijst=(Array.isArray(oud)?oud:[]).filter(m=>m && !(meting && m.op===meting.op));
-  if(meting && meting.op>0 && meting.ms>0) lijst.push(meting);
-  return lijst.slice(-ST_GEHEUGEN_N);
+// Puur (#414). Wat er van het verbindprofiel het geheugen in gaat: alles,
+// maar als ATST alleen wat de koude poort deze verbinding mat. Wat het geheugen
+// of het bijsturen daarna van de ATST maakte, geldt voor deze verbinding en
+// niet voor de volgende. Mat de poort deze keer niets, dan blijft de vorige
+// meting staan, met haar eigen datum: een mislukte meting wist geen kennis.
+function plVerbindVoorGeheugen(profiel, gemeten, vorig){
+  if(!profiel) return null;
+  if(!(gemeten && gemeten.bron==='gemeten') && vorig && vorig.st && vorig.st.bron==='gemeten') return JSON.parse(JSON.stringify(vorig));
+  const v=JSON.parse(JSON.stringify(profiel));
+  v.st = gemeten ? Object.assign({}, gemeten) : { hex:ST_STANDAARD_HEX, bron:'standaard' };
+  return v;
 }
 
 // ── DE VERBINDING MET DE HAND (#394, 04-10-2026) ───────────────────
@@ -1948,7 +1944,7 @@ const PLVerbind={
   vergeet(){
     _plSt={ hex:ST_STANDAARD_HEX, bron:'standaard' };
     _plAt='1';
-    this._gemeten=null; this._meting=null;
+    this._gemeten=null;
     this._venster=[]; this._laatsteStap=0; this._stappen=0;
     this.profiel=null;
     try{ if(window.PLBus && PLBus.batchPlafondWis) PLBus.batchPlafondWis(); }
@@ -2020,10 +2016,6 @@ const PLVerbind={
         gemetenOp:Date.now()
       };
       this._gemeten=Object.assign({}, _plSt);
-      // Wat het geheugen van deze verbinding mag onthouden: alleen de meting
-      // van de koude poort, nooit een bijsturing of het geheugen zelf (#414).
-      this._meting = st ? { hex:st.hex, ms:st.ms, traagstMs:st.traagstMs, refMs:st.refMs, n:st.n,
-                            protocol:this.profiel.protocol.id, adapter:this.profiel.adapter, op:this.profiel.gemetenOp } : null;
       await this._handToepassen();
       btDiag(`🔧 Verbindprofiel: protocol ${protoId} (${bits?bits+'-bit CAN':'geen CAN'}) · ATST 0x${_plSt.hex}`+
         (st?` (${st.ms} ms; traagste antwoord ${st.traagstMs} ms over ${st.n})`:' (standaard)')+
@@ -2057,11 +2049,11 @@ const PLVerbind={
     this.profiel.st=Object.assign({}, _plSt);
     btDiag(`🔧 ATST bijgestuurd 0x${oud} → 0x${nieuw} (${_plSt.ms} ms): ${n} van de laatste ${ST_VENSTER} verzoeken misten een PID die kort geleden nog antwoordde`,'warn');
     Promise.resolve(sendCmd('ATST'+nieuw,1500)).catch(e=>btDiag('ATST bijsturen: adapter niet bijgewerkt ('+(e.message||e)+')','warn'));
-    // Niet bewaren (#414): een gemiste PID kan ook een motor zijn die uitgaat
-    // of een ECU die een groep overslaat. Bijsturen geldt voor deze rit.
+    // Bewust niet bewaren (#414): bijsturen geldt voor deze verbinding. In het
+    // geheugen werd het de bodem van de volgende, en zo klom de ATST blijvend.
   },
   // ── met de hand ──
-  _gemeten:null, _meting:null,
+  _gemeten:null,
   handStand(){ return _plHandLees(); },
   protocollen(){ return PL_PROTOCOLLEN.slice(); },
   // Wat er nu in de adapter staat, voor het paneel.
@@ -2155,9 +2147,7 @@ const PLVerbind={
       const k=vinProfileKey(vin), r=localStorage.getItem(k);
       if(!r) return;                       // geen voertuigprofiel: dan ook geen geheugen
       const prof=JSON.parse(r);
-      const vorige=prof.verbind && Array.isArray(prof.verbind.metingen) ? prof.verbind.metingen : [];
-      prof.verbind=JSON.parse(JSON.stringify(this.profiel));
-      prof.verbind.metingen=plStMetingenBij(vorige, this._meting);
+      prof.verbind=plVerbindVoorGeheugen(this.profiel, this._gemeten, prof.verbind);
       localStorage.setItem(k, JSON.stringify(prof));
     }catch(e){ btDiag('Verbindprofiel niet bewaard: '+(e.message||e),'warn'); }
   },

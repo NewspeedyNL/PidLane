@@ -600,14 +600,6 @@ reden:
   toestemmingstekst (`AKKOORD_TEKST_SINDS` = 03-10-2026).
 - **Het geheugen beperkt zich tot ATST, en alleen omhoog** (fase 4). Groep en
   protocol worden elke verbinding opnieuw gemeten.
-  **Herzien op 06-10-2026 (#414).** "Alleen omhoog" klopt voor één
-  verbinding: het geheugen verlaagt de meting van vandaag nooit. Over
-  verbindingen heen was het een ratel. Het geheugen is nu het veld
-  `verbind.metingen`, met de laatste drie metingen van de koude poort
-  (`ST_GEHEUGEN_N`). De traagste daarvan telt (`plStUitGeheugen`). Een
-  bijsturing tijdens de rit gaat er niet in, en drie snellere metingen op
-  rij halen het geheugen mee omlaag. Het oude veld `verbind.st` telt niet
-  meer als geheugen; een profiel van vóór deze datum begint dus leeg.
 - **Een nieuwe verbinding begint weer op ATST 64** (400 ms). Alleen het
   herverbindpad houdt de meting van de vorige verbinding vast.
 
@@ -617,5 +609,14 @@ in. Gemeten ATST 48–176 ms bij een traagste antwoord van 17–173 ms, groep 3,
 37 reads/s gemiddeld. Maar het geheugen duwde de ATST in drie dagen op naar
 **0xFF (1020 ms)**, terwijl het traagste gemeten antwoord 81 ms was. Het
 bijsturen tijdens de rit schrijft in het geheugen, en het geheugen gaat
-alleen omhoog. Dat is #414; zie de herziening bij "alleen omhoog" hierboven.
+alleen omhoog. Dat is #414; de keuze "alleen omhoog" uit deze lijst staat
+daarmee ter discussie.
+
+**Herzien op 06-10-2026 (#414).** "Alleen omhoog" blijft, maar het geheugen
+bewaart en neemt alleen nog een **koude meting** (bron `gemeten`) over. Wat
+het bijsturen tijdens de rit of het geheugen zelf van de ATST maakt, geldt
+voor die verbinding en gaat niet het geheugen in (`plVerbindVoorGeheugen()`).
+Mat de poort een keer niets, dan blijft de vorige meting staan met haar eigen
+datum. Een eerder bewaard `bijgestuurd`- of `geheugen`-profiel telt niet meer,
+dus de CX-5 begint bij de eerstvolgende verbinding weer op zijn meting.
 

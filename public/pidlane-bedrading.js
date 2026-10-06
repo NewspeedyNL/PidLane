@@ -177,6 +177,12 @@ var KRITIEK = [
   'plBerekendDefs','plIsBerekend','_aiReportHtml','openGearInstellingen',
   // 05-10-2026. Telefoonsensoren (pidlane-telemetrie.js), dezelfde twee guards.
   'plTelemetrieDefs','plIsTelemetrie',
+  // 06-10-2026 (#418). Een telefoon die niet vast zit tekent alleen via
+  // applyG; valt die weg, dan blijft de tegel stil op zijn oude waarde staan.
+  'applyG',
+  // 06-10-2026 (#414). Het ATST-geheugen; de blok 5-proef vraagt erom.
+  // Ontbreekt de tweede, dan bewaart PLVerbind.bewaar() niets meer.
+  'plStUitGeheugen','plVerbindVoorGeheugen',
   // Eigen PIDs per voertuig (pidlane-uitgebreid.js) in de keuzelijst. Ontbreekt
   // hij, dan staan de dealercodes van de klant stil niet meer in de lijst.
   'plEigenDefs',

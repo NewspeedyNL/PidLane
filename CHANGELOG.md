@@ -23,16 +23,30 @@
    blok 5-proef.
 
  ═══════════════════════════════════════════════════════════
- 06-10-2026 — Verbindgeheugen: alleen metingen, de laatste drie (#414)
+ 06-10-2026 — ATST-geheugen is geen ratel meer (#414)
  ═══════════════════════════════════════════════════════════
 
- - Het ATST-geheugen per auto is nu verbind.metingen: de laatste drie
-   metingen van de koude poort. De traagste telt, en alleen als die hoger is
-   dan vandaag gemeten (plStUitGeheugen, plStMetingenBij).
- - Bijsturen tijdens de rit schrijft niet meer in het geheugen. Het oude
-   veld verbind.st telt niet: de CX-5 (0xFF uit het geheugen) begint weer
-   bij zijn meting.
- - test-verbindprofiel.js, vier nieuwe mutaties, blok 5-proef.
+ - plStUitGeheugen() neemt alleen een bewaarde koude meting (bron
+   'gemeten') over; 'bijgestuurd' en 'geheugen' tellen niet meer.
+ - PLVerbind.bewaar() schrijft als ATST de koude meting van deze verbinding
+   (plVerbindVoorGeheugen); zonder meting blijft de vorige staan.
+ - noteAntwoord() bewaart niet meer: bijsturen geldt voor de verbinding.
+ - test-verbindprofiel.js (ook PLVerbind.bewaar uit de echte bron), vier
+   mutaties, blok 5-proef. PIDLANE-VERBINDPROFIEL.md §10 herzien.
+
+ ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Telemetrie telt alleen mee als de telefoon vast zit (#418)
+ ═══════════════════════════════════════════════════════════
+
+ - PLTelemetrie.houder(): vast = genuld, binnen 15° van de nulstand, wiebel
+   buiten de gierrichting ≤ 8°/s (als vector gefilterd), en dat 5 s lang.
+ - Niet vast: geen updPID, dus niets in pidVals/pidHist, rapport, AI,
+   bevindingen, delen of rijsituatie; ook geen rijrichting leren. Alleen
+   applyG, met de tegel en Slim visueel als `los` (heel dof, met de reden).
+ - Zonder Nulstellen telt telemetrie dus nooit mee. De stale-watchdog slaat
+   een losse tegel over.
+ - test-telemetrie.js, test-visprofiel.js, bproef-telemetrie.js, vijf
+   mutaties, blok 5-proef en CAMPAGNE-stap 4C. Handleiding bijgewerkt.
 
  ═══════════════════════════════════════════════════════════
  06-10-2026 — Beheerdersdemo: als admin rekent de AI echt (#409)

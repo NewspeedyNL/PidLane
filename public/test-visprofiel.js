@@ -259,5 +259,32 @@ console.log('\n8. Het emissiescherm is donker (06-10-2026)');
   }
 }
 
+console.log('\n10. Telefoon niet vast in de houder: heel dof (06-10-2026)');
+{
+  function keurLos(bron) {
+    const els = {};
+    const mk = () => { const k = new Set(); return { classList: { toggle: (n, aan) => { if (aan) k.add(n); else k.delete(n); }, contains: n => k.has(n) } }; };
+    const c = laad(bron);
+    c.document = { getElementById: id => (els[id] = els[id] || mk()) };
+    let vast = false;
+    c.PLTelemetrie = { los: pid => /^TL/.test(pid) && !vast };
+    const ind = { motor: 'benzine', plekken: { helling: 'TL01', kanteling: 'TL02', lengte: 'TL03', dwars: 'TL04', 'hz-helling': 'TL01', 'hz-kanteling': 'TL02' } };
+    c.PLVisProfiel.dof('telemetrie', ind, () => false);
+    const losNu = ['helling', 'lengte'].every(r => els['vpf-p-' + r] && els['vpf-p-' + r].classList.contains('los'));
+    vast = true;
+    c.PLVisProfiel.dof('telemetrie', ind, () => false);
+    const losDaarna = ['helling', 'lengte'].some(r => els['vpf-p-' + r].classList.contains('los'));
+    return { losNu, losDaarna };
+  }
+  const r = keurLos(BRON);
+  waar('niet vast: helling en G-cirkel krijgen de klasse los', r.losNu, JSON.stringify(r));
+  waar('weer vast: de klasse gaat eraf', !r.losDaarna, JSON.stringify(r));
+  waar('tegenproef: zonder de regel blijft alles helder',
+    !keurLos(BRON.replace("    e.classList.toggle('los', l);", '')).losNu);
+  const css = lees('pidlane.css');
+  const m = css.match(/\.vpf \.los[^{]*\{[^}]*opacity:\s*([0-9.]+)/), o = css.match(/\.vpf \.oud \{[^}]*opacity:\s*([0-9.]+)/);
+  waar('los is doffer dan oud', m && o && parseFloat(m[1]) < parseFloat(o[1]), (m && m[1]) + ' tegen ' + (o && o[1]));
+}
+
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + (ok + fout) : 'goed: ' + ok + ' ok, 0 fout'));
 process.exit(fout ? 1 : 0);

@@ -85,6 +85,10 @@ ROOD=$'\033[31m'; GROEN=$'\033[32m'; GEEL=$'\033[33m'; GRIJS=$'\033[90m'; UIT=$'
 # bestand @@ zoek @@ vervang @@ test @@ omschrijving
 # Het bestandspad is relatief aan de repo-root.
 MUTATIES=(
+"public/pidlane-bt.js@@  if(!b || b.bron!=='gemeten' || !/^[0-9A-F]{2}$/@@  if(!b || b.bron==='standaard' || !/^[0-9A-F]{2}$/@@test-verbindprofiel.js@@het geheugen neemt een bijgestuurde ATST over als bodem: de ratel van #414, de CX-5 op 1020 ms"
+"public/pidlane-bt.js@@      prof.verbind=plVerbindVoorGeheugen(this.profiel, this._gemeten, prof.verbind);@@      prof.verbind=JSON.parse(JSON.stringify(this.profiel));@@test-verbindprofiel.js@@het geheugen bewaart de bijgestuurde ATST in plaats van de koude meting — #414"
+"public/pidlane-bt.js@@  v.st = gemeten ? Object.assign({}, gemeten) : { hex:ST_STANDAARD_HEX, bron:'standaard' };@@@@test-verbindprofiel.js@@het geheugen krijgt de ATST van de sessie mee in plaats van de meting — #414"
+"public/pidlane-bt.js@@  if(!(gemeten && gemeten.bron==='gemeten') && vorig && vorig.st && vorig.st.bron==='gemeten') return JSON.parse(JSON.stringify(vorig));@@@@test-verbindprofiel.js@@een verbinding zonder meting wist de vorige meting uit het geheugen — #414"
 "public/pidlane-diagbundel.js@@const ds=idx>=0?idx+hdr.length:4;@@const ds=idx>=0?idx+hdr.length-2:4;@@test-parser.js@@parsePID slaat de header-echo één byte te vroeg over"
 "public/pidlane-diagbundel.js@@if(/[0-9A-Fa-f]\s*:/.test(line)){@@if(false){@@test-parser.js@@de batch-splitser ziet de framemarkers niet meer"
 "public/pidlane-datalog.js@@if(lim&&(rawVal<lim.min||rawVal>lim.max)){@@if(false){@@test-parser.js@@laag 1 laat fysiek onmogelijke waarden door"
@@ -1661,12 +1665,7 @@ MUTATIES=(
 "public/pidlane-bt.js@@const ref = ok.length>=5 ? ok[ok.length-2] : ok[ok.length-1];@@const ref = ok[ok.length-1];@@test-verbindprofiel.js@@één Bluetooth-haper bepaalt het ATST-plafond van een snelle auto"
 "public/pidlane-bt.js@@const doel=Math.min(ST_TOP_MS, Math.max(ST_BODEM_MS, ref*2));@@const doel=Math.min(ST_TOP_MS, Math.max(ST_BODEM_MS, ref));@@test-verbindprofiel.js@@ATST zonder marge: het traagste antwoord valt precies op het plafond"
 "public/pidlane-bt.js@@if(msNu!=null && !(b.ms>msNu)) return null;@@@@test-verbindprofiel.js@@het verbindgeheugen verlaagt ATST onder wat vandaag gemeten is"
-"public/pidlane-bt.js@@if(String(m.adapter||'')!==String(adapter||'')) continue;@@@@test-verbindprofiel.js@@het verbindgeheugen geldt ook over een andere adapter heen"
-# ── verbindgeheugen is geen ratel (#414, 06-10-2026) ──
-"public/pidlane-bt.js@@  return lijst.slice(-ST_GEHEUGEN_N);@@  return lijst;@@test-verbindprofiel.js@@het verbindgeheugen vergeet nooit: één trage meting houdt ATST een half jaar hoog — #414"
-"public/pidlane-bt.js@@if(!b || m.ms>b.ms) b=m;@@b=m;@@test-verbindprofiel.js@@het verbindgeheugen neemt de laatste meting in plaats van de traagste — #414"
-"public/pidlane-bt.js@@filter(m=>m && !(meting && m.op===meting.op));@@filter(m=>m);@@test-verbindprofiel.js@@elke bewaar() in één verbinding telt als nieuwe meting en duwt de trage van eerder eruit — #414"
-"public/pidlane-bt.js@@    // Niet bewaren (#414): een gemiste PID kan ook een motor zijn die uitgaat@@    try{ if(typeof vehicleInfo!=='undefined' && vehicleInfo && vehicleInfo.vin) this.bewaar(vehicleInfo.vin); }catch(e){ btDiag(String(e),'warn'); }\n    // Niet bewaren (#414): een gemiste PID kan ook een motor zijn die uitgaat@@test-verbindprofiel.js@@bijsturen tijdens de rit schrijft weer in het geheugen — #414"
+"public/pidlane-bt.js@@if(String(bewaard.adapter||'')!==String(adapter||'')) return null;@@@@test-verbindprofiel.js@@het verbindgeheugen geldt ook over een andere adapter heen"
 "public/pidlane-data.js@@if(S.batchGroep>=this.batchPlafond()) return false;@@if(S.batchGroep>=this.GROEP_AUTO_MAX) return false;@@test-verbindprofiel.js@@de groep klimt boven het plafond uit de groepsproef"
 "public/pidlane-data.js@@c==='ATST64' ? 'ATST'+st :@@c==='ATST64' ? 'ATST64' :@@test-verbindprofiel.js@@de terugrol zet ATST weer op 400 ms in plaats van de gemeten waarde"
 "worker.js@@vin_pseudo: vorm(b.vin_pseudo, /^[0-9a-f]{16}@@vin_pseudo: vorm(b.vin_pseudo, /^[0-9A-Za-z]{16,17}@@test-verbindprofiel.js@@een ruwe VIN komt als pseudoniem in de kennisbank (privacy)"
@@ -1696,6 +1695,11 @@ MUTATIES=(
 "public/pidlane-visprofiel.js@@  const v=klem(val, x.lo, x.hi);@@  const v=Number(val)||0;@@test-visprofiel.js@@een onzinwaarde schuift de horizon uit het beeld"
 "public/pidlane-functietest.js@@    if(/^tel(-|emetrie$)/.test(p.id)) return;@@    void 0;@@test-functietest.js@@de Full function test rekent de auto de telefoonweergaven aan als ongeschikt"
 "public/pidlane-telemetrie.js@@  const gL=dot(lin, ax.voor)/G, gD=dot(lin, ax.rechts)/G;@@  const gL=dot(lin, ax.voor)/G, gD=-dot(lin, ax.rechts)/G;@@test-telemetrie.js@@de G-cirkel zet een bocht naar links aan de rechterkant"
+"public/pidlane-telemetrie.js@@      if (hz.vast){ updPID(pid, w[pid]); _s.n++; }@@      if (true){ updPID(pid, w[pid]); _s.n++; }@@test-telemetrie.js@@een telefoon op schoot of los in een vakje telt mee in rapport, AI en bevindingen"
+"public/pidlane-telemetrie.js@@  if (!o.genuld) return { vast:false, reden:'geen-nulstand' };\n@@@@test-telemetrie.js@@zonder nulstand geldt de telefoon als vast, ook al heeft niemand gezegd dat hij in een houder zit"
+"public/pidlane-telemetrie.js@@    wiebelBij([w[0]-wg*ref[0], w[1]-wg*ref[1], w[2]-wg*ref[2]], nu);@@    wiebelBij(w, nu);@@test-telemetrie.js@@gieren telt als wiebel: elke rotonde maakt de telefoon in de houder onbetrouwbaar"
+"public/pidlane-telemetrie.js@@  if (!(o.okMs>=HOUDER.rustMs)) return { vast:false, reden:'wacht' };\n@@@@test-telemetrie.js@@een telefoon die net is teruggezet telt meteen weer mee, zonder 5 s rust"
+"public/pidlane-telemetrie.js@@  if (!houderNu().vast) return;\n  if (_nul && aL!==null)@@  if (_nul && aL!==null)@@test-telemetrie.js@@hard remmen telt als rijsituatie terwijl de telefoon los wiebelt"
 # ── de beheerdersdemo (#409) ──
 "public/pidlane-demo.js@@    try { return typeof window.isAdmin === 'function' && !!window.isAdmin(); }@@    try { return true; }@@test-demozandbak.js@@elke demo is een beheerdersdemo: een reviewer zonder login laat de echte AI rekenen — #409"
 "public/pidlane-demo.js@@    if (!isDemo()) return false;\n    try { return typeof window.isAdmin@@    try { return typeof window.isAdmin@@test-demozandbak.js@@een beheerder buiten de demo telt als beheerdersdemo — #409"

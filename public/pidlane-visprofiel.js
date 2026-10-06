@@ -423,7 +423,12 @@ function dof(id, ind, oud){
   if(!p || !p.plekken || !ind) return;
   p.plekken.forEach(function(x){
     const pid=ind.plekken[x.rol], e=el('vpf-p-'+x.rol);
-    if(e && pid) e.classList.toggle('oud', !!oud(pid));
+    if(!e || !pid) return;
+    e.classList.toggle('oud', !!oud(pid));
+    // Telefoon niet vast in de houder: telt niet mee, dus heel dof (06-10-2026).
+    let l=false;
+    try{ l=!!(window.PLTelemetrie && window.PLTelemetrie.los(pid)); }catch(err){ console.warn('PLVisProfiel: PLTelemetrie.los', err); }
+    e.classList.toggle('los', l);
   });
 }
 function pids(ind){

@@ -2771,6 +2771,48 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── ATST-geheugen is geen ratel (#414) ──
+  {
+    issue: '#414',
+    naam: 'Het verbindgeheugen bewaart alleen de koude ATST-meting; bijsturen tijdens de rit telt niet voor de volgende verbinding',
+    waarom: 'De CX-5 stond na drie dagen op 1020 ms terwijl het traagste antwoord 81 ms was: elke gemiste PID kostte een seconde busstilte.',
+    proef: async function () {
+      if (typeof plStUitGeheugen !== 'function' || typeof plVerbindVoorGeheugen !== 'function') return { staat: 'FOUT', detail: 'plVerbindVoorGeheugen ontbreekt — pidlane-bt.js is niet de nieuwe' };
+      var bew = { st: { hex: 'FF', ms: 1020, bron: 'bijgestuurd' }, protocol: { id: '6' }, adapter: 'spp', gemetenOp: Date.now() };
+      if (plStUitGeheugen({ hex: '29', ms: 164, bron: 'gemeten' }, bew, '6', 'spp') !== null) return { staat: 'FOUT', detail: 'een bijgestuurde 0xFF uit het geheugen verhoogt de meting nog' };
+      var V = window.PLVerbind;
+      if (!V || !V.profiel) return { staat: 'LET OP', detail: 'gedrag klopt; geen verbindprofiel — nodig: verbonden met een auto, en draai opnieuw' };
+      var nu = V.nu(), g = V._gemeten;
+      var d = 'ATST nu 0x' + nu.st + ' (' + nu.stBron + ', ' + nu.stMs + ' ms)' + (g ? ' · koude meting 0x' + g.hex + ' (' + g.bron + ')' : '') + ' · ' + V.stappen() + '× bijgestuurd deze verbinding';
+      return { staat: 'OK', detail: d };
+    }
+  },
+
+  // ── telemetrie telt alleen mee als de telefoon vast zit (#418) ──
+  {
+    issue: '#418',
+    naam: 'Telefoonsensoren tellen alleen mee als de telefoon zeker vast in een houder zit; anders heel dof',
+    waarom: 'Op schoot of los in een vakje meet de telefoon zijn eigen bewegingen; die horen niet in rapport, AI of rijsituatie.',
+    proef: async function () {
+      var T = window.PLTelemetrie;
+      if (!T || typeof T.houder !== 'function' || typeof T.houderNu !== 'function') return { staat: 'FOUT', detail: 'PLTelemetrie.houder ontbreekt — pidlane-telemetrie.js is niet de nieuwe' };
+      var goed = { vers: true, genuld: true, afwijking: 3, wiebel: 2, okMs: 6000 };
+      if (!T.houder(goed).vast || T.houder(Object.assign({}, goed, { genuld: false })).vast || T.houder(Object.assign({}, goed, { afwijking: 40 })).vast)
+        return { staat: 'FOUT', detail: 'de regel klopt niet: zonder nulstand of 40° verschoven telt hij als vast' };
+      if (!T.beschikbaar()) return { staat: 'LET OP', detail: 'gedrag klopt; dit toestel meldt geen bewegingssensor — nodig: de app op de telefoon' };
+      var h = T.houderNu(), s = T.stats().houder;
+      var bewijs = 'vast ' + s.vastS + ' s, niet vast ' + s.losS + ' s, ' + s.geweerd + ' metingen geweerd';
+      if (!h.vast) {
+        var voor = (typeof pidHist !== 'undefined' && pidHist.TL01) ? pidHist.TL01.length : 0;
+        await new Promise(function (r) { setTimeout(r, 1200); });
+        var na = (typeof pidHist !== 'undefined' && pidHist.TL01) ? pidHist.TL01.length : 0;
+        if (!T.houderNu().vast && na > voor) return { staat: 'FOUT', detail: 'niet vast (' + h.reden + ') en toch ' + (na - voor) + ' helling-metingen in pidHist' };
+        return { staat: 'LET OP', detail: 'gedrag klopt: niet vast (' + h.uitleg + '), telt niet mee · ' + bewijs + ' — nodig voor OK: telefoon in de houder, Nulstellen, 5 s stil' };
+      }
+      return { staat: 'OK', detail: 'vast in de houder (afwijking ' + h.afwijking + '°, wiebel ' + h.wiebel + '°/s) · ' + bewijs };
+    }
+  },
+
   // ── de beheerdersdemo (#409) ──
   {
     issue: '#409',
@@ -3038,44 +3080,6 @@ const PROEVEN_B5 = [
       if (!r.ok) return { staat: 'LET OP', detail: wat + ' — vragen lukte niet: ' + r.reden };
       if (!r.goed) return { staat: 'LET OP', detail: wat + ' — geen enkele band gaf antwoord op ' + r.gevraagd + ' vragen. Klopt het ECU-adres? Test een code in Mijn voertuigen → Sensoren.' };
       return { staat: 'OK', detail: wat + ' · ' + r.goed + ' van ' + r.gevraagd + ' gaven antwoord · ' + PLBanden.oordeel(PLBanden.nu().ind, PLBanden.nu().st).detail };
-    }
-  },
-
-  // ── Het verbindgeheugen is geen ratel (#414, 06-10-2026) ──
-  // De CX-5 stond in drie dagen op ATST 0xFF (1020 ms) bij een traagste
-  // antwoord van 81 ms: elke bijsturing ging het geheugen in en kwam er nooit
-  // meer uit. Nu onthoudt het geheugen alleen de laatste drie metingen van de
-  // koude poort. Deze proef kijkt naar wat er na het verbinden in de adapter
-  // staat én naar wat er bewaard is.
-  {
-    issue: '#414',
-    naam: 'Het verbindgeheugen onthoudt alleen metingen, de laatste drie',
-    waarom: 'Een ATST die alleen omhoog kan maakt elke NO DATA blijvend duurder. Dat zie je niet aan de reads/s, alleen aan een trage bus wanneer er een PID wegvalt.',
-    proef: async function () {
-      if (typeof connected === 'undefined' || !connected || (typeof demoMode !== 'undefined' && demoMode))
-        return { staat: 'LET OP', detail: 'niet verbonden met een echte auto — er is geen geheugen geraadpleegd' };
-      var V = window.PLVerbind;
-      if (!V || !V.profiel) return { staat: 'LET OP', detail: 'geen verbindprofiel — zie de proef van #388' };
-      var st = V.profiel.st || {};
-      var vin = (typeof vehicleInfo !== 'undefined' && vehicleInfo && vehicleInfo.vin) ? vehicleInfo.vin : '';
-      var bewaard = null;
-      try { var r = vin && typeof vinProfileKey === 'function' ? localStorage.getItem(vinProfileKey(vin)) : null; bewaard = r ? (JSON.parse(r).verbind || null) : null; }
-      catch (e) { return { staat: 'FOUT', detail: 'bewaard voertuigprofiel onleesbaar: ' + (e.message || e) }; }
-      var lijst = bewaard && Array.isArray(bewaard.metingen) ? bewaard.metingen : [];
-      var wat = 'ATST 0x' + st.hex + ' (' + (st.ms || '?') + ' ms, ' + st.bron + ') · geheugen ' +
-        (lijst.length ? lijst.map(function (m) { return '0x' + m.hex; }).join(', ') : 'leeg');
-      if (lijst.length > 3) return { staat: 'FOUT', detail: lijst.length + ' metingen bewaard, meer dan drie — het geheugen vergeet niet: ' + wat };
-      var ops = {};
-      for (var i = 0; i < lijst.length; i++) {
-        if (ops[lijst[i].op]) return { staat: 'FOUT', detail: 'dezelfde verbinding staat twee keer in het geheugen: ' + wat };
-        ops[lijst[i].op] = 1;
-      }
-      if (st.bron === 'geheugen') {
-        var max = lijst.reduce(function (a, m) { return Math.max(a, m.ms || 0); }, 0);
-        if (st.ms > max) return { staat: 'FOUT', detail: 'de ATST komt uit het geheugen maar ligt boven elke bewaarde meting — bijgestuurd of oud: ' + wat };
-      }
-      if (!vin) return { staat: 'LET OP', detail: 'geen VIN — er is niets bewaard om te toetsen; ' + wat };
-      return { staat: 'OK', detail: wat };
     }
   },
 
@@ -9812,6 +9816,7 @@ const CAMPAGNE = {
     'STAP 3 — 🔄 OPNIEUW VERBINDEN in hetzelfde paneel. Vanaf hier telt het half uur van #302; de groepsproef zit dan niet in die meting.',
     'STAP 4 — DERTIG MINUTEN RIJDEN IN SLIM VISUEEL, ZONDER TE VERBREKEN (#302, #337, #338). Onderweg: een paar keer vanuit stilstand stevig optrekken en daarna het gas helemaal los, een stuk boven 50 km/u, en één keer stilstaan. Laat waakronde en bulk-recorder zoals je ze normaal hebt.',
     'STAP 4B — RIT-MONITOR AAN, EN SCHAKEL (#400). Zet vóór STAP 4 de rit-monitor aan. Schakel onderweg een paar keer op en terug bij gelijkblijvende snelheid, en rol één keer uit met het gas los. Daar hoort nu geen melding bij. Komt er tóch een melding die niet klopt: tik 👎 Klopt niet en kies de reden.',
+    'STAP 4C — TELEFOON IN DE HOUDER, EN EEN STUK OP SCHOOT (#418). Vóór vertrek: telefoon in de houder, stilstaan op vlakke grond, Sensoren → Telemetrie → Nulstellen. Rij daarna gewoon; de tegels Helling en Kanteling horen helder te blijven, ook over drempels. Alleen met een bijrijder: laat die de telefoon een paar minuten op schoot houden — de tegels horen dan binnen een paar seconden heel dof te worden. De testrun (blok 5) zegt hoeveel seconden vast en niet vast.',
     'STAP 5 — TWEE MINUTEN BEELD-IN-BEELD (#319, #338). Onderweg, met de navigatie: thuisknop, PidLane staat klein; minstens twee minuten, dan terug naar de app.',
     'STAP 6 — GROEPSPROEF B, WARM EN STIL (#333). Na het half uur stilstaan op een veilige plek, motor draaiend. Eerst 🔄 Opnieuw verbinden, dan 📦 Groepsproef.',
     'STAP 7 — VERZENDEN. Meetkamer → alle afgeronde opdrachten verzenden, en beantwoord de vragen. Daarna eventueel de testrun.',

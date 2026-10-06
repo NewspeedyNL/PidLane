@@ -42,34 +42,64 @@ lampje en het venster zijn nu die ene weergave.
 
 ---
 
-## 06-10-2026 — Het verbindgeheugen was een ratel (#414)
+## 06-10-2026 — Het ATST-geheugen was een ratel (#414)
 
-**Wat de kennisbank liet zien.** De CX-5 mat bij de koude poort een ATST van
-48 tot 176 ms. Toch stond hij op 06-10 op 0xFF (1020 ms), met als bron
-`geheugen`, bij een traagste antwoord van 81 ms.
+**Wat er gebeurde.** Drie dingen samen maakten een ratel. `noteAntwoord()`
+zette de ATST een trede hoger zodra 3 van de 20 verzoeken een PID misten die
+kort geleden nog antwoordde, en schreef dat meteen in het voertuigprofiel.
+`plStUitGeheugen()` nam bij de volgende verbinding elke bewaarde bron behalve
+`standaard` over zodra die hoger was dan de meting. En `bewaar()` schreef
+daarna het hele profiel terug, met `bron:'geheugen'` en een verse
+`gemetenOp` — de half-jaargrens schoof dus elke keer mee. Een misser die
+niets met timing te maken had (motor uit, een ECU die een groep overslaat)
+duwde de ATST zo blijvend omhoog: de CX-5 op 0xFF (1020 ms) bij een
+traagste antwoord van 81 ms.
 
-**Waarom.** Drie regels die elk klopten, samen een ratel:
-`noteAntwoord()` zette ATST een trede hoger bij 3 missers op 20, en schreef
-dat meteen met `bewaar()` in het voertuigprofiel. `naVin()` nam het bewaarde
-`st` over als dat hoger was dan de meting. En `bewaar()` bij het verbinden
-schreef dat overgenomen `st` (bron `geheugen`) weer terug, met een verse
-`gemetenOp`. Daardoor verliep het halfjaar nooit. Een gemiste PID hoeft geen
-timing te zijn: motor uit, contact aan, of een ECU die een groep overslaat.
-Toch duwde elke misser de waarde blijvend omhoog.
+**De keuze.** Uit het issue kwamen twee wegen: bijsturen niet meer bewaren, of
+het geheugen laten vervallen als de meting een paar keer lager uitkomt. De
+eerste gekozen, omdat de tweede een tweede regelkring met eigen drempels is
+die zelf weer gemeten moet worden. "Alleen omhoog" blijft: een koude meting die
+de vorige keer hoger uitkwam is echte kennis over die auto.
 
-**Wat nu.** Het geheugen is de lijst `verbind.metingen`: wat de koude poort
-de laatste drie verbindingen mat. Elke meting heeft een eigen tijdstip,
-protocol en adapter. Bijsturen geldt alleen voor de rit. Het issue noemde
-twee opties: alleen de koude poort onthouden, of het geheugen laten
-vervallen na een paar lagere metingen. Dit is allebei. Het oude `st` wordt
-genegeerd, dus bestaande profielen beginnen leeg. Dat is de bedoeling: het
-0xFF van de CX-5 was geen meting.
+**Wat het niet oplost.** Binnen één verbinding kan het bijsturen nog steeds tot
+de top klimmen op missers die geen timing zijn. Dat is een vraag over
+`plStMoetOmhoog()`, niet over het geheugen; daar hoort een rit bij (#394 punt
+1 gaat over de bodem). Wat er al in een voertuigprofiel staat met bron
+`bijgestuurd` of `geheugen` wordt genegeerd, niet gewist: de eerstvolgende
+verbinding met een meting overschrijft het.
 
-**Wat open blijft.** Of de bodem van 48 ms te krap is (#394 punt 1). Of een
-rit waarin ATST echt omhoog moest, de volgende keer opnieuw 60 s aan
-missers kost voordat de bijsturing weer ingrijpt. Dat laatste is de prijs
-van niet bewaren. Is die te hoog, dan hoort het antwoord een meting in de
-koude poort te zijn en geen geheugen.
+---
+
+## 06-10-2026 — Telemetrie alleen als de telefoon vast zit (#418)
+
+**De vraag.** Telemetrie mag alleen meetellen in analyses of beoordelingen
+als zeker is dat de telefoon vast in een houder zit, niet op schoot of in
+een vakje. Anders niet meetellen en heel dof tonen.
+
+**Waarom bij updPID en niet bij elke lezer.** Rapport, AI, bevindingen, de
+deel-tap van pidlane-remote.js en de bulk-opname lezen allemaal pidVals of
+pidHist, en die worden alleen door updPID() gevuld. Eén poort vóór updPID
+dekt ze dus allemaal; een vlag per waarde had elke lezer moeten leren
+filteren, en de eerstvolgende nieuwe lezer was hem vergeten. Tekenen gaat
+rechtstreeks via applyG().
+
+**Waarom de wiebel een vector is.** Eerst lag de grootte van de draaisnelheid
+voor de hand, maar een trillende houder heeft een flinke gemiddelde
+|ω| zonder dat er iets beweegt. Eerst de vector filteren laat trillen
+uitmiddelen naar nul, en een toestel dat gepakt wordt of op schoot schommelt
+niet. Het gieren (draaien om omhoog) gaat er vooraf af: een rotonde is geen
+losse telefoon. Zonder gyroscoop komt dezelfde vector uit u×u′/dt.
+
+**Wat het niet kan.** Een telefoon die plat in een vakje ligt en dáár genuld
+is, onderscheidt de app niet van een houder: Nulstellen geldt als de
+verklaring. Een telefoon die gaat bewegen telt nog zo'n halve seconde mee,
+tot het filter de wiebel ziet. De drempels (15°, 8°/s, 5 s) komen uit de
+tafel; de rit van #418 moet zeggen of een vaste houder over drempels te vaak
+wegvalt.
+
+**Een test die op de drempel lag.** De bochttoets van #404 reed 72 km/u met
+0,2 rad/s, precies de 4 m/s² van SIT.bocht. Met een nulstand die net iets
+anders binnenkwam werd dat 3,9999999 en telde de bocht niet. Nu 0,21 rad/s.
 
 ---
 
