@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Versie 3.2.0 voor de openbare release
+ ═══════════════════════════════════════════════════════════
+
+ - Gesloten test geslaagd (#408). APP_VERSION en package.json naar 3.2.0;
+   PLAY-INZENDING.md §16 bevestigt 3.2.0, de mutatie in plmutate.sh schuift
+   mee naar 3.3.0.
+ - Eigen PIDs krijgen een standaardbereik (#370), van branch
+   ccr-8e6efa44 meegenomen: bandtemperatuur −40…80 °C (let op vanaf 65),
+   bandenspanning 0…3,5 bar, motorolietemperatuur als 015C.
+
+ ═══════════════════════════════════════════════════════════
  05-10-2026 — Nieuwe sensorgroep Telemetrie: helling en kanteling van de telefoon
  ═══════════════════════════════════════════════════════════
 
