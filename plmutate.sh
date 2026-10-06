@@ -1568,6 +1568,8 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  } else if(volt){@@  } else if(volt && m){@@test-visueel.js@@het acculampje brandt alleen als er ook een motoroordeel is: zonder PLAandrijving geen spanning"
 "public/pidlane-banden.js@@      uit[p] = (!st || st.ernst === 'geen' || !d || d.waarde === null || d.oud) ? 'geen' : w.ernst;@@      uit[p] = w ? w.ernst : 'geen';@@test-banden.js@@het autootje kleurt een band van een kwartier geleden groen"
 "public/pidlane.css@@body.pl-visueel #plLiveWaak, body.pl-visueel #plLiveRec { display:none !important; }@@@@bproef-visueel.js@@Bewaken en Opnemen staan weer onder Slim visueel, naast de waakronde en de recorder in het vak"
+# ── nooit een VIN als voertuignaam rechtsboven (06-10-2026) ──
+"public/pidlane-uihelpers.js@@  el.dataset.naam = t ? (sysNaam(t, merk, vi.model) || 'Voertuig') : '';@@  el.dataset.naam = t||'';@@test-nav.js@@showVtag bewaart een VIN als naam: rechtsboven staan 17 tekens in plaats van de auto"
 # ── het acculampje flitst niet meer weg bij een oude spanning (06-10-2026) ──
 "public/pidlane-visueel.js@@  return { v:pidVals[pid], oud:isOud(pid, nu) };@@  return isOud(pid, nu) ? null : { v:pidVals[pid], oud:false };@@test-visueel.js@@een oude accuspanning gooit het lampje weg: de accu flitst weg tot de volgende meting"
 "public/pidlane-visueel.js@@soort:'accu '+vSt+(extra.voltOud ? ' oud' : ''),@@soort:'accu '+vSt,@@test-visueel.js@@een oude accuspanning staat er even fel als een verse"

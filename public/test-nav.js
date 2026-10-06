@@ -98,6 +98,26 @@ console.log('\n6b. Nooit een VIN in de statusregel');
     eis('een VIN zonder merk wordt leeg, niet de VIN', sysNaam('JMZKF6W7600766507', '', '') === '');
     eis('een gewone naam blijft staan', sysNaam('DEMO — Mazda CX-5', 'Mazda', 'CX-5') === 'DEMO — Mazda CX-5');
     eis('geen naam → merk en model', sysNaam('', 'Mazda', 'CX-5') === 'Mazda CX-5');
+
+    // 06-10-2026: de VIN stond ook rechtsboven, in de tooltip van de
+    // voertuigchip en de ingeklapte voertuigkop — die lezen #vtag.dataset.naam.
+    // showVtag() zelf hoort dus geen VIN als naam te bewaren.
+    const a = bron.indexOf('function showVtag(t){'), b = bron.indexOf('\n}', a);
+    if (a < 0) { eis('showVtag() bestaat', false); }
+    else {
+      const el = { style: {}, dataset: {}, innerHTML: '' };
+      const maak = (vi) => new Function('document', 'vehicleInfo', 'dossierPct', 'situatieChipHtml', 'updateTopbarStatus',
+        bron.slice(i, j + 2) + '\n' + bron.slice(a, b + 2) + '\nreturn showVtag;')(
+        { getElementById: () => el }, vi, () => 50, () => '', () => {});
+      maak({ merk: 'Mazda', model: 'CX-5', vin: 'JMZKF6W7600766507' })('JMZKF6W7600766507');
+      eis('showVtag met een VIN bewaart merk en model als naam', el.dataset.naam === 'Mazda CX-5', el.dataset.naam);
+      maak({ merk: 'Onbekend', model: '', vin: 'JMZKF6W7600766507' })('JMZKF6W7600766507');
+      eis('…zonder merk "Voertuig", niet de VIN en niet "Onbekend"', el.dataset.naam === 'Voertuig', el.dataset.naam);
+      maak({ merk: 'Mazda', model: 'CX-5' })('DEMO — Mazda CX-5');
+      eis('TEGENPROEF: een gewone naam blijft staan', el.dataset.naam === 'DEMO — Mazda CX-5', el.dataset.naam);
+      const bt = fs.readFileSync(__dirname + '/pidlane-bt.js', 'utf8');
+      eis('updateVehicleCard() geeft niet meer als eerste de VIN mee', !/showVtag\(vehicleInfo\.vin\s*\|\|/.test(bt));
+    }
   }
 }
 

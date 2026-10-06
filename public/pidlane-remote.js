@@ -601,7 +601,7 @@ window.PLRemote=(function(){
         try{mergeVehicleData('vin',v.veh);}catch(_){ console.warn('Voertuigdata van de local niet overgenomen', _); }
         try{if(v.veh.vin)vehicleInfo.vin=v.veh.vin;}catch(_){ console.warn('VIN niet overgenomen van de local', _); }
         try{const lbl=((vehicleInfo.merk||'')+' '+(vehicleInfo.model||'')).trim();
-            showVtag(lbl||vehicleInfo.vin||'Remote voertuig');}catch(_){ console.warn('Voertuigtag niet bijgewerkt', _); }
+            showVtag(lbl||'Remote voertuig');}catch(_){ console.warn('Voertuigtag niet bijgewerkt', _); }
       }
       if(v.health&&typeof v.health==='object'){try{for(const k in v.health)_pidHealth[k]=v.health[k];}catch(_){ console.warn('Sensor-gezondheid van de local niet overgenomen', _); }}
       if(Array.isArray(v.pids)&&v.pids.length){
