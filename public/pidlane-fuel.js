@@ -369,8 +369,8 @@ function extractAIText(data){
 async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, aanlevering=null, extra=null){
   // Demo: een voorbeeldrapport uit de gesimuleerde waarden, geen AI-call en
   // geen tegoed. Een rapport over een verzonnen auto is geen echt rapport.
-  // Zie de zandbak in pidlane-demo.js.
-  if(window.PLDemo && PLDemo.actief()) return PLDemo.aiVoorbeeld(prompt, extra);
+  // Zie de zandbak in pidlane-demo.js. De beheerdersdemo (#409) rekent wél echt.
+  if(window.PLDemo && PLDemo.actief() && !PLDemo.volledig()) return PLDemo.aiVoorbeeld(prompt, extra);
   // Key ophalen — prioriteit: login account → window → localStorage
   let key = '';
   try{

@@ -2771,6 +2771,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de beheerdersdemo (#409) ──
+  {
+    issue: '#409',
+    naam: 'In de demo als admin rekent de AI echt en worden bestanden opgeslagen; referentiedata en applog blijven dicht',
+    waarom: 'Een beheerder heeft geen eigen voertuigen; met een demo die alleen een voorbeeldrapport geeft valt de app niet te laten zien.',
+    proef: async function () {
+      var D = window.PLDemo;
+      if (!D || typeof D.volledig !== 'function') return { staat: 'FOUT', detail: 'PLDemo.volledig ontbreekt — pidlane-demo.js is niet de nieuwe' };
+      if (D.netBesluit('/v1/messages', {}, true) !== 'door') return { staat: 'FOUT', detail: 'de beheerdersdemo houdt de AI nog tegen' };
+      if (D.netBesluit('/airtable/veldlab', {}, true) === 'door' || D.netBesluit('/airtable/log', {}, true) === 'door') return { staat: 'FOUT', detail: 'de beheerdersdemo laat referentiedata of de applog door' };
+      if (D.netBesluit('/v1/messages', {}, false) === 'door') return { staat: 'FOUT', detail: 'de gewone demo laat de AI door' };
+      var admin = typeof isAdmin === 'function' && isAdmin();
+      if (!D.actief()) return { staat: 'LET OP', detail: 'gedrag klopt; er loopt geen demo — nodig: start de demo' + (admin ? '' : ' als admin') + ' en draai opnieuw' };
+      return { staat: 'OK', detail: D.volledig() ? 'beheerdersdemo: AI en bestanden echt' : 'gewone demo (niet als admin ingelogd): voorbeeldrapport, geen bestanden' };
+    }
+  },
+
   // ── diesel: eigen sensoren op dezelfde weergaven (#393) ──
   {
     issue: '#393',

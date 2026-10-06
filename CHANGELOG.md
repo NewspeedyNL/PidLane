@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Beheerdersdemo: als admin rekent de AI echt (#409)
+ ═══════════════════════════════════════════════════════════
+
+ - PLDemo.volledig(): demo én ingelogd als admin. Dan geeft apiFetch geen
+   voorbeeldrapport maar vraagt de echte AI, laat plFetch /v1/messages door
+   (netBesluit met beheer) en slaat plBewaarBestand echt op.
+ - Blijft dicht, ook voor de beheerder: referentiemetingen, de applog,
+   tegoed inwisselen, schrijven op het klantplatform en de opslag op het
+   toestel. Een demo zonder login is nooit volledig.
+ - Melding bij de start; test-demozandbak.js, zeven mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Diesel: eigen sensoren in de weergaven van Slim visueel (#393)
  ═══════════════════════════════════════════════════════════
 

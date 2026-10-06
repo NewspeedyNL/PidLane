@@ -211,6 +211,9 @@ function _startDemoCore(car, kent){
   const _dNaam=(_eigen && car.naam) || [demoVin.merk,demoVin.model,demoVin.year].filter(Boolean).join(' ')||'demo-auto';
   showVtag('DEMO — '+_dNaam);
   log('Demo modus — '+_dNaam+(demoVin.motortype?(' '+demoVin.motortype):'')+' gesimuleerd','warn');
+  // De beheerdersdemo (#409): zeg het, want de AI rekent hier echt (en kost API-tegoed).
+  try{ if(window.PLDemo && PLDemo.volledig()){ log('Beheerdersdemo — de AI-analyse en het opslaan van bestanden werken echt','info'); showToast?.('🧪 Beheerdersdemo: AI en bestanden werken echt'); } }
+  catch(e){ console.warn('Beheerdersdemo niet gemeld', e); }
 
   // Toon auto info in welcome title
   document.getElementById('welcomeTitle').textContent = kent ? ('Simulatie met kenteken '+kent) : (_dNaam+(_eigen?' — gesimuleerd':' herkend ✅'));
@@ -307,6 +310,17 @@ window.plDemoZonderLogin = plDemoZonderLogin;
      • het rapportenoverzicht — een demorapport draagt `demo` en verdwijnt
        bij het stoppen.
 
+   DE BEHEERDERSDEMO (#409, 06-10-2026)
+   Een beheerder heeft geen eigen voertuigen en wil de app laten zien zoals
+   hij echt werkt. Is wie de demo start ingelogd als admin (isAdmin()), dan
+   is de demo VOLLEDIG (volledig()): de AI rekent echt op de gesimuleerde
+   waarden (de worker kent de rol, er gaat geen tegoed af) en bestanden
+   worden echt opgeslagen. Wat blijft dicht, ook voor de beheerder:
+   referentiemetingen en de applog (verzonnen data tussen echte ritten),
+   tegoed inwisselen, schrijven op het klantplatform, en de opslag op het
+   toestel (de laag hieronder): een demo verandert je instellingen niet.
+   Een demo zonder login is nooit volledig: daar is geen rol.
+
    De negen losse poorten blijven staan: ze zijn de eerste lijn, en ze
    houden de demo ook uit sessionStorage, IndexedDB en de server. Dit is de
    tweede lijn, die de volgende vergeten poort vangt.
@@ -338,8 +352,9 @@ window.plDemoZonderLogin = plDemoZonderLogin;
   var LEES_ACTIES = ['stand', 'rapporten', 'rapport', 'ritten', 'issues', 'pidbib_lijst', 'voorkeuren'];
 
   // Paden die in de demo nooit de deur uit gaan, met de reden erbij.
+  // `beheer: true` = in de beheerdersdemo (#409) gaat dit wél door.
   var WEIGER = [
-    { re: /^\/v1\/messages\b/, reden: 'de AI rekent niet op een verzonnen auto' },
+    { re: /^\/v1\/messages\b/, reden: 'de AI rekent niet op een verzonnen auto', beheer: true },
     { re: /^\/credits\//, reden: 'tegoed inwisselen hoort niet bij een demo' },
     { re: /\/airtable\/veldlab\b/, reden: 'een demo is geen referentiemeting' },
     { re: /\/airtable\/log\b/, reden: 'de logregels van een verzonnen auto horen niet tussen echte ritten (#360)' }
@@ -349,14 +364,20 @@ window.plDemoZonderLogin = plDemoZonderLogin;
     try { return typeof demoMode !== 'undefined' && !!demoMode; }
     catch (e) { console.warn('PLDemo: demoMode onleesbaar — de zandbak laat alles door', e); return false; }
   }
+  /* De beheerdersdemo (#409): demo én ingelogd als admin. */
+  function volledig() {
+    if (!isDemo()) return false;
+    try { return typeof window.isAdmin === 'function' && !!window.isAdmin(); }
+    catch (e) { console.warn('PLDemo: rol onleesbaar — gewone demo', e); return false; }
+  }
 
   /* Puur. Mag dit verzoek in de demo naar buiten? 'door' of de reden van nee.
      `pad` zoals plFetch hem krijgt (relatief of absoluut), `opties` met json
-     of body. */
-  function netBesluit(pad, opties) {
+     of body, `beheer` = de beheerdersdemo (volledig()). */
+  function netBesluit(pad, opties, beheer) {
     var p = String(pad || '');
     try { p = p.replace(/^https?:\/\/[^/]+/i, ''); } catch (e) { console.warn('PLDemo: pad niet te ontleden', e); }
-    for (var i = 0; i < WEIGER.length; i++) if (WEIGER[i].re.test(p)) return WEIGER[i].reden;
+    for (var i = 0; i < WEIGER.length; i++) if (WEIGER[i].re.test(p) && !(beheer && WEIGER[i].beheer)) return WEIGER[i].reden;
     if (/^\/klant\/platform\b/.test(p)) {
       var o = opties || {}, actie = '';
       if (o.json && typeof o.json === 'object') actie = String(o.json.actie || '');
@@ -498,7 +519,7 @@ window.plDemoZonderLogin = plDemoZonderLogin;
      stop() vanuit plDemoStop() — de twee plekken waar elke demo langskomt. */
   function start() {
     var ok = aan();
-    try { if (typeof btDiag === 'function') btDiag('Demo-zandbak ' + (ok ? 'aan: er wordt niets bewaard' : 'NIET aan — opslag onbereikbaar'), ok ? 'info' : 'warn'); }
+    try { if (typeof btDiag === 'function') btDiag('Demo-zandbak ' + (ok ? 'aan: er wordt niets bewaard' + (volledig() ? ' — beheerdersdemo: de AI en bestanden werken echt (#409)' : '') : 'NIET aan — opslag onbereikbaar'), ok ? 'info' : 'warn'); }
     catch (e) { console.warn('PLDemo: melding niet gelogd', e); }
     return ok;
   }
@@ -517,6 +538,7 @@ window.plDemoZonderLogin = plDemoZonderLogin;
 
   window.PLDemo = {
     actief: isDemo,
+    volledig: volledig,
     start: start,
     stop: stop,
     stand: stand,

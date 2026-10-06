@@ -15,6 +15,29 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — De beheerdersdemo (#409)
+
+**De vraag.** "Ik heb als admin geen voertuigen en kan met de demo te weinig
+laten zien." Mijn voertuigen hangt aan het klantplatform (`klantAuth()` in
+`worker.js`), en een beheerder is geen klant: die lijst blijft voor admin dus
+leeg. De demo was de enige manier om de app te laten zien, en de zandbak gaf
+daar een voorbeeldrapport in plaats van een analyse, en weigerde bestanden.
+
+**Wat nu.** `PLDemo.volledig()` = demo én `isAdmin()`. Dan rekent de AI echt
+op de gesimuleerde waarden en worden exports echt opgeslagen. Het blijft een
+zandbak voor wat anderen raakt of blijft hangen: referentiedata en de applog
+(verzonnen ritten tussen echte), tegoed, het klantplatform en de opslag op het
+toestel. Het rapport heet in het overzicht nog steeds `🧪 DEMO`.
+
+**Wat dit níét doet.** Een beheerder krijgt geen Mijn voertuigen: dat vraagt
+om admin als klant in de worker, en dat raakt toegang en privacy. De recorder
+(`pidlane-bulk.js`) neemt een demo nog steeds niet op. De privacyregel "in de
+demo gaat er niets naar onze server" in de handleiding klopt voor klanten,
+niet voor de beheerdersdemo; die is alleen voor de eigenaar, en kost
+API-tegoed bij elke analyse.
+
+---
+
 ## 06-10-2026 — Diesel in de weergaven van Slim visueel (#393)
 
 **Wat er misging.** `PLVisProfiel` had per plek één keten, voor elke motor

@@ -73,7 +73,7 @@ window.plFetch = async function(pad, opties){
   // een weigering leest en niets in een wachtrij zet om later te versturen.
   try{
     if(window.PLDemo && PLDemo.actief()){
-      const besluit = PLDemo.netBesluit(pad, opties);
+      const besluit = PLDemo.netBesluit(pad, opties, PLDemo.volledig());
       if(besluit !== 'door') return PLDemo.weigerAntwoord(besluit);
     }
   }catch(e){ console.warn('plFetch: demopoort niet te bepalen voor '+pad+' — het verzoek gaat door', e); }
