@@ -15,6 +15,37 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — Bluetooth uit las als "adapter niet gevonden" (#359)
+
+**Waarneming (30-09, Android 16).** `SPP scan: Bluetooth is disabled` in het
+log, en toch liep de keten door: SPP, BLE (12 s), een tweede ronde. Twee keer
+achter elkaar, samen anderhalve minuut. De melding aan het eind: *Adapter in
+OBD-poort? Contact aan?*
+
+**Waarom.** `connectSPP()` ving de scanfout op als waarschuwing en ging
+verder met een lege lijst. Zonder kandidaat gooide hij dan "geen adapter
+gevonden", en de keten kende alleen permissie en een geannuleerde kiezer als
+reden om te stoppen.
+
+**Wat er nu staat.** Twee lijnen. Vóór de keten vraagt `btAanVoorKeten()` de
+SPP-plugin of Bluetooth aan staat, en laat Android zo nodig om aanzetten
+vragen. Vanaf Android 13 mag een app Bluetooth niet zelf aanzetten (de
+SPP-plugin weigert dan, zie `BluetoothSerialPlugin.java`); de systeemvraag
+via de BLE-plugin (`requestEnable`) wél. In de keten stopt een fout die
+`btUitFout()` herkent alles, net als een permissieweigering.
+
+**Wat niet getoetst is.** De systeemvraag zelf en wat de BLE-plugin op een
+echt toestel teruggeeft. `test-btuit.js` draait de echte code met een
+nep-plugin. Antwoordt de plugin anders dan verwacht, dan is de stand
+'onbekend' en loopt de keten zoals vroeger. Dat is gekozen boven een
+verbinding die niet start.
+
+**Niet meegenomen.** De ruis `SPP permissie: Missing the following
+permissions…` als INFO bij elke poging. Die staat ook in #359, maar het is
+een ander onderwerp.
+
+---
+
 ## 06-10-2026 — De demo logde wél, en zonder sessie 25× een 401 (#360)
 
 **Waarneming (30-09).** Een demo vanaf het loginscherm, zonder sessie:

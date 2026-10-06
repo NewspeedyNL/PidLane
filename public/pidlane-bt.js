@@ -224,6 +224,17 @@ async function connectSerial(opt){
     return;
   }
 
+  // Bluetooth uit: niet de hele keten aflopen (#359). Alleen in de app; in
+  // de browser vraagt Chrome er zelf om.
+  if (env.native && spp){
+    if (await btAanVoorKeten(spp, ble) === 'uit'){
+      btDiag('Keten niet gestart: Bluetooth staat uit (#359)', 'err');
+      resetConnectBtn();
+      showConnError(BT_UIT_TEKST);
+      return;
+    }
+  }
+
   // Startscherm laten zien dat de keten begint. De keten is hier pas
   // samengesteld — welke transports erin zitten hangt af van wat de vorige
   // keer werkte — dus dit kan niet eerder.
@@ -276,6 +287,14 @@ async function connectSerial(opt){
           permissionBlocked = true;   // hergebruikt: stopt beide lussen
           break;
         }
+        // Bluetooth uit (#359): geen volgende transport en geen tweede ronde,
+        // en de melding zegt dat het aan de telefoon ligt.
+        if (e.__plBtUit || btUitFout(e.message)){
+          btDiag('Bluetooth staat uit — cascade gestopt (#359)', 'warn');
+          lastErr = new Error(BT_UIT_TEKST);
+          permissionBlocked = true;   // hergebruikt: stopt beide lussen
+          break;
+        }
         // Permissie permanent geweigerd → doorgaan is zinloos
         if (/denied|permission|toestemming|geweigerd/i.test(e.message || '')){
           btDiag('Permissie-blokkade gedetecteerd — cascade gestopt', 'warn');
@@ -303,6 +322,41 @@ async function connectSerial(opt){
   resetConnectBtn();
   showConnError((lastErr?.message || 'Geen OBD2-adapter gevonden.') +
     '\n\n💡 Open 📡 Log en kopieer de inhoud voor diagnose.');
+}
+
+/* BLUETOOTH UIT (#359, 06-10-2026)
+   Met Bluetooth uit liep de hele keten door — SPP, BLE (12 s scannen), en
+   dan een tweede ronde — en eindigde op "Adapter in OBD-poort? Contact aan?".
+   Anderhalve minuut, en de melding stuurt je naar de auto terwijl het aan de
+   telefoon ligt. De SPP-plugin weet het al: scan() gooit "Bluetooth is
+   disabled". */
+// Alleen wat over Bluetooth zélf gaat: "Location services are not enabled"
+// is een andere fout, en die hoort niet als "Bluetooth staat uit" te lezen.
+const BT_UIT_RX = /\b(bluetooth|ble)\b( adapter)? (is |staat )?(disabled|turned off|off|uit|not enabled)\b/i;
+const BT_UIT_TEKST = 'Bluetooth staat uit.\n\nZet Bluetooth aan en tik opnieuw op Verbinden.';
+function btUitFout(msg){ return BT_UIT_RX.test(String(msg || '')); }
+
+/* Vóór de keten: staat Bluetooth aan? 'aan', 'uit' of 'onbekend'. Staat hij
+   uit, dan eerst Android om aanzetten laten vragen (BLE-plugin:
+   requestEnable, de systeemvraag; vanaf Android 13 is dat de enige weg) en
+   daarna opnieuw kijken. 'onbekend' laat de keten gewoon lopen zoals
+   vroeger: liever een gemiste kortere weg dan een auto die niet verbindt
+   omdat een plugin iets anders antwoordt dan verwacht. */
+async function btAanVoorKeten(spp, ble){
+  if(!spp || typeof spp.isEnabled !== 'function') return 'onbekend';
+  const aan = async () => { const r = await spp.isEnabled(); return !!(r && r.enabled); };
+  try{
+    if(await aan()) return 'aan';
+  }catch(e){ btDiag('Bluetooth-stand niet uit te lezen ('+(e.message||e)+') — keten loopt zoals altijd', 'warn'); return 'onbekend'; }
+  btDiag('Bluetooth staat uit — Android vragen om aanzetten', 'warn');
+  try{
+    if(ble && typeof ble.requestEnable === 'function') await ble.requestEnable();
+    else if(typeof spp.enable === 'function') await spp.enable();
+  }catch(e){ btDiag('Aanzetten van Bluetooth niet gelukt of geweigerd: '+(e.message||e), 'warn'); }
+  try{
+    if(await aan()){ btDiag('Bluetooth staat nu aan', 'ok'); return 'aan'; }
+  }catch(e){ btDiag('Bluetooth-stand na aanzetten niet uit te lezen: '+(e.message||e), 'warn'); return 'onbekend'; }
+  return 'uit';
 }
 
 function resetConnectBtn(){
@@ -349,7 +403,11 @@ async function connectSPP(spp){
     devices = result?.devices || [];
     btDiag(`${devices.length} apparaten`, 'info');
     devices.forEach(d => btDiagDevice(d.name || '?', d.address || d.id || '', null));
-  } catch(se){ btDiag('SPP scan: ' + se.message, 'warn'); }
+  } catch(se){
+    btDiag('SPP scan: ' + se.message, 'warn');
+    // "Bluetooth is disabled" is geen "adapter niet gevonden" (#359).
+    if (btUitFout(se.message)){ const f = new Error(BT_UIT_TEKST); f.__plBtUit = true; throw f; }
+  }
 
   const OBD = ['obdlink','obd','elm','vgate','icar','eobd','scan','link'];
   // Bekende niet-OBD apparaten (Shelly, watches, buds...) nooit als kandidaat.
