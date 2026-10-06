@@ -529,7 +529,68 @@ const _staat = { aan:false, start:0, traag:new Set(), turboVast:false, handteken
 // vak wisselt rond; de keuze wordt per toestel onthouden.
 function PF(){ return window.PLVisProfiel || null; }
 function profielNu(){ return (PF() && _staat.profiel && PF().geldig(_staat.profiel)) ? _staat.profiel : 'basis'; }
-function profielKetens(){ const p=profielNu(); return (p!=='basis' && PF()) ? PF().ketens(p, leesMotor()) : []; }
+function profielKetens(){ const p=profielNu(); return (p!=='basis' && PF()) ? PF().ketens(p, leesMotor(), profielOpts()) : []; }
+/* Wat het profiel nodig heeft om een plek zelf in te vullen (06-10-2026): de
+   keuzes van dit toestel en de keuzelijst (naam, eenheid, schaal). */
+function profielOpts(){
+  let defs=[];
+  try{ defs=(typeof discoveredPIDDefs!=='undefined' && discoveredPIDDefs) ? discoveredPIDDefs.map(function(d){ return { pid:d.pid, name:d.name, unit:d.unit, min:d.min, max:d.max }; }) : []; }
+  catch(e){ console.warn('PLVisueel: keuzelijst onleesbaar voor het profiel', e); }
+  return { keuze:PF() ? PF().keuzes() : {}, defs:defs };
+}
+
+/* ── EEN PLEK ZELF KIEZEN (06-10-2026) ───────────────────────────
+   Tik op een plek van een profiel: een lijst met "Automatisch" en de
+   sensoren van deze auto, die met dezelfde eenheid bovenaan. De telemetrie
+   doet niet mee: die plekken zijn de telefoon, niet de auto. */
+function kandidaten(eenheid){
+  let lijst=[];
+  try{ lijst=(typeof discoveredPIDDefs!=='undefined' && discoveredPIDDefs) ? discoveredPIDDefs.slice() : []; }
+  catch(e){ console.warn('PLVisueel: keuzelijst onleesbaar', e); }
+  lijst=lijst.filter(function(d){
+    try{
+      if(typeof hiddenPIDs!=='undefined' && hiddenPIDs && hiddenPIDs.has(d.pid)) return false;
+      if(typeof plIsTelemetrie==='function' && plIsTelemetrie(d.pid)) return false;
+      if(typeof pidGate==='function' && !pidGate(d.pid,'kiesbaar',{})) return false;
+    }catch(e){ console.warn('PLVisueel: kandidaat '+d.pid+' niet te beoordelen', e); return false; }
+    return true;
+  });
+  const temp=/°/.test(String(eenheid||''));
+  const zelfde=function(d){ const u=String(d.unit||''); return temp ? /°/.test(u) : (u && u===eenheid); };
+  return lijst.filter(zelfde).concat(lijst.filter(function(d){ return !zelfde(d); }));
+}
+function kiesPlek(rol){
+  const P=PF(), pr=profielNu(); if(!P || pr==='basis' || pr==='telemetrie') return;
+  const z=P.voorInd(pr, _staat.ind && _staat.ind.profiel);
+  const x=z && z.plekken ? z.plekken.filter(function(q){ return q.rol===rol; })[0] : null; if(!x) return;
+  const nu=(P.keuzes()[pr+'/'+rol])||'';
+  const basis=P.zoek(pr).plekken.filter(function(q){ return q.rol===rol; })[0] || x;
+  let ov=el('plVisKies');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='plVisKies';
+    ov.setAttribute('role','dialog'); ov.setAttribute('aria-modal','true'); ov.setAttribute('aria-labelledby','plVisKiesTtl');
+    ov.addEventListener('click', function(e){ if(e.target===ov) ov.style.display='none'; });
+    document.body.appendChild(ov);
+  }
+  const rij=function(pid, naam, sub){
+    return '<button type="button" class="vk-rij'+(nu===pid?' aan':'')+'" data-pid="'+esc(pid)+'">'+
+      '<span>'+esc(naam)+'</span><small>'+esc(sub||'')+'</small></button>';
+  };
+  ov.innerHTML='<div class="vk-vel"><div class="vk-kop"><h2 id="plVisKiesTtl">'+esc(basis.naam)+'</h2>'+
+    '<button type="button" class="vk-sluit" aria-label="Sluiten" onclick="document.getElementById(\'plVisKies\').style.display=\'none\'">✕</button></div>'+
+    '<p class="vk-uitleg">Kies welke sensor op deze plek staat. Automatisch neemt de vaste sensor, of een eigen sensor met dezelfde naam.</p>'+
+    rij('', 'Automatisch', nu ? '' : 'nu gekozen')+
+    kandidaten(basis.eenheid).map(function(d){ return rij(d.pid, d.name, (d.unit||'')+' · '+d.pid); }).join('')+'</div>';
+  ov.querySelectorAll('.vk-rij').forEach(function(b){
+    b.onclick=function(){
+      P.zetKeuze(pr, rol, b.getAttribute('data-pid'));
+      ov.style.display='none';
+      const g=el('gGrid');
+      if(g && typeof pidViewMode!=='undefined' && pidViewMode==='visueel') bouw(g, 'keuze');
+    };
+  });
+  ov.style.display='flex';
+}
 function profielKnop(){
   const P=PF(); if(!P) return '';
   const nu=profielNu(), z=P.zoek(nu), vlg=P.zoek(P.volgende(nu));
@@ -659,7 +720,7 @@ function indeling(){
   PLEKKEN.forEach(function(r){ ind.plekken[r.rol]=(r.rol==='pedaal') ? kiesPedaal() : eerste(r.keten); });
   ind.trek = trekAan() ? trekIndeling(bruikbaar, turboBewezen()) : null;
   const pr=profielNu();
-  ind.profiel = (pr!=='basis' && PF()) ? PF().indeling(pr, bruikbaar, motor) : null;
+  ind.profiel = (pr!=='basis' && PF()) ? PF().indeling(pr, bruikbaar, motor, profielOpts()) : null;
   return ind;
 }
 function gebruiktePids(ind){
@@ -1039,6 +1100,7 @@ const ONDER_ICOON = { olie:'olie', laaddruk:'turbo' };
      testrun   de testrun liep, met dezelfde keuze
      indeling  de tik zag een andere indeling (traag pedaal, turbo, trekmodus)
      profiel   de klant tikte op "Volgende" (een andere weergave, 02-10-2026)
+     keuze     de klant koos zelf een sensor voor een plek (06-10-2026)
      scherm    niets van dat alles: een hertekening die niemand vroeg
    Alleen de laatste twee ziet een klant zonder dat hij er zelf om vroeg. */
 const HERBOUW_KLANT = ['indeling', 'scherm'];
@@ -1078,6 +1140,13 @@ function bouw(g, reden){
       '<button class="vis-voet" type="button" onclick="setPidView(\'slim\')">Overige sensoren staan in <b>Slim →</b></button></div>';
     _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
     meldBij(); lampjesBij(); trekBij();
+    // Tik op een plek: zelf een sensor kiezen (06-10-2026). Eén luisteraar op
+    // het vak; de plekken dragen hun rol in hun id (vpf-p-<rol>).
+    const vak=g.querySelector('.vpf');
+    if(vak && ind.profiel.id!=='telemetrie') vak.addEventListener('click', function(e){
+      const t=e.target && e.target.closest ? e.target.closest('[id^="vpf-p-"]') : null;
+      if(t) kiesPlek(t.id.slice(6));
+    });
     return;
   }
   if(!ind.naald){
@@ -1458,7 +1527,7 @@ window.PLVisueel = {
   sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, herbouwKlant:herbouwKlant, maat:maat,
   rijVenster:rijVenster, VENSTER_MS:VIS_VENSTER_MS, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
   remt:remt, isOud:isOud, bouw:bouw, bij:bij, tik:tik, start:start, stop:stop,
-  volgende:volgende, profiel:profielNu,
+  volgende:volgende, profiel:profielNu, kiesPlek:kiesPlek, kandidaten:kandidaten, profielOpts:profielOpts,
   ververs:function(){ if(!_staat.aan) return; _staat.meldSleutel=''; meldBij(); },
   staat:function(){ return { aan:_staat.aan, start:_staat.start, traag:Array.from(_staat.traag),
                              turboVast:_staat.turboVast, gebruik:Array.from(_staat.gebruik), ind:_staat.ind, rijdtSinds:_staat.rijdtSinds }; }

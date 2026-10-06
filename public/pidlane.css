@@ -3062,3 +3062,21 @@ html.dark .plh-i, #loginOv .plh-i, .mbtn.p > .plh-i, .pl-check > .plh-i {
 .plh-tip p { margin:0 0 8px; }
 .plh-tip-x { position:absolute; top:4px; right:4px; width:34px; height:34px; border:none; background:none; color:var(--tx3); font-size:16px; cursor:pointer; }
 .plh-tip-meer { border:none; background:none; color:var(--bl); font:inherit; font-weight:700; padding:6px 0; cursor:pointer; }
+
+/* ── Slim visueel: een plek zelf kiezen (06-10-2026) ── */
+.vpf [id^="vpf-p-"] { cursor:pointer; }
+#plVisKies { position:fixed; inset:0; z-index:var(--z-modal); display:flex; align-items:flex-end; justify-content:center; background:rgba(0,0,0,.5); }
+#plVisKies .vk-vel { width:100%; max-width:480px; max-height:80vh; overflow:auto; background:var(--sur); color:var(--tx); border-radius:16px 16px 0 0;
+  padding:14px 16px calc(16px + var(--pl-sab, 0px)); box-sizing:border-box; }
+#plVisKies .vk-kop { display:flex; align-items:center; }
+#plVisKies h2 { flex:1; margin:0; font-size:18px; }
+#plVisKies .vk-sluit { background:none; border:0; color:inherit; font-size:20px; padding:4px 8px; cursor:pointer; }
+#plVisKies .vk-uitleg { margin:6px 0 10px; font-size:13px; color:var(--tx2); }
+#plVisKies .vk-rij { display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; min-height:44px; padding:8px 10px; margin:0 0 4px;
+  background:var(--sur2); color:var(--tx); border:1px solid transparent; border-radius:10px; text-align:left; font-size:15px; cursor:pointer; }
+#plVisKies .vk-rij span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#plVisKies .vk-rij small { flex:none; font-size:12px; color:var(--tx2); }
+#plVisKies .vk-rij.aan { border-color:var(--bl); }
+.vpf-tel-nul { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:44px; margin-top:10px; padding:8px 12px;
+  background:var(--sur2); color:var(--tx); border:1px solid var(--bd2); border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; }
+.vpf-tel-nul small { font-weight:400; font-size:12px; color:var(--tx2); }

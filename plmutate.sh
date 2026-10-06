@@ -1716,8 +1716,14 @@ MUTATIES=(
 "public/pidlane-motortype.js@@  if(window.PLDemo && PLDemo.actief() && !PLDemo.volledig()){@@  if(window.PLDemo && PLDemo.actief()){@@test-demozandbak.js@@de beheerdersdemo slaat geen bestanden op — #409"
 # ── diesel: eigen sensoren op dezelfde weergaven (#393) ──
 "public/pidlane-visprofiel.js@@  if(motor!=='diesel') return p.plekken;@@  return p.plekken;@@test-visprofiel.js@@een diesel krijgt weer lambda rond 1,00, de brandstoftrims en de ontsteking — #393"
-"public/pidlane-visprofiel.js@@function ketens(id, motor){\n  const p=voor(id, motor);@@function ketens(id, motor){\n  const p=zoek(id);@@test-visprofiel.js@@Slim visueel zet op een diesel de roetfilter-PIDs niet aan: het scherm blijft leeg — #393"
-"public/pidlane-visueel.js@@PF().indeling(pr, bruikbaar, motor)@@PF().indeling(pr, bruikbaar)@@test-visprofiel.js@@Slim visueel geeft de motorsoort niet door: een diesel ziet de benzinekaart — #393"
+"public/pidlane-visprofiel.js@@function ketens(id, motor, opts){\n  const p=voor(id, motor);@@function ketens(id, motor, opts){\n  const p=zoek(id);@@test-visprofiel.js@@Slim visueel zet op een diesel de roetfilter-PIDs niet aan: het scherm blijft leeg — #393"
+"public/pidlane-visueel.js@@PF().indeling(pr, bruikbaar, motor, profielOpts())@@PF().indeling(pr, bruikbaar, undefined, profielOpts())@@test-visprofiel.js@@Slim visueel geeft de motorsoort niet door: een diesel ziet de benzinekaart — #393"
+# ── Slim visueel: een plek zelf invullen (06-10-2026) ──
+"public/pidlane-visprofiel.js@@eenheid:'°', soort:'thermo', lo:40, hi:150, dec:0, zoek:/olie|oil/i },@@eenheid:'°', soort:'thermo', lo:40, hi:150, dec:0 },@@test-visprofiel.js@@OLIE blijft leeg op de CX-5 terwijl de eigen motorolietemperatuur er is"
+"public/pidlane-visprofiel.js@@      if(x.keten.indexOf(q)<0 && (bezet.indexOf(q)>=0 || eigen.indexOf(q)>=0)) continue;@@@@test-visprofiel.js@@een gekozen sensor staat twee keer in beeld, op zijn eigen plek en op de gekozen"
+"public/pidlane-visprofiel.js@@  if(kz) k.push(kz);@@@@test-visprofiel.js@@de eigen keuze voor een plek wordt bewaard maar nooit getekend"
+"public/pidlane-visprofiel.js@@function html(id, ind){\n  const p=voorInd(id, ind);@@function html(id, ind){\n  const p=voor(id, ind && ind.motor);@@test-visprofiel.js@@een gekozen accuspanning staat op BUITEN met het label Buiten en de schaal in graden"
+"public/pidlane-visueel.js@@      if(t) kiesPlek(t.id.slice(6));@@      if(t) void 0;@@bproef-visplek.js@@tikken op een plek van Slim visueel doet niets: de keuzelijst opent nooit"
 "public/pidlane-visprofiel.js@@        diesel:{ hi:6000 } },@@        diesel:{} },@@test-visprofiel.js@@de neonring van een diesel loopt tot 8000 tpm: 3000 staat er als bijna stationair — #393"
 "public/pidlane-functietest.js@@    plekkenVan(p, brandstof).forEach(@@    p.plekken.forEach(@@test-functietest.js@@de Full function test beoordeelt een diesel op de benzinekaart — #393"
 )

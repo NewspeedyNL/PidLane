@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Slim visueel: een lege plek zelf invullen, Nulstellen op Telemetrie
+ ═══════════════════════════════════════════════════════════
+
+ - Een plek met `zoek` neemt ook een eigen sensor met een passende naam:
+   op de CX-5 komt de eigen motorolietemperatuur (221310) op OLIE.
+ - Tik op een plek: kies zelf een sensor, of Automatisch. Bewaard per
+   toestel (pl_vis_keuze); een andere grootheid krijgt eigen naam en schaal.
+   Een keuze staat nooit dubbel in beeld.
+ - Telemetrie: knop Nulstellen onder het scherm. Handleiding bijgewerkt.
+ - test-visprofiel.js, nieuwe bproef-visplek.js, vijf mutaties; twee oude
+   mutatie-ankers hersteld.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Banden: één regel in de sensorlijst, elke vijf minuten (#396)
  ═══════════════════════════════════════════════════════════
 

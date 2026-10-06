@@ -15,6 +15,28 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — Lege plekken in Slim visueel
+
+**Uit het gebruik, 22:16, op de CX-5.** Op het temperatuurscherm bleven OLIE
+en BUITEN leeg: geen 015C en geen 0146. "5 sensoren is vol en alles OK, maar
+2 lege balkjes is niets." De auto heeft wel een motorolietemperatuur, maar
+als eigen PID (221310 op 7E0). De ketens kenden alleen mode 01.
+
+**Wat nu.** Een plek met `zoek` neemt ook een eigen sensor waarvan de naam
+past. En elke plek is met de hand te kiezen. Eén regel kwam uit de bestaande
+test: de telemetrie zet TL01 met opzet op twee plekken, de horizon en het
+autootje. Een eerste "nooit dubbel" brak dat. De regel is nu: alleen een
+sensor van búíten de eigen keten (een keuze of een naamtreffer) mag niet
+dubbel staan.
+
+**Ook gevonden.** De mutatie "Slim visueel geeft de motorsoort niet door"
+had als anker `PF().indeling(pr, bruikbaar, motor)`. Na een vierde argument
+paste dat anker nog steeds, maar de vervanging maakte er een syntaxfout van.
+De test werd dus rood om de verkeerde reden. Een mutatie die "gevangen"
+zegt, bewijst alleen iets als hij de bedoelde fout nabouwt.
+
+---
+
 ## 06-10-2026 — Banden elke vijf minuten, als één regel (#396, vervolg)
 
 **Wat er gebeurde.** Op 06-10 om 21:56, vóór de testrun, stonden de acht
