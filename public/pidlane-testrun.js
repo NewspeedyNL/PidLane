@@ -2771,6 +2771,22 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── G-cirkel: zij-G volgt het gevoel, piekballetje (#407) ──
+  {
+    issue: '#407',
+    naam: 'G-cirkel: rechts sturen zet de stip links, en een piek blijft 3 s staan',
+    waarom: 'Achter het stuur kijk je niet continu naar het scherm; een hard rem- of stuurmoment moet na een korte blik nog te zien zijn.',
+    proef: async function () {
+      var P = window.PLVisProfiel;
+      if (!P || typeof P.gPiek !== 'function' || typeof P.gPunt !== 'function') return { staat: 'FOUT', detail: 'PLVisProfiel.gPiek of gPunt ontbreekt — pidlane-visprofiel.js is niet de nieuwe' };
+      if (!(Number(P.gPunt(0.25, 0).cx) < 100)) return { staat: 'FOUT', detail: '0,25 g naar rechts gestuurd staat op cx ' + P.gPunt(0.25, 0).cx + ' — hoort links van 100' };
+      var pk = P.gPiek(P.gPiek(null, 0, -0.9, 0), 0, -0.1, 1000);
+      if (pk.y !== -0.9) return { staat: 'FOUT', detail: 'de piek viel binnen 3 s terug' };
+      if (!document.getElementById('vpf-f-gpiek')) return { staat: 'LET OP', detail: 'gedrag klopt; het balletje zelf staat alleen in Slim visueel → G-cirkel — nodig: open die weergave en draai opnieuw' };
+      return { staat: 'OK', detail: 'zij-G gespiegeld, piek ' + P.G_PIEK_MS / 1000 + ' s, balletje in beeld' };
+    }
+  },
+
   // ── een gekozen berekende PID houdt zijn bronnen (#392) ──
   {
     issue: '#392',

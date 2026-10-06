@@ -273,6 +273,9 @@ function nulstellen(){
   }
   try{ if (typeof log==='function') log('📐 Telemetrie: nulstand vastgelegd — helling en kanteling zijn nu 0°','info'); }
   catch(e){ console.warn('PLTelemetrie: logregel', e); }
+  // Het piekballetje van de G-cirkel hoort bij de oude stand (#407).
+  try{ if (typeof window.dispatchEvent==='function') window.dispatchEvent(new CustomEvent('pl:telemetrie-genuld')); }
+  catch(e){ console.warn('PLTelemetrie: Nulstellen niet doorgegeven aan de G-cirkel', e); }
   return true;
 }
 function genuld(){ return !!_nul; }

@@ -161,8 +161,24 @@ console.log('\n7. Telemetrie: de tekening draait mee (05-10-2026)');
   const indG = P.indeling('tel-g', () => true);
   P.bij('tel-g', indG, 'TL03', -0.5, 'ok'); P.bij('tel-g', indG, 'TL04', 0.25, 'ok');
   const st = els['vpf-f-gstip'].attr;
-  waar('G-cirkel: 0,5 g remmen = 40 px omlaag, 0,25 g rechts = 20 px rechts', st.cy === '140.0' && st.cx === '120.0', JSON.stringify(st));
+  // Zij-G volgt het gevoel (#407): rechts sturen (TL04 = +0,25) duwt je naar links.
+  waar('G-cirkel: 0,5 g remmen = 40 px omlaag, 0,25 g naar rechts gestuurd = 20 px naar LINKS (#407)', st.cy === '140.0' && st.cx === '80.0', JSON.stringify(st));
   waar('G-cirkel: de getallen staan eronder', els['vpf-w-lengte'] && els['vpf-w-lengte'].textContent === '−0,50', els['vpf-w-lengte'] && els['vpf-w-lengte'].textContent);
+  const pk = els['vpf-f-gpiek'];
+  let weg = false; pk.classList.toggle = function (c, aan) { if (c === 'weg') weg = !!aan; };
+  P.bij('tel-g', indG, 'TL03', -0.9, 'ok');   // hard remmen
+  P.bij('tel-g', indG, 'TL03', -0.1, 'ok');   // los
+  waar('piekballetje: blijft op de hardste rem staan (0,9 g = 72 px omlaag) terwijl de stip terugveert',
+    pk.attr.cy === '172.0' && st.cy === '108.0' && weg === false, JSON.stringify({ piek: pk.attr, stip: st, weg }));
+  T.PLVisProfiel.gWis();
+  waar('piekballetje: Nulstellen wist hem', weg === true && st.cx === '100.0' && st.cy === '100.0', JSON.stringify({ stip: st, weg }));
+  const G = T.PLVisProfiel.gPiek;
+  let p1 = G(null, 0.1, -0.8, 0);
+  p1 = G(p1, 0, -0.2, 1000);
+  waar('gPiek: binnen 3 s wint de grootste uitslag', p1.y === -0.8, JSON.stringify(p1));
+  p1 = G(p1, 0, -0.2, 3500);
+  waar('gPiek: na 3 s valt hij terug naar de huidige stand', p1.y === -0.2 && p1.t === 3500, JSON.stringify(p1));
+  waar('gPiek: lengte en zij tellen samen (0,6 bij 0,6 is groter dan 0,8)', G({ x: 0, y: -0.8, t: 0 }, 0.6, 0.6, 100).x === 0.6);
 }
 
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + (ok + fout) : 'goed: ' + ok + ' ok, 0 fout'));
