@@ -32,7 +32,7 @@
      dat wordt in window.APP_TOKEN gezet en als X-App-Token meegestuurd naar
      alle proxy-routes. Vóór login is het token leeg — dat hoort zo. */
   try{ window.APP_TOKEN = window.APP_TOKEN || ''; }catch(e){ window.APP_TOKEN=''; }
-  try{ if(typeof AIRTABLE_URL==='undefined') window.AIRTABLE_URL='https://pidlane-proxy.newspeedynl.workers.dev/airtable/log'; }catch(e){}
+  try{ if(typeof AIRTABLE_URL==='undefined') window.AIRTABLE_URL='https://pidlane-proxy.newspeedynl.workers.dev/airtable/log'; }catch(e){ /* stil: draait vóór log(); de log-URL blijft dan leeg */ }
 
   /* ── REMOTE CONFIG (admin-dashboard) ──────────────────────────────
      Hardcoded fallback zodat de app ALTIJD werkt, ook zonder internet of
@@ -58,7 +58,7 @@
   try{
     const _c=localStorage.getItem('pl_remote_config');
     if(_c){ const o=JSON.parse(_c); if(o&&typeof o==='object') window.PID_CONFIG={...window.PID_CONFIG,...o}; }
-  }catch(e){}
+  }catch(e){ /* stil: draait vóór log(); onleesbare bewaarde config = de vaste terugval hierboven */ }
 </script>
 <link rel="stylesheet" href="pidlane.css"><!-- hoofd-CSS → pidlane.css -->
 </head>
@@ -175,7 +175,7 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
          waar een Play-reviewer als eerste kijkt, en het is dezelfde stille
          versieleugen als in package.json: een verkeerd getal dat niemand
          controleert. Liever een vraagteken — dat valt op, een fout getal niet. -->
-    <script>try{var _lv=document.getElementById('loginVer');if(_lv)_lv.textContent='v'+(typeof APP_VERSION!=='undefined'?APP_VERSION:'?');}catch(e){}
+    <script>try{var _lv=document.getElementById('loginVer');if(_lv)_lv.textContent='v'+(typeof APP_VERSION!=='undefined'?APP_VERSION:'?');}catch(e){ /* stil: alleen het versielabel op het inlogscherm */ }
 
 /* ── De buildregel op het inlogscherm (27-08-2026) ───────────────────
    AANLEIDING. Op 26-08 is een hele rit verloren gegaan: het toestel draaide
@@ -238,29 +238,29 @@ try{
    modules bijkomen. localStorage blijft bewust ongemoeid: daar staan de
    sessie, favorieten en instellingen in — dat is geen cache. */
 window.plHardReload = async function(btn){
-  const zet=(t)=>{ try{ if(btn){ btn.textContent=t; btn.disabled=true; } }catch(e){} };
+  const zet=(t)=>{ try{ if(btn){ btn.textContent=t; btn.disabled=true; } }catch(e){ /* stil: alleen de knoptekst; herladen gaat door */ } };
   zet('⏳ Ophalen…');
   const urls=new Set([location.pathname]);
   try{
     document.querySelectorAll('script[src]').forEach(x=>{ if(x.src) urls.add(x.src); });
     document.querySelectorAll('link[rel="stylesheet"][href]').forEach(x=>{ if(x.href) urls.add(x.href); });
-  }catch(e){}
+  }catch(e){ console.warn('Hard herladen: bestandenlijst onvolledig', e); }
   // Service workers en Cache Storage gebruikt de webversie niet, maar de
   // Capacitor-WebView kan ze wél hebben. Opruimen kost hier niets.
   try{ if(navigator.serviceWorker){
     const rs=await navigator.serviceWorker.getRegistrations();
-    for(const r of rs){ try{ await r.unregister(); }catch(e){} }
-  } }catch(e){}
+    for(const r of rs){ try{ await r.unregister(); }catch(e){ console.warn('Hard herladen: service worker niet afgemeld', e); } }
+  } }catch(e){ console.warn('Hard herladen: service workers niet op te vragen', e); }
   try{ if(window.caches){
     const ks=await caches.keys();
     await Promise.all(ks.map(k=>caches.delete(k).catch(()=>{})));
-  } }catch(e){}
+  } }catch(e){ console.warn('Hard herladen: cache niet geleegd', e); }
   // Elk bestand vers ophalen. Fouten negeren, zodat één 404 de rest niet blokkeert.
   // De ETag van elk antwoord gaat de app-log in. Die log overleeft het herladen,
   // dus je kunt na afloop zien wélk bestand daadwerkelijk veranderd is — precies
   // wat je anders alleen kunt raden als er half oude, half nieuwe modules draaien.
   let res=[];
-  try{ res=await Promise.all([...urls].map(u=>fetch(u,{cache:'reload'}).then(r=>[u,r]).catch(()=>null))); }catch(e){}
+  try{ res=await Promise.all([...urls].map(u=>fetch(u,{cache:'reload'}).then(r=>[u,r]).catch(()=>null))); }catch(e){ console.warn('Hard herladen: bestanden niet vers opgehaald', e); }
   try{
     if(typeof log==='function'){
       log('🔄 Verse kopie opgehaald van '+res.filter(Boolean).length+' bestanden:','info');
@@ -270,7 +270,7 @@ window.plHardReload = async function(btn){
         log('   '+naam+' → '+stamp,'info');
       });
     }
-  }catch(e){}
+  }catch(e){ console.warn('Hard herladen: versiestempels niet gelogd', e); }
   zet('✅ Herladen…');
   const u=new URL(location.href);
   u.searchParams.set('fris', Date.now().toString(36));
@@ -283,8 +283,8 @@ window.plHardReload = async function(btn){
 // Sluitroute voor het verbindscherm. Naast verbergen dooft dit de
 // golfachtergrond: die hoort bij het inlog-/verbindscherm en niet bij de app.
 function closeConnOv(){
-  try{ document.getElementById('connOv').classList.add('hidden'); }catch(e){}
-  try{ document.getElementById('lgWaveBg').classList.add('off'); }catch(e){}
+  try{ document.getElementById('connOv').classList.add('hidden'); }catch(e){ /* stil: element kan al weg zijn */ }
+  try{ document.getElementById('lgWaveBg').classList.add('off'); }catch(e){ /* stil: element kan al weg zijn */ }
 }
 </script>
 <!-- ══ VERBINDSCHERM — zelfde vormtaal als het inlogscherm ══ -->
@@ -902,7 +902,7 @@ function closeConnOv(){
     </div>
     <div class="sys-drop" id="tprDetail">
       <!-- 1️⃣ Voertuig-chip: dot (rood=geen auto, oranje=dossier onvolledig, groen=compleet) + naam -->
-      <div class="tchip" id="vchip" onclick="closeSysStatus();try{openVehicleOverview()}catch(e){}" title="Voertuig &amp; gevonden informatie">
+      <div class="tchip" id="vchip" onclick="closeSysStatus();try{openVehicleOverview()}catch(e){console.warn('Voertuigoverzicht niet geopend',e)}" title="Voertuig &amp; gevonden informatie">
         <div class="tdot r" id="vdot"></div><span class="sys-naam"><b>Auto-dossier</b><small id="vSub">nog geen auto herkend</small></span><span id="vchipLbl" hidden></span><div id="vtag"></div>
       </div>
       <!-- 2️⃣ OBD-chip: dot (rood=niet verbonden, oranje=traag/demo, groen=snel) -->
@@ -910,13 +910,13 @@ function closeConnOv(){
         <div class="dot" id="sdot"></div><span class="sys-naam"><b>Adapter (OBD)</b><small id="obdSub">niet verbonden — tik om te verbinden</small></span><span id="stxt" style="display:none">Niet verbonden</span>
       </div>
       <!-- 3️⃣ AI-chip: dot (groen=AI bereikbaar, rood=geen AI) -->
-      <div class="tchip" id="aiChip" onclick="closeSysStatus();try{openApiDialog()}catch(e){}" title="AI-verbinding">
+      <div class="tchip" id="aiChip" onclick="closeSysStatus();try{openApiDialog()}catch(e){console.warn('AI-venster niet geopend',e)}" title="AI-verbinding">
         <div class="tdot r" id="adot"></div><span class="sys-naam"><b>AI-uitleg</b><small id="aiSub">geen AI-verbinding</small></span>
       </div>
       <!-- 4️⃣ Run-chip: dot (grijs=niets draait, groen=achtergrondtaak actief).
            Vijf dingen konden aanstaan zonder dat het ergens zichtbaar was;
            hier staat wat er loopt en gaat het uit. Zie pidlane-run.js -->
-      <div class="tchip" id="runChip" onclick="closeSysStatus();try{PLRun.open()}catch(e){}" title="Niets actief op de achtergrond">
+      <div class="tchip" id="runChip" onclick="closeSysStatus();try{PLRun.open()}catch(e){console.warn('Achtergrondoverzicht niet geopend',e)}" title="Niets actief op de achtergrond">
         <div class="tdot" id="rdot"></div><span class="sys-naam"><b>Achtergrond</b><small id="runSub">niets loopt — tik om iets te starten</small></span><span id="runTel" style="font-weight:800;color:var(--gn)"></span>
       </div>
     </div>
@@ -1206,7 +1206,7 @@ function closeConnOv(){
                verwijderd, dus staat de schakelaar nu hier op de pane zelf. De
                monitor start altijd UIT (zie pidlane-monitor.js), meten blijft
                een bewuste handeling. -->
-          <button id="monPaneToggle" onclick="try{toggleRitMonitor()}catch(e){}" style="margin-top:10px;display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:10px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">🔕 Rit-monitor aanzetten</button>
+          <button id="monPaneToggle" onclick="try{toggleRitMonitor()}catch(e){console.warn('Rit-monitor niet omgezet',e)}" style="margin-top:10px;display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:10px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">🔕 Rit-monitor aanzetten</button>
         </div>
         <div id="monStatus" class="mon-status slaap">
           <div class="mon-dot"></div>
@@ -1239,7 +1239,7 @@ function closeConnOv(){
           <div class="mon-tip-live" id="monTipLive">⛽ Zuinig rijden — advies verschijnt zodra je rijdt.</div>
           <div class="mon-tip-alg" id="monTipAlg">—</div>
         </div>
-        <div class="mon-warnkop"><span>⚠️ Waarschuwingen &amp; onderbouwing</span><button class="btn" style="padding:5px 11px;font-size:12px" onclick="try{PLMon.report();showToast?.('Monitorrapport opgeslagen in 📄 Rapporten')}catch(e){}">📄 Rapport nu</button></div>
+        <div class="mon-warnkop"><span>⚠️ Waarschuwingen &amp; onderbouwing</span><button class="btn" style="padding:5px 11px;font-size:12px" onclick="try{PLMon.report();showToast?.('Monitorrapport opgeslagen in 📄 Rapporten')}catch(e){console.warn('Monitorrapport niet opgeslagen',e)}">📄 Rapport nu</button></div>
         <div id="monWarnLijst"><div class="mon-leeg">✅ Nog geen afwijkingen.<br>De monitor let op: verborgen (pending) foutcodes, sensor-uitval, bevroren waarden, onmogelijke sprongen, scheve brandstoftrim, oververhitting en laadspanning — elk alleen getoetst wanneer de rij-situatie dat toelaat.</div></div>
       </div>
 
@@ -2077,7 +2077,7 @@ window.PLWake=(function(){
   let lock=null;
   function pillOn(id){try{const p=document.getElementById(id);return !!(p&&p.style.display==='flex');}catch(_){return false;}}
   function needed(){
-    try{if(typeof connected!=='undefined'&&connected&&!(typeof demoMode!=='undefined'&&demoMode))return true;}catch(_){}
+    try{if(typeof connected!=='undefined'&&connected&&!(typeof demoMode!=='undefined'&&demoMode))return true;}catch(_){ /* stil: dan beslissen de pills hieronder */ }
     if(pillOn('remPill'))return true;        // diagnose delen actief (ook in demo)
     if(pillOn('remDrivePill'))return true;   // expert draait op remote data
     return false;
@@ -2088,12 +2088,12 @@ window.PLWake=(function(){
     try{
       lock=await navigator.wakeLock.request('screen');
       lock.addEventListener('release',()=>{lock=null;});   // OS kan 'm afpakken
-      try{log('🔆 Scherm blijft aan zolang de verbinding/sessie loopt','info');}catch(_){}
+      try{log('🔆 Scherm blijft aan zolang de verbinding/sessie loopt','info');}catch(_){ /* stil: melding mag nooit de stroom breken */ }
     }catch(_){lock=null;}
   }
   function release(){
     try{if(lock){const l=lock;lock=null;l.release();
-      try{log('🔅 Scherm-aan-bewaking vrijgegeven','info');}catch(_){}
+      try{log('🔅 Scherm-aan-bewaking vrijgegeven','info');}catch(_){ /* stil: melding mag nooit de stroom breken */ }
     }}catch(_){lock=null;}
   }
   async function sync(){ if(needed()) await acquire(); else release(); }
@@ -2104,9 +2104,9 @@ window.PLWake=(function(){
   if(!window._wakeSyncTimer) window._wakeSyncTimer=setInterval(sync,15000);   // vangnet: status elke 15s her-evalueren
   try{ // direct reageren op verbinden/verbreken
     if(typeof setConn==='function'){const _s=setConn;
-      setConn=function(on){const r=_s.apply(this,arguments);try{sync();}catch(_){}return r;};
+      setConn=function(on){const r=_s.apply(this,arguments);try{sync();}catch(_){console.warn('Scherm-aan niet bijgewerkt na setConn',_);}return r;};
       window.setConn=setConn;}
-  }catch(_){}
+  }catch(_){ console.warn('Scherm-aan volgt setConn niet — het vangnet van 15 s blijft', _); }
   return {sync};
 })();
 </script>
