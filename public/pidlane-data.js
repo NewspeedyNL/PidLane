@@ -823,7 +823,8 @@ Object.assign(ALL_PID_DEFS,{
   // plus vier 16-bits waarden op 0,1 °C met -40); hier de inlaat van bank 1.
   // Voedt de roetfilterteller CA12 in pidlane-berekend.js. Niet met meetdata
   // bevestigd — de blok-5-proef "Berekende PIDs" zegt of hij antwoordt.
-  '017C':{name:'DPF temperatuur inlaat B1', unit:'°C', cat:'Emissie', min:-40,max:6513,parse:b=>((b[0]&1)?(((b[1]*256+b[2])*0.1)-40):null)},
+  // 017C stond hier tot 06-10-2026 twee keer (Emissie en Temp); de tweede won
+  // stil. Die blijft, zodat de app niets anders toont dan hij deed.
   '017C':{name:'DPF inlaattemp B1',      unit:'°C',  cat:'Temp',     min:-40,max:6513,parse:b=>((b[0]&1)?(((b[1]*256+b[2])*0.1)-40):null)},
   '017D':{name:'NOx NTE status',         unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
   '017E':{name:'PM NTE status',          unit:'code',cat:'Emissie',  min:0,max:255,  parse:b=>b[0]},
@@ -952,7 +953,7 @@ window.PID_BYTE_LEN ={
   '78':9,'79':9,'7A':7,'7B':7,'7C':9,'7D':1,'7E':1,'7F':13,'80':4,'A0':4,'C0':4,
   // 26-09-2026: de PIDs boven 80 die sinds de correctie een definitie hebben
   // (zie ALL_PID_DEFS). Lengtes uit de SAE-indeling: steunbyte plus velden.
-  '83':9,'84':1,'85':10,'86':5,'87':5,'8B':7,'8D':1,'8E':1,'9E':2,'A2':2,'A6':4,
+  '83':9,'84':1,'85':10,'86':5,'87':5,'8B':7,'8D':1,'8E':1,'9E':2,'A2':2,
   // A6 = odometer, 4 bytes (J1979). Stond er niet in, en daardoor viel
   // pidByteLen('A6') terug op de bodem van één byte. Zolang veldlab dat PID
   // zelf uitpakte viel dat niet op; sinds #116 loopt het via
