@@ -484,6 +484,12 @@ async function logout(){
   // uitgelogd. De log bewaren kan gewoon vooraf met de hand, via Admin → log
   // delen; uitloggen hoeft daar niet naar te vragen. Gedrag is nu gelijk aan
   // wat "Annuleren" deed: direct uitloggen, niets exporteren.
+  // Het live-log hoort bij de beheerder die inlogde (liveLogStart bij het
+  // inloggen). Zonder stop schreef het door in de sessie van wie er daarna
+  // inlogde, en liep zijn timer van 4 s nooit af (06-10-2026). Niet
+  // afwachten: de laatste regels gaan nog mee, uitloggen wacht er niet op.
+  try{ if(typeof liveLogStop==='function') Promise.resolve(liveLogStop()).catch(e=>console.warn('Live-log niet netjes gestopt bij uitloggen', e)); }
+  catch(e){ console.warn('Live-log niet gestopt bij uitloggen — hij schrijft door tot de app sluit', e); }
   currentUser = null;
   window.currentUser = null;
   // Chip opnieuw beoordelen, en pas HIER (#52). vergeetKlant() hierboven doet
@@ -1062,13 +1068,23 @@ async function flushAirtable(){
 // ════════════════════════════════════════
 //  BUGMELDER — Airtable (Type=bug) + e-mail-fallback
 // ════════════════════════════════════════
+/* De verbindstaat voor de bugmelding (06-10-2026). Tot die datum las
+   _bugDiag() `isConnected`, een naam die nergens bestaat: elke bugmelding zei
+   "Verbinding: onbekend". De vlag heet `connected`, en de demo telt apart —
+   een melding uit de demo is geen melding over een echte auto. Puur genoeg om
+   los te toetsen: test-bugdiag.js. */
+function _bugVerbinding(){
+  if(typeof connected==='undefined') return 'onbekend';
+  if(!connected) return 'niet verbonden';
+  return (typeof demoMode!=='undefined' && demoMode) ? 'demo' : 'verbonden';
+}
 function _bugDiag(){
   let android='?', plat='web', native=false;
   try{ const c=window.Capacitor; native=!!c?.isNativePlatform?.(); plat=c?.getPlatform?.()||'web';
     const m=navigator.userAgent.match(/Android\s+([\d.]+)/); if(m) android=m[1]; }catch(e){ console.warn('Android-versie niet uit te lezen voor de bugmelding, blijft op "?"', e); }
   const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
   let conn='onbekend';
-  try{ if(typeof isConnected!=='undefined') conn=isConnected?'verbonden':'niet verbonden'; }catch(e){ console.warn('Verbindingsstatus niet uit te lezen voor de bugmelding, blijft op "onbekend"', e); }
+  try{ conn=_bugVerbinding(); }catch(e){ console.warn('Verbindingsstatus niet uit te lezen voor de bugmelding, blijft op "onbekend"', e); }
   let lastErr='';
   try{ lastErr=(_btLog||[]).filter(l=>l.type==='err'||l.type==='warn').slice(-3).map(l=>l.msg).join(' | '); }catch(e){ console.warn('Laatste fouten niet uit de BT-log te halen voor de bugmelding', e); }
   return {

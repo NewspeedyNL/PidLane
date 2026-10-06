@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Brede controle: vier stille fouten en twee eigen restpunten
+ ═══════════════════════════════════════════════════════════
+
+ - Bugmelding: "Verbinding" was altijd "onbekend" (las isConnected, die niet
+   bestaat). Nu _bugVerbinding(): verbonden, niet verbonden of demo.
+ - Rapport zonder AI: de regel over PIDs zonder data verscheen nooit (las
+   window._deadPIDs). Nu _rapportDodePids() op _pidDead.
+ - Uitloggen stopt het live-log; het schreef door in de volgende sessie.
+ - pidlane-data.js: 017C en A6 stonden twee keer; test-dubbelesleutels.js.
+ - Banden: met de ronde van vijf minuten is een meting na 15 min dof, niet
+   pas na 30. Commentaar bij EIGEN_PER_RONDE bijgewerkt.
+ - test-meldregels.js, test-afmelden.js, test-banden.js, zeven mutaties.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Slim visueel: een lege plek zelf invullen, Nulstellen op Telemetrie
  ═══════════════════════════════════════════════════════════
 

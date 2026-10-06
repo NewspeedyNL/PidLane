@@ -15,6 +15,53 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — Brede controle op dode aanroepen, dubbelingen en fix op fix
+
+**Hoe.** Alle 70 app-modules in laadvolgorde, de inline scripts van
+`index.html` en `worker.js` met een JS-parser doorgelopen (in de scratchpad,
+niet in de repo). Gezocht naar: globale namen die twee keer gedeclareerd
+worden, functies die nergens worden aangeroepen, `typeof X` en `window.X` op
+iets dat nergens gezet wordt, dubbele objectsleutels, lege catches, en
+functies die een andere module overschrijft. Daarna elke treffer met de hand
+nagekeken: veel waren functieparameters of id's die als `'grf_' + id`
+gebouwd worden.
+
+**Gerepareerd (deze PR).** De bugmelding las `isConnected` en zei dus
+altijd "onbekend". Het rapport zonder AI las `window._deadPIDs` en meldde
+dus nooit dode PIDs. `liveLogStop()` werd nergens aangeroepen, waardoor het
+live-log van een beheerder doorschreef na het uitloggen. `017C` en `A6`
+stonden twee keer in hun tabel; de verliezer had het commentaar. Bij de
+banden (#396) was 30 minuten tot "dof" te ruim zodra er elke vijf minuten
+gevraagd wordt.
+
+**Schoon bevonden.** Geen globale naam dubbel tussen modules, geen dubbele
+`let`/`const` (die laten de app crashen), elke `onclick` wijst naar een
+bestaande functie, `worker.js` heeft voor alle 165 functies `__name`, blok 5
+en `plmutate.sh` hebben geen dubbele namen of mutaties. De wrappers om
+`setConn` (vier lagen), `updPID` (twee) en de vijftien in
+`pidlane-remote.js` roepen allemaal de vorige laag aan met de goede
+argumenten. Ze werken, maar de laadvolgorde in `index.html` is daarmee het
+contract.
+
+**Open, als voorstel (niet gedaan: niets verwijderen zonder te vragen).**
+- Restant van het oude inlogvinkje "Extra logfunctie":
+  `refreshAdminLogRow()`, `maybeStartLiveLog()`, `pl_admin_logexport`, de id's
+  `adminLogExport` en `loginAdminLogRow`. Vervangen door het automatische
+  live-log voor beheerders.
+- Nergens aangeroepen: `bevindingVerborgen`, `lcSave`, `lcSend`,
+  `changeGraph`, `selectTrendGroup`.
+- Controles op iets dat nergens gezet wordt: `OBDLINK_ADDRESS`/`_NAME`,
+  `window.PUBLIC_APP_URL`, `window.rdwData`, `window.selectedModel`; id's
+  `apiPill`, `kebabBtn`, `monitorBtn`, `fontLbl`, `vlSheet`.
+- `pidlane.css`: 105 eigenschappen die een later blok met dezelfde selector
+  overschrijft, vooral het startscherm (regels rond 300–350 tegen 430–445) en
+  het oude cirkelontwerp van het loginscherm (2151–2300 tegen het herontwerp
+  van 02-10).
+- 19 lege catches zonder reden, in `config.js` en de inline scripts van
+  `index.html`.
+
+---
+
 ## 06-10-2026 — Lege plekken in Slim visueel
 
 **Uit het gebruik, 22:16, op de CX-5.** Op het temperatuurscherm bleven OLIE

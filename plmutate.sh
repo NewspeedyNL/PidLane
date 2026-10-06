@@ -1341,6 +1341,13 @@ MUTATIES=(
 "public/pidlane-banden.js@@  const OUD_MS = 30 * 60000;@@  const OUD_MS = 180000;@@test-banden.js@@op verzoek gevraagd en na drie minuten al dof: het lampje is grijs zolang je rijdt — #396"
 # ── geen PID twee keer in één tabel (06-10-2026) ──
 "public/pidlane-data.js@@  '017D':{name:'NOx NTE status',@@  '017C':{name:'DPF temperatuur inlaat B1', unit:'°C', cat:'Emissie', min:-40,max:6513,parse:b=>null},\n  '017D':{name:'NOx NTE status',@@test-dubbelesleutels.js@@017C komt er een tweede keer in ALL_PID_DEFS bij en overschrijft de eerste stil"
+# ── reparaties na de brede controle van 06-10-2026 ──
+"public/pidlane-auth.js@@  try{ if(typeof liveLogStop==='function') Promise.resolve(liveLogStop())@@  try{ if(false) Promise.resolve(liveLogStop())@@test-afmelden.js@@het live-log van de beheerder schrijft door in de sessie van wie daarna inlogt"
+"public/pidlane-auth.js@@  if(typeof connected==='undefined') return 'onbekend';@@  if(typeof isConnected==='undefined') return 'onbekend';@@test-meldregels.js@@de bugmelding zegt weer altijd \"Verbinding: onbekend\""
+"public/pidlane-auth.js@@  return (typeof demoMode!=='undefined' && demoMode) ? 'demo' : 'verbonden';@@  return 'verbonden';@@test-meldregels.js@@een bugmelding uit de demo zegt dat er een echte auto verbonden was"
+"public/pidlane-fuel.js@@  const d=(typeof _pidDead!=='undefined' && _pidDead) ? _pidDead : null;@@  const d=window._deadPIDs || null;@@test-meldregels.js@@het rapport meldt nooit meer dat PIDs herhaald geen data gaven"
+"public/pidlane-banden.js@@  function oudNu() { return _aan ? OUD_AUTO_MS : OUD_MS; }@@  function oudNu() { return OUD_MS; }@@test-banden.js@@met de ronde van vijf minuten blijft een band een half uur groen op een meting die niemand ververst"
+"public/pidlane-banden.js@@stand(ind, v, t, Date.now(), oudNu())@@stand(ind, v, t, Date.now())@@test-banden.js@@het lampje en het venster negeren de kortere grens van de ronde van vijf minuten"
 # ── banden: één regel in de sensorlijst, elke vijf minuten (#396, 06-10-2026) ──
 "public/pidlane-banden.js@@    return !!(aan && klaar && heeft && nu - (laatst || 0) >= AUTO_MS);@@    return !!(aan && klaar && heeft);@@test-banden.js@@de bandenronde draait elke tik van 30 s in plaats van elke vijf minuten — #396"
 "public/pidlane-banden.js@@!(typeof demoMode !== 'undefined' && demoMode) && !!window._plVerbindingKlaar; }@@!(typeof demoMode !== 'undefined' && demoMode); }@@test-banden.js@@de bandenronde vraagt de bus midden in het verbinden, tijdens de koude poort — #396"
@@ -1352,7 +1359,7 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@    if (voor === achter || links === rechts) return null;@@    if (false) return null;@@test-mode21.js@@een naam zonder duidelijke plek wordt toch een band (en staat dan op de verkeerde)"
 "public/pidlane-uitgebreid.js@@.eenheid || '').toLowerCase()]) delete pidVals[c]; });@@.eenheid || '').toLowerCase()]) void 0; });@@test-mode21.js@@na een andere drukeenheid staat de oude waarde er een minuut lang met de nieuwe eenheid"
 "public/pidlane-banden.js@@        if (a <= -GEVAAR) w[p].ernst = 'danger'; else if (a <= -WARN) w[p].ernst = 'warn';@@        if (a <= -GEVAAR) w[p].ernst = 'danger';@@test-banden.js@@een band die 10–20% zachter is dan de rest geeft geen melding"
-"public/pidlane-banden.js@@oud: !(typeof t === 'number' && nu - t < OUD_MS) };@@oud: false };@@test-banden.js@@een bandenspanning van een kwartier geleden telt mee in het oordeel"
+"public/pidlane-banden.js@@oud: !(typeof t === 'number' && nu - t < grens) };@@oud: false };@@test-banden.js@@een bandenspanning van een kwartier geleden telt mee in het oordeel"
 "public/pidlane-banden.js@@    if (vers.length >= 3) {@@    if (vers.length >= 1) {@@test-banden.js@@met twee banden gemeten oordeelt het venster al over alle vier"
 "public/pidlane-visueel.js@@  e.style.display=l.toon ? '' : 'none';@@  e.style.display='';@@bproef-banden.js@@een auto zonder bandensensoren krijgt een leeg bandenlampje"
 "worker.js@@var KP_EIGEN_TEMPO = [\"snel\", \"normaal\", \"traag\", \"minuut\"];@@var KP_EIGEN_TEMPO = [\"snel\", \"normaal\", \"traag\"];@@test-klantplatform.js@@de server gooit het tempo \"elke minuut\" weg"
