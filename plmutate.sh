@@ -1568,6 +1568,11 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  } else if(volt){@@  } else if(volt && m){@@test-visueel.js@@het acculampje brandt alleen als er ook een motoroordeel is: zonder PLAandrijving geen spanning"
 "public/pidlane-banden.js@@      uit[p] = (!st || st.ernst === 'geen' || !d || d.waarde === null || d.oud) ? 'geen' : w.ernst;@@      uit[p] = w ? w.ernst : 'geen';@@test-banden.js@@het autootje kleurt een band van een kwartier geleden groen"
 "public/pidlane.css@@body.pl-visueel #plLiveWaak, body.pl-visueel #plLiveRec { display:none !important; }@@@@bproef-visueel.js@@Bewaken en Opnemen staan weer onder Slim visueel, naast de waakronde en de recorder in het vak"
+# ── een gekozen berekende PID houdt zijn bronnen (#392) ──
+"public/pidlane-berekend.js@@  if (_bronPoging[pid] && nu-_bronPoging[pid] < BRON_OPNIEUW_MS) return;@@  if (_bronPoging[pid]) return;@@test-berekendbronnen.js@@een bron die wegvalt komt niet terug: de tegel van de berekende PID blijft leeg tot een herstart"
+"public/pidlane-berekend.js@@  if (_bronPoging[pid] && nu-_bronPoging[pid] < BRON_OPNIEUW_MS) return;\n  _bronPoging[pid]=nu;@@  _bronPoging[pid]=nu;@@test-berekendbronnen.js@@de bronnen worden bij elke tik opnieuw aangeboden: een logregel per 400 ms"
+"public/pidlane-berekend.js@@      if (!set){ if (gekozen) nietTeBerekenen(pid, heeftNu); return; }@@      if (!set) return;@@test-berekendbronnen.js@@een gekozen berekende PID die op deze auto niet kan blijft leeg zonder te zeggen waarom"
+"public/pidlane-berekend.js@@  if (r.weg && r.weg.length && !_bronGemeld['weg:'+pid]){\n    _bronGemeld['weg:'+pid]=true;@@  if (r.weg && r.weg.length){@@test-berekendbronnen.js@@een weigering van de sensorpoort komt elke 5 s opnieuw in het log"
 # ── de koopcheck laat jouw kenteken staan (#331) ──
 "public/pidlane-koopcheck.js@@_kent: kent, _val: val };\n@@_kent: kent, _val: val };\n    localStorage.setItem('pl_kenteken', kent);\n@@test-koopcheck-kenteken.js@@een koopcheck schrijft het kenteken van de gecheckte auto in pl_kenteken: je dossier hoort dan bij een vreemde auto"
 # ── Bluetooth uit is geen "adapter niet gevonden" (#359) ──

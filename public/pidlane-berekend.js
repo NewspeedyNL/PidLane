@@ -325,16 +325,24 @@ function echtVerbonden(){
   return (typeof connected!=='undefined' && connected) && !(typeof demoMode!=='undefined' && demoMode);
 }
 
-// Een gekozen berekende PID heeft zijn bronnen nodig. Eén keer per PID per
-// sessie erbij zetten, met een logregel: een selectie die stil groeit is
-// precies wat #31 onleesbaar maakte.
-const _bronGezet = {};
-function bronnenErbij(pid, set){
-  if (_bronGezet[pid] || typeof activePIDs==='undefined') return;
-  _bronGezet[pid]=true;
+// Een gekozen berekende PID heeft zijn bronnen nodig (#392). Tot 06-10-2026
+// gebeurde dat één keer per PID per sessie, en de vlag stond al vóór het
+// resultaat. Viel een bron daarna weg (uitgezet, of uit de selectie bij een
+// herbouw), of weigerde de poort hem de eerste keer, dan bleef de tegel leeg
+// tot de app herstartte. Nu bij elke tik waarop er een ontbreekt, hoogstens
+// eens per BRON_OPNIEUW_MS per PID. Elke toevoeging krijgt een logregel — een
+// selectie die stil groeit is wat #31 onleesbaar maakte — en een weigering
+// één keer per verbinding.
+const BRON_OPNIEUW_MS = 5000;
+let _bronPoging = {}, _bronGemeld = {};
+function bronnenErbij(pid, set, nu){
+  if (typeof activePIDs==='undefined') return;
   const mist=set.filter(p=>!activePIDs.has(p));
   if (!mist.length) return;
-  let r={ok:[]};
+  nu = nu || Date.now();
+  if (_bronPoging[pid] && nu-_bronPoging[pid] < BRON_OPNIEUW_MS) return;
+  _bronPoging[pid]=nu;
+  let r={ok:[], weg:[]};
   try{ r=(typeof pidToevoegen==='function') ? pidToevoegen(mist, { handmatig:false, niveau:'bestaat' }) : r; }
   catch(e){ console.warn('PLBerekend: bronnen niet toegevoegd', e); }
   if (r.ok && r.ok.length){
@@ -342,6 +350,26 @@ function bronnenErbij(pid, set){
     catch(e){ console.warn('PLBerekend: logregel', e); }
     try{ if (typeof renderGauges==='function') renderGauges(); }catch(e){ console.warn('PLBerekend: renderGauges', e); }
   }
+  if (r.weg && r.weg.length && !_bronGemeld['weg:'+pid]){
+    _bronGemeld['weg:'+pid]=true;
+    try{ log(`🧮 ${DEFS[pid].name}: bron${r.weg.length===1?'':'nen'} ${r.weg.join(', ')} niet erbij gezet — de sensorpoort weigert ${r.weg.length===1?'hem':'ze'}`,'warn'); }
+    catch(e){ console.warn('PLBerekend: logregel', e); }
+  }
+}
+
+/* Gekozen, maar niet te berekenen op deze auto (#392): zeg één keer per
+   verbinding wélke bron ontbreekt, in plaats van een tegel die leeg blijft.
+   Pas als de auto zijn PIDs heeft gemeld — daarvoor ontbreekt alles. */
+function nietTeBerekenen(pid, heeftNu){
+  if (_bronGemeld['niet:'+pid]) return;
+  if (typeof supportedPIDs==='undefined' || !supportedPIDs || !supportedPIDs.size) return;
+  const d=DEFS[pid]; if (!d) return;
+  _bronGemeld['niet:'+pid]=true;
+  let beste=null;
+  d.bronnen.forEach(set=>{ const mist=set.filter(p=>!heeftNu(p)); if (!beste || mist.length<beste.length) beste=mist; });
+  const reden = (beste && beste.length) ? `deze auto meldt ${beste.join(', ')} niet` : 'past niet bij deze auto (brandstof, bak of tankinhoud)';
+  try{ log(`🧮 ${d.name}: niet te berekenen — ${reden}`,'warn'); }
+  catch(e){ console.warn('PLBerekend: logregel', e); }
 }
 
 // ── de sessie: liters en km van deze verbinding, en het bewijs voor blok 5 ──
@@ -386,7 +414,7 @@ function tik(){
     // Een nieuwe verbinding is een nieuwe rit voor de kosten en het bereik.
     // Het bewijs voor blok 5 blijft staan: een herverbinding midden in de rit
     // (#302) mag niet wissen wat er daarvoor gemeten is.
-    if (!_wasAan){ _wasAan=true; _s.liters=0; _s.km=0; _s.sBrandstof=0; }
+    if (!_wasAan){ _wasAan=true; _s.liters=0; _s.km=0; _s.sBrandstof=0; _bronPoging={}; _bronGemeld={}; }
     const m=motor(), d=m==='diesel', gi=gearInfo();
     const cache={};
     const meting=p=>{ if(!(p in cache)) cache[p]=versMeting(p, nu); return cache[p]; };
@@ -430,8 +458,8 @@ function tik(){
     Object.keys(DEFS).forEach(pid=>{
       const gekozen=actief.has(pid);
       const set=bronset(pid, heeftNu, d, vw);
-      if (!set) return;
-      if (gekozen) bronnenErbij(pid, set);
+      if (!set){ if (gekozen) nietTeBerekenen(pid, heeftNu); return; }
+      if (gekozen) bronnenErbij(pid, set, nu);
       const v={};
       set.concat(['0133','0104']).forEach(p=>{ const x=waarde(p); if (x!==undefined) v[p]=x; });
       // Bronnen van verschillende momenten: deze tik niet rekenen, en tellen
