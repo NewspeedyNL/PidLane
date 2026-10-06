@@ -141,7 +141,7 @@ function oordeelWeergaven(sv, ctx, brandstof){
   const elektrisch=brandstof==='elektrisch';
   P.forEach(function(p){
     // Telemetrie hangt van de telefoon af, niet van de auto: geen oordeel hier.
-    if(/^tel-/.test(p.id)) return;
+    if(/^tel(-|emetrie$)/.test(p.id)) return;   // telefoonsensoren: geen oordeel over de auto (één scherm sinds 06-10-2026)
     const r={ id:p.id, naam:p.naam, oordeel:'goed', gevuld:0, plekken:0, reden:'', indeling:{} };
     if(!p.plekken){   // basis: de vaste meter
       const heeft=okSet.has('010C') && okSet.has('010D');
