@@ -2771,6 +2771,31 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── telemetrie telt alleen mee als de telefoon vast zit (#418) ──
+  {
+    issue: '#418',
+    naam: 'Telefoonsensoren tellen alleen mee als de telefoon zeker vast in een houder zit; anders heel dof',
+    waarom: 'Op schoot of los in een vakje meet de telefoon zijn eigen bewegingen; die horen niet in rapport, AI of rijsituatie.',
+    proef: async function () {
+      var T = window.PLTelemetrie;
+      if (!T || typeof T.houder !== 'function' || typeof T.houderNu !== 'function') return { staat: 'FOUT', detail: 'PLTelemetrie.houder ontbreekt — pidlane-telemetrie.js is niet de nieuwe' };
+      var goed = { vers: true, genuld: true, afwijking: 3, wiebel: 2, okMs: 6000 };
+      if (!T.houder(goed).vast || T.houder(Object.assign({}, goed, { genuld: false })).vast || T.houder(Object.assign({}, goed, { afwijking: 40 })).vast)
+        return { staat: 'FOUT', detail: 'de regel klopt niet: zonder nulstand of 40° verschoven telt hij als vast' };
+      if (!T.beschikbaar()) return { staat: 'LET OP', detail: 'gedrag klopt; dit toestel meldt geen bewegingssensor — nodig: de app op de telefoon' };
+      var h = T.houderNu(), s = T.stats().houder;
+      var bewijs = 'vast ' + s.vastS + ' s, niet vast ' + s.losS + ' s, ' + s.geweerd + ' metingen geweerd';
+      if (!h.vast) {
+        var voor = (typeof pidHist !== 'undefined' && pidHist.TL01) ? pidHist.TL01.length : 0;
+        await new Promise(function (r) { setTimeout(r, 1200); });
+        var na = (typeof pidHist !== 'undefined' && pidHist.TL01) ? pidHist.TL01.length : 0;
+        if (!T.houderNu().vast && na > voor) return { staat: 'FOUT', detail: 'niet vast (' + h.reden + ') en toch ' + (na - voor) + ' helling-metingen in pidHist' };
+        return { staat: 'LET OP', detail: 'gedrag klopt: niet vast (' + h.uitleg + '), telt niet mee · ' + bewijs + ' — nodig voor OK: telefoon in de houder, Nulstellen, 5 s stil' };
+      }
+      return { staat: 'OK', detail: 'vast in de houder (afwijking ' + h.afwijking + '°, wiebel ' + h.wiebel + '°/s) · ' + bewijs };
+    }
+  },
+
   // ── de beheerdersdemo (#409) ──
   {
     issue: '#409',
@@ -9743,6 +9768,7 @@ const CAMPAGNE = {
     'STAP 3 — 🔄 OPNIEUW VERBINDEN in hetzelfde paneel. Vanaf hier telt het half uur van #302; de groepsproef zit dan niet in die meting.',
     'STAP 4 — DERTIG MINUTEN RIJDEN IN SLIM VISUEEL, ZONDER TE VERBREKEN (#302, #337, #338). Onderweg: een paar keer vanuit stilstand stevig optrekken en daarna het gas helemaal los, een stuk boven 50 km/u, en één keer stilstaan. Laat waakronde en bulk-recorder zoals je ze normaal hebt.',
     'STAP 4B — RIT-MONITOR AAN, EN SCHAKEL (#400). Zet vóór STAP 4 de rit-monitor aan. Schakel onderweg een paar keer op en terug bij gelijkblijvende snelheid, en rol één keer uit met het gas los. Daar hoort nu geen melding bij. Komt er tóch een melding die niet klopt: tik 👎 Klopt niet en kies de reden.',
+    'STAP 4C — TELEFOON IN DE HOUDER, EN EEN STUK OP SCHOOT (#418). Vóór vertrek: telefoon in de houder, stilstaan op vlakke grond, Sensoren → Telemetrie → Nulstellen. Rij daarna gewoon; de tegels Helling en Kanteling horen helder te blijven, ook over drempels. Alleen met een bijrijder: laat die de telefoon een paar minuten op schoot houden — de tegels horen dan binnen een paar seconden heel dof te worden. De testrun (blok 5) zegt hoeveel seconden vast en niet vast.',
     'STAP 5 — TWEE MINUTEN BEELD-IN-BEELD (#319, #338). Onderweg, met de navigatie: thuisknop, PidLane staat klein; minstens twee minuten, dan terug naar de app.',
     'STAP 6 — GROEPSPROEF B, WARM EN STIL (#333). Na het half uur stilstaan op een veilige plek, motor draaiend. Eerst 🔄 Opnieuw verbinden, dan 📦 Groepsproef.',
     'STAP 7 — VERZENDEN. Meetkamer → alle afgeronde opdrachten verzenden, en beantwoord de vragen. Daarna eventueel de testrun.',
