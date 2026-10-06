@@ -1643,6 +1643,9 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vpf-g-as { stroke:#1d3047; stroke-width:1; }
 .vpf-g-label { fill:#8fb0d6; font-family:var(--f); font-size:8px; }
 .vpf-g-stip { fill:#ff3ea5; filter:drop-shadow(0 0 6px #ff3ea5); transition:cx .25s ease-out, cy .25s ease-out; }
+/* Het piekballetje (#407): een ring op de grootste uitslag van de laatste 3 s. */
+.vpf-g-piek { fill:none; stroke:#ff3ea5; stroke-width:2; opacity:.75; transition:opacity .3s; }
+.vpf-g-piek.weg { opacity:0; }
 @media (prefers-reduced-motion: reduce){ .vpf * { transition:none !important; } }
 
 .vis-meld.meer { justify-content:flex-start; font-size:12px; font-weight:700; color:var(--bl); background:var(--sur2); }

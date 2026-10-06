@@ -2771,6 +2771,48 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── G-cirkel: zij-G volgt het gevoel, piekballetje (#407) ──
+  {
+    issue: '#407',
+    naam: 'G-cirkel: rechts sturen zet de stip links, en een piek blijft 3 s staan',
+    waarom: 'Achter het stuur kijk je niet continu naar het scherm; een hard rem- of stuurmoment moet na een korte blik nog te zien zijn.',
+    proef: async function () {
+      var P = window.PLVisProfiel;
+      if (!P || typeof P.gPiek !== 'function' || typeof P.gPunt !== 'function') return { staat: 'FOUT', detail: 'PLVisProfiel.gPiek of gPunt ontbreekt — pidlane-visprofiel.js is niet de nieuwe' };
+      if (!(Number(P.gPunt(0.25, 0).cx) < 100)) return { staat: 'FOUT', detail: '0,25 g naar rechts gestuurd staat op cx ' + P.gPunt(0.25, 0).cx + ' — hoort links van 100' };
+      var pk = P.gPiek(P.gPiek(null, 0, -0.9, 0), 0, -0.1, 1000);
+      if (pk.y !== -0.9) return { staat: 'FOUT', detail: 'de piek viel binnen 3 s terug' };
+      if (!document.getElementById('vpf-f-gpiek')) return { staat: 'LET OP', detail: 'gedrag klopt; het balletje zelf staat alleen in Slim visueel → G-cirkel — nodig: open die weergave en draai opnieuw' };
+      return { staat: 'OK', detail: 'zij-G gespiegeld, piek ' + P.G_PIEK_MS / 1000 + ' s, balletje in beeld' };
+    }
+  },
+
+  // ── een gekozen berekende PID houdt zijn bronnen (#392) ──
+  {
+    issue: '#392',
+    naam: 'Elke gekozen berekende PID heeft zijn bronnen in de selectie',
+    waarom: 'Een berekende tegel zonder bronnen blijft leeg en leest als kapot; tot 06-10-2026 kwam een weggevallen bron pas na een herstart terug.',
+    proef: async function () {
+      var B = window.PLBerekend;
+      if (!B || typeof B.bronset !== 'function') return { staat: 'FOUT', detail: 'PLBerekend.bronset ontbreekt' };
+      if (typeof activePIDs === 'undefined' || typeof supportedPIDs === 'undefined' || !supportedPIDs.size) return { staat: 'LET OP', detail: 'geen auto gemeld — nodig: verbonden, met een berekende sensor gekozen' };
+      var heeft = function (p) { return supportedPIDs.has(p); };
+      var isDiesel = (typeof vehicleInfo !== 'undefined' && vehicleInfo && /diesel/i.test(vehicleInfo.brandstof || ''));
+      var gekozen = [...activePIDs].filter(function (p) { return B.DEFS[p]; });
+      if (!gekozen.length) return { staat: 'LET OP', detail: 'geen berekende sensor gekozen — nodig: kies er een (bijv. Verbruik) en wacht 6 s' };
+      var mist = [], kan = 0;
+      gekozen.forEach(function (p) {
+        var set = B.bronset(p, heeft, isDiesel, {});
+        if (!set) return;
+        kan++;
+        var weg = set.filter(function (x) { return !activePIDs.has(x); });
+        if (weg.length) mist.push(p + ' mist ' + weg.join('+'));
+      });
+      if (mist.length) return { staat: 'FOUT', detail: mist.join(' · ') + ' — na 5 s hoort bronnenErbij() ze erbij te zetten' };
+      return { staat: 'OK', detail: kan + ' van ' + gekozen.length + ' gekozen berekende sensor(en) te berekenen, allemaal met hun bronnen in de selectie' };
+    }
+  },
+
   // ── de koopcheck laat jouw kenteken staan (#331) ──
   {
     issue: '#331',

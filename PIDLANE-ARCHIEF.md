@@ -15,6 +15,61 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — Verbindprofiel: drie dagen kennisbank, en een geheugen dat alleen omhoog kan (#391, #414)
+
+**Waarom dit hier staat.** De administratie bij PR #390 (03-10) bleef liggen
+om usage te sparen (#391). De afwijkingen van het plan staan nu in §10 van
+`PIDLANE-VERBINDPROFIEL.md`; hier staat wat er achteraf uit de data bleek.
+
+**De kennisbank werkt, ook zonder `run_worker_first`.** `/verbind/profiel`
+staat niet in de lijst in `wrangler.toml`, en de kop van die lijst zegt dat
+zo'n route een 404 geeft. Toch staan er 20 records in `verbindprofielen`
+(03-10 19:48 tot 06-10 06:05). Een pad zonder bestand valt door naar de
+Worker, zoals `test-verwijzingen.js` al opmerkte. De waarschuwing in
+`wrangler.toml` is dus strenger dan de werkelijkheid. Hij is niet aangepast:
+een route in de lijst schaadt niet, en wie hem volgt doet niets fout.
+
+**Het geheugen werkt als een ratel.** Op de CX-5 liep de ATST in drie dagen
+van 0x0C (48 ms, gemeten) naar 0xFF (1020 ms, uit het geheugen), terwijl het
+traagste gemeten antwoord 81 ms was. Vermoedelijk:
+- `noteAntwoord()` stuurt tijdens de rit omhoog op elke misser, ook op een
+  misser die niets met timing te maken heeft;
+- `bewaar()` schrijft dat meteen weg;
+- `plStUitGeheugen()` neemt de hoogste waarde over, een half jaar lang.
+
+De keuze "alleen omhoog" uit fase 4 was bedoeld tegen een te lage ATST die
+een gezonde auto stil maakt. Hij beschermt nu tegen het ene en veroorzaakt
+het andere. Niet gerepareerd: #414.
+
+---
+
+## 06-10-2026 — Berekende PIDs: een bron die wegviel kwam niet terug (#392)
+
+**Waarom.** `bronnenErbij()` zette de bronnen van een gekozen berekende PID
+één keer per sessie aan, en de vlag `_bronGezet[pid]` stond al vóór het
+resultaat. Viel een bron daarna uit de selectie (met de hand uitgezet, of bij
+een herbouw), of weigerde de sensorpoort hem de eerste keer, dan werd het
+nooit opnieuw geprobeerd: een lege tegel tot de app herstartte. En kon een
+gekozen berekende PID op deze auto helemaal niet, dan zei niets waarom.
+
+**Nu.** Opnieuw aanbieden zolang er een ontbreekt, hoogstens eens per 5 s,
+met een logregel per toevoeging. Een weigering één keer per verbinding, en
+"niet te berekenen" met de ontbrekende bron erbij. Welk geval op de
+screenshot van het issue speelde, is niet na te gaan; de test bouwt ze
+allebei na.
+
+---
+
+## 06-10-2026 — G-cirkel: zij-G volgde de kracht, niet het gevoel (#407)
+
+**Besluit.** De stip volgt het lichaamsgevoel: rechts sturen zet hem links.
+TL04 blijft meten wat er op de auto werkt (rechts = +), zodat de data en de
+tests van de telemetrie niet omdraaien; alleen `gPunt()` spiegelt. Het
+piekballetje blijft 3 s staan op de grootste gecombineerde uitslag
+(lengte en zij samen), zodat één blik genoeg is.
+
+---
+
 ## 06-10-2026 — De koopcheck nam je eigen kenteken over (#331)
 
 **Wat er gebeurde.** `koopRdwLookup()` schreef het kenteken van de auto die je

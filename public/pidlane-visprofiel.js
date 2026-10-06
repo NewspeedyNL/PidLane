@@ -280,6 +280,7 @@ function htmlGcirkel(p, ind){
     '<text class="vpf-g-label" x="100" y="11" text-anchor="middle">optrekken</text>'+
     '<text class="vpf-g-label" x="100" y="198" text-anchor="middle">remmen</text>'+
     '<text class="vpf-g-label" x="104" y="58">0,5 g</text><text class="vpf-g-label" x="104" y="18">1 g</text>'+
+    '<circle class="vpf-g-piek weg" id="vpf-f-gpiek" cx="100" cy="100" r="9"/>'+
     '<circle class="vpf-g-stip vpf-f" id="vpf-f-gstip" cx="100" cy="100" r="7"/></svg>'+telGetallen(p, ind);
 }
 /* De HTML van het vak voor een profiel (niet de basis). */
@@ -328,12 +329,40 @@ function bij(id, ind, pid, val, st){
   });
 }
 function klem(v, lo, hi){ const n=Number(v); return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : 0; }
+/* De G-cirkel (#407, 06-10-2026).
+   • Zij-G volgt het GEVOEL: rechts sturen duwt je lijf naar links, dus gaat
+     de stip naar links. TL04 zelf meet de kracht op de auto (rechts = +) en
+     blijft zo; alleen de tekening draait om. Lengte-G heeft dat verschil
+     niet: optrekken drukt je in de stoel, en de stip gaat omhoog.
+   • Het piekballetje blijft G_PIEK_MS staan op de grootste afstand tot het
+     midden, zodat je een hard rem- of stuurmoment ziet zonder op het scherm
+     te blijven kijken. Daarna, of bij Nulstellen, valt het terug. */
+const G_PIEK_MS = 3000;
+let _gNu = { x:0, y:0 }, _gPiek = null;
+/* Puur. `piek` = {x,y,t} of null; x = zij-G, y = lengte-G, in g. */
+function gPiek(piek, x, y, t){
+  if(!piek || t-piek.t > G_PIEK_MS || Math.hypot(x, y) >= Math.hypot(piek.x, piek.y)) return { x:x, y:y, t:t };
+  return piek;
+}
+/* In px: 1 g = 80 px (de buitenste ring). Zij-G gespiegeld, zie boven. */
+function gPunt(x, y){ return { cx:(100-x*80).toFixed(1), cy:(100-y*80).toFixed(1) }; }
+function gTeken(){
+  const s=el('vpf-f-gstip'), pk=el('vpf-f-gpiek');
+  const nu=gPunt(_gNu.x, _gNu.y);
+  if(s){ s.setAttribute('cx', nu.cx); s.setAttribute('cy', nu.cy); }
+  if(!pk) return;
+  const weg=!_gPiek || Math.hypot(_gPiek.x-_gNu.x, _gPiek.y-_gNu.y) < 0.05;
+  if(!weg){ const p=gPunt(_gPiek.x, _gPiek.y); pk.setAttribute('cx', p.cx); pk.setAttribute('cy', p.cy); }
+  pk.classList.toggle('weg', weg);
+}
+function gWis(){ _gNu={ x:0, y:0 }; _gPiek=null; gTeken(); }
+try{ if(typeof window.addEventListener==='function') window.addEventListener('pl:telemetrie-genuld', gWis); }
+catch(e){ console.warn('PLVisProfiel: Nulstellen wist het piekballetje niet', e); }
 function telBij(x, val){
   if(x.soort==='gx' || x.soort==='gy'){
-    const s=el('vpf-f-gstip'); if(!s) return;
-    // 1 g = 80 px (de buitenste ring). Optrekken naar boven, rechts = naar rechts.
-    if(x.soort==='gx') s.setAttribute('cx', (100+klem(val, x.lo, x.hi)*80).toFixed(1));
-    else s.setAttribute('cy', (100-klem(val, x.lo, x.hi)*80).toFixed(1));
+    if(x.soort==='gx') _gNu.x=klem(val, x.lo, x.hi); else _gNu.y=klem(val, x.lo, x.hi);
+    _gPiek=gPiek(_gPiek, _gNu.x, _gNu.y, Date.now());
+    gTeken();
     return;
   }
   const f=el('vpf-f-'+x.rol); if(!f) return;
@@ -363,6 +392,7 @@ function pids(ind){
 window.PLVisProfiel = {
   PROFIELEN:PROFIELEN, SEG:SEG, SLEUTEL:SLEUTEL,
   zoek:zoek, geldig:geldig, volgende:volgende, lees:lees, bewaar:bewaar,
-  indeling:indeling, ketens:ketens, deel:deel, tekst:tekst, html:html, bij:bij, dof:dof, pids:pids
+  indeling:indeling, ketens:ketens, deel:deel, tekst:tekst, html:html, bij:bij, dof:dof, pids:pids,
+  G_PIEK_MS:G_PIEK_MS, gPiek:gPiek, gPunt:gPunt, gWis:gWis
 };
 })();

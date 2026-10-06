@@ -1,11 +1,11 @@
 # PidLane — het verbindprofiel: elke auto goed, zonder merkenlijst
 
-Versie 0.2 — 03-10-2026 — **ontwerp, nog niet gebouwd**
+Versie 0.3 — 06-10-2026 — **fase 1–5 gebouwd** (PR #390, 03-10-2026), fase 6 open
 
-> Antwoord op #388 en #389. Er staat geen code in en er verandert nog niets aan
-> de app. Versie 0.2 is het volledige plan: alle zes fases, alle genomen
-> keuzes, en per fase wat hij raakt en wat hij met rust laat — zodat fase 1
-> niets in de basis stuk kan maken of overslaan.
+> Antwoord op #388 en #389. §1–§8 zijn het plan zoals het in 0.2 stond; dat
+> blijft staan, want de afweging is meer waard dan alleen de uitkomst. Wat er
+> bij de bouw anders werd, staat in **§10**. Lees die eerst als je wilt weten
+> wat er nu in de app zit.
 
 De vraag uit #389 is niet "hoe maak ik de T6 ook goed" maar: **hoe krijgt élke
 auto de juiste taal, de juiste snelheid en de juiste verwerking, ook een auto
@@ -580,3 +580,35 @@ Dan staat blok 5 rood vóór de PR, niet na een rit.
 |---|---|---|
 | 03-10-2026 | 0.1 | eerste ontwerp, als antwoord op #388/#389 |
 | 03-10-2026 | 0.2 | volledig plan: inventaris van de acht knoppen (§3), de volgorde in de flow (§4.0), negen genomen keuzes met afweging (§5), zes fases met raakt/raakt-niet/risico (§6), het blok-5-vangnet voor de Mazda (§7) |
+| 06-10-2026 | 0.3 | fase 1–5 gebouwd; §10: wat er bij de bouw afweek van 0.2, en wat de eerste drie dagen kennisbank laten zien (#391) |
+
+## 10. Wat er bij de bouw afweek van 0.2
+
+Gebouwd in PR #390 (03-10-2026). Vijf afwijkingen van het plan, elk met de
+reden:
+
+- **ATST = 2× de óp één na traagste rondrit**, niet 2× de traagste (§5.3).
+  Eén Bluetooth-haper zou een snelle auto anders een seconde per misser
+  kosten. Zie `plStUitMetingen()` in `pidlane-bt.js`.
+- **A4 (antwoordcijfer voorvullen) vervalt.** De sleutel van `PLAntwoordtal`
+  is de exacte groep, en die hangt af van welke PIDs op dat moment aan de
+  beurt zijn. Een proefgroep uit de koude poort valt daar zelden mee samen.
+- **Merkkennis als startgok (fase 5) vervalt; D1 oogst wel.** De WMI komt pas
+  ná de koude poort binnen, en de meting zelf kost op een snelle auto onder
+  een seconde. Een gok vooraf wint dus niets. De tabel `verbindprofielen`
+  bestaat wel, onder het VIN-pseudoniem (§5.7), met bijgewerkte
+  toestemmingstekst (`AKKOORD_TEKST_SINDS` = 03-10-2026).
+- **Het geheugen beperkt zich tot ATST, en alleen omhoog** (fase 4). Groep en
+  protocol worden elke verbinding opnieuw gemeten.
+- **Een nieuwe verbinding begint weer op ATST 64** (400 ms). Alleen het
+  herverbindpad houdt de meting van de vorige verbinding vast.
+
+**Wat de kennisbank na drie dagen laat zien (06-10-2026).** Twintig records,
+allemaal van de Mazda CX-5 2018 (SPP, protocol A6); de T6 staat er nog niet
+in. Gemeten ATST 48–176 ms bij een traagste antwoord van 17–173 ms, groep 3,
+37 reads/s gemiddeld. Maar het geheugen duwde de ATST in drie dagen op naar
+**0xFF (1020 ms)**, terwijl het traagste gemeten antwoord 81 ms was. Het
+bijsturen tijdens de rit schrijft in het geheugen, en het geheugen gaat
+alleen omhoog. Dat is #414; de keuze "alleen omhoog" uit deze lijst staat
+daarmee ter discussie.
+
