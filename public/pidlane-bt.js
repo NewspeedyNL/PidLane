@@ -1837,9 +1837,14 @@ function plGroepCompleet(parsed, grp){
 // gemeten is, op dezelfde bus (protocol) en via hetzelfde soort adapter, en
 // niet ouder dan een half jaar. Het geheugen verlaagt nooit: een auto die
 // eerder trager bleek dan vandaag, krijgt de ruimte van toen.
+// Alleen bron 'gemeten' (#414). 'geheugen' en 'bijgestuurd' telden tot
+// 06-10-2026 ook, en dat was een ratel: een misser tijdens de rit (motor uit,
+// een ECU die een groep overslaat) zette de ATST een trede hoger, dat ging het
+// geheugen in, en de volgende verbinding nam het over als bodem. De CX-5 kwam
+// zo op 0xFF (1020 ms) bij een traagste antwoord van 81 ms.
 function plStUitGeheugen(nu, bewaard, protoId, adapter, tijd){
   const b=bewaard && bewaard.st;
-  if(!b || b.bron==='standaard' || !/^[0-9A-F]{2}$/.test(String(b.hex||''))) return null;
+  if(!b || b.bron!=='gemeten' || !/^[0-9A-F]{2}$/.test(String(b.hex||''))) return null;
   const zelfde=v=>String(v||'').toUpperCase().replace(/^A(?=.)/,'');
   if(zelfde(bewaard.protocol && bewaard.protocol.id)!==zelfde(protoId)) return null;
   if(String(bewaard.adapter||'')!==String(adapter||'')) return null;
@@ -1848,6 +1853,19 @@ function plStUitGeheugen(nu, bewaard, protoId, adapter, tijd){
   const msNu = (nu && nu.bron==='gemeten') ? nu.ms : null;
   if(msNu!=null && !(b.ms>msNu)) return null;
   return { hex:b.hex, ms:b.ms, bron:'geheugen', traagstMs:b.traagstMs, refMs:b.refMs, n:b.n };
+}
+
+// Puur (#414). Wat er van het verbindprofiel het geheugen in gaat: alles,
+// maar als ATST alleen wat de koude poort deze verbinding mat. Wat het geheugen
+// of het bijsturen daarna van de ATST maakte, geldt voor deze verbinding en
+// niet voor de volgende. Mat de poort deze keer niets, dan blijft de vorige
+// meting staan, met haar eigen datum: een mislukte meting wist geen kennis.
+function plVerbindVoorGeheugen(profiel, gemeten, vorig){
+  if(!profiel) return null;
+  if(!(gemeten && gemeten.bron==='gemeten') && vorig && vorig.st && vorig.st.bron==='gemeten') return JSON.parse(JSON.stringify(vorig));
+  const v=JSON.parse(JSON.stringify(profiel));
+  v.st = gemeten ? Object.assign({}, gemeten) : { hex:ST_STANDAARD_HEX, bron:'standaard' };
+  return v;
 }
 
 // ── DE VERBINDING MET DE HAND (#394, 04-10-2026) ───────────────────
@@ -2031,8 +2049,8 @@ const PLVerbind={
     this.profiel.st=Object.assign({}, _plSt);
     btDiag(`🔧 ATST bijgestuurd 0x${oud} → 0x${nieuw} (${_plSt.ms} ms): ${n} van de laatste ${ST_VENSTER} verzoeken misten een PID die kort geleden nog antwoordde`,'warn');
     Promise.resolve(sendCmd('ATST'+nieuw,1500)).catch(e=>btDiag('ATST bijsturen: adapter niet bijgewerkt ('+(e.message||e)+')','warn'));
-    try{ if(typeof vehicleInfo!=='undefined' && vehicleInfo && vehicleInfo.vin) this.bewaar(vehicleInfo.vin); }
-    catch(e){ btDiag('Bijgestuurde ATST niet in het geheugen: '+(e.message||e),'warn'); }
+    // Bewust niet bewaren (#414): bijsturen geldt voor deze verbinding. In het
+    // geheugen werd het de bodem van de volgende, en zo klom de ATST blijvend.
   },
   // ── met de hand ──
   _gemeten:null,
@@ -2129,7 +2147,7 @@ const PLVerbind={
       const k=vinProfileKey(vin), r=localStorage.getItem(k);
       if(!r) return;                       // geen voertuigprofiel: dan ook geen geheugen
       const prof=JSON.parse(r);
-      prof.verbind=JSON.parse(JSON.stringify(this.profiel));
+      prof.verbind=plVerbindVoorGeheugen(this.profiel, this._gemeten, prof.verbind);
       localStorage.setItem(k, JSON.stringify(prof));
     }catch(e){ btDiag('Verbindprofiel niet bewaard: '+(e.message||e),'warn'); }
   },

@@ -15,6 +15,34 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — Het ATST-geheugen was een ratel (#414)
+
+**Wat er gebeurde.** Drie dingen samen maakten een ratel. `noteAntwoord()`
+zette de ATST een trede hoger zodra 3 van de 20 verzoeken een PID misten die
+kort geleden nog antwoordde, en schreef dat meteen in het voertuigprofiel.
+`plStUitGeheugen()` nam bij de volgende verbinding elke bewaarde bron behalve
+`standaard` over zodra die hoger was dan de meting. En `bewaar()` schreef
+daarna het hele profiel terug, met `bron:'geheugen'` en een verse
+`gemetenOp` — de half-jaargrens schoof dus elke keer mee. Een misser die
+niets met timing te maken had (motor uit, een ECU die een groep overslaat)
+duwde de ATST zo blijvend omhoog: de CX-5 op 0xFF (1020 ms) bij een
+traagste antwoord van 81 ms.
+
+**De keuze.** Uit het issue kwamen twee wegen: bijsturen niet meer bewaren, of
+het geheugen laten vervallen als de meting een paar keer lager uitkomt. De
+eerste gekozen, omdat de tweede een tweede regelkring met eigen drempels is
+die zelf weer gemeten moet worden. "Alleen omhoog" blijft: een koude meting die
+de vorige keer hoger uitkwam is echte kennis over die auto.
+
+**Wat het niet oplost.** Binnen één verbinding kan het bijsturen nog steeds tot
+de top klimmen op missers die geen timing zijn. Dat is een vraag over
+`plStMoetOmhoog()`, niet over het geheugen; daar hoort een rit bij (#394 punt
+1 gaat over de bodem). Wat er al in een voertuigprofiel staat met bron
+`bijgestuurd` of `geheugen` wordt genegeerd, niet gewist: de eerstvolgende
+verbinding met een meting overschrijft het.
+
+---
+
 ## 06-10-2026 — Telemetrie alleen als de telefoon vast zit (#418)
 
 **De vraag.** Telemetrie mag alleen meetellen in analyses of beoordelingen

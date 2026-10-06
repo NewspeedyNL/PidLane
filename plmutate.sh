@@ -85,6 +85,10 @@ ROOD=$'\033[31m'; GROEN=$'\033[32m'; GEEL=$'\033[33m'; GRIJS=$'\033[90m'; UIT=$'
 # bestand @@ zoek @@ vervang @@ test @@ omschrijving
 # Het bestandspad is relatief aan de repo-root.
 MUTATIES=(
+"public/pidlane-bt.js@@  if(!b || b.bron!=='gemeten' || !/^[0-9A-F]{2}$/@@  if(!b || b.bron==='standaard' || !/^[0-9A-F]{2}$/@@test-verbindprofiel.js@@het geheugen neemt een bijgestuurde ATST over als bodem: de ratel van #414, de CX-5 op 1020 ms"
+"public/pidlane-bt.js@@      prof.verbind=plVerbindVoorGeheugen(this.profiel, this._gemeten, prof.verbind);@@      prof.verbind=JSON.parse(JSON.stringify(this.profiel));@@test-verbindprofiel.js@@het geheugen bewaart de bijgestuurde ATST in plaats van de koude meting — #414"
+"public/pidlane-bt.js@@  v.st = gemeten ? Object.assign({}, gemeten) : { hex:ST_STANDAARD_HEX, bron:'standaard' };@@@@test-verbindprofiel.js@@het geheugen krijgt de ATST van de sessie mee in plaats van de meting — #414"
+"public/pidlane-bt.js@@  if(!(gemeten && gemeten.bron==='gemeten') && vorig && vorig.st && vorig.st.bron==='gemeten') return JSON.parse(JSON.stringify(vorig));@@@@test-verbindprofiel.js@@een verbinding zonder meting wist de vorige meting uit het geheugen — #414"
 "public/pidlane-diagbundel.js@@const ds=idx>=0?idx+hdr.length:4;@@const ds=idx>=0?idx+hdr.length-2:4;@@test-parser.js@@parsePID slaat de header-echo één byte te vroeg over"
 "public/pidlane-diagbundel.js@@if(/[0-9A-Fa-f]\s*:/.test(line)){@@if(false){@@test-parser.js@@de batch-splitser ziet de framemarkers niet meer"
 "public/pidlane-datalog.js@@if(lim&&(rawVal<lim.min||rawVal>lim.max)){@@if(false){@@test-parser.js@@laag 1 laat fysiek onmogelijke waarden door"
