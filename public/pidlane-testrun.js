@@ -3010,6 +3010,44 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── Het verbindgeheugen is geen ratel (#414, 06-10-2026) ──
+  // De CX-5 stond in drie dagen op ATST 0xFF (1020 ms) bij een traagste
+  // antwoord van 81 ms: elke bijsturing ging het geheugen in en kwam er nooit
+  // meer uit. Nu onthoudt het geheugen alleen de laatste drie metingen van de
+  // koude poort. Deze proef kijkt naar wat er na het verbinden in de adapter
+  // staat én naar wat er bewaard is.
+  {
+    issue: '#414',
+    naam: 'Het verbindgeheugen onthoudt alleen metingen, de laatste drie',
+    waarom: 'Een ATST die alleen omhoog kan maakt elke NO DATA blijvend duurder. Dat zie je niet aan de reads/s, alleen aan een trage bus wanneer er een PID wegvalt.',
+    proef: async function () {
+      if (typeof connected === 'undefined' || !connected || (typeof demoMode !== 'undefined' && demoMode))
+        return { staat: 'LET OP', detail: 'niet verbonden met een echte auto — er is geen geheugen geraadpleegd' };
+      var V = window.PLVerbind;
+      if (!V || !V.profiel) return { staat: 'LET OP', detail: 'geen verbindprofiel — zie de proef van #388' };
+      var st = V.profiel.st || {};
+      var vin = (typeof vehicleInfo !== 'undefined' && vehicleInfo && vehicleInfo.vin) ? vehicleInfo.vin : '';
+      var bewaard = null;
+      try { var r = vin && typeof vinProfileKey === 'function' ? localStorage.getItem(vinProfileKey(vin)) : null; bewaard = r ? (JSON.parse(r).verbind || null) : null; }
+      catch (e) { return { staat: 'FOUT', detail: 'bewaard voertuigprofiel onleesbaar: ' + (e.message || e) }; }
+      var lijst = bewaard && Array.isArray(bewaard.metingen) ? bewaard.metingen : [];
+      var wat = 'ATST 0x' + st.hex + ' (' + (st.ms || '?') + ' ms, ' + st.bron + ') · geheugen ' +
+        (lijst.length ? lijst.map(function (m) { return '0x' + m.hex; }).join(', ') : 'leeg');
+      if (lijst.length > 3) return { staat: 'FOUT', detail: lijst.length + ' metingen bewaard, meer dan drie — het geheugen vergeet niet: ' + wat };
+      var ops = {};
+      for (var i = 0; i < lijst.length; i++) {
+        if (ops[lijst[i].op]) return { staat: 'FOUT', detail: 'dezelfde verbinding staat twee keer in het geheugen: ' + wat };
+        ops[lijst[i].op] = 1;
+      }
+      if (st.bron === 'geheugen') {
+        var max = lijst.reduce(function (a, m) { return Math.max(a, m.ms || 0); }, 0);
+        if (st.ms > max) return { staat: 'FOUT', detail: 'de ATST komt uit het geheugen maar ligt boven elke bewaarde meting — bijgestuurd of oud: ' + wat };
+      }
+      if (!vin) return { staat: 'LET OP', detail: 'geen VIN — er is niets bewaard om te toetsen; ' + wat };
+      return { staat: 'OK', detail: wat };
+    }
+  },
+
   // ── Slim visueel: vijf weergaven met een knop Volgende (02-10-2026) ──
   // Basis, temperatuur, emissie, verbruik en motor. Deze proef loopt de
   // rondgang af en telt per profiel hoeveel plekken deze auto kan vullen; een

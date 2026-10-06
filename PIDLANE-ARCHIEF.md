@@ -15,6 +15,37 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — Het verbindgeheugen was een ratel (#414)
+
+**Wat de kennisbank liet zien.** De CX-5 mat bij de koude poort een ATST van
+48 tot 176 ms. Toch stond hij op 06-10 op 0xFF (1020 ms), met als bron
+`geheugen`, bij een traagste antwoord van 81 ms.
+
+**Waarom.** Drie regels die elk klopten, samen een ratel:
+`noteAntwoord()` zette ATST een trede hoger bij 3 missers op 20, en schreef
+dat meteen met `bewaar()` in het voertuigprofiel. `naVin()` nam het bewaarde
+`st` over als dat hoger was dan de meting. En `bewaar()` bij het verbinden
+schreef dat overgenomen `st` (bron `geheugen`) weer terug, met een verse
+`gemetenOp`. Daardoor verliep het halfjaar nooit. Een gemiste PID hoeft geen
+timing te zijn: motor uit, contact aan, of een ECU die een groep overslaat.
+Toch duwde elke misser de waarde blijvend omhoog.
+
+**Wat nu.** Het geheugen is de lijst `verbind.metingen`: wat de koude poort
+de laatste drie verbindingen mat. Elke meting heeft een eigen tijdstip,
+protocol en adapter. Bijsturen geldt alleen voor de rit. Het issue noemde
+twee opties: alleen de koude poort onthouden, of het geheugen laten
+vervallen na een paar lagere metingen. Dit is allebei. Het oude `st` wordt
+genegeerd, dus bestaande profielen beginnen leeg. Dat is de bedoeling: het
+0xFF van de CX-5 was geen meting.
+
+**Wat open blijft.** Of de bodem van 48 ms te krap is (#394 punt 1). Of een
+rit waarin ATST echt omhoog moest, de volgende keer opnieuw 60 s aan
+missers kost voordat de bijsturing weer ingrijpt. Dat laatste is de prijs
+van niet bewaren. Is die te hoog, dan hoort het antwoord een meting in de
+koude poort te zijn en geen geheugen.
+
+---
+
 ## 06-10-2026 — De beheerdersdemo (#409)
 
 **De vraag.** "Ik heb als admin geen voertuigen en kan met de demo te weinig

@@ -1653,7 +1653,12 @@ MUTATIES=(
 "public/pidlane-bt.js@@const ref = ok.length>=5 ? ok[ok.length-2] : ok[ok.length-1];@@const ref = ok[ok.length-1];@@test-verbindprofiel.js@@één Bluetooth-haper bepaalt het ATST-plafond van een snelle auto"
 "public/pidlane-bt.js@@const doel=Math.min(ST_TOP_MS, Math.max(ST_BODEM_MS, ref*2));@@const doel=Math.min(ST_TOP_MS, Math.max(ST_BODEM_MS, ref));@@test-verbindprofiel.js@@ATST zonder marge: het traagste antwoord valt precies op het plafond"
 "public/pidlane-bt.js@@if(msNu!=null && !(b.ms>msNu)) return null;@@@@test-verbindprofiel.js@@het verbindgeheugen verlaagt ATST onder wat vandaag gemeten is"
-"public/pidlane-bt.js@@if(String(bewaard.adapter||'')!==String(adapter||'')) return null;@@@@test-verbindprofiel.js@@het verbindgeheugen geldt ook over een andere adapter heen"
+"public/pidlane-bt.js@@if(String(m.adapter||'')!==String(adapter||'')) continue;@@@@test-verbindprofiel.js@@het verbindgeheugen geldt ook over een andere adapter heen"
+# ── verbindgeheugen is geen ratel (#414, 06-10-2026) ──
+"public/pidlane-bt.js@@  return lijst.slice(-ST_GEHEUGEN_N);@@  return lijst;@@test-verbindprofiel.js@@het verbindgeheugen vergeet nooit: één trage meting houdt ATST een half jaar hoog — #414"
+"public/pidlane-bt.js@@if(!b || m.ms>b.ms) b=m;@@b=m;@@test-verbindprofiel.js@@het verbindgeheugen neemt de laatste meting in plaats van de traagste — #414"
+"public/pidlane-bt.js@@filter(m=>m && !(meting && m.op===meting.op));@@filter(m=>m);@@test-verbindprofiel.js@@elke bewaar() in één verbinding telt als nieuwe meting en duwt de trage van eerder eruit — #414"
+"public/pidlane-bt.js@@    // Niet bewaren (#414): een gemiste PID kan ook een motor zijn die uitgaat@@    try{ if(typeof vehicleInfo!=='undefined' && vehicleInfo && vehicleInfo.vin) this.bewaar(vehicleInfo.vin); }catch(e){ btDiag(String(e),'warn'); }\n    // Niet bewaren (#414): een gemiste PID kan ook een motor zijn die uitgaat@@test-verbindprofiel.js@@bijsturen tijdens de rit schrijft weer in het geheugen — #414"
 "public/pidlane-data.js@@if(S.batchGroep>=this.batchPlafond()) return false;@@if(S.batchGroep>=this.GROEP_AUTO_MAX) return false;@@test-verbindprofiel.js@@de groep klimt boven het plafond uit de groepsproef"
 "public/pidlane-data.js@@c==='ATST64' ? 'ATST'+st :@@c==='ATST64' ? 'ATST64' :@@test-verbindprofiel.js@@de terugrol zet ATST weer op 400 ms in plaats van de gemeten waarde"
 "worker.js@@vin_pseudo: vorm(b.vin_pseudo, /^[0-9a-f]{16}@@vin_pseudo: vorm(b.vin_pseudo, /^[0-9A-Za-z]{16,17}@@test-verbindprofiel.js@@een ruwe VIN komt als pseudoniem in de kennisbank (privacy)"

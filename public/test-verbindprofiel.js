@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════════
-// test-verbindprofiel.js — de koude poort meet, het geheugen verhoogt alleen,
-// en naar de kennisbank gaat geen VIN (#388)
+// test-verbindprofiel.js — de koude poort meet, het geheugen verhoogt alleen
+// en is geen ratel, en naar de kennisbank gaat geen VIN (#388, #414)
 // ──────────────────────────────────────────────────────────────────
 // WAAROM
 // ATST stond voor elke auto op 400 ms. De koude poort (PLVerbind in
@@ -10,6 +10,8 @@
 //   - een trage gateway moet boven de oude 400 ms uitkomen — dát is de T6;
 //   - het geheugen mag ATST nooit verlagen, en niet over een andere adapter
 //     of een andere bus heen;
+//   - het geheugen onthoudt alleen metingen van de koude poort, de laatste
+//     drie: geen bijsturing, geen oud `st` — anders is het een ratel (#414);
 //   - de groepsproef zet een plafond, en de automaat klimt er niet boven;
 //   - een terugrol gaat naar de gemeten ATST, niet naar 64;
 //   - de Worker laat geen ruwe VIN en geen e-mailadres door naar D1.
@@ -42,7 +44,7 @@ const s = { window: {}, Date };
 vm.createContext(s);
 vm.runInContext(knip(BT, 'const ST_BODEM_MS=', '// De PIDs waarmee de groepsproef werkt', 'de verbindprofielfuncties') +
   '\nthis.plStUitMetingen=plStUitMetingen; this.plProtocolBits=plProtocolBits; this.plSoloAntwoord=plSoloAntwoord;' +
-  '\nthis.plGroepCompleet=plGroepCompleet; this.plStUitGeheugen=plStUitGeheugen; this.plAdressen=plAdressen; this.plHandSchoon=plHandSchoon; this.plStVolgende=plStVolgende; this.plStMoetOmhoog=plStMoetOmhoog;', s, { filename: 'pidlane-bt.js' });
+  '\nthis.plGroepCompleet=plGroepCompleet; this.plStUitGeheugen=plStUitGeheugen; this.plAdressen=plAdressen; this.plHandSchoon=plHandSchoon; this.plStVolgende=plStVolgende; this.plStMoetOmhoog=plStMoetOmhoog; this.plStMetingenBij=plStMetingenBij;', s, { filename: 'pidlane-bt.js' });
 
 console.log('\nATST uit de metingen\n');
 toets('te weinig metingen: niets zetten', s.plStUitMetingen([40, 41]) === null);
@@ -127,20 +129,51 @@ toets('headers, echo en onbekende velden komen er niet door', Object.keys(s.plHa
 toets('rommel geeft een leeg object', JSON.stringify(s.plHandSchoon(null)) === '{}' && JSON.stringify(s.plHandSchoon('ATZ')) === '{}');
 
 console.log('\nGeheugen: alleen omhoog, alleen op dezelfde bus en adapter\n');
-const NU = 1759500000000;
-const bewaard = { st: { hex: 'A3', ms: 652, bron: 'gemeten' }, protocol: { id: '6' }, adapter: 'spp', gemetenOp: NU - 86400000 };
+const NU = 1759500000000, DAG = 86400000;
+const m = (hex, ms, dagen, extra) => Object.assign({ hex, ms, protocol: 'A6', adapter: 'spp', op: NU - dagen * DAG }, extra || {});
+const bewaard = { metingen: [m('A3', 652, 1)] };
 const nuGemeten = { hex: '16', ms: 88, bron: 'gemeten' };
 const g1 = s.plStUitGeheugen(nuGemeten, bewaard, 'A6', 'spp', NU);
-toets('bewaard trager dan nu: ATST omhoog naar de vorige keer (A6 en 6 zijn dezelfde bus)', g1 && g1.hex === 'A3' && g1.bron === 'geheugen', JSON.stringify(g1));
+toets('bewaard trager dan nu: ATST omhoog naar de vorige keer', g1 && g1.hex === 'A3' && g1.bron === 'geheugen', JSON.stringify(g1));
+toets('A6 en 6 zijn dezelfde bus', (s.plStUitGeheugen(nuGemeten, bewaard, '6', 'spp', NU) || {}).hex === 'A3');
 toets('bewaard sneller dan nu: niet verlagen',
-  s.plStUitGeheugen({ hex: 'A3', ms: 652, bron: 'gemeten' }, Object.assign({}, bewaard, { st: { hex: '16', ms: 88, bron: 'gemeten' } }), '6', 'spp', NU) === null);
+  s.plStUitGeheugen({ hex: 'A3', ms: 652, bron: 'gemeten' }, { metingen: [m('16', 88, 1)] }, '6', 'spp', NU) === null);
 toets('andere adapter: geheugen telt niet', s.plStUitGeheugen(nuGemeten, bewaard, '6', 'ble', NU) === null);
 toets('ander protocol: geheugen telt niet', s.plStUitGeheugen(nuGemeten, bewaard, '7', 'spp', NU) === null);
 toets('ouder dan een half jaar: geheugen telt niet',
-  s.plStUitGeheugen(nuGemeten, Object.assign({}, bewaard, { gemetenOp: NU - 200 * 86400000 }), '6', 'spp', NU) === null);
-toets('nu niet gemeten (standaard): het bewaarde gemeten profiel geldt, ook als het lager is',
-  (s.plStUitGeheugen({ hex: '64', bron: 'standaard' }, Object.assign({}, bewaard, { st: { hex: '16', ms: 88, bron: 'gemeten' } }), '6', 'spp', NU) || {}).hex === '16');
-toets('een bewaard standaardprofiel is geen meting', s.plStUitGeheugen(nuGemeten, Object.assign({}, bewaard, { st: { hex: 'FF', ms: 1020, bron: 'standaard' } }), '6', 'spp', NU) === null);
+  s.plStUitGeheugen(nuGemeten, { metingen: [m('A3', 652, 200)] }, '6', 'spp', NU) === null);
+toets('nu niet gemeten (standaard): de bewaarde meting geldt, ook als die lager is',
+  (s.plStUitGeheugen({ hex: '64', bron: 'standaard' }, { metingen: [m('16', 88, 1)] }, '6', 'spp', NU) || {}).hex === '16');
+
+console.log('\nGeheugen is geen ratel (#414)\n');
+// De echte stand van de CX-5 op 06-10-2026: st op 0xFF uit het geheugen,
+// bovenop bijsturingen. Zonder `metingen` telt dat niet meer.
+const cx5 = { st: { hex: 'FF', ms: 1020, bron: 'geheugen' }, protocol: { id: 'A6' }, adapter: 'spp', gemetenOp: NU - DAG };
+toets('oud profiel (st 0xFF uit het geheugen, geen metingen): geen geheugen — de CX-5 heelt zichzelf',
+  s.plStUitGeheugen({ hex: '29', ms: 164, bron: 'gemeten' }, cx5, 'A6', 'spp', NU) === null);
+const drie = { metingen: [m('1C', 112, 3), m('46', 280, 2), m('29', 164, 1)] };
+toets('de traagste van de bewaarde metingen telt, niet de laatste',
+  (s.plStUitGeheugen({ hex: '0C', ms: 48, bron: 'gemeten' }, drie, 'A6', 'spp', NU) || {}).hex === '46');
+let lijst = drie.metingen;
+for (let i = 0; i < 3; i++) lijst = s.plStMetingenBij(lijst, m('0C', 48, -i));
+toets('drie snellere metingen erna: het geheugen is mee omlaag',
+  lijst.length === 3 && s.plStUitGeheugen({ hex: '0C', ms: 48, bron: 'gemeten' }, { metingen: lijst }, 'A6', 'spp', NU) === null,
+  JSON.stringify(lijst.map(x => x.hex)));
+const een = m('0C', 48, 0);
+let herhaald = drie.metingen;
+for (let i = 0; i < 5; i++) herhaald = s.plStMetingenBij(herhaald, een);
+toets('bewaar() vijf keer in één verbinding: telt als één meting, de trage van eerder blijft staan',
+  herhaald.length === 3 && herhaald.filter(x => x.op === een.op).length === 1 && herhaald.some(x => x.hex === '46'),
+  JSON.stringify(herhaald.map(x => x.hex)));
+toets('geen meting deze verbinding (standaard, handmatig): de lijst blijft zoals hij was',
+  JSON.stringify(s.plStMetingenBij(drie.metingen, null)) === JSON.stringify(drie.metingen));
+toets('een meting zonder geldige hex telt niet', s.plStUitGeheugen(nuGemeten, { metingen: [m('ZZ', 652, 1)] }, 'A6', 'spp', NU) === null);
+
+// De bron: bijsturen tijdens de rit schrijft niet in het geheugen. Broncode
+// lezen, omdat noteAntwoord() een verbonden adapter, vehicleInfo en
+// localStorage nodig heeft; het gedrag zelf toetst blok 5 (#414).
+const note = knip(BT, '  noteAntwoord(mist){', '  // ── met de hand ──', 'noteAntwoord');
+toets('noteAntwoord() roept bewaar() niet aan — bijsturen geldt alleen voor deze rit', note.indexOf('.bewaar(') === -1);
 
 // ── 2. PLBus en de terugrol, uit de echte pidlane-data.js ──
 console.log('\nGroepsplafond en terugrol (pidlane-data.js)\n');

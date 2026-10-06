@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-10-2026 — Verbindgeheugen: alleen metingen, de laatste drie (#414)
+ ═══════════════════════════════════════════════════════════
+
+ - Het ATST-geheugen per auto is nu verbind.metingen: de laatste drie
+   metingen van de koude poort. De traagste telt, en alleen als die hoger is
+   dan vandaag gemeten (plStUitGeheugen, plStMetingenBij).
+ - Bijsturen tijdens de rit schrijft niet meer in het geheugen. Het oude
+   veld verbind.st telt niet: de CX-5 (0xFF uit het geheugen) begint weer
+   bij zijn meting.
+ - test-verbindprofiel.js, vier nieuwe mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Beheerdersdemo: als admin rekent de AI echt (#409)
  ═══════════════════════════════════════════════════════════
 
