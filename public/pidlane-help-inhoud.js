@@ -230,7 +230,7 @@ var PL_HULP = {
         '<p>Wat PidLane opslaat, waar, en wat er met je chassisnummer gebeurt, staat in het privacyscherm. ' +
         'Dat is de tekst die telt; deze handleiding herhaalt hem niet, zodat er geen twee versies uit elkaar kunnen lopen.</p>' +
         '<p><button type="button" data-hulp-doe="privacy">🔒 Open Privacy</button></p>' +
-        '<p>In de demo wordt niets bewaard.</p>',
+        '<p>In de demo wordt niets bewaard en gaat er niets naar onze server. Het scherm Telemetrie gebruikt de bewegingssensoren van je telefoon, niet je locatie.</p>',
       zie: ['account'] },
 
     /* ─────────────── HULP EN CONTACT ─────────────── */

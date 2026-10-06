@@ -121,6 +121,10 @@ WAT PIDLANE DOET
   ritten en open punten, op elk toestel waarop je inlogt.
 • Meting in beeld — schakel je tijdens het meten naar een andere app, dan
   loopt de meting door in een klein venster.
+• Slim visueel — de belangrijkste waarden als dashboard: toerental,
+  snelheid, de accu als lampje en je banden in een autootje.
+• Telemetrie — met de sensoren van je telefoon: hoe schuin de auto staat en
+  hoeveel G hij trekt bij optrekken, remmen en in de bocht.
 • Rapporten opslaan en delen als PDF.
 
 WAT JE NODIG HEBT
@@ -148,6 +152,7 @@ PRIVACY
 PidLane vraagt toegang tot Bluetooth om de adapter te vinden en ermee te
 praten — meer niet. De scanpermissie is aangevraagd met de markering
 neverForLocation: de app bepaalt je locatie niet en slaat hem niet op.
+Telemetrie gebruikt de bewegingssensoren van je telefoon, niet je locatie.
 
 Metingen staan op je toestel. Vraag je een analyse, dan gaan de meetwaarden
 en voertuiggegevens naar onze server en naar de aanbieder van het taalmodel.
@@ -504,6 +509,7 @@ e-mailadres gaat sinds dezelfde dag niet meer mee (`_vlGeenEmail()`).
 | Calendar, Contacts | — |
 | Web browsing history | — |
 | App info and performance → Crash logs | Er gaat geen crashrapportage naar een dienst |
+| Sensoren van de telefoon (Telemetrie, sinds 3.2.0) | Play heeft geen categorie voor de oriëntatie- en bewegingssensor, en ze geven geen positie (dus niet *Location*). De waarden blijven op het toestel; vraag je een AI-analyse met telemetrie aan, dan gaan ze mee als sensorwaarde — dezelfde verwerking als de autosensoren, die al onder *App functionality* valt. Niet in de gedeelde referentiedata. `privacy.html` noemt het onder *Sensoren van je telefoon* |
 | **Device or other IDs** | Zie het kader hieronder: sinds 3.1.0 is dit een besluit en geen vanzelfsprekend "nee". |
 
 > **Device or other IDs — besluit bij 3.1.0: aanvinken.** Van het toestel
@@ -632,6 +638,12 @@ hand hetzelfde beschrijven, lopen hier uit de pas. Dat is de fout die §16 op
 controleert daarom dat elke functie die dit veld noemt óók in §3 staat**; noem
 je hier iets nieuws, dan hoort het daar eerst.
 
+**Nagelezen tegen de code op 06-10-2026, voor 3.2.0.** Slim visueel is
+`pidlane-visueel.js` met de schermen uit `pidlane-visprofiel.js`, telemetrie is
+`pidlane-telemetrie.js`, het inmeten is `PLVerbind` in `pidlane-bt.js` (#388),
+Bluetooth uit is `btAanVoorKeten()` (#359), de herinneringen zijn
+`pidlane-herinner.js` en de rit-monitor bij schakelen is #400.
+
 **Nagelezen tegen de code op 27-09-2026, voor 3.1.0.** De functies die
 hieronder bij naam genoemd worden bestaan als eigen module: Mijn voertuigen is
 `pidlane-garage.js` met `handleKlantPlatform` in `worker.js` (maximaal drie
@@ -645,15 +657,16 @@ toetst hij niet.
 10-09-2026 ook een en-US-blok, net als §2, terwijl §3 er geen had (#177).
 
 ```
-Versie 3.1
-Met Mijn voertuigen en meting in beeld.
+Versie 3.2
+Met slim visueel en telemetrie.
 
-- Mijn voertuigen: bewaar tot drie auto's in je account, met rapporten,
-  ritten en open punten. Het kenteken staat versleuteld.
-- Mijn voorkeuren: je vaste instellingen gaan mee naar elk toestel.
-- Meting in beeld: schakel je tijdens het meten weg, dan loopt de meting
-  door in een klein venster.
-- Sneller opnieuw verbinden, veel verbeteringen aan meten.
+- Slim visueel: je auto als dashboard, met de accu als lampje en je
+  banden in een autootje. Nieuw: helling en G-kracht op één scherm.
+- Elke auto wordt bij het verbinden ingemeten, voor een snellere en
+  stabielere verbinding.
+- Staat Bluetooth uit, dan zegt de app dat meteen.
+- Herinneringen voor APK en onderhoud.
+- De rit-monitor meldt niets meer bij gewoon schakelen.
 
 Geen adapter? Probeer de demomodus op het startscherm.
 ```
@@ -762,6 +775,12 @@ want hij gaat over één bepaalde bundel. Vul hem dus bij, tik hem niet af.
 | Meting in beeld (sinds 3.1.0): tijdens het meten wegschakelen geeft het kleine venster, de meting loopt zichtbaar door, en terugkomen geeft het volle scherm terug. Ook met de sensoren pas ná het verbinden gekozen — dat was de volgorde waarin het venster tot 23-09 nooit verscheen | nog niet bewezen |
 | Meting in beeld uit via `feat_pip` in de Config: geen venster meer, zonder nieuwe build | nog niet bewezen |
 | Mijn voertuigen (sinds 3.1.0): akkoord geven, een voertuig bewaren, uitloggen en op een tweede toestel terugzien; daarna *Alles wissen* en zien dat het weg is | nog niet bewezen |
+| Bluetooth uit (sinds 3.2.0, #359): op Verbinden tikken met Bluetooth uit geeft de systeemvraag van Android; weigeren geeft meteen "Bluetooth staat uit", zonder anderhalve minuut zoeken | nog niet bewezen |
+| Telemetrie (sinds 3.2.0): Slim visueel → Telemetrie toont horizon, G-cirkel en de twee autootjes op één scherm, en ze bewegen mee; Nulstellen wist het piekballetje | nog niet bewezen |
+
+**Let op bij 3.2.0.** Na de geslaagde gesloten test (#408) zijn Slim visueel,
+het inmeten van de verbinding, de demo (stuurt niets meer) en het verbinden met
+Bluetooth uit verbouwd. Ook hier geldt: een oud buildnummer is geen bewijs.
 
 **Let op bij 3.1.0.** Alle "laatst bewezen"-regels hierboven gaan over builds
 van vóór 12-09-2026. Sindsdien zijn beeld-in-beeld (#228), Mijn voertuigen,

@@ -64,7 +64,8 @@
   const REGELS = [
     ['🔌', 'Verbinding met je OBD2-adapter',
       'PidLane gebruikt Bluetooth om te praten met de adapter in de OBD2-poort van je auto. ' +
-      'Android noemt die permissie "apparaten in de buurt". Zonder die permissie kan de app niets uitlezen.'],
+      'Android noemt die permissie "apparaten in de buurt". Zonder die permissie kan de app niets uitlezen. ' +
+      'Staat Bluetooth uit, dan vraagt de app Android om hem aan te zetten; dat mag je weigeren.'],
     ['📍', 'Geen locatiebepaling',
       'PidLane vraagt je locatie niet op en slaat hem niet op. De scanpermissie is aangevraagd met de ' +
       'markering neverForLocation, waarmee Android het gebruik voor plaatsbepaling blokkeert. ' +
@@ -74,9 +75,14 @@
       'scherm en, als je om een AI-analyse vraagt, naar onze server om daar een rapport van te maken. ' +
       'Het chassisnummer zelf blijft op je toestel: in de referentiedata die je apart deelt staat er ' +
       'een uit dat nummer berekende code in de plaats. Dat is een pseudoniem, geen anonimisering.'],
+    ['📱', 'Sensoren van je telefoon',
+      'Het scherm Telemetrie leest de oriëntatie- en bewegingssensor van je telefoon: helling, kanteling en ' +
+      'G-kracht. Geen positie. De waarden blijven op je toestel, behalve als je met telemetrie aan om een ' +
+      'AI-analyse vraagt; in de gedeelde referentiedata gaan ze niet mee.'],
     ['💾', 'Wat er bewaard wordt',
       'Metingen en logboeken staan op je eigen toestel. Vraag je een analyse aan, dan wordt de meting ' +
-      'op onze server verwerkt en bewaard bij je account. Je kunt ze daar verwijderen.']
+      'op onze server verwerkt en bewaard bij je account. Je kunt ze daar verwijderen. ' +
+      'In de demo wordt niets bewaard en gaat er niets naar onze server.']
   ];
 
   function _esc(s) {
