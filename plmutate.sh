@@ -603,11 +603,11 @@ MUTATIES=(
 # zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop
 # kostte: twee velden die een reviewer allebei leest, met verschillende
 # beloftes. Het valt niemand op tot het in de Console staat.
-"PLAY-INZENDING.md@@Met Mijn voertuigen en meting in beeld.@@Met Mijn voertuigen en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
+"PLAY-INZENDING.md@@Met slim visueel en telemetrie.@@Met slim visueel en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
 # En andersom: §3 hernoemt een functie, §14 blijft de oude naam beloven. Dat is
 # de stillere van de twee — je verbetert de beschrijving en raakt het veld
 # ernaast niet aan.
-"PLAY-INZENDING.md@@• Meting in beeld — schakel je@@• Klein venster — schakel je@@test-playteksten.js@@§3 hernoemt een functie en §14 belooft de oude naam nog"
+"PLAY-INZENDING.md@@• Slim visueel — de belangrijkste@@• Dashboardweergave — de belangrijkste@@test-playteksten.js@@§3 hernoemt een functie en §14 belooft de oude naam nog"
 # ── Inloggen kost geen credit meer (#179, 10-09-2026) ──
 # Vijf fouten die deze reparatie ongedaan maken, en ze zijn geen van vijven
 # verzonnen: de eerste is precies hoe het er tot vandaag in stond, en de
@@ -1568,6 +1568,16 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  } else if(volt){@@  } else if(volt && m){@@test-visueel.js@@het acculampje brandt alleen als er ook een motoroordeel is: zonder PLAandrijving geen spanning"
 "public/pidlane-banden.js@@      uit[p] = (!st || st.ernst === 'geen' || !d || d.waarde === null || d.oud) ? 'geen' : w.ernst;@@      uit[p] = w ? w.ernst : 'geen';@@test-banden.js@@het autootje kleurt een band van een kwartier geleden groen"
 "public/pidlane.css@@body.pl-visueel #plLiveWaak, body.pl-visueel #plLiveRec { display:none !important; }@@@@bproef-visueel.js@@Bewaken en Opnemen staan weer onder Slim visueel, naast de waakronde en de recorder in het vak"
+# ── helling en G-kracht op één scherm (06-10-2026) ──
+"public/pidlane-visprofiel.js@@  return '<div class=\"vpf-tel-boven\"><div>'+htmlHorizon(p, ind, 'hz-', false)@@  return '<div class=\"vpf-tel-boven\"><div>'+htmlHorizon(p, ind, '', false)@@test-visprofiel.js@@de horizon en de autootjes delen hun element-id's: de horizon beweegt niet en een autootje draait verkeerd"
+"public/pidlane-visprofiel.js@@  try{ let v=localStorage.getItem(SLEUTEL); if(OUD_PROFIEL[v]) v=OUD_PROFIEL[v];@@  try{ let v=localStorage.getItem(SLEUTEL);@@test-visprofiel.js@@wie een van de oude telemetrieschermen gekozen had, valt terug op Basis"
+# ── het emissiescherm is donker (06-10-2026) ──
+"public/pidlane.css@@.vpf-licht { background:#0f141d;@@.vpf-licht { background:#f7f8fb;@@test-visprofiel.js@@het emissiescherm is weer wit en verblindt 's avonds in de auto"
+# ── nooit een VIN als voertuignaam rechtsboven (06-10-2026) ──
+"public/pidlane-uihelpers.js@@  el.dataset.naam = t ? (sysNaam(t, merk, vi.model) || 'Voertuig') : '';@@  el.dataset.naam = t||'';@@test-nav.js@@showVtag bewaart een VIN als naam: rechtsboven staan 17 tekens in plaats van de auto"
+# ── het acculampje flitst niet meer weg bij een oude spanning (06-10-2026) ──
+"public/pidlane-visueel.js@@  return { v:pidVals[pid], oud:isOud(pid, nu) };@@  return isOud(pid, nu) ? null : { v:pidVals[pid], oud:false };@@test-visueel.js@@een oude accuspanning gooit het lampje weg: de accu flitst weg tot de volgende meting"
+"public/pidlane-visueel.js@@soort:'accu '+vSt+(extra.voltOud ? ' oud' : ''),@@soort:'accu '+vSt,@@test-visueel.js@@een oude accuspanning staat er even fel als een verse"
 # ── G-cirkel: zij-G volgt het gevoel, piekballetje (#407) ──
 "public/pidlane-visprofiel.js@@function gPunt(x, y){ return { cx:(100-x*80)@@function gPunt(x, y){ return { cx:(100+x*80)@@test-visprofiel.js@@rechts sturen zet de stip weer rechts, tegen het gevoel in"
 "public/pidlane-visprofiel.js@@  if(!piek || t-piek.t > G_PIEK_MS || Math.hypot(x, y) >= Math.hypot(piek.x, piek.y)) return@@  if(true) return@@test-visprofiel.js@@het piekballetje volgt gewoon de stip: een hard remmoment is na het loslaten al weg"
@@ -1671,7 +1681,7 @@ MUTATIES=(
 "public/pidlane-telemetrie.js@@  _voor=null; _leer={ som:[0,0,0], n:0 };@@  _leer={ som:[0,0,0], n:0 };@@test-telemetrie.js@@na nulstellen in een andere houder blijft de oude rijrichting staan — #404"
 "public/pidlane-visprofiel.js@@  else if(x.soort==='draai') f.setAttribute('transform', 'rotate('+(-v).toFixed(1)+' 100 100)');@@  else if(x.soort==='draai') f.setAttribute('transform', 'rotate('+(v).toFixed(1)+' 100 100)');@@test-visprofiel.js@@de kunstmatige horizon draait de verkeerde kant op: rechts omlaag leest als links omlaag"
 "public/pidlane-visprofiel.js@@  const v=klem(val, x.lo, x.hi);@@  const v=Number(val)||0;@@test-visprofiel.js@@een onzinwaarde schuift de horizon uit het beeld"
-"public/pidlane-functietest.js@@    if(/^tel-/.test(p.id)) return;@@    void 0;@@test-functietest.js@@de Full function test rekent de auto de telefoonweergaven aan als ongeschikt"
+"public/pidlane-functietest.js@@    if(/^tel(-|emetrie$)/.test(p.id)) return;@@    void 0;@@test-functietest.js@@de Full function test rekent de auto de telefoonweergaven aan als ongeschikt"
 "public/pidlane-telemetrie.js@@  const gL=dot(lin, ax.voor)/G, gD=dot(lin, ax.rechts)/G;@@  const gL=dot(lin, ax.voor)/G, gD=-dot(lin, ax.rechts)/G;@@test-telemetrie.js@@de G-cirkel zet een bocht naar links aan de rechterkant"
 )
 

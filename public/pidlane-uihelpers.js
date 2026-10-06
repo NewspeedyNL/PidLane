@@ -205,7 +205,13 @@ function showVtag(t){
   // de tooltip + het voertuigoverzicht achter de chip; dát het om een demo gaat
   // zie je al aan de oranje OBD-stip. In de chip blijft alleen wat kort is:
   // het dossier-percentage en de rijsituatie-iconen.
-  el.dataset.naam = t||'';
+  // Nooit een VIN als naam (06-10-2026). updateVehicleCard() gaf hem als
+  // eerste mee, en dan stond er rechtsboven 17 tekens in plaats van de auto —
+  // ook in de tooltip en de ingeklapte voertuigkop, en dus in elke gedeelde
+  // schermafdruk. sysNaam() maakt van een VIN-vorm merk en model.
+  let vi={}; try{ vi=(typeof vehicleInfo!=='undefined' && vehicleInfo) || {}; }catch(e){ console.warn('vehicleInfo niet leesbaar voor de voertuignaam', e); }
+  const merk=(vi.merk && vi.merk!=='Onbekend') ? vi.merk : '';
+  el.dataset.naam = t ? (sysNaam(t, merk, vi.model) || 'Voertuig') : '';
   el.innerHTML='<span id="vtagPct" style="font-size:11px;font-weight:800;padding:1px 5px;border-radius:3px;background:'+(pct>=80?'rgba(0,168,107,.18)':'rgba(247,127,0,.18)')+';color:'+(pct>=80?'var(--gn)':'var(--or)')+'">📋 '+pct+'%</span>'+sitHtml;
   el.style.display='block';
   // Klik loopt via de omliggende voertuig-chip (#vchip) — geen eigen onclick meer,

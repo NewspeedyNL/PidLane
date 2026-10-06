@@ -925,7 +925,7 @@ const LAMP_MOTOR = {
 // lampje een balkje.
 function pct(v){ const n=Number(v); return (v===null || v===undefined || v==='' || !isFinite(n)) ? null : Math.max(0, Math.min(100, Math.round(n))); }
 /* {motor, accu}: wat de twee lampjes zeggen, of null. `extra` = de getallen
-   {belasting, accu (015B, %), volt (0142), rpm}. Puur. */
+   {belasting, accu (015B, %), volt (0142), voltOud, rpm}. Puur. */
 function aandrijfLampjes(res, motor, extra){
   const uit={ motor:null, accu:null };
   extra=extra||{};
@@ -949,7 +949,7 @@ function aandrijfLampjes(res, motor, extra){
   } else if(volt){
     // De accu hoort bij de auto, niet bij de motor: hij brandt ook zonder
     // oordeel van PLAandrijving, zolang er een spanning binnen is.
-    uit.accu={ soort:'accu '+vSt, kop:'Accu', waarde:volt, icoon:'accu', dubbel:false, twijfel:false,
+    uit.accu={ soort:'accu '+vSt+(extra.voltOud ? ' oud' : ''), kop:'Accu', waarde:volt, icoon:'accu', dubbel:false, twijfel:false,
                balk: Math.round(deel(extra.volt, ACCU_BALK_LO, ACCU_BALK_HI)) };
   }
   return uit;
@@ -975,6 +975,20 @@ function lampGetal(pid){
   if(!pid || typeof pidVals==='undefined' || pidVals[pid]===undefined) return null;
   return isOud(pid) ? null : pidVals[pid];
 }
+/* De spanning bij het acculampje (06-10-2026). Die werd net als de belasting
+   weggegooid zodra hij oud was, en dan verdween het hele lampje: 0142 wordt
+   traag gevraagd, dus elke keer dat een antwoord iets later kwam dan drie
+   keer het tempo, flitste de accu weg tot de volgende meting. Een accu
+   verandert niet per seconde; het lampje blijft staan, dof als de waarde oud
+   is. Pas na VIS_ACCU_VERGEET_MS zonder antwoord verdwijnt hij. Geeft
+   {v, oud} of null. */
+const VIS_ACCU_VERGEET_MS = 60000;
+function accuGetal(pid, nu){
+  if(!pid || typeof pidVals==='undefined' || pidVals[pid]===undefined) return null;
+  const laatste=(typeof _pidLastUpd!=='undefined' && _pidLastUpd) ? (_pidLastUpd[pid]||0) : 0;
+  if(laatste && (nu||Date.now())-laatste > VIS_ACCU_VERGEET_MS) return null;
+  return { v:pidVals[pid], oud:isOud(pid, nu) };
+}
 /* Het bandenlampje: alleen als deze auto bandensensoren heeft (PLBanden),
    gekleurd met het oordeel over de vier banden. Erin het autootje van
    bovenaf met per wiel zijn eigen kleur (#371). Tikken opent het venster. */
@@ -996,8 +1010,9 @@ function bandenBij(){
 function lampjesBij(){
   const I=_staat.ind;
   const rpm=(I && I.naald && typeof pidVals!=='undefined') ? lampGetal(I.naald) : null;
+  const vg=accuGetal(I && I.lamp.volt);
   const res=leesAandrijving(), L=aandrijfLampjes(res, I ? I.motor : leesMotor(),
-    { belasting: lampGetal(I && I.lamp.belasting), accu: lampGetal(I && I.lamp.accu), volt: lampGetal(I && I.lamp.volt), rpm: rpm });
+    { belasting: lampGetal(I && I.lamp.belasting), accu: lampGetal(I && I.lamp.accu), volt: vg ? vg.v : null, voltOud: !!(vg && vg.oud), rpm: rpm });
   const sleutel=JSON.stringify(L);
   if(sleutel===_staat.lampSleutel) return;
   _staat.lampSleutel=sleutel;
@@ -1431,7 +1446,7 @@ function stop(){
 window.PLVisueel = {
   G:G, REM_MS:VIS_REM_MS, TRAAG_MS:VIS_TRAAG_MS, MIN_N:VIS_MIN_N, AANLOOP_MS:VIS_AANLOOP_MS, OUD_MIN_MS:VIS_OUD_MIN_MS,
   PEDAAL_KETEN:PEDAAL_KETEN, PLEKKEN:PLEKKEN, HOOFD:HOOFD, SCHAAL:SCHAAL,
-  schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, open:open,
+  schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
   stand:stand, tekst:tekst, laaddrukNu:laaddrukNu, plekOordeel:plekOordeel,
   wijzerplaat:wijzerplaat, boogPad:boogPad, hoekOnder:hoekOnder, hoekLaaddrukNul:hoekLaaddrukNul,
   indeling:indeling, gebruiktePids:gebruiktePids, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,

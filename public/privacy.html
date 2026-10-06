@@ -40,7 +40,7 @@
 <main>
 
   <h1>Privacyverklaring</h1>
-  <div class="sub">PidLane — laatst bijgewerkt: 1 oktober 2026</div>
+  <div class="sub">PidLane — laatst bijgewerkt: 6 oktober 2026</div>
 
   <p>PidLane leest de boordcomputer van je auto uit via een OBD2-adapter en maakt daar een
   diagnose van. Deze verklaring beschrijft welke gegevens daarbij worden verwerkt, waarom,
@@ -50,6 +50,9 @@
   <p>Om met de OBD2-adapter te kunnen praten vraagt PidLane toegang tot Bluetooth. Op Android
   heet die permissie <em>apparaten in de buurt</em>. Zonder die toegang kan de app zijn werk
   niet doen — er is geen andere weg naar de gegevens van je auto.</p>
+  <p>Staat Bluetooth uit als je op Verbinden tikt, dan vraagt PidLane Android om hem aan te
+  zetten. Dat is de gewone systeemvraag van Android; je kunt hem weigeren, en dan verbindt de
+  app niet.</p>
 
   <div class="kader">
     <strong>Bluetooth wordt niet gebruikt om je locatie te bepalen.</strong> De scanpermissie is
@@ -67,6 +70,20 @@
     <tr><td>Kenteken (als je het invult)</td><td>Voertuiggegevens ophalen bij de RDW-open-data-dienst.</td></tr>
   </table>
 
+  <h2>Sensoren van je telefoon (Telemetrie)</h2>
+  <p>Kies je in Slim visueel het scherm <em>Telemetrie</em>, of zet je de telemetriesensoren aan,
+  dan leest PidLane de oriëntatie- en bewegingssensor van je telefoon: hoe schuin de auto staat
+  (helling en kanteling) en hoe hard hij optrekt, remt en de bocht door gaat (G-kracht). Daar is
+  geen aparte toestemming voor nodig, en er gaat geen positie mee: deze sensoren weten niet
+  wáár je bent.</p>
+  <ul>
+    <li>De waarden staan op het scherm en blijven op je toestel. De nulstand (de stand van de
+    telefoon in de houder) wordt alleen op je toestel bewaard.</li>
+    <li>Vraag je een AI-analyse terwijl telemetrie aan staat, dan gaan de waarden mee zoals elke
+    andere sensorwaarde (zie hieronder).</li>
+    <li>In de referentiedata die je onder een pseudoniem deelt, gaan ze níét mee.</li>
+  </ul>
+
   <h2>Waar die gegevens heen gaan</h2>
   <ul>
     <li><strong>Op je toestel.</strong> Metingen, logboeken en instellingen staan lokaal opgeslagen.
@@ -77,7 +94,7 @@
     protocol, merk en bouwjaar, de code die uit het chassisnummer berekend is (zie hieronder) en of
     je klant of beheerder bent. Geen e-mailadres, geen naam en geen kenteken. We gebruiken ze
     alleen om fouten in de app te vinden en te herstellen; ze gaan mee weg als je je account
-    verwijdert.</li>
+    verwijdert. Zonder geldige sessie worden ze niet verstuurd, en in de demo nooit.</li>
     <li><strong>Je account</strong> (e-mailadres, je wachtwoord als hash, je tegoed en je
     akkoorden) staat in een database van Cloudflare (D1).</li>
     <li><strong>Naar onze server</strong>, als je om een AI-analyse vraagt. De meting wordt dan
@@ -159,6 +176,8 @@
     Tot augustus 2026 kon de ritopname optioneel de hoogte meenemen; die functie is
     verwijderd.</li>
     <li>Geen opslag of verzending van camerabeeld — de scanner leest alleen de QR-code.</li>
+    <li>Niets van de demo. Een demo werkt met een verzonnen auto: er wordt niets bewaard, en er
+    gaan geen logregels, AI-vragen of meetgegevens naar onze server.</li>
     <li>Geen toegang tot je contacten, agenda, foto's, sms of belgeschiedenis.</li>
   </ul>
 

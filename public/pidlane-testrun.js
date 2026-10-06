@@ -2771,6 +2771,24 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Slim visueel 06-10: accu blijft staan, auto i.p.v. VIN, één telemetriescherm ──
+  {
+    issue: '—',
+    naam: 'Rechtsboven staat de auto en niet de VIN, het acculampje flitst niet weg, telemetrie is één scherm',
+    waarom: 'Een VIN op het scherm gaat mee met elke schermafdruk; een lampje dat steeds even verdwijnt leest als een storing.',
+    proef: async function () {
+      var vt = document.getElementById('vtag');
+      var naam = vt && vt.dataset ? (vt.dataset.naam || '') : '';
+      if (/^[A-HJ-NPR-Z0-9]{17}$/i.test(naam.replace(/\s+/g, ''))) return { staat: 'FOUT', detail: 'de voertuignaam rechtsboven is een VIN' };
+      var V = window.PLVisueel, P = window.PLVisProfiel;
+      if (!V || typeof V.accuGetal !== 'function') return { staat: 'FOUT', detail: 'PLVisueel.accuGetal ontbreekt — pidlane-visueel.js is niet de nieuwe' };
+      if (!P || !P.zoek('telemetrie') || P.zoek('tel-g')) return { staat: 'FOUT', detail: 'de telemetrieschermen zijn niet samengevoegd' };
+      if (!naam) return { staat: 'LET OP', detail: 'nog geen auto herkend — nodig: verbonden met een auto, en draai opnieuw' };
+      var g = V.accuGetal('0142');
+      return { staat: 'OK', detail: 'rechtsboven: ' + naam + ' · accu ' + (g ? g.v + ' V' + (g.oud ? ' (oud, dof)' : '') : 'geen spanning') + ' · telemetrie op één scherm' };
+    }
+  },
+
   // ── G-cirkel: zij-G volgt het gevoel, piekballetje (#407) ──
   {
     issue: '#407',

@@ -41,15 +41,15 @@ function laad(bron) {
 console.log('\n1. Volgende loopt rond');
 function keurRond(bron) {
   const P = laad(bron).PLVisProfiel, uit = [];
-  if (P.PROFIELEN.length !== 8) uit.push('er zijn ' + P.PROFIELEN.length + ' weergaven, verwacht 8');
+  if (P.PROFIELEN.length !== 6) uit.push('er zijn ' + P.PROFIELEN.length + ' weergaven, verwacht 6');
   let id = 'basis'; const gezien = [id];
-  for (let i = 0; i < 8; i++) { id = P.volgende(id); gezien.push(id); }
-  if (gezien.join(',') !== 'basis,temp,emissie,verbruik,motor,tel-horizon,tel-offroad,tel-g,basis') uit.push('de rondgang is ' + gezien.join(' → '));
+  for (let i = 0; i < 6; i++) { id = P.volgende(id); gezien.push(id); }
+  if (gezien.join(',') !== 'basis,temp,emissie,verbruik,motor,telemetrie,basis') uit.push('de rondgang is ' + gezien.join(' → '));
   if (P.volgende('onzin') !== 'temp') uit.push('na een onbekende keuze komt ' + P.volgende('onzin'));
   return uit;
 }
 const r1 = keurRond(BRON);
-waar('basis → temperatuur → emissie → verbruik → motor → drie keer telemetrie → basis', r1.length === 0, r1.join('; '));
+waar('basis → temperatuur → emissie → verbruik → motor → telemetrie (één scherm sinds 06-10-2026) → basis', r1.length === 0, r1.join('; '));
 waar('tegenproef: zonder de rond-modulo stopt hij na motor',
   keurRond(BRON.replace('% PROFIELEN.length].id', '] ? PROFIELEN[i+1].id : PROFIELEN[PROFIELEN.length-1].id')).length > 0);
 
@@ -59,6 +59,10 @@ P.bewaar('motor');
 waar('een opgeslagen keuze wordt teruggelezen', P.lees() === 'motor');
 C.localStorage.setItem(P.SLEUTEL, 'kapot');
 waar('rommel in de opslag: basis, geen lege weergave', P.lees() === 'basis');
+['tel-horizon', 'tel-offroad', 'tel-g'].forEach(oud => {
+  C.localStorage.setItem(P.SLEUTEL, oud);
+  waar('een oude keuze ' + oud + ' komt uit op het samengevoegde scherm, niet op Basis', P.lees() === 'telemetrie', P.lees());
+});
 
 console.log('\n2. De eerste bruikbare PID uit de keten');
 const mag = s => p => s.indexOf(p) >= 0;
@@ -102,7 +106,9 @@ function vakkenMis(PP) {
   const uit = [];
   PP.PROFIELEN.filter(p => p.plekken).forEach(p => {
     const i = PP.indeling(p.id, () => true), h = PP.html(p.id, i);
-    p.plekken.forEach(x => { if (h.indexOf('id="vpf-w-' + x.rol + '"') < 0) uit.push(p.id + '/' + x.rol); });
+    // Een getalvak, of — voor de horizon in het samengevoegde telemetriescherm,
+    // die zijn getallen deelt met de autootjes — ten minste zijn tekening.
+    p.plekken.forEach(x => { if (h.indexOf('id="vpf-w-' + x.rol + '"') < 0 && !(/^hz-/.test(x.rol) && h.indexOf('id="vpf-f-' + x.rol + '"') >= 0)) uit.push(p.id + '/' + x.rol); });
     if (h.indexOf('vpf-' + p.stijl) < 0) uit.push(p.id + ': stijl ' + p.stijl + ' ontbreekt');
   });
   return uit;
@@ -148,26 +154,31 @@ console.log('\n7. Telemetrie: de tekening draait mee (05-10-2026)');
     setAttribute(k, v) { this.attr[k] = String(v); }, getAttribute(k) { return this.attr[k]; } });
   T.document = { getElementById: nep };
   const P = T.PLVisProfiel;
-  const ind = P.indeling('tel-horizon', () => true);
-  P.bij('tel-horizon', ind, 'TL01', 10, 'ok');
-  P.bij('tel-horizon', ind, 'TL02', 5, 'ok');
-  waar('horizon: neus 10° omhoog = de horizon 30 px omlaag', els['vpf-f-helling'].attr.transform === 'translate(0 30.0)', els['vpf-f-helling'].attr.transform);
-  waar('horizon: rechts 5° omlaag = de horizon draait linksom', els['vpf-f-kanteling'].attr.transform === 'rotate(-5.0 100 100)', els['vpf-f-kanteling'].attr.transform);
-  P.bij('tel-horizon', ind, 'TL01', 400, 'ok');
-  waar('horizon: een onzinwaarde blijft binnen de schaal (30°)', els['vpf-f-helling'].attr.transform === 'translate(0 90.0)', els['vpf-f-helling'].attr.transform);
-  const indO = P.indeling('tel-offroad', () => true);
-  P.bij('tel-offroad', indO, 'TL01', 12, 'ok');
-  waar('offroad: van opzij gaat de neus (rechts) omhoog = linksom', els['vpf-f-helling'].attr.transform === 'rotate(-12.0 100 112)', els['vpf-f-helling'].attr.transform);
-  const indG = P.indeling('tel-g', () => true);
-  P.bij('tel-g', indG, 'TL03', -0.5, 'ok'); P.bij('tel-g', indG, 'TL04', 0.25, 'ok');
+  // Sinds 06-10-2026 één scherm: horizon (rollen hz-*), autootjes en G-cirkel.
+  const ind = P.indeling('telemetrie', () => true);
+  waar('helling en kanteling staan op de horizon én op de autootjes', ind.plekken['hz-helling'] === 'TL01' && ind.plekken.helling === 'TL01' && ind.plekken['hz-kanteling'] === 'TL02' && ind.plekken.kanteling === 'TL02', JSON.stringify(ind.plekken));
+  const html = P.html('telemetrie', ind);
+  ['vpf-f-hz-helling', 'vpf-f-hz-kanteling', 'vpf-f-helling', 'vpf-f-kanteling', 'vpf-f-gstip', 'vpf-f-gpiek'].forEach(id => {
+    waar('het samengevoegde scherm heeft ' + id + ', één keer', (html.match(new RegExp('id="' + id + '"', 'g')) || []).length === 1);
+  });
+  waar('geen element-id twee keer', (() => { const ids = [...html.matchAll(/id="([^"]+)"/g)].map(m => m[1]); return ids.length === new Set(ids).size; })());
+  P.bij('telemetrie', ind, 'TL01', 10, 'ok');
+  P.bij('telemetrie', ind, 'TL02', 5, 'ok');
+  waar('horizon: neus 10° omhoog = de horizon 30 px omlaag', els['vpf-f-hz-helling'].attr.transform === 'translate(0 30.0)', els['vpf-f-hz-helling'].attr.transform);
+  waar('horizon: rechts 5° omlaag = de horizon draait linksom', els['vpf-f-hz-kanteling'].attr.transform === 'rotate(-5.0 100 100)', els['vpf-f-hz-kanteling'].attr.transform);
+  waar('offroad: van opzij gaat de neus (rechts) omhoog = linksom, in hetzelfde scherm', els['vpf-f-helling'].attr.transform === 'rotate(-10.0 100 112)', els['vpf-f-helling'].attr.transform);
+  P.bij('telemetrie', ind, 'TL01', 400, 'ok');
+  waar('horizon: een onzinwaarde blijft binnen de schaal (30°)', els['vpf-f-hz-helling'].attr.transform === 'translate(0 90.0)', els['vpf-f-hz-helling'].attr.transform);
+  const indG = ind;
+  P.bij('telemetrie', indG, 'TL03', -0.5, 'ok'); P.bij('telemetrie', indG, 'TL04', 0.25, 'ok');
   const st = els['vpf-f-gstip'].attr;
   // Zij-G volgt het gevoel (#407): rechts sturen (TL04 = +0,25) duwt je naar links.
   waar('G-cirkel: 0,5 g remmen = 40 px omlaag, 0,25 g naar rechts gestuurd = 20 px naar LINKS (#407)', st.cy === '140.0' && st.cx === '80.0', JSON.stringify(st));
   waar('G-cirkel: de getallen staan eronder', els['vpf-w-lengte'] && els['vpf-w-lengte'].textContent === '−0,50', els['vpf-w-lengte'] && els['vpf-w-lengte'].textContent);
   const pk = els['vpf-f-gpiek'];
   let weg = false; pk.classList.toggle = function (c, aan) { if (c === 'weg') weg = !!aan; };
-  P.bij('tel-g', indG, 'TL03', -0.9, 'ok');   // hard remmen
-  P.bij('tel-g', indG, 'TL03', -0.1, 'ok');   // los
+  P.bij('telemetrie', indG, 'TL03', -0.9, 'ok');   // hard remmen
+  P.bij('telemetrie', indG, 'TL03', -0.1, 'ok');   // los
   waar('piekballetje: blijft op de hardste rem staan (0,9 g = 72 px omlaag) terwijl de stip terugveert',
     pk.attr.cy === '172.0' && st.cy === '108.0' && weg === false, JSON.stringify({ piek: pk.attr, stip: st, weg }));
   T.PLVisProfiel.gWis();
@@ -179,6 +190,20 @@ console.log('\n7. Telemetrie: de tekening draait mee (05-10-2026)');
   p1 = G(p1, 0, -0.2, 3500);
   waar('gPiek: na 3 s valt hij terug naar de huidige stand', p1.y === -0.2 && p1.t === 3500, JSON.stringify(p1));
   waar('gPiek: lengte en zij tellen samen (0,6 bij 0,6 is groter dan 0,8)', G({ x: 0, y: -0.8, t: 0 }, 0.6, 0.6, 100).x === 0.6);
+}
+
+console.log('\n8. Het emissiescherm is donker (06-10-2026)');
+{
+  // Tot 06-10 een witte kaart, ook in het donkere thema; 's avonds in de auto
+  // verblindde hij. Getoetst op de helderheid van de achtergrond en de tekst.
+  const css = lees('pidlane.css');
+  const m = css.match(/\.vpf-licht \{[^}]*background:(#[0-9a-f]{6});[^}]*color:(#[0-9a-f]{6});/i);
+  const lum = h => { const n = parseInt(h.slice(1), 16); return (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255; };
+  waar('.vpf-licht heeft een achtergrond en een tekstkleur', !!m);
+  if (m) {
+    waar('de achtergrond is donker (helderheid < 0,2)', lum(m[1]) < 0.2, m[1] + ' = ' + lum(m[1]).toFixed(2));
+    waar('…en de tekst licht, dus leesbaar', lum(m[2]) > 0.7, m[2]);
+  }
 }
 
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + (ok + fout) : 'goed: ' + ok + ' ok, 0 fout'));

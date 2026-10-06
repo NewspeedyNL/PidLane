@@ -144,7 +144,7 @@ var PL_HULP = {
         '<li><b>Slim</b> — de standaard: dashboardwaarden groot, trends alleen waar iets beweegt.</li>' +
         '<li><b>Visueel</b> — één vaste meter. Onder de snelheid staan koelwater, gaspedaal en brandstof als balkjes; ' +
         'rechtsboven de accu (bij een hybride de aandrijfaccu én de 12V-accu), rechtsonder een autootje met de vier banden. ' +
-        'Met <b>Volgende</b> boven de meter wissel je tussen acht weergaven: Basis, Temperatuur (glas), Emissie (licht), Verbruik (digitaal), Motor (neon) en drie keer Telemetrie: Horizon, Offroad en G-kracht. Die laatste drie gebruiken de sensoren van je telefoon; zet de auto eerst stil op vlakke grond en tik in Sensoren bij Telemetrie op Nulstellen. ' +
+        'Met <b>Volgende</b> boven de meter wissel je tussen zes weergaven: Basis, Temperatuur (glas), Emissie, Verbruik (digitaal), Motor (neon) en Telemetrie: de horizon, de G-kracht en de auto van opzij en van achteren op één scherm. Telemetrie gebruikt de sensoren van je telefoon; zet de auto eerst stil op vlakke grond en tik in Sensoren bij Telemetrie op Nulstellen. ' +
         'De app onthoudt je keuze.</li>' +
         '</ul>' +
         '<p>Een dubbeltik op een tegel verbergt hem. Hij wordt wel gewoon gemeten en staat daarna in een strook om terug te halen.</p>' +
@@ -230,7 +230,7 @@ var PL_HULP = {
         '<p>Wat PidLane opslaat, waar, en wat er met je chassisnummer gebeurt, staat in het privacyscherm. ' +
         'Dat is de tekst die telt; deze handleiding herhaalt hem niet, zodat er geen twee versies uit elkaar kunnen lopen.</p>' +
         '<p><button type="button" data-hulp-doe="privacy">🔒 Open Privacy</button></p>' +
-        '<p>In de demo wordt niets bewaard.</p>',
+        '<p>In de demo wordt niets bewaard en gaat er niets naar onze server. Het scherm Telemetrie gebruikt de bewegingssensoren van je telefoon, niet je locatie.</p>',
       zie: ['account'] },
 
     /* ─────────────── HULP EN CONTACT ─────────────── */

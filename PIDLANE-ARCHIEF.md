@@ -15,6 +15,30 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 06-10-2026 — Slim visueel: een accu die wegflitste en een VIN rechtsboven
+
+**Het acculampje.** `lampGetal()` geeft `null` zodra een waarde ouder is dan
+drie keer het meettempo (minimaal 5 s). Voor de belasting is dat goed: een
+oude belasting naast "Motor aan" liegt. Maar de accuspanning (0142) wordt
+traag gevraagd, en met `null` viel het hele acculampje weg tot het volgende
+antwoord. Een accu verandert niet per seconde; het lampje blijft nu staan,
+dof, en verdwijnt pas na een minuut zonder antwoord.
+
+**De VIN rechtsboven.** `updateVehicleCard()` riep `showVtag(vin || merk)`
+aan. De zichtbare statusregel filterde een VIN al weg (`sysNaam`, 29-09),
+maar `#vtag.dataset.naam` bewaarde hem, en de tooltip van de voertuigchip en
+de ingeklapte voertuigkop lazen die. De rem zit nu in `showVtag()` zelf, zodat
+geen aanroeper hem nog kan omzeilen.
+
+**Privacy bij 3.2.0.** De telemetriewaarden gaan mee met een AI-analyse als
+gewone meetwaarden (`pidlane-aanlevering.js` neemt elke actieve PID), maar
+niet met de referentiedata (het veldlab leest ze niet). De akkoordteksten
+gaan over het uitlezen van de auto en de referentiedata, en blijven daarom
+gelijk; `AKKOORD_TEKST_SINDS` hoeft niet op te schuiven. De privacyverklaring
+noemt de sensoren wel.
+
+---
+
 ## 06-10-2026 — Verbindprofiel: drie dagen kennisbank, en een geheugen dat alleen omhoog kan (#391, #414)
 
 **Waarom dit hier staat.** De administratie bij PR #390 (03-10) bleef liggen

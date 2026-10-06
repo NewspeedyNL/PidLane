@@ -2897,7 +2897,8 @@ function updateVehicleCard(vinInfo){
   // vinInfo bevat reeds ge-merancte data uit tryReadVIN; hier alleen aanvullen
   // voor het geval updateVehicleCard los wordt aangeroepen.
   if(vinInfo){ mergeVehicleData('vin', vinInfo); }
-  showVtag(vehicleInfo.vin||vehicleInfo.merk||'Verbonden');
+  // De naam van de auto, niet de VIN (06-10-2026): die kwam zo rechtsboven.
+  showVtag((vehicleInfo.merk && vehicleInfo.merk!=='Onbekend') ? (vehicleInfo.merk+' '+(vehicleInfo.model||'')).trim() : 'Verbonden');
   const card=document.getElementById('vehicleCard');
   const savedKent=localStorage.getItem('pl_kenteken')||'';
   const vinValid=/^[A-HJ-NPR-Z0-9]{17}$/.test(vehicleInfo.vin||'');
