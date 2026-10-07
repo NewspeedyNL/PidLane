@@ -151,8 +151,7 @@
   function _merkNu() {
     try {
       if (typeof merkGroep === 'function') {
-        const m = (window.vehicleInfo && (vehicleInfo.merk || vehicleInfo.make)) ||
-                  (window.selectedModel && selectedModel.merk) || '';
+        const m = (window.vehicleInfo && (vehicleInfo.merk || vehicleInfo.make)) || '';
         return merkGroep(m) || '';
       }
     } catch(e){ console.warn('merkGroep mislukt:', e); }

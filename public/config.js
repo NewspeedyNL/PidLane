@@ -34,7 +34,7 @@ const PROXY_URL = (() => {
   try {
     const h = location.hostname;
     if (h === 'app.pidlane.nl' || h.endsWith('.workers.dev')) return location.origin;
-  } catch (_) {}
+  } catch (_) { /* stil: geen location (losse test of file://) — dan de absolute Worker-URL hieronder */ }
   return WORKER_ORIGIN;
 })();
 
@@ -66,4 +66,4 @@ try{
   window.AIRTABLE_URL     = AIRTABLE_URL;
   window.VELDLAB_ENDPOINT = VELDLAB_ENDPOINT;
   window.USERS            = USERS;
-}catch(e){}
+}catch(e){ /* stil: draait vóór log() bestaat; zonder window is er niets om te vullen */ }

@@ -1359,6 +1359,8 @@ MUTATIES=(
 "public/pidlane-banden.js@@    if (_gen === (window._btGen || 0)) return Promise.resolve({ ok: true, al: true });@@    if (false) return Promise.resolve({ ok: true, al: true });@@test-banden.js@@elke keer dat Slim visueel opbouwt worden de acht banden opnieuw gevraagd — #396"
 "public/pidlane-banden.js@@    if (_bezig) return _bezig;\n    const pids = vraagPids@@    const pids = vraagPids@@test-banden.js@@twee keer tikken op ↻ vraagt de banden twee keer achter elkaar — #396"
 "public/pidlane-banden.js@@  const OUD_MS = 30 * 60000;@@  const OUD_MS = 180000;@@test-banden.js@@op verzoek gevraagd en na drie minuten al dof: het lampje is grijs zolang je rijdt — #396"
+# ── de regel die werkelijk wint (opruim-PR, 06-10-2026) ──
+"public/pidlane.css@@#fabLane { bottom:calc(14px + var(--pl-sab) + var(--pl-nav-h)); }@@#fabLane { bottom:calc(14px + var(--pl-sab)); }@@test-schermranden.js@@de zwevende chips vallen achter de navigatiebalk: de regel die wint vergeet --pl-nav-h"
 # ── geen PID twee keer in één tabel (06-10-2026) ──
 "public/pidlane-data.js@@  '017D':{name:'NOx NTE status',@@  '017C':{name:'DPF temperatuur inlaat B1', unit:'°C', cat:'Emissie', min:-40,max:6513,parse:b=>null},\n  '017D':{name:'NOx NTE status',@@test-dubbelesleutels.js@@017C komt er een tweede keer in ALL_PID_DEFS bij en overschrijft de eerste stil"
 # ── reparaties na de brede controle van 06-10-2026 ──
