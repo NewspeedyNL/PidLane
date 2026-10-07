@@ -172,7 +172,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 |---|---|---|---|
 | 1 | `capacitor.js` | — | alleen in APK aanwezig; `onerror` vangt het web-geval af |
 | 2 | `config.js` | 3 | `PROXY_URL`, `AIRTABLE_URL`, `APP_VERSION`, repo-info |
-| 3 | `pidlane-data.js` | 100 | statische referentiedata: 148 J1979-PID-definities, `DTCDB` (generiek) + `DTC_MERK` (merkbuckets) + `merkGroep()`, kennisbank, analysesets, `PID_TEKST`, `slimGroep()`/`SLIM_DASH`/`SLIM_METER` (de VORM van de slimme weergave; de MAAT — en daarmee het vijfde vak "Rustig" — zit in `slimMaat()` in `pidlane-pids.js`) |
+| 3 | `pidlane-data.js` | 100 | statische referentiedata: 148 J1979-PID-definities, `DTCDB` (generiek) + `DTC_MERK` (merkbuckets) + `merkGroep()`, kennisbank, `SOFTWARE_OORZAKEN` + `softwareOorzaken()` (inleren/codering als oorzaak in plaats van een sensor, #426), analysesets, `PID_TEKST`, `slimGroep()`/`SLIM_DASH`/`SLIM_METER` (de VORM van de slimme weergave; de MAAT — en daarmee het vijfde vak "Rustig" — zit in `slimMaat()` in `pidlane-pids.js`) |
 | 4 | `pidlane-assets.js` | 205 | ingebedde media (base64), o.a. `BANDEN_IMG` |
 
 ### Fase 1b — opstart-intro (eerste in `<body>`)

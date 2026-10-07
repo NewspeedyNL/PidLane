@@ -12,6 +12,7 @@
    analyse-/checklijsten · BSC_TESTS · scenario-presets · ALL_PID_DEFS
    (+ uitgebreide set via Object.assign) · SAE_PID_NAMES · PROTOCOLS ·
    poll-classificatie · demo-voertuigen · AUTO_KENNIS (merk-kennisbank) ·
+   SOFTWARE_OORZAKEN (inleren/codering, #426) ·
    HUD_LABEL_DICT. Gedrag: identiek aan vóór de split.
    ════════════════════════════════════════════════════════════════════ */
 
@@ -1204,6 +1205,133 @@ window.AUTO_KENNIS = {
   'peugeot':    {zwak:[['distributieketting (1.2 PureTech)','benzine'],['EGR/DPF (HDi)','diesel'],['AdBlue-systeem','diesel'],['olieslib 1.2 PureTech','benzine']],pids:['0106','017A','0185','0105'],let_op:'1.2 PureTech: ketting met natte riem — controleer olie + timing.'},
   'citroen':    {zwak:[['1.2 PureTech ketting/riem','benzine'],['HDi DPF','diesel'],['AdBlue (BlueHDi)','diesel'],['ophanging',null]],pids:['0106','017A','0185'],let_op:'Deelt motoren met Peugeot — zelfde PureTech/HDi aandachtspunten.'},
   'volvo':      {zwak:[['PCV-systeem (oudere 5-cil)',null],['DPF (diesel)','diesel'],['PHEV accu-balancering','hybride'],['turbo',null]],pids:['0106','017A','015B','0170'],let_op:'PHEV (XC60/XC90): laat verbrandingsmotor meedraaien voor volledige meting.'}
+};
+
+// ── SOFTWARE_OORZAKEN — wanneer het de software is en niet de sensor (#426) ──
+// 07-10-2026. Aanleiding: een BMW-diesel zonder roetfilter waarvan de ECU dat
+// nooit verteld is. De ECU verwacht een DPF, die monitor wordt nooit klaar, en
+// de keuringsstatus blijft op "niet klaar". Wie dan naar de sensoren kijkt,
+// zoekt op de verkeerde plek: geen sensor is kapot, de configuratie klopt niet.
+//
+// Elk merk heeft software die zoiets aan de ECU vertelt (ISTA, BimmerCode,
+// FORScan, VCDS, …). PidLane schrijft daar NIET in en gaat dat niet doen. Deze
+// tabel is kennis: welke inleer- of coderingsfunctie bestaat er, en welk
+// symptoom verklaart hij. Daarmee kan een analyse zeggen "dit wijst op
+// software/configuratie" in plaats van "vervang de sensor".
+//
+// Opzet als PLOnderdeel: bewijs, geen gok. softwareOorzaken() geeft alleen een
+// functie terug als er iets gemeten is dat erbij past, met dat bewijs erbij.
+//
+// Monitornamen zijn letterlijk die uit parseReadiness() in
+// pidlane-foutcodes.js (MON_VONK / MON_DIESEL); test-softwareoorzaak.js laadt
+// beide en zakt als een naam hier niet meer bestaat.
+//
+// Wat hier NOOIT in komt: een roetfilter, EGR of AdBlue "wegcoderen". Een
+// verwijderd roetfilter is niet toegestaan en valt op bij de deeltjestest van
+// de APK; een ECU die het ontbreken verbergt maakt de auto niet legaal.
+window.SOFTWARE_OORZAKEN = [
+  { id:'dpf', naam:'Roetfilter niet (goed) bij de ECU geregistreerd', sterkte:'sterk', brandstof:'diesel',
+    monitors:['Roetfilter (DPF)'],
+    dtc:/^P(2002|2003|244A|244B|2452|2453|2454|2455|2458|2459|2463|246C)$/,
+    vervangen:['roetfilter','dpf'],
+    inleren:'Na het vervangen of reinigen van het roetfilter moet de ECU dat weten: nieuw filter registreren, asbelading op nul, daarna een (geforceerde) regeneratie. Gebeurt dat niet, dan rekent de ECU met het oude filter en wordt de monitor nooit klaar.',
+    waarschuwing:'Is het roetfilter verwijderd, dan is dat het probleem — niet de codering. Verwijderen is niet toegestaan en valt op bij de deeltjestest van de APK; software die het ontbreken verbergt maakt dat niet anders.' },
+  { id:'scr', naam:'AdBlue/SCR-onderdeel niet ingeleerd', sterkte:'sterk', brandstof:'diesel',
+    monitors:['NOx-nabehandeling (SCR)'],
+    dtc:/^P(20EE|207F|2BAD)$/,
+    vervangen:['adblue','nox-sensor','noxsensor','scr','doseermodule'],
+    inleren:'Na het vervangen van een NOx-sensor, doseermodule of AdBlue-pomp de adaptatie resetten of het nieuwe onderdeel inleren; anders rekent de ECU met de waarden van het oude.',
+    waarschuwing:'Een uitgeschakeld SCR-systeem is niet toegestaan, net als bij het roetfilter.' },
+  { id:'egr', naam:'EGR-klep niet ingeleerd', sterkte:'zwak', brandstof:null,
+    monitors:['EGR / VVT'],
+    dtc:/^P040[0-9]$/,
+    vervangen:['egr'],
+    inleren:'Na het vervangen of reinigen van de EGR-klep de aanslagen opnieuw inleren (basisinstelling).',
+    waarschuwing:'EGR-codes hebben vaker een mechanische oorzaak (vervuiling, vastzittende klep). Pas als dat uitgesloten is, of als de klep net vervangen is, ligt inleren voor de hand.' },
+  { id:'gasklep', naam:'Gasklep niet ingeleerd', sterkte:'zwak', brandstof:'benzine',
+    monitors:[],
+    dtc:/^P(0506|0507|0638|2111|2112|2119)$/,
+    vervangen:['gasklep','smoorklep','accu'],
+    inleren:'Na het reinigen of vervangen van de gasklep, of na een losgekoppelde accu, de gasklep opnieuw inleren. Veel auto\'s doen dat zelf na contact aan en een tijd stationair; anders via de merktool.',
+    waarschuwing:null },
+  { id:'injectoren', naam:'Injectorcodes niet ingevoerd', sterkte:'zwak', brandstof:'diesel',
+    monitors:[],
+    dtc:/^P(030[0-8]|0263|0266|0269|0272)$/,
+    vervangen:['injector','verstuiver'],
+    inleren:'Elke diesel-injector heeft een correctiecode (IMA/QR) op de behuizing. Na het vervangen of verwisselen moet die code in de ECU; anders loopt de motor onrustig en komen er misfire- of cilinderbalanscodes.',
+    waarschuwing:'Zonder recente injectorwissel is een mechanische of elektrische oorzaak waarschijnlijker.' },
+  { id:'adaptaties', naam:'Brandstofadaptaties niet gewist na reparatie', sterkte:'zwak', brandstof:'benzine',
+    monitors:['Katalysator','Lambdasonde'],
+    dtc:/^P(0171|0172|0174|0175|0420|0430)$/,
+    vervangen:['katalysator','lambdasonde','luchtmassameter','maf'],
+    inleren:'Na het vervangen van katalysator, lambdasonde of luchtmassameter de geleerde brandstofadaptaties wissen (bij Ford heet dat de KAM-reset). De ECU corrigeert anders nog voor het oude onderdeel.',
+    waarschuwing:'Zonder recente vervanging wijzen deze codes eerder op het onderdeel zelf, of op een luchtlek.' },
+  { id:'ecu', naam:'ECU vervangen of niet (goed) gecodeerd', sterkte:'sterk', brandstof:null,
+    monitors:[], vin:true,
+    dtc:/^P(0602|0610|0630|0633)$/,
+    vervangen:['ecu','motorstuurapparaat','dde','dme'],
+    inleren:'Een vervangen of gebruikte ECU moet het chassisnummer, de variantcodering (welke onderdelen deze auto heeft) en de startonderbreker aangeleerd krijgen. Een verkeerde variant laat monitors hangen voor onderdelen die er niet zijn, of mist onderdelen die er wel zijn.',
+    waarschuwing:null },
+  { id:'accu', naam:'Nieuwe accu niet geregistreerd', sterkte:'zwak', brandstof:null,
+    monitors:[],
+    dtc:null,
+    vervangen:['accu'],
+    inleren:'Bij auto\'s met accubewaking (BMW, VAG, Ford en andere met start-stop) moet een nieuwe accu geregistreerd worden. Anders laadt de dynamo nog voor de oude accu: de nieuwe veroudert sneller en start-stop werkt soms niet.',
+    waarschuwing:'Niet elke auto heeft dit nodig; het staat in de werkplaatsgegevens van het model.' }
+];
+
+// Een monitor die na zoveel rijden sinds het wissen nog niet klaar is, hangt.
+// AANNAME (#426): een gewone rijcyclus is binnen enkele ritten rond; deze
+// grens is ruim genomen en nog niet tegen echte uitlezingen getoetst.
+window.SOFTWARE_MONITOR_HANGT = { km:300, warm:15 };
+
+// Welke software er per merkgroep (merkGroep()) bestaat. Of een bepaalde
+// functie erin zit verschilt per tool, versie en model — dit is waar je kijkt,
+// geen belofte dat het er staat.
+window.SOFTWARE_TOOLS = {
+  BMW:    ['ISTA (dealer)', 'BimmerLink', 'BimmerCode', 'Carly'],
+  VAG:    ['ODIS (dealer)', 'VCDS', 'OBDeleven'],
+  FORD:   ['FDRS / IDS (dealer)', 'FORScan'],
+  OPEL:   ['GDS2 / Tech2 (dealer)', 'OP-COM'],
+  TOYOTA: ['Techstream (dealer)'],
+  MAZDA:  ['MDARS / IDS (dealer)', 'FORScan']
+};
+
+/* ctx: { merk, brandstof ('diesel'|'benzine'|…), nietKlaar: [monitornamen],
+          sinds: { km, warm } uit 0131/0130, dtc: ['P2463', …],
+          vinAfwijkend: true als de ECU een ander chassisnummer draagt,
+          vervangen: ['accu', …] — wat er onlangs aan de auto gedaan is }
+   Geeft per passende functie { id, naam, sterkte, bewijs:[…], inleren,
+   waarschuwing, tools:[…] }. Zonder bewijs komt een functie er niet in. */
+window.softwareOorzaken = function softwareOorzaken(ctx){
+  ctx = ctx || {};
+  const groep = merkGroep(ctx.merk);
+  const sinds = ctx.sinds || {};
+  const grens = SOFTWARE_MONITOR_HANGT;
+  const hangt = (sinds.km != null && sinds.km >= grens.km) || (sinds.warm != null && sinds.warm >= grens.warm);
+  const brandstof = String(ctx.brandstof || '').toLowerCase();
+  const niet = ctx.nietKlaar || [];
+  const dtc = (ctx.dtc || []).map(function(c){ return String(c).trim().toUpperCase(); });
+  const vervangen = (ctx.vervangen || []).map(function(v){ return String(v).toLowerCase(); });
+  const sindsTekst = [sinds.km != null ? sinds.km + ' km' : null,
+                      sinds.warm != null ? sinds.warm + '× warmgedraaid' : null].filter(Boolean).join(', ');
+  return SOFTWARE_OORZAKEN.map(function(f){
+    // Alleen filteren als de brandstof bekend én een van de twee is; een
+    // hybride of onbekende brandstof sluit niets uit.
+    if (f.brandstof && (brandstof === 'diesel' || brandstof === 'benzine') && f.brandstof !== brandstof) return null;
+    const bewijs = [];
+    if (hangt) f.monitors.forEach(function(m){
+      if (niet.indexOf(m) >= 0) bewijs.push('monitor "' + m + '" nog niet klaar na ' + sindsTekst + ' sinds het wissen');
+    });
+    if (f.dtc) dtc.forEach(function(c){ if (f.dtc.test(c)) bewijs.push('foutcode ' + c); });
+    if (f.vin && ctx.vinAfwijkend) bewijs.push('het chassisnummer in de ECU wijkt af van dat van de auto');
+    vervangen.forEach(function(v){
+      if (f.vervangen.some(function(w){ return v.indexOf(w) >= 0; })) bewijs.push('onlangs vervangen: ' + v);
+    });
+    if (!bewijs.length) return null;
+    return { id:f.id, naam:f.naam, sterkte:f.sterkte, bewijs:bewijs, inleren:f.inleren,
+             waarschuwing:f.waarschuwing, tools:(SOFTWARE_TOOLS[groep] || []).slice() };
+  }).filter(Boolean);
 };
 
 // ── HUD_LABEL_DICT (was index.html regel 12763) ──

@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Kennis: software/codering als oorzaak, niet de sensor (#426)
+ ═══════════════════════════════════════════════════════════
+
+ - pidlane-data.js: SOFTWARE_OORZAKEN — acht inleer-/coderingsfuncties
+   (roetfilter, SCR, EGR, gasklep, injectorcodes, adaptaties, ECU, accu) met
+   het symptoom dat ze verklaren en de tools per merkgroep (SOFTWARE_TOOLS).
+ - softwareOorzaken(ctx) geeft alleen functies mét bewijs: een monitor die na
+   300 km / 15× warmdraaien nog hangt, een foutcode, een afwijkend VIN of een
+   vervangen onderdeel. Nog geen UI; koppeling volgt in #426.
+ - test-softwareoorzaak.js (laadt de echte parseReadiness), drie mutaties,
+   blok 5.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Brede controle: vier stille fouten en twee eigen restpunten
  ═══════════════════════════════════════════════════════════
 
