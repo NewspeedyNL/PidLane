@@ -815,12 +815,12 @@ function ovzRang(pid, ord){ const i=OVZ_RANG.indexOf(pid); return i>-1 ? i : 100
 // De schaal van het balkje en het groene vlak erin. Het vlak loopt van wL
 // tot wH; ontbreekt er één, dan tot de rand van de schaal; ontbreken ze
 // allebei, dan is er geen vlak (heeft:false) — dan is er geen grens bekend en
-// beweert het balkje niets over normaal. De schaal zelf: voor een temperatuur
-// niet vanaf −40 (dan staat koelwater altijd rechts), en de bovenkant zoals
-// slimTempSchaal() hem kiest, zodat 87 °C koelwater niet tegen de rand plakt.
+// beweert het balkje niets over normaal. De bovenkant zoals slimTempSchaal()
+// hem kiest (gevarengrens, of bij een temperatuur 1,3× de waarschuwingsgrens),
+// zodat 87 °C koelwater niet tegen de rand van een schaal tot 215 °C plakt.
 function ovzSchaal(d){
   if(!d) return { lo:0, hi:100 };
-  const lo = (d.cat==='Temp' && typeof d.min==='number') ? Math.max(d.min, -20) : (typeof d.min==='number' ? d.min : 0);
+  const lo = (typeof d.min==='number') ? d.min : 0;
   let hi = (typeof d.balkVol==='number') ? d.balkVol : (typeof d.dH==='number') ? d.dH
          : (d.cat==='Temp' && typeof d.wH==='number') ? d.wH*1.3 : (typeof d.max==='number' ? d.max : 100);
   if(!(hi>lo)) hi=lo+1;
