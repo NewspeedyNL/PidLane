@@ -154,6 +154,9 @@ var PL_HULP = {
         'Je ziet per sensor de waarde binnenkomen; een ✓ betekent dat er genoeg metingen van zijn. Een waarde die nu al opvalt, krijgt meteen een kleur.</p>' +
         '<p>Is er genoeg gemeten, dan staat er <b>✓ Data verzameld</b> met bovenaan wat er opviel: rood is over de alarmgrens, oranje over de waarschuwingsgrens of buiten het gebruikelijke bereik. ' +
         'Daarbij staat het laagste en hoogste wat er gemeten is, en hoe vaak het buiten de grens kwam. Opvallend is nog geen defect: of het in deze toestand van de motor normaal is, weegt de AI.</p>' +
+        '<p>Bovenaan staat <b>Samenhang</b>. Daar leest PidLane de meting zoals een monteur: eerst in welke toestand de motor was (koud of warm, stationair, rijdend, vollast), en dan alleen de controles die in díé toestand iets zeggen. ' +
+        'De brandstoftrims bijvoorbeeld alleen bij een warme motor, en de laadspanning alleen stationair, want bij optrekken zakt die op veel auto\'s normaal even weg. ' +
+        'Het zijn dezelfde controles als in het <a data-hulp="onderzoek">volledig onderzoek</a>. Je ziet een aanwijzing met zijn bewijs (▲ ervoor, ▼ ertegen), wat de meting tegenspreekt, en wat in deze meting niet te beoordelen was en waarom.</p>' +
         '<ul>' +
         '<li><b>🤖 Laat de AI dit onderzoeken</b> — pas hier gaat er iets naar de AI, met precies wat je op het scherm zag. Dit kost tokens.</li>' +
         '<li><b>⏳ Langer meten</b> — meet nog een halve minuut door.</li>' +

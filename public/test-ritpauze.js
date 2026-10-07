@@ -77,6 +77,9 @@ vm.createContext(ctx);
   const fuel = fs.readFileSync(__dirname + '/pidlane-fuel.js', 'utf8');
   const c = (naam) => { const m = fuel.match(new RegExp('const ' + naam + ' *= *(\\d+);')); if (!m) { console.log('  FOUT  ' + naam + ' niet gevonden in pidlane-fuel.js'); process.exit(1); } return Number(m[1]); };
   ctx.MEET_RIJ_KMH = c('MEET_RIJ_KMH'); ctx.MEET_RIJ_GAT_MS = c('MEET_RIJ_GAT_MS');
+  // De samenhang (#446) heeft zijn eigen scenariotest (test-samenhang.js);
+  // hier alleen een herkenbaar blok, zodat te zien is dát hij meegaat.
+  ctx.PLSamenhang = { leesApp: () => ({ geen: 'proef' }), promptBlok: () => '\n\nSAMENHANG: proefblok' };
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-verzamel.js', 'utf8'), ctx, { filename: 'pidlane-verzamel.js' });
   ctx.PLVerzamel = Object.assign({}, ctx.window.PLVerzamel, { meet: async () => ({ door: true, ai: true }) });
 }

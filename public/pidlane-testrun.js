@@ -2771,6 +2771,33 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── #446: de samenhang leest een meting als een monteur ──
+  {
+    issue: '#446',
+    naam: 'Samenhang: een lek (trim hoog stationair, normaal bij 2500 tpm) wordt gevonden, een gezonde auto niet',
+    waarom: 'Het verzamelscherm leest de meting in toestanden en laat de stappen van het volledig onderzoek erop los, in plaats van losse waarden tegen een grens.',
+    proef: async function () {
+      var S = window.PLSamenhang, O = window.PLOnderzoek;
+      if (!S || !S.lees || !O) return { staat: 'FOUT', detail: 'PLSamenhang of PLOnderzoek ontbreekt' };
+      function meting(stTrim, st2500) {
+        var h = {}, t = 0;
+        function zet(p, v) { (h[p] || (h[p] = [])).push({ t: t, v: v }); }
+        for (var i = 0; i < 90; i++, t += 1000) {   // 60 s stationair warm, 30 s rond 2500 tpm
+          var hoog = i >= 60;
+          zet('010C', hoog ? 2500 : 780); zet('010D', 0); zet('0104', 22); zet('0105', 91); zet('0103', 2);
+          zet('0106', hoog ? st2500 : stTrim); zet('0107', 3); zet('0110', hoog ? 9 : 3);
+        }
+        return h;
+      }
+      var lek = S.lees(meting(12, 0), O, { brandstof: 'benzine', liters: 2 });
+      var top = (lek.conclusie && lek.conclusie.top[0]) || null;
+      if (!top || top.id !== 'valselucht') return { staat: 'FOUT', detail: 'een lek gaf ' + (top ? top.id : 'geen aanwijzing') + ' in plaats van valse lucht' };
+      var gezond = S.lees(meting(1, 0), O, { brandstof: 'benzine', liters: 2 });
+      if (gezond.conclusie.top.length) return { staat: 'FOUT', detail: 'vals alarm op een gezonde meting: ' + gezond.conclusie.top.map(function (x) { return x.naam; }).join(', ') };
+      return { staat: 'OK', detail: 'lek gevonden (' + top.bewijs.length + ' bewijsstukken), gezonde meting zonder alarm' };
+    }
+  },
+
   // ── #443 ronde 2: de rit als meting, en de meetproef kan meten ──
   {
     issue: '#443',

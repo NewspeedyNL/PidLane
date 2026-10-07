@@ -15,6 +15,47 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 07-10-2026 — Samenhang: van twee getallen vergelijken naar lezen als een monteur (#446)
+
+**De klacht (eigenaar).** Het verzamelscherm legde per sensor het hoogste
+en laagste punt naast een vaste grens. Dat is twee waarden vergelijken, geen
+expertoordeel: geen toestand, geen verband tussen sensoren.
+
+**Wat het onderzoek opleverde** (bronnen in #446). OBD-monitors en
+monteurs beoordelen een waarde alleen onder zijn voorwaarden: trims warm en
+in gesloten lus (0103 bit 2), laadspanning stationair omdat een slim
+laadsysteem bij optrekken naar 12 à 13 V zakt, de katalysator alleen als
+de voorste sonde regelt. De scheiding lek/luchtmassameter is de trim
+stationair tegen 2500 tpm. Een koelwatersensor liegt als hij na lang
+stilstaan afwijkt van inlaat- en buitenlucht. Foutdetectie evalueer je op
+twee kanten: gevonden, en geen vals alarm op een gezonde auto.
+
+**Keuze: geen tweede kennisbank.** Al die regels stonden al in de stappen
+van het volledig onderzoek. PLSamenhang knipt een meting op in toestanden
+en geeft elke stap alleen de stukken waar zijn voorwaarde gold. Het bewijs
+wordt gewogen door dezelfde verwerk() en conclusie().
+
+**Wat de scenario's vonden dat de code fout had.**
+- *Aliasing.* Eerst zette ik alle sensoren op de momenten van het
+  toerental (1 Hz). Een voorste lambdasonde wisselt een paar keer per
+  seconde; zo afgetast viel hij steeds op hetzelfde punt van de golf en
+  leek een gezonde sonde stil te staan. Stappen krijgen nu de ruwe monsters
+  binnen de tijdvakken; alleen laaddruk (map[i] bij last[i]) uitgelijnd.
+  **Beperking die blijft:** een achterste sonde die sneller wisselt dan het
+  meettempo, is in een meting van 1 Hz niet van een rustige te onderscheiden.
+- *Gas geven bij stilstand* las als een schommelend stationair (overslaan).
+  Daarom de toestand `stil_gas` boven 1200 tpm.
+- *Een vaste lambdasonde* (in de browserproef, en op auto's met een
+  breedbandsonde die op 0114 een dode smalbandwaarde meldt — zie b1s1Line)
+  leidde tot "sonde traag of defect". Exact stilstaan is nu een meetvraag.
+- *"Klopt"* stond er ook als er niets te lezen viel. Nu zegt hij dat er
+  niets beoordeeld is, en dat dat niet betekent dat alles in orde is.
+
+**Grens van de live meting.** pidHist houdt 120 monsters per sensor. Een
+live meting van een minuut heeft dus zelden een warm stationair stuk én een
+2500-tpm-stuk; de samenhang zegt dat bij "niet beoordeeld". Na een rit
+(ritfases) of een datalog is er meer te lezen.
+
 ## 07-10-2026 — Het verzamelscherm voor alle analyses: wat er bij de uitrol bleek (#443)
 
 **De poort meette verkeerde dingen bij een rit.** Verbruik en Totaalcheck

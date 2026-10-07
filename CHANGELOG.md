@@ -10,6 +10,25 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Samenhang: het verzamelscherm leest de meting als een monteur (#446)
+ ═══════════════════════════════════════════════════════════
+
+ - Bovenaan de uitslag een blok Samenhang: eerst de toestand per moment
+   (koud/warm, stationair, rijden, vollast, gesloten lus uit 0103), dan de
+   stappen van het volledig onderzoek op de stukken waar hun voorwaarde
+   gold. Aanwijzingen met bewijs ▲▼, wat de meting tegenspreekt, en wat
+   niet te beoordelen was met de reden. De AI krijgt hetzelfde, vóór de
+   getallen.
+ - Geen tweede kennisbank: pidlane-samenhang.js gebruikt PLOnderzoek
+   (STAPPEN, verwerk, conclusie); de grenzen staan nu in CFG.grens.
+ - Scenariotest test-samenhang.js: gezonde koude start met slim laden, lek,
+   luchtmassameter, dynamo, liegende koelwatersensor, versleten kat, warme
+   file, open lus, korte meting, stilstaand gas, vaste lambdasonde.
+ - Gevonden onderweg: op het tempo van het toerental afgetast lijkt een
+   regelende lambdasonde stil te staan; stappen krijgen daarom de ruwe
+   monsters.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Verzamelscherm voor alle analyses, de rit als meting, en de meetproef (#443)
  ═══════════════════════════════════════════════════════════
 

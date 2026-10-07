@@ -1102,6 +1102,9 @@
     KLACHTEN: KLACHTEN, VERDENKINGEN: VERDENKINGEN, STAPPEN: STAPPEN, CODEREGELS: CODEREGELS, cfg: CFG,
     klachtUitTekst: klachtUitTekst, nieuw: nieuw, volgende: volgende, vooruit: vooruit, verwerk: verwerk,
     verbreed: verbreed, conclusie: conclusie, status: status, draai: draai, alsTekst: alsTekst,
+    // Voor PLSamenhang (#446): een verdenking in spel zetten, en de
+    // cilinderinhoud uit het voertuig, zoals het onderzoek die zelf leest.
+    speel: speel, liters: liters,
     demoWaarde: demoWaarde, _voer: voer, _ui: function () { return _ui; }
   };
 })();

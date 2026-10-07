@@ -1833,6 +1833,17 @@ MUTATIES=(
 "public/pidlane-koopcheck.js@@  if(!uit || !uit.ai) return;\n  try{ ['ddProgRow',@@  try{ ['ddProgRow',@@test-verzamelroutes.js@@nee op het scherm van de diepe analyse vraagt toch de AI"
 "public/pidlane-rit.js@@  if(!_uit || !_uit.ai){@@  if(false){@@test-ritrapport.js@@nee op het scherm na de rit maakt toch een betaald ritrapport"
 "public/pidlane-rit.js@@    try{ const _rb=plRitBron(); const _rs=PLVerzamel.vanBron(_rb);@@    try{ const _rb=null; const _rs=PLVerzamel.vanBron(_rb);@@test-ritrapport.js@@het ritrapport krijgt de samenvatting over de hele rit niet meer"
+# ── #446: de samenhang. Elk van deze is een fout die een monteur niet zou maken.
+"public/pidlane-samenhang.js@@      if (gesloten) { const g = geslotenOp(tl, i); if (g === false) continue; }@@@@test-samenhang.js@@trims worden in open lus gelezen: een koude of vollast-motor leest als een lek"
+"public/pidlane-samenhang.js@@    if (rpm > STATIONAIR_MAX) return 'stil_gas';@@@@test-samenhang.js@@stilstaand gas geven telt als stationair: een paar tikken op het gas lezen als overslaan"
+"public/pidlane-samenhang.js@@    if (uitgelijnd || !hist) {@@    if (true) {@@test-samenhang.js@@de lambdasonde wordt op het tempo van het toerental afgetast: een regelende sonde lijkt stil te staan"
+"public/pidlane-samenhang.js@@    return n >= 3 ? gelijk / n >= 0.8 : null;@@    return true;@@test-samenhang.js@@zonder buitentemperatuur wordt toch aangenomen dat de auto lang stilstond"
+"public/pidlane-samenhang.js@@        return a.length >= VAST_MIN && Math.max.apply(null, a) === Math.min.apply(null, a);@@        return false;@@test-samenhang.js@@een lambdasonde die exact stilstaat leest als een defecte sonde"
+"public/pidlane-samenhang.js@@      if (k.ms < l.minMs) {@@      if (false) {@@test-samenhang.js@@een stap wordt op een paar seconden data beoordeeld"
+"public/pidlane-samenhang.js@@    if (warm && rpm >= 2200 && rpm <= 2900) return 'toeren2500';@@@@test-samenhang.js@@de scheidingstest bij 2500 tpm wordt nooit gelezen: lek en luchtmassameter blijven op één hoop"
+"public/pidlane-samenhang.js@@    if (!r.gelezen.length) s += @@    if (false) s += @@test-samenhang.js@@een meting waarin niets te lezen viel, gaat naar de AI als \"geen verdenking\""
+"public/pidlane-verzamel.js@@        uitslagSam = metSamenhang(samNu(), appBron().hist);@@        uitslagSam = samNu();@@bproef-verzamel.js@@het scherm toont de samenhang niet meer"
+"public/pidlane-verzamel.js@@    let s = (sam.samenhangTekst || '') + @@    let s = '' + @@test-verzamel.js@@de AI krijgt de samenhang niet meer"
 )
 
 echo
