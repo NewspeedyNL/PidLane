@@ -70,6 +70,7 @@ function maak(opties) {
   // Ná pidlane-data.js: dat bestand zet zelf een echte PLBus neer, en die zou
   // een eerder gezette nep overschrijven — dan meet de pauzeproef niets.
   c.PLBus = { pausedTotal: function () { return c.__pauze || 0; } };
+  vm.runInContext(lees('pidlane-toon.js'), c, { filename: 'pidlane-toon.js' });   // vraagUit rekent via PLToon
   vm.runInContext(lees('pidlane-visueel.js'), c, { filename: 'pidlane-visueel.js' });
   // De echte regel voor "oud" (pidlane-plload.js), niet een kopie: isOud() is er een doorgeefluik naar.
   vm.runInContext(knip(lees('pidlane-plload.js'), '// ── WANNEER IS EEN METING OUD?', 'function pidsDueNow(){', 'plOud'), c, { filename: 'pidlane-plload.js' });
