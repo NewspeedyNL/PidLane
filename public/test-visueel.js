@@ -841,5 +841,45 @@ console.log('\n── de vermogensnaald (#432) ──');
   waar('indeling benzine: toeren op 010C', r2.i.naaldSoort === 'toeren' && r2.i.naald === '010C');
 }
 
+// ══════════════════════════════════════════════════════════════════
+console.log('\n── de tegels van de energieweergave (#437) ──');
+{
+  const h = (paren) => paren.map((p) => ({ t: p[0], v: p[1] }));
+  waar('versnelling: 50 → 56 in 1 s is +6,0', V.versnellingUit(h([[0, 50], [1000, 56]]), 1000) === 6);
+  waar('versnelling: remmen is negatief', V.versnellingUit(h([[0, 60], [1000, 54]]), 1000) === -6);
+  waar('versnelling: één monster is geen uitspraak', V.versnellingUit(h([[1000, 60]]), 1000) === null);
+  waar('versnelling: hetzelfde venster als de laadzone', V.versnellingUit(h([[0, 90], [1000, 60], [2000, 60]]), 2000) === 0);
+
+  // EV-aandeel: alleen rijtijd telt.
+  let a = null, t = 0;
+  for (let i = 0; i < 20; i++) { t += 1000; a = V.aandeelBij(a, 'ACCU_RIJDT', t); }
+  for (let i = 0; i < 20; i++) { t += 1000; a = V.aandeelBij(a, 'DRAAIT_RIJDT', t); }
+  waar('40 s gereden: daar is een uitspraak over', V.aandeelUit(a) !== null);
+  waar('20 s accu en 20 s motor: 50% EV (het eerste monster telt niet)', V.aandeelUit(a) === Math.round(19000 / 39000 * 100), JSON.stringify(a));
+  for (let i = 0; i < 60; i++) { t += 1000; a = V.aandeelBij(a, 'STARTSTOP', t); }
+  waar('stilstaan voor het stoplicht telt niet mee', V.aandeelUit(a) === Math.round(19000 / 39000 * 100));
+  let k = null; t = 0;
+  for (let i = 0; i < 10; i++) { t += 1000; k = V.aandeelBij(k, 'ACCU_RIJDT', t); }
+  waar('korter dan 30 s gereden: geen uitspraak', V.aandeelUit(k) === null);
+  const gat = V.aandeelBij({ evMs: 0, rijMs: 0, t: 0 }, 'ACCU_RIJDT', 600000);
+  waar('een gat van tien minuten (app op de achtergrond) telt hoogstens 5 s', gat.evMs === 5000);
+
+  // Elektrisch bereik: geleerd uit km per procent.
+  let l = null; t = 0; let soc = 60;
+  for (let i = 0; i < 120; i++) { t += 1000; if (i % 40 === 39) soc -= 1; l = V.accuLeerBij(l, 'ACCU_RIJDT', soc, 36, t); }
+  // 119 s × 36 km/h ≈ 1,19 km, 3% gezakt
+  waar('geleerd: km en procenten op de accu', Math.abs(l.km - 1.19) < 0.02 && l.pct === 3, JSON.stringify(l));
+  waar('elektrisch bereik = soc × km / %', Math.abs(V.elektrischBereik(l, 57) - 57 * l.km / 3) < 1e-9);
+  waar('te weinig geleerd: null', V.elektrischBereik({ km: 0.3, pct: 1 }, 57) === null);
+  const opladen = V.accuLeerBij({ km: 1, pct: 2, soc: 50, t: 0 }, 'DRAAIT_RIJDT', 55, 50, 1000);
+  waar('met de motor aan telt er niets bij (ook niet het opladen)', opladen.km === 1 && opladen.pct === 2 && opladen.soc === 55);
+
+  // Bereik: optellen.
+  waar('brandstof + accu', JSON.stringify(V.bereikUit(509.4, 2.6)) === JSON.stringify({ totaal: 512, brandstof: 509, elektrisch: 3 }));
+  waar('alleen brandstof', V.bereikUit(420, null).totaal === 420 && V.bereikUit(420, null).elektrisch === null);
+  waar('alleen accu', V.bereikUit(null, 4).totaal === 4);
+  waar('niets: null', V.bereikUit(null, null) === null && V.bereikUit('x', undefined) === null);
+}
+
 console.log('\n' + (fout ? 'FOUT: ' : 'goed: ') + ok + ' ok, ' + fout + ' fout\n');
 process.exit(fout ? 1 : 0);

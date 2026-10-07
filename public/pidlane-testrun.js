@@ -2771,6 +2771,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de tegels van de energieweergave (#437) ──
+  {
+    issue: '#437',
+    naam: 'Energieweergave: EV-aandeel, versnelling en bereik (brandstof + accu) rekenen zoals beloofd',
+    waarom: 'De tegels onder de Energie-ringen werden aandrijving, versnelling en bereik; het bereik telt brandstof en het geleerde accudeel op.',
+    proef: async function () {
+      var V = window.PLVisueel, Q = window.PLVisProfiel;
+      if (!V || !V.versnellingUit || !V.bereikUit || !V.aandeelUit || !Q || !Q.tegelTekst) return { staat: 'FOUT', detail: 'de tegelfuncties ontbreken — pidlane-visueel.js of pidlane-visprofiel.js is niet de nieuwe' };
+      var vs = V.versnellingUit([{ t: 0, v: 60 }, { t: 1000, v: 54 }], 1000);
+      if (vs !== -6) return { staat: 'FOUT', detail: 'remmen van 60 naar 54 in 1 s geeft ' + vs + ' in plaats van −6' };
+      var b = V.bereikUit(400, 3);
+      if (!b || b.totaal !== 403) return { staat: 'FOUT', detail: 'brandstof 400 + accu 3 geeft ' + JSON.stringify(b) };
+      var rollen = Q.voor('motor', 'hybride').plekken.map(function (x) { return x.rol; }).slice(-3).join(',');
+      if (rollen !== 'aandeel,versn,bereik') return { staat: 'FOUT', detail: 'de tegels zijn ' + rollen };
+      var tank = (typeof pidVals !== 'undefined' && typeof pidVals['CA09'] === 'number');
+      return { staat: 'OK', detail: 'tegels ' + rollen + (tank ? '; deze auto heeft een brandstofbereik' : '; geen brandstofbereik (tankinhoud in Mijn voertuigen?)') };
+    }
+  },
+
   // ── de energieweergave voor hybride en EV (#435) ──
   {
     issue: '#435',

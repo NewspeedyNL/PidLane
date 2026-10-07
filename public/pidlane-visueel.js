@@ -454,6 +454,59 @@ function vermogenStand(vraag, laad){
 }
 function hoekVermogen(d){ return G.A0+(G.A1-G.A0)*d/100; }
 
+// ── DE DRIE TEGELS VAN DE ENERGIEWEERGAVE (07-10-2026, #437) ─────────
+/* Versnelling in km/h per seconde over het laadvenster: positief bij
+   optrekken, negatief bij remmen. null = te weinig om iets te zeggen. Dezelfde
+   vensterregels als laadUit(), zodat de tegel en de groene ring hetzelfde
+   moment beschrijven. */
+function versnellingUit(hist, nu){
+  if(!Array.isArray(hist)) return null;
+  const van=nu-VERMOGEN.LAAD_VENSTER_MS;
+  const p=hist.filter(function(x){ return x && typeof x.v==='number' && isFinite(x.v) && typeof x.t==='number' && x.t>=van; });
+  if(p.length<2) return null;
+  const a=p[0], b=p[p.length-1], dt=(b.t-a.t)/1000;
+  if(dt*1000<VERMOGEN.LAAD_MIN_MS) return null;
+  return Math.round((b.v-a.v)/dt*10)/10;
+}
+/* Het EV-aandeel van deze rit: welk deel van de RIJtijd de motor uit stond.
+   Stilstaan telt niet mee — een hybride voor het stoplicht staat altijd op
+   de accu, en dat is geen elektrisch rijden. `st` = {evMs, rijMs, t}. */
+const AANDEEL_MIN_MS = 30000;   // korter gereden: nog geen uitspraak
+function aandeelBij(st, toestand, nu){
+  const uit={ evMs:(st&&st.evMs)||0, rijMs:(st&&st.rijMs)||0, t:nu };
+  const dt=(st && typeof st.t==='number') ? Math.max(0, Math.min(5000, nu-st.t)) : 0;
+  if(toestand==='ACCU_RIJDT'){ uit.evMs+=dt; uit.rijMs+=dt; }
+  else if(toestand==='DRAAIT_RIJDT') uit.rijMs+=dt;
+  return uit;
+}
+function aandeelUit(st){ return (st && st.rijMs>=AANDEEL_MIN_MS) ? Math.round(st.evMs/st.rijMs*100) : null; }
+/* Het elektrische bereik, geleerd op deze rit: hoeveel km de auto op de accu
+   rijdt per procent dat 015B zakt. Er is geen OBD-PID voor de accu-inhoud
+   of het verbruik in kWh/km, dus meten is de enige eerlijke weg. Pas na
+   ACCU_MIN_PCT daling en ACCU_MIN_KM afstand is het een getal.
+   `leer` = {km, pct, soc, t}. */
+const ACCU_MIN_PCT = 2, ACCU_MIN_KM = 0.5;
+function accuLeerBij(leer, toestand, soc, kmh, nu){
+  const uit={ km:(leer&&leer.km)||0, pct:(leer&&leer.pct)||0, soc:(typeof soc==='number' && isFinite(soc)) ? soc : (leer?leer.soc:null), t:nu };
+  const dt=(leer && typeof leer.t==='number') ? Math.max(0, Math.min(5000, nu-leer.t)) : 0;
+  if(toestand==='ACCU_RIJDT' && typeof kmh==='number' && isFinite(kmh) && kmh>0){
+    uit.km+=kmh*dt/3600000;
+    if(leer && typeof leer.soc==='number' && typeof soc==='number' && soc<leer.soc) uit.pct+=leer.soc-soc;
+  }
+  return uit;
+}
+function elektrischBereik(leer, soc){
+  if(!leer || !(leer.pct>=ACCU_MIN_PCT) || !(leer.km>=ACCU_MIN_KM) || typeof soc!=='number' || !isFinite(soc)) return null;
+  return Math.max(0, soc*leer.km/leer.pct);
+}
+/* Brandstof plus accu, in km. Eén van beide mag ontbreken; allebei weg is null. */
+function bereikUit(brandstofKm, elektrischKm){
+  const b=(typeof brandstofKm==='number' && isFinite(brandstofKm)) ? Math.max(0, brandstofKm) : null;
+  const e=(typeof elektrischKm==='number' && isFinite(elektrischKm)) ? Math.max(0, elektrischKm) : null;
+  if(b===null && e===null) return null;
+  return { totaal:Math.round((b||0)+(e||0)), brandstof:b===null?null:Math.round(b), elektrisch:e===null?null:Math.round(e) };
+}
+
 /* Het oordeel van een plekje: 'ok', 'koud', 'warn', 'danger' of 'geen'.
    Koelwater leest zijn grenzen uit de PID-definitie (wH/dH), de rest staat
    hierboven met de reden erbij. */
@@ -626,7 +679,7 @@ function leegSessie(){
 let _sessie = leegSessie(), _sessieT = 0, _snelheden = [], _laatsteAlarm = 0;
 const _staat = { aan:false, start:0, traag:new Set(), turboVast:false, handtekening:'', gebruik:new Set(), ind:null, timer:null,
                  meldSleutel:'', lampSleutel:'', rijdtSinds:0, laatsteTik:0, pauze:null, gebouwd:false, selectie:'', profiel:'basis',
-                 vraagLeer:{ min:null, max:null } };
+                 vraagLeer:{ min:null, max:null }, aandeel:null, accuLeer:null };
 
 // ── DE VIJF WEERGAVEN (02-10-2026) ────────────────────────────────
 // Basis is de meter hieronder; temperatuur, emissie, verbruik en motor zijn
@@ -1570,7 +1623,15 @@ function energieProfielBij(){
   let laad=null;
   try{ laad=(typeof pidHist!=='undefined') ? laadUit(pidHist[sp], Date.now()) : null; }
   catch(e){ console.warn('PLVisueel: laadzone voor de energiering mislukt', e); }
-  try{ PF().energie(pr.id, pr, vermogenStand(vraag, laad), leesAandrijving()); }
+  const nu=Date.now(), res=leesAandrijving();
+  let versn=null;
+  try{ versn=(typeof pidHist!=='undefined') ? versnellingUit(pidHist[sp], nu) : null; }
+  catch(e){ console.warn('PLVisueel: versnelling uit de snelheid mislukt', e); }
+  const pv=(typeof pidVals!=='undefined') ? pidVals : {};
+  const soc=(typeof pv['015B']==='number') ? pv['015B'] : null;
+  const extra={ aandeel:aandeelUit(_staat.aandeel), versnelling:versn,
+                bereik:bereikUit(pv['CA09'], elektrischBereik(_staat.accuLeer, soc)) };
+  try{ PF().energie(pr.id, pr, vermogenStand(vraag, laad), res, extra); }
   catch(e){ console.warn('PLVisueel: energiering bijwerken mislukt', e); }
 }
 /* De vermogensnaald bijwerken: bij een nieuwe pedaalwaarde én bij een nieuwe
@@ -1629,7 +1690,14 @@ function tik(){
   });
   PLEKKEN.forEach(function(r){ const p=el('visp-'+r.rol), pid=I.plekken[r.rol]; if(p && pid) dof(p, isOud(pid, nu)); });
   if(I.profiel && PF()){ try{ PF().dof(I.profiel.id, I.profiel, function(p){ return isOud(p, nu); }); }catch(e){ console.warn('PLVisueel: profiel dof zetten', e); } }
-  // De toestand in het midden verandert ook zonder nieuwe pedaalwaarde.
+  // De toestand in het midden verandert ook zonder nieuwe pedaalwaarde. De
+  // tellers van de tegels lopen hier, één keer per seconde, en niet in bij():
+  // die komt tientallen keren per seconde en zou de rijtijd scheef tellen.
+  if(I.profiel && I.profiel.plekken && 'energie' in I.profiel.plekken){
+    const res=leesAandrijving(), t=res && res.toestand, pv=(typeof pidVals!=='undefined') ? pidVals : {};
+    _staat.aandeel=aandeelBij(_staat.aandeel, t, nu);
+    _staat.accuLeer=accuLeerBij(_staat.accuLeer, t, pv['015B'], pv['010D'], nu);
+  }
   if(I.profiel) energieProfielBij();
   meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
 }
@@ -1652,7 +1720,7 @@ function lichaam(aan){
 function start(){
   if(_staat.aan) return;
   lichaam(true);
-  _staat.aan=true; _staat.start=Date.now(); _staat.traag=new Set(); _staat.handtekening=''; _staat.vraagLeer={ min:null, max:null };
+  _staat.aan=true; _staat.start=Date.now(); _staat.traag=new Set(); _staat.handtekening=''; _staat.vraagLeer={ min:null, max:null }; _staat.aandeel=null; _staat.accuLeer=null;
   try{ _staat.profiel=PF() ? PF().lees(leesMotor()) : 'basis'; }catch(e){ console.warn('PLVisueel: profielkeuze onleesbaar', e); _staat.profiel='basis'; }
   _staat.rijdtSinds=0; _staat.laatsteTik=0; _staat.pauze=null; _staat.gebouwd=false;
   // Meteen de indeling kennen: remt() leest hem, en een lege set zou in de
@@ -1676,6 +1744,7 @@ window.PLVisueel = {
   schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
   stand:stand, tekst:tekst, laaddrukNu:laaddrukNu, plekOordeel:plekOordeel,
   VERMOGEN:VERMOGEN, VRAAG_KETEN:VRAAG_KETEN, naaldSoort:naaldSoort, vraagUit:vraagUit, laadUit:laadUit, vermogenStand:vermogenStand,
+  versnellingUit:versnellingUit, aandeelBij:aandeelBij, aandeelUit:aandeelUit, accuLeerBij:accuLeerBij, elektrischBereik:elektrischBereik, bereikUit:bereikUit,
   wijzerplaat:wijzerplaat, boogPad:boogPad, hoekOnder:hoekOnder, hoekLaaddrukNul:hoekLaaddrukNul,
   indeling:indeling, gebruiktePids:gebruiktePids, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,
   meldingen:meldingen, schakel:schakel,

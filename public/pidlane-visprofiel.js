@@ -117,9 +117,12 @@ const PROFIELEN = [
       { rol:'hvaccu',  naam:'Aandrijfaccu', keten:['015B'], eenheid:'%', soort:'ring', lo:0, hi:100, dec:0 },
       { rol:'motor',   naam:'Motor',        keten:['010C'], eenheid:'rpm', soort:'ring', lo:0, hi:6000, dec:0 },
       { rol:'snel',    naam:'Snelheid',     keten:['010D'], eenheid:'km/h', soort:'kern', lo:0, hi:250, dec:0 },
-      { rol:'volt',    naam:'12V-accu',     keten:['0142'], eenheid:'V', soort:'getal', lo:0, hi:20, dec:1 },
-      { rol:'last',    naam:'Belasting',    keten:['0104','0143'], eenheid:'%', soort:'getal', lo:0, hi:100, dec:0 },
-      { rol:'verbruik',naam:'Verbruik nu',  keten:['CA03','015E'], eenheid:'', soort:'getal', lo:0, hi:50, dec:1 }
+      // De drie tegels (#437) zijn afgeleid, geen ruwe PID: pidlane-visueel.js
+      // rekent ze uit en zet ze via energie(). De keten zegt alleen welke
+      // sensoren er aan moeten. 12V staat al in het accu-lampje rechtsboven.
+      { rol:'aandeel', naam:'Aandrijving',  keten:['010D'], eenheid:'% EV', soort:'afgeleid', dec:0 },
+      { rol:'versn',   naam:'Versnelling',  keten:['010D'], eenheid:'km/h/s', soort:'afgeleid', dec:1 },
+      { rol:'bereik',  naam:'Bereik',       keten:['CA09','015B','012F'], eenheid:'km', soort:'afgeleid', dec:0 }
     ] } },
   // Telemetrie (05-10-2026): de telefoonsensoren van pidlane-telemetrie.js.
   // Tot 06-10-2026 drie losse schermen (Horizon, Offroad, G-kracht); nu één,
@@ -364,7 +367,7 @@ function htmlNeon(p, ind){
   const leg='<div class="vpf-legenda">'+ringen.filter(function(x){ return !x.groot; }).map(function(x){
     return '<span class="r-'+x.rol+'"><i></i>'+esc(x.naam)+' <b class="vpf-w" id="vpf-w-'+x.rol+'">—</b>'+esc(x.eenheid)+'</span>';
   }).join('')+'</div>';
-  const getallen='<div class="vpf-neon-getallen">'+p.plekken.filter(function(x){ return x.soort==='getal'; }).map(function(x){
+  const getallen='<div class="vpf-neon-getallen">'+p.plekken.filter(function(x){ return x.soort==='getal' || x.soort==='afgeleid'; }).map(function(x){
     const pid=ind.plekken[x.rol];
     return '<div class="'+(pid?'':'leeg')+'" id="vpf-p-'+x.rol+'" title="'+titel(x, pid)+'"><small>'+esc(x.naam)+'</small>'+
       '<b class="vpf-w" id="vpf-w-'+x.rol+'">—</b><i class="vpf-e">'+esc(x.eenheid)+'</i></div>';
@@ -466,7 +469,7 @@ function bij(id, ind, pid, val, st){
   p.plekken.forEach(function(x){
     if(ind.plekken[x.rol]!==pid) return;
     // De energiering is geen ruwe pedaalwaarde: die zet energie().
-    if(x.soort==='energie') return;
+    if(x.soort==='energie' || x.soort==='afgeleid') return;
     const d=deel(val, x.lo, x.hi);
     // De ring van het toerental: 0–8000, op een diesel 0–6000 (#393), net
     // als de schaal van de basismeter.
@@ -551,7 +554,20 @@ function toestandTekst(res, stand){
 }
 /* De energiering en het midden bijwerken. Eén ring, twee betekenissen: blauw
    gevuld met de vraag, of groen gevuld met het laden. */
-function energie(id, ind, stand, res){
+/* De tekst van een afgeleide tegel. Puur. */
+function tegelTekst(rol, extra){
+  const e=extra||{};
+  if(rol==='aandeel') return (typeof e.aandeel==='number') ? String(Math.round(e.aandeel)) : '—';
+  if(rol==='versn'){
+    if(typeof e.versnelling!=='number' || !isFinite(e.versnelling)) return '—';
+    const v=Math.max(-99, Math.min(99, e.versnelling));
+    return (v>0.04 ? '+' : '')+tekst(v, 1);
+  }
+  if(rol==='bereik') return (e.bereik && typeof e.bereik.totaal==='number') ? tekst(e.bereik.totaal, 0) : '—';
+  return '—';
+}
+/* `extra` = {aandeel, versnelling, bereik:{totaal, brandstof, elektrisch}}. */
+function energie(id, ind, stand, res, extra){
   const p=voorInd(id, ind);
   if(!p || !p.plekken || !plekVan(p, 'energie')) return;
   const f=el('vpf-f-energie'), g=el('vpf-p-energie');
@@ -562,6 +578,13 @@ function energie(id, ind, stand, res){
   const t=toestandTekst(res, stand), m=el('vpf-w-toestand');
   zetTekst('vpf-w-toestand', t);
   if(m) m.setAttribute('data-t', t);
+  ['aandeel','versn','bereik'].forEach(function(r){ zetTekst('vpf-w-'+r, tegelTekst(r, extra)); });
+  // Het bereik vertelt waar het uit bestaat; zonder tankinhoud zegt hij hoe je hem krijgt.
+  const b=extra && extra.bereik, bp=el('vpf-p-bereik');
+  if(bp) bp.setAttribute('title', b
+    ? 'Brandstof '+(b.brandstof===null ? '— (vul de tankinhoud in bij Mijn voertuigen)' : b.brandstof+' km')+
+      ', accu '+(b.elektrisch===null ? 'nog niet geleerd (rijd een stuk op de accu)' : b.elektrisch+' km')
+    : 'Bereik: vul de tankinhoud in bij Mijn voertuigen, en rijd een stuk op de accu');
 }
 
 /* Dof zetten wat oud is. `oud(pid)` komt uit pidlane-visueel.js. */
@@ -587,7 +610,7 @@ function pids(ind){
 window.PLVisProfiel = {
   PROFIELEN:PROFIELEN, SEG:SEG, SLEUTEL:SLEUTEL,
   zoek:zoek, voor:voor, geldig:geldig, plekkenVan:plekkenVan, volgende:volgende, lees:lees, bewaar:bewaar,
-  standaard:standaard, energie:energie, toestandTekst:toestandTekst,
+  standaard:standaard, energie:energie, toestandTekst:toestandTekst, tegelTekst:tegelTekst,
   indeling:indeling, ketens:ketens, deel:deel, tekst:tekst, html:html, bij:bij, dof:dof, pids:pids,
   KEUZE_SLEUTEL:KEUZE_SLEUTEL, keuzes:keuzes, zetKeuze:zetKeuze, ketenVan:ketenVan, voorInd:voorInd, nulstellen:nulstellen,
   G_PIEK_MS:G_PIEK_MS, gPiek:gPiek, gPunt:gPunt, gWis:gWis

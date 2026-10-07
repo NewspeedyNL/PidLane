@@ -338,7 +338,7 @@ console.log('\nH. De energieweergave voor hybride en EV (#435)');
   const hyb = Q.voor('motor', 'hybride'), ben = Q.voor('motor', 'benzine'), die = Q.voor('motor', 'diesel');
   waar('hybride: de weergave heet Energie', hyb.naam === 'Energie' && ben.naam === 'Motor' && die.naam === 'Motor', [hyb.naam, ben.naam, die.naam].join());
   const rollen = hyb.plekken.map(x => x.rol).join();
-  waar('hybride: energie, aandrijfaccu, motor, snelheid en drie tegels', rollen === 'energie,hvaccu,motor,snel,volt,last,verbruik', rollen);
+  waar('hybride: energie, aandrijfaccu, motor, snelheid en de tegels aandrijving, versnelling, bereik (#437)', rollen === 'energie,hvaccu,motor,snel,aandeel,versn,bereik', rollen);
   waar('benzine houdt toeren, belasting en gasklep', ben.plekken.map(x => x.rol).slice(0, 3).join() === 'toeren,last,gasklep');
   waar('de energiering leest het pedaal, niet de gasklep', hyb.plekken[0].keten.indexOf('0111') < 0 && hyb.plekken[0].keten[0] === '015A');
 
@@ -361,14 +361,25 @@ console.log('\nH. De energieweergave voor hybride en EV (#435)');
   waar('start/stop: Stil', T({ toestand: 'STARTSTOP' }, null) === 'Stil');
   waar('onbekend: een streepje', T({ toestand: 'ONBEKEND' }, null) === '—' && T(null, null) === '—');
 
+  // De tegels (#437).
+  const TT = Q.tegelTekst;
+  waar('aandrijving: 64 (% EV)', TT('aandeel', { aandeel: 64 }) === '64' && TT('aandeel', {}) === '—');
+  waar('versnelling: met teken en komma', TT('versn', { versnelling: 3.2 }) === '+3,2' && TT('versn', { versnelling: -5 }) === '−5,0' && TT('versn', { versnelling: 0 }) === '0,0');
+  waar('versnelling: een gekke waarde blijft binnen twee cijfers', TT('versn', { versnelling: 4000 }) === '+99,0');
+  waar('bereik: het totaal', TT('bereik', { bereik: { totaal: 512, brandstof: 509, elektrisch: 3 } }) === '512' && TT('bereik', { bereik: null }) === '—');
+  waar('hybride: de tegels staan in beeld, 12V/belasting/verbruik niet meer', /id="vpf-w-aandeel"/.test(html) && /id="vpf-w-versn"/.test(html) && /id="vpf-w-bereik"/.test(html) && !/<small>12V-accu/.test(html));
+
   // energie() op een nep-DOM.
   const els = {};
   const elm = () => { const k = new Set(), a = {}; return { textContent: '', setAttribute: (n, v) => { a[n] = v; }, getAttribute: n => a[n], classList: { toggle: (c, v) => { if (v) k.add(c); else k.delete(c); }, contains: c => k.has(c) } }; };
-  ['vpf-f-energie', 'vpf-p-energie', 'vpf-w-energie', 'vpf-w-toestand'].forEach(id => { els[id] = elm(); });
+  ['vpf-f-energie', 'vpf-p-energie', 'vpf-w-energie', 'vpf-w-toestand', 'vpf-w-aandeel', 'vpf-w-versn', 'vpf-w-bereik', 'vpf-p-bereik'].forEach(id => { els[id] = elm(); });
   H.document = { getElementById: id => els[id] || null };
   Q.energie('motor', ind, { leeg: false, vraag: 60, laad: 0, laden: false, tekst: '60%' }, { toestand: 'ACCU_RIJDT' });
   waar('vraag 60%: de ring 45 van 75 gevuld, blauw', els['vpf-f-energie'].getAttribute('stroke-dasharray') === '45.0 100' && !els['vpf-p-energie'].classList.contains('laden'), els['vpf-f-energie'].getAttribute('stroke-dasharray'));
   waar('…met 60% en EV erbij', els['vpf-w-energie'].textContent === '60%' && els['vpf-w-toestand'].textContent === 'EV');
+  Q.energie('motor', ind, { leeg: false, vraag: 10, laad: 0, laden: false, tekst: '10%' }, null, { aandeel: 71, versnelling: 1.5, bereik: { totaal: 420, brandstof: 420, elektrisch: null } });
+  waar('de tegels krijgen hun waarde', els['vpf-w-aandeel'].textContent === '71' && els['vpf-w-versn'].textContent === '+1,5' && els['vpf-w-bereik'].textContent === '420');
+  waar('het bereik zegt waar het uit bestaat', /Brandstof 420 km/.test(els['vpf-p-bereik'].getAttribute('title')) && /accu nog niet geleerd/.test(els['vpf-p-bereik'].getAttribute('title')));
   Q.energie('motor', ind, { leeg: false, vraag: 0, laad: 40, laden: true, tekst: 'laden' }, { toestand: 'ACCU_RIJDT' });
   waar('laden 40%: de ring groen, 30 van 75', els['vpf-p-energie'].classList.contains('laden') && els['vpf-f-energie'].getAttribute('stroke-dasharray') === '30.0 100' && els['vpf-w-toestand'].textContent === 'Laden');
   Q.energie('motor', Q.indeling('motor', mag(['010C']), 'benzine'), { leeg: false, vraag: 99, laad: 0, laden: false, tekst: '99%' }, null);
