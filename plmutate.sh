@@ -1756,6 +1756,8 @@ MUTATIES=(
 "public/pidlane-onderzoek.js@@      var gevonden = false, f = vast.indexOf(code) >= 0 ? 1 : 0.6;@@      var gevonden = false, f = 1;@@test-onderzoek.js@@een code in afwachting weegt even zwaar als een bevestigde"
 "public/pidlane-onderzoek.js@@      if (KLACHTEN[k].kw.some(function (w) { return t.indexOf(' ' + w) >= 0; })) r.push(k);@@      if (KLACHTEN[k].kw.some(function (w) { return t.indexOf(w) >= 0; })) r.push(k);@@test-onderzoek.js@@\"verbruikt\" wordt rook: er staat \"ruikt\" in"
 "public/pidlane-onderzoek.js@@  function nogOpen(c) { return c.open.filter(@@  function nogOpen(c) { return [].filter(@@test-onderzoek.js@@tegenstrijdig bewijs verdwijnt onder \"open\" uit de conclusie"
+"public/pidlane-onderzoek.js@@    if (stap.garage && !st.ctx.garage) return false;@@@@test-onderzoek.js@@een klant krijgt de opdracht om tijdens het rijden vol op te trekken"
+"public/pidlane-onderzoek.js@@      if (st.ctx.garage) h += tekenVerdenkingen(st)@@      h += tekenVerdenkingen(st)@@bproef-onderzoek.js@@een klant krijgt het hele verdenkingenbord en de tijdlijn te zien"
 "public/pidlane-foutcodes.js@@      if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }@@      if (wat === 'oorzaak') PLWizard.open('storing');@@bproef-onderzoek.js@@Oorzaak laten zoeken opent weer de lijst losse modules in plaats van het onderzoek"
 )
 

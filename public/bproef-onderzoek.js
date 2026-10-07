@@ -43,7 +43,8 @@ function toets(naam, waar, uitleg) {
     console.log('\n── 1. de route: tegel → wizard → onderzoek ──');
     toets('geen JS-fouten tijdens de boot', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
     toets('PLOnderzoek staat er', await app.ev(`typeof PLOnderzoek === 'object' && typeof PLOnderzoek.open === 'function'`));
-    await app.ev(`demoMode = true; PLNav.tab('auto'); document.querySelector('.pl-tegel.tg-storing').click(); 'ok'`);
+    // Garagemodus: dan staan verdenkingenbord en tijdlijn in beeld (deel 4 doet de klant).
+    await app.ev(`demoMode = true; PLNav.zetGarage(true); PLNav.tab('auto'); document.querySelector('.pl-tegel.tg-storing').click(); 'ok'`);
     await app.ev(`PLWizard.kies(0); document.getElementById('wzTekst').value = 'Hij loopt onrustig stationair en hapert soms'; PLWizard.tekstVerder(); PLWizard.kies(2); 'ok'`);
     toets('het plan zet het volledige onderzoek bovenaan', await app.ev(`!!document.getElementById('wzOnderzoek')`));
     await foto('wizard-plan');
@@ -94,6 +95,18 @@ function toets(naam, waar, uitleg) {
     await app.ev(`PLFoutcodes._vervolg('oorzaak'); 'ok'`);
     toets('opent het onderzoek, niet de wizard', await app.ev(`getComputedStyle(document.getElementById('plOzOv')).display === 'flex'`));
     toets('met het motorlampje als klacht (er staan codes)', await app.ev(`!!document.querySelector('#plOzDoos .oz-chip.aan[data-k="lampje"]')`));
+    await app.ev(`PLOnderzoek.sluit(); 'ok'`);
+
+    console.log('\n── 4. een klant ziet de stap en de conclusie, geen bord ──');
+    await app.ev(`PLNav.zetGarage(false); PLOnderzoek.open({ klacht: 'onrustig stationair' }); document.querySelector('#plOzDoos [data-a="begin"]').click(); 'ok'`);
+    toets('het onderzoek loopt', await wacht(`(PLOnderzoek.staat()||{}).gedaan && PLOnderzoek.staat().gedaan.length >= 1`, 10000));
+    toets('geen verdenkingenbord voor een klant', await app.ev(`!document.querySelector('#plOzDoos .oz-v')`));
+    toets('geen tijdlijn voor een klant', await app.ev(`!document.querySelector('#plOzDoos .oz-lijn')`));
+    toets('wel de huidige stap', await wacht(`!!document.querySelector('#plOzDoos .oz-stap')`, 5000));
+    await foto('klant-stap');
+    await app.ev(`document.querySelector('#plOzDoos [data-a="stop"]').click(); 'ok'`);
+    toets('na stoppen staat de conclusie er', await wacht(`!!document.querySelector('#plOzDoos .oz-concl')`, 8000));
+    toets('nog steeds zonder bord', await app.ev(`!document.querySelector('#plOzDoos .oz-v')`));
     await app.ev(`PLOnderzoek.sluit(); 'ok'`);
     toets('geen JS-fouten tijdens het hele onderzoek', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {

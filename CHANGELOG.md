@@ -23,6 +23,9 @@
    PLFoutcodes.leesStil() leest uit zonder venster.
  - Handleiding: onderwerp "Volledig onderzoek". test-onderzoek.js,
    bproef-onderzoek.js, acht mutaties, blok 5.
+ - Klant ziet alleen de huidige stap en de conclusie; verdenkingenbord en
+   tijdlijn alleen in de garagemodus. De laaddrukproef (vol optrekken tijdens
+   het rijden) alleen in de garagemodus. Twee mutaties erbij.
 
  ═══════════════════════════════════════════════════════════
  07-10-2026 — Check mijn auto: software als oorzaak bij de keuringsstatus (#426)

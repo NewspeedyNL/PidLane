@@ -126,6 +126,12 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
   eis(O.status(st.v.software.score) === 'waarschijnlijk' || O.status(st.v.software.score) === 'bevestigd', 'P0507 na een nieuwe gasklep wijst naar inleren', st.v.software.score);
   eis((st.metingen.software || []).some((a) => a.tools.indexOf('VCDS') >= 0), 'met de VAG-software erbij');
 
+  console.log('\n7b. De laaddrukproef alleen in de garagemodus');
+  const turbo = (garage) => O.nieuw({ klachten: ['vermogen'], garage });
+  const zonder = turbo(false), met = turbo(true);
+  eis(O.vooruit(zonder, 20).every((x) => x.id !== 'laaddruk'), 'zonder garagemodus komt de rijproef nooit in het plan');
+  eis(O.vooruit(met, 20).some((x) => x.id === 'laaddruk'), 'in de garagemodus wel  <- tegenproef');
+
   console.log('\n8. De kaart klopt');
   const V = O.VERDENKINGEN, alleH = [];
   Object.keys(O.KLACHTEN).forEach((k) => O.KLACHTEN[k].h.forEach((h) => { alleH.push(h); }));

@@ -137,8 +137,10 @@ var PL_HULP = {
         '<li><b>Vragen</b> — wat geen sensor ziet, zoals de kleur van de rook.</li>' +
         '<li><b>Een andere richting</b> — wijst een foutcode of meting ergens anders naar, dan komt die verdenking erbij.</li>' +
         '</ul>' +
-        '<p>Elke verdenking heeft een balk. Tik erop voor het bewijs: ▲ wijst ernaartoe, ▼ ervan af, met de gemeten waarde erbij. ' +
-        'De conclusie zegt wat bevestigd is, wat uitgesloten is en wat er nog openstaat. <b>💾 Bewaren</b> legt het hele verloop vast; ' +
+        '<p>Je ziet steeds de stap waar het onderzoek mee bezig is, en aan het eind de conclusie: wat bevestigd is, wat uitgesloten is en wat er nog openstaat.</p>' +
+        '<p>In de <a data-hulp="garagemodus">garagemodus</a> staan daar de verdenkingen bij, elk met een balk, en het plan van aanpak als tijdlijn. Tik op een verdenking voor het bewijs: ▲ wijst ernaartoe, ▼ ervan af, met de gemeten waarde erbij. ' +
+        'Alleen in de garagemodus komt ook de laaddrukproef, die tijdens het rijden vol optrekken vraagt.</p>' +
+        '<p><b>💾 Bewaren</b> legt het hele verloop vast; ' +
         '<b>🤖 Tweede mening</b> laat de AI-uitleg ernaar kijken.</p>' +
         '<p>Het onderzoek wijst aan, het vervangt geen monteur: laat een bevinding bevestigen voordat je onderdelen koopt.</p>',
       zie: ['check'] },

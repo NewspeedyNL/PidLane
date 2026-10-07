@@ -286,7 +286,9 @@
 
     { id: 'laaddruk', soort: 'meten', titel: 'Laaddruk onder vollast', icoon: '🌀',
       waarom: 'Een turbo die te weinig druk maakt, of een lek in de laadlucht, zie je alleen als er echt vermogen gevraagd wordt.',
-      voorwaarde: 'rijden', pids: ['010B', '0133', '010C', '0104'], duurMs: 30000,
+      // Alleen in de garagemodus: vol optrekken tijdens het rijden is geen
+      // opdracht die je een klant geeft (besluit 07-10-2026).
+      voorwaarde: 'rijden', pids: ['010B', '0133', '010C', '0104'], duurMs: 30000, garage: true,
       opdracht: 'Alleen waar het veilig en toegestaan is: trek in de 3e versnelling vol op van ±1500 naar ±3500 tpm. Liefst met iemand naast je die de telefoon vasthoudt.',
       test: { turbo: 3, egr: 0.5, dpf: 0.5 },
       beoordeel: function (u) {
@@ -440,6 +442,7 @@
   function balk(score) { return 1 / (1 + Math.exp(-score * 0.9)); }
 
   function meetbaar(st, stap) {
+    if (stap.garage && !st.ctx.garage) return false;
     if (!stap.pids) return true;
     var b = st.ctx.beschikbaar;
     return !b || stap.pids.some(function (p) { return b(p); });
@@ -956,7 +959,9 @@
         ' · stap ' + st.gedaan.length + (stap ? ' → ' + (st.gedaan.length + 1) : '') + (isDemo() ? ' · demo' : '') + '</div>';
       if (st.klaar) h += tekenConclusie(st);
       else if (stap) h += tekenStap(st, stap);
-      h += tekenVerdenkingen(st) + tekenPlan(st, st.klaar ? null : stap);
+      // Een klant ziet de stap en de conclusie; het verdenkingenbord en de
+      // tijdlijn zijn werkgereedschap voor de garagemodus (besluit 07-10-2026).
+      if (st.ctx.garage) h += tekenVerdenkingen(st) + tekenPlan(st, st.klaar ? null : stap);
       if (!st.klaar) h += '<div class="oz-knoppen"><button class="oz-k" data-a="stop">⏹ Stoppen en conclusie</button></div>';
     }
     d.innerHTML = h;
@@ -982,6 +987,10 @@
     if (a === 'opnieuw') { _ui.fase = 'intake'; _st = null; return teken(); }
   }
 
+  function isGarage() {
+    try { return !!(window.PLNav && PLNav.garage()); } catch (e) { console.warn('PLOnderzoek: garagemodus onbekend', e); return false; }
+  }
+
   function vehicle() {
     try { return (typeof getVehicle === 'function' && getVehicle()) || {}; } catch (e) { console.warn('PLOnderzoek: voertuig onbekend', e); return {}; }
   }
@@ -995,7 +1004,8 @@
     var i = _ui.intake, v = vehicle();
     _open = {}; _nieuw = {}; _ui.ai = null;
     _st = nieuw({ klachten: i.klachten.slice(), klachtTekst: i.klachtTekst, lampje: i.lampje, meting: i.meting,
-      merk: v.merk, brandstof: v.brandstof, liters: liters(v), vervangen: i.vervangen.slice(), scan: i.scan, beschikbaar: beschikbaar });
+      merk: v.merk, brandstof: v.brandstof, liters: liters(v), vervangen: i.vervangen.slice(), scan: i.scan, beschikbaar: beschikbaar,
+      garage: isGarage() });
     var start = Object.keys(_st.v);
     _ui.fase = 'loopt'; teken();
     var st = _st;
