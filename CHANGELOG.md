@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Check mijn auto: software als oorzaak bij de keuringsstatus (#426)
+ ═══════════════════════════════════════════════════════════
+
+ - Het readiness-blok toont "🧩 Mogelijk software, geen kapot onderdeel" met
+   het bewijs, wat er ingeleerd moet worden, de software voor dit merk en de
+   waarschuwing. Ook in de bewaartekst. Niet direct na zelf wissen.
+ - softwareOorzaken: P2452–P2455 en P2463 eruit (sensor/vol filter, geen
+   software); zwakke functies tellen alleen na een vervanging, zodat een
+   gewone P0420 geen "adaptaties wissen" wordt.
+ - Handleiding Check mijn auto bijgewerkt. Toetsen in test-foutcodes.js en
+   test-softwareoorzaak.js, drie mutaties erbij, blok 5 toetst de koppeling.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Kennis: software/codering als oorzaak, niet de sensor (#426)
  ═══════════════════════════════════════════════════════════
 

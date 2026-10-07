@@ -159,6 +159,24 @@ function nepEcu(antwoorden) {
   const tekst = F.alsTekst(sc);
   eis(/P0171/.test(tekst) && /FREEZE FRAME/.test(tekst) && /niet klaar\] Verdampingssysteem/.test(tekst), 'de bewaartekst draagt codes, freeze frame en monitors');
 
+  console.log('\n6b. Software als oorzaak in de keuringsstatus (#426)');
+  // Dezelfde benzineauto: P0420 en P0171 met 3000 km sinds wissen. Dat is het
+  // onderdeel zelf, geen inleerprobleem — er mag dus niets bij staan.
+  eis(!F.softwareAdvies(sc).length && !/MOGELIJK SOFTWARE/.test(tekst), 'een gewone P0420 krijgt geen software-advies');
+  // De BMW van #426: diesel, DPF-monitor niet klaar, 2400 km sinds wissen.
+  const B = laad({ getVehicle: () => ({ merk: 'BMW 320d' }) }).PLFoutcodes;
+  const bmw = await B.leesUit(nepEcu({
+    '0101': '41 01 00 0F 40 40', '03': '43 00', '07': '47 00', '0A': '4A 00',
+    '0131': '41 31 09 60', '0130': '41 30 3C', '010C': '41 0C 00 00', '010D': '41 0D 00'
+  }));
+  eis(bmw.sinds.km === 2400 && lijst(bmw.readiness.nietKlaar) === lijst(['Roetfilter (DPF)']), 'de BMW: DPF niet klaar na 2400 km', JSON.stringify([bmw.sinds, bmw.readiness && bmw.readiness.nietKlaar]));
+  const html = B._tekenReadiness(bmw);
+  eis(/Mogelijk software/.test(html) && /Roetfilter niet \(goed\) bij de ECU geregistreerd/.test(html), 'het readiness-blok noemt het roetfilter-inleren');
+  eis(/2400 km/.test(html) && /ISTA/.test(html) && /niet toegestaan/.test(html), 'met het bewijs, de BMW-software en de waarschuwing');
+  eis(!/Mogelijk software/.test(B._tekenReadiness(bmw, true)), 'direct na zelf wissen geen advies: dan hangt alles en dat hoort zo');
+  const bt = B.alsTekst(bmw);
+  eis(/MOGELIJK SOFTWARE/.test(bt) && /waarom: monitor "Roetfilter \(DPF\)"/.test(bt), 'de bewaartekst draagt het advies mee');
+
   const stil = nepEcu({ '03': '', '07': 'NO DATA', '0A': 'NO DATA' });
   const sc2 = await F.leesUit(stil);
   eis(sc2.gelezen.bevestigd === false && sc2.gelezen.pending === true, 'geen antwoord op 03 → "niet gelezen", niet "geen codes"');

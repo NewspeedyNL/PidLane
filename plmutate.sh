@@ -1742,6 +1742,8 @@ MUTATIES=(
 "public/pidlane-data.js@@    if (f.brandstof && (brandstof === 'diesel' || brandstof === 'benzine') && f.brandstof !== brandstof) return null;@@@@test-softwareoorzaak.js@@een benzineauto krijgt het roetfilter-inleren voorgeschoteld"
 "public/pidlane-data.js@@    if (!bewijs.length) return null;@@@@test-softwareoorzaak.js@@elke inleerfunctie verschijnt zonder enig bewijs, ook bij een gewone sensorcode"
 "public/pidlane-data.js@@    if (f.sterkte === 'zwak' && !aanleiding) return null;@@@@test-softwareoorzaak.js@@een gewone P0420 komt als \"adaptaties wissen\" op het scherm: de sensorkant wordt software"
+"public/pidlane-foutcodes.js@@    h += tekenSoftware(s, zelfGewist);\n@@@@test-foutcodes.js@@de keuringsstatus in Check mijn auto zegt nooit dat het software kan zijn — #426"
+"public/pidlane-foutcodes.js@@    if (!s || zelfGewist) return [];@@    if (!s) return [];@@test-foutcodes.js@@direct na zelf wissen wijst elke hangende monitor naar inleren — #426"
 )
 
 echo
