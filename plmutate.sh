@@ -1201,7 +1201,7 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  RIJ_Y: [238, 255, 272],@@  RIJ_Y: [238, 255, 286],@@test-visueel.js@@de onderste rij onder de snelheid zakt op de oliebalk"
 "public/pidlane-visueel.js@@    if(window.PLSched && window.PLSched.dood(pid)) return false;\n@@@@test-visueel.js@@een dode PID houdt zijn plek op de meter in plaats van door te vallen naar de volgende"
 "public/pidlane-visueel.js@@if(h[i] && typeof h[i].t==='number' && h[i].t>=vanaf) t.push@@if(h[i] && typeof h[i].t==='number') t.push@@test-visueel.js@@metingen van vóór het openen (ander tempo) laten het pedaal ten onrechte van de onderboog vallen"
-"public/pidlane-visueel.js@@    if(bruikbaar(p) && !_staat.traag.has(p)) return@@    if(bruikbaar(p)) return@@test-visueel.js@@een pedaal dat op deze auto te traag binnenkomt blijft in zijn rij staan en schokt"
+"public/pidlane-visueel.js@@    const p=PEDAAL_KETEN[i];\n    if(bruikbaar(p) && !_staat.traag.has(p)) return@@    const p=PEDAAL_KETEN[i];\n    if(bruikbaar(p)) return@@test-visueel.js@@een pedaal dat op deze auto te traag binnenkomt blijft in zijn rij staan en schokt"
 "public/pidlane-visueel.js@@  if(t) _staat.turboVast=true;@@@@test-visueel.js@@de onderboog wisselt terug van laaddruk naar pedaal zodra het turbobewijs even wegvalt"
 "public/pidlane-visueel.js@@    return n<KOEL_KOUD ? 'koud' : 'ok';@@    return 'ok';@@test-visueel.js@@een koude motor kleurt niet meer blauw"
 "public/pidlane-visueel.js@@    if(isFinite(r) && r>MOTOR_DRAAIT && n<ACCU_LAADT) return 'warn';@@@@test-visueel.js@@een dynamo die niet laadt blijft grijs: 12,5 V bij draaiende motor leest als goed"
