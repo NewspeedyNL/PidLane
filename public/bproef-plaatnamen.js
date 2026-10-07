@@ -57,7 +57,14 @@ const METERS = ['0104', '0111', '0149', '0143', '010C', '0145', '014A'];
     console.log('\n1. De plaat staat er, met zeven meters naast elkaar');
     await app.ev(`startDemoCar(0); true`);
     await new Promise(r => setTimeout(r, 1200));
-    await app.ev(`(function(){ ${JSON.stringify(METERS)}.forEach(function(p){ activePIDs.add(p); }); renderGauges(); return true; })()`);
+    /* Sinds #439 toont Slim het dashboard (PLDash) en staat de oude tellerplaat
+       niet meer in beeld. De plaat en slimMeterLabels() staan nog in de bron
+       tot de opruim-PR; zolang toetst deze proef ze door PLDash even weg te
+       zetten, zodat renderGauges() de oude weg neemt. Gaat de plaat eruit,
+       dan gaat deze proef mee. */
+    await app.ev(`(function(){ ${JSON.stringify(METERS)}.forEach(function(p){ activePIDs.add(p); });
+      setPidView('slim'); const d = window.PLDash; window.PLDash = null;
+      try { renderGauges(); } finally { window.PLDash = d; } return true; })()`);
     await new Promise(r => setTimeout(r, 700));
 
     const opzet = await app.ev(`(function(){

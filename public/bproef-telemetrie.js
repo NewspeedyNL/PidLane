@@ -82,6 +82,8 @@ function toets(naam, waar, uitleg) {
     console.log('\n4. Zonder houder telt hij niet mee, wel dof op de tegel');
     const los = await app.ev(`(function(){
       try { localStorage.removeItem('pl_telemetrie_nul'); } catch (e) { console.warn(e); }
+      // Slim is sinds #439 een eigen dashboard zonder .gc-tegels: meet in het Overzicht.
+      setPidView('overzicht');
       renderGauges();
       for (let i = 0; i < 60; i++) window.dispatchEvent(Object.assign(new Event('deviceorientation'), { alpha: 0, beta: 90, gamma: 0 }));
       PLTelemetrie.tik();
