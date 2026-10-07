@@ -91,7 +91,10 @@ var BOOM = {
       {t:'Nu, ook stilstaand',       d:'Het is er zodra de motor draait',            set:{meting:'stil'},    next:'storing_klacht'},
       {t:'Alleen tijdens het rijden',d:'Onder belasting, bij optrekken of snelheid', set:{meting:'rit10'},   next:'storing_klacht'},
       {t:'Alleen bij een koude motor',d:'Verdwijnt als hij op temperatuur is',       set:{meting:'monitor'}, next:'storing_klacht'},
-      {t:'Onvoorspelbaar',           d:'Soms wel, soms niet — lastig op te wekken',  set:{meting:'monitor'}, next:'storing_klacht'}
+      {t:'Onvoorspelbaar',           d:'Soms wel, soms niet — lastig op te wekken',  set:{meting:'monitor'}, next:'storing_klacht'},
+      // #434: wie niets merkt maar het niet vertrouwt, hoeft geen klacht te
+      // verzinnen. Het plan opent dan met het volledige onderzoek, brede ronde.
+      {t:'Ik merk niets bijzonders', d:'Maar ik wil het zeker weten',                set:{meting:'stil', controle:true}, next:null}
     ]
   },
   storing_klacht: {
@@ -542,7 +545,7 @@ window.PLWizard = {
   onderzoek: function(){
     var ov=el('wizardNieuwOv'); if(ov) ov.style.display='none';
     actief=false; chipTick();
-    PLOnderzoek.open({ klacht: job.klacht, meting: job.meting, lampje: job.lampje });
+    PLOnderzoek.open({ klacht: job.klacht, meting: job.meting, lampje: job.lampje, controle: !!job.controle });
   },
   opnieuw: function(){
     beginVan(tak);

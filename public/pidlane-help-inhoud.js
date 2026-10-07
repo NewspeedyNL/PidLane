@@ -117,7 +117,8 @@ var PL_HULP = {
       tekst:
         '<p>Leest de foutcodes en de keuringsstatus uit en zet de uitkomst in één stoplicht. Daaronder staan de codes en drie vervolgstappen:</p>' +
         '<ul>' +
-        '<li><b>🔧 Oorzaak laten zoeken</b> — start het <a data-hulp="onderzoek">volledige onderzoek</a>, met deze uitlezing als eerste stap</li>' +
+        '<li><b>🔧 Oorzaak laten zoeken</b> — bij rood of oranje: start het <a data-hulp="onderzoek">volledige onderzoek</a>, met deze uitlezing als eerste stap</li>' +
+        '<li><b>🧭 Toch grondig onderzoeken</b> — bij groen: hetzelfde onderzoek zonder klacht, als brede controle</li>' +
         '<li><b>🔩 Welk onderdeel?</b></li>' +
         '<li><b>🩺 Grondiger laten kijken</b></li>' +
         '</ul>' +
@@ -132,6 +133,8 @@ var PL_HULP = {
       tekst:
         '<p>Bij <b>Er is iets mis</b> staat bovenaan het plan <b>🧭 Volledig onderzoek</b>. Het werkt zoals een monteur: het stelt verdenkingen op uit je klacht, ' +
         'en kiest steeds de stap die er de meeste tegelijk kan bevestigen of uitsluiten.</p>' +
+        '<p>Merk je niets maar wil je het zeker weten? Kies bij <b>Er is iets mis</b> voor <b>Ik merk niets bijzonders</b>, of tik bij een groene <a data-hulp="check">Check mijn auto</a> op <b>🧭 Toch grondig onderzoeken</b>. ' +
+        'Het onderzoek begint dan met een brede ronde: valse lucht, luchtmassameter, lambda en katalysator, thermostaat, accu en laden, en ontsteking. Bij een diesel komen het roetfilter, de EGR-klep en software erbij.</p>' +
         '<ul>' +
         '<li><b>Meten</b> — soms met een opdracht erbij, zoals gas geven tot 2500 tpm. Je ziet de sensoren live meelopen.</li>' +
         '<li><b>Vragen</b> — wat geen sensor ziet, zoals de kleur van de rook.</li>' +

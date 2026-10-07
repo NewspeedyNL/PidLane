@@ -115,8 +115,18 @@
       h: ['olie', 'koppakking', 'injector', 'turbo', 'egr', 'dpf'] },
     elektrisch: { naam: 'Accu of elektrisch', icoon: '🔋',
       kw: ['accu', 'batterij', 'dynamo', 'spanning', 'lampjes flikkeren', 'laadt niet', 'leeg'],
-      h: ['accu', 'laad'] }
+      h: ['accu', 'laad'] },
+    // Geen klacht (07-10-2026, #434). Tot dan begon het onderzoek altijd
+    // vanuit een klacht, en wie bij een groene "Check mijn auto" toch wilde
+    // weten hoe het ervoor stond, kwam er niet in. Dit is de brede ronde:
+    // wat je zonder klacht het vaakst mist. Bij een diesel komt CONTROLE_DIESEL
+    // erbij (zie nieuw()). Geen trefwoorden: "niets aan de hand" in vrije
+    // tekst is geen reden om hem aan te zetten.
+    controle: { naam: 'Niets bijzonders — controle', icoon: '🧭',
+      kw: [],
+      h: ['valselucht', 'maf', 'lambda', 'kat', 'thermostaat', 'accu', 'laad', 'misfire'] }
   };
+  var CONTROLE_DIESEL = ['dpf', 'egr', 'software'];
   var BREED = ['valselucht', 'maf', 'misfire', 'injector', 'lambda', 'thermostaat', 'koelsensor', 'accu', 'laad', 'turbo', 'egr', 'software'];
 
   // ── Hulpjes voor reeksen ────────────────────────────────────────────
@@ -417,9 +427,12 @@
     if (ctx.lampje === 'aan' && ks.indexOf('lampje') < 0) ks = ks.concat(['lampje']);
     ctx.klachten = ks;
     ks.forEach(function (k) { (KLACHTEN[k] ? KLACHTEN[k].h : []).forEach(function (h) { speel(st, h, 'klacht'); }); });
+    if (ks.indexOf('controle') >= 0 && /diesel/i.test(String(ctx.brandstof || '')))
+      CONTROLE_DIESEL.forEach(function (h) { speel(st, h, 'controle (diesel)'); });
     if ((ctx.vervangen || []).length) speel(st, 'software', 'onlangs vervangen');
-    st.log.push({ soort: 'start', t: 'Klacht: ' + ks.map(function (k) { return KLACHTEN[k] ? KLACHTEN[k].naam : k; }).join(', ') +
-      '. ' + Object.keys(st.v).length + ' verdenkingen om te onderzoeken.' });
+    var kop = (ks.length === 1 && ks[0] === 'controle') ? 'Geen klacht, brede controle'
+      : 'Klacht: ' + ks.map(function (k) { return KLACHTEN[k] ? KLACHTEN[k].naam : k; }).join(', ');
+    st.log.push({ soort: 'start', t: kop + '. ' + Object.keys(st.v).length + ' verdenkingen om te onderzoeken.' });
     return st;
   }
 
@@ -1050,7 +1063,8 @@
   }
 
   /* open(opt): opt.klacht (vrije tekst), opt.meting, opt.lampje uit de wizard;
-     opt.scan uit Check mijn auto (dan wordt er niet nog eens uitgelezen). */
+     opt.scan uit Check mijn auto (dan wordt er niet nog eens uitgelezen);
+     opt.controle = er is geen klacht, begin met de brede ronde (#434). */
   function openScherm(opt) {
     opt = opt || {};
     if (_st && !_st.klaar && !_st.gestopt) { zorgOv().style.display = 'flex'; teken(); return; }
@@ -1060,6 +1074,9 @@
       var c = opt.scan.codes || {};
       if ((c.bevestigd || []).length || (c.permanent || []).length) ks.push('lampje');
     }
+    // Zonder klacht, uit een groene check of "ik merk niks" (#434): de brede
+    // ronde. Staat er tóch een klacht, dan wint die — en controle valt weg.
+    if (opt.controle && !ks.length) ks.push('controle');
     _ui = { fase: 'intake', live: {}, voortgang: 0, wacht: null, ai: null, aiBezig: false,
       intake: { klachten: ks, klachtTekst: opt.klacht || '', lampje: opt.lampje, meting: opt.meting, vervangen: [], scan: opt.scan || null } };
     _st = null;

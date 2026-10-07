@@ -147,6 +147,32 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
   const ondekt = Object.keys(V).filter((h) => !O.STAPPEN.some((x) => x.test[h]));
   eis(!ondekt.length, 'voor elke verdenking bestaat een stap die haar toetst', ondekt.join());
 
+  console.log('\nGeen klacht: de brede ronde (#434)');
+  {
+    const BREDE = ['valselucht', 'maf', 'lambda', 'kat', 'thermostaat', 'accu', 'laad', 'misfire'];
+    let st = O.nieuw({ klachten: ['controle'], brandstof: 'benzine' });
+    eis(JSON.stringify(Object.keys(st.v).sort()) === JSON.stringify(BREDE.slice().sort()), 'benzine: precies de brede ronde', Object.keys(st.v).join());
+    eis(/^Geen klacht, brede controle\. 8 verdenkingen/.test(st.log[0].t), 'het verslag zegt dat er geen klacht was', st.log[0].t);
+    st = O.nieuw({ klachten: ['controle'], brandstof: 'diesel' });
+    eis(['dpf', 'egr', 'software'].every((h) => !!st.v[h]) && Object.keys(st.v).length === 11, 'diesel: roetfilter, EGR en software erbij', Object.keys(st.v).join());
+    st = O.nieuw({ klachten: ['controle'], brandstof: 'hybride' });
+    eis(!st.v.dpf, 'een hybride krijgt geen roetfilter');
+    eis(O.klachtUitTekst('niets aan de hand, alles prima').indexOf('controle') < 0, 'vrije tekst zet de controle nooit aan');
+    st = O.nieuw({ klachten: ['controle', 'warm'], brandstof: 'benzine' });
+    eis(!!st.v.koeling && !!st.v.valselucht && /^Klacht: /.test(st.log[0].t), 'controle naast een klacht: allebei, en het heet een klacht');
+    // Een gezonde auto: de brede ronde vindt niets en zegt dat.
+    st = O.nieuw({ klachten: ['controle'], brandstof: 'benzine', liters: 2.0 });
+    await O.draai(st, nepAuto({ waarde: gezond() }));
+    const best = Object.keys(st.v).filter((h) => O.status(st.v[h].score) === 'bevestigd');
+    eis(!best.length, 'gezonde auto: niets bevestigd', best.join());
+    eis(Object.keys(st.v).some((h) => /uitgesloten|onwaarschijnlijk/.test(O.status(st.v[h].score))), 'gezonde auto: er is iets uitgesloten', JSON.stringify(Object.keys(st.v).map((h) => [h, st.v[h].score])));
+    // De knop bij Check mijn auto: alleen bij groen.
+    const groen = F._tekenOordeel(GEEN_CODES);
+    const rood = F._tekenOordeel({ codes: { bevestigd: ['P0171'], pending: [], permanent: [] }, gelezen: GEEN_CODES.gelezen, readiness: null, sinds: {} });
+    eis(/_vervolg\('controle'\)/.test(groen), 'groen: "Toch grondig onderzoeken"', groen.slice(-400));
+    eis(!/_vervolg\('controle'\)/.test(rood) && /_vervolg\('oorzaak'\)/.test(rood), 'rood: "Oorzaak laten zoeken" en geen controle');
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('  FOUT test brak af: ' + (e.stack || e)); process.exit(1); });
