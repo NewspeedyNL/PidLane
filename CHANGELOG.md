@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Volledig onderzoek: meten, vragen, uitsluiten, doorpakken (#428)
+ ═══════════════════════════════════════════════════════════
+
+ - pidlane-onderzoek.js (PLOnderzoek), nieuw. Verdenkingen uit de klacht,
+   daarna steeds de stap die de meeste kan scheiden: meten (live grafiekjes,
+   opdrachten zoals 2500 tpm vasthouden), vragen (rookkleur, startgedrag)
+   en foutcodes. Nieuwe richting op een code, samenhang (accu → dynamo),
+   één keer verbreden, eerlijk "niets gevonden". AI als tweede mening.
+ - Ingangen: bovenaan het plan van "Er is iets mis", en "Oorzaak laten
+   zoeken" in Check mijn auto (die uitlezing is dan de eerste stap).
+   PLFoutcodes.leesStil() leest uit zonder venster.
+ - Handleiding: onderwerp "Volledig onderzoek". test-onderzoek.js,
+   bproef-onderzoek.js, acht mutaties, blok 5.
+ - Klant ziet alleen de huidige stap en de conclusie; verdenkingenbord en
+   tijdlijn alleen in de garagemodus. De laaddrukproef (vol optrekken tijdens
+   het rijden) alleen in de garagemodus. Twee mutaties erbij.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Check mijn auto: software als oorzaak bij de keuringsstatus (#426)
  ═══════════════════════════════════════════════════════════
 

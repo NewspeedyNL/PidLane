@@ -474,6 +474,14 @@ function toonPlan(){
             (af ? af+' van de '+mods.length+' klaar. Ga verder waar je gebleven was — je antwoorden staan er nog.'
                 : 'Op basis van je antwoorden. Je kunt hier nog terug.')+
           '</div>'+
+          // #428: bij een klacht staat het volledige onderzoek bovenaan. Het
+          // meet, vraagt en sluit uit tot het iets vindt; de losse modules
+          // hieronder blijven voor wie zelf wil kiezen.
+          (job.doel==='storing' && window.PLOnderzoek ?
+            '<div class="wz-plan-item" id="wzOnderzoek" style="border-color:var(--bl,#3b82f6)"><b>🧭 Volledig onderzoek</b>'+
+              '<span>Ik meet, stel vragen en geef opdrachten, sluit uit wat niet klopt en zoek verder tot ik iets vind.</span>'+
+              '<button class="wz-mod-run" onclick="PLWizard.onderzoek()">Starten</button></div>'+
+            '<div class="wz-plan-kop">Of zelf kiezen</div>' : '')+
           '<div class="wz-plan-kop">1 · Meten</div>'+
           // Stap 1 had als enige regel in dit scherm géén knop, terwijl elke
           // analyse eronder er wél een had. Daarmee wees de hele lijst naar de
@@ -528,6 +536,13 @@ window.PLWizard = {
     actief=false;
     chipTick();
     veilig(function(){ goHome(); });
+  },
+  // Het volledige onderzoek (#428) krijgt de antwoorden mee; de wizard gaat
+  // dicht, want het onderzoek heeft zijn eigen plan.
+  onderzoek: function(){
+    var ov=el('wizardNieuwOv'); if(ov) ov.style.display='none';
+    actief=false; chipTick();
+    PLOnderzoek.open({ klacht: job.klacht, meting: job.meting, lampje: job.lampje });
   },
   opnieuw: function(){
     beginVan(tak);
