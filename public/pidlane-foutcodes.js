@@ -910,7 +910,9 @@
   function vervolg(wat) {
     sluit();
     try {
-      if (wat === 'oorzaak') PLWizard.open('storing');
+      // Sinds #428 het volledige onderzoek, met deze uitlezing als eerste stap:
+      // de lijst losse modules achter de wizard was precies het probleem.
+      if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }
       else if (wat === 'grondig') PLWizard.open('conditie');
       else if (wat === 'onderdeel') {
         var w = document.getElementById('welcomeScreen'); if (w) w.classList.add('hidden');
@@ -1043,6 +1045,9 @@
     _blijf: function () { stopDoor(); },
     stoplicht: stoplicht,
     magDoor: magDoor,
+    // Uitlezen zonder venster, voor het volledige onderzoek (PLOnderzoek, #428):
+    // dezelfde bus, dezelfde demo-ECU, dezelfde keten als scan().
+    leesStil: function () { return metBus(function () { return leesUit(stuurNu()); }); },
     // pure kern en bus — voor test-foutcodes.js
     parseDtc: parseDtc,
     parseReadiness: parseReadiness,

@@ -2771,6 +2771,28 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── het volledige onderzoek (#428) ──
+  {
+    issue: '#428',
+    naam: 'Volledig onderzoek: vindt in de app een lek via stationair en 2500 tpm, en opent een nieuwe richting op een foutcode',
+    waarom: '"Er is iets mis" gaf losse modules met elk een eigen rapport; het onderzoek legt het verband en pakt door.',
+    proef: async function () {
+      var O = window.PLOnderzoek;
+      if (!O || !O.draai) return { staat: 'FOUT', detail: 'PLOnderzoek ontbreekt — pidlane-onderzoek.js is niet geladen' };
+      var st = O.nieuw({ klachten: ['onrustig'], liters: 2.0 });
+      await O.draai(st, async function (stap) {
+        if (stap.soort === 'vraag') return { overgeslagen: true };
+        if (stap.soort === 'lezen') return { scan: { codes: { bevestigd: ['P0171', 'P0420'], pending: [], permanent: [] }, gelezen: { bevestigd: true, pending: true, permanent: true }, readiness: null, sinds: {} } };
+        var r = {}; stap.pids.forEach(function (p) { r[p] = []; for (var i = 0; i < 20; i++) r[p].push(O.demoWaarde(p, stap.id)); });
+        return { reeks: r, ontbreekt: [] };
+      });
+      var top = st.uitkomst.top[0];
+      if (!top || top.id !== 'valselucht') return { staat: 'FOUT', detail: 'conclusie ' + (top ? top.id : 'geen') + ' in plaats van valse lucht' };
+      if (!st.log.some(function (l) { return (l.nieuw || []).indexOf('kat') >= 0; })) return { staat: 'FOUT', detail: 'P0420 opende de katalysator niet als nieuwe richting' };
+      return { staat: 'OK', detail: st.gedaan.length + ' stappen: ' + st.gedaan.join(' → ') };
+    }
+  },
+
   // ── software als oorzaak, niet de sensor (#426) ──
   {
     issue: '#426',

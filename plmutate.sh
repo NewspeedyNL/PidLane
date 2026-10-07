@@ -1744,6 +1744,19 @@ MUTATIES=(
 "public/pidlane-data.js@@    if (f.sterkte === 'zwak' && !aanleiding) return null;@@@@test-softwareoorzaak.js@@een gewone P0420 komt als \"adaptaties wissen\" op het scherm: de sensorkant wordt software"
 "public/pidlane-foutcodes.js@@    h += tekenSoftware(s, zelfGewist);\n@@@@test-foutcodes.js@@de keuringsstatus in Check mijn auto zegt nooit dat het software kan zijn — #426"
 "public/pidlane-foutcodes.js@@    if (!s || zelfGewist) return [];@@    if (!s) return [];@@test-foutcodes.js@@direct na zelf wissen wijst elke hangende monitor naar inleren — #426"
+
+# ── Het volledige onderzoek (#428, 07-10-2026). Wat de onderzoeker beslist:
+# een andere richting op gaan, verbreden, doorpakken bij samenhang, de
+# 2500-tpm-scheiding, het gewicht van een code in afwachting en de
+# klachtherkenning. Plus de deur vanuit Check mijn auto.
+"public/pidlane-onderzoek.js@@        speel(st, b.h, stap.titel);\n        stuk.nieuw.push(b.h);@@        return;@@test-onderzoek.js@@een foutcode die ergens anders naar wijst opent geen nieuwe richting"
+"public/pidlane-onderzoek.js@@    if (st.verbreed) return false;@@    return false;@@test-onderzoek.js@@alles bij de klacht uitgesloten: hij verbreedt nooit"
+"public/pidlane-onderzoek.js@@    if (samen) return true;@@@@test-onderzoek.js@@na \"accu zwak\" stopt hij zonder te kijken of de dynamo laadt"
+"public/pidlane-onderzoek.js@@        if (s > 8 && t < s / 2) return [@@        if (s > 8 && t > s / 2) return [@@test-onderzoek.js@@de 2500-tpm-proef leest lek en luchtmassameter omgekeerd"
+"public/pidlane-onderzoek.js@@      var gevonden = false, f = vast.indexOf(code) >= 0 ? 1 : 0.6;@@      var gevonden = false, f = 1;@@test-onderzoek.js@@een code in afwachting weegt even zwaar als een bevestigde"
+"public/pidlane-onderzoek.js@@      if (KLACHTEN[k].kw.some(function (w) { return t.indexOf(' ' + w) >= 0; })) r.push(k);@@      if (KLACHTEN[k].kw.some(function (w) { return t.indexOf(w) >= 0; })) r.push(k);@@test-onderzoek.js@@\"verbruikt\" wordt rook: er staat \"ruikt\" in"
+"public/pidlane-onderzoek.js@@  function nogOpen(c) { return c.open.filter(@@  function nogOpen(c) { return [].filter(@@test-onderzoek.js@@tegenstrijdig bewijs verdwijnt onder \"open\" uit de conclusie"
+"public/pidlane-foutcodes.js@@      if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }@@      if (wat === 'oorzaak') PLWizard.open('storing');@@bproef-onderzoek.js@@Oorzaak laten zoeken opent weer de lijst losse modules in plaats van het onderzoek"
 )
 
 echo

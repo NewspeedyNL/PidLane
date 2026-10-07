@@ -117,7 +117,7 @@ var PL_HULP = {
       tekst:
         '<p>Leest de foutcodes en de keuringsstatus uit en zet de uitkomst in één stoplicht. Daaronder staan de codes en drie vervolgstappen:</p>' +
         '<ul>' +
-        '<li><b>🔧 Oorzaak laten zoeken</b></li>' +
+        '<li><b>🔧 Oorzaak laten zoeken</b> — start het <a data-hulp="onderzoek">volledige onderzoek</a>, met deze uitlezing als eerste stap</li>' +
         '<li><b>🔩 Welk onderdeel?</b></li>' +
         '<li><b>🩺 Grondiger laten kijken</b></li>' +
         '</ul>' +
@@ -126,7 +126,22 @@ var PL_HULP = {
         'Dat betekent: een onderdeel is vervangen of weggehaald zonder dat de motorcomputer het weet. PidLane past daar niets aan; het zegt wat er ingeleerd moet worden en met welke software dat bij dit merk kan.</p>' +
         '<p><b>Foutcodes wissen</b> kan alleen als de voorwaarden kloppen: een verse uitlezing, contact aan, motor uit en de auto staat stil. ' +
         'Niet op afstand. Klopt er iets niet, dan zegt het venster wat. Bewaar de codes eerst: na wissen zijn ze weg.</p>',
-      zie: ['startscherm', 'rapporten'] },
+      zie: ['startscherm', 'rapporten', 'onderzoek'] },
+
+    { id: 'onderzoek', groep: 'gebruik', titel: 'Volledig onderzoek',
+      tekst:
+        '<p>Bij <b>Er is iets mis</b> staat bovenaan het plan <b>🧭 Volledig onderzoek</b>. Het werkt zoals een monteur: het stelt verdenkingen op uit je klacht, ' +
+        'en kiest steeds de stap die er de meeste tegelijk kan bevestigen of uitsluiten.</p>' +
+        '<ul>' +
+        '<li><b>Meten</b> — soms met een opdracht erbij, zoals gas geven tot 2500 tpm. Je ziet de sensoren live meelopen.</li>' +
+        '<li><b>Vragen</b> — wat geen sensor ziet, zoals de kleur van de rook.</li>' +
+        '<li><b>Een andere richting</b> — wijst een foutcode of meting ergens anders naar, dan komt die verdenking erbij.</li>' +
+        '</ul>' +
+        '<p>Elke verdenking heeft een balk. Tik erop voor het bewijs: ▲ wijst ernaartoe, ▼ ervan af, met de gemeten waarde erbij. ' +
+        'De conclusie zegt wat bevestigd is, wat uitgesloten is en wat er nog openstaat. <b>💾 Bewaren</b> legt het hele verloop vast; ' +
+        '<b>🤖 Tweede mening</b> laat de AI-uitleg ernaar kijken.</p>' +
+        '<p>Het onderzoek wijst aan, het vervangt geen monteur: laat een bevinding bevestigen voordat je onderdelen koopt.</p>',
+      zie: ['check'] },
 
     { id: 'status', groep: 'gebruik', titel: 'De statusknop bovenin',
       tekst:
