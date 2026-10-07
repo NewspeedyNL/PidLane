@@ -57,6 +57,10 @@ var KRITIEK = [
   // socket dichtgaat, achter een guard omdat pidlane-bt.js ook los getest
   // wordt. Ontbreekt hij, dan blijft een K-lijn-ECU op een tester wachten.
   'plBusVrijgeven',
+  // Erbij op 06-10-2026. logout() stopt het live-log van de beheerder achter
+  // een guard: pidlane-koopcheck.js laadt later dan pidlane-auth.js. Ontbreekt
+  // hij, dan schrijft het live-log door in de sessie van wie daarna inlogt.
+  'liveLogStop',
   'ecuSteunt','hasTesterConsent','healthUitProfiel',
   // De twee helften van #78 (02-09-2026). plHealthHerzien() laat een negatief
   // gezondheidsoordeel vervallen zodra er alsnog een geldige meting binnenkomt;

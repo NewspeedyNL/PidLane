@@ -597,10 +597,11 @@ function pidsDueNow(){
     if(d) return d;
     return (_pidNextPoll[a]||0)-(_pidNextPoll[b]||0);
   });
-  // Hoogstens EIGEN_PER_RONDE eigen PIDs per ronde (28-09-2026). Acht banden
-  // met hetzelfde tempo werden anders in één ronde gevraagd, elk met ATSH heen
-  // en terug: vier seconden zonder toerental, en de meter van Slim visueel
-  // werd dof en weer helder. De rest blijft due en komt de volgende tik.
+  // Hoogstens EIGEN_PER_RONDE eigen PIDs per ronde (28-09-2026). Aanleiding
+  // waren acht banden met hetzelfde tempo, elk met ATSH heen en terug: vier
+  // seconden zonder toerental. De banden staan sinds #396 buiten de pollus
+  // (PLBanden.ververs), maar elke eigen PID met een ECU-adres kost dat heen en
+  // terug, dus de rem blijft. De rest blijft due en komt de volgende tik.
   let eigen=0;
   return due.filter(pid=>{
     try{ if(window.PLEigen && window.PLEigen.is(pid)) return ++eigen<=EIGEN_PER_RONDE; }

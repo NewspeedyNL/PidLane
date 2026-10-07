@@ -25,7 +25,8 @@
 // (AUTO_MS, tik()). Acht banden kosten via adres 720 samen zo'n 1,2 s bus,
 // dus 0,4% van vijf minuten. Tot 06-10 was het elke minuut, als acht losse
 // PIDs met elk een trend — voor één vraag: staan de banden op spanning, en
-// worden ze niet te heet. Een meting ouder dan een half uur is dof.
+// worden ze niet te heet. Een meting is dof na drie gemiste rondes (15 min),
+// of na een half uur als de ronde van vijf minuten uit staat.
 //
 // ÉÉN REGEL IN DE SENSORLIJST. De acht staan daar niet meer los (PLEigen
 // houdt ze eruit); lijstRegel() geeft buildPIDList() één regel met het vinkje
@@ -42,8 +43,12 @@
 
   const POS = ['VL', 'VR', 'AL', 'AR'];
   const POS_NAAM = { VL: 'Voor links', VR: 'Voor rechts', AL: 'Achter links', AR: 'Achter rechts' };
-  const OUD_MS = 30 * 60000;      // op verzoek gevraagd: een half uur, daarna dof (#396)
+  const OUD_MS = 30 * 60000;      // alleen op verzoek gevraagd: een half uur, daarna dof (#396)
   const AUTO_MS = 5 * 60000;      // de ronde van vijf minuten, zolang het vinkje aanstaat
+  // Met die ronde aan is een meting na drie gemiste rondes oud (06-10-2026).
+  // Met een half uur bleef het lampje na een gestopte ronde dertig minuten
+  // groen op een meting die niemand meer ververste.
+  const OUD_AUTO_MS = 3 * AUTO_MS;
   const AUTO_SLEUTEL = 'pl_banden_auto';
   const WARN = 0.10, GEVAAR = 0.20;
 
@@ -67,14 +72,15 @@
 
   /* Wat er nu staat. vals/laatst zoals pidVals/_pidLastUpd. Geeft per band
      {druk, temp, ernst} en het totaal {ernst, uitleg}. Puur. */
-  function stand(ind, vals, laatst, nu) {
+  function stand(ind, vals, laatst, nu, oudMs) {
     if (!ind) return null;
+    const grens = (typeof oudMs === 'number' && oudMs > 0) ? oudMs : OUD_MS;
     vals = vals || {}; laatst = laatst || {};
     const meet = x => {
       if (!x) return null;
       const v = vals[x.pid], t = laatst[x.pid];
       if (typeof v !== 'number' || !isFinite(v)) return { waarde: null, eenheid: x.eenheid, oud: false };
-      return { waarde: v, eenheid: x.eenheid, oud: !(typeof t === 'number' && nu - t < OUD_MS) };
+      return { waarde: v, eenheid: x.eenheid, oud: !(typeof t === 'number' && nu - t < grens) };
     };
     const w = {};
     POS.forEach(p => { w[p] = { druk: meet(ind[p].druk), temp: meet(ind[p].temp), ernst: 'ok', afwijking: null }; });
@@ -107,7 +113,7 @@
     let v = {}, t = {};
     try { if (typeof pidVals !== 'undefined' && pidVals) v = pidVals; } catch (e) { console.warn('PLBanden: pidVals onleesbaar', e); }
     try { if (typeof _pidLastUpd !== 'undefined' && _pidLastUpd) t = _pidLastUpd; } catch (e) { console.warn('PLBanden: tijden onleesbaar', e); }
-    return { ind, st: stand(ind, v, t, Date.now()) };
+    return { ind, st: stand(ind, v, t, Date.now(), oudNu()) };
   }
 
   // ── Op verzoek vragen (#396) ─────────────────────────────────────
@@ -132,6 +138,9 @@
   }
   let _aan = leesAan();
   function aan() { return _aan; }
+  /* Wanneer een meting dof wordt: met de ronde van vijf minuten na drie
+     gemiste rondes, zonder na een half uur. */
+  function oudNu() { return _aan ? OUD_AUTO_MS : OUD_MS; }
   function zetAan(v) {
     _aan = !!v;
     try { localStorage.setItem(AUTO_SLEUTEL, _aan ? '1' : '0'); }
@@ -232,7 +241,7 @@
         '<p class="plb-oordeel ' + n.st.ernst + '">' + esc(n.st.uitleg) + '</p>' +
         '<p class="plb-uitleg">De app vergelijkt de vier banden met elkaar: 10% lager dan de rest is oranje, 20% rood. Of ze samen op de voorgeschreven druk staan, ' +
         'zie je op de sticker in de deurstijl — die kent de app niet. Gevraagd bij het openen van dit venster en van Slim visueel' +
-        (_aan ? ', en elke vijf minuten' : '') + '; tik op ↻ om opnieuw te vragen. Een meting ouder dan een half uur is dof.</p>';
+        (_aan ? ', en elke vijf minuten' : '') + '; tik op ↻ om opnieuw te vragen. Een meting ouder dan ' + (_aan ? 'een kwartier' : 'een half uur') + ' is dof.</p>';
     }
     ov.innerHTML = '<div class="plb-vel"><div class="plb-kop"><h2 id="plBandenTtl">🛞 Banden</h2>' +
       (n.ind ? '<button type="button" class="plb-ververs" aria-label="Opnieuw vragen"' + (_bezig ? ' disabled' : '') + ' onclick="PLBanden.ververs()">↻</button>' : '') +
@@ -297,7 +306,7 @@
 
   setInterval(tik, 30000);
 
-  window.PLBanden = { POS, OUD_MS, AUTO_MS, WARN, GEVAAR, indeling, stand, oordeel, open, sluit, lamp, teken, wielKleuren, mini, vraagPids, ververs, eenmaal,
+  window.PLBanden = { POS, OUD_MS, OUD_AUTO_MS, AUTO_MS, oudNu, WARN, GEVAAR, indeling, stand, oordeel, open, sluit, lamp, teken, wielKleuren, mini, vraagPids, ververs, eenmaal,
     moetVragen, aan, zetAan, tik, lijstRegel,
     nu: function () { return nu(); } };
 })();
