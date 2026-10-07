@@ -976,7 +976,7 @@ MUTATIES=(
 "public/pidlane-data.js@@{id:'misfire', sit:'constant', motor:true,@@{id:'misfire', sit:'constant',@@test-hybridebasis.js@@de misfire-test mag weer meten terwijl de auto op de accu rijdt"
 "public/pidlane-visueel.js@@  if(elektrisch && heeftVraag) return 'vermogen';@@  if(false) return 'vermogen';@@test-visueel.js@@een hybride houdt de toerennaald die op 0 staat terwijl hij 50 rijdt (#432)"
 "public/pidlane-visueel.js@@const VRAAG_KETEN = ['015A','0149','014A'];@@const VRAAG_KETEN = ['015A','0149','014A','0111'];@@test-visueel.js@@de gasklep telt als vermogensvraag: op de accu optrekken staat dan op nul"
-"public/pidlane-visueel.js@@  if(leer.min===null || leer.min===undefined || n<leer.min) leer.min=n;@@  if(leer.min===null || leer.min===undefined) leer.min=0;@@test-visueel.js@@de rustwaarde van het pedaal wordt niet geleerd: 0149 staat stil op 25% vraag"
+"public/pidlane-toon.js@@    if (leer.min === null || leer.min === undefined || n < leer.min) leer.min = n;@@    if (leer.min === null || leer.min === undefined) leer.min = 0;@@test-visueel.js@@de rustwaarde van het pedaal wordt niet geleerd: 0149 staat stil op 25% vraag"
 "public/pidlane-visueel.js@@  if(b.v<VERMOGEN.LAAD_MIN_KMH) return 0;@@@@test-visueel.js@@de laadzone slaat uit bij het laatste stukje stilvallen, waar niets meer terugwint"
 "public/pidlane-visueel.js@@  if(heeftV && vraag>VERMOGEN.RUST){@@  if(heeftV && vraag>VERMOGEN.RUST && !(heeftL && laad>0)){@@test-visueel.js@@vertragen wint van gas geven: de naald slaat naar laden terwijl je optrekt na een bocht"
 "public/pidlane-visueel.js@@  if(heeftVraag) return 'vermogen';\n  return null;@@  return null;@@test-visueel.js@@zonder toerental weer geen naald, ook als het pedaal er is"
