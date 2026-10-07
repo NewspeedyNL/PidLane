@@ -322,7 +322,9 @@ waar('een verborgen 0149 valt door naar 015A', r.i.plekken.pedaal === '015A');
 r = ind({ actief: ['010C', '015C', '0149'], dood: ['015C'] });
 waar('een dode olie: geen onderboog, het pedaal blijft in zijn rij', r.i.onder === null && r.i.plekken.pedaal === '0149');
 r = ind({ actief: ['010D', '0149'] });
-waar('zonder toerental geen naald (het scherm zegt dat dan)', r.i.naald === null);
+waar('zonder toerental: de vermogensnaald op het pedaal (#432)', r.i.naald === '0149' && r.i.naaldSoort === 'vermogen', JSON.stringify(r.i));
+r = ind({ actief: ['010D'] });
+waar('zonder toerental en zonder pedaal: geen naald, maar wel een indeling', r.i.naald === null && r.i.naaldSoort === null && r.i.midden === '010D');
 r = ind({ actief: ['010C'] });
 waar('niets voor onderboog, rijen of accu: die blijven leeg', r.i.onder === null && !r.i.plekken.koel && !r.i.plekken.pedaal && !r.i.plekken.tank && !r.i.lamp.volt);
 
@@ -771,6 +773,72 @@ console.log('\n— sessiebewijs en oordelen voor blok 5 (#294, trekmodus) —');
   waar('rust: tien herbouwen in tien minuten is knipperen (FOUT)', V.rustOordeel(S({ rijdendMs: 600000, openMs: 600000, dof: 0, herbouw: 10 })).staat === 'FOUT');
   const tr = V.trekOordeel(S({ trekMs: 600000, maxTrend: 2.4, alarmen: 1 }));
   waar('trekmodus: tien minuten, trend en waarschuwing in het verslag', tr.staat === 'ok' && /2,4 °C\/min/.test(tr.detail) && /1 waarschuwing\b/.test(tr.detail), tr.detail);
+}
+
+// ══════════════════════════════════════════════════════════════════
+console.log('\n── de vermogensnaald (#432) ──');
+{
+  const N = V.VERMOGEN.NUL;
+  // Welke naald.
+  waar('benzine met toerental: toeren', V.naaldSoort('benzine', false, true, true) === 'toeren');
+  waar('diesel met toerental: toeren', V.naaldSoort('diesel', false, true, true) === 'toeren');
+  waar('hybride met toerental én pedaal: vermogen', V.naaldSoort('hybride', false, true, true) === 'vermogen');
+  waar('EV: vermogen', V.naaldSoort('ev', false, true, true) === 'vermogen');
+  waar('"benzine" maar accurijden gezien: vermogen (de meting wint)', V.naaldSoort('benzine', true, true, true) === 'vermogen');
+  waar('hybride zonder pedaal maar met toerental: toeren (liever iets dan niets)', V.naaldSoort('hybride', false, true, false) === 'toeren');
+  waar('benzine zonder toerental, met pedaal: vermogen', V.naaldSoort('benzine', false, false, true) === 'vermogen');
+  waar('niets: geen naald', V.naaldSoort('benzine', false, false, false) === null);
+  waar('de gasklep (0111) is geen vermogensvraag', V.VRAAG_KETEN.indexOf('0111') < 0);
+
+  // De vraag uit het pedaal, zelflerend vanaf de rust.
+  const leer = { min: null, max: null };
+  waar('eerste waarde 15% is de rust: 0', V.vraagUit(15, leer) === 0);
+  waar('15 + 30 bij een minimaal bereik van 60: 50%', Math.round(V.vraagUit(45, leer)) === 50);
+  waar('vloer (75%): 100', V.vraagUit(75, leer) === 100);
+  waar('boven het geleerde bereik: begrensd en het bereik groeit mee', V.vraagUit(95, leer) === 100 && leer.max === 95);
+  waar('daarna is 75% geen 100 meer', V.vraagUit(75, leer) < 100);
+  waar('geen getal: null, en het geleerde blijft', V.vraagUit('x', leer) === null && leer.min === 15);
+
+  // De laadzone uit de snelheid.
+  const h = (paren) => paren.map((p) => ({ t: p[0], v: p[1] }));
+  waar('van 60 naar 54 in 1 s (6 km/h/s): 75%', Math.round(V.laadUit(h([[0, 60], [500, 57], [1000, 54]]), 1000)) === 75);
+  waar('constant 60: 0', V.laadUit(h([[0, 60], [1000, 60]]), 1000) === 0);
+  waar('optrekken: 0', V.laadUit(h([[0, 50], [1000, 56]]), 1000) === 0);
+  waar('bijna stil: 0 (daar wint niets meer terug)', V.laadUit(h([[0, 10], [1000, 4]]), 1000) === 0);
+  waar('één monster: null', V.laadUit(h([[1000, 60]]), 1000) === null);
+  waar('te kort venster: null', V.laadUit(h([[800, 60], [1000, 50]]), 1000) === null);
+  waar('oude monsters tellen niet', V.laadUit(h([[0, 90], [1000, 60], [2000, 60]]), 2000) === 0);
+  waar('noodstop: begrensd op 100', V.laadUit(h([[0, 80], [1000, 50]]), 1000) === 100);
+
+  // De stand.
+  let s = V.vermogenStand(null, null);
+  waar('niets: leeg, naald in rust op het nulpunt', s.leeg && s.deel === N && s.tekst === '—');
+  s = V.vermogenStand(0, 0);
+  waar('pedaal los, niet remmen: op nul', !s.leeg && s.deel === N && s.tekst === '0%');
+  s = V.vermogenStand(100, 0);
+  waar('vol gas: de naald aan het eind', s.deel === 100 && s.vraag === 100 && Math.abs(s.hoek - G.A1) < 1e-9);
+  s = V.vermogenStand(1, 80);
+  waar('pedaal los en vertragen: laden, links van nul', s.laden && s.deel < N && s.laad === 80 && s.tekst === 'laden');
+  s = V.vermogenStand(40, 80);
+  waar('gas geven wint van vertragen (wie gas geeft laadt niet)', !s.laden && s.deel > N && s.laad === 0);
+  s = V.vermogenStand(500, -20);
+  waar('een gekke waarde blijft binnen de schaal', s.deel <= 100 && s.deel >= 0 && s.hoek <= G.A1 && s.hoek >= G.A0);
+
+  // De tekening: de laadzone en de vraagboog bestaan, de toerenboog niet.
+  const plaat = V.wijzerplaat(null, null, null, 8000, 'vermogen');
+  waar('vermogensplaat: laadboog en vraagboog', /id="vis-laadboog"/.test(plaat) && /id="vis-vraagboog"/.test(plaat));
+  waar('vermogensplaat: geen toerenboog en geen 8', !/vis-toerenboog/.test(plaat) && !/>8</.test(plaat));
+  waar('vermogensplaat: de naald rust op het nulpunt', new RegExp('rotate\\(' + (G.A0 + (G.A1 - G.A0) * N / 100) + 'deg\\)').test(plaat));
+  const toer = V.wijzerplaat(null, null, null, 8000);
+  waar('zonder soort blijft het de toerenplaat (niets veranderd voor benzine)', /vis-toerenboog/.test(toer) && !/vis-vraagboog/.test(toer));
+
+  // De indeling: een hybride met toerental krijgt de vermogensnaald op het pedaal.
+  let r2 = ind({ actief: ['010C', '010D', '0149'], motor: 'hybride' });
+  waar('indeling hybride: vermogen op 0149, toerental blijft voor de accu', r2.i.naaldSoort === 'vermogen' && r2.i.naald === '0149' && r2.i.toeren === '010C', JSON.stringify(r2.i));
+  r2 = ind({ actief: ['010C', '010D', '015A', '0149'], motor: 'hybride' });
+  waar('indeling hybride: 015A (relatief) gaat voor 0149', r2.i.naald === '015A');
+  r2 = ind({ actief: ['010C', '010D', '0149'], motor: 'benzine' });
+  waar('indeling benzine: toeren op 010C', r2.i.naaldSoort === 'toeren' && r2.i.naald === '010C');
 }
 
 console.log('\n' + (fout ? 'FOUT: ' : 'goed: ') + ok + ' ok, ' + fout + ' fout\n');
