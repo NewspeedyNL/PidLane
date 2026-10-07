@@ -379,6 +379,8 @@ console.log('\nH. De energieweergave voor hybride en EV (#435)');
   waar('…met 60% en EV erbij', els['vpf-w-energie'].textContent === '60%' && els['vpf-w-toestand'].textContent === 'EV');
   Q.energie('motor', ind, { leeg: false, vraag: 10, laad: 0, laden: false, tekst: '10%' }, null, { aandeel: 71, versnelling: 1.5, bereik: { totaal: 420, brandstof: 420, elektrisch: null } });
   waar('de tegels krijgen hun waarde', els['vpf-w-aandeel'].textContent === '71' && els['vpf-w-versn'].textContent === '+1,5' && els['vpf-w-bereik'].textContent === '420');
+  Q.bij('motor', ind, '010D', 50, 'ok');
+  waar('een ruwe snelheid (50) overschrijft de versnellingstegel niet', els['vpf-w-versn'].textContent === '+1,5', els['vpf-w-versn'].textContent);
   waar('het bereik zegt waar het uit bestaat', /Brandstof 420 km/.test(els['vpf-p-bereik'].getAttribute('title')) && /accu nog niet geleerd/.test(els['vpf-p-bereik'].getAttribute('title')));
   Q.energie('motor', ind, { leeg: false, vraag: 0, laad: 40, laden: true, tekst: 'laden' }, { toestand: 'ACCU_RIJDT' });
   waar('laden 40%: de ring groen, 30 van 75', els['vpf-p-energie'].classList.contains('laden') && els['vpf-f-energie'].getAttribute('stroke-dasharray') === '30.0 100' && els['vpf-w-toestand'].textContent === 'Laden');
