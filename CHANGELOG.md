@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Overzicht per categorie, met de normale band (#439)
+ ═══════════════════════════════════════════════════════════
+
+ - Live → Overzicht: een kaart per categorie (Rijden, Motor, Temperaturen,
+   Brandstof, Uitlaat, Elektrisch, Berekend, Overig), in de volgorde van de
+   aandrijving: bij hybride en EV staat Elektrisch direct onder Rijden.
+ - Per sensor één rij: korte naam · balk met groen vlak (wL…wH) en een
+   streepje voor nu · waarde met de decimalen van zijn eenheid · trendlijn
+   (hoogstens vier, #302 blijft) · 📈. Buiten de band: oranje/rood met een
+   uitleg eronder; de kop telt mee; de rij gaat bovenaan zijn kaart.
+ - Compact of Ruim (twee kolommen tegels), onthouden per toestel. Ruimte
+   onderaan voor de zwevende pillen.
+ - test-overzicht.js (36 nieuw), bproef-overzicht.js, zeven mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Energieweergave: tegels aandrijving, versnelling, bereik (#437)
  ═══════════════════════════════════════════════════════════
 

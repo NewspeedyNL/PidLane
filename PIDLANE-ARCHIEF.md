@@ -15,6 +15,33 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 07-10-2026 — Overzicht per categorie (#439)
+
+**Wat er mis was, gezien op de demo-CX-5.** Een rooster van tegels in de
+volgorde van de keuzelijst, met wisselende breedte, afgekapte namen
+("OMGEVINGSTEMPE"), op elke tegel een 📈, en een statusbolletje dat altijd
+groen was. Nergens stond wat normaal is.
+
+**De keuze (met de eigenaar, na schetsen).** Overzicht wordt het naslagwerk,
+Slim het eigen dashboard (volgende stap). Per categorie een kaart, per sensor
+één rij met een band: groen = wL…wH uit de PID-definitie, het streepje = nu.
+Zonder wL/wH is er geen groen vlak; de band beweert dan niets over normaal.
+
+**Wat hetzelfde bleef, en waarom.** De tegels houden hun ids (gc-, gv-, gs-),
+dus applyG(), de trendkeuze en het verbergen werken ongewijzigd. De grens van
+vier trendlijnen uit #302 blijft: tekenen kostte op de telefoon zichtbaar.
+Een rij zonder lijn houdt zijn plek leeg en de 📈-knop ernaast.
+
+**Twee vondsten onderweg.**
+- applyG() roept fv(val) aan zonder eenheid. Daardoor gold de
+  decimalenregel van fvDec() nooit, en stond de accu op "14 V". In Overzicht
+  nu met de definitie (14.10 V); Slim volgt in zijn eigen stap.
+- fvDec() kent geen regel voor %, dus belasting staat op "5.00 %". Dat is
+  bewust níét hier opgelost: fv() met eenheid zit ook in de systeemtest, de
+  waakronde en de rapporten.
+
+---
+
 ## 07-10-2026 — De tegels van de energieweergave (#437)
 
 **Bereik = brandstof + accu, en het accudeel wordt geleerd.** Er is geen

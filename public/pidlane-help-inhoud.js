@@ -161,8 +161,11 @@ var PL_HULP = {
       tekst:
         '<p>De tab <b>Live</b> toont de metingen van de auto op dit moment. Bovenaan kies je hoe je kijkt:</p>' +
         '<ul>' +
-        '<li><b>Overzicht</b> — elke sensor als getal met een gekleurd puntje. Hoogstens vier krijgen een trendlijn: ' +
-        'wat je zelf vastzet met <b>📈</b> op de tegel, en verder wat op dat moment het meest beweegt.</li>' +
+        '<li><b>Overzicht</b> — alle sensoren, per categorie (Rijden, Motor, Temperaturen, Brandstof, Uitlaat, Elektrisch). ' +
+        'Per sensor één rij met een balkje: het groene stuk is normaal voor die sensor, het streepje is nu. Valt hij erbuiten, dan kleurt hij oranje of rood ' +
+        'met een korte uitleg eronder, en zegt de kop van de categorie hoeveel er afwijken. Bij een hybride of elektrische auto staat Elektrisch bovenaan. ' +
+        'Met <b>Compact</b> en <b>Ruim</b> kies je rijen of grotere tegels. Hoogstens vier rijen krijgen een trendlijn: ' +
+        'wat je zelf vastzet met <b>📈</b>, en verder wat op dat moment het meest beweegt.</li>' +
         '<li><b>Slim</b> — de standaard: dashboardwaarden groot, trends alleen waar iets beweegt.</li>' +
         '<li><b>Visueel</b> — één vaste meter. De naald toont het toerental; bij een hybride of elektrische auto, en bij een auto die geen toerental geeft, toont hij hoeveel vermogen je met het gaspedaal vraagt. Links van nul, in groen, staat de laadzone: gas los en afremmen, wanneer een hybride energie terugwint. Dat is een schatting uit de vertraging, geen gemeten laadstroom. Onder de snelheid staan koelwater, gaspedaal en brandstof als balkjes; ' +
         'rechtsboven de accu (bij een hybride de aandrijfaccu én de 12V-accu), rechtsonder een autootje met de vier banden. ' +

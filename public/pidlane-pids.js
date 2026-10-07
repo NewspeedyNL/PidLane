@@ -226,6 +226,28 @@ function renderGauges(){
   // weergavekeuze kan de live-verversing niet stukmaken.
   const slim = (pidViewMode==='slim');
   const vak = {};
+  // ── Overzicht per categorie (#439): een kaart per categorie, in de volgorde
+  // die bij de aandrijving past; de tegels worden rijen. Zelfde ids, dus
+  // applyG() en de trendkeuze werken ongewijzigd.
+  const ovz = (pidViewMode==='overzicht');
+  const ovzVak = {};
+  if(ovz){
+    const motor=(typeof detectEngineType==='function') ? detectEngineType() : 'benzine';
+    const dicht=ovzDichtLees();
+    g.classList.toggle('ovz-ruim', dicht==='ruim');
+    const bar=document.createElement('div'); bar.className='ovz-balk';
+    bar.innerHTML='<span class="ovz-tel" id="ovzTel"></span><div class="ovz-dicht" role="group" aria-label="Dichtheid">'+
+      '<button type="button" data-d="compact"'+(dicht==='compact'?' class="aan"':'')+' onclick="ovzDicht(\'compact\')">Compact</button>'+
+      '<button type="button" data-d="ruim"'+(dicht==='ruim'?' class="aan"':'')+' onclick="ovzDicht(\'ruim\')">Ruim</button></div>';
+    g.appendChild(bar);
+    ovzVolgorde(motor).forEach(function(k){
+      const sec=document.createElement('section'); sec.className='ovz-cat'; sec.id='ovzCat-'+k; sec.style.display='none';
+      sec.innerHTML='<div class="ovz-kop"><h3>'+OVZ_CATS[k]+'</h3><span class="ovz-chip">normaal</span></div>';
+      const box=document.createElement('div'); box.className='ovz-vak'; box.id='ovzVak-'+k;
+      sec.appendChild(box); g.appendChild(sec);
+      ovzVak[k]={sec:sec, box:box};
+    });
+  }
   if(slim){
     // "Rustig" staat achteraan, en dat is de volgorde van het scherm: eerst
     // wat er op de teller staat, dan wat de bestuurder doet, dan de
@@ -247,7 +269,8 @@ function renderGauges(){
   // De korte namen voor de tellerplaat in één keer voor het hele rooster: de
   // botsingscontrole kan pas iets zeggen als hij álle meters kent.
   const meterNaam = slim ? slimMeterLabels([...activePIDs]) : {};
-  [...activePIDs].sort((a,b)=>(_ord[a]??999)-(_ord[b]??999)).forEach(pid=>{
+  const _sorteer = ovz ? (a,b)=>ovzRang(a,_ord)-ovzRang(b,_ord) : (a,b)=>(_ord[a]??999)-(_ord[b]??999);
+  [...activePIDs].sort(_sorteer).forEach(pid=>{
     const d=getPidDef(pid); if(!d) return;
     // Verborgen: geen tegel, geen regel in het tekstblok. Verder verandert er
     // niets — de PID staat nog in activePIDs, dus de pollus vraagt hem, updPID
@@ -295,7 +318,7 @@ function renderGauges(){
     const _alt=(window.PID_ALT_KANAAL||{})[pid];
     const altTag=_alt?` <span class="gc-alt" title="${(window.pidAltKanaalTip?pidAltKanaalTip(pid):'').replace(/"/g,'&quot;')}">⇄ ${_alt}</span>`:'';
     c.innerHTML=`<div class="gdot${leeg?' leeg':''}" id="gd-${pid}"${leeg?` title="${LEEG_TIP}"`:''}></div>
-      <div class="gn2"${meterNaam[pid]?` title="${d.name.replace(/"/g,'&quot;')}"`:''}>${meterNaam[pid]||d.name}${manTag}${altTag}</div>
+      <div class="gn2"${(meterNaam[pid]||(ovz&&OVZ_KORT[pid]))?` title="${d.name.replace(/"/g,'&quot;')}"`:''}>${meterNaam[pid]||(ovz?ovzNaam(pid,d):d.name)}${manTag}${altTag}</div>
       <div class="gval"><span class="gv" id="gv-${pid}">—</span><span class="gunit">${d.unit||''}</span></div>
       <svg class="gspark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline id="gs-${pid}" points=""/></svg>`;
     c.style.cursor='pointer'; c.title='Dubbeltik = tegel verbergen, er wordt dan nog gemeten';
@@ -308,7 +331,21 @@ function renderGauges(){
     tk.title='Trendlijn vastzetten (hoogstens '+TREND_MAX+')';
     tk.onclick=function(ev){ ev.stopPropagation(); trendWissel(pid); };
     c.appendChild(tk);
-    if(slim){
+    if(ovz){
+      // De normale band: een vlak (wL…wH) en een streepje voor nu. Het vlak
+      // staat vast; applyG() verschuift alleen het streepje.
+      const b=ovzBand(d, null);
+      const band=document.createElement('div'); band.className='gband'+(b.heeft?'':' geen'); band.id='gb-'+pid;
+      band.title=b.heeft ? 'Groen = normaal voor deze sensor' : 'Voor deze sensor is geen normale grens bekend';
+      band.innerHTML='<i style="left:'+b.z0.toFixed(1)+'%;width:'+(b.z1-b.z0).toFixed(1)+'%"></i><u></u>';
+      // Achteraan in de DOM; de grid zet hem tussen naam en waarde (grid-column).
+      c.appendChild(band);
+      const noot=document.createElement('div'); noot.className='gnoot'; noot.id='gno-'+pid;
+      c.appendChild(noot);
+      const v=ovzVak[ovzCat(d, pid)]||ovzVak.overig;
+      v.sec.style.display='';
+      v.box.appendChild(c);
+    } else if(slim){
       const groep=(typeof slimGroep==='function')?slimGroep(pid,d):'rest';
       // Een temperatuur krijgt er een liggende balk bij, een meter een
       // staande; de rest houdt zijn sparkline.
@@ -351,7 +388,11 @@ function renderGauges(){
   }
   // Herstel actieve weergavemodus op de nieuwe grid
   g.classList.add('view-'+pidViewMode);
-  if(pidViewMode==='overzicht'){ try{ trendHerkies(); }catch(e){ console.warn('trendkeuze mislukt:', e); } }
+  if(pidViewMode==='overzicht'){
+    try{ trendHerkies(); }catch(e){ console.warn('trendkeuze mislukt:', e); }
+    try{ ovzBij(); const t=document.getElementById('ovzTel'); if(t) t.textContent=getoond+' sensor'+(getoond===1?'':'en')+' · per categorie'; }
+    catch(e){ console.warn('Overzicht: koppen bijwerken mislukt', e); }
+  }
   // Tekstblok alleen tonen als er ook echt code-PIDs geselecteerd zijn
   if(vast) vast.style.display = vastAantal ? 'grid' : 'none';
   const verborgen = renderVerborgenStrook();
@@ -604,7 +645,7 @@ const PID_VIEW_MODI = ['overzicht','slim','visueel'];
 const PID_VIEW_OUD = { full:'overzicht', numbers:'overzicht', dots:'overzicht' };
 // Weergaven met een EIGEN opbouw van het rooster: wisselen van of naar zo'n
 // modus vraagt een herbouw, klassen wisselen is dan niet genoeg.
-const PID_VIEW_EIGEN = ['slim','visueel'];
+const PID_VIEW_EIGEN = ['overzicht','slim','visueel'];
 const PID_VIEW_STANDAARD = 'slim';
 let pidViewMode=PID_VIEW_STANDAARD;
 let _pidLastUpd={};          // pid -> laatste update-tijd (ms)
@@ -739,6 +780,126 @@ function pidOordeel(d,val,pid){
   return st;
 }
 
+// ══ OVERZICHT PER CATEGORIE (07-10-2026, #439) ══════════════════════
+// Overzicht was een rooster van tegels in de volgorde van de keuzelijst,
+// met wisselende breedtes, afgekapte namen en een statusbolletje dat altijd
+// groen stond. Nu is het het naslagwerk: per categorie een kaart, per sensor
+// één rij met de normale band erin. Slim wordt het eigen dashboard (volgende
+// stap), Visueel blijft de meter achter het stuur.
+//
+// Alles hieronder tot applyG() is puur — test-overzicht.js knipt het los.
+const OVZ_CATS = {
+  rijden:'Rijden', motor:'Motor', temp:'Temperaturen', brandstof:'Brandstof',
+  uitlaat:'Uitlaat en emissie', elektrisch:'Elektrisch', berekend:'Berekend', overig:'Overig'
+};
+const OVZ_VAN_CAT = { Rijden:'rijden', Motor:'motor', Temp:'temp', Brandstof:'brandstof', Emissie:'uitlaat',
+  Electrisch:'elektrisch', Berekend:'berekend', Telemetrie:'rijden', Status:'overig', Overig:'overig' };
+// Een paar PIDs staan in de definitie onder een categorie die voor een lezer
+// niet klopt: inlaatlucht is een temperatuur, ook al is het motorlucht.
+const OVZ_PID_CAT = { '010F':'temp' };
+function ovzCat(d, pid){ return OVZ_PID_CAT[pid] || (d && OVZ_VAN_CAT[d.cat]) || 'overig'; }
+// De volgorde van de kaarten hangt aan de aandrijving. Een hybride of EV
+// wordt eerst elektrisch gelezen: de aandrijfaccu staat dan bovenaan, de
+// motor eronder. Een EV heeft geen brandstof en geen uitlaat; staan die er
+// tóch (een PID die de ECU meldt), dan komen ze achteraan.
+function ovzVolgorde(motor){
+  if(motor==='hybride') return ['rijden','elektrisch','motor','temp','brandstof','uitlaat','berekend','overig'];
+  if(motor==='ev') return ['rijden','elektrisch','temp','motor','berekend','overig','brandstof','uitlaat'];
+  return ['rijden','motor','temp','brandstof','uitlaat','elektrisch','berekend','overig'];
+}
+// De belangrijkste eerst, vast per categorie: wat een monteur als eerste
+// wil zien. Wat hier niet staat volgt de keuzelijst.
+const OVZ_RANG = ['010D','010C','0104','0149','015A','0111','010B','0105','015C','010F','0146',
+  '012F','015E','CA03','0106','0107','0108','0109','0110','0124','0134','0114','0115','015B','0142'];
+function ovzRang(pid, ord){ const i=OVZ_RANG.indexOf(pid); return i>-1 ? i : 100+((ord && ord[pid]!==undefined) ? ord[pid] : 900); }
+// De schaal van het balkje en het groene vlak erin. Het vlak loopt van wL
+// tot wH; ontbreekt er één, dan tot de rand van de schaal; ontbreken ze
+// allebei, dan is er geen vlak (heeft:false) — dan is er geen grens bekend en
+// beweert het balkje niets over normaal. De schaal zelf: voor een temperatuur
+// niet vanaf −40 (dan staat koelwater altijd rechts), en de bovenkant zoals
+// slimTempSchaal() hem kiest, zodat 87 °C koelwater niet tegen de rand plakt.
+function ovzSchaal(d){
+  if(!d) return { lo:0, hi:100 };
+  const lo = (d.cat==='Temp' && typeof d.min==='number') ? Math.max(d.min, -20) : (typeof d.min==='number' ? d.min : 0);
+  let hi = (typeof d.balkVol==='number') ? d.balkVol : (typeof d.dH==='number') ? d.dH
+         : (d.cat==='Temp' && typeof d.wH==='number') ? d.wH*1.3 : (typeof d.max==='number' ? d.max : 100);
+  if(!(hi>lo)) hi=lo+1;
+  return { lo:lo, hi:hi };
+}
+function ovzBand(d, val){
+  const s=ovzSchaal(d), p=function(x){ return Math.max(0, Math.min(100, (x-s.lo)/(s.hi-s.lo)*100)); };
+  const heeft=!!d && (typeof d.wL==='number' || typeof d.wH==='number');
+  const n=Number(val);
+  return { heeft:heeft, z0: heeft && typeof d.wL==='number' ? p(d.wL) : 0, z1: heeft && typeof d.wH==='number' ? p(d.wH) : 100,
+           pos: (val===null || val===undefined || !isFinite(n)) ? null : p(n) };
+}
+// Eén regel onder een rij die buiten zijn band valt: wat de grens is, zodat
+// "oranje" niet alleen een kleur blijft. Leeg bij ok.
+function ovzNoot(d, val, st){
+  if(st==='ok' || !d) return '';
+  const n=Number(val), e=d.unit ? ' '+d.unit : '', f=function(x){ return (typeof fv==='function') ? fv(x, d) : String(x); };
+  const hoog=(typeof d.dH==='number' && n>=d.dH) ? d.dH : (typeof d.wH==='number' && n>=d.wH) ? d.wH : null;
+  const laag=(typeof d.dL==='number' && n<=d.dL) ? d.dL : (typeof d.wL==='number' && n<=d.wL) ? d.wL : null;
+  const ernst = st==='danger' ? 'gevarengrens' : 'waarschuwingsgrens';
+  if(hoog!==null) return 'Boven de '+ernst+' van '+f(hoog)+e;
+  if(laag!==null) return 'Onder de '+ernst+' van '+f(laag)+e;
+  return st==='danger' ? 'Buiten het veilige bereik' : 'Buiten het normale bereik';
+}
+// De chip in de kop van een categorie.
+function ovzKop(warn, danger){
+  if(danger) return { tekst: danger+' gevaar', kl:'rd' };
+  if(warn) return { tekst: warn+' let op', kl:'or' };
+  return { tekst:'normaal', kl:'' };
+}
+// Binnen een categorie: afwijkend bovenaan, daarna de vaste rang. `st` per
+// pid ('ok'|'warn'|'danger'). Puur; geeft de nieuwe volgorde.
+function ovzSorteer(pids, st, ord){
+  const w={ danger:0, warn:1 };
+  return pids.slice().sort(function(a,b){
+    const sa=(st && w[st[a]]!==undefined) ? w[st[a]] : 2, sb=(st && w[st[b]]!==undefined) ? w[st[b]] : 2;
+    return sa!==sb ? sa-sb : ovzRang(a, ord)-ovzRang(b, ord);
+  });
+}
+// Korte namen voor de rij: in Compact is de naamkolom zo'n 100 px, en drie
+// rijen "Brandsto…" onder elkaar zeggen niets. De volle naam blijft in de
+// title. Wat hier niet staat houdt zijn eigen naam en wordt afgekapt.
+const OVZ_KORT = { '010D':'Snelheid', '010C':'Toerental', '0104':'Belasting', '0111':'Gasklep', '0149':'Gaspedaal',
+  '015A':'Gaspedaal', '010B':'Inlaatdruk', '0110':'Luchtmassa', '0105':'Koelwater', '015C':'Motorolie', '010F':'Inlaatlucht',
+  '0146':'Buiten', '012F':'Brandstofpeil', '015E':'Verbruik', '0106':'Trim kort B1', '0107':'Trim lang B1',
+  '0108':'Trim kort B2', '0109':'Trim lang B2', '0124':'Lambda B1S1', '0134':'Lambda B1S1', '0114':'O₂ B1S1',
+  '0115':'O₂ B1S2', '0142':'Accu 12V', '015B':'Aandrijfaccu', '0133':'Luchtdruk', '011F':'Looptijd' };
+function ovzNaam(pid, d){ return OVZ_KORT[pid] || (d && d.name) || pid; }
+const OVZ_DICHT_SLEUTEL='pl_ovz_dicht';
+function ovzDichtLees(){
+  try{ return localStorage.getItem(OVZ_DICHT_SLEUTEL)==='ruim' ? 'ruim' : 'compact'; }
+  catch(e){ console.warn('Overzicht: dichtheid onleesbaar, compact', e); return 'compact'; }
+}
+function ovzDicht(stand){
+  const s=stand==='ruim' ? 'ruim' : 'compact';
+  try{ localStorage.setItem(OVZ_DICHT_SLEUTEL, s); }catch(e){ console.warn('Overzicht: dichtheid niet opgeslagen', e); }
+  const g=document.getElementById('gGrid'); if(g) g.classList.toggle('ovz-ruim', s==='ruim');
+  document.querySelectorAll('.ovz-dicht button').forEach(function(b){ b.classList.toggle('aan', b.dataset.d===s); });
+  return s;
+}
+// De koppen bijwerken en de afwijkende rijen omhoog halen. Draait op de
+// trendklok (3 s), niet per meting: een rij die bij elke meetwaarde van plek
+// wisselt is niet te lezen. Alleen verplaatsen als de volgorde verandert.
+function ovzBij(){
+  if(pidViewMode!=='overzicht') return;
+  const ord={}; (discoveredPIDDefs||[]).forEach(function(d,i){ ord[d.pid]=i; });
+  document.querySelectorAll('.ovz-cat').forEach(function(sec){
+    const box=sec.querySelector('.ovz-vak'); if(!box) return;
+    const kaarten=[].slice.call(box.querySelectorAll(':scope > .gc'));
+    const st={}; let warn=0, danger=0;
+    kaarten.forEach(function(c){ const p=c.id.slice(3); st[p]=c.classList.contains('danger')?'danger':c.classList.contains('warn')?'warn':'ok';
+      if(st[p]==='danger') danger++; else if(st[p]==='warn') warn++; });
+    const k=ovzKop(warn, danger), chip=sec.querySelector('.ovz-chip');
+    if(chip && chip.textContent!==k.tekst){ chip.textContent=k.tekst; chip.className='ovz-chip'+(k.kl?' '+k.kl:''); }
+    const nu=kaarten.map(function(c){ return c.id.slice(3); }), nieuw=ovzSorteer(nu, st, ord);
+    if(nieuw.join()!==nu.join()) nieuw.forEach(function(p){ const c=document.getElementById('gc-'+p); if(c) box.appendChild(c); });
+  });
+}
+
 function applyG(pid,val){
   const d=getPidDef(pid); if(!d) return;
   if(pidViewMode==='visueel' && window.PLVisueel){
@@ -773,7 +934,17 @@ function applyG(pid,val){
     if(st!=='ok') dot.classList.add(st);
     dot.removeAttribute('title');
   }
-  const gv=document.getElementById('gv-'+pid); if(gv) gv.textContent=fv(val);
+  // In Overzicht met de eenheid erbij (#439): dan geldt de decimalenregel van
+  // fvDec(), en staat de accu op 14.10 V in plaats van 14 V.
+  const gv=document.getElementById('gv-'+pid); if(gv) gv.textContent=(pidViewMode==='overzicht') ? fv(val, d) : fv(val);
+  const gb=document.getElementById('gb-'+pid);
+  if(gb){
+    const b=ovzBand(d, val), u=gb.lastChild;
+    if(u && b.pos!==null) u.style.left='calc('+b.pos.toFixed(1)+'% - 1.5px)';
+    gb.classList.toggle('warn', st==='warn'); gb.classList.toggle('danger', st==='danger');
+    const no=document.getElementById('gno-'+pid), t=ovzNoot(d, val, st);
+    if(no && no.textContent!==t) no.textContent=t;
+  }
   // Sparkline: niet hier tekenen maar aanmelden. sparkTeken() tekent ze
   // gebundeld, hoogstens SPARK_MS per keer en alleen als ze in beeld zijn.
   sparkVraag(pid, st);
@@ -904,7 +1075,10 @@ function trendHerkies(){
 }
 function trendStart(){
   trendStop();
-  _trendTimer=setInterval(function(){ try{ trendHerkies(); }catch(e){ console.warn('trendkeuze mislukt:', e); } }, TREND_HERKIES_MS);
+  _trendTimer=setInterval(function(){
+    try{ trendHerkies(); }catch(e){ console.warn('trendkeuze mislukt:', e); }
+    try{ ovzBij(); }catch(e){ console.warn('Overzicht: koppen bijwerken mislukt', e); }
+  }, TREND_HERKIES_MS);
 }
 function trendStop(){ if(_trendTimer){ clearInterval(_trendTimer); _trendTimer=null; } }
 function trendWissel(pid){
