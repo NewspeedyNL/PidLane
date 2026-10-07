@@ -2771,6 +2771,22 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Banden: een ontbrekende sensor wordt genoemd ──
+  {
+    issue: '#396',
+    naam: 'Banden: een band zonder temperatuursensor zegt dat, en het venster zegt waar je hem toevoegt',
+    waarom: 'Op de CX-5 ontbrak 222A0C; achter links toonde alleen "· +3%" en niemand zag waarom.',
+    proef: async function () {
+      if (!window.PLBanden || typeof PLBanden.ontbreekt !== 'function' || !window.PLEigen)
+        return { staat: 'FOUT', detail: 'PLBanden.ontbreekt ontbreekt — pidlane-banden.js is niet de nieuwe' };
+      var ind = PLBanden.indeling(PLEigen.defs());
+      if (!ind) return { staat: 'LET OP', detail: 'deze auto heeft geen bandensensoren' };
+      var m = PLBanden.ontbreekt(ind), gat = m.druk.map(function (p) { return 'druk ' + p; }).concat(m.temp.map(function (p) { return 'temp ' + p; }));
+      return gat.length ? { staat: 'LET OP', detail: 'deze auto mist: ' + gat.join(', ') + ' — voeg ze toe in Mijn voertuigen → Sensoren' }
+                        : { staat: 'OK', detail: 'alle vier de banden hebben dezelfde sensoren' };
+    }
+  },
+
   // ── Overzicht Compact: de naam wijkt niet voor de band (#439) ──
   {
     issue: '#439',

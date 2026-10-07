@@ -214,12 +214,25 @@
     return m.waarde.toLocaleString('nl', { minimumFractionDigits: dec, maximumFractionDigits: dec });
   }
   function drukDec(eenheid) { return /bar/i.test(eenheid) ? 2 : /psi/i.test(eenheid) ? 1 : 0; }
-  function tegel(p, x, inr) {
+  /* Puur. De banden waar een sensor ontbreekt die een andere band wel heeft:
+     { temp:['AL'], druk:[] }. Een auto zonder bandtemperatuur mist niets. */
+  function ontbreekt(ind) {
+    const uit = { druk: [], temp: [] };
+    if (!ind) return uit;
+    ['druk', 'temp'].forEach(k => {
+      if (POS.some(p => ind[p][k])) POS.forEach(p => { if (!ind[p][k]) uit[k].push(p); });
+    });
+    return uit;
+  }
+  function tegel(p, x, inr, mist) {
     if (!inr.druk && !inr.temp) return '<div class="plb-tegel geen"><small>' + POS_NAAM[p] + '</small><b>—</b><span>geen sensor</span></div>';
     const d = x.druk, t = x.temp, oud = (d && d.oud) || (t && t.oud);
+    // Geen temperatuursensor terwijl de andere banden er wel een hebben: dat
+    // zeggen, niet een los "· +3%" laten staan (07-10-2026, CX-5 zonder 222A0C).
+    const tTekst = t ? getal(t, 0) + (t.waarde !== null ? ' ' + esc(t.eenheid) : '') : (mist && mist.temp.indexOf(p) >= 0 ? 'geen temp.' : '');
     return '<div class="plb-tegel ' + x.ernst + (oud ? ' oud' : '') + '" data-pos="' + p + '"><small>' + POS_NAAM[p] + '</small>' +
       '<b>' + getal(d, drukDec(d ? d.eenheid : '')) + (d && d.waarde !== null ? '<i>' + esc(d.eenheid) + '</i>' : '') + '</b>' +
-      '<span>' + (t ? getal(t, 0) + (t.waarde !== null ? ' ' + esc(t.eenheid) : '') : '') + (x.afwijking ? ' · ' + (x.afwijking > 0 ? '+' : '') + x.afwijking + '%' : '') + '</span></div>';
+      '<span>' + tTekst + (x.afwijking ? (tTekst ? ' · ' : '') + (x.afwijking > 0 ? '+' : '') + x.afwijking + '%' : '') + '</span></div>';
   }
   function auto(st) {
     const k = p => st ? st.wielen[p].ernst : 'ok';
@@ -235,10 +248,12 @@
     let body;
     if (!n.ind) body = '<p class="plb-uitleg">Deze auto heeft geen sensoren voor de banden. Voeg ze toe in Mijn voertuigen → Sensoren, bijvoorbeeld uit "Codes voor dit model".</p>';
     else {
-      const w = n.st.wielen;
-      body = '<div class="plb-rooster">' + tegel('VL', w.VL, n.ind.VL) + auto(n.st) + tegel('VR', w.VR, n.ind.VR) +
-        tegel('AL', w.AL, n.ind.AL) + tegel('AR', w.AR, n.ind.AR) + '</div>' +
+      const w = n.st.wielen, mist = ontbreekt(n.ind);
+      const gat = mist.druk.map(p => 'de druk ' + POS_NAAM[p].toLowerCase()).concat(mist.temp.map(p => 'de temperatuur ' + POS_NAAM[p].toLowerCase()));
+      body = '<div class="plb-rooster">' + tegel('VL', w.VL, n.ind.VL, mist) + auto(n.st) + tegel('VR', w.VR, n.ind.VR, mist) +
+        tegel('AL', w.AL, n.ind.AL, mist) + tegel('AR', w.AR, n.ind.AR, mist) + '</div>' +
         '<p class="plb-oordeel ' + n.st.ernst + '">' + esc(n.st.uitleg) + '</p>' +
+        (gat.length ? '<p class="plb-uitleg plb-gat">Voor ' + esc(gat.join(' en ')) + ' staat geen sensor bij deze auto. Voeg hem toe in Mijn voertuigen → Sensoren, bijvoorbeeld uit "Codes voor dit model".</p>' : '') +
         '<p class="plb-uitleg">De app vergelijkt de vier banden met elkaar: 10% lager dan de rest is oranje, 20% rood. Of ze samen op de voorgeschreven druk staan, ' +
         'zie je op de sticker in de deurstijl — die kent de app niet. Gevraagd bij het openen van dit venster en van Slim visueel' +
         (_aan ? ', en elke vijf minuten' : '') + '; tik op ↻ om opnieuw te vragen. Een meting ouder dan ' + (_aan ? 'een kwartier' : 'een half uur') + ' is dof.</p>';
@@ -306,7 +321,7 @@
 
   setInterval(tik, 30000);
 
-  window.PLBanden = { POS, OUD_MS, OUD_AUTO_MS, AUTO_MS, oudNu, WARN, GEVAAR, indeling, stand, oordeel, open, sluit, lamp, teken, wielKleuren, mini, vraagPids, ververs, eenmaal,
+  window.PLBanden = { POS, OUD_MS, OUD_AUTO_MS, AUTO_MS, oudNu, WARN, GEVAAR, indeling, ontbreekt, stand, oordeel, open, sluit, lamp, teken, wielKleuren, mini, vraagPids, ververs, eenmaal,
     moetVragen, aan, zetAan, tik, lijstRegel,
     nu: function () { return nu(); } };
 })();

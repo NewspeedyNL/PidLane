@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Banden: een ontbrekende sensor wordt genoemd
+ ═══════════════════════════════════════════════════════════
+
+ - Een band zonder temperatuursensor (de CX-5 miste 222A0C) toont
+   "geen temp." in plaats van een los "· +3%", en het venster zegt welke
+   sensor ontbreekt en waar je hem toevoegt.
+ - PLBanden.ontbreekt() met drie toetsen, bproef-banden.js deel 4, twee
+   mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Overzicht Compact: de naam wijkt niet meer voor de band (#439)
  ═══════════════════════════════════════════════════════════
 

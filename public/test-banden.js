@@ -55,6 +55,9 @@ t('zonder bandensensoren: null (geen lampje, geen venster)', B.indeling([{ pid: 
 t('alleen temperaturen: ook null — het oordeel gaat over de druk', B.indeling(E.defs().filter(d => d.band && d.band.soort === 'temp')), null);
 const half = B.indeling(E.defs().filter(d => d.pid === '222A05'));
 t('één band bekend: de rest is leeg, niet verzonnen', [half.VL.druk && half.VL.druk.pid, half.VR.druk, half.AR.temp], ['222A05', null, null]);
+t('ontbreekt: met alle acht mist er niets', B.ontbreekt(ind), { druk: [], temp: [] });
+t('ontbreekt: zonder 222A0C mist de temperatuur achter links (de CX-5 van 07-10)', B.ontbreekt(B.indeling(E.defs().filter(d => d.pid !== '222A0C'))), { druk: [], temp: ['AL'] });
+t('ontbreekt: een auto zonder bandtemperatuur mist geen temperatuur', B.ontbreekt(B.indeling(E.defs().filter(d => d.band && d.band.soort === 'druk'))), { druk: [], temp: [] });
 
 console.log('\n— stand: de vier banden tegen elkaar —');
 const NU = 1e9, vers = NU - 20000;
