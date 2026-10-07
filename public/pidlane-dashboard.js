@@ -165,7 +165,7 @@ const _lijnVuil = {}; let _lijnGepland = false;
 function el(id){ return document.getElementById(id); }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 function def(pid){ try{ return (typeof getPidDef==='function') ? getPidDef(pid) : null; }catch(e){ console.warn('PLDash: getPidDef('+pid+')', e); return null; } }
-function naam(pid){ const d=def(pid); return (typeof ovzNaam==='function') ? ovzNaam(pid, d) : ((d && d.name) || pid); }
+function naam(pid){ const d=def(pid); return (window.ovzNaam) ? ovzNaam(pid, d) : ((d && d.name) || pid); }
 function motor(){ try{ return (typeof detectEngineType==='function') ? (detectEngineType() || 'benzine') : 'benzine'; }catch(e){ console.warn('PLDash: motorsoort onleesbaar', e); return 'benzine'; } }
 function vin(){ try{ return (typeof vehicleInfo!=='undefined' && vehicleInfo) ? vehicleInfo.vin : ''; }catch(e){ return ''; } }
 function heeft(pid){
@@ -200,7 +200,7 @@ function waardeHtml(pid, groot){
   return '<div class="dt-w'+(groot?' groot':'')+'"><b id="dv-'+pid+'">—</b><i>'+esc(d.unit||'')+'</i></div>';
 }
 function bandHtml(pid){
-  const d=def(pid), b=(typeof ovzBand==='function') ? ovzBand(d, null) : { heeft:false, z0:0, z1:100 };
+  const d=def(pid), b=(window.ovzBand) ? ovzBand(d, null) : { heeft:false, z0:0, z1:100 };
   return '<div class="gband dt-band'+(b.heeft?'':' geen')+'" id="db-'+pid+'"><i style="left:'+b.z0.toFixed(1)+'%;width:'+(b.z1-b.z0).toFixed(1)+'%"></i><u></u></div>';
 }
 function tegelHtml(t){
@@ -242,7 +242,7 @@ function bouw(g){
 function bij(pid, val){
   if(!_tegels.some(function(t){ return t.pids.indexOf(pid)>-1; })) return;
   const d=def(pid);
-  const st=(typeof pidOordeel==='function') ? pidOordeel(d, val, pid) : 'ok';
+  const st=(window.pidOordeel) ? pidOordeel(d, val, pid) : 'ok';
   const w=el('dv-'+pid);
   if(w){
     const t=(typeof fv==='function') ? fv(val, d) : String(val);
@@ -255,12 +255,12 @@ function bij(pid, val){
     const erg=tegelOordeel(t.pids.map(function(q){
       if(q===pid) return st;
       const v=(typeof pidVals!=='undefined') ? pidVals[q] : undefined;
-      return (v===undefined || typeof pidOordeel!=='function') ? 'ok' : pidOordeel(def(q), v, q);
+      return (v===undefined || !window.pidOordeel) ? 'ok' : pidOordeel(def(q), v, q);
     }));
     tg.classList.toggle('warn', erg==='warn'); tg.classList.toggle('danger', erg==='danger');
   });
   const b=el('db-'+pid);
-  if(b && typeof ovzBand==='function'){
+  if(b && window.ovzBand){
     const r=ovzBand(d, val), u=b.lastChild;
     if(u && r.pos!==null) u.style.left='calc('+r.pos.toFixed(1)+'% - 1.5px)';
     b.classList.toggle('warn', st==='warn'); b.classList.toggle('danger', st==='danger');
@@ -297,12 +297,12 @@ function blad(html){
 function sluitBlad(){ if(_blad && _blad.parentNode) _blad.parentNode.removeChild(_blad); _blad=null; }
 function bladTegel(id){
   const t=_tegels.filter(function(x){ return x.id===id; })[0]; if(!t) return;
-  const p=t.pids[0], cat=(typeof ovzCat==='function') ? ovzCat(def(p), p) : '';
+  const p=t.pids[0], cat=(window.ovzCat) ? ovzCat(def(p), p) : '';
   // Een tweede sensor die al ergens op het dashboard staat kan niet: één
   // sensor, één plek (de element-ids zijn per sensor).
   const op=_tegels.reduce(function(a,x){ return x.id===id ? a : a.concat(x.pids); }, []);
   const maat=(typeof discoveredPIDDefs!=='undefined' && Array.isArray(discoveredPIDDefs)) ? discoveredPIDDefs.filter(function(d){
-    return d.pid!==p && op.indexOf(d.pid)<0 && (typeof ovzCat!=='function' || ovzCat(d, d.pid)===cat); }) : [];
+    return d.pid!==p && op.indexOf(d.pid)<0 && (!window.ovzCat || ovzCat(d, d.pid)===cat); }) : [];
   blad('<h5>'+esc(naam(p))+'</h5><p>Hoe wil je deze sensor zien?</p>'+
     '<div class="dash-keus">'+SOORTEN.map(function(s){ return '<button type="button"'+(t.soort===s?' class="aan"':'')+' onclick="PLDash.soort(\''+id+'\',\''+s+'\')">'+{getal:'Getal',balk:'Balk',grafiek:'Grafiekje',meter:'Meter'}[s]+'</button>'; }).join('')+'</div>'+
     '<div class="dash-keus twee"><button type="button"'+(!t.breed?' class="aan"':'')+' onclick="PLDash.breed(\''+id+'\',false)">Half breed</button>'+
@@ -317,8 +317,8 @@ function kies(){
   const lijst=((typeof discoveredPIDDefs!=='undefined' && Array.isArray(discoveredPIDDefs)) ? discoveredPIDDefs : [])
     .filter(function(d){ return op.indexOf(d.pid)<0 && !(typeof pidIsTekst==='function' && pidIsTekst(d.pid)); });
   const groep={};
-  lijst.forEach(function(d){ const c=(typeof ovzCat==='function') ? ovzCat(d, d.pid) : 'overig'; (groep[c]=groep[c]||[]).push(d); });
-  const volg=(typeof ovzVolgorde==='function') ? ovzVolgorde(motor()) : Object.keys(groep);
+  lijst.forEach(function(d){ const c=(window.ovzCat) ? ovzCat(d, d.pid) : 'overig'; (groep[c]=groep[c]||[]).push(d); });
+  const volg=(window.ovzVolgorde) ? ovzVolgorde(motor()) : Object.keys(groep);
   const namen=(typeof OVZ_CATS!=='undefined') ? OVZ_CATS : {};
   blad('<h5>Sensor toevoegen</h5>'+(lijst.length ? '' : '<p>Alles wat deze auto levert staat al op je dashboard.</p>')+
     volg.filter(function(c){ return groep[c]; }).map(function(c){
