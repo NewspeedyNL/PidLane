@@ -1812,7 +1812,7 @@ MUTATIES=(
 "public/pidlane-verzamel.js@@    if (t.ok && t.kernCompleet !== false) return 'klaar';@@    if (t.ok) return 'klaar';@@test-verzamel.js@@het scherm is klaar terwijl de kernsensoren nog niet binnen zijn"
 "public/pidlane-verzamel.js@@(r.buiten ? '; ' + r.buiten + ' daarvan buiten de grens'@@(false ? '; ' + r.buiten + ' daarvan buiten de grens'@@test-verzamel.js@@de AI hoort niet meer hoe vaak een waarde buiten de grens kwam: een piek weegt even zwaar als een blijvende afwijking"
 "public/pidlane-fuel.js@@  if(!uit || !uit.ai) return;\n  activateAIPane();@@  if(!uit) return;\n  activateAIPane();@@test-verzamel.js@@sluiten zonder AI op het verzamelscherm verstuurt toch een betaald rapport"
-"public/pidlane-fuel.js@@  const meetBlok=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});@@  const meetBlok='';@@test-verzamel.js@@het AI-rapport krijgt de samenvatting van het scherm niet meer mee"
+"public/pidlane-fuel.js@@  const v=getVehicle();\n  const meetBlok=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});@@  const v=getVehicle();\n  const meetBlok='';@@test-verzamel.js@@het AI-rapport krijgt de samenvatting van het scherm niet meer mee"
 "public/pidlane-wizard.js@@    if(GEEN_MEETEIS[k] || EIGEN_METING[k] || typeof plVraagMeting@@    if(GEEN_MEETEIS[k] || typeof plVraagMeting@@bproef-verzamel.js@@de AI-monteur krijgt weer het oude meetscherm vóór het verzamelscherm"
 # ── #443 ronde 2: alle analyses via het scherm, de rit en de datalog als bron.
 "public/pidlane-verzamel.js@@    if (!bron && o.ritBron !== false) { bron = ritVanZojuist(eis); ritBron = !!bron; }@@@@test-verzamel.js@@na een rijtest meet het scherm opnieuw over de laatste minuten in plaats van de rit te nemen"

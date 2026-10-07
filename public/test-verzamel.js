@@ -240,9 +240,10 @@ console.log('\nG. Het scherm zelf: bron, de rit van zojuist, terugkeer na een ri
   klik('annuleer'); await wacht();
   toets('sluiten zonder AI: door en ai allebei false, en de AI-score zakt naar 50%', u && u.door === false && u.ai === false && V.maat('verzamel-ai-pct') === 50, JSON.stringify(u) + ' ' + V.maat('verzamel-ai-pct'));
 
-  // 3. Te oud: geen hergebruik. De poort draait dan gewoon (hier: niet klaar).
+  // 3. Te oud: geen hergebruik. De poort staat open, dus het enige dat het
+  // scherm nog laat meten is de minimumtijd — en die hoort hier te gelden.
   s._plVerzameld.ts = Date.now() - 10 * 60 * 1000;
-  s.tekort = { ok: false, tekort: ['te kort'], st: { sec: 5, rijSec: 0 }, rijTekort: false };
+  s.tekort = { ok: true, tekort: [], st: { sec: 70, rijSec: 0 }, rijTekort: false };
   u = null;
   V.meet({ niveau: 'normaal', profiel: false }).then(x => { u = x; });
   await wacht(); await wacht();
