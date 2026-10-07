@@ -1235,7 +1235,7 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  if(t) _staat.turboVast=true;@@@@test-visueel.js@@de onderboog wisselt terug van laaddruk naar pedaal zodra het turbobewijs even wegvalt"
 "public/pidlane-visueel.js@@    return n<KOEL_KOUD ? 'koud' : 'ok';@@    return 'ok';@@test-visueel.js@@een koude motor kleurt niet meer blauw"
 "public/pidlane-visueel.js@@    if(isFinite(r) && r>MOTOR_DRAAIT && n<ACCU_LAADT) return 'warn';@@@@test-visueel.js@@een dynamo die niet laadt blijft grijs: 12,5 V bij draaiende motor leest als goed"
-"public/pidlane-visueel.js@@return ((nu||Date.now())-laatste-krediet) >@@return ((nu||Date.now())-laatste) >@@test-visueel.js@@de meter wordt dof zodra een andere lezer de bus even bezet"
+"public/pidlane-plload.js@@  const stil=nu-laatste-krediet;@@  const stil=nu-laatste;@@test-visueel.js@@de meter wordt dof zodra een andere lezer de bus even bezet"
 "public/pidlane-visueel.js@@  if(!hoofd.length) HOOFD.forEach(@@  HOOFD.forEach(@@test-visueel.js@@terwijl de caravanrit loopt staan er snelkoppelingen naar rit-monitor en bulk-recorder, en die horen niet tegelijk"
 "public/pidlane-visueel.js@@(!h.admin || admin)@@(true)@@test-visueel.js@@een gewone gebruiker krijgt een bulk-recorderknop die alleen 'Alleen voor admin' zegt"
 "public/pidlane-visueel.js@@  Y_LOGO: 112, LOGO_B: 56,@@  Y_LOGO: 140, LOGO_B: 56,@@test-visueel.js@@het embleem zakt op de naaf en de naald draait er niet meer omheen maar erdoorheen"
