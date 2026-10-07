@@ -222,7 +222,7 @@ function nepPdf() {
   toets('het logo staat op het voorblad', p.log.some((x) => x.soort === 'logo' && x.pagina === 1));
   toets('"Over PidLane" staat erin', alle.indexOf('OVER PIDLANE') >= 0);
   const voet = (x) => x.y === 290;
-  toets('niets loopt in de voettekst of buiten de pagina', teksten.every((x) => voet(x) || (x.y < 284 && x.y >= 0)), JSON.stringify(teksten.filter((x) => !voet(x) && x.y >= 284).slice(0, 3)));
+  toets('niets loopt in de voettekst of buiten de pagina', teksten.every((x) => voet(x) || (x.y < 280 && x.y >= 0)), JSON.stringify(teksten.filter((x) => !voet(x) && x.y >= 280).slice(0, 3)));
   toets('geen tekens die de PDF-letter niet kent (emoji, pijlen, ▲▼)', !/[\u{1F000}-\u{1FAFF}▲▼→≥≤λ]/u.test(alle));
   const q = nepPdf();
   R.pdf(R.model({}), q.Doc, {});
