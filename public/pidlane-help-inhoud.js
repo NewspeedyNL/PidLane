@@ -148,9 +148,9 @@ var PL_HULP = {
         '<p>Het onderzoek wijst aan, het vervangt geen monteur: laat een bevinding bevestigen voordat je onderdelen koopt.</p>',
       zie: ['check'] },
 
-    { id: 'verzamelen', groep: 'gebruik', titel: 'AI-monteur en AI-rapport',
+    { id: 'verzamelen', groep: 'gebruik', titel: 'Data verzamelen vóór een analyse',
       tekst:
-        '<p>Kies je in het plan van <b>Er is iets mis</b> voor de <b>AI-monteur</b>, of vraag je een AI-rapport, dan gaat er eerst een scherm open: <b>📡 Data verzamelen</b>. ' +
+        '<p>Elke analyse die de AI om een oordeel vraagt, begint met hetzelfde scherm: <b>📡 Data verzamelen</b>. Dat geldt voor de AI-monteur, het AI-rapport, de totaalcheck, de verbruiksanalyse, onderhoud, de EV-check, de lange-rit-check en de diepe storingsanalyse. ' +
         'Je ziet per sensor de waarde binnenkomen; een ✓ betekent dat er genoeg metingen van zijn. Een waarde die nu al opvalt, krijgt meteen een kleur.</p>' +
         '<p>Is er genoeg gemeten, dan staat er <b>✓ Data verzameld</b> met bovenaan wat er opviel: rood is over de alarmgrens, oranje over de waarschuwingsgrens of buiten het gebruikelijke bereik. ' +
         'Daarbij staat het laagste en hoogste wat er gemeten is, en hoe vaak het buiten de grens kwam. Opvallend is nog geen defect: of het in deze toestand van de motor normaal is, weegt de AI.</p>' +
@@ -159,7 +159,11 @@ var PL_HULP = {
         '<li><b>⏳ Langer meten</b> — meet nog een halve minuut door.</li>' +
         '<li><b>Sluiten zonder AI</b> — je hebt de meting gezien en er gaat niets weg.</li>' +
         '</ul>' +
-        '<p>Wil je niet wachten, tik dan tijdens het meten op <b>Nu bekijken met wat er is</b>. Het rapport zegt dan zelf dat het op een kortere meting rust.</p>',
+        '<p>Wil je niet wachten, tik dan tijdens het meten op <b>Nu bekijken met wat er is</b>. Het rapport zegt dan zelf dat het op een kortere meting rust. ' +
+        'Vraagt een analyse om rijden, dan staat er <b>🚗 Rijtest starten</b>; na de rit komt de analyse vanzelf terug.</p>' +
+        '<p><b>Na een rit</b> (een rijtest, de ritanalyse of een caravanrit) komt de uitslag uit die rit, en is er een kwartier lang geen nieuwe meting nodig. Wil je toch vers meten, tik dan op <b>📡 Opnieuw meten</b>. ' +
+        'Heb je net een analyse gedaan, dan toont de volgende meteen de uitslag, tenzij hij meer sensoren nodig heeft. ' +
+        'Bij de datalog, de ritanalyse, de caravan en de klimaatcheck is de eigen meting de bron: je ziet de uitslag daarvan, en daarna de vraag aan de AI. Zeg je nee, dan krijg je bij caravan en klimaat het rapport zonder AI-deel.</p>',
       zie: ['onderzoek', 'account'] },
 
     { id: 'status', groep: 'gebruik', titel: 'De statusknop bovenin',

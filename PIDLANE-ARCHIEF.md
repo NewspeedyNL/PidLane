@@ -15,6 +15,36 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 07-10-2026 — Het verzamelscherm voor alle analyses: wat er bij de uitrol bleek (#443)
+
+**De poort meette verkeerde dingen bij een rit.** Verbruik en Totaalcheck
+eisten via `plVraagMeting('rit')` drie minuten waarvan anderhalve rijdend, en
+stuurden daarna `pidVals` — één waarde per sensor. Dezelfde regel stond drie
+keer gekopieerd in Onderhoud, EV-check en Lange rit.
+
+**`pidHist` is geen rit.** Hij houdt 120 monsters per sensor
+(`pidlane-pids.js`), op een rit een paar minuten. Een uitslag "over de rit"
+uit `pidHist` zou dus over de laatste minuten gaan, en de rij-eis na een
+rijtest kon zelfs weer falen als de rit stilstaand eindigde — de klant zou
+opnieuw naar een rijtest gestuurd worden. Daarom is de rit zelf de bron
+(`plRitBron()`, uit `ritFaseData`), en niet de poort op `pidHist`.
+
+**Hergebruik slaat de wachttijd over, niet de poort.** In de browserproef
+toonde Onderhoud ná de AI-monteur géén directe uitslag. Dat bleek juist:
+Onderhoud vraagt de set `totaal`, de AI-monteur `basis`, en de grotere set
+was nog niet compleet. Een plan doet daarom eerst de grote set; de
+meetproef in CAMPAGNE volgt die volgorde.
+
+**Stappen in een meetopdracht zijn handwerk.** Een `stap`-voorwaarde is een
+markering die iemand zet; de opdracht van #443 meet daarom alleen wat de app
+zelf telt. `verzamel-hergebruik` en `verzamel-na-rit` zijn `null` tot het
+geval zich voordeed: "geen plan gedaan" mag niet lezen als "hergebruik
+faalt".
+
+**Wat bewust niet mee is.** Systeemtest en Welk onderdeel stellen geen
+AI-vraag; de koopcheck heeft zijn eigen proefrit en eindoordeel. Die houden
+de oude poort tot er een reden is.
+
 ## 07-10-2026 — Het verzamelscherm, en een herziening van 24-09 (#443)
 
 **Wat er mis was.** Na de wizardvragen kreeg de klant op de AI-monteur

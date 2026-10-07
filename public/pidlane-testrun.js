@@ -2771,6 +2771,29 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── #443 ronde 2: de rit als meting, en de meetproef kan meten ──
+  {
+    issue: '#443',
+    naam: 'Verzamelscherm: een rit telt als meting, en de meetproef kan zijn tellers lezen',
+    waarom: 'Na een rijtest of een ritrapport komt de uitslag uit de rit zelf; de meetproef van #443 leest verzamel-* via PLOpdracht.',
+    proef: async function () {
+      var V = window.PLVerzamel;
+      if (!V || !V.vanBron || !V.rijSecUit) return { staat: 'FOUT', detail: 'PLVerzamel mist vanBron of rijSecUit — pidlane-verzamel.js is niet de nieuwe' };
+      var snel = [], kw = [];
+      for (var i = 0; i < 40; i++) { snel.push({ t: i * 2000, v: i < 5 ? 0 : 60 }); kw.push({ t: i * 2000, v: i === 20 ? 112 : 88 }); }
+      var rij = V.rijSecUit(snel);
+      if (rij !== 68) return { staat: 'FOUT', detail: 'rijtijd uit een rit van 40 monsters (35 rijdend, elke 2 s): ' + rij + ' s in plaats van 68 s' };
+      var sam = V.vanBron({ hist: { '010D': snel, '0105': kw } });
+      var r = (sam && sam.rijen || []).filter(function (x) { return x.pid === '0105'; })[0];
+      if (!r || r.oordeel !== 'afwijkend') return { staat: 'FOUT', detail: 'de koelwaterpiek in de rit werd ' + (r ? r.oordeel : 'niet gezien') };
+      var O = window.PLOpdracht;
+      if (!O || !O.appMaten) return { staat: 'LET OP', detail: 'PLOpdracht ontbreekt — de meetproef is hier niet na te gaan' };
+      var mist = ['verzamel-uitslagen', 'verzamel-afwijkend', 'verzamel-na-rit', 'verzamel-hergebruik'].filter(function (n) { return O.appMaten().indexOf(n) < 0; });
+      if (mist.length) return { staat: 'FOUT', detail: 'de meetopdracht kent ' + mist.join(', ') + ' niet' };
+      return { staat: 'OK', detail: 'rit: ' + rij + ' s rijdend, piek afwijkend; uitslagen deze sessie: ' + V.maat('verzamel-uitslagen') };
+    }
+  },
+
   // ── het verzamelscherm vóór een AI-rapport (#443) ──
   {
     issue: '#443',
@@ -10077,6 +10100,14 @@ const CAMPAGNE = {
     'GROEPSPROEF C, RIJDEND (#333). Constante snelheid boven 50 km/u, de bijrijder start de groepsproef. Alleen met een bijrijder.',
     '── RESERVE ────────',
     'ALLEEN ALS #302 IN MEETRIT 1 EEN BEVINDING GAF: dezelfde dertig minuten in Overzicht in plaats van Slim visueel (opdracht "Reserve"). Dan zegt het verschil of het in het tekenen van de meter zit of in de sessie zelf.',
+    '── MEETPROEF VERZAMELSCHERM (#443), ±30 MINUTEN, MAG OP DEZELFDE RIT ────────',
+    'WAAROM. Elke analyse toont nu eerst "📡 Data verzamelen" en de uitslag, met wat opvalt, en vraagt dan pas of de AI mag. "Opvallend" rust op vaste grenzen uit de PID-definities: de vraag is of die op een gezonde auto te vaak oranje of rood geven, en of de meting een plan en een rijtest doorkomt zonder dubbel te meten. De app telt het zelf (app-maten verzamel-*).',
+    'VOORAF. Zet in beheer → 🎯 Meetopdrachten "Verzamelscherm · vaste grenzen op een gezonde auto (#443)"; de tekst staat in #443.',
+    'STAP A — KOUDE MOTOR. Er is iets mis → AI-monteur. Kijk of de waarden binnenkomen en het ✓ per sensor verschijnt; tik daarna Sluiten zonder AI.',
+    'STAP B — TWEE MODULES ACHTER ELKAAR. In hetzelfde plan eerst Conditie per systeem (totaalcheck), dan binnen twee minuten de AI-monteur. De tweede hoort meteen de uitslag te tonen, zonder opnieuw te meten.',
+    'STAP C — RIJTEST VANUIT HET SCHERM. Start stilstaand de verbruiksanalyse; het scherm biedt 🚗 Rijtest starten. Rij de tien minuten. Na het stoppen hoort de uitslag uit die rit te komen, niet een nieuwe meting.',
+    'STAP D — WARME MOTOR, STILSTAAND. Onderhoud of Lange rit. Let op wat er bij "Valt op" staat (koelwater, accu) en of dat klopt met hoe de auto zich gedraagt.',
+    'DAARNA. Beantwoord de drie vragen van de opdracht. Kies de AI waar je wilt; tokens zijn voor deze proef niet nodig.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
     'DE AUTOMAAT GAAT NOG NIET BOVEN DE 3. Geven A, B en C op de MX+ "gesloten", dan is dat een eigen wijziging: hoger alleen op een adapter die geen echo gaf, met deze metingen als bewijs.',
     '#331, #359, #360 EN #370 HEBBEN GEEN RIT NODIG maar code met een test; #371 is ontwerpwerk; #327 is werk aan de Worker; #309 en #264 hebben nog niets in de app om te meten.',

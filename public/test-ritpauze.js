@@ -65,10 +65,21 @@ const ctx = {
   PID_DEFS: {}, sendCmd: async () => '', fv: v => v, KERN_PIDS: [],
   _pidHealth: {}, correlationLines: () => [], plVraagMeting: async () => true,
   discoveredPIDDefs: [], ALL_PID_DEFS: {}, ritSweepFindings: [], apiFetch: async () => ({}),
-  isPIDOkVal: () => true, PLMon: null, PLWizard: null
+  isPIDOkVal: () => true, PLMon: null, PLWizard: null,
 };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
+// Het verzamelscherm (#443) staat sinds 07-10-2026 tussen het einde van de rit
+// en het rapport. De echte module, met de rijdrempels uit pidlane-fuel.js;
+// alleen het scherm zelf zegt hier altijd ja. Wat het scherm doet, toetsen
+// test-verzamel.js en bproef-verzamel.js.
+{
+  const fuel = fs.readFileSync(__dirname + '/pidlane-fuel.js', 'utf8');
+  const c = (naam) => { const m = fuel.match(new RegExp('const ' + naam + ' *= *(\\d+);')); if (!m) { console.log('  FOUT  ' + naam + ' niet gevonden in pidlane-fuel.js'); process.exit(1); } return Number(m[1]); };
+  ctx.MEET_RIJ_KMH = c('MEET_RIJ_KMH'); ctx.MEET_RIJ_GAT_MS = c('MEET_RIJ_GAT_MS');
+  vm.runInContext(fs.readFileSync(__dirname + '/pidlane-verzamel.js', 'utf8'), ctx, { filename: 'pidlane-verzamel.js' });
+  ctx.PLVerzamel = Object.assign({}, ctx.window.PLVerzamel, { meet: async () => ({ door: true, ai: true }) });
+}
 // top-level `let` in een classic script wordt geen eigenschap van het
 // globale object, dus reiken we de interne toestand aan via een aangeplakt
 // accessor-blok. Dat draait in dezelfde scope en leest dus de echte variabelen.

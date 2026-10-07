@@ -1044,6 +1044,12 @@ function _deepPidOverview(){
 async function runDeepDiag(){
   var probleem=(document.getElementById('dd_probleem')||{}).value||'';
   if(!probleem.trim()){ showToast?.('Vul minimaal het probleem in'); return; }
+  // Eerst de uitslag, dan pas de AI (#443). Is er in de intake een datalog
+  // opgenomen, dan is die de meting; anders meet het verzamelscherm zelf.
+  var _heeftLog=Object.keys(datalogBuffer||{}).some(function(p){ return datalogBuffer[p]&&datalogBuffer[p].length; });
+  var uit=await PLVerzamel.meet(_heeftLog ? { bron:plDatalogBron(), watVoor:'de diepe storingsanalyse' }
+                                          : { niveau:'normaal', profiel:'basis', watVoor:'de diepe storingsanalyse' });
+  if(!uit || !uit.ai) return;
   try{ ['ddProgRow','ddStepTitle','ddStepSub','ddFoot'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; }); document.querySelectorAll('#deepDiagOv .dd-step').forEach(function(el){ el.style.display='none'; }); }catch(e){ /* stil: element kan al weg zijn */ }
   var checks=(document.getElementById('dd_checks')||{}).value||'';
   var merk=(document.getElementById('dd_merk')||{}).value||'';
@@ -1058,7 +1064,8 @@ async function runDeepDiag(){
     'GEVOEL/VERMOEDEN BESTUURDER: '+(gevoel||'(geen)')+'\n'+
     'WAARNEMING TIJDENS DATALOG: '+(annot||'(geen)')+'\n'+
     'EXTRA INFO: '+(extra||'(geen)')+'\n'+
-    'VASTGELEGDE SENSOR-AFWIJKINGEN (datalog): '+ov.summary+'\n\n'+
+    'VASTGELEGDE SENSOR-AFWIJKINGEN (datalog): '+ov.summary+
+    PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec})+'\n\n'+
     'Geef je antwoord in EXACT deze secties met deze koppen (hoofdletters):\n'+
     'MOGELIJKE OORZAAK\nDATA-OORDEEL\nBEVINDINGEN\nADVIES\nGESCHATTE KOSTEN';
   var res=document.getElementById('dd_result');
@@ -1187,19 +1194,24 @@ async function runOnderhoud(){
     openRitAnalyse(rit);
     return;
   }
+  // Eerst het verzamelscherm (#443): de data en wat opvalt, dan pas de AI.
+  // Is er net gereden, dan is die rit de meting.
+  const uit=await PLVerzamel.meet({niveau:'normaal', profiel:'totaal', watVoor:'het onderhoudsadvies'});
+  if(!uit || !uit.ai){ res.innerHTML=''; return; }
   res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 AI analyseert het onderhoud…</div>`;
   try{ await ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet vers gezet vóór het onderhoudsadvies — het advies kan op oude data draaien: '+(e.message||e),'warn'); _plSensorVlag('De sensoren voor het onderhoudsadvies'); }
   const v=getVehicle();
   const laatste=parseInt(document.getElementById('ondLaatste')?.value)||0;
-  const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
+  // Wat de AI over de sensoren hoort is wat de klant net zag: de samenvatting
+  // over het meetvenster, niet de laatste waarde per sensor (#443).
+  const pdata=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});
   const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor));
   const prompt=`Jij bent een Nederlandse APK-keurmeester/monteur. Bepaal of onderhoud nu nodig is of kan wachten.
 
 Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}
 Km-stand: ${v.km||'onbekend'}
 Km sinds laatste grote beurt: ${laatste||'onbekend'}
-Live sensordata:
-${pdata||'(geen)'}
+Sensordata:${pdata||'\n(geen)'}
 Foutcodes: ${(typeof dtcCodes!=='undefined'?dtcCodes.join(', '):'')||'geen'}${qBlok}
 
 Gebruik de fabrieksintervallen van dit merk/model als referentie (olie, filters, distributieriem/-ketting, remvloeistof, bougies). Beoordeel daarnaast of de sensordata wijst op een actueel gebrek.
@@ -1257,18 +1269,23 @@ function runEVCheckRit(){
 }
 async function runEVCheck(){
   const res=document.getElementById('evResult');
+  // Eerst het verzamelscherm (#443): de data en wat opvalt, dan pas de AI.
+  // Is er net gereden, dan is die rit de meting.
+  const uit=await PLVerzamel.meet({niveau:'normaal', profiel:'accu', watVoor:'de accu- en EV-check'});
+  if(!uit || !uit.ai){ res.innerHTML=''; return; }
   res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 AI analyseert accu & systemen…</div>`;
   try{ await ensurePIDsActive('accu'); }catch(e){ log('Sensoren niet vers gezet vóór de EV/accu-check — de beoordeling kan op oude data draaien: '+(e.message||e),'warn'); _plSensorVlag('De accu- en systeemsensoren'); }
   const v=getVehicle();
   const ft=(typeof vehicleFuelType==='function')?vehicleFuelType():'onbekend';
-  const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
+  // Wat de AI over de sensoren hoort is wat de klant net zag: de samenvatting
+  // over het meetvenster, niet de laatste waarde per sensor (#443).
+  const pdata=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});
   const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor));
   const prompt=`Jij bent een Nederlandse EV/hybride specialist. Beoordeel de elektrische aandrijving en accu.
 
 Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}
 Aandrijving: ${ft}
-Live sensordata:
-${pdata||'(geen)'}
+Sensordata:${pdata||'\n(geen)'}
 Foutcodes: ${(typeof dtcCodes!=='undefined'?dtcCodes.join(', '):'')||'geen'}${qBlok}
 
 Focus op: accu/HV-systeem conditie, laad- en ontlaadgedrag, regeneratie, temperatuurbeheer. Wees eerlijk dat standaard OBD2 beperkte EV-data geeft en dat sommige waarden merk-specifiek zijn en kunnen ontbreken. Verzin geen waarden.
@@ -1328,17 +1345,22 @@ function openLangeRit(){
 }
 async function runLangeRitTech(){
   const res=document.getElementById('langeRitResult');
+  // Eerst het verzamelscherm (#443): de data en wat opvalt, dan pas de AI.
+  // Is er net gereden, dan is die rit de meting.
+  const uit=await PLVerzamel.meet({niveau:'normaal', profiel:'totaal', watVoor:'de lange-rit-check'});
+  if(!uit || !uit.ai){ res.innerHTML=''; return; }
   res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 Technische go/no-go…</div>`;
   try{ await ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet vers gezet vóór de lange-rit-check — de go/no-go kan op oude data draaien: '+(e.message||e),'warn'); _plSensorVlag('De sensoren voor de go/no-go'); }
   const v=getVehicle();
-  const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!=null?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
+  // Wat de AI over de sensoren hoort is wat de klant net zag: de samenvatting
+  // over het meetvenster, niet de laatste waarde per sensor (#443).
+  const pdata=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});
   const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor));
   const prompt=`Jij bent een Nederlandse monteur. Beoordeel of deze auto klaar is voor een lange rit (1000+ km).
 
 Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}
 Km-stand: ${v.km||'onbekend'}
-Live sensordata:
-${pdata||'(geen)'}
+Sensordata:${pdata||'\n(geen)'}
 Foutcodes: ${(typeof dtcCodes!=='undefined'?dtcCodes.join(', '):'')||'geen'}
 
 Let op zaken die juist op lange afstand kritisch zijn: koelsysteem/thermostaat, oliedruk/-temperatuur, accu/laadspanning, banden (indirect), foutcodes die op afstand verergeren.
@@ -1637,11 +1659,19 @@ async function climateVerdict(){
   </div>`;
   // Lokaal oordeel (altijd beschikbaar, ook zonder AI-sleutel)
   const local = airco ? aircoLocalVerdict() : winterLocalVerdict();
+  // Eerst de uitslag van de klimaatmeting, dan pas de AI (#443). Nee op de
+  // AI: het lokale oordeel komt er gewoon.
+  const monsters=(_climateData.samples||[]).map(m=>Object.assign({}, m, { t:m.t*1000 }));
+  const uit=await PLVerzamel.meet({ bron:{ naam:airco?'de aircometing':'de opwarmmeting',
+      hist:PLVerzamel.histUit(monsters, CLIMATE_PID), sec:Math.round(((monsters[monsters.length-1]||{}).t||0)/1000), rijSec:null },
+    watVoor:airco?'de aircocheck':'de wintercheck', aiTekst:'🤖 Laat de AI de meting beoordelen' });
   let aiText='';
-  try{
-    const prompt = airco ? buildAircoPrompt(local) : buildWinterPrompt(local);
-    aiText = await apiFetch(prompt, 600) || '';
-  }catch(e){ aiText=''; }
+  if(uit && uit.ai){
+    try{
+      const prompt = (airco ? buildAircoPrompt(local) : buildWinterPrompt(local)) + PLVerzamel.promptBlok(uit.sam,{sec:uit.sec});
+      aiText = await apiFetch(prompt, 600) || '';
+    }catch(e){ console.warn('Klimaatcheck: de AI-beoordeling kwam niet — het lokale oordeel staat er wel', e); aiText=''; }
+  }
   climateRenderResult(local, aiText);
 }
 

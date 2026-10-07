@@ -66,7 +66,10 @@ function pickOnderdelen(title, options){
 }
 
 async function runTotalCheck(){
-  if(!(await plVraagMeting('rit','totaalcheck','totaal'))) return;
+  // Het verzamelscherm (#443): eerst de data en wat opvalt, dan pas de
+  // controle met de AI. Een rijtest vanuit het scherm komt hier terug (naRit).
+  const uit=await PLVerzamel.meet({niveau:'rit', profiel:'totaal', watVoor:'de totaalcheck', naRit:runTotalCheck});
+  if(!uit || !uit.ai) return;
   window._didTotalCheck=true;
   if(!(await preAnalysisCheck())) return;
   await ensurePIDsActive('totaal');
@@ -89,7 +92,7 @@ async function runTotalCheck(){
   await delay(demoMode?300:400);
   checkResults=items;
   renderCheckResults(items);
-  runCheckAI(items);
+  runCheckAI(items, uit);
 }
 function buildCheckItems(){
   const items=[];
@@ -174,7 +177,7 @@ function renderCheckResults(items){
     grp.sort((a,b)=>sev[a.status]-sev[b.status]).forEach(renderItem);
   });
 }
-async function runCheckAI(items){
+async function runCheckAI(items, uit){
   activateAIPane();
   const btn=document.getElementById('aiBtn'); btn.disabled=true;
   const v=getVehicle();
@@ -205,7 +208,7 @@ async function runCheckAI(items){
   } else if(ft==='diesel'){
     fuelNote=`\nDit is een DIESEL: brandstoftrim-logica wijkt af; let op roetfilter (DPF), AdBlue/SCR en NOx waar relevant.`;
   }
-  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}${fuelNote}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nGemeten sensordata (${items.length} sensoren):\n${meet||'(geen meetdata — sensoren leverden nog geen waarden; zeg dit eerlijk in het rapport)'}\nAfwijkingen:\n${prob||'Geen'}\nDTC: ${formatDtcCodes(dtcCodes)}${q.promptBlok}${scenNote}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
+  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}${fuelNote}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nGemeten sensordata (${items.length} sensoren):\n${meet||'(geen meetdata — sensoren leverden nog geen waarden; zeg dit eerlijk in het rapport)'}\nAfwijkingen:\n${prob||'Geen'}\nDTC: ${formatDtcCodes(dtcCodes)}${q.promptBlok}${uit?PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec}):''}${scenNote}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
 
 Voertuigscore: <0-100>/100
 Diagnosebetrouwbaarheid: <0-100>%

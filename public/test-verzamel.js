@@ -167,6 +167,124 @@ console.log('\nE. runQuickAI: eerst het scherm, dan pas de AI');
   toets('een klik-event is geen klacht', knop.verstuurd.length === 1 && !/Klacht van de gebruiker/.test(knop.verstuurd[0].p));
 }
 
+console.log('\nF. Rijtijd, momentopnames en een gegeven bron');
+{
+  const f = fs.readFileSync(dir + '/pidlane-fuel.js', 'utf8');
+  const c = (naam) => Number((f.match(new RegExp('const ' + naam + ' *= *(\\d+);')) || [])[1]);
+  s.MEET_RIJ_KMH = c('MEET_RIJ_KMH'); s.MEET_RIJ_GAT_MS = c('MEET_RIJ_GAT_MS');
+  toets('de rijdrempels komen uit pidlane-fuel.js', s.MEET_RIJ_KMH > 0 && s.MEET_RIJ_GAT_MS > 0);
+  const snel = [0, 20, 30, 40, 50, 10].map((v, i) => ({ t: i * 2000, v }));
+  toets('rijtijd: alleen stukken waarin beide monsters boven de drempel liggen', V.rijSecUit(snel) === 6, String(V.rijSecUit(snel)));
+  const gat = [{ t: 0, v: 50 }, { t: 2000, v: 50 }, { t: 60000, v: 50 }];
+  toets('een gat langer dan MEET_RIJ_GAT_MS telt niet als rijden', V.rijSecUit(gat) === 2, String(V.rijSecUit(gat)));
+  toets('geen snelheid: null, niet 0', V.rijSecUit([]) === null && V.rijSecUit(undefined) === null);
+  const h = V.histUit([{ t: 0, coolant: 80, rpm: 800 }, { t: 2000, coolant: 82, rpm: null }], { coolant: '0105', rpm: '010C' });
+  toets('momentopnames worden reeksen per PID, zonder lege waarden', h['0105'].length === 2 && h['010C'].length === 1 && h['0105'][1].v === 82, JSON.stringify(h));
+  s.isReportableSensor = () => true;
+  const v = rond(85, 95); v[7] = 112;
+  const sb = V.vanBron({ hist: { '0105': reeks(v), '010C': [] } });
+  toets('een gegeven bron krijgt hetzelfde oordeel als het scherm', sb.rijen[0].pid === '0105' && sb.rijen[0].oordeel === 'afwijkend' && sb.rijen.length === 1, JSON.stringify(sb.rijen.map(r => r.pid)));
+}
+
+console.log('\nG. Het scherm zelf: bron, de rit van zojuist, terugkeer na een rijtest, hergebruik, tellers');
+{
+  // Een DOM die alleen doet wat meet() vraagt: elementen op id, en een klik
+  // die via ov.onclick binnenkomt zoals in de app.
+  const el = {};
+  const maak = (id) => (el[id] = el[id] || { id, style: {}, innerHTML: '', textContent: '' });
+  s.document = { getElementById: (id) => el[id] || (['plVzOv'].indexOf(id) >= 0 ? null : maak(id)),
+                 createElement: () => {
+                   // Zoals de echte DOM: wie de kaart opnieuw vult, gooit de oude
+                   // kop, tekst en knoppen weg.
+                   let html = '';
+                   return { style: {}, get innerHTML() { return html; },
+                            set innerHTML(v) { html = v; Object.keys(el).forEach(k => { if (k !== 'plVzOv') delete el[k]; }); } };
+                 },
+                 body: { appendChild: (e) => { el[e.id] = e; } } };
+  s.setInterval = () => 0; s.clearInterval = () => {}; s.setTimeout = (fn) => { s.__uitgesteld.push(fn); return 0; };
+  s.__uitgesteld = [];
+  s.logs = []; s.log = (m) => s.logs.push(String(m));
+  s.MEET_EIS = { normaal: { sec: 60, n: 15, naam: 'stilstaande meting' }, rit: { sec: 180, n: 40, rij: 90, naam: 'meting onder belasting' }, kortrit: { sec: 90, rij: 30 } };
+  s.plMeetNiveau = (x) => x; s.KERN_REEKS_MIN = 10; s.KERN_MAX_WACHT_MS = 45000; s.KERN_VERLENG_MS = 30000; s.MEET_BEVESTIGD_MS = 120000;
+  s.plKernStatus = () => null; s.connected = true; s.demoMode = false; s.activePIDs = new Set(['0105']);
+  s.tekort = { ok: true, tekort: [], st: { sec: 70, rijSec: 0 }, rijTekort: false };
+  s.plMeetTekort = () => s.tekort;
+  s.ritBron = null; s.plRitBron = () => s.ritBron;
+  s.ritGestart = null; s.openRitAnalyse = (m) => { s.ritGestart = m; };
+  const g = (id) => el[id] || { innerHTML: '', textContent: '' };   // wat er nu in beeld staat
+  const klik = (a) => el.plVzOv.onclick({ target: { closest: () => ({ getAttribute: () => a }) } });
+  const wacht = () => new Promise((r) => setImmediate(r));
+
+  toets('vóór de eerste uitslag is elke maat null', ['verzamel-uitslagen', 'verzamel-afwijkend', 'verzamel-ai-pct', 'verzamel-hergebruik', 'verzamel-na-rit'].every(m => V.maat(m) === null));
+
+  // 1. Een gegeven bron (de datalog): meteen de uitslag, geen poort.
+  const piek = rond(85, 95); piek[7] = 112;
+  let u = null;
+  V.meet({ bron: { naam: 'de datalog', hist: { '0105': reeks(piek) }, sec: 20, rijSec: null }, watVoor: 'proef' }).then(x => { u = x; });
+  await wacht();
+  toets('gegeven bron: meteen "Data verzameld" met de AI-knop', /verzameld/.test(g('plVzKop').textContent) && /data-a="ai"/.test(g('plVzKnoppen').innerHTML), g('plVzKop').textContent);
+  toets('en zonder "Langer meten": een datalog kun je niet verlengen', !/data-a="langer"/.test(g('plVzKnoppen').innerHTML));
+  klik('ai'); await wacht();
+  toets('ja op de AI: de uitkomst draagt de samenvatting en de duur van de bron', u && u.ai && u.sec === 20 && u.bron === 'de datalog' && u.sam.rijen[0].oordeel === 'afwijkend', JSON.stringify(u && { ai: u.ai, sec: u.sec, bron: u.bron }));
+  toets('de uitslag staat in het log, met wat opviel', s.logs.some(m => /Verzamelscherm — proef: uitslag/.test(m) && /valt op: Koelwater temp 85–112/.test(m)), s.logs.slice(-1)[0]);
+  toets('tellers: één uitslag, één rode vlag, koelwater één keer, AI 100%', V.maat('verzamel-uitslagen') === 1 && V.maat('verzamel-afwijkend') === 1 && V.maat('verzamel-koelwater') === 1 && V.maat('verzamel-ai-pct') === 100,
+    ['uitslagen', 'afwijkend', 'koelwater', 'ai-pct'].map(m => V.maat('verzamel-' + m)).join(','));
+
+  // 2. Net verzameld: de volgende analyse meet niet opnieuw.
+  u = null;
+  s.pidHist['0105'] = reeks(rond(85, 95));
+  V.meet({ niveau: 'normaal', profiel: false, watVoor: 'tweede module' }).then(x => { u = x; });
+  await wacht(); await wacht();
+  toets('binnen de termijn: meteen de uitslag, zonder tien seconden te meten', /verzameld/.test(g('plVzKop').textContent) && /data-a="langer"/.test(g('plVzKnoppen').innerHTML), g('plVzKop').textContent);
+  toets('en dat telt als hergebruik', V.maat('verzamel-hergebruik') === 1, String(V.maat('verzamel-hergebruik')));
+  klik('annuleer'); await wacht();
+  toets('sluiten zonder AI: door en ai allebei false, en de AI-score zakt naar 50%', u && u.door === false && u.ai === false && V.maat('verzamel-ai-pct') === 50, JSON.stringify(u) + ' ' + V.maat('verzamel-ai-pct'));
+
+  // 3. Te oud: geen hergebruik. De poort draait dan gewoon (hier: niet klaar).
+  s._plVerzameld.ts = Date.now() - 10 * 60 * 1000;
+  s.tekort = { ok: false, tekort: ['te kort'], st: { sec: 5, rijSec: 0 }, rijTekort: false };
+  u = null;
+  V.meet({ niveau: 'normaal', profiel: false }).then(x => { u = x; });
+  await wacht(); await wacht();
+  toets('TEGENPROEF: een meting van tien minuten geleden telt niet, het scherm meet', /haal ik de sensoren binnen/.test(g('plVzSub').innerHTML) && !/verzameld/.test(g('plVzKop').textContent), g('plVzKop').textContent + ' | ' + g('plVzSub').innerHTML.slice(0, 80));
+  klik('annuleer'); await wacht();
+
+  // 4. De rit van zojuist is de meting, als hij vers is en genoeg rijtijd heeft.
+  s.ritBron = { naam: 'de rit van zojuist', hist: { '0105': reeks(rond(80, 98)) }, rit: true, eind: Date.now() - 60000, sec: 600, rijSec: 400 };
+  u = null;
+  V.meet({ niveau: 'rit', profiel: false, watVoor: 'verbruik' }).then(x => { u = x; });
+  await wacht();
+  toets('na een rit: de uitslag komt uit die rit', /de rit van zojuist/.test(g('plVzSub').innerHTML) && /data-a="opnieuw"/.test(g('plVzKnoppen').innerHTML), g('plVzSub').innerHTML.slice(0, 120));
+  klik('ai'); await wacht();
+  toets('de uitkomst noemt de rit als bron, met zijn rijtijd', u && u.bron === 'de rit van zojuist' && u.rijSec === 400 && u.sec === 600, JSON.stringify(u && { bron: u.bron, rijSec: u.rijSec }));
+  toets('en telt als uitslag uit een rit', V.maat('verzamel-na-rit') === 1);
+  s.ritBron.rijSec = 30;
+  V.meet({ niveau: 'rit', profiel: false }).then(x => { u = x; });
+  await wacht(); await wacht();
+  toets('TEGENPROEF: te weinig gereden voor dit niveau — de rit telt niet', !/de rit van zojuist/.test(g('plVzSub').innerHTML), g('plVzSub').innerHTML.slice(0, 120));
+  klik('annuleer'); await wacht();
+  s.ritBron.rijSec = 400; s.ritBron.eind = Date.now() - 20 * 60 * 1000;
+  V.meet({ niveau: 'rit', profiel: false }).then(x => { u = x; });
+  await wacht(); await wacht();
+  toets('TEGENPROEF: een rit van twintig minuten geleden telt niet', !/de rit van zojuist/.test(g('plVzSub').innerHTML), g('plVzSub').innerHTML.slice(0, 120));
+  klik('annuleer'); await wacht();
+  s.ritBron = null;
+
+  // 5. Rijtest vanuit het scherm: daarna komt de analyse terug.
+  s.tekort = { ok: false, tekort: ['niet gereden'], st: { sec: 70, rijSec: 0 }, rijTekort: true };
+  let terug = 0;
+  u = null;
+  V.meet({ niveau: 'rit', profiel: false, naRit: () => { terug++; } }).then(x => { u = x; });
+  await wacht(); await wacht();
+  toets('te weinig gereden: het scherm biedt een rijtest aan', /data-a="rit"/.test(g('plVzKnoppen').innerHTML), g('plVzKnoppen').innerHTML);
+  klik('rit'); await wacht();
+  toets('de rijtest start (10 minuten), het scherm sluit zonder AI', s.ritGestart === '10min' && u && u.rit === true && u.ai === false, s.ritGestart + ' ' + JSON.stringify(u));
+  s.__uitgesteld.length = 0;
+  toets('na de rit: naRit() zegt ja en start de analyse opnieuw', V.naRit() === true && s.__uitgesteld.length === 1);
+  s.__uitgesteld.forEach(f => f());
+  toets('precies één keer', terug === 1 && V.naRit() === false, 'terug=' + terug);
+}
+
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + n : 'Alles goed — ' + n + ' controles'));
 process.exit(fout ? 1 : 0);
 })();

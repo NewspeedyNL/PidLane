@@ -501,8 +501,20 @@ async function generateCaravanRapport(){
     ? 'LET OP: elektrisch voertuig — praat over kWh-verbruik en efficiëntie, niet over liters/toerental.'
     : ft==='diesel' ? 'Dit is een diesel — betrek DPF/roetfilter en koeling op lange klimmen waar relevant.' : '';
 
-  let ai='';
-  try{
+  // Eerst de uitslag van de rit, dan pas de vraag aan de AI (#443). De bron
+  // is de caravanhistorie; die houdt de laatste ±6,5 minuten (CARAVAN_HIST_CAP),
+  // en dat zegt het scherm ook. Nee op de AI: het rapport komt er gewoon,
+  // zonder AI-deel.
+  let ai='', uit=null;
+  {
+    let t0=Infinity, t1=0;
+    Object.keys(caravanHist).forEach(p=>{ const h=caravanHist[p]; if(h&&h.length){ t0=Math.min(t0,h[0].t); t1=Math.max(t1,h[h.length-1].t); } });
+    const bron={ naam:'de laatste minuten van de caravanrit', hist:caravanHist, rit:true,
+                 sec:t1>t0?Math.round((t1-t0)/1000):0, rijSec:PLVerzamel.rijSecUit(caravanHist['010D']) };
+    uit=await PLVerzamel.meet({ bron, watVoor:'het caravanrapport', aiTekst:'🤖 Laat de AI de rit beoordelen' });
+  }
+  if(!uit || !uit.ai) ai='(Geen AI-analyse gevraagd — hierboven staat de volledige meet- en coachingsamenvatting.)';
+  else try{
     ai=await apiFetch(
 `Je bent een rij- en techniekcoach. Analyseer één lange rit met CARAVAN/AANHANGER door BERGACHTIG terrein. De focus is BRANDSTOF: hoe kon deze bestuurder zuiniger rijden, gecombineerd met de technische staat en het rijgedrag onder zware belasting.
 ${fuelNote}
@@ -512,7 +524,7 @@ Gebruik de meetdata en vooral de coaching-momenten hieronder als concreet bewijs
 Rit: ${mins} min, ${caravanKm.toFixed(1)} km, gemiddeld ${avg!==null?avg.toFixed(1)+' L/100km':'onbekend'}, kosten € ${(caravanLiters*price).toFixed(2)}.
 Terrein (OBD-inschatting): klim ${secToMin(caravanClimbSecs.klim)}, afdaling ${secToMin(caravanClimbSecs.afdaling)}, vlak ${secToMin(caravanClimbSecs.vlak)}.
 Meetwaarden min/gem/max — snelheid ${sp?`${F(sp.min)}/${F(sp.avg)}/${F(sp.max)}`:'—'} km/h, toerental ${rp?`${F(rp.min)}/${F(rp.avg)}/${F(rp.max)}`:'—'} tpm, belasting ${ld?`${F(ld.min)}/${F(ld.avg)}/${F(ld.max)}`:'—'}%, koelwater ${co?`${F(co.min)}/${F(co.avg)}/${F(co.max)}`:'—'}°C.
-Coaching gegeven: ${coachEvidence}.
+Coaching gegeven: ${coachEvidence}.${PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec})}
 
 Geef in het Nederlands, met kopjes:
 SAMENVATTING

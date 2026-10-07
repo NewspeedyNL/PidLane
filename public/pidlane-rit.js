@@ -27,6 +27,9 @@ let RIT_TOTAAL=RIT_FASEN.reduce((a,f)=>a+f.duur,0); // 10 minuten
 
 let ritActive=false, ritFaseIdx=0, ritFaseTimer=null, ritTotalTimer=null, ritCollectInterval=null;
 let ritStartTime=null, ritLogs=[], ritFaseData={};
+// Wanneer de laatste rit stopte; plRitBron() geeft hem daarna als meting aan
+// het verzamelscherm (#443). 0 = er is deze sessie nog niet gereden.
+let ritEindTijd=0;
 
 /* ── ACHTERGROND ────────────────────────────────────────────────────────
    Een rit onder belasting vraagt dat je rijdt, en rijden vraagt navigatie.
@@ -414,6 +417,7 @@ async function stopRitAnalyse(){
   // hoort ook van de meettijd af, anders telt hij stilte als meting.
   if(ritPauzeSinds){ ritPauzeTotaal+=Date.now()-ritPauzeSinds; ritPauzeSinds=0; }
   ritActive=false;
+  ritEindTijd=Date.now();
   clearTimeout(ritFaseTimer); ritFaseTimer=null; clearInterval(ritTotalTimer);
   if(ritCollectInterval){ clearInterval(ritCollectInterval); ritCollectInterval=null; }
   // Was de rit geminimaliseerd? Toon het overlay weer zodat het rapport
@@ -472,6 +476,21 @@ async function stopRitAnalyse(){
     setTimeout(()=>runEVCheck(), 300);
     return;
   }
+  // Rijtest gestart vanuit het verzamelscherm (#443): terug naar de analyse
+  // die erom vroeg. Die neemt deze rit dan als meting (plRitBron).
+  if(PLVerzamel.naRit()){
+    try{ closeRitAnalyse?.(); }catch(e){ console.warn('closeRitAnalyse mislukt:', e); }
+    log('Rijtest klaar — terug naar de analyse die erom vroeg','info');
+    return;
+  }
+  // Eerst de uitslag van de rit, dan pas de vraag of de AI een rapport maakt
+  // (#443) — hetzelfde scherm als bij elke andere analyse, met de rit als bron.
+  const _uit=await PLVerzamel.meet({ bron:plRitBron(), watVoor:'het ritrapport', aiTekst:'🤖 Laat de AI een ritrapport maken' });
+  if(!_uit || !_uit.ai){
+    document.getElementById('ritStatus').textContent='Rit klaar — geen AI-rapport gemaakt';
+    log('Rit klaar — de AI-vraag is met nee beantwoord, geen rapport','info');
+    return;
+  }
   // 2-min check is altijd technisch (geen rijgedrag) → direct technisch rapport
   if(ritMode==='2min'){
     document.getElementById('ritStatus').textContent='Technische check klaar — rapport wordt gegenereerd...';
@@ -517,6 +536,27 @@ async function ritFocusChosen(focus){
   document.getElementById('ritFocusModal').style.display='none';
   document.getElementById('ritStatus').textContent='Analyse klaar — rapport wordt gegenereerd...';
   await generateRitRapport(focus);
+}
+
+/* De laatste rit als meting voor het verzamelscherm (#443). Elke fase bewaart
+   zijn volledige reeks; pidHist houdt er maar 120 per sensor, op een rit een
+   paar minuten. `sec` is de meettijd zonder de achtergrond, `rijSec` de tijd
+   boven MEET_RIJ_KMH (PLVerzamel.rijSecUit) — dezelfde maat als de
+   meetpoort. Geen rit: null. */
+function plRitBron(){
+  if(!ritStartTime || !ritEindTijd || ritActive) return null;
+  const hist={};
+  Object.keys(ritFaseData||{}).sort((a,b)=>a-b).forEach(i=>{
+    const d=(ritFaseData[i]||{}).data||{};
+    Object.keys(d).forEach(pid=>{ (hist[pid]||(hist[pid]=[])).push(...d[pid]); });
+  });
+  Object.keys(hist).forEach(pid=>hist[pid].sort((a,b)=>a.t-b.t));
+  // Snelheid: uit de rit, en anders uit pidHist binnen het ritvenster.
+  let snel=hist['010D'];
+  if(!snel||!snel.length) snel=((typeof pidHist!=='undefined'&&pidHist['010D'])||[]).filter(h=>h.t>=ritStartTime&&h.t<=ritEindTijd);
+  return { naam:'de rit van zojuist', hist, rit:true, eind:ritEindTijd,
+           sec:Math.max(0,Math.round((ritEindTijd-ritStartTime-ritPauzeTotaal)/1000)),
+           rijSec:PLVerzamel.rijSecUit(snel) };
 }
 
 async function generateRitRapport(focus='beide'){
@@ -620,8 +660,13 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
     const ritFuelNote = _ftr==='elektrisch'
       ? '\nLET OP: dit is een ELEKTRISCH voertuig — praat over energieverbruik (kWh) en rij-efficiëntie, NIET over brandstof, brandstoftrim, toerental-zuinigheid of liters.'
       : _ftr==='diesel' ? '\nDit is een diesel — let op DPF/roetfilter en AdBlue/SCR waar relevant.' : '';
+    // Dezelfde samenvatting over de hele rit als op het verzamelscherm (#443),
+    // naast de cijfers per fase: zo leest elk rapport zijn sensoren in één vorm.
+    let ritMeetBlok='';
+    try{ const _rb=plRitBron(); const _rs=PLVerzamel.vanBron(_rb); if(_rs) ritMeetBlok=PLVerzamel.promptBlok(_rs,{sec:_rb.sec,rijSec:_rb.rijSec}); }
+    catch(e){ console.warn('Rit rapport: samenvatting over de hele rit niet gemaakt (#443)', e); }
     const totalAnalysis=await apiFetch(
-      `${focusPrompt}${ritFuelNote}\n\nRit van ${mins} minuten met een ${v.merk||'auto'} ${v.model||''}. Antwoord in het Nederlands.\n\nFase data:\n${allStats}${sweepBlok}\n\nSluit het rapport af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
+      `${focusPrompt}${ritFuelNote}\n\nRit van ${mins} minuten met een ${v.merk||'auto'} ${v.model||''}. Antwoord in het Nederlands.\n\nFase data:\n${allStats}${ritMeetBlok}${sweepBlok}\n\nSluit het rapport af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
       3000, null, null,
       // De onderbrekingen tellen hier dubbel: dit rapport gaat over een reeks
       // over tijd, en juist daar leest een gat als een sensor die uitvalt (#188).

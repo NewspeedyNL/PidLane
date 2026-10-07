@@ -241,10 +241,18 @@ var MODULES = {
 var GEEN_MEETEIS = { dtc:1, monitor:1, recorder:1 };
 
 /* Modules die hun meting zélf tonen, in het verzamelscherm (PLVerzamel,
-   07-10-2026). Die eis is er wel, maar de poort zit in de module: krijgen ze
-   hier ook plVraagMeting, dan ziet de klant twee meetschermen achter elkaar.
-   Anders dan GEEN_MEETEIS: die modules hebben géén meeteis. */
-var EIGEN_METING = { aimonteur:1 };
+   #443). Die eis is er wel, maar de poort zit in de module: krijgen ze hier
+   ook plVraagMeting, dan ziet de klant twee meetschermen achter elkaar.
+   Anders dan GEEN_MEETEIS: die modules hebben géén meeteis.
+     aimonteur  runQuickAI          verbruik  runFuelAnalysis
+     conditie   runTotalCheck       onderhoud runOnderhoud
+     accu/evaccu runEVCheck         langerit  runLangeRitTech
+     diep       de datalog van de intake is de meting
+     klimaat    eigen draaiboek; de uitslag komt uit de klimaatmeting
+     trekken    de caravanrit is de meting
+   systeem en onderdeel houden de poort: die meten zonder AI-vraag. */
+var EIGEN_METING = { aimonteur:1, verbruik:1, conditie:1, onderhoud:1, accu:1, evaccu:1, langerit:1,
+                     diep:1, klimaat:1, trekken:1 };
 
 /* Welke kern-PID-set hoort bij welke module (drie-fasenpoort, §19). Staat hier
    los van MODULES zodat de moduletabel zelf onaangeraakt blijft — mechanisch

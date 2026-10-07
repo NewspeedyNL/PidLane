@@ -1814,6 +1814,25 @@ MUTATIES=(
 "public/pidlane-fuel.js@@  if(!uit || !uit.ai) return;\n  activateAIPane();@@  if(!uit) return;\n  activateAIPane();@@test-verzamel.js@@sluiten zonder AI op het verzamelscherm verstuurt toch een betaald rapport"
 "public/pidlane-fuel.js@@  const meetBlok=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});@@  const meetBlok='';@@test-verzamel.js@@het AI-rapport krijgt de samenvatting van het scherm niet meer mee"
 "public/pidlane-wizard.js@@    if(GEEN_MEETEIS[k] || EIGEN_METING[k] || typeof plVraagMeting@@    if(GEEN_MEETEIS[k] || typeof plVraagMeting@@bproef-verzamel.js@@de AI-monteur krijgt weer het oude meetscherm vóór het verzamelscherm"
+# ── #443 ronde 2: alle analyses via het scherm, de rit en de datalog als bron.
+"public/pidlane-verzamel.js@@    if (!bron && o.ritBron !== false) { bron = ritVanZojuist(eis); ritBron = !!bron; }@@@@test-verzamel.js@@na een rijtest meet het scherm opnieuw over de laatste minuten in plaats van de rit te nemen"
+"public/pidlane-verzamel.js@@    if (!b || !getal(b.eind) || Date.now() - b.eind > RIT_GELDIG_MS) return null;@@    if (!b) return null;@@test-verzamel.js@@een rit van een uur geleden telt nog als de meting van nu"
+"public/pidlane-verzamel.js@@    if (eis && eis.rij && !(getal(b.rijSec) && b.rijSec >= eis.rij)) return null;\n@@@@test-verzamel.js@@een rit met een halve minuut rijden haalt de rij-eis van een verbruiksanalyse"
+"public/pidlane-verzamel.js@@(Date.now() - window._plVerzameld.ts) < MEET_BEVESTIGD_MS;@@true;@@test-verzamel.js@@een meting van een kwartier geleden wordt hergebruikt zonder opnieuw te meten"
+"public/pidlane-verzamel.js@@          naRitVervolg = (typeof o.naRit === 'function') ? o.naRit : null;@@          naRitVervolg = null;@@test-verzamel.js@@na de rijtest uit het scherm komt de analyse niet terug"
+"public/pidlane-verzamel.js@@    const f = naRitVervolg; naRitVervolg = null;@@    const f = naRitVervolg;@@test-verzamel.js@@elke volgende rit start de vorige analyse opnieuw"
+"public/pidlane-verzamel.js@@      case 'verzamel-hergebruik':    return tel.hergebruik || null;@@      case 'verzamel-hergebruik':    return tel.hergebruik;@@test-verzamel.js@@geen plan gedaan leest in de meetproef als hergebruik dat faalde (0 in plaats van niet gemeten)"
+"public/pidlane-koopcheck.js@@watVoor:'het onderhoudsadvies'});\n  if(!uit || !uit.ai){ res.innerHTML=''; return; }@@watVoor:'het onderhoudsadvies'});@@test-verzamelroutes.js@@sluiten zonder AI op het onderhoudsscherm vraagt toch een betaald advies"
+"public/pidlane-koopcheck.js@@'onbekend';\n  // Wat de AI over de sensoren hoort is wat de klant net zag: de samenvatting\n  // over het meetvenster, niet de laatste waarde per sensor (#443).\n  const pdata=PLVerzamel.promptBlok(@@'onbekend';\n  const pdata=String(@@test-verzamelroutes.js@@de EV-check stuurt de samenvatting van het scherm niet meer mee"
+"public/pidlane-totalcheck.js@@  runCheckAI(items, uit);@@  runCheckAI(items);@@test-verzamelroutes.js@@de totaalcheck geeft de samenvatting niet door aan de AI"
+"public/pidlane-fuel.js@@    if(!uit || !uit.ai) return;\n  }\n  activateAIPane();@@    if(!uit) return;\n  }\n  activateAIPane();@@test-verzamelroutes.js@@nee op het scherm van de verbruiksanalyse verstuurt toch een rapport"
+"public/pidlane-fuel.js@@watVoor:'de verbruiksanalyse', naRit:runFuelAnalysis});@@watVoor:'de verbruiksanalyse'});@@test-verzamelroutes.js@@na de rijtest voor de verbruiksanalyse komt de analyse niet terug"
+"public/pidlane-datalog.js@@  const uit=await PLVerzamel.meet({bron, watVoor:'de datalog-analyse'});@@  const uit=await PLVerzamel.meet({watVoor:'de datalog-analyse'});@@test-verzamelroutes.js@@de datalog-analyse meet opnieuw in plaats van de datalog te tonen"
+"public/pidlane-caravan.js@@  if(!uit || !uit.ai) ai='(Geen AI-analyse@@  if(false) ai='(Geen AI-analyse@@test-verzamelroutes.js@@nee op het scherm na een caravanrit vraagt toch de AI"
+"public/pidlane-koopcheck.js@@  if(uit && uit.ai){\n    try{\n      const prompt = (airco@@  if(true){\n    try{\n      const prompt = (airco@@test-verzamelroutes.js@@nee op het scherm van de klimaatcheck vraagt toch de AI"
+"public/pidlane-koopcheck.js@@  if(!uit || !uit.ai) return;\n  try{ ['ddProgRow',@@  try{ ['ddProgRow',@@test-verzamelroutes.js@@nee op het scherm van de diepe analyse vraagt toch de AI"
+"public/pidlane-rit.js@@  if(!_uit || !_uit.ai){@@  if(false){@@test-ritrapport.js@@nee op het scherm na de rit maakt toch een betaald ritrapport"
+"public/pidlane-rit.js@@    try{ const _rb=plRitBron(); const _rs=PLVerzamel.vanBron(_rb);@@    try{ const _rb=null; const _rs=PLVerzamel.vanBron(_rb);@@test-ritrapport.js@@het ritrapport krijgt de samenvatting over de hele rit niet meer"
 )
 
 echo
