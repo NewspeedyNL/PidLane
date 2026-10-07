@@ -265,6 +265,8 @@ const echt = (ctx, k) => vm.runInContext('localStorage._m[' + JSON.stringify(k) 
     const src = knip('pidlane-archief.js', 'function registerSessionReport(entry){', 'function _srUpdateBadge(){', 'registerSessionReport');
     const c = laadDemo({ _srSeq: 0, _srUpdateBadge() {}, _srAutoTitle: () => 'Rapport', logUsage() {} });
     c._sessionReports = [];
+    vm.runInContext(fs.readFileSync(__dirname + '/pidlane-rapport.js', 'utf8'), c, { filename: 'pidlane-rapport.js' });
+    if (!c.PLRapport && c.window) c.PLRapport = c.window.PLRapport;   // registerSessionReport haalt het <rapport>-blok eruit
     vm.runInContext('let _srSeq=0;\n' + src + '\nglobalThis.__reg = registerSessionReport;', c);
     c.demoMode = false;
     const echtRec = c.__reg({ type: 'ai', text: 'echt rapport' });

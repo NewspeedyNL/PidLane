@@ -498,17 +498,26 @@
     };
   }
 
-  /* Het logo als dataURL voor jsPDF. Mislukt het, dan een tekstlogo. */
+  /* Het logo als dataURL voor jsPDF. Via een <img> en een canvas, niet met
+     fetch: serververkeer loopt hier via plFetch (test-plfetch.js), en dit is
+     een bestand van de app zelf. Mislukt het, dan een tekstlogo. */
   let _logo = null;
-  async function laadLogo() {
-    if (_logo) return _logo;
-    try {
-      const r = await fetch('icon-192.png');
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const b = await r.blob();
-      _logo = await new Promise((ok, nee) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = () => nee(fr.error); fr.readAsDataURL(b); });
-    } catch (e) { console.warn('PLRapport: logo niet geladen — het rapport krijgt een tekstlogo', e); _logo = null; }
-    return _logo;
+  function laadLogo() {
+    if (_logo) return Promise.resolve(_logo);
+    return new Promise(klaar => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth; c.height = img.naturalHeight;
+          c.getContext('2d').drawImage(img, 0, 0);
+          _logo = c.toDataURL('image/png');
+        } catch (e) { console.warn('PLRapport: logo niet omgezet — het rapport krijgt een tekstlogo', e); }
+        klaar(_logo);
+      };
+      img.onerror = () => { console.warn('PLRapport: icon-192.png niet geladen — het rapport krijgt een tekstlogo'); klaar(null); };
+      img.src = 'icon-192.png';
+    });
   }
 
   // ── DE PDF ─────────────────────────────────────────────────────────
