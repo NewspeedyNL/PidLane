@@ -207,7 +207,9 @@ function nepPdf() {
 }
 {
   const p = nepPdf();
-  R.pdf(R.model(ctx()), p.Doc, { logo: 'data:image/png;base64,AAAA' });
+  // Een lange AI-tekst (bijlage B), zodat pagina's tot de onderrand vollopen.
+  const lang = AI_TEKST + '\n' + Array.from({ length: 160 }, (_, i) => '- bevinding ' + i + ' met wat uitleg erbij').join('\n');
+  R.pdf(R.model(ctx({ ai: { text: lang } })), p.Doc, { logo: 'data:image/png;base64,AAAA' });
   const teksten = p.log.filter((x) => x.soort === 'tekst');
   const alle = teksten.map((x) => x.t).join('\n');
   toets('voorblad: ANALYSERAPPORT, IN HET KORT en het voertuig', ['ANALYSERAPPORT', 'IN HET KORT', 'Mazda CX-5'].every((k) => teksten.some((x) => x.pagina === 1 && x.t.indexOf(k) >= 0)));
@@ -234,7 +236,7 @@ console.log('\nG. De bedrading');
   const lees = (f) => fs.readFileSync(dir + '/' + f, 'utf8');
   const fuel = lees('pidlane-fuel.js');
   toets('de PDF-knop maakt het analyserapport', /async function exportAIReportPDF[\s\S]{0,900}PLRapport\.maak\(jsPDF, window\._lastAIReport\)/.test(fuel));
-  toets('de gedeelde trechter (callAI) vraagt het rapportblok', /apiFetch\(prompt\+PLRapport\.instructie\(\),/.test(fuel));
+  toets('de gedeelde trechter (callAI) vraagt het rapportblok', /async function callAI\(prompt,contentEl,aanlevering\)\{[\s\S]{0,700}apiFetch\(prompt\+PLRapport\.instructie\(\),4000,null,null,aanlevering\)/.test(fuel));
   toets('het scherm toont de tekst zonder blok', /function _aiReportHtml\(text\)\{\s*text=PLRapport\.zonderBlok\(text\);/.test(fuel));
   toets('het rapport neemt de meting van het verzamelscherm mee', /meting:PLRapport\.versMeting\(Date\.now\(\)\)/.test(fuel));
   toets('het archief bewaart de leesbare tekst, en de bron voor de PDF', /const txt=PLRapport\.zonderBlok\(entry\.text\|\|''\)\.trim\(\);/.test(lees('pidlane-archief.js')));
