@@ -108,6 +108,18 @@ function toets(naam, waar, uitleg) {
     toets('na stoppen staat de conclusie er', await wacht(`!!document.querySelector('#plOzDoos .oz-concl')`, 8000));
     toets('nog steeds zonder bord', await app.ev(`!document.querySelector('#plOzDoos .oz-v')`));
     await app.ev(`PLOnderzoek.sluit(); 'ok'`);
+
+    console.log('\n5. Er is iets mis, maar ik merk niets: de brede ronde (#434)');
+    await app.ev(`PLNav.tab('auto'); document.querySelector('.pl-tegel.tg-storing').click(); 'ok'`);
+    const keuze = await app.ev(`(function(){ var k=[].slice.call(document.querySelectorAll('#wizardNieuwOv .wz-opt, #wizardNieuwOv button')).map(function(b){ return b.textContent; }); return k.join(' | '); })()`);
+    toets('"Ik merk niets bijzonders" staat bij de eerste vraag', /Ik merk niets bijzonders/.test(keuze), keuze.slice(0, 300));
+    await app.ev(`PLWizard.kies(4); 'ok'`);
+    toets('zonder klachttekst meteen het plan, met het onderzoek bovenaan', await wacht(`!!document.getElementById('wzOnderzoek')`, 3000));
+    await app.ev(`document.querySelector('#wzOnderzoek button').click(); 'ok'`);
+    toets('de controle staat aan als enige keuze', await app.ev(`!!document.querySelector('#plOzDoos .oz-chip.aan[data-k="controle"]') && document.querySelectorAll('#plOzDoos .oz-chip.aan[data-k]').length === 1`));
+    toets('en het onderzoek kan starten', await app.ev(`!document.querySelector('#plOzDoos [data-a="begin"]').disabled`));
+    await foto('controle-intake');
+    await app.ev(`PLOnderzoek.sluit(); 'ok'`);
     toets('geen JS-fouten tijdens het hele onderzoek', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     await app.stop();

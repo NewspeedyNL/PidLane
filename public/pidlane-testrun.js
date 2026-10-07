@@ -2771,6 +2771,41 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de energieweergave voor hybride en EV (#435) ──
+  {
+    issue: '#435',
+    naam: 'Slim visueel: een hybride opent op Energie (vermogen, accu, motor) en de ring volgt het pedaal',
+    waarom: 'De Neon-weergave toonde op een hybride een toerental van 0 terwijl de auto reed; hybride-dashboards tonen energie, en dat is nu de standaard.',
+    proef: async function () {
+      var Q = window.PLVisProfiel;
+      if (!Q || !Q.voor || !Q.toestandTekst || !Q.standaard) return { staat: 'FOUT', detail: 'PLVisProfiel.voor/toestandTekst ontbreekt — pidlane-visprofiel.js is niet de nieuwe' };
+      var h = Q.voor('motor', 'hybride');
+      if (h.naam !== 'Energie' || h.plekken[0].rol !== 'energie') return { staat: 'FOUT', detail: 'een hybride ziet ' + h.naam + ' met ' + h.plekken[0].rol };
+      if (Q.standaard('hybride') !== 'motor' || Q.standaard('benzine') !== 'basis') return { staat: 'FOUT', detail: 'de standaardweergave klopt niet' };
+      if (Q.toestandTekst({ toestand: 'ACCU_RIJDT' }, { laden: true }) !== 'Laden') return { staat: 'FOUT', detail: 'laden wint niet van de toestand' };
+      var nu = (typeof detectEngineType === 'function') ? detectEngineType() : '?';
+      return { staat: 'OK', detail: 'Energie bij hybride/EV; deze auto: ' + nu + (nu === 'hybride' || nu === 'ev' ? ' — opent op Energie' : ' — opent op Basis') };
+    }
+  },
+
+  // ── het volledige onderzoek zonder klacht (#434) ──
+  {
+    issue: '#434',
+    naam: 'Volledig onderzoek zonder klacht: de brede ronde, en de knop bij een groene check',
+    waarom: 'Wie niets merkte maar het zeker wilde weten, kwam niet in het onderzoek; dat kon alleen met een klacht of een oranje/rode check.',
+    proef: async function () {
+      var O = window.PLOnderzoek, F = window.PLFoutcodes;
+      if (!O || !O.nieuw || !O.KLACHTEN || !O.KLACHTEN.controle) return { staat: 'FOUT', detail: 'de klacht "controle" ontbreekt — pidlane-onderzoek.js is niet de nieuwe' };
+      var st = O.nieuw({ klachten: ['controle'], brandstof: 'diesel' });
+      var n = Object.keys(st.v).length;
+      if (!st.v.kat || !st.v.dpf || n !== 11) return { staat: 'FOUT', detail: 'diesel-controle heeft ' + n + ' verdenkingen: ' + Object.keys(st.v).join(',') };
+      if (!F || !F._tekenOordeel) return { staat: 'FOUT', detail: 'PLFoutcodes._tekenOordeel ontbreekt' };
+      var groen = F._tekenOordeel({ codes: { bevestigd: [], pending: [], permanent: [] }, gelezen: { bevestigd: true, pending: true, permanent: true }, readiness: null, sinds: {} });
+      if (!/Toch grondig onderzoeken/.test(groen)) return { staat: 'FOUT', detail: 'een groene check toont de knop niet' };
+      return { staat: 'OK', detail: 'brede ronde (diesel ' + n + ' verdenkingen) en de knop bij groen' };
+    }
+  },
+
   // ── de vermogensnaald (#432) ──
   {
     issue: '#432',

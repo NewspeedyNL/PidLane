@@ -902,6 +902,9 @@
       h += '<button class="fc-k hoofd" onclick="PLFoutcodes._vervolg(\'oorzaak\')">🔧 Oorzaak laten zoeken</button>';
       if (alle.length) h += '<button class="fc-k" onclick="PLFoutcodes._vervolg(\'onderdeel\')">🔩 Welk onderdeel?</button>';
     }
+    // Groen is "niets gevonden", niet "niets mis" (#434): het volledige
+    // onderzoek kan dan toch de brede ronde doen.
+    else if (o.kleur === 'groen' && window.PLOnderzoek) h += '<button class="fc-k hoofd" onclick="PLFoutcodes._vervolg(\'controle\')">🧭 Toch grondig onderzoeken</button>';
     h += '<button class="fc-k" onclick="PLFoutcodes._vervolg(\'grondig\')">🩺 Grondiger laten kijken</button></div>';
     return h;
   }
@@ -913,6 +916,7 @@
       // Sinds #428 het volledige onderzoek, met deze uitlezing als eerste stap:
       // de lijst losse modules achter de wizard was precies het probleem.
       if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }
+      else if (wat === 'controle') PLOnderzoek.open({ scan: _st.scan, controle: true });
       else if (wat === 'grondig') PLWizard.open('conditie');
       else if (wat === 'onderdeel') {
         var w = document.getElementById('welcomeScreen'); if (w) w.classList.add('hidden');
@@ -1054,6 +1058,7 @@
     oordeelReadiness: oordeelReadiness,
     softwareAdvies: softwareAdvies,
     _tekenReadiness: tekenReadiness,
+    _tekenOordeel: tekenOordeel,
     wisUitslag: wisUitslag,
     magWissen: magWissen,
     vergelijk: vergelijk,

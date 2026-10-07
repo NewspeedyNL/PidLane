@@ -117,7 +117,8 @@ var PL_HULP = {
       tekst:
         '<p>Leest de foutcodes en de keuringsstatus uit en zet de uitkomst in één stoplicht. Daaronder staan de codes en drie vervolgstappen:</p>' +
         '<ul>' +
-        '<li><b>🔧 Oorzaak laten zoeken</b> — start het <a data-hulp="onderzoek">volledige onderzoek</a>, met deze uitlezing als eerste stap</li>' +
+        '<li><b>🔧 Oorzaak laten zoeken</b> — bij rood of oranje: start het <a data-hulp="onderzoek">volledige onderzoek</a>, met deze uitlezing als eerste stap</li>' +
+        '<li><b>🧭 Toch grondig onderzoeken</b> — bij groen: hetzelfde onderzoek zonder klacht, als brede controle</li>' +
         '<li><b>🔩 Welk onderdeel?</b></li>' +
         '<li><b>🩺 Grondiger laten kijken</b></li>' +
         '</ul>' +
@@ -132,6 +133,8 @@ var PL_HULP = {
       tekst:
         '<p>Bij <b>Er is iets mis</b> staat bovenaan het plan <b>🧭 Volledig onderzoek</b>. Het werkt zoals een monteur: het stelt verdenkingen op uit je klacht, ' +
         'en kiest steeds de stap die er de meeste tegelijk kan bevestigen of uitsluiten.</p>' +
+        '<p>Merk je niets maar wil je het zeker weten? Kies bij <b>Er is iets mis</b> voor <b>Ik merk niets bijzonders</b>, of tik bij een groene <a data-hulp="check">Check mijn auto</a> op <b>🧭 Toch grondig onderzoeken</b>. ' +
+        'Het onderzoek begint dan met een brede ronde: valse lucht, luchtmassameter, lambda en katalysator, thermostaat, accu en laden, en ontsteking. Bij een diesel komen het roetfilter, de EGR-klep en software erbij.</p>' +
         '<ul>' +
         '<li><b>Meten</b> — soms met een opdracht erbij, zoals gas geven tot 2500 tpm. Je ziet de sensoren live meelopen.</li>' +
         '<li><b>Vragen</b> — wat geen sensor ziet, zoals de kleur van de rook.</li>' +
@@ -163,7 +166,7 @@ var PL_HULP = {
         '<li><b>Slim</b> — de standaard: dashboardwaarden groot, trends alleen waar iets beweegt.</li>' +
         '<li><b>Visueel</b> — één vaste meter. De naald toont het toerental; bij een hybride of elektrische auto, en bij een auto die geen toerental geeft, toont hij hoeveel vermogen je met het gaspedaal vraagt. Links van nul, in groen, staat de laadzone: gas los en afremmen, wanneer een hybride energie terugwint. Dat is een schatting uit de vertraging, geen gemeten laadstroom. Onder de snelheid staan koelwater, gaspedaal en brandstof als balkjes; ' +
         'rechtsboven de accu (bij een hybride de aandrijfaccu én de 12V-accu), rechtsonder een autootje met de vier banden. ' +
-        'Met <b>Volgende</b> boven de meter wissel je tussen zes weergaven: Basis, Temperatuur (glas), Emissie, Verbruik (digitaal), Motor (neon) en Telemetrie: de horizon, de G-kracht en de auto van opzij en van achteren op één scherm. Telemetrie gebruikt de sensoren van je telefoon; zet de telefoon in de houder, de auto stil op vlakke grond, en tik op <b>Nulstellen</b> onder het scherm Telemetrie (of in Sensoren bij Telemetrie). Pas dan, en alleen zolang de telefoon stil in de houder zit, tellen deze metingen mee in rapporten en analyses; ligt hij op schoot of los in een vakje, dan zijn ze heel dof en tellen ze niet mee. Is een plek leeg of wil je er iets anders zien, tik er dan op en kies zelf een sensor; <b>Automatisch</b> zet hem terug. Een eigen sensor met dezelfde naam (zoals een motorolietemperatuur uit Mijn voertuigen) vult de plek ook vanzelf. Bij een diesel tonen Emissie, Verbruik, Motor en Temperatuur wat bij een diesel hoort: roetfilter, NOx, AdBlue, laaddruk, injectie en uitlaatgas in plaats van lambda, brandstoftrims en ontsteking. ' +
+        'Met <b>Volgende</b> boven de meter wissel je tussen zes weergaven: Basis, Temperatuur (glas), Emissie, Verbruik (digitaal), Motor (neon; bij een hybride of elektrische auto heet hij <b>Energie</b>: ringen voor het gevraagde vermogen, groen bij terugwinnen, de aandrijfaccu en de motor, met in het midden EV, Motor, Laden of Stil. Een hybride opent hier, tot je zelf een andere weergave kiest) en Telemetrie: de horizon, de G-kracht en de auto van opzij en van achteren op één scherm. Telemetrie gebruikt de sensoren van je telefoon; zet de telefoon in de houder, de auto stil op vlakke grond, en tik op <b>Nulstellen</b> onder het scherm Telemetrie (of in Sensoren bij Telemetrie). Pas dan, en alleen zolang de telefoon stil in de houder zit, tellen deze metingen mee in rapporten en analyses; ligt hij op schoot of los in een vakje, dan zijn ze heel dof en tellen ze niet mee. Is een plek leeg of wil je er iets anders zien, tik er dan op en kies zelf een sensor; <b>Automatisch</b> zet hem terug. Een eigen sensor met dezelfde naam (zoals een motorolietemperatuur uit Mijn voertuigen) vult de plek ook vanzelf. Bij een diesel tonen Emissie, Verbruik, Motor en Temperatuur wat bij een diesel hoort: roetfilter, NOx, AdBlue, laaddruk, injectie en uitlaatgas in plaats van lambda, brandstoftrims en ontsteking. ' +
         'De app onthoudt je keuze.</li>' +
         '</ul>' +
         '<p>Een dubbeltik op een tegel verbergt hem. Hij wordt wel gewoon gemeten en staat daarna in een strook om terug te halen.</p>' +

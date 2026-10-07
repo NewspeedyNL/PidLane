@@ -1615,6 +1615,18 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vpf-legenda .r-last i { background:#28e0ff; box-shadow:0 0 6px #28e0ff; }
 .vpf-legenda .r-gasklep i { background:#b7ff3c; box-shadow:0 0 6px #b7ff3c; }
 .vpf-legenda b { color:#fff; }
+/* De energieweergave van een hybride (#435): vraag in elektrisch blauw, laden
+   in groen, de accu in cyaan, de motor in het roze van de toerenring. */
+.vpf-ring.r-energie .vpf-ring-vul { stroke:#4d8dff; filter:drop-shadow(0 0 5px #4d8dff); }
+.vpf-ring.r-energie.laden .vpf-ring-vul { stroke:#3dff9a; filter:drop-shadow(0 0 6px #3dff9a); }
+.vpf-ring.r-hvaccu .vpf-ring-vul { stroke:#28e0ff; filter:drop-shadow(0 0 4px #28e0ff); }
+.vpf-ring.r-motor .vpf-ring-vul { stroke:#ff3ea5; filter:drop-shadow(0 0 4px #ff3ea5); }
+.vpf-legenda .r-energie i { background:#4d8dff; box-shadow:0 0 6px #4d8dff; }
+.vpf-legenda .r-hvaccu i { background:#28e0ff; box-shadow:0 0 6px #28e0ff; }
+.vpf-legenda .r-motor i { background:#ff3ea5; box-shadow:0 0 6px #ff3ea5; }
+.vpf-neon-toestand { fill:#f2eaff; font-family:var(--f); font-size:22px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
+.vpf-neon-toestand[data-t="EV"] { fill:#4d8dff; } .vpf-neon-toestand[data-t="Laden"] { fill:#3dff9a; } .vpf-neon-toestand[data-t="Motor"] { fill:#ff7cc4; }
+.vpf-neon-groot.klein { font-size:24px; }
 .vpf-neon-getallen { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:14px; }
 .vpf-neon-getallen > div { display:flex; flex-direction:column; align-items:center; padding:8px 4px; border-radius:12px; border:1px solid rgba(183,140,255,.28); background:rgba(255,255,255,.03); min-width:0; }
 .vpf-neon-getallen small { font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#b9a8e6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }

@@ -354,6 +354,31 @@ function beoordeel(m) {
     toets('hybride: vermogensplaat, geen toerenplaat', hyb.vraagboog && !hyb.toerenboog, JSON.stringify(hyb));
     toets('hybride: de naald staat in rust op nul en gaat naar rechts bij gas', hyb.rust !== null && hyb.vol > hyb.rust + 100, JSON.stringify(hyb));
 
+    console.log('\n9. Een hybride zonder eigen keuze opent op de energieweergave (#435)');
+    const en = await app.ev(`(async function(){
+      const echt=window.detectEngineType;
+      window.detectEngineType=function(){ return 'hybride'; };
+      try{
+        try{ localStorage.removeItem(PLVisProfiel.SLEUTEL); }catch(e){}
+        setPidView('slim'); setPidView('visueel');
+        await new Promise(function(r){ setTimeout(r, 50); });
+        const r={ naam:(document.querySelector('.vis-profiel-naam b')||{}).textContent,
+                  toestand:!!document.getElementById('vpf-w-toestand'), ring:!!document.getElementById('vpf-f-energie'),
+                  toerenGetal:!!document.getElementById('vpf-w-toeren') };
+        PLVisueel.bij('0149', 0); PLVisueel.bij('0149', 60);
+        r.vol=document.getElementById('vpf-f-energie').getAttribute('stroke-dasharray');
+        r.tekst=(document.getElementById('vpf-w-energie')||{}).textContent;
+        return r;
+      } finally {
+        window.detectEngineType=echt;
+        try{ localStorage.removeItem(PLVisProfiel.SLEUTEL); }catch(e){}
+        setPidView('slim'); setPidView('visueel');
+      }
+    })()`);
+    toets('hybride: de weergave heet Energie', en.naam === 'Energie', JSON.stringify(en));
+    toets('hybride: toestand en energiering in beeld, geen toerental-getal', en.toestand && en.ring && !en.toerenGetal, JSON.stringify(en));
+    toets('gas geven vult de energiering', /^[1-9]/.test(en.vol || '') && /%$/.test(en.tekst || ''), JSON.stringify(en));
+
     toets('geen fouten in de console', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     if (app) await app.stop();

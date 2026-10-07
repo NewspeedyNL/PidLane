@@ -102,7 +102,25 @@ const PROFIELEN = [
       { rol:'timing',   naam:'Ontsteking',  keten:['010E','015D'], eenheid:'°', soort:'getal', lo:-40, hi:60, dec:0,
         diesel:{ naam:'Injectie', keten:['015D'] } },
       { rol:'maf',      naam:'Luchtmassa',  keten:['0110'], eenheid:'g/s', soort:'getal', lo:0, hi:655, dec:1 }
-    ] },
+    ],
+    // HYBRIDE EN EV (07-10-2026, #435). Op een hybride zegt het toerental de
+    // helft van de tijd 0, en gasklep en luchtmassa zijn van een motor die
+    // vaak stilstaat. Wat er wél telt is wat een hybride-dashboard ook toont:
+    // hoeveel vermogen je vraagt, of hij terugwint, hoe vol de accu is, en of
+    // de motor meedoet. Een eigen lijst en geen per-plek-vervanging zoals bij
+    // de diesel: het zijn andere grootheden, niet dezelfde onder een andere
+    // naam. De energiering heeft geen eigen PID-waarde: pidlane-visueel.js
+    // rekent hem uit (vraag uit het pedaal, laden uit de vertraging, net als
+    // de vermogensnaald van #432) en zet hem via energie() hieronder.
+    hybride:{ naam:'Energie', ondertitel:'Neon', plekken:[
+      { rol:'energie', naam:'Vermogen',     keten:['015A','0149','014A'], eenheid:'', soort:'energie', lo:0, hi:100, dec:0 },
+      { rol:'hvaccu',  naam:'Aandrijfaccu', keten:['015B'], eenheid:'%', soort:'ring', lo:0, hi:100, dec:0 },
+      { rol:'motor',   naam:'Motor',        keten:['010C'], eenheid:'rpm', soort:'ring', lo:0, hi:6000, dec:0 },
+      { rol:'snel',    naam:'Snelheid',     keten:['010D'], eenheid:'km/h', soort:'kern', lo:0, hi:250, dec:0 },
+      { rol:'volt',    naam:'12V-accu',     keten:['0142'], eenheid:'V', soort:'getal', lo:0, hi:20, dec:1 },
+      { rol:'last',    naam:'Belasting',    keten:['0104','0143'], eenheid:'%', soort:'getal', lo:0, hi:100, dec:0 },
+      { rol:'verbruik',naam:'Verbruik nu',  keten:['CA03','015E'], eenheid:'', soort:'getal', lo:0, hi:50, dec:1 }
+    ] } },
   // Telemetrie (05-10-2026): de telefoonsensoren van pidlane-telemetrie.js.
   // Tot 06-10-2026 drie losse schermen (Horizon, Offroad, G-kracht); nu één,
   // uit het gebruik: helling en G-kracht horen bij hetzelfde moment, en
@@ -121,13 +139,15 @@ const PROFIELEN = [
 ];
 // De ringen van buiten naar binnen; de straal staat hier en niet in de CSS,
 // want de tekening is een SVG met een vaste viewBox.
-const RING_R = { toeren:86, last:68, gasklep:50 };
+const RING_R = { toeren:86, last:68, gasklep:50, energie:86, hvaccu:68, motor:50 };
+function elektrisch(motor){ return motor==='hybride' || motor==='ev'; }
 
 function zoek(id){ for(let i=0;i<PROFIELEN.length;i++){ if(PROFIELEN[i].id===id) return PROFIELEN[i]; } return null; }
 /* De plekken van een profiel voor deze motor. Puur. Een diesel krijgt de
    diesel-velden van een plek in de plaats, of de plek valt weg (false). */
 function plekkenVan(p, motor){
   if(!p || !p.plekken) return null;
+  if(elektrisch(motor) && p.hybride) return p.hybride.plekken;
   if(motor!=='diesel') return p.plekken;
   return p.plekken.filter(function(x){ return x.diesel!==false; })
     .map(function(x){ return x.diesel ? Object.assign({}, x, x.diesel) : x; });
@@ -135,7 +155,9 @@ function plekkenVan(p, motor){
 /* Het profiel zoals deze motor het ziet: dezelfde velden, andere plekken. */
 function voor(id, motor){
   const p=zoek(id);
-  return (p && p.plekken) ? Object.assign({}, p, { plekken:plekkenVan(p, motor) }) : p;
+  if(!p || !p.plekken) return p;
+  const h=(elektrisch(motor) && p.hybride) ? { naam:p.hybride.naam, ondertitel:p.hybride.ondertitel } : {};
+  return Object.assign({}, p, h, { plekken:plekkenVan(p, motor) });
 }
 function geldig(id){ return !!zoek(id); }
 /* Het profiel na `id`, rond. Onbekend = het eerste na de basis. */
@@ -146,9 +168,12 @@ function volgende(id){
 // De drie losse telemetrieschermen van vóór 06-10-2026: wie er een gekozen
 // had, komt op het samengevoegde scherm uit en niet terug op Basis.
 const OUD_PROFIEL = { 'tel-horizon':'telemetrie', 'tel-offroad':'telemetrie', 'tel-g':'telemetrie' };
-function lees(){
-  try{ let v=localStorage.getItem(SLEUTEL); if(OUD_PROFIEL[v]) v=OUD_PROFIEL[v]; return geldig(v) ? v : 'basis'; }
-  catch(e){ console.warn('PLVisProfiel: keuze niet te lezen, basis', e); return 'basis'; }
+/* `motor` mag weg. Heeft de bestuurder nog niets gekozen, dan opent een
+   hybride of EV op de energieweergave (#435); een eigen keuze gaat altijd voor. */
+function standaard(motor){ return elektrisch(motor) ? 'motor' : 'basis'; }
+function lees(motor){
+  try{ let v=localStorage.getItem(SLEUTEL); if(OUD_PROFIEL[v]) v=OUD_PROFIEL[v]; return geldig(v) ? v : standaard(motor); }
+  catch(e){ console.warn('PLVisProfiel: keuze niet te lezen, standaard', e); return standaard(motor); }
 }
 function bewaar(id){
   try{ localStorage.setItem(SLEUTEL, id); }
@@ -316,7 +341,7 @@ function htmlDigitaal(p, ind){
   return h;
 }
 function htmlNeon(p, ind){
-  const ringen=p.plekken.filter(function(x){ return x.soort==='ring'; });
+  const ringen=p.plekken.filter(function(x){ return x.soort==='ring' || x.soort==='energie'; });
   let svg='<svg class="vpf-ringen" viewBox="0 0 200 200" role="img" aria-label="'+esc(ringen.map(function(x){ return x.naam; }).join(', '))+'">';
   ringen.forEach(function(x){
     const r=RING_R[x.rol], pid=ind.plekken[x.rol];
@@ -326,8 +351,16 @@ function htmlNeon(p, ind){
       '<circle class="vpf-ring-bak" cx="100" cy="100" r="'+r+'" pathLength="100" stroke-dasharray="75 100" transform="rotate(135 100 100)"/>'+
       '<circle class="vpf-ring-vul vpf-f" id="vpf-f-'+x.rol+'" cx="100" cy="100" r="'+r+'" pathLength="100" stroke-dasharray="0 100" transform="rotate(135 100 100)"/></g>';
   });
-  svg+='<text class="vpf-neon-groot vpf-w" id="vpf-w-toeren" x="100" y="104" text-anchor="middle">—</text>'+
-       '<text class="vpf-neon-eenheid" x="100" y="124" text-anchor="middle">rpm</text></svg>';
+  if(plekVan(p, 'energie')){
+    // Het midden van een hybride: wat de aandrijving doet, met de snelheid
+    // eronder. Toestand en snelheid zijn tekst; ze komen via energie() en bij().
+    svg+='<text class="vpf-neon-toestand" id="vpf-w-toestand" x="100" y="96" text-anchor="middle">—</text>'+
+         '<text class="vpf-neon-groot klein vpf-w" id="vpf-w-snel" x="100" y="126" text-anchor="middle">—</text>'+
+         '<text class="vpf-neon-eenheid" x="100" y="142" text-anchor="middle">km/h</text></svg>';
+  } else {
+    svg+='<text class="vpf-neon-groot vpf-w" id="vpf-w-toeren" x="100" y="104" text-anchor="middle">—</text>'+
+         '<text class="vpf-neon-eenheid" x="100" y="124" text-anchor="middle">rpm</text></svg>';
+  }
   const leg='<div class="vpf-legenda">'+ringen.filter(function(x){ return !x.groot; }).map(function(x){
     return '<span class="r-'+x.rol+'"><i></i>'+esc(x.naam)+' <b class="vpf-w" id="vpf-w-'+x.rol+'">—</b>'+esc(x.eenheid)+'</span>';
   }).join('')+'</div>';
@@ -432,6 +465,8 @@ function bij(id, ind, pid, val, st){
   if(!p || !p.plekken || !ind) return;
   p.plekken.forEach(function(x){
     if(ind.plekken[x.rol]!==pid) return;
+    // De energiering is geen ruwe pedaalwaarde: die zet energie().
+    if(x.soort==='energie') return;
     const d=deel(val, x.lo, x.hi);
     // De ring van het toerental: 0–8000, op een diesel 0–6000 (#393), net
     // als de schaal van de basismeter.
@@ -502,6 +537,33 @@ function telBij(x, val){
   else if(x.soort==='draai') f.setAttribute('transform', 'rotate('+(-v).toFixed(1)+' 100 100)');
   else f.setAttribute('transform', 'rotate('+((x.teken||1)*v).toFixed(1)+' 100 112)');
 }
+/* Het woord in het midden van de energieweergave. Puur. `res` = de uitkomst
+   van PLAandrijving, `stand` = vermogenStand() uit pidlane-visueel.js.
+   Laden wint: dat is het moment waar een hybride om draait. "Motor" en niet
+   "Hybride" als de motor draait: of de accu dan meehelpt, ziet standaard-OBD
+   niet, en een woord dat iets beweert wat niet gemeten is hoort hier niet. */
+const TOESTAND_TEKST = { ACCU_RIJDT:'EV', DRAAIT_RIJDT:'Motor', DRAAIT_STIL:'Motor', START:'Start',
+                         STARTSTOP:'Stil', UIT_VOOR_START:'Stil' };
+function toestandTekst(res, stand){
+  if(stand && stand.laden) return 'Laden';
+  const t=res && res.toestand;
+  return (t && TOESTAND_TEKST[t]) || '—';
+}
+/* De energiering en het midden bijwerken. Eén ring, twee betekenissen: blauw
+   gevuld met de vraag, of groen gevuld met het laden. */
+function energie(id, ind, stand, res){
+  const p=voorInd(id, ind);
+  if(!p || !p.plekken || !plekVan(p, 'energie')) return;
+  const f=el('vpf-f-energie'), g=el('vpf-p-energie');
+  const v=!stand || stand.leeg ? 0 : (stand.laden ? stand.laad : stand.vraag);
+  if(f) f.setAttribute('stroke-dasharray', (Math.max(0, Math.min(100, v))*0.75).toFixed(1)+' 100');
+  if(g){ g.classList.toggle('laden', !!(stand && stand.laden)); g.classList.toggle('leeg', !stand || stand.leeg); }
+  zetTekst('vpf-w-energie', stand ? stand.tekst : '—');
+  const t=toestandTekst(res, stand), m=el('vpf-w-toestand');
+  zetTekst('vpf-w-toestand', t);
+  if(m) m.setAttribute('data-t', t);
+}
+
 /* Dof zetten wat oud is. `oud(pid)` komt uit pidlane-visueel.js. */
 function dof(id, ind, oud){
   const p=voorInd(id, ind);
@@ -524,7 +586,8 @@ function pids(ind){
 
 window.PLVisProfiel = {
   PROFIELEN:PROFIELEN, SEG:SEG, SLEUTEL:SLEUTEL,
-  zoek:zoek, geldig:geldig, plekkenVan:plekkenVan, volgende:volgende, lees:lees, bewaar:bewaar,
+  zoek:zoek, voor:voor, geldig:geldig, plekkenVan:plekkenVan, volgende:volgende, lees:lees, bewaar:bewaar,
+  standaard:standaard, energie:energie, toestandTekst:toestandTekst,
   indeling:indeling, ketens:ketens, deel:deel, tekst:tekst, html:html, bij:bij, dof:dof, pids:pids,
   KEUZE_SLEUTEL:KEUZE_SLEUTEL, keuzes:keuzes, zetKeuze:zetKeuze, ketenVan:ketenVan, voorInd:voorInd, nulstellen:nulstellen,
   G_PIEK_MS:G_PIEK_MS, gPiek:gPiek, gPunt:gPunt, gWis:gWis

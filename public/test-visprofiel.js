@@ -326,5 +326,56 @@ console.log('\n— een plek zelf invullen: op naam, met de hand, nooit dubbel �
   waar('Nulstellen roept PLTelemetrie.nulstellen() aan', P.nulstellen() === true);
 }
 
+console.log('\nH. De energieweergave voor hybride en EV (#435)');
+{
+  const H = laad(BRON), Q = H.PLVisProfiel;
+  waar('hybride zonder keuze: opent op de energieweergave', Q.lees('hybride') === 'motor');
+  waar('EV zonder keuze: ook', Q.lees('ev') === 'motor');
+  waar('benzine zonder keuze: basis, zoals altijd', Q.lees('benzine') === 'basis' && Q.lees() === 'basis');
+  Q.bewaar('temp');
+  waar('een eigen keuze gaat voor, ook bij een hybride', Q.lees('hybride') === 'temp');
+
+  const hyb = Q.voor('motor', 'hybride'), ben = Q.voor('motor', 'benzine'), die = Q.voor('motor', 'diesel');
+  waar('hybride: de weergave heet Energie', hyb.naam === 'Energie' && ben.naam === 'Motor' && die.naam === 'Motor', [hyb.naam, ben.naam, die.naam].join());
+  const rollen = hyb.plekken.map(x => x.rol).join();
+  waar('hybride: energie, aandrijfaccu, motor, snelheid en drie tegels', rollen === 'energie,hvaccu,motor,snel,volt,last,verbruik', rollen);
+  waar('benzine houdt toeren, belasting en gasklep', ben.plekken.map(x => x.rol).slice(0, 3).join() === 'toeren,last,gasklep');
+  waar('de energiering leest het pedaal, niet de gasklep', hyb.plekken[0].keten.indexOf('0111') < 0 && hyb.plekken[0].keten[0] === '015A');
+
+  const ind = Q.indeling('motor', mag(['0149', '015B', '010C', '010D', '0142', '0104']), 'hybride');
+  waar('indeling: energie op 0149, accu op 015B, motor op 010C, snelheid op 010D', ind.plekken.energie === '0149' && ind.plekken.hvaccu === '015B' && ind.plekken.motor === '010C' && ind.plekken.snel === '010D', JSON.stringify(ind.plekken));
+  const ketens = Q.ketens('motor', 'hybride');
+  waar('de ketens zetten pedaal en snelheid aan', ketens.some(k => k.indexOf('0149') >= 0) && ketens.some(k => k.indexOf('010D') >= 0));
+
+  const html = Q.html('motor', ind), hb = Q.html('motor', Q.indeling('motor', mag(['010C', '0104', '0111']), 'benzine'));
+  waar('hybride: een toestand in het midden, geen toerental-getal', /id="vpf-w-toestand"/.test(html) && /id="vpf-w-snel"/.test(html) && !/id="vpf-w-toeren"/.test(html));
+  waar('hybride: drie ringen, met de energiering buiten', /r-energie/.test(html) && /r-hvaccu/.test(html) && /r-motor/.test(html) && /r="86"[\s\S]*?id="vpf-f-energie"/.test(html));
+  waar('hybride: de snelheid is geen tegel', !/<small>Snelheid<\/small>/.test(html));
+  waar('benzine: onveranderd, toerental in het midden', /id="vpf-w-toeren"/.test(hb) && !/vpf-w-toestand/.test(hb));
+
+  // Het woord in het midden.
+  const T = Q.toestandTekst;
+  waar('accu rijdt: EV', T({ toestand: 'ACCU_RIJDT' }, { laden: false }) === 'EV');
+  waar('motor draait: Motor (niet "Hybride": dat ziet OBD niet)', T({ toestand: 'DRAAIT_RIJDT' }, { laden: false }) === 'Motor');
+  waar('laden wint van de toestand', T({ toestand: 'DRAAIT_RIJDT' }, { laden: true }) === 'Laden');
+  waar('start/stop: Stil', T({ toestand: 'STARTSTOP' }, null) === 'Stil');
+  waar('onbekend: een streepje', T({ toestand: 'ONBEKEND' }, null) === '—' && T(null, null) === '—');
+
+  // energie() op een nep-DOM.
+  const els = {};
+  const elm = () => { const k = new Set(), a = {}; return { textContent: '', setAttribute: (n, v) => { a[n] = v; }, getAttribute: n => a[n], classList: { toggle: (c, v) => { if (v) k.add(c); else k.delete(c); }, contains: c => k.has(c) } }; };
+  ['vpf-f-energie', 'vpf-p-energie', 'vpf-w-energie', 'vpf-w-toestand'].forEach(id => { els[id] = elm(); });
+  H.document = { getElementById: id => els[id] || null };
+  Q.energie('motor', ind, { leeg: false, vraag: 60, laad: 0, laden: false, tekst: '60%' }, { toestand: 'ACCU_RIJDT' });
+  waar('vraag 60%: de ring 45 van 75 gevuld, blauw', els['vpf-f-energie'].getAttribute('stroke-dasharray') === '45.0 100' && !els['vpf-p-energie'].classList.contains('laden'), els['vpf-f-energie'].getAttribute('stroke-dasharray'));
+  waar('…met 60% en EV erbij', els['vpf-w-energie'].textContent === '60%' && els['vpf-w-toestand'].textContent === 'EV');
+  Q.energie('motor', ind, { leeg: false, vraag: 0, laad: 40, laden: true, tekst: 'laden' }, { toestand: 'ACCU_RIJDT' });
+  waar('laden 40%: de ring groen, 30 van 75', els['vpf-p-energie'].classList.contains('laden') && els['vpf-f-energie'].getAttribute('stroke-dasharray') === '30.0 100' && els['vpf-w-toestand'].textContent === 'Laden');
+  Q.energie('motor', Q.indeling('motor', mag(['010C']), 'benzine'), { leeg: false, vraag: 99, laad: 0, laden: false, tekst: '99%' }, null);
+  waar('op de benzineweergave doet energie() niets', els['vpf-w-energie'].textContent === 'laden');
+  Q.bij('motor', ind, '0149', 15, 'ok');
+  waar('een ruwe pedaalwaarde (15% in rust) overschrijft de energiering niet', els['vpf-f-energie'].getAttribute('stroke-dasharray') === '30.0 100' && els['vpf-w-energie'].textContent === 'laden');
+}
+
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + (ok + fout) : 'goed: ' + ok + ' ok, 0 fout'));
 process.exit(fout ? 1 : 0);

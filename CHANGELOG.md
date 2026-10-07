@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Energieweergave voor hybride (#435), onderzoek zonder klacht (#434)
+ ═══════════════════════════════════════════════════════════
+
+ - Slim visueel → Motor (Neon) heet op een hybride of EV "Energie": ringen
+   voor vermogensvraag (groen bij terugwinnen), aandrijfaccu (015B) en
+   motor (010C); in het midden EV / Motor / Laden / Stil met de snelheid;
+   tegels 12V, belasting, verbruik. Een hybride opent hier zolang er geen
+   eigen keuze is.
+ - Volledig onderzoek zonder klacht: "🧭 Toch grondig onderzoeken" bij een
+   groene Check mijn auto, en "Ik merk niets bijzonders" bij Er is iets
+   mis. Brede ronde: valse lucht, MAF, lambda/kat, thermostaat, accu en
+   laden, misfire; bij een diesel ook roetfilter, EGR en software.
+ - Handleiding, test-visprofiel.js, test-onderzoek.js, bproef-visueel.js
+   deel 9, bproef-onderzoek.js deel 5, zeven mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Slim visueel: vermogensnaald, en altijd open (#432)
  ═══════════════════════════════════════════════════════════
 
