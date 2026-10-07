@@ -10,6 +10,32 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Check mijn auto: software als oorzaak bij de keuringsstatus (#426)
+ ═══════════════════════════════════════════════════════════
+
+ - Het readiness-blok toont "🧩 Mogelijk software, geen kapot onderdeel" met
+   het bewijs, wat er ingeleerd moet worden, de software voor dit merk en de
+   waarschuwing. Ook in de bewaartekst. Niet direct na zelf wissen.
+ - softwareOorzaken: P2452–P2455 en P2463 eruit (sensor/vol filter, geen
+   software); zwakke functies tellen alleen na een vervanging, zodat een
+   gewone P0420 geen "adaptaties wissen" wordt.
+ - Handleiding Check mijn auto bijgewerkt. Toetsen in test-foutcodes.js en
+   test-softwareoorzaak.js, drie mutaties erbij, blok 5 toetst de koppeling.
+
+ ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Kennis: software/codering als oorzaak, niet de sensor (#426)
+ ═══════════════════════════════════════════════════════════
+
+ - pidlane-data.js: SOFTWARE_OORZAKEN — acht inleer-/coderingsfuncties
+   (roetfilter, SCR, EGR, gasklep, injectorcodes, adaptaties, ECU, accu) met
+   het symptoom dat ze verklaren en de tools per merkgroep (SOFTWARE_TOOLS).
+ - softwareOorzaken(ctx) geeft alleen functies mét bewijs: een monitor die na
+   300 km / 15× warmdraaien nog hangt, een foutcode, een afwijkend VIN of een
+   vervangen onderdeel. Nog geen UI; koppeling volgt in #426.
+ - test-softwareoorzaak.js (laadt de echte parseReadiness), drie mutaties,
+   blok 5.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Brede controle: vier stille fouten en twee eigen restpunten
  ═══════════════════════════════════════════════════════════
 

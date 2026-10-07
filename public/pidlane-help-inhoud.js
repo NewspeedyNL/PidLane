@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-06', app: '3.2.0' },
+  gecontroleerd: { datum: '2026-10-07', app: '3.2.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -122,6 +122,8 @@ var PL_HULP = {
         '<li><b>🩺 Grondiger laten kijken</b></li>' +
         '</ul>' +
         '<p><b>💾 Bewaren</b> legt de uitlezing vast.</p>' +
+        '<p>Blijft een zelftest lang na het wissen op <b>niet klaar</b> staan, of meldt de auto een code die bij een verkeerde instelling hoort, dan staat bij de keuringsstatus <b>🧩 Mogelijk software, geen kapot onderdeel</b>. ' +
+        'Dat betekent: een onderdeel is vervangen of weggehaald zonder dat de motorcomputer het weet. PidLane past daar niets aan; het zegt wat er ingeleerd moet worden en met welke software dat bij dit merk kan.</p>' +
         '<p><b>Foutcodes wissen</b> kan alleen als de voorwaarden kloppen: een verse uitlezing, contact aan, motor uit en de auto staat stil. ' +
         'Niet op afstand. Klopt er iets niet, dan zegt het venster wat. Bewaar de codes eerst: na wissen zijn ze weg.</p>',
       zie: ['startscherm', 'rapporten'] },

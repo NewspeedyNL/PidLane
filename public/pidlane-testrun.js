@@ -2771,6 +2771,27 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── software als oorzaak, niet de sensor (#426) ──
+  {
+    issue: '#426',
+    naam: 'Check mijn auto: een DPF-monitor die blijft hangen staat bij de keuringsstatus als mogelijk software; een vers gewiste auto niet',
+    waarom: 'Een BMW-diesel zonder roetfilter die de ECU nooit verteld was bleef op "niet klaar"; de oorzaak zat in de software, niet in een sensor.',
+    proef: async function () {
+      var softwareOorzaken = window.softwareOorzaken;
+      if (!softwareOorzaken || !window.SOFTWARE_OORZAKEN) return { staat: 'FOUT', detail: 'softwareOorzaken ontbreekt — pidlane-data.js is niet de nieuwe' };
+      var mon = ['Roetfilter (DPF)'];
+      var oud = softwareOorzaken({ merk: 'BMW', brandstof: 'diesel', nietKlaar: mon, sinds: { km: 2400 } });
+      var vers = softwareOorzaken({ merk: 'BMW', brandstof: 'diesel', nietKlaar: mon, sinds: { km: 40 } });
+      if (!oud.some(function (x) { return x.id === 'dpf'; })) return { staat: 'FOUT', detail: 'een DPF-monitor die na 2400 km hangt geeft geen inleerfunctie' };
+      if (vers.length) return { staat: 'FOUT', detail: '40 km na wissen geeft al een inleerfunctie: ' + vers.map(function (x) { return x.id; }).join(', ') };
+      var F = window.PLFoutcodes;
+      if (!F || !F._tekenReadiness) return { staat: 'FOUT', detail: 'PLFoutcodes._tekenReadiness ontbreekt — pidlane-foutcodes.js is niet de nieuwe' };
+      var scan = { codes: {}, sinds: { km: 2400 }, readiness: { brandstof: 'diesel', nietKlaar: mon, ondersteund: 1, monitors: [], mil: false } };
+      if (!/Mogelijk software/.test(F._tekenReadiness(scan))) return { staat: 'FOUT', detail: 'de keuringsstatus in Check mijn auto toont het software-advies niet' };
+      return { staat: 'OK', detail: window.SOFTWARE_OORZAKEN.length + ' inleer-/coderingsfuncties; de keuringsstatus toont het advies' };
+    }
+  },
+
   // ── ATST-geheugen is geen ratel (#414) ──
   {
     issue: '#414',

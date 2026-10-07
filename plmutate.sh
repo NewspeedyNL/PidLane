@@ -1735,6 +1735,15 @@ MUTATIES=(
 "public/pidlane-visueel.js@@      if(t) kiesPlek(t.id.slice(6));@@      if(t) void 0;@@bproef-visplek.js@@tikken op een plek van Slim visueel doet niets: de keuzelijst opent nooit"
 "public/pidlane-visprofiel.js@@        diesel:{ hi:6000 } },@@        diesel:{} },@@test-visprofiel.js@@de neonring van een diesel loopt tot 8000 tpm: 3000 staat er als bijna stationair — #393"
 "public/pidlane-functietest.js@@    plekkenVan(p, brandstof).forEach(@@    p.plekken.forEach(@@test-functietest.js@@de Full function test beoordeelt een diesel op de benzinekaart — #393"
+
+# ── Software als oorzaak (#426, 07-10-2026). Drie fouten die een vers gewiste
+# auto, een benzineauto of een gewone sensorcode naar "inleren" zouden sturen.
+"public/pidlane-data.js@@  const hangt = (sinds.km != null && sinds.km >= grens.km) || (sinds.warm != null && sinds.warm >= grens.warm);@@  const hangt = true;@@test-softwareoorzaak.js@@een monitor 40 km na wissen telt al als hangen: elke verse wis wordt een inleerprobleem"
+"public/pidlane-data.js@@    if (f.brandstof && (brandstof === 'diesel' || brandstof === 'benzine') && f.brandstof !== brandstof) return null;@@@@test-softwareoorzaak.js@@een benzineauto krijgt het roetfilter-inleren voorgeschoteld"
+"public/pidlane-data.js@@    if (!bewijs.length) return null;@@@@test-softwareoorzaak.js@@elke inleerfunctie verschijnt zonder enig bewijs, ook bij een gewone sensorcode"
+"public/pidlane-data.js@@    if (f.sterkte === 'zwak' && !aanleiding) return null;@@@@test-softwareoorzaak.js@@een gewone P0420 komt als \"adaptaties wissen\" op het scherm: de sensorkant wordt software"
+"public/pidlane-foutcodes.js@@    h += tekenSoftware(s, zelfGewist);\n@@@@test-foutcodes.js@@de keuringsstatus in Check mijn auto zegt nooit dat het software kan zijn — #426"
+"public/pidlane-foutcodes.js@@    if (!s || zelfGewist) return [];@@    if (!s) return [];@@test-foutcodes.js@@direct na zelf wissen wijst elke hangende monitor naar inleren — #426"
 )
 
 echo
