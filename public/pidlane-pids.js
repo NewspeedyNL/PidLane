@@ -214,6 +214,12 @@ function renderGauges(){
     try{ renderVerborgenStrook(); }catch(e){ console.warn('verborgen-strook mislukt:', e); }
     return;
   }
+  // Slim is sinds 07-10-2026 je eigen dashboard (#439): de tegels, hun soort
+  // en volgorde staan in pidlane-dashboard.js, per auto bewaard.
+  if(pidViewMode==='slim' && window.PLDash){
+    try{ PLDash.bouw(g); }catch(e){ console.warn('PLDash.bouw mislukt:', e); }
+    return;
+  }
   // Zelfde volgorde als de PID-keuzelijst: per motoronderdeel (Motor → Temp →
   // Brandstof → ... → Overig). discoveredPIDDefs is al zo gesorteerd; PIDs
   // die daar niet in staan komen achteraan. Voorheen: Set-invoegvolgorde.
@@ -867,7 +873,8 @@ const OVZ_KORT = { '010D':'Snelheid', '010C':'Toerental', '0104':'Belasting', '0
   '015A':'Gaspedaal', '010B':'Inlaatdruk', '0110':'Luchtmassa', '0105':'Koelwater', '015C':'Motorolie', '010F':'Inlaatlucht',
   '0146':'Buiten', '012F':'Brandstofpeil', '015E':'Verbruik', '0106':'Trim kort B1', '0107':'Trim lang B1',
   '0108':'Trim kort B2', '0109':'Trim lang B2', '0124':'Lambda B1S1', '0134':'Lambda B1S1', '0114':'O₂ B1S1',
-  '0115':'O₂ B1S2', '0142':'Accu 12V', '015B':'Aandrijfaccu', '0133':'Luchtdruk', '011F':'Looptijd' };
+  '0115':'O₂ B1S2', '0142':'Accu 12V', '015B':'Aandrijfaccu', '0133':'Luchtdruk', '011F':'Looptijd',
+  'CA02':'Brandstofdebiet', 'CA03':'Verbruik nu', 'CA04':'Laaddruk' };
 function ovzNaam(pid, d){ return OVZ_KORT[pid] || (d && d.name) || pid; }
 const OVZ_DICHT_SLEUTEL='pl_ovz_dicht';
 function ovzDichtLees(){
@@ -904,6 +911,10 @@ function applyG(pid,val){
   const d=getPidDef(pid); if(!d) return;
   if(pidViewMode==='visueel' && window.PLVisueel){
     try{ PLVisueel.bij(pid,val); }catch(e){ console.warn('PLVisueel.bij mislukt:', e); }
+    return;
+  }
+  if(pidViewMode==='slim' && window.PLDash){
+    try{ PLDash.bij(pid,val); }catch(e){ console.warn('PLDash.bij mislukt:', e); }
     return;
   }
   // Code-/vlag-PIDs staan in het tekstblok, niet in een tegel: daar alleen de
