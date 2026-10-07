@@ -973,8 +973,8 @@ async function pidRecAiText(prob){
     'OPNAMEDUUR: '+(d?d.dur:0)+' seconden\n'+
     'OPGENOMEN SENSORDATA:\n'+ds+'\n'+
     'Geef je antwoord in EXACT deze secties met deze koppen (hoofdletters):\n'+
-    'MOGELIJKE OORZAAK\nDATA-OORDEEL\nADVIES';
-  var txt=await apiFetch(p,1400);
+    'MOGELIJKE OORZAAK\nDATA-OORDEEL\nADVIES'+PLRapport.instructie();
+  var txt=await apiFetch(p,2000);
   return _withDisclaimer(txt);
 }
 async function pidRecRunAI(){
@@ -1047,8 +1047,8 @@ async function runDeepDiag(){
   // Eerst de uitslag, dan pas de AI (#443). Is er in de intake een datalog
   // opgenomen, dan is die de meting; anders meet het verzamelscherm zelf.
   var _heeftLog=Object.keys(datalogBuffer||{}).some(function(p){ return datalogBuffer[p]&&datalogBuffer[p].length; });
-  var uit=await PLVerzamel.meet(_heeftLog ? { bron:plDatalogBron(), watVoor:'de diepe storingsanalyse' }
-                                          : { niveau:'normaal', profiel:'basis', watVoor:'de diepe storingsanalyse' });
+  var uit=await PLVerzamel.meet(_heeftLog ? { bron:plDatalogBron(), watVoor:'de diepe storingsanalyse', klacht:probleem }
+                                          : { niveau:'normaal', profiel:'basis', watVoor:'de diepe storingsanalyse', klacht:probleem });
   if(!uit || !uit.ai) return;
   try{ ['ddProgRow','ddStepTitle','ddStepSub','ddFoot'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; }); document.querySelectorAll('#deepDiagOv .dd-step').forEach(function(el){ el.style.display='none'; }); }catch(e){ /* stil: element kan al weg zijn */ }
   var checks=(document.getElementById('dd_checks')||{}).value||'';
@@ -1067,11 +1067,11 @@ async function runDeepDiag(){
     'VASTGELEGDE SENSOR-AFWIJKINGEN (datalog): '+ov.summary+
     PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec})+'\n\n'+
     'Geef je antwoord in EXACT deze secties met deze koppen (hoofdletters):\n'+
-    'MOGELIJKE OORZAAK\nDATA-OORDEEL\nBEVINDINGEN\nADVIES\nGESCHATTE KOSTEN';
+    'MOGELIJKE OORZAAK\nDATA-OORDEEL\nBEVINDINGEN\nADVIES\nGESCHATTE KOSTEN'+PLRapport.instructie();
   var res=document.getElementById('dd_result');
   if(res){ res.style.display='block'; res.innerHTML='<div class="ai-ld"><span class="spin"></span> AI analyseert alle input</div>'; }
   try{
-    var txt=await apiFetch(p,1600);
+    var txt=await apiFetch(p,2200);
     txt=_withDisclaimer(txt);
     window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date() };
     var head='<div class="ai-res"><div class="ai-sec orange"><div class="ai-sh orange">🔁 Probleem-PID-overzicht ('+(ov.useLog?'datalog':'momentopname')+')</div><div class="ai-sb" style="padding:8px 4px">'+ov.html+'</div></div></div>';

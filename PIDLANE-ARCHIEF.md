@@ -15,6 +15,44 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 07-10-2026 — Het analyserapport: waarom de AI geen tabellen meer maakt (#448)
+
+**Wat er was.** De PDF van een analyse zette de AI-tekst regel voor regel
+onder een blauwe kop, met daaronder een momentopname (de laatste waarde per
+sensor). Elke route vroeg andere koppen, dus geen twee rapporten zagen er
+hetzelfde uit. Wat het verzamelscherm (#443) en de samenhang (#446) hadden
+gemeten, stond er niet in.
+
+**De keuze.** Gevraagd was een rapport met een vaste opbouw, in de volgorde
+van het onderzoek (gekozen boven "conclusie eerst"). Daarom staat er één
+regel "In het kort" op het voorblad. De belangrijkste keuze was wie wat
+levert. De AI liet het rapport tot nu toe zelf een sensortabel schrijven
+(SENSORANALYSE), en daar kan een getal in staan dat niet gemeten is. Nu
+maakt de app alle tabellen, stoplichten en grafieken uit de meting, en
+levert de AI alleen woorden in een `<rapport>`-JSON-blok. Een onbekende
+uitkomst of urgentie neemt het rapport niet over: die wordt "open" of leeg.
+
+**Wat niet gemeten is, is niet groen.** Een systeem zonder sensordata is
+grijs ("niet gemeten"). Foutcodes die niet uitgelezen zijn, geven een grijs
+kader en geen "geen foutcodes". De snelle lijst `dtcCodes` telt alleen mee
+als hij codes bevat: een lege lijst zegt niet dat er gelezen is.
+
+**Waarom het blok aan het eind staat.** Een antwoord dat wordt afgebroken,
+kost dan het blok en niet de leesbare tekst. `zonderBlok()` knipt een
+afgebroken blok af tot de eerste lege regel, omdat `_withDisclaimer()` de
+disclaimer daarachter zet. Die viel er in de eerste versie stil af; een toets
+in test-rapport.js vangt dat nu.
+
+**Nagemeten met de echte jsPDF** (2.5.1, buiten de repo gerenderd en als
+beeld bekeken). Twee opmaakfouten zijn eruit: de eerste tabelrij plakte tegen
+de kop, en een tussenkop ("Verloop per sensor") bleef alleen onderaan een
+pagina staan. In de tests zit een nep-jsPDF die opschrijft wat er getekend
+wordt; de echte bibliotheek komt in de app van cdnjs.
+
+**Open (#448).** Of het echte model het blok betrouwbaar en volledig
+levert, vooral op de routes met een kleiner tokenbudget. Dat is een vraag
+voor een rit: CAMPAGNE stap E.
+
 ## 07-10-2026 — "Pedaal vast op 20, tank 6 of 8": geen kapotte sensor, maar vijf tekenpaden
 
 **De melding.** Mazda CX-5, 19:45–19:47: het gaspedaal stond in Overzicht

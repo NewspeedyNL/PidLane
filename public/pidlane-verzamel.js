@@ -285,7 +285,7 @@
   }
 
   /* Opent het scherm en lost op met {door, ai, sam, sec, rijSec}.
-     opts: {niveau, profiel, watVoor, ai:false (geen AI-knop), aiTekst,
+     opts: {niveau, profiel, watVoor, klacht (voor het rapport), ai:false (geen AI-knop), aiTekst,
             naRit (functie die na een rijtest opnieuw begint),
             bron: {naam, hist, pids?, sec, rijSec} — een meting die er al is
             (een datalog, de ritfases): dan meteen de uitslag, zonder poort} */
@@ -341,6 +341,12 @@
       const quotaVan = k => quotaFn(k, quota);
       const verbonden = () => (typeof connected !== 'undefined' && connected) || (typeof demoMode !== 'undefined' && demoMode);
       const samNu = () => bron ? vanBron(bron) : samenvatting(sensorPids());
+      const histVoorRapport = (sam) => {
+        const h = bron ? (bron.hist || {}) : appBron().hist, uit = {};
+        sam.rijen.map(r => r.pid).concat(PLRapport.TOESTAND_PIDS)
+          .forEach(p => { if (h[p] && h[p].length) uit[p] = h[p].slice(); });
+        return uit;
+      };
 
       const sluit = (uit) => {
         if (klaar) return; klaar = true;
@@ -355,7 +361,10 @@
         if (bron) { sec = bron.sec; rijSec = bron.rijSec; }
         else { const m = laatste || meting(); sec = m.r.st.sec; rijSec = m.r.st.rijSec; }
         const res = { door: true, ai: !!ai, sam, sec, rijSec, bron: bron ? bron.naam : null, beperkt: window._meetBeperkt || '' };
-        window._plVerzameld = { sam, sec, rijSec, beperkt: res.beperkt, bron: res.bron, ts: Date.now() };
+        // Het analyserapport (PLRapport) bouwt zijn tabellen en grafieken uit
+        // deze meting: de reeksen zelf, en waarvoor en waarom er gemeten werd.
+        window._plVerzameld = { sam, sec, rijSec, beperkt: res.beperkt, bron: res.bron, ts: Date.now(),
+                                hist: histVoorRapport(sam), watVoor: o.watVoor || '', klacht: o.klacht || '', eisNaam: bron ? '' : eis.naam };
         window._plMeetBevestigd = Date.now();
         tel.besloten++; if (ai) tel.ai++;
         return res;

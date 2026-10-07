@@ -64,9 +64,11 @@ async function runFuelAnalysis(){
   const meetBlok=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});
   const prompt=`Je bent brandstofefficiëntie specialist. Analyseer deze OBD2 data en geef besparingsadvies in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}\nBrandstofprijs: €${prijs}/liter | Jaarkilometers: ${jaarKm.toLocaleString('nl')} km\nDTC: ${formatDtcCodes(dtcCodes)}\n\nLIVE METINGEN (laatste waarde, met de brandstofreferentie):\n${mData||'(geen data)'}${q.promptBlok}${meetBlok}\n\nGeef: HUIDIGE SITUATIE, GEVONDEN INEFFICIËNTIES, BESPAARTIPS (€/jaar), TOTALE BESPARING, RIJSTIJL TIPS`;
   try{
-    const text=await apiFetch(prompt,1400,null,null,{
+    // Het <rapport>-blok is voor de PDF; dit scherm toont de tekst zonder.
+    const ruw=await apiFetch(prompt+PLRapport.instructie(),2000,null,null,{
       vraag:'Brandstofefficiëntie: waar gaat er brandstof verloren en wat levert het op om dat te verhelpen?',
       profiel:'brandstof'});
+    const text=PLRapport.zonderBlok(ruw);
     const secs=[{k:'HUIDIGE SITUATIE',i:'📊',c:'blue'},{k:'GEVONDEN INEFFICIËNTIES',i:'🔍',c:'orange'},{k:'BESPAARTIPS',i:'💡',c:'green'},{k:'TOTALE BESPARING',i:'💶',c:'purple'},{k:'RIJSTIJL TIPS',i:'🚗',c:'blue'}];
     const found=[];
     secs.forEach(s=>{if(text.toLowerCase().includes(s.k.toLowerCase()))found.push({...s,idx:text.toLowerCase().indexOf(s.k.toLowerCase())});});
@@ -76,7 +78,7 @@ async function runFuelAnalysis(){
     if(!found.length)html+=`<div class="ai-sec blue"><div class="ai-sh blue">💡 Analyse</div><div class="ai-sb">${_fmtReportBody(text)}</div></div>`;
     html+=`<div style="margin-top:8px"><button class="btn" onclick="exportFuelReport()" style="width:100%;justify-content:center">💾 Exporteer rapport</button></div></div>`;
     document.getElementById('fuelResults').innerHTML=html;
-    renderAIText(text,document.getElementById('aiContent'));
+    renderAIText(ruw,document.getElementById('aiContent'));
   }catch(e){document.getElementById('fuelResults').innerHTML=`<div class="ai-sec"><div class="ai-sh red">⚠ Fout</div><div class="ai-sb">${e.message}</div></div>`;}
   btn.disabled=false;
 }
@@ -670,6 +672,7 @@ function _systemBars(text){
   return any?('<div class="ai-sec sys"><div class="ai-sh">AI Diagnose-overzicht</div><div class="ai-sb"><div class="sysb-wrap">'+bars+'</div></div></div>'):'';
 }
 function _aiReportHtml(text){
+  text=PLRapport.zonderBlok(text);   // het <rapport>-blok is voor de PDF, niet voor het scherm
   const secs=[{k:'VOERTUIGGEGEVENS',i:'',c:'blue'},{k:'SYSTEEMSTATUS',i:'',c:'blue'},{k:'FOUTCODES',i:'',c:'orange'},{k:'SENSORANALYSE',i:'',c:'blue'},{k:'WAARSCHIJNLIJKE OORZAAK',i:'',c:'red'},{k:'KOSTENINDICATIE',i:'',c:'purple'},{k:'AANBEVOLEN VERVOLGONDERZOEK',i:'',c:'green'},{k:'SAMENVATTING',i:'📋',c:'blue'},{k:'BEVINDINGEN',i:'🔍',c:'orange'},{k:'PRIORITEIT ACTIES',i:'⚡',c:'red'},{k:'REPARATIE STAPPEN',i:'🔧',c:'orange'},{k:'KAN IK HET ZELF?',i:'🛠️',c:'green'},{k:'KOSTEN SCHATTING',i:'💶',c:'purple'},{k:'GESCHATTE KOSTEN',i:'💶',c:'purple'},{k:'URGENTIE',i:'🚨',c:'red'},{k:'HUIDIGE SITUATIE',i:'📊',c:'blue'},{k:'ONDERHOUDSADVIES',i:'🔧',c:'green'},{k:'MOGELIJKE OORZAAK',i:'🎯',c:'red'},{k:'DATA-OORDEEL',i:'📊',c:'blue'},{k:'ADVIES',i:'💡',c:'green'},{k:'REPRODUCEER',i:'🔁',c:'orange'}];
   const found=[];
   secs.forEach(s=>{if(text.toLowerCase().includes(s.k.toLowerCase()))found.push({...s,idx:text.toLowerCase().indexOf(s.k.toLowerCase())});});
@@ -690,8 +693,9 @@ function _aiReportHtml(text){
 function renderAIText(text,contentEl){
   text=_withDisclaimer(text);   // garantie: disclaimer op elk getoond/gedeeld/geëxporteerd rapport (fix 15-07: _withDisclaimer werd nergens aangeroepen)
   const fullHtml=_aiReportHtml(text);
-  window._lastAIReport={ text, html:fullHtml, ts:new Date() };
-  const v=aiVerdict(text);
+  const v=aiVerdict(PLRapport.zonderBlok(text));
+  // De meting van het verzamelscherm en het stoplicht gaan mee naar de PDF.
+  window._lastAIReport={ text, html:fullHtml, ts:new Date(), meting:PLRapport.versMeting(Date.now()), oordeel:v.vc };
   contentEl.innerHTML=`<div class="ai-res">
     <div class="ai-verdict" style="background:${v.bg};border:1px solid ${v.clr}55"><span style="font-size:20px;line-height:1">${v.vi}</span><b style="color:${v.clr};font-size:14px">${v.vt}</b></div>
     <div class="ai-acts">
@@ -748,7 +752,7 @@ async function aiReplyRevise(){
   var reply=(document.getElementById('aiReplyTxt')||{}).value||'';
   if(!reply.trim()){ showToast?.('Typ eerst je aanvulling'); return; }
   var btn=document.getElementById('aiReplyBtn'); if(btn){ btn.disabled=true; btn.textContent='⏳ Herzien'; }
-  var p='Hieronder staat een eerder AI-rapport over een voertuig. De gebruiker geeft aanvullende informatie of een correctie. Herzie het rapport en houd rekening met deze nieuwe input. Behoud dezelfde sectiekoppen en stijl als het origineel; pas alleen de inhoud aan waar de nieuwe info dat rechtvaardigt.\n\nEERDER RAPPORT:\n'+r.text+'\n\nAANVULLING/CORRECTIE VAN GEBRUIKER:\n'+reply+'\n\nGeef het volledige herziene rapport.';
+  var p='Hieronder staat een eerder AI-rapport over een voertuig. De gebruiker geeft aanvullende informatie of een correctie. Herzie het rapport en houd rekening met deze nieuwe input. Behoud dezelfde sectiekoppen en stijl als het origineel, ook het <rapport>-blok aan het eind; pas alleen de inhoud aan waar de nieuwe info dat rechtvaardigt.\n\nEERDER RAPPORT:\n'+r.text+'\n\nAANVULLING/CORRECTIE VAN GEBRUIKER:\n'+reply+'\n\nGeef het volledige herziene rapport.';
   var body=document.querySelector('#aiReportSheet .ai-sheet-b');
   if(body) body.innerHTML='<div class="ai-ld"><span class="spin"></span> Rapport wordt herzien op basis van je input</div>';
   try{
@@ -757,7 +761,7 @@ async function aiReplyRevise(){
     var _mdl=(window._aiReplyModel==='deep')?null:'claude-haiku-4-5-20251001';
     var txt=await apiFetch(p,1600,null,_mdl);
     txt=_withDisclaimer(txt);
-    window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date() };
+    window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date(), meting:r.meting, oordeel:aiVerdict(PLRapport.zonderBlok(txt)).vc };
     openAIReportSheet();
     showToast?.('Rapport herzien');
   }catch(e){
@@ -766,7 +770,7 @@ async function aiReplyRevise(){
   }
 }
 async function shareAIReport(){
-  const r=window._lastAIReport; const txt=r&&r.text?r.text:''; if(!txt){ showToast?.('Nog geen rapport'); return; }
+  const r=window._lastAIReport; const txt=r&&r.text?PLRapport.zonderBlok(r.text):''; if(!txt){ showToast?.('Nog geen rapport'); return; }
   // Eerst de native route (Capacitor Filesystem+Share) — dezelfde die bij
   // PDF-delen bewezen werkt. Web-API's alleen als fallback (browser).
   try{
@@ -800,100 +804,11 @@ async function exportAIReportPDF(btn){
   try{
     const jsPDF=await loadJsPDF();
     if(!jsPDF) throw new Error('jsPDF niet geladen');
-    const doc=new jsPDF({unit:'mm',format:'a4'});
-    const W=210, M=15, CW=W-2*M;
-    const BLUE=[26,111,255], DARK=[26,32,44], GREY=[113,128,150], LIGHT=[237,242,247];
-    let y=0;
-
-    const clean=t=>String(t).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2100}-\u{214F}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu,'').replace(/\*\*/g,'').trim();
-    const footer=()=>{
-      const n=doc.getNumberOfPages();
-      for(let i=1;i<=n;i++){
-        doc.setPage(i);
-        doc.setDrawColor(...LIGHT); doc.line(M,285,W-M,285);
-        doc.setFontSize(8); doc.setTextColor(...GREY); doc.setFont('helvetica','normal');
-        doc.text(`Gegenereerd door PidLane — ${new Date(window._lastAIReport.ts).toLocaleString('nl-NL')}`,M,290);
-        doc.text(`Pagina ${i} van ${n}`,W-M,290,{align:'right'});
-      }
-    };
-    const pageBreak=need=>{ if(y+need>278){ doc.addPage(); y=M+5; } };
-
-    // ── Kopband ──
-    doc.setFillColor(...BLUE); doc.rect(0,0,W,30,'F');
-    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(20);
-    doc.text('PidLane',M,13);
-    doc.setFont('helvetica','normal'); doc.setFontSize(9);
-    doc.text('Your car talks. We translate.',M,19);
-    doc.setFontSize(11); doc.setFont('helvetica','bold');
-    doc.text('VOERTUIG DIAGNOSERAPPORT',W-M,13,{align:'right'});
-    doc.setFont('helvetica','normal'); doc.setFontSize(9);
-    doc.text(new Date(window._lastAIReport.ts).toLocaleString('nl-NL'),W-M,19,{align:'right'});
-    y=38;
-
-    // ── Voertuiggegevens blok ──
-    const kent=localStorage.getItem('pl_kenteken')||'';
-    const meta=[
-      ['Voertuig',`${vehicleInfo.merk||'Onbekend'} ${vehicleInfo.model||''} ${vehicleInfo.year?'('+vehicleInfo.year+')':''}`.trim()],
-      kent?['Kenteken',kent]:null,
-      vehicleInfo.vin?['VIN',vehicleInfo.vin]:null,
-      selectedNetwork?['Protocol',clean(selectedNetwork.name||selectedNetwork.id||'')]:null,
-      ['Sensoren',`${activePIDs.size} actief, ${supportedPIDs.size||discoveredPIDDefs.length} beschikbaar`]
-    ].filter(Boolean);
-    doc.setFillColor(...LIGHT); doc.roundedRect(M,y,CW,8+meta.length*6,2,2,'F');
-    let my=y+7;
-    meta.forEach(([k,v])=>{
-      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...GREY);
-      doc.text(k.toUpperCase(),M+5,my);
-      doc.setFont('helvetica','normal'); doc.setTextColor(...DARK);
-      doc.text(clean(v),M+45,my); my+=6;
-    });
-    y=my+6;
-
-    // ── Rapportinhoud ──
-    const lines=clean(window._lastAIReport.text).split('\n');
-    for(let raw of lines){
-      const line=raw.trim();
-      if(!line){ y+=2; continue; }
-      if(/^#{1,3}\s/.test(line)){
-        pageBreak(12); y+=4;
-        doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...BLUE);
-        doc.text(line.replace(/^#{1,3}\s*/,''),M,y); y+=2;
-        doc.setDrawColor(...BLUE); doc.setLineWidth(0.4); doc.line(M,y,M+40,y); y+=5;
-      } else if(/^[-•*]\s/.test(line)){
-        const txt=doc.splitTextToSize(line.replace(/^[-•*]\s*/,''),CW-8);
-        pageBreak(txt.length*5+2);
-        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
-        doc.text('•',M+2,y); doc.text(txt,M+8,y); y+=txt.length*5+1;
-      } else {
-        const txt=doc.splitTextToSize(line,CW);
-        pageBreak(txt.length*5+2);
-        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
-        doc.text(txt,M,y); y+=txt.length*5+1.5;
-      }
-    }
-
-    // ── Sensorwaarden bijlage ──
-    const snap=[...activePIDs].filter(isReportableSensor).map(pid=>{
-      const d=getPidDef(pid); const v=pidVals[pid];
-      return [clean(d.name),`${typeof v==='number'?v.toFixed(d.unit==='V'||d.unit==='λ'?2:0):v} ${d.unit||''}`];
-    });
-    if(snap.length){
-      pageBreak(20); y+=5;
-      doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...BLUE);
-      doc.text('Sensorwaarden (momentopname)',M,y); y+=2;
-      doc.setDrawColor(...BLUE); doc.line(M,y,M+40,y); y+=6;
-      doc.setFontSize(9);
-      const colW=CW/2;
-      snap.forEach((row,i)=>{
-        const col=i%2, x=M+col*colW;
-        if(col===0) pageBreak(6);
-        doc.setFont('helvetica','normal'); doc.setTextColor(...GREY); doc.text(row[0],x,y);
-        doc.setFont('helvetica','bold'); doc.setTextColor(...DARK); doc.text(row[1],x+colW-6,y,{align:'right'});
-        if(col===1||i===snap.length-1) y+=5.5;
-      });
-    }
-
-    footer();
+    // Het analyserapport (PLRapport, 07-10-2026): vaste secties in de volgorde
+    // van het onderzoek, de tabellen en grafieken uit de meting zelf, de
+    // woorden van de AI uit zijn <rapport>-blok. Hier stond de AI-tekst regel
+    // voor regel onder een kopband, met een momentopname van de sensoren.
+    const {doc}=await PLRapport.maak(jsPDF, window._lastAIReport);
 
     // ── PDF klaar: rechtstreeks opslaan (geen deelmenu: navigator.share
     // vereist een VERSE gebruikersactie, en schrijven naar een map niet) ──
@@ -916,7 +831,7 @@ async function exportAIReportPDF(btn){
         `Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}`.trim(),
         v.vin?`VIN: ${v.vin}`:'',
         '='.repeat(50), '',
-        String(r.text).replace(/\*\*/g,'')
+        PLRapport.zonderBlok(r.text).replace(/\*\*/g,'')
       ].filter(Boolean).join('\n');
       download(`PidLane-rapport-${plStempelLokaal().slice(0,16)}.txt`, txt);
     }catch(_){ log('Ook de TXT-fallback is mislukt — er is geen rapportbestand beschikbaar','err'); }
@@ -1100,7 +1015,7 @@ async function callAI(prompt,contentEl,aanlevering){
       contentEl.innerHTML=`<div class="ai-sec"><div class="ai-sh orange">⏳ Data stabiliseert</div><div class="ai-sb">Even geduld — app valideert sensorwaarden voor betrouwbare analyse.</div></div>`;
       return;
     }
-    const text=await apiFetch(prompt,4000,null,null,aanlevering);
+    const text=await apiFetch(prompt+PLRapport.instructie(),4000,null,null,aanlevering);
     renderAIText(text,contentEl);   // toont verdict + View/Share/Download
     try{ plVerifyAugment(contentEl); }catch(e){ console.warn('Verifiëer-knoppen niet toegevoegd aan het AI-rapport', e); }   // 🔍 knoppen bij Direct aandacht
     log('AI analyse klaar','ok');
@@ -1611,7 +1526,7 @@ function plMeetPromptBlok(){
 async function runQuickAI(opts){
   const o=(opts&&typeof opts==='object')?opts:{};
   const klacht=String(o.klacht||'').trim();
-  const uit=await PLVerzamel.meet({niveau:'normaal', profiel:'basis', watVoor:klacht?'de AI-monteur':'een AI-rapport'});
+  const uit=await PLVerzamel.meet({niveau:'normaal', profiel:'basis', watVoor:klacht?'de AI-monteur':'een AI-rapport', klacht});
   if(!uit || !uit.ai) return;
   activateAIPane();
   const v=getVehicle();

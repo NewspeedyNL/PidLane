@@ -533,7 +533,7 @@ TECHNISCHE STAAT ONDER BELASTING (koeling, thermiek, spanning)
 RIJGEDRAG MET CARAVAN
 TOP 3 ACTIES VOOR DE VOLGENDE BERGRIT (🔴/🟡/🟢)
 
-Sluit af met exact deze zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
+Sluit af met exact deze zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}${PLRapport.instructie()}`,
       3000, null, null,
       // Een caravanrit is lang en de app gaat onderweg gegarandeerd een keer
       // naar de achtergrond. Juist hier moet de AI weten waar de gaten zaten,
@@ -545,7 +545,7 @@ Sluit af met exact deze zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
     ai='(AI niet beschikbaar — hierboven staat de volledige meet- en coachingsamenvatting.)';
   }
 
-  lines.push('═══════════════════════════════════','AI-ANALYSE:',ai);
+  lines.push('═══════════════════════════════════','AI-ANALYSE:',PLRapport.zonderBlok(ai));
 
   // tonen in het AI-paneel (renderAIText beheert zelf _lastAIReport + disclaimer)
   try{

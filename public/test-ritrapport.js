@@ -108,6 +108,8 @@ vm.createContext(ctx);
   // De samenhang (#446) heeft zijn eigen scenariotest (test-samenhang.js);
   // hier alleen een herkenbaar blok, zodat te zien is dát hij meegaat.
   ctx.PLSamenhang = { leesApp: () => ({ geen: 'proef' }), promptBlok: () => '\n\nSAMENHANG: proefblok' };
+  vm.runInContext(fs.readFileSync(__dirname + '/pidlane-rapport.js', 'utf8'), ctx, { filename: 'pidlane-rapport.js' });
+  ctx.PLRapport = ctx.window.PLRapport;   // het <rapport>-blok achter de prompt
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-verzamel.js', 'utf8'), ctx, { filename: 'pidlane-verzamel.js' });
   // Alleen het scherm zelf niet: deze test roept het rapport aan terwijl de
   // rit nog loopt, en dan stopt closeRitAnalyse() hem en zou het scherm

@@ -10,6 +10,26 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Analyserapport: één vaste PDF voor alle analyses (#448)
+ ═══════════════════════════════════════════════════════════
+
+ - ⬇ Download PDF maakt altijd hetzelfde rapport, in de volgorde van het
+   onderzoek: voorblad met logo en "In het kort", autokennis,
+   probleemstelling, staat van het voertuig, plan van aanpak en testplan,
+   uitvoering met grafieken, hypothesen en bewijs, conclusie en advies,
+   disclaimer en grenzen; bijlage A meetdata, bijlage B de AI-tekst.
+ - Tabellen, stoplichten en grafieken komen uit de meting (verzamelscherm,
+   samenhang, foutcodes, readiness). De AI levert alleen de woorden, in
+   een <rapport>-blok aan het eind van zijn antwoord; zonder blok haalt het
+   rapport conclusie en advies uit de bekende koppen en zegt dat erbij.
+ - Grafiek per sensor met de alarm- en waarschuwingsgrens uit de
+   PID-definitie en de toestanden van de motor als gekleurde banden.
+ - Scherm, delen en archief tonen de tekst zonder het blok; het archief
+   bewaart het geheel als bron voor een latere PDF.
+ - Nieuw: pidlane-rapport.js, test-rapport.js, bproef-rapport.js, tien
+   mutaties, blok 5, CAMPAGNE stap E, handleiding.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Gaspedaal en tank: hetzelfde getal in elke weergave
  ═══════════════════════════════════════════════════════════
 

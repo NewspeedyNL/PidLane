@@ -2771,6 +2771,27 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── #448: één analyserapport, altijd dezelfde opbouw ──
+  {
+    issue: '#448',
+    naam: 'Analyserapport: acht vaste hoofdstukken, het AI-blok gelezen, een systeem zonder data grijs',
+    waarom: 'De PDF van een analyse was de AI-tekst onder een kopband; nu bouwt PLRapport vaste secties uit de meting, en de AI levert alleen de woorden.',
+    proef: async function () {
+      var R = window.PLRapport;
+      if (!R || !R.model || !R.leesAI) return { staat: 'FOUT', detail: 'PLRapport ontbreekt — pidlane-rapport.js is niet geladen' };
+      var blok = 'Tekst.\n<rapport>{"conclusie":"Geen afwijking.","oordeel":"groen","hypothesen":[{"naam":"Thermostaat","uitkomst":"raar","voor":[],"tegen":["stabiel"]}]}</rapport>';
+      var a = R.leesAI(blok);
+      if (a.velden.bron !== 'blok' || a.velden.hypothesen[0].uitkomst !== 'open') return { staat: 'FOUT', detail: 'het rapportblok werd niet (veilig) gelezen: ' + JSON.stringify(a.velden).slice(0, 120) };
+      var sam = { rijen: [{ pid: '0142', naam: 'Accuspanning', eenheid: 'V', oordeel: 'nodata', n: 0, min: null, max: null, gem: null, laatste: null, reden: '' }], tel: { nodata: 1 } };
+      var m = R.model({ ai: { text: blok }, meting: { sam: sam, sec: 60, hist: {} }, def: function (p) { return getPidDef(p); } });
+      if (m.secties.length !== 8) return { staat: 'FOUT', detail: m.secties.length + ' hoofdstukken in plaats van 8' };
+      var st = m.secties[2].blokken.filter(function (b) { return b.soort === 'stoplicht'; })[0];
+      var el = st && st.items[0];
+      if (!el || el.kleur !== 'grijs') return { staat: 'FOUT', detail: 'een systeem zonder data kreeg ' + (el ? el.kleur : 'geen stoplicht') + ' in plaats van grijs' };
+      return { staat: 'OK', detail: 'voorblad ' + m.voorblad.kort.kleur + ', ' + m.secties.length + ' hoofdstukken, ' + m.bijlagen.length + ' bijlagen' };
+    }
+  },
+
   // ── #446: de samenhang leest een meting als een monteur ──
   {
     issue: '#446',
@@ -10135,6 +10156,8 @@ const CAMPAGNE = {
     'STAP C — RIJTEST VANUIT HET SCHERM. Start stilstaand de verbruiksanalyse; het scherm biedt 🚗 Rijtest starten. Rij de tien minuten. Na het stoppen hoort de uitslag uit die rit te komen, niet een nieuwe meting.',
     'STAP D — WARME MOTOR, STILSTAAND. Onderhoud of Lange rit. Let op wat er bij "Valt op" staat (koelwater, accu) en of dat klopt met hoe de auto zich gedraagt.',
     'DAARNA. Beantwoord de drie vragen van de opdracht. Kies de AI waar je wilt; tokens zijn voor deze proef niet nodig.',
+    '── ANALYSERAPPORT (#448), BIJ ÉÉN VAN DE ANALYSES HIERBOVEN ────────',
+    'STAP E — ÉÉN ANALYSE MET AI, DAN ⬇ DOWNLOAD PDF. Kijk in hoofdstuk 7: staat daar "uit de koppen van de AI-tekst gehaald" of "afgebroken", dan leverde het model zijn rapportblok niet (volledig). Noem in #448 welke analyse het was. De rest van het rapport (tabellen, grafieken) komt uit de meting en hoort er hoe dan ook te staan.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
     'DE AUTOMAAT GAAT NOG NIET BOVEN DE 3. Geven A, B en C op de MX+ "gesloten", dan is dat een eigen wijziging: hoger alleen op een adapter die geen echo gaf, met deze metingen als bewijs.',
     '#331, #359, #360 EN #370 HEBBEN GEEN RIT NODIG maar code met een test; #371 is ontwerpwerk; #327 is werk aan de Worker; #309 en #264 hebben nog niets in de app om te meten.',
