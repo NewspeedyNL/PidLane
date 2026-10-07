@@ -175,6 +175,22 @@ t('zonder wielen: vier grijze', (B.mini(null).match(/vbm-wiel geen/g) || []).len
   t('een auto zonder banden: geen regel in de sensorlijst', B.lijstRegel(''), null);
   E.zet(lijst, 'CX-5');
 
+  // Dof: na drie gemiste rondes als de ronde aanstaat, na een half uur zonder.
+  t('met de ronde aan is een meting na een kwartier oud', [B.OUD_AUTO_MS, (B.zetAan(true), B.oudNu())], [900000, 900000]);
+  t('zonder de ronde na een half uur', (B.zetAan(false), B.oudNu()), 1800000);
+  B.zetAan(true);
+  const twintig = Object.assign({}, tijden, { '222A06': NU - 20 * 60000 });
+  t('20 min oud met de ronde aan: dof — de ronde had hem drie keer moeten verversen',
+    B.stand(ind, druk(2.3, 2.3, 2.3, 2.3), twintig, NU, B.oudNu()).wielen.VR.druk.oud, true);
+  t('dezelfde meting zonder de ronde: nog vers', B.stand(ind, druk(2.3, 2.3, 2.3, 2.3), twintig, NU, B.OUD_MS).wielen.VR.druk.oud, false);
+  // De echte ingang (lampje en venster): nu() leest pidVals en _pidLastUpd.
+  s.pidVals = druk(2.3, 2.3, 2.3, 2.3);
+  const nuEcht = Date.now(); s._pidLastUpd = {}; Object.keys(s.pidVals).forEach(p => { s._pidLastUpd[p] = nuEcht - 1000; });
+  s._pidLastUpd['222A06'] = nuEcht - 20 * 60000;
+  t('PLBanden.nu() gebruikt die grens ook: met de ronde aan is 20 min dof', B.nu().st.wielen.VR.druk.oud, true);
+  delete s.pidVals; delete s._pidLastUpd;
+  t('stand() zonder grens valt terug op een half uur (oude aanroepers)', B.stand(ind, druk(2.3, 2.3, 2.3, 2.3), twintig, NU).wielen.VR.druk.oud, false);
+
   // De pollus zelf: pidsDueNow uit de echte pidlane-plload.js.
   const PL = lees('pidlane-plload.js');
   const i = PL.indexOf('function pidsDueNow(){'), j = PL.indexOf('const EIGEN_PER_RONDE=2;');

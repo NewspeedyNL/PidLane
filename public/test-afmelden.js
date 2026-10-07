@@ -134,6 +134,31 @@ function laad(opt) {
       r === true && s._exit === 1, 'plSluitApp gaf: ' + r);
   }
 
+  console.log('\n4. Het live-log stopt bij uitloggen (06-10-2026)');
+  {
+    // De beheerder krijgt bij het inloggen een live-log; zonder stop schreef
+    // het door in de sessie van wie daarna inlogde, met een timer die nooit afliep.
+    const s = laad({ verbonden: false });
+    let gestopt = 0, gebruikerBijStop = 'niet gestopt';
+    s.liveLogStop = () => { gestopt++; gebruikerBijStop = s.currentUser; return Promise.resolve(); };
+    await s.logout();
+    toets('uitloggen stopt het live-log, één keer', gestopt === 1, 'liveLogStop() werd ' + gestopt + ' keer aangeroepen');
+    toets('…terwijl de beheerder nog ingelogd is (de laatste regels horen bij hem)', gebruikerBijStop && gebruikerBijStop.name === 'a', JSON.stringify(gebruikerBijStop));
+  }
+  {
+    const s = laad({ verbonden: false });
+    s.liveLogStop = () => Promise.reject(new Error('schijf vol'));
+    let fout2 = null;
+    try { await s.logout(); } catch (e) { fout2 = e; }
+    toets('een live-log dat niet netjes stopt houdt het uitloggen niet tegen', !fout2 && s.currentUser === null, fout2 && fout2.message);
+  }
+  {
+    const s = laad({ verbonden: false });
+    let fout3 = null;
+    try { await s.logout(); } catch (e) { fout3 = e; }
+    toets('zonder live-log-module logt hij gewoon uit', !fout3 && s.currentUser === null, fout3 && fout3.message);
+  }
+
   console.log(`\n${n - fout}/${n} goed`);
   process.exit(fout ? 1 : 0);
 })();

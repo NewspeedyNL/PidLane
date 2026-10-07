@@ -956,6 +956,14 @@ async function sharePdf(){
 // bruikbare regelgebaseerde diagnose: foutcodes-lookup, datakwaliteit en
 // een duidelijke melding. Output in hetzelfde sectie-formaat zodat het
 // verdict + de rapport-sheet gewoon werken.
+/* De regel over PIDs die herhaald geen data gaven, of null (06-10-2026). Tot
+   die datum las het rapport `window._deadPIDs`, die nergens gezet wordt: de
+   regel verscheen nooit. De echte lijst is `_pidDead` in pidlane-plload.js —
+   een top-level const, dus wel bij naam bereikbaar maar niet op window. */
+function _rapportDodePids(){
+  const d=(typeof _pidDead!=='undefined' && _pidDead) ? _pidDead : null;
+  return (d && d.size) ? `🟡 ${d.size} PID(s) gaven herhaald geen data — mogelijk niet ondersteund of een sensorprobleem.` : null;
+}
 function buildFallbackReport(err){
   const L=[];
   L.push('SAMENVATTING');
@@ -977,7 +985,7 @@ function buildFallbackReport(err){
   const tot=(typeof supportedPIDs!=='undefined'&&supportedPIDs.size)?supportedPIDs.size:0;
   const act=(typeof activePIDs!=='undefined'&&activePIDs.size)?activePIDs.size:0;
   L.push(`Beschikbare sensoren (PIDs): ${tot} · actief gemonitord: ${act}.`);
-  try{ if(window._deadPIDs && window._deadPIDs.size) L.push(`🟡 ${window._deadPIDs.size} PID(s) gaven herhaald geen data — mogelijk niet ondersteund of een sensorprobleem.`); }catch(e){ console.warn('Regel over dode PIDs niet toegevoegd aan het tekstrapport', e); }
+  try{ const r=_rapportDodePids(); if(r) L.push(r); }catch(e){ console.warn('Regel over dode PIDs niet toegevoegd aan het tekstrapport', e); }
   if(typeof vehicleInfo!=='undefined' && (vehicleInfo.merk||vehicleInfo.brandstof)) L.push(`Voertuig: ${[vehicleInfo.merk,vehicleInfo.model,vehicleInfo.year].filter(Boolean).join(' ')||'onbekend'}${vehicleInfo.brandstof?' ('+vehicleInfo.brandstof+')':''}.`);
   L.push('');
   L.push('PRIORITEIT ACTIES');
