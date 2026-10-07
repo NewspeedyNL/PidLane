@@ -63,6 +63,11 @@ function maakD1(db) {
   };
 }
 
+class VasteDatum extends Date {
+  constructor(...a) { if (a.length) super(...a); else super(NU.getTime()); }
+  static now() { return NU.getTime(); }
+}
+
 function bouw(opties) {
   const o = opties || {};
   const db = new DatabaseSync(':memory:');
@@ -79,6 +84,12 @@ function bouw(opties) {
     fetch: async () => { throw new Error('hoort niet naar buiten'); },
     console: { log: (m) => logs.push(String(m)), warn: (m) => logs.push(String(m)), error: (m) => logs.push('ERR ' + m) },
     __name: () => {},
+    // De klok van de test, niet die van de dag (07-10-2026). Deel 7 en 8 gaan
+    // via de route en de cron, en die geven geen `nu` mee: dan rekent de
+    // Worker met `new Date()`. De rit "van gisteren" lag zo vanaf 07-10 05:00
+    // ook buiten de 7 dagen en de test werd rood op elke branch, zonder dat
+    // er iets aan de Worker veranderd was.
+    Date: VasteDatum,
     d1Kolommen: kolBlok.d1Kolommen, D1_NAAM_OK: kolBlok.D1_NAAM_OK
   };
   const code = (o.bewerk ? o.bewerk(archSrc) : archSrc) + '\n' + routeSrc;
