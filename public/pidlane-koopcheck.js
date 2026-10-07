@@ -1520,16 +1520,19 @@ async function climateStart(){
   }, airco?2000:3000);
 }
 
+// Welke sleutel van climateSnapshot() welke PID is — één tabel, zodat het
+// verzamelscherm (#443) de klimaatmeting als reeksen per PID kan lezen.
+const CLIMATE_PID={ rpm:'010C', load:'0104', iat:'010F', coolant:'0105', oil:'015C', volt:'0142', map:'010B' };
 function climateSnapshot(){
   const g=pid=> (typeof pidVals!=='undefined' && pidVals[pid]!=null)?pidVals[pid]:null;
   return {
-    rpm:    g('010C'),
-    load:   g('0104'),
-    iat:    g('010F'),
-    coolant:g('0105'),
-    oil:    g('015C'),
-    volt:   g('0142'),
-    map:    g('010B'),
+    rpm:    g(CLIMATE_PID.rpm),
+    load:   g(CLIMATE_PID.load),
+    iat:    g(CLIMATE_PID.iat),
+    coolant:g(CLIMATE_PID.coolant),
+    oil:    g(CLIMATE_PID.oil),
+    volt:   g(CLIMATE_PID.volt),
+    map:    g(CLIMATE_PID.map),
   };
 }
 
