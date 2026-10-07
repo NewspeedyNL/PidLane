@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Overzicht Compact: de naam wijkt niet meer voor de band (#439)
+ ═══════════════════════════════════════════════════════════
+
+ - Bij tekstgrootte L op een telefoon van 384 px (340 px na de zoom) bleef
+   er 38 px over voor de naam: "Sne…", "Toe…", 17 van de 18 afgekapt. De
+   naam houdt nu minstens 6.6em, de band krimpt, en de waardekolom is 4.8em
+   in plaats van 86 px (de breedste waarde is 62 px).
+ - bproef-overzicht.js stap 1b meet het op 384 px met L, één mutatie, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Overzicht per categorie, met de normale band (#439)
  ═══════════════════════════════════════════════════════════
 

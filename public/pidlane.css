@@ -1144,8 +1144,11 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .ovz-kop h3 { margin:0; flex:1; min-width:0; font-size:11.5px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--tx2); }
 .ovz-chip { flex:none; font-size:11px; font-weight:800; padding:3px 9px; border-radius:999px; background:var(--gns); color:var(--gn); }
 .ovz-chip.or { background:var(--ors); color:var(--or); } .ovz-chip.rd { background:var(--rds); color:var(--rd); }
-/* Compact: één rij per sensor. */
-.gg.view-overzicht .ovz-vak .gc { display:grid; grid-template-columns:minmax(0,1fr) 24% 86px 40px 24px; align-items:center; column-gap:8px;
+/* Compact: één rij per sensor. De naam houdt minstens 6.6em, de band wijkt.
+   Met een vaste 24% en een waardekolom van 86 px bleef er bij tekstgrootte L
+   op een telefoon van 384 px (340 px na de zoom) 38 px over voor de naam:
+   "Sne…", "Toe…". De breedste waarde ("17L/100km") is 62 px, dus 4.8em. */
+.gg.view-overzicht .ovz-vak .gc { display:grid; grid-template-columns:minmax(min(6.6em,34%),1fr) minmax(0,24%) 4.8em 40px 24px; align-items:center; column-gap:8px;
   padding:7px 8px 7px 12px; border:0; border-top:1px solid var(--bd); border-radius:0; box-shadow:none; background:transparent; overflow:visible; }
 .gg.view-overzicht .ovz-vak .gc:first-child { border-top:0; }
 .gg.view-overzicht .ovz-vak .gc:hover { transform:none; box-shadow:none; }

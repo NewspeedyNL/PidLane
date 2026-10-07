@@ -8,6 +8,7 @@
 //
 //   1. benzine: kaarten in de volgorde rijden → motor → temperaturen …, elke
 //      rij heeft een band, en niets steekt buiten het scherm
+//   1b. tekstgrootte L op een telefoon van 384 px: geen naam afgekapt
 //   2. een afwijkende waarde: oranje, een opmerking eronder, de kop telt
 //      mee, en de rij staat bovenaan zijn kaart
 //   3. Ruim: de klasse gaat aan, wordt onthouden, en past nog steeds
@@ -59,6 +60,25 @@ const KAARTEN = `(function(){ return [].filter.call(document.querySelectorAll('#
     toets('elke rij heeft een band', een.rijen > 0 && een.banden === een.rijen, een.banden + ' van ' + een.rijen);
     toets('geen losse tegels meer buiten de kaarten', een.los === 0, een.los);
     toets('niets steekt buiten het scherm', een.breed <= een.venster && een.uitsteek === 0, JSON.stringify(een));
+
+    console.log('\n1b. Tekstgrootte L op 384 px: de namen passen');
+    await app.venster(384, 854);
+    const eenB = await app.ev(`(async function(){
+      document.body.classList.add('uiL');
+      try{
+        setPidView('slim'); setPidView('overzicht');
+        await new Promise(function(r){ setTimeout(r, 600); });
+        const rijen=[].slice.call(document.querySelectorAll('#gGrid .ovz-vak > .gc'));
+        return { rijen:rijen.length,
+                 kort:rijen.filter(function(c){ const n=c.querySelector('.gn2'); return n.scrollWidth>n.clientWidth+1; }).map(function(c){ return c.querySelector('.gn2').textContent; }),
+                 band:Math.min.apply(null, rijen.map(function(c){ return c.querySelector('.gband').getBoundingClientRect().width; })),
+                 breed:document.documentElement.scrollWidth, venster:window.innerWidth };
+      } finally { document.body.classList.remove('uiL'); setPidView('slim'); setPidView('overzicht'); }
+    })()`);
+    await app.venster(412, 915);
+    toets('geen naam afgekapt', eenB.rijen > 0 && eenB.kort.length === 0, eenB.kort.length + ' van ' + eenB.rijen + ': ' + eenB.kort.slice(0, 4).join(', '));
+    toets('de band blijft zichtbaar', eenB.band >= 20, Math.round(eenB.band) + ' px');
+    toets('en past op het scherm', eenB.breed <= eenB.venster, JSON.stringify(eenB));
 
     console.log('\n2. Een afwijkende waarde');
     const twee = await app.ev(`(async function(){

@@ -2771,6 +2771,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Overzicht Compact: de naam wijkt niet voor de band (#439) ──
+  {
+    issue: '#439',
+    naam: 'Overzicht Compact: elke sensornaam past op dit scherm, ook bij tekstgrootte L',
+    waarom: 'Op een telefoon van 384 px met tekstgrootte L hield de naamkolom 38 px over: "Sne…", "Toe…", "Bel…".',
+    proef: async function () {
+      var g = document.getElementById('gGrid');
+      if (!g || !g.classList.contains('view-overzicht') || g.classList.contains('ovz-ruim'))
+        return { staat: 'LET OP', detail: 'Live staat niet op Overzicht → Compact; zet hem daarop en draai opnieuw' };
+      var rijen = [].slice.call(g.querySelectorAll('.ovz-vak > .gc')).filter(function (c) { return c.getClientRects().length > 0; });
+      if (!rijen.length) return { staat: 'LET OP', detail: 'geen zichtbare rijen in Overzicht' };
+      var kort = rijen.filter(function (c) { var n = c.querySelector('.gn2'); return n && n.scrollWidth > n.clientWidth + 1; })
+        .map(function (c) { return c.querySelector('.gn2').textContent; });
+      var maat = Math.round(window.innerWidth) + ' px' + (document.body.classList.contains('uiL') ? ', tekstgrootte L' : '');
+      if (kort.length) return { staat: 'FOUT', detail: kort.length + ' van ' + rijen.length + ' afgekapt op ' + maat + ': ' + kort.slice(0, 4).join(', ') };
+      return { staat: 'OK', detail: rijen.length + ' namen passen op ' + maat };
+    }
+  },
+
   // ── Overzicht per categorie (#439) ──
   {
     issue: '#439',
