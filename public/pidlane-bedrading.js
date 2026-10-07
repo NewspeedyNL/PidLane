@@ -181,6 +181,9 @@ var KRITIEK = [
   'plBerekendDefs','plIsBerekend','_aiReportHtml','openGearInstellingen',
   // 05-10-2026. Telefoonsensoren (pidlane-telemetrie.js), dezelfde twee guards.
   'plTelemetrieDefs','plIsTelemetrie',
+  // 07-10-2026. Wanneer een waarde oud is (pidlane-plload.js): Overzicht en
+  // Visueel roepen hem allebei aan. Ontbreekt hij, dan wordt niets meer grijs.
+  'plOud',
   // 06-10-2026 (#418). Een telefoon die niet vast zit tekent alleen via
   // applyG; valt die weg, dan blijft de tegel stil op zijn oude waarde staan.
   'applyG',

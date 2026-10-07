@@ -56,7 +56,8 @@ function maak(opties) {
     pidVals: {}, pidHist: {}, _pidLastUpd: {}, _pidLastUpdPause: {},
     PLSched: {
       dood: function (p) { return (opties.dood || []).indexOf(p) > -1; },
-      interval: function () { return 120; }
+      interval: function (p) { return (c.__tempo && c.__tempo[p]) || 120; },
+      laatstePoging: function (p) { return (c.__poging && c.__poging[p]) || 0; }
     },
     PLGate: { stats: function () { return { turbo: !!c.__turbo, omgevingsdruk: c.__baro === undefined ? null : c.__baro }; } },
     detectEngineType: function () { return opties.motor || 'benzine'; },
@@ -70,6 +71,8 @@ function maak(opties) {
   // een eerder gezette nep overschrijven — dan meet de pauzeproef niets.
   c.PLBus = { pausedTotal: function () { return c.__pauze || 0; } };
   vm.runInContext(lees('pidlane-visueel.js'), c, { filename: 'pidlane-visueel.js' });
+  // De echte regel voor "oud" (pidlane-plload.js), niet een kopie: isOud() is er een doorgeefluik naar.
+  vm.runInContext(knip(lees('pidlane-plload.js'), '// ── WANNEER IS EEN METING OUD?', 'function pidsDueNow(){', 'plOud'), c, { filename: 'pidlane-plload.js' });
   c.T = T;
   return c;
 }
@@ -489,11 +492,34 @@ o._pidLastUpd['010C'] = 1000000;
 waar('net binnen: niet oud', !o.PLVisueel.isOud('010C', 1000000 + 500));
 // Sinds 28-09-2026 is de ondergrens 5 s: een hapering van 3 à 4 s (acht
 // banden via een ander ECU-adres) gaf een flits op het toerental.
-waar('3,5 s zonder antwoord bij een 120 ms-PID: nog niet oud (geen flits bij een korte hapering)', !o.PLVisueel.isOud('010C', 1000000 + 3500));
-waar('5,5 s zonder antwoord: oud', o.PLVisueel.isOud('010C', 1000000 + 5500));
+o.__poging = { '010C': 1000000 + 2000 };
+waar('3,5 s zonder antwoord bij een 120 ms-PID, wel gevraagd: nog niet oud (geen flits bij een korte hapering)', !o.PLVisueel.isOud('010C', 1000000 + 3500));
+waar('5,5 s stil terwijl hij wel gevraagd is: oud', o.PLVisueel.isOud('010C', 1000000 + 5500));
+o.__poging = {};
+waar('5,5 s stil en niet meer gevraagd: nog niet oud — hij was niet aan de beurt (07-10-2026)', !o.PLVisueel.isOud('010C', 1000000 + 5500));
+o.__poging = { '010C': 1000000 + 2000 };
 o.__pauze = 5000; o._pidLastUpdPause['010C'] = 0;
 waar('dezelfde 5,5 s maar de bus was bezet door een andere lezer: niet oud', !o.PLVisueel.isOud('010C', 1000000 + 5500));
 waar('nog nooit iets binnen is leeg, niet oud', !o.PLVisueel.isOud('010D', 1000000 + 99999));
+o.__pauze = 0; o.__poging = {};
+waar('niet gevraagd, maar een minuut stil: toch oud — het getal is geen "nu" meer', o.PLVisueel.isOud('010C', 1000000 + 61000));
+{
+  // De klacht van 07-10-2026: een trage sensor (10 s) die achteraan de pollus
+  // staat en pas na 40 s weer gevraagd wordt, ging grijs.
+  const tr = maak({ actief: ['0105'] });
+  tr.__tempo = { '0105': 10000 };
+  tr._pidLastUpd['0105'] = 1000000;
+  waar('trage sensor, 40 s stil en nog niet aan de beurt: niet grijs', !tr.PLVisueel.isOud('0105', 1000000 + 40000));
+  tr.__poging = { '0105': 1000000 + 35000 };
+  waar('TEGENPROEF: dezelfde 40 s, maar gevraagd zonder antwoord: wel grijs', tr.PLVisueel.isOud('0105', 1000000 + 40000));
+  tr.__poging = {};
+  [0, 20000, 40000, 60000, 80000].forEach(function (t, i) { (tr.pidHist['0105'] = tr.pidHist['0105'] || []).push({ t: 1000000 - 80000 + t, v: 90 }); });
+  tr.__poging = { '0105': 1000000 + 1000 };
+  waar('gemeten elke 20 s (trager dan zijn 10 s): 50 s stil en gevraagd is nog binnen 3× het gemeten tempo', !tr.PLVisueel.isOud('0105', 1000000 + 50000));
+  waar('maar 65 s wel', tr.PLVisueel.isOud('0105', 1000000 + 65000));
+  tr.__tempo = { '0105': 999999 };
+  waar('op verzoek (999999): stilte is bedoeld, nooit grijs', !tr.PLVisueel.isOud('0105', 1000000 + 9999999));
+}
 
 // ══ 4. HET MELDINGENVAK ════════════════════════════════════════════
 console.log('\n── 4. het meldingenvak ──');
@@ -618,6 +644,7 @@ waar('TEGENPROEF: een verse spanning is niet dof', !/\boud\b/.test(L(null, 'benz
   const nu = Date.now();
   Ac.pidVals['0142'] = 12.6;
   Ac._pidLastUpd['0142'] = nu - 8000;   // ruim boven 3× het tempo en de 5 s-grens
+  Ac.__poging = { '0142': nu - 3000 };  // en gevraagd zonder antwoord (plOud, 07-10-2026)
   const g = Ac.PLVisueel.accuGetal('0142', nu);
   waar('accuGetal: 8 s oud geeft de waarde terug, gemerkt als oud', g && g.v === 12.6 && g.oud === true, JSON.stringify(g));
   waar('TEGENPROEF: lampGetal gooit dezelfde waarde weg — dáárom verdween het lampje', Ac.PLVisueel.isOud('0142', nu) === true);

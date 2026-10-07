@@ -2771,6 +2771,26 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Grijs: één regel, en niet aan de beurt is niet oud ──
+  {
+    issue: '#439',
+    naam: 'Grijs/dof: één regel (plOud) voor Overzicht en Visueel; een trage sensor die nog niet aan de beurt was blijft gewoon staan',
+    waarom: 'Te veel metingen gingen grijs terwijl ze bewust traag gevraagd worden: de oude regel keek naar het nominale tempo, niet naar of er gevraagd was.',
+    proef: async function () {
+      if (typeof plOud !== 'function') return { staat: 'FOUT', detail: 'plOud ontbreekt — pidlane-plload.js is niet de nieuwe' };
+      if (typeof connected === 'undefined' || !connected) return { staat: 'LET OP', detail: 'niet verbonden — zonder pollus valt er niets te meten' };
+      var nu = Date.now(), grijs = [], gered = [];
+      activePIDs.forEach(function (p) {
+        var t = _pidLastUpd[p] || 0; if (!t) return;
+        if (plOud(p, nu)) { grijs.push(p); return; }
+        var oud = (nu - t) > Math.max(3 * pidPollInterval(p), 5000);
+        if (oud) gered.push(p);
+      });
+      return { staat: 'OK', detail: grijs.length + ' grijs' + (grijs.length ? ' (' + grijs.slice(0, 5).join(', ') + ')' : '') +
+        '; ' + gered.length + ' die de oude regel grijs had gezet staan nu gewoon' + (gered.length ? ' (' + gered.slice(0, 5).join(', ') + ')' : '') };
+    }
+  },
+
   // ── Banden: een ontbrekende sensor wordt genoemd ──
   {
     issue: '#396',

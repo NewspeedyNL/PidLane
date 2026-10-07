@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Grijs: één regel, en niet aan de beurt is niet oud
+ ═══════════════════════════════════════════════════════════
+
+ - Overzicht en Visueel (met zijn profielen en lampjes) hadden elk een eigen
+   regel voor "oud": 3× het nominale tempo, minstens 5 s. Loopt de bus
+   achter, dan zet de pollus trage PIDs bewust achteraan, en die gingen dan
+   grijs terwijl ze gewoon nog niet gevraagd waren.
+ - Nu één regel, plOud() in pidlane-plload.js: verwacht = het tempo of het
+   gemeten tempo als dat trager is; oud na 3× verwacht (min. 5 s) als er
+   sinds het laatste antwoord gevraagd is zonder antwoord. Niet gevraagd:
+   pas na een minuut (of 6× verwacht). Op verzoek (banden): nooit.
+ - test-visueel.js op de echte plOud, bproef-overzicht.js 2b, zes mutaties
+   (één verhuisd van VIS_OUD_MIN_MS), blok 5.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Telemetrie alleen in Visueel
  ═══════════════════════════════════════════════════════════
 

@@ -12,6 +12,7 @@
 //   1c. telemetrie staat niet in Overzicht en is niet te kiezen in Slim
 //   2. een afwijkende waarde: oranje, een opmerking eronder, de kop telt
 //      mee, en de rij staat bovenaan zijn kaart
+//   2b. grijs volgt plOud(): niet aan de beurt is niet oud
 //   3. Ruim: de klasse gaat aan, wordt onthouden, en past nog steeds
 //   4. hybride: Elektrisch staat direct onder Rijden
 //   5. TEGENPROEF: zonder ovzBij() telt de kop niet mee — anders meet deel 2
@@ -112,6 +113,25 @@ const KAARTEN = `(function(){ return [].filter.call(document.querySelectorAll('#
     toets('de kop telt mee', twee.chip === '1 let op', twee.chip);
     toets('de rij staat bovenaan zijn kaart', twee.eerste);
     toets('de accu met de decimalen van volt', !twee.gv || /\.\d\d$/.test(twee.gv), twee.gv);
+
+    console.log('\n2b. Grijs: een trage sensor die niet aan de beurt was blijft gewoon (07-10-2026)');
+    const grijs = await app.ev(`(async function(){
+      stopPoll();
+      const pid='0105', c=document.getElementById('gc-'+pid);
+      if(!c) return { geen:true };
+      const echt=pidPollInterval, nu=Date.now();
+      window.pidPollInterval=function(p){ return p===pid ? 10000 : echt(p); };
+      try{
+        pidHist[pid]=[]; _pidLastUpd[pid]=nu-40000; _pidLastUpdPause[pid]=PLBus.pausedTotal();
+        await new Promise(function(r){ setTimeout(r, 1300); });
+        const voor=c.classList.contains('stale');
+        markPidNoData(pid);                       // nu wél gevraagd, en niets terug
+        await new Promise(function(r){ setTimeout(r, 1300); });
+        return { voor:voor, na:c.classList.contains('stale') };
+      } finally { window.pidPollInterval=echt; }
+    })()`);
+    toets('40 s stil bij een tempo van 10 s, maar niet gevraagd: niet grijs', grijs.voor === false, JSON.stringify(grijs));
+    toets('TEGENPROEF: gevraagd zonder antwoord: wel grijs', grijs.na === true, JSON.stringify(grijs));
 
     console.log('\n3. Ruim');
     const drie = await app.ev(`(async function(){

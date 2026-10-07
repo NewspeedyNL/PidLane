@@ -716,19 +716,9 @@ function startStaleWatchdog(){
       // Een telefoonsensor die niet vast zit is al dof (pidlane-telemetrie.js);
       // hij krijgt bewust geen updPID, dus 'stale' zou hier elke seconde knipperen.
       if(card.classList.contains('los')){ card.classList.remove('stale'); return; }
-      const last=_pidLastUpd[pid]||0;
-      // Stale-drempel per PID: trage sensoren (temp/niveau, 10-60s interval)
-      // mogen NIET rood knipperen zolang ze binnen hun eigen ritme verversen.
-      // Drempel = 3× het poll-interval, met een ruime ondergrens van 5s.
-      const interval=(typeof pidPollInterval==='function')?pidPollInterval(pid):1000;
-      const drempel=Math.max(interval*3, 5000);
-      // Trek de tijd eraf dat de bus door een ANDERE lezer bezet was
-      // (gezondheidscheck, rit-sweep, veldlab-survey, verificatie, monitor).
-      // Zonder deze correctie kleurde tijdens elke sweep de hele live view
-      // rood, terwijl er niets mis was met de sensoren.
-      let krediet=0;
-      try{ krediet=Math.max(0, PLBus.pausedTotal()-(_pidLastUpdPause[pid]||0)); }catch(e){ console.warn('PLBus.pausedTotal mislukt:', e); }
-      const stale=(now-last-krediet)>drempel;
+      // Wanneer een waarde oud is staat op één plek: plOud() in
+      // pidlane-plload.js, dezelfde regel als Visueel (07-10-2026).
+      const stale=plOud(pid, now);
       card.classList.toggle('stale', stale);
     });
   },1000);

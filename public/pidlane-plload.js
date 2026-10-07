@@ -568,6 +568,55 @@ window.PLSched={
   }
 };
 
+// ── WANNEER IS EEN METING OUD? (07-10-2026) ─────────────────────────
+// Eén regel voor alles wat een waarde grijs of dof zet: de rijen in
+// Overzicht (startStaleWatchdog) en Visueel met zijn profielen en lampjes
+// (PLVisueel.isOud). Tot vandaag hadden die elk een eigen regel, allebei
+// "3× het tempo, minstens 5 s" — en allebei op het tempo dat de PID HOORT te
+// hebben. Loopt de bus achter, dan zet pidsDueNow() de trage PIDs bewust
+// achteraan; die werden dan later gevraagd dan hun tempo zei, en gingen grijs
+// terwijl er niets mis was ("er gaat teveel op grijs terwijl die expres
+// langzaam staan"). Hetzelfde onderscheid als stilteBeeld() in
+// pidlane-onderdeel.js al maakte:
+//   • verwacht = het tempo, of het gemeten tempo als dat trager is;
+//   • over 3× verwacht (minstens 5 s) en sinds het laatste antwoord gevraagd
+//     zonder antwoord → oud;
+//   • nog niet gevraagd → niet aan de beurt geweest, dus niet oud; pas na
+//     OUD_ONGEVRAAGD_MS (of 6× verwacht) wel, want dan is het getal te oud
+//     om nog als "nu" te tonen, wiens schuld het ook is.
+// Tijd waarin een andere lezer de bus had telt niet als stilte (krediet).
+const OUD_MIN_MS=5000, OUD_FACTOR=3, OUD_ONGEVRAAGD_MS=60000, OUD_GEMETEN_N=6;
+function plGemetenTempo(pid){
+  const h=(typeof pidHist!=='undefined' && pidHist) ? pidHist[pid] : null;
+  if(!h || h.length<3) return 0;
+  const t=h.slice(-(OUD_GEMETEN_N+1)).map(x=>x && x.t).filter(x=>typeof x==='number');
+  const d=[]; for(let i=1;i<t.length;i++) d.push(t[i]-t[i-1]);
+  if(d.length<2) return 0;
+  d.sort((a,b)=>a-b);
+  const m=d.length>>1;
+  return d.length%2 ? d[m] : (d[m-1]+d[m])/2;
+}
+function plOud(pid, nu){
+  nu=nu||Date.now();
+  const laatste=(typeof _pidLastUpd!=='undefined' && _pidLastUpd) ? (_pidLastUpd[pid]||0) : 0;
+  if(!laatste) return false;                         // nog niets binnen: dat is 'leeg', niet 'oud'
+  const S=window.PLSched;
+  let tempo=1000;
+  try{ if(S && typeof S.interval==='function') tempo=S.interval(pid)||1000; }catch(e){ console.warn('plOud: PLSched.interval mislukt', e); }
+  if(tempo>=999999) return false;                    // op verzoek of uitgezet: stilte is bedoeld
+  let krediet=0;
+  try{ if(window.PLBus && typeof _pidLastUpdPause!=='undefined') krediet=Math.max(0, window.PLBus.pausedTotal()-(_pidLastUpdPause[pid]||0)); }
+  catch(e){ console.warn('plOud: PLBus.pausedTotal mislukt', e); }
+  const verwacht=Math.max(tempo, plGemetenTempo(pid));
+  const stil=nu-laatste-krediet;
+  if(stil<=Math.max(OUD_MIN_MS, OUD_FACTOR*verwacht)) return false;
+  let poging=0;
+  try{ if(S && typeof S.laatstePoging==='function') poging=S.laatstePoging(pid)||0; }catch(e){ console.warn('plOud: PLSched.laatstePoging mislukt', e); }
+  if(poging>laatste) return true;                    // gevraagd, en niets bruikbaars terug
+  return stil>Math.max(OUD_ONGEVRAAGD_MS, 2*OUD_FACTOR*verwacht);
+}
+window.plOud=plOud;
+
 function pidsDueNow(){
   const now=Date.now();
   const due=[];
