@@ -329,10 +329,22 @@ const BSC_TIK_MS = 250;
    constant — heette "ok" over een motor die niet liep.
 
    6 s is langer dan het langste basislijnvenster (5 s), zodat geen enkele
-   basislijn nog een monster van vóór de start bevat. */
+   basislijn nog een monster van vóór de start bevat.
+
+   Het oordeel komt uit de toerentalhistorie zelf, niet uit een klok die
+   start bij de eerste aanroep. Die eerste versie liet een motor die al
+   minuten liep óók 6 s wachten, alleen omdat de systeemtest net begon —
+   bproef-systeemtest.js zag dat. De historie houdt 120 monsters; bij de
+   snelste pollstand (80 ms) is dat nog ruim 9 s. */
 const BSC_MOTOR_STABIEL_MS = 6000;
-let _bscDraaitSinds = 0;
 function bscMotorTest(t){ return !!t.motor || t.sit==='draaiend' || t.sit==='stationair'; }
+function bscMotorStabiel(hist, nu){
+  if(!Array.isArray(hist) || !hist.length) return false;
+  const van=nu-BSC_MOTOR_STABIEL_MS;
+  if(hist[0].t>van) return false;   // de historie reikt niet ver genoeg terug
+  const venster=hist.filter(x=>x.t>=van);
+  return venster.length>=3 && venster.every(x=>typeof x.v==='number' && x.v>400);
+}
 
 // Welke situaties spelen er nu? Een set, want stationair is ook "draaiend".
 function bscSituaties(){
@@ -344,8 +356,7 @@ function bscSituaties(){
   if(contact) nu.add('contact');
   if(typeof rpm==='number' && rpm<200) nu.add('motoruit');
   if(draait) nu.add('draaiend');
-  if(draait){ if(!_bscDraaitSinds) _bscDraaitSinds=Date.now(); } else _bscDraaitSinds=0;
-  if(draait && Date.now()-_bscDraaitSinds>=BSC_MOTOR_STABIEL_MS) nu.add('motorstabiel');
+  if(draait && bscMotorStabiel(pidHist['010C'], Date.now())) nu.add('motorstabiel');
   if(draait && (typeof spd!=='number' || spd<3)) nu.add('stationair');
   if(typeof spd==='number' && spd>=5){
     nu.add('rijden');

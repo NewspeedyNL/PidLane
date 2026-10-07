@@ -113,40 +113,65 @@ waar('een hybride krijgt geen dieseltests',
 // ══════════════════════════════════════════════════════════════════
 console.log('\n── 3. een motortest meet alleen bij een motor die al even draait ──');
 const test = id => p.__bscTests.find(x => x.id === id);
-const zet = (rpm, spd, f) => { p.pidVals = { '010C': rpm, '010D': spd, '0105': 85 }; fase = f || 'onbekend'; return p.bscSituaties(); };
+// Een rijdende auto: elke 250 ms een monster in pidVals én pidHist, zoals
+// updPID() dat doet. De motorvoorwaarde leest de historie van 010C.
+function rij(rpm, spd, f, ms) {
+  fase = f || 'onbekend';
+  for (let i = 0; i < ms; i += 250) {
+    klok += 250;
+    p.pidVals = { '010C': rpm, '010D': spd, '0105': 85 };
+    const h = (p.pidHist['010C'] = p.pidHist['010C'] || []);
+    h.push({ t: klok, v: rpm });
+    if (h.length > 120) h.shift();
+  }
+  return p.bscSituaties();
+}
+const mag = (id, s) => p.bscConditie(test(id), s);
 
 // Rijden op de accu, constant 60.
-let s = zet(0, 60, 'constant');
+let s = rij(0, 60, 'constant', 10000);
 waar('situatie "constant" wordt herkend zonder motor', s.has('constant'));
-let c = p.bscConditie(test('misfire'), s);
+let c = mag('misfire', s);
 waar('misfire meet niet zonder motor', !c.ok, 'kreeg ok');
 waar('…en zegt waarop hij wacht', /motor draait/.test(c.label), c.label);
-waar('x_rpm_const meet niet zonder motor', !p.bscConditie(test('x_rpm_const'), s).ok);
-waar('x_decel_load meet niet zonder motor', !p.bscConditie(test('x_decel_load'), zet(0, 40, 'remmen')).ok);
+waar('x_rpm_const meet niet zonder motor', !mag('x_rpm_const', s).ok);
+waar('x_decel_load meet niet zonder motor', !mag('x_decel_load', rij(0, 40, 'remmen', 500)).ok);
 // Tegenproef: de regel blokkeert niet alles wat rijdt.
-s = zet(0, 60, 'constant');
-waar('ev_ice (geen motortest) meet wél tijdens accurijden', p.bscConditie(test('ev_ice'), s).ok);
+s = rij(0, 60, 'constant', 250);
+waar('ev_ice (geen motortest) meet wél tijdens accurijden', mag('ev_ice', s).ok);
 
 // De motor slaat aan.
-klok += 1000; s = zet(1500, 60, 'constant');
-c = p.bscConditie(test('misfire'), s);
+s = rij(1500, 60, 'constant', 1000);
+c = mag('misfire', s);
 waar('net aangeslagen: misfire wacht nog', !c.ok, 'kreeg ok');
 waar('…met de reden erbij', /al \d+ s/.test(c.label), c.label);
-klok += 5000; s = zet(1500, 60, 'constant');
-waar('na 5 s nog steeds niet (de basislijn van 5 s bevat de aanloop)', !p.bscConditie(test('misfire'), s).ok);
-klok += 1500; s = zet(1500, 60, 'constant');
-waar('na 6,5 s wél', p.bscConditie(test('misfire'), s).ok, p.bscConditie(test('misfire'), s).label);
+s = rij(1500, 60, 'constant', 4500);
+waar('na 5,5 s nog steeds niet (de basislijn van 5 s bevat de aanloop)', !mag('misfire', s).ok);
+s = rij(1500, 60, 'constant', 1000);
+waar('na 6,5 s wél', mag('misfire', s).ok, mag('misfire', s).label);
 
-// Even uit en weer aan: de klok begint opnieuw.
-klok += 500; zet(0, 60, 'constant');
-klok += 500; s = zet(1500, 60, 'constant');
-waar('na een stop telt de wachttijd opnieuw', !p.bscConditie(test('misfire'), s).ok);
+// Even uit en weer aan: de wachttijd begint opnieuw.
+rij(0, 60, 'constant', 500);
+s = rij(1500, 60, 'constant', 3000);
+waar('na een stop telt de wachttijd opnieuw', !mag('misfire', s).ok);
+
+// Een verse sessie met een motor die al liep: geen wachttijd. De historie
+// zegt het, niet een klok die bij de eerste aanroep begint.
+p.pidHist = {};
+rij(800, 0, 'onbekend', 7000);
+s = p.bscSituaties();
+waar('motor liep al vóór de eerste aanroep: idle_stab meet meteen', mag('idle_stab', s).ok, mag('idle_stab', s).label);
+// Tegenproef: te weinig historie is geen bewijs van stabiel.
+p.pidHist = {};
+s = rij(800, 0, 'onbekend', 3000);
+waar('3 s historie: idle_stab wacht', !mag('idle_stab', s).ok);
 
 // Stationair na een start: zelfde regel, geen hybride-uitzondering.
-klok += 60000; zet(0, 0); klok += 100; s = zet(900, 0);
-waar('stationair net gestart: idle_stab wacht', !p.bscConditie(test('idle_stab'), s).ok);
-klok += 6100; s = zet(900, 0);
-waar('stationair na 6 s: idle_stab meet', p.bscConditie(test('idle_stab'), s).ok, p.bscConditie(test('idle_stab'), s).label);
+rij(0, 0, 'onbekend', 2000);
+s = rij(900, 0, 'onbekend', 1000);
+waar('stationair net gestart: idle_stab wacht', !mag('idle_stab', s).ok);
+s = rij(900, 0, 'onbekend', 6000);
+waar('stationair na 7 s: idle_stab meet', mag('idle_stab', s).ok, mag('idle_stab', s).label);
 
 console.log('\n' + ok + ' goed, ' + fout + ' fout');
 process.exit(fout ? 1 : 0);

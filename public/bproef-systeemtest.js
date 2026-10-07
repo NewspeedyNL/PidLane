@@ -79,8 +79,11 @@ const RIJ  = `{ rpm: 2000, spd: 60, ect: 91, volt: 14.2, map: 55, load: 30, gas:
     await app.ev(AUTO);
 
     console.log('\n1. Stilstaand en warm');
+    // Warm betekent ook: hij draait al even. Een motortest meet sinds
+    // 07-10-2026 pas als 010C 6 s lang boven de drempel staat (#430), dus de
+    // nagebootste motor loopt eerst 6,5 s voordat de systeemtest start.
     const stil = await app.ev(`(async function(){
-      __zet(${STIL}); await __wacht(1500);
+      __zet(${STIL}); await __wacht(6500);
       await startBasicCheck(); await __wacht(9000);
       const ids = ['idle_stab','map_idle','x_laadspanning','spd_rpm','x_rpm_const','fuel_flow','iat_amb','batt_rust'];
       const r = {}; ids.forEach(function (i) { r[i] = __st(i); });
