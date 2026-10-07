@@ -15,6 +15,24 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 07-10-2026 — De tegels van de energieweergave (#437)
+
+**Bereik = brandstof + accu, en het accudeel wordt geleerd.** Er is geen
+standaard-PID voor de accu-inhoud in kWh of het verbruik in kWh/km. Het
+enige wat er wél is, zijn 015B (procenten) en de snelheid. Dus: tijdens
+ACCU_RIJDT de afgelegde km optellen en de procenten die 015B zakt, en het
+bereik is dan 015B × km per procent. Met de motor aan telt er niets bij,
+ook niet het opladen: anders wordt "km per procent" te groot. Bekende
+zwakte, staat als ritvraag in #437: een hybride gebruikt maar een deel van
+het pakket, dus het getal kan te hoog zijn.
+
+**EV-aandeel telt alleen rijtijd.** Voor het stoplicht staat een hybride
+altijd op de accu, en dat is geen elektrisch rijden. Een gat tussen twee
+tikken telt hoogstens 5 s, zodat een app op de achtergrond geen minuten
+"elektrisch" bijschrijft.
+
+---
+
 ## 07-10-2026 — De energieweergave en het onderzoek zonder klacht (#434, #435)
 
 **Energie in plaats van Motor op een hybride.** De Neon-weergave had drie

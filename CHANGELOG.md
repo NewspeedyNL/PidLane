@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Energieweergave: tegels aandrijving, versnelling, bereik (#437)
+ ═══════════════════════════════════════════════════════════
+
+ - De tegels onder de Energie-ringen: EV-aandeel van deze rit (alleen
+   rijtijd telt), versnelling in km/h per s (uit 010D, zelfde venster als de
+   laadring) en bereik: brandstof (CA09) plus accu, het accudeel geleerd
+   als km op de accu per procent dat 015B zakt.
+ - Handleiding, test-visueel.js, test-visprofiel.js, zes mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Energieweergave voor hybride (#435), onderzoek zonder klacht (#434)
  ═══════════════════════════════════════════════════════════
 
