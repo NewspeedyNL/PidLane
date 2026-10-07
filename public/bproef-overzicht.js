@@ -8,8 +8,11 @@
 //
 //   1. benzine: kaarten in de volgorde rijden → motor → temperaturen …, elke
 //      rij heeft een band, en niets steekt buiten het scherm
+//   1b. tekstgrootte L op een telefoon van 384 px: geen naam afgekapt
+//   1c. telemetrie staat niet in Overzicht en is niet te kiezen in Slim
 //   2. een afwijkende waarde: oranje, een opmerking eronder, de kop telt
 //      mee, en de rij staat bovenaan zijn kaart
+//   2b. grijs volgt plOud(): niet aan de beurt is niet oud
 //   3. Ruim: de klasse gaat aan, wordt onthouden, en past nog steeds
 //   4. hybride: Elektrisch staat direct onder Rijden
 //   5. TEGENPROEF: zonder ovzBij() telt de kop niet mee — anders meet deel 2
@@ -60,6 +63,43 @@ const KAARTEN = `(function(){ return [].filter.call(document.querySelectorAll('#
     toets('geen losse tegels meer buiten de kaarten', een.los === 0, een.los);
     toets('niets steekt buiten het scherm', een.breed <= een.venster && een.uitsteek === 0, JSON.stringify(een));
 
+    console.log('\n1b. Tekstgrootte L op 384 px: de namen passen');
+    await app.venster(384, 854);
+    const eenB = await app.ev(`(async function(){
+      document.body.classList.add('uiL');
+      try{
+        setPidView('slim'); setPidView('overzicht');
+        await new Promise(function(r){ setTimeout(r, 600); });
+        const rijen=[].slice.call(document.querySelectorAll('#gGrid .ovz-vak > .gc'));
+        return { rijen:rijen.length,
+                 kort:rijen.filter(function(c){ const n=c.querySelector('.gn2'); return n.scrollWidth>n.clientWidth+1; }).map(function(c){ return c.querySelector('.gn2').textContent; }),
+                 band:Math.min.apply(null, rijen.map(function(c){ return c.querySelector('.gband').getBoundingClientRect().width; })),
+                 breed:document.documentElement.scrollWidth, venster:window.innerWidth };
+      } finally { document.body.classList.remove('uiL'); setPidView('slim'); setPidView('overzicht'); }
+    })()`);
+    await app.venster(412, 915);
+    toets('geen naam afgekapt', eenB.rijen > 0 && eenB.kort.length === 0, eenB.kort.length + ' van ' + eenB.rijen + ': ' + eenB.kort.slice(0, 4).join(', '));
+    toets('de band blijft zichtbaar', eenB.band >= 20, Math.round(eenB.band) + ' px');
+    toets('en past op het scherm', eenB.breed <= eenB.venster, JSON.stringify(eenB));
+
+    console.log('\n1c. Telemetrie alleen in Visueel (07-10-2026)');
+    const eenC = await app.ev(`(async function(){
+      // Een headless browser heeft geen oriëntatiesensor, dus plTelemetrieDefs() is
+      // hier leeg: de definities zelf erin zetten, zoals op een telefoon gebeurt.
+      const D=(window.PLTelemetrie && PLTelemetrie.DEFS) || {}, tl=Object.keys(D);
+      tl.forEach(function(p){ if(!discoveredPIDDefs.some(function(d){ return d.pid===p; })) discoveredPIDDefs.push(Object.assign({ pid:p, telemetrie:true }, D[p])); activePIDs.add(p); });
+      setPidView('slim'); setPidView('overzicht');
+      await new Promise(function(r){ setTimeout(r, 400); });
+      const inOvz=tl.filter(function(p){ return !!document.getElementById('gc-'+p); });
+      setPidView('slim'); PLDash.kies();
+      const blad=[].slice.call(document.querySelectorAll('.dash-regel')).map(function(b){ return b.textContent; }).join('|');
+      PLDash.sluit(); setPidView('overzicht');
+      return { tl:tl, inOvz:inOvz, inKies:tl.filter(function(p){ const d=getPidDef(p); return d && blad.indexOf(ovzNaam(p, d))>=0; }) };
+    })()`);
+    toets('er zijn telefoonsensoren om te weren', eenC.tl.length >= 2, JSON.stringify(eenC));
+    toets('geen telemetrie in Overzicht', eenC.inOvz.length === 0, eenC.inOvz.join());
+    toets('en niet te kiezen voor Slim', eenC.inKies.length === 0, eenC.inKies.join());
+
     console.log('\n2. Een afwijkende waarde');
     const twee = await app.ev(`(async function(){
       stopPoll();
@@ -73,6 +113,25 @@ const KAARTEN = `(function(){ return [].filter.call(document.querySelectorAll('#
     toets('de kop telt mee', twee.chip === '1 let op', twee.chip);
     toets('de rij staat bovenaan zijn kaart', twee.eerste);
     toets('de accu met de decimalen van volt', !twee.gv || /\.\d\d$/.test(twee.gv), twee.gv);
+
+    console.log('\n2b. Grijs: een trage sensor die niet aan de beurt was blijft gewoon (07-10-2026)');
+    const grijs = await app.ev(`(async function(){
+      stopPoll();
+      const pid='0105', c=document.getElementById('gc-'+pid);
+      if(!c) return { geen:true };
+      const echt=pidPollInterval, nu=Date.now();
+      window.pidPollInterval=function(p){ return p===pid ? 10000 : echt(p); };
+      try{
+        pidHist[pid]=[]; _pidLastUpd[pid]=nu-40000; _pidLastUpdPause[pid]=PLBus.pausedTotal();
+        await new Promise(function(r){ setTimeout(r, 1300); });
+        const voor=c.classList.contains('stale');
+        markPidNoData(pid);                       // nu wél gevraagd, en niets terug
+        await new Promise(function(r){ setTimeout(r, 1300); });
+        return { voor:voor, na:c.classList.contains('stale') };
+      } finally { window.pidPollInterval=echt; }
+    })()`);
+    toets('40 s stil bij een tempo van 10 s, maar niet gevraagd: niet grijs', grijs.voor === false, JSON.stringify(grijs));
+    toets('TEGENPROEF: gevraagd zonder antwoord: wel grijs', grijs.na === true, JSON.stringify(grijs));
 
     console.log('\n3. Ruim');
     const drie = await app.ev(`(async function(){

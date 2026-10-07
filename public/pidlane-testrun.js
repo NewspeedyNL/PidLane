@@ -2771,6 +2771,77 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Grijs: één regel, en niet aan de beurt is niet oud ──
+  {
+    issue: '#439',
+    naam: 'Grijs/dof: één regel (plOud) voor Overzicht en Visueel; een trage sensor die nog niet aan de beurt was blijft gewoon staan',
+    waarom: 'Te veel metingen gingen grijs terwijl ze bewust traag gevraagd worden: de oude regel keek naar het nominale tempo, niet naar of er gevraagd was.',
+    proef: async function () {
+      if (typeof plOud !== 'function') return { staat: 'FOUT', detail: 'plOud ontbreekt — pidlane-plload.js is niet de nieuwe' };
+      if (typeof connected === 'undefined' || !connected) return { staat: 'LET OP', detail: 'niet verbonden — zonder pollus valt er niets te meten' };
+      var nu = Date.now(), grijs = [], gered = [];
+      activePIDs.forEach(function (p) {
+        var t = _pidLastUpd[p] || 0; if (!t) return;
+        if (plOud(p, nu)) { grijs.push(p); return; }
+        var oud = (nu - t) > Math.max(3 * pidPollInterval(p), 5000);
+        if (oud) gered.push(p);
+      });
+      return { staat: 'OK', detail: grijs.length + ' grijs' + (grijs.length ? ' (' + grijs.slice(0, 5).join(', ') + ')' : '') +
+        '; ' + gered.length + ' die de oude regel grijs had gezet staan nu gewoon' + (gered.length ? ' (' + gered.slice(0, 5).join(', ') + ')' : '') };
+    }
+  },
+
+  // ── Banden: een ontbrekende sensor wordt genoemd ──
+  {
+    issue: '#396',
+    naam: 'Banden: een band zonder temperatuursensor zegt dat, en het venster zegt waar je hem toevoegt',
+    waarom: 'Op de CX-5 ontbrak 222A0C; achter links toonde alleen "· +3%" en niemand zag waarom.',
+    proef: async function () {
+      if (!window.PLBanden || typeof PLBanden.ontbreekt !== 'function' || !window.PLEigen)
+        return { staat: 'FOUT', detail: 'PLBanden.ontbreekt ontbreekt — pidlane-banden.js is niet de nieuwe' };
+      var ind = PLBanden.indeling(PLEigen.defs());
+      if (!ind) return { staat: 'LET OP', detail: 'deze auto heeft geen bandensensoren' };
+      var m = PLBanden.ontbreekt(ind), gat = m.druk.map(function (p) { return 'druk ' + p; }).concat(m.temp.map(function (p) { return 'temp ' + p; }));
+      return gat.length ? { staat: 'LET OP', detail: 'deze auto mist: ' + gat.join(', ') + ' — voeg ze toe in Mijn voertuigen → Sensoren' }
+                        : { staat: 'OK', detail: 'alle vier de banden hebben dezelfde sensoren' };
+    }
+  },
+
+  // ── Telemetrie alleen in Visueel ──
+  {
+    issue: '#439',
+    naam: 'Telemetrie (TL01–TL04) staat alleen in Visueel, niet in Overzicht of op het Slim-dashboard',
+    waarom: 'In Overzicht stonden vier rijen "—" onder Rijden zolang de telefoon niet in de houder zat.',
+    proef: async function () {
+      if (typeof plIsTelemetrie !== 'function') return { staat: 'LET OP', detail: 'pidlane-telemetrie.js niet geladen' };
+      var tl = [].slice.call(activePIDs).filter(function (p) { return plIsTelemetrie(p); });
+      if (!tl.length) return { staat: 'LET OP', detail: 'geen telefoonsensor aangezet — niets om te weren' };
+      var g = document.getElementById('gGrid');
+      if (!g || !g.classList.contains('view-overzicht')) return { staat: 'LET OP', detail: 'zet Live op Overzicht en draai opnieuw' };
+      var los = tl.filter(function (p) { return !!document.getElementById('gc-' + p); });
+      return los.length ? { staat: 'FOUT', detail: 'in Overzicht: ' + los.join(', ') } : { staat: 'OK', detail: tl.length + ' telefoonsensoren aan, geen ervan in Overzicht' };
+    }
+  },
+
+  // ── Overzicht Compact: de naam wijkt niet voor de band (#439) ──
+  {
+    issue: '#439',
+    naam: 'Overzicht Compact: elke sensornaam past op dit scherm, ook bij tekstgrootte L',
+    waarom: 'Op een telefoon van 384 px met tekstgrootte L hield de naamkolom 38 px over: "Sne…", "Toe…", "Bel…".',
+    proef: async function () {
+      var g = document.getElementById('gGrid');
+      if (!g || !g.classList.contains('view-overzicht') || g.classList.contains('ovz-ruim'))
+        return { staat: 'LET OP', detail: 'Live staat niet op Overzicht → Compact; zet hem daarop en draai opnieuw' };
+      var rijen = [].slice.call(g.querySelectorAll('.ovz-vak > .gc')).filter(function (c) { return c.getClientRects().length > 0; });
+      if (!rijen.length) return { staat: 'LET OP', detail: 'geen zichtbare rijen in Overzicht' };
+      var kort = rijen.filter(function (c) { var n = c.querySelector('.gn2'); return n && n.scrollWidth > n.clientWidth + 1; })
+        .map(function (c) { return c.querySelector('.gn2').textContent; });
+      var maat = Math.round(window.innerWidth) + ' px' + (document.body.classList.contains('uiL') ? ', tekstgrootte L' : '');
+      if (kort.length) return { staat: 'FOUT', detail: kort.length + ' van ' + rijen.length + ' afgekapt op ' + maat + ': ' + kort.slice(0, 4).join(', ') };
+      return { staat: 'OK', detail: rijen.length + ' namen passen op ' + maat };
+    }
+  },
+
   // ── Overzicht per categorie (#439) ──
   {
     issue: '#439',

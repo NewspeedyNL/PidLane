@@ -283,6 +283,11 @@ function renderGauges(){
     // vult de historie, en applyG() vindt straks alleen geen element om bij te
     // werken. Meten en tonen zijn hier twee dingen geworden.
     if(hiddenPIDs.has(pid)) return;
+    // Telemetrie (de telefoonsensoren TL01–TL04) hoort alleen in Visueel:
+    // daar staat hij op zijn eigen scherm met horizon en G-cirkel. In Overzicht
+    // en Slim waren het vier rijen "—" onder Rijden zolang de telefoon niet in
+    // de houder zat (07-10-2026, uit het gebruik).
+    if(typeof plIsTelemetrie==='function' && plIsTelemetrie(pid)) return;
     // Het vangnet dat hier stond is op 21-08-2026 verwijderd (§15, ronde 6 →
     // afgerond). Het riep pidGate(pid,'plausibel') aan en meldde via btDiag
     // zodra er iets langskwam, om te ontdekken of er nog een toevoegpad was
@@ -711,19 +716,9 @@ function startStaleWatchdog(){
       // Een telefoonsensor die niet vast zit is al dof (pidlane-telemetrie.js);
       // hij krijgt bewust geen updPID, dus 'stale' zou hier elke seconde knipperen.
       if(card.classList.contains('los')){ card.classList.remove('stale'); return; }
-      const last=_pidLastUpd[pid]||0;
-      // Stale-drempel per PID: trage sensoren (temp/niveau, 10-60s interval)
-      // mogen NIET rood knipperen zolang ze binnen hun eigen ritme verversen.
-      // Drempel = 3× het poll-interval, met een ruime ondergrens van 5s.
-      const interval=(typeof pidPollInterval==='function')?pidPollInterval(pid):1000;
-      const drempel=Math.max(interval*3, 5000);
-      // Trek de tijd eraf dat de bus door een ANDERE lezer bezet was
-      // (gezondheidscheck, rit-sweep, veldlab-survey, verificatie, monitor).
-      // Zonder deze correctie kleurde tijdens elke sweep de hele live view
-      // rood, terwijl er niets mis was met de sensoren.
-      let krediet=0;
-      try{ krediet=Math.max(0, PLBus.pausedTotal()-(_pidLastUpdPause[pid]||0)); }catch(e){ console.warn('PLBus.pausedTotal mislukt:', e); }
-      const stale=(now-last-krediet)>drempel;
+      // Wanneer een waarde oud is staat op één plek: plOud() in
+      // pidlane-plload.js, dezelfde regel als Visueel (07-10-2026).
+      const stale=plOud(pid, now);
       card.classList.toggle('stale', stale);
     });
   },1000);

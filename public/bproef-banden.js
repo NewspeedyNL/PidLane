@@ -126,6 +126,23 @@ function toets(naam, waar, uitleg) {
     toets('tikken opent het bandenvenster', lamp.opent, JSON.stringify(lamp));
     toets('een auto zonder bandensensoren: geen lampje', lamp.weg, JSON.stringify(lamp));
 
+    console.log('\n4. Een band zonder temperatuursensor (CX-5 zonder 222A0C, 07-10-2026)');
+    const gat = await app.ev(`(async function(){
+      const psi = '((A*1373)/1000)*0.145037738';
+      const namen = { '222A05':'Bandenspanning voor-links', '222A06':'Bandenspanning voor-rechts', '222A07':'Bandenspanning achter-links', '222A08':'Bandenspanning achter-rechts',
+                      '222A0A':'Bandtemperatuur voor-links', '222A0B':'Bandtemperatuur voor-rechts', '222A0D':'Bandtemperatuur achter-rechts' };
+      PLEigen.zet(Object.keys(namen).map(c => ({ code: c, naam: namen[c], ecu: '720', formule: /Bandenspanning/.test(namen[c]) ? psi : 'A-50', eenheid: /Bandenspanning/.test(namen[c]) ? 'psi' : '°C' })), 'CX-5');
+      [['222A05',2.39],['222A06',2.39],['222A07',2.53],['222A08',2.55],['222A0A',28],['222A0B',29],['222A0D',27]].forEach(x => updPID(x[0], x[1]));
+      PLBanden.open();
+      const ov = document.getElementById('plBandenOv');
+      const al = ov.querySelector('.plb-tegel[data-pos="AL"] span');
+      const r = { al: al ? al.textContent : null, gat: (ov.querySelector('.plb-gat') || {}).textContent || '' };
+      PLBanden.sluit();
+      return r;
+    })()`);
+    toets('achter links zegt dat de temperatuur ontbreekt, geen los "·"', gat.al && /^geen temp\. · \+\d+%$/.test(gat.al), JSON.stringify(gat));
+    toets('en het venster zegt waar je hem toevoegt', /temperatuur achter links/.test(gat.gat) && /Mijn voertuigen/.test(gat.gat), JSON.stringify(gat));
+
     toets('geen fouten in de console', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     if (app) await app.stop();

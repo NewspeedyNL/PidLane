@@ -65,7 +65,7 @@
 //      pedaal of de laaddruk hier langzamer binnen dan VIS_TRAAG_MS, dan valt
 //      die plek door naar de volgende kandidaat — één keer, en hij springt
 //      niet terug. Olie is van nature traag en valt daar niet onder.
-//   3. Blijft een antwoord uit (3× het eigen tempo, minimaal VIS_OUD_MIN_MS),
+//   3. Blijft een antwoord uit (plOud() in pidlane-plload.js, dezelfde regel als Overzicht),
 //      dan wordt die plek dof en blijft de naald staan waar hij stond.
 //   4. Een PID die de app als dood heeft gemarkeerd of verborgen is, telt als
 //      ontbrekend; de keten valt door naar de volgende kandidaat.
@@ -116,7 +116,6 @@
 const VIS_TRAAG_MS   = 800;    // mediaan tussen twee metingen: daarboven is het geen vloeiende meter meer
 const VIS_MIN_N      = 8;      // zoveel metingen voordat "te traag" een uitspraak is
 const VIS_AANLOOP_MS = 3000;   // metingen van vóór het openen (ander tempo) tellen niet mee
-const VIS_OUD_MIN_MS = 5000;   // ondergrens voor "dit antwoord is oud" (was 3000 tot 28-09: elke korte hapering gaf een flits)
 const VIS_REM_MS     = 2000;   // tempo voor snelle PIDs die niet op het scherm staan
 const VIS_SNEL_MS    = 300;    // wat "snel" is in PID_POLL_CLASS
 const VIS_TIK_MS     = 1000;   // herbeoordeling: tempo, ouderdom, indeling, meldingen
@@ -937,18 +936,9 @@ function remt(pid){
 }
 
 // ── ÉÉN ANTWOORD IS OUD ───────────────────────────────────────────
-// Zelfde krediet als de stale-watchdog van de puntjesweergave: tijd waarin de
-// bus door een andere lezer bezet was telt niet als stilte van deze PID.
-function isOud(pid, nu){
-  const laatste=(typeof _pidLastUpd!=='undefined' && _pidLastUpd) ? (_pidLastUpd[pid]||0) : 0;
-  if(!laatste) return false;               // nog niets binnen: dat is 'leeg', niet 'oud'
-  let krediet=0;
-  try{ if(window.PLBus && typeof _pidLastUpdPause!=='undefined') krediet=Math.max(0, window.PLBus.pausedTotal()-(_pidLastUpdPause[pid]||0)); }
-  catch(e){ console.warn('PLVisueel: PLBus.pausedTotal mislukt', e); }
-  let tempo=gemetenTempo(pid);
-  if(tempo===null){ try{ tempo=window.PLSched ? window.PLSched.interval(pid) : 1000; }catch(e){ console.warn('PLVisueel: PLSched.interval mislukt', e); tempo=1000; } }
-  return ((nu||Date.now())-laatste-krediet) > Math.max(3*(tempo||1000), VIS_OUD_MIN_MS);
-}
+// Dezelfde regel als Overzicht: plOud() in pidlane-plload.js. Een trage PID
+// die nog niet aan de beurt was is niet oud (07-10-2026).
+function isOud(pid, nu){ return plOud(pid, nu); }
 
 // ── HET MELDINGENVAK ──────────────────────────────────────────────
 // Onder de meter: wat er op de achtergrond loopt, en anders snelkoppelingen
@@ -1739,7 +1729,7 @@ function stop(){
 }
 
 window.PLVisueel = {
-  G:G, REM_MS:VIS_REM_MS, TRAAG_MS:VIS_TRAAG_MS, MIN_N:VIS_MIN_N, AANLOOP_MS:VIS_AANLOOP_MS, OUD_MIN_MS:VIS_OUD_MIN_MS,
+  G:G, REM_MS:VIS_REM_MS, TRAAG_MS:VIS_TRAAG_MS, MIN_N:VIS_MIN_N, AANLOOP_MS:VIS_AANLOOP_MS,
   PEDAAL_KETEN:PEDAAL_KETEN, PLEKKEN:PLEKKEN, HOOFD:HOOFD, SCHAAL:SCHAAL,
   schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
   stand:stand, tekst:tekst, laaddrukNu:laaddrukNu, plekOordeel:plekOordeel,

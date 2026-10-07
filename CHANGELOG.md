@@ -10,6 +10,51 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Grijs: één regel, en niet aan de beurt is niet oud
+ ═══════════════════════════════════════════════════════════
+
+ - Overzicht en Visueel (met zijn profielen en lampjes) hadden elk een eigen
+   regel voor "oud": 3× het nominale tempo, minstens 5 s. Loopt de bus
+   achter, dan zet de pollus trage PIDs bewust achteraan, en die gingen dan
+   grijs terwijl ze gewoon nog niet gevraagd waren.
+ - Nu één regel, plOud() in pidlane-plload.js: verwacht = het tempo of het
+   gemeten tempo als dat trager is; oud na 3× verwacht (min. 5 s) als er
+   sinds het laatste antwoord gevraagd is zonder antwoord. Niet gevraagd:
+   pas na een minuut (of 6× verwacht). Op verzoek (banden): nooit.
+ - test-visueel.js op de echte plOud, bproef-overzicht.js 2b, zes mutaties
+   (één verhuisd van VIS_OUD_MIN_MS), blok 5.
+
+ ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Telemetrie alleen in Visueel
+ ═══════════════════════════════════════════════════════════
+
+ - Helling, kanteling, lengte- en zij-G (TL01–TL04) staan niet meer in
+   Overzicht en zijn niet meer te kiezen op het Slim-dashboard; een
+   opgeslagen tegel ervan valt weg. Visueel → Telemetrie blijft.
+ - bproef-overzicht.js 1c, bproef-telemetrie.js deel 4 meet de dofheid nu
+   via PLTelemetrie.los(), twee mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Banden: een ontbrekende sensor wordt genoemd
+ ═══════════════════════════════════════════════════════════
+
+ - Een band zonder temperatuursensor (de CX-5 miste 222A0C) toont
+   "geen temp." in plaats van een los "· +3%", en het venster zegt welke
+   sensor ontbreekt en waar je hem toevoegt.
+ - PLBanden.ontbreekt() met drie toetsen, bproef-banden.js deel 4, twee
+   mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Overzicht Compact: de naam wijkt niet meer voor de band (#439)
+ ═══════════════════════════════════════════════════════════
+
+ - Bij tekstgrootte L op een telefoon van 384 px (340 px na de zoom) bleef
+   er 38 px over voor de naam: "Sne…", "Toe…", 17 van de 18 afgekapt. De
+   naam houdt nu minstens 6.6em, de band krimpt, en de waardekolom is 4.8em
+   in plaats van 86 px (de breedste waarde is 62 px).
+ - bproef-overzicht.js stap 1b meet het op 384 px met L, één mutatie, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Overzicht per categorie, met de normale band (#439)
  ═══════════════════════════════════════════════════════════
 

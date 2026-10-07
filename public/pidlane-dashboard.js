@@ -175,13 +175,16 @@ function heeft(pid){
     return !!def(pid);
   }catch(e){ console.warn('PLDash: keuzelijst onleesbaar', e); return false; }
 }
+// Telemetrie staat alleen in Visueel, niet op het dashboard (07-10-2026).
+function telefoon(pid){ return typeof plIsTelemetrie==='function' && plIsTelemetrie(pid); }
 function laad(){
   _sleutel=sleutel(vin());
   let ruw=null;
   try{ ruw=JSON.parse(localStorage.getItem(_sleutel)||'null'); }
   catch(e){ console.warn('PLDash: opgeslagen dashboard onleesbaar, standaard', e); }
   const t=normaliseer(ruw);
-  _tegels = t && t.length ? t : maakStandaard(motor(), heeft);
+  _tegels = (t && t.length ? t : maakStandaard(motor(), heeft))
+    .filter(function(x){ return !x.pids.some(telefoon); });
 }
 function bewaar(){
   try{ localStorage.setItem(_sleutel, JSON.stringify({ versie:VERSIE, tegels:_tegels })); }
@@ -302,7 +305,7 @@ function bladTegel(id){
   // sensor, één plek (de element-ids zijn per sensor).
   const op=_tegels.reduce(function(a,x){ return x.id===id ? a : a.concat(x.pids); }, []);
   const maat=(typeof discoveredPIDDefs!=='undefined' && Array.isArray(discoveredPIDDefs)) ? discoveredPIDDefs.filter(function(d){
-    return d.pid!==p && op.indexOf(d.pid)<0 && (!window.ovzCat || ovzCat(d, d.pid)===cat); }) : [];
+    return d.pid!==p && op.indexOf(d.pid)<0 && !telefoon(d.pid) && (!window.ovzCat || ovzCat(d, d.pid)===cat); }) : [];
   blad('<h5>'+esc(naam(p))+'</h5><p>Hoe wil je deze sensor zien?</p>'+
     '<div class="dash-keus">'+SOORTEN.map(function(s){ return '<button type="button"'+(t.soort===s?' class="aan"':'')+' onclick="PLDash.soort(\''+id+'\',\''+s+'\')">'+{getal:'Getal',balk:'Balk',grafiek:'Grafiekje',meter:'Meter'}[s]+'</button>'; }).join('')+'</div>'+
     '<div class="dash-keus twee"><button type="button"'+(!t.breed?' class="aan"':'')+' onclick="PLDash.breed(\''+id+'\',false)">Half breed</button>'+
@@ -315,7 +318,7 @@ function bladTegel(id){
 function kies(){
   const op=_tegels.reduce(function(a,t){ return a.concat(t.pids); }, []);
   const lijst=((typeof discoveredPIDDefs!=='undefined' && Array.isArray(discoveredPIDDefs)) ? discoveredPIDDefs : [])
-    .filter(function(d){ return op.indexOf(d.pid)<0 && !(typeof pidIsTekst==='function' && pidIsTekst(d.pid)); });
+    .filter(function(d){ return op.indexOf(d.pid)<0 && !telefoon(d.pid) && !(typeof pidIsTekst==='function' && pidIsTekst(d.pid)); });
   const groep={};
   lijst.forEach(function(d){ const c=(window.ovzCat) ? ovzCat(d, d.pid) : 'overig'; (groep[c]=groep[c]||[]).push(d); });
   const volg=(window.ovzVolgorde) ? ovzVolgorde(motor()) : Object.keys(groep);
