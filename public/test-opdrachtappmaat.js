@@ -57,7 +57,8 @@ function laad() {
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-pip.js'), 'utf8'), s, { filename: 'pidlane-pip.js' });
   // De meetrit van 01-10-2026: #302 en #333 (PLAdapter), #337 (PLBerekend),
   // #338 (PLVisueel), #376 (PLFoutcodes).
-  ['pidlane-adapter.js', 'pidlane-berekend.js', 'pidlane-visueel.js', 'pidlane-foutcodes.js'].forEach(function (f) {
+  // #443 (PLVerzamel), het verzamelscherm.
+  ['pidlane-adapter.js', 'pidlane-berekend.js', 'pidlane-visueel.js', 'pidlane-foutcodes.js', 'pidlane-verzamel.js'].forEach(function (f) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, f), 'utf8'), s, { filename: f });
   });
   return s;
@@ -123,7 +124,8 @@ console.log('── 2. de lijst en de module lopen gelijk ──');
    ['pidlane-adapter.js', 'PLAdapter', /case '((?:adapter|groep|verbind|antwoordtal)-[a-z-]+)'/g],
    ['pidlane-berekend.js', 'PLBerekend', /case '(berekend-[a-z-]+)'/g],
    ['pidlane-visueel.js', 'PLVisueel', /case '(visueel-[a-z-]+)'/g],
-   ['pidlane-foutcodes.js', 'PLFoutcodes', /case '(check-[a-z-]+)'/g]].forEach(function (m) {
+   ['pidlane-foutcodes.js', 'PLFoutcodes', /case '(check-[a-z-]+)'/g],
+   ['pidlane-verzamel.js', 'PLVerzamel', /case '(verzamel-[a-z-]+)'/g]].forEach(function (m) {
     const bron = fs.readFileSync(path.join(__dirname, m[0]), 'utf8');
     const inModule = (bron.match(m[2]) || []).map(function (x) { return x.slice(6, -1); });
     const vergeten = inModule.filter(function (n) { return namen.indexOf(n) < 0 || s.PLOpdracht.appMaatModule(n) !== m[1]; });

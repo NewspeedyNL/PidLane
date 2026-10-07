@@ -9,7 +9,15 @@
 // ════════════════════════════════════════
 // → FUEL_PIDS verplaatst naar pidlane-data.js
 async function runFuelAnalysis(){
-  if(!(await plVraagMeting('rit','de verbruiksanalyse','brandstof'))) return;
+  // Het verzamelscherm (#443), op het niveau van een rit. Biedt het een
+  // rijtest aan, dan komt deze analyse na de rit hier terug (naRit), en is die
+  // rit de meting. Een elektrische auto krijgt het scherm niet: daar is niets
+  // aan te meten (hieronder).
+  let uit=null;
+  if(vehicleFuelType()!=='elektrisch'){
+    uit=await PLVerzamel.meet({niveau:'rit', profiel:'brandstof', watVoor:'de verbruiksanalyse', naRit:runFuelAnalysis});
+    if(!uit || !uit.ai) return;
+  }
   activateAIPane();
   // Elektrisch voertuig heeft geen brandstof — brandstofefficiëntie-analyse
   // is niet van toepassing. Toon een passende melding i.p.v. een AI-call die
@@ -53,7 +61,8 @@ async function runFuelAnalysis(){
   const jaarKm=parseInt(document.getElementById('yearKm').value)||15000;
   const v=getVehicle();
   const mData=measurements.filter(m=>m.val!==null&&m.val!==undefined).map(m=>`• ${m.name}: ${fv(m.val)} ${m.unit} [${m.status.toUpperCase()}] — ${m.desc}`).join('\n');
-  const prompt=`Je bent brandstofefficiëntie specialist. Analyseer deze OBD2 data en geef besparingsadvies in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}\nBrandstofprijs: €${prijs}/liter | Jaarkilometers: ${jaarKm.toLocaleString('nl')} km\nDTC: ${formatDtcCodes(dtcCodes)}\n\nLIVE METINGEN:\n${mData||'(geen data)'}${q.promptBlok}\n\nGeef: HUIDIGE SITUATIE, GEVONDEN INEFFICIËNTIES, BESPAARTIPS (€/jaar), TOTALE BESPARING, RIJSTIJL TIPS`;
+  const meetBlok=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});
+  const prompt=`Je bent brandstofefficiëntie specialist. Analyseer deze OBD2 data en geef besparingsadvies in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}\nBrandstofprijs: €${prijs}/liter | Jaarkilometers: ${jaarKm.toLocaleString('nl')} km\nDTC: ${formatDtcCodes(dtcCodes)}\n\nLIVE METINGEN (laatste waarde, met de brandstofreferentie):\n${mData||'(geen data)'}${q.promptBlok}${meetBlok}\n\nGeef: HUIDIGE SITUATIE, GEVONDEN INEFFICIËNTIES, BESPAARTIPS (€/jaar), TOTALE BESPARING, RIJSTIJL TIPS`;
   try{
     const text=await apiFetch(prompt,1400,null,null,{
       vraag:'Brandstofefficiëntie: waar gaat er brandstof verloren en wat levert het op om dat te verhelpen?',

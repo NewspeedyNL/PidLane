@@ -144,7 +144,17 @@
     'verbind-weigeringen':   ['PLAdapter', 'verzoeken die de ELM-poort deze sessie weigerde'],
     'verbind-st-stappen':    ['PLAdapter', 'keren dat ATST tijdens deze verbinding omhoog werd bijgestuurd wegens ontbrekende antwoorden'],
     'antwoordtal-winst-pct': ['PLAdapter', '% sneller met antwoordcijfer dan zonder (mediaan); 0 of minder = het cijfer bespaart niets'],
-    'antwoordtal-blokkades': ['PLAdapter', 'keren dat een antwoordcijfer werd uitgezet omdat er met cijfer iets ontbrak']
+    'antwoordtal-blokkades': ['PLAdapter', 'keren dat een antwoordcijfer werd uitgezet omdat er met cijfer iets ontbrak'],
+    // #443 — het verzamelscherm: geven de vaste grenzen op een gezonde auto te vaak oranje of rood?
+    'verzamel-uitslagen':     ['PLVerzamel', 'uitslagen van het verzamelscherm deze sessie'],
+    'verzamel-opvallend-max': ['PLVerzamel', 'meeste opvallende sensoren (oranje of rood) in één uitslag'],
+    'verzamel-afwijkend':     ['PLVerzamel', 'rode vlaggen (over de alarmgrens) in alle uitslagen samen'],
+    'verzamel-koelwater':     ['PLVerzamel', 'uitslagen waarin het koelwater (0105) opviel'],
+    'verzamel-accu':          ['PLVerzamel', 'uitslagen waarin de accuspanning (0142) opviel'],
+    'verzamel-wacht-s':       ['PLVerzamel', 'langste live meting tot de uitslag, in seconden'],
+    'verzamel-hergebruik':    ['PLVerzamel', 'uitslagen zonder nieuwe meting omdat er net verzameld was'],
+    'verzamel-na-rit':        ['PLVerzamel', 'uitslagen uit een rit (rijtest, ritrapport, caravan of de rit van zojuist)'],
+    'verzamel-ai-pct':        ['PLVerzamel', '% van de beslissingen op het verzamelscherm dat de AI gevraagd werd']
   };
   function _appMaat(naam) {
     var bron = APPMATEN[naam];

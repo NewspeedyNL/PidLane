@@ -99,13 +99,57 @@ function toets(naam, waar, uitleg) {
     toets('het rapport staat in het AI-paneel', await wacht(`!!document.querySelector('#aiContent .ai-verdict') && !!document.querySelector('#aiContent [onclick*="openAIReportSheet"]')`, 5000),
       await app.ev(`(document.getElementById('aiContent')||{}).textContent.slice(0, 120)`));
 
-    console.log('\n── 5. sluiten zonder AI en de terugknop ──');
+    console.log('\n── 6. een tweede analyse op dezelfde set: één meting ──');
+    await app.ev(`runQuickAI(); 'ok'`);
+    toets('net verzameld: meteen de uitslag, zonder opnieuw te meten', await wacht(`/verzameld/.test((document.getElementById('plVzKop')||{}).textContent||'')`, 3000),
+      await app.ev(`(document.getElementById('plVzKop')||{}).textContent`));
+    toets('en dat telt als hergebruik', await app.ev(`PLVerzamel.maat('verzamel-hergebruik') >= 1`));
+    await app.ev(`document.querySelector('#plVzOv [data-a="ai"]').click(); 'ok'`);
+    toets('het AI-rapport krijgt de samenvatting', await wacht(`window.__prompts.length === 2 && /GEMETEN OVER HET MEETVENSTER/.test(window.__prompts[1])`, 8000),
+      await app.ev(`(window.__prompts[1]||'').slice(0, 200)`));
+
+    console.log('\n── 6b. Onderhoud: een grotere set, dus de poort meet door ──');
+    // Hergebruik slaat de tien seconden over, niet de poort: Onderhoud vraagt
+    // de set "totaal", en die is na de AI-monteur nog niet compleet.
+    await app.ev(`openOnderhoud(); runOnderhoud(); 'ok'`);
+    toets('het verzamelscherm opent vóór de AI', await wacht(zichtbaar('plVzOv'), 3000));
+    toets('en meet, want de set is groter', await wacht(`/haal ik de sensoren binnen/.test((document.getElementById('plVzSub')||{}).innerHTML||'')`, 3000));
+    await app.ev(`document.querySelector('#plVzOv [data-a="annuleer"]').click(); 'ok'`);
+    toets('annuleren: geen onderhoudsadvies', await app.ev(`window.__prompts.length === 2 && !/AI analyseert het onderhoud/.test((document.getElementById('ondResult')||{}).innerHTML||'')`));
+    await app.ev(`closeExtraDash('onderhoudDash'); 'ok'`);
+
+    console.log('\n── 7. de datalog is de meting ──');
+    await app.ev(`(function(){ datalogBuffer = { '0105': [], '010C': [] };
+      for (var i = 0; i < 20; i++) { datalogBuffer['0105'].push({ t: i * 1000, v: i === 9 ? 113 : 90 }); datalogBuffer['010C'].push({ t: i * 1000, v: 800 + i }); }
+      runDatalogAI(); return 1; })()`);
+    toets('het scherm toont meteen de uitslag uit de datalog', await wacht(`/de datalog/.test(document.getElementById('plVzSub').innerHTML)`, 3000),
+      await app.ev(`(document.getElementById('plVzSub')||{}).innerHTML`));
+    toets('de piek van 113 °C staat bij "Valt op"', await app.ev(`!!document.querySelector('#plVzOv .vz-rij.vz-afwijkend[data-pid="0105"]')`));
+    toets('zonder "Langer meten": een datalog verleng je niet', await app.ev(`!document.querySelector('#plVzOv [data-a="langer"]')`));
+    await app.ev(`document.querySelector('#plVzOv [data-a="annuleer"]').click(); 'ok'`);
+    toets('sluiten zonder AI: er gaat niets weg', await app.ev(`window.__prompts.length === 2`));
+
+    console.log('\n── 8. de rit van zojuist is de meting voor de verbruiksanalyse ──');
+    await app.ev(`(function(){ var nu = Date.now(); ritActive = false; ritStartTime = nu - 11 * 60000; ritEindTijd = nu - 30000; ritPauzeTotaal = 0;
+      var d = { '010D': [], '0105': [], '010C': [] };
+      for (var i = 0; i < 300; i++) { var t = ritStartTime + i * 2000; d['010D'].push({ t: t, v: i < 20 ? 0 : 70 }); d['0105'].push({ t: t, v: 88 }); d['010C'].push({ t: t, v: 2200 }); }
+      ritFaseData = { 0: { fase: { naam: 'proef' }, data: d } }; runFuelAnalysis(); return 1; })()`);
+    toets('de uitslag komt uit de rit, zonder nieuwe meting', await wacht(`/de rit van zojuist/.test((document.getElementById('plVzSub')||{}).innerHTML||'')`, 3000),
+      await app.ev(`(document.getElementById('plVzSub')||{}).innerHTML`));
+    toets('met de rijtijd van de rit erbij', await app.ev(`/waarvan \\d+ s gereden/.test(document.getElementById('plVzSub').innerHTML)`));
+    toets('en een knop om toch opnieuw te meten', await app.ev(`!!document.querySelector('#plVzOv [data-a="opnieuw"]')`));
+    await app.ev(`document.querySelector('#plVzOv [data-a="ai"]').click(); 'ok'`);
+    toets('het verbruiksrapport krijgt de rit als meetvenster', await wacht(`window.__prompts.length === 3 && /brandstofefficiëntie/.test(window.__prompts[2]) && /waarvan \\d+ s rijdend/.test(window.__prompts[2])`, 8000),
+      await app.ev(`(window.__prompts[2]||'').slice(-400)`));
+    await app.ev(`ritEindTijd = 0; 'ok'`);
+
+    console.log('\n── 9. sluiten zonder AI en de terugknop ──');
     await app.ev(`window.__uit = null; PLVerzamel.meet({ profiel: false, watVoor: 'proef' }).then(function (u) { window.__uit = u; }); 'ok'`);
     toets('het scherm staat weer open', await wacht(zichtbaar('plVzOv'), 3000));
     await app.ev(`appBack(); 'ok'`);
     toets('de terugknop sluit het, zonder AI', await wacht(`!!window.__uit && window.__uit.door === false && window.__uit.ai === false`, 3000),
       await app.ev(`JSON.stringify(window.__uit)`));
-    toets('nog steeds één prompt', await app.ev(`window.__prompts.length === 1`));
+    toets('geen prompt erbij', await app.ev(`window.__prompts.length === 3`));
     toets('geen JS-fouten onderweg', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     await app.stop();

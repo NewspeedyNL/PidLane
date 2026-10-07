@@ -61,6 +61,8 @@ function zichtbaarheid(v) { zichtbaar = v; (luisteraars['visibilitychange'] || [
 const logs = [];
 let gevangenPrompt = null, gevangenAanlevering = null, aiFaalt = null;
 const bestanden = [];
+// Wat het verzamelscherm na de rit antwoordt, en waarmee het gevraagd werd.
+let meetAntwoord = { door: true, ai: true }, laatsteMeet = null;
 const ctx = {
   document, window: {}, console,
   Date: new Proxy(Date, { get: (t, p) => p === 'now' ? (() => NU) : t[p], construct: (t, a) => new t(...a) }),
@@ -96,11 +98,27 @@ const ctx = {
 };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
+// Het echte verzamelscherm (#443): het ritrapport krijgt dezelfde samenvatting
+// over de hele rit als het scherm, en die moet uit de echte module komen. De
+// rijdrempels komen uit pidlane-fuel.js, niet uit deze test.
+{
+  const fuel = fs.readFileSync(__dirname + '/pidlane-fuel.js', 'utf8');
+  const c = (naam) => { const m = fuel.match(new RegExp('const ' + naam + ' *= *(\\d+);')); if (!m) { console.log('  FOUT  ' + naam + ' niet gevonden in pidlane-fuel.js'); process.exit(1); } return Number(m[1]); };
+  ctx.MEET_RIJ_KMH = c('MEET_RIJ_KMH'); ctx.MEET_RIJ_GAT_MS = c('MEET_RIJ_GAT_MS');
+  vm.runInContext(fs.readFileSync(__dirname + '/pidlane-verzamel.js', 'utf8'), ctx, { filename: 'pidlane-verzamel.js' });
+  // Alleen het scherm zelf niet: deze test roept het rapport aan terwijl de
+  // rit nog loopt, en dan stopt closeRitAnalyse() hem en zou het scherm
+  // opengaan. Het scherm is het onderwerp van bproef-verzamel.js.
+  ctx.PLVerzamel = Object.assign({}, ctx.window.PLVerzamel, { meet: async (o) => { laatsteMeet = o; return meetAntwoord; } });
+}
 const BRUG = `
 globalThis.__rit = {
   get faseIdx(){return ritFaseIdx}, get logs(){return ritLogs},
   get pauzeLog(){return ritPauzeLog},
   rapport: function(focus){ return generateRitRapport(focus); },
+  // Zoals stopRitAnalyse() het doet, zonder het scherm erachter.
+  zetEind: function(){ ritActive=false; ritEindTijd=Date.now(); },
+  zetModus: function(m){ ritMode=m; },
   stop: function(){ return stopRitAnalyse(); },
   startRit: function(fasen){
     RIT_FASEN_ACTIEF=fasen; RIT_TOTAAL=fasen.reduce((a,f)=>a+f.duur,0);
@@ -185,6 +203,17 @@ console.log('\n— de AI hoort WAAR het gat zat, niet alleen dat het er was —'
   toets('de aanlevering weet welk profiel gemeten werd', gevangenAanlevering.profiel, 'rit');
 }
 
+console.log('\n— de samenvatting van het verzamelscherm over de hele rit (#443) —');
+{
+  toets('een rit die nog niet gestopt is, heeft geen samenvatting', /GEMETEN OVER HET MEETVENSTER/.test(gevangenPrompt), false);
+  R.zetEind();
+  await R.rapport('techniek');
+  const p = gevangenPrompt || '';
+  toets('na het stoppen staat hij erin', /GEMETEN OVER HET MEETVENSTER/.test(p), true);
+  toets('over alle fases: min 800 en de uitschieter 4200 uit fase A', /010C: 800–4200/.test(p), true);
+  toets('naast de cijfers per fase, niet in plaats ervan', /\nFase A[^\n]*: [^\n]*min 800/.test(p), true);
+}
+
 console.log('\n— het tekstbestand draagt hetzelfde verhaal —');
 {
   const t = bestanden[bestanden.length - 1].tekst;
@@ -226,6 +255,20 @@ console.log('\n— de proefrit geeft de koopcheck haar bevindingen door —');
         /Fase A: \S/.test(doorgegeven || ''), true);
   toets('de duiding is de echte fase-duiding',
         /binnen normaal bereik|Afwijking in deze fase/.test(doorgegeven || ''), true);
+}
+
+console.log('\n— na de rit: eerst het verzamelscherm, dan pas het rapport (#443) —');
+{
+  await ritMetGat(); R.zetModus('2min'); gevangenPrompt = null; laatsteMeet = null;
+  meetAntwoord = { door: false, ai: false };
+  await R.stop();
+  toets('nee op het scherm: geen ritrapport naar de AI', gevangenPrompt, null);
+  toets('het scherm kreeg de rit als bron', laatsteMeet && laatsteMeet.bron && laatsteMeet.bron.naam, 'de rit van zojuist');
+  toets('met de rijtijd uit de rit', laatsteMeet && laatsteMeet.bron && (laatsteMeet.bron.rijSec === null || typeof laatsteMeet.bron.rijSec === 'number'), true);
+  await ritMetGat(); R.zetModus('2min'); gevangenPrompt = null;
+  meetAntwoord = { door: true, ai: true };
+  await R.stop();
+  toets('TEGENPROEF: ja op het scherm, dan gaat het rapport wel', gevangenPrompt !== null, true);
 }
 
 console.log('\n' + n + ' toetsen, ' + fout + ' fout');

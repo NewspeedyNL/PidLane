@@ -10,6 +10,29 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Verzamelscherm voor alle analyses, de rit als meting, en de meetproef (#443)
+ ═══════════════════════════════════════════════════════════
+
+ - Ook Verbruik, Totaalcheck, Onderhoud, EV-check, Lange rit, Datalog,
+   Diepe analyse, het ritrapport, de caravan en de klimaatcheck tonen eerst
+   de uitslag en vragen dan pas om de AI. Bij "nee" gaat er niets weg; bij
+   caravan en klimaat komt het rapport zonder AI-deel.
+ - Een meting die er al is, is de bron: de datalog, de ritfases, de
+   caravanhistorie, de klimaatmetingen. De rit van zojuist (een kwartier,
+   genoeg rijtijd) telt als meting voor de volgende analyse; "📡 Opnieuw
+   meten" vervangt hem. Na "🚗 Rijtest starten" komt de analyse vanzelf
+   terug. Net verzameld = geen tien seconden opnieuw; de poort blijft.
+ - Alle prompts krijgen dezelfde samenvatting; het ritrapport over de hele
+   rit naast de cijfers per fase.
+ - Meetproef: app-maten verzamel-*, een logregel per uitslag, een
+   meetopdracht (tekst in #443) en de stappen in CAMPAGNE.
+ - test-verzamelroutes.js (elf routes: nee = niets naar de AI, ja = de
+   samenvatting erin), test-verzamel.js en bproef-verzamel.js uitgebreid,
+   rittests op de echte module, achttien mutaties, blok 5, handleiding.
+ - Nog op de oude meetpoort: Systeemtest, Welk onderdeel en de koopcheck
+   (geen AI-vraag of een eigen draaiboek).
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Verzamelscherm: eerst de data en wat opvalt, dan de AI (#443)
  ═══════════════════════════════════════════════════════════
 

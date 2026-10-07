@@ -221,15 +221,28 @@ function getDatalogStats(){
   return stats;
 }
 
+/* De datalog als meting voor het verzamelscherm (#443). `t` staat hier
+   relatief aan datalogStart; voor de samenvatting maakt dat niet uit. */
+function plDatalogBron(){
+  const hist=datalogBuffer||{};
+  let eind=0;
+  Object.keys(hist).forEach(p=>{ const h=hist[p]; if(h&&h.length) eind=Math.max(eind,h[h.length-1].t); });
+  return { naam:'de datalog', hist, sec:Math.round(eind/1000), rijSec:PLVerzamel.rijSecUit(hist['010D']) };
+}
+
 async function runDatalogAI(){
-  if(!(await plVraagMeting('normaal','de datalog-analyse','basis'))) return;
-  activateAIPane();
   const stats=getDatalogStats();
   if(!Object.keys(stats).length){
     log('Geen datalog data beschikbaar','warn');
     document.getElementById('aiBtn').disabled=false;
     return;
   }
+  // De datalog ís de meting: het verzamelscherm toont meteen de uitslag
+  // ervan, en pas dan de vraag aan de AI (#443).
+  const bron=plDatalogBron();
+  const uit=await PLVerzamel.meet({bron, watVoor:'de datalog-analyse'});
+  if(!uit || !uit.ai) return;
+  activateAIPane();
   const v=getVehicle();
   const statLines=Object.values(stats).map(s=>
     `• ${s.name}: gem=${fv(s.avg)} ${s.unit}, min=${fv(s.min)}, max=${fv(s.max)}, trend=${s.trend} (${s.count} metingen)`
@@ -244,7 +257,7 @@ Voertuig: ${v.merk||'?'} ${v.year||''}
 DTC codes: ${formatDtcCodes(dtcCodes)}
 
 DATALOG — 20 seconden live meting:
-${statLines}${qBlok}
+${statLines}${qBlok}${PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec})}
 
 Let specifiek op:
 - Correlaties (spanning daalt als RPM stijgt = alternator)
