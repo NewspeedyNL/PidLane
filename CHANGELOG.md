@@ -10,6 +10,26 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Verzamelscherm: eerst de data en wat opvalt, dan de AI (#443)
+ ═══════════════════════════════════════════════════════════
+
+ - AI-monteur (wizard), AI-rapport en de oorzaak-uitwerking openen nu
+   "📡 Data verzamelen": per sensor de waarde, een verloopje en ✓ bij genoeg
+   metingen. Daarna "✓ Data verzameld" met bovenaan wat opviel (rood over de
+   alarmgrens, oranje over de waarschuwingsgrens of PID_LET_OP), en pas dan
+   "🤖 Laat de AI dit onderzoeken" — of Langer meten, of Sluiten zonder AI.
+ - Weg op deze routes: "Sensoren registreren", "Gebruik de meting van
+   zojuist?" en de tweede meetpoort vóór de uitwerking. De eisen zijn
+   dezelfde (plMeetTekort + plKernStatus); stop je eerder, dan gaat de
+   beperking mee in het rapport.
+ - De AI krijgt dezelfde samenvatting als het scherm: per sensor min–max,
+   gemiddelde, aantal en hoe vaak buiten de grens. Tot nu toe alleen de
+   laatste waarde. De klacht uit de wizard gaat mee als vraag.
+ - pidlane-verzamel.js (nieuw), test-verzamel.js, bproef-verzamel.js,
+   schermranden, acht mutaties (één verankerd opnieuw), blok 5, handleiding.
+ - Nog niet: Diepe analyse, totaalcheck, verbruik, datalog — zie #443.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Grijs: één regel, en niet aan de beurt is niet oud
  ═══════════════════════════════════════════════════════════
 

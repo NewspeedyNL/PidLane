@@ -213,7 +213,8 @@ var MODULES = {
   systeem:   {n:'Systeemtest',           d:'Sensoren tegen hun verwachte gedrag, stilstaand en rijdend',                run:function(){ startChoice('basiccheck'); }},
   conditie:  {n:'Conditie per systeem',  d:'Oordeel per systeem, met de meetwaarde eronder',                run:function(){ startChoice('check'); }},
   verbruik:  {n:'Verbruik & rijgedrag',  d:'Werkelijk verbruik en wat je rijstijl kost',                    run:function(){ startChoice('fuel'); }},
-  aimonteur: {n:'AI-monteur',            d:'Analyse van je klacht tegen de gemeten waarden',                run:function(){ startChoice('diag'); }},
+  aimonteur: {n:'AI-monteur',            d:'Analyse van je klacht tegen de gemeten waarden',
+              run:function(j){ veilig(function(){ el('welcomeScreen').classList.add('hidden'); }); runQuickAI({klacht:j.klacht}); }},
   onderdeel: {n:'Welk onderdeel is kapot?', d:'Foutcodes en meetwaarden samen, teruggebracht tot verdachte onderdelen', run:function(){ openOnderdeelCheck(); }},
   diep:      {n:'Diepe storingsanalyse', d:'Uitgebreide intake plus datalog om het probleem te vangen',     run:function(){ openDeepDiag(); }},
   markt:     {n:'Koop- en verkoopcheck', d:'Staat, historie en onderbouwing van de waarde',
@@ -238,6 +239,12 @@ var MODULES = {
    poort. Nieuwe module? Standaard poort; hier alleen bij als je kunt uitleggen
    waarom meetdata er niet toe doet. */
 var GEEN_MEETEIS = { dtc:1, monitor:1, recorder:1 };
+
+/* Modules die hun meting zélf tonen, in het verzamelscherm (PLVerzamel,
+   07-10-2026). Die eis is er wel, maar de poort zit in de module: krijgen ze
+   hier ook plVraagMeting, dan ziet de klant twee meetschermen achter elkaar.
+   Anders dan GEEN_MEETEIS: die modules hebben géén meeteis. */
+var EIGEN_METING = { aimonteur:1 };
 
 /* Welke kern-PID-set hoort bij welke module (drie-fasenpoort, §19). Staat hier
    los van MODULES zodat de moduletabel zelf onaangeraakt blijft — mechanisch
@@ -601,7 +608,7 @@ window.PLWizard = {
     // deur waar de knoppen in het planscherm naartoe wijzen. Zelfde les als
     // ronde 6 van de PID-gate: een poort op één van de paden is geen poort.
     // plVraagMeting bepaalt zelf het niveau uit job.meting (plMeetNiveau).
-    if(GEEN_MEETEIS[k] || typeof plVraagMeting!=='function'){ open(); return; }
+    if(GEEN_MEETEIS[k] || EIGEN_METING[k] || typeof plVraagMeting!=='function'){ open(); return; }
     plVraagMeting('normaal', M.n, MODULE_PROFIEL[k] || false).then(function(door){
       if(door){ metingGestart=true; open(); }
       // false = de gebruiker koos een rijtest; die neemt het scherm over.
@@ -640,7 +647,9 @@ window.PLWizard = {
         veilig(function(){ MODULES[eerste].run(job); });
         chipTick();
       };
-      if(typeof plVraagMeting==='function'){
+      if(EIGEN_METING[eerste]){
+        draaiEerste();
+      } else if(typeof plVraagMeting==='function'){
         plVraagMeting('normaal','dit onderzoek', job.profiel || false).then(function(door){
           if(door) draaiEerste();
           // Meetfase afgebroken: dan is er ook niets gemeten. Plan terug in

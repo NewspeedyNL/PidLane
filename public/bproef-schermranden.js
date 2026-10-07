@@ -248,6 +248,10 @@ const VELLEN = [
   { naam: 'Balk "AI analyseert"',  open: 'aiBusyBegin',         id: 'aiBusyBar',
     geenKnop: true, sluit: `aiBusyEnd();` },
   { naam: 'Meetscherm vóór een analyse', open: 'plMeetPoortVraag', id: 'meetGateOv' },
+  // Erbij op 07-10-2026: het verzamelscherm heeft een lijst die scrollt en
+  // drie of vier knoppen eronder — de onderste moet met een vinger te raken zijn.
+  { naam: 'Verzamelscherm vóór een AI-rapport', open: 'PLVerzamel.meet', id: 'plVzOv',
+    sluit: `e.querySelector('[data-a="annuleer"]').click();` },
   // Erbij op 01-10-2026: de uitslag van "🧵 SPP: draden meten" (#302) viel
   // met zijn derde regel onder de knoppenbalk — "drukst:" stond er, de draden
   // erachter niet. Gevuld zoals een echte meting hem vult: kop plus drie regels.

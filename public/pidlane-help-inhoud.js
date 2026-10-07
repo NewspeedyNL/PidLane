@@ -148,6 +148,20 @@ var PL_HULP = {
         '<p>Het onderzoek wijst aan, het vervangt geen monteur: laat een bevinding bevestigen voordat je onderdelen koopt.</p>',
       zie: ['check'] },
 
+    { id: 'verzamelen', groep: 'gebruik', titel: 'AI-monteur en AI-rapport',
+      tekst:
+        '<p>Kies je in het plan van <b>Er is iets mis</b> voor de <b>AI-monteur</b>, of vraag je een AI-rapport, dan gaat er eerst een scherm open: <b>📡 Data verzamelen</b>. ' +
+        'Je ziet per sensor de waarde binnenkomen; een ✓ betekent dat er genoeg metingen van zijn. Een waarde die nu al opvalt, krijgt meteen een kleur.</p>' +
+        '<p>Is er genoeg gemeten, dan staat er <b>✓ Data verzameld</b> met bovenaan wat er opviel: rood is over de alarmgrens, oranje over de waarschuwingsgrens of buiten het gebruikelijke bereik. ' +
+        'Daarbij staat het laagste en hoogste wat er gemeten is, en hoe vaak het buiten de grens kwam. Opvallend is nog geen defect: of het in deze toestand van de motor normaal is, weegt de AI.</p>' +
+        '<ul>' +
+        '<li><b>🤖 Laat de AI dit onderzoeken</b> — pas hier gaat er iets naar de AI, met precies wat je op het scherm zag. Dit kost tokens.</li>' +
+        '<li><b>⏳ Langer meten</b> — meet nog een halve minuut door.</li>' +
+        '<li><b>Sluiten zonder AI</b> — je hebt de meting gezien en er gaat niets weg.</li>' +
+        '</ul>' +
+        '<p>Wil je niet wachten, tik dan tijdens het meten op <b>Nu bekijken met wat er is</b>. Het rapport zegt dan zelf dat het op een kortere meting rust.</p>',
+      zie: ['onderzoek', 'account'] },
+
     { id: 'status', groep: 'gebruik', titel: 'De statusknop bovenin',
       tekst:
         '<p>Rechtsboven staat één knop met een gekleurde stip en de naam van de auto, of <b>Niet verbonden</b>. ' +

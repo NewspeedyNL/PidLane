@@ -2724,6 +2724,38 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .mg-pri{border:1.6px solid transparent;color:var(--tx);background:linear-gradient(rgba(255,255,255,.04),rgba(255,255,255,.04)) padding-box,linear-gradient(100deg,#00ff88,#22d3ee 55%,#3b82f6) border-box}
 .mg-sec{border:1px solid var(--bd);background:var(--sur2);color:var(--tx)}
 .mg-ter{border:1px solid transparent;background:transparent;color:var(--tx3);font-weight:600;font-size:13px}
+/* Verzamelscherm (PLVerzamel, 07-10-2026): de meetpoort als zichtbare meting. */
+.vz-kaart{max-width:460px;max-height:calc(var(--pl-vh) - 40px - var(--pl-sat,0px) - var(--pl-sab,0px));display:flex;flex-direction:column}
+.vz-kop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.vz-x{background:none;border:none;color:var(--tx3);font-size:20px;line-height:1;padding:2px 4px;cursor:pointer}
+.vz-balk{height:6px;border-radius:3px;background:var(--sur2);overflow:hidden;margin:0 0 10px;flex-shrink:0}
+.vz-balk i{display:block;height:100%;width:0;background:linear-gradient(90deg,#00ff88,#22d3ee 55%,#3b82f6);transition:width .4s}
+.vz-lijst{flex:1;min-height:60px;overflow-y:auto;margin:0 -4px 14px;padding:0 4px}
+.vz-rij{display:grid;grid-template-columns:minmax(0,1fr) 60px auto auto;align-items:center;gap:4px 8px;padding:6px 8px;border-radius:8px;border-left:3px solid transparent;font-size:12.5px}
+.vz-rij+.vz-rij{margin-top:2px}
+.vz-nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx)}
+.vz-spark{width:60px;height:16px}
+.vz-spark polyline{fill:none;stroke:var(--tx3);stroke-width:1.4;vector-effect:non-scaling-stroke}
+.vz-w{font-variant-numeric:tabular-nums;color:var(--tx);white-space:nowrap;text-align:right}
+.vz-n{font-size:11px;color:var(--tx3);min-width:34px;text-align:right}
+.vz-rij.klaar .vz-n{color:var(--gn)}
+.vz-tag{font-size:10.5px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--sur2);color:var(--tx2);white-space:nowrap}
+.vz-reden{grid-column:1/-1;font-size:11px;color:var(--tx3);line-height:1.4}
+.vz-afwijkend{border-left-color:var(--rd);background:rgba(239,68,68,.08)}
+.vz-afwijkend .vz-tag,.vz-afwijkend .vz-w{color:var(--rd)}
+.vz-afwijkend .vz-spark polyline{stroke:var(--rd)}
+.vz-let{border-left-color:var(--or);background:rgba(245,158,11,.08)}
+.vz-let .vz-tag,.vz-let .vz-w{color:var(--or)}
+.vz-let .vz-spark polyline{stroke:var(--or)}
+.vz-opval{color:var(--or)}
+.vz-meetfout,.vz-twijfel{border-left-color:var(--tx3)}
+.vz-nodata .vz-w{color:var(--tx3)}
+.vz-sectie{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--tx3);margin:10px 4px 4px}
+.vz-sectie:first-child{margin-top:0}
+.vz-noot{font-size:11px;color:var(--tx3);line-height:1.45;margin:6px 4px 2px}
+.vz-meer{margin-top:8px}
+.vz-meer summary{font-size:12px;font-weight:700;color:var(--tx2);cursor:pointer;padding:6px 4px}
+.vz-beperkt{margin:6px 0 0}
 
 /* ── Annuleerknop in de busy-pill (pidlane-theme.js maakt hem aan) ────── */
 #busyPillX{flex:none;margin-left:2px;width:20px;height:20px;line-height:1;padding:0;border-radius:50%;border:1px solid #2c4a7e;background:rgba(255,255,255,.06);color:#9fb6e0;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--f)}

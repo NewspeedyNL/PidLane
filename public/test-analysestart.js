@@ -156,7 +156,7 @@ const TEWEINIG = { ok: false, tekort: ['gemeten over 5 s, nodig 60 s'], st: { ge
     toets('TEGENPROEF: een echte storing krijgt het noodrapport nog wel', s.nood === 1, 'nood=' + s.nood);
   }
 
-  console.log('\nC. De AI-monteur werkt een oorzaak pas uit na het meetscherm');
+  console.log('\nC. De AI-monteur werkt een oorzaak pas uit na het verzamelscherm');
   {
     const diag = fs.readFileSync('pidlane-diagnose.js', 'utf8');
     const a0 = diag.indexOf('async function runDiagAI(causeName){');
@@ -169,19 +169,22 @@ const TEWEINIG = { ok: false, tekort: ['gemeten over 5 s, nodig 60 s'], st: { ge
           document: { getElementById: () => ({ value: 'stottert', disabled: false, scrollIntoView() {} }), querySelectorAll: () => [] },
           getVehicle: () => ({ merk: 'Mazda', model: 'CX-5', year: 2018 }), activePIDs: new Set(), isReportableSensor: () => true,
           getPidDef: () => null, pidVals: {}, fv: String, _qualityBlokFor: () => '', formatDtcCodes: () => '', dtcCodes: [] };
-        s.plVraagMeting = (niveau, wat, prof) => { s.gevraagd.push([niveau, wat, prof]); return Promise.resolve(door); };
+        // Sinds 07-10-2026 het verzamelscherm: `door` is hier "ja, laat de AI
+        // dit onderzoeken"; nee is sluiten zonder AI.
+        s.PLVerzamel = { meet: (o) => { s.gevraagd.push([o.niveau, o.watVoor, o.profiel]); return Promise.resolve({ door, ai: door, sam: { rijen: [] } }); },
+                         promptBlok: () => '' };
         s.callAI = () => { s.verstuurd++; return Promise.resolve(); };
         vm.createContext(s); vm.runInContext(RUN, s); return s;
       };
       const nee = maak(false);
       await nee.runDiagAI('Bobine defect');
-      toets('annuleren op het meetscherm: er gaat niets naar de AI', nee.gevraagd.length === 1 && nee.verstuurd === 0,
+      toets('sluiten zonder AI op het verzamelscherm: er gaat niets naar de AI', nee.gevraagd.length === 1 && nee.verstuurd === 0,
         JSON.stringify(nee.gevraagd) + ' verstuurd=' + nee.verstuurd);
       toets('zonder profiel, zodat de sensoren van deze oorzaak aan blijven', nee.gevraagd[0] && nee.gevraagd[0][2] === false,
         JSON.stringify(nee.gevraagd));
       const ja = maak(true);
       await ja.runDiagAI('Bobine defect');
-      toets('TEGENPROEF: na "gebruik de meting" gaat de uitwerking wel', ja.verstuurd === 1, 'verstuurd=' + ja.verstuurd);
+      toets('TEGENPROEF: na "laat de AI dit onderzoeken" gaat de uitwerking wel', ja.verstuurd === 1, 'verstuurd=' + ja.verstuurd);
     }
   }
 

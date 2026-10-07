@@ -2771,6 +2771,27 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── het verzamelscherm vóór een AI-rapport (#443) ──
+  {
+    issue: '#443',
+    naam: 'Verzamelscherm: een koelwaterpiek onderweg staat bij "Valt op" en in de prompt, ook als de laatste waarde gewoon is',
+    waarom: 'AI-monteur en AI-rapport stuurden alleen de laatste waarde per sensor mee; het scherm toont het venster, en de AI krijgt hetzelfde.',
+    proef: async function () {
+      var V = window.PLVerzamel;
+      if (!V || !V.samenvatting) return { staat: 'FOUT', detail: 'PLVerzamel ontbreekt — pidlane-verzamel.js is niet geladen' };
+      var h = []; for (var i = 0; i < 20; i++) h.push({ t: i * 1000, v: i === 7 ? 112 : 85 + (i % 5) * 2.5 });
+      var bron = { hist: { '0105': h, '0110': [] }, def: function (p) { return getPidDef(p); }, letOp: window.PID_LET_OP || {},
+                   kwal: function (p, v) { return assessPidQuality(p, v); } };
+      var sam = V.samenvatting(['0110', '0105'], bron);
+      var r = sam.rijen[0];
+      if (!r || r.pid !== '0105' || r.oordeel !== 'afwijkend') return { staat: 'FOUT', detail: 'koelwater met piek 112 °C: ' + (r ? r.pid + ' ' + r.oordeel : 'geen rij') + ' in plaats van afwijkend bovenaan' };
+      var p = V.promptBlok(sam, { sec: 60 });
+      if (!/OPVALLEND[\s\S]*–112/.test(p)) return { staat: 'FOUT', detail: 'de piek staat niet onder OPVALLEND in de prompt' };
+      if (!/GEEN DATA ONTVANGEN/.test(p)) return { staat: 'FOUT', detail: 'een sensor zonder data wordt niet genoemd' };
+      return { staat: 'OK', detail: 'afwijkend: ' + r.reden + ' (' + r.buiten + ' van ' + r.n + ')' };
+    }
+  },
+
   // ── Grijs: één regel, en niet aan de beurt is niet oud ──
   {
     issue: '#439',

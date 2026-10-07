@@ -335,13 +335,18 @@ async function runDiagAI(causeName){
   // klachttekst en krijgt dit scherm dus niet. Geen profiel: de verificatie
   // heeft de sensoren van deze oorzaak al aangezet, en een profiel zou die
   // selectie hier overschrijven.
-  if(!(await plVraagMeting('normaal', 'de uitwerking van "'+causeName+'"', false))) return;
+  //
+  // Sinds 07-10-2026 is dat het verzamelscherm (PLVerzamel): eerst de data en
+  // wat opvalt, dan pas de vraag of de AI mag. De AI krijgt dezelfde
+  // samenvatting over het meetvenster, niet alleen de laatste waarde.
+  const uit=await PLVerzamel.meet({niveau:'normaal', profiel:false, watVoor:'de uitwerking van "'+causeName+'"'});
+  if(!uit || !uit.ai) return;
   const v=getVehicle();
   const desc=document.getElementById('diagDesc').value;
   const chips=[...document.querySelectorAll('#diagChips .chip.on')].map(c=>c.textContent).join(', ');
-  const pdata=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean).join('\n');
+  const pdata=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});
   const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor));
-  const prompt=`Voertuig: ${v.merk} ${v.model} ${v.year}\nProbleem: ${desc}\nSymptomen: ${chips}\nOorzaak: ${causeName}\nPID data:\n${pdata}\nDTC: ${formatDtcCodes(dtcCodes)}${qBlok}\n\nGeef: SAMENVATTING, REPARATIE STAPPEN, KAN IK HET ZELF?, KOSTEN SCHATTING, URGENTIE`;
+  const prompt=`Voertuig: ${v.merk} ${v.model} ${v.year}\nProbleem: ${desc}\nSymptomen: ${chips}\nOorzaak: ${causeName}\nPID data:${pdata||'\n(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}${qBlok}\n\nGeef: SAMENVATTING, REPARATIE STAPPEN, KAN IK HET ZELF?, KOSTEN SCHATTING, URGENTIE`;
   const btn=document.getElementById('aiBtn'); if(btn) btn.disabled=true;
   const diagOut=document.getElementById('aiContentDiag');
   await callAI(prompt,diagOut,{
