@@ -1221,6 +1221,11 @@ window.AUTO_KENNIS = {
 //
 // Opzet als PLOnderdeel: bewijs, geen gok. softwareOorzaken() geeft alleen een
 // functie terug als er iets gemeten is dat erbij past, met dat bewijs erbij.
+//   sterk — het symptoom alleen is genoeg (een monitor die blijft hangen, een
+//           code die alleen bij een verkeerde configuratie voorkomt)
+//   zwak  — dezelfde codes komen veel vaker van het onderdeel zelf; alleen als
+//           er onlangs iets vervangen is, telt het als software. Anders zou een
+//           gewone P0420 als "adaptaties wissen" op het scherm komen.
 //
 // Monitornamen zijn letterlijk die uit parseReadiness() in
 // pidlane-foutcodes.js (MON_VONK / MON_DIESEL); test-softwareoorzaak.js laadt
@@ -1232,13 +1237,16 @@ window.AUTO_KENNIS = {
 window.SOFTWARE_OORZAKEN = [
   { id:'dpf', naam:'Roetfilter niet (goed) bij de ECU geregistreerd', sterkte:'sterk', brandstof:'diesel',
     monitors:['Roetfilter (DPF)'],
-    dtc:/^P(2002|2003|244A|244B|2452|2453|2454|2455|2458|2459|2463|246C)$/,
+    // Alleen "rendement te laag": dat ziet de ECU bij een filter dat hij niet
+    // (goed) kent. Drukvoelercircuits (P2452–P2455) en roetophoping (P2463)
+    // wijzen naar een sensor of een vol filter — die horen hier juist niet.
+    dtc:/^P(2002|2003)$/,
     vervangen:['roetfilter','dpf'],
     inleren:'Na het vervangen of reinigen van het roetfilter moet de ECU dat weten: nieuw filter registreren, asbelading op nul, daarna een (geforceerde) regeneratie. Gebeurt dat niet, dan rekent de ECU met het oude filter en wordt de monitor nooit klaar.',
     waarschuwing:'Is het roetfilter verwijderd, dan is dat het probleem — niet de codering. Verwijderen is niet toegestaan en valt op bij de deeltjestest van de APK; software die het ontbreken verbergt maakt dat niet anders.' },
   { id:'scr', naam:'AdBlue/SCR-onderdeel niet ingeleerd', sterkte:'sterk', brandstof:'diesel',
     monitors:['NOx-nabehandeling (SCR)'],
-    dtc:/^P(20EE|207F|2BAD)$/,
+    dtc:/^P(20EE|2BAD)$/,
     vervangen:['adblue','nox-sensor','noxsensor','scr','doseermodule'],
     inleren:'Na het vervangen van een NOx-sensor, doseermodule of AdBlue-pomp de adaptatie resetten of het nieuwe onderdeel inleren; anders rekent de ECU met de waarden van het oude.',
     waarschuwing:'Een uitgeschakeld SCR-systeem is niet toegestaan, net als bij het roetfilter.' },
@@ -1325,10 +1333,12 @@ window.softwareOorzaken = function softwareOorzaken(ctx){
     });
     if (f.dtc) dtc.forEach(function(c){ if (f.dtc.test(c)) bewijs.push('foutcode ' + c); });
     if (f.vin && ctx.vinAfwijkend) bewijs.push('het chassisnummer in de ECU wijkt af van dat van de auto');
+    let aanleiding = false;
     vervangen.forEach(function(v){
-      if (f.vervangen.some(function(w){ return v.indexOf(w) >= 0; })) bewijs.push('onlangs vervangen: ' + v);
+      if (f.vervangen.some(function(w){ return v.indexOf(w) >= 0; })) { aanleiding = true; bewijs.push('onlangs vervangen: ' + v); }
     });
     if (!bewijs.length) return null;
+    if (f.sterkte === 'zwak' && !aanleiding) return null;
     return { id:f.id, naam:f.naam, sterkte:f.sterkte, bewijs:bewijs, inleren:f.inleren,
              waarschuwing:f.waarschuwing, tools:(SOFTWARE_TOOLS[groep] || []).slice() };
   }).filter(Boolean);

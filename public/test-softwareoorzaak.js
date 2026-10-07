@@ -60,9 +60,11 @@ r = SO({ merk: 'BMW', brandstof: 'diesel', nietKlaar: bmw.nietKlaar, sinds: { wa
 eis(ids(r).indexOf('dpf') >= 0, '20× warmgedraaid zonder km telt ook als hangen', JSON.stringify(ids(r)));
 
 console.log('\n── foutcodes en andere aanwijzingen ──');
-r = SO({ merk: 'Ford', dtc: [' p2463 '] });
-eis(ids(r).indexOf('dpf') >= 0, 'P2463 (roetophoping) wijst ook zonder readiness naar het roetfilter');
+r = SO({ merk: 'Ford', dtc: [' p2002 '] });
+eis(ids(r).indexOf('dpf') >= 0, 'P2002 (rendement roetfilter te laag) wijst ook zonder readiness naar het roetfilter');
 eis(((r.find((x) => x.id === 'dpf') || {}).tools || []).indexOf('FORScan') >= 0, 'Ford krijgt FORScan');
+r = SO({ merk: 'Ford', dtc: ['P2463', 'P2452'] });
+eis(!r.length, 'roetophoping en een drukvoelercircuit zijn geen software', JSON.stringify(ids(r)));
 r = SO({ merk: 'Peugeot', dtc: ['P0630'] });
 eis(ids(r).indexOf('ecu') >= 0, 'P0630 (VIN niet geprogrammeerd) wijst naar de ECU-codering');
 eis(Array.isArray(r[0].tools) && r[0].tools.length === 0, 'een merk zonder groep geeft een lege toollijst, geen fout');
@@ -73,10 +75,16 @@ eis(ids(r).indexOf('accu') >= 0, 'een vervangen accu brengt accuregistratie op',
 r = SO({ merk: 'Volkswagen', dtc: ['P0101'] });
 eis(!r.length, 'een gewone sensorcode (P0101) levert geen softwareoorzaak op', JSON.stringify(ids(r)));
 
+console.log('\n── zwak telt alleen na een vervanging ──');
+r = SO({ merk: 'Ford', brandstof: 'benzine', dtc: ['P0420', 'P0171', 'P0507'], nietKlaar: ['Katalysator'], sinds: { km: 3000 } });
+eis(!r.length, 'P0420 en P0507 zonder vervanging: dat is het onderdeel, geen inleerprobleem', JSON.stringify(ids(r)));
+r = SO({ merk: 'Ford', brandstof: 'benzine', dtc: ['P0420'], vervangen: ['katalysator'] });
+eis(ids(r).join() === 'adaptaties', 'P0420 na een nieuwe katalysator wijst naar de adaptaties', JSON.stringify(ids(r)));
+
 console.log('\n── brandstof sluit uit ──');
-r = SO({ merk: 'BMW', brandstof: 'benzine', dtc: ['P2463', 'P0507'] });
+r = SO({ merk: 'BMW', brandstof: 'benzine', dtc: ['P2002', 'P0507'], vervangen: ['gasklep'] });
 eis(ids(r).indexOf('dpf') < 0 && ids(r).indexOf('gasklep') >= 0, 'een benzineauto krijgt geen roetfilter, wel de gasklep', JSON.stringify(ids(r)));
-r = SO({ merk: 'Toyota', brandstof: 'Hybride', dtc: ['P0507'] });
+r = SO({ merk: 'Toyota', brandstof: 'Hybride', dtc: ['P0507'], vervangen: ['gasklep'] });
 eis(ids(r).indexOf('gasklep') >= 0, 'een hybride of onbekende brandstof sluit niets uit', JSON.stringify(ids(r)));
 
 console.log('\n── de tabel zelf ──');
