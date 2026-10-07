@@ -41,7 +41,10 @@
     maxStappen: 14,
     meetIntervalMs: 350,
     voorwaardeMaxMs: 180000,
-    demoFactor: 0.12     // demo: metingen duren een fractie, zodat je het verloop ziet
+    demoFactor: 0.12,    // demo: metingen duren een fractie, zodat je het verloop ziet
+    // Wanneer een voorwaarde gehaald is. Op één plek, omdat PLSamenhang
+    // (#446) met dezelfde grenzen een meting achteraf in toestanden opknipt.
+    grens: { uitRpm: 100, aanRpm: 400, rijKmh: 5, warmC: 70 }
   };
 
   // ── De verdenkingen ─────────────────────────────────────────────────
@@ -704,10 +707,11 @@
   async function voorwaardeGehaald(v) {
     if (isDemo() || !v) return true;
     var rpm = await leesPid('010C');
-    if (v === 'motor_uit') return rpm == null || rpm < 100;
-    if (v === 'motor_aan') return rpm != null && rpm > 400;
-    if (v === 'rijden') { var s = await leesPid('010D'); return s != null && s > 5; }
-    if (v === 'warm') { if (!(rpm > 400)) return false; var t = await leesPid('0105'); return t != null && t >= 70; }
+    var g = CFG.grens;
+    if (v === 'motor_uit') return rpm == null || rpm < g.uitRpm;
+    if (v === 'motor_aan') return rpm != null && rpm > g.aanRpm;
+    if (v === 'rijden') { var s = await leesPid('010D'); return s != null && s > g.rijKmh; }
+    if (v === 'warm') { if (!(rpm > g.aanRpm)) return false; var t = await leesPid('0105'); return t != null && t >= g.warmC; }
     return true;
   }
 
