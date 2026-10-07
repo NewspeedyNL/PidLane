@@ -1186,6 +1186,54 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .gg.view-overzicht.ovz-ruim .gband { grid-area:band; background:var(--bd); }
 .gg.view-overzicht.ovz-ruim .ovz-vak .gspark { grid-area:spark; width:100%; height:24px; }
 .gg.view-overzicht.ovz-ruim .gnoot { grid-area:noot; }
+/* ══ SLIM ALS EIGEN DASHBOARD (07-10-2026, #439) ══════════════════════
+   Tegels in een raster van twee kolommen; .breed neemt er twee. De band is
+   dezelfde .gband als in Overzicht. Bewerkstand: knoppen op de tegels en een
+   blad van onderen voor de weergave en het toevoegen. */
+.gg.view-slim { display:block; padding-bottom:64px; }
+.dash-balk { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 2px 10px; font-size:12px; color:var(--tx3); }
+.dash-balk span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dash-knop { flex:none; font-family:var(--f); font-size:12px; font-weight:700; padding:7px 14px; border-radius:999px; border:1px solid var(--bd); background:var(--sur); color:var(--tx); cursor:pointer; }
+.dash-knop.aan { background:var(--blv); border-color:var(--blv); color:#fff; }
+.dash { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.dt { position:relative; background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:11px 12px; min-height:92px; min-width:0; box-shadow:var(--ss); }
+.dt.breed { grid-column:span 2; }
+.dt.warn { border-color:var(--or); } .dt.danger { border-color:var(--rd); }
+.dt h4 { margin:0 0 6px; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--tx3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dt-w { display:flex; align-items:baseline; gap:4px; font-family:var(--m); }
+.dt-w b { font-size:24px; font-weight:800; color:var(--tx); letter-spacing:-.5px; }
+.dt-w.groot b { font-size:38px; line-height:1.05; }
+.dt-w i { font-style:normal; font-size:12px; color:var(--tx3); }
+.dt.warn .dt-w b { color:var(--or); } .dt.danger .dt-w b { color:var(--rd); }
+.dt .dt-band { display:block; margin-top:12px; }
+.dt-lijn { display:block; width:100%; height:38px; margin-top:6px; }
+.dt-lijn polyline { fill:none; stroke:var(--bl); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+.dt-meter { display:block; width:100%; max-width:140px; height:auto; margin:2px auto 0; }
+.dt-meter path { fill:none; stroke-width:9; stroke-linecap:round; }
+.dt-meter-bak { stroke:var(--sur2); } .dt-meter-vul { stroke:var(--bl); transition:stroke-dasharray .3s linear; }
+.dt.warn .dt-meter-vul { stroke:var(--or); } .dt.danger .dt-meter-vul { stroke:var(--rd); }
+.dt-meter + .dt-w { justify-content:center; margin-top:-6px; }
+.dt-duo { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; column-gap:6px; }
+.dt-duo + .dt-duo { margin-top:8px; }
+.dt-duo span { font-size:11px; font-weight:700; color:var(--tx3); text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dt-duo .dt-w b { font-size:18px; }
+.dt-duo .dt-band { grid-column:1 / -1; margin-top:5px; }
+.dt-knop { display:flex; gap:4px; justify-content:flex-end; margin:-4px -4px 6px; }
+.dt-knop button { width:30px; height:30px; padding:0; border-radius:8px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx); font-size:13px; cursor:pointer; }
+.dt-voeg { min-height:92px; border:1.5px dashed var(--bd); border-radius:var(--r); background:transparent; color:var(--tx3); font-family:var(--f); font-size:14px; font-weight:700; cursor:pointer; }
+.dash-herstel { display:block; margin:12px auto 0; font-family:var(--f); font-size:12px; color:var(--tx3); background:none; border:0; text-decoration:underline; cursor:pointer; }
+.dash-blad-ov { position:fixed; inset:0; z-index:9800; background:rgba(0,0,0,.45); display:flex; align-items:flex-end; }
+.dash-blad { width:100%; max-height:80vh; overflow:auto; background:var(--sur); border-top:1px solid var(--bd); border-radius:18px 18px 0 0; padding:16px 16px calc(18px + env(safe-area-inset-bottom)); box-shadow:var(--sl); }
+.dash-blad h5 { margin:0 0 4px; font-size:16px; color:var(--tx); } .dash-blad p { margin:10px 0 8px; font-size:12px; color:var(--tx3); }
+.dash-keus { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:8px; }
+.dash-keus.twee { grid-template-columns:1fr 1fr; margin-top:10px; }
+.dash-keus button { padding:11px 4px; border-radius:12px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); font-family:var(--f); font-size:12px; font-weight:700; cursor:pointer; }
+.dash-keus button.aan { border-color:var(--bl); background:var(--bls); color:var(--tx); }
+.dash-keus button.hoofd { background:var(--blv); border-color:var(--blv); color:#fff; }
+.dash-tweede { width:100%; padding:10px; border-radius:10px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx); font-family:var(--f); font-size:13px; }
+.dash-groep { margin:12px 2px 6px; font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--tx3); }
+.dash-regel { display:flex; justify-content:space-between; width:100%; padding:11px 12px; margin-bottom:6px; border-radius:10px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx); font-family:var(--f); font-size:14px; text-align:left; cursor:pointer; }
+.dash-regel small { color:var(--tx3); font-family:var(--m); }
 /* ══ SLIM — dashboard, temperatuurbalken, en trends alleen waar iets beweegt ══
    Issue #61 (30-08-2026). De live view toonde alles op één hoop en met één
    opmaak: een brandstofmeter kreeg dezelfde trendlijn als het toerental,

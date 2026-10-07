@@ -198,7 +198,8 @@ function zeg(m) {
       return true; })()`);
     toets('de opzet is gelukt', opzet === true, String(opzet));
     await rust(300);
-    const tegels = await app.ev(`document.querySelectorAll('#gGrid .gc').length`);
+    // .dt: Slim is sinds #439 een eigen dashboard met eigen tegels.
+    const tegels = await app.ev(`document.querySelectorAll('#gGrid .gc, #gGrid .dt').length`);
     toets('er staan tegels om aan te meten', tegels > 0,
           'zonder tegels meet blok 2 een leeg scherm en staat hij groen om de verkeerde reden');
 
