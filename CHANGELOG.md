@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Slim visueel: vermogensnaald, en altijd open (#432)
+ ═══════════════════════════════════════════════════════════
+
+ - Bij elektrische aandrijving (hybride/EV, of accurijden gezien) en bij
+   elke auto zonder toerental: een vermogensnaald. Rechts van nul de vraag
+   uit het gaspedaal (015A → 0149 → 014A, zelflerend vanaf de rust), links
+   een groene laadzone uit de vertraging bij gas los. Geen kW: dat meet
+   standaard-OBD op een hybride niet.
+ - "Slim visueel heeft het toerental nodig" is weg: zonder naald gaat de
+   meter gewoon open, met een lege naald.
+ - Handleiding (Live → Visueel), test-visueel.js, bproef-visueel.js deel 7
+   en 8, zes mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Hybride in de basis: motortype, testgroepen, motortests (#430)
  ═══════════════════════════════════════════════════════════
 

@@ -974,6 +974,12 @@ MUTATIES=(
 "public/pidlane-totalcheck.js@@  return venster.length>=3 && venster.every(x=>typeof x.v==='number' && x.v>400);@@  return venster.length>=3;@@test-hybridebasis.js@@de wachttijd na een motorstart is weg: de basislijn loopt weer over de aanloop"
 "public/pidlane-totalcheck.js@@  if(hist[0].t>van) return false;   // de historie reikt niet ver genoeg terug@@@@test-hybridebasis.js@@een motor die net aansloeg heet meteen stabiel zolang er nog geen 6 s historie is"
 "public/pidlane-data.js@@{id:'misfire', sit:'constant', motor:true,@@{id:'misfire', sit:'constant',@@test-hybridebasis.js@@de misfire-test mag weer meten terwijl de auto op de accu rijdt"
+"public/pidlane-visueel.js@@  if(elektrisch && heeftVraag) return 'vermogen';@@  if(false) return 'vermogen';@@test-visueel.js@@een hybride houdt de toerennaald die op 0 staat terwijl hij 50 rijdt (#432)"
+"public/pidlane-visueel.js@@const VRAAG_KETEN = ['015A','0149','014A'];@@const VRAAG_KETEN = ['015A','0149','014A','0111'];@@test-visueel.js@@de gasklep telt als vermogensvraag: op de accu optrekken staat dan op nul"
+"public/pidlane-visueel.js@@  if(leer.min===null || leer.min===undefined || n<leer.min) leer.min=n;@@  if(leer.min===null || leer.min===undefined) leer.min=0;@@test-visueel.js@@de rustwaarde van het pedaal wordt niet geleerd: 0149 staat stil op 25% vraag"
+"public/pidlane-visueel.js@@  if(b.v<VERMOGEN.LAAD_MIN_KMH) return 0;@@@@test-visueel.js@@de laadzone slaat uit bij het laatste stukje stilvallen, waar niets meer terugwint"
+"public/pidlane-visueel.js@@  if(heeftV && vraag>VERMOGEN.RUST){@@  if(heeftV && vraag>VERMOGEN.RUST && !(heeftL && laad>0)){@@test-visueel.js@@vertragen wint van gas geven: de naald slaat naar laden terwijl je optrekt na een bocht"
+"public/pidlane-visueel.js@@  if(heeftVraag) return 'vermogen';\n  return null;@@  return null;@@test-visueel.js@@zonder toerental weer geen naald, ook als het pedaal er is"
 "public/pidlane-archief.js@@    return {waarde:'', reden:'geen start/stop-stop gezien; dat kan ook betekenen dat je niet lang genoeg stilstond met een warme motor'};@@    return {waarde:'nee', reden:'geen start/stop-stop gezien'};@@test-meetcontext.js@@niets-gezien wordt als 'nee' voorgesteld, en dan leest de AI een normale start/stop-stop als afslaan"
 "public/pidlane-archief.js@@        gekozen[v]=b.dataset.waarde;\n        geklikt[v]=true;@@        gekozen[v]=b.dataset.waarde;@@test-meetcontext.js@@een aangeklikt antwoord is niet meer van een blijven-staand voorstel te onderscheiden: punt 3 van #64 meet zichzelf kapot"
 

@@ -1360,6 +1360,11 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vis-vul.warn { stroke:var(--or); }
 .vis-vul.danger { stroke:var(--rd); }
 .vis-vul.vac { stroke:var(--tx3); }
+/* De vermogensnaald (#432): de laadzone links van nul, in groen. */
+.vis-zone.laad { stroke:var(--gn); }
+.vis-vul.laad { stroke:var(--gn); }
+.vis-streep.laad, .vis-cijfer.laad { stroke:var(--gn); fill:var(--gn); }
+#visg-naald.laden .vis-naald line { stroke:var(--gn); }
 .vis-streep { stroke:var(--tx2); stroke-width:1.4; stroke-linecap:round; }
 .vis-streep.groot { stroke:var(--tx); stroke-width:2.6; }
 .vis-streep.rood { stroke:var(--or); }

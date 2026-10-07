@@ -2771,6 +2771,26 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de vermogensnaald (#432) ──
+  {
+    issue: '#432',
+    naam: 'Slim visueel: een hybride krijgt de vermogensnaald, en zonder toerental gaat de meter tóch open',
+    waarom: 'Op een hybride stond de toerennaald op 0 terwijl de auto reed, en zonder 010C ging Slim visueel helemaal niet open.',
+    proef: async function () {
+      var V = window.PLVisueel;
+      if (!V || !V.naaldSoort || !V.vermogenStand || !V.vraagUit) return { staat: 'FOUT', detail: 'PLVisueel.naaldSoort/vermogenStand ontbreekt — pidlane-visueel.js is niet de nieuwe' };
+      if (V.naaldSoort('hybride', false, true, true) !== 'vermogen') return { staat: 'FOUT', detail: 'een hybride met pedaal krijgt de toerennaald' };
+      if (V.naaldSoort('benzine', false, true, true) !== 'toeren') return { staat: 'FOUT', detail: 'een benzineauto verliest zijn toerennaald' };
+      if (V.naaldSoort('benzine', false, false, true) !== 'vermogen') return { staat: 'FOUT', detail: 'zonder toerental geen naald' };
+      var leer = { min: null, max: null }; V.vraagUit(15, leer);
+      var rust = V.vermogenStand(V.vraagUit(15, leer), 0), gas = V.vermogenStand(V.vraagUit(60, leer), 0), laad = V.vermogenStand(0, 60);
+      if (rust.deel !== V.VERMOGEN.NUL) return { staat: 'FOUT', detail: 'pedaal in rust staat niet op nul maar op ' + rust.deel };
+      if (!(gas.deel > rust.deel)) return { staat: 'FOUT', detail: 'gas geven beweegt de naald niet naar rechts' };
+      if (!(laad.laden && laad.deel < rust.deel)) return { staat: 'FOUT', detail: 'vertragen geeft geen laadzone' };
+      return { staat: 'OK', detail: 'rust ' + rust.tekst + ', gas ' + gas.tekst + ', vertragen ' + laad.tekst };
+    }
+  },
+
   // ── hybride in de basis (#430) ──
   {
     issue: '#430',

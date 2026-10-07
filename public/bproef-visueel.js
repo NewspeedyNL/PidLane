@@ -319,7 +319,7 @@ function beoordeel(m) {
     toets('open: toerental ongemoeid', rem.open.rpm < rem.rem, JSON.stringify(rem));
     toets('terug naar Slim: de rem is eraf', rem.dicht.aan === false && rem.dicht.klep < rem.rem, JSON.stringify(rem));
 
-    console.log('\n7. Zonder toerental geen lege meter maar een uitleg');
+    console.log('\n7. Zonder toerental gaat de meter tóch open, met de vermogensnaald (#432)');
     const zonder = await app.ev(`(function(){
       // Alleen uitgezet: dat herstelt Slim visueel zelf (27-09). Verborgen
       // is een keuze van de klant, en die blijft staan.
@@ -327,12 +327,32 @@ function beoordeel(m) {
       const r={ zelfTerug: activePIDs.has('010C') && !!document.querySelector('#gGrid .vis-meter') };
       hiddenPIDs.add('010C'); renderGauges();
       r.uitleg=!!document.querySelector('#gGrid .vis-leeg'); r.meter=!!document.querySelector('#gGrid .vis-meter');
-      r.knop=!!document.querySelector('#gGrid .vis-leeg button');
-      hiddenPIDs.delete('010C'); renderGauges(); r.terug=!!document.querySelector('#gGrid .vis-meter'); return r;
+      r.vraagboog=!!document.getElementById('vis-vraagboog'); r.toerenboog=!!document.getElementById('vis-toerenboog');
+      r.verborgen=hiddenPIDs.has('010C');
+      hiddenPIDs.delete('010C'); renderGauges(); r.terug=!!document.getElementById('vis-toerenboog'); return r;
     })()`);
     toets('010C alleen uitgezet: Slim visueel zet hem zelf weer aan', zonder.zelfTerug, JSON.stringify(zonder));
-    toets('010C verborgen: uitleg met knop, geen meter (en hij blijft verborgen)', zonder.uitleg && zonder.knop && !zonder.meter, JSON.stringify(zonder));
-    toets('met 010C terug: de meter staat er weer', zonder.terug);
+    toets('010C verborgen: de meter staat er, geen uitlegscherm', zonder.meter && !zonder.uitleg, JSON.stringify(zonder));
+    toets('…met de vermogensnaald in plaats van de toerenplaat', zonder.vraagboog && !zonder.toerenboog, JSON.stringify(zonder));
+    toets('…en 010C blijft verborgen', zonder.verborgen);
+    toets('met 010C terug: de toerenplaat staat er weer', zonder.terug);
+
+    console.log('\n8. Een hybride krijgt de vermogensnaald, ook mét toerental (#432)');
+    const hyb = await app.ev(`(async function(){
+      const echt=window.detectEngineType;
+      window.detectEngineType=function(){ return 'hybride'; };
+      try{
+        renderGauges(); PLVisueel.tik(); await new Promise(function(r){ setTimeout(r, 50); });
+        const r={ vraagboog:!!document.getElementById('vis-vraagboog'), toerenboog:!!document.getElementById('vis-toerenboog') };
+        const hoek=function(){ const m=/rotate\\((-?[\\d.]+)deg\\)/.exec(document.getElementById('vis-naald').style.transform); return m?+m[1]:null; };
+        PLVisueel.bij('0149', 0); r.rust=hoek();       // het laagste dat hij zag: dat is nul
+        PLVisueel.bij('0149', 75); r.vol=hoek();
+        r.waarden=PLVisueel.indeling().naaldSoort;
+        return r;
+      } finally { window.detectEngineType=echt; renderGauges(); PLVisueel.tik(); }
+    })()`);
+    toets('hybride: vermogensplaat, geen toerenplaat', hyb.vraagboog && !hyb.toerenboog, JSON.stringify(hyb));
+    toets('hybride: de naald staat in rust op nul en gaat naar rechts bij gas', hyb.rust !== null && hyb.vol > hyb.rust + 100, JSON.stringify(hyb));
 
     toets('geen fouten in de console', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
