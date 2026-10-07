@@ -15,6 +15,83 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 07-10-2026 — "Pedaal vast op 20, tank 6 of 8": geen kapotte sensor, maar vijf tekenpaden
+
+**De melding.** Mazda CX-5, 19:45–19:47: het gaspedaal stond in Overzicht
+op 20 % en leek niet te bewegen; het tankniveau was het ene scherm 6 % en
+het andere 8 %. De schermafdrukken waren van twee momenten (88 en 41 km/u),
+dus een deel van het verschil was gewoon echt.
+
+**Wat de check vond.**
+- *0149 is het absolute pedaal.* In rust staat hij op deze auto rond de
+  20 %. Bij constant rijden of met cruise control staat je voet stil of los,
+  en dan blijft 0149 op zijn rust. Dat leest als "vast". Visueel kende die
+  rust al (vraagUit, voor de vermogensnaald), maar toonde op de pedaalrij
+  toch het ruwe getal; Overzicht en Slim ook.
+- *0149 en 015A heetten allebei "Gaspedaal"*, en Visueel valt over naar 015A
+  als 0149 te traag is. Twee sensoren onder één naam, met een andere rust.
+- *012F wordt eens per minuut gevraagd* (PID_POLL_CLASS 60000), en de ruwe
+  tankwaarde klotst bij optrekken en in bochten een paar procent. Elk scherm
+  ving een ander moment; de meter in de auto dempt.
+- *Afronding verschilde per scherm*: Overzicht toont procenten onder de 10
+  met twee decimalen ("7.80"), Visueel in hele ("8%").
+- *Vijf tekenpaden*: Overzicht (applyG), Slim (PLDash.bij), Visueel
+  (plekBij), de Visueel-profielen (PLVisProfiel.bij), en bij het opbouwen
+  lezen Visueel en Slim pidVals rechtstreeks. Een omrekening in applyG
+  alleen had de opbouw gemist, en de vermogensnaald dubbel genormaliseerd.
+
+**De keuze.** Eén functie, PLToon.waarde(), aangeroepen in elk van die
+paden; de ruwe waarde blijft in pidVals/pidHist voor de AI, de recorder en
+de analyses. De browserproef vond daarbij nog iets: een verminkte 0 van het
+absolute pedaal zou de geleerde rust omlaag trekken, en dan leest een
+losgelaten pedaal als 20 %. Die tellen niet meer mee.
+
+**Niet gedaan.** Het tempo van 012F is niet verhoogd: één vraag per minuut
+is genoeg voor een tank, en dempen lost het klotsen op zonder de bus te
+belasten. Of de rust van 0149 op een echte rit goed geleerd wordt, is een
+vraag voor de volgende rit.
+
+## 07-10-2026 — Samenhang: van twee getallen vergelijken naar lezen als een monteur (#446)
+
+**De klacht (eigenaar).** Het verzamelscherm legde per sensor het hoogste
+en laagste punt naast een vaste grens. Dat is twee waarden vergelijken, geen
+expertoordeel: geen toestand, geen verband tussen sensoren.
+
+**Wat het onderzoek opleverde** (bronnen in #446). OBD-monitors en
+monteurs beoordelen een waarde alleen onder zijn voorwaarden: trims warm en
+in gesloten lus (0103 bit 2), laadspanning stationair omdat een slim
+laadsysteem bij optrekken naar 12 à 13 V zakt, de katalysator alleen als
+de voorste sonde regelt. De scheiding lek/luchtmassameter is de trim
+stationair tegen 2500 tpm. Een koelwatersensor liegt als hij na lang
+stilstaan afwijkt van inlaat- en buitenlucht. Foutdetectie evalueer je op
+twee kanten: gevonden, en geen vals alarm op een gezonde auto.
+
+**Keuze: geen tweede kennisbank.** Al die regels stonden al in de stappen
+van het volledig onderzoek. PLSamenhang knipt een meting op in toestanden
+en geeft elke stap alleen de stukken waar zijn voorwaarde gold. Het bewijs
+wordt gewogen door dezelfde verwerk() en conclusie().
+
+**Wat de scenario's vonden dat de code fout had.**
+- *Aliasing.* Eerst zette ik alle sensoren op de momenten van het
+  toerental (1 Hz). Een voorste lambdasonde wisselt een paar keer per
+  seconde; zo afgetast viel hij steeds op hetzelfde punt van de golf en
+  leek een gezonde sonde stil te staan. Stappen krijgen nu de ruwe monsters
+  binnen de tijdvakken; alleen laaddruk (map[i] bij last[i]) uitgelijnd.
+  **Beperking die blijft:** een achterste sonde die sneller wisselt dan het
+  meettempo, is in een meting van 1 Hz niet van een rustige te onderscheiden.
+- *Gas geven bij stilstand* las als een schommelend stationair (overslaan).
+  Daarom de toestand `stil_gas` boven 1200 tpm.
+- *Een vaste lambdasonde* (in de browserproef, en op auto's met een
+  breedbandsonde die op 0114 een dode smalbandwaarde meldt — zie b1s1Line)
+  leidde tot "sonde traag of defect". Exact stilstaan is nu een meetvraag.
+- *"Klopt"* stond er ook als er niets te lezen viel. Nu zegt hij dat er
+  niets beoordeeld is, en dat dat niet betekent dat alles in orde is.
+
+**Grens van de live meting.** pidHist houdt 120 monsters per sensor. Een
+live meting van een minuut heeft dus zelden een warm stationair stuk én een
+2500-tpm-stuk; de samenhang zegt dat bij "niet beoordeeld". Na een rit
+(ritfases) of een datalog is er meer te lezen.
+
 ## 07-10-2026 — Het verzamelscherm voor alle analyses: wat er bij de uitrol bleek (#443)
 
 **De poort meette verkeerde dingen bij een rit.** Verbruik en Totaalcheck

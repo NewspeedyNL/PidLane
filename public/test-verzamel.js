@@ -212,6 +212,14 @@ console.log('\nG. Het scherm zelf: bron, de rit van zojuist, terugkeer na een ri
   s.ritBron = null; s.plRitBron = () => s.ritBron;
   s.ritGestart = null; s.openRitAnalyse = (m) => { s.ritGestart = m; };
   const g = (id) => el[id] || { innerHTML: '', textContent: '' };   // wat er nu in beeld staat
+  // De samenhang (#446) heeft zijn eigen scenariotest; hier een vaste uitkomst,
+  // om te zien dat het scherm hem toont en de AI hem krijgt.
+  s.PLSamenhang = {
+    leesApp: () => ({ regel: 'stationair warm 1:00 min · rijden warm 8:00 min', gelezen: [{ id: 'stationair' }, { id: 'laden' }], niet: [{ id: 'toeren2500', titel: 'Trims bij 2500 tpm', reden: 'geen rond 2500 tpm stilstaand van 10 s' }],
+      conclusie: { top: [{ id: 'valselucht', naam: 'Valse lucht', status: 'waarschijnlijk', bewijs: [{ d: 2, t: 'brandstoftrim +14 % stationair' }] }],
+                   uitgesloten: [{ id: 'laad', naam: 'Laadsysteem', status: 'uitgesloten', bewijs: [{ d: -2, t: 'laadspanning 14,1 V' }] }] } }),
+    promptBlok: () => '\n\nSAMENHANG: proefblok'
+  };
   const klik = (a) => el.plVzOv.onclick({ target: { closest: () => ({ getAttribute: () => a }) } });
   const wacht = () => new Promise((r) => setImmediate(r));
 
@@ -224,7 +232,14 @@ console.log('\nG. Het scherm zelf: bron, de rit van zojuist, terugkeer na een ri
   await wacht();
   toets('gegeven bron: meteen "Data verzameld" met de AI-knop', /verzameld/.test(g('plVzKop').textContent) && /data-a="ai"/.test(g('plVzKnoppen').innerHTML), g('plVzKop').textContent);
   toets('en zonder "Langer meten": een datalog kun je niet verlengen', !/data-a="langer"/.test(g('plVzKnoppen').innerHTML));
+  {
+    const l = g('plVzLijst').innerHTML;
+    toets('de samenhang staat bovenaan, vóór "Valt op"', l.indexOf('Samenhang') >= 0 && l.indexOf('Samenhang') < l.indexOf('Valt op'), l.slice(0, 160));
+    toets('met de toestanden, de aanwijzing en zijn bewijs (▲)', /stationair warm 1:00 min/.test(l) && /Valse lucht/.test(l) && /▲ brandstoftrim \+14 %/.test(l), l.slice(0, 400));
+    toets('wat de meting tegenspreekt (▼) en wat niet beoordeeld is, met de reden', /▼ laadspanning 14,1 V/.test(l) && /Niet beoordeeld in deze meting \(1\)/.test(l) && /geen rond 2500 tpm/.test(l));
+  }
   klik('ai'); await wacht();
+  toets('de AI krijgt de samenhang vóór de getallen', /^\n\nSAMENHANG: proefblok[\s\S]*GEMETEN OVER HET MEETVENSTER/.test(V.promptBlok(u ? u.sam : null) || ''), (V.promptBlok(u ? u.sam : null) || '').slice(0, 80));
   toets('ja op de AI: de uitkomst draagt de samenvatting en de duur van de bron', u && u.ai && u.sec === 20 && u.bron === 'de datalog' && u.sam.rijen[0].oordeel === 'afwijkend', JSON.stringify(u && { ai: u.ai, sec: u.sec, bron: u.bron }));
   toets('de uitslag staat in het log, met wat opviel', s.logs.some(m => /Verzamelscherm — proef: uitslag/.test(m) && /valt op: Koelwater temp 85–112/.test(m)), s.logs.slice(-1)[0]);
   toets('tellers: één uitslag, één rode vlag, koelwater één keer, AI 100%', V.maat('verzamel-uitslagen') === 1 && V.maat('verzamel-afwijkend') === 1 && V.maat('verzamel-koelwater') === 1 && V.maat('verzamel-ai-pct') === 100,

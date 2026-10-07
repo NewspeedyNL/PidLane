@@ -194,9 +194,16 @@ function beoordeel(m) {
       const h = function(id){ return +String(document.getElementById(id).getAttribute('stroke-dasharray')).split(' ')[0]; };
       PLVisueel.bij('0105', 130); uit.koelVol = h('viss-koel');
       PLVisueel.bij('0105', 40);  uit.koelLeeg = h('viss-koel');
+      // Tank en pedaal gaan door PLToon (07-10-2026): de tank gedempt over de
+      // laatste drie metingen, het pedaal vanaf zijn geleerde rust. Daarom
+      // een vaste historie, en niet wat de demo toevallig al gemeten had.
+      var nu = Date.now();
+      pidHist['012F'] = [50, 50, 50].map(function(v, i){ return { t: nu - (3 - i) * 60000, v: v }; });
       PLVisueel.bij('012F', 50);  uit.tankHalf = h('viss-tank');
       uit.H = 100;
-      PLVisueel.bij('0149', 37); uit.pedaal = { h: h('viss-pedaal'), tekst: document.getElementById('visv-pedaal').textContent };
+      PLToon._wis();
+      pidHist['0149'] = [15, 15.2, 15].map(function(v, i){ return { t: nu - (3 - i) * 1000, v: v }; });
+      PLVisueel.bij('0149', 45); uit.pedaal = { h: h('viss-pedaal'), tekst: document.getElementById('visv-pedaal').textContent };
       activePIDs.delete('0105'); manualPIDs.delete('0105'); setPidView('slim'); setPidView('visueel');
       await new Promise(function(r){ setTimeout(r, 500); });
       uit.koelWeer = activePIDs.has('0105'); uit.handmatig = manualPIDs.has('0105');
@@ -210,7 +217,7 @@ function beoordeel(m) {
     toets('achteruit is R en neutraal N (niet "-1" en "0")', mid.achteruit === 'R' && mid.neutraal === 'N', JSON.stringify(mid));
     toets('koelwaterbalkje: 130 °C vol, 40 °C leeg', mid.koelVol === mid.H && mid.koelLeeg === 0, JSON.stringify(mid));
     toets('brandstofbalkje: 50% is half', Math.abs(mid.tankHalf - mid.H / 2) < 0.05, JSON.stringify(mid));
-    toets('pedaalbalkje: 37% vult 37, met het getal erachter', mid.pedaal.h === 37 && mid.pedaal.tekst === '37%', JSON.stringify(mid.pedaal));
+    toets('pedaalbalkje: 45 % bij een rust van 15 % is half ingetrapt — vult 50, met "50%" erachter', mid.pedaal.h === 50 && mid.pedaal.tekst === '50%', JSON.stringify(mid.pedaal));
     toets('Slim visueel openen zet een uitgezette sensor van de meter weer aan, niet als handmatige keuze', mid.koelWeer && !mid.handmatig, JSON.stringify(mid));
     const alarm = await app.ev(`(function(){
       PLVisueel._nieuweSessie();

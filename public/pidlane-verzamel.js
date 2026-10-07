@@ -127,7 +127,9 @@
       const g = sam.rijen.filter(filter);
       return g.length ? '\n' + titel + ':\n' + g.map(regel).join('\n') : '';
     };
-    let s = '\n\nGEMETEN OVER HET MEETVENSTER (' + (getal(m.sec) ? m.sec + ' s' : 'duur onbekend') +
+    // De samenhang (#446) gaat vóór de getallen: de AI werkt dan vanuit een
+    // redenering, en de getallen eronder zijn het bewijs.
+    let s = (sam.samenhangTekst || '') + '\n\nGEMETEN OVER HET MEETVENSTER (' + (getal(m.sec) ? m.sec + ' s' : 'duur onbekend') +
       (getal(m.rijSec) && m.rijSec > 0 ? ', waarvan ' + m.rijSec + ' s rijdend' : '') +
       '; dezelfde samenvatting die de gebruiker op het scherm zag — per sensor min–max, gemiddelde, laatste waarde en aantal metingen):';
     s += groep('OPVALLEND (vlag van de app op vaste grenzen — nog geen diagnose)', r => r.oordeel === 'afwijkend' || r.oordeel === 'let');
@@ -178,6 +180,29 @@
     '</div>';
   }
 
+  /* Het blok "Samenhang" bovenaan de uitslag (#446). Wat de regels van het
+     onderzoek uit de meting lazen: aanwijzingen met hun bewijs (▲ ervoor,
+     ▼ ertegen), wat de meting tegenspreekt, en wat niet te beoordelen was. */
+  const STATUS = { bevestigd: 'bevestigd', waarschijnlijk: 'aanwijzing', uitgesloten: 'tegengesproken', onwaarschijnlijk: 'onwaarschijnlijk', open: 'open' };
+  function samenhangHtml(r) {
+    if (!r) return '';
+    const kop = '<div class="vz-sectie">Samenhang</div>';
+    if (r.geen) return kop + '<div class="vz-noot">Niet bepaald: ' + esc(r.geen) + '.</div>';
+    const c = r.conclusie || { top: [], uitgesloten: [] };
+    const bew = x => '<ul class="vz-bewijs">' + (x.bewijs || []).map(b => '<li class="' + (b.d > 0 ? 'voor' : 'tegen') + '">' + (b.d > 0 ? '▲ ' : '▼ ') + esc(b.t) + '</li>').join('') + '</ul>';
+    let h = kop + (r.regel ? '<div class="vz-toestand">' + esc(r.regel) + '</div>' : '');
+    h += !(r.gelezen || []).length
+      ? '<div class="vz-noot">Niets in samenhang te beoordelen: geen stuk van deze meting voldeed aan de voorwaarden. Dat zegt dus ook niet dat alles in orde is.</div>'
+      : c.top.length
+      ? c.top.map(x => '<div class="vz-sh vz-sh-' + esc(x.status) + '"><div><b>' + esc(x.naam) + '</b> <span class="vz-tag">' + STATUS[x.status] + '</span></div>' + bew(x) + '</div>').join('')
+      : '<div class="vz-noot">Geen verdenking. Wat de regels van het onderzoek in deze meting konden lezen, klopt.</div>';
+    if (c.uitgesloten.length) h += '<details class="vz-meer"><summary>Tegengesproken door de meting (' + c.uitgesloten.length + ')</summary>' +
+      c.uitgesloten.map(x => '<div class="vz-sh vz-sh-uit"><b>' + esc(x.naam) + '</b>' + bew(x) + '</div>').join('') + '</details>';
+    if (r.niet.length) h += '<details class="vz-meer"><summary>Niet beoordeeld in deze meting (' + r.niet.length + ')</summary><ul class="vz-bewijs">' +
+      r.niet.map(n => '<li><b>' + esc(n.titel) + '</b> — ' + esc(n.reden) + '</li>').join('') + '</ul></details>';
+    return h;
+  }
+
   /* Hoeveel monsters een sensor nodig heeft: dezelfde maat als de kop
      ("3 van 8 klaar"), dus uit plKernStatus — een trage sensor heeft er één
      nodig. Buiten de kernset de gewone maat. */
@@ -211,6 +236,8 @@
           (info.bron ? ' uit ' + info.bron : (getal(info.ms) ? ' na ' + Math.round(info.ms / 1000) + ' s' : '')) +
           ', ' + (sam.rijen.length - sam.tel.nodata) + ' sensoren, ' +
           (opv.length ? 'valt op: ' + opv.join('; ') : 'niets opvallend') +
+          (sam.samenhang && sam.samenhang.conclusie && sam.samenhang.conclusie.top.length
+            ? ' — samenhang: ' + sam.samenhang.conclusie.top.map(x => x.naam + ' (' + x.status + ')').join(', ') : '') +
           ' — toestand: ' + (getal(info.rijSec) ? info.rijSec + ' s rijdend' : 'rijden onbekend') +
           (kw ? ', koelwater laatste ' + fmt(kw.laatste) + ' °C' : ''), opv.length ? 'warn' : 'info');
     } catch (e) { console.warn('PLVerzamel: logregel niet geschreven', e); }
@@ -384,6 +411,7 @@
                       : '<details class="vz-meer"><summary>' + titel + ' (' + g.length + ')</summary>' + inhoud + '</details>';
         };
         document.getElementById('plVzLijst').innerHTML =
+          samenhangHtml(sam.samenhang) +
           sectie('Valt op', r => r.oordeel === 'afwijkend' || r.oordeel === 'let', true) +
           (sam.opvallend ? '<div class="vz-noot">Opvallend is een vlag op vaste grenzen, nog geen defect. Of het in deze toestand van de motor normaal is, weegt de AI.</div>' : '') +
           sectie('Meting twijfelachtig', r => r.oordeel === 'meetfout' || r.oordeel === 'twijfel', true) +
@@ -422,7 +450,7 @@
           if (m.k && m.k.stil && m.k.stil.length) t.push('geen data van ' + m.k.stil.map(i => i.naam).join(', '));
           window._meetBeperkt = t.length ? t.join('; ') : 'meting vroegtijdig gestopt';
         }
-        uitslagSam = samNu();
+        uitslagSam = metSamenhang(samNu(), appBron().hist);
         tekenUitslag(m.r.st, m.k, uitslagSam, m.r.rijTekort);
         noteer(uitslagSam, { watVoor: o.watVoor, reden, ms: verstreken, hergebruik: vers && verstreken < MIN_MS, rijSec: m.r.st.rijSec });
       };
@@ -499,13 +527,25 @@
     return Math.round(ms / 1000);
   }
 
+  /* De samenhang (#446) aan een samenvatting hangen: PLSamenhang leest
+     dezelfde reeksen als een monteur — eerst de toestand, dan de regels van
+     het volledig onderzoek op de stukken waar ze gelden. */
+  function metSamenhang(sam, hist) {
+    if (!sam) return sam;
+    try {
+      sam.samenhang = PLSamenhang.leesApp(hist || {});
+      sam.samenhangTekst = PLSamenhang.promptBlok(sam.samenhang);
+    } catch (e) { console.warn('PLVerzamel: de samenhang is niet bepaald (#446) — het scherm en de AI krijgen alleen de getallen', e); }
+    return sam;
+  }
+
   /* De samenvatting van een gegeven bron ({hist, pids?}), zoals het scherm
      hem toont. Voor een rapport dat de bron zelf heeft (het ritrapport). */
   function vanBron(b) {
     if (!b) return null;
     const pids = (b.pids && b.pids.length) ? b.pids
       : Object.keys(b.hist || {}).filter(p => (b.hist[p] || []).length && isReportableSensor(p));
-    return samenvatting(pids, Object.assign(appBron(), { hist: b.hist || {} }));
+    return metSamenhang(samenvatting(pids, Object.assign(appBron(), { hist: b.hist || {} })), b.hist);
   }
 
   /* Reeksen per PID uit een lijst van momentopnames, zoals de klimaatcheck
@@ -522,6 +562,6 @@
     return h;
   }
 
-  window.PLVerzamel = { MIN_MS, RIT_GELDIG_MS, beoordeel, samenvatting, promptBlok, fase, meet, naRit, maat, histUit, vanBron, rijSecUit,
+  window.PLVerzamel = { MIN_MS, RIT_GELDIG_MS, beoordeel, samenvatting, promptBlok, fase, meet, naRit, maat, histUit, vanBron, rijSecUit, metSamenhang,
     open: function () { return !!lopend; } };
 })();

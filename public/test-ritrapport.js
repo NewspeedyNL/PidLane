@@ -105,6 +105,9 @@ vm.createContext(ctx);
   const fuel = fs.readFileSync(__dirname + '/pidlane-fuel.js', 'utf8');
   const c = (naam) => { const m = fuel.match(new RegExp('const ' + naam + ' *= *(\\d+);')); if (!m) { console.log('  FOUT  ' + naam + ' niet gevonden in pidlane-fuel.js'); process.exit(1); } return Number(m[1]); };
   ctx.MEET_RIJ_KMH = c('MEET_RIJ_KMH'); ctx.MEET_RIJ_GAT_MS = c('MEET_RIJ_GAT_MS');
+  // De samenhang (#446) heeft zijn eigen scenariotest (test-samenhang.js);
+  // hier alleen een herkenbaar blok, zodat te zien is dát hij meegaat.
+  ctx.PLSamenhang = { leesApp: () => ({ geen: 'proef' }), promptBlok: () => '\n\nSAMENHANG: proefblok' };
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-verzamel.js', 'utf8'), ctx, { filename: 'pidlane-verzamel.js' });
   // Alleen het scherm zelf niet: deze test roept het rapport aan terwijl de
   // rit nog loopt, en dan stopt closeRitAnalyse() hem en zou het scherm
@@ -211,6 +214,7 @@ console.log('\n— de samenvatting van het verzamelscherm over de hele rit (#443
   const p = gevangenPrompt || '';
   toets('na het stoppen staat hij erin', /GEMETEN OVER HET MEETVENSTER/.test(p), true);
   toets('over alle fases: min 800 en de uitschieter 4200 uit fase A', /010C: 800–4200/.test(p), true);
+  toets('met de samenhang erbij, vóór de getallen (#446)', /SAMENHANG: proefblok[\s\S]*GEMETEN OVER HET MEETVENSTER/.test(p), true);
   toets('naast de cijfers per fase, niet in plaats ervan', /\nFase A[^\n]*: [^\n]*min 800/.test(p), true);
 }
 

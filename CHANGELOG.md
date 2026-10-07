@@ -10,6 +10,42 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Gaspedaal en tank: hetzelfde getal in elke weergave
+ ═══════════════════════════════════════════════════════════
+
+ - Melding uit de auto (Mazda CX-5): het gaspedaal "stond vast op 20", en
+   het tankniveau verschilde per scherm (6 tegen 8 %).
+ - Pedaal: 0149 is het absolute pedaal, in rust rond de 20 %. Alle
+   weergaven tonen nu hoeveel hij ingetrapt is vanaf de rust die per auto
+   geleerd wordt; een verminkte 0 telt niet mee bij het leren.
+ - Tank: 012F wordt eens per minuut gevraagd en klotst; getoond wordt de
+   mediaan van de laatste drie metingen.
+ - Pedaal en tank overal in hele procenten (Overzicht zei "7.80" waar
+   Visueel "8%" zei).
+ - Eén module, pidlane-toon.js, aangeroepen door Overzicht, Slim, Visueel
+   en de Visueel-profielen. De ruwe waarde blijft voor de AI en analyses.
+ - test-toon.js, bproef-toon.js, acht mutaties, handleiding.
+
+ ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Samenhang: het verzamelscherm leest de meting als een monteur (#446)
+ ═══════════════════════════════════════════════════════════
+
+ - Bovenaan de uitslag een blok Samenhang: eerst de toestand per moment
+   (koud/warm, stationair, rijden, vollast, gesloten lus uit 0103), dan de
+   stappen van het volledig onderzoek op de stukken waar hun voorwaarde
+   gold. Aanwijzingen met bewijs ▲▼, wat de meting tegenspreekt, en wat
+   niet te beoordelen was met de reden. De AI krijgt hetzelfde, vóór de
+   getallen.
+ - Geen tweede kennisbank: pidlane-samenhang.js gebruikt PLOnderzoek
+   (STAPPEN, verwerk, conclusie); de grenzen staan nu in CFG.grens.
+ - Scenariotest test-samenhang.js: gezonde koude start met slim laden, lek,
+   luchtmassameter, dynamo, liegende koelwatersensor, versleten kat, warme
+   file, open lus, korte meting, stilstaand gas, vaste lambdasonde.
+ - Gevonden onderweg: op het tempo van het toerental afgetast lijkt een
+   regelende lambdasonde stil te staan; stappen krijgen daarom de ruwe
+   monsters.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Verzamelscherm voor alle analyses, de rit als meting, en de meetproef (#443)
  ═══════════════════════════════════════════════════════════
 

@@ -416,12 +416,9 @@ function naaldSoort(motor, bewijstHybride, heeftToeren, heeftVraag){
    niet op nul maar rond de 15%, en het vloerniveau verschilt per auto. Dus
    zelflerend: `leer` = {min, max} van deze sessie, en wordt hier bijgewerkt. */
 function vraagUit(v, leer){
-  const n=Number(v);
-  if(v===null || v===undefined || v==='' || !isFinite(n) || !leer) return null;
-  if(leer.min===null || leer.min===undefined || n<leer.min) leer.min=n;
-  if(leer.max===null || leer.max===undefined || n>leer.max) leer.max=n;
-  const bereik=Math.max(VERMOGEN.BEREIK, leer.max-leer.min);
-  return Math.max(0, Math.min(100, (n-leer.min)/bereik*100));
+  // De rekensom staat in PLToon (pidlane-toon.js): dezelfde rust geldt ook
+  // voor het getal op de pedaalrij en in Slim en Overzicht.
+  return PLToon.ingedrukt(v, leer, VERMOGEN.BEREIK);
 }
 /* De laadzone 0–100 uit de snelheidshistorie: vertraging over het laatste
    venster. null = te weinig om iets te zeggen; 0 = niet aan het vertragen. */
@@ -1644,6 +1641,9 @@ function vermogenBij(pedaal){
 function plekBij(rol, val){
   const ind=_staat.ind; if(!ind) return;
   const pid=ind.plekken[rol];
+  // Het getal op de rij: pedaal vanaf de rust, tank gedempt — dezelfde regel
+  // als Overzicht en Slim (PLToon). De naald rekent zelf met de ruwe waarde.
+  val=PLToon.waarde(pid, val);
   const st=plekOordeel(rol, val, defVan(pid));
   zetTekst('visv-'+rol, st==='geen' ? '—' : tekst(rol, val)+(rol==='koel'?'°':'%'));
   const p=el('visp-'+rol); klasse(p, st); if(p) p.classList.remove('oud');

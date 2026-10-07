@@ -34,6 +34,8 @@ function laad(bron) {
   };
   c.window = c;
   vm.createContext(c);
+  // bij() toont via PLToon (pedaal vanaf de rust, tank gedempt).
+  vm.runInContext(fs.readFileSync(__dirname + '/pidlane-toon.js', 'utf8'), c, { filename: 'pidlane-toon.js' });
   vm.runInContext(bron, c, { filename: 'pidlane-visprofiel.js' });
   return c;
 }
@@ -139,6 +141,7 @@ function maakV() {
   c.getPidDef = p => c.ALL_PID_DEFS[p] || null;
   c.PLBus = { pausedTotal: () => 0 };
   vm.runInContext(BRON, c, { filename: 'pidlane-visprofiel.js' });
+  vm.runInContext(lees('pidlane-toon.js'), c, { filename: 'pidlane-toon.js' });   // vraagUit rekent via PLToon
   vm.runInContext(lees('pidlane-visueel.js'), c, { filename: 'pidlane-visueel.js' });
   return c;
 }
@@ -238,6 +241,7 @@ console.log('\n9. Diesel: andere sensoren op dezelfde weergaven (#393)');
   vm.runInContext(lees('pidlane-data.js'), c, { filename: 'pidlane-data.js' });
   c.getPidDef = p => c.ALL_PID_DEFS[p] || null; c.PLBus = { pausedTotal: () => 0 };
   vm.runInContext(BRON, c, { filename: 'pidlane-visprofiel.js' });
+  vm.runInContext(lees('pidlane-toon.js'), c, { filename: 'pidlane-toon.js' });
   vm.runInContext(lees('pidlane-visueel.js'), c, { filename: 'pidlane-visueel.js' });
   c.PLVisueel.start();
   const i = c.PLVisueel.indeling();

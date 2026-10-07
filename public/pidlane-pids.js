@@ -927,6 +927,9 @@ function applyG(pid,val){
     return;
   }
   const card=document.getElementById('gc-'+pid); if(!card) return;
+  // Het getal op het scherm: pedaal vanaf de rust, tank gedempt (PLToon).
+  // Dezelfde regel als Slim en Visueel; de ruwe waarde blijft in pidVals.
+  val=PLToon.waarde(pid,val);
   const st=pidOordeel(d,val,pid);
   // Er is een waarde binnen, dus de lege stand is voorbij. Via classList in
   // plaats van een className-toewijzing: die overschreef ook gc-manueel,
@@ -942,7 +945,7 @@ function applyG(pid,val){
   }
   // In Overzicht met de eenheid erbij (#439): dan geldt de decimalenregel van
   // fvDec(), en staat de accu op 14.10 V in plaats van 14 V.
-  const gv=document.getElementById('gv-'+pid); if(gv) gv.textContent=(pidViewMode==='overzicht') ? fv(val, d) : fv(val);
+  const gv=document.getElementById('gv-'+pid); if(gv) gv.textContent=PLToon.tekst(pid,val) || ((pidViewMode==='overzicht') ? fv(val, d) : fv(val));
   const gb=document.getElementById('gb-'+pid);
   if(gb){
     const b=ovzBand(d, val), u=gb.lastChild;

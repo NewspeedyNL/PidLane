@@ -85,7 +85,10 @@ function toets(naam, waar, uitleg) {
     toets('na de verlenging komt de uitslag zonder beperking', await wacht(`!!document.querySelector('#plVzOv [data-a="ai"]') && !window._meetBeperkt`, 45000),
       await app.ev(`document.getElementById('plVzKop').textContent + ' | ' + window._meetBeperkt`));
     toets('de koelwaterpiek staat bij "Valt op", als afwijkend', await app.ev(`!!document.querySelector('#plVzOv .vz-rij.vz-afwijkend[data-pid="0105"]')`));
-    toets('"Valt op" staat bovenaan', await app.ev(`/^Valt op/.test((document.querySelector('#plVzOv .vz-lijst > *')||{}).textContent||'')`));
+    // Sinds #446 staat de samenhang bovenaan, dan pas "Valt op".
+    toets('de samenhang staat bovenaan, met de toestanden van de meting', await app.ev(`/^Samenhang/.test((document.querySelector('#plVzOv .vz-lijst > *')||{}).textContent||'') && !!document.querySelector('#plVzOv .vz-toestand')`),
+      await app.ev(`(document.querySelector('#plVzOv .vz-lijst')||{}).textContent.slice(0, 200)`));
+    toets('"Valt op" volgt erna', await app.ev(`!!Array.from(document.querySelectorAll('#plVzOv .vz-sectie')).find(function (e) { return /^Valt op/.test(e.textContent); })`));
     await foto('uitslag');
 
     console.log('\n── 4. pas na ja gaat de AI aan het werk ──');
@@ -95,6 +98,7 @@ function toets(naam, waar, uitleg) {
     const p = await app.ev(`window.__prompts[0] || ''`);
     toets('met de samenvatting over het venster en de piek erin', /GEMETEN OVER HET MEETVENSTER/.test(p) && /Koelwater temp: [\d,.]+–112/.test(p), p.slice(0, 300));
     toets('en met de klacht uit de wizard', /Klacht van de gebruiker: Temperatuurmeter loopt op/.test(p));
+    toets('de AI krijgt de samenhang vóór de getallen (#446)', /SAMENHANG[\s\S]*GEMETEN OVER HET MEETVENSTER/.test(p), p.slice(0, 300));
     // Het paneel toont het oordeel en een knop naar het volledige rapport.
     toets('het rapport staat in het AI-paneel', await wacht(`!!document.querySelector('#aiContent .ai-verdict') && !!document.querySelector('#aiContent [onclick*="openAIReportSheet"]')`, 5000),
       await app.ev(`(document.getElementById('aiContent')||{}).textContent.slice(0, 120)`));
