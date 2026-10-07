@@ -15,6 +15,28 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 07-10-2026 — Slim visueel zonder toerental, en de vermogensnaald (#432)
+
+**Wat er stond.** `bouw()` tekende "Slim visueel heeft het toerental nodig"
+in plaats van de meter zodra 010C ontbrak, terwijl de kop van hetzelfde
+bestand als eerste regel heeft dat een ontbrekende PID een lege plek is en
+niets anders. Op een hybride is 010C er meestal wel, maar staat hij een groot
+deel van de rit op 0: de naald zei dan niets over wat de auto deed.
+
+**Gekozen (met de eigenaar).** Een vermogensnaald zoals in een EV, met als
+bron de vermogens*vraag* uit het gaspedaal en een laadzone uit de
+vertraging. Bewust geen kW: standaard-OBD geeft op een hybride geen gemeten
+totaalvermogen, en 019A (hybride-accudata) staat hier zonder parser omdat
+de schaal niet zeker is. Een berekend rijvermogen (massa × versnelling ×
+snelheid) is overwogen en afgewezen voor nu: de snelheid komt in stappen van
+1 km/h binnen en de naald werd daar onrustig van zonder flinke demping.
+
+**Niet de gasklep.** 0111 staat in de pedaalketen van de rij eronder, maar
+niet in VRAAG_KETEN: op een hybride is dat de klep van de verbrandingsmotor,
+en die staat dicht terwijl je op de accu optrekt.
+
+---
+
 ## 07-10-2026 — Een hybride aansluiten: drie fouten in de basis (#430)
 
 **Aanleiding.** Een eerste rit met een MX+ in een nieuwe hybride. Doorgelopen
