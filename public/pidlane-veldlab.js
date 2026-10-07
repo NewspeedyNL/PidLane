@@ -95,7 +95,6 @@ function vlNovelty(g){
 function vlFinalize(){
   if(!window.PidLaneEvalLog || !PidLaneEvalLog.active) return;
   const snap=PidLaneEvalLog.stop(); if(!snap) return;
-  try{ const el=document.getElementById('vlSheet'); if(el) el.remove(); }catch(e){ /* stil: element kan al weg zijn */ }
   if(snap.invalid){ try{ log('🧪 Veldlab: sessie ongeldig (demo actief) — niet opgeslagen','warn'); }catch(e){ /* stil: melding mag nooit de meting breken */ } return; }
   if((snap.events||[]).length<4) return; // te weinig gebeurd om iets van te leren
   const g=vlDerive(snap.events||[]);

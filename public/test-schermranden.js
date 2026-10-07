@@ -201,8 +201,14 @@ console.log('\n3. De app-schil zelf — issue #58 (29-08-2026)');
         /#welcomeScreen \{[^}]*top:var\(--pl-top\)/.test(css),
         'met top:46px overlapt het keuzescherm de onderrand van de topbalk');
 
+  // De LAATSTE bottom van #fabLane telt: een latere regel met dezelfde
+  // selector wint altijd. Tot 06-10-2026 keek deze toets naar de eerste
+  // (zonder --pl-nav-h), die een latere regel al overschreef — hij bewees dus
+  // een declaratie die nooit gold. De opruim-PR haalde die weg.
+  const fabBottoms = [...css.matchAll(/#fabLane \{[^}]*?bottom:([^;}]+)/g)].map(m => m[1].trim());
   toets('#fabLane (zwevende chips) staat boven de navigatiebalk',
-        /#fabLane \{[^}]*bottom:calc\(14px \+ var\(--pl-sab\)\)/.test(css));
+        fabBottoms.length > 0 && /var\(--pl-sab\)/.test(fabBottoms[fabBottoms.length - 1]) && /var\(--pl-nav-h\)/.test(fabBottoms[fabBottoms.length - 1]),
+        'laatste bottom van #fabLane: ' + fabBottoms[fabBottoms.length - 1]);
 
   toets('.ai-sheet-f (knoppenrij van een bottom-sheet) gebruikt --pl-sab',
         /\.ai-sheet-f \{[^}]*var\(--pl-sab\)/.test(css),

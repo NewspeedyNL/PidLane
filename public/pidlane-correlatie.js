@@ -92,7 +92,6 @@ function _bevToonBij(){
 // waarschuwing die je een maand geleden wegklikte en niet meer kent, is
 // erger dan één kaart te veel.
 const _bevVerborgen = new Set();
-function bevindingVerborgen(id){ return _bevVerborgen.has(id); }
 function bevindingZichtbaar(hits){ return (hits||[]).filter(h=>h && !_bevVerborgen.has(h.id)); }
 function _bevNaam(id){ const h=(_bevLaatst[id]||(_bevToon||[]).find(x=>x.id===id)); return h ? h.naam : 'Bevinding'; }
 function _bevHerteken(){

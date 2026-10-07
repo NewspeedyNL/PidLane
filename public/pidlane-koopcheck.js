@@ -184,20 +184,6 @@ async function liveLogRecoveryCheck(){
   }catch(e){ console.warn('Live-log herstelcheck bij opstarten mislukt — niet-blokkerend, geen crash-melding getoond', e); }
 }
 
-// Prompt + start: zodra tester-consent én extra logfunctie aan staan
-async function maybeStartLiveLog(){
-  try{
-    if(_liveLog.active) return;
-    const consent = (typeof hasTesterConsent==='function') ? hasTesterConsent() : (localStorage.getItem('pl_tester_consent')==='1');
-    const extra = !!document.getElementById('adminLogExport')?.checked;
-    if(!(consent && extra)) return;
-    const ok = window.confirm('Live-logbestand aanmaken?\n\nPidLane schrijft vanaf nu alle logs continu naar een bestand, zodat ze bewaard blijven — óók als de app crasht. Je kunt het later delen of exporteren.');
-    if(!ok) return;
-    const started=await liveLogStart();
-    if(started){ try{ log('🛠 Live-log actief — '+_liveLog.path+' ('+_liveLog.mode+')','ok'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } try{ showToast?.('🛠 Live-log actief'); }catch(e){ /* stil: melding mag nooit de stroom breken */ } }
-  }catch(e){ console.warn('Live-log niet gestart na bevestiging', e); }
-}
-
 // Periodieke veiligheids-flush bij backgrounden/sluiten
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'){ liveLogFlush(); persistAppState(); } });
 window.addEventListener('pagehide',()=>{ liveLogFlush(); persistAppState(); });

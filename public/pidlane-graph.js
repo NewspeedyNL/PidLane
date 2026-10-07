@@ -251,9 +251,6 @@ if(typeof setInterval==='function' && !_grKlok) _grKlok=setInterval(()=>{
   try{ _grTik(); }catch(e){ console.warn('grafiek: tik mislukt', e); }
 }, 1000);
 
-// Oude ingangen die nog in opgeslagen HTML of andere modules kunnen staan.
-function selectTrendGroup(g){ if(g==='none'){ activeTrendGroup=null; grKeuze=[]; drawGraph(); } else grKiesGroep(g); }
-function changeGraph(v){ grVoegToe(v); }
 function isPIDOk(pid){
   const val=pidVals[pid]; if(val===undefined) return true;
   return (typeof isPIDOkVal==='function') ? isPIDOkVal(pid,val) : true;

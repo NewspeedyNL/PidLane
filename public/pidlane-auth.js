@@ -440,25 +440,6 @@ async function testApiKey(){
   }
 }
 
-// ── Extra logfunctie (admin-only) ──────────────────────
-// Vinkje op het inlogscherm: verschijnt alleen als een admin-account
-// is ingetypt. Staat het aan, dan wordt bij uitloggen automatisch de
-// volledige gebundelde log gedownload. Keuze onthouden in localStorage.
-function refreshAdminLogRow(){
-  const row=document.getElementById('loginAdminLogRow');
-  if(!row) return;
-  const typed=(document.getElementById('loginUser')?.value||'').trim().toLowerCase();
-  let isAdminName=false;
-  try{
-    for(const name in USERS){
-      if(name.toLowerCase()===typed && (USERS[name].role||'admin')==='admin'){ isAdminName=true; break; }
-    }
-  }catch(e){ console.warn('Adminherkenning op het loginscherm mislukt — de log-exportrij kan onterecht verborgen blijven', e); }
-  row.style.display = isAdminName ? 'block' : 'none';
-  const cb=document.getElementById('adminLogExport');
-  if(cb){ try{ cb.checked = localStorage.getItem('pl_admin_logexport')==='1'; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ } }
-}
-
 async function logout(){
   // Admin logt uit → ALTIJD eerst vragen of de volledige log bewaard moet
   // worden. Pas daarna uitloggen. De vraag wordt gesteld vóór het wissen van
