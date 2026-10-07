@@ -222,6 +222,7 @@ var PL_HULP = {
     { id: 'rapporten', groep: 'gebruik', titel: 'Rapporten',
       tekst:
         '<p>De tab <b>Rapporten</b> toont wat PidLane in deze sessie heeft vastgelegd, zoals bewaarde uitlezingen en analyses.</p>' +
+        '<p>Bij een AI-analyse maakt <b>⬇ Download PDF</b> altijd hetzelfde rapport: een voorblad met het oordeel in het kort, dan de auto, de vraag, de staat van de auto (foutcodes, keuringsstatus, een stoplicht per systeem), het testplan, de meting met een grafiek per sensor, de mogelijke oorzaken met wat ervóór en ertegen pleit, de conclusie met advies, en de grenzen van de meting. Achterin staan de meetwaarden per sensor en de volledige tekst van de AI, voor een monteur. De tabellen en grafieken komen uit de meting van de app zelf; wat niet gemeten is, staat er als niet gemeten.</p>' +
         '<p>Met een klantaccount staan je rapporten en ritten ook bij je auto: <b>Meer → Mijn voertuigen</b>.</p>',
       zie: ['check', 'account'] },
 

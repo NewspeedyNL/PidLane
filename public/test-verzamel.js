@@ -41,6 +41,7 @@ const van = kw.indexOf('function assessPidQuality');
 const tot = kw.indexOf('\n}', van) + 2;
 if (van < 0) { console.log('  FOUT  assessPidQuality niet gevonden in pidlane-kwaliteit.js'); process.exit(1); }
 vm.runInContext('function fv(x){ return String(Math.round(x*10)/10); }\n' + kw.slice(van, tot), s, { filename: 'pidlane-kwaliteit.js' });
+vm.runInContext(fs.readFileSync(dir + '/pidlane-rapport.js', 'utf8'), s, { filename: 'pidlane-rapport.js' });
 vm.runInContext(fs.readFileSync(dir + '/pidlane-verzamel.js', 'utf8'), s, { filename: 'pidlane-verzamel.js' });
 const V = s.PLVerzamel;
 if (!V || typeof V.samenvatting !== 'function') { console.log('  FOUT  PLVerzamel niet geladen'); process.exit(1); }

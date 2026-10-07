@@ -339,7 +339,8 @@ async function runDiagAI(causeName){
   // Sinds 07-10-2026 is dat het verzamelscherm (PLVerzamel): eerst de data en
   // wat opvalt, dan pas de vraag of de AI mag. De AI krijgt dezelfde
   // samenvatting over het meetvenster, niet alleen de laatste waarde.
-  const uit=await PLVerzamel.meet({niveau:'normaal', profiel:false, watVoor:'de uitwerking van "'+causeName+'"'});
+  const uit=await PLVerzamel.meet({niveau:'normaal', profiel:false, watVoor:'de uitwerking van "'+causeName+'"',
+    klacht:[(document.getElementById('diagDesc')||{}).value||'', 'verdenking: '+causeName].filter(Boolean).join(' — ')});
   if(!uit || !uit.ai) return;
   const v=getVehicle();
   const desc=document.getElementById('diagDesc').value;

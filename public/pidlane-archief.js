@@ -40,7 +40,10 @@ function _srAutoTitle(entry){
 function registerSessionReport(entry){
   try{
     const list=window._sessionReports;
-    const txt=String(entry.text||'').trim();
+    // Het <rapport>-blok van de AI (PLRapport) is voor de PDF: het archief,
+    // delen en Mijn voertuigen krijgen de leesbare tekst; `bron` bewaart het
+    // geheel, zodat een PDF uit het archief dezelfde secties krijgt.
+    const txt=PLRapport.zonderBlok(entry.text||'').trim();
     if(!txt && entry.type!=='pdf') return null;
     // Dedupe: identieke tekst als de laatste entry van hetzelfde type → niet dubbel archiveren
     // (vangt o.a. TXT-download van een rapport dat al via de setter is gearchiveerd,
@@ -60,6 +63,7 @@ function registerSessionReport(entry){
       demo:_demo,
       title:(_demo?'🧪 DEMO · ':'')+(entry.title||_srAutoTitle(entry)),
       text:txt,
+      bron:(entry.text && String(entry.text).trim()!==txt)?String(entry.text):null,
       html:entry.html||null,
       blob:entry.blob||null,
       fname:entry.fname||null,
@@ -594,7 +598,7 @@ function srOpen(id){
     // Rapport terugzetten als "actief" rapport zodat Deel/PDF/Herzie erop werken.
     // _srSilent voorkomt dat het terugkijken een duplicaat in het archief zet.
     window._srSilent=true;
-    try{ window._lastAIReport={text:r.text, html:r.html||_aiReportHtml(r.text), ts:r.ts}; }
+    try{ window._lastAIReport={text:r.bron||r.text, html:r.html||_aiReportHtml(r.text), ts:r.ts}; }
     finally{ window._srSilent=false; }
     closeReportsOverview();
     try{ openAIReportSheet(); }catch(e){ console.warn('openAIReportSheet mislukt:', e); }

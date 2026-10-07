@@ -666,7 +666,7 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
     try{ const _rb=plRitBron(); const _rs=PLVerzamel.vanBron(_rb); if(_rs) ritMeetBlok=PLVerzamel.promptBlok(_rs,{sec:_rb.sec,rijSec:_rb.rijSec}); }
     catch(e){ console.warn('Rit rapport: samenvatting over de hele rit niet gemaakt (#443)', e); }
     const totalAnalysis=await apiFetch(
-      `${focusPrompt}${ritFuelNote}\n\nRit van ${mins} minuten met een ${v.merk||'auto'} ${v.model||''}. Antwoord in het Nederlands.\n\nFase data:\n${allStats}${ritMeetBlok}${sweepBlok}\n\nSluit het rapport af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`,
+      `${focusPrompt}${ritFuelNote}\n\nRit van ${mins} minuten met een ${v.merk||'auto'} ${v.model||''}. Antwoord in het Nederlands.\n\nFase data:\n${allStats}${ritMeetBlok}${sweepBlok}\n\nSluit het rapport af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}${PLRapport.instructie()}`,
       3000, null, null,
       // De onderbrekingen tellen hier dubbel: dit rapport gaat over een reeks
       // over tijd, en juist daar leest een gat als een sensor die uitvalt (#188).
@@ -679,7 +679,7 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
     // Rapport beschikbaar maken voor PDF-export
     lines.push('═══════════════════════════════════');
     lines.push(focus==='techniek'?'TECHNISCHE ANALYSE:':focus==='rijgedrag'?'RIJGEDRAG ANALYSE:':'TOTAAL AI ANALYSE:');
-    lines.push(totalAnalysis);
+    lines.push(PLRapport.zonderBlok(totalAnalysis));
     // Fix 15-07: _lastAIReport werd hier al gezet én daarna nogmaals door
     // renderAIText() hieronder (met andere tekst) → twee archief-entries voor
     // één rit-rapport. renderAIText zet hem nu als enige (incl. html + disclaimer).

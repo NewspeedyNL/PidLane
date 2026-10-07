@@ -1853,6 +1853,16 @@ MUTATIES=(
 "public/pidlane-toon.js@@    if (HEEL.indexOf(pid) < 0 || !getal(val)) return null;@@    return null;@@test-toon.js@@Overzicht toont weer 7.80 waar Visueel 8% zegt"
 "public/pidlane-pids.js@@  val=PLToon.waarde(pid,val);\n  const st=pidOordeel(d,val,pid);@@  const st=pidOordeel(d,val,pid);@@bproef-toon.js@@Overzicht toont het ruwe pedaal (20) waar Visueel 0 zegt"
 "public/pidlane-visueel.js@@  // als Overzicht en Slim (PLToon). De naald rekent zelf met de ruwe waarde.\n  val=PLToon.waarde(pid, val);@@  // als Overzicht en Slim (PLToon). De naald rekent zelf met de ruwe waarde.@@bproef-toon.js@@Visueel toont het ruwe pedaal (20) waar Overzicht 0 zegt"
+"public/pidlane-rapport.js@@      let kleur = gemeten.length ? STATUS_KLEUR[ergste.oordeel] : 'grijs';@@      let kleur = gemeten.length ? STATUS_KLEUR[ergste.oordeel] : 'groen';@@test-rapport.js@@het analyserapport kleurt een systeem zonder data groen: niet gemeten leest als goed"
+"public/pidlane-rapport.js@@      uitkomst: UITKOMST[tekst(h && h.uitkomst).toLowerCase()] ? tekst(h.uitkomst).toLowerCase() : 'open',@@      uitkomst: tekst(h && h.uitkomst).toLowerCase() || 'open',@@test-rapport.js@@het analyserapport neemt elke uitkomst van de AI over, ook een die het niet kent"
+"public/pidlane-rapport.js@@      .filter(g => getal(d[g[0]]) && d[g[0]] >= lo - span && d[g[0]] <= hi + span)@@      .filter(g => getal(d[g[0]]))@@test-rapport.js@@een grafiek trekt een grens ver buiten de meting en drukt de lijn plat"
+"public/pidlane-rapport.js@@      const opv = sam ? sam.rijen.filter(r => r.oordeel !== 'ok' && r.oordeel !== 'nodata') : [];@@      const opv = sam ? sam.rijen.filter(r => r.oordeel !== 'nodata') : [];@@test-rapport.js@@wat opviel in het rapport bevat ook de sensoren die normaal zijn"
+"public/pidlane-rapport.js@@      (d.permanent || []).filter(x => (d.bevestigd || []).indexOf(x) < 0).forEach(@@      (d.permanent || []).forEach(@@test-rapport.js@@een foutcode die bevestigd en permanent is, staat twee keer in het rapport"
+"public/pidlane-rapport.js@@    for (let i = 1; i <= n; i++) {\n      doc.setPage(i);@@    for (let i = 1; i < n; i++) {\n      doc.setPage(i);@@test-rapport.js@@de laatste pagina van het rapport krijgt geen voettekst"
+"public/pidlane-rapport.js@@    const kleur = f.oordeel || c.verdict || 'grijs';@@    const kleur = f.oordeel || c.verdict || 'groen';@@test-rapport.js@@een rapport zonder oordeel zegt op het voorblad dat er geen urgente problemen zijn"
+"public/pidlane-rapport.js@@  const W = 210, H = 297, M = 15, CW = W - 2 * M, ONDER = 278;@@  const W = 210, H = 297, M = 15, CW = W - 2 * M, ONDER = 289;@@test-rapport.js@@de inhoud van het rapport loopt door in de voettekst"
+"public/pidlane-fuel.js@@    const text=await apiFetch(prompt+PLRapport.instructie(),4000,null,null,aanlevering);@@    const text=await apiFetch(prompt,4000,null,null,aanlevering);@@test-rapport.js@@de gedeelde AI-trechter vraagt het rapportblok niet meer: het PDF-rapport valt terug op de koppen"
+"public/pidlane-verzamel.js@@                                hist: histVoorRapport(sam), watVoor@@                                hist: null, watVoor@@bproef-rapport.js@@het verzamelscherm geeft zijn reeksen niet mee: het analyserapport heeft geen grafieken"
 )
 
 echo

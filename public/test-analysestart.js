@@ -132,12 +132,14 @@ const TEWEINIG = { ok: false, tekort: ['gemeten over 5 s, nodig 60 s'], st: { ge
   function callAI(fetchFout) {
     const s = { console: { warn() {} }, regels: [], nood: 0, getoond: 0,
       dataStable: true, connected: true, demoMode: false, activePIDs: new Set(['010C']) };
+    s.window = s;
     s.log = (m) => { s.regels.push(String(m)); };
     s.apiFetch = () => Promise.reject(fetchFout);
     s.renderAIText = () => { s.getoond++; };
     s.buildFallbackReport = () => { s.nood++; return 'nood'; };
     s.plVerifyAugment = () => {};
     vm.createContext(s);
+    vm.runInContext(fs.readFileSync('pidlane-rapport.js', 'utf8'), s, { filename: 'pidlane-rapport.js' });
     vm.runInContext(CALLAI, s);
     return s;
   }
