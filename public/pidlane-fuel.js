@@ -1594,16 +1594,24 @@ function plMeetPromptBlok(){
   return s;
 }
 
-async function runQuickAI(){
-  if(!(await plVraagMeting('normaal','een AI-rapport','basis'))) return;
+/* Het verzamelscherm (PLVerzamel, 07-10-2026) is hier de meetpoort én de
+   vraag of de AI mag: de klant ziet eerst wat er binnenkwam en wat opvalt.
+   De AI krijgt diezelfde samenvatting — min–max, gemiddelde en aantal per
+   sensor — in plaats van alleen de laatste waarde. `opts.klacht` komt van de
+   AI-monteur in de wizard. */
+async function runQuickAI(opts){
+  const o=(opts&&typeof opts==='object')?opts:{};
+  const klacht=String(o.klacht||'').trim();
+  const uit=await PLVerzamel.meet({niveau:'normaal', profiel:'basis', watVoor:klacht?'de AI-monteur':'een AI-rapport'});
+  if(!uit || !uit.ai) return;
   activateAIPane();
-  await ensurePIDsActive('basis');
   const v=getVehicle();
-  const liveLines=[...activePIDs].filter(isReportableSensor).map(pid=>{const d=getPidDef(pid);return d&&pidVals[pid]!==undefined?`• ${d.name}: ${fv(pidVals[pid])} ${d.unit}`:null;}).filter(Boolean);
+  const meetBlok=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});
+  const klachtBlok=klacht?`\nKlacht van de gebruiker: ${klacht}\nBetrek elke bevinding op deze klacht, en zeg ook wat deze meting over de klacht níét kan zeggen.`:'';
   const corr=correlationLines();
   const corrBlock=corr.length?`\nAutomatische bevindingen (correlatie-engine):\n${corr.join('\n')}`:'';
   const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor)); // zelfde gate als Totaalcheck
-  const prompt=`${plMeetPromptBlok()}\nAnalyseer dit voertuig in het Nederlands als expert automonteur.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:\n${liveLines.join('\n')||'(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}${corrBlock}${qBlok}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
+  const prompt=`${plMeetPromptBlok()}\nAnalyseer dit voertuig in het Nederlands als expert automonteur.${klachtBlok}\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:${meetBlok||'\n(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}${corrBlock}${qBlok}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
 
 Voertuigscore: <0-100>/100
 Diagnosebetrouwbaarheid: <0-100>%
@@ -1644,7 +1652,7 @@ AANBEVOLEN VERVOLGONDERZOEK
 Een korte lijst met concrete meet- of controlestappen om de diagnose te bevestigen.`;
   const btn=document.getElementById('aiBtn'); btn.disabled=true;
   await callAI(prompt,document.getElementById('aiContent'),{
-    vraag:'Algehele staat van het voertuig: wat valt op in de live sensordata en wat vraagt aandacht?',
+    vraag:klacht||'Algehele staat van het voertuig: wat valt op in de live sensordata en wat vraagt aandacht?',
     profiel:'basis'});
   btn.disabled=false;
 }

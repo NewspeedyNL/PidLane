@@ -1127,7 +1127,7 @@ MUTATIES=(
 "public/pidlane-fuel.js@@padding:10px 14px calc(10px + var(--pl-sab));background:linear-gradient(135deg,#161b2b@@padding:10px 14px;background:linear-gradient(135deg,#161b2b@@bproef-schermranden.js@@de balk AI analyseert valt weer achter de Android-knoppenbalk"
 "public/pidlane-fuel.js@@    if(r.ok && recent){ resolve(true); return; }@@    if(r.ok){ resolve(true); return; }@@test-analysestart.js@@bij genoeg data gaat de analyse weer stil door: geen keuze tussen de meting van zojuist en nog even meten"
 "public/pidlane-fuel.js@@          '<button class=\"mg-ter\" id=\"mgToch\">Toch doorgaan met wat er is</button>'+\n          '<button class=\"mg-ter\" id=\"mgAnnuleer\">Annuleren</button>'+@@          '<button class=\"mg-ter\" id=\"mgToch\">Toch doorgaan met wat er is</button>'+@@test-analysestart.js@@bij te weinig data is er weer alleen toch doorgaan en geen annuleren"
-"public/pidlane-diagnose.js@@  if(!(await plVraagMeting('normaal', 'de uitwerking van \"'+causeName+'\"', false))) return;@@@@test-analysestart.js@@de AI-monteur werkt een oorzaak weer uit zonder meetscherm"
+"public/pidlane-diagnose.js@@  if(!uit || !uit.ai) return;\n  const v=getVehicle();\n  const desc=@@  const v=getVehicle();\n  const desc=@@test-analysestart.js@@de AI-monteur werkt een oorzaak weer uit zonder dat de klant op het verzamelscherm ja zei"
 "schema.sql@@  Message       TEXT,@@  Bericht       TEXT,@@test-logschema.js@@een kolom in D1 hernoemd zonder de app mee te nemen: het berichtveld komt nergens meer aan"
 # ── De logroute schrijft sinds #262 naar D1. Deze drie bouwen de fouten na
 # die deze route al eens gemaakt heeft of makkelijk weer maakt, en ze gaan
@@ -1804,6 +1804,16 @@ MUTATIES=(
 "public/pidlane-onderzoek.js@@    if (stap.garage && !st.ctx.garage) return false;@@@@test-onderzoek.js@@een klant krijgt de opdracht om tijdens het rijden vol op te trekken"
 "public/pidlane-onderzoek.js@@      if (st.ctx.garage) h += tekenVerdenkingen(st)@@      h += tekenVerdenkingen(st)@@bproef-onderzoek.js@@een klant krijgt het hele verdenkingenbord en de tijdlijn te zien"
 "public/pidlane-foutcodes.js@@      if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }@@      if (wat === 'oorzaak') PLWizard.open('storing');@@bproef-onderzoek.js@@Oorzaak laten zoeken opent weer de lijst losse modules in plaats van het onderzoek"
+# ── Het verzamelscherm (#443, 07-10-2026). De poort is die van §16; wat hier stil
+# kan breken is wat de klant ziet en wat de AI krijgt.
+"public/pidlane-verzamel.js@@        if (q && q.status === 'onzin') return zet('meetfout'@@        if (false) return zet('meetfout'@@test-verzamel.js@@koelwater 300 °C staat weer als afwijking op het scherm in plaats van als meetfout"
+"public/pidlane-verzamel.js@@    if (getal(d.dH) && r.max >= d.dH) return zet('afwijkend'@@    if (getal(d.dH) && r.laatste >= d.dH) return zet('afwijkend'@@test-verzamel.js@@het oordeel kijkt weer alleen naar de laatste waarde: een uitschieter onderweg verdwijnt"
+"public/pidlane-verzamel.js@@    if (t.verstreken < t.minMs) return 'meten';\n@@@@test-verzamel.js@@met genoeg historie springt het scherm meteen naar de uitslag: de klant ziet niets binnenkomen"
+"public/pidlane-verzamel.js@@    if (t.ok && t.kernCompleet !== false) return 'klaar';@@    if (t.ok) return 'klaar';@@test-verzamel.js@@het scherm is klaar terwijl de kernsensoren nog niet binnen zijn"
+"public/pidlane-verzamel.js@@(r.buiten ? '; ' + r.buiten + ' daarvan buiten de grens'@@(false ? '; ' + r.buiten + ' daarvan buiten de grens'@@test-verzamel.js@@de AI hoort niet meer hoe vaak een waarde buiten de grens kwam: een piek weegt even zwaar als een blijvende afwijking"
+"public/pidlane-fuel.js@@  if(!uit || !uit.ai) return;\n  activateAIPane();@@  if(!uit) return;\n  activateAIPane();@@test-verzamel.js@@sluiten zonder AI op het verzamelscherm verstuurt toch een betaald rapport"
+"public/pidlane-fuel.js@@  const meetBlok=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});@@  const meetBlok='';@@test-verzamel.js@@het AI-rapport krijgt de samenvatting van het scherm niet meer mee"
+"public/pidlane-wizard.js@@    if(GEEN_MEETEIS[k] || EIGEN_METING[k] || typeof plVraagMeting@@    if(GEEN_MEETEIS[k] || typeof plVraagMeting@@bproef-verzamel.js@@de AI-monteur krijgt weer het oude meetscherm vóór het verzamelscherm"
 )
 
 echo

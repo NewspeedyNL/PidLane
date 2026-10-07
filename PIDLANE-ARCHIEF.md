@@ -15,6 +15,49 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 07-10-2026 — Het verzamelscherm, en een herziening van 24-09 (#443)
+
+**Wat er mis was.** Na de wizardvragen kreeg de klant op de AI-monteur
+achter elkaar "📡 Sensoren registreren", "Gebruik de meting van zojuist of
+nog even meten?" en — vóór de uitwerking van een oorzaak — die vraag nog een
+keer. Nergens zag hij wát er gemeten was. Hij moest beslissen over data die
+hij niet kende.
+
+**Herzien: de keuze van 24-09.** `test-analysestart.js` legt vast wat er op
+de rit van 24-09 gevraagd werd: *"eerst aanbieden om data te verzamelen of de
+reeds vastgestelde data te gebruiken"*. Dat werd het meetscherm met "✓
+Gebruik de meting van zojuist". De vraag erachter klopte — niet blind naar de
+AI — maar de vorm bleek een vraag te stellen waar de klant geen grond voor
+had. Op 07-10 (eigenaar): *liever een echt verzamelscherm, met de afwijkingen
+uitgelicht, en pas dán de vraag of de AI het moet onderzoeken*. De oude
+keuze blijft hier staan omdat de les erin zit: een keuze aanbieden is niet
+hetzelfde als laten zien waarover je kiest.
+
+**Wat er bij het uitzoeken bovenkwam.** `runQuickAI` en `runDiagAI` eisten via
+de poort een minuut historie en vijftien monsters per sensor, en stuurden dan
+alleen `pidVals[pid]` mee: de laatste waarde. Een koelwater dat onderweg 112 °C
+haalde en bij het versturen 95 °C stond, kwam bij de AI binnen als 95 °C. Ook
+`_qualityBlokFor` keek naar de laatste waarde. Alleen de Diepe analyse
+stuurde min–max mee (`_deepPidOverview`), en die tabel verscheen pas ná het
+rapport.
+
+**De keuzes.**
+- **De poort blijft die van §16.** `PLVerzamel` beslist niet zelf wanneer er
+  genoeg is; dat doen `plMeetTekort` en `plKernStatus`. Het is een andere
+  vorm van dezelfde eis, geen tweede eis.
+- **Geen eigen grenzen.** "Opvallend" komt uit `dH/dL`, `wH/wL` en
+  `PID_LET_OP`; een meetfout (`assessPidQuality` onzin) gaat vóór alles. Dat
+  zijn vaste grenzen, en 13,0 V is met draaiende motor verdacht en zonder
+  gewoon. Daarom zegt het scherm "nog geen defect" en krijgt de AI de regel
+  om elke vlag tegen de toestand te toetsen. Een voorwaardelijk oordeel in de
+  app zelf is een eigen stap.
+- **Minstens tien seconden meten**, ook met genoeg historie: de klant ziet de
+  data binnenkomen, en het rapport gaat over de toestand van nu.
+- **Eerst de AI-routes.** Diepe analyse, totaalcheck, verbruik en datalog
+  hebben eigen vormen (een datalog, een rit) en volgen in #443.
+
+---
+
 ## 07-10-2026 — Overzicht per categorie (#439)
 
 **Wat er mis was, gezien op de demo-CX-5.** Een rooster van tegels in de
