@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Hybride in de basis: motortype, testgroepen, motortests (#430)
+ ═══════════════════════════════════════════════════════════
+
+ - detectEngineType(): hybride eerst, 'ev' alleen als los woord. "HEV",
+   "e:HEV", "PHEV" en "Revolution" heetten volledig elektrisch.
+ - Systeemtest: groepen uit twee vragen (verbrandingsmotor? elektrische
+   aandrijving?). Een hybride houdt zijn vijf benzinetests.
+ - Systeemtest: een test over de motor meet alleen bij een motor die al
+   6 s draait (motor:true, plus alles op stationair/draaiend). Geen twijfel
+   meer op accurijden of vlak na een start; geldt voor elke auto.
+ - test-hybridebasis.js, zes mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Volledig onderzoek: meten, vragen, uitsluiten, doorpakken (#428)
  ═══════════════════════════════════════════════════════════
 

@@ -2771,6 +2771,29 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── hybride in de basis (#430) ──
+  {
+    issue: '#430',
+    naam: 'Systeemtest: een hybride houdt zijn benzinetests, en een motortest meet niet tijdens accurijden of vlak na een start',
+    waarom: 'Een hybride verloor vijf tests aan een motor die hij gewoon heeft, en misfire gaf twijfel op een gezonde auto die op de accu reed.',
+    proef: async function () {
+      var bscGroepen = window.bscGroepen, bscConditie = window.bscConditie, BSC_TESTS = window.BSC_TESTS;
+      if (!bscGroepen || !bscConditie || !BSC_TESTS)
+        return { staat: 'FOUT', detail: 'bscGroepen/bscConditie ontbreekt — pidlane-totalcheck.js is niet de nieuwe' };
+      var g = bscGroepen('hybride');
+      if (!g.has('benzine') || !g.has('hybride')) return { staat: 'FOUT', detail: 'hybride krijgt groepen ' + Array.from(g).join(',') };
+      var mf = BSC_TESTS.filter(function (x) { return x.id === 'misfire'; })[0];
+      if (!mf) return { staat: 'FOUT', detail: 'misfire-test ontbreekt in BSC_TESTS' };
+      var accu = bscConditie(mf, new Set(['contact', 'rijden', 'constant']));
+      var net = bscConditie(mf, new Set(['contact', 'rijden', 'constant', 'draaiend']));
+      var stabiel = bscConditie(mf, new Set(['contact', 'rijden', 'constant', 'draaiend', 'motorstabiel']));
+      if (accu.ok) return { staat: 'FOUT', detail: 'misfire meet terwijl de auto op de accu rijdt' };
+      if (net.ok) return { staat: 'FOUT', detail: 'misfire meet vlak na de motorstart' };
+      if (!stabiel.ok) return { staat: 'FOUT', detail: 'misfire meet niet bij een motor die al draait: ' + stabiel.label };
+      return { staat: 'OK', detail: 'accu: "' + accu.label + '", net gestart: "' + net.label + '"' };
+    }
+  },
+
   // ── het volledige onderzoek (#428) ──
   {
     issue: '#428',
