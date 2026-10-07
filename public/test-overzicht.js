@@ -159,5 +159,84 @@ console.log('── 4. de planner ──');
   eis(zicht.kleur === 2, 'een andere status zet de kleur wel');
 }
 
+// ══════════════════════════════════════════════════════════════════
+// Overzicht per categorie (#439): de echte functies, op de echte tabel uit
+// pidlane-data.js. Geen eigen grenzen verzinnen: koelwater is wat de app
+// zegt dat koelwater is.
+// ══════════════════════════════════════════════════════════════════
+console.log('\nOverzicht per categorie (#439)');
+{
+  const c = { console: { warn() {}, log() {} } };
+  c.window = c; c.globalThis = c;
+  vm.createContext(c);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-data.js'), 'utf8'), c, { filename: 'pidlane-data.js' });
+  c.localStorage = { d: {}, getItem(k) { return k in this.d ? this.d[k] : null; }, setItem(k, v) { this.d[k] = String(v); } };
+  c.getPidDef = (p) => c.ALL_PID_DEFS[p] || null;
+  vm.runInContext(knip('const _FV_DEC', '\n// ── PID weergavemodus') + '\n' + knip('// ══ OVERZICHT PER CATEGORIE', '\nfunction applyG(pid,val){') + '\nwindow.OVZ_CATS = OVZ_CATS;', c, { filename: 'pidlane-pids.js (ovz)' });
+  const D = (p) => c.ALL_PID_DEFS[p];
+
+  // Categorieën
+  eis(c.ovzCat(D('0105'), '0105') === 'temp', 'koelwater is een temperatuur');
+  eis(c.ovzCat(D('010F'), '010F') === 'temp', 'inlaatlucht staat bij de temperaturen, ook al zegt de definitie Motor', D('010F').cat);
+  eis(c.ovzCat(D('0142'), '0142') === 'elektrisch' && c.ovzCat(D('015B'), '015B') === 'elektrisch', 'accu en aandrijfaccu zijn elektrisch');
+  eis(c.ovzCat(D('0124'), '0124') === 'uitlaat', 'lambda staat bij uitlaat en emissie');
+  eis(c.ovzCat(null, 'XXXX') === 'overig' && c.ovzCat({ cat: 'Iets' }, 'X') === 'overig', 'onbekend valt in Overig');
+
+  // Volgorde per aandrijving
+  const v = (m) => c.ovzVolgorde(m).join(',');
+  eis(v('benzine').indexOf('rijden,motor,temp,brandstof,uitlaat,elektrisch') === 0, 'benzine: motor voor elektrisch', v('benzine'));
+  eis(v('diesel') === v('benzine'), 'diesel: dezelfde volgorde');
+  eis(c.ovzVolgorde('hybride').indexOf('elektrisch') === 1 && c.ovzVolgorde('hybride').indexOf('motor') === 2, 'hybride: elektrisch direct na rijden, motor erna', v('hybride'));
+  eis(c.ovzVolgorde('ev').slice(-2).join() === 'brandstof,uitlaat', 'EV: brandstof en uitlaat achteraan', v('ev'));
+  ['benzine', 'diesel', 'hybride', 'ev'].forEach((m) => {
+    const l = c.ovzVolgorde(m), u = new Set(l);
+    eis(u.size === l.length && Object.keys(c.OVZ_CATS).every((k) => u.has(k)), m + ': elke categorie precies één keer');
+  });
+
+  // De band
+  let b = c.ovzBand(D('0105'), 87);
+  eis(b.heeft && b.z0 === 0 && b.z1 > 50 && b.z1 < 100, 'koelwater: groen tot de waarschuwingsgrens', JSON.stringify(b));
+  eis(b.pos > 70 && b.pos < b.z1, '87 °C staat in het groen, niet tegen de rand', JSON.stringify(b));
+  b = c.ovzBand(D('0105'), 108);
+  eis(b.pos > b.z1, '108 °C staat voorbij het groen');
+  b = c.ovzBand(D('0106'), 0);
+  eis(b.heeft && Math.abs(b.pos - 50) < 0.01 && b.z0 > 0 && b.z1 < 100, 'trim: groen rond nul, nul in het midden', JSON.stringify(b));
+  b = c.ovzBand(D('0142'), 14.1);
+  eis(b.heeft && b.z0 > 0 && b.z1 === 100, 'accu: alleen een ondergrens, groen tot de rand', JSON.stringify(b));
+  b = c.ovzBand(D('010B'), 96);
+  eis(!b.heeft, 'inlaatdruk: geen grens bekend, dus geen groen vlak');
+  b = c.ovzBand(D('010C'), 99999);
+  eis(b.pos === 100, 'een gekke waarde blijft op de schaal');
+  eis(c.ovzBand(D('010C'), null).pos === null && c.ovzBand(D('010C'), 'x').pos === null, 'geen waarde: geen streepje');
+
+  // De opmerking
+  eis(c.ovzNoot(D('0105'), 108, 'warn') === 'Boven de waarschuwingsgrens van 100 °C', 'koelwater te warm', c.ovzNoot(D('0105'), 108, 'warn'));
+  eis(c.ovzNoot(D('0142'), 11.2, 'warn') === 'Onder de waarschuwingsgrens van 11.50 V', 'accu laag, met de decimalen van volt', c.ovzNoot(D('0142'), 11.2, 'warn'));
+  eis(c.ovzNoot(D('0105'), 87, 'ok') === '', 'normaal: geen opmerking');
+  eis(/gevarengrens/.test(c.ovzNoot(D('0105'), 120, 'danger')), 'boven de gevarengrens heet het zo', c.ovzNoot(D('0105'), 120, 'danger'));
+
+  // De kop
+  eis(c.ovzKop(0, 0).tekst === 'normaal' && c.ovzKop(2, 0).tekst === '2 let op' && c.ovzKop(2, 0).kl === 'or', 'kop: normaal of N let op');
+  eis(c.ovzKop(1, 1).kl === 'rd' && /gevaar/.test(c.ovzKop(1, 1).tekst), 'gevaar wint van let op');
+
+  // De volgorde binnen een categorie
+  const ord = {};
+  eis(c.ovzSorteer(['0111', '0104', '010C'], {}, ord).join() === '010C,0104,0111', 'belangrijkste eerst: toerental, belasting, gasklep');
+  eis(c.ovzSorteer(['010C', '0104', '0111'], { '0111': 'warn' }, ord).join() === '0111,010C,0104', 'een afwijkende sensor gaat bovenaan');
+  eis(c.ovzSorteer(['010C', '0104', '0111'], { '0111': 'warn', '0104': 'danger' }, ord)[0] === '0104', 'gevaar boven let op');
+  eis(c.ovzRang('ZZZZ', { ZZZZ: 3 }) > c.ovzRang('0142', {}), 'onbekend komt na de vaste rang, in keuzelijstvolgorde');
+
+  // Namen
+  eis(c.ovzNaam('0106', D('0106')) === 'Trim kort B1' && c.ovzNaam('0107', D('0107')) === 'Trim lang B1', 'drie brandstofrijen zijn uit elkaar te houden');
+  eis(c.ovzNaam('XXXX', { name: 'Iets anders' }) === 'Iets anders', 'zonder korte naam: de eigen naam');
+
+  // Dichtheid
+  eis(c.ovzDichtLees() === 'compact', 'standaard compact');
+  c.localStorage.d.pl_ovz_dicht = 'ruim';
+  eis(c.ovzDichtLees() === 'ruim', 'ruim wordt teruggelezen');
+  c.localStorage.d.pl_ovz_dicht = 'onzin';
+  eis(c.ovzDichtLees() === 'compact', 'rommel: compact');
+}
+
 if (fouten) { console.log('FOUT — ' + fouten + ' eis(en) niet gehaald'); process.exit(1); }
-console.log('Alles goed — Overzicht kiest hoogstens vier trendlijnen en tekent ze gebundeld');
+console.log('Alles goed — Overzicht kiest hoogstens vier trendlijnen, tekent ze gebundeld, en deelt in per categorie');

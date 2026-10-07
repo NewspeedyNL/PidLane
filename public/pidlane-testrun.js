@@ -2771,6 +2771,27 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Overzicht per categorie (#439) ──
+  {
+    issue: '#439',
+    naam: 'Overzicht: per categorie in de volgorde van de aandrijving, met een normale band en een uitleg bij een afwijking',
+    waarom: 'Overzicht was een rooster zonder indeling, met afgekapte namen en een statusbolletje dat altijd groen stond.',
+    proef: async function () {
+      var ovzVolgorde = window.ovzVolgorde, ovzBand = window.ovzBand, ovzNoot = window.ovzNoot;
+      if (!ovzVolgorde || !ovzBand || !ovzNoot)
+        return { staat: 'FOUT', detail: 'ovzVolgorde/ovzBand/ovzNoot ontbreekt — pidlane-pids.js is niet de nieuwe' };
+      var d = getPidDef('0105');
+      if (!d) return { staat: 'LET OP', detail: 'geen definitie voor koelwater' };
+      var b = ovzBand(d, 87), n = ovzNoot(d, 108, 'warn');
+      if (!b.heeft || !(b.pos < b.z1)) return { staat: 'FOUT', detail: 'koelwater 87 °C valt niet in het groen: ' + JSON.stringify(b) };
+      if (!/Boven de waarschuwingsgrens/.test(n)) return { staat: 'FOUT', detail: 'geen uitleg bij 108 °C: ' + n };
+      var motor = (typeof detectEngineType === 'function') ? detectEngineType() : 'benzine';
+      var v = ovzVolgorde(motor);
+      if ((motor === 'hybride' || motor === 'ev') && v[1] !== 'elektrisch') return { staat: 'FOUT', detail: motor + ' zet Elektrisch niet bovenaan: ' + v.join(',') };
+      return { staat: 'OK', detail: 'deze auto (' + motor + '): ' + v.slice(0, 4).join(' → ') + ' …' };
+    }
+  },
+
   // ── de tegels van de energieweergave (#437) ──
   {
     issue: '#437',
