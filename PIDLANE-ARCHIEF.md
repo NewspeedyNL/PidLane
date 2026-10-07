@@ -15,6 +15,33 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 07-10-2026 — De energieweergave en het onderzoek zonder klacht (#434, #435)
+
+**Energie in plaats van Motor op een hybride.** De Neon-weergave had drie
+ringen voor een verbrandingsmotor: toerental, belasting en gasklep. Op een
+hybride staan die alle drie een groot deel van de rit op nul. Besloten met de
+eigenaar: een eigen plekkenlijst (`hybride:` op het profiel), geen
+per-plek-vervanging zoals bij de diesel, omdat het andere grootheden zijn. De
+energiering rekent met dezelfde functies als de vermogensnaald (#432):
+`vraagUit`, `laadUit` en `vermogenStand` in `pidlane-visueel.js`. Dat zijn er
+geen kopieën van, dus de geleerde rustwaarde van het pedaal is dezelfde.
+
+**Het woord in het midden.** "Motor" en niet "Hybride" als de motor draait:
+of de accu dan meehelpt, ziet standaard-OBD niet. "Laden" wint van alles,
+omdat dat het moment is waar een hybride om draait.
+
+**Bewust niet: wisselen op bewijs.** De vermogensnaald gaat ook aan als de
+aandrijfstatus één keer "rijdt op accu" zag. De energieweergave doet dat
+niet: halverwege een rit van weergave wisselen leest als een storing, en
+een benzineauto die zeilt met de motor uit (VW) zou hem dan krijgen.
+
+**Onderzoek zonder klacht.** Een klacht `controle` zonder trefwoorden: vrije
+tekst als "niets aan de hand" mag hem niet aanzetten. Bij een diesel
+komen roetfilter, EGR en software erbij in `nieuw()`, en niet in de
+klachtenlijst, omdat die lijst niet per brandstof is.
+
+---
+
 ## 07-10-2026 — Slim visueel zonder toerental, en de vermogensnaald (#432)
 
 **Wat er stond.** `bouw()` tekende "Slim visueel heeft het toerental nodig"

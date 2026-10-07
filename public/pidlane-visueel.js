@@ -699,7 +699,8 @@ function kiesPlek(rol){
 }
 function profielKnop(){
   const P=PF(); if(!P) return '';
-  const nu=profielNu(), z=P.zoek(nu), vlg=P.zoek(P.volgende(nu));
+  // voor() en niet zoek(): een hybride ziet "Energie" waar een benzine "Motor" ziet (#435).
+  const m=leesMotor(), nu=profielNu(), z=P.voor(nu, m), vlg=P.voor(P.volgende(nu), m);
   return '<div class="vis-profiel" role="group" aria-label="Weergave">'+
     '<span class="vis-profiel-stip" aria-hidden="true">'+P.PROFIELEN.map(function(x){ return '<i'+(x.id===nu?' class="aan"':'')+'></i>'; }).join('')+'</span>'+
     '<span class="vis-profiel-naam"><b>'+esc(z.naam)+'</b><small>'+esc(z.ondertitel)+'</small></span>'+
@@ -1530,6 +1531,8 @@ function bij(pid, val){
   if(ind.profiel && PF()){
     try{ PF().bij(ind.profiel.id, ind.profiel, pid, val, oordeel(pid, val)); }
     catch(e){ console.warn('PLVisueel: profiel '+ind.profiel.id+' bijwerken mislukt', e); }
+    const pl=ind.profiel.plekken;
+    if(pl && 'energie' in pl && (pid===pl.energie || pid===(pl.snel||'010D'))) energieProfielBij();
   }
   if(ind.naaldSoort==='vermogen' && (pid===ind.naald || pid===ind.midden)){
     vermogenBij(pid===ind.naald ? val : (typeof pidVals!=='undefined' ? pidVals[ind.naald] : null));
@@ -1556,6 +1559,19 @@ function bij(pid, val){
   if(ind.onder && (pid===ind.onder.pid || (ind.onder.soort==='laaddruk' && pid==='0133'))) onderBij();
   PLEKKEN.forEach(function(r){ if(ind.plekken[r.rol]===pid) plekBij(r.rol, val); });
   if(pid===ind.lamp.belasting || pid===ind.lamp.accu || pid===ind.lamp.volt) lampjesBij();
+}
+/* De energiering van de hybride-weergave (#435): dezelfde rekensom als de
+   vermogensnaald, dezelfde geleerde rust, een andere tekening. */
+function energieProfielBij(){
+  const ind=_staat.ind, pr=ind && ind.profiel;
+  if(!pr || !pr.plekken || !('energie' in pr.plekken) || !PF() || typeof PF().energie!=='function') return;
+  const ep=pr.plekken.energie, sp=pr.plekken.snel || '010D';
+  const vraag=(ep && typeof pidVals!=='undefined') ? vraagUit(pidVals[ep], _staat.vraagLeer) : null;
+  let laad=null;
+  try{ laad=(typeof pidHist!=='undefined') ? laadUit(pidHist[sp], Date.now()) : null; }
+  catch(e){ console.warn('PLVisueel: laadzone voor de energiering mislukt', e); }
+  try{ PF().energie(pr.id, pr, vermogenStand(vraag, laad), leesAandrijving()); }
+  catch(e){ console.warn('PLVisueel: energiering bijwerken mislukt', e); }
 }
 /* De vermogensnaald bijwerken: bij een nieuwe pedaalwaarde én bij een nieuwe
    snelheid, want de laadzone komt uit de snelheid. Geen sleepwijzer: een
@@ -1613,6 +1629,8 @@ function tik(){
   });
   PLEKKEN.forEach(function(r){ const p=el('visp-'+r.rol), pid=I.plekken[r.rol]; if(p && pid) dof(p, isOud(pid, nu)); });
   if(I.profiel && PF()){ try{ PF().dof(I.profiel.id, I.profiel, function(p){ return isOud(p, nu); }); }catch(e){ console.warn('PLVisueel: profiel dof zetten', e); } }
+  // De toestand in het midden verandert ook zonder nieuwe pedaalwaarde.
+  if(I.profiel) energieProfielBij();
   meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
 }
 
@@ -1635,7 +1653,7 @@ function start(){
   if(_staat.aan) return;
   lichaam(true);
   _staat.aan=true; _staat.start=Date.now(); _staat.traag=new Set(); _staat.handtekening=''; _staat.vraagLeer={ min:null, max:null };
-  try{ _staat.profiel=PF() ? PF().lees() : 'basis'; }catch(e){ console.warn('PLVisueel: profielkeuze onleesbaar', e); _staat.profiel='basis'; }
+  try{ _staat.profiel=PF() ? PF().lees(leesMotor()) : 'basis'; }catch(e){ console.warn('PLVisueel: profielkeuze onleesbaar', e); _staat.profiel='basis'; }
   _staat.rijdtSinds=0; _staat.laatsteTik=0; _staat.pauze=null; _staat.gebouwd=false;
   // Meteen de indeling kennen: remt() leest hem, en een lege set zou in de
   // eerste pollronde ook de PIDs remmen die er straks wél op staan.
