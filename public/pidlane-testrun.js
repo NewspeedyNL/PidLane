@@ -2777,7 +2777,8 @@ const PROEVEN_B5 = [
     naam: 'Systeemtest: een hybride houdt zijn benzinetests, en een motortest meet niet tijdens accurijden of vlak na een start',
     waarom: 'Een hybride verloor vijf tests aan een motor die hij gewoon heeft, en misfire gaf twijfel op een gezonde auto die op de accu reed.',
     proef: async function () {
-      if (typeof bscGroepen !== 'function' || typeof bscConditie !== 'function' || !window.BSC_TESTS)
+      var bscGroepen = window.bscGroepen, bscConditie = window.bscConditie, BSC_TESTS = window.BSC_TESTS;
+      if (!bscGroepen || !bscConditie || !BSC_TESTS)
         return { staat: 'FOUT', detail: 'bscGroepen/bscConditie ontbreekt — pidlane-totalcheck.js is niet de nieuwe' };
       var g = bscGroepen('hybride');
       if (!g.has('benzine') || !g.has('hybride')) return { staat: 'FOUT', detail: 'hybride krijgt groepen ' + Array.from(g).join(',') };
