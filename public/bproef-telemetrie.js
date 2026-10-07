@@ -13,8 +13,8 @@
 //     Chromium heeft er geen — dat ís de tegenproef);
 //   • een telefoonsensor die in supportedPIDs belandt;
 //   • een waarde in pidVals (dus rapport, AI, bevindingen) terwijl niet zeker
-//     is dat de telefoon vast in een houder zit, of een tegel die dan niet
-//     dof (los) is.
+//     is dat de telefoon vast in een houder zit, of een plek in Visueel die dan
+//     niet dof (los) is.
 //
 // Draaien vanuit public/:  node bproef-telemetrie.js
 // ═══════════════════════════════════════════════════════════════════
@@ -79,21 +79,23 @@ function toets(naam, waar, uitleg) {
     toets('sendCmd("TL01") komt niet bij de adapter', bus.naarAdapter === 0 && bus.r === '', JSON.stringify(bus));
     toets('en de weigering is geteld', bus.geweigerd === 1, JSON.stringify(bus));
 
-    console.log('\n4. Zonder houder telt hij niet mee, wel dof op de tegel');
+    console.log('\n4. Zonder houder telt hij niet mee, en dof in Visueel');
     const los = await app.ev(`(function(){
       try { localStorage.removeItem('pl_telemetrie_nul'); } catch (e) { console.warn(e); }
-      // Slim is sinds #439 een eigen dashboard zonder .gc-tegels: meet in het Overzicht.
+      // Telemetrie staat sinds 07-10-2026 alleen in Visueel: het Overzicht hoort
+      // geen tegel te hebben. Dof is daar PLTelemetrie.los() (pidlane-visprofiel.js).
       setPidView('overzicht');
       renderGauges();
       for (let i = 0; i < 60; i++) window.dispatchEvent(Object.assign(new Event('deviceorientation'), { alpha: 0, beta: 90, gamma: 0 }));
       PLTelemetrie.tik();
       const c = document.getElementById('gc-TL01');
       return { genuld: PLTelemetrie.genuld(), h: pidVals.TL01, hist: (pidHist.TL01 || []).length, kaart: !!c,
-               los: !!(c && c.classList.contains('los')), titel: c ? c.title : '', reden: PLTelemetrie.houderNu().reden };
+               los: PLTelemetrie.los('TL01'), reden: PLTelemetrie.houderNu().reden };
     })()`);
     toets('een verse sessie heeft geen nulstand (anders toetst deel 4 niets)', los.genuld === false, JSON.stringify(los));
     toets('zonder nulstand: niets in pidVals of pidHist', los.h === undefined && los.hist === 0, JSON.stringify(los));
-    toets('de tegel bestaat en is dof (los), met de reden als tooltip', los.kaart && los.los && /Nulstellen/.test(los.titel), JSON.stringify(los));
+    toets('geen tegel in het Overzicht: telemetrie staat alleen in Visueel', los.kaart === false, JSON.stringify(los));
+    toets('los, dus dof in Visueel, met de reden geen-nulstand', los.los === true && los.reden === 'geen-nulstand', JSON.stringify(los));
 
     console.log('\n5. Genuld en 5 s stil in de houder: de tik zet de waarde');
     const tik = await app.ev(`(async function(){
@@ -105,12 +107,11 @@ function toets(naam, waar, uitleg) {
         await new Promise(r => setTimeout(r, 100));
       }
       PLTelemetrie.tik();
-      const c = document.getElementById('gc-TL01');
-      return { ok: ok, vast: PLTelemetrie.houderNu(), h: pidVals.TL01, k: pidVals.TL02, los: !!(c && c.classList.contains('los')) };
+      return { ok: ok, vast: PLTelemetrie.houderNu(), h: pidVals.TL01, k: pidVals.TL02, los: PLTelemetrie.los('TL01') };
     })()`);
     toets('nulstellen lukt', tik.ok === true, JSON.stringify(tik));
     toets('helling en kanteling staan in pidVals (rechtop: ≈ 0°)', typeof tik.h === 'number' && Math.abs(tik.h) < 1 && typeof tik.k === 'number', JSON.stringify(tik));
-    toets('en de tegel is niet meer dof', tik.los === false, JSON.stringify(tik));
+    toets('en niet meer dof', tik.los === false, JSON.stringify(tik));
   } finally {
     await app.stop();
   }

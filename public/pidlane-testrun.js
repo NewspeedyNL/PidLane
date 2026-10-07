@@ -2787,6 +2787,22 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── Telemetrie alleen in Visueel ──
+  {
+    issue: '#439',
+    naam: 'Telemetrie (TL01–TL04) staat alleen in Visueel, niet in Overzicht of op het Slim-dashboard',
+    waarom: 'In Overzicht stonden vier rijen "—" onder Rijden zolang de telefoon niet in de houder zat.',
+    proef: async function () {
+      if (typeof plIsTelemetrie !== 'function') return { staat: 'LET OP', detail: 'pidlane-telemetrie.js niet geladen' };
+      var tl = [].slice.call(activePIDs).filter(function (p) { return plIsTelemetrie(p); });
+      if (!tl.length) return { staat: 'LET OP', detail: 'geen telefoonsensor aangezet — niets om te weren' };
+      var g = document.getElementById('gGrid');
+      if (!g || !g.classList.contains('view-overzicht')) return { staat: 'LET OP', detail: 'zet Live op Overzicht en draai opnieuw' };
+      var los = tl.filter(function (p) { return !!document.getElementById('gc-' + p); });
+      return los.length ? { staat: 'FOUT', detail: 'in Overzicht: ' + los.join(', ') } : { staat: 'OK', detail: tl.length + ' telefoonsensoren aan, geen ervan in Overzicht' };
+    }
+  },
+
   // ── Overzicht Compact: de naam wijkt niet voor de band (#439) ──
   {
     issue: '#439',

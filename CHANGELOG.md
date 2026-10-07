@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Telemetrie alleen in Visueel
+ ═══════════════════════════════════════════════════════════
+
+ - Helling, kanteling, lengte- en zij-G (TL01–TL04) staan niet meer in
+   Overzicht en zijn niet meer te kiezen op het Slim-dashboard; een
+   opgeslagen tegel ervan valt weg. Visueel → Telemetrie blijft.
+ - bproef-overzicht.js 1c, bproef-telemetrie.js deel 4 meet de dofheid nu
+   via PLTelemetrie.los(), twee mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Banden: een ontbrekende sensor wordt genoemd
  ═══════════════════════════════════════════════════════════
 

@@ -283,6 +283,11 @@ function renderGauges(){
     // vult de historie, en applyG() vindt straks alleen geen element om bij te
     // werken. Meten en tonen zijn hier twee dingen geworden.
     if(hiddenPIDs.has(pid)) return;
+    // Telemetrie (de telefoonsensoren TL01–TL04) hoort alleen in Visueel:
+    // daar staat hij op zijn eigen scherm met horizon en G-cirkel. In Overzicht
+    // en Slim waren het vier rijen "—" onder Rijden zolang de telefoon niet in
+    // de houder zat (07-10-2026, uit het gebruik).
+    if(typeof plIsTelemetrie==='function' && plIsTelemetrie(pid)) return;
     // Het vangnet dat hier stond is op 21-08-2026 verwijderd (§15, ronde 6 →
     // afgerond). Het riep pidGate(pid,'plausibel') aan en meldde via btDiag
     // zodra er iets langskwam, om te ontdekken of er nog een toevoegpad was

@@ -9,6 +9,7 @@
 //   1. benzine: kaarten in de volgorde rijden → motor → temperaturen …, elke
 //      rij heeft een band, en niets steekt buiten het scherm
 //   1b. tekstgrootte L op een telefoon van 384 px: geen naam afgekapt
+//   1c. telemetrie staat niet in Overzicht en is niet te kiezen in Slim
 //   2. een afwijkende waarde: oranje, een opmerking eronder, de kop telt
 //      mee, en de rij staat bovenaan zijn kaart
 //   3. Ruim: de klasse gaat aan, wordt onthouden, en past nog steeds
@@ -79,6 +80,24 @@ const KAARTEN = `(function(){ return [].filter.call(document.querySelectorAll('#
     toets('geen naam afgekapt', eenB.rijen > 0 && eenB.kort.length === 0, eenB.kort.length + ' van ' + eenB.rijen + ': ' + eenB.kort.slice(0, 4).join(', '));
     toets('de band blijft zichtbaar', eenB.band >= 20, Math.round(eenB.band) + ' px');
     toets('en past op het scherm', eenB.breed <= eenB.venster, JSON.stringify(eenB));
+
+    console.log('\n1c. Telemetrie alleen in Visueel (07-10-2026)');
+    const eenC = await app.ev(`(async function(){
+      // Een headless browser heeft geen oriëntatiesensor, dus plTelemetrieDefs() is
+      // hier leeg: de definities zelf erin zetten, zoals op een telefoon gebeurt.
+      const D=(window.PLTelemetrie && PLTelemetrie.DEFS) || {}, tl=Object.keys(D);
+      tl.forEach(function(p){ if(!discoveredPIDDefs.some(function(d){ return d.pid===p; })) discoveredPIDDefs.push(Object.assign({ pid:p, telemetrie:true }, D[p])); activePIDs.add(p); });
+      setPidView('slim'); setPidView('overzicht');
+      await new Promise(function(r){ setTimeout(r, 400); });
+      const inOvz=tl.filter(function(p){ return !!document.getElementById('gc-'+p); });
+      setPidView('slim'); PLDash.kies();
+      const blad=[].slice.call(document.querySelectorAll('.dash-regel')).map(function(b){ return b.textContent; }).join('|');
+      PLDash.sluit(); setPidView('overzicht');
+      return { tl:tl, inOvz:inOvz, inKies:tl.filter(function(p){ const d=getPidDef(p); return d && blad.indexOf(ovzNaam(p, d))>=0; }) };
+    })()`);
+    toets('er zijn telefoonsensoren om te weren', eenC.tl.length >= 2, JSON.stringify(eenC));
+    toets('geen telemetrie in Overzicht', eenC.inOvz.length === 0, eenC.inOvz.join());
+    toets('en niet te kiezen voor Slim', eenC.inKies.length === 0, eenC.inKies.join());
 
     console.log('\n2. Een afwijkende waarde');
     const twee = await app.ev(`(async function(){
