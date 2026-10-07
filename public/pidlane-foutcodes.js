@@ -772,6 +772,16 @@
     if (s.readiness) s.readiness.monitors.filter(function (m) { return m.ondersteund; }).forEach(function (m) {
       r.push(' ' + (m.klaar ? '[klaar]      ' : '[niet klaar] ') + m.naam);
     });
+    var adv = softwareAdvies(s);
+    if (adv.length) {
+      r.push('', '=== MOGELIJK SOFTWARE, GEEN KAPOT ONDERDEEL ===');
+      adv.forEach(function (a) {
+        r.push(' ' + a.naam + (a.sterkte === 'zwak' ? ' (zwakke aanwijzing)' : ''),
+          '  waarom: ' + a.bewijs.join('; '), '  ' + a.inleren);
+        if (a.tools.length) r.push('  software voor dit merk: ' + a.tools.join(', '));
+        if (a.waarschuwing) r.push('  let op: ' + a.waarschuwing);
+      });
+    }
     r.push('', '=== SINDS HET LAATSTE WISSEN ===',
       ' afstand: ' + (s.sinds.km != null ? s.sinds.km + ' km' : 'onbekend'),
       ' warmgedraaid: ' + (s.sinds.warm != null ? s.sinds.warm + '×' : 'onbekend'),
@@ -807,6 +817,39 @@
     return h + '</div></div>';
   }
 
+  /* Wijst deze uitlezing op inleren of codering in plaats van een kapot
+     onderdeel (#426)? De kennis en het oordeel staan in softwareOorzaken()
+     (pidlane-data.js); hier alleen wat de uitlezing meegeeft. Direct na
+     zelf wissen niet: dan hangt elke monitor, en dat hoort zo. */
+  function softwareAdvies(s, zelfGewist) {
+    if (!s || zelfGewist) return [];
+    var v = {};
+    try { if (typeof getVehicle === 'function') v = getVehicle() || {}; } catch (e) { console.warn('PLFoutcodes: voertuig onbekend', e); }
+    var c = s.codes || {}, rd = s.readiness;
+    return softwareOorzaken({
+      merk: v.merk, brandstof: rd ? rd.brandstof : v.brandstof,
+      nietKlaar: rd ? rd.nietKlaar : [], sinds: s.sinds,
+      dtc: uniek([].concat(c.bevestigd || [], c.pending || [], c.permanent || []))
+    });
+  }
+
+  function tekenSoftware(s, zelfGewist) {
+    var adv = softwareAdvies(s, zelfGewist);
+    if (!adv.length) return '';
+    var h = '<div class="fc-cd" style="font-weight:700;margin-top:10px">🧩 Mogelijk software, geen kapot onderdeel</div>' +
+      '<div class="fc-cb">Wat de auto meldt past bij een onderdeel dat niet (goed) bij de motorcomputer is ingeleerd of gecodeerd. ' +
+      'PidLane past daar niets aan; dat doet een garage of de software voor dit merk.</div>';
+    adv.forEach(function (a) {
+      h += '<div class="fc-cd" style="margin-top:6px">' + esc(a.naam) +
+        (a.sterkte === 'zwak' ? ' <span class="fc-nvt">· zwakke aanwijzing</span>' : '') + '</div>' +
+        '<div class="fc-cb">Waarom: ' + esc(a.bewijs.join('; ')) + '.</div>' +
+        '<div class="fc-cb">' + esc(a.inleren) + '</div>' +
+        (a.tools.length ? '<div class="fc-cb">Software voor dit merk: ' + esc(a.tools.join(', ')) + '.</div>' : '') +
+        (a.waarschuwing ? '<div class="fc-cb fc-let">' + esc(a.waarschuwing) + '</div>' : '');
+    });
+    return h;
+  }
+
   function tekenReadiness(s, zelfGewist) {
     var o = oordeelReadiness(s.readiness, s.sinds, zelfGewist);
     var kl = o.niveau === 'ok' ? 'fc-ok' : o.niveau === 'let-op' ? 'fc-let' : '';
@@ -823,6 +866,7 @@
       });
       h += '</div>';
     }
+    h += tekenSoftware(s, zelfGewist);
     var sd = s.sinds || {};
     h += '<div class="fc-uitleg" style="margin:9px 0 0">Sinds het laatste wissen: ' +
       (sd.km != null ? sd.km + ' km' : 'afstand onbekend') + ' · ' +
@@ -866,7 +910,9 @@
   function vervolg(wat) {
     sluit();
     try {
-      if (wat === 'oorzaak') PLWizard.open('storing');
+      // Sinds #428 het volledige onderzoek, met deze uitlezing als eerste stap:
+      // de lijst losse modules achter de wizard was precies het probleem.
+      if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }
       else if (wat === 'grondig') PLWizard.open('conditie');
       else if (wat === 'onderdeel') {
         var w = document.getElementById('welcomeScreen'); if (w) w.classList.add('hidden');
@@ -999,10 +1045,15 @@
     _blijf: function () { stopDoor(); },
     stoplicht: stoplicht,
     magDoor: magDoor,
+    // Uitlezen zonder venster, voor het volledige onderzoek (PLOnderzoek, #428):
+    // dezelfde bus, dezelfde demo-ECU, dezelfde keten als scan().
+    leesStil: function () { return metBus(function () { return leesUit(stuurNu()); }); },
     // pure kern en bus — voor test-foutcodes.js
     parseDtc: parseDtc,
     parseReadiness: parseReadiness,
     oordeelReadiness: oordeelReadiness,
+    softwareAdvies: softwareAdvies,
+    _tekenReadiness: tekenReadiness,
     wisUitslag: wisUitslag,
     magWissen: magWissen,
     vergelijk: vergelijk,

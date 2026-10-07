@@ -22,6 +22,63 @@
    10.037 element-toestanden in licht en donker vóór en na gelijk.
  - Elke lege catch in config.js en index.html heeft een reden; vijf knoppen
    en vier stappen van hard herladen waarschuwen nu in de console.
+ 07-10-2026 — Hybride in de basis: motortype, testgroepen, motortests (#430)
+ ═══════════════════════════════════════════════════════════
+
+ - detectEngineType(): hybride eerst, 'ev' alleen als los woord. "HEV",
+   "e:HEV", "PHEV" en "Revolution" heetten volledig elektrisch.
+ - Systeemtest: groepen uit twee vragen (verbrandingsmotor? elektrische
+   aandrijving?). Een hybride houdt zijn vijf benzinetests.
+ - Systeemtest: een test over de motor meet alleen bij een motor die al
+   6 s draait (motor:true, plus alles op stationair/draaiend). Geen twijfel
+   meer op accurijden of vlak na een start; geldt voor elke auto.
+ - test-hybridebasis.js, zes mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Volledig onderzoek: meten, vragen, uitsluiten, doorpakken (#428)
+ ═══════════════════════════════════════════════════════════
+
+ - pidlane-onderzoek.js (PLOnderzoek), nieuw. Verdenkingen uit de klacht,
+   daarna steeds de stap die de meeste kan scheiden: meten (live grafiekjes,
+   opdrachten zoals 2500 tpm vasthouden), vragen (rookkleur, startgedrag)
+   en foutcodes. Nieuwe richting op een code, samenhang (accu → dynamo),
+   één keer verbreden, eerlijk "niets gevonden". AI als tweede mening.
+ - Ingangen: bovenaan het plan van "Er is iets mis", en "Oorzaak laten
+   zoeken" in Check mijn auto (die uitlezing is dan de eerste stap).
+   PLFoutcodes.leesStil() leest uit zonder venster.
+ - Handleiding: onderwerp "Volledig onderzoek". test-onderzoek.js,
+   bproef-onderzoek.js, acht mutaties, blok 5.
+ - Klant ziet alleen de huidige stap en de conclusie; verdenkingenbord en
+   tijdlijn alleen in de garagemodus. De laaddrukproef (vol optrekken tijdens
+   het rijden) alleen in de garagemodus. Twee mutaties erbij.
+
+ ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Check mijn auto: software als oorzaak bij de keuringsstatus (#426)
+ ═══════════════════════════════════════════════════════════
+
+ - Het readiness-blok toont "🧩 Mogelijk software, geen kapot onderdeel" met
+   het bewijs, wat er ingeleerd moet worden, de software voor dit merk en de
+   waarschuwing. Ook in de bewaartekst. Niet direct na zelf wissen.
+ - softwareOorzaken: P2452–P2455 en P2463 eruit (sensor/vol filter, geen
+   software); zwakke functies tellen alleen na een vervanging, zodat een
+   gewone P0420 geen "adaptaties wissen" wordt.
+ - Handleiding Check mijn auto bijgewerkt. Toetsen in test-foutcodes.js en
+   test-softwareoorzaak.js, drie mutaties erbij, blok 5 toetst de koppeling.
+
+ ═══════════════════════════════════════════════════════════
+ 07-10-2026 — Kennis: software/codering als oorzaak, niet de sensor (#426)
+ ═══════════════════════════════════════════════════════════
+
+ - pidlane-data.js: SOFTWARE_OORZAKEN — acht inleer-/coderingsfuncties
+   (roetfilter, SCR, EGR, gasklep, injectorcodes, adaptaties, ECU, accu) met
+   het symptoom dat ze verklaren en de tools per merkgroep (SOFTWARE_TOOLS).
+ - softwareOorzaken(ctx) geeft alleen functies mét bewijs: een monitor die na
+   300 km / 15× warmdraaien nog hangt, een foutcode, een afwijkend VIN of een
+   vervangen onderdeel. Nog geen UI; koppeling volgt in #426.
+ - test-softwareoorzaak.js (laadt de echte parseReadiness), drie mutaties,
+   blok 5.
+
+ ═══════════════════════════════════════════════════════════
  06-10-2026 — Brede controle: vier stille fouten en twee eigen restpunten
  ═══════════════════════════════════════════════════════════
 

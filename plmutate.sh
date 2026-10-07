@@ -967,6 +967,13 @@ MUTATIES=(
 # niemand gemeten heeft — en dat is precies wat die vraag moest voorkomen.
 "public/pidlane-aandrijving.js@@      startStopGezien: !!((v && v.startStopGezien) || toestand === 'STARTSTOP'),@@      startStopGezien: toestand === 'STARTSTOP',@@test-aandrijving.js@@de waarneming verdwijnt zodra de motor weer aanslaat: het venster stelt alleen 'ja' voor als je toevallig bij een stoplicht op Analyseer drukt"
 "public/pidlane-aandrijving.js@@      startStopGezien: !!((v && v.startStopGezien) || toestand === 'STARTSTOP'),@@      startStopGezien: !!((v && v.startStopGezien) || toestand === 'STARTSTOP' || toestand === 'UIT_VOOR_START'),@@test-aandrijving.js@@'motor uit vóór de eerste start' telt als start/stop: contact aan is genoeg voor een 'ja' in de prompt"
+"public/pidlane-motortype.js@@  if(bf.includes('elektr') || mt.includes('elektr') || /\\bb?ev\\b/.test(mt)) return 'ev';@@  if(bf.includes('elektr') || mt.includes('elektr') || mt.includes('ev')) return 'ev';@@test-hybridebasis.js@@'ev' telt weer als stukje woord: \"Revolution\" heet een elektrische auto"
+"public/pidlane-motortype.js@@  if(bf.includes('hybr') || mt.includes('hybr') || /\\b(p|m)?hev\\b/.test(mt)) return 'hybride';@@  if(bf.includes('hybr') || mt.includes('hybr')) return 'hybride';@@test-hybridebasis.js@@een motornaam met HEV of PHEV wordt niet meer als hybride herkend (Kia, Hyundai, Honda e:HEV)"
+"public/pidlane-totalcheck.js@@  else if(et!=='ev') g.add('benzine');@@  else if(et==='benzine') g.add('benzine');@@test-hybridebasis.js@@een hybride verliest de benzinetests weer, terwijl hij een benzinemotor heeft"
+"public/pidlane-totalcheck.js@@  if(bscMotorTest(t) && !nu.has('motorstabiel')){@@  if(false){@@test-hybridebasis.js@@motortests meten weer zonder draaiende motor: misfire op accurijden geeft twijfel op een gezonde hybride"
+"public/pidlane-totalcheck.js@@  return venster.length>=3 && venster.every(x=>typeof x.v==='number' && x.v>400);@@  return venster.length>=3;@@test-hybridebasis.js@@de wachttijd na een motorstart is weg: de basislijn loopt weer over de aanloop"
+"public/pidlane-totalcheck.js@@  if(hist[0].t>van) return false;   // de historie reikt niet ver genoeg terug@@@@test-hybridebasis.js@@een motor die net aansloeg heet meteen stabiel zolang er nog geen 6 s historie is"
+"public/pidlane-data.js@@{id:'misfire', sit:'constant', motor:true,@@{id:'misfire', sit:'constant',@@test-hybridebasis.js@@de misfire-test mag weer meten terwijl de auto op de accu rijdt"
 "public/pidlane-archief.js@@    return {waarde:'', reden:'geen start/stop-stop gezien; dat kan ook betekenen dat je niet lang genoeg stilstond met een warme motor'};@@    return {waarde:'nee', reden:'geen start/stop-stop gezien'};@@test-meetcontext.js@@niets-gezien wordt als 'nee' voorgesteld, en dan leest de AI een normale start/stop-stop als afslaan"
 "public/pidlane-archief.js@@        gekozen[v]=b.dataset.waarde;\n        geklikt[v]=true;@@        gekozen[v]=b.dataset.waarde;@@test-meetcontext.js@@een aangeklikt antwoord is niet meer van een blijven-staand voorstel te onderscheiden: punt 3 van #64 meet zichzelf kapot"
 
@@ -1737,6 +1744,30 @@ MUTATIES=(
 "public/pidlane-visueel.js@@      if(t) kiesPlek(t.id.slice(6));@@      if(t) void 0;@@bproef-visplek.js@@tikken op een plek van Slim visueel doet niets: de keuzelijst opent nooit"
 "public/pidlane-visprofiel.js@@        diesel:{ hi:6000 } },@@        diesel:{} },@@test-visprofiel.js@@de neonring van een diesel loopt tot 8000 tpm: 3000 staat er als bijna stationair — #393"
 "public/pidlane-functietest.js@@    plekkenVan(p, brandstof).forEach(@@    p.plekken.forEach(@@test-functietest.js@@de Full function test beoordeelt een diesel op de benzinekaart — #393"
+
+# ── Software als oorzaak (#426, 07-10-2026). Drie fouten die een vers gewiste
+# auto, een benzineauto of een gewone sensorcode naar "inleren" zouden sturen.
+"public/pidlane-data.js@@  const hangt = (sinds.km != null && sinds.km >= grens.km) || (sinds.warm != null && sinds.warm >= grens.warm);@@  const hangt = true;@@test-softwareoorzaak.js@@een monitor 40 km na wissen telt al als hangen: elke verse wis wordt een inleerprobleem"
+"public/pidlane-data.js@@    if (f.brandstof && (brandstof === 'diesel' || brandstof === 'benzine') && f.brandstof !== brandstof) return null;@@@@test-softwareoorzaak.js@@een benzineauto krijgt het roetfilter-inleren voorgeschoteld"
+"public/pidlane-data.js@@    if (!bewijs.length) return null;@@@@test-softwareoorzaak.js@@elke inleerfunctie verschijnt zonder enig bewijs, ook bij een gewone sensorcode"
+"public/pidlane-data.js@@    if (f.sterkte === 'zwak' && !aanleiding) return null;@@@@test-softwareoorzaak.js@@een gewone P0420 komt als \"adaptaties wissen\" op het scherm: de sensorkant wordt software"
+"public/pidlane-foutcodes.js@@    h += tekenSoftware(s, zelfGewist);\n@@@@test-foutcodes.js@@de keuringsstatus in Check mijn auto zegt nooit dat het software kan zijn — #426"
+"public/pidlane-foutcodes.js@@    if (!s || zelfGewist) return [];@@    if (!s) return [];@@test-foutcodes.js@@direct na zelf wissen wijst elke hangende monitor naar inleren — #426"
+
+# ── Het volledige onderzoek (#428, 07-10-2026). Wat de onderzoeker beslist:
+# een andere richting op gaan, verbreden, doorpakken bij samenhang, de
+# 2500-tpm-scheiding, het gewicht van een code in afwachting en de
+# klachtherkenning. Plus de deur vanuit Check mijn auto.
+"public/pidlane-onderzoek.js@@        speel(st, b.h, stap.titel);\n        stuk.nieuw.push(b.h);@@        return;@@test-onderzoek.js@@een foutcode die ergens anders naar wijst opent geen nieuwe richting"
+"public/pidlane-onderzoek.js@@    if (st.verbreed) return false;@@    return false;@@test-onderzoek.js@@alles bij de klacht uitgesloten: hij verbreedt nooit"
+"public/pidlane-onderzoek.js@@    if (samen) return true;@@@@test-onderzoek.js@@na \"accu zwak\" stopt hij zonder te kijken of de dynamo laadt"
+"public/pidlane-onderzoek.js@@        if (s > 8 && t < s / 2) return [@@        if (s > 8 && t > s / 2) return [@@test-onderzoek.js@@de 2500-tpm-proef leest lek en luchtmassameter omgekeerd"
+"public/pidlane-onderzoek.js@@      var gevonden = false, f = vast.indexOf(code) >= 0 ? 1 : 0.6;@@      var gevonden = false, f = 1;@@test-onderzoek.js@@een code in afwachting weegt even zwaar als een bevestigde"
+"public/pidlane-onderzoek.js@@      if (KLACHTEN[k].kw.some(function (w) { return t.indexOf(' ' + w) >= 0; })) r.push(k);@@      if (KLACHTEN[k].kw.some(function (w) { return t.indexOf(w) >= 0; })) r.push(k);@@test-onderzoek.js@@\"verbruikt\" wordt rook: er staat \"ruikt\" in"
+"public/pidlane-onderzoek.js@@  function nogOpen(c) { return c.open.filter(@@  function nogOpen(c) { return [].filter(@@test-onderzoek.js@@tegenstrijdig bewijs verdwijnt onder \"open\" uit de conclusie"
+"public/pidlane-onderzoek.js@@    if (stap.garage && !st.ctx.garage) return false;@@@@test-onderzoek.js@@een klant krijgt de opdracht om tijdens het rijden vol op te trekken"
+"public/pidlane-onderzoek.js@@      if (st.ctx.garage) h += tekenVerdenkingen(st)@@      h += tekenVerdenkingen(st)@@bproef-onderzoek.js@@een klant krijgt het hele verdenkingenbord en de tijdlijn te zien"
+"public/pidlane-foutcodes.js@@      if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }@@      if (wat === 'oorzaak') PLWizard.open('storing');@@bproef-onderzoek.js@@Oorzaak laten zoeken opent weer de lijst losse modules in plaats van het onderzoek"
 )
 
 echo

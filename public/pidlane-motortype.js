@@ -37,11 +37,18 @@ const ICE_PIDS_SUFFIX = new Set([
 const EV_ANKER_SUFFIX = new Set(['0C', '0D']);
 let _evModeActive = false;
 
+/* Hybride staat VÓÓR elektrisch, en 'ev' telt alleen als los woord
+   (07-10-2026). Tot dan stond hier `mt.includes('ev')` als eerste regel, en
+   die ving elke motornaam met die twee letters erin: "1.6 GDi HEV", "e:HEV",
+   "PHEV" en zelfs "Revolution" heetten volledig elektrisch. De regel
+   `mt.includes('phev')` eronder was daardoor nooit bereikbaar. Een hybride is
+   hier geen randgeval — het wordt de gewone auto — dus de herkenning moet
+   juist daar kloppen. */
 function detectEngineType(){
   const bf = (vehicleInfo?.brandstof || '').toLowerCase();
   const mt = (vehicleInfo?.motortype || '').toLowerCase();
-  if(bf.includes('elektr') || mt.includes('elektr') || mt.includes('ev')) return 'ev';
-  if(bf.includes('hybr')   || mt.includes('hybr')   || mt.includes('phev')) return 'hybride';
+  if(bf.includes('hybr') || mt.includes('hybr') || /\b(p|m)?hev\b/.test(mt)) return 'hybride';
+  if(bf.includes('elektr') || mt.includes('elektr') || /\bb?ev\b/.test(mt)) return 'ev';
   if(bf.includes('diesel')  || mt.includes('diesel') || mt.includes('tdi') || mt.includes('cdi')) return 'diesel';
   return 'benzine';
 }

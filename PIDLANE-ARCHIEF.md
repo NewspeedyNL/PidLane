@@ -57,6 +57,36 @@ uit tot de kop "Extra logfunctie"; dat anker is nu `async function logout(){`.
   `selectedDemoVehicle`, die allebei nergens bestaan, dus geeft hij altijd
   `null` terug. Dat is geen opruimwerk maar een fout: een gedeelde sessie
   toont nooit de naam van de auto. Hoort in een eigen PR, met een test.
+## 07-10-2026 — Een hybride aansluiten: drie fouten in de basis (#430)
+
+**Aanleiding.** Een eerste rit met een MX+ in een nieuwe hybride. Doorgelopen
+wat er gebeurt vanaf het verbinden. Verbinden, RDW-herkenning ("Benzine" +
+"Elektriciteit" → hybride), de aandrijfbalk en de EV-pauze in de pollronde
+klopten. Drie dingen niet, en alle drie zaten in de basis, niet in een
+hybride-tak:
+
+- `detectEngineType()` deed `mt.includes('ev')` als eerste regel. Elke
+  motornaam met die letters werd `ev`: "1.6 GDi HEV", "e:HEV", "PHEV",
+  "Revolution". De `phev`-regel eronder was daardoor nooit bereikbaar.
+- `bscBuildList()` deed `new Set(['universeel', et])`. Eén motortype, één
+  groep — een hybride verloor zo zijn benzinetests. De vorm was het probleem:
+  een hybride is geen soort benzineauto, maar een auto die beide heeft.
+- `bscSituaties()` zette "constant rijden" op snelheid alleen. Een motortest
+  mat dan RPM 0 op de accu, of een basislijn (mediaan over 5 s) over de
+  aanloop van een motor die net aansloeg. Gevolg: "twijfel" met "overslaan of
+  slippende koppeling" als uitleg, op een gezonde auto.
+
+**Besluit (met de eigenaar).** Niet fixen als uitzondering op brandstof:
+hybride wordt de gewone auto. Dus twee assen in plaats van één motortype, en
+een motortest wacht op een motor die draait — voor elke auto, ook bij
+start/stop.
+
+**Bewust niet gedaan.** De diesel-hybride (de normalisatie gooit "diesel" weg),
+de nietszeggende hybridetests (`regen` op 12V, `ev_ice` 0–6000, `hv_soc` op
+015B) en de stationair-instructie. Staan als open punten in #430.
+
+---
+
 ## 06-10-2026 — Brede controle op dode aanroepen, dubbelingen en fix op fix
 
 **Hoe.** Alle 70 app-modules in laadvolgorde, de inline scripts van
