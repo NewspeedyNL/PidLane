@@ -244,11 +244,14 @@ function bouw(g){
 // ── Eén binnenkomende waarde ──
 function bij(pid, val){
   if(!_tegels.some(function(t){ return t.pids.indexOf(pid)>-1; })) return;
+  // Het getal op het scherm: pedaal vanaf de rust, tank gedempt — dezelfde
+  // regel als Overzicht en Visueel (PLToon). De ruwe waarde blijft in pidVals.
+  val=PLToon.waarde(pid, val);
   const d=def(pid);
   const st=(window.pidOordeel) ? pidOordeel(d, val, pid) : 'ok';
   const w=el('dv-'+pid);
   if(w){
-    const t=(typeof fv==='function') ? fv(val, d) : String(val);
+    const t=PLToon.tekst(pid, val) || ((typeof fv==='function') ? fv(val, d) : String(val));
     if(w.textContent!==t) w.textContent=t;
   }
   // De kleur van de tegel: de slechtste van zijn sensoren (een duo heeft er twee).

@@ -466,6 +466,10 @@ function zetTekst(id, t){ const e=el(id); if(e && e.textContent!==t) e.textConte
 function bij(id, ind, pid, val, st){
   const p=voorInd(id, ind);
   if(!p || !p.plekken || !ind) return;
+  // Het getal op het scherm: pedaal vanaf de rust, tank gedempt — dezelfde
+  // regel als Overzicht, Slim en de basismeter (PLToon). De energiering
+  // rekent zelf met de ruwe waarde (energie()).
+  val=PLToon.waarde(pid, val);
   p.plekken.forEach(function(x){
     if(ind.plekken[x.rol]!==pid) return;
     // De energiering is geen ruwe pedaalwaarde: die zet energie().

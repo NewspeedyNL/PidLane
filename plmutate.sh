@@ -1844,6 +1844,15 @@ MUTATIES=(
 "public/pidlane-samenhang.js@@    if (!r.gelezen.length) s += @@    if (false) s += @@test-samenhang.js@@een meting waarin niets te lezen viel, gaat naar de AI als \"geen verdenking\""
 "public/pidlane-verzamel.js@@        uitslagSam = metSamenhang(samNu(), appBron().hist);@@        uitslagSam = samNu();@@bproef-verzamel.js@@het scherm toont de samenhang niet meer"
 "public/pidlane-verzamel.js@@    let s = (sam.samenhangTekst || '') + @@    let s = '' + @@test-verzamel.js@@de AI krijgt de samenhang niet meer"
+# ── 07-10-2026: wat een weergave toont (PLToon). Pedaal "vast op 20" en een tank die per scherm verschilde.
+"public/pidlane-toon.js@@      if (ABSOLUUT.indexOf(pid) >= 0 && val < ABS_ONDER) return 0;\n@@@@test-toon.js@@een verminkte 0 van het absolute pedaal verpest de geleerde rust: los leest daarna als 20 %"
+"public/pidlane-toon.js@@        .filter(v => ABSOLUUT.indexOf(pid) < 0 || v >= ABS_ONDER);@@;@@test-toon.js@@een verminkte 0 in de historie wordt als rust geleerd"
+"public/pidlane-toon.js@@      return a.length >= TANK_N ? mediaan(a) : val;@@      return val;@@test-toon.js@@de tank klotst weer mee: elk scherm vangt een ander moment"
+"public/pidlane-toon.js@@      _leer[pid] = { min: a.length ? Math.min.apply(null, a) : null,@@      _leer[pid] = { min: null,@@test-toon.js@@de rust wordt niet uit de historie gehaald: het eerste getal is een gok"
+"public/pidlane-toon.js@@    if (s !== _sleutel) { _leer = {}; _sleutel = s; }@@    if (s !== _sleutel) { _sleutel = s; }@@test-toon.js@@een andere auto in dezelfde sessie houdt de rust van de vorige: zijn losgelaten pedaal leest als ingetrapt"
+"public/pidlane-toon.js@@    if (HEEL.indexOf(pid) < 0 || !getal(val)) return null;@@    return null;@@test-toon.js@@Overzicht toont weer 7.80 waar Visueel 8% zegt"
+"public/pidlane-pids.js@@  val=PLToon.waarde(pid,val);\n  const st=pidOordeel(d,val,pid);@@  const st=pidOordeel(d,val,pid);@@bproef-toon.js@@Overzicht toont het ruwe pedaal (20) waar Visueel 0 zegt"
+"public/pidlane-visueel.js@@  // als Overzicht en Slim (PLToon). De naald rekent zelf met de ruwe waarde.\n  val=PLToon.waarde(pid, val);@@  // als Overzicht en Slim (PLToon). De naald rekent zelf met de ruwe waarde.@@bproef-toon.js@@Visueel toont het ruwe pedaal (20) waar Overzicht 0 zegt"
 )
 
 echo

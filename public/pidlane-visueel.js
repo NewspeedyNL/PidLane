@@ -1641,6 +1641,9 @@ function vermogenBij(pedaal){
 function plekBij(rol, val){
   const ind=_staat.ind; if(!ind) return;
   const pid=ind.plekken[rol];
+  // Het getal op de rij: pedaal vanaf de rust, tank gedempt — dezelfde regel
+  // als Overzicht en Slim (PLToon). De naald rekent zelf met de ruwe waarde.
+  val=PLToon.waarde(pid, val);
   const st=plekOordeel(rol, val, defVan(pid));
   zetTekst('visv-'+rol, st==='geen' ? '—' : tekst(rol, val)+(rol==='koel'?'°':'%'));
   const p=el('visp-'+rol); klasse(p, st); if(p) p.classList.remove('oud');

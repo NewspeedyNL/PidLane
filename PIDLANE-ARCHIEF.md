@@ -15,6 +15,42 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 07-10-2026 — "Pedaal vast op 20, tank 6 of 8": geen kapotte sensor, maar vijf tekenpaden
+
+**De melding.** Mazda CX-5, 19:45–19:47: het gaspedaal stond in Overzicht
+op 20 % en leek niet te bewegen; het tankniveau was het ene scherm 6 % en
+het andere 8 %. De schermafdrukken waren van twee momenten (88 en 41 km/u),
+dus een deel van het verschil was gewoon echt.
+
+**Wat de check vond.**
+- *0149 is het absolute pedaal.* In rust staat hij op deze auto rond de
+  20 %. Bij constant rijden of met cruise control staat je voet stil of los,
+  en dan blijft 0149 op zijn rust. Dat leest als "vast". Visueel kende die
+  rust al (vraagUit, voor de vermogensnaald), maar toonde op de pedaalrij
+  toch het ruwe getal; Overzicht en Slim ook.
+- *0149 en 015A heetten allebei "Gaspedaal"*, en Visueel valt over naar 015A
+  als 0149 te traag is. Twee sensoren onder één naam, met een andere rust.
+- *012F wordt eens per minuut gevraagd* (PID_POLL_CLASS 60000), en de ruwe
+  tankwaarde klotst bij optrekken en in bochten een paar procent. Elk scherm
+  ving een ander moment; de meter in de auto dempt.
+- *Afronding verschilde per scherm*: Overzicht toont procenten onder de 10
+  met twee decimalen ("7.80"), Visueel in hele ("8%").
+- *Vijf tekenpaden*: Overzicht (applyG), Slim (PLDash.bij), Visueel
+  (plekBij), de Visueel-profielen (PLVisProfiel.bij), en bij het opbouwen
+  lezen Visueel en Slim pidVals rechtstreeks. Een omrekening in applyG
+  alleen had de opbouw gemist, en de vermogensnaald dubbel genormaliseerd.
+
+**De keuze.** Eén functie, PLToon.waarde(), aangeroepen in elk van die
+paden; de ruwe waarde blijft in pidVals/pidHist voor de AI, de recorder en
+de analyses. De browserproef vond daarbij nog iets: een verminkte 0 van het
+absolute pedaal zou de geleerde rust omlaag trekken, en dan leest een
+losgelaten pedaal als 20 %. Die tellen niet meer mee.
+
+**Niet gedaan.** Het tempo van 012F is niet verhoogd: één vraag per minuut
+is genoeg voor een tank, en dempen lost het klotsen op zonder de bus te
+belasten. Of de rust van 0149 op een echte rit goed geleerd wordt, is een
+vraag voor de volgende rit.
+
 ## 07-10-2026 — Samenhang: van twee getallen vergelijken naar lezen als een monteur (#446)
 
 **De klacht (eigenaar).** Het verzamelscherm legde per sensor het hoogste
