@@ -148,6 +148,12 @@ const beeld = (r) => r.conclusie.alle.map((x) => x.id + ':' + Math.round(x.score
   toets('de koelwatersensor is een aanwijzing (31 °C bij 12 °C lucht na een nacht)', top(r4).indexOf('koelsensor') >= 0, beeld(r4));
   const zonder = (stukken, pid) => stukken.map((x) => ({ sec: x.sec, v: Object.fromEntries(Object.entries(x.v).filter(([k]) => k !== pid)) }));
   const r4b = S.lees(rit(zonder(leugen, '0146')), O, CTX);
+  // Een korte stop met een warme motor: buitenlucht 12 °C, maar de
+  // motorruimte (inlaatlucht) nog 35 °C en het koelwater 80 °C.
+  const kortStil = gezond(); kortStil[0].v['0105'] = 80; kortStil[0].v['010F'] = 35;
+  const r4c = lees(kortStil);
+  toets('TEGENPROEF: na een korte stop (inlaatlucht warmer dan buiten) geen koude-motorcontrole, en geen liegende sensor',
+    r4c.niet.some((x) => x.id === 'koudstart' && /niet afgekoeld/.test(x.reden)) && top(r4c).indexOf('koelsensor') < 0, beeld(r4c));
   toets('TEGENPROEF: zonder buitentemperatuur is "lang stilgestaan" niet vast te stellen, en zegt hij dat', r4b.niet.some((x) => x.id === 'koudstart' && /buitentemperatuur/.test(x.reden)), beeld(r4b));
 
   console.log('\nG. Katalysator versleten: de achterste sonde wisselt mee');
@@ -178,7 +184,8 @@ const beeld = (r) => r.conclusie.alle.map((x) => x.id + ':' + Math.round(x.score
   console.log('\nK. Stilstaand gas geven is geen stationair');
   const gas = gezond(); gas[3].v['010C'] = (u, t) => (Math.floor(t / 4000) % 3 === 0 ? 1600 : 780);
   const r9 = lees(gas);
-  toets('tikken op het gas bij stilstand leest niet als overslaan', status(r9, 'misfire') !== 'waarschijnlijk' && status(r9, 'misfire') !== 'bevestigd', beeld(r9));
+  const mis = r9.conclusie.alle.filter((x) => x.id === 'misfire')[0];
+  toets('tikken op het gas bij stilstand leest niet als overslaan: het stationair zelf is rustig', mis && mis.score < 0 && !mis.bewijs.some((b) => /schommelt/.test(b.t)), beeld(r9));
 
   console.log('\nK2. Een lambdasonde die exact stilstaat is een meetvraag, geen defect');
   const dood = gezond(); dood.forEach((x) => { if ('0114' in x.v) x.v['0114'] = 0.45; });
