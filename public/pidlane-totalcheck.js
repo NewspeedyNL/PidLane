@@ -269,7 +269,8 @@ function exportCheckReport(){
    ══════════════════════════════════════════════════════════════════════════ */
 
 // Elke test: {id, groep, naam, pids:[hoofd-PID...], uitleg, band:{lo,hi} of fn,
-//   hold: seconden binnen band om te slagen, min? (min. sec meten)}
+//   hold: seconden binnen band om te slagen, min? (min. sec meten),
+//   motor? (meet alleen bij een motor die al even draait — zie bscMotorTest)}
 // band kan statisch zijn {lo,hi} of dynamisch via fn(vals,hist)->{lo,hi,ref?}.
 // → BSC_TESTS verplaatst naar pidlane-data.js
 
@@ -315,6 +316,23 @@ const BSC_KOUD_C = 50;          // daaronder telt de motor als koud
 const BSC_MAX_MEET_MS = 20000;  // zo lang mag een test IN zijn situatie meten
 const BSC_GEEN_DATA_MS = 15000; // zo lang wachten op een eerste meetwaarde
 const BSC_TIK_MS = 250;
+/* Een test over de motor meet alleen terwijl die motor draait, en pas als hij
+   al even draait (07-10-2026). Dat is geen hybride-regel maar de basis — hij
+   geldt net zo voor start/stop en voor een motor die net aansloeg.
+
+   Tot vandaag keek "constant rijden" alleen naar de snelheid. Bij een hybride
+   die op de accu rijdt mat de misfire-test dus een toerental van 0, en sloeg
+   de motor halverwege aan, dan liep de basislijn van x_rpm_const (de mediaan
+   van de laatste 5 s) over nullen en een aanloop. Uitkomst: "twijfel", met
+   "overslaan of slippende koppeling" als uitleg, op een gezonde auto. En wat
+   wel binnen de band viel — belasting 0 bij uitrollen, verbruik 0 bij
+   constant — heette "ok" over een motor die niet liep.
+
+   6 s is langer dan het langste basislijnvenster (5 s), zodat geen enkele
+   basislijn nog een monster van vóór de start bevat. */
+const BSC_MOTOR_STABIEL_MS = 6000;
+let _bscDraaitSinds = 0;
+function bscMotorTest(t){ return !!t.motor || t.sit==='draaiend' || t.sit==='stationair'; }
 
 // Welke situaties spelen er nu? Een set, want stationair is ook "draaiend".
 function bscSituaties(){
@@ -326,6 +344,8 @@ function bscSituaties(){
   if(contact) nu.add('contact');
   if(typeof rpm==='number' && rpm<200) nu.add('motoruit');
   if(draait) nu.add('draaiend');
+  if(draait){ if(!_bscDraaitSinds) _bscDraaitSinds=Date.now(); } else _bscDraaitSinds=0;
+  if(draait && Date.now()-_bscDraaitSinds>=BSC_MOTOR_STABIEL_MS) nu.add('motorstabiel');
   if(draait && (typeof spd!=='number' || spd<3)) nu.add('stationair');
   if(typeof spd==='number' && spd>=5){
     nu.add('rijden');
@@ -341,6 +361,10 @@ function bscConditie(t, situaties){
   const nu=situaties||bscSituaties();
   const sit=t.sit||'draaiend', mis=[];
   if(!nu.has(sit)) mis.push((BSC_SIT[sit]||{naam:sit}).naam.toLowerCase());
+  if(bscMotorTest(t) && !nu.has('motorstabiel')){
+    if(nu.has('draaiend')) mis.push('motor draait al '+Math.round(BSC_MOTOR_STABIEL_MS/1000)+' s');
+    else if(t.motor) mis.push('motor draait');
+  }
   if(t.warm && !(typeof pidVals['0105']==='number' && pidVals['0105']>=BSC_WARM_C)) mis.push('motor bedrijfswarm');
   if(t.minSnelheid && !(typeof pidVals['010D']==='number' && pidVals['010D']>=t.minSnelheid)) mis.push('≥'+t.minSnelheid+' km/u');
   return mis.length ? {ok:false, label:mis.join(' + ')} : {ok:true, label:''};
@@ -352,15 +376,15 @@ function bscConditie(t, situaties){
 (function(){
   if(typeof BSC_TESTS==='undefined'||!Array.isArray(BSC_TESTS)) return;
   const extra=[
-    {id:'x_rpm_const', groep:'universeel', naam:'Toerental stabiel bij constante snelheid',
+    {id:'x_rpm_const', groep:'universeel', motor:true, naam:'Toerental stabiel bij constante snelheid',
      pids:['010C'], hold:5, sit:'constant', minSnelheid:40,
      uitleg:'Bij constante snelheid hoort het toerental vlak te blijven. Schommelingen wijzen op overslaan of een slippende koppeling/omvormer.',
      band:(vals,hist)=>{ const m=bscBaseline(hist['010C'],5); return m==null?null:{lo:m-75,hi:m+75}; }},
-    {id:'x_accel_load', groep:'universeel', naam:'Belasting reageert op gas geven',
+    {id:'x_accel_load', groep:'universeel', motor:true, naam:'Belasting reageert op gas geven',
      pids:['0104'], hold:2, sit:'optrekken',
      uitleg:'Tijdens accelereren hoort de motorbelasting duidelijk op te lopen. Blijft die laag, dan leest MAF/MAP mogelijk te laag.',
      band:{lo:35,hi:100}},
-    {id:'x_decel_load', groep:'universeel', naam:'Belasting valt weg bij uitrollen/remmen',
+    {id:'x_decel_load', groep:'universeel', motor:true, naam:'Belasting valt weg bij uitrollen/remmen',
      pids:['0104'], hold:2, sit:'remmen',
      uitleg:'Bij gas los/remmen hoort de belasting laag te zijn (brandstof-cut). Hoge belasting hier is verdacht.',
      band:{lo:0,hi:25}},
@@ -669,10 +693,32 @@ function _monChipTick(){
 // — die guard zit in _monTick zelf.
 setInterval(()=>{ try{ _monChipTick(); }catch(e){ console.warn('_monChipTick mislukt:', e); } try{ _monTick(); }catch(e){ console.warn('_monTick mislukt:', e); } },1000);
 
+/* Welke testgroepen horen bij deze auto? Twee vragen, niet één (07-10-2026).
+
+   Tot vandaag was dit `new Set(['universeel', et])`: één motortype, één groep.
+   Een hybride kreeg daardoor 'hybride' en níét 'benzine', en verloor vijf
+   tests (MAF, ontsteking, STFT, katalysator, tankniveau) aan een motor die hij
+   gewoon heeft. Een hybride is geen soort benzineauto en ook geen soort EV:
+   het is een auto die beide heeft. Dus apart gevraagd:
+
+     zit er een verbrandingsmotor in?   ja, behalve bij volledig elektrisch
+     zit er elektrische aandrijving in? ja bij hybride
+
+   Bekende grens: een diesel-hybride heet 'hybride' en krijgt hier 'benzine'.
+   De brandstofnormalisatie maakt van "Diesel + Elektriciteit" één woord en
+   gooit de diesel weg; dat is een eigen klus, zie het issue. */
+function bscGroepen(et){
+  const g=new Set(['universeel']);
+  if(et==='diesel') g.add('diesel');
+  else if(et!=='ev') g.add('benzine');
+  if(et==='hybride') g.add('hybride');
+  return g;
+}
+
 // Filter de catalogus op motortype + welke PIDs de auto levert.
 function bscBuildList(){
   const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
-  const groepen=new Set(['universeel', et]); // ev valt terug op universeel
+  const groepen=bscGroepen(et);
   // 27-07-2026 — hier zat de oorzaak van "⏳ Wachten op sensordata…" dat nooit
   // afliep. De laatste voorwaarde (|| !!getPidDef(pid)) maakte deze controle
   // waardeloos: élk PID dat in ALL_PID_DEFS staat gaf `true`, ook als de auto
