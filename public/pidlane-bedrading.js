@@ -61,6 +61,10 @@ var KRITIEK = [
   // een guard: pidlane-koopcheck.js laadt later dan pidlane-auth.js. Ontbreekt
   // hij, dan schrijft het live-log door in de sessie van wie daarna inlogt.
   'liveLogStop',
+  // Erbij op 08-10-2026. Blok 5 toetst achter een guard dat de herverbind-
+  // guard wijkt voor een volledige verbinding (pidlane-bt.js). Ontbreekt hij,
+  // dan meldt de proef dat; zonder deze regel zou de guard zelf stil falen.
+  '_verbindingHeeftEigenaar',
   'ecuSteunt','hasTesterConsent','healthUitProfiel',
   // De twee helften van #78 (02-09-2026). plHealthHerzien() laat een negatief
   // gezondheidsoordeel vervallen zodra er alsnog een geldige meting binnenkomt;
