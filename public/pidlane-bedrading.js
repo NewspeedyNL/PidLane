@@ -53,6 +53,10 @@ var KRITIEK = [
   // Ontbreekt die functie, dan doet de knop niets en zegt niets -- precies de
   // stille vorm waarvoor deze lijst bestaat.
   'handleConnect',
+  // Erbij op 08-10-2026. Blok 5 roept het VIN-vangnet en de context van de
+  // Auto-expert achter een guard aan. Ontbreekt plZonderVin, dan gaat een VIN
+  // weer ruw naar de AI zonder dat iets het zegt.
+  'plZonderVin','buildAutoExpertContext',
   // Erbij op 29-09-2026. handleConnect() geeft de bus vrij (ATPC) voordat de
   // socket dichtgaat, achter een guard omdat pidlane-bt.js ook los getest
   // wordt. Ontbreekt hij, dan blijft een K-lijn-ECU op een tester wachten.

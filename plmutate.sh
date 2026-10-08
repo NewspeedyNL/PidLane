@@ -1546,6 +1546,10 @@ MUTATIES=(
 "public/pidlane-auth.js@@    const bericht=mailUit(String(message||'')@@    const bericht=(String(message||'')@@test-logvelden.js@@een e-mailadres in de tekst van een logregel gaat ongezien mee"
 "public/pidlane-veldlab.js@@  try{ kopie=JSON.parse(_vlEmailUitTekst(JSON.stringify(rec))); }@@  try{ kopie=JSON.parse(JSON.stringify(rec)); }@@test-vin-anoniem.js@@een e-mailadres ergens in het veldlabrecord (foutregels, survey) gaat mee in het JSON-blob"
 "public/pidlane-veldlab.js@@  if(kopie && 'tester' in kopie) kopie.tester=_vlGeenEmail(rec.tester);@@  if(kopie && 'tester' in kopie) kopie.tester=kopie.tester;@@test-vin-anoniem.js@@de Tester van een klant gaat als \"[e-mail]\" mee in plaats van leeg"
+# ── Geen VIN naar de AI (08-10-2026). De Auto-expert en Optimaliseer stuurden
+# hem ruw mee; apiFetch() is nu het vangnet voor wat er nog in sluipt.
+"public/pidlane-fuel.js@@  prompt=plZonderVin(prompt); sys=plZonderVin(sys);@@@@test-vin-anoniem.js@@het vangnet in apiFetch staat uit: een VIN in een prompt gaat ruw naar de AI"
+"public/pidlane-fuel.js@@const PL_VIN_PATROON=/\\b(?=[A-HJ-NPR-Z0-9]*\\d)(?=[A-HJ-NPR-Z0-9]*[A-HJ-NPR-Z])@@const PL_VIN_PATROON=/\\b(?=[A-HJ-NPR-Z0-9]*\\d)@@test-vin-anoniem.js@@het vangnet eist geen letter meer: een getal van 17 cijfers in een prompt wordt weggepoetst"
 "worker.js@@        const sporen = await klantSporenWissen(env.LOGDB, emailVan[id]);@@        const sporen = null;@@test-klantsporen.js@@een verwijderd account laat zijn logregels en veldlabrecords met zijn e-mailadres staan"
 "worker.js@@ OR INSTR(LOWER(\"JSON\"), LOWER(?)) > 0@@ OR ? IS NULL@@test-klantsporen.js@@een veldlabrecord met het adres alleen in het JSON-blob blijft na verwijderen staan"
 "public/pidlane-demo.js@@      if (Array.isArray(l)) for (var i = l.length - 1; i >= 0; i--) if (l[i] && l[i].demo) l.splice(i, 1);@@      void 0;@@test-demozandbak.js@@demorapporten blijven na de demo in het overzicht — en gaan als eerdere rapporten mee naar de AI"

@@ -71,10 +71,11 @@
       'markering neverForLocation, waarmee Android het gebruik voor plaatsbepaling blokkeert. ' +
       'De ritopname kon tot augustus 2026 optioneel de hoogte meenemen; die functie is verwijderd.'],
     ['🚗', 'Wat er uit de auto komt',
-      'Foutcodes, sensorwaarden, motorgegevens en het chassisnummer (VIN). Die gegevens gaan naar het ' +
-      'scherm en, als je om een AI-analyse vraagt, naar onze server om daar een rapport van te maken. ' +
-      'Het chassisnummer zelf blijft op je toestel: in de referentiedata die je apart deelt staat er ' +
-      'een uit dat nummer berekende code in de plaats. Dat is een pseudoniem, geen anonimisering.'],
+      'Foutcodes, sensorwaarden, motorgegevens en het chassisnummer (VIN). Foutcodes, sensorwaarden en ' +
+      'motorgegevens gaan naar het scherm en, als je om een AI-analyse vraagt, naar onze server om daar ' +
+      'een rapport van te maken. ' +
+      'Het chassisnummer zelf blijft op je toestel, ook bij een AI-analyse: waar de app een auto moet ' +
+      'herkennen, gaat er een uit dat nummer berekende code mee. Dat is een pseudoniem, geen anonimisering.'],
     ['📱', 'Sensoren van je telefoon',
       'Het scherm Telemetrie leest de oriëntatie- en bewegingssensor van je telefoon: helling, kanteling en ' +
       'G-kracht. Geen positie. De waarden blijven op je toestel, behalve als je met telemetrie aan om een ' +

@@ -239,7 +239,7 @@ async function optimizeConnectionAI(btn){
       adapter:'OBDLink MX+ (STN-chip, ELM327 v1.4b compatibel)',
       protocol:String(selectedNetwork?.name||selectedNetwork?.id||'onbekend'),
       voertuig:`${vehicleInfo.merk||'?'} ${vehicleInfo.model||''} ${vehicleInfo.year||''}`.trim(),
-      vin:vehicleInfo.vin||'onbekend',
+      fabrikant:String(vehicleInfo.vin||'').slice(0,3)||'onbekend',   // de fabrikantcode, nooit de hele VIN
       pids_actief:activePIDs.size, pids_beschikbaar:supportedPIDs.size,
       batch:window._batchSupported===false?'uitgeschakeld (onbetrouwbaar)':'actief',
       gemiddelde_responstijd_ms:before
