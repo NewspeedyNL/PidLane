@@ -17,6 +17,17 @@
    nieuwe accu af (015B is levensduur, geen laadtoestand), ev_ice slaagde
    altijd, regen mat de 12V-accu. Een hybride houdt de benzinetests.
  - test-hybridebasis.js, een mutatie en een proef in blok 5.
+ 08-10-2026 — Herverbinden: één herverbinder tegelijk
+ ═══════════════════════════════════════════════════════════
+
+ - Na een stekker eruit en erin liepen sppReconnectGuard en connectSerial()
+   door elkaar. De warme reset (ATWS) van de guard viel midden in de 0100 van
+   de protocoldetectie; de app vroeg om een protocol (Aygo, 07-10: ISO 9141-2
+   op een CAN-auto). De pair-knop deed één schone verbinding en fixte het.
+ - De guard wijkt nu voor een volledige verbinding die loopt, gepland staat
+   of tijdens zijn eigen poging begint (_btGen). Een automatische
+   herverbinding zoekt het protocol eerst nog één keer zelf.
+ - test-herverbindguard.js, vier mutaties, blok 5.
 
  ═══════════════════════════════════════════════════════════
  08-10-2026 — Basismeter: vier plekken die je zelf kiest

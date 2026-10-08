@@ -36,6 +36,36 @@ zodat een test die wél iets onderscheidt er zonder meer bij kan.
 **Wat blijft.** Een hybride krijgt nog alle benzinetests en de universele.
 `test-hybridebasis.js` eist dat de groep leeg is; de mutatie in
 `plmutate.sh` zet `hv_soc` terug en wordt gevangen.
+## 08-10-2026 — Herverbinden werkte "te goed": twee herverbinders tegelijk
+
+**Wat er gemeld werd.** Na iets met de stekker herverbond de app vanzelf,
+maar vroeg dan met welk protocol. App afsluiten en op pair drukken maakte
+alles weer goed. Bij de eerste keer aansluiten op de Aygo precies hetzelfde.
+
+**Wat D1 liet zien (logregels, 07-10).** 13:48 verbonden, CAN 11/500 herkend.
+13:52:43 opnieuw verbonden; om 13:54 stond het protocol op "ISO 9141-2" (een
+handmatige keuze, zonder "AUTO,"). 13:54:50 pair-knop: weer CAN, data stabiel.
+De BT-diagnoseregels zelf gaan niet naar D1; de oorzaak is uit de code
+afgeleid en met een test nagebouwd, niet uit dat log gelezen.
+
+**De oorzaak.** Drie paden herverbinden vanzelf, met twee sloten die van
+elkaar niet wisten. `sppReconnectGuard()` (bij een lege respons) opent de
+socket opnieuw en doet 60 ms later `initELM327` met ATWS. `connectSerial()`
+(na zes lege antwoorden of bij terugkeer naar de app, slot `_reconnBusy`)
+sluit eerst de oude socket, opent een nieuwe en zoekt het protocol met 0100.
+`connectSerial()` zette bovendien `_reinitBusy` terug op false, zodat de
+re-init van de guard gewoon doorging. Viel de warme reset midden in de 0100,
+dan herkende de detectie niets en kwam de handmatige lijst.
+
+**Wat er veranderd is.** De guard wijkt: zolang een volledige verbinding
+loopt of gepland staat (`_reconnBusy`, of minder dan 30 s sinds
+`connectSerial` begon), en zodra er tijdens zijn eigen poging een nieuwe
+begint (`_btGen` veranderd) — dan geen connect en geen re-init. En een
+automatische herverbinding die geen protocol herkent, zoekt eerst nog één
+keer zelf (na 2 s) voordat ze het vraagt.
+
+**Nog niet gemeten.** Of het op de weg weg is: blok 5 vraagt om de adapter
+even uit te trekken met de motor aan.
 
 ## 08-10-2026 — De Basismeter: van drie balkjes naar vier plekken
 

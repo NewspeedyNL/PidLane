@@ -2788,6 +2788,26 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── één herverbinder tegelijk (08-10-2026) ──
+  {
+    issue: '—',
+    naam: 'Na een stekker eruit en erin herverbindt de app één keer, schoon, en vraagt niet om een protocol',
+    waarom: 'Op de Aygo liepen twee herverbinders door elkaar; de warme reset van de een viel midden in de protocoldetectie van de ander, en de app vroeg om een protocol (ISO 9141-2 op een CAN-auto).',
+    proef: async function () {
+      if (typeof _verbindingHeeftEigenaar !== 'function') return { staat: 'FOUT', detail: '_verbindingHeeftEigenaar ontbreekt — pidlane-bt.js is niet de nieuwe' };
+      var was = window._plVerbindSinds, bezig = window._reconnBusy;
+      window._reconnBusy = false; window._plVerbindSinds = Date.now() - 5000;
+      var binnen = _verbindingHeeftEigenaar(Date.now());
+      window._plVerbindSinds = Date.now() - 60000;
+      var buiten = _verbindingHeeftEigenaar(Date.now());
+      window._plVerbindSinds = was; window._reconnBusy = bezig;
+      if (!binnen || buiten) return { staat: 'FOUT', detail: 'de guard wijkt niet (of altijd) voor een volledige verbinding: 5 s ' + binnen + ', 60 s ' + buiten };
+      var h = window._plLaatsteHervat;
+      if (!h) return { staat: 'LET OP', detail: 'regel klopt; nodig: trek de adapter even uit de OBD-poort (motor aan), steek hem terug, raak niets aan, en draai deze proef opnieuw' };
+      return { staat: 'OK', detail: 'hervat na ' + h.reden + ' in ' + h.s + ' s, ' + h.sensoren + ' sensoren — zonder protocolvraag' };
+    }
+  },
+
   // ── de Basismeter: vier plekken die je zelf kiest (08-10-2026) ──
   {
     issue: '—',
