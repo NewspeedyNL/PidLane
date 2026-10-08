@@ -15,6 +15,32 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 08-10-2026 — Privacycheck voor 3.2: een VIN naar de AI, en een belofte die niet klopte
+
+**Gevonden.** Twee prompts stuurden de ruwe VIN mee naar onze server en
+door naar Anthropic: de Auto-expert (`buildAutoExpertContext()`, regel
+`VOERTUIG: … VIN …`) en 🛠 Optimaliseer in het verbindvenster
+(`optimizeConnectionAI()`, veld `vin` in de context). De uitleg vóór het
+verbinden zei al die tijd "het chassisnummer zelf blijft op je toestel", en
+de Play-tekst "chassisnummer (als pseudoniem)". Geen van de bestaande
+toetsen keek naar de AI-weg: `test-vin-anoniem.js` dekte alleen Veldlab en
+de logregels.
+
+**Wat er nu staat.** Beide prompts noemen de VIN niet meer (Optimaliseer
+krijgt de fabrikantcode, de eerste drie tekens). En `apiFetch()`, de enige
+weg naar het model, haalt vlak voor verzending alles weg wat eruitziet als
+een VIN (`plZonderVin()`). Dat vangnet is er omdat dit de vorm is die
+terugkomt: een nieuw veld in een nieuwe prompt.
+
+**Tweede bevinding.** Sinds 28-09 zegt het akkoordscherm van Mijn voertuigen
+dat twee accounts met dezelfde auto de technische gegevens delen ("de
+techniek volgt de auto"). `privacy.html` zei "deze gegevens worden niet
+gedeeld" en noemde dat delen niet. De verklaring volgt nu het akkoordscherm.
+
+**Niet veranderd.** `DISCLOSURE_VERSIE` blijft 3: de tekst beloofde al wat de
+app nu doet. Het verschil tussen `info@` (privacyverklaring) en `support@`
+(verwijderpagina) staat er nog; welk adres leidend is, is een keuze.
+
 ## 08-10-2026 — Inhaalmerges: wat botste, en waarom een script het nu doet
 
 **Gemeten.** Van de 39 keer dat `main` sinds 01-09 in een tak werd

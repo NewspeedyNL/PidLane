@@ -189,6 +189,48 @@ const VIN = 'JM3KFBCL8J0123456';          // Mazda CX-5, het testvoertuig
   toets('een testernaam zonder @ blijft staan', (await _vlSchoonVoorVerzending({ tester: 'Nico', t: 1 })).tester === 'Nico');
   toets('het origineel houdt het adres (de app zelf mag het tonen)', klantRec.tester === MAIL);
 
+  // ── 9. de weg naar de AI (08-10-2026) ──
+  // Bij de privacycheck voor 3.2 stuurden de Auto-expert en 🛠 Optimaliseer de
+  // ruwe VIN in hun prompt mee. apiFetch() is de enige weg naar het model; hier
+  // draait de echte apiFetch() met een nep-plFetch die vastlegt wat er over de
+  // lijn zou gaan. Alles wat apiFetch verder nodig heeft, levert een Proxy als
+  // lege functie: dit gaat alleen over wat er in de body terechtkomt.
+  console.log('\n9. geen VIN naar de AI\n');
+  const fuel = fs.readFileSync(__dirname + '/pidlane-fuel.js', 'utf8');
+  const fVan = fuel.indexOf('const PL_VIN_PATROON'), fTot = fuel.indexOf('// De vijfde parameter `aanlevering`');
+  const aVan = fuel.indexOf('async function apiFetch('), aTot = fuel.indexOf('\n}\n', aVan) + 3;
+  if (fVan < 0 || fTot < fVan || aVan < 0) {
+    toets('het vangnet en apiFetch() staan in pidlane-fuel.js', false, 'anker PL_VIN_PATROON of apiFetch niet gevonden');
+  } else {
+    let body = null;
+    const vast = {
+      window: {}, log() {}, console: { warn() {}, log() {} }, currentUser: null, USERS: {},
+      localStorage: { getItem() { return ''; } }, pidVals: {},
+      vehicleInfo: { merk: 'Mazda', model: 'CX-5', vin: VIN },
+      JSON, String, Math, Array, Object, Date, Promise, Error, RegExp, Number, Set, Map, setTimeout, encodeURIComponent,
+      plFetch: async function (u, o) {
+        body = o.json;
+        return { ok: true, status: 200, headers: { get() { return null; } },
+          json: async function () { return { content: [{ type: 'text', text: 'ok' }], usage: {} }; } };
+      }
+    };
+    const leeg = function () { return ''; };
+    const omg = new Proxy(vast, { has: function () { return true; },
+      get: function (t, k) { return k === Symbol.unscopables ? undefined : (k in t ? t[k] : leeg); } });
+    const bouw = new Function('omg', 'with (omg) {' + fuel.slice(fVan, fTot) + fuel.slice(aVan, aTot) +
+      '\nreturn { apiFetch: apiFetch, plZonderVin: plZonderVin }; }');
+    const F = bouw(omg);
+    await F.apiFetch('VOERTUIG: Mazda CX-5 VIN ' + VIN + '\nWat zegt de live data?', 100, 'context ' + VIN);
+    const lijn = JSON.stringify(body || {});
+    toets('er ging een verzoek over de lijn', !!body, 'plFetch werd niet aangeroepen');
+    toets('de VIN staat niet in prompt of systeemprompt', lijn.indexOf(VIN) < 0, lijn.slice(0, 300));
+    toets('de fabrikantcode blijft staan, met de reden erbij', /JM3… \(chassisnummer weggelaten\)/.test(lijn), lijn.slice(0, 300));
+    // Tegenproef binnen de toets: wat géén VIN is, blijft ongemoeid.
+    const rest = 'Mazda 2018, 010C0D11492, ATST 0x19, 12345678901234567 en ONDERHOUDSBEURTEN';
+    toets('geen VIN, dan verandert er niets (cijfers, PID-groep, gewone woorden)', F.plZonderVin(rest) === rest, F.plZonderVin(rest));
+    toets('een VIN midden in een zin wordt ook gevonden', F.plZonderVin('auto (' + VIN + '),') === 'auto (JM3… (chassisnummer weggelaten)),', F.plZonderVin('auto (' + VIN + '),'));
+  }
+
   console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'alle ' + n + ' tests geslaagd') + '\n');
   process.exit(fout ? 1 : 0);
 })().catch(e => { console.error('FOUT: test wierp een exception:', e); process.exit(1); });

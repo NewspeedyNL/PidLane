@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 08-10-2026 — Privacy: geen VIN naar de AI, privacyverklaring gelijk aan de app
+ ═══════════════════════════════════════════════════════════
+
+ - De Auto-expert en Optimaliseer stuurden de ruwe VIN mee naar de AI. Nu
+   niet meer, en apiFetch() haalt een VIN altijd weg vóór verzending
+   (plZonderVin). test-vin-anoniem.js deel 9, twee mutaties, blok 5.
+ - privacy.html: "de techniek volgt de auto" uit Mijn voertuigen staat er nu
+   in, met de volledige lijst; Anthropic krijgt geen chassisnummer.
+ - De uitleg vóór het verbinden zegt dat de VIN ook bij een AI-analyse op
+   het toestel blijft.
+
+ ═══════════════════════════════════════════════════════════
  08-10-2026 — plinhaal.js: main binnenhalen zonder handwerk aan toevoegingen
  ═══════════════════════════════════════════════════════════
 

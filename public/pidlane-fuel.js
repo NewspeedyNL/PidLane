@@ -371,6 +371,20 @@ function extractAIText(data){
   return '';
 }
 
+// ── Geen chassisnummer naar de AI (08-10-2026) ──────────────────────
+// Een VIN gaat nooit ruw de telefoon uit (CLAUDE.md, privacy). Bij de
+// privacycheck voor 3.2 bleken twee prompts hem toch mee te sturen: de
+// Auto-expert (buildAutoExpertContext) en 🛠 Optimaliseer
+// (optimizeConnectionAI). Die twee zijn gerepareerd; dit is het vangnet voor
+// de volgende, want apiFetch() is de enige weg naar het model. Wat eruit ziet
+// als een VIN (17 tekens uit het VIN-alfabet, met minstens één cijfer en één
+// letter) wordt de fabrikantcode plus een vaste tekst. De fabrikantcode zegt
+// alleen wie de auto bouwde.
+const PL_VIN_PATROON=/\b(?=[A-HJ-NPR-Z0-9]*\d)(?=[A-HJ-NPR-Z0-9]*[A-HJ-NPR-Z])[A-HJ-NPR-Z0-9]{17}\b/g;
+function plZonderVin(t){
+  return typeof t==='string' ? t.replace(PL_VIN_PATROON, m=>m.slice(0,3)+'… (chassisnummer weggelaten)') : t;
+}
+
 // De vijfde parameter `aanlevering` is nieuw op 11-09-2026 (#188) en optioneel.
 // Zonder hem levert PLAanlevering het blok af op wat de app zelf kan vaststellen;
 // een aanroeper die wél weet wat hij laat analyseren geeft {vraag, set} mee en
@@ -481,6 +495,8 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
   // De module is fail-open: ontbreekt hij of gaat er iets mis, dan draait
   // de analyse gewoon door zonder afboeking. Annuleren door de gebruiker
   // gooit een fout met .plAfgebroken zodat callers dat kunnen herkennen.
+  // Het vangnet hierboven: na dit punt verandert prompt noch sys nog.
+  prompt=plZonderVin(prompt); sys=plZonderVin(sys);
   let _plCred=null;
   try{
     if(window.PLCredits && typeof window.PLCredits.preflight==='function'){

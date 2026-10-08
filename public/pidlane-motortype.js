@@ -150,7 +150,7 @@ function buildAutoExpertContext(){
   const v=getVehicle()||{};
   const lines=[];
   const merkModel=[v.merk,v.model,v.year].filter(Boolean).join(' ');
-  lines.push(`VOERTUIG: ${merkModel||'onbekend'}${v.brandstof?' ('+v.brandstof+')':''}${v.vin?' VIN '+v.vin:''}`);
+  lines.push(`VOERTUIG: ${merkModel||'onbekend'}${v.brandstof?' ('+v.brandstof+')':''}`);   // geen VIN: die gaat nooit ruw de telefoon uit
   try{ const _sit=situatieKort(); if(_sit) lines.push('RIJSITUATIE NU: '+_sit); }catch(e){ console.warn('situatieKort mislukt:', e); }
   // Brandstof-context zodat de monteur geen verbrandingsonderdelen aanhaalt bij een EV
   const _ft=vehicleFuelType();

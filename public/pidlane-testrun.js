@@ -2771,6 +2771,24 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── privacycheck 3.2: geen chassisnummer naar de AI ──
+  {
+    issue: '—',
+    naam: 'Geen VIN naar de AI: het vangnet in apiFetch, en de Auto-expert zonder chassisnummer',
+    waarom: 'De Auto-expert en Optimaliseer stuurden de ruwe VIN in hun prompt mee, terwijl een VIN nooit ruw de telefoon uit mag.',
+    proef: async function () {
+      if (typeof plZonderVin !== 'function') return { staat: 'FOUT', detail: 'plZonderVin ontbreekt — pidlane-fuel.js is niet de nieuwe' };
+      var nep = 'JM3KFBCL8J0123456';
+      if (plZonderVin('VIN ' + nep).indexOf(nep) >= 0) return { staat: 'FOUT', detail: 'het vangnet laat een VIN door' };
+      if (plZonderVin('12345678901234567') !== '12345678901234567') return { staat: 'FOUT', detail: 'het vangnet poetst een gewoon getal weg' };
+      var vin = (typeof vehicleInfo !== 'undefined' && vehicleInfo && vehicleInfo.vin) || '';
+      if (!vin || typeof buildAutoExpertContext !== 'function') return { staat: 'LET OP', detail: 'vangnet klopt; voor de Auto-expert is een verbonden auto met VIN nodig' };
+      var ctx = buildAutoExpertContext();
+      if (ctx.indexOf(vin) >= 0) return { staat: 'FOUT', detail: 'de Auto-expert zet de VIN van deze auto in zijn context' };
+      return { staat: 'OK', detail: 'vangnet werkt, en de context van de Auto-expert noemt de VIN van deze auto niet' };
+    }
+  },
+
   // ── #430: geen hybridetest die een nieuwe accu afkeurt of altijd slaagt ──
   {
     issue: '#430',
