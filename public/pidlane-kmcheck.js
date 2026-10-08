@@ -768,6 +768,9 @@
 
     res.duurMs = Date.now() - t0;
     res.oordeel = oordeel(res.metingen, opgegeven);
+    // Onthouden voor softwareOorzaken() (#426): verschillende VIN's in de
+    // stuurapparaten wijzen op een vervangen of verkeerd gecodeerde ECU.
+    _laatsteVin = { vin: huidigeVin(), niveau: (res.oordeel.vin && res.oordeel.vin.niveau) || 'onbekend', t: Date.now() };
     diag('Km-check klaar: ' + res.oordeel.tekst + ' (' + (res.duurMs / 1000).toFixed(1) + 's)',
       res.oordeel.niveau === 'kritiek' ? 'warn' : 'ok');
     return res;
@@ -988,8 +991,23 @@
     }
   }
 
+  /* ── DE LAATSTE VIN-CONTROLE (#426) ──────────────────────────────────
+     Alleen voor dezelfde auto: een km-check van gisteren op een andere auto
+     zegt niets over deze. Zonder VIN op het moment van de check, of nu,
+     geen uitspraak (false). Puur; vinAfwijkend() hieronder vult hem in. */
+  var _laatsteVin = null;
+  function huidigeVin() {
+    try { return (typeof vehicleInfo !== 'undefined' && vehicleInfo && vehicleInfo.vin) ? String(vehicleInfo.vin) : ''; }
+    catch (e) { console.warn('PLKm: VIN van de verbonden auto onleesbaar', e); return ''; }
+  }
+  function vinAfwijkendVan(laatste, vin) {
+    return !!(laatste && laatste.vin && vin && laatste.vin === vin && laatste.niveau === 'kritiek');
+  }
+  function vinAfwijkend() { return vinAfwijkendVan(_laatsteVin, huidigeVin()); }
+
   window.PLKm = {
     check: check,
+    vinAfwijkend: vinAfwijkend,
     draaiUI: draaiUI,
     oordeel: oordeel,
     render: render,
@@ -1001,7 +1019,7 @@
       naarHex: naarHex, leesDid: leesDid, naarWaarde: naarWaarde, isVulling: isVulling,
       kandidaten: kandidaten, kiesSchaal: kiesSchaal, kiesAnker: kiesAnker,
       bytesNaarTekst: bytesNaarTekst, isVin: isVin, vinKenmerk: vinKenmerk,
-      rxVan: rxVan, tolerantie: tolerantie
+      rxVan: rxVan, tolerantie: tolerantie, vinAfwijkendVan: vinAfwijkendVan
     }
   };
 })();

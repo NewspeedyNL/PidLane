@@ -15,6 +15,28 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 09-10-2026 — #426: softwareoorzaken in Welk onderdeel en via de VIN-controle
+
+Twee open punten van #426 zijn gekoppeld; twee blijven open.
+
+- **Welk onderdeel?** toont nu hetzelfde 🧩-blok als Check mijn auto. Het
+  paneel heeft zelf geen readiness; die komt uit `PLFoutcodes.staat().scan`,
+  de laatste uitlezing van Check mijn auto. Is die er niet, dan rust het
+  oordeel alleen op de codes, en dat is bewust: een monitor die hangt is
+  zonder "sinds wissen" geen bewijs (zie `softwareOorzaken()`).
+- **`vinAfwijkend`**: `vinConsistentie()` bewaarde zijn oordeel nergens.
+  `PLKm.check()` onthoudt het nu met de VIN van de verbonden auto erbij, en
+  `vinAfwijkend()` zegt alleen ja voor diezelfde auto. Een km-check op een
+  andere auto (de koopcheck) zegt niets over de eigen auto.
+
+**Blijft open.** De drempel "monitor hangt" (300 km of 15× warmgedraaid) is
+niet te toetsen: D1 heeft alleen vier readiness-antwoorden van de CX-5
+("readiness: ja") en geen enkele van de BMW. "Onlangs vervangen" heeft nog
+geen bron buiten het onderzoek (dat vraagt het). Een veld in Mijn voertuigen
+is op 09-10 bewust niet gebouwd.
+
+---
+
 ## 09-10-2026 — #457: rendement tot 99 % en een meter die "zonder vraag" opbouwde
 
 **Rendement (CA10).** Na #337 (bronnen van hetzelfde moment) gaf de CX-5 nog

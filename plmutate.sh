@@ -175,6 +175,7 @@ MUTATIES=(
 "public/pidlane-kmcheck.js@@    if (sleutels.length > 1) {@@    if (false) {@@test-kmcheck.js@@twee verschillende voertuignummers in één auto leveren geen bevinding op"
 "public/pidlane-kmcheck.js@@      if (uit.niveau === 'ok' || uit.niveau === 'onbevestigd') uit.niveau = 'let-op';@@      if (false) uit.niveau = 'let-op';@@test-kmcheck.js@@een blanco voertuignummer verdwijnt uit het oordeel"
 "public/pidlane-kmcheck.js@@  var VIN_TEKENS = /^[A-HJ-NPR-Z0-9]{17}$/;@@  var VIN_TEKENS = /^[A-Z0-9]{17}$/;@@test-kmcheck.js@@de VIN-herkenning accepteert een O en een I, die in geen enkele VIN voorkomen"
+"public/pidlane-kmcheck.js@@    return !!(laatste && laatste.vin && vin && laatste.vin === vin && laatste.niveau === 'kritiek');@@    return !!(laatste && laatste.niveau === 'kritiek');@@test-softwareoorzaak.js@@de km-check van een andere auto telt als VIN-afwijking voor deze (#426)"
 "public/pidlane-rijsituatie.js@@if(q.status==='ok'){ ok++; updPID(pid,val); } else onzin++;@@updPID(pid,val);\n      if(q.status==='ok') ok++; else onzin++;@@test-healthherziening.js@@de gezondheidscheck stempelt de versheidsbron vóór het oordeel"
 "public/pidlane-testrun.js@@    id: 'achtergrond',@@    id: 'achtergrondproef',@@test-begeleid.js@@een stap van de begeleide rit is hernoemd zonder de volgorderegel mee te nemen"
 "public/pidlane-testrun.js@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C', '0155', '0156'];@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C'];@@test-begeleid.js@@0155 en 0156 zijn weer uit de meet-PIDs verdwenen (#40 blijft dan onmeetbaar)"
@@ -951,6 +952,8 @@ MUTATIES=(
 "public/pidlane-onderdeel.js@@        if(c.rpm===null || c.rpm>1000) return null;\n        if(c.snelheid!==null@@        if(c.rpm===null) return null;\n        if(c.snelheid!==null@@test-onderdeel.js@@de MAF-regel oordeelt weer buiten stationair: vol gas op 91 g/s past dan niet (#232)"
 "public/pidlane-onderdeel.js@@        return a===null?null:(a<-25||a>45);@@        return a===null?null:(a<-5||a>45);@@test-onderdeel.js@@de ontstekingsgrens staat weer op −5°: een warme motor die tot −20° terugneemt heet weer een versleten ketting (#231)"
 "public/pidlane-onderdeel.js@@    _scanMislukt=false;\n    render();@@    _scanMislukt=false;@@test-onderdeel.js@@na het uitlezen vanuit het paneel wordt er niet opnieuw getekend: er staat nog steeds dat de foutcodes niet uitgelezen zijn (#233)"
+"public/pidlane-onderdeel.js@@  h+=softwareHtml(software());\n@@@@test-onderdeel.js@@Welk onderdeel zegt niet meer dat het software kan zijn (#426)"
+"public/pidlane-onderdeel.js@@      vinAfwijkend: typeof plVinAfwijkend==='function' && plVinAfwijkend() });@@      vinAfwijkend: false });@@test-onderdeel.js@@Welk onderdeel negeert twee VIN's uit de km-check (#426)"
 # ── #218: de DTC-vlag zegt "er is gekeken" (22-09-2026) ──
 # De vlag ging aan op de eerste regel van scanDTC(); het onderdeelpaneel zei dan
 # tijdens de scan en na een fout "geen foutcodes" in plaats van "niet uitgelezen".

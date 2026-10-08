@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-10-2026 — Software als oorzaak ook in Welk onderdeel, en met de VIN-controle (#426)
+ ═══════════════════════════════════════════════════════════
+
+ - Welk onderdeel? toont "🧩 Mogelijk software, geen kapot onderdeel" met
+   de codes van het paneel en de laatste uitlezing van Check mijn auto.
+ - Vond de km-check verschillende VIN's in de stuurapparaten van déze auto,
+   dan wijzen Check mijn auto, het onderzoek en Welk onderdeel naar de
+   ECU-codering (PLKm.vinAfwijkend, plVinAfwijkend).
+ - Handleiding bijgewerkt. test-onderdeel.js +5, test-softwareoorzaak.js +4,
+   drie mutaties.
+
+ ═══════════════════════════════════════════════════════════
  09-10-2026 — Testrun 8.9: rendement vanaf 5 kW, een diagnose is geen knipperen (#457)
  ═══════════════════════════════════════════════════════════
 
