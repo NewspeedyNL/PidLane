@@ -2771,6 +2771,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── #430: geen hybridetest die een nieuwe accu afkeurt of altijd slaagt ──
+  {
+    issue: '#430',
+    naam: 'Systeemtest: hv_soc, ev_ice en regen zijn weg; een hybride houdt de benzinetests',
+    waarom: 'hv_soc keurde een nieuwe accu af (015B is de levensduur van het pakket), ev_ice slaagde altijd en regen mat de 12V-accu.',
+    proef: async function () {
+      var T = window.BSC_TESTS, groepenVan = window.bscGroepen;
+      if (!Array.isArray(T) || !groepenVan) return { staat: 'FOUT', detail: 'BSC_TESTS of bscGroepen ontbreekt' };
+      var hyb = T.filter(function (t) { return t.groep === 'hybride'; }).map(function (t) { return t.id; });
+      if (hyb.length) return { staat: 'FOUT', detail: 'nog hybridetests in de catalogus: ' + hyb.join(', ') };
+      var g = groepenVan('hybride');
+      if (!g.has('benzine')) return { staat: 'FOUT', detail: 'een hybride krijgt de benzinetests niet meer' };
+      var et = (typeof detectEngineType === 'function') ? detectEngineType() : '?';
+      return { staat: 'OK', detail: 'geen hybridetests, hybride krijgt ' + Array.from(g).sort().join(',') + ' · deze auto: ' + et };
+    }
+  },
+
   // ── één herverbinder tegelijk (08-10-2026) ──
   {
     issue: '—',

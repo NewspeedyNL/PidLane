@@ -216,6 +216,22 @@ zetten; hij wordt dan rood met de gemeten waarde erbij.
     10-09-2026 tegen PR #173: dezelfde twee takken, `PIDLANE.md` botst niet
     vanuit de tak die het bestand heeft en botst wél vanuit de tak die het niet
     heeft. Een tak van vóór 10-09 botst dus nog één keer; daarna niet meer.
+- **Inhalen doe je met `node plinhaal.js`, niet met `git merge`** (08-10-2026).
+  Hij haalt `origin/main` binnen en lost een botsing zelf op als beide
+  takken op dezelfde plek alleen regels *toevoegden* — onderaan de tabel in
+  `plmutate.sh`, bovenaan `PROEVEN_B5`. Dat was 9 van de 11 botsende
+  inhaalmerges sinds 01-09, en de handmatige oplossing ging daar één keer
+  mis (#154/#155: twee blok 5-proeven aan elkaar geplakt). Veranderden beide
+  kanten hetzelfde stuk, dan blijft dat handwerk en zegt hij welk bestand.
+  Hij commit niet: draai je test en commit dan zelf.
+
+  **Twee gewoontes die botsingen voorkomen in plaats van oplossen:**
+  - Een nieuwe mutatie gaat **bij zijn onderwerp** in `plmutate.sh` — onder
+    de mutaties van hetzelfde bestand of dezelfde test — en niet onderaan.
+    Onderaan schrijft iedereen, dus daar botst iedereen.
+  - **Haal main binnen vlak vóór je de PR opent**, niet pas als GitHub het
+    conflict meldt. Een PR die al bij is, botst alleen nog met wat er
+    daarna landt.
 - Open pas een PR als het werk af is en `plcheck.sh` groen staat.
 - **Automerge is opt-in sinds 03-09-2026: het label `klaar`.** Zonder dat
   label wordt er niets samengevoegd, hoe groen de gate ook staat. `klaar`

@@ -569,6 +569,15 @@ MUTATIES=(
 # de klasse fout die hier maanden blijft staan.
 ".gitattributes@@PIDLANE.md            merge=union@@PIDLANE.md            -merge@@test-gitattributes.js@@PIDLANE.md valt niet meer onder union, dus de conflicten komen terug"
 ".gitattributes@@CHANGELOG.md          merge=union@@CHANGELOG.md          merge=union\n*.js                  merge=union@@test-gitattributes.js@@union uitgebreid naar JS, waar een verdubbelde regel stil breekt"
+# ── plinhaal.js: alleen toevoegingen vanzelf oplossen (08-10-2026) ──
+# Elke rem eruit, en de toets moet het zien. Zonder de eerste lost hij een
+# echte botsing op door beide versies te houden; zonder de telling plakt hij
+# twee blok 5-proeven aan elkaar zoals de handmatige merge van 10-09 deed.
+"plinhaal.js@@    if (heeftBasis && basis.length === 0 && !dubbel && einde < regels.length) {@@    if (!dubbel && einde < regels.length) {@@test-plinhaal.js@@een regel die beide takken veranderden wordt opgelost door beide versies te houden"
+"plinhaal.js@@    if (heeftBasis && basis.length === 0 && !dubbel && einde < regels.length) {@@    if (heeftBasis && basis.length === 0 && einde < regels.length) {@@test-plinhaal.js@@dezelfde mutatie die beide takken toevoegden staat er na het inhalen twee keer"
+"plinhaal.js@@    if ((R.get(r) || 0) !== (O.get(r) || 0) + (H.get(r) || 0) - (B.get(r) || 0)) return r;@@    if (false) return r;@@test-plinhaal.js@@de telling kijkt niet meer: het slot van een proef komt er stil twee keer in"
+"plinhaal.js@@      if (c.status !== 0) {@@      if (false) {@@test-plinhaal.js@@na het oplossen ongeldige JS, en de merge blijft gewoon staan"
+"plinhaal.js@@  if (git(['status', '--porcelain', '--untracked-files=no']).stdout.trim()) {@@  if (false) {@@test-plinhaal.js@@inhalen begint over niet-vastgelegd werk heen"
 # ── Opnieuw verbinden uit het verbindingspaneel (#302, 26-09-2026) ──
 "public/pidlane-adapter.js@@      await handleConnect();@@      await Promise.resolve();@@bproef-adapterpaneel.js@@Opnieuw verbinden hervat bovenop een open verbinding in plaats van eerst te verbreken"
 "public/pidlane-adapter.js@@        localStorage.setItem('pl_selectie', JSON.stringify({ pids: [...activePIDs], t: Date.now() }));@@        void 0;@@bproef-adapterpaneel.js@@Opnieuw verbinden bewaart de selectie niet: de hervatstand kan de standaardset van 26 PIDs terugzetten"
@@ -974,6 +983,7 @@ MUTATIES=(
 "public/pidlane-totalcheck.js@@  return venster.length>=3 && venster.every(x=>typeof x.v==='number' && x.v>400);@@  return venster.length>=3;@@test-hybridebasis.js@@de wachttijd na een motorstart is weg: de basislijn loopt weer over de aanloop"
 "public/pidlane-totalcheck.js@@  if(hist[0].t>van) return false;   // de historie reikt niet ver genoeg terug@@@@test-hybridebasis.js@@een motor die net aansloeg heet meteen stabiel zolang er nog geen 6 s historie is"
 "public/pidlane-data.js@@{id:'misfire', sit:'constant', motor:true,@@{id:'misfire', sit:'constant',@@test-hybridebasis.js@@de misfire-test mag weer meten terwijl de auto op de accu rijdt"
+"public/pidlane-data.js@@     blijft bestaan in bscGroepen(), zodat zo'n test er zonder meer bij kan. */@@     blijft bestaan in bscGroepen(), zodat zo'n test er zonder meer bij kan. */\n  {id:'hv_soc', sit:'contact', groep:'hybride', naam:'HV-batterij SOC', pids:['015B'], uitleg:'SOC blijft binnen 30–80 %', hold:4, band:{lo:25,hi:85}},@@test-hybridebasis.js@@de SOC-test is terug: 015B als laadtoestand keurt een nieuwe hybride-accu af (#430)"
 "public/pidlane-visueel.js@@  if(elektrisch && heeftVraag) return 'vermogen';@@  if(false) return 'vermogen';@@test-visueel.js@@een hybride houdt de toerennaald die op 0 staat terwijl hij 50 rijdt (#432)"
 "public/pidlane-visueel.js@@const VRAAG_KETEN = ['015A','0149','014A'];@@const VRAAG_KETEN = ['015A','0149','014A','0111'];@@test-visueel.js@@de gasklep telt als vermogensvraag: op de accu optrekken staat dan op nul"
 "public/pidlane-toon.js@@    if (leer.min === null || leer.min === undefined || n < leer.min) leer.min = n;@@    if (leer.min === null || leer.min === undefined) leer.min = 0;@@test-visueel.js@@de rustwaarde van het pedaal wordt niet geleerd: 0149 staat stil op 25% vraag"

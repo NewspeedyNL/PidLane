@@ -106,7 +106,12 @@ waar('de catalogus heeft benzinetests (anders bewijst dit niets)', benzineIds.le
 waar('een hybride krijgt alle benzinetests',
   benzineIds.every(id => lijst.includes(id)),
   'mist: ' + benzineIds.filter(id => !lijst.includes(id)).join(','));
-waar('een hybride krijgt de hybridetests', lijst.includes('hv_soc') && lijst.includes('ev_ice'));
+// #430: de drie hybridetests zijn weg. Ze keurden een nieuwe accu af (015B
+// is levensduur, geen laadtoestand), slaagden altijd, of maten de 12V-accu.
+const hybrideIds = p.__bscTests.filter(x => x.groep === 'hybride').map(x => x.id);
+waar('de catalogus heeft geen hybridetest die niets onderscheidt (#430)', !hybrideIds.length, hybrideIds.join(','));
+waar('een hybride krijgt hv_soc, ev_ice en regen niet meer',
+  !['hv_soc', 'ev_ice', 'regen'].some(id => lijst.includes(id)), lijst.join(','));
 waar('een hybride krijgt geen dieseltests',
   !p.__bscTests.filter(x => x.groep === 'diesel').some(x => lijst.includes(x.id)));
 
@@ -138,7 +143,8 @@ waar('x_rpm_const meet niet zonder motor', !mag('x_rpm_const', s).ok);
 waar('x_decel_load meet niet zonder motor', !mag('x_decel_load', rij(0, 40, 'remmen', 500)).ok);
 // Tegenproef: de regel blokkeert niet alles wat rijdt.
 s = rij(0, 60, 'constant', 250);
-waar('ev_ice (geen motortest) meet wél tijdens accurijden', mag('ev_ice', s).ok);
+// Een test zonder motoreis, zoals de dieseltest egr_flow (sit 'rijden').
+waar('een test zonder motoreis meet wél tijdens accurijden', p.bscConditie(test('egr_flow'), s).ok);
 
 // De motor slaat aan.
 s = rij(1500, 60, 'constant', 1000);
