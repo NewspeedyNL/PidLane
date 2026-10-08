@@ -1760,6 +1760,7 @@ MUTATIES=(
 "public/pidlane-telemetrie.js@@    wiebelBij([w[0]-wg*ref[0], w[1]-wg*ref[1], w[2]-wg*ref[2]], nu);@@    wiebelBij(w, nu);@@test-telemetrie.js@@gieren telt als wiebel: elke rotonde maakt de telefoon in de houder onbetrouwbaar"
 "public/pidlane-telemetrie.js@@  if (!(o.okMs>=HOUDER.rustMs)) return { vast:false, reden:'wacht' };\n@@@@test-telemetrie.js@@een telefoon die net is teruggezet telt meteen weer mee, zonder 5 s rust"
 "public/pidlane-telemetrie.js@@  if (!houderNu().vast) return;\n  if (_nul && aL!==null)@@  if (_nul && aL!==null)@@test-telemetrie.js@@hard remmen telt als rijsituatie terwijl de telefoon los wiebelt"
+"public/pidlane-telemetrie.js@@  if (typeof o.wiebel!=='number' || o.wiebelMs>=HOUDER.wiebelMs) return@@  if (typeof o.wiebel!=='number' || o.wiebel>HOUDER.maxWiebel) return@@test-telemetrie.js@@één drempel of kuil maakt de telefoon in de houder 5 s grijs: de auto knikt, niet de houder"
 # ── de beheerdersdemo (#409) ──
 "public/pidlane-demo.js@@    try { return typeof window.isAdmin === 'function' && !!window.isAdmin(); }@@    try { return true; }@@test-demozandbak.js@@elke demo is een beheerdersdemo: een reviewer zonder login laat de echte AI rekenen — #409"
 "public/pidlane-demo.js@@    if (!isDemo()) return false;\n    try { return typeof window.isAdmin@@    try { return typeof window.isAdmin@@test-demozandbak.js@@een beheerder buiten de demo telt als beheerdersdemo — #409"

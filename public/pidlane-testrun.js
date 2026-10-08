@@ -2771,6 +2771,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── #418: een drempel maakt de telefoon in de houder niet grijs ──
+  {
+    issue: '#418',
+    naam: 'Helling en kanteling blijven helder over drempels: wiebelen telt pas na een seconde binnen 3 s',
+    waarom: 'Een telefoon in de houder knikt mee met de auto; elke drempel gaf "wiebelt" en daarna 5 s grijs.',
+    proef: async function () {
+      var T = window.PLTelemetrie;
+      if (!T || !T.HOUDER || typeof T.HOUDER.wiebelMs !== 'number') return { staat: 'FOUT', detail: 'PLTelemetrie.HOUDER.wiebelMs ontbreekt — pidlane-telemetrie.js is niet de nieuwe' };
+      var goed = { vers: true, genuld: true, afwijking: 3, wiebel: 20, okMs: 6000 };
+      if (!T.houder(Object.assign({}, goed, { wiebelMs: 300 })).vast) return { staat: 'FOUT', detail: 'een stoot van 0,3 s boven 8°/s telt als wiebelen' };
+      if (T.houder(Object.assign({}, goed, { wiebelMs: 1500 })).vast) return { staat: 'FOUT', detail: '1,5 s wiebelen binnen 3 s telt als vast' };
+      if (!T.beschikbaar() || !T.genuld()) return { staat: 'LET OP', detail: 'regel klopt; nodig voor de rit: de app op de telefoon, in de houder, Nulstellen' };
+      var s = T.stats().houder, tot = s.vastS + s.losS;
+      var bewijs = 'vast ' + s.vastS + ' s, niet vast ' + s.losS + ' s';
+      if (tot >= 60 && s.losS > 0.2 * tot) return { staat: 'LET OP', detail: bewijs + ' — meer dan 20% niet vast; zat de telefoon de hele rit in de houder? Dan is het wegdek ruiger dan de drempel' };
+      return { staat: 'OK', detail: bewijs };
+    }
+  },
+
   // ── #448: één analyserapport, altijd dezelfde opbouw ──
   {
     issue: '#448',
