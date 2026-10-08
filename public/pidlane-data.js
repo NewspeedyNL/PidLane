@@ -491,12 +491,18 @@ window.BSC_TESTS = [
    uitleg:'NOx-waarden stijgen bij accelereren', hold:3, band:{lo:0,hi:2000}, dynamiek:true},
 
   // ── HYBRIDE ─────────────────────────────────────────────────────
-  {id:'hv_soc', sit:'contact', groep:'hybride', naam:'HV-batterij SOC', pids:['015B'],
-   uitleg:'SOC blijft binnen 30–80 %', hold:4, band:{lo:25,hi:85}},
-  {id:'ev_ice', sit:'rijden', groep:'hybride', naam:'EV ↔ ICE overgang', pids:['010C'],
-   uitleg:'RPM springt vloeiend in/uit (motor start/stopt netjes)', hold:4, band:{lo:0,hi:6000}},
-  {id:'regen', sit:'remmen', groep:'hybride', naam:'Regeneratie laadstroom', pids:['0142','015B'],
-   uitleg:'Spanning/laden stijgt bij remmen', hold:3, band:{lo:12,hi:15.5}, dynamiek:true},
+  /* Leeg sinds 08-10-2026 (#430). Hier stonden drie tests die op een hybride
+     niets zeiden, of het omgekeerde van wat ze beloofden:
+       hv_soc  las 015B als laadtoestand met band 25–85 %. Volgens J1979 is
+               015B de resterende levensduur van het pakket: een nieuwe accu
+               (~100 %) werd afgekeurd.
+       ev_ice  band 0–6000 tpm op 010C: slaagde altijd.
+       regen   mat 0142, de 12V-spanning. Die komt bij een hybride uit de
+               DC/DC-omvormer en zegt niets over terugwinnen.
+     Een test die niet kan zakken of een gezonde auto afkeurt, is erger dan
+     geen test. Wat een merk in 015B zet is een ritvraag (#452); pas als dat
+     bekend is, komt hier een test die iets onderscheidt. De groep 'hybride'
+     blijft bestaan in bscGroepen(), zodat zo'n test er zonder meer bij kan. */
 ];
 
 // ── COMPLAINT_FOCUS (was index.html regel 6264) ──
