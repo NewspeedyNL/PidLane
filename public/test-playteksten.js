@@ -359,6 +359,29 @@ console.log('\n7. Elk invulveld draagt evenveel taalblokken');
         'gelijkGeteld() keurt alles goed — dan bewaakt de controle hierboven niets');
 }
 
+// ── één contactadres (08-10-2026) ──
+// Tot vandaag noemden de Console-teksten en privacy.html info@, de
+// verwijderpagina en de app support@. Twee adressen voor hetzelfde is een
+// verwijderverzoek dat in de verkeerde bus valt. Nu is het overal support@.
+{
+  const ADRES = 'support@pidlane.nl';
+  const plekken = {
+    'PLAY-INZENDING.md': doc,
+    'public/privacy.html': fs.readFileSync(path.join(wortel, 'public/privacy.html'), 'utf8'),
+    'public/verwijderen.html': fs.readFileSync(path.join(wortel, 'public/verwijderen.html'), 'utf8')
+  };
+  const anders = function (tekst) {
+    return (tekst.match(/[a-z0-9._-]+@pidlane\.nl/gi) || []).filter(function (m) { return m.toLowerCase() !== ADRES && m.toLowerCase() !== 'demo@pidlane.nl'; });   // demo@ is de inlog van het testaccount (§7), geen contactadres
+  };
+  Object.keys(plekken).forEach(function (naam) {
+    const t = plekken[naam], x = anders(t);
+    toets(naam + ' noemt ' + ADRES + ' en geen ander adres', t.indexOf(ADRES) >= 0 && !x.length,
+          x.length ? 'ook: ' + x.join(', ') : ADRES + ' ontbreekt');
+  });
+  toets('een tweede adres zou hij vinden (tegenproef)', anders('mail info@pidlane.nl of ' + ADRES).length === 1,
+        'anders() vindt niets — dan bewaakt de controle hierboven niets');
+}
+
 console.log('');
 if (fouten) { console.log('test-playteksten: ' + fouten + ' fout(en)'); process.exit(1); }
 console.log('test-playteksten: alles goed');

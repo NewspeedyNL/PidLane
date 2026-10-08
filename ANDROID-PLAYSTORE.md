@@ -56,7 +56,7 @@ data-disclosure met andere mededelingen.
 > doet, is een van de vaakst genoemde afwijzingsgronden.
 
 **De privacyverklaring bestaat**, op `/privacy.html`, en de app linkt ernaar.
-Vul het contactadres in vóór de inzending — `info@pidlane.nl` moet echt
+Vul het contactadres in vóór de inzending — `support@pidlane.nl` moet echt
 bestaan, een reviewer mag erop mailen.
 
 ---
