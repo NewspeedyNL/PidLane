@@ -15,6 +15,37 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 08-10-2026 — Inhaalmerges: wat botste, en waarom een script het nu doet
+
+**Gemeten.** Van de 39 keer dat `main` sinds 01-09 in een tak werd
+binnengehaald, botsten er 11. Acht daarvan raakten `plmutate.sh`, twee
+`PROEVEN_B5` in `pidlane-testrun.js`. Op twee na hadden ze dezelfde vorm:
+beide takken voegden op dezelfde plek iets toe (onderaan de mutatietabel,
+bovenaan de blok 5-lijst) en geen van beide veranderde een bestaande regel.
+
+**Waarom geen union.** `.gitattributes` zet union alleen op proza, met
+reden: op code verdubbelt union stil een regel die beide takken
+veranderden. Die grens blijft staan.
+
+**Wat in de plaats kwam.** `plinhaal.js` lost een botsing alleen op als de
+diff3-basis leeg is (beide kanten voegden alleen toe), er geen lange regel
+aan beide kanten staat, en de telling klopt: elke regel staat erin zo vaak
+als in ons plus hun min de basis. Daarna `node --check` of `bash -n`.
+Nagespeeld op de 11 botsingen: 9 opgelost, 2 terecht aan een mens gelaten.
+
+**De telling is er om één geval.** Bij `e499d880` (10-09) gaf git de ene
+kant het slot van een bestaande proef mee (`return kop; } },`). De eerste
+versie van het script hield allebei en zette dat slot er twee keer in;
+`node --check` zag niets. Bij nader inzien was het omgekeerd: de basis had
+dat slot twee keer, ons vier, hun drie, dus vijf was juist. De handmatige
+merge van toen had er vier, en plakte daarmee twee proeven aan elkaar;
+`02eaf48` moest dat herstellen. De telling bleef erin, omdat hij het
+geval vangt waar de indeling van git wél iets verdubbelt.
+
+**Wat het niet doet.** De automerge-workflow gebruikt nog de "Update
+branch" van GitHub, die geen eigen oplossing kent. Lukt die niet, dan
+blijft er een melding op de PR en draait iemand `node plinhaal.js`.
+
 ## 08-10-2026 — De drie hybridetests van de systeemtest zijn weg (#430)
 
 **Wat er stond.** De groep `hybride` in `BSC_TESTS` had drie tests:

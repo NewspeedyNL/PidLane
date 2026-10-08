@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 08-10-2026 — plinhaal.js: main binnenhalen zonder handwerk aan toevoegingen
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw: node plinhaal.js. Lost een botsing alleen op als beide kanten
+   alleen toevoegden; de rest blijft handwerk. Op de 11 botsende
+   inhaalmerges sinds 01-09: 9 vanzelf. test-plinhaal.js, vijf mutaties.
+ - CLAUDE.md: inhalen met plinhaal, nieuwe mutaties bij hun onderwerp en
+   niet onderaan, main binnenhalen vóór de PR.
+
+ ═══════════════════════════════════════════════════════════
  08-10-2026 — Systeemtest: geen hybridetests die niets zeggen (#430)
  ═══════════════════════════════════════════════════════════
 
