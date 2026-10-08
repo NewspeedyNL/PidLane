@@ -15,6 +15,31 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 09-10-2026 — #457: rendement tot 99 % en een meter die "zonder vraag" opbouwde
+
+**Rendement (CA10).** Na #337 (bronnen van hetzelfde moment) gaf de CX-5 nog
+33 van 505 waarden boven 60 %, tot 99 %. Op deze auto rekent CA10 via de
+luchtmassa (`0110`), omdat 015E is opgeruimd. De ruwe bus gaf stationair
+`0162` = 0x87, dus 10 % van 250 Nm: ±2 kW bij 750 tpm. Dat is een frictie-
+of modelwaarde van de motorregeling, geen arbeid. Bij gas los stroomt er
+lucht zonder brandstof, en brandstof-uit-luchtmassa (λ = 1) klopt dan niet
+meer. Bij een kleine deler schiet de verhouding omhoog.
+
+Wat er veranderd is: CA10 rekent pas vanaf 5 kW (`REND_MIN_KW`). **Dit is
+een verklaring, geen bewijs**: de 33 waarden zelf zijn niet bewaard. Daarom
+bewaart `boek()` nu de bronwaarden van het hoogste punt buiten bereik, en
+noemt blok 5 ze. Blijft CA10 FOUT, dan zegt de volgende testrun bij welke
+`0162`, `0110` en `010C` dat gebeurde, en dan klopt deze verklaring niet.
+
+**De meter.** `rustOordeel()` telt alleen de herbouwen met reden `indeling`
+en `scherm` als knipperen. De tik gaf vast `'indeling'` mee, ook als de
+indeling veranderde omdat er sensoren bij kwamen. Op 08-10 draaiden er vijf
+diagnoses tegelijk, en zo telden 5 van de 7 "zonder vraag" als knipperen.
+`herbouwReden()` kende `selectie` al; de tik vroeg het hem alleen niet. De
+2× `scherm` blijft onverklaard, maar valt binnen de grens.
+
+---
+
 ## 09-10-2026 — De testrun meldde vier keer zichzelf, en de meetopdrachten zijn klaar
 
 **De aanleiding.** Twee testruns om 00:16 en 00:17 op de CX-5 (build 514)

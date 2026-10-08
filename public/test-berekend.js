@@ -74,6 +74,11 @@ ok(B.bereken('CA09', { '012F': 50 }, { verbruikGem: 6 }) === null, 'bereik zonde
 const rend = B.bereken('CA10', { '0162': 50, '0163': 300, '010C': 3000, '015E': 15 }, { kwhPerL: 8.9 });
 ok(Math.abs(rend - 35.3) < 0.2, 'rendement: 47,1 kW uit 15 l/u benzine ≈ 35 %', rend);
 ok(B.bereken('CA10', { '0162': 50, '0163': 300, '010C': 3000, '015E': 0.2 }, { kwhPerL: 8.9 }) === null, 'rendement bij bijna nul debiet: geen waarde (delen door bijna nul)');
+// #457: de CX-5 stationair (0162 = 0x87 = 10 % van 250 Nm, 750 tpm = 2 kW)
+// met weinig lucht. Dat is geen arbeid; de verhouding zegt niets.
+ok(B.bereken('CA10', { '0162': 10, '0163': 250, '010C': 750, '0110': 2.5 }, { kwhPerL: 8.9 }) === null, 'rendement onder 5 kW: geen waarde (frictie, geen arbeid)');
+ok(B.bereken('CA10', { '0162': 15, '0163': 250, '010C': 1200, '0110': 1.8 }, { kwhPerL: 8.9 }) === null, 'gas los met weinig lucht: 4,7 kW is onder de grens, dus geen 99 %');
+ok(B.bereken('CA10', { '0162': 30, '0163': 250, '010C': 2000, '0110': 12 }, { kwhPerL: 8.9 }) > 0, 'TEGENPROEF: 15,7 kW bij 12 g/s geeft wél een rendement');
 ok(B.bereken('CA13', { '0105': 92, '0146': 18 }, {}) === 74, 'koelwater min buiten');
 ok(B.bereken('CA14', { '0108': 2, '0109': -1 }, {}) === 1, 'trim B2');
 ok(B.bereken('CA15', { '0106': 4, '0107': 3, '0108': 1, '0109': 0 }, {}) === 6, 'trimverschil B1 − B2');
@@ -119,6 +124,8 @@ ok(B.oordeel(goed).staat === 'ok', 'binnen bereik en geen weigeringen: ok');
 ok(B.oordeel({ pids: goed.pids, geweigerd: [{ cmd: 'CA01', waar: 'x' }], vermogen: {} }).staat === 'FOUT', 'één weigering in sendCmd: FOUT, met het pad');
 ok(B.oordeel({ pids: { CA05: { n: 3, min: -60, max: 0, buiten: 1 } }, geweigerd: [], vermogen: {} }).staat === 'FOUT', 'buiten bereik: FOUT');
 ok(B.oordeel({ pids: { CA10: { n: 30, min: 5, max: 61, buiten: 0 } }, geweigerd: [], vermogen: {} }).staat === 'FOUT', 'rendement boven 45%: FOUT');
+const bij = B.oordeel({ pids: { CA10: { n: 30, min: 5, max: 99, buiten: 1, buitenBij: { v: 99, bronnen: { '0162': 40, '0110': 3.21, '010C': 2100 } } } }, geweigerd: [], vermogen: {} });
+ok(/hoogste bij 010C=2100 0110=3\.2 0162=40/.test(bij.detail), 'het oordeel noemt de bronnen van het hoogste punt (#457)', bij.detail);
 const vmo = { pids: { CA06: { n: 90, min: 0, max: 140, buiten: 0 } }, geweigerd: [], voertuig: { vermogen: 110 } };
 ok(B.oordeel(Object.assign({}, vmo, { vermogen: { volgasN: 0 } })).staat === 'LET OP', 'vermogen zonder vol gas: LET OP met wat er nodig is');
 ok(/vol gas/.test(B.oordeel(Object.assign({}, vmo, { vermogen: { volgasN: 0 } })).detail), 'en die zegt "vol gas"');

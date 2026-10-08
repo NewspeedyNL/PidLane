@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-10-2026 — Testrun 8.9: rendement vanaf 5 kW, een diagnose is geen knipperen (#457)
+ ═══════════════════════════════════════════════════════════
+
+ - CA10 (rendement) rekent pas vanaf 5 kW. Stationair en bij gas los gaf
+   hij tot 99 %. Blijft hij FOUT, dan noemt blok 5 de bronwaarden van het
+   hoogste punt. test-berekend.js +4, twee mutaties.
+ - Slim visueel: een herbouw in de tik door een nieuwe sensorkeuze telt als
+   selectie, niet als knipperen. test-visueel.js +2, één mutatie.
+
+ ═══════════════════════════════════════════════════════════
  09-10-2026 — Testrun 8.8: vier FOUT-regels over zichzelf weg, een opgeruimde lade
  ═══════════════════════════════════════════════════════════
 

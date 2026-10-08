@@ -504,6 +504,26 @@ console.log('\n── #338: alleen het rijden telt, en de reden van elke herbouw
   waar('elke herbouw heeft een reden: openen, scherm, selectie, testrun, indeling',
     R.openen === 1 && R.scherm === 1 && R.selectie === 1 && R.testrun === 1 && R.indeling === 1, JSON.stringify(R));
   waar('een klant ziet er twee zonder dat hij erom vroeg (scherm en indeling)', h.PLVisueel.herbouwKlant(h.PLVisueel.sessie()) === 2);
+
+  // De tik zelf (#457, 09-10-2026). Vijf diagnoses tegelijk zetten sensoren
+  // aan; de indeling verandert mee en de tik bouwt opnieuw op. Dat is een
+  // gevraagde herbouw (selectie), geen knipperen (indeling).
+  {
+    const t = maak({ actief: ['010C', '010D'] });
+    const tg = { innerHTML: '', querySelector: function () { return null; } };
+    t.document = { getElementById: function (id) { return id === 'gGrid' ? tg : null; }, body: null };
+    t.connected = true; t.demoMode = false; t.pidViewMode = 'visueel';
+    t.PLVisueel.start();
+    t.PLVisueel.bouw(tg);                                    // openen
+    const voor = JSON.stringify(t.PLVisueel.sessie().herbouwReden);
+    t.activePIDs.add('0105'); t.activePIDs.add('0104'); t.activePIDs.add('0142');
+    ['0105', '0104', '0142'].forEach(function (p) { t.pidVals[p] = 50; t._pidLastUpd[p] = t.T.t; t.pidHist[p] = [{ t: t.T.t, v: 50 }]; });
+    t.PLVisueel.tik();
+    const R2 = t.PLVisueel.sessie().herbouwReden;
+    waar('de proef verandert de indeling echt (anders zegt hij niets)', (t.PLVisueel.sessie().herbouw || 0) === 2, voor + ' → ' + JSON.stringify(R2));
+    waar('een herbouw in de tik door een nieuwe sensorkeuze telt als selectie, niet als knipperen',
+      R2.selectie === 1 && !R2.indeling, JSON.stringify(R2));
+  }
   const Sx = (o) => Object.assign({ openMs: 600000, rijdendMs: 600000, dof: 0, herbouw: 10 }, o);
   waar('rust: tien herbouwen door de testrun en de keuze is geen knipperen',
     V.rustOordeel(Sx({ herbouwReden: { openen: 2, selectie: 4, testrun: 4 } })).staat === 'ok');

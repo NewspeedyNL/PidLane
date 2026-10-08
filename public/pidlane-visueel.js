@@ -1760,7 +1760,13 @@ function tik(){
   _staat.gebruik=gebruiktePids(nieuw);
   if(handtekening(nieuw)!==_staat.handtekening){
     const g=el('gGrid');
-    if(g && typeof pidViewMode!=='undefined' && pidViewMode==='visueel'){ bouw(g, 'indeling'); return; }
+    // Een andere indeling omdat de sensorkeuze veranderde (een diagnose zette
+    // sensoren aan) is gevraagd, geen knipperen: herbouwReden() beslist, net
+    // als bij elke andere herbouw. Tot 09-10-2026 stond hier vast 'indeling',
+    // en vijf diagnoses tegelijk gaven zo een FOUT op de knipperproef (#457).
+    if(g && typeof pidViewMode!=='undefined' && pidViewMode==='visueel'){
+      bouw(g, selectieSleutel()!==_staat.selectie ? undefined : 'indeling'); return;
+    }
   }
   const nu=Date.now(), I=_staat.ind; if(!I) return;
   const ng=el('visg-naald'); if(ng && I.naald) dof(ng, isOud(I.naald, nu));

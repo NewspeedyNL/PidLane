@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '8.8 (09-10-2026)';
+const TESTRUN_VERSIE = '8.9 (09-10-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -10249,7 +10249,7 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 09-10 (achttiende) — geen meetopdrachten meer: de testrun meldt alleen nog wat er stuk is',
+  titel: 'OPLEVERING 09-10 (negentiende) — de laatste twee FOUT-regels: rendement en de meter die opnieuw opbouwt (#457)',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
     'DE VERBINDING IS KLAAR. Verbinding, snelheid, herverbinden en protocol werken: op 08-10 vijf diagnoses tegelijk op de CX-5, 0 fouten in het log (#394 dicht). Alle meetopdrachten in D1 staan op afgerond; de meetkamer is leeg tot er een nieuw issue komt.',
@@ -10257,8 +10257,10 @@ const CAMPAGNE = {
     '── WAT JE DOET ────────',
     'NIETS BIJZONDERS. Rij zoals je rijdt. Draai de testrun pas als je iets vreemds ziet, en plak dan alleen de FOUT- en LET OP-regels.',
     'EEN NIEUW PROBLEEM = EEN NIEUW ISSUE. Daar hoort dan één meetopdracht bij, met één vraag. Die verschijnt in de meetkamer; staat hij groen, dan verzend je hem.',
+    '── #457, OP DE GEWONE RIT ────────',
+    'RENDEMENT (CA10) REKENT PAS VANAF 5 KW. Stationair gaf 0162 een frictiewaarde en bij gas los stroomt er lucht zonder brandstof: dan schoot de verhouding naar 99 %. Blijft "Berekende PIDs … binnen hun bereik" toch FOUT, dan staan de bronwaarden van het hoogste punt er nu achter — plak die regel.',
+    'DE METER: EEN DIAGNOSE DIE SENSOREN AANZET IS GEEN KNIPPEREN MEER. De tik boekte zo\'n herbouw als "indeling"; nu als "selectie". Draai gerust weer meerdere diagnoses tijdens het rijden en kijk of "De meter van Slim visueel knippert niet" groen wordt.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
-    'RENDEMENT (CA10) TOT 99 % EN DE METER DIE TE VAAK OPNIEUW OPBOUWT (#457). Blijven FOUT in blok 5 tot dat issue af is; geen rit nodig om te beginnen.',
     'HYBRIDE (#430, #452) heeft een hybride nodig; het analyserapport (#448) een analyse met AI, geparkeerd.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
