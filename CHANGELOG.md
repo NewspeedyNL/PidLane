@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 08-10-2026 — Systeemtest: geen hybridetests die niets zeggen (#430)
+ ═══════════════════════════════════════════════════════════
+
+ - hv_soc, ev_ice en regen zijn uit de systeemtest. hv_soc keurde een
+   nieuwe accu af (015B is levensduur, geen laadtoestand), ev_ice slaagde
+   altijd, regen mat de 12V-accu. Een hybride houdt de benzinetests.
+ - test-hybridebasis.js, een mutatie en een proef in blok 5.
+
+ ═══════════════════════════════════════════════════════════
  08-10-2026 — Basismeter: vier plekken die je zelf kiest
  ═══════════════════════════════════════════════════════════
 

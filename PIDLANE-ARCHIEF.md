@@ -15,6 +15,28 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 08-10-2026 — De drie hybridetests van de systeemtest zijn weg (#430)
+
+**Wat er stond.** De groep `hybride` in `BSC_TESTS` had drie tests:
+- `hv_soc` las 015B als laadtoestand en wilde 25–85 %. Volgens J1979 is
+  015B de *resterende levensduur* van het pakket. Een nieuwe accu (~100 %)
+  zakte dus, een versleten accu van 60 % slaagde.
+- `ev_ice` had band 0–6000 tpm op 010C. Elk toerental valt daarbinnen, dus
+  de test kon niet zakken.
+- `regen` mat 0142, de 12V-spanning. Die komt bij een hybride uit de
+  DC/DC-omvormer en beweegt niet mee met terugwinnen.
+
+**Waarom weg en niet verbeterd.** Wat een merk werkelijk in 015B zet, is
+nog niet gemeten: er staat nog geen hybride in D1 (#452). Een nieuwe band
+zou dus opnieuw een gok zijn. Een test die niet kan zakken of een gezonde
+auto afkeurt, is erger dan geen test: hij geeft een vinkje of een
+waarschuwing die niets betekent. De groep blijft bestaan in `bscGroepen()`,
+zodat een test die wél iets onderscheidt er zonder meer bij kan.
+
+**Wat blijft.** Een hybride krijgt nog alle benzinetests en de universele.
+`test-hybridebasis.js` eist dat de groep leeg is; de mutatie in
+`plmutate.sh` zet `hv_soc` terug en wordt gevangen.
+
 ## 08-10-2026 — De Basismeter: van drie balkjes naar vier plekken
 
 **Wat er gemeld werd.** Op de CX-5 waren de drie waarden onder de km/h
