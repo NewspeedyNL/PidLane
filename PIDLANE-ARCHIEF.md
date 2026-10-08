@@ -15,6 +15,42 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 09-10-2026 — De testrun meldde vier keer zichzelf, en de meetopdrachten zijn klaar
+
+**De aanleiding.** Twee testruns om 00:16 en 00:17 op de CX-5 (build 514)
+gaven 4 en 6 FOUT. Vier daarvan gingen niet over de app:
+
+- *Berekende PIDs gaan niet de bus op* en *Telemetrie blijft van de bus af*:
+  de stacktrace wees naar `_blok3`. De PID-sweep veegt de hele keuzelijst,
+  en sinds de berekende waarden (CA..) en de telefoonsensoren (TL..) daarin
+  staan, vroeg hij die aan de adapter. `sendCmd` weigerde ze netjes, maar
+  telde de weigering, en blok 5 las die telling als fout van de app. Waarom
+  het alleen in de tweede run gebeurde, is niet nagegaan. De pollus had
+  dezelfde grens al (`plload.js`); de sweep niet.
+- *Slim visueel heeft vijf weergaven*: telemetrie kwam op 05/06-10 als
+  zesde, `test-visprofiel.js` ging mee, de proef in blok 5 niet.
+- *De vaste sensoren staan aan*: 221E1C (ATF) was door de PID-poort
+  opgeruimd omdat de auto niet antwoordde. Blok 14 zag dat in dezelfde run.
+  Het oordeel kende het begrip opgeruimd niet.
+- *#17 bulk-recorder*: hier had de proef wél gelijk. `start()` las de klok
+  twee keer, voor het etiket en voor `gestart`, en die lagen 1 ms uit
+  elkaar. Klein, maar precies het soort verschil waar #17 over ging.
+
+**Wat bleef staan** is #457: CA10 (rendement) nog tot 99 % ondanks #337, en
+de meter van Slim visueel die zonder vraag opnieuw opbouwt.
+
+**De meetopdrachten.** Op 08-10 zijn alle opdrachten in D1 op afgerond
+gezet. De diagnose die avond: ritopdrachten sloten zelden, omdat
+voorwaarden over de hele rit gemeten worden (stilstand na 22 minuten rijden
+kan nooit meer), een PID die de auto niet levert (0162) een opdracht
+onsluitbaar maakt, en elke keuze in de meetkamer een nieuwe sessie begint
+(negen in twee minuten op 06-10). Die drie zijn niet opgelost; ze doen pas
+weer ter zake als er een nieuwe opdracht komt. Wat wél werkt, en wat ik
+eerst verkeerd zag: een opdracht die groen wordt, kun je meteen vanuit de
+meetkamer verzenden. Er is geen testrun na de rit voor nodig.
+
+---
+
 ## 08-10-2026 — Privacycheck voor 3.2: een VIN naar de AI, en een belofte die niet klopte
 
 **Gevonden.** Twee prompts stuurden de ruwe VIN mee naar onze server en

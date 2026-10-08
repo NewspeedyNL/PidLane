@@ -738,15 +738,22 @@
   }
   /* Blok 5 (28-09-2026): staan de vaste sensoren van het gekoppelde voertuig
      aan na het verbinden? Alleen wat in de keuzelijst staat telt (een code die
-     de auto niet heeft, kan niet aan). Puur: test-garage.js toetst hem. */
-  function selectieOordeel(v, actief, lijst) {
+     de auto niet heeft, kan niet aan). Puur: test-garage.js toetst hem.
+     `opgeruimd` (09-10-2026): wat de PID-poort onderweg uitzette omdat de
+     auto niet antwoordde. Die staat terecht uit; op 09-10 gaf 221E1C (ATF)
+     daarvoor een FOUT terwijl blok 14 in dezelfde run de opruiming zag. */
+  function selectieOordeel(v, actief, lijst, opgeruimd) {
     if (!v) return { staat: 'LET OP', detail: 'geen voertuig uit Mijn voertuigen gekoppeld (niet herkend op het chassisnummer, of geen klant)' };
     var sel = Array.isArray(v.pid_selectie) ? v.pid_selectie : [];
     if (!sel.length) return { staat: 'LET OP', detail: 'bij ' + (v.naam || 'dit voertuig') + ' zijn geen vaste sensoren vastgelegd' };
+    var weg = Array.isArray(opgeruimd) ? opgeruimd : [];
     var kan = sel.filter(function (p) { return lijst.indexOf(p) >= 0; });
-    var mist = kan.filter(function (p) { return actief.indexOf(p) < 0; });
+    var uit = kan.filter(function (p) { return actief.indexOf(p) < 0; });
+    var mist = uit.filter(function (p) { return weg.indexOf(p) < 0; });
+    var stil = uit.filter(function (p) { return weg.indexOf(p) >= 0; });
     var d = kan.length + ' van de ' + sel.length + ' vaste sensoren van ' + (v.naam || 'dit voertuig') + ' kan deze verbinding leveren';
     if (mist.length) return { staat: 'FOUT', detail: d + ', maar niet aan: ' + mist.join(', ') };
+    if (stil.length) return { staat: 'LET OP', detail: d + '; uit omdat de auto niet antwoordde (opgeruimd): ' + stil.join(', ') };
     if (!kan.length) return { staat: 'LET OP', detail: d + ' — de keuzelijst kent er geen van (eigen PIDs gezet?)' };
     return { staat: 'ok', detail: d + ', en ze staan alle ' + kan.length + ' aan' };
   }

@@ -540,16 +540,40 @@
      totaal) blijft staan, want die is waar.
 
      Plus het venster: een oordeel zonder "waarover" is geen oordeel. */
-  function eindoordeel(oor, verzend) {
+  function eindoordeel(oor, verzend, opdracht) {
     var v = verzend && verzend.vonnis;
     if (!v) return oor;
     var staat = v.staat === 'gesloten' ? 'ja' : v.staat === 'bevinding' ? 'fout' : 'let op';
     var kop = v.staat === 'gesloten' ? 'GESLOTEN' : v.staat === 'bevinding' ? 'BEVINDING' : 'NOG NIET';
-    var regel = String(v.reden || '');
+    var regel = String(v.reden || ''), technisch = '';
     // Bij "nog niet" is de eerste ontbrekende voorwaarde de instructie.
-    var mist = (v.voorwaarden || []).filter(function (x) { return x.vervuld !== true; })[0];
-    if (v.staat === 'nog niet' && mist) regel = mist.wat + ' — ' + mist.detail;
-    return { staat: staat, goed: oor.goed, totaal: oor.totaal, kop: kop, regel: regel, venster: v.venster || null };
+    var vw = v.voorwaarden || [];
+    var i = -1;
+    for (var k = 0; k < vw.length; k++) if (vw[k].vervuld !== true) { i = k; break; }
+    var mist = i >= 0 ? vw[i] : null;
+    if (v.staat === 'nog niet' && mist) {
+      var def = (opdracht && Array.isArray(opdracht.voorwaarden)) ? opdracht.voorwaarden[i] : null;
+      var kort = nodigKort(mist, def);
+      regel = mist.wat + (kort ? ': ' + kort : ' — ' + mist.detail);
+      technisch = mist.detail || '';
+    }
+    return { staat: staat, goed: oor.goed, totaal: oor.totaal, kop: kop, regel: regel, technisch: technisch, venster: v.venster || null };
+  }
+
+  /* WAT ER NOG MOET, IN EEN HALVE ZIN (09-10-2026). Achter het stuur stond
+     hier "010D veranderingen = 24 (verwacht 30–1000000, 256 monster(s)) —
+     buiten de band die de opdracht noemt". Alles klopt, maar wat je wilt
+     weten is "nu 24, nodig minstens 30". De volle regel blijft de titel van
+     het element. Alleen voor een getal met een band; de rest (adapter, stap,
+     gebeurtenis) zegt het al in woorden. */
+  function nodigKort(mist, def) {
+    if (!mist || typeof mist.waarde !== 'number' || !def || !Array.isArray(def.tussen)) return '';
+    var lo = def.tussen[0], hi = def.tussen[1];
+    var getal = function (x) { return String(Math.round(x * 10) / 10).replace('.', ','); };
+    var nodig = hi >= 1e5 ? 'minstens ' + getal(lo)
+      : (lo <= -1e5 || (lo === 0 && mist.waarde > hi)) ? 'hoogstens ' + getal(hi)
+      : getal(lo) + '–' + getal(hi);
+    return 'nu ' + getal(mist.waarde) + ', nodig ' + nodig;
   }
 
   function vensterRegel(venster, duurS, nu) {
@@ -575,7 +599,7 @@
         _lus(st) + '</div>';
     }
 
-    oor = eindoordeel(oor, s.verzend);
+    oor = eindoordeel(oor, s.verzend, s.opdracht);
     var kl = _kleur(oor.staat);
     var vr = vensterRegel(oor.venster, s.opdracht.duurS, s.nu);
     return '<div class="mk-v"' + (oor.staat === 'fout' ? ' style="border-color:var(--rd)"' : '') + '>' +
@@ -588,7 +612,7 @@
         (oor.totaal
           ? '<span class="mk-cijfer" style="color:' + kl + '">' + oor.goed + '<i>/' + oor.totaal + '</i></span>'
           : '<span class="mk-cijfer" style="color:var(--tx3);font-size:20px">—</span>') +
-        '<span class="mk-wat">' + veilig(oor.kop) + '<u>' + veilig(oor.regel) + '</u></span>' +
+        '<span class="mk-wat">' + veilig(oor.kop) + '<u' + (oor.technisch ? ' title="' + veilig(oor.technisch) + '"' : '') + '>' + veilig(oor.regel) + '</u></span>' +
       '</div>' +
       (vr ? '<div class="mk-sub" id="mkVenster">⏱ ' + veilig(vr) + '</div>' : '') +
       _vragen(s) +
@@ -1006,6 +1030,7 @@
     stations: stations,
     oordeel: oordeel,
     eindoordeel: eindoordeel,
+    nodigKort: nodigKort,
     verzendAlle: verzendAlle,
     antwoord: antwoord,
     _vragen: _vragen,

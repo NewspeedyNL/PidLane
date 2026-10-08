@@ -446,6 +446,12 @@ function laad(opties) {
     eis(ok.staat === 'ok' && /3 van de 4/.test(ok.detail), 'drie die kunnen, drie aan: ok (een onbekende code telt niet mee)', ok.detail);
     const fout = O(v, ['010C'], ['010C', '222A05', '221310', 'CA01']);
     eis(fout.staat === 'FOUT' && /222A05, 221310, CA01/.test(fout.detail), 'de bug van 28-09 (alleen de standaardset): FOUT met de namen', fout.detail);
+    // 09-10-2026: 221E1C (ATF) opgeruimd omdat de auto niet antwoordde. Dat
+    // is de poort die zijn werk doet, geen selectie die kwijt is.
+    const weg = O(v, ['010C', '222A05', 'CA01'], ['010C', '222A05', '221310', 'CA01'], ['221310']);
+    eis(weg.staat === 'LET OP' && /opgeruimd\): 221310/.test(weg.detail), 'een opgeruimde vaste sensor: LET OP, geen FOUT', weg.detail);
+    const beide = O(v, ['010C', 'CA01'], ['010C', '222A05', '221310', 'CA01'], ['221310']);
+    eis(beide.staat === 'FOUT' && /niet aan: 222A05$/.test(beide.detail), 'wat niet opgeruimd is en toch uit staat blijft FOUT', beide.detail);
   }
 
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));

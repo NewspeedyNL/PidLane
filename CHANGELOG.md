@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-10-2026 — Testrun 8.8: vier FOUT-regels over zichzelf weg, een opgeruimde lade
+ ═══════════════════════════════════════════════════════════
+
+ - De PID-sweep (blok 3) vraagt geen berekende waarden en telefoonsensoren
+   meer aan de adapter (_sweepLijst, test-sweeplijst.js, twee mutaties).
+ - Slim visueel: de proef telt zes weergaven, met telemetrie.
+ - Een vaste sensor die de PID-poort opruimde is LET OP en geen FOUT
+   (selectieOordeel, test-garage.js, één mutatie).
+ - De bulk-recorder leest één keer de klok voor etiket en starttijd (#17).
+ - Gereedschapslade: tien knoppen in drie groepen in plaats van veertien.
+   Budget, Ritverslag, Inventarisatie en nulstellen zaten al in "Alles
+   meten" of de Meetrit. Blok 10 heet Busgrens, niet meer Snelheidsproef.
+ - Meetkamer: onder NOG NIET staat "nu 24, nodig minstens 30" in plaats
+   van de band met 1000000 erin; de volle regel staat in de titel.
+ - CAMPAGNE: geen meetopdrachten meer; de verbinding is klaar (#394).
+   Wat blijft staan: #457 (CA10 tot 99 %, de meter die opnieuw opbouwt).
+
+ ═══════════════════════════════════════════════════════════
  08-10-2026 — Eén contactadres, en de Play-checklist voor 3.2 bijgewerkt
  ═══════════════════════════════════════════════════════════
 
