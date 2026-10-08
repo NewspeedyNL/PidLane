@@ -116,7 +116,8 @@ t('zonder wielen: vier grijze', (B.mini(null).match(/vbm-wiel geen/g) || []).len
   t('een band zonder gekozen tempo: op verzoek, niet elke minuut', ['222A05', '222A0A'].map(p => E.opVerzoek(p)), [true, true]);
   t('de motorolie (geen band) blijft in de pollus', E.opVerzoek('221310'), false);
   E.zet(lijst.map(x => x.code === '222A06' ? Object.assign({}, x, { tempo: 'minuut' }) : x), 'CX-5');
-  t('een band met een gekozen tempo houdt dat tempo (de keuze wint)', [E.opVerzoek('222A06'), E.interval('222A06')], [false, 60000]);
+  // Tot 08-10-2026 won de keuze; dan stonden de banden dubbel in de keuzelijst.
+  t('een band met een gekozen tempo blijft op verzoek: het bandenvenster heeft zijn eigen ronde', [E.opVerzoek('222A06'), E.interval('222A06')], [true, 999999]);
   E.zet(lijst, 'CX-5');
   t('in het oordeel van blok 5 telt een band op verzoek mee, ook zonder vinkje',
     E.oordeel({ echt: true, defs: E.defs().filter(d => d.pid === '222A05'), actief: [], laatst: { '222A05': NU - 3600000 }, waarden: { '222A05': 2.3 }, nu: NU }).staat, 'ok');
