@@ -158,7 +158,8 @@ function toets(naam, waar, uitleg) {
       return JSON.stringify({
         erIs: true, dicht: dicht, na: na, knop: knop,
         weerDicht: getComputedStyle(la).display,
-        knoppen: la.querySelectorAll('button').length
+        knoppen: la.querySelectorAll('button').length,
+        labels: Array.prototype.map.call(la.querySelectorAll('button'), function (b) { return b.textContent.trim(); })
       });
     })()`));
     toets('de lade bestaat', la.erIs, JSON.stringify(la));
@@ -166,9 +167,15 @@ function toets(naam, waar, uitleg) {
     toets('de knop klapt hem open', la.na === 'flex', JSON.stringify(la));
     toets('en zegt dan zijn eigen stand', la.knop === '✕', JSON.stringify(la));
     toets('nog een keer drukken sluit hem', la.weerDicht === 'none', JSON.stringify(la));
-    // NIETS IS WEG, ALLEEN VERPLAATST. Wat je een keer per maand gebruikt
-    // (de kaartmaker, de snelheidsproef) moet je nog steeds kunnen vinden.
-    toets('alle oude knoppen zitten er nog in', la.knoppen >= 12, la.knoppen + ' knoppen');
+    // Wat je een keer per maand gebruikt (de kaartmaker, de busgrens) moet je
+    // nog steeds kunnen vinden. Sinds 09-10-2026 op naam en niet op aantal:
+    // de dubbele knoppen (Budget, Ritverslag, Inventarisatie, nulstellen) zijn
+    // eruit, want ze draaiden wat "Alles meten" en de Meetrit al doen.
+    const nodig = ['📱 Toestelronde', '▶ Alles meten', '⚡ Snel (zonder sweep)', '■ Stop', '📶 Busgrens (10 min)',
+      '🗺️ Kaart maken', '🎯 Kaart gericht', '🗺️ Kaart volledig (uren)', '📍 Markeer nu', '💾 Logboek'];
+    const kwijt = nodig.filter(function (n) { return (la.labels || []).indexOf(n) < 0; });
+    toets('het gereedschap zit er nog in, op naam', !kwijt.length, 'kwijt: ' + kwijt.join(', ') + ' — wel: ' + (la.labels || []).join(' | '));
+    toets('en geen knop staat er twee keer', la.knoppen === nodig.length, la.knoppen + ' knoppen: ' + (la.labels || []).join(' | '));
 
     console.log('\n4c. De opdrachtkiezer hangt in het echte paneel (#248)');
     const kz = JSON.parse(await app.ev(`(function(){

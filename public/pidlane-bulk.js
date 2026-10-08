@@ -433,8 +433,10 @@ async function start(stil) {
   // draagt dezelfde tijd; met toISOString() scheelde dat twee uur en leek het
   // om twee verschillende momenten te gaan. Het epoch-getal staat in
   // _blkS.gestart en in elk blok (van/tot) — dát is de tijd die telt.
-  _blkS.sessieId = 'blk-' + plStempelLokaal();
+  // Eén klokmoment voor allebei: twee keer lezen gaf op 09-10-2026 een id dat
+  // 1 ms voor `gestart` lag, en blok 5 (#17) vergelijkt die twee exact.
   _blkS.gestart = _blkNu();
+  _blkS.sessieId = 'blk-' + plStempelLokaal(_blkS.gestart);
   _blkS.buf = [];
   _blkS.nRegels = 0;
   _blkS.nBlokken = 0;

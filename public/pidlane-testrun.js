@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '8.7 (01-10-2026)';
+const TESTRUN_VERSIE = '8.8 (09-10-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -1310,6 +1310,22 @@ async function _blok2() {
 // gewoon log niet kunt maken.
 let _budgetVoor = null;
 
+// ── WAT DE SWEEP OPVRAAGT ──
+// Berekende waarden (CA..) en telefoonsensoren (TL..) staan in dezelfde
+// keuzelijst, maar zijn geen commando voor de auto. sendCmd weigert ze en telt
+// die weigering — en dus gaf blok 5 op 09-10-2026 twee FOUT-regels over
+// verkeer dat de sweep zelf maakte. Zelfde grens als de pollus (plload.js).
+// Los en puur, zodat test-sweeplijst.js hem met de echte modules toetst.
+function _sweepLijst(lijst) {
+  return (lijst || []).filter(function (p) {
+    if (!p || VERBODEN.test(p)) return false;
+    if (typeof plIsBerekend === 'function' && plIsBerekend(p)) return false;
+    if (typeof plIsTelemetrie === 'function' && plIsTelemetrie(p)) return false;
+    return true;
+  });
+}
+// ── einde sweeplijst ──
+
 async function _blok3() {
   try { _budgetVoor = (window.PLLoad && PLLoad.staat) ? PLLoad.staat().tempoPct : null; } catch (e) { console.warn('Tempo vóór de sweep niet gemeten — blok 4 kan dan geen vóór/na-vergelijking tonen voor PLAN.md punt 2/13', e); }
   if (typeof connected === 'undefined' || !connected) {
@@ -1329,7 +1345,7 @@ async function _blok3() {
       lijst = Array.from(activePIDs);
     }
   } catch (e) { console.warn('PID-lijst voor de sweep niet opgebouwd — de melding \'geen PID-lijst beschikbaar\' hieronder kan dan een leesfout verbergen', e); }
-  lijst = lijst.filter(function (p) { return p && !VERBODEN.test(p); });
+  lijst = _sweepLijst(lijst);
   if (!lijst.length) { _boek(3, 'PID-sweep', 'overgeslagen', 'geen PID-lijst beschikbaar', null); return; }
 
   // PIDs die de ECU expliciet ontkent niet opvragen. Ze geven gegarandeerd
@@ -3507,20 +3523,21 @@ const PROEVEN_B5 = [
     }
   },
 
-  // ── Slim visueel: vijf weergaven met een knop Volgende (02-10-2026) ──
-  // Basis, temperatuur, emissie, verbruik en motor. Deze proef loopt de
+  // ── Slim visueel: zes weergaven met een knop Volgende (02-10-2026) ──
+  // Basis, temperatuur, emissie, verbruik, motor en sinds 06-10-2026
+  // telemetrie (dezelfde volgorde als test-visprofiel.js). Deze proef loopt de
   // rondgang af en telt per profiel hoeveel plekken deze auto kan vullen; een
   // profiel waar niets op komt is op deze auto een lege kaart.
   {
     issue: '—',
-    naam: 'Slim visueel heeft vijf weergaven en Volgende loopt ze rond',
+    naam: 'Slim visueel heeft zes weergaven en Volgende loopt ze rond',
     waarom: 'Een weergave die op deze auto geen enkele sensor vindt, toont een lege kaart — en dat zie je pas als je er tijdens het rijden naartoe tikt.',
     proef: async function () {
       var P = window.PLVisProfiel;
       if (!P) return { staat: 'FOUT', detail: 'PLVisProfiel ontbreekt — pidlane-visprofiel.js is niet geladen' };
       var id = 'basis', rond = [id];
       for (var i = 0; i < P.PROFIELEN.length; i++) { id = P.volgende(id); rond.push(id); }
-      if (rond.join(',') !== 'basis,temp,emissie,verbruik,motor,basis') return { staat: 'FOUT', detail: 'de rondgang is ' + rond.join(' → ') };
+      if (rond.join(',') !== 'basis,temp,emissie,verbruik,motor,telemetrie,basis') return { staat: 'FOUT', detail: 'de rondgang is ' + rond.join(' → ') };
       var mag = function (p) { return typeof activePIDs !== 'undefined' && activePIDs.has(p) || (typeof discoveredPIDDefs !== 'undefined' && (discoveredPIDDefs || []).some(function (d) { return d.pid === p; })); };
       var leeg = [], tel = [];
       P.PROFIELEN.forEach(function (pr) {
@@ -7692,7 +7709,10 @@ const PROEVEN_B5 = [
     proef: async function () {
       if (!window.PLGarage || typeof PLGarage.selectieOordeel !== 'function') return { staat: 'FOUT', detail: 'PLGarage.selectieOordeel ontbreekt' };
       const lijst = (typeof discoveredPIDDefs !== 'undefined' && discoveredPIDDefs) ? discoveredPIDDefs.map(function (d) { return d.pid; }) : [];
-      const o = PLGarage.selectieOordeel(PLGarage.gekoppeld(), (typeof activePIDs !== 'undefined') ? Array.from(activePIDs) : [], lijst);
+      let weg = [];
+      try { if (typeof pidOpgeruimdLijst === 'function') weg = pidOpgeruimdLijst().map(function (x) { return x.pid; }); }
+      catch (e) { console.warn('pidOpgeruimdLijst() gaf een fout — een opgeruimde vaste sensor telt dan als FOUT', e); }
+      const o = PLGarage.selectieOordeel(PLGarage.gekoppeld(), (typeof activePIDs !== 'undefined') ? Array.from(activePIDs) : [], lijst, weg);
       return o.staat === 'ok' ? o.detail : o;
     }
   },
@@ -9920,6 +9940,16 @@ function _bgTeken() {
 // ══════════════════════════════════════════════════════════════════
 // SCHERM
 // ══════════════════════════════════════════════════════════════════
+// De knoppen van de gereedschapslade: één vorm, zodat een nieuwe knop niet
+// weer een eigen kopie van dezelfde stijlregel meekrijgt.
+function _trKnop(actie, label, kleur, rand, vet) {
+  return '<button onclick="' + actie + '" style="background:var(--sur2);color:' + kleur + ';border:1px solid ' + rand +
+    ';border-radius:8px;padding:9px 12px;font:' + (vet ? 700 : 600) + ' 12px var(--f);cursor:pointer">' + label + '</button>';
+}
+function _trGroep(naam) {
+  return '<div style="flex-basis:100%;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--tx3);margin-top:4px">' + naam + '</div>';
+}
+
 function openTestrun() {
   if (typeof isAdmin === 'function' && !(typeof magOntwikkelen === 'function' ? magOntwikkelen() : isAdmin())) { try { showToast('Alleen voor ontwikkelaars'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } return; }
   let ov = document.getElementById('testrunOv');
@@ -9949,38 +9979,35 @@ function openTestrun() {
         '<button onclick="testrunGereedschap()" id="trMeerBtn" title="Meer gereedschap" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:11px;padding:13px 16px;font:700 14px var(--f);cursor:pointer">⚙</button>' +
       '</div>' +
       '<div id="trGereedschap" style="display:none;gap:7px;flex-wrap:wrap;flex-shrink:0">' +
+        // OPGERUIMD OP 09-10-2026: van veertien knoppen naar tien, in drie
+        // groepen. Weg zijn Budget (blok 7), Ritverslag (blok 14) en
+        // Inventarisatie (blok 11): alle drie draaien al in "Alles meten", en
+        // 7 en 11 ook in "Snel". En "Rit begint (nulstellen)": de Meetrit
+        // heeft die stap zelf, met dezelfde knop erin. Een knop die hetzelfde
+        // doet als een andere is een keuze die niets kiest.
+        _trGroep('Een ronde') +
         // De toestelronde (#166). Alles wat geen RIJDENDE auto nodig heeft
         // staat hier, zodat het geen ritminuten kost: de schermoordelen, het
         // logboek en de meetcontextvragen. Stilstaand op de parkeerplaats of
         // thuis op de bank.
-        '<button onclick="begeleidStart(\'toestel\')" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--ac);border-radius:8px;padding:10px 14px;font:700 12px var(--f);cursor:pointer">📱 Toestelronde</button>' +
-        '<button onclick="startTestrun()" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">▶ Alleen meten</button>' +
-        '<button onclick="startTestrun({b5:true,b1:true,b4:true,b7:true,b11:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snel (geen sweep)</button>' +
-        // Weg op 24-08: "DID-scan (45 s)" (blok 9) en "Budget + olie" (blok 7+8).
-        // Beide dienden de jacht op de mode 22-olietemperatuur, en die is op
-        // 23-08 definitief losgelaten — zonder echte Mazda-DID-lijst is verder
-        // zoeken raden. De blokken zelf staan er nog en zijn los aan te roepen
-        // met startTestrun({b8:true}) of {b9:true} vanuit de console; ze slopen
-        // is een mechanische stap en die gaat apart. Wat blijft is blok 7, het
-        // pollbudget, want dat heeft niets met olie te maken.
-        '<button onclick="startTestrun({b7:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Budget</button>' +
-        '<button onclick="startTestrun({b10:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Snelheidsproef (10 min)</button>' +
-        // De rit (26-08b). Twee knoppen omdat het twee momenten zijn: nulstellen
-        // aan het begin van de rit, uitlezen aan het eind. Blok 14 zit óók in de
-        // standaardset, dus wie gewoon "Start" drukt krijgt het ritbeeld erbij.
-        '<button onclick="ritNulstellen()" style="background:var(--sur2);color:var(--gn);border:1px solid var(--gn);border-radius:8px;padding:9px 12px;font:700 12px var(--f);cursor:pointer">🚗 Rit begint (nulstellen)</button>' +
-        '<button onclick="startTestrun({b14:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Ritverslag</button>' +
-        // Alleen tellen, geen bus: mag ook los, bijvoorbeeld thuis op de bank.
-        '<button onclick="startTestrun({b11:true})" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">Inventarisatie</button>' +
-        // DE KAARTMAKER (blok 15). Staat bewust náást de meetknoppen en niet
-        // ertussen: hij neemt de verbinding over, zet de adapter in een andere
-        // stand en duurt minuten. Dat is geen meting maar een expeditie.
-        '<button onclick="kaartStart(false)" style="background:var(--sur2);color:var(--bl);border:1px solid var(--bl);border-radius:8px;padding:9px 12px;font:700 12px var(--f);cursor:pointer">🗺️ Kaart maken</button>' +
-        '<button onclick="kaartStart(true)" style="background:var(--sur2);color:var(--tx3);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">🗺️ Volledig (uren)</button>' +
-        '<button onclick="kaartGericht()" style="background:var(--sur2);color:var(--bl);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">🎯 Gericht</button>' +
-        '<button onclick="stopTestrun()" style="background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">■ Stop</button>' +
-        '<button onclick="plMarkeer(\'losse markering\', \'met de hand gezet\')" style="background:var(--sur2);color:var(--bl);border:1px solid var(--bl);border-radius:8px;padding:9px 12px;font:700 12px var(--f);cursor:pointer">📍 Markeer nu</button>' +
-        '<button onclick="testrunOpslaan()" style="margin-left:auto;background:var(--sur2);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;font:600 12px var(--f);cursor:pointer">💾 Logboek</button>' +
+        _trKnop('begeleidStart(\'toestel\')', '📱 Toestelronde', 'var(--tx2)', 'var(--ac)', true) +
+        _trKnop('startTestrun()', '▶ Alles meten', 'var(--tx2)', 'var(--bd)') +
+        _trKnop('startTestrun({b5:true,b1:true,b4:true,b7:true,b11:true})', '⚡ Snel (zonder sweep)', 'var(--tx2)', 'var(--bd)') +
+        _trKnop('stopTestrun()', '■ Stop', 'var(--tx2)', 'var(--bd)') +
+        _trGroep('Uitzoeken (minuten tot uren)') +
+        // Blok 10 meet wat de verbinding KAN (vaste dichtheden, PLLoad buiten
+        // spel). Heette tot 09-10 "Snelheidsproef", net als de stappenproef in
+        // het kebabmenu (pidlane-snelproef.js) — twee dingen met één naam.
+        _trKnop('startTestrun({b10:true})', '📶 Busgrens (10 min)', 'var(--tx2)', 'var(--bd)') +
+        // DE KAARTMAKER (blok 15). Staat bewust apart van de meetknoppen: hij
+        // neemt de verbinding over, zet de adapter in een andere stand en
+        // duurt minuten. Dat is geen meting maar een expeditie.
+        _trKnop('kaartStart(false)', '🗺️ Kaart maken', 'var(--bl)', 'var(--bl)', true) +
+        _trKnop('kaartGericht()', '🎯 Kaart gericht', 'var(--bl)', 'var(--bd)') +
+        _trKnop('kaartStart(true)', '🗺️ Kaart volledig (uren)', 'var(--tx3)', 'var(--bd)') +
+        _trGroep('Vastleggen') +
+        _trKnop('plMarkeer(\'losse markering\', \'met de hand gezet\')', '📍 Markeer nu', 'var(--bl)', 'var(--bl)', true) +
+        _trKnop('testrunOpslaan()', '💾 Logboek', 'var(--tx2)', 'var(--bd)') +
       '</div>' +
       '<div id="testrunBody" style="flex:1"></div>';
     document.body.appendChild(ov);
@@ -10222,41 +10249,17 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 01-10 (zeventiende) — de meetrit: zes issues met een getal in plaats van een vraag (#302 #319 #333 #337 #338 #376)',
+  titel: 'OPLEVERING 09-10 (achttiende) — geen meetopdrachten meer: de testrun meldt alleen nog wat er stuk is',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
-    'ELKE VRAAG IS NU EEN METING. De ritten van 27–29 september gaven "gesloten" op proeven die niet over het issue gingen ("de meting liep door"), of "nog niet" op een stap die de app nooit zet. De app meet nu zelf wat de vraag is: de responstijd per verbinding (#302), welke groep de groepsproef adviseert onder welke omstandigheid (#333), berekende waarden buiten hun bereik (#337), een pedaal dat van de meter valt en elke herbouw met de reden erbij (#338), en of de balk na de check vanzelf doorging (#376).',
-    'TWEE FIXES ZONDER RIT, DIE DE RIT ALLEEN NOG BEVESTIGT. #337: een berekende waarde rekent alleen nog met bronnen van hetzelfde moment (hoogstens een seconde uit elkaar), en verbruik nu klemt op 50 l/100 km. #338: Slim visueel oordeelt over het tempo van het pedaal alleen tijdens het rijden met de meter in beeld, niet bij stilstand, op de achtergrond of terwijl een andere lezer de bus heeft.',
-    '── DE OPDRACHTEN ────────',
-    'Zet ze vooraf in beheer → 🎯 Meetopdrachten (de tekst staat in het issue van de meetrit). Kies in de app "Meetrit 1 · berekende waarden" als opdracht: die zet alle sensoren van meetrit 1 aan. De andere worden aan het eind op dezelfde rit beoordeeld.',
-    '── MEETRIT 1, ALLEEN, ±45 MINUTEN ────────',
-    'STAP 0 — VOORAF, MOTOR KOUD. Nieuwste versie laden (Meer → Admin). De MX+ erin. Een nieuwe APK is niet nodig.',
-    'STAP 1 — VERBINDEN (#376). Check mijn auto opent vanzelf. Vindt hij niets, dan loopt er een balk van vijf seconden: raak niets aan en kijk of je "Alles in orde" kunt lezen voordat hij naar Live gaat.',
-    'STAP 2 — GROEPSPROEF A, KOUD EN STIL (#333). Tik op de OBD-chip → 📦 Groepsproef. Twee minuten, de meters staan stil, laat de app open. Meldt hij drift, doe hem dan meteen nog eens.',
-    'STAP 3 — 🔄 OPNIEUW VERBINDEN in hetzelfde paneel. Vanaf hier telt het half uur van #302; de groepsproef zit dan niet in die meting.',
-    'STAP 4 — DERTIG MINUTEN RIJDEN IN SLIM VISUEEL, ZONDER TE VERBREKEN (#302, #337, #338). Onderweg: een paar keer vanuit stilstand stevig optrekken en daarna het gas helemaal los, een stuk boven 50 km/u, en één keer stilstaan. Laat waakronde en bulk-recorder zoals je ze normaal hebt.',
-    'STAP 4B — RIT-MONITOR AAN, EN SCHAKEL (#400). Zet vóór STAP 4 de rit-monitor aan. Schakel onderweg een paar keer op en terug bij gelijkblijvende snelheid, en rol één keer uit met het gas los. Daar hoort nu geen melding bij. Komt er tóch een melding die niet klopt: tik 👎 Klopt niet en kies de reden.',
-    'STAP 4C — TELEFOON IN DE HOUDER, EN EEN STUK OP SCHOOT (#418). Vóór vertrek: telefoon in de houder, stilstaan op vlakke grond, Sensoren → Telemetrie → Nulstellen. Rij daarna gewoon; de tegels Helling en Kanteling horen helder te blijven, ook over drempels. Alleen met een bijrijder: laat die de telefoon een paar minuten op schoot houden — de tegels horen dan binnen een paar seconden heel dof te worden. De testrun (blok 5) zegt hoeveel seconden vast en niet vast.',
-    'STAP 5 — TWEE MINUTEN BEELD-IN-BEELD (#319, #338). Onderweg, met de navigatie: thuisknop, PidLane staat klein; minstens twee minuten, dan terug naar de app.',
-    'STAP 6 — GROEPSPROEF B, WARM EN STIL (#333). Na het half uur stilstaan op een veilige plek, motor draaiend. Eerst 🔄 Opnieuw verbinden, dan 📦 Groepsproef.',
-    'STAP 7 — VERZENDEN. Meetkamer → alle afgeronde opdrachten verzenden, en beantwoord de vragen. Daarna eventueel de testrun.',
-    '── MEETRIT 2, MET BIJRIJDER, ±10 MINUTEN ────────',
-    'GROEPSPROEF C, RIJDEND (#333). Constante snelheid boven 50 km/u, de bijrijder start de groepsproef. Alleen met een bijrijder.',
-    '── RESERVE ────────',
-    'ALLEEN ALS #302 IN MEETRIT 1 EEN BEVINDING GAF: dezelfde dertig minuten in Overzicht in plaats van Slim visueel (opdracht "Reserve"). Dan zegt het verschil of het in het tekenen van de meter zit of in de sessie zelf.',
-    '── MEETPROEF VERZAMELSCHERM (#443), ±30 MINUTEN, MAG OP DEZELFDE RIT ────────',
-    'WAAROM. Elke analyse toont nu eerst "📡 Data verzamelen" en de uitslag, met wat opvalt, en vraagt dan pas of de AI mag. "Opvallend" rust op vaste grenzen uit de PID-definities: de vraag is of die op een gezonde auto te vaak oranje of rood geven, en of de meting een plan en een rijtest doorkomt zonder dubbel te meten. De app telt het zelf (app-maten verzamel-*).',
-    'VOORAF. Zet in beheer → 🎯 Meetopdrachten "Verzamelscherm · vaste grenzen op een gezonde auto (#443)"; de tekst staat in #443.',
-    'STAP A — KOUDE MOTOR. Er is iets mis → AI-monteur. Kijk of de waarden binnenkomen en het ✓ per sensor verschijnt; tik daarna Sluiten zonder AI.',
-    'STAP B — TWEE MODULES ACHTER ELKAAR. In hetzelfde plan eerst Conditie per systeem (totaalcheck), dan binnen twee minuten de AI-monteur. De tweede hoort meteen de uitslag te tonen, zonder opnieuw te meten.',
-    'STAP C — RIJTEST VANUIT HET SCHERM. Start stilstaand de verbruiksanalyse; het scherm biedt 🚗 Rijtest starten. Rij de tien minuten. Na het stoppen hoort de uitslag uit die rit te komen, niet een nieuwe meting.',
-    'STAP D — WARME MOTOR, STILSTAAND. Onderhoud of Lange rit. Let op wat er bij "Valt op" staat (koelwater, accu) en of dat klopt met hoe de auto zich gedraagt.',
-    'DAARNA. Beantwoord de drie vragen van de opdracht. Kies de AI waar je wilt; tokens zijn voor deze proef niet nodig.',
-    '── ANALYSERAPPORT (#448), BIJ ÉÉN VAN DE ANALYSES HIERBOVEN ────────',
-    'STAP E — ÉÉN ANALYSE MET AI, DAN ⬇ DOWNLOAD PDF. Kijk in hoofdstuk 7: staat daar "uit de koppen van de AI-tekst gehaald" of "afgebroken", dan leverde het model zijn rapportblok niet (volledig). Noem in #448 welke analyse het was. De rest van het rapport (tabellen, grafieken) komt uit de meting en hoort er hoe dan ook te staan.',
+    'DE VERBINDING IS KLAAR. Verbinding, snelheid, herverbinden en protocol werken: op 08-10 vijf diagnoses tegelijk op de CX-5, 0 fouten in het log (#394 dicht). Alle meetopdrachten in D1 staan op afgerond; de meetkamer is leeg tot er een nieuw issue komt.',
+    'VIER FOUT-REGELS GINGEN OVER DE TESTRUN ZELF, NIET OVER DE APP. De PID-sweep vroeg berekende waarden (CA..) en telefoonsensoren (TL..) aan de adapter en meldde dat daarna als fout; de proef van Slim visueel telde vijf weergaven terwijl telemetrie de zesde is; een vaste sensor die de PID-poort terecht opruimde (221E1C) heette FOUT; en de bulk-recorder las twee keer de klok, waardoor zijn etiket 1 ms voor zijn starttijd lag. Alle vier opgelost.',
+    '── WAT JE DOET ────────',
+    'NIETS BIJZONDERS. Rij zoals je rijdt. Draai de testrun pas als je iets vreemds ziet, en plak dan alleen de FOUT- en LET OP-regels.',
+    'EEN NIEUW PROBLEEM = EEN NIEUW ISSUE. Daar hoort dan één meetopdracht bij, met één vraag. Die verschijnt in de meetkamer; staat hij groen, dan verzend je hem.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
-    'DE AUTOMAAT GAAT NOG NIET BOVEN DE 3. Geven A, B en C op de MX+ "gesloten", dan is dat een eigen wijziging: hoger alleen op een adapter die geen echo gaf, met deze metingen als bewijs.',
-    '#331, #359, #360 EN #370 HEBBEN GEEN RIT NODIG maar code met een test; #371 is ontwerpwerk; #327 is werk aan de Worker; #309 en #264 hebben nog niets in de app om te meten.',
+    'RENDEMENT (CA10) TOT 99 % EN DE METER DIE TE VAAK OPNIEUW OPBOUWT (#457). Blijven FOUT in blok 5 tot dat issue af is; geen rit nodig om te beginnen.',
+    'HYBRIDE (#430, #452) heeft een hybride nodig; het analyserapport (#448) een analyse met AI, geparkeerd.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
   ]
 };

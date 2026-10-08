@@ -187,6 +187,21 @@ function rij(s, tikken, meten, gas) {
       toets('het zegt NOG NIET', e.kop === 'NOG NIET', e.kop);
       toets('en noemt wat er ontbreekt', /adapter is er even uit/.test(e.regel), e.regel);
       toets('gesloten is groen', M.eindoordeel(proefstand, { vonnis: { staat: 'gesloten', reden: '', voorwaarden: [] } }).staat === 'ja');
+
+      /* 09-10-2026: de regel van het scherm op de rit van 08-10. Wat je achter
+         het stuur wilt lezen is de halve zin, niet de band met 1000000 erin. */
+      const rijden = { staat: 'nog niet', reden: '1 van de 2 voorwaarden niet vervuld',
+        voorwaarden: [{ wat: 'gestopt', vervuld: true, detail: '' },
+          { wat: 'daarna weer gereden', vervuld: false, waarde: 24,
+            detail: '010D veranderingen = 24 (verwacht 30–1000000, 256 monster(s)) — buiten de band die de opdracht noemt' }] };
+      const opd = { voorwaarden: [{ wat: 'gestopt', pid: '010D', meet: 'min', tussen: [0, 0] },
+        { wat: 'daarna weer gereden', pid: '010D', meet: 'veranderingen', tussen: [30, 1000000] }] };
+      const kort = M.eindoordeel(proefstand, { vonnis: rijden }, opd);
+      toets('de ontbrekende voorwaarde in gewone woorden', kort.regel === 'daarna weer gereden: nu 24, nodig minstens 30', kort.regel);
+      toets('de volle regel blijft bewaard', /1000000/.test(kort.technisch), kort.technisch);
+      toets('een bovengrens zegt hoogstens', M.nodigKort({ waarde: 104 }, { tussen: [0, 5] }) === 'nu 104, nodig hoogstens 5',
+        M.nodigKort({ waarde: 104 }, { tussen: [0, 5] }));
+      toets('zonder getal blijft de oude regel', /geen onderbreking/.test(M.eindoordeel(proefstand, { vonnis: vonnis }, { voorwaarden: [{ gebeurtenis: 'onderbreking' }] }).regel));
       toets('het venster staat in beeld', /3:12/.test(M.vensterRegel({ start: T0 }, 900, T0 + 192000)),
         M.vensterRegel({ start: T0 }, 900, T0 + 192000));
 
