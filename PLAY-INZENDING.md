@@ -2,7 +2,8 @@
 
 Opgesteld 03-09-2026, bijgewerkt 10-09-2026 (§7, §16 en de taalkeuze) en
 27-09-2026 (versie 3.1.0: Mijn voertuigen en Mijn voorkeuren in §3, §11, §12
-en §14; beeld-in-beeld in §13 en §16b). Dit bestand is
+en §14; beeld-in-beeld in §13 en §16b) en 08-10-2026 (3.2.0: één contactadres,
+§11 zonder chassisnummer naar de AI, §16b voor de laatste wijzigingen). Dit bestand is
 **kopieerwerk**: elk kopje hieronder is
 een veld in de Play Console, en wat eronder staat gaat er letterlijk in.
 
@@ -168,7 +169,7 @@ opgeslagen.
 Je account verwijder je zelf in de app, of via app.pidlane.nl/verwijderen.html.
 
 De volledige privacyverklaring: app.pidlane.nl/privacy.html
-Vragen: info@pidlane.nl
+Vragen: support@pidlane.nl
 ```
 
 ---
@@ -226,7 +227,7 @@ die niet overeenkomt met de app is een afwijzingsgrond.
 | App or game | App |
 | Category | Auto & Vehicles |
 | Tags | OBD2, Car Diagnostics, Vehicle Maintenance (max 5) |
-| Email address | info@pidlane.nl |
+| Email address | support@pidlane.nl |
 | Website | https://pidlane.nl |
 | Phone | leeg laten (optioneel, en een nummer dat je niet opneemt is erger dan geen nummer) |
 | External marketing | uit — deze app doet geen marketing buiten Play om |
@@ -297,7 +298,7 @@ vinden en ermee te communiceren. De scanpermissie is aangevraagd met
 neverForLocation; de app bepaalt geen locatie via Bluetooth. Vóór het eerste
 verbinden toont de app hiervoor een aparte uitleg met een weigeroptie.
 
-Vragen: info@pidlane.nl
+Vragen: support@pidlane.nl
 ```
 
 ### Regel 2 — een testaccount, en dit sla je niet over
@@ -464,7 +465,7 @@ onderhoudsdatum
 | veld | antwoord |
 |---|---|
 | Verzameld | Ja |
-| **Gedeeld** | **Ja** — met de aanbieder van het taalmodel (Anthropic), die het rapport schrijft. Het kenteken gaat daar niet mee |
+| **Gedeeld** | **Ja** — met de aanbieder van het taalmodel (Anthropic), die het rapport schrijft. Het kenteken en het chassisnummer gaan daar niet mee (sinds 08-10-2026 bewaakt door `test-vin-anoniem.js`) |
 | Verplicht of optioneel | Optioneel — alleen als de gebruiker om een analyse vraagt, meetdata deelt of Mijn voertuigen aanzet |
 | Doel | App functionality |
 
@@ -682,7 +683,7 @@ productie. Wat je invult:
 |---|---|
 | Track | Closed testing |
 | Testers | e-mailadressen van het pilotbedrijf plus eigen adressen |
-| Feedback channel | `info@pidlane.nl` |
+| Feedback channel | `support@pidlane.nl` |
 | Countries | Nederland (breid uit zodra de RDW-kentekenfunctie niet meer het enige regiogebonden stuk is) |
 
 De gesloten test is ook de plek waar de dingen uitkomen die de gate niet kan
@@ -777,10 +778,16 @@ want hij gaat over één bepaalde bundel. Vul hem dus bij, tik hem niet af.
 | Mijn voertuigen (sinds 3.1.0): akkoord geven, een voertuig bewaren, uitloggen en op een tweede toestel terugzien; daarna *Alles wissen* en zien dat het weg is | nog niet bewezen |
 | Bluetooth uit (sinds 3.2.0, #359): op Verbinden tikken met Bluetooth uit geeft de systeemvraag van Android; weigeren geeft meteen "Bluetooth staat uit", zonder anderhalve minuut zoeken | nog niet bewezen |
 | Telemetrie (sinds 3.2.0): Slim visueel → Telemetrie toont horizon, G-cirkel en de twee autootjes op één scherm, en ze bewegen mee; Nulstellen wist het piekballetje | nog niet bewezen |
+| Basismeter (08-10-2026): Slim visueel → Basis toont koelwater en brandstof als bogen onderin, het verbruik onder de km/h en het bereik of de rit linksonder; op een plek tikken laat je kiezen, *Automatisch* zet hem terug | nog niet bewezen |
+| Herverbinden (08-10-2026, #453): adapter even uit de OBD-poort trekken met de motor aan, terugsteken, niets aanraken — de app hervat zonder protocolvraag. Daarna blok 5 draaien | nog niet bewezen |
 
 **Let op bij 3.2.0.** Na de geslaagde gesloten test (#408) zijn Slim visueel,
 het inmeten van de verbinding, de demo (stuurt niets meer) en het verbinden met
 Bluetooth uit verbouwd. Ook hier geldt: een oud buildnummer is geen bewijs.
+Op 08-10 kwamen daar nog bij: de Basismeter, het herverbinden (#453), de
+systeemtest zonder hybridetests (#430) en geen chassisnummer meer naar de AI.
+Elke wijziging aan `public/privacy.html` op `main` start bovendien vanzelf een
+nieuwe build; upload de build van ná de laatste merge, niet een eerdere.
 
 **Let op bij 3.1.0.** Alle "laatst bewezen"-regels hierboven gaan over builds
 van vóór 12-09-2026. Sindsdien zijn beeld-in-beeld (#228), Mijn voertuigen,
@@ -796,8 +803,9 @@ meer over wat een reviewer nu ziet.
 
 Hier kan de code niets aan doen; dit is handwerk in andere systemen.
 
-- [ ] `info@pidlane.nl` bestaat en wordt gelezen — een reviewer mag erop mailen
-- [ ] `support@pidlane.nl` bestaat óók en wordt gelezen — `verwijderen.html` stuurt
+- [ ] `support@pidlane.nl` bestaat en wordt gelezen — sinds 08-10-2026 het enige
+      adres overal (Console, privacyverklaring, verwijderpagina, app); een reviewer
+      mag erop mailen, en `verwijderen.html` stuurt
       verwijderverzoeken daarheen, niet naar `info@`. Een verwijderverzoek dat
       in een lege bus valt, is precies wat §12 belooft te voorkomen
 - [ ] `https://app.pidlane.nl/privacy.html` opent in een private venster
