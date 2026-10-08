@@ -39,8 +39,8 @@ const WACHT = ms => new Promise(r => setTimeout(r, ms));
 // De teksten eerst op hun breedste inhoud, zodat "past net" niet groen staat
 // omdat er toevallig een smal getal stond.
 const MEET = `(function(){
-  const zet = { 'vis-snel':'999', 'visv-koel':'118°', 'visv-pedaal':'100%',
-                'visv-tank':'100%', 'vis-ondertekst':'≈+1,5 bar', 'vis-gear':'10' };
+  const zet = { 'vis-snel':'999', 'visv-links':'118°', 'visv-rechts':'100%',
+                'visv-midden':'9999+', 'vise-midden':'l/100 km', 'vis-gear':'10' };
   Object.keys(zet).forEach(function(id){ const e=document.getElementById(id); if(e) e.textContent=zet[id]; });
   // Versnelling en embleem delen één plek en staan nooit samen: meet de
   // versnelling op zijn breedste ("10"), met het embleem weg zoals gearBij() doet.
@@ -48,15 +48,13 @@ const MEET = `(function(){
   const svg = document.querySelector('.vis-meter');
   if (!svg) return { fout: 'geen .vis-meter in het rooster' };
   const G = PLVisueel.G, uit = [];
-  svg.querySelectorAll('text, svg.vis-icoon, svg.vis-logo, path.vis-balk-spoor').forEach(function(e){
+  svg.querySelectorAll('text, svg.vis-icoon, svg.vis-logo').forEach(function(e){
     if (e.closest('.afwezig') || e.closest('[style*="display: none"], [style*="display:none"]')) return;
     let b;
     if (e.tagName.toLowerCase() === 'svg') b = { x:+e.getAttribute('x'), y:+e.getAttribute('y'), width:+e.getAttribute('width'), height:+e.getAttribute('height') };
     else b = e.getBBox();
     if (!b.width) return;
-    // Een balkje is een lijn: getBBox() kent zijn dikte niet, die komt erbij.
-    const dik = e.classList.contains('vis-balk-spoor') ? (+e.getAttribute('stroke-width') || 0) / 2 : 0;
-    uit.push({ naam: e.id || (e.classList.contains('vis-logo') ? 'embleem' : dik ? 'balkje in '+e.parentNode.id : e.textContent), x0:b.x, y0:b.y-dik, x1:b.x+b.width, y1:b.y+b.height+dik });
+    uit.push({ naam: e.id || (e.classList.contains('vis-logo') ? 'embleem' : e.textContent), x0:b.x, y0:b.y, x1:b.x+b.width, y1:b.y+b.height });
   });
   return { vakken: uit, C: G.C, R: G.R_RING,
            streepjes: svg.querySelectorAll('.vis-streep').length };
@@ -67,11 +65,7 @@ function beoordeel(m) {
   const v = m.vakken;
   for (let i = 0; i < v.length; i++) {
     const a = v[i];
-    // Het getal van de onderboog staat met opzet ONDER de cirkel: voor dat
-    // icoon en die tekst is de eis dat ze helemaal onder de ring blijven.
-    if (/^vis-onder/.test(a.naam)) {
-      if (a.y0 <= m.C + m.R + 1) buiten.push(a.naam + ' (hoort onder de ring)');
-    } else [[a.x0, a.y0], [a.x1, a.y0], [a.x0, a.y1], [a.x1, a.y1]].forEach(function (p) {
+    [[a.x0, a.y0], [a.x1, a.y0], [a.x0, a.y1], [a.x1, a.y1]].forEach(function (p) {
       if (Math.hypot(p[0] - m.C, p[1] - m.C) > m.R - 2) buiten.push(a.naam);
     });
     for (let j = i + 1; j < v.length; j++) {
@@ -103,12 +97,13 @@ function beoordeel(m) {
     await new Promise(r => setTimeout(r, 2500));
     const staat = await app.ev(`(function(){ const s=PLVisueel.staat(); return { modus: pidViewMode,
       meter: !!document.querySelector('#gGrid .vis-meter'), aan: s.aan,
-      onder: s.ind && s.ind.onder, plekken: s.ind && s.ind.plekken,
-      koel: document.getElementById('visv-koel').textContent, tank: document.getElementById('visv-tank').textContent,
+      plekken: s.ind && s.ind.plekken,
+      links: document.getElementById('visv-links').textContent, rechts: document.getElementById('visv-rechts').textContent,
+      vak: !!document.getElementById('visp-vak'), bogen: document.querySelectorAll('#gGrid .vis-boog').length,
       snel: document.querySelectorAll('#visMeld .vis-snelk button').length,
       snelTekst: document.getElementById('visMeld').textContent,
       knoppen: document.querySelectorAll('.vis-trekknop, .vis-trekerbij').length,
-      balkjes: document.querySelectorAll('#gGrid .vis-balk').length,
+      balkjes: document.querySelectorAll('#gGrid .vis-balk, #gGrid .vis-rij').length,
       accuLamp: (document.getElementById('vis-lamp-accu')||{}).textContent || '', accuKlasse: (document.getElementById('vis-lamp-accu')||{}).className || '',
       knop: (function(){
         const was=document.body.classList.contains('pl-garage'); document.body.classList.add('pl-garage');
@@ -118,17 +113,17 @@ function beoordeel(m) {
         return uit; })() }; })()`);
     toets('setPidView("visueel") bouwt de meter', staat.modus === 'visueel' && staat.meter, JSON.stringify(staat));
     toets('de rem staat aan zolang de weergave open is', staat.aan === true);
-    toets('olie staat op de onderboog', staat.onder && staat.onder.pid === '015C', JSON.stringify(staat.onder));
-    toets('koelwater, gaspedaal en brandstof hebben hun rij (#371)', staat.plekken && staat.plekken.koel === '0105' &&
-      staat.plekken.pedaal === '0149' && staat.plekken.tank === '012F', JSON.stringify(staat.plekken));
-    toets('drie balkjes onder de snelheid', staat.balkjes === 3, 'gevonden: ' + staat.balkjes);
+    toets('koelwater op de boog links, brandstof op de boog rechts (08-10-2026)', staat.plekken && staat.plekken.links === '0105' &&
+      staat.plekken.rechts === '012F', JSON.stringify(staat.plekken));
+    toets('twee bogen onderin en het vak linksonder, geen balkjes meer', staat.bogen === 2 && staat.vak && staat.balkjes === 0,
+      JSON.stringify({ bogen: staat.bogen, vak: staat.vak, balkjes: staat.balkjes }));
     toets('de accuspanning staat rechtsboven als lampje, met V erachter', /Accu/.test(staat.accuLamp) && /\d,\d V/.test(staat.accuLamp) && !/leeg/.test(staat.accuKlasse),
       JSON.stringify({ t: staat.accuLamp, k: staat.accuKlasse }));
     toets('Opnemen en Bewaken staan niet onder Slim visueel, ook niet in de garagemodus (#371)',
       staat.knop.visueel.rec === 'none' && staat.knop.visueel.waak === 'none', JSON.stringify(staat.knop));
     toets('…en in Slim staan ze er allebei (de PID-recorder blijft een eigen functie)',
       staat.knop.slim.rec !== 'none' && staat.knop.slim.waak !== 'none', JSON.stringify(staat.knop));
-    toets('de plekjes tonen een getal, geen streepje', /°$/.test(staat.koel) && /%$/.test(staat.tank), staat.koel + ' / ' + staat.tank);
+    toets('de bogen tonen een getal, geen streepje', /^\d+°$/.test(staat.links) && /^\d+%$/.test(staat.rechts), staat.links + ' / ' + staat.rechts);
     toets('niets actief: snelkoppelingen in het meldingenvak', staat.snel >= 2, 'knoppen: ' + staat.snel);
     toets('geen snelkoppeling, knop of tekst voor de caravanrit of trekmodus (27-09)',
       !/Caravan|trekmodus/i.test(staat.snelTekst) && staat.knoppen === 0, JSON.stringify({ t: staat.snelTekst, k: staat.knoppen }));
@@ -139,7 +134,7 @@ function beoordeel(m) {
     toets('17 streepjes', m.streepjes === 17, 'gevonden: ' + m.streepjes);
     toets('er is iets gemeten (' + m.vakken.length + ' vakken)', m.vakken.length >= 15, 'te weinig vakken — dan meet de rest niets');
     const b = beoordeel(m);
-    toets('alles binnen de ring, en het olie-getal eronder', b.buiten.length === 0, b.buiten.join(', '));
+    toets('alles binnen de ring', b.buiten.length === 0, b.buiten.join(', '));
     toets('geen tekst of icoon raakt een ander', b.botsing.length === 0, b.botsing.join(', '));
 
     console.log('\n3. Tegenproef — ziet de controle een echte overlap?');
@@ -168,7 +163,7 @@ function beoordeel(m) {
     toets('de belasting (0104) wordt dan niet geremd', trek.aan.gebruik.indexOf('0104') >= 0, JSON.stringify(trek.aan.gebruik));
     toets('rijsituatie weer uit: de strook is weg, en er staat geen knop voor in de plaats', !trek.uit.strook && !trek.uit.knop, JSON.stringify(trek.uit));
 
-    console.log('\n3c. Versnelling in het midden, staafjes, sensoren zelf aan (27-09)');
+    console.log('\n3c. Versnelling in het midden, de bogen, sensoren zelf aan (27-09)');
     const mid = await app.ev(`(async function(){
       const logo = function(){ const g=document.getElementById('visg-logo'); return !!g && g.style.display !== 'none'; };
       const gear = function(){ return document.getElementById('vis-gear').textContent; };
@@ -192,18 +187,14 @@ function beoordeel(m) {
       document.body.classList.add('pl-visueel');
       PLGear.toon = toonWas; PLGear.uit = uitWas; PLGear._render();
       const h = function(id){ return +String(document.getElementById(id).getAttribute('stroke-dasharray')).split(' ')[0]; };
-      PLVisueel.bij('0105', 130); uit.koelVol = h('viss-koel');
-      PLVisueel.bij('0105', 40);  uit.koelLeeg = h('viss-koel');
-      // Tank en pedaal gaan door PLToon (07-10-2026): de tank gedempt over de
-      // laatste drie metingen, het pedaal vanaf zijn geleerde rust. Daarom
-      // een vaste historie, en niet wat de demo toevallig al gemeten had.
+      PLVisueel.bij('0105', 130); uit.koelVol = h('viss-links');
+      PLVisueel.bij('0105', 40);  uit.koelLeeg = h('viss-links');
+      // De tank gaat door PLToon (07-10-2026), gedempt over de laatste drie
+      // metingen. Daarom een vaste historie, en niet wat de demo al mat.
       var nu = Date.now();
       pidHist['012F'] = [50, 50, 50].map(function(v, i){ return { t: nu - (3 - i) * 60000, v: v }; });
-      PLVisueel.bij('012F', 50);  uit.tankHalf = h('viss-tank');
+      PLVisueel.bij('012F', 50);  uit.tankHalf = h('viss-rechts');
       uit.H = 100;
-      PLToon._wis();
-      pidHist['0149'] = [15, 15.2, 15].map(function(v, i){ return { t: nu - (3 - i) * 1000, v: v }; });
-      PLVisueel.bij('0149', 45); uit.pedaal = { h: h('viss-pedaal'), tekst: document.getElementById('visv-pedaal').textContent };
       activePIDs.delete('0105'); manualPIDs.delete('0105'); setPidView('slim'); setPidView('visueel');
       await new Promise(function(r){ setTimeout(r, 500); });
       uit.koelWeer = activePIDs.has('0105'); uit.handmatig = manualPIDs.has('0105');
@@ -215,9 +206,8 @@ function beoordeel(m) {
     toets('in Slim visueel staat de versnelling niet ook nog in de topbalk (daarbuiten wel)',
       mid.topbalk.visueel === 'none' && mid.topbalk.slim !== 'none', JSON.stringify(mid.topbalk));
     toets('achteruit is R en neutraal N (niet "-1" en "0")', mid.achteruit === 'R' && mid.neutraal === 'N', JSON.stringify(mid));
-    toets('koelwaterbalkje: 130 °C vol, 40 °C leeg', mid.koelVol === mid.H && mid.koelLeeg === 0, JSON.stringify(mid));
-    toets('brandstofbalkje: 50% is half', Math.abs(mid.tankHalf - mid.H / 2) < 0.05, JSON.stringify(mid));
-    toets('pedaalbalkje: 45 % bij een rust van 15 % is half ingetrapt — vult 50, met "50%" erachter', mid.pedaal.h === 50 && mid.pedaal.tekst === '50%', JSON.stringify(mid.pedaal));
+    toets('de koelwaterboog: 130 °C vol, 40 °C leeg', mid.koelVol === mid.H && mid.koelLeeg === 0, JSON.stringify(mid));
+    toets('de brandstofboog: 50% is half', Math.abs(mid.tankHalf - mid.H / 2) < 0.05, JSON.stringify(mid));
     toets('Slim visueel openen zet een uitgezette sensor van de meter weer aan, niet als handmatige keuze', mid.koelWeer && !mid.handmatig, JSON.stringify(mid));
     const alarm = await app.ev(`(function(){
       PLVisueel._nieuweSessie();
@@ -320,8 +310,10 @@ function beoordeel(m) {
       setPidView('visueel');
       return { open:open, dicht:dicht, rem:PLVisueel.REM_MS };
     })()`);
-    toets('open: de gasklep geremd, het pedaal in zijn rij niet (#371)',
-      rem.open.klep >= rem.rem && rem.open.pedaal < rem.rem, JSON.stringify(rem));
+    // Sinds 08-10-2026 staat het pedaal niet meer vanzelf op de meter: geremd
+    // zoals de gasklep. Het toerental op de naald blijft vlot.
+    toets('open: gasklep en pedaal geremd (niet op de meter), het toerental niet',
+      rem.open.klep >= rem.rem && rem.open.pedaal >= rem.rem && rem.open.rpm < rem.rem, JSON.stringify(rem));
     toets('open: de motorbelasting staat bij het motorlampje en wordt niet geremd', rem.open.belasting < rem.rem, JSON.stringify(rem));
     toets('open: toerental ongemoeid', rem.open.rpm < rem.rem, JSON.stringify(rem));
     toets('terug naar Slim: de rem is eraf', rem.dicht.aan === false && rem.dicht.klep < rem.rem, JSON.stringify(rem));

@@ -30,17 +30,12 @@
 //              gas los en afremmen. Zie naaldSoort() en vermogenStand()
 //   midden     010D snelheid; erboven de versnelling (PLGear), en zolang die
 //              niet bekend is het PidLane-embleem
-//   onderboog  tussen vijf en zeven uur, op de straal van de toerenboog:
-//              motorolie (015C); zonder olie de laaddruk als de turbo BEWEZEN
-//              is (PLGate). Heeft de auto geen van beide, dan is er geen
-//              onderboog en is de tekening zo hoog als de cirkel
-//   rijen      onder de snelheid drie rijen onder elkaar (#371, 30-09-2026):
-//              koelwater, gaspedaal (0149 → 015A → 014A → 0111) en brandstof,
-//              elk een icoon met een liggend balkje en het getal erachter.
-//              Tot 30-09 stond het pedaal op de onderboog en stonden
-//              koelwater, accu en brandstof als drie plekjes naast elkaar
-//   onder de   het getal van de onderboog, gecentreerd onder de cirkel
-//   cirkel     (buiten de ring, dus de viewBox is dan hoger dan breed)
+//   plekken    vier plekken die je zelf kiest (08-10-2026, zie PLEKKEN):
+//              links en rechts een boog in de onderrand (koelwater en
+//              brandstof), één getal onder de km/h (verbruik nu) en het vak
+//              linksonder (bereik, anders de rit). Tot 08-10 stonden hier
+//              drie rijtjes met een balkje en een onderboog voor olie of
+//              laaddruk; die staan nu in Motor en in de trekstrook
 //   meldingen  onder de meter; zie meldingen() hieronder
 //   boven      twee lampjes in de hoeken, op elf en op één uur: links wat de
 //              verbrandingsmotor doet (aan, start/stop, uit) met de
@@ -48,15 +43,16 @@
 //              accu met de spanning (0142); op een hybride twee — de
 //              aandrijfaccu (015B) en het 12V-net (0142). Zie aandrijfLampjes()
 //   banden     rechtsonder een autootje van bovenaf met vier wielen, groen als
-//              alles goed is (PLBanden.mini); tikken opent het bandenvenster
+//              alles goed is (PLBanden.mini); tikken opent het bandenvenster; het vak
+//              linksonder is zijn spiegel
 //
 // Een diesel draait lager: daar loopt de schaal tot 6000 en begint het
 // oranje bij 4500. Zie SCHAAL hieronder en schaalVoor().
 //
-// Bewust NIET op de meter zelf: de gasklepsensoren A/B/C, de tweede en derde
+// Standaard NIET op de meter: de gasklepsensoren A/B/C, de tweede en derde
 // pedaalsensor, ontstekingstiming, raildruk, luchtmassa. Die volgen uit het
-// pedaal en het toerental of zijn getallen voor de monteur. Ze blijven in
-// "Slim".
+// pedaal en het toerental of zijn getallen voor de monteur. Ze staan in
+// "Slim", en wie ze toch wil zet ze zelf op een plek.
 //
 // ── ÉÉN AFWIJKENDE PID MAG DE METER NIET VERSTOREN ─────────────────
 //   1. Elke plek tekent los. Ontbreekt een PID, dan blijft zijn plek leeg met
@@ -147,14 +143,41 @@ const SCHAAL = {
   diesel:  { max:6000, rood:4500 }
 };
 
-const PEDAAL_KETEN = ['0149','015A','014A','0111'];
-// De drie rijen onder de snelheid, van boven naar onder (#371). De accu staat
-// hier niet meer: die is een lampje rechtsboven geworden, net als de motor.
+/* De vier plekken van de Basismeter (08-10-2026). Tot vandaag stonden onder
+   de snelheid drie rijtjes met een balkje van vijf pixels (koelwater, pedaal,
+   brandstof), en een onderboog voor olie of laaddruk die op een auto zonder
+   die twee leeg bleef: "nutteloos, te klein", en de onderrand leeg. Nu:
+     links   een boog in de onderrand, van zeven naar acht uur — koelwater
+     rechts  een boog in de onderrand, van vijf naar vier uur — brandstof
+     midden  één getal onder de km/h — het verbruik van dit moment
+     vak     het vak linksonder, de spiegel van het bandenautootje — het
+             bereik, en zonder bereik de rit
+   Zoals elk dashboard: temperatuur links, brandstof rechts, koud en leeg
+   onderaan. Elke plek is aan te tikken (kiesPlek): de keuze staat in
+   pl_vis_keuze onder "basis/<rol>", net als bij de profielen. Een boog krijgt
+   alleen sensoren met een schaal (boogSchaal), een getal alleen sensoren met
+   een getal (getalKan). Een keuze die op deze auto niet bruikbaar is valt
+   terug op de keten: een keuze maakt nooit iets leger dan automatisch. */
 const PLEKKEN = [
-  { rol:'koel',   keten:['0105','0167'], icoon:'koelwater', naam:'Koelwater' },
-  { rol:'pedaal', keten:PEDAAL_KETEN,    icoon:'pedaal',    naam:'Gaspedaal' },
-  { rol:'tank',   keten:['012F'],        icoon:'brandstof', naam:'Brandstofpeil' }
+  { rol:'links',  soort:'boog',  naam:'Boog links',         keten:['0105','0167'] },
+  { rol:'rechts', soort:'boog',  naam:'Boog rechts',        keten:['012F'] },
+  { rol:'midden', soort:'getal', naam:'Onder de snelheid',  keten:['CA03','CA02','015E'] },
+  { rol:'vak',    soort:'getal', naam:'Vak linksonder',     keten:['CA09'], rit:true }
 ];
+/* De schaal van een boog per PID: waar de vulling begint en vol is. Zonder
+   regel hier de min/max uit de definitie, als die er is en begrensd is: een
+   eigen sensor zonder bereik (max 1e9) of een tekst-PID kan niet op een boog. */
+const BOOG_SCHAAL = {
+  '0105':[40,130], '0167':[40,130], '015C':[40,150], '010F':[-20,80], '0146':[-20,40],
+  '012F':[0,100], '015B':[0,100], '0142':[11,15], '0104':[0,100], '0143':[0,100],
+  '0149':[0,100], '015A':[0,100], '014A':[0,100], '0111':[0,100], 'CA04':[-1,1.5]
+};
+// Het icoon boven de waarde van een boog. Zonder icoon staat er een kort woord.
+const PLEK_ICOON = {
+  '0105':'koelwater', '0167':'koelwater', '015C':'olie', '012F':'brandstof', '0142':'accu', '015B':'accu',
+  '0149':'pedaal', '015A':'pedaal', '014A':'pedaal', '0111':'gasklep', '010B':'turbo', 'CA04':'turbo',
+  '0104':'motor', '0143':'motor', 'CA03':'verbruik', 'CA02':'verbruik', '015E':'verbruik'
+};
 const ACCU_PID = '0142';
 // De spanning op het accubalkje: 11 V leeg, 15 V vol. Een rustende accu
 // (12,6 V) staat dan op 40%, een ladende dynamo (14,2 V) op 80%.
@@ -221,7 +244,7 @@ function trekAan(){ return caravanLoopt() || trekSituatie(); }
    auto heeft (`heeft`), tenzij er uit die keten al een aanstaat of de klant
    hem verborgen heeft. Puur: test-visueel.js toetst hem los. */
 function nodigePids(heeft, actief, verborgen, trek, extra){
-  const ketens=[['010C'],['010D'],['015C']];
+  const ketens=[['010C'],['010D']];
   PLEKKEN.forEach(function(r){ ketens.push(r.keten); });
   ketens.push([ACCU_PID]);
   if(trek) TREK.forEach(function(t){ if(t.keten && !t.turbo) ketens.push(t.keten); });
@@ -258,7 +281,7 @@ function zorgPids(){
 const G = {
   C: 160,
   R_RING: 152,                  // buitenrand, lijn 2
-  R_BOOG: 140, B_BOOG: 6,       // de gevulde toerenboog, en de onderboog
+  R_BOOG: 140, B_BOOG: 6,       // de gevulde toerenboog, en de twee bogen onderin
   R_STREEP_UIT: 132,            // alle streepjes eindigen hier
   R_STREEP_GROOT: 118,          // …en beginnen hier (per 1000)
   R_STREEP_KLEIN: 125,          // …of hier (per 500)
@@ -267,12 +290,14 @@ const G = {
   NAALD: 126, NAALD_STAART: 16, R_NAAF: 8,
   A0: -120, A1: 120,            // toerenschaal
   RPM_MAX: 8000,
-  // De onderboog: van zeven uur (210°) naar vijf uur (150°), dus van links
-  // naar rechts gevuld — koud links, heet rechts.
-  O0: 210, O1: 150,
-  OLIE_LO: 40, OLIE_HI: 150,
-  // Laaddruk: −1 … +1,5 bar op de onderboog, nul op 40% van links.
-  BAR_LO: -1, BAR_HI: 1.5,
+  // De twee bogen in de onderrand (08-10-2026), in het gat tussen 120° en
+  // 240° dat de toerenboog openlaat. Elk vult van onder naar boven: koud en
+  // leeg onderaan, zoals de temperatuur- en brandstofmeter van een auto.
+  // Acht graden van de toerenboog af, en twintig graden van elkaar.
+  L0: 192, L1: 232, R0: 168, R1: 128,
+  // Icoon en waarde van een boog staan BINNEN de ring, op de middelste hoek
+  // van hun boog: het icoon erboven, de waarde eronder.
+  R_PLEK: 106, ICOON_PLEK: 14, DY_ICOON_PLEK: -18, FS_PLEK: 15,
   // Het midden. De snelheid staat ONDER de naaf: boven de naaf veegt de
   // naald bij elk toerental tussen 1000 en 7000 over de tekst heen, eronder
   // alleen bij stationair en boven 7000. Boven de naaf staat sinds 26-09 het
@@ -282,22 +307,13 @@ const G = {
   // Lettermaten staan HIER en niet in de CSS: test-visueel.js rekent er de
   // tekstvakken mee uit, en een maat die op twee plekken staat loopt uit de pas.
   FS_SNEL: 38, FS_KLEIN: 14, FS_EENHEID: 11,
-  // De drie rijen onder de snelheid (#371): per rij een icoon, een liggend
-  // balkje en het getal erachter, links uitgelijnd zodat "118°" naar rechts
-  // groeit en het balkje niet raakt. De onderste rij staat vlak boven de
-  // onderboog; test-visueel.js rekent na dat hij die niet raakt.
-  RIJ_Y: [238, 255, 272], RIJ_ICOON: 14, X_RIJ_ICOON: 108,
-  X_BALK0: 120, X_BALK1: 186, B_BALK: 5, X_RIJ_TEKST: 191, FS_RIJ: 11,
-  // Het getal van de onderboog staat ONDER de cirkel, gecentreerd onder zijn
-  // balk: icoon en getal naast elkaar, het getal links uitgelijnd zodat een
-  // langere laaddruk ("≈+1,5 bar") naar rechts groeit en het icoon niet raakt.
-  // Zonder onderboog staat daar niets, en is de tekening zo hoog als de
-  // cirkel (VB_KORT): geen lege strook tussen de meter en de meldingen.
-  VB_H: 346, VB_KORT: 320, ICOON_ONDER: 20, X_ONDER_ICOON: 136, X_ONDER_TEKST: 150, Y_ONDER: 330,
+  // Het getal onder de snelheid (08-10-2026): groot genoeg om onder het
+  // rijden te lezen, met de eenheid eronder. Tussen de waarden van de twee
+  // bogen in; test-visueel.js rekent na dat ze elkaar niet raken.
+  Y_MID: 250, FS_MID: 22, Y_MID_EENHEID: 270,
+  VB: 320,
   // De versnelling, in het midden op de plek van het embleem (27-09-2026).
-  FS_GEAR: 34,
-  // Het bereik van het koelwaterbalkje.
-  KOEL_LO: 40, KOEL_HI: 130
+  FS_GEAR: 34
 };
 
 function P(r,a){ const t=(a-90)*Math.PI/180; return [G.C+r*Math.cos(t), G.C+r*Math.sin(t)]; }
@@ -307,8 +323,9 @@ function boogPad(r,a0,a1){
   const p0=P(r,a0), p1=P(r,a1), groot=Math.abs(a1-a0)>180?1:0, zin=a1>a0?1:0;
   return 'M'+f2(p0[0])+' '+f2(p0[1])+'A'+r+' '+r+' 0 '+groot+' '+zin+' '+f2(p1[0])+' '+f2(p1[1]);
 }
-function hoekOnder(d){ return G.O0 + (G.O1-G.O0)*d/100; }
-function hoekLaaddrukNul(){ return hoekOnder((0-G.BAR_LO)/(G.BAR_HI-G.BAR_LO)*100); }
+// Begin- en eindhoek van een boog onderin; d = vulling 0–100.
+function boogHoeken(rol){ return rol==='links' ? [G.L0, G.L1] : [G.R0, G.R1]; }
+function hoekPlek(rol, d){ const h=boogHoeken(rol); return h[0] + (h[1]-h[0])*d/100; }
 
 // ── STAND: getal in, begrensde aansturing uit ─────────────────────
 function deel(v,lo,hi){
@@ -322,18 +339,37 @@ function tekst(rol, v){
   switch(rol){
     case 'snel':  return String(Math.max(0, Math.min(999, Math.round(n))));
     case 'toeren':return String(Math.max(0, Math.min(9990, Math.round(n/10)*10)));
-    case 'pedaal':
-    case 'tank':  return String(Math.max(0, Math.min(100, Math.round(n))));
-    case 'koel':
-    case 'olie':  return String(Math.max(-99, Math.min(999, Math.round(n))));
     case 'accu':  return Math.max(0, Math.min(99, n)).toFixed(1).replace('.',',');
-    case 'laaddruk': { const b=Math.max(-9.9, Math.min(9.9, n)); return (b>0.04?'+':'')+b.toFixed(1).replace('.',','); }
   }
   return String(Math.round(n));
 }
+/* Het getal van een plek, voor elke sensor die er gekozen kan worden: hele
+   getallen vanaf 100 (of als de eenheid ° of % is), anders één decimaal met
+   een komma. Begrensd op `max` tekens (standaard vijf; op een boog vier min
+   het ° of %), zodat het nooit buiten zijn vak loopt: past de decimaal niet,
+   dan het hele getal, en past dat niet, dan "999+" of "−99". */
+function plekGetal(v, eenheid, max){
+  const n=Number(v), m=(max>=2 ? max : 5);
+  if(v===null || v===undefined || v==='' || !isFinite(n)) return '—';
+  const heel=String(Math.round(n)).replace('-','−');
+  const dec=(Math.round(n*10)/10).toFixed(1).replace('.',',').replace('-','−');
+  const t=(Math.abs(n)>=100 || /[°%]/.test(String(eenheid||''))) ? heel : dec;
+  if(t.length<=m) return t;
+  if(heel.length<=m) return heel;
+  return n>0 ? '9'.repeat(m-1)+'+' : '−'+'9'.repeat(m-1);
+}
+/* De eenheid zoals hij op de meter staat. Op een boog alleen ° en % achter
+   het getal (de rest is te breed en het icoon zegt al wat het is); onder het
+   getal in het midden en in het vak de hele eenheid, leesbaar geschreven. */
+function plekEenheid(u){
+  const e=String(u||'').trim();
+  if(/^L\/100 ?km$/i.test(e)) return 'l/100 km';
+  if(/^L\/h$/i.test(e)) return 'l/u';
+  return e;
+}
+function boogAchter(u){ const e=String(u||''); return /°/.test(e) ? '°' : e==='%' ? '%' : ''; }
 /* De enige plek waar een meetwaarde iets aan de meter verandert. Geeft
-   {hoek, deel, tekst} terug — of voor laaddruk {vac, boost, tekst} — en elk
-   veld is begrensd. `max` is het einde van de toerenschaal (standaard
+   {hoek, deel, tekst} terug, en elk veld is begrensd. `max` is het einde van de toerenschaal (standaard
    G.RPM_MAX; een diesel geeft 6000 mee). `leeg` is true als er geen
    bruikbare waarde is: dan blijft de naald op het begin en staat er een
    streepje. */
@@ -342,38 +378,32 @@ function stand(rol, v, max){
     const d=deel(v,0,(max>0?max:G.RPM_MAX));
     return { leeg:d===null, deel:d===null?0:d, hoek:G.A0+(G.A1-G.A0)*(d===null?0:d)/100, tekst:tekst('toeren',v) };
   }
-  if(rol==='pedaal'){
-    const d=deel(v,0,100);
-    return { leeg:d===null, deel:d===null?0:d, tekst:tekst('pedaal',v) };
-  }
-  if(rol==='olie'){
-    const d=deel(v,G.OLIE_LO,G.OLIE_HI);
-    return { leeg:d===null, deel:d===null?0:d, tekst:tekst('olie',v) };
-  }
-  if(rol==='laaddruk'){
-    const n=Number(v);
-    if(v===null || v===undefined || v==='' || !isFinite(n)) return { leeg:true, vac:0, boost:0, tekst:'—' };
-    return { leeg:false,
-             vac:   n<0 ? Math.min(100, (-n)/(-G.BAR_LO)*100) : 0,
-             boost: n>0 ? Math.min(100, n/G.BAR_HI*100) : 0,
-             tekst: tekst('laaddruk',n) };
-  }
   const n=Number(v);
   return { leeg:(v===null || v===undefined || v==='' || !isFinite(n)), tekst:tekst(rol,v) };
 }
 
-// Laaddruk in bar: inlaatdruk min omgevingsdruk. Zonder gemeten omgevings-
-// druk (0133, of de terugval van PLGate uit MAP bij stilstaande motor) wordt
-// het de standaardatmosfeer. Dat is op zeeniveau exact en op 1500 m zo'n
-// 0,15 bar te hoog; de meter draagt daarom altijd een ≈, en de tooltip zegt
-// welke van de twee het is.
-const STANDAARD_KPA = 101.3;
-function laaddrukNu(map, baro){
-  const m=Number(map);
-  if(map===null || map===undefined || !isFinite(m)) return null;
-  const b=Number(baro);
-  const echt=(baro!==null && baro!==undefined && isFinite(b) && b>0);
-  return (m-(echt?b:STANDAARD_KPA))/100;
+/* De schaal van een boog voor deze PID, [lo, hi], of null als hij niet op
+   een boog kan: geen definitie, geen begrensd bereik, of een tekst-PID. Puur
+   op de definitie die meegegeven wordt; BOOG_SCHAAL gaat voor. */
+function boogSchaal(pid, def){
+  const p=String(pid||'').toUpperCase();
+  if(BOOG_SCHAAL[p]) return BOOG_SCHAAL[p].slice();
+  if(!def || ANKERS.has(p) || !getalKan(p, def)) return null;
+  const lo=Number(def.min), hi=Number(typeof def.balkVol==='number' ? def.balkVol : def.max);
+  if(!isFinite(lo) || !isFinite(hi) || !(hi>lo) || hi-lo>1e5) return null;
+  return [lo, hi];
+}
+/* Kan deze PID als getal op een plek? Niet de toerental en snelheid (die
+   staan al op de meter), geen tekst-PID (status, brandstofsysteem) en geen
+   telefoonsensor. */
+function getalKan(pid, def){
+  const p=String(pid||'').toUpperCase();
+  if(!def || ANKERS.has(p)) return false;
+  try{
+    if(window.PID_TEKST && window.PID_TEKST[p]) return false;
+    if(typeof plIsTelemetrie==='function' && plIsTelemetrie(p)) return false;
+  }catch(e){ console.warn('PLVisueel: soort van '+p+' niet te bepalen', e); return false; }
+  return true;
 }
 
 // ── DE VERMOGENSNAALD (07-10-2026, #432) ──────────────────────────
@@ -567,24 +597,27 @@ function embleem(){
     '<path d="M404 52C409 79 417 88 446 96C417 104 409 113 404 140C399 113 391 104 362 96C391 88 399 79 404 52Z" fill="url(#visLogoSp)"/>'+
     '</svg>';
 }
-// Eén rij onder de snelheid: icoon, liggend balkje, getal. Het balkje is
-// hetzelfde trucje als de bogen — een vast pad met pathLength=100 dat via
-// stroke-dasharray gevuld wordt — dus het kan nooit langer worden dan zijn spoor.
-function rij(r, y){
-  const d='M'+G.X_BALK0+' '+y+'H'+G.X_BALK1;
-  return '<g id="visp-'+r.rol+'" class="vis-plek vis-rij '+r.rol+' geen">'+
-    icoonVak('visi-'+r.rol, G.X_RIJ_ICOON, y, G.RIJ_ICOON)+
-    '<path class="vis-balk-spoor" d="'+d+'" stroke-width="'+G.B_BALK+'"/>'+
-    '<path id="viss-'+r.rol+'" class="vis-balk" pathLength="100" stroke-dasharray="0 200" d="'+d+'" stroke-width="'+G.B_BALK+'"/>'+
-    tekstEl('visv-'+r.rol, 'vis-klein', G.X_RIJ_TEKST, y, G.FS_RIJ, '—', true)+'</g>';
+/* Een boog onderin (08-10-2026): spoor, vulling, icoon en waarde. De
+   vulling is hetzelfde trucje als de toerenboog — een vast pad met
+   pathLength=100 dat via stroke-dasharray gevuld wordt — dus hij kan nooit
+   langer worden dan zijn spoor. Het brede doorzichtige pad eronder is het
+   tikvlak: een boog van zes pixels raak je niet met een duim. */
+function plekBoog(rol){
+  const h=boogHoeken(rol), m=(h[0]+h[1])/2, p=P(G.R_PLEK, m);
+  return '<g id="visp-'+rol+'" class="vis-plek vis-boog '+rol+' geen" data-plek="'+rol+'">'+
+    '<path class="vis-tik" d="'+boogPad(G.R_BOOG-14,h[0],h[1])+'" stroke-width="44"/>'+
+    '<path class="vis-spoor" d="'+boogPad(G.R_BOOG,h[0],h[1])+'" stroke-width="'+G.B_BOOG+'"/>'+
+    '<path id="viss-'+rol+'" class="vis-vul" pathLength="100" stroke-dasharray="0 200" d="'+boogPad(G.R_BOOG,h[0],h[1])+'" stroke-width="'+G.B_BOOG+'"/>'+
+    icoonVak('visi-'+rol, f2(p[0]), f2(p[1]+G.DY_ICOON_PLEK), G.ICOON_PLEK)+
+    tekstEl('visn-'+rol, 'vis-plek-naam', f2(p[0]), f2(p[1]+G.DY_ICOON_PLEK), G.FS_EENHEID, '')+
+    tekstEl('visv-'+rol, 'vis-klein', f2(p[0]), f2(p[1]), G.FS_PLEK, '—')+'</g>';
 }
-// Vulling 0–100 van een balkje; null = geen waarde. Koelwater loopt van
-// KOEL_LO tot KOEL_HI, brandstof en pedaal zijn al een percentage.
-function staafDeel(rol, v){
-  const n=Number(v);
-  if(v===null || v===undefined || v==='' || !isFinite(n)) return null;
-  const d = rol==='koel' ? (n-G.KOEL_LO)/(G.KOEL_HI-G.KOEL_LO)*100 : n;
-  return Math.max(0, Math.min(100, d));
+// Het getal onder de snelheid, met de eenheid eronder.
+function plekMidden(){
+  return '<g id="visp-midden" class="vis-plek vis-getal midden geen" data-plek="midden">'+
+    '<rect class="vis-tik" x="'+(G.C-40)+'" y="'+(G.Y_MID-18)+'" width="80" height="'+(G.Y_MID_EENHEID-G.Y_MID+28)+'"/>'+
+    tekstEl('visv-midden', 'vis-mid', G.C, G.Y_MID, G.FS_MID, '—')+
+    tekstEl('vise-midden', 'vis-eenheid', G.C, G.Y_MID_EENHEID, G.FS_EENHEID, '')+'</g>';
 }
 // De versnelling als tekst: N, R of het getal; '' = onbekend (embleem).
 function gearTekst(g){
@@ -621,7 +654,7 @@ function vermogenPlaat(){
   s+=tekstEl('', 'vis-cijfer laad', f2(pl[0]), f2(pl[1]), G.FS_EENHEID, '⚡');
   return s;
 }
-function wijzerplaat(wH, olieWH, olieDH, max, soort){
+function wijzerplaat(wH, max, soort){
   const C=G.C, M=(max>0?max:G.RPM_MAX);
   let s='';
   s+='<circle class="vis-plaat" cx="'+C+'" cy="'+C+'" r="'+G.R_RING+'"/>';
@@ -637,25 +670,13 @@ function wijzerplaat(wH, olieWH, olieDH, max, soort){
   }
   s+='<g id="visg-logo">'+embleem()+'</g>';
   s+=tekstEl('vis-gear', 'vis-gear', C, G.Y_LOGO, G.FS_GEAR, '');
-  // De onderboog. Alle paden staan er altijd (vaste tekening); de CSS toont
-  // per soort (olie, pedaal, laaddruk) alleen wat erbij hoort.
-  const z=hoekLaaddrukNul();
-  s+='<g id="visg-onder" class="vis-slot leeg">'+
-       '<path class="vis-spoor" d="'+boogPad(G.R_BOOG,G.O0,G.O1)+'" stroke-width="'+G.B_BOOG+'"/>'+
-       (olieWH ? '<path class="vis-zone olie" d="'+boogPad(G.R_BOOG,hoekOnder(deel(olieWH,G.OLIE_LO,G.OLIE_HI)),hoekOnder(deel(olieDH||G.OLIE_HI,G.OLIE_LO,G.OLIE_HI)))+'" stroke-width="'+G.B_BOOG+'"/>' : '')+
-       (olieDH && olieDH<G.OLIE_HI ? '<path class="vis-zone olie rood" d="'+boogPad(G.R_BOOG,hoekOnder(deel(olieDH,G.OLIE_LO,G.OLIE_HI)),G.O1)+'" stroke-width="'+G.B_BOOG+'"/>' : '')+
-       '<path id="vis-onderboog" class="vis-vul" pathLength="100" stroke-dasharray="0 200" d="'+boogPad(G.R_BOOG,G.O0,G.O1)+'" stroke-width="'+G.B_BOOG+'"/>'+
-       '<path id="vis-vacboog" class="vis-vul vac" pathLength="100" stroke-dasharray="0 200" d="'+boogPad(G.R_BOOG,z,G.O0)+'" stroke-width="'+G.B_BOOG+'"/>'+
-       '<path id="vis-boostboog" class="vis-vul" pathLength="100" stroke-dasharray="0 200" d="'+boogPad(G.R_BOOG,z,G.O1)+'" stroke-width="'+G.B_BOOG+'"/>'+
-       lijn(G.R_BOOG-5, G.R_BOOG+5, z, 'vis-nul')+
-       icoonVak('vis-ondericoon', G.X_ONDER_ICOON, G.Y_ONDER, G.ICOON_ONDER)+
-       tekstEl('vis-ondertekst', 'vis-klein', G.X_ONDER_TEKST, G.Y_ONDER, G.FS_KLEIN, '—', true)+
-     '</g>';
+  // De twee bogen onderin (08-10-2026).
+  s+=plekBoog('links')+plekBoog('rechts');
   // Midden: de snelheid.
   s+=tekstEl('vis-snel', 'vis-snel', C, G.Y_SNEL, G.FS_SNEL, '—');
   s+=tekstEl('', 'vis-eenheid', C, G.Y_KMH, G.FS_EENHEID, 'km/h');
-  // De drie rijen.
-  PLEKKEN.forEach(function(r, i){ s+=rij(r, G.RIJ_Y[i]); });
+  // Het getal eronder.
+  s+=plekMidden();
   // Sleepwijzer en naald: één vorm op twaalf uur, gedraaid om het midden.
   const pk0=P(G.R_PIEK_IN,0), pkL=P(G.R_PIEK_UIT,-2.2), pkR=P(G.R_PIEK_UIT,2.2);
   s+='<g id="vis-piek" class="vis-piek" style="display:none;transform:rotate('+G.A0+'deg)">'+
@@ -669,7 +690,7 @@ function wijzerplaat(wH, olieWH, olieDH, max, soort){
 
 // ── DE INDELING ───────────────────────────────────────────────────
 function leegSessie(){
-  return { sinds:Date.now(), openMs:0, rijdendMs:0, trekMs:0, maxTrend:null, alarmen:0, tempo:{}, onder:{}, turbo:false,
+  return { sinds:Date.now(), openMs:0, rijdendMs:0, trekMs:0, maxTrend:null, alarmen:0, tempo:{}, turbo:false,
            traag:[], constant:{ n:0, som:0, kmhSom:0 }, herbouwReden:{} };
 }
 let _sessie = leegSessie(), _sessieT = 0, _snelheden = [], _laatsteAlarm = 0;
@@ -684,7 +705,11 @@ const _staat = { aan:false, start:0, traag:new Set(), turboVast:false, handteken
 // vak wisselt rond; de keuze wordt per toestel onthouden.
 function PF(){ return window.PLVisProfiel || null; }
 function profielNu(){ return (PF() && _staat.profiel && PF().geldig(_staat.profiel)) ? _staat.profiel : 'basis'; }
-function profielKetens(){ const p=profielNu(); return (p!=='basis' && PF()) ? PF().ketens(p, leesMotor(), profielOpts()) : []; }
+function profielKetens(){
+  const p=profielNu();
+  if(p==='basis'){ const k=basisKeuzes(); return PLEKKEN.map(function(x){ return plekKeten(x, k); }); }
+  return PF() ? PF().ketens(p, leesMotor(), profielOpts()) : [];
+}
 /* Wat het profiel nodig heeft om een plek zelf in te vullen (06-10-2026): de
    keuzes van dit toestel en de keuzelijst (naam, eenheid, schaal). */
 function profielOpts(){
@@ -699,6 +724,22 @@ function profielOpts(){
    sensoren van deze auto, die met dezelfde eenheid bovenaan. De telemetrie
    doet niet mee: die plekken zijn de telefoon, niet de auto. */
 function kandidaten(eenheid){
+  const lijst=kiesbaar();
+  const temp=/°/.test(String(eenheid||''));
+  const zelfde=function(d){ const u=String(d.unit||''); return temp ? /°/.test(u) : (u && u===eenheid); };
+  return lijst.filter(zelfde).concat(lijst.filter(function(d){ return !zelfde(d); }));
+}
+/* De sensoren voor een plek van de Basismeter (08-10-2026): een boog krijgt
+   alleen wat een schaal heeft, een getal alleen wat een getal is. Wat de
+   meter al toont (toerental, snelheid) staat er niet tussen. */
+function kandidatenPlek(soort){
+  return kiesbaar().filter(function(d){
+    const def=defVan(d.pid) || d;
+    return soort==='boog' ? !!boogSchaal(d.pid, def) : getalKan(d.pid, def);
+  });
+}
+// Wat er in de keuzelijst van een plek mag: niet verborgen, geen telefoon.
+function kiesbaar(){
   let lijst=[];
   try{ lijst=(typeof discoveredPIDDefs!=='undefined' && discoveredPIDDefs) ? discoveredPIDDefs.slice() : []; }
   catch(e){ console.warn('PLVisueel: keuzelijst onleesbaar', e); }
@@ -710,16 +751,31 @@ function kandidaten(eenheid){
     }catch(e){ console.warn('PLVisueel: kandidaat '+d.pid+' niet te beoordelen', e); return false; }
     return true;
   });
-  const temp=/°/.test(String(eenheid||''));
-  const zelfde=function(d){ const u=String(d.unit||''); return temp ? /°/.test(u) : (u && u===eenheid); };
-  return lijst.filter(zelfde).concat(lijst.filter(function(d){ return !zelfde(d); }));
+  return lijst;
 }
+// Wat "Automatisch" op een plek van de Basismeter betekent, in woorden.
+const PLEK_AUTO = { links:'koelwater', rechts:'het brandstofpeil', midden:'het verbruik van dit moment',
+                    vak:'het bereik met deze tank, en zonder tankinhoud de rit' };
 function kiesPlek(rol){
-  const P=PF(), pr=profielNu(); if(!P || pr==='basis' || pr==='telemetrie') return;
+  const P=PF(), pr=profielNu(); if(!P || pr==='telemetrie') return;
+  const nu=(P.keuzes()[pr+'/'+rol])||'';
+  if(pr==='basis'){
+    const x=PLEKKEN.filter(function(q){ return q.rol===rol; })[0]; if(!x) return;
+    toonKeuze(pr, rol, x.naam, 'Kies wat hier staat. '+(x.soort==='boog'
+        ? 'Op een boog passen alleen sensoren met een vaste schaal.' : 'Hier passen sensoren met een getal.')+
+      ' Automatisch is '+PLEK_AUTO[rol]+'.', nu, kandidatenPlek(x.soort));
+    return;
+  }
   const z=P.voorInd(pr, _staat.ind && _staat.ind.profiel);
   const x=z && z.plekken ? z.plekken.filter(function(q){ return q.rol===rol; })[0] : null; if(!x) return;
-  const nu=(P.keuzes()[pr+'/'+rol])||'';
   const basis=P.zoek(pr).plekken.filter(function(q){ return q.rol===rol; })[0] || x;
+  toonKeuze(pr, rol, basis.naam, 'Kies welke sensor op deze plek staat. Automatisch neemt de vaste sensor, of een eigen sensor met dezelfde naam.',
+    nu, kandidaten(basis.eenheid));
+}
+/* Het keuzevel: "Automatisch" en de kandidaten. Een keuze gaat naar
+   pl_vis_keuze (PLVisProfiel.zetKeuze) en de meter wordt opnieuw opgebouwd. */
+function toonKeuze(pr, rol, titel, uitleg, nu, lijst){
+  const P=PF();
   let ov=el('plVisKies');
   if(!ov){
     ov=document.createElement('div'); ov.id='plVisKies';
@@ -731,11 +787,11 @@ function kiesPlek(rol){
     return '<button type="button" class="vk-rij'+(nu===pid?' aan':'')+'" data-pid="'+esc(pid)+'">'+
       '<span>'+esc(naam)+'</span><small>'+esc(sub||'')+'</small></button>';
   };
-  ov.innerHTML='<div class="vk-vel"><div class="vk-kop"><h2 id="plVisKiesTtl">'+esc(basis.naam)+'</h2>'+
+  ov.innerHTML='<div class="vk-vel"><div class="vk-kop"><h2 id="plVisKiesTtl">'+esc(titel)+'</h2>'+
     '<button type="button" class="vk-sluit" aria-label="Sluiten" onclick="document.getElementById(\'plVisKies\').style.display=\'none\'">✕</button></div>'+
-    '<p class="vk-uitleg">Kies welke sensor op deze plek staat. Automatisch neemt de vaste sensor, of een eigen sensor met dezelfde naam.</p>'+
+    '<p class="vk-uitleg">'+esc(uitleg)+'</p>'+
     rij('', 'Automatisch', nu ? '' : 'nu gekozen')+
-    kandidaten(basis.eenheid).map(function(d){ return rij(d.pid, d.name, (d.unit||'')+' · '+d.pid); }).join('')+'</div>';
+    lijst.map(function(d){ return rij(d.pid, d.name, (d.unit||'')+' · '+d.pid); }).join('')+'</div>';
   ov.querySelectorAll('.vk-rij').forEach(function(b){
     b.onclick=function(){
       P.zetKeuze(pr, rol, b.getAttribute('data-pid'));
@@ -774,8 +830,8 @@ function bruikbaar(pid){
 function eerste(keten){ for(let i=0;i<keten.length;i++){ if(bruikbaar(keten[i])) return keten[i]; } return null; }
 
 /* Is de turbo bewezen? Eén keer ja, altijd ja: de turbo verdwijnt niet
-   halverwege de rit, en een boog die van betekenis wisselt is erger dan een
-   lege. */
+   halverwege de rit, en een tegel in de trekstrook die verschijnt en weer
+   verdwijnt is erger dan een lege. */
 function turboBewezen(){
   if(_staat.turboVast) return true;
   let t=false;
@@ -784,24 +840,21 @@ function turboBewezen(){
   if(t) _staat.turboVast=true;
   return t;
 }
-/* De onderboog: olie, anders laaddruk (alleen met bewezen turbo), anders
-   niets. Het gaspedaal stond hier tot 30-09-2026 als laatste terugval; het
-   heeft nu een eigen rij onder de snelheid (#371). Olie valt nooit af: die
-   is van nature traag en beweegt ook zo. */
-function kiesOnder(){
-  if(bruikbaar('015C')) return { soort:'olie', pid:'015C' };
-  if(turboBewezen() && bruikbaar('010B') && !_staat.traag.has('010B')) return { soort:'laaddruk', pid:'010B' };
-  return null;
-}
-/* Het pedaal voor zijn rij: de eerste uit de keten die er is en op deze auto
-   niet te traag bleek. Een balkje dat eens per seconde verspringt leest als
-   een haperend pedaal, dus dan liever de volgende sensor. */
-function kiesPedaal(){
-  for(let i=0;i<PEDAAL_KETEN.length;i++){
-    const p=PEDAAL_KETEN[i];
-    if(bruikbaar(p) && !_staat.traag.has(p)) return p;
+/* De keten van een plek van de Basismeter: de eigen keuze (pl_vis_keuze,
+   "basis/<rol>") vooraan, dan de vaste keten. Een keuze die niet op deze plek
+   past (een sensor zonder schaal op een boog) telt niet. */
+function plekKeten(x, keuzes){
+  const k=[], kz=keuzes && keuzes['basis/'+x.rol];
+  if(kz){
+    const def=defVan(kz);
+    if(x.soort==='boog' ? boogSchaal(kz, def) : getalKan(kz, def)) k.push(kz);
   }
-  return null;
+  x.keten.forEach(function(q){ if(k.indexOf(q)<0) k.push(q); });
+  return k;
+}
+function basisKeuzes(){
+  try{ return PF() ? PF().keuzes() : {}; }
+  catch(e){ console.warn('PLVisueel: keuzes van de Basismeter onleesbaar — automatisch', e); return {}; }
 }
 
 // Mediaan van de tijd tussen twee metingen, alleen over metingen van ná het
@@ -882,10 +935,11 @@ function indeling(){
   const soort=naaldSoort(motor, !!(res && res.bewijstHybride), !!toeren, !!vraag);
   const ind={ naald: soort==='vermogen' ? vraag : soort==='toeren' ? toeren : null, naaldSoort:soort, toeren:toeren,
               midden:bruikbaar('010D')?'010D':null,
-              onder:kiesOnder(), plekken:{}, motor:motor,
+              plekken:{}, motor:motor,
               lamp:{ belasting:bruikbaar('0104')?'0104':null, accu:bruikbaar('015B')?'015B':null, volt:bruikbaar(ACCU_PID)?ACCU_PID:null },
               schaal:schaalVoor(motor, d10 && d10.wH) };
-  PLEKKEN.forEach(function(r){ ind.plekken[r.rol]=(r.rol==='pedaal') ? kiesPedaal() : eerste(r.keten); });
+  const kz=basisKeuzes();
+  PLEKKEN.forEach(function(r){ ind.plekken[r.rol]=eerste(plekKeten(r, kz)); });
   ind.trek = trekAan() ? trekIndeling(bruikbaar, turboBewezen()) : null;
   const pr=profielNu();
   ind.profiel = (pr!=='basis' && PF()) ? PF().indeling(pr, bruikbaar, motor, profielOpts()) : null;
@@ -897,7 +951,6 @@ function gebruiktePids(ind){
   if(ind.naald) s.add(ind.naald);
   if(ind.toeren) s.add(ind.toeren);
   if(ind.midden) s.add(ind.midden);
-  if(ind.onder){ s.add(ind.onder.pid); if(ind.onder.soort==='laaddruk') s.add('0133'); }
   if(ind.lamp){ if(ind.lamp.belasting) s.add(ind.lamp.belasting); if(ind.lamp.accu) s.add(ind.lamp.accu); if(ind.lamp.volt) s.add(ind.lamp.volt); }
   Object.keys(ind.plekken).forEach(function(k){ if(ind.plekken[k]) s.add(ind.plekken[k]); });
   if(ind.trek) ind.trek.forEach(function(t){ if(t.pid) s.add(t.pid); });
@@ -905,7 +958,7 @@ function gebruiktePids(ind){
   return s;
 }
 function handtekening(ind){
-  return [ind.naaldSoort||'', ind.naald, ind.midden, ind.onder?ind.onder.soort+ind.onder.pid:'', ind.schaal?ind.schaal.max:'',
+  return [ind.naaldSoort||'', ind.naald, ind.midden, ind.schaal?ind.schaal.max:'',
           ind.lamp?(ind.lamp.belasting||'')+(ind.lamp.accu||'')+(ind.lamp.volt||''):'',
           PLEKKEN.map(function(r){ return ind.plekken[r.rol]||''; }).join(','),
           ind.trek ? 'trek:'+ind.trek.map(function(t){ return t.pid||'-'; }).join(',') : '',
@@ -1250,7 +1303,6 @@ function lampjesBij(){
 // ── HET SCHERM ────────────────────────────────────────────────────
 function icoonHtml(naam){ return '<g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+((window.PL_ICOON||{})[naam]||'')+'</g>'; }
 function el(id){ return document.getElementById(id); }
-const ONDER_ICOON = { olie:'olie', laaddruk:'turbo' };
 
 /* WAAROM ER OPNIEUW GEBOUWD WORDT (#338). De teller zei 15× in 39 minuten,
    maar een paar daarvan deed de testrun zelf (begeleide run, meetopdracht,
@@ -1314,13 +1366,15 @@ function bouw(g, reden){
   // terwijl de regel bovenaan dit bestand zegt dat een ontbrekende PID een
   // lege plek is en niets anders. Een auto zonder 010C en zonder pedaal
   // krijgt een naald in rust; snelheid, rijen en lampjes werken gewoon.
-  const dOlie=defVan('015C');
   g.innerHTML='<div class="vis">'+profielKnop()+
     '<div class="vis-bak">'+
       '<div class="vis-lampen"><span class="vis-lamp leeg" id="vis-lamp-motor"></span>'+
         '<span class="vis-lamp leeg" id="vis-lamp-accu"></span></div>'+
-      '<svg class="vis-meter" viewBox="0 0 320 '+(ind.onder ? G.VB_H : G.VB_KORT)+'" role="img" aria-label="'+(ind.naaldSoort==='vermogen' ? 'Vermogen' : 'Toerental')+', snelheid, koelwater, gaspedaal en brandstof">'+
-        wijzerplaat(ind.schaal.rood, dOlie && dOlie.wH, dOlie && dOlie.dH, ind.schaal.max, ind.naaldSoort)+'</svg>'+
+      '<svg class="vis-meter" viewBox="0 0 320 '+G.VB+'" role="img" aria-label="'+(ind.naaldSoort==='vermogen' ? 'Vermogen' : 'Toerental')+' en snelheid, met vier plekken die je zelf kiest">'+
+        wijzerplaat(ind.schaal.rood, ind.schaal.max, ind.naaldSoort)+'</svg>'+
+      // Het vak linksonder, de spiegel van het bandenautootje (08-10-2026).
+      '<button type="button" class="vis-plek vis-vak geen" id="visp-vak" data-plek="vak" aria-label="Vak linksonder: tik om te kiezen wat hier staat">'+
+        '<small id="visn-vak"></small><b id="visv-vak">—</b><span id="vise-vak"></span></button>'+
       // Het bandenlampje rechtsonder, in de lege hoek naast de cirkel
       // (30-09-2026, uit het gebruik): bovenaan zat het tussen de lampjes.
       // Sinds #371 geen bandicoon maar het autootje uit het bandenvenster in
@@ -1330,25 +1384,19 @@ function bouw(g, reden){
     (ind.trek ? '<div class="vis-trek" id="visTrek" aria-label="Trekmodus: caravan of beladen"></div>' : '')+
     '<div class="vis-meldingen" id="visMeld"></div>'+
     '<button class="vis-voet" type="button" onclick="setPidView(\'slim\')">Overige sensoren staan in <b>Slim →</b></button></div>';
-  // Onderboog: soort, icoon en titel.
-  const og=el('visg-onder'), oi=el('vis-ondericoon');
-  if(ind.onder){
-    const o=ind.onder;
-    if(og){ og.classList.add(o.soort);
-            og.insertAdjacentHTML('afterbegin','<title>'+(o.soort==='laaddruk'
-              ? '≈ Laaddruk: inlaatdruk (010B) min omgevingsdruk (0133, anders 101,3 kPa)'
-              : esc(naamVan(o.pid))+' ('+o.pid+')')+'</title>'); }
-    if(oi) oi.innerHTML=icoonHtml(ONDER_ICOON[o.soort]);
-  } else if(og) og.classList.add('afwezig');
-  // Rijen: icoon en titel; zonder PID blijft het een leeg balkje met een streepje.
-  PLEKKEN.forEach(function(r){
-    const i=el('visi-'+r.rol), p=el('visp-'+r.rol), pid=ind.plekken[r.rol];
-    if(i) i.innerHTML=icoonHtml(pid==='0111' ? 'gasklep' : r.icoon);
-    if(p) p.insertAdjacentHTML('afterbegin','<title>'+r.naam+(pid?' ('+pid+')':': niet geselecteerd of niet ondersteund')+'</title>');
+  // De plekken: icoon of kort woord, eenheid en titel. Zonder PID blijft
+  // het een leeg spoor met een streepje; het vak toont dan de rit.
+  PLEKKEN.forEach(function(r){ plekOpbouw(r, ind.plekken[r.rol]); });
+  // Tikken op een plek: zelf kiezen wat er staat. Eén luisteraar op het vak.
+  const bak=g.querySelector('.vis-bak');
+  if(bak) bak.addEventListener('click', function(e){
+    const t=e.target && e.target.closest ? e.target.closest('[data-plek]') : null;
+    if(t) kiesPlek(t.getAttribute('data-plek'));
   });
   // Wat er al binnen is meteen tonen: een herbouw midden in een rit hoort
   // niet eerst een lege meter te laten zien.
   _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
+  ritBij();
   meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
   // De banden gaan niet de pollus in (#396): één keer per verbinding vragen.
   try{ if(window.PLBanden && PLBanden.eenmaal) PLBanden.eenmaal(); }catch(e){ console.warn('PLVisueel: banden niet gevraagd', e); }
@@ -1399,7 +1447,6 @@ function sessieTik(nu){
   const rijdt=typeof kmh==='number' && kmh>=5;
   if(rijdt) S.rijdendMs+=dt;
   if(ind && ind.trek) S.trekMs+=dt;
-  if(ind && ind.onder) S.onder[ind.onder.soort]=(S.onder[ind.onder.soort]||0)+dt;
   if(_staat.turboVast) S.turbo=true;
   _staat.traag.forEach(function(p){ if(S.traag.indexOf(p)<0) S.traag.push(p); });
   // Het gemeten tempo van wat er op de meter staat, alleen tijdens het rijden:
@@ -1436,13 +1483,12 @@ function ritOordeel(S){
   const min=function(ms){ return Math.round((ms||0)/60000); };
   if(!(S.rijdendMs>=RIJ_MIN_MS))
     return { staat:'LET OP', detail:'Slim visueel stond '+min(S.rijdendMs)+' min open tijdens het rijden; nodig: 3 min' };
-  const viel=(S.traag||[]).filter(function(p){ return PEDAAL_KETEN.indexOf(p)>=0 || p==='010B'; });
+  const viel=(S.traag||[]).filter(function(p){ return VRAAG_KETEN.indexOf(p)>=0; });
   const tempo=Object.keys(S.tempo||{}).map(function(p){ return p+' '+Math.round(S.tempo[p].max)+' ms'; }).join(', ');
-  const onder=Object.keys(S.onder||{}).sort(function(a,b){ return S.onder[b]-S.onder[a]; });
   const c=S.constant||{};
   const verbruik=c.n>=10 ? ' · ≈ '+(Math.round(c.som/c.n*10)/10).toString().replace('.',',')+' l/100 km bij constant '+Math.round(c.kmhSom/c.n)+' km/u — leg dit naast de boordcomputer'
     : ' · geen 30 s constant boven 50 km/u gereden, dus geen verbruik om te vergelijken';
-  const kop=min(S.rijdendMs)+' min rijdend; traagste tempo op de meter: '+(tempo||'niets gemeten')+'; onderboog: '+(onder.join(' → ')||'geen')+'; turbo '+(S.turbo?'herkend':'niet herkend');
+  const kop=min(S.rijdendMs)+' min rijdend; traagste tempo op de meter: '+(tempo||'niets gemeten')+'; turbo '+(S.turbo?'herkend':'niet herkend');
   if(viel.length) return { staat:'FOUT', detail:kop+' — van de meter gevallen (te traag): '+viel.join(', ')+verbruik };
   return { staat:'ok', detail:kop+verbruik };
 }
@@ -1483,7 +1529,9 @@ function maat(naam){
   switch(naam){
     case 'visueel-rijdend-min': return Math.round((S.rijdendMs||0)/60000);
     case 'visueel-van-meter':
-      return genoeg ? (S.traag||[]).filter(function(p){ return PEDAAL_KETEN.indexOf(p)>=0 || p==='010B'; }).length : null;
+      // Sinds 08-10-2026 staat er geen pedaalrij meer; wat van de meter kan
+      // vallen is de vraag onder de vermogensnaald.
+      return genoeg ? (S.traag||[]).filter(function(p){ return VRAAG_KETEN.indexOf(p)>=0; }).length : null;
     case 'visueel-herbouw-klant': return genoeg ? herbouwKlant(S) : null;
     default: return null;
   }
@@ -1543,25 +1591,65 @@ function oordeel(pid, v){
 function klasse(e, st){ if(!e) return; e.classList.remove('warn','danger','koud','geen'); if(st && st!=='ok') e.classList.add(st); }
 function vers(id){ const e=el(id); if(e) e.classList.remove('leeg','oud'); }
 
-function onderBij(){
-  const ind=_staat.ind; if(!ind || !ind.onder || typeof pidVals==='undefined') return;
-  const o=ind.onder;
-  if(o.soort==='laaddruk'){
-    let baro=pidVals['0133'];
-    try{ const s=window.PLGate ? window.PLGate.stats() : null; if(s && typeof s.omgevingsdruk==='number') baro=s.omgevingsdruk; }
-    catch(e){ console.warn('PLVisueel: omgevingsdruk onleesbaar', e); }
-    const s=stand('laaddruk', laaddrukNu(pidVals['010B'], baro));
-    zetDash('vis-vacboog', s.vac); zetDash('vis-boostboog', s.boost);
-    zetTekst('vis-ondertekst', s.leeg ? '—' : '≈'+s.tekst+' bar');
-    if(!s.leeg) vers('visg-onder');
-    return;
-  }
-  const v=pidVals[o.pid], s=stand(o.soort, v);
-  zetDash('vis-onderboog', s.deel);
-  zetTekst('vis-ondertekst', s.leeg ? '—' : s.tekst+(o.soort==='olie'?'°':'%'));
-  const st=o.soort==='olie' ? oordeel(o.pid, v) : 'ok';
-  klasse(el('vis-onderboog'), st); klasse(el('visg-onder'), st);
-  if(!s.leeg) vers('visg-onder');
+/* Een plek opbouwen bij een (her)bouw: icoon of kort woord, eenheid, titel.
+   Een gekozen plek krijgt de klasse "gekozen" (een stipje), zodat zichtbaar
+   is dat hier niet de standaard staat. */
+function plekOpbouw(r, pid){
+  const def=pid ? defVan(pid) : null;
+  const ic=pid ? (PLEK_ICOON[pid] || icoonUitNaam(def && def.name)) : (r.soort==='boog' ? PLEK_ICOON[r.keten[0]] : null);
+  const i=el('visi-'+r.rol), n=el('visn-'+r.rol), e=el('vise-'+r.rol), p=el('visp-'+r.rol);
+  if(i) i.innerHTML=ic ? icoonHtml(ic) : '';
+  if(n) n.textContent=(r.rol==='vak') ? vakKop(pid, def) : (ic ? '' : kortNaam(def, 6));
+  if(e) e.textContent=pid ? plekEenheid(def && def.unit).slice(0, 10) : '';
+  if(!p) return;
+  let gekozen=false;
+  try{ gekozen=!!basisKeuzes()['basis/'+r.rol]; }catch(x){ console.warn('PLVisueel: keuze van '+r.rol+' onleesbaar', x); }
+  p.classList.toggle('gekozen', gekozen);
+  const t=(pid ? naamVan(pid)+' ('+pid+')' : (r.rit ? 'Rit: kilometers en minuten' : 'Niet beschikbaar op deze auto'))+' — tik om te kiezen wat hier staat';
+  if(p.tagName==='BUTTON') p.title=t; else p.insertAdjacentHTML('afterbegin','<title>'+esc(t)+'</title>');
+}
+// Een icoon uit de naam van een eigen of berekende sensor; null = geen.
+function icoonUitNaam(naam){
+  const n=String(naam||'');
+  if(/olie|oil/i.test(n)) return 'olie';
+  if(/koelw|coolant/i.test(n)) return 'koelwater';
+  if(/brandstofpeil|tank|fuel level/i.test(n)) return 'brandstof';
+  if(/accu|batter/i.test(n)) return 'accu';
+  if(/band|tire|tyre/i.test(n)) return 'band';
+  if(/turbo|laaddruk|boost/i.test(n)) return 'turbo';
+  if(/verbruik/i.test(n)) return 'verbruik';
+  return null;
+}
+// Het eerste woord van de naam, zonder "(berekend)", hoogstens `max` tekens.
+function kortNaam(def, max){
+  const w=String(def && def.name || '').replace(/\(.*?\)/g,'').trim().split(/\s+/)[0] || '';
+  return w.length>max ? w.slice(0, max-1)+'.' : w;
+}
+function vakKop(pid, def){
+  if(!pid) return 'RIT';
+  if(pid==='CA09') return 'BEREIK';
+  return kortNaam(def, 10).toUpperCase();
+}
+/* Het oordeel van een plek: koelwater, brandstof en accu met hun eigen regel
+   (plekOordeel), de rest met de grenzen uit de PID-definitie. */
+function plekStaat(pid, v, def){
+  const n=Number(v);
+  if(v===null || v===undefined || v==='' || !isFinite(n)) return 'geen';
+  if(pid==='0105' || pid==='0167') return plekOordeel('koel', n, def);
+  if(pid==='012F') return plekOordeel('tank', n, def);
+  if(pid===ACCU_PID) return plekOordeel('accu', n, null, typeof pidVals!=='undefined' ? pidVals['010C'] : null);
+  const o=oordeel(pid, n);
+  return (o==='warn' || o==='danger') ? o : 'ok';
+}
+/* Het vak zonder sensor: de lopende rit (PLGarage), anders een streepje. */
+function ritBij(){
+  const ind=_staat.ind; if(!ind || ind.profiel || ind.plekken.vak) return;
+  let r=null;
+  try{ r=(window.PLGarage && typeof window.PLGarage.ritKort==='function') ? window.PLGarage.ritKort() : null; }
+  catch(e){ console.warn('PLVisueel: rit onleesbaar voor het vak', e); }
+  zetTekst('visv-vak', r ? plekGetal(r.km, 'km') : '—');
+  zetTekst('vise-vak', r ? 'km · '+r.min+' min' : 'nog geen rit');
+  klasse(el('visp-vak'), r ? 'ok' : 'geen');
 }
 
 /* Eén binnenkomende waarde. Aangeroepen vanuit applyG() zolang deze
@@ -1596,7 +1684,6 @@ function bij(pid, val){
     if(ind.lamp.volt) lampjesBij();
   }
   if(pid===ind.midden){ zetTekst('vis-snel', tekst('snel', val)); gearBij(); }
-  if(ind.onder && (pid===ind.onder.pid || (ind.onder.soort==='laaddruk' && pid==='0133'))) onderBij();
   PLEKKEN.forEach(function(r){ if(ind.plekken[r.rol]===pid) plekBij(r.rol, val); });
   if(pid===ind.lamp.belasting || pid===ind.lamp.accu || pid===ind.lamp.volt) lampjesBij();
 }
@@ -1640,15 +1727,18 @@ function vermogenBij(pedaal){
 }
 function plekBij(rol, val){
   const ind=_staat.ind; if(!ind) return;
-  const pid=ind.plekken[rol];
-  // Het getal op de rij: pedaal vanaf de rust, tank gedempt — dezelfde regel
+  const pid=ind.plekken[rol], def=defVan(pid), boog=(rol==='links' || rol==='rechts');
+  // Het getal op de plek: pedaal vanaf de rust, tank gedempt — dezelfde regel
   // als Overzicht en Slim (PLToon). De naald rekent zelf met de ruwe waarde.
   val=PLToon.waarde(pid, val);
-  const st=plekOordeel(rol, val, defVan(pid));
-  zetTekst('visv-'+rol, st==='geen' ? '—' : tekst(rol, val)+(rol==='koel'?'°':'%'));
+  const st=plekStaat(pid, val, def), u=def && def.unit;
+  const achter=boog ? boogAchter(u) : '';
+  zetTekst('visv-'+rol, st==='geen' ? '—' : plekGetal(val, u, boog ? 4-achter.length : 5)+achter);
   const p=el('visp-'+rol); klasse(p, st); if(p) p.classList.remove('oud');
-  const d=st==='geen' ? null : staafDeel(rol, val);
-  zetDash('viss-'+rol, d===null ? 0 : d);
+  if(boog){
+    const sc=boogSchaal(pid, def), d=(st==='geen' || !sc) ? null : deel(val, sc[0], sc[1]);
+    zetDash('viss-'+rol, d===null ? 0 : d);
+  }
 }
 
 // De tik: tempo beoordelen, ouderdom tonen, meldingen bijwerken, en herbouwen
@@ -1665,8 +1755,6 @@ function tik(){
   if(!_staat.aan) return;
   rijVenster(Date.now());
   const ind=_staat.ind;
-  if(ind && ind.onder) beoordeelTempo(ind.onder.pid);
-  if(ind && ind.plekken.pedaal) beoordeelTempo(ind.plekken.pedaal);
   if(ind && ind.naaldSoort==='vermogen' && ind.naald) beoordeelTempo(ind.naald);
   const nieuw=indeling();
   _staat.gebruik=gebruiktePids(nieuw);
@@ -1675,9 +1763,7 @@ function tik(){
     if(g && typeof pidViewMode!=='undefined' && pidViewMode==='visueel'){ bouw(g, 'indeling'); return; }
   }
   const nu=Date.now(), I=_staat.ind; if(!I) return;
-  [['visg-naald',I.naald],['visg-onder',I.onder&&I.onder.pid]].forEach(function(x){
-    const e=el(x[0]); if(e && x[1]) dof(e, isOud(x[1], nu));
-  });
+  const ng=el('visg-naald'); if(ng && I.naald) dof(ng, isOud(I.naald, nu));
   PLEKKEN.forEach(function(r){ const p=el('visp-'+r.rol), pid=I.plekken[r.rol]; if(p && pid) dof(p, isOud(pid, nu)); });
   if(I.profiel && PF()){ try{ PF().dof(I.profiel.id, I.profiel, function(p){ return isOud(p, nu); }); }catch(e){ console.warn('PLVisueel: profiel dof zetten', e); } }
   // De toestand in het midden verandert ook zonder nieuwe pedaalwaarde. De
@@ -1689,6 +1775,7 @@ function tik(){
     _staat.accuLeer=accuLeerBij(_staat.accuLeer, t, pv['015B'], pv['010D'], nu);
   }
   if(I.profiel) energieProfielBij();
+  ritBij();
   meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
 }
 
@@ -1730,16 +1817,17 @@ function stop(){
 
 window.PLVisueel = {
   G:G, REM_MS:VIS_REM_MS, TRAAG_MS:VIS_TRAAG_MS, MIN_N:VIS_MIN_N, AANLOOP_MS:VIS_AANLOOP_MS,
-  PEDAAL_KETEN:PEDAAL_KETEN, PLEKKEN:PLEKKEN, HOOFD:HOOFD, SCHAAL:SCHAAL,
+  PLEKKEN:PLEKKEN, BOOG_SCHAAL:BOOG_SCHAAL, HOOFD:HOOFD, SCHAAL:SCHAAL,
   schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
-  stand:stand, tekst:tekst, laaddrukNu:laaddrukNu, plekOordeel:plekOordeel,
+  stand:stand, tekst:tekst, plekOordeel:plekOordeel, plekGetal:plekGetal, plekEenheid:plekEenheid, boogSchaal:boogSchaal, getalKan:getalKan,
+  plekKeten:plekKeten, plekStaat:plekStaat, kandidatenPlek:kandidatenPlek,
   VERMOGEN:VERMOGEN, VRAAG_KETEN:VRAAG_KETEN, naaldSoort:naaldSoort, vraagUit:vraagUit, laadUit:laadUit, vermogenStand:vermogenStand,
   versnellingUit:versnellingUit, aandeelBij:aandeelBij, aandeelUit:aandeelUit, accuLeerBij:accuLeerBij, elektrischBereik:elektrischBereik, bereikUit:bereikUit,
-  wijzerplaat:wijzerplaat, boogPad:boogPad, hoekOnder:hoekOnder, hoekLaaddrukNul:hoekLaaddrukNul,
+  wijzerplaat:wijzerplaat, boogPad:boogPad, hoekPlek:hoekPlek, boogHoeken:boogHoeken,
   indeling:indeling, gebruiktePids:gebruiktePids, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,
   meldingen:meldingen, schakel:schakel,
   TREK:TREK, TREK_SITUATIES:TREK_SITUATIES, trekIndeling:trekIndeling, koelTrend:koelTrend, trekAan:trekAan,
-  nodigePids:nodigePids, zorgPids:zorgPids, bandenBij:bandenBij, staafDeel:staafDeel, gearTekst:gearTekst,
+  nodigePids:nodigePids, zorgPids:zorgPids, bandenBij:bandenBij, gearTekst:gearTekst,
   sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, herbouwKlant:herbouwKlant, maat:maat,
   rijVenster:rijVenster, VENSTER_MS:VIS_VENSTER_MS, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
   remt:remt, isOud:isOud, bouw:bouw, bij:bij, tik:tik, start:start, stop:stop,

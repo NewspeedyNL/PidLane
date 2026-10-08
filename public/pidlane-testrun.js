@@ -2771,6 +2771,32 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de Basismeter: vier plekken die je zelf kiest (08-10-2026) ──
+  {
+    issue: '—',
+    naam: 'Basismeter: koelwater en brandstof als bogen onderin, verbruik onder de km/h, bereik of rit linksonder — elke plek zelf te kiezen',
+    waarom: 'De drie balkjes onder de snelheid waren te klein om onder het rijden te lezen, en de onderrand bleef leeg op een auto zonder olietemperatuur of turbo.',
+    proef: async function () {
+      var V = window.PLVisueel;
+      if (!V || !V.PLEKKEN || typeof V.boogSchaal !== 'function') return { staat: 'FOUT', detail: 'PLVisueel.PLEKKEN of boogSchaal ontbreekt — pidlane-visueel.js is niet de nieuwe' };
+      var rollen = V.PLEKKEN.map(function (r) { return r.rol; }).join(',');
+      if (rollen !== 'links,rechts,midden,vak') return { staat: 'FOUT', detail: 'de plekken zijn ' + rollen + ', verwacht links,rechts,midden,vak' };
+      var d = getPidDef('0105');
+      if (JSON.stringify(V.boogSchaal('0105', d)) !== '[40,130]') return { staat: 'FOUT', detail: 'koelwater op de boog loopt niet van 40 tot 130' };
+      if (V.boogSchaal('22ABCD', { name: 'x', min: -1e9, max: 1e9 }) !== null) return { staat: 'FOUT', detail: 'een sensor zonder bereik mag op een boog' };
+      if (V.plekGetal(12345.6, 'kPa', 4) !== '999+') return { staat: 'FOUT', detail: 'een te breed getal wordt niet begrensd' };
+      if (typeof pidViewMode === 'undefined' || pidViewMode !== 'visueel' || V.profiel() !== 'basis' || !document.querySelector('#gGrid .vis-meter'))
+        return { staat: 'LET OP', detail: 'de regels kloppen, maar de Basismeter staat niet open — open Live → Visueel → Basis en draai opnieuw' };
+      var ind = V.staat().ind || {}, pl = ind.plekken || {};
+      var bogen = document.querySelectorAll('#gGrid .vis-boog').length, vak = !!document.getElementById('visp-vak');
+      if (bogen !== 2 || !vak) return { staat: 'FOUT', detail: bogen + ' bogen en ' + (vak ? 'een' : 'geen') + ' vak linksonder, verwacht 2 en een' };
+      var tekst = ['links', 'rechts', 'midden', 'vak'].map(function (r) { var e = document.getElementById('visv-' + r); return r + ' ' + (pl[r] || (r === 'vak' ? 'rit' : '—')) + ' = ' + (e ? e.textContent : '?'); }).join(' · ');
+      var keuze = {}; try { keuze = JSON.parse(localStorage.getItem('pl_vis_keuze') || '{}'); } catch (e) { console.warn('blok 5: pl_vis_keuze onleesbaar', e); }
+      var zelf = Object.keys(keuze).filter(function (k) { return /^basis\//.test(k); });
+      return { staat: 'OK', detail: tekst + (zelf.length ? ' · zelf gekozen: ' + zelf.map(function (k) { return k.slice(6) + '=' + keuze[k]; }).join(', ') : ' · alles automatisch') };
+    }
+  },
+
   // ── #418: een drempel maakt de telefoon in de houder niet grijs ──
   {
     issue: '#418',
@@ -3618,12 +3644,10 @@ const PROEVEN_B5 = [
   // alleen als Slim visueel open staat, anders LET OP met wat je moet doen.
   {
     issue: '#371',
-    naam: 'Slim visueel: drie balkjes onder de snelheid, de accu rechtsboven, een autootje voor de banden',
-    waarom: 'De accu stond als getal tussen koelwater en brandstof en het pedaal op de onderboog; Opnemen en Bewaken stonden dubbel naast het vak.',
+    naam: 'Slim visueel: de accu rechtsboven, een autootje voor de banden',
+    waarom: 'De accu stond als getal tussen koelwater en brandstof; Opnemen en Bewaken stonden dubbel naast het vak. (De balkjes onder de snelheid zijn op 08-10-2026 vier plekken geworden; zie de proef daarvoor.)',
     proef: async function () {
       if (!window.PLVisueel || typeof PLVisueel.aandrijfLampjes !== 'function') return { staat: 'FOUT', detail: 'PLVisueel.aandrijfLampjes ontbreekt' };
-      var rollen = PLVisueel.PLEKKEN.map(function (r) { return r.rol; }).join(',');
-      if (rollen !== 'koel,pedaal,tank') return { staat: 'FOUT', detail: 'de rijen zijn ' + rollen + ', verwacht koel,pedaal,tank' };
       var b = PLVisueel.aandrijfLampjes(null, 'benzine', { volt: 12.4, rpm: 800 }).accu;
       if (!b || b.waarde !== '12,4 V' || !/warn/.test(b.soort)) return { staat: 'FOUT', detail: 'benzine, 12,4 V bij 800 rpm hoort een oranje acculampje te geven — kreeg ' + JSON.stringify(b) };
       var h = PLVisueel.aandrijfLampjes(null, 'hybride', { accu: 60, volt: 12.6 }).accu;
@@ -3631,13 +3655,11 @@ const PROEVEN_B5 = [
       if (!window.PLBanden || typeof PLBanden.mini !== 'function') return { staat: 'FOUT', detail: 'PLBanden.mini ontbreekt — het bandenlampje heeft geen autootje' };
       if (typeof pidViewMode === 'undefined' || pidViewMode !== 'visueel' || !document.querySelector('#gGrid .vis-meter'))
         return { staat: 'LET OP', detail: 'de functies kloppen, maar Slim visueel staat niet open — open Live → Visueel en draai opnieuw om het scherm zelf te zien' };
-      var balk = document.querySelectorAll('#gGrid .vis-balk').length;
-      if (balk !== 3) return { staat: 'FOUT', detail: balk + ' balkjes onder de snelheid, verwacht 3' };
       var knop = ['plLiveRec', 'plLiveWaak'].filter(function (id) { var e = document.getElementById(id); return e && getComputedStyle(e).display !== 'none'; });
       if (knop.length) return { staat: 'FOUT', detail: 'onder Slim visueel staat nog ' + knop.join(' en ') };
       var a = document.getElementById('vis-lamp-accu');
       var tekst = a && !/leeg/.test(a.className) ? a.textContent : 'leeg (nog geen spanning binnen)';
-      return { staat: 'OK', detail: '3 balkjes, Opnemen en Bewaken weg; acculampje: ' + tekst };
+      return { staat: 'OK', detail: 'Opnemen en Bewaken weg; acculampje: ' + tekst };
     }
   },
 

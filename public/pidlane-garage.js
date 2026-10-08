@@ -1676,6 +1676,13 @@
     ritBeeindig: function (label) { return ritAf('handmatig', label); },
     ritVerslag: function () { return (_st.ritVerslag || []).slice(); },
     // Voor test-garage.js: de tik en het herstel bij de start, met de echte staat.
+    /* De lopende rit in het kort, voor het vak linksonder van Slim visueel
+       (08-10-2026): kilometers en minuten tot nu. null zonder rit. */
+    ritKort: function () {
+      var r = _st.rit;
+      if (!r || typeof r.km !== 'number') return null;
+      return { km: rond(r.km, 1), min: Math.max(0, Math.round(((r.tLaatst || r.t0) - r.t0) / 60000)) };
+    },
     _ritTikNu: function () { return ritTikNu(); },
     _ritHerstel: function () { return ritHerstel(); },
     tekenKaart: tekenKaart,
