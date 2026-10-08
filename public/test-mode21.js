@@ -348,7 +348,7 @@ function haalZeef(isMode01) {
            { code: '222A06', naam: 'Bandenspanning voor-rechts', formule: psi, eenheid: 'psi', ecu: '720', tempo: 'normaal' },
            { code: '221310', naam: 'Motorolietemperatuur', formule: '((A*256)+B)/100-40', eenheid: '°C' }], 'Mazda');
     t('een band zonder gekozen tempo: op verzoek, buiten de pollus (#396)', [E.opVerzoek('222A05'), E.opVerzoek('222A0A'), E.interval('222A05')].join(','), 'true,true,999999');
-    t('een band met tempo "normaal" blijft elke 2 s (de keuze wint)', E.interval('222A06'), 2000);
+    t('een band met tempo "normaal" blijft op verzoek: de banden vraagt het bandenvenster (08-10-2026)', E.interval('222A06'), 999999);
     t('geen band: elke 2 s', E.interval('221310'), 2000);
     const d = s.ALL_PID_DEFS['222A05'];
     t('psi wordt bar: eenheid', d.unit, 'bar');

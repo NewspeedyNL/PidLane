@@ -129,10 +129,12 @@ updates.length = 0;
 let ooitVast = false, wiebelMax = 0;
 for (let i = 0; i < 200; i++){
   klok += 50; ev({ alpha: 0, beta: 90 + 8 * Math.sin(i / 8), gamma: 0 }); T.tik();
-  if (i === 19) updates.length = 0;     // de eerste seconde: het filter moet de wiebel nog zien
-  const hz = T.houderNu(); if (i >= 20 && hz.vast) ooitVast = true; wiebelMax = Math.max(wiebelMax, hz.wiebel || 0);
+  // De eerste twee seconden: het filter moet de wiebel zien, en wiebelen telt
+  // pas na een seconde boven de grens (een drempel is geen schoot, 08-10-2026).
+  if (i === 39) updates.length = 0;
+  const hz = T.houderNu(); if (i >= 40 && hz.vast) ooitVast = true; wiebelMax = Math.max(wiebelMax, hz.wiebel || 0);
 }
-ok(!ooitVast && updates.length === 0, 'een schommeling van ±8° in 2,5 s (op schoot): na de eerste seconde 9 s lang niet vast, niets telt mee', { wiebelMax, updates: updates.length });
+ok(!ooitVast && updates.length === 0, 'een schommeling van ±8° in 2,5 s (op schoot): na twee seconden 8 s lang niet vast, niets telt mee', { wiebelMax, updates: updates.length });
 ok(T.stats().houder.geweerd >= 6, 'het sessiebewijs telt de geweerde metingen', T.stats().houder);
 
 console.log('\n— de pure regel —');
@@ -140,7 +142,8 @@ const H = o => T.houder(Object.assign({ vers: true, genuld: true, afwijking: 3, 
 ok(H({}).vast, 'alles goed: vast');
 ok(H({ genuld: false }).reden === 'geen-nulstand', 'zonder nulstand nooit vast — ook niet als de rest klopt');
 ok(H({ afwijking: 16 }).reden === 'verschoven' && H({ afwijking: 15 }).vast, 'afwijking: 15° mag, 16° niet');
-ok(H({ wiebel: 9 }).reden === 'wiebelt' && H({ wiebel: 8 }).vast && H({ wiebel: null }).reden === 'wiebelt', 'wiebel boven 8°/s of onbekend: niet vast');
+ok(H({ wiebel: 20, wiebelMs: 1000 }).reden === 'wiebelt' && H({ wiebel: null }).reden === 'wiebelt', 'een seconde boven 8°/s binnen 3 s, of wiebel onbekend: niet vast');
+ok(H({ wiebel: 20, wiebelMs: 999 }).vast, 'korter boven 8°/s (een drempel, een kuil): nog vast');
 ok(H({ okMs: 4999 }).reden === 'wacht' && H({ okMs: 5000 }).vast, 'rust: 5 s');
 ok(H({ vers: false }).reden === 'geen-sensor', 'zonder verse meting: niet vast');
 ok(T.houder({ vers: true, genuld: true, afwijking: null, wiebel: 2, okMs: 9000 }).vast === false, 'afwijking onbekend telt niet als goed');
@@ -194,6 +197,15 @@ ok(gb && Math.abs(gb.dwars + 0.43) < 0.03, 'Zij-G linksaf: −0,43 g (naar links
 ok(T.stats().situatie.scherpeBocht >= 1, 'en het telt als een scherpe bocht', T.stats().situatie);
 rij(200, [-3.9, G, 0], 20, 0, 0.7);
 ok(T.houderNu().vast, 'een rotonde (20 km/u, 0,7 rad/s gieren = 40°/s): de houder blijft vast — gieren is geen wiebel', T.houderNu());
+// Een drempel: de auto knikt 0,3 s met 40°/s voorover en terug, de telefoon
+// in de houder knikt mee. Dat is de auto, niet de houder (08-10-2026).
+rij(200, [0, G, 0], 50, 0);
+let drempelLos = 0;
+for (let k = 0; k < 4; k++){
+  for (let i = 0; i < 6; i++){ klok += 50; M({ accelerationIncludingGravity: { x: 0, y: G, z: 0 }, rotationRate: { alpha: 0, beta: i < 3 ? 40 : -40, gamma: 0 } }); if (!T.houderNu().vast) drempelLos++; }
+  for (let i = 0; i < 60; i++){ klok += 50; M({ accelerationIncludingGravity: { x: 0, y: G, z: 0 }, rotationRate: { alpha: 0, beta: 0, gamma: 0 } }); if (!T.houderNu().vast) drempelLos++; }
+}
+ok(drempelLos === 0, 'vier drempels (0,3 s knikken met 40°/s): de houder blijft vast, de tegel helder', { drempelLos, h: T.houderNu() });
 rij(200, [0, G, 0], 72, 0, 0, 40);
 ok(T.houderNu().reden === 'wiebelt', 'maar 40°/s om de dwarsas, een seconde heen en terug: wiebelt', T.houderNu());
 rij(20, [0, G, 0], 72, 0, 0, 0);

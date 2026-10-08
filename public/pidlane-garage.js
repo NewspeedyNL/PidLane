@@ -1374,7 +1374,8 @@
         return '<div class="gr-item"><label class="gr-sens" style="padding:0"><input type="checkbox" ' + (S.sel.indexOf(e.code) >= 0 ? 'checked ' : '') + 'onchange="PLGarage._sensKies(\'' + esc(e.code) + '\',this.checked)">' +
           '<span><b>' + esc(e.naam) + '</b> <small>' + esc(e.eenheid || '') + '</small><br><small>' + sensRegel(e) + '</small></span></label>' +
           (t ? '<div class="gr-klein" style="margin-top:4px">' + esc(t) + '</div>' : '') +
-          '<label class="gr-veld gr-tempo">Hoe vaak' + tempoKeuze('onchange="PLGarage._sensTempo(' + i + ',this.value)"', e.tempo) + '</label>' +
+          (isBand(e) ? '<div class="gr-klein" style="margin-top:4px">Hoe vaak: in het bandenvenster, samen met de andere banden</div>'
+            : '<label class="gr-veld gr-tempo">Hoe vaak' + tempoKeuze('onchange="PLGarage._sensTempo(' + i + ',this.value)"', e.tempo) + '</label>') +
           '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="PLGarage._sensTest(' + i + ')">▶ Test</button>' : '') +
           (S.ok[e.code] ? '<button class="gr-k klein" onclick="PLGarage._sensDeel(' + i + ')">📤 Deel met rijders van dit model</button>' : '') +
           '<button class="gr-k klein gevaar" onclick="PLGarage._sensWeg(' + i + ')">Weghalen</button></div></div>';
@@ -1409,8 +1410,13 @@
     if (_st.sens && document.getElementById('grsNaam')) _st.sens.form = { naam: e.naam, code: e.code, formule: w('grsFormule'), eenheid: e.eenheid, min: e.min, max: e.max, ecu: e.ecu, tempo: e.tempo };
     return e;
   }
-  // '' = de app kiest: een band elke minuut, de rest elke 2 s (PLEigen).
+  // '' = de app kiest: elke 2 s (PLEigen). Een band heeft geen keuze: die
+  // vraagt het bandenvenster (#396, 08-10-2026).
   var SENS_TEMPO = { '': 'Standaard', snel: 'Elke seconde', normaal: 'Elke 2 s', traag: 'Elke 10 s', minuut: 'Elke minuut' };
+  function isBand(e) {
+    try { return !!(window.PLEigen && PLEigen.bandRol && PLEigen.bandRol(e.naam)); }
+    catch (x) { console.warn('PLGarage: bandRol', x); return false; }
+  }
   function tempoKeuze(attr, nu) {
     return '<select ' + attr + '>' + Object.keys(SENS_TEMPO).map(function (k) {
       return '<option value="' + k + '"' + ((nu || '') === k ? ' selected' : '') + '>' + SENS_TEMPO[k] + '</option>'; }).join('') + '</select>';

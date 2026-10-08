@@ -63,8 +63,14 @@ const NUL_LS = 'pl_telemetrie_nul';
    gieren zijn, als vector gefilterd zodat een trillende houder uitmiddelt en
    een toestel dat gepakt of verschoven wordt niet. Rust: zo lang moet alles
    goed zijn voordat een meting weer meetelt. Getallen uit de tafel, niet uit
-   een rit: zie het issue bij deze wijziging. */
-const HOUDER = { maxAfwijking:15, maxWiebel:8, rustMs:5000, tauWiebelMs:500 };
+   een rit: zie het issue bij deze wijziging.
+   Wiebelen telt pas als het aanhoudt (08-10-2026): minstens wiebelMs boven
+   maxWiebel binnen de laatste vensterMs. Een telefoon die vast in de houder
+   zit draait mee met de carrosserie, en een drempel of kuil is een stoot van
+   een paar tiende seconde boven 8°/s. Met een stoot als oordeel werd de tegel
+   na elke drempel 5 s grijs — over een gewone weg meer grijs dan helder. Een
+   telefoon op schoot schommelt seconden lang en blijft dus wiebelen. */
+const HOUDER = { maxAfwijking:15, maxWiebel:8, rustMs:5000, tauWiebelMs:500, wiebelMs:1000, vensterMs:3000 };
 
 const DEFS = {
   TL01:{ name:'Helling (telefoon)', unit:'°', cat:'Telemetrie', min:-45, max:45,
@@ -288,7 +294,7 @@ function houder(o){
   if (!o || !o.vers) return { vast:false, reden:'geen-sensor' };
   if (!o.genuld) return { vast:false, reden:'geen-nulstand' };
   if (typeof o.afwijking!=='number' || !(o.afwijking<=HOUDER.maxAfwijking)) return { vast:false, reden:'verschoven' };
-  if (typeof o.wiebel!=='number' || !(o.wiebel<=HOUDER.maxWiebel)) return { vast:false, reden:'wiebelt' };
+  if (typeof o.wiebel!=='number' || o.wiebelMs>=HOUDER.wiebelMs) return { vast:false, reden:'wiebelt' };
   if (!(o.okMs>=HOUDER.rustMs)) return { vast:false, reden:'wacht' };
   return { vast:true, reden:'' };
 }
@@ -300,6 +306,8 @@ const HOUDER_UITLEG = {
   'wacht':'de telefoon zit net stil; na 5 s telt hij weer mee'
 };
 let _uRuw=null, _uRuwT=0, _gyroT=0, _w=null, _wT=0, _okSinds=0;
+/* Wanneer de wiebel boven maxWiebel stond: [t, ms] per stap, binnen vensterMs. */
+let _wiebelBoven=[], _wiebelT=0;
 let _houderS={ vastMs:0, losMs:0, t:0, geweerd:0, reden:'' };
 function wiebelBij(w, nu){
   if (!_w || nu-_wT>VERS_MS) _w=w.slice();
@@ -314,9 +322,20 @@ function houderMeting(nu){
   const v=mVers ? _m : (uVers ? _u : null);
   const afwijking=(v && _nul) ? Math.acos(Math.max(-1, Math.min(1, dot(v, _nul))))/RAD : null;
   const wiebel=(_w && nu-_wT<=VERS_MS) ? Math.hypot(_w[0], _w[1], _w[2]) : null;
-  return { vers:!!v, genuld:!!_nul, afwijking, wiebel };
+  return { vers:!!v, genuld:!!_nul, afwijking, wiebel, wiebelMs:wiebelBoven(nu) };
+}
+/* Hoeveel ms de wiebel binnen het venster boven maxWiebel stond. */
+function wiebelBoven(nu){
+  while (_wiebelBoven.length && nu-_wiebelBoven[0][0]>HOUDER.vensterMs) _wiebelBoven.shift();
+  let ms=0;
+  for (let i=0;i<_wiebelBoven.length;i++) ms+=_wiebelBoven[i][1];
+  return ms;
 }
 function houderBij(nu){
+  const w=(_w && nu-_wT<=VERS_MS) ? Math.hypot(_w[0], _w[1], _w[2]) : null;
+  // Een stap telt hoogstens 200 ms: een gat in de events is geen wiebel.
+  if (w!==null && w>HOUDER.maxWiebel && _wiebelT && nu>_wiebelT) _wiebelBoven.push([nu, Math.min(200, nu-_wiebelT)]);
+  _wiebelT=nu;
   const o=houderMeting(nu);
   const goed=houder(Object.assign(o, { okMs:Infinity })).vast;
   if (!goed) _okSinds=0; else if (!_okSinds) _okSinds=nu;
@@ -327,7 +346,7 @@ function houderNu(){
   const h=houder(o);
   return { vast:h.vast, reden:h.reden, uitleg:h.reden ? HOUDER_UITLEG[h.reden] : '',
     afwijking:o.afwijking===null ? null : Math.round(o.afwijking*10)/10,
-    wiebel:o.wiebel===null ? null : Math.round(o.wiebel*10)/10 };
+    wiebel:o.wiebel===null ? null : Math.round(o.wiebel*10)/10, wiebelMs:o.wiebelMs };
 }
 /* Voor de weergaven: is dit een telefoonsensor die nu niet meetelt? */
 function los(pid){ return isTelemetrie(pid) && !houderNu().vast; }

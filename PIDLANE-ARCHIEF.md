@@ -15,6 +15,63 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 08-10-2026 — Banden stonden dubbel in de keuzelijst (#396 herzien)
+
+**Wat er gemeld werd.** In Sensoren stonden op de CX-5 acht losse regels
+"Bandenspanning …" en "Bandtemperatuur …", terwijl dezelfde acht ook al
+gebundeld in het bandenvenster zitten.
+
+**Waarom.** #396 haalde een band alleen uit de keuzelijst als hij geen eigen
+tempo had: "een band met een gekozen tempo houdt dat tempo (de keuze wint)".
+Banden die vóór 06-10 waren toegevoegd of waarbij ooit "Elke minuut" was
+gekozen, hadden zo'n tempo, en stonden dus gewoon in de pollus en de lijst.
+
+**Herzien.** Die uitzondering was fout gekozen: het bandenvenster heeft zijn
+eigen ronde (`PLBanden`, elke vijf minuten met het vinkje), dus een tempo per
+band voegt niets toe en levert alleen de dubbele weergave op. Een band is
+nu altijd op verzoek; Mijn voertuigen toont bij een band geen tempokeuze meer.
+
+## 08-10-2026 — Helling en kanteling werden grijs na een paar seconden (#418)
+
+**Wat er gemeld werd.** Helling en kanteling werden na een paar seconden
+grijs terwijl de telefoon in de houder zat. CAMPAGNE stap 4C zei al: "de
+tegels horen helder te blijven, ook over drempels". Dat bleek dus niet zo.
+
+**Het was niet de verouderingsregel.** Grijs (`grayscale`) is hier de klasse
+`los` van de houderpoort uit #418, niet `stale`/`oud`. `plOud()` geeft een
+telefoonsensor pas na 30 tot 60 s stilte "oud". TL.. heeft geen ECU-tempo en
+valt dus op de 10 s van een niet-01-PID.
+
+**De oorzaak.** De wiebel meet hoe snel de telefoon draait, en een telefoon
+die vast in de houder zit draait mee met de carrosserie. Een drempel of kuil
+laat de auto 0,3 s knikken met tientallen graden per seconde. Na het filter
+van 500 ms is dat ruim boven de 8°/s. Eén zo'n stoot gaf `wiebelt`, en
+daarna 5 s `wacht`. Nagebouwd in `test-telemetrie.js`: vier drempels van
+0,3 s met 40°/s gaven met de oude regel 262 van de 264 momenten grijs. In een
+grovere simulatie (een telefoon vast in de houder, een drempel om de 8 s,
+trilling op 20 Hz) telde hij 33% van de tijd mee. Met de nieuwe regel is
+dat 96%; de rest zijn de eerste 5 s na Nulstellen.
+
+**Wat er veranderd is.** Wiebelen telt pas als het aanhoudt: minstens 1 s
+boven 8°/s binnen de laatste 3 s (`HOUDER.wiebelMs`, `vensterMs`). Een
+telefoon die op schoot schommelt (±8° in 2,5 s) staat ruim de helft van de
+tijd boven de grens en blijft dus weggezet. Wat het kost: zo'n telefoon wordt
+nu na ongeveer 2 s dof in plaats van na 1 s.
+
+**De poll-tempo's van de andere sensoren, nagelopen.** Daar zat het niet.
+Sinds 07-10 gebruikt `plOud()` één regel. Een waarde is pas oud na
+3× het tempo, met een minimum van 5 s, en alleen als hij sinds het laatste
+antwoord wél gevraagd is. Was hij niet gevraagd, dan pas na 60 s of 6× het
+tempo. Het tempo is het ingestelde of, als dat trager is, het gemeten tempo.
+Pauzetijd van de bus telt niet mee. Snel (120 ms) wordt dus pas na 5 s oud,
+300 ms en 1 s ook na 5 s, traag (10 s) na 30 s en zelden (30 tot 60 s) na
+90 tot 180 s. Geremde PIDs in Slim visueel staan op 2 s en worden na 6 s oud.
+Een PID van een ander tempo kan zo niet onterecht grijs worden.
+
+**Wat nog alleen op de weg te beantwoorden is.** Of 1 s op 3 s goed ligt
+voor een ventilatieroosterhouder op klinkers. Blok 5 meldt LET OP als de
+telefoon na Nulstellen meer dan 20% van de rit niet vast was.
+
 ## 07-10-2026 — Het analyserapport: waarom de AI geen tabellen meer maakt (#448)
 
 **Wat er was.** De PDF van een analyse zette de AI-tekst regel voor regel

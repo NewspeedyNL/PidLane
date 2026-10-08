@@ -399,13 +399,15 @@
     if (!naam) return { ok: false, fout: 'Geef de sensor een naam' };
     const ecu = String(e.ecu || '').toUpperCase().replace(/\s+/g, '');
     if (ecu && !EIGEN_ECU.test(ecu)) return { ok: false, fout: 'ECU-adres: 7xx (bijv. 7E1) of 18DAxxF1, of leeg laten' };
-    // Geen tempo gekozen: een band op verzoek (#396) — PLBanden.ververs()
-    // vraagt de vier banden bij het openen van Slim visueel en van het
-    // bandenvenster. Acht PIDs via een ander ECU-adres die elke minuut de
-    // pollus in gaan, kosten busstilte voor één vraag: staan ze op spanning,
-    // worden ze niet te heet. Al het andere elke 2 s.
+    // Een band is altijd op verzoek (#396) — PLBanden.ververs() vraagt de
+    // vier banden bij het openen van Slim visueel en van het bandenvenster,
+    // en met het vinkje elke vijf minuten. Acht PIDs via een ander ECU-adres
+    // die elke minuut de pollus in gaan, kosten busstilte voor één vraag:
+    // staan ze op spanning, worden ze niet te heet. Tot 08-10-2026 won een
+    // gekozen tempo; dan stonden de acht banden én gebundeld in het
+    // bandenvenster én los in de keuzelijst. Al het andere: de keuze, of 2 s.
     const band = bandRol(naam);
-    const tempo = EIGEN_TEMPO[e.tempo] ? e.tempo : (band ? 'opverzoek' : 'normaal');
+    const tempo = band ? 'opverzoek' : (EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal');
     let parse;
     try { parse = formule(e.formule || 'A'); } catch (x) { return { ok: false, fout: 'Formule: ' + x.message }; }
     let min = Number(e.min), max = Number(e.max), unit = String(e.eenheid || '').slice(0, 12);

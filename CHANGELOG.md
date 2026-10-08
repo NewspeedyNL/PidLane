@@ -10,6 +10,26 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 08-10-2026 — Banden niet meer dubbel in de keuzelijst (#396)
+ ═══════════════════════════════════════════════════════════
+
+ - Een band is altijd op verzoek, ook als er een tempo bij gekozen was.
+   Zo'n band stond los in de keuzelijst én gebundeld in het bandenvenster.
+ - Mijn voertuigen toont bij een band geen tempokeuze meer: het
+   bandenvenster vraagt ze, en met het vinkje elke vijf minuten.
+
+ ═══════════════════════════════════════════════════════════
+ 08-10-2026 — Helling en kanteling blijven helder over drempels (#418)
+ ═══════════════════════════════════════════════════════════
+
+ - Een telefoon in de houder knikt mee met de auto. Een drempel gaf
+   "wiebelt" en daarna 5 s grijs. Wiebelen telt nu pas na minstens 1 s
+   boven 8°/s binnen 3 s (HOUDER.wiebelMs, vensterMs).
+ - Op schoot wordt hij nog steeds dof, nu na ongeveer 2 s in plaats van 1 s.
+ - test-telemetrie: vier drempels houden de houder vast; één mutatie
+   erbij; blok 5 meldt het aandeel vast/niet vast van de rit.
+
+ ═══════════════════════════════════════════════════════════
  07-10-2026 — Analyserapport: één vaste PDF voor alle analyses (#448)
  ═══════════════════════════════════════════════════════════
 
