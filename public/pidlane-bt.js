@@ -129,6 +129,9 @@ async function connectSerial(opt){
   catch(e){ console.warn('Busstatistieken resetten mislukt: '+(e.message||e)); }
   connected = false;
   window._btGen = (window._btGen || 0) + 1;   // oude commando's ongeldig maken
+  // Deze verbinding is nu eigenaar van de socket: sppReconnectGuard() blijft
+  // er de komende VERBIND_EIGENAAR_MS af (08-10-2026, zie daar).
+  window._plVerbindSinds = Date.now();
   /* Wanneer begon deze verbindingspoging? (#86, 03-09-2026)
      Blok 1 van de testrun vraagt of een voertuigprofiel bij het verbinden
      geladen had moeten worden. Dat hing aan een leeftijdsdrempel van 0.1 uur,
@@ -1350,6 +1353,22 @@ async function _sendBTOnce(cmd, timeoutMs){
 
 // Reconnect-guard: na lege response checken of de SPP socket nog leeft.
 // Max 1 herverbindpoging per 10 sec om loops te voorkomen.
+//
+// ÉÉN HERVERBINDER TEGELIJK (08-10-2026). Na een stekker eruit en erin liepen
+// er twee: deze guard (socket opnieuw open, en 60 ms later initELM327 met
+// ATWS) en connectSerial() vanuit zes lege antwoorden of de terugkeer naar
+// de app (doSPPConnect: oude socket dicht, init, protocoldetectie met 0100).
+// De warme reset van de guard kwam midden in die 0100, de detectie gaf niets,
+// en de app vroeg om een protocol. Op de Aygo werd dat ISO 9141-2 op een
+// CAN-auto, tot de pair-knop één schone verbinding deed. Nu wijkt de guard:
+//   • zolang een volledige verbinding loopt of gepland staat (_reconnBusy,
+//     of minder dan VERBIND_EIGENAAR_MS sinds connectSerial begon);
+//   • en zodra er tijdens zijn eigen herverbinding een nieuwe verbinding
+//     begint (_btGen verandert): dan geen connect en geen re-init meer.
+const VERBIND_EIGENAAR_MS = 30000;
+function _verbindingHeeftEigenaar(nu){
+  return !!window._reconnBusy || (!!window._plVerbindSinds && nu - window._plVerbindSinds < VERBIND_EIGENAAR_MS);
+}
 async function sppReconnectGuard(spp,address,cmd,force){
   try{
     // Zelfde reden als in trackBtQuality: een lege buffer op een adres dat
@@ -1358,6 +1377,9 @@ async function sppReconnectGuard(spp,address,cmd,force){
     if(window._plScanActief && !force) return;
     const now=Date.now();
     if(window._lastSppReconnect&&now-window._lastSppReconnect<10000) return;
+    if(_verbindingHeeftEigenaar(now)){ btDiag(`Lege respons op "${cmd}" — een volledige verbinding loopt al, de guard wijkt`,'info'); return; }
+    const gen=window._btGen;
+    const overgenomen=()=>window._btGen!==gen;
 
     // force=true (bv. na een write()-fout): socket is zéker kapot — de
     // isConnected-check overslaan, die rapporteert dan soms nog "verbonden".
@@ -1390,10 +1412,12 @@ async function sppReconnectGuard(spp,address,cmd,force){
       let _rcOk=false,_rcErr=null;
       for(let _a=1;_a<=3&&!_rcOk;_a++){
         await delay(_a===1?500:1500);
+        if(overgenomen()){ btDiag('Guard stopt: een volledige verbinding nam het over','info'); return; }
         try{ await spp.connect({address}); _rcOk=true; _sppNieuweSocket(); }
         catch(_e){ _rcErr=_e; btDiag(`Herverbindpoging ${_a}/3 mislukt: ${_e.message}`,'warn'); }
       }
       if(!_rcOk) throw (_rcErr||new Error('herverbinden mislukt'));
+      if(overgenomen()){ btDiag('Guard stopt na zijn connect: een volledige verbinding nam het over','info'); return; }
       btDiag('Herverbonden ✓','ok');
       log('SPP automatisch herverbonden','warn');
       // De ritwaarnemer telt herverbindingen door `connected` te bemonsteren, en
@@ -1413,6 +1437,9 @@ async function sppReconnectGuard(spp,address,cmd,force){
         // de vervaltijd. _metElmBus doet dat zelf voor het normale pad; deze
         // twee gevallen komen daar niet eens.
         if(window._reinitBusy){ return; }   // andere init loopt al → die doet de poort
+        // Een volledige verbinding begon intussen: die doet zijn eigen init en
+        // detectie. Een ATWS van hier zou die midden in 0100 resetten.
+        if(overgenomen()){ btDiag('Re-init na herverbinden overgeslagen: een volledige verbinding nam het over','info'); return; }
         window._reinitBusy=true;
         try{
           if(connected){ await initELM327({herstelProtocol:true}); btDiag('ELM327 opnieuw klaar na herverbinden','ok'); }
@@ -2434,6 +2461,16 @@ async function scanNetworks(){
     // dus de ReferenceError verdween en het opschonen gebeurde nooit meer.
     try{ herijkPidGate('protocol gevonden'); }
     catch(e){ btDiag('Herijking na protocolvondst mislukt — de PID-zeef draait op oude kennis: '+(e.message||e),'warn'); }
+  } else if(_hervatActief() && !window._plHervat.herscan){
+    // Een automatische herverbinding (08-10-2026): eerst zelf nog één keer
+    // zoeken voordat er om een protocol gevraagd wordt. Wie net de stekker
+    // terugstak, staat met de motor aan; een adapter die net opstart mist de
+    // eerste 0100 soms. Vragen kost een tik tijdens het rijden, en een
+    // verkeerde keuze kost de hele verbinding.
+    window._plHervat.herscan = true;
+    btDiag('Hervatten ('+window._plHervat.reden+'): geen protocol herkend — over 2 s nog één keer zoeken','warn');
+    await delay(2000);
+    return scanNetworks();
   } else {
     // Geen auto-detect — geen contact of auto reageert niet
     btDiag('Geen auto-detect response — contact aan?','warn');
