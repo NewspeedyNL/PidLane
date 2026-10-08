@@ -15,6 +15,22 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 08-10-2026 — Banden stonden dubbel in de keuzelijst (#396 herzien)
+
+**Wat er gemeld werd.** In Sensoren stonden op de CX-5 acht losse regels
+"Bandenspanning …" en "Bandtemperatuur …", terwijl dezelfde acht ook al
+gebundeld in het bandenvenster zitten.
+
+**Waarom.** #396 haalde een band alleen uit de keuzelijst als hij geen eigen
+tempo had: "een band met een gekozen tempo houdt dat tempo (de keuze wint)".
+Banden die vóór 06-10 waren toegevoegd of waarbij ooit "Elke minuut" was
+gekozen, hadden zo'n tempo, en stonden dus gewoon in de pollus en de lijst.
+
+**Herzien.** Die uitzondering was fout gekozen: het bandenvenster heeft zijn
+eigen ronde (`PLBanden`, elke vijf minuten met het vinkje), dus een tempo per
+band voegt niets toe en levert alleen de dubbele weergave op. Een band is
+nu altijd op verzoek; Mijn voertuigen toont bij een band geen tempokeuze meer.
+
 ## 08-10-2026 — Helling en kanteling werden grijs na een paar seconden (#418)
 
 **Wat er gemeld werd.** Helling en kanteling werden na een paar seconden

@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 08-10-2026 — Banden niet meer dubbel in de keuzelijst (#396)
+ ═══════════════════════════════════════════════════════════
+
+ - Een band is altijd op verzoek, ook als er een tempo bij gekozen was.
+   Zo'n band stond los in de keuzelijst én gebundeld in het bandenvenster.
+ - Mijn voertuigen toont bij een band geen tempokeuze meer: het
+   bandenvenster vraagt ze, en met het vinkje elke vijf minuten.
+
+ ═══════════════════════════════════════════════════════════
  08-10-2026 — Helling en kanteling blijven helder over drempels (#418)
  ═══════════════════════════════════════════════════════════
 
