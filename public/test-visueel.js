@@ -774,6 +774,17 @@ console.log('\n— 27-09-2026: trekmodus vanzelf, versnelling, staafjes, sensore
   c.userVehicleData.sit = [];
   c.PLRun = { staat: function () { return { caravan: { aan: true } }; } };
   waar('een lopende Caravanrit zet hem aan, ook zonder rijsituatie', V.trekAan() === true);
+  // Eenmaal turbo, altijd turbo: een tegel in de trekstrook die verschijnt
+  // en weer verdwijnt is erger dan een lege (sinds 08-10-2026 de enige plek
+  // op de meter die het turbobewijs gebruikt).
+  {
+    const t = maak({ actief: ['010C', '010D', 'CA04'], turbo: true });
+    t.PLRun = { staat: function () { return { caravan: { aan: true } }; } };
+    const laad = () => (t.PLVisueel.indeling().trek || []).some(x => x.rol === 'laaddruk');
+    const eerst = laad();
+    t.__turbo = false;
+    waar('trekstrook: met bewezen turbo staat de laaddruk erin, en blijft staan als het bewijs even wegvalt', eerst && laad());
+  }
   waar('het oude handmatige vinkje (pl_vis_trek) bestaat niet meer', typeof V.trek === 'undefined' && typeof V.trekSensoren === 'undefined');
   waar('de caravanrit heeft geen snelkoppeling meer', !V.meldingen({ monitor: { aan: false }, caravan: { aan: false }, waak: { aan: false } }, [], true).snel.some(s => s.id === 'caravan'));
 
