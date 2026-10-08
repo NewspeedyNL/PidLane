@@ -1475,30 +1475,36 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 #visg-naald.warn .vis-naald line { stroke:var(--or); }
 .vis-piek path { fill:var(--tx); opacity:.7; }
 .vis-naaf { fill:var(--sur2); stroke:var(--bd2); stroke-width:2; }
-/* De onderboog heeft drie soorten. Alle paden staan er (vaste tekening), en
-   hier wordt per soort getoond wat erbij hoort: olie en pedaal vullen één
-   boog, laaddruk vult vanaf nul naar twee kanten; alleen olie heeft zones. */
-#visg-onder:not(.laaddruk) #vis-vacboog, #visg-onder:not(.laaddruk) #vis-boostboog,
-#visg-onder:not(.laaddruk) .vis-nul, #visg-onder.laaddruk #vis-onderboog,
-#visg-onder:not(.olie) .vis-zone { display:none; }
-/* Zonder olie of bewezen turbo is er geen onderboog (#371): dan ook geen
-   leeg spoor en geen streepje onder de cirkel. */
-#visg-onder.afwezig { display:none; }
-/* De rijen onder de snelheid (#371): grijs icoon, een balkje dat groen vult
-   zolang het goed is, blauw bij een koude motor, oranje en rood bij de
-   grens. Het pedaal is geen toestand maar een voet: dat vult blauw, net als
-   de toerenboog. */
+/* De vier plekken van de Basismeter (08-10-2026): twee bogen onderin, het
+   getal onder de snelheid en het vak linksonder. Een boog vult groen zolang
+   het goed is, blauw bij een koude motor, oranje en rood bij de grens. Het
+   tikvlak is doorzichtig en breder dan de boog: een duim raakt zes pixels niet. */
+path.vis-tik { fill:none; stroke:transparent; cursor:pointer; pointer-events:stroke; }
+rect.vis-tik { fill:transparent; cursor:pointer; pointer-events:all; }
+.vis-boog .vis-vul { stroke:var(--gn); }
+.vis-plek.koud .vis-vul { stroke:var(--bl); }
+.vis-plek.warn .vis-vul { stroke:var(--or); }
+.vis-plek.danger .vis-vul { stroke:var(--rd); }
+.vis-plek[data-plek] { cursor:pointer; }
+.vis-mid { font-weight:800; fill:var(--tx); }
+.vis-plek-naam { font-weight:700; fill:var(--tx3); letter-spacing:.4px; }
+.vis-plek.warn .vis-mid { fill:var(--or); }
+.vis-plek.danger .vis-mid { fill:var(--rd); }
+/* Het vak linksonder: de spiegel van het bandenautootje. */
+.vis-vak { position:absolute; left:0; bottom:0; z-index:1; pointer-events:auto; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  width:52px; height:60px; padding:0 2px; box-sizing:border-box; border-radius:10px; border:1px solid var(--bd); background:var(--sur); color:var(--tx); cursor:pointer; font-family:var(--f); }
+.vis-vak small { font-size:8.5px; font-weight:700; letter-spacing:.4px; color:var(--tx3); white-space:nowrap; }
+.vis-vak b { font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; line-height:1.1; }
+.vis-vak span { font-size:8.5px; color:var(--tx2); white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+.vis-vak.warn { border-color:var(--or); color:var(--or); }
+.vis-vak.danger { border-color:var(--rd); color:var(--rd); }
+.vis-vak.geen b { color:var(--tx3); }
+.vis-vak.gekozen { border-color:var(--bd2); }
 .vis-plek .vis-icoon { color:var(--tx2); }
 .vis-plek.koud .vis-icoon { color:var(--bl); }
 .vis-plek.warn .vis-icoon, .vis-plek.warn .vis-klein { color:var(--or); fill:var(--or); }
 .vis-plek.danger .vis-icoon, .vis-plek.danger .vis-klein { color:var(--rd); fill:var(--rd); }
 .vis-plek.geen { opacity:.45; }
-.vis-balk-spoor { fill:none; stroke:var(--sur2); stroke-linecap:butt; }
-.vis-balk { fill:none; stroke:var(--gn); stroke-linecap:butt; transition:stroke-dasharray .3s linear, stroke .3s; }
-.vis-rij.pedaal .vis-balk { stroke:var(--bl); transition:stroke-dasharray .12s linear; }
-.vis-plek.koud .vis-balk { stroke:var(--bl); }
-.vis-plek.warn .vis-balk { stroke:var(--or); }
-.vis-plek.danger .vis-balk { stroke:var(--rd); }
 /* De versnelling in het midden (27-09-2026). */
 .vis-gear { fill:var(--tx); font-weight:800; }
 /* Het bandenlampje (28-09-2026): opent PLBanden. Sinds 30-09 rechtsonder
@@ -1546,8 +1552,6 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 #plBandenOv .plb-oordeel.danger { color:var(--rd); }
 #plBandenOv .plb-uitleg { font-size:12px; color:var(--tx3); margin:8px 0 0; }
 .vis-plek.oud { opacity:.5; }
-#visg-onder.warn .vis-klein { fill:var(--or); }
-#visg-onder.danger .vis-klein { fill:var(--rd); }
 /* Leeg = nog niets binnen, oud = het laatste antwoord is te lang geleden,
    afwezig = deze auto of selectie heeft er niets voor. De naald blijft in
    alle drie staan waar hij stond; alleen de kleur zegt dat het niet vers is. */

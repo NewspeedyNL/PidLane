@@ -48,12 +48,15 @@ function toets(naam, waar, uitleg) {
       return true; })()`;
     const lees = {
       overzicht: `({ ped: (document.getElementById('gv-0149')||{}).textContent, tank: (document.getElementById('gv-012F')||{}).textContent })`,
-      visueel: `({ ped: (document.getElementById('visv-pedaal')||{}).textContent, tank: (document.getElementById('visv-tank')||{}).textContent, plek: (PLVisueel.staat().ind||{}).plekken })`
+      // Sinds 08-10-2026 staat het pedaal niet meer vanzelf op de Basismeter:
+      // hier zet de klant het zelf op de plek in het midden, de tank staat rechts.
+      visueel: `({ ped: (document.getElementById('visv-midden')||{}).textContent, tank: (document.getElementById('visv-rechts')||{}).textContent, plek: (PLVisueel.staat().ind||{}).plekken })`
     };
     const getal = (t) => { const m = String(t || '').replace(',', '.').match(/-?\d+(\.\d+)?/); return m ? Math.round(Number(m[0])) : null; };
     const uit = {};
     for (const view of ['overzicht', 'visueel']) {
       await app.ev(zet);
+      if (view === 'visueel') await app.ev(`localStorage.setItem('pl_vis_keuze', JSON.stringify({ 'basis/midden': '0149' })); true`);
       await app.ev(`setPidView('${view}'); true`);
       await wacht(1200);
       await app.ev(zet);
@@ -73,7 +76,7 @@ function toets(naam, waar, uitleg) {
     console.log('\n── overal hetzelfde ──');
     toets('Overzicht en Visueel tonen hetzelfde pedaal', uit.overzicht.in === uit.visueel.in, JSON.stringify([uit.overzicht.in, uit.visueel.in]));
     toets('en hetzelfde tankniveau', uit.overzicht.tank === uit.visueel.tank, JSON.stringify([uit.overzicht.tank, uit.visueel.tank]));
-    toets('de pedaalplek van Visueel is 0149 (de eerste uit de keten)', uit.visueel.plek && uit.visueel.plek.pedaal === '0149', JSON.stringify(uit.visueel.plek));
+    toets('de zelf gekozen plek in het midden van Visueel is 0149', uit.visueel.plek && uit.visueel.plek.midden === '0149', JSON.stringify(uit.visueel.plek));
     toets('de ruwe waarde blijft ongemoeid (de AI krijgt 20, niet 0)', await app.ev(`pidVals['0149'] === 20`));
     toets('geen JS-fouten', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {

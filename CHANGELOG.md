@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 08-10-2026 — Basismeter: vier plekken die je zelf kiest
+ ═══════════════════════════════════════════════════════════
+
+ - De drie balkjes onder de snelheid (koelwater, pedaal, brandstof) zijn weg.
+   In de onderrand staan nu twee bogen: koelwater links, brandstof rechts,
+   koud en leeg onderaan. Onder de km/h staat één groot getal: het verbruik
+   van dit moment. Linksonder, als spiegel van het bandenautootje, het
+   bereik met deze tank, of zonder tankinhoud de rit (km en minuten).
+ - Tik op een plek om zelf te kiezen wat er staat (pl_vis_keuze, basis/…).
+   Op een boog alleen sensoren met een schaal; toerental, snelheid en
+   tekst-PIDs nergens. Automatisch zet de plek terug.
+ - De onderboog voor olie of laaddruk is weg; die staan in Motor en in de
+   trekstrook, of zet ze zelf op een boog. Het pedaal staat niet meer
+   vanzelf op de meter en wordt dus geremd zolang Visueel open staat.
+ - Nieuw in PLGarage: ritKort(). Tests, browserproeven, blok 5, negen
+   mutaties en de handleiding bijgewerkt.
+
+ ═══════════════════════════════════════════════════════════
  08-10-2026 — Banden niet meer dubbel in de keuzelijst (#396)
  ═══════════════════════════════════════════════════════════
 

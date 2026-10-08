@@ -112,6 +112,49 @@ function toets(naam, waar, uitleg) {
     toets('de knop past op een telefoon en is groot genoeg om te raken (44 px)', tel.past, JSON.stringify(tel));
     toets('op het telemetriescherm opent een tik geen sensorlijst', tel.geenKiezer, JSON.stringify(tel));
 
+    console.log('\n5. De Basismeter: tik op een boog of het vak en kies zelf (08-10-2026)');
+    const basis = await app.ev(`(async function(){
+      const wacht = ms => new Promise(r => setTimeout(r, ms));
+      // Een eigen sensor zonder bereik: wel een getal, geen boog.
+      PLEigen.zet([{ code:'221310', naam:'Motorolietemperatuur', formule:'A-40', eenheid:'°C', ecu:'' },
+                   { code:'22DD01', naam:'Teller ritten', formule:'A', eenheid:'', ecu:'' }], 'CX-5');
+      buildDiscoveredPIDList();
+      localStorage.removeItem('pl_vis_keuze');
+      for (let i = 0; i < 8 && PLVisueel.profiel() !== 'basis'; i++) PLVisueel.volgende();
+      await wacht(300);
+      const tik = function(sel){ const e = document.querySelector(sel); if (e) e.dispatchEvent(new MouseEvent('click', { bubbles: true })); return !!e; };
+      const ov = function(){ return document.getElementById('plVisKies'); };
+      const r = { profiel: PLVisueel.profiel(), tikBoog: tik('#visp-links .vis-tik') };
+      r.boog = { open: ov() && ov().style.display === 'flex', titel: ov() && ov().querySelector('h2').textContent,
+                 rijen: ov() ? [...ov().querySelectorAll('.vk-rij')].map(b => b.getAttribute('data-pid')) : [] };
+      const b = ov() && ov().querySelector('.vk-rij[data-pid="0142"]'); b && b.click();
+      await wacht(400);
+      r.links = PLVisueel.staat().ind.plekken.links;
+      r.tekst = (document.getElementById('visv-links') || {}).textContent;
+      r.tikVak = tik('#visp-vak');
+      r.vak = { titel: ov().querySelector('h2').textContent, rijen: [...ov().querySelectorAll('.vk-rij')].map(b => b.getAttribute('data-pid')) };
+      const v = ov().querySelector('.vk-rij[data-pid="22DD01"]'); v && v.click();
+      await wacht(400);
+      r.vakPid = PLVisueel.staat().ind.plekken.vak;
+      r.vakKop = (document.getElementById('visn-vak') || {}).textContent;
+      r.keuze = JSON.parse(localStorage.getItem('pl_vis_keuze') || '{}');
+      tik('#visp-links .vis-tik'); ov().querySelector('.vk-rij[data-pid=""]').click();
+      await wacht(400);
+      r.terug = PLVisueel.staat().ind.plekken.links;
+      return r;
+    })()`);
+    toets('de Basismeter staat open', basis.profiel === 'basis' && basis.tikBoog, JSON.stringify(basis));
+    toets('tikken op de boog links opent de lijst, met de naam van de plek', basis.boog.open && basis.boog.titel === 'Boog links', JSON.stringify(basis.boog));
+    toets('op een boog staan sensoren met een schaal, niet een eigen sensor zonder bereik en niet toerental of snelheid',
+      basis.boog.rijen[0] === '' && basis.boog.rijen.indexOf('0142') > 0 && basis.boog.rijen.indexOf('22DD01') < 0 &&
+      basis.boog.rijen.indexOf('010C') < 0 && basis.boog.rijen.indexOf('010D') < 0, JSON.stringify(basis.boog.rijen));
+    toets('de accuspanning staat links, met een getal', basis.links === '0142' && /^\d+,\d$/.test(basis.tekst || ''), JSON.stringify(basis));
+    toets('het vak heeft een eigen lijst, en daar mag een getal zonder schaal wel', basis.tikVak && basis.vak.titel === 'Vak linksonder' && basis.vak.rijen.indexOf('22DD01') > 0,
+      JSON.stringify(basis.vak));
+    toets('de eigen sensor staat in het vak, met zijn naam als kop', basis.vakPid === '22DD01' && /TELLER/.test(basis.vakKop || ''), JSON.stringify(basis));
+    toets('de keuzes zijn onthouden onder basis/…', basis.keuze['basis/links'] === '0142' && basis.keuze['basis/vak'] === '22DD01', JSON.stringify(basis.keuze));
+    toets('Automatisch zet koelwater terug op de boog links (tegenproef)', basis.terug === '0105', JSON.stringify(basis));
+
     toets('geen fouten in de console', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     if (app) await app.stop();

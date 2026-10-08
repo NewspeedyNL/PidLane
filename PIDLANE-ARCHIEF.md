@@ -15,6 +15,38 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 08-10-2026 — De Basismeter: van drie balkjes naar vier plekken
+
+**Wat er gemeld werd.** Op de CX-5 waren de drie waarden onder de km/h
+"nutteloos, te klein", het vak linksonder (de spiegel van het
+bandenautootje) leeg, en de onderrand van de cirkel ook: de onderboog was
+voor olie of laaddruk, en die auto heeft geen van beide.
+
+**Wat er nu staat, en waarom.** Een ontwerpvoorstel met keuzes per plek is
+eerst als mockup voorgelegd; gekozen is "zoals het voorstel", met de wens
+dat elke plek zelf in te vullen is, maar alleen met wat er past.
+- Twee bogen in het gat dat de toerenboog onderin openlaat (128°–168° en
+  192°–232°): koelwater links, brandstof rechts, koud en leeg onderaan. Zo
+  staat het in vrijwel elke auto, dus het leest vanuit de ooghoek.
+- Eén getal onder de snelheid (verbruik nu, CA03 → CA02 → 015E) in 22 px in
+  plaats van drie keer 11 px.
+- Het vak linksonder: bereik (CA09), zonder tankinhoud de rit uit PLGarage.
+- Kiezen gaat via dezelfde opslag als bij de profielen (pl_vis_keuze,
+  "basis/<rol>"). Een boog neemt alleen een sensor met een begrensde schaal
+  (boogSchaal); een getal alles behalve tekst-PIDs, telefoonsensoren en wat
+  de meter al toont (getalKan). Een keuze die niet past of er niet is, valt
+  terug op de keten.
+
+**Wat ervoor wegging.** De olie/laaddruk-onderboog met zijn vacuüm- en
+drukkant, de pedaalrij met zijn tempo-terugval, en de tekst onder de cirkel.
+Het tempo-oordeel bestaat nog voor de vraag onder de vermogensnaald; de
+tests die het met de pedaalrij bewezen, bewijzen het nu daarmee. Het pedaal
+wordt sinds deze wijziging geremd zolang Visueel open staat, tenzij iemand
+het op een plek zet.
+
+**Wat alleen op de weg te zien is.** Of 22 px onder het rijden genoeg is,
+en of de bogen naast de toerenboog als aparte meters lezen.
+
 ## 08-10-2026 — Banden stonden dubbel in de keuzelijst (#396 herzien)
 
 **Wat er gemeld werd.** In Sensoren stonden op de CX-5 acht losse regels
