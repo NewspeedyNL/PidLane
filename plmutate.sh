@@ -569,6 +569,15 @@ MUTATIES=(
 # de klasse fout die hier maanden blijft staan.
 ".gitattributes@@PIDLANE.md            merge=union@@PIDLANE.md            -merge@@test-gitattributes.js@@PIDLANE.md valt niet meer onder union, dus de conflicten komen terug"
 ".gitattributes@@CHANGELOG.md          merge=union@@CHANGELOG.md          merge=union\n*.js                  merge=union@@test-gitattributes.js@@union uitgebreid naar JS, waar een verdubbelde regel stil breekt"
+# ── plinhaal.js: alleen toevoegingen vanzelf oplossen (08-10-2026) ──
+# Elke rem eruit, en de toets moet het zien. Zonder de eerste lost hij een
+# echte botsing op door beide versies te houden; zonder de telling plakt hij
+# twee blok 5-proeven aan elkaar zoals de handmatige merge van 10-09 deed.
+"plinhaal.js@@    if (heeftBasis && basis.length === 0 && !dubbel && einde < regels.length) {@@    if (!dubbel && einde < regels.length) {@@test-plinhaal.js@@een regel die beide takken veranderden wordt opgelost door beide versies te houden"
+"plinhaal.js@@    if (heeftBasis && basis.length === 0 && !dubbel && einde < regels.length) {@@    if (heeftBasis && basis.length === 0 && einde < regels.length) {@@test-plinhaal.js@@dezelfde mutatie die beide takken toevoegden staat er na het inhalen twee keer"
+"plinhaal.js@@    if ((R.get(r) || 0) !== (O.get(r) || 0) + (H.get(r) || 0) - (B.get(r) || 0)) return r;@@    if (false) return r;@@test-plinhaal.js@@de telling kijkt niet meer: het slot van een proef komt er stil twee keer in"
+"plinhaal.js@@      if (c.status !== 0) {@@      if (false) {@@test-plinhaal.js@@na het oplossen ongeldige JS, en de merge blijft gewoon staan"
+"plinhaal.js@@  if (git(['status', '--porcelain', '--untracked-files=no']).stdout.trim()) {@@  if (false) {@@test-plinhaal.js@@inhalen begint over niet-vastgelegd werk heen"
 # ── Opnieuw verbinden uit het verbindingspaneel (#302, 26-09-2026) ──
 "public/pidlane-adapter.js@@      await handleConnect();@@      await Promise.resolve();@@bproef-adapterpaneel.js@@Opnieuw verbinden hervat bovenop een open verbinding in plaats van eerst te verbreken"
 "public/pidlane-adapter.js@@        localStorage.setItem('pl_selectie', JSON.stringify({ pids: [...activePIDs], t: Date.now() }));@@        void 0;@@bproef-adapterpaneel.js@@Opnieuw verbinden bewaart de selectie niet: de hervatstand kan de standaardset van 26 PIDs terugzetten"
