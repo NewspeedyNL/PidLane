@@ -1372,7 +1372,11 @@ async function plVraagMeting(niveau, watVoor, profiel){
       log('Sensoren voor de meting niet aangezet ('+(e.message||e)+') — de meetcontrole hieronder kan onterecht \'te weinig data\' zeggen','warn');
     }
   }
-  const k0=plKernStatus(prof);
+  // Zonder profiel géén kernfase. plKernStatus(null) valt terug op
+  // _laatstProfiel, maar fase 1 is hierboven juist overgeslagen: dan wacht
+  // het scherm op sensoren van een vórige analyse die niemand aanzet, en
+  // blijven die op 0/10 staan (09-10-2026, wizard "dit onderzoek").
+  const k0=prof ? plKernStatus(prof) : null;
   if(k0){
     // FASE 2 — registreren (slaat zichzelf over als de historie al volstaat)
     if(!k0.compleet){

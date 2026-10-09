@@ -779,7 +779,7 @@ window.PLWizard = {
       if(EIGEN_METING[eerste]){
         draaiEerste();
       } else if(typeof plVraagMeting==='function'){
-        plVraagMeting('normaal','dit onderzoek', job.profiel || false).then(function(door){
+        plVraagMeting('normaal','dit onderzoek', MODULE_PROFIEL[eerste] || false).then(function(door){
           if(door) draaiEerste();
           // Meetfase afgebroken: dan is er ook niets gemeten. Plan terug in
           // beeld, anders sta je met een leeg scherm en een chip te kijken.

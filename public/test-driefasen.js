@@ -212,6 +212,24 @@ console.log('\n— zonder profiel blijft het gedrag als voorheen —');
   toets('en die laat door als hij open is', await bouw().plVraagMeting('normaal', 'test', false), true);
 }
 
+console.log('\n— profiel false negeert ook het profiel van een vórige analyse —');
+{
+  // De wizard (start) gaf false mee, maar de kernfase viel terug op
+  // _laatstProfiel zonder die sensoren aan te zetten: het scherm wachtte op
+  // sensoren die nooit data kregen (09-10-2026).
+  reset(); KERN_ACCU.forEach(p => supportedPIDs.add(p));
+  window_._laatstProfiel = 'accu';
+  // Niet kaal awaiten: hangt de poort op het wachtscherm, dan lost de belofte
+  // nooit op en eindigt node stil met exit 0 — groen voor de fout zelf.
+  let uit = 'hangt';
+  bouw().plVraagMeting('normaal', 'test', false).then(v => { uit = v; });
+  await loopTot(NU + 600);
+  await new Promise(r => setImmediate(r));
+  toets('poort laat meteen door', uit, true);
+  toets('geen wachtscherm', /Sensoren registreren/.test(kaartTekst()), false);
+  toets('geen sensoren aangezet', ensureAanroepen, []);
+}
+
 console.log('\n— fase 3 wordt niet overgeslagen —');
 {
   reset(); KERN_ACCU.forEach(p => supportedPIDs.add(p));

@@ -173,6 +173,65 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
     eis(!/_vervolg\('controle'\)/.test(rood) && /_vervolg\('oorzaak'\)/.test(rood), 'rood: "Oorzaak laten zoeken" en geen controle');
   }
 
+  console.log('\n9. Wat bij het merk bekend is, stuurt het onderzoek');
+  {
+    // De echte autoKennisVoorMerk() uit pidlane-motortype.js, zoals test-weten.js.
+    const mt = fs.readFileSync(__dirname + '/pidlane-motortype.js', 'utf8');
+    const ki = mt.indexOf('function autoKennisVoorMerk(merk, brandstof){'), kj = mt.indexOf('\n}\n', ki);
+    eis(ki >= 0 && kj > ki, 'autoKennisVoorMerk() staat nog in pidlane-motortype.js');
+    vm.runInContext(mt.slice(ki, kj + 2), s, { filename: 'autoKennisVoorMerk' });
+
+    let st = O.nieuw({ klachten: ['controle'], merk: 'Volkswagen Golf', brandstof: 'benzine' });
+    eis(!!st.v.distributie && /ketting/.test(st.v.distributie.bekend || ''), 'VW benzine: de ketting wordt een verdenking', JSON.stringify(st.v.distributie));
+    eis(!!st.v.koeling && !!st.v.koeling.bekend, 'en de waterpomp (koeling)');
+    eis(!st.v.egr && !st.v.dpf, 'een benzine-VW krijgt geen EGR of roetfilter uit de dieselkennis', Object.keys(st.v).join());
+    eis(Object.keys(st.v).every((h) => st.v[h].score === 0), 'kennis is geen bewijs: alle scores 0');
+    eis(st.log.some((l) => l.soort === 'kennis' && /Volkswagen bekend/.test(l.t)), 'het verloop zegt wat er bekend is');
+    const met = O.vooruit(st, 20).map((x) => x.id);
+    const zonder = O.vooruit(O.nieuw({ klachten: ['controle'], merk: 'Volkswagen Golf', brandstof: 'benzine', kennis: null }), 20).map((x) => x.id);
+    eis(met.indexOf('koudstartgeluid') >= 0 && zonder.indexOf('koudstartgeluid') < 0, 'met kennis staat de koude-startvraag in het plan, zonder niet  <- tegenproef', met.join() + ' | ' + zonder.join());
+
+    // De kennis bepaalt wat eerst komt (KENNIS_GEWICHT).
+    const plan = (kennis) => O.vooruit(O.nieuw({ klachten: ['lampje'], kennis }), 6).map((x) => x.id);
+    const mk = plan({ merk: 'x', zwak: ['thermostaat'] }), zk = plan(null);
+    eis(mk.indexOf('temperatuur') < mk.indexOf('stationair') && zk.indexOf('temperatuur') > zk.indexOf('stationair'),
+      'een bekende thermostaat haalt de temperatuurstap naar voren  <- tegenproef zonder kennis', mk.join() + ' | ' + zk.join());
+
+    // Bij een klacht alleen wat erbij past.
+    st = O.nieuw({ klachten: ['elektrisch'], merk: 'Volkswagen', brandstof: 'benzine' });
+    eis(!st.v.distributie, 'bij een accuklacht geen ketting-onderzoek', Object.keys(st.v).join());
+    eis(st.kennis.andereKlacht.some((t) => /ketting/.test(t)), 'maar wel genoemd als "past niet bij deze klacht"');
+
+    // Bevestigd door een code; onbewezen kennis staat als niet getoetst in het rapport.
+    st = O.nieuw({ klachten: ['controle'], merk: 'Volkswagen', brandstof: 'benzine' });
+    await O.draai(st, nepAuto({ waarde: gezond(), antwoorden: { koudstartgeluid: 'kort' },
+      scan: { codes: { bevestigd: ['P0016'], pending: [], permanent: [] }, gelezen: GEEN_CODES.gelezen, readiness: null, sinds: {} } }));
+    eis(O.status(st.v.distributie.score) === 'bevestigd', 'P0016 + ratel bij koude start: distributie bevestigd', st.v.distributie.score);
+    const t = O.alsTekst(st);
+    eis(/=== BEKEND BIJ DIT MERK \(volkswagen\) ===[\s\S]*Distributie[^\n]*bevestigd/.test(t), 'het rapport heeft een eigen blok voor de merkkennis', t.slice(t.indexOf('BEKEND'), t.indexOf('BEKEND') + 400));
+
+    // Wat de diagnosepoort niet ziet, verdwijnt niet.
+    st = O.nieuw({ klachten: ['controle'], merk: 'Mercedes', brandstof: 'benzine' });
+    eis(st.kennis.zelf.indexOf('luchtvering') >= 0 && /zelf nakijken: [^\n]*luchtvering/.test(O.alsTekst(st)), 'luchtvering: "zelf nakijken" in het rapport');
+
+    // Een handbak sluit de DSG uit.
+    st = O.nieuw({ klachten: ['controle'], merk: 'Skoda', brandstof: 'benzine' });
+    eis(!!st.v.versnellingsbak, 'Skoda: DSG als verdenking');
+    await O.draai(st, nepAuto({ waarde: gezond(), antwoorden: { schakelen: 'hand', koudstartgeluid: 'nee' } }));
+    eis(O.status(st.v.versnellingsbak.score) === 'uitgesloten', 'handgeschakeld: DSG uitgesloten', st.v.versnellingsbak.score);
+
+    // De vertaling zelf: de vergissingen die een trefwoord makkelijk maakt.
+    const k = (t) => O.kennisNaarVerdenking({ zwak: [t] })[0].h.join();
+    eis(k('hybride accu-degradatie') === '', 'hybride accu is geen EGR (degradatie bevat "egr")', k('hybride accu-degradatie'));
+    eis(k('distributieketting (1.4 Turbo)') === 'distributie', 'een ketting op een turbomotor is geen turboverdenking', k('distributieketting (1.4 Turbo)'));
+    eis(k('EGR-koeler') === 'koppakking,koeling', 'een EGR-koeler is koelvloeistof in de verbranding', k('EGR-koeler'));
+    eis(k('EGR/DPF (TDI)') === 'egr,dpf', 'EGR/DPF wordt allebei', k('EGR/DPF (TDI)'));
+    const onbekend = [];
+    Object.keys(s.AUTO_KENNIS).forEach((m) => O.kennisNaarVerdenking({ zwak: s.AUTO_KENNIS[m].zwak.map((z) => z[0]) })
+      .forEach((z) => z.h.forEach((h) => { if (!V[h]) onbekend.push(z.t + '→' + h); })));
+    eis(!onbekend.length, 'elke vertaling wijst naar een bestaande verdenking', onbekend.join());
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('  FOUT test brak af: ' + (e.stack || e)); process.exit(1); });

@@ -87,6 +87,15 @@
       vervolg: 'CO2-test op het koelwater en een druktest van het koelsysteem.' },
     software:    { naam: 'Inleren of codering (software)', systeem: 'software',
       vervolg: 'Het onderdeel laten inleren of coderen met de software voor dit merk (zie het bewijs).' },
+    // Sinds 09-10-2026: komen in spel via de merkkennis (KENNIS hieronder) of
+    // via een foutcode. `klachten`: bij welke klacht ze meedoen als ze alleen
+    // uit de merkkennis komen — de klachtlijsten in KLACHTEN blijven zoals ze zijn.
+    distributie: { naam: 'Distributie: ketting gerekt of nokkenasverstelling', systeem: 'motor',
+      klachten: ['lampje', 'onrustig', 'vermogen', 'start'],
+      vervolg: 'De nokkenas/krukas-afwijking (in graden) uitlezen met merk-software; bij een afwijking de kettingspanner en de ketting laten opmeten. Niet doorrijden op een ratelende ketting.' },
+    versnellingsbak: { naam: 'Versnellingsbak (automaat, DSG of PowerShift)', systeem: 'aandrijving',
+      klachten: ['lampje', 'onrustig', 'vermogen'],
+      vervolg: 'De regeleenheid van de bak uitlezen met merk-software (VCDS/ODIS, FORScan): foutgeheugen, koppelingsadaptatie en slijtagewaarden. Olie- en filterbeurt nagaan.' },
     niet_obd:    { naam: 'Mechanisch, niet via OBD te zien', systeem: 'mechanisch',
       vervolg: 'Geluiden, ophanging, aandrijving en lekkage zijn alleen met een proefrit en een brug te beoordelen.' }
   };
@@ -130,6 +139,51 @@
       h: ['valselucht', 'maf', 'lambda', 'kat', 'thermostaat', 'accu', 'laad', 'misfire'] }
   };
   var CONTROLE_DIESEL = ['dpf', 'egr', 'software'];
+
+  // ── Wat bij dit merk bekend is (09-10-2026) ────────────────────────
+  // AUTO_KENNIS (pidlane-data.js) noemt per merk de bekende zwakke punten.
+  // Tot nu toe kwamen die alleen als tekst op het scherm ("Wat we al weten")
+  // en in de prompt van de Auto-expert; het onderzoek zelf toetste ze niet.
+  // Hier wordt elk zwak punt een verdenking, zodat het onderzoek er een stap
+  // voor kiest. Kennis is GEEN bewijs: de score blijft 0, alleen de stappen
+  // die zo'n verdenking toetsen wegen zwaarder (KENNIS_GEWICHT). Wat niet
+  // via de diagnosepoort te toetsen is, komt als "zelf nakijken" in het
+  // rapport — nooit stilzwijgend weg.
+  var KENNIS = [
+    // alleen: deze regel wint van de rest. "EGR-koeler" is koelvloeistof in
+    // de verbranding, niet (ook nog) een vervuilde EGR-klep.
+    { re: /egr-koeler|koelvloeistof-verlies|waterpomp intern/i, h: ['koppakking', 'koeling'], alleen: true },
+    { re: /\begr/i, h: ['egr'] },
+    { re: /dpf|roetfilter/i, h: ['dpf'] },
+    { re: /injector/i, h: ['injector'] },
+    { re: /thermostaat/i, h: ['thermostaat'] },
+    { re: /waterpomp|koelsysteem/i, h: ['koeling'] },
+    { re: /olieverbruik|pcv/i, h: ['olie'] },
+    { re: /turbo/i, h: ['turbo'] },
+    { re: /lambda/i, h: ['lambda'] },
+    { re: /katalysator/i, h: ['kat'] },
+    { re: /carbon|inlaatklep/i, h: ['misfire'] },
+    { re: /ketting|chain|distributie|vanos|balanceer/i, h: ['distributie'], alleen: true },
+    { re: /dsg|mechatronic|powershift|versnellingsbak/i, h: ['versnellingsbak'] }
+  ];
+  // Gemeten op 09-10-2026 over vijf klachten: bij 1,5 en 2 veranderde de
+  // volgorde van het plan nergens, bij 3 gaat de stap voor het bekende punt
+  // voor ("lampje" bij een thermostaat-merk: eerst de temperatuur). De klacht
+  // blijft de basis; de kennis bepaalt wat er eerst aan de beurt is.
+  var KENNIS_GEWICHT = 3;
+
+  /* kennis: { merk, zwak:[tekst…] } uit autoKennisVoorMerk(). Geeft per
+     zwak punt de verdenkingen terug; een leeg h betekent: niet te toetsen. */
+  function kennisNaarVerdenking(kennis) {
+    return ((kennis && kennis.zwak) || []).map(function (t) {
+      var regels = KENNIS.filter(function (k) { return k.re.test(t); });
+      var alleen = regels.filter(function (k) { return k.alleen; });
+      if (alleen.length) regels = alleen;
+      var h = [];
+      regels.forEach(function (k) { k.h.forEach(function (x) { if (h.indexOf(x) < 0) h.push(x); }); });
+      return { t: t, h: h };
+    });
+  }
   var BREED = ['valselucht', 'maf', 'misfire', 'injector', 'lambda', 'thermostaat', 'koelsensor', 'accu', 'laad', 'turbo', 'egr', 'software'];
 
   // ── Hulpjes voor reeksen ────────────────────────────────────────────
@@ -156,7 +210,7 @@
   var STAPPEN = [
     { id: 'codes', soort: 'lezen', titel: 'Foutcodes en zelftests uitlezen', icoon: '🔍',
       waarom: 'Wat de auto zelf al gevonden heeft, gaat voor alles. Het kost tien seconden en wijst vaak meteen een richting.',
-      test: { misfire: 2, lambda: 2, kat: 2, maf: 1.5, valselucht: 1, egr: 1.5, dpf: 1.5, software: 2, thermostaat: 1.5, koelsensor: 1, laad: 1, turbo: 1, injector: 0.5 },
+      test: { misfire: 2, lambda: 2, kat: 2, maf: 1.5, valselucht: 1, egr: 1.5, dpf: 1.5, software: 2, thermostaat: 1.5, koelsensor: 1, laad: 1, turbo: 1, injector: 0.5, distributie: 2, versnellingsbak: 1.5 },
       altijdEerst: true,
       beoordeel: beoordeelCodes },
 
@@ -345,6 +399,21 @@
         { t: 'Ja, vooral stationair', w: 'stil', b: [{ h: 'misfire', d: 1.5 }, { h: 'valselucht', d: 0.5 }] },
         { t: 'Ja, vooral bij optrekken', w: 'last', b: [{ h: 'misfire', d: 1.5 }, { h: 'brandstofdruk', d: 0.5 }] },
         { t: 'Nee', w: 'nee', b: [{ h: 'misfire', d: -1 }] }] },
+    { id: 'koudstartgeluid', soort: 'vraag', titel: 'Hoor je bij een koude start de eerste seconden een ratel of rammel?', icoon: '⛓️',
+      waarom: 'Een gerekte ketting of een lekkende kettingspanner hoor je het best in de eerste seconden na een koude start, vóór de oliedruk er is. Geen sensor ziet dat.',
+      test: { distributie: 2 },
+      opties: [
+        { t: 'Ja, een paar seconden, daarna weg', w: 'kort', b: [{ h: 'distributie', d: 2 }] },
+        { t: 'Ja, en het blijft', w: 'blijft', b: [{ h: 'distributie', d: 1 }, { h: 'niet_obd', d: 0.5 }] },
+        { t: 'Nee, hij start stil', w: 'nee', b: [{ h: 'distributie', d: -1 }] }] },
+    { id: 'schakelen', soort: 'vraag', titel: 'Hoe schakelt hij als je rustig optrekt van de 1e naar de 3e?', icoon: '⚙️',
+      waarom: 'Een automaat of DSG meldt zijn fouten vaak in zijn eigen regeleenheid, niet in de motor. Wat je voelt bij het wegrijden zegt dan meer dan de diagnosepoort.',
+      test: { versnellingsbak: 2 },
+      opties: [
+        { t: 'Schok of klap, vooral van 1 naar 2', w: 'schok', b: [{ h: 'versnellingsbak', d: 2 }] },
+        { t: 'Toeren lopen op zonder dat hij sneller gaat', w: 'slip', b: [{ h: 'versnellingsbak', d: 2.5 }] },
+        { t: 'Soepel', w: 'soepel', b: [{ h: 'versnellingsbak', d: -1.5 }] },
+        { t: 'Het is een handgeschakelde auto', w: 'hand', b: [{ h: 'versnellingsbak', d: -4 }] }] },
     { id: 'geluid', soort: 'vraag', titel: 'Is het vooral een geluid, of iets wat je in het stuur of de bodem voelt?', icoon: '👂',
       waarom: 'Rammels, piepjes en trillingen van ophanging of aandrijving ziet geen enkele sensor. Dan zeg ik dat liever eerlijk.',
       test: { niet_obd: 2 },
@@ -372,7 +441,10 @@
     { re: /^P056[23]$/, h: 'laad', d: 2.5, t: function (c) { return c + ' — boordspanning buiten bereik'; } },
     { re: /^P0(299|234)$/, h: 'turbo', d: 2.5, t: function (c) { return c + ' — laaddruk wijkt af'; } },
     { re: /^P040[0-9]$/, h: 'egr', d: 2, t: function (c) { return c + ' — uitlaatgasrecirculatie'; } },
-    { re: /^P2(002|463)$/, h: 'dpf', d: 2.5, t: function (c) { return c + ' — roetfilter'; } }
+    { re: /^P2(002|463)$/, h: 'dpf', d: 2.5, t: function (c) { return c + ' — roetfilter'; } },
+    { re: /^P00(0[89]|1[6-9])$/, h: 'distributie', d: 3, t: function (c) { return c + ' — nokkenas en krukas lopen niet gelijk (ketting of versteller)'; } },
+    { re: /^P00(1[0-5]|2[0-5])$/, h: 'distributie', d: 2, t: function (c) { return c + ' — nokkenasverstelling of haar magneetklep'; } },
+    { re: /^P07\d\d$/, h: 'versnellingsbak', d: 2.5, t: function (c) { return c + ' — versnellingsbak'; } }
   ];
 
   function beoordeelCodes(u, st) {
@@ -434,10 +506,45 @@
     if (ks.indexOf('controle') >= 0 && /diesel/i.test(String(ctx.brandstof || '')))
       CONTROLE_DIESEL.forEach(function (h) { speel(st, h, 'controle (diesel)'); });
     if ((ctx.vervangen || []).length) speel(st, 'software', 'onlangs vervangen');
+    kennisInSpel(st, ks);
     var kop = (ks.length === 1 && ks[0] === 'controle') ? 'Geen klacht, brede controle'
       : 'Klacht: ' + ks.map(function (k) { return KLACHTEN[k] ? KLACHTEN[k].naam : k; }).join(', ');
     st.log.push({ soort: 'start', t: kop + '. ' + Object.keys(st.v).length + ' verdenkingen om te onderzoeken.' });
     return st;
+  }
+
+  /* De merkkennis in het onderzoek. ctx.kennis mag meegegeven worden (test);
+     anders vraagt hij autoKennisVoorMerk() van pidlane-motortype.js. Bij
+     "controle" doet alles mee; bij een klacht alleen wat bij die klacht past,
+     de rest staat als "bekend, niet bij deze klacht" in het rapport. */
+  function kennisInSpel(st, ks) {
+    var ctx = st.ctx, kennis = ctx.kennis;
+    if (kennis === undefined) {
+      try { kennis = (typeof autoKennisVoorMerk === 'function' && ctx.merk) ? autoKennisVoorMerk(ctx.merk, ctx.brandstof) : null; }
+      catch (e) { console.warn('PLOnderzoek: merkkennis niet gelezen', e); kennis = null; }
+    }
+    st.kennis = { merk: (kennis && kennis.merk) || '', getoetst: [], andereKlacht: [], zelf: [] };
+    if (!kennis) return;
+    var breed = ks.indexOf('controle') >= 0;
+    var past = function (h) {
+      if (breed) return true;
+      return ks.some(function (k) {
+        return (KLACHTEN[k] && KLACHTEN[k].h.indexOf(h) >= 0) || (VERDENKINGEN[h].klachten || []).indexOf(k) >= 0;
+      });
+    };
+    var merk = st.kennis.merk.charAt(0).toUpperCase() + st.kennis.merk.slice(1);
+    kennisNaarVerdenking(kennis).forEach(function (z) {
+      if (!z.h.length) { st.kennis.zelf.push(z.t); return; }
+      var mee = z.h.filter(past);
+      if (!mee.length) { st.kennis.andereKlacht.push(z.t); return; }
+      mee.forEach(function (h) {
+        speel(st, h, 'bekend bij ' + merk);
+        st.v[h].bekend = (st.v[h].bekend ? st.v[h].bekend + '; ' : '') + z.t;
+      });
+      st.kennis.getoetst.push(z.t);
+    });
+    if (st.kennis.getoetst.length)
+      st.log.push({ soort: 'kennis', t: 'Bij ' + merk + ' bekend: ' + st.kennis.getoetst.join(', ') + '. Die toets ik mee, en ze gaan voor.' });
   }
 
   function speel(st, h, waarom) {
@@ -469,7 +576,7 @@
     var w = 0;
     Object.keys(stap.test).forEach(function (h) {
       if (!open(st, h)) return;
-      w += stap.test[h] * (1 + Math.max(0, st.v[h].score) / 2);
+      w += stap.test[h] * (1 + Math.max(0, st.v[h].score) / 2) * (st.v[h].bekend ? KENNIS_GEWICHT : 1);
     });
     if (stap.soort === 'meten' && stap.voorwaarde === 'rijden') w *= st.ctx.meting === 'rit10' ? 1 : 0.6;
     return w;
@@ -639,6 +746,16 @@
     if (c.uitgesloten.length) { r.push('', '=== UITGESLOTEN ==='); c.uitgesloten.forEach(function (x) { r.push(' ' + x.naam + ' — ' + ((x.bewijs[0] || {}).t || '')); }); }
     var tegen = nogOpen(c);
     if (tegen.length) { r.push('', '=== NOG OPEN, MET AANWIJZINGEN ==='); tegen.forEach(function (x) { r.push(' ' + x.naam); x.bewijs.forEach(function (b) { r.push('   ' + (b.d > 0 ? '+' : '−') + ' ' + b.t); }); }); }
+    var kn = st.kennis;
+    if (kn && kn.merk && (kn.getoetst.length || kn.andereKlacht.length || kn.zelf.length)) {
+      r.push('', '=== BEKEND BIJ DIT MERK (' + kn.merk + ') ===');
+      Object.keys(st.v).filter(function (h) { return st.v[h].bekend; }).forEach(function (h) {
+        var x = st.v[h], s = status(x.score), gemeten = x.bewijs.length > 0;
+        r.push(' ' + VERDENKINGEN[h].naam + ' (' + x.bekend + '): ' + (gemeten ? s : 'niet getoetst — geen stap kon dit meten of het onderzoek stopte eerder'));
+      });
+      if (kn.andereKlacht.length) r.push(' Niet getoetst, past niet bij deze klacht: ' + kn.andereKlacht.join(', '));
+      if (kn.zelf.length) r.push(' Niet via de diagnosepoort te zien, zelf nakijken: ' + kn.zelf.join(', '));
+    }
     r.push('', '=== VERLOOP ===');
     st.log.forEach(function (l, i) {
       if (l.soort !== 'stap') { r.push(' · ' + l.t); return; }
@@ -883,7 +1000,7 @@
     var h = '<div class="oz-blok"><div class="oz-bh">Plan van aanpak</div><div class="oz-lijn">';
     st.log.forEach(function (l) {
       if (l.soort === 'start') return;
-      if (l.soort === 'verbreed') { h += '<div class="oz-ls sprong">↪ ' + esc(l.t) + '</div>'; return; }
+      if (l.soort === 'verbreed' || l.soort === 'kennis') { h += '<div class="oz-ls sprong">↪ ' + esc(l.t) + '</div>'; return; }
       var kort = l.t || l.bewijs.filter(function (b) { return b.h; }).slice(0, 2).map(function (b) { return b.t; }).join('; ') || (l.bewijs[0] || {}).t || '';
       h += '<div class="oz-ls af">' + esc(STAP[l.stap].icoon + ' ' + l.titel) + (l.antwoord ? ' — ' + esc(l.antwoord) : '') + '<small>' + esc(kort) + '</small></div>';
       if (l.nieuw && l.nieuw.length) h += '<div class="oz-ls sprong">↪ Nieuwe richting: ' + esc(l.nieuw.map(function (x) { return VERDENKINGEN[x].naam; }).join(', ')) + '</div>';
@@ -928,7 +1045,7 @@
     hs.forEach(function (id) {
       var x = st.v[id], s = status(x.score), uit = s === 'uitgesloten' || s === 'onwaarschijnlijk';
       h += '<div class="oz-v' + (uit ? ' uit' : '') + (_nieuw[id] ? ' nieuw' : '') + '" data-a="v" data-k="' + id + '">' +
-        '<div class="oz-vn">' + esc(VERDENKINGEN[id].naam) + '</div><div class="oz-vs">' + STATUSTEKST[s] + '</div>' +
+        '<div class="oz-vn">' + esc(VERDENKINGEN[id].naam) + (x.bekend ? ' <small>· bekend bij dit merk</small>' : '') + '</div><div class="oz-vs">' + STATUSTEKST[s] + '</div>' +
         '<div class="oz-vb"><i style="width:' + Math.round(balk(x.score) * 100) + '%;background:' + kleur(x.score) + '"></i></div>';
       if (_open[id]) {
         h += '<div class="oz-bw">' + (x.bewijs.length ? x.bewijs.map(function (b) { return '<div class="' + (b.d > 0 ? 'oz-plus' : 'oz-min') + '">' + (b.d > 0 ? '▲ ' : '▼ ') + esc(b.t) + '</div>'; }).join('') : 'Nog niets gemeten.') + '</div>';
@@ -1101,6 +1218,7 @@
     staat: function () { return _st; },
     // pure kern — voor test-onderzoek.js
     KLACHTEN: KLACHTEN, VERDENKINGEN: VERDENKINGEN, STAPPEN: STAPPEN, CODEREGELS: CODEREGELS, cfg: CFG,
+    KENNIS: KENNIS, kennisNaarVerdenking: kennisNaarVerdenking,
     klachtUitTekst: klachtUitTekst, nieuw: nieuw, volgende: volgende, vooruit: vooruit, verwerk: verwerk,
     verbreed: verbreed, conclusie: conclusie, status: status, draai: draai, alsTekst: alsTekst,
     // Voor PLSamenhang (#446): een verdenking in spel zetten, en de

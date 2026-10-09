@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '9.0 (09-10-2026)';
+const TESTRUN_VERSIE = '9.1 (09-10-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2786,6 +2786,42 @@ function _zonderSporen(naam, fn) {
 }
 
 const PROEVEN_B5 = [
+
+  // ── de merkkennis stuurt het onderzoek (09-10-2026) ──
+  {
+    issue: '—',
+    naam: 'Onderzoek: de bekende zwakke punten van dit merk worden verdenkingen, met kennis als voorrang en niet als bewijs',
+    waarom: 'De merkkennis kwam als tekst op het scherm, maar het onderzoek toetste hem niet: een VW met een bekende kettingspanner kreeg dezelfde stappen als elke andere auto.',
+    proef: async function () {
+      if (!window.PLOnderzoek || typeof PLOnderzoek.kennisNaarVerdenking !== 'function') return { staat: 'FOUT', detail: 'PLOnderzoek.kennisNaarVerdenking ontbreekt — pidlane-onderzoek.js is niet de nieuwe' };
+      var v = (typeof getVehicle === 'function' && getVehicle()) || {};
+      if (!v.merk) return { staat: 'LET OP', detail: 'geen merk in het profiel — dan is er geen merkkennis om te toetsen' };
+      var st = PLOnderzoek.nieuw({ klachten: ['controle'], merk: v.merk, brandstof: v.brandstof });
+      var kn = st.kennis || {};
+      if (!kn.merk) return { staat: 'LET OP', detail: v.merk + ' staat niet in AUTO_KENNIS — het onderzoek loopt zonder merkkennis' };
+      var bekend = Object.keys(st.v).filter(function (h) { return st.v[h].bekend; });
+      if (!bekend.length && !(kn.zelf || []).length) return { staat: 'FOUT', detail: 'merkkennis voor ' + kn.merk + ' gevonden, maar geen verdenking en geen "zelf nakijken"' };
+      var bewijs = bekend.filter(function (h) { return st.v[h].score !== 0; });
+      if (bewijs.length) return { staat: 'FOUT', detail: 'kennis telt als bewijs: ' + bewijs.join(', ') };
+      return { staat: 'OK', detail: kn.merk + ': getoetst ' + (kn.getoetst.join(', ') || '—') + (kn.zelf.length ? ' · zelf nakijken: ' + kn.zelf.join(', ') : '') };
+    }
+  },
+
+  // ── registreren zonder profiel (09-10-2026) ──
+  {
+    issue: '—',
+    naam: 'Meetpoort: zonder profiel geen registratiescherm voor de sensoren van een vórige analyse',
+    waarom: 'Op de rit van 09-10 wachtte "Sensoren registreren" in de wizard op vijf sensoren die niemand had aangezet: 0/10, tot het venster verliep.',
+    // Broncode, met reden: de gedragsproef opent het meetscherm over de app
+    // heen en laat het open staan als de fout terug is. test-driefasen.js
+    // toetst het gedrag; dit ziet alleen of de geladen versie de nieuwe is.
+    proef: async function () {
+      if (typeof plVraagMeting !== 'function') return { staat: 'FOUT', detail: 'plVraagMeting ontbreekt' };
+      var bron = String(plVraagMeting);
+      if (bron.indexOf('prof ? plKernStatus(prof) : null') < 0) return { staat: 'FOUT', detail: 'plVraagMeting valt zonder profiel nog terug op het vorige profiel — oude pidlane-fuel.js (herladen?)' };
+      return { staat: 'OK', detail: 'nieuwe versie geladen · laatste profiel: ' + (window._laatstProfiel || 'geen') };
+    }
+  },
 
   // ── de AI-stip onderweg (09-10-2026) ──
   {
@@ -10304,7 +10340,7 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 09-10 (twintigste) — eerst weten, dan invullen, dan meten; en een AI-stip die onderweg niet meer vals rood wordt',
+  titel: 'OPLEVERING 09-10 (eenentwintigste) — het onderzoek toetst wat bij het merk bekend is; registreren hangt niet meer op uitgezette sensoren',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
     'DE VERBINDING IS KLAAR. Verbinding, snelheid, herverbinden en protocol werken: op 08-10 vijf diagnoses tegelijk op de CX-5, 0 fouten in het log (#394 dicht). Alle meetopdrachten in D1 staan op afgerond; de meetkamer is leeg tot er een nieuw issue komt.',
@@ -10319,6 +10355,10 @@ const CAMPAGNE = {
     'AI-STIP ONDERWEG. Op 5G stond er "AI niet bereikbaar" terwijl de AI werkte. Nu pas rood na twee mislukte pings op rij, en elk antwoord van de proxy zet hem terug. Zie je hem toch rood terwijl je dekking hebt: tik op de statusknop, wacht een halve minuut, en plak de regel "AI-proxy niet bereikbaar" uit het logboek.',
     'KOPEN, MET DE AUTO ERBIJ. Tegel Kopen of verkopen → Ik wil hem kopen → kenteken. Kijk of "Wat we al weten" klopt met wat je van de auto weet (APK, NAP, terugroepactie, merk), en of de proefrittips iets zijn wat je echt kunt doen. Kies daarna een proefrit uit het plan: de uitslag hoort terug te komen in de koopcheck ("✅ Proefrit-data opgenomen").',
     'MEER OVER DIT MODEL kost tegoed. Probeer het één keer en beoordeel of het iets toevoegt aan de merktabel — of dat de AI iets algemeens zegt.',
+    '── 9.1: HET ONDERZOEK KENT HET MERK ────────',
+    'VOLLEDIG ONDERZOEK MET EEN BEKEND MERK. Er is iets mis → Ik merk niets bijzonders (of een klacht). Bovenaan het plan hoort nu "Bij <merk> bekend: …" te staan, en de verdenkingen die daaruit komen dragen "bekend bij dit merk". Klopt die lijst met wat je van dit merk weet? Komen de vragen over een koude start (ketting) of het schakelen (DSG) als ze erbij horen — en blijven ze weg als ze er niet bij horen?',
+    'HET RAPPORT. Onderaan staat een blok "BEKEND BIJ DIT MERK": per punt bevestigd, uitgesloten, open of niet getoetst, en wat je zelf moet nakijken. Plak dat blok als iets niet klopt.',
+    'SENSOREN REGISTREREN IN DE WIZARD. Start een onderzoek uit de wizard: het scherm "Sensoren registreren" hoort niet meer te blijven hangen op sensoren met 0/10 (nog geen data).',
     '── WAT DEZE RONDE NIET OPLOST ────────',
     'HYBRIDE (#430, #452) heeft een hybride nodig; het analyserapport (#448) een analyse met AI, geparkeerd.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
