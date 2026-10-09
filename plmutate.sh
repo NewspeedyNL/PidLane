@@ -261,6 +261,9 @@ MUTATIES=(
 "public/pidlane-uihelpers.js@@'T' + _plTweeCijfers(d.getHours())@@'T' + _plTweeCijfers(d.getUTCHours())@@test-tijdklok.js@@de stempel valt terug op het UTC-uur (#17)"
 "public/pidlane-privacy.js@@    if (klant)@@    if (true)@@test-account-verwijderen.js@@personeel wordt weer naar een knop gestuurd die het niet heeft (#69)"
 "public/pidlane-uihelpers.js@@'-' + String(d.getMilliseconds()).padStart(3,'0');@@'-' + String(d.getMilliseconds());@@test-tijdklok.js@@milliseconden verliezen hun voorloopnullen en sorteren verkeerd (#17)"
+"public/pidlane-uihelpers.js@@  return { reach: mis>=AI_MIS_ROOD ? false : (st ? st.reach : null), mis:mis };@@  return { reach:false, mis:mis };@@test-aibereik.js@@de AI-stip wordt weer rood van één mislukte ping onderweg"
+"public/pidlane-uihelpers.js@@window.plProxyGezien=function(){ if(_aiReach!==true || _aiMis) _aiZet(true); };@@window.plProxyGezien=function(){};@@test-aibereik.js@@een geslaagde AI-vraag haalt de rode stip niet meer weg"
+"public/pidlane-uihelpers.js@@  if(was!==false && _aiReach===false) console.warn(@@  if(false) console.warn(@@test-aibereik.js@@de omslag naar \"AI niet bereikbaar\" is weer stil"
 "public/pidlane-uihelpers.js@@function plDatumLokaal(ms){\n  const d = (ms===undefined || ms===null) ? new Date() : new Date(ms);\n  return d.getFullYear() + '-' + _plTweeCijfers(d.getMonth()+1) + '-' + _plTweeCijfers(d.getDate());@@function plDatumLokaal(ms){\n  const d = (ms===undefined || ms===null) ? new Date() : new Date(ms);\n  return d.toISOString().slice(0,10);@@test-tijdklok.js@@de exportdatum staat weer op de UTC-dag (#17)"
 # ── de ronde van 08-09-2026 (#112, #140) ──
 "public/pidlane-veldlab.js@@    try{ download('pidlane-survey-'+plDatumLokaal(t0)+'.json',@@    try{ download('pidlane-survey-'+new Date(t0).toISOString().slice(0,10)+'.json',@@test-tijdklok.js@@een exportnaam bouwt zichzelf weer op de UTC-klok (#112)"
@@ -345,6 +348,7 @@ MUTATIES=(
 "public/pidlane-plfetch.js@@  if(!zonder && t && !kop['X-App-Token']) kop['X-App-Token']=t;@@  if(!zonder && t) kop['X-App-Token']=t;@@test-plfetch.js@@de helper overschrijft een tokenkop die de aanroeper zelf meegaf"
 "public/pidlane-plfetch.js@@  try{ if(window.PLCredits && PLCredits.volgServer) PLCredits.volgServer(resp.headers, null); }@@  try{ if(false) PLCredits.volgServer(resp.headers, null); }@@test-plfetch.js@@het serversaldo uit X-PidLane-Saldo blijft weer liggen"
 "public/pidlane-plfetch.js@@  if(resp.status===401) diag('Server weigert (401) bij '+pad+' — sessie verlopen of ongeldig','warn');@@@@test-plfetch.js@@een verlopen sessie is weer stil"
+"public/pidlane-plfetch.js@@  try{ if(!/^https?:@@  try{ if(true||!/^https?:@@test-aibereik.js@@een antwoord van een andere host telt als bereikbaarheid van de eigen proxy"
 "public/pidlane-klant.js@@    const r = await plFetch(pad, { method: 'POST', geenToken: !metToken, json: body || {} });@@    const r = await fetch(_base() + pad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });@@test-plfetch.js@@een module doet zijn serveraanroep weer zelf, buiten de helper om"
 # ── het scherm dat de gebruiker ziet als de app niet laadt ──
 # Alle drie zijn stille fouten: de workflow bouwt gewoon door, de bundel ziet
@@ -1522,6 +1526,14 @@ MUTATIES=(
 "public/pidlane-nav.js@@    return !!(st.ingelogd || st.demo) && !st.dashboard;@@    return !st.dashboard;@@test-nav.js@@de balk staat er al op het inlogscherm"
 "public/pidlane-wizard.js@@  voorbereiding: {nu:'voorb_wat',       set:{doel:'voorbereiding'}},@@  voorbereiding: {nu:'voorb_klaar',      set:{doel:'voorbereiding'}},@@test-wizardtakken.js@@de tegel Voorbereiden wijst naar een knoop die niet bestaat"
 "public/pidlane-wizard.js@@  return m.filter(moduleAan);@@  return m;@@test-wizardtakken.js@@een functie die beheer uitzet, blijft in het wizardplan staan"
+"public/pidlane-wizard.js@@set:{rol:'koop'},     next:'handel_kenteken'@@set:{rol:'koop'},     next:'handel_tijd'@@test-wizardtakken.js@@kopen vraagt weer eerst hoe lang je meet, vóór er iets over de auto bekend is"
+"public/pidlane-wizard.js@@  zet('koopKentInput', j.kenteken); zet('koopKmInput', j.km);@@  zet('koopKentInput', j.kenteken);@@bproef-koopstroom.js@@de kilometerstand uit de wizard gaat weer nergens heen en de koopcheck vraagt hem opnieuw"
+"public/pidlane-wizard.js@@if(koopKlaar) return;@@@@bproef-koopstroom.js@@de koopcheck nog eens openen wist een gereden proefrit (setKoopMode)"
+"public/pidlane-wizard.js@@    if(meting.start && job.doel==='handel' && typeof startKoopProefrit==='function'){@@    if(false){@@bproef-koopstroom.js@@een proefrit uit het plan komt weer niet terug in het koopoordeel"
+"public/pidlane-wizard.js@@if(nu===hier && m.leeg && !m.blokken.length){@@if(false){@@bproef-koopstroom.js@@een lege kaart blijft staan als een tik voor niets"
+"public/pidlane-weten.js@@ en de laatste uitlezing — alleen voor je eigen auto\n    if (tak !== 'handel') {@@ en de laatste uitlezing — alleen voor je eigen auto\n    if (true) {@@test-weten.js@@de auto die je wilt kopen krijgt jouw dossier en foutcodes op zijn kaart"
+"public/pidlane-weten.js@@{ kw: /dpf|roetfilter/i, last: true,@@{ kw: /dpf|roetfilter/i, last: false,@@test-weten.js@@een roetfilterprobleem geeft geen advies meer om onder belasting te meten"
+"public/pidlane-weten.js@@    var c = kent && _net[tak + '|' + kent];@@    var c = null;@@bproef-koopstroom.js@@terugbladeren in de wizard vraagt het RDW elke keer opnieuw"
 "public/pidlane-foutcodes.js@@    var ongelezen = ['bevestigd', 'pending', 'permanent'].filter(function (k) { return !g[k]; }).length;@@    var ongelezen = 0;@@test-foutcodes.js@@het stoplicht telt een niet-gelezen soort code als \"geen codes\" en wordt groen"
 "public/pidlane-foutcodes.js@@    var vast = uniek([].concat(c.bevestigd || [], c.permanent || [])).length;@@    var vast = [].concat(c.bevestigd || [], c.permanent || []).length;@@test-foutcodes.js@@een code die bevestigd én permanent is, telt twee keer in de kop"
 "public/pidlane-nav.js@@    schrijf(OPSLAG.autocheck, '0');   // eenmalig@@    void 0;                           // eenmalig@@bproef-navigatie.js@@de automatische check blijft aan en springt bij elke volgende verbinding opnieuw open (02-10-2026: eenmalig)"
@@ -1569,6 +1581,7 @@ MUTATIES=(
 # hier is geen cosmetiek: "verzekerd" op een onverzekerde auto, of "logisch"
 # op een onlogische tellerstand, is een verkeerd koopadvies.
 "public/pidlane-zonder.js@@    else if (nee(rij.wam_verzekerd)) r('🛡️', 'WAM-verzekerd', 'nee — volgens het RDW niet verzekerd', 'rood');@@    else if (nee(rij.wam_verzekerd)) r('🛡️', 'WAM-verzekerd', 'nee — volgens het RDW niet verzekerd', null);@@test-zonder.js@@een onverzekerde auto staat niet in het rood"
+"public/pidlane-zonder.js@@r('⏱️', 'Tellerstand (NAP)'@@r('⏱️', 'Teller (NAP)'@@test-weten.js@@het NAP-oordeel heet anders en valt stil uit de kaart \"Wat we al weten\""
 "public/pidlane-zonder.js@@      var onlog = /onlogisch/i.test(teller), logisch = !onlog && /logisch/i.test(teller);@@      var onlog = false, logisch = /logisch/i.test(teller);@@test-zonder.js@@een onlogische tellerstand wordt als logisch gelezen (\"onlogisch\" bevat \"logisch\")"
 "public/pidlane-zonder.js@@    if (dagen <= 30) return { ernst: 'oranje'@@    if (dagen <= 3) return { ernst: 'oranje'@@test-zonder.js@@een APK die over drie weken verloopt, staat in het groen"
 "public/pidlane-zonder.js@@    if (/^[0-9][0-9A-F]{3}$/.test(s)) s = 'P' + s;@@    void 0;@@test-zonder.js@@een foutcode zonder letter (0301, zoals op een werkbon) wordt niet gevonden"
@@ -1855,6 +1868,7 @@ MUTATIES=(
 "public/pidlane-verzamel.js@@    const f = naRitVervolg; naRitVervolg = null;@@    const f = naRitVervolg;@@test-verzamel.js@@elke volgende rit start de vorige analyse opnieuw"
 "public/pidlane-verzamel.js@@      case 'verzamel-hergebruik':    return tel.hergebruik || null;@@      case 'verzamel-hergebruik':    return tel.hergebruik;@@test-verzamel.js@@geen plan gedaan leest in de meetproef als hergebruik dat faalde (0 in plaats van niet gemeten)"
 "public/pidlane-koopcheck.js@@watVoor:'het onderhoudsadvies'});\n  if(!uit || !uit.ai){ res.innerHTML=''; return; }@@watVoor:'het onderhoudsadvies'});@@test-verzamelroutes.js@@sluiten zonder AI op het onderhoudsscherm vraagt toch een betaald advies"
+"public/pidlane-koopcheck.js@@  if(mm){\n    window._ddSteps=@@  if(false){\n    window._ddSteps=@@bproef-koopstroom.js@@de diepe storingsanalyse vraagt weer merk en model terwijl de app ze kent"
 "public/pidlane-koopcheck.js@@'onbekend';\n  // Wat de AI over de sensoren hoort is wat de klant net zag: de samenvatting\n  // over het meetvenster, niet de laatste waarde per sensor (#443).\n  const pdata=PLVerzamel.promptBlok(@@'onbekend';\n  const pdata=String(@@test-verzamelroutes.js@@de EV-check stuurt de samenvatting van het scherm niet meer mee"
 "public/pidlane-totalcheck.js@@  runCheckAI(items, uit);@@  runCheckAI(items);@@test-verzamelroutes.js@@de totaalcheck geeft de samenvatting niet door aan de AI"
 "public/pidlane-fuel.js@@    if(!uit || !uit.ai) return;\n  }\n  activateAIPane();@@    if(!uit) return;\n  }\n  activateAIPane();@@test-verzamelroutes.js@@nee op het scherm van de verbruiksanalyse verstuurt toch een rapport"

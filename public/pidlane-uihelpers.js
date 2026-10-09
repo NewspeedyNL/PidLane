@@ -353,12 +353,45 @@ document.addEventListener('click',(e)=>{
   if(d && d.classList.contains('open') && !binnen) closeSysStatus();
 });
 // Lichte bereikbaarheidscheck van de proxy (no-cors: elke netwerkrespons telt als bereikbaar)
-async function checkAiReachable(){
-  if(typeof PROXY_URL==='undefined' || !PROXY_URL){ _aiReach=null; try{updateTopbarStatus();}catch(e){ console.warn('updateTopbarStatus mislukt:', e); } return; }
-  try{ await plFetch('/',{method:'GET',mode:'no-cors',cache:'no-store'}); _aiReach=true; }
-  catch(e){ _aiReach=false; }
+//
+// EÉN MISLUKTE PING IS GEEN STORING (09-10-2026). Tot deze datum werd de stip
+// bij de eerste mislukte ping rood en bleef dat tot de volgende, vijf minuten
+// later. Rijdend op 5G is één mislukte fetch gewoon een celwissel of een app
+// die even op de achtergrond stond: de bovenbalk zei "AI niet bereikbaar"
+// terwijl de AI het prima deed. Nu:
+//   • rood pas na AI_MIS_ROOD mislukte pings op rij; na de eerste volgt er een
+//     tweede na AI_HERPING_MS, zodat een echte storing niet vijf minuten wacht;
+//   • elk antwoord van de proxy — ook van een gewone AI-vraag via plFetch —
+//     zet hem terug op groen (plProxyGezien);
+//   • terug in beeld of weer online: meteen opnieuw meten;
+//   • de reden komt in het logboek, één keer per omslag en niet elke ping.
+const AI_MIS_ROOD=2, AI_HERPING_MS=20000;
+let _aiMis=0, _aiHerping=null;
+// Puur: de nieuwe toestand na één ping. test-aibereik.js knipt hem hieruit.
+function aiPingUitslag(st, ok){
+  if(ok) return { reach:true, mis:0 };
+  const mis=(st && st.mis || 0)+1;
+  return { reach: mis>=AI_MIS_ROOD ? false : (st ? st.reach : null), mis:mis };
+}
+function _aiZet(ok, reden){
+  const was=_aiReach;
+  const n=aiPingUitslag({ reach:_aiReach, mis:_aiMis }, ok);
+  _aiReach=n.reach; _aiMis=n.mis;
+  if(was!==false && _aiReach===false) console.warn('AI-proxy niet bereikbaar na '+_aiMis+' pogingen: '+(reden||'onbekend'));
+  else if(was===false && _aiReach===true) console.info('AI-proxy weer bereikbaar');
   try{ updateTopbarStatus(); }catch(e){ console.warn('updateTopbarStatus mislukt:', e); }
 }
+async function checkAiReachable(){
+  if(typeof PROXY_URL==='undefined' || !PROXY_URL){ _aiReach=null; _aiMis=0; try{updateTopbarStatus();}catch(e){ console.warn('updateTopbarStatus mislukt:', e); } return; }
+  try{ await plFetch('/',{method:'GET',mode:'no-cors',cache:'no-store'}); _aiZet(true); }
+  catch(e){
+    _aiZet(false, e && e.message ? e.message : String(e));
+    // Eerste misser: snel nog eens, in plaats van vijf minuten in het ongewisse.
+    if(_aiMis<AI_MIS_ROOD && !_aiHerping) _aiHerping=setTimeout(()=>{ _aiHerping=null; try{checkAiReachable();}catch(e2){ console.warn('checkAiReachable mislukt:', e2); } }, AI_HERPING_MS);
+  }
+}
+// plFetch meldt hier elk antwoord van de proxy: dan is hij bereikbaar.
+window.plProxyGezien=function(){ if(_aiReach!==true || _aiMis) _aiZet(true); };
 /* Tik op de OBD-dot: niet verbonden → verbindscherm; verbonden → het
    adapterpaneel.
 
@@ -386,6 +419,12 @@ function obdChipTap(){
 if(!window._topbarTimer) window._topbarTimer=setInterval(()=>{ try{updateTopbarStatus();}catch(e){ console.warn('updateTopbarStatus mislukt:', e); } },2000);   // dots actueel houden
 if(!window._aiPingTimer) window._aiPingTimer=setInterval(()=>{ try{checkAiReachable();}catch(e){ console.warn('checkAiReachable mislukt:', e); } },300000);   // proxy elke 5 min pingen
 setTimeout(()=>{ try{checkAiReachable();}catch(e){ console.warn('checkAiReachable mislukt:', e); } },1500);             // eerste check na opstart
+// Terug in beeld of weer online: dan meteen meten, niet pas bij de volgende ronde.
+if(!window._aiPingLuister){
+  window._aiPingLuister=true;
+  window.addEventListener('online', ()=>{ try{checkAiReachable();}catch(e){ console.warn('checkAiReachable mislukt:', e); } });
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ try{checkAiReachable();}catch(e){ console.warn('checkAiReachable mislukt:', e); } } });
+}
 async function handleConnect(){
   if(connected){
     saveSession();   // idee 2: sessie-stats in voertuigdossier bewaren vóór verbreken

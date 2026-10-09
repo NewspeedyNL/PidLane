@@ -57,6 +57,12 @@ var KRITIEK = [
   // Auto-expert achter een guard aan. Ontbreekt plZonderVin, dan gaat een VIN
   // weer ruw naar de AI zonder dat iets het zegt.
   'plZonderVin','buildAutoExpertContext',
+  // Erbij op 09-10-2026. De wizard zet de koopcheck klaar (koopRdwLookup) en
+  // start een proefrit via de koopcheck (startKoopProefrit); PLWeten leest de
+  // merkkennis (autoKennisVoorMerk); blok 5 toetst de AI-stip (aiPingUitslag).
+  // Ontbreekt een van die vier, dan valt de kaart, het RDW in de koopcheck of
+  // de terugkoppeling van de proefrit stil weg.
+  'koopRdwLookup','startKoopProefrit','autoKennisVoorMerk','aiPingUitslag',
   // Erbij op 29-09-2026. handleConnect() geeft de bus vrij (ATPC) voordat de
   // socket dichtgaat, achter een guard omdat pidlane-bt.js ook los getest
   // wordt. Ontbreekt hij, dan blijft een K-lijn-ECU op een tester wachten.

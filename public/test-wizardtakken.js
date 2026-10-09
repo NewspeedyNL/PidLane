@@ -94,5 +94,31 @@ console.log('\n6. Een functie die beheer uitzet, verdwijnt ook uit het plan');
   delete ctx.featOn;
 }
 
+console.log('\n7. Kopen en verkopen: eerst wat we weten, dan invullen, dan meten (09-10-2026)');
+{
+  // Het pad dat de boom aflegt na "Ik wil hem kopen", knoop voor knoop.
+  const pad = [];
+  let k = BOOM.handel_rol.opt[0].next;
+  while (k && pad.length < 10) { pad.push(k); const kn = BOOM[k]; k = kn.type ? kn.next : (kn.opt[0] || {}).next; }
+  eis('de volgorde is kenteken → info → gegevens → tijd', pad.join(',') === 'handel_kenteken,handel_info,handel_gegevens,handel_tijd', pad.join(','));
+  eis('elke rol loopt via het kenteken', BOOM.handel_rol.opt.every(function (o) { return o.next === 'handel_kenteken'; }));
+  eis('de infostap toont de handelskaart', BOOM.handel_info.type === 'info' && BOOM.handel_info.weten === 'handel');
+  eis('de tijdvraag geeft een advies uit die kaart', BOOM.handel_tijd.advies === true);
+  // De gegevens gingen tot deze datum nergens heen: koopVoorbereiden() moet
+  // ze in een veld zetten dat in index.html bestaat.
+  const wz = fs.readFileSync(__dirname + '/pidlane-wizard.js', 'utf8');
+  const doel = { km: 'koopKmInput', prijs: 'koopVraagprijs', laatsteBeurt: 'koopLaatsteBeurt', kenteken: 'koopKentInput' };
+  Object.keys(doel).forEach(function (f) {
+    eis('"' + f + '" landt in #' + doel[f] + ', en dat veld bestaat', wz.indexOf("zet('" + doel[f] + "', j." + f + ')') > -1 && html.indexOf('id="' + doel[f] + '"') > -1);
+  });
+  eis('geen "Vraagprijz" meer', wz.indexOf('Vraagprijz') < 0);
+}
+
+console.log('\n8. Elke tak begint met wat we al weten');
+['storing_wanneer', 'conditie_diep', 'verbruik_wat', 'voorb_wat'].forEach(function (k) {
+  eis(k + ' toont de kaart', !!BOOM[k].weten);
+});
+eis('onderweg niet: tijdens het rijden geen extra scherm', !BOOM.onderweg_wat.weten && !BOOM.verbruik_nu.weten);
+
 console.log('\n' + (fout ? fout + ' van ' + n + ' FAAL' : 'Alle ' + n + ' goed'));
 process.exit(fout ? 1 : 0);

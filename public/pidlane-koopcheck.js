@@ -723,7 +723,7 @@ function openDeepDiag(){
   var mm=[vi.merk||vi.make||'',vi.model||''].filter(Boolean).join(' ');
   var ta='width:100%;box-sizing:border-box;background:#11151f;border:1px solid #232c40;border-radius:12px;color:#fff;font-family:var(--f);font-size:16px;padding:14px;resize:vertical;line-height:1.4';
   window._ddSteps=[
-    {t:'Wat is het probleem?', sub:'Beschrijf zo concreet mogelijk wat er gebeurt.', req:'dd_probleem', html:'<textarea id="dd_probleem" rows="5" style="'+ta+'" placeholder="bijv. trilt bij optrekken, vermogensverlies bij 3000 tpm"></textarea>'},
+    {t:'Wat is het probleem?', sub:'Beschrijf zo concreet mogelijk wat er gebeurt.'+(mm?' Auto: '+mm+'.':''), req:'dd_probleem', html:'<textarea id="dd_probleem" rows="5" style="'+ta+'" placeholder="bijv. trilt bij optrekken, vermogensverlies bij 3000 tpm"></textarea>'},
     {t:'Eerdere checks of reparaties?', sub:'Wat is er al gedaan of gecontroleerd?', html:'<textarea id="dd_checks" rows="5" style="'+ta+'" placeholder="bijv. bougies vervangen, geen foutcodes eerder"></textarea>'},
     {t:'Merk en model', sub:'Voor merk/model-specifieke bekende problemen.', html:'<input id="dd_merk" value="'+mm.replace(/"/g,'&quot;')+'" style="'+ta+'" placeholder="bijv. Mazda CX-5 2.0 2018">'},
     {t:'Jouw gevoel of vermoeden', sub:'Waar denk jij dat het vandaan komt?', html:'<textarea id="dd_gevoel" rows="5" style="'+ta+'" placeholder="bijv. klinkt als de turbo, voelt brandstof-gerelateerd"></textarea>'},
@@ -731,6 +731,14 @@ function openDeepDiag(){
     {t:'Wat gebeurde er tijdens de datalog?', sub:'Koppel je waarneming aan het moment.', html:'<textarea id="dd_annot" rows="5" style="'+ta+'" placeholder="bijv. bij 2500 tpm begon het trillen, na 30s erger"></textarea>'},
     {t:'Extra info (optioneel)', sub:'Alles wat kan helpen \u2014 of laat leeg.', html:'<textarea id="dd_extra" rows="5" style="'+ta+'" placeholder="bijv. alleen koud / alleen snelweg"></textarea>'}
   ];
+  // Merk en model kent de app al uit de verbinding: dan is het geen vraag
+  // meer (09-10-2026). Het veld blijft bestaan, verborgen, want runDeepDiag
+  // leest het; de auto staat in de toelichting van de eerste stap.
+  var _ddMerkVast='';
+  if(mm){
+    window._ddSteps=window._ddSteps.filter(function(s){ return s.html.indexOf('id="dd_merk"')<0; });
+    _ddMerkVast='<input type="hidden" id="dd_merk" value="'+mm.replace(/"/g,'&quot;')+'">';
+  }
   _ddStep=0;
   ov.innerHTML=
     '<div style="display:flex;align-items:center;gap:12px;padding:calc(18px + var(--pl-sat,0px)) 18px 10px;flex-shrink:0">'+
@@ -744,6 +752,7 @@ function openDeepDiag(){
       '<div id="ddStepTitle" style="font-size:25px;font-weight:800;color:#fff;line-height:1.25;margin-bottom:8px"></div>'+
       '<div id="ddStepSub" style="font-size:14px;color:#8a93a6;margin-bottom:24px;line-height:1.5"></div>'+
       window._ddSteps.map(function(s,i){ return '<div class="dd-step" data-i="'+i+'" style="display:none">'+s.html+'</div>'; }).join('')+
+      _ddMerkVast+
       '<div id="dd_result" style="display:none;margin-top:14px"></div>'+
     '</div>'+
     '<div id="ddFoot" style="display:flex;gap:12px;padding:14px 18px calc(20px + var(--pl-sab,0px));flex-shrink:0;border-top:1px solid #1a2030">'+
