@@ -1,0 +1,56 @@
+1
+00:00:00,000 --> 00:00:03,200
+Zaterdag. Sanne koopt een occasion.
+Ruud: Deze adapter krijg je erbij.
+
+2
+00:00:03,200 --> 00:00:06,400
+Twee weken later. Hij slaat af en start niet meer.
+
+3
+00:00:06,400 --> 00:00:09,400
+Ze belt Ruud.
+Ruud: Stop de adapter onder het stuur. Dan kijk ik mee.
+
+4
+00:00:09,400 --> 00:00:12,000
+Adapter erin. Verbonden.
+
+5
+00:00:12,000 --> 00:00:14,800
+Eén code. Die geeft ze door aan Ruud.
+
+6
+00:00:14,800 --> 00:00:16,400
+Ruud typt hem in, vanuit de werkplaats.
+
+7
+00:00:16,400 --> 00:00:18,000
+Hij kijkt live mee.
+
+8
+00:00:18,000 --> 00:00:21,000
+Ruud: Start eens?
+220 tpm, accu zakt. Geen start.
+
+9
+00:00:21,000 --> 00:00:23,400
+Foutcodes opvragen. Op afstand, met één tik.
+
+10
+00:00:23,400 --> 00:00:25,800
+P0340. De nokkenassensor geeft geen signaal.
+
+11
+00:00:25,800 --> 00:00:28,600
+Twintig minuten later. Nieuwe sensor erin.
+Sanne: Hij loopt weer!
+
+12
+00:00:28,600 --> 00:00:31,000
+Gered. Zonder sleepwagen.
+
+13
+00:00:31,000 --> 00:00:34,500
+Je auto vertelt het. PidLane vertaalt het. Je garage kijkt mee.
+pidlane.nl
