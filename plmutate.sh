@@ -1849,6 +1849,12 @@ MUTATIES=(
 "public/pidlane-onderzoek.js@@  function nogOpen(c) { return c.open.filter(@@  function nogOpen(c) { return [].filter(@@test-onderzoek.js@@tegenstrijdig bewijs verdwijnt onder \"open\" uit de conclusie"
 "public/pidlane-onderzoek.js@@    if (stap.garage && !st.ctx.garage) return false;@@@@test-onderzoek.js@@een klant krijgt de opdracht om tijdens het rijden vol op te trekken"
 "public/pidlane-onderzoek.js@@      if (st.ctx.garage) h += tekenVerdenkingen(st)@@      h += tekenVerdenkingen(st)@@bproef-onderzoek.js@@een klant krijgt het hele verdenkingenbord en de tijdlijn te zien"
+"public/pidlane-onderzoek.js@@    kennisInSpel(st, ks);\n@@\n@@test-onderzoek.js@@de merkkennis komt niet meer in het onderzoek: een bekende ketting wordt nooit getoetst"
+"public/pidlane-onderzoek.js@@  var KENNIS_GEWICHT = 3;@@  var KENNIS_GEWICHT = 1;@@test-onderzoek.js@@een bekend zwak punt telt mee maar komt nooit eerder aan de beurt"
+"public/pidlane-onderzoek.js@@    { re: /\\begr/i, h: ['egr'] },@@    { re: /egr/i, h: ['egr'] },@@test-onderzoek.js@@\"degradatie\" bevat egr: een hybride accu wordt een EGR-verdenking"
+"public/pidlane-onderzoek.js@@h: ['distributie'], alleen: true },@@h: ['distributie'] },@@test-onderzoek.js@@een ketting op een 1.4 Turbo wordt ook een turboverdenking"
+"public/pidlane-onderzoek.js@@      if (breed) return true;\n      return ks.some(@@      return true;\n      return ks.some(@@test-onderzoek.js@@bij een accuklacht toetst het onderzoek ook alle merkzwaktes van de motor"
+"public/pidlane-onderzoek.js@@    { re: /^P00(0[89]|1[6-9])$/, h: 'distributie', d: 3,@@    { re: /^P00(0[89])$/, h: 'distributie', d: 3,@@test-onderzoek.js@@P0016 (nokkenas/krukas niet gelijk) wijst niet meer naar de distributie"
 "public/pidlane-foutcodes.js@@      if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }@@      if (wat === 'oorzaak') PLWizard.open('storing');@@bproef-onderzoek.js@@Oorzaak laten zoeken opent weer de lijst losse modules in plaats van het onderzoek"
 # ── Het verzamelscherm (#443, 07-10-2026). De poort is die van §16; wat hier stil
 # kan breken is wat de klant ziet en wat de AI krijgt.
