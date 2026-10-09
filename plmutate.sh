@@ -493,6 +493,7 @@ MUTATIES=(
 # daarmee is dit weer een fout die gevangen wordt.
 "public/pidlane-datalog.js@@  '0105', // koelwatertemperatuur@@  '05', // koelwatertemperatuur@@test-kerndekking.js@@FILTERED_PIDS staat weer op een suffix, dus een trage sensor telt als dynamisch en heeft ineens een volle reeks nodig"
 "public/pidlane-fuel.js@@      const traag=traagSet.has(pid);@@      const traag=traagSet.has(pid.slice(2).toUpperCase());@@test-kerndekking.js@@de kerndekking zoekt weer een suffix in een lijst met volledige PIDs, dus elke trage sensor telt als dynamisch"
+"public/pidlane-fuel.js@@  const k0=prof ? plKernStatus(prof) : null;@@  const k0=plKernStatus(prof);@@test-driefasen.js@@zonder profiel wacht de registratie op de sensoren van een vórige analyse, die niemand aanzet: 0/10 tot het venster verloopt"
 
 # ── De kostenraming hangt aan de uitvoer, niet aan het plafond (08-09-2026) ──
 # Vier fouten die je bij deze verbouwing écht kunt maken. Ze delen één gevolg:

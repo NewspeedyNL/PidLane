@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-10-2026 — Wizard: "Sensoren registreren" wacht niet meer op sensoren die uit staan
+ ═══════════════════════════════════════════════════════════
+
+ - Gemeld met een schermafdruk: "7 van 12 klaar", en motorbelasting,
+   inlaattemp, beide brandstoftrims en gaspedaal bleven op 0 staan.
+ - Oorzaak: start() in de wizard gaf `job.profiel` mee, en dat veld
+   bestaat niet; de poort kreeg dus `false` en zette geen sensoren aan.
+   De kernfase viel daarna wél terug op het profiel van een vórige
+   analyse en wachtte op sensoren die niemand had aangezet.
+ - Nu: zonder profiel géén kernfase (zoals PLVerzamel al deed), en de
+   wizard geeft het profiel van de eerste module mee (MODULE_PROFIEL),
+   net als draai() al deed.
+ - test-driefasen.js toetst het geval met een oud `_laatstProfiel`;
+   mutatie in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  09-10-2026 — Testrun 9.0: eerst weten, dan invullen, dan meten; AI-stip niet meer vals rood
  ═══════════════════════════════════════════════════════════
 
