@@ -87,6 +87,7 @@ var BOOM = {
   storing_wanneer: {
     v:'Wanneer merk je het?',
     sub:'Hiermee bepaal ik hoe we moeten meten.',
+    weten:'storing',
     opt:[
       {t:'Nu, ook stilstaand',       d:'Het is er zodra de motor draait',            set:{meting:'stil'},    next:'storing_klacht'},
       {t:'Alleen tijdens het rijden',d:'Onder belasting, bij optrekken of snelheid', set:{meting:'rit10'},   next:'storing_klacht'},
@@ -115,32 +116,49 @@ var BOOM = {
     ]
   },
 
-  /* ── Handel ── rol bepaalt de toon van het rapport, tijd bepaalt de meting */
+  /* ── Handel ── rol bepaalt de toon van het rapport, tijd bepaalt de meting.
+       Volgorde sinds 09-10-2026: eerst wat we al weten (RDW, merkkennis, waar
+       je op let), dan wat jij invult, dan pas hoe lang je meet. Tot die datum
+       kwam de tijdvraag direct na de rol, vóór er iets over de auto bekend
+       was, en gingen de gegevens nergens heen: de koopcheck vroeg ze opnieuw. */
   handel_rol: {
     v:'Wat is jouw rol?',
     sub:'Dat bepaalt waar het rapport de nadruk op legt.',
     opt:[
-      {t:'Ik wil hem kopen',      d:'Particulier — waar moet ik op letten', set:{rol:'koop'},     next:'handel_tijd'},
-      {t:'Ik wil hem verkopen',   d:'Onderbouw wat je vraagt',              set:{rol:'verkoop'},  next:'handel_tijd'},
-      {t:'Inruil of inkoop',      d:'Zakelijk taxeren',                     set:{rol:'inkoop'},   next:'handel_tijd'},
-      {t:'Lease-inname',          d:'Staat bij terugname vastleggen',       set:{rol:'lease'},    next:'handel_tijd'},
-      {t:'Occasionrapport',       d:'Volledig rapport voor de etalage',     set:{rol:'occasion'}, next:'handel_tijd'}
+      {t:'Ik wil hem kopen',      d:'Particulier — waar moet ik op letten', set:{rol:'koop'},     next:'handel_kenteken'},
+      {t:'Ik wil hem verkopen',   d:'Onderbouw wat je vraagt',              set:{rol:'verkoop'},  next:'handel_kenteken'},
+      {t:'Inruil of inkoop',      d:'Zakelijk taxeren',                     set:{rol:'inkoop'},   next:'handel_kenteken'},
+      {t:'Lease-inname',          d:'Staat bij terugname vastleggen',       set:{rol:'lease'},    next:'handel_kenteken'},
+      {t:'Occasionrapport',       d:'Volledig rapport voor de etalage',     set:{rol:'occasion'}, next:'handel_kenteken'}
     ]
+  },
+  handel_kenteken: {
+    v:'Om welke auto gaat het?',
+    sub:'Met het kenteken zoek ik op wat het RDW weet en waar je bij dit merk op let. Geen kenteken bij de hand? Sla het over.',
+    type:'kenteken', veld:'kenteken',
+    next:'handel_info'
+  },
+  handel_info: {
+    v:'Wat we al weten',
+    sub:'',
+    type:'info', weten:'handel',
+    next:'handel_gegevens'
+  },
+  handel_gegevens: {
+    v:'Gegevens toevoegen?',
+    sub:'Optioneel, maar het maakt het rapport een stuk concreter. Laat leeg wat je niet weet — de koopcheck neemt ze over.',
+    type:'gegevens',
+    next:'handel_tijd'
   },
   handel_tijd: {
     v:'Hoeveel tijd heb je bij de auto?',
     sub:'Stilstaand zie ik veel, maar niet alles. Onder belasting komt de rest boven.',
+    advies:true,
     opt:[
-      {t:'Een paar minuten, stilstaand', d:'Contact aan, motor draait',      set:{meting:'stil'},  next:'handel_gegevens'},
-      {t:'Korte proefrit (±2 min)',      d:'Even het blok om',               set:{meting:'rit2'},  next:'handel_gegevens'},
-      {t:'Uitgebreide proefrit (±10 min)',d:'Ook snelweg of stevig optrekken',set:{meting:'rit10'}, next:'handel_gegevens'}
+      {t:'Een paar minuten, stilstaand', d:'Contact aan, motor draait',      set:{meting:'stil'},  next:null},
+      {t:'Korte proefrit (±2 min)',      d:'Even het blok om',               set:{meting:'rit2'},  next:null},
+      {t:'Uitgebreide proefrit (±10 min)',d:'Ook snelweg of stevig optrekken',set:{meting:'rit10'}, next:null}
     ]
-  },
-  handel_gegevens: {
-    v:'Gegevens toevoegen?',
-    sub:'Optioneel, maar het maakt het rapport een stuk concreter. Laat leeg wat je niet weet.',
-    type:'gegevens',
-    next:null
   },
 
   /* ── Onderweg (29-09-2026) ── de tegel "Rit starten" op het startscherm.
@@ -163,6 +181,7 @@ var BOOM = {
   /* ── Verbruik ── */
   verbruik_wat: {
     v:'Wat wil je weten?',
+    weten:'verbruik',
     sub:'',
     opt:[
       {t:'Wat verbruikt hij écht',       d:'Gemeten, niet wat de boordcomputer zegt', set:{vraag:'werkelijk'},  next:'verbruik_nu'},
@@ -184,6 +203,8 @@ var BOOM = {
   /* ── Conditie ── */
   conditie_diep: {
     v:'Hoe grondig wil je het?',
+    weten:'conditie',
+    advies:true,
     sub:'Alles wat de auto ondersteunt wordt meegenomen; dit bepaalt vooral hoeveel tijd het kost.',
     opt:[
       {t:'Snel',     d:'Stilstaand, ±2 minuten — foutcodes en systeemtest', set:{meting:'stil',  diepte:'snel'},     next:null},
@@ -195,6 +216,7 @@ var BOOM = {
   /* ── Voorbereiding ── */
   voorb_wat: {
     v:'Waar moet hij klaar voor zijn?',
+    weten:'voorbereiding',
     sub:'',
     opt:[
       {t:'❄️ De winter',              d:'Accu, koelsysteem, verwarming',      set:{voorb:'winter',    meting:'stil'},  next:null},
@@ -218,7 +240,7 @@ var MODULES = {
   onderdeel: {n:'Welk onderdeel is kapot?', d:'Foutcodes en meetwaarden samen, teruggebracht tot verdachte onderdelen', run:function(){ openOnderdeelCheck(); }},
   diep:      {n:'Diepe storingsanalyse', d:'Uitgebreide intake plus datalog om het probleem te vangen',     run:function(){ openDeepDiag(); }},
   markt:     {n:'Koop- en verkoopcheck', d:'Staat, historie en onderbouwing van de waarde',
-              run:function(j){ veilig(function(){ setKoopMode(j.rol||'koop'); }); openAnalysis('koop'); }},
+              run:function(j){ koopVoorbereiden(j); openAnalysis('koop'); }},
   klimaat:   {n:'Klimaat & koeling',     d:'Airco of winterklaar, afhankelijk van het seizoen',
               run:function(j){ openClimateCheck(j.voorb==='winter'?'winter':'airco'); }},
   accu:      {n:'Start- & laadsysteem',  d:'Accuspanning, laadgedrag en startgedrag',                       run:function(){ openEVCheck(); }},
@@ -351,7 +373,7 @@ var tak = null;
 function beginVan(t){
   var T = TAKKEN[t];
   tak = T ? t : null;
-  job = {}; pad = [];
+  job = {}; pad = []; koopKlaar = false; weten = {};
   if(T){ Object.keys(T.set).forEach(function(k){ job[k]=T.set[k]; }); nu = T.nu; }
   else nu = 'start';
 }
@@ -363,6 +385,34 @@ function beginVan(t){
    gedaan     = welke modules je al geopend hebt (voor de vinkjes).          */
 var job = {}, pad = [], nu = 'start';
 var actief = false, gedaan = {}, metingGestart = false;
+
+/* ── Wat we al weten (PLWeten) ──────────────────────────────────────────
+   weten[tak] = het model van de kaart zodra hij binnen is, zodat terug-
+   bladeren niet opnieuw het RDW vraagt. Per opdracht; beginVan() wist hem. */
+var weten = {};
+function wetenOpts(tak){
+  return { tak: tak, rol: job.rol, kent: tak==='handel' ? job.kenteken : '' };
+}
+
+/* ── De koopcheck krijgt wat de wizard al vroeg ─────────────────────────
+   Eén keer per opdracht: setKoopMode() wist de proefritgegevens, dus een
+   tweede aanroep na een gereden proefrit zou de uitslag weggooien. */
+var koopKlaar = false;
+function koopVoorbereiden(j){
+  if(koopKlaar) return;
+  koopKlaar = true;
+  try{ setKoopMode(j.rol||'koop'); }catch(e){ console.warn('PLWizard: koopmodus niet gezet', e); }
+  var zet = function(id, v){ var i=el(id); if(i && v!=null && String(v)!=='') i.value=v; };
+  zet('koopKentInput', j.kenteken); zet('koopKmInput', j.km);
+  zet('koopVraagprijs', j.prijs);   zet('koopLaatsteBeurt', j.laatsteBeurt);
+  var rit = { rit2:'2min', rit10:'10min' }[j.meting];
+  try{ setKoopRit(rit ? 'ja' : 'nee'); if(rit) setKoopRitDuur(rit); }
+  catch(e){ console.warn('PLWizard: proefritkeuze niet overgenomen in de koopcheck', e); }
+  if(j.kenteken && typeof koopRdwLookup==='function'){
+    try{ Promise.resolve(koopRdwLookup()).catch(function(e){ console.warn('PLWizard: RDW in de koopcheck niet opgehaald', e); }); }
+    catch(e){ console.warn('PLWizard: RDW in de koopcheck niet opgehaald', e); }
+  }
+}
 
 /* ── Zwevende chip ──────────────────────────────────────────────────────
    Zolang het onderzoek loopt en het planscherm verborgen is, hangt hier de
@@ -437,8 +487,36 @@ function toonVraag(){
   el('wzBalk').style.width = Math.round((diepte/totaal)*100)+'%';
   el('wzTerug').style.visibility = pad.length ? 'visible' : 'hidden';
 
-  var h = '<div class="wz-vraag">'+k.v+'</div>';
+  // Wat we al weten staat bóven de vraag: eerst de info, dan de keuze.
+  var h = k.weten && k.type!=='info' ? '<div id="wzWeten"></div>' : '';
+  h += '<div class="wz-vraag">'+k.v+'</div>';
   if(k.sub) h += '<div class="wz-sub">'+k.sub+'</div>';
+
+  if(k.type==='info'){
+    h += '<div id="wzWeten"></div>';
+    body.innerHTML = h;
+    foot.innerHTML = '<button class="wz-pri" onclick="PLWizard.infoVerder()">Volgende →</button>';
+    var hier = nu;
+    tekenWeten(k.weten, function(m){
+      // Niets bekend en niets algemeens te zeggen: dan is deze stap een tik
+      // voor niets. Door naar de volgende, zonder hem in het pad te zetten —
+      // dan landt "terug" er ook niet meer op.
+      if(nu===hier && m.leeg && !m.blokken.length){ nu = k.next; if(nu) toonVraag(); else toonPlan(); }
+    });
+    return;
+  }
+  if(k.type==='kenteken'){
+    h += '<div class="wz-velden">'+_veld(k.veld,'Kenteken','bijv. 12-ABC-3','text')+'</div>';
+    body.innerHTML = h;
+    foot.innerHTML = '<button class="wz-sec" onclick="PLWizard.kentekenVerder(true)">Overslaan</button>'+
+                     '<button class="wz-pri" onclick="PLWizard.kentekenVerder(false)">Volgende →</button>';
+    var inp = el('wz_'+k.veld);
+    if(inp){
+      inp.setAttribute('maxlength','8'); inp.setAttribute('autocapitalize','characters'); inp.setAttribute('autocomplete','off');
+      inp.addEventListener('keydown', function(e){ if(e.key==='Enter') window.PLWizard.kentekenVerder(false); });
+    }
+    return;
+  }
 
   if(k.type==='tekst'){
     h += '<textarea class="wz-tekst" id="wzTekst" rows="5" placeholder="'+(k.plaats||'')+'">'+
@@ -448,11 +526,12 @@ function toonVraag(){
     return;
   }
   if(k.type==='gegevens'){
+    // Alleen velden die de koopcheck ook heeft: koopVoorbereiden() zet ze
+    // daar neer. Het kenteken is een eigen stap geworden, vóór de info.
     h += '<div class="wz-velden">'+
-      _veld('km',   'Kilometerstand', 'bijv. 142500', 'number')+
-      _veld('prijs','Vraagprijz of taxatie (€)', 'bijv. 12950', 'number')+
-      _veld('kenteken','Kenteken', 'bijv. 12-ABC-3', 'text')+
-      _veld('historie','Onderhoudshistorie', 'bijv. dealeronderhoud t/m 2024, distributie vervangen', 'text')+
+      _veld('km',   'Kilometerstand op de teller', 'bijv. 142500', 'number')+
+      _veld('prijs','Vraagprijs of taxatie (€)', 'bijv. 12950', 'number')+
+      _veld('laatsteBeurt','Km-stand bij de laatste beurt', 'bijv. 130000', 'number')+
       '</div>';
     body.innerHTML = h;
     foot.innerHTML = '<button class="wz-sec" onclick="PLWizard.gegevensVerder(true)">Overslaan</button>'+
@@ -460,17 +539,41 @@ function toonVraag(){
     return;
   }
 
+  // Een advies alleen als de kaart er een reden voor had (PLWeten.adviesMeting).
+  var adv = k.advies ? adviesVoor() : null;
+  if(adv) h += '<div class="wz-sub" style="color:var(--tx2)">💡 '+adv.waarom.replace(/</g,'&lt;')+'</div>';
   h += '<div class="wz-opts">';
   (k.opt||[]).forEach(function(o,i){
     if(o.direct && !moduleAan(o.direct)) return;   // uitgezet in beheer: keuze weg, index blijft kloppen
-    h += '<button class="wz-opt" onclick="PLWizard.kies('+i+')">'+
-           '<span class="wz-opt-t">'+o.t+'</span>'+
+    var raad = adv && o.set && o.set.meting===adv.meting;
+    h += '<button class="wz-opt'+(raad?' wz-raad':'')+'" onclick="PLWizard.kies('+i+')"'+
+           (raad?' style="border-color:var(--bl)"':'')+'>'+
+           '<span class="wz-opt-t">'+o.t+(raad?' <span style="color:var(--bl);font-size:.8em">· aanbevolen</span>':'')+'</span>'+
            (o.d?'<span class="wz-opt-d">'+o.d+'</span>':'')+
          '</button>';
   });
   h += '</div>';
   body.innerHTML = h;
   foot.innerHTML = '';
+  if(k.weten) tekenWeten(k.weten);
+}
+
+/* De kaart "Wat we al weten" in #wzWeten. klaar(model) als hij binnen is. */
+function tekenWeten(tak, klaar){
+  var doel = el('wzWeten');
+  if(!doel || !window.PLWeten) return;
+  var o = wetenOpts(tak);
+  o.klaar = function(m){ weten[tak] = m; if(klaar) klaar(m); };
+  PLWeten.teken(doel, o).catch(function(e){
+    console.warn('PLWizard: "Wat we al weten" niet getekend', e);
+    doel.innerHTML = '';
+    if(klaar) klaar({ leeg:true, blokken:[] });
+  });
+}
+/* Het advies voor de meetvraag: uit de kaart van deze tak. */
+function adviesVoor(){
+  var m = weten[job.doel==='handel' ? 'handel' : job.doel];
+  return (m && m.advies) || null;
 }
 
 function _veld(id,label,plaats,type){
@@ -594,9 +697,21 @@ window.PLWizard = {
     pad.push(nu); nu=k.next;
     if(nu) toonVraag(); else toonPlan();
   },
+  infoVerder: function(){
+    pad.push(nu); nu=BOOM[nu].next;
+    if(nu) toonVraag(); else toonPlan();
+  },
+  kentekenVerder: function(sla){
+    var k=BOOM[nu], i=el('wz_'+k.veld);
+    var v = sla ? '' : String((i && i.value) || '').toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if(!sla && v && v.length<4){ try{ showToast('Dat is geen volledig kenteken — vul het aan of sla het over'); }catch(e){ console.warn('PLWizard: melding', e); } return; }
+    if(v) job[k.veld]=v; else delete job[k.veld];
+    pad.push(nu); nu=k.next;
+    if(nu) toonVraag(); else toonPlan();
+  },
   gegevensVerder: function(sla){
     if(!sla){
-      ['km','prijs','kenteken','historie'].forEach(function(f){
+      ['km','prijs','laatsteBeurt'].forEach(function(f){
         var i=el('wz_'+f); if(i && i.value.trim()) job[f]=i.value.trim();
       });
     }
@@ -638,11 +753,17 @@ window.PLWizard = {
     var meting = METING[job.meting] || METING.stil;
     // Klacht doorgeven aan de AI-laag zodat de analyse er meteen op slaat.
     if(job.klacht) veilig(function(){ window._wizKlacht = job.klacht; });
-    if(job.rol)    veilig(function(){ setKoopMode(job.rol); });
+    if(job.doel==='handel') koopVoorbereiden(job);
     window._wizJob = job;
     actief=true; metingGestart=true;
     this.sluitStil();
-    if(meting.start) veilig(function(){ meting.start(); });
+    // Een proefrit voor een koop gaat via de koopcheck: dan komt de uitslag
+    // terug in het eindoordeel (koopProefritKlaar). Via openRitAnalyse direct
+    // ging hij nergens heen.
+    if(meting.start && job.doel==='handel' && typeof startKoopProefrit==='function'){
+      try{ startKoopProefrit(); }catch(e){ console.warn('PLWizard: proefrit via de koopcheck mislukt — gewone rit', e); veilig(function(){ meting.start(); }); }
+    }
+    else if(meting.start) veilig(function(){ meting.start(); });
     else {
       // Stilstaand meten kent geen eigen rijscherm, maar wél een meetfase: de
       // eerste module mag pas draaien als er genoeg monsters binnen zijn.

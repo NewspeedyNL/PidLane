@@ -530,6 +530,8 @@
     stopDemo: stopDemo,
     sluit: sluit,
     teken: teken,
+    // RDW plus validatie als data, zonder scherm — voor PLWeten (de infokaart in de wizard)
+    haal: haal,
     _zoek: zoek,
     _mijn: maakMijn,
     _simuleerKent: simuleerKent,
