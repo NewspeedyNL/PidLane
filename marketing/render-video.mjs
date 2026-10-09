@@ -1,5 +1,5 @@
 // Neemt marketing/tiktok.html frame voor frame op en maakt er een MP4 van.
-// gebruik: FFMPEG=/pad/naar/ffmpeg node marketing/render-video.mjs [uitvoer.mp4] [fps]
+// gebruik: [PAGINA=andere.html] FFMPEG=/pad/naar/ffmpeg node marketing/render-video.mjs [uitvoer.mp4] [fps]
 // Vereist een Chromium (headless_shell van Playwright of chromium in PATH) en een
 // ffmpeg met libx264. Geen npm-pakketten: node praat zelf met het debugprotocol.
 import { spawn } from 'node:child_process';
@@ -11,6 +11,8 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 const uit = path.resolve(process.argv[2] || path.join(dir, 'pidlane-tiktok.mp4'));
 const FPS = +(process.argv[3] || 30);
 const FFMPEG = process.env.FFMPEG || 'ffmpeg';
+// Welke animatie: standaard tiktok.html, of PAGINA=pad/naar/film.html.
+const pagina = path.resolve(process.env.PAGINA || path.join(dir, 'tiktok.html'));
 
 function chromium() {
   if (process.env.CHROME) return process.env.CHROME;
@@ -44,7 +46,7 @@ const js = async expr => { const r = await cmd('Runtime.evaluate', { expression:
 
 await cmd('Emulation.setDeviceMetricsOverride', { width: 1080, height: 1920, deviceScaleFactor: 1, mobile: false });
 await cmd('Page.enable');
-await cmd('Page.navigate', { url: 'file://' + path.join(dir, 'tiktok.html') + '?opname' });
+await cmd('Page.navigate', { url: 'file://' + pagina + '?opname' });
 await sleep(800);
 const fonts = await js('document.fonts.ready.then(()=>[...document.fonts].filter(f=>f.status==="loaded").map(f=>f.family).join(", "))');
 console.log('lettertypes:', fonts);
