@@ -80,6 +80,9 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('een proefrittip uit de merkkennis (roetfilter, diesel)', /Roetfilter/.test(k));
     toets('schadehistorie wordt uitgelegd, niet beloofd', /Schadehistorie/.test(k) && /niet in de open RDW-data/.test(k));
     toets('de knop "Meer over dit model" staat er, met de prijs erbij', /Meer over dit model \(AI, kost tegoed\)/.test(k));
+    await app.ev(`PLWizard.terug(); PLWizard.kentekenVerder(false); 'ok'`);
+    await wacht(`${kaart}.indexOf('Let bij Mazda op')>-1`, 5000);
+    toets('terugbladeren vraagt het RDW niet opnieuw', (await app.ev(`window.__rdwVragen.length`)) === 1, await app.ev(`window.__rdwVragen.join(',')`));
 
     console.log('\n2. Invullen, dan de tijdvraag met advies');
     await app.ev(`PLWizard.infoVerder(); 'ok'`);
@@ -125,6 +128,8 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('en staat vóór de vraag', await app.ev(`(function(){ var w=document.getElementById('wzWeten'), v=document.querySelector('#wizardNieuwOv .wz-vraag');
       return !!w && !!v && !!(w.compareDocumentPosition(v) & Node.DOCUMENT_POSITION_FOLLOWING); })()`));
     toets('de vraag zelf is ongewijzigd', (await app.ev(vraag)) === 'Wanneer merk je het?');
+    await app.ev(`PLWizard.sluit(); PLFoutcodes.staat().scan={ tijd:Date.now(), codes:{ bevestigd:['P0420'], pending:[], permanent:[] } }; PLWizard.open('storing'); 'ok'`);
+    toets('een nieuwe uitlezing staat er meteen, niet de vorige  <- tegenproef: geen oude cache', await wacht(`${kaart}.indexOf('P0420')>-1 && ${kaart}.indexOf('P0301')<0`, 4000), await app.ev(kaart));
     await app.ev(`PLFoutcodes.staat().scan=null; PLWizard.sluit(); 'ok'`);
 
     console.log('\n8. Diepe storingsanalyse: merk en model zijn geen vraag als de app ze kent');

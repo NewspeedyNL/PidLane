@@ -255,13 +255,19 @@
   /* opts = { tak, kent }. Bij handel alleen het ingevulde kenteken: de auto
      die je wilt kopen is niet je eigen auto. Bij verbruik je eigen kenteken,
      voor de fabrieksopgave. */
+  // Alleen wat van het net komt wordt bewaard: het dossier en de laatste
+  // uitlezing lezen we elke keer vers, want die kunnen net veranderd zijn.
+  // Terugbladeren in de wizard vraagt zo niet opnieuw het RDW.
+  var CACHE_MS = 10 * 60 * 1000, _net = {};
   async function verzamel(opts) {
     opts = opts || {};
     var tak = opts.tak;
     var b = lokaal(tak);
     var kent = tak === 'handel' ? String(opts.kent || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
       : tak === 'verbruik' ? mijnKenteken() : '';
-    if (kent && window.PLZonder && typeof PLZonder.haal === 'function') {
+    var c = kent && _net[tak + '|' + kent];
+    if (c && Date.now() - c.t < CACHE_MS) { b.rdw = c.rdw; b.recall = c.recall; b.fout = c.fout; }
+    else if (kent && window.PLZonder && typeof PLZonder.haal === 'function') {
       try {
         var d = await PLZonder.haal(kent);
         if (d) b.rdw = d.overzicht;
@@ -274,6 +280,8 @@
         try { var rc = await PLRecall.check(kent); b.recall = ((rc && rc.acties) || []).filter(function (a) { return a.open; }); }
         catch (e) { console.warn('PLWeten: terugroepacties niet opgehaald — de RDW-vlag blijft staan', e); }
       }
+      // Een mislukte opzoeking niet bewaren: dan probeert de volgende keer het opnieuw.
+      if (!b.fout) _net[tak + '|' + kent] = { t: Date.now(), rdw: b.rdw, recall: b.recall, fout: null };
     }
     b.kennis = kennisVoor(b);
     return b;
@@ -324,10 +332,6 @@
   }
 
   var _laatste = null;   // { bron } van de laatst getekende kaart, voor de AI-knop
-  // Terugbladeren in de wizard tekent de kaart opnieuw; dan niet opnieuw het
-  // RDW vragen. Kort bewaard: een APK of terugroepactie verandert niet per minuut.
-  var CACHE_MS = 10 * 60 * 1000, _cache = {};
-  function sleutel(o) { return [o.tak, o.rol || '', String(o.kent || '').toUpperCase().replace(/[^A-Z0-9]/g, '')].join('|'); }
   /* Tekent de kaart in `doel`. opts = { tak, rol, kent, klaar(model) }.
      klaar() krijgt het model zodra alles binnen is — ook als hij leeg is,
      zodat de aanroeper kan besluiten de stap over te slaan. */
@@ -336,9 +340,7 @@
     if (!doel) return null;
     zorgCss();
     doel.innerHTML = '<div class="plw"><div class="plw-kop">📋 Wat we al weten</div><div class="plw-st">⏳ Even opzoeken…</div></div>';
-    var k = sleutel(opts), c = _cache[k], b;
-    if (c && Date.now() - c.t < CACHE_MS) b = c.b;
-    else { b = await verzamel(opts); _cache[k] = { t: Date.now(), b: b }; }
+    var b = await verzamel(opts);
     var m = kaart(b, opts.tak, opts.rol);
     _laatste = { bron: b };
     if (!doel.isConnected) return m;

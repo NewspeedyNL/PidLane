@@ -26,8 +26,8 @@
    proxy-antwoord, opnieuw meten bij online en terug in beeld, reden in het
    logboek.
  - Handleiding bijgewerkt. test-weten.js (33), test-aibereik.js (17),
-   test-wizardtakken.js +14, bproef-koopstroom.js (34), drie blok 5-proeven,
-   dertien mutaties.
+   test-wizardtakken.js +14, bproef-koopstroom.js (36), drie blok 5-proeven,
+   veertien mutaties.
 
  ═══════════════════════════════════════════════════════════
  09-10-2026 — Software als oorzaak ook in Welk onderdeel, en met de VIN-controle (#426)
