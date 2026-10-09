@@ -15,6 +15,47 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 09-10-2026 — De wizard vroeg te vroeg, en de AI-stip werd vals rood
+
+**AI-stip.** `checkAiReachable()` zette `_aiReach=false` bij de eerste
+mislukte ping en liet dat vijf minuten staan; een geslaagde AI-vraag haalde
+hem niet terug, en de `catch` was stil. Rijdend op 5G (celwissel, app even op
+de achtergrond) stond er dus "AI niet bereikbaar" terwijl de AI werkte. Nu:
+rood na twee missers op rij (`aiPingUitslag`), een snelle herhaling na de
+eerste, opnieuw meten bij `online`/`visibilitychange`, en `plFetch` meldt
+elk antwoord van de proxy via `plProxyGezien()`. De omslag komt één keer in
+het logboek.
+
+**Kopen.** Na "Ik wil hem kopen" kwam eerst de tijdvraag, toen een
+gegevensstap (km, prijs, kenteken, historie). Die gegevens gingen nergens
+heen: `window._wizJob` werd alleen voor `.meting` gelezen, en de koopcheck
+vroeg alles opnieuw. Daarnaast liep een proefrit die je uit het plan
+startte via `openRitAnalyse()` zonder `_koopProefritActief`, dus de uitslag
+kwam niet terug in het koopoordeel; en `setKoopMode()` wist de proefrit bij
+elke keer openen. Nu: rol → kenteken → "Wat we al weten" (`PLWeten`) →
+gegevens → tijd met advies → plan, en `koopVoorbereiden()` zet alles één keer
+in de koopcheck. Het label "Vraagprijz" is "Vraagprijs" geworden.
+
+**Herzien.** In het gesprek vooraf noemde ik de ritkeuze bij Onderhoud
+dubbel. Dat klopte niet: de wizard zet daar zelf `meting:'stil'` en vraagt
+niets; alleen het onderhoudsscherm vraagt het. Ook de klacht bij "Er is iets
+mis" die het onderzoek als chips terugtoont is geen dubbele vraag maar een
+voorselectie (`opt.klacht` → `KLACHTEN`). Wel dubbel was "Merk en model" in
+de diepe storingsanalyse: die stap valt nu weg als de app de auto kent.
+
+**Gevonden en niet gerepareerd** (één onderwerp per PR):
+- `pidlane-koopcheck.js` zet bij het laden `pl_kenteken` — het kenteken van
+  je **eigen** auto — in `#koopKentInput`. Wie een andere auto koopt zonder
+  kenteken in de wizard, ziet daar zijn eigen kenteken staan.
+- `autoKennisVoorMerk()` filtert bij een hybride op `'hybride'` en laat dan
+  de punten met `'benzine'` weg, terwijl een hybride ook een benzinemotor
+  heeft.
+- `AUTO_KENNIS` is per merk (14 merken), niet per model of motor; roest
+  staat er alleen bij Mazda in. Modelkennis loopt nu via de knop "Meer over
+  dit model" (AI, op verzoek, gelabeld als niet geverifieerd).
+- `veilig()` in `pidlane-wizard.js` is een stille catch; nieuwe code in de
+  wizard gebruikt hem niet meer, de bestaande aanroepen staan er nog.
+
 ## 09-10-2026 — #426: softwareoorzaken in Welk onderdeel en via de VIN-controle
 
 Twee open punten van #426 zijn gekoppeld; twee blijven open.

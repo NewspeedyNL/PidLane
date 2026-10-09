@@ -65,10 +65,11 @@ var PL_HULP = {
         '<p>Daaronder, onder <b>Ik wil…</b>, vier tegels. Elke tegel opent een korte wizard voor die vraag:</p>' +
         '<ul>' +
         '<li><b>Er is iets mis</b> — een klacht, lampje of geluid.</li>' +
-        '<li><b>Kopen of verkopen</b> — staat, historie en waarde.</li>' +
+        '<li><b>Kopen of verkopen</b> — staat, historie en waarde. Je geeft eerst het kenteken; dan zie je wat het RDW weet, waar je bij dit merk op let en wat je tijdens de proefrit voelt of hoort. Daarna vul je km-stand en prijs in, en pas dan kies je hoe lang je meet. Wat je invult staat straks al in de koopcheck.</li>' +
         '<li><b>Rit starten</b> — meekijken, zuinig rijden, caravan.</li>' +
         '<li><b>Voorbereiden</b> — winter, lange rit, onderhoud.</li>' +
         '</ul>' +
+        '<p>Elke wizard begint met <b>Wat we al weten</b>: wat de app al over je auto heeft, zoals de laatste foutcodes of een openstaande terugroepactie. Weet hij nog niets, dan blijft dat blok weg.</p>' +
         '<p>In de <a data-hulp="garagemodus">garagemodus</a> staat er ook <b>Alle functies</b>, voor wie precies weet wat hij zoekt.</p>',
       zie: ['check', 'zonder'] },
 
@@ -174,7 +175,7 @@ var PL_HULP = {
         '<p>Rechtsboven staat één knop met een gekleurde stip en de naam van de auto, of <b>Niet verbonden</b>. ' +
         'De kleur is de ernstigste van auto-dossier, adapter en AI samen.</p>' +
         '<p>Tik erop voor vier regels, elk met een korte uitleg en hoe het nu staat: <b>Auto-dossier</b> (wat PidLane over de auto weet, met het percentage), ' +
-        '<b>Adapter (OBD)</b> (hoe de verbinding met de auto het doet), <b>AI-uitleg</b> (of de AI bereikbaar is) en <b>Achtergrond</b> (wat er op de achtergrond loopt). ' +
+        '<b>Adapter (OBD)</b> (hoe de verbinding met de auto het doet), <b>AI-uitleg</b> (of de AI bereikbaar is; één gemiste verbinding onderweg maakt hem nog niet rood, pas twee op rij) en <b>Achtergrond</b> (wat er op de achtergrond loopt). ' +
         'Een getal bij de statusknop zegt hoeveel dingen er lopen.</p>',
       zie: ['verbinden'] },
 

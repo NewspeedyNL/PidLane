@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '8.9 (09-10-2026)';
+const TESTRUN_VERSIE = '9.0 (09-10-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2786,6 +2786,61 @@ function _zonderSporen(naam, fn) {
 }
 
 const PROEVEN_B5 = [
+
+  // ── de AI-stip onderweg (09-10-2026) ──
+  {
+    issue: '—',
+    naam: 'AI-stip: één mislukte ping is nog niet rood, twee op rij wel, en een antwoord van de proxy herstelt hem',
+    waarom: 'Rijdend op 5G stond er "AI niet bereikbaar" terwijl de AI werkte: één gemiste ping zette de stip vijf minuten op rood.',
+    proef: async function () {
+      if (typeof aiPingUitslag !== 'function' || typeof window.plProxyGezien !== 'function') return { staat: 'FOUT', detail: 'aiPingUitslag of plProxyGezien ontbreekt — pidlane-uihelpers.js is niet de nieuwe' };
+      var een = aiPingUitslag({ reach: true, mis: 0 }, false), twee = aiPingUitslag(een, false);
+      if (een.reach !== true) return { staat: 'FOUT', detail: 'één misser maakt hem al rood' };
+      if (twee.reach !== false) return { staat: 'FOUT', detail: 'twee missers op rij maken hem niet rood' };
+      var nu = (typeof _aiReach !== 'undefined') ? _aiReach : '?';
+      return { staat: 'OK', detail: 'regel klopt · nu: ' + (nu === true ? 'bereikbaar' : nu === false ? 'niet bereikbaar' : 'nog niet gemeten') };
+    }
+  },
+
+  // ── eerst weten, dan invullen, dan meten (09-10-2026) ──
+  {
+    issue: '—',
+    naam: 'Wizard: kopen begint met kenteken en "Wat we al weten"; de gegevens komen in de koopcheck terecht',
+    waarom: 'De tijdvraag kwam vóór er iets over de auto bekend was, en km, prijs en kenteken uit de wizard gingen nergens heen: de koopcheck vroeg ze opnieuw.',
+    proef: async function () {
+      if (!window.PLWeten || !window.PLWizard) return { staat: 'FOUT', detail: 'PLWeten of PLWizard ontbreekt — pidlane-weten.js hangt niet in index.html' };
+      var B = PLWizard._boom, pad = [], k = B.handel_rol.opt[0].next;
+      while (k && pad.length < 8) { pad.push(k); var kn = B[k]; k = kn.type ? kn.next : (kn.opt[0] || {}).next; }
+      if (pad.join(',') !== 'handel_kenteken,handel_info,handel_gegevens,handel_tijd') return { staat: 'FOUT', detail: 'volgorde na "kopen": ' + pad.join(' → ') };
+      var v = (typeof getVehicle === 'function' && getVehicle()) || {};
+      if (!v.merk) return { staat: 'LET OP', detail: 'volgorde klopt; voor de merkkennis op de kaart is een auto met bekend merk nodig' };
+      var kennis = typeof autoKennisVoorMerk === 'function' ? autoKennisVoorMerk(v.merk, v.brandstof) : null;
+      var m = PLWeten._kern.kaart({ voertuig: { merk: v.merk, model: v.model }, kennis: kennis }, 'handel', 'koop');
+      var tips = m.blokken.filter(function (b) { return b.kop === 'Bij de auto en tijdens de proefrit'; })[0];
+      if (!tips) return { staat: 'FOUT', detail: 'de kaart voor een koper heeft geen proefrittips' };
+      return { staat: 'OK', detail: v.merk + ': ' + (kennis ? kennis.zwak.length + ' zwakke punten uit de merktabel, ' : 'niet in de merktabel, ') + tips.regels.length + ' proefrittips' +
+        (m.advies ? ', advies ' + m.advies.meting : ', geen meetadvies') };
+    }
+  },
+
+  // ── diepe storingsanalyse: merk en model zijn geen vraag (09-10-2026) ──
+  {
+    issue: '—',
+    naam: 'Diepe storingsanalyse vraagt geen merk en model als de app ze al kent',
+    waarom: 'De zeven stappen vroegen "Merk en model" ook als de auto verbonden was en de app ze al wist.',
+    proef: async function () {
+      if (typeof openDeepDiag !== 'function') return { staat: 'FOUT', detail: 'openDeepDiag ontbreekt' };
+      var v = (typeof vehicleInfo !== 'undefined' && vehicleInfo) || {};
+      if (!(v.merk || v.make)) return { staat: 'LET OP', detail: 'nodig: een verbonden auto waarvan het merk bekend is' };
+      openDeepDiag();
+      var vraagt = (window._ddSteps || []).some(function (s) { return s.t === 'Merk en model'; });
+      var veld = document.getElementById('dd_merk');
+      try { closeDeepDiag(); } catch (e) { console.warn('Testrun: diepe analyse niet gesloten', e); }
+      if (vraagt) return { staat: 'FOUT', detail: 'de stap "Merk en model" staat er nog' };
+      if (!veld || veld.type !== 'hidden' || !veld.value) return { staat: 'FOUT', detail: 'het verborgen veld met merk en model ontbreekt — runDeepDiag krijgt dan geen auto' };
+      return { staat: 'OK', detail: 'geen vraag, wel "' + veld.value + '" in de analyse' };
+    }
+  },
 
   // ── privacycheck 3.2: geen chassisnummer naar de AI ──
   {
@@ -10249,7 +10304,7 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 09-10 (negentiende) — de laatste twee FOUT-regels: rendement en de meter die opnieuw opbouwt (#457)',
+  titel: 'OPLEVERING 09-10 (twintigste) — eerst weten, dan invullen, dan meten; en een AI-stip die onderweg niet meer vals rood wordt',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
     'DE VERBINDING IS KLAAR. Verbinding, snelheid, herverbinden en protocol werken: op 08-10 vijf diagnoses tegelijk op de CX-5, 0 fouten in het log (#394 dicht). Alle meetopdrachten in D1 staan op afgerond; de meetkamer is leeg tot er een nieuw issue komt.',
@@ -10260,6 +10315,10 @@ const CAMPAGNE = {
     '── #457, OP DE GEWONE RIT ────────',
     'RENDEMENT (CA10) REKENT PAS VANAF 5 KW. Stationair gaf 0162 een frictiewaarde en bij gas los stroomt er lucht zonder brandstof: dan schoot de verhouding naar 99 %. Blijft "Berekende PIDs … binnen hun bereik" toch FOUT, dan staan de bronwaarden van het hoogste punt er nu achter — plak die regel.',
     'DE METER: EEN DIAGNOSE DIE SENSOREN AANZET IS GEEN KNIPPEREN MEER. De tik boekte zo\'n herbouw als "indeling"; nu als "selectie". Draai gerust weer meerdere diagnoses tijdens het rijden en kijk of "De meter van Slim visueel knippert niet" groen wordt.',
+    '── 9.0: DE WIZARD EN DE AI-STIP ────────',
+    'AI-STIP ONDERWEG. Op 5G stond er "AI niet bereikbaar" terwijl de AI werkte. Nu pas rood na twee mislukte pings op rij, en elk antwoord van de proxy zet hem terug. Zie je hem toch rood terwijl je dekking hebt: tik op de statusknop, wacht een halve minuut, en plak de regel "AI-proxy niet bereikbaar" uit het logboek.',
+    'KOPEN, MET DE AUTO ERBIJ. Tegel Kopen of verkopen → Ik wil hem kopen → kenteken. Kijk of "Wat we al weten" klopt met wat je van de auto weet (APK, NAP, terugroepactie, merk), en of de proefrittips iets zijn wat je echt kunt doen. Kies daarna een proefrit uit het plan: de uitslag hoort terug te komen in de koopcheck ("✅ Proefrit-data opgenomen").',
+    'MEER OVER DIT MODEL kost tegoed. Probeer het één keer en beoordeel of het iets toevoegt aan de merktabel — of dat de AI iets algemeens zegt.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
     'HYBRIDE (#430, #452) heeft een hybride nodig; het analyserapport (#448) een analyse met AI, geparkeerd.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'

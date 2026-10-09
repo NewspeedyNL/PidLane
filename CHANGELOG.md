@@ -10,6 +10,26 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-10-2026 — Testrun 9.0: eerst weten, dan invullen, dan meten; AI-stip niet meer vals rood
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw: pidlane-weten.js (PLWeten), de kaart "Wat we al weten" bovenaan
+   elke wizardtak: RDW, terugroepacties, dossier, laatste foutcodes,
+   merkkennis, en voor een koper proefrittips en een regel over
+   schadehistorie. "Meer over dit model" vraagt de AI, alleen op een tik.
+ - Kopen: rol → kenteken → wat we weten → gegevens → tijd (met advies) →
+   plan. Kenteken, km, prijs, laatste beurt en ritduur staan daarna al in
+   de koopcheck; een proefrit uit het plan komt terug in het koopoordeel.
+   "Vraagprijz" → "Vraagprijs".
+ - Diepe storingsanalyse vraagt geen merk en model als de app ze kent.
+ - AI-stip: rood pas na twee mislukte pings op rij, terug op groen bij elk
+   proxy-antwoord, opnieuw meten bij online en terug in beeld, reden in het
+   logboek.
+ - Handleiding bijgewerkt. test-weten.js (33), test-aibereik.js (17),
+   test-wizardtakken.js +14, bproef-koopstroom.js (34), drie blok 5-proeven,
+   dertien mutaties.
+
+ ═══════════════════════════════════════════════════════════
  09-10-2026 — Software als oorzaak ook in Welk onderdeel, en met de VIN-controle (#426)
  ═══════════════════════════════════════════════════════════
 
