@@ -261,6 +261,10 @@ var KRITIEK = [
   // Het run-paneel (pidlane-run.js) schakelt deze vijf aan en uit. Ze stonden
   // er nog niet in omdat ze tot 21-08 alleen vanuit hun eigen scherm werden
   // aangeroepen, zónder guard.
+  // Erbij op 09-10-2026 (#463). Blok 5 toetst de terreinregel van de
+  // caravanrit achter een guard; ontbreekt hij, dan meldt de proef dat — maar
+  // zonder deze regel zou de guard zelf de stille fout zijn.
+  'caravanTerrein',
   'toggleRitMonitor','startCaravan','stopCaravan','startRitAnalyse','stopRitAnalyse',
   // Aandachtspunten bij het voertuigdossier (pidlane-voertuigdata.js), gezet
   // door initConnection als de RDW-opzoeking mislukt.
