@@ -634,6 +634,29 @@ console.log('\n15. De ontstekingsgrens volgt een gezonde motor (#231)');
     toets('een mislukte scan zegt dat, en de knop komt terug', ok === false && /Uitlezen mislukt/.test(s.odBody.innerHTML), s.odBody.innerHTML.slice(0, 200));
   }
 
+  console.log('\n── software in plaats van een onderdeel (#426) ──');
+  {
+    const s = laad();
+    vm.runInContext(fs.readFileSync(__dirname + '/pidlane-data.js', 'utf8'), s, { filename: 'pidlane-data.js' });
+    s.getPidDef = function (pid) { return { name: pid, unit: '' }; };
+    s.getVehicle = function () { return { merk: 'BMW', brandstof: 'diesel' }; };
+    // De BMW zonder roetfilter, uitgelezen in Check mijn auto: DPF hangt na 2400 km.
+    s.PLFoutcodes = { staat() { return { scan: { readiness: { brandstof: 'diesel', nietKlaar: ['Roetfilter (DPF)'] }, sinds: { km: 2400, warm: 60 }, codes: {} } }; } };
+    const adv = s.PLOnderdeel.software();
+    toets('een hangende DPF-monitor uit Check mijn auto komt in Welk onderdeel', adv.some((a) => a.id === 'dpf'), JSON.stringify(adv.map((a) => a.id)));
+    s.openOnderdeelCheck();
+    toets('en staat op het scherm, met de merktool', /Mogelijk software/.test(s.odBody.innerHTML) && /ISTA/.test(s.odBody.innerHTML), s.odBody.innerHTML.slice(-600));
+    // De km-check zag twee VIN's: dat hoort bij de ECU-codering.
+    s.PLFoutcodes = { staat() { return { scan: null }; } };
+    s.PLKm = { vinAfwijkend() { return true; } };
+    toets('een afwijkende VIN uit de km-check wijst naar de ECU-codering', s.PLOnderdeel.software().some((a) => a.id === 'ecu'));
+    s.PLKm = { vinAfwijkend() { return false; } };
+    toets('TEGENPROEF: zonder uitlezing en zonder VIN-afwijking: niets', s.PLOnderdeel.software().length === 0);
+    // Tekst van de auto komt ontsmet op het scherm.
+    const h = s.PLOnderdeel.softwareHtml([{ naam: '<b>x</b>', sterkte: 'sterk', bewijs: ['<img>'], inleren: 'y', tools: [] }]);
+    toets('tekst in het blok wordt ontsmet', h.indexOf('<img>') < 0 && h.indexOf('&lt;b&gt;x') >= 0, h);
+  }
+
   console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles'
                           : 'goed: alle ' + n + ' controles') + '\n');
   process.exit(fout ? 1 : 0);

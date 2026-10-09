@@ -869,6 +869,46 @@ function beoordeel(){
   return uit;
 }
 
+/* ── SOFTWARE IN PLAATS VAN EEN ONDERDEEL (#426) ───────────────────────
+   Een monitor die nooit klaar wordt of een code die bij een niet-ingeleerd
+   onderdeel past, wijst hier anders naar een sensor die niets mankeert. De
+   kennis en het oordeel staan in softwareOorzaken() (pidlane-data.js), net
+   als bij Check mijn auto; hier alleen wat dit paneel weet: de codes van
+   dtcBron() en, als die er is, de laatste uitlezing van Check mijn auto
+   (readiness en "sinds wissen"). Geen bron = lege lijst, geen gok. */
+function software(){
+  if(typeof softwareOorzaken!=='function') return [];
+  var scan=null, v={};
+  try{ scan=(window.PLFoutcodes && typeof PLFoutcodes.staat==='function') ? (PLFoutcodes.staat()||{}).scan : null; }
+  catch(e){ console.warn('Onderdeelcheck: laatste uitlezing onleesbaar (#426)', e); }
+  try{ v=(typeof getVehicle==='function' && getVehicle()) || {}; }
+  catch(e){ console.warn('Onderdeelcheck: voertuig onbekend (#426)', e); }
+  var rd=scan && scan.readiness, c=(scan && scan.codes) || {};
+  var dtc=[].concat(dtcBron().codes, c.bevestigd||[], c.pending||[], c.permanent||[])
+    .map(function(x){ return String(x).toUpperCase(); })
+    .filter(function(x, i, a){ return x && a.indexOf(x)===i; });
+  try{
+    return softwareOorzaken({ merk:v.merk, brandstof: rd ? rd.brandstof : v.brandstof,
+      nietKlaar: rd ? rd.nietKlaar : [], sinds: scan ? scan.sinds : null, dtc:dtc,
+      vinAfwijkend: typeof plVinAfwijkend==='function' && plVinAfwijkend() });
+  }catch(e){ console.warn('Onderdeelcheck: softwareOorzaken gaf een fout (#426)', e); return []; }
+}
+function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g, function(x){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[x]; }); }
+function softwareHtml(adv){
+  if(!adv || !adv.length) return '';
+  var h='<div class="od-grens" style="border-left-color:#8b5cf6;background:rgba(139,92,246,.07)">'+
+    '<b>🧩 Mogelijk software, geen kapot onderdeel</b><br>'+
+    'Wat de auto meldt past bij een onderdeel dat niet (goed) bij de motorcomputer is ingeleerd of gecodeerd. '+
+    'PidLane past daar niets aan; dat doet een garage of de software voor dit merk.';
+  adv.forEach(function(a){
+    h+='<div style="margin-top:8px"><b>'+esc(a.naam)+'</b>'+(a.sterkte==='zwak'?' <i>· zwakke aanwijzing</i>':'')+'<br>'+
+      'Waarom: '+esc(a.bewijs.join('; '))+'.<br>'+esc(a.inleren)+
+      (a.tools && a.tools.length ? '<br>Software voor dit merk: '+esc(a.tools.join(', '))+'.' : '')+
+      (a.waarschuwing ? '<br><i>'+esc(a.waarschuwing)+'</i>' : '')+'</div>';
+  });
+  return h+'</div>';
+}
+
 /* ── Weergave ──────────────────────────────────────────────────────────── */
 function zekerheid(r){
   var p = r.max? Math.max(0, Math.round(r.score/r.max*100)) : 0;
@@ -1003,6 +1043,8 @@ function render(){
        'niet iets dat je kunt vervangen.</div>';
   }
 
+  h+=softwareHtml(software());
+
   // Wat OBD principieel niet kan zien — altijd tonen, juist bij ratelen.
   h+='<div class="od-grens"><b>Wat ik hiermee niet kan zien</b><br>'+
      'Motorsteunen, hitteschilden, uitlaatbeugels, ophanging, aandrijfassen, remmen en '+
@@ -1066,6 +1108,7 @@ window.openOnderdeelCheck = function(){
 // uitleesfout-poort te kunnen natoetsen zonder de UI te openen.
 window.PLOnderdeel = { beoordeel:beoordeel, _regels:REGELS, motorLiters:motorLiters, scan:scan, scanMogelijk:scanMogelijk,
   busBetrouwbaar:busBetrouwbaar, stilteBeeld:stilteBeeld, railTreffers:railTreffers,
-  dtcBron:dtcBron, context:context, cadansRegels:cadansRegels, tellers:TELLER_PIDS };
+  dtcBron:dtcBron, context:context, cadansRegels:cadansRegels, tellers:TELLER_PIDS,
+  software:software, softwareHtml:softwareHtml };
 
 })();

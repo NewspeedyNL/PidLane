@@ -175,6 +175,7 @@ MUTATIES=(
 "public/pidlane-kmcheck.js@@    if (sleutels.length > 1) {@@    if (false) {@@test-kmcheck.js@@twee verschillende voertuignummers in één auto leveren geen bevinding op"
 "public/pidlane-kmcheck.js@@      if (uit.niveau === 'ok' || uit.niveau === 'onbevestigd') uit.niveau = 'let-op';@@      if (false) uit.niveau = 'let-op';@@test-kmcheck.js@@een blanco voertuignummer verdwijnt uit het oordeel"
 "public/pidlane-kmcheck.js@@  var VIN_TEKENS = /^[A-HJ-NPR-Z0-9]{17}$/;@@  var VIN_TEKENS = /^[A-Z0-9]{17}$/;@@test-kmcheck.js@@de VIN-herkenning accepteert een O en een I, die in geen enkele VIN voorkomen"
+"public/pidlane-kmcheck.js@@    return !!(laatste && laatste.vin && vin && laatste.vin === vin && laatste.niveau === 'kritiek');@@    return !!(laatste && laatste.niveau === 'kritiek');@@test-softwareoorzaak.js@@de km-check van een andere auto telt als VIN-afwijking voor deze (#426)"
 "public/pidlane-rijsituatie.js@@if(q.status==='ok'){ ok++; updPID(pid,val); } else onzin++;@@updPID(pid,val);\n      if(q.status==='ok') ok++; else onzin++;@@test-healthherziening.js@@de gezondheidscheck stempelt de versheidsbron vóór het oordeel"
 "public/pidlane-testrun.js@@    id: 'achtergrond',@@    id: 'achtergrondproef',@@test-begeleid.js@@een stap van de begeleide rit is hernoemd zonder de volgorderegel mee te nemen"
 "public/pidlane-testrun.js@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C', '0155', '0156'];@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C'];@@test-begeleid.js@@0155 en 0156 zijn weer uit de meet-PIDs verdwenen (#40 blijft dan onmeetbaar)"
@@ -951,6 +952,8 @@ MUTATIES=(
 "public/pidlane-onderdeel.js@@        if(c.rpm===null || c.rpm>1000) return null;\n        if(c.snelheid!==null@@        if(c.rpm===null) return null;\n        if(c.snelheid!==null@@test-onderdeel.js@@de MAF-regel oordeelt weer buiten stationair: vol gas op 91 g/s past dan niet (#232)"
 "public/pidlane-onderdeel.js@@        return a===null?null:(a<-25||a>45);@@        return a===null?null:(a<-5||a>45);@@test-onderdeel.js@@de ontstekingsgrens staat weer op −5°: een warme motor die tot −20° terugneemt heet weer een versleten ketting (#231)"
 "public/pidlane-onderdeel.js@@    _scanMislukt=false;\n    render();@@    _scanMislukt=false;@@test-onderdeel.js@@na het uitlezen vanuit het paneel wordt er niet opnieuw getekend: er staat nog steeds dat de foutcodes niet uitgelezen zijn (#233)"
+"public/pidlane-onderdeel.js@@  h+=softwareHtml(software());\n@@@@test-onderdeel.js@@Welk onderdeel zegt niet meer dat het software kan zijn (#426)"
+"public/pidlane-onderdeel.js@@      vinAfwijkend: typeof plVinAfwijkend==='function' && plVinAfwijkend() });@@      vinAfwijkend: false });@@test-onderdeel.js@@Welk onderdeel negeert twee VIN's uit de km-check (#426)"
 # ── #218: de DTC-vlag zegt "er is gekeken" (22-09-2026) ──
 # De vlag ging aan op de eerste regel van scanDTC(); het onderdeelpaneel zei dan
 # tijdens de scan en na een fout "geen foutcodes" in plaats van "niet uitgelezen".
@@ -1336,7 +1339,7 @@ MUTATIES=(
 "public/pidlane-berekend.js@@  if (rpm<g.vanaf) return gear;@@  if (rpm<g.vanaf) return Math.max(1, gear-1);@@test-berekend.js@@het schakeladvies zegt terugschakelen bij laag toerental (op de top van een klim precies verkeerd)"
 "public/pidlane-berekend.js@@  const heet=typeof m.temp==='number' && m.temp>=DPF.heet && !(typeof m.belasting==='number' && m.belasting>DPF.maxBelasting);@@  const heet=typeof m.temp==='number' && m.temp>=DPF.heet;@@test-berekend.js@@een hete uitlaat bij het trekken telt als roetfilterregeneratie"
 "public/pidlane-berekend.js@@  if ((s.geweigerd||[]).length) fout.push(@@  if (false) fout.push(@@test-berekend.js@@de blok-5-proef ziet niet meer dat een CA-PID naar de adapter ging"
-"public/pidlane-berekend.js@@      if (k===null || l===null || !(e>0) || l<0.5 || k<=0) return null;@@      if (k===null || l===null || !(e>0) || l<=0 || k<=0) return null;@@test-berekend.js@@rendement bij bijna nul debiet: delen door bijna nul"
+"public/pidlane-berekend.js@@      if (k===null || l===null || !(e>0) || l<0.5 || k<REND_MIN_KW) return null;@@      if (k===null || l===null || !(e>0) || l<=0 || k<REND_MIN_KW) return null;@@test-berekend.js@@rendement bij bijna nul debiet: delen door bijna nul"
 "public/pidlane-gear.js@@      if (achteruit){\n        doel='R';@@      if (achteruit){\n        doel=undefined;@@test-gear.js@@een geleerde achteruit wordt nooit getoond: de klant ziet geen R"
 "public/pidlane-gear.js@@    if (een && Math.abs(r-een)/een<=CFG.matchTol)@@    if (false)@@test-gear.js@@R met dezelfde verhouding als de 1e wordt geaccepteerd en maakt de 1e tot achteruit"
 "public/pidlane-gear.js@@    return s>60 ? null : Math.max(0, Math.round(s*10)/10);@@    return s>60 ? null : Math.round(s*10)/10;@@test-gear.js@@koppelomvormer-slip wordt negatief bij uitrollen"
@@ -1726,12 +1729,15 @@ MUTATIES=(
 "public/pidlane-berekend.js@@  return Math.max.apply(null, t)-Math.min.apply(null, t)<=SAMEN_MS;@@  return Math.max.apply(null, t)-Math.min.apply(null, t)<=VERS_MS;@@test-berekend.js@@de bronnen van één berekening mogen weer 3 s uit elkaar liggen"
 "public/pidlane-berekend.js@@      return r1(Math.min(DEFS.CA03.max, Math.max(0, l/kmh*100)));@@      return r1(Math.min(99, Math.max(0, l/kmh*100)));@@test-berekend.js@@CA03 klemt weer op 99 en elk optrekken telt als buiten bereik"
 "public/pidlane-berekend.js@@      return namen.length ? namen.reduce((a,k)=>a+p[k].buiten, 0) : null;@@      return namen.length ? 0 : null;@@test-berekend.js@@de app-maat berekend-buiten ziet een waarde buiten bereik niet"
+"public/pidlane-berekend.js@@l<0.5 || k<REND_MIN_KW) return null;@@l<0.5 || k<=0) return null;@@test-berekend.js@@rendement stationair en bij gas los weer gerekend: 99 % uit frictie en lucht zonder brandstof (#457)"
+"public/pidlane-berekend.js@@    (s.pids.CA10.buitenBij ? ' (hoogste bij '+bronTekst(s.pids.CA10.buitenBij.bronnen)+')' : ''));@@    '');@@test-berekend.js@@het rendementsoordeel zegt weer niet bij welke bronwaarden het misging (#457)"
 # ── Slim visueel: tempo alleen rijdend, herbouw met reden (#338, 01-10-2026) ──
 "public/pidlane-visueel.js@@  if(!rijdtNu() || !inBeeld()) return;\n  const t=gemetenTempo(pid,@@  if(!inBeeld()) return;\n  const t=gemetenTempo(pid,@@test-visueel.js@@een stilstand haalt het pedaal weer voor de hele rit van de meter"
 "public/pidlane-visueel.js@@  const gat=_staat.laatsteTik>0 && nu-_staat.laatsteTik>3*VIS_TIK_MS;@@  const gat=false;@@test-visueel.js@@157 s op de achtergrond telt weer mee in het tempo van het pedaal"
 "public/pidlane-visueel.js@@  const bus=_staat.pauze!==null && pauze!==_staat.pauze;@@  const bus=false;@@test-visueel.js@@een groepsproef of waakronde die de bus had, laat het pedaal van de meter vallen"
 "public/pidlane-visueel.js@@  const t=gemetenTempo(pid, Math.max(_staat.rijdtSinds||0, Date.now()-VIS_VENSTER_MS));@@  const t=gemetenTempo(pid);@@test-visueel.js@@het tempo-oordeel kijkt weer over de hele sessie in plaats van het rijvenster"
 "public/pidlane-visueel.js@@  if(selectieSleutel()!==_staat.selectie) return 'selectie';@@@@test-visueel.js@@een herbouw door een nieuwe sensorkeuze telt als knipperen dat de klant niet vroeg"
+"public/pidlane-visueel.js@@      bouw(g, selectieSleutel()!==_staat.selectie ? undefined : 'indeling'); return;@@      bouw(g, 'indeling'); return;@@test-visueel.js@@een diagnose die sensoren aanzet telt in de tik weer als knipperen (#457)"
 "public/pidlane-visueel.js@@  if(!rijdtNu() || !inBeeld()) return;\n  const t=gemetenTempo(pid,@@  if(!rijdtNu()) return;\n  const t=gemetenTempo(pid,@@test-visueel.js@@in beeld-in-beeld of op de achtergrond, met de meetdienst wakker, valt het pedaal van de meter"
 "public/pidlane-visueel.js@@  if(perMin>1 || klant>herbouwMax) return@@  if(perMin>1 || (S.herbouw||0)>herbouwMax) return@@test-visueel.js@@de herbouwen van de testrun zelf maken de knipperproef weer rood"
 # ── app-maten voor de meetrit: #302, #333, #376 (01-10-2026) ──

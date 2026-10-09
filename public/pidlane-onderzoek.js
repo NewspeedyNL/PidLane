@@ -401,7 +401,8 @@
     var rd = s.readiness;
     var sw = softwareOorzaken({
       merk: st.ctx.merk, brandstof: rd ? rd.brandstof : st.ctx.brandstof,
-      nietKlaar: rd ? rd.nietKlaar : [], sinds: s.sinds, dtc: alle, vervangen: st.ctx.vervangen
+      nietKlaar: rd ? rd.nietKlaar : [], sinds: s.sinds, dtc: alle, vervangen: st.ctx.vervangen,
+      vinAfwijkend: typeof plVinAfwijkend === 'function' && plVinAfwijkend()
     });
     sw.forEach(function (a) {
       r.push({ h: 'software', d: a.sterkte === 'sterk' ? 3 : 2, t: a.naam + ': ' + a.bewijs.join('; ') });

@@ -70,6 +70,15 @@ eis(ids(r).indexOf('ecu') >= 0, 'P0630 (VIN niet geprogrammeerd) wijst naar de E
 eis(Array.isArray(r[0].tools) && r[0].tools.length === 0, 'een merk zonder groep geeft een lege toollijst, geen fout');
 r = SO({ merk: 'Opel', vinAfwijkend: true });
 eis(ids(r).join() === 'ecu', 'een afwijkend chassisnummer in de ECU wijst alleen naar de ECU', JSON.stringify(ids(r)));
+
+// De km-check onthoudt zijn VIN-oordeel (#426), maar alleen voor dezelfde auto.
+vm.runInContext(fs.readFileSync(__dirname + '/pidlane-kmcheck.js', 'utf8'), s, { filename: 'pidlane-kmcheck.js' });
+const VV = s.PLKm._intern.vinAfwijkendVan;
+eis(VV({ vin: 'WBA1', niveau: 'kritiek' }, 'WBA1') === true, 'km-check: twee VIN\'s in déze auto is een afwijking');
+eis(VV({ vin: 'WBA1', niveau: 'kritiek' }, 'WVW9') === false, 'km-check van een andere auto telt niet');
+eis(VV({ vin: 'WBA1', niveau: 'ok' }, 'WBA1') === false && VV(null, 'WBA1') === false && VV({ vin: '', niveau: 'kritiek' }, '') === false,
+  'geen afwijking, geen check of geen VIN: geen aanwijzing');
+eis(s.plVinAfwijkend() === false, 'plVinAfwijkend zonder km-check: false, geen fout');
 r = SO({ merk: 'Volkswagen', vervangen: ['Accu 70Ah'] });
 eis(ids(r).indexOf('accu') >= 0, 'een vervangen accu brengt accuregistratie op', JSON.stringify(ids(r)));
 r = SO({ merk: 'Volkswagen', dtc: ['P0101'] });

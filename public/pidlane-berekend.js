@@ -54,6 +54,12 @@ const STATISCH_MS = 600000;    // …behalve voor grootheden die niet bewegen
 const STATISCH = new Set(['0163','0133','012F','0146']);
 const TIK_MS = 400;
 const BENZINE_G_PER_L = 745, STOICH = 14.7;
+/* Rendement pas vanaf dit vermogen (#457, 09-10-2026). Stationair geeft de
+   CX-5 voor 0162 10 % van 250 Nm: een frictie- of modelwaarde, geen arbeid.
+   Daaronder is de verhouding koppel/brandstof ruis, en bij gas los (lucht
+   zonder brandstof) schiet hij omhoog. Boven 5 kW kan 99 % alleen nog een
+   meetfout zijn, en dan hoort de FOUT te blijven. */
+const REND_MIN_KW = 5;
 const STANDAARD_KPA = 101.3;
 // Energie per liter (onderste verbrandingswaarde), voor het rendement.
 const KWH_PER_L = { benzine:8.9, diesel:9.9, lpg:6.9, hybride:8.9, 'plug-in hybride':8.9 };
@@ -97,7 +103,7 @@ const DEFS = {
          uitleg:'Tankpercentage maal de tankinhoud uit je profiel, gedeeld door het verbruik van deze rit (na 5 km) of je gemiddelde.' },
   CA10:{ name:'Rendement (berekend)', unit:'%', cat:'Berekend', min:0, max:60,
          bronnen:[['0162','0163','010C','015E'],['0162','0163','010C','0110']],
-         uitleg:'Vermogen gedeeld door de energie in de brandstof die er op dat moment in gaat. Een benzinemotor haalt hoogstens rond 35%, een diesel rond 40%.' },
+         uitleg:'Vermogen gedeeld door de energie in de brandstof die er op dat moment in gaat. Een benzinemotor haalt hoogstens rond 35%, een diesel rond 40%. Pas vanaf 5 kW: stationair en bij gas los doet de motor geen arbeid, en dan zegt het getal niets.' },
   CA11:{ name:'Schakeladvies (berekend)', unit:'versn.', cat:'Berekend', min:1, max:10, handbak:true,
          bronnen:[['010D','010C']],
          uitleg:'De versnelling waarin de motor op dit moment zuiniger draait. Alleen opschakelen: terugschakelen adviseert de app niet.' },
@@ -199,7 +205,7 @@ function bereken(pid, v, o){
     }
     case 'CA10': {
       const k=kw(v), l=lph(v, o.diesel), e=o.kwhPerL;
-      if (k===null || l===null || !(e>0) || l<0.5 || k<=0) return null;
+      if (k===null || l===null || !(e>0) || l<0.5 || k<REND_MIN_KW) return null;
       return r1(Math.min(99, k/(l*e)*100));
     }
     case 'CA11': return schakelAdvies(v['010D'], v['010C'], o.gear, o.ratios, o.diesel, v['0104']);
@@ -378,12 +384,21 @@ function leegSessie(){
            pids:{}, geweigerd:[], vermogen:{ max:null, volgas:null, volgasN:0 }, dpfRegens:0, scheef:{} };
 }
 let _s = leegSessie();
-function boek(pid, v){
+/* `bronnen` (#457): de bronwaarden van die tik. Bij een waarde buiten het
+   bereik bewaart hij die van de hoogste, zodat blok 5 kan zeggen wáár het
+   misging in plaats van alleen dát. */
+function boek(pid, v, bronnen){
   const d=DEFS[pid], p=_s.pids[pid]=_s.pids[pid]||{ n:0, min:null, max:null, buiten:0, laatste:null };
   p.n++; p.laatste=v;
   p.min=p.min===null ? v : Math.min(p.min, v);
   p.max=p.max===null ? v : Math.max(p.max, v);
-  if (d && (v<d.min-1e-9 || v>d.max+1e-9)) p.buiten++;
+  if (d && (v<d.min-1e-9 || v>d.max+1e-9)){
+    p.buiten++;
+    if (bronnen && (!p.buitenBij || v>p.buitenBij.v)) p.buitenBij={ v:v, bronnen:Object.assign({}, bronnen) };
+  }
+}
+function bronTekst(b){
+  return Object.keys(b||{}).sort().map(k=>k+'='+(Math.round(b[k]*10)/10)).join(' ');
 }
 function weiger(cmd){
   try{
@@ -470,7 +485,7 @@ function tik(){
       const uit=bereken(pid, v, o);
       if (uit===null || !isFinite(uit)) return;
       if (echtVerbonden()){
-        boek(pid, uit);
+        boek(pid, uit, v);
         if (pid==='CA06'){
           const vol=[waarde('0149'), waarde('0111')].some(x=>typeof x==='number' && x>=80) || (typeof v['0104']==='number' && v['0104']>=90);
           _s.vermogen.max=Math.max(_s.vermogen.max||0, uit);
@@ -496,7 +511,8 @@ function oordeel(s){
   const fout=[], let_=[];
   if ((s.geweigerd||[]).length) fout.push((s.geweigerd.length)+'× een berekende PID naar de adapter gestuurd, o.a. "'+s.geweigerd[0].cmd+'" via '+s.geweigerd[0].waar);
   pids.forEach(p=>{ if (s.pids[p].buiten) fout.push(p+' '+s.pids[p].buiten+'× buiten bereik ('+s.pids[p].min+'…'+s.pids[p].max+')'); });
-  if (s.pids && s.pids.CA10 && s.pids.CA10.max>45) fout.push('rendement tot '+s.pids.CA10.max+'% — hoger dan een motor haalt, dus het koppel of het debiet klopt niet');
+  if (s.pids && s.pids.CA10 && s.pids.CA10.max>45) fout.push('rendement tot '+s.pids.CA10.max+'% — hoger dan een motor haalt, dus het koppel of het debiet klopt niet'+
+    (s.pids.CA10.buitenBij ? ' (hoogste bij '+bronTekst(s.pids.CA10.buitenBij.bronnen)+')' : ''));
   const vm=s.voertuig && Number(s.voertuig.vermogen), vg=s.vermogen && s.vermogen.volgas;
   if (s.pids && s.pids.CA06){
     if (!(s.vermogen && s.vermogen.volgasN>0)) let_.push('vermogen: geen vol gas gezien (nodig: één keer ≥80% gas in de 2e of 3e)');

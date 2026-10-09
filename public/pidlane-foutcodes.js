@@ -829,7 +829,8 @@
     return softwareOorzaken({
       merk: v.merk, brandstof: rd ? rd.brandstof : v.brandstof,
       nietKlaar: rd ? rd.nietKlaar : [], sinds: s.sinds,
-      dtc: uniek([].concat(c.bevestigd || [], c.pending || [], c.permanent || []))
+      dtc: uniek([].concat(c.bevestigd || [], c.pending || [], c.permanent || [])),
+      vinAfwijkend: typeof plVinAfwijkend === 'function' && plVinAfwijkend()
     });
   }
 

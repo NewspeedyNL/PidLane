@@ -1317,6 +1317,13 @@ window.SOFTWARE_TOOLS = {
           vervangen: ['accu', …] — wat er onlangs aan de auto gedaan is }
    Geeft per passende functie { id, naam, sterkte, bewijs:[…], inleren,
    waarschuwing, tools:[…] }. Zonder bewijs komt een functie er niet in. */
+/* Wat de laatste km-check van déze auto over de VIN's zei (#426). Staat hier
+   en niet in elke aanroeper: drie modules vragen het, en ontbreekt PLKm (een
+   test, een losse pagina), dan is het antwoord "geen aanwijzing". */
+window.plVinAfwijkend = function plVinAfwijkend(){
+  try{ return !!(window.PLKm && typeof PLKm.vinAfwijkend==='function' && PLKm.vinAfwijkend()); }
+  catch(e){ console.warn('plVinAfwijkend: PLKm gaf een fout', e); return false; }
+};
 window.softwareOorzaken = function softwareOorzaken(ctx){
   ctx = ctx || {};
   const groep = merkGroep(ctx.merk);
