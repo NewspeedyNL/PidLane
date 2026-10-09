@@ -261,6 +261,9 @@ MUTATIES=(
 "public/pidlane-uihelpers.js@@'T' + _plTweeCijfers(d.getHours())@@'T' + _plTweeCijfers(d.getUTCHours())@@test-tijdklok.js@@de stempel valt terug op het UTC-uur (#17)"
 "public/pidlane-privacy.js@@    if (klant)@@    if (true)@@test-account-verwijderen.js@@personeel wordt weer naar een knop gestuurd die het niet heeft (#69)"
 "public/pidlane-uihelpers.js@@'-' + String(d.getMilliseconds()).padStart(3,'0');@@'-' + String(d.getMilliseconds());@@test-tijdklok.js@@milliseconden verliezen hun voorloopnullen en sorteren verkeerd (#17)"
+"public/pidlane-uihelpers.js@@  return { reach: mis>=AI_MIS_ROOD ? false : (st ? st.reach : null), mis:mis };@@  return { reach:false, mis:mis };@@test-aibereik.js@@de AI-stip wordt weer rood van één mislukte ping onderweg"
+"public/pidlane-uihelpers.js@@window.plProxyGezien=function(){ if(_aiReach!==true || _aiMis) _aiZet(true); };@@window.plProxyGezien=function(){};@@test-aibereik.js@@een geslaagde AI-vraag haalt de rode stip niet meer weg"
+"public/pidlane-uihelpers.js@@  if(was!==false && _aiReach===false) console.warn(@@  if(false) console.warn(@@test-aibereik.js@@de omslag naar \"AI niet bereikbaar\" is weer stil"
 "public/pidlane-uihelpers.js@@function plDatumLokaal(ms){\n  const d = (ms===undefined || ms===null) ? new Date() : new Date(ms);\n  return d.getFullYear() + '-' + _plTweeCijfers(d.getMonth()+1) + '-' + _plTweeCijfers(d.getDate());@@function plDatumLokaal(ms){\n  const d = (ms===undefined || ms===null) ? new Date() : new Date(ms);\n  return d.toISOString().slice(0,10);@@test-tijdklok.js@@de exportdatum staat weer op de UTC-dag (#17)"
 # ── de ronde van 08-09-2026 (#112, #140) ──
 "public/pidlane-veldlab.js@@    try{ download('pidlane-survey-'+plDatumLokaal(t0)+'.json',@@    try{ download('pidlane-survey-'+new Date(t0).toISOString().slice(0,10)+'.json',@@test-tijdklok.js@@een exportnaam bouwt zichzelf weer op de UTC-klok (#112)"
@@ -345,6 +348,7 @@ MUTATIES=(
 "public/pidlane-plfetch.js@@  if(!zonder && t && !kop['X-App-Token']) kop['X-App-Token']=t;@@  if(!zonder && t) kop['X-App-Token']=t;@@test-plfetch.js@@de helper overschrijft een tokenkop die de aanroeper zelf meegaf"
 "public/pidlane-plfetch.js@@  try{ if(window.PLCredits && PLCredits.volgServer) PLCredits.volgServer(resp.headers, null); }@@  try{ if(false) PLCredits.volgServer(resp.headers, null); }@@test-plfetch.js@@het serversaldo uit X-PidLane-Saldo blijft weer liggen"
 "public/pidlane-plfetch.js@@  if(resp.status===401) diag('Server weigert (401) bij '+pad+' — sessie verlopen of ongeldig','warn');@@@@test-plfetch.js@@een verlopen sessie is weer stil"
+"public/pidlane-plfetch.js@@  try{ if(!/^https?:@@  try{ if(true||!/^https?:@@test-aibereik.js@@een antwoord van een andere host telt als bereikbaarheid van de eigen proxy"
 "public/pidlane-klant.js@@    const r = await plFetch(pad, { method: 'POST', geenToken: !metToken, json: body || {} });@@    const r = await fetch(_base() + pad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });@@test-plfetch.js@@een module doet zijn serveraanroep weer zelf, buiten de helper om"
 # ── het scherm dat de gebruiker ziet als de app niet laadt ──
 # Alle drie zijn stille fouten: de workflow bouwt gewoon door, de bundel ziet

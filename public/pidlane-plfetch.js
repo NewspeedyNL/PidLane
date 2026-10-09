@@ -105,6 +105,12 @@ window.plFetch = async function(pad, opties){
     throw f;
   }
 
+  // ── de proxy antwoordde: dan is hij bereikbaar ──
+  // De AI-stip in de bovenbalk hoeft dan niet op zijn eigen ping te wachten.
+  // Alleen voor ons eigen adres: een absolute URL is een andere host.
+  try{ if(!/^https?:\/\//i.test(String(pad||'')) && typeof window.plProxyGezien==='function') window.plProxyGezien(); }
+  catch(e){ console.warn('plFetch: bereikbaarheid niet doorgegeven', e); }
+
   // ── het saldo dat de server meestuurt ──
   // X-PidLane-Saldo staat in Access-Control-Expose-Headers en komt op ELK
   // antwoord van de Worker mee. Tot #117 las alleen de AI-haak hem uit; alle
