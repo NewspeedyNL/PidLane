@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-10-2026 — Testrun 9.1: het onderzoek toetst wat bij het merk bekend is
+ ═══════════════════════════════════════════════════════════
+
+ - Volledig onderzoek: de bekende zwakke punten uit AUTO_KENNIS worden
+   verdenkingen ("bekend bij dit merk") en hun stappen gaan voor. Kennis
+   is geen bewijs: de score blijft 0 tot er gemeten of gevraagd is.
+ - Nieuwe verdenkingen: distributie (ketting/nokkenasverstelling) en
+   versnellingsbak (DSG/PowerShift), met foutcoderegels P0008/9,
+   P0010–P0025, P07xx en twee vragen: ratel bij koude start, schakelgedrag.
+ - Bij een klacht alleen de kennis die erbij past. Het rapport heeft een
+   blok "BEKEND BIJ DIT MERK" met per punt de uitkomst, wat niet bij de
+   klacht paste, en wat je zelf moet nakijken.
+ - Blok 5: twee proeven (merkkennis, registreren zonder profiel); CAMPAGNE
+   9.1; handleiding Volledig onderzoek bijgewerkt.
+
+ ═══════════════════════════════════════════════════════════
  09-10-2026 — Wizard: "Sensoren registreren" wacht niet meer op sensoren die uit staan
  ═══════════════════════════════════════════════════════════
 

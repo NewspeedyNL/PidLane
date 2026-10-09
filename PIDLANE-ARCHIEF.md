@@ -15,6 +15,45 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 09-10-2026 — Registreren wachtte op uitgezette sensoren; het onderzoek kende het merk niet
+
+**Registreren.** Schermafdruk van de rit: "Sensoren registreren — 7 van 12
+klaar", met belasting, inlaattemperatuur, beide trims en gaspedaal op 0/10.
+`PLWizard.start()` gaf `job.profiel` mee, een veld dat sinds #386 nergens
+gevuld wordt; de poort kreeg dus `false` en sloeg fase 1 (aanzetten) over.
+`plKernStatus(null)` viel daarna wél terug op `window._laatstProfiel`, het
+profiel van een vórige analyse, en wachtte op sensoren die niet in
+`activePIDs` stonden. De bestaande test met `false` zette geen
+`_laatstProfiel` en kon de fout dus niet zien. Bij het nalopen van alle
+lezers van `_laatstProfiel`: `PLVerzamel` deed het al goed (zet aan wat hij
+afwacht), `plKernDekking()` in de prompt alleen na een eigen `basis`.
+
+Een les uit de tegenproef: de eerste versie van de nieuwe test `await`te de
+poort kaal. Met de fout terug hing die belofte, node eindigde stil met exit
+0 — groen voor precies de fout die hij moest vangen. De test laat de klok
+nu lopen en kijkt daarna of de belofte opgelost is.
+
+**Merkkennis in het onderzoek.** `AUTO_KENNIS` (zwakke punten per merk) ging
+naar de kaart "Wat we al weten" en de Auto-expert, maar `PLOnderzoek` koos
+zijn stappen alleen uit de klacht. Nu vertaalt `KENNIS` elk zwak punt naar
+een verdenking; twee nieuwe (`distributie`, `versnellingsbak`) met
+foutcoderegels (P0008/9, P0010–P0025, P07xx) en een vraag (ratel bij koude
+start, schakelgedrag). Kennis geeft géén score: alleen de stappen die zo'n
+verdenking toetsen wegen zwaarder. Bij 1,5× en 2× veranderde de volgorde
+van het plan over vijf klachten nergens; bij 3× wel, dus 3. Bij een klacht
+doet alleen mee wat bij die klacht past; de rest en wat OBD niet ziet
+(roest, luchtvering, AdBlue, hybride accu) staat in het rapport.
+
+Drie trefwoordvallen die de eerste tabel had: "degradatie" bevat `egr` (een
+hybride accu werd een EGR-verdenking), "distributieketting (1.4 Turbo)"
+werd ook een turboverdenking, en "EGR-koeler" is koelvloeistof in de
+verbranding en geen vervuilde klep. Alle drie in `test-onderzoek.js` en
+`plmutate.sh`.
+
+Wat het nog niet doet: een meetstap voor de ketting of de bak. Standaard-OBD
+heeft geen nokkenas-afwijking en geen bakslip; dat vraagt merk-PIDs (mode
+22) of de rijproef met toeren tegen snelheid.
+
 ## 09-10-2026 — De wizard vroeg te vroeg, en de AI-stip werd vals rood
 
 **AI-stip.** `checkAiReachable()` zette `_aiReach=false` bij de eerste

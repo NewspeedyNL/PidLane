@@ -136,6 +136,9 @@ var PL_HULP = {
         'en kiest steeds de stap die er de meeste tegelijk kan bevestigen of uitsluiten.</p>' +
         '<p>Merk je niets maar wil je het zeker weten? Kies bij <b>Er is iets mis</b> voor <b>Ik merk niets bijzonders</b>, of tik bij een groene <a data-hulp="check">Check mijn auto</a> op <b>🧭 Toch grondig onderzoeken</b>. ' +
         'Het onderzoek begint dan met een brede ronde: valse lucht, luchtmassameter, lambda en katalysator, thermostaat, accu en laden, en ontsteking. Bij een diesel komen het roetfilter, de EGR-klep en software erbij.</p>' +
+        '<p>Kent de app het merk van je auto, dan toetst het onderzoek ook wat bij dat merk bekend is — een kettingspanner, een DSG, een roetfilter. ' +
+        'Die verdenkingen staan erbij met <b>bekend bij dit merk</b> en komen eerder aan de beurt, maar zijn geen bewijs: alleen een meting, foutcode of antwoord telt. ' +
+        'Bij een klacht doet alleen mee wat bij die klacht past. Wat de diagnosepoort niet kan zien, zoals roest of luchtvering, staat in het rapport onder <b>zelf nakijken</b>.</p>' +
         '<ul>' +
         '<li><b>Meten</b> — soms met een opdracht erbij, zoals gas geven tot 2500 tpm. Je ziet de sensoren live meelopen.</li>' +
         '<li><b>Vragen</b> — wat geen sensor ziet, zoals de kleur van de rook.</li>' +
