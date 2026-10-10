@@ -890,6 +890,7 @@ function closeConnOv(){
              hier los voor beheer; dat is sinds 29-09 de tab Live. -->
         <button class="kebab-item kebab-group" id="admGroupBtn" style="display:none" onclick="toggleAdmGroup(event)" aria-expanded="false" aria-controls="admGroup">🛠️ Admin<span class="kb-caret" id="admCaret">▸</span></button>
         <div class="kebab-sub" id="admGroup">
+          <button class="kebab-item" id="kbMeekijk" onclick="closeKebab();PLMeekijk.open()">🔑 Voertuigen van een klant</button>
           <button class="kebab-item" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
           <button class="kebab-item" id="frisBtn" onclick="closeKebab();plHardReload(this)">🔄 Nieuwste versie laden</button>
           <button class="kebab-item" id="testrunBtn" onclick="closeKebab();openTestrun()">🔬 Testrun</button>
@@ -2072,6 +2073,7 @@ function closeConnOv(){
 <script src="pidlane-start.js"></script><!-- startscherm: adapterprofielen, geheugen, cascade-voortgang -->
 <script src="pidlane-run.js"></script><!-- run-chip: één plek waar staat wat er op de achtergrond draait -->
 <script src="pidlane-voorkeur.js"></script><!-- Mijn voorkeuren (PLVoorkeur) — standaardinstellingen per klantaccount; vereist PLRun, PLGarage, plFetch -->
+<script src="pidlane-meekijk.js"></script><!-- Meekijken bij een klant met zijn meekijkcode (PLMeekijk) — alleen beheer; vereist plFetch -->
 <script src="pidlane-afsluiten.js"></script><!-- Rit beëindigen (PLAfsluiten) — rit afronden, verbreken, uitloggen, app sluiten; vereist PLGarage, handleConnect, logout, plSluitApp -->
 <script src="pidlane-nav.js"></script><!-- PLNav: onderbalk, startscherm (Check mijn auto + tegels) en garagemodus; vereist ná datalog, archief, uihelpers, wizard, foutcodes en afsluiten -->
 <script src="pidlane-zonder.js"></script><!-- PLZonder: zonder adapter — kenteken-check (RDW), foutcode opzoeken, simulatie; vereist plFetch, PLRecall, dtcInfo, PLGarage -->

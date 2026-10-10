@@ -1632,6 +1632,9 @@ MUTATIES=(
 "public/pidlane-sppproef.js@@      _volle.push({ t: Date.now(), patch: !!patch.patch, aan: !!(patch.patch && patch.aan !== false),@@      _volle.push({ t: Date.now(), patch: !!patch.patch, aan: !!patch.patch,@@test-sppproef.js@@een volle proef met de patch uit telt als proef met de patch aan: de tegenproef verdwijnt uit de meetopdracht"
 "public/pidlane-archief.js@@display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:11px 2px@@display:flex;gap:6px 10px;align-items:center;padding:11px 2px@@bproef-regelruimte.js@@de knoppen van een rapport staan weer naast de titel, en op een telefoon met grote tekst valt alles over elkaar"
 "public/pidlane-garage.js@@flex:0 1 auto;max-width:100%;min-width:0;white-space:normal;@@flex:0 0 auto;@@bproef-garage.js@@een lange knoptekst loopt de kaart uit"
+"public/pidlane-garage.js@@    h += tekenMeekijk();\n@@@@bproef-meekijk.js@@de klant kan nergens een meekijkcode maken of intrekken"
+"public/pidlane-meekijk.js@@    if (!(typeof isAdmin === 'function' && isAdmin())) { melding('Meekijken is er voor beheerders'); return; }@@@@bproef-meekijk.js@@een klant opent het beheervenster voor de voertuigen van anderen"
+"public/pidlane-meekijk.js@@    _st = { code: '', data: null, fout: '', bezig: false, form: null };\n  }\n\n  function waarde@@  }\n\n  function waarde@@bproef-meekijk.js@@na sluiten staan de voertuigen van de vorige klant er nog"
 # ── het anker van de BT-log na een herlaad (30-09-2026) ──
 "public/pidlane-btflow.js@@Object.assign({},e,{vorige:true})@@Object.assign({},e)@@test-btlogcap.js@@teruggezette regels zijn niet meer herkenbaar: na een herlaad houdt het anker weer de vorige sessie vast en valt de VIN weg"
 "public/pidlane-btflow.js@@const eigen=log.filter(r=>r && !r.vorige && !r.cap);@@const eigen=log.filter(r=>r && !r.cap);@@test-btlogcap.js@@de cap telt de vorige sessie mee als eigen regels: het anker is weer het pollverkeer van vóór de herlaad"

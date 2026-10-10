@@ -983,6 +983,7 @@
     '#plGarOv .gr-2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}' +
     '#plGarOv .gr-melding{font-size:12px;padding:9px 11px;border-radius:9px;margin-bottom:10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.4);color:var(--tx2)}' +
     '#plGarOv .gr-melding.rood{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.45)}' +
+    '#plGarOv .gr-meekijkcode{font:800 28px ui-monospace,monospace;letter-spacing:.18em;color:var(--tx);text-align:center;padding:8px 0 4px;user-select:all}' +
     '#plGarOv .gr-melding.blauw{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.45)}' +
     '#plGarOv pre.gr-tekst{white-space:pre-wrap;font:12px/1.5 ui-monospace,monospace;color:var(--tx2);margin:0}' +
     '#plGarOv ul{margin:4px 0 0 18px;padding:0;font-size:12px;color:var(--tx2)} #plGarOv li{margin:4px 0}' +
@@ -1041,6 +1042,7 @@
     }
     ov.style.display = 'flex';
     _st.view = vid ? 'voertuig' : 'lijst'; _st.vid = vid || null; _st.tab = 'overzicht';
+    _st.meekijk = undefined;   // elke keer vers: "bekeken" kan intussen veranderd zijn
     teken();
     ververs();
   }
@@ -1121,8 +1123,36 @@
       h += '</div>';
     }
     if (st.kentekenBewaarbaar === false) h += '<div class="gr-melding">Kentekens kunnen op dit moment niet versleuteld bewaard worden en worden daarom niet opgeslagen.</div>';
+    h += tekenMeekijk();
     h += '<div class="gr-knoppen" style="margin-top:14px"><button class="gr-k klein gevaar" onclick="PLGarage._allesWissen()">Alles wissen</button></div>';
     return h;
+  }
+
+  /* Meekijken door PidLane (10-10-2026). De klant maakt zelf een code; zolang
+     die geldt (7 dagen, intrekbaar) kan beheer zijn voertuigen inzien en eigen
+     sensoren toevoegen — niets wijzigen of verwijderen. Zonder code ziet
+     beheer niets. Wat er met de code gebeurde (bekeken, sensoren erbij) staat
+     hier, zodat de klant het kan nagaan. */
+  function tekenMeekijk() {
+    var m = _st.meekijk;
+    if (m === undefined) { laadMeekijk(); return ''; }
+    var h = '<div class="gr-blok" id="grMeekijk" style="margin-top:12px"><div class="gr-bh">🔭 Meekijken door PidLane</div>';
+    if (!m) return h + '<div class="gr-klein">Hulp nodig? Met een meekijkcode kan PidLane zeven dagen je voertuigen, open punten en eigen sensoren inzien, en sensoren (PIDs) voor je auto toevoegen. Wijzigen of verwijderen kan PidLane niet, en je trekt de code in wanneer je wilt.</div>' +
+      '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._meekijkAan()">Laat PidLane meekijken</button></div></div>';
+    return h + '<div class="gr-meekijkcode" aria-label="Meekijkcode">' + esc(m.code) + '</div>' +
+      '<div class="gr-klein">Geef deze code aan PidLane. Geldig tot ' + datumNl(m.verloopt, true) + '. ' +
+      (m.aantal ? 'Bekeken: ' + m.aantal + '×, laatst ' + datumNl(m.bekeken_op, true) + '.' : 'Nog niet bekeken.') +
+      (m.erbij ? ' Sensoren toegevoegd: ' + m.erbij + '.' : '') + '</div>' +
+      '<div class="gr-knoppen"><button class="gr-k klein gevaar" onclick="PLGarage._meekijkUit()">Intrekken</button></div></div>';
+  }
+  var _meekijkLaadt = false;
+  async function laadMeekijk() {
+    if (_meekijkLaadt) return;
+    _meekijkLaadt = true;
+    try { _st.meekijk = (await api('meekijk')).meekijk || null; }
+    catch (e) { console.warn('PLGarage: meekijkcode niet op te halen', e); _st.meekijk = null; }
+    finally { _meekijkLaadt = false; }
+    teken();
   }
 
   function cacheVan(vid) { return (_st.cache[vid] = _st.cache[vid] || {}); }
@@ -1725,7 +1755,14 @@
     },
     _allesWissen: function () {
       if (!confirm('Alle voertuigen, rapporten, ritten en open punten uit je account wissen? Je account en tokens blijven bestaan.')) return;
-      doe(async function () { await api('alles_wissen'); schrijf(OPSLAG.actief, null); _st.actiefId = null; _st.cache = {}; }, 'Alles gewist');
+      doe(async function () { await api('alles_wissen'); schrijf(OPSLAG.actief, null); _st.actiefId = null; _st.cache = {}; _st.meekijk = undefined; }, 'Alles gewist');
+    },
+    _meekijkAan: function () {
+      doe(async function () { _st.meekijk = (await api('meekijk_aan')).meekijk || null; }, 'Meekijkcode gemaakt — geef hem aan PidLane');
+    },
+    _meekijkUit: function () {
+      if (!confirm('Meekijkcode intrekken? PidLane kan daarna niet meer bij je voertuigen.')) return;
+      doe(async function () { await api('meekijk_uit'); _st.meekijk = null; }, 'Meekijkcode ingetrokken');
     },
     _issue: function (sleutel, actie) {
       var vid = _st.vid;

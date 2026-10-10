@@ -10,6 +10,23 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 10-10-2026 — Meekijken: beheer ziet met een code van de klant zijn voertuigen
+ ═══════════════════════════════════════════════════════════
+
+ - Mijn voertuigen: "Laat PidLane meekijken" maakt een code van zes tekens,
+   zeven dagen geldig, intrekbaar. De klant ziet hoe vaak er gekeken is en
+   hoeveel sensoren PidLane toevoegde. Alles wissen haalt de code mee weg.
+ - Beheer: Meer → Admin → "Voertuigen van een klant". Met de code: de
+   voertuigen, open punten en eigen sensoren, en "Sensor toevoegen". Een
+   sensor die er al staat wordt geweigerd: wijzigen en verwijderen blijven
+   bij de klant. Zonder geldige code ziet beheer niets.
+ - Server: kp_meekijk, acties meekijk / meekijk_aan / meekijk_uit, POST
+   /admin/meekijk (alleen sessie met rol admin). privacy.html en handleiding
+   bijgewerkt; de akkoordversie blijft gelijk (het gebeurt alleen op een
+   handeling van de klant zelf).
+ - Tests: test-meekijk.js, bproef-meekijk.js (nieuw); acht mutaties.
+
+ ═══════════════════════════════════════════════════════════
  10-10-2026 — Inlogscherm, Check mijn auto en het menu Meer opgeruimd
  ═══════════════════════════════════════════════════════════
 
