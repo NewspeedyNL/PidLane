@@ -3356,7 +3356,7 @@ const PROEVEN_B5 = [
         await new Promise(function (r) { setTimeout(r, 1200); });
         var na = (typeof pidHist !== 'undefined' && pidHist.TL01) ? pidHist.TL01.length : 0;
         if (!T.houderNu().vast && na > voor) return { staat: 'FOUT', detail: 'niet vast (' + h.reden + ') en toch ' + (na - voor) + ' helling-metingen in pidHist' };
-        return { staat: 'LET OP', detail: 'gedrag klopt: niet vast (' + h.uitleg + '), telt niet mee · ' + bewijs + ' — nodig voor OK: telefoon in de houder, Nulstellen, 5 s stil' };
+        return { staat: 'LET OP', detail: 'gedrag klopt: niet vast (' + h.uitleg + '), telt niet mee · ' + bewijs + ' — nodig voor OK: telefoon in de houder, Nulstellen, 2 s stil' };
       }
       return { staat: 'OK', detail: 'vast in de houder (afwijking ' + h.afwijking + '°, wiebel ' + h.wiebel + '°/s) · ' + bewijs };
     }

@@ -36,7 +36,7 @@
 // een waarde niet via updPID() — dus niet in pidVals, pidHist, het rapport,
 // de AI, de bevindingen of de rijsituatie — maar alleen naar het scherm, en
 // daar heel dof (klasse `los`). Zeker = genuld, binnen 15° van die nulstand,
-// geen wiebel buiten de gierrichting, en dat al 5 s achter elkaar. Zie houder().
+// geen wiebel buiten de gierrichting, en dat al 2 s achter elkaar. Zie houder().
 //
 // WAT HET NIET IS
 // De oriëntatiesensor voelt ook versnelling. Bij hard remmen of optrekken
@@ -69,8 +69,12 @@ const NUL_LS = 'pl_telemetrie_nul';
    zit draait mee met de carrosserie, en een drempel of kuil is een stoot van
    een paar tiende seconde boven 8°/s. Met een stoot als oordeel werd de tegel
    na elke drempel 5 s grijs — over een gewone weg meer grijs dan helder. Een
-   telefoon op schoot schommelt seconden lang en blijft dus wiebelen. */
-const HOUDER = { maxAfwijking:15, maxWiebel:8, rustMs:5000, tauWiebelMs:500, wiebelMs:1000, vensterMs:3000 };
+   telefoon op schoot schommelt seconden lang en blijft dus wiebelen.
+   Rust 5 s → 2 s (10-10-2026): na elke kuil of bocht die wél als wiebel
+   telde bleef de tegel nog 5 s grijs, en dat stapelde zich op een gewone weg
+   op tot meer grijs dan helder. Het wiebeloordeel zelf (1 s binnen 3 s boven
+   8°/s) blijft: een hogere drempel liet een telefoon op schoot doorglippen. */
+const HOUDER = { maxAfwijking:15, maxWiebel:8, rustMs:2000, tauWiebelMs:500, wiebelMs:1000, vensterMs:3000 };
 
 const DEFS = {
   TL01:{ name:'Helling (telefoon)', unit:'°', cat:'Telemetrie', min:-45, max:45,
@@ -303,7 +307,7 @@ const HOUDER_UITLEG = {
   'geen-nulstand':'nog niet genuld — zet de telefoon in de houder en tik bij Telemetrie op Nulstellen',
   'verschoven':'de telefoon staat anders dan bij Nulstellen — op schoot, in een vakje of verplaatst',
   'wiebelt':'de telefoon beweegt los van de auto',
-  'wacht':'de telefoon zit net stil; na 5 s telt hij weer mee'
+  'wacht':'de telefoon zit net stil; na 2 s telt hij weer mee'
 };
 let _uRuw=null, _uRuwT=0, _gyroT=0, _w=null, _wT=0, _okSinds=0;
 /* Wanneer de wiebel boven maxWiebel stond: [t, ms] per stap, binnen vensterMs. */
@@ -379,7 +383,7 @@ function nulstellen(){
   _nul=(_m && Date.now()-_mT<=VERS_MS ? _m : _u).slice();
   // Een nieuwe nulstand is een nieuwe houder: vooruit opnieuw leren.
   _voor=null; _leer={ som:[0,0,0], n:0 };
-  _okSinds=0;   // ook net genuld eerst 5 s stil
+  _okSinds=0;   // ook net genuld eerst 2 s stil
   try{ localStorage.removeItem(VOOR_LS); }catch(e){ console.warn('PLTelemetrie: geleerd vooruit niet gewist', e); }
   if (!(typeof demoMode!=='undefined' && demoMode)){
     try{ localStorage.setItem(NUL_LS, JSON.stringify(_nul)); }

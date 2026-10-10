@@ -1837,7 +1837,7 @@ MUTATIES=(
 "public/pidlane-telemetrie.js@@      if (hz.vast){ updPID(pid, w[pid]); _s.n++; }@@      if (true){ updPID(pid, w[pid]); _s.n++; }@@test-telemetrie.js@@een telefoon op schoot of los in een vakje telt mee in rapport, AI en bevindingen"
 "public/pidlane-telemetrie.js@@  if (!o.genuld) return { vast:false, reden:'geen-nulstand' };\n@@@@test-telemetrie.js@@zonder nulstand geldt de telefoon als vast, ook al heeft niemand gezegd dat hij in een houder zit"
 "public/pidlane-telemetrie.js@@    wiebelBij([w[0]-wg*ref[0], w[1]-wg*ref[1], w[2]-wg*ref[2]], nu);@@    wiebelBij(w, nu);@@test-telemetrie.js@@gieren telt als wiebel: elke rotonde maakt de telefoon in de houder onbetrouwbaar"
-"public/pidlane-telemetrie.js@@  if (!(o.okMs>=HOUDER.rustMs)) return { vast:false, reden:'wacht' };\n@@@@test-telemetrie.js@@een telefoon die net is teruggezet telt meteen weer mee, zonder 5 s rust"
+"public/pidlane-telemetrie.js@@  if (!(o.okMs>=HOUDER.rustMs)) return { vast:false, reden:'wacht' };\n@@@@test-telemetrie.js@@een telefoon die net is teruggezet telt meteen weer mee, zonder 2 s rust"
 "public/pidlane-telemetrie.js@@  if (!houderNu().vast) return;\n  if (_nul && aL!==null)@@  if (_nul && aL!==null)@@test-telemetrie.js@@hard remmen telt als rijsituatie terwijl de telefoon los wiebelt"
 "public/pidlane-telemetrie.js@@  if (typeof o.wiebel!=='number' || o.wiebelMs>=HOUDER.wiebelMs) return@@  if (typeof o.wiebel!=='number' || o.wiebel>HOUDER.maxWiebel) return@@test-telemetrie.js@@één drempel of kuil maakt de telefoon in de houder 5 s grijs: de auto knikt, niet de houder"
 # ── de beheerdersdemo (#409) ──

@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 10-10-2026 — Helling en kanteling worden na 2 s weer helder, niet na 5 s
+ ═══════════════════════════════════════════════════════════
+
+ - De rusttijd na wiebelen of verschuiven gaat van 5 naar 2 s. Het oordeel
+   over wiebelen zelf (1 s binnen 3 s boven 8°/s) blijft, anders telt een
+   telefoon op schoot weer mee.
+
+ ═══════════════════════════════════════════════════════════
  10-10-2026 — Tankbeurten: beloofd bereik tegenover echt gereden (#469, stap 1)
  ═══════════════════════════════════════════════════════════
 
