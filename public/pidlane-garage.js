@@ -475,7 +475,7 @@
 
   function wie() { try { return String((window.currentUser && window.currentUser.user) || '').toLowerCase(); } catch (e) { return ''; } }
 
-  function isKlant() {
+  function magPlatform() {
     try { var u = window.currentUser; return !!(u && String(u.role || '').toLowerCase() === 'klant'); }
     catch (e) { return false; }
   }
@@ -503,7 +503,7 @@
   }
   var _legen = false;
   async function wachtrijLegen() {
-    if (_legen || !isKlant()) return;
+    if (_legen || !magPlatform()) return;
     var q = lees(OPSLAG.wachtrij, []);
     if (!q.length) return;
     _legen = true;
@@ -551,7 +551,7 @@
   }
 
   async function ververs() {
-    if (!isKlant()) return null;
+    if (!magPlatform()) return null;
     _st.bezig = true; _st.fout = null;
     try {
       var d = await api('stand');
@@ -640,7 +640,7 @@
      rapport, geen open punt, geen gezondheid, geen dossier, en ook geen
      eerdere rapporten van de echte auto als context voor een demo-analyse. */
   function isDemo() { try { return typeof demoMode !== 'undefined' && !!demoMode; } catch (e) { return false; } }
-  function magBewaren() { return !isDemo() && isKlant() && !!(_st.stand && _st.stand.akkoord) && !!actief(); }
+  function magBewaren() { return !isDemo() && magPlatform() && !!(_st.stand && _st.stand.akkoord) && !!actief(); }
 
   /* De waakronde vond iets buiten bereik → een open punt bij het voertuig.
      Eén keer per sensor per sessie: een volgende sessie met dezelfde
@@ -840,7 +840,7 @@
   function ritTikNu() {
     var v = actief();
     var nu = Date.now();
-    if (!isKlant() || !(_st.stand && _st.stand.akkoord) || !v) return;
+    if (!magPlatform() || !(_st.stand && _st.stand.akkoord) || !v) return;
     var verbonden = isVerbonden();
     var r = _st.rit;
     // Een geparkeerde rit hoort bij het voertuig waarmee hij begon. Een ander
@@ -1029,7 +1029,7 @@
   }
 
   function open(vid) {
-    if (!isKlant()) { melding('Mijn voertuigen is er voor klantaccounts'); return; }
+    if (!magPlatform()) { melding('Mijn voertuigen is er voor klantaccounts'); return; }
     zorgCss();
     var ov = document.getElementById('plGarOv');
     if (!ov) {
@@ -1612,7 +1612,7 @@
   function tekenKaart() {
     var el = document.getElementById('plGarageKaart');
     if (!el) return;
-    if (!isKlant()) { el.innerHTML = ''; return; }
+    if (!magPlatform()) { el.innerHTML = ''; return; }
     zorgCss();
     var st = _st.stand, v = actief();
     var t, d, kleur = null;
@@ -1699,7 +1699,7 @@
        nu zou worden vastgelegd, zonder hem af te sluiten. null = geen rit. */
     ritNu: function () {
       var r = _st.rit;
-      if (!r || !isKlant()) return null;
+      if (!r || !magPlatform()) return null;
       var c = cacheVan(r.vid);
       if (!c.ritten) laad(r.vid, 'ritten');   // voor het labelvoorstel; komt er later bij
       var rs = c.ritten || [];
@@ -2038,7 +2038,7 @@
   var _wasKlant = false, _bootKlaar = false;
   function lus() {
     try {
-      var k = isKlant();
+      var k = magPlatform();
       var item = document.getElementById('kbGarage');
       if (item) item.style.display = k ? '' : 'none';
       if (k && !_wasKlant) {

@@ -1483,7 +1483,7 @@ MUTATIES=(
 
 # ── 28-09-2026: een demo-auto laat niets achter. Elke mutatie haalt één
 # demotoets weg; de fout die dan stil gebeurt staat erachter.
-"public/pidlane-garage.js@@  function magBewaren() { return !isDemo() && isKlant()@@  function magBewaren() { return isKlant()@@test-garage.js@@demo-foutcodes, -rapporten en -waakrondes komen bij het echte actieve voertuig"
+"public/pidlane-garage.js@@  function magBewaren() { return !isDemo() && magPlatform()@@  function magBewaren() { return magPlatform()@@test-garage.js@@demo-foutcodes, -rapporten en -waakrondes komen bij het echte actieve voertuig"
 "public/pidlane-pids.js@@  if(typeof demoMode!=='undefined' && demoMode) return; // een demo-auto heeft geen dossier\n@@@@test-demoopslag.js@@een demosessie komt in het voertuigdossier van de demo-VIN"
 "public/pidlane-waarneming.js@@      if (typeof demoMode !== 'undefined' && demoMode) return null;\n@@@@test-demoopslag.js@@een kentekendemo schrijft in het profiel van een echte auto van hetzelfde type"
 "public/pidlane-berekend.js@@  if (typeof demoMode!=='undefined' && demoMode) return;   // demo: de teller@@  void 0;   // demo: de teller@@test-demoopslag.js@@de roetfilterteller van een demo-diesel wordt bewaard"
