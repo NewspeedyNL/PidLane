@@ -1864,6 +1864,8 @@ MUTATIES=(
 "public/pidlane-onderzoek.js@@      if (breed) return true;\n      return ks.some(@@      return true;\n      return ks.some(@@test-onderzoek.js@@bij een accuklacht toetst het onderzoek ook alle merkzwaktes van de motor"
 "public/pidlane-onderzoek.js@@    { re: /^P00(0[89]|1[6-9])$/, h: 'distributie', d: 3,@@    { re: /^P00(0[89])$/, h: 'distributie', d: 3,@@test-onderzoek.js@@P0016 (nokkenas/krukas niet gelijk) wijst niet meer naar de distributie"
 "public/pidlane-foutcodes.js@@      if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }@@      if (wat === 'oorzaak') PLWizard.open('storing');@@bproef-onderzoek.js@@Oorzaak laten zoeken opent weer de lijst losse modules in plaats van het onderzoek"
+"public/pidlane-foutcodes.js@@  function magTerug(s) { return magDoor(s) && stoplicht(s).kleur === 'groen'; }@@  function magTerug(s) { return magDoor(s); }@@test-foutcodes.js@@zelf getikt met een zelftest die nog niet klaar is: het venster gaat toch vanzelf dicht en de Let op-regel is weg"
+"public/pidlane-foutcodes.js@@    _st.doorGewild = !isGarage();@@    _st.doorGewild = !!opties.auto && !isGarage();@@bproef-foutcodes.js@@zelf op Check mijn auto getikt en alles groen: het venster blijft weer staan"
 # ── Het verzamelscherm (#443, 07-10-2026). De poort is die van §16; wat hier stil
 # kan breken is wat de klant ziet en wat de AI krijgt.
 "public/pidlane-verzamel.js@@        if (q && q.status === 'onzin') return zet('meetfout'@@        if (false) return zet('meetfout'@@test-verzamel.js@@koelwater 300 °C staat weer als afwijking op het scherm in plaats van als meetfout"

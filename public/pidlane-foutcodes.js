@@ -288,6 +288,11 @@
     if ((c.bevestigd || []).length || (c.pending || []).length || (c.permanent || []).length) return false;
     return !(s.readiness && s.readiness.mil);
   }
+  /* Zelf op Check mijn auto getikt (10-10-2026, op verzoek van de eigenaar):
+     bij groen na 5 s vanzelf terug naar het hoofdscherm. Strenger dan magDoor:
+     alleen echt groen. "Let op" (een zelftest die nog niet klaar is) blijft
+     staan, want wie zelf tikt, kijkt ook naar die regel. */
+  function magTerug(s) { return magDoor(s) && stoplicht(s).kleur === 'groen'; }
 
   /* Antwoord op 04 → wat er gebeurd is. Géén antwoord is NIET "gewist". */
   function wisUitslag(raw) {
@@ -590,8 +595,10 @@
   }
 
   /* opties.auto: geopend door PLNav.naVerbinding(), niet door een tik op de
-     knop. Alleen dan mag het venster zelf weer weg — wie zelf op Check mijn
-     auto tikt, wil de uitslag lezen. */
+     knop. Dan gaat het venster bij niets gevonden door naar Live. Tot
+     10-10-2026 bleef het bij een eigen tik staan ("wie zelf tikt wil de
+     uitslag lezen"); de eigenaar wil ook dan bij groen na 5 s terug naar het
+     hoofdscherm — "Blijf hier" en elke aanraking houden het tegen. */
   function open(opties) {
     opties = opties || {};
     zorgCss();
@@ -612,7 +619,8 @@
       });
     }
     stopDoor(true);
-    _st.doorGewild = !!opties.auto && !isGarage();
+    _st.doorDoel = opties.auto ? 'live' : 'thuis';
+    _st.doorGewild = !isGarage();
     ov.style.display = 'flex';
     _st.fase = 'lijst';
     teken();
@@ -642,7 +650,7 @@
       // Mijn voertuigen: codes worden issues, keuringsstatus gaat in de status.
       try { if (window.PLGarage && PLGarage.foutcodes) PLGarage.foutcodes({ bevestigd: s.codes.bevestigd, pending: s.codes.pending, permanent: s.codes.permanent, gelezen: s.gelezen, readiness: s.readiness }); }
       catch (e) { console.warn('PLFoutcodes: doorgeven aan Mijn voertuigen faalde', e); }
-      if (_st.doorGewild && magDoor(s)) startDoor();
+      if (_st.doorGewild && (_st.doorDoel === 'thuis' ? magTerug(s) : magDoor(s))) startDoor();
       _st.doorGewild = false;   // één keer: opnieuw uitlezen is een eigen keuze
       return s;
     } catch (e) {
@@ -680,6 +688,11 @@
   function naarLive(hoe) {
     stopDoor(true, hoe === 'vanzelf' ? 'vanzelf' : 'knop');
     sluit();
+    if (_st.doorDoel === 'thuis') {
+      try { if (typeof goHome === 'function') goHome(); }
+      catch (e) { console.warn('PLFoutcodes: terug naar het hoofdscherm mislukt', e); }
+      return;
+    }
     try {
       openLiveView();
       setPidView('visueel');
@@ -690,9 +703,10 @@
     var d = _st.door;
     // Na een hertekening loopt de balk verder waar hij was, niet opnieuw vol.
     var al = Math.min(d.ms, Date.now() - d.start);
-    return '<div class="fc-door" role="status"><div class="fc-door-t">Je gaat zo door naar Live</div>' +
+    var thuis = _st.doorDoel === 'thuis';
+    return '<div class="fc-door" role="status"><div class="fc-door-t">' + (thuis ? 'Je gaat zo terug naar het hoofdscherm' : 'Je gaat zo door naar Live') + '</div>' +
       '<div class="fc-door-balk"><i style="animation-duration:' + d.ms + 'ms;animation-delay:-' + al + 'ms"></i></div>' +
-      '<div class="fc-knoppen"><button class="fc-k hoofd" onclick="PLFoutcodes._naarLive()">Nu naar Live</button>' +
+      '<div class="fc-knoppen"><button class="fc-k hoofd" onclick="PLFoutcodes._naarLive()">' + (thuis ? 'Nu terug' : 'Nu naar Live') + '</button>' +
       '<button class="fc-k" onclick="PLFoutcodes._blijf()">Blijf hier</button></div></div>';
   }
 
@@ -1050,6 +1064,7 @@
     _blijf: function () { stopDoor(); },
     stoplicht: stoplicht,
     magDoor: magDoor,
+    magTerug: magTerug,
     // Uitlezen zonder venster, voor het volledige onderzoek (PLOnderzoek, #428):
     // dezelfde bus, dezelfde demo-ECU, dezelfde keten als scan().
     leesStil: function () { return metBus(function () { return leesUit(stuurNu()); }); },
