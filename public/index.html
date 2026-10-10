@@ -133,7 +133,15 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
         <!-- 02-10-2026: "Wachtwoord vergeten?" hoort bij het wachtwoordveld, en
              "Nog geen account?" staat onder de knoppen: eerst wat de meeste
              mensen doen (inloggen), dan de rest. -->
-        <a href="#" class="lg-vergeten" onclick="event.preventDefault();PLKlant.openHerstelAanvraag()">Wachtwoord vergeten?</a>
+        <!-- 10-10-2026: het inlogscherm laat alleen zien wat je nodig hebt om
+             binnen te komen. Account aanmaken, versie, links en "Nieuwste
+             versie laden" staan achter Geavanceerd (klasse lg-geav). De
+             demoknop blijft zichtbaar: de Play-reviewnotitie belooft hem
+             direct onder Inloggen (test-demo-toegang.js). -->
+        <div class="lg-rij">
+          <a href="#" class="lg-meer" id="lgMeer" aria-expanded="false" onclick="event.preventDefault();plLoginMeer()">Geavanceerd ▾</a>
+          <a href="#" class="lg-vergeten" onclick="event.preventDefault();PLKlant.openHerstelAanvraag()">Wachtwoord vergeten?</a>
+        </div>
         <div id="loginErr" style="font-size:12px;color:var(--rd);min-height:16px;text-align:center"></div>
         <!-- Tweede deur: bezoekers kunnen zichzelf gratis registreren en
              krijgen proeftegoed. Zakelijke logins gebruiken gewoon het
@@ -155,10 +163,10 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
            om af te haken. -->
       <div class="lg-of" aria-hidden="true"><span>of</span></div>
       <button class="mbtn s" id="btnDemoLogin" onclick="plDemoZonderLogin()">▷ Try demo — no adapter needed</button>
-      <a href="#" class="lg-nieuw" onclick="event.preventDefault();PLKlant.openRegistratie()">Nog geen account? <b>Gratis aanmaken</b></a>
+      <a href="#" class="lg-nieuw lg-geav" onclick="event.preventDefault();PLKlant.openRegistratie()">Nog geen account? <b>Gratis aanmaken</b></a>
     </div>
   </div>
-  <div class="lg-foot">
+  <div class="lg-foot lg-geav">
     PidLane <span id="loginVer">v…</span> — AI Car Diagnostics<br>
     <!-- Tweede, gedempte regel: wat er nodig is om te zien of deze build vers
          is. Bewust NIET op de productregel erboven: die is wat een Play-reviewer
@@ -225,6 +233,16 @@ try{
   if(document.readyState==='complete') plVersieRegel();
   else window.addEventListener('load', function(){ plVersieRegel(); }, { once:true });
 }catch(e){ console.warn('plVersieRegel niet gestart — de buildregel op het inlogscherm blijft leeg:', e); }
+
+/* ── Geavanceerd op het inlogscherm (10-10-2026) ─────────────────────
+   Klapt open of dicht wat achter Geavanceerd staat (.lg-geav). Begint elke
+   keer dicht: het is geen voorkeur maar een la. */
+window.plLoginMeer = function(){
+  var ov = document.getElementById('loginOv'), k = document.getElementById('lgMeer');
+  if(!ov) return;
+  var open = ov.classList.toggle('lg-open');
+  if(k){ k.setAttribute('aria-expanded', open ? 'true' : 'false'); k.textContent = 'Geavanceerd ' + (open ? '▴' : '▾'); }
+};
 
 /* ── Nieuwste versie forceren ────────────────────────────────────────
    location.reload(true) doet in moderne browsers niets meer, en alléén
