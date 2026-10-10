@@ -274,7 +274,17 @@ function _ritStartVerzamelen(){
     fase.pids.forEach(pid=>{
       if(pidVals[pid]!==undefined) ritFaseData[idx].data[pid].push({t:Date.now(),v:pidVals[pid]});
     });
+    // De helling van de telefoon in elke fase, als hij vast in de houder zit.
+    // Niet via fase.pids: TL01 gaat nooit de bus op en hoeft geen tegel te
+    // hebben. Zonder houder blijft de reeks weg, en dan zegt de fase niets
+    // over het terrein in plaats van iets fouts.
+    const h=_ritHelling();
+    if(h!==null) (ritFaseData[idx].data.TL01||(ritFaseData[idx].data.TL01=[])).push({t:Date.now(),v:h});
   },500);
+}
+function _ritHelling(){
+  try{ return (window.PLTelemetrie && PLTelemetrie.hellingVast) ? PLTelemetrie.hellingVast() : null; }
+  catch(e){ console.warn('rit: helling niet gelezen', e); return null; }
 }
 
 /* Fasetimer op basis van wandkloktijd. Bij hervatten is ritFaseEind al
@@ -384,12 +394,15 @@ async function analyseRitFase(idx){
 // PID-definitie (dH/dL/wH/wL) plus trend; produceert 1-3 korte zinnen NL.
 function _faseLokaleDuiding(stats, fase){
   const afw=Object.values(stats).filter(s=>!s.ok);
-  const stijgend=Object.values(stats).filter(s=>s.trend>15);
+  // De helling telt niet als "liep op": rond 0° is een procentuele trend
+  // betekenisloos, en wat hij zegt staat in de terreinzin eronder.
+  const stijgend=Object.entries(stats).filter(([pid,s])=>pid!=='TL01'&&s.trend>15).map(([,s])=>s);
   if(!Object.keys(stats).length) return 'Geen meetdata in deze fase.';
+  const terrein=_faseTerrein(stats.TL01);
   if(!afw.length){
     let t='Alle gemeten waarden binnen normaal bereik.';
     if(stijgend.length) t+=` ${stijgend.map(s=>s.name).join(', ')} liep op tijdens de fase — bij een opwarmfase is dat normaal.`;
-    return t;
+    return t+terrein;
   }
   // Beschrijf de afwijkingen kort en concreet
   const delen=afw.map(s=>{
@@ -398,7 +411,19 @@ function _faseLokaleDuiding(stats, fase){
                   :(def&&def.dL&&s.avg<=def.dL)||(def&&def.wL&&s.avg<=def.wL)?'te laag':'afwijkend';
     return `${s.name} ${richting} (${fv(s.avg)} ${s.unit})`;
   });
-  return `Afwijking in deze fase: ${delen.join('; ')}. Wordt meegenomen in de eindbeoordeling.`;
+  return `Afwijking in deze fase: ${delen.join('; ')}. Wordt meegenomen in de eindbeoordeling.`+terrein;
+}
+/* Het terrein van een fase uit de helling (TL01). Bergop zijn hoge belasting
+   en een oplopend koelwater normaal; dat moet naast de cijfers staan, anders
+   leest een klim als een motor die zwoegt. Zelfde drempel als de caravanrit. */
+const RIT_HELLING_DREMPEL=2.5;   // °
+function _faseTerrein(h){
+  if(!h || !(h.count>=10)) return '';
+  const fv=v=>Number(v).toFixed(1);   // graden: op een tiende
+  if(h.avg>=RIT_HELLING_DREMPEL) return ` De weg ging overwegend bergop (gemiddeld +${fv(h.avg)}°): hogere belasting en koelwater horen daarbij.`;
+  if(h.avg<=-RIT_HELLING_DREMPEL) return ` De weg ging overwegend bergaf (gemiddeld ${fv(h.avg)}°): lage belasting en uitrollen horen daarbij.`;
+  if(h.max-h.min>=2*RIT_HELLING_DREMPEL) return ` Heuvelachtig (helling ${fv(h.min)}° tot +${fv(h.max)}°).`;
+  return '';
 }
 
 function isPIDOkVal(pid,val){

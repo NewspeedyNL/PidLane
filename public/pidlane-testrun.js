@@ -42,7 +42,7 @@
 (function () {
 'use strict';
 
-const TESTRUN_VERSIE = '9.1 (09-10-2026)';
+const TESTRUN_VERSIE = '9.2 (09-10-2026)';
 const VERBODEN = /^(04|2F|31|34|35|36|37|3E|27|28|29|2E|85|11)/i;
 
 let _trBezig = false;
@@ -2786,6 +2786,24 @@ function _zonderSporen(naam, fn) {
 }
 
 const PROEVEN_B5 = [
+
+  // ── de helling in caravanrit en ritanalyse (#463, 09-10-2026) ──
+  {
+    issue: '#463',
+    naam: 'Caravanrit: de helling van de telefoon beslist over klim en afdaling, met de motorregel als terugval',
+    waarom: 'Klim en afdaling kwamen alleen uit belasting en snelheid: zware belasting op vlakke weg (tegenwind, volle caravan) las als een klim, met de tips die daarbij horen.',
+    proef: async function () {
+      if (typeof caravanTerrein !== 'function') return { staat: 'FOUT', detail: 'caravanTerrein ontbreekt — oude pidlane-caravan.js (herladen?)' };
+      if (!window.PLTelemetrie || typeof PLTelemetrie.hellingVast !== 'function') return { staat: 'FOUT', detail: 'PLTelemetrie.hellingVast ontbreekt — oude pidlane-telemetrie.js (herladen?)' };
+      var vlak = caravanTerrein(85, 80, 60, 0, 0.5), zonder = caravanTerrein(85, 80, 60, 0, null), op = caravanTerrein(40, 80, 30, 0, 4);
+      if (vlak.climb !== 'vlak' || vlak.bron !== 'helling') return { staat: 'FOUT', detail: 'zware belasting op 0,5° leest als ' + vlak.climb + ' (' + vlak.bron + ')' };
+      if (zonder.bron !== 'obd' || zonder.climb !== 'klim') return { staat: 'FOUT', detail: 'zonder helling geen terugval op de motorregel: ' + JSON.stringify(zonder) };
+      if (op.climb !== 'klim') return { staat: 'FOUT', detail: '+4° leest als ' + op.climb };
+      var h = PLTelemetrie.hellingVast(), hz = PLTelemetrie.houderNu();
+      if (h === null) return { staat: 'LET OP', detail: 'regel goed, maar nu geen helling: ' + (hz.uitleg || hz.reden || 'telefoon niet vast') + ' — de caravanrit schat dan uit de motor' };
+      return { staat: 'OK', detail: 'regel goed · helling nu ' + h.toFixed(1) + '° (telefoon vast in de houder)' };
+    }
+  },
 
   // ── de merkkennis stuurt het onderzoek (09-10-2026) ──
   {
@@ -10340,7 +10358,7 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 09-10 (eenentwintigste) — het onderzoek toetst wat bij het merk bekend is; registreren hangt niet meer op uitgezette sensoren',
+  titel: 'OPLEVERING 09-10 (tweeëntwintigste) — de helling van de telefoon in caravanrit en ritanalyse',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
     'DE VERBINDING IS KLAAR. Verbinding, snelheid, herverbinden en protocol werken: op 08-10 vijf diagnoses tegelijk op de CX-5, 0 fouten in het log (#394 dicht). Alle meetopdrachten in D1 staan op afgerond; de meetkamer is leeg tot er een nieuw issue komt.',
@@ -10359,6 +10377,10 @@ const CAMPAGNE = {
     'VOLLEDIG ONDERZOEK MET EEN BEKEND MERK. Er is iets mis → Ik merk niets bijzonders (of een klacht). Bovenaan het plan hoort nu "Bij <merk> bekend: …" te staan, en de verdenkingen die daaruit komen dragen "bekend bij dit merk". Klopt die lijst met wat je van dit merk weet? Komen de vragen over een koude start (ketting) of het schakelen (DSG) als ze erbij horen — en blijven ze weg als ze er niet bij horen?',
     'HET RAPPORT. Onderaan staat een blok "BEKEND BIJ DIT MERK": per punt bevestigd, uitgesloten, open of niet getoetst, en wat je zelf moet nakijken. Plak dat blok als iets niet klopt.',
     'SENSOREN REGISTREREN IN DE WIZARD. Start een onderzoek uit de wizard: het scherm "Sensoren registreren" hoort niet meer te blijven hangen op sensoren met 0/10 (nog geen data).',
+    '── 9.2: DE HELLING TELT MEE (#463) ────────',
+    'TELEFOON VAST EN GENULD. Zet hem in de houder, sta stil op vlakke grond en tik Nulstellen (Telemetrie). Zonder dat telt de helling nergens mee en schat de app zoals vroeger uit de motor.',
+    'CARAVANRIT. De badge zegt nu ook de hoek ("⛰️ Klim · +3.2°") als hij gemeten is. Rij een oprit of dijk op: klopt de hoek ongeveer, en springt hij op Klim? Op vlakke snelweg met tegenwind hoort hij op Vlak te blijven. Onderaan het rapport staat of de terreinverdeling gemeten of geschat was.',
+    'RITANALYSE. Rij een fase door heuvels: de faseduiding hoort "bergop", "bergaf" of "heuvelachtig" te zeggen, en Helling (telefoon) staat bij de cijfers. Is 2,5° te gevoelig of te traag, zet het in #463.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
     'HYBRIDE (#430, #452) heeft een hybride nodig; het analyserapport (#448) een analyse met AI, geparkeerd.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'

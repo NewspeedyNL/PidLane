@@ -350,6 +350,16 @@ function houderNu(){
 }
 /* Voor de weergaven: is dit een telefoonsensor die nu niet meetelt? */
 function los(pid){ return isTelemetrie(pid) && !houderNu().vast; }
+/* De helling voor wie hem nodig heeft zonder tegel: de caravanrit en de
+   ritanalyse. Dezelfde poort als updPID in tik() — alleen als het toestel
+   vast zit — maar los van activePIDs: de helling hoeft niet op het scherm te
+   staan om mee te tellen. Anders null, en dan valt de vrager terug op wat
+   hij al had. */
+function hellingVast(){
+  if (!houderNu().vast) return null;
+  const h=nu();
+  return h && typeof h.helling==='number' ? h.helling : null;
+}
 
 function beschikbaar(){ return _events>0 || _mEvents>0; }
 function vers(){ return (!!_u && Date.now()-_t<=VERS_MS) || (!!_m && Date.now()-_mT<=VERS_MS); }
@@ -446,7 +456,7 @@ if (typeof window!=='undefined' && window.ALL_PID_DEFS) Object.keys(DEFS).forEac
   if (!window.ALL_PID_DEFS[pid]) window.ALL_PID_DEFS[pid]=Object.assign({ telemetrie:true }, DEFS[pid]);
 });
 window.PLTelemetrie = { DEFS, omhoog, hoeken, standaardNul, isTelemetrie, defs, nulstellen, genuld, nu, beschikbaar,
-  tik, stats, weiger, gNu, lengteA, zwaarte, situatie, SIT, LEER, houder, houderNu, los, HOUDER,
+  tik, stats, weiger, gNu, lengteA, zwaarte, situatie, SIT, LEER, houder, houderNu, los, hellingVast, HOUDER,
   _opEvent:opEvent, _opMotion:opMotion };
 window.plIsTelemetrie = isTelemetrie;
 window.plTelemetrieDefs = defs;

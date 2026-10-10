@@ -13,7 +13,9 @@
 //   • een waarde op de tegel terwijl de sensor al seconden zweeg;
 //   • een meting die meetelt (updPID) terwijl het toestel niet vast zit:
 //     zonder nulstand, verschoven (op schoot, in een vakje), wiebelend, of
-//     nog geen 5 s stil — en een bocht (gieren) die als wiebel telt.
+//     nog geen 5 s stil — en een bocht (gieren) die als wiebel telt;
+//   • hellingVast() die een helling geeft terwijl het toestel los ligt, of
+//     er geen geeft zodra de tegel niet aanstaat.
 //
 // Draaien vanuit public/:  node test-telemetrie.js
 // ══════════════════════════════════════════════════════════════════
@@ -108,6 +110,10 @@ updates.length = 0; getoond.length = 0;
 T.tik();
 ok(updates.length === 2 && updates[0][0] === 'TL01' && updates[1][0] === 'TL02', 'na 5 s stil in de houder: TL01 en TL02 tellen mee', { updates, h: T.houderNu() });
 ok(!kaart('gc-TL01').classList.contains('los') && kaart('gc-TL01').title === '', 'en de tegel is niet meer dof, zonder tooltip');
+ok(typeof T.hellingVast() === 'number' && T.hellingVast() === T.nu().helling, 'hellingVast(): vast in de houder geeft de helling (caravanrit, ritanalyse)', T.hellingVast());
+ctx.activePIDs.delete('TL01');
+ok(typeof T.hellingVast() === 'number', 'en ook zonder tegel: de caravanrit hoeft TL01 niet op het scherm te hebben');
+ctx.activePIDs.add('TL01');
 updates.length = 0;
 klok += 5000;
 T.tik();
@@ -122,6 +128,7 @@ updates.length = 0; getoond.length = 0;
 T.tik();
 ok(T.houderNu().reden === 'verschoven' && updates.length === 0 && getoond.length === 2, 'verschoven: geen updPID, wel dof getoond', { h: T.houderNu(), updates });
 ok(/Telt niet mee/.test(kaart('gc-TL02').title), 'de tooltip zegt waarom', kaart('gc-TL02').title);
+ok(T.hellingVast() === null, 'hellingVast(): verschoven geeft null — dan valt de caravanrit terug op de motorregel', T.hellingVast());
 stand(90, 0); stand(90, 0);
 ok(T.houderNu().vast, 'terug in de houder en 5 s stil: telt weer mee', T.houderNu());
 // Wiebelen binnen de 15°: een telefoon op schoot die met de benen meebeweegt.

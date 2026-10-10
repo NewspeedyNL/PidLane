@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-10-2026 — Testrun 9.2: de helling van de telefoon in caravanrit en ritanalyse (#463)
+ ═══════════════════════════════════════════════════════════
+
+ - Caravanrit: klim / afdaling / vlak komt uit de helling (TL01) zodra de
+   telefoon vast in de houder zit (`PLTelemetrie.hellingVast()`), drempel
+   2,5° en alleen bij vrijwel constante snelheid. Anders de oude
+   motorregel. Zware belasting op vlakke weg is daarmee geen klim meer.
+ - Het label toont de gemeten hoek; het rapport en de AI-vraag zeggen of de
+   terreinverdeling gemeten of geschat was, plus min/gem/max van de helling.
+ - Ritanalyse: elke fase neemt de helling mee (ook zonder tegel); de
+   faseduiding zegt bergop / bergaf / heuvelachtig.
+ - Tests: test-helling.js (nieuw), test-telemetrie.js; zes mutaties;
+   blok 5-proef #463; CAMPAGNE 9.2; handleiding Telemetrie bijgewerkt.
+
+ ═══════════════════════════════════════════════════════════
  09-10-2026 — Testrun 9.1: het onderzoek toetst wat bij het merk bekend is
  ═══════════════════════════════════════════════════════════
 

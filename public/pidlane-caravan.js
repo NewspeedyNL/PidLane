@@ -34,11 +34,17 @@ let caravanKm           = 0;      // geïntegreerde afstand
 let caravanLiters       = 0;      // geïntegreerd verbruik
 let caravanSpeedLimit   = 100;    // instelbaar; caravan-snelweglimiet
 let caravanClimbSecs    = { klim:0, afdaling:0, vlak:0 };
+let caravanTerreinBron  = { helling:0, obd:0 };   // seconden per bron van het terreinoordeel
 let caravanPeak         = { lkm:0, coolant:0, load:0, power:0 };
 let caravanVermogenBron = 'belasting';
 
 const CARAVAN_PIDS_BASE = ['010D','010C','0104','0105','0111','0142','015E','0110'];
 const CARAVAN_HIST_CAP  = 400;    // ~6.5 min bij 1s
+/* Terrein uit de helling van de telefoon (TL01). 2,5° is ruim 4% — een
+   helling die je met een caravan merkt. Zonder correctie voor versnelling
+   wijkt de hoek uit bij optrekken en remmen (1 m/s² ≈ 6°), dus alleen bij
+   een vrijwel constante snelheid. Of deze getallen kloppen is een ritvraag. */
+const CARAVAN_HELLING   = { drempel:2.5, maxTrend:1 };   // °, km/h per s
 
 // ═══════════════════ OPEN / RESET ═══════════════════
 function openCaravan(){
@@ -91,6 +97,7 @@ async function startCaravan(){
   caravanHist={}; caravanCoach=[]; caravanCooldown={};
   caravanKm=0; caravanLiters=0;
   caravanClimbSecs={ klim:0, afdaling:0, vlak:0 };
+  caravanTerreinBron={ helling:0, obd:0 };
   caravanPeak={ lkm:0, coolant:0, load:0, power:0 };
 
   // UI naar live
@@ -229,6 +236,20 @@ function caravanDetectClimb(load,speed,throttle,trend){
     return 'afdaling';
   return 'vlak';
 }
+/* Het terrein: de helling beslist als die er is, anders de OBD-heuristiek.
+   Juist het verschil telt: zware belasting op vlakke weg (tegenwind, een
+   volle caravan) is voor de motorregel een klim, voor de helling niet.
+   helling = null als de telefoon niet vast in de houder zit (hellingVast). */
+function caravanTerrein(load,speed,throttle,trend,helling){
+  const bruikbaar = Number.isFinite(helling) && (trend===null || Math.abs(trend)<=CARAVAN_HELLING.maxTrend);
+  if(!bruikbaar) return { climb:caravanDetectClimb(load,speed,throttle,trend), bron:'obd' };
+  const climb = helling>=CARAVAN_HELLING.drempel ? 'klim' : helling<=-CARAVAN_HELLING.drempel ? 'afdaling' : 'vlak';
+  return { climb, bron:'helling' };
+}
+function _carHelling(){
+  try{ return (window.PLTelemetrie && PLTelemetrie.hellingVast) ? PLTelemetrie.hellingVast() : null; }
+  catch(e){ console.warn('caravan: helling niet gelezen', e); return null; }
+}
 
 // ═══════════════════ COACHING ═══════════════════
 function _carAlert(key,msg,level,cooldownMs){
@@ -351,6 +372,8 @@ function caravanTick(){
   _carPush('0105',now,coolant); _carPush('0111',now,throttle);
   if(volt!==undefined) _carPush('0142',now,volt);
   if(fuelRate!==null)  _carPush('015E',now,fuelRate);
+  const helling=_carHelling();
+  if(helling!==null)   _carPush('TL01',now,helling);
 
   // integreren met échte dt
   if(typeof speed==='number'&&speed>0) caravanKm    += speed*dt/3600;
@@ -363,8 +386,10 @@ function caravanTick(){
   // afgeleiden
   const spdAgo=_carAgo('010D',5);
   const trend = (spdAgo!==null)?(speed-spdAgo)/5:null;   // km/h per s
-  const climb = caravanDetectClimb(load,speed,throttle,trend);
+  const terrein = caravanTerrein(load,speed,throttle,trend,helling);
+  const climb = terrein.climb;
   caravanClimbSecs[climb]=(caravanClimbSecs[climb]||0)+dt;
+  caravanTerreinBron[terrein.bron]+=dt;
   const pw=caravanVermogen(rpm,load);
   const cruiseTarget=Math.max(80,caravanSpeedLimit-5);
   const fuelType=vehicleFuelType();
@@ -375,7 +400,7 @@ function caravanTick(){
   if(typeof load==='number'&&load>caravanPeak.load) caravanPeak.load=load;
   if(pw.unit==='kW'&&pw.val>caravanPeak.power) caravanPeak.power=pw.val;
 
-  const ctx={ speed,rpm,load,coolant,throttle,volt,fuelRate,lkm,climb,trend,
+  const ctx={ speed,rpm,load,coolant,throttle,volt,fuelRate,lkm,climb,trend,helling,terreinBron:terrein.bron,
               fuelType,cruiseTarget,limit:caravanSpeedLimit };
 
   caravanRenderLive(ctx,pw);
@@ -394,7 +419,12 @@ function caravanRenderLive(ctx,pw){
   // klim-badge
   const cb={ klim:{t:'⛰️ Klim',c:'#ffb020'}, afdaling:{t:'🛞 Afdaling',c:'#7cf5c0'}, vlak:{t:'➖ Vlak',c:'#8fd3ff'} }[ctx.climb];
   const cbEl=document.getElementById('carClimb');
-  if(cbEl){ cbEl.textContent=cb.t; cbEl.style.background=cb.c+'22'; cbEl.style.color=cb.c; }
+  if(cbEl){
+    const uitHelling=ctx.terreinBron==='helling';
+    cbEl.textContent=cb.t+(uitHelling?` · ${ctx.helling>0?'+':''}${ctx.helling.toFixed(1)}°`:'');
+    cbEl.title=uitHelling?'Gemeten met de helling van de telefoon':'Geschat uit belasting en snelheid — zet de telefoon vast in de houder en nul hem voor een gemeten helling';
+    cbEl.style.background=cb.c+'22'; cbEl.style.color=cb.c;
+  }
 
   // momentaan verbruik (kleur t.o.v. richtwaarde)
   const baseL=ctx.fuelType==='diesel'?11:14;
@@ -446,6 +476,14 @@ function caravanRenderLive(ctx,pw){
 }
 
 // ═══════════════════ AI-EINDRAPPORT ═══════════════════
+/* Waar de terreinverdeling vandaan komt. Puur, zodat de test hem kan lezen. */
+function caravanTerreinBronTekst(b){
+  const tot=(b.helling||0)+(b.obd||0);
+  if(!tot || !b.helling) return 'inschatting uit belasting en snelheid — geen helling van de telefoon gemeten';
+  const pct=Math.round(b.helling/tot*100);
+  return pct>=99 ? 'gemeten met de helling van de telefoon'
+       : `${pct}% gemeten met de helling van de telefoon, de rest geschat uit belasting en snelheid`;
+}
 async function generateCaravanRapport(){
   const v=getVehicle();
   const el=Math.floor((Date.now()-caravanStartTime)/1000);
@@ -456,7 +494,8 @@ async function generateCaravanRapport(){
   const ft  = vehicleFuelType();
 
   const secToMin=s=>`${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}`;
-  const sp=_carStats('010D'), rp=_carStats('010C'), ld=_carStats('0104'), co=_carStats('0105');
+  const sp=_carStats('010D'), rp=_carStats('010C'), ld=_carStats('0104'), co=_carStats('0105'), hl=_carStats('TL01');
+  const terreinBron=caravanTerreinBronTekst(caravanTerreinBron);
 
   // uniek gegeven tips + hoe vaak
   const tipCount={};
@@ -475,8 +514,9 @@ async function generateCaravanRapport(){
     `Verbruik: ${caravanLiters.toFixed(2)} L   Gemiddeld: ${avg!==null?avg.toFixed(1)+' L/100km':'—'}   Kosten: € ${(caravanLiters*price).toFixed(2)} (à € ${price.toFixed(2)}/L)`,
     `Vermogensbron: ${caravanVermogenBron==='koppel'?'gemeten koppel (PID 0162/0163)':'belasting% (koppel-PID niet beschikbaar)'}`,
     '',
-    'TERREINVERDELING (inschatting op OBD-basis):',
+    `TERREINVERDELING (${terreinBron}):`,
     `  ⛰️ Klim: ${secToMin(caravanClimbSecs.klim)}   🛞 Afdaling: ${secToMin(caravanClimbSecs.afdaling)}   ➖ Vlak: ${secToMin(caravanClimbSecs.vlak)}`,
+    ...(hl?[`  Helling (telefoon, laatste minuten): ${hl.min.toFixed(1)} / ${hl.avg.toFixed(1)} / ${hl.max.toFixed(1)} °`]:[]),
     '',
     'GEMETEN WAARDEN (min / gem / max):',
     sp?`  Snelheid: ${F(sp.min)} / ${F(sp.avg)} / ${F(sp.max)} km/h`:'  Snelheid: —',
@@ -522,7 +562,7 @@ ${fuelNote}
 Gebruik de meetdata en vooral de coaching-momenten hieronder als concreet bewijs — verwijs ernaar (bv. hoe vaak de motor zwoeg, of cruise nuttig was). Wees concreet en praktisch, geen algemeenheden.
 
 Rit: ${mins} min, ${caravanKm.toFixed(1)} km, gemiddeld ${avg!==null?avg.toFixed(1)+' L/100km':'onbekend'}, kosten € ${(caravanLiters*price).toFixed(2)}.
-Terrein (OBD-inschatting): klim ${secToMin(caravanClimbSecs.klim)}, afdaling ${secToMin(caravanClimbSecs.afdaling)}, vlak ${secToMin(caravanClimbSecs.vlak)}.
+Terrein (${terreinBron}): klim ${secToMin(caravanClimbSecs.klim)}, afdaling ${secToMin(caravanClimbSecs.afdaling)}, vlak ${secToMin(caravanClimbSecs.vlak)}.
 Meetwaarden min/gem/max — snelheid ${sp?`${F(sp.min)}/${F(sp.avg)}/${F(sp.max)}`:'—'} km/h, toerental ${rp?`${F(rp.min)}/${F(rp.avg)}/${F(rp.max)}`:'—'} tpm, belasting ${ld?`${F(ld.min)}/${F(ld.avg)}/${F(ld.max)}`:'—'}%, koelwater ${co?`${F(co.min)}/${F(co.avg)}/${F(co.max)}`:'—'}°C.
 Coaching gegeven: ${coachEvidence}.${PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec})}
 

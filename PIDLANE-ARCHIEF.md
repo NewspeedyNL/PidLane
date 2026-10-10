@@ -15,6 +15,28 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 09-10-2026 — De helling stond op een tegel maar telde nergens mee (#463)
+
+De telefoon meet sinds 05-10 de helling (TL01), maar de twee plekken waar
+terrein ertoe doet gebruikten hem niet. De caravanrit raadde klim en
+afdaling uit de motor: belasting ≥ 70% zonder snelheidswinst heette klim.
+Tegenwind op de snelweg of een zwaar beladen caravan op vlakke weg voldoen
+daar ook aan, en kregen dan de tips van een klim (geen cruise, verbruikspiek
+"normaal"). De ritanalyse had vaste PID-lijsten per fase; TL01 zat daar niet
+in, dus een fase bergop las als een motor die hard werkte zonder reden.
+
+Twee keuzes die niet vanzelf spreken:
+
+- **Niet via `activePIDs`.** TL01 komt alleen in `pidVals` als de tegel
+  aanstaat. Een caravanrit kan niet eisen dat iemand eerst een tegel kiest;
+  `hellingVast()` leest daarom de hoek zelf, met dezelfde houderpoort.
+- **Alleen bij vrijwel constante snelheid.** Zonder devicemotion is de hoek
+  ook versnelling (1 m/s² ≈ 6°). Bij optrekken of remmen valt hij terug op
+  de motorregel. Of 1 km/u per s en 2,5° de goede getallen zijn is een
+  ritvraag (#463).
+
+---
+
 ## 09-10-2026 — Registreren wachtte op uitgezette sensoren; het onderzoek kende het merk niet
 
 **Registreren.** Schermafdruk van de rit: "Sensoren registreren — 7 van 12
