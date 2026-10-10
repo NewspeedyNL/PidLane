@@ -1438,6 +1438,8 @@ MUTATIES=(
 "public/pidlane-pidgate.js@@    if(!supportedPIDs.has(pid) && !inLijst.has(pid)) return;@@    if(!supportedPIDs.has(pid)) return;@@test-sessiedoorloop.js@@hervatten laat eigen en berekende sensoren weer vallen"
 "public/pidlane-garage.js@@PLVoorkeur.selectieToepassen(sel, v.naam || v.merk, { erbij: !basis.length })@@PLVoorkeur.selectieToepassen(sel, v.naam || v.merk, { erbij: false })@@bproef-garage.js@@de eigen sensoren van het voertuig vervangen de standaardset: geen toerental meer"
 "public/pidlane-voorkeur.js@@    if (!erbij) {@@    if (true) {@@bproef-garage.js@@\"erbij\" wist toch de hele selectie"
+"public/pidlane-voorkeur.js@@    var klant = isKlant();\n    if@@    var klant = isKlant();\n    if (!klant) return;\n    if@@bproef-voorkeur.js@@Mijn voorkeuren opent weer niet voor een beheerder: Garagemodus en de andere schakelaars zijn voor hem onbereikbaar"
+"public/pidlane-voorkeur.js@@ plek.appendChild(t); t.hidden = false; }@@ plek.appendChild(t); }@@bproef-voorkeur.js@@het blok Op dit toestel verhuist naar het venster maar blijft verborgen"
 "public/pidlane-garage.js@@    if (mist.length) return { staat: 'FOUT'@@    if (false) return { staat: 'FOUT'@@test-garage.js@@blok 5 ziet niet dat de vaste sensoren na het verbinden ontbreken"
 "public/pidlane-uitgebreid.js@@    if (!/^(21|22[0-9A-F]{2})$/.test(prefix)) return@@    if (false) return@@test-mode21.js@@de buurscan scant ook een blok met schrijfcodes (2E)"
 "public/pidlane-uitgebreid.js@@            if (ecu) { try { await sendCmd(functioneel, 1500); }@@            if (false) { try { await sendCmd(functioneel, 1500); }@@test-mode21.js@@na de buurscan blijft de adapter op ECU-adres 720 staan"
