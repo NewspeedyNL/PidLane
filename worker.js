@@ -4926,10 +4926,12 @@ var KP_MAX_ACTIEF = 3;
 var KP_MAX_TOTAAL = 10;          // actief + archief: een vangnet, geen productregel
 var KP_MAX_RAPPORTEN = 500;      // per voertuig
 var KP_MAX_RITTEN = 5000;        // per voertuig
+var KP_MAX_TANKBEURTEN = 2000;   // per voertuig — tien jaar elke week tanken
 var KP_MAX_TEKST = 120000;       // tekens per rapport
 // 2026-09-27b: ritlabels en het geleerde versnellingsmodel kwamen erbij. Een
 // nieuwe verwerking = een nieuwe tekst = opnieuw akkoord (CLAUDE.md, Privacy).
-var KP_AKKOORD_VERSIE = "2026-09-28";
+// 2026-10-10: tankbeurten (kp_tank, #469) kwamen erbij.
+var KP_AKKOORD_VERSIE = "2026-10-10";
 
 var KP_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS kp_akkoord (klant_id TEXT PRIMARY KEY, versie TEXT NOT NULL, op TEXT NOT NULL)",
@@ -4946,7 +4948,9 @@ var KP_SCHEMA = [
   "CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_pid_bib_code ON kp_pid_bib (merk, model, code, ecu)",
   "CREATE TABLE IF NOT EXISTS kp_pid_stem (bib_id TEXT NOT NULL, klant_id TEXT NOT NULL, uitkomst TEXT NOT NULL, op TEXT NOT NULL, PRIMARY KEY (bib_id, klant_id))",
   "CREATE TABLE IF NOT EXISTS kp_meekijk (code TEXT PRIMARY KEY, klant_id TEXT NOT NULL, aangemaakt TEXT NOT NULL, verloopt TEXT NOT NULL, bekeken_op TEXT, aantal INTEGER NOT NULL DEFAULT 0, erbij INTEGER NOT NULL DEFAULT 0)",
-  "CREATE INDEX IF NOT EXISTS idx_kp_meekijk_klant ON kp_meekijk (klant_id)"
+  "CREATE INDEX IF NOT EXISTS idx_kp_meekijk_klant ON kp_meekijk (klant_id)",
+  "CREATE TABLE IF NOT EXISTS kp_tank (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, op TEXT NOT NULL, soort TEXT NOT NULL DEFAULT 'brandstof', liters REAL, literprijs REAL, bedrag REAL, kwh REAL, kmstand INTEGER, vol INTEGER, bereik_dashboard INTEGER, bereik_voor INTEGER, bereik_app INTEGER, tank_voor REAL, tank_na REAL, bron TEXT NOT NULL DEFAULT 'hand', notitie TEXT, aangemaakt TEXT NOT NULL, bijgewerkt TEXT NOT NULL)",
+  "CREATE INDEX IF NOT EXISTS idx_kp_tank_vt ON kp_tank (voertuig_id, op DESC)"
 ];
 // Kolommen die er later bij kwamen. CREATE TABLE IF NOT EXISTS voegt op een
 // bestaande tabel niets toe, dus die gaan er met ALTER bij. "duplicate column"
@@ -5252,7 +5256,7 @@ __name(kpBibStem, "kpBibStem");
 
 async function kpAlleWissen(db, klantId) {
   const uit = {};
-  for (const t of ["kp_rapport", "kp_rit", "kp_issue", "kp_voertuig", "kp_voorkeur", "kp_pid_stem", "kp_meekijk", "kp_akkoord"]) {
+  for (const t of ["kp_rapport", "kp_rit", "kp_tank", "kp_issue", "kp_voertuig", "kp_voorkeur", "kp_pid_stem", "kp_meekijk", "kp_akkoord"]) {
     const r = await db.prepare("DELETE FROM " + t + " WHERE klant_id = ?").bind(klantId).run();
     uit[t] = (r && r.meta && r.meta.changes) || 0;
   }
@@ -5438,6 +5442,7 @@ var KP_ACTIES = {
     await c.db.batch([
       c.db.prepare("DELETE FROM kp_rapport WHERE voertuig_id = ? AND klant_id = ?").bind(v.id, c.klantId),
       c.db.prepare("DELETE FROM kp_rit WHERE voertuig_id = ? AND klant_id = ?").bind(v.id, c.klantId),
+      c.db.prepare("DELETE FROM kp_tank WHERE voertuig_id = ? AND klant_id = ?").bind(v.id, c.klantId),
       c.db.prepare("DELETE FROM kp_issue WHERE voertuig_id = ? AND klant_id = ?").bind(v.id, c.klantId),
       c.db.prepare("DELETE FROM kp_voertuig WHERE id = ? AND klant_id = ?").bind(v.id, c.klantId)
     ]);
@@ -5597,6 +5602,71 @@ var KP_ACTIES = {
       erbij++;
     }
     return { ok: true, erbij, geweigerd };
+  },
+
+  // ── Tankbeurten (#469, 10-10-2026) ───────────────────────────────
+  // Wat de klant bij het tanken invult: liters, prijs of bedrag, de
+  // afgelezen km-stand, of de tank vol is en welk bereik het dashboard
+  // gaf vóór (bereik_voor) en na het tanken (bereik_dashboard). bereik_app en tank_voor/tank_na komen van de app (stap 2).
+  // Zonder id = nieuw, met id = wijzigen. Elk getal buiten zijn bereik
+  // wordt null, niet bewaard; een tankbeurt zonder één ingevuld getal
+  // wordt geweigerd. De rekensom (km per cyclus, verbruik) doet de app:
+  // die hangt van de ritten af, en die zijn er al.
+  async tank_opslaan(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const t = b.tank || {};
+    const op = String(t.op || "");
+    if (isNaN(new Date(op))) return { ok: false, error: "Tankbeurt zonder datum.", code: 400 };
+    const getal = (x, min, max, d) => {
+      if (x === null || x === undefined || x === "") return null;
+      const g = Number(String(x).replace(",", "."));
+      if (!isFinite(g) || g < min || g > max) return null;
+      const f = Math.pow(10, d); return Math.round(g * f) / f;
+    };
+    const soort = t.soort === "laden" ? "laden" : "brandstof";
+    const bron = t.bron === "app" ? "app" : "hand";
+    const w = {
+      liters: getal(t.liters, 0.1, 300, 2), literprijs: getal(t.literprijs, 0.1, 5, 3), bedrag: getal(t.bedrag, 0.1, 2000, 2),
+      kwh: getal(t.kwh, 0.1, 300, 2), kmstand: getal(t.kmstand, 0, 2000000, 0), vol: t.vol === true || t.vol === 1 ? 1 : 0,
+      bereik_dashboard: getal(t.bereik_dashboard, 0, 3000, 0), bereik_voor: getal(t.bereik_voor, 0, 3000, 0), bereik_app: getal(t.bereik_app, 0, 3000, 0),
+      tank_voor: getal(t.tank_voor, 0, 100, 1), tank_na: getal(t.tank_na, 0, 100, 1),
+      notitie: String(t.notitie == null ? "" : t.notitie).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 200) || null
+    };
+    if ([w.liters, w.bedrag, w.kwh, w.kmstand, w.bereik_dashboard, w.bereik_voor, w.bereik_app, w.tank_na].every((x) => x === null))
+      return { ok: false, error: "Vul minstens één getal in: liters, bedrag, km-stand of bereik.", code: 400 };
+    const kol = ["soort", "liters", "literprijs", "bedrag", "kwh", "kmstand", "vol", "bereik_dashboard", "bereik_voor", "bereik_app", "tank_voor", "tank_na", "bron", "notitie"];
+    const waarden = kol.map((k) => k === "soort" ? soort : k === "bron" ? bron : w[k]);
+    if (t.id) {
+      const r = await c.db.prepare("UPDATE kp_tank SET op = ?, " + kol.map((k) => k + " = ?").join(", ") + ", bijgewerkt = ? WHERE id = ? AND voertuig_id = ? AND klant_id = ?")
+        .bind(op, ...waarden, kpNu(), String(t.id), v.id, c.klantId).run();
+      return (r && r.meta && r.meta.changes) ? { ok: true, id: String(t.id) } : { ok: false, error: "Tankbeurt niet gevonden.", code: 404 };
+    }
+    const dezelfde = await c.db.prepare("SELECT id FROM kp_tank WHERE voertuig_id = ? AND op = ?").bind(v.id, op).first();
+    if (dezelfde) return { ok: true, id: dezelfde.id, dubbel: true };   // opnieuw verstuurd na een wegvallende verbinding
+    const n = (await c.db.prepare("SELECT COUNT(*) AS n FROM kp_tank WHERE voertuig_id = ?").bind(v.id).first() || {}).n || 0;
+    if (n >= KP_MAX_TANKBEURTEN) return { ok: false, error: "Dit voertuig heeft " + KP_MAX_TANKBEURTEN + " tankbeurten.", code: 409 };
+    const id = kpId(), nu = kpNu();
+    await c.db.prepare("INSERT INTO kp_tank (id, klant_id, voertuig_id, op, " + kol.join(", ") + ", aangemaakt, bijgewerkt) VALUES (?, ?, ?, ?, " + kol.map(() => "?").join(", ") + ", ?, ?)")
+      .bind(id, c.klantId, v.id, op, ...waarden, nu, nu).run();
+    // Een afgelezen km-stand is de beste die er is: die gaat het profiel in,
+    // maar net als bij status_opslaan nooit stil omlaag.
+    if (w.kmstand !== null && !(v.kmstand > w.kmstand))
+      await c.db.prepare("UPDATE kp_voertuig SET kmstand = ?, kmstand_op = ? WHERE id = ? AND klant_id = ?").bind(w.kmstand, op, v.id, c.klantId).run();
+    return { ok: true, id };
+  },
+
+  async tanken(c, b) {
+    const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
+    if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
+    const lim = Math.min(Math.max(parseInt(b.limiet, 10) || 200, 1), KP_MAX_TANKBEURTEN);
+    const r = await c.db.prepare("SELECT * FROM kp_tank WHERE voertuig_id = ? AND klant_id = ? ORDER BY op DESC LIMIT ?").bind(v.id, c.klantId, lim).all();
+    return { ok: true, tanken: (r.results || []).map((x) => { const o = Object.assign({}, x); delete o.klant_id; o.vol = !!x.vol; return o; }) };
+  },
+
+  async tank_verwijder(c, b) {
+    const r = await c.db.prepare("DELETE FROM kp_tank WHERE id = ? AND klant_id = ?").bind(String(b.id || ""), c.klantId).run();
+    return (r && r.meta && r.meta.changes) ? { ok: true } : { ok: false, error: "Tankbeurt niet gevonden.", code: 404 };
   },
 
   // Het label dat de klant aan een rit geeft ("woon-werk", "caravan naar

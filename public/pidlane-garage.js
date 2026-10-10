@@ -1075,6 +1075,7 @@
       '<li><b>Je kenteken versleuteld.</b> Het chassisnummer (VIN) alleen als een uit dat nummer berekende code, zoals elders in de app. Dat is pseudonimisering: wie je VIN kent, kan die code narekenen.</li>' +
       '<li><b>Rapporten</b> die de app voor dit voertuig maakt (AI-rapporten en foutcode-uitlezingen).</li>' +
       '<li><b>Ritten als samenvatting:</b> datum, duur, afstand, snelheid, verbruik, temperatuur en accuspanning, en het label dat je er zelf aan geeft. Geen locatie, geen route. De meting per seconde blijft op je telefoon.</li>' +
+      '<li><b>Tankbeurten die je zelf invult:</b> datum, liters, literprijs of bedrag, de afgelezen kilometerstand, of de tank vol was, het bereik op je dashboard en je notitie. Geen locatie, geen tankstation tenzij je het zelf in de notitie zet.</li>' +
       '<li><b>Wat de versnellingsindicator over je auto leert:</b> de verhouding tussen snelheid en toerental per versnelling, en je correcties. Geen locatie, geen tijdstippen van ritten.</li>' +
       '<li><b>De techniek volgt de auto.</b> Heeft een ander account dezelfde auto (hetzelfde chassisnummer), dan delen jullie de technische gegevens: merk, model, bouwjaar, motor, brandstof, vermogen, handbak of automaat, versnellingen, tankinhoud, de eigen sensoren en wat de versnellingsindicator leerde. Ritten, rapporten, kilometerstand, onderhoud, notities, kenteken en APK blijven van jou. Het andere account ziet niet wie jij bent, en jij niet wie het is.</li>' +
       '<li><b>Open punten</b>: foutcodes en wat de app opvalt, tot ze opgelost zijn.</li></ul></div>' +
@@ -1171,7 +1172,7 @@
   }
 
   function tekenVoertuig(v) {
-    var tabs = [['overzicht', 'Overzicht'], ['issues', 'Open punten'], ['ritten', 'Ritten'], ['rapporten', 'Rapporten'], ['sensoren', 'Sensoren'], ['profiel', 'Profiel']];
+    var tabs = [['overzicht', 'Overzicht'], ['issues', 'Open punten'], ['ritten', 'Ritten'], ['tanken', 'Tankbeurten'], ['rapporten', 'Rapporten'], ['sensoren', 'Sensoren'], ['profiel', 'Profiel']];
     var h = '<div class="gr-knoppen" style="margin:0 0 10px"><button class="gr-k klein" onclick="PLGarage._terug()">← Alle voertuigen</button>' +
       (v.status === 'actief' && v.id !== _st.actiefId ? '<button class="gr-k klein" onclick="PLGarage._actief(\'' + esc(v.id) + '\')">Maak actief</button>' : '') + '</div>';
     h += '<div class="gr-blok">' + tekenKentekenEnNaam(v) + '</div>';
@@ -1248,6 +1249,13 @@
           (_st.labelRit === r.id ? tekenLabelInvoer(r, rs) :
             '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._labelOpen(\'' + esc(r.id) + '\')">🏷 ' + (r.label ? 'Label wijzigen' : 'Label geven') + '</button></div>') + '</div>';
       }).join('') : '<div class="gr-klein">' + (rs.length ? 'Geen ritten met dit label.' : 'Nog geen ritten. Een rit wordt vanzelf vastgelegd zodra je rijdt met dit voertuig actief en de adapter verbonden.') + '</div>') : '<div class="gr-klein">⏳</div>') + '</div>';
+    } else if (_st.tab === 'tanken') {
+      // Tankbeurten (#469): de rekensom en het scherm staan in PLTank; de
+      // ritten zijn er voor de km als de klant geen km-stand invulde.
+      if (!c.tanken) laad(v.id, 'tanken');
+      if (!c.ritten) laad(v.id, 'ritten');
+      h += window.PLTank ? PLTank.html(v, { tanken: c.tanken || (c.tankenFout ? [] : null), ritten: c.ritten || [], form: _st.tankForm, fout: c.tankenFout || null })
+        : '<div class="gr-melding">Tankbeurten niet geladen (pidlane-tank.js).</div>';
     } else if (_st.tab === 'rapporten') {
       if (!c.rapporten) laad(v.id, 'rapporten');
       var rp = c.rapporten || [];
@@ -1728,7 +1736,7 @@
     tekenKaart: tekenKaart,
     _akkoord: function () { doe(function () { return api('akkoord', { versie: _st.stand && _st.stand.akkoordVersie }); }, 'Mijn voertuigen staat aan'); },
     _open: function (id) { _st.view = 'voertuig'; _st.vid = id; _st.tab = 'overzicht'; teken(); },
-    _tab: function (t) { _st.tab = t; _st.labelRit = null; _st.kiesModus = false; _st.kies = {}; // Sensoren opnieuw openen = verse stand uit het voertuig en de bibliotheek,
+    _tab: function (t) { _st.tab = t; _st.labelRit = null; _st.tankForm = null; _st.kiesModus = false; _st.kies = {}; // Sensoren opnieuw openen = verse stand uit het voertuig en de bibliotheek,
       // behalve als er nog iets onbewaards staat.
       if (t !== 'sensoren' || !(_st.sens && _st.sens.gewijzigd)) _st.sens = null; teken(); },
     _terug: function () { _st.view = _st.view === 'formulier' && _st.vid ? 'voertuig' : 'lijst'; if (_st.view === 'lijst') _st.vid = null; teken(); },
@@ -1969,6 +1977,35 @@
         if (soort === 'csv') { if (typeof download === 'function') download(naam + '.csv', x.csv); }
         else if (typeof plOpslaanPdf === 'function') plOpslaanPdf(naam, x.tekst, { titel: 'Ritten' + (_st.labelFilter ? ' — ' + _st.labelFilter : '') });
       } catch (e) { melding('⚠️ Exporteren mislukt: ' + e.message); console.warn('PLGarage: export', e); }
+    },
+    // ── Tankbeurten (#469) ──
+    _tankForm: function (x) {
+      if (x === null) _st.tankForm = null;
+      else if (typeof x === 'string') _st.tankForm = (cacheVan(_st.vid).tanken || []).filter(function (t) { return t.id === x; })[0] || null;
+      else _st.tankForm = {};
+      teken();
+    },
+    _tankBewaar: async function (id) {
+      var t = PLTank.uitFormulier(document);
+      if (!t.op) { melding('⚠️ Vul in wanneer je tankte'); return; }
+      if (id) t.id = id;
+      try {
+        // Nieuw mag later (de server ontdubbelt op het tijdstip), wijzigen niet.
+        var d = id ? await api('tank_opslaan', { voertuig_id: _st.vid, tank: t }) : await schrijfOfWacht('tank_opslaan', { voertuig_id: _st.vid, tank: t });
+        melding(d && d.inWachtrij ? '⛽ Offline — de tankbeurt gaat mee zodra er weer verbinding is' : '⛽ Tankbeurt bewaard');
+        _st.tankForm = null; delete cacheVan(_st.vid).tanken;
+      } catch (e) { melding('⚠️ ' + e.message); console.warn('PLGarage: tankbeurt bewaren', e); }
+      teken();
+    },
+    _tankWeg: function (id) {
+      if (!confirm('Deze tankbeurt wissen?')) return;
+      doe(function () { return api('tank_verwijder', { id: id }); }, 'Tankbeurt gewist').then(function () { delete cacheVan(_st.vid).tanken; teken(); });
+    },
+    _tankExport: function () {
+      var v = voertuig(_st.vid), c = cacheVan(_st.vid);
+      var naam = 'tankbeurten-' + String((v && (v.naam || v.merk)) || 'voertuig').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+      try { if (typeof download === 'function') download(naam + '.csv', PLTank.csv(c.tanken || [], c.ritten || [])); }
+      catch (e) { melding('⚠️ Exporteren mislukt: ' + e.message); console.warn('PLGarage: tankexport', e); }
     },
     _rapportPdf: function () {
       var r = _st.rapport; if (!r) return;

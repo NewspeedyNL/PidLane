@@ -274,6 +274,9 @@ CREATE TABLE IF NOT EXISTS kp_pid_stem (bib_id TEXT NOT NULL, klant_id TEXT NOT 
 -- Meekijken door PidLane (10-10-2026): een code die de klant zelf maakt, 7 dagen geldig.
 CREATE TABLE IF NOT EXISTS kp_meekijk (code TEXT PRIMARY KEY, klant_id TEXT NOT NULL, aangemaakt TEXT NOT NULL, verloopt TEXT NOT NULL, bekeken_op TEXT, aantal INTEGER NOT NULL DEFAULT 0, erbij INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS idx_kp_meekijk_klant ON kp_meekijk (klant_id);
+-- Tankbeurten (#469, 10-10-2026): wat de klant bij het tanken invult, per voertuig.
+CREATE TABLE IF NOT EXISTS kp_tank (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, op TEXT NOT NULL, soort TEXT NOT NULL DEFAULT 'brandstof', liters REAL, literprijs REAL, bedrag REAL, kwh REAL, kmstand INTEGER, vol INTEGER, bereik_dashboard INTEGER, bereik_voor INTEGER, bereik_app INTEGER, tank_voor REAL, tank_na REAL, bron TEXT NOT NULL DEFAULT 'hand', notitie TEXT, aangemaakt TEXT NOT NULL, bijgewerkt TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_kp_tank_vt ON kp_tank (voertuig_id, op DESC);
 -- Later bijgekomen kolommen (KP_MIGRATIES in worker.js). De Worker voert ze
 -- zelf uit; "duplicate column" betekent dat ze er al staan.
 ALTER TABLE kp_voertuig ADD COLUMN onderhoud_laatst TEXT;

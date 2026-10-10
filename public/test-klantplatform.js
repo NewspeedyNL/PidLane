@@ -195,6 +195,39 @@ async function laadWorker() {
   const mz = st.voertuigen.find((v) => v.id === v1.voertuig.id);
   toets('stand telt rapporten, ritten en open issues', mz.aantal.rapporten === 1 && mz.aantal.ritten === 3 && mz.aantal.openIssues === 0, JSON.stringify(mz.aantal));
 
+  console.log('\n4a. Tankbeurten (#469)');
+  {
+    const vid = v1.voertuig.id;
+    const t1 = await roep(tokA, { actie: 'tank_opslaan', voertuig_id: vid, tank: { op: '2026-10-01T12:00:00.000Z', liters: '41,5', literprijs: 1.959, kmstand: 86000, vol: true, bereik_dashboard: 640, bereik_app: 9999, notitie: 'Shell\nA12' } });
+    toets('tankbeurt bewaard', t1.ok && t1.id, JSON.stringify(t1));
+    const rij = db.prepare('SELECT * FROM kp_tank WHERE id = ?').get(t1.id);
+    toets('liters met komma gelezen, vol als 1, notitie zonder regeleinde', rij.liters === 41.5 && rij.vol === 1 && rij.notitie === 'Shell A12', JSON.stringify(rij));
+    toets('een bereik buiten 0–3000 wordt null, niet bewaard', rij.bereik_app === null && rij.bereik_dashboard === 640);
+    toets('de afgelezen km-stand gaat het profiel in', db.prepare('SELECT kmstand FROM kp_voertuig WHERE id = ?').get(vid).kmstand === 86000);
+    toets('dezelfde tankbeurt nog eens (zelfde tijd): niet dubbel', (await roep(tokA, { actie: 'tank_opslaan', voertuig_id: vid, tank: { op: '2026-10-01T12:00:00.000Z', liters: 41.5 } })).dubbel === true);
+    toets('een tankbeurt zonder één getal: 400', (await roep(tokA, { actie: 'tank_opslaan', voertuig_id: vid, tank: { op: '2026-10-02T12:00:00.000Z', vol: true } }))._status === 400);
+    toets('een tankbeurt zonder datum: 400', (await roep(tokA, { actie: 'tank_opslaan', voertuig_id: vid, tank: { liters: 30 } }))._status === 400);
+    await roep(tokA, { actie: 'tank_opslaan', voertuig_id: vid, tank: { op: '2026-10-08T12:00:00.000Z', liters: 38, kmstand: 80000 } });
+    toets('een lagere km-stand zet het profiel niet stil omlaag', db.prepare('SELECT kmstand FROM kp_voertuig WHERE id = ?').get(vid).kmstand === 86000);
+    const lt = await roep(tokA, { actie: 'tanken', voertuig_id: vid });
+    toets('lijst nieuwste eerst, vol als boolean, zonder klant_id', lt.ok && lt.tanken.length === 2 && lt.tanken[0].op > lt.tanken[1].op &&
+      lt.tanken[1].vol === true && !('klant_id' in lt.tanken[0]), JSON.stringify(lt).slice(0, 300));
+    const wijzig = await roep(tokA, { actie: 'tank_opslaan', voertuig_id: vid, tank: { id: t1.id, op: '2026-10-01T12:00:00.000Z', liters: 42, vol: false } });
+    toets('wijzigen via id overschrijft, ook vol → niet vol', wijzig.ok && db.prepare('SELECT liters, vol FROM kp_tank WHERE id = ?').get(t1.id).vol === 0);
+    const tekst = await roep(tokA, { actie: 'tank_opslaan', voertuig_id: vid, tank: { op: '2026-10-05T12:00:00.000Z', liters: 10, vol: 'false' } });
+    toets('vol als tekst "false" telt niet als vol', db.prepare('SELECT vol FROM kp_tank WHERE id = ?').get(tekst.id).vol === 0);
+    await roep(tokA, { actie: 'tank_verwijder', id: tekst.id });
+    toets('Bert ziet Anna\'s tankbeurten niet', (await roep(tokB, { actie: 'tanken', voertuig_id: vid }))._status === 404);
+    toets('Bert kan ze niet wijzigen', (await roep(tokB, { actie: 'tank_opslaan', voertuig_id: vb.voertuig.id, tank: { id: t1.id, op: '2026-10-01T12:00:00.000Z', liters: 1 } }))._status === 404 &&
+      db.prepare('SELECT liters FROM kp_tank WHERE id = ?').get(t1.id).liters === 42);
+    toets('en niet verwijderen', (await roep(tokB, { actie: 'tank_verwijder', id: t1.id }))._status === 404);
+    const extra = await roep(tokA, { actie: 'tank_opslaan', voertuig_id: vid, tank: { op: '2026-10-09T12:00:00.000Z', bedrag: 60 } });
+    toets('Anna verwijdert haar eigen tankbeurt', (await roep(tokA, { actie: 'tank_verwijder', id: extra.id })).ok &&
+      !db.prepare('SELECT 1 FROM kp_tank WHERE id = ?').get(extra.id));
+    const v3t = await roep(tokA, { actie: 'tank_opslaan', voertuig_id: v3.voertuig.id, tank: { op: '2026-10-03T12:00:00.000Z', liters: 20 } });
+    toets('tankbeurt op het gearchiveerde derde voertuig (voor deel 6)', v3t.ok);
+  }
+
   console.log('\n4b. Voorkeuren en de sensorselectie per voertuig');
   const tokV = (await W.makeToken(env, 'vera@voorbeeld.nl', 'klant', 'Vera')).token;
   toets('voorkeuren zonder akkoord op Mijn voertuigen: mag', (await roep(tokV, { actie: 'voorkeuren' })).ok === true);
@@ -386,6 +419,7 @@ async function laadWorker() {
   const weg3 = await roep(tokA, { actie: 'voertuig_verwijder', id: v3.voertuig.id });
   toets('een gearchiveerd voertuig verwijderen neemt zijn rapporten mee', weg3.ok &&
     !db.prepare('SELECT 1 FROM kp_voertuig WHERE id = ?').get(v3.voertuig.id), JSON.stringify(weg3));
+  toets('en zijn tankbeurten', !db.prepare('SELECT 1 FROM kp_tank WHERE voertuig_id = ?').get(v3.voertuig.id));
 
   // De nachtelijke opruimer: Anna's account is rijp. Eerst het klantplatform,
   // dan het klantrecord — allebei in D1 sinds 01-10-2026 (#327).
@@ -401,7 +435,7 @@ async function laadWorker() {
   d1Kapot = false;
   op = await W.klantWachtrijOpruimen(envOp, new Date('2026-09-27'));
   const annaId = await W.kpKlantId('anna@voorbeeld.nl');
-  const rest = ['kp_voertuig', 'kp_rapport', 'kp_rit', 'kp_issue', 'kp_pid_stem', 'kp_akkoord'].map((t) => db.prepare('SELECT COUNT(*) AS n FROM ' + t + ' WHERE klant_id = ?').get(annaId).n);
+  const rest = ['kp_voertuig', 'kp_rapport', 'kp_rit', 'kp_tank', 'kp_issue', 'kp_pid_stem', 'kp_akkoord'].map((t) => db.prepare('SELECT COUNT(*) AS n FROM ' + t + ' WHERE klant_id = ?').get(annaId).n);
   toets('na de opruimer staat er van Anna niets meer in D1', rest.every((x) => x === 0), rest.join(','));
   toets('en is het klantrecord daarna gewist', !annaStaat() && op.verwijderd.indexOf('recAnna0000000001') >= 0, JSON.stringify(op));
   toets('Bert is ongemoeid gebleven', db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig WHERE klant_id != ?').get(annaId).n > 0);
