@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 10-10-2026 — Inlogscherm, Check mijn auto en het menu Meer opgeruimd
+ ═══════════════════════════════════════════════════════════
+
+ - Inlogscherm: alleen de velden, Wachtwoord vergeten, Inloggen en de
+   demoknop. Account aanmaken, versie, website, handleiding en "Nieuwste
+   versie laden" staan achter "Geavanceerd" naast Wachtwoord vergeten.
+   De demoknop blijft zichtbaar (Play-reviewnotitie).
+ - Check mijn auto: zelf getikt en alles groen → na 5 s vanzelf terug naar
+   het hoofdscherm. "Let op" blijft staan; een tik of "Blijf hier" stopt het.
+ - Meer: Garagemodus, Check na verbinden, Uitleg bij knoppen, Tekstgrootte
+   en Privacy staan in Mijn voorkeuren, blok "Op dit toestel" (ook voor
+   beheerders). De Versnellingsindicator staat alleen nog in Mijn voertuigen.
+ - Tests: bproef-inlogscherm.js (nieuw), bproef-foutcodes.js,
+   bproef-voorkeur.js, test-foutcodes.js; zes mutaties; handleiding bij.
+
+ ═══════════════════════════════════════════════════════════
  09-10-2026 — Testrun 9.2: de helling van de telefoon in caravanrit en ritanalyse (#463)
  ═══════════════════════════════════════════════════════════
 
