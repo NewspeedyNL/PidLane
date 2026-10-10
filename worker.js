@@ -4944,7 +4944,9 @@ var KP_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS kp_voorkeur (klant_id TEXT PRIMARY KEY, data TEXT NOT NULL, bijgewerkt TEXT NOT NULL)",
   "CREATE TABLE IF NOT EXISTS kp_pid_bib (id TEXT PRIMARY KEY, merk TEXT NOT NULL, model TEXT NOT NULL DEFAULT '', code TEXT NOT NULL, ecu TEXT NOT NULL DEFAULT '', naam TEXT NOT NULL, formule TEXT NOT NULL, eenheid TEXT, bron TEXT NOT NULL, url TEXT, aangemaakt TEXT NOT NULL)",
   "CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_pid_bib_code ON kp_pid_bib (merk, model, code, ecu)",
-  "CREATE TABLE IF NOT EXISTS kp_pid_stem (bib_id TEXT NOT NULL, klant_id TEXT NOT NULL, uitkomst TEXT NOT NULL, op TEXT NOT NULL, PRIMARY KEY (bib_id, klant_id))"
+  "CREATE TABLE IF NOT EXISTS kp_pid_stem (bib_id TEXT NOT NULL, klant_id TEXT NOT NULL, uitkomst TEXT NOT NULL, op TEXT NOT NULL, PRIMARY KEY (bib_id, klant_id))",
+  "CREATE TABLE IF NOT EXISTS kp_meekijk (code TEXT PRIMARY KEY, klant_id TEXT NOT NULL, aangemaakt TEXT NOT NULL, verloopt TEXT NOT NULL, bekeken_op TEXT, aantal INTEGER NOT NULL DEFAULT 0, erbij INTEGER NOT NULL DEFAULT 0)",
+  "CREATE INDEX IF NOT EXISTS idx_kp_meekijk_klant ON kp_meekijk (klant_id)"
 ];
 // Kolommen die er later bij kwamen. CREATE TABLE IF NOT EXISTS voegt op een
 // bestaande tabel niets toe, dus die gaan er met ALTER bij. "duplicate column"
@@ -5250,7 +5252,7 @@ __name(kpBibStem, "kpBibStem");
 
 async function kpAlleWissen(db, klantId) {
   const uit = {};
-  for (const t of ["kp_rapport", "kp_rit", "kp_issue", "kp_voertuig", "kp_voorkeur", "kp_pid_stem", "kp_akkoord"]) {
+  for (const t of ["kp_rapport", "kp_rit", "kp_issue", "kp_voertuig", "kp_voorkeur", "kp_pid_stem", "kp_meekijk", "kp_akkoord"]) {
     const r = await db.prepare("DELETE FROM " + t + " WHERE klant_id = ?").bind(klantId).run();
     uit[t] = (r && r.meta && r.meta.changes) || 0;
   }
@@ -5675,8 +5677,59 @@ var KP_ACTIES = {
     }
     if (stmts.length) await c.db.batch(stmts);
     return { ok: true, verwerkt: stmts.length };
+  },
+
+  // ── Meekijken door PidLane (10-10-2026) ────────────────────────────
+  // De klant maakt zelf een code; zolang die geldt kan beheer zijn voertuigen
+  // inzien en eigen sensoren toevoegen (handleAdminMeekijk). Niets wijzigen,
+  // niets verwijderen. Eén code per klant; een nieuwe vervangt de oude.
+  async meekijk(c) {
+    return { ok: true, meekijk: await kpMeekijkVan(c.db, c.klantId) };
+  },
+  async meekijk_aan(c) {
+    await c.db.prepare("DELETE FROM kp_meekijk WHERE klant_id = ?").bind(c.klantId).run();
+    const nu = new Date();
+    const verloopt = new Date(nu.getTime() + KP_MEEKIJK_DAGEN * 864e5).toISOString();
+    // Een botsing met een bestaande code is bij 31^6 mogelijkheden zeldzaam,
+    // maar niet onmogelijk: dan gewoon een nieuwe trekken.
+    for (let i = 0; i < 5; i++) {
+      const code = kpMeekijkCode();
+      const al = await c.db.prepare("SELECT code FROM kp_meekijk WHERE code = ?").bind(code).first();
+      if (al) continue;
+      await c.db.prepare("INSERT INTO kp_meekijk (code, klant_id, aangemaakt, verloopt) VALUES (?, ?, ?, ?)").bind(code, c.klantId, nu.toISOString(), verloopt).run();
+      return { ok: true, meekijk: await kpMeekijkVan(c.db, c.klantId) };
+    }
+    return { ok: false, error: "Geen vrije code gevonden — probeer het nog eens.", code: 503 };
+  },
+  async meekijk_uit(c) {
+    const r = await c.db.prepare("DELETE FROM kp_meekijk WHERE klant_id = ?").bind(c.klantId).run();
+    return { ok: true, ingetrokken: (r && r.meta && r.meta.changes) || 0 };
   }
 };
+
+/* Meekijkcode: zes tekens zonder 0/O en 1/I/L, zodat hij over de telefoon
+   voor te lezen is. crypto.getRandomValues, niet Math.random: de code is een
+   sleutel tot iemands voertuiggegevens. */
+var KP_MEEKIJK_DAGEN = 7;
+var KP_MEEKIJK_TEKENS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+function kpMeekijkCode() {
+  const b = crypto.getRandomValues(new Uint8Array(6));
+  let s = "";
+  for (let i = 0; i < 6; i++) s += KP_MEEKIJK_TEKENS[b[i] % KP_MEEKIJK_TEKENS.length];
+  return s;
+}
+__name(kpMeekijkCode, "kpMeekijkCode");
+// De geldende code van een klant; een verlopen code wordt meteen opgeruimd.
+async function kpMeekijkVan(db, klantId) {
+  const r = await db.prepare("SELECT code, aangemaakt, verloopt, bekeken_op, aantal, erbij FROM kp_meekijk WHERE klant_id = ?").bind(klantId).first();
+  if (!r) return null;
+  if (r.verloopt <= kpNu()) {
+    await db.prepare("DELETE FROM kp_meekijk WHERE klant_id = ?").bind(klantId).run();
+    return null;
+  }
+  return r;
+}
+__name(kpMeekijkVan, "kpMeekijkVan");
 
 // ── POST /klant/platform  { actie, ... }  (ingelogd als klant) ──────
 async function handleKlantPlatform(request, env) {
@@ -5737,6 +5790,67 @@ async function handleKlantPlatform(request, env) {
   }
 }
 __name(handleKlantPlatform, "handleKlantPlatform");
+
+// ── POST /admin/meekijk  { actie, code, ... }  (ingelogd als beheerder) ──
+// De andere kant van meekijk_aan (10-10-2026). Alleen met een geldige code
+// die de klant zelf maakte; zonder code ziet beheer niets. Twee acties:
+//   open       — de voertuigen van die klant (zoals de klant ze ziet) en zijn
+//                open punten. Telt mee in "bekeken", dat ziet de klant.
+//   pid_erbij  — één eigen sensor toevoegen aan een voertuig. Een sensor die
+//                er al staat (zelfde code en ECU) wordt NIET overschreven:
+//                wijzigen en verwijderen blijven bij de klant.
+async function handleAdminMeekijk(request, env) {
+  const s = await auth(request, env);
+  if (!s) return json({ ok: false, error: "Niet ingelogd." }, 401);
+  if (s.r !== "admin") return json({ ok: false, error: "Alleen voor beheerders." }, 403);
+  if (!env.LOGDB) return json({ ok: false, error: "Opslag niet beschikbaar." }, 503);
+  const rl = await rateLimit(env, "admin-meekijk", s.u || "admin", { limit: 120, windowMs: 36e5 }, true);
+  if (rl.limited) return rateLimitResponse(rl);
+
+  let b = {};
+  try { b = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — b blijft {}, de code hieronder valideert */ }
+  const actie = String(b.actie || "");
+  const code = String(b.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (!/^[A-Z0-9]{6}$/.test(code)) return json({ ok: false, error: "Een meekijkcode heeft zes tekens." }, 400);
+  try {
+    const db = env.LOGDB;
+    await kpSchema(db);
+    const m = await db.prepare("SELECT klant_id, verloopt FROM kp_meekijk WHERE code = ?").bind(code).first();
+    if (!m || m.verloopt <= kpNu()) return json({ ok: false, error: "Code onbekend, verlopen of ingetrokken." }, 404);
+    const klantId = m.klant_id;
+    const sleutel = await kpSleutel(env);
+
+    if (actie === "open") {
+      const r = await db.prepare("SELECT * FROM kp_voertuig WHERE klant_id = ? ORDER BY status, aangemaakt").bind(klantId).all();
+      const voertuigen = [];
+      for (const v of (r && r.results) || []) voertuigen.push(await kpVoertuigPubliek(v, sleutel, klantId));
+      const iss = await db.prepare("SELECT voertuig_id, sleutel, soort, titel, ernst, laatst_gezien, aantal FROM kp_issue WHERE klant_id = ? AND status = 'open' ORDER BY laatst_gezien DESC LIMIT 200").bind(klantId).all();
+      await db.prepare("UPDATE kp_meekijk SET bekeken_op = ?, aantal = aantal + 1 WHERE code = ?").bind(kpNu(), code).run();
+      return json({ ok: true, verloopt: m.verloopt, voertuigen, issues: (iss && iss.results) || [] });
+    }
+    if (actie === "pid_erbij") {
+      const v = await kpVoertuigVan(db, klantId, b.voertuig_id);
+      if (!v) return json({ ok: false, error: "Voertuig niet gevonden." }, 404);
+      const e = kpEigenPid(b.pid);
+      if (e.fout) return json({ ok: false, error: e.fout }, 400);
+      const lijst = kpLees(v.eigen_pids) || [];
+      if (lijst.some((x) => x.code === e.code && (x.ecu || "") === (e.ecu || "")))
+        return json({ ok: false, error: e.code + (e.ecu ? " @ " + e.ecu : "") + " staat er al. Wijzigen doet de klant zelf." }, 409);
+      if (lijst.length >= KP_VELDEN.eigen_pids.max) return json({ ok: false, error: "Dit voertuig heeft al " + lijst.length + " eigen sensoren, het maximum." }, 409);
+      lijst.push(e);
+      const tekst = JSON.stringify(lijst);
+      await db.prepare("UPDATE kp_voertuig SET eigen_pids = ?, bijgewerkt = ? WHERE id = ? AND klant_id = ?").bind(tekst, kpNu(), v.id, klantId).run();
+      // Zoals bij een eigen opslag: de techniek volgt de auto (KP_VIN_TECHNIEK).
+      await kpVinDelen({ db, klantId, sleutel }, v, { eigen_pids: tekst }, false);
+      await db.prepare("UPDATE kp_meekijk SET erbij = erbij + 1 WHERE code = ?").bind(code).run();
+      return json({ ok: true, eigen_pids: lijst });
+    }
+    return json({ ok: false, error: "Onbekende actie." }, 400);
+  } catch (e) {
+    return klantFout(e, "Meekijken mislukt.");
+  }
+}
+__name(handleAdminMeekijk, "handleAdminMeekijk");
 
 // ── De opruimer ─────────────────────────────────────────────────────
 // Draait uit de cron (zie scheduled() onderaan) en uit de adminpagina, zodat
@@ -6113,6 +6227,8 @@ var worker_default = {
         return lockOrigin(request, await handleAdminD1Get(request, env));
       if (url.pathname === "/admin/d1" && request.method === "POST")
         return lockOrigin(request, await handleAdminD1Post(request, env));
+      if (url.pathname === "/admin/meekijk" && request.method === "POST")
+        return lockOrigin(request, await handleAdminMeekijk(request, env));
       if (url.pathname === "/klant/registreer" && request.method === "POST")
         return lockOrigin(request, await handleKlantRegistreer(request, env));
       if (url.pathname === "/klant/login" && request.method === "POST")
