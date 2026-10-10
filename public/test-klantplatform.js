@@ -214,6 +214,9 @@ async function laadWorker() {
       lt.tanken[1].vol === true && !('klant_id' in lt.tanken[0]), JSON.stringify(lt).slice(0, 300));
     const wijzig = await roep(tokA, { actie: 'tank_opslaan', voertuig_id: vid, tank: { id: t1.id, op: '2026-10-01T12:00:00.000Z', liters: 42, vol: false } });
     toets('wijzigen via id overschrijft, ook vol → niet vol', wijzig.ok && db.prepare('SELECT liters, vol FROM kp_tank WHERE id = ?').get(t1.id).vol === 0);
+    const tekst = await roep(tokA, { actie: 'tank_opslaan', voertuig_id: vid, tank: { op: '2026-10-05T12:00:00.000Z', liters: 10, vol: 'false' } });
+    toets('vol als tekst "false" telt niet als vol', db.prepare('SELECT vol FROM kp_tank WHERE id = ?').get(tekst.id).vol === 0);
+    await roep(tokA, { actie: 'tank_verwijder', id: tekst.id });
     toets('Bert ziet Anna\'s tankbeurten niet', (await roep(tokB, { actie: 'tanken', voertuig_id: vid }))._status === 404);
     toets('Bert kan ze niet wijzigen', (await roep(tokB, { actie: 'tank_opslaan', voertuig_id: vb.voertuig.id, tank: { id: t1.id, op: '2026-10-01T12:00:00.000Z', liters: 1 } }))._status === 404 &&
       db.prepare('SELECT liters FROM kp_tank WHERE id = ?').get(t1.id).liters === 42);
