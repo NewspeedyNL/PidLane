@@ -52,7 +52,7 @@ if (!T) throw new Error('PLTelemetrie niet gezet — anker weg?');
 const ev = luisteraars.deviceorientation;
 if (typeof ev !== 'function') throw new Error('geen deviceorientation-luisteraar — anker weg?');
 // Een stilstaande stand: lang genoeg herhalen dat het filter hem bereikt.
-function stand(beta, gamma, alpha){ for (let i = 0; i < 100; i++){ klok += 50; ev({ alpha: alpha || 0, beta, gamma }); } }
+function stand(beta, gamma, alpha, n){ for (let i = 0; i < (n || 100); i++){ klok += 50; ev({ alpha: alpha || 0, beta, gamma }); } }
 const bijna = (a, b) => Math.abs(a - b) <= 0.3;
 
 console.log('\n— zonder sensor —');
@@ -96,16 +96,16 @@ ok(T.nulstellen() === true && T.genuld(), 'nulstellen lukt met een verse meting'
 ok(opslag.pl_telemetrie_nul && JSON.parse(opslag.pl_telemetrie_nul).length === 3, 'de nulstand is bewaard');
 h = T.nu();
 ok(bijna(h.helling, 0) && bijna(h.kanteling, 0), 'na nulstellen: 0° en 0°', h);
-stand(80, 5);
-h = T.nu();
-ok(Math.abs(h.helling - 10) < 0.5 && Math.abs(h.kanteling) < 1, 'daarna 10° naar de bestuurder: helling ≈ +10', h);
+stand(80, 5, 0, 20);   // 1 s: korter dan de rust van 2 s
 
 console.log('\n— de tik: alleen meetellen als hij vast zit —');
 updates.length = 0; getoond.length = 0;
 T.tik();
-ok(updates.length === 0 && getoond.length === 2, 'net verdraaid (80° na een nulstand op 70°): nog geen 5 s stil, dus alleen tonen', { updates, getoond, h: T.houderNu() });
+ok(updates.length === 0 && getoond.length === 2, 'net verdraaid (80° na een nulstand op 70°): nog geen 2 s stil, dus alleen tonen', { updates, getoond, h: T.houderNu() });
 ok(T.houderNu().reden === 'wacht' && kaart('gc-TL01').classList.contains('los'), 'reden "wacht", en de tegel is dof (los)', T.houderNu());
 stand(80, 5);
+h = T.nu();
+ok(Math.abs(h.helling - 10) < 0.5 && Math.abs(h.kanteling) < 1, 'daarna 10° naar de bestuurder: helling ≈ +10', h);
 updates.length = 0; getoond.length = 0;
 T.tik();
 ok(updates.length === 2 && updates[0][0] === 'TL01' && updates[1][0] === 'TL02', 'na 5 s stil in de houder: TL01 en TL02 tellen mee', { updates, h: T.houderNu() });
@@ -151,7 +151,7 @@ ok(H({ genuld: false }).reden === 'geen-nulstand', 'zonder nulstand nooit vast �
 ok(H({ afwijking: 16 }).reden === 'verschoven' && H({ afwijking: 15 }).vast, 'afwijking: 15° mag, 16° niet');
 ok(H({ wiebel: 20, wiebelMs: 1000 }).reden === 'wiebelt' && H({ wiebel: null }).reden === 'wiebelt', 'een seconde boven 8°/s binnen 3 s, of wiebel onbekend: niet vast');
 ok(H({ wiebel: 20, wiebelMs: 999 }).vast, 'korter boven 8°/s (een drempel, een kuil): nog vast');
-ok(H({ okMs: 4999 }).reden === 'wacht' && H({ okMs: 5000 }).vast, 'rust: 5 s');
+ok(H({ okMs: 1999 }).reden === 'wacht' && H({ okMs: 2000 }).vast, 'rust: 2 s');
 ok(H({ vers: false }).reden === 'geen-sensor', 'zonder verse meting: niet vast');
 ok(T.houder({ vers: true, genuld: true, afwijking: null, wiebel: 2, okMs: 9000 }).vast === false, 'afwijking onbekend telt niet als goed');
 
@@ -216,7 +216,7 @@ ok(drempelLos === 0, 'vier drempels (0,3 s knikken met 40°/s): de houder blijft
 rij(200, [0, G, 0], 72, 0, 0, 40);
 ok(T.houderNu().reden === 'wiebelt', 'maar 40°/s om de dwarsas, een seconde heen en terug: wiebelt', T.houderNu());
 rij(20, [0, G, 0], 72, 0, 0, 0);
-ok(!T.houderNu().vast, 'en vlak daarna nog niet vast: eerst 5 s rust', T.houderNu());
+ok(!T.houderNu().vast, 'en vlak daarna nog niet vast: eerst 2 s rust', T.houderNu());
 const hel = 6 * Math.PI / 180;
 rij(300, [0, G * Math.cos(hel), -G * Math.sin(hel)], 50, 0);   // 6° klim, constante snelheid
 h = T.nu();
