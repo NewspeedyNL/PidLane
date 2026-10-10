@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 10-10-2026 — Tankbeurten: beloofd bereik tegenover echt gereden (#469, stap 1)
+ ═══════════════════════════════════════════════════════════
+
+ - Mijn voertuigen → tabblad Tankbeurten. De klant vult in wat hij weet:
+   liters, literprijs of bedrag, km-stand, vol of niet, en het bereik op
+   het dashboard vóór en ná tanken. Nieuwe tabel kp_tank in D1, gaat mee
+   met voertuig verwijderen en alles wissen; een afgelezen km-stand gaat
+   het profiel in (nooit omlaag).
+ - Per cyclus: km gereden tegenover het opgemaakte beloofde bereik, en het
+   echte verbruik met de volle-tankmethode. CSV met BOM voor Excel.
+ - Nieuwe verwerking, dus een nieuwe akkoordtekst (KP_AKKOORD_VERSIE
+   2026-10-10): klanten bevestigen opnieuw.
+ - Nieuw: pidlane-tank.js (PLTank). Tests: test-tank.js, test-klantplatform.js
+   deel 4a; tien mutaties.
+
+ ═══════════════════════════════════════════════════════════
  10-10-2026 — Mijn voertuigen ook voor beheer, voor de eigen auto's
  ═══════════════════════════════════════════════════════════
 

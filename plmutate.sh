@@ -1292,6 +1292,18 @@ MUTATIES=(
 "worker.js@@      if (!ak || ak.versie !== KP_AKKOORD_VERSIE)\n        return json({ ok: false, error: \"Eerst akkoord@@      if (false)\n        return json({ ok: false, error: \"Eerst akkoord@@test-klantplatform.js@@schrijven zonder akkoord op het bewaren"
 "worker.js@@        rijp.splice(i, 1);@@@@test-klantplatform.js@@D1 faalt en het account wordt toch gewist — de sleutel naar de voertuigdata is dan weg"
 "worker.js@@(v.kmstand == null || r.waarde >= v.kmstand)@@true@@test-klantplatform.js@@een gemeten kilometerstand zet de opgegeven stil lager"
+# Tankbeurten (#469, 10-10-2026): wat de klant invult blijft van hem, gaat mee
+# met wissen, en de rekensom in PLTank telt eerlijk.
+"worker.js@@\"kp_rit\", \"kp_tank\", \"kp_issue\",@@\"kp_rit\", \"kp_issue\",@@test-klantplatform.js@@de opruimer en alles_wissen laten de tankbeurten staan"
+"worker.js@@DELETE FROM kp_tank WHERE id = ? AND klant_id = ?\").bind(String(b.id || \"\"), c.klantId)@@DELETE FROM kp_tank WHERE id = ?\").bind(String(b.id || \"\"))@@test-klantplatform.js@@een klant wist de tankbeurt van een ander"
+"worker.js@@    if (w.kmstand !== null && !(v.kmstand > w.kmstand))@@    if (w.kmstand !== null)@@test-klantplatform.js@@een oude tankbeurt zet de km-stand van het profiel stil lager"
+"worker.js@@vol: t.vol === true || t.vol === 1 ? 1 : 0,@@vol: t.vol ? 1 : 0,@@test-klantplatform.js@@vol wordt bewaard als wat er ook maar in staat"
+"public/pidlane-tank.js@@    if (ka !== null && kb !== null && kb > ka && kb - ka <= CFG.kmMax) {@@    if (false) {@@test-tank.js@@de afgelezen km-standen worden genegeerd en de ritten tellen"
+"public/pidlane-tank.js@@        c.opgemaakt = c.restBekend ? bel - c.rest : bel;@@        c.opgemaakt = bel;@@test-tank.js@@gehaald vergeet wat er bij het tanken nog in de tank zat"
+"public/pidlane-tank.js@@          if (l === null) { heel = false; break; }@@          if (l === null) continue;@@test-tank.js@@een beurt zonder liters maakt het volle-tankverbruik te laag"
+"public/pidlane-tank.js@@        for (var j = start + 1; j <= i; j++) {@@        for (var j = i; j <= i; j++) {@@test-tank.js@@de halve beurt tussen twee volle tanken telt niet mee"
+"public/pidlane-tank.js@@      if (isNaN(s) || s < van || s >= tot || typeof r.km !== 'number') return;@@      if (isNaN(s) || typeof r.km !== 'number') return;@@test-tank.js@@ritten buiten de tankcyclus tellen mee"
+"public/pidlane-tank.js@@'<div class=\"gr-klein\">📝 ' + esc(t.notitie)@@'<div class=\"gr-klein\">📝 ' + t.notitie@@test-tank.js@@een notitie komt als HTML op het scherm"
 "public/pidlane-garage.js@@    if (dt > CFG.ritGatMaxS) dt = 0;@@@@test-garage.js@@een meetgat telt als afgelegde weg"
 "public/pidlane-garage.js@@    else if (typeof m.maf === 'number' && brandstof !== 'diesel')@@    else if (typeof m.maf === 'number')@@test-garage.js@@een dieselverbruik uit de luchtmassa"
 "public/pidlane-garage.js@@    if (b.sLiters >= b.s * 0.7 && r.km >= 1)@@    if (b.sLiters > 0 && r.km >= 1)@@test-garage.js@@verbruik over een stukje van de rit geldt als ritverbruik"
