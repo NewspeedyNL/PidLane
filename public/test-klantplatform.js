@@ -98,7 +98,11 @@ async function laadWorker() {
 
   console.log('\n1. Toegang en akkoord');
   toets('zonder inlog: 401', (await roep('', { actie: 'stand' }))._status === 401);
-  toets('een admin-token is geen klant: 401', (await roep(tokAdmin, { actie: 'stand' }))._status === 401);
+  // Sinds 10-10-2026 heeft een beheerder een eigen Mijn voertuigen (deel 4b).
+  const stAdmin = await roep(tokAdmin, { actie: 'stand' });
+  toets('een beheerder komt binnen, in een eigen ruimte zonder akkoord', stAdmin._status === 200 && stAdmin.akkoord === false, JSON.stringify(stAdmin));
+  const tokMonteur = (await W.makeToken(env, 'monteur', 'user', 'Monteur')).token;
+  toets('een monteur (geen klant, geen beheerder): 401', (await roep(tokMonteur, { actie: 'stand' }))._status === 401);
   let st = await roep(tokA, { actie: 'stand' });
   toets('stand zonder akkoord: akkoord=false en de versie erbij', st.ok && st.akkoord === false && !!st.akkoordVersie, JSON.stringify(st));
   const zonder = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { naam: 'X' } });
@@ -333,6 +337,21 @@ async function laadWorker() {
 
   await roep(tokV, { actie: 'alles_wissen' });
   toets('alles wissen neemt de voorkeuren mee', Object.keys((await roep(tokV, { actie: 'voorkeuren' })).voorkeur).length === 0);
+
+  console.log('\n4b. De beheerder heeft een eigen Mijn voertuigen');
+  await roep(tokAdmin, { actie: 'akkoord', versie: st.akkoordVersie });
+  const vAdmin = await roep(tokAdmin, { actie: 'voertuig_opslaan', voertuig: { naam: 'Testauto beheer', merk: 'Mazda' } });
+  toets('een beheerder bewaart zijn eigen auto', vAdmin.ok && !!vAdmin.voertuig.id, JSON.stringify(vAdmin));
+  const stA2 = await roep(tokA, { actie: 'stand' }), stAd2 = await roep(tokAdmin, { actie: 'stand' });
+  toets('Anna ziet de auto van beheer niet', !JSON.stringify(stA2.voertuigen).includes(vAdmin.voertuig.id));
+  toets('en beheer ziet alleen zijn eigen auto, niet die van Anna', stAd2.voertuigen.length === 1 && stAd2.voertuigen[0].id === vAdmin.voertuig.id);
+  toets('beheer raakt een voertuig van Anna niet', (await roep(tokAdmin, { actie: 'voertuig_archiveer', id: v1.voertuig.id }))._status === 404);
+  const beheerId = db.prepare('SELECT klant_id FROM kp_voertuig WHERE id = ?').get(vAdmin.voertuig.id).klant_id;
+  toets('de ruimte van beheer is niet die van een klant met dezelfde naam', beheerId !== await W.kpKlantId('beheer') && beheerId === await W.kpKlantId('beheer:beheer'));
+  const voorWis = db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig WHERE klant_id != ?').get(beheerId).n;
+  await roep(tokAdmin, { actie: 'alles_wissen' });
+  toets('Alles wissen door beheer wist alleen zijn eigen ruimte', db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig WHERE klant_id = ?').get(beheerId).n === 0 &&
+    db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig WHERE klant_id != ?').get(beheerId).n === voorWis);
 
   console.log('\n5. Account verwijderd of geblokkeerd: meteen dicht');
   // De klantentabel staat sinds 01-10-2026 in D1 (#327), in dezelfde database

@@ -5731,9 +5731,24 @@ async function kpMeekijkVan(db, klantId) {
 }
 __name(kpMeekijkVan, "kpMeekijkVan");
 
-// ── POST /klant/platform  { actie, ... }  (ingelogd als klant) ──────
+// Wie Mijn voertuigen mag gebruiken (10-10-2026): een klant, en sinds die dag
+// ook een beheerder voor zijn eigen auto's. De beheerder krijgt een eigen
+// ruimte: kpKlantId("beheer:" + gebruikersnaam). Een gebruikersnaam heeft geen
+// @, een klant wel een e-mailadres, dus die twee kunnen nooit dezelfde
+// klant-id opleveren. Alleen een ondertekende sessie; de kale ADMIN_TOKEN van
+// de beheerpagina telt hier niet. Andere rollen (monteur) niet.
+async function platformAuth(request, env) {
+  const k = await klantAuth(request, env);
+  if (k) return k;
+  const p = await verifyToken(env, request.headers.get("X-App-Token") || "");
+  if (p && p.r === "admin" && p.u) return Object.assign({}, p, { beheer: true });
+  return null;
+}
+__name(platformAuth, "platformAuth");
+
+// ── POST /klant/platform  { actie, ... }  (ingelogd als klant of beheerder) ──
 async function handleKlantPlatform(request, env) {
-  const p = await klantAuth(request, env);
+  const p = await platformAuth(request, env);
   if (!p) return json({ ok: false, error: "Niet ingelogd." }, 401);
   if (!env.LOGDB) return json({ ok: false, error: "Opslag niet beschikbaar.", detail: "geen LOGDB-binding" }, 503);
 
@@ -5743,7 +5758,7 @@ async function handleKlantPlatform(request, env) {
   const fn = Object.prototype.hasOwnProperty.call(KP_ACTIES, actie) ? KP_ACTIES[actie] : null;
   if (!fn) return json({ ok: false, error: "Onbekende actie." }, 400);
 
-  const klantId = await kpKlantId(p.u);
+  const klantId = await kpKlantId(p.beheer ? "beheer:" + p.u : p.u);
   const rl = await rateLimit(env, "klant-platform", klantId, { limit: 600, windowMs: 36e5 }, true);
   if (rl.limited) return rateLimitResponse(rl);
 
@@ -5760,7 +5775,9 @@ async function handleKlantPlatform(request, env) {
     // voertuigen niet onbereikbaar maken. Sinds 01-10-2026 staat de tabel in
     // D1 en wordt hij bij elke stand gelezen; de vijf minuten van PR #380
     // waren er alleen om Airtable-calls te sparen (#327).
-    if (actie === "stand") {
+    // Een beheerder heeft geen record in de klantentabel: daar valt niets te
+    // controleren, zijn rol stond al in de ondertekende sessie.
+    if (actie === "stand" && !p.beheer) {
       try {
         const rec = await klantZoek(env, p.u);
         const pr = rec ? klantToegangProbleem(rec.fields) : { status: 403, code: "onbekend", bericht: "Account niet gevonden." };
