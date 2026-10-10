@@ -2387,7 +2387,10 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .ov#loginOv .lg-form{ width:calc(100% - 48px); gap:10px; }
 .ov#loginOv .api-inp{ padding:14px 46px 14px 16px; border-radius:12px; font-size:15px; }
 .ov#loginOv .lg-field .lg-ico{ right:15px; width:19px; height:19px; }
-.ov#loginOv .lg-vergeten{ align-self:flex-end; margin-top:-2px; font-size:12px; font-weight:600; color:var(--tx3); text-decoration:none; }
+.ov#loginOv .lg-rij{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:-2px; }
+.ov#loginOv .lg-vergeten, .ov#loginOv .lg-meer{ font-size:12px; font-weight:600; color:var(--tx3); text-decoration:none; padding:6px 0; }
+/* Geavanceerd (10-10-2026): dicht tot je erop tikt. */
+.ov#loginOv:not(.lg-open) .lg-geav{ display:none; }
 .ov#loginOv #loginErr{ font-size:12px; min-height:0; }
 .ov#loginOv #loginErr:empty{ display:none; }
 .ov#loginOv .mact{ width:calc(100% - 48px); padding:14px 0 0; gap:10px; }

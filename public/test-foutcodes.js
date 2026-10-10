@@ -253,6 +253,11 @@ function nepEcu(antwoorden) {
   eis(F.magDoor(lamp) === false, 'motorlampje aan → blijven staan');
   eis(F.magDoor(null) === false, 'geen uitlezing → nergens heen');
 
+  // Zelf getikt (10-10-2026): alleen bij écht groen terug naar het hoofdscherm.
+  eis(F.magTerug(schoon) === (F.stoplicht(schoon).kleur === 'groen') && F.stoplicht(schoon).kleur === 'groen', 'zelf getikt, alles in orde → terug naar het hoofdscherm');
+  eis(F.magTerug(halfKlaar) === false, 'zelf getikt, zelftests niet klaar ("Let op") → blijven staan  <- wie zelf tikt, leest die regel');
+  eis(F.magTerug(v1) === false && F.magTerug(lamp) === false && F.magTerug(null) === false, 'codes, motorlampje of niets gelezen → blijven staan');
+
   console.log('\n12. Wat er met de balk gebeurde — de app-maten voor #376');
   {
     const wacht = [], naar = [];

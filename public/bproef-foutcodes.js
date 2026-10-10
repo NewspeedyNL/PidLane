@@ -131,7 +131,7 @@ const ECU = {
     toets('en staat Live open in Slim visueel', await app.ev(`pidViewMode === 'visueel' && document.getElementById('welcomeScreen').classList.contains('hidden')`),
       await app.ev(`pidViewMode`));
 
-    console.log('\n── 8. aanraken = blijven; codes = geen balk; zelf geopend = geen balk ──');
+    console.log('\n── 8. aanraken = blijven; codes = geen balk; zelf geopend en groen = terug naar het hoofdscherm ──');
     await app.ev(`setPidView('overzicht'); PLFoutcodes.staat().scan = null; PLFoutcodes.open({ auto: true }); 'ok'`);
     await wacht(`!!document.querySelector('#plFcOv .fc-door')`, 15000);
     await app.ev(`document.querySelector('#plFcOv .fc-oordeel').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); 'ok'`);
@@ -139,9 +139,13 @@ const ECU = {
     await new Promise(r => setTimeout(r, 6000));
     toets('en het venster blijft staan', await app.ev(`getComputedStyle(document.getElementById('plFcOv')).display === 'flex' && pidViewMode === 'overzicht'`));
 
-    await app.ev(`PLFoutcodes.sluit(); PLFoutcodes.staat().scan = null; PLFoutcodes.open(); 'ok'`);
-    await wacht(`!!(PLFoutcodes.staat().scan && !PLFoutcodes.staat().bezig)`, 15000);
-    toets('zelf op Check mijn auto getikt → geen balk', await app.ev(`!document.querySelector('#plFcOv .fc-door')`));
+    // Sinds 10-10-2026 loopt de balk ook als je zelf tikt, maar terug naar
+    // het hoofdscherm in plaats van door naar Live.
+    await app.ev(`PLFoutcodes.sluit(); setPidView('overzicht'); PLFoutcodes.staat().scan = null; PLFoutcodes.open(); 'ok'`);
+    toets('zelf op Check mijn auto getikt, groen → de balk naar het hoofdscherm', await wacht(`/hoofdscherm/.test((document.querySelector('#plFcOv .fc-door')||{}).textContent||'')`, 15000));
+    toets('na het aftellen is het venster dicht', await wacht(`getComputedStyle(document.getElementById('plFcOv')).display === 'none'`, 8000));
+    toets('en staat het hoofdscherm open, niet Live', await app.ev(`!document.getElementById('welcomeScreen').classList.contains('hidden') && pidViewMode === 'overzicht'`),
+      await app.ev(`pidViewMode + ' / welkom verborgen: ' + document.getElementById('welcomeScreen').classList.contains('hidden')`));
 
     await app.nepAdapter(ECU);
     await app.ev(`PLFoutcodes.sluit(); PLFoutcodes.staat().scan = null; PLFoutcodes.open({ auto: true }); 'ok'`);

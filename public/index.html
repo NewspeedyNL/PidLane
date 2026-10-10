@@ -133,7 +133,15 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
         <!-- 02-10-2026: "Wachtwoord vergeten?" hoort bij het wachtwoordveld, en
              "Nog geen account?" staat onder de knoppen: eerst wat de meeste
              mensen doen (inloggen), dan de rest. -->
-        <a href="#" class="lg-vergeten" onclick="event.preventDefault();PLKlant.openHerstelAanvraag()">Wachtwoord vergeten?</a>
+        <!-- 10-10-2026: het inlogscherm laat alleen zien wat je nodig hebt om
+             binnen te komen. Account aanmaken, versie, links en "Nieuwste
+             versie laden" staan achter Geavanceerd (klasse lg-geav). De
+             demoknop blijft zichtbaar: de Play-reviewnotitie belooft hem
+             direct onder Inloggen (test-demo-toegang.js). -->
+        <div class="lg-rij">
+          <a href="#" class="lg-meer" id="lgMeer" aria-expanded="false" onclick="event.preventDefault();plLoginMeer()">Geavanceerd ▾</a>
+          <a href="#" class="lg-vergeten" onclick="event.preventDefault();PLKlant.openHerstelAanvraag()">Wachtwoord vergeten?</a>
+        </div>
         <div id="loginErr" style="font-size:12px;color:var(--rd);min-height:16px;text-align:center"></div>
         <!-- Tweede deur: bezoekers kunnen zichzelf gratis registreren en
              krijgen proeftegoed. Zakelijke logins gebruiken gewoon het
@@ -155,10 +163,10 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
            om af te haken. -->
       <div class="lg-of" aria-hidden="true"><span>of</span></div>
       <button class="mbtn s" id="btnDemoLogin" onclick="plDemoZonderLogin()">▷ Try demo — no adapter needed</button>
-      <a href="#" class="lg-nieuw" onclick="event.preventDefault();PLKlant.openRegistratie()">Nog geen account? <b>Gratis aanmaken</b></a>
+      <a href="#" class="lg-nieuw lg-geav" onclick="event.preventDefault();PLKlant.openRegistratie()">Nog geen account? <b>Gratis aanmaken</b></a>
     </div>
   </div>
-  <div class="lg-foot">
+  <div class="lg-foot lg-geav">
     PidLane <span id="loginVer">v…</span> — AI Car Diagnostics<br>
     <!-- Tweede, gedempte regel: wat er nodig is om te zien of deze build vers
          is. Bewust NIET op de productregel erboven: die is wat een Play-reviewer
@@ -225,6 +233,16 @@ try{
   if(document.readyState==='complete') plVersieRegel();
   else window.addEventListener('load', function(){ plVersieRegel(); }, { once:true });
 }catch(e){ console.warn('plVersieRegel niet gestart — de buildregel op het inlogscherm blijft leeg:', e); }
+
+/* ── Geavanceerd op het inlogscherm (10-10-2026) ─────────────────────
+   Klapt open of dicht wat achter Geavanceerd staat (.lg-geav). Begint elke
+   keer dicht: het is geen voorkeur maar een la. */
+window.plLoginMeer = function(){
+  var ov = document.getElementById('loginOv'), k = document.getElementById('lgMeer');
+  if(!ov) return;
+  var open = ov.classList.toggle('lg-open');
+  if(k){ k.setAttribute('aria-expanded', open ? 'true' : 'false'); k.textContent = 'Geavanceerd ' + (open ? '▴' : '▾'); }
+};
 
 /* ── Nieuwste versie forceren ────────────────────────────────────────
    location.reload(true) doet in moderne browsers niets meer, en alléén
@@ -846,14 +864,20 @@ function closeConnOv(){
         <button class="kebab-item" id="kbAccount" style="display:none" onclick="closeKebab();PLKlant.openMijnTokens()">👤 Mijn account en tegoed</button>
         <button class="kebab-item" id="kbGarage" style="display:none" onclick="closeKebab();PLGarage.open()">🚗 Mijn voertuigen</button>
         <div class="kebab-kop">Instellingen</div>
-        <button class="kebab-item" id="kbVoorkeur" style="display:none" onclick="closeKebab();PLVoorkeur.open()">⚙️ Mijn voorkeuren</button>
-        <!-- Garagemodus (29-09-2026): dezelfde plekken, met de vakgereedschappen
-             erbij. Staat vanzelf aan voor een account dat geen klant is. -->
-        <button class="kebab-item kebab-schakel" id="kbGarageModus" role="switch" aria-checked="false" onclick="PLNav.wisselGarage()">🔧 Garagemodus<span class="kb-sw" aria-hidden="true"></span></button>
-        <button class="kebab-item kebab-schakel" id="kbAutoCheck" role="switch" aria-checked="false" onclick="PLNav.wisselAutoCheck()">🩺 Check na verbinden<span class="kb-sw" aria-hidden="true"></span></button>
-        <button class="kebab-item kebab-schakel" id="kbHelpTips" role="switch" aria-checked="false" onclick="PLHelp.wisselTips()">ⓘ Uitleg bij knoppen<span class="kb-sw" aria-hidden="true"></span></button>
-        <button class="kebab-item" onclick="closeKebab();openGearInstellingen()">🔢 Versnellingsindicator</button>
-        <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
+        <button class="kebab-item" id="kbVoorkeur" onclick="closeKebab();PLVoorkeur.open()">⚙️ Mijn voorkeuren</button>
+        <!-- 10-10-2026: Garagemodus, Check na verbinden, Uitleg bij knoppen,
+             Tekstgrootte en Privacy staan in Mijn voorkeuren, blok "Op dit
+             toestel" (#vkToestel hieronder; PLVoorkeur zet het in zijn venster).
+             De Versnellingsindicator staat in Mijn voertuigen. De ids blijven
+             gelijk: PLNav, PLHelp en de handleiding vinden ze daaraan. -->
+        <div id="vkToestel" class="vk-toestel" hidden>
+          <div class="vk-bh">Op dit toestel — werkt meteen</div>
+          <button class="kebab-item kebab-schakel" id="kbGarageModus" role="switch" aria-checked="false" onclick="PLNav.wisselGarage()">🔧 Garagemodus<span class="kb-sw" aria-hidden="true"></span></button>
+          <button class="kebab-item kebab-schakel" id="kbAutoCheck" role="switch" aria-checked="false" onclick="PLNav.wisselAutoCheck()">🩺 Check na verbinden<span class="kb-sw" aria-hidden="true"></span></button>
+          <button class="kebab-item kebab-schakel" id="kbHelpTips" role="switch" aria-checked="false" onclick="PLHelp.wisselTips()">ⓘ Uitleg bij knoppen<span class="kb-sw" aria-hidden="true"></span></button>
+          <div class="kebab-item" style="display:flex;align-items:center;gap:6px;cursor:default">📖 Tekstgrootte<span style="margin-left:auto;display:flex;gap:4px"><button class="uiscale-btn" id="uiS" onclick="setUiScale('s')">S</button><button class="uiscale-btn" id="uiM" onclick="setUiScale('m')">M</button><button class="uiscale-btn" id="uiL" onclick="setUiScale('l')">L</button></span></div>
+          <button class="kebab-item" id="vkPrivacy" onclick="PLVoorkeur.sluit();openPrivacy()">🔒 Privacy</button>
+        </div>
         <!-- De schakelaar voor de bevindingenbalk (issue #60) stond hier tot
              08-09-2026 en zit nu in het Run-venster rechtsboven (#123). -->
         <div class="kebab-kop">Hulp</div>
@@ -861,7 +885,6 @@ function closeConnOv(){
         <button class="kebab-item" id="kbHandleiding" onclick="closeKebab();PLHelp.open()">📘 Handleiding</button>
         <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
         <button class="kebab-item" onclick="closeKebab();openLogboek()">📜 Logboek</button>
-        <button class="kebab-item" onclick="closeKebab();openPrivacy()">🔒 Privacy</button>
         <div class="kebab-sep"></div>
         <!-- 🛠️ ADMIN — één uitklapbare regel (2026-07-26). "Live view" stond
              hier los voor beheer; dat is sinds 29-09 de tab Live. -->

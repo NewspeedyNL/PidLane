@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-09', app: '3.2.0' },
+  gecontroleerd: { datum: '2026-10-10', app: '3.2.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -95,8 +95,8 @@ var PL_HULP = {
         '<li>Tik op <b>⚡ Plug in. Let\'s go.</b> De eerste keer legt PidLane eerst uit waarvoor Bluetooth nodig is.</li>' +
         '<li>PidLane zoekt de adapter en daarna de auto. Bij <b>Verbinding inmeten…</b> meet hij hoe snel jouw auto antwoordt; dat duurt meestal minder dan een seconde. Na afloop zie je de sensoren van jouw auto.</li>' +
         '</ol>' +
-        '<p>Zet je <b>Check na verbinden</b> aan (in Meer), dan opent <a data-hulp="check">Check mijn auto</a> bij de volgende verbinding één keer vanzelf; daarna staat de schakelaar weer uit. ' +
-        'Vindt hij niets, dan gaat de app na 5 seconden door naar Live; tik in het venster of op <b>Blijf hier</b> om te blijven.</p>' +
+        '<p>Zet je <b>Check na verbinden</b> aan (Meer → Mijn voorkeuren), dan opent <a data-hulp="check">Check mijn auto</a> bij de volgende verbinding één keer vanzelf; daarna staat de schakelaar weer uit. ' +
+        'Vindt hij niets, dan gaat de app na 5 seconden door naar Live; tik in het venster of op <b>Blijf hier</b> om te blijven. Tik je zelf op <b>Check mijn auto</b> en is alles in orde, dan ga je na 5 seconden vanzelf terug naar het hoofdscherm.</p>' +
         '<p>In hetzelfde scherm: <b>Simuleer verbinding</b> (demo), <b>Zonder adapter</b> en, als regel eronder, ' +
         '<b>Meekijken met een sessie</b> voor de expert die op afstand meekijkt. Zie <a data-hulp="delen">Delen en meekijken</a>.</p>',
       zie: ['verbinden-mislukt', 'status'] },
@@ -242,29 +242,30 @@ var PL_HULP = {
         '<ul><li><b>👤 Mijn account en tegoed</b></li><li><b>🚗 Mijn voertuigen</b></li></ul>' +
         '<p><b>Instellingen</b></p>' +
         '<ul>' +
-        '<li><b>⚙️ Mijn voorkeuren</b></li>' +
+        '<li><b>⚙️ Mijn voorkeuren</b> — bovenaan het blok <b>Op dit toestel</b>, dat meteen werkt:</li>' +
         '<li><b>🔧 Garagemodus</b> — zie <a data-hulp="garagemodus">Garagemodus</a>.</li>' +
         '<li><b>🩺 Check na verbinden</b> — opent Check mijn auto bij de volgende verbinding één keer vanzelf en gaat dan weer uit. Standaard uit.</li>' +
-        '<li><b>🔢 Versnellingsindicator</b></li>' +
-        '<li><b>📖 Tekstgrootte</b> — S, M of L.</li>' +
         '<li><b>ⓘ Uitleg bij knoppen</b> — zet de kleine <b>i</b>-rondjes aan of uit. Standaard uit.</li>' +
+        '<li><b>📖 Tekstgrootte</b> — S, M of L.</li>' +
+        '<li><b>🔒 Privacy</b></li>' +
         '</ul>' +
+        '<p>Met een klantaccount staan daaronder je standaarden voor elke keer dat je inlogt, met <b>Bewaren</b>. De <b>⚙️ Versnellingsindicator</b> staat bij je auto in <b>Mijn voertuigen</b>.</p>' +
         '<p><b>Hulp</b></p>' +
-        '<ul><li><b>📘 Handleiding</b> — dit scherm.</li><li><b>🐞 Meld een bug</b></li><li><b>📜 Logboek</b></li><li><b>🔒 Privacy</b></li></ul>' +
+        '<ul><li><b>📘 Handleiding</b> — dit scherm.</li><li><b>🐞 Meld een bug</b></li><li><b>📜 Logboek</b></li></ul>' +
         '<p>Onderaan: <a data-hulp="afsluiten">Afsluiten</a>. Welke regels je ziet hangt af van je account.</p>',
       zie: ['uitroeptekens', 'garagemodus'] },
 
     { id: 'garagemodus', groep: 'gebruik', titel: 'Garagemodus',
       tekst:
         '<p>Zet de vakgereedschappen erbij, zoals <b>Alle functies</b> op het startscherm en <b>◉ Bewaken</b> bij Live. ' +
-        'Hij staat standaard uit; aanzetten doe je in Meer.</p>',
+        'Hij staat standaard uit; aanzetten doe je in Meer → Mijn voorkeuren.</p>',
       zie: ['meer'] },
 
     { id: 'uitroeptekens', groep: 'gebruik', titel: 'De i-rondjes',
       tekst:
         '<p>Bij sommige knoppen staat een klein glazen rondje met een <b>i</b>. Tik erop voor een korte uitleg; de knop zelf wordt dan niet ingedrukt. ' +
         'Onder de uitleg staat een link naar het onderwerp in deze handleiding.</p>' +
-        '<p>Ze staan standaard uit. Aanzetten doe je met <b>Meer → ⓘ Uitleg bij knoppen</b>. Deze handleiding blijft altijd bereikbaar.</p>',
+        '<p>Ze staan standaard uit. Aanzetten doe je met <b>Meer → Mijn voorkeuren → ⓘ Uitleg bij knoppen</b>. Deze handleiding blijft altijd bereikbaar.</p>',
       zie: ['meer'] },
 
     /* ─────────────── ACCOUNT EN GEGEVENS ─────────────── */
@@ -346,7 +347,7 @@ var PL_HULP = {
       a: 'Tokens zijn tegoed voor AI-analyses. Uitlezen en live meten kosten geen tokens. Je saldo staat in Meer → Mijn account en tegoed.',
       zie: 'account' },
     { v: 'Die i-rondjes zitten in de weg.',
-      a: 'Ze staan standaard uit; aan- of uitzetten doe je met Meer → Uitleg bij knoppen. De handleiding blijft bereikbaar via Meer → Handleiding.',
+      a: 'Ze staan standaard uit; aan- of uitzetten doe je met Meer → Mijn voorkeuren → Uitleg bij knoppen. De handleiding blijft bereikbaar via Meer → Handleiding.',
       zie: 'uitroeptekens' }
   ]
 };

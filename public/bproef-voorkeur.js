@@ -52,18 +52,28 @@ const NEPSERVER = `(async function(){
   };
 
   try {
-    console.log('\n── 1. de module staat er, alleen voor klanten ──');
+    console.log('\n── 1. de module staat er; het accountdeel alleen voor klanten ──');
     toets('geen JS-fouten tijdens de boot', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
     toets('PLVoorkeur staat er', await app.ev(`typeof PLVoorkeur === 'object'`));
     const vin = await app.ev(NEPSERVER);
     await app.ev(`window.currentUser = { user:'beheer', role:'admin' }; 'ok'`);
     await new Promise(r => setTimeout(r, 2500));
-    toets('een beheerder ziet "Mijn voorkeuren" niet', await app.ev(`document.getElementById('kbVoorkeur').style.display === 'none'`));
+    // Sinds 10-10-2026 staat "Mijn voorkeuren" er voor iedereen: bovenaan de
+    // schakelaars van dit toestel, die tot dan in Meer stonden.
+    toets('ook een beheerder ziet "Mijn voorkeuren" in Meer', await app.ev(`document.getElementById('kbVoorkeur').style.display !== 'none'`));
+    toets('Meer zelf heeft de schakelaars en de Versnellingsindicator niet meer', await app.ev(`!document.querySelector('#kebabMenu > #kbGarageModus, #kebabMenu > #kbAutoCheck, #kebabMenu > #kbHelpTips') && !/Versnellingsindicator|Privacy/.test(document.getElementById('kebabMenu').textContent.replace(document.getElementById('vkToestel') ? document.getElementById('vkToestel').textContent : '', ''))`));
+    await app.ev(`PLVoorkeur.open(); 'ok'`);
+    const zie = (sel) => app.ev(`(function(){ var e=document.querySelector(${JSON.stringify('#plVkOv ')}+${JSON.stringify(sel)}); return !!e && e.getClientRects().length>0; })()`);
+    toets('een beheerder opent het: Op dit toestel staat er', await zie('#kbGarageModus') && await zie('#kbAutoCheck') && await zie('#kbHelpTips') && await zie('#uiM') && await zie('#vkPrivacy'));
+    toets('…maar het accountdeel niet', !(await zie('#plVkAccount')));
+    const gWas = await app.ev(`PLNav.garage()`);
+    await app.ev(`document.getElementById('kbGarageModus').click(); 'ok'`);
+    toets('de schakelaar Garagemodus werkt meteen, en zijn stand klopt', await app.ev(`PLNav.garage() === ${!gWas} && document.getElementById('kbGarageModus').getAttribute('aria-checked') === '${!gWas}'`));
+    await app.ev(`document.getElementById('kbGarageModus').click(); PLVoorkeur.sluit(); 'ok'`);
     toets('en er wordt niets opgehaald', await app.ev(`window._nep.log.indexOf('voorkeuren') < 0`));
 
     console.log('\n── 2. inloggen als klant: het account wint ──');
     await app.ev(`localStorage.setItem('pl_uiscale','s'); setUiScale('s'); window.currentUser = { user:'anna@voorbeeld.nl', role:'klant' }; 'ok'`);
-    toets('het menu-item verschijnt', await wacht(`document.getElementById('kbVoorkeur').style.display === ''`, 5000));
     toets('tekstgrootte groot uit het account (was klein op dit toestel)', await wacht(`document.body.classList.contains('uiL')`, 5000));
     // Het account draagt nog 'numbers' van vóór 01-10-2026; dat is Overzicht geworden.
     toets('de oude weergave Getallen uit het account wordt Overzicht', await wacht(`typeof pidViewMode !== 'undefined' && pidViewMode === 'overzicht'`));
@@ -73,6 +83,7 @@ const NEPSERVER = `(async function(){
     console.log('\n── 3. het scherm: overnemen en bewaren ──');
     await app.ev(`PLVoorkeur.open(); 'ok'`);
     toets('het scherm opent', await app.ev(`getComputedStyle(document.getElementById('plVkOv')).display === 'flex'`));
+    toets('als klant: Op dit toestel én het accountdeel', await zie('#kbGarageModus') && await zie('#plVkAccount'));
     await app.ev(`setUiScale('m'); PLVoorkeur._overnemen(); PLVoorkeur._zet('scanBekend','overslaan'); PLVoorkeur._zet('waakronde', true); PLVoorkeur._bewaar(); 'ok'`);
     toets('bewaren stuurt de stand van het toestel mee', await wacht(`!!(window._nep.opgeslagen && window._nep.opgeslagen.tekst === 'm' && window._nep.opgeslagen.scanBekend === 'overslaan')`),
       JSON.stringify(await app.ev(`window._nep.opgeslagen`)));

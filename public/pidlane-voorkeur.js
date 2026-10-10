@@ -326,6 +326,8 @@
     '#plVkOv .vk-sub{font-size:12px;color:var(--tx3);margin:2px 0 12px}' +
     '#plVkOv .vk-blok{background:var(--sur);border:1px solid var(--bd);border-radius:11px;padding:10px 12px;margin-bottom:10px}' +
     '#plVkOv .vk-bh{font:800 13px var(--f);color:var(--tx);margin-bottom:4px}' +
+    '#plVkOv .vk-toestel{border:1px solid var(--bd);border-radius:12px;padding:10px 10px 6px;margin:12px 0 14px;background:var(--sur)}' +
+    '#plVkOv .vk-toestel .kebab-item{font-size:14px;padding:10px 6px;color:var(--tx)}' +
     '#plVkOv .vk-rij{padding:8px 0;border-top:1px solid var(--bd)} #plVkOv .vk-rij:first-of-type{border-top:0}' +
     '#plVkOv .vk-t{font:700 12.5px var(--f);color:var(--tx)} #plVkOv .vk-u{font-size:11px;color:var(--tx3);margin-top:2px}' +
     '#plVkOv .vk-kn{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}' +
@@ -337,21 +339,35 @@
     '#plVkOv .vk-k:disabled{opacity:.45;cursor:not-allowed}' +
     '#plVkOv .vk-melding{font-size:12px;padding:9px 11px;border-radius:9px;margin-bottom:10px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.45);color:var(--tx2)}';
 
+  /* Sinds 10-10-2026 voor iedereen: bovenaan staat "Op dit toestel" (de
+     schakelaars die tot dan in Meer stonden, #vkToestel in index.html, werken
+     meteen). Wat eronder staat — standaarden per account, met Bewaren — blijft
+     alleen voor klantaccounts. Twee blokken, twee betekenissen: meteen op dit
+     toestel, of vastgelegd voor elke keer dat je inlogt. */
   function open() {
-    if (!isKlant()) { melding('Voorkeuren zijn er voor klantaccounts'); return; }
+    var klant = isKlant();
     if (!document.getElementById('plVkCss')) { var s = document.createElement('style'); s.id = 'plVkCss'; s.textContent = CSS; document.head.appendChild(s); }
     var ov = document.getElementById('plVkOv');
     if (!ov) {
       ov = document.createElement('div'); ov.id = 'plVkOv';
       ov.innerHTML = '<div class="vk-doos"><div class="vk-kop"><div class="vk-titel">⚙️ Mijn voorkeuren</div>' +
         '<button class="vk-x" aria-label="Sluiten" onclick="PLVoorkeur.sluit()">✕</button></div>' +
+        '<div id="plVkToestelPlek"></div>' +
+        '<div id="plVkAccount"><div class="vk-bh vk-bh-account">Voor je account — bij elke keer inloggen</div>' +
         '<div class="vk-sub">Wat de app standaard doet als je inlogt — op elk toestel en in de browser. Bij "Geen voorkeur" verandert de app niets aan hoe dit toestel nu staat.</div>' +
-        '<div id="plVkBody"></div></div>';
+        '<div id="plVkBody"></div></div></div>';
       document.body.appendChild(ov);
       ov.addEventListener('click', function (e) { if (e.target === ov) sluit(); });
     }
-    _form = Object.assign({}, _pref || {});
+    // De schakelaars verhuizen één keer naar het venster; ze houden hun id.
+    var t = document.getElementById('vkToestel'), plek = document.getElementById('plVkToestelPlek');
+    if (t && plek && t.parentNode !== plek) { plek.appendChild(t); t.hidden = false; }
+    try { if (window.PLNav && PLNav.ververs) PLNav.ververs(); } catch (e) { console.warn('PLVoorkeur: schakelaars verversen', e); }
+    var acc = document.getElementById('plVkAccount');
+    if (acc) acc.style.display = klant ? '' : 'none';
     ov.style.display = 'flex';
+    if (!klant) return;
+    _form = Object.assign({}, _pref || {});
     teken();
   }
   function sluit() { var ov = document.getElementById('plVkOv'); if (ov) ov.style.display = 'none'; }
@@ -464,8 +480,6 @@
   function lus() {
     try {
       var k = isKlant();
-      var item = document.getElementById('kbVoorkeur');
-      if (item) item.style.display = k ? '' : 'none';
       if (k && !_wasKlant) laadEnPas();
       if (!k && _wasKlant) { _pref = null; _bron = null; schrijf(OPSLAG, null); }
       _wasKlant = k;

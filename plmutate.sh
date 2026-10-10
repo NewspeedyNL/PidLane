@@ -272,6 +272,8 @@ MUTATIES=(
 # ── de veiligemarge-ronde van 08-09-2026 (#134, #135) ──
 "public/pidlane.css@@.ai-sheet-b:last-child { padding-bottom:calc(14px + var(--pl-sab)); }@@.ai-sheet-b:last-child { padding-bottom:14px; }@@test-schermranden.js@@een vel zonder voettekst verliest zijn marge onder de knoppenbalk (#134)"
 "public/pidlane.css@@#welcomeScreen .welcome-scroll { padding-bottom:calc(24px + var(--pl-sab)); }@@#welcomeScreen .welcome-scroll { padding-bottom:24px; }@@test-schermranden.js@@de onderste kaart van het keuzescherm valt weer achter de knoppenbalk (#135)"
+"public/pidlane.css@@.ov#loginOv:not(.lg-open) .lg-geav{ display:none; }@@.ov#loginOv:not(.lg-open) .lg-geav{ }@@bproef-inlogscherm.js@@het inlogscherm toont account, versie en Nieuwste versie laden weer zonder dat je Geavanceerd opent"
+"public/index.html@@<button class=\"mbtn s\" id=\"btnDemoLogin\"@@<button class=\"mbtn s lg-geav\" id=\"btnDemoLogin\"@@bproef-inlogscherm.js@@de demoknop verdwijnt mee achter Geavanceerd: een Play-reviewer zonder account ziet hem niet meer"
 "public/pidlane-logboek.js@@        t: r.t || '',\n        ms: (typeof r.ms === 'number' ? r.ms : null),\n        bron: 'PID',@@        t: r.ts || r.tijd || '',\n        ms: (typeof r.ms === 'number' ? r.ms : null),\n        bron: 'PID',@@test-logboeksort.js@@de PID-regels lezen weer een veldnaam die de diagring niet heeft"
 # ── de vier reparaties van 03-09-2026 (#103 t/m #106) ──
 "public/pidlane-testrun.js@@    if (gezien.has(sleutel)) return;@@@@test-opruimmelding.js@@dezelfde opruiming in beide logs telt weer dubbel (#104)"
@@ -1436,6 +1438,8 @@ MUTATIES=(
 "public/pidlane-pidgate.js@@    if(!supportedPIDs.has(pid) && !inLijst.has(pid)) return;@@    if(!supportedPIDs.has(pid)) return;@@test-sessiedoorloop.js@@hervatten laat eigen en berekende sensoren weer vallen"
 "public/pidlane-garage.js@@PLVoorkeur.selectieToepassen(sel, v.naam || v.merk, { erbij: !basis.length })@@PLVoorkeur.selectieToepassen(sel, v.naam || v.merk, { erbij: false })@@bproef-garage.js@@de eigen sensoren van het voertuig vervangen de standaardset: geen toerental meer"
 "public/pidlane-voorkeur.js@@    if (!erbij) {@@    if (true) {@@bproef-garage.js@@\"erbij\" wist toch de hele selectie"
+"public/pidlane-voorkeur.js@@    var klant = isKlant();\n    if@@    var klant = isKlant();\n    if (!klant) return;\n    if@@bproef-voorkeur.js@@Mijn voorkeuren opent weer niet voor een beheerder: Garagemodus en de andere schakelaars zijn voor hem onbereikbaar"
+"public/pidlane-voorkeur.js@@ plek.appendChild(t); t.hidden = false; }@@ plek.appendChild(t); }@@bproef-voorkeur.js@@het blok Op dit toestel verhuist naar het venster maar blijft verborgen"
 "public/pidlane-garage.js@@    if (mist.length) return { staat: 'FOUT'@@    if (false) return { staat: 'FOUT'@@test-garage.js@@blok 5 ziet niet dat de vaste sensoren na het verbinden ontbreken"
 "public/pidlane-uitgebreid.js@@    if (!/^(21|22[0-9A-F]{2})$/.test(prefix)) return@@    if (false) return@@test-mode21.js@@de buurscan scant ook een blok met schrijfcodes (2E)"
 "public/pidlane-uitgebreid.js@@            if (ecu) { try { await sendCmd(functioneel, 1500); }@@            if (false) { try { await sendCmd(functioneel, 1500); }@@test-mode21.js@@na de buurscan blijft de adapter op ECU-adres 720 staan"
@@ -1862,6 +1866,8 @@ MUTATIES=(
 "public/pidlane-onderzoek.js@@      if (breed) return true;\n      return ks.some(@@      return true;\n      return ks.some(@@test-onderzoek.js@@bij een accuklacht toetst het onderzoek ook alle merkzwaktes van de motor"
 "public/pidlane-onderzoek.js@@    { re: /^P00(0[89]|1[6-9])$/, h: 'distributie', d: 3,@@    { re: /^P00(0[89])$/, h: 'distributie', d: 3,@@test-onderzoek.js@@P0016 (nokkenas/krukas niet gelijk) wijst niet meer naar de distributie"
 "public/pidlane-foutcodes.js@@      if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }@@      if (wat === 'oorzaak') PLWizard.open('storing');@@bproef-onderzoek.js@@Oorzaak laten zoeken opent weer de lijst losse modules in plaats van het onderzoek"
+"public/pidlane-foutcodes.js@@  function magTerug(s) { return magDoor(s) && stoplicht(s).kleur === 'groen'; }@@  function magTerug(s) { return magDoor(s); }@@test-foutcodes.js@@zelf getikt met een zelftest die nog niet klaar is: het venster gaat toch vanzelf dicht en de Let op-regel is weg"
+"public/pidlane-foutcodes.js@@    _st.doorGewild = !isGarage();@@    _st.doorGewild = !!opties.auto && !isGarage();@@bproef-foutcodes.js@@zelf op Check mijn auto getikt en alles groen: het venster blijft weer staan"
 # ── Het verzamelscherm (#443, 07-10-2026). De poort is die van §16; wat hier stil
 # kan breken is wat de klant ziet en wat de AI krijgt.
 "public/pidlane-verzamel.js@@        if (q && q.status === 'onzin') return zet('meetfout'@@        if (false) return zet('meetfout'@@test-verzamel.js@@koelwater 300 °C staat weer als afwijking op het scherm in plaats van als meetfout"
