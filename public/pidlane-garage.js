@@ -475,8 +475,11 @@
 
   function wie() { try { return String((window.currentUser && window.currentUser.user) || '').toLowerCase(); } catch (e) { return ''; } }
 
+  /* Wie Mijn voertuigen heeft: een klant, en sinds 10-10-2026 ook een
+     beheerder, voor zijn eigen auto's (de server geeft hem een eigen ruimte,
+     platformAuth in worker.js). Een monteur niet. */
   function magPlatform() {
-    try { var u = window.currentUser; return !!(u && String(u.role || '').toLowerCase() === 'klant'); }
+    try { var u = window.currentUser, r = u && String(u.role || '').toLowerCase(); return r === 'klant' || r === 'admin'; }
     catch (e) { return false; }
   }
 
@@ -1029,7 +1032,7 @@
   }
 
   function open(vid) {
-    if (!magPlatform()) { melding('Mijn voertuigen is er voor klantaccounts'); return; }
+    if (!magPlatform()) { melding('Mijn voertuigen is er voor klant- en beheeraccounts'); return; }
     zorgCss();
     var ov = document.getElementById('plGarOv');
     if (!ov) {
@@ -2035,18 +2038,20 @@
   }
 
   // ── De lus: rollen bijhouden, rit meten, auto herkennen ────────────
-  var _wasKlant = false, _bootKlaar = false;
+  var _wasKlant = false, _wasWie = '', _bootKlaar = false;
   function lus() {
     try {
       var k = magPlatform();
       var item = document.getElementById('kbGarage');
       if (item) item.style.display = k ? '' : 'none';
-      if (k && !_wasKlant) {
+      // Ook bij een wissel van gebruiker zonder uitloggen ertussen (beheer →
+      // klant): sinds beheer ook Mijn voertuigen heeft, mogen ze allebei.
+      if (k && (!_wasKlant || wie() !== _wasWie)) {
         // Een kopie van een andere klant op dit toestel: weg, vóór er iets getekend wordt.
         if (_st.stand && _st.stand.__u !== wie()) { _st.stand = null; _st.actiefId = null; schrijf(OPSLAG.stand, null); schrijf(OPSLAG.actief, null); schrijf(OPSLAG.wachtrij, null); schrijf(OPSLAG.rit, null); }
         ververs(); if (!_bootKlaar) { _bootKlaar = true; ritHerstel(); } }
       if (!k && _wasKlant) { _st.stand = null; schrijf(OPSLAG.stand, null); _st.cache = {}; tekenKaart(); gearKoppel(); }
-      _wasKlant = k;
+      _wasKlant = k; _wasWie = wie();
       if (!k) return;
       ritTikNu();
       if (isVerbonden()) { if (!_st.verbondenSinds) _st.verbondenSinds = Date.now(); herkenAuto(); }

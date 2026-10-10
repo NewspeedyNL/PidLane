@@ -1511,6 +1511,8 @@ MUTATIES=(
 "public/pidlane-testrun.js@@    if (typeof plIsBerekend === 'function' && plIsBerekend(p)) return false;\n@@@@test-sweeplijst.js@@de PID-sweep vraagt berekende waarden aan de adapter"
 "public/pidlane-testrun.js@@    if (typeof plIsTelemetrie === 'function' && plIsTelemetrie(p)) return false;\n@@@@test-sweeplijst.js@@de PID-sweep vraagt telefoonsensoren aan de adapter"
 "worker.js@@kpJson(r.extra, 4000), label, kpNu()).run();@@kpJson(r.extra, 4000), null, kpNu()).run();@@test-klantplatform.js@@de naam van een rit gaat op de server verloren"
+"worker.js@@  if (p && p.r === \"admin\" && p.u) return Object.assign({}, p, { beheer: true });@@  if (p && p.u) return Object.assign({}, p, { beheer: true });@@test-klantplatform.js@@elke ingelogde rol (ook een monteur) komt in Mijn voertuigen"
+"worker.js@@  const klantId = await kpKlantId(p.beheer ? \"beheer:\" + p.u : p.u);@@  const klantId = await kpKlantId(p.u);@@test-klantplatform.js@@de ruimte van beheer valt samen met die van een klant met dezelfde naam"
 "worker.js@@    if (!m || m.verloopt <= kpNu()) return json({ ok: false, error: \"Code onbekend, verlopen of ingetrokken.\" }, 404);@@    if (!m) return json({ ok: false, error: \"Code onbekend, verlopen of ingetrokken.\" }, 404);@@test-meekijk.js@@een verlopen meekijkcode geeft beheer nog steeds de voertuigen van de klant"
 "worker.js@@  if (s.r !== \"admin\") return json({ ok: false, error: \"Alleen voor beheerders.\" }, 403);@@  if (false) return json({ ok: false, error: \"Alleen voor beheerders.\" }, 403);@@test-meekijk.js@@elke ingelogde klant of monteur met een code kan bij de voertuigen van een ander"
 "worker.js@@      if (lijst.some((x) => x.code === e.code && (x.ecu || \"\") === (e.ecu || \"\")))@@      if (false)@@test-meekijk.js@@beheer zet een tweede sensor met dezelfde code naast die van de klant in plaats van te weigeren"
@@ -1633,6 +1635,8 @@ MUTATIES=(
 "public/pidlane-archief.js@@display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:11px 2px@@display:flex;gap:6px 10px;align-items:center;padding:11px 2px@@bproef-regelruimte.js@@de knoppen van een rapport staan weer naast de titel, en op een telefoon met grote tekst valt alles over elkaar"
 "public/pidlane-garage.js@@flex:0 1 auto;max-width:100%;min-width:0;white-space:normal;@@flex:0 0 auto;@@bproef-garage.js@@een lange knoptekst loopt de kaart uit"
 "public/pidlane-garage.js@@    h += tekenMeekijk();\n@@@@bproef-meekijk.js@@de klant kan nergens een meekijkcode maken of intrekken"
+"public/pidlane-garage.js@@      if (k && (!_wasKlant || wie() !== _wasWie)) {@@      if (k && !_wasKlant) {@@bproef-garage.js@@wie van beheer naar klant wisselt zonder uit te loggen, ziet de auto's van beheer"
+"public/pidlane-garage.js@@return r === 'klant' || r === 'admin'; }@@return r === 'klant'; }@@bproef-garage.js@@een beheerder ziet Mijn voertuigen weer niet"
 "public/pidlane-meekijk.js@@    if (!(typeof isAdmin === 'function' && isAdmin())) { melding('Meekijken is er voor beheerders'); return; }@@@@bproef-meekijk.js@@een klant opent het beheervenster voor de voertuigen van anderen"
 "public/pidlane-meekijk.js@@    _st = { code: '', data: null, fout: '', bezig: false, form: null };\n  }\n\n  function waarde@@  }\n\n  function waarde@@bproef-meekijk.js@@na sluiten staan de voertuigen van de vorige klant er nog"
 # ── het anker van de BT-log na een herlaad (30-09-2026) ──

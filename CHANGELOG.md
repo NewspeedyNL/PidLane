@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 10-10-2026 — Mijn voertuigen ook voor beheer, voor de eigen auto's
+ ═══════════════════════════════════════════════════════════
+
+ - Een beheerder ziet Meer → Mijn voertuigen, met een eigen ruimte op de
+   server (kpKlantId("beheer:" + naam)): eigen auto's, rapporten, ritten en
+   herkenning bij verbinden, los van elke klant. Een monteur niet.
+ - Wisselt de gebruiker zonder uit te loggen (beheer → klant), dan wordt
+   de stand van de vorige weggegooid.
+ - Tests: test-klantplatform.js deel 4b, bproef-garage.js; vier mutaties.
+
+ ═══════════════════════════════════════════════════════════
  10-10-2026 — Meekijken: beheer ziet met een code van de klant zijn voertuigen
  ═══════════════════════════════════════════════════════════
 

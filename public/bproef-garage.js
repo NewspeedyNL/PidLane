@@ -73,17 +73,24 @@ const NEPSERVER = `(function(){
   };
 
   try {
-    console.log('\n── 1. de module staat er, en is er alleen voor klanten ──');
+    console.log('\n── 1. de module staat er, voor klanten en beheer ──');
     toets('geen JS-fouten tijdens de boot', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
     toets('PLGarage staat er', await app.ev(`typeof PLGarage === 'object'`));
     await app.ev(NEPSERVER);
-    await app.ev(`window.currentUser = { user:'beheer', role:'admin', label:'Beheer' }; 'ok'`);
+    await app.ev(`window.currentUser = { user:'monteur', role:'user', label:'Monteur' }; 'ok'`);
     await new Promise(r => setTimeout(r, 2500));
-    toets('een beheerder ziet geen "Mijn voertuigen" in het menu', await app.ev(`document.getElementById('kbGarage').style.display === 'none'`));
+    toets('een monteur ziet geen "Mijn voertuigen" in het menu', await app.ev(`document.getElementById('kbGarage').style.display === 'none'`));
     toets('en geen kaartje op het startscherm', await app.ev(`document.getElementById('plGarageKaart').innerHTML === ''`));
+    // Sinds 10-10-2026 heeft een beheerder een eigen Mijn voertuigen.
+    await app.ev(`window.currentUser = { user:'beheer', role:'admin', label:'Beheer' }; 'ok'`);
+    toets('een beheerder krijgt het menu-item wél', await wacht(`document.getElementById('kbGarage').style.display === ''`, 5000));
+    await app.ev(`window._nepPlatform.voertuigen.push({ id:'vb', status:'actief', naam:'Testauto beheer' }); window._nepPlatform.akkoord = true; PLGarage.ververs(); 'ok'`);
+    toets('…met zijn eigen auto', await wacht(`JSON.stringify((PLGarage.staat().stand||{}).voertuigen||[]).includes('Testauto beheer')`, 5000));
+    await app.ev(`window._nepPlatform.voertuigen = []; window._nepPlatform.akkoord = false; 'ok'`);
 
     await app.ev(`window.currentUser = { user:'anna@voorbeeld.nl', role:'klant', label:'Anna' }; 'ok'`);
     toets('een klant krijgt het menu-item', await wacht(`document.getElementById('kbGarage').style.display === ''`, 5000));
+    toets('na de wissel van beheer naar klant staat de auto van beheer er niet meer', await wacht(`!JSON.stringify((PLGarage.staat().stand||{}).voertuigen||[]).includes('Testauto beheer')`, 5000));
     toets('en het kaartje op het startscherm', await wacht(`/Mijn voertuigen/.test(document.getElementById('plGarageKaart').textContent)`, 5000));
 
     console.log('\n── 2. eerst akkoord, dan pas iets bewaren ──');
