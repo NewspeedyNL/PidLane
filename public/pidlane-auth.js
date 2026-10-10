@@ -902,6 +902,18 @@ function _plLogSoort(){
 /* De adapter stond in AT_KOLOMMEN en werd nergens gevuld, terwijl hij dé
    variabele is in #217 en #254: welke adapter erin zat moest uit een tekstregel
    van blok 12 gevist worden. */
+/* Waar de regel vandaan komt (10-10-2026): de APK uit de Play Store of de
+   browser. De APK laadt dezelfde app live, dus AppVersion is in beide gelijk;
+   zonder dit veld is in de bewaking van het beheer niet te zien of een fout
+   alleen de Play Store-gebruikers raakt. Geen toestelmodel: alleen de soort. */
+function _plLogToestel(){
+  try{
+    const c=window.Capacitor;
+    if(c && typeof c.isNativePlatform==='function' && c.isNativePlatform()) return String((c.getPlatform&&c.getPlatform())||'native')+' APK';
+  }catch(e){ console.warn('Platform niet leesbaar voor de log — de regel gaat als "web" mee', e); }
+  return 'web';
+}
+
 function _plLogAdapter(){
   try{
     if(window.PLAdapter&&typeof PLAdapter.adapterNaam==='function'){
@@ -972,6 +984,7 @@ async function logToSheets(type, message, extra={}){
         RecordType: soort,
         SessionId:  sessie,
         Adapter:    adapter,
+        Device:     _plLogToestel(),
         ...velden,
       }
     });

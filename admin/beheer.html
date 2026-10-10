@@ -183,6 +183,11 @@
              padding:6px 0 24px;overflow:hidden}
   .staaf{flex:1 1 9px;min-width:6px;background:linear-gradient(180deg,var(--bl2),var(--bl));
          border-radius:3px 3px 0 0;position:relative;cursor:default}
+  .bw-sig{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--bd)}
+  .bw-sig:last-child{border-bottom:none}
+  .bw-sig .t{font-weight:700} .bw-sig .d{font-size:12.5px;color:var(--tx2);margin-top:2px}
+  .bw-rust{color:var(--gn);font-weight:700;padding:6px 0}
+  .bw-kop{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .staaf.rood{background:linear-gradient(180deg,#ff7b7b,var(--rd))}
   .staaf span{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);
               font-size:9.5px;color:var(--tx3);white-space:nowrap}
@@ -267,6 +272,54 @@
 
     <!-- ══ OVERZICHT ══════════════════════════════════════════ -->
     <div class="paneel" id="p-overzicht">
+      <!-- Bewaking (10-10-2026): sinds de Play Store laadt de APK app.pidlane.nl
+           live, dus een fout in een deploy staat meteen op elke telefoon. Deze
+           kaart vergelijkt de laatste 24 uur met de week ervóór; de drempels
+           staan in worker.js (BEWAKING), niet hier. -->
+      <div class="card" id="bwKaart">
+        <div class="card-kop"><h2>🚨 Bewaking</h2>
+          <div class="bw-kop">
+            <span class="hint" id="bwVers" style="margin:0"></span>
+            <label class="hint" style="margin:0;display:flex;gap:4px;align-items:center">
+              <input type="checkbox" id="bwAuto" checked onchange="bewakingAuto()"> elke 5 min</label>
+            <button class="btn-sec btn-sm" id="bwMeldKnop" onclick="bewakingMeldingenAan()">🔔 Meldingen aan</button>
+            <button class="btn-sec btn-sm" onclick="bewakingLaden()">↻ Nu meten</button>
+          </div></div>
+        <div id="bwSignalen"><div class="leeg">Nog niet gemeten.</div></div>
+        <div class="hint" style="margin-top:10px">Logregels per uur, laatste 48 uur (rood = met fouten)</div>
+        <div id="bwPerUur"></div>
+        <div class="grid2" style="margin-top:10px">
+          <div><h3 style="margin:4px 0">Nieuwe foutmeldingen (24 u)</h3><div id="bwNieuw"></div></div>
+          <div><h3 style="margin:4px 0">Bugmeldingen (7 dagen)</h3><div id="bwBugs"></div></div>
+        </div>
+        <details class="uitleg"><summary>Wat meet dit, en wanneer krijg ik een melding?</summary><div class="body">
+          De laatste 24 uur tegen het gemiddelde van de zeven dagen ervóór: <b>stilte</b> (er komt niets
+          binnen terwijl dat normaal wel zo is), <b>veel logregels</b> in het laatste uur of de laatste dag,
+          <b>meer fouten</b> dan normaal, een <b>foutmelding die de week ervoor niet voorkwam</b>,
+          <b>bugmeldingen</b> van gebruikers en <b>velden zonder kolom</b>. Elk signaal heeft een bodem, zodat
+          drie regels in een stil uur geen alarm zijn. De drempels staan in <code>worker.js</code> (BEWAKING).<br><br>
+          Met <b>Meldingen aan</b> geeft de browser een melding zodra er een nieuw signaal bijkomt, en het
+          aantal staat in de tabtitel. Dat werkt zolang deze pagina open staat (ook op de achtergrond).
+          Is de pagina dicht, dan meldt niemand iets.
+        </div></details>
+      </div>
+
+      <div class="card">
+        <div class="card-kop"><h2>📱 Play Store</h2>
+          <a class="btn-sec btn-sm" href="https://play.google.com/console" target="_blank" rel="noopener">Play Console →</a></div>
+        <div class="grid2">
+          <div><h3 style="margin:4px 0">Waar de logregels vandaan komen (7 dagen)</h3><div id="bwToestel"><div class="leeg">Nog niet gemeten.</div></div></div>
+          <div><h3 style="margin:4px 0">App-versie (7 dagen)</h3><div id="bwVersie"><div class="leeg">Nog niet gemeten.</div></div></div>
+        </div>
+        <div class="hint" style="margin-top:8px">
+          <b>De APK laadt <code>app.pidlane.nl</code> live</b> (<code>capacitor.config.json</code>): elke merge naar
+          <code>main</code> die code raakt staat binnen een minuut op elke telefoon, zonder Play-review. Een
+          nieuwe APK is alleen nodig voor de schil zelf (rechten, plugins, icoon). App-ID <code>nl.pidlane.app</code>.<br>
+          "android APK" en "web" komen uit de kolom <code>Device</code>, die de app sinds 10-10-2026 bij elke
+          regel zet; oudere regels staan als "—". Crashes en ANR's van de schil zelf ziet alleen de Play Console.
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-kop"><h2>🩺 Status van de keten</h2>
           <button class="btn-sec btn-sm" onclick="checkStatus()">Opnieuw meten</button></div>
@@ -1411,6 +1464,22 @@ function oefenAntwoord(path, opts){
           fouten:a.reduce((t,x) => t + x.fouten, 0), oudste:a.reduce((m,x) => !m || x.begonnen < m ? x.begonnen : m, ''),
           nieuwste:a.reduce((m,x) => x.geeindigd > m ? x.geeindigd : m, ''), laatst:a.reduce((m,x) => x.gearchiveerd > m ? x.gearchiveerd : m, '') } };
       }
+      if(actie === 'bewaking'){
+        // Geen tweede oordeel in deze pagina: de drempels staan in worker.js.
+        // Wel een meting op de voorbeeldregels, met één voorbeeldsignaal zodat
+        // je ziet hoe een signaal eruitziet.
+        const ms = Date.now(), uur = {}, dag1 = new Date(ms - 864e5).toISOString();
+        log.filter(r => String(r.ontvangen) >= new Date(ms - 2*864e5).toISOString()).forEach(r => {
+          const u = String(r.ontvangen).slice(0,13), x = uur[u] || (uur[u] = [u, 0, 0]); x[1]++; if(r.Type === 'error' || r.Type === 'bug') x[2]++; });
+        const dag = log.filter(r => String(r.ontvangen) >= dag1);
+        const paren = (k) => { const m = {}; log.forEach(r => { const v = r[k] || '—'; m[v] = (m[v] || 0) + 1; }); return Object.keys(m).map(x => [x, m[x]]).sort((a,b) => b[1] - a[1]); };
+        return { ok:true, nu:ms, meetmoment:nu, laatste:log.reduce((m,r) => r.ontvangen > m ? r.ontvangen : m, ''),
+          uur:{ n:0, fouten:0 }, dag:{ n:dag.length, fouten:dag.filter(r => r.Type === 'error' || r.Type === 'bug').length },
+          basis:{ perDag:0, foutenPerDag:0 }, perUur:Object.keys(uur).sort().map(k => uur[k]),
+          nieuweFouten:[], bugs:log.filter(r => r.Type === 'bug').slice(0,5), onbekend:0,
+          perToestel:paren('Device'), perVersie:paren('AppVersion'),
+          signalen:[{ id:'oefen', ernst:'oranje', titel:'Voorbeeldsignaal (oefenmodus)', detail:'Zo ziet een signaal eruit. In oefenmodus is er niets gemeten.' }] };
+      }
       if(actie !== 'overzicht') return { ok:false, error:'Onbekende actie.' };
       const dagen = Math.min(90, Math.max(1, Number(sp.get('dagen')) || 30));
       const grens = new Date(Date.now() - dagen*864e5).toISOString().slice(0,10);
@@ -1701,14 +1770,18 @@ function start(){
   toon(TABBLADEN.some(t => t[0] === uitHash) ? uitHash : 'overzicht');
   renderFeatures(); tekenRoutes(); tekenSessie(); sqlVoorbeeldenTekenen(); opdKeurderTekenen();
   checkStatus(); loadConfig(); loadKlanten(); loadCodes(); loadUsers(); d1Laden();
+  bewakingLaden(); bewakingAuto();
+  try{ if(typeof Notification !== 'undefined' && Notification.permission === 'granted') $('bwMeldKnop').textContent = '🔔 Meldingen staan aan'; }
+  catch(e){ console.warn('Meldingsrecht niet leesbaar', e); }
 }
 function logout(){
+  if(BW.timer){ clearInterval(BW.timer); BW.timer = null; }
   TOKEN = ''; $('adminTok').value = '';
   $('app').classList.add('hidden');
   $('gate').classList.remove('hidden');
 }
 function allesHerladen(){
-  checkStatus(); loadConfig(); loadKlanten(); loadCodes(); loadUsers(); d1Laden();
+  checkStatus(); loadConfig(); loadKlanten(); loadCodes(); loadUsers(); d1Laden(); bewakingLaden();
   if(LOG_RIJEN.length) logLaden();
   if(OPD.rijen.length) opdLaden();
   if(RITTEN.length) rittenLaden();
@@ -1841,6 +1914,80 @@ async function testAi(){
       messages:[{ role:'user', content:'ping' }], thinking:{ type:'disabled' } })
   }));
   toast(r.ok ? '✓ AI-route antwoordt' : '✗ AI-route gaf een fout — zie Instellingen');
+}
+
+/* ════════════════════════════════════════════════════════════════
+   🚨 BEWAKING (10-10-2026)
+   De Worker meet en oordeelt (/admin/d1?actie=bewaking, BEWAKING in
+   worker.js); deze pagina toont, ververst elke vijf minuten en meldt een
+   signaal dat er bij de vorige meting nog niet was.
+   ════════════════════════════════════════════════════════════════ */
+const BW = { laatst:null, gezien:null, timer:null };
+async function bewakingLaden(){
+  const el = $('bwSignalen'); if(!el) return;
+  const r = await veilig(el, () => callWorker('d1','/admin/d1?actie=bewaking',{ headers:H() }), 'Bezig met meten…');
+  if(!r.ok) return;
+  BW.laatst = r.uit.data;
+  bewakingTeken();
+  bewakingMeld(BW.laatst.signalen || []);
+}
+function bewakingTeken(){
+  const m = BW.laatst; if(!m) return;
+  const sig = m.signalen || [];
+  $('bwSignalen').innerHTML = sig.length
+    ? sig.map(x => `<div class="bw-sig"><span class="pill ${x.ernst === 'rood' ? 'p-uit' : 'p-wacht'}">${x.ernst === 'rood' ? '● rood' : '● let op'}</span>
+        <div><div class="t">${esc(x.titel)}</div><div class="d">${esc(x.detail)}</div></div></div>`).join('')
+    : '<div class="bw-rust">✓ Niets bijzonders — alles binnen wat de afgelopen week normaal was.</div>';
+  const min = m.laatste ? Math.round((Date.now() - new Date(m.laatste).getTime()) / 6e4) : null;
+  $('bwVers').textContent = 'gemeten ' + new Date(m.meetmoment || Date.now()).toLocaleTimeString('nl', { hour:'2-digit', minute:'2-digit' }) +
+    ' · laatste regel ' + (min === null ? 'nooit' : min < 60 ? min + ' min geleden' : Math.round(min / 60) + ' uur geleden') +
+    ' · ' + (m.uur ? m.uur.n : 0) + ' het laatste uur, ' + (m.dag ? m.dag.n : 0) + ' in 24 uur';
+  // Alle 48 uren, ook de lege: een gat is hier informatie.
+  const per = {}; (m.perUur || []).forEach(x => { per[x[0]] = x; });
+  const punten = [];
+  for(let i = 47; i >= 0; i--){
+    const u = new Date((m.nu || Date.now()) - i * 36e5).toISOString().slice(0, 13);
+    const x = per[u] || [u, 0, 0];
+    punten.push([u.replace('T', ' ') + ':00 UTC', x[1], i % 6 === 0 ? u.slice(11, 13) : '', x[2]]);
+  }
+  staafgrafiek($('bwPerUur'), punten, p => p[3] > 0);
+  const nieuw = m.nieuweFouten || [];
+  $('bwNieuw').innerHTML = nieuw.length
+    ? nieuw.map(x => `<div class="rij"><div class="desc">${esc(x[0])}</div><span class="pill p-wacht">${esc(x[1])}×</span></div>`).join('')
+    : '<div class="leeg">Geen — alle fouten van vandaag kwamen vorige week ook voor.</div>';
+  const bugs = m.bugs || [];
+  $('bwBugs').innerHTML = bugs.length
+    ? bugs.map(b => `<div class="rij"><div><div class="lbl">${esc(String(b.Message || '').slice(0, 120))}</div>
+        <div class="desc">${esc(String(b.ontvangen || '').slice(0, 16).replace('T', ' '))} · ${esc(b.Device || '—')} · ${esc(b.AppVersion || '?')}${b.Merk ? ' · ' + esc(b.Merk) : ''}</div></div></div>`).join('')
+    : '<div class="leeg">Geen bugmeldingen.</div>';
+  balken($('bwToestel'), m.perToestel || []);
+  balken($('bwVersie'), m.perVersie || []);
+  const aantal = sig.length, rood = sig.some(x => x.ernst === 'rood');
+  document.title = (aantal ? '(' + aantal + (rood ? '!' : '') + ') ' : '') + document.title.replace(/^\(\d+!?\) /, '');
+}
+/* Een melding alleen voor een signaal dat er de vorige keer niet was: elke
+   vijf minuten dezelfde melding leer je wegklikken, en dan mis je de nieuwe. */
+function bewakingMeld(signalen){
+  const nu = new Set(signalen.map(x => x.id));
+  const vorige = BW.gezien;
+  BW.gezien = nu;
+  if(!vorige || OEFEN) return;
+  const nieuw = signalen.filter(x => !vorige.has(x.id));
+  if(!nieuw.length) return;
+  toast('🚨 ' + nieuw.map(x => x.titel).join(' · '));
+  try{
+    if(typeof Notification !== 'undefined' && Notification.permission === 'granted')
+      new Notification('PidLane — ' + nieuw[0].titel, { body: nieuw.map(x => x.detail).join('\n'), tag: 'pidlane-bewaking' });
+  }catch(e){ console.warn('Browsermelding niet getoond — het signaal staat wel op de kaart', e); }
+}
+async function bewakingMeldingenAan(){
+  if(typeof Notification === 'undefined'){ toast('Deze browser kent geen meldingen'); return; }
+  const p = await Notification.requestPermission();
+  $('bwMeldKnop').textContent = p === 'granted' ? '🔔 Meldingen staan aan' : '🔕 Meldingen geweigerd';
+}
+function bewakingAuto(){
+  if(BW.timer){ clearInterval(BW.timer); BW.timer = null; }
+  if($('bwAuto') && $('bwAuto').checked) BW.timer = setInterval(bewakingLaden, 5 * 6e4);
 }
 
 function tekenKpi(){
@@ -3382,7 +3529,7 @@ function tekenRoutes(){
     ['POST /admin/users','opslaan en verwijderen'],
     ['GET /admin/tabel','ruwe records uit een van de bekende tabellen'],
     ['POST /admin/tabel','één record wijzigen, wissen, of (D1) opruimen na eerst tellen'],
-    ['GET /admin/d1','het overzicht over de hele database, één rit van begin tot eind, of het logarchief'],
+    ['GET /admin/d1','het overzicht over de hele database, de bewaking (wat is anders dan normaal), één rit van begin tot eind, of het logarchief'],
     ['POST /admin/d1','de SQL-console (alleen lezen), logregels archiveren (eerst proef), en meetopdrachten aanmaken, bewaren, activeren, uitzetten'],
     ['POST /v1/messages','de AI-route — alleen voor de statuscheck en de testvraag']
   ];

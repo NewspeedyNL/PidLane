@@ -175,7 +175,7 @@ const beide = (fn) => ({ demo: fn(true), echt: fn(false) });
       let vinGevraagd = 0;
       const b = sandbox(demo, {
         AIRTABLE_URL: 'x', vehicleInfo: { merk: 'Mazda', year: '2018', vin: 'JM3KFBCL8J0123456' },
-        _plLogSoort: () => 'app', _plSessieId: () => 's1', _plLogAdapter: () => '',
+        _plLogSoort: () => 'app', _plSessieId: () => 's1', _plLogAdapter: () => '', _plLogToestel: () => 'web',
         _plVinVoorLog: async () => { vinGevraagd++; return 'pseudo123'; },
         _atBuffer: [], _atTimer: null, clearTimeout() {}, setTimeout() {}, flushAirtable() {},
         selectedNetwork: null, activePIDs: new Set(), currentUser: { name: 'x', role: 'klant' }

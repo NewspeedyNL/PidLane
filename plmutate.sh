@@ -1181,6 +1181,10 @@ MUTATIES=(
 "worker.js@@      db.prepare(\"UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1 AND id <> ?\").bind(id),\n@@@@test-admind1.js@@een opdracht aanzetten laat de andere aan staan: de app kiest er dan zelf een, zoals op 22-09"
 "worker.js@@      ? await db.batch([db.prepare(\"UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1\"), invoeg])@@      ? [await invoeg.run()]@@test-admind1.js@@een nieuwe actieve opdracht zet de oude niet uit"
 "worker.js@@var D1_OPDRACHT_VELDEN = [\"Naam\", \"Reden\", \"Opdracht\", \"Notitie\"];@@var D1_OPDRACHT_VELDEN = [\"Naam\", \"Reden\", \"Opdracht\", \"Notitie\", \"Gewijzigd\"];@@test-admind1.js@@Gewijzigd is met de hand te zetten: dan kies je stil welke opdracht er rijdt"
+"worker.js@@  if (basisDag >= B.stilBasisPerDag) {@@  if (false) {@@test-bewaking.js@@de bewaking ziet niet dat er niets meer binnenkomt: een app die niet start blijft stil groen"
+"worker.js@@function bewakingDrempel(basis, d) { return Math.max(d.bodem, d.factor * (basis || 0)); }@@function bewakingDrempel(basis, d) { return d.factor * (basis || 0); }@@test-bewaking.js@@zonder bodem is drie regels in een stil uur al alarm, en leer je de kaart negeren"
+"worker.js@@        AND substr(Message, 1, 80) NOT IN (SELECT@@        AND substr(Message, 1, 80) IN (SELECT@@test-bewaking.js@@\"nieuwe foutmeldingen\" toont juist de fouten die er vorige week ook al waren"
+"worker.js@@  const bugs = (m.bugs || []).filter((b) => m.nu - Date.parse(b.ontvangen) < 864e5);@@  const bugs = (m.bugs || []);@@test-bewaking.js@@een bugmelding van vorige week blijft elke dag opnieuw alarm geven"
 # ── het logarchief (01-10-2026) ──
 # Oude logregels worden samengevat en dan gewist. De fouten die ertoe doen:
 # uitkomsten mee wissen, bij een tweede ronde het archief overschrijven of
@@ -1564,6 +1568,7 @@ MUTATIES=(
 "public/pidlane.css@@no-repeat; contain:strict; }@@no-repeat; contain:strict; animation:softblink 2.6s ease-in-out infinite; }@@bproef-navigatie.js@@de achtergrond van het startscherm beweegt weer eindeloos: de telefoon tekent hem bij elk beeldje opnieuw (#302)"
 "public/pidlane-fuel.js@@  door_saving_active: 'tg-rit',@@  door_saving_active: 'tg-onderweg',@@bproef-navigatie.js@@de beheerschakelaar voor Rit starten wijst naar een tegel die er niet is"
 "admin/beheer.html@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], true));@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], false));@@bproef-beheerpagina.js@@beheer toont een nooit opgeslagen tegel als uit, en Alles opslaan zet hem dan echt uit"
+"admin/beheer.html@@ + document.title.replace(/^\\(\\d+!?\\) /, '');@@ + document.title;@@bproef-beheerpagina.js@@elke meting zet het aantal signalen er opnieuw voor: (1) (1) (1) in de tabtitel"
 "public/pidlane.css@@.pl-live-acties { display:flex; gap:6px; margin:12px 0 calc(64px + var(--pl-sab, 0px)); }@@.pl-live-acties { display:flex; gap:6px; margin:12px 0 calc(64px + var(--pl-sab, 0px)); }\nbody:not(.pl-garage) #pidViewSwitch { display:none !important; }@@bproef-navigatie.js@@de weergavekeuze in Live staat alleen in de garagemodus: een klant zit vast in Slim"
 "public/pidlane-uihelpers.js@@  if(t && !isVin) return t;@@  if(t) return t;@@test-nav.js@@de statusregel bovenin toont het chassisnummer (VIN) in plaats van merk en model"
 "public/pidlane-uihelpers.js@@  if(!s.ai) return 'AI niet bereikbaar';\n  return s.naam || 'Verbonden';@@  return s.naam || 'Verbonden';@@test-nav.js@@de statusregel toont de autonaam terwijl de AI weg is"
@@ -1586,6 +1591,7 @@ MUTATIES=(
 "public/pidlane-auth.js@@  if(!tok || tok===_atGeweigerdToken){@@  if(false){@@test-livelog.js@@zonder sessie wordt de log weer verstuurd, en elke keer een 401"
 "public/pidlane-auth.js@@      if(resp.status===401){ _atGeweigerdToken=tok;@@      if(false){ _atGeweigerdToken=tok;@@test-livelog.js@@na een 401 wordt elke 15 s opnieuw geprobeerd met hetzelfde token"
 "public/pidlane-auth.js@@      if(err && err.demo===true){@@      if(false){@@test-livelog.js@@een demoweigering zet de batch terug, en na de demo gaan de regels alsnog mee"
+"public/pidlane-auth.js@@        Device:     _plLogToestel(),\n@@\n@@test-livelog.js@@de logregels zeggen niet meer of ze uit de Play Store-APK of de browser komen"
 "public/pidlane-auth.js@@        User:       geenMail(currentUser?.name||''),@@        User:       String(currentUser?.name||''),@@test-logvelden.js@@het e-mailadres van een klant staat weer als User in elke logregel"
 "public/pidlane-auth.js@@    const bericht=mailUit(String(message||'')@@    const bericht=(String(message||'')@@test-logvelden.js@@een e-mailadres in de tekst van een logregel gaat ongezien mee"
 "public/pidlane-veldlab.js@@  try{ kopie=JSON.parse(_vlEmailUitTekst(JSON.stringify(rec))); }@@  try{ kopie=JSON.parse(JSON.stringify(rec)); }@@test-vin-anoniem.js@@een e-mailadres ergens in het veldlabrecord (foutregels, survey) gaat mee in het JSON-blob"

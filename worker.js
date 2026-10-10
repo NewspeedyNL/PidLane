@@ -4532,6 +4532,128 @@ async function adminD1Overzicht(db, dagen) {
 }
 __name(adminD1Overzicht, "adminD1Overzicht");
 
+// ── De bewaking (10-10-2026) ──────────────────────────────────────────
+//  Sinds de app in de Play Store staat, laadt de APK app.pidlane.nl live:
+//  elke push naar main staat binnen een minuut op elke telefoon. Een fout
+//  die dan meekomt zie je alleen in de logregels, en die las tot nu toe
+//  niemand tenzij hij er zelf heen klikte. Deze route stelt één vraag:
+//  "is er iets anders dan normaal?" — vergeleken met de zeven dagen ervóór.
+//
+//  De meting (adminD1Bewaking) en het oordeel (bewakingOordeel) zijn
+//  gescheiden: het oordeel is puur en wordt in test-bewaking.js met
+//  verzonnen getallen getoetst, de meting met echte SQLite uit schema.sql.
+//  De drempels staan hier en nergens anders; de beheerpagina toont alleen.
+var BEWAKING = {
+  // Minstens zoveel regels per dag in de basisweek voordat stilte iets
+  // betekent. Bij een handvol testers is een stille nacht normaal.
+  stilBasisPerDag: 20, stilOranjeUur: 6, stilRoodUur: 24,
+  // Instroom in het laatste uur: veelvoud van het gewone uurgemiddelde,
+  // met een bodem zodat drie regels in een stil uur geen alarm zijn.
+  uurOranje: { factor: 3, bodem: 30 }, uurRood: { factor: 5, bodem: 60 },
+  dagOranje: { factor: 3, bodem: 300 },
+  // Fouten (Type error of bug) in de laatste 24 uur tegen het daggemiddelde.
+  foutOranje: { factor: 2, bodem: 5 }, foutRood: { factor: 3, bodem: 15 },
+  // Een foutmelding die de week ervoor niet voorkwam, telt vanaf zoveel keer.
+  nieuwMin: 3,
+  basisDagen: 7
+};
+function bewakingDrempel(basis, d) { return Math.max(d.bodem, d.factor * (basis || 0)); }
+__name(bewakingDrempel, "bewakingDrempel");
+
+// Puur: m is wat adminD1Bewaking() meet. Geeft [{ id, ernst, titel, detail }]
+// terug, rood eerst. ernst: rood | oranje. Leeg = niets bijzonders.
+function bewakingOordeel(m) {
+  const B = BEWAKING, uit = [];
+  const basisDag = (m.basis && m.basis.perDag) || 0, basisUur = basisDag / 24;
+  const basisFout = (m.basis && m.basis.foutenPerDag) || 0;
+  const rond = (x) => Math.round(x * 10) / 10;
+  // 1. Stilte: er komt niets meer binnen terwijl er normaal wél iets komt.
+  if (basisDag >= B.stilBasisPerDag) {
+    const stilUur = m.laatste ? (m.nu - Date.parse(m.laatste)) / 36e5 : Infinity;
+    if (stilUur >= B.stilOranjeUur) uit.push({ id: "stil", ernst: stilUur >= B.stilRoodUur ? "rood" : "oranje",
+      titel: "Er komt niets binnen",
+      detail: (Number.isFinite(stilUur) ? "Al " + Math.floor(stilUur) + " uur geen logregel" : "Nog nooit een logregel") +
+        ", terwijl er normaal " + Math.round(basisDag) + " per dag komen. Werkt het loggen nog, of start de app niet?" });
+  }
+  // 2. Veel logregels in het laatste uur, of in de laatste 24 uur.
+  const uur = (m.uur && m.uur.n) || 0, dag = (m.dag && m.dag.n) || 0;
+  if (uur > bewakingDrempel(basisUur, B.uurOranje))
+    uit.push({ id: "uur", ernst: uur > bewakingDrempel(basisUur, B.uurRood) ? "rood" : "oranje",
+      titel: "Veel logregels het laatste uur",
+      detail: uur + " in een uur; normaal " + rond(basisUur) + " per uur. Een lus in de app, of veel nieuwe gebruikers?" });
+  else if (dag > bewakingDrempel(basisDag, B.dagOranje))
+    uit.push({ id: "dag", ernst: "oranje", titel: "Veel logregels vandaag",
+      detail: dag + " in 24 uur; normaal " + Math.round(basisDag) + " per dag." });
+  // 3. Meer fouten dan normaal.
+  const fout = (m.dag && m.dag.fouten) || 0;
+  if (fout > bewakingDrempel(basisFout, B.foutOranje))
+    uit.push({ id: "fouten", ernst: fout > bewakingDrempel(basisFout, B.foutRood) ? "rood" : "oranje",
+      titel: "Meer fouten dan normaal",
+      detail: fout + " fouten in 24 uur; normaal " + rond(basisFout) + " per dag. Kwam er vandaag een deploy?" });
+  // 4. Een foutmelding die er de week ervoor niet was.
+  const nieuw = (m.nieuweFouten || []).filter((x) => x[1] >= B.nieuwMin);
+  if (nieuw.length) uit.push({ id: "nieuw", ernst: "oranje",
+    titel: nieuw.length === 1 ? "Een nieuwe foutmelding" : nieuw.length + " nieuwe foutmeldingen",
+    detail: nieuw.slice(0, 3).map((x) => "“" + x[0] + "” (" + x[1] + "×)").join(" · ") });
+  // 5. Bugmeldingen van gebruikers.
+  const bugs = (m.bugs || []).filter((b) => m.nu - Date.parse(b.ontvangen) < 864e5);
+  if (bugs.length) uit.push({ id: "bugs", ernst: "oranje",
+    titel: bugs.length === 1 ? "Een bugmelding van een gebruiker" : bugs.length + " bugmeldingen van gebruikers",
+    detail: bugs.slice(0, 3).map((b) => "“" + String(b.Message || "").slice(0, 80) + "”").join(" · ") });
+  // 6. De app stuurt een veld waar geen kolom voor is.
+  if ((m.onbekend || 0) > 0) uit.push({ id: "onbekend", ernst: "oranje", titel: "Velden zonder kolom",
+    detail: m.onbekend + " regels in 24 uur met iets in `onbekend`: de app stuurt een veld dat schema.sql niet kent." });
+  return uit.sort((a, b) => (a.ernst === b.ernst ? 0 : a.ernst === "rood" ? -1 : 1));
+}
+__name(bewakingOordeel, "bewakingOordeel");
+
+async function adminD1Bewaking(db, nu) {
+  nu = nu || Date.now();
+  const iso = (ms) => new Date(ms).toISOString();
+  const uur1 = iso(nu - 36e5), dag1 = iso(nu - 864e5), dag2 = iso(nu - 2 * 864e5);
+  const week0 = iso(nu - (BEWAKING.basisDagen + 1) * 864e5);
+  const FOUT = "Type IN ('error','bug')";
+  const een = (sql, ...w) => db.prepare(sql).bind(...w).first();
+  const m = { nu, meetmoment: iso(nu) };
+  const laatste = await een("SELECT MAX(ontvangen) AS t FROM logregels");
+  m.laatste = (laatste && laatste.t) || "";
+  const tel = async (van, tot) => {
+    const r = await een(`SELECT COUNT(*) AS n, SUM(CASE WHEN ${FOUT} THEN 1 ELSE 0 END) AS f,
+        COUNT(DISTINCT SessionId) AS s FROM logregels WHERE ontvangen >= ? AND ontvangen < ?`, van, tot);
+    return { n: Number(r && r.n) || 0, fouten: Number(r && r.f) || 0, ritten: Number(r && r.s) || 0 };
+  };
+  m.uur = await tel(uur1, iso(nu + 6e4));
+  m.dag = await tel(dag1, iso(nu + 6e4));
+  const basis = await tel(week0, dag1);
+  m.basis = { perDag: basis.n / BEWAKING.basisDagen, foutenPerDag: basis.fouten / BEWAKING.basisDagen,
+              rittenPerDag: basis.ritten / BEWAKING.basisDagen };
+  const perUur = await db.prepare(
+    `SELECT substr(ontvangen, 1, 13) AS u, COUNT(*) AS n, SUM(CASE WHEN ${FOUT} THEN 1 ELSE 0 END) AS f
+       FROM logregels WHERE ontvangen >= ? GROUP BY u ORDER BY u`).bind(dag2).all();
+  m.perUur = ((perUur && perUur.results) || []).map((x) => [x.u, Number(x.n) || 0, Number(x.f) || 0]);
+  const nieuw = await db.prepare(
+    `SELECT substr(Message, 1, 80) AS k, COUNT(*) AS n, MIN(ontvangen) AS eerst FROM logregels
+      WHERE ontvangen >= ? AND ${FOUT}
+        AND substr(Message, 1, 80) NOT IN (SELECT substr(Message, 1, 80) FROM logregels
+                                            WHERE ontvangen >= ? AND ontvangen < ? AND ${FOUT} AND Message IS NOT NULL)
+      GROUP BY k ORDER BY n DESC LIMIT 10`).bind(dag1, week0, dag1).all();
+  m.nieuweFouten = ((nieuw && nieuw.results) || []).map((x) => [x.k === null ? "—" : String(x.k), Number(x.n) || 0, x.eerst || ""]);
+  const bugs = await db.prepare(
+    "SELECT id, ontvangen, Message, Device, AppVersion, Merk FROM logregels WHERE Type = 'bug' AND ontvangen >= ? ORDER BY ontvangen DESC LIMIT 20"
+  ).bind(week0).all();
+  m.bugs = (bugs && bugs.results) || [];
+  const onb = await een("SELECT COUNT(*) AS n FROM logregels WHERE ontvangen >= ? AND onbekend IS NOT NULL AND onbekend <> ''", dag1);
+  m.onbekend = Number(onb && onb.n) || 0;
+  // Waar de regels vandaan komen: de APK uit de Play Store of de browser
+  // (kolom Device, sinds 10-10-2026 bij elke regel), en welke versie.
+  m.perToestel = await d1Paren(db, "SELECT Device AS k, COUNT(*) AS n FROM logregels WHERE ontvangen >= ? GROUP BY k ORDER BY n DESC LIMIT 8", week0);
+  m.perVersie = await d1Paren(db, "SELECT AppVersion AS k, COUNT(*) AS n FROM logregels WHERE ontvangen >= ? GROUP BY k ORDER BY n DESC LIMIT 8", week0);
+  m.drempels = BEWAKING;
+  m.signalen = bewakingOordeel(m);
+  return json({ ok: true, ...m });
+}
+__name(adminD1Bewaking, "adminD1Bewaking");
+
 // Eén rit van begin tot eind, in de volgorde waarin de Worker hem ontving.
 // Dit is wat CLAUDE.md met de hand vraagt ("haal er FOUT en LET OP uit"), maar
 // dan met alle regels erbij, zodat de pagina kan filteren zonder opnieuw te
@@ -4652,7 +4774,7 @@ async function adminD1Opdracht(db, actie, body) {
 }
 __name(adminD1Opdracht, "adminD1Opdracht");
 
-// ── GET /admin/d1?actie=overzicht&dagen=30 | ?actie=rit&sessie=… | ?actie=archief ──
+// ── GET /admin/d1?actie=overzicht&dagen=30 | ?actie=bewaking | ?actie=rit&sessie=… | ?actie=archief ──
 async function handleAdminD1Get(request, env) {
   if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
   if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
@@ -4663,6 +4785,7 @@ async function handleAdminD1Get(request, env) {
       const dagen = Math.min(90, Math.max(1, Math.round(Number(sp.get("dagen")) || 30)));
       return await adminD1Overzicht(env.LOGDB, dagen);
     }
+    if (actie === "bewaking") return await adminD1Bewaking(env.LOGDB);
     if (actie === "rit") return await adminD1Rit(env.LOGDB, sp.get("sessie"));
     if (actie === "archief") return await adminD1Archief(env.LOGDB, sp.get("limiet"));
     return json({ ok: false, error: "Onbekende actie." }, 400);

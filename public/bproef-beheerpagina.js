@@ -316,6 +316,21 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     const stat = await app.ev('document.getElementById("st_worker").textContent');
     toets('de status zegt "niet gemeten"', stat === 'niet gemeten', 'er staat: ' + stat);
 
+    // ── 9b. de bewaking tekent, en zegt dat hij in oefenmodus niets mat ──
+    console.log('\n9b. De bewakingskaart (10-10-2026)');
+    await app.ev('toon("overzicht")');
+    await app.ev('bewakingLaden()');
+    await rust(600);
+    const sig = await app.ev('document.getElementById("bwSignalen").textContent');
+    toets('het signaal staat op de kaart en noemt de oefenmodus', /Voorbeeldsignaal/.test(sig) && /oefenmodus/.test(sig), sig.slice(0, 200));
+    toets('48 staven per uur, ook de lege uren', await app.ev('document.querySelectorAll("#bwPerUur .staaf").length') === 48,
+      String(await app.ev('document.querySelectorAll("#bwPerUur .staaf").length')));
+    toets('het aantal signalen staat in de tabtitel', /^\(1\) /.test(await app.ev('document.title')), await app.ev('document.title'));
+    await app.ev('bewakingLaden()'); await rust(600);
+    toets('een tweede meting zet het getal er niet dubbel voor  <- tegenproef', !/^\(1\) \(1\)/.test(await app.ev('document.title')), await app.ev('document.title'));
+    toets('de Play Store-kaart toont waar de regels vandaan komen', await app.ev('document.querySelectorAll("#bwToestel .balk").length') > 0,
+      await app.ev('document.getElementById("bwToestel").textContent'));
+
     // ── 10. geen enkele uitzondering onderweg ───────────────────
     console.log('\n10. Wat de browser onderweg meldde');
     toets('geen uitzonderingen', app.fouten.length === 0, app.fouten.join(' | '));

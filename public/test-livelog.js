@@ -110,6 +110,13 @@ console.log('\n1. logToSheets() laat het derde argument niet meer vallen');
     toets('en de vaste velden staan er nog',
       f && f.Merk === 'Mazda' && f.VIN === 'JM3-pseudoniem' && f.AppVersion === '3.0.0',
       'velden: ' + JSON.stringify(f));
+    // Waar de regel vandaan komt (10-10-2026): de bewaking in het beheer
+    // scheidt de Play Store-APK van de browser op dit veld.
+    toets('in de browser staat Device op "web"', f && f.Device === 'web', 'velden: ' + JSON.stringify(f));
+    s.Capacitor = { isNativePlatform: () => true, getPlatform: () => 'android' };
+    f = await velden('info', 'uit de apk');
+    delete s.Capacitor;
+    toets('in de APK op "android APK"  <- tegenproef', f && f.Device === 'android APK', 'velden: ' + JSON.stringify(f));
 
     // Het bericht blijft afgekapt op 500 tekens, ook mét staart: een lange
     // extra mag de grens niet omzeilen.
