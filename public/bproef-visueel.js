@@ -259,8 +259,8 @@ function beoordeel(m) {
       return { admin:isAdmin(), voor:voor, aan:aan, tekst:tekst, knoppen:knoppen, uit:!PLRun.staat().monitor.aan,
                chip:chip, pilWeg:pilWeg, pilTerug:pilTerug };
     })()`);
-    toets('de bulk-recorder staat alleen als snelkoppeling bij een beheerder',
-      meld.voor.some(k => /Bulk-recorder/.test(k)) === !!meld.admin, 'admin ' + meld.admin + ': ' + meld.voor.join(', '));
+    toets('de bulk-recorder staat als snelkoppeling, ook zonder beheer (#478)',
+      meld.voor.some(k => /Bulk-recorder/.test(k)), 'admin ' + meld.admin + ': ' + meld.voor.join(', '));
     toets('de snelkoppeling zet de rit-monitor echt aan (via PLRun)', meld.aan === true, JSON.stringify(meld));
     toets('daarna staat de rit-monitor in het vak', /Rit-monitor/.test(meld.tekst), meld.tekst);
     toets('en geen snelkoppeling meer naar caravanrit of bulk-recorder (één tegelijk)',
