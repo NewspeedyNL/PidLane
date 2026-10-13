@@ -718,12 +718,12 @@ setInterval(()=>{ try{ _monChipTick(); }catch(e){ console.warn('_monChipTick mis
      zit er een verbrandingsmotor in?   ja, behalve bij volledig elektrisch
      zit er elektrische aandrijving in? ja bij hybride
 
-   Bekende grens: een diesel-hybride heet 'hybride' en krijgt hier 'benzine'.
-   De brandstofnormalisatie maakt van "Diesel + Elektriciteit" één woord en
-   gooit de diesel weg; dat is een eigen klus, zie het issue. */
-function bscGroepen(et){
+   Een diesel-hybride krijgt sinds 13-10-2026 (#430) de dieseltests: welke
+   verbrandingsmotor erin zit komt uit vehicleFuelType() (`brandstof`), want
+   detectEngineType() zegt alleen 'hybride'. */
+function bscGroepen(et, brandstof){
   const g=new Set(['universeel']);
-  if(et==='diesel') g.add('diesel');
+  if(et==='diesel' || (et==='hybride' && brandstof==='diesel')) g.add('diesel');
   else if(et!=='ev') g.add('benzine');
   if(et==='hybride') g.add('hybride');
   return g;
@@ -732,7 +732,9 @@ function bscGroepen(et){
 // Filter de catalogus op motortype + welke PIDs de auto levert.
 function bscBuildList(){
   const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
-  const groepen=bscGroepen(et);
+  let fuel='';
+  try{ fuel=(typeof vehicleFuelType==='function')?vehicleFuelType():''; }catch(e){ console.warn('Systeemtest: brandstoftype onbekend — een diesel-hybride krijgt de benzinetests', e); }
+  const groepen=bscGroepen(et, fuel);
   // 27-07-2026 — hier zat de oorzaak van "⏳ Wachten op sensordata…" dat nooit
   // afliep. De laatste voorwaarde (|| !!getPidDef(pid)) maakte deze controle
   // waardeloos: élk PID dat in ALL_PID_DEFS staat gaf `true`, ook als de auto
@@ -905,7 +907,12 @@ function bscWerkLijstBij(sits){
   const vol=document.getElementById('bscVolgende');
   if(vol){
     const kans=Object.keys(wachtPer).filter(k=>!sits.has(k)).sort((a,b)=>wachtPer[b]-wachtPer[a])[0];
-    vol.textContent = kans ? 'Volgende kans: '+BSC_SIT[kans].ico+' '+BSC_SIT[kans].doe+' ('+wachtPer[kans]+' test'+(wachtPer[kans]===1?'':'s')+' wacht'+(wachtPer[kans]===1?'':'en')+' hierop)' : '';
+    let doe=kans ? BSC_SIT[kans].doe : '';
+    if(kans==='stationair' && typeof plStationairUitleg==='function'){
+      try{ doe=plStationairUitleg((typeof detectEngineType==='function')?detectEngineType():'', doe); }
+      catch(e){ console.warn('Systeemtest: motortype onbekend voor de stationair-uitleg', e); }
+    }
+    vol.textContent = kans ? 'Volgende kans: '+BSC_SIT[kans].ico+' '+doe+' ('+wachtPer[kans]+' test'+(wachtPer[kans]===1?'':'s')+' wacht'+(wachtPer[kans]===1?'':'en')+' hierop)' : '';
   }
 }
 
