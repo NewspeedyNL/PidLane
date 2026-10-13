@@ -2967,7 +2967,7 @@ function klantPubliek(rec) {
 __name(klantPubliek, "klantPubliek");
 
 // ── POST /klant/registreer  { email, pass, naam? } ──────────────────
-async function handleKlantRegistreer(request, env) {
+async function handleKlantRegistreer(request, env, ctx) {
   if (!env.SESSION_SECRET) return json({ ok: false, error: "no_session_secret" }, 500);
   if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
 
@@ -3017,6 +3017,13 @@ async function handleKlantRegistreer(request, env) {
       return json({ ok: false, error: "Aanmaken mislukt, probeer later opnieuw." }, 502);
     }
 
+    // Melding aan Support via Airtable (#477). Na het antwoord, zodat een
+    // trage of onbereikbare Airtable de registratie niet ophoudt.
+    const melding = klantMeldingAirtable(env, email, naam).catch((e) => {
+      try { console.error("[klant] melding naar Airtable mislukt :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+    });
+    if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(melding); else await melding;
+
     const t = await makeToken(env, email, "klant", naam || email);
     return json({ ok: true, ...t, klant: klantPubliek(rec) }, 201);
   } catch (e) {
@@ -3024,6 +3031,65 @@ async function handleKlantRegistreer(request, env) {
   }
 }
 __name(handleKlantRegistreer, "handleKlantRegistreer");
+
+// ── Melding van een nieuwe klant via Airtable (#477, 13-10-2026) ─────
+// Tot #327 stond Klanten in Airtable, en de automatisering "Nieuwe klant →
+// mail naar Support" (trigger: record aangemaakt) mailde gratis bij elke
+// registratie. Sinds Klanten in D1 staat komt er daar geen rij meer bij en
+// is die mail stil weggevallen. Mail vanuit de Worker kost een provider;
+// daarom schrijft de Worker bij zelfregistratie weer een rij in de oude
+// Airtable-tabel, en doet de automatisering de rest.
+//
+// ALLEEN WAT DE MAIL NODIG HEEFT: Email en Naam. Geen PassHash, geen saldo:
+// D1 blijft de enige bron, deze rij is een melding en geen account. De app
+// leest de tabel niet meer (d1_overzet staat), dus hij komt nooit terug.
+//
+// HIJ BLIJFT NIET STAAN. Een e-mailadres in een tweede systeem valt buiten
+// het wissen uit klantWachtrijOpruimen. De cron haalt daarom elke nacht de
+// meldingen weg die ouder zijn dan KLANT_MELDING_DAGEN. Herkend aan het merk
+// in Opmerking, zodat de rijen van vóór de overzet blijven staan; de formule
+// is een vaste tekst, er gaat geen klantwaarde in (#142).
+var KLANT_MELDING_MERK = "melding #477";
+var KLANT_MELDING_DAGEN = 2;
+function klantMeldingUrl(env) {
+  return `https://api.airtable.com/v0/${resolveBase(env, "AIRTABLE_CONFIG_BASE")}/` +
+    encodeURIComponent(cfg(env, "AIRTABLE_KLANTEN_TABLE"));
+}
+__name(klantMeldingUrl, "klantMeldingUrl");
+async function klantMeldingAirtable(env, email, naam) {
+  if (!env.AIRTABLE_TOKEN) return false;
+  const r = await fetch(klantMeldingUrl(env), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.AIRTABLE_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ records: [{ fields: { Email: email, Naam: naam || "", Opmerking: KLANT_MELDING_MERK } }] })
+  });
+  if (!r.ok) throw new Error("airtable_melding_" + r.status);
+  return true;
+}
+__name(klantMeldingAirtable, "klantMeldingAirtable");
+async function klantMeldingenOpruimen(env) {
+  if (!env.AIRTABLE_TOKEN) return 0;
+  const kop = { Authorization: `Bearer ${env.AIRTABLE_TOKEN}` };
+  const formule = `AND({Opmerking}='${KLANT_MELDING_MERK}',DATETIME_DIFF(NOW(),CREATED_TIME(),'days')>=${KLANT_MELDING_DAGEN})`;
+  const ids = [];
+  let offset = "";
+  do {
+    const r = await fetch(klantMeldingUrl(env) + "?pageSize=100&filterByFormula=" + encodeURIComponent(formule) +
+      (offset ? "&offset=" + encodeURIComponent(offset) : ""), { headers: kop });
+    if (!r.ok) throw new Error("airtable_melding_lezen_" + r.status);
+    const d = await r.json();
+    for (const rec of d.records || []) ids.push(rec.id);
+    offset = d.offset || "";
+  } while (offset);
+  // Airtable wist hoogstens tien records per verzoek.
+  for (let i = 0; i < ids.length; i += 10) {
+    const q = ids.slice(i, i + 10).map((id) => "records[]=" + encodeURIComponent(id)).join("&");
+    const r = await fetch(klantMeldingUrl(env) + "?" + q, { method: "DELETE", headers: kop });
+    if (!r.ok) throw new Error("airtable_melding_wissen_" + r.status);
+  }
+  return ids.length;
+}
+__name(klantMeldingenOpruimen, "klantMeldingenOpruimen");
 
 // ── POST /klant/login  { email, pass } ──────────────────────────────
 async function handleKlantLogin(request, env, ctx) {
@@ -6317,7 +6383,7 @@ var worker_default = {
       if (url.pathname === "/admin/meekijk" && request.method === "POST")
         return lockOrigin(request, await handleAdminMeekijk(request, env));
       if (url.pathname === "/klant/registreer" && request.method === "POST")
-        return lockOrigin(request, await handleKlantRegistreer(request, env));
+        return lockOrigin(request, await handleKlantRegistreer(request, env, ctx));
       if (url.pathname === "/klant/login" && request.method === "POST")
         return lockOrigin(request, await handleKlantLogin(request, env, ctx));
       if (url.pathname === "/klant/onboarding" && request.method === "POST")
@@ -6390,6 +6456,12 @@ var worker_default = {
           console.error("[opruimen] niet gelukt: " + JSON.stringify(uit.mislukt).slice(0, 400));
       } catch (e) {
         try { console.error("[opruimen] ronde afgebroken :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+      }
+      try {
+        const n = await klantMeldingenOpruimen(env);
+        if (n) console.log(`[opruimen] ${n} klantmeldingen uit Airtable gewist`);
+      } catch (e) {
+        try { console.error("[opruimen] klantmeldingen niet gewist :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
       }
     })();
     // waitUntil zodat de ronde afmaakt nadat scheduled() is teruggekeerd.
