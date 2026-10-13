@@ -1538,7 +1538,7 @@ MUTATIES=(
 # venster rondt de rit af vóór de verbinding weg is; ATPC geeft de bus vrij.
 "public/pidlane-garage.js@@    if (stil > CFG.ritPauzeMs) return 'af';@@    if (stil > 3 * 60 * 1000) return 'af';@@test-garage.js@@drie minuten stil is weer het einde van de rit: één rit met een tankstop wordt er twee"
 "public/pidlane-garage.js@@    if (!verbonden || stil > CFG.pauzeMinMs) return 'pauze';@@    if (!verbonden) return 'af';\n    if (stil > CFG.pauzeMinMs) return 'pauze';@@test-garage.js@@verbinding weg beëindigt de rit meteen"
-"public/pidlane-garage.js@@    } else if (r && !r._weg) {@@    } else if (r) { ritAf('verbinding weg'); } else if (false) {@@test-garage.js@@de lus rondt de rit af zodra de verbinding wegvalt"
+"public/pidlane-garage.js@@    if (!verbonden && r && !r._weg) {@@    if (!verbonden && r) { ritAf('verbinding weg'); } else if (false) {@@test-garage.js@@de lus rondt de rit af zodra de verbinding wegvalt"
 "public/pidlane-garage.js@@    if (kmh != null && kmh >= 2) r.bij = {@@    if (false) r.bij = {@@test-garage.js@@de rit eindigt een kwartier na aankomst in plaats van bij de laatste beweging"
 "public/pidlane-garage.js@@if (t - r.tBeweeg > CFG.pauzeMinMs && r.sBeweeg > 0)@@if (t - r.tBeweeg > 0 && r.sBeweeg > 0)@@test-garage.js@@elk stoplicht telt als pauze in de rit"
 "public/pidlane-garage.js@@    if (label) sam.label = String(label).slice(0, 40);\n@@@@test-garage.js@@de naam uit Rit beëindigen gaat niet mee de server op"
