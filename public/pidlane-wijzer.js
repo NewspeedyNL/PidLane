@@ -8,9 +8,9 @@
    Dit bestand voegt vier dingen toe die mensen bij een kenteken willen
    weten, en die de stap naar een adapter klein maken:
 
-     1. Mag ik deze zone in?  Emissieklasse en brandstof uit het RDW tegen
-        de milieuzones voor dieselpersonenauto's (ZONES), en de regel voor
-        bestelauto's in een zero-emissiezone.
+     1. Milieuklasse. Brandstof en emissieklasse uit het RDW, met een link
+        naar milieuzones.nl. Geen tabel per stad: die regels verschillen per
+        gemeente en veranderen te vaak om hier bij te houden.
      2. Wat kost hij per maand? Wegenbelasting als INDICATIE (MRB) plus
         brandstof of stroom uit het verbruik van de typekeuring.
      3. Klachtenwijzer. De klacht- en verdenkingenkern van PLOnderzoek, met
@@ -24,10 +24,10 @@
    nieuw, verwerk, conclusie). Hier staat alleen wat nergens anders staat:
    de zonetabel, het belastingmodel en de OBD-plichtdata.
 
-   EERLIJK OVER DE TABELLEN. ZONES en MRB hebben een peildatum (PEIL). De
+   EERLIJK OVER DE TABELLEN. MRB en PRIJS hebben een peildatum (PEIL). De
    wegenbelasting is een schatting zonder provincie; elke uitkomst zegt dat,
-   met de rekenhulp van de Belastingdienst erbij. Een zone die we niet
-   kennen is "onbekend", nooit "mag".
+   met de rekenhulp van de Belastingdienst erbij. Een onbekende emissie-
+   klasse heet "onbekend", nooit een geschat getal zonder dat erbij.
 
    Pure kern in _kern (test-wijzer.js); het scherm hangt aan PLZonder
    (blokken onder de kenteken-check, en de knop "Klacht?" op de kaart).
@@ -37,17 +37,11 @@
 
   var PEIL = '13-10-2026';
 
-  // ── 1. Milieuzones ──────────────────────────────────────────────────
-  // Dieselpersonenauto's. `min` = laagste emissieklasse die erin mag. Een
-  // aanscherping staat als `vanaf` met de klasse die daarna geldt.
-  // Bron: ANWB/milieuzones.nl en gemeente Arnhem, peil hierboven.
-  var ZONES = [
-    { stad: 'Amsterdam', gebied: 'binnen de ring A10', min: 5 },
-    { stad: 'Utrecht', gebied: 'binnen de milieuzone', min: 5 },
-    { stad: 'Den Haag', gebied: 'binnen de milieuzone', min: 4 },
-    { stad: 'Arnhem', gebied: 'binnen de milieuzone', min: 4, vanaf: '20260601', minDaarna: 5 }
-  ];
-  var ZONE_VRIJ_JAREN = 40;   // oldtimers van 40 jaar en ouder zijn vrijgesteld
+  // ── 1. Milieuklasse ─────────────────────────────────────────────────
+  // Geen zonetabel per stad: die regels verschillen per gemeente en veranderen
+  // vaak (besluit 13-10-2026, #485). De app zegt welke klasse de auto heeft en
+  // verwijst voor de regels naar milieuzones.nl, waar je het kenteken invult.
+  var MILIEUZONES_URL = 'https://www.milieuzones.nl';
 
   // ── 2. Wegenbelasting, indicatie ────────────────────────────────────
   // Per kwartaal, gemiddelde provincie, op massa rijklaar (sinds 01-07-2026).
@@ -67,7 +61,6 @@
   // ════════════════════════════════════════════════════════════════
   function datum8(x) { var c = String(x || '').replace(/\D/g, '').slice(0, 8); return c.length === 8 ? c : null; }
   function getal(x) { var g = parseFloat(String(x == null ? '' : x).replace(',', '.')); return isFinite(g) ? g : null; }
-  function vandaag8(nu) { var d = new Date(nu || Date.now()); return '' + d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2); }
   function euro(x) { return '€ ' + Math.round(x).toLocaleString('nl-NL'); }
   function lijst(bs) { return Array.isArray(bs) ? bs.filter(Boolean) : []; }
 
@@ -101,49 +94,19 @@
     return { klasse: j, bron: 'schatting' };
   }
 
-  function zoneMin(z, nu) { return (z.vanaf && vandaag8(nu) >= z.vanaf) ? z.minDaarna : z.min; }
-
-  /* Mag deze auto de zones in? { soort, klasse, bron, rijen:[{stad,gebied,mag,tekst}], kop, uitleg } */
-  function zones(rij, bs, nu) {
+  /* Welke milieuklasse heeft deze auto? { soort, klasse, bron, kop, uitleg }.
+     Geen oordeel over een stad: dat staat op milieuzones.nl. */
+  function milieuklasse(rij, bs) {
     rij = rij || {};
     var soort = soortBrandstof(bs), ek = euroKlasse(rij, bs);
     var vs = String(rij.voertuigsoort || 'Personenauto');
-    var d = datum8(rij.datum_eerste_toelating);
-    var leeftijd = d ? (parseInt(vandaag8(nu).slice(0, 4), 10) - parseInt(d.slice(0, 4), 10) - (vandaag8(nu).slice(4) < d.slice(4) ? 1 : 0)) : null;
-    var uit = { soort: soort, klasse: ek.klasse, bron: ek.bron, rijen: [], kop: '', uitleg: '' };
-
-    if (/bedrijfsauto/i.test(vs)) {
-      var ze = soort === 'elektrisch';
-      uit.kop = ze ? 'Mag in alle zero-emissiezones' : 'Let op: zero-emissiezones voor bestelauto\'s';
-      uit.ernst = ze ? 'groen' : 'oranje';
-      uit.uitleg = ze ? 'Een elektrische bestelauto mag overal in.'
-        : 'Sinds 2025 hebben veel steden een zero-emissiezone voor bestel- en vrachtverkeer. Er geldt een overgangsregeling naar emissieklasse (Euro 5 korter dan Euro 6). Controleer je stad op milieuzones.nl.';
-      return uit;
-    }
-    if (!/personenauto/i.test(vs)) { uit.kop = 'Geen zoneregels gevonden voor een ' + vs.toLowerCase(); uit.ernst = null; return uit; }
-
-    if (soort !== 'diesel' && soort !== 'hybride-diesel') {
-      uit.kop = soort === 'onbekend' ? 'Brandstof onbekend — zones niet te beoordelen' : 'Mag in alle milieuzones';
-      uit.ernst = soort === 'onbekend' ? null : 'groen';
-      uit.uitleg = soort === 'onbekend' ? '' : 'De milieuzones voor personenauto\'s gelden alleen voor diesels.';
-      return uit;
-    }
-    if (leeftijd != null && leeftijd >= ZONE_VRIJ_JAREN) {
-      uit.kop = 'Mag in alle milieuzones — oldtimer'; uit.ernst = 'groen';
-      uit.uitleg = 'Voertuigen van ' + ZONE_VRIJ_JAREN + ' jaar en ouder zijn vrijgesteld.';
-      return uit;
-    }
-    var nee = 0;
-    ZONES.forEach(function (z) {
-      var min = zoneMin(z, nu), mag = ek.klasse == null ? null : ek.klasse >= min;
-      if (mag === false) nee++;
-      uit.rijen.push({ stad: z.stad, gebied: z.gebied, mag: mag, min: min,
-        tekst: mag == null ? 'onbekend — emissieklasse ontbreekt' : (mag ? 'mag erin' : 'mag er niet in (vanaf Euro ' + min + ')') });
-    });
-    uit.kop = ek.klasse == null ? 'Emissieklasse onbekend' : (nee ? 'Mag ' + nee + ' van de ' + ZONES.length + ' milieuzones niet in' : 'Mag in alle milieuzones');
-    uit.ernst = ek.klasse == null ? null : (nee ? 'rood' : 'groen');
-    uit.uitleg = 'Diesel, Euro ' + (ek.klasse == null ? '?' : ek.klasse) + (ek.bron === 'schatting' ? ' (geschat uit de eerste toelating — het RDW geeft hem niet)' : '') + '.';
-    return uit;
+    var NAAM = { benzine: 'Benzine', diesel: 'Diesel', lpg: 'LPG', elektrisch: 'Elektrisch', 'hybride-benzine': 'Hybride (benzine)', 'hybride-diesel': 'Hybride (diesel)', onbekend: 'Brandstof onbekend' };
+    var kop = NAAM[soort] + (soort === 'elektrisch' ? '' : ', ' + (ek.klasse == null ? 'emissieklasse onbekend' : 'Euro ' + ek.klasse));
+    var uitleg = ek.bron === 'schatting' && soort !== 'elektrisch' ? 'Emissieklasse geschat uit de eerste toelating — het RDW geeft hem niet. ' : '';
+    if (/bedrijfsauto/i.test(vs)) uitleg += 'Voor bestelauto\'s gelden in veel steden zero-emissiezones.';
+    else if (/diesel/.test(soort)) uitleg += 'Milieuzones voor personenauto\'s weren alleen oudere diesels; de grens verschilt per stad.';
+    else if (soort !== 'onbekend') uitleg += 'Milieuzones voor personenauto\'s gelden alleen voor diesels.';
+    return { soort: soort, klasse: ek.klasse, bron: ek.bron, kop: kop, uitleg: uitleg };
   }
 
   /* Wegenbelasting per maand, als indicatie. { perMaand, laag, hoog, kwartaal, uitleg } of { onbekend } */
@@ -274,12 +237,11 @@
       (klein ? '<div class="plz-klein">' + esc(klein) + '</div>' : '') + '</span></div>';
   }
 
-  /* Drie blokken onder de kenteken-check: zones, kosten, adapter. */
+  /* Drie blokken onder de kenteken-check: milieuklasse, kosten, adapter. */
   function blokken(rij, bs) {
-    var z = zones(rij, bs), k = kosten(rij, bs), a = adapter(rij, bs);
-    var h = '<div class="plz-blok" data-plw="zones"><b>🏙️ Milieuzones</b>' + regel(z.ernst, z.kop, z.uitleg || '');
-    z.rijen.forEach(function (r) { h += regel(r.mag == null ? '' : (r.mag ? 'groen' : 'rood'), r.stad + ' · ' + r.gebied, r.tekst); });
-    h += '<div class="plz-klein" style="margin-top:6px">Peil ' + PEIL + '. Regels veranderen; controleer je kenteken op milieuzones.nl.</div></div>';
+    var z = milieuklasse(rij, bs), k = kosten(rij, bs), a = adapter(rij, bs);
+    var h = '<div class="plz-blok" data-plw="zones"><b>🏙️ Milieuklasse</b>' + regel('info', 'Brandstof en emissieklasse', z.kop, z.uitleg) +
+      '<div class="plz-klein" style="margin-top:6px">Mag hij een stad in? Vul het kenteken in op <a href="' + MILIEUZONES_URL + '" target="_blank" rel="noopener" style="color:var(--bl)">milieuzones.nl</a>.</div></div>';
 
     h += '<div class="plz-blok" data-plw="kosten"><b>💶 Wat kost hij per maand?</b>';
     if (k.mrb.perMaand != null) h += regel('info', 'Wegenbelasting (indicatie)', euro(k.mrb.laag) + ' – ' + euro(k.mrb.hoog) + ' per maand', k.mrb.uitleg);
@@ -364,8 +326,8 @@
     klacht: klacht,
     _kies: kies, _verder: verder, _antwoord: antwoord, _uitkomst: tekenUitkomst,
     // pure kern — voor test-wijzer.js
-    _kern: { PEIL: PEIL, ZONES: ZONES, MRB: MRB, OBD: OBD, VRAGEN: VRAGEN,
-      soortBrandstof: soortBrandstof, euroKlasse: euroKlasse, zones: zones, mrb: mrb, brandstofKosten: brandstofKosten,
+    _kern: { PEIL: PEIL, MILIEUZONES_URL: MILIEUZONES_URL, MRB: MRB, OBD: OBD, VRAGEN: VRAGEN,
+      soortBrandstof: soortBrandstof, euroKlasse: euroKlasse, milieuklasse: milieuklasse, mrb: mrb, brandstofKosten: brandstofKosten,
       kosten: kosten, adapter: adapter, wijzerStart: wijzerStart, wijzerVragen: wijzerVragen, wijzerAntwoord: wijzerAntwoord, wijzerUitkomst: wijzerUitkomst }
   };
 })();

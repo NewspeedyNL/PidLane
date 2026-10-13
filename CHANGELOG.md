@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Milieuzones: alleen de milieuklasse, met een link (#485)
+ ═══════════════════════════════════════════════════════════
+
+ - Geen zonetabel per stad meer: die regels verschillen per gemeente en
+   veranderen te vaak. De kenteken-check toont brandstof en emissieklasse
+   (met "geschat" als het RDW hem niet geeft) en linkt naar milieuzones.nl.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Contact uit is geen storing (#487)
  ═══════════════════════════════════════════════════════════
 
