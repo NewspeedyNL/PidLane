@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Nieuwe klant geeft weer een mail aan Support (#477)
+ ═══════════════════════════════════════════════════════════
+
+ - Bij zelfregistratie zet de Worker een rij (Email, Naam, merk in
+   Opmerking) in Airtable Klanten; de bestaande automatisering mailt weer.
+ - De cron wist die meldingen na twee dagen. Test: `test-klantmelding.js`.
+
+ ═══════════════════════════════════════════════════════════
  10-10-2026 — Helling en kanteling worden na 2 s weer helder, niet na 5 s
  ═══════════════════════════════════════════════════════════
 
