@@ -1458,6 +1458,7 @@ MUTATIES=(
 "worker.js@@  if (e.tempo && KP_EIGEN_TEMPO.indexOf(e.tempo) >= 0) o.tempo = e.tempo;@@  if (e.tempo && KP_EIGEN_TEMPO.indexOf(e.tempo) >= 0 && e.tempo !== \"normaal\") o.tempo = e.tempo;@@test-klantplatform.js@@een gekozen \"elke 2 s\" voor een band wordt weer elke minuut"
 "public/pidlane-uitgebreid.js@@: Math.max(30000, 2.5 * (EIGEN_TEMPO[d.tempo] || EIGEN_TEMPO.normaal));@@: 30000;@@test-mode21.js@@blok 5 noemt een eigen PID met tempo elke minuut na 50 s stil"
 "public/pidlane-banden.js@@    if (st.ernst === 'ok') return { staat: 'ok', detail: d + ' — ' + st.uitleg };@@    if (st.ernst !== 'geen') return { staat: 'ok', detail: d + ' — ' + st.uitleg };@@test-banden.js@@blok 5 meldt een zachte band als ok"
+"public/pidlane-uitgebreid.js@@    if (u === '%') return { min: 0, max: 100 };\n@@@@test-banden.js@@een eigen rempedaal in % zonder bereik kan weer niet op een boog (#472)"
 "public/pidlane-pidgate.js@@    if(!supportedPIDs.has(pid) && !inLijst.has(pid)) return;@@    if(!supportedPIDs.has(pid)) return;@@test-sessiedoorloop.js@@hervatten laat eigen en berekende sensoren weer vallen"
 "public/pidlane-garage.js@@PLVoorkeur.selectieToepassen(sel, v.naam || v.merk, { erbij: !basis.length })@@PLVoorkeur.selectieToepassen(sel, v.naam || v.merk, { erbij: false })@@bproef-garage.js@@de eigen sensoren van het voertuig vervangen de standaardset: geen toerental meer"
 "public/pidlane-voorkeur.js@@    if (!erbij) {@@    if (true) {@@bproef-garage.js@@\"erbij\" wist toch de hele selectie"
@@ -1661,6 +1662,8 @@ MUTATIES=(
 "public/pidlane-garage.js@@      if (k && (!_wasKlant || wie() !== _wasWie)) {@@      if (k && !_wasKlant) {@@bproef-garage.js@@wie van beheer naar klant wisselt zonder uit te loggen, ziet de auto's van beheer"
 "public/pidlane-garage.js@@return r === 'klant' || r === 'admin'; }@@return r === 'klant'; }@@bproef-garage.js@@een beheerder ziet Mijn voertuigen weer niet"
 "public/pidlane-garage.js@@    if (v) { _st.tab = 'sensoren'; _st.sens = null; teken(); }@@@@bproef-garage.js@@de knop Eigen in de sensorkeuzelijst opent het overzicht in plaats van Sensoren (#474)"
+"public/pidlane-garage.js@@    if (k.length >= 4 && !al) v.kenteken = k;@@@@test-garage.js@@Voertuig toevoegen vraagt het kenteken van de verbinding opnieuw (#476)"
+"public/pidlane-garage.js@@      _st.voorinvul = voorinvulNieuw(vanVerbinding ? _st.onbekend : null, ken, voertuigen(true));@@      _st.voorinvul = voorinvulNieuw(vanVerbinding ? _st.onbekend : null, '', voertuigen(true));@@bproef-garage.js@@het formulier leest het kenteken van de verbinding niet (#476)"
 "public/pidlane-meekijk.js@@    if (!(typeof isAdmin === 'function' && isAdmin())) { melding('Meekijken is er voor beheerders'); return; }@@@@bproef-meekijk.js@@een klant opent het beheervenster voor de voertuigen van anderen"
 "public/pidlane-meekijk.js@@    _st = { code: '', data: null, fout: '', bezig: false, form: null };\n  }\n\n  function waarde@@  }\n\n  function waarde@@bproef-meekijk.js@@na sluiten staan de voertuigen van de vorige klant er nog"
 # ── het anker van de BT-log na een herlaad (30-09-2026) ──
@@ -1713,6 +1716,7 @@ MUTATIES=(
 "public/pidlane.css@@.vis-lamp-banden { position:absolute; right:0; bottom:0; z-index:1; pointer-events:auto;@@.vis-lamp-banden { pointer-events:auto;@@bproef-banden.js@@het bandenlampje staat niet meer rechtsonder in de hoek van de meter"
 # ── Slim visueel volgens #371 (30-09-2026): rijen, acculampje, autootje ──
 "public/pidlane-visueel.js@@    if(x.soort==='boog' ? boogSchaal(kz, def) : getalKan(kz, def)) k.push(kz);@@    k.push(kz);@@test-visueel.js@@een gekozen tekst-PID of sensor zonder bereik komt toch op een boog"
+"public/pidlane-visueel.js@@    return !!(def && def.eigen) && getalKan(d.pid, def) && !boogSchaal(d.pid, def);@@    return false;@@test-visueel.js@@een eigen sensor zonder schaal valt stil van de boog af, zonder reden erbij (#472)"
 "public/pidlane-visueel.js@@  ketens.push([ACCU_PID]);@@@@test-visueel.js@@Slim visueel zet de accuspanning niet meer aan, en het acculampje blijft leeg"
 "public/pidlane-visueel.js@@  const vSt=plekOordeel('accu', extra.volt, null, extra.rpm);@@  const vSt=plekOordeel('accu', extra.volt, null);@@test-visueel.js@@het acculampje ziet niet meer dat een draaiende dynamo niet laadt"
 "public/pidlane-visueel.js@@  } else if(volt){@@  } else if(volt && m){@@test-visueel.js@@het acculampje brandt alleen als er ook een motoroordeel is: zonder PLAandrijving geen spanning"
@@ -1839,6 +1843,8 @@ MUTATIES=(
 "public/pidlane-bt.js@@        if(overgenomen()){ btDiag('Re-init na herverbinden overgeslagen@@        if(false){ btDiag('Re-init na herverbinden overgeslagen@@test-herverbindguard.js@@de warme reset van de guard valt midden in de protocoldetectie van een nieuwe verbinding — de Aygo van 07-10"
 "public/pidlane-bt.js@@    if(_verbindingHeeftEigenaar(now)){@@    if(false){@@test-herverbindguard.js@@de guard herverbindt terwijl connectSerial al loopt of gepland staat"
 "public/pidlane-bt.js@@  } else if(_hervatActief() && !window._plHervat.herscan){@@  } else if(false){@@test-herverbindguard.js@@een automatische herverbinding vraagt meteen om een protocol, zonder eerst zelf nog eens te zoeken"
+"public/pidlane-bt.js@@      if(plAdapterStil(autoResp, ati)){ toonAdapterStil(); return; }\n@@@@bproef-adapterstil.js@@een adapter die niet op pair staat krijgt weer de protocolkeuze (#476)"
+"public/pidlane-data.js@@  return !schoon(autoResp) && !schoon(atiResp);@@  return !schoon(autoResp);@@test-protocolkeuze.js@@een adapter die op ATI antwoordt heet toch stil (#476)"
 "public/pidlane-telemetrie.js@@  const u=zwaarte(ag, aL, aD, ax.voor, ax.rechts);@@  const u=zwaarte(ag, 0, aD, ax.voor, ax.rechts);@@test-telemetrie.js@@remmen leest weer als voorover hellen: de rijversnelling gaat er niet af — #404"
 "public/pidlane-telemetrie.js@@  const aD=(vers && typeof kmh==='number') ? -(kmh/3.6)*_gier : 0;@@  const aD=(vers && typeof kmh==='number') ? (kmh/3.6)*_gier : 0;@@test-telemetrie.js@@de bochtcorrectie heeft het verkeerde teken: een bocht leest als dubbele kanteling — #404"
 "public/pidlane-telemetrie.js@@  _voor=null; _leer={ som:[0,0,0], n:0 };@@  _leer={ som:[0,0,0], n:0 };@@test-telemetrie.js@@na nulstellen in een andere houder blijft de oude rijrichting staan — #404"

@@ -15,6 +15,14 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 13-10-2026 — Een nieuwe auto was meteen "afwijkend", een eigen % had geen boog, een stille adapter kreeg een protocolkeuze (#473, #472, #476)
+
+**#473.** Het normaal voor een auto kwam uit de laatste sessies in `pl_sessions_<VIN>`, vanaf drie stuks, en een sessie was alles tussen verbinden en verbreken. Drie keer verbinden op de oprit gaf zo "normaal 19 km/h", en de eerste echte rit was 4σ afwijkend. Het oordeel over de lopende rit viel na 30 metingen — binnen een minuut — dus drie minuten stationair en dan gas was al raak. En snelheid, gaspedaal en rempedaal deden mee, terwijl die over de bestuurder gaan en niet over de auto. Nu: een sessie telt alleen met ≥ 10 min verbonden en ≥ 5 min gereden (`duur`, `gereden` in de sessie; de klok hangt aan het `_sessionStats`-object, zodat een nieuwe verbinding vanzelf een nieuwe klok is), normaal vanaf 5 zulke ritten, oordeel pas na 10 min, en `BASE_RIJGEDRAG` plus eigen pedaal/rem-sensoren nooit. Sessies van vóór deze datum hebben geen duur en tellen niet: het geleerde normaal begint dus opnieuw. Dat is bewust — van die sessies is niet te zeggen of het ritten waren. Volgende stap als het nog te grof blijkt: vergelijken per toestand (stationair, stad, snelweg).
+
+**#472.** Een eigen sensor zonder min/max kreeg −1e9…1e9 tenzij `standaardBereik()` hem kende (banden, olie). `boogSchaal()` weigert terecht een bereik boven 1e5, dus de sensor viel stil van de boog af en stond wel in het vak. Nu krijgt `%` zonder bereik 0…100, en de boogkeuze noemt eigen sensoren zonder schaal onderaan met de reden. Gevolg om te kennen: een %-sensor boven 150 heet nu "ver buiten sensorbereik" in `pidlane-kwaliteit.js` (marge 50 %); dan is het ook geen percentage. Min/max achteraf bewerken kan nog niet (weghalen en opnieuw toevoegen).
+
+**#476.** Eerst gelezen als "zonder voertuig in Mijn voertuigen geen PIDs"; dat bleek niet zo — in de code is een voertuig geen poort. De echte oorzaak kwam uit het gebruik: een adapter die niet op pair stond liet de socket toe, gaf op 0100 niets, en de app toonde de protocolkeuze met "meestal staat het contact uit". Daarna stonden er geen PIDs. Nu vraagt `scanNetworks()` na een lege 0100 eerst `ATI`; zwijgt ook die (`plAdapterStil()`), dan "Adapter reageert niet" met **Opnieuw verbinden**, en de protocollijst alleen nog op verzoek. Erbij: "Voertuig toevoegen" vult het kenteken uit de verbindingsstap (`pl_kenteken`) al in en haalt de rest bij het RDW.
+
 ## 13-10-2026 — De mail bij een nieuwe klant viel stil na de overstap naar D1 (#477)
 
 De Airtable-automatisering "Nieuwe klant → mail naar Support" (base

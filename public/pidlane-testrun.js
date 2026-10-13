@@ -2787,6 +2787,57 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── afwijkend t.o.v. normaal pas na echte ritten (#473, 13-10-2026) ──
+  {
+    issue: '#473',
+    naam: 'Afwijkend t.o.v. normaal: pas na vijf echte ritten en tien minuten rijden, nooit over rijgedrag',
+    waarom: 'Een nieuwe CX-5 kreeg na drie korte sessies al een normaal ("19 km/h"), en drie minuten stationair en dan gas was al een afwijking — over snelheid en rempedaal.',
+    proef: async function () {
+      if (typeof baselineBevinding !== 'function' || typeof sessieTeltVoorNormaal !== 'function') return { staat: 'FOUT', detail: 'baselineBevinding of sessieTeltVoorNormaal ontbreekt — oude pidlane-pids.js (herladen?)' };
+      var rij = ['010C', '010D', '0111', '0149'].filter(function (p) { return baselineBevinding(p) !== null; });
+      if (rij.length) return { staat: 'FOUT', detail: 'rijgedrag toch als afwijking: ' + rij.join(', ') };
+      if (BASE_MIN_RITTEN !== 5) return { staat: 'FOUT', detail: 'normaal vanaf ' + BASE_MIN_RITTEN + ' ritten, verwacht 5' };
+      var alle = (typeof loadSessions === 'function') ? loadSessions() : [];
+      var tel = alle.filter(sessieTeltVoorNormaal).length;
+      var k = (typeof sessieKlok === 'function') ? sessieKlok(Date.now()) : null;
+      var min = k ? Math.round((Date.now() - k.start) / 60000) : 0, gereden = k ? Math.round(k.gereden / 60000) : 0;
+      var d = tel + ' van ' + alle.length + ' sessies tellen als rit · deze sessie ' + min + ' min, ' + gereden + ' min gereden';
+      if (tel < BASE_MIN_RITTEN) return { staat: 'LET OP', detail: d + ' — nog geen normaal voor deze auto, dus nog geen "afwijkend"' };
+      return { staat: 'OK', detail: d };
+    }
+  },
+
+  // ── een eigen sensor zonder schaal op de boog (#472, 13-10-2026) ──
+  {
+    issue: '#472',
+    naam: 'Slim visueel: een eigen sensor in % krijgt 0…100, en wie zonder schaal van de boog valt staat er met de reden bij',
+    waarom: 'De eigen Rempedaal positie (222B0D, %, zonder min/max) stond wel in het vak maar niet in de boogkeuze, zonder uitleg waarom.',
+    proef: async function () {
+      if (!window.PLEigen || typeof PLEigen.standaardBereik !== 'function') return { staat: 'FOUT', detail: 'PLEigen.standaardBereik ontbreekt — oude pidlane-uitgebreid.js (herladen?)' };
+      if (!window.PLVisueel || typeof PLVisueel.zonderSchaal !== 'function') return { staat: 'FOUT', detail: 'PLVisueel.zonderSchaal ontbreekt — oude pidlane-visueel.js (herladen?)' };
+      var b = PLEigen.standaardBereik('Rempedaal positie', null, '%');
+      if (!b || b.min !== 0 || b.max !== 100) return { staat: 'FOUT', detail: '% zonder bereik geeft ' + JSON.stringify(b) + ', verwacht 0…100' };
+      var eigen = (typeof discoveredPIDDefs !== 'undefined' ? discoveredPIDDefs : []).filter(function (d) { return d.eigen; });
+      var af = PLVisueel.zonderSchaal(eigen);
+      if (!eigen.length) return { staat: 'LET OP', detail: 'regel goed, maar geen eigen sensoren in de keuzelijst om te toetsen' };
+      if (af.length) return { staat: 'LET OP', detail: af.length + ' eigen sensor(en) zonder schaal, staan met reden onder de boogkeuze: ' + af.map(function (d) { return d.name; }).join(', ') };
+      return { staat: 'OK', detail: 'alle ' + eigen.length + ' eigen sensoren met een getal hebben een schaal' };
+    }
+  },
+
+  // ── een adapter die niet op pair staat (#476, 13-10-2026) ──
+  {
+    issue: '#476',
+    naam: 'Verbinden: een zwijgende adapter krijgt "opnieuw verbinden", geen protocolkeuze',
+    waarom: 'Stond de adapter niet op pair, dan kwam de verbinding tot stand, gaf 0100 niets en vroeg de app om een protocol — waarna er geen PIDs stonden.',
+    proef: async function () {
+      if (typeof plAdapterStil !== 'function' || typeof toonAdapterStil !== 'function') return { staat: 'FOUT', detail: 'plAdapterStil of toonAdapterStil ontbreekt — oude pidlane-data.js of pidlane-bt.js (herladen?)' };
+      if (plAdapterStil('', '') !== true) return { staat: 'FOUT', detail: 'niets op 0100 en ATI heet niet stil' };
+      if (plAdapterStil('', 'ELM327 v1.5') !== false || plAdapterStil('UNABLE TO CONNECT', '') !== false) return { staat: 'FOUT', detail: 'een adapter die antwoordt heet toch stil' };
+      return { staat: 'OK', detail: 'stil = niets op 0100 én ATI; UNABLE TO CONNECT of een versie op ATI = de adapter leeft' };
+    }
+  },
+
   // ── de helling in caravanrit en ritanalyse (#463, 09-10-2026) ──
   {
     issue: '#463',
