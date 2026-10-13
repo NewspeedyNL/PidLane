@@ -291,6 +291,9 @@ var KRITIEK = [
   // onderzoek en de systeemtest. Ontbreekt hij, dan staat er weer alleen
   // "laat hem stationair draaien".
   'plStationairUitleg','bscGroepen',
+  // PLContact (#487): zonder deze drie herkent hij contact uit niet, of
+  // blijft de bus na een contact-uit op de stand van de stilte staan.
+  '_plKortGeledenOk','plStilteStand','plStilteTerug',
   // Blok 5 controleert hiermee of pidlane-motortype.js geladen is (hernoemd
   // uit pidlane-scheduler.js op 21-08).
   'selectStandardSet',

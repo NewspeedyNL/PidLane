@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Contact uit is geen storing (#487)
+ ═══════════════════════════════════════════════════════════
+
+ - Motor uit op de bestemming: de ECU zwijgt, de adapter niet. De app las
+   dat als een slechte bus (groep 3→1, multi-PID uit, ATST omhoog,
+   pollbudget omlaag) en begon daarna trager.
+ - Nu: na zes stille antwoorden over ≥ 1 s gaat de busstand van vóór de
+   stilte terug, pauzeren de bijstellers en vraagt de app elke 2 s alleen
+   het toerental. Melding "Contact uit — meting gepauzeerd", of "storing"
+   als de auto nog reed. Beide ook naar de serverlog (type `contact`).
+ - Nieuw: pidlane-contact.js (PLContact), test-contact.js, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Zonder adapter: zones, kosten, klachtenwijzer, adapter (#485)
  ═══════════════════════════════════════════════════════════
 

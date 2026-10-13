@@ -179,6 +179,9 @@ const PLLoad={
     if(nu-this._laatstTick<this.cfg.tickMs) return;
     this._laatstTick=nu;
     if(!connected||demoMode){ this._mult=1.0; this._staat='normaal'; return; }
+    // Contact uit: het venster staat vol NO DATA van een ECU die zwijgt, en
+    // daar valt geen tempo uit te leren (pidlane-contact.js).
+    if(_plEcuStil()) return;
     let s=null;
     try{ s=(window.PLBus&&typeof PLBus.stats==='function')?PLBus.stats():null; }catch(e){ console.warn('PLBus.stats mislukt:', e); }
     if(!s) return;
@@ -512,6 +515,8 @@ function markPidData(pid){
   }
 }
 function markPidNoData(pid){
+  // Contact uit: de hele ECU zwijgt, deze sensor is niet kapot.
+  if(_plEcuStil()) return;
   const nu=Date.now();
   _pidLastTry[pid]=nu;
   if(!_streakSince[pid]) _streakSince[pid]=nu;
@@ -732,10 +737,16 @@ function startPoll(){
   // onnodig bezet houdt. Wanneer de volgende ronde komt: zie _pollWacht().
   const ronde=async()=>{
     let bezet=false;
-    try{ if(connected&&activePIDs.size) await _pollRonde(()=>{ bezet=true; }); }
+    // Contact uit (PLContact): geen volle ronde vol NO DATA, alleen af en toe
+    // het toerental. Komt dat terug, dan gaat de volgende ronde gewoon door.
+    const stil=_plEcuStil();
+    try{
+      if(stil){ if(connected) await withBusOfNiets('poll', ()=>plVraagSolo('010C')); }
+      else if(connected&&activePIDs.size) await _pollRonde(()=>{ bezet=true; });
+    }
     catch(e){ console.warn('Pollronde mislukt:', e); }
     if(gen!==_pollGen) return;   // intussen gestopt of opnieuw gestart
-    pollTimer=setTimeout(ronde, bezet?POLL_BEZET_MS:_pollWacht(Date.now()));
+    pollTimer=setTimeout(ronde, stil?PLContact.cfg.hartslagMs:(bezet?POLL_BEZET_MS:_pollWacht(Date.now())));
   };
   pollTimer=setTimeout(ronde, POLL_WACHT_MIN);
 }
@@ -922,6 +933,30 @@ function _plKortGeledenOk(pid){
   const w=_pidLastOk[pid];
   return typeof w==='number' && w>0 && (Date.now()-w)<(typeof GROEP_BEKEND_MS!=='undefined' ? GROEP_BEKEND_MS : 300000);
 }
+/* ── CONTACT UIT IS GEEN STORING (13-10-2026, zie pidlane-contact.js) ──
+   PLContact vraagt bij het eerste stille antwoord de stand van de bus op en
+   zet die terug zodra vaststaat dat de hele ECU zwijgt. Alles wat de
+   bijstellers in die eerste seconde van de stilte leerden, is daarmee weg. */
+function _plEcuStil(){
+  try{ return !!(window.PLContact && PLContact.stil()); }
+  catch(e){ console.warn('PLContact.stil mislukt — bijstellen gaat door', e); return false; }
+}
+function plStilteStand(){
+  let st=null;
+  try{ st=(window.PLVerbind&&typeof window.PLVerbind.nu==='function')?window.PLVerbind.nu().st:null; }
+  catch(e){ console.warn('PLVerbind.nu mislukt — ATST gaat niet mee terug', e); }
+  return { groep:PLBus.batchGroep(), vast:PLBus.batchVast(), batchAan:window._batchSupported,
+           batchUitSinds:_batchOffSince, dips:_batchDips, mult:PLLoad._mult, st };
+}
+function plStilteTerug(s){
+  if(!s) return;
+  if(!s.vast && PLBus.batchGroep()!==s.groep) PLBus.batchZet(s.groep, false);
+  window._batchSupported=s.batchAan; _batchOffSince=s.batchUitSinds; _batchDips=s.dips;
+  if(typeof s.mult==='number') PLLoad._mult=s.mult;
+  for(const pid of Object.keys(_noDataStreak)){ _noDataStreak[pid]=0; delete _streakSince[pid]; }
+  try{ if(s.st && window.PLVerbind && typeof window.PLVerbind.stTerug==='function') window.PLVerbind.stTerug(s.st); }
+  catch(e){ console.warn('PLVerbind.stTerug mislukt — ATST blijft bijgestuurd', e); }
+}
 function _plNoteVerbind(mist){
   try{ if(window.PLVerbind && typeof PLVerbind.noteAntwoord==='function') PLVerbind.noteAntwoord(!!mist); }
   catch(e){ console.warn('PLVerbind.noteAntwoord mislukt — ATST wordt niet bijgestuurd', e); }
@@ -1064,6 +1099,7 @@ window.plFrames=plFrames;
 // ── P8: batch-uitval met herstel i.p.v. permanent uitschakelen ──
 let _batchDips=0, _batchOffSince=0;
 function batchDip(){
+  if(_plEcuStil()) return;   // een stille ECU zegt niets over de groepsgrootte
   _batchDips++;
   // Eerst een trapje kleiner proberen (3->2->1). Pas als dat óók niet helpt
   // valt de code hieronder terug op batch helemaal uit.

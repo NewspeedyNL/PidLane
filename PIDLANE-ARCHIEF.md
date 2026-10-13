@@ -15,6 +15,19 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 13-10-2026 — Contact uit werd gelezen als een slechte bus (#487)
+
+Logboek 23:20 (Mazda CX-5, OBDLink MX+). Laatste antwoord 664 tpm, 0 km/u,
+14,1 V; daarna alleen NO DATA, met een adapter die gewoon binnen 220 ms
+antwoordde. In 0,5 s: groep 3→2→1, ATST 0x1C→0x32, multi-PID uit, en
+pollbudget naar 74%. Elke bijsteller leerde van een antwoord waar niets in
+zat. De accuspanning is géén signaal: de laatste 0142 was nog 14,1 V, want
+de ECU valt stil vóórdat de spanning zakt. Het onderscheid zit in de
+laatste snelheid. In D1 stond van dit moment niets — alleen `connect` en
+tabwissels gaan naar de server — dus de rit van 21:18 was niet terug te
+lezen. Het herverbindpad bij een slapende adapter (lege antwoorden) is niet
+aangeraakt; dat is een vraag voor een rit.
+
 ## 13-10-2026 — Tanken herkennen aan het brandstofpeil (#469 stap 2)
 
 Het peil (012F) klotst tijdens het rijden en bij optrekken; daarom telt alleen een mediaan over vijf metingen in stilstand. Het eerste plan vergeleek elke tik met de vorige, en dat mist het tanken met contact aan: het peil loopt dan over twee minuten in kleine stapjes op, en geen enkele stap haalt 15 punt. Nu is er een anker — het peil bij de eerste stilstand na rijden of verbinden — en wordt binnen dezelfde stilstand tegen dát anker vergeleken, één keer. Op verzoek per voertuig aan/uit (`kp_voertuig.tanken`), standaard uit: "misschien interesseert het niemand". Stap 3 is alleen voor het deel "ritten per cyclus exporteren" gebouwd; een fijnmazige datalog per tankcyclus op het toestel en stap 4/5 niet. Of 012F na een echte tankstop netjes genoeg springt (helling, filtering in het instrumentenpaneel) is een ritvraag in `CAMPAGNE`.
