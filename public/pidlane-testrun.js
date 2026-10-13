@@ -2787,6 +2787,27 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── tanken herkennen aan het brandstofpeil (#469 stap 2, 13-10-2026) ──
+  {
+    issue: '#469',
+    naam: 'Tankbeurten: per voertuig aan of uit, en na het tanken vraagt de app het zelf',
+    waarom: 'Tankbeurten moesten met de hand worden ingevuld, en niet iedereen wil ze bijhouden: nu standaard uit, en aan herkent de app een sprong in het brandstofpeil bij stilstand.',
+    proef: async function () {
+      if (!window.PLTank || typeof PLTank.peilTik !== 'function') return { staat: 'FOUT', detail: 'PLTank.peilTik ontbreekt — oude pidlane-tank.js (herladen?)' };
+      var r = PLTank.peilTik({ buf: [12, 12, 12, 12], stil: false }, 0, 96, Date.now(), { pct: 12, t: 0 });
+      if (r.sprong) return { staat: 'FOUT', detail: 'vier metingen van 12 en één van 96 heet al tanken (de mediaan dempt niet)' };
+      r = PLTank.peilTik({ buf: [96, 96, 96, 96], stil: false }, 0, 96, Date.now(), { pct: 12, t: 0 });
+      if (!r.sprong) return { staat: 'FOUT', detail: 'van 12 naar 96 % in stilstand wordt niet herkend' };
+      var v = (window.PLGarage && PLGarage.actief) ? PLGarage.actief() : null;
+      if (!v) return { staat: 'LET OP', detail: 'regel goed, maar geen actief voertuig in Mijn voertuigen' };
+      if (v.tanken !== 'aan') return { staat: 'LET OP', detail: 'regel goed · tankbeurten bijhouden staat uit voor ' + (v.naam || 'dit voertuig') + ' (Profiel → Tankbeurten bijhouden)' };
+      var a = null; try { a = JSON.parse(localStorage.getItem('pl_tank_peil_' + v.id) || 'null'); } catch (e) { a = null; }
+      var p = (typeof pidVals !== 'undefined') ? pidVals['012F'] : undefined;
+      if (typeof p !== 'number') return { staat: 'LET OP', detail: 'aan, maar het brandstofpeil (012F) staat niet aan: zonder peil geen herkenning' };
+      return { staat: 'OK', detail: 'aan · peil nu ' + Math.round(p) + ' % · anker ' + (a ? Math.round(a.pct) + ' % (' + new Date(a.t).toLocaleString('nl') + ')' : 'nog geen — volgt bij de eerstvolgende stilstand') };
+    }
+  },
+
   // ── een diesel-hybride blijft een diesel (#430, 13-10-2026) ──
   {
     issue: '#430',
@@ -10449,6 +10470,9 @@ const CAMPAGNE = {
     'TELEFOON VAST EN GENULD. Zet hem in de houder, sta stil op vlakke grond en tik Nulstellen (Telemetrie). Zonder dat telt de helling nergens mee en schat de app zoals vroeger uit de motor.',
     'CARAVANRIT. De badge zegt nu ook de hoek ("⛰️ Klim · +3.2°") als hij gemeten is. Rij een oprit of dijk op: klopt de hoek ongeveer, en springt hij op Klim? Op vlakke snelweg met tegenwind hoort hij op Vlak te blijven. Onderaan het rapport staat of de terreinverdeling gemeten of geschat was.',
     'RITANALYSE. Rij een fase door heuvels: de faseduiding hoort "bergop", "bergaf" of "heuvelachtig" te zeggen, en Helling (telefoon) staat bij de cijfers. Is 2,5° te gevoelig of te traag, zet het in #463.',
+    '── #469: TANKEN HERKENNEN ────────',
+    'ZET HET AAN. Mijn voertuigen → je auto → Profiel → Tankbeurten bijhouden: aan. Het staat standaard uit.',
+    'TANK MET DE APP VERBONDEN, OF ERNA. Sta stil vóór het tanken (de app legt het peil vast), tank, en verbind daarna weer of laat hem verbonden. Komt de vraag "Getankt?" met een peil dat klopt met wat je dashboard zegt? Komt hij maar één keer? Komt hij nooit bij een helling of een bocht zonder tanken? Zo niet: plak het peil vóór en na uit de vraag in #469.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
     'HYBRIDE (#430, #452) heeft een hybride nodig; het analyserapport (#448) een analyse met AI, geparkeerd.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'

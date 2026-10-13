@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Tankbeurten aan/uit per voertuig en tanken herkennen (#469)
+ ═══════════════════════════════════════════════════════════
+
+ - Tankbeurten bijhouden staat per voertuig in het Profiel, standaard uit.
+   Uit: geen tabblad, geen vraag, geen export. Bewaarde beurten blijven.
+ - Aan: na een sprong van ≥ 15 procentpunt in het brandstofpeil bij
+   stilstand vraagt de app "Getankt?" en vult het formulier met het peil
+   en zijn eigen bereikschatting (CA09).
+ - Per tankcyclus de ritten als CSV, en de ritten sinds de laatste beurt.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Registreren weer direct op het inlogscherm
  ═══════════════════════════════════════════════════════════
 
