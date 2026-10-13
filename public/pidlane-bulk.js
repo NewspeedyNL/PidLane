@@ -121,12 +121,6 @@ function logg(m, lvl) {
   try { console.log('[PLBulk] ' + m); } catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 
-function magIk() {
-  // De beheerder, of een klant met de ontwikkelaarsvlag (28-09-2026).
-  try { if (typeof magOntwikkelen === 'function') return !!magOntwikkelen(); if (typeof isAdmin === 'function') return !!isAdmin(); } catch(e){ console.warn('magOntwikkelen mislukt:', e); }
-  return false;
-}
-
 function _blkNu() { return Date.now(); }
 
 function tijdKort(ms) {
@@ -421,7 +415,8 @@ function chipWeg() {
 /* ═══════════════════ PUBLIEKE BEDIENING ═══════════════════ */
 
 async function start(stil) {
-  if (!magIk()) { toast('Alleen voor ontwikkelaars'); return false; }
+  // Sinds #478 voor iedereen: de opname blijft op het toestel, er gaat niets
+  // naar de Worker, dus er valt niets af te schermen.
   if (_blkS.actief) { toast('Recorder loopt al'); return false; }
   if (typeof demoMode !== 'undefined' && demoMode) { toast('De recorder neemt geen demo op — verbind een echte auto'); return false; }
   try { await dbKlaar(); }
@@ -564,7 +559,6 @@ async function wisAlles() {
 /* ═══════════════════ DASHBOARD ═══════════════════ */
 
 function openDash() {
-  if (!magIk()) { toast('Alleen voor ontwikkelaars'); return; }
   var o = _blkEl('blkOverlay');
   if (!o) { o = bouwDash(); }
   o.style.display = 'flex';
@@ -684,7 +678,6 @@ function herstelPoging() {
     if (_blkS.actief) return;              // handmatig gestart binnen de 3 s: niks doen
     var m = metaLees();
     if (!m || !m.actief) return;
-    if (!magIk()) return;
     var mins = Math.round((_blkNu() - (m.gestart || _blkNu())) / 60000);
     toast('Bulk-recorder liep nog (' + mins + ' min) — hervat');
     logg('sessie hervat na herstart', 'warn');

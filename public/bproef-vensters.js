@@ -98,14 +98,20 @@ function toets(naam, waar, uitleg) {
       window.currentUser = { user: 'klant', role: 'user', label: 'klant' };
       PLKlant.pasMenuAan();
       const klant = { bulkrec: zicht('wc-bulkrec'), waak: zicht('wc-waak') };
+      // #478: niet alleen de kaart, ook het venster zelf opent voor een klant.
+      openBulkRecorder();
+      const ov = document.getElementById('blkOverlay');
+      klant.venster = !!ov && getComputedStyle(ov).display !== 'none';
+      if (ov) ov.style.display = 'none';
       window.currentUser = { user: 'beheer', role: 'admin', label: 'beheer' };
       PLKlant.pasMenuAan();
       const beheer = { bulkrec: zicht('wc-bulkrec') };
       return { klant, beheer };
     })()`);
-    toets('een klant ziet de bulk-recorder niet', !rol.klant.bulkrec, JSON.stringify(rol));
+    toets('een klant ziet de bulk-recorder ook (#478)', rol.klant.bulkrec, JSON.stringify(rol));
+    toets('en het recordervenster opent voor hem', rol.klant.venster, JSON.stringify(rol));
     toets('maar wel de waakronde', rol.klant.waak, JSON.stringify(rol));
-    toets('TEGENPROEF: beheer ziet hem wel', rol.beheer.bulkrec, JSON.stringify(rol));
+    toets('beheer ziet hem ook', rol.beheer.bulkrec, JSON.stringify(rol));
 
     // De enige ingang naar de bulk-analyse: de knop in het recordervenster.
     const ingang = await app.ev(`(async function(){

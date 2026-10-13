@@ -1015,13 +1015,12 @@ function isOud(pid, nu){ return plOud(pid, nu); }
 // start er één vanuit dit vak. Loopt er een, dan verdwijnen de snelkoppelingen
 // naar de andere. Lopen er toch twee (aangezet via het run-paneel), dan staan
 // ze allebei op de rail: wat loopt verzwijgen is erger dan een volle rail.
-// De bulk-recorder is alleen voor beheerders (magIk() in pidlane-bulk.js);
-// een snelkoppeling die bij iemand anders alleen "Alleen voor admin" zegt,
-// hoort er niet te staan.
+// Een item met admin:true staat alleen bij de beheerder als snelkoppeling.
+// De bulk-recorder had dat tot #478; sinds dan is hij voor iedereen.
 const HOOFD = [
   { id:'monitor', naam:'Rit-monitor',   kort:'Rit-monitor', icoon:'🔔', snel:true },
   { id:'caravan', naam:'Caravanrit',    kort:'Caravanrit',  icoon:'🚐', snel:false },
-  { id:'bulk',    naam:'Bulk-recorder', kort:'Recorder',    icoon:'⏺',  snel:true, admin:true },
+  { id:'bulk',    naam:'Bulk-recorder', kort:'Recorder',    icoon:'⏺',  snel:true },
   { id:'rit',     naam:'Rit-analyse',   kort:'Rit-analyse', icoon:'🎒', snel:false }
 ];
 const BEV_IN_VAK = 2;           // zelfde grens als de bevindingenbalk (BEV_MAX)

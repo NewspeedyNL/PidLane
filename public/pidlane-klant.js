@@ -812,9 +812,9 @@
       let admin = false;
       // Het ontwikkelmenu: de beheerder, of een klant met de ontwikkelaarsvlag.
       try { admin = (typeof magOntwikkelen === 'function') ? magOntwikkelen() : ((typeof isAdmin === 'function') && isAdmin()); } catch(e){ console.warn('magOntwikkelen mislukt:', e); }
-      // De bulk-kaarten zijn beheergereedschap en stonden tot #286 in het
-      // Admin-menu; in de deur "Live data" gelden dezelfde regels.
-      ['admGroupBtn', 'admGroup', 'wc-bulkrec'].forEach(function (id) {
+      // De kaart "Bulk-recorder" in de deur Live data hoort hier sinds #478
+      // niet meer bij: de recorder is voor iedereen.
+      ['admGroupBtn', 'admGroup'].forEach(function (id) {
         const el = document.getElementById(id);
         if (el) el.style.display = admin ? '' : 'none';
       });
