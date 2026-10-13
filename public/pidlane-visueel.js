@@ -738,6 +738,15 @@ function kandidatenPlek(soort){
     return soort==='boog' ? !!boogSchaal(d.pid, def) : getalKan(d.pid, def);
   });
 }
+/* Eigen sensoren die op een boog zouden kunnen maar geen schaal hebben (#472):
+   een getal zonder min en max. Ze vallen terecht af — een boog weet dan niet
+   waar hij vol is — maar de klant moet zien waaróm, anders lijkt de sensor kwijt. */
+function zonderSchaal(lijst){
+  return (lijst||[]).filter(function(d){
+    const def=defVan(d.pid) || d;
+    return !!(def && def.eigen) && getalKan(d.pid, def) && !boogSchaal(d.pid, def);
+  });
+}
 // Wat er in de keuzelijst van een plek mag: niet verborgen, geen telefoon.
 function kiesbaar(){
   let lijst=[];
@@ -763,7 +772,7 @@ function kiesPlek(rol){
     const x=PLEKKEN.filter(function(q){ return q.rol===rol; })[0]; if(!x) return;
     toonKeuze(pr, rol, x.naam, 'Kies wat hier staat. '+(x.soort==='boog'
         ? 'Op een boog passen alleen sensoren met een vaste schaal.' : 'Hier passen sensoren met een getal.')+
-      ' Automatisch is '+PLEK_AUTO[rol]+'.', nu, kandidatenPlek(x.soort));
+      ' Automatisch is '+PLEK_AUTO[rol]+'.', nu, kandidatenPlek(x.soort), x.soort==='boog' ? zonderSchaal(kiesbaar()) : []);
     return;
   }
   const z=P.voorInd(pr, _staat.ind && _staat.ind.profiel);
@@ -774,7 +783,7 @@ function kiesPlek(rol){
 }
 /* Het keuzevel: "Automatisch" en de kandidaten. Een keuze gaat naar
    pl_vis_keuze (PLVisProfiel.zetKeuze) en de meter wordt opnieuw opgebouwd. */
-function toonKeuze(pr, rol, titel, uitleg, nu, lijst){
+function toonKeuze(pr, rol, titel, uitleg, nu, lijst, afval){
   const P=PF();
   let ov=el('plVisKies');
   if(!ov){
@@ -791,7 +800,10 @@ function toonKeuze(pr, rol, titel, uitleg, nu, lijst){
     '<button type="button" class="vk-sluit" aria-label="Sluiten" onclick="document.getElementById(\'plVisKies\').style.display=\'none\'">✕</button></div>'+
     '<p class="vk-uitleg">'+esc(uitleg)+'</p>'+
     rij('', 'Automatisch', nu ? '' : 'nu gekozen')+
-    lijst.map(function(d){ return rij(d.pid, d.name, (d.unit||'')+' · '+d.pid); }).join('')+'</div>';
+    lijst.map(function(d){ return rij(d.pid, d.name, (d.unit||'')+' · '+d.pid); }).join('')+
+    ((afval||[]).length ? '<p class="vk-afval" id="plVisAfval">Niet op een boog, want zonder schaal: '+
+      afval.map(function(d){ return '<b>'+esc(d.name||d.pid)+'</b>'; }).join(', ')+
+      '. Vul een minimum en maximum in bij Mijn voertuigen → Sensoren.</p>' : '')+'</div>';
   ov.querySelectorAll('.vk-rij').forEach(function(b){
     b.onclick=function(){
       P.zetKeuze(pr, rol, b.getAttribute('data-pid'));
@@ -1825,7 +1837,7 @@ window.PLVisueel = {
   PLEKKEN:PLEKKEN, BOOG_SCHAAL:BOOG_SCHAAL, HOOFD:HOOFD, SCHAAL:SCHAAL,
   schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
   stand:stand, tekst:tekst, plekOordeel:plekOordeel, plekGetal:plekGetal, plekEenheid:plekEenheid, boogSchaal:boogSchaal, getalKan:getalKan,
-  plekKeten:plekKeten, plekStaat:plekStaat, kandidatenPlek:kandidatenPlek,
+  plekKeten:plekKeten, plekStaat:plekStaat, kandidatenPlek:kandidatenPlek, zonderSchaal:zonderSchaal,
   VERMOGEN:VERMOGEN, VRAAG_KETEN:VRAAG_KETEN, naaldSoort:naaldSoort, vraagUit:vraagUit, laadUit:laadUit, vermogenStand:vermogenStand,
   versnellingUit:versnellingUit, aandeelBij:aandeelBij, aandeelUit:aandeelUit, accuLeerBij:accuLeerBij, elektrischBereik:elektrischBereik, bereikUit:bereikUit,
   wijzerplaat:wijzerplaat, boogPad:boogPad, hoekPlek:hoekPlek, boogHoeken:boogHoeken,

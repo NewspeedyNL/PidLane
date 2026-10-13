@@ -295,6 +295,13 @@ waar('een eigen sensor zonder bereik (1e9) kan niet op een boog, wel als getal',
 waar('een tekst-PID (brandstofsysteem 0103) kan nergens', V.boogSchaal('0103', D['0103']) === null && !V.getalKan('0103', D['0103']));
 waar('toerental en snelheid staan al op de meter: niet op een plek', !V.getalKan('010C', D['010C']) && !V.getalKan('010D', D['010D']) && V.boogSchaal('010D', D['010D']) === null);
 waar('zonder definitie niets', V.boogSchaal('22ABCD', null) === null && !V.getalKan('22ABCD', null));
+{ // #472: wat er van een boog afvalt, met de reden erbij
+  const zonder = { pid: '221310', name: 'Olie', unit: '°C', min: -1e9, max: 1e9, eigen: true };
+  const met = { pid: '222B0D', name: 'Rempedaal positie', unit: '%', min: 0, max: 100, eigen: true };
+  const vast = { pid: '22F00D', name: 'Vaste ruwe', unit: '', min: -1e9, max: 1e9 };
+  const af = V.zonderSchaal([zonder, met, vast]).map(d => d.pid).join(',');
+  waar('een eigen sensor zonder schaal staat bij "niet op een boog" (#472)', af === '221310', af);
+}
 // De keten van een plek: de eigen keuze vooraan, maar alleen als hij past.
 const PL = (rol) => V.PLEKKEN.find(x => x.rol === rol);
 waar('een gekozen sensor gaat vóór de vaste keten', JSON.stringify(V.plekKeten(PL('links'), { 'basis/links': '015C' })) === JSON.stringify(['015C', '0105', '0167']));

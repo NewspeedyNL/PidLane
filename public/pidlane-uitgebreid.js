@@ -345,6 +345,9 @@
       return { min: 0, max: inU(4), dL: inU(1.5), dH: inU(3.5) };
     }
     if (/(olie|oil).*(temp)|(motorolietemp)/i.test(String(naam || '')) && /°c|^c$/.test(u)) return Object.assign({}, OLIE_STANDAARD);
+    // Een percentage zonder bereik loopt van 0 tot 100 (#472): anders had een
+    // rempedaal of gaspedaal geen schaal en kon hij niet op een boog.
+    if (u === '%') return { min: 0, max: 100 };
     return null;
   }
 

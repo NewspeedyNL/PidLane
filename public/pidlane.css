@@ -3181,6 +3181,7 @@ html.dark .plh-i, #loginOv .plh-i, .mbtn.p > .plh-i, .pl-check > .plh-i {
 #plVisKies h2 { flex:1; margin:0; font-size:18px; }
 #plVisKies .vk-sluit { background:none; border:0; color:inherit; font-size:20px; padding:4px 8px; cursor:pointer; }
 #plVisKies .vk-uitleg { margin:6px 0 10px; font-size:13px; color:var(--tx2); }
+#plVisKies .vk-afval { margin:12px 0 4px; font-size:12px; color:var(--tx3); }
 #plVisKies .vk-rij { display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; min-height:44px; padding:8px 10px; margin:0 0 4px;
   background:var(--sur2); color:var(--tx); border:1px solid transparent; border-radius:10px; text-align:left; font-size:15px; cursor:pointer; }
 #plVisKies .vk-rij span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

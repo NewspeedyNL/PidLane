@@ -210,6 +210,15 @@ t('zonder wielen: vier grijze', (B.mini(null).match(/vbm-wiel geen/g) || []).len
   const keuze = new Function('plEigenDefs', 'discoveredPIDDefs', RS.slice(ki, kj) + "catch(e){ throw e; }\nreturn discoveredPIDDefs;")(() => E.defs(), []);
   t('in de keuzelijst: de motorolie wel, de acht banden niet', keuze.map(d => d.pid).join(','), '221310');
 
+  console.log('\n— #472: een percentage zonder bereik krijgt 0…100 —');
+  t('standaardBereik: % geeft 0…100', E.standaardBereik('Rempedaal positie', null, '%'), { min: 0, max: 100 });
+  t('standaardBereik: kPa zonder band niets', E.standaardBereik('Turbodruk', null, 'kPa'), null);
+  E.zet([{ code: '222B0D', naam: 'Rempedaal positie', formule: '(A*256+B)/2.3', eenheid: '%', ecu: '760' },
+         { code: '222B0E', naam: 'Gaspedaal eigen', formule: 'A', eenheid: '%', ecu: '760', min: 10, max: 90 }], 'CX-5');
+  const rp = E.defs().filter(d => d.pid === '222B0D')[0], gp = E.defs().filter(d => d.pid === '222B0E')[0];
+  t('de eigen rempedaal (de CX-5 van 13-10) loopt van 0 tot 100', [rp.min, rp.max], [0, 100]);
+  t('een eigen bereik wint van de standaard', [gp.min, gp.max], [10, 90]);
+
   console.log('\n' + (fout ? fout + ' van ' + (ok + fout) + ' FOUT' : 'Alle ' + ok + ' goed'));
   process.exit(fout ? 1 : 0);
 })().catch(e => { console.log('FOUT: ' + (e && e.stack || e)); process.exit(1); });
