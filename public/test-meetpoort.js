@@ -8,7 +8,7 @@ const fs = require('fs');
 
 const src = fs.readFileSync(__dirname + '/pidlane-fuel.js', 'utf8');
 const van = src.indexOf('const MEET_EIS = {');
-const tot = src.indexOf('/* Toont het meetscherm');
+const tot = src.indexOf('/* Hoe lang een bevestigde meting geldt');
 if (van < 0 || tot < 0 || tot < van) {
   console.error('FOUT: knipbereik niet gevonden in pidlane-fuel.js');
   process.exit(1);
