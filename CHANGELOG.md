@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Registreren weer direct op het inlogscherm
+ ═══════════════════════════════════════════════════════════
+
+ - "Nog geen account? Gratis aanmaken" staat niet meer achter Geavanceerd,
+   en is een omlijnd vak in plaats van een kleine link.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Een diesel-hybride blijft een diesel (#430)
  ═══════════════════════════════════════════════════════════
 

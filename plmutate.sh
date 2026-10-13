@@ -274,6 +274,7 @@ MUTATIES=(
 "public/pidlane.css@@#welcomeScreen .welcome-scroll { padding-bottom:calc(24px + var(--pl-sab)); }@@#welcomeScreen .welcome-scroll { padding-bottom:24px; }@@test-schermranden.js@@de onderste kaart van het keuzescherm valt weer achter de knoppenbalk (#135)"
 "public/pidlane.css@@.ov#loginOv:not(.lg-open) .lg-geav{ display:none; }@@.ov#loginOv:not(.lg-open) .lg-geav{ }@@bproef-inlogscherm.js@@het inlogscherm toont account, versie en Nieuwste versie laden weer zonder dat je Geavanceerd opent"
 "public/index.html@@<button class=\"mbtn s\" id=\"btnDemoLogin\"@@<button class=\"mbtn s lg-geav\" id=\"btnDemoLogin\"@@bproef-inlogscherm.js@@de demoknop verdwijnt mee achter Geavanceerd: een Play-reviewer zonder account ziet hem niet meer"
+"public/index.html@@<a href=\"#\" class=\"lg-nieuw\" onclick@@<a href=\"#\" class=\"lg-nieuw lg-geav\" onclick@@bproef-inlogscherm.js@@Nog geen account verdwijnt weer achter Geavanceerd: nieuwe gebruikers vinden registreren niet"
 "public/pidlane-logboek.js@@        t: r.t || '',\n        ms: (typeof r.ms === 'number' ? r.ms : null),\n        bron: 'PID',@@        t: r.ts || r.tijd || '',\n        ms: (typeof r.ms === 'number' ? r.ms : null),\n        bron: 'PID',@@test-logboeksort.js@@de PID-regels lezen weer een veldnaam die de diagring niet heeft"
 # ── de vier reparaties van 03-09-2026 (#103 t/m #106) ──
 "public/pidlane-testrun.js@@    if (gezien.has(sleutel)) return;@@@@test-opruimmelding.js@@dezelfde opruiming in beide logs telt weer dubbel (#104)"

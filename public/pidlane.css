@@ -2398,7 +2398,7 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .ov#loginOv .mbtn.s{ padding:12px 8px; border-radius:12px; font-size:13px; }
 .ov#loginOv .lg-of{ display:flex; align-items:center; gap:10px; color:var(--tx3); font-size:11.5px; font-weight:600; }
 .ov#loginOv .lg-of::before, .ov#loginOv .lg-of::after{ content:""; flex:1; height:1px; background:rgba(255,255,255,.12); }
-.ov#loginOv .lg-nieuw{ display:block; margin-top:6px; text-align:center; font-size:13px; color:var(--tx2); text-decoration:none; }
+.ov#loginOv .lg-nieuw{ display:block; margin-top:12px; padding:10px 12px; text-align:center; font-size:14px; color:var(--tx2); text-decoration:none; border:1px solid var(--bl); border-radius:8px; }
 .ov#loginOv .lg-nieuw b{ color:var(--bl); font-weight:800; }
 .ov#loginOv .lg-foot{ margin-top:18px; font-size:11.5px; line-height:1.65; }
 .ov#loginOv .lg-fris{ font-size:11.5px; padding:6px 14px; }
