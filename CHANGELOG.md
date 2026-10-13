@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Knop "Eigen" in de sensorkeuzelijst (#474)
+ ═══════════════════════════════════════════════════════════
+
+ - Naast Diep zoeken: opent Mijn voertuigen meteen op Sensoren van het
+   voertuig aan de adapter. Alleen voor wie Mijn voertuigen heeft.
+
+ ═══════════════════════════════════════════════════════════
+ 13-10-2026 — De bulk-recorder is voor iedereen (#478)
+ ═══════════════════════════════════════════════════════════
+
+ - De kaart in Live data, de snelkoppeling onder de meter van Visueel en
+   het recordervenster zelf vragen geen ontwikkelaarsvlag meer. De opname
+   blijft op het toestel; er gaat niets naar de Worker.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Nieuwe klant geeft weer een mail aan Support (#477)
  ═══════════════════════════════════════════════════════════
 

@@ -582,8 +582,8 @@ waar('niets actief: geen chips, geen regels, wel snelkoppelingen', m.lopend.leng
 waar('de snelkoppelingen voor een beheerder: rit-monitor, bulk-recorder en waakronde (caravanrit niet meer, 27-09)',
   m.snel.map(s => s.id).join(',') === 'monitor,bulk,waak', m.snel.map(s => s.id).join(','));
 m = V.meldingen(run(), [], false);
-waar('voor een gewone gebruiker geen bulk-recorder (die weigert daar toch)',
-  m.snel.map(s => s.id).join(',') === 'monitor,waak', m.snel.map(s => s.id).join(','));
+waar('ook een gewone gebruiker krijgt de bulk-recorder (#478)',
+  m.snel.map(s => s.id).join(',') === 'monitor,bulk,waak', m.snel.map(s => s.id).join(','));
 m = V.meldingen(run({ caravan: { aan: true, draait: true, detail: 'rit loopt' } }), [], true);
 waar('caravanrit loopt: die staat op de rail, met de status uit PLRun', m.lopend[0] && m.lopend[0].id === 'caravan' && m.lopend[0].kort === 'rit loopt');
 waar('caravanrit loopt: geen snelkoppeling naar rit-monitor of bulk-recorder (één tegelijk)',

@@ -61,10 +61,10 @@ function toets(naam, waar, uitleg) {
       await wacht(1200);
       await app.ev(zet);
       // Losgelaten pedaal en de laatste (klotsende) tankmeting, zoals updPID ze doorgeeft.
-      await app.ev(`applyG('0149', 20); applyG('012F', 7.8); true`);
-      const los = await app.ev(lees[view]);
-      await app.ev(`applyG('0149', 50); true`);
-      const in_ = await app.ev(lees[view]);
+      // Zetten en lezen in één app.ev (#465): daartussen loopt de demo-poll
+      // door, en die zette 0149 via updPID → applyG terug op de rust.
+      const los = await app.ev(`(function(){ applyG('0149', 20); applyG('012F', 7.8); return ${lees[view]}; })()`);
+      const in_ = await app.ev(`(function(){ applyG('0149', 50); return ${lees[view]}; })()`);
       uit[view] = { los: getal(los.ped), in: getal(in_.ped), tank: getal(los.tank), ruw: los, plek: los.plek };
       console.log('\n── ' + view + ' ──');
       // 20 tegen een geleerde rust van 19,6: 0,67 %, getoond als 1.
