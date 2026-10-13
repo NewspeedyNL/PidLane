@@ -2787,6 +2787,28 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── contact uit is geen storing (#487, 13-10-2026) ──
+  {
+    issue: '#487',
+    naam: 'Contact uit: de busstand van vóór de stilte komt terug, en het heet geen storing',
+    waarom: 'Bij motor uit op de bestemming zwijgt de ECU; de app las dat als een slechte bus, zette groep, multi-PID, ATST en tempo omlaag en begon daarna trager.',
+    proef: async function () {
+      if (!window.PLContact || !PLContact._kern) return { staat: 'FOUT', detail: 'PLContact ontbreekt — pidlane-contact.js niet geladen (herladen?)' };
+      if (typeof plStilteStand !== 'function' || typeof plStilteTerug !== 'function') return { staat: 'FOUT', detail: 'plStilteStand/plStilteTerug ontbreken — oude pidlane-plload.js (herladen?)' };
+      if (!window.PLVerbind || typeof PLVerbind.stTerug !== 'function') return { staat: 'FOUT', detail: 'PLVerbind.stTerug ontbreekt — oude pidlane-bt.js (herladen?)' };
+      var K = PLContact._kern, t = 0, terug = [], meld = [];
+      var c = K.maak({ nu: function () { return t; }, kortOk: function () { return true; }, stand: function () { return { nr: terug.length + 1 }; },
+        laatst: function () { return { rpm: 664, kmh: 0 }; }, terug: function (s) { terug.push(s); }, meld: function (s) { meld.push(s); }, weer: function () {} });
+      c.noteAntwoord('010C0D492', '008 0:410C0A620D00 1:49270000000000');
+      for (var i = 0; i < 8; i++) { c.noteAntwoord('010C1', 'NO DATA'); t += 230; }
+      if (!c.stil() || meld[0] !== 'contact_uit') return { staat: 'FOUT', detail: 'de reeks van 13-10 23:20 heet niet contact uit (' + JSON.stringify(meld) + ')' };
+      if (K.oordeel({ rpm: 2100, kmh: 80 }) !== 'storing') return { staat: 'FOUT', detail: 'stilvallen bij 80 km/u heet geen storing' };
+      var nu = PLContact.stand();
+      return { staat: 'OK', detail: 'reeks van 13-10 → contact uit, stand teruggezet · nu ' + (nu.stil ? 'stil (' + nu.oordeel + ')' : 'ECU antwoordt') +
+        ' · zet het contact uit met de app open: één melding, geen ATST- of groepswijziging in het logboek' };
+    }
+  },
+
   // ── zonder adapter: zones, kosten, klachtenwijzer, adapter (#485, 13-10-2026) ──
   {
     issue: '#485',

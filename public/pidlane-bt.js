@@ -1518,6 +1518,11 @@ function trackBtQuality(cmd, r){
   // Sinds #302 dragen batches ook een antwoordcijfer ('010C0D052', zie
   // PLAntwoordtal): één hexcijfer achteraan, niet alleen een '1'.
   if(!/^01([0-9A-F]{2})+[0-9A-F]?$/i.test(cmd)) return;
+  // Contact uit (pidlane-contact.js): de adapter antwoordt nog, de ECU niet.
+  // Dat is geen slechte verbinding, dus ook geen waarschuwing daarover.
+  let _ecuStil=false;
+  try{ _ecuStil = !!(window.PLContact && PLContact.noteAntwoord(cmd, r)); }
+  catch(e){ console.warn('PLContact.noteAntwoord mislukt — contact uit wordt niet herkend', e); }
   // Stille socketdood: een dode socket geeft NIETS terug (geen bytes), terwijl
   // 'NO DATA' juist betekent dat de adapter wél leeft. Tel daarom alleen écht
   // lege responses. Meerdere achter elkaar = verbinding feitelijk weg.
@@ -1535,6 +1540,7 @@ function trackBtQuality(cmd, r){
     }
     return;
   }
+  if(_ecuStil) return;
   const bad = !r || !r.trim() || r.includes('NO DATA') || r.includes('ERROR') || r.includes('STOPPED');
   _btQual.push(bad?1:0); if(_btQual.length>20) _btQual.shift();
   if(_btQual.length<10) return;
@@ -2063,6 +2069,8 @@ const PLVerbind={
   // antwoordde? Synchroon en goedkoop; de ATST-wissel gaat erachteraan.
   noteAntwoord(mist){
     if(demoMode || !connected || !this.profiel || _plSt.bron==='handmatig') return;
+    // Contact uit: elke PID "mist", maar dat is geen timing (pidlane-contact.js).
+    if(window.PLContact && PLContact.stil()) return;
     this._venster.push(!!mist);
     if(this._venster.length>ST_VENSTER) this._venster.shift();
     if(!plStMoetOmhoog(this._venster, Date.now(), this._laatsteStap)) return;
@@ -2078,6 +2086,18 @@ const PLVerbind={
     Promise.resolve(sendCmd('ATST'+nieuw,1500)).catch(e=>btDiag('ATST bijsturen: adapter niet bijgewerkt ('+(e.message||e)+')','warn'));
     // Bewust niet bewaren (#414): bijsturen geldt voor deze verbinding. In het
     // geheugen werd het de bodem van de volgende, en zo klom de ATST blijvend.
+  },
+  // Terug naar de ATST van vóór de stilte (pidlane-contact.js). Wat in de
+  // eerste seconde van een contact-uit werd bijgestuurd, was geen timing.
+  stTerug(hex){
+    if(!hex || hex===_plSt.hex || _plSt.bron==='handmatig') return false;
+    const oud=_plSt.hex;
+    _plSt=Object.assign({}, _plSt, { hex, ms:parseInt(hex,16)*4 });
+    if(this.profiel) this.profiel.st=Object.assign({}, _plSt);
+    this._venster=[];
+    btDiag(`🔧 ATST terug 0x${oud} → 0x${hex}: bijgestuurd tijdens een stille ECU (contact uit)`,'info');
+    Promise.resolve(sendCmd('ATST'+hex,1500)).catch(e=>btDiag('ATST terugzetten: adapter niet bijgewerkt ('+(e.message||e)+')','warn'));
+    return true;
   },
   // ── met de hand ──
   _gemeten:null,
