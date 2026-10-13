@@ -77,13 +77,18 @@ function bouw(pid, ritten, nu) {
     knip(lees('pidlane-pids.js'), 'function feedSessionStat', null, 'baseline'), s, { filename: 'pidlane-pids.js (knip)' });
 
   // De historie: elke eerdere rit is één opgeslagen sessie met één gemiddelde.
-  const sessies = ritten.map(avg => ({ ts: Date.now(), stats: { [pid]: { avg, min: avg, max: avg, n: 100 } } }));
+  // Sinds #473 telt een sessie alleen als echte rit: 10 min verbonden, 5 gereden.
+  const sessies = ritten.map(avg => ({ ts: Date.now(), stats: { [pid]: { avg, min: avg, max: avg, n: 100 } },
+    duur: 20 * 60000, gereden: 15 * 60000 }));
   opslag['pl_sessions_' + VIN] = JSON.stringify(sessies);
 
   // De lopende rit: `nu.n` metingen met gemiddelde `nu.gem`.
   if (nu) {
     vm.runInContext('_sessionStats[' + JSON.stringify(pid) + ']=' +
       JSON.stringify({ n: nu.n, sum: nu.gem * nu.n, min: nu.gem, max: nu.gem, last: nu.gem }) + ';', s);
+    // De lopende rit duurt standaard 11 minuten (#473: pas vanaf 10 een oordeel).
+    vm.runInContext('_sessieKlok={stats:_sessionStats, start:Date.now()-' + ((nu.min == null ? 11 : nu.min) * 60000) +
+      ', gereden:0, rijT:0};', s);
   }
   s.lezen = expr => vm.runInContext(expr, s);
   return s;
@@ -92,18 +97,19 @@ function bouw(pid, ritten, nu) {
 // ══════════════════════════════════════════════════════════════════
 console.log('\n— de drempels staan waar ze horen —');
 {
-  const s = bouw('010C', [1200, 1240, 1180], null);
+  const s = bouw('0110', [1200, 1240, 1180], null);
   t('BASE_MIN_N is 30', s.lezen('BASE_MIN_N'), 30);
+  t('normaal pas vanaf 5 echte ritten (#473)', s.lezen('BASE_MIN_RITTEN'), 5);
   t('de σ-bodem is 2 %', s.lezen('BASE_SIGMA_MIN'), 0.02);
   t('de drempel is 3σ, niet 2,5', s.lezen('BASE_DREMPEL'), 3);
 }
 
 console.log('\n— zonder historie geen normaal —');
 {
-  t('nul ritten geeft geen baseline', bouw('010C', [], null).vehicleBaseline('010C'), null);
-  t('twee ritten is te weinig', bouw('010C', [1200, 1240], null).vehicleBaseline('010C'), null);
-  const b = bouw('010C', [1200, 1240, 1180], null).vehicleBaseline('010C');
-  t('drie ritten is genoeg', b.n, 3);
+  t('nul ritten geeft geen baseline', bouw('0110', [], null).vehicleBaseline('0110'), null);
+  t('vier ritten is te weinig (#473)', bouw('0110', [1200, 1240, 1180, 1220], null).vehicleBaseline('0110'), null);
+  const b = bouw('0110', [1200, 1240, 1180, 1220, 1195], null).vehicleBaseline('0110');
+  t('vijf ritten is genoeg', b.n, 5);
   t('en het gemiddelde klopt', Math.round(b.mean), 1207);
 }
 
@@ -115,31 +121,91 @@ console.log('\n— gelijk met gelijk: de rit, niet het moment —');
   // die tussen 700 en 4000 schommelt. Vergeleken met de σ van sessie-
   // gemiddelden (~20 rpm) is dat moeiteloos 13σ. Het mag geen bevinding zijn:
   // er wordt niet op momentwaarden geoordeeld.
-  const s = bouw('010C', ritten, { gem: 1215, n: 200 });
-  t('een normale rit levert niets op', s.baselineBevinding('010C'), null);
-  t('en dus ook geen tekst', s.baselineWarning('010C', 937), '');
+  const s = bouw('0110', ritten, { gem: 1215, n: 200 });
+  t('een normale rit levert niets op', s.baselineBevinding('0110'), null);
+  t('en dus ook geen tekst', s.baselineWarning('0110', 937), '');
 
-  const s2 = bouw('010C', ritten, { gem: 1900, n: 200 });
-  const r = s2.baselineBevinding('010C');
+  const s2 = bouw('0110', ritten, { gem: 1900, n: 200 });
+  const r = s2.baselineBevinding('0110');
   t('een écht afwijkende rit is wel een bevinding', r !== null, true);
   t('de afwijking is uitgerekend', r.dev > 3, true);
-  t('het PID staat erbij', r.pid, '010C');
-  t('de tekst noemt de sensornaam', /Motortoerental/.test(r.tekst), true);
+  t('het PID staat erbij', r.pid, '0110');
+  t('de tekst noemt de sensornaam', /MAF luchtmassameter/.test(r.tekst), true);
   t('de tekst zegt dat het over de rit gaat', /deze rit gemiddeld/.test(r.tekst), true);
   t('en noemt over hoeveel ritten', /over 5 ritten/.test(r.tekst), true);
+}
+
+console.log('\n— #473: een nieuwe auto is niet meteen afwijkend —');
+{
+  const ritten = [1200, 1240, 1180, 1220, 1210];
+  // Drie minuten stationair en dan gas: genoeg metingen, maar te kort.
+  t('na 3 minuten geen oordeel over de rit',
+    bouw('0110', ritten, { gem: 1900, n: 200, min: 3 }).baselineBevinding('0110'), null);
+  t('na 9 minuten ook nog niet',
+    bouw('0110', ritten, { gem: 1900, n: 200, min: 9 }).baselineBevinding('0110'), null);
+  t('na 11 minuten wel',
+    bouw('0110', ritten, { gem: 1900, n: 200, min: 11 }).baselineBevinding('0110') !== null, true);
+
+  // Sessies op de oprit: te kort, of niet gereden.
+  const s = bouw('0110', ritten, { gem: 1900, n: 200 });
+  const kort = ritten.map(avg => ({ ts: Date.now(), stats: { '0110': { avg, n: 100 } }, duur: 5 * 60000, gereden: 4 * 60000 }));
+  s.localStorage.setItem('pl_sessions_' + VIN, JSON.stringify(kort));
+  t('vijf sessies van 5 minuten geven geen normaal', s.vehicleBaseline('0110'), null);
+  const stil = ritten.map(avg => ({ ts: Date.now(), stats: { '0110': { avg, n: 100 } }, duur: 30 * 60000, gereden: 60000 }));
+  s.localStorage.setItem('pl_sessions_' + VIN, JSON.stringify(stil));
+  t('vijf sessies van 30 minuten stilstaan ook niet', s.vehicleBaseline('0110'), null);
+  const oud = ritten.map(avg => ({ ts: Date.now(), stats: { '0110': { avg, n: 100 } } }));
+  s.localStorage.setItem('pl_sessions_' + VIN, JSON.stringify(oud));
+  t('sessies van vóór #473 (zonder duur) tellen niet', s.vehicleBaseline('0110'), null);
+
+  // Rijgedrag is geen gezondheid.
+  ['010C', '010D', '0111', '0149', '014C'].forEach(function (pid) {
+    t(pid + ' (rijgedrag) is nooit afwijkend t.o.v. normaal',
+      bouw(pid, ritten, { gem: 9000, n: 200 }).baselineBevinding(pid), null);
+  });
+  const e = bouw('ZZ01', ritten, { gem: 9000, n: 200 });
+  e.lezen("getPidDef=function(p){ return p==='ZZ01' ? { name:'Rempedaal positie', unit:'%', eigen:true } : ALL_PID_DEFS[p]||null; };");
+  t('een eigen rempedaal ook niet', e.baselineBevinding('ZZ01'), null);
+  e.lezen("getPidDef=function(p){ return p==='ZZ01' ? { name:'Olietemperatuur', unit:'°C', eigen:true } : ALL_PID_DEFS[p]||null; };");
+  t('maar een eigen olietemperatuur wel', e.baselineBevinding('ZZ01') !== null, true);
+}
+
+console.log('\n— de klok van de sessie —');
+{
+  const s = bouw('0110', [1200, 1240, 1180, 1220, 1210], null);
+  s.lezen('_sessionStats={};');
+  s.lezen('var __nu=1000000; Date.now=function(){ return __nu; };');
+  s.feedSessionStat('010D', 0);
+  s.lezen('__nu+=2000'); s.feedSessionStat('010D', 30);
+  s.lezen('__nu+=2000'); s.feedSessionStat('010D', 40);
+  s.lezen('__nu+=60000'); s.feedSessionStat('010D', 50);   // gat: telt voor 10 s
+  s.lezen('__nu+=2000'); s.feedSessionStat('010D', 0);     // stilstand telt niet
+  s.lezen('__nu+=2000'); s.feedSessionStat('010D', 0);
+  t('gereden tijd: 2 s + 10 s (gat afgekapt) + 2 s', s.lezen('_sessieKlok.gereden'), 14000);
+  t('de klok start bij de eerste meting', s.lezen('_sessieKlok.start'), 1000000);
+  s.lezen('_sessionStats={};'); s.feedSessionStat('0105', 90);
+  t('een nieuwe sessie (nieuw _sessionStats) zet de klok terug', s.lezen('_sessieKlok.gereden'), 0);
+  s.lezen("vehicleInfo.vin='" + VIN + "'; var demoMode=false;");
+  s.lezen('_sessionStats={}; __nu=5000000;');
+  for (let i = 0; i < 4; i++) { s.feedSessionStat('010D', 50); s.lezen('__nu+=1000'); }
+  s.lezen('__nu+=11*60000;'); s.feedSessionStat('0105', 90);
+  s.saveSession();
+  const opgeslagen = JSON.parse(s.localStorage.getItem('pl_sessions_' + VIN)).pop();
+  t('saveSession bewaart de duur', opgeslagen.duur, 3000 + 11 * 60000 + 1000);
+  t('en de gereden tijd', opgeslagen.gereden, 3000);
 }
 
 console.log('\n— rem 1: te weinig metingen deze rit —');
 {
   const ritten = [1200, 1240, 1180, 1220, 1210];
   t('10 metingen is te weinig om te oordelen',
-    bouw('010C', ritten, { gem: 1900, n: 10 }).baselineBevinding('010C'), null);
+    bouw('0110', ritten, { gem: 1900, n: 10 }).baselineBevinding('0110'), null);
   t('29 ook nog',
-    bouw('010C', ritten, { gem: 1900, n: 29 }).baselineBevinding('010C'), null);
+    bouw('0110', ritten, { gem: 1900, n: 29 }).baselineBevinding('0110'), null);
   t('vanaf 30 telt hij mee',
-    bouw('010C', ritten, { gem: 1900, n: 30 }).baselineBevinding('010C') !== null, true);
+    bouw('0110', ritten, { gem: 1900, n: 30 }).baselineBevinding('0110') !== null, true);
   t('zonder lopende rit geen oordeel',
-    bouw('010C', ritten, null).baselineBevinding('010C'), null);
+    bouw('0110', ritten, null).baselineBevinding('0110'), null);
 }
 
 console.log('\n— rem 2: de σ-bodem tegen te strakke historie —');
@@ -177,8 +243,8 @@ console.log('\n— het getal om op te sorteren staat los van de zin —');
   // Sinds de bevindingenbalk er nog maar twee toont (#60) moet `dev` een eigen
   // veld zijn: de opmaak van de zin mag niet bepalen welke bevinding wint.
   const ritten = [1200, 1240, 1180, 1220, 1210];
-  const licht = bouw('010C', ritten, { gem: 1400, n: 200 }).baselineBevinding('010C');
-  const zwaar = bouw('010C', ritten, { gem: 1900, n: 200 }).baselineBevinding('010C');
+  const licht = bouw('0110', ritten, { gem: 1400, n: 200 }).baselineBevinding('0110');
+  const zwaar = bouw('0110', ritten, { gem: 1900, n: 200 }).baselineBevinding('0110');
   t('beide zijn bevindingen', !!(licht && zwaar), true);
   t('de zwaarste heeft de hoogste dev', zwaar.dev > licht.dev, true);
   t('dev is een getal, geen tekst', typeof zwaar.dev, 'number');
@@ -187,16 +253,16 @@ console.log('\n— het getal om op te sorteren staat los van de zin —');
 
 console.log('\n— de sessie-boekhouding eronder —');
 {
-  const s = bouw('010C', [1200, 1240, 1180], null);
+  const s = bouw('0110', [1200, 1240, 1180], null);
   s.lezen('_sessionStats={};');
-  [800, 1200, 1600].forEach(v => s.feedSessionStat('010C', v));
-  t('drie metingen geteld', s.lezen("_sessionStats['010C'].n"), 3);
-  t('de som klopt', s.lezen("_sessionStats['010C'].sum"), 3600);
+  [800, 1200, 1600].forEach(v => s.feedSessionStat('0110', v));
+  t('drie metingen geteld', s.lezen("_sessionStats['0110'].n"), 3);
+  t('de som klopt', s.lezen("_sessionStats['0110'].sum"), 3600);
   t('min en max kloppen',
-    s.lezen("_sessionStats['010C'].min+'/'+_sessionStats['010C'].max"), '800/1600');
-  s.feedSessionStat('010C', null);
-  s.feedSessionStat('010C', NaN);
-  t('null en NaN tellen niet mee', s.lezen("_sessionStats['010C'].n"), 3);
+    s.lezen("_sessionStats['0110'].min+'/'+_sessionStats['0110'].max"), '800/1600');
+  s.feedSessionStat('0110', null);
+  s.feedSessionStat('0110', NaN);
+  t('null en NaN tellen niet mee', s.lezen("_sessionStats['0110'].n"), 3);
 }
 
 console.log('\n─────────────────────────────────────────');
