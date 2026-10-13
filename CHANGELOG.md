@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Eén meetscherm: het oude is weg (#452)
+ ═══════════════════════════════════════════════════════════
+
+ - Systeemtest en Welk onderdeel uit het wizardplan meten nu in het
+   verzamelscherm, met "Verder" in plaats van een AI-knop. Na een rijtest
+   begint dezelfde module opnieuw, met de rit als meting.
+ - Daarmee leunde niets meer op het oude meetscherm ("Sensoren
+   registreren", "Gebruik de meting van zojuist"): plVraagMeting,
+   plRegistreer, plKernTeMager en plMeetPoortVraag zijn weg.
+ - bproef-verzamel.js stap 10, twee mutaties erbij, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Milieuzones: alleen de milieuklasse, met een link (#485)
  ═══════════════════════════════════════════════════════════
 
