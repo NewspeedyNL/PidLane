@@ -2787,6 +2787,24 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── samenvatting per tankcyclus (#469 stap 3, 13-10-2026) ──
+  {
+    issue: '#469',
+    naam: 'Tankbeurten: per cyclus de ritten samengevat, en de app-liters tegenover getankt',
+    waarom: 'Per tankcyclus waren alleen de km en het beloofde bereik te zien; hoe lang, hoe snel en hoeveel de app zelf mat, moest je uit de ritten-export halen.',
+    proef: async function () {
+      if (!window.PLTank || typeof PLTank.ritSom !== 'function') return { staat: 'FOUT', detail: 'PLTank.ritSom ontbreekt — oude pidlane-tank.js (herladen?)' };
+      var r = function (start, km, d, l) { return { start: start, km: km, duur_s: d, liters: l }; };
+      var tk = [{ id: 'a', op: '2026-10-01T12:00:00Z', vol: true, liters: 40 }, { id: 'b', op: '2026-10-08T12:00:00Z', vol: true, liters: 50 }];
+      var rs = [r('2026-10-02T08:00:00Z', 300, 10800, 21), r('2026-10-05T08:00:00Z', 200, 7200, 24)];
+      var c = PLTank.cycli(tk, rs)[0];
+      if (!c || !c.rit || c.rit.kmh !== 100 || c.appVsGetanktPct !== 90) return { staat: 'FOUT', detail: 'nagebouwde cyclus geeft ' + JSON.stringify(c && { rit: c.rit, pct: c.appVsGetanktPct }) };
+      tk[1].vol = false;
+      if (PLTank.cycli(tk, rs)[0].appVsGetanktPct !== null) return { staat: 'FOUT', detail: 'een halve tankbeurt wordt toch tegen de app-liters gelegd' };
+      return { staat: 'OK', detail: 'nagebouwde cyclus klopt · open Mijn voertuigen → Tankbeurten: onder elke beurt ritten, rijtijd en verbruik volgens de app' };
+    }
+  },
+
   // ── mode 06 in het onderzoek (#428, 13-10-2026) ──
   {
     issue: '#428',

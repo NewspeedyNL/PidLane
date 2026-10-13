@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Tankbeurten: samenvatting per tankcyclus (#469 stap 3)
+ ═══════════════════════════════════════════════════════════
+
+ - Bij elke tankbeurt: ritten, rijtijd, gemiddelde snelheid en verbruik
+   volgens de app over de cyclus die daar eindigt.
+ - Vol tot vol: hoeveel liter de app mat tegenover wat er getankt is.
+   Alleen als elke rit liters heeft en de km kloppen; anders weg.
+ - Dezelfde kolommen in de CSV, vóór de notitie.
+ - test-tank.js deel 9, vier mutaties, blok 5, handleiding.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Onderzoek leest mode 06: missers per cilinder (#428)
  ═══════════════════════════════════════════════════════════
 
