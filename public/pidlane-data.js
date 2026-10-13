@@ -649,6 +649,16 @@ window.PROTOCOLS =[
 // minst waarschijnlijk, CAN 11-bit 500k voorop.
 //
 // Pure functie, geen DOM: bewaakt door test-protocolkeuze.js.
+// Zwijgt de adapter zelf, of alleen de auto? (#476, 13-10-2026) Stond de
+// adapter niet op pair, dan kwam de verbinding wél tot stand, gaf 0100 niets
+// en vroeg de app om een protocol — dat bij een zwijgende adapter niets
+// oplost. Alles wat terugkomt (UNABLE TO CONNECT, NO DATA, "?", een
+// versienummer op ATI) betekent dat de adapter leeft. De echo van het
+// commando zelf en de prompt tellen niet.
+window.plAdapterStil = function plAdapterStil(autoResp, atiResp){
+  const schoon = function(r){ return String(r==null?'':r).replace(/ATSP0|ATI|0100/gi,'').replace(/[>\s]/g,''); };
+  return !schoon(autoResp) && !schoon(atiResp);
+};
 window.plProtocolLijst = function plProtocolLijst(gedetecteerd, tabel){
   // ATDPN zet een 'A' voor een automatisch gevonden protocol ("A6"). Die hoort
   // niet bij het id zelf, dus zonder strippen zou het gedetecteerde protocol

@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Afwijkend pas na echte ritten, % op de boog, stille adapter (#473, #472, #476)
+ ═══════════════════════════════════════════════════════════
+
+ - "Afwijkend t.o.v. normaal": pas na vijf ritten van ≥ 10 min (≥ 5 min
+   gereden), oordeel pas na 10 min, nooit over snelheid, toerental, gas- of
+   rempedaal. Oudere sessies tellen niet meer mee.
+ - Een eigen sensor in % zonder bereik loopt van 0 tot 100 en kan op een
+   boog; wie zonder schaal afvalt staat onderaan de boogkeuze met de reden.
+ - Zwijgt de adapter op 0100 én ATI: "Adapter reageert niet" met Opnieuw
+   verbinden, in plaats van een protocolkeuze.
+ - Voertuig toevoegen vult het kenteken van de verbinding al in.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Knop "Eigen" in de sensorkeuzelijst (#474)
  ═══════════════════════════════════════════════════════════
 

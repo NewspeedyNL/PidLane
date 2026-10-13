@@ -416,5 +416,25 @@ toetsMeldt('de oude versie (alles altijd in beeld) valt door de mand',
   keurDichtgeklapt(RENDER_OUD), 'kaarten in beeld, verwacht 1');
 
 
+// ── #476: zwijgt de adapter zelf, of alleen de auto? ──────────────────
+// Stond de adapter niet op pair, dan kwam de verbinding tot stand, gaf 0100
+// niets en vroeg de app om een protocol. plAdapterStil() beslist of dat zin
+// heeft; alleen een adapter die op 0100 én ATI niets zegt is "stil".
+{
+  const st = laadData().plAdapterStil;
+  const uit = [];
+  const moet = (a, i, w, naam) => { if (st(a, i) !== w) uit.push(naam + ': kreeg ' + st(a, i) + ', wilde ' + w); };
+  moet('', '', true, 'niets op 0100 en niets op ATI');
+  moet('>', ' \r\n>', true, 'alleen de prompt is ook niets');
+  moet('0100\r\r>', 'ATI\r>', true, 'alleen de echo van het commando is ook niets');
+  moet(null, undefined, true, 'null en undefined');
+  moet('', 'ELM327 v1.5', false, 'ATI geeft een versie: de adapter leeft, de auto zwijgt');
+  moet('UNABLE TO CONNECT', '', false, 'UNABLE TO CONNECT komt van de adapter');
+  moet('SEARCHING...\rNO DATA', '', false, 'NO DATA ook');
+  moet('', '?', false, 'een vraagteken is ook een antwoord');
+  console.log(uit.length ? '  FOUT  plAdapterStil\n        ' + uit.join('\n        ') : '  ok    plAdapterStil onderscheidt een zwijgende adapter van een zwijgende auto (#476)');
+  if (uit.length) fout++;
+}
+
 console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);

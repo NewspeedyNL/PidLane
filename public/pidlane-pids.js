@@ -1548,6 +1548,15 @@ function applyVinProfileIfKnown(vin){
 // ══════════════════════════════════════════════════════
 function feedSessionStat(pid,val){
   if(val===null||val===undefined||isNaN(val)) return;
+  const k=sessieKlok(Date.now());
+  // Gereden tijd: de tijd na een snelheidsmeting boven 0, tot de volgende
+  // meting. Een gat van meer dan 10 s (verbinding weg, app op de achtergrond)
+  // telt maar voor 10 s.
+  if(pid==='010D'){
+    const nu=Date.now();
+    if(k.rijT) k.gereden+=Math.min(nu-k.rijT, 10000);
+    k.rijT = val>0 ? nu : 0;
+  }
   const s=_sessionStats[pid]||(_sessionStats[pid]={n:0,sum:0,min:val,max:val,last:val});
   s.n++; s.sum+=val; s.last=val;
   if(val<s.min) s.min=val; if(val>s.max) s.max=val;
@@ -1567,11 +1576,21 @@ function saveSession(){
       compact[pid]={avg:Math.round(s.sum/s.n*100)/100,min:s.min,max:s.max,n:s.n};
     });
     if(!Object.keys(compact).length) return;
-    arr.push({ts:Date.now(), merk:vehicleInfo.merk||'', year:vehicleInfo.year||'', stats:compact});
+    const k=sessieKlok(Date.now());
+    arr.push({ts:Date.now(), merk:vehicleInfo.merk||'', year:vehicleInfo.year||'', stats:compact,
+              duur:Date.now()-k.start, gereden:k.gereden});
     while(arr.length>20) arr.shift(); // max 20 sessies per voertuig
     localStorage.setItem(sessionsKey(vin), JSON.stringify(arr));
     log(`💾 Sessie opgeslagen (${Object.keys(compact).length} PIDs) in voertuigdossier`,'ok');
   }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
+}
+// De klok van de lopende sessie (#473): hoe lang verbonden, hoe lang gereden.
+// Een nieuwe _sessionStats (verbinden, pidlane-bt.js) is een nieuwe sessie;
+// daarom hangt de klok aan dat object en niet aan een eigen reset.
+let _sessieKlok={stats:null, start:0, gereden:0, rijT:0};
+function sessieKlok(nu){
+  if(_sessieKlok.stats!==_sessionStats) _sessieKlok={stats:_sessionStats, start:nu, gereden:0, rijT:0};
+  return _sessieKlok;
 }
 function loadSessions(vin){
   try{ return JSON.parse(localStorage.getItem(sessionsKey(vin||vehicleInfo?.vin))||'[]'); }
@@ -1584,10 +1603,16 @@ function loadSessions(vin){
 // laatste sessies. Een waarde die daar statistisch buiten valt is verdacht,
 // óók als die nog binnen de harde fabrieksgrens ligt.
 // ══════════════════════════════════════════════════════
+// Telt deze sessie mee voor het normaal? Alleen een echte rit (#473): drie
+// keer verbinden op de oprit gaf "normaal 19 km/h", en daarna was elke rit
+// een afwijking. Een sessie van vóór 13-10-2026 heeft geen duur en telt niet.
+function sessieTeltVoorNormaal(s){
+  return !!s && (s.duur||0)>=BASE_SESSIE_MIN_MS && (s.gereden||0)>=BASE_GEREDEN_MIN_MS;
+}
 function vehicleBaseline(pid){
-  const sessions=loadSessions();
+  const sessions=loadSessions().filter(sessieTeltVoorNormaal);
   const avgs=sessions.map(s=>s.stats?.[pid]?.avg).filter(v=>typeof v==='number');
-  if(avgs.length<3) return null; // te weinig historie voor betrouwbaar normaal
+  if(avgs.length<BASE_MIN_RITTEN) return null; // te weinig historie voor betrouwbaar normaal
   const mean=avgs.reduce((a,b)=>a+b,0)/avgs.length;
   const std=Math.sqrt(avgs.reduce((a,b)=>a+(b-mean)**2,0)/avgs.length);
   return {mean, std, n:avgs.length};
@@ -1621,11 +1646,27 @@ function vehicleBaseline(pid){
 const BASE_MIN_N   = 30;    // metingen in deze rit voordat we oordelen
 const BASE_SIGMA_MIN = 0.02; // σ-bodem als fractie van het normaal
 const BASE_DREMPEL = 3;     // hoeveel σ voordat het een bevinding is
+// #473 (13-10-2026): een nieuwe auto kreeg na drie korte sessies al een
+// "normaal", en een rit werd beoordeeld na 30 metingen (binnen een minuut).
+const BASE_MIN_RITTEN     = 5;              // echte ritten voordat er een normaal is
+const BASE_SESSIE_MIN_MS  = 10*60*1000;     // een sessie telt pas vanaf 10 min verbonden…
+const BASE_GEREDEN_MIN_MS = 5*60*1000;      // …waarvan 5 min gereden
+const BASE_RIT_MIN_MS     = 10*60*1000;     // de lopende rit pas na 10 min beoordelen
+// Rijgedrag, geen gezondheid: hoe hard, hoeveel gas, hoeveel rem zegt iets
+// over de bestuurder en de route, niet over de auto. Nooit tegen normaal.
+const BASE_RIJGEDRAG = new Set(['010C','010D','0111','0145','0147','0148','0149','014A','014B','014C']);
+function baselineRijgedrag(pid){
+  if(BASE_RIJGEDRAG.has(pid)) return true;
+  const d=(typeof getPidDef==='function') ? getPidDef(pid) : null;
+  // Eigen sensoren (PLEigen) hebben geen vaste code: op de naam.
+  return !!(d && d.eigen && /pedaal|gas|rem|snelheid|toerental/i.test(String(d.name||'')));
+}
 
 // Gemiddelde van de LOPENDE rit; null als er nog te weinig gemeten is.
 function huidigSessieGem(pid){
   const s=_sessionStats&&_sessionStats[pid];
   if(!s||!s.n||s.n<BASE_MIN_N) return null;
+  if(Date.now()-sessieKlok(Date.now()).start<BASE_RIT_MIN_MS) return null;
   return s.sum/s.n;
 }
 
@@ -1638,6 +1679,7 @@ function huidigSessieGem(pid){
 // (issue #60, 30-08-2026) — en het uit de zin terugparsen zou betekenen dat
 // de opmaak bepaalt welke bevinding de belangrijkste is.
 function baselineBevinding(pid){
+  if(baselineRijgedrag(pid)) return null;
   const b=vehicleBaseline(pid);
   if(!b) return null;
   const cur=huidigSessieGem(pid);

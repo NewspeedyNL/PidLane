@@ -2474,6 +2474,13 @@ async function scanNetworks(){
   } else {
     // Geen auto-detect — geen contact of auto reageert niet
     btDiag('Geen auto-detect response — contact aan?','warn');
+    // Of de adapter zelf zwijgt (#476): dan is een protocol kiezen zinloos.
+    if(typeof plAdapterStil==='function' && plAdapterStil(autoResp, '')){
+      let ati='';
+      try{ ati=await sendCmd('ATI', 3000); }catch(e){ ati=''; btDiag('ATI na een lege 0100 mislukt: '+(e.message||e),'warn'); }
+      btDiag(`ATI na lege 0100: "${ati||'(geen)'}"`, 'info');
+      if(plAdapterStil(autoResp, ati)){ toonAdapterStil(); return; }
+    }
     if(!autoResp||autoResp.length===0){
       document.getElementById('step2Sub').textContent='Zet contact aan en probeer opnieuw';
     }
@@ -2488,6 +2495,36 @@ async function scanNetworks(){
   if(discoveredNetworks.length<=1 && _gedetecteerdProtocol)
     btDiag('PROTOCOLS-tabel ontbreekt — alleen het gedetecteerde protocol is kiesbaar','warn');
   renderNetworkCards();
+}
+
+/* De adapter zwijgt (#476): geen protocollijst maar wat er wél helpt. Meestal
+   staat hij niet op pair of half aan; opnieuw verbinden lost het op. Wie het
+   beter weet kan toch zelf een protocol kiezen. */
+function toonAdapterStil(){
+  btDiag('Adapter reageert niet op 0100 en ATI — geen protocolkeuze, maar opnieuw verbinden','warn');
+  document.getElementById('step2Title').textContent='Adapter reageert niet';
+  document.getElementById('step2Sub').textContent='Zet de adapter aan of op pair, en verbind opnieuw. Een protocol kiezen helpt hier niet.';
+  document.getElementById('networkList').innerHTML='';
+  document.getElementById('connActions').innerHTML=
+    `<button class="mbtn p" id="btnAdapterOpnieuw" onclick="adapterOpnieuw()">🔌 Opnieuw verbinden</button>`+
+    `<button class="mbtn s" onclick="adapterTochKiezen()">Toch zelf een protocol kiezen</button>`+
+    `<button class="mbtn s" onclick="resetToStep1()">↺ Terug</button>`;
+}
+function adapterTochKiezen(){
+  discoveredNetworks = (typeof plProtocolLijst==='function') ? plProtocolLijst(null) : [];
+  renderNetworkCards();
+}
+async function adapterOpnieuw(){
+  btDiag('Opnieuw verbinden na een zwijgende adapter: socket dicht en opnieuw open','info');
+  try{ if(window._sppConn) await window._sppConn.spp.disconnect({address:window._sppConn.address}); }
+  catch(e){ btDiag('Socket sluiten mislukt (kan al weg zijn): '+(e.message||e),'warn'); }
+  try{ if(window._bleConn) await window._bleConn.ble?.disconnect?.(window._bleConn.id); }
+  catch(e){ btDiag('BLE sluiten mislukt (kan al weg zijn): '+(e.message||e),'warn'); }
+  try{ if(window._webSerialWrite && typeof disconnectWebSerial==='function') await disconnectWebSerial(); }
+  catch(e){ btDiag('Web Serial sluiten mislukt: '+(e.message||e),'warn'); }
+  window._sppConn=null; window._bleConn=null; window._webBtWrite=null;
+  resetToStep1();
+  return connectSerial();
 }
 
 function renderNetworkCards(){

@@ -283,6 +283,10 @@ var KRITIEK = [
   // De verbindwizard: de kentekenstap vóór de protocolscan en het tekenen van
   // de protocolkeuze. Blok 5 toetst ze, en die guards horen hier genoemd.
   'toonKentekenStap','kentekenBevestig','kentekenOverslaan','kentPoortReset','renderNetworkCards',
+  // Zwijgt de adapter zelf na een lege 0100 (#476)? Dan geen protocolkeuze
+  // maar opnieuw verbinden. Ontbreekt plAdapterStil, dan valt scanNetworks()
+  // stil terug op de protocollijst — de toestand van vóór 13-10-2026.
+  'plAdapterStil','toonAdapterStil','adapterOpnieuw','adapterTochKiezen',
   // Blok 5 controleert hiermee of pidlane-motortype.js geladen is (hernoemd
   // uit pidlane-scheduler.js op 21-08).
   'selectStandardSet',
@@ -291,6 +295,9 @@ var KRITIEK = [
   // op de sigma die hier uitkomt; ontbreekt hij, dan blijven alleen de vijf
   // regelbevindingen over en verdwijnt "afwijkend voor deze auto" stil.
   'baselineBevinding',
+  // Wat als echte rit telt voor dat normaal (#473): de sessies, de klok van
+  // de lopende sessie en de drempel erop. Blok 5 meldt er de stand van.
+  'loadSessions','sessieKlok','sessieTeltVoorNormaal',
   // Deelt een PID in bij dashboard / temperatuur / rest (pidlane-data.js).
   // renderGauges() bouwt de slimme weergave (issue #61) daarop; ontbreekt hij,
   // dan belandt álles in het vak "beweegt" en is de indeling die de modus
