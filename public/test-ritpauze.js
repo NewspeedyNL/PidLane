@@ -63,7 +63,7 @@ const ctx = {
   ensurePIDListActive() {}, pickOnderdelen: async () => [], preAnalysisCheck: async () => true,
   getPidDef: () => null, isReportableSensor: () => true, download() {}, showToast() {},
   PID_DEFS: {}, sendCmd: async () => '', fv: v => v, KERN_PIDS: [],
-  _pidHealth: {}, correlationLines: () => [], plVraagMeting: async () => true,
+  _pidHealth: {}, correlationLines: () => [],
   discoveredPIDDefs: [], ALL_PID_DEFS: {}, ritSweepFindings: [], apiFetch: async () => ({}),
   isPIDOkVal: () => true, PLMon: null, PLWizard: null,
 };

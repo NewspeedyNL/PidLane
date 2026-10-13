@@ -2787,6 +2787,24 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── het oude meetscherm weg (#452, 13-10-2026) ──
+  // Broncode, met reden: de gedragsproef (bproef-verzamel.js, stap 10) opent
+  // het verzamelscherm over de app heen. Dit ziet alleen of de geladen versie
+  // de nieuwe is; daarna zegt de rit zelf het.
+  {
+    issue: '#452',
+    naam: 'Systeemtest en Welk onderdeel meten in het verzamelscherm; het oude meetscherm is weg',
+    waarom: 'Twee meetschermen naast elkaar: de wizard gaf Systeemtest en Welk onderdeel nog "Sensoren registreren" en "Gebruik de meting van zojuist", de rest het verzamelscherm.',
+    proef: async function () {
+      if (!window.PLVerzamel || typeof PLVerzamel.meet !== 'function') return { staat: 'FOUT', detail: 'PLVerzamel ontbreekt (herladen?)' };
+      if (typeof window.plVraagMeting === 'function' || typeof window.plMeetPoortVraag === 'function')
+        return { staat: 'FOUT', detail: 'het oude meetscherm staat er nog — oude pidlane-fuel.js (herladen?)' };
+      if (!window.PLWizard || String(PLWizard.draai).indexOf('PLVerzamel.meet') < 0)
+        return { staat: 'FOUT', detail: 'de wizard opent het verzamelscherm niet — oude pidlane-wizard.js (herladen?)' };
+      return { staat: 'OK', detail: 'nieuwe versie geladen · start de Systeemtest uit het plan: "📡 Data verzamelen" met "Verder", geen AI-knop' };
+    }
+  },
+
   // ── contact uit is geen storing (#487, 13-10-2026) ──
   {
     issue: '#487',
@@ -2954,22 +2972,6 @@ const PROEVEN_B5 = [
       var bewijs = bekend.filter(function (h) { return st.v[h].score !== 0; });
       if (bewijs.length) return { staat: 'FOUT', detail: 'kennis telt als bewijs: ' + bewijs.join(', ') };
       return { staat: 'OK', detail: kn.merk + ': getoetst ' + (kn.getoetst.join(', ') || '—') + (kn.zelf.length ? ' · zelf nakijken: ' + kn.zelf.join(', ') : '') };
-    }
-  },
-
-  // ── registreren zonder profiel (09-10-2026) ──
-  {
-    issue: '—',
-    naam: 'Meetpoort: zonder profiel geen registratiescherm voor de sensoren van een vórige analyse',
-    waarom: 'Op de rit van 09-10 wachtte "Sensoren registreren" in de wizard op vijf sensoren die niemand had aangezet: 0/10, tot het venster verliep.',
-    // Broncode, met reden: de gedragsproef opent het meetscherm over de app
-    // heen en laat het open staan als de fout terug is. test-driefasen.js
-    // toetst het gedrag; dit ziet alleen of de geladen versie de nieuwe is.
-    proef: async function () {
-      if (typeof plVraagMeting !== 'function') return { staat: 'FOUT', detail: 'plVraagMeting ontbreekt' };
-      var bron = String(plVraagMeting);
-      if (bron.indexOf('prof ? plKernStatus(prof) : null') < 0) return { staat: 'FOUT', detail: 'plVraagMeting valt zonder profiel nog terug op het vorige profiel — oude pidlane-fuel.js (herladen?)' };
-      return { staat: 'OK', detail: 'nieuwe versie geladen · laatste profiel: ' + (window._laatstProfiel || 'geen') };
     }
   },
 
@@ -4487,8 +4489,8 @@ const PROEVEN_B5 = [
     naam: 'Een analyse begint met de meting, niet met vragen',
     waarom: 'Vier vragen vóór elke analyse werden als storend weggeklikt — en wegklikken liet de betaalde analyse toch lopen.',
     proef: async function () {
-      if (typeof _plVoorvragenAan !== 'function' || typeof plMeetPoortVraag !== 'function')
-        return { staat: 'FOUT', detail: 'het nieuwe begin van een analyse ontbreekt (_plVoorvragenAan of plMeetPoortVraag) (#290)' };
+      if (typeof _plVoorvragenAan !== 'function' || !window.PLVerzamel)
+        return { staat: 'FOUT', detail: 'het nieuwe begin van een analyse ontbreekt (_plVoorvragenAan of PLVerzamel) (#290)' };
       var aan = false;
       try { aan = _plVoorvragenAan(); } catch (e) { return { staat: 'FOUT', detail: 'de vragenschakelaar gaf een fout: ' + ((e && e.message) || e) }; }
       var regel = '';
@@ -4498,7 +4500,7 @@ const PROEVEN_B5 = [
         return { staat: 'LET OP', detail: 'de vragen staan AAN via de Config (feat_voorvragen) — dan komen ze vóór elke analyse, zoals vóór #290. Een keuze, geen fout.' };
       return { staat: 'ok', detail: 'geen vragen vóór een analyse; de AI krijgt ' +
         (regel ? 'wat de app zelf vaststelde (' + regel.trim().split('\n').length + ' regel(s))' : 'nog niets uit de meting — er is nog te weinig gemeten') +
-        '. Open de AI-monteur, kies een oorzaak en kijk of het meetscherm met "Annuleren" komt.' };
+        '. Open de AI-monteur, kies een oorzaak en kijk of het verzamelscherm met "Sluiten zonder AI" komt.' };
     }
   },
 

@@ -51,7 +51,6 @@ function toets(naam, waar, uitleg) {
     toets('het plan heeft een knop voor de AI-monteur', await app.ev(`!!document.querySelector('.wz-mod-run[onclick*="aimonteur"]')`));
     await app.ev(`document.querySelector('.wz-mod-run[onclick*="aimonteur"]').click(); 'ok'`);
     toets('het verzamelscherm staat open', await wacht(zichtbaar('plVzOv'), 5000));
-    toets('het oude meetscherm niet: geen "gebruik de meting van zojuist"', !(await app.ev(zichtbaar('meetGateOv'))));
     toets('er komen sensoren binnen, met een waarde', await wacht(`document.querySelectorAll('#plVzOv .vz-rij').length >= 3`, 8000),
       await app.ev(`document.querySelectorAll('#plVzOv .vz-rij').length`));
     await foto('meten');

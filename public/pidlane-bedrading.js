@@ -123,9 +123,9 @@ var KRITIEK = [
   'magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
   'openCaravan','openLogboek','openBugReport','openPrivacy','openRitAnalyse',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
-  'brandstofPoort','plBevestig','plDemoZonderLogin','plHerijkTick','plLokaalLog','plVraagMeting','preAnalysisCheck','probeUitgebreid','profielHealth',
+  'brandstofPoort','plBevestig','plDemoZonderLogin','plHerijkTick','plLokaalLog','preAnalysisCheck','probeUitgebreid','profielHealth',
   // Blok 5 vraagt het begin van een analyse achter een guard (#290).
-  '_plVoorvragenAan','plMeetPoortVraag',
+  '_plVoorvragenAan',
   // De uitleesknop in Welk onderdeel? (#233) roept scanDTC achter een guard.
   'scanDTC',
   'realScanDTC','refreshAllReadiness','relevantSupportedPIDs','renderAIText',

@@ -7,11 +7,12 @@
 //      vastgestelde data te gebruiken";
 //   2. "bij terug klikken gaat de AI-analyse toch lopen terwijl ik annuleer".
 //
-// Twee stukken uit de échte pidlane-fuel.js, geknipt op hun eigen koppen:
-//   A. plMeetPoortVraag() — het meetscherm: ook bij genoeg data een keuze,
-//      altijd een Annuleren;
+// Een stuk uit de échte pidlane-fuel.js, geknipt op zijn eigen kop:
 //   B. callAI() — een geannuleerde analyse is geen storing en krijgt dus geen
 //      noodrapport.
+// (Deel A toetste plMeetPoortVraag(), het oude meetscherm. Dat is op
+// 13-10-2026 weggehaald (#452); het verzamelscherm dat het verving toetsen
+// test-verzamel.js en bproef-verzamel.js.)
 // (Dat wegklikken van het vragenvenster als annuleren telt, toetst
 // test-meetcontext.js; dat de balk boven de knoppenbalk blijft,
 // bproef-schermranden.js.)
@@ -39,96 +40,11 @@ function knip(van, tot) {
   }
   return bron.slice(a, b);
 }
-const POORT = knip('/* Toont het meetscherm en geeft een belofte terug', 'function watFor(w)');
 const CALLAI = knip('async function callAI(prompt,contentEl,aanlevering){', '/* ══ MEETFASE-POORT');
 const wacht = () => new Promise((r) => setImmediate(r));
 
-function knopEl() { return { onclick: null, disabled: false, textContent: '' }; }
-
-function poort(tekort, bevestigd) {
-  const els = {};
-  const s = {
-    console: { warn() {} }, regels: [],
-    Date, setInterval: () => 0, clearInterval() {},
-    MEET_EIS: { normaal: { sec: 60, naam: 'stilstaande meting' }, kortrit: { sec: 90, naam: 'korte rit' } },
-    plMeetNiveau: (x) => x || 'normaal',
-    plMeetTekort: () => tekort,
-    watFor: (w) => w || 'deze analyse',
-    openRitAnalyse() {}
-  };
-  s.window = s;
-  s._plMeetBevestigd = bevestigd || 0;
-  s.log = (m) => { s.regels.push(String(m)); };
-  s.document = {
-    getElementById(id) {
-      if (els[id]) return els[id];
-      const ov = els.meetGateOv;
-      if (ov && ov.innerHTML.indexOf('id="' + id + '"') >= 0) return (els[id] = knopEl());
-      return null;
-    },
-    createElement() { return { style: {}, innerHTML: '', id: '', className: '' }; },
-    body: { appendChild(e) { els[e.id] = e; } }
-  };
-  vm.createContext(s);
-  vm.runInContext(POORT, s);
-  return { s, els };
-}
-const GENOEG = { ok: true, tekort: [], st: { genoeg: 9, sensoren: 9, sec: 252, rijSec: 0 }, eis: { sec: 60, naam: 'stilstaande meting' }, rijTekort: false };
-const TEWEINIG = { ok: false, tekort: ['gemeten over 5 s, nodig 60 s'], st: { genoeg: 2, sensoren: 9, sec: 5, rijSec: 0 }, eis: { sec: 60, naam: 'stilstaande meting' }, rijTekort: false };
-
 (async function () {
-  console.log('A. Het meetscherm vóór een analyse');
-  {
-    const { s, els } = poort(GENOEG);
-    let r = null;
-    s.plMeetPoortVraag('normaal', 'de uitwerking').then((x) => { r = x; });
-    const h = (els.meetGateOv || {}).innerHTML || '';
-    toets('bij genoeg data verschijnt het scherm tóch — met de keuze', /Gebruik de meting van zojuist/.test(h), h.slice(0, 160));
-    toets('het zegt wat er al gemeten is', /9 van de 9/.test(h) && /4:12 min/.test(h), h.slice(0, 300));
-    toets('en er is een Annuleren', /id="mgAnnuleer"/.test(h));
-    s.document.getElementById('mgGebruik').onclick();
-    await wacht();
-    toets('"gebruik de meting" gaat door', r === true, String(r));
-    toets('en onthoudt de bevestiging', s._plMeetBevestigd > 0);
-  }
-  {
-    const { s, els } = poort(GENOEG, Date.now() - 30000);
-    let r = null;
-    s.plMeetPoortVraag('normaal').then((x) => { r = x; });
-    await wacht();
-    toets('binnen twee minuten na een bevestiging: niet nog eens vragen (wizard met meerdere modules)',
-      r === true && !els.meetGateOv, String(r));
-  }
-  {
-    const { s } = poort(GENOEG);
-    let r = null;
-    s.plMeetPoortVraag('normaal').then((x) => { r = x; });
-    s.document.getElementById('mgAnnuleer').onclick();
-    await wacht();
-    toets('Annuleren bij genoeg data: niet door', r === false, String(r));
-  }
-  {
-    const { s, els } = poort(TEWEINIG);
-    let r = null;
-    s.plMeetPoortVraag('normaal').then((x) => { r = x; });
-    const h = (els.meetGateOv || {}).innerHTML || '';
-    toets('bij te weinig data: het tekort en de meetknoppen', /nodig 60 s/.test(h) && /id="mgWacht"/.test(h), h.slice(0, 200));
-    toets('en óók hier een Annuleren — tot 24-09 kon je alleen "toch doorgaan"', /id="mgAnnuleer"/.test(h));
-    s.document.getElementById('mgAnnuleer').onclick();
-    await wacht();
-    toets('Annuleren bij te weinig data: niet door', r === false, String(r));
-  }
-  {
-    const { s } = poort(TEWEINIG);
-    let r = null;
-    s.plMeetPoortVraag('normaal').then((x) => { r = x; });
-    s.document.getElementById('mgToch').onclick();
-    await wacht();
-    toets('TEGENPROEF: "toch doorgaan" gaat wél door, met de beperking erbij', r === true && /nodig 60 s/.test(s._meetBeperkt || ''),
-      String(r) + ' / ' + s._meetBeperkt);
-  }
-
-  console.log('\nB. Een geannuleerde analyse is geen storing');
+  console.log('B. Een geannuleerde analyse is geen storing');
   function callAI(fetchFout) {
     const s = { console: { warn() {} }, regels: [], nood: 0, getoond: 0,
       dataStable: true, connected: true, demoMode: false, activePIDs: new Set(['010C']) };

@@ -506,7 +506,6 @@ MUTATIES=(
 # daarmee is dit weer een fout die gevangen wordt.
 "public/pidlane-datalog.js@@  '0105', // koelwatertemperatuur@@  '05', // koelwatertemperatuur@@test-kerndekking.js@@FILTERED_PIDS staat weer op een suffix, dus een trage sensor telt als dynamisch en heeft ineens een volle reeks nodig"
 "public/pidlane-fuel.js@@      const traag=traagSet.has(pid);@@      const traag=traagSet.has(pid.slice(2).toUpperCase());@@test-kerndekking.js@@de kerndekking zoekt weer een suffix in een lijst met volledige PIDs, dus elke trage sensor telt als dynamisch"
-"public/pidlane-fuel.js@@  const k0=prof ? plKernStatus(prof) : null;@@  const k0=plKernStatus(prof);@@test-driefasen.js@@zonder profiel wacht de registratie op de sensoren van een vórige analyse, die niemand aanzet: 0/10 tot het venster verloopt"
 
 # ── De kostenraming hangt aan de uitvoer, niet aan het plafond (08-09-2026) ──
 # Vier fouten die je bij deze verbouwing écht kunt maken. Ze delen één gevolg:
@@ -1164,8 +1163,6 @@ MUTATIES=(
 "public/pidlane-fuel.js@@    if(e && e.plAfgebroken) throw e;                 // bewuste keuze van de gebruiker\n    console.warn('Eerdere rapporten@@    console.warn('Eerdere rapporten@@bproef-aanlevering.js@@de annulering wordt ingeslikt door de catch om de rapportenvraag heen en de analyse loopt door"
 "public/pidlane-fuel.js@@    if(e && e.plAfgebroken){\n      contentEl.innerHTML=@@    if(false){\n      contentEl.innerHTML=@@test-analysestart.js@@een geannuleerde analyse krijgt een noodrapport alsof de AI stuk was"
 "public/pidlane-fuel.js@@padding:10px 14px calc(10px + var(--pl-sab));background:linear-gradient(135deg,#161b2b@@padding:10px 14px;background:linear-gradient(135deg,#161b2b@@bproef-schermranden.js@@de balk AI analyseert valt weer achter de Android-knoppenbalk"
-"public/pidlane-fuel.js@@    if(r.ok && recent){ resolve(true); return; }@@    if(r.ok){ resolve(true); return; }@@test-analysestart.js@@bij genoeg data gaat de analyse weer stil door: geen keuze tussen de meting van zojuist en nog even meten"
-"public/pidlane-fuel.js@@          '<button class=\"mg-ter\" id=\"mgToch\">Toch doorgaan met wat er is</button>'+\n          '<button class=\"mg-ter\" id=\"mgAnnuleer\">Annuleren</button>'+@@          '<button class=\"mg-ter\" id=\"mgToch\">Toch doorgaan met wat er is</button>'+@@test-analysestart.js@@bij te weinig data is er weer alleen toch doorgaan en geen annuleren"
 "public/pidlane-diagnose.js@@  if(!uit || !uit.ai) return;\n  const v=getVehicle();\n  const desc=@@  const v=getVehicle();\n  const desc=@@test-analysestart.js@@de AI-monteur werkt een oorzaak weer uit zonder dat de klant op het verzamelscherm ja zei"
 "schema.sql@@  Message       TEXT,@@  Bericht       TEXT,@@test-logschema.js@@een kolom in D1 hernoemd zonder de app mee te nemen: het berichtveld komt nergens meer aan"
 # ── De logroute schrijft sinds #262 naar D1. Deze drie bouwen de fouten na

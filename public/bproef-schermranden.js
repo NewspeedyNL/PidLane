@@ -243,11 +243,9 @@ const VELLEN = [
   { naam: 'Klaar voor gebruik (#286)', open: 'wizShow',        id: 'wizardOv',
     sluit: `e.classList.add('hidden');` },
   // Erbij op 24-09-2026: "AI analyseert…" viel achter de knoppenbalk op een
-  // schermfoto van de AI-monteur, en het meetscherm vóór een analyse is nieuw
-  // in zijn huidige vorm.
+  // schermfoto van de AI-monteur.
   { naam: 'Balk "AI analyseert"',  open: 'aiBusyBegin',         id: 'aiBusyBar',
     geenKnop: true, sluit: `aiBusyEnd();` },
-  { naam: 'Meetscherm vóór een analyse', open: 'plMeetPoortVraag', id: 'meetGateOv' },
   // Erbij op 07-10-2026: het verzamelscherm heeft een lijst die scrollt en
   // drie of vier knoppen eronder — de onderste moet met een vinger te raken zijn.
   { naam: 'Verzamelscherm vóór een AI-rapport', open: 'PLVerzamel.meet', id: 'plVzOv',

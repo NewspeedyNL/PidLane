@@ -79,7 +79,7 @@ const ctx = {
   getPidDef: () => null, isReportableSensor: () => true, showToast() {},
   download: (naam, tekst) => bestanden.push({ naam, tekst }),
   PID_DEFS: {}, sendCmd: async () => '', fv: v => Math.round(v * 10) / 10, KERN_PIDS: [],
-  _pidHealth: {}, correlationLines: () => [], plVraagMeting: async () => true,
+  _pidHealth: {}, correlationLines: () => [],
   discoveredPIDDefs: [], ritSweepFindings: [],
   ALL_PID_DEFS: { '010C': { name: 'Toerental', unit: 'rpm' }, '0105': { name: 'Koelwater', unit: '°C' } },
   // De AI-haak: we vangen de prompt op in plaats van hem te versturen.
