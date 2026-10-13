@@ -1050,6 +1050,14 @@
     ververs();
   }
   function sluit() { var ov = document.getElementById('plGarOv'); if (ov) ov.style.display = 'none'; }
+  /* Vanuit de sensorkeuzelijst (#474): meteen het tabblad Sensoren van het
+     voertuig aan de adapter. Is er geen voertuig, dan de lijst. */
+  function openSensoren() {
+    if (!magPlatform()) { open(); return; }
+    var v = voertuig(_st.gekoppeld) || actief();
+    open(v ? v.id : null);
+    if (v) { _st.tab = 'sensoren'; _st.sens = null; teken(); }
+  }
 
   function teken() {
     var body = document.getElementById('plGarBody');
@@ -1692,6 +1700,7 @@
 
   window.PLGarage = {
     open: open,
+    openSensoren: openSensoren,
     sluit: sluit,
     ververs: ververs,
     rapport: rapport,
@@ -2081,6 +2090,8 @@
       var k = magPlatform();
       var item = document.getElementById('kbGarage');
       if (item) item.style.display = k ? '' : 'none';
+      var sens = document.getElementById('pidGarSens');   // #474: in de sensorkeuzelijst
+      if (sens) sens.style.display = k ? '' : 'none';
       // Ook bij een wissel van gebruiker zonder uitloggen ertussen (beheer →
       // klant): sinds beheer ook Mijn voertuigen heeft, mogen ze allebei.
       if (k && (!_wasKlant || wie() !== _wasWie)) {

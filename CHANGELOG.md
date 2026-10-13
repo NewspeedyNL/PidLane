@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Knop "Eigen" in de sensorkeuzelijst (#474)
+ ═══════════════════════════════════════════════════════════
+
+ - Naast Diep zoeken: opent Mijn voertuigen meteen op Sensoren van het
+   voertuig aan de adapter. Alleen voor wie Mijn voertuigen heeft.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — De bulk-recorder is voor iedereen (#478)
  ═══════════════════════════════════════════════════════════
 

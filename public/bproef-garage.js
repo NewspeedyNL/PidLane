@@ -80,6 +80,7 @@ const NEPSERVER = `(function(){
     await app.ev(`window.currentUser = { user:'monteur', role:'user', label:'Monteur' }; 'ok'`);
     await new Promise(r => setTimeout(r, 2500));
     toets('een monteur ziet geen "Mijn voertuigen" in het menu', await app.ev(`document.getElementById('kbGarage').style.display === 'none'`));
+    toets('en geen knop "Eigen" in de sensorkeuzelijst (#474)', await app.ev(`document.getElementById('pidGarSens').style.display === 'none'`));
     toets('en geen kaartje op het startscherm', await app.ev(`document.getElementById('plGarageKaart').innerHTML === ''`));
     // Sinds 10-10-2026 heeft een beheerder een eigen Mijn voertuigen.
     await app.ev(`window.currentUser = { user:'beheer', role:'admin', label:'Beheer' }; 'ok'`);
@@ -112,6 +113,11 @@ const NEPSERVER = `(function(){
     await app.ev(`PLGarage._bewaar(); 'ok'`);
     toets('het voertuig is aangemaakt en actief', await wacht(`!!(PLGarage.actief() && PLGarage.actief().naam === 'Blauwe Mazda')`));
     toets('het detailvenster toont de status en het advies', await wacht(`/Condities/.test(document.getElementById('plGarBody').textContent) && /Advies/.test(document.getElementById('plGarBody').textContent)`));
+    // #474: vanuit de sensorkeuzelijst meteen naar Sensoren van dit voertuig.
+    toets('de knop "Eigen" staat in de sensorkeuzelijst voor een klant', await wacht(`document.getElementById('pidGarSens').style.display === ''`));
+    await app.ev(`PLGarage.sluit(); document.getElementById('pidGarSens').click(); 'ok'`);
+    toets('en opent het tabblad Sensoren van het voertuig', await wacht(`(document.querySelector('#plGarBody .gr-tab.aan')||{}).textContent === 'Sensoren'`));
+    await app.ev(`PLGarage._tab('overzicht'); 'ok'`);
     toets('het kenteken staat als gele plaat met streepjes', await app.ev(`/AB-123-C/.test(document.querySelector('#plGarBody .gr-kent').textContent)`));
 
     console.log('\n── 4. rapporten en foutcodes komen vanzelf bij het voertuig ──');

@@ -1650,6 +1650,7 @@ MUTATIES=(
 "public/pidlane-garage.js@@    h += tekenMeekijk();\n@@@@bproef-meekijk.js@@de klant kan nergens een meekijkcode maken of intrekken"
 "public/pidlane-garage.js@@      if (k && (!_wasKlant || wie() !== _wasWie)) {@@      if (k && !_wasKlant) {@@bproef-garage.js@@wie van beheer naar klant wisselt zonder uit te loggen, ziet de auto's van beheer"
 "public/pidlane-garage.js@@return r === 'klant' || r === 'admin'; }@@return r === 'klant'; }@@bproef-garage.js@@een beheerder ziet Mijn voertuigen weer niet"
+"public/pidlane-garage.js@@    if (v) { _st.tab = 'sensoren'; _st.sens = null; teken(); }@@@@bproef-garage.js@@de knop Eigen in de sensorkeuzelijst opent het overzicht in plaats van Sensoren (#474)"
 "public/pidlane-meekijk.js@@    if (!(typeof isAdmin === 'function' && isAdmin())) { melding('Meekijken is er voor beheerders'); return; }@@@@bproef-meekijk.js@@een klant opent het beheervenster voor de voertuigen van anderen"
 "public/pidlane-meekijk.js@@    _st = { code: '', data: null, fout: '', bezig: false, form: null };\n  }\n\n  function waarde@@  }\n\n  function waarde@@bproef-meekijk.js@@na sluiten staan de voertuigen van de vorige klant er nog"
 # ── het anker van de BT-log na een herlaad (30-09-2026) ──
