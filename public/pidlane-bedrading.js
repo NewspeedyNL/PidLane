@@ -290,7 +290,7 @@ var KRITIEK = [
   // Een hybride houdt stationair niet vanzelf aan (#430): de uitleg in het
   // onderzoek en de systeemtest. Ontbreekt hij, dan staat er weer alleen
   // "laat hem stationair draaien".
-  'plStationairUitleg',
+  'plStationairUitleg','bscGroepen',
   // Blok 5 controleert hiermee of pidlane-motortype.js geladen is (hernoemd
   // uit pidlane-scheduler.js op 21-08).
   'selectStandardSet',
