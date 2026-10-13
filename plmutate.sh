@@ -1636,6 +1636,16 @@ MUTATIES=(
 "public/pidlane-zonder.js@@    if (/^[0-9][0-9A-F]{3}$/.test(s)) s = 'P' + s;@@    void 0;@@test-zonder.js@@een foutcode zonder letter (0301, zoals op een werkbon) wordt niet gevonden"
 "public/pidlane-zonder.js@@    if (st.verbonden) return [];@@    if (false) return [];@@test-zonder.js@@de kaart zonder adapter staat er ook als de auto verbonden is"
 "public/pidlane-zonder.js@@    var onbekend = !info.desc || /^Onbekende code/.test(info.desc);@@    var onbekend = !info.desc;@@test-zonder.js@@een onbekende foutcode krijgt de standaardernst van dtcInfo als oordeel"
+# ── PLWijzer: zones, kosten, klachtenwijzer, adapter (13-10-2026) ──
+# "Mag erin" en "past" zijn uitspraken waar iemand op handelt: een boete of
+# een adapter in de la. Onbekend mag nooit "mag" of "mag niet" worden.
+"public/pidlane-wijzer.js@@      var min = zoneMin(z, nu), mag = ek.klasse == null ? null : ek.klasse >= min;@@      var min = zoneMin(z, nu), mag = ek.klasse >= min;@@test-wijzer.js@@een diesel met onbekende emissieklasse krijgt toch een zone-oordeel"
+"public/pidlane-wijzer.js@@  function zoneMin(z, nu) { return (z.vanaf && vandaag8(nu) >= z.vanaf) ? z.minDaarna : z.min; }@@  function zoneMin(z, nu) { return z.min; }@@test-wijzer.js@@een aangescherpte zone (Arnhem, 01-06-2026) houdt de oude norm"
+"public/pidlane-wijzer.js@@    if (el && d) return 'hybride-diesel';@@    if (false) return 'hybride-diesel';@@test-wijzer.js@@een diesel-hybride ontloopt de dieselzones"
+"public/pidlane-wijzer.js@@    if (d >= grens) {@@    if (d > grens) {@@test-wijzer.js@@een auto van precies de OBD-plichtdatum heet \"waarschijnlijk\""
+"public/pidlane-wijzer.js@@if (w) kwh = w / 1000; }@@if (w) kwh = w; }@@test-wijzer.js@@het stroomverbruik in Wh/km wordt als kWh/km gerekend: duizend keer te duur"
+"public/pidlane-wijzer.js@@    if (s && st.gedaan.indexOf(id) < 0) O.verwerk(st, s, { w: w });@@    if (s) O.verwerk(st, s, { w: w });@@test-wijzer.js@@een dubbel antwoord in de klachtenwijzer telt twee keer mee"
+"public/pidlane-zonder.js@@    var k = ['kenteken', 'klacht', 'lampje', 'foutcode'];@@    var k = ['kenteken', 'lampje', 'foutcode'];@@test-zonder.js@@de klachtenwijzer verdwijnt van de kaart zonder adapter"
 # ── Herinneringen en de lampjesgids (29-09-2026) ──
 # Een herinnering die op de verkeerde dag komt, dubbel, of vanuit de demo, is
 # erger dan geen; een lampjesgids die bij rood "doorrijden" zegt, is gevaarlijk.

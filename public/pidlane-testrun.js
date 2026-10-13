@@ -2787,6 +2787,28 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── zonder adapter: zones, kosten, klachtenwijzer, adapter (#485, 13-10-2026) ──
+  {
+    issue: '#485',
+    naam: 'Zonder adapter: milieuzones, kosten per maand, klachtenwijzer en past een adapter',
+    waarom: 'Wie de app downloadt heeft meestal nog geen adapter; bij een kenteken staan nu de zones, de maandkosten en of een adapter past, en de kaart heeft een klachtenwijzer.',
+    proef: async function () {
+      if (!window.PLWijzer || !PLWijzer._kern) return { staat: 'FOUT', detail: 'PLWijzer ontbreekt — pidlane-wijzer.js niet geladen (herladen?)' };
+      var K = PLWijzer._kern, bs = [{ brandstof_omschrijving: 'Diesel', emissiecode_omschrijving: '4' }];
+      var z = K.zones({ voertuigsoort: 'Personenauto', datum_eerste_toelating: '20080101' }, bs, Date.now());
+      var ams = z.rijen.filter(function (r) { return r.stad === 'Amsterdam'; })[0];
+      if (!ams || ams.mag !== false) return { staat: 'FOUT', detail: 'een Euro 4-diesel mag volgens de app Amsterdam in' };
+      if (K.adapter({ voertuigsoort: 'Personenauto', datum_eerste_toelating: '20010101' }, [{ brandstof_omschrijving: 'Benzine' }]).past !== 'ja') return { staat: 'FOUT', detail: 'een benzine van 01-01-2001 heet geen OBD2' };
+      if (!window.PLOnderzoek) return { staat: 'LET OP', detail: 'zones en adapter goed · PLOnderzoek ontbreekt, dus geen klachtenwijzer' };
+      var st = K.wijzerStart(['start']);
+      K.wijzerAntwoord(st, 'startgedrag', 'traag');
+      var u = K.wijzerUitkomst(st);
+      if (!u || !u.kandidaten.length || u.kandidaten[0].id !== 'accu') return { staat: 'FOUT', detail: 'klachtenwijzer: traag ronddraaien zet de accu niet bovenaan' };
+      var knop = document.querySelector('#plZonderKaart [data-plz="klacht"]');
+      return { staat: 'OK', detail: 'zones, adapter en klachtenwijzer goed · peil ' + K.PEIL + ' · knop op de kaart ' + (knop ? 'zichtbaar' : 'niet zichtbaar (verbonden of demo)') };
+    }
+  },
+
   // ── tanken herkennen aan het brandstofpeil (#469 stap 2, 13-10-2026) ──
   {
     issue: '#469',

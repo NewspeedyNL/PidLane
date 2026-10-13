@@ -172,7 +172,7 @@
     st = st || {};
     if (st.verbonden) return [];
     if (st.demo) return ['demoStop'];
-    var k = ['kenteken', 'lampje', 'foutcode'];
+    var k = ['kenteken', 'klacht', 'lampje', 'foutcode'];
     if (st.demoMag) k.push('simuleer');
     if (st.klant) k.push('garage');
     return k;
@@ -316,6 +316,7 @@
 
   var KNOP = {
     kenteken: { ic: '🔎', t: 'Kenteken-check', d: 'APK, verzekering, NAP, terugroep', on: 'PLZonder.kenteken()' },
+    klacht: { ic: '🩺', t: 'Er is iets mis', d: 'Wat kan het zijn?', on: 'PLWijzer.klacht()' },
     lampje: { ic: '💡', t: 'Lampje brandt?', d: 'Mag ik doorrijden?', on: 'PLLampjes.open()' },
     foutcode: { ic: '🔧', t: 'Foutcode opzoeken', d: 'Wat betekent P0301?', on: 'PLZonder.foutcode()' },
     simuleer: { ic: '▷', t: 'Simuleer verbinding', d: 'Alles proberen, niets bewaard', on: 'PLZonder.simuleer()' },
@@ -413,6 +414,9 @@
       return '<div class="plz-regel"><span class="plz-dot ' + (x.ernst || '') + '" style="margin-top:4px"></span><span style="flex:1"><div class="plz-l">' + x.ico + ' ' + esc(x.label) + '</div><div class="plz-w">' + esc(x.waarde) + '</div></span></div>';
     }).join('');
     h += '<div id="plzRecall"></div>';
+    // Zones, kosten en adapter (pidlane-wijzer.js) — uit dezelfde RDW-rijen
+    try { if (window.PLWijzer) h += PLWijzer.blokken(d.rij, d.bs); }
+    catch (e) { console.warn('PLZonder: zones, kosten en adapter niet getekend', e); }
     h += '<div class="plz-knoppen">';
     if (!isMijn && !isDemo()) h += '<button type="button" class="plz-kn hoofd" onclick="PLZonder._mijn()">📌 Dit is mijn auto</button>';
     if (isMijn && !isDemo() && window.PLHerinner && !PLHerinner.aan()) h += '<button type="button" class="plz-kn hoofd" onclick="PLHerinner.zet(true)">🔔 Herinner me aan de APK</button>';
@@ -536,6 +540,7 @@
     _mijn: maakMijn,
     _simuleerKent: simuleerKent,
     _code: code,
+    _blad: blad,   // het venster, ook voor PLWijzer
     // pure kern — voor test-zonder.js
     _kern: { normKent: normKent, normCode: normCode, dagenTot: dagenTot, apkRegel: apkRegel, rdwOverzicht: rdwOverzicht, kaartKnoppen: kaartKnoppen, codeOordeel: codeOordeel, ERNST: ERNST }
   };
