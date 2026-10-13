@@ -154,6 +154,22 @@ function toets(naam, waar, uitleg) {
     toets('de terugknop sluit het, zonder AI', await wacht(`!!window.__uit && window.__uit.door === false && window.__uit.ai === false`, 3000),
       await app.ev(`JSON.stringify(window.__uit)`));
     toets('geen prompt erbij', await app.ev(`window.__prompts.length === 3`));
+
+    console.log('\n── 10. Systeemtest uit het plan: het verzamelscherm zonder AI-knop ──');
+    // Tot 13-10-2026 kreeg de wizard hier het oude meetscherm (plVraagMeting);
+    // systeem en onderdeel waren de laatste routes die het nog hadden.
+    await app.ev(`window.__sysRun = 0; window.__startChoice = startChoice; startChoice = function (c) { if (c === 'basiccheck') window.__sysRun++; else window.__startChoice(c); }; 'ok'`);
+    await app.ev(`PLWizard.draai('systeem'); 'ok'`);
+    toets('de Systeemtest opent het verzamelscherm', await wacht(zichtbaar('plVzOv'), 3000));
+    toets('en draait nog niet vóór de meting', await app.ev(`window.__sysRun === 0`));
+    // Net verzameld in de stappen hiervoor: dan kan de uitslag er al staan.
+    await app.ev(`(function(){ var b = document.querySelector('#plVzOv [data-a="nu"]'); if (b) b.click(); return 'ok'; })()`);
+    toets('de uitslag heeft "Verder" en geen AI-knop', await wacht(`!!document.querySelector('#plVzOv [data-a="door"]') && !document.querySelector('#plVzOv [data-a="ai"]')`, 3000),
+      await app.ev(`(document.getElementById('plVzKnoppen')||{}).innerHTML`));
+    await app.ev(`document.querySelector('#plVzOv [data-a="door"]').click(); 'ok'`);
+    toets('"Verder" start de Systeemtest', await wacht(`window.__sysRun === 1`, 3000), await app.ev(`window.__sysRun`));
+    toets('zonder prompt', await app.ev(`window.__prompts.length === 3`));
+    await app.ev(`startChoice = window.__startChoice; 'ok'`);
     toets('geen JS-fouten onderweg', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     await app.stop();

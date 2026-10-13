@@ -264,7 +264,7 @@ var GEEN_MEETEIS = { dtc:1, monitor:1, recorder:1 };
 
 /* Modules die hun meting zélf tonen, in het verzamelscherm (PLVerzamel,
    #443). Die eis is er wel, maar de poort zit in de module: krijgen ze hier
-   ook plVraagMeting, dan ziet de klant twee meetschermen achter elkaar.
+   ook een verzamelscherm, dan ziet de klant twee meetschermen achter elkaar.
    Anders dan GEEN_MEETEIS: die modules hebben géén meeteis.
      aimonteur  runQuickAI          verbruik  runFuelAnalysis
      conditie   runTotalCheck       onderhoud runOnderhoud
@@ -272,7 +272,8 @@ var GEEN_MEETEIS = { dtc:1, monitor:1, recorder:1 };
      diep       de datalog van de intake is de meting
      klimaat    eigen draaiboek; de uitslag komt uit de klimaatmeting
      trekken    de caravanrit is de meting
-   systeem en onderdeel houden de poort: die meten zonder AI-vraag. */
+   systeem en onderdeel krijgen het verzamelscherm hier, in draai(), zonder
+   AI-knop: die meten zonder AI-vraag. */
 var EIGEN_METING = { aimonteur:1, verbruik:1, conditie:1, onderhoud:1, accu:1, evaccu:1, langerit:1,
                      diep:1, klimaat:1, trekken:1 };
 
@@ -730,12 +731,15 @@ window.PLWizard = {
     // TWEEDE DEUR. start() had de meetfase-poort, deze niet — en dit is de
     // deur waar de knoppen in het planscherm naartoe wijzen. Zelfde les als
     // ronde 6 van de PID-gate: een poort op één van de paden is geen poort.
-    // plVraagMeting bepaalt zelf het niveau uit job.meting (plMeetNiveau).
-    if(GEEN_MEETEIS[k] || EIGEN_METING[k] || typeof plVraagMeting!=='function'){ open(); return; }
-    plVraagMeting('normaal', M.n, MODULE_PROFIEL[k] || false).then(function(door){
-      if(door){ metingGestart=true; open(); }
-      // false = de gebruiker koos een rijtest; die neemt het scherm over.
-      // Het plan blijft staan, de chip brengt hem straks terug.
+    // Sinds 13-10-2026 het verzamelscherm (PLVerzamel, #443) zonder AI-knop:
+    // het oude meetscherm (plVraagMeting) had alleen deze wizard nog. Na een
+    // rijtest begint dezelfde module opnieuw, nu met de rit als meting.
+    if(GEEN_MEETEIS[k] || EIGEN_METING[k] || typeof PLVerzamel!=='object'){ open(); return; }
+    PLVerzamel.meet({ niveau:'normaal', profiel:MODULE_PROFIEL[k] || false, watVoor:M.n, ai:false,
+                      naRit:function(){ window.PLWizard.draai(k); } }).then(function(uit){
+      if(uit && uit.door){ metingGestart=true; open(); }
+      // Annuleren of een rijtest: het plan blijft staan, de chip brengt hem
+      // straks terug.
     });
   },
   // Terug naar het plan zonder ook maar iets te resetten. Dit is de ingang
@@ -778,12 +782,14 @@ window.PLWizard = {
       };
       if(EIGEN_METING[eerste]){
         draaiEerste();
-      } else if(typeof plVraagMeting==='function'){
-        plVraagMeting('normaal','dit onderzoek', MODULE_PROFIEL[eerste] || false).then(function(door){
-          if(door) draaiEerste();
+      } else if(typeof PLVerzamel==='object'){
+        PLVerzamel.meet({ niveau:'normaal', profiel:MODULE_PROFIEL[eerste] || false, watVoor:'dit onderzoek', ai:false,
+                          naRit:function(){ window.PLWizard.draai(eerste); } }).then(function(uit){
+          if(uit && uit.door) draaiEerste();
           // Meetfase afgebroken: dan is er ook niets gemeten. Plan terug in
           // beeld, anders sta je met een leeg scherm en een chip te kijken.
-          else { metingGestart=false; window.PLWizard.terugNaarPlan(); }
+          // Een rijtest neemt het scherm zelf over en komt via naRit terug.
+          else if(!(uit && uit.rit)){ metingGestart=false; window.PLWizard.terugNaarPlan(); }
         });
       } else {
         draaiEerste();
