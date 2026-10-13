@@ -295,6 +295,9 @@ var KRITIEK = [
   // op de sigma die hier uitkomt; ontbreekt hij, dan blijven alleen de vijf
   // regelbevindingen over en verdwijnt "afwijkend voor deze auto" stil.
   'baselineBevinding',
+  // Wat als echte rit telt voor dat normaal (#473): de sessies, de klok van
+  // de lopende sessie en de drempel erop. Blok 5 meldt er de stand van.
+  'loadSessions','sessieKlok','sessieTeltVoorNormaal',
   // Deelt een PID in bij dashboard / temperatuur / rest (pidlane-data.js).
   // renderGauges() bouwt de slimme weergave (issue #61) daarop; ontbreekt hij,
   // dan belandt álles in het vak "beweegt" en is de indeling die de modus

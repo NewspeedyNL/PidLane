@@ -1561,14 +1561,6 @@ function feedSessionStat(pid,val){
   s.n++; s.sum+=val; s.last=val;
   if(val<s.min) s.min=val; if(val>s.max) s.max=val;
 }
-// De klok van de lopende sessie (#473): hoe lang verbonden, hoe lang gereden.
-// Een nieuwe _sessionStats (verbinden, pidlane-bt.js) is een nieuwe sessie;
-// daarom hangt de klok aan dat object en niet aan een eigen reset.
-let _sessieKlok={stats:null, start:0, gereden:0, rijT:0};
-function sessieKlok(nu){
-  if(_sessieKlok.stats!==_sessionStats) _sessieKlok={stats:_sessionStats, start:nu, gereden:0, rijT:0};
-  return _sessieKlok;
-}
 function sessionsKey(vin){ return 'pl_sessions_'+String(vin||'').toUpperCase(); }
 
 function saveSession(){
@@ -1591,6 +1583,14 @@ function saveSession(){
     localStorage.setItem(sessionsKey(vin), JSON.stringify(arr));
     log(`💾 Sessie opgeslagen (${Object.keys(compact).length} PIDs) in voertuigdossier`,'ok');
   }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
+}
+// De klok van de lopende sessie (#473): hoe lang verbonden, hoe lang gereden.
+// Een nieuwe _sessionStats (verbinden, pidlane-bt.js) is een nieuwe sessie;
+// daarom hangt de klok aan dat object en niet aan een eigen reset.
+let _sessieKlok={stats:null, start:0, gereden:0, rijT:0};
+function sessieKlok(nu){
+  if(_sessieKlok.stats!==_sessionStats) _sessieKlok={stats:_sessionStats, start:nu, gereden:0, rijT:0};
+  return _sessieKlok;
 }
 function loadSessions(vin){
   try{ return JSON.parse(localStorage.getItem(sessionsKey(vin||vehicleInfo?.vin))||'[]'); }
