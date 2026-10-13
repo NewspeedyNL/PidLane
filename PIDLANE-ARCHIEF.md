@@ -15,6 +15,17 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 13-10-2026 — De mail bij een nieuwe klant viel stil na de overstap naar D1 (#477)
+
+De Airtable-automatisering "Nieuwe klant → mail naar Support" (base
+`appUAuyRxK18T7ImK`, trigger *record aangemaakt* op Klanten) stond nog aan,
+maar had geen runs meer: sinds #327 (01-10-2026) maakt `/klant/registreer` de
+klant in D1 aan en komt er in Airtable geen rij meer bij. Niets werd rood —
+een trigger die niet vuurt is geen fout. Mail vanuit de Worker vraagt een
+betaalde provider; daarom schrijft de Worker nu weer een melding-rij naar
+Airtable, met alleen Email en Naam, en wist de cron die na twee dagen. Alleen
+zelfregistratie meldt: een account dat de beheerder aanmaakt kent hij al.
+
 ## 09-10-2026 — De helling stond op een tegel maar telde nergens mee (#463)
 
 De telefoon meet sinds 05-10 de helling (TL01), maar de twee plekken waar
