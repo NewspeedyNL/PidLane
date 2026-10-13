@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Zonder adapter: zones, kosten, klachtenwijzer, adapter (#485)
+ ═══════════════════════════════════════════════════════════
+
+ - Onder de kenteken-check: milieuzones voor diesels (Amsterdam, Utrecht,
+   Den Haag, Arnhem), kosten per maand (wegenbelasting als indicatie plus
+   brandstof) en of er een adapter past (OBD-plicht, CAN, WiFi werkt niet).
+ - "Er is iets mis" op de kaart: de klachtenwijzer op de kern van
+   PLOnderzoek, met alleen vragen zonder sensor, en wat een adapter meet.
+ - Nieuw: pidlane-wijzer.js (PLWijzer), test-wijzer.js, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Tankbeurten aan/uit per voertuig en tanken herkennen (#469)
  ═══════════════════════════════════════════════════════════
 

@@ -78,10 +78,12 @@ var PL_HULP = {
         '<p>Op het startscherm staat een kaart voor als je niet in de auto zit. Daarop:</p>' +
         '<ul>' +
         '<li><b>Kenteken-check</b> — APK, verzekering, NAP en terugroepacties uit het RDW.</li>' +
+        '<li><b>Er is iets mis</b> — kies wat je merkt, beantwoord een paar vragen en zie wat het waarschijnlijk is, en wat een adapter zou meten.</li>' +
         '<li><b>Lampje brandt?</b> — wat een dashboardlampje betekent en of je mag doorrijden.</li>' +
         '<li><b>Foutcode opzoeken</b> — bijvoorbeeld P0301. Dit staat in de app zelf.</li>' +
         '<li><b>Simuleer verbinding</b> — alles proberen, er wordt niets bewaard.</li>' +
         '</ul>' +
+        '<p>Onder de kenteken-check staan ook de <b>milieuzones</b> (mag een diesel de stad in), een schatting van de <b>kosten per maand</b> (wegenbelasting en brandstof) en of er een <b>adapter past</b>.</p>' +
         '<p>Na een kenteken-check kun je <b>Dit is mijn auto</b> kiezen. Staat er een APK-datum bij, dan verschijnt ook <b>Herinner me</b>.</p>' +
         '<p>In het verbindscherm brengt <b>Zonder adapter</b> je hier ook.</p>',
       zie: ['wat', 'verbinden'] },
