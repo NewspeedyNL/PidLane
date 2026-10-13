@@ -854,6 +854,31 @@
 
   function melding(t) { try { if (typeof showToast === 'function') showToast(t); } catch (e) { console.warn('PLGarage: melding', e); } }
 
+  // ── Tanken herkennen (#469 stap 2, 13-10-2026) ────────────────────
+  // PLTank.peilTik() beslist; hier alleen het anker per voertuig bewaren en
+  // de vraag stellen. Niet in de demo: daar is geen echte tank.
+  var _peil = {};
+  function peilSleutel(vid) { return 'pl_tank_peil_' + vid; }
+  function tankTik(v, kmh, nu) {
+    if (!tankenAan(v) || !window.PLTank || !PLTank.peilTik) return;
+    var a = lees(peilSleutel(v.id), null);
+    var r = PLTank.peilTik(_peil, kmh, pv('012F'), nu, a);
+    _peil = r.st;
+    if (r.anker) schrijf(peilSleutel(v.id), r.anker);
+    if (r.sprong) tankVraag(v, r.sprong);
+  }
+  async function tankVraag(v, s) {
+    var vraag = '⛽ Getankt? Het brandstofpeil ging van ' + Math.round(s.voor) + ' % naar ' + Math.round(s.na) + ' %.\n\nWil je de tankbeurt invullen? De app heeft het peil en zijn eigen bereikschatting al.';
+    var ja = false;
+    try { ja = (typeof plBevestig === 'function') ? await plBevestig(vraag, 'Invullen', 'Nee, niet getankt', '⛽ Tankbeurt') : false; }
+    catch (e) { console.warn('PLGarage: tankvraag', e); }
+    if (!ja) { melding('Oké — geen tankbeurt'); return; }
+    var bereik = pv('CA09');
+    open(v.id);
+    _st.tab = 'tanken'; _st.tankForm = PLTank.uitSprong(s, typeof bereik === 'number' ? bereik : null);
+    teken();
+  }
+
   // ── De rit: elke tik pidVals lezen, niets op de bus zetten ─────────
   function ritTikNu() {
     var v = actief();
@@ -867,6 +892,7 @@
     if (r && ritStand(r, nu, verbonden) === 'af') { ritAf('stil'); r = null; }
     if (verbonden) {
       var kmh = pv('010D');
+      try { tankTik(v, kmh, nu); } catch (e) { console.warn('PLGarage: tanken herkennen', e); }
       if (!r && typeof kmh === 'number' && kmh >= CFG.ritStartKmh) {
         r = _st.rit = ritNieuw(nu); r.vid = v.id;
         // Een nieuwe rit: het rit-histogram van de versnellingsindicator leeg.
@@ -885,7 +911,10 @@
         var g = (v.gezondheid = v.gezondheid || {});
         if (typeof rpm === 'number' && rpm < 100) g.accuRust = accu; else if (typeof rpm === 'number' && rpm > 600) g.accuLopend = accu;
       }
-    } else if (r && !r._weg) {
+    } else if (_peil.stil || (_peil.buf && _peil.buf.length)) {
+      _peil = {};   // weer verbinden = een nieuwe stilstand, met een nieuw eerste peil
+    }
+    if (!verbonden && r && !r._weg) {
       // Verbinding weg is géén einde (tot 29-09-2026 wel, en dan werd één rit
       // met een tankstop er twee). De rit blijft staan, veilig op het toestel;
       // ritStand() beslist hierboven wanneer het wachten voorbij is.
@@ -1195,7 +1224,9 @@
   }
 
   function tekenVoertuig(v) {
-    var tabs = [['overzicht', 'Overzicht'], ['issues', 'Open punten'], ['ritten', 'Ritten'], ['tanken', 'Tankbeurten'], ['rapporten', 'Rapporten'], ['sensoren', 'Sensoren'], ['profiel', 'Profiel']];
+    var tabs = [['overzicht', 'Overzicht'], ['issues', 'Open punten'], ['ritten', 'Ritten'], ['tanken', 'Tankbeurten'], ['rapporten', 'Rapporten'], ['sensoren', 'Sensoren'], ['profiel', 'Profiel']]
+      .filter(function (t) { return t[0] !== 'tanken' || tankenAan(v); });
+    if (_st.tab === 'tanken' && !tankenAan(v)) _st.tab = 'overzicht';
     var h = '<div class="gr-knoppen" style="margin:0 0 10px"><button class="gr-k klein" onclick="PLGarage._terug()">← Alle voertuigen</button>' +
       (v.status === 'actief' && v.id !== _st.actiefId ? '<button class="gr-k klein" onclick="PLGarage._actief(\'' + esc(v.id) + '\')">Maak actief</button>' : '') + '</div>';
     h += '<div class="gr-blok">' + tekenKentekenEnNaam(v) + '</div>';
@@ -1318,8 +1349,13 @@
     brandstof: ['benzine', 'diesel', 'hybride', 'plug-in hybride', 'elektrisch', 'lpg', 'cng', 'onbekend'],
     turbo: ['onbekend', 'ja', 'nee'], transmissie: ['handgeschakeld', 'automaat', 'onbekend'],
     versnellingen: ['4', '5', '6', '7', '8', '9', '10'],
-    rijprofiel: ['gemengd', 'stad', 'snelweg', 'korte ritten', 'aanhanger of caravan']
+    rijprofiel: ['gemengd', 'stad', 'snelweg', 'korte ritten', 'aanhanger of caravan'],
+    tanken: ['uit', 'aan']
   };
+  /* Tankbeurten bijhouden is per voertuig en staat standaard uit (#469,
+     13-10-2026): niet iedereen wil het. Uit = geen tabblad, geen vraag
+     "Getankt?" en geen export. Wat al bewaard is blijft staan. */
+  function tankenAan(v) { return !!v && v.tanken === 'aan'; }
   function tekenFormulier(v) {
     v = v || {};
     var inv = function (id, label, w, type, extra) {
@@ -1344,6 +1380,8 @@
       '<div class="gr-2">' + inv('verbruik_opgegeven', 'Verbruik (l/100 km)', v.verbruik_opgegeven, 'number', 'step="0.1" min="0" max="50"') + inv('kmstand', 'Kilometerstand', v.kmstand, 'number', 'min="0"') + '</div>' +
       '<div class="gr-2">' + inv('tankinhoud', 'Tankinhoud (liter)', v.tankinhoud, 'number', 'min="10" max="200"') + inv('brandstofprijs', 'Literprijs (€)', v.brandstofprijs, 'number', 'step="0.001" min="0.1" max="5"') + '</div>' +
       '<div class="gr-klein">Tankinhoud geeft het bereik met de tank die erin zit; de literprijs de kosten per rit en per uur.</div>' +
+      kies('tanken', 'Tankbeurten bijhouden', v.tanken || 'uit') +
+      '<div class="gr-klein">Aan: een tabblad Tankbeurten met beloofd tegenover gereden bereik en export, en na het tanken vraagt de app of je de beurt wilt invullen.</div>' +
       '<div class="gr-2">' + inv('apk_tot', 'APK geldig tot', v.apk_tot, 'date') + inv('onderhoud_datum', 'Volgend onderhoud (datum)', v.onderhoud_datum, 'date') + '</div>' +
       inv('onderhoud_km', 'Volgend onderhoud (km-stand)', v.onderhoud_km, 'number', 'min="0"') +
       '<div class="gr-2">' + inv('onderhoud_laatst', 'Laatste onderhoudsbeurt', v.onderhoud_laatst, 'text', 'maxlength="80" placeholder="bv. 03-2026 / 135.000 km"') +
@@ -1666,7 +1704,7 @@
   }
 
   function formWaarden() {
-    var velden = ['naam', 'kenteken', 'merk', 'model', 'bouwjaar', 'motor', 'brandstof', 'turbo', 'transmissie', 'versnellingen', 'rijprofiel', 'verbruik_opgegeven', 'kmstand', 'tankinhoud', 'brandstofprijs', 'apk_tot', 'onderhoud_datum', 'onderhoud_km', 'onderhoud_laatst', 'distributie', 'notities', 'cilinderinhoud', 'vermogen_kw', 'vin_pseudo'];
+    var velden = ['naam', 'kenteken', 'merk', 'model', 'bouwjaar', 'motor', 'brandstof', 'turbo', 'transmissie', 'versnellingen', 'rijprofiel', 'verbruik_opgegeven', 'kmstand', 'tankinhoud', 'brandstofprijs', 'apk_tot', 'onderhoud_datum', 'onderhoud_km', 'onderhoud_laatst', 'distributie', 'notities', 'cilinderinhoud', 'vermogen_kw', 'vin_pseudo', 'tanken'];
     var uit = {};
     velden.forEach(function (k) { var el = document.getElementById('grf_' + k); if (el) uit[k] = el.value === '' ? null : el.value; });
     return uit;
@@ -2027,6 +2065,16 @@
     _tankWeg: function (id) {
       if (!confirm('Deze tankbeurt wissen?')) return;
       doe(function () { return api('tank_verwijder', { id: id }); }, 'Tankbeurt gewist').then(function () { delete cacheVan(_st.vid).tanken; teken(); });
+    },
+    // Stap 3: de ritten van één tankcyclus (null = sinds de laatste beurt).
+    _tankCyclus: function (totId) {
+      var v = voertuig(_st.vid), c = cacheVan(_st.vid);
+      var cy = PLTank.cyclusRitten(c.tanken || [], c.ritten || [], totId);
+      if (!cy) { melding('Geen tankcyclus om te exporteren'); return; }
+      if (!cy.ritten.length) { melding('Geen ritten in deze tankcyclus'); return; }
+      var naam = 'tankcyclus-' + String((v && (v.naam || v.merk)) || 'voertuig').replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '-' + String(cy.van).slice(0, 10);
+      try { if (typeof download === 'function') download(naam + '.csv', ritExport(cy.ritten, null, literprijs(v).prijs).csv); }
+      catch (e) { melding('⚠️ Exporteren mislukt: ' + e.message); console.warn('PLGarage: cyclusexport', e); }
     },
     _tankExport: function () {
       var v = voertuig(_st.vid), c = cacheVan(_st.vid);

@@ -433,6 +433,27 @@ const NEPSERVER = `(function(){
     toets('na twee verversrondes staat het venster nog waar je het liet', scroll.gezet > 0 && Math.abs(scroll.na - scroll.gezet) <= 1, JSON.stringify(scroll));
     toets('"In welke versnelling zit je nu?" staat er altijd, met cijfers en R', scroll.knoppen >= 7, JSON.stringify(scroll));
 
+    console.log('\n── 4k. tanken herkennen aan het brandstofpeil (#469 stap 2) ──');
+    // Echte ritTikNu()-lus (elke 2 s) op pidVals; geen bus. Eerst een stilstand
+    // op 12 %, dan "weg" (contact uit bij de pomp), dan terug op 96 %.
+    await app.ev(`localStorage.removeItem('pl_tank_peil_' + PLGarage.actief().id); pidVals['010D'] = 0; pidVals['012F'] = 12; pidVals['CA09'] = 612; connected = true; demoMode = false; 'ok'`);
+    // Standaard uit: geen tabblad en niets bijgehouden.
+    await new Promise(r => setTimeout(r, 12500));
+    toets('uit (standaard): geen anker, dus ook nooit een vraag', await app.ev(`localStorage.getItem('pl_tank_peil_' + PLGarage.actief().id) === null`));
+    await app.ev(`PLGarage.open(PLGarage.actief().id); 'ok'`);
+    toets('uit (standaard): geen tabblad Tankbeurten', await app.ev(`!/Tankbeurten/.test(document.querySelector('#plGarBody').textContent)`));
+    await app.ev(`PLGarage.sluit(); const id = PLGarage.actief().id; window._nepPlatform.voertuigen.forEach(function (x) { if (x.id === id) x.tanken = 'aan'; }); PLGarage.actief().tanken = 'aan'; 'ok'`);
+    toets('aan, stilstand op 12 %: het anker wordt bewaard', await wacht(`(JSON.parse(localStorage.getItem('pl_tank_peil_' + PLGarage.actief().id) || 'null') || {}).pct === 12`, 20000));
+    toets('en dat is nog geen vraag', await app.ev(`!document.querySelector('.plBevestigOv')`));
+    await app.ev(`connected = false; 'ok'`);
+    await new Promise(r => setTimeout(r, 2500));
+    await app.ev(`pidVals['012F'] = 96; connected = true; 'ok'`);
+    toets('terug op 96 %: de app vraagt of er getankt is', await wacht(`/van 12 % naar 96 %/.test((document.querySelector('.plBevestigOv') || {}).textContent || '')`, 20000));
+    await app.ev(`document.querySelector('.plBevestigOv .plBevestigBtn.ja').click(); 'ok'`);
+    toets('"Invullen" opent Tankbeurten met wat de app zag', await wacht(`/De app zag het brandstofpeil van 12 % naar 96 %/.test((document.getElementById('plGarBody') || {}).textContent || '') && document.getElementById('tk_bereik_app').value === '612'`, 5000));
+    toets('aan: het tabblad Tankbeurten staat er', await app.ev(`/Tankbeurten/.test(document.querySelector('#plGarBody').textContent)`));
+    await app.ev(`connected = false; PLGarage._tankForm(null); window._nepPlatform.voertuigen.forEach(function (x) { x.tanken = null; }); PLGarage.actief().tanken = null; PLGarage.sluit(); 'ok'`);
+
     console.log('\n── 5. de terugknop en het startscherm ──');
     await app.ev(`PLGarage.open(); 'ok'`);
     await app.ev(`appBack(); 'ok'`);

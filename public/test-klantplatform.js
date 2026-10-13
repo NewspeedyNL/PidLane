@@ -270,6 +270,12 @@ async function laadWorker() {
 
   const tp = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, tankinhoud: 56, brandstofprijs: '1,959' } });
   toets('tankinhoud en literprijs, met drie decimalen', tp.ok && tp.voertuig.tankinhoud === 56 && tp.voertuig.brandstofprijs === 1.959, JSON.stringify(tp).slice(0, 300));
+  // #469: tankbeurten bijhouden per voertuig, standaard uit.
+  toets('tankbeurten bijhouden staat standaard uit (geen waarde)', tp.voertuig.tanken == null, JSON.stringify(tp.voertuig.tanken));
+  const ta = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, tanken: 'aan' } });
+  toets('tankbeurten bijhouden aan wordt bewaard', ta.ok && ta.voertuig.tanken === 'aan', JSON.stringify(ta).slice(0, 300));
+  const tx = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, tanken: 'misschien' } });
+  toets('een andere waarde dan aan of uit wordt geweigerd', !tx.ok || tx.voertuig.tanken === 'aan', JSON.stringify(tx).slice(0, 300));
   const ck = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, carrosserie: 'suv', kleur: 'rood' } });
   toets('carrosserie en kleur worden niet meer bewaard (het icoon is weg)', ck.ok && !ck.voertuig.carrosserie && !ck.voertuig.kleur);
   const gr = await roep(tokA, { actie: 'rit_opslaan', voertuig_id: v1.voertuig.id, rit: { start: '2026-09-27T12:00:00.000Z', km: 12, extra: { gear: { v: 1, bin: 0.015, n: 300, h: { '171': 150, '199': 150 } } } } });
