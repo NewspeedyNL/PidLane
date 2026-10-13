@@ -2787,6 +2787,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── mode 06 in het onderzoek (#428, 13-10-2026) ──
+  {
+    issue: '#428',
+    naam: 'Onderzoek: mode 06 telt missers per cilinder en weegt de zelftests',
+    waarom: 'Een cilinder die overslaat zonder foutcode, of een katalysator krap binnen de grens, zag het onderzoek niet: het las alleen foutcodes en live waarden.',
+    proef: async function () {
+      if (!window.PLOnderzoek || typeof PLOnderzoek.beoordeelMode06 !== 'function') return { staat: 'FOUT', detail: 'PLOnderzoek.beoordeelMode06 ontbreekt — oude pidlane-onderzoek.js (herladen?)' };
+      if (!window.PLM06 || !PLM06._intern) return { staat: 'FOUT', detail: 'PLM06 ontbreekt — pidlane-mode06.js niet geladen' };
+      var R = PLM06._intern.bouwRecord, mis = function (per) { return per.map(function (n, i) { return R(0xA2 + i, 0x0B, 0x24, n, 0, 0xFFFF); }); };
+      var oordeel = function (t) { var st = PLOnderzoek.nieuw({ klachten: ['onrustig'] }); var r = PLOnderzoek.beoordeelMode06({ m06: { tests: t } }, st); return { r: r, st: st }; };
+      var een = oordeel(mis([2, 1, 40, 0]));
+      if (een.st.metingen.mode06.cilinder !== 3) return { staat: 'FOUT', detail: 'cilinder 3 met 40 missers wordt niet aangewezen: ' + JSON.stringify(een.r) };
+      if (oordeel(mis([9, 11, 10, 12])).st.metingen.mode06.cilinder) return { staat: 'FOUT', detail: 'missers verdeeld over alle cilinders heten één cilinder' };
+      if (oordeel(mis([0, 0, 0, 0])).r.some(function (b) { return b.h === 'misfire' && b.d > 0; })) return { staat: 'FOUT', detail: 'nul missers telt als bewijs vóór overslaan' };
+      var verb = (typeof connected !== 'undefined' && connected);
+      return { staat: 'OK', detail: 'oordeel klopt op drie nagebouwde uitlezingen · ' + (verb ? 'start een onderzoek met "onrustig": de stap "Zelftests per cilinder" komt vroeg, en het logboek toont "Mode 06 klaar"' : 'niet verbonden — de echte uitlezing toetst een rit') };
+    }
+  },
+
   // ── het oude meetscherm weg (#452, 13-10-2026) ──
   // Broncode, met reden: de gedragsproef (bproef-verzamel.js, stap 10) opent
   // het verzamelscherm over de app heen. Dit ziet alleen of de geladen versie

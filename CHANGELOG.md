@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Onderzoek leest mode 06: missers per cilinder (#428)
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuwe stap "Zelftests per cilinder en katalysator", na de foutcodes.
+   Eén cilinder die duidelijk vaker overslaat dan de rest bevestigt een
+   ontstekingsprobleem op die cilinder, ook zonder foutcode; missers over
+   alle cilinders wijzen naar mengsel of brandstof.
+ - Zelftests van katalysator, sondes, EGR en missers: buiten de grens
+   bevestigt, krap is een aanwijzing, ruim binnen sluit uit. Een telling
+   op 0 is niet krap. Onbekende schaal telt niet mee.
+ - Drempels (10 missers, 3× de rest) zijn voorlopig: te toetsen op echte
+   uitlezingen. In de demo wordt de stap overgeslagen.
+ - test-onderzoek.js deel 10, vier mutaties, blok 5, handleiding.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Eén meetscherm: het oude is weg (#452)
  ═══════════════════════════════════════════════════════════
 

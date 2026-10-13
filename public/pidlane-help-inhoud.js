@@ -145,6 +145,7 @@ var PL_HULP = {
         'Bij een klacht doet alleen mee wat bij die klacht past. Wat de diagnosepoort niet kan zien, zoals roest of luchtvering, staat in het rapport onder <b>zelf nakijken</b>.</p>' +
         '<ul>' +
         '<li><b>Meten</b> — soms met een opdracht erbij, zoals gas geven tot 2500 tpm. Je ziet de sensoren live meelopen.</li>' +
+        '<li><b>Zelftests</b> — de motorcomputer telt per cilinder hoe vaak hij overslaat, en meet katalysator en sondes tegen zijn eigen grens. Een cilinder die vaker overslaat dan de rest zie je zo vóór er een foutcode is. Niet elke auto levert dit; dan slaat het onderzoek de stap over.</li>' +
         '<li><b>Vragen</b> — wat geen sensor ziet, zoals de kleur van de rook.</li>' +
         '<li><b>Een andere richting</b> — wijst een foutcode of meting ergens anders naar, dan komt die verdenking erbij.</li>' +
         '</ul>' +
