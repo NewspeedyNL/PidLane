@@ -144,5 +144,72 @@ console.log('\n6. Formulier en scherm');
   toets('nieuw formulier: literprijs uit het profiel, vol standaard aan', /value="1.899"/.test(form) && /id="tk_vol" type="checkbox" checked/.test(form), form.slice(0, 300));
 }
 
+console.log('\n7. Stap 2: tanken herkennen aan het brandstofpeil (13-10-2026)');
+{
+  toets('mediaan: één uitschieter telt niet', T.mediaan([12, 12, 40, 13, 12]) === 12 && T.mediaan([1, 3]) === 2 && T.mediaan([]) === null);
+  toets('sprong van 12 naar 96: getankt', !!T.tankSprong({ pct: 12, t: 1 }, { pct: 96, t: 2 }));
+  toets('sprong van 12 naar 26 (14 punt): niet', T.tankSprong({ pct: 12, t: 1 }, { pct: 26, t: 2 }) === null);
+  toets('omlaag is nooit tanken', T.tankSprong({ pct: 80, t: 1 }, { pct: 20, t: 2 }) === null);
+  toets('zonder anker (eerste keer): geen vraag', T.tankSprong(null, { pct: 96, t: 2 }) === null);
+
+  // Een tikreeks: geeft per tik de uitkomst van peilTik terug, met het anker zoals PLGarage het bewaart.
+  const reeks = (anker, tikken) => {
+    let st = {}, a = anker; const vragen = [];
+    tikken.forEach(([kmh, pct], i) => { const r = T.peilTik(st, kmh, pct, 1000 + i, a); st = r.st; if (r.anker) a = r.anker; if (r.sprong) vragen.push(r.sprong); });
+    return { vragen, anker: a };
+  };
+  const stil = (pct, n) => Array.from({ length: n || 5 }, () => [0, pct]);
+
+  // Geval 1: app dicht bij de pomp. Anker 12 %, nieuwe sessie start op 96 %.
+  let r = reeks({ pct: 12, t: 0 }, stil(96));
+  toets('na een sessie zonder app bij de pomp: één vraag, van 12 naar 96', r.vragen.length === 1 && r.vragen[0].voor === 12 && r.vragen[0].na === 96, JSON.stringify(r.vragen));
+  toets('en het nieuwe anker is 96', r.anker.pct === 96);
+  // Geval 2: contact aan bij de pomp: het peil loopt op binnen één stilstand.
+  const oplopend = [].concat(stil(12), [14, 20, 30, 45, 60, 75, 90, 96, 96, 96, 96, 96].map(p => [0, p]));
+  r = reeks({ pct: 30, t: 0 }, oplopend);
+  toets('contact aan bij de pomp: ook gevangen, en maar één keer', r.vragen.length === 1 && r.vragen[0].voor === 12, JSON.stringify(r.vragen));
+  // Klotsen tijdens het rijden telt niet.
+  r = reeks({ pct: 40, t: 0 }, [[50, 70], [60, 75], [55, 80], [50, 72], [48, 71], [52, 74]]);
+  toets('klotsen tijdens het rijden: geen vraag en geen nieuw anker', r.vragen.length === 0 && r.anker.pct === 40);
+  // Eén uitschieter in stilstand dempt de mediaan.
+  r = reeks({ pct: 40, t: 0 }, [[0, 40], [0, 41], [0, 90], [0, 40], [0, 40]]);
+  toets('één uitschieter van 90 bij stilstand: geen vraag', r.vragen.length === 0, JSON.stringify(r.vragen));
+  // Rijden, stoppen, rijden: een lager peil is gewoon verbruik.
+  r = reeks({ pct: 60, t: 0 }, [].concat(stil(60), [[50, 55]], stil(52)));
+  toets('stoppen na een stuk rijden: nieuw anker op het lagere peil, geen vraag', r.vragen.length === 0 && r.anker.pct === 52, JSON.stringify(r));
+  toets('te weinig metingen in stilstand: nog geen oordeel', reeks({ pct: 10, t: 0 }, stil(96, 4)).vragen.length === 0);
+
+  const u = T.uitSprong({ voor: 12, na: 96, op: Date.UTC(2026, 9, 13, 8) }, 612.4);
+  toets('het formulier krijgt peil, vol, bereik van de app en bron app', u.tank_voor === 12 && u.tank_na === 96 && u.vol === true && u.bereik_app === 612 && u.bron === 'app' && /^2026-10-13T08/.test(u.op), JSON.stringify(u));
+  toets('tot 80 %: niet vol, en zonder CA09 geen bereik', T.uitSprong({ voor: 12, na: 80, op: 1 }, null).vol === false && T.uitSprong({ voor: 12, na: 80, op: 1 }, null).bereik_app === null);
+
+  const f = T.html({}, { tanken: [], ritten: [], form: u });
+  toets('het formulier zegt wat de app zag en draagt het mee', /van 12 % naar 96 %/.test(f) && /id="tk_bron" value="app"/.test(f) && /id="tk_bereik_app" value="612"/.test(f), f.slice(0, 500));
+  const f2 = T.html({}, { tanken: [], ritten: [], form: T.uitSprong({ voor: 12, na: 80, op: 1 }, null) });
+  toets('niet vol: het vinkje staat uit', /id="tk_vol" type="checkbox">/.test(f2));
+  const els = { tk_op: '2026-10-13T10:00', tk_liters: '45', tk_bron: 'app', tk_tank_voor: '12', tk_tank_na: '96', tk_bereik_app: '612' };
+  const doc = { getElementById: (id) => id === 'tk_vol' ? { checked: true } : (id in els ? { value: els[id] } : null) };
+  const g = T.uitFormulier(doc);
+  toets('bewaren stuurt bron, peil en app-bereik mee', g.bron === 'app' && g.tank_voor === 12 && g.tank_na === 96 && g.bereik_app === 612, JSON.stringify(g));
+  const hand = T.uitFormulier({ getElementById: (id) => id === 'tk_op' ? { value: '2026-10-13T10:00' } : null });
+  toets('een gewone beurt stuurt geen bron mee', !('bron' in hand) && !('tank_na' in hand));
+  const lijst = T.html({}, { tanken: [t('a', '2026-10-01T12:00:00Z', { liters: 40 }), t('b', '2026-10-08T12:00:00Z', { liters: 41, bron: 'app', tank_voor: 12, tank_na: 96, bereik_app: 612 })], ritten: [] });
+  toets('in de lijst: "Herkend door de app" met het peil', /Herkend door de app: peil 12 → 96 %/.test(lijst));
+}
+
+console.log('\n8. Stap 3: de ritten van één tankcyclus');
+{
+  const tk = [t('a', '2026-10-01T12:00:00Z'), t('b', '2026-10-08T12:00:00Z')];
+  const rs = [rit('2026-09-30T08:00:00Z', 10), rit('2026-10-02T08:00:00Z', 20), rit('2026-10-08T11:59:00Z', 30), rit('2026-10-08T12:00:00Z', 40), rit('2026-10-09T08:00:00Z', 50)];
+  const c = T.cyclusRitten(tk, rs, 'b');
+  toets('de cyclus die op b eindigt: de ritten vanaf a tot b, b zelf niet', c.ritten.map(x => x.km).join(',') === '20,30', JSON.stringify(c));
+  const lopend = T.cyclusRitten(tk, rs, null);
+  toets('de lopende cyclus: alles sinds de laatste beurt', lopend.ritten.map(x => x.km).join(',') === '40,50' && lopend.tot === null);
+  toets('de eerste beurt heeft geen cyclus', T.cyclusRitten(tk, rs, 'a') === null);
+  toets('zonder tankbeurten geen lopende cyclus', T.cyclusRitten([], rs, null) === null);
+  const h = T.html({}, { tanken: tk, ritten: rs });
+  toets('knoppen: per cyclus en sinds de laatste beurt', /_tankCyclus\(&quot;b&quot;\)/.test(h) && /_tankCyclus\(null\)/.test(h) && !/_tankCyclus\(&quot;a&quot;\)/.test(h));
+}
+
 console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' goed'));
 process.exit(fout ? 1 : 0);

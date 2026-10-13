@@ -38,7 +38,12 @@
 
   var CFG = {
     kmMax: 3000,        // meer km tussen twee tankbeurten = een overgeslagen beurt of een tikfout
-    kmAfwijking: 0.1    // ritten en km-stand verschillen meer dan 10 % → melden
+    kmAfwijking: 0.1,   // ritten en km-stand verschillen meer dan 10 % → melden
+    // Stap 2 (13-10-2026): tanken herkennen aan het brandstofpeil (012F).
+    sprongMin: 15,      // procentpunt omhoog tussen twee stilstanden = getankt
+    peilN: 5,           // zoveel metingen in stilstand voor één peil (klotsen dempen)
+    volVanaf: 95,       // peil na tanken vanaf hier: waarschijnlijk vol
+    rijdtVanaf: 2       // km/h; daarboven is het geen stilstand
   };
 
   function getal(x) { return typeof x === 'number' && isFinite(x) ? x : null; }
@@ -168,6 +173,76 @@
     return '\uFEFF' + regels.join('\n');
   }
 
+  /* ── Stap 2: tanken herkennen (13-10-2026) ──────────────────────────
+     Het brandstofpeil (012F) klotst tijdens het rijden; alleen een peil in
+     stilstand telt, als mediaan over peilN metingen. Het ANKER is het peil
+     bij de eerste stilstand na het rijden (of na verbinden), bewaard per
+     voertuig. Twee manieren om te tanken, allebei gevangen:
+       • app dicht of contact uit bij de pomp: de eerste stilstand van de
+         volgende sessie ligt ≥ sprongMin boven het anker;
+       • contact aan bij de pomp: binnen dezelfde stilstand loopt het peil
+         langzaam op; zodra het ≥ sprongMin boven het anker staat, één keer.
+     Alles hieronder is puur; PLGarage bewaart het anker en stelt de vraag. */
+  function mediaan(xs) {
+    var a = (xs || []).filter(function (x) { return typeof x === 'number' && isFinite(x); }).slice().sort(function (p, q) { return p - q; });
+    if (!a.length) return null;
+    var m = Math.floor(a.length / 2);
+    return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+  }
+  /* Van anker `oud` naar peil `nu` ({pct, t}): getankt? */
+  function tankSprong(oud, nu) {
+    if (!oud || !nu || typeof oud.pct !== 'number' || typeof nu.pct !== 'number') return null;
+    if (nu.pct > 100 || oud.pct < 0) return null;
+    var d = nu.pct - oud.pct;
+    if (d < CFG.sprongMin) return null;
+    return { voor: Math.round(oud.pct * 10) / 10, na: Math.round(nu.pct * 10) / 10, sprong: Math.round(d * 10) / 10, sinds: oud.t || null, op: nu.t };
+  }
+  /* Eén tik. `st` = { buf, stil, gevraagd } (begin met {}), `anker` = het
+     bewaarde anker van dit voertuig. Geeft { st, anker, sprong }:
+     `anker` alleen als het opnieuw bewaard moet worden, `sprong` alleen
+     als er nu gevraagd moet worden. */
+  function peilTik(st, kmh, pct, nu, anker) {
+    st = { buf: (st && st.buf || []).slice(), stil: !!(st && st.stil), gevraagd: !!(st && st.gevraagd) };
+    var uit = { st: st, anker: null, sprong: null };
+    if (typeof kmh !== 'number' || typeof pct !== 'number') return uit;
+    if (kmh >= CFG.rijdtVanaf) { uit.st = { buf: [], stil: false, gevraagd: false }; return uit; }
+    st.buf.push(pct); if (st.buf.length > CFG.peilN) st.buf.shift();
+    if (st.buf.length < CFG.peilN) return uit;
+    var nuPeil = { pct: Math.round(mediaan(st.buf) * 10) / 10, t: nu };
+    if (!st.stil) {
+      // De eerste stabiele stilstand: vergelijken met het vorige anker en
+      // dit wordt het nieuwe.
+      st.stil = true;
+      uit.anker = nuPeil;
+      uit.sprong = tankSprong(anker, nuPeil);
+      if (uit.sprong) st.gevraagd = true;
+      return uit;
+    }
+    if (!st.gevraagd) {
+      var s = tankSprong(anker, nuPeil);
+      if (s) { st.gevraagd = true; uit.sprong = s; uit.anker = nuPeil; }
+    }
+    return uit;
+  }
+  /* Wat het formulier al weet na een herkende tankbeurt. */
+  function uitSprong(s, bereikApp) {
+    return { op: new Date(s.op || Date.now()).toISOString(), vol: s.na >= CFG.volVanaf, tank_voor: s.voor, tank_na: s.na,
+      bereik_app: typeof bereikApp === 'number' && isFinite(bereikApp) && bereikApp > 0 ? Math.round(bereikApp) : null, bron: 'app' };
+  }
+
+  /* ── Stap 3: de ritten van één tankcyclus (13-10-2026) ──────────────
+     `totId` = de tankbeurt waarop de cyclus eindigt; null = de lopende
+     cyclus, sinds de laatste tankbeurt. Geeft { van, tot, ritten }. */
+  function cyclusRitten(tanken, ritten, totId) {
+    var t = oplopend(tanken), i;
+    if (totId == null) i = t.length;
+    else { for (i = 0; i < t.length && t[i].id !== totId; i++); if (i >= t.length) return null; }
+    var van = i > 0 ? tijd(t[i - 1]) : null, tot = i < t.length ? tijd(t[i]) : Infinity;
+    if (van === null) return null;
+    var rs = (ritten || []).filter(function (r) { var s = new Date(r.start).getTime(); return !isNaN(s) && s >= van && s < tot; });
+    return { van: t[i - 1].op, tot: i < t.length ? t[i].op : null, ritten: rs };
+  }
+
   /* ── Scherm ──────────────────────────────────────────────────────── */
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function nl(x, d) { return typeof x === 'number' && isFinite(x) ? x.toLocaleString('nl', { minimumFractionDigits: d || 0, maximumFractionDigits: d || 0 }) : '—'; }
@@ -189,7 +264,12 @@
       '<div class="gr-2">' + inv('literprijs', 'Literprijs (€)', t.literprijs != null ? t.literprijs : (v && v.brandstofprijs)) + inv('bedrag', 'of: totaal (€)', t.bedrag) + '</div>' +
       '<div class="gr-2">' + inv('bereik_voor', 'Bereik dashboard vóór tanken (km)', t.bereik_voor, 'type="number" inputmode="numeric"') +
         inv('bereik_dashboard', 'Bereik dashboard ná tanken (km)', t.bereik_dashboard, 'type="number" inputmode="numeric"') + '</div>' +
-      '<label class="gr-veld" style="flex-direction:row;align-items:center;gap:8px"><input id="tk_vol" type="checkbox"' + (t.id ? (t.vol ? ' checked' : '') : ' checked') + '> Tank helemaal vol (tot de pomp afslaat)</label>' +
+      '<label class="gr-veld" style="flex-direction:row;align-items:center;gap:8px"><input id="tk_vol" type="checkbox"' + ((t.id || t.vol === false) ? (t.vol ? ' checked' : '') : ' checked') + '> Tank helemaal vol (tot de pomp afslaat)</label>' +
+      // Stap 2: wat de app zelf zag, mee naar de server (bron 'app').
+      (!t.id && t.bron === 'app' ? '<div class="gr-klein" id="tk_app">De app zag het brandstofpeil van ' + nl(t.tank_voor, 0) + ' % naar ' + nl(t.tank_na, 0) + ' % gaan' +
+        (t.bereik_app != null ? ', en schat het bereik nu op ' + nl(t.bereik_app) + ' km' : '') + '.</div>' +
+        '<input type="hidden" id="tk_tank_voor" value="' + esc(t.tank_voor) + '"><input type="hidden" id="tk_tank_na" value="' + esc(t.tank_na) + '">' +
+        '<input type="hidden" id="tk_bereik_app" value="' + esc(t.bereik_app == null ? '' : t.bereik_app) + '"><input type="hidden" id="tk_bron" value="app">' : '') +
       inv('notitie', 'Notitie', t.notitie, 'type="text" maxlength="200" placeholder="bv. winterbanden, aanhanger, andere pomp"') +
       '<div class="gr-klein">Alleen wat je weet. Met "vol" en de liters rekent de app je echte verbruik uit; met het bereik vóór en ná tanken hoeveel van het beloofde bereik je haalt.</div>' +
       '<div class="gr-knoppen"><button class="gr-k hoofd" onclick="PLGarage._tankBewaar(' + esc(JSON.stringify(t.id || '')) + ')">Bewaren</button>' +
@@ -202,16 +282,20 @@
     var g = function (id) { var x = w(id).replace(',', '.'); return x === '' ? null : Number(x); };
     var op = new Date(w('op'));
     var vol = doc.getElementById('tk_vol');
-    return { op: isNaN(op) ? null : op.toISOString(), liters: g('liters'), kmstand: g('kmstand'), literprijs: g('literprijs'), bedrag: g('bedrag'),
+    var uit = { op: isNaN(op) ? null : op.toISOString(), liters: g('liters'), kmstand: g('kmstand'), literprijs: g('literprijs'), bedrag: g('bedrag'),
       bereik_voor: g('bereik_voor'), bereik_dashboard: g('bereik_dashboard'), vol: !!(vol && vol.checked), notitie: w('notitie') || null };
+    // Alleen als de app ze vulde (stap 2); een gewone beurt stuurt ze niet mee.
+    if (w('bron') === 'app') { uit.bron = 'app'; uit.tank_voor = g('tank_voor'); uit.tank_na = g('tank_na'); uit.bereik_app = g('bereik_app'); }
+    return uit;
   }
 
   /* Het tabblad. `st` = { tanken, ritten, form (null | {} | tankbeurt), fout }. */
   function html(v, st) {
     var tk = st.tanken, h = '';
-    if (st.form) return formulier(st.form.id ? st.form : null, v);
+    if (st.form) return formulier(st.form, v);
     h += '<div class="gr-knoppen" style="margin:0 0 10px"><button class="gr-k hoofd" onclick="PLGarage._tankForm({})">⛽ Tankbeurt invullen</button>' +
-      (tk && tk.length ? '<button class="gr-k klein" onclick="PLGarage._tankExport()">⤓ CSV (Excel)</button>' : '') + '</div>';
+      (tk && tk.length ? '<button class="gr-k klein" onclick="PLGarage._tankExport()">⤓ CSV (Excel)</button>' +
+        '<button class="gr-k klein" onclick="PLGarage._tankCyclus(null)">⤓ Ritten sinds laatste tankbeurt</button>' : '') + '</div>';
     if (st.fout) h += '<div class="gr-melding">' + esc(st.fout) + '</div>';
     if (!tk) return h + '<div class="gr-klein">⏳</div>';
     if (!tk.length) return h + '<div class="gr-blok"><div class="gr-klein">Nog geen tankbeurten. Vul bij het tanken in wat je weet — liters, km-stand en het bereik op je dashboard. Vanaf de tweede beurt zie je hier hoeveel km je echt reed tegenover wat de auto beloofde.</div></div>';
@@ -236,12 +320,15 @@
       return '<div class="gr-item"><b>' + datum(t.op) + '</b>' + (regel1 ? ' · ' + esc(regel1) : '') +
         (t.bereik_dashboard != null ? '<div class="gr-klein">Dashboard na tanken: ' + nl(t.bereik_dashboard) + ' km' + (t.bereik_voor != null ? ', ervoor ' + nl(t.bereik_voor) + ' km' : '') + '</div>' : '') +
         '<div class="gr-klein">' + esc(regel2) + '</div>' + (t.notitie ? '<div class="gr-klein">📝 ' + esc(t.notitie) + '</div>' : '') +
+        (t.bron === 'app' && t.tank_na != null ? '<div class="gr-klein">⛽ Herkend door de app: peil ' + nl(t.tank_voor, 0) + ' → ' + nl(t.tank_na, 0) + ' %' + (t.bereik_app != null ? ', bereik volgens de app ' + nl(t.bereik_app) + ' km' : '') + '</div>' : '') +
         '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._tankForm(' + esc(JSON.stringify(t.id)) + ')">Wijzigen</button>' +
+        (c ? '<button class="gr-k klein" onclick="PLGarage._tankCyclus(' + esc(JSON.stringify(t.id)) + ')">⤓ Ritten van deze cyclus</button>' : '') +
         '<button class="gr-k klein gevaar" onclick="PLGarage._tankWeg(' + esc(JSON.stringify(t.id)) + ')">Wissen</button></div></div>';
     }).join('') + '</div>';
     return h;
   }
 
   window.PLTank = { CFG: CFG, bedragVan: bedragVan, ritKm: ritKm, kmTussen: kmTussen, cycli: cycli, volleTank: volleTank,
-    samenvatting: samenvatting, csv: csv, html: html, uitFormulier: uitFormulier };
+    samenvatting: samenvatting, csv: csv, html: html, uitFormulier: uitFormulier,
+    mediaan: mediaan, tankSprong: tankSprong, peilTik: peilTik, uitSprong: uitSprong, cyclusRitten: cyclusRitten };
 })();

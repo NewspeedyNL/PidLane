@@ -5041,7 +5041,9 @@ var KP_MIGRATIES = [
   // wordt gewist: gegevens bewaren waar geen functie meer bij hoort, is precies
   // wat de akkoordtekst niet belooft. Idempotent, dus veilig bij elke start.
   "UPDATE kp_voertuig SET carrosserie = NULL, kleur = NULL WHERE carrosserie IS NOT NULL OR kleur IS NOT NULL",
-  "ALTER TABLE kp_voertuig ADD COLUMN eigen_pids TEXT"
+  "ALTER TABLE kp_voertuig ADD COLUMN eigen_pids TEXT",
+  // Tankbeurten bijhouden per voertuig (#469, 13-10-2026): standaard uit.
+  "ALTER TABLE kp_voertuig ADD COLUMN tanken TEXT"
 ];
 var _kpSchemaKlaar = false;
 
@@ -5128,6 +5130,7 @@ var KP_VELDEN = {
   transmissie: { soort: "keuze", uit: ["handgeschakeld", "automaat", "onbekend"] },
   versnellingen: { soort: "geheel", min: 1, max: 10 },
   tankinhoud: { soort: "geheel", min: 10, max: 200 },
+  tanken: { soort: "keuze", uit: ["aan", "uit"] },
   // Een literprijs heeft drie decimalen (1,959): "getal" rondt op één af.
   brandstofprijs: { soort: "prijs", min: 0.1, max: 5 },
   rijprofiel: { soort: "keuze", uit: ["stad", "gemengd", "snelweg", "korte ritten", "aanhanger of caravan"] },

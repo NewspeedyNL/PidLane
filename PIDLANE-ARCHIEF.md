@@ -15,6 +15,10 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 13-10-2026 — Tanken herkennen aan het brandstofpeil (#469 stap 2)
+
+Het peil (012F) klotst tijdens het rijden en bij optrekken; daarom telt alleen een mediaan over vijf metingen in stilstand. Het eerste plan vergeleek elke tik met de vorige, en dat mist het tanken met contact aan: het peil loopt dan over twee minuten in kleine stapjes op, en geen enkele stap haalt 15 punt. Nu is er een anker — het peil bij de eerste stilstand na rijden of verbinden — en wordt binnen dezelfde stilstand tegen dát anker vergeleken, één keer. Op verzoek per voertuig aan/uit (`kp_voertuig.tanken`), standaard uit: "misschien interesseert het niemand". Stap 3 is alleen voor het deel "ritten per cyclus exporteren" gebouwd; een fijnmazige datalog per tankcyclus op het toestel en stap 4/5 niet. Of 012F na een echte tankstop netjes genoeg springt (helling, filtering in het instrumentenpaneel) is een ritvraag in `CAMPAGNE`.
+
 ## 13-10-2026 — Een diesel-hybride werd als benzine behandeld (#430)
 
 `normBrandstof()` geeft voor elke combinatie van elektrisch en verbranding één woord, `hybride`, en `vehicleFuelType()` las `hybride` als benzine. Een diesel-hybride verloor daardoor zijn DPF- en AdBlue-sensoren aan de fantoomzeef en kreeg in de systeemtest de benzinetests. `hybride` als woord blijft (tien plekken vergelijken er letterlijk mee); de verbranding staat nu apart in `vehicleInfo.verbranding` (`verbrandingVan()`), en `vehicleFuelType()` en `bscGroepen(et, brandstof)` kijken daarnaar. Zonder RDW geldt 0151 = 0x13 als diesel en 0x11/0x12 als benzine. Niet gedaan: het beheer-testscenario (`_scenarioFuelType()` in `pidlane-btflow.js`) leest nog alleen het woord. Wat een merk in 015B zet en of de motor-ECU bij stilstaande motor NO DATA geeft blijven ritvragen.
