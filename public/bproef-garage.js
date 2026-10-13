@@ -105,7 +105,10 @@ const NEPSERVER = `(function(){
     toets('na het akkoord: de lijst', await wacht(`/Voertuig toevoegen/.test(document.getElementById('plGarBody').textContent)`));
 
     console.log('\n── 3. een voertuig toevoegen ──');
-    await app.ev(`PLGarage._nieuw(); 'ok'`);
+    // #476: het kenteken uit de verbindingsstap staat al ingevuld.
+    await app.ev(`localStorage.setItem('pl_kenteken', 'R-054-XD'); PLGarage._nieuw(); 'ok'`);
+    toets('Voertuig toevoegen vult het kenteken van de verbinding al in (#476)', await wacht(`String((document.getElementById('grf_kenteken')||{}).value).replace(/-/g,'') === 'R054XD'`));
+    await app.ev(`localStorage.removeItem('pl_kenteken'); PLGarage._nieuw(); 'ok'`);
     await app.ev(`(function(){ const z=(id,w)=>{ document.getElementById('grf_'+id).value=w; };
       z('naam','Blauwe Mazda'); z('kenteken','ab-123-c'); z('merk','Mazda'); z('model','CX-5'); z('bouwjaar','2018');
       document.getElementById('grf_brandstof').value='benzine'; document.getElementById('grf_turbo').value='nee';

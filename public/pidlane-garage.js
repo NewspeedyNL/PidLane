@@ -460,6 +460,21 @@
     return p;
   }
 
+  /* Wat "Voertuig toevoegen" al weet (#476). Het kenteken staat al in de
+     verbindingsstap (pl_kenteken, pidlane-bt.js); het nog eens laten typen was
+     dubbel werk. Een kenteken dat al bij een voertuig staat vult hij niet in.
+     De VIN en het profiel van de verbonden auto alleen via "Nieuw voertuig"
+     bij die auto (`onbekend`): anders koppelt een tweede auto de VIN van de
+     eerste. Puur. */
+  function voorinvulNieuw(onbekend, kenteken, actief) {
+    var v = onbekend ? Object.assign({ vin_pseudo: onbekend.pseudo }, onbekend.profiel) : {};
+    var norm = function (k) { return String(k || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+    var k = norm(kenteken);
+    var al = (actief || []).some(function (x) { return norm(x.kenteken) === k; });
+    if (k.length >= 4 && !al) v.kenteken = k;
+    return v;
+  }
+
   // ════════════════════════════════════════════════════════════════
   //  OPSLAG, SERVER, WACHTRIJ
   // ════════════════════════════════════════════════════════════════
@@ -1753,8 +1768,11 @@
     _actief: function (id) { zetActief(id); melding('Actief voertuig gewijzigd'); teken(); },
     _nieuw: function (vanVerbinding) {
       _st.view = 'formulier'; _st.vid = null;
-      _st.voorinvul = vanVerbinding && _st.onbekend ? Object.assign({ vin_pseudo: _st.onbekend.pseudo }, _st.onbekend.profiel) : {};
+      var ken = ''; try { ken = localStorage.getItem('pl_kenteken') || ''; } catch (e) { console.warn('PLGarage: kenteken van de verbinding onleesbaar', e); }
+      _st.voorinvul = voorinvulNieuw(vanVerbinding ? _st.onbekend : null, ken, voertuigen(true));
       teken();
+      // Kenteken bekend maar de rest niet: meteen bij het RDW ophalen.
+      if (_st.voorinvul.kenteken && !_st.voorinvul.merk) rdw();
     },
     _bewerk: function (id) { _st.view = 'formulier'; _st.vid = id; teken(); },
     _bewaar: bewaarFormulier,
@@ -2067,7 +2085,7 @@
     },
     // pure kern — voor test-garage.js
     _kern: { status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar, ritStand: ritStand,
-      rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
+      rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, voorinvulNieuw: voorinvulNieuw, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
       waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, cfg: CFG }
   };
 

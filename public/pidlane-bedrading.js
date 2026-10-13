@@ -283,6 +283,10 @@ var KRITIEK = [
   // De verbindwizard: de kentekenstap vóór de protocolscan en het tekenen van
   // de protocolkeuze. Blok 5 toetst ze, en die guards horen hier genoemd.
   'toonKentekenStap','kentekenBevestig','kentekenOverslaan','kentPoortReset','renderNetworkCards',
+  // Zwijgt de adapter zelf na een lege 0100 (#476)? Dan geen protocolkeuze
+  // maar opnieuw verbinden. Ontbreekt plAdapterStil, dan valt scanNetworks()
+  // stil terug op de protocollijst — de toestand van vóór 13-10-2026.
+  'plAdapterStil','toonAdapterStil','adapterOpnieuw','adapterTochKiezen',
   // Blok 5 controleert hiermee of pidlane-motortype.js geladen is (hernoemd
   // uit pidlane-scheduler.js op 21-08).
   'selectStandardSet',

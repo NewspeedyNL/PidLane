@@ -454,6 +454,17 @@ function laad(opties) {
     eis(beide.staat === 'FOUT' && /niet aan: 222A05$/.test(beide.detail), 'wat niet opgeruimd is en toch uit staat blijft FOUT', beide.detail);
   }
 
+  console.log('\n#476. Voertuig toevoegen kent het kenteken van de verbinding al');
+  {
+    const V = laad({ rol: 'klant' }).G._kern.voorinvulNieuw;
+    eis(V(null, 'r-054-xd', []).kenteken === 'R054XD', 'het kenteken uit de verbindingsstap staat al ingevuld');
+    eis(V(null, 'R054XD', [{ kenteken: 'R-054-XD' }]).kenteken === undefined, 'een kenteken dat al bij een voertuig staat niet nog eens');
+    eis(V(null, '', []).kenteken === undefined && V(null, 'AB', []).kenteken === undefined, 'leeg of te kort: niets');
+    const vb = V({ pseudo: 'ps1', profiel: { merk: 'Mazda' } }, 'R054XD', []);
+    eis(vb.vin_pseudo === 'ps1' && vb.merk === 'Mazda' && vb.kenteken === 'R054XD', 'vanaf de verbonden auto: VIN-pseudoniem, profiel én kenteken', JSON.stringify(vb));
+    eis(V(null, 'R054XD', []).vin_pseudo === undefined, 'zonder verbonden auto geen VIN-koppeling');
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });
