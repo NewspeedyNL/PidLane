@@ -815,9 +815,14 @@
   // ── Toestand van het scherm ─────────────────────────────────────────
   var _st = null, _ui = { fase: 'intake', live: {}, voortgang: 0, wacht: null, antwoord: null, ai: null, aiBezig: false, intake: null };
 
+  function stationair(t) {
+    var m = '';
+    try { m = (typeof detectEngineType === 'function') ? detectEngineType() : ''; } catch (e) { console.warn('PLOnderzoek: motortype onbekend', e); }
+    return (typeof plStationairUitleg === 'function') ? plStationairUitleg(m, t) : t;
+  }
   function voorwaardeTekst(v) {
     return { motor_uit: 'Zet het contact aan, maar start de motor niet.',
-      motor_aan: 'Start de motor en laat hem stationair draaien.',
+      motor_aan: stationair('Start de motor en laat hem stationair draaien.'),
       warm: 'De motor moet op temperatuur zijn (koelwater boven 70 °C). Laat hem draaien of rijd eerst een stukje.',
       rijden: 'Deze meting gaat tijdens het rijden.' }[v] || '';
   }

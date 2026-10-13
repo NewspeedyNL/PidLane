@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Een diesel-hybride blijft een diesel (#430)
+ ═══════════════════════════════════════════════════════════
+
+ - RDW "Diesel + Elektriciteit" bewaart de diesel apart (vehicleInfo.
+   verbranding): DPF- en AdBlue-sensoren blijven, de systeemtest geeft de
+   dieseltests. Zonder RDW telt 0151 = 0x13 ook als diesel.
+ - "Laat de motor stationair draaien" krijgt bij een hybride de uitleg erbij:
+   kachel op vol, anders de onderhoudsmodus van het merk.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Afwijkend pas na echte ritten, % op de boog, stille adapter (#473, #472, #476)
  ═══════════════════════════════════════════════════════════
 

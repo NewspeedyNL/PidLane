@@ -51,6 +51,9 @@ function vehicleFuelType(){
     // elektrisch' behandelen. Alleen volledig elektrisch zet die sensoren uit.
     const hybride=/hybr|phev|hev/.test(b);
     if(!hybride && /elektr|electric|\bev\b|bev/.test(b)) return 'elektrisch';
+    // Een diesel-hybride heeft DPF en AdBlue (#430); verbrandingVan() in
+    // pidlane-voertuigdata.js bewaart wat normBrandstof() wegpoetst.
+    if(hybride && String(vehicleInfo.verbranding||'')==='diesel') return 'diesel';
     if(/diesel|gasolie/.test(b)) return 'diesel';
     if(/benzine|petrol|gasoline|lpg|cng|alcohol|ethanol|waterstof|hybr|phev|hev/.test(b)) return 'benzine';
   }
@@ -60,6 +63,9 @@ function vehicleFuelType(){
   if(typeof ft==='number'&&ft>=1){
     if(ft===4||ft===11) return 'diesel';
     if(ft<=10) return 'benzine';
+    // Hybride (J1979: 0x11 benzine, 0x12 ethanol, 0x13 diesel, #430).
+    if(ft===19) return 'diesel';
+    if(ft===17||ft===18) return 'benzine';
   }
   return 'onbekend';
 }

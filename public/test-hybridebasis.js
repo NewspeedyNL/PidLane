@@ -179,5 +179,34 @@ waar('stationair net gestart: idle_stab wacht', !mag('idle_stab', s).ok);
 s = rij(900, 0, 'onbekend', 6000);
 waar('stationair na 7 s: idle_stab meet', mag('idle_stab', s).ok, mag('idle_stab', s).label);
 
+// ══════════════════════════════════════════════════════════════════
+console.log('\n── 5. een diesel-hybride blijft een diesel (#430) ──');
+{
+  const vd = lees('pidlane-voertuigdata.js'), pg = lees('pidlane-pidgate.js');
+  vm.runInContext([
+    knip(vd, 'function verbrandingVan(s){', '// Kern: neem een veld over als', 'verbrandingVan'),
+    knip(pg, 'function vehicleFuelType(){', '// Aandrijflijn-fantomen', 'vehicleFuelType'),
+    'window.verbrandingVan = verbrandingVan; window.vehicleFuelType = vehicleFuelType;'
+  ].join('\n'), p, { filename: 'dieselhybride-knip.js' });
+  t('RDW "Diesel + Elektriciteit": de verbranding is diesel', p.verbrandingVan('Diesel + Elektriciteit'), 'diesel');
+  t('RDW "Elektriciteit/Benzine": benzine', p.verbrandingVan('Elektriciteit/Benzine'), 'benzine');
+  t('"hybride" zonder meer: onbekend', p.verbrandingVan('hybride'), '');
+  const fuel = (vi, pv) => { p.vehicleInfo = vi; p.pidVals = pv || {}; return p.vehicleFuelType(); };
+  t('hybride met verbranding diesel: diesel (DPF en AdBlue blijven)', fuel({ brandstof: 'hybride', verbranding: 'diesel' }), 'diesel');
+  t('hybride zonder verbranding: benzine, zoals altijd', fuel({ brandstof: 'hybride' }), 'benzine');
+  t('zonder RDW: 0151 = 0x13 (hybride diesel) is diesel', fuel({}, { '0151': 19 }), 'diesel');
+  t('zonder RDW: 0151 = 0x11 (hybride benzine) is benzine', fuel({}, { '0151': 17 }), 'benzine');
+  t('diesel-hybride: de dieseltests, niet de benzinetests', [...p.bscGroepen('hybride', 'diesel')].sort().join(','), 'diesel,hybride,universeel');
+  t('benzine-hybride blijft zoals hij was', [...p.bscGroepen('hybride', 'benzine')].sort().join(','), 'benzine,hybride,universeel');
+}
+
+console.log('\n── 6. stationair bij een hybride (#430) ──');
+{
+  const basis = 'Laat de motor stationair draaien.';
+  t('geen hybride: de tekst blijft', p.plStationairUitleg('benzine', basis), basis);
+  waar('hybride: kachel op vol en de onderhoudsmodus erbij',
+    /kachel/.test(p.plStationairUitleg('hybride', basis)) && /onderhoudsmodus/.test(p.plStationairUitleg('hybride', basis)));
+}
+
 console.log('\n' + ok + ' goed, ' + fout + ' fout');
 process.exit(fout ? 1 : 0);

@@ -2787,6 +2787,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── een diesel-hybride blijft een diesel (#430, 13-10-2026) ──
+  {
+    issue: '#430',
+    naam: 'Hybride: een diesel-hybride houdt DPF, AdBlue en de dieseltests; stationair krijgt een hybride-uitleg',
+    waarom: 'normBrandstof() maakte van "Diesel + Elektriciteit" één woord, hybride, en de app behandelde de auto daarna als benzine: dieselsensoren werden fantomen en de systeemtest gaf benzinetests.',
+    proef: async function () {
+      if (typeof bscGroepen !== 'function' || typeof plStationairUitleg !== 'function') return { staat: 'FOUT', detail: 'bscGroepen of plStationairUitleg ontbreekt — oude pidlane-totalcheck.js of pidlane-data.js (herladen?)' };
+      if (!bscGroepen('hybride', 'diesel').has('diesel') || bscGroepen('hybride', 'diesel').has('benzine')) return { staat: 'FOUT', detail: 'een diesel-hybride krijgt niet de dieseltests' };
+      if (plStationairUitleg('hybride', 'x') === 'x') return { staat: 'FOUT', detail: 'een hybride krijgt geen stationair-uitleg' };
+      var et = (typeof detectEngineType === 'function') ? detectEngineType() : '?';
+      var vb = (typeof vehicleInfo !== 'undefined' && vehicleInfo && vehicleInfo.verbranding) || '—';
+      var f = (typeof vehicleFuelType === 'function') ? vehicleFuelType() : '?';
+      if (et !== 'hybride') return { staat: 'OK', detail: 'regels goed · deze auto: ' + et + ' (geen hybride, dus niets te zien)' };
+      return { staat: 'OK', detail: 'hybride · verbranding ' + vb + ' · brandstoffilter ' + f + ' · testgroepen ' + Array.from(bscGroepen(et, f)).join(', ') };
+    }
+  },
+
   // ── afwijkend t.o.v. normaal pas na echte ritten (#473, 13-10-2026) ──
   {
     issue: '#473',

@@ -23,6 +23,7 @@ const _FIELD_SRC_PREF = {
   model:     { rdw:1, nhtsa:2, user:4 },
   year:      { vin:1, nhtsa:2, rdw:3, user:4 },
   brandstof: { vin:1, nhtsa:2, rdw:3, user:4 },
+  verbranding: { vin:1, nhtsa:2, rdw:3, user:4 },
   motor:     { rdw:1, nhtsa:2, user:4 }
 };
 // Onthoudt met welke bron-rang elk veld is gevuld, zodat een zwakkere bron
@@ -95,6 +96,18 @@ function normBrandstof(s){
   return f;
 }
 
+// Welke verbrandingsmotor zit er in een hybride? (#430) normBrandstof() maakt
+// van "Diesel + Elektriciteit" één woord, 'hybride', en gooit de diesel weg;
+// daarna kreeg een diesel-hybride de benzinetests en verdwenen zijn DPF- en
+// AdBlue-sensoren als fantoom. Dit bewaart het apart in vehicleInfo.verbranding.
+// Puur: 'diesel', 'benzine' of ''.
+function verbrandingVan(s){
+  const f = String(s||'').toLowerCase();
+  if(/diesel|gasolie/.test(f)) return 'diesel';
+  if(/benzine|petrol|gasoline|euro95|e10|essence/.test(f)) return 'benzine';
+  return '';
+}
+
 // Kern: neem een veld over als (a) er een waarde is en (b) de bron minstens
 // even sterk is als wat het veld nu vulde. Lege waarden overschrijven NOOIT.
 function _setField(field, value, src){
@@ -118,6 +131,8 @@ function mergeVehicleData(src, data){
   if(data.brandstof!==undefined){
     const _hadB=vehicleInfo.brandstof;
     _setField('brandstof', normBrandstof(data.brandstof), src);
+    const _vb=verbrandingVan(data.brandstof);
+    if(_vb) _setField('verbranding', _vb, src);
     // Brandstof (nieuw) bekend of gewijzigd → actieve selectie her-filteren,
     // zodat diesel-fantomen (AdBlue/NOx/DPF) van een benzineauto verdwijnen.
     // Idem: purgeImplausiblePids() bestaat sinds ronde 5b niet meer. Deze

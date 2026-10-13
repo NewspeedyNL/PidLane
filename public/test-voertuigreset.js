@@ -177,6 +177,15 @@ toetsSchoon('een echt ander voertuig begint wél schoon',
   keurAndereAutoResetWel(S));
 toetsSchoon('handmatige invoer blijft boven RDW staan',
   keurUserBlijftLeidend(S));
+toetsSchoon('een diesel-hybride van het RDW houdt zijn diesel apart (#430)',
+  (function () {
+    S.vehicleInfo = leegVoertuig(); S.resetVehicleSources();
+    S.mergeVehicleData('rdw', { brandstof: 'Diesel + Elektriciteit' });
+    const uit = [];
+    if (S.vehicleInfo.brandstof !== 'hybride') uit.push('brandstof ' + JSON.stringify(S.vehicleInfo.brandstof));
+    if (S.vehicleInfo.verbranding !== 'diesel') uit.push('verbranding ' + JSON.stringify(S.vehicleInfo.verbranding));
+    return uit;
+  })());
 
 // ── tegenproef ───────────────────────────────────────────────────
 // De oude voorwaarde, letterlijk: "gelijk aan de opgeslagen VIN, anders weg".

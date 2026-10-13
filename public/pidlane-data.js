@@ -659,6 +659,14 @@ window.plAdapterStil = function plAdapterStil(autoResp, atiResp){
   const schoon = function(r){ return String(r==null?'':r).replace(/ATSP0|ATI|0100/gi,'').replace(/[>\s]/g,''); };
   return !schoon(autoResp) && !schoon(atiResp);
 };
+// "Laat de motor stationair draaien" klopt niet voor een volle hybride (#430):
+// die zet de benzinemotor zelf uit zodra het kan. Eén tekst, gebruikt door
+// het onderzoek (motor_aan) en de systeemtest (situatie stationair).
+window.plStationairUitleg = function plStationairUitleg(motor, basis){
+  if(motor!=='hybride') return basis;
+  return basis + ' Een hybride zet de motor vaak zelf uit: zet de kachel en de ontwaseming op vol. ' +
+    'Blijft hij uit, gebruik dan de onderhoudsmodus van het merk (bij Toyota: Inspection mode).';
+};
 window.plProtocolLijst = function plProtocolLijst(gedetecteerd, tabel){
   // ATDPN zet een 'A' voor een automatisch gevonden protocol ("A6"). Die hoort
   // niet bij het id zelf, dus zonder strippen zou het gedetecteerde protocol

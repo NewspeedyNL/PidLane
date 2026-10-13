@@ -15,6 +15,10 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 13-10-2026 — Een diesel-hybride werd als benzine behandeld (#430)
+
+`normBrandstof()` geeft voor elke combinatie van elektrisch en verbranding één woord, `hybride`, en `vehicleFuelType()` las `hybride` als benzine. Een diesel-hybride verloor daardoor zijn DPF- en AdBlue-sensoren aan de fantoomzeef en kreeg in de systeemtest de benzinetests. `hybride` als woord blijft (tien plekken vergelijken er letterlijk mee); de verbranding staat nu apart in `vehicleInfo.verbranding` (`verbrandingVan()`), en `vehicleFuelType()` en `bscGroepen(et, brandstof)` kijken daarnaar. Zonder RDW geldt 0151 = 0x13 als diesel en 0x11/0x12 als benzine. Niet gedaan: het beheer-testscenario (`_scenarioFuelType()` in `pidlane-btflow.js`) leest nog alleen het woord. Wat een merk in 015B zet en of de motor-ECU bij stilstaande motor NO DATA geeft blijven ritvragen.
+
 ## 13-10-2026 — Een nieuwe auto was meteen "afwijkend", een eigen % had geen boog, een stille adapter kreeg een protocolkeuze (#473, #472, #476)
 
 **#473.** Het normaal voor een auto kwam uit de laatste sessies in `pl_sessions_<VIN>`, vanaf drie stuks, en een sessie was alles tussen verbinden en verbreken. Drie keer verbinden op de oprit gaf zo "normaal 19 km/h", en de eerste echte rit was 4σ afwijkend. Het oordeel over de lopende rit viel na 30 metingen — binnen een minuut — dus drie minuten stationair en dan gas was al raak. En snelheid, gaspedaal en rempedaal deden mee, terwijl die over de bestuurder gaan en niet over de auto. Nu: een sessie telt alleen met ≥ 10 min verbonden en ≥ 5 min gereden (`duur`, `gereden` in de sessie; de klok hangt aan het `_sessionStats`-object, zodat een nieuwe verbinding vanzelf een nieuwe klok is), normaal vanaf 5 zulke ritten, oordeel pas na 10 min, en `BASE_RIJGEDRAG` plus eigen pedaal/rem-sensoren nooit. Sessies van vóór deze datum hebben geen duur en tellen niet: het geleerde normaal begint dus opnieuw. Dat is bewust — van die sessies is niet te zeggen of het ritten waren. Volgende stap als het nog te grof blijkt: vergelijken per toestand (stationair, stad, snelweg).
