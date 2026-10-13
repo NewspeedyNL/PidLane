@@ -3047,8 +3047,8 @@ __name(handleKlantRegistreer, "handleKlantRegistreer");
 // HIJ BLIJFT NIET STAAN. Een e-mailadres in een tweede systeem valt buiten
 // het wissen uit klantWachtrijOpruimen. De cron haalt daarom elke nacht de
 // meldingen weg die ouder zijn dan KLANT_MELDING_DAGEN. Herkend aan het merk
-// in Opmerking, zodat de rijen van vóór de overzet blijven staan; de formule
-// is een vaste tekst, er gaat geen klantwaarde in (#142).
+// in Opmerking, zodat de rijen van vóór de overzet blijven staan. Gefilterd
+// hier en niet met een Airtable-formule: die bouwt de Worker sinds #142 nergens.
 var KLANT_MELDING_MERK = "melding #477";
 var KLANT_MELDING_DAGEN = 2;
 function klantMeldingUrl(env) {
@@ -3070,15 +3070,18 @@ __name(klantMeldingAirtable, "klantMeldingAirtable");
 async function klantMeldingenOpruimen(env) {
   if (!env.AIRTABLE_TOKEN) return 0;
   const kop = { Authorization: `Bearer ${env.AIRTABLE_TOKEN}` };
-  const formule = `AND({Opmerking}='${KLANT_MELDING_MERK}',DATETIME_DIFF(NOW(),CREATED_TIME(),'days')>=${KLANT_MELDING_DAGEN})`;
+  const grens = Date.now() - KLANT_MELDING_DAGEN * 864e5;
   const ids = [];
   let offset = "";
   do {
-    const r = await fetch(klantMeldingUrl(env) + "?pageSize=100&filterByFormula=" + encodeURIComponent(formule) +
+    const r = await fetch(klantMeldingUrl(env) + "?pageSize=100&fields%5B%5D=Opmerking" +
       (offset ? "&offset=" + encodeURIComponent(offset) : ""), { headers: kop });
     if (!r.ok) throw new Error("airtable_melding_lezen_" + r.status);
     const d = await r.json();
-    for (const rec of d.records || []) ids.push(rec.id);
+    for (const rec of d.records || []) {
+      const f = rec.fields || {};
+      if (f.Opmerking === KLANT_MELDING_MERK && Date.parse(rec.createdTime) <= grens) ids.push(rec.id);
+    }
     offset = d.offset || "";
   } while (offset);
   // Airtable wist hoogstens tien records per verzoek.

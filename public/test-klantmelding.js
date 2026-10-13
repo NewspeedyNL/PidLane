@@ -11,7 +11,8 @@
 //      Deel 1 kijkt naar de complete verzendbody, niet naar één veld.
 //   2. De rij blijft eeuwig staan. Deel 2 draait de opruimer en kijkt of de
 //      formule alleen de gemerkte, oude rijen raakt en of er in stukken van
-//      tien gewist wordt (meer weigert Airtable).
+//      tien gewist wordt (meer weigert Airtable). Een verse melding, een
+//      oude klantrij en een rij met een ander merk moeten blijven staan.
 //   3. De registratie roept de melding niet aan, of wacht erop. Deel 3 leest
 //      daarvoor de handler: een gedragstest zou de hele registratie met D1,
 //      rate limit en tokens moeten nabouwen.
@@ -82,22 +83,32 @@ function laad(fetchNep) {
       calls.push({ url, opt: opt || {} });
       if ((opt && opt.method) === 'DELETE') return { ok: true };
       const tweede = url.includes('offset=p2');
+      const oud = new Date(Date.now() - 3 * 864e5).toISOString();
+      const nieuw = new Date(Date.now() - 36e5).toISOString();
+      const merk = { Opmerking: 'melding #477' };
+      // Naast de 23 te wissen: een verse melding, een oude klantrij zonder
+      // merk en een met een ander merk. Die drie moeten blijven staan.
+      const blijft = [
+        { id: 'recVERS', createdTime: nieuw, fields: merk },
+        { id: 'recOUDEKLANT', createdTime: oud, fields: {} },
+        { id: 'recANDER', createdTime: oud, fields: { Opmerking: 'vip' } }
+      ];
+      const recs = (a, b) => ids.slice(a, b).map((id) => ({ id, createdTime: oud, fields: merk }));
       return { ok: true, json: async () => tweede
-        ? { records: ids.slice(15).map((id) => ({ id })) }
-        : { records: ids.slice(0, 15).map((id) => ({ id })), offset: 'p2' } };
+        ? { records: recs(15).concat(blijft.slice(1)) }
+        : { records: recs(0, 15).concat(blijft.slice(0, 1)), offset: 'p2' } };
     });
     const n = await m.klantMeldingenOpruimen({ AIRTABLE_TOKEN: 't' });
     toets('telt alle pagina\'s', n === 23, String(n));
     const lees = calls.filter((c) => !c.opt.method);
-    const formule = decodeURIComponent((lees[0].url.match(/filterByFormula=([^&]+)/) || [])[1] || '');
-    toets('formule vraagt het merk', formule.includes("{Opmerking}='" + m.KLANT_MELDING_MERK + "'"), formule);
-    toets('formule vraagt een minimale leeftijd', /DATETIME_DIFF\(NOW\(\),CREATED_TIME\(\),'days'\)>=\d+/.test(formule), formule);
-    toets('formule is EN, niet OF', formule.startsWith('AND('), formule);
+    toets('leest alleen het veld Opmerking', lees.length === 2 && lees.every((c) => c.url.includes('fields%5B%5D=Opmerking')));
+    toets('geen filterByFormula (#142)', lees.every((c) => !c.url.includes('filterByFormula')));
     const wis = calls.filter((c) => c.opt.method === 'DELETE');
     toets('gewist in stukken van hoogstens tien', wis.length === 3 &&
       wis.every((c) => (c.url.match(/records\[\]=/g) || []).length <= 10), String(wis.length));
     const gewist = wis.flatMap((c) => c.url.split('?')[1].split('&').map((x) => decodeURIComponent(x.split('=')[1])));
-    toets('elk gevonden record gewist, geen ander', JSON.stringify(gewist) === JSON.stringify(ids));
+    toets('alleen gemerkte rijen ouder dan de termijn gewist', JSON.stringify(gewist) === JSON.stringify(ids),
+      gewist.filter((x) => !ids.includes(x)).join(','));
 
     const m2 = laad(async () => ({ ok: false, status: 403 }));
     let fout = '';

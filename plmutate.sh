@@ -471,6 +471,8 @@ MUTATIES=(
 "worker.js@@  if (actie !== \"opruimen\" && actie !== \"aanmaken\" && !/^rec[A-Za-z0-9]{14}$/.test(id))@@  if (false)@@test-klant-aanmaken.js@@de uitzondering op de id-eis is te ruim: bijboeken zonder id wordt een PATCH op niets"
 "worker.js@@{ fields: { Email: email, Naam: naam || \"\", Opmerking: KLANT_MELDING_MERK } }@@{ fields: { Email: email, Naam: naam || \"\", Opmerking: KLANT_MELDING_MERK, PassHash: \"x\" } }@@test-klantmelding.js@@de melding aan Airtable neemt meer mee dan de mail nodig heeft"
 "worker.js@@  for (let i = 0; i < ids.length; i += 10) {\n    const q = ids.slice(i, i + 10)@@  for (let i = 0; i < ids.length; i += 25) {\n    const q = ids.slice(i, i + 25)@@test-klantmelding.js@@de opruimer wist meer dan tien records per verzoek, wat Airtable weigert"
+"worker.js@@      if (f.Opmerking === KLANT_MELDING_MERK && Date.parse(rec.createdTime) <= grens) ids.push(rec.id);@@      if (f.Opmerking === KLANT_MELDING_MERK) ids.push(rec.id);@@test-klantmelding.js@@de opruimer wist een melding vóór de mail eruit kon zijn"
+"worker.js@@      if (f.Opmerking === KLANT_MELDING_MERK && Date.parse(rec.createdTime) <= grens) ids.push(rec.id);@@      if (Date.parse(rec.createdTime) <= grens) ids.push(rec.id);@@test-klantmelding.js@@de opruimer wist ook de oude klantrijen van vóór de overzet"
 "worker.js@@    const melding = klantMeldingAirtable(env, email, naam).catch(@@    const melding = Promise.resolve().catch(@@test-klantmelding.js@@de registratie meldt de nieuwe klant niet meer, de mail naar Support valt weer stil"
 
 # ── De escaping naar Airtable en naar de HTML van de expert (#142, 08-09-2026).
