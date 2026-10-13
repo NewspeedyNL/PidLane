@@ -211,5 +211,32 @@ console.log('\n8. Stap 3: de ritten van één tankcyclus');
   toets('knoppen: per cyclus en sinds de laatste beurt', /_tankCyclus\(&quot;b&quot;\)/.test(h) && /_tankCyclus\(null\)/.test(h) && !/_tankCyclus\(&quot;a&quot;\)/.test(h));
 }
 
+console.log('\n9. Stap 3: de samenvatting per cyclus');
+{
+  const r = (start, km, duur_s, liters) => ({ start, km, duur_s, liters });
+  const tk = [t('a', '2026-10-01T12:00:00Z', { vol: true, liters: 40 }), t('b', '2026-10-08T12:00:00Z', { vol: true, liters: 50, literprijs: 2 })];
+  const rs = [r('2026-09-30T08:00:00Z', 99, 3600, 9), r('2026-10-02T08:00:00Z', 300, 10800, 21), r('2026-10-05T08:00:00Z', 200, 7200, 24), r('2026-10-08T12:00:00Z', 50, 1800, 4)];
+  const c = T.cycli(tk, rs)[0];
+  toets('alleen de ritten binnen de cyclus (de rit op het tankmoment zelf niet)', c.rit.ritten === 2 && c.rit.km === 500, JSON.stringify(c.rit));
+  toets('rijtijd en gemiddelde snelheid uit de ritten', c.rit.rijMin === 300 && c.rit.kmh === 100, JSON.stringify(c.rit));
+  toets('liters en verbruik volgens de app', c.rit.liters === 45 && c.rit.l100 === 9, JSON.stringify(c.rit));
+  toets('getankt en kosten van de beurt die de cyclus afsluit', c.getankt === 50 && c.kosten === 100, JSON.stringify([c.getankt, c.kosten]));
+  toets('vol tot vol: de app mat 90 % van wat er getankt is', c.appVsGetanktPct === 90, String(c.appVsGetanktPct));
+  const half = T.cycli([tk[0], Object.assign({}, tk[1], { vol: false })], rs)[0];
+  toets('TEGENPROEF: niet vol getankt — geen vergelijking, want dan is getankt niet verbruikt', half.appVsGetanktPct === null, String(half.appVsGetanktPct));
+  const gat = T.cycli(tk, rs.map((x, i) => i === 2 ? Object.assign({}, x, { liters: null }) : x))[0];
+  toets('TEGENPROEF: een rit zonder liters — geen vergelijking, de som is te laag', gat.appVsGetanktPct === null && gat.rit.litersVolledig === false, JSON.stringify(gat.rit));
+  toets('het verbruik telt dan alleen de ritten met liters', gat.rit.l100 === 7, String(gat.rit.l100));
+  const kort = T.ritSom([r('2026-10-02T08:00:00Z', 8, 600, 1)], Date.parse('2026-10-01'), Date.parse('2026-10-08'));
+  toets('onder 20 km met liters: geen verbruik uit de ritten', kort.l100 === null && kort.liters === 1, JSON.stringify(kort));
+  toets('zonder ritten: niet gemeten, geen nul', T.ritSom([], 0, Date.now()) === null);
+  const regels = T.csv(tk, rs).replace(/^\uFEFF/, '').split('\n'), kol = regels[0].split(';'), r2 = regels[2].split(';');
+  toets('CSV: de cycluskolommen staan bij de beurt die de cyclus afsluit',
+    r2[kol.indexOf('ritten')] === '2' && r2[kol.indexOf('rijtijd_min')] === '300' && r2[kol.indexOf('liters_app')] === '45,00' && r2[kol.indexOf('app_tegenover_getankt_pct')] === '90,0', regels[2]);
+  toets('CSV: de notitie blijft de laatste kolom', kol[kol.length - 1] === 'notitie');
+  const h = T.html({}, { tanken: tk, ritten: rs });
+  toets('scherm: ritten, rijtijd en de vergelijking met getankt', /2 ritten · 5:00 u gereden · gem\. 100 km\/u/.test(h) && /de app mat 45,0 l \(90 %\)/.test(h), h.slice(h.indexOf('ritten') - 80, h.indexOf('ritten') + 220));
+}
+
 console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' goed'));
 process.exit(fout ? 1 : 0);

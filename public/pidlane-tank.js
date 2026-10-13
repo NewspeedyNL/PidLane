@@ -43,7 +43,9 @@
     sprongMin: 15,      // procentpunt omhoog tussen twee stilstanden = getankt
     peilN: 5,           // zoveel metingen in stilstand voor één peil (klotsen dempen)
     volVanaf: 95,       // peil na tanken vanaf hier: waarschijnlijk vol
-    rijdtVanaf: 2       // km/h; daarboven is het geen stilstand
+    rijdtVanaf: 2,      // km/h; daarboven is het geen stilstand
+    // Stap 3 (13-10-2026): samenvatting per cyclus uit de ritten.
+    ritL100MinKm: 20    // minder km met liters = geen verbruik uit de ritten
   };
 
   function getal(x) { return typeof x === 'number' && isFinite(x) ? x : null; }
@@ -74,6 +76,29 @@
     return n ? { km: Math.round(km * 10) / 10, ritten: n } : null;
   }
 
+  /* Stap 3 (13-10-2026): wat de ritten in een venster samen zeggen —
+     aantal, km, rijtijd, gemiddelde snelheid en de liters die de app per
+     rit schatte. Het verbruik telt alleen ritten met km én liters, en pas
+     vanaf ritL100MinKm: een paar korte ritten geven een getal dat niets
+     zegt. Null zonder ritten: niet gemeten, geen nul. */
+  function ritSom(ritten, van, tot) {
+    var n = 0, km = 0, sec = 0, secN = 0, l = 0, lN = 0, kmL = 0, lL = 0;
+    (ritten || []).forEach(function (r) {
+      var s = new Date(r.start).getTime();
+      if (isNaN(s) || s < van || s >= tot) return;
+      n++;
+      var k = getal(r.km), d = getal(r.duur_s), x = getal(r.liters);
+      if (k !== null) km += k;
+      if (d !== null && d > 0) { sec += d; secN++; }
+      if (x !== null) { l += x; lN++; if (k !== null && k > 0) { kmL += k; lL += x; } }
+    });
+    if (!n) return null;
+    return { ritten: n, km: Math.round(km * 10) / 10, rijMin: secN ? Math.round(sec / 60) : null,
+      kmh: secN === n && sec > 0 ? Math.round(km / (sec / 3600)) : null,
+      liters: lN ? Math.round(l * 100) / 100 : null, litersVolledig: lN === n,
+      l100: kmL >= CFG.ritL100MinKm ? Math.round(lL / kmL * 1000) / 10 : null };
+  }
+
   /* De km tussen tankbeurt a en b: de afgelezen km-standen winnen, de
      ritten zijn de terugval. Beide bekend → de afwijking ertussen. */
   function kmTussen(a, b, ritten) {
@@ -100,6 +125,16 @@
         if (c.opgemaakt > 0) c.gehaaldPct = Math.round(c.km / c.opgemaakt * 1000) / 10;
       }
       if (c.beloofdApp !== null && c.beloofdApp > 0 && c.km !== null) c.gehaaldAppPct = Math.round(c.km / c.beloofdApp * 1000) / 10;
+      // Stap 3: de ritten van deze cyclus samengevat, en wat er aan het eind
+      // getankt werd. Van volle tank tot volle tank is dat precies wat er
+      // verbruikt is — dan valt de schatting van de app ertegen te leggen,
+      // mits elke rit liters heeft en de ritten de km dekken.
+      c.rit = ritSom(ritten, tijd(a), tijd(b));
+      c.getankt = getal(b.liters); c.kosten = bedragVan(b).bedrag;
+      c.appVsGetanktPct = null;
+      if (a.vol && b.vol && c.rit && c.rit.litersVolledig && c.rit.liters > 0 && c.getankt > 0 &&
+          (c.kmAfwijking === null || Math.abs(c.kmAfwijking) <= CFG.kmAfwijking * 100))
+        c.appVsGetanktPct = Math.round(c.rit.liters / c.getankt * 1000) / 10;
       uit.push(c);
     }
     return uit;
@@ -158,7 +193,7 @@
   function csv(tanken, ritten) {
     var t = oplopend(tanken), cs = cycli(t, ritten), vt = volleTank(t, ritten);
     var n = function (x, d) { return typeof x === 'number' && isFinite(x) ? x.toFixed(d).replace('.', ',') : ''; };
-    var regels = ['datum;tijd;km_stand;liters;literprijs;bedrag_eur;vol;bereik_voor;bereik_na;bereik_app;km_sinds_vorige;km_bron;km_volgens_ritten;opgemaakt_bereik;gehaald_pct;verbruik_l100_volle_tank;eur_per_100km;notitie'];
+    var regels = ['datum;tijd;km_stand;liters;literprijs;bedrag_eur;vol;bereik_voor;bereik_na;bereik_app;km_sinds_vorige;km_bron;km_volgens_ritten;opgemaakt_bereik;gehaald_pct;verbruik_l100_volle_tank;eur_per_100km;ritten;rijtijd_min;gem_kmh;liters_app;verbruik_l100_app;app_tegenover_getankt_pct;notitie'];
     t.forEach(function (x) {
       var d = new Date(x.op), b = bedragVan(x);
       var c = cs.filter(function (y) { return y.totId === x.id; })[0] || {};
@@ -167,6 +202,8 @@
         n(getal(x.kmstand), 0), n(getal(x.liters), 2), n(b.literprijs, 3), n(b.bedrag, 2), x.vol ? 'ja' : 'nee',
         n(getal(x.bereik_voor), 0), n(getal(x.bereik_dashboard), 0), n(getal(x.bereik_app), 0),
         n(c.km, 1), c.kmBron || '', n(c.ritKm, 1), n(c.opgemaakt, 0), n(c.gehaaldPct, 1), n(v.l100, 1), n(v.per100, 2),
+        c.rit ? c.rit.ritten : '', c.rit ? n(c.rit.rijMin, 0) : '', c.rit ? n(c.rit.kmh, 0) : '',
+        c.rit ? n(c.rit.liters, 2) : '', c.rit ? n(c.rit.l100, 1) : '', n(c.appVsGetanktPct, 1),
         String(x.notitie || '').replace(/[;\r\n]/g, ',')].join(';'));
     });
     // Met BOM: zonder opent Excel een CSV als Windows-1252, en wordt € en é rommel.
@@ -317,9 +354,15 @@
       var regel2 = c ? [c.km !== null ? nl(c.km, 0) + ' km gereden sinds ' + datum(c.van) + (c.kmBron === 'ritten' ? ' (uit ' + c.ritten + ' rit' + (c.ritten === 1 ? '' : 'ten') + ')' : '') : 'km sinds de vorige beurt onbekend',
         c.gehaaldPct !== null ? nl(c.gehaaldPct, 0) + ' % van ' + nl(c.opgemaakt) + ' km beloofd' + (c.restBekend ? '' : ' (rest onbekend)') : null,
         x ? nl(x.l100, 1) + ' l/100 km' : null].filter(Boolean).join(' · ') : 'Eerste beurt — de vergelijking begint bij de volgende.';
+      var r = c && c.rit, regel3 = r ? [r.ritten + ' rit' + (r.ritten === 1 ? '' : 'ten'),
+        r.rijMin !== null ? (r.rijMin >= 60 ? Math.floor(r.rijMin / 60) + ':' + String(r.rijMin % 60).padStart(2, '0') + ' u' : r.rijMin + ' min') + ' gereden' : null,
+        r.kmh !== null ? 'gem. ' + r.kmh + ' km/u' : null,
+        r.l100 !== null ? nl(r.l100, 1) + ' l/100 km volgens de app' : null].filter(Boolean).join(' · ') : '';
+      var regel4 = c && c.appVsGetanktPct !== null ? 'Getankt ' + nl(c.getankt, 1) + ' l, de app mat ' + nl(c.rit.liters, 1) + ' l (' + nl(c.appVsGetanktPct, 0) + ' %)' : '';
       return '<div class="gr-item"><b>' + datum(t.op) + '</b>' + (regel1 ? ' · ' + esc(regel1) : '') +
         (t.bereik_dashboard != null ? '<div class="gr-klein">Dashboard na tanken: ' + nl(t.bereik_dashboard) + ' km' + (t.bereik_voor != null ? ', ervoor ' + nl(t.bereik_voor) + ' km' : '') + '</div>' : '') +
-        '<div class="gr-klein">' + esc(regel2) + '</div>' + (t.notitie ? '<div class="gr-klein">📝 ' + esc(t.notitie) + '</div>' : '') +
+        '<div class="gr-klein">' + esc(regel2) + '</div>' +
+        (regel3 ? '<div class="gr-klein">' + esc(regel3) + '</div>' : '') + (regel4 ? '<div class="gr-klein">' + esc(regel4) + '</div>' : '') + (t.notitie ? '<div class="gr-klein">📝 ' + esc(t.notitie) + '</div>' : '') +
         (t.bron === 'app' && t.tank_na != null ? '<div class="gr-klein">⛽ Herkend door de app: peil ' + nl(t.tank_voor, 0) + ' → ' + nl(t.tank_na, 0) + ' %' + (t.bereik_app != null ? ', bereik volgens de app ' + nl(t.bereik_app) + ' km' : '') + '</div>' : '') +
         '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._tankForm(' + esc(JSON.stringify(t.id)) + ')">Wijzigen</button>' +
         (c ? '<button class="gr-k klein" onclick="PLGarage._tankCyclus(' + esc(JSON.stringify(t.id)) + ')">⤓ Ritten van deze cyclus</button>' : '') +
@@ -329,6 +372,6 @@
   }
 
   window.PLTank = { CFG: CFG, bedragVan: bedragVan, ritKm: ritKm, kmTussen: kmTussen, cycli: cycli, volleTank: volleTank,
-    samenvatting: samenvatting, csv: csv, html: html, uitFormulier: uitFormulier,
+    samenvatting: samenvatting, csv: csv, ritSom: ritSom, html: html, uitFormulier: uitFormulier,
     mediaan: mediaan, tankSprong: tankSprong, peilTik: peilTik, uitSprong: uitSprong, cyclusRitten: cyclusRitten };
 })();
