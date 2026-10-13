@@ -45,19 +45,18 @@ function toets(naam, waar, uitleg) {
     toets('Wachtwoord vergeten staat er', await zie('#loginOv .lg-vergeten'));
     toets('Geavanceerd staat ernaast', await zie('#lgMeer'));
     toets('Try demo blijft zichtbaar (Play-reviewnotitie)', await zie('#btnDemoLogin'));
-    toets('Nog geen account is weg', !(await zie('#loginOv .lg-nieuw')));
+    toets('Nog geen account staat er direct (registreren niet achter Geavanceerd)', await zie('#loginOv .lg-nieuw'));
     toets('versie, website en Nieuwste versie laden zijn weg', !(await zie('#loginOv .lg-foot')) && !(await zie('#plFrisBtn')));
     toets('Geavanceerd zegt dat hij dicht is', await app.ev(`document.getElementById('lgMeer').getAttribute('aria-expanded') === 'false'`));
 
     console.log('\n2. Open');
     await app.ev(`document.getElementById('lgMeer').click(); true`);
-    toets('Nog geen account verschijnt', await zie('#loginOv .lg-nieuw'));
     toets('versie en Nieuwste versie laden verschijnen', await zie('#loginVer') && await zie('#plFrisBtn'));
     toets('Geavanceerd zegt dat hij open is', await app.ev(`document.getElementById('lgMeer').getAttribute('aria-expanded') === 'true'`));
 
     console.log('\n3. Weer dicht');
     await app.ev(`document.getElementById('lgMeer').click(); true`);
-    toets('alles weer weg', !(await zie('#loginOv .lg-nieuw')) && !(await zie('#plFrisBtn')));
+    toets('alles weer weg, registreren blijft', !(await zie('#plFrisBtn')) && await zie('#loginOv .lg-nieuw'));
     toets('het verbindscherm heeft zijn eigen voet nog (geen lg-geav daar)', await app.ev(`!document.querySelector('#connOv .lg-geav')`));
     toets('geen JS-fouten', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {

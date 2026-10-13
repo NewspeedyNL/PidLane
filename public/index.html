@@ -134,10 +134,12 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
              "Nog geen account?" staat onder de knoppen: eerst wat de meeste
              mensen doen (inloggen), dan de rest. -->
         <!-- 10-10-2026: het inlogscherm laat alleen zien wat je nodig hebt om
-             binnen te komen. Account aanmaken, versie, links en "Nieuwste
-             versie laden" staan achter Geavanceerd (klasse lg-geav). De
-             demoknop blijft zichtbaar: de Play-reviewnotitie belooft hem
-             direct onder Inloggen (test-demo-toegang.js). -->
+             binnen te komen. Versie, links en "Nieuwste versie laden" staan
+             achter Geavanceerd (klasse lg-geav). De demoknop blijft
+             zichtbaar: de Play-reviewnotitie belooft hem direct onder
+             Inloggen (test-demo-toegang.js).
+             13-10-2026: "Nog geen account?" staat weer direct zichtbaar —
+             achter Geavanceerd vonden nieuwe gebruikers registreren niet. -->
         <div class="lg-rij">
           <a href="#" class="lg-meer" id="lgMeer" aria-expanded="false" onclick="event.preventDefault();plLoginMeer()">Geavanceerd ▾</a>
           <a href="#" class="lg-vergeten" onclick="event.preventDefault();PLKlant.openHerstelAanvraag()">Wachtwoord vergeten?</a>
@@ -163,7 +165,7 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
            om af te haken. -->
       <div class="lg-of" aria-hidden="true"><span>of</span></div>
       <button class="mbtn s" id="btnDemoLogin" onclick="plDemoZonderLogin()">▷ Try demo — no adapter needed</button>
-      <a href="#" class="lg-nieuw lg-geav" onclick="event.preventDefault();PLKlant.openRegistratie()">Nog geen account? <b>Gratis aanmaken</b></a>
+      <a href="#" class="lg-nieuw" onclick="event.preventDefault();PLKlant.openRegistratie()">Nog geen account? <b>Gratis aanmaken</b></a>
     </div>
   </div>
   <div class="lg-foot lg-geav">
