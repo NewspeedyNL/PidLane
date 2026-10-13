@@ -255,6 +255,10 @@
       res.duurMs = Date.now() - t0;
       res.onbekendeUas = Object.keys(_onbekendeUas).length ? _onbekendeUas : null;
       res.samenvatting = PLM06.samenvat(res);
+      // Tijdens een rit gaan de ontstekingsmissers mee naar de conditiescore
+      // (#475). Passief: dit is de scan die de klant zelf startte.
+      try { if (window.PLGarage && typeof PLGarage.mode06 === 'function') PLGarage.mode06(res); }
+      catch (e) { console.warn('PLM06: misfires naar PLGarage', e); }
       diag(`Mode 06 klaar: ${res.tests.length} tests in ${(res.duurMs / 1000).toFixed(1)}s — ${res.samenvatting.tekst}`,
            res.samenvatting.niveau === 'kritiek' ? 'warn' : 'ok');
       return res;

@@ -292,6 +292,10 @@ ALTER TABLE kp_voertuig ADD COLUMN kleur TEXT;
 UPDATE kp_voertuig SET carrosserie = NULL, kleur = NULL WHERE carrosserie IS NOT NULL OR kleur IS NOT NULL;
 ALTER TABLE kp_voertuig ADD COLUMN eigen_pids TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN tanken TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN score TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN onderhoud_log TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN onderhoud_interval_km INTEGER;
+ALTER TABLE kp_voertuig ADD COLUMN onderhoud_interval_mnd INTEGER;
 
 -- ══════════════════════════════════════════════════════════════════
 --  APPCONFIG (#327, 01-10-2026)

@@ -54,7 +54,8 @@
     ritMinKm: 0.3,             // korter is geen rit maar verplaatsen op de oprit
     ritGatMaxS: 10,            // een gat in de meting telt niet als afgelegde weg
     ritBewaarMs: 30000,        // lopende rit zo vaak veilig stellen
-    wachtrijMax: 50
+    wachtrijMax: 50,
+    condRitten: 500            // zoveel ritten haalt de conditiescore op (de server geeft er hoogstens 500)
   };
   var OPSLAG = { stand: 'pl_garage_stand', actief: 'pl_garage_actief', rit: 'pl_garage_rit', wachtrij: 'pl_garage_wachtrij' };
 
@@ -370,6 +371,10 @@
     else if (typeof m.maf === 'number' && brandstof !== 'diesel') lph = m.maf * 3600 / (14.7 * 745);
     if (lph != null && dt > 0) { r.liters += lph * dt / 3600; r.sLiters += dt; }
     if (typeof m.trim === 'number') { r.trimSom += m.trim; r.trimN++; }
+    // De meetkenmerken voor de conditiescore (#475): altijd, ook als de score
+    // uit staat — dan is er een nulmeting op het moment dat de klant hem aanzet.
+    var cd = conditieModule();
+    if (cd && dt > 0) r.cd = cd.tik(r.cd, m, dt);
     // De stand bij de laatste beweging. Een rit eindigt waar de auto stilviel,
     // niet een kwartier later toen de app dat pas zeker wist: ritKlaar() knipt
     // de staart eraf.
@@ -394,6 +399,11 @@
     return 'rijdt';
   }
 
+  function conditieModule() {
+    try { return (typeof window !== 'undefined' && window.PLConditie && typeof window.PLConditie.tik === 'function') ? window.PLConditie : null; }
+    catch (e) { console.warn('PLGarage: PLConditie', e); return null; }
+  }
+
   function nl1(x) { return (Math.round(x * 10) / 10).toFixed(1).replace('.', ','); }
 
   function rond(x, d) { var f = Math.pow(10, d || 1); return Math.round(x * f) / f; }
@@ -409,6 +419,8 @@
     var extra = {};
     if (r.trimN) extra.trimLang = rond(r.trimSom / r.trimN, 1);
     if (r.pauzes) { extra.pauzes = r.pauzes; extra.pauze_s = Math.round(r.pauzeS || 0); }
+    var cd = conditieModule(), cds = cd && r.cd ? cd.samenvat(r.cd) : null;
+    if (cds) extra.cd = cds;
     var uit = {
       start: r.start, eind: new Date(b.t).toISOString(), duur_s: Math.round(b.s), km: rond(r.km, 1),
       gem_kmh: r.sBeweeg > 0 ? rond(r.km / (r.sBeweeg / 3600), 1) : null, max_kmh: rond(r.maxKmh, 0),
@@ -899,7 +911,8 @@
         try { if (window.PLGear) PLGear.ritHist(true); } catch (e) { console.warn('PLGarage: rit-histogram niet geleegd', e); }
       }
       if (r) {
-        ritTik(r, { kmh: kmh, rpm: pv('010C'), koelwater: pv('0105'), accu: pv('0142'), lph: pv('015E'), maf: pv('0110'), trim: pv('0107') }, nu, v.brandstof);
+        ritTik(r, { kmh: kmh, rpm: pv('010C'), koelwater: pv('0105'), accu: pv('0142'), lph: pv('015E'), maf: pv('0110'), trim: pv('0107'),
+          ltft: pv('0107'), stft: pv('0106'), vervroeg: pv('010E'), last: pv('0104'), raildruk: pv('0123') }, nu, v.brandstof);
         try { (typeof dtcCodes !== 'undefined' && Array.isArray(dtcCodes) ? dtcCodes : []).forEach(function (c) { if (r.codes.indexOf(c) < 0) r.codes.push(c); }); }
         catch (e) { console.warn('PLGarage: codes van de rit', e); }
         r._weg = false;
@@ -954,6 +967,7 @@
       if (voorkeurMelding('meldingRit', true)) melding('🚗 Rit vastgelegd: ' + sam.km.toLocaleString('nl') + ' km' + (sam.verbruik_l100 ? ' · ' + verbruikNl(sam.verbruik_l100) : ''));
       if (_st.cache[r.vid]) delete _st.cache[r.vid];
       ververs();
+      conditieNaRit(v);
     } catch (e) { console.warn('PLGarage: rit niet bewaard', e); }
     return sam;
   }
@@ -963,6 +977,23 @@
      pomp, weer open, en de rit stond in tweeën. Nu beslist ritStand(): nog
      binnen de pauze = hij loopt door, anders af met de laatste beweging als
      eindtijd. */
+  /* Na een bewaarde rit: zakte de conditiescore duidelijk? Eén stille
+     melding per daling, alleen als de klant de score aanzette (#475). */
+  function gemeldSleutel(vid) { return 'pl_conditie_gemeld_' + vid; }
+  async function conditieNaRit(v) {
+    var cd = conditieModule();
+    if (!cd || !scoreAan(v) || !cd.heeftBasis(v) || isDemo()) return;
+    try {
+      var d = await api('ritten', { voertuig_id: v.id, limiet: CFG.condRitten });
+      var m = cd.beoordeel(v, d.ritten || [], { prijs: literprijs(v).prijs });
+      var b = cd.meldBesluit(m.daling, lees(gemeldSleutel(v.id), null), m.score);
+      schrijf(gemeldSleutel(v.id), b.gemeld);
+      if (b.meld && voorkeurMelding('meldingConditie', true)) {
+        melding('📉 Conditiescore ' + m.daling.van + ' → ' + m.daling.naar + (m.oorzaken[0] ? ': ' + m.oorzaken[0].tekst : '') + ' — zie Mijn voertuigen → Conditie');
+      }
+    } catch (e) { console.warn('PLGarage: conditiescore na de rit', e); }
+  }
+
   function ritHerstel() {
     var r = lees(OPSLAG.rit, null);
     if (!(r && r.vid && r.tLaatst)) return;
@@ -1127,6 +1158,8 @@
       '<li><b>Je kenteken versleuteld.</b> Het chassisnummer (VIN) alleen als een uit dat nummer berekende code, zoals elders in de app. Dat is pseudonimisering: wie je VIN kent, kan die code narekenen.</li>' +
       '<li><b>Rapporten</b> die de app voor dit voertuig maakt (AI-rapporten en foutcode-uitlezingen).</li>' +
       '<li><b>Ritten als samenvatting:</b> datum, duur, afstand, snelheid, verbruik, temperatuur en accuspanning, en het label dat je er zelf aan geeft. Geen locatie, geen route. De meting per seconde blijft op je telefoon.</li>' +
+      '<li><b>Per rit ook een paar meetkenmerken van de motor</b>, voor de conditiescore: brandstoftrim, hoe rustig het stationair toerental is, hoe lang het opwarmen duurt, ontstekingsvervroeging en brandstofdruk bij belasting, laadspanning, of de rit met een koude motor begon en hoe lang je met een koude motor hoge toeren maakte. Ontstekingsmissers alleen als je zelf de monitortests (mode 06) leest. Ook als de score uit staat, zodat hij meteen iets kan zeggen als je hem aanzet.</li>' +
+      '<li><b>Je onderhoudslogboek</b>, als je de conditiescore aanzet: de datum en km-stand van een beurt, wat er gedaan is, je notitie en het interval uit je onderhoudsboekje.</li>' +
       '<li><b>Tankbeurten die je zelf invult:</b> datum, liters, literprijs of bedrag, de afgelezen kilometerstand, of de tank vol was, het bereik op je dashboard en je notitie. Geen locatie, geen tankstation tenzij je het zelf in de notitie zet.</li>' +
       '<li><b>Wat de versnellingsindicator over je auto leert:</b> de verhouding tussen snelheid en toerental per versnelling, en je correcties. Geen locatie, geen tijdstippen van ritten.</li>' +
       '<li><b>De techniek volgt de auto.</b> Heeft een ander account dezelfde auto (hetzelfde chassisnummer), dan delen jullie de technische gegevens: merk, model, bouwjaar, motor, brandstof, vermogen, handbak of automaat, versnellingen, tankinhoud, de eigen sensoren en wat de versnellingsindicator leerde. Ritten, rapporten, kilometerstand, onderhoud, notities, kenteken en APK blijven van jou. Het andere account ziet niet wie jij bent, en jij niet wie het is.</li>' +
@@ -1223,10 +1256,19 @@
     finally { c['_' + wat] = false; teken(); }
   }
 
+  async function laadCondRitten(vid) {
+    var c = cacheVan(vid);
+    c._condRitten = true;
+    try { c.condRitten = (await api('ritten', { voertuig_id: vid, limiet: CFG.condRitten })).ritten || []; }
+    catch (e) { c.condRittenFout = e.message; console.warn('PLGarage: ritten voor de conditiescore', e); }
+    finally { c._condRitten = false; teken(); }
+  }
+
   function tekenVoertuig(v) {
-    var tabs = [['overzicht', 'Overzicht'], ['issues', 'Open punten'], ['ritten', 'Ritten'], ['tanken', 'Tankbeurten'], ['rapporten', 'Rapporten'], ['sensoren', 'Sensoren'], ['profiel', 'Profiel']]
-      .filter(function (t) { return t[0] !== 'tanken' || tankenAan(v); });
+    var tabs = [['overzicht', 'Overzicht'], ['issues', 'Open punten'], ['ritten', 'Ritten'], ['conditie', 'Conditie'], ['tanken', 'Tankbeurten'], ['rapporten', 'Rapporten'], ['sensoren', 'Sensoren'], ['profiel', 'Profiel']]
+      .filter(function (t) { return (t[0] !== 'tanken' || tankenAan(v)) && (t[0] !== 'conditie' || scoreAan(v)); });
     if (_st.tab === 'tanken' && !tankenAan(v)) _st.tab = 'overzicht';
+    if (_st.tab === 'conditie' && !scoreAan(v)) _st.tab = 'overzicht';
     var h = '<div class="gr-knoppen" style="margin:0 0 10px"><button class="gr-k klein" onclick="PLGarage._terug()">← Alle voertuigen</button>' +
       (v.status === 'actief' && v.id !== _st.actiefId ? '<button class="gr-k klein" onclick="PLGarage._actief(\'' + esc(v.id) + '\')">Maak actief</button>' : '') + '</div>';
     h += '<div class="gr-blok">' + tekenKentekenEnNaam(v) + '</div>';
@@ -1303,6 +1345,13 @@
           (_st.labelRit === r.id ? tekenLabelInvoer(r, rs) :
             '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._labelOpen(\'' + esc(r.id) + '\')">🏷 ' + (r.label ? 'Label wijzigen' : 'Label geven') + '</button></div>') + '</div>';
       }).join('') : '<div class="gr-klein">' + (rs.length ? 'Geen ritten met dit label.' : 'Nog geen ritten. Een rit wordt vanzelf vastgelegd zodra je rijdt met dit voertuig actief en de adapter verbonden.') + '</div>') : '<div class="gr-klein">⏳</div>') + '</div>';
+    } else if (_st.tab === 'conditie') {
+      // De conditiescore (#475): de rekensom en het scherm staan in PLConditie.
+      // Meer ritten dan het tabblad Ritten: de nulmeting kan ver terug liggen.
+      if (!c.condRitten && !c._condRitten && !c.condRittenFout) laadCondRitten(v.id);
+      h += window.PLConditie ? PLConditie.html(v, { ritten: c.condRitten || (c.condRittenFout ? [] : null), form: _st.condForm, fout: _st.condFout, logOpen: _st.condForm, prijs: literprijs(v).prijs })
+        : '<div class="gr-melding">Conditiescore niet geladen (pidlane-conditie.js).</div>';
+      if (c.condRittenFout) h += '<div class="gr-melding">Ritten niet opgehaald: ' + esc(c.condRittenFout) + '</div>';
     } else if (_st.tab === 'tanken') {
       // Tankbeurten (#469): de rekensom en het scherm staan in PLTank; de
       // ritten zijn er voor de km als de klant geen km-stand invulde.
@@ -1337,6 +1386,8 @@
         rijProf('Kilometerstand', v.kmstand != null ? v.kmstand.toLocaleString('nl') + ' km' : null) + rijProf('APK tot', v.apk_tot ? datumNl(v.apk_tot) : null) +
         rijProf('Laatste onderhoudsbeurt', v.onderhoud_laatst) + rijProf('Distributieriem/-ketting', v.distributie) +
         rijProf('Volgend onderhoud', [v.onderhoud_km ? v.onderhoud_km.toLocaleString('nl') + ' km' : null, v.onderhoud_datum ? datumNl(v.onderhoud_datum) : null].filter(Boolean).join(' of ')) +
+        rijProf('Conditiescore', scoreAan(v) ? 'aan' : 'uit') +
+        rijProf('Onderhoudsinterval', [v.onderhoud_interval_km ? v.onderhoud_interval_km.toLocaleString('nl') + ' km' : null, v.onderhoud_interval_mnd ? v.onderhoud_interval_mnd + ' maanden' : null].filter(Boolean).join(' of ')) +
         rijProf('Gekoppeld aan de auto', v.vin_pseudo ? 'ja (via het chassisnummer)' : 'nog niet') +
         '</div>' + (v.notities ? '<div class="gr-klein" style="margin-top:8px">' + esc(v.notities) + '</div>' : '') + '</div>' +
         '<div class="gr-knoppen"><button class="gr-k hoofd" onclick="PLGarage._bewerk(\'' + esc(v.id) + '\')">✏️ Profiel aanpassen</button></div>' +
@@ -1350,12 +1401,17 @@
     turbo: ['onbekend', 'ja', 'nee'], transmissie: ['handgeschakeld', 'automaat', 'onbekend'],
     versnellingen: ['4', '5', '6', '7', '8', '9', '10'],
     rijprofiel: ['gemengd', 'stad', 'snelweg', 'korte ritten', 'aanhanger of caravan'],
-    tanken: ['uit', 'aan']
+    tanken: ['uit', 'aan'],
+    score: ['uit', 'aan']
   };
   /* Tankbeurten bijhouden is per voertuig en staat standaard uit (#469,
      13-10-2026): niet iedereen wil het. Uit = geen tabblad, geen vraag
      "Getankt?" en geen export. Wat al bewaard is blijft staan. */
   function tankenAan(v) { return !!v && v.tanken === 'aan'; }
+  /* De conditiescore is per voertuig en staat standaard uit (#475,
+     13-10-2026). Uit = geen tabblad en geen melding. De ritten verzamelen
+     hun kenmerken wel altijd, zodat er een nulmeting is als hij aangaat. */
+  function scoreAan(v) { return !!v && v.score === 'aan'; }
   function tekenFormulier(v) {
     v = v || {};
     var inv = function (id, label, w, type, extra) {
@@ -1382,6 +1438,10 @@
       '<div class="gr-klein">Tankinhoud geeft het bereik met de tank die erin zit; de literprijs de kosten per rit en per uur.</div>' +
       kies('tanken', 'Tankbeurten bijhouden', v.tanken || 'uit') +
       '<div class="gr-klein">Aan: een tabblad Tankbeurten met beloofd tegenover gereden bereik en export, en na het tanken vraagt de app of je de beurt wilt invullen.</div>' +
+      kies('score', 'Conditiescore bijhouden', v.score || 'uit') +
+      '<div class="gr-klein">Aan: een tabblad Conditie met een score uit je onderhoud en je ritten, die je zelf opent. Eén keer de laatste beurt invullen; de rest meet de app.</div>' +
+      '<div class="gr-2">' + inv('onderhoud_interval_km', 'Onderhoudsinterval (km)', v.onderhoud_interval_km, 'number', 'min="1000" max="100000" placeholder="15000"') +
+      inv('onderhoud_interval_mnd', 'of (maanden)', v.onderhoud_interval_mnd, 'number', 'min="1" max="60" placeholder="12"') + '</div>' +
       '<div class="gr-2">' + inv('apk_tot', 'APK geldig tot', v.apk_tot, 'date') + inv('onderhoud_datum', 'Volgend onderhoud (datum)', v.onderhoud_datum, 'date') + '</div>' +
       inv('onderhoud_km', 'Volgend onderhoud (km-stand)', v.onderhoud_km, 'number', 'min="0"') +
       '<div class="gr-2">' + inv('onderhoud_laatst', 'Laatste onderhoudsbeurt', v.onderhoud_laatst, 'text', 'maxlength="80" placeholder="bv. 03-2026 / 135.000 km"') +
@@ -1704,7 +1764,7 @@
   }
 
   function formWaarden() {
-    var velden = ['naam', 'kenteken', 'merk', 'model', 'bouwjaar', 'motor', 'brandstof', 'turbo', 'transmissie', 'versnellingen', 'rijprofiel', 'verbruik_opgegeven', 'kmstand', 'tankinhoud', 'brandstofprijs', 'apk_tot', 'onderhoud_datum', 'onderhoud_km', 'onderhoud_laatst', 'distributie', 'notities', 'cilinderinhoud', 'vermogen_kw', 'vin_pseudo', 'tanken'];
+    var velden = ['naam', 'kenteken', 'merk', 'model', 'bouwjaar', 'motor', 'brandstof', 'turbo', 'transmissie', 'versnellingen', 'rijprofiel', 'verbruik_opgegeven', 'kmstand', 'tankinhoud', 'brandstofprijs', 'apk_tot', 'onderhoud_datum', 'onderhoud_km', 'onderhoud_laatst', 'distributie', 'notities', 'cilinderinhoud', 'vermogen_kw', 'vin_pseudo', 'tanken', 'score', 'onderhoud_interval_km', 'onderhoud_interval_mnd'];
     var uit = {};
     velden.forEach(function (k) { var el = document.getElementById('grf_' + k); if (el) uit[k] = el.value === '' ? null : el.value; });
     return uit;
@@ -1732,6 +1792,24 @@
       });
       if (st) st.textContent = '✓ Ingevuld vanuit het RDW: ' + [p.merk, p.model, p.bouwjaar].filter(Boolean).join(' ');
     } catch (e) { if (st) st.textContent = 'RDW niet bereikbaar: ' + e.message; console.warn('PLGarage.rdw', e); }
+  }
+
+  /* Een beurt uit het formulier in het tabblad Conditie. `basis`: het eerste
+     formulier, dat ook het interval meegeeft. */
+  async function condBewaar(basis) {
+    var v = voertuig(_st.vid), cd = conditieModule(); if (!v || !cd) return;
+    var w = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
+    var wat = Array.prototype.slice.call(document.querySelectorAll('input[name="cdWat"]:checked')).map(function (el) { return el.value; });
+    var r = cd.beurt({ datum: w('cd_datum'), km: w('cd_km'), wat: wat, notitie: w('cd_notitie') });
+    if (r.fout) { _st.condFout = r.fout; teken(); return; }
+    var zet = { id: v.id, onderhoud_log: cd.logMet(v.onderhoud_log, r.beurt) };
+    if (basis) { zet.onderhoud_interval_km = w('cd_ikm') || null; zet.onderhoud_interval_mnd = w('cd_imnd') || null; }
+    try {
+      await api('voertuig_opslaan', { voertuig: zet });
+      _st.condForm = false; _st.condFout = null;
+      melding(basis ? '📊 Conditiescore gestart' : '🔧 Beurt bewaard');
+    } catch (e) { _st.condFout = e.message; console.warn('PLGarage: beurt bewaren', e); }
+    await ververs();
   }
 
   async function bewaarFormulier() {
@@ -1798,7 +1876,7 @@
     tekenKaart: tekenKaart,
     _akkoord: function () { doe(function () { return api('akkoord', { versie: _st.stand && _st.stand.akkoordVersie }); }, 'Mijn voertuigen staat aan'); },
     _open: function (id) { _st.view = 'voertuig'; _st.vid = id; _st.tab = 'overzicht'; teken(); },
-    _tab: function (t) { _st.tab = t; _st.labelRit = null; _st.tankForm = null; _st.kiesModus = false; _st.kies = {}; // Sensoren opnieuw openen = verse stand uit het voertuig en de bibliotheek,
+    _tab: function (t) { _st.tab = t; _st.labelRit = null; _st.tankForm = null; _st.condForm = false; _st.condFout = null; _st.kiesModus = false; _st.kies = {}; // Sensoren opnieuw openen = verse stand uit het voertuig en de bibliotheek,
       // behalve als er nog iets onbewaards staat.
       if (t !== 'sensoren' || !(_st.sens && _st.sens.gewijzigd)) _st.sens = null; teken(); },
     _terug: function () { _st.view = _st.view === 'formulier' && _st.vid ? 'voertuig' : 'lijst'; if (_st.view === 'lijst') _st.vid = null; teken(); },
@@ -2061,6 +2139,32 @@
         _st.tankForm = null; delete cacheVan(_st.vid).tanken;
       } catch (e) { melding('⚠️ ' + e.message); console.warn('PLGarage: tankbeurt bewaren', e); }
       teken();
+    },
+    // ── De conditiescore (#475) ──
+    _condForm: function (aan) { _st.condForm = !!aan; _st.condFout = null; teken(); },
+    _condStart: function () { condBewaar(true); },
+    _condBeurt: function () { condBewaar(false); },
+    _condWeg: function (i) {
+      var v = voertuig(_st.vid), cd = conditieModule(); if (!v || !cd) return;
+      var log = cd.logboek(v.onderhoud_log), b = log[i]; if (!b) return;
+      if (!confirm('De beurt van ' + b.datum + ' wissen?')) return;
+      log.splice(i, 1);
+      doe(function () { return api('voertuig_opslaan', { voertuig: { id: v.id, onderhoud_log: log } }); }, 'Beurt gewist');
+    },
+    _condPaspoort: function () {
+      var v = voertuig(_st.vid), cd = conditieModule(); if (!v || !cd) return;
+      var m = cd.beoordeel(v, cacheVan(v.id).condRitten || [], { prijs: literprijs(v).prijs });
+      var naam = 'paspoort-' + String(v.naam || v.merk || 'voertuig').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+      try { if (typeof plOpslaanPdf === 'function') plOpslaanPdf(naam, cd.paspoort(v, m), { titel: 'Gezondheidspaspoort' }); }
+      catch (e) { melding('⚠️ PDF mislukt: ' + e.message); console.warn('PLGarage: paspoort', e); }
+    },
+    // Een mode 06-uitlezing tijdens een rit: de ontstekingsmissers gaan mee.
+    mode06: function (res) {
+      var r = _st.rit, cd = conditieModule();
+      if (!r || !cd) return null;
+      var mf = cd.misfire(res);
+      if (mf !== null) (r.cd = r.cd || {}).mf = mf;
+      return mf;
     },
     _tankWeg: function (id) {
       if (!confirm('Deze tankbeurt wissen?')) return;

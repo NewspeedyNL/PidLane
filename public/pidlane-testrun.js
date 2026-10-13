@@ -2787,6 +2787,31 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de conditiescore (#475, 13-10-2026) ──
+  {
+    issue: '#475',
+    naam: 'Conditiescore: per voertuig aan of uit, de auto tegen zichzelf, en de ritten meten altijd mee',
+    waarom: 'Uitgesteld onderhoud moest zichtbaar worden als een score die langzaam zakt, zonder een lijst die de klant moet bijhouden: één beurt invullen, de rest komt uit de ritten.',
+    proef: async function () {
+      if (!window.PLConditie || typeof PLConditie.beoordeel !== 'function') return { staat: 'FOUT', detail: 'PLConditie ontbreekt — oude pidlane-conditie.js of niet in index.html (herladen?)' };
+      if (!window.PLGarage || typeof PLGarage.mode06 !== 'function') return { staat: 'FOUT', detail: 'PLGarage.mode06 ontbreekt — oude pidlane-garage.js (herladen?)' };
+      var d = 864e5, nu = Date.now();
+      var r = function (i, tw) { return { start: new Date(nu - (30 - i) * d).toISOString(), km: 20, duur_s: 1500, gem_kmh: 50, verbruik_l100: 6, extra: { cd: { tw: tw, sr: 20, lv: 14.2 } } }; };
+      var rs = []; for (var i = 0; i < 10; i++) rs.push(r(i, i < 5 ? 1 : 8));
+      var v = { onderhoud_log: [{ datum: new Date(nu - 60 * d).toISOString().slice(0, 10), km: 1000, wat: ['olie'] }] };
+      var m = PLConditie.beoordeel(v, rs, { nu: nu });
+      if (!(m.deel.brandstof < 90)) return { staat: 'FOUT', detail: 'een trim van +1 naar +8 % kost geen punten (brandstof ' + m.deel.brandstof + ')' };
+      if (PLConditie.beoordeel(v, rs.slice(0, 8), { nu: nu }).conditie.klaar) return { staat: 'FOUT', detail: 'acht ritten geven al een rijmeting' };
+      var g = PLGarage.actief ? PLGarage.actief() : null;
+      var rit = PLGarage.staat ? PLGarage.staat().rit : null;
+      var meet = rit ? ' · lopende rit verzamelt: ' + (rit.cd ? Object.keys(PLConditie.samenvat(rit.cd) || {}).join(', ') || 'nog te kort' : 'niets (FOUT?)') : ' · geen lopende rit';
+      if (rit && !rit.cd) return { staat: 'FOUT', detail: 'er loopt een rit, maar hij verzamelt geen conditiekenmerken' };
+      if (!g) return { staat: 'LET OP', detail: 'regel goed, maar geen actief voertuig in Mijn voertuigen' + meet };
+      if (g.score !== 'aan') return { staat: 'LET OP', detail: 'regel goed · conditiescore staat uit voor ' + (g.naam || 'dit voertuig') + ' (Profiel → Conditiescore bijhouden)' + meet };
+      return { staat: 'OK', detail: 'aan · ' + (PLConditie.heeftBasis(g) ? 'basis ingevuld' : 'nog geen beurt ingevuld (tabblad Conditie)') + meet };
+    }
+  },
+
   // ── contact uit is geen storing (#487, 13-10-2026) ──
   {
     issue: '#487',
@@ -10516,6 +10541,10 @@ const CAMPAGNE = {
     '── #469: TANKEN HERKENNEN ────────',
     'ZET HET AAN. Mijn voertuigen → je auto → Profiel → Tankbeurten bijhouden: aan. Het staat standaard uit.',
     'TANK MET DE APP VERBONDEN, OF ERNA. Sta stil vóór het tanken (de app legt het peil vast), tank, en verbind daarna weer of laat hem verbonden. Komt de vraag "Getankt?" met een peil dat klopt met wat je dashboard zegt? Komt hij maar één keer? Komt hij nooit bij een helling of een bocht zonder tanken? Zo niet: plak het peil vóór en na uit de vraag in #469.',
+    '── #475: DE CONDITIESCORE ────────',
+    'ZET HEM AAN. Mijn voertuigen → je auto → Profiel → Conditiescore bijhouden: aan. Open het tabblad Conditie en vul één keer de laatste beurt in. Was dat te veel gedoe? Zet het in #475.',
+    'RIJ ZOALS ALTIJD. Na elke rit van minstens 3 km verzamelt de app trim, stationair, opwarmtijd en laadspanning. Na tien ritten telt de rijmeting mee. Springt de score tussen twee gewone ritten meer dan vijf punten? Plak "Waarom deze score" in #475: dan is een dode zone te krap.',
+    'MODE 06 TIJDENS EEN RIT. Lees één keer de monitortests terwijl de rit loopt: de missers horen in die rit mee te gaan. Staat er na de rit niets onder Ontstekingsmissers, dan kent je auto geen misfire-monitor in mode 06 (zeg dat in #475).',
     '── WAT DEZE RONDE NIET OPLOST ────────',
     'HYBRIDE (#430, #452) heeft een hybride nodig; het analyserapport (#448) een analyse met AI, geparkeerd.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'

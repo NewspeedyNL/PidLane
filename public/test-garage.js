@@ -49,6 +49,8 @@ function laad(opties) {
   };
   s.window = s;
   vm.createContext(s);
+  // De conditiescore (#475) hangt in de app vóór de garage; alleen als de toets erom vraagt.
+  if (o.conditie) vm.runInContext(fs.readFileSync(__dirname + '/pidlane-conditie.js', 'utf8'), s, { filename: 'pidlane-conditie.js' });
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-garage.js', 'utf8'), s, { filename: 'pidlane-garage.js' });
   return { G: s.PLGarage, K: s.PLGarage._kern, verzoeken, opslag, s };
 }
@@ -115,6 +117,27 @@ function laad(opties) {
   r = K.ritNieuw(t0);
   for (let i = 1; i <= 100; i++) K.ritTik(r, { kmh: i <= 50 ? 0 : 30, rpm: 800 }, t0 + i * 2000);
   eis(K.ritKlaar(r).stationair_pct === 50, 'half stilstaan met draaiende motor = 50% stationair', String(K.ritKlaar(r).stationair_pct));
+
+  console.log('\n3a. De conditiekenmerken gaan met de rit mee (#475)');
+  {
+    const L = laad({ conditie: true });
+    const K2 = L.K;
+    let rc = K2.ritNieuw(t0);
+    for (let i = 1; i <= 200; i++) K2.ritTik(rc, { kmh: i <= 30 ? 0 : 60, rpm: i <= 30 ? 800 + (i % 2 ? 15 : -15) : 2200, koelwater: 90, accu: 14.1, trim: 3, ltft: 3, stft: 1.5 }, t0 + i * 2000, 'benzine');
+    const sc = K2.ritKlaar(rc);
+    eis(sc && sc.extra && sc.extra.cd && sc.extra.cd.tw === 4.5, 'trim warm (lang 3 + kort 1,5) in rit.extra.cd', JSON.stringify(sc && sc.extra));
+    eis(sc && sc.extra.cd.sr >= 14 && sc.extra.cd.sr <= 17, 'onrust stationair in rit.extra.cd', JSON.stringify(sc && sc.extra));
+    eis(sc && sc.extra.cd.lv === 14.1, 'laadspanning in rit.extra.cd', JSON.stringify(sc && sc.extra));
+    eis(JSON.stringify(sc.extra).length < 3800, 'past in de ruimte voor extra', String(JSON.stringify(sc.extra).length));
+    L.G.staat().rit = rc;
+    const mf = L.G.mode06({ tests: [{ mid: 0xA2, tid: 0x0B, ruw: { waarde: 4 } }, { mid: 0xA3, tid: 0x0B, ruw: { waarde: 1 } }] });
+    eis(mf === 5 && K2.ritKlaar(rc).extra.cd.mf === 5, 'een mode 06-scan tijdens de rit geeft de misfires mee', JSON.stringify(K2.ritKlaar(rc).extra));
+    L.G.staat().rit = null;
+    eis(L.G.mode06({ tests: [{ mid: 0xA2, tid: 0x0B, ruw: { waarde: 4 } }] }) === null, 'zonder rit gaat er niets mee');
+    rc = K.ritNieuw(t0);
+    for (let i = 1; i <= 200; i++) K.ritTik(rc, { kmh: 60, rpm: 2200, koelwater: 90, trim: 3 }, t0 + i * 2000, 'benzine');
+    eis(!(K.ritKlaar(rc).extra && K.ritKlaar(rc).extra.cd), 'zonder pidlane-conditie.js: de rit gewoon, zonder kenmerken');
+  }
 
   console.log('\n3b. Pauze of einde (29-09-2026)');
   // Motor uit, drie minuten later weer rijden: dat is één rit, geen twee.
