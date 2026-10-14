@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Software als oorzaak: het logboek zegt wat vervangen is (#426)
+ ═══════════════════════════════════════════════════════════
+
+ - Beurt toevoegen heeft "Ander werk": gasklep, injector, katalysator,
+   lambdasonde, luchtmassameter, roetfilter, EGR-klep, ECU. Een beurt
+   met alleen ander werk mag; de Worker keurt dezelfde lijst.
+ - plVervangenRecent(): wat de laatste 90 dagen in het logboek van het
+   actieve voertuig staat (accu en ander werk). Foutcodes, de
+   onderdeelcheck en het onderzoek geven het aan softwareOorzaken();
+   in het onderzoek staan die chips al aan.
+ - Daarmee kunnen de zwakke oorzaken (adaptaties, gasklep, injector, EGR,
+   accu) eindelijk verschijnen.
+ - Tests in test-conditie, test-softwareoorzaak en test-klantplatform,
+   vijf mutaties, blok 5, handleiding.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Tankbeurten: samenvatting per tankcyclus (#469 stap 3)
  ═══════════════════════════════════════════════════════════
 
