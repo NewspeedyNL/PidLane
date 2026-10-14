@@ -38,7 +38,7 @@ var KRITIEK = [
   '_niceReportName','aiBusyBegin','aiBusyEnd','_srUpdateBadge','_noteMap','_recStats',
   'appBack','btDiag','btLogAfkappen','btLogDomAfkappen','sppOudeSluiten','_pollWacht','buildDiscoveredPIDList',
   'clearDTC','clearSLAutoHide','closeCaravanDash','closeKebab','closeLades','closeRitAnalyse',
-  'demo','detectEngineType','disconnectWebSerial','doLogin','download','dtcInfo',
+  'demo','detectEngineType','disconnectWebSerial','doLogin','download','dtcInfo','dtcPlan',
   'ensurePIDListActive','ensurePIDsActive',
   // applyFeatureToggles erbij op 03-09-2026. Blok 5 draait de schakelaar
   // feat_demo echt om om te zien of beide demoknoppen verdwijnen; dat gaat
