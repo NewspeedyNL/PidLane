@@ -201,7 +201,7 @@ var KRITIEK = [
   // 09-10-2026 (#426). Welk onderdeel, Check mijn auto en het onderzoek vragen
   // allemaal of het software kan zijn. Ontbreekt een van de twee, dan zegt
   // geen van de drie dat nog, en valt een gecodeerde ECU onder "sensor".
-  'softwareOorzaken','plVinAfwijkend',
+  'softwareOorzaken','plVinAfwijkend','plVervangenRecent',
   // 06-10-2026 (#418). Een telefoon die niet vast zit tekent alleen via
   // applyG; valt die weg, dan blijft de tegel stil op zijn oude waarde staan.
   'applyG',

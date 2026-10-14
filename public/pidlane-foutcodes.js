@@ -856,6 +856,7 @@
       merk: v.merk, brandstof: rd ? rd.brandstof : v.brandstof,
       nietKlaar: rd ? rd.nietKlaar : [], sinds: s.sinds,
       dtc: uniek([].concat(c.bevestigd || [], c.pending || [], c.permanent || [])),
+      vervangen: typeof plVervangenRecent === 'function' ? plVervangenRecent() : [],
       vinAfwijkend: typeof plVinAfwijkend === 'function' && plVinAfwijkend()
     });
   }

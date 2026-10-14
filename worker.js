@@ -5167,6 +5167,9 @@ var KP_VELDEN = {
 // toekomst ligt, een km-stand of niets, alleen bekende onderdelen, een
 // korte notitie. Zelfde regels als PLConditie.beurt().
 var KP_ONDERHOUD_WAT = ["olie", "oliefilter", "luchtfilter", "bougies", "brandstoffilter", "distributie", "remvloeistof", "koelvloeistof", "remmen", "accu"];
+// Ander werk (#426): geen interval, wel inleren. Zelfde lijst als WERK in
+// pidlane-conditie.js; test-klantplatform.js vergelijkt de twee.
+var KP_ONDERHOUD_WERK = ["gasklep", "injector", "katalysator", "lambdasonde", "luchtmassameter", "roetfilter", "egr", "ecu"];
 function kpOnderhoudBeurt(b) {
   b = b || {};
   const datum = String(b.datum || "").slice(0, 10);
@@ -5179,8 +5182,10 @@ function kpOnderhoudBeurt(b) {
     km = Math.round(km);
   }
   const wat = (Array.isArray(b.wat) ? b.wat : []).map((x) => String(x)).filter((x, i, l) => KP_ONDERHOUD_WAT.indexOf(x) >= 0 && l.indexOf(x) === i);
-  if (!wat.length) return { fout: "een beurt zonder onderdelen" };
+  const werk = (Array.isArray(b.werk) ? b.werk : []).map((x) => String(x)).filter((x, i, l) => KP_ONDERHOUD_WERK.indexOf(x) >= 0 && l.indexOf(x) === i);
+  if (!wat.length && !werk.length) return { fout: "een beurt zonder onderdelen" };
   const o = { datum, km, wat };
+  if (werk.length) o.werk = werk;
   const notitie = String(b.notitie == null ? "" : b.notitie).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 80);
   if (notitie) o.notitie = notitie;
   return { beurt: o };

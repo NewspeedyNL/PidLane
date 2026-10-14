@@ -10,6 +10,35 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Onderzoek: brandstofdruk en breedbandsonde als stap (#428)
+ ═══════════════════════════════════════════════════════════
+
+ - Raildruk (0123/0159, of 010A bij een oudere injectiemotor): stationair
+   tegen 2500 tpm. Zakt hij meer dan 15 %, dan is de toevoer verdacht;
+   houdt hij stand, dan valt brandstofdruk af. 010A onder 200 kPa is laag.
+ - Breedbandsonde (0124/0134, met 0144 als doel): staat hij stil, of ziet
+   hij de brandstofafsluiting bij gas loslaten? En arm of rijk stationair.
+ - Een stap telt alleen als de auto de PID levert (`nodig`), niet omdat
+   hij toeren geeft. Drempels voorlopig, net als bij mode 06.
+ - test-onderzoek.js 6b, vier mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Software als oorzaak: het logboek zegt wat vervangen is (#426)
+ ═══════════════════════════════════════════════════════════
+
+ - Beurt toevoegen heeft "Ander werk": gasklep, injector, katalysator,
+   lambdasonde, luchtmassameter, roetfilter, EGR-klep, ECU. Een beurt
+   met alleen ander werk mag; de Worker keurt dezelfde lijst.
+ - plVervangenRecent(): wat de laatste 90 dagen in het logboek van het
+   actieve voertuig staat (accu en ander werk). Foutcodes, de
+   onderdeelcheck en het onderzoek geven het aan softwareOorzaken();
+   in het onderzoek staan die chips al aan.
+ - Daarmee kunnen de zwakke oorzaken (adaptaties, gasklep, injector, EGR,
+   accu) eindelijk verschijnen.
+ - Tests in test-conditie, test-softwareoorzaak en test-klantplatform,
+   vijf mutaties, blok 5, handleiding.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Tankbeurten: samenvatting per tankcyclus (#469 stap 3)
  ═══════════════════════════════════════════════════════════
 

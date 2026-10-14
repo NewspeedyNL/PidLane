@@ -113,6 +113,25 @@ console.log('\n3. Een beurt invullen');
   toets('basis = een beurt met olie', C.heeftBasis({ onderhoud_log: log }) && !C.heeftBasis({ onderhoud_log: [{ datum: '2026-01-01', wat: ['remmen'] }] }));
 }
 
+console.log('\n3b. Ander werk: vervangen onderdelen voor softwareOorzaken (#426)');
+{
+  let r = C.beurt({ datum: '2026-09-20', wat: [], werk: ['lambdasonde', 'lambdasonde', 'raketmotor', 'gasklep'] }, NU);
+  toets('een beurt met alleen ander werk mag; dubbel en onbekend eruit', r.beurt && r.beurt.wat.length === 0 && r.beurt.werk.join() === 'lambdasonde,gasklep', JSON.stringify(r));
+  r = C.beurt({ datum: '2026-09-20', wat: ['olie'], werk: ['raketmotor'] }, NU);
+  toets('zonder geldig ander werk geen leeg werk-veld', r.beurt && !('werk' in r.beurt), JSON.stringify(r));
+  toets('alleen onbekend werk telt als niets gedaan', !!C.beurt({ datum: '2026-09-20', wat: [], werk: ['raketmotor'] }, NU).fout);
+  const v = { brandstof: 'benzine', onderhoud_log: [
+    { datum: '2026-09-20', wat: [], werk: ['lambdasonde'] },
+    { datum: '2026-08-01', wat: ['accu', 'olie'] },
+    { datum: '2026-03-01', wat: [], werk: ['gasklep'] } ] };
+  const rv = C.recentVervangen(v, NU);
+  toets('recent vervangen: lambdasonde en accu binnen 90 dagen, geen olie, geen gasklep van een half jaar terug',
+    rv.slice().sort().join() === 'accu,lambdasonde', JSON.stringify(rv));
+  toets('zonder logboek een lege lijst', C.recentVervangen({}, NU).length === 0 && C.recentVervangen(null, NU).length === 0);
+  toets('logboek en paspoort noemen het werk bij naam', C.gedaan(v.onderhoud_log[0]).join() === 'Lambdasonde' && C.gedaan(v.onderhoud_log[1]).join() === 'Accu,Motorolie');
+  toets('heeftBasis struikelt niet over een beurt zonder onderdelen', C.heeftBasis(v) === true && C.heeftBasis({ onderhoud_log: [v.onderhoud_log[0]] }) === false);
+}
+
 console.log('\n4. Onderhoudsstand');
 {
   const v = (log, x) => Object.assign({ brandstof: 'benzine', onderhoud_log: log }, x || {});

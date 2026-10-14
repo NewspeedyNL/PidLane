@@ -1956,6 +1956,11 @@ MUTATIES=(
 # ── Software als oorzaak (#426, 07-10-2026). Drie fouten die een vers gewiste
 # auto, een benzineauto of een gewone sensorcode naar "inleren" zouden sturen.
 "public/pidlane-data.js@@  const hangt = (sinds.km != null && sinds.km >= grens.km) || (sinds.warm != null && sinds.warm >= grens.warm);@@  const hangt = true;@@test-softwareoorzaak.js@@een monitor 40 km na wissen telt al als hangen: elke verse wis wordt een inleerprobleem"
+"public/pidlane-conditie.js@@      if (t < van || t > (nu || Date.now()) + 864e5) return;@@      if (t > (nu || Date.now()) + 864e5) return;@@test-conditie.js@@een gasklep van jaren terug telt nog als onlangs vervangen (#426)"
+"public/pidlane-conditie.js@@    if (werk.length) b.werk = werk;@@@@test-conditie.js@@het andere werk valt weg bij het bewaren van een beurt (#426)"
+"worker.js@@  if (werk.length) o.werk = werk;@@@@test-klantplatform.js@@de Worker gooit het andere werk van een beurt weg (#426)"
+"public/pidlane-data.js@@    return PLConditie.recentVervangen(v, Date.now());@@    return [];@@test-softwareoorzaak.js@@het onderhoudslogboek komt nooit bij softwareOorzaken() aan (#426)"
+"public/pidlane-foutcodes.js@@      vervangen: typeof plVervangenRecent === 'function' ? plVervangenRecent() : [],\n@@@@test-softwareoorzaak.js@@Foutcodes geeft het logboek niet mee (#426)"
 "public/pidlane-data.js@@    if (f.brandstof && (brandstof === 'diesel' || brandstof === 'benzine') && f.brandstof !== brandstof) return null;@@@@test-softwareoorzaak.js@@een benzineauto krijgt het roetfilter-inleren voorgeschoteld"
 "public/pidlane-data.js@@    if (!bewijs.length) return null;@@@@test-softwareoorzaak.js@@elke inleerfunctie verschijnt zonder enig bewijs, ook bij een gewone sensorcode"
 "public/pidlane-data.js@@    if (f.sterkte === 'zwak' && !aanleiding) return null;@@@@test-softwareoorzaak.js@@een gewone P0420 komt als \"adaptaties wissen\" op het scherm: de sensorkant wordt software"
@@ -1985,6 +1990,10 @@ MUTATIES=(
 "public/pidlane-onderzoek.js@@        if (t.uasId !== 0x24) return t.krap;@@        return t.krap;@@test-onderzoek.js@@mode 06: nul missers heet krap binnen de grens en telt als bewijs vóór een ontstekingsprobleem"
 "public/pidlane-onderzoek.js@@    [0x0B, 0x0C].forEach(function (tid) {@@    [0x0C, 0x0B].forEach(function (tid) {@@test-onderzoek.js@@mode 06: één rit met missers wint van het gemiddelde over tien ritten"
 "public/pidlane-onderzoek.js@@t.mid >= f.van && t.mid <= f.tot && t.oordeelZeker; });@@t.mid >= f.van && t.mid <= f.tot; });@@test-onderzoek.js@@mode 06: een test met onbekende schaal telt toch als oordeel over de sonde"
+"public/pidlane-onderzoek.js@@          if (q < 0.85) r.push(@@          if (q < 0.5) r.push(@@test-onderzoek.js@@een raildruk die 30 % wegzakt bij meer toeren valt niet op (#428)"
+"public/pidlane-onderzoek.js@@          else if (q >= 0.95 && !teLaag) r.push(@@          else if (q >= 0.95) r.push(@@test-onderzoek.js@@een te lage brandstofdruk wordt vrijgesproken omdat hij stabiel te laag is (#428)"
+"public/pidlane-onderzoek.js@@    return !b || (stap.nodig || stap.pids).some(@@    return !b || stap.pids.some(@@test-onderzoek.js@@een auto zonder raildruk krijgt de raildrukstap omdat hij toeren levert (#428)"
+"public/pidlane-onderzoek.js@@        if (sp != null && sp < 0.02) r.push({ h: 'lambda'@@        if (sp != null && sp < 0) r.push({ h: 'lambda'@@test-onderzoek.js@@een breedbandsonde die stilstaat valt niet op (#428)"
 "public/pidlane-foutcodes.js@@      if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }@@      if (wat === 'oorzaak') PLWizard.open('storing');@@bproef-onderzoek.js@@Oorzaak laten zoeken opent weer de lijst losse modules in plaats van het onderzoek"
 "public/pidlane-foutcodes.js@@  function magTerug(s) { return magDoor(s) && stoplicht(s).kleur === 'groen'; }@@  function magTerug(s) { return magDoor(s); }@@test-foutcodes.js@@zelf getikt met een zelftest die nog niet klaar is: het venster gaat toch vanzelf dicht en de Let op-regel is weg"
 "public/pidlane-foutcodes.js@@    _st.doorGewild = !isGarage();@@    _st.doorGewild = !!opties.auto && !isGarage();@@bproef-foutcodes.js@@zelf op Check mijn auto getikt en alles groen: het venster blijft weer staan"

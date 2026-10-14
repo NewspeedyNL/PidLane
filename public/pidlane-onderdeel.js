@@ -890,6 +890,7 @@ function software(){
   try{
     return softwareOorzaken({ merk:v.merk, brandstof: rd ? rd.brandstof : v.brandstof,
       nietKlaar: rd ? rd.nietKlaar : [], sinds: scan ? scan.sinds : null, dtc:dtc,
+      vervangen: typeof plVervangenRecent==='function' ? plVervangenRecent() : [],
       vinAfwijkend: typeof plVinAfwijkend==='function' && plVinAfwijkend() });
   }catch(e){ console.warn('Onderdeelcheck: softwareOorzaken gaf een fout (#426)', e); return []; }
 }

@@ -120,6 +120,40 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
   eis(!st.v.valselucht.bewijs.some((b) => /trim/.test(b.t)), 'zonder trims geen trim-oordeel over valse lucht');
   eis(stappen(st).indexOf('toeren2500') < 0, 'de 2500-tpm-proef wordt niet gedaan zonder trim om te vergelijken');
 
+  console.log('\n6b. Brandstofdruk en breedbandsonde (#428)');
+  {
+    const S = (id) => O.STAPPEN.filter((x) => x.id === id)[0];
+    const RD = S('raildruk'), BB = S('breedband');
+    eis(RD && BB, 'de stappen raildruk en breedband bestaan');
+    const rpm = Array.from({ length: 30 }, (_, i) => (i < 15 ? 750 : 2500));
+    const druk = (laag, hoog) => rpm.map((r, i) => (r < 1200 ? laag : hoog) + (i % 3));
+    const v = (r) => r.filter((x) => x.h === 'brandstofdruk').map((x) => x.d).reduce((a, b) => a + b, 0);
+    eis(v(RD.beoordeel({ reeks: { '0123': druk(5000, 3500), '010C': rpm } })) >= 2.5, 'raildruk zakt 30 % bij 2500 tpm: brandstofdruk verdacht');
+    eis(v(RD.beoordeel({ reeks: { '0123': druk(5000, 5300), '010C': rpm } })) <= -2, 'raildruk houdt stand: brandstofdruk van tafel');
+    eis(v(RD.beoordeel({ reeks: { '0123': druk(5000, 4600), '010C': rpm } })) === 0, 'een zakje van 8 % zegt niets, in geen van beide richtingen');
+    eis(v(RD.beoordeel({ reeks: { '010A': druk(150, 150), '010C': rpm } })) >= 2, 'oude injectiemotor met 150 kPa: te laag');
+    eis(v(RD.beoordeel({ reeks: { '0159': druk(5000, 3500), '010C': rpm } })) >= 2.5, 'ook de absolute raildruk (0159) telt');
+    let r = RD.beoordeel({ reeks: { '010C': rpm } });
+    eis(r.length === 1 && r[0].h === null, 'zonder brandstofdruk: niet beoordeeld, geen tegenbewijs', JSON.stringify(r));
+    r = RD.beoordeel({ reeks: { '0123': druk(5000, 5000) } });
+    eis(!r.some((x) => x.h === 'brandstofdruk' && x.d < 0), 'zonder toerental geen vrijspraak: stationair en 2500 tpm zijn niet te scheiden', JSON.stringify(r));
+
+    const lam = (rust, piek) => rpm.map((x, i) => (i === 20 || i === 21 || i === 26 ? piek : rust + (i % 2 ? 0.005 : -0.005)));
+    const h = (r, id) => r.filter((x) => x.h === id).map((x) => x.d).reduce((a, b) => a + b, 0);
+    let st2 = O.nieuw({ klachten: ['lampje'] });
+    eis(h(BB.beoordeel({ reeks: { '0124': rpm.map(() => 1.0), '010C': rpm } }, st2), 'lambda') >= 2.5, 'een breedbandsonde die stilstaat: sonde verdacht');
+    eis(h(BB.beoordeel({ reeks: { '0124': lam(1.0, 1.9), '010C': rpm } }, st2), 'lambda') <= -2, 'de sonde ziet de brandstofafsluiting: sonde van tafel');
+    eis(h(BB.beoordeel({ reeks: { '0134': lam(1.09, 1.9), '010C': rpm, '0144': rpm.map(() => 1.0) } }, st2), 'valselucht') >= 1, 'λ 1,09 stationair waar 1,00 gevraagd is: arm, past bij valse lucht');
+    eis(h(BB.beoordeel({ reeks: { '0124': lam(0.92, 1.9), '010C': rpm } }, st2), 'injector') >= 1, 'λ 0,92 stationair: rijk, past bij een injector');
+    r = BB.beoordeel({ reeks: { '010C': rpm } }, st2);
+    eis(r.length === 1 && r[0].h === null, 'zonder breedbandsonde: niet beoordeeld');
+
+    const kan = (b) => O.vooruit(O.nieuw({ klachten: ['vermogen', 'lampje', 'verbruik'], beschikbaar: b }), 20).map((x) => x.id);
+    const zonder = kan((p) => ['0123', '0159', '010A', '0124', '0134'].indexOf(p) < 0), met = kan(() => true);
+    eis(zonder.indexOf('raildruk') < 0 && zonder.indexOf('breedband') < 0, 'een auto zonder raildruk of breedband krijgt die stappen niet, ook al levert hij toeren', zonder.join());
+    eis(met.indexOf('raildruk') >= 0 && met.indexOf('breedband') >= 0, 'een auto die ze wel levert, krijgt ze in het plan', met.join());
+  }
+
   console.log('\n7. Software als oorzaak (#426)');
   st = O.nieuw({ klachten: ['onrustig'], merk: 'Volkswagen Golf', brandstof: 'benzine', vervangen: ['gasklep'] });
   eis(!!st.v.software, 'een vervangen onderdeel zet software in spel');
@@ -193,7 +227,7 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
     eis(met.indexOf('koudstartgeluid') >= 0 && zonder.indexOf('koudstartgeluid') < 0, 'met kennis staat de koude-startvraag in het plan, zonder niet  <- tegenproef', met.join() + ' | ' + zonder.join());
 
     // De kennis bepaalt wat eerst komt (KENNIS_GEWICHT).
-    const plan = (kennis) => O.vooruit(O.nieuw({ klachten: ['lampje'], kennis }), 6).map((x) => x.id);
+    const plan = (kennis) => O.vooruit(O.nieuw({ klachten: ['lampje'], kennis }), 10).map((x) => x.id);
     const mk = plan({ merk: 'x', zwak: ['thermostaat'] }), zk = plan(null);
     eis(mk.indexOf('temperatuur') < mk.indexOf('stationair') && zk.indexOf('temperatuur') > zk.indexOf('stationair'),
       'een bekende thermostaat haalt de temperatuurstap naar voren  <- tegenproef zonder kennis', mk.join() + ' | ' + zk.join());

@@ -1815,7 +1815,8 @@
     var v = voertuig(_st.vid), cd = conditieModule(); if (!v || !cd) return;
     var w = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
     var wat = Array.prototype.slice.call(document.querySelectorAll('input[name="cdWat"]:checked')).map(function (el) { return el.value; });
-    var r = cd.beurt({ datum: w('cd_datum'), km: w('cd_km'), wat: wat, notitie: w('cd_notitie') });
+    var werk = Array.prototype.slice.call(document.querySelectorAll('input[name="cdWerk"]:checked')).map(function (el) { return el.value; });
+    var r = cd.beurt({ datum: w('cd_datum'), km: w('cd_km'), wat: wat, werk: werk, notitie: w('cd_notitie') });
     if (r.fout) { _st.condFout = r.fout; teken(); return; }
     var zet = { id: v.id, onderhoud_log: cd.logMet(v.onderhoud_log, r.beurt) };
     if (basis) { zet.onderhoud_interval_km = w('cd_ikm') || null; zet.onderhoud_interval_mnd = w('cd_imnd') || null; }

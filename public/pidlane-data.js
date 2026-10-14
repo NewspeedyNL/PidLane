@@ -1345,6 +1345,16 @@ window.plVinAfwijkend = function plVinAfwijkend(){
   try{ return !!(window.PLKm && typeof PLKm.vinAfwijkend==='function' && PLKm.vinAfwijkend()); }
   catch(e){ console.warn('plVinAfwijkend: PLKm gaf een fout', e); return false; }
 };
+/* Wat er onlangs aan de actieve auto vervangen is, uit het onderhoudslogboek
+   in Mijn voertuigen (#426). Zonder klantaccount, actief voertuig of
+   PLConditie is het antwoord een lege lijst: geen aanwijzing, geen fout. */
+window.plVervangenRecent = function plVervangenRecent(){
+  try{
+    const v = window.PLGarage && typeof PLGarage.actief==='function' ? PLGarage.actief() : null;
+    if (!v || !window.PLConditie) return [];
+    return PLConditie.recentVervangen(v, Date.now());
+  }catch(e){ console.warn('plVervangenRecent: logboek niet te lezen', e); return []; }
+};
 window.softwareOorzaken = function softwareOorzaken(ctx){
   ctx = ctx || {};
   const groep = merkGroep(ctx.merk);
