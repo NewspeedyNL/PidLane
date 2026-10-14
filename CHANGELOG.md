@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Toestemming Mijn voertuigen meteen na inloggen
+ ═══════════════════════════════════════════════════════════
+
+ - Zonder akkoord opent het toestemmingsvenster nu direct na het inloggen,
+   niet pas als je zelf Mijn voertuigen opent. Tot dan herkende de app de
+   auto niet en zette ze de vaste sensoren en displays niet aan.
+ - "Nu niet" geldt per account en tekstversie; een nieuwe tekst vraagt opnieuw.
+
+ ═══════════════════════════════════════════════════════════
  14-10-2026 — Onderhoudsschema per model via de AI (#490)
  ═══════════════════════════════════════════════════════════
 
