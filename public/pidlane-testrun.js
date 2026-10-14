@@ -2787,6 +2787,24 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── bekende kwalen per motor en bouwjaar (#491, 14-10-2026) ──
+  {
+    issue: '#491',
+    naam: 'Bekende kwalen: alleen wat bij deze motor en dit bouwjaar past, anders "bij sommige motoren"',
+    waarom: 'AUTO_KENNIS gaf per merk alle zwakke punten van die brandstof, ook van motoren en bouwjaren die de auto niet heeft.',
+    proef: async function () {
+      if (typeof autoKennisVoorMerk !== 'function') return { staat: 'FOUT', detail: 'autoKennisVoorMerk ontbreekt' };
+      var oud = autoKennisVoorMerk('Volkswagen', 'benzine', { cc: 1390, jaar: 2011 }), nieuw = autoKennisVoorMerk('Volkswagen', 'benzine', { cc: 1395, jaar: 2016 });
+      var ea = function (r) { return !!r && r.zwak.some(function (t) { return /EA111/.test(t); }); };
+      if (!ea(oud)) return { staat: 'FOUT', detail: 'een 1.4 TSI van 2011 krijgt de EA111-kettingspanner niet — oude pidlane-motortype.js of pidlane-data.js (herladen?)' };
+      if (ea(nieuw)) return { staat: 'FOUT', detail: 'een 1.4 TSI van 2016 krijgt de EA111-kettingspanner toch' };
+      var v = (typeof getVehicle === 'function') ? getVehicle() : null;
+      if (!v || !v.merk) return { staat: 'OK', detail: 'filter goed · geen voertuig herkend' };
+      var k = autoKennisVoorMerk(v.merk, v.brandstof, { jaar: v.year });
+      return { staat: 'OK', detail: 'filter goed · ' + v.merk + ' ' + (v.year || '') + ': ' + (k ? k.zwak.length + ' bekende punten' : 'merk niet in de kennisbank') };
+    }
+  },
+
   // ── de lampjesgids tekent echte dashboardsymbolen (#495, 14-10-2026) ──
   {
     issue: '#495',

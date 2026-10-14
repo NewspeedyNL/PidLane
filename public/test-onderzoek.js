@@ -177,7 +177,7 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
   {
     // De echte autoKennisVoorMerk() uit pidlane-motortype.js, zoals test-weten.js.
     const mt = fs.readFileSync(__dirname + '/pidlane-motortype.js', 'utf8');
-    const ki = mt.indexOf('function autoKennisVoorMerk(merk, brandstof){'), kj = mt.indexOf('\n}\n', ki);
+    const ki = mt.indexOf('function autoKennisVoorMerk(merk, brandstof, auto){'), kj = mt.indexOf('\n}\n', ki);
     eis(ki >= 0 && kj > ki, 'autoKennisVoorMerk() staat nog in pidlane-motortype.js');
     vm.runInContext(mt.slice(ki, kj + 2), s, { filename: 'autoKennisVoorMerk' });
 

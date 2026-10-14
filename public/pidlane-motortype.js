@@ -126,7 +126,11 @@ function updateEVMode(){
 // merk-lookup + brandstof-filter: laat alleen zwak-punten zien die passen bij
 // de bevestigde brandstof (null=geen tag -> altijd tonen). Onbekende brandstof
 // -> alles tonen (kunnen we niet uitsluiten).
-function autoKennisVoorMerk(merk, brandstof){
+/* auto = { cc, jaar } (optioneel, #491): een zwak punt met een cilinderinhoud
+   of bouwjaren geldt alleen binnen die grenzen. Weten we cc of jaar niet, dan
+   blijft het staan met "(bij sommige motoren)" erachter: verbergen zou een
+   bekend probleem wegpoetsen omdat wij iets niet weten. */
+function autoKennisVoorMerk(merk, brandstof, auto){
   if(!merk) return null;
   const m=merk.toLowerCase().trim();
   let hit=null;
@@ -137,10 +141,14 @@ function autoKennisVoorMerk(merk, brandstof){
   if(/diesel/.test(bf)) fuelClass='diesel';
   else if(/benzine|petrol/.test(bf)) fuelClass='benzine';
   else if(/hybr/.test(bf)) fuelClass='hybride';
-  const zwakGefilterd = hit.zwak
-    .filter(z=>!fuelClass || !z[1] || z[1]===fuelClass)
-    .map(z=>z[0]);
-  return {...hit, zwak: zwakGefilterd.length?zwakGefilterd:hit.zwak.map(z=>z[0])};
+  const pt=z=>Array.isArray(z)?{t:z[0],bs:z[1]}:z;
+  const cc=(auto&&Number(auto.cc))||null, jaar=(auto&&Number(auto.jaar))||null;
+  const binnen=(r,w)=>!r||w==null||(w>=r[0]&&(r[1]==null||w<=r[1]));
+  const tekst=p=>p.t+(((p.cc&&!cc)||(p.jaar&&!jaar))?' (bij sommige motoren)':'');
+  const alle=hit.zwak.map(pt);
+  const opBrandstof=alle.filter(p=>!fuelClass||!p.bs||p.bs===fuelClass);
+  const zwak=(opBrandstof.length?opBrandstof:alle).filter(p=>binnen(p.cc,cc)&&binnen(p.jaar,jaar)).map(tekst);
+  return {...hit, zwak};
 }
 
 function closeAutoExpert(){ document.getElementById('autoExpertSheet').classList.add('hidden'); }
@@ -170,7 +178,7 @@ function buildAutoExpertContext(){
     dtcCodes.forEach(c=>{ const i=(typeof DTCDB!=='undefined')?dtcInfo(c):null; lines.push(`  ${c}${i?' — '+i.desc:''}`); });
   } else lines.push('ACTIEVE FOUTCODES: geen / niet gescand');
   // Lokale merk-kennis
-  const know=autoKennisVoorMerk(v.merk, v.brandstof);
+  const know=autoKennisVoorMerk(v.merk, v.brandstof, { jaar: v.year });
   if(know){
     lines.push(`BEKENDE ${know.merk.toUpperCase()}-ZWAKKE PUNTEN: ${know.zwak.join('; ')}`);
     if(know.let_op) lines.push(`LET OP: ${know.let_op}`);

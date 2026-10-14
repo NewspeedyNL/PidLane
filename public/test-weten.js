@@ -42,7 +42,7 @@ vm.runInContext(lees('pidlane-weten.js'), ctx, { filename: 'pidlane-weten.js' })
 try { vm.runInContext(lees('pidlane-data.js'), ctx, { filename: 'pidlane-data.js' }); }
 catch (e) { console.log('FAAL pidlane-data.js laadt niet in de testcontext: ' + e.message); process.exit(1); }
 const mt = lees('pidlane-motortype.js');
-const ki = mt.indexOf('function autoKennisVoorMerk(merk, brandstof){');
+const ki = mt.indexOf('function autoKennisVoorMerk(merk, brandstof, auto){');
 const kj = mt.indexOf('\n}\n', ki);
 if (ki < 0 || kj < 0) { console.log('FAAL autoKennisVoorMerk() is niet meer te vinden in pidlane-motortype.js'); process.exit(1); }
 vm.runInContext(mt.slice(ki, kj + 2), ctx, { filename: 'autoKennisVoorMerk' });

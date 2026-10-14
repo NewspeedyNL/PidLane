@@ -26,6 +26,14 @@
    meldt een nieuwe open actie (Android-melding, anders in de app).
  - De eerste keer per kenteken is stil; een mislukte RDW-opzoeking telt
    niet en wordt de volgende keer herhaald.
+ 14-10-2026 — Bekende kwalen per motor en bouwjaar (#491)
+ ═══════════════════════════════════════════════════════════
+
+ - Een zwak punt in AUTO_KENNIS kan een cilinderinhoud, bouwjaren en een
+   motorcode dragen; autoKennisVoorMerk() filtert daarop als ze bekend zijn,
+   anders staat er "(bij sommige motoren)" achter.
+ - PLWeten geeft cilinderinhoud en bouwjaar uit het RDW mee, de autoexpert
+   het bouwjaar. De 1.2 PureTech heeft een riem in olie, geen ketting.
 
  ═══════════════════════════════════════════════════════════
  13-10-2026 — Conditiescore per voertuig (#475)
