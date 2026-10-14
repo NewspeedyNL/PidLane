@@ -188,6 +188,7 @@
 
   // ── Hulpjes voor reeksen ────────────────────────────────────────────
   function getallen(a) { return (a || []).filter(function (v) { return typeof v === 'number' && !isNaN(v); }); }
+  function mediaan(a) { a = getallen(a).sort(function (x, y) { return x - y; }); if (!a.length) return null; var h = a.length >> 1; return a.length % 2 ? a[h] : (a[h - 1] + a[h]) / 2; }
   function gem(a) { a = getallen(a); if (!a.length) return null; var s = 0; a.forEach(function (v) { s += v; }); return s / a.length; }
   function sprei(a) { a = getallen(a); if (a.length < 2) return null; return Math.max.apply(null, a) - Math.min.apply(null, a); }
   function max(a) { a = getallen(a); return a.length ? Math.max.apply(null, a) : null; }
@@ -329,6 +330,62 @@
         if (a != null && v != null && v >= 0.3 && genoeg(u.reeks['0115'], 8)) {
           if (a > 0.5) r.push({ h: 'kat', d: 2.5, t: 'achterste sonde wisselt ' + r1(a) + ' V mee — de katalysator slaat geen zuurstof meer op' });
           else if (a < 0.25) r.push({ h: 'kat', d: -2.5, t: 'achterste sonde rustig (' + r1(a) + ' V) — de katalysator werkt' });
+        }
+        return r;
+      } },
+
+    // ── brandstofdruk en breedbandsonde (#428, 14-10-2026) ──
+    // De drempels zijn voorlopig, net als die van mode 06: ze vergelijken de
+    // auto met zichzelf (stationair tegen 2500 tpm, gemeten tegen gevraagd),
+    // omdat de absolute druk per motor tien keer kan verschillen.
+    { id: 'raildruk', soort: 'meten', titel: 'Brandstofdruk stationair en bij 2500 tpm', icoon: '⛽',
+      waarom: 'Een zwakke pomp of een dicht filter houdt de druk stationair nog bij, maar zakt weg zodra de motor meer brandstof vraagt.',
+      voorwaarde: 'warm', pids: ['0123', '0159', '010A', '010C'], nodig: ['0123', '0159', '010A'], duurMs: 25000,
+      opdracht: 'Laat de motor eerst stationair draaien. Geef halverwege gas tot ongeveer 2500 tpm en houd dat vast tot de meting klaar is. Handrem erop.',
+      test: { brandstofdruk: 3, injector: 0.5 },
+      beoordeel: function (u) {
+        var pid = ['0123', '0159', '010A'].filter(function (p) { return genoeg(u.reeks[p], 8); })[0];
+        if (!pid) return [{ h: null, d: 0, t: 'de auto gaf geen brandstofdruk — niet beoordeeld' }];
+        var d = u.reeks[pid], rpm = u.reeks['010C'] || [], laag = [], hoog = [], r = [];
+        d.forEach(function (x, i) {
+          if (typeof x !== 'number' || typeof rpm[i] !== 'number') return;
+          if (rpm[i] < 1200) laag.push(x); else if (rpm[i] >= 1800) hoog.push(x);
+        });
+        var mL = mediaan(laag), mH = mediaan(hoog);
+        var teLaag = pid === '010A' && mL != null && laag.length >= 3 && mL < 200;
+        if (teLaag)
+          r.push({ h: 'brandstofdruk', d: 2, t: 'brandstofdruk stationair ' + Math.round(mL) + ' kPa — laag voor een injectiemotor' });
+        if (mL != null && mH != null && laag.length >= 3 && hoog.length >= 3) {
+          var q = mH / mL;
+          if (q < 0.85) r.push({ h: 'brandstofdruk', d: 2.5, t: 'brandstofdruk zakt van ' + Math.round(mL) + ' naar ' + Math.round(mH) + ' kPa bij meer toeren — de toevoer houdt het niet bij' });
+          else if (q >= 0.95 && !teLaag) r.push({ h: 'brandstofdruk', d: -2, t: 'brandstofdruk houdt stand (' + Math.round(mL) + ' → ' + Math.round(mH) + ' kPa bij meer toeren)' });
+        } else r.push({ h: null, d: 0, t: 'niet zowel stationair als rond 2500 tpm gemeten — alleen de rust van de druk beoordeeld' });
+        var s = sprei(laag);
+        if (s != null && mL > 0 && laag.length >= 5 && s / mL > 0.3) r.push({ h: 'brandstofdruk', d: 1, t: 'brandstofdruk schommelt stationair ' + Math.round(s) + ' kPa rond ' + Math.round(mL) });
+        return r;
+      } },
+
+    { id: 'breedband', soort: 'meten', titel: 'Breedbandsonde: reageert hij, en klopt het mengsel?', icoon: '🧪',
+      waarom: 'Veel moderne motoren hebben voor de katalysator een breedbandsonde in plaats van een sonde die wisselt. Die hoort λ ≈ 1 te meten en bij gas loslaten naar arm te schieten.',
+      voorwaarde: 'warm', pids: ['0124', '0134', '0144', '010C'], nodig: ['0124', '0134'], duurMs: 20000,
+      opdracht: 'Laat de motor stationair draaien. Geef dan twee keer kort gas tot ongeveer 3000 tpm en laat het pedaal telkens meteen los.',
+      test: { lambda: 2.5, valselucht: 0.5, injector: 0.5 },
+      beoordeel: function (u, st) {
+        var pid = ['0124', '0134'].filter(function (p) { return genoeg(u.reeks[p], 8); })[0];
+        if (!pid) return [{ h: null, d: 0, t: 'de auto gaf geen breedbandsonde — niet beoordeeld' }];
+        var l = u.reeks[pid], rpm = u.reeks['010C'] || [], doel = gem(u.reeks['0144']), r = [], rust = [];
+        if (doel == null || doel < 0.8 || doel > 1.2) doel = 1;
+        var sp = sprei(l), mx = Math.max.apply(null, getallen(l));
+        if (sp != null && sp < 0.02) r.push({ h: 'lambda', d: 2.5, t: 'breedbandsonde staat stil op λ ' + (Math.round(gem(l) * 100) / 100) + ' — reageert niet op gas geven' });
+        else if (mx > 1.25) r.push({ h: 'lambda', d: -2, t: 'breedbandsonde ziet de brandstofafsluiting bij gas loslaten (λ tot ' + (Math.round(mx * 100) / 100) + ')' });
+        l.forEach(function (x, i) { if (typeof x === 'number' && x < 1.2 && (typeof rpm[i] !== 'number' || rpm[i] < 1200)) rust.push(x); });
+        var m = mediaan(rust);
+        if (m != null && rust.length >= 5 && !(sp != null && sp < 0.02)) {
+          st.metingen.lambdaRust = m;
+          var a = m - doel, t = 'λ ' + (Math.round(m * 100) / 100) + ' stationair (gevraagd ' + (Math.round(doel * 100) / 100) + ')';
+          if (a > 0.05) r.push({ h: 'valselucht', d: 1, t: t + ' — mengsel arm' });
+          else if (a < -0.05) r.push({ h: 'injector', d: 1, t: t + ' — mengsel rijk' });
+          else if (Math.abs(a) <= 0.02) r.push({ h: 'lambda', d: -0.5, t: t + ' — sonde en regeling zijn het eens' });
         }
         return r;
       } },
@@ -650,7 +707,9 @@
     if (stap.garage && !st.ctx.garage) return false;
     if (!stap.pids) return true;
     var b = st.ctx.beschikbaar;
-    return !b || stap.pids.some(function (p) { return b(p); });
+    // `nodig`: zonder minstens één hiervan zegt de stap niets, ook al levert
+    // de auto het toerental wel (#428: raildruk en breedband).
+    return !b || (stap.nodig || stap.pids).some(function (p) { return b(p); });
   }
 
   function waarde(st, stap) {

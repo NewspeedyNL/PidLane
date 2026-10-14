@@ -2787,6 +2787,28 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── onderzoek: brandstofdruk en breedbandsonde (#428, 14-10-2026) ──
+  {
+    issue: '#428',
+    naam: 'Onderzoek: brandstofdruk bij 2500 tpm en de breedbandsonde als stap',
+    waarom: 'Brandstofdruk was alleen een verdenking uit de trims; een motor met alleen een breedbandsonde voor de katalysator kreeg geen sondeproef.',
+    proef: async function () {
+      if (!window.PLOnderzoek || !PLOnderzoek.STAPPEN) return { staat: 'FOUT', detail: 'PLOnderzoek ontbreekt — oude pidlane-onderzoek.js (herladen?)' };
+      var S = function (id) { return PLOnderzoek.STAPPEN.filter(function (x) { return x.id === id; })[0]; };
+      var rd = S('raildruk'), bb = S('breedband');
+      if (!rd || !bb) return { staat: 'FOUT', detail: 'stap raildruk of breedband ontbreekt' };
+      var rpm = [], d = [], l = [];
+      for (var i = 0; i < 20; i++) { rpm.push(i < 10 ? 750 : 2500); d.push(i < 10 ? 5000 : 3500); l.push(1); }
+      var r1 = rd.beoordeel({ reeks: { '0123': d, '010C': rpm } });
+      if (!r1.some(function (x) { return x.h === 'brandstofdruk' && x.d > 0; })) return { staat: 'FOUT', detail: 'wegzakkende raildruk niet gezien: ' + JSON.stringify(r1) };
+      var r2 = bb.beoordeel({ reeks: { '0124': l, '010C': rpm } }, PLOnderzoek.nieuw({ klachten: ['lampje'] }));
+      if (!r2.some(function (x) { return x.h === 'lambda' && x.d > 0; })) return { staat: 'FOUT', detail: 'stilstaande breedbandsonde niet gezien: ' + JSON.stringify(r2) };
+      var heeft = function (p) { try { return typeof supportedPIDs !== 'undefined' && supportedPIDs && supportedPIDs.has(p); } catch (e) { console.warn('blok 5 #428: supportedPIDs', e); return false; } };
+      var ja = ['0123', '0159', '010A', '0124', '0134'].filter(heeft);
+      return { staat: 'OK', detail: (ja.length ? 'deze auto levert ' + ja.join(', ') : 'deze auto levert geen raildruk of breedbandsonde (of niet verbonden)') + ' · Er is iets mis → Volledig onderzoek' };
+    }
+  },
+
   // ── vervangen onderdeel uit het onderhoudslogboek (#426, 14-10-2026) ──
   {
     issue: '#426',
