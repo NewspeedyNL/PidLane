@@ -1683,6 +1683,10 @@ MUTATIES=(
 "public/pidlane-herinner.js@@    if (isDemo() || _bezig) return { gedaan: false, reden: isDemo() ? 'demo' : 'bezig' };@@    if (_bezig) return { gedaan: false, reden: 'bezig' };@@test-herinner.js@@de demo plant echte Android-meldingen voor een verzonnen auto"
 "public/pidlane-herinner.js@@        if (perm && perm.display === 'granted') {\n          await LN.schedule({ notifications: p.map(@@        if (true) {\n          await LN.schedule({ notifications: p.map(@@test-herinner.js@@zonder toestemming wordt er toch ingepland (en Android gooit een fout die niemand ziet)"
 "public/pidlane-herinner.js@@    return (h >>> 1) || 1;@@    return h | 0;@@test-herinner.js@@een melding-id kan negatief zijn: Android weigert hem"
+# ── Bekende kwalen per motor en bouwjaar (#491, 14-10-2026) ──
+"public/pidlane-motortype.js@@  const binnen=(r,w)=>!r||w==null||(w>=r[0]&&(r[1]==null||w<=r[1]));@@  const binnen=(r,w)=>!r||w==null||(w>=r[0]);@@test-autokennis.js@@een zwak punt van tot 2013 geldt ook voor een auto van 2016 (#491)"
+"public/pidlane-motortype.js@@  const binnen=(r,w)=>!r||w==null||(@@  const binnen=(r,w)=>!r||(@@test-autokennis.js@@een onbekende cilinderinhoud verbergt een bekend probleem in plaats van het voorbehoud te tonen (#491)"
+"public/pidlane-motortype.js@@  const tekst=p=>p.t+(((p.cc&&!cc)||(p.jaar&&!jaar))?@@  const tekst=p=>p.t+(((p.jaar&&!jaar))?@@test-autokennis.js@@het voorbehoud \"bij sommige motoren\" valt weg als alleen het bouwjaar bekend is (#491)"
 "public/pidlane-lampjes.js@@  var GROEN = { cruise: 1, mist: 1 };@@  var GROEN = {};@@test-lampjes.js@@cruisecontrol en mistlicht worden blauw getekend, terwijl ze in de auto groen zijn (#495)"
 "public/pidlane-lampjes.js@@  handrem: '<circle@@  parkeer: '<circle@@test-lampjes.js@@een lampje zonder pictogram, of een pictogram zonder lampje (#495)"
 "public/pidlane-lampjes.js@@    return '<svg class=\"pll-svg\" viewBox=\"0 0 48 48\" width@@    return '<svg class=\"pll-svg\" width@@test-lampjes.js@@het pictogram verliest zijn viewBox en tekent op de verkeerde schaal (#495)"
