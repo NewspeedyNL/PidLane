@@ -128,6 +128,67 @@ const NU = new Date(2026, 8, 29, 12, 0, 0).getTime();   // 29-09-2026 12:00 loka
     toets('in de demo wordt er niets bij Android ingepland — daar kan de zandbak niet bij', np.log.gepland.length === 0 && np.log.gevraagd === 0);
   }
 
+  console.log('\nT. Terugroepacties (#493)');
+  {
+    const ks = K.recallKentekens({ kent: 'ab-123-c', merk: 'Mazda' }, [
+      { status: 'actief', kenteken: 'AB123C', naam: 'Onze Mazda' }, { status: 'actief', kenteken: '99-XYZ-1', merk: 'Fiat' },
+      { status: 'archief', kenteken: 'OUD111' }, { status: 'actief', kenteken: '' }]);
+    toets('kentekens: actief en eigen auto, elk één keer, archief niet', JSON.stringify(ks.map((k) => k.kent)) === '["AB123C","99XYZ1"]', JSON.stringify(ks));
+    toets('het voertuig uit Mijn voertuigen wint de naam', ks[0].naam === 'Onze Mazda');
+    const R = (acties) => ({ merk: 'MAZDA', acties });
+    const A = (c, open) => ({ referentiecode: c, open, omschrijving: 'Airbag ' + c });
+    let u = K.recallNieuw({}, 'AB123C', R([A('R1', true)]));
+    toets('eerste keer: stil, maar wel onthouden', u.telt && u.eerste && u.nieuw.length === 0 && JSON.stringify(u.codes) === '["R1"]');
+    u = K.recallNieuw({ AB123C: ['R1'] }, 'AB123C', R([A('R1', true), A('R2', true)]));
+    toets('een nieuwe open actie wordt gemeld, de oude niet', u.nieuw.length === 1 && u.nieuw[0].referentiecode === 'R2');
+    u = K.recallNieuw({ AB123C: ['R1'] }, 'AB123C', R([A('R3', false)]));
+    toets('een nieuwe maar afgehandelde actie: geen melding, wel onthouden', u.nieuw.length === 0 && u.codes.indexOf('R3') >= 0);
+    u = K.recallNieuw({ AB123C: [] }, 'AB123C', { merk: null, acties: [] });
+    toets('mislukte opzoeking (geen merk): telt niet', !u.telt && JSON.stringify(u.codes) === '[]');
+    u = K.recallNieuw({}, 'AB123C', { merk: null, acties: [] });
+    toets('mislukte eerste opzoeking: ook geen "eerste keer gehad"', !u.telt && !u.eerste);
+    u = K.recallNieuw({ AB123C: [] }, 'AB123C', R([A('R1', true)]));
+    toets('een lege lijst is niet de eerste keer: dan wél melden', !u.eerste && u.nieuw.length === 1);
+    const t = K.recallTekst('Mazda', 'AB123C', [A('R2', true)]);
+    toets('de melding noemt de auto en wat het is', /Nieuwe terugroepactie/.test(t.titel) && /AB123C/.test(t.titel) && /Airbag R2/.test(t.tekst));
+  }
+  {
+    const np = nepPlugin('granted');
+    let antwoord = { merk: 'MAZDA', acties: [{ referentiecode: 'R1', open: true }] }, vragen = 0;
+    const toasts = [];
+    const { ctx, opslag } = laad({ Capacitor: { Plugins: { LocalNotifications: np.LN } }, demoMode: false, showToast(t) { toasts.push(t); },
+      currentUser: { user: 'test' }, PLRecall: { check: async () => { vragen++; return antwoord; } } });
+    opslag.pl_zonder_mijn = JSON.stringify({ kent: 'AB123C', merk: 'Mazda' });
+    let r = await ctx.PLHerinner.recallRonde(true);
+    toets('herinneringen uit: geen ronde, geen RDW', !r.gedaan && vragen === 0);
+    opslag.pl_herinner = 'true';
+    r = await ctx.PLHerinner.recallRonde(false);
+    toets('aan, eerste ronde: wel opgezocht, geen melding', r.gedaan && vragen === 1 && np.log.gepland.length === 0 && r.gemeld === 0);
+    r = await ctx.PLHerinner.recallRonde(false);
+    toets('dezelfde dag nog eens: niets', !r.gedaan && vragen === 1);
+    antwoord = { merk: 'MAZDA', acties: [{ referentiecode: 'R1', open: true }, { referentiecode: 'R2', open: true, omschrijving: 'Remleiding' }] };
+    r = await ctx.PLHerinner.recallRonde(true);
+    toets('een nieuwe actie: één melding bij Android', r.gemeld === 1 && np.log.gepland.length === 1 && /Remleiding/.test(np.log.gepland[0].body), JSON.stringify(np.log.gepland));
+    antwoord = { merk: null, acties: [] };
+    opslag.pl_recall_dag = JSON.stringify('2000-01-01');
+    r = await ctx.PLHerinner.recallRonde(false);
+    toets('mislukte opzoeking: de dag telt niet, de gezien-lijst blijft', JSON.parse(opslag.pl_recall_dag) === '2000-01-01' && JSON.parse(opslag.pl_recall_gezien).AB123C.length === 2);
+  }
+  {
+    let vragen = 0;
+    const { ctx, opslag } = laad({ demoMode: true, showToast() {}, currentUser: { user: 'test' }, PLRecall: { check: async () => { vragen++; return { merk: 'X', acties: [] }; } } });
+    opslag.pl_zonder_mijn = JSON.stringify({ kent: 'AB123C' }); opslag.pl_herinner = 'true';
+    await ctx.PLHerinner.recallRonde(true);
+    toets('demo: geen RDW-ronde', vragen === 0);
+  }
+  {
+    let vragen = 0;
+    const { ctx, opslag } = laad({ demoMode: false, showToast() {}, PLRecall: { check: async () => { vragen++; return { merk: 'X', acties: [] }; } } });
+    opslag.pl_zonder_mijn = JSON.stringify({ kent: 'AB123C' }); opslag.pl_herinner = 'true';
+    await ctx.PLHerinner.recallRonde(true);
+    toets('niet ingelogd: geen RDW-ronde', vragen === 0);
+  }
+
   console.log('\n' + n + ' toetsen, ' + fout + ' fout');
   process.exit(fout ? 1 : 0);
 })().catch((e) => { console.error('FOUT: ' + (e && e.stack || e)); process.exit(1); });

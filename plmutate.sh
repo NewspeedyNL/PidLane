@@ -1673,6 +1673,10 @@ MUTATIES=(
 # ── Herinneringen en de lampjesgids (29-09-2026) ──
 # Een herinnering die op de verkeerde dag komt, dubbel, of vanuit de demo, is
 # erger dan geen; een lampjesgids die bij rood "doorrijden" zegt, is gevaarlijk.
+"public/pidlane-herinner.js@@    var nieuw = eerste ? [] : acties.filter(@@    var nieuw = acties.filter(@@test-herinner.js@@de eerste terugroepronde meldt acties die al jaren openstaan (#493)"
+"public/pidlane-herinner.js@@    if (!res || !res.merk) return { telt: false@@    if (!res) return { telt: false@@test-herinner.js@@een mislukte RDW-opzoeking telt als eerste keer, en de dag erna is alles nieuw (#493)"
+"public/pidlane-herinner.js@@    var nieuw = eerste ? [] : acties.filter(function (a) { return a.open && !set[a.referentiecode]; });@@    var nieuw = eerste ? [] : acties.filter(function (a) { return !set[a.referentiecode]; });@@test-herinner.js@@een afgehandelde terugroepactie geeft toch een melding (#493)"
+"public/pidlane-herinner.js@@      if (allesGelukt) schrijf(OPSLAG.recallDag, vandaag);@@      schrijf(OPSLAG.recallDag, vandaag);@@test-herinner.js@@een mislukte terugroepronde telt als gedaan, en het kenteken wacht een dag extra (#493)"
 "public/pidlane-herinner.js@@  var TREDEN = [30, 7, 0];@@  var TREDEN = [30, 7];@@test-herinner.js@@op de dag zelf komt er geen herinnering meer"
 "public/pidlane-herinner.js@@        if (isNaN(d) || d.getTime() <= nu) return;@@        if (isNaN(d)) return;@@test-herinner.js@@herinneringen voor een datum die al voorbij is, worden toch ingepland"
 "public/pidlane-herinner.js@@    if (mijn && mijn.kent && datum8(mijn.keuring) && !gehad[kent(mijn.kent)]) {@@    if (mijn && mijn.kent && datum8(mijn.keuring)) {@@test-herinner.js@@een kenteken dat ook in Mijn voertuigen staat, krijgt twee APK-herinneringen"
