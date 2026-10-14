@@ -2787,6 +2787,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── een nieuwe terugroepactie wordt gemeld (#493, 14-10-2026) ──
+  {
+    issue: '#493',
+    naam: 'Terugroepacties: één keer per dag bij openen, nieuwe acties als melding, de eerste keer stil',
+    waarom: 'De app zag een terugroepactie alleen als je zelf een kenteken-check deed; met herinneringen aan meldt hij nu een nieuwe actie voor je eigen voertuigen.',
+    proef: async function () {
+      if (!window.PLHerinner || !PLHerinner._kern || typeof PLHerinner._kern.recallNieuw !== 'function') return { staat: 'FOUT', detail: 'PLHerinner.recallNieuw ontbreekt — oude pidlane-herinner.js (herladen?)' };
+      var K = PLHerinner._kern, A = { referentiecode: 'X1', open: true };
+      if (K.recallNieuw({}, 'K', { merk: 'M', acties: [A] }).nieuw.length) return { staat: 'FOUT', detail: 'de eerste ronde meldt een actie die er al stond' };
+      if (K.recallNieuw({ K: [] }, 'K', { merk: 'M', acties: [A] }).nieuw.length !== 1) return { staat: 'FOUT', detail: 'een nieuwe open actie wordt niet gemeld' };
+      if (K.recallNieuw({}, 'K', { merk: null, acties: [] }).telt) return { staat: 'FOUT', detail: 'een mislukte opzoeking telt mee' };
+      if (!PLHerinner.aan()) return { staat: 'LET OP', detail: 'regels goed · herinneringen staan uit, dus geen terugroepronde' };
+      var g = {}, d = ''; try { g = JSON.parse(localStorage.getItem('pl_recall_gezien') || '{}'); d = JSON.parse(localStorage.getItem('pl_recall_dag') || '""'); } catch (e) { g = {}; }
+      return { staat: 'OK', detail: 'aan · ' + Object.keys(g).length + ' kenteken(s) bekend · laatste volledige ronde ' + (d || 'nog niet') };
+    }
+  },
+
   // ── de conditiescore (#475, 13-10-2026) ──
   {
     issue: '#475',

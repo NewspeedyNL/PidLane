@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Melding bij een nieuwe terugroepactie (#493)
+ ═══════════════════════════════════════════════════════════
+
+ - Met herinneringen aan zoekt de app één keer per dag bij het openen de
+   terugroepacties op voor de eigen auto en alle actieve voertuigen, en
+   meldt een nieuwe open actie (Android-melding, anders in de app).
+ - De eerste keer per kenteken is stil; een mislukte RDW-opzoeking telt
+   niet en wordt de volgende keer herhaald.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Conditiescore per voertuig (#475)
  ═══════════════════════════════════════════════════════════
 
