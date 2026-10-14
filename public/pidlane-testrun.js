@@ -2787,6 +2787,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── vervangen onderdeel uit het onderhoudslogboek (#426, 14-10-2026) ──
+  {
+    issue: '#426',
+    naam: 'Software als oorzaak: het onderhoudslogboek zegt wat er onlangs vervangen is',
+    waarom: 'De zwakke software-oorzaken (gasklep, injector, adaptaties, EGR, accu) verschenen nooit: geen enkele analyse wist wat er aan de auto gedaan was.',
+    proef: async function () {
+      if (!window.PLConditie || typeof PLConditie.recentVervangen !== 'function') return { staat: 'FOUT', detail: 'PLConditie.recentVervangen ontbreekt — oude pidlane-conditie.js (herladen?)' };
+      if (typeof plVervangenRecent !== 'function') return { staat: 'FOUT', detail: 'plVervangenRecent ontbreekt — oude pidlane-data.js (herladen?)' };
+      var dag = function (n) { return new Date(Date.now() - n * 864e5).toISOString().slice(0, 10); };
+      var v = { brandstof: 'benzine', onderhoud_log: [{ datum: dag(5), wat: [], werk: ['lambdasonde'] }, { datum: dag(400), wat: [], werk: ['gasklep'] }] };
+      var rv = PLConditie.recentVervangen(v, Date.now());
+      if (rv.join() !== 'lambdasonde') return { staat: 'FOUT', detail: 'recentVervangen geeft ' + JSON.stringify(rv) + ', verwacht alleen de lambdasonde van 5 dagen terug' };
+      var sw = softwareOorzaken({ merk: 'Mazda', brandstof: 'benzine', dtc: ['P0171'], vervangen: rv });
+      if (!sw.some(function (x) { return x.sterkte === 'zwak'; })) return { staat: 'FOUT', detail: 'een recente lambdasonde plus P0171 geeft geen zwakke software-oorzaak' };
+      var act = window.PLGarage && typeof PLGarage.actief === 'function' ? PLGarage.actief() : null;
+      return { staat: 'OK', detail: act ? 'actief voertuig: ' + (plVervangenRecent().join(', ') || 'niets vervangen in de laatste 90 dagen') : 'geen actief voertuig in Mijn voertuigen — met een klantaccount: Conditie → Beurt toevoegen → Ander werk' };
+    }
+  },
+
   // ── kostenindicatie en controleplan per foutcode (#503, 14-10-2026) ──
   {
     issue: '#503',

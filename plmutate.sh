@@ -1956,6 +1956,11 @@ MUTATIES=(
 # ── Software als oorzaak (#426, 07-10-2026). Drie fouten die een vers gewiste
 # auto, een benzineauto of een gewone sensorcode naar "inleren" zouden sturen.
 "public/pidlane-data.js@@  const hangt = (sinds.km != null && sinds.km >= grens.km) || (sinds.warm != null && sinds.warm >= grens.warm);@@  const hangt = true;@@test-softwareoorzaak.js@@een monitor 40 km na wissen telt al als hangen: elke verse wis wordt een inleerprobleem"
+"public/pidlane-conditie.js@@      if (t < van || t > (nu || Date.now()) + 864e5) return;@@      if (t > (nu || Date.now()) + 864e5) return;@@test-conditie.js@@een gasklep van jaren terug telt nog als onlangs vervangen (#426)"
+"public/pidlane-conditie.js@@    if (werk.length) b.werk = werk;@@@@test-conditie.js@@het andere werk valt weg bij het bewaren van een beurt (#426)"
+"worker.js@@  if (werk.length) o.werk = werk;@@@@test-klantplatform.js@@de Worker gooit het andere werk van een beurt weg (#426)"
+"public/pidlane-data.js@@    return PLConditie.recentVervangen(v, Date.now());@@    return [];@@test-softwareoorzaak.js@@het onderhoudslogboek komt nooit bij softwareOorzaken() aan (#426)"
+"public/pidlane-foutcodes.js@@      vervangen: typeof plVervangenRecent === 'function' ? plVervangenRecent() : [],\n@@@@test-softwareoorzaak.js@@Foutcodes geeft het logboek niet mee (#426)"
 "public/pidlane-data.js@@    if (f.brandstof && (brandstof === 'diesel' || brandstof === 'benzine') && f.brandstof !== brandstof) return null;@@@@test-softwareoorzaak.js@@een benzineauto krijgt het roetfilter-inleren voorgeschoteld"
 "public/pidlane-data.js@@    if (!bewijs.length) return null;@@@@test-softwareoorzaak.js@@elke inleerfunctie verschijnt zonder enig bewijs, ook bij een gewone sensorcode"
 "public/pidlane-data.js@@    if (f.sterkte === 'zwak' && !aanleiding) return null;@@@@test-softwareoorzaak.js@@een gewone P0420 komt als \"adaptaties wissen\" op het scherm: de sensorkant wordt software"

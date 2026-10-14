@@ -55,7 +55,8 @@
     dalingDagen: 21,
     dalingPunten: 8,
     gewicht: { onderhoud: 35, motor: 25, brandstof: 25, accu: 15 },
-    logMax: 60
+    logMax: 60,
+    vervangenDagen: 90     // zo lang telt een vervanging als "onlangs" (#426)
   };
 
   // ── Het onderhoudslogboek ─────────────────────────────────────────
@@ -74,6 +75,24 @@
     { id: 'accu', naam: 'Accu', km: null, mnd: 72, gewicht: 4 }
   ];
   var ONDERDEEL = {}; ONDERDELEN.forEach(function (o) { ONDERDEEL[o.id] = o; });
+
+  // ── Ander werk (#426) ─────────────────────────────────────────────
+  // Geen interval en geen gewicht in de score, wel iets dat de ECU moet
+  // weten: na vervangen of reinigen hoort inleren of coderen. De id's zijn
+  // dezelfde woorden als VERVANGEN in pidlane-onderzoek.js en de
+  // `vervangen`-lijsten van SOFTWARE_OORZAKEN, zodat softwareOorzaken() ze
+  // herkent. De accu staat al bij de onderdelen en telt daar ook mee.
+  var WERK = [
+    { id: 'gasklep', naam: 'Gasklep' },
+    { id: 'injector', naam: 'Injector' },
+    { id: 'katalysator', naam: 'Katalysator' },
+    { id: 'lambdasonde', naam: 'Lambdasonde' },
+    { id: 'luchtmassameter', naam: 'Luchtmassameter' },
+    { id: 'roetfilter', naam: 'Roetfilter', niet: ['elektrisch'] },
+    { id: 'egr', naam: 'EGR-klep', niet: ['elektrisch'] },
+    { id: 'ecu', naam: 'Motorstuurapparaat (ECU)' }
+  ];
+  var WERKID = {}; WERK.forEach(function (o) { WERKID[o.id] = o; });
 
   // ── De kenmerken uit de ritten ────────────────────────────────────
   // soort: hoe een verandering een verlies wordt (zie verlies()).
@@ -200,8 +219,10 @@
     var km = w.km === '' || w.km == null ? null : Number(String(w.km).replace(/[.\s]/g, ''));
     if (km !== null && !(isFinite(km) && km >= 0 && km <= 2000000)) return { fout: 'De km-stand klopt niet.' };
     var wat = (Array.isArray(w.wat) ? w.wat : []).filter(function (x, i, l) { return ONDERDEEL[x] && l.indexOf(x) === i; });
-    if (!wat.length) return { fout: 'Vink aan wat er gedaan is.' };
+    var werk = (Array.isArray(w.werk) ? w.werk : []).filter(function (x, i, l) { return WERKID[x] && l.indexOf(x) === i; });
+    if (!wat.length && !werk.length) return { fout: 'Vink aan wat er gedaan is.' };
     var b = { datum: dat, km: km === null ? null : Math.round(km), wat: wat };
+    if (werk.length) b.werk = werk;
     var not = String(w.notitie || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 80);
     if (not) b.notitie = not;
     return { beurt: b };
@@ -210,6 +231,27 @@
   /* Het logboek met deze beurt erbij (nieuwste eerst, hoogstens logMax). */
   function logMet(log, b) {
     return logOplopend((Array.isArray(log) ? log : []).concat([b])).reverse().slice(0, CFG.logMax);
+  }
+
+  /* Wat er in een beurt gedaan is, als namen: onderdelen en ander werk. */
+  function gedaan(b) {
+    return (b.wat || []).map(function (w) { return ONDERDEEL[w] ? ONDERDEEL[w].naam : w; })
+      .concat((b.werk || []).map(function (w) { return WERKID[w] ? WERKID[w].naam : w; }));
+  }
+
+  /* Wat er de laatste vervangenDagen aan de auto vervangen is, in de woorden
+     die softwareOorzaken() kent (#426). Alleen werk dat de ECU kan merken:
+     de accu en het andere werk, geen olie of filters. */
+  function recentVervangen(v, nu) {
+    var van = (nu || Date.now()) - CFG.vervangenDagen * 864e5, uit = [];
+    logOplopend(v && v.onderhoud_log).forEach(function (b) {
+      var t = tijd(b.datum);
+      if (t < van || t > (nu || Date.now()) + 864e5) return;
+      (b.wat || []).filter(function (w) { return w === 'accu'; }).concat(b.werk || []).forEach(function (w) {
+        if ((w === 'accu' || WERKID[w]) && uit.indexOf(w) < 0) uit.push(w);
+      });
+    });
+    return uit;
   }
 
   function heeftBasis(v) { return logOplopend(v && v.onderhoud_log).some(function (b) { return b.wat.indexOf('olie') >= 0; }); }
@@ -583,7 +625,7 @@
     var log = logOplopend(v.onderhoud_log).reverse();
     r.push('', 'Onderhoudslogboek (' + log.length + ')');
     log.forEach(function (b) {
-      r.push('  ' + b.datum + (b.km != null ? ' · ' + nl(b.km, 0) + ' km' : '') + ' · ' + b.wat.map(function (w) { return ONDERDEEL[w].naam.toLowerCase(); }).join(', ') + (b.notitie ? ' · ' + b.notitie : ''));
+      r.push('  ' + b.datum + (b.km != null ? ' · ' + nl(b.km, 0) + ' km' : '') + ' · ' + gedaan(b).map(function (w) { return w.toLowerCase(); }).join(', ') + (b.notitie ? ' · ' + b.notitie : ''));
     });
     if (!log.length) r.push('  (leeg)');
     if (m.oorzaken.length) { r.push('', 'Aandachtspunten'); m.oorzaken.slice(0, 6).forEach(function (x) { r.push('  • ' + x.tekst); }); }
@@ -602,6 +644,12 @@
   function vinkjes(v, aan) {
     return '<div class="gr-labels">' + ONDERDELEN.filter(function (o) { return telt(o, v); }).map(function (o) {
       return '<label class="gr-lab"><input type="checkbox" name="cdWat" value="' + o.id + '"' + (aan.indexOf(o.id) >= 0 ? ' checked' : '') + '> ' + esc(o.naam) + '</label>';
+    }).join('') + '</div>';
+  }
+
+  function werkVinkjes(v) {
+    return '<div class="gr-labels">' + WERK.filter(function (o) { return telt(o, v); }).map(function (o) {
+      return '<label class="gr-lab"><input type="checkbox" name="cdWerk" value="' + o.id + '"> ' + esc(o.naam) + '</label>';
     }).join('') + '</div>';
   }
 
@@ -627,6 +675,8 @@
       '<div class="gr-2"><label class="gr-veld">Datum<input id="cd_datum" type="date" max="' + new Date().toISOString().slice(0, 10) + '"></label>' +
       '<label class="gr-veld">Km-stand<input id="cd_km" type="number" min="0" value="' + esc(v.kmstand != null ? v.kmstand : '') + '"></label></div>' +
       vinkjes(v, ['olie', 'oliefilter']) +
+      '<details class="gr-klein"><summary>Ander werk (vervangen of gereinigd)</summary>' + werkVinkjes(v) +
+      '<div class="gr-klein">Na dit werk moet de auto het onderdeel vaak opnieuw inleren. Een analyse gebruikt dit om "niet ingeleerd" te onderscheiden van "kapot".</div></details>' +
       '<label class="gr-veld">Notitie<input id="cd_notitie" type="text" maxlength="80" placeholder="bv. garage, olie 5W-30"></label>' +
       (fout ? '<div class="gr-melding rood">' + esc(fout) + '</div>' : '') +
       '<div class="gr-knoppen"><button class="gr-k hoofd" onclick="PLGarage._condBeurt()">Bewaren</button><button class="gr-k" onclick="PLGarage._condForm(false)">Annuleren</button></div></div>';
@@ -673,7 +723,7 @@
       }).join('') +
       '<div class="gr-sec">Logboek</div>' + log.map(function (b, i) {
         return '<div class="gr-item"><b>' + esc(b.datum) + '</b>' + (b.km != null ? ' · ' + nl(b.km, 0) + ' km' : '') + '<div class="gr-klein">' +
-          esc(b.wat.map(function (w) { return ONDERDEEL[w].naam; }).join(', ')) + (b.notitie ? ' · ' + esc(b.notitie) : '') + '</div>' +
+          esc(gedaan(b).join(', ')) + (b.notitie ? ' · ' + esc(b.notitie) : '') + '</div>' +
           '<div class="gr-knoppen"><button class="gr-k klein gevaar" onclick="PLGarage._condWeg(' + i + ')">Wissen</button></div></div>';
       }).join('') + '</details>';
     h += '<div class="gr-knoppen">' + (st.form ? '' : '<button class="gr-k" onclick="PLGarage._condForm(true)">🔧 Beurt toevoegen</button>') +
@@ -683,9 +733,9 @@
   }
 
   window.PLConditie = {
-    CFG: CFG, ONDERDELEN: ONDERDELEN, KENMERKEN: KENMERKEN,
+    CFG: CFG, ONDERDELEN: ONDERDELEN, WERK: WERK, KENMERKEN: KENMERKEN,
     tik: tik, samenvat: samenvat, misfire: misfire,
-    beurt: beurt, logMet: logMet, heeftBasis: heeftBasis, kmNu: kmNu,
+    beurt: beurt, logMet: logMet, heeftBasis: heeftBasis, kmNu: kmNu, gedaan: gedaan, recentVervangen: recentVervangen,
     onderhoudsstand: onderhoudsstand, conditie: conditie, olieBelasting: olieBelasting,
     beoordeel: beoordeel, effect: effect, kosten: kosten, lijn: lijn, daling: daling, meldBesluit: meldBesluit,
     paspoort: paspoort, oordeel: oordeel, html: html, mediaan: mediaan, verlies: verlies,

@@ -285,6 +285,17 @@ async function laadWorker() {
   toets('logboek nieuwste eerst, als lijst terug', Array.isArray(cdLg) && cdLg.length === 2 && cdLg[0].datum === '2026-03-01', JSON.stringify(cdLg));
   toets('onbekende onderdelen en velden eruit, km als getal, notitie zonder regeleinde',
     cdLg && cdLg[1].wat.join() === 'olie' && cdLg[1].km === 90000 && !('klant_id' in cdLg[0]) && cdLg[0].notitie === 'garage West', JSON.stringify(cdLg));
+  // #426: ander werk in een beurt, met dezelfde lijst als PLConditie.WERK.
+  const cdWk = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, onderhoud_log: [{ datum: '2026-04-01', wat: [], werk: ['lambdasonde', 'raketmotor'] }, { datum: '2026-03-01', km: 100000, wat: ['olie', 'oliefilter'] }] } });
+  const wkLg = cdWk.voertuig && cdWk.voertuig.onderhoud_log;
+  toets('een beurt met alleen ander werk wordt bewaard, onbekend werk eruit', cdWk.ok && wkLg && wkLg[0].werk && wkLg[0].werk.join() === 'lambdasonde' && !('werk' in wkLg[1]), JSON.stringify(cdWk).slice(0, 400));
+  {
+    const vmW = require('vm'), ctxW = { console };
+    ctxW.window = ctxW; vmW.createContext(ctxW);
+    vmW.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-conditie.js'), 'utf8'), ctxW);
+    const kpWerk = (bron.match(/var KP_ONDERHOUD_WERK = (\[[^\]]*\]);/) || [])[1];
+    toets('Worker en app kennen hetzelfde andere werk', kpWerk && JSON.stringify(JSON.parse(kpWerk)) === JSON.stringify(ctxW.window.PLConditie.WERK.map((w) => w.id)), kpWerk);
+  }
   const cdF = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, onderhoud_log: [{ datum: '2099-01-01', wat: ['olie'] }] } });
   toets('een beurt in de toekomst wordt geweigerd', cdF._status === 400 && /toekomst/.test(cdF.error), JSON.stringify(cdF));
   const cdW = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, onderhoud_log: [{ datum: '2026-01-01', wat: [] }] } });

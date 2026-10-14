@@ -1292,8 +1292,12 @@
     // Zonder klacht, uit een groene check of "ik merk niks" (#434): de brede
     // ronde. Staat er tóch een klacht, dan wint die — en controle valt weg.
     if (opt.controle && !ks.length) ks.push('controle');
+    // Wat in het onderhoudslogboek staat, staat al aan (#426); de klant kan
+    // het uitzetten of er iets bij tikken.
+    var uitLog = (typeof plVervangenRecent === 'function' ? plVervangenRecent() : [])
+      .filter(function (x) { return VERVANGEN.indexOf(x) >= 0; });
     _ui = { fase: 'intake', live: {}, voortgang: 0, wacht: null, ai: null, aiBezig: false,
-      intake: { klachten: ks, klachtTekst: opt.klacht || '', lampje: opt.lampje, meting: opt.meting, vervangen: [], scan: opt.scan || null } };
+      intake: { klachten: ks, klachtTekst: opt.klacht || '', lampje: opt.lampje, meting: opt.meting, vervangen: uitLog, scan: opt.scan || null } };
     _st = null;
     zorgOv().style.display = 'flex';
     teken();

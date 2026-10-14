@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-13', app: '3.2.0' },
+  gecontroleerd: { datum: '2026-10-14', app: '3.2.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -239,7 +239,7 @@ var PL_HULP = {
         'Tankte je twee keer vol, dan zie je ook hoeveel liter de app mat tegenover wat er in de tank ging. Dat staat er alleen als elke rit liters heeft; reed je een stuk zonder de app, dan klopt de vergelijking niet en laat de app hem weg.</p>' +
         '<p>Onder het tabblad <b>Tankbeurten</b> van je voertuig vul je bij het tanken in wat je weet: liters, literprijs of bedrag, de kilometerstand, of de tank vol is, en het bereik op je dashboard vóór en ná het tanken. Vanaf de tweede tankbeurt zie je hoeveel km je echt reed tegenover wat de auto beloofde. Met een volle tank en de liters rekent de app je echte verbruik uit. <b>⤓ CSV (Excel)</b> zet alles in een spreadsheet.</p>' +
         '<p><b>Conditiescore</b> staat ook standaard uit. Zet hem aan in het <b>Profiel</b> van je voertuig bij <b>Conditiescore bijhouden</b>; dan verschijnt het tabblad <b>Conditie</b>. Daar vul je één keer in wanneer de laatste beurt was en bij welke km-stand. Daarna houdt de app de score zelf bij: uit je onderhoud (hoeveel van het interval op is) en uit je ritten, waarin je auto met zichzelf wordt vergeleken — trim, verbruik op vergelijkbare ritten, stationair, opwarmen, laadspanning. Na tien ritten van minstens 3 km telt de rijmeting mee. ' +
-        'Onder <b>Waarom deze score</b> staat wat punten kost, en na een nieuwe beurt (<b>🔧 Beurt toevoegen</b>) zie je wat hij opleverde. <b>📕 Gezondheidspaspoort</b> zet de score, het verloop en je logboek in een PDF, bijvoorbeeld voor bij verkoop. Zakt de score duidelijk, dan krijg je één melding. De score is geen keuring; je onderhoudsboekje gaat voor.</p>' +
+        'Onder <b>Waarom deze score</b> staat wat punten kost, en na een nieuwe beurt (<b>🔧 Beurt toevoegen</b>) zie je wat hij opleverde. Onder <b>Ander werk</b> vink je aan wat er vervangen of gereinigd is, zoals een lambdasonde of de gasklep: een foutcode-analyse weet dan dat het onderdeel misschien nog ingeleerd moet worden. <b>📕 Gezondheidspaspoort</b> zet de score, het verloop en je logboek in een PDF, bijvoorbeeld voor bij verkoop. Zakt de score duidelijk, dan krijg je één melding. De score is geen keuring; je onderhoudsboekje gaat voor.</p>' +
         '<p>Hulp nodig bij je auto? Tik onderaan Mijn voertuigen op <b>Laat PidLane meekijken</b>. Je krijgt een code van zes tekens, zeven dagen geldig. Met die code kan PidLane je voertuigen, open punten en eigen sensoren inzien en sensoren voor je auto toevoegen — niets wijzigen of verwijderen. Je ziet daar ook hoe vaak er gekeken is, en met <b>Intrekken</b> stop je het meteen.</p>',
       zie: ['check', 'account'] },
 

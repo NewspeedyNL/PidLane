@@ -112,5 +112,24 @@ Object.keys(s.SOFTWARE_TOOLS).forEach((g) => {
   eis(voorbeeld[g] && s.merkGroep(voorbeeld[g]) === g, 'toolgroep ' + g + ' is een echte merkGroep()-uitkomst');
 });
 
+console.log('\n── het onderhoudslogboek als bron (#426) ──');
+vm.runInContext(fs.readFileSync(__dirname + '/pidlane-conditie.js', 'utf8'), s, { filename: 'pidlane-conditie.js' });
+eis(Array.isArray(s.plVervangenRecent()) && s.plVervangenRecent().length === 0, 'plVervangenRecent zonder Mijn voertuigen: lege lijst, geen fout');
+const dagGeleden = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+s.PLGarage = { actief: () => ({ brandstof: 'benzine', onderhoud_log: [{ datum: dagGeleden(10), wat: [], werk: ['lambdasonde'] }] }) };
+const uitLog = s.plVervangenRecent();
+eis(uitLog.join() === 'lambdasonde', 'plVervangenRecent leest het logboek van het actieve voertuig', JSON.stringify(uitLog));
+r = SO({ merk: 'Mazda', brandstof: 'benzine', dtc: ['P0171'], vervangen: uitLog });
+const adapt = r.filter((x) => x.bewijs.some((b) => /lambdasonde/.test(b)));
+eis(adapt.length === 1 && adapt[0].sterkte === 'zwak', 'een lambdasonde uit het logboek brengt de zwakke oorzaak op die zonder vervanging nooit verschijnt', JSON.stringify(ids(r)));
+eis(!SO({ merk: 'Mazda', brandstof: 'benzine', dtc: ['P0171'] }).some((x) => x.id === adapt[0].id), 'dezelfde code zonder logboek: niet');
+s.PLConditie.WERK.forEach((w) => {
+  eis(s.SOFTWARE_OORZAKEN.some((f) => f.vervangen.some((x) => w.id.indexOf(x) >= 0)), 'werk "' + w.id + '" is een woord dat softwareOorzaken() kent');
+});
+const scLog = { codes: { bevestigd: ['P0171'], pending: [], permanent: [] }, readiness: null, sinds: null };
+eis(s.PLFoutcodes.softwareAdvies(scLog, false).some((x) => x.id === adapt[0].id), 'de uitlezing in Foutcodes geeft het logboek mee aan softwareOorzaken()');
+s.PLGarage = { actief: () => { throw new Error('kapot'); } };
+eis(s.plVervangenRecent().length === 0, 'een fout in Mijn voertuigen geeft een lege lijst, de analyse gaat door');
+
 console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
 process.exit(fouten ? 1 : 0);
