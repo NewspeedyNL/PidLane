@@ -79,7 +79,7 @@ var PL_HULP = {
         '<ul>' +
         '<li><b>Kenteken-check</b> — APK, verzekering, NAP en terugroepacties uit het RDW.</li>' +
         '<li><b>Er is iets mis</b> — kies wat je merkt, beantwoord een paar vragen en zie wat het waarschijnlijk is, en wat een adapter zou meten.</li>' +
-        '<li><b>Lampje brandt?</b> — wat een dashboardlampje betekent en of je mag doorrijden.</li>' +
+        '<li><b>Lampje brandt?</b> — wat een dashboardlampje betekent en of je mag doorrijden. Met <b>Foto van het dashboard</b> wijst de AI het lampje aan (kost tegoed; de foto wordt niet bewaard).</li>' +
         '<li><b>Foutcode opzoeken</b> — bijvoorbeeld P0301. Dit staat in de app zelf.</li>' +
         '<li><b>Simuleer verbinding</b> — alles proberen, er wordt niets bewaard.</li>' +
         '</ul>' +

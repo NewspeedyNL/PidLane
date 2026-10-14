@@ -27,6 +27,13 @@
    anders staat er "(bij sommige motoren)" achter.
  - PLWeten geeft cilinderinhoud en bouwjaar uit het RDW mee, de autoexpert
    het bouwjaar. De 1.2 PureTech heeft een riem in olie, geen ketting.
+ 14-10-2026 — Lampjesgids: een foto van het dashboard laten herkennen (#492)
+ ═══════════════════════════════════════════════════════════
+
+ - "Foto van het dashboard" in de lampjesgids: verkleind tot 800 px, als
+   afbeelding naar de AI (apiFetch extra.afbeelding), die uit de gids kiest;
+   de gids opent op wat herkend is. Alleen met tegoed, niet in de demo.
+ - De eerste keer apart toestemming; de privacyverklaring noemt de foto.
 
  ═══════════════════════════════════════════════════════════
  14-10-2026 — Lampjesgids: echte dashboardsymbolen, plus handrem en service (#495)

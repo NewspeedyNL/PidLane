@@ -216,6 +216,29 @@
     });
   }
 
+  /* ── Foto van het dashboard (#492, 14-10-2026) ──────────────────
+     De AI kijkt naar de foto en kiest uit DEZE lijst; een id dat niet in de
+     lijst staat telt niet. Daarna opent de gids op wat herkend is: de AI
+     wijst aan, de gids zegt wat je doet. */
+  function fotoPrompt(lijst) {
+    return 'Op deze foto staat (een deel van) het dashboard van een auto. Welke waarschuwingslampjes branden er?\n' +
+      'Kies alleen uit deze lijst (id: naam — hoe het pictogram eruitziet):\n' +
+      lijst.map(function (l) { return l.id + ': ' + l.naam + ' — ' + l.vorm; }).join('\n') + '\n' +
+      'Antwoord met precies één blok <lampjes>{"ids":[…],"zeker":"hoog"|"laag"}</lampjes>. Hoogstens drie id\'s, het duidelijkste eerst. ' +
+      'Brandt er geen lampje uit de lijst, of is de foto onduidelijk: "ids":[] en "zeker":"laag". Verzin geen id.';
+  }
+  function leesFoto(tekst, lijst) {
+    var m = String(tekst == null ? '' : tekst).match(/<lampjes>([\s\S]*?)<\/lampjes>/i);
+    if (!m) return { ids: [], zeker: 'laag', fout: 'de AI gaf geen antwoordblok' };
+    var o;
+    try { o = JSON.parse(m[1].replace(/^[^{]*/, '').replace(/[^}]*$/, '')); }
+    catch (e) { return { ids: [], zeker: 'laag', fout: 'het antwoordblok was geen geldige JSON' }; }
+    var bekend = {}; (lijst || []).forEach(function (l) { bekend[l.id] = 1; });
+    var ids = [];
+    (Array.isArray(o && o.ids) ? o.ids : []).forEach(function (id) { if (bekend[id] && ids.indexOf(id) < 0 && ids.length < 3) ids.push(id); });
+    return { ids: ids, zeker: o && o.zeker === 'hoog' && ids.length ? 'hoog' : 'laag', fout: null };
+  }
+
   // ════════════════════════════════════════════════════════════════
   //  HET VENSTER
   // ════════════════════════════════════════════════════════════════
@@ -266,7 +289,7 @@
   }
   function sluit() { var ov = el('plLampOv'); if (ov) ov.style.display = 'none'; }
   function kop(t, terug) {
-    return '<div class="pll-kop"><span>' + (terug ? '<button type="button" class="pll-x" style="margin-right:8px" aria-label="Terug" onclick="PLLampjes.open()">←</button>' : '') + t + '</span>' +
+    return '<div class="pll-kop"><span>' + (terug ? '<button type="button" class="pll-x" style="margin-right:8px" aria-label="Terug" onclick="PLLampjes._terug()">←</button>' : '') + t + '</span>' +
       '<button type="button" class="pll-x" aria-label="Sluiten" onclick="PLLampjes.sluit()">✕</button></div>';
   }
 
@@ -276,7 +299,10 @@
       '<input id="pllZoek" placeholder="Zoek: olie, motor, band, schildpad…" autocomplete="off" value="' + esc(_filter.term) + '">' +
       '<div class="pll-chips">' + [null, 'rood', 'oranje', 'info'].map(function (k) {
         return '<button type="button" class="pll-chip' + (_filter.kleur === k ? ' aan' : '') + '" data-kleur="' + (k || '') + '" onclick="PLLampjes._kleur(\'' + (k || '') + '\')">' + (k ? KLEUR[k].kort : 'Alle') + '</button>';
-      }).join('') + '</div><div class="pll-grid" id="pllGrid"></div>' +
+      }).join('') + '</div>' +
+      (_fotoIds ? '<div class="pll-band info" id="pllFotoBand">📷 Herkend op je foto (' + (_fotoZeker === 'hoog' ? 'vrij zeker' : 'onzeker') + '). Klopt het niet? <a href="#" style="color:#fff" onclick="PLLampjes._fotoWeg();return false">Toon alle lampjes</a></div>'
+        : '<div class="pll-knoppen" style="margin:0 0 10px"><button type="button" class="pll-kn" id="pllFotoKnop" onclick="PLLampjes._foto()">📷 Foto van het dashboard</button></div>') +
+      '<div class="pll-grid" id="pllGrid"></div>' +
       '<div class="pll-klein">De kleur zegt het meest: rood is stoppen, oranje is laten nakijken, groen en blauw is informatie. Pictogrammen verschillen per merk; bij twijfel geldt het instructieboekje van je auto.</div>');
     var i = el('pllZoek');
     if (i) i.addEventListener('input', function () { _filter.term = i.value; rooster(); });
@@ -284,7 +310,7 @@
   }
   function rooster() {
     var g = el('pllGrid'); if (!g) return;
-    var l = zoek(LAMPJES, _filter.term, _filter.kleur);
+    var l = _fotoIds ? _fotoIds.map(function (id) { return LAMPJES.filter(function (x) { return x.id === id; })[0]; }).filter(Boolean) : zoek(LAMPJES, _filter.term, _filter.kleur);
     g.innerHTML = l.length ? l.map(function (x) {
       return '<button type="button" class="pll-tegel" data-lamp="' + x.id + '" onclick="PLLampjes.toon(\'' + x.id + '\')"><span class="pll-ico">' + svg(x, 32) + '</span><span>' + esc(x.naam) + '</span></button>';
     }).join('') : '<div class="pll-klein">Niets gevonden. Probeer een ander woord, of kies een kleur.</div>';
@@ -321,6 +347,81 @@
       else openLiveView();
     } catch (e) { console.warn('PLLampjes: meten opent niet', e); if (typeof showToast === 'function') showToast('Dit opent nu niet — probeer het opnieuw'); }
   }
+  // ── De foto: toestemming, kiezen, verkleinen, vragen ──────────────
+  var _fotoIds = null, _fotoZeker = 'laag';
+  var FOTO_AKKOORD = 'pl_lampfoto_akkoord';
+  function fotoWeg() { _fotoIds = null; open(); }
+  function geenToegang() {
+    if (isDemo()) return 'In de demo vraagt de app de AI niets. Zoek het lampje in de lijst.';
+    try { var u = window.currentUser; if (!(u && (u.user || u.name))) return 'Log in om een foto te laten herkennen: dat loopt via de AI en kost tegoed. Zoek het lampje zolang in de lijst.'; }
+    catch (e) { return 'Log in om een foto te laten herkennen.'; }
+    if (typeof apiFetch !== 'function') return 'De AI is in deze versie niet beschikbaar.';
+    try {
+      if (window.PLCredits && PLCredits.saldoBekend && PLCredits.saldoBekend() && PLCredits.saldo() <= 0 && !(typeof isAdmin === 'function' && isAdmin()))
+        return 'Je tegoed is op. Een foto laten herkennen kost tegoed; zoek het lampje zolang in de lijst.';
+    } catch (e) { console.warn('PLLampjes: tegoed onleesbaar — apiFetch beslist', e); }
+    return null;
+  }
+  function akkoord() { try { return localStorage.getItem(FOTO_AKKOORD) === '1'; } catch (e) { return false; } }
+  function foto() {
+    var nee = geenToegang();
+    if (nee) { if (typeof showToast === 'function') showToast(nee, 5000); return; }
+    if (!akkoord()) {
+      blad(kop('📷 Foto van het dashboard', true) +
+        '<div class="pll-blok">Je foto gaat via onze server naar Anthropic, de aanbieder van de AI, die kijkt welk lampje er brandt. ' +
+        'De foto wordt verkleind, <b>niet bewaard</b> en alleen hiervoor gebruikt. Fotografeer alleen het dashboard: geen gezichten, geen kenteken of papieren.</div>' +
+        '<div class="pll-blok">Elke foto kost een beetje tegoed.</div>' +
+        '<div class="pll-knoppen"><button type="button" class="pll-kn hoofd" onclick="PLLampjes._fotoAkkoord()">Akkoord, maak een foto</button>' +
+        '<button type="button" class="pll-kn" onclick="PLLampjes._terug()">Liever niet</button></div>');
+      return;
+    }
+    kiesFoto();
+  }
+  function fotoAkkoord() { try { localStorage.setItem(FOTO_AKKOORD, '1'); } catch (e) { console.warn('PLLampjes: akkoord niet bewaard — de vraag komt volgende keer terug', e); } open(); kiesFoto(); }
+  function kiesFoto() {
+    var i = document.createElement('input');
+    i.type = 'file'; i.accept = 'image/*'; i.setAttribute('capture', 'environment');
+    i.addEventListener('change', function () { if (i.files && i.files[0]) herken(i.files[0]); });
+    i.click();
+  }
+  // Verkleinen tot hoogstens `max` px, als JPEG; base64 zonder kop.
+  function verklein(bestand, max, kwal) {
+    return new Promise(function (ok, nok) {
+      var url = URL.createObjectURL(bestand), img = new Image();
+      img.onload = function () {
+        try {
+          var f = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
+          c.width = Math.round(img.width * f); c.height = Math.round(img.height * f);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          ok(c.toDataURL('image/jpeg', kwal).split(',')[1] || '');
+        } catch (e) { nok(e); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); nok(new Error('de foto is niet te lezen')); };
+      img.src = url;
+    });
+  }
+  async function herken(bestand) {
+    var knop = el('pllFotoKnop'); if (knop) { knop.disabled = true; knop.textContent = '⏳ De AI kijkt naar je foto…'; }
+    try {
+      var data = await verklein(bestand, 800, 0.7);
+      if (data.length > 230000) data = await verklein(bestand, 560, 0.6);
+      var t = await apiFetch(fotoPrompt(LAMPJES), 200, null, null, { meet: false }, { afbeelding: { type: 'image/jpeg', data: data } });
+      var r = leesFoto(t, LAMPJES);
+      if (r.fout) console.warn('PLLampjes: ' + r.fout);
+      if (!r.ids.length) {
+        if (typeof showToast === 'function') showToast('Op de foto is geen lampje uit de gids te herkennen. Zoek het in de lijst.', 5000);
+        open(); return;
+      }
+      if (r.ids.length === 1 && r.zeker === 'hoog') { _fotoIds = r.ids; _fotoZeker = r.zeker; toon(r.ids[0]); return; }
+      _fotoIds = r.ids; _fotoZeker = r.zeker; open();
+    } catch (e) {
+      console.warn('PLLampjes: foto niet herkend', e);
+      if (typeof showToast === 'function') showToast('De foto kon niet worden herkend: ' + (e && e.message ? e.message : e), 5000);
+      open();
+    }
+  }
+
   function verbind() {
     sluit();
     try { document.getElementById('connOv').classList.remove('hidden'); }
@@ -328,13 +429,20 @@
   }
 
   window.PLLampjes = {
-    open: open,
+    // Van buiten (de kaart, de klachtenwijzer): altijd de hele gids. Terug
+    // binnen de gids houdt de selectie van de foto vast.
+    open: function () { _fotoIds = null; open(); },
+    _terug: open,
     sluit: sluit,
     toon: toon,
     _kleur: kleur,
     _meet: meet,
     _verbind: verbind,
+    _foto: foto,
+    _fotoAkkoord: fotoAkkoord,
+    _fotoWeg: fotoWeg,
+    _herken: herken,   // voor bproef-lampfoto.js: een bestand zonder bestandskiezer
     // pure kern — voor test-lampjes.js
-    _kern: { LAMPJES: LAMPJES, KLEUR: KLEUR, DOOR: DOOR, PICTO: PICTO, tint: tint, svg: svg, zoek: zoek }
+    _kern: { LAMPJES: LAMPJES, KLEUR: KLEUR, DOOR: DOOR, PICTO: PICTO, tint: tint, svg: svg, zoek: zoek, fotoPrompt: fotoPrompt, leesFoto: leesFoto }
   };
 })();

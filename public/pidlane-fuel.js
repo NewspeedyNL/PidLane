@@ -515,6 +515,11 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
     // getoond, midden in een woord afgekapt. Nu: max 2 vervolgcalls met
     // "ga verder", daarna nette melding in de tekst zelf.
     let msgs=[{role:'user', content: prompt}];
+    // Een foto bij de vraag (#492, de lampjesgids): eerst de afbeelding, dan de
+    // tekst. extra.afbeelding = { type:'image/jpeg', data:<base64> }, al verkleind
+    // door de aanroeper (de Worker neemt hoogstens 250 KB JSON aan).
+    if(extra && extra.afbeelding && extra.afbeelding.data)
+      msgs=[{role:'user', content:[{type:'image', source:{type:'base64', media_type: extra.afbeelding.type||'image/jpeg', data: extra.afbeelding.data}}, {type:'text', text: prompt}]}];
     let full='';
     for(let part=0; part<3; part++){
       const body = {

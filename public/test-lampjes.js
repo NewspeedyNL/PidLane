@@ -76,6 +76,17 @@ const s1 = K.svg(L.find((l) => l.id === 'olie'), 32);
 toets('svg(): één <svg> met viewBox, in de kleur van het lampje', /^<svg [^>]*viewBox="0 0 48 48"/.test(s1) && (s1.match(/<svg/g) || []).length === 1 && /color:#ff3b30/.test(s1), s1.slice(0, 160));
 toets('cruisecontrol en mistlicht zijn groen, zoals in de auto; grootlicht blauw', K.tint({ id: 'cruise', kleur: 'info' }) !== K.tint({ id: 'grootlicht', kleur: 'info' }) && K.tint({ id: 'mist', kleur: 'info' }) === K.tint({ id: 'cruise', kleur: 'info' }));
 
+console.log('\n1c. Een foto laten herkennen (#492)');
+const fp = K.fotoPrompt(L);
+toets('de vraag noemt elk lampje met zijn id en vorm', L.every((l) => fp.indexOf(l.id + ': ' + l.naam + ' — ' + l.vorm) >= 0));
+let lf = K.leesFoto('Ik zie dit:\n<lampjes>{"ids":["olie"],"zeker":"hoog"}</lampjes>', L);
+toets('één lampje, zeker', lf.ids.join() === 'olie' && lf.zeker === 'hoog' && !lf.fout);
+lf = K.leesFoto('<lampjes>{"ids":["turbo","olie","olie","motor","abs","banden"],"zeker":"hoog"}</lampjes>', L);
+toets('een onbekend id valt weg, dubbel telt één keer, hoogstens drie', lf.ids.join() === 'olie,motor,abs', lf.ids.join());
+lf = K.leesFoto('<lampjes>{"ids":["turbo"],"zeker":"hoog"}</lampjes>', L);
+toets('alleen onbekend: niets, en dan ook niet "zeker"', lf.ids.length === 0 && lf.zeker === 'laag');
+toets('kapotte JSON of geen blok: niets, met een reden', K.leesFoto('<lampjes>{"ids":[</lampjes>', L).ids.length === 0 && !!K.leesFoto('weet ik niet', L).fout);
+
 console.log('\n2. Het advies');
 const roodJa = L.filter((l) => l.kleur === 'rood' && l.doorrijden === 'ja');
 toets('een rood lampje zegt nooit "je kunt doorrijden"', roodJa.length === 0, roodJa.map((l) => l.id).join(', '));
