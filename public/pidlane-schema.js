@@ -103,7 +103,7 @@
      is en op is; anders beslist apiFetch (dat rekent en weigert zelf). */
   function geenToegang() {
     if (isDemo()) return 'In de demo vraagt de app de AI niets: dit kost tegoed en wordt bewaard.';
-    try { if (!(window.currentUser && (currentUser.user || currentUser.name))) return 'Log in om het schema op te vragen: het loopt via de AI en kost tegoed.'; }
+    try { var u = window.currentUser; if (!(u && (u.user || u.name))) return 'Log in om het schema op te vragen: het loopt via de AI en kost tegoed.'; }
     catch (e) { return 'Log in om het schema op te vragen.'; }
     if (typeof apiFetch !== 'function') return 'De AI is in deze versie niet beschikbaar.';
     try {
