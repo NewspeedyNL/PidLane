@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Conditiescore per voertuig (#475)
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw, per voertuig aan te zetten (Profiel → Conditiescore bijhouden,
+   standaard uit): een tabblad Conditie met één score uit het onderhoud en
+   uit de ritten, met deelscores Onderhoud, Motor, Brandstof en Accu.
+ - De auto wordt met zichzelf vergeleken: trim bij warme motor, verbruik op
+   vergelijkbare ritten, onrust stationair, opwarmtijd, vervroeging en
+   raildruk bij belasting, laadspanning, misfires uit een eigen mode 06-scan.
+   Eerst tien ritten van minstens 3 km; daarvoor alleen het onderhoud.
+ - Eén keer de laatste beurt invullen; het logboek groeit alleen als je
+   dat zelf wilt. Voor/na een beurt, meerverbruik in euro's per jaar, een
+   olie-interval naar rijpatroon, een gezondheidspaspoort (PDF) en één
+   melding als de score duidelijk zakt.
+ - De ritten verzamelen de kenmerken altijd. Daarom een nieuwe
+   toestemmingstekst (akkoordversie 2026-10-13): klanten bevestigen opnieuw.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Milieuzones: alleen de milieuklasse, met een link (#485)
  ═══════════════════════════════════════════════════════════
 

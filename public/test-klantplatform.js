@@ -276,6 +276,26 @@ async function laadWorker() {
   toets('tankbeurten bijhouden aan wordt bewaard', ta.ok && ta.voertuig.tanken === 'aan', JSON.stringify(ta).slice(0, 300));
   const tx = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, tanken: 'misschien' } });
   toets('een andere waarde dan aan of uit wordt geweigerd', !tx.ok || tx.voertuig.tanken === 'aan', JSON.stringify(tx).slice(0, 300));
+  // #475: de conditiescore — standaard uit, een logboek dat de server zelf keurt.
+  toets('conditiescore staat standaard uit, logboek leeg', tp.voertuig.score == null && Array.isArray(tp.voertuig.onderhoud_log) && !tp.voertuig.onderhoud_log.length, JSON.stringify([tp.voertuig.score, tp.voertuig.onderhoud_log]));
+  const cdS = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, score: 'aan', onderhoud_interval_km: 20000, onderhoud_interval_mnd: 24,
+    onderhoud_log: [{ datum: '2025-03-01', km: '90000', wat: ['olie', 'raketmotor'] }, { datum: '2026-03-01', km: 100000, wat: ['olie', 'oliefilter'], notitie: 'garage\nWest', klant_id: 'iemand anders' }] } });
+  toets('score aan, interval en logboek bewaard', cdS.ok && cdS.voertuig.score === 'aan' && cdS.voertuig.onderhoud_interval_km === 20000 && cdS.voertuig.onderhoud_interval_mnd === 24, JSON.stringify(cdS).slice(0, 400));
+  const cdLg = cdS.voertuig && cdS.voertuig.onderhoud_log;
+  toets('logboek nieuwste eerst, als lijst terug', Array.isArray(cdLg) && cdLg.length === 2 && cdLg[0].datum === '2026-03-01', JSON.stringify(cdLg));
+  toets('onbekende onderdelen en velden eruit, km als getal, notitie zonder regeleinde',
+    cdLg && cdLg[1].wat.join() === 'olie' && cdLg[1].km === 90000 && !('klant_id' in cdLg[0]) && cdLg[0].notitie === 'garage West', JSON.stringify(cdLg));
+  const cdF = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, onderhoud_log: [{ datum: '2099-01-01', wat: ['olie'] }] } });
+  toets('een beurt in de toekomst wordt geweigerd', cdF._status === 400 && /toekomst/.test(cdF.error), JSON.stringify(cdF));
+  const cdW = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, onderhoud_log: [{ datum: '2026-01-01', wat: [] }] } });
+  toets('een beurt zonder onderdelen wordt geweigerd', cdW._status === 400, JSON.stringify(cdW));
+  const cdL = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, onderhoud_log: Array.from({ length: 61 }, () => ({ datum: '2026-01-01', wat: ['olie'] })) } });
+  toets('meer dan 60 beurten wordt geweigerd', cdL._status === 400, JSON.stringify(cdL).slice(0, 200));
+  const cdB = await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, onderhoud_log: [] } });
+  toets('Bert wist Anna\'s logboek niet', cdB._status === 404, JSON.stringify(cdB));
+  const cdR = await roep(tokA, { actie: 'rit_opslaan', voertuig_id: v1.voertuig.id, rit: { start: '2026-10-12T08:00:00.000Z', km: 20, duur_s: 1500, extra: { cd: { tw: 2.5, sr: 24, lv: 14.15, kk: 1, ow: 300 } } } });
+  const cdRr = (await roep(tokA, { actie: 'ritten', voertuig_id: v1.voertuig.id, limiet: 500 })).ritten.filter((r) => r.id === cdR.id)[0];
+  toets('een rit draagt de conditiekenmerken mee', cdR.ok && cdRr && cdRr.extra && cdRr.extra.cd && cdRr.extra.cd.tw === 2.5, JSON.stringify(cdRr && cdRr.extra));
   const ck = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, carrosserie: 'suv', kleur: 'rood' } });
   toets('carrosserie en kleur worden niet meer bewaard (het icoon is weg)', ck.ok && !ck.voertuig.carrosserie && !ck.voertuig.kleur);
   const gr = await roep(tokA, { actie: 'rit_opslaan', voertuig_id: v1.voertuig.id, rit: { start: '2026-09-27T12:00:00.000Z', km: 12, extra: { gear: { v: 1, bin: 0.015, n: 300, h: { '171': 150, '199': 150 } } } } });

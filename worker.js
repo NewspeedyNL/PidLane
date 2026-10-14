@@ -5000,7 +5000,9 @@ var KP_MAX_TEKST = 120000;       // tekens per rapport
 // 2026-09-27b: ritlabels en het geleerde versnellingsmodel kwamen erbij. Een
 // nieuwe verwerking = een nieuwe tekst = opnieuw akkoord (CLAUDE.md, Privacy).
 // 2026-10-10: tankbeurten (kp_tank, #469) kwamen erbij.
-var KP_AKKOORD_VERSIE = "2026-10-10";
+// 2026-10-13: de conditiescore (#475): een onderhoudslogboek en per rit
+// meetkenmerken van de motor en het rijpatroon (rit.extra.cd).
+var KP_AKKOORD_VERSIE = "2026-10-13";
 
 var KP_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS kp_akkoord (klant_id TEXT PRIMARY KEY, versie TEXT NOT NULL, op TEXT NOT NULL)",
@@ -5043,7 +5045,12 @@ var KP_MIGRATIES = [
   "UPDATE kp_voertuig SET carrosserie = NULL, kleur = NULL WHERE carrosserie IS NOT NULL OR kleur IS NOT NULL",
   "ALTER TABLE kp_voertuig ADD COLUMN eigen_pids TEXT",
   // Tankbeurten bijhouden per voertuig (#469, 13-10-2026): standaard uit.
-  "ALTER TABLE kp_voertuig ADD COLUMN tanken TEXT"
+  "ALTER TABLE kp_voertuig ADD COLUMN tanken TEXT",
+  // De conditiescore (#475, 13-10-2026): standaard uit; het logboek als JSON.
+  "ALTER TABLE kp_voertuig ADD COLUMN score TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN onderhoud_log TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN onderhoud_interval_km INTEGER",
+  "ALTER TABLE kp_voertuig ADD COLUMN onderhoud_interval_mnd INTEGER"
 ];
 var _kpSchemaKlaar = false;
 
@@ -5140,6 +5147,12 @@ var KP_VELDEN = {
   onderhoud_km: { soort: "geheel", min: 0, max: 2000000 },
   onderhoud_datum: { soort: "datum" },
   onderhoud_laatst: { soort: "tekst", max: 80 },
+  // De conditiescore (#475): aan/uit, het interval uit het onderhoudsboekje
+  // en het logboek. Zelfde regels als PLConditie.beurt() in pidlane-conditie.js.
+  score: { soort: "keuze", uit: ["aan", "uit"] },
+  onderhoud_interval_km: { soort: "geheel", min: 1000, max: 100000 },
+  onderhoud_interval_mnd: { soort: "geheel", min: 1, max: 60 },
+  onderhoud_log: { soort: "onderhoudlog", max: 60 },
   distributie: { soort: "tekst", max: 80 },
   notities: { soort: "tekst", max: 1000 },
   pid_selectie: { soort: "pidlijst", max: 200 },
@@ -5149,6 +5162,30 @@ var KP_VELDEN = {
   eigen_pids: { soort: "eigenpids", max: 20 },
   vin_pseudo: { soort: "tekst", max: 32, patroon: /^[0-9a-f]{8,32}$/ }
 };
+
+// Eén beurt uit het onderhoudslogboek (#475). Een datum die niet in de
+// toekomst ligt, een km-stand of niets, alleen bekende onderdelen, een
+// korte notitie. Zelfde regels als PLConditie.beurt().
+var KP_ONDERHOUD_WAT = ["olie", "oliefilter", "luchtfilter", "bougies", "brandstoffilter", "distributie", "remvloeistof", "koelvloeistof", "remmen", "accu"];
+function kpOnderhoudBeurt(b) {
+  b = b || {};
+  const datum = String(b.datum || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(datum) || isNaN(new Date(datum))) return { fout: "een beurt zonder geldige datum" };
+  if (new Date(datum).getTime() > Date.now() + 864e5) return { fout: "een beurt in de toekomst" };
+  let km = null;
+  if (b.km !== null && b.km !== undefined && b.km !== "") {
+    km = Number(b.km);
+    if (!isFinite(km) || km < 0 || km > 2000000) return { fout: "een beurt met een onmogelijke km-stand" };
+    km = Math.round(km);
+  }
+  const wat = (Array.isArray(b.wat) ? b.wat : []).map((x) => String(x)).filter((x, i, l) => KP_ONDERHOUD_WAT.indexOf(x) >= 0 && l.indexOf(x) === i);
+  if (!wat.length) return { fout: "een beurt zonder onderdelen" };
+  const o = { datum, km, wat };
+  const notitie = String(b.notitie == null ? "" : b.notitie).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 80);
+  if (notitie) o.notitie = notitie;
+  return { beurt: o };
+}
+__name(kpOnderhoudBeurt, "kpOnderhoudBeurt");
 
 // Eén eigen PID, voor het voertuig én voor de bibliotheek: dezelfde regels
 // als PLEigen.controleer() in pidlane-uitgebreid.js. Alleen LEES-diensten
@@ -5233,6 +5270,18 @@ function kpVeld(naam, waarde) {
     }
     return { waarde: JSON.stringify(l) };
   }
+  if (d.soort === "onderhoudlog") {
+    if (!Array.isArray(waarde)) return { fout: naam + " moet een lijst zijn" };
+    if (waarde.length > d.max) return { fout: "hoogstens " + d.max + " beurten in het logboek" };
+    const l = [];
+    for (const b of waarde) {
+      const r = kpOnderhoudBeurt(b);
+      if (r.fout) return { fout: "onderhoudslogboek: " + r.fout };
+      l.push(r.beurt);
+    }
+    l.sort((a, b) => (a.datum < b.datum ? 1 : a.datum > b.datum ? -1 : 0));
+    return { waarde: JSON.stringify(l) };
+  }
   if (d.soort === "datum") {
     const s = String(waarde).slice(0, 10);
     return /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(new Date(s)) ? { waarde: s } : { fout: naam + " is geen datum (JJJJ-MM-DD)" };
@@ -5270,6 +5319,7 @@ async function kpVoertuigPubliek(v, sleutel, klantId) {
   uit.pid_selectie = kpLees(v.pid_selectie);
   uit.gear_model = kpLees(v.gear_model);
   uit.eigen_pids = kpLees(v.eigen_pids);
+  uit.onderhoud_log = kpLees(v.onderhoud_log) || [];
   return uit;
 }
 __name(kpVoertuigPubliek, "kpVoertuigPubliek");
