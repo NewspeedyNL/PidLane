@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Contact uit: meetopdracht telt alleen de stilte (#487)
+ ═══════════════════════════════════════════════════════════
+ De rit van 14-10 gaf BEVINDING op verbind-weigeringen = 27 en
+ verbind-st-stappen = 2, met een band van 0–0. Beide tellen de hele
+ verbinding (opstarten, wissels naar Google Maps), terwijl de twee
+ stiltes in het logboek schoon verliepen. Nieuwe app-maten in PLContact:
+ contact-stiltes, contact-terug-anders (groep, multi-PID, pollbudget of
+ ATST anders dan vóór de stilte) en contact-weigeringen (alleen binnen
+ de stilte). Opdracht #39 in D1 gebruikt die nu.
+
+ ═══════════════════════════════════════════════════════════
  14-10-2026 — Onderzoek: brandstofdruk en breedbandsonde als stap (#428)
  ═══════════════════════════════════════════════════════════
 
