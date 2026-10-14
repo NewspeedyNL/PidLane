@@ -274,6 +274,15 @@ var PL_HULP = {
         'Hij staat standaard uit; aanzetten doe je in Meer → Mijn voorkeuren.</p>',
       zie: ['meer'] },
 
+    { id: 'rijmodus', groep: 'gebruik', titel: 'Rijmodus naast de kaart',
+      tekst:
+        '<p>Zet PidLane in gesplitst scherm naast je navigatie. Is het venster klein en ben je verbonden, dan toont de app vier grote tegels: ' +
+        '<b>koelwater</b>, <b>toerental</b>, <b>accu</b> en <b>motorstatus</b>, met één melding bovenaan als er iets opvalt. Er hoeft niets aangetikt te worden.</p>' +
+        '<p>Neutraal is normaal. Oranje is opvallend, rood is ruim daarbuiten. Grijs betekent dat de waarde niet meer ververst of niet klopt. ' +
+        'Het scherm blijft aan zolang de rijmodus staat en de adapter verbonden is.</p>' +
+        '<p>In Meer → Mijn voorkeuren wissel je tussen <b>auto</b>, <b>aan</b> en <b>uit</b>. Met <b>volledige app</b> onderaan ga je terug tot de volgende verbinding.</p>',
+      zie: ['meer'] },
+
     { id: 'uitroeptekens', groep: 'gebruik', titel: 'De i-rondjes',
       tekst:
         '<p>Bij sommige knoppen staat een klein glazen rondje met een <b>i</b>. Tik erop voor een korte uitleg; de knop zelf wordt dan niet ingedrukt. ' +
@@ -336,6 +345,8 @@ var PL_HULP = {
       tekst: 'Zet de vakgereedschappen erbij, zoals Alle functies en Bewaken. Voor een account dat geen klant is staat hij vanzelf aan.' },
     { id: 'autocheck', anker: '#kbAutoCheck', bron: 'index.html', onderwerp: 'check',
       tekst: 'Opent Check mijn auto vanzelf na het verbinden, één keer per sessie. Niet bij hervatten, meekijken of in de demo.' },
+    { id: 'rijmodus', anker: '#kbRijmodus', bron: 'index.html', onderwerp: 'rijmodus',
+      tekst: 'Naast de kaart in gesplitst scherm: vier grote tegels en één melding bovenaan. Tik om te wisselen tussen auto, aan en uit. Auto schakelt alleen bij een klein venster én een verbinding.' },
     { id: 'afsluiten', anker: '#kbAfsluiten', bron: 'index.html', onderwerp: 'afsluiten',
       tekst: 'Loopt er een rit, dan heet dit Rit beëindigen. Daarna kies je: verbonden blijven, verbinding verbreken of de app sluiten.' }
   ],
