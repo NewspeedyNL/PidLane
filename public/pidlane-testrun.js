@@ -2787,6 +2787,20 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── een foto van het dashboard laten herkennen (#492, 14-10-2026) ──
+  {
+    issue: '#492',
+    naam: 'Lampjesgids: een foto van het dashboard, de AI wijst het lampje aan, de gids zegt wat je doet',
+    waarom: 'Wie niet weet hoe het lampje heet, kon alleen zoeken op een omschrijving van de vorm.',
+    proef: async function () {
+      if (!window.PLLampjes || !PLLampjes._kern || typeof PLLampjes._kern.leesFoto !== 'function') return { staat: 'FOUT', detail: 'PLLampjes.leesFoto ontbreekt — oude pidlane-lampjes.js (herladen?)' };
+      var r = PLLampjes._kern.leesFoto('<lampjes>{"ids":["olie","verzonnen"],"zeker":"hoog"}</lampjes>', PLLampjes._kern.LAMPJES);
+      if (r.ids.join() !== 'olie') return { staat: 'FOUT', detail: 'een verzonnen id komt door: ' + r.ids.join() };
+      var ak = null; try { ak = localStorage.getItem('pl_lampfoto_akkoord'); } catch (e) { ak = null; }
+      return { staat: 'OK', detail: 'lezen goed · toestemming voor foto\'s ' + (ak === '1' ? 'gegeven' : 'nog niet gevraagd') };
+    }
+  },
+
   // ── het onderhoudsschema van dit model (#490, 14-10-2026) ──
   {
     issue: '#490',
