@@ -236,6 +236,7 @@
     '#plLampOv .pll-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}' +
     '#plLampOv .pll-tegel{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:11px;border:1px solid var(--bd);background:var(--sur);color:var(--tx);font-family:var(--f);font-size:12.5px;font-weight:700;text-align:left;cursor:pointer;min-width:0}' +
     '#plLampOv .pll-ico{flex:0 0 40px;width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:#05070b;border:1px solid rgba(255,255,255,.08)}' +
+    '#plLampOv .pll-tegel>span:last-child{min-width:0;overflow-wrap:anywhere;hyphens:auto}' +
     '#plLampOv .pll-ico.groot{flex:0 0 76px;width:76px;height:76px;border-radius:14px}' +
     '#plLampOv .pll-svg .v,#plLampOv .pll-svg .t{fill:currentColor;stroke:none}' +
     '#plLampOv .pll-band{padding:10px 12px;border-radius:10px;font-size:13px;font-weight:800;margin:4px 0 10px;color:#fff}' +
