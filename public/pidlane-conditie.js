@@ -278,10 +278,10 @@
       som += d.score * od.gewicht; gew += od.gewicht;
       delen.push(d);
     });
-    var uit = { klaar: gew > 0, delen: delen, score: gew > 0 ? Math.round(som / gew) : null, apk: null };
+    var uit = { klaar: gew > 0, delen: delen, score: gew > 0 ? Math.round(som / gew) : null, apkStaat: null };
     if (v.apk_tot && tijd(v.apk_tot) !== null) {
       var dag = Math.floor((tijd(v.apk_tot) - nu) / 864e5);
-      uit.apk = dag < 0 ? 'verlopen' : dag <= 30 ? 'bijna' : 'ok';
+      uit.apkStaat = dag < 0 ? 'verlopen' : dag <= 30 ? 'bijna' : 'ok';
       if (dag < 0 && uit.score !== null) uit.score = Math.max(0, uit.score - 15);
     }
     return uit;
@@ -458,7 +458,7 @@
       uit.push({ soort: 'onderhoud', id: d.id, naam: d.naam, punten: rond((100 - d.score) * ONDERDEEL[d.id].gewicht / og * CFG.gewicht.onderhoud / gTot, 1),
         tekst: tekstOnderdeel(d), uitleg: d.staat === 'over' ? 'Over het interval. Hoe langer, hoe meer slijtage — en het gaat vaak eerst ten koste van het verbruik.' : 'Bijna aan de beurt.' });
     });
-    if (od.apk === 'verlopen') uit.push({ soort: 'apk', id: 'apk', naam: 'APK', punten: rond(15 * CFG.gewicht.onderhoud / gTot, 1), tekst: 'De APK is verlopen.', uitleg: 'Zonder geldige APK mag je niet de weg op.' });
+    if (od.apkStaat === 'verlopen') uit.push({ soort: 'apk', id: 'apk', naam: 'APK', punten: rond(15 * CFG.gewicht.onderhoud / gTot, 1), tekst: 'De APK is verlopen.', uitleg: 'Zonder geldige APK mag je niet de weg op.' });
     return uit.sort(function (a, b) { return b.punten - a.punten; });
   }
 

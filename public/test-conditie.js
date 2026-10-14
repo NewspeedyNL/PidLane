@@ -136,7 +136,7 @@ console.log('\n4. Onderhoudsstand');
   o = C.onderhoudsstand(v([olie('2026-09-13', 100000)]), { nu: NU, km: 101000 });
   toets('niet ingevulde onderdelen tellen niet mee', o.delen.filter((d) => d.staat === 'onbekend').length > 3 && o.score === 100);
   o = C.onderhoudsstand(v([olie('2026-09-13', 100000)], { apk_tot: '2026-10-01' }), { nu: NU, km: 101000 });
-  toets('verlopen APK kost 15 punten', o.score === 85 && o.apk === 'verlopen', JSON.stringify(o));
+  toets('verlopen APK kost 15 punten', o.score === 85 && o.apkStaat === 'verlopen', JSON.stringify(o));
   o = C.onderhoudsstand(v([olie('2026-09-13', 100000)], { onderhoud_km: 100500 }), { nu: NU, km: 101000 });
   toets('voorbij het geplande onderhoud uit het profiel telt als over tijd', o.score <= 80, JSON.stringify(o.delen[0]));
   toets('km-stand nu: profiel + ritten erna', C.kmNu({ kmstand: 1000, kmstand_op: dag(10), onderhoud_log: [] }, [rit(5, {}, { km: 30 }), rit(20, {}, { km: 99 })]) === 1030);
