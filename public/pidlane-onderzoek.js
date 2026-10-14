@@ -202,7 +202,8 @@
   }
 
   // ── De stappen ──────────────────────────────────────────────────────
-  // soort: lezen (foutcodes), meten (live), vraag (de gebruiker antwoordt).
+  // soort: lezen (foutcodes), mode06 (de zelftests van de ECU, PLM06),
+  // meten (live), vraag (de gebruiker antwoordt).
   // test: welke verdenkingen deze stap kan scheiden, en hoe sterk (0–3).
   // voorwaarde: motor_uit | motor_aan | warm. opdracht: wat de gebruiker
   // tijdens het meten doet. beoordeel(u, st) → [{h, d, t}]: verdenking,
@@ -213,6 +214,16 @@
       test: { misfire: 2, lambda: 2, kat: 2, maf: 1.5, valselucht: 1, egr: 1.5, dpf: 1.5, software: 2, thermostaat: 1.5, koelsensor: 1, laad: 1, turbo: 1, injector: 0.5, distributie: 2, versnellingsbak: 1.5 },
       altijdEerst: true,
       beoordeel: beoordeelCodes },
+
+    // Mode 06 (13-10-2026): de meetwaarden achter de zelftests. Een missende
+    // cilinder telt hier per cilinder, ook als er (nog) geen foutcode is; een
+    // katalysator of sonde krap binnen de fabrieksgrens zegt meer dan "geen
+    // code". Niet elke auto levert het: dan overgeslagen, geen tegenbewijs.
+    { id: 'mode06', soort: 'mode06', titel: 'Zelftests per cilinder en katalysator (mode 06)', icoon: '🔬',
+      waarom: 'De motorcomputer telt per cilinder hoe vaak hij overslaat en meet de katalysator en sondes tegen zijn eigen grens. Dat staat er al vóór er een foutcode komt.',
+      na: ['codes'],
+      test: { misfire: 2.5, kat: 2, lambda: 1.5, egr: 1 },
+      beoordeel: beoordeelMode06 },
 
     { id: 'rust', soort: 'meten', titel: 'Accu in rust', icoon: '🔋',
       waarom: 'Een accu zonder dat de dynamo meehelpt: de enige manier om accu en laadsysteem uit elkaar te houden.',
@@ -481,6 +492,76 @@
       st.metingen.software = (st.metingen.software || []).concat([a]);
     });
     if (rd && rd.nietKlaar && rd.nietKlaar.length) r.push({ h: null, d: 0, t: rd.nietKlaar.length + ' zelftest(s) niet klaar: ' + rd.nietKlaar.join(', ') });
+    return r;
+  }
+
+  /* Mode 06: welke monitor-ID's bij welke verdenking horen (J1979 bijlage D,
+     dezelfde families als FAMILIE in pidlane-mode06.js). */
+  var M06_FAMILIE = [
+    { van: 0x01, tot: 0x10, h: 'lambda', naam: 'lambdasonde' },
+    { van: 0x21, tot: 0x2F, h: 'kat', naam: 'katalysator' },
+    { van: 0x31, tot: 0x3F, h: 'egr', naam: 'EGR' },
+    { van: 0xA1, tot: 0xAF, h: 'misfire', naam: 'ontstekingsmissers' }
+  ];
+  // Missers per cilinder: MID A2–A9 = cilinder 1–8. TID 0B is het lopende
+  // gemiddelde over de laatste tien ritten, 0C de laatste of huidige rit.
+  // Voorlopige drempels, te toetsen tegen echte uitlezingen (#428): een
+  // cilinder telt als uitschieter vanaf M06_MIS_MIN missers en minstens
+  // M06_MIS_FACTOR keer de andere cilinders.
+  var M06_MIS_MIN = 10, M06_MIS_FACTOR = 3, M06_MIS_RUST = 5;
+
+  function missersPerCilinder(tests) {
+    var per = {};
+    [0x0B, 0x0C].forEach(function (tid) {
+      if (Object.keys(per).length) return;
+      tests.forEach(function (t) {
+        if (t.mid >= 0xA2 && t.mid <= 0xA9 && t.tid === tid && t.ruw && typeof t.ruw.waarde === 'number') per[t.mid - 0xA1] = t.ruw.waarde;
+      });
+    });
+    return per;
+  }
+
+  function beoordeelMode06(u, st) {
+    var r = [];
+    var tests = (u && u.m06 && u.m06.tests) || [];
+    if (!tests.length) return [{ h: null, d: 0, t: 'de auto levert geen mode 06-gegevens' }];
+    st.metingen.mode06 = { tests: tests.length };
+    // Per cilinder: één uitschieter wijst naar die cilinder, gespreid naar
+    // iets wat alle cilinders raakt.
+    var per = missersPerCilinder(tests), cil = Object.keys(per).map(Number);
+    if (cil.length >= 2) {
+      var tot = 0, top = cil[0];
+      cil.forEach(function (c) { tot += per[c]; if (per[c] > per[top]) top = c; });
+      var rest = cil.filter(function (c) { return c !== top; }).map(function (c) { return per[c]; });
+      var restMax = Math.max.apply(null, rest);
+      st.metingen.mode06.missers = per;
+      if (per[top] >= M06_MIS_MIN && per[top] >= M06_MIS_FACTOR * Math.max(1, restMax)) {
+        st.metingen.mode06.cilinder = top;
+        r.push({ h: 'misfire', d: 2.5, t: 'cilinder ' + top + ' slaat ' + per[top] + '× over, de andere hoogstens ' + restMax + '× — één cilinder: bobine, bougie of injector van die cilinder' });
+      } else if (tot >= M06_MIS_MIN * 2) {
+        r.push({ h: 'misfire', d: 1.5, t: tot + ' missers verdeeld over ' + cil.length + ' cilinders — eerder mengsel, brandstof of valse lucht dan één bobine' });
+      } else if (tot < M06_MIS_RUST) {
+        r.push({ h: 'misfire', d: -1.5, t: 'missers per cilinder samen ' + tot + ' — de motor slaat niet over' });
+      }
+    }
+    // Per familie: buiten de fabrieksgrens bevestigt, krap is een aanwijzing,
+    // ruim binnen de grens sluit uit. Een onzeker oordeel (onbekende schaal)
+    // telt niet mee.
+    M06_FAMILIE.forEach(function (f) {
+      var g = tests.filter(function (t) { return t.mid >= f.van && t.mid <= f.tot && t.oordeelZeker; });
+      if (!g.length) return;
+      // Een telling (UAS 0x24, missers) op 0 is goed, niet "krap": daar telt
+      // alleen de afstand tot de bovengrens.
+      var krapT = function (t) {
+        if (t.uasId !== 0x24) return t.krap;
+        var span = t.ruw.max - t.ruw.min;
+        return t.geslaagd && span > 0 && (t.ruw.max - t.ruw.waarde) / span < 0.15;
+      };
+      var gezakt = g.filter(function (t) { return !t.geslaagd; }), krap = g.filter(krapT);
+      if (gezakt.length) r.push({ h: f.h, d: 2.5, t: gezakt.length + ' zelftest(s) ' + f.naam + ' buiten de fabrieksgrens (' + gezakt.map(function (t) { return t.midNaam; }).join(', ') + ')' });
+      else if (krap.length) r.push({ h: f.h, d: 1, t: krap.length + ' zelftest(s) ' + f.naam + ' krap binnen de grens — nog geen fout, wel bijna' });
+      else if (f.h !== 'misfire' || cil.length < 2) r.push({ h: f.h, d: -1.5, t: g.length + ' zelftest(s) ' + f.naam + ' ruim binnen de fabrieksgrens' });
+    });
     return r;
   }
 
@@ -853,6 +934,13 @@
       var scan = await PLFoutcodes.leesStil();
       return scan ? { scan: scan } : { overgeslagen: true, reden: 'de auto gaf geen antwoord' };
     }
+    if (stap.soort === 'mode06') {
+      if (!window.PLM06 || typeof PLM06.scan !== 'function') return { overgeslagen: true, reden: 'mode 06-module niet geladen' };
+      if (isDemo()) return { overgeslagen: true, reden: 'mode 06 bestaat niet in de demo' };
+      _ui.melding = 'Zelftests uitlezen…'; teken();
+      try { return { m06: await PLM06.scan() }; }
+      catch (e) { console.warn('PLOnderzoek: mode 06 niet gelezen', e); return { overgeslagen: true, reden: 'de auto gaf geen mode 06-antwoord' }; }
+    }
     // meten — eerst de voorwaarde, dan de opdracht, dan de meting
     var begin = Date.now();
     while (!(await voorwaardeGehaald(stap.voorwaarde))) {
@@ -1223,6 +1311,7 @@
     staat: function () { return _st; },
     // pure kern — voor test-onderzoek.js
     KLACHTEN: KLACHTEN, VERDENKINGEN: VERDENKINGEN, STAPPEN: STAPPEN, CODEREGELS: CODEREGELS, cfg: CFG,
+    beoordeelMode06: beoordeelMode06,
     KENNIS: KENNIS, kennisNaarVerdenking: kennisNaarVerdenking,
     klachtUitTekst: klachtUitTekst, nieuw: nieuw, volgende: volgende, vooruit: vooruit, verwerk: verwerk,
     verbreed: verbreed, conclusie: conclusie, status: status, draai: draai, alsTekst: alsTekst,

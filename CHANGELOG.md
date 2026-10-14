@@ -10,6 +10,44 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Tankbeurten: samenvatting per tankcyclus (#469 stap 3)
+ ═══════════════════════════════════════════════════════════
+
+ - Bij elke tankbeurt: ritten, rijtijd, gemiddelde snelheid en verbruik
+   volgens de app over de cyclus die daar eindigt.
+ - Vol tot vol: hoeveel liter de app mat tegenover wat er getankt is.
+   Alleen als elke rit liters heeft en de km kloppen; anders weg.
+ - Dezelfde kolommen in de CSV, vóór de notitie.
+ - test-tank.js deel 9, vier mutaties, blok 5, handleiding.
+
+ ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Onderzoek leest mode 06: missers per cilinder (#428)
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuwe stap "Zelftests per cilinder en katalysator", na de foutcodes.
+   Eén cilinder die duidelijk vaker overslaat dan de rest bevestigt een
+   ontstekingsprobleem op die cilinder, ook zonder foutcode; missers over
+   alle cilinders wijzen naar mengsel of brandstof.
+ - Zelftests van katalysator, sondes, EGR en missers: buiten de grens
+   bevestigt, krap is een aanwijzing, ruim binnen sluit uit. Een telling
+   op 0 is niet krap. Onbekende schaal telt niet mee.
+ - Drempels (10 missers, 3× de rest) zijn voorlopig: te toetsen op echte
+   uitlezingen. In de demo wordt de stap overgeslagen.
+ - test-onderzoek.js deel 10, vier mutaties, blok 5, handleiding.
+
+ ═══════════════════════════════════════════════════════════
+ 13-10-2026 — Eén meetscherm: het oude is weg (#452)
+ ═══════════════════════════════════════════════════════════
+
+ - Systeemtest en Welk onderdeel uit het wizardplan meten nu in het
+   verzamelscherm, met "Verder" in plaats van een AI-knop. Na een rijtest
+   begint dezelfde module opnieuw, met de rit als meting.
+ - Daarmee leunde niets meer op het oude meetscherm ("Sensoren
+   registreren", "Gebruik de meting van zojuist"): plVraagMeting,
+   plRegistreer, plKernTeMager en plMeetPoortVraag zijn weg.
+ - bproef-verzamel.js stap 10, twee mutaties erbij, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  14-10-2026 — Toestemming Mijn voertuigen meteen na inloggen
  ═══════════════════════════════════════════════════════════
 

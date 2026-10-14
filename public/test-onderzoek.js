@@ -32,7 +32,7 @@ s.navigator = {};
 s.setTimeout = (fn) => { fn(); return 0; };
 s.setInterval = () => 0; s.clearTimeout = () => { }; s.clearInterval = () => { };
 vm.createContext(s);
-['pidlane-data.js', 'pidlane-foutcodes.js', 'pidlane-onderzoek.js'].forEach((f) =>
+['pidlane-data.js', 'pidlane-foutcodes.js', 'pidlane-mode06.js', 'pidlane-onderzoek.js'].forEach((f) =>
   vm.runInContext(fs.readFileSync(__dirname + '/' + f, 'utf8'), s, { filename: f }));
 const O = s.PLOnderzoek, F = s.PLFoutcodes;
 if (!O || typeof O.draai !== 'function') throw new Error('PLOnderzoek.draai niet gevonden');
@@ -48,6 +48,7 @@ function nepAuto(opt) {
       const w = (opt.antwoorden || {})[stap.id];
       return w ? { w } : { overgeslagen: true, reden: 'test' };
     }
+    if (stap.soort === 'mode06') return opt.m06 ? { m06: opt.m06 } : { overgeslagen: true, reden: 'test' };
     if (stap.soort === 'lezen') {
       if (opt.scan === 'demo') return { scan: await F.leesUit(F.demoStuur()) };
       return { scan: opt.scan || GEEN_CODES };
@@ -230,6 +231,57 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
     Object.keys(s.AUTO_KENNIS).forEach((m) => O.kennisNaarVerdenking({ zwak: s.AUTO_KENNIS[m].zwak.map((z) => z[0]) })
       .forEach((z) => z.h.forEach((h) => { if (!V[h]) onbekend.push(z.t + '→' + h); })));
     eis(!onbekend.length, 'elke vertaling wijst naar een bestaande verdenking', onbekend.join());
+  }
+
+  console.log('\n10. Mode 06: missers per cilinder en de zelftests (#428)');
+  {
+    // Records uit de echte bouwRecord() van pidlane-mode06.js, zoals een scan
+    // ze teruggeeft. UAS 0x24 = tellingen; grens 0–65535 zoals de meeste
+    // auto's die voor missers opgeven (dan zakt er nooit iets).
+    const R = s.PLM06._intern.bouwRecord;
+    const mis = (per, tid) => per.map((n, i) => R(0xA2 + i, tid || 0x0B, 0x24, n, 0, 0xFFFF));
+    const stap = O.STAPPEN.find((x) => x.id === 'mode06');
+    eis(!!stap && stap.soort === 'mode06' && (stap.na || []).indexOf('codes') >= 0, 'er is een mode 06-stap, na de foutcodes');
+    const oordeel = (tests) => { const st = O.nieuw({ klachten: ['onrustig'] }); return { r: O.beoordeelMode06({ m06: { tests } }, st), st }; };
+    const van = (r, h) => r.filter((b) => b.h === h);
+
+    let u = oordeel(mis([2, 1, 40, 0]));
+    eis(van(u.r, 'misfire').some((b) => b.d >= 2.5 && /cilinder 3/.test(b.t)), 'één cilinder met 40 missers: misfire bevestigd, op cilinder 3', JSON.stringify(u.r));
+    eis(u.st.metingen.mode06.cilinder === 3, 'en de cilinder staat in de metingen');
+    u = oordeel(mis([9, 11, 10, 12]));
+    eis(van(u.r, 'misfire').some((b) => b.d > 0 && b.d < 2.5 && /verdeeld/.test(b.t)) && !u.st.metingen.mode06.cilinder,
+      'TEGENPROEF: dezelfde missers over alle cilinders wijzen niet naar één cilinder', JSON.stringify(u.r));
+    u = oordeel(mis([0, 1, 0, 2]));
+    eis(van(u.r, 'misfire').some((b) => b.d < 0), 'nauwelijks missers: misfire uitgesloten', JSON.stringify(u.r));
+    eis(van(u.r, 'misfire').length === 1, 'de grens 0–65535 telt niet nog eens als "ruim binnen de grens"', JSON.stringify(u.r));
+    u = oordeel(mis([0, 0, 40, 0], 0x0C).concat(mis([0, 0, 0, 0], 0x0B)));
+    eis(!u.st.metingen.mode06.cilinder, 'het gemiddelde over tien ritten (0B) gaat voor de laatste rit (0C)', JSON.stringify(u.st.metingen.mode06));
+
+    u = oordeel([R(0x21, 0x01, 0x01, 800, 0, 750)]);
+    eis(van(u.r, 'kat').some((b) => b.d >= 2.5), 'katalysatortest buiten de grens: kat bevestigd', JSON.stringify(u.r));
+    u = oordeel([R(0x21, 0x01, 0x01, 700, 0, 750)]);
+    eis(van(u.r, 'kat').some((b) => b.d > 0 && b.d < 2.5 && /krap/.test(b.t)), 'krap binnen de grens: een aanwijzing, geen bevestiging', JSON.stringify(u.r));
+    u = oordeel([R(0x21, 0x01, 0x01, 300, 0, 750)]);
+    eis(van(u.r, 'kat').some((b) => b.d < 0), 'ruim binnen de grens: kat uitgesloten', JSON.stringify(u.r));
+    u = oordeel([R(0x01, 0x01, 0x99, 0x9000, 0x8000, 0x7000)]);
+    eis(!van(u.r, 'lambda').length, 'onbekende schaal waar signed en unsigned elkaar tegenspreken: geen oordeel', JSON.stringify(u.r));
+    u = oordeel([]);
+    eis(u.r.length === 1 && !u.r[0].h, 'geen mode 06: alleen een opmerking, geen tegenbewijs', JSON.stringify(u.r));
+
+    // In de lus: bij "onrustig" komt mode 06 na de codes aan de beurt, en een
+    // cilinder die overslaat stuurt de conclusie.
+    let st2 = O.nieuw({ klachten: ['onrustig'], liters: 2.0 });
+    await O.draai(st2, nepAuto({ waarde: gezond(), m06: { tests: mis([0, 1, 60, 2]) }, antwoorden: { gevoel: 'stil' } }));
+    const v2 = stappen(st2);
+    eis(v2.indexOf('mode06') > 0 && v2.indexOf('mode06') <= 2, 'de onderzoeker leest mode 06 bij de eerste stappen', v2.join());
+    eis(st2.uitkomst.top[0] && st2.uitkomst.top[0].id === 'misfire', 'geen foutcode, wel cilinder 3 en schudden: ontstekingsprobleem bovenaan', JSON.stringify(st2.uitkomst.top.map((x) => [x.id, x.score])));
+    st2 = O.nieuw({ klachten: ['onrustig'], liters: 2.0 });
+    await O.draai(st2, nepAuto({ waarde: gezond(), m06: { tests: mis([0, 1, 0, 2]) }, antwoorden: { gevoel: 'stil' } }));
+    eis(!(st2.uitkomst.top[0] && st2.uitkomst.top[0].id === 'misfire'), 'TEGENPROEF: zonder missers in mode 06 alleen het schudden — niet bovenaan', JSON.stringify(st2.uitkomst.top.map((x) => [x.id, x.score])));
+    st2 = O.nieuw({ klachten: ['onrustig'], liters: 2.0 });
+    await O.draai(st2, nepAuto({ waarde: gezond() }));
+    const ov = st2.log.find((l) => l.stap === 'mode06');
+    eis(ov && /Overgeslagen/.test(ov.t) && !st2.v.misfire.bewijs.some((b) => b.stap === 'mode06'), 'zonder mode 06 overgeslagen, zonder tegenbewijs');
   }
 
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));

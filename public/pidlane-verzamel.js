@@ -306,9 +306,9 @@
     const vers = !bron && window._plVerzameld && (Date.now() - window._plVerzameld.ts) < MEET_BEVESTIGD_MS;
 
     lopend = new Promise(resolve => {
-      // FASE 1 van de poort — de juiste sensoren aan. Zelfde stap als
-      // plVraagMeting; faalt hij, dan meten we wat er aanstaat en zegt de
-      // samenvatting welke sensoren niets gaven.
+      // FASE 1 van de poort — de juiste sensoren aan. Zelfde stap als het
+      // oude meetscherm (tot 13-10-2026); faalt hij, dan meten we wat er
+      // aanstaat en zegt de samenvatting welke sensoren niets gaven.
       const aan = (!bron && prof && typeof ensurePIDsActive === 'function')
         ? Promise.resolve().then(() => ensurePIDsActive(prof)).catch(e => {
             console.warn('PLVerzamel: kernprofiel niet geactiveerd', e);

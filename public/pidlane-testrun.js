@@ -2787,6 +2787,61 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── samenvatting per tankcyclus (#469 stap 3, 13-10-2026) ──
+  {
+    issue: '#469',
+    naam: 'Tankbeurten: per cyclus de ritten samengevat, en de app-liters tegenover getankt',
+    waarom: 'Per tankcyclus waren alleen de km en het beloofde bereik te zien; hoe lang, hoe snel en hoeveel de app zelf mat, moest je uit de ritten-export halen.',
+    proef: async function () {
+      if (!window.PLTank || typeof PLTank.ritSom !== 'function') return { staat: 'FOUT', detail: 'PLTank.ritSom ontbreekt — oude pidlane-tank.js (herladen?)' };
+      var r = function (start, km, d, l) { return { start: start, km: km, duur_s: d, liters: l }; };
+      var tk = [{ id: 'a', op: '2026-10-01T12:00:00Z', vol: true, liters: 40 }, { id: 'b', op: '2026-10-08T12:00:00Z', vol: true, liters: 50 }];
+      var rs = [r('2026-10-02T08:00:00Z', 300, 10800, 21), r('2026-10-05T08:00:00Z', 200, 7200, 24)];
+      var c = PLTank.cycli(tk, rs)[0];
+      if (!c || !c.rit || c.rit.kmh !== 100 || c.appVsGetanktPct !== 90) return { staat: 'FOUT', detail: 'nagebouwde cyclus geeft ' + JSON.stringify(c && { rit: c.rit, pct: c.appVsGetanktPct }) };
+      tk[1].vol = false;
+      if (PLTank.cycli(tk, rs)[0].appVsGetanktPct !== null) return { staat: 'FOUT', detail: 'een halve tankbeurt wordt toch tegen de app-liters gelegd' };
+      return { staat: 'OK', detail: 'nagebouwde cyclus klopt · open Mijn voertuigen → Tankbeurten: onder elke beurt ritten, rijtijd en verbruik volgens de app' };
+    }
+  },
+
+  // ── mode 06 in het onderzoek (#428, 13-10-2026) ──
+  {
+    issue: '#428',
+    naam: 'Onderzoek: mode 06 telt missers per cilinder en weegt de zelftests',
+    waarom: 'Een cilinder die overslaat zonder foutcode, of een katalysator krap binnen de grens, zag het onderzoek niet: het las alleen foutcodes en live waarden.',
+    proef: async function () {
+      if (!window.PLOnderzoek || typeof PLOnderzoek.beoordeelMode06 !== 'function') return { staat: 'FOUT', detail: 'PLOnderzoek.beoordeelMode06 ontbreekt — oude pidlane-onderzoek.js (herladen?)' };
+      if (!window.PLM06 || !PLM06._intern) return { staat: 'FOUT', detail: 'PLM06 ontbreekt — pidlane-mode06.js niet geladen' };
+      var R = PLM06._intern.bouwRecord, mis = function (per) { return per.map(function (n, i) { return R(0xA2 + i, 0x0B, 0x24, n, 0, 0xFFFF); }); };
+      var oordeel = function (t) { var st = PLOnderzoek.nieuw({ klachten: ['onrustig'] }); var r = PLOnderzoek.beoordeelMode06({ m06: { tests: t } }, st); return { r: r, st: st }; };
+      var een = oordeel(mis([2, 1, 40, 0]));
+      if (een.st.metingen.mode06.cilinder !== 3) return { staat: 'FOUT', detail: 'cilinder 3 met 40 missers wordt niet aangewezen: ' + JSON.stringify(een.r) };
+      if (oordeel(mis([9, 11, 10, 12])).st.metingen.mode06.cilinder) return { staat: 'FOUT', detail: 'missers verdeeld over alle cilinders heten één cilinder' };
+      if (oordeel(mis([0, 0, 0, 0])).r.some(function (b) { return b.h === 'misfire' && b.d > 0; })) return { staat: 'FOUT', detail: 'nul missers telt als bewijs vóór overslaan' };
+      var verb = (typeof connected !== 'undefined' && connected);
+      return { staat: 'OK', detail: 'oordeel klopt op drie nagebouwde uitlezingen · ' + (verb ? 'start een onderzoek met "onrustig": de stap "Zelftests per cilinder" komt vroeg, en het logboek toont "Mode 06 klaar"' : 'niet verbonden — de echte uitlezing toetst een rit') };
+    }
+  },
+
+  // ── het oude meetscherm weg (#452, 13-10-2026) ──
+  // Broncode, met reden: de gedragsproef (bproef-verzamel.js, stap 10) opent
+  // het verzamelscherm over de app heen. Dit ziet alleen of de geladen versie
+  // de nieuwe is; daarna zegt de rit zelf het.
+  {
+    issue: '#452',
+    naam: 'Systeemtest en Welk onderdeel meten in het verzamelscherm; het oude meetscherm is weg',
+    waarom: 'Twee meetschermen naast elkaar: de wizard gaf Systeemtest en Welk onderdeel nog "Sensoren registreren" en "Gebruik de meting van zojuist", de rest het verzamelscherm.',
+    proef: async function () {
+      if (!window.PLVerzamel || typeof PLVerzamel.meet !== 'function') return { staat: 'FOUT', detail: 'PLVerzamel ontbreekt (herladen?)' };
+      if (typeof window.plVraagMeting === 'function' || typeof window.plMeetPoortVraag === 'function')
+        return { staat: 'FOUT', detail: 'het oude meetscherm staat er nog — oude pidlane-fuel.js (herladen?)' };
+      if (!window.PLWizard || String(PLWizard.draai).indexOf('PLVerzamel.meet') < 0)
+        return { staat: 'FOUT', detail: 'de wizard opent het verzamelscherm niet — oude pidlane-wizard.js (herladen?)' };
+      return { staat: 'OK', detail: 'nieuwe versie geladen · start de Systeemtest uit het plan: "📡 Data verzamelen" met "Verder", geen AI-knop' };
+    }
+  },
+
   // ── een foto van het dashboard laten herkennen (#492, 14-10-2026) ──
   {
     issue: '#492',
@@ -3057,22 +3112,6 @@ const PROEVEN_B5 = [
       var bewijs = bekend.filter(function (h) { return st.v[h].score !== 0; });
       if (bewijs.length) return { staat: 'FOUT', detail: 'kennis telt als bewijs: ' + bewijs.join(', ') };
       return { staat: 'OK', detail: kn.merk + ': getoetst ' + (kn.getoetst.join(', ') || '—') + (kn.zelf.length ? ' · zelf nakijken: ' + kn.zelf.join(', ') : '') };
-    }
-  },
-
-  // ── registreren zonder profiel (09-10-2026) ──
-  {
-    issue: '—',
-    naam: 'Meetpoort: zonder profiel geen registratiescherm voor de sensoren van een vórige analyse',
-    waarom: 'Op de rit van 09-10 wachtte "Sensoren registreren" in de wizard op vijf sensoren die niemand had aangezet: 0/10, tot het venster verliep.',
-    // Broncode, met reden: de gedragsproef opent het meetscherm over de app
-    // heen en laat het open staan als de fout terug is. test-driefasen.js
-    // toetst het gedrag; dit ziet alleen of de geladen versie de nieuwe is.
-    proef: async function () {
-      if (typeof plVraagMeting !== 'function') return { staat: 'FOUT', detail: 'plVraagMeting ontbreekt' };
-      var bron = String(plVraagMeting);
-      if (bron.indexOf('prof ? plKernStatus(prof) : null') < 0) return { staat: 'FOUT', detail: 'plVraagMeting valt zonder profiel nog terug op het vorige profiel — oude pidlane-fuel.js (herladen?)' };
-      return { staat: 'OK', detail: 'nieuwe versie geladen · laatste profiel: ' + (window._laatstProfiel || 'geen') };
     }
   },
 
@@ -4590,8 +4629,8 @@ const PROEVEN_B5 = [
     naam: 'Een analyse begint met de meting, niet met vragen',
     waarom: 'Vier vragen vóór elke analyse werden als storend weggeklikt — en wegklikken liet de betaalde analyse toch lopen.',
     proef: async function () {
-      if (typeof _plVoorvragenAan !== 'function' || typeof plMeetPoortVraag !== 'function')
-        return { staat: 'FOUT', detail: 'het nieuwe begin van een analyse ontbreekt (_plVoorvragenAan of plMeetPoortVraag) (#290)' };
+      if (typeof _plVoorvragenAan !== 'function' || !window.PLVerzamel)
+        return { staat: 'FOUT', detail: 'het nieuwe begin van een analyse ontbreekt (_plVoorvragenAan of PLVerzamel) (#290)' };
       var aan = false;
       try { aan = _plVoorvragenAan(); } catch (e) { return { staat: 'FOUT', detail: 'de vragenschakelaar gaf een fout: ' + ((e && e.message) || e) }; }
       var regel = '';
@@ -4601,7 +4640,7 @@ const PROEVEN_B5 = [
         return { staat: 'LET OP', detail: 'de vragen staan AAN via de Config (feat_voorvragen) — dan komen ze vóór elke analyse, zoals vóór #290. Een keuze, geen fout.' };
       return { staat: 'ok', detail: 'geen vragen vóór een analyse; de AI krijgt ' +
         (regel ? 'wat de app zelf vaststelde (' + regel.trim().split('\n').length + ' regel(s))' : 'nog niets uit de meting — er is nog te weinig gemeten') +
-        '. Open de AI-monteur, kies een oorzaak en kijk of het meetscherm met "Annuleren" komt.' };
+        '. Open de AI-monteur, kies een oorzaak en kijk of het verzamelscherm met "Sluiten zonder AI" komt.' };
     }
   },
 
