@@ -1296,6 +1296,11 @@ MUTATIES=(
 "public/pidlane-foutcodes.js@@    if ((c.bevestigd || []).length || (c.pending || []).length || (c.permanent || []).length) return false;@@    if ((c.bevestigd || []).length || (c.permanent || []).length) return false;@@test-foutcodes.js@@een code in afwachting en de check gaat toch vanzelf door naar Live"
 "public/pidlane-foutcodes.js@@    return !(s.readiness && s.readiness.mil);@@    return true;@@test-foutcodes.js@@het motorlampje brandt en de check gaat toch vanzelf door naar Live"
 "public/pidlane-foutcodes.js@@        if (_st.door && !(e.target.closest && e.target.closest('.fc-door'))) stopDoor();@@        if (false) stopDoor();@@bproef-foutcodes.js@@de klant tikt in het venster en wordt toch naar Live gestuurd"
+# ── Kostenindicatie en controleplan per foutcode (DTC_PLAN, 14-10-2026)
+"public/pidlane-data.js@@  for (var n = 5; n >= 1; n--) {@@  for (var n = 1; n <= 5; n++) {@@test-dtcplan.js@@kortste voorvoegsel wint: P0128 krijgt een bredere familie dan de thermostaat"
+"public/pidlane-data.js@@stappen: p.stappen.slice() };@@stappen: p.stappen };@@test-dtcplan.js@@dtcPlan geeft de tabel zelf terug: een aanroeper die stappen toevoegt, verandert hem voor iedereen"
+"public/pidlane-bt.js@@  base.plan=(!_implausibleMisfire(code)&&typeof dtcPlan@@  base.plan=(typeof dtcPlan@@test-dtcplan.js@@een onmogelijke misfire (cilinder 6 op een viercilinder) krijgt toch een reparatieplan"
+"public/pidlane-foutcodes.js@@'<li>' + esc(t) + '</li>'@@'<li>' + t + '</li>'@@test-dtcplan.js@@stappen ongeëscapet in het venster"
 # ── Mijn voertuigen (klantplatform, 27-09-2026). Worker: de fouten die een
 #    klant bij een ander laten binnenkijken of een persoonsgegeven onversleuteld
 #    laten staan. App: de fouten die een rit, een issue of een rapport stil

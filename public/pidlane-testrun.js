@@ -2787,6 +2787,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── kostenindicatie en controleplan per foutcode (#503, 14-10-2026) ──
+  {
+    issue: '#503',
+    naam: 'Foutcodes: per code een kostenindicatie en een controleplan',
+    waarom: 'Bij een foutcode stond alleen wat hij betekent; wat het ongeveer kost en wat je eerst controleert moest de klant zelf uitzoeken.',
+    proef: async function () {
+      if (typeof dtcPlan !== 'function' || !window.DTC_PLAN) return { staat: 'FOUT', detail: 'dtcPlan ontbreekt — oude pidlane-data.js (herladen?)' };
+      if (!window.PLFoutcodes || typeof PLFoutcodes.planHtml !== 'function') return { staat: 'FOUT', detail: 'PLFoutcodes.planHtml ontbreekt — oude pidlane-foutcodes.js (herladen?)' };
+      var i = dtcInfo('P0171');
+      if (!i || !i.plan || i.plan.familie !== 'P017') return { staat: 'FOUT', detail: 'dtcInfo(P0171) geeft geen mengselplan: ' + JSON.stringify(i && i.plan) };
+      if (dtcInfo('P1260').plan !== null) return { staat: 'FOUT', detail: 'merkcode P1260 krijgt toch een generiek plan' };
+      var h = PLFoutcodes.planHtml(i.plan);
+      if (h.indexOf('fc-plan') < 0 || h.indexOf('<ol>') < 0) return { staat: 'FOUT', detail: 'planHtml tekent geen plan' };
+      return { staat: 'OK', detail: Object.keys(DTC_PLAN).length + ' families · open Check mijn auto in de demo: onder elke code staat 💶 met bedrag en stappen' };
+    }
+  },
+
   // ── samenvatting per tankcyclus (#469 stap 3, 13-10-2026) ──
   {
     issue: '#469',

@@ -3405,6 +3405,9 @@ function dtcInfo(code){
     base.body=`Cilindernummer hoger dan het aantal cilinders (${total}). Vrijwel zeker een uitlees-/communicatiefout of restcode, geen echte storing op deze cilinder.`;
     base.sev='warn';
   }
+  // Kostenindicatie en controleplan (DTC_PLAN, pidlane-data.js). Geen plan bij
+  // een onwaarschijnlijke misfire: dan is er niets te repareren.
+  base.plan=(!_implausibleMisfire(code)&&typeof dtcPlan==='function')?dtcPlan(code):null;
   return base;
 }
 function formatDtcCodes(arr){

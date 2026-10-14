@@ -48,6 +48,16 @@
  - bproef-verzamel.js stap 10, twee mutaties erbij, blok 5.
 
  ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Foutcodes: kostenindicatie en controleplan (#503)
+ ═══════════════════════════════════════════════════════════
+
+ - Onder elke foutcode in Check mijn auto een ingeklapt blok 💶: een
+   bandbreedte in euro, zelf of garage, en 2–5 controles, goedkoopste eerst.
+   Open in de garagemodus. Ook een regel per code in het voertuigdossier.
+ - Zonder AI en zonder tegoed: DTC_PLAN per codefamilie in pidlane-data.js,
+   dtcPlan() kiest het langste voorvoegsel; merkcodes krijgen bewust niets.
+
+ ═══════════════════════════════════════════════════════════
  14-10-2026 — Toestemming Mijn voertuigen meteen na inloggen
  ═══════════════════════════════════════════════════════════
 

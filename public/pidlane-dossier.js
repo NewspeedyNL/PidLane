@@ -74,7 +74,7 @@ async function exportVehicleDossier(btn){
     doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...PU); doc.text('Foutcodes (huidig)',M,y); y+=2;
     doc.setDrawColor(...PU); doc.line(M,y,M+45,y); y+=6;
     doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...DARK);
-    if(dtcCodes.length){ dtcCodes.forEach(c=>{ const i=dtcInfo(c); pageBreak(6); doc.text(`${c} — ${clean(i?.desc||'onbekend')}`,M,y); y+=5.5; }); }
+    if(dtcCodes.length){ dtcCodes.forEach(c=>{ const i=dtcInfo(c); pageBreak(6); doc.text(`${c} — ${clean(i?.desc||'onbekend')}`,M,y); y+=5.5; if(i?.plan){ pageBreak(6); doc.text(`   Indicatie: ${i.plan.kost?('EUR '+i.plan.kost[0]+'–'+i.plan.kost[1]):'via dealer'} · ${clean((window.DTC_PLAN_WIE||{})[i.plan.wie]||'')} · eerst: ${clean(i.plan.stappen[0])}`.slice(0,110),M,y); y+=5.5; } }); }
     else { doc.setTextColor(...GREY); doc.text('Geen actieve foutcodes.',M,y); y+=6; }
     y+=2;
 
