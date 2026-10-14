@@ -276,11 +276,12 @@ var PL_HULP = {
 
     { id: 'rijmodus', groep: 'gebruik', titel: 'Rijmodus naast de kaart',
       tekst:
-        '<p>Zet PidLane in gesplitst scherm naast je navigatie. Is het venster klein en ben je verbonden, dan toont de app vier grote tegels: ' +
-        '<b>koelwater</b>, <b>toerental</b>, <b>accu</b> en <b>motorstatus</b>, met één melding bovenaan als er iets opvalt. Er hoeft niets aangetikt te worden.</p>' +
-        '<p>Neutraal is normaal. Oranje is opvallend, rood is ruim daarbuiten. Grijs betekent dat de waarde niet meer ververst of niet klopt. ' +
-        'Het scherm blijft aan zolang de rijmodus staat en de adapter verbonden is.</p>' +
-        '<p>In Meer → Mijn voorkeuren wissel je tussen <b>auto</b>, <b>aan</b> en <b>uit</b>. Met <b>volledige app</b> onderaan ga je terug tot de volgende verbinding.</p>',
+        '<p>Voor gesplitst scherm naast je navigatie. Zet hem aan in Meer → Mijn voorkeuren → <b>🚗 Rijmodus</b>; hij staat standaard uit.</p>' +
+        '<p>Bovenaan staan koelwater, toerental, accu en de motorstatus als korte balkjes. De rest van het scherm toont het advies van de monitor die loopt: ' +
+        'bij de <b>Caravan-monitor</b> een radertje dat zegt of je op of terug moet schakelen, een snelheidsboog met je doel, en het verbruik tegen de richtwaarde; ' +
+        'bij de <b>Rit-monitor</b> een stip per controle: grijs is nog niet aan bod geweest, groen is gecontroleerd, oranje heeft iets gezien.</p>' +
+        '<p>Neutraal is normaal, oranje is opvallend, rood is ruim daarbuiten. Grijs betekent dat de waarde niet meer ververst of niet klopt. ' +
+        'Het scherm blijft aan zolang de rijmodus aan staat en de adapter verbonden is. Met <b>volledige app</b> onderaan ga je terug tot de volgende verbinding.</p>',
       zie: ['meer'] },
 
     { id: 'uitroeptekens', groep: 'gebruik', titel: 'De i-rondjes',
@@ -346,7 +347,7 @@ var PL_HULP = {
     { id: 'autocheck', anker: '#kbAutoCheck', bron: 'index.html', onderwerp: 'check',
       tekst: 'Opent Check mijn auto vanzelf na het verbinden, één keer per sessie. Niet bij hervatten, meekijken of in de demo.' },
     { id: 'rijmodus', anker: '#kbRijmodus', bron: 'index.html', onderwerp: 'rijmodus',
-      tekst: 'Naast de kaart in gesplitst scherm: vier grote tegels en één melding bovenaan. Tik om te wisselen tussen auto, aan en uit. Auto schakelt alleen bij een klein venster én een verbinding.' },
+      tekst: 'Voor gesplitst scherm naast de kaart: een smalle strook met waarden en daaronder het advies van de Rit- of Caravan-monitor in beeld. Standaard uit.' },
     { id: 'afsluiten', anker: '#kbAfsluiten', bron: 'index.html', onderwerp: 'afsluiten',
       tekst: 'Loopt er een rit, dan heet dit Rit beëindigen. Daarna kies je: verbonden blijven, verbinding verbreken of de app sluiten.' }
   ],

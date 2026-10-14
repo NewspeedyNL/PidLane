@@ -33,21 +33,21 @@
  - test-testgate.js kent hulpjobs; één mutatie erbij.
 
  ═══════════════════════════════════════════════════════════
- 14-10-2026 — Rijmodus: PidLane in split-screen naast de kaart
+ 14-10-2026 — Rijmodus: het advies van de monitor naast de kaart
  ═══════════════════════════════════════════════════════════
 
- - pidlane-rijmodus.js (PLRijmodus): klein venster én verbonden → vier
-   grote tegels (koelwater, toerental, accu, motorstatus) en één banner
-   met de laatste luide melding van PLMon/PLWatch. Geen knoppen nodig.
- - Venstergrens h < 480 of w < 340 met hysterese. Niet w < 420: een
-   telefoon is in vol portret 393-412 px breed en zou altijd rij zijn.
- - Buiten de harde limiet = grijs '?', niet rood: een meetfout is geen
-   alarm. Ouder dan 5 s = grijs. Schrijft alleen bij verandering.
- - Scherm aan zolang rijmodus én verbinding (KeepAwake of Wake Lock).
- - Manifest: resizeableActivity=true, vaste screenOrientation eraf;
-   de bundelpoort weigert een activiteit die niet in split-screen kan.
- - Meer → Mijn voorkeuren → 🚗 Rijmodus (auto/aan/uit), handleiding,
-   test-rijmodus.js, tien mutaties, blok 5.
+ - pidlane-rijmodus.js (PLRijmodus): een keuze in Meer → Mijn voorkeuren,
+   standaard uit. Voor split-screen naast Maps; de app raadt niet zelf.
+ - Bovenaan een strook: koelwater, toerental, accu als balkje, motorstatus.
+ - De rest is advies in beeld van de monitor die loopt. Caravan: radertje
+   (op/terug schakelen), snelheidsboog met doelstreepje, verbruiksbalk tegen
+   de richtwaarde, terrein, laatste tip. Rit-monitor: een stip per test
+   (grijs nog niet, groen getoetst, oranje iets gezien) met de namen.
+ - Eén banner met de laatste luide melding. Buiten de harde limiet grijs
+   '?', geen rood. Schrijft alleen bij verandering. Scherm aan zolang aan
+   én verbonden. Manifest: resizeableActivity, geen vaste oriëntatie.
+ - Caravan: schakel- en verbruiksoordeel als eigen functies (gedrag gelijk).
+ - test-rijmodus.js, bproef-rijmodus.js, vijftien mutaties, blok 5.
 
  ═══════════════════════════════════════════════════════════
  14-10-2026 — Onderzoek: brandstofdruk en breedbandsonde als stap (#428)

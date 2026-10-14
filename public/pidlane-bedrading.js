@@ -265,6 +265,10 @@ var KRITIEK = [
   // caravanrit achter een guard; ontbreekt hij, dan meldt de proef dat — maar
   // zonder deze regel zou de guard zelf de stille fout zijn.
   'caravanTerrein',
+  // Erbij op 14-10-2026. De rijmodus (pidlane-rijmodus.js) leest het advies
+  // van de caravancoach achter een guard: ontbreekt een van deze, dan blijft
+  // het radertje of de verbruiksbalk leeg zonder dat iets het zegt.
+  'caravanRenderLive','caravanRichtverbruik','caravanSchakelAdvies','caravanVerbruikNiveau',
   'toggleRitMonitor','startCaravan','stopCaravan','startRitAnalyse','stopRitAnalyse',
   // Aandachtspunten bij het voertuigdossier (pidlane-voertuigdata.js), gezet
   // door initConnection als de RDW-opzoeking mislukt.

@@ -15,6 +15,29 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 14-10-2026 — Rijmodus: van vier getallen naar advies in beeld
+
+De eerste opzet (zelfde dag) schakelde vanzelf bij een klein venster én een
+verbinding, en toonde vier grote tegels: koelwater, toerental, accu, status.
+Twee conclusies bleken fout.
+
+- **De automaat.** De grens `w < 420` uit het oorspronkelijke opzetje zou een
+  telefoon in vol portret (393-412 CSS-px) al als split-screen lezen; dat is
+  vóór de eerste commit naar 340 gegaan. Maar ook goed afgesteld bleef het
+  raden. Op verzoek is het nu een keuze: standaard uit, Meer → Mijn
+  voorkeuren. Het venster bepaalt alleen nog de indeling (`kiesVorm`).
+- **De vier getallen.** Op het toestel namen ze een derde van het scherm in
+  en zeiden ze niets wat de app elders niet al zei. De ruimte is nu voor het
+  advies van de monitor die loopt — het radertje (op/terug schakelen), de
+  snelheidsboog met het doelstreepje en de verbruiksbalk bij de caravan, een
+  stip per test bij de Rit-monitor — en de waarden staan in een strook.
+
+Het schakel- en verbruiksoordeel stond inline in `caravanRenderLive`. Het
+is eerst als `caravanSchakelAdvies`/`caravanVerbruikNiveau` uit die functie
+getild (eigen commit, gedrag gelijk), zodat rijmodus en dashboard hetzelfde
+zeggen. `caravanCheckRules` heeft nog eigen snelheidsvoorwaarden (speed > 10
+of > 25) voor de tips; die zijn bewust niet gelijkgetrokken.
+
 ## 13-10-2026 — Contact uit werd gelezen als een slechte bus (#487)
 
 Logboek 23:20 (Mazda CX-5, OBDLink MX+). Laatste antwoord 664 tpm, 0 km/u,

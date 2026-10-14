@@ -408,6 +408,25 @@ function caravanTick(){
   _updateCaravanPill();
 }
 
+// ═══════════════════ ADVIES ALS WAARDE ═══════════════════
+// Eén bron voor het schakel- en verbruiksoordeel van het live-beeld, zodat de
+// rijmodus (pidlane-rijmodus.js) hetzelfde toont als het caravandashboard.
+function caravanRichtverbruik(fuelType){ return fuelType==='diesel'?11:14; }   // L/100km met caravan
+// 'terug' | 'op' | 'ok', of null als toerental of belasting ontbreekt.
+function caravanSchakelAdvies(ctx){
+  if(!ctx||typeof ctx.load!=='number'||typeof ctx.rpm!=='number') return null;
+  const lugRpm=ctx.fuelType==='diesel'?1500:1900, upRpm=ctx.fuelType==='diesel'?2000:2400;
+  if(ctx.load>=85&&ctx.rpm<lugRpm) return 'terug';
+  if(ctx.rpm>upRpm&&ctx.load<45&&ctx.climb!=='klim') return 'op';
+  return 'ok';
+}
+// 'ok' | 'letop' | 'alarm' t.o.v. het richtverbruik, of null zonder meting.
+function caravanVerbruikNiveau(lkm,fuelType){
+  if(typeof lkm!=='number'||isNaN(lkm)) return null;
+  const baseL=caravanRichtverbruik(fuelType);
+  return lkm>baseL*1.5?'alarm':lkm>baseL*1.15?'letop':'ok';
+}
+
 // ═══════════════════ LIVE-WEERGAVE ═══════════════════
 function caravanRenderLive(ctx,pw){
   const set=(id,txt,color)=>{ const el=document.getElementById(id); if(el){ el.textContent=txt; if(color)el.style.color=color; } };
@@ -427,9 +446,8 @@ function caravanRenderLive(ctx,pw){
   }
 
   // momentaan verbruik (kleur t.o.v. richtwaarde)
-  const baseL=ctx.fuelType==='diesel'?11:14;
   let lkmTxt='—', lkmClr='#fff';
-  if(ctx.lkm!==null){ lkmTxt=ctx.lkm.toFixed(1); lkmClr=ctx.lkm>baseL*1.5?'#ff6b6b':ctx.lkm>baseL*1.15?'#ffb020':'#7cf5c0'; }
+  if(ctx.lkm!==null){ lkmTxt=ctx.lkm.toFixed(1); lkmClr={ alarm:'#ff6b6b', letop:'#ffb020', ok:'#7cf5c0' }[caravanVerbruikNiveau(ctx.lkm,ctx.fuelType)]; }
   set('carLkm',lkmTxt,lkmClr);
   set('carLh', ctx.fuelRate!==null?`${ctx.fuelRate.toFixed(1)} L/u`:'—');
 
@@ -444,11 +462,11 @@ function caravanRenderLive(ctx,pw){
 
   // toerental + schakel-hint (glow)
   set('carRpm', typeof ctx.rpm==='number'?Math.round(ctx.rpm):'—');
-  const lugRpm=ctx.fuelType==='diesel'?1500:1900, upRpm=ctx.fuelType==='diesel'?2000:2400;
   const gEl=document.getElementById('carGear');
   if(gEl){
-    if(typeof ctx.load==='number'&&typeof ctx.rpm==='number'&&ctx.load>=85&&ctx.rpm<lugRpm){ gEl.textContent='⬇️ terug'; gEl.style.color='#ffb020'; }
-    else if(typeof ctx.rpm==='number'&&typeof ctx.load==='number'&&ctx.rpm>upRpm&&ctx.load<45&&ctx.climb!=='klim'){ gEl.textContent='⬆️ op'; gEl.style.color='#8fd3ff'; }
+    const adv=caravanSchakelAdvies(ctx);
+    if(adv==='terug'){ gEl.textContent='⬇️ terug'; gEl.style.color='#ffb020'; }
+    else if(adv==='op'){ gEl.textContent='⬆️ op'; gEl.style.color='#8fd3ff'; }
     else { gEl.textContent='✓ ok'; gEl.style.color='#7cf5c0'; }
   }
 

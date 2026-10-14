@@ -3191,23 +3191,92 @@ html.dark .plh-i, #loginOv .plh-i, .mbtn.p > .plh-i, .pl-check > .plh-i {
   background:var(--sur2); color:var(--tx); border:1px solid var(--bd2); border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; }
 .vpf-tel-nul small { font-weight:400; font-size:12px; color:var(--tx2); }
 
-/* ══ RIJMODUS (14-10-2026) — PLRijmodus, split-screen naast de kaart ══
-   Alleen zichtbaar bij body[data-modus="rij"]; dan is de rest van de app
-   verborgen. Kleur alleen bij een overschrijding: neutraal is normaal. */
+/* ══ RIJMODUS (14-10-2026) — PLRijmodus: het advies van de monitor in beeld ══
+   Alleen bij body[data-modus="rij"] (Meer → Mijn voorkeuren, standaard uit);
+   dan is de rest van de app verborgen. Bovenaan een smalle strook met drie
+   balkjes en een statusstip; de rest is voor het paneel van de actieve
+   monitor. Kleur alleen bij een overschrijding: neutraal is normaal. */
 #rijModus { display:none; }
 body[data-modus="rij"] > *:not(#rijModus):not(script):not(style) { display:none !important; }
-body[data-modus="rij"] #rijModus { display:flex; flex-direction:column; gap:8px; min-height:var(--pl-vh); padding:8px; background:var(--bg); color:var(--tx); }
-#rijModus .rij-banner { padding:8px 12px; border-radius:10px; background:var(--ors); color:var(--tx); border:1px solid var(--or); font-size:16px; font-weight:700; line-height:1.3; }
+body[data-modus="rij"] #rijModus { display:flex; flex-direction:column; gap:8px; min-height:var(--pl-vh); padding:8px 10px; background:var(--bg); color:var(--tx); }
+#rijModus .rij-banner { padding:8px 12px; border-radius:10px; background:var(--ors); border:1px solid var(--or); font-size:15px; font-weight:700; line-height:1.3; }
 #rijModus .rij-banner[hidden] { display:none; }
-#rijModus .rij-tegels { flex:1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
-#rijModus .rij-tegel { display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:12px; background:var(--sur); border:2px solid var(--bd); padding:6px; min-width:0; }
-#rijModus .rij-tegel b { font-family:var(--m); font-size:clamp(40px, 13vmin, 88px); font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
-#rijModus .rij-tegel span { font-size:14px; color:var(--tx2); margin-top:4px; }
-#rijModus .rij-tegel[data-k="letop"] { border-color:var(--or); background:var(--ors); }
-#rijModus .rij-tegel[data-k="alarm"] { border-color:var(--rd); background:var(--rds); }
-#rijModus .rij-tegel[data-k="alarm"] b { color:var(--rd); }
-#rijModus .rij-tegel[data-k="oud"] b,
-#rijModus .rij-tegel[data-k="meetfout"] b,
-#rijModus .rij-tegel[data-k="leeg"] b { color:var(--tx3); }
-#rijModus .rij-tegel[data-k="oud"] { opacity:.6; }
+
+/* de strook: vier op een rij — label, waarde, balkje eronder */
+#rijModus .rij-strook { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+#rijModus .rij-mini { display:grid; grid-template-columns:1fr auto; align-items:center; row-gap:4px; padding:5px 8px 7px; border-radius:10px; background:var(--sur); border:1px solid var(--bd); min-width:0; }
+#rijModus .rij-mini > span { font-size:11px; color:var(--tx2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#rijModus .rij-mini b { font-family:var(--m); font-size:16px; font-weight:800; font-variant-numeric:tabular-nums; grid-column:1 / 3; white-space:nowrap; }
+#rijModus .rij-mini .rij-balk { grid-column:1 / 3; }
+#rijModus .rij-status .rij-stip { grid-row:1; grid-column:2; }
+#rijModus .rij-balk { height:6px; border-radius:3px; background:var(--sur2); overflow:hidden; position:relative; }
+#rijModus .rij-balk i { display:block; height:100%; width:0; border-radius:3px; background:var(--tx3); transition:width .4s ease; }
+#rijModus .rij-stip { width:12px; height:12px; border-radius:50%; background:var(--tx3); }
+#rijModus [data-k="ok"] .rij-balk i, #rijModus [data-k="ok"] .rij-stip { background:var(--gn); }
+#rijModus [data-k="letop"] { border-color:var(--or); }
+#rijModus [data-k="letop"] .rij-balk i, #rijModus [data-k="letop"] .rij-stip { background:var(--or); }
+#rijModus [data-k="alarm"] { border-color:var(--rd); background:var(--rds); }
+#rijModus [data-k="alarm"] .rij-balk i, #rijModus [data-k="alarm"] .rij-stip { background:var(--rd); }
+#rijModus [data-k="alarm"] b { color:var(--rd); }
+#rijModus [data-k="oud"], #rijModus [data-k="meetfout"], #rijModus [data-k="leeg"] { color:var(--tx3); }
+#rijModus [data-k="oud"] { opacity:.6; }
+
+/* het paneel: één van drie secties, gekozen door data-paneel */
+#rijModus .rij-paneel { flex:1; display:flex; min-height:0; }
+#rijModus .rij-paneel > section { display:none; flex:1; min-width:0; }
+#rijModus .rij-paneel[data-paneel="caravan"] .rij-p-caravan,
+#rijModus .rij-paneel[data-paneel="rit"] .rij-p-rit,
+#rijModus .rij-paneel[data-paneel="geen"] .rij-p-geen { display:grid; }
+
+/* caravan: radertje en boog naast elkaar, verbruik en terrein eronder */
+#rijModus .rij-p-caravan { grid-template-columns:1fr 1fr; grid-template-rows:1fr auto auto; gap:8px; align-items:stretch; }
+#rijModus .rij-rad, #rijModus .rij-meter { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:6px; border-radius:14px; background:var(--sur); border:1px solid var(--bd); min-height:0; }
+#rijModus .rij-rad svg { width:min(100%, 34vmin); height:auto; }
+#rijModus .rij-meter svg { width:100%; max-height:30vmin; }
+#rijModus .rij-rad > span, #rijModus .rij-meter > span { font-size:14px; color:var(--tx2); text-align:center; }
+#rijModus .rij-tand { fill:none; stroke:var(--tx3); stroke-width:12; stroke-dasharray:9 6; transition:stroke .3s; }
+#rijModus .rij-naaf { fill:var(--sur2); stroke:var(--bd2); stroke-width:2; }
+#rijModus .rij-rad text { font-size:34px; font-weight:800; fill:var(--tx); }
+#rijModus .rij-rad[data-advies="ok"] .rij-tand { stroke:var(--gn); }
+#rijModus .rij-rad[data-advies="op"] .rij-tand { stroke:var(--bl); animation:rijDraai 6s linear infinite; transform-origin:50% 50%; }
+#rijModus .rij-rad[data-advies="terug"] .rij-tand { stroke:var(--or); animation:rijDraai 6s linear infinite reverse; transform-origin:50% 50%; }
+#rijModus .rij-rad[data-advies="op"] > span { color:var(--bl); font-weight:700; }
+#rijModus .rij-rad[data-advies="terug"] > span { color:var(--or); font-weight:700; }
+@keyframes rijDraai { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { #rijModus .rij-tand { animation:none !important; } }
+#rijModus .rij-boog-bg, #rijModus .rij-boog { fill:none; stroke-width:10; stroke-linecap:round; }
+#rijModus .rij-boog-bg { stroke:var(--sur2); }
+#rijModus .rij-boog { stroke:var(--tx3); transition:stroke-dasharray .4s ease; }
+#rijModus .rij-meter[data-k="ok"] .rij-boog { stroke:var(--gn); }
+#rijModus .rij-meter[data-k="letop"] .rij-boog { stroke:var(--or); }
+#rijModus .rij-meter[data-k="alarm"] .rij-boog { stroke:var(--rd); }
+#rijModus .rij-doelstreep { stroke:var(--tx); stroke-width:3; stroke-linecap:round; }
+#rijModus .rij-meter text { font-family:var(--m); font-size:24px; font-weight:800; fill:var(--tx); }
+#rijModus .rij-verbruik { grid-column:1 / 3; display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; padding:8px 10px; border-radius:12px; background:var(--sur); border:1px solid var(--bd); }
+#rijModus .rij-verbruik > span { font-size:13px; color:var(--tx2); }
+#rijModus .rij-verbruik b { font-family:var(--m); font-size:16px; }
+#rijModus .rij-balk.groot { height:12px; border-radius:6px; overflow:visible; }
+#rijModus .rij-balk em { position:absolute; top:-4px; bottom:-4px; width:2px; left:50%; background:var(--tx); border-radius:1px; }
+#rijModus .rij-terrein { grid-column:1 / 2; align-self:center; justify-self:start; padding:4px 10px; border-radius:20px; background:var(--sur2); font-size:14px; font-weight:700; }
+#rijModus .rij-terrein[data-t="klim"] { color:var(--or); }
+#rijModus .rij-terrein[data-t="afdaling"] { color:var(--gn); }
+#rijModus .rij-tip { grid-column:2 / 3; align-self:center; font-size:13px; line-height:1.3; color:var(--tx2); }
+body[data-rijvorm="compact"] #rijModus .rij-tip { grid-column:1 / 3; }
+
+/* rit-monitor: één stip per test — grijs nog niet aan bod, groen getoetst, oranje melding */
+#rijModus .rij-p-rit { align-content:center; justify-items:center; gap:12px; padding:10px; border-radius:14px; background:var(--sur); border:1px solid var(--bd); }
+#rijModus .rij-fase { padding:4px 12px; border-radius:20px; background:var(--sur2); font-size:15px; font-weight:700; }
+#rijModus .rij-stippen { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; max-width:420px; }
+#rijModus .rij-stippen i { width:30px; height:30px; border-radius:50%; background:var(--sur2); border:2px solid var(--bd2); transition:background .3s, border-color .3s; }
+#rijModus .rij-stippen i[data-s="ok"] { background:var(--gn); border-color:var(--gn); }
+#rijModus .rij-stippen i[data-s="hit"] { background:var(--or); border-color:var(--or); }
+#rijModus .rij-telling { font-size:14px; color:var(--tx2); }
+#rijModus .rij-legenda { display:flex; gap:12px; font-size:12px; color:var(--tx2); }
+#rijModus .rij-legenda i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; vertical-align:-1px; background:var(--sur2); border:2px solid var(--bd2); }
+#rijModus .rij-legenda i.ok { background:var(--gn); border-color:var(--gn); }
+#rijModus .rij-legenda i.hit { background:var(--or); border-color:var(--or); }
+#rijModus .rij-gezien { font-size:14px; font-weight:700; color:var(--or); text-align:center; line-height:1.35; }
+#rijModus .rij-p-geen { align-content:center; justify-items:center; text-align:center; gap:6px; color:var(--tx2); }
+#rijModus .rij-p-geen p { font-size:17px; font-weight:700; }
+#rijModus .rij-p-geen .rij-klein { font-size:14px; font-weight:400; max-width:320px; }
 #rijModus .rij-uit { align-self:flex-end; background:none; border:0; color:var(--tx3); font-size:13px; padding:6px 4px; cursor:pointer; }
