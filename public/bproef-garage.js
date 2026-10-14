@@ -454,6 +454,24 @@ const NEPSERVER = `(function(){
     toets('aan: het tabblad Tankbeurten staat er', await app.ev(`/Tankbeurten/.test(document.querySelector('#plGarBody').textContent)`));
     await app.ev(`connected = false; PLGarage._tankForm(null); window._nepPlatform.voertuigen.forEach(function (x) { x.tanken = null; }); PLGarage.actief().tanken = null; PLGarage.sluit(); 'ok'`);
 
+    console.log('\n── 4l. de conditiescore (#475): per voertuig aan, één keer de basis ──');
+    await app.ev(`PLGarage.open(PLGarage.actief().id); 'ok'`);
+    toets('uit (standaard): geen tabblad Conditie', await app.ev(`!/Conditie/.test(document.querySelector('#plGarBody .gr-tabs').textContent)`));
+    await app.ev(`PLGarage._bewerk(PLGarage.actief().id); 'ok'`);
+    toets('het profiel heeft de keuze "Conditiescore bijhouden"', await app.ev(`!!document.getElementById('grf_score') && document.getElementById('grf_score').value === 'uit'`));
+    await app.ev(`document.getElementById('grf_score').value = 'aan'; PLGarage._bewaar(); 'ok'`);
+    toets('aan bewaard via het profiel', await wacht(`(window._nepPlatform.voertuigen.find(function (x) { return x.id === PLGarage.actief().id; }) || {}).score === 'aan'`, 5000));
+    await app.ev(`PLGarage._tab('conditie'); 'ok'`);
+    toets('aan: het tabblad Conditie vraagt eerst de laatste beurt', await wacht(`/Conditiescore starten/.test(document.getElementById('plGarBody').textContent) && !!document.getElementById('cd_datum')`, 5000));
+    await app.ev(`document.querySelector('[onclick*="_condStart"]').click(); 'ok'`);
+    toets('zonder datum: een melding, niets bewaard', await wacht(`/datum van de beurt/.test(document.getElementById('plGarBody').textContent)`, 3000));
+    await app.ev(`document.getElementById('cd_datum').value = '2026-09-01'; document.getElementById('cd_km').value = '120000'; document.querySelector('[onclick*="_condStart"]').click(); 'ok'`);
+    toets('de beurt staat in het logboek van de server', await wacht(`((window._nepPlatform.voertuigen.find(function (x) { return x.id === PLGarage.actief().id; }) || {}).onderhoud_log || []).some(function (b) { return b.datum === '2026-09-01' && b.km === 120000 && b.wat.indexOf('olie') >= 0; })`, 5000));
+    toets('daarna de score, niet opnieuw het formulier', await wacht(`/Conditiescore/.test(document.getElementById('plGarBody').textContent) && !document.querySelector('[onclick*="_condStart"]') && document.getElementById('plGarBody').textContent.indexOf('Onderhoud (1)') >= 0`, 5000),
+      await app.ev(`document.getElementById('plGarBody').textContent.slice(0, 400)`));
+    toets('"Waarom" en het logboek staan dicht: niets dringt zich op', await app.ev(`Array.prototype.every.call(document.querySelectorAll('#plGarBody details'), function (d) { return !d.open; })`));
+    await app.ev(`window._nepPlatform.voertuigen.forEach(function (x) { x.score = null; x.onderhoud_log = []; }); PLGarage.actief().score = null; PLGarage.sluit(); 'ok'`);
+
     console.log('\n── 5. de terugknop en het startscherm ──');
     await app.ev(`PLGarage.open(); 'ok'`);
     await app.ev(`appBack(); 'ok'`);

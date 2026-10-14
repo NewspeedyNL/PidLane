@@ -2842,6 +2842,109 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── een foto van het dashboard laten herkennen (#492, 14-10-2026) ──
+  {
+    issue: '#492',
+    naam: 'Lampjesgids: een foto van het dashboard, de AI wijst het lampje aan, de gids zegt wat je doet',
+    waarom: 'Wie niet weet hoe het lampje heet, kon alleen zoeken op een omschrijving van de vorm.',
+    proef: async function () {
+      if (!window.PLLampjes || !PLLampjes._kern || typeof PLLampjes._kern.leesFoto !== 'function') return { staat: 'FOUT', detail: 'PLLampjes.leesFoto ontbreekt — oude pidlane-lampjes.js (herladen?)' };
+      var r = PLLampjes._kern.leesFoto('<lampjes>{"ids":["olie","verzonnen"],"zeker":"hoog"}</lampjes>', PLLampjes._kern.LAMPJES);
+      if (r.ids.join() !== 'olie') return { staat: 'FOUT', detail: 'een verzonnen id komt door: ' + r.ids.join() };
+      var ak = null; try { ak = localStorage.getItem('pl_lampfoto_akkoord'); } catch (e) { ak = null; }
+      return { staat: 'OK', detail: 'lezen goed · toestemming voor foto\'s ' + (ak === '1' ? 'gegeven' : 'nog niet gevraagd') };
+    }
+  },
+
+  // ── het onderhoudsschema van dit model (#490, 14-10-2026) ──
+  {
+    issue: '#490',
+    naam: 'Onderhoudsschema per model: de AI op een tik, gelabeld, lokaal bewaard, olie-interval over te nemen',
+    waarom: 'Wanneer de distributieriem moet, wist de app niet; de intervallen in de conditiescore zijn algemene standaarden.',
+    proef: async function () {
+      if (!window.PLSchema || !PLSchema._kern) return { staat: 'FOUT', detail: 'PLSchema ontbreekt — pidlane-schema.js niet geladen (herladen?)' };
+      var K = PLSchema._kern, r = K.lees('<schema>[{"id":"olie","km":15000,"mnd":12},{"id":"turbo","km":5}]</schema>');
+      if (r.items.length !== 1 || r.items[0].id !== 'olie') return { staat: 'FOUT', detail: 'het AI-antwoord wordt niet goed gelezen: ' + JSON.stringify(r.items) };
+      if (!window.PLGarage || typeof PLGarage.zetInterval !== 'function') return { staat: 'FOUT', detail: 'PLGarage.zetInterval ontbreekt — overnemen kan niet (herladen?)' };
+      var n = 0; try { for (var i = 0; i < localStorage.length; i++) if (/^pl_schema_/.test(localStorage.key(i))) n++; } catch (e) { n = -1; }
+      return { staat: 'OK', detail: 'lezen goed · ' + (n < 0 ? 'opslag onleesbaar' : n + ' schema(\'s) bewaard op dit toestel') };
+    }
+  },
+
+  // ── bekende kwalen per motor en bouwjaar (#491, 14-10-2026) ──
+  {
+    issue: '#491',
+    naam: 'Bekende kwalen: alleen wat bij deze motor en dit bouwjaar past, anders "bij sommige motoren"',
+    waarom: 'AUTO_KENNIS gaf per merk alle zwakke punten van die brandstof, ook van motoren en bouwjaren die de auto niet heeft.',
+    proef: async function () {
+      if (typeof autoKennisVoorMerk !== 'function') return { staat: 'FOUT', detail: 'autoKennisVoorMerk ontbreekt' };
+      var oud = autoKennisVoorMerk('Volkswagen', 'benzine', { cc: 1390, jaar: 2011 }), nieuw = autoKennisVoorMerk('Volkswagen', 'benzine', { cc: 1395, jaar: 2016 });
+      var ea = function (r) { return !!r && r.zwak.some(function (t) { return /EA111/.test(t); }); };
+      if (!ea(oud)) return { staat: 'FOUT', detail: 'een 1.4 TSI van 2011 krijgt de EA111-kettingspanner niet — oude pidlane-motortype.js of pidlane-data.js (herladen?)' };
+      if (ea(nieuw)) return { staat: 'FOUT', detail: 'een 1.4 TSI van 2016 krijgt de EA111-kettingspanner toch' };
+      var v = (typeof getVehicle === 'function') ? getVehicle() : null;
+      if (!v || !v.merk) return { staat: 'OK', detail: 'filter goed · geen voertuig herkend' };
+      var k = autoKennisVoorMerk(v.merk, v.brandstof, { jaar: v.year });
+      return { staat: 'OK', detail: 'filter goed · ' + v.merk + ' ' + (v.year || '') + ': ' + (k ? k.zwak.length + ' bekende punten' : 'merk niet in de kennisbank') };
+    }
+  },
+
+  // ── de lampjesgids tekent echte dashboardsymbolen (#495, 14-10-2026) ──
+  {
+    issue: '#495',
+    naam: 'Lampjesgids: elk lampje een getekend pictogram zoals in het dashboard, plus handrem en servicebeurt',
+    waarom: 'De gids toonde emoji\'s (een vat voor de oliedruk, een stoel voor de airbag) die niet op het dashboard lijken, terwijl je een brandend lampje juist op vorm zoekt.',
+    proef: async function () {
+      if (!window.PLLampjes || !PLLampjes._kern || !PLLampjes._kern.PICTO) return { staat: 'FOUT', detail: 'PLLampjes.PICTO ontbreekt — oude pidlane-lampjes.js (herladen?)' };
+      var K = PLLampjes._kern, zonder = K.LAMPJES.filter(function (l) { return !K.PICTO[l.id]; }).map(function (l) { return l.id; });
+      if (zonder.length) return { staat: 'FOUT', detail: 'zonder pictogram: ' + zonder.join(', ') };
+      if (!K.LAMPJES.some(function (l) { return l.id === 'handrem'; })) return { staat: 'FOUT', detail: 'de handrem ontbreekt' };
+      return { staat: 'OK', detail: K.LAMPJES.length + ' lampjes, elk met een getekend pictogram' };
+    }
+  },
+
+  // ── een nieuwe terugroepactie wordt gemeld (#493, 14-10-2026) ──
+  {
+    issue: '#493',
+    naam: 'Terugroepacties: één keer per dag bij openen, nieuwe acties als melding, de eerste keer stil',
+    waarom: 'De app zag een terugroepactie alleen als je zelf een kenteken-check deed; met herinneringen aan meldt hij nu een nieuwe actie voor je eigen voertuigen.',
+    proef: async function () {
+      if (!window.PLHerinner || !PLHerinner._kern || typeof PLHerinner._kern.recallNieuw !== 'function') return { staat: 'FOUT', detail: 'PLHerinner.recallNieuw ontbreekt — oude pidlane-herinner.js (herladen?)' };
+      var K = PLHerinner._kern, A = { referentiecode: 'X1', open: true };
+      if (K.recallNieuw({}, 'K', { merk: 'M', acties: [A] }).nieuw.length) return { staat: 'FOUT', detail: 'de eerste ronde meldt een actie die er al stond' };
+      if (K.recallNieuw({ K: [] }, 'K', { merk: 'M', acties: [A] }).nieuw.length !== 1) return { staat: 'FOUT', detail: 'een nieuwe open actie wordt niet gemeld' };
+      if (K.recallNieuw({}, 'K', { merk: null, acties: [] }).telt) return { staat: 'FOUT', detail: 'een mislukte opzoeking telt mee' };
+      if (!PLHerinner.aan()) return { staat: 'LET OP', detail: 'regels goed · herinneringen staan uit, dus geen terugroepronde' };
+      var g = {}, d = ''; try { g = JSON.parse(localStorage.getItem('pl_recall_gezien') || '{}'); d = JSON.parse(localStorage.getItem('pl_recall_dag') || '""'); } catch (e) { g = {}; }
+      return { staat: 'OK', detail: 'aan · ' + Object.keys(g).length + ' kenteken(s) bekend · laatste volledige ronde ' + (d || 'nog niet') };
+    }
+  },
+
+  // ── de conditiescore (#475, 13-10-2026) ──
+  {
+    issue: '#475',
+    naam: 'Conditiescore: per voertuig aan of uit, de auto tegen zichzelf, en de ritten meten altijd mee',
+    waarom: 'Uitgesteld onderhoud moest zichtbaar worden als een score die langzaam zakt, zonder een lijst die de klant moet bijhouden: één beurt invullen, de rest komt uit de ritten.',
+    proef: async function () {
+      if (!window.PLConditie || typeof PLConditie.beoordeel !== 'function') return { staat: 'FOUT', detail: 'PLConditie ontbreekt — oude pidlane-conditie.js of niet in index.html (herladen?)' };
+      if (!window.PLGarage || typeof PLGarage.mode06 !== 'function') return { staat: 'FOUT', detail: 'PLGarage.mode06 ontbreekt — oude pidlane-garage.js (herladen?)' };
+      var d = 864e5, nu = Date.now();
+      var r = function (i, tw) { return { start: new Date(nu - (30 - i) * d).toISOString(), km: 20, duur_s: 1500, gem_kmh: 50, verbruik_l100: 6, extra: { cd: { tw: tw, sr: 20, lv: 14.2 } } }; };
+      var rs = []; for (var i = 0; i < 10; i++) rs.push(r(i, i < 5 ? 1 : 8));
+      var v = { onderhoud_log: [{ datum: new Date(nu - 60 * d).toISOString().slice(0, 10), km: 1000, wat: ['olie'] }] };
+      var m = PLConditie.beoordeel(v, rs, { nu: nu });
+      if (!(m.deel.brandstof < 90)) return { staat: 'FOUT', detail: 'een trim van +1 naar +8 % kost geen punten (brandstof ' + m.deel.brandstof + ')' };
+      if (PLConditie.beoordeel(v, rs.slice(0, 8), { nu: nu }).conditie.klaar) return { staat: 'FOUT', detail: 'acht ritten geven al een rijmeting' };
+      var g = PLGarage.actief ? PLGarage.actief() : null;
+      var rit = PLGarage.staat ? PLGarage.staat().rit : null;
+      var meet = rit ? ' · lopende rit verzamelt: ' + (rit.cd ? Object.keys(PLConditie.samenvat(rit.cd) || {}).join(', ') || 'nog te kort' : 'niets (FOUT?)') : ' · geen lopende rit';
+      if (rit && !rit.cd) return { staat: 'FOUT', detail: 'er loopt een rit, maar hij verzamelt geen conditiekenmerken' };
+      if (!g) return { staat: 'LET OP', detail: 'regel goed, maar geen actief voertuig in Mijn voertuigen' + meet };
+      if (g.score !== 'aan') return { staat: 'LET OP', detail: 'regel goed · conditiescore staat uit voor ' + (g.naam || 'dit voertuig') + ' (Profiel → Conditiescore bijhouden)' + meet };
+      return { staat: 'OK', detail: 'aan · ' + (PLConditie.heeftBasis(g) ? 'basis ingevuld' : 'nog geen beurt ingevuld (tabblad Conditie)') + meet };
+    }
+  },
+
   // ── contact uit is geen storing (#487, 13-10-2026) ──
   {
     issue: '#487',
@@ -10555,6 +10658,10 @@ const CAMPAGNE = {
     '── #469: TANKEN HERKENNEN ────────',
     'ZET HET AAN. Mijn voertuigen → je auto → Profiel → Tankbeurten bijhouden: aan. Het staat standaard uit.',
     'TANK MET DE APP VERBONDEN, OF ERNA. Sta stil vóór het tanken (de app legt het peil vast), tank, en verbind daarna weer of laat hem verbonden. Komt de vraag "Getankt?" met een peil dat klopt met wat je dashboard zegt? Komt hij maar één keer? Komt hij nooit bij een helling of een bocht zonder tanken? Zo niet: plak het peil vóór en na uit de vraag in #469.',
+    '── #475: DE CONDITIESCORE ────────',
+    'ZET HEM AAN. Mijn voertuigen → je auto → Profiel → Conditiescore bijhouden: aan. Open het tabblad Conditie en vul één keer de laatste beurt in. Was dat te veel gedoe? Zet het in #475.',
+    'RIJ ZOALS ALTIJD. Na elke rit van minstens 3 km verzamelt de app trim, stationair, opwarmtijd en laadspanning. Na tien ritten telt de rijmeting mee. Springt de score tussen twee gewone ritten meer dan vijf punten? Plak "Waarom deze score" in #475: dan is een dode zone te krap.',
+    'MODE 06 TIJDENS EEN RIT. Lees één keer de monitortests terwijl de rit loopt: de missers horen in die rit mee te gaan. Staat er na de rit niets onder Ontstekingsmissers, dan kent je auto geen misfire-monitor in mode 06 (zeg dat in #475).',
     '── WAT DEZE RONDE NIET OPLOST ────────',
     'HYBRIDE (#430, #452) heeft een hybride nodig; het analyserapport (#448) een analyse met AI, geparkeerd.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'

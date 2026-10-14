@@ -355,7 +355,7 @@
     }
     var hr = herinnerRegel();
     if (hr) h += '<div class="plz-mijn" data-plz="herinner" onclick="PLHerinner.zet(' + (hr.aan ? 'false' : 'true') + ')"><span aria-hidden="true">' + (hr.aan ? '🔔' : '🔕') + '</span>' +
-      '<span style="flex:1">' + (hr.aan ? '<b>Herinnering aan</b> · APK en onderhoud, 30 en 7 dagen vooraf' : '<b>Herinner me</b> aan de APK en het onderhoud') + '</span><span style="font-weight:800;color:var(--bl)">' + (hr.aan ? 'Uit' : 'Aan') + '</span></div>';
+      '<span style="flex:1">' + (hr.aan ? '<b>Herinnering aan</b> · APK en onderhoud, 30 en 7 dagen vooraf, en nieuwe terugroepacties' : '<b>Herinner me</b> aan de APK, het onderhoud en terugroepacties') + '</span><span style="font-weight:800;color:var(--bl)">' + (hr.aan ? 'Uit' : 'Aan') + '</span></div>';
     h += '<div class="plz-rij">' + knoppen.map(function (k) {
       var b = KNOP[k];
       return '<button type="button" class="plz-k" data-plz="' + k + '" onclick="' + b.on + '"><span>' + b.ic + ' ' + esc(b.t) + '</span><small>' + esc(b.d) + '</small></button>';

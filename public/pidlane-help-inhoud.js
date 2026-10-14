@@ -79,12 +79,12 @@ var PL_HULP = {
         '<ul>' +
         '<li><b>Kenteken-check</b> — APK, verzekering, NAP en terugroepacties uit het RDW.</li>' +
         '<li><b>Er is iets mis</b> — kies wat je merkt, beantwoord een paar vragen en zie wat het waarschijnlijk is, en wat een adapter zou meten.</li>' +
-        '<li><b>Lampje brandt?</b> — wat een dashboardlampje betekent en of je mag doorrijden.</li>' +
+        '<li><b>Lampje brandt?</b> — wat een dashboardlampje betekent en of je mag doorrijden. Met <b>Foto van het dashboard</b> wijst de AI het lampje aan (kost tegoed; de foto wordt niet bewaard).</li>' +
         '<li><b>Foutcode opzoeken</b> — bijvoorbeeld P0301. Dit staat in de app zelf.</li>' +
         '<li><b>Simuleer verbinding</b> — alles proberen, er wordt niets bewaard.</li>' +
         '</ul>' +
-        '<p>Onder de kenteken-check staan ook de <b>milieuklasse</b> (brandstof en emissieklasse, met een link naar milieuzones.nl), een schatting van de <b>kosten per maand</b> (wegenbelasting en brandstof) en of er een <b>adapter past</b>.</p>' +
-        '<p>Na een kenteken-check kun je <b>Dit is mijn auto</b> kiezen. Staat er een APK-datum bij, dan verschijnt ook <b>Herinner me</b>.</p>' +
+        '<p>Onder de kenteken-check staan ook de <b>milieuklasse</b> (brandstof en emissieklasse, met een link naar milieuzones.nl), een schatting van de <b>kosten per maand</b> (wegenbelasting en brandstof), het <b>onderhoudsschema</b> van dit model (de AI zoekt het op; kost tegoed, niet geverifieerd) en of er een <b>adapter past</b>.</p>' +
+        '<p>Na een kenteken-check kun je <b>Dit is mijn auto</b> kiezen. Staat er een APK-datum bij, dan verschijnt ook <b>Herinner me</b>. Met herinneringen aan kijkt de app ook één keer per dag of er een nieuwe terugroepactie is voor je auto, en meldt hij die.</p>' +
         '<p>In het verbindscherm brengt <b>Zonder adapter</b> je hier ook.</p>',
       zie: ['wat', 'verbinden'] },
 
@@ -238,6 +238,8 @@ var PL_HULP = {
         'Bij elke tankbeurt staat ook wat de ritten van die cyclus samen zeggen: hoeveel ritten, hoe lang je reed, je gemiddelde snelheid en het verbruik volgens de app. ' +
         'Tankte je twee keer vol, dan zie je ook hoeveel liter de app mat tegenover wat er in de tank ging. Dat staat er alleen als elke rit liters heeft; reed je een stuk zonder de app, dan klopt de vergelijking niet en laat de app hem weg.</p>' +
         '<p>Onder het tabblad <b>Tankbeurten</b> van je voertuig vul je bij het tanken in wat je weet: liters, literprijs of bedrag, de kilometerstand, of de tank vol is, en het bereik op je dashboard vóór en ná het tanken. Vanaf de tweede tankbeurt zie je hoeveel km je echt reed tegenover wat de auto beloofde. Met een volle tank en de liters rekent de app je echte verbruik uit. <b>⤓ CSV (Excel)</b> zet alles in een spreadsheet.</p>' +
+        '<p><b>Conditiescore</b> staat ook standaard uit. Zet hem aan in het <b>Profiel</b> van je voertuig bij <b>Conditiescore bijhouden</b>; dan verschijnt het tabblad <b>Conditie</b>. Daar vul je één keer in wanneer de laatste beurt was en bij welke km-stand. Daarna houdt de app de score zelf bij: uit je onderhoud (hoeveel van het interval op is) en uit je ritten, waarin je auto met zichzelf wordt vergeleken — trim, verbruik op vergelijkbare ritten, stationair, opwarmen, laadspanning. Na tien ritten van minstens 3 km telt de rijmeting mee. ' +
+        'Onder <b>Waarom deze score</b> staat wat punten kost, en na een nieuwe beurt (<b>🔧 Beurt toevoegen</b>) zie je wat hij opleverde. <b>📕 Gezondheidspaspoort</b> zet de score, het verloop en je logboek in een PDF, bijvoorbeeld voor bij verkoop. Zakt de score duidelijk, dan krijg je één melding. De score is geen keuring; je onderhoudsboekje gaat voor.</p>' +
         '<p>Hulp nodig bij je auto? Tik onderaan Mijn voertuigen op <b>Laat PidLane meekijken</b>. Je krijgt een code van zes tekens, zeven dagen geldig. Met die code kan PidLane je voertuigen, open punten en eigen sensoren inzien en sensoren voor je auto toevoegen — niets wijzigen of verwijderen. Je ziet daar ook hoe vaak er gekeken is, en met <b>Intrekken</b> stop je het meteen.</p>',
       zie: ['check', 'account'] },
 
