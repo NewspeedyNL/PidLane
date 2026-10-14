@@ -36,6 +36,13 @@
    meldt een nieuwe open actie (Android-melding, anders in de app).
  - De eerste keer per kenteken is stil; een mislukte RDW-opzoeking telt
    niet en wordt de volgende keer herhaald.
+ 14-10-2026 — Onderhoudsschema per model via de AI (#490)
+ ═══════════════════════════════════════════════════════════
+
+ - Onder de kenteken-check: "Bekijk het schema". De AI geeft per onderdeel
+   van de conditiescore het interval voor dit model, gelabeld als niet
+   geverifieerd; alleen met tegoed, lokaal bewaard per motor en bouwjaar.
+ - Het olie-interval is over te nemen in Mijn voertuigen (PLGarage.zetInterval).
 
  ═══════════════════════════════════════════════════════════
  13-10-2026 — Conditiescore per voertuig (#475)

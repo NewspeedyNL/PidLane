@@ -1812,6 +1812,14 @@
     await ververs();
   }
 
+  /* Het onderhoudsinterval zetten, zonder formulier (#490: het olie-interval
+     uit het onderhoudsschema van PLSchema). Dezelfde velden als condBewaar(). */
+  async function zetInterval(id, km, mnd) {
+    if (!voertuig(id)) throw new Error('dit voertuig staat niet in Mijn voertuigen');
+    await api('voertuig_opslaan', { voertuig: { id: id, onderhoud_interval_km: km || null, onderhoud_interval_mnd: mnd || null } });
+    await ververs();
+  }
+
   async function bewaarFormulier() {
     var w = formWaarden();
     var fout = document.getElementById('grfFout');
@@ -1843,6 +1851,7 @@
     dossier: dossier,
     dossierBewaar: dossierBewaar,
     actief: actief,
+    zetInterval: zetInterval,
     gekoppeld: function () { return versnellingsVoertuig(); },
     selectieOordeel: selectieOordeel,
     staat: function () { return _st; },
