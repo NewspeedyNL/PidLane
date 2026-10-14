@@ -79,12 +79,21 @@ jobs:
       - name: Draai plcheck
         run: bash plcheck.sh .
 
-  tegenproef:
-    name: tegenproef (bouwt fouten na, verwacht rood)
+  tegenproef-deel:
+    name: tegenproef deel ${{ matrix.deel }}/4
     runs-on: ubuntu-latest
     # Apart van plcheck en niet ervoor: plcheck is de poort, dit is de vraag of
     # die poort iets voorstelt. Draait ook als plcheck faalt, want juist dan wil
     # je weten of de reeks nog onderscheidt.
+    #
+    # In vier delen sinds 14-10-2026: op één runner kostte de volle tabel 14
+    # minuten en was hij de langste job van elke run. --deel verdeelt de
+    # browsermutaties (de trage) en de node-mutaties elk om en om; samen dekken
+    # de vier delen de tabel precies één keer. fail-fast uit: zie alle delen.
+    strategy:
+      fail-fast: false
+      matrix:
+        deel: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -96,11 +105,25 @@ jobs:
 
       # plmutate.sh toetst HEAD, in een eigen git worktree per werker, en
       # weigert op een werkmap met niet-vastgelegde wijzigingen; na een verse
-      # checkout is die schoon. Altijd de VOLLE tabel: --sinds is voor lokaal.
-      # Vier tegelijk, zoveel kernen heeft de runner. Nagemeten op 29-09-2026
-      # op vier kernen: 732 mutaties in 261 s, één tegelijk 944 s.
+      # checkout is die schoon. Nooit --sinds hier: dat is voor lokaal.
+      # Vier tegelijk, zoveel kernen heeft de runner.
       - name: Draai plmutate
-        run: bash plmutate.sh . --parallel 4
+        run: bash plmutate.sh . --parallel 4 --deel ${{ matrix.deel }}/4
+
+  tegenproef:
+    name: tegenproef (bouwt fouten na, verwacht rood)
+    runs-on: ubuntu-latest
+    # Draagt de naam die branch protection als verplicht kent. De matrix
+    # hierboven heeft vier andere namen; zonder deze job zou de verplichte
+    # check nooit meer rapporteren. always(): ook bij een rood deel moet hier
+    # rood staan, niet "skipped" — en skipped telt bij GitHub als geslaagd.
+    needs: tegenproef-deel
+    if: always()
+    steps:
+      - name: Alle vier de delen groen?
+        run: |
+          echo "uitslag van de delen: ${{ needs.tegenproef-deel.result }}"
+          [ "${{ needs.tegenproef-deel.result }}" = "success" ]
 
   browserproeven:
     name: browserproeven (de echte app in een echte browser)
@@ -132,8 +155,9 @@ jobs:
           fi
           echo "Browser: $pad"
 
+      # Vier tegelijk sinds 14-10-2026: na elkaar kostte dit 8,5 minuut.
       - name: Draai de browserproeven
-        run: bash plbrowser.sh .
+        run: bash plbrowser.sh . --parallel 4
 
   geheimen:
     name: Geen sleutels in de repo

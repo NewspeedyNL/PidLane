@@ -41,6 +41,7 @@
 #           bash plmutate.sh . --sinds origin/main   alleen wat je branch raakte
 #           bash plmutate.sh . --parallel 4          vier tegelijk (standaard:
 #                                                    het aantal kernen, hoogstens 4)
+#           bash plmutate.sh . --deel 2/4            het tweede kwart (CI-matrix)
 #
 # SNELLER SINDS 29-09-2026. De tabel telde 732 mutaties en een volledige run
 # duurde zo'n 16 minuten. De tijd zat bijna helemaal in de 49 mutaties op een
@@ -61,16 +62,23 @@
 #                 bestand B stil stukmaken, en dat ziet alleen de volle run.
 #                 Daarom draait CI hem altijd helemaal, en zegt een deelrun dat
 #                 in zijn laatste regel.
+#   --deel K/N    (14-10-2026) alleen het K-de van N stukken. Voor CI: de volle
+#                 tabel duurde daar 14 minuten op één runner, en N runners naast
+#                 elkaar delen dat door N. Samen dekken de N delen de tabel
+#                 precies één keer. Browser- en node-mutaties worden elk apart
+#                 om en om verdeeld, anders kan één deel alle trage krijgen.
 # ══════════════════════════════════════════════════════════════════
 
-REPO=""; SINDS=""; PARALLEL=""
+REPO=""; SINDS=""; PARALLEL=""; DEEL=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --sinds)      SINDS="$2"; shift 2 ;;
     --sinds=*)    SINDS="${1#*=}"; shift ;;
     --parallel|-j) PARALLEL="$2"; shift 2 ;;
     --parallel=*) PARALLEL="${1#*=}"; shift ;;
-    -*)           echo "Onbekende optie: $1 (bekend: --sinds REF, --parallel N)"; exit 2 ;;
+    --deel)       DEEL="$2"; shift 2 ;;
+    --deel=*)     DEEL="${1#*=}"; shift ;;
+    -*)           echo "Onbekende optie: $1 (bekend: --sinds REF, --parallel N, --deel K/N)"; exit 2 ;;
     *)            REPO="$1"; shift ;;
   esac
 done
@@ -413,6 +421,7 @@ MUTATIES=(
 # blokkeert. Deze twee bouwen dat na.
 ".github/workflows/tests.yml@@    name: browserproeven (de echte app in een echte browser)@@    name: browserproeven@@test-testgate.js@@een jobnaam is ingekort: de ruleset wacht op een naam die niet meer gerapporteerd wordt"
 ".github/workflows/tests.yml@@    name: Geen sleutels in de repo@@    name: Sleutelscan@@test-testgate.js@@de sleutelscan heet anders: elke PR blokkeert stil op de oude naam"
+".github/workflows/tests.yml@@    needs: tegenproef-deel\n    if: always()@@    needs: tegenproef-deel@@test-testgate.js@@de verplichte tegenproef draait niet bij een rood deel: skipped telt als geslaagd"
 # ── de tak zelf bijwerken (18-09-2026, spoor 2 van #238) ──
 # De duurste is de derde: het besluit zegt dan wel bijwerken, maar de workflow
 # doet er niets mee. De poort staat dan groen getoetst dode code te zijn, en de
@@ -1426,6 +1435,16 @@ MUTATIES=(
 "public/pidlane-pip.js@@    var slecht = lang.filter(function (p) { return p.maxGat > PIP_GAT_MS; });@@    var slecht = [];@@test-pip.js@@de #319-proef zegt ok bij een meetlus die acht seconden stillag"
 "public/pidlane-pip.js@@        return tellen.length ? Math.round(Math.max.apply(null, tellen.map(function (p) { return p.maxGat; })) / 100) / 10 : null;@@        return tellen.length ? 0 : null;@@test-pip.js@@de meetopdracht van #319 hoort nooit een stil venster: pip-gat-s zegt altijd 0"
 "public/pidlane-pip.js@@    var lang = perioden().filter(function (p) { return p.verbonden; });@@    var lang = perioden();@@test-pip.js@@een PiP-periode zonder verbinding haalt de voorwaarde van #319: 2 minuten klein op de oprit telt als meting"
+"public/pidlane-rijmodus.js@@    if (h < GRENS.h || w < GRENS.w) return 'rij';@@    if (h < GRENS.h && w < GRENS.w) return 'rij';@@test-rijmodus.js@@en- in plaats van of-: een portret-split van 412 breed blijft de volle app in een half scherm"
+"public/pidlane-rijmodus.js@@    if (vorige === 'rij' && (h < GRENS.h + GRENS.marge@@    if (false && (h < GRENS.h + GRENS.marge@@test-rijmodus.js@@geen hysterese: slepen aan de deler laat de weergave heen en weer klapperen"
+"public/pidlane-rijmodus.js@@    if (!f.verbonden) return { modus: 'normaal'@@    if (false) return { modus: 'normaal'@@test-rijmodus.js@@een klein venster zonder adapter verbergt de hele app achter vier streepjes"
+"public/pidlane-rijmodus.js@@    if (f.stand === 'uit') return@@    if (f.stand === 'UIT') return@@test-rijmodus.js@@de handmatige uitstand doet niets meer"
+"public/pidlane-rijmodus.js@@    if (hard && (v < hard.min || v > hard.max)) return 'meetfout';@@    if (false) return 'meetfout';@@test-rijmodus.js@@een vastgelopen sensor (buiten de harde limiet) kleurt rood in plaats van grijs: de bestuurder schrikt van een meetfout"
+"public/pidlane-rijmodus.js@@    if (typeof ouderdomMs === 'number' && ouderdomMs > OUD_MS) return 'oud';@@    if (false) return 'oud';@@test-rijmodus.js@@een waarde die niet meer ververst staat er als actueel"
+"public/pidlane-rijmodus.js@@    return buiten >= ROOD_FRACTIE * (lo.max - lo.min) ? 'alarm' : 'letop';@@    return 'alarm';@@test-rijmodus.js@@elke LET_OP-overschrijding is meteen rood: oranje betekent niets meer"
+"public/pidlane-rijmodus.js@@    if (_cache[id] === sleutel) return false;@@    if (false) return false;@@test-rijmodus.js@@elke tik herschrijft alle tegels, ook als er niets veranderde (de oude waakronde-bug)"
+"public/pidlane-rijmodus.js@@        if (meldLuid && reden) {@@        if (reden) {@@test-rijmodus.js@@ook stille PLMon-events komen in de banner"
+"public/pidlane-rijmodus.js@@    if (typeof aantal !== 'number' || isNaN(aantal)) return { tekst: '—', klasse: 'leeg' };@@    if (false) return { tekst: '—', klasse: 'leeg' };@@test-rijmodus.js@@niet uitgelezen leest als OK: de statustegel belooft een gezonde motor zonder dat er iets gelezen is"
 "public/pidlane-adapter.js@@        for (let j = i - 3; j <= i + 3; j++)@@        for (let j = i; j < i; j++)@@test-adapterpaneel.js@@de stap ligt een paar monsters te vroeg en noemt de verkeerde oorzaak (#302)"
 "public/pidlane-adapter.js@@    if (!(g.factor >= 1.3)) return@@    if (!(g.factor >= 3)) return@@test-adapterpaneel.js@@de drift van 150 naar 270 ms heet deze rit niet opgetreden (#302)"
 "public/pidlane-visueel.js@@  if(nu-_laatsteAlarm<ALARM_MS) return false;@@@@bproef-visueel.js@@de koelwaterwaarschuwing piept elke tik op een lange klim"
@@ -2111,6 +2130,24 @@ else
   KEUZE=("${!MUTATIES[@]}")
 fi
 
+# --deel K/N: browser- en node-mutaties elk om en om, zodat de trage
+# browsermutaties gelijk over de delen vallen.
+if [ -n "$DEEL" ]; then
+  [[ "$DEEL" =~ ^([1-9][0-9]*)/([1-9][0-9]*)$ ]] && [ "${BASH_REMATCH[1]}" -le "${BASH_REMATCH[2]}" ] \
+    || { echo "--deel verwacht K/N met 1 ≤ K ≤ N, niet '$DEEL'"; exit 2; }
+  DK=$(( BASH_REMATCH[1] - 1 )); DN=${BASH_REMATCH[2]}
+  ALLES=${#KEUZE[@]}; DEZE=(); nb=0; nn=0
+  for i in "${KEUZE[@]}"; do
+    if [[ "$(veld "${MUTATIES[$i]}" 3)" == bproef-* ]]; then
+      [ $(( nb++ % DN )) -eq "$DK" ] && DEZE+=("$i")
+    else
+      [ $(( nn++ % DN )) -eq "$DK" ] && DEZE+=("$i")
+    fi
+  done
+  KEUZE=("${DEZE[@]}")
+  echo "${GRIJS}  deel $DEEL: ${#KEUZE[@]} van $ALLES mutaties${UIT}"
+fi
+
 if [ -z "$PARALLEL" ]; then
   PARALLEL=$( (nproc || getconf _NPROCESSORS_ONLN || echo 1) 2>/dev/null | head -1 )
   [ "$PARALLEL" -gt 4 ] 2>/dev/null && PARALLEL=4
@@ -2118,6 +2155,9 @@ fi
 [[ "$PARALLEL" =~ ^[1-9][0-9]*$ ]] || { echo "--parallel verwacht een getal vanaf 1, niet '$PARALLEL'"; exit 2; }
 [ "$PARALLEL" -gt "${#KEUZE[@]}" ] && PARALLEL=${#KEUZE[@]}
 
+if [ "${#KEUZE[@]}" -eq 0 ] && [ -n "$DEEL" ] && [ -z "$SINDS" ]; then
+  echo "  Deel $DEEL is leeg."; exit 0
+fi
 if [ "${#KEUZE[@]}" -eq 0 ]; then
   echo "  Niets te doen: geen enkele mutatie raakt wat sinds $SINDS veranderde."
   echo
@@ -2271,7 +2311,10 @@ if [ $ontsnapt -gt 0 ]; then
   exit 1
 fi
 
-if [ -n "$SINDS" ]; then
+if [ -n "$DEEL" ] && [ -z "$SINDS" ]; then
+  echo "${GROEN}Elke nagebouwde fout in deel $DEEL is gevangen.${UIT}"
+  echo "${GEEL}Deel $DEEL: ${#KEUZE[@]} mutaties. Alleen alle delen samen zijn de volle tabel.${UIT}"
+elif [ -n "$SINDS" ]; then
   echo "${GROEN}Elke nagebouwde fout in deze deelrun is gevangen.${UIT}"
   echo "${GEEL}Deelrun: ${#KEUZE[@]} van ${#MUTATIES[@]}. De volle tabel draait in CI.${UIT}"
 else

@@ -22,9 +22,30 @@
 # is daar dus geen ontsnapping.
 #
 # Draaien:  bash plbrowser.sh .
+#           bash plbrowser.sh . --parallel 4   vier proeven tegelijk
+#
+# PARALLEL SINDS 14-10-2026. 49 proeven na elkaar kostten in CI 8,5 minuut,
+# bijna allemaal wachten op Chromium en de app-boot. plbrowser.js kiest per
+# proef een vrije poort en een eigen profielmap — plmutate.sh draait ze al
+# vier tegelijk — dus naast elkaar kan. De uitvoer blijft in bestandsvolgorde.
+# Standaard: het aantal kernen, hoogstens 4.
 # ══════════════════════════════════════════════════════════════════
 
-REPO="${1:-$HOME/PidLane}"
+REPO=""; PARALLEL=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --parallel|-j) PARALLEL="$2"; shift 2 ;;
+    --parallel=*)  PARALLEL="${1#*=}"; shift ;;
+    -*)            echo "Onbekende optie: $1 (bekend: --parallel N)"; exit 2 ;;
+    *)             REPO="$1"; shift ;;
+  esac
+done
+REPO="${REPO:-$HOME/PidLane}"
+if [ -z "$PARALLEL" ]; then
+  PARALLEL=$( (nproc || getconf _NPROCESSORS_ONLN || echo 1) 2>/dev/null | head -1 )
+  [ "$PARALLEL" -gt 4 ] 2>/dev/null && PARALLEL=4
+fi
+[[ "$PARALLEL" =~ ^[1-9][0-9]*$ ]] || { echo "--parallel verwacht een getal vanaf 1, niet '$PARALLEL'"; exit 2; }
 PUB="$REPO/public"
 [ -d "$PUB" ] || { echo "Geen public/ in $REPO"; exit 2; }
 
@@ -50,13 +71,30 @@ echo "  Chromium: $CHROOM"
 echo
 
 cd "$PUB" || exit 2
-n=0; stuk=0
-for f in bproef-*.js; do
-  [ -e "$f" ] || continue
-  n=$((n+1))
+PROEVEN=(); for f in bproef-*.js; do [ -e "$f" ] && PROEVEN+=("$f"); done
+n=${#PROEVEN[@]}; stuk=0
+UITMAP="$(mktemp -d "${TMPDIR:-/tmp}/plbrowser.XXXXXX")"
+trap 'rm -rf "$UITMAP"' EXIT
+echo "  ${#PROEVEN[@]} proeven, $PARALLEL tegelijk"
+echo
+
+# Elke proef schrijft naar zijn eigen bestand; de exitcode komt als laatste
+# in <naam>.exit, dus "bestaat .exit" betekent "klaar".
+draai() { node "$1" > "$UITMAP/$1.uit" 2>&1; echo $? > "$UITMAP/$1.exit"; }
+lopend=0
+for f in "${PROEVEN[@]}"; do
+  if [ "$lopend" -ge "$PARALLEL" ]; then wait -n; lopend=$((lopend-1)); fi
+  draai "$f" &
+  lopend=$((lopend+1))
+done
+wait
+
+for f in "${PROEVEN[@]}"; do
   echo "── $f"
-  if node "$f"; then :; else
-    echo "${ROOD}  ROOD${UIT}  $f gaf exit $?"
+  cat "$UITMAP/$f.uit"
+  code=$(cat "$UITMAP/$f.exit" 2>/dev/null || echo "?")
+  if [ "$code" != "0" ]; then
+    echo "${ROOD}  ROOD${UIT}  $f gaf exit $code"
     stuk=$((stuk+1))
   fi
   echo

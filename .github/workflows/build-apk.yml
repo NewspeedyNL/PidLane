@@ -612,6 +612,14 @@ jobs:
           nieuwTag = tag
           if 'android:supportsPictureInPicture' not in nieuwTag:
               nieuwTag = nieuwTag[:-1].rstrip() + '\n            android:supportsPictureInPicture="true">'
+          # Rijmodus (14-10-2026): split-screen naast de kaart. Vanaf targetSdk 24
+          # is resizeable de standaard, maar een library of thema kan hem
+          # uitzetten; expliciet zetten maakt het controleerbaar. Een vaste
+          # screenOrientation laat Android de app in split-screen letterboxen
+          # of weigeren, dus die gaat eraf.
+          nieuwTag = re.sub(r'\s*android:resizeableActivity="[^"]*"', '', nieuwTag)
+          nieuwTag = re.sub(r'\s*android:screenOrientation="[^"]*"', '', nieuwTag)
+          nieuwTag = nieuwTag[:-1].rstrip() + '\n            android:resizeableActivity="true">'
           mc = re.search(r'android:configChanges="([^"]*)"', nieuwTag)
           if mc:
               heeft = [x for x in mc.group(1).split("|") if x]
@@ -626,6 +634,7 @@ jobs:
 
           for naam, waarvoor in [
               ('android:supportsPictureInPicture="true"', 'de activiteit mag in een klein venster (#228)'),
+              ('android:resizeableActivity="true"', 'de activiteit mag in split-screen naast de kaart (rijmodus)'),
               ('FOREGROUND_SERVICE_CONNECTED_DEVICE', 'het servicetype dat bij een gekoppelde adapter hoort'),
               ('POST_NOTIFICATIONS', 'de melding die bij een foreground service hoort'),
               ('WAKE_LOCK', 'de partial wake lock die de CPU wakker houdt'),
@@ -1068,6 +1077,9 @@ jobs:
                       if not mcfg or c not in mcfg.group(1)]
               if mist:
                   print("FOUT: MainActivity herstart bij de wissel naar PiP — configChanges mist %s (#228)" % "|".join(mist))
+                  fout += 1
+              if 'android:resizeableActivity="false"' in act or 'android:screenOrientation=' in act:
+                  print("FOUT: MainActivity kan niet in split-screen (resizeableActivity=false of vaste screenOrientation) — de rijmodus naast de kaart werkt dan niet")
                   fout += 1
 
           for naam, waarvoor in [
