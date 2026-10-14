@@ -2787,6 +2787,20 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── de lampjesgids tekent echte dashboardsymbolen (#495, 14-10-2026) ──
+  {
+    issue: '#495',
+    naam: 'Lampjesgids: elk lampje een getekend pictogram zoals in het dashboard, plus handrem en servicebeurt',
+    waarom: 'De gids toonde emoji\'s (een vat voor de oliedruk, een stoel voor de airbag) die niet op het dashboard lijken, terwijl je een brandend lampje juist op vorm zoekt.',
+    proef: async function () {
+      if (!window.PLLampjes || !PLLampjes._kern || !PLLampjes._kern.PICTO) return { staat: 'FOUT', detail: 'PLLampjes.PICTO ontbreekt — oude pidlane-lampjes.js (herladen?)' };
+      var K = PLLampjes._kern, zonder = K.LAMPJES.filter(function (l) { return !K.PICTO[l.id]; }).map(function (l) { return l.id; });
+      if (zonder.length) return { staat: 'FOUT', detail: 'zonder pictogram: ' + zonder.join(', ') };
+      if (!K.LAMPJES.some(function (l) { return l.id === 'handrem'; })) return { staat: 'FOUT', detail: 'de handrem ontbreekt' };
+      return { staat: 'OK', detail: K.LAMPJES.length + ' lampjes, elk met een getekend pictogram' };
+    }
+  },
+
   // ── een nieuwe terugroepactie wordt gemeld (#493, 14-10-2026) ──
   {
     issue: '#493',

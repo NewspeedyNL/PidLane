@@ -18,6 +18,12 @@
    meldt een nieuwe open actie (Android-melding, anders in de app).
  - De eerste keer per kenteken is stil; een mislukte RDW-opzoeking telt
    niet en wordt de volgende keer herhaald.
+ 14-10-2026 — Lampjesgids: echte dashboardsymbolen, plus handrem en service (#495)
+ ═══════════════════════════════════════════════════════════
+
+ - Elk lampje een zelfgetekend pictogram in ISO 2575-stijl (inline SVG) in
+   de kleur van het lampje op een donker vlak, in plaats van een emoji.
+ - Nieuw: Handrem (parkeerrem) en Servicebeurt; nu 27 lampjes.
 
  ═══════════════════════════════════════════════════════════
  13-10-2026 — Conditiescore per voertuig (#475)
