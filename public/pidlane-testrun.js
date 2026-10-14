@@ -2787,6 +2787,21 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── het onderhoudsschema van dit model (#490, 14-10-2026) ──
+  {
+    issue: '#490',
+    naam: 'Onderhoudsschema per model: de AI op een tik, gelabeld, lokaal bewaard, olie-interval over te nemen',
+    waarom: 'Wanneer de distributieriem moet, wist de app niet; de intervallen in de conditiescore zijn algemene standaarden.',
+    proef: async function () {
+      if (!window.PLSchema || !PLSchema._kern) return { staat: 'FOUT', detail: 'PLSchema ontbreekt — pidlane-schema.js niet geladen (herladen?)' };
+      var K = PLSchema._kern, r = K.lees('<schema>[{"id":"olie","km":15000,"mnd":12},{"id":"turbo","km":5}]</schema>');
+      if (r.items.length !== 1 || r.items[0].id !== 'olie') return { staat: 'FOUT', detail: 'het AI-antwoord wordt niet goed gelezen: ' + JSON.stringify(r.items) };
+      if (!window.PLGarage || typeof PLGarage.zetInterval !== 'function') return { staat: 'FOUT', detail: 'PLGarage.zetInterval ontbreekt — overnemen kan niet (herladen?)' };
+      var n = 0; try { for (var i = 0; i < localStorage.length; i++) if (/^pl_schema_/.test(localStorage.key(i))) n++; } catch (e) { n = -1; }
+      return { staat: 'OK', detail: 'lezen goed · ' + (n < 0 ? 'opslag onleesbaar' : n + ' schema(\'s) bewaard op dit toestel') };
+    }
+  },
+
   // ── bekende kwalen per motor en bouwjaar (#491, 14-10-2026) ──
   {
     issue: '#491',

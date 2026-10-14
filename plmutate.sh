@@ -1683,6 +1683,10 @@ MUTATIES=(
 "public/pidlane-herinner.js@@    if (isDemo() || _bezig) return { gedaan: false, reden: isDemo() ? 'demo' : 'bezig' };@@    if (_bezig) return { gedaan: false, reden: 'bezig' };@@test-herinner.js@@de demo plant echte Android-meldingen voor een verzonnen auto"
 "public/pidlane-herinner.js@@        if (perm && perm.display === 'granted') {\n          await LN.schedule({ notifications: p.map(@@        if (true) {\n          await LN.schedule({ notifications: p.map(@@test-herinner.js@@zonder toestemming wordt er toch ingepland (en Android gooit een fout die niemand ziet)"
 "public/pidlane-herinner.js@@    return (h >>> 1) || 1;@@    return h | 0;@@test-herinner.js@@een melding-id kan negatief zijn: Android weigert hem"
+# ── Het onderhoudsschema van de AI (#490, 14-10-2026) ──
+"public/pidlane-schema.js@@      if (!r || !naam[r.id] || gehad[r.id]) return;@@      if (!r || gehad[r.id]) return;@@test-schema.js@@een onderdeel dat de app niet kent, komt toch in het schema (#490)"
+"public/pidlane-schema.js@@items.push({ id: r.id, naam: naam[r.id], km: geheel(r.km, 1000, 400000), mnd: geheel(r.mnd, 1, 240),@@items.push({ id: r.id, naam: naam[r.id], km: r.km, mnd: r.mnd,@@test-schema.js@@een onzinnig interval van de AI (3 km, 999 maanden) wordt overgenomen (#490)"
+"public/pidlane-schema.js@@    var km = o.km && o.km <= 100000 ? o.km : null, mnd = o.mnd && o.mnd <= 60 ? o.mnd : null;@@    var km = o.km, mnd = o.mnd;@@test-schema.js@@overnemen stuurt een interval dat de Worker weigert (#490)"
 # ── Bekende kwalen per motor en bouwjaar (#491, 14-10-2026) ──
 "public/pidlane-motortype.js@@  const binnen=(r,w)=>!r||w==null||(w>=r[0]&&(r[1]==null||w<=r[1]));@@  const binnen=(r,w)=>!r||w==null||(w>=r[0]);@@test-autokennis.js@@een zwak punt van tot 2013 geldt ook voor een auto van 2016 (#491)"
 "public/pidlane-motortype.js@@  const binnen=(r,w)=>!r||w==null||(@@  const binnen=(r,w)=>!r||(@@test-autokennis.js@@een onbekende cilinderinhoud verbergt een bekend probleem in plaats van het voorbehoud te tonen (#491)"

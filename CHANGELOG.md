@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Onderhoudsschema per model via de AI (#490)
+ ═══════════════════════════════════════════════════════════
+
+ - Onder de kenteken-check: "Bekijk het schema". De AI geeft per onderdeel
+   van de conditiescore het interval voor dit model, gelabeld als niet
+   geverifieerd; alleen met tegoed, lokaal bewaard per motor en bouwjaar.
+ - Het olie-interval is over te nemen in Mijn voertuigen (PLGarage.zetInterval).
+
+ ═══════════════════════════════════════════════════════════
  14-10-2026 — Bekende kwalen per motor en bouwjaar (#491)
  ═══════════════════════════════════════════════════════════
 
