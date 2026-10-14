@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 14-10-2026 — CI sneller: tegenproef in vier delen, browserproeven parallel
+ ═══════════════════════════════════════════════════════════
+
+ - De tegenproef (14 min op één runner) draait als matrix van vier delen:
+   `plmutate.sh --deel K/N` verdeelt browser- en node-mutaties elk om en om.
+   De verplichte check `tegenproef (...)` wacht op alle vier (`needs` +
+   `if: always()`), dus de ruleset hoeft niet mee.
+ - `plbrowser.sh --parallel N` (standaard kernen, max 4): 49 proeven in
+   ~2,5 min in plaats van 8,5. Uitvoer blijft in bestandsvolgorde.
+ - test-testgate.js kent hulpjobs; één mutatie erbij.
+
+ ═══════════════════════════════════════════════════════════
  14-10-2026 — Onderzoek: brandstofdruk en breedbandsonde als stap (#428)
  ═══════════════════════════════════════════════════════════
 
