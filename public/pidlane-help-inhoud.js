@@ -84,8 +84,6 @@ var PL_HULP = {
         '<li><b>Simuleer verbinding</b> — alles proberen, er wordt niets bewaard.</li>' +
         '</ul>' +
         '<p>Onder de kenteken-check staan ook de <b>milieuklasse</b> (brandstof en emissieklasse, met een link naar milieuzones.nl), een schatting van de <b>kosten per maand</b> (wegenbelasting en brandstof), het <b>onderhoudsschema</b> van dit model (de AI zoekt het op; kost tegoed, niet geverifieerd) en of er een <b>adapter past</b>.</p>' +
-        '<p>Na een kenteken-check kun je <b>Dit is mijn auto</b> kiezen. Staat er een APK-datum bij, dan verschijnt ook <b>Herinner me</b>.</p>' +
-        '<p>Onder de kenteken-check staan ook de <b>milieuklasse</b> (brandstof en emissieklasse, met een link naar milieuzones.nl), een schatting van de <b>kosten per maand</b> (wegenbelasting en brandstof) en of er een <b>adapter past</b>.</p>' +
         '<p>Na een kenteken-check kun je <b>Dit is mijn auto</b> kiezen. Staat er een APK-datum bij, dan verschijnt ook <b>Herinner me</b>. Met herinneringen aan kijkt de app ook één keer per dag of er een nieuwe terugroepactie is voor je auto, en meldt hij die.</p>' +
         '<p>In het verbindscherm brengt <b>Zonder adapter</b> je hier ook.</p>',
       zie: ['wat', 'verbinden'] },
