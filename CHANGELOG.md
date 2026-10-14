@@ -10,6 +10,43 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Onderhoudsschema per model via de AI (#490)
+ ═══════════════════════════════════════════════════════════
+
+ - Onder de kenteken-check: "Bekijk het schema". De AI geeft per onderdeel
+   van de conditiescore het interval voor dit model, gelabeld als niet
+   geverifieerd; alleen met tegoed, lokaal bewaard per motor en bouwjaar.
+ - Het olie-interval is over te nemen in Mijn voertuigen (PLGarage.zetInterval).
+
+ ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Bekende kwalen per motor en bouwjaar (#491)
+ ═══════════════════════════════════════════════════════════
+
+ - Een zwak punt in AUTO_KENNIS kan een cilinderinhoud, bouwjaren en een
+   motorcode dragen; autoKennisVoorMerk() filtert daarop als ze bekend zijn,
+   anders staat er "(bij sommige motoren)" achter.
+ - PLWeten geeft cilinderinhoud en bouwjaar uit het RDW mee, de autoexpert
+   het bouwjaar. De 1.2 PureTech heeft een riem in olie, geen ketting.
+
+ ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Lampjesgids: echte dashboardsymbolen, plus handrem en service (#495)
+ ═══════════════════════════════════════════════════════════
+
+ - Elk lampje een zelfgetekend pictogram in ISO 2575-stijl (inline SVG) in
+   de kleur van het lampje op een donker vlak, in plaats van een emoji.
+ - Nieuw: Handrem (parkeerrem) en Servicebeurt; nu 27 lampjes.
+
+ ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Melding bij een nieuwe terugroepactie (#493)
+ ═══════════════════════════════════════════════════════════
+
+ - Met herinneringen aan zoekt de app één keer per dag bij het openen de
+   terugroepacties op voor de eigen auto en alle actieve voertuigen, en
+   meldt een nieuwe open actie (Android-melding, anders in de app).
+ - De eerste keer per kenteken is stil; een mislukte RDW-opzoeking telt
+   niet en wordt de volgende keer herhaald.
+
+ ═══════════════════════════════════════════════════════════
  13-10-2026 — Conditiescore per voertuig (#475)
  ═══════════════════════════════════════════════════════════
 

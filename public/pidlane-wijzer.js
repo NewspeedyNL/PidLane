@@ -237,7 +237,10 @@
       (klein ? '<div class="plz-klein">' + esc(klein) + '</div>' : '') + '</span></div>';
   }
 
-  /* Drie blokken onder de kenteken-check: milieuklasse, kosten, adapter. */
+  var _schemaAuto = null;
+  function schema() { if (window.PLSchema && _schemaAuto) PLSchema.open(_schemaAuto, _schemaAuto.kent); }
+
+  /* Blokken onder de kenteken-check: milieuklasse, kosten, onderhoudsschema, adapter. */
   function blokken(rij, bs) {
     var z = milieuklasse(rij, bs), k = kosten(rij, bs), a = adapter(rij, bs);
     var h = '<div class="plz-blok" data-plw="zones"><b>🏙️ Milieuklasse</b>' + regel('info', 'Brandstof en emissieklasse', z.kop, z.uitleg) +
@@ -250,6 +253,11 @@
     else h += regel('', 'Brandstof of stroom', 'niet te schatten', k.brandstof.onbekend);
     if (k.totaal != null) h += regel('', 'Samen, zonder verzekering en onderhoud', '± ' + euro(k.totaal) + ' per maand');
     h += '<div class="plz-klein" style="margin-top:6px">Een schatting, geen aanslag: de provincie en de exacte tarieftabel ontbreken. Exact: belastingdienst.nl/mrb-berekenen. Prijzen peil ' + PEIL + '.</div></div>';
+
+    // Het onderhoudsschema (#490): op een tik, via de AI (pidlane-schema.js).
+    _schemaAuto = { merk: rij && rij.merk, model: rij && rij.handelsbenaming, jaar: String((rij && rij.datum_eerste_toelating) || '').slice(0, 4), brandstof: z.soort, cc: rij && rij.cilinderinhoud, kent: rij && rij.kenteken };
+    if (window.PLSchema) h += '<div class="plz-blok" data-plw="schema"><b>🔧 Onderhoudsschema</b><div class="plz-klein" style="margin-top:4px">Wanneer olie, filters, distributieriem en remvloeistof? De AI zoekt het op voor dit model (kost tegoed, niet geverifieerd).</div>' +
+      '<div class="plz-knoppen" style="margin-top:8px"><button type="button" class="plz-kn" onclick="PLWijzer._schema()">🔧 Bekijk het schema</button></div></div>';
 
     h += '<div class="plz-blok" data-plw="adapter"><b>🔌 Past een adapter?</b>' +
       regel(a.past === 'ja' ? 'groen' : a.past === 'nee' ? 'rood' : 'oranje', a.kop, a.tekst);
@@ -324,6 +332,7 @@
   window.PLWijzer = {
     blokken: blokken,
     klacht: klacht,
+    _schema: schema,
     _kies: kies, _verder: verder, _antwoord: antwoord, _uitkomst: tekenUitkomst,
     // pure kern — voor test-wijzer.js
     _kern: { PEIL: PEIL, MILIEUZONES_URL: MILIEUZONES_URL, MRB: MRB, OBD: OBD, VRAGEN: VRAGEN,

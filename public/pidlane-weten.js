@@ -248,7 +248,11 @@
     var merk = (b.rdw && b.rdw.merk) || (b.voertuig && b.voertuig.merk) || '';
     var bs = (b.voertuig && b.voertuig.brandstof) || '';
     if (b.rdw) (b.rdw.regels || []).forEach(function (r) { if (r.label === 'Brandstof') bs = r.waarde; });
-    try { return typeof autoKennisVoorMerk === 'function' ? autoKennisVoorMerk(merk, bs) : null; }
+    // Cilinderinhoud en bouwjaar uit het RDW (#491): dan vallen zwakke punten
+    // van een andere motor of een ander bouwjaar af.
+    var auto = { jaar: (b.rdw && b.rdw.jaar) || (b.voertuig && b.voertuig.jaar) || null, cc: null };
+    if (b.rdw) (b.rdw.regels || []).forEach(function (r) { if (r.label === 'Cilinderinhoud') auto.cc = parseInt(String(r.waarde).replace(/\D.*$/, ''), 10) || null; });
+    try { return typeof autoKennisVoorMerk === 'function' ? autoKennisVoorMerk(merk, bs, auto) : null; }
     catch (e) { console.warn('PLWeten: merkkennis niet gelezen', e); return null; }
   }
 

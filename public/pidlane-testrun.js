@@ -2787,6 +2787,70 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── het onderhoudsschema van dit model (#490, 14-10-2026) ──
+  {
+    issue: '#490',
+    naam: 'Onderhoudsschema per model: de AI op een tik, gelabeld, lokaal bewaard, olie-interval over te nemen',
+    waarom: 'Wanneer de distributieriem moet, wist de app niet; de intervallen in de conditiescore zijn algemene standaarden.',
+    proef: async function () {
+      if (!window.PLSchema || !PLSchema._kern) return { staat: 'FOUT', detail: 'PLSchema ontbreekt — pidlane-schema.js niet geladen (herladen?)' };
+      var K = PLSchema._kern, r = K.lees('<schema>[{"id":"olie","km":15000,"mnd":12},{"id":"turbo","km":5}]</schema>');
+      if (r.items.length !== 1 || r.items[0].id !== 'olie') return { staat: 'FOUT', detail: 'het AI-antwoord wordt niet goed gelezen: ' + JSON.stringify(r.items) };
+      if (!window.PLGarage || typeof PLGarage.zetInterval !== 'function') return { staat: 'FOUT', detail: 'PLGarage.zetInterval ontbreekt — overnemen kan niet (herladen?)' };
+      var n = 0; try { for (var i = 0; i < localStorage.length; i++) if (/^pl_schema_/.test(localStorage.key(i))) n++; } catch (e) { n = -1; }
+      return { staat: 'OK', detail: 'lezen goed · ' + (n < 0 ? 'opslag onleesbaar' : n + ' schema(\'s) bewaard op dit toestel') };
+    }
+  },
+
+  // ── bekende kwalen per motor en bouwjaar (#491, 14-10-2026) ──
+  {
+    issue: '#491',
+    naam: 'Bekende kwalen: alleen wat bij deze motor en dit bouwjaar past, anders "bij sommige motoren"',
+    waarom: 'AUTO_KENNIS gaf per merk alle zwakke punten van die brandstof, ook van motoren en bouwjaren die de auto niet heeft.',
+    proef: async function () {
+      if (typeof autoKennisVoorMerk !== 'function') return { staat: 'FOUT', detail: 'autoKennisVoorMerk ontbreekt' };
+      var oud = autoKennisVoorMerk('Volkswagen', 'benzine', { cc: 1390, jaar: 2011 }), nieuw = autoKennisVoorMerk('Volkswagen', 'benzine', { cc: 1395, jaar: 2016 });
+      var ea = function (r) { return !!r && r.zwak.some(function (t) { return /EA111/.test(t); }); };
+      if (!ea(oud)) return { staat: 'FOUT', detail: 'een 1.4 TSI van 2011 krijgt de EA111-kettingspanner niet — oude pidlane-motortype.js of pidlane-data.js (herladen?)' };
+      if (ea(nieuw)) return { staat: 'FOUT', detail: 'een 1.4 TSI van 2016 krijgt de EA111-kettingspanner toch' };
+      var v = (typeof getVehicle === 'function') ? getVehicle() : null;
+      if (!v || !v.merk) return { staat: 'OK', detail: 'filter goed · geen voertuig herkend' };
+      var k = autoKennisVoorMerk(v.merk, v.brandstof, { jaar: v.year });
+      return { staat: 'OK', detail: 'filter goed · ' + v.merk + ' ' + (v.year || '') + ': ' + (k ? k.zwak.length + ' bekende punten' : 'merk niet in de kennisbank') };
+    }
+  },
+
+  // ── de lampjesgids tekent echte dashboardsymbolen (#495, 14-10-2026) ──
+  {
+    issue: '#495',
+    naam: 'Lampjesgids: elk lampje een getekend pictogram zoals in het dashboard, plus handrem en servicebeurt',
+    waarom: 'De gids toonde emoji\'s (een vat voor de oliedruk, een stoel voor de airbag) die niet op het dashboard lijken, terwijl je een brandend lampje juist op vorm zoekt.',
+    proef: async function () {
+      if (!window.PLLampjes || !PLLampjes._kern || !PLLampjes._kern.PICTO) return { staat: 'FOUT', detail: 'PLLampjes.PICTO ontbreekt — oude pidlane-lampjes.js (herladen?)' };
+      var K = PLLampjes._kern, zonder = K.LAMPJES.filter(function (l) { return !K.PICTO[l.id]; }).map(function (l) { return l.id; });
+      if (zonder.length) return { staat: 'FOUT', detail: 'zonder pictogram: ' + zonder.join(', ') };
+      if (!K.LAMPJES.some(function (l) { return l.id === 'handrem'; })) return { staat: 'FOUT', detail: 'de handrem ontbreekt' };
+      return { staat: 'OK', detail: K.LAMPJES.length + ' lampjes, elk met een getekend pictogram' };
+    }
+  },
+
+  // ── een nieuwe terugroepactie wordt gemeld (#493, 14-10-2026) ──
+  {
+    issue: '#493',
+    naam: 'Terugroepacties: één keer per dag bij openen, nieuwe acties als melding, de eerste keer stil',
+    waarom: 'De app zag een terugroepactie alleen als je zelf een kenteken-check deed; met herinneringen aan meldt hij nu een nieuwe actie voor je eigen voertuigen.',
+    proef: async function () {
+      if (!window.PLHerinner || !PLHerinner._kern || typeof PLHerinner._kern.recallNieuw !== 'function') return { staat: 'FOUT', detail: 'PLHerinner.recallNieuw ontbreekt — oude pidlane-herinner.js (herladen?)' };
+      var K = PLHerinner._kern, A = { referentiecode: 'X1', open: true };
+      if (K.recallNieuw({}, 'K', { merk: 'M', acties: [A] }).nieuw.length) return { staat: 'FOUT', detail: 'de eerste ronde meldt een actie die er al stond' };
+      if (K.recallNieuw({ K: [] }, 'K', { merk: 'M', acties: [A] }).nieuw.length !== 1) return { staat: 'FOUT', detail: 'een nieuwe open actie wordt niet gemeld' };
+      if (K.recallNieuw({}, 'K', { merk: null, acties: [] }).telt) return { staat: 'FOUT', detail: 'een mislukte opzoeking telt mee' };
+      if (!PLHerinner.aan()) return { staat: 'LET OP', detail: 'regels goed · herinneringen staan uit, dus geen terugroepronde' };
+      var g = {}, d = ''; try { g = JSON.parse(localStorage.getItem('pl_recall_gezien') || '{}'); d = JSON.parse(localStorage.getItem('pl_recall_dag') || '""'); } catch (e) { g = {}; }
+      return { staat: 'OK', detail: 'aan · ' + Object.keys(g).length + ' kenteken(s) bekend · laatste volledige ronde ' + (d || 'nog niet') };
+    }
+  },
+
   // ── de conditiescore (#475, 13-10-2026) ──
   {
     issue: '#475',

@@ -45,13 +45,36 @@ if (!PIDS.size) { console.log('FOUT ALL_PID_DEFS niet geladen uit pidlane-data.j
 console.log('1. Elke regel is compleet');
 toets('er staan lampjes in de gids, van alle drie de kleuren', L.length >= 20 && ['rood', 'oranje', 'info'].every((k) => L.some((l) => l.kleur === k)), String(L.length));
 toets('elk id is uniek', new Set(L.map((l) => l.id)).size === L.length);
-const velden = ['id', 'naam', 'kleur', 'ico', 'vorm', 'betekent', 'doen', 'doorrijden'];
+const velden = ['id', 'naam', 'kleur', 'vorm', 'betekent', 'doen', 'doorrijden'];
 const onvolledig = L.filter((l) => velden.some((v) => !String(l[v] || '').trim()));
 toets('elke regel heeft naam, pictogram, vorm, betekenis, advies en doorrijstand', onvolledig.length === 0, onvolledig.map((l) => l.id).join(', '));
 toets('elke kleur is een bekende kleur', L.every((l) => K.KLEUR[l.kleur]), L.filter((l) => !K.KLEUR[l.kleur]).map((l) => l.id).join(', '));
 toets('elke doorrijstand heeft een tekst', L.every((l) => K.DOOR[l.doorrijden]), L.filter((l) => !K.DOOR[l.doorrijden]).map((l) => l.id).join(', '));
 const slechteObd = L.filter((l) => l.obd != null && l.obd !== 'check' && l.obd !== 'geen' && !PIDS.has(l.obd));
 toets('elke OBD-verwijzing is check, geen, of een PID die in pidlane-data.js bestaat', slechteObd.length === 0, slechteObd.map((l) => l.id + '→' + l.obd).join(', '));
+
+console.log('\n1b. De pictogrammen (#495)');
+const P = K.PICTO || {};
+const zonder = L.filter((l) => !P[l.id]);
+toets('elk lampje heeft een eigen pictogram', zonder.length === 0, zonder.map((l) => l.id).join(', '));
+const wees = Object.keys(P).filter((id) => !L.some((l) => l.id === id));
+toets('geen pictogram zonder lampje', wees.length === 0, wees.join(', '));
+toets('geen emoji meer als pictogram (het veld ico is weg)', L.every((l) => !('ico' in l)), L.filter((l) => 'ico' in l).map((l) => l.id).join(', '));
+const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
+const onveilig = Object.keys(P).filter((id) => /<script|<svg|\son[a-z]+=|href|url\(/i.test(P[id]) || EMOJI.test(P[id]));
+toets('pictogrammen zijn alleen vormen: geen script, geen eigen <svg>, geen handlers, links of emoji', onveilig.length === 0, onveilig.join(', '));
+const open = Object.keys(P).filter((id) => {
+  const t = P[id].replace(/<(path|circle|rect)\b[^>]*\/>/g, '').replace(/<text\b[^>]*>[^<]*<\/text>/g, '').replace(/<\/?g\b[^>]*>/g, '').trim();
+  return t !== '';
+});
+toets('alleen path, circle, rect, text en g, allemaal gesloten', open.length === 0, open.join(', '));
+const dubbel = Object.keys(P).filter((id) => Object.keys(P).some((j) => j !== id && P[j] === P[id] && !((id === 'koud' && j === 'koelwater') || (id === 'koelwater' && j === 'koud'))));
+toets('elk pictogram is anders (behalve koelwater en koud: dat is in de auto hetzelfde symbool in een andere kleur)', dubbel.length === 0, dubbel.join(', '));
+toets('de handrem en de servicebeurt staan erin', ['handrem', 'service'].every((id) => L.some((l) => l.id === id)));
+toets('de handrem lijkt niet op het remsysteem: een P, geen uitroepteken', P.handrem && P.rem && P.handrem !== P.rem && !/r="1\.8"/.test(P.handrem));
+const s1 = K.svg(L.find((l) => l.id === 'olie'), 32);
+toets('svg(): één <svg> met viewBox, in de kleur van het lampje', /^<svg [^>]*viewBox="0 0 48 48"/.test(s1) && (s1.match(/<svg/g) || []).length === 1 && /color:#ff3b30/.test(s1), s1.slice(0, 160));
+toets('cruisecontrol en mistlicht zijn groen, zoals in de auto; grootlicht blauw', K.tint({ id: 'cruise', kleur: 'info' }) !== K.tint({ id: 'grootlicht', kleur: 'info' }) && K.tint({ id: 'mist', kleur: 'info' }) === K.tint({ id: 'cruise', kleur: 'info' }));
 
 console.log('\n2. Het advies');
 const roodJa = L.filter((l) => l.kleur === 'rood' && l.doorrijden === 'ja');

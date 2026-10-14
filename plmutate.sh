@@ -1673,12 +1673,27 @@ MUTATIES=(
 # ── Herinneringen en de lampjesgids (29-09-2026) ──
 # Een herinnering die op de verkeerde dag komt, dubbel, of vanuit de demo, is
 # erger dan geen; een lampjesgids die bij rood "doorrijden" zegt, is gevaarlijk.
+"public/pidlane-herinner.js@@    var nieuw = eerste ? [] : acties.filter(@@    var nieuw = acties.filter(@@test-herinner.js@@de eerste terugroepronde meldt acties die al jaren openstaan (#493)"
+"public/pidlane-herinner.js@@    if (!res || !res.merk) return { telt: false@@    if (!res) return { telt: false@@test-herinner.js@@een mislukte RDW-opzoeking telt als eerste keer, en de dag erna is alles nieuw (#493)"
+"public/pidlane-herinner.js@@    var nieuw = eerste ? [] : acties.filter(function (a) { return a.open && !set[a.referentiecode]; });@@    var nieuw = eerste ? [] : acties.filter(function (a) { return !set[a.referentiecode]; });@@test-herinner.js@@een afgehandelde terugroepactie geeft toch een melding (#493)"
+"public/pidlane-herinner.js@@      if (allesGelukt) schrijf(OPSLAG.recallDag, vandaag);@@      schrijf(OPSLAG.recallDag, vandaag);@@test-herinner.js@@een mislukte terugroepronde telt als gedaan, en het kenteken wacht een dag extra (#493)"
 "public/pidlane-herinner.js@@  var TREDEN = [30, 7, 0];@@  var TREDEN = [30, 7];@@test-herinner.js@@op de dag zelf komt er geen herinnering meer"
 "public/pidlane-herinner.js@@        if (isNaN(d) || d.getTime() <= nu) return;@@        if (isNaN(d)) return;@@test-herinner.js@@herinneringen voor een datum die al voorbij is, worden toch ingepland"
 "public/pidlane-herinner.js@@    if (mijn && mijn.kent && datum8(mijn.keuring) && !gehad[kent(mijn.kent)]) {@@    if (mijn && mijn.kent && datum8(mijn.keuring)) {@@test-herinner.js@@een kenteken dat ook in Mijn voertuigen staat, krijgt twee APK-herinneringen"
 "public/pidlane-herinner.js@@    if (isDemo() || _bezig) return { gedaan: false, reden: isDemo() ? 'demo' : 'bezig' };@@    if (_bezig) return { gedaan: false, reden: 'bezig' };@@test-herinner.js@@de demo plant echte Android-meldingen voor een verzonnen auto"
-"public/pidlane-herinner.js@@        if (perm && perm.display === 'granted') {@@        if (true) {@@test-herinner.js@@zonder toestemming wordt er toch ingepland (en Android gooit een fout die niemand ziet)"
+"public/pidlane-herinner.js@@        if (perm && perm.display === 'granted') {\n          await LN.schedule({ notifications: p.map(@@        if (true) {\n          await LN.schedule({ notifications: p.map(@@test-herinner.js@@zonder toestemming wordt er toch ingepland (en Android gooit een fout die niemand ziet)"
 "public/pidlane-herinner.js@@    return (h >>> 1) || 1;@@    return h | 0;@@test-herinner.js@@een melding-id kan negatief zijn: Android weigert hem"
+# ── Het onderhoudsschema van de AI (#490, 14-10-2026) ──
+"public/pidlane-schema.js@@      if (!r || !naam[r.id] || gehad[r.id]) return;@@      if (!r || gehad[r.id]) return;@@test-schema.js@@een onderdeel dat de app niet kent, komt toch in het schema (#490)"
+"public/pidlane-schema.js@@items.push({ id: r.id, naam: naam[r.id], km: geheel(r.km, 1000, 400000), mnd: geheel(r.mnd, 1, 240),@@items.push({ id: r.id, naam: naam[r.id], km: r.km, mnd: r.mnd,@@test-schema.js@@een onzinnig interval van de AI (3 km, 999 maanden) wordt overgenomen (#490)"
+"public/pidlane-schema.js@@    var km = o.km && o.km <= 100000 ? o.km : null, mnd = o.mnd && o.mnd <= 60 ? o.mnd : null;@@    var km = o.km, mnd = o.mnd;@@test-schema.js@@overnemen stuurt een interval dat de Worker weigert (#490)"
+# ── Bekende kwalen per motor en bouwjaar (#491, 14-10-2026) ──
+"public/pidlane-motortype.js@@  const binnen=(r,w)=>!r||w==null||(w>=r[0]&&(r[1]==null||w<=r[1]));@@  const binnen=(r,w)=>!r||w==null||(w>=r[0]);@@test-autokennis.js@@een zwak punt van tot 2013 geldt ook voor een auto van 2016 (#491)"
+"public/pidlane-motortype.js@@  const binnen=(r,w)=>!r||w==null||(@@  const binnen=(r,w)=>!r||(@@test-autokennis.js@@een onbekende cilinderinhoud verbergt een bekend probleem in plaats van het voorbehoud te tonen (#491)"
+"public/pidlane-motortype.js@@  const tekst=p=>p.t+(((p.cc&&!cc)||(p.jaar&&!jaar))?@@  const tekst=p=>p.t+(((p.jaar&&!jaar))?@@test-autokennis.js@@het voorbehoud \"bij sommige motoren\" valt weg als alleen het bouwjaar bekend is (#491)"
+"public/pidlane-lampjes.js@@  var GROEN = { cruise: 1, mist: 1 };@@  var GROEN = {};@@test-lampjes.js@@cruisecontrol en mistlicht worden blauw getekend, terwijl ze in de auto groen zijn (#495)"
+"public/pidlane-lampjes.js@@  handrem: '<circle@@  parkeer: '<circle@@test-lampjes.js@@een lampje zonder pictogram, of een pictogram zonder lampje (#495)"
+"public/pidlane-lampjes.js@@    return '<svg class=\"pll-svg\" viewBox=\"0 0 48 48\" width@@    return '<svg class=\"pll-svg\" width@@test-lampjes.js@@het pictogram verliest zijn viewBox en tekent op de verkeerde schaal (#495)"
 "public/pidlane-lampjes.js@@      doorrijden: 'nee', obd: null, zoek: 'olie oliepeil smering kannetje' },@@      doorrijden: 'voorzichtig', obd: null, zoek: 'olie oliepeil smering kannetje' },@@test-lampjes.js@@bij het oliedruklampje zegt de gids dat je voorzichtig door kunt rijden"
 "public/pidlane-lampjes.js@@      doorrijden: 'nadat', obd: null, zoek: 'gordel riem piepen' },@@      doorrijden: 'ja', obd: null, zoek: 'gordel riem piepen' },@@test-lampjes.js@@een rood lampje zegt \"je kunt doorrijden\""
 "public/pidlane-lampjes.js@@      return (l.naam + ' ' + l.vorm + ' ' + (l.zoek || '')).toLowerCase().indexOf(t) >= 0;@@      return l.naam.toLowerCase().indexOf(t) >= 0;@@test-lampjes.js@@zoeken op wat je ziet (schildpad, spiraaltje) vindt niets meer"

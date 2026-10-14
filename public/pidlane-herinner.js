@@ -39,7 +39,7 @@
 (function () {
   'use strict';
 
-  var OPSLAG = { aan: 'pl_herinner', ids: 'pl_herinner_ids', gezien: 'pl_herinner_gezien' };
+  var OPSLAG = { aan: 'pl_herinner', ids: 'pl_herinner_ids', gezien: 'pl_herinner_gezien', recall: 'pl_recall_gezien', recallDag: 'pl_recall_dag' };
   var TREDEN = [30, 7, 0];     // dagen vooraf
   var UUR = 9;                 // 09:00 lokale tijd
   var MAX = 60;                // Android houdt er per app een paar honderd vast; ruim eronder blijven
@@ -119,6 +119,51 @@
       var d = new Date(+p.datum.slice(0, 4), +p.datum.slice(4, 6) - 1, +p.datum.slice(6, 8));
       return Object.assign({}, p, { dagen: Math.round((d - n) / 864e5) });
     }).filter(function (p) { return p.dagen <= 30 && p.dagen >= -60; });
+  }
+
+  /* ── Terugroepacties (#493, 14-10-2026) ──────────────────────────
+     Dezelfde schakelaar als de APK: wie herinneringen aanzet, hoort ook
+     van een nieuwe terugroepactie. Eén keer per dag bij het openen, geen
+     achtergrondtaak. De eerste keer per kenteken is stil: wie zijn auto net
+     instelt, hoeft geen melding over een actie die al jaren openstaat. */
+
+  // Welke kentekens: de eigen auto en de actieve voertuigen, elk één keer.
+  function recallKentekens(mijn, voertuigen) {
+    var uit = [], gehad = {};
+    (voertuigen || []).forEach(function (v) {
+      var k = v && v.status === 'actief' ? kent(v.kenteken) : '';
+      if (!k || gehad[k]) return;
+      gehad[k] = true;
+      uit.push({ kent: k, naam: v.naam || [v.merk, v.model].filter(Boolean).join(' ') || k });
+    });
+    var mk = mijn && kent(mijn.kent);
+    if (mk && !gehad[mk]) uit.push({ kent: mk, naam: [mijn.merk, mijn.model].filter(Boolean).join(' ') || mk });
+    return uit;
+  }
+
+  /* Wat is nieuw? `gezien` = { [kent]: [referentiecode…] }, `res` = de
+     uitkomst van PLRecall.check. Een uitkomst zonder merk is een mislukte
+     opzoeking (PLRecall vangt netfouten als lege lijst): die telt niet, ook
+     niet als eerste keer — anders meldt de volgende dag alles als nieuw.
+     Geeft { telt, eerste, nieuw:[actie…], codes:[…] }; codes = alles wat
+     voortaan als gezien geldt (ook afgehandelde, zodat een heropende actie
+     niet opnieuw meldt). */
+  function recallNieuw(gezien, k, res) {
+    gezien = gezien || {};
+    if (!res || !res.merk) return { telt: false, eerste: false, nieuw: [], codes: gezien[k] || [] };
+    var oud = gezien[k], eerste = !Array.isArray(oud), set = {};
+    (oud || []).forEach(function (c) { set[c] = 1; });
+    var acties = (res.acties || []).filter(function (a) { return a && a.referentiecode; });
+    var nieuw = eerste ? [] : acties.filter(function (a) { return a.open && !set[a.referentiecode]; });
+    acties.forEach(function (a) { set[a.referentiecode] = 1; });
+    return { telt: true, eerste: eerste, nieuw: nieuw, codes: Object.keys(set) };
+  }
+
+  function recallTekst(naam, k, nieuw) {
+    var wie = naam + (k && naam !== k ? ' (' + k + ')' : '');
+    var n = nieuw.length;
+    return { titel: (n === 1 ? 'Nieuwe terugroepactie' : n + ' nieuwe terugroepacties') + ' — ' + wie,
+      tekst: (n === 1 && nieuw[0].omschrijving ? nieuw[0].omschrijving + '. ' : '') + 'Laat hem gratis uitvoeren bij een dealer van het merk.' };
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -228,6 +273,57 @@
     schrijf(OPSLAG.gezien, gezien);
   }
 
+  /* Eén keer per dag de terugroepacties van alle eigen kentekens. Alleen met
+     herinneringen aan, niet in de demo en niet zonder login (het RDW loopt
+     via de proxy). Een kenteken dat niet opgehaald kon worden, blijft voor
+     morgen staan; de dag telt pas als alles gelukt is. */
+  var _recallBezig = false;
+  async function recallRonde(forceer) {
+    if (!aan() || isDemo() || _recallBezig) return { gedaan: false };
+    if (!window.PLRecall || typeof PLRecall.check !== 'function') return { gedaan: false, reden: 'geen PLRecall' };
+    try { if (!(window.currentUser && (currentUser.user || currentUser.name))) return { gedaan: false, reden: 'niet ingelogd' }; }
+    catch (e) { console.warn('PLHerinner: login onleesbaar', e); return { gedaan: false }; }
+    var vandaag = new Date().toISOString().slice(0, 10);
+    if (!forceer && lees(OPSLAG.recallDag, '') === vandaag) return { gedaan: false, reden: 'vandaag al' };
+    var vt = [];
+    try {
+      var st = window.PLGarage && PLGarage.staat ? PLGarage.staat() : null;
+      if (window.PLKlant && PLKlant.isKlant() && st && st.stand && st.stand.akkoord) vt = st.stand.voertuigen || [];
+    } catch (e) { console.warn('PLHerinner: Mijn voertuigen onleesbaar — alleen je eigen kenteken', e); }
+    var ks = recallKentekens(lees('pl_zonder_mijn', null), vt);
+    if (!ks.length) return { gedaan: false, reden: 'geen kenteken' };
+    _recallBezig = true;
+    var gezien = lees(OPSLAG.recall, {}), allesGelukt = true, gemeld = 0;
+    try {
+      for (var i = 0; i < ks.length; i++) {
+        var res = null;
+        try { res = await PLRecall.check(ks[i].kent, { negeerCache: true }); }
+        catch (e) { console.warn('PLHerinner: terugroepacties ' + ks[i].kent + ' niet opgehaald — morgen opnieuw', e); }
+        var u = recallNieuw(gezien, ks[i].kent, res);
+        if (!u.telt) { allesGelukt = false; continue; }
+        gezien[ks[i].kent] = u.codes;
+        if (u.nieuw.length) { await meldRecall(ks[i], u.nieuw); gemeld++; }
+      }
+      schrijf(OPSLAG.recall, gezien);
+      if (allesGelukt) schrijf(OPSLAG.recallDag, vandaag);
+      return { gedaan: true, gemeld: gemeld };
+    } finally { _recallBezig = false; }
+  }
+  async function meldRecall(k, nieuw) {
+    var t = recallTekst(k.naam, k.kent, nieuw), LN = plugin();
+    if (LN) {
+      try {
+        var perm = await LN.checkPermissions();
+        if (perm && perm.display === 'granted') {
+          await LN.schedule({ notifications: [{ id: meldId('recall:' + k.kent + ':' + nieuw.map(function (a) { return a.referentiecode; }).join(','), 0),
+            title: t.titel, body: t.tekst, schedule: { at: new Date(Date.now() + 3000), allowWhileIdle: true }, extra: { sleutel: 'recall:' + k.kent } }] });
+          return;
+        }
+      } catch (e) { console.warn('PLHerinner: terugroepmelding niet ingepland — melding in de app', e); }
+    }
+    melding('🔔 ' + t.titel, 6000);
+  }
+
   // Een regel voor de kaart op het startscherm (PLZonder tekent hem).
   function regel() {
     var n = huidigePunten().length;
@@ -237,11 +333,13 @@
   function teken() { try { if (window.PLZonder) PLZonder.teken(true); } catch (e) { console.warn('PLHerinner: kaart niet ververst', e); } }
 
   function start() {
-    setTimeout(function () { synchroniseer(false); inApp(); }, 4000);
+    setTimeout(function () { synchroniseer(false); inApp(); recallRonde(false); }, 4000);
     // De bronnen hebben geen event: Mijn voertuigen ververst uit zichzelf, en
     // "Dit is mijn auto" komt uit een ander bestand. synchroniseer() doet
     // niets als het plan niet veranderd is.
-    setInterval(function () { synchroniseer(false); }, 60000);
+    // recallRonde() doet hooguit één ronde per dag; de minuut vangt een login
+    // of "Dit is mijn auto" die pas ná het openen komt.
+    setInterval(function () { synchroniseer(false); recallRonde(false); }, 60000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
@@ -251,7 +349,8 @@
     aan: aan,
     synchroniseer: synchroniseer,
     regel: regel,
+    recallRonde: recallRonde,
     // pure kern — voor test-herinner.js
-    _kern: { punten: punten, plan: plan, binnenkort: binnenkort, meldId: meldId, tekstVoor: tekstVoor, TREDEN: TREDEN, UUR: UUR }
+    _kern: { recallKentekens: recallKentekens, recallNieuw: recallNieuw, recallTekst: recallTekst, punten: punten, plan: plan, binnenkort: binnenkort, meldId: meldId, tekstVoor: tekstVoor, TREDEN: TREDEN, UUR: UUR }
   };
 })();
