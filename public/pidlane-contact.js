@@ -85,8 +85,29 @@
     return 'onbekend';
   }
 
+  /* Kwam de bus terug zoals hij vóór de stilte stond? Alleen wat de
+     bijstellers van #487 verknoeiden: groep, multi-PID, pollbudget en ATST.
+     De tijdstempels en de dip-teller lopen gewoon door en zeggen niets. */
+  function standGelijk(a, b) {
+    if (!a || !b) return null;
+    return a.groep === b.groep && a.batchAan === b.batchAan && a.mult === b.mult && (a.st || null) === (b.st || null);
+  }
+
+  /* ── WAT EEN MEETOPDRACHT HIERVAN KAN VRAGEN (14-10-2026) ──────────
+     De eerste rit voor #487 vroeg PLElm.weigeringen() en PLVerbind.stappen()
+     met een band van 0–0. Allebei tellen ze de hele verbinding, ook het
+     opstarten en de wissels naar Google Maps, en kwamen ze uit op 27 en 2
+     terwijl beide stiltes van die rit schoon verliepen. Deze tellers lopen
+     alleen over de stilte zelf: van het eerste stille antwoord tot het
+     eerste antwoord met data. */
   function maak(omg) {
-    var st = { reeks: 0, sinds: 0, snap: null, laatst: null, stil: false, oordeel: null };
+    var st = { reeks: 0, sinds: 0, snap: null, laatst: null, stil: false, oordeel: null, weig0: null };
+    var tel = { stiltes: 0, terugAnders: 0, terugGemeten: 0, weigeringen: 0 };
+
+    function _weig() {
+      var w = omg.weigeringen ? omg.weigeringen() : null;
+      return getal(w);
+    }
 
     function noteAntwoord(cmd, raw) {
       if (!String(raw || '').trim()) return st.stil;
@@ -94,9 +115,13 @@
         if (st.stil) {
           var duur = omg.nu() - st.sinds;
           st.stil = false;
+          var g = standGelijk(st.snap, omg.stand());
+          if (g !== null) { tel.terugGemeten++; if (!g) tel.terugAnders++; }
+          var w1 = _weig();
+          if (w1 !== null && st.weig0 !== null) tel.weigeringen += Math.max(0, w1 - st.weig0);
           omg.weer(st.oordeel, duur);
         }
-        st.reeks = 0; st.sinds = 0; st.snap = null; st.laatst = null; st.oordeel = null;
+        st.reeks = 0; st.sinds = 0; st.snap = null; st.laatst = null; st.oordeel = null; st.weig0 = null;
         return false;
       }
       if (st.stil) return true;
@@ -104,11 +129,12 @@
       // stilte, en hij mag een lopende reeks ook niet afbreken.
       var pids = pidsUit(cmd);
       if (!pids.some(function (p) { return omg.kortOk(p); })) return false;
-      if (st.reeks === 0) { st.sinds = omg.nu(); st.snap = omg.stand(); st.laatst = omg.laatst(); }
+      if (st.reeks === 0) { st.sinds = omg.nu(); st.snap = omg.stand(); st.laatst = omg.laatst(); st.weig0 = _weig(); }
       st.reeks++;
       if (st.reeks >= CFG.reeks && omg.nu() - st.sinds >= CFG.minMs) {
         st.stil = true;
         st.oordeel = oordeel(st.laatst);
+        tel.stiltes++;
         omg.terug(st.snap);
         omg.meld(st.oordeel, st.laatst);
       }
@@ -121,7 +147,17 @@
       stand: function () {
         return { stil: st.stil, oordeel: st.oordeel, reeks: st.reeks, sinds: st.sinds, laatst: st.laatst };
       },
-      reset: function () { st.reeks = 0; st.sinds = 0; st.snap = null; st.laatst = null; st.stil = false; st.oordeel = null; }
+      reset: function () { st.reeks = 0; st.sinds = 0; st.snap = null; st.laatst = null; st.stil = false; st.oordeel = null; st.weig0 = null; },
+      /* null = niet gemeten. Zonder stilte is er niets om terug te zetten,
+         en dan is 0 "anders" geen bewijs dat het terugzetten werkt. */
+      maat: function (naam) {
+        switch (naam) {
+          case 'contact-stiltes': return tel.stiltes;
+          case 'contact-terug-anders': return tel.terugGemeten ? tel.terugAnders : null;
+          case 'contact-weigeringen': return tel.terugGemeten ? tel.weigeringen : null;
+          default: return null;
+        }
+      }
     };
   }
 
@@ -158,6 +194,10 @@
       catch (e) { console.warn('PLContact: plStilteStand mislukt', e); return null; }
     },
     laatst: function () { return { rpm: _waarde('010C'), kmh: _waarde('010D'), volt: _waarde('0142') }; },
+    weigeringen: function () {
+      try { return (window.PLElm && typeof window.PLElm.weigeringen === 'function') ? window.PLElm.weigeringen() : null; }
+      catch (e) { console.warn('PLContact: PLElm.weigeringen mislukt — de stilte telt geen weigeringen', e); return null; }
+    },
     terug: function (snap) {
       if (!snap) return;
       try { if (typeof plStilteTerug === 'function') plStilteTerug(snap); }
@@ -183,7 +223,8 @@
     stil: app.stil,
     stand: app.stand,
     reset: app.reset,
+    maat: app.maat,
     cfg: CFG,
-    _kern: { maak: maak, oordeel: oordeel, pidsUit: pidsUit, heeftData: heeftData }
+    _kern: { maak: maak, oordeel: oordeel, pidsUit: pidsUit, heeftData: heeftData, standGelijk: standGelijk }
   };
 })();

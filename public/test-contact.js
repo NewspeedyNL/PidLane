@@ -143,5 +143,37 @@ console.log('\n5. plStilteStand en plStilteTerug uit pidlane-plload.js');
   toets('een met de hand vastgezette groep blijft staan', S.groep === 5 && S.zet.length === 0);
 }
 
+console.log('\n6. Maten voor een meetopdracht: alleen de stilte zelf (#487, rit 14-10)');
+{
+  /* De rit van 14-10: 27 weigeringen en 2 ATST-stappen over de hele
+     verbinding, twee schone stiltes. Hier telt alleen wat in de stilte viel. */
+  const e = { t: 0, w: 27, stand: { groep: 3, batchAan: true, mult: 1, st: '1C', batchUitSinds: 0, dips: 0 } };
+  const api = K.maak({
+    nu: () => e.t, kortOk: () => true, laatst: () => ({ rpm: 664, kmh: 0 }),
+    stand: () => Object.assign({}, e.stand), terug: () => {}, meld: () => {}, weer: () => {},
+    weigeringen: () => e.w
+  });
+  toets('zonder stilte: stiltes 0, de rest niet gemeten',
+    api.maat('contact-stiltes') === 0 && api.maat('contact-terug-anders') === null && api.maat('contact-weigeringen') === null);
+  for (let i = 0; i < CFG.reeks; i++) { api.noteAntwoord('010C0D492', 'NO DATA'); e.t += 300; }
+  e.w += 4;                                  // weigeringen tijdens de stilte
+  e.stand.dips = 3; e.stand.batchUitSinds = 99; // lopen door en tellen niet
+  api.noteAntwoord('010C', '410C0A62');
+  toets('de 27 van vóór de stilte tellen niet, de 4 erin wel', api.maat('contact-weigeringen') === 4, String(api.maat('contact-weigeringen')));
+  toets('stand gelijk teruggekomen: 0 anders', api.maat('contact-terug-anders') === 0 && api.maat('contact-stiltes') === 1);
+  e.w += 10;                                 // na de stilte (Maps, herverbinden): telt niet
+  for (let i = 0; i < CFG.reeks; i++) { api.noteAntwoord('010C0D492', 'NO DATA'); e.t += 300; }
+  e.stand.st = '32';                         // ATST bleef bijgestuurd
+  api.noteAntwoord('010C', '410C0A62');
+  toets('tweede stilte met ATST anders: 1 anders', api.maat('contact-terug-anders') === 1 && api.maat('contact-stiltes') === 2);
+  toets('weigeringen tussen de stiltes tellen niet', api.maat('contact-weigeringen') === 4, String(api.maat('contact-weigeringen')));
+  toets('standGelijk kijkt naar groep, multi-PID, budget en ATST',
+    K.standGelijk({ groep: 3, batchAan: true, mult: 1, st: '1C' }, { groep: 2, batchAan: true, mult: 1, st: '1C' }) === false &&
+    K.standGelijk({ groep: 3, batchAan: true, mult: 1, st: '1C' }, { groep: 3, batchAan: false, mult: 1, st: '1C' }) === false &&
+    K.standGelijk({ groep: 3, batchAan: true, mult: 1, st: '1C' }, { groep: 3, batchAan: true, mult: 0.74, st: '1C' }) === false &&
+    K.standGelijk(null, {}) === null);
+  toets('onbekende maat: null', api.maat('verbind-weigeringen') === null);
+}
+
 console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alles goed — ' + n + ' toetsen'));
 process.exit(fout ? 1 : 0);
