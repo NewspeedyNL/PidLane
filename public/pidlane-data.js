@@ -2119,3 +2119,60 @@ window.SITUATIES = [
       'duurzaamheid van koppeling, automaat en turbo bij het verhoogde koppel'
     ]}
 ];
+
+// ── DTC_PLAN — kostenindicatie en controleplan per codefamilie (14-10-2026) ──
+// Het idee van Carly ("wat kost dit") en OBDeleven ("repair plan"), zonder AI
+// en zonder tegoed. Per FAMILIE, niet per code: 81 losse codes bijhouden
+// loopt uit de pas, twintig families niet. dtcPlan() kiest het langste
+// voorvoegsel dat past (P0128 wint van P012), en geeft null als er geen
+// familie is — merkcodes (P1xxx, P3xxx) krijgen bewust geen plan, want daar
+// is een generiek bedrag eerder misleidend dan nuttig.
+//   kost  [min, max] in euro, onderdelen + arbeid bij een gewone garage in NL;
+//         null = alleen via de dealer te zeggen
+//   wie   'zelf' | 'beide' | 'garage'
+//   stappen  3–5 controles, goedkoopste en meest voorkomende eerst
+// Tests: test-dtcplan.js
+window.DTC_PLAN_WIE = { zelf: 'Zelf te doen', beide: 'Zelf of garage', garage: 'Garage' };
+window.DTC_PLAN = {
+  P001:{ kost:[150,1500], wie:'garage', stappen:['Olieniveau en olieviscositeit controleren (verkeerde olie verstoort de nokkenasverstelling)','Stekker en bedrading van de VVT-klep nakijken','VVT-klep laten meten of vervangen','Distributieketting of -riem laten controleren op rek']},
+  P008:{ kost:[150,1200], wie:'garage', stappen:['Brandstoffilter controleren (diesel: water afvoeren)','Brandstofdruk laten meten tegen de specificatie','Hogedrukpomp en drukregelaar laten testen']},
+  P010:{ kost:[0,350], wie:'beide', stappen:['Luchtfilter en luchtinlaat controleren op scheuren of losse slangen','Luchtmassameter reinigen met MAF-reiniger (niet aanraken)','Stekker en bedrading van de luchtmassameter nakijken','Luchtmassameter vervangen als de waarde stationair nog afwijkt']},
+  P011:{ kost:[40,200], wie:'beide', stappen:['Stekker van de temperatuursensor controleren op corrosie','Waarde in Live vergelijken met de buitentemperatuur bij koude motor','Sensor vervangen']},
+  P0128:{ kost:[120,400], wie:'beide', stappen:['Koelvloeistofpeil controleren','In Live kijken of de motor binnen 10–15 min boven 80 °C komt','Thermostaat vervangen (blijft vaak open hangen)']},
+  P013:{ kost:[100,350], wie:'beide', stappen:['Uitlaat vóór de sensor controleren op lekkage','Stekker en bedrading van de lambdasensor nakijken','Sensorspanning in Live bekijken: moet bij warme motor wisselen','Lambdasensor vervangen']},
+  P014:{ kost:[100,350], wie:'beide', stappen:['Zekering van de sensorverwarming controleren','Stekker en bedrading van de lambdasensor nakijken','Lambdasensor vervangen']},
+  P017:{ kost:[50,400], wie:'beide', stappen:['Vacuümslangen en inlaat controleren op lekkage (sissend geluid)','Luchtmassameter reinigen','Brandstoftrims in Live bekijken: hoog stationair en lager bij toeren wijst op een lek','Brandstofdruk en injectoren laten controleren']},
+  P0191:{ kost:[150,1200], wie:'garage', stappen:['Stekker van de raildruksensor controleren','Raildruk in Live vergelijken met de gewenste waarde','Brandstofdruk laten meten, daarna sensor of pomp']},
+  P021:{ kost:[50,800], wie:'garage', stappen:['Stop met rijden en laat de motor afkoelen — doorrijden kan de motor beschadigen','Koelvloeistofpeil controleren bij koude motor','Koelventilator en waterpomp laten controleren','Koppakking laten testen bij wit uitlaatgas of borrelend koelwater']},
+  P0299:{ kost:[100,2500], wie:'garage', stappen:['Turbo- en intercoolerslangen controleren op scheuren of losse klemmen','Laaddruk in Live vergelijken met de gewenste waarde','Wastegate of VGT-verstelling laten controleren','Turbo laten beoordelen']},
+  P226:{ kost:[100,2500], wie:'garage', stappen:['Turbo- en intercoolerslangen controleren op scheuren of losse klemmen','Vacuümslangen naar de turbo-actuator controleren','Laaddruk laten meten']},
+  P030:{ kost:[80,450], wie:'beide', stappen:['Kijk welke cilinder misfire geeft (P0301 = cilinder 1, P0300 = wisselend)','Bougie van die cilinder controleren en vervangen','Bobine verwisselen met een andere cilinder: verhuist de storing mee, dan is de bobine kapot','Injector en compressie laten controleren als de storing blijft']},
+  P034:{ kost:[80,250], wie:'beide', stappen:['Stekker en bedrading van de nokkenassensor nakijken','Sensor reinigen (metaalgruis)','Nokkenassensor vervangen']},
+  P040:{ kost:[150,800], wie:'garage', stappen:['EGR-klep en leidingen laten controleren op vervuiling','EGR-klep laten reinigen','EGR-klep vervangen als hij vastzit']},
+  P0411:{ kost:[200,700], wie:'garage', stappen:['Zekering en relais van de secundaire luchtpomp controleren','Slangen en terugslagklep nakijken','Luchtpomp laten testen']},
+  P042:{ kost:[150,1500], wie:'garage', stappen:['Eerst andere storingen oplossen (misfire of mengsel beschadigt de katalysator)','Uitlaat controleren op lekkage vóór de achterste lambdasensor','Achterste lambdasensor laten testen — vaak de goedkopere oorzaak','Katalysator laten beoordelen']},
+  P043:{ kost:[150,1500], wie:'garage', stappen:['Eerst andere storingen oplossen (misfire of mengsel beschadigt de katalysator)','Uitlaat controleren op lekkage vóór de achterste lambdasensor','Achterste lambdasensor laten testen — vaak de goedkopere oorzaak','Katalysator laten beoordelen']},
+  P044:{ kost:[0,300], wie:'beide', stappen:['Tankdop controleren: goed dichtdraaien tot hij klikt, rubber niet gescheurd','Storing wissen en een paar ritten afwachten','Slangen van het koolstoffilter nakijken','Purgeklep of rookproef bij de garage']},
+  P045:{ kost:[0,300], wie:'beide', stappen:['Tankdop controleren: goed dichtdraaien tot hij klikt, rubber niet gescheurd','Storing wissen en een paar ritten afwachten','Slangen van het koolstoffilter nakijken','Purgeklep of rookproef bij de garage']},
+  P050:{ kost:[50,300], wie:'beide', stappen:['Gasklephuis reinigen','Inlaat controleren op vacuümlek','Snelheidssensor en bedrading laten controleren']},
+  P056:{ kost:[0,500], wie:'beide', stappen:['Accupolen controleren op corrosie en vast zitten','Accuspanning meten: motor uit ≥12,4 V, motor aan 13,5–14,7 V','Accu laten testen (belastingtest)','Dynamo laten testen als de spanning bij draaiende motor afwijkt']},
+  P0597:{ kost:[150,400], wie:'garage', stappen:['Stekker van de elektronische thermostaat controleren','Thermostaat vervangen']},
+  P07:{ kost:[100,2500], wie:'garage', stappen:['Versnellingsbakolie controleren (peil, kleur, geur)','Stekkers op de versnellingsbak nakijken','Bak laten uitlezen met merkspecifieke software']},
+  P0A:{ kost:null, wie:'garage', stappen:['Laat de auto uitlezen door een dealer of hybride-specialist','Hoogspanningssysteem nooit zelf openen']},
+  P200:{ kost:[150,700], wie:'garage', stappen:['Stekker en vacuümslang van de inlaatklepverstelling nakijken','Werking van de actuator laten testen','Inlaatspruitstuk laten controleren op vastgelopen kleppen']},
+  P201:{ kost:[150,700], wie:'garage', stappen:['Stekker en vacuümslang van de inlaatklepverstelling nakijken','Werking van de actuator laten testen','Inlaatspruitstuk laten controleren op vastgelopen kleppen']},
+  P218:{ kost:[50,400], wie:'beide', stappen:['Vacuümslangen en inlaat controleren op lekkage','Luchtmassameter reinigen','Brandstofdruk en injectoren laten controleren']},
+  P24:{ kost:[0,1500], wie:'garage', stappen:['Een rit van 20 min boven 2500 tpm op de snelweg (regeneratie)','Differentiaaldruksensor en slangen laten controleren','Roetfilter laten reinigen of vervangen']},
+  B1318:{ kost:[0,250], wie:'beide', stappen:['Accu laden of laten testen','Accupolen en massakabel controleren','Lekstroom laten meten als de accu steeds leegloopt']},
+  C1:{ kost:[80,300], wie:'beide', stappen:['Wielsnelheidssensor en bedrading bij dat wiel controleren op schade','Sensor en tandring reinigen','Sensor vervangen']},
+  U0:{ kost:[0,600], wie:'garage', stappen:['Accuspanning controleren — lage spanning geeft vaak communicatiecodes','Stekkers en massapunten van de genoemde module laten nakijken','Module en CAN-bus laten doormeten']}
+};
+window.dtcPlan = function (code) {
+  var c = String(code || '').toUpperCase().trim();
+  if (!/^[PBCU][0-9A-F]{4}$/.test(c)) return null;
+  for (var n = 5; n >= 1; n--) {
+    var p = window.DTC_PLAN[c.slice(0, n)];
+    if (p) return { familie: c.slice(0, n), kost: p.kost ? p.kost.slice() : null, wie: p.wie, stappen: p.stappen.slice() };
+  }
+  return null;
+};

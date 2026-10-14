@@ -543,6 +543,7 @@
     '#plFcOv .fc-uitleg{font-size:12.5px;color:var(--tx2);margin-bottom:7px}' +
     '#plFcOv .fc-code{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--bd)}' +
     '#plFcOv .fc-code:first-of-type{border-top:0}' +
+    '#plFcOv .fc-plan{margin-top:6px;font-size:12.5px;color:var(--tx2)} #plFcOv .fc-plan summary{cursor:pointer;font-weight:700;color:var(--tx)} #plFcOv .fc-plan ol{margin:6px 0 4px 18px;padding:0} #plFcOv .fc-plan li{margin:2px 0} #plFcOv .fc-plan-n{font-size:11.5px;color:var(--tx3)}' +
     '#plFcOv .fc-cc{font:800 14px ui-monospace,monospace;color:var(--tx);min-width:56px}' +
     '#plFcOv .fc-cd{font-size:13.5px;color:var(--tx)} #plFcOv .fc-cb{font-size:12.5px;color:var(--tx2);margin-top:2px}' +
     '#plFcOv .fc-leeg{font-size:13px;color:var(--tx2)} #plFcOv .fc-ok{color:var(--gr,#22c55e)} #plFcOv .fc-let{color:var(--or,#f59e0b)} #plFcOv .fc-rood{color:var(--rd,#ef4444)}' +
@@ -814,9 +815,20 @@
     s.codes[b.soort].forEach(function (c) {
       var i = info(c);
       h += '<div class="fc-code"><div class="fc-cc">' + esc(c) + '</div><div><div class="fc-cd">' + esc(i.desc || 'Onbekende code') + '</div>' +
-        (i.body ? '<div class="fc-cb">' + esc(i.body) + '</div>' : '') + '</div></div>';
+        (i.body ? '<div class="fc-cb">' + esc(i.body) + '</div>' : '') + planHtml(i.plan) + '</div></div>';
     });
     return h + '</div>';
+  }
+
+  /* Kostenindicatie en controleplan per code (DTC_PLAN in pidlane-data.js,
+     via dtcInfo). Ingeklapt; in de garagemodus open. Geen plan = niets tonen. */
+  function planHtml(p) {
+    if (!p || !p.stappen || !p.stappen.length) return '';
+    var wie = (window.DTC_PLAN_WIE && DTC_PLAN_WIE[p.wie]) || '';
+    var kost = p.kost ? '€ ' + p.kost[0].toLocaleString('nl') + ' – ' + p.kost[1].toLocaleString('nl') : 'prijs via de dealer';
+    return '<details class="fc-plan"' + (isGarage() ? ' open' : '') + '><summary>💶 ' + esc(kost) + (wie ? ' · ' + esc(wie) : '') + '</summary>' +
+      '<ol>' + p.stappen.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol>' +
+      '<div class="fc-plan-n">Indicatie voor onderdelen en arbeid bij een gewone garage. De echte prijs hangt af van auto en oorzaak.</div></details>';
   }
 
   function tekenFreeze(s) {
@@ -1039,6 +1051,7 @@
   }
 
   window.PLFoutcodes = {
+    planHtml: planHtml,
     open: open,
     sluit: sluit,
     scan: scan,
