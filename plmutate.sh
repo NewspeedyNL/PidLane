@@ -1683,6 +1683,10 @@ MUTATIES=(
 "public/pidlane-herinner.js@@    if (isDemo() || _bezig) return { gedaan: false, reden: isDemo() ? 'demo' : 'bezig' };@@    if (_bezig) return { gedaan: false, reden: 'bezig' };@@test-herinner.js@@de demo plant echte Android-meldingen voor een verzonnen auto"
 "public/pidlane-herinner.js@@        if (perm && perm.display === 'granted') {\n          await LN.schedule({ notifications: p.map(@@        if (true) {\n          await LN.schedule({ notifications: p.map(@@test-herinner.js@@zonder toestemming wordt er toch ingepland (en Android gooit een fout die niemand ziet)"
 "public/pidlane-herinner.js@@    return (h >>> 1) || 1;@@    return h | 0;@@test-herinner.js@@een melding-id kan negatief zijn: Android weigert hem"
+# ── Foto van het dashboard (#492, 14-10-2026) ──
+"public/pidlane-lampjes.js@@function (id) { if (bekend[id] && ids.indexOf(id) < 0 && ids.length < 3) ids.push(id); }@@function (id) { if (ids.indexOf(id) < 0 && ids.length < 3) ids.push(id); }@@test-lampjes.js@@een id dat de AI verzint, opent een lampje dat niet bestaat (#492)"
+"public/pidlane-fuel.js@@    if(extra && extra.afbeelding && extra.afbeelding.data)@@    if(false)@@bproef-lampfoto.js@@de foto gaat niet mee naar de AI: hij kijkt naar niets en raadt (#492)"
+"public/pidlane-lampjes.js@@      if (data.length > 230000) data = await verklein(bestand, 560, 0.6);\n@@      data = data + data + data;\n@@bproef-lampfoto.js@@een te grote foto gaat ongewijzigd naar de Worker, die hem weigert (#492)"
 # ── Het onderhoudsschema van de AI (#490, 14-10-2026) ──
 "public/pidlane-schema.js@@      if (!r || !naam[r.id] || gehad[r.id]) return;@@      if (!r || gehad[r.id]) return;@@test-schema.js@@een onderdeel dat de app niet kent, komt toch in het schema (#490)"
 "public/pidlane-schema.js@@items.push({ id: r.id, naam: naam[r.id], km: geheel(r.km, 1000, 400000), mnd: geheel(r.mnd, 1, 240),@@items.push({ id: r.id, naam: naam[r.id], km: r.km, mnd: r.mnd,@@test-schema.js@@een onzinnig interval van de AI (3 km, 999 maanden) wordt overgenomen (#490)"
