@@ -63,6 +63,20 @@ function toets(naam, waar, uitleg) {
     toets('eerst een afbeeldingsblok, dan de tekst', Array.isArray(inh) && inh[0].type === 'image' && inh[0].source.type === 'base64' && inh[1].type === 'text', JSON.stringify(inh && inh.map((x) => x.type)));
     const data = inh && inh[0] && inh[0].source && inh[0].source.data || '';
     toets('de foto is verkleind: onder de grens van de Worker (230.000 tekens)', data.length > 1000 && data.length < 230000, String(data.length));
+    // Een foto vol detail (ruis) is na de eerste verkleining nog te groot:
+    // dan moet hij een tweede keer kleiner, anders weigert de Worker hem.
+    const groot = await app.ev(`(async function(){
+      var c = document.createElement('canvas'); c.width = 2400; c.height = 1600;
+      var g = c.getContext('2d'), d = g.createImageData(2400, 1600);
+      for (var i = 0; i < d.data.length; i++) d.data[i] = (Math.random() * 256) | 0;
+      g.putImageData(d, 0, 0);
+      var blob = await new Promise(function(ok){ c.toBlob(ok, 'image/jpeg', 0.95); });
+      var voor = window.__ai.length;
+      PLLampjes.open();
+      await PLLampjes._herken(new File([blob], 'ruis.jpg', { type: 'image/jpeg' }));
+      var b = window.__ai[voor]; var x = b && b.messages[0].content[0].source.data;
+      return { n: window.__ai.length - voor, lengte: x ? x.length : 0 }; })()`);
+    toets('een foto vol detail gaat toch onder de grens (een tweede keer verkleind)', groot.n === 1 && groot.lengte > 1000 && groot.lengte < 230000, JSON.stringify(groot));
     toets('de vraag noemt de id\'s van de gids', inh && /olie: Oliedruk/.test(inh[1].text) && /handrem/.test(inh[1].text));
     const scherm = await app.ev(`document.getElementById('plLampOv').textContent`);
     toets('één lampje, vrij zeker: de gids opent op de oliedruk', /Oliedruk/.test(scherm) && /Niet doorrijden/.test(scherm), scherm.slice(0, 120));
