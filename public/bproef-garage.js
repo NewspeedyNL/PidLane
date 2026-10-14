@@ -467,7 +467,7 @@ const NEPSERVER = `(function(){
     toets('zonder datum: een melding, niets bewaard', await wacht(`/datum van de beurt/.test(document.getElementById('plGarBody').textContent)`, 3000));
     await app.ev(`document.getElementById('cd_datum').value = '2026-09-01'; document.getElementById('cd_km').value = '120000'; document.querySelector('[onclick*="_condStart"]').click(); 'ok'`);
     toets('de beurt staat in het logboek van de server', await wacht(`((window._nepPlatform.voertuigen.find(function (x) { return x.id === PLGarage.actief().id; }) || {}).onderhoud_log || []).some(function (b) { return b.datum === '2026-09-01' && b.km === 120000 && b.wat.indexOf('olie') >= 0; })`, 5000));
-    toets('daarna de score, niet opnieuw het formulier', await wacht(`/Conditiescore/.test(document.getElementById('plGarBody').textContent) && !document.querySelector('[onclick*="_condStart"]') && /Onderhoud \(1\)/.test(document.getElementById('plGarBody').textContent)`, 5000),
+    toets('daarna de score, niet opnieuw het formulier', await wacht(`/Conditiescore/.test(document.getElementById('plGarBody').textContent) && !document.querySelector('[onclick*="_condStart"]') && document.getElementById('plGarBody').textContent.indexOf('Onderhoud (1)') >= 0`, 5000),
       await app.ev(`document.getElementById('plGarBody').textContent.slice(0, 400)`));
     toets('"Waarom" en het logboek staan dicht: niets dringt zich op', await app.ev(`Array.prototype.every.call(document.querySelectorAll('#plGarBody details'), function (d) { return !d.open; })`));
     await app.ev(`window._nepPlatform.voertuigen.forEach(function (x) { x.score = null; x.onderhoud_log = []; }); PLGarage.actief().score = null; PLGarage.sluit(); 'ok'`);
