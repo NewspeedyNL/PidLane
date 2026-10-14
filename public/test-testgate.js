@@ -48,6 +48,15 @@ const VERWACHT = [
   'Geen sleutels in de repo'
 ];
 
+// Hulpjobs (14-10-2026): niet zelf verplicht, maar een verplichte job wacht
+// erop met `needs:` en `if: always()`, en wordt rood als zij rood zijn. Zo
+// kan de tegenproef over vier runners verdeeld worden zonder dat de ruleset
+// mee hoeft. Sleutel = job-id, waarde = naam; `door` = de verplichte job-id.
+const HULP = {
+  'tegenproef-deel': { naam: 'tegenproef deel ${{ matrix.deel }}/4', door: 'tegenproef' }
+};
+const hulpNamen = Object.keys(HULP).map(k => HULP[k].naam);
+
 console.log('\n1. De jobnamen liggen vast');
 
 // Alleen de namen van JOBS, niet die van stappen. Een job-`name:` staat op vier
@@ -59,8 +68,8 @@ const re = /^ {4}name:[ \t]*(.+?)[ \t]*$/gm;
 let m;
 while ((m = re.exec(wf)) !== null) jobNamen.push(m[1]);
 
-toets('er staan precies ' + VERWACHT.length + ' jobs in tests.yml',
-      jobNamen.length === VERWACHT.length,
+toets('er staan precies ' + (VERWACHT.length + hulpNamen.length) + ' jobs in tests.yml',
+      jobNamen.length === VERWACHT.length + hulpNamen.length,
       'gevonden: ' + jobNamen.length + ' → ' + JSON.stringify(jobNamen));
 
 for (const naam of VERWACHT) {
@@ -71,10 +80,30 @@ for (const naam of VERWACHT) {
 
 // En de andere kant op: een job erbij is geen fout, maar hij is ook niet
 // verplicht in de ruleset. Dat hoort iemand te weten in plaats van te ontdekken.
-const onbekend = jobNamen.filter(n => VERWACHT.indexOf(n) < 0);
+const onbekend = jobNamen.filter(n => VERWACHT.indexOf(n) < 0 && hulpNamen.indexOf(n) < 0);
 toets('geen job die de ruleset niet kent',
       onbekend.length === 0,
       'nieuw: ' + JSON.stringify(onbekend) + ' — voeg hem toe aan de ruleset én aan VERWACHT, of hij is niet verplicht');
+
+// Een hulpjob telt alleen als de verplichte job op hem wacht én ook bij een
+// rode hulpjob draait. Zonder `if: always()` wordt die verplichte job
+// "skipped", en skipped telt bij GitHub als geslaagd: een rood deel gaat dan
+// groen door de poort.
+for (const id of Object.keys(HULP)) {
+  const h = HULP[id];
+  const blok = (wf.split(/^ {2}(?=[\w-]+:\s*$)/m).find(b => b.startsWith(h.door + ':')) || '');
+  toets('hulpjob ' + id + ' bestaat onder zijn naam',
+        jobNamen.indexOf(h.naam) >= 0, 'verwacht "' + h.naam + '"');
+  toets('verplichte job ' + h.door + ' wacht op ' + id,
+        new RegExp('^ {4}needs:[ \\t]*\\[?[^\\n]*\\b' + id + '\\b', 'm').test(blok),
+        'zonder needs rapporteert ' + h.door + ' groen vóór de delen klaar zijn');
+  toets(h.door + ' draait ook als ' + id + ' rood is',
+        /^ {4}if:[ \t]*always\(\)/m.test(blok),
+        'zonder if: always() wordt hij skipped, en skipped telt als geslaagd');
+  toets(h.door + ' wordt rood als ' + id + ' niet slaagt',
+        blok.indexOf('needs.' + id + '.result') >= 0 && blok.indexOf('"success"') >= 0,
+        'hij moet needs.' + id + '.result tegen "success" toetsen');
+}
 
 console.log('\n2. En de gate draait nog op het event waar de ruleset op rekent');
 

@@ -141,8 +141,12 @@
     'verbind-groep-nu':      ['PLAdapter', 'groepsgrootte op dit moment'],
     'verbind-fout-pct':      ['PLAdapter', '% verzoeken deze sessie zonder bruikbaar antwoord'],
     'verbind-onvol-pct':     ['PLAdapter', '% groepsverzoeken deze sessie waarin een PID ontbrak'],
-    'verbind-weigeringen':   ['PLAdapter', 'verzoeken die de ELM-poort deze sessie weigerde'],
-    'verbind-st-stappen':    ['PLAdapter', 'keren dat ATST tijdens deze verbinding omhoog werd bijgestuurd wegens ontbrekende antwoorden'],
+    'verbind-weigeringen':   ['PLAdapter', 'verzoeken die de ELM-poort deze sessie weigerde, ook bij het verbinden (voor een stilte: contact-weigeringen)'],
+    'verbind-st-stappen':    ['PLAdapter', 'keren dat ATST tijdens deze verbinding omhoog werd bijgestuurd wegens ontbrekende antwoorden, de hele verbinding'],
+    // #487 — alleen over de stilte zelf; de verbind-tellers hierboven lopen over de hele verbinding
+    'contact-stiltes':       ['PLContact', 'keren dat de ECU stilviel en de app dat als stilte herkende, deze sessie'],
+    'contact-terug-anders':  ['PLContact', 'stiltes waarna groep, multi-PID, pollbudget of ATST anders stond dan ervoor; leeg = geen stilte afgerond'],
+    'contact-weigeringen':   ['PLContact', 'verzoeken die de ELM-poort weigerde tijdens een stilte; leeg = geen stilte afgerond'],
     'antwoordtal-winst-pct': ['PLAdapter', '% sneller met antwoordcijfer dan zonder (mediaan); 0 of minder = het cijfer bespaart niets'],
     'antwoordtal-blokkades': ['PLAdapter', 'keren dat een antwoordcijfer werd uitgezet omdat er met cijfer iets ontbrak'],
     // #443 — het verzamelscherm: geven de vaste grenzen op een gezonde auto te vaak oranje of rood?

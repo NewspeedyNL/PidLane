@@ -2787,6 +2787,26 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── contact uit: maten over de stilte zelf (#487, 14-10-2026) ──
+  {
+    issue: '#487',
+    naam: 'Contact uit: de meetopdracht telt alleen wat er in de stilte gebeurde',
+    waarom: 'De rit van 14-10 kreeg BEVINDING op 27 weigeringen en 2 ATST-stappen van de hele verbinding, terwijl beide stiltes schoon verliepen.',
+    proef: async function () {
+      if (!window.PLContact || typeof PLContact.maat !== 'function') return { staat: 'FOUT', detail: 'PLContact.maat ontbreekt — oude pidlane-contact.js (herladen?)' };
+      var K = PLContact._kern, t = 0, w = 27, s = { groep: 3, batchAan: true, mult: 1, st: '1C' };
+      var c = K.maak({ nu: function () { return t; }, kortOk: function () { return true; }, stand: function () { return Object.assign({}, s); },
+        laatst: function () { return { rpm: 664, kmh: 0 }; }, terug: function () {}, meld: function () {}, weer: function () {}, weigeringen: function () { return w; } });
+      for (var i = 0; i < 8; i++) { c.noteAntwoord('010C1', 'NO DATA'); t += 230; }
+      w += 3;
+      c.noteAntwoord('010C1', '410C0A62');
+      if (c.maat('contact-weigeringen') !== 3) return { staat: 'FOUT', detail: 'contact-weigeringen = ' + c.maat('contact-weigeringen') + ', verwacht 3 (de 27 van vóór de stilte tellen mee?)' };
+      if (c.maat('contact-terug-anders') !== 0) return { staat: 'FOUT', detail: 'contact-terug-anders = ' + c.maat('contact-terug-anders') + ' bij een gelijke stand' };
+      return { staat: 'OK', detail: 'nagebouwde stilte: 3 weigeringen erin geteld, 27 ervoor niet · deze sessie: ' + PLContact.maat('contact-stiltes') + ' stilte(s), anders terug ' +
+        PLContact.maat('contact-terug-anders') + ', weigeringen erin ' + PLContact.maat('contact-weigeringen') };
+    }
+  },
+
   // ── rijmodus: het advies van de monitor in beeld (14-10-2026) ──
   {
     issue: 'rijmodus',

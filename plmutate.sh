@@ -41,6 +41,7 @@
 #           bash plmutate.sh . --sinds origin/main   alleen wat je branch raakte
 #           bash plmutate.sh . --parallel 4          vier tegelijk (standaard:
 #                                                    het aantal kernen, hoogstens 4)
+#           bash plmutate.sh . --deel 2/4            het tweede kwart (CI-matrix)
 #
 # SNELLER SINDS 29-09-2026. De tabel telde 732 mutaties en een volledige run
 # duurde zo'n 16 minuten. De tijd zat bijna helemaal in de 49 mutaties op een
@@ -61,16 +62,23 @@
 #                 bestand B stil stukmaken, en dat ziet alleen de volle run.
 #                 Daarom draait CI hem altijd helemaal, en zegt een deelrun dat
 #                 in zijn laatste regel.
+#   --deel K/N    (14-10-2026) alleen het K-de van N stukken. Voor CI: de volle
+#                 tabel duurde daar 14 minuten op één runner, en N runners naast
+#                 elkaar delen dat door N. Samen dekken de N delen de tabel
+#                 precies één keer. Browser- en node-mutaties worden elk apart
+#                 om en om verdeeld, anders kan één deel alle trage krijgen.
 # ══════════════════════════════════════════════════════════════════
 
-REPO=""; SINDS=""; PARALLEL=""
+REPO=""; SINDS=""; PARALLEL=""; DEEL=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --sinds)      SINDS="$2"; shift 2 ;;
     --sinds=*)    SINDS="${1#*=}"; shift ;;
     --parallel|-j) PARALLEL="$2"; shift 2 ;;
     --parallel=*) PARALLEL="${1#*=}"; shift ;;
-    -*)           echo "Onbekende optie: $1 (bekend: --sinds REF, --parallel N)"; exit 2 ;;
+    --deel)       DEEL="$2"; shift 2 ;;
+    --deel=*)     DEEL="${1#*=}"; shift ;;
+    -*)           echo "Onbekende optie: $1 (bekend: --sinds REF, --parallel N, --deel K/N)"; exit 2 ;;
     *)            REPO="$1"; shift ;;
   esac
 done
@@ -413,6 +421,7 @@ MUTATIES=(
 # blokkeert. Deze twee bouwen dat na.
 ".github/workflows/tests.yml@@    name: browserproeven (de echte app in een echte browser)@@    name: browserproeven@@test-testgate.js@@een jobnaam is ingekort: de ruleset wacht op een naam die niet meer gerapporteerd wordt"
 ".github/workflows/tests.yml@@    name: Geen sleutels in de repo@@    name: Sleutelscan@@test-testgate.js@@de sleutelscan heet anders: elke PR blokkeert stil op de oude naam"
+".github/workflows/tests.yml@@    needs: tegenproef-deel\n    if: always()@@    needs: tegenproef-deel@@test-testgate.js@@de verplichte tegenproef draait niet bij een rood deel: skipped telt als geslaagd"
 # ── de tak zelf bijwerken (18-09-2026, spoor 2 van #238) ──
 # De duurste is de derde: het besluit zegt dan wel bijwerken, maar de workflow
 # doet er niets mee. De poort staat dan groen getoetst dode code te zijn, en de
@@ -1356,6 +1365,8 @@ MUTATIES=(
 "public/pidlane-contact.js@@        omg.terug(st.snap);@@        omg.terug(omg.stand());@@test-contact.js@@de busstand wordt pas na de stilte opgevraagd, dus komt de verknoeide stand terug (#487)"
 "public/pidlane-contact.js@@      if (!String(raw || '').trim()) return st.stil;@@@@test-contact.js@@een leeg antwoord (adapter weg) telt als stille ECU (#487)"
 "public/pidlane-plload.js@@  window._batchSupported=s.batchAan; _batchOffSince=s.batchUitSinds; _batchDips=s.dips;@@  _batchOffSince=s.batchUitSinds; _batchDips=s.dips;@@test-contact.js@@multi-PID blijft uit na een contact-uit (#487)"
+"public/pidlane-contact.js@@          if (w1 !== null && st.weig0 !== null) tel.weigeringen += Math.max(0, w1 - st.weig0);@@          if (w1 !== null) tel.weigeringen = w1;@@test-contact.js@@contact-weigeringen telt de hele verbinding in plaats van de stilte, zoals de rit van 14-10 (#487)"
+"public/pidlane-contact.js@@          if (g !== null) { tel.terugGemeten++; if (!g) tel.terugAnders++; }@@          if (g !== null) { tel.terugGemeten++; }@@test-contact.js@@een stilte waarna ATST bijgestuurd bleef telt niet als anders (#487)"
 "public/pidlane-garage.js@@    if (!tankenAan(v) || !window.PLTank || !PLTank.peilTik) return;@@    if (!window.PLTank || !PLTank.peilTik) return;@@bproef-garage.js@@tankbeurten bijhouden staat uit, en toch vraagt de app na het tanken (#469)"
 "public/pidlane-garage.js@@      .filter(function (t) { return (t[0] !== 'tanken' || tankenAan(v)) && (t[0] !== 'conditie' || scoreAan(v)); });@@      .filter(function (t) { return t[0] !== 'conditie' || scoreAan(v); });@@bproef-garage.js@@het tabblad Tankbeurten staat er ook als het uit staat (#469)"
 "public/pidlane-garage.js@@      .filter(function (t) { return (t[0] !== 'tanken' || tankenAan(v)) && (t[0] !== 'conditie' || scoreAan(v)); });@@      .filter(function (t) { return t[0] !== 'tanken' || tankenAan(v); });@@bproef-garage.js@@het tabblad Conditie staat er ook als de score uit staat (#475)"
@@ -2124,6 +2135,24 @@ else
   KEUZE=("${!MUTATIES[@]}")
 fi
 
+# --deel K/N: browser- en node-mutaties elk om en om, zodat de trage
+# browsermutaties gelijk over de delen vallen.
+if [ -n "$DEEL" ]; then
+  [[ "$DEEL" =~ ^([1-9][0-9]*)/([1-9][0-9]*)$ ]] && [ "${BASH_REMATCH[1]}" -le "${BASH_REMATCH[2]}" ] \
+    || { echo "--deel verwacht K/N met 1 ≤ K ≤ N, niet '$DEEL'"; exit 2; }
+  DK=$(( BASH_REMATCH[1] - 1 )); DN=${BASH_REMATCH[2]}
+  ALLES=${#KEUZE[@]}; DEZE=(); nb=0; nn=0
+  for i in "${KEUZE[@]}"; do
+    if [[ "$(veld "${MUTATIES[$i]}" 3)" == bproef-* ]]; then
+      [ $(( nb++ % DN )) -eq "$DK" ] && DEZE+=("$i")
+    else
+      [ $(( nn++ % DN )) -eq "$DK" ] && DEZE+=("$i")
+    fi
+  done
+  KEUZE=("${DEZE[@]}")
+  echo "${GRIJS}  deel $DEEL: ${#KEUZE[@]} van $ALLES mutaties${UIT}"
+fi
+
 if [ -z "$PARALLEL" ]; then
   PARALLEL=$( (nproc || getconf _NPROCESSORS_ONLN || echo 1) 2>/dev/null | head -1 )
   [ "$PARALLEL" -gt 4 ] 2>/dev/null && PARALLEL=4
@@ -2131,6 +2160,9 @@ fi
 [[ "$PARALLEL" =~ ^[1-9][0-9]*$ ]] || { echo "--parallel verwacht een getal vanaf 1, niet '$PARALLEL'"; exit 2; }
 [ "$PARALLEL" -gt "${#KEUZE[@]}" ] && PARALLEL=${#KEUZE[@]}
 
+if [ "${#KEUZE[@]}" -eq 0 ] && [ -n "$DEEL" ] && [ -z "$SINDS" ]; then
+  echo "  Deel $DEEL is leeg."; exit 0
+fi
 if [ "${#KEUZE[@]}" -eq 0 ]; then
   echo "  Niets te doen: geen enkele mutatie raakt wat sinds $SINDS veranderde."
   echo
@@ -2284,7 +2316,10 @@ if [ $ontsnapt -gt 0 ]; then
   exit 1
 fi
 
-if [ -n "$SINDS" ]; then
+if [ -n "$DEEL" ] && [ -z "$SINDS" ]; then
+  echo "${GROEN}Elke nagebouwde fout in deel $DEEL is gevangen.${UIT}"
+  echo "${GEEL}Deel $DEEL: ${#KEUZE[@]} mutaties. Alleen alle delen samen zijn de volle tabel.${UIT}"
+elif [ -n "$SINDS" ]; then
   echo "${GROEN}Elke nagebouwde fout in deze deelrun is gevangen.${UIT}"
   echo "${GEEL}Deelrun: ${#KEUZE[@]} van ${#MUTATIES[@]}. De volle tabel draait in CI.${UIT}"
 else
