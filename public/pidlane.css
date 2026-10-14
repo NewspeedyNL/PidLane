@@ -3190,3 +3190,24 @@ html.dark .plh-i, #loginOv .plh-i, .mbtn.p > .plh-i, .pl-check > .plh-i {
 .vpf-tel-nul { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:44px; margin-top:10px; padding:8px 12px;
   background:var(--sur2); color:var(--tx); border:1px solid var(--bd2); border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; }
 .vpf-tel-nul small { font-weight:400; font-size:12px; color:var(--tx2); }
+
+/* ══ RIJMODUS (14-10-2026) — PLRijmodus, split-screen naast de kaart ══
+   Alleen zichtbaar bij body[data-modus="rij"]; dan is de rest van de app
+   verborgen. Kleur alleen bij een overschrijding: neutraal is normaal. */
+#rijModus { display:none; }
+body[data-modus="rij"] > *:not(#rijModus):not(script):not(style) { display:none !important; }
+body[data-modus="rij"] #rijModus { display:flex; flex-direction:column; gap:8px; min-height:var(--pl-vh); padding:8px; background:var(--bg); color:var(--tx); }
+#rijModus .rij-banner { padding:8px 12px; border-radius:10px; background:var(--ors); color:var(--tx); border:1px solid var(--or); font-size:16px; font-weight:700; line-height:1.3; }
+#rijModus .rij-banner[hidden] { display:none; }
+#rijModus .rij-tegels { flex:1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+#rijModus .rij-tegel { display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:12px; background:var(--sur); border:2px solid var(--bd); padding:6px; min-width:0; }
+#rijModus .rij-tegel b { font-family:var(--m); font-size:clamp(40px, 13vmin, 88px); font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+#rijModus .rij-tegel span { font-size:14px; color:var(--tx2); margin-top:4px; }
+#rijModus .rij-tegel[data-k="letop"] { border-color:var(--or); background:var(--ors); }
+#rijModus .rij-tegel[data-k="alarm"] { border-color:var(--rd); background:var(--rds); }
+#rijModus .rij-tegel[data-k="alarm"] b { color:var(--rd); }
+#rijModus .rij-tegel[data-k="oud"] b,
+#rijModus .rij-tegel[data-k="meetfout"] b,
+#rijModus .rij-tegel[data-k="leeg"] b { color:var(--tx3); }
+#rijModus .rij-tegel[data-k="oud"] { opacity:.6; }
+#rijModus .rij-uit { align-self:flex-end; background:none; border:0; color:var(--tx3); font-size:13px; padding:6px 4px; cursor:pointer; }

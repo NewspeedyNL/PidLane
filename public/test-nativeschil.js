@@ -333,6 +333,11 @@ console.log('\n── de tweede plugin: de meting in beeld houden (#228) ──'
   bevat('en vult configChanges aan', wf, 'smallestScreenSize');
   bevat('de bundelpoort leest het terug uit de merge', wf, 'mag geen picture-in-picture in de bundel');
   bevat('en betrapt een herstart bij de wissel', wf, 'herstart bij de wissel naar PiP');
+  /* Rijmodus: split-screen naast de kaart. Resizeable expliciet aan, geen vaste
+     oriëntatie — en de bundelpoort leest beide terug uit de merge. */
+  bevat('de workflow zet resizeableActivity aan', wf, 'android:resizeableActivity="true">');
+  bevat('en haalt een vaste screenOrientation weg', wf, "re.sub(r'\\s*android:screenOrientation=");
+  bevat('de bundelpoort betrapt een activiteit die niet in split-screen kan', wf, 'kan niet in split-screen');
 
   /* De app-kant: de module moet hangen, en na de twee functies die hij wikkelt. */
   const html = lees('public/index.html');
