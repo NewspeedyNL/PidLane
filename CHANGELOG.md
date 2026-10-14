@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Lampjesgids: echte dashboardsymbolen, plus handrem en service (#495)
+ ═══════════════════════════════════════════════════════════
+
+ - Elk lampje een zelfgetekend pictogram in ISO 2575-stijl (inline SVG) in
+   de kleur van het lampje op een donker vlak, in plaats van een emoji.
+ - Nieuw: Handrem (parkeerrem) en Servicebeurt; nu 27 lampjes.
+
+ ═══════════════════════════════════════════════════════════
  14-10-2026 — Melding bij een nieuwe terugroepactie (#493)
  ═══════════════════════════════════════════════════════════
 
