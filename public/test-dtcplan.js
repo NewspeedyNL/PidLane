@@ -61,6 +61,12 @@ console.log('\n2. Langste voorvoegsel wint');
 eis(plan('P0128').familie === 'P0128', 'P0128 → thermostaat-familie');
 eis(plan('P0301').familie === 'P030', 'P0301 → misfire-familie');
 eis(plan('P0299').familie === 'P0299', 'P0299 → turbo, niet een bredere familie');
+// De tabel heeft (nog) geen families die elkaar overlappen; zonder een bredere
+// ernaast onderscheidt "langste wint" niets. Daarom tijdelijk P01 erbij.
+P.P01 = { kost: [1, 2], wie: 'zelf', stappen: ['breed', 'breed'] };
+eis(plan('P0128').familie === 'P0128' && plan('P0171').familie === 'P017', 'met een bredere P01 ernaast wint nog steeds de smalste');
+eis(plan('P0199').familie === 'P01', 'zonder smallere familie valt hij op de brede terug');
+delete P.P01;
 eis(plan('p0420 ').familie === 'P042', 'kleine letters en spaties worden genegeerd');
 
 console.log('\n3. Dekking van DTCDB');
