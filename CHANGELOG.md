@@ -10,6 +10,23 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 14-10-2026 — Rijmodus: PidLane in split-screen naast de kaart
+ ═══════════════════════════════════════════════════════════
+
+ - pidlane-rijmodus.js (PLRijmodus): klein venster én verbonden → vier
+   grote tegels (koelwater, toerental, accu, motorstatus) en één banner
+   met de laatste luide melding van PLMon/PLWatch. Geen knoppen nodig.
+ - Venstergrens h < 480 of w < 340 met hysterese. Niet w < 420: een
+   telefoon is in vol portret 393-412 px breed en zou altijd rij zijn.
+ - Buiten de harde limiet = grijs '?', niet rood: een meetfout is geen
+   alarm. Ouder dan 5 s = grijs. Schrijft alleen bij verandering.
+ - Scherm aan zolang rijmodus én verbinding (KeepAwake of Wake Lock).
+ - Manifest: resizeableActivity=true, vaste screenOrientation eraf;
+   de bundelpoort weigert een activiteit die niet in split-screen kan.
+ - Meer → Mijn voorkeuren → 🚗 Rijmodus (auto/aan/uit), handleiding,
+   test-rijmodus.js, tien mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  14-10-2026 — Onderzoek: brandstofdruk en breedbandsonde als stap (#428)
  ═══════════════════════════════════════════════════════════
 
