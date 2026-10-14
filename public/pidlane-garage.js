@@ -57,7 +57,7 @@
     wachtrijMax: 50,
     condRitten: 500            // zoveel ritten haalt de conditiescore op (de server geeft er hoogstens 500)
   };
-  var OPSLAG = { stand: 'pl_garage_stand', actief: 'pl_garage_actief', rit: 'pl_garage_rit', wachtrij: 'pl_garage_wachtrij' };
+  var OPSLAG = { stand: 'pl_garage_stand', actief: 'pl_garage_actief', rit: 'pl_garage_rit', wachtrij: 'pl_garage_wachtrij', nuNiet: 'pl_garage_nuniet' };
 
   // ════════════════════════════════════════════════════════════════
   //  PURE FUNCTIES
@@ -733,6 +733,21 @@
     try { var x = (typeof pidVals !== 'undefined') ? pidVals[pid] : undefined; return typeof x === 'number' && isFinite(x) ? x : undefined; }
     catch (e) { return undefined; }
   }
+  /* De toestemming meteen na inloggen vragen (14-10-2026). Daarvóór kwam ze
+     pas als je zelf Mijn voertuigen opende; tot dan herkende de app de auto
+     niet en zette ze de vaste sensoren en displays van het voertuig niet aan.
+     Eén keer per gebruiker en tekstversie: "Nu niet" geldt tot de tekst
+     verandert. Puur: test-garage.js toetst hem. */
+  function akkoordVragen(stand, demo, nuNiet, u) {
+    if (!stand || stand.akkoord || demo) return false;
+    return nuNiet !== String(u || '') + '|' + String(stand.akkoordVersie || '');
+  }
+  function nuNiet() {
+    var st = _st.stand;
+    if (st && !st.akkoord) schrijf(OPSLAG.nuNiet, wie() + '|' + String(st.akkoordVersie || ''));
+    sluit();
+  }
+
   function isVerbonden() { try { return typeof connected !== 'undefined' && !!connected && !(typeof demoMode !== 'undefined' && demoMode); } catch (e) { return false; } }
 
   // Welke auto hangt er aan? Pseudoniem van de VIN tegen de voertuigen.
@@ -1169,7 +1184,7 @@
       '<div class="gr-blok"><div class="gr-bh">Wissen</div><div class="gr-klein">Een voertuig verwijder je zelf, met alles erbij. "Alles wissen" onderaan Mijn voertuigen haalt al deze gegevens in één keer weg. Verwijder je je account, dan gaan ze binnen 30 dagen mee.</div></div>' +
       (st.eerderAkkoord ? '<div class="gr-melding">De tekst is gewijzigd sinds je eerder akkoord gaf. Je gegevens staan er nog; lees en bevestig opnieuw.</div>' : '') +
       '<div class="gr-knoppen"><button class="gr-k hoofd" onclick="PLGarage._akkoord()">Akkoord — bewaar mijn voertuigen</button></div>' +
-      '<div class="gr-knoppen"><button class="gr-k" onclick="PLGarage.sluit()">Nu niet</button></div>';
+      '<div class="gr-knoppen"><button class="gr-k" onclick="PLGarage._nuNiet()">Nu niet</button></div>';
   }
 
   function tekenKentekenEnNaam(v) {
@@ -1883,6 +1898,8 @@
     _ritTikNu: function () { return ritTikNu(); },
     _ritHerstel: function () { return ritHerstel(); },
     tekenKaart: tekenKaart,
+    _nuNiet: function () { nuNiet(); },
+    _lus: function () { lus(); },
     _akkoord: function () { doe(function () { return api('akkoord', { versie: _st.stand && _st.stand.akkoordVersie }); }, 'Mijn voertuigen staat aan'); },
     _open: function (id) { _st.view = 'voertuig'; _st.vid = id; _st.tab = 'overzicht'; teken(); },
     _tab: function (t) { _st.tab = t; _st.labelRit = null; _st.tankForm = null; _st.condForm = false; _st.condFout = null; _st.kiesModus = false; _st.kies = {}; // Sensoren opnieuw openen = verse stand uit het voertuig en de bibliotheek,
@@ -2247,7 +2264,7 @@
     // pure kern — voor test-garage.js
     _kern: { status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar, ritStand: ritStand,
       rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, voorinvulNieuw: voorinvulNieuw, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
-      waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, cfg: CFG }
+      waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, akkoordVragen: akkoordVragen, cfg: CFG }
   };
 
   // Eén keer per sessie: APK of onderhoud dat eraan komt of verlopen is.
@@ -2276,7 +2293,9 @@
       if (k && (!_wasKlant || wie() !== _wasWie)) {
         // Een kopie van een andere klant op dit toestel: weg, vóór er iets getekend wordt.
         if (_st.stand && _st.stand.__u !== wie()) { _st.stand = null; _st.actiefId = null; schrijf(OPSLAG.stand, null); schrijf(OPSLAG.actief, null); schrijf(OPSLAG.wachtrij, null); schrijf(OPSLAG.rit, null); }
-        ververs(); if (!_bootKlaar) { _bootKlaar = true; ritHerstel(); } }
+        ververs().then(function (d) { if (akkoordVragen(d, isDemo(), lees(OPSLAG.nuNiet, null), wie())) open(); })
+          .catch(function (e) { console.warn('PLGarage: toestemming na inloggen', e); });
+        if (!_bootKlaar) { _bootKlaar = true; ritHerstel(); } }
       if (!k && _wasKlant) { _st.stand = null; schrijf(OPSLAG.stand, null); _st.cache = {}; tekenKaart(); gearKoppel(); }
       _wasKlant = k; _wasWie = wie();
       if (!k) return;
