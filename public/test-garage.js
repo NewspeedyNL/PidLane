@@ -488,6 +488,28 @@ function laad(opties) {
     eis(V(null, 'R054XD', []).vin_pseudo === undefined, 'zonder verbonden auto geen VIN-koppeling');
   }
 
+  console.log('\nToestemming meteen na inloggen, niet pas bij Mijn voertuigen');
+  {
+    const A = laad({ rol: 'klant' }).G._kern.akkoordVragen;
+    const st = { akkoord: false, akkoordVersie: 3 };
+    eis(A(st, false, null, 'anna') === true, 'nog geen akkoord na inloggen: meteen vragen');
+    eis(A({ akkoord: true, akkoordVersie: 3 }, false, null, 'anna') === false, 'al akkoord: niet vragen');
+    eis(A(null, false, null, 'anna') === false, 'stand niet opgehaald (offline): niet vragen');
+    eis(A(st, true, null, 'anna') === false, 'demo: niet vragen');
+    eis(A(st, false, 'anna|3', 'anna') === false, '"Nu niet" voor deze tekst: niet opnieuw');
+    eis(A({ akkoord: false, akkoordVersie: 4 }, false, 'anna|3', 'anna') === true, 'nieuwe tekstversie: opnieuw vragen');
+    eis(A(st, false, 'bert|3', 'anna') === true, '"Nu niet" van een ander account telt niet');
+  }
+  {
+    // De koppeling in lus(): na inloggen zonder akkoord gaat het venster open.
+    const { G, s } = laad({ rol: 'klant', server: { stand: { ok: true, akkoord: false, akkoordVersie: 3, voertuigen: [] } } });
+    let geopend = 0; const echt = s.document.getElementById;
+    s.document.getElementById = (id) => (id === 'plGarOv' ? { style: { set display(v) { if (v === 'flex') geopend++; } } } : echt(id));
+    await G._lus();
+    await new Promise((r) => setImmediate(r)); await new Promise((r) => setImmediate(r));
+    eis(geopend === 1, 'lus() opent de toestemming na het inloggen', 'geopend: ' + geopend);
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });
