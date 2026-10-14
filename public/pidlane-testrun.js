@@ -2787,18 +2787,18 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
-  // ── rijmodus: split-screen naast de kaart (14-10-2026) ──
+  // ── rijmodus: het advies van de monitor in beeld (14-10-2026) ──
   {
     issue: 'rijmodus',
-    naam: 'Rijmodus: vier tegels in een half scherm naast de kaart',
-    waarom: 'In split-screen loopt de meetlus door (#228), maar de volle app is in een half venster niet met één blik te lezen.',
+    naam: 'Rijmodus: advies van de Rit- en Caravan-monitor in een half scherm',
+    waarom: 'In split-screen loopt de meetlus door (#228), maar de volle app is in een half venster niet te lezen; vier grote getallen namen een derde van het scherm.',
     proef: async function () {
-      if (!window.PLRijmodus || typeof PLRijmodus.kiesModus !== 'function') return { staat: 'FOUT', detail: 'PLRijmodus ontbreekt — oude pidlane-rijmodus.js (herladen?)' };
-      if (PLRijmodus.kiesModus(412, 430) !== 'rij' || PLRijmodus.kiesModus(412, 869) !== 'normaal') return { staat: 'FOUT', detail: 'venstergrenzen kloppen niet: portret-split moet rij zijn, vol portret normaal' };
+      if (!window.PLRijmodus || typeof PLRijmodus.paneel !== 'function') return { staat: 'FOUT', detail: 'PLRijmodus ontbreekt — oude pidlane-rijmodus.js (herladen?)' };
+      if (PLRijmodus.besluit({ stand: null }).modus !== 'normaal') return { staat: 'FOUT', detail: 'zonder keuze staat de rijmodus aan — hij hoort standaard uit' };
       if (PLRijmodus.klasse('0105', 300) !== 'meetfout') return { staat: 'FOUT', detail: 'koelwater buiten de harde limiet kleurt niet als meetfout' };
+      if (typeof caravanSchakelAdvies !== 'function') return { staat: 'FOUT', detail: 'caravanSchakelAdvies ontbreekt — oude pidlane-caravan.js (herladen?)' };
       var nu = PLRijmodus.nu();
-      var v = window.innerWidth + 'x' + window.innerHeight;
-      return { staat: 'OK', detail: 'venster ' + v + ' · modus ' + nu.modus + ' (' + nu.reden + ') · stand ' + PLRijmodus.stand() + ' · scherm-aan ' + (nu.wake || 'nee') + ' · zet de app in gesplitst scherm naast Maps om de tegels te zien' };
+      return { staat: 'OK', detail: 'stand ' + PLRijmodus.stand() + ' · modus ' + nu.modus + ' · vorm ' + nu.vorm + ' (' + window.innerWidth + 'x' + window.innerHeight + ') · scherm-aan ' + (nu.wake || 'nee') + ' · zet hem aan in Mijn voorkeuren, start de Caravan- of Rit-monitor en zet de app naast Maps' };
     }
   },
 
