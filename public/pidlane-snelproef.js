@@ -431,26 +431,6 @@
     catch (e) { console.warn('Snelheidsproef: paneel niet gesloten', e); }
   }
 
-  function menu() {
-    const groep = document.getElementById('admGroup');
-    if (!groep || document.getElementById('plSnelMenu')) return 0;
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'kebab-item';
-    b.id = 'plSnelMenu';
-    b.textContent = '🚦 Snelheidsproef (stap 1, 2, 3…)';
-    b.addEventListener('click', function () {
-      try { if (typeof closeKebab === 'function') closeKebab(); }
-      catch (e) { console.warn('Snelheidsproef: kebabmenu niet gesloten', e); }
-      open();
-    });
-    groep.appendChild(b);
-    return 1;
-  }
-
-  try { document.addEventListener('DOMContentLoaded', menu); }
-  catch (e) { console.warn('Snelheidsproef: menuknop niet ingehaakt', e); }
-
   window.PLSnelProef = {
     versie: VERSIE,
     DOEL_MS: DOEL_MS,
@@ -463,7 +443,6 @@
     doeStap: doeStap,
     reset: reset,
     open: open,
-    sluit: sluit,
-    menu: menu
+    sluit: sluit
   };
 })();

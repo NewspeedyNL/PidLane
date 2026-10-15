@@ -1280,9 +1280,34 @@
     finally { c._condRitten = false; teken(); }
   }
 
+  /* Tabblad Kenteken: RDW, terugroepacties, milieuklasse, kosten, schema en
+     adapter — dezelfde uitslag als de kenteken-check (PLZonder.checkHtml). */
+  async function laadRdw(v) {
+    var c = cacheVan(v.id);
+    c._rdw = true;
+    try {
+      if (!window.PLZonder || typeof PLZonder.haal !== 'function') throw new Error('kenteken-check niet geladen (pidlane-zonder.js)');
+      c.rdw = await PLZonder.haal(v.kenteken);
+      if (!c.rdw) c.rdwFout = kentekenNl(v.kenteken) + ' staat niet bij het RDW';
+    } catch (e) { c.rdwFout = e.message; console.warn('PLGarage: RDW voor het tabblad Kenteken', e); }
+    finally { c._rdw = false; teken(); }
+    if (!c.rdw || !window.PLRecall || typeof PLRecall.check !== 'function') return;
+    try { c.rdwRecall = PLZonder.recallHtml(await PLRecall.check(v.kenteken)); teken(); }
+    catch (e) { console.warn('PLGarage: terugroepacties niet opgehaald — de RDW-vlag blijft staan', e); }
+  }
+  function tekenKenteken(c) {
+    if (c.rdwFout) return '<div class="gr-melding">⚠️ ' + esc(c.rdwFout) + '</div><div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._rdwOpnieuw()">Opnieuw</button></div>';
+    if (!c.rdw) return '<div class="gr-klein">⏳ RDW opzoeken…</div>';
+    try { PLZonder.zorgCss(); } catch (e) { console.warn('PLGarage: opmaak van de kenteken-check', e); }
+    var o = c.rdw.overzicht;
+    return '<div class="gr-blok plz-los"><div class="gr-klein">' + (o.aandacht ? '⚠️ ' + o.aandacht + ' punt' + (o.aandacht === 1 ? '' : 'en') + ' die aandacht vragen' : '✅ Niets gevonden dat aandacht vraagt') + '</div>' +
+      PLZonder.checkHtml(c.rdw, 'grRecall').replace('<div id="grRecall"></div>', '<div id="grRecall">' + (c.rdwRecall || '') + '</div>') + PLZonder.BRON + '</div>';
+  }
+
   function tekenVoertuig(v) {
-    var tabs = [['overzicht', 'Overzicht'], ['issues', 'Open punten'], ['ritten', 'Ritten'], ['conditie', 'Conditie'], ['tanken', 'Tankbeurten'], ['rapporten', 'Rapporten'], ['sensoren', 'Sensoren'], ['profiel', 'Profiel']]
-      .filter(function (t) { return (t[0] !== 'tanken' || tankenAan(v)) && (t[0] !== 'conditie' || scoreAan(v)); });
+    var tabs = [['overzicht', 'Overzicht'], ['issues', 'Open punten'], ['ritten', 'Ritten'], ['conditie', 'Conditie'], ['tanken', 'Tankbeurten'], ['kenteken', 'Kenteken'], ['rapporten', 'Rapporten'], ['sensoren', 'Sensoren'], ['profiel', 'Profiel']]
+      .filter(function (t) { return (t[0] !== 'tanken' || tankenAan(v)) && (t[0] !== 'conditie' || scoreAan(v)) && (t[0] !== 'kenteken' || !!v.kenteken); });
+    if (_st.tab === 'kenteken' && !v.kenteken) _st.tab = 'overzicht';
     if (_st.tab === 'tanken' && !tankenAan(v)) _st.tab = 'overzicht';
     if (_st.tab === 'conditie' && !scoreAan(v)) _st.tab = 'overzicht';
     var h = '<div class="gr-knoppen" style="margin:0 0 10px"><button class="gr-k klein" onclick="PLGarage._terug()">← Alle voertuigen</button>' +
@@ -1375,6 +1400,11 @@
       if (!c.ritten) laad(v.id, 'ritten');
       h += window.PLTank ? PLTank.html(v, { tanken: c.tanken || (c.tankenFout ? [] : null), ritten: c.ritten || [], form: _st.tankForm, fout: c.tankenFout || null })
         : '<div class="gr-melding">Tankbeurten niet geladen (pidlane-tank.js).</div>';
+    } else if (_st.tab === 'kenteken') {
+      // De kenteken-check van het startscherm (PLZonder), maar hier ook als de
+      // adapter verbonden is: daar verdwijnt de kaart "Niet in de auto?".
+      if (!c.rdw && !c._rdw && !c.rdwFout) laadRdw(v);
+      h += tekenKenteken(c);
     } else if (_st.tab === 'rapporten') {
       if (!c.rapporten) laad(v.id, 'rapporten');
       var rp = c.rapporten || [];
@@ -1930,6 +1960,7 @@
     _lus: function () { lus(); },
     _akkoord: function () { doe(function () { return api('akkoord', { versie: _st.stand && _st.stand.akkoordVersie }); }, 'Mijn voertuigen staat aan'); },
     _open: function (id) { _st.view = 'voertuig'; _st.vid = id; _st.tab = 'overzicht'; teken(); },
+    _rdwOpnieuw: function () { var c = cacheVan(_st.vid); c.rdwFout = null; c.rdw = null; teken(); },
     _tab: function (t) { _st.tab = t; _st.labelRit = null; _st.tankForm = null; _st.condForm = false; _st.condFout = null; _st.kiesModus = false; _st.kies = {}; // Sensoren opnieuw openen = verse stand uit het voertuig en de bibliotheek,
       // behalve als er nog iets onbewaards staat.
       if (t !== 'sensoren' || !(_st.sens && _st.sens.gewijzigd)) _st.sens = null; teken(); },

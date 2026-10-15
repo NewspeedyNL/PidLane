@@ -2787,6 +2787,22 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── tabblad Kenteken in Mijn voertuigen, Admin-menu korter (15-10-2026) ──
+  {
+    issue: 'kentekentab',
+    naam: 'Mijn voertuigen: tabblad Kenteken met de kenteken-check, ook verbonden; vier Admin-regels weg',
+    waarom: 'De kenteken-check (APK, terugroepacties, milieuklasse, kosten) stond alleen op de kaart "Niet in de auto?", en die verdwijnt zodra de adapter verbonden is.',
+    proef: async function () {
+      if (!window.PLZonder || typeof PLZonder.checkHtml !== 'function' || typeof PLZonder.recallHtml !== 'function') return { staat: 'FOUT', detail: 'PLZonder.checkHtml/recallHtml ontbreekt — oude pidlane-zonder.js (herladen?)' };
+      var h = PLZonder.checkHtml({ rij: { merk: 'MAZDA', handelsbenaming: 'CX-5' }, bs: [], overzicht: { naam: 'Mazda CX-5', regels: [{ ico: '📅', label: 'APK', waarde: 'geldig' }] } }, 'b5Recall');
+      if (!/plz-regel/.test(h) || !/id="b5Recall"/.test(h)) return { staat: 'FOUT', detail: 'checkHtml geeft geen RDW-regels of geen plek voor de terugroepacties' };
+      if (PLZonder.recallHtml({ acties: [{ open: false }] }) !== '' || !/Nepactie/.test(PLZonder.recallHtml({ acties: [{ open: true, omschrijving: 'Nepactie' }] }))) return { staat: 'FOUT', detail: 'recallHtml toont een gesloten actie of mist een open actie' };
+      var weg = ['frisBtn', 'kbMode06', 'plSppMenu', 'plSnelMenu'].filter(function (id) { return document.getElementById(id); });
+      if (weg.length) return { staat: 'FOUT', detail: 'nog in het Admin-menu: ' + weg.join(', ') + ' — oude index.html (herladen?)' };
+      return { staat: 'OK', detail: 'rij: Meer → Mijn voertuigen → voertuig met kenteken → Kenteken, verbonden' };
+    }
+  },
+
   // ── foutcodes met tekst, UDS en mode 06 in Rapporten (15-10-2026) ──
   {
     issue: 'dtctekst',
@@ -2798,7 +2814,7 @@ const PROEVEN_B5 = [
       if (mis.length) return { staat: 'FOUT', detail: 'nog zonder tekst: ' + mis.join(', ') };
       if (!/fabrikantspecifiek/.test(dtcInfo('P117A').desc)) return { staat: 'FOUT', detail: 'P117A zegt niets over zijn opbouw: ' + dtcInfo('P117A').desc };
       if (!window.PLUds || typeof PLUds.bewaarInSessie !== 'function' || !window.PLM06 || typeof PLM06.bewaarInSessie !== 'function') return { staat: 'FOUT', detail: 'bewaarInSessie ontbreekt — oude pidlane-uds.js of pidlane-mode06.js (herladen?)' };
-      return { staat: 'OK', detail: 'teksten kloppen · rij: 🧩 Alle stuurapparaten en Admin → Mode 06, en kijk of beide in Rapporten verschijnen' };
+      return { staat: 'OK', detail: 'teksten kloppen · rij: 🧩 Alle stuurapparaten, en kijk of die in Rapporten verschijnt (de Admin-knop Mode 06 is sinds 15-10 weg)' };
     }
   },
 
@@ -2849,7 +2865,6 @@ const PROEVEN_B5 = [
     waarom: 'PLM06.render() bestond maar werd nergens aangeroepen: de app gebruikte mode 06 alleen als bewijs, de tests zelf zag niemand.',
     proef: async function () {
       if (!window.PLM06 || typeof PLM06.alsTekst !== 'function' || typeof PLM06.open !== 'function') return { staat: 'FOUT', detail: 'PLM06.alsTekst/open ontbreekt — oude pidlane-mode06.js (herladen?)' };
-      if (!document.getElementById('kbMode06')) return { staat: 'FOUT', detail: 'de knop Mode 06 (#kbMode06) staat niet in het Admin-menu — oude index.html (herladen?)' };
       if (!window.PLOnderzoek || typeof PLOnderzoek.beoordeelMode06 !== 'function') return { staat: 'FOUT', detail: 'PLOnderzoek.beoordeelMode06 ontbreekt' };
       var R = PLM06._intern.bouwRecord;
       var st = PLOnderzoek.nieuw({ klachten: ['onrustig'] });
@@ -4449,7 +4464,6 @@ const PROEVEN_B5 = [
     waarom: 'Een uitslag die de verkeerde ingreep aanwijst, stuurt de volgende fix de verkeerde kant op — en na een rit valt dat niet meer na te gaan.',
     proef: async function () {
       if (!window.PLSnelProef) return { staat: 'FOUT', detail: 'PLSnelProef ontbreekt — pidlane-snelproef.js is niet geladen' };
-      if (!document.getElementById('plSnelMenu')) return { staat: 'FOUT', detail: 'de knop "Snelheidsproef" staat niet in het Admin-menu' };
       var P = PLSnelProef;
       var proef = { stappen: { 1: { m: { atrv: 150 }, oordeel: {} },
         2: { m: { atrv: 30 }, oordeel: P.oordeelStap({ atrv: 30 }, { atrv: 150 }, { atrv: 150 }) },

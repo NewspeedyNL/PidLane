@@ -484,6 +484,29 @@ const NEPSERVER = `(function(){
     toets('"Waarom" en het logboek staan dicht: niets dringt zich op', await app.ev(`Array.prototype.every.call(document.querySelectorAll('#plGarBody details'), function (d) { return !d.open; })`));
     await app.ev(`window._nepPlatform.voertuigen.forEach(function (x) { x.score = null; x.onderhoud_log = []; }); PLGarage.actief().score = null; PLGarage.sluit(); 'ok'`);
 
+    console.log('\n── 4m. tabblad Kenteken: de kenteken-check ook als de adapter verbonden is ──');
+    await app.ev(`(function(){
+      const id = PLGarage.actief().id; PLGarage.actief().kenteken = 'R054XD';
+      window._nepPlatform.voertuigen.forEach(function (x) { if (x.id === id) x.kenteken = 'R054XD'; });
+      window._nepRdw = 0; const vorig = window.plFetch;
+      window._plFetchVoorRdw = vorig;
+      window.plFetch = async function (pad, o) {
+        const u = decodeURIComponent(String(pad));
+        if (u.indexOf('opendata.rdw.nl') < 0) return vorig(pad, o);
+        window._nepRdw++;
+        const rij = /m9d7-ebf2/.test(u) ? [{ kenteken:'R054XD', merk:'MAZDA', handelsbenaming:'CX-5', vervaldatum_apk:'20270301', wam_verzekerd:'Ja', datum_eerste_toelating:'20180101', cilinderinhoud:'2191' }] : [];
+        return { ok:true, status:200, json: async function () { return rij; } };
+      };
+      window._recallVoorRdw = window.PLRecall && PLRecall.check;
+      if (window.PLRecall) PLRecall.check = async function () { return { acties:[{ open:true, omschrijving:'Nepactie remleiding', status:'open' }] }; };
+      connected = true; PLGarage.open(id); return 'ok'; })()`);
+    toets('verbonden: het tabblad Kenteken staat er', await app.ev(`/Kenteken/.test(document.querySelector('#plGarBody .gr-tabs').textContent)`));
+    await app.ev(`PLGarage._tab('kenteken'); 'ok'`);
+    toets('het tabblad toont de RDW-uitslag van dit kenteken', await wacht(`window._nepRdw > 0 && /APK/.test(document.getElementById('plGarBody').textContent) && !!document.querySelector('#plGarBody .plz-los .plz-regel')`, 5000),
+      await app.ev(`document.getElementById('plGarBody').textContent.slice(0, 300)`));
+    toets('met de terugroepactie en de blokken van PLWijzer', await wacht(`/Nepactie remleiding/.test(document.getElementById('plGarBody').textContent) && !!document.querySelector('#plGarBody [data-plw="kosten"]')`, 5000));
+    await app.ev(`window.plFetch = window._plFetchVoorRdw; if (window._recallVoorRdw) PLRecall.check = window._recallVoorRdw; connected = false; PLGarage._tab('overzicht'); PLGarage.sluit(); 'ok'`);
+
     console.log('\n── 5. de terugknop en het startscherm ──');
     await app.ev(`PLGarage.open(); 'ok'`);
     await app.ev(`appBack(); 'ok'`);

@@ -120,7 +120,7 @@
       else sessionStorage.setItem(SLEUTEL, JSON.stringify(a));
     }
     catch (e) { console.warn('SPP-proef: markering niet bewaard — een herlaad vergeet dat de bus aangetast is', e); }
-    _log('⚠ Bus aangetast door de SPP-proef (' + reden + ') — responstijden zijn geen meting van de auto tot het proces beëindigd is (🧹 in het Admin-menu; wegvegen is niet genoeg) (#352)', 'warn');
+    _log('⚠ Bus aangetast door de SPP-proef (' + reden + ') — responstijden zijn geen meting van de auto tot het proces beëindigd is (🧹 in de SPP-kaart, PLSppProef.controle(); wegvegen is niet genoeg) (#352)', 'warn');
     return a;
   }
   function procesNu() { return _procesNu; }
@@ -522,7 +522,8 @@
      Tot die datum stonden de acht proeven als acht regels in het Admin-menu.
      Nu één regel, "SPP-controle", die een kaart opent met de acht knoppen —
      zelfde ids, zelfde handelingen. Zijn de proeven van #352 klaar, dan gaat
-     alleen deze ene regel weg. */
+     alleen deze ene regel weg. Dat is op 15-10-2026 gebeurd, op verzoek:
+     de kaart opent nu alleen nog met PLSppProef.controle(). */
   function controle() {
     _toon('kies een proef', []);
     const v = document.getElementById('plSppProef');
@@ -544,26 +545,8 @@
     v.insertBefore(lijst, v.lastChild);
     return KNOPPEN.length;
   }
-  function menu() {
-    const groep = document.getElementById('admGroup');
-    if (!groep || document.getElementById('plSppMenu')) return 0;
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'kebab-item';
-    b.id = 'plSppMenu';
-    b.textContent = '🧵 SPP-controle';
-    b.addEventListener('click', function () {
-      try { if (typeof closeKebab === 'function') closeKebab(); }
-      catch (e) { console.warn('SPP-proef: kebabmenu niet gesloten', e); }
-      controle();
-    });
-    groep.appendChild(b);
-    return 1;
-  }
-
   try {
     document.addEventListener('DOMContentLoaded', function () {
-      menu();
       // De patchstand één keer opvragen, zodat een meetopdracht meteen weet of
       // de patch in deze APK zit — zonder dat eerst iemand op een knop drukt.
       patchStatus().catch(function (e) { console.warn('SPP-proef: patchstand bij het opstarten niet opgevraagd', e); });
@@ -592,7 +575,6 @@
     schakel: knopSchakel,
     volle: knopVolle,
     dodeSocket: knopDodeSocket,
-    menu: menu,
     maat: maat,
     toon: _toon,
     laatste: function () { return _laatste; },

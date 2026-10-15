@@ -276,13 +276,10 @@ function bouw(opt) {
       [k, kaal.spoor.indexOf('plSluitApp'), kaal.logs.some(function (l) { return /Meer → Afsluiten/.test(l[0]); })], [false, -1, true]);
   }
 
-  console.log('── 7. het Admin-menu ──');
+  console.log('── 7. geen regel meer in het Admin-menu (15-10-2026, op verzoek) ──');
   {
     const s = bouw();
-    const eerst = s.P.menu(), dan = s.P.menu();
-    // Sinds 02-10-2026 één regel, "SPP-controle"; de acht staan in de kaart die hij opent.
-    toets('één knop in het Admin-menu, en een tweede keer niet nog eens', [eerst, dan, s.knoppen.length], [1, 0, 1]);
-    toets('met een eigen id en klasse', s.knoppen.every((k) => k.id === 'plSppMenu' && k.className === 'kebab-item'), true);
+    toets('geen menu() en geen knop', [typeof s.P.menu, s.knoppen.length], ['undefined', 0]);
   }
 
   console.log('\n' + n + ' toetsen, ' + (fout ? fout + ' FOUT' : 'alles goed'));

@@ -49,11 +49,12 @@ const WACHT = (id, re) => `new Promise(function (klaar) { var n = 0; var i = set
   }
 
   try {
-    console.log('\n1. Mode 06 vanuit het Admin-menu, met Live open');
+    console.log('\n1. Mode 06-paneel, met Live open');
     await app.ev(`window.__fouten = []; window.addEventListener('error', function (e) { window.__fouten.push(String(e.message)); }); 1`);
-    const k = JSON.parse(await app.ev(`JSON.stringify({ knop: !!document.getElementById('kbMode06'), m06: !!(window.PLM06 && PLM06.open) })`));
-    toets('de knop Mode 06 staat in de app', k.knop && k.m06, JSON.stringify(k));
-    await app.ev(`document.getElementById('kbMode06').click(); 1`);
+    // De Admin-knop is sinds 15-10-2026 weg (op verzoek); het paneel blijft.
+    const k = JSON.parse(await app.ev(`JSON.stringify({ m06: !!(window.PLM06 && PLM06.open) })`));
+    toets('PLM06.open bestaat', k.m06, JSON.stringify(k));
+    await app.ev(`PLM06.open(); 1`);
     await app.ev(WACHT('plM06Paneel', '/Niet gelezen|monitortest/'));
     let m = JSON.parse(await app.ev(BOVENOP('m06')));
     toets('Sluiten ligt bovenop, niet onder de topbalk of de onderbalk', m.knop && m.bovenop, JSON.stringify(m).slice(0, 200));
