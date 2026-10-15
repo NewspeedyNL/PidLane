@@ -1067,6 +1067,8 @@ MUTATIES=(
 "public/pidlane-rondgang.js@@  const kop=KOP.map(function(s){ return tegel(s, true); }).filter(Boolean);@@  const kop=[];@@test-rondgang.js@@snelheid en toerental staan niet meer bovenaan elke dia"
 "public/pidlane-rondgang.js@@    if(d.tegels.length===1 && vorig && @@    if(false && vorig && @@test-rondgang.js@@een categorie met één sensor wordt weer een eigen, bijna lege dia"
 "public/pidlane-rondgang.js@@  return u.length>=DIA_IDS.length ? [] : u;@@  return u;@@test-rondgang.js@@alle vinkjes uit geeft een lege rondgang"
+"public/pidlane-rondgang.js@@  const nodig=pidsVan(_ind.kop)\n@@  const nodig=pidsVan(_ind.kop).concat(_ind.dias.reduce(function(a,d){ return a.concat(pidsVan(d.tegels)); }, []))\n@@bproef-rondgang.js@@de rondgang zet stil de sensoren van alle categorieën aan, over de selectie van het voertuig heen"
+"public/pidlane-rondgang.js@@  _ind=indeling(motor(), { heeft:actief,@@  _ind=indeling(motor(), { heeft:levert,@@bproef-rondgang.js@@een dia toont sensoren die uit staan: lege tegels met een streepje"
 "public/pidlane-rondgang.js@@  if(iDia<0 || iDia===_st.i) return false;@@  if(iDia<0) return false;@@bproef-rondgang.js@@de sensoren van de dia die in beeld is worden op de bus geremd"
 "public/pidlane-plload.js@@  try{ if(window.PLRond && PLRond.remt(pid)) ms=@@  try{ if(false) ms=@@bproef-rondgang.js@@de rondgang remt de bus niet meer: alle categorieën vechten om het snelle tempo"
 "public/pidlane-dashboard.js@@  if(window.PLRond && PLRond.aan() && !_bewerk){@@  if(false){@@bproef-rondgang.js@@Slim opent weer als vast dashboard: de rondgang is niet bereikbaar"

@@ -7,6 +7,7 @@
 // dia's remt, en dat Mijn dashboard er gewoon nog is.
 //
 //   1. Slim opent als rondgang: kop, titel, voortgang, past op het scherm
+//   1b. de rondgang zet geen sensoren terug die je uitzette; ⚙ "Zet ze aan" wel
 //   2. de klok wisselt na de wisseltijd (5 s), Pauze houdt vast
 //   3. › gaat een dia verder
 //   4. alarm: koelwater in het rood haalt Temperaturen in beeld
@@ -57,6 +58,20 @@ const wacht = (ms) => `await new Promise(function(r){ setTimeout(r, ${ms}); });`
     toets('standaard 10 s', een.ms === 10000, een.ms);
     toets('geen Aanpassen in de rondgang', !een.aanpassen);
     toets('past op het scherm', een.breed <= een.venster, JSON.stringify(een));
+
+    console.log('\n1b. De selectie blijft van de klant');
+    const eenB = await app.ev(`(async function(){
+      const p=PLRond.staat().dias.reduce(function(a,d){ return a.concat(d.pids); }, []).filter(function(x){ return x!=='0105'; })[0];
+      activePIDs.delete(p); manualPIDs.delete(p);
+      setPidView('overzicht'); setPidView('slim'); PLRond.stap(1); PLRond.stap(1); ${wacht(500)}
+      const terug=activePIDs.has(p), mist=PLRond.nogUit();
+      PLRond.instellingen(); const knop=!!document.getElementById('rondAlleAan');
+      const n=PLRond.alleAan(); PLRond.sluit(); ${wacht(200)}
+      return { p:p, terug:terug, mist:mist, knop:knop, n:n, na:activePIDs.has(p) };
+    })()`);
+    toets('een sensor die je uitzet, zet de rondgang niet stil terug', eenB.p && !eenB.terug, JSON.stringify(eenB));
+    toets('het ⚙-blad telt hem en biedt "Zet ze aan"', eenB.mist.indexOf(eenB.p) > -1 && eenB.knop, JSON.stringify(eenB));
+    toets('"Zet ze aan" zet hem aan', eenB.n >= 1 && eenB.na, JSON.stringify(eenB));
 
     console.log('\n2. De klok en Pauze');
     const twee = await app.ev(`(async function(){

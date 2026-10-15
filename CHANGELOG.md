@@ -19,6 +19,9 @@
  categorie, ook via Mijn voorkeuren → Rondgang in Slim. Een rode waarde
  haalt zijn categorie in beeld en houdt die vast. De sensoren van de
  andere dia's gaan op de bus naar 4 s (PLRond.remt in pidPollInterval).
+ Een dia toont wat aan staat; de rondgang zet zelf alleen de kop aan.
+ Wat ontbreekt zet ⚙ → "Zet ze aan" aan, zodat de vaste selectie uit
+ Mijn voertuigen niet stil overschreven wordt.
  Mijn dashboard blijft één tik weg. Pauze wordt niet onthouden.
 
  ═══════════════════════════════════════════════════════════

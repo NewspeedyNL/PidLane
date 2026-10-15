@@ -200,7 +200,7 @@ var PL_HULP = {
         'Met <b>Compact</b> en <b>Ruim</b> kies je rijen of grotere tegels. Hoogstens vier rijen krijgen een trendlijn: ' +
         'wat je zelf vastzet met <b>📈</b>, en verder wat op dat moment het meest beweegt.</li>' +
         '<li><b>Slim</b> — de standaard. Slim opent als <b>rondgang</b>: elke 10 seconden een andere categorie (Motor en rijden, Temperaturen, Brandstof en trims, Lucht en turbo, Uitlaat en emissie, Elektrisch), zodat in ongeveer een minuut alles langs is geweest. ' +
-        'Snelheid en toerental staan altijd bovenaan. Met <b>‹ ›</b> of vegen ga je zelf verder (die categorie blijft dan even staan), <b>⏸</b> houdt hem vast tot je op <b>▶</b> tikt. ' +
+        'Een categorie toont de sensoren die aan staan; staan er sensoren uit die erbij horen, dan zegt <b>⚙</b> hoeveel en zet <b>Zet ze aan</b> ze aan. Snelheid en toerental staan altijd bovenaan. Met <b>‹ ›</b> of vegen ga je zelf verder (die categorie blijft dan even staan), <b>⏸</b> houdt hem vast tot je op <b>▶</b> tikt. ' +
         'Wordt een waarde rood, dan springt de rondgang naar die categorie en blijft daar tot het weer normaal is. ' +
         'Met <b>⚙</b> kies je de wisseltijd (5 tot 30 seconden) en welke categorieën meedoen; dat kan ook in <b>Mijn voorkeuren</b> bij <b>Rondgang in Slim</b>. ' +
         '<b>Mijn dashboard</b> zet de rondgang uit en toont je eigen tegels, die je met <b>Aanpassen</b> inricht; <b>🔁 Rondgang</b> zet hem weer aan.</li>' +

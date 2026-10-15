@@ -20,6 +20,14 @@
 // meter, duo), dezelfde band, hetzelfde oordeel. Deze module levert alleen
 // de indeling, de klok en de rem op de bus.
 //
+// WAT ER IN BEELD KOMT. Een dia toont de sensoren die AAN staan (Sensoren,
+// of de vaste selectie uit Mijn voertuigen). De rondgang zet zelf alleen de
+// kop aan, zoals Mijn dashboard dat al deed. Alles aanzetten wat de auto
+// voor de rondgang heeft is een knop in het ⚙-blad (alleAan()): de selectie
+// is van de klant en het voertuig, niet van een weergave — een rondgang die
+// er stil sensoren bij zette, maakte de selectie uit Mijn voertuigen
+// ongedaan (bproef-garage.js zag het, 15-10-2026).
+//
 // DE BUS. Een ELM kan niet alles tegelijk snel vragen. remt() — gelezen in
 // pidPollInterval() — zet de sensoren van de andere dia's op REM_MS; de
 // huidige dia, de kop en vlak vóór de wissel (VOOR_MS) de volgende dia
@@ -96,17 +104,20 @@ const DIAS = [
 const DIA_IDS = DIAS.map(function(d){ return d.id; });
 
 // ── DE INDELING — puur ──────────────────────────────────────────────
-// o.heeft(pid): levert deze auto hem; o.extra: PIDs die aan staan (voor het
+// o.heeft(pid): staat aan op deze auto; o.heeftKop(pid): kan de kop hem
+// tonen (standaard o.heeft); o.extra: PIDs die aan staan (voor het
 // aanvullen); o.cat(pid): de Overzicht-categorie, of null = niet aanvullen;
 // o.uit: dia-ids met het vinkje uit. Eén sensor staat op één plek.
 function indeling(motor, o){
   o=o||{};
   const heeft=o.heeft || function(){ return false; };
+  const heeftKop=o.heeftKop || heeft;
   const cat=o.cat || function(){ return null; };
   const uit=schoonUit(o.uit);
   const gebruikt={};
   function tegel(s, kop){
-    const p=s.keten.filter(function(x){ return !gebruikt[x] && heeft(x); })[0];
+    const h=kop ? heeftKop : heeft;
+    const p=s.keten.filter(function(x){ return !gebruikt[x] && h(x); })[0];
     if(!p) return null;
     gebruikt[p]=1;
     const t={ id:'r-'+p, soort:s.soort, pids:[p], breed:!!s.breed };
@@ -205,7 +216,11 @@ function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').rep
 function def(pid){ try{ return (typeof getPidDef==='function') ? getPidDef(pid) : null; }catch(e){ console.warn('PLRond: getPidDef('+pid+')', e); return null; } }
 function motor(){ try{ return (typeof detectEngineType==='function') ? (detectEngineType() || 'benzine') : 'benzine'; }catch(e){ console.warn('PLRond: motorsoort onleesbaar', e); return 'benzine'; } }
 function inLijst(){ try{ return (typeof discoveredPIDDefs!=='undefined' && Array.isArray(discoveredPIDDefs)) ? discoveredPIDDefs : []; }catch(e){ console.warn('PLRond: keuzelijst onleesbaar', e); return []; } }
-function heeft(pid){
+function actief(pid){
+  try{ return typeof activePIDs!=='undefined' && activePIDs.has(pid) && levert(pid); }
+  catch(e){ console.warn('PLRond: activePIDs onleesbaar', e); return false; }
+}
+function levert(pid){
   const l=inLijst();
   if(typeof plIsTelemetrie==='function' && plIsTelemetrie(pid)) return false;
   if(typeof pidIsTekst==='function' && pidIsTekst(pid)) return false;
@@ -219,7 +234,7 @@ function catVan(pid){
 function opbouw(){
   let extra=[];
   try{ if(typeof activePIDs!=='undefined') extra=Array.from(activePIDs); }catch(e){ console.warn('PLRond: activePIDs onleesbaar', e); }
-  _ind=indeling(motor(), { heeft:heeft, extra:extra, cat:catVan, uit:uitLijst(),
+  _ind=indeling(motor(), { heeft:actief, heeftKop:levert, extra:extra, cat:catVan, uit:uitLijst(),
     balk:function(p){ const d=def(p); return !!(d && (typeof d.wL==='number' || typeof d.wH==='number')); } });
   if(_st.i>=_ind.dias.length) _st.i=0;
   return _ind;
@@ -230,14 +245,21 @@ function oordeel(pid){
   try{ if(typeof plOud==='function' && plOud(pid, Date.now())) return 'ok'; }catch(e){ console.warn('PLRond: plOud('+pid+')', e); }
   return pidOordeel(def(pid), v, pid);
 }
+// Alleen de kop: snelheid en toerental horen altijd in beeld.
 function zorgPids(){
-  const nodig=pidsVan(_ind.kop).concat(_ind.dias.reduce(function(a,d){ return a.concat(pidsVan(d.tegels)); }, []))
+  const nodig=pidsVan(_ind.kop)
     .filter(function(p){ return !(typeof activePIDs!=='undefined' && activePIDs.has(p)); });
   if(!nodig.length || typeof pidToevoegen!=='function') return;
+  console.warn("RONDZORG", nodig.join(), new Error().stack.split(String.fromCharCode(10)).slice(1,6).join(" | "));
   try{ pidToevoegen(nodig, { handmatig:false }); }catch(e){ console.warn('PLRond: sensoren aanzetten mislukt', e); }
 }
 function draait(){
   return aan() && typeof pidViewMode!=='undefined' && pidViewMode==='slim' && !!document.getElementById('rondVoort');
+}
+// Live in beeld? Zo niet, dan wisselt de rondgang niet en remt hij niets.
+function inBeeld(){
+  const v=document.getElementById('rondVoort');
+  return !!v && v.getClientRects().length>0 && !document.hidden;
 }
 
 // De tegels voor PLDash: de kop en de huidige dia.
@@ -269,7 +291,7 @@ function voortBij(){
 function herbouw(){ if(window.PLDash) PLDash.bouw(); }
 function klokTik(){
   if(!draait()){ stopKlok(); return; }
-  if(document.hidden) return;
+  if(!inBeeld()) return;
   const nu=Date.now(), was=_st.i, wasAlarm=_st.alarm;
   _st=tik(_st, nu, { n:_ind.dias.length, ms:ms(), alarm:alarmDia(_ind.dias, oordeel) });
   if(_st.i!==was || _st.alarm!==wasAlarm) herbouw(); else voortBij();
@@ -295,7 +317,7 @@ function na(){
 
 // ── Remmen op de bus — gelezen in pidPollInterval() ──
 function remt(pid){
-  if(!pid || !draait()) return false;
+  if(!pid || !draait() || !inBeeld()) return false;
   if(pidsVan(_ind.kop).indexOf(pid)>-1) return false;
   const n=_ind.dias.length; if(n<2) return false;
   const iDia=_ind.dias.findIndex(function(d){ return pidsVan(d.tegels).indexOf(pid)>-1; });
@@ -304,11 +326,25 @@ function remt(pid){
   return true;
 }
 
+// Wat de auto voor de rondgang heeft maar nog uit staat.
+function nogUit(){
+  const vol=indeling(motor(), { heeft:levert, uit:uitLijst() });
+  return vol.dias.reduce(function(a,d){ return a.concat(pidsVan(d.tegels)); }, [])
+    .filter(function(p){ return !actief(p); });
+}
+function alleAan(){
+  const n=nogUit();
+  if(n.length && typeof pidToevoegen==='function'){
+    try{ pidToevoegen(n, { handmatig:true }); }catch(e){ console.warn('PLRond: sensoren aanzetten mislukt', e); }
+  }
+  return n.length;
+}
+
 // ── Het ⚙-blad: wisseltijd en vinkjes ──
 function sluitBlad(){ if(_blad && _blad.parentNode) _blad.parentNode.removeChild(_blad); _blad=null; }
 function instellingen(){
   sluitBlad();
-  const nu=ms(), uit=uitLijst();
+  const nu=ms(), uit=uitLijst(), mist=nogUit().length;
   _blad=document.createElement('div'); _blad.className='dash-blad-ov'; _blad.id='rondBlad'; _blad.style.zIndex='9900';
   _blad.onclick=function(e){ if(e.target===_blad) sluitBlad(); };
   _blad.innerHTML='<div class="dash-blad"><h5>Rondgang in Slim</h5><p>Elke categorie blijft zo lang in beeld</p>'+
@@ -317,6 +353,8 @@ function instellingen(){
       const op=uit.indexOf(d.id)<0;
       return '<button type="button" class="dash-regel" role="switch" aria-checked="'+op+'" data-dia="'+d.id+'" onclick="PLRond.zetDia(\''+d.id+'\')">'+esc(d.ico+' '+d.naam)+'<small>'+(op?'☑':'☐')+'</small></button>';
     }).join('')+
+    '<p>De rondgang toont de sensoren die aan staan. '+(mist ? mist+' sensoren van deze auto horen erbij maar staan uit.' : 'Alles wat deze auto ervoor heeft staat aan.')+'</p>'+
+    (mist ? '<div class="dash-keus twee" style="grid-template-columns:1fr"><button type="button" id="rondAlleAan" onclick="PLRond.alleAan()">Zet ze aan ('+mist+')</button></div>' : '')+
     '<p>Snelheid en toerental staan altijd bovenaan. Een sensor in het rood houdt de rondgang op zijn categorie vast.</p>'+
     '<div class="dash-keus twee"><button type="button" onclick="PLRond.modus(\'dash\');PLRond.sluit()">Mijn dashboard</button><button type="button" class="hoofd" onclick="PLRond.sluit()">Klaar</button></div></div>';
   document.body.appendChild(_blad);
@@ -327,7 +365,8 @@ const api = {
   DIAS:DIAS, KOP:KOP, KEUZES_MS:KEUZES_MS, STANDAARD_MS:STANDAARD_MS, HOLD_MS:HOLD_MS, VOOR_MS:VOOR_MS, REM_MS:REM_MS, MAX_PER_DIA:MAX_PER_DIA,
   indeling:indeling, tik:tik, stapPuur:stap, voortgang:voortgang, alarmDia:alarmDia, schoonMs:schoonMs, schoonUit:schoonUit,
   // het scherm
-  aan:aan, tegels:tegels, balkHtml:balkHtml, na:na, remt:remt, instellingen:instellingen, sluit:sluitBlad,
+  aan:aan, tegels:tegels, nogUit:nogUit,
+  alleAan:function(){ const n=alleAan(); if(n && typeof showToast==='function') showToast(n+' sensoren aangezet voor de rondgang'); instellingen(); herbouw(); return n; }, balkHtml:balkHtml, na:na, remt:remt, instellingen:instellingen, sluit:sluitBlad,
   staat:function(){ return { i:_st.i, pauze:_st.pauze, alarm:_st.alarm, ms:ms(), dias:_ind.dias.map(function(d){ return { id:d.id, naam:d.naam, pids:pidsVan(d.tegels) }; }), kop:pidsVan(_ind.kop) }; },
   modus:function(m){ schrijf('pl_slim_modus', m==='dash' ? 'dash' : 'rond'); if(m==='dash') stopKlok(); _vorigeI=-1; herbouw(); },
   stap:function(r){ _st=stap(_st, r, Date.now(), _ind.dias.length); herbouw(); },

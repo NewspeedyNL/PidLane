@@ -52,6 +52,8 @@ waar('hybride: elektrisch is de eerste dia', ind.dias[0].id === 'elektrisch', id
 
 ind = R.indeling('benzine', { heeft: uit(['010D', '010C', '0106', '0105', '015C', '0142', '0104']) });
 waar('alleen wat de auto heeft; trim zonder lange wordt een balk', pids(ind.dias[1]).slice(0, 2).join() === '0105,015C' && JSON.stringify(ind).indexOf('"0107"') < 0 && /"soort":"balk","pids":\["0106"\]/.test(JSON.stringify(ind)), JSON.stringify(ind.dias));
+ind = R.indeling('benzine', { heeft: uit(['0105']), heeftKop: alles });
+waar('de kop kijkt naar wat de auto levert, de dia\'s naar wat aan staat', ind.kop.length === 2 && pids(ind.dias[0]).join() === '0105', JSON.stringify(ind));
 waar('een auto zonder sensoren: niets', R.indeling('benzine', { heeft: () => false }).dias.length === 0);
 
 const heeftT = (p) => /^01/.test(p);
