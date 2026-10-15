@@ -105,11 +105,14 @@ const wacht = (ms) => `await new Promise(function(r){ setTimeout(r, ${ms}); });`
       pidVals['0105']=135; _pidLastUpd['0105']=Date.now(); applyG('0105', 135); ${wacht(700)}
       const tijdens={ i:PLRond.staat().i, alarm:PLRond.staat().alarm, balk:!!document.getElementById('rondAlarm') };
       pidVals['0105']=88; _pidLastUpd['0105']=Date.now(); applyG('0105', 88); ${wacht(700)}
-      return { iT:iT, voor:voor, tijdens:tijdens, na:PLRond.staat().alarm, balkNa:!!document.getElementById('rondAlarm'), getal:(document.getElementById('rv-0105')||{}).textContent };
+      // Zonder hertekenen: alleen PLDash.bij() → PLRond.bij() kan hem zetten.
+      const naAlarm=PLRond.staat().alarm;
+      pidVals['0105']=91; _pidLastUpd['0105']=Date.now(); applyG('0105', 91);
+      return { iT:iT, voor:voor, tijdens:tijdens, na:naAlarm, balkNa:!!document.getElementById('rondAlarm'), getal:(document.getElementById('rv-0105')||{}).textContent };
     })()`);
     toets('de demo-auto heeft koelwater in de rondgang', !vier.geen, JSON.stringify(vier));
     toets('135 °C haalt Temperaturen in beeld, met de melding', vier.voor !== vier.iT && vier.tijdens.i === vier.iT && vier.tijdens.alarm === vier.iT && vier.tijdens.balk, JSON.stringify(vier));
-    toets('de waarde landt in zijn paneel (88)', vier.getal === '88', JSON.stringify(vier));
+    toets('een nieuwe waarde landt in zijn paneel zonder hertekenen (91)', vier.getal === '91', JSON.stringify(vier));
     toets('weer normaal: het alarm en de melding zijn weg', vier.na === -1 && !vier.balkNa, JSON.stringify(vier));
 
     console.log('\n5. De bus');
