@@ -225,14 +225,24 @@ function tegelHtml(t){
       (t.soort==='grafiek' ? '<svg class="dt-lijn" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"><polyline id="dl-'+p+'" points=""/></svg>' : '');
   }
   const d=def(p);
-  return '<div class="dt dt-s-'+t.soort+(t.breed?' breed':'')+'" id="dt-'+t.id+'" data-pids="'+t.pids.join(',')+'" title="'+esc(t.pids.map(function(q){ const x=def(q); return (x&&x.name)||q; }).join(' · '))+'">'+k+binnen+'</div>';
+  return '<div class="dt dt-s-'+t.soort+(t.breed?' breed':'')+(t.kop?' dt-kop':'')+'" id="dt-'+t.id+'" data-pids="'+t.pids.join(',')+'" title="'+esc(t.pids.map(function(q){ const x=def(q); return (x&&x.name)||q; }).join(' · '))+'">'+k+binnen+'</div>';
 }
 function bouw(g){
   _g=g||_g; if(!_g) return;
+  // De rondgang (pidlane-rondgang.js): dezelfde tegels, maar de kop en één
+  // categorie tegelijk, niet bewaard. Aanpassen hoort bij Mijn dashboard.
+  if(window.PLRond && PLRond.aan() && !_bewerk){
+    _tegels=PLRond.tegels();
+    _g.innerHTML=PLRond.balkHtml()+'<div class="dash rond" id="dashRaster">'+_tegels.map(tegelHtml).join('')+'</div>';
+    _tegels.forEach(function(t){ t.pids.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); }); });
+    PLRond.na();
+    return;
+  }
   laad();
   zorgPids();
   const leeg=!_tegels.length;
   _g.innerHTML='<div class="dash-balk"><span>'+(_bewerk ? 'Aanpassen · ▲▼ verplaatsen, ✎ weergave, ✕ weg' : 'Mijn dashboard'+(_sleutel==='pl_dash_onbekend' ? ' · nog geen VIN' : ''))+'</span>'+
+      (!_bewerk && window.PLRond ? '<button type="button" class="dash-knop" onclick="PLRond.modus(\'rond\')">🔁 Rondgang</button>' : '')+
       '<button type="button" class="dash-knop'+(_bewerk?' aan':'')+'" onclick="PLDash.bewerk()">'+(_bewerk ? 'Klaar' : 'Aanpassen')+'</button></div>'+
     '<div class="dash'+(_bewerk?' bewerk':'')+'" id="dashRaster">'+_tegels.map(tegelHtml).join('')+
       (_bewerk || leeg ? '<button type="button" class="dt-voeg" onclick="PLDash.kies()">+ Sensor toevoegen</button>' : '')+
