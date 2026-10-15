@@ -33,14 +33,31 @@ const pids = (d) => d.tegels.reduce((a, t) => a.concat(t.pids), []);
 
 console.log('\n1. De indeling');
 let ind = R.indeling('benzine', { heeft: alles });
-waar('kop: snelheid en toerental, als getal', ind.kop.map((t) => t.pids[0] + ':' + t.soort).join(' ') === '010D:getal 010C:getal', JSON.stringify(ind.kop));
+waar('kop: snelheid en toerental, klein', ind.kop.map((t) => t.pids[0] + ':' + t.soort).join(' ') === '010D:kop 010C:kop', JSON.stringify(ind.kop));
 waar('benzine: zes dia\'s in vaste volgorde', ids(ind) === 'motor temp brandstof lucht uitlaat elektrisch', ids(ind));
 const alle = ind.kop.reduce((a, t) => a.concat(t.pids), []).concat(ind.dias.reduce((a, d) => a.concat(pids(d)), []));
 waar('elke sensor staat op één plek', new Set(alle).size === alle.length, alle.join(','));
-waar('elke tegel een unieke id', new Set(ind.kop.concat(...ind.dias.map((d) => d.tegels)).map((t) => t.id)).size === alle.length - ind.dias.reduce((n, d) => n + d.tegels.filter((t) => t.pids.length === 2).length, 0));
+waar('elke tegel een unieke id', new Set(ind.kop.concat(...ind.dias.map((d) => d.tegels)).map((t) => t.id)).size === alle.length);
 const br = ind.dias.find((d) => d.id === 'brandstof');
-waar('brandstof: verbruik breed als grafiek, trims kort+lang als duo', br.tegels[0].soort === 'grafiek' && br.tegels[0].breed && br.tegels[1].soort === 'duo' && br.tegels[1].pids.join() === '0106,0107', JSON.stringify(br.tegels.slice(0, 2)));
-waar('temperaturen: koelwater eerst, als balk', ind.dias[1].tegels[0].pids[0] === '0105' && ind.dias[1].tegels[0].soort === 'balk');
+waar('brandstof: verbruik groot met lijn, trims vanuit het midden rond 0 %', br.tegels[0].soort === 'held' && br.tegels[0].pids[0] === 'CA03' && br.tegels[1].soort === 'mid' && br.tegels[1].midden === 0 && br.tegels[1].span === 25, JSON.stringify(br.tegels.slice(0, 2)));
+waar('temperaturen: koelwater eerst, als rij met band', ind.dias[1].tegels[0].pids[0] === '0105' && ind.dias[1].tegels[0].soort === 'rij');
+const ui = ind.dias.find((d) => d.id === 'uitlaat');
+waar('uitlaat: lambda rond 1,00, sondes als staaf met de 0,45 V-lijn', ui.tegels[0].soort === 'mid' && ui.tegels[0].midden === 1 && ui.tegels.some((t) => t.pids[0] === '0114' && t.soort === 'staaf' && t.ref === 0.45), JSON.stringify(ui.tegels.slice(0, 3)));
+
+console.log('\n1b. De panelen');
+const pn = R.groepen(br.tegels);
+waar('brandstof: held, één trimpaneel met alle vier, dan rijen', pn.map((g) => g.soort + ':' + g.tegels.length).join(' ') === 'held:1 mid:4 rij:3', pn.map((g) => g.soort + ':' + g.tegels.length).join(' '));
+waar('het trimpaneel heet Brandstoftrims', pn[1].titel === 'Brandstoftrims');
+const mot = R.groepen(ind.dias[0].tegels);
+waar('motor: belasting, pedaal, gasklep en koppel staan samen op één tellerplaat', mot.filter((g) => g.soort === 'staaf').length === 1 && mot.find((g) => g.soort === 'staaf').tegels.length === 4, mot.map((g) => g.soort + ':' + g.tegels.length).join(' '));
+const los = R.groepen([{ id: 'r-0106', soort: 'mid', pids: ['0106'], midden: 0, span: 25 }, { id: 'r-0105', soort: 'rij', pids: ['0105'] }]);
+waar('een losse trim zonder buren wordt een rij, en komt in het rijenpaneel', los.length === 1 && los[0].soort === 'rij' && los[0].tegels.length === 2, JSON.stringify(los));
+waar('twee helden staan elk in een eigen paneel', R.groepen([{ id: 'a', soort: 'held', pids: ['CA03'] }, { id: 'b', soort: 'held', pids: ['0110'] }]).length === 2);
+let m = R.midVulling(-12.5, 0, 25);
+waar('mid: −12,5 % vult van 25 % tot het midden', m.links === 25 && m.breed === 25, JSON.stringify(m));
+m = R.midVulling(1.5, 1, 0.25);
+waar('mid: lambda 1,5 loopt niet buiten de baan', m.links === 50 && m.breed === 50, JSON.stringify(m));
+waar('mid: geen getal = leeg', R.midVulling(null, 0, 25).breed === 0 && R.midVulling(5, 0, 0).breed === 0);
 waar('geen dia meer dan ' + R.MAX_PER_DIA + ' tegels', ind.dias.every((d) => d.tegels.length <= R.MAX_PER_DIA));
 
 ind = R.indeling('ev', { heeft: uit(['010D', '015B', '0142', '0105']) });
@@ -51,13 +68,13 @@ ind = R.indeling('hybride', { heeft: alles });
 waar('hybride: elektrisch is de eerste dia', ind.dias[0].id === 'elektrisch', ids(ind));
 
 ind = R.indeling('benzine', { heeft: uit(['010D', '010C', '0106', '0105', '015C', '0142', '0104']) });
-waar('alleen wat de auto heeft; trim zonder lange wordt een balk', pids(ind.dias[1]).slice(0, 2).join() === '0105,015C' && JSON.stringify(ind).indexOf('"0107"') < 0 && /"soort":"balk","pids":\["0106"\]/.test(JSON.stringify(ind)), JSON.stringify(ind.dias));
+waar('alleen wat de auto heeft; een dia met één sensor gaat bij de vorige', pids(ind.dias[1]).join() === '0105,015C,0106,0142' && JSON.stringify(ind).indexOf('"0107"') < 0, JSON.stringify(ind.dias));
 ind = R.indeling('benzine', { heeft: uit(['0105']), heeftKop: alles });
 waar('de kop kijkt naar wat de auto levert, de dia\'s naar wat aan staat', ind.kop.length === 2 && pids(ind.dias[0]).join() === '0105', JSON.stringify(ind));
 waar('een auto zonder sensoren: niets', R.indeling('benzine', { heeft: () => false }).dias.length === 0);
 
 const heeftT = (p) => /^01/.test(p);
-const extra = ['0175', '0176', '016B'];
+const extra = ['0175', '0176', '016B', '013D', '013F'];
 ind = R.indeling('benzine', { heeft: heeftT, extra: extra, cat: (p) => (extra.indexOf(p) > -1 ? 'temp' : null), balk: () => true });
 const tmp = ind.dias.filter((d) => /^temp/.test(d.id));
 waar('aanvullen: een eigen temperatuur komt bij Temperaturen', tmp.some((d) => pids(d).indexOf('0175') > -1), JSON.stringify(tmp));

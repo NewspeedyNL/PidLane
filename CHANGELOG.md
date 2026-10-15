@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Rondgang: compacte kop, een eigen weergave per categorie
+ ═══════════════════════════════════════════════════════════
+ Na de eerste rit: de balk boven de dia was te groot en de categorieën
+ waren losse tegels. Nu staan snelheid en toerental klein op één regel
+ met ⏸ en ⚙ en een afteller van 2 px; ‹ ›, de puntjes en de knop Mijn
+ dashboard zijn weg (vegen of tik op de titel; Mijn dashboard zit in ⚙).
+ Per categorie panelen: gaspad als tellerplaat, trims en lambda vanuit
+ het midden, verbruik en luchtmassa groot met lijn, lambdasondes met de
+ 0,45 V-lijn, laaddruk en inlaatdruk als boog, de rest als rij met band.
+ PLRond tekent zelf (bouw/bij); PLDash geeft alleen door.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Slim als rondgang langs de categorieën
  ═══════════════════════════════════════════════════════════
  Slim opent nu als rondgang (pidlane-rondgang.js, PLRond): elke 10 s
