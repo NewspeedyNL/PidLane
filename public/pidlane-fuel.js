@@ -391,6 +391,18 @@ function plZonderVin(t){
 // krijgt er de dekkingscontrole bij: welke sensoren deze analyse nodig heeft en
 // welke daarvan ontbreken. {meet:false} zet het blok uit voor een call die niets
 // met sensordata te maken heeft.
+// Welke analyse dit is, in een paar woorden — voor het kasboek en de logregel
+// van de afboeking (#524). Op 15-10-2026 kostte een call 85 tokens en was
+// nergens terug te vinden wélke. Een aanroeper met een aanlevering geeft zijn
+// profiel mee; de rest herken je aan de eerste zin van de prompt ("Je bent
+// brandstofefficiëntie specialist."). Na plZonderVin aanroepen.
+function plAnalyseRol(prompt, aanlevering){
+  const a=aanlevering||{};
+  const kort=(t,n)=>String(t||'').replace(/\s+/g,' ').trim().slice(0,n);
+  if(a.profiel) return kort(a.profiel+(a.vraag?': '+a.vraag:''),80);
+  const eerste=String(prompt||'').split(/(?<=[.!?:])\s|\n/)[0];
+  return kort(eerste,80);
+}
 async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, aanlevering=null, extra=null){
   // Demo: een voorbeeldrapport uit de gesimuleerde waarden, geen AI-call en
   // geen tegoed. Een rapport over een verzonnen auto is geen echt rapport.
@@ -497,6 +509,7 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
   // gooit een fout met .plAfgebroken zodat callers dat kunnen herkennen.
   // Het vangnet hierboven: na dit punt verandert prompt noch sys nog.
   prompt=plZonderVin(prompt); sys=plZonderVin(sys);
+  const _plRol=plAnalyseRol(prompt, aanlevering);
   let _plCred=null;
   try{
     if(window.PLCredits && typeof window.PLCredits.preflight==='function'){
@@ -528,6 +541,8 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
         system: sys,
         messages: msgs
       };
+      // Alleen voor het kasboek (#524): de Worker haalt het eraf vóór Anthropic.
+      if(_plRol) body.pl_rol=_plRol;
       // Extended thinking bewust UIT: voor OBD2-rapporten met vaste structuur
       // geen meerwaarde, wel trager/duurder en vreet uit het token-budget.
       // thinking:{type:'disabled'} is geldig op Sonnet 5 (geverifieerd 15-07-2026
@@ -563,7 +578,10 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
       // schrijft is de bron, en dat hoort de server te zijn (§8 PIDLANE.md).
       // Bij een vervolgcall op max_tokens komt de header opnieuw mee — ook dat
       // deel is afgeboekt, dus ook dat getal telt.
-      try{ window.PLCredits?.volgServer?.(resp.headers, data); }catch(e){ console.warn('Serversaldo niet overgenomen — de teller loopt op de schatting', e); }
+      let _plVanServer=null;
+      try{ _plVanServer=window.PLCredits?.volgServer?.(resp.headers, data) ?? null; }catch(e){ console.warn('Serversaldo niet overgenomen — de teller loopt op de schatting', e); }
+      // De logregel pas nu, met het getal van de server erin (#524).
+      try{ window.PLCredits?.meld?.(_plCred, _plVanServer, _plRol); }catch(e){ console.warn('Afboeking niet in het logboek gezet', e); }
       try{ PidLaneEvalLog.log('ai','api-call',{model:mdl,latencyMs:Date.now()-_plT0,part:part+1,stop:data.stop_reason||''}); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 
       const txt=extractAIText(data)||'';

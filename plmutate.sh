@@ -342,9 +342,10 @@ MUTATIES=(
 # als Airtable hapert, is erger dan geen kasboek, want dan kost de administratie
 # de klant zijn analyse. De laatste twee bewaken de leeskant: een boek dat je
 # vanaf de beheerpagina kunt bijstellen bewijst alleen nog wat erin staat.
-"worker.js@@credits: -afgeboekt, saldoNa, details: \"analyse afgeboekt\" + tekort@@credits: -kosten, saldoNa, details: \"analyse afgeboekt\" + tekort@@test-kasboek.js@@het kasboek boekt de volle prijs terwijl er minder van het saldo af ging (#83)"
+"worker.js@@credits: -afgeboekt, saldoNa, details: \"analyse afgeboekt\" + voor + tekort@@credits: -kosten, saldoNa, details: \"analyse afgeboekt\" + voor + tekort@@test-kasboek.js@@het kasboek boekt de volle prijs terwijl er minder van het saldo af ging (#83)"
 "worker.js@@credits: 0, saldoNa: saldoVoor,@@credits: -kosten, saldoNa: saldoVoor,@@test-kasboek.js@@een mislukte afboeking wordt geboekt alsof hij gelukt is (#83)"
 "worker.js@@if (na !== null) velden.SaldoNa = na;@@velden.SaldoNa = na || 0;@@test-kasboek.js@@een onbekend saldo komt als 0 in het kasboek en leest later als een leeg account (#83)"
+"worker.js@@  if (payload) delete payload.pl_rol;@@  if (false) delete payload.pl_rol;@@test-kasboek.js@@pl_rol gaat mee naar Anthropic, en die weigert onbekende velden: elke analyse faalt (#524)"
 "worker.js@@    } catch (e) {\n      try {\n        console.error(\"[kasboek] regel niet weggeschreven :: \" + String(e && e.message || e));\n      } catch (_) { /* stil: melden mag de stroom nooit breken */ }\n    }\n  })();@@    } catch (e) {\n      throw e;\n    }\n  })();@@test-kasboek.js@@een kapot kasboek sleurt de analyse mee: administratie kost de klant zijn antwoord (#83)"
 "worker.js@@if (uit && uit.kasboek) await tegoedLog(env, ctx, uit.kasboek);@@@@test-kasboek.js@@de AI-afboeking laat geen spoor meer na — precies de toestand van vóór #83"
 "worker.js@@if (res && res.body && res.body.ok && Number(res.body.toegekend) > 0)@@if (res && res.body && res.body.ok && Number(res.body.toegekend) >= 0)@@test-kasboek.js@@elke tweede onboarding schrijft een lege regel van 0 credits (#83)"
@@ -632,6 +633,10 @@ MUTATIES=(
 # toetst het gelijke-z-geval wel, als gedrag.)
 "public/pidlane-correlatie.js@@if(rest>0){ uit.push(_bevLaatst[id]);@@if(rest>BEV_MIN_MS){ uit.push(_bevLaatst[id]);@@test-bevindingen.js@@een bevinding die weer goed is verdwijnt meteen: één seconde in beeld, zoals vóór 26-09"
 "public/pidlane-credits.js@@    chipTonen: false,@@    chipTonen: true,@@test-tokenchip.js@@de zwevende tokenteller hangt weer in beeld bij klanten"
+"public/pidlane-credits.js@@    if (groot || (!klein && !_nietMeerVragen)) {@@    if (!klein && !_nietMeerVragen) {@@test-grotecall.js@@\"niet meer vragen\" slaat ook een call van 85 tokens over (#524)"
+"public/pidlane-credits.js@@        jaKnop.disabled = true;@@        jaKnop.disabled = false;@@test-grotecall.js@@een grote call gaat weer door op één tik, zonder het getal over te typen (#524)"
+"public/pidlane-credits.js@@      if (groot && !(await _sheet(a, { groot: true, vrij: true }))) throw AfgebrokenFout();@@      @@test-grotecall.js@@de beheerder ziet een grote call weer niet, terwijl hij hem betaalt (#524)"
+"public/pidlane-credits.js@@      res.kosten = kosten;@@      res.kosten = kosten; _log('Tegoed afgeboekt: -' + kosten + ' (saldo ' + saldo() + ')', 'info');@@test-grotecall.js@@de afboekregel komt weer vóór het serversaldo en noemt de tussenstand (#524)"
 "public/pidlane-auth.js@@  try{ const md=window.PLMeetdienst; if(md && typeof md.stop==='function') await binnen(md.stop()); }@@  try{ }@@test-afmelden.js@@Sluit de app laat de meetdienst draaien: het proces en de BT-socket blijven leven na exitApp()"
 "public/pidlane-graph.js@@  w.classList.toggle('buiten', !ok);@@  w.classList.toggle('buiten', false);@@bproef-grafiek.js@@een waarde buiten het normaalbereik staat in de grafiek niet meer in het rood"
 "public/pidlane-graph.js@@const GR_MAX = 3;@@const GR_MAX = 6;@@bproef-grafiek.js@@een groep zet weer zes lijnen in de grafiek in plaats van hoogstens drie"

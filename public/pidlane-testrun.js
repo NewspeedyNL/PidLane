@@ -2787,6 +2787,22 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Grote AI-call: getal overtypen, afboekregel met het serversaldo (#524) ──
+  {
+    issue: '#524',
+    naam: 'AI-call boven 10 tokens: getal overtypen, ook voor de beheerder; afboekregel noemt de analyse en het saldo van de server',
+    waarom: 'Op 15-10-2026 kostte één analyse 85 tokens op één tik; het logboek zei saldo 0 terwijl de server 15 had, en het kasboek zei niet welke analyse het was.',
+    proef: async function () {
+      if (!window.PLCredits || typeof PLCredits.meld !== 'function') return { staat: 'FOUT', detail: 'PLCredits.meld ontbreekt — oude pidlane-credits.js (herladen?)' };
+      var d = PLCredits.CFG && PLCredits.CFG.bevestigDrempel;
+      if (d !== 10) return { staat: 'FOUT', detail: 'bevestigDrempel is ' + d + ', verwacht 10' };
+      if (typeof window.plAnalyseRol !== 'function') return { staat: 'FOUT', detail: 'plAnalyseRol ontbreekt — oude pidlane-fuel.js (herladen?)' };
+      var a = PLCredits.ontleed('Je bent expert automonteur.\n' + new Array(4000).join('0105 91 010C 2208\n'), '', 2000);
+      if (!(a.credits > d)) return { staat: 'FOUT', detail: 'een prompt van ' + a.totTekens + ' tekens komt maar op ' + a.credits + ' tokens' };
+      return { staat: 'OK', detail: 'drempel ' + d + ' tokens; start een grote analyse (bijv. Diagnose met veel sensoren) en kijk of je het getal moet overtypen, daarna in het logboek "Tegoed afgeboekt: -N voor …" met het saldo uit het kasboek' };
+    }
+  },
+
   // ── Rondgang: pagina's als verhaal, met een regel "wat dit zegt" (15-10-2026) ──
   {
     issue: 'rondgangduiding',

@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Grote AI-call: getal overtypen; afboekregel klopt (#524)
+ ═══════════════════════════════════════════════════════════
+ Een analyse boven 10 tokens vraagt het getal over te typen, ook met
+ "niet meer vragen" aan en ook voor de beheerder (die betaalt de
+ rekening). De logregel "Tegoed afgeboekt" komt nu ná het serversaldo
+ en noemt de analyse; het kasboek zet die in Details (pl_rol, de
+ Worker haalt het van de payload af vóór Anthropic).
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Rondgang: pagina's vertellen een verhaal, met "wat dit zegt"
  ═══════════════════════════════════════════════════════════
  Na de demo-screenshots: pagina's waren lijsten per soort, een losse

@@ -78,7 +78,7 @@ const srcRedeem = knip('async function handleCreditsRedeem', '__name(handleCredi
 function bouwTegoed(opties) {
   const o = opties || {};
   const staat = {
-    posts: [], patches: [], meldingen: [], jobs: [], aiCalls: 0,
+    posts: [], patches: [], meldingen: [], jobs: [], aiCalls: 0, aiBodies: [],
     saldo: o.saldo === undefined ? 180 : o.saldo
   };
   const aiAntwoord = JSON.stringify({
@@ -124,6 +124,7 @@ function bouwTegoed(opties) {
       const u = String(url);
       if (u.indexOf('api.anthropic.com') >= 0) {
         staat.aiCalls++;
+        staat.aiBodies.push(JSON.parse(init.body));
         const st = o.aiStatus || 200;
         return { ok: st < 400, status: st, text: async () => aiAntwoord };
       }
@@ -138,7 +139,7 @@ function bouwTegoed(opties) {
   const ctx = { waitUntil: (p) => { staat.jobs.push(p); } };
   const verzoek = {
     headers: { get: (n) => (String(n).toLowerCase() === 'content-length' ? '400' : null) },
-    json: async () => ({ messages: [{ role: 'user', content: 'wat is er mis' }], model: 'claude-sonnet-4-6' })
+    json: async () => Object.assign({ messages: [{ role: 'user', content: 'wat is er mis' }], model: 'claude-sonnet-4-6' }, o.extraVelden || {})
   };
   return {
     staat, api, env, ctx, aiAntwoord,
@@ -509,6 +510,32 @@ const gezien = new Set();
   // hem een keer nodig hebt. Deze toets is de vangnet-regel: een nieuwe
   // saldoschrijver zonder kasboekregel hoort hier op te vallen, doordat zijn
   // bron ontbreekt zodra hij aan dit lijstje wordt toegevoegd.
+  // ── 14. de analyse staat in het kasboek, en niet bij Anthropic (#524) ──
+  // Op 15-10-2026 kostte één call 85 tokens en zei het kasboek alleen
+  // "analyse afgeboekt". apiFetch stuurt nu pl_rol mee; de Worker zet hem in
+  // Details en haalt hem van de payload af — Anthropic weigert onbekende velden.
+  console.log('\n14. pl_rol gaat het kasboek in en niet naar Anthropic');
+  {
+    const t = bouwTegoed({ extraVelden: { pl_rol: 'brandstof:\n waar  gaat het heen?' } });
+    await t.analyse(false);
+    const v = laatste(t.staat);
+    toets('Details noemt de analyse', v && v.Details === 'analyse afgeboekt \u2014 brandstof: waar gaat het heen?',
+          v && JSON.stringify(v.Details));
+    const b = t.staat.aiBodies[0] || {};
+    toets('de payload naar Anthropic heeft geen pl_rol', !('pl_rol' in b), JSON.stringify(Object.keys(b)));
+    toets('maar de rest is er nog', Array.isArray(b.messages) && b.model === 'claude-sonnet-4-6');
+
+    const z = bouwTegoed();
+    await z.analyse(false);
+    toets('zonder pl_rol blijft Details zoals het was', laatste(z.staat).Details === 'analyse afgeboekt',
+          JSON.stringify(laatste(z.staat).Details));
+
+    const f = bouwTegoed({ patchFaalt: true, extraVelden: { pl_rol: 'diagnose' } });
+    await f.analyse(false);
+    toets('ook een mislukte afboeking noemt de analyse', laatste(f.staat).Details.indexOf('diagnose') > 0,
+          JSON.stringify(laatste(f.staat).Details));
+  }
+
   console.log('\n13. Alle vier de bronnen uit #83 zijn werkelijk langsgekomen');
   {
     for (const soort of ['ai-call', 'code-ingewisseld', 'proeftegoed', 'admin-mutatie'])
