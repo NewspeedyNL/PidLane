@@ -85,6 +85,11 @@
      → { staat: 'geweigerd', nrc, tekst } het stuurapparaat zegt nee
      → { staat: 'gelezen', codes: [...] } ook als de lijst leeg is
      "Stil" en "gelezen, leeg" zijn nooit hetzelfde (zelfde regel als #218). */
+  // Status-bits (ISO 14229): 0 nu fout, 1 fout deze rit, 2 in afwachting,
+  // 3 bevestigd, 5 fout sinds het wissen, 7 lampje. Niet: 4 en 6 (test niet
+  // gedraaid sinds wissen / deze rit).
+  var FOUTBITS = 0x01 | 0x02 | 0x04 | 0x08 | 0x20 | 0x80;
+
   function parse19(raw) {
     var t = String(raw || '').toUpperCase();
     if (!t.trim() || /NO DATA|ERROR|UNABLE|STOPPED|BUFFER|\?/.test(t)) return { staat: 'stil' };
@@ -100,10 +105,14 @@
     var codes = [];
     for (var j = 0; j + 8 <= body.length; j += 8) {
       var w = parseInt(body.substr(j, 4), 16), ftb = body.substr(j + 4, 2), st = parseInt(body.substr(j + 6, 2), 16);
-      if (!w || isNaN(w) || !st) continue;                               // status 0 = niets aan de hand
+      // Alleen de foutbits tellen. Bit 4 en 6 zeggen "test nog niet
+      // gedraaid": met masker FF stuurt een Mazda (CX-5, 15-10-2026) zijn
+      // hele lijst bekende codes terug met alleen die bits aan. Dat zijn
+      // geen fouten, en ze stonden als elf codes "in het geheugen" in beeld.
+      if (!w || isNaN(w) || !(st & FOUTBITS)) continue;
       var code = woordNaarCode(w);
       if (codes.some(function (c) { return c.code === code && c.ftb === ftb; })) continue;
-      codes.push({ code: code, ftb: ftb, status: st, actief: !!(st & 1), pending: !!(st & 4), bevestigd: !!(st & 8), lamp: !!(st & 0x80) });
+      codes.push({ code: code, ftb: ftb, status: st, actief: !!(st & 1), dezeRit: !!(st & 2), pending: !!(st & 4), bevestigd: !!(st & 8), eerder: !!(st & 0x20), lamp: !!(st & 0x80) });
     }
     // Actief en met lampje bovenaan; daarna wat alleen nog in het geheugen staat.
     codes.sort(function (a, b) { return (b.lamp - a.lamp) || (b.actief - a.actief) || (b.bevestigd - a.bevestigd); });
@@ -135,7 +144,9 @@
             await stuur('ATSH' + m.hdr, CFG.atTimeoutMs);
             try { await stuur('ATCRA' + rxVan(m.hdr), CFG.atTimeoutMs); }
             catch (e) { console.warn('PLUds: ATCRA geweigerd voor ' + m.hdr + ', zonder filter verder', e); r.zonderFilter = true; }
-            var p = parse19(await stuur('1902FF', CFG.cmdTimeoutMs));
+            var ruw = await stuur('1902FF', CFG.cmdTimeoutMs);
+            var p = parse19(ruw);
+            if (p.staat !== 'stil') diag('UDS ' + m.hdr + ' RX: ' + String(ruw || '').replace(/\s+/g, ' ').trim().slice(0, 300), 'info');
             for (var k in p) r[k] = p[k];
           } catch (e) { console.warn('PLUds: ' + m.hdr + ' niet gelezen', e); r.staat = 'stil'; r.fout = String(e.message || e); }
           res.modules.push(r);
@@ -176,8 +187,8 @@
     catch (e) { console.warn('PLUds: dtcInfo faalde voor ' + code, e); return ''; }
   }
   function statusTekst(c) {
-    return [c.actief ? 'nu actief' : '', c.bevestigd ? 'bevestigd' : '', c.pending ? 'in afwachting' : '', c.lamp ? 'lampje aan' : '']
-      .filter(Boolean).join(', ') || 'in het geheugen';
+    return [c.actief ? 'nu actief' : (c.dezeRit ? 'deze rit gezien' : ''), c.bevestigd ? 'bevestigd' : '', c.pending ? 'in afwachting' : '', c.lamp ? 'lampje aan' : '']
+      .filter(Boolean).join(', ') || 'eerder opgetreden, sinds het wissen';
   }
 
   function alsTekst(res) {

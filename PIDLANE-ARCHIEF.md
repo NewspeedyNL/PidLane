@@ -15,6 +15,26 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 15-10-2026 — UDS 0x19: elf "codes" op een Mazda die geen fout hadden
+
+Eerste rit met `PLUds` (Mazda CX-5 benzine). Het motorblok (7E0) gaf op
+`19 02 FF` elf codes terug — P117A, P0421, P0171, P0172, P2096, P2097,
+P0524, P2119, P2101, P2107, P0461 — alle met faaltype 00 en geen enkel
+foutbit: de app toonde ze als "in het geheugen". Tegelijk stond het
+gewone stoplicht (mode 03/07/0A) niet op rood.
+
+Oorzaak: met statusmasker FF geeft een stuurapparaat elke code waarvan
+*een* statusbit aan staat, en bit 4 en 6 betekenen "test nog niet
+gedraaid" (sinds het wissen / deze rit). Mazda stuurt zo zijn hele lijst
+bekende codes. `parse19` filterde op "status ≠ 0" en telde die mee.
+
+Nu telt alleen een foutbit (0, 1, 2, 3, 5, 7). Het ruwe antwoord per
+stuurapparaat gaat sindsdien naar het logboek (`UDS 7E0 RX: …`): het
+logboek van deze rit was om 11:56:40 opgeslagen, de scan liep daarna, dus
+de echte statusbytes zijn niet nagelezen — de verklaring past op het
+beeld (alles 00-faaltype, niets actief) maar is niet uit de bytes bewezen.
+Bij de volgende rit: logboek ná de scan opslaan.
+
 ## 14-10-2026 — Rijmodus: van vier getallen naar advies in beeld
 
 De eerste opzet (zelfde dag) schakelde vanzelf bij een klein venster én een
