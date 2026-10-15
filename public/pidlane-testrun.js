@@ -2787,6 +2787,29 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── UDS 0x19: foutcodes van alle stuurapparaten (15-10-2026) ──
+  {
+    issue: 'uds19',
+    naam: 'UDS 0x19: foutcodes van ABS, airbag en de rest, en de adapter staat daarna weer op 7DF',
+    waarom: 'Mode 03 hoort alleen motor en bak; een groen stoplicht zei niets over het ABS-lampje.',
+    proef: async function () {
+      if (!window.PLUds || typeof PLUds.scan !== 'function') return { staat: 'FOUT', detail: 'PLUds ontbreekt — pidlane-uds.js niet geladen (herladen?)' };
+      var log = [], hdr = '7DF';
+      var stuur = async function (c) {
+        log.push(c);
+        if (c === 'ATDPN') return 'A6';
+        if (/^ATSH/.test(c)) { hdr = c.slice(4); return 'OK'; }
+        if (/^AT/.test(c)) return 'OK';
+        return hdr === '760' ? '59 02 FF 40 35 11 09' : 'NO DATA';
+      };
+      var res = await PLUds.scan(stuur);
+      var abs = res.modules.filter(function (m) { return m.hdr === '760'; })[0];
+      if (!abs || !abs.codes || !abs.codes.length || abs.codes[0].code !== 'C0035') return { staat: 'FOUT', detail: 'C0035 op 760 niet gelezen: ' + JSON.stringify(abs) };
+      if (log.slice(-2).join() !== 'ATSH7DF,ATCRA') return { staat: 'FOUT', detail: 'adapter niet teruggezet: ' + log.slice(-3).join(' ') };
+      return { staat: 'OK', detail: 'nep-bus klopt · rij: Check mijn auto → Uitlezen → 🧩 Alle stuurapparaten; noteer welke adressen antwoorden (adressen zijn per merk anders)' };
+    }
+  },
+
   // ── mode 06: tabel in het onderzoek, los paneel in Admin (15-10-2026) ──
   {
     issue: 'mode06',

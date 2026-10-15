@@ -184,6 +184,12 @@ MUTATIES=(
 "public/pidlane-kmcheck.js@@      if (uit.niveau === 'ok' || uit.niveau === 'onbevestigd') uit.niveau = 'let-op';@@      if (false) uit.niveau = 'let-op';@@test-kmcheck.js@@een blanco voertuignummer verdwijnt uit het oordeel"
 "public/pidlane-kmcheck.js@@  var VIN_TEKENS = /^[A-HJ-NPR-Z0-9]{17}$/;@@  var VIN_TEKENS = /^[A-Z0-9]{17}$/;@@test-kmcheck.js@@de VIN-herkenning accepteert een O en een I, die in geen enkele VIN voorkomen"
 "public/pidlane-kmcheck.js@@    return !!(laatste && laatste.vin && vin && laatste.vin === vin && laatste.niveau === 'kritiek');@@    return !!(laatste && laatste.niveau === 'kritiek');@@test-softwareoorzaak.js@@de km-check van een andere auto telt als VIN-afwijking voor deze (#426)"
+# ── PLUds: foutcodes van alle stuurapparaten (UDS 0x19, 15-10-2026)
+"public/pidlane-uds.js@@        try { await stuur('ATSH7DF', CFG.atTimeoutMs); }@@        try { }@@test-uds.js@@na de UDS-scan blijft de adapter op het laatste stuurapparaat staan"
+"public/pidlane-uds.js@@      if (!w || isNaN(w) || !st) continue;@@      if (!w || isNaN(w)) continue;@@test-uds.js@@een record met status 0 telt weer als foutcode"
+"public/pidlane-uds.js@@    if (body == null) return weiger ?@@    if (body == null) return false ?@@test-uds.js@@een weigering (7F 19 11) heet weer stilte"
+"public/pidlane-uds.js@@  function rxVan(hdr) { return (parseInt(hdr, 16) + 8)@@  function rxVan(hdr) { return (parseInt(hdr, 16) + 0)@@test-uds.js@@het ontvangstfilter staat op het zendadres in plaats van adres + 8"
+"public/pidlane-uds.js@@      if (!/^A?[68]$/i.test(res.protocol)) { res.nietCan = true; return; }@@@@test-uds.js@@op een bus zonder CAN wordt toch per adres gevraagd"
 "public/pidlane-rijsituatie.js@@if(q.status==='ok'){ ok++; updPID(pid,val); } else onzin++;@@updPID(pid,val);\n      if(q.status==='ok') ok++; else onzin++;@@test-healthherziening.js@@de gezondheidscheck stempelt de versheidsbron vóór het oordeel"
 "public/pidlane-testrun.js@@    id: 'achtergrond',@@    id: 'achtergrondproef',@@test-begeleid.js@@een stap van de begeleide rit is hernoemd zonder de volgorderegel mee te nemen"
 "public/pidlane-testrun.js@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C', '0155', '0156'];@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C'];@@test-begeleid.js@@0155 en 0156 zijn weer uit de meet-PIDs verdwenen (#40 blijft dan onmeetbaar)"
