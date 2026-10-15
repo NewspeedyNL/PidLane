@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Tabblad Kenteken in Mijn voertuigen, Admin-menu korter
+ ═══════════════════════════════════════════════════════════
+ De kenteken-check van "Niet in de auto?" (APK, verzekering, terugroep-
+ acties, milieuklasse, kosten, onderhoudsschema, adapter) was weg zodra
+ de adapter verbonden was. Nu staat hij ook als tabblad Kenteken bij elk
+ voertuig met een kenteken, verbonden of niet (PLZonder.checkHtml).
+ Uit het Admin-menu: Nieuwste versie laden (staat op het inlogscherm),
+ Mode 06 — monitortests, SPP-controle en Snelheidsproef. De modules
+ blijven; PLM06.open(), PLSppProef.controle() en PLSnelProef.open()
+ openen ze nog.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Sensoren per voertuig: geen dubbele lijst meer
  ═══════════════════════════════════════════════════════════
  Een code uit "Codes voor dit model" stond na toevoegen twee keer: bij

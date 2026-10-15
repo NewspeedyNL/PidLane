@@ -35,21 +35,15 @@ function toets(naam, waar, uitleg) {
   }
 
   try {
-    console.log('\n1. De knop hangt in het echte Admin-menu');
-    const k = JSON.parse(await app.ev(`(function(){
-      var groep = document.getElementById('admGroup'), el = document.getElementById('plSnelMenu');
-      return JSON.stringify({ module: !!window.PLSnelProef, inMenu: !!(el && groep && groep.contains(el)),
-        klasse: !!(el && /kebab-item/.test(el.className)), uniek: document.querySelectorAll('#plSnelMenu').length });
-    })()`));
+    console.log('\n1. De module laadt, de Admin-knop is weg (15-10-2026, op verzoek)');
+    const k = JSON.parse(await app.ev(`JSON.stringify({ module: !!window.PLSnelProef, knop: !!document.getElementById('plSnelMenu') })`));
     toets('PLSnelProef bestaat na een echte boot', k.module, JSON.stringify(k));
-    toets('de knop hangt in #admGroup', k.inMenu, JSON.stringify(k));
-    toets('met de opmaak van de andere menuknoppen', k.klasse, JSON.stringify(k));
-    toets('en één keer', k.uniek === 1, JSON.stringify(k));
+    toets('en staat niet meer in het Admin-menu', !k.knop, JSON.stringify(k));
 
     console.log('\n2. Het paneel opent, en alleen knop 1 is te drukken');
     await app.ev(`window.__fouten = []; window.addEventListener('error', function (e) { window.__fouten.push(String(e.message)); });
       try { localStorage.removeItem('pl_snelproef'); } catch (e) {}
-      document.getElementById('plSnelMenu').click(); 1`);
+      PLSnelProef.open(); 1`);
     const p = JSON.parse(await app.ev(`(function(){
       var v = document.getElementById('plSnelProef');
       var knop = function (n) { var b = document.getElementById('plSnel' + n); return b ? !b.disabled : null; };

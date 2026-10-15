@@ -238,11 +238,11 @@ function bouw(opt) {
     toets('een ander proces: stap 6 meet', !!(r && r.m), true);
   }
 
-  console.log('\n7. De menuknop');
+  console.log('\n7. Geen menuknop meer (15-10-2026, op verzoek)');
   {
     const b = bouw();
-    toets('één knop in het Admin-menu', b.groep.kids.map(function (k) { return k.id; }), ['plSnelMenu']);
-    toets('een tweede keer niet nog eens', b.P.menu(), 0);
+    toets('niets in het Admin-menu', b.groep.kids.length, 0);
+    toets('en geen menu() meer', typeof b.P.menu, 'undefined');
   }
 
   console.log('\n' + n + ' toetsen, ' + fout + ' fout');
