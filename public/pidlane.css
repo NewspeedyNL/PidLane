@@ -1269,6 +1269,7 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .rond-titel small { margin-left:auto; font-size:11px; font-weight:700; color:var(--tx3); font-family:var(--m); }
 .rond-dia { display:grid; gap:10px; }
 .rond-dia > .rond-titel { margin-bottom:0; }
+.rond-mist { width:100%; padding:9px 10px; border-radius:10px; border:1px dashed var(--bd); background:none; color:var(--tx2); font-family:var(--f); font-size:12px; font-weight:700; text-align:left; cursor:pointer; }
 .rk { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:12px 14px; box-shadow:var(--ss); min-width:0; }
 .rk h4 { margin:0 0 10px; font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--tx3); }
 .rk-w { display:flex; align-items:baseline; gap:4px; font-family:var(--m); }
