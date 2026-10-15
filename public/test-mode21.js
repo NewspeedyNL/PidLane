@@ -337,20 +337,20 @@ function haalZeef(isMode01) {
     t('obdb: repo-namen voor RDW-modellen', JSON.stringify([E.obdbNamen('MAZDA', 'CX5'), E.obdbNamen('BMW', '320D XDRIVE'), E.obdbNamen('Hyundai', 'i20')]),
       JSON.stringify([['MAZDA-CX5', 'MAZDA-CX-5'], ['BMW-320D-XDRIVE', 'BMW-320D', 'BMW-3-Series'], ['Hyundai-i20', 'Hyundai-i-20']]));
 
-    // Zoeken: proberen tot een naam bestaat, geen AI en dus geen tegoed.
+    // Zoeken: proberen tot een naam bestaat, geen AI en dus geen tegoed. De
+    // app haalt via de Worker (haal = obdb_bestand); hier een nagemaakte.
     const gehaald = [];
     s.apiFetch = async () => { throw new Error('de AI mag hier niet gevraagd worden'); };
-    s.fetch = async (u) => { gehaald.push(u); return /MAZDA-CX-5\//.test(u) ? { ok: true, status: 200, json: async () => obdb } : { ok: false, status: 404 }; };
-    const z = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 });
+    const haal = async (repo) => { gehaald.push(repo); return repo === 'MAZDA-CX-5' ? { gevonden: true, data: obdb } : { gevonden: false }; };
+    const z = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal);
     t('zoekObdb: tweede naam raak, kandidaten erbij', z.ok + ' ' + z.repo + ' ' + z.kandidaten.length, 'true MAZDA-CX-5 7');
-    t('zoekObdb: haalt het bestand bij OBDb', gehaald[1], 'https://raw.githubusercontent.com/OBDb/MAZDA-CX-5/main/signalsets/v3/default.json');
-    s.fetch = async () => ({ ok: false, status: 404 });
-    const z2 = await E.zoekObdb({ merk: 'Dacia', model: 'Logan' });
+    t('zoekObdb: probeert de namen op volgorde', gehaald.join(','), 'MAZDA-CX5,MAZDA-CX-5');
+    const z2 = await E.zoekObdb({ merk: 'Dacia', model: 'Logan' }, async () => ({ gevonden: false }));
     t('zoekObdb: niet in OBDb is geen fout, en zegt wat er geprobeerd is', z2.ok + ' ' + z2.repo + ' ' + z2.geprobeerd.join(','), 'true  Dacia-Logan');
-    s.fetch = async () => { throw new Error('Failed to fetch'); };
-    const z3 = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' });
+    const z3 = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' }, async () => { throw new Error('Serverfout 502'); });
     t('zoekObdb: geen net is een melding', !z3.ok && /niet bereikbaar/.test(z3.fout), true);
-    t('zonder merk of model: niet zoeken', (await E.zoekObdb({ merk: 'Mazda' })).ok, false);
+    t('zoekObdb: zonder weg naar OBDb niet zoeken', (await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' })).ok, false);
+    t('zonder merk of model: niet zoeken', (await E.zoekObdb({ merk: 'Mazda' }, haal)).ok, false);
   }
 
   console.log('\n— banden: herkennen, op verzoek (#396), druk in bar of psi (28-09-2026) —');

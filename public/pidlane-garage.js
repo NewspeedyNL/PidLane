@@ -2135,7 +2135,7 @@
       var S = _st.sens, v = S && voertuig(S.vid); if (!S || !v || S.zoek === 'bezig' || !window.PLEigen) return;
       sensNieuw();
       S.zoek = 'bezig'; teken();
-      var r = await PLEigen.zoekObdb(v);
+      var r = await PLEigen.zoekObdb(v, function (repo) { return api('obdb_bestand', { repo: repo }); });
       if (!r.ok) S.zoek = '✗ ' + r.fout;
       else if (!r.repo) S.zoek = 'Dit model staat (nog) niet in OBDb. Gezocht als: ' + (r.geprobeerd || []).join(', ') + '.';
       else if (!r.kandidaten.length) S.zoek = 'OBDb kent ' + r.repo + ', maar geen leescode die deze app kan gebruiken.';

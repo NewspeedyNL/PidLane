@@ -345,6 +345,7 @@ MUTATIES=(
 "worker.js@@credits: -afgeboekt, saldoNa, details: \"analyse afgeboekt\" + voor + tekort@@credits: -kosten, saldoNa, details: \"analyse afgeboekt\" + voor + tekort@@test-kasboek.js@@het kasboek boekt de volle prijs terwijl er minder van het saldo af ging (#83)"
 "worker.js@@credits: 0, saldoNa: saldoVoor,@@credits: -kosten, saldoNa: saldoVoor,@@test-kasboek.js@@een mislukte afboeking wordt geboekt alsof hij gelukt is (#83)"
 "worker.js@@if (na !== null) velden.SaldoNa = na;@@velden.SaldoNa = na || 0;@@test-kasboek.js@@een onbekend saldo komt als 0 in het kasboek en leest later als een leeg account (#83)"
+"worker.js@@    if (!/^[A-Za-z0-9][A-Za-z0-9-]{1,60}$/.test(repo)) return@@    if (false) return@@test-klantplatform.js@@een OBDb-naam met / of .. gaat ongezien het net op, naar een ander pad op GitHub (#526)"
 "worker.js@@  if (payload.tools !== undefined) return@@  if (false) return@@test-kasboek.js@@web_search en andere tools gaan weer ongezien naar Anthropic (#526)"
 "worker.js@@  if (AI_MODELLEN.indexOf(payload.model) < 0) return@@  if (false) return@@test-kasboek.js@@elk model mag weer, ook Opus, tegen het Sonnet-tarief (#526)"
 "worker.js@@  for (const k of Object.keys(payload)) if (AI_VELDEN.indexOf(k) < 0) delete payload[k];@@@@test-kasboek.js@@onbekende velden gaan weer mee naar Anthropic (#526)"

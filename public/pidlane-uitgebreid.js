@@ -534,7 +534,6 @@
      antwoord op +8 (geen extended addressing: dat kan de eigen-PID-route
      niet), hele bytes binnen A–H, zonder teken of opzoektabel. Eén code per
      commando: de bibliotheek kent per code één formule. */
-  const OBDB_RAW = 'https://raw.githubusercontent.com/OBDb/';
   const OBDB_EENHEID = {
     celsius: '°C', bars: 'bar', psi: 'psi', kilopascal: 'kPa', percent: '%', volts: 'V', amps: 'A',
     kilometers: 'km', kilometersPerHour: 'km/h', meters: 'm', millimeters: 'mm', degrees: '°', rpm: 'rpm',
@@ -630,23 +629,22 @@
     return uit.slice(0, 60);
   }
 
-  /* Zoeken voor een voertuig {merk, model, bouwjaar}. Geen AI, geen tegoed. */
-  async function zoekObdb(v) {
+  /* Zoeken voor een voertuig {merk, model, bouwjaar}. Geen AI, geen tegoed.
+     `haal(repo)` → { gevonden, data } komt van de aanroeper: in de app de
+     Worker-actie obdb_bestand (PLGarage): een module haalt niets zelf van
+     het net (test-plfetch.js). Gooit hij, dan is OBDb niet bereikbaar. */
+  async function zoekObdb(v, haal) {
     v = v || {};
     if (!v.merk || !v.model) return { ok: false, fout: 'Vul eerst merk en model in bij het profiel' };
+    if (typeof haal !== 'function') return { ok: false, fout: 'Geen weg naar OBDb' };
     const namen = obdbNamen(v.merk, v.model);
-    let netfout = '';
     for (const repo of namen) {
-      let r;
-      try { r = await fetch(OBDB_RAW + encodeURIComponent(repo) + '/main/signalsets/v3/default.json'); }
-      catch (x) { netfout = String(x && x.message || x); console.warn('PLEigen: OBDb niet bereikbaar', x); continue; }
-      if (r.status === 404) continue;
-      if (!r.ok) { netfout = 'HTTP ' + r.status; continue; }
-      let data;
-      try { data = await r.json(); } catch (x) { return { ok: false, fout: 'OBDb gaf geen leesbaar bestand voor ' + repo }; }
-      return { ok: true, repo, kandidaten: obdbKandidaten(data, repo, v.bouwjaar) };
+      let d;
+      try { d = await haal(repo); }
+      catch (x) { console.warn('PLEigen: OBDb niet bereikbaar', x); return { ok: false, fout: 'OBDb niet bereikbaar (' + String(x && x.message || x) + ')' }; }
+      if (!d || !d.gevonden) continue;
+      return { ok: true, repo, kandidaten: obdbKandidaten(d.data, repo, v.bouwjaar) };
     }
-    if (netfout) return { ok: false, fout: 'OBDb niet bereikbaar (' + netfout + ')' };
     return { ok: true, repo: '', kandidaten: [], geprobeerd: namen };
   }
 

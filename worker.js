@@ -5729,6 +5729,25 @@ var KP_ACTIES = {
   // van een test op zijn auto. In de bibliotheek staat geen klant, geen
   // voertuig en geen kenteken — alleen merk, model en de code. De stem draagt
   // de klant-hash (om dubbel stemmen te voorkomen) en gaat mee met alles_wissen.
+  // OBDb (#526): het bestand van één merk/model voor PLEigen.zoekObdb(). Via
+  // de Worker en niet rechtstreeks uit de app: één cache voor iedereen, en
+  // geen module met een eigen fetch (test-plfetch.js). Alleen de commando's
+  // gaan terug; de rest van het bestand gebruikt de app niet.
+  async obdb_bestand(c, b) {
+    const repo = String(b.repo || "");
+    if (!/^[A-Za-z0-9][A-Za-z0-9-]{1,60}$/.test(repo)) return { ok: false, error: "Ongeldige OBDb-naam.", code: 400 };
+    let r;
+    try {
+      r = await fetch("https://raw.githubusercontent.com/OBDb/" + repo + "/main/signalsets/v3/default.json", { cf: { cacheTtl: 86400, cacheEverything: true } });
+    } catch (e) {
+      return { ok: false, error: "OBDb niet bereikbaar: " + String(e && e.message || e), code: 502 };
+    }
+    if (r.status === 404) return { ok: true, gevonden: false };
+    if (!r.ok) return { ok: false, error: "OBDb gaf HTTP " + r.status + ".", code: 502 };
+    let data;
+    try { data = await r.json(); } catch (e) { return { ok: false, error: "Het OBDb-bestand van " + repo + " is onleesbaar.", code: 502 }; }
+    return { ok: true, gevonden: true, data: { commands: Array.isArray(data && data.commands) ? data.commands : [] } };
+  },
   async pidbib_lijst(c, b) {
     const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
     if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };

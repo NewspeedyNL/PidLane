@@ -52,6 +52,7 @@ const NEPSERVER = `(function(){
     else if (b.actie === 'rapport_verwijder') { S.gewist = (S.gewist || []).concat(b.ids || [b.id]); d.gewist = (b.ids || [b.id]).length; }
     else if (b.actie === 'rit_label') { (S.ritten || []).forEach(r => { if (r.id === b.id) r.label = b.label || null; }); d.label = b.label || null; }
     else if (b.actie === 'pidbib_lijst') d.lijst = S.bib || [];
+    else if (b.actie === 'obdb_bestand') { S.obdbGehaald = b.repo; d.gevonden = !!S.obdb; if (S.obdb) d.data = S.obdb; }
     else if (b.actie === 'pidbib_kandidaten') { S.kandidaten = b.lijst; S.kandidaatBron = b.bron; d.erbij = b.lijst.length; d.geweigerd = 0; }
     else if (b.actie === 'pidbib_stem') (S.stemmen = S.stemmen || []).push(b.id + ':' + b.uitkomst);
     else if (b.actie === 'pidbib_deel') S.gedeeld = b.code + '@' + b.ecu;
@@ -300,19 +301,15 @@ const NEPSERVER = `(function(){
       await PLGarage._sensDeel(i);
       uit.gedeeld = S.gedeeld;
       PLEigen.test = echtTest;
-      // Zoeken in OBDb (#526): het bestand van de open database, geen AI.
-      const echtApi = window.apiFetch, echtFetch = window.fetch; let ai = 0, gehaald = '';
+      // Zoeken in OBDb (#526): via de Worker-actie obdb_bestand, geen AI.
+      const echtApi = window.apiFetch; let ai = 0;
       window.apiFetch = async () => { ai++; return ''; };
-      window.fetch = async (u, o) => {
-        if (String(u).indexOf('raw.githubusercontent.com/OBDb/') < 0) return echtFetch(u, o);
-        gehaald = String(u);
-        return { ok: true, status: 200, json: async () => ({ commands: [
-          { hdr: '7E0', rax: '7E8', cmd: { '22': '0404' }, signals: [{ name: 'AdBlue niveau', fmt: { len: 8, unit: 'percent' } }] },
-          { hdr: '7E0', rax: '7E8', cmd: { '2E': '0404' }, signals: [{ name: 'x', fmt: { len: 8, unit: 'percent' } }] }] }) };
-      };
+      S.obdb = { commands: [
+        { hdr: '7E0', rax: '7E8', cmd: { '22': '0404' }, signals: [{ name: 'AdBlue niveau', fmt: { len: 8, unit: 'percent' } }] },
+        { hdr: '7E0', rax: '7E8', cmd: { '2E': '0404' }, signals: [{ name: 'x', fmt: { len: 8, unit: 'percent' } }] }] };
       await PLGarage._bibZoek();
-      window.apiFetch = echtApi; window.fetch = echtFetch;
-      uit.zoekTool = ai === 0 && gehaald.indexOf('/main/signalsets/v3/default.json') > 0 ? 'obdb' : 'ai=' + ai + ' ' + gehaald;
+      window.apiFetch = echtApi;
+      uit.zoekTool = ai === 0 && S.obdbGehaald ? 'obdb' : 'ai=' + ai + ' repo=' + S.obdbGehaald;
       uit.kandidaten = (S.kandidaten || []).map(k => k.code).join(',');
       uit.kandidaatBron = S.kandidaatBron;
       uit.zoekMelding = /1 nieuwe kandidaat/.test(body());
