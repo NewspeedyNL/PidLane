@@ -2787,6 +2787,48 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── UDS 0x19: foutcodes van alle stuurapparaten (15-10-2026) ──
+  {
+    issue: 'uds19',
+    naam: 'UDS 0x19: foutcodes van ABS, airbag en de rest, en de adapter staat daarna weer op 7DF',
+    waarom: 'Mode 03 hoort alleen motor en bak; een groen stoplicht zei niets over het ABS-lampje.',
+    proef: async function () {
+      if (!window.PLUds || typeof PLUds.scan !== 'function') return { staat: 'FOUT', detail: 'PLUds ontbreekt — pidlane-uds.js niet geladen (herladen?)' };
+      var log = [], hdr = '7DF';
+      var stuur = async function (c) {
+        log.push(c);
+        if (c === 'ATDPN') return 'A6';
+        if (/^ATSH/.test(c)) { hdr = c.slice(4); return 'OK'; }
+        if (/^AT/.test(c)) return 'OK';
+        return hdr === '760' ? '59 02 FF 40 35 11 09' : 'NO DATA';
+      };
+      var res = await PLUds.scan(stuur);
+      var abs = res.modules.filter(function (m) { return m.hdr === '760'; })[0];
+      if (!abs || !abs.codes || !abs.codes.length || abs.codes[0].code !== 'C0035') return { staat: 'FOUT', detail: 'C0035 op 760 niet gelezen: ' + JSON.stringify(abs) };
+      if (log.slice(-2).join() !== 'ATSH7DF,ATCRA') return { staat: 'FOUT', detail: 'adapter niet teruggezet: ' + log.slice(-3).join(' ') };
+      return { staat: 'OK', detail: 'nep-bus klopt · rij: Check mijn auto → Uitlezen → 🧩 Alle stuurapparaten; noteer welke adressen antwoorden (adressen zijn per merk anders)' };
+    }
+  },
+
+  // ── mode 06: tabel in het onderzoek, los paneel in Admin (15-10-2026) ──
+  {
+    issue: 'mode06',
+    naam: 'Mode 06: alle zelftests in het onderzoeksrapport, en een Admin-knop die ze direct leest',
+    waarom: 'PLM06.render() bestond maar werd nergens aangeroepen: de app gebruikte mode 06 alleen als bewijs, de tests zelf zag niemand.',
+    proef: async function () {
+      if (!window.PLM06 || typeof PLM06.alsTekst !== 'function' || typeof PLM06.open !== 'function') return { staat: 'FOUT', detail: 'PLM06.alsTekst/open ontbreekt — oude pidlane-mode06.js (herladen?)' };
+      if (!document.getElementById('kbMode06')) return { staat: 'FOUT', detail: 'de knop Mode 06 (#kbMode06) staat niet in het Admin-menu — oude index.html (herladen?)' };
+      if (!window.PLOnderzoek || typeof PLOnderzoek.beoordeelMode06 !== 'function') return { staat: 'FOUT', detail: 'PLOnderzoek.beoordeelMode06 ontbreekt' };
+      var R = PLM06._intern.bouwRecord;
+      var st = PLOnderzoek.nieuw({ klachten: ['onrustig'] });
+      PLOnderzoek.beoordeelMode06({ m06: { tests: [R(0x21, 0x01, 0x01, 300, 0, 750), R(0x21, 0x02, 0x01, 800, 0, 750)] } }, st);
+      var t = PLOnderzoek.alsTekst(st), i = t.indexOf('=== MONITORTESTS (MODE 06) ===');
+      if (i < 0) return { staat: 'FOUT', detail: 'het bewaarde onderzoek heeft geen blok MONITORTESTS' };
+      if (!/\[GEZAKT\][^\n]*0x02/.test(t.slice(i).split('\n')[2] || '')) return { staat: 'FOUT', detail: 'gezakt staat niet bovenaan: ' + t.slice(i, i + 300) };
+      return { staat: 'OK', detail: 'rapport en tabel kloppen · rij: Admin → 🔬 Mode 06 en kijk of de tabel komt; een onderzoek met "onrustig" toont onder de conclusie "Alle zelftests (mode 06)"' };
+    }
+  },
+
   // ── indeling Live: tabbalk weg, Grafiek in de weergaverij, vegen in Visueel (15-10-2026) ──
   {
     issue: 'indeling',

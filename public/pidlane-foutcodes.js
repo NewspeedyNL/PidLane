@@ -985,6 +985,8 @@
     h += '<div class="fc-knoppen">' +
       '<button class="fc-k hoofd" ' + (kan ? '' : 'disabled') + ' onclick="PLFoutcodes.scan()">' + (s ? '🔄 Opnieuw uitlezen' : '🔍 Uitlezen') + '</button>' +
       (s ? '<button class="fc-k" onclick="PLFoutcodes.bewaar()">💾 Bewaren</button>' : '') +
+      // Mode 03 hoort alleen motor en bak; ABS, airbag en de rest vraagt PLUds apart.
+      (s && window.PLUds ? '<button class="fc-k" id="plFcUds" ' + (kan ? '' : 'disabled') + ' onclick="PLUds.open()">🧩 Alle stuurapparaten</button>' : '') +
       '</div>';
     return h;
   }

@@ -897,6 +897,7 @@ function closeConnOv(){
           <button class="kebab-item" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
           <button class="kebab-item" id="frisBtn" onclick="closeKebab();plHardReload(this)">🔄 Nieuwste versie laden</button>
           <button class="kebab-item" id="testrunBtn" onclick="closeKebab();openTestrun()">🔬 Testrun</button>
+          <button class="kebab-item" id="kbMode06" onclick="closeKebab();PLM06.open()">🔬 Mode 06 — monitortests</button>
           <button class="kebab-item" id="kbSessie" onclick="closeKebab();showTokenDetail()">🪙 AI-kosten deze sessie</button>
           <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">🧪 Full function test</button>
         </div>
@@ -1873,6 +1874,7 @@ function closeConnOv(){
 <script src="pidlane-recall.js"></script><!-- terugroepacties met detail (PLRecall) -->
 <script src="pidlane-mode06.js"></script><!-- on-board monitortests (PLM06) — vereist sendCmd + PLBus -->
 <script src="pidlane-kmcheck.js"></script><!-- kilometerstand-check (PLKm) — vereist sendCmd + withBus -->
+<script src="pidlane-uds.js"></script><!-- foutcodes van alle stuurapparaten, UDS 0x19 (PLUds) — vereist sendCmd + withBus -->
 <script src="pidlane-foutcodes.js"></script><!-- foutcodes &amp; keuringsstatus (PLFoutcodes) — vereist sendCmd + withBus + ALL_PID_DEFS -->
 <script src="pidlane-onderzoek.js"></script><!-- volledig onderzoek (PLOnderzoek) — vereist PLFoutcodes.leesStil + softwareOorzaken -->
 <script src="pidlane-samenhang.js"></script><!-- samenhang (PLSamenhang, #446) — toestanden + de stappen van PLOnderzoek op een meting die er al is -->
