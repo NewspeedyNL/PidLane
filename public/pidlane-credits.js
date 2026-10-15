@@ -77,6 +77,13 @@
     // Onder dit aantal credits geen preview-sheet (achtergrond/hulpcalls).
     previewDrempel: 3,
 
+    // Boven dit aantal credits is het venster niet weg te klikken (#524). Op
+    // 15-10-2026 kostte één analyse 85 tokens (116k tokens invoer) en dat viel
+    // pas achteraf in het kasboek op. Een grote call vraagt nu het getal over
+    // te typen, ook als "niet meer vragen" aanstaat, en ook voor wie niet
+    // betaalt: bij de beheerder en personeel komt de rekening bij de beheerder.
+    bevestigDrempel: 10,
+
     // Saldochip linksonder. Uit sinds 26-09-2026: een zwevende teller over
     // het scherm was voor users en klanten meer ruis dan hulp. Een klant ziet
     // zijn saldo in ☰ → Mijn account en in de kostenmelding vóór een AI-call.
@@ -598,12 +605,15 @@
   let _sheetBezig = null;
   let _nietMeerVragen = false;   // per sessie, gezet via checkbox
 
-  function _sheet(a) {
+  function _sheet(a, opt) {
     if (_sheetBezig) return _sheetBezig;
+    const o = opt || {};
     _sheetBezig = new Promise((res) => {
       const ov = _overlay('plCredSheet');
       const s = saldo();
-      const bekend = saldoBekend();
+      // Wie niet betaalt heeft geen saldo om te tonen; daar staat wie de
+      // rekening krijgt.
+      const bekend = !o.vrij && saldoBekend();
       // Onbekend saldo mag geen "tekort" tonen: we weten het niet. Het venster
       // laat dan de kosten zien en laat doorgaan; de Worker weigert alsnog met
       // 402 als het tegoed echt op is. Dat is ook de bestaande verdeling —
@@ -652,7 +662,9 @@
                 '<div style="font-size:10.5px;color:var(--tx3,#94a3b8);margin-top:3px">tokens voor deze analyse</div>' +
               '</div>' +
               '<div style="text-align:right;font-size:10.5px;color:var(--tx3,#94a3b8);line-height:1.5">' +
-                (bekend
+                (o.vrij
+                  ? 'betaald door<br><b style="color:var(--tx2,#cbd5e1)">de beheerder</b>'
+                  : bekend
                   ? 'saldo nu <b style="color:var(--tx2,#cbd5e1)">' + _nl(s) + '</b><br>' +
                     (genoeg
                       ? 'daarna <b style="color:var(--tx2,#cbd5e1)">' + _nl(s - a.credits) + '</b>'
@@ -678,10 +690,23 @@
               '\ud83d\udca1 Wat dit betekent</div>' +
             vlaggen +
 
-            '<label style="display:flex;align-items:center;gap:7px;margin-top:14px;font-size:10.5px;' +
-              'color:var(--tx3,#94a3b8);cursor:pointer">' +
-              '<input type="checkbox" id="plCredStil" style="accent-color:var(--bl,#6366f1)"> ' +
-              'Niet meer vragen deze sessie (tokens worden wel gewoon afgeboekt)</label>' +
+            // Grote call: overtypen in plaats van "niet meer vragen". Eén tik
+            // op een knop die er altijd zit is geen besluit (#524).
+            (o.groot
+              ? '<div style="margin-top:14px;padding:10px 12px;border-radius:8px;' +
+                  'background:var(--ors,rgba(245,158,11,.12));border-left:3px solid var(--or,#f59e0b)">' +
+                  '<div style="font-size:11.5px;font-weight:700;color:var(--tx,#e2e8f0)">' +
+                    '\u26A0\uFE0F Grote analyse: meer dan ' + CFG.bevestigDrempel + ' tokens</div>' +
+                  '<label for="plCredTyp" style="display:block;font-size:10.5px;color:var(--tx3,#94a3b8);margin:4px 0 6px">' +
+                    'Typ <b>' + a.credits + '</b> om te bevestigen.</label>' +
+                  '<input id="plCredTyp" type="text" inputmode="numeric" autocomplete="off" ' +
+                    'style="width:100%;box-sizing:border-box;padding:7px 9px;border-radius:6px;' +
+                    'border:1px solid var(--bd,#2a3142);background:var(--sur,#111827);color:var(--tx,#e2e8f0)">' +
+                '</div>'
+              : '<label style="display:flex;align-items:center;gap:7px;margin-top:14px;font-size:10.5px;' +
+                  'color:var(--tx3,#94a3b8);cursor:pointer">' +
+                  '<input type="checkbox" id="plCredStil" style="accent-color:var(--bl,#6366f1)"> ' +
+                  'Niet meer vragen deze sessie (tokens worden wel gewoon afgeboekt)</label>') +
 
           '</div>' +
           '<div class="ai-sheet-f">' +
@@ -693,7 +718,10 @@
         '</div>';
 
       const klaar = (v) => {
-        try { _nietMeerVragen = !!(document.getElementById('plCredStil') || {}).checked; } catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
+        // Alleen het kleine venster heeft het vinkje; het grote laat de keuze staan.
+        if (!o.groot) {
+          try { _nietMeerVragen = !!(document.getElementById('plCredStil') || {}).checked; } catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
+        }
         ov.style.display = 'none';
         _sheetBezig = null;
         window._plCredDismiss = null;
@@ -701,7 +729,12 @@
       };
 
       const jaKnop = ov.querySelector('#plCredJa');
-      if (jaKnop) jaKnop.onclick = () => klaar(true);
+      if (jaKnop) jaKnop.onclick = () => { if (!jaKnop.disabled) klaar(true); };
+      if (jaKnop && o.groot) {
+        const typ = ov.querySelector('#plCredTyp');
+        jaKnop.disabled = true;
+        if (typ) typ.oninput = () => { jaKnop.disabled = String(typ.value || '').trim() !== String(a.credits); };
+      }
       const koopKnop = ov.querySelector('#plCredKoop');
       if (koopKnop) koopKnop.onclick = () => { klaar(false); openVerzilver(); };
       ov.querySelector('#plCredNee').onclick = () => klaar(false);
@@ -828,14 +861,21 @@
   }
 
   async function preflight(prompt, sys, maxTokens, mdl) {
-    if (_vrijgesteld()) return null;
-
     let a;
     try {
       a = ontleed(prompt, sys, maxTokens);
     } catch (e) {
       _log('Kostenanalyse mislukt, analyse gaat door zonder afboeking: ' + e.message, 'warn');
       return null;                                   // fail-open
+    }
+
+    const groot = a.credits > CFG.bevestigDrempel;
+
+    // Wie niet betaalt, ziet alleen het grote venster. Er valt niets af te
+    // boeken, dus er komt ook geen afrekening terug.
+    if (_vrijgesteld()) {
+      if (groot && !(await _sheet(a, { groot: true, vrij: true }))) throw AfgebrokenFout();
+      return null;
     }
 
     const s = saldo();
@@ -850,8 +890,8 @@
     }
 
     const klein = a.credits < CFG.previewDrempel;
-    if (!klein && !_nietMeerVragen) {
-      const ok = await _sheet(a);
+    if (groot || (!klein && !_nietMeerVragen)) {
+      const ok = await _sheet(a, { groot: groot });
       if (!ok) throw AfgebrokenFout();
     }
 
@@ -883,18 +923,37 @@
         afboeken(kosten);
       }
 
-      // Kennen we het saldo niet, dan is er ook niets afgeboekt om te melden.
-      // Zou afboeken() hier tóch draaien, dan schreef hij '0' weg en werd
-      // "onbekend" stilzwijgend "nul" — waarna preflight alles blokkeert.
+      // Geen logregel hier: dit is nog de schatting. meld() schrijft hem pas
+      // als volgServer() het getal van de server heeft overgenomen (#524).
+      res.kosten = kosten;
+    } catch(e){ console.warn('lokale afboeking mislukt:', e); }
+  }
+
+  // ── meld() — de logregel van een afboeking, ná het serversaldo ───────
+  // GEMETEN OP 15-10-2026 (#524). Het logboek zei "Tegoed afgeboekt: -85
+  // (saldo 0)" terwijl het kasboek SaldoNa 15 had. boek() schreef die regel
+  // met zijn eigen tussenstand, en volgServer() zette het echte getal pas
+  // daarna — de teller klopte dus, de regel niet. Wie het logboek leest om
+  // te zien wat een analyse kostte, las het verkeerde getal.
+  //
+  // `vanServer` is wat volgServer() teruggaf: een getal als de server het
+  // saldo meestuurde, anders null. `rol` zegt welke analyse het was.
+  function meld(res, vanServer, rol) {
+    try {
+      if (!res || res.gemeld || !res.geboekt) return;
+      res.gemeld = true;
+      const kosten = res.kosten || res.credits;
+      const wat = rol ? ' voor ' + rol : '';
+      const tekens = res.tekensIn ? ', ' + _nl(res.tekensIn) + ' tekens verstuurd' : '';
       if (!saldoBekend()) {
-        _log('Tegoed afgeboekt op de server: -' + kosten + ' (lokaal saldo nog onbekend)', 'info');
+        _log('Tegoed afgeboekt op de server: -' + kosten + wat + ' (lokaal saldo nog onbekend' + tekens + ')', 'info');
         return;
       }
-
       const s = saldo();
+      const bron = (vanServer === null || vanServer === undefined) ? ', geschat \u2014 de server gaf geen saldo terug' : '';
       if (s <= 5) _toast('\u26A1 Nog ' + s + ' tokens over');
-      _log('Tegoed afgeboekt: -' + kosten + ' (saldo ' + s + ')', 'info');
-    } catch(e){ console.warn('_log mislukt:', e); }
+      _log('Tegoed afgeboekt: -' + kosten + wat + ' (saldo ' + s + bron + tekens + ')', 'info');
+    } catch(e){ console.warn('afboeking niet gelogd:', e); }
   }
 
   // ── volgServer() — de server heeft het laatste woord over de teller ──
@@ -995,6 +1054,7 @@
     isKlant: _isKlant,
     preflight: preflight,
     boek: boek,
+    meld: meld,
     ontleed: ontleed,
     openVerzilver: openVerzilver,
     verzilver: verzilver,

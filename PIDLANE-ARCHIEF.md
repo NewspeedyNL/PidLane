@@ -15,6 +15,33 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 15-10-2026 — Een analyse van 85 tokens, en een logregel die "saldo 0" zei (#524)
+
+Rit met de Hyundai i20, ingelogd als klant. Logboek: `Tegoed afgeboekt: -85
+(saldo 0)`. Kasboek: Credits −85, **SaldoNa 15**, TokensIn 116 015,
+TokensUit 945. Twee losse dingen:
+
+- **De logregel was fout, de teller niet.** `apiFetch` roept eerst `boek()`
+  aan (lokale schatting) en daarna `volgServer()` (het getal uit
+  `X-PidLane-Saldo`). `boek()` schreef de logregel, dus met de tussenstand.
+  Die tussenstand was `Math.max(0, _serverSaldo − 85)` op een lokaal saldo dat
+  al lager stond dan de 100 van de server — waaróm het lager stond is niet
+  achterhaald. Nu schrijft `meld()` de regel ná `volgServer()`, met de analyse
+  erbij en "geschat" als de server geen getal teruggaf.
+- **Welke analyse het was, stond nergens.** Vóór de afboeking stond alleen
+  `apiFetch: key LEEG`. `apiFetch` stuurt nu `pl_rol` mee (profiel uit de
+  aanlevering, anders de eerste zin van de prompt); de Worker haalt het eraf
+  vóór Anthropic en zet het in `Details`. Waarom deze call 116k tokens invoer
+  had, is daarmee nog níét beantwoord — dat zie je bij de volgende.
+- **Het venster was één tik.** Er stond een kostenvenster, met een vinkje
+  "niet meer vragen". Boven `bevestigDrempel` (10) moet het getal nu
+  overgetypt worden, ook met dat vinkje aan, en ook voor de beheerder,
+  personeel en "tegoed uit": daar komt de rekening bij de beheerder, en dat
+  was precies wie het niet zag. Gevraagd was "wachtwoord opnieuw invoeren";
+  dat werd het niet omdat er geen route is die een wachtwoord toetst zonder
+  een nieuwe sessie te maken, en omdat overtypen het doel — geen blinde
+  tik — al haalt zonder servercode.
+
 ## 15-10-2026 — Rondgang: zelfevaluatie op de demo-screenshots
 
 Zes screenshots van de rondgang in demo, naast elkaar gelegd:

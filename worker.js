@@ -643,6 +643,16 @@ function klantTegoedUit(f) {
   return !!(f && f.Ontwikkelaar === true && f.TegoedUit === true);
 }
 __name(klantTegoedUit, "klantTegoedUit");
+// Welke analyse dit is (#524), meegestuurd door apiFetch als `pl_rol`. Alleen
+// voor het kasboek: Anthropic kent het veld niet en weigert de call ermee, dus
+// het gaat eraf vóórdat de payload doorgaat. Op 15-10-2026 kostte één call 85
+// tokens en zei het kasboek alleen "analyse afgeboekt" — niet wélke.
+function plRolUit(payload) {
+  const v = payload ? payload.pl_rol : undefined;
+  if (payload) delete payload.pl_rol;
+  return typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, 80) : "";
+}
+__name(plRolUit, "plRolUit");
 async function handleMessages(request, env, ctx) {
   const session = await auth(request, env);
   if (!session) return json({ error: "unauthorized" }, 401);
@@ -659,6 +669,7 @@ async function handleMessages(request, env, ctx) {
   if (!payload || typeof payload !== "object" || !Array.isArray(payload.messages))
     return json({ error: "bad_payload", hint: "messages-array ontbreekt" }, 400);
   if (payload.messages.length > 40) return json({ error: "too_many_messages" }, 413);
+  const rol = plRolUit(payload);
   if (JSON.stringify(payload).length > 25e4) return json({ error: "payload_too_large" }, 413);
   payload.max_tokens = Math.min(Math.max(Number(payload.max_tokens) || 2048, 1), 8192);
   const clientKey = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "") || request.headers.get("x-api-key") || "";
@@ -795,10 +806,11 @@ async function handleMessages(request, env, ctx) {
             klant: session.u, soort: "ai-call", model,
             tokensIn: usage && usage.input_tokens, tokensUit: usage && usage.output_tokens
           };
+          const voor = rol ? " \u2014 " + rol : "";
           try {
             await klantPatch(env, klantRec.id, { Saldo: saldoNa });
             kop["X-PidLane-Saldo"] = String(saldoNa);
-            kasboek = { ...meting, credits: -afgeboekt, saldoNa, details: "analyse afgeboekt" + tekort };
+            kasboek = { ...meting, credits: -afgeboekt, saldoNa, details: "analyse afgeboekt" + voor + tekort };
           } catch (e) {
             try {
               console.error("[tegoed] afboeken mislukt voor " + session.u + " (" + kosten + " credits) :: " + String(e && e.message || e));
@@ -811,7 +823,7 @@ async function handleMessages(request, env, ctx) {
             // saldo onaangeroerd — dus de reden gaat mee.
             kasboek = {
               ...meting, credits: 0, saldoNa: saldoVoor,
-              details: `afboeken van ${kosten} credits MISLUKT, AI wel verbruikt :: ` + String(e && e.message || e)
+              details: `afboeken van ${kosten} credits MISLUKT, AI wel verbruikt${voor} :: ` + String(e && e.message || e)
             };
           }
         }
