@@ -615,7 +615,7 @@ function resetDataStream(auto){
    diagnostische betekenis van dat PID zit in de tienden.
    Nu bepaalt de EENHEID het aantal decimalen, met de oude regel als terugval
    voor alles waar geen eenheid bij bekend is. */
-const _FV_DEC={'V':2,'λ':3,'MPa':2,'bar':2,'A':2,'g/s':2,'L/100':1,'L/uur':1,'L/h':1,'mA':1};
+const _FV_DEC={'V':2,'λ':3,'MPa':2,'bar':2,'A':2,'g/s':2,'L/100':1,'L/uur':1,'L/h':1,'L/u':1,'mA':1};
 function fvDec(unit,v){
   if(unit && _FV_DEC[unit]!=null) return _FV_DEC[unit];
   return Math.abs(v)<10 ? 2 : 0;

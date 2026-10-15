@@ -364,7 +364,7 @@ function plekGetal(v, eenheid, max){
 function plekEenheid(u){
   const e=String(u||'').trim();
   if(/^L\/100 ?km$/i.test(e)) return 'l/100 km';
-  if(/^L\/h$/i.test(e)) return 'l/u';
+  if(/^L\/[hu]$/i.test(e)) return 'l/u';
   return e;
 }
 function boogAchter(u){ const e=String(u||''); return /°/.test(e) ? '°' : e==='%' ? '%' : ''; }

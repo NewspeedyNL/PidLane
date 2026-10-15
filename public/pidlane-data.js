@@ -30,7 +30,7 @@ window.PIDS = [
   {cat:'Temp',      pid:'015C',name:'Motorolie temp',        unit:'°C',  min:-40, max:215,  wH:130, dH:150},
   {cat:'Temp',      pid:'0146',name:'Omgevingstemperatuur',  unit:'°C',  min:-40, max:85},
   {cat:'Brandstof', pid:'012F',name:'Brandstofpeil',         unit:'%',   min:0,   max:100,  wL:10},
-  {cat:'Brandstof', pid:'015E',name:'Brandstofverbruik',     unit:'L/h', min:0,   max:50},
+  {cat:'Brandstof', pid:'015E',name:'Brandstofverbruik',     unit:'L/u', min:0,   max:50},
   {cat:'Brandstof', pid:'0110',name:'Luchtmassameter (MAF)', unit:'g/s', min:0,   max:500},
   {cat:'Brandstof', pid:'0106',name:'Brandstoftrim kort B1', unit:'%',   min:-30, max:30,   wH:10, wL:-10},
   {cat:'Brandstof', pid:'0107',name:'Brandstoftrim lang B1', unit:'%',   min:-30, max:30,   wH:10, wL:-10},
@@ -427,7 +427,7 @@ window.PIDS_EXTRA = {
   '015B':{name:'Hybride accu %',      unit:'%',  min:0,   max:100, cat:'Electrisch'},
   '0143':{name:'Abs motorbelasting',  unit:'%',  min:0,   max:400, cat:'Motor'},   // max mee met ALL_PID_DEFS, zie daar
   '0146':{name:'Omgevingstemperatuur',unit:'°C', min:-40, max:60,  cat:'Temperatuur'},
-  '015E':{name:'Brandstofverbruik',   unit:'L/h',min:0,   max:20,  cat:'Brandstof'},
+  '015E':{name:'Brandstofverbruik',   unit:'L/u',min:0,   max:20,  cat:'Brandstof'},
   '015C':{name:'Motorolie temp',      unit:'°C', min:-40, max:150, cat:'Temperatuur'},
 };
 
@@ -636,7 +636,7 @@ window.FUEL_PIDS =[
   {pid:'010E',name:'Ontstekingstiming',unit:'°',ok:[5,25],desc:'Afwijking=minder efficiënte verbranding.'},
   {pid:'0105',name:'Koelwater temp',unit:'°C',ok:[80,100],desc:'Te koud=10-20% meer verbruik.'},
   {pid:'0142',name:'Accuspanning',unit:'V',ok:[13.5,14.8],desc:'Laag=alternator belasting verhoogd.'},
-  {pid:'015E',name:'Live brandstofverbruik',unit:'L/h',ok:null,desc:'Directe verbruiksmeting.'},
+  {pid:'015E',name:'Live brandstofverbruik',unit:'L/u',ok:null,desc:'Directe verbruiksmeting.'},
 ];
 
 // ── ELM_BASELINE (was index.html regel 7992) ──
@@ -691,7 +691,7 @@ window.ALL_PID_DEFS ={
   '0146':{name:'Omgevingstemperatuur', unit:'°C',  cat:'Temp',       min:-40, max:85,                      parse:b=>(b[0]-40)},
   '0133':{name:'Barometerdruk',        unit:'kPa', cat:'Temp',       min:0,   max:255,                     parse:b=>b[0]},
   '012F':{name:'Brandstofpeil',        unit:'%',   cat:'Brandstof',  min:0,   max:100,  wL:10,             parse:b=>(b[0]*100/255)},
-  '015E':{name:'Brandstofverbruik',    unit:'L/h', cat:'Brandstof',  min:0,   max:50,                      parse:b=>((b[0]*256+b[1])/20)},
+  '015E':{name:'Brandstofverbruik',    unit:'L/u', cat:'Brandstof',  min:0,   max:50,                      parse:b=>((b[0]*256+b[1])/20)},
   '0110':{name:'MAF luchtmassameter',  unit:'g/s', cat:'Brandstof',  min:0,   max:500,                     parse:b=>((b[0]*256+b[1])/100)},
   '0106':{name:'Brandstoftrim kort B1',unit:'%',   cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},
   '0107':{name:'Brandstoftrim lang B1',unit:'%',   cat:'Brandstof',  min:-30, max:30,   wH:10, wL:-10,    parse:b=>(b[0]/1.28-100)},

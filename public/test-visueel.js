@@ -286,7 +286,7 @@ waar('bereik 312,4 km: een heel getal vanaf 100', V.plekGetal(312.4, 'km') === '
 waar('accu 13,94 V op een boog: "13,9"', V.plekGetal(13.94, 'V', 4) === '13,9');
 waar('te breed: eerst zonder decimaal, dan "999+"', V.plekGetal(1234.5, 'kPa', 4) === '1235' && V.plekGetal(12345.6, 'kPa', 4) === '999+' && V.plekGetal(99.94, 'bar', 3) === '100' && V.plekGetal(-12.34, 'kPa', 4) === '−12');
 waar('"NO DATA" is een streepje, geen 0', V.plekGetal('NO DATA', '%') === '—' && V.plekGetal(undefined, 'km') === '—');
-waar('de eenheid leesbaar: L/100km wordt l/100 km, L/h wordt l/u', V.plekEenheid('L/100km') === 'l/100 km' && V.plekEenheid('L/h') === 'l/u' && V.plekEenheid('kPa') === 'kPa');
+waar('de eenheid leesbaar: L/100km wordt l/100 km, L/h wordt l/u', V.plekEenheid('L/100km') === 'l/100 km' && V.plekEenheid('L/h') === 'l/u' && V.plekEenheid('L/u') === 'l/u' && V.plekEenheid('kPa') === 'kPa');
 const D = A.ALL_PID_DEFS;
 waar('koelwater op een boog: 40…130 (niet −40…215 uit de definitie)', JSON.stringify(V.boogSchaal('0105', D['0105'])) === '[40,130]');
 waar('een sensor met een begrensde schaal kan op een boog (inlaatdruk 0…255)', JSON.stringify(V.boogSchaal('010B', D['010B'])) === JSON.stringify([D['010B'].min, D['010B'].max]));

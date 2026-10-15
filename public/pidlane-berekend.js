@@ -77,7 +77,7 @@ const DEFS = {
   CA01:{ name:'Versnelling (berekend)', unit:'versn.', cat:'Berekend', min:-1, max:10,
          bronnen:[['010D','010C']],
          uitleg:'Uit snelheid en toerental, zelflerend per voertuig (versnellingsindicator). 0 = neutraal of koppeling in, -1 = achteruit.' },
-  CA02:{ name:'Brandstofdebiet (berekend)', unit:'L/h', cat:'Berekend', min:0, max:60,
+  CA02:{ name:'Brandstofdebiet (berekend)', unit:'L/u', cat:'Berekend', min:0, max:60,
          bronnen:[['015E'],['0110']],
          uitleg:'Direct uit 015E; anders uit de luchtmassa bij λ=1 (alleen benzine — een diesel loopt arm).' },
   CA03:{ name:'Verbruik nu (berekend)', unit:'L/100km', cat:'Berekend', min:0, max:50,
