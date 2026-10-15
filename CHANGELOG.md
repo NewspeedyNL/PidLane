@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Mode 06: de zelftests zelf in beeld
+ ═══════════════════════════════════════════════════════════
+ PLM06.render() bestond maar werd nergens aangeroepen: het onderzoek
+ gebruikte mode 06 alleen als bewijs. Nu staat onder de conclusie
+ "🔬 Alle zelftests (mode 06)" met de hele tabel, en het bewaarde
+ rapport heeft een blok MONITORTESTS (gezakt bovenaan, zelfde volgorde
+ als de tabel). In het Admin-menu leest "🔬 Mode 06 — monitortests"
+ de tests direct, zonder onderzoek eromheen.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Live opnieuw ingedeeld, vegen in Visueel, alarmvraag weg
  ═══════════════════════════════════════════════════════════
  Uit het gebruik, vijf schermafdrukken. De tabbalk boven het midden is

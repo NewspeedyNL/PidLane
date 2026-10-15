@@ -222,6 +222,47 @@
     return gevonden.slice(0, CFG.maxMids);
   }
 
+  // Gezakt eerst, dan krap, dan op marge — het probleem bovenaan. Eén
+  // volgorde voor de tabel en de tekst, zodat die twee hetzelfde zeggen.
+  function volgorde(res) {
+    return ((res && res.tests) || []).slice().sort((a, b) => {
+      const p = t => t.geslaagd ? (t.krap ? 1 : 2) : 0;
+      return p(a) - p(b) || (a.marge ?? 1) - (b.marge ?? 1);
+    });
+  }
+  const klasse = t => !t.oordeelZeker ? 'onzeker' : !t.geslaagd ? 'gezakt' : t.krap ? 'krap' : 'ok';
+  const LABEL = { onzeker: 'onzeker', gezakt: 'GEZAKT', krap: 'krap', ok: 'ok' };
+
+  // ── Los paneel (Admin-menu): scan + tabel, zonder het onderzoek ─────
+  let _paneel = { open: false, bezig: false, res: null, fout: '' };
+  function paneel() {
+    if (!_paneel.open) return;
+    let v = document.getElementById('plM06Paneel');
+    if (!v) {
+      v = document.createElement('div');
+      v.id = 'plM06Paneel';
+      v.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:9000;max-height:80vh;overflow:auto;' +
+        'background:var(--sur);color:var(--tx);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;' +
+        'box-shadow:0 8px 30px rgba(0,0,0,.35);font:500 13px/1.45 var(--f)';
+      v.addEventListener('click', e => {
+        const a = e.target && e.target.getAttribute && e.target.getAttribute('data-m06');
+        if (a === 'scan') PLM06.open();
+        else if (a === 'sluit') PLM06.sluit();
+      });
+      document.body.appendChild(v);
+    }
+    const knop = 'flex:1;padding:10px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font:700 13px var(--f)';
+    const esc = x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    let h = '<div style="font-weight:800;font-size:15px;margin-bottom:6px">🔬 Mode 06 — monitortests</div>';
+    if (_paneel.bezig) h += '<div style="color:var(--tx2)">Bezig met uitlezen…</div>';
+    else if (_paneel.fout) h += '<div style="color:var(--or)">' + esc(_paneel.fout) + '</div>';
+    else if (_paneel.res) h += '<div style="overflow-x:auto">' + PLM06.render(_paneel.res) + '</div>';
+    h += '<div style="display:flex;gap:8px;margin-top:10px">' +
+      '<button type="button" data-m06="scan" style="' + knop + '"' + (_paneel.bezig ? ' disabled' : '') + '>Opnieuw lezen</button>' +
+      '<button type="button" data-m06="sluit" style="' + knop + '">Sluiten</button></div>';
+    v.innerHTML = h;
+  }
+
   const PLM06 = {
 
     /**
@@ -291,11 +332,7 @@
       const s = res.samenvatting || PLM06.samenvat(res);
       const esc = x => String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-      // Gezakt eerst, dan krap, dan op marge — het probleem bovenaan
-      const rijen = (res.tests || []).slice().sort((a, b) => {
-        const p = t => t.geslaagd ? (t.krap ? 1 : 2) : 0;
-        return p(a) - p(b) || (a.marge ?? 1) - (b.marge ?? 1);
-      });
+      const rijen = volgorde(res);
 
       let h = `<div class="pl-m06 pl-m06-${s.niveau}">`;
       h += `<div class="pl-m06-kop">🔬 Monitortests (mode 06) — ${esc(s.tekst)}</div>`;
@@ -311,8 +348,8 @@
                       : `${t.ruw.waarde} <span class="pl-m06-ruw">ruw</span>`;
           const gr = g ? `${rond(g.min)} – ${rond(g.max)}` : `${t.ruw.min} – ${t.ruw.max}`;
 
-          const kl = !t.oordeelZeker ? 'onzeker' : !t.geslaagd ? 'gezakt' : t.krap ? 'krap' : 'ok';
-          const lbl = { onzeker: 'onzeker', gezakt: 'GEZAKT', krap: 'krap', ok: 'ok' }[kl];
+          const kl = klasse(t);
+          const lbl = LABEL[kl];
 
           h += `<tr class="pl-m06-${kl}"><td>${esc(t.midNaam)}</td>` +
                `<td class="pl-m06-tid">${esc(t.tidHex)}</td>` +
@@ -331,6 +368,37 @@
 
     // Alleen wat diagnostisch iets betekent. Zestig regels "ok" in de prompt
     // kost tokens (zie pidlane-credits.js) zonder het antwoord te verbeteren.
+    /** Alle tests als platte tekst, in dezelfde volgorde als render() —
+     *  voor het bewaarde onderzoeksrapport. */
+    alsTekst(res) {
+      const tests = volgorde(res);
+      if (!tests.length) return ['Geen mode 06-gegevens op dit voertuig.'];
+      const rond = v => Math.round(v * 1000) / 1000;
+      const r = [PLM06.samenvat(res).tekst + '.'];
+      for (const t of tests) {
+        const g = t.geschaald;
+        const w = g ? `${rond(g.waarde)}${g.eenheid ? ' ' + g.eenheid : ''}` : `${t.ruw.waarde} ruw`;
+        const gr = g ? `${rond(g.min)}–${rond(g.max)}` : `${t.ruw.min}–${t.ruw.max}`;
+        r.push(`[${LABEL[klasse(t)]}] ${t.midNaam} (test ${t.tidHex}): ${w}, grens ${gr}`);
+      }
+      return r;
+    },
+
+    /** Admin: scan direct en toon de tabel in een eigen paneel. */
+    async open() {
+      _paneel.open = true;
+      if (_paneel.bezig) return paneel();
+      _paneel.bezig = true; _paneel.fout = ''; paneel();
+      try { _paneel.res = await PLM06.scan(); }
+      catch (e) { console.warn('PLM06: scan vanuit het paneel faalde', e); _paneel.res = null; _paneel.fout = 'Niet gelezen: ' + (e.message || e); }
+      _paneel.bezig = false; paneel();
+    },
+    sluit() {
+      _paneel.open = false;
+      const v = document.getElementById('plM06Paneel');
+      if (v) v.remove();
+    },
+
     naarPromptRegels(res) {
       if (!res || !res.tests || !res.tests.length) return 'Mode 06: geen gegevens.';
       const r = ['Mode 06 monitortests:'];

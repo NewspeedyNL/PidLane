@@ -2787,6 +2787,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── mode 06: tabel in het onderzoek, los paneel in Admin (15-10-2026) ──
+  {
+    issue: 'mode06',
+    naam: 'Mode 06: alle zelftests in het onderzoeksrapport, en een Admin-knop die ze direct leest',
+    waarom: 'PLM06.render() bestond maar werd nergens aangeroepen: de app gebruikte mode 06 alleen als bewijs, de tests zelf zag niemand.',
+    proef: async function () {
+      if (!window.PLM06 || typeof PLM06.alsTekst !== 'function' || typeof PLM06.open !== 'function') return { staat: 'FOUT', detail: 'PLM06.alsTekst/open ontbreekt — oude pidlane-mode06.js (herladen?)' };
+      if (!document.getElementById('kbMode06')) return { staat: 'FOUT', detail: 'de knop Mode 06 (#kbMode06) staat niet in het Admin-menu — oude index.html (herladen?)' };
+      if (!window.PLOnderzoek || typeof PLOnderzoek.beoordeelMode06 !== 'function') return { staat: 'FOUT', detail: 'PLOnderzoek.beoordeelMode06 ontbreekt' };
+      var R = PLM06._intern.bouwRecord;
+      var st = PLOnderzoek.nieuw({ klachten: ['onrustig'] });
+      PLOnderzoek.beoordeelMode06({ m06: { tests: [R(0x21, 0x01, 0x01, 300, 0, 750), R(0x21, 0x02, 0x01, 800, 0, 750)] } }, st);
+      var t = PLOnderzoek.alsTekst(st), i = t.indexOf('=== MONITORTESTS (MODE 06) ===');
+      if (i < 0) return { staat: 'FOUT', detail: 'het bewaarde onderzoek heeft geen blok MONITORTESTS' };
+      if (!/\[GEZAKT\][^\n]*0x02/.test(t.slice(i).split('\n')[2] || '')) return { staat: 'FOUT', detail: 'gezakt staat niet bovenaan: ' + t.slice(i, i + 300) };
+      return { staat: 'OK', detail: 'rapport en tabel kloppen · rij: Admin → 🔬 Mode 06 en kijk of de tabel komt; een onderzoek met "onrustig" toont onder de conclusie "Alle zelftests (mode 06)"' };
+    }
+  },
+
   // ── indeling Live: tabbalk weg, Grafiek in de weergaverij, vegen in Visueel (15-10-2026) ──
   {
     issue: 'indeling',

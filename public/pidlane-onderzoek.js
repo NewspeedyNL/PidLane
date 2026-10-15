@@ -583,6 +583,7 @@
     var tests = (u && u.m06 && u.m06.tests) || [];
     if (!tests.length) return [{ h: null, d: 0, t: 'de auto levert geen mode 06-gegevens' }];
     st.metingen.mode06 = { tests: tests.length };
+    st.m06 = u.m06;   // de hele uitlezing, voor de tabel in het rapport
     // Per cilinder: één uitschieter wijst naar die cilinder, gespreid naar
     // iets wat alle cilinders raakt.
     var per = missersPerCilinder(tests), cil = Object.keys(per).map(Number);
@@ -895,6 +896,10 @@
       });
       if (kn.andereKlacht.length) r.push(' Niet getoetst, past niet bij deze klacht: ' + kn.andereKlacht.join(', '));
       if (kn.zelf.length) r.push(' Niet via de diagnosepoort te zien, zelf nakijken: ' + kn.zelf.join(', '));
+    }
+    if (st.m06 && window.PLM06 && typeof PLM06.alsTekst === 'function') {
+      r.push('', '=== MONITORTESTS (MODE 06) ===');
+      PLM06.alsTekst(st.m06).forEach(function (l) { r.push(' ' + l); });
     }
     r.push('', '=== VERLOOP ===');
     st.log.forEach(function (l, i) {
@@ -1227,6 +1232,8 @@
     if (c.uitgesloten.length) h += '<div class="oz-meld" style="margin-top:10px"><b>Uitgesloten:</b> ' + esc(c.uitgesloten.map(function (x) { return x.naam; }).join(', ')) + '</div>';
     var tegen = nogOpen(c);
     if (tegen.length) h += '<div class="oz-meld" style="margin-top:6px"><b>Nog open, met aanwijzingen:</b> ' + esc(tegen.map(function (x) { return x.naam + ' (' + x.bewijs.map(function (b) { return b.t; }).join('; ') + ')'; }).join(' · ')) + '</div>';
+    if (st.m06 && window.PLM06 && typeof PLM06.render === 'function')
+      h += '<details class="oz-m06" style="margin-top:10px"><summary>🔬 Alle zelftests (mode 06)</summary><div style="overflow-x:auto">' + PLM06.render(st.m06) + '</div></details>';
     h += '<div class="oz-meld" style="margin-top:8px">Dit is een onderbouwde aanwijzing uit metingen, geen vervangen onderdeel. Laat een monteur het bevestigen voor je onderdelen koopt.</div>';
     if (_ui.ai) h += '<div class="oz-ai">🤖 ' + esc(_ui.ai) + '</div>';
     h += '<div class="oz-knoppen"><button class="oz-k hoofd" data-a="bewaar">💾 Bewaren</button>' +

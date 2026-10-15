@@ -2017,6 +2017,8 @@ MUTATIES=(
 "public/pidlane-onderzoek.js@@      if (breed) return true;\n      return ks.some(@@      return true;\n      return ks.some(@@test-onderzoek.js@@bij een accuklacht toetst het onderzoek ook alle merkzwaktes van de motor"
 "public/pidlane-onderzoek.js@@    { re: /^P00(0[89]|1[6-9])$/, h: 'distributie', d: 3,@@    { re: /^P00(0[89])$/, h: 'distributie', d: 3,@@test-onderzoek.js@@P0016 (nokkenas/krukas niet gelijk) wijst niet meer naar de distributie"
 "public/pidlane-onderzoek.js@@      if (per[top] >= M06_MIS_MIN && per[top] >= M06_MIS_FACTOR * Math.max(1, restMax)) {@@      if (per[top] >= M06_MIS_MIN) {@@test-onderzoek.js@@mode 06: missers verdeeld over alle cilinders heten weer één slechte cilinder"
+"public/pidlane-onderzoek.js@@    st.m06 = u.m06;@@@@test-onderzoek.js@@de mode 06-uitlezing gaat niet mee naar het rapport: geen tabel met zelftests"
+"public/pidlane-mode06.js@@      return p(a) - p(b) || (a.marge ?? 1) - (b.marge ?? 1);@@      return 0;@@test-onderzoek.js@@de zelftests in het rapport staan in scanvolgorde, gezakt niet bovenaan"
 "public/pidlane-onderzoek.js@@        if (t.uasId !== 0x24) return t.krap;@@        return t.krap;@@test-onderzoek.js@@mode 06: nul missers heet krap binnen de grens en telt als bewijs vóór een ontstekingsprobleem"
 "public/pidlane-onderzoek.js@@    [0x0B, 0x0C].forEach(function (tid) {@@    [0x0C, 0x0B].forEach(function (tid) {@@test-onderzoek.js@@mode 06: één rit met missers wint van het gemiddelde over tien ritten"
 "public/pidlane-onderzoek.js@@t.mid >= f.van && t.mid <= f.tot && t.oordeelZeker; });@@t.mid >= f.van && t.mid <= f.tot; });@@test-onderzoek.js@@mode 06: een test met onbekende schaal telt toch als oordeel over de sonde"

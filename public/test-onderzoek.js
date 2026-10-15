@@ -293,6 +293,19 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
 
     u = oordeel([R(0x21, 0x01, 0x01, 800, 0, 750)]);
     eis(van(u.r, 'kat').some((b) => b.d >= 2.5), 'katalysatortest buiten de grens: kat bevestigd', JSON.stringify(u.r));
+    // De tabel in het rapport: de hele uitlezing gaat mee, gezakt bovenaan.
+    {
+      const st = O.nieuw({ klachten: ['onrustig'] });
+      O.beoordeelMode06({ m06: { tests: [R(0x21, 0x01, 0x01, 300, 0, 750), R(0x21, 0x02, 0x01, 800, 0, 750)] } }, st);
+      const t = O.alsTekst(st), i = t.indexOf('=== MONITORTESTS (MODE 06) ===');
+      const regels = i >= 0 ? t.slice(i).split('\n') : [];
+      eis(i >= 0 && /\[GEZAKT\].*test 0x02/.test(regels[2] || '') && /\[ok\].*test 0x01/.test(regels[3] || ''),
+        'het bewaarde rapport heeft alle zelftests, gezakt bovenaan', t.slice(i));
+      eis(/GEZAKT/.test(s.PLM06.render(st.m06)) && st.m06.tests.length === 2, 'en de tabel in de conclusie krijgt dezelfde uitlezing');
+      const leeg = O.nieuw({ klachten: ['onrustig'] });
+      O.beoordeelMode06({ m06: { tests: [] } }, leeg);
+      eis(O.alsTekst(leeg).indexOf('MONITORTESTS') < 0, 'TEGENPROEF: geen mode 06-gegevens, geen lege tabel in het rapport');
+    }
     u = oordeel([R(0x21, 0x01, 0x01, 700, 0, 750)]);
     eis(van(u.r, 'kat').some((b) => b.d > 0 && b.d < 2.5 && /krap/.test(b.t)), 'krap binnen de grens: een aanwijzing, geen bevestiging', JSON.stringify(u.r));
     u = oordeel([R(0x21, 0x01, 0x01, 300, 0, 750)]);
