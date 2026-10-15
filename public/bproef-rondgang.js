@@ -65,11 +65,13 @@ const wacht = (ms) => `await new Promise(function(r){ setTimeout(r, ${ms}); });`
       activePIDs.delete(p); manualPIDs.delete(p);
       setPidView('overzicht'); setPidView('slim'); PLRond.stap(1); PLRond.stap(1); ${wacht(500)}
       const terug=activePIDs.has(p), mist=PLRond.nogUit();
+      const inDia=PLRond.staat().dias.some(function(d){ return d.pids.indexOf(p)>-1; });
       PLRond.instellingen(); const knop=!!document.getElementById('rondAlleAan');
       const n=PLRond.alleAan(); PLRond.sluit(); ${wacht(200)}
-      return { p:p, terug:terug, mist:mist, knop:knop, n:n, na:activePIDs.has(p) };
+      return { p:p, terug:terug, inDia:inDia, mist:mist, knop:knop, n:n, na:activePIDs.has(p) };
     })()`);
     toets('een sensor die je uitzet, zet de rondgang niet stil terug', eenB.p && !eenB.terug, JSON.stringify(eenB));
+    toets('en hij staat niet als lege tegel op een dia', !eenB.inDia, JSON.stringify(eenB));
     toets('het ⚙-blad telt hem en biedt "Zet ze aan"', eenB.mist.indexOf(eenB.p) > -1 && eenB.knop, JSON.stringify(eenB));
     toets('"Zet ze aan" zet hem aan', eenB.n >= 1 && eenB.na, JSON.stringify(eenB));
 
@@ -112,16 +114,20 @@ const wacht = (ms) => `await new Promise(function(r){ setTimeout(r, ${ms}); });`
     // Een snelle sensor van een dia die niet nu en niet de volgende is: een
     // trage (koelwater, 10 s) zit al boven REM_MS en zegt niets over de rem.
     const vijf = await app.ev(`(async function(){
-      const st=PLRond.staat(), n=st.dias.length, nu=st.dias[st.i].pids[0], echt=PLRond.remt;
+      // Alleen snelle sensoren worden geremd: zoek een dia met een snelle
+      // sensor erop en zet die in beeld, anders zegt "niet geremd" niets.
+      const echt=PLRond.remt, kaalMs=function(p){ PLRond.remt=function(){ return false; }; try{ return pidPollInterval(p); } finally{ PLRond.remt=echt; } };
+      const snelIn=function(d){ return d.pids.filter(function(p){ return kaalMs(p)<PLRond.REM_MS; })[0]; };
+      let st=PLRond.staat(), n=st.dias.length;
+      for(let k=0;k<n && !snelIn(st.dias[st.i]);k++){ PLRond.stap(1); st=PLRond.staat(); }
+      const nu=snelIn(st.dias[st.i]);
       const ver=[]; st.dias.forEach(function(d, i){ if(i!==st.i && i!==(st.i+1)%n) d.pids.forEach(function(p){ ver.push(p); }); });
-      PLRond.remt=function(){ return false; };
       let snel=null, kaal=0;
-      try{ ver.forEach(function(p){ const m=pidPollInterval(p); if(snel===null && m<PLRond.REM_MS){ snel=p; kaal=m; } }); }
-      finally{ PLRond.remt=echt; }
+      ver.forEach(function(p){ const m=kaalMs(p); if(snel===null && m<PLRond.REM_MS){ snel=p; kaal=m; } });
       return { nu:nu, snel:snel, kaal:kaal, remtNu:PLRond.remt(nu), remtVer:snel ? PLRond.remt(snel) : null, remtKop:PLRond.remt('010C'),
                ms:snel ? pidPollInterval(snel) : 0, rem:PLRond.REM_MS };
     })()`);
-    toets('de huidige dia en de kop worden niet geremd', !vijf.remtNu && !vijf.remtKop, JSON.stringify(vijf));
+    toets('een snelle sensor van de huidige dia en de kop worden niet geremd', !!vijf.nu && !vijf.remtNu && !vijf.remtKop, JSON.stringify(vijf));
     toets('er is een snelle sensor op een andere dia', !!vijf.snel, JSON.stringify(vijf));
     toets('die gaat naar REM_MS (TEGENPROEF: zonder remt() was hij sneller)', vijf.remtVer && vijf.ms >= vijf.rem && vijf.kaal < vijf.rem, JSON.stringify(vijf));
 
