@@ -432,10 +432,25 @@
       _paneel.open = true;
       if (_paneel.bezig) return paneel();
       _paneel.bezig = true; _paneel.fout = ''; paneel();
-      try { _paneel.res = await PLM06.scan(); }
+      try {
+        _paneel.res = await PLM06.scan();
+        PLM06.bewaarInSessie(_paneel.res);
+      }
       catch (e) { console.warn('PLM06: scan vanuit het paneel faalde', e); _paneel.res = null; _paneel.fout = 'Niet gelezen: ' + (e.message || e); }
       _paneel.bezig = false; paneel();
     },
+    /** In Rapporten, zoals een foutcode-uitlezing: anders is de tabel weg
+     *  zodra het venster dicht gaat. */
+    bewaarInSessie(res) {
+      if (!res) return false;
+      try {
+        if (typeof registerSessionReport !== 'function') return false;
+        registerSessionReport({ type: 'm06', title: 'Monitortests (mode 06)',
+          text: ['PidLane — Monitortests (mode 06)', 'Datum: ' + new Date().toLocaleString('nl'), ''].concat(PLM06.alsTekst(res)).join('\n') });
+        return true;
+      } catch (e) { console.warn('PLM06: niet in het sessiearchief gezet', e); return false; }
+    },
+
     /** Een uitlezing tonen zonder te scannen (onderzoek, browserproef). */
     toon(res) {
       _paneel.open = true; _paneel.bezig = false; _paneel.fout = ''; _paneel.res = res; paneel();

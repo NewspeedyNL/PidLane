@@ -20,6 +20,9 @@
  DTC_OMSCHRIJVING (P0421, P2096, P0524, P2119, ABS- en netwerkcodes),
  en een code die nergens staat zegt wat zijn opbouw zegt
  ("fabrikantspecifiek, aandrijving: brandstof en lucht").
+ De uitlezing van alle stuurapparaten en een losse mode 06-uitlezing
+ staan in Rapporten, en Bewaren in Check mijn auto neemt de
+ stuurapparaten mee als ze in dezelfde zit gelezen zijn.
 
  ═══════════════════════════════════════════════════════════
  15-10-2026 — Mode 06- en stuurapparatenpaneel liggen bovenop

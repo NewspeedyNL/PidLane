@@ -88,6 +88,22 @@ function eis(ok, naam, extra) {
   res = await U.scan(U.demoStuur());
   eis(res.modules.some((x) => (x.codes || []).some((c) => c.code === 'C0035')), 'de demo levert een ABS-code', JSON.stringify(res.modules.filter((x) => x.staat !== 'stil')));
 
+  console.log('\n3. Het verslag gaat mee: Rapporten en het foutcoderapport');
+  const gemeld = [];
+  s.registerSessionReport = (e) => { gemeld.push(e); return e; };
+  res = await U.scan(nep({ '760': '59 02 FF 40 35 11 09' }));
+  eis(U.laatste() === res, 'de laatste uitlezing is op te vragen');
+  eis(U.bewaarInSessie(res) && gemeld.length === 1 && gemeld[0].type === 'uds' && /C0035-11/.test(gemeld[0].text),
+    'bewaarInSessie zet het verslag in Rapporten', JSON.stringify(gemeld).slice(0, 200));
+  vm.runInContext(fs.readFileSync(__dirname + '/pidlane-data.js', 'utf8'), s, { filename: 'pidlane-data.js' });
+  vm.runInContext(fs.readFileSync(__dirname + '/pidlane-foutcodes.js', 'utf8'), s, { filename: 'pidlane-foutcodes.js' });
+  const F = s.PLFoutcodes;
+  const scan = await F.leesUit(F.demoStuur());
+  let t = F.alsTekst(Object.assign({}, scan, { tijd: res.tijd }));
+  eis(/=== ALLE STUURAPPARATEN \(UDS 19 02\) ===[\s\S]*C0035-11/.test(t), 'het bewaarde foutcoderapport noemt de ABS-code', t.slice(-400));
+  t = F.alsTekst(Object.assign({}, scan, { tijd: res.tijd + 2 * 3600 * 1000 }));
+  eis(!/ALLE STUURAPPARATEN/.test(t), 'TEGENPROEF: een UDS-uitlezing van twee uur eerder hoort er niet bij');
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('  FOUT test brak af: ' + (e.stack || e)); process.exit(1); });

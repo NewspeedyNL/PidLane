@@ -129,7 +129,7 @@ var PL_HULP = {
         '</ul>' +
         '<p><b>💾 Bewaren</b> legt de uitlezing vast.</p>' +
         '<p><b>🧩 Alle stuurapparaten</b> vraagt de foutcodes van ABS, airbag, versnellingsbak, instrumentenpaneel en carrosserie één voor één op. De gewone uitlezing hoort alleen motor en bak. ' +
-        'Geeft een stuurapparaat geen antwoord, dan staat het er niet bij: dat betekent dat het op deze auto een ander adres heeft, niet dat er geen codes zijn. Alleen bij auto\'s met CAN (vrijwel alles vanaf 2008).</p>' +
+        'Geeft een stuurapparaat geen antwoord, dan staat het er niet bij: dat betekent dat het op deze auto een ander adres heeft, niet dat er geen codes zijn. Alleen bij auto\'s met CAN (vrijwel alles vanaf 2008). De uitkomst staat daarna in <b>Rapporten</b>, en <b>💾 Bewaren</b> neemt hem mee.</p>' +
         '<p>Blijft een zelftest lang na het wissen op <b>niet klaar</b> staan, of meldt de auto een code die bij een verkeerde instelling hoort, dan staat bij de keuringsstatus <b>🧩 Mogelijk software, geen kapot onderdeel</b>. Hetzelfde blok staat ook onder <b>🔩 Welk onderdeel?</b>. ' +
         'Dat betekent: een onderdeel is vervangen of weggehaald zonder dat de motorcomputer het weet. Vond de tellerstandcontrole in de stuurapparaten twee verschillende chassisnummers, dan telt dat ook als aanwijzing. PidLane past daar niets aan; het zegt wat er ingeleerd moet worden en met welke software dat bij dit merk kan.</p>' +
         '<p><b>Foutcodes wissen</b> kan alleen als de voorwaarden kloppen: een verse uitlezing, contact aan, motor uit en de auto staat stil. ' +

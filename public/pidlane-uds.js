@@ -159,6 +159,7 @@
     };
     if (!isDemo() && typeof withBus === 'function') await withBus('uds', werk, CFG.busWachtMs);
     else await werk();
+    _laatste = res;
     var n = res.modules.reduce(function (s, m) { return s + ((m.codes || []).length); }, 0);
     diag('UDS: ' + res.modules.filter(function (m) { return m.staat !== 'stil'; }).length + ' stuurapparaten antwoordden, ' + n + ' code(s)', n ? 'warn' : 'ok');
     return res;
@@ -178,6 +179,21 @@
       if (/^AT/.test(cmd)) return pauze(20).then(function () { return 'OK'; });
       return pauze(120).then(function () { return A[hdr] || 'NO DATA'; });
     };
+  }
+
+  var _laatste = null;
+
+  /* Het verslag als tekst, voor het sessiearchief (Rapporten) en voor het
+     bewaarde foutcoderapport van PLFoutcodes. */
+  function rapport(res) {
+    var r = ['PidLane — Alle stuurapparaten (UDS 19 02)', 'Datum: ' + new Date(res.tijd).toLocaleString('nl'), ''];
+    return r.concat(alsTekst(res)).join('\n');
+  }
+  function bewaarInSessie(res) {
+    if (!res) return false;
+    try { if (typeof registerSessionReport === 'function') { registerSessionReport({ type: 'uds', title: 'Alle stuurapparaten', text: rapport(res) }); return true; } }
+    catch (e) { console.warn('PLUds: niet in het sessiearchief gezet', e); }
+    return false;
   }
 
   // ── Weergave ─────────────────────────────────────────────────────
@@ -263,7 +279,7 @@
     _p.open = true;
     if (_p.bezig) return paneel();
     _p.bezig = true; _p.fout = ''; paneel();
-    try { _p.res = await scan(); }
+    try { _p.res = await scan(); bewaarInSessie(_p.res); }
     catch (e) { console.warn('PLUds: scan faalde', e); _p.res = null; _p.fout = 'Niet gelezen: ' + (e.message || e); }
     _p.bezig = false; paneel();
   }
@@ -275,6 +291,6 @@
 
   window.PLUds = {
     MODULES: MODULES, scan: scan, parse19: parse19, alsTekst: alsTekst, render: render,
-    open: open, sluit: sluit, laatste: function () { return _p.res; }, demoStuur: demoStuur
+    open: open, sluit: sluit, laatste: function () { return _laatste; }, rapport: rapport, bewaarInSessie: bewaarInSessie, demoStuur: demoStuur
   };
 })();

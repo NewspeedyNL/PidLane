@@ -2787,6 +2787,21 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── foutcodes met tekst, UDS en mode 06 in Rapporten (15-10-2026) ──
+  {
+    issue: 'dtctekst',
+    naam: 'Foutcodes: P0421/P2096/C0035 hebben een tekst, een onbekende code zegt zijn opbouw, UDS en mode 06 gaan naar Rapporten',
+    waarom: 'Op de Mazda stonden P0421, P2096, P0524 en P2119 als "Onbekende code", en de UDS- en mode 06-uitlezing verdwenen met hun venster.',
+    proef: async function () {
+      if (typeof dtcInfo !== 'function' || typeof DTC_OMSCHRIJVING === 'undefined') return { staat: 'FOUT', detail: 'DTC_OMSCHRIJVING ontbreekt — oude pidlane-data.js (herladen?)' };
+      var mis = ['P0421', 'P2096', 'P0524', 'P2119', 'C0035', 'U0121'].filter(function (c) { return /^Onbekende code/.test(dtcInfo(c).desc); });
+      if (mis.length) return { staat: 'FOUT', detail: 'nog zonder tekst: ' + mis.join(', ') };
+      if (!/fabrikantspecifiek/.test(dtcInfo('P117A').desc)) return { staat: 'FOUT', detail: 'P117A zegt niets over zijn opbouw: ' + dtcInfo('P117A').desc };
+      if (!window.PLUds || typeof PLUds.bewaarInSessie !== 'function' || !window.PLM06 || typeof PLM06.bewaarInSessie !== 'function') return { staat: 'FOUT', detail: 'bewaarInSessie ontbreekt — oude pidlane-uds.js of pidlane-mode06.js (herladen?)' };
+      return { staat: 'OK', detail: 'teksten kloppen · rij: 🧩 Alle stuurapparaten en Admin → Mode 06, en kijk of beide in Rapporten verschijnen' };
+    }
+  },
+
   // ── mode 06 naar J1979: MID-namen, teken uit de grenzen, VVT ≠ EGR (#515) ──
   {
     issue: '#515',

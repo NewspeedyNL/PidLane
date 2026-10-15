@@ -313,6 +313,15 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
     u = oordeel([R(0x01, 0x01, 0x99, 0x10, 0x7000, 0x0100)]);
     eis(!van(u.r, 'lambda').length, 'onbekende schaal en grenzen die in geen lezing kloppen (min > max): geen oordeel', JSON.stringify(u.r));
 
+    {
+      const gemeld = [];
+      s.registerSessionReport = (e) => { gemeld.push(e); return e; };
+      const ok = s.PLM06.bewaarInSessie({ tests: [R(0x21, 0x02, 0x01, 800, 0, 750)] });
+      eis(ok && gemeld.length === 1 && gemeld[0].type === 'm06' && /\[GEZAKT\]/.test(gemeld[0].text), 'een losse mode 06-uitlezing gaat naar Rapporten', JSON.stringify(gemeld).slice(0, 200));
+      eis(s.PLM06.bewaarInSessie(null) === false && gemeld.length === 1, 'TEGENPROEF: zonder uitlezing niets in Rapporten');
+      delete s.registerSessionReport;
+    }
+
     // De Mazda CX-5 van 15-10-2026 (#515): MID 0x35 is de kleptiming (VVT),
     // geen "EGR bank 5", en grenzen 0x8000…0x05DC kunnen alleen signed.
     const vvt = R(0x35, 0x80, 0xB0, 14, 0x8000, 0x05DC);
