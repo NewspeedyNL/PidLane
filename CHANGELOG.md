@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Sensoren per voertuig: geen dubbele lijst meer
+ ═══════════════════════════════════════════════════════════
+ Een code uit "Codes voor dit model" stond na toevoegen twee keer: bij
+ de eigen sensoren mét vinkje, in de bibliotheek zonder. Nu staat hij
+ alleen bij de eigen sensoren, met de stand (werkt bij N) erbij; ▶ Test
+ telt daar als stem. De bibliotheek toont alleen wat nog te proberen
+ is, wat het vaakst werkt bovenaan. Berekende sensoren: wat aan staat
+ bovenaan, de rest onder "Meer berekende sensoren".
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Mode 06 volgens J1979, foutcodes met tekst
  ═══════════════════════════════════════════════════════════
  Uit de Mazda-rit. Mode 06: de MID-namen volgen J1979 (0x35 is de
