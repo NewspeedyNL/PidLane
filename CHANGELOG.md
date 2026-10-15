@@ -16,6 +16,9 @@
  topbalk en de onderbalk, en Sluiten van het stuurapparatenpaneel viel
  achter de systeembalk. Beide zijn nu een venster over alles heen
  (--z-modal-hoog, veilige randen), tik naast het venster sluit.
+ De mode 06-tabel heeft drie kolommen in plaats van vijf (test-ID
+ onder de monitor, grens onder de waarde): op 360 px viel Oordeel
+ buiten beeld.
  Daarnaast telt UDS alleen nog foutbits: een Mazda CX-5 gaf elf
  codes met alleen "test niet gedraaid" — geen fouten.
 
