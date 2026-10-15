@@ -299,15 +299,15 @@
     '#plZonderOv input{flex:1;min-width:0;box-sizing:border-box;padding:11px 12px;border-radius:10px;border:1px solid var(--bd);background:var(--sur);color:var(--tx);font-family:var(--f);font-size:17px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}' +
     '#plZonderOv .plz-go{padding:0 16px;border-radius:10px;border:none;background:var(--bl);color:#fff;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer}' +
     '#plZonderOv .plz-st{font-size:12px;color:var(--tx3);min-height:16px;margin-bottom:8px}' +
-    '#plZonderOv .plz-naam{font-size:16px;font-weight:800;margin:4px 0 8px}' +
-    '#plZonderOv .plz-regel{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--bd);font-size:12.5px}' +
-    '#plZonderOv .plz-regel .plz-l{color:var(--tx3);font-size:11px}' +
-    '#plZonderOv .plz-regel .plz-w{font-weight:700;color:var(--tx)}' +
-    '#plZonderOv .plz-blok{margin-top:10px;padding:10px 11px;border-radius:10px;border:1px solid var(--bd);background:var(--sur);font-size:12.5px;line-height:1.5}' +
-    '#plZonderOv .plz-knoppen{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}' +
-    '#plZonderOv .plz-kn{padding:10px 13px;border-radius:10px;border:1px solid var(--bd);background:var(--sur);color:var(--tx);font-family:var(--f);font-size:12.5px;font-weight:800;cursor:pointer}' +
-    '#plZonderOv .plz-kn.hoofd{background:var(--bl);border-color:var(--bl);color:#fff}' +
-    '#plZonderOv .plz-klein{font-size:11px;color:var(--tx3);line-height:1.5}';
+    '#plZonderOv .plz-naam,.plz-los .plz-naam{font-size:16px;font-weight:800;margin:4px 0 8px}' +
+    '#plZonderOv .plz-regel,.plz-los .plz-regel{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--bd);font-size:12.5px}' +
+    '#plZonderOv .plz-regel .plz-l,.plz-los .plz-regel .plz-l{color:var(--tx3);font-size:11px}' +
+    '#plZonderOv .plz-regel .plz-w,.plz-los .plz-regel .plz-w{font-weight:700;color:var(--tx)}' +
+    '#plZonderOv .plz-blok,.plz-los .plz-blok{margin-top:10px;padding:10px 11px;border-radius:10px;border:1px solid var(--bd);background:var(--sur);font-size:12.5px;line-height:1.5}' +
+    '#plZonderOv .plz-knoppen,.plz-los .plz-knoppen{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}' +
+    '#plZonderOv .plz-kn,.plz-los .plz-kn{padding:10px 13px;border-radius:10px;border:1px solid var(--bd);background:var(--sur);color:var(--tx);font-family:var(--f);font-size:12.5px;font-weight:800;cursor:pointer}' +
+    '#plZonderOv .plz-kn.hoofd,.plz-los .plz-kn.hoofd{background:var(--bl);border-color:var(--bl);color:#fff}' +
+    '#plZonderOv .plz-klein,.plz-los .plz-klein{font-size:11px;color:var(--tx3);line-height:1.5}';
   function zorgCss() {
     if (el('plZonderCss')) return;
     var s = document.createElement('style'); s.id = 'plZonderCss'; s.textContent = CSS;
@@ -394,6 +394,31 @@
     else if (i) setTimeout(function () { try { i.focus(); } catch (e) { console.warn('PLZonder: focus', e); } }, 60);
   }
 
+  /* De uitslag van een kenteken-check als HTML: naam, RDW-regels, een plek
+     voor de terugroepacties (recallId) en de blokken van PLWijzer. Zonder de
+     knoppen — die horen bij het venster. Ook voor het tabblad Kenteken in
+     Mijn voertuigen (PLGarage). `d` is wat haal() geeft. */
+  var BRON = '<div class="plz-klein" style="margin-top:10px">Bron: RDW open data. Het verbruik is dat van de typekeuring, geen meting. Een NAP-oordeel zegt iets over de geregistreerde standen, niet over de teller zelf.</div>';
+  function checkHtml(d, recallId) {
+    var o = d.overzicht;
+    var h = '<div class="plz-naam">' + esc(o.naam) + '</div>' + o.regels.map(function (x) {
+      return '<div class="plz-regel"><span class="plz-dot ' + (x.ernst || '') + '" style="margin-top:4px"></span><span style="flex:1"><div class="plz-l">' + x.ico + ' ' + esc(x.label) + '</div><div class="plz-w">' + esc(x.waarde) + '</div></span></div>';
+    }).join('');
+    h += '<div id="' + recallId + '"></div>';
+    // Zones, kosten en adapter (pidlane-wijzer.js) — uit dezelfde RDW-rijen
+    try { if (window.PLWijzer) h += PLWijzer.blokken(d.rij, d.bs); }
+    catch (e) { console.warn('PLZonder: zones, kosten en adapter niet getekend', e); }
+    return h;
+  }
+  /* De openstaande terugroepacties uit PLRecall.check() als HTML; '' als er geen zijn. */
+  function recallHtml(r) {
+    var open = ((r && r.acties) || []).filter(function (a) { return a.open; });
+    if (!open.length) return '';
+    return '<div class="plz-blok"><b>🔔 ' + esc(r.samenvatting ? r.samenvatting.tekst : open.length + ' openstaande terugroepactie(s)') + '</b>' +
+      open.map(function (a) { return '<div style="margin-top:6px">• ' + esc(a.omschrijving || a.referentiecode) + (a.risico ? '<div class="plz-klein">Risico: ' + esc(a.risico) + '</div>' : '') + '<div class="plz-klein">Status: ' + esc(a.status) + '</div></div>'; }).join('') +
+      '<div class="plz-klein" style="margin-top:6px">Een terugroepactie laat je gratis uitvoeren bij een dealer van het merk.</div></div>';
+  }
+
   var _laatsteCheck = null;
   async function zoek() {
     var kent = normKent((el('plzKent') || {}).value);
@@ -410,18 +435,12 @@
     var m = mijn(), isMijn = !!(m && normKent(m.kent) === kent);
     if (isMijn) bewaarMijn(kent, o);
     if (st) st.textContent = o.aandacht ? '⚠️ ' + o.aandacht + ' punt' + (o.aandacht === 1 ? '' : 'en') + ' die aandacht vragen' : '✅ Niets gevonden dat aandacht vraagt';
-    var h = '<div class="plz-naam">' + esc(o.naam) + '</div>' + o.regels.map(function (x) {
-      return '<div class="plz-regel"><span class="plz-dot ' + (x.ernst || '') + '" style="margin-top:4px"></span><span style="flex:1"><div class="plz-l">' + x.ico + ' ' + esc(x.label) + '</div><div class="plz-w">' + esc(x.waarde) + '</div></span></div>';
-    }).join('');
-    h += '<div id="plzRecall"></div>';
-    // Zones, kosten en adapter (pidlane-wijzer.js) — uit dezelfde RDW-rijen
-    try { if (window.PLWijzer) h += PLWijzer.blokken(d.rij, d.bs); }
-    catch (e) { console.warn('PLZonder: zones, kosten en adapter niet getekend', e); }
+    var h = checkHtml(d, 'plzRecall');
     h += '<div class="plz-knoppen">';
     if (!isMijn && !isDemo()) h += '<button type="button" class="plz-kn hoofd" onclick="PLZonder._mijn()">📌 Dit is mijn auto</button>';
     if (isMijn && !isDemo() && window.PLHerinner && !PLHerinner.aan()) h += '<button type="button" class="plz-kn hoofd" onclick="PLHerinner.zet(true)">🔔 Herinner me aan de APK</button>';
     if (demoMag()) h += '<button type="button" class="plz-kn" onclick="PLZonder._simuleerKent()">▷ Simuleer deze auto</button>';
-    h += '</div><div class="plz-klein" style="margin-top:10px">Bron: RDW open data. Het verbruik is dat van de typekeuring, geen meting. Een NAP-oordeel zegt iets over de geregistreerde standen, niet over de teller zelf.</div>';
+    h += '</div>' + BRON;
     if (uit) uit.innerHTML = h;
     recall(kent);
   }
@@ -431,11 +450,8 @@
     if (!doel || !window.PLRecall || typeof PLRecall.check !== 'function') return;
     try {
       var r = await PLRecall.check(kent);
-      var open = ((r && r.acties) || []).filter(function (a) { return a.open; });
-      if (!open.length) return;
-      doel.innerHTML = '<div class="plz-blok"><b>🔔 ' + esc(r.samenvatting ? r.samenvatting.tekst : open.length + ' openstaande terugroepactie(s)') + '</b>' +
-        open.map(function (a) { return '<div style="margin-top:6px">• ' + esc(a.omschrijving || a.referentiecode) + (a.risico ? '<div class="plz-klein">Risico: ' + esc(a.risico) + '</div>' : '') + '<div class="plz-klein">Status: ' + esc(a.status) + '</div></div>'; }).join('') +
-        '<div class="plz-klein" style="margin-top:6px">Een terugroepactie laat je gratis uitvoeren bij een dealer van het merk.</div></div>';
+      var h = recallHtml(r);
+      if (h) doel.innerHTML = h;
     } catch (e) { console.warn('PLZonder: terugroepacties niet opgehaald — de RDW-vlag hierboven blijft staan', e); }
   }
 
@@ -536,11 +552,16 @@
     teken: teken,
     // RDW plus validatie als data, zonder scherm — voor PLWeten (de infokaart in de wizard)
     haal: haal,
+    // de uitslag als HTML, ook voor het tabblad Kenteken in PLGarage
+    checkHtml: checkHtml,
+    recallHtml: recallHtml,
+    BRON: BRON,
     _zoek: zoek,
     _mijn: maakMijn,
     _simuleerKent: simuleerKent,
     _code: code,
-    _blad: blad,   // het venster, ook voor PLWijzer
+    _blad: blad,
+    zorgCss: zorgCss,   // ook voor het tabblad Kenteken (.plz-los)   // het venster, ook voor PLWijzer
     // pure kern — voor test-zonder.js
     _kern: { normKent: normKent, normCode: normCode, dagenTot: dagenTot, apkRegel: apkRegel, rdwOverzicht: rdwOverzicht, kaartKnoppen: kaartKnoppen, codeOordeel: codeOordeel, ERNST: ERNST }
   };
