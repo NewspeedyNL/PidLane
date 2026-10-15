@@ -51,10 +51,10 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     await app.ev(`PLNav.ververs(); 'ok'`);
     toets('de balk staat er niet  <- tegenproef: tabs zonder app erachter', !(await app.ev(`document.body.classList.contains('pl-nav-aan')`)));
 
-    console.log('\n2. Demo gestart: balk, Mijn auto licht op, gewone taal bovenin');
+    console.log('\n2. Demo gestart: balk, Home licht op, gewone taal bovenin');
     await app.ev(`plDemoZonderLogin(); setTimeout(function(){ startDemoCar(0); }, 700); 'ok'`);
     toets('de balk verschijnt', await wacht(`document.body.classList.contains('pl-nav-aan') && !document.getElementById('welcomeScreen').classList.contains('hidden')`, 15000));
-    toets('Mijn auto licht op', (await app.ev(tab)) === 'auto', await app.ev(tab));
+    toets('Home licht op', (await app.ev(tab)) === 'auto', await app.ev(tab));
     toets('de statusregel zegt Demo, niet "Systeem"', (await app.ev(`document.getElementById('sysTxt').textContent`)) === 'Demo');
     toets('de demo zonder login is geen garage', !(await app.ev(`document.body.classList.contains('pl-garage')`)));
     // Het startscherm hertekende zich bij elk beeldje (01-10-2026, #302): de
@@ -90,7 +90,7 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('Rapporten opent het overzicht', await app.ev(toon('reportsOverviewSheet')));
     toets('Rapporten licht op', (await app.ev(tab)) === 'rapporten', await app.ev(tab));
     await app.ev(`PLNav.tab('auto'); 'ok'`);
-    toets('Mijn auto sluit het overzicht en toont het startscherm',
+    toets('Home sluit het overzicht en toont het startscherm',
       !(await app.ev(toon('reportsOverviewSheet'))) && !(await app.ev(`document.getElementById('welcomeScreen').classList.contains('hidden')`)));
 
     console.log('\n4. Meer opent en gaat weer dicht');

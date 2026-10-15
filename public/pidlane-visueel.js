@@ -1045,8 +1045,8 @@ function isOud(pid, nu){ return plOud(pid, nu); }
 // als kaart onder de rail.
 //
 // Rit-monitor, caravanrit, bulk-recorder en rit-analyse zijn één soort: je
-// start er één vanuit dit vak. Loopt er een, dan verdwijnen de snelkoppelingen
-// naar de andere. Lopen er toch twee (aangezet via het run-paneel), dan staan
+// start er hoogstens twee vanuit dit vak (HOOFD_MAX). Lopen er twee, dan
+// verdwijnen de snelkoppelingen naar de andere. Lopen er toch twee (aangezet via het run-paneel), dan staan
 // ze allebei op de rail: wat loopt verzwijgen is erger dan een volle rail.
 // Een item met admin:true staat alleen bij de beheerder als snelkoppeling.
 // De bulk-recorder had dat tot #478; sinds dan is hij voor iedereen.
@@ -1056,6 +1056,12 @@ const HOOFD = [
   { id:'bulk',    naam:'Bulk-recorder', kort:'Recorder',    icoon:'⏺',  snel:true },
   { id:'rit',     naam:'Rit-analyse',   kort:'Rit-analyse', icoon:'🎒', snel:false }
 ];
+// Twee tegelijk (15-10-2026, uit het gebruik): met de recorder aan kon de
+// rit-monitor niet meer gestart worden. Bus en PLRun.schakel kunnen het aan;
+// de grens lag alleen hier. Rit-monitor en caravanrit blijven elkaars
+// alternatief: dat zijn twee monitors over dezelfde rit.
+const HOOFD_MAX = 2;
+const MONITOREN = ['monitor','caravan'];
 const BEV_IN_VAK = 2;           // zelfde grens als de bevindingenbalk (BEV_MAX)
 
 function leesRun(){
@@ -1133,7 +1139,11 @@ function meldingen(run, bev, admin, nu){
     bev.slice(0, BEV_IN_VAK).forEach(function(b){ uit.regels.push({ soort:'bevinding', id:b.id, ernst:b.ernst, naam:b.naam, detail:b.uitleg||'' }); });
     if(bev.length>BEV_IN_VAK) uit.regels.push({ soort:'meer', naam:'nog '+(bev.length-BEV_IN_VAK)+' bevinding'+(bev.length-BEV_IN_VAK===1?'':'en') });
   }
-  if(!hoofd.length) HOOFD.forEach(function(h){ if(h.snel && run[h.id] && (!h.admin || admin)) uit.snel.push({ id:h.id, icoon:h.icoon, naam:h.naam }); });
+  if(hoofd.length<HOOFD_MAX) HOOFD.forEach(function(h){
+    if(!h.snel || !run[h.id] || run[h.id].aan || (h.admin && !admin)) return;
+    if(MONITOREN.indexOf(h.id)>-1 && hoofd.some(function(x){ return MONITOREN.indexOf(x.id)>-1; })) return;
+    uit.snel.push({ id:h.id, icoon:h.icoon, naam:h.naam });
+  });
   if(run.waak && !run.waak.aan) uit.snel.push({ id:'waak', icoon:'👁', naam:'Waakronde' });
   return uit;
 }

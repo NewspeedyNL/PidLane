@@ -593,12 +593,13 @@ waar('ook een gewone gebruiker krijgt de bulk-recorder (#478)',
   m.snel.map(s => s.id).join(',') === 'monitor,bulk,waak', m.snel.map(s => s.id).join(','));
 m = V.meldingen(run({ caravan: { aan: true, draait: true, detail: 'rit loopt' } }), [], true);
 waar('caravanrit loopt: die staat op de rail, met de status uit PLRun', m.lopend[0] && m.lopend[0].id === 'caravan' && m.lopend[0].kort === 'rit loopt');
-waar('caravanrit loopt: geen snelkoppeling naar rit-monitor of bulk-recorder (één tegelijk)',
-  !m.snel.some(s => s.id === 'monitor' || s.id === 'bulk' || s.id === 'caravan'), m.snel.map(s => s.id).join(','));
+waar('caravanrit loopt: geen snelkoppeling naar de rit-monitor (twee monitors over één rit)',
+  !m.snel.some(s => s.id === 'monitor' || s.id === 'caravan'), m.snel.map(s => s.id).join(','));
+waar('caravanrit loopt: de bulk-recorder kan er nog bij (twee tegelijk, 15-10-2026)', m.snel.some(s => s.id === 'bulk'), m.snel.map(s => s.id).join(','));
 waar('caravanrit loopt: de waakronde kan er nog bij', m.snel.some(s => s.id === 'waak'));
 m = V.meldingen(run({ bulk: { aan: true, detail: 'neemt op — 40 regels' }, waak: { aan: true, detail: 'loopt rond, niets bijzonders' } }), []);
-waar('bulk-recorder en waakronde samen: twee chips, geen kaarten, geen snelkoppelingen',
-  m.lopend.length === 2 && m.regels.length === 0 && m.snel.length === 0, JSON.stringify(m));
+waar('bulk-recorder en waakronde samen: twee chips, geen kaarten, en de rit-monitor is nog te starten',
+  m.lopend.length === 2 && m.regels.length === 0 && m.snel.map(s => s.id).join(',') === 'monitor', JSON.stringify(m));
 // De schermafdruk van 25-09: rit-monitor én recorder liepen, en het vak liet
 // alleen de rit-monitor zien — de recorder stond als zwevende pil ernaast.
 const T0 = 1000000;
@@ -607,6 +608,7 @@ m = V.meldingen(run({
   bulk: { aan: true, draait: true, detail: 'neemt op — 673 regels', sinds: T0 - 674000, regels: 673, pauze: false },
   waak: { aan: true, draait: true, detail: 'loopt rond', totaal: 13, gelezen: 4, let: 0 }
 }), [], true, T0);
+waar('rit-monitor en recorder lopen: dat zijn er twee, dus geen snelkoppelingen meer', m.snel.length === 0, m.snel.map(s => s.id).join(','));
 waar('rit-monitor, recorder en waakronde lopen samen: drie chips, in die volgorde',
   m.lopend.map(c => c.id).join(',') === 'monitor,bulk,waak', m.lopend.map(c => c.id).join(','));
 const cb = m.lopend.find(c => c.id === 'bulk');

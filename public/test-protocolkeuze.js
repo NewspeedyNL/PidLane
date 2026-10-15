@@ -336,6 +336,8 @@ function keurDichtgeklapt(vervangRender) {
   const b = knop(ctx);
   if (!b) uit.push('geen knop om de handmatige lijst te openen');
   else if (b.textContent.indexOf('Handmatig kiezen') < 0) uit.push('de knop zegt "' + b.textContent + '"');
+  if (!vervangRender && ctx.reg.networkList.children.some(function (k) { return k.id === 'protoContactHint'; }))
+    uit.push('met een herkend protocol staat de hint "contact uit" er toch');
   return uit;
 }
 
@@ -361,6 +363,10 @@ function keurZonderDetectie() {
   if (k.length !== ctx.discoveredNetworks.length)
     uit.push('zonder detectie staan er ' + k.length + ' van de ' + ctx.discoveredNetworks.length + ' kaarten in beeld — dan is het scherm leeg');
   if (knop(ctx)) uit.push('er staat een "handmatig kiezen"-knop terwijl de lijst al openstaat');
+  // 15-10-2026: de waarschijnlijke oorzaak staat als eerste in de lijst.
+  const eerste = ctx.reg.networkList.children[0];
+  if (!eerste || eerste.id !== 'protoContactHint' || !/contact uit/.test(eerste.innerHTML))
+    uit.push('zonder detectie staat "contact uit" niet als eerste in de lijst');
   return uit;
 }
 

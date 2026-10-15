@@ -136,8 +136,10 @@ const PROFIELEN = [
       { rol:'hz-kanteling', naam:'Kanteling', keten:['TL02'], eenheid:'°', soort:'draai',  lo:-45, hi:45, dec:1 },
       { rol:'helling',   naam:'Helling',   keten:['TL01'], eenheid:'°', soort:'kantel', lo:-45, hi:45, dec:0, teken:-1 },
       { rol:'kanteling', naam:'Kanteling', keten:['TL02'], eenheid:'°', soort:'kantel', lo:-45, hi:45, dec:0, teken:1 },
-      { rol:'lengte', naam:'Lengte-G', keten:['TL03'], eenheid:'g', soort:'gy', lo:-1.2, hi:1.2, dec:2 },
-      { rol:'dwars',  naam:'Zij-G',    keten:['TL04'], eenheid:'g', soort:'gx', lo:-1.2, hi:1.2, dec:2 }
+      // Kort (15-10-2026): "Lengte-G" brak in het vakje af na het streepje.
+      // De eenheid g staat er al onder.
+      { rol:'lengte', naam:'Lengte', keten:['TL03'], eenheid:'g', soort:'gy', lo:-1.2, hi:1.2, dec:2 },
+      { rol:'dwars',  naam:'Zij',    keten:['TL04'], eenheid:'g', soort:'gx', lo:-1.2, hi:1.2, dec:2 }
     ] }
 ];
 // De ringen van buiten naar binnen; de straal staat hier en niet in de CSS,

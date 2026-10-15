@@ -152,6 +152,15 @@ const ECU = {
     await wacht(`!!(PLFoutcodes.staat().scan && !PLFoutcodes.staat().bezig)`, 15000);
     toets('codes gevonden → geen balk, het venster blijft', await app.ev(`!document.querySelector('#plFcOv .fc-door') && getComputedStyle(document.getElementById('plFcOv')).display === 'flex'`));
     await app.ev(`PLFoutcodes.sluit(); 'ok'`);
+
+    // 15-10-2026: het oude foutcode-tabblad las alleen 03. Zijn knop doet nu
+    // dezelfde check: 07, 0A en de keuringsstatus gaan mee de bus op.
+    await app.ev(`window._plNepLog.length = 0; PLFoutcodes.staat().scan = null; document.getElementById('bscan').click(); 'ok'`);
+    await wacht(`!!(PLFoutcodes.staat().scan && !PLFoutcodes.staat().bezig)`, 15000);
+    const log2 = await app.ev(`window._plNepLog.slice()`);
+    toets('de knop in het foutcode-tabblad leest ook 07, 0A en de keuringsstatus (0101)',
+      ['03', '07', '0A', '0101'].every(c => log2.indexOf(c) >= 0), log2.join(','));
+    await app.ev(`PLFoutcodes.sluit(); 'ok'`);
     toets('de app draait nog zonder fouten', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     await app.stop();
