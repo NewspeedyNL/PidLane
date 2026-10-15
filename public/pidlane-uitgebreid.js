@@ -636,7 +636,7 @@
   async function zoekObdb(v, haal) {
     v = v || {};
     if (!v.merk || !v.model) return { ok: false, fout: 'Vul eerst merk en model in bij het profiel' };
-    if (typeof haal !== 'function') return { ok: false, fout: 'Geen weg naar OBDb' };
+    if (!haal) return { ok: false, fout: 'Geen weg naar OBDb' };
     const namen = obdbNamen(v.merk, v.model);
     for (const repo of namen) {
       let d;
