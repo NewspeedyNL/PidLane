@@ -1510,6 +1510,8 @@ MUTATIES=(
 "worker.js@@    const e = (kpLees(v.eigen_pids) || []).find((x) => x.code === code && (x.ecu || \"\") === ecu);@@    const e = (kpLees(v.eigen_pids) || []).find((x) => true);@@test-klantplatform.js@@delen zet een code in de bibliotheek die niet bij het voertuig staat"
 "public/pidlane-garage.js@@(/weigert|Geen antwoord/.test(r.fout || '') ? 'werkt_niet' : null)@@'werkt_niet'@@bproef-garage.js@@\"niet verbonden\" telt in de bibliotheek als \"werkt niet\""
 "public/pidlane-garage.js@@          (S.ok[e.code] ? '<button class=\"gr-k klein\" onclick=\"PLGarage._sensDeel(@@          (true ? '<button class=\"gr-k klein\" onclick=\"PLGarage._sensDeel(@@bproef-garage.js@@een nooit geteste code kan gedeeld worden als bewezen"
+"public/pidlane-garage.js@@      else nieuw.push(b);@@      nieuw.push(b);@@test-garage.js@@een toegevoegde code staat weer twee keer in Sensoren: eigen én bibliotheek"
+"public/pidlane-garage.js@@berAan = ber.filter(function (p) { return S.sel.indexOf(p) >= 0; });@@berAan = ber;@@bproef-garage.js@@alle berekende sensoren staan weer uitgeklapt, ook wat uit staat"
 "public/pidlane-uitgebreid.js@@    const tempo = band ? 'opverzoek' : (EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal');@@    const tempo = EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal';@@test-mode21.js@@acht bandensensoren worden elke 2 s via een ander ECU-adres gevraagd"
 # ── banden op verzoek, buiten de pollus (#396, 06-10-2026) ──
 "public/pidlane-uitgebreid.js@@    const tempo = band ? 'opverzoek' : (EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal');@@    const tempo = band ? 'minuut' : (EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal');@@test-banden.js@@de banden gaan weer elke minuut als acht losse PIDs de pollus in — #396"
