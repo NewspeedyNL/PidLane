@@ -2787,6 +2787,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── mode 06 naar J1979: MID-namen, teken uit de grenzen, VVT ≠ EGR (#515) ──
+  {
+    issue: '#515',
+    naam: 'Mode 06: MIDs volgens J1979, het teken uit de grenzen, en een VVT-test weegt niet als EGR',
+    waarom: 'Een Mazda CX-5 toonde "EGR-systeem bank 5" met grenzen 32768 – 1500; dat was de kleptiming, met signed grenzen.',
+    proef: async function () {
+      if (!window.PLM06 || !PLM06.familieVan || !PLM06._intern) return { staat: 'FOUT', detail: 'PLM06.familieVan ontbreekt — oude pidlane-mode06.js (herladen?)' };
+      var t = PLM06._intern.bouwRecord(0x35, 0x80, 0xB0, 14, 0x8000, 0x05DC);
+      if (!/kleptiming/.test(t.midNaam)) return { staat: 'FOUT', detail: 'MID 0x35 heet ' + t.midNaam };
+      if (!t.oordeelZeker || t.getoond.min !== -32768) return { staat: 'FOUT', detail: 'grenzen niet signed gelezen: ' + JSON.stringify(t.getoond) };
+      var st = PLOnderzoek.nieuw({ klachten: ['onrustig'] });
+      var r = PLOnderzoek.beoordeelMode06({ m06: { tests: [PLM06._intern.bouwRecord(0x35, 0x80, 0x01, 900, 0, 750)] } }, st);
+      if (r.some(function (b) { return b.h === 'egr'; })) return { staat: 'FOUT', detail: 'een VVT-test weegt als EGR: ' + JSON.stringify(r) };
+      return { staat: 'OK', detail: 'namen en teken kloppen · rij: Admin → 🔬 Mode 06 en kijk of er nog "onzeker" of een rare grens staat; noteer de UAS uit het logboek' };
+    }
+  },
+
   // ── UDS 0x19: foutcodes van alle stuurapparaten (15-10-2026) ──
   {
     issue: 'uds19',

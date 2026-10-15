@@ -15,6 +15,28 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 15-10-2026 — Mode 06: "EGR-systeem bank 5" was de kleptiming (#515)
+
+Dezelfde Mazda-rit. De mode 06-tabel toonde vier tests als "EGR-systeem
+bank 5" met grenzen als 32768 – 1500 en 64036 – 32767.
+
+- **Namen.** `FAMILIE` deelde de MIDs per blok van zestien in (0x31–0x3F
+  EGR, 0x41–0x4F kleptiming, …). J1979 doet dat niet: 0x31–0x34 is EGR,
+  0x35–0x38 VVT, 0x39–0x3D EVAP, 0x41–0x50 sondeverwarming, 0x81–0x84
+  brandstofsysteem, 0x85–0x88 laaddruk, 0xB0–0xB1 roetfilter. De tabel
+  komt nu daaruit, en het onderzoek leest dezelfde tabel: daar woog een
+  VVT- of EVAP-test als bewijs voor de EGR-klep. De indeling is uit het
+  hoofd naar J1979 opgeschreven en niet naast de norm gelegd.
+- **Teken.** Bij een onbekende UAS werden beide lezingen doorgerekend en
+  bij verschil "onzeker" getoond. Maar min ≤ max moet kloppen: liggen min
+  en max in verschillende helften, dan kan maar één lezing; in dezelfde
+  helft geven beide hetzelfde oordeel. Het oordeel staat dus altijd vast,
+  behalve bij een record dat in geen lezing klopt. De eerdere
+  "tegenspraak"-toets ging over een geval met min > max unsigned — precies
+  het geval dat de grenzen zelf beslissen.
+- **Gewicht.** Een geslaagde VVT-test strept "distributie" niet weg: een
+  gerekte ketting zie je eerder aan P0016 dan aan de VVT-monitor.
+
 ## 15-10-2026 — UDS 0x19: elf "codes" op een Mazda die geen fout hadden
 
 Eerste rit met `PLUds` (Mazda CX-5 benzine). Het motorblok (7E0) gaf op

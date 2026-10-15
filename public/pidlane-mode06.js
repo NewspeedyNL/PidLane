@@ -21,11 +21,14 @@
 
    De UAS-tabel (Unit And Scaling) hieronder is daarom bewust kort: alleen
    waarden waarvan ik het teken en de factor zeker weet. Bij een onbekende
-   UAS-ID rekent bouwRecord() BEIDE interpretaties door. Geven ze hetzelfde
-   oordeel, dan staat het oordeel vast en tonen we alleen de ruwe waarde.
-   Verschillen ze, dan komt er 'onzeker' te staan. Nooit een gok die eruit
-   ziet als een meting — dat is precies de fout die pidlane-uitgebreid.js
-   beschrijft bij de mode 21-PIDs.
+   UAS-ID haalt bouwRecord() het teken uit de grenzen zelf: min ≤ max moet
+   kloppen. Liggen min en max in verschillende helften (0x8000…0x05DC), dan
+   kan maar één lezing; liggen ze in dezelfde helft, dan geven beide
+   lezingen hetzelfde oordeel (15-10-2026, #515). Alleen een record dat in
+   geen lezing klopt krijgt 'onzeker'. De schaalfactor blijft onbekend: de
+   tabel toont dan ruwe getallen. Nooit een gok die eruit ziet als een
+   meting — dat is precies de fout die pidlane-uitgebreid.js beschrijft bij
+   de mode 21-PIDs.
 
    Onbekende UAS-IDs worden verzameld in PLM06.onbekendeUas(). Na een paar
    echte auto's kun je de tabel aanvullen, in dezelfde geest als het
@@ -49,33 +52,47 @@
   };
 
   // ── MID-namen ─────────────────────────────────────────────────────────
-  // Per familie, met specifieke namen alleen waar die vastliggen. Een
-  // onbekende MID krijgt 'Monitor 0xNN' — geen verzonnen naam.
+  // De indeling van SAE J1979 (OBDMID-tabel), niet per blok van zestien:
+  // tot 15-10-2026 stond hier 0x31–0x3F als "EGR", en een Mazda CX-5 toonde
+  // daardoor "EGR-systeem bank 5" voor wat de kleptiming (VVT) is (#515).
+  // Een onbekende MID krijgt 'Monitor 0xNN' — geen verzonnen naam.
+  //
+  // `h` is de verdenking in pidlane-onderzoek.js waar deze test iets over
+  // zegt; `sluitUit` = een ruim geslaagde test mag die verdenking ook
+  // wegstrepen. Dit is de enige plek waar die koppeling staat.
+  //   soort 'sonde': 4 per bank (B1S1…B4S4) · 'bank': bank 1…4 · 'nr': 1…n
 
   const FAMILIE = [
-    { van: 0x01, tot: 0x10, naam: 'Lambdasonde',              genummerd: true },
-    { van: 0x21, tot: 0x2F, naam: 'Katalysator bank',         genummerd: true },
-    { van: 0x31, tot: 0x3F, naam: 'EGR-systeem bank',         genummerd: true },
-    { van: 0x41, tot: 0x4F, naam: 'Variabele kleptiming',     genummerd: true },
-    { van: 0x50, tot: 0x5F, naam: 'EVAP-systeem',             genummerd: false },
-    { van: 0x61, tot: 0x6F, naam: 'Lambdasondeverwarming',    genummerd: true },
-    { van: 0x71, tot: 0x7F, naam: 'Verwarmde katalysator',    genummerd: true },
-    { van: 0x81, tot: 0x8F, naam: 'Secundaire luchtinjectie', genummerd: false },
-    { van: 0x91, tot: 0x9F, naam: 'Brandstofsysteem bank',    genummerd: true },
-    { van: 0xA0, tot: 0xAF, naam: 'Ontstekingsmissers',       genummerd: false }
+    { van: 0x01, tot: 0x10, naam: 'Lambdasonde',                soort: 'sonde', h: 'lambda',      kort: 'lambdasonde', sluitUit: true },
+    { van: 0x21, tot: 0x24, naam: 'Katalysator',                soort: 'bank',  h: 'kat',         kort: 'katalysator', sluitUit: true },
+    { van: 0x31, tot: 0x34, naam: 'EGR-systeem',                soort: 'bank',  h: 'egr',         kort: 'EGR',         sluitUit: true },
+    { van: 0x35, tot: 0x38, naam: 'Variabele kleptiming (VVT)', soort: 'bank',  h: 'distributie', kort: 'kleptiming' },
+    { van: 0x39, tot: 0x3D, naam: 'EVAP-systeem',               soort: 'los' },
+    { van: 0x41, tot: 0x50, naam: 'Lambdasondeverwarming',      soort: 'sonde', h: 'lambda',      kort: 'lambdasonde', sluitUit: true },
+    { van: 0x61, tot: 0x64, naam: 'Verwarmde katalysator',      soort: 'bank',  h: 'kat',         kort: 'katalysator', sluitUit: true },
+    { van: 0x71, tot: 0x74, naam: 'Secundaire luchtinjectie',   soort: 'nr' },
+    { van: 0x81, tot: 0x84, naam: 'Brandstofsysteem',           soort: 'bank' },
+    { van: 0x85, tot: 0x88, naam: 'Laaddrukregeling',           soort: 'bank',  h: 'turbo',       kort: 'laaddruk' },
+    { van: 0x90, tot: 0x91, naam: 'NOx-opslagkatalysator',      soort: 'bank' },
+    { van: 0x98, tot: 0x99, naam: 'NOx-katalysator (SCR)',      soort: 'bank' },
+    { van: 0xA1, tot: 0xAD, naam: 'Ontstekingsmissers',         soort: 'los',   h: 'misfire',     kort: 'ontstekingsmissers', sluitUit: true },
+    { van: 0xB0, tot: 0xB1, naam: 'Roetfilter',                 soort: 'bank',  h: 'dpf',         kort: 'roetfilter', sluitUit: true }
   ];
 
   const SPECIFIEK = {
-    0xA1: 'Ontstekingsmissers — algemeen',
-    0xA2: 'Ontstekingsmissers — cilinder 1',
-    0xA3: 'Ontstekingsmissers — cilinder 2',
-    0xA4: 'Ontstekingsmissers — cilinder 3',
-    0xA5: 'Ontstekingsmissers — cilinder 4',
-    0xA6: 'Ontstekingsmissers — cilinder 5',
-    0xA7: 'Ontstekingsmissers — cilinder 6',
-    0xA8: 'Ontstekingsmissers — cilinder 7',
-    0xA9: 'Ontstekingsmissers — cilinder 8'
+    0x39: 'EVAP-systeem — groot lek of tankdop open',
+    0x3A: 'EVAP-systeem — lek 0,090″',
+    0x3B: 'EVAP-systeem — lek 0,040″',
+    0x3C: 'EVAP-systeem — lek 0,020″',
+    0x3D: 'EVAP-systeem — spoelstroom',
+    0xA1: 'Ontstekingsmissers — algemeen'
   };
+  for (let c = 1; c <= 12; c++) SPECIFIEK[0xA1 + c] = 'Ontstekingsmissers — cilinder ' + c;
+
+  function familieVan(mid) {
+    for (const f of FAMILIE) if (mid >= f.van && mid <= f.tot) return f;
+    return null;
+  }
 
   // ── UAS: alleen wat zeker is ──────────────────────────────────────────
   const UAS = {
@@ -105,12 +122,13 @@
 
   function midNaam(mid) {
     if (SPECIFIEK[mid]) return SPECIFIEK[mid];
-    for (const f of FAMILIE) {
-      if (mid >= f.van && mid <= f.tot) {
-        return f.genummerd ? `${f.naam} ${mid - f.van + 1}` : `${f.naam} (0x${hex2(mid)})`;
-      }
-    }
-    return `Monitor 0x${hex2(mid)}`;
+    const f = familieVan(mid);
+    if (!f) return `Monitor 0x${hex2(mid)}`;
+    const i = mid - f.van;
+    if (f.soort === 'sonde') return `${f.naam} bank ${Math.floor(i / 4) + 1} sonde ${i % 4 + 1}`;
+    if (f.soort === 'bank') return `${f.naam} bank ${i + 1}`;
+    if (f.soort === 'nr') return `${f.naam} ${i + 1}`;
+    return `${f.naam} (0x${hex2(mid)})`;
   }
 
   // ── Responsparser ─────────────────────────────────────────────────────
@@ -147,29 +165,46 @@
       return w >= lo && w <= hi;
     };
 
-    let geslaagd, zeker;
+    // Welke lezing? Bekende UAS: die van de tabel. Onbekend: een grens
+    // moet min ≤ max zijn, en kan er maar één lezing dat, dan staat het
+    // teken vast. De Mazda gaf 14 met grenzen 0x8000…0x05DC: unsigned is
+    // dat 32768 – 1500 (onmogelijk), signed −32768 – 1500 (#515).
+    let geslaagd, zeker, signed = null;
     if (def) {
-      geslaagd = oordeelMet(def.signed);
+      signed = def.signed;
+      geslaagd = oordeelMet(signed);
       zeker = true;
     } else {
+      const kan = s => (s ? teken(min) : min) <= (s ? teken(max) : max);
+      const ku = kan(false), ks = kan(true);
+      if (ku !== ks) signed = ks;
       const a = oordeelMet(false), b = oordeelMet(true);
-      geslaagd = a;
-      zeker = (a === b);
+      // Liggen min en max in dezelfde helft, dan ordenen beide lezingen ze
+      // gelijk en geven ze hetzelfde oordeel; liggen ze in verschillende
+      // helften, dan kan er maar één. Alleen een record dat in géén lezing
+      // klopt (min > max) blijft zonder oordeel.
+      if (signed !== null) { geslaagd = signed ? b : a; zeker = true; }
+      else { geslaagd = a; zeker = ku && a === b; }
       if (!_onbekendeUas[uasId]) {
-        _onbekendeUas[uasId] = { mid, tid, voorbeeld: [waarde, min, max], eensgezind: a === b };
+        _onbekendeUas[uasId] = { mid, tid, voorbeeld: [waarde, min, max], eensgezind: a === b, teken: signed === null ? 'onbekend' : (signed ? 'signed' : 'unsigned') };
       }
     }
 
-    // Marge: 0 = precies op de grens, 0.5 = midden in het venster
-    const span = max - min;
+    // Marge: 0 = precies op de grens, 0.5 = midden in het venster — in de
+    // lezing die het oordeel gaf.
+    const lees = v => signed ? teken(v) : v;
+    const span = lees(max) - lees(min);
     const marge = span > 0
-      ? Math.max(0, Math.min(waarde - min, max - waarde) / span)
+      ? Math.max(0, Math.min(lees(waarde) - lees(min), lees(max) - lees(waarde)) / span)
       : null;
 
     return {
       mid, midNaam: midNaam(mid), tid, tidHex: '0x' + hex2(tid),
       uasId, uasHex: '0x' + hex2(uasId),
       ruw: { waarde, min, max },
+      // Wat de tabel toont als de schaal onbekend is: de ruwe getallen in
+      // de lezing waarvan het teken vaststaat, anders zoals ontvangen.
+      getoond: { waarde: lees(waarde), min: lees(min), max: lees(max), teken: signed === null ? null : (signed ? 'signed' : 'unsigned') },
       geschaald: def ? {
         waarde: (def.signed ? teken(waarde) : waarde) * def.f,
         min: (def.signed ? teken(min) : min) * def.f,
@@ -354,8 +389,8 @@
           const g = t.geschaald;
           const rond = v => Math.round(v * 1000) / 1000;
           const w = g ? `${rond(g.waarde)}${g.eenheid ? ' ' + g.eenheid : ''}`
-                      : `${t.ruw.waarde} <span class="pl-m06-ruw">ruw</span>`;
-          const gr = g ? `${rond(g.min)} – ${rond(g.max)}` : `${t.ruw.min} – ${t.ruw.max}`;
+                      : `${t.getoond.waarde} <span class="pl-m06-ruw">ruw</span>`;
+          const gr = g ? `${rond(g.min)} – ${rond(g.max)}` : `${t.getoond.min} – ${t.getoond.max}`;
 
           const kl = klasse(t);
           const lbl = LABEL[kl];
@@ -368,7 +403,7 @@
 
         if (s.aantalOnzeker) {
           h += `<div class="pl-m06-note">${s.aantalOnzeker} test(s) met een onbekende schaal-ID — ` +
-               `daar spreken de signed- en unsigned-lezing elkaar tegen, dus geen oordeel.</div>`;
+               `daar kloppen de grenzen in geen enkele lezing (min boven max), dus geen oordeel.</div>`;
         }
       }
       return h + '</div>';
@@ -385,8 +420,8 @@
       const r = [PLM06.samenvat(res).tekst + '.'];
       for (const t of tests) {
         const g = t.geschaald;
-        const w = g ? `${rond(g.waarde)}${g.eenheid ? ' ' + g.eenheid : ''}` : `${t.ruw.waarde} ruw`;
-        const gr = g ? `${rond(g.min)}–${rond(g.max)}` : `${t.ruw.min}–${t.ruw.max}`;
+        const w = g ? `${rond(g.waarde)}${g.eenheid ? ' ' + g.eenheid : ''}` : `${t.getoond.waarde} ruw`;
+        const gr = g ? `${rond(g.min)}–${rond(g.max)}` : `${t.getoond.min}–${t.getoond.max}`;
         r.push(`[${LABEL[klasse(t)]}] ${t.midNaam} (test ${t.tidHex}): ${w}, grens ${gr}`);
       }
       return r;
@@ -420,8 +455,8 @@
         if (!t.oordeelZeker || (t.geslaagd && !t.krap)) continue;
         const g = t.geschaald;
         r.push(`- ${t.midNaam} (test ${t.tidHex}): ` +
-          (g ? `${rond(g.waarde)}${g.eenheid}` : `${t.ruw.waarde} ruw`) +
-          `, grens ${g ? `${rond(g.min)}–${rond(g.max)}` : `${t.ruw.min}–${t.ruw.max}`}` +
+          (g ? `${rond(g.waarde)}${g.eenheid}` : `${t.getoond.waarde} ruw`) +
+          `, grens ${g ? `${rond(g.min)}–${rond(g.max)}` : `${t.getoond.min}–${t.getoond.max}`}` +
           ` → ${t.geslaagd ? 'krap binnen grens' : 'BUITEN grens'}`);
       }
       if (r.length === 1) r.push('- alle tests ruim binnen de fabrieksgrenzen');
@@ -429,6 +464,7 @@
     },
 
     onbekendeUas() { return _onbekendeUas; },
+    FAMILIE, familieVan,
     _intern: { naarBytes, parseRecords, bouwRecord, midNaam }
   };
 
