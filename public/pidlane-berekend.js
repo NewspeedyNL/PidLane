@@ -316,6 +316,35 @@ function versMeting(pid, nu){
   return (nu-(x.t||0))<=max ? { v:x.v, t:x.t||0 } : undefined;
 }
 function vers(pid, nu){ const m=versMeting(pid, nu); return m ? m.v : undefined; }
+/* Puur (16-10-2026): de bronnen van één berekening, op één moment. Per
+   bewegende bron de verse meting die het dichtst ligt bij de OUDSTE laatste
+   meting van de set. Tot deze datum nam tik() van elke bron de laatste: 015E
+   van 1,5 s geleden met de snelheid van zojuist was niet samen(), de tik
+   rekende niet, en CA03 bleef op een oude waarde staan alsof hij live was
+   (28,5 l/100 km bij 3,5 L/u en 15 km/u). samen() blijft de poort: lukt
+   uitlijnen niet binnen SAMEN_MS, dan wordt er nog steeds niet gerekend.
+   h = { pid: [{t,v}] }. Geeft { pid: {v,t} } met alleen wat vers is. */
+function uitgelijnd(h, set, nu){
+  const uit={};
+  (set||[]).forEach(p=>{
+    const r=h && h[p], x=r && r.length ? r[r.length-1] : null;
+    const max=STATISCH.has(p) ? STATISCH_MS : VERS_MS;
+    if (x && typeof x.v==='number' && isFinite(x.v) && nu-(x.t||0)<=max) uit[p]={ v:x.v, t:x.t||0 };
+  });
+  const bew=Object.keys(uit).filter(p=>!STATISCH.has(p));
+  if (bew.length<2) return uit;
+  const ref=Math.min.apply(null, bew.map(p=>uit[p].t));
+  bew.forEach(p=>{
+    const r=h[p];
+    for (let i=r.length-1, n=0; i>=0 && n<40; i--, n++){
+      const x=r[i];
+      if (!x || typeof x.v!=='number' || !isFinite(x.v) || nu-(x.t||0)>VERS_MS) break;
+      if (Math.abs((x.t||0)-ref)<Math.abs(uit[p].t-ref)) uit[p]={ v:x.v, t:x.t||0 };
+      if ((x.t||0)<ref) break;
+    }
+  });
+  return uit;
+}
 /* Puur (#337): liggen de meettijden van de bewegende bronnen van één
    berekening dicht genoeg bij elkaar? Eén bron of geen: altijd ja. */
 function samen(tijden){
@@ -475,12 +504,13 @@ function tik(){
       const set=bronset(pid, heeftNu, d, vw);
       if (!set){ if (gekozen) nietTeBerekenen(pid, heeftNu); return; }
       if (gekozen) bronnenErbij(pid, set, nu);
-      const v={};
-      set.concat(['0133','0104']).forEach(p=>{ const x=waarde(p); if (x!==undefined) v[p]=x; });
+      const v={}, al=uitgelijnd((typeof pidHist!=='undefined' && pidHist) ? pidHist : {}, set, nu);
+      ['0133','0104'].forEach(p=>{ const x=waarde(p); if (x!==undefined) v[p]=x; });
+      set.forEach(p=>{ if (al[p]) v[p]=al[p].v; });
       // Bronnen van verschillende momenten: deze tik niet rekenen, en tellen
       // hoe vaak (#337). De tegel houdt zijn vorige waarde en wordt vanzelf
       // oud; een verkeerde waarde tonen is erger dan een seconde wachten.
-      const tijden=set.filter(p=>!STATISCH.has(p)).map(p=>{ const m=meting(p); return m ? m.t : null; });
+      const tijden=set.filter(p=>!STATISCH.has(p)).map(p=>al[p] ? al[p].t : null);
       if (!samen(tijden)){ if (echtVerbonden()) _s.scheef[pid]=(_s.scheef[pid]||0)+1; return; }
       const uit=bereken(pid, v, o);
       if (uit===null || !isFinite(uit)) return;
@@ -562,7 +592,7 @@ try{
 }catch(e){ console.warn('PLBerekend: ALL_PID_DEFS aanvullen mislukt', e); }
 
 window.PLBerekend = { DEFS, SCHAKEL, DPF, PRIJS_STANDAARD, KWH_PER_L, bereken, bronset, schakelAdvies, dpfTik, defs, isBerekend,
-  tik, stats, oordeel, weiger, voertuig, prijs, VERS_MS, SAMEN_MS, samen, maat, _nieuweSessie:function(){ _s=leegSessie(); } };
+  tik, stats, oordeel, weiger, voertuig, prijs, VERS_MS, SAMEN_MS, samen, uitgelijnd, maat, _nieuweSessie:function(){ _s=leegSessie(); } };
 window.plIsBerekend = isBerekend;
 window.plBerekendDefs = defs;
 if (typeof setInterval==='function') setInterval(tik, TIK_MS);

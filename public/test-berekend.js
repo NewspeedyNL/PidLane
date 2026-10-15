@@ -137,15 +137,16 @@ console.log('\n— bronnen van één moment (#337) —');
 // De echte tik(), in een eigen context: pidHist met tijden, een verbonden
 // auto, en de bronnen die de CX-5 geeft. Testrun 8.3 zag CA10 tot 96,7%:
 // 0110 al gezakt na gas los, 0162 nog van een seconde eerder.
-function rit(hist, geenTik){
+function rit(hist, geenTik, meer){
   const nu = Date.now();
   const c = { console: { log(){}, warn(){} }, Math, JSON, Object, Array, String, Number, Set, Date, isFinite,
     ALL_PID_DEFS: {}, connected: true, demoMode: false,
-    supportedPIDs: new Set(['010C', '010D', '0110', '0162', '0163']), activePIDs: new Set(), pidHist: {} };
+    supportedPIDs: new Set(['010C', '010D', '0110', '0162', '0163'].concat(meer || [])), activePIDs: new Set(), pidHist: {} };
   c.window = c;
   vm.createContext(c);
   vm.runInContext(fs.readFileSync(path.join(__dirname, 'pidlane-berekend.js'), 'utf8'), c, { filename: 'pidlane-berekend.js' });
-  Object.keys(hist).forEach(p => { c.pidHist[p] = [{ t: nu - hist[p][1], v: hist[p][0] }]; });
+  // [waarde, ouderdom] of een lijst daarvan, oudste eerst
+  Object.keys(hist).forEach(p => { c.pidHist[p] = (Array.isArray(hist[p][0]) ? hist[p] : [hist[p]]).map((x) => ({ t: nu - x[1], v: x[0] })); });
   if (!geenTik) c.PLBerekend.tik();
   return c.PLBerekend;
 }
@@ -162,6 +163,25 @@ ok(Q.stats().pids.CA10 && Q.stats().pids.CA10.n === 1, 'TEGENPROEF: dezelfde bro
 ok(Q.maat('berekend-buiten') >= 1 && Q.maat('berekend-rendement-max') > 45,
    'en dan meldt de app-maat het onmogelijke rendement (buiten ' + Q.maat('berekend-buiten') + ', max ' + Q.maat('berekend-rendement-max') + ')');
 ok(Q.samen([0, 1000]) && !Q.samen([0, 1001]) && Q.samen([5]) && Q.samen([]), 'samen(): grens op precies ' + Q.SAMEN_MS + ' ms');
+// Uitlijnen (16-10-2026): CA03 bleef staan op een oude waarde als 015E en de
+// snelheid niet binnen 1 s na elkaar binnenkwamen. Nu de snelheid van het
+// moment van 015E, uit de geschiedenis.
+{
+  const nu = 100000;
+  const h = { '015E': [{ t: nu - 1500, v: 3.5 }], '010D': [{ t: nu - 1600, v: 15 }, { t: nu - 1000, v: 18 }, { t: nu - 100, v: 25 }] };
+  const al = Q.uitgelijnd(h, ['015E', '010D'], nu);
+  ok(al['010D'].v === 15 && al['010D'].t === nu - 1600 && al['015E'].v === 3.5, 'uitgelijnd(): de snelheid van het moment van 015E, niet de laatste', al);
+  ok(Q.samen([al['015E'].t, al['010D'].t]) && !Q.samen([nu - 1500, nu - 100]), 'TEGENPROEF: met de laatste was het niet samen, uitgelijnd wel');
+  ok(B.bereken('CA03', { '015E': al['015E'].v, '010D': al['010D'].v }, {}) === 23.3, 'en CA03 klopt dan met 015E ÷ snelheid (3,5 / 15 → 23,3)');
+  const ver = Q.uitgelijnd({ '015E': [{ t: nu - 2500, v: 3.5 }], '010D': [{ t: nu - 100, v: 25 }] }, ['015E', '010D'], nu);
+  ok(!Q.samen([ver['015E'].t, ver['010D'].t]), 'geen meting dichtbij: nog steeds niet samen — de #337-poort blijft');
+  const st2 = Q.uitgelijnd({ '0163': [{ t: nu - 500000, v: 250 }], '0162': [{ t: nu - 100, v: 40 }] }, ['0162', '0163'], nu);
+  ok(st2['0163'] && st2['0163'].v === 250, 'een statische bron mag oud zijn en lijnt niet uit');
+  ok(Object.keys(Q.uitgelijnd({ '015E': [{ t: nu - 9000, v: 3 }] }, ['015E'], nu)).length === 0, 'een oude bewegende bron telt niet');
+  // In tik(): 015E van 1,5 s geleden, de snelheid vaker gemeten.
+  const R = rit({ '015E': [3.5, 1500], '010D': [[15, 1600], [25, 100]] }, false, ['015E']), c3 = R.stats().pids.CA03;
+  ok(c3 && c3.n === 1 && c3.max === 23.3, 'tik(): CA03 rekent met de snelheid van het moment van 015E (23,3), niet met de laatste (14) of niet', c3);
+}
 ok(rit({}, true).maat('berekend-buiten') === null && rit({}, true).maat('berekend-n') === null && rit({}, true).maat('berekend-rendement-max') === null,
    'vóór de eerste berekening: de app-maten zijn null (niet gemeten), niet 0');
 // Optrekken rond 5 km/u: CA03 kan echt boven 50 komen, en dat is de rand van

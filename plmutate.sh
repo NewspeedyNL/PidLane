@@ -1935,6 +1935,8 @@ MUTATIES=(
 "public/pidlane-berekend.js@@      return namen.length ? namen.reduce((a,k)=>a+p[k].buiten, 0) : null;@@      return namen.length ? 0 : null;@@test-berekend.js@@de app-maat berekend-buiten ziet een waarde buiten bereik niet"
 "public/pidlane-berekend.js@@l<0.5 || k<REND_MIN_KW) return null;@@l<0.5 || k<=0) return null;@@test-berekend.js@@rendement stationair en bij gas los weer gerekend: 99 % uit frictie en lucht zonder brandstof (#457)"
 "public/pidlane-berekend.js@@    (s.pids.CA10.buitenBij ? ' (hoogste bij '+bronTekst(s.pids.CA10.buitenBij.bronnen)+')' : ''));@@    '');@@test-berekend.js@@het rendementsoordeel zegt weer niet bij welke bronwaarden het misging (#457)"
+"public/pidlane-berekend.js@@      if (Math.abs((x.t||0)-ref)<Math.abs(uit[p].t-ref)) uit[p]=@@      if (false) uit[p]=@@test-berekend.js@@CA03 rekent weer met de laatste snelheid naast een oudere 015E, en blijft dan op een oude waarde hangen"
+"public/pidlane-berekend.js@@      set.forEach(p=>{ if (al[p]) v[p]=al[p].v; });@@      set.forEach(p=>{ const x=waarde(p); if (x!==undefined) v[p]=x; });@@test-berekend.js@@tik() rekent met de laatste waarden terwijl de tijden van de uitgelijnde komen"
 # ── Slim visueel: tempo alleen rijdend, herbouw met reden (#338, 01-10-2026) ──
 "public/pidlane-visueel.js@@  if(!rijdtNu() || !inBeeld()) return;\n  const t=gemetenTempo(pid,@@  if(!inBeeld()) return;\n  const t=gemetenTempo(pid,@@test-visueel.js@@een stilstand haalt het pedaal weer voor de hele rit van de meter"
 "public/pidlane-visueel.js@@  const gat=_staat.laatsteTik>0 && nu-_staat.laatsteTik>3*VIS_TIK_MS;@@  const gat=false;@@test-visueel.js@@157 s op de achtergrond telt weer mee in het tempo van het pedaal"
