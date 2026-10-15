@@ -2787,6 +2787,20 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Codes zoeken in OBDb in plaats van met de AI (#526) ──
+  {
+    issue: '#526',
+    naam: 'Sensoren → Zoek codes in OBDb: gratis, met bron, zonder AI-zoektocht',
+    waarom: 'De AI-zoektocht met web_search kostte 50–85 tokens per keer terwijl het venster ±7 zei, en vond voor de i20 niets; OBDb heeft voor de i20 17 bruikbare codes.',
+    proef: async function () {
+      if (!window.PLEigen || typeof PLEigen.zoekObdb !== 'function') return { staat: 'FOUT', detail: 'PLEigen.zoekObdb ontbreekt — oude pidlane-uitgebreid.js (herladen?)' };
+      if (typeof PLEigen.zoekOnline === 'function') return { staat: 'FOUT', detail: 'de AI-zoektocht zoekOnline staat er nog' };
+      var f = PLEigen.obdbFormule({ len: 8, mul: 1373, div: 100000, unit: 'bars' });
+      if (f !== 'A*1373/100000') return { staat: 'FOUT', detail: 'OBDb-formule voor de Mazda-bandenspanning: ' + f };
+      return { staat: 'OK', detail: 'formule klopt; rij: Mijn voertuigen → Sensoren → 🔎 Zoek codes in OBDb, test een paar kandidaten op de auto (bandenspanning, accuspanning) en kijk of de waarde klopt met het dashboard' };
+    }
+  },
+
   // ── Grote AI-call: getal overtypen, afboekregel met het serversaldo (#524) ──
   {
     issue: '#524',

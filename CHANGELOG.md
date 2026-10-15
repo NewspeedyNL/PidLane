@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Codes uit OBDb in plaats van een AI-zoektocht (#526)
+ ═══════════════════════════════════════════════════════════
+ Sensoren → "Zoek codes in OBDb" haalt het bestand van de open
+ database (CC BY-SA 4.0) op: gratis, met bron. De AI-zoektocht met
+ web_search en "Dieper zoeken" zijn weg. De Worker laat alleen nog
+ Sonnet 5 en Haiku 4.5 door, geen tools en geen onbekende velden.
+ Calls van personeel, de beheerder en "tegoed uit" krijgen een
+ kasboekregel "ai-verbruik" (Credits 0), zodat hun verbruik te zien is.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Grote AI-call: getal overtypen; afboekregel klopt (#524)
  ═══════════════════════════════════════════════════════════
  Een analyse boven 10 tokens vraagt het getal over te typen, ook met

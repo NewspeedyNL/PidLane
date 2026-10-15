@@ -653,6 +653,42 @@ function plRolUit(payload) {
   return typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, 80) : "";
 }
 __name(plRolUit, "plRolUit");
+// Wat de app naar Anthropic mag sturen (#526). Tot 15-10-2026 ging de payload
+// ongewijzigd door: een aangepaste client, of een fout in de app, kon Opus
+// kiezen of web_search met tientallen zoekopdrachten meesturen, en dat werd
+// afgerekend tegen één tarief zonder de zoekopdrachten zelf. De app gebruikt
+// alleen deze modellen, en sinds OBDb (#526) geen tools meer.
+var AI_MODELLEN = ["claude-sonnet-5", "claude-haiku-4-5", "claude-haiku-4-5-20251001"];
+var AI_VELDEN = ["model", "max_tokens", "system", "messages", "thinking", "temperature", "stop_sequences"];
+function plPayloadFout(payload) {
+  if (payload.tools !== undefined) return "Tools (zoeken op internet e.d.) zijn niet toegestaan.";
+  if (payload.model === undefined) payload.model = AI_MODELLEN[0];
+  if (AI_MODELLEN.indexOf(payload.model) < 0) return "Model niet toegestaan: " + String(payload.model).slice(0, 60);
+  for (const k of Object.keys(payload)) if (AI_VELDEN.indexOf(k) < 0) delete payload[k];
+  return "";
+}
+__name(plPayloadFout, "plPayloadFout");
+// Een kasboekregel voor een call waar niets van een saldo afgaat (#526):
+// personeel, de beheerder, een klant met tegoed uit of met een eigen sleutel.
+// Die draaiden zonder enig spoor, dus wat de beheerder zelf verbruikte was
+// nergens te zien. Soort "ai-verbruik" met Credits 0 en zonder SaldoNa: het
+// is geen mutatie, dus de optelling van de afboekingen blijft kloppen.
+function aiVerbruikRegel(wie, text, rol, waarom) {
+  let usage = null, model = "";
+  try {
+    const d = JSON.parse(text);
+    usage = d && d.usage || null;
+    model = d && typeof d.model === "string" ? d.model : "";
+  } catch (e) {
+    try { console.error("[kasboek] verbruik niet af te lezen voor " + wie + " :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+  }
+  return {
+    klant: wie, soort: "ai-verbruik", credits: 0, model,
+    tokensIn: usage && usage.input_tokens, tokensUit: usage && usage.output_tokens,
+    details: "niet afgeboekt \u2014 " + waarom + (rol ? " \u2014 " + rol : "")
+  };
+}
+__name(aiVerbruikRegel, "aiVerbruikRegel");
 async function handleMessages(request, env, ctx) {
   const session = await auth(request, env);
   if (!session) return json({ error: "unauthorized" }, 401);
@@ -670,6 +706,8 @@ async function handleMessages(request, env, ctx) {
     return json({ error: "bad_payload", hint: "messages-array ontbreekt" }, 400);
   if (payload.messages.length > 40) return json({ error: "too_many_messages" }, 413);
   const rol = plRolUit(payload);
+  const nietToegestaan = plPayloadFout(payload);
+  if (nietToegestaan) return json({ error: { message: nietToegestaan }, code: "payload_niet_toegestaan" }, 400);
   if (JSON.stringify(payload).length > 25e4) return json({ error: "payload_too_large" }, 413);
   payload.max_tokens = Math.min(Math.max(Number(payload.max_tokens) || 2048, 1), 8192);
   const clientKey = (request.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "") || request.headers.get("x-api-key") || "";
@@ -750,12 +788,16 @@ async function handleMessages(request, env, ctx) {
         const bezwaar = klantToegangProbleem(kf);
         if (bezwaar)
           return { status: bezwaar.status, body: { ok: false, code: bezwaar.code, error: { message: bezwaar.bericht } } };
-        // Tegoed uit: geen saldocontrole, geen afboeking en dus ook geen
-        // kasboekregel — het kasboek telt mutaties, en er muteert niets. De
-        // rekening komt bij de beheerder, net als bij personeel (#49).
+        // Tegoed uit: geen saldocontrole en geen afboeking. De rekening komt
+        // bij de beheerder, net als bij personeel (#49). Sinds #526 wél een
+        // kasboekregel, soort "ai-verbruik" met Credits 0: geen mutatie, maar
+        // anders is wat de beheerder betaalt nergens te zien.
         if (klantTegoedUit(kf)) {
           const { r, text } = await doAnthropicCall();
-          return { raw: new Response(text, { status: r.status, headers: { "Content-Type": "application/json", ...CORS } }), kasboek: null };
+          return {
+            raw: new Response(text, { status: r.status, headers: { "Content-Type": "application/json", ...CORS } }),
+            kasboek: r.ok ? aiVerbruikRegel(session.u, text, rol, "tegoed uit") : null
+          };
         }
         const saldoVoor = Number(kf.Saldo || 0);
         if (saldoVoor < tarief.min)
@@ -863,6 +905,8 @@ async function handleMessages(request, env, ctx) {
   // ── Personeel en klanten met eigen sleutel: geen Saldo om te
   // beschermen, dus geen slot nodig. ──────────────────────────────────
   const { r, text } = await doAnthropicCall();
+  if (r.ok && env && env.LOGDB)
+    await tegoedLog(env, ctx, aiVerbruikRegel(session.u, text, rol, clientKey ? "eigen sleutel" : "personeel (" + (session.r || "?") + ")"));
   return new Response(text, { status: r.status, headers: { "Content-Type": "application/json", ...CORS } });
 }
 __name(handleMessages, "handleMessages");
@@ -5685,6 +5729,25 @@ var KP_ACTIES = {
   // van een test op zijn auto. In de bibliotheek staat geen klant, geen
   // voertuig en geen kenteken — alleen merk, model en de code. De stem draagt
   // de klant-hash (om dubbel stemmen te voorkomen) en gaat mee met alles_wissen.
+  // OBDb (#526): het bestand van één merk/model voor PLEigen.zoekObdb(). Via
+  // de Worker en niet rechtstreeks uit de app: één cache voor iedereen, en
+  // geen module met een eigen fetch (test-plfetch.js). Alleen de commando's
+  // gaan terug; de rest van het bestand gebruikt de app niet.
+  async obdb_bestand(c, b) {
+    const repo = String(b.repo || "");
+    if (!/^[A-Za-z0-9][A-Za-z0-9-]{1,60}$/.test(repo)) return { ok: false, error: "Ongeldige OBDb-naam.", code: 400 };
+    let r;
+    try {
+      r = await fetch("https://raw.githubusercontent.com/OBDb/" + repo + "/main/signalsets/v3/default.json", { cf: { cacheTtl: 86400, cacheEverything: true } });
+    } catch (e) {
+      return { ok: false, error: "OBDb niet bereikbaar: " + String(e && e.message || e), code: 502 };
+    }
+    if (r.status === 404) return { ok: true, gevonden: false };
+    if (!r.ok) return { ok: false, error: "OBDb gaf HTTP " + r.status + ".", code: 502 };
+    let data;
+    try { data = await r.json(); } catch (e) { return { ok: false, error: "Het OBDb-bestand van " + repo + " is onleesbaar.", code: 502 }; }
+    return { ok: true, gevonden: true, data: { commands: Array.isArray(data && data.commands) ? data.commands : [] } };
+  },
   async pidbib_lijst(c, b) {
     const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
     if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
@@ -5729,7 +5792,9 @@ var KP_ACTIES = {
     if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
     const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model);
     if (!merk || !model) return { ok: false, error: "Vul eerst merk en model in bij het profiel.", code: 400 };
-    if (!Array.isArray(b.lijst) || b.lijst.length > 20) return { ok: false, error: "Een lijst van hoogstens 20 kandidaten.", code: 400 };
+    if (!Array.isArray(b.lijst) || b.lijst.length > 60) return { ok: false, error: "Een lijst van hoogstens 60 kandidaten.", code: 400 };
+    // Waar de lijst vandaan komt (#526): OBDb, of de oude AI-zoektocht.
+    const bron = b.bron === "obdb" ? "obdb" : "online";
     let erbij = 0, geweigerd = 0;
     for (const k of b.lijst) {
       const e = kpEigenPid(k);
@@ -5737,7 +5802,7 @@ var KP_ACTIES = {
       if (e.fout || !/^https?:\/\/[^\s"<>]+$/.test(url)) { geweigerd++; continue; }
       const al = await c.db.prepare("SELECT id FROM kp_pid_bib WHERE merk = ? AND model = ? AND code = ? AND ecu = ?").bind(merk, model, e.code, e.ecu || "").first();
       if (al) continue;
-      await kpBibErbij(c.db, merk, model, e, "online", url);
+      await kpBibErbij(c.db, merk, model, e, bron, url);
       erbij++;
     }
     return { ok: true, erbij, geweigerd };

@@ -377,8 +377,28 @@ async function laadWorker() {
   bl = await roep(tokA, { actie: 'pidbib_lijst', voertuig_id: v1.voertuig.id });
   const online = bl.lijst.find((x) => x.code === '220202');
   toets('kandidaten: Anna ziet de online kandidaat, met de bron en nog niet getest', !!online && online.bron === 'online' && /forum/.test(online.url) && online.werkt === 0, JSON.stringify(bl.lijst));
-  toets('kandidaten: meer dan 20 in één keer is 400', (await roep(tokB, { actie: 'pidbib_kandidaten', voertuig_id: rBert.voertuig.id,
-    lijst: Array.from({ length: 21 }, () => ({ code: '220505', naam: 'x', url: 'https://x.nl' })) }))._status === 400);
+  toets('kandidaten: meer dan 60 in één keer is 400 (OBDb levert er tot 60, #526)', (await roep(tokB, { actie: 'pidbib_kandidaten', voertuig_id: rBert.voertuig.id,
+    lijst: Array.from({ length: 61 }, () => ({ code: '220505', naam: 'x', url: 'https://x.nl' })) }))._status === 400);
+  // OBDb (#526): de Worker haalt het bestand op; de app doet geen eigen fetch.
+  {
+    const echtFetch = globalThis.fetch, gehaald = [];
+    globalThis.fetch = async (u) => {
+      gehaald.push(String(u));
+      if (/Mazda-CX-5\//.test(String(u))) return new Response(JSON.stringify({ ecu: [], commands: [{ hdr: '720', cmd: { '22': '2A05' }, signals: [] }], extra: 'x' }), { status: 200 });
+      return new Response('404: Not Found', { status: 404 });
+    };
+    const o1 = await roep(tokB, { actie: 'obdb_bestand', repo: 'Mazda-CX-5' });
+    const o2 = await roep(tokB, { actie: 'obdb_bestand', repo: 'Dacia-Logan' });
+    const o3 = await roep(tokB, { actie: 'obdb_bestand', repo: '../../evil/x' });
+    globalThis.fetch = async () => { throw new Error('netwerk weg'); };
+    const o4 = await roep(tokB, { actie: 'obdb_bestand', repo: 'Mazda-CX-5' });
+    globalThis.fetch = echtFetch;
+    toets('obdb: het bestand komt terug, alleen de commando\'s', o1.ok && o1.gevonden && o1.data.commands.length === 1 && !('extra' in o1.data), JSON.stringify(o1));
+    toets('obdb: van github.com/OBDb, het v3-bestand', gehaald[0] === 'https://raw.githubusercontent.com/OBDb/Mazda-CX-5/main/signalsets/v3/default.json', gehaald[0]);
+    toets('obdb: niet bestaand is geen fout maar "niet gevonden"', o2.ok && o2.gevonden === false, JSON.stringify(o2));
+    toets('obdb: een naam met / of .. is 400 en gaat het net niet op', o3._status === 400 && gehaald.length === 2, o3._status + ' / ' + gehaald.length);
+    toets('obdb: geen net is 502 met een melding', o4._status === 502 && /niet bereikbaar/.test(o4.error), JSON.stringify(o4));
+  }
   const vKia = await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { naam: 'Kia', merk: 'Kia', model: 'Ceed' } });
   toets('een ander merk ziet de Mazda-codes niet', vKia.ok && (await roep(tokB, { actie: 'pidbib_lijst', voertuig_id: vKia.voertuig.id })).lijst.length === 0);
   // De VIN als master voor de techniek (28-09-2026).

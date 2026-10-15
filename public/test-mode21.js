@@ -307,26 +307,50 @@ function haalZeef(isMode01) {
       'ATSH18DA18F1 221E1C1 ATSH18DB33F1 ATSH18DB33F1 ATSH18DA18F1 221E1C1 ATSH18DB33F1');
     s.sendCmd = echt;
 
-    const k = E.kandidatenUitTekst('Hier is wat ik vond:\n{"kandidaten":[' +
-      '{"code":"221e1c","ecu":"7e1","naam":"Temperatuur automaat","formule":"A - 40","eenheid":"°C","bron":"https://forum.nl/a"},' +
-      '{"code":"2E1E1C","naam":"schrijven","formule":"A","bron":"https://forum.nl/b"},' +
-      '{"code":"220202","naam":"zonder bron","formule":"A"},' +
-      '{"code":"220303","naam":"Signed","formule":"Signed(A)","bron":"https://forum.nl/c"},' +
-      '{"code":"221E1C","ecu":"7E1","naam":"dubbel","formule":"A","bron":"https://forum.nl/d"}]}\nSucces!');
-    t('kandidaten: alleen de geldige leescode met bron blijft over', k.map(x => x.code + '@' + x.ecu).join(','), '221E1C@7E1');
-    t('kandidaten: de formule zonder spaties, de bron erbij', k[0].formule + ' ' + k[0].url, 'A-40 https://forum.nl/a');
-    t('kandidaten: geen JSON is een lege lijst, geen fout', E.kandidatenUitTekst('Sorry, niets gevonden.').length, 0);
+    // OBDb in plaats van de AI-zoektocht (#526). Het bestand hieronder heeft
+    // de vorm van github.com/OBDb/Mazda-CX-5 (signalsets/v3/default.json),
+    // met per regel één geval dat er wél of níét door hoort te komen.
+    const obdb = { commands: [
+      { hdr: '720', rax: '728', dbg: true, cmd: { '22': 'C901' }, signals: [{ name: 'Debug band', fmt: { len: 8, div: 5, unit: 'psi' } }] },
+      { hdr: '720', rax: '728', cmd: { '22': '2A05' }, signals: [{ name: 'Rear left tire pressure', fmt: { len: 8, mul: 1373, div: 100000, unit: 'bars' } }] },
+      { hdr: '7E0', rax: '7E8', cmd: { '22': '1310' }, signals: [{ name: 'Oil temperature', fmt: { bix: 8, len: 16, div: 100, add: -40, unit: 'celsius' } }] },
+      { hdr: '7E1', rax: '7E9', cmd: { '22': '1E1C' }, signals: [{ name: 'ATF temperature', fmt: { len: 8, unit: 'fahrenheit' } }] },
+      { hdr: '7E0', rax: '7E8', cmd: { '22': 'DD01' }, signals: [{ name: 'Odometer', fmt: { len: 24, blsb: true, unit: 'kilometers' } }] },
+      { hdr: '7E0', rax: '7E8', cmd: { '21': '05' }, signals: [{ name: 'Coolant', fmt: { len: 8, add: -40, unit: 'celsius' } }] },
+      { hdr: '7E0', rax: '7E8', eax: '12', cmd: { '22': '4205' }, signals: [{ name: 'Extended addressing', fmt: { len: 8, unit: 'volts' } }] },
+      { hdr: '7E0', rax: '7EA', cmd: { '22': '0101' }, signals: [{ name: 'Andere antwoordheader', fmt: { len: 8, unit: 'volts' } }] },
+      { hdr: '7E0', rax: '7E8', cmd: { '22': '0202' }, signals: [{ name: 'Signed', fmt: { len: 8, sign: true, unit: 'celsius' } }] },
+      { hdr: '7E0', rax: '7E8', cmd: { '22': '0303' }, signals: [{ name: 'Hazard switch', fmt: { len: 8, unit: 'scalar' } }, { name: 'Battery', fmt: { bix: 8, len: 8, div: 10, unit: 'volts' } }] },
+      { hdr: '7E0', rax: '7E8', cmd: { '22': '0404' }, signals: [{ name: 'Half byte', fmt: { bix: 4, len: 4, unit: 'percent' } }] },
+      { hdr: '7E0', rax: '7E8', cmd: { '22': '0505' }, filter: { to: 2016, from: 2022 }, signals: [{ name: 'Alleen oud of nieuw', fmt: { len: 8, unit: 'percent' } }] },
+      { hdr: '7E0', rax: '7E8', cmd: { '2E': '0606' }, signals: [{ name: 'Schrijven', fmt: { len: 8, unit: 'percent' } }] }
+    ] };
+    const k = E.obdbKandidaten(obdb, 'Mazda-CX-5', 2018);
+    const kort = k.map(x => x.code + '@' + x.ecu + '=' + x.formule + ' ' + x.eenheid).join(' | ');
+    t('obdb: alleen wat de app kan lezen, geverifieerd vóór dbg', kort,
+      '222A05@720=A*1373/100000 bar | 221310@7E0=(B*256+C)/100-40 °C | 221E1C@7E1=((A)-32)*5/9 °C | 22DD01@7E0=A+B*256+C*65536 km | 2105@7E0=A-40 °C | 220303@7E0=B/10 V | 22C901@720=A/5 psi');
+    t('obdb: de bron is de repo, voor de naamsvermelding (CC BY-SA)', k[0].url, 'https://github.com/OBDb/Mazda-CX-5');
+    t('obdb: het jaarfilter met twee open stukken laat 2015 wél door', E.obdbKandidaten(obdb, 'x', 2015).some(x => x.code === '220505'), true);
+    t('obdb: jaarfilter', [E.obdbJaarPast({ from: 2021 }, 2018), E.obdbJaarPast({ to: 2016 }, 2016), E.obdbJaarPast({ from: 2012, to: 2020 }, 2021), E.obdbJaarPast({ from: 2012 }, '')].join(','), 'false,true,false,true');
+    t('obdb: geen formule voor teken, tabel, halve bytes of meer dan 8 bytes',
+      [{ len: 8, sign: true }, { len: 8, map: {} }, { bix: 4, len: 8 }, { bix: 48, len: 24 }, { len: 8, mul: -1 }].map(E.obdbFormule).join(','), ',,,,');
+    t('obdb: repo-namen voor RDW-modellen', JSON.stringify([E.obdbNamen('MAZDA', 'CX5'), E.obdbNamen('BMW', '320D XDRIVE'), E.obdbNamen('Hyundai', 'i20')]),
+      JSON.stringify([['MAZDA-CX5', 'MAZDA-CX-5'], ['BMW-320D-XDRIVE', 'BMW-320D', 'BMW-3-Series'], ['Hyundai-i20', 'Hyundai-i-20']]));
 
-    // Online zoeken: via apiFetch met de zoektool, en eerlijk als die ontbreekt.
-    let gevraagd = null;
-    s.apiFetch = async (p, max, sys, mdl, aanl, extra) => { gevraagd = { sys, extra }; return '{"kandidaten":[{"code":"220404","naam":"Olie","formule":"A","bron":"https://x.nl"}]}'; };
-    const z = await E.zoekOnline({ merk: 'Mazda', model: 'CX-5', bouwjaar: 2019 });
-    t('zoekOnline vraagt de zoektool van de API', gevraagd && gevraagd.extra.tools[0].name, 'web_search');
-    t('zoekOnline geeft de gecontroleerde kandidaten', z.ok && z.kandidaten.map(x => x.code).join(','), '220404');
-    s.apiFetch = async () => { throw new Error('API fout (400): web_search is not enabled'); };
-    const z2 = await E.zoekOnline({ merk: 'Mazda', model: 'CX-5' });
-    t('zonder zoektool: een melding, en geen kandidaten uit het geheugen', !z2.ok && /niet beschikbaar/.test(z2.fout) && !z2.kandidaten, true);
-    t('zonder merk of model: niet zoeken', (await E.zoekOnline({ merk: 'Mazda' })).ok, false);
+    // Zoeken: proberen tot een naam bestaat, geen AI en dus geen tegoed. De
+    // app haalt via de Worker (haal = obdb_bestand); hier een nagemaakte.
+    const gehaald = [];
+    s.apiFetch = async () => { throw new Error('de AI mag hier niet gevraagd worden'); };
+    const haal = async (repo) => { gehaald.push(repo); return repo === 'MAZDA-CX-5' ? { gevonden: true, data: obdb } : { gevonden: false }; };
+    const z = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal);
+    t('zoekObdb: tweede naam raak, kandidaten erbij', z.ok + ' ' + z.repo + ' ' + z.kandidaten.length, 'true MAZDA-CX-5 7');
+    t('zoekObdb: probeert de namen op volgorde', gehaald.join(','), 'MAZDA-CX5,MAZDA-CX-5');
+    const z2 = await E.zoekObdb({ merk: 'Dacia', model: 'Logan' }, async () => ({ gevonden: false }));
+    t('zoekObdb: niet in OBDb is geen fout, en zegt wat er geprobeerd is', z2.ok + ' ' + z2.repo + ' ' + z2.geprobeerd.join(','), 'true  Dacia-Logan');
+    const z3 = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' }, async () => { throw new Error('Serverfout 502'); });
+    t('zoekObdb: geen net is een melding', !z3.ok && /niet bereikbaar/.test(z3.fout), true);
+    t('zoekObdb: zonder weg naar OBDb niet zoeken', (await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' })).ok, false);
+    t('zonder merk of model: niet zoeken', (await E.zoekObdb({ merk: 'Mazda' }, haal)).ok, false);
   }
 
   console.log('\n— banden: herkennen, op verzoek (#396), druk in bar of psi (28-09-2026) —');
@@ -423,13 +447,6 @@ function haalZeef(isMode01) {
     s.lezen('connected=false');
     t('niet verbonden: geen scan', (await E.buurScan({ prefix: '222A', ecu: '' })).ok, false);
 
-    const vraag = E.dieperVraag('Mazda CX-5 2018', [{ code: '222A05', ecu: '720', naam: 'Bandenspanning voor-links' }, { code: '221310', ecu: '', naam: 'Olie' }]);
-    t('dieper: de vraag noemt de werkende codes en hun ECU-adres', /222A05@720/.test(vraag) && /221310/.test(vraag) && /\(720\)/.test(vraag), true);
-    let gevraagd = null;
-    s.apiFetch = async (q) => { gevraagd = q; return '{"kandidaten":[{"code":"222A05","ecu":"720","naam":"Band","formule":"A","bron":"https://x.nl"},{"code":"222A20","ecu":"720","naam":"Nieuw","formule":"A","bron":"https://x.nl"}]}'; };
-    const z = await E.zoekOnline({ merk: 'Mazda', model: 'CX-5' }, [{ code: '222A05', ecu: '720', naam: 'Band' }]);
-    t('dieper: de AI krijgt de werkende codes mee', /Deze leescodes werken/.test(gevraagd), true);
-    t('dieper: wat er al is komt niet terug als kandidaat', z.dieper + ' ' + z.kandidaten.map(k => k.code).join(','), 'true 222A20');
   }
 
   console.log('\n— de pollus vraagt hoogstens twee eigen PIDs per ronde (28-09-2026) —');

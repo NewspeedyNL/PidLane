@@ -1667,7 +1667,7 @@
   }
   function bibStand(b) {
     return (b.werkt ? '✓ werkt bij ' + b.werkt : '') + (b.werkt_niet ? (b.werkt ? ' · ' : '') + '✗ niet bij ' + b.werkt_niet : '') +
-      (!b.werkt && !b.werkt_niet ? (b.bron === 'online' ? 'online gevonden, nog door niemand getest' : 'nog niet getest') : '') +
+      (!b.werkt && !b.werkt_niet ? (b.bron === 'obdb' ? 'uit OBDb, nog door niemand getest' : b.bron === 'online' ? 'online gevonden, nog door niemand getest' : 'nog niet getest') : '') +
       (b.mijn ? ' · jij: ' + (b.mijn === 'werkt' ? 'werkt' : 'werkt niet') : '');
   }
   function tekenBib(v, S, nu, deel) {
@@ -1679,7 +1679,7 @@
     else if (S.bib && S.bib.fout) h += '<div class="gr-melding rood">' + esc(S.bib.fout) + '</div>';
     else if (S.bib && S.bib.lijst) {
       var nAl = Object.keys(deel.al).length;
-      if (!S.bib.lijst.length) h += '<div class="gr-klein">Nog niets voor dit model. Zoek online, of deel een code die bij jou werkt.</div>';
+      if (!S.bib.lijst.length) h += '<div class="gr-klein">Nog niets voor dit model. Zoek in OBDb, of deel een code die bij jou werkt.</div>';
       else if (!deel.nieuw.length) h += '<div class="gr-klein">Alles uit deze lijst staat bij je sensoren.</div>';
       deel.nieuw.forEach(function (b) {
         var t = S.test['bib:' + b.id], stand = bibStand(b);
@@ -1693,10 +1693,9 @@
     }
     var bew = bewezen(S);
     h += '<div class="gr-knoppen"><button class="gr-k klein" ' + (S.zoek === 'bezig' ? 'disabled' : '') + ' onclick="PLGarage._bibZoek()">' +
-      (S.zoek === 'bezig' ? '⏳ Zoeken…' : '🔎 Zoek online naar codes voor dit model') + '</button>' +
-      (bew.length ? '<button class="gr-k klein" ' + (S.zoek === 'bezig' ? 'disabled' : '') + ' onclick="PLGarage._bibZoek(true)">🔎 Dieper zoeken (' + bew.length + ' werkende codes als aanwijzing)</button>' : '') + '</div>' +
+      (S.zoek === 'bezig' ? '⏳ Zoeken…' : '🔎 Zoek codes voor dit model in OBDb') + '</button></div>' +
       (S.zoek && S.zoek !== 'bezig' ? '<div class="gr-klein">' + esc(S.zoek) + '</div>' : '') +
-      '<div class="gr-klein" style="margin-top:4px">Zoeken gebruikt AI-tegoed. Wat gevonden wordt komt in deze lijst, voor iedereen met dit model, met de bron erbij. ' +
+      '<div class="gr-klein" style="margin-top:4px">De codes komen uit OBDb, een open database (obdb.community, CC BY-SA 4.0); zoeken kost geen tegoed. Wat gevonden wordt komt in deze lijst, voor iedereen met dit model, met de bron erbij. ' +
       'Een test op je auto telt mee als "werkt" of "werkt niet" — zonder naam, kenteken of VIN, alleen merk en model.' +
       (nu ? '' : ' Testen kan als deze auto verbonden is.') + '</div></div>';
     h += tekenScan(S, bew, nu);
@@ -2131,16 +2130,18 @@
       teken();
       setTimeout(function () { var el = document.getElementById('grsNaam'); if (el) { el.scrollIntoView({ block: 'center' }); el.focus(); } }, 50);
     },
-    _bibZoek: async function (dieper) {
+    // OBDb in plaats van een AI-zoektocht (#526): gratis en met bron.
+    _bibZoek: async function () {
       var S = _st.sens, v = S && voertuig(S.vid); if (!S || !v || S.zoek === 'bezig' || !window.PLEigen) return;
       sensNieuw();
       S.zoek = 'bezig'; teken();
-      var r = await PLEigen.zoekOnline(v, dieper ? bewezen(S) : null);
+      var r = await PLEigen.zoekObdb(v, function (repo) { return api('obdb_bestand', { repo: repo }); });
       if (!r.ok) S.zoek = '✗ ' + r.fout;
-      else if (!r.kandidaten.length) S.zoek = 'Niets gevonden dat door de controle komt (alleen leescodes met een bron).';
+      else if (!r.repo) S.zoek = 'Dit model staat (nog) niet in OBDb. Gezocht als: ' + (r.geprobeerd || []).join(', ') + '.';
+      else if (!r.kandidaten.length) S.zoek = 'OBDb kent ' + r.repo + ', maar geen leescode die deze app kan gebruiken.';
       else {
         try {
-          var d = await api('pidbib_kandidaten', { voertuig_id: S.vid, lijst: r.kandidaten });
+          var d = await api('pidbib_kandidaten', { voertuig_id: S.vid, lijst: r.kandidaten, bron: 'obdb' });
           S.zoek = '✓ ' + d.erbij + ' nieuwe kandidaat' + (d.erbij === 1 ? '' : 'en') + ' in de lijst' + (r.kandidaten.length > d.erbij ? ' (' + (r.kandidaten.length - d.erbij) + ' stonden er al of vielen af)' : '') + '. Test ze op je auto.';
           S.bib = null;
         } catch (x) { S.zoek = '✗ ' + x.message; }

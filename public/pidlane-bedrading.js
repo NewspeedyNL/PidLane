@@ -214,7 +214,8 @@ var KRITIEK = [
   // Slim visueel zet de trekstrook aan bij rijsituatie caravan of beladen
   // (27-09-2026). Valt hij weg, dan blijft de strook stil weg.
   'situatieActief',
-  // Mijn voertuigen → Sensoren → online zoeken naar codes (PLEigen.zoekOnline).
+  // Alle AI-rapporten lopen via apiFetch (pidlane-fuel.js). Valt hij weg,
+  // dan doet geen enkele analyseknop nog iets.
   'apiFetch',
   // De ontwikkeltools voor de beheerder én voor een klant met de
   // ontwikkelaarsvlag (28-09-2026). Valt hij weg, dan zien die klanten ze
