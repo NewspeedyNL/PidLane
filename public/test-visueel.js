@@ -609,6 +609,8 @@ m = V.meldingen(run({
   waak: { aan: true, draait: true, detail: 'loopt rond', totaal: 13, gelezen: 4, let: 0 }
 }), [], true, T0);
 waar('rit-monitor en recorder lopen: dat zijn er twee, dus geen snelkoppelingen meer', m.snel.length === 0, m.snel.map(s => s.id).join(','));
+waar('caravanrit en rit-analyse lopen: twee, dus ook geen bulk-recorder als derde',
+  !V.meldingen(run({ caravan: { aan: true, draait: true }, rit: { aan: true, draait: true } }), [], true, T0).snel.some(s => s.id === 'bulk'));
 waar('rit-monitor, recorder en waakronde lopen samen: drie chips, in die volgorde',
   m.lopend.map(c => c.id).join(',') === 'monitor,bulk,waak', m.lopend.map(c => c.id).join(','));
 const cb = m.lopend.find(c => c.id === 'bulk');
