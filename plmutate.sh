@@ -1711,6 +1711,7 @@ MUTATIES=(
 "public/pidlane-herinner.js@@    if (!res || !res.merk) return { telt: false@@    if (!res) return { telt: false@@test-herinner.js@@een mislukte RDW-opzoeking telt als eerste keer, en de dag erna is alles nieuw (#493)"
 "public/pidlane-herinner.js@@    var nieuw = eerste ? [] : acties.filter(function (a) { return a.open && !set[a.referentiecode]; });@@    var nieuw = eerste ? [] : acties.filter(function (a) { return !set[a.referentiecode]; });@@test-herinner.js@@een afgehandelde terugroepactie geeft toch een melding (#493)"
 "public/pidlane-herinner.js@@      if (allesGelukt) schrijf(OPSLAG.recallDag, vandaag);@@      schrijf(OPSLAG.recallDag, vandaag);@@test-herinner.js@@een mislukte terugroepronde telt als gedaan, en het kenteken wacht een dag extra (#493)"
+"public/pidlane-herinner.js@@allowWhileIdle: true }, isExactNotification: false, extra: { sleutel: x.sleutel }@@allowWhileIdle: true }, extra: { sleutel: x.sleutel }@@test-herinner.js@@de plugin plant exact en opent bij elke start het scherm Alarmen en herinneringen"
 "public/pidlane-herinner.js@@  var TREDEN = [30, 7, 0];@@  var TREDEN = [30, 7];@@test-herinner.js@@op de dag zelf komt er geen herinnering meer"
 "public/pidlane-herinner.js@@        if (isNaN(d) || d.getTime() <= nu) return;@@        if (isNaN(d)) return;@@test-herinner.js@@herinneringen voor een datum die al voorbij is, worden toch ingepland"
 "public/pidlane-herinner.js@@    if (mijn && mijn.kent && datum8(mijn.keuring) && !gehad[kent(mijn.kent)]) {@@    if (mijn && mijn.kent && datum8(mijn.keuring)) {@@test-herinner.js@@een kenteken dat ook in Mijn voertuigen staat, krijgt twee APK-herinneringen"
@@ -1879,7 +1880,7 @@ MUTATIES=(
 # De handleiding (30-09-2026). Drie fouten die gewoon gebeuren: een knop krijgt
 # een andere id, een menuregel een andere tekst, en er sluipt een prijs in de
 # tekst. De eerste twee laten een ! of een beschrijving stil verouderen.
-"public/index.html@@id=\"plLiveDeel\"@@id=\"plLiveDelen\"@@test-help.js@@een knop met een uitroepteken is hernoemd en de tip vindt hem niet meer"
+"public/index.html@@id=\"wc-liveshare\"@@id=\"wc-livedelen\"@@test-help.js@@een knop met een uitroepteken is hernoemd en de tip vindt hem niet meer"
 "public/index.html@@🩺 Check na verbinden<span@@🩺 Check na het verbinden<span@@test-help.js@@een menuregel is hernoemd en de handleiding noemt de oude tekst"
 "public/pidlane-help-inhoud.js@@Codes worden met de hand verstuurd.@@Codes kosten € 4,99.@@test-help.js@@er staat een prijs in de handleiding"
 # ── berekende PIDs uit bronnen van één moment (#337, 01-10-2026) ──
@@ -1977,6 +1978,9 @@ MUTATIES=(
 "public/pidlane-visprofiel.js@@function html(id, ind){\n  const p=voorInd(id, ind);@@function html(id, ind){\n  const p=voor(id, ind && ind.motor);@@test-visprofiel.js@@een gekozen accuspanning staat op BUITEN met het label Buiten en de schaal in graden"
 "public/pidlane-visueel.js@@      if(t) kiesPlek(t.id.slice(6));@@      if(t) void 0;@@bproef-visplek.js@@tikken op een plek van Slim visueel doet niets: de keuzelijst opent nooit"
 "public/pidlane-visprofiel.js@@        diesel:{ hi:6000 } },@@        diesel:{} },@@test-visprofiel.js@@de neonring van een diesel loopt tot 8000 tpm: 3000 staat er als bijna stationair — #393"
+"public/pidlane-visueel.js@@  if(Math.abs(dx)<VEEG_MIN || Math.abs(dx)<1.5*Math.abs(dy)) return 0;@@  if(Math.abs(dx)<VEEG_MIN) return 0;@@test-visueel.js@@een schuine scroll over de meter wisselt de weergave"
+"public/pidlane-visueel.js@@  return dx<0 ? 1 : -1;@@  return dx<0 ? -1 : 1;@@test-visueel.js@@naar links vegen gaat terug in plaats van verder"
+"public/pidlane-visprofiel.js@@  return PROFIELEN[i<0 ? 0 : (i-1+PROFIELEN.length) % PROFIELEN.length].id;@@  return PROFIELEN[i<0 ? 0 : Math.max(0, i-1)].id;@@test-visprofiel.js@@naar rechts vegen blijft op Basis hangen in plaats van rond te gaan"
 "public/pidlane-functietest.js@@    plekkenVan(p, brandstof).forEach(@@    p.plekken.forEach(@@test-functietest.js@@de Full function test beoordeelt een diesel op de benzinekaart — #393"
 
 # ── Software als oorzaak (#426, 07-10-2026). Drie fouten die een vers gewiste

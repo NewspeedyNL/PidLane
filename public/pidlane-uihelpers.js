@@ -337,8 +337,10 @@ function toggleSysStatus(e){
   if(d.parentElement!==document.body) document.body.appendChild(d);
   d.style.position='fixed';
   d.style.top=((r?r.bottom:46)+6)+'px';
-  d.style.right=(r?Math.max(6,window.innerWidth-r.right):8)+'px';
-  d.style.left='auto';
+  // De chip staat sinds 15-10-2026 links in de topbalk: het venster hangt
+  // aan zijn linkerrand en loopt naar rechts uit.
+  d.style.left=(r?Math.max(6,r.left):8)+'px';
+  d.style.right='auto';
   d.style.zIndex='9560';
   d.classList.add('open');
 }
@@ -482,6 +484,12 @@ function sw(name,el){
   const pane=document.getElementById('pane-'+name);
   if(pane) pane.classList.add('active');
   if(name==='graph') setTimeout(drawGraph,50);
+  // De weergaverij (15-10-2026) draagt Grafiek als vierde vak: bij de grafiek
+  // licht alleen dat vak op, bij Live de gekozen weergave.
+  const gb=document.getElementById('tabGraph'); if(gb) gb.classList.toggle('active', name==='graph');
+  document.querySelectorAll('#pidViewSwitch .pidview-btn[data-mode]').forEach(function(b){
+    b.classList.toggle('active', name==='live' && typeof pidViewMode!=='undefined' && b.dataset.mode===pidViewMode);
+  });
   // De dubbeltik-tip hoort bij het zíén van de tegels (#145). Hier en niet in
   // renderGauges(): die draait al tijdens het opstarten, en dan kwam de tip op
   // het keuzescherm voorbij waar geen tegel staat.

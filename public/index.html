@@ -910,6 +910,10 @@ function closeConnOv(){
   </div>
   <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:26px;height:26px"><defs><linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bgC)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="440" stroke-width="14"/><line x1="256" y1="418" x2="256" y2="392" stroke-width="12"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grC)" stroke-width="18" stroke-linejoin="round"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spC)"/></svg></div>Pid<em>Lane</em></div>
   <button type="button" id="plGear" hidden aria-live="polite" onclick="openGearInstellingen()"></button>
+  <!-- Sensoren kiezen (15-10-2026): stond als laatste tab boven het midden;
+       die tabbalk is weg. Rechts in de topbalk, de statuschip schuift naar
+       links. Alleen in beeld als Live open is (body.pl-op-live, PLNav). -->
+  <button type="button" class="tb-sensoren" id="tbSensoren" onclick="openPidChoice()" title="Sensoren kiezen">🎛️ Sensoren</button>
   <div class="tpr">
     <!-- 🔵 Systeem-chip — samengevoegd 27-08-2026 uit de vier losse chips
          hieronder (voertuig/OBD/AI/Run), die vier stuks brede ruimte kostten
@@ -1067,10 +1071,33 @@ function closeConnOv(){
 
   <!-- CENTER -->
   <div class="cc">
-    <div class="tabs">
-      <button class="tab active" onclick="sw('live',this)">📊 Live</button>
-      <button class="tab" id="tabGraph" onclick="sw('graph',this)">📈 Grafiek</button>
-      <button class="tab tab-action" onclick="openPidChoice()" title="Sensoren kiezen">🎛️ Sensoren</button>
+    <!-- De tabbalk Live/Grafiek/Sensoren is weg (15-10-2026): Live staat al in
+         de onderbalk, Grafiek is een vierde weergave in de rij hieronder en
+         Sensoren staat rechts in de topbalk (#tbSensoren). De weergaverij
+         staat daarom niet meer ín pane-live maar erboven, zodat hij ook bij
+         de grafiek blijft staan; de CSS verbergt hem bij elk ander paneel. -->
+    <div class="pidview-switch" id="pidViewSwitch" style="display:none">
+      <!-- Eén regel (26-09-2026): gelijke vakken met het icoon boven
+           een kort woord, als een tabbalk. Het label "Weergave:" en de
+           waakronde-knop zijn eruit — de waakronde staat al in het
+           run-paneel en in het meldingenvak van Slim visueel. -->
+      <!-- Overzicht (01-10-2026, #302): vervangt Trends, Getallen en Puntjes.
+           Getal en statuspuntje per sensor, hoogstens vier trendlijnen. -->
+      <button class="pidview-btn" data-mode="overzicht" onclick="setPidView('overzicht')" title="Overzicht"><i>📋</i>Overzicht</button>
+      <!-- Slimme weergave (#61, #68) en sinds 01-09-2026 de STANDAARD:
+           dashboardwaarden groot, een tellerplaat met verticale meters
+           voor toerental/pedaal/klep/belasting, alle temperaturen als één
+           balkdiagram, en een trendlijn alleen waar er iets beweegt.
+           De active-klasse staat hier omdat dit de startweergave is;
+           plPidViewHerstel() zet hem meteen goed als er een andere
+           voorkeur is opgeslagen. -->
+      <button class="pidview-btn active" data-mode="slim" onclick="setPidView('slim')" title="Slim"><i>🧠</i>Slim</button>
+      <!-- Slim visueel (25-09-2026): één vaste meter voor wat er vloeiend
+           ververst — toerental, snelheid, gaspedaal, laaddruk of verbruik —
+           met een rustige rand voor koelwater, olie, tank en accu. Zie
+           pidlane-visueel.js. -->
+      <button class="pidview-btn" data-mode="visueel" onclick="setPidView('visueel')" title="Slim visueel"><i>🎯</i>Visueel</button>
+      <button class="pidview-btn" id="tabGraph" onclick="sw('graph',this)" title="Grafiek"><i>📈</i>Grafiek</button>
     </div>
     <div class="tb">
 
@@ -1084,28 +1111,6 @@ function closeConnOv(){
              pidlane-aandrijving.js. Staat leeg tot er verbinding is, want een
              toestandsregel zonder meting eronder hoort er niet te staan. -->
         <div id="aandrijfBalk" style="display:none"></div>
-        <div class="pidview-switch" id="pidViewSwitch" style="display:none">
-          <!-- Eén regel (26-09-2026): gelijke vakken met het icoon boven
-               een kort woord, als een tabbalk. Het label "Weergave:" en de
-               waakronde-knop zijn eruit — de waakronde staat al in het
-               run-paneel en in het meldingenvak van Slim visueel. -->
-          <!-- Overzicht (01-10-2026, #302): vervangt Trends, Getallen en Puntjes.
-               Getal en statuspuntje per sensor, hoogstens vier trendlijnen. -->
-          <button class="pidview-btn" data-mode="overzicht" onclick="setPidView('overzicht')" title="Overzicht"><i>📋</i>Overzicht</button>
-          <!-- Slimme weergave (#61, #68) en sinds 01-09-2026 de STANDAARD:
-               dashboardwaarden groot, een tellerplaat met verticale meters
-               voor toerental/pedaal/klep/belasting, alle temperaturen als één
-               balkdiagram, en een trendlijn alleen waar er iets beweegt.
-               De active-klasse staat hier omdat dit de startweergave is;
-               plPidViewHerstel() zet hem meteen goed als er een andere
-               voorkeur is opgeslagen. -->
-          <button class="pidview-btn active" data-mode="slim" onclick="setPidView('slim')" title="Slim"><i>🧠</i>Slim</button>
-          <!-- Slim visueel (25-09-2026): één vaste meter voor wat er vloeiend
-               ververst — toerental, snelheid, gaspedaal, laaddruk of verbruik —
-               met een rustige rand voor koelwater, olie, tank en accu. Zie
-               pidlane-visueel.js. -->
-          <button class="pidview-btn" data-mode="visueel" onclick="setPidView('visueel')" title="Slim visueel"><i>🎯</i>Visueel</button>
-        </div>
         <!-- Vaste/code-PIDs (brandstoftype, OBD-norm, …) in gewone woorden.
              Een sparkline of 32px-cijfer is zonde van de ruimte bij een waarde
              die niet beweegt of die eigenlijk een code is. Gevuld door
@@ -1129,11 +1134,12 @@ function closeConnOv(){
              waakronde) is vakgereedschap.
              30-09-2026: onder de meter en de tegels, op verzoek uit het
              gebruik. Bovenaan drukte de regel de meter van Slim visueel naar
-             beneden, en je kijkt vaker dan je opneemt of deelt. -->
+             beneden, en je kijkt vaker dan je opneemt of deelt.
+             15-10-2026: Deel live en Meekijken eruit, op verzoek uit het
+             gebruik. Ze staan al als deur 5 op Mijn auto (#wc-liveshare,
+             #wc-liveexpert). -->
         <div class="pl-live-acties" id="plLiveActies">
           <button type="button" id="plLiveRec" onclick="openPidRecorder()">⏺ Opnemen</button>
-          <button type="button" id="plLiveDeel" onclick="try{PLRemote.openShare()}catch(e){console.warn('Delen opent niet:',e)}">📡 Deel live</button>
-          <button type="button" id="plLiveMee" onclick="try{PLRemote.openExpert()}catch(e){console.warn('Meekijken opent niet:',e)}">🔭 Meekijken</button>
           <button type="button" id="plLiveWaak" class="alleen-garage" onclick="openWaakvenster()">◉ Bewaken</button>
         </div>
         <!-- (Correlatie-weergave verwijderd op verzoek; de correlatie-ENGINE voor AI-bevindingen blijft bestaan) -->

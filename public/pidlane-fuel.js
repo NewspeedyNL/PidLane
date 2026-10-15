@@ -275,7 +275,7 @@ const FEATURE_TOGGLES = {
   feat_ev:           ['#wc-ev'],
   feat_live_spec:    ['#wc-live'],
   feat_grafiek:      ['#tabGraph'],
-  feat_pid_keuze:    ['.tabs .tab-action'],   // was '#bnPids' (onderbalk verwijderd)
+  feat_pid_keuze:    ['#tbSensoren'],   // was '.tabs .tab-action' (tabbalk weg, 15-10-2026)
   feat_dossier:      ['#vtagPct','#vehOverview'],
   feat_situatie:     ['#situatieBtn','#sitBlok','#vtagSit','#situatieSheet'],
   feat_pdf:          ['button[onclick^="exportAIReportPDF"]','#pdfReadyModal'],

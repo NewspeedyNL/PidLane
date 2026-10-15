@@ -361,7 +361,7 @@ function beoordeel(m) {
         try{ localStorage.removeItem(PLVisProfiel.SLEUTEL); }catch(e){}
         setPidView('slim'); setPidView('visueel');
         await new Promise(function(r){ setTimeout(r, 50); });
-        const r={ naam:(document.querySelector('.vis-profiel-naam b')||{}).textContent,
+        const r={ naam:PLVisProfiel.voor(PLVisueel.profiel(), 'hybride').naam,
                   toestand:!!document.getElementById('vpf-w-toestand'), ring:!!document.getElementById('vpf-f-energie'),
                   toerenGetal:!!document.getElementById('vpf-w-toeren') };
         PLVisueel.bij('0149', 0); PLVisueel.bij('0149', 60);

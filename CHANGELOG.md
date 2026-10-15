@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Live opnieuw ingedeeld, vegen in Visueel, alarmvraag weg
+ ═══════════════════════════════════════════════════════════
+ Uit het gebruik, vijf schermafdrukken. De tabbalk boven het midden is
+ weg: Live stond al in de onderbalk, Grafiek is een vierde vak in de
+ weergaverij (Overzicht · Slim · Visueel · Grafiek) en die rij staat nu
+ boven het paneel, en Sensoren staat rechts in de topbalk; de statuschip
+ schuift naar links. In Visueel is de strook met stipjes en "Volgende"
+ weg: vegen over de meter wisselt (links = volgende, rechts = vorige),
+ de naam komt kort als melding. "Overige sensoren staan in Slim" is weg,
+ en Deel live en Meekijken staan niet meer onder de meters — ze zitten
+ op Mijn auto bij Rit starten. De herinneringen plannen niet meer exact
+ (isExactNotification:false): de plugin opende anders bij elke start
+ "Alarmen en herinneringen" met een grijze schakelaar, want die
+ machtiging halen we bewust uit het manifest.
+
+ ═══════════════════════════════════════════════════════════
  14-10-2026 — Contact uit: meetopdracht telt alleen de stilte (#487)
  ═══════════════════════════════════════════════════════════
  De rit van 14-10 gaf BEVINDING op verbind-weigeringen = 27 en

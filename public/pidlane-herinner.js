@@ -20,6 +20,10 @@
      haalt die er met tools:node="remove" weer uit. Play staat hem alleen toe
      voor wekker- en agenda-apps, en een APK-melding die om 09:07 komt in
      plaats van 09:00 is geen verlies.
+     isExactNotification:false hoort daar bij (15-10-2026). De plugin staat
+     standaard op exact, en opent dan bij elke schedule() het Android-scherm
+     "Alarmen en herinneringen" — met een grijze schakelaar, want de
+     machtiging staat niet in het manifest. Dat kwam bij elke start terug.
    • Niet in de demo. De zandbak houdt localStorage en het net binnen, maar
      een ingeplande Android-melding staat daarbuiten. Daarom weigert deze
      module zelf in de demo, en haalt hij bij het stoppen niets weg dat hij
@@ -214,7 +218,7 @@
         var perm = await LN.checkPermissions();
         if (perm && perm.display === 'granted') {
           await LN.schedule({ notifications: p.map(function (x) {
-            return { id: x.id, title: x.titel, body: x.tekst, schedule: { at: new Date(x.at), allowWhileIdle: true }, extra: { sleutel: x.sleutel } };
+            return { id: x.id, title: x.titel, body: x.tekst, schedule: { at: new Date(x.at), allowWhileIdle: true }, isExactNotification: false, extra: { sleutel: x.sleutel } };
           }) });
           nieuw = p.map(function (x) { return x.id; });
         } else {
@@ -316,7 +320,7 @@
         var perm = await LN.checkPermissions();
         if (perm && perm.display === 'granted') {
           await LN.schedule({ notifications: [{ id: meldId('recall:' + k.kent + ':' + nieuw.map(function (a) { return a.referentiecode; }).join(','), 0),
-            title: t.titel, body: t.tekst, schedule: { at: new Date(Date.now() + 3000), allowWhileIdle: true }, extra: { sleutel: 'recall:' + k.kent } }] });
+            title: t.titel, body: t.tekst, schedule: { at: new Date(Date.now() + 3000), allowWhileIdle: true }, isExactNotification: false, extra: { sleutel: 'recall:' + k.kent } }] });
           return;
         }
       } catch (e) { console.warn('PLHerinner: terugroepmelding niet ingepland — melding in de app', e); }

@@ -106,6 +106,8 @@ const NU = new Date(2026, 8, 29, 12, 0, 0).getTime();   // 29-09-2026 12:00 loka
     toets('uit (de standaard): er wordt niets ingepland', np.log.gepland.length === 0);
     await ctx.PLHerinner.zet(true);
     toets('aan: drie herinneringen bij Android, met een datum', np.log.gepland.length === 3 && np.log.gepland.every((x) => x.schedule && x.schedule.at instanceof Date || (x.schedule && typeof x.schedule.at === 'object')), JSON.stringify(np.log.gepland.map((x) => x.id)));
+    toets('niet exact: anders opent Android bij elke start "Alarmen en herinneringen" met een grijze schakelaar',
+      np.log.gepland.length > 0 && np.log.gepland.every((x) => x.isExactNotification === false), JSON.stringify(np.log.gepland.map((x) => x.isExactNotification)));
     toets('de ids staan bewaard, om later weg te halen', JSON.parse(opslag.pl_herinner_ids).length === 3);
     await ctx.PLHerinner.zet(false);
     toets('uit: de ingeplande worden weer weggehaald', np.log.weg.length === 3 && JSON.parse(opslag.pl_herinner_ids).length === 0);
@@ -169,6 +171,7 @@ const NU = new Date(2026, 8, 29, 12, 0, 0).getTime();   // 29-09-2026 12:00 loka
     antwoord = { merk: 'MAZDA', acties: [{ referentiecode: 'R1', open: true }, { referentiecode: 'R2', open: true, omschrijving: 'Remleiding' }] };
     r = await ctx.PLHerinner.recallRonde(true);
     toets('een nieuwe actie: één melding bij Android', r.gemeld === 1 && np.log.gepland.length === 1 && /Remleiding/.test(np.log.gepland[0].body), JSON.stringify(np.log.gepland));
+    toets('de terugroepmelding is ook niet exact', np.log.gepland.length === 1 && np.log.gepland[0].isExactNotification === false);
     antwoord = { merk: null, acties: [] };
     opslag.pl_recall_dag = JSON.stringify('2000-01-01');
     r = await ctx.PLHerinner.recallRonde(false);

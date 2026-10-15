@@ -157,6 +157,8 @@
     document.body.classList.toggle('pl-garage', garage());
     var nav = el('plNav'); if (!nav) return;
     var tab = welkeTab(st);
+    // Sensoren kiezen staat in de topbalk en hoort alleen bij Live (15-10-2026).
+    document.body.classList.toggle('pl-op-live', aan && tab === 'live');
     nav.querySelectorAll('.pl-nav-tab').forEach(function (b) {
       var op = b.getAttribute('data-tab') === tab;
       b.classList.toggle('aan', op);
