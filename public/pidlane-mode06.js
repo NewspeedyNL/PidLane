@@ -239,18 +239,24 @@
     if (!_paneel.open) return;
     let v = document.getElementById('plM06Paneel');
     if (!v) {
+      // Een venster over alles heen (--z-modal-hoog: ook boven Check mijn
+      // auto), met de veilige rand onderaan — los onderin op z-index 9000
+      // viel hij onder de topbalk en de onderbalk (15-10-2026).
       v = document.createElement('div');
       v.id = 'plM06Paneel';
-      v.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:9000;max-height:80vh;overflow:auto;' +
-        'background:var(--sur);color:var(--tx);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;' +
-        'box-shadow:0 8px 30px rgba(0,0,0,.35);font:500 13px/1.45 var(--f)';
+      v.style.cssText = 'position:fixed;inset:0;z-index:var(--z-modal-hoog,9800);background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;' +
+        'padding:calc(12px + var(--pl-sat,0px)) 12px calc(12px + var(--pl-sab,0px))';
+      v.innerHTML = '<div id="plM06Doos" style="width:100%;max-width:640px;max-height:100%;overflow:auto;background:var(--sur);color:var(--tx);' +
+        'border:1px solid var(--bd);border-radius:12px;padding:12px 14px;box-shadow:0 8px 30px rgba(0,0,0,.35);font:500 13px/1.45 var(--f)"></div>';
       v.addEventListener('click', e => {
+        if (e.target === v) return PLM06.sluit();
         const a = e.target && e.target.getAttribute && e.target.getAttribute('data-m06');
         if (a === 'scan') PLM06.open();
         else if (a === 'sluit') PLM06.sluit();
       });
       document.body.appendChild(v);
     }
+    const doos = document.getElementById('plM06Doos');
     const knop = 'flex:1;padding:10px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font:700 13px var(--f)';
     const esc = x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');
     let h = '<div style="font-weight:800;font-size:15px;margin-bottom:6px">🔬 Mode 06 — monitortests</div>';
@@ -260,7 +266,7 @@
     h += '<div style="display:flex;gap:8px;margin-top:10px">' +
       '<button type="button" data-m06="scan" style="' + knop + '"' + (_paneel.bezig ? ' disabled' : '') + '>Opnieuw lezen</button>' +
       '<button type="button" data-m06="sluit" style="' + knop + '">Sluiten</button></div>';
-    v.innerHTML = h;
+    doos.innerHTML = h;
   }
 
   const PLM06 = {

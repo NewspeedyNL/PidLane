@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Mode 06- en stuurapparatenpaneel liggen bovenop
+ ═══════════════════════════════════════════════════════════
+ Uit de eerste rit: het mode 06-paneel (z-index 9000) lag onder de
+ topbalk en de onderbalk, en Sluiten van het stuurapparatenpaneel viel
+ achter de systeembalk. Beide zijn nu een venster over alles heen
+ (--z-modal-hoog, veilige randen), tik naast het venster sluit.
+ Daarnaast telt UDS alleen nog foutbits: een Mazda CX-5 gaf elf
+ codes met alleen "test niet gedraaid" — geen fouten.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — UDS 0x19: foutcodes van alle stuurapparaten
  ═══════════════════════════════════════════════════════════
  Mode 03 vraagt functioneel, en daar antwoorden alleen motor en bak.
