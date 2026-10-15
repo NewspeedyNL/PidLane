@@ -252,7 +252,6 @@ function zorgPids(){
   const nodig=pidsVan(_ind.kop)
     .filter(function(p){ return !(typeof activePIDs!=='undefined' && activePIDs.has(p)); });
   if(!nodig.length || typeof pidToevoegen!=='function') return;
-  console.warn("RONDZORG", nodig.join(), new Error().stack.split(String.fromCharCode(10)).slice(1,6).join(" | "));
   try{ pidToevoegen(nodig, { handmatig:false }); }catch(e){ console.warn('PLRond: sensoren aanzetten mislukt', e); }
 }
 function draait(){
