@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Slim als rondgang langs de categorieën
+ ═══════════════════════════════════════════════════════════
+ Slim opent nu als rondgang (pidlane-rondgang.js, PLRond): elke 10 s
+ een andere categorie — motor, temperaturen, brandstof en trims, lucht
+ en turbo, uitlaat, elektrisch — met snelheid en toerental vast boven-
+ aan. ‹ › en vegen, ⏸/▶, ⚙ voor wisseltijd (5–30 s) en vinkjes per
+ categorie, ook via Mijn voorkeuren → Rondgang in Slim. Een rode waarde
+ haalt zijn categorie in beeld en houdt die vast. De sensoren van de
+ andere dia's gaan op de bus naar 4 s (PLRond.remt in pidPollInterval).
+ Mijn dashboard blijft één tik weg. Pauze wordt niet onthouden.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Tabblad Kenteken in Mijn voertuigen, Admin-menu korter
  ═══════════════════════════════════════════════════════════
  De kenteken-check van "Niet in de auto?" (APK, verzekering, terugroep-

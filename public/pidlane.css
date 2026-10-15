@@ -1245,6 +1245,28 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .dash-keus button { padding:11px 4px; border-radius:12px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); font-family:var(--f); font-size:12px; font-weight:700; cursor:pointer; }
 .dash-keus button.aan { border-color:var(--bl); background:var(--bls); color:var(--tx); }
 .dash-keus button.hoofd { background:var(--blv); border-color:var(--blv); color:#fff; }
+/* ══ RONDGANG in Slim (pidlane-rondgang.js, 15-10-2026) — de kop en één
+   categorie tegelijk; voortgangsbalk, puntjes en een rustige overgang. */
+.dt-kop { min-height:0; padding:8px 12px; }
+.dt-kop h4 { margin-bottom:2px; }
+.dt-kop .dt-w.groot b { font-size:28px; }
+.rond-kop { display:flex; align-items:center; gap:6px; margin:0 0 6px; }
+.rond-kop h3 { flex:1; min-width:0; margin:0; font-size:15px; font-weight:800; color:var(--tx); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; }
+.rond-kop h3 small { margin-left:6px; font-size:11px; font-weight:600; color:var(--tx3); }
+.rond-k { flex:none; width:36px; height:36px; padding:0; border-radius:10px; border:1px solid var(--bd); background:var(--sur); color:var(--tx); font-size:15px; cursor:pointer; }
+.rond-k.aan { background:var(--blv); border-color:var(--blv); color:#fff; }
+.rond-voort { height:3px; border-radius:2px; background:var(--sur2); overflow:hidden; margin:0 0 6px; }
+.rond-voort i { display:block; height:100%; width:0; background:var(--bl); transition:width .25s linear; }
+.rond-voort.stil i { background:var(--tx3); }
+.rond-voort.alarm i { background:var(--rd); }
+.rond-alarm { margin:0 0 8px; padding:8px 10px; border-radius:10px; border:1px solid var(--rd); color:var(--rd); font-size:12px; font-weight:700; }
+.rond-punten { display:flex; justify-content:center; gap:6px; margin:0 0 10px; }
+.rond-punten b { width:6px; height:6px; border-radius:3px; background:var(--bd); transition:width .2s; }
+.rond-punten b.aan { width:16px; background:var(--bl); }
+.dash.rond-in { animation:rondIn .3s ease-out; }
+@keyframes rondIn { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:none; } }
+.rond-tijd { grid-template-columns:repeat(5,1fr); }
+@media (prefers-reduced-motion:reduce){ .dash.rond-in { animation:none; } .rond-voort i, .rond-punten b { transition:none; } }
 .dash-tweede { width:100%; padding:10px; border-radius:10px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx); font-family:var(--f); font-size:13px; }
 .dash-groep { margin:12px 2px 6px; font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--tx3); }
 .dash-regel { display:flex; justify-content:space-between; width:100%; padding:11px 12px; margin-bottom:6px; border-radius:10px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx); font-family:var(--f); font-size:14px; text-align:left; cursor:pointer; }

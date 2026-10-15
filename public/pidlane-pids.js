@@ -873,7 +873,7 @@ const OVZ_KORT = { '010D':'Snelheid', '010C':'Toerental', '0104':'Belasting', '0
   '0146':'Buiten', '012F':'Brandstofpeil', '015E':'Verbruik', '0106':'Trim kort B1', '0107':'Trim lang B1',
   '0108':'Trim kort B2', '0109':'Trim lang B2', '0124':'Lambda B1S1', '0134':'Lambda B1S1', '0114':'O₂ B1S1',
   '0115':'O₂ B1S2', '0142':'Accu 12V', '015B':'Aandrijfaccu', '0133':'Luchtdruk', '011F':'Looptijd',
-  'CA02':'Brandstofdebiet', 'CA03':'Verbruik nu', 'CA04':'Laaddruk' };
+  'CA02':'Brandstofdebiet', 'CA03':'Verbruik nu', 'CA04':'Laaddruk', '010E':'Ontsteking', '012C':'EGR-klep' };
 function ovzNaam(pid, d){ return OVZ_KORT[pid] || (d && d.name) || pid; }
 const OVZ_DICHT_SLEUTEL='pl_ovz_dicht';
 function ovzDichtLees(){

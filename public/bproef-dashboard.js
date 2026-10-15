@@ -44,11 +44,14 @@ function toets(naam, waar, uitleg) {
     console.log('\n1. Slim is het dashboard');
     const een = await app.ev(`(async function(){
       stopPoll();
+      // Slim opent sinds 15-10-2026 als rondgang (pidlane-rondgang.js); deze
+      // proef gaat over Mijn dashboard.
+      PLRond.modus('dash');
       setPidView('overzicht'); setPidView('slim'); await new Promise(function(r){ setTimeout(r, 300); });
       localStorage.removeItem(PLDash.sleutelNu());
       setPidView('overzicht'); setPidView('slim'); await new Promise(function(r){ setTimeout(r, 500); });
       return { tegels:document.querySelectorAll('#gGrid .dt').length, oud:document.querySelectorAll('#gGrid .slim-sec, #gGrid .gc').length,
-               knop:(document.querySelector('#gGrid .dash-knop')||{}).textContent, bewerkKnoppen:document.querySelectorAll('#gGrid .dt-knop').length,
+               knop:([].filter.call(document.querySelectorAll('#gGrid .dash-knop'), function(b){ return b.textContent==='Aanpassen'; })[0]||{}).textContent, bewerkKnoppen:document.querySelectorAll('#gGrid .dt-knop').length,
                breed:document.documentElement.scrollWidth, venster:window.innerWidth };
     })()`);
     toets('de standaard staat er', een.tegels >= 4, JSON.stringify(een));

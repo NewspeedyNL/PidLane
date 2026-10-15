@@ -444,6 +444,9 @@ function pidPollInterval(pid){
   // worden nog gemeten; terug naar een andere weergave en dit vervalt.
   try{ if(window.PLVisueel && PLVisueel.remt(pid)) ms=Math.max(ms, PLVisueel.REM_MS); }
   catch(e){ console.warn('PLVisueel.remt mislukt:', e); }
+  // De rondgang in Slim: de sensoren van de andere categorieën trager.
+  try{ if(window.PLRond && PLRond.remt(pid)) ms=Math.max(ms, PLRond.REM_MS); }
+  catch(e){ console.warn('PLRond.remt mislukt:', e); }
   return ms;
 }
 // Welke PIDs zijn NU "due" om te pollen?
