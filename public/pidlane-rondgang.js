@@ -29,7 +29,8 @@
 // ongedaan (bproef-garage.js zag het, 15-10-2026).
 //
 // DE BUS. Een ELM kan niet alles tegelijk snel vragen. remt() — gelezen in
-// pidPollInterval() — zet de sensoren van de andere dia's op REM_MS; de
+// pidPollInterval() — zet de SNELLE sensoren van de andere dia's op REM_MS
+// (dezelfde regel als Visueel); de
 // huidige dia, de kop en vlak vóór de wissel (VOOR_MS) de volgende dia
 // houden hun eigen tempo, zodat een nieuwe dia niet met "—" begint.
 //
@@ -44,7 +45,8 @@ const KEUZES_MS = [5000, 10000, 15000, 20000, 30000];
 const STANDAARD_MS = 10000;
 const HOLD_MS = 30000;   // na vegen of ‹ › blijft de dia zo lang staan
 const VOOR_MS = 2500;    // zo lang vóór de wissel wordt de volgende dia al snel gevraagd
-const REM_MS = 4000;     // tempo voor de sensoren van de andere dia's
+const REM_MS = 2000;     // tempo voor de snelle sensoren van de andere dia's
+const SNEL_MS = 300;     // wat "snel" is in PID_POLL_CLASS — dezelfde grens als Visueel
 const MAX_PER_DIA = 8;
 const TIK_MS = 250;
 
@@ -318,6 +320,12 @@ function na(){
 // ── Remmen op de bus — gelezen in pidPollInterval() ──
 function remt(pid){
   if(!pid || !draait() || !inBeeld()) return false;
+  // Alleen snelle PIDs, net als Visueel: een trage sensor staat al ver
+  // boven REM_MS, en alles remmen houdt de groepsregelaar in de pollus te
+  // weinig verzoeken over om een kloon te herkennen (bproef-groepsproef.js).
+  if(!/^01/i.test(String(pid))) return false;
+  const klasse=(window.PID_POLL_CLASS||{})[String(pid).slice(2).toUpperCase()];
+  if(!(typeof klasse==='number' && klasse<=SNEL_MS)) return false;
   if(pidsVan(_ind.kop).indexOf(pid)>-1) return false;
   const n=_ind.dias.length; if(n<2) return false;
   const iDia=_ind.dias.findIndex(function(d){ return pidsVan(d.tegels).indexOf(pid)>-1; });
