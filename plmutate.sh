@@ -1453,7 +1453,8 @@ MUTATIES=(
 "public/pidlane-bt.js@@  if(/^CA[0-9A-F]{2}1?$/i.test(String(cmd||'').trim())){@@  if(false){@@bproef-berekend.js@@sendCmd laat een berekende PID door naar de adapter"
 "public/pidlane-berekend.js@@    if (isDiesel && set.indexOf('0110')>=0) continue;@@@@test-berekend.js@@een dieselverbruik uit de luchtmassa (een diesel loopt arm)"
 "public/pidlane-berekend.js@@      if (l===null || typeof kmh!=='number' || kmh<5) return null;@@      if (l===null || typeof kmh!=='number' || kmh<=0) return null;@@test-berekend.js@@liters per 100 km bij stapvoets rijden: delen door bijna nul"
-"public/pidlane-berekend.js@@  return (nu-(x.t||0))<=max ? { v:x.v, t:x.t||0 } : undefined;@@  return { v:x.v, t:x.t||0 };@@bproef-berekend.js@@een berekende PID rekent door op bronwaarden van tien seconden oud"
+# 16-10-2026: de bronnen van een berekening komen uit uitgelijnd(), dus daar zit de versheidspoort.
+"public/pidlane-berekend.js@@    if (x && typeof x.v==='number' && isFinite(x.v) && nu-(x.t||0)<=max) uit[p]=@@    if (x && typeof x.v==='number' && isFinite(x.v)) uit[p]=@@bproef-berekend.js@@een berekende PID rekent door op bronwaarden van tien seconden oud"
 "public/pidlane-visueel.js@@  if(p.length<5 || p[p.length-1].t-p[0].t<20000) return null;@@  if(p.length<2) return null;@@test-visueel.js@@de koelwatertrend spreekt zich uit op vier metingen"
 "public/pidlane-visueel.js@@  return TREK.filter(function(t){ return !t.turbo || turbo; }).map(function(t){@@  return TREK.map(function(t){@@test-visueel.js@@de laaddruk staat in de trekstrook van een auto zonder turbo"
 "public/pidlane-garage.js@@    if (!/^PidLane — Waakronde/.test(regels[0] || '')) return null;@@@@test-garage.js@@elk rapport wordt als waakrapport gelezen"
