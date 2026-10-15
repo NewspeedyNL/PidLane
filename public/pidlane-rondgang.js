@@ -370,7 +370,7 @@ function instellingen(){
 
 const api = {
   // de pure kern — voor test-rondgang.js
-  DIAS:DIAS, KOP:KOP, KEUZES_MS:KEUZES_MS, STANDAARD_MS:STANDAARD_MS, HOLD_MS:HOLD_MS, VOOR_MS:VOOR_MS, REM_MS:REM_MS, MAX_PER_DIA:MAX_PER_DIA,
+  DIAS:DIAS, KOP:KOP, KEUZES_MS:KEUZES_MS, STANDAARD_MS:STANDAARD_MS, HOLD_MS:HOLD_MS, VOOR_MS:VOOR_MS, REM_MS:REM_MS, SNEL_MS:SNEL_MS, MAX_PER_DIA:MAX_PER_DIA,
   indeling:indeling, tik:tik, stapPuur:stap, voortgang:voortgang, alarmDia:alarmDia, schoonMs:schoonMs, schoonUit:schoonUit,
   // het scherm
   aan:aan, tegels:tegels, nogUit:nogUit,

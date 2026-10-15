@@ -117,7 +117,8 @@ const wacht = (ms) => `await new Promise(function(r){ setTimeout(r, ${ms}); });`
       // Alleen snelle sensoren worden geremd: zoek een dia met een snelle
       // sensor erop en zet die in beeld, anders zegt "niet geremd" niets.
       const echt=PLRond.remt, kaalMs=function(p){ PLRond.remt=function(){ return false; }; try{ return pidPollInterval(p); } finally{ PLRond.remt=echt; } };
-      const snelIn=function(d){ return d.pids.filter(function(p){ return kaalMs(p)<PLRond.REM_MS; })[0]; };
+      const klasse=function(p){ return (window.PID_POLL_CLASS||{})[p.slice(2).toUpperCase()]; };
+      const snelIn=function(d){ return d.pids.filter(function(p){ return /^01/.test(p) && klasse(p)<=PLRond.SNEL_MS; })[0]; };
       let st=PLRond.staat(), n=st.dias.length;
       for(let k=0;k<n && !snelIn(st.dias[st.i]);k++){ PLRond.stap(1); st=PLRond.staat(); }
       const nu=snelIn(st.dias[st.i]);
