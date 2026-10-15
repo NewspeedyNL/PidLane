@@ -587,7 +587,7 @@ function openLiveView(){
   // 3) Welkomstscherm en lades weg, en het midden ECHT naar de Live-tab
   var w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
   try{ closeLades(); }catch(e){ console.warn('closeLades mislukt:', e); }
-  try{ sw('live', document.querySelector('.tabs .tab')); }catch(e){ console.warn('sw mislukt:', e); }
+  try{ sw('live', null); }catch(e){ console.warn('sw mislukt:', e); }
 }
 window.openLiveView=openLiveView;
 function reportNav(){

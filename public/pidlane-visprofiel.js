@@ -168,6 +168,11 @@ function volgende(id){
   const i=PROFIELEN.findIndex(function(p){ return p.id===id; });
   return PROFIELEN[(i<0 ? 1 : i+1) % PROFIELEN.length].id;
 }
+/* Het profiel vóór `id`, rond (vegen naar rechts, 15-10-2026). Onbekend = de basis. */
+function vorige(id){
+  const i=PROFIELEN.findIndex(function(p){ return p.id===id; });
+  return PROFIELEN[i<0 ? 0 : (i-1+PROFIELEN.length) % PROFIELEN.length].id;
+}
 // De drie losse telemetrieschermen van vóór 06-10-2026: wie er een gekozen
 // had, komt op het samengevoegde scherm uit en niet terug op Basis.
 const OUD_PROFIEL = { 'tel-horizon':'telemetrie', 'tel-offroad':'telemetrie', 'tel-g':'telemetrie' };
@@ -456,7 +461,7 @@ function html(id, ind){
                : p.stijl==='digitaal' ? htmlDigitaal(p, ind) : p.stijl==='telemetrie' ? htmlTelemetrie(p, ind) : htmlNeon(p, ind);
   const geen=p.plekken.every(function(x){ return !ind.plekken[x.rol]; });
   return '<div class="vpf vpf-'+p.stijl+'" data-profiel="'+p.id+'">'+binnen+
-    (geen ? '<p class="vpf-geen">Deze auto geeft geen van de sensoren voor '+esc(p.naam.toLowerCase())+'. Tik op <b>Volgende</b> voor een andere weergave.</p>' : '')+'</div>';
+    (geen ? '<p class="vpf-geen">Deze auto geeft geen van de sensoren voor '+esc(p.naam.toLowerCase())+'. Veeg opzij voor een andere weergave.</p>' : '')+'</div>';
 }
 
 // ── EEN WAARDE OP ZIJN PLEK ───────────────────────────────────────
@@ -613,7 +618,7 @@ function pids(ind){
 
 window.PLVisProfiel = {
   PROFIELEN:PROFIELEN, SEG:SEG, SLEUTEL:SLEUTEL,
-  zoek:zoek, voor:voor, geldig:geldig, plekkenVan:plekkenVan, volgende:volgende, lees:lees, bewaar:bewaar,
+  zoek:zoek, voor:voor, geldig:geldig, plekkenVan:plekkenVan, volgende:volgende, vorige:vorige, lees:lees, bewaar:bewaar,
   standaard:standaard, energie:energie, toestandTekst:toestandTekst, tegelTekst:tegelTekst,
   indeling:indeling, ketens:ketens, deel:deel, tekst:tekst, html:html, bij:bij, dof:dof, pids:pids,
   KEUZE_SLEUTEL:KEUZE_SLEUTEL, keuzes:keuzes, zetKeuze:zetKeuze, ketenVan:ketenVan, voorInd:voorInd, nulstellen:nulstellen,

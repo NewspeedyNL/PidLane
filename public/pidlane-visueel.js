@@ -701,8 +701,8 @@ const _staat = { aan:false, start:0, traag:new Set(), turboVast:false, handteken
 // ── DE VIJF WEERGAVEN (02-10-2026) ────────────────────────────────
 // Basis is de meter hieronder; temperatuur, emissie, verbruik en motor zijn
 // eigen tekeningen uit pidlane-visprofiel.js. Het kader (lampjes, meldingen,
-// trekstrook) blijft bij elk profiel hetzelfde. De knop "Volgende" boven het
-// vak wisselt rond; de keuze wordt per toestel onthouden.
+// trekstrook) blijft bij elk profiel hetzelfde. Vegen over het vak wisselt
+// rond (veegRichting hieronder); de keuze wordt per toestel onthouden.
 function PF(){ return window.PLVisProfiel || null; }
 function profielNu(){ return (PF() && _staat.profiel && PF().geldig(_staat.profiel)) ? _staat.profiel : 'basis'; }
 function profielKetens(){
@@ -814,21 +814,42 @@ function toonKeuze(pr, rol, titel, uitleg, nu, lijst, afval){
   });
   ov.style.display='flex';
 }
-function profielKnop(){
-  const P=PF(); if(!P) return '';
-  // voor() en niet zoek(): een hybride ziet "Energie" waar een benzine "Motor" ziet (#435).
-  const m=leesMotor(), nu=profielNu(), z=P.voor(nu, m), vlg=P.voor(P.volgende(nu), m);
-  return '<div class="vis-profiel" role="group" aria-label="Weergave">'+
-    '<span class="vis-profiel-stip" aria-hidden="true">'+P.PROFIELEN.map(function(x){ return '<i'+(x.id===nu?' class="aan"':'')+'></i>'; }).join('')+'</span>'+
-    '<span class="vis-profiel-naam"><b>'+esc(z.naam)+'</b><small>'+esc(z.ondertitel)+'</small></span>'+
-    '<button type="button" class="vis-profiel-volgende" onclick="PLVisueel.volgende()" title="Volgende weergave: '+esc(vlg.naam)+'">Volgende <span aria-hidden="true">›</span></button></div>';
+/* Vegen wisselt de weergave (15-10-2026): de keuzestrook met stipjes en
+   "Volgende" is weg, op verzoek uit het gebruik. veegRichting() is los zodat
+   test-visveeg.js hem kan toetsen: alleen een duidelijk horizontale beweging
+   telt, anders zou elke scroll die een beetje schuin gaat de weergave wisselen.
+   Naar links vegen = volgende (+1), naar rechts = vorige (-1), anders 0. */
+const VEEG_MIN=50;
+function veegRichting(dx, dy){
+  if(!isFinite(dx) || !isFinite(dy)) return 0;
+  if(Math.abs(dx)<VEEG_MIN || Math.abs(dx)<1.5*Math.abs(dy)) return 0;
+  return dx<0 ? 1 : -1;
 }
-function volgende(){
+function veegAan(vis){
+  if(!vis) return;
+  let x0=null, y0=0;
+  vis.addEventListener('touchstart', function(e){
+    const t=e.touches && e.touches[0];
+    x0=(t && e.touches.length===1) ? t.clientX : null; y0=t ? t.clientY : 0;
+  }, { passive:true });
+  vis.addEventListener('touchend', function(e){
+    if(x0===null) return;
+    const t=e.changedTouches && e.changedTouches[0]; const begin=x0; x0=null;
+    if(!t) return;
+    const r=veegRichting(t.clientX-begin, t.clientY-y0);
+    if(r) wissel(r);
+  }, { passive:true });
+}
+function volgende(){ wissel(1); }
+function wissel(stap){
   const P=PF(); if(!P) return;
-  _staat.profiel=P.volgende(profielNu());
+  _staat.profiel=stap<0 ? P.vorige(profielNu()) : P.volgende(profielNu());
   P.bewaar(_staat.profiel);
   const g=el('gGrid');
   if(g && typeof pidViewMode!=='undefined' && pidViewMode==='visueel') bouw(g, 'profiel');
+  // Zonder strook zegt niets meer welke weergave er nu staat: kort melden.
+  try{ if(typeof showToast==='function') showToast(P.voor(_staat.profiel, leesMotor()).naam, 1200); }
+  catch(e){ console.warn('PLVisueel: weergavenaam niet gemeld', e); }
 }
 
 function bruikbaar(pid){
@@ -1322,7 +1343,7 @@ function el(id){ return document.getElementById(id); }
      selectie  de sensorkeuze veranderde (een mens of de testrun koos)
      testrun   de testrun liep, met dezelfde keuze
      indeling  de tik zag een andere indeling (traag pedaal, turbo, trekmodus)
-     profiel   de klant tikte op "Volgende" (een andere weergave, 02-10-2026)
+     profiel   de klant veegde naar een andere weergave (tot 15-10-2026: tikte op "Volgende") (02-10-2026)
      keuze     de klant koos zelf een sensor voor een plek (06-10-2026)
      scherm    niets van dat alles: een hertekening die niemand vroeg
    Alleen de laatste twee ziet een klant zonder dat hij er zelf om vroeg. */
@@ -1352,7 +1373,7 @@ function bouw(g, reden){
   _staat.ind=ind; _staat.handtekening=handtekening(ind); _staat.gebruik=gebruiktePids(ind); _staat.meldSleutel=''; _staat.lampSleutel='';
   if(ind.profiel){
     // Een profiel: hetzelfde kader, een andere tekening in het vak.
-    g.innerHTML='<div class="vis">'+profielKnop()+
+    g.innerHTML='<div class="vis">'+
       '<div class="vis-bak">'+
         '<div class="vis-lampen"><span class="vis-lamp leeg" id="vis-lamp-motor"></span>'+
           '<span class="vis-lamp leeg" id="vis-lamp-accu"></span></div>'+
@@ -1360,9 +1381,10 @@ function bouw(g, reden){
       '</div>'+
       (ind.trek ? '<div class="vis-trek" id="visTrek" aria-label="Trekmodus: caravan of beladen"></div>' : '')+
       '<div class="vis-meldingen" id="visMeld"></div>'+
-      '<button class="vis-voet" type="button" onclick="setPidView(\'slim\')">Overige sensoren staan in <b>Slim →</b></button></div>';
+      '</div>';
     _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
     meldBij(); lampjesBij(); trekBij();
+    veegAan(g.querySelector('.vis'));
     // Tik op een plek: zelf een sensor kiezen (06-10-2026). Eén luisteraar op
     // het vak; de plekken dragen hun rol in hun id (vpf-p-<rol>).
     const vak=g.querySelector('.vpf');
@@ -1377,7 +1399,7 @@ function bouw(g, reden){
   // terwijl de regel bovenaan dit bestand zegt dat een ontbrekende PID een
   // lege plek is en niets anders. Een auto zonder 010C en zonder pedaal
   // krijgt een naald in rust; snelheid, rijen en lampjes werken gewoon.
-  g.innerHTML='<div class="vis">'+profielKnop()+
+  g.innerHTML='<div class="vis">'+
     '<div class="vis-bak">'+
       '<div class="vis-lampen"><span class="vis-lamp leeg" id="vis-lamp-motor"></span>'+
         '<span class="vis-lamp leeg" id="vis-lamp-accu"></span></div>'+
@@ -1394,9 +1416,10 @@ function bouw(g, reden){
     '</div>'+
     (ind.trek ? '<div class="vis-trek" id="visTrek" aria-label="Trekmodus: caravan of beladen"></div>' : '')+
     '<div class="vis-meldingen" id="visMeld"></div>'+
-    '<button class="vis-voet" type="button" onclick="setPidView(\'slim\')">Overige sensoren staan in <b>Slim →</b></button></div>';
+    '</div>';
   // De plekken: icoon of kort woord, eenheid en titel. Zonder PID blijft
   // het een leeg spoor met een streepje; het vak toont dan de rit.
+  veegAan(g.querySelector('.vis'));
   PLEKKEN.forEach(function(r){ plekOpbouw(r, ind.plekken[r.rol]); });
   // Tikken op een plek: zelf kiezen wat er staat. Eén luisteraar op het vak.
   const bak=g.querySelector('.vis-bak');
@@ -1848,7 +1871,7 @@ window.PLVisueel = {
   sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, herbouwKlant:herbouwKlant, maat:maat,
   rijVenster:rijVenster, VENSTER_MS:VIS_VENSTER_MS, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
   remt:remt, isOud:isOud, bouw:bouw, bij:bij, tik:tik, start:start, stop:stop,
-  volgende:volgende, profiel:profielNu, kiesPlek:kiesPlek, kandidaten:kandidaten, profielOpts:profielOpts,
+  volgende:volgende, wissel:wissel, veegRichting:veegRichting, profiel:profielNu, kiesPlek:kiesPlek, kandidaten:kandidaten, profielOpts:profielOpts,
   ververs:function(){ if(!_staat.aan) return; _staat.meldSleutel=''; meldBij(); },
   staat:function(){ return { aan:_staat.aan, start:_staat.start, traag:Array.from(_staat.traag),
                              turboVast:_staat.turboVast, gebruik:Array.from(_staat.gebruik), ind:_staat.ind, rijdtSinds:_staat.rijdtSinds }; }

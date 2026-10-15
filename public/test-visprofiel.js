@@ -56,6 +56,12 @@ waar('tegenproef: zonder de rond-modulo stopt hij na motor',
   keurRond(BRON.replace('% PROFIELEN.length].id', '] ? PROFIELEN[i+1].id : PROFIELEN[PROFIELEN.length-1].id')).length > 0);
 
 const C = laad(BRON), P = C.PLVisProfiel;
+// Vegen naar rechts (15-10-2026): vorige() is het omgekeerde van volgende(),
+// óók over de rand — anders zit je na Basis vast of sla je er een over.
+console.log('\n1b. Vorige is het omgekeerde van Volgende');
+waar('vorige(volgende(x)) === x voor elk profiel', P.PROFIELEN.every(function (p) { return P.vorige(P.volgende(p.id)) === p.id; }),
+  P.PROFIELEN.map(function (p) { return p.id + '→' + P.volgende(p.id) + '→' + P.vorige(P.volgende(p.id)); }).join(' '));
+waar('vóór de basis komt de laatste', P.vorige('basis') === P.PROFIELEN[P.PROFIELEN.length - 1].id, P.vorige('basis'));
 waar('zonder opgeslagen keuze: basis', P.lees() === 'basis');
 P.bewaar('motor');
 waar('een opgeslagen keuze wordt teruggelezen', P.lees() === 'motor');

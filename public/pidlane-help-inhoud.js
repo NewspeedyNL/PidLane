@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-14', app: '3.2.0' },
+  gecontroleerd: { datum: '2026-10-15', app: '3.2.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -189,7 +189,8 @@ var PL_HULP = {
 
     { id: 'live', groep: 'gebruik', titel: 'Live',
       tekst:
-        '<p>De tab <b>Live</b> toont de metingen van de auto op dit moment. Bovenaan kies je hoe je kijkt:</p>' +
+        '<p><b>Live</b> in de onderbalk toont de metingen van de auto op dit moment. Bovenaan kies je hoe je kijkt: Overzicht, Slim, Visueel of <b>Grafiek</b>. ' +
+        'Welke sensoren er gemeten worden kies je met <b>🎛️ Sensoren</b> rechtsboven.</p>' +
         '<ul>' +
         '<li><b>Overzicht</b> — alle sensoren, per categorie (Rijden, Motor, Temperaturen, Brandstof, Uitlaat, Elektrisch). ' +
         'Per sensor één rij met een balkje: het groene stuk is normaal voor die sensor, het streepje is nu. Valt hij erbuiten, dan kleurt hij oranje of rood ' +
@@ -199,12 +200,12 @@ var PL_HULP = {
         '<li><b>Slim</b> — de standaard: dashboardwaarden groot, trends alleen waar iets beweegt.</li>' +
         '<li><b>Visueel</b> — één vaste meter. De naald toont het toerental; bij een hybride of elektrische auto, en bij een auto die geen toerental geeft, toont hij hoeveel vermogen je met het gaspedaal vraagt. Links van nul, in groen, staat de laadzone: gas los en afremmen, wanneer een hybride energie terugwint. Dat is een schatting uit de vertraging, geen gemeten laadstroom. In de onderrand staan twee bogen, zoals in je dashboard: links het koelwater, rechts de brandstof, koud en leeg onderaan. Onder de snelheid staat in grote cijfers het verbruik van dit moment, en linksonder het bereik met deze tank (daarvoor is de tankinhoud uit Mijn voertuigen nodig; zonder staat er je rit, in kilometers en minuten). Tik op een boog, het getal of het vak linksonder om zelf te kiezen wat daar staat; op een boog kunnen alleen sensoren met een vaste schaal, <b>Automatisch</b> zet de plek terug. Een eigen sensor zonder minimum en maximum staat onderaan die lijst, met de reden erbij; een eigen sensor in % krijgt vanzelf 0 tot 100. Het gaspedaal toont in elke weergave hoeveel je het intrapt: met de voet los is dat 0, ook als de sensor zelf in rust rond de 15 à 20 % staat. Het brandstofpeil is gedempt (de laatste drie metingen), zoals de meter in je auto, zodat het niet meeklotst bij optrekken of in bochten; ' +
         'rechtsboven de accu (bij een hybride de aandrijfaccu én de 12V-accu), rechtsonder een autootje met de vier banden. ' +
-        'Met <b>Volgende</b> boven de meter wissel je tussen zes weergaven: Basis, Temperatuur (glas), Emissie, Verbruik (digitaal), Motor (neon; bij een hybride of elektrische auto heet hij <b>Energie</b>: ringen voor het gevraagde vermogen, groen bij terugwinnen, de aandrijfaccu en de motor, met in het midden EV, Motor, Laden of Stil. Eronder staan drie tegels: <b>Aandrijving</b> (welk deel van deze rit je elektrisch reed), <b>Versnelling</b> (km/h per seconde, min bij remmen) en <b>Bereik</b> (brandstof plus accu; voor de brandstof is de tankinhoud uit Mijn voertuigen nodig, het accudeel leert de app tijdens het rijden). Een hybride opent hier, tot je zelf een andere weergave kiest) en Telemetrie: de horizon, de G-kracht en de auto van opzij en van achteren op één scherm. Telemetrie gebruikt de sensoren van je telefoon; zet de telefoon in de houder, de auto stil op vlakke grond, en tik op <b>Nulstellen</b> onder het scherm Telemetrie (of in Sensoren bij Telemetrie). Pas dan, en alleen zolang de telefoon stil in de houder zit, tellen deze metingen mee in rapporten en analyses; ligt hij op schoot of los in een vakje, dan zijn ze heel dof en tellen ze niet mee. Zit de telefoon vast, dan beslist de helling bij de <b>caravanrit</b> of je klimt, daalt of vlak rijdt (het label toont dan de hoek, bijvoorbeeld ⛰️ Klim · +3.2°), en zegt de <b>ritanalyse</b> per fase of de weg bergop, bergaf of heuvelachtig was. Zonder vaste telefoon schatten ze dat zoals voorheen uit belasting en snelheid; het caravanrapport zegt welke van de twee het was. Is een plek leeg of wil je er iets anders zien, tik er dan op en kies zelf een sensor; <b>Automatisch</b> zet hem terug. Een eigen sensor met dezelfde naam (zoals een motorolietemperatuur uit Mijn voertuigen) vult de plek ook vanzelf. Bij een diesel tonen Emissie, Verbruik, Motor en Temperatuur wat bij een diesel hoort: roetfilter, NOx, AdBlue, laaddruk, injectie en uitlaatgas in plaats van lambda, brandstoftrims en ontsteking. ' +
+        'Veeg over de meter naar links of rechts om te wisselen tussen zes weergaven: Basis, Temperatuur (glas), Emissie, Verbruik (digitaal), Motor (neon; bij een hybride of elektrische auto heet hij <b>Energie</b>: ringen voor het gevraagde vermogen, groen bij terugwinnen, de aandrijfaccu en de motor, met in het midden EV, Motor, Laden of Stil. Eronder staan drie tegels: <b>Aandrijving</b> (welk deel van deze rit je elektrisch reed), <b>Versnelling</b> (km/h per seconde, min bij remmen) en <b>Bereik</b> (brandstof plus accu; voor de brandstof is de tankinhoud uit Mijn voertuigen nodig, het accudeel leert de app tijdens het rijden). Een hybride opent hier, tot je zelf een andere weergave kiest) en Telemetrie: de horizon, de G-kracht en de auto van opzij en van achteren op één scherm. Telemetrie gebruikt de sensoren van je telefoon; zet de telefoon in de houder, de auto stil op vlakke grond, en tik op <b>Nulstellen</b> onder het scherm Telemetrie (of in Sensoren bij Telemetrie). Pas dan, en alleen zolang de telefoon stil in de houder zit, tellen deze metingen mee in rapporten en analyses; ligt hij op schoot of los in een vakje, dan zijn ze heel dof en tellen ze niet mee. Zit de telefoon vast, dan beslist de helling bij de <b>caravanrit</b> of je klimt, daalt of vlak rijdt (het label toont dan de hoek, bijvoorbeeld ⛰️ Klim · +3.2°), en zegt de <b>ritanalyse</b> per fase of de weg bergop, bergaf of heuvelachtig was. Zonder vaste telefoon schatten ze dat zoals voorheen uit belasting en snelheid; het caravanrapport zegt welke van de twee het was. Is een plek leeg of wil je er iets anders zien, tik er dan op en kies zelf een sensor; <b>Automatisch</b> zet hem terug. Een eigen sensor met dezelfde naam (zoals een motorolietemperatuur uit Mijn voertuigen) vult de plek ook vanzelf. Bij een diesel tonen Emissie, Verbruik, Motor en Temperatuur wat bij een diesel hoort: roetfilter, NOx, AdBlue, laaddruk, injectie en uitlaatgas in plaats van lambda, brandstoftrims en ontsteking. ' +
         'De app onthoudt je keuze.</li>' +
         '</ul>' +
         '<p>Een dubbeltik op een tegel verbergt hem. Hij wordt wel gewoon gemeten en staat daarna in een strook om terug te halen.</p>' +
         '<p>Een automatische bevinding verberg je met het <b>✕</b> of een dubbeltik. De AI krijgt hem nog mee; terughalen doe je via <b>bekijk alles</b>.</p>' +
-        '<p>Onder de meters staan <b>⏺ Opnemen</b>, <b>📡 Deel live</b> en <b>🔭 Meekijken</b>. In de garagemodus ook <b>◉ Bewaken</b>. ' +
+        '<p>Onder de meters staat <b>⏺ Opnemen</b>, in de garagemodus ook <b>◉ Bewaken</b>. Delen en meekijken start je op Mijn auto bij <b>Rit starten</b>. ' +
         'Bij Visueel staan Opnemen en Bewaken er niet: daar start je de bulk-recorder en de waakronde vanuit het vak onder de meter.</p>',
       zie: ['opnemen', 'delen'] },
 
@@ -216,7 +217,7 @@ var PL_HULP = {
 
     { id: 'delen', groep: 'gebruik', titel: 'Delen en meekijken',
       tekst:
-        '<p><b>📡 Deel live</b> laat een expert op afstand meekijken. De expert ziet je sensordata en kan zelf waarden en foutcodes opvragen — ' +
+        '<p><b>Deel mijn live data</b> (Mijn auto → Rit starten) laat een expert op afstand meekijken. De expert ziet je sensordata en kan zelf waarden en foutcodes opvragen — ' +
         'alleen lezen: op afstand kan er niets aan de auto veranderd worden.</p>' +
         '<ol>' +
         '<li>Tik op <b>Start delen</b>.</li>' +
@@ -224,7 +225,7 @@ var PL_HULP = {
         'Alleen die manier staat dan in beeld; de app onthoudt je keuze.</li>' +
         '<li>Je ziet hoeveel experts meekijken. Klaar? Tik op <b>Stop delen</b>.</li>' +
         '</ol>' +
-        '<p>Ben jij de expert? Tik op <b>🔭 Meekijken</b> en typ de code, of plak de link die je kreeg.</p>' +
+        '<p>Ben jij de expert? Tik op <b>Ontvang data op afstand</b> en typ de code, of plak de link die je kreeg.</p>' +
         '<p>De data loopt via de beveiligde PidLane-server. De link verloopt vanzelf met de sessie.</p>',
       zie: ['live'] },
 
@@ -338,9 +339,9 @@ var PL_HULP = {
       tekst: 'De kleur is de ernstigste van auto-dossier, adapter en AI samen. Tik voor de vier regels met uitleg.' },
     { id: 'opnemen', anker: '#plLiveRec', bron: 'index.html', onderwerp: 'opnemen',
       tekst: 'Kies sensoren, start de opname, rijd en laat het probleem gebeuren. Stop daarna de opname.' },
-    { id: 'deel', anker: '#plLiveDeel', bron: 'index.html', onderwerp: 'delen',
+    { id: 'deel', anker: '#wc-liveshare', bron: 'index.html', onderwerp: 'delen',
       tekst: 'Een expert kijkt live mee en kan waarden en foutcodes opvragen — alleen lezen. Deel de code alleen met iemand die je vertrouwt en tik op Stop delen als je klaar bent.' },
-    { id: 'meekijken', anker: '#plLiveMee', bron: 'index.html', onderwerp: 'delen',
+    { id: 'meekijken', anker: '#wc-liveexpert', bron: 'index.html', onderwerp: 'delen',
       tekst: 'Voor de expert: typ de meekijk-code of plak de link die je kreeg.' },
     { id: 'garagemodus', anker: '#kbGarageModus', bron: 'index.html', onderwerp: 'garagemodus',
       tekst: 'Zet de vakgereedschappen erbij, zoals Alle functies en Bewaken. Voor een account dat geen klant is staat hij vanzelf aan.' },

@@ -672,6 +672,10 @@ function setPidView(mode){
   // want renderGauges() gooit alle tegels weg en bouwt ze terug.
   const herbouw = mode!==pidViewMode && (PID_VIEW_EIGEN.indexOf(mode)>-1 || PID_VIEW_EIGEN.indexOf(pidViewMode)>-1);
   pidViewMode=mode;
+  // Een weergave kiezen terwijl de grafiek open is: terug naar Live (15-10-2026,
+  // de grafiek staat sindsdien in dezelfde rij).
+  try{ const pg=document.getElementById('pane-graph'); if(pg && pg.classList.contains('active')) sw('live', null); }
+  catch(e){ console.warn('Terug naar Live mislukt:', e); }
   // Slim visueel remt de snelle PIDs die er niet op staan (PLVisueel.remt);
   // die rem hoort precies zo lang te duren als de weergave open staat.
   try{ if(window.PLVisueel){ if(mode==='visueel') PLVisueel.start(); else PLVisueel.stop(); } }

@@ -970,5 +970,16 @@ console.log('\n── de tegels van de energieweergave (#437) ──');
   waar('niets: null', V.bereikUit(null, null) === null && V.bereikUit('x', undefined) === null);
 }
 
+// ══ VEGEN WISSELT DE WEERGAVE (15-10-2026) ═════════════════════════
+// De strook met "Volgende" is weg; alleen een duidelijk horizontale veeg
+// wisselt. Een scroll die wat schuin gaat mag de weergave niet omgooien.
+console.log('\n── vegen ──');
+waar('naar links vegen: volgende', V.veegRichting(-80, 10) === 1);
+waar('naar rechts vegen: vorige', V.veegRichting(80, -10) === -1);
+waar('te kort (40 px): niets', V.veegRichting(-40, 0) === 0);
+waar('schuin scrollen (80 opzij, 70 omlaag): niets', V.veegRichting(-80, 70) === 0);
+waar('verticaal scrollen: niets', V.veegRichting(5, 200) === 0);
+waar('geen getal: niets', V.veegRichting(NaN, 0) === 0);
+
 console.log('\n' + (fout ? 'FOUT: ' : 'goed: ') + ok + ' ok, ' + fout + ' fout\n');
 process.exit(fout ? 1 : 0);

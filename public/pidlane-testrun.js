@@ -2787,6 +2787,24 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── indeling Live: tabbalk weg, Grafiek in de weergaverij, vegen in Visueel (15-10-2026) ──
+  {
+    issue: 'indeling',
+    naam: 'Live: Sensoren rechtsboven, Grafiek als vierde weergave, vegen in Visueel, herinnering niet exact',
+    waarom: 'Uit het gebruik: Live stond dubbel (tabbalk en onderbalk), de strook met Volgende kostte ruimte, en bij elke start opende Android "Alarmen en herinneringen" met een grijze schakelaar.',
+    proef: async function () {
+      if (document.querySelector('.tabs')) return { staat: 'FOUT', detail: 'de oude tabbalk .tabs staat er nog — oude index.html (herladen?)' };
+      var rij = document.getElementById('pidViewSwitch'), gb = document.getElementById('tabGraph'), sb = document.getElementById('tbSensoren');
+      if (!rij || !gb || gb.parentElement !== rij) return { staat: 'FOUT', detail: 'Grafiek (#tabGraph) staat niet in de weergaverij #pidViewSwitch' };
+      if (!sb || !sb.closest('.topbar')) return { staat: 'FOUT', detail: 'Sensoren (#tbSensoren) staat niet in de topbalk' };
+      if (document.getElementById('plLiveDeel') || document.getElementById('plLiveMee')) return { staat: 'FOUT', detail: 'Deel live / Meekijken staan nog onder de meters' };
+      if (!window.PLVisueel || typeof PLVisueel.veegRichting !== 'function') return { staat: 'FOUT', detail: 'PLVisueel.veegRichting ontbreekt — oude pidlane-visueel.js (herladen?)' };
+      if (PLVisueel.veegRichting(-80, 10) !== 1 || PLVisueel.veegRichting(-80, 70) !== 0) return { staat: 'FOUT', detail: 'vegen: links = ' + PLVisueel.veegRichting(-80, 10) + ', schuin = ' + PLVisueel.veegRichting(-80, 70) };
+      if (document.querySelector('.vis-profiel, .vis-voet')) return { staat: 'FOUT', detail: 'de keuzestrook of "Overige sensoren staan in Slim" staat nog in Visueel' };
+      return { staat: 'OK', detail: 'tabbalk weg, Grafiek in de rij, Sensoren rechtsboven · veeg in Visueel naar links/rechts en kijk of de naam kort in beeld komt · Android: de vraag "Alarmen en herinneringen" hoort na het starten niet meer te komen' };
+    }
+  },
+
   // ── contact uit: maten over de stilte zelf (#487, 14-10-2026) ──
   {
     issue: '#487',

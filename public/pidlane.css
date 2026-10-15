@@ -558,7 +558,6 @@ body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
 /* ════ FASE 2b — onderbalk VERWIJDERD (dubbelop met Live/Grafiek-balk).
    Navigatie: ☰-menu (Rapporten), 4 deuren (Live view) en tabs (PID-keuze). ════ */
 .lade-handles { display:none !important; }
-.tabs .tab-action { flex:0 0 auto; margin-left:auto; }
 /* ══ GERESERVEERDE BAAN RECHTSBOVEN ══
    2026-07-22: #remPill ("📡 delen · 👁 n") staat position:fixed op
    top:52px/right:10px met z-index 9600 en zweeft dus over álles heen, ook over
@@ -841,6 +840,15 @@ body.pl-visueel #plGear { display:none; }
   background:none; color:inherit; font:inherit; font-weight:700; cursor:pointer; }
 #plGearOv .plg-wis.let { border-color:var(--or); }
 .tpr { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+/* 15-10-2026: de statuschip links, Sensoren rechts. De knop staat in de
+   HTML vóór .tpr; order zet hem achteraan en margin-left:auto duwt hem tegen
+   de rechterrand. Buiten Live (body.pl-op-live, PLNav.ververs) is er niets te
+   kiezen, dan is hij weg. */
+.tb-sensoren { order:2; margin-left:auto; flex:0 0 auto; height:30px; padding:0 10px; box-sizing:border-box;
+  border-radius:999px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2);
+  font-family:var(--f); font-size:12px; font-weight:700; white-space:nowrap; cursor:pointer; }
+.tb-sensoren:active { border-color:var(--bl); }
+body:not(.pl-op-live) .tb-sensoren { display:none; }
 .pill { display:flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; border:1px solid var(--bd); font-size:12px; font-weight:500; color:var(--tx2); background:var(--sur2); }
 .dot { width:6px; height:6px; border-radius:50%; background:var(--tx3); transition:all .3s; }
 .dot.on { background:var(--gn); box-shadow:0 0 0 2px rgba(0,168,107,.2); animation:blink 2s infinite; }
@@ -1117,13 +1125,16 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
    Met het woord naast het icoon paste de rij op een telefoon niet, en
    brak hij over drie regels. De knoppen buiten deze rij (snelkoppelingen in
    Slim visueel) houden de gewone pil-vorm: die hebben geen <i>. */
-.pidview-switch { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; margin-bottom:10px;
+/* 15-10-2026: vier vakken — Grafiek erbij — en boven .tb in plaats van in
+   pane-live, dus met eigen marge. Alleen bij Live en Grafiek in beeld. */
+.pidview-switch { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; margin:10px 14px 0;
                   padding:3px; border:1px solid var(--bd); border-radius:12px; background:var(--sur); }
 .pidview-btn { font-family:var(--f); font-size:12px; font-weight:600; padding:4px 10px; border-radius:999px; border:1.5px solid var(--bd); background:var(--sur2); color:var(--tx2); cursor:pointer; transition:all .15s; }
 .pidview-switch .pidview-btn { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; min-width:0;
                   min-height:44px; padding:4px 2px; border:0; border-radius:9px; background:transparent;
                   font-size:10.5px; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .pidview-switch .pidview-btn i { font-style:normal; font-size:16px; line-height:1; }
+.cc:not(:has(#pane-live.active, #pane-graph.active)) > .pidview-switch { display:none !important; }
 .pidview-btn.active, .pidview-switch .pidview-btn.active { background:var(--blv); border-color:var(--blv); color:#fff; }
 /* OVERZICHT PER CATEGORIE (07-10-2026, #439) — vervangt het rooster van #302.
    Een kaart per categorie, per sensor één rij: naam · band · waarde · lijn ·
@@ -1402,6 +1413,8 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
    transform-box:view-box laat de naald om (160,160) van de viewBox draaien
    en niet om zijn eigen omtrek: anders draait elke vorm om een ander punt. */
 .gg.view-visueel { display:block; }
+/* pan-y: verticaal scrollt de browser, horizontaal vegen is van ons (weergave wisselen). */
+.vis { touch-action:pan-y; }
 .vis { display:flex; flex-direction:column; align-items:center; gap:12px;
        /* Ruimte onder de laatste regel voor wat er nog zweeft (tokenteller,
           remote-pil): anders valt die over "Naar Slim" heen. */
@@ -1582,20 +1595,11 @@ rect.vis-tik { fill:transparent; cursor:pointer; pointer-events:all; }
 .bev-x { flex:none; min-width:24px; height:24px; padding:0 7px; border-radius:6px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); font-family:var(--f); font-size:11px; font-weight:800; cursor:pointer; line-height:1; }
 .bev-x.bev-terug { color:var(--bl); border-color:var(--bl); }
 /* ── De vijf weergaven van Slim visueel (02-10-2026, pidlane-visprofiel.js) ──
-   Boven het vak de keuzestrook: vijf stipjes, de naam, en "Volgende". Het vak
+   Wisselen gaat sinds 15-10-2026 met vegen over het vak (PLVisueel.veeg);
+   de keuzestrook met stipjes en "Volgende" is weg. Het vak
    zelf krijgt per profiel een eigen stijl: glas, licht, digitaal, neon. De
    maten staan hier vast; de meetwaarden zetten alleen hoogte, breedte,
    positie of stroke-dasharray, altijd begrensd op 0–100%. */
-.vis-profiel { display:flex; align-items:center; gap:10px; width:100%; max-width:380px; padding:5px 5px 5px 12px; border:1px solid var(--bd); border-radius:999px; background:var(--sur); }
-.vis-profiel-stip { display:flex; gap:4px; flex:none; }
-.vis-profiel-stip i { width:6px; height:6px; border-radius:50%; background:var(--bd); }
-.vis-profiel-stip i.aan { background:var(--bl); width:16px; border-radius:3px; }
-.vis-profiel-naam { flex:1; min-width:0; display:flex; align-items:baseline; gap:6px; overflow:hidden; white-space:nowrap; }
-.vis-profiel-naam b { font-size:13px; font-weight:800; }
-.vis-profiel-naam small { font-size:11px; color:var(--tx3); overflow:hidden; text-overflow:ellipsis; }
-.vis-profiel-volgende { flex:none; min-height:34px; padding:0 14px; border-radius:999px; border:0; background:var(--bl); color:#fff; font-family:var(--f); font-size:13px; font-weight:800; cursor:pointer; }
-.vis-profiel-volgende span { font-size:16px; line-height:1; margin-left:2px; }
-.vis-profiel-volgende:active { transform:scale(.96); }
 
 .vpf { position:relative; width:100%; border-radius:22px; padding:30px 14px 16px; overflow:hidden; margin-top:16px; }
 .vpf .leeg { opacity:.35; }
@@ -1793,9 +1797,6 @@ rect.vis-tik { fill:transparent; cursor:pointer; pointer-events:all; }
 /* Opname loopt: een rode stip die ademt, zoals de pil die hij vervangt. */
 .vis-chip.opname .vis-chip-ic { color:var(--rd); animation:visOpname 1.6s ease-in-out infinite; }
 @keyframes visOpname { 0%,100% { opacity:1; } 50% { opacity:.35; } }
-.vis-voet { display:inline-flex; align-items:center; gap:4px; min-height:36px; padding:6px 12px; border:0; border-radius:18px;
-            background:transparent; font-family:var(--f); font-size:12px; color:var(--tx3); cursor:pointer; }
-.vis-voet b { color:var(--bl); font-weight:700; }
 /* Slim visueel in beeld: wat de rail en de lampjes al tonen, staat niet
    nóg eens ergens anders. De pillen hangen buiten #pane-live (in #fabLane),
    dus alleen verbergen zolang de live view echt openstaat. */

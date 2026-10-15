@@ -994,9 +994,9 @@ function startChoice(choice){
   } else {
     // Overgebleven tabs: live, graph. Foutcodes is een kaart in deur 1
     // (geen tab meer) — de gebruiker start de scan daar zelf.
-    const tabMap={live:0,graph:1};
-    const tabs=document.querySelectorAll('.tab');
-    if(tabMap[choice]!==undefined) sw(choice,tabs[tabMap[choice]]);
+    // De tabbalk is weg (15-10-2026); Grafiek is een vak in de weergaverij.
+    if(choice==='live') sw('live', null);
+    else if(choice==='graph') sw('graph', document.getElementById('tabGraph'));
     else if(choice==='dtc') sw('dtc',null);
   }
   if(choice==='report') setTimeout(()=>runQuickAI(),300);

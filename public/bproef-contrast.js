@@ -165,24 +165,22 @@ function zeg(m) {
        (basislijn 3) en een ingespoten kleur die nog niet begonnen was (3 → 3).
        Nagebouwd door de overgang op 5 s te zetten: precies die uitslag.
        Deze proef meet de eindtoestand, dus de overgangen gaan uit. `:root *`
-       en als laatste in de head, zodat hij wint van `.tab{transition:…}`. */
+       en als laatste in de head, zodat hij wint van `.pidview-btn{transition:…}`. */
     const stil = await app.ev(`(function(){
       const st = document.createElement('style'); st.id = 'plProefGeenOvergang';
       st.textContent = ':root *, :root *::before, :root *::after{ transition:none !important; animation:none !important; }';
       document.head.appendChild(st);
-      const t = document.querySelector('.tabs .tab');
-      if (!t) return 'de tabbalk staat er niet: .tabs .tab vond niets';
+      const t = document.querySelector('#pidViewSwitch .pidview-btn');
+      if (!t) return 'de weergaverij staat er niet: #pidViewSwitch .pidview-btn vond niets';
       const d = getComputedStyle(t).transitionDuration;
-      return d === '0s' ? true : 'de overgang op .tab staat nog op ' + d; })()`);
+      return d === '0s' ? true : 'de overgang op .pidview-btn staat nog op ' + d; })()`);
     toets('de overgangen staan uit, dus er wordt een eindtoestand gemeten', stil === true, String(stil));
 
     const opzet = await app.ev(`(function(){
       const w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
 
-      const tab = document.querySelector('.tabs .tab');
-      if (!tab) return 'de tabbalk staat er niet: .tabs .tab vond niets';
       if (typeof sw !== 'function') return 'sw() bestaat niet in de app';
-      try{ sw('live', tab); }catch(e){ return 'sw(live) mislukte: ' + (e.message||e); }
+      try{ sw('live', null); }catch(e){ return 'sw(live) mislukte: ' + (e.message||e); }
       if (typeof activePIDs === 'undefined') return 'activePIDs bestaat nog niet';
       ['010C','0105','0104','010D','0111','0142'].forEach(function(p,i){
         activePIDs.add(p);
