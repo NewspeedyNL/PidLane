@@ -15,6 +15,35 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 15-10-2026 — Rondgang: zelfevaluatie op de demo-screenshots
+
+Zes screenshots van de rondgang in demo, naast elkaar gelegd:
+
+- **De eerste pagina was één "—".** "Vermogen en koppel" had in de demo
+  alleen CA01 (versnelling, nog niet geleerd). De rondgang begint nu bij
+  "Van pedaal tot motor", die elke auto heeft.
+- **Verhoudingen klopten niet.** Abs. belasting (0143, schaal 0–400 %)
+  stond naast belasting (0104, 0–100 %): 30 % leek leeg naast 34 %. Een
+  paneel kan nu een gedeelde schaal dragen (`lo`/`hi`).
+- **Losse vormen.** Eén staaf, trim of boog zonder buren werd een rij of
+  een halve kaart; daardoor zag "Uitlaat en emissie" er als lijst uit en
+  stond de tankmeter alleen op de linkerhelft.
+- **Getallen zonder verband.** Inlaatdruk 110 en buitendruk 101 kPa en
+  laaddruk 0,08 bar stonden op drie plekken; lambda en trims op twee
+  categorieën, terwijl de trims juist de correctie op de sonde zijn. Nu
+  per pagina een keten en een regel uit `duiding()`.
+- **Niet opgelost, wel gezien.** (1) De aandrijfpil zei 3,5 L/u en de
+  rij Verbruik 4,2 L/h op hetzelfde moment: twee bronnen
+  (`PLAandrijving.brandstofLu` tegen 015E/CA02), en ook "L/u" tegen
+  "L/h". (2) De demo geeft lambda 0,950 (rijk) naast een voorste
+  smalbandsonde op 0,06 V (arm): een auto heeft op B1S1 het een of het
+  ander. (3) Demo-luchtmassa 23 g/s bij 1674 tpm en 110 kPa inlaat bij
+  een motor zonder turbo is niet geloofwaardig. Eigen issue, eigen PR.
+- **Wat de duiding níét zegt.** Een slimme dynamo laat de spanning
+  rijdend zakken tot ~12,4 V; daaronder pas "nakijken". Trims bij een
+  koude motor (open regelkring) krijgen geen oordeel, en de katalysator
+  alleen als de voorste sonde echt schakelt.
+
 ## 15-10-2026 — Mode 06: "EGR-systeem bank 5" was de kleptiming (#515)
 
 Dezelfde Mazda-rit. De mode 06-tabel toonde vier tests als "EGR-systeem

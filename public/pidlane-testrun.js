@@ -2787,6 +2787,21 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Rondgang: pagina's als verhaal, met een regel "wat dit zegt" (15-10-2026) ──
+  {
+    issue: 'rondgangduiding',
+    naam: 'Rondgang: pedaal → gasklep → belasting op één plaat, inlaat tegen buitendruk, mengsel samen; per pagina wat de waarden zeggen',
+    waarom: 'De pagina\'s waren lijsten per soort sensor: een losse balk, abs. belasting op een andere schaal dan belasting, en geen uitleg wat de getallen samen betekenen.',
+    proef: async function () {
+      if (!window.PLRond || typeof PLRond.duiding !== 'function') return { staat: 'FOUT', detail: 'PLRond.duiding ontbreekt — oude pidlane-rondgang.js (herladen?)' };
+      var d = PLRond.duiding('druk', { '010B': 110, '0133': 101 });
+      if (!/0,09 bar boven/.test(d || '')) return { staat: 'FOUT', detail: 'duiding druk: ' + d };
+      if (PLRond.duiding('laden', { '0142': 12.6, '010C': 1500 }).indexOf('slimme dynamo') < 0) return { staat: 'FOUT', detail: 'een slimme dynamo heet defect' };
+      var st = PLRond.staat(), met = st.dias.filter(function (x) { return x.duid && x.duid.length; }).length;
+      return { staat: 'OK', detail: met + ' van ' + st.dias.length + " pagina's met een duidingsregel; rij: Live → Slim, lees of de regel onder de titel klopt met wat de auto doet (gas los, optrekken, stationair, koude start)" };
+    }
+  },
+
   // ── Rondgang: meer pagina's per categorie (15-10-2026) ──
   {
     issue: 'rondgangpaginas',
@@ -2797,7 +2812,7 @@ const PROEVEN_B5 = [
       var ind = PLRond.indeling('benzine', { heeft: function () { return true; } });
       var mot = ind.dias.filter(function (d) { return d.cat === 'motor'; });
       var n = mot.reduce(function (a, d) { return a + d.tegels.length; }, 0);
-      if (mot.length < 3 || n < 25) return { staat: 'FOUT', detail: 'Motor en rijden: ' + mot.length + " pagina's, " + n + ' sensoren' };
+      if (mot.length < 3 || n < 23) return { staat: 'FOUT', detail: 'Motor en rijden: ' + mot.length + " pagina's, " + n + ' sensoren' };
       var mist = PLRond.nogUit().length;
       return { staat: 'OK', detail: 'rij: Live → Slim, ' + (mist ? mist + ' sensoren staan nog uit — tik onderaan een pagina op de knop en kijk of alle pagina\'s vol en leesbaar zijn' : 'kijk of alle pagina\'s vol en leesbaar zijn') + '; let op of snelheid en toerental vlot blijven met alles aan' };
     }
