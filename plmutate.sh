@@ -1074,7 +1074,7 @@ MUTATIES=(
 "public/pidlane-dashboard.js@@  if(window.PLRond && PLRond.aan() && !_bewerk){ PLRond.bij(pid, val); return; }@@  void 0;@@bproef-rondgang.js@@een waarde komt niet in de rondgang aan: de panelen blijven op een streepje"
 "public/pidlane-rondgang.js@@  if(iDia<0 || iDia===_st.i) return false;@@  if(iDia<0) return false;@@bproef-rondgang.js@@de sensoren van de dia die in beeld is worden op de bus geremd"
 "public/pidlane-plload.js@@  try{ if(window.PLRond && PLRond.remt(pid)) ms=@@  try{ if(false) ms=@@bproef-rondgang.js@@de rondgang remt de bus niet meer: alle categorieën vechten om het snelle tempo"
-"public/pidlane-dashboard.js@@  if(window.PLRond && PLRond.aan() && !_bewerk){@@  if(false){@@bproef-rondgang.js@@Slim opent weer als vast dashboard: de rondgang is niet bereikbaar"
+"public/pidlane-dashboard.js@@  if(window.PLRond && PLRond.aan() && !_bewerk){\n    _tegels=[];@@  if(false){\n    _tegels=[];@@bproef-rondgang.js@@Slim opent weer als vast dashboard: de rondgang is niet bereikbaar"
 "public/pidlane-banden.js@@(mist && mist.temp.indexOf(p) >= 0 ? 'geen temp.' : '')@@''@@bproef-banden.js@@een band zonder temperatuursensor toont weer een los punt voor zijn afwijking"
 "public/pidlane-banden.js@@      if (POS.some(p => ind[p][k])) POS.forEach(@@      POS.forEach(@@test-banden.js@@een auto zonder bandtemperatuur krijgt bij alle vier de banden geen temp. en een melding dat hij ontbreekt"
 "public/pidlane-plload.js@@  return stil>Math.max(OUD_ONGEVRAAGD_MS, 2*OUD_FACTOR*verwacht);@@  return true;@@bproef-overzicht.js@@een trage sensor die nog niet aan de beurt was gaat weer grijs (07-10-2026)"

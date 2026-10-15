@@ -196,8 +196,9 @@ function zeg(m) {
       return true; })()`);
     toets('de opzet is gelukt', opzet === true, String(opzet));
     await rust(300);
-    // .dt: Slim is sinds #439 een eigen dashboard met eigen tegels.
-    const tegels = await app.ev(`document.querySelectorAll('#gGrid .gc, #gGrid .dt').length`);
+    // .dt: Slim is sinds #439 een eigen dashboard met eigen tegels; .rk: de
+    // panelen van de rondgang, waarin Slim sinds 15-10-2026 opent.
+    const tegels = await app.ev(`document.querySelectorAll('#gGrid .gc, #gGrid .dt, #gGrid .rk').length`);
     toets('er staan tegels om aan te meten', tegels > 0,
           'zonder tegels meet blok 2 een leeg scherm en staat hij groen om de verkeerde reden');
 

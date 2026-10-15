@@ -104,7 +104,9 @@ console.log('\n5. Alle drie de weergaven rekenen via PLToon');
   // en in bproef-toon.js (de echte schermen).
   const lees = (f) => fs.readFileSync(__dirname + '/' + f, 'utf8');
   toets('Overzicht (applyG, de tegel)', /const card=document\.getElementById\('gc-'\+pid\); if\(!card\) return;[\s\S]{0,300}val=PLToon\.waarde\(pid,val\);/.test(lees('pidlane-pids.js')));
-  toets('Slim (PLDash.bij)', /function bij\(pid, val\)\{[\s\S]{0,300}val=PLToon\.waarde\(pid, val\);/.test(lees('pidlane-dashboard.js')));
+  // 400: sinds 15-10-2026 geeft PLDash.bij() eerst door aan de rondgang.
+  toets('Slim (PLDash.bij)', /function bij\(pid, val\)\{[\s\S]{0,400}val=PLToon\.waarde\(pid, val\);/.test(lees('pidlane-dashboard.js')));
+  toets('Slim, de rondgang (PLRond.bij)', /function bij\(pid, val\)\{[\s\S]{0,200}PLToon\.waarde\(pid, val\)/.test(lees('pidlane-rondgang.js')) && /PLToon\.tekst\(pid, v\)/.test(lees('pidlane-rondgang.js')));
   toets('Visueel (de rijen onder de snelheid)', /function plekBij\(rol, val\)\{[\s\S]{0,300}val=PLToon\.waarde\(pid, val\);/.test(lees('pidlane-visueel.js')));
   toets('Visueel-profielen (Verbruik, Emissie, …: ook een pedaal- en tankplek)', /function bij\(id, ind, pid, val, st\)\{[\s\S]{0,400}val=PLToon\.waarde\(pid, val\);/.test(lees('pidlane-visprofiel.js')));
   toets('Overzicht en Slim tonen pedaal en tank in hele procenten', /PLToon\.tekst\(pid,val\)/.test(lees('pidlane-pids.js')) && /PLToon\.tekst\(pid, val\)/.test(lees('pidlane-dashboard.js')));
