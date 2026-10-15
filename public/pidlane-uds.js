@@ -85,6 +85,11 @@
      → { staat: 'geweigerd', nrc, tekst } het stuurapparaat zegt nee
      → { staat: 'gelezen', codes: [...] } ook als de lijst leeg is
      "Stil" en "gelezen, leeg" zijn nooit hetzelfde (zelfde regel als #218). */
+  // Status-bits (ISO 14229): 0 nu fout, 1 fout deze rit, 2 in afwachting,
+  // 3 bevestigd, 5 fout sinds het wissen, 7 lampje. Niet: 4 en 6 (test niet
+  // gedraaid sinds wissen / deze rit).
+  var FOUTBITS = 0x01 | 0x02 | 0x04 | 0x08 | 0x20 | 0x80;
+
   function parse19(raw) {
     var t = String(raw || '').toUpperCase();
     if (!t.trim() || /NO DATA|ERROR|UNABLE|STOPPED|BUFFER|\?/.test(t)) return { staat: 'stil' };
@@ -100,10 +105,14 @@
     var codes = [];
     for (var j = 0; j + 8 <= body.length; j += 8) {
       var w = parseInt(body.substr(j, 4), 16), ftb = body.substr(j + 4, 2), st = parseInt(body.substr(j + 6, 2), 16);
-      if (!w || isNaN(w) || !st) continue;                               // status 0 = niets aan de hand
+      // Alleen de foutbits tellen. Bit 4 en 6 zeggen "test nog niet
+      // gedraaid": met masker FF stuurt een Mazda (CX-5, 15-10-2026) zijn
+      // hele lijst bekende codes terug met alleen die bits aan. Dat zijn
+      // geen fouten, en ze stonden als elf codes "in het geheugen" in beeld.
+      if (!w || isNaN(w) || !(st & FOUTBITS)) continue;
       var code = woordNaarCode(w);
       if (codes.some(function (c) { return c.code === code && c.ftb === ftb; })) continue;
-      codes.push({ code: code, ftb: ftb, status: st, actief: !!(st & 1), pending: !!(st & 4), bevestigd: !!(st & 8), lamp: !!(st & 0x80) });
+      codes.push({ code: code, ftb: ftb, status: st, actief: !!(st & 1), dezeRit: !!(st & 2), pending: !!(st & 4), bevestigd: !!(st & 8), eerder: !!(st & 0x20), lamp: !!(st & 0x80) });
     }
     // Actief en met lampje bovenaan; daarna wat alleen nog in het geheugen staat.
     codes.sort(function (a, b) { return (b.lamp - a.lamp) || (b.actief - a.actief) || (b.bevestigd - a.bevestigd); });
@@ -135,7 +144,9 @@
             await stuur('ATSH' + m.hdr, CFG.atTimeoutMs);
             try { await stuur('ATCRA' + rxVan(m.hdr), CFG.atTimeoutMs); }
             catch (e) { console.warn('PLUds: ATCRA geweigerd voor ' + m.hdr + ', zonder filter verder', e); r.zonderFilter = true; }
-            var p = parse19(await stuur('1902FF', CFG.cmdTimeoutMs));
+            var ruw = await stuur('1902FF', CFG.cmdTimeoutMs);
+            var p = parse19(ruw);
+            if (p.staat !== 'stil') diag('UDS ' + m.hdr + ' RX: ' + String(ruw || '').replace(/\s+/g, ' ').trim().slice(0, 300), 'info');
             for (var k in p) r[k] = p[k];
           } catch (e) { console.warn('PLUds: ' + m.hdr + ' niet gelezen', e); r.staat = 'stil'; r.fout = String(e.message || e); }
           res.modules.push(r);
@@ -148,6 +159,7 @@
     };
     if (!isDemo() && typeof withBus === 'function') await withBus('uds', werk, CFG.busWachtMs);
     else await werk();
+    _laatste = res;
     var n = res.modules.reduce(function (s, m) { return s + ((m.codes || []).length); }, 0);
     diag('UDS: ' + res.modules.filter(function (m) { return m.staat !== 'stil'; }).length + ' stuurapparaten antwoordden, ' + n + ' code(s)', n ? 'warn' : 'ok');
     return res;
@@ -169,6 +181,21 @@
     };
   }
 
+  var _laatste = null;
+
+  /* Het verslag als tekst, voor het sessiearchief (Rapporten) en voor het
+     bewaarde foutcoderapport van PLFoutcodes. */
+  function rapport(res) {
+    var r = ['PidLane — Alle stuurapparaten (UDS 19 02)', 'Datum: ' + new Date(res.tijd).toLocaleString('nl'), ''];
+    return r.concat(alsTekst(res)).join('\n');
+  }
+  function bewaarInSessie(res) {
+    if (!res) return false;
+    try { if (typeof registerSessionReport === 'function') { registerSessionReport({ type: 'uds', title: 'Alle stuurapparaten', text: rapport(res) }); return true; } }
+    catch (e) { console.warn('PLUds: niet in het sessiearchief gezet', e); }
+    return false;
+  }
+
   // ── Weergave ─────────────────────────────────────────────────────
   function esc(x) { return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function omschrijving(code) {
@@ -176,8 +203,8 @@
     catch (e) { console.warn('PLUds: dtcInfo faalde voor ' + code, e); return ''; }
   }
   function statusTekst(c) {
-    return [c.actief ? 'nu actief' : '', c.bevestigd ? 'bevestigd' : '', c.pending ? 'in afwachting' : '', c.lamp ? 'lampje aan' : '']
-      .filter(Boolean).join(', ') || 'in het geheugen';
+    return [c.actief ? 'nu actief' : (c.dezeRit ? 'deze rit gezien' : ''), c.bevestigd ? 'bevestigd' : '', c.pending ? 'in afwachting' : '', c.lamp ? 'lampje aan' : '']
+      .filter(Boolean).join(', ') || 'eerder opgetreden, sinds het wissen';
   }
 
   function alsTekst(res) {
@@ -222,12 +249,17 @@
     if (!_p.open) return;
     var v = document.getElementById('plUdsPaneel');
     if (!v) {
+      // Venster over alles heen, ook boven Check mijn auto (--z-modal), met
+      // de veilige rand onderaan: los onderin viel Sluiten achter de
+      // systeembalk van Android (15-10-2026).
       v = document.createElement('div');
       v.id = 'plUdsPaneel';
-      v.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:9700;max-height:80vh;overflow:auto;' +
-        'background:var(--sur);color:var(--tx);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;' +
-        'box-shadow:0 8px 30px rgba(0,0,0,.35);font:500 13px/1.45 var(--f)';
+      v.style.cssText = 'position:fixed;inset:0;z-index:var(--z-modal-hoog,9800);background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;' +
+        'padding:calc(12px + var(--pl-sat,0px)) 12px calc(12px + var(--pl-sab,0px))';
+      v.innerHTML = '<div id="plUdsDoos" style="width:100%;max-width:640px;max-height:100%;overflow:auto;background:var(--sur);color:var(--tx);' +
+        'border:1px solid var(--bd);border-radius:12px;padding:12px 14px;box-shadow:0 8px 30px rgba(0,0,0,.35);font:500 13px/1.45 var(--f)"></div>';
       v.addEventListener('click', function (e) {
+        if (e.target === v) return sluit();
         var a = e.target && e.target.getAttribute && e.target.getAttribute('data-uds');
         if (a === 'scan') open(); else if (a === 'sluit') sluit();
       });
@@ -241,13 +273,13 @@
     else h += render(_p.res);
     h += '<div style="display:flex;gap:8px;margin-top:10px"><button type="button" data-uds="scan" style="' + knop + '"' + (_p.bezig ? ' disabled' : '') + '>Opnieuw lezen</button>' +
       '<button type="button" data-uds="sluit" style="' + knop + '">Sluiten</button></div>';
-    v.innerHTML = h;
+    document.getElementById('plUdsDoos').innerHTML = h;
   }
   async function open() {
     _p.open = true;
     if (_p.bezig) return paneel();
     _p.bezig = true; _p.fout = ''; paneel();
-    try { _p.res = await scan(); }
+    try { _p.res = await scan(); bewaarInSessie(_p.res); }
     catch (e) { console.warn('PLUds: scan faalde', e); _p.res = null; _p.fout = 'Niet gelezen: ' + (e.message || e); }
     _p.bezig = false; paneel();
   }
@@ -259,6 +291,6 @@
 
   window.PLUds = {
     MODULES: MODULES, scan: scan, parse19: parse19, alsTekst: alsTekst, render: render,
-    open: open, sluit: sluit, laatste: function () { return _p.res; }, demoStuur: demoStuur
+    open: open, sluit: sluit, laatste: function () { return _laatste; }, rapport: rapport, bewaarInSessie: bewaarInSessie, demoStuur: demoStuur
   };
 })();

@@ -10,6 +10,34 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Mode 06 volgens J1979, foutcodes met tekst
+ ═══════════════════════════════════════════════════════════
+ Uit de Mazda-rit. Mode 06: de MID-namen volgen J1979 (0x35 is de
+ kleptiming, geen "EGR bank 5"), het teken van een onbekende schaal
+ volgt uit de grenzen (−32768 – 1500 in plaats van 32768 – 1500), en
+ het onderzoek leest dezelfde tabel: een VVT- of EVAP-test weegt niet
+ meer als EGR (#515). Foutcodes: 101 generieke codes met een tekst in
+ DTC_OMSCHRIJVING (P0421, P2096, P0524, P2119, ABS- en netwerkcodes),
+ en een code die nergens staat zegt wat zijn opbouw zegt
+ ("fabrikantspecifiek, aandrijving: brandstof en lucht").
+ De uitlezing van alle stuurapparaten en een losse mode 06-uitlezing
+ staan in Rapporten, en Bewaren in Check mijn auto neemt de
+ stuurapparaten mee als ze in dezelfde zit gelezen zijn.
+
+ ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Mode 06- en stuurapparatenpaneel liggen bovenop
+ ═══════════════════════════════════════════════════════════
+ Uit de eerste rit: het mode 06-paneel (z-index 9000) lag onder de
+ topbalk en de onderbalk, en Sluiten van het stuurapparatenpaneel viel
+ achter de systeembalk. Beide zijn nu een venster over alles heen
+ (--z-modal-hoog, veilige randen), tik naast het venster sluit.
+ De mode 06-tabel heeft drie kolommen in plaats van vijf (test-ID
+ onder de monitor, grens onder de waarde): op 360 px viel Oordeel
+ buiten beeld.
+ Daarnaast telt UDS alleen nog foutbits: een Mazda CX-5 gaf elf
+ codes met alleen "test niet gedraaid" — geen fouten.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — UDS 0x19: foutcodes van alle stuurapparaten
  ═══════════════════════════════════════════════════════════
  Mode 03 vraagt functioneel, en daar antwoorden alleen motor en bak.

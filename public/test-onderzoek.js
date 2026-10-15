@@ -310,8 +310,34 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
     eis(van(u.r, 'kat').some((b) => b.d > 0 && b.d < 2.5 && /krap/.test(b.t)), 'krap binnen de grens: een aanwijzing, geen bevestiging', JSON.stringify(u.r));
     u = oordeel([R(0x21, 0x01, 0x01, 300, 0, 750)]);
     eis(van(u.r, 'kat').some((b) => b.d < 0), 'ruim binnen de grens: kat uitgesloten', JSON.stringify(u.r));
-    u = oordeel([R(0x01, 0x01, 0x99, 0x9000, 0x8000, 0x7000)]);
-    eis(!van(u.r, 'lambda').length, 'onbekende schaal waar signed en unsigned elkaar tegenspreken: geen oordeel', JSON.stringify(u.r));
+    u = oordeel([R(0x01, 0x01, 0x99, 0x10, 0x7000, 0x0100)]);
+    eis(!van(u.r, 'lambda').length, 'onbekende schaal en grenzen die in geen lezing kloppen (min > max): geen oordeel', JSON.stringify(u.r));
+
+    {
+      const gemeld = [];
+      s.registerSessionReport = (e) => { gemeld.push(e); return e; };
+      const ok = s.PLM06.bewaarInSessie({ tests: [R(0x21, 0x02, 0x01, 800, 0, 750)] });
+      eis(ok && gemeld.length === 1 && gemeld[0].type === 'm06' && /\[GEZAKT\]/.test(gemeld[0].text), 'een losse mode 06-uitlezing gaat naar Rapporten', JSON.stringify(gemeld).slice(0, 200));
+      eis(s.PLM06.bewaarInSessie(null) === false && gemeld.length === 1, 'TEGENPROEF: zonder uitlezing niets in Rapporten');
+      delete s.registerSessionReport;
+    }
+
+    // De Mazda CX-5 van 15-10-2026 (#515): MID 0x35 is de kleptiming (VVT),
+    // geen "EGR bank 5", en grenzen 0x8000…0x05DC kunnen alleen signed.
+    const vvt = R(0x35, 0x80, 0xB0, 14, 0x8000, 0x05DC);
+    eis(/kleptiming/.test(vvt.midNaam) && /bank 1/.test(vvt.midNaam), 'MID 0x35 heet kleptiming bank 1', vvt.midNaam);
+    eis(vvt.oordeelZeker && vvt.geslaagd && vvt.getoond.min === -32768 && vvt.getoond.max === 1500,
+      'grenzen die alleen signed kloppen: zeker oordeel, en als −32768 – 1500 getoond', JSON.stringify(vvt.getoond));
+    eis(s.PLM06._intern.midNaam(0x02) === 'Lambdasonde bank 1 sonde 2' && /0,040/.test(s.PLM06._intern.midNaam(0x3B)) && /cilinder 12/.test(s.PLM06._intern.midNaam(0xAD)),
+      'sondes per bank, EVAP-lekmaat en cilinder 12 naar J1979');
+    u = oordeel([R(0x35, 0x80, 0x01, 900, 0, 750)]);
+    eis(van(u.r, 'distributie').some((b) => b.d >= 2.5) && !van(u.r, 'egr').length, 'een gezakte VVT-test bevestigt de kleptiming, niet de EGR-klep', JSON.stringify(u.r));
+    u = oordeel([R(0x3B, 0x01, 0x01, 900, 0, 750)]);
+    eis(!van(u.r, 'egr').length, 'TEGENPROEF: een gezakte EVAP-lektest zegt niets over de EGR-klep', JSON.stringify(u.r));
+    u = oordeel([R(0x35, 0x80, 0x01, 300, 0, 750)]);
+    eis(!van(u.r, 'distributie').some((b) => b.d < 0), 'een geslaagde VVT-test strept een gerekte ketting niet weg', JSON.stringify(u.r));
+    u = oordeel([R(0x42, 0x01, 0x01, 300, 0, 750), R(0x02, 0x01, 0x01, 300, 0, 750)]);
+    eis(van(u.r, 'lambda').length === 1, 'sonde en sondeverwarming tellen samen als één lambda-bewijs', JSON.stringify(u.r));
     u = oordeel([]);
     eis(u.r.length === 1 && !u.r[0].h, 'geen mode 06: alleen een opmerking, geen tegenbewijs', JSON.stringify(u.r));
 

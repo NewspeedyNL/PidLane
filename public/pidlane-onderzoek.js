@@ -223,7 +223,7 @@
     { id: 'mode06', soort: 'mode06', titel: 'Zelftests per cilinder en katalysator (mode 06)', icoon: '🔬',
       waarom: 'De motorcomputer telt per cilinder hoe vaak hij overslaat en meet de katalysator en sondes tegen zijn eigen grens. Dat staat er al vóór er een foutcode komt.',
       na: ['codes'],
-      test: { misfire: 2.5, kat: 2, lambda: 1.5, egr: 1 },
+      test: { misfire: 2.5, kat: 2, lambda: 1.5, egr: 1, distributie: 1, turbo: 1, dpf: 1 },
       beoordeel: beoordeelMode06 },
 
     { id: 'rust', soort: 'meten', titel: 'Accu in rust', icoon: '🔋',
@@ -554,13 +554,23 @@
 
   /* Mode 06: welke monitor-ID's bij welke verdenking horen (J1979 bijlage D,
      dezelfde families als FAMILIE in pidlane-mode06.js). */
-  var M06_FAMILIE = [
-    { van: 0x01, tot: 0x10, h: 'lambda', naam: 'lambdasonde' },
-    { van: 0x21, tot: 0x2F, h: 'kat', naam: 'katalysator' },
-    { van: 0x31, tot: 0x3F, h: 'egr', naam: 'EGR' },
-    { van: 0xA1, tot: 0xAF, h: 'misfire', naam: 'ontstekingsmissers' }
-  ];
-  // Missers per cilinder: MID A2–A9 = cilinder 1–8. TID 0B is het lopende
+  // Welke mode 06-tests iets zeggen over welke verdenking staat in
+  // PLM06.FAMILIE (pidlane-mode06.js), naar de MID-indeling van J1979. Tot
+  // 15-10-2026 stond hier een eigen lijst met 0x31–0x3F als EGR: een VVT- of
+  // EVAP-test woog dan als bewijs voor de EGR-klep (#515). Per verdenking
+  // samengevoegd: sondes en hun verwarming zijn samen één 'lambda'.
+  function m06Groepen() {
+    var g = {}, lijst = [];
+    var fam = (window.PLM06 && PLM06.FAMILIE) || [];
+    fam.forEach(function (f) {
+      if (!f.h) return;
+      if (!g[f.h]) { g[f.h] = { h: f.h, naam: f.kort, sluitUit: !!f.sluitUit, delen: [] }; lijst.push(g[f.h]); }
+      g[f.h].delen.push(f);
+    });
+    return lijst;
+  }
+  function inGroep(t, gr) { return gr.delen.some(function (f) { return t.mid >= f.van && t.mid <= f.tot; }); }
+  // Missers per cilinder: MID A2–AD = cilinder 1–12. TID 0B is het lopende
   // gemiddelde over de laatste tien ritten, 0C de laatste of huidige rit.
   // Voorlopige drempels, te toetsen tegen echte uitlezingen (#428): een
   // cilinder telt als uitschieter vanaf M06_MIS_MIN missers en minstens
@@ -572,7 +582,7 @@
     [0x0B, 0x0C].forEach(function (tid) {
       if (Object.keys(per).length) return;
       tests.forEach(function (t) {
-        if (t.mid >= 0xA2 && t.mid <= 0xA9 && t.tid === tid && t.ruw && typeof t.ruw.waarde === 'number') per[t.mid - 0xA1] = t.ruw.waarde;
+        if (t.mid >= 0xA2 && t.mid <= 0xAD && t.tid === tid && t.ruw && typeof t.ruw.waarde === 'number') per[t.mid - 0xA1] = t.ruw.waarde;
       });
     });
     return per;
@@ -605,8 +615,8 @@
     // Per familie: buiten de fabrieksgrens bevestigt, krap is een aanwijzing,
     // ruim binnen de grens sluit uit. Een onzeker oordeel (onbekende schaal)
     // telt niet mee.
-    M06_FAMILIE.forEach(function (f) {
-      var g = tests.filter(function (t) { return t.mid >= f.van && t.mid <= f.tot && t.oordeelZeker; });
+    m06Groepen().forEach(function (f) {
+      var g = tests.filter(function (t) { return inGroep(t, f) && t.oordeelZeker; });
       if (!g.length) return;
       // Een telling (UAS 0x24, missers) op 0 is goed, niet "krap": daar telt
       // alleen de afstand tot de bovengrens.
@@ -618,7 +628,7 @@
       var gezakt = g.filter(function (t) { return !t.geslaagd; }), krap = g.filter(krapT);
       if (gezakt.length) r.push({ h: f.h, d: 2.5, t: gezakt.length + ' zelftest(s) ' + f.naam + ' buiten de fabrieksgrens (' + gezakt.map(function (t) { return t.midNaam; }).join(', ') + ')' });
       else if (krap.length) r.push({ h: f.h, d: 1, t: krap.length + ' zelftest(s) ' + f.naam + ' krap binnen de grens — nog geen fout, wel bijna' });
-      else if (f.h !== 'misfire' || cil.length < 2) r.push({ h: f.h, d: -1.5, t: g.length + ' zelftest(s) ' + f.naam + ' ruim binnen de fabrieksgrens' });
+      else if (f.sluitUit && (f.h !== 'misfire' || cil.length < 2)) r.push({ h: f.h, d: -1.5, t: g.length + ' zelftest(s) ' + f.naam + ' ruim binnen de fabrieksgrens' });
     });
     return r;
   }
