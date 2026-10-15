@@ -262,6 +262,14 @@ const NEPSERVER = `(function(){
       // Uit de bibliotheek toevoegen
       PLGarage._bibErbij('b2');
       uit.erbij = /staat bij je sensoren/.test(body()) && _st_eigen().some(e => e.code === '221E1C' && e.ecu === '7E1');
+      // 15-10-2026: niet nog eens in de bibliotheek; de stand gaat mee naar de eigen sensor.
+      uit.eenKeer = !document.querySelector('#plGarBody button[onclick="PLGarage._bibErbij(\\'b2\\')"]') &&
+        !!document.querySelector('#plGarBody button[onclick="PLGarage._bibErbij(\\'b1\\')"]') &&
+        Array.prototype.some.call(document.querySelectorAll('#plGarBody .gr-item:not(.gr-bib)'), x => /221E1C/.test(x.textContent) && /werkt bij 3/.test(x.textContent));
+      // Berekend: wat aan staat bovenaan, de rest ingeklapt.
+      PLGarage._sensKies('CA03', true);
+      const ber = Array.prototype.map.call(document.querySelectorAll('#plGarBody input[onchange^="PLGarage._sensKies(\\'CA"]'), x => !!x.closest('details') === !x.checked);
+      uit.ingeklapt = ber.length > 2 && ber.every(Boolean);
       // Zelf een code met ECU-adres en tempo
       document.getElementById('grsNaam').value = 'Olie druk'; document.getElementById('grsCode').value = '220303';
       document.getElementById('grsFormule').value = 'A*4'; document.getElementById('grsEcu').value = '7e0'; document.getElementById('grsTempo').value = 'traag';
@@ -305,6 +313,8 @@ const NEPSERVER = `(function(){
     })()`);
     toets('de bibliotheek van dit model staat in Sensoren, met stand en bron', bib.lijst && bib.bron, JSON.stringify(bib));
     toets('uit de bibliotheek toevoegen neemt het ECU-adres mee', bib.erbij, JSON.stringify(bib));
+    toets('een toegevoegde code staat één keer: bij de eigen sensoren, met de stand uit de bibliotheek', bib.eenKeer, JSON.stringify(bib));
+    toets('berekende sensoren: aangevinkt bovenaan, de rest ingeklapt', bib.ingeklapt, JSON.stringify(bib));
     toets('een eigen code met ECU-adres (7e0 → 7E0) en tempo traag', bib.eigen && bib.eigen.ecu === '7E0' && bib.eigen.tempo === 'traag', JSON.stringify(bib.eigen));
     toets('tempo in de lijst: elke minuut, en "Standaard" haalt de keuze weg', bib.tempoLijst === 'minuut' && bib.tempoStandaard === false, JSON.stringify(bib));
     toets('een test telt als stem: werkt en 7F tellen, "niet verbonden" niet', JSON.stringify(bib.stemmen) === '["b1:werkt","b2:werkt_niet"]', JSON.stringify(bib.stemmen));

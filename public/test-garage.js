@@ -510,6 +510,16 @@ function laad(opties) {
     eis(geopend === 1, 'lus() opent de toestemming na het inloggen', 'geopend: ' + geopend);
   }
 
+  console.log('\nSensoren: de bibliotheek toont niet nog eens wat al bij de eigen sensoren staat');
+  {
+    const B = laad({ rol: 'klant' }).G._kern.bibSplits;
+    const lijst = [{ id: 'a', code: '220202', werkt: 0, werkt_niet: 2 }, { id: 'b', code: '221E1C', werkt: 3 }, { id: 'c', code: '220404', werkt: 5, werkt_niet: 1 }, { id: 'd', code: '220505' }];
+    const d = B(lijst, [{ code: '221E1C' }]);
+    eis(!d.nieuw.some((b) => b.code === '221E1C') && d.al['221E1C'] && d.al['221E1C'].id === 'b', 'een toegevoegde code staat bij de eigen sensoren, niet in de bibliotheek', JSON.stringify(d));
+    eis(d.nieuw.map((b) => b.id).join('') === 'cda', 'de rest: wat het vaakst werkt bovenaan, wat niet werkt onderaan', d.nieuw.map((b) => b.id).join(''));
+    eis(B(null, null).nieuw.length === 0, 'zonder bibliotheek (nog laden) geen fout');
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });

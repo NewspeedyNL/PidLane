@@ -1102,6 +1102,7 @@
     '#plGarOv .gr-sens{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--bd);font-size:13px;color:var(--tx);cursor:pointer}' +
     '#plGarOv .gr-sens input{width:20px;height:20px;flex:0 0 20px;margin-top:1px;accent-color:var(--bl,#3b82f6)}' +
     '#plGarOv .gr-sens small{color:var(--tx3);font-size:11px}' +
+    '#plGarOv .gr-meer{border-top:1px solid var(--bd)}#plGarOv .gr-meer>summary{padding:9px 0;font-size:13px;font-weight:600;color:var(--bl,#3b82f6);cursor:pointer}' +
     '#plGarOv .gr-bib small{color:var(--tx3);font-size:11px}#plGarOv .gr-bib a{color:var(--bl,#3b82f6)}' +
     '#plGarOv .gr-tempo{display:flex;align-items:center;gap:8px;margin:6px 0 0;font-size:12px}#plGarOv .gr-tempo select{width:auto;padding:5px 8px;font-size:13px}' +
     '#plGarOv .gr-kies{width:20px;height:20px;flex:0 0 20px;accent-color:var(--bl,#3b82f6)}' +
@@ -1546,21 +1547,30 @@
     var B = (window.PLBerekend && PLBerekend.DEFS) || {};
     var koppel = versnellingsVoertuig(), nu = koppel && koppel.id === v.id && isVerbonden();
     var h = '<div class="gr-sub">Wat hier aan staat, zet de app aan zodra deze auto verbonden en herkend is.</div>';
-    h += '<div class="gr-blok"><div class="gr-bh">🧮 Berekende sensoren<span class="gr-r">rekent de app uit</span></div>' +
-      Object.keys(B).map(function (pid) {
-        var aan = S.sel.indexOf(pid) >= 0;
-        return '<label class="gr-sens"><input type="checkbox" ' + (aan ? 'checked ' : '') + 'onchange="PLGarage._sensKies(\'' + pid + '\',this.checked)">' +
-          '<span><b>' + esc(String(B[pid].name).replace(' (berekend)', '')) + '</b> <small>' + esc(B[pid].unit) + '</small><br><small>' + esc(B[pid].uitleg || '') + '</small></span></label>';
-      }).join('') + '<div class="gr-klein" style="margin-top:6px">Een berekende sensor verschijnt alleen als de auto de bronnen ervoor geeft.</div></div>';
+    // Wat aan staat bovenaan; de rest ingeklapt (15-10-2026: de lijst was
+    // langer dan het scherm, en wat je gekozen had zocht je ertussenuit).
+    var ber = Object.keys(B), berAan = ber.filter(function (p) { return S.sel.indexOf(p) >= 0; });
+    var berRij = function (pid) {
+      return '<label class="gr-sens"><input type="checkbox" ' + (S.sel.indexOf(pid) >= 0 ? 'checked ' : '') + 'onchange="PLGarage._sensKies(\'' + pid + '\',this.checked)">' +
+        '<span><b>' + esc(String(B[pid].name).replace(' (berekend)', '')) + '</b> <small>' + esc(B[pid].unit) + '</small><br><small>' + esc(B[pid].uitleg || '') + '</small></span></label>';
+    };
+    var berUit = ber.filter(function (p) { return berAan.indexOf(p) < 0; });
+    h += '<div class="gr-blok"><div class="gr-bh">🧮 Berekende sensoren<span class="gr-r">' + berAan.length + ' van ' + ber.length + ' aan</span></div>' +
+      (berAan.length ? berAan.map(berRij).join('') : '<div class="gr-klein">Nog geen enkele aan.</div>') +
+      (berUit.length ? '<details class="gr-meer"' + (S.berOpen ? ' open' : '') + ' ontoggle="PLGarage._sensBerOpen(this.open)"><summary>Meer berekende sensoren (' + berUit.length + ')</summary>' +
+        berUit.map(berRij).join('') + '</details>' : '') +
+      '<div class="gr-klein" style="margin-top:6px">De app rekent ze uit. Een berekende sensor verschijnt alleen als de auto de bronnen ervoor geeft.</div></div>';
+    var bibDeel = bibSplits(S.bib && S.bib.lijst, S.eigen);
     h += '<div class="gr-blok"><div class="gr-bh">🔧 Eigen sensoren<span class="gr-r">' + S.eigen.length + ' / ' + ((window.PLEigen && PLEigen.MAX) || 20) + '</span></div>' +
       (S.eigen.length ? S.eigen.map(function (e, i) {
-        var t = S.test[e.code];
+        var b = bibDeel.al[e.code], t = b ? S.test['bib:' + b.id] || S.test[e.code] : S.test[e.code];
         return '<div class="gr-item"><label class="gr-sens" style="padding:0"><input type="checkbox" ' + (S.sel.indexOf(e.code) >= 0 ? 'checked ' : '') + 'onchange="PLGarage._sensKies(\'' + esc(e.code) + '\',this.checked)">' +
-          '<span><b>' + esc(e.naam) + '</b> <small>' + esc(e.eenheid || '') + '</small><br><small>' + sensRegel(e) + '</small></span></label>' +
+          '<span><b>' + esc(e.naam) + '</b> <small>' + esc(e.eenheid || '') + '</small><br><small>' + sensRegel(e) + '</small>' +
+          (b ? '<br><small>📚 ' + esc(bibStand(b)) + '</small>' : '') + '</span></label>' +
           (t ? '<div class="gr-klein" style="margin-top:4px">' + esc(t) + '</div>' : '') +
           (isBand(e) ? '<div class="gr-klein" style="margin-top:4px">Hoe vaak: in het bandenvenster, samen met de andere banden</div>'
             : '<label class="gr-veld gr-tempo">Hoe vaak' + tempoKeuze('onchange="PLGarage._sensTempo(' + i + ',this.value)"', e.tempo) + '</label>') +
-          '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="PLGarage._sensTest(' + i + ')">▶ Test</button>' : '') +
+          '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="' + (b ? 'PLGarage._bibTest(\'' + esc(b.id) + '\')' : 'PLGarage._sensTest(' + i + ')') + '">▶ Test</button>' : '') +
           (S.ok[e.code] ? '<button class="gr-k klein" onclick="PLGarage._sensDeel(' + i + ')">📤 Deel met rijders van dit model</button>' : '') +
           '<button class="gr-k klein gevaar" onclick="PLGarage._sensWeg(' + i + ')">Weghalen</button></div></div>';
       }).join('') : '<div class="gr-klein">Nog geen eigen sensoren.</div>') +
@@ -1579,7 +1589,7 @@
       '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="PLGarage._sensTest(-1)">▶ Test op de auto</button>' : '<span class="gr-klein">Testen kan als deze auto verbonden is.</span>') +
       '<button class="gr-k klein hoofd" onclick="PLGarage._sensErbij()">➕ Toevoegen</button></div>' +
       (S.test.nieuw ? '<div class="gr-klein" style="margin-top:4px">' + esc(S.test.nieuw) + '</div>' : '') + '</div></div>';
-    h += tekenBib(v, S, nu);
+    h += tekenBib(v, S, nu, bibDeel);
     var standaard = S.sel.filter(function (p) { return !(B[p]) && !S.eigen.some(function (e) { return e.code === p; }); });
     h += '<div class="gr-blok"><div class="gr-bh">🎛️ Vaste selectie<span class="gr-r">' + standaard.length + ' sensoren van de auto</span></div>' +
       '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._sensLive()">Neem de huidige live-selectie over</button></div></div>';
@@ -1612,27 +1622,44 @@
   /* De bibliotheek per merk en model: codes die andere klanten bewezen
      hebben, en kandidaten die online gevonden zijn. Testen op de eigen auto
      telt als stem (werkt / werkt niet) — anoniem, alleen merk en model. */
-  function tekenBib(v, S, nu) {
+  /* De bibliotheek gesplitst (15-10-2026): wat al bij de eigen sensoren
+     staat komt daar te staan, met de stand erbij; de bibliotheek toont alleen
+     wat nog te proberen is — wat het vaakst werkt bovenaan. Eerst stond elke
+     toegevoegde code er twee keer, één keer met en één keer zonder vinkje. */
+  function bibSplits(lijst, eigen) {
+    var al = {}, nieuw = [];
+    (lijst || []).forEach(function (b) {
+      if ((eigen || []).some(function (e) { return e.code === b.code; })) { if (!al[b.code]) al[b.code] = b; }
+      else nieuw.push(b);
+    });
+    nieuw.sort(function (x, y) { return ((y.werkt || 0) - (y.werkt_niet || 0)) - ((x.werkt || 0) - (x.werkt_niet || 0)); });
+    return { al: al, nieuw: nieuw };
+  }
+  function bibStand(b) {
+    return (b.werkt ? '✓ werkt bij ' + b.werkt : '') + (b.werkt_niet ? (b.werkt ? ' · ' : '') + '✗ niet bij ' + b.werkt_niet : '') +
+      (!b.werkt && !b.werkt_niet ? (b.bron === 'online' ? 'online gevonden, nog door niemand getest' : 'nog niet getest') : '') +
+      (b.mijn ? ' · jij: ' + (b.mijn === 'werkt' ? 'werkt' : 'werkt niet') : '');
+  }
+  function tekenBib(v, S, nu, deel) {
     if (S.bib === null) { S.bib = 'laden'; sensBibLaad(v.id); }
     var titel = [v.merk, (v.model || '').split(/\s+/)[0]].filter(Boolean).join(' ') || 'dit model';
-    var h = '<div class="gr-blok"><div class="gr-bh">📚 Codes voor ' + esc(titel) + '<span class="gr-r">gedeeld door rijders</span></div>';
+    var h = '<div class="gr-blok"><div class="gr-bh">📚 Codes voor ' + esc(titel) + '<span class="gr-r">nog niet bij je sensoren</span></div>';
     if (!v.merk || !v.model) return h + '<div class="gr-klein">Vul merk en model in bij het profiel; dan zie je hier wat anderen met dezelfde auto gevonden hebben.</div></div>';
     if (S.bib === 'laden') h += '<div class="gr-klein">⏳ Laden…</div>';
     else if (S.bib && S.bib.fout) h += '<div class="gr-melding rood">' + esc(S.bib.fout) + '</div>';
     else if (S.bib && S.bib.lijst) {
+      var nAl = Object.keys(deel.al).length;
       if (!S.bib.lijst.length) h += '<div class="gr-klein">Nog niets voor dit model. Zoek online, of deel een code die bij jou werkt.</div>';
-      S.bib.lijst.forEach(function (b) {
-        var al = S.eigen.some(function (e) { return e.code === b.code; });
-        var t = S.test['bib:' + b.id];
-        var stand = (b.werkt ? '✓ werkt bij ' + b.werkt : '') + (b.werkt_niet ? (b.werkt ? ' · ' : '') + '✗ niet bij ' + b.werkt_niet : '') +
-          (!b.werkt && !b.werkt_niet ? (b.bron === 'online' ? 'online gevonden, nog door niemand getest' : 'nog niet getest') : '') +
-          (b.mijn ? ' · jij: ' + (b.mijn === 'werkt' ? 'werkt' : 'werkt niet') : '');
+      else if (!deel.nieuw.length) h += '<div class="gr-klein">Alles uit deze lijst staat bij je sensoren.</div>';
+      deel.nieuw.forEach(function (b) {
+        var t = S.test['bib:' + b.id], stand = bibStand(b);
         h += '<div class="gr-item gr-bib"><b>' + esc(b.naam) + '</b> <small>' + esc(b.eenheid || '') + '</small><br><small>' + sensRegel(b) + '</small>' +
           '<div class="gr-klein">' + esc(stand) + (b.url ? ' · <a href="' + esc(b.url) + '" target="_blank" rel="noopener noreferrer">bron</a>' : '') + '</div>' +
           (t ? '<div class="gr-klein" style="margin-top:4px">' + esc(t) + '</div>' : '') +
           '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="PLGarage._bibTest(\'' + esc(b.id) + '\')">▶ Test</button>' : '') +
-          (al ? '<span class="gr-klein">staat bij je sensoren</span>' : '<button class="gr-k klein" onclick="PLGarage._bibErbij(\'' + esc(b.id) + '\')">➕ Toevoegen</button>') + '</div></div>';
+          '<button class="gr-k klein" onclick="PLGarage._bibErbij(\'' + esc(b.id) + '\')">➕ Toevoegen</button></div></div>';
       });
+      if (nAl && deel.nieuw.length) h += '<div class="gr-klein" style="margin-top:4px">' + (nAl === 1 ? '1 code uit deze lijst staat' : nAl + ' codes uit deze lijst staan') + ' bij je sensoren, hierboven.</div>';
     }
     var bew = bewezen(S);
     h += '<div class="gr-knoppen"><button class="gr-k klein" ' + (S.zoek === 'bezig' ? 'disabled' : '') + ' onclick="PLGarage._bibZoek()">' +
@@ -2003,6 +2030,7 @@
       } catch (x) { S.test[sleutel] = '✗ ' + x.message; }
       teken();
     },
+    _sensBerOpen: function (open) { if (_st.sens) _st.sens.berOpen = !!open; },
     _sensTempo: function (i, t) {
       var S = _st.sens; if (!S || !S.eigen[i]) return;
       sensNieuw();
@@ -2265,7 +2293,7 @@
     // pure kern — voor test-garage.js
     _kern: { status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar, ritStand: ritStand,
       rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, voorinvulNieuw: voorinvulNieuw, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
-      waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, akkoordVragen: akkoordVragen, cfg: CFG }
+      waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, akkoordVragen: akkoordVragen, bibSplits: bibSplits, cfg: CFG }
   };
 
   // Eén keer per sessie: APK of onderhoud dat eraan komt of verlopen is.
