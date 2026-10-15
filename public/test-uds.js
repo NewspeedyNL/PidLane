@@ -37,6 +37,13 @@ function eis(ok, naam, extra) {
   eis(p.staat === 'gelezen' && p.codes.length === 0, 'TEGENPROEF: wel antwoord, geen codes, is "gelezen, leeg" en niet "stil"', JSON.stringify(p));
   p = U.parse19('59 02 FF 01 71 00 00 01 72 00 08');
   eis(p.codes.length === 1 && p.codes[0].code === 'P0172', 'een record met status 0 is geen code', JSON.stringify(p.codes));
+  p = U.parse19('59 02 FF 11 7A 00 50 04 21 00 50 01 71 00 10 01 72 00 40');
+  eis(p.staat === 'gelezen' && p.codes.length === 0, 'Mazda CX-5: alleen "test niet gedraaid" (bit 4/6) is geen fout', JSON.stringify(p.codes));
+  p = U.parse19('59 02 FF 11 7A 00 50 04 21 00 28');
+  eis(p.codes.length === 1 && p.codes[0].code === 'P0421' && p.codes[0].bevestigd && p.codes[0].eerder,
+    'TEGENPROEF: dezelfde lijst met één echte fout (bevestigd) houdt die ene', JSON.stringify(p.codes));
+  p = U.parse19('59 02 FF 01 71 00 20');
+  eis(p.codes.length === 1 && p.codes[0].eerder && !p.codes[0].bevestigd, 'alleen "fout sinds het wissen" telt wel: dat is geschiedenis', JSON.stringify(p.codes));
   p = U.parse19('7E8 07 59 02 FF 01 71 00 08');
   eis(p.staat === 'gelezen' && p.codes.length === 1, 'met headers aan (7E8 + PCI) ook gelezen', JSON.stringify(p));
   p = U.parse19('41 0C 1A F8');
