@@ -1266,7 +1266,9 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .rond-voort.alarm i { background:var(--rd); }
 .rond-alarm { margin:0 0 8px; padding:8px 10px; border-radius:10px; border:1px solid var(--rd); color:var(--rd); font-size:12px; font-weight:700; }
 .rond-titel { display:flex; align-items:baseline; gap:8px; width:100%; margin:0 0 10px; padding:0 2px; border:0; background:none; color:var(--tx); font-family:var(--f); font-size:17px; font-weight:800; text-align:left; cursor:pointer; }
-.rond-titel small { margin-left:auto; font-size:11px; font-weight:700; color:var(--tx3); font-family:var(--m); }
+.rond-titel small { margin-left:auto; flex:none; white-space:nowrap; font-size:11px; font-weight:700; color:var(--tx3); font-family:var(--m); }
+.rond-duid { margin:0; padding:8px 12px; border-left:3px solid var(--bl); border-radius:0 10px 10px 0; background:var(--sur); color:var(--tx2); font-size:13px; font-weight:600; line-height:1.4; white-space:pre-line; }
+.rond-duid[hidden] { display:none; }
 .rond-dia { display:grid; gap:10px; }
 .rond-dia > .rond-titel { margin-bottom:0; }
 .rond-mist { width:100%; padding:9px 10px; border-radius:10px; border:1px dashed var(--bd); background:none; color:var(--tx2); font-family:var(--f); font-size:12px; font-weight:700; text-align:left; cursor:pointer; }

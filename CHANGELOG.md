@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Rondgang: pagina's vertellen een verhaal, met "wat dit zegt"
+ ═══════════════════════════════════════════════════════════
+ Na de demo-screenshots: pagina's waren lijsten per soort, een losse
+ staaf of boog werd half leeg, abs. belasting stond op 0–400 % naast
+ belasting op 0–100 %, en de eerste pagina was één "—". Nu per pagina
+ een keten: pedaal → gasklep → belasting (eerste pagina), inlaatdruk
+ tegen buitendruk, mengsel = lambda gevraagd/gemeten + trims, sondes
+ vóór/ná met de katalysator, accu en laden. Gedeelde schaal per paneel
+ (lo/hi), korte labels, losse meter wordt rij. Onder de titel één regel
+ uit de live waarden (duiding(): belasting, turbo/vacuüm, trims,
+ opwarmen, dynamo, katalysator); geen uitspraak als het niet klopt.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Rondgang: meer pagina's per categorie, verwante sensoren samen
  ═══════════════════════════════════════════════════════════
  Motor en rijden toonde drie of vier sensoren. Een categorie heeft nu

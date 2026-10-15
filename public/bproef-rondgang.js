@@ -60,6 +60,19 @@ const wacht = (ms) => `await new Promise(function(r){ setTimeout(r, ${ms}); });`
     toets('geen Aanpassen in de rondgang', !een.aanpassen);
     toets('past op het scherm', een.breed <= een.venster, JSON.stringify(een));
 
+    // De regel "wat dit zegt": in de demo geeft de accu altijd een waarde
+    // en draait de motor, dus de pagina met 'laden' hoort een zin te dragen.
+    const duid = await app.ev(`(async function(){
+      pidVals['0142']=14.07; pidVals['010C']=1600; pidHist['0142']=[{t:Date.now(),v:14.07}];
+      let st=PLRond.staat(); const i=st.dias.findIndex(function(d){ return d.duid.indexOf('laden')>-1; });
+      if(i<0) return { geen:true, dias:st.dias.map(function(d){ return d.id+':'+d.duid; }) };
+      for(let k=0;k<st.dias.length && PLRond.staat().i!==i;k++) PLRond.stap(1);
+      ${wacht(700)}
+      const el=document.getElementById('rondDuid');
+      return { i:i, nu:PLRond.staat().i, tekst:el ? el.textContent : null, zicht:!!el && !el.hidden && el.getClientRects().length>0 };
+    })()`);
+    toets('een pagina met Accu en laden zegt in één regel wat de spanning betekent', duid.zicht && /dynamo laadt de accu \(14,1 V\)/.test(duid.tekst || ''), JSON.stringify(duid));
+
     console.log('\n1b. De selectie blijft van de klant');
     const eenB = await app.ev(`(async function(){
       const p=PLRond.staat().dias.reduce(function(a,d){ return a.concat(d.pids); }, []).filter(function(x){ return x!=='0105'; })[0];
