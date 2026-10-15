@@ -1935,6 +1935,10 @@ MUTATIES=(
 "public/pidlane-berekend.js@@      return namen.length ? namen.reduce((a,k)=>a+p[k].buiten, 0) : null;@@      return namen.length ? 0 : null;@@test-berekend.js@@de app-maat berekend-buiten ziet een waarde buiten bereik niet"
 "public/pidlane-berekend.js@@l<0.5 || k<REND_MIN_KW) return null;@@l<0.5 || k<=0) return null;@@test-berekend.js@@rendement stationair en bij gas los weer gerekend: 99 % uit frictie en lucht zonder brandstof (#457)"
 "public/pidlane-berekend.js@@    (s.pids.CA10.buitenBij ? ' (hoogste bij '+bronTekst(s.pids.CA10.buitenBij.bronnen)+')' : ''));@@    '');@@test-berekend.js@@het rendementsoordeel zegt weer niet bij welke bronwaarden het misging (#457)"
+"public/pidlane-auth.js@@  const map=22+(M.baro-24)*last/100+golf(600,0.6);@@  const map=98+golf(8000,12);@@test-demorit.js@@de demo-inlaatdruk komt weer boven de buitenlucht bij een motor zonder turbo"
+"public/pidlane-auth.js@@  const maf=M.liter*1.2*rpm/120*last/100;@@  const maf=Math.max(2,8+golf(8000,14));@@test-demorit.js@@de demo-luchtmassa beweegt weer los van toerental en belasting"
+"public/pidlane-auth.js@@  const lph=los ? 0.1 : maf*3600/(14.7*lambda*745);@@  const lph=6.5+golf(8000,4);@@test-demorit.js@@het demo-verbruik hangt niet meer aan de luchtmassa: L/u en l/100 km spreken elkaar tegen"
+"public/pidlane-demo.js@@    '0124','0134','0115','0142'@@    '0114','0124','0134','0115','0142'@@test-demorit.js@@de benzine-demo biedt weer een platte voorste smalbandsonde aan naast de breedbandsonde"
 "public/pidlane-berekend.js@@      if (Math.abs((x.t||0)-ref)<Math.abs(uit[p].t-ref)) uit[p]=@@      if (false) uit[p]=@@test-berekend.js@@CA03 rekent weer met de laatste snelheid naast een oudere 015E, en blijft dan op een oude waarde hangen"
 "public/pidlane-berekend.js@@      set.forEach(p=>{ if (al[p]) v[p]=al[p].v; });@@      set.forEach(p=>{ const x=waarde(p); if (x!==undefined) v[p]=x; });@@test-berekend.js@@tik() rekent met de laatste waarden terwijl de tijden van de uitgelijnde komen"
 # ── Slim visueel: tempo alleen rijdend, herbouw met reden (#338, 01-10-2026) ──

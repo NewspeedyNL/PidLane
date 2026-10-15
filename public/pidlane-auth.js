@@ -614,6 +614,43 @@ const _ds={};
 // Scenario-override (admin-only, demo-modus): handmatig gezette PID-waarden,
 // DTC-codes en voertuiggegevens om de beoordeling/het rapport te testen.
 // Alles wat hier gezet wordt, wordt in de UI als "MANUEEL" gelabeld.
+// ── DE DEMO-RIT: één rijtoestand, alle sensoren daaruit (16-10-2026) ──
+// Mazda CX-5 2018 2.0 SkyActiv-G: atmosferisch, zesbak, breedbandsonde vóór
+// en smalband ná de katalysator. Tot deze datum was elke PID een eigen
+// sinus: de inlaatdruk kwam tot 110 kPa (boven de buitenlucht, zonder
+// turbo), luchtmassa, verbruik en toerental bewogen los van elkaar, en de
+// relaties en duidingen in Slim lieten dus iets zien wat geen auto doet.
+// Nu volgt alles uit snelheid en versnelling op moment t: versnelling →
+// toerental, pedaal → gasklep → belasting → inlaatdruk en luchtmassa →
+// verbruik en lambda. Puur (alleen t); getoetst in test-demorit.js.
+const DEMO_RIT={ baro:101.3, liter:2.0, km1000:[8,14,21,29,37,45], stat:750 };
+function demoRit(t){
+  const M=DEMO_RIT, f=x=>Math.round(x*100)/100, golf=(p,a)=>Math.sin(t/p)*a;
+  const fase=t/8000, kmh=Math.max(0, 45+Math.sin(fase)*35+golf(1300,1.5));
+  const acc=Math.cos(fase);                               // + optrekken, − afremmen
+  const los=acc<-0.55;                                    // gas los: uitrollen op de motor
+  let g=1; for(let i=M.km1000.length; i>=1; i--){ if(kmh/M.km1000[i-1]*1000>=(acc>0.4?1700:1250)){ g=i; break; } }
+  const rpm=Math.max(M.stat+golf(700,15), kmh/M.km1000[g-1]*1000);
+  const ped=los ? 0 : Math.max(0, Math.min(70, 10+acc*30+kmh*0.12+golf(900,1.5)));   // ingetrapt, %
+  const last=los ? 9 : Math.max(14, Math.min(95, 16+ped*1.15));                       // berekende belasting, %
+  const map=22+(M.baro-24)*last/100+golf(600,0.6);                                    // altijd onder de buitenlucht
+  const maf=M.liter*1.2*rpm/120*last/100;                                             // g/s
+  const lambda=los ? 1.0 : last>85 ? 0.9 : 1.0+golf(1100,0.025);
+  const lph=los ? 0.1 : maf*3600/(14.7*lambda*745);
+  const koel=89+golf(20000,3);
+  return {
+    '010D':f(kmh), '010C':f(rpm), '0149':f(14.9+ped*0.75), '0111':f(6+ped*0.85),
+    '0104':f(last), '0143':f(last*0.92), '010B':f(map), '0133':f(M.baro+golf(60000,0.2)),
+    '0110':f(maf), '015E':f(lph), '0124':f(lambda), '0134':f(lambda),
+    '0106':f((1-lambda)*60+golf(450,1.2)), '0107':f(2.4+golf(40000,0.4)),
+    '0115':f(los ? 0.12 : 0.7+golf(4000,0.03)),
+    '010E':f(rpm<900 ? 8+golf(500,1) : 10+rpm*0.006-last*0.12), '010F':f(22+golf(30000,4)),
+    '0105':f(koel), '015C':f(koel+6+golf(25000,3)), '0146':f(19+golf(60000,2)),
+    '012F':68, '010A':f(330+golf(800,4)), '0113':3,                     // sondes aanwezig: B1S1 en B1S2
+    '0142':f(los ? 14.5 : acc>0.3 ? 12.9 : 14.0+golf(4000,0.1)),       // slimme dynamo: laden bij uitrollen
+    '012C':f(last<20 || last>80 ? 0 : 4+last*0.25)
+  };
+}
 let _scenario={ enabled:false, pids:{}, dtcs:[], vehicle:null };
 function demo(pid){
   const d=getPidDef(pid); if(!d) return null;
@@ -633,52 +670,8 @@ function demo(pid){
   _ds[pid]=Math.max(d.min,Math.min(d.max,_ds[pid]));
 
   // ── Mazda CX-5 2018 2.0 SkyActiv-G — realistische rijsimulatie ──
-  const t=Date.now();
-  const rijcyclus=Math.sin(t/8000);  // langzame rijcyclus
-
-  // Motor
-  if(pid==='010C') _ds[pid]=800+(rijcyclus*0.5+0.5)*900+Math.random()*40; // 800-1740 RPM — gezonde stadsrit, blijft boven stationair
-  if(pid==='010D') _ds[pid]=Math.max(0,45+rijcyclus*35+Math.random()*5); // 10-80 km/h
-  if(pid==='0104') _ds[pid]=Math.max(5,22+rijcyclus*28+Math.random()*5); // 5-50% belasting
-  if(pid==='0111') _ds[pid]=Math.max(5,18+rijcyclus*22+Math.random()*4); // gasklep 5-40%
-  if(pid==='0149') _ds[pid]=Math.max(2,15+rijcyclus*20+Math.random()*5); // gaspedaal
-  if(pid==='010E') _ds[pid]=8+rijcyclus*6+Math.random()*2;               // timing 2-14°
-  if(pid==='010B') _ds[pid]=98+rijcyclus*12+Math.random()*3;             // MAP 86-110 kPa
-  if(pid==='010F') _ds[pid]=22+Math.sin(t/30000)*5;                      // IAT 17-27°C
-
-  // MAF — realistisch voor 2.0L
-  if(pid==='0110') _ds[pid]=Math.max(2,8+rijcyclus*14+Math.random()*2);  // 2-22 g/s
-
-  // Temperatuur
-  if(pid==='0105') _ds[pid]=89+Math.sin(t/20000)*4+Math.random()*1;      // koelwater 85-93°C
-  if(pid==='015C') _ds[pid]=95+Math.sin(t/25000)*8;                      // olie 87-103°C warmer
-  if(pid==='0146') _ds[pid]=19+Math.sin(t/60000)*3;                      // buiten 16-22°C
-
-  // Brandstof
-  if(pid==='012F') _ds[pid]=68;                                           // tank 68% vol
-  if(pid==='015E') _ds[pid]=Math.max(0.5,6.5+rijcyclus*4+Math.random()); // verbruik 2.5-10.5 L/h
-  if(pid==='0106') _ds[pid]=(Math.random()-.5)*4;                        // STFT ±2%
-  if(pid==='0107') _ds[pid]=1.5+Math.random()*2;                         // LTFT +1.5-3.5%
-  if(pid==='010A') _ds[pid]=330+Math.random()*10;                        // brandstofdruk 330 kPa
-
-  // O2 sensoren — moderne auto (Mazda CX-5): B1S1 upstream is BREEDBAND.
-  // De smalband-spanning B1S1 = PID 0114 staat daarom dood/plat (~0.05V); de
-  // echte B1S1-waarde komt van breedband 0124 in lambda. 0115 (B1S2 na-kat) is
-  // wél smalband. 0113 is GEEN spanning maar de "O2-sensoren aanwezig"-bitmap.
-  if(pid==='0114') _ds[pid]=0.05+Math.random()*0.02;                    // smalband B1S1 upstream afwezig/plat
-  if(pid==='0113') _ds[pid]=51;                                         // bitmap: sensoren aanwezig (0x33)
-  if(pid==='0124') _ds[pid]=1.0+Math.sin(t/2500)*0.06+Math.random()*0.01;// breedband B1S1 ~1.00 λ
-  if(pid==='0134') _ds[pid]=1.0+Math.sin(t/2500)*0.06;                   // idem (stroom-variant)
-  if(pid==='0115') _ds[pid]=0.72+Math.sin(t/4000)*.05;                   // O2 B1S2 stabiel ~0.72V
-
-  // Electrisch
-  if(pid==='0142') _ds[pid]=13.9+Math.sin(t/4000)*.2+Math.random()*.1;   // accu 13.7-14.1V
-  if(pid==='0143') _ds[pid]=Math.max(5,22+rijcyclus*28);                  // abs belasting
-
-  // Emissie/overig
-  if(pid==='0133') _ds[pid]=101+Math.random()*.5;                        // barometer ~101 kPa
-  if(pid==='012C') _ds[pid]=Math.max(0,12+rijcyclus*8);                  // EGR 4-20%
-
+  const w=demoRit(Date.now());
+  if(w[pid]!==undefined) _ds[pid]=w[pid];
   return Math.round(_ds[pid]*100)/100;
 }
 

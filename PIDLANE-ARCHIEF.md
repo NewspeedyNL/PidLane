@@ -32,6 +32,12 @@ Zes screenshots van de rondgang in demo, naast elkaar gelegd:
   laaddruk 0,08 bar stonden op drie plekken; lambda en trims op twee
   categorieën, terwijl de trims juist de correctie op de sonde zijn. Nu
   per pagina een keten en een regel uit `duiding()`.
+- **Herzien op 16-10-2026.** Punt (1) hieronder was niet "twee bronnen":
+  pil en rij lezen allebei 015E. De afwijking zat in CA03: de tik rekende
+  alleen als 015E en 010D binnen 1 s na elkaar gemeten waren (#337), en
+  anders bleef de oude L/100 km staan alsof hij live was — gemeten 28,5
+  bij 3,49 L/u en 15,5 km/u. Opgelost met uitlijnen op de geschiedenis,
+  de #337-poort blijft. (2) en (3): de demo is nu één rijmodel.
 - **Niet opgelost, wel gezien.** (1) De aandrijfpil zei 3,5 L/u en de
   rij Verbruik 4,2 L/h op hetzelfde moment: twee bronnen
   (`PLAandrijving.brandstofLu` tegen 015E/CA02), en ook "L/u" tegen

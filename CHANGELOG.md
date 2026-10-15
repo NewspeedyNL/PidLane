@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 16-10-2026 — Getallen die bij elkaar horen kloppen ook met elkaar
+ ═══════════════════════════════════════════════════════════
+ L/100 km (CA03) bleef op een oude waarde staan als 015E en de snelheid
+ niet binnen 1 s na elkaar binnenkwamen; nu lijnt PLBerekend.uitgelijnd()
+ de bronnen uit op één moment uit de geschiedenis. Verbruik per uur heet
+ overal L/u. De demo is één rijtoestand (demoRit(t)): toerental volgt uit
+ snelheid en versnelling, pedaal → gasklep → belasting → inlaatdruk en
+ luchtmassa → verbruik; inlaatdruk nooit boven de buitenlucht, gas los
+ zonder verbruik, slimme dynamo. Geen platte voorste smalbandsonde meer.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Rondgang: pagina's vertellen een verhaal, met "wat dit zegt"
  ═══════════════════════════════════════════════════════════
  Na de demo-screenshots: pagina's waren lijsten per soort, een losse

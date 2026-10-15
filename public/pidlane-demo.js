@@ -15,7 +15,7 @@ function demoPIDsForFuel(brandstof){
   const b=String(brandstof||'').toLowerCase();
   const benzine=['010C','010D','0104','0111','0149','010E','010B','010F','0110',
     '0105','015C','0146','012F','015E','0106','0107','010A',
-    '0114','0124','0134','0115','0142','0143','0133','012C'];
+    '0124','0134','0115','0142','0143','0133','012C'];   // vóór breedband (0124), ná smalband (0115): geen 0114
   if(/elektr|electric|\bev\b|bev/.test(b)){
     // EV: geen verbrandings-PIDs. Snelheid, temps, 12V-spanning, accupakket.
     return ['010D','0146','0142','015B','0105','0143','0133'];
@@ -223,7 +223,7 @@ function _startDemoCore(car, kent){
     '010C','010D','0105','0142',  // Motor essentials
     '012F','015E','0104','0111',  // Brandstof & belasting
     '0106','0107','0110','010F',  // Brandstoftrim & MAF
-    '015C','0114','0124','010B','0146',  // Temp, O2 smalband+breedband, druk
+    '015C','0124','0115','010B','0146',  // Temp, sonde vóór (breedband) en ná, druk
   ].filter(pid=>supportedPIDs.has(pid)).forEach(pid=>{ activePIDs.add(pid); manualPIDs.add(pid); });
 
   buildPIDList();

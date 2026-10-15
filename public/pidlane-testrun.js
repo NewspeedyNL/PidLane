@@ -2787,6 +2787,21 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── L/100 km uitgelijnd, de demo als één rijtoestand (16-10-2026) ──
+  {
+    issue: 'samenhang',
+    naam: 'L/100 km rekent met de snelheid van het moment van het verbruik, niet met een oude waarde',
+    waarom: 'Op een screenshot stond 20 l/100 km naast 4,2 L/u bij 21 km/u, en in de browser 28,5 waar 22,5 hoorde: CA03 bleef hangen als de bronnen niet binnen 1 s na elkaar kwamen.',
+    proef: async function () {
+      if (!window.PLBerekend || typeof PLBerekend.uitgelijnd !== 'function') return { staat: 'FOUT', detail: 'PLBerekend.uitgelijnd ontbreekt — oude pidlane-berekend.js (herladen?)' };
+      var e = (pidHist['015E'] || []).slice(-1)[0], s = (pidHist['010D'] || []).slice(-1)[0], c = pidVals['CA03'];
+      if (!e || !s || typeof c !== 'number' || !(s.v > 20)) return { staat: 'LET OP', detail: 'niet te toetsen: zet Verbruik nu (CA03) aan en rij harder dan 20 km/u' };
+      var verwacht = e.v / s.v * 100, af = Math.abs(c - verwacht) / Math.max(1, verwacht);
+      if (af > 0.35) return { staat: 'FOUT', detail: 'CA03 ' + c + ' l/100 km, maar 015E ' + e.v + ' L/u ÷ ' + s.v + ' km/u = ' + verwacht.toFixed(1) };
+      return { staat: 'OK', detail: 'CA03 ' + c + ' tegen ' + verwacht.toFixed(1) + ' uit de laatste metingen' };
+    }
+  },
+
   // ── Rondgang: pagina's als verhaal, met een regel "wat dit zegt" (15-10-2026) ──
   {
     issue: 'rondgangduiding',
