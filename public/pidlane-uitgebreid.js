@@ -522,70 +522,132 @@
      tekst, en daaruit alleen wat door controleer() komt én een http(s)-bron
      heeft. Verzonnen of schrijvende codes vallen er hier al uit; de server
      keurt ze daarna nog eens. Puur: test-mode21.js toetst hem los. */
-  function kandidatenUitTekst(tekst) {
-    const t = String(tekst || ''), a = t.indexOf('{'), z = t.lastIndexOf('}');
-    let j = null;
-    if (a >= 0 && z > a) { try { j = JSON.parse(t.slice(a, z + 1)); } catch (x) { console.warn('PLEigen: kandidaten niet te lezen', x); } }
-    const lijst = (j && Array.isArray(j.kandidaten)) ? j.kandidaten : [];
+  /* ── OBDb: codes uit de open database (#526, 15-10-2026) ──────────
+     Hier stond zoekOnline(): de AI zocht met web_search op internet. Dat
+     kostte 50–85 tokens per keer (de zoekresultaten tellen als invoer), het
+     kostenvenster schatte ±7, en voor de i20 kwam er niets uit. OBDb
+     (github.com/OBDb, CC BY-SA 4.0) heeft per merk en model één JSON met de
+     code, het ECU-adres en de omrekening — gratis, herhaalbaar, met bron. De
+     keuring blijft de test op de auto.
+
+     Wat we overnemen: alleen leesdiensten 21/22 op een 7xx-adres met het
+     antwoord op +8 (geen extended addressing: dat kan de eigen-PID-route
+     niet), hele bytes binnen A–H, zonder teken of opzoektabel. Eén code per
+     commando: de bibliotheek kent per code één formule. */
+  const OBDB_RAW = 'https://raw.githubusercontent.com/OBDb/';
+  const OBDB_EENHEID = {
+    celsius: '°C', bars: 'bar', psi: 'psi', kilopascal: 'kPa', percent: '%', volts: 'V', amps: 'A',
+    kilometers: 'km', kilometersPerHour: 'km/h', meters: 'm', millimeters: 'mm', degrees: '°', rpm: 'rpm',
+    newtonMeters: 'Nm', seconds: 's', milliseconds: 'ms', minutes: 'min', hours: 'h', liters: 'l',
+    ampereHours: 'Ah', ohms: 'Ω', hertz: 'Hz', watts: 'W', kilowatts: 'kW', kilowattHours: 'kWh',
+    metersPerSecondSquared: 'm/s²'
+  };
+  // Zonder eenheid ("scalar", leeg) is het in OBDb bijna altijd een stand of
+  // schakelaar (alarmlichten, remlicht), geen meetwaarde: die blijven weg.
+  // Omrekenen naar metrisch: [eenheid, vóór, na] om de ruwe formule heen.
+  const OBDB_OM = { fahrenheit: ['°C', '((', ')-32)*5/9'], miles: ['km', '(', ')*1.609344'] };
+
+  /* De repo-namen om te proberen. GitHub is hoofdletterongevoelig, dus het
+     gaat alleen om de vorm: RDW zegt "CX5" of "320D XDRIVE", OBDb "CX-5" en
+     "3-Series". */
+  function obdbNamen(merk, model) {
+    const m = String(merk || '').trim().replace(/\s+/g, '-');
+    const vol = String(model || '').trim();
+    if (!m || !vol) return [];
+    const eerste = vol.split(/\s+/)[0];
+    const uit = [vol.replace(/\s+/g, '-'), eerste, eerste.replace(/^([A-Za-z]+)(\d)/, '$1-$2')];
+    const mk = m.toLowerCase();
+    let r;
+    if (mk === 'bmw' && (r = /^([1-8])\d{2}/.exec(eerste))) uit.push(r[1] + '-Series');
+    if (/^mercedes/.test(mk) && (r = /^([A-Z]{1,3})\s*\d{2,3}/i.exec(vol))) uit.push(r[1].toUpperCase() + '-Class');
+    return Array.from(new Set(uit.filter(Boolean))).map(x => m + '-' + x).slice(0, 5);
+  }
+
+  function obdbGetal(n) { return String(Math.round(Number(n) * 1e6) / 1e6); }
+
+  /* fmt {bix, len, mul, div, add, blsb, sign, map, unit} → formule in A–H,
+     of null als hij niet in die notatie past. */
+  function obdbFormule(fmt) {
+    const f = fmt || {};
+    const bix = Number(f.bix || 0), len = Number(f.len);
+    if (f.sign || f.map || bix % 8 || [8, 16, 24, 32].indexOf(len) < 0) return null;
+    const i0 = bix / 8, n = len / 8;
+    if (i0 + n > 8) return null;
+    const delen = [];
+    for (let k = 0; k < n; k++) {
+      const w = f.blsb ? k : n - 1 - k;
+      delen.push('ABCDEFGH'[i0 + k] + (w ? '*' + Math.pow(256, w) : ''));
+    }
+    let x = delen.join('+');
+    const groep = () => (x.indexOf('+') >= 0 || x.indexOf('-') >= 0 ? '(' + x + ')' : x);
+    if (f.mul !== undefined) { if (!(Number(f.mul) > 0)) return null; x = groep() + '*' + obdbGetal(f.mul); }
+    if (f.div !== undefined) { if (!(Number(f.div) > 0)) return null; x = groep() + '/' + obdbGetal(f.div); }
+    if (f.add !== undefined && Number(f.add)) x += (Number(f.add) < 0 ? '-' : '+') + obdbGetal(Math.abs(Number(f.add)));
+    const om = OBDB_OM[f.unit];
+    if (om) x = om[1] + x + om[2];
+    return x;
+  }
+
+  // filter {from, to}: to < from betekent twee open stukken (t/m to, of vanaf from).
+  function obdbJaarPast(filter, jaar) {
+    if (!filter || !jaar) return true;
+    const j = Number(jaar), van = filter.from, tot = filter.to;
+    if (Array.isArray(filter.years) && filter.years.indexOf(j) >= 0) return true;
+    if (van !== undefined && tot !== undefined) return tot >= van ? (j >= van && j <= tot) : (j <= tot || j >= van);
+    if (van !== undefined) return j >= van;
+    if (tot !== undefined) return j <= tot;
+    return !Array.isArray(filter.years);
+  }
+
+  function obdbKandidaten(data, repo, jaar) {
+    const cmds = (data && Array.isArray(data.commands)) ? data.commands.slice() : [];
+    // Geverifieerde commando's eerst; dbg staat voor wat nog in onderzoek is.
+    cmds.sort((a, b) => (a && a.dbg ? 1 : 0) - (b && b.dbg ? 1 : 0));
+    const url = 'https://github.com/OBDb/' + repo;
     const uit = [], gezien = {};
-    lijst.slice(0, 40).forEach(k => {
-      if (!k || typeof k !== 'object') return;
-      const r = eigenControleer({ code: k.code, naam: k.naam, formule: k.formule, eenheid: k.eenheid, ecu: k.ecu });
-      const url = String(k.bron || k.url || '').trim();
-      if (!r.ok || !/^https?:\/\/[^\s"<>]+$/.test(url)) return;
-      const s = r.code + '@' + r.ecu;
-      if (gezien[s]) return;
-      gezien[s] = 1;
-      uit.push({ code: r.code, ecu: r.ecu, naam: r.def.name, formule: r.def.formule.replace(/\s+/g, '').toUpperCase(), eenheid: r.def.unit, url: url.slice(0, 300) });
+    cmds.forEach(c => {
+      if (!c || !c.cmd || c.eax || !obdbJaarPast(c.filter, jaar)) return;
+      const dienst = c.cmd['22'] !== undefined ? '22' : c.cmd['21'] !== undefined ? '21' : '';
+      if (!dienst) return;
+      const hdr = String(c.hdr || '').toUpperCase();
+      if (c.rax && parseInt(c.rax, 16) !== parseInt(hdr, 16) + 8) return;
+      const code = dienst + String(c.cmd[dienst]).toUpperCase();
+      for (const g of (Array.isArray(c.signals) ? c.signals : [])) {
+        const fmt = (g && g.fmt) || {};
+        if (!OBDB_EENHEID[fmt.unit] && !OBDB_OM[fmt.unit]) continue;   // aan/uit, hex, ja/nee, zonder eenheid: geen meetwaarde
+        const fo = obdbFormule(fmt);
+        if (!fo) continue;
+        const eenheid = OBDB_OM[fmt.unit] ? OBDB_OM[fmt.unit][0] : OBDB_EENHEID[fmt.unit];
+        const r = eigenControleer({ code, naam: g.name, formule: fo, eenheid, ecu: hdr });
+        if (!r.ok) continue;
+        const sl = r.code + '@' + r.ecu;
+        if (gezien[sl]) break;
+        gezien[sl] = 1;
+        uit.push({ code: r.code, ecu: r.ecu, naam: r.def.name, formule: fo.replace(/\s+/g, '').toUpperCase(), eenheid, url });
+        break;
+      }
     });
-    return uit.slice(0, 20);
+    return uit.slice(0, 60);
   }
 
-  const ZOEK_SYS = 'Je zoekt voor één auto naar diagnosecodes om sensoren te LEZEN die niet in de standaard-OBD (mode 01) zitten: ' +
-    'UDS/KWP-leesdiensten mode 22 (22 + 4 hex, bijv. 221E1C) of mode 21 (21 + 2 hex). Zoek op internet: forums, lijsten voor Torque of Car Scanner, ' +
-    'GitHub-repositories met PID-lijsten, documentatie. Antwoord UITSLUITEND met één JSON-object, zonder uitleg eromheen: ' +
-    '{"kandidaten":[{"code":"221E1C","ecu":"7E1","naam":"Temperatuur automaat","formule":"A-40","eenheid":"°C","bron":"https://…"}]}. ' +
-    'Regels: alleen codes die je in een bron hebt gezien, met de URL van die bron — verzin niets en vul niets aan uit je geheugen. ' +
-    'Alleen leesdiensten 21 en 22; nooit 2E, 2F, 31, 04, 10, 11, 14 of iets anders dat schrijft, wist of aanstuurt. ' +
-    'ecu = het fysieke CAN-adres als de bron het noemt (7E0 motor, 7E1 automaat, of 18DAxxF1), anders "". ' +
-    'formule in bytes A, B, C … met alleen getallen, + - * / en haakjes (Torque-notatie zonder functies); past de formule daar niet in, laat de code dan weg. ' +
-    'Naam in het Nederlands, hoogstens 40 tekens. Hoogstens 15 kandidaten. Niets gevonden: {"kandidaten":[]}.';
-
-  /* Online zoeken voor een voertuig {merk, model, bouwjaar, motor}. Via de
-     gewone AI-route (apiFetch: tegoed, kostenvoorvertoning), met de
-     zoektool van de API. Weigert de API die tool, dan zegt de uitkomst dat
-     er niet online gezocht is — dan komt er niets in de bibliotheek, want
-     een code uit het geheugen van een taalmodel is geen bron. */
-  /* `bewezen` (optioneel): codes die op deze auto al antwoorden
-     [{code, ecu, naam}]. Dan zoekt de AI DIEPER (28-09-2026): verwante codes
-     op dezelfde regeleenheden en uit dezelfde familie (andere modellen op
-     hetzelfde platform delen vaak hun codes), en niet nog eens wat er al is. */
-  function dieperVraag(auto, bewezen) {
-    const lijst = bewezen.slice(0, 30).map(b => b.code + (b.ecu ? '@' + b.ecu : '') + ' (' + String(b.naam || '').slice(0, 40) + ')').join(', ');
-    const ecus = Array.from(new Set(bewezen.map(b => b.ecu).filter(Boolean)));
-    return 'Auto: ' + auto + '. Deze leescodes werken op deze auto al: ' + lijst + '. ' +
-      'Zoek VERDER: andere codes op dezelfde regeleenheden' + (ecus.length ? ' (' + ecus.join(', ') + ')' : '') +
-      ', codes uit dezelfde reeks (buren van de werkende codes), en codes die bij andere modellen van hetzelfde merk en platform gedocumenteerd zijn. ' +
-      'Noem geen codes die hierboven al staan.';
-  }
-  async function zoekOnline(v, bewezen) {
+  /* Zoeken voor een voertuig {merk, model, bouwjaar}. Geen AI, geen tegoed. */
+  async function zoekObdb(v) {
     v = v || {};
     if (!v.merk || !v.model) return { ok: false, fout: 'Vul eerst merk en model in bij het profiel' };
-    if (typeof apiFetch !== 'function') return { ok: false, fout: 'De AI-route ontbreekt' };
-    const auto = [v.merk, v.model, v.bouwjaar, v.motor, v.brandstof].filter(Boolean).join(' ');
-    const dieper = Array.isArray(bewezen) && bewezen.length > 0;
-    const vraag = dieper ? dieperVraag(auto, bewezen) : 'Auto: ' + auto + '. Zoek leescodes (mode 21/22) voor sensoren die voor een eigenaar nuttig zijn: temperatuur van de automaat, ' +
-      'olietemperatuur en -druk, roetfilter (beladen, regeneratie), AdBlue, accu-toestand, bandenspanning, laaddruk, kilometerstand van het instrumentenpaneel.';
-    let tekst;
-    try {
-      tekst = await apiFetch(vraag, 3000, ZOEK_SYS, 'claude-sonnet-5', null, { tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }] });
-    } catch (x) {
-      if (x && x.plAfgebroken) return { ok: false, fout: 'Afgebroken' };
-      if (/web_search|tool/i.test(String(x && x.message || x))) return { ok: false, fout: 'Online zoeken is op dit account niet beschikbaar (de zoektool van de AI staat uit)' };
-      return { ok: false, fout: String(x && x.message || x) };
+    const namen = obdbNamen(v.merk, v.model);
+    let netfout = '';
+    for (const repo of namen) {
+      let r;
+      try { r = await fetch(OBDB_RAW + encodeURIComponent(repo) + '/main/signalsets/v3/default.json'); }
+      catch (x) { netfout = String(x && x.message || x); console.warn('PLEigen: OBDb niet bereikbaar', x); continue; }
+      if (r.status === 404) continue;
+      if (!r.ok) { netfout = 'HTTP ' + r.status; continue; }
+      let data;
+      try { data = await r.json(); } catch (x) { return { ok: false, fout: 'OBDb gaf geen leesbaar bestand voor ' + repo }; }
+      return { ok: true, repo, kandidaten: obdbKandidaten(data, repo, v.bouwjaar) };
     }
-    const al = new Set((bewezen || []).map(b => String(b.code).toUpperCase() + '@' + String(b.ecu || '').toUpperCase()));
-    return { ok: true, dieper, kandidaten: kandidatenUitTekst(tekst).filter(k => !al.has(k.code + '@' + (k.ecu || ''))) };
+    if (netfout) return { ok: false, fout: 'OBDb niet bereikbaar (' + netfout + ')' };
+    return { ok: true, repo: '', kandidaten: [], geprobeerd: namen };
   }
 
   /* ── BUURSCAN (28-09-2026) ───────────────────────────────────────
@@ -697,7 +759,7 @@
 
   window.PLEigen = { CODE: EIGEN_CODE, MAX: EIGEN_MAX, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
     ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, drukOmrekening, standaardBereik,
-    scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, dieperVraag, vraag: eigenVraag, kandidatenUitTekst, zoekOnline };
+    scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, vraag: eigenVraag, obdbNamen, obdbFormule, obdbJaarPast, obdbKandidaten, zoekObdb };
   window.plEigenDefs = eigenDefs;
 
   btDiagSafe('pidlane-uitgebreid.js geladen — mode 21/22 pad actief');

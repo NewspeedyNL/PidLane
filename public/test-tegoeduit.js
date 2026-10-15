@@ -77,7 +77,7 @@ function bouwAI(velden) {
   const api = new Function(...Object.keys(omg), srcTegoed + '\nreturn { handleMessages };')(...Object.values(omg));
   const verzoek = {
     headers: { get: (h) => (String(h).toLowerCase() === 'content-length' ? '400' : null) },
-    json: async () => ({ messages: [{ role: 'user', content: 'wat is er mis' }], model: 'm' })
+    json: async () => ({ messages: [{ role: 'user', content: 'wat is er mis' }], model: 'claude-sonnet-5' })
   };
   return { staat, analyse: async () => {
     const r = await api.handleMessages(verzoek, { LOGDB: {} }, { waitUntil() {} });
@@ -112,7 +112,8 @@ function bouwAdmin(ontwikkelaarInAirtable) {
     const t = bouwAI({ Ontwikkelaar: true, TegoedUit: true, Saldo: 0 });
     const st = await t.analyse();
     toets('ontwikkelaar + tegoed uit, saldo 0: de analyse gaat door', st === 200 && t.staat.aiCalls === 1, 'status ' + st);
-    toets('en er wordt niets afgeboekt en geen kasboekregel geschreven', t.staat.patches.length === 0 && t.staat.kasboek.length === 0,
+    // Sinds #526 wél één kasboekregel: soort ai-verbruik, Credits 0 (test-kasboek.js deel 16).
+    toets('en er wordt niets afgeboekt; wel één verbruiksregel in het kasboek', t.staat.patches.length === 0 && t.staat.kasboek.length === 1,
       JSON.stringify(t.staat));
   }
   {

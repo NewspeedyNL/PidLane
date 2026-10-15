@@ -52,7 +52,7 @@ const NEPSERVER = `(function(){
     else if (b.actie === 'rapport_verwijder') { S.gewist = (S.gewist || []).concat(b.ids || [b.id]); d.gewist = (b.ids || [b.id]).length; }
     else if (b.actie === 'rit_label') { (S.ritten || []).forEach(r => { if (r.id === b.id) r.label = b.label || null; }); d.label = b.label || null; }
     else if (b.actie === 'pidbib_lijst') d.lijst = S.bib || [];
-    else if (b.actie === 'pidbib_kandidaten') { S.kandidaten = b.lijst; d.erbij = b.lijst.length; d.geweigerd = 0; }
+    else if (b.actie === 'pidbib_kandidaten') { S.kandidaten = b.lijst; S.kandidaatBron = b.bron; d.erbij = b.lijst.length; d.geweigerd = 0; }
     else if (b.actie === 'pidbib_stem') (S.stemmen = S.stemmen || []).push(b.id + ':' + b.uitkomst);
     else if (b.actie === 'pidbib_deel') S.gedeeld = b.code + '@' + b.ecu;
     return { ok:true, status:200, json: async () => d };
@@ -300,13 +300,21 @@ const NEPSERVER = `(function(){
       await PLGarage._sensDeel(i);
       uit.gedeeld = S.gedeeld;
       PLEigen.test = echtTest;
-      // Online zoeken: via apiFetch met de zoektool, wat door de controle komt naar de server.
-      const echtApi = window.apiFetch; let gevraagd = null;
-      window.apiFetch = async (p, m, sys, mdl, a, extra) => { gevraagd = extra; return '{"kandidaten":[{"code":"220404","naam":"AdBlue niveau","formule":"A","eenheid":"%","bron":"https://github.com/voorbeeld/pids"},{"code":"2E0404","naam":"x","formule":"A","bron":"https://x.nl"}]}'; };
+      // Zoeken in OBDb (#526): het bestand van de open database, geen AI.
+      const echtApi = window.apiFetch, echtFetch = window.fetch; let ai = 0, gehaald = '';
+      window.apiFetch = async () => { ai++; return ''; };
+      window.fetch = async (u, o) => {
+        if (String(u).indexOf('raw.githubusercontent.com/OBDb/') < 0) return echtFetch(u, o);
+        gehaald = String(u);
+        return { ok: true, status: 200, json: async () => ({ commands: [
+          { hdr: '7E0', rax: '7E8', cmd: { '22': '0404' }, signals: [{ name: 'AdBlue niveau', fmt: { len: 8, unit: 'percent' } }] },
+          { hdr: '7E0', rax: '7E8', cmd: { '2E': '0404' }, signals: [{ name: 'x', fmt: { len: 8, unit: 'percent' } }] }] }) };
+      };
       await PLGarage._bibZoek();
-      window.apiFetch = echtApi;
-      uit.zoekTool = gevraagd && gevraagd.tools && gevraagd.tools[0].name;
+      window.apiFetch = echtApi; window.fetch = echtFetch;
+      uit.zoekTool = ai === 0 && gehaald.indexOf('/main/signalsets/v3/default.json') > 0 ? 'obdb' : 'ai=' + ai + ' ' + gehaald;
       uit.kandidaten = (S.kandidaten || []).map(k => k.code).join(',');
+      uit.kandidaatBron = S.kandidaatBron;
       uit.zoekMelding = /1 nieuwe kandidaat/.test(body());
       return uit;
       function _st_eigen() { return PLGarage.staat().sens.eigen; }
@@ -320,18 +328,19 @@ const NEPSERVER = `(function(){
     toets('een test telt als stem: werkt en 7F tellen, "niet verbonden" niet', JSON.stringify(bib.stemmen) === '["b1:werkt","b2:werkt_niet"]', JSON.stringify(bib.stemmen));
     toets('delen kan pas na een geslaagde test', !bib.deelVoor && bib.deelNa, JSON.stringify(bib));
     toets('delen stuurt code en ECU-adres naar de server', bib.gedeeld === '221E1C@7E1', JSON.stringify(bib.gedeeld));
-    toets('online zoeken gebruikt de zoektool, en alleen leescodes gaan naar de server', bib.zoekTool === 'web_search' && bib.kandidaten === '220404', JSON.stringify(bib));
+    toets('zoeken haalt OBDb op zonder AI, en alleen leescodes gaan naar de server', bib.zoekTool === 'obdb' && bib.kandidaten === '220404', JSON.stringify(bib));
+    toets('met bron "obdb", zodat de lijst zegt waar het vandaan komt', bib.kandidaatBron === 'obdb', JSON.stringify(bib.kandidaatBron));
     toets('en zegt hoeveel er nieuw in de lijst kwamen', bib.zoekMelding, JSON.stringify(bib));
     await app.ev(`PLEigen.zet(null); PLGarage.sluit(); 'ok'`);
 
-    console.log('\n── 4i. dieper zoeken en de buurscan (28-09) ──');
+    console.log('\n── 4i. de buurscan (28-09); "dieper zoeken" met de AI is weg (#526) ──');
     const diep = await app.ev(`(async function(){
       const S = window._nepPlatform, v = S.voertuigen[0];
       S.bib = [{ id: 'b9', code: '222A05', ecu: '720', naam: 'Bandenspanning voor-links', formule: 'A', eenheid: 'psi', bron: 'online', url: 'https://x.nl', werkt: 1, werkt_niet: 0, mijn: 'werkt' }];
       const wacht = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise(r => setTimeout(r, 50)); return f(); };
       PLGarage.open(v.id); PLGarage._tab('sensoren');
       const body = () => document.getElementById('plGarBody').textContent;
-      const uit = { knop: await wacht(() => body().indexOf('Dieper zoeken (1 werkende') >= 0), blok: /Scan 222Axx @ 720/.test(body()) };
+      const uit = { blok: await wacht(() => /Scan 222Axx @ 720/.test(body())), geenDieper: body().indexOf('Dieper zoeken') < 0 };
       // 30-09-2026: de knoptekst liep de kaart uit op tekstgrootte L. Elke
       // kleine knop in deze tab hoort binnen de rechterrand van het venster.
       setUiScale('l'); await new Promise(r => setTimeout(r, 100));
@@ -340,11 +349,6 @@ const NEPSERVER = `(function(){
         return k.offsetParent && k.getBoundingClientRect().right > rand + 1; }).map(function (k) { return k.textContent.trim().slice(0, 40); });
       setUiScale('m');
       uit.buiten = buiten;
-      const echtApi = window.apiFetch; let vraag = '';
-      window.apiFetch = async (q) => { vraag = q; return '{"kandidaten":[]}'; };
-      await PLGarage._bibZoek(true);
-      window.apiFetch = echtApi;
-      uit.vraag = /222A05@720/.test(vraag);
       const echtScan = PLEigen.buurScan;
       PLEigen.buurScan = async (b) => ({ ok: true, gedaan: 256, gestopt: false, gevonden: [
         { code: '222A05', ecu: '720', bytes: [170] }, { code: '222A21', ecu: '720', bytes: [1, 2] }] });
@@ -356,9 +360,8 @@ const NEPSERVER = `(function(){
       PLGarage.sluit();
       return uit;
     })()`);
-    toets('met een werkende code: knoppen "Dieper zoeken" en "Scan 222Axx @ 720"', diep.knop && diep.blok, JSON.stringify(diep));
+    toets('met een werkende code: knop "Scan 222Axx @ 720", en geen AI-knop "Dieper zoeken" meer', diep.blok && diep.geenDieper, JSON.stringify(diep));
     toets('op tekstgrootte L blijft elke kleine knop binnen het venster', Array.isArray(diep.buiten) && diep.buiten.length === 0, JSON.stringify(diep.buiten));
-    toets('dieper zoeken geeft de werkende code met ECU-adres aan de AI mee', diep.vraag, JSON.stringify(diep));
     toets('buurscan: alleen de nieuwe code staat erbij, met zijn bytes', diep.lijst, JSON.stringify(diep));
     toets('"In het formulier" zet code en ECU-adres klaar', diep.form === '222A21@720', JSON.stringify(diep));
 

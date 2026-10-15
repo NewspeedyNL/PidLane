@@ -102,7 +102,7 @@ function bouwTegoed(opties) {
     cfg: (env, k) => 'tbl_' + k,
     klantZoek: async () => (o.geenKlant ? null : {
       id: 'recKLANT000000001',
-      fields: { Email: 'klant@voorbeeld.nl', Saldo: staat.saldo, Status: 'actief' }
+      fields: Object.assign({ Email: 'klant@voorbeeld.nl', Saldo: staat.saldo, Status: 'actief' }, o.velden || {})
     }),
     klantToegangProbleem: () => null,
     klantPatch: async (env, id, f) => {
@@ -139,7 +139,7 @@ function bouwTegoed(opties) {
   const ctx = { waitUntil: (p) => { staat.jobs.push(p); } };
   const verzoek = {
     headers: { get: (n) => (String(n).toLowerCase() === 'content-length' ? '400' : null) },
-    json: async () => Object.assign({ messages: [{ role: 'user', content: 'wat is er mis' }], model: 'claude-sonnet-4-6' }, o.extraVelden || {})
+    json: async () => Object.assign({ messages: [{ role: 'user', content: 'wat is er mis' }], model: 'claude-sonnet-5' }, o.extraVelden || {})
   };
   return {
     staat, api, env, ctx, aiAntwoord,
@@ -523,7 +523,7 @@ const gezien = new Set();
           v && JSON.stringify(v.Details));
     const b = t.staat.aiBodies[0] || {};
     toets('de payload naar Anthropic heeft geen pl_rol', !('pl_rol' in b), JSON.stringify(Object.keys(b)));
-    toets('maar de rest is er nog', Array.isArray(b.messages) && b.model === 'claude-sonnet-4-6');
+    toets('maar de rest is er nog', Array.isArray(b.messages) && b.model === 'claude-sonnet-5');
 
     const z = bouwTegoed();
     await z.analyse(false);
@@ -534,6 +534,54 @@ const gezien = new Set();
     await f.analyse(false);
     toets('ook een mislukte afboeking noemt de analyse', laatste(f.staat).Details.indexOf('diagnose') > 0,
           JSON.stringify(laatste(f.staat).Details));
+  }
+
+  // ── 15. wat er naar Anthropic mag (#526) ─────────────────────────
+  // Tot 15-10-2026 ging de payload ongezien door: Opus of web_search kon er
+  // zo bij, afgerekend tegen één tarief. Nu een vaste lijst.
+  console.log('\n15. Alleen toegestane modellen, geen tools, geen vreemde velden');
+  {
+    const opus = bouwTegoed({ extraVelden: { model: 'claude-opus-5' } });
+    const r1 = await opus.analyse(false);
+    toets('een ander model: 400, en geen AI-call', r1.status === 400 && opus.staat.aiCalls === 0,
+          r1.status + ' / ' + opus.staat.aiCalls + ' call(s)');
+    toets('met een leesbare melding voor apiFetch', /Model niet toegestaan/.test(r1.body && r1.body.error && r1.body.error.message),
+          JSON.stringify(r1.body));
+    const zoek = bouwTegoed({ extraVelden: { model: 'claude-sonnet-5', tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 50 }] } });
+    const r2 = await zoek.analyse(false);
+    toets('tools: 400, en geen AI-call', r2.status === 400 && zoek.staat.aiCalls === 0, r2.status + ' / ' + zoek.staat.aiCalls);
+    const vreemd = bouwTegoed({ extraVelden: { model: 'claude-haiku-4-5-20251001', metadata: { x: 1 }, mcp_servers: [] } });
+    await vreemd.analyse(false);
+    const b = vreemd.staat.aiBodies[0] || {};
+    toets('Haiku mag, en onbekende velden gaan eraf', vreemd.staat.aiCalls === 1 && !('metadata' in b) && !('mcp_servers' in b) && b.model === 'claude-haiku-4-5-20251001',
+          JSON.stringify(Object.keys(b)));
+  }
+
+  // ── 16. wie niet betaalt, laat toch een spoor na (#526) ──────────
+  // Personeel en "tegoed uit" draaiden zonder enige regel; wat de beheerder
+  // zelf verbruikte was nergens te zien. Nu "ai-verbruik": Credits 0, geen
+  // SaldoNa, zodat de optelling van de afboekingen blijft kloppen.
+  console.log('\n16. Personeel en tegoed uit: een verbruiksregel, geen afboeking');
+  {
+    const p = bouwTegoed({ session: { u: 'beheer', r: 'admin' }, extraVelden: { pl_rol: 'diagnose' } });
+    await p.analyse(true);
+    await Promise.all(p.staat.jobs);
+    const v = laatste(p.staat);
+    toets('personeel: één regel, soort ai-verbruik', p.staat.posts.length === 1 && v.Soort === 'ai-verbruik', JSON.stringify(v));
+    toets('met Credits 0 en de echte tokens', v && v.Credits === 0 && v.TokensIn === 4880 && v.TokensUit === 720, JSON.stringify(v));
+    toets('zonder SaldoNa: er is geen saldo', v && !('SaldoNa' in v), JSON.stringify(v));
+    toets('Details zegt wie en welke analyse', v && /personeel \(admin\)/.test(v.Details) && /diagnose/.test(v.Details), v && v.Details);
+    toets('en er gaat niets van een saldo af', p.staat.patches.length === 0, JSON.stringify(p.staat.patches));
+
+    const u = bouwTegoed({ velden: { Ontwikkelaar: true, TegoedUit: true }, saldo: 0 });
+    await u.analyse(false);
+    const w = laatste(u.staat);
+    toets('tegoed uit: ook een verbruiksregel, geen afboeking', w && w.Soort === 'ai-verbruik' && /tegoed uit/.test(w.Details) && u.staat.patches.length === 0,
+          JSON.stringify(w));
+
+    const f = bouwTegoed({ session: { u: 'beheer', r: 'admin' }, aiStatus: 529 });
+    await f.analyse(false);
+    toets('een mislukte call (529) schrijft niets', f.staat.posts.length === 0, f.staat.posts.length + ' regel(s)');
   }
 
   console.log('\n13. Alle vier de bronnen uit #83 zijn werkelijk langsgekomen');

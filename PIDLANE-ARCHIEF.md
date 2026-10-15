@@ -15,6 +15,32 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 15-10-2026 — Waar de AI-kosten heen gingen: de zoektool (#526)
+
+Kasboek 10-09 t/m 15-10, 25 klantcalls: 9 daarvan hadden 56k–116k tokens
+invoer en < 2k uit, samen 445 van de 547 afgeboekte tokens (81 %). Allemaal
+na 28-09, de dag van `zoekOnline()`: `web_search` met `max_uses: 5`, en de
+zoekresultaten tellen bij Anthropic als invoer. Op 28-09 09:10 viel zo'n call
+samen met 11 Mazda-codes in `kp_pid_bib`. Het kostenvenster rekende alleen
+met de eigen vraag (±2 900 tekens → 7 tokens); de drempel uit #524 vangt
+dat dus níét. De zoekopdrachten zelf werden ook niet doorberekend.
+
+- **Vervangen door OBDb**, niet "eerlijker geprijsd". Per merk en model één
+  JSON met code, adres en `fmt` (`bix`/`len`/`mul`/`div`/`add`). Nagemeten:
+  OBDb `22 2A05` = `A*1373/100000` bar is dezelfde formule als die de AI in
+  psi vond. Wat níét overkomt: BMW gebruikt extended addressing (`eax`), dat
+  kan de eigen-PID-route niet — voor de BMW blijft er 0 over. En per code
+  één formule, dus van een commando met vier banden komt alleen de eerste mee.
+- **De Worker liet alles door.** Model, tools en elk ander veld gingen
+  ongezien naar Anthropic. Nu een vaste lijst (`AI_MODELLEN`, `AI_VELDEN`).
+- **Personeel en "tegoed uit" lieten geen spoor na.** Dat was een besluit
+  ("het kasboek telt mutaties"), en het klopte als boekhouding, maar het
+  maakte het verbruik van de beheerder onzichtbaar. Nu `ai-verbruik` met
+  Credits 0 en zonder SaldoNa: de optelling van mutaties blijft kloppen.
+- **Nog niet gemeten:** hoe vaak een rapport in drie delen komt (elk deel
+  stuurt de hele invoer opnieuw). Met `pl_rol` in Details is dat nu na te
+  tellen.
+
 ## 15-10-2026 — Een analyse van 85 tokens, en een logregel die "saldo 0" zei (#524)
 
 Rit met de Hyundai i20, ingelogd als klant. Logboek: `Tegoed afgeboekt: -85
