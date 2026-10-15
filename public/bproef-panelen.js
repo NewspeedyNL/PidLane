@@ -62,6 +62,29 @@ const WACHT = (id, re) => `new Promise(function (klaar) { var n = 0; var i = set
     await app.ev(`document.querySelector('[data-m06="sluit"]').click(); 1`);
     toets('Sluiten sluit', await app.ev(`!document.getElementById('plM06Paneel')`) === true);
 
+    console.log('\n1b. De tabel past op een smalle telefoon (360 px), ook de onderkant');
+    await app.venster(360, 740);
+    // De MIDs en waarden van de Mazda CX-5 (15-10-2026): onbekende UAS,
+    // signed grenzen die als 32768 – 1500 in beeld kwamen, en missers.
+    const t = JSON.parse(await app.ev(`(function(){
+      var R = PLM06._intern.bouwRecord, tests = [];
+      [0x80, 0x81, 0x82, 0x83].forEach(function (tid) { tests.push(R(0x35, tid, 0xB0, 14, 0x8000, 0x05DC)); });
+      for (var c = 0; c < 4; c++) { tests.push(R(0xA2 + c, 0x0B, 0x24, 0, 0, 0xFFFF)); tests.push(R(0xA2 + c, 0x0C, 0x24, 0, 0, 0xFFFF)); }
+      tests.push(R(0x01, 0x80, 0x01, 0, 0, 256));
+      PLM06.toon({ mids: [], tests: tests });
+      var doos = document.getElementById('plM06Doos'), cel = doos.querySelectorAll('.pl-m06-oordeel');
+      var laatste = cel[cel.length - 1].getBoundingClientRect(), d = doos.getBoundingClientRect();
+      var sluit = document.querySelector('[data-m06="sluit"]'); sluit.scrollIntoView({ block: 'end' });
+      var s = sluit.getBoundingClientRect();
+      return JSON.stringify({ rijen: cel.length, breed: doos.scrollWidth - doos.clientWidth, tabelBreed: doos.querySelector('table').scrollWidth - doos.querySelector('table').clientWidth,
+        oordeelRechts: Math.round(laatste.right), scherm: window.innerWidth, doosOnder: Math.round(d.bottom), sluitOnder: Math.round(s.bottom), hoogte: window.innerHeight });
+    })()`));
+    toets('de tabel heeft alle rijen', t.rijen === 13, JSON.stringify(t));
+    toets('niets steekt rechts uit: de kolom Oordeel staat in beeld', t.breed <= 0 && t.tabelBreed <= 0 && t.oordeelRechts <= t.scherm, JSON.stringify(t));
+    toets('de onderkant past: venster en Sluiten binnen het scherm', t.doosOnder <= t.hoogte && t.sluitOnder <= t.hoogte, JSON.stringify(t));
+    await app.ev(`PLM06.sluit(); 1`);
+    await app.venster(412, 915);
+
     console.log('\n2. Alle stuurapparaten, boven Check mijn auto');
     await app.ev(`PLFoutcodes.open(); PLUds.open(); 1`);
     await app.ev(WACHT('plUdsPaneel', '/Niet gelezen|Geen /'));

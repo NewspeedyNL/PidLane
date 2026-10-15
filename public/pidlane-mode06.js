@@ -344,8 +344,11 @@
       h += `<div class="pl-m06-kop">🔬 Monitortests (mode 06) — ${esc(s.tekst)}</div>`;
 
       if (rijen.length) {
+        // Drie kolommen, niet vijf: op een telefoon (360–412 px, grote
+        // systeemletter) vielen Grenzen en Oordeel buiten beeld (15-10-2026).
+        // De test-ID staat klein onder de monitor, de grens onder de waarde.
         h += '<table class="pl-m06-tbl"><thead><tr>' +
-             '<th>Monitor</th><th>Test</th><th>Waarde</th><th>Grenzen</th><th>Oordeel</th>' +
+             '<th>Monitor</th><th>Waarde · grens</th><th>Oordeel</th>' +
              '</tr></thead><tbody>';
         for (const t of rijen) {
           const g = t.geschaald;
@@ -357,9 +360,8 @@
           const kl = klasse(t);
           const lbl = LABEL[kl];
 
-          h += `<tr class="pl-m06-${kl}"><td>${esc(t.midNaam)}</td>` +
-               `<td class="pl-m06-tid">${esc(t.tidHex)}</td>` +
-               `<td>${w}</td><td class="pl-m06-gr">${gr}</td>` +
+          h += `<tr class="pl-m06-${kl}"><td>${esc(t.midNaam)}<div class="pl-m06-tid">test ${esc(t.tidHex)}</div></td>` +
+               `<td>${w}<div class="pl-m06-gr">${gr}</div></td>` +
                `<td class="pl-m06-oordeel">${lbl}</td></tr>`;
         }
         h += '</tbody></table>';
@@ -398,6 +400,10 @@
       try { _paneel.res = await PLM06.scan(); }
       catch (e) { console.warn('PLM06: scan vanuit het paneel faalde', e); _paneel.res = null; _paneel.fout = 'Niet gelezen: ' + (e.message || e); }
       _paneel.bezig = false; paneel();
+    },
+    /** Een uitlezing tonen zonder te scannen (onderzoek, browserproef). */
+    toon(res) {
+      _paneel.open = true; _paneel.bezig = false; _paneel.fout = ''; _paneel.res = res; paneel();
     },
     sluit() {
       _paneel.open = false;
