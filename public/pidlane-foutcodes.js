@@ -797,6 +797,13 @@
         if (a.waarschuwing) r.push('  let op: ' + a.waarschuwing);
       });
     }
+    // De andere stuurapparaten (PLUds), als die in dezelfde zit gelezen zijn:
+    // een uitlezing van gisteren hoort niet onder de codes van vandaag.
+    var u = (window.PLUds && typeof PLUds.laatste === 'function') ? PLUds.laatste() : null;
+    if (u && Math.abs(u.tijd - s.tijd) < 30 * 60000) {
+      r.push('', '=== ALLE STUURAPPARATEN (UDS 19 02) ===');
+      PLUds.alsTekst(u).forEach(function (l) { r.push(' ' + l); });
+    }
     r.push('', '=== SINDS HET LAATSTE WISSEN ===',
       ' afstand: ' + (s.sinds.km != null ? s.sinds.km + ' km' : 'onbekend'),
       ' warmgedraaid: ' + (s.sinds.warm != null ? s.sinds.warm + '×' : 'onbekend'),
@@ -985,6 +992,8 @@
     h += '<div class="fc-knoppen">' +
       '<button class="fc-k hoofd" ' + (kan ? '' : 'disabled') + ' onclick="PLFoutcodes.scan()">' + (s ? '🔄 Opnieuw uitlezen' : '🔍 Uitlezen') + '</button>' +
       (s ? '<button class="fc-k" onclick="PLFoutcodes.bewaar()">💾 Bewaren</button>' : '') +
+      // Mode 03 hoort alleen motor en bak; ABS, airbag en de rest vraagt PLUds apart.
+      (s && window.PLUds ? '<button class="fc-k" id="plFcUds" ' + (kan ? '' : 'disabled') + ' onclick="PLUds.open()">🧩 Alle stuurapparaten</button>' : '') +
       '</div>';
     return h;
   }

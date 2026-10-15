@@ -23,6 +23,8 @@ function _srTypeMeta(type){
   return {
     ai:  {ic:'🔬', lbl:'AI-rapport'},
     dtc: {ic:'🔴', lbl:'Foutcode-uitlezing'},
+    uds: {ic:'🧩', lbl:'Alle stuurapparaten'},
+    m06: {ic:'📈', lbl:'Monitortests (mode 06)'},
     txt: {ic:'📝', lbl:'TXT-rapport'},
     pdf: {ic:'📄', lbl:'PDF-rapport'}
   }[type] || {ic:'📄', lbl:'Rapport'};

@@ -3395,6 +3395,7 @@ function _dtcBron(code){
   const M = (typeof DTC_MERK!=='undefined') ? DTC_MERK : null;
   if(groep&&M&&M[groep]&&M[groep][code]) return {rij:M[groep][code],noot:''};
   if(typeof DTCDB!=='undefined'&&DTCDB[code])   return {rij:DTCDB[code],noot:''};
+  if(typeof DTC_OMSCHRIJVING!=='undefined'&&DTC_OMSCHRIJVING[code]) return {rij:DTC_OMSCHRIJVING[code],noot:''};
   if(M){
     for(const g of Object.keys(M)){
       if(M[g][code]){
@@ -3405,11 +3406,26 @@ function _dtcBron(code){
   }
   return null;
 }
+// Wat de opbouw van een code zegt als hij in geen tabel staat (SAE J2012):
+// letter = systeem, tweede teken = generiek of fabrikant, bij P0/P1 het
+// derde teken = deelsysteem. "Onbekende code" blijft vooraan staan: daar
+// leunen PLZonder en de stoplichten op (15-10-2026).
+const _DTC_SYS={P:'aandrijving',C:'onderstel',B:'carrosserie',U:'netwerk'};
+const _DTC_DEEL={'0':'brandstof en lucht','1':'brandstof en lucht','2':'brandstof en lucht','3':'ontsteking','4':'emissie','5':'snelheid en stationair','6':'regeleenheid en uitgangen','7':'versnellingsbak','8':'versnellingsbak','9':'versnellingsbak','A':'hybride'};
+function _dtcStructuur(code){
+  const c=String(code||'').toUpperCase().trim();
+  if(!/^[PCBU][0-3][0-9A-F]{3}$/.test(c)) return '';
+  const l=c[0], d=c[1];
+  const fabr = l==='P' ? (d==='1'||(d==='3'&&c[2]<'4')) : (d==='1'||d==='2');
+  const deel = (l==='P'&&(d==='0'||d==='1')) ? _DTC_DEEL[c[2]] : '';
+  return (fabr?'fabrikantspecifiek':'generiek')+', '+_DTC_SYS[l]+(deel?': '+deel:'');
+}
 function dtcInfo(code){
   const bron=_dtcBron(code);
+  const st=bron?'':_dtcStructuur(code);
   const base=bron
     ? Object.assign({},bron.rij)
-    : {desc:'Onbekende code',body:'Raadpleeg fabrikantdocumentatie.',sev:'med'};
+    : {desc:'Onbekende code'+(st?' — '+st:''),body:st&&/^fabrikant/.test(st)?'Fabrikantspecifieke code: de betekenis verschilt per merk. Raadpleeg de fabrikantdocumentatie.':'Raadpleeg fabrikantdocumentatie.',sev:'med'};
   if(bron&&bron.noot) base.desc=base.desc+bron.noot;
   if(_implausibleMisfire(code)){
     const total=vehicleCylinderCount();

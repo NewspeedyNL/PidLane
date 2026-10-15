@@ -97,6 +97,7 @@ if (m) {
   s._dtcBron = function (c) { return s.DTCDB[c] ? { rij: s.DTCDB[c], noot: '' } : null; };
   s._implausibleMisfire = function () { return misfire; };
   s.vehicleCylinderCount = function () { return 4; };
+  s._dtcStructuur = function () { return ''; };   // getoetst in test-dtcomschrijving.js
   vm.runInContext(m[0], s);
   eis(s.dtcInfo('P0171').plan && s.dtcInfo('P0171').plan.familie === 'P017', 'P0171 krijgt het mengselplan');
   eis(s.dtcInfo('P9999').plan === null, 'onbekende code: plan null');

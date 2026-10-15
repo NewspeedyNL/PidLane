@@ -10,6 +10,55 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Mode 06 volgens J1979, foutcodes met tekst
+ ═══════════════════════════════════════════════════════════
+ Uit de Mazda-rit. Mode 06: de MID-namen volgen J1979 (0x35 is de
+ kleptiming, geen "EGR bank 5"), het teken van een onbekende schaal
+ volgt uit de grenzen (−32768 – 1500 in plaats van 32768 – 1500), en
+ het onderzoek leest dezelfde tabel: een VVT- of EVAP-test weegt niet
+ meer als EGR (#515). Foutcodes: 101 generieke codes met een tekst in
+ DTC_OMSCHRIJVING (P0421, P2096, P0524, P2119, ABS- en netwerkcodes),
+ en een code die nergens staat zegt wat zijn opbouw zegt
+ ("fabrikantspecifiek, aandrijving: brandstof en lucht").
+ De uitlezing van alle stuurapparaten en een losse mode 06-uitlezing
+ staan in Rapporten, en Bewaren in Check mijn auto neemt de
+ stuurapparaten mee als ze in dezelfde zit gelezen zijn.
+
+ ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Mode 06- en stuurapparatenpaneel liggen bovenop
+ ═══════════════════════════════════════════════════════════
+ Uit de eerste rit: het mode 06-paneel (z-index 9000) lag onder de
+ topbalk en de onderbalk, en Sluiten van het stuurapparatenpaneel viel
+ achter de systeembalk. Beide zijn nu een venster over alles heen
+ (--z-modal-hoog, veilige randen), tik naast het venster sluit.
+ De mode 06-tabel heeft drie kolommen in plaats van vijf (test-ID
+ onder de monitor, grens onder de waarde): op 360 px viel Oordeel
+ buiten beeld.
+ Daarnaast telt UDS alleen nog foutbits: een Mazda CX-5 gaf elf
+ codes met alleen "test niet gedraaid" — geen fouten.
+
+ ═══════════════════════════════════════════════════════════
+ 15-10-2026 — UDS 0x19: foutcodes van alle stuurapparaten
+ ═══════════════════════════════════════════════════════════
+ Mode 03 vraagt functioneel, en daar antwoorden alleen motor en bak.
+ Nieuw: pidlane-uds.js (PLUds) vraagt 19 02 FF per adres (7E0–7E2,
+ 760/7B0 ABS, 720 instrumenten, 726 BCM, 737/715 airbag, 730 stuur-
+ bekrachtiging) en zet de adapter in een finally terug op 7DF. Knop
+ "🧩 Alle stuurapparaten" onder een uitlezing in Check mijn auto. Een
+ stil adres heet nooit "geen codes". Welke adressen per merk
+ antwoorden is nog een vraag voor een rit.
+
+ ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Mode 06: de zelftests zelf in beeld
+ ═══════════════════════════════════════════════════════════
+ PLM06.render() bestond maar werd nergens aangeroepen: het onderzoek
+ gebruikte mode 06 alleen als bewijs. Nu staat onder de conclusie
+ "🔬 Alle zelftests (mode 06)" met de hele tabel, en het bewaarde
+ rapport heeft een blok MONITORTESTS (gezakt bovenaan, zelfde volgorde
+ als de tabel). In het Admin-menu leest "🔬 Mode 06 — monitortests"
+ de tests direct, zonder onderzoek eromheen.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Live opnieuw ingedeeld, vegen in Visueel, alarmvraag weg
  ═══════════════════════════════════════════════════════════
  Uit het gebruik, vijf schermafdrukken. De tabbalk boven het midden is

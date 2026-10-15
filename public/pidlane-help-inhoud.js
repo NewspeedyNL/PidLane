@@ -128,6 +128,8 @@ var PL_HULP = {
         '<li><b>🩺 Grondiger laten kijken</b></li>' +
         '</ul>' +
         '<p><b>💾 Bewaren</b> legt de uitlezing vast.</p>' +
+        '<p><b>🧩 Alle stuurapparaten</b> vraagt de foutcodes van ABS, airbag, versnellingsbak, instrumentenpaneel en carrosserie één voor één op. De gewone uitlezing hoort alleen motor en bak. ' +
+        'Geeft een stuurapparaat geen antwoord, dan staat het er niet bij: dat betekent dat het op deze auto een ander adres heeft, niet dat er geen codes zijn. Alleen bij auto\'s met CAN (vrijwel alles vanaf 2008). De uitkomst staat daarna in <b>Rapporten</b>, en <b>💾 Bewaren</b> neemt hem mee.</p>' +
         '<p>Blijft een zelftest lang na het wissen op <b>niet klaar</b> staan, of meldt de auto een code die bij een verkeerde instelling hoort, dan staat bij de keuringsstatus <b>🧩 Mogelijk software, geen kapot onderdeel</b>. Hetzelfde blok staat ook onder <b>🔩 Welk onderdeel?</b>. ' +
         'Dat betekent: een onderdeel is vervangen of weggehaald zonder dat de motorcomputer het weet. Vond de tellerstandcontrole in de stuurapparaten twee verschillende chassisnummers, dan telt dat ook als aanwijzing. PidLane past daar niets aan; het zegt wat er ingeleerd moet worden en met welke software dat bij dit merk kan.</p>' +
         '<p><b>Foutcodes wissen</b> kan alleen als de voorwaarden kloppen: een verse uitlezing, contact aan, motor uit en de auto staat stil. ' +
@@ -145,7 +147,7 @@ var PL_HULP = {
         'Bij een klacht doet alleen mee wat bij die klacht past. Wat de diagnosepoort niet kan zien, zoals roest of luchtvering, staat in het rapport onder <b>zelf nakijken</b>.</p>' +
         '<ul>' +
         '<li><b>Meten</b> — soms met een opdracht erbij, zoals gas geven tot 2500 tpm. Je ziet de sensoren live meelopen.</li>' +
-        '<li><b>Zelftests</b> — de motorcomputer telt per cilinder hoe vaak hij overslaat, en meet katalysator en sondes tegen zijn eigen grens. Een cilinder die vaker overslaat dan de rest zie je zo vóór er een foutcode is. Niet elke auto levert dit; dan slaat het onderzoek de stap over.</li>' +
+        '<li><b>Zelftests</b> — de motorcomputer telt per cilinder hoe vaak hij overslaat, en meet katalysator en sondes tegen zijn eigen grens. Een cilinder die vaker overslaat dan de rest zie je zo vóór er een foutcode is. Niet elke auto levert dit; dan slaat het onderzoek de stap over. Onder de conclusie staan alle zelftests onder <b>🔬 Alle zelftests (mode 06)</b>.</li>' +
         '<li><b>Vragen</b> — wat geen sensor ziet, zoals de kleur van de rook.</li>' +
         '<li><b>Een andere richting</b> — wijst een foutcode of meting ergens anders naar, dan komt die verdenking erbij.</li>' +
         '</ul>' +

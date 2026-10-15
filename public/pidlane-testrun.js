@@ -2787,6 +2787,80 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── foutcodes met tekst, UDS en mode 06 in Rapporten (15-10-2026) ──
+  {
+    issue: 'dtctekst',
+    naam: 'Foutcodes: P0421/P2096/C0035 hebben een tekst, een onbekende code zegt zijn opbouw, UDS en mode 06 gaan naar Rapporten',
+    waarom: 'Op de Mazda stonden P0421, P2096, P0524 en P2119 als "Onbekende code", en de UDS- en mode 06-uitlezing verdwenen met hun venster.',
+    proef: async function () {
+      if (typeof dtcInfo !== 'function' || typeof DTC_OMSCHRIJVING === 'undefined') return { staat: 'FOUT', detail: 'DTC_OMSCHRIJVING ontbreekt — oude pidlane-data.js (herladen?)' };
+      var mis = ['P0421', 'P2096', 'P0524', 'P2119', 'C0035', 'U0121'].filter(function (c) { return /^Onbekende code/.test(dtcInfo(c).desc); });
+      if (mis.length) return { staat: 'FOUT', detail: 'nog zonder tekst: ' + mis.join(', ') };
+      if (!/fabrikantspecifiek/.test(dtcInfo('P117A').desc)) return { staat: 'FOUT', detail: 'P117A zegt niets over zijn opbouw: ' + dtcInfo('P117A').desc };
+      if (!window.PLUds || typeof PLUds.bewaarInSessie !== 'function' || !window.PLM06 || typeof PLM06.bewaarInSessie !== 'function') return { staat: 'FOUT', detail: 'bewaarInSessie ontbreekt — oude pidlane-uds.js of pidlane-mode06.js (herladen?)' };
+      return { staat: 'OK', detail: 'teksten kloppen · rij: 🧩 Alle stuurapparaten en Admin → Mode 06, en kijk of beide in Rapporten verschijnen' };
+    }
+  },
+
+  // ── mode 06 naar J1979: MID-namen, teken uit de grenzen, VVT ≠ EGR (#515) ──
+  {
+    issue: '#515',
+    naam: 'Mode 06: MIDs volgens J1979, het teken uit de grenzen, en een VVT-test weegt niet als EGR',
+    waarom: 'Een Mazda CX-5 toonde "EGR-systeem bank 5" met grenzen 32768 – 1500; dat was de kleptiming, met signed grenzen.',
+    proef: async function () {
+      if (!window.PLM06 || !PLM06.familieVan || !PLM06._intern) return { staat: 'FOUT', detail: 'PLM06.familieVan ontbreekt — oude pidlane-mode06.js (herladen?)' };
+      var t = PLM06._intern.bouwRecord(0x35, 0x80, 0xB0, 14, 0x8000, 0x05DC);
+      if (!/kleptiming/.test(t.midNaam)) return { staat: 'FOUT', detail: 'MID 0x35 heet ' + t.midNaam };
+      if (!t.oordeelZeker || t.getoond.min !== -32768) return { staat: 'FOUT', detail: 'grenzen niet signed gelezen: ' + JSON.stringify(t.getoond) };
+      var st = PLOnderzoek.nieuw({ klachten: ['onrustig'] });
+      var r = PLOnderzoek.beoordeelMode06({ m06: { tests: [PLM06._intern.bouwRecord(0x35, 0x80, 0x01, 900, 0, 750)] } }, st);
+      if (r.some(function (b) { return b.h === 'egr'; })) return { staat: 'FOUT', detail: 'een VVT-test weegt als EGR: ' + JSON.stringify(r) };
+      return { staat: 'OK', detail: 'namen en teken kloppen · rij: Admin → 🔬 Mode 06 en kijk of er nog "onzeker" of een rare grens staat; noteer de UAS uit het logboek' };
+    }
+  },
+
+  // ── UDS 0x19: foutcodes van alle stuurapparaten (15-10-2026) ──
+  {
+    issue: 'uds19',
+    naam: 'UDS 0x19: foutcodes van ABS, airbag en de rest, en de adapter staat daarna weer op 7DF',
+    waarom: 'Mode 03 hoort alleen motor en bak; een groen stoplicht zei niets over het ABS-lampje.',
+    proef: async function () {
+      if (!window.PLUds || typeof PLUds.scan !== 'function') return { staat: 'FOUT', detail: 'PLUds ontbreekt — pidlane-uds.js niet geladen (herladen?)' };
+      var log = [], hdr = '7DF';
+      var stuur = async function (c) {
+        log.push(c);
+        if (c === 'ATDPN') return 'A6';
+        if (/^ATSH/.test(c)) { hdr = c.slice(4); return 'OK'; }
+        if (/^AT/.test(c)) return 'OK';
+        return hdr === '760' ? '59 02 FF 40 35 11 09' : 'NO DATA';
+      };
+      var res = await PLUds.scan(stuur);
+      var abs = res.modules.filter(function (m) { return m.hdr === '760'; })[0];
+      if (!abs || !abs.codes || !abs.codes.length || abs.codes[0].code !== 'C0035') return { staat: 'FOUT', detail: 'C0035 op 760 niet gelezen: ' + JSON.stringify(abs) };
+      if (log.slice(-2).join() !== 'ATSH7DF,ATCRA') return { staat: 'FOUT', detail: 'adapter niet teruggezet: ' + log.slice(-3).join(' ') };
+      return { staat: 'OK', detail: 'nep-bus klopt · rij: Check mijn auto → Uitlezen → 🧩 Alle stuurapparaten; noteer welke adressen antwoorden (adressen zijn per merk anders)' };
+    }
+  },
+
+  // ── mode 06: tabel in het onderzoek, los paneel in Admin (15-10-2026) ──
+  {
+    issue: 'mode06',
+    naam: 'Mode 06: alle zelftests in het onderzoeksrapport, en een Admin-knop die ze direct leest',
+    waarom: 'PLM06.render() bestond maar werd nergens aangeroepen: de app gebruikte mode 06 alleen als bewijs, de tests zelf zag niemand.',
+    proef: async function () {
+      if (!window.PLM06 || typeof PLM06.alsTekst !== 'function' || typeof PLM06.open !== 'function') return { staat: 'FOUT', detail: 'PLM06.alsTekst/open ontbreekt — oude pidlane-mode06.js (herladen?)' };
+      if (!document.getElementById('kbMode06')) return { staat: 'FOUT', detail: 'de knop Mode 06 (#kbMode06) staat niet in het Admin-menu — oude index.html (herladen?)' };
+      if (!window.PLOnderzoek || typeof PLOnderzoek.beoordeelMode06 !== 'function') return { staat: 'FOUT', detail: 'PLOnderzoek.beoordeelMode06 ontbreekt' };
+      var R = PLM06._intern.bouwRecord;
+      var st = PLOnderzoek.nieuw({ klachten: ['onrustig'] });
+      PLOnderzoek.beoordeelMode06({ m06: { tests: [R(0x21, 0x01, 0x01, 300, 0, 750), R(0x21, 0x02, 0x01, 800, 0, 750)] } }, st);
+      var t = PLOnderzoek.alsTekst(st), i = t.indexOf('=== MONITORTESTS (MODE 06) ===');
+      if (i < 0) return { staat: 'FOUT', detail: 'het bewaarde onderzoek heeft geen blok MONITORTESTS' };
+      if (!/\[GEZAKT\][^\n]*0x02/.test(t.slice(i).split('\n')[2] || '')) return { staat: 'FOUT', detail: 'gezakt staat niet bovenaan: ' + t.slice(i, i + 300) };
+      return { staat: 'OK', detail: 'rapport en tabel kloppen · rij: Admin → 🔬 Mode 06 en kijk of de tabel komt; een onderzoek met "onrustig" toont onder de conclusie "Alle zelftests (mode 06)"' };
+    }
+  },
+
   // ── indeling Live: tabbalk weg, Grafiek in de weergaverij, vegen in Visueel (15-10-2026) ──
   {
     issue: 'indeling',

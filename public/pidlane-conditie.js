@@ -184,13 +184,13 @@
   }
 
   /* Ontstekingsmissers uit een mode 06-uitlezing (PLM06.scan): de som
-     over de cilinders (MID A2–A9). TID 0B is het gemiddelde over de
+     over de cilinders (MID A2–AD, cilinder 1–12). TID 0B is het gemiddelde over de
      laatste tien cycli, 0C de huidige cyclus; 0B gaat voor. Geen
      misfire-monitor = null, niet 0. */
   function misfire(res) {
     var tests = (res && res.tests) || [], som = { 11: 0, 12: 0 }, n = { 11: 0, 12: 0 };
     tests.forEach(function (t) {
-      if (!t || t.mid < 0xA2 || t.mid > 0xA9 || !(t.tid === 0x0B || t.tid === 0x0C)) return;
+      if (!t || t.mid < 0xA2 || t.mid > 0xAD || !(t.tid === 0x0B || t.tid === 0x0C)) return;
       var w = getal(t.ruw && t.ruw.waarde);
       if (w === null) return;
       som[t.tid] += w; n[t.tid]++;
