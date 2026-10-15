@@ -1319,6 +1319,9 @@ MUTATIES=(
 "public/pidlane-data.js@@stappen: p.stappen.slice() };@@stappen: p.stappen };@@test-dtcplan.js@@dtcPlan geeft de tabel zelf terug: een aanroeper die stappen toevoegt, verandert hem voor iedereen"
 "public/pidlane-bt.js@@  base.plan=(!_implausibleMisfire(code)&&typeof dtcPlan@@  base.plan=(typeof dtcPlan@@test-dtcplan.js@@een onmogelijke misfire (cilinder 6 op een viercilinder) krijgt toch een reparatieplan"
 "public/pidlane-foutcodes.js@@'<li>' + esc(t) + '</li>'@@'<li>' + t + '</li>'@@test-dtcplan.js@@stappen ongeëscapet in het venster"
+"public/pidlane-bt.js@@  if(typeof DTC_OMSCHRIJVING!=='undefined'&&DTC_OMSCHRIJVING[code]) return@@  if(false) return@@test-dtcomschrijving.js@@P0421, P2096 en de UDS-codes heten weer \"Onbekende code\" (Mazda CX-5, 15-10-2026)"
+"public/pidlane-bt.js@@(d==='1'||(d==='3'&&c[2]<'4'))@@(d==='1')@@test-dtcomschrijving.js@@P30–P33 heten weer generiek terwijl ze per merk verschillen"
+"public/pidlane-bt.js@@  const st=bron?'':_dtcStructuur(code);@@  const st='';@@test-dtcomschrijving.js@@een onbekende code zegt weer niets over wat voor code het is"
 # ── Mijn voertuigen (klantplatform, 27-09-2026). Worker: de fouten die een
 #    klant bij een ander laten binnenkijken of een persoonsgegeven onversleuteld
 #    laten staan. App: de fouten die een rit, een issue of een rapport stil
