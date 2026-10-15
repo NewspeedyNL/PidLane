@@ -46,15 +46,16 @@ const wacht = (ms) => `await new Promise(function(r){ setTimeout(r, ${ms}); });`
       stopPoll();
       setPidView('overzicht'); setPidView('slim'); ${wacht(400)}
       const st=PLRond.staat();
-      return { voort:!!document.getElementById('rondVoort'), kop:!!document.getElementById('dv-010D') && !!document.getElementById('dv-010C'),
-               kopKlasse:document.querySelectorAll('#gGrid .dt-kop').length, titel:(document.getElementById('rondTitel')||{}).textContent,
-               dias:st.dias.length, punten:document.querySelectorAll('.rond-punten b').length, ms:st.ms,
+      return { voort:!!document.getElementById('rondVoort'), kop:!!document.getElementById('rv-010D') && !!document.getElementById('rv-010C'),
+               kopKlasse:document.querySelectorAll('#gGrid .rond-kv').length, kopHoog:Math.round(document.querySelector('.rond-boven').getBoundingClientRect().height), titel:(document.getElementById('rondTitel')||{}).textContent,
+               dias:st.dias.length, panelen:document.querySelectorAll('#rondDia .rk').length, ms:st.ms,
                aanpassen:[].some.call(document.querySelectorAll('#gGrid .dash-knop'), function(b){ return b.textContent==='Aanpassen'; }),
                breed:document.documentElement.scrollWidth, venster:window.innerWidth };
     })()`);
     toets('voortgangsbalk en titel staan er', een.voort && !!een.titel, JSON.stringify(een));
-    toets('snelheid en toerental in de kop', een.kop && een.kopKlasse === 2, JSON.stringify(een));
-    toets('meerdere categorieën, één puntje per dia', een.dias >= 3 && een.punten === een.dias, JSON.stringify(een));
+    toets('snelheid en toerental klein in de kop', een.kop && een.kopKlasse === 2, JSON.stringify(een));
+    toets('kop, ⏸, ⚙ en afteller samen hoogstens 60 px', een.kopHoog > 0 && een.kopHoog <= 60, JSON.stringify(een));
+    toets('meerdere categorieën, de titel telt ze, en de dia heeft panelen', een.dias >= 3 && een.titel.indexOf('/ ' + een.dias) > -1 && een.panelen >= 1, JSON.stringify(een));
     toets('standaard 10 s', een.ms === 10000, een.ms);
     toets('geen Aanpassen in de rondgang', !een.aanpassen);
     toets('past op het scherm', een.breed <= een.venster, JSON.stringify(een));
@@ -104,10 +105,14 @@ const wacht = (ms) => `await new Promise(function(r){ setTimeout(r, ${ms}); });`
       pidVals['0105']=135; _pidLastUpd['0105']=Date.now(); applyG('0105', 135); ${wacht(700)}
       const tijdens={ i:PLRond.staat().i, alarm:PLRond.staat().alarm, balk:!!document.getElementById('rondAlarm') };
       pidVals['0105']=88; _pidLastUpd['0105']=Date.now(); applyG('0105', 88); ${wacht(700)}
-      return { iT:iT, voor:voor, tijdens:tijdens, na:PLRond.staat().alarm, balkNa:!!document.getElementById('rondAlarm') };
+      // Zonder hertekenen: alleen PLDash.bij() → PLRond.bij() kan hem zetten.
+      const naAlarm=PLRond.staat().alarm;
+      pidVals['0105']=91; _pidLastUpd['0105']=Date.now(); applyG('0105', 91);
+      return { iT:iT, voor:voor, tijdens:tijdens, na:naAlarm, balkNa:!!document.getElementById('rondAlarm'), getal:(document.getElementById('rv-0105')||{}).textContent };
     })()`);
     toets('de demo-auto heeft koelwater in de rondgang', !vier.geen, JSON.stringify(vier));
     toets('135 °C haalt Temperaturen in beeld, met de melding', vier.voor !== vier.iT && vier.tijdens.i === vier.iT && vier.tijdens.alarm === vier.iT && vier.tijdens.balk, JSON.stringify(vier));
+    toets('een nieuwe waarde landt in zijn paneel zonder hertekenen (91)', vier.getal === '91', JSON.stringify(vier));
     toets('weer normaal: het alarm en de melding zijn weg', vier.na === -1 && !vier.balkNa, JSON.stringify(vier));
 
     console.log('\n5. De bus');

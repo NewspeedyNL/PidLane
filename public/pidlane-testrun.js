@@ -2794,12 +2794,13 @@ const PROEVEN_B5 = [
     waarom: 'Slim toonde één vast dashboard; de vraag was alles in ongeveer een minuut langs te zien, per categorie, met Pauze en een instelbare wisseltijd.',
     proef: async function () {
       if (!window.PLRond || typeof PLRond.indeling !== 'function' || typeof PLRond.remt !== 'function') return { staat: 'FOUT', detail: 'PLRond ontbreekt — oude pidlane-rondgang.js of index.html (herladen?)' };
+      if (typeof PLRond.groepen !== 'function' || typeof PLRond.bouw !== 'function') return { staat: 'FOUT', detail: 'PLRond tekent nog losse tegels — oude pidlane-rondgang.js (herladen?)' };
       var ind = PLRond.indeling('benzine', { heeft: function () { return true; } });
       if (ind.kop.length !== 2 || ind.dias.length < 5) return { staat: 'FOUT', detail: 'indeling klopt niet: kop ' + ind.kop.length + ', dia\'s ' + ind.dias.length };
       var st = PLRond.tik({ i: 0, start: 0, pauze: true, alarm: -1 }, 1000, { n: 6, ms: 10000, alarm: 2 });
       if (st.i !== 2) return { staat: 'FOUT', detail: 'een rode waarde haalt zijn dia niet in beeld' };
       if (!document.getElementById('kbRondgang')) return { staat: 'FOUT', detail: 'Mijn voorkeuren mist Rondgang in Slim — oude index.html (herladen?)' };
-      return { staat: 'OK', detail: 'rij: Live → Slim, kijk of elke categorie langskomt; ⏸ houdt vast, ⚙ voor de wisseltijd en de vinkjes' };
+      return { staat: 'OK', detail: 'rij: Live → Slim, kijk of elke categorie langskomt en leesbaar is (tellerplaat, trims vanuit het midden, sondes); ⏸ houdt vast, ⚙ voor de wisseltijd, vinkjes en Mijn dashboard' };
     }
   },
 
