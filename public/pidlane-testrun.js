@@ -2787,6 +2787,22 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── brandstofprijs invulbaar, banden één regel in Sensoren (15-10-2026) ──
+  {
+    issue: 'prijsbanden',
+    naam: 'Kosten per maand rekenen met de ingevulde brandstofprijs; banden zijn één regel in Mijn voertuigen → Sensoren',
+    waarom: 'De literprijs stond vast op € 1,95; en elke band stond in Sensoren los aangevinkt terwijl het vinkje 🛞 Banden in de sensorlijst uit stond.',
+    proef: async function () {
+      var K = window.PLWijzer && PLWijzer._kern;
+      if (!K || typeof K.kostenBlok !== 'function' || typeof K.geldigePrijs !== 'function') return { staat: 'FOUT', detail: 'PLWijzer.kostenBlok/geldigePrijs ontbreekt — oude pidlane-wijzer.js (herladen?)' };
+      if (K.geldigePrijs('benzine', '2,39') !== 2.39 || K.geldigePrijs('benzine', '239') !== null) return { staat: 'FOUT', detail: 'de prijscontrole laat 239 toe of weigert 2,39' };
+      var b = K.brandstofKosten([{ brandstof_omschrijving: 'Benzine', brandstofverbruik_gecombineerd: '6.4' }], { prijs: { benzine: 2.5 } });
+      if (!/2,50\/l/.test(b.uitleg || '')) return { staat: 'FOUT', detail: 'een eigen prijs telt niet mee in de som: ' + (b.uitleg || JSON.stringify(b)) };
+      if (!window.PLBanden || typeof PLBanden.zetAan !== 'function') return { staat: 'FOUT', detail: 'PLBanden.zetAan ontbreekt — het vinkje in Sensoren kan niets omzetten' };
+      return { staat: 'OK', detail: 'rij: vul in de kenteken-check een prijs in; open Mijn voertuigen → Sensoren en kijk of de banden één regel zijn' };
+    }
+  },
+
   // ── tabblad Kenteken in Mijn voertuigen, Admin-menu korter (15-10-2026) ──
   {
     issue: 'kentekentab',

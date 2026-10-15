@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Brandstofprijs invulbaar, banden één regel in Sensoren
+ ═══════════════════════════════════════════════════════════
+ Kosten per maand: de literprijs (of stroomprijs) is een invulveld onder
+ het kostenblok, per brandstofsoort bewaard op dit toestel; leeg zet de
+ standaard terug, 239 in plaats van 2,39 wordt geweigerd.
+ Mijn voertuigen → Sensoren: de banden stonden los met elk een vinkje uit
+ de vaste selectie, terwijl het vinkje 🛞 Banden in de sensorlijst uit
+ stond. Nu één regel 🛞 Banden met datzelfde vinkje (PLBanden), de losse
+ sensoren ingeklapt eronder, en Bewaren haalt ze uit de vaste selectie.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Tabblad Kenteken in Mijn voertuigen, Admin-menu korter
  ═══════════════════════════════════════════════════════════
  De kenteken-check van "Niet in de auto?" (APK, verzekering, terugroep-

@@ -507,6 +507,30 @@ const NEPSERVER = `(function(){
     toets('met de terugroepactie en de blokken van PLWijzer', await wacht(`/Nepactie remleiding/.test(document.getElementById('plGarBody').textContent) && !!document.querySelector('#plGarBody [data-plw="kosten"]')`, 5000));
     await app.ev(`window.plFetch = window._plFetchVoorRdw; if (window._recallVoorRdw) PLRecall.check = window._recallVoorRdw; connected = false; PLGarage._tab('overzicht'); PLGarage.sluit(); 'ok'`);
 
+    console.log('\n── 4n. banden in Sensoren: één regel, hetzelfde vinkje als de sensorlijst ──');
+    await app.ev(`(function(){
+      const v = PLGarage.actief(), eigen = [{ code: '222A05', naam: 'Bandenspanning voor-links', formule: 'A', eenheid: 'psi', ecu: '720' },
+        { code: '222A06', naam: 'Bandenspanning voor-rechts', formule: 'A', eenheid: 'psi', ecu: '720' },
+        { code: '221310', naam: 'Motorolietemperatuur', formule: 'A-40', eenheid: '°C' }];
+      [v].concat(window._nepPlatform.voertuigen).forEach(x => { if (x.id === v.id) { x.eigen_pids = eigen.slice(); x.pid_selectie = ['222A05', '222A06', '221310']; } });
+      PLBanden.zetAan(false); PLGarage.open(v.id); PLGarage._tab('sensoren'); return 'ok'; })()`);
+    const bd = JSON.parse(await app.ev(`(function(){
+      const r = document.querySelector('#plGarBody [data-gr="banden"]');
+      const los = Array.prototype.filter.call(document.querySelectorAll('#plGarBody input[type=checkbox]'), i => /_sensKies\\('222A0[56]'/.test(i.getAttribute('onchange') || ''));
+      return JSON.stringify({ regel: !!r, regels: document.querySelectorAll('#plGarBody [data-gr="banden"]').length, los: los.length,
+        vinkje: r ? r.querySelector('input[type=checkbox]').checked : null, olie: /_sensKies\\('221310'/.test(document.getElementById('plGarBody').innerHTML) });
+    })()`));
+    toets('de banden staan als één regel 🛞 Banden', bd.regel && bd.regels === 1, JSON.stringify(bd));
+    toets('zonder een eigen vinkje per band, ook al stonden ze in de selectie', bd.los === 0, JSON.stringify(bd));
+    toets('het vinkje volgt de sensorlijst (uit), de olietemperatuur houdt het zijne', bd.vinkje === false && bd.olie, JSON.stringify(bd));
+    await app.ev(`document.querySelector('#plGarBody [data-gr="banden"] input[type=checkbox]').click(); 'ok'`);
+    toets('aanvinken zet de ronde van vijf minuten aan (PLBanden)', await wacht(`PLBanden.aan() === true && localStorage.getItem('pl_banden_auto') === '1'`, 3000));
+    await app.ev(`PLGarage._sensKies('221310', false); PLGarage._sensBewaar(); 'ok'`);
+    toets('bewaren haalt de banden uit de vaste selectie: daar deden ze niets', await wacht(`(function(){ const x = window._nepPlatform.voertuigen.find(v => v.id === PLGarage.actief().id);
+      return x && Array.isArray(x.pid_selectie) && x.pid_selectie.indexOf('222A05') < 0 && x.pid_selectie.indexOf('222A06') < 0; })()`, 5000),
+      await app.ev(`JSON.stringify(window._nepPlatform.voertuigen.map(v => v.pid_selectie))`));
+    await app.ev(`window._nepPlatform.voertuigen.forEach(x => { x.eigen_pids = []; x.pid_selectie = []; }); PLGarage.actief().eigen_pids = []; PLGarage.actief().pid_selectie = []; PLGarage._tab('overzicht'); PLGarage.sluit(); 'ok'`);
+
     console.log('\n── 5. de terugknop en het startscherm ──');
     await app.ev(`PLGarage.open(); 'ok'`);
     await app.ev(`appBack(); 'ok'`);

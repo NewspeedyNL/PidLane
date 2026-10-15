@@ -137,5 +137,28 @@ toets('de link naar milieuzones.nl staat erin', html.indexOf('href="https://www.
 const leeg = s.PLWijzer.blokken({}, []);
 toets('een lege RDW-rij geeft ook geen undefined of NaN', !/undefined|NaN/.test(leeg));
 
+console.log('\n7. De brandstofprijs is een invulveld (15-10-2026)');
+{
+  const opslag = {};
+  s.localStorage.getItem = (k) => (k in opslag ? opslag[k] : null);
+  s.localStorage.setItem = (k, v) => { opslag[k] = String(v); };
+  const benz = bs(['Benzine'], { brandstofverbruik_gecombineerd: '6.4' }), rij = pa('20180101', 1518);
+  const voor = s.PLWijzer._kern.kostenBlok(rij, benz);
+  toets('zonder eigen prijs: het veld toont de standaard (1,95) en zegt dat', /data-plw-prijs="benzine" value="1,95"/.test(voor) && /\(standaard\)/.test(voor), voor.slice(0, 300));
+  toets('een diesel-hybride vraagt de dieselprijs, een EV de stroomprijs',
+    s.PLWijzer._kern.prijsSleutel('hybride-diesel') === 'diesel' && s.PLWijzer._kern.prijsSleutel('elektrisch') === 'stroom' && s.PLWijzer._kern.prijsSleutel('onbekend') === 'benzine');
+  s.PLWijzer._prijs('benzine', '2,39');
+  const na = s.PLWijzer._kern.kostenBlok(rij, benz);
+  toets('2,39 ingevuld: bewaard, en de som rekent ermee', JSON.parse(opslag.pl_brandstofprijs).benzine === 2.39 && /€ 2,39\/l/.test(na) && /\(jouw prijs\)/.test(na), na.slice(0, 400));
+  toets('de dieselprijs blijft de standaard', !('diesel' in JSON.parse(opslag.pl_brandstofprijs)));
+  s.PLWijzer._prijs('benzine', '239');
+  toets('239 (komma vergeten) wordt geweigerd: de vorige prijs blijft', JSON.parse(opslag.pl_brandstofprijs).benzine === 2.39);
+  s.PLWijzer._prijs('benzine', '');
+  toets('leeg maken zet de standaard terug', !('benzine' in JSON.parse(opslag.pl_brandstofprijs)) && /€ 1,95\/l/.test(s.PLWijzer._kern.kostenBlok(rij, benz)));
+  opslag.pl_brandstofprijs = '{"benzine":"abc","diesel":99}';
+  toets('rommel in de opslag telt niet', /€ 1,95\/l/.test(s.PLWijzer._kern.kostenBlok(rij, benz)));
+  s.localStorage.getItem = () => null; s.localStorage.setItem = () => { };
+}
+
 console.log('\n' + n + ' toetsen, ' + fout + ' fout');
 process.exit(fout ? 1 : 0);

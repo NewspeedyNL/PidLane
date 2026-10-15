@@ -140,9 +140,45 @@
       return { perMaand: s, uitleg: Math.round(kwh * 1000) + ' Wh/km × ' + km + ' km × € ' + pr.stroom.toFixed(2).replace('.', ',') + '/kWh (thuisladen)' };
     }
     if (!l) return { onbekend: 'het verbruik staat niet bij het RDW' };
-    var p = /diesel/.test(soort) ? pr.diesel : soort === 'lpg' ? pr.lpg : pr.benzine;
+    var p = pr[prijsSleutel(soort)];
     var liters = l * PRAKTIJK * km / 100;
     return { perMaand: liters * p, uitleg: String(l).replace('.', ',') + ' l/100 km +15 % praktijk × ' + km + ' km × € ' + p.toFixed(2).replace('.', ',') + '/l' };
+  }
+
+  /* Welke prijs bij welke brandstof: 'benzine', 'diesel', 'lpg' of 'stroom'. Puur. */
+  function prijsSleutel(soort) {
+    if (soort === 'elektrisch') return 'stroom';
+    if (/diesel/.test(soort)) return 'diesel';
+    return soort === 'lpg' ? 'lpg' : 'benzine';
+  }
+  /* De eigen prijs (15-10-2026): brandstof was duurder dan de vaste tabel,
+     dus de klant vult hem in. Per brandstofsoort, op dit toestel.
+     Puur: een waarde buiten het bereik telt niet. */
+  var PRIJS_SLEUTEL = 'pl_brandstofprijs';
+  var PRIJS_BEREIK = { benzine: [0.5, 5], diesel: [0.5, 5], lpg: [0.2, 3], stroom: [0.05, 2] };
+  function geldigePrijs(sleutel, waarde) {
+    var v = Number(String(waarde == null ? '' : waarde).replace(',', '.')), b = PRIJS_BEREIK[sleutel];
+    return (b && String(waarde).trim() !== '' && isFinite(v) && v >= b[0] && v <= b[1]) ? Math.round(v * 1000) / 1000 : null;
+  }
+  function eigenPrijzen() {
+    var uit = {};
+    try {
+      var o = JSON.parse(localStorage.getItem(PRIJS_SLEUTEL) || '{}') || {};
+      Object.keys(PRIJS_BEREIK).forEach(function (k) { var v = geldigePrijs(k, o[k]); if (v != null) uit[k] = v; });
+    } catch (e) { console.warn('PLWijzer: eigen brandstofprijs onleesbaar — de standaardprijs geldt', e); }
+    return uit;
+  }
+  var _kostenAuto = null;
+  function prijs(sleutel, waarde) {
+    if (!PRIJS_BEREIK[sleutel]) return;
+    var o = eigenPrijzen(), v = geldigePrijs(sleutel, waarde), leeg = String(waarde == null ? '' : waarde).trim() === '';
+    if (v == null && !leeg) { if (typeof showToast === 'function') showToast('Vul een prijs tussen € ' + PRIJS_BEREIK[sleutel][0] + ' en € ' + PRIJS_BEREIK[sleutel][1] + ' in'); return; }
+    if (v == null) delete o[sleutel]; else o[sleutel] = v;
+    try { localStorage.setItem(PRIJS_SLEUTEL, JSON.stringify(o)); }
+    catch (e) { console.warn('PLWijzer: brandstofprijs niet bewaard', e); if (typeof showToast === 'function') showToast('De prijs kon niet bewaard worden'); return; }
+    if (!_kostenAuto) return;
+    var nieuw = kostenBlok(_kostenAuto.rij, _kostenAuto.bs);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-plw="kosten"]'), function (el) { el.outerHTML = nieuw; });
   }
 
   function kosten(rij, bs, opt) {
@@ -240,19 +276,32 @@
   var _schemaAuto = null;
   function schema() { if (window.PLSchema && _schemaAuto) PLSchema.open(_schemaAuto, _schemaAuto.kent); }
 
-  /* Blokken onder de kenteken-check: milieuklasse, kosten, onderhoudsschema, adapter. */
-  function blokken(rij, bs) {
-    var z = milieuklasse(rij, bs), k = kosten(rij, bs), a = adapter(rij, bs);
-    var h = '<div class="plz-blok" data-plw="zones"><b>🏙️ Milieuklasse</b>' + regel('info', 'Brandstof en emissieklasse', z.kop, z.uitleg) +
-      '<div class="plz-klein" style="margin-top:6px">Mag hij een stad in? Vul het kenteken in op <a href="' + MILIEUZONES_URL + '" target="_blank" rel="noopener" style="color:var(--bl)">milieuzones.nl</a>.</div></div>';
-
-    h += '<div class="plz-blok" data-plw="kosten"><b>💶 Wat kost hij per maand?</b>';
+  /* Het kostenblok los, zodat een nieuwe prijs alleen dit blok opnieuw tekent. */
+  function kostenBlok(rij, bs) {
+    _kostenAuto = { rij: rij, bs: bs };
+    var eigen = eigenPrijzen(), k = kosten(rij, bs, { prijs: eigen });
+    var h = '<div class="plz-blok" data-plw="kosten"><b>💶 Wat kost hij per maand?</b>';
     if (k.mrb.perMaand != null) h += regel('info', 'Wegenbelasting (indicatie)', euro(k.mrb.laag) + ' – ' + euro(k.mrb.hoog) + ' per maand', k.mrb.uitleg);
     else h += regel('', 'Wegenbelasting', 'niet te schatten', k.mrb.onbekend);
     if (k.brandstof.perMaand != null) h += regel('info', 'Brandstof of stroom', '± ' + euro(k.brandstof.perMaand) + ' per maand', k.brandstof.uitleg);
     else h += regel('', 'Brandstof of stroom', 'niet te schatten', k.brandstof.onbekend);
+    var ps = prijsSleutel(soortBrandstof(bs)), pv = eigen[ps] != null ? eigen[ps] : PRIJS[ps];
+    h += '<label class="plz-klein" style="display:flex;align-items:center;gap:6px;margin-top:6px">' + (ps === 'stroom' ? 'Jouw stroomprijs per kWh' : 'Jouw prijs per liter ' + ps) + ': €' +
+      '<input type="text" inputmode="decimal" data-plw-prijs="' + ps + '" value="' + pv.toFixed(2).replace('.', ',') + '" onchange="PLWijzer._prijs(\'' + ps + '\', this.value)" style="flex:none;width:80px;padding:6px 8px;font-size:14px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx)">' +
+      '<span>' + (eigen[ps] != null ? '(jouw prijs)' : '(standaard)') + '</span></label>';
     if (k.totaal != null) h += regel('', 'Samen, zonder verzekering en onderhoud', '± ' + euro(k.totaal) + ' per maand');
-    h += '<div class="plz-klein" style="margin-top:6px">Een schatting, geen aanslag: de provincie en de exacte tarieftabel ontbreken. Exact: belastingdienst.nl/mrb-berekenen. Prijzen peil ' + PEIL + '.</div></div>';
+    h += '<div class="plz-klein" style="margin-top:6px">Een schatting, geen aanslag: de provincie en de exacte tarieftabel ontbreken. Exact: belastingdienst.nl/mrb-berekenen. Standaardprijzen peil ' + PEIL + '; leeg maken zet de standaard terug.</div></div>';
+
+    return h;
+  }
+
+  /* Blokken onder de kenteken-check: milieuklasse, kosten, onderhoudsschema, adapter. */
+  function blokken(rij, bs) {
+    var z = milieuklasse(rij, bs), a = adapter(rij, bs);
+    var h = '<div class="plz-blok" data-plw="zones"><b>🏙️ Milieuklasse</b>' + regel('info', 'Brandstof en emissieklasse', z.kop, z.uitleg) +
+      '<div class="plz-klein" style="margin-top:6px">Mag hij een stad in? Vul het kenteken in op <a href="' + MILIEUZONES_URL + '" target="_blank" rel="noopener" style="color:var(--bl)">milieuzones.nl</a>.</div></div>';
+
+    h += kostenBlok(rij, bs);
 
     // Het onderhoudsschema (#490): op een tik, via de AI (pidlane-schema.js).
     _schemaAuto = { merk: rij && rij.merk, model: rij && rij.handelsbenaming, jaar: String((rij && rij.datum_eerste_toelating) || '').slice(0, 4), brandstof: z.soort, cc: rij && rij.cilinderinhoud, kent: rij && rij.kenteken };
@@ -333,10 +382,11 @@
     blokken: blokken,
     klacht: klacht,
     _schema: schema,
+    _prijs: prijs,
     _kies: kies, _verder: verder, _antwoord: antwoord, _uitkomst: tekenUitkomst,
     // pure kern — voor test-wijzer.js
     _kern: { PEIL: PEIL, MILIEUZONES_URL: MILIEUZONES_URL, MRB: MRB, OBD: OBD, VRAGEN: VRAGEN,
       soortBrandstof: soortBrandstof, euroKlasse: euroKlasse, milieuklasse: milieuklasse, mrb: mrb, brandstofKosten: brandstofKosten,
-      kosten: kosten, adapter: adapter, wijzerStart: wijzerStart, wijzerVragen: wijzerVragen, wijzerAntwoord: wijzerAntwoord, wijzerUitkomst: wijzerUitkomst }
+      kosten: kosten, kostenBlok: kostenBlok, prijsSleutel: prijsSleutel, geldigePrijs: geldigePrijs, PRIJS: PRIJS, adapter: adapter, wijzerStart: wijzerStart, wijzerVragen: wijzerVragen, wijzerAntwoord: wijzerAntwoord, wijzerUitkomst: wijzerUitkomst }
   };
 })();
