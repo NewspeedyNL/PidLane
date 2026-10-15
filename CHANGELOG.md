@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 15-10-2026 — Rondgang: meer pagina's per categorie, verwante sensoren samen
+ ═══════════════════════════════════════════════════════════
+ Motor en rijden toonde drie of vier sensoren. Een categorie heeft nu
+ één of meer pagina's (DIAS met cat, CATS): Motor in Vermogen en koppel
+ (gevraagd/werkelijk/vrijloop/wrijving), Gas en belasting (pedaal en
+ gasklep elk een tellerplaat) en Ontsteking en looptijd; Temperaturen
+ met katalysatoren en uitlaatgas; Brandstof met druk en tank; Uitlaat
+ met sondes per bank en EGR/roetfilter/AdBlue. Vinkje per categorie.
+ Staan er sensoren uit, dan zegt een knop onderaan de pagina dat.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Rondgang: compacte kop, een eigen weergave per categorie
  ═══════════════════════════════════════════════════════════
  Na de eerste rit: de balk boven de dia was te groot en de categorieën

@@ -64,60 +64,129 @@ const KOP = [
 //   mid    een balk vanuit het midden (trims rond 0 %, lambda rond 1,00)
 //   meter  een boog, twee naast elkaar
 //   rij    naam, getal en de normale band (de band uit Overzicht)
-// `vul`: de categorieën uit Overzicht (ovzCat) waarmee een dia wordt
-// aangevuld met sensoren die je zelf aan hebt staan — als rij.
+// Een categorie (CATS) heeft één of meer PAGINA'S in DIAS, elk met een
+// eigen onderwerp: sensoren die bij elkaar horen staan samen, zodat je ze
+// tegen elkaar afleest (gevraagd tegen werkelijk koppel, pedaal tegen
+// gasklep, bank 1 tegen bank 2). Een pagina waarvan de auto niets heeft
+// valt weg. Het vinkje (pl_rond_uit) gaat per categorie, niet per pagina.
+// `vul`: de categorieën uit Overzicht (ovzCat) waarmee de laatste pagina
+// van een categorie wordt aangevuld met sensoren die je zelf aan hebt
+// staan — als rij.
+const CATS = [
+  { id:'motor', naam:'Motor en rijden', ico:'⚙️', vul:['rijden','motor'] },
+  { id:'temp', naam:'Temperaturen', ico:'🌡️', vul:['temp'] },
+  { id:'brandstof', naam:'Brandstof en trims', ico:'⛽', vul:['brandstof'] },
+  { id:'lucht', naam:'Lucht en turbo', ico:'🌀', vul:[] },
+  { id:'uitlaat', naam:'Uitlaat en emissie', ico:'💨', vul:['uitlaat'] },
+  { id:'elektrisch', naam:'Elektrisch', ico:'🔋', vul:['elektrisch'] }
+];
 const DIAS = [
-  { id:'motor', naam:'Motor en rijden', ico:'⚙️', vul:['rijden','motor'], tegels:[
+  { id:'motor', cat:'motor', naam:'Vermogen en koppel', tegels:[
     { keten:['CA06'], soort:'held' },
-    { keten:['0104'], soort:'staaf', groep:'Gaspad' },
-    { keten:['0149','015A','014A'], soort:'staaf', groep:'Gaspad' },
-    { keten:['0111','0145','014C','016C'], soort:'staaf', groep:'Gaspad' },
-    { keten:['0162'], soort:'staaf', groep:'Gaspad' },
+    { keten:['0161'], soort:'staaf', groep:'Koppel' },
+    { keten:['0162'], soort:'staaf', groep:'Koppel' },
+    { keten:['0164'], soort:'staaf', groep:'Koppel' },
+    { keten:['018E'], soort:'staaf', groep:'Koppel' },
     { keten:['CA07'], soort:'rij' },
-    { keten:['010E'], soort:'rij' } ] },
-  { id:'temp', naam:'Temperaturen', ico:'🌡️', vul:['temp'], tegels:[
+    { keten:['0163'], soort:'rij' },
+    { keten:['CA01'], soort:'rij' } ] },
+  { id:'motor-gas', cat:'motor', naam:'Gas en belasting', tegels:[
+    { keten:['0104'], soort:'staaf', groep:'Belasting' },
+    { keten:['0143'], soort:'staaf', groep:'Belasting' },
+    { keten:['0149'], soort:'staaf', groep:'Gaspedaal' },
+    { keten:['015A'], soort:'staaf', groep:'Gaspedaal' },
+    { keten:['014A'], soort:'staaf', groep:'Gaspedaal' },
+    { keten:['014B'], soort:'staaf', groep:'Gaspedaal' },
+    { keten:['0111'], soort:'staaf', groep:'Gasklep' },
+    { keten:['014C'], soort:'staaf', groep:'Gasklep' },
+    { keten:['0145'], soort:'staaf', groep:'Gasklep' },
+    { keten:['0147'], soort:'staaf', groep:'Gasklep' },
+    { keten:['016C','018D'], soort:'staaf', groep:'Gasklep' } ] },
+  { id:'motor-ontsteking', cat:'motor', naam:'Ontsteking en looptijd', tegels:[
+    { keten:['010E'], soort:'held' },
+    { keten:['015D'], soort:'rij' },
+    { keten:['01A2'], soort:'rij' },
+    { keten:['011F'], soort:'rij' },
+    { keten:['017F'], soort:'rij' },
+    { keten:['01A6'], soort:'rij' },
+    { keten:['0131'], soort:'rij' } ] },
+  { id:'temp', cat:'temp', naam:'Motor en lucht', tegels:[
     { keten:['0105','0167'], soort:'rij' },
     { keten:['015C'], soort:'rij' },
-    { keten:['010F','0168','0184'], soort:'rij' },
+    { keten:['010F','0168'], soort:'rij' },
+    { keten:['0184'], soort:'rij' },
     { keten:['0146'], soort:'rij' },
     { keten:['0177'], soort:'rij' },
-    { keten:['013C','013E'], soort:'rij' },
-    { keten:['0178','0179'], soort:'rij' },
+    { keten:['0175'], soort:'rij' },
+    { keten:['0176'], soort:'rij' },
+    { keten:['016B'], soort:'rij' } ] },
+  { id:'temp-uitlaat', cat:'temp', naam:'Uitlaat en katalysator', tegels:[
+    { keten:['013C'], soort:'staaf', groep:'Katalysator' },
+    { keten:['013E'], soort:'staaf', groep:'Katalysator' },
+    { keten:['013D'], soort:'staaf', groep:'Katalysator' },
+    { keten:['013F'], soort:'staaf', groep:'Katalysator' },
+    { keten:['0178'], soort:'staaf', groep:'Uitlaatgas' },
+    { keten:['0179'], soort:'staaf', groep:'Uitlaatgas' },
     { keten:['017C'], soort:'rij' } ] },
-  { id:'brandstof', naam:'Brandstof en trims', ico:'⛽', vul:['brandstof'], tegels:[
+  { id:'brandstof', cat:'brandstof', naam:'Verbruik en trims', tegels:[
     { keten:['CA03','015E','CA02'], soort:'held' },
     { keten:['0106'], soort:'mid', groep:'Brandstoftrims', midden:0, span:25 },
     { keten:['0107'], soort:'mid', groep:'Brandstoftrims', midden:0, span:25 },
     { keten:['0108'], soort:'mid', groep:'Brandstoftrims', midden:0, span:25 },
     { keten:['0109'], soort:'mid', groep:'Brandstoftrims', midden:0, span:25 },
-    { keten:['012F'], soort:'rij' },
+    { keten:['0155'], soort:'mid', groep:'Brandstoftrims', midden:0, span:25 },
+    { keten:['0156'], soort:'mid', groep:'Brandstoftrims', midden:0, span:25 },
+    { keten:['015E','CA02'], soort:'rij' },
+    { keten:['CA08'], soort:'rij' } ] },
+  { id:'brandstof-druk', cat:'brandstof', naam:'Druk, tank en bereik', tegels:[
+    { keten:['012F'], soort:'meter' },
+    { keten:['0152'], soort:'meter' },
     { keten:['CA09'], soort:'rij' },
-    { keten:['010A','0123','0159','016D','0122'], soort:'rij' } ] },
-  { id:'lucht', naam:'Lucht en turbo', ico:'🌀', vul:[], tegels:[
+    { keten:['010A'], soort:'rij' },
+    { keten:['0123','0159','016D','0122'], soort:'rij' },
+    { keten:['016E'], soort:'rij' } ] },
+  { id:'lucht', cat:'lucht', naam:'Luchtmassa en druk', tegels:[
     { keten:['0110','0166'], soort:'held' },
     { keten:['CA04','0170'], soort:'meter' },
     { keten:['010B','0187'], soort:'meter' },
-    { keten:['0171'], soort:'staaf', groep:'Turboregeling' },
-    { keten:['0172'], soort:'staaf', groep:'Turboregeling' },
+    { keten:['0171'], soort:'staaf', groep:'Turbo en kleppen' },
+    { keten:['0172'], soort:'staaf', groep:'Turbo en kleppen' },
+    { keten:['016A'], soort:'staaf', groep:'Turbo en kleppen' },
     { keten:['016F'], soort:'rij' },
+    { keten:['0166'], soort:'rij' },
     { keten:['0133'], soort:'rij' } ] },
-  { id:'uitlaat', naam:'Uitlaat en emissie', ico:'💨', vul:['uitlaat'], tegels:[
+  { id:'uitlaat', cat:'uitlaat', naam:'Lambda en sondes', tegels:[
     { keten:['0124','0134'], soort:'mid', groep:'Lambda', midden:1, span:0.25 },
+    { keten:['0125','0135'], soort:'mid', groep:'Lambda', midden:1, span:0.25 },
+    { keten:['0128','0138'], soort:'mid', groep:'Lambda', midden:1, span:0.25 },
     { keten:['0144'], soort:'mid', groep:'Lambda', midden:1, span:0.25 },
-    { keten:['0114'], soort:'staaf', groep:'Zuurstofsondes', ref:0.45 },
-    { keten:['0115'], soort:'staaf', groep:'Zuurstofsondes', ref:0.45 },
-    { keten:['0118'], soort:'staaf', groep:'Zuurstofsondes', ref:0.45 },
-    { keten:['0119'], soort:'staaf', groep:'Zuurstofsondes', ref:0.45 },
-    { keten:['012C','0169'], soort:'rij' },
-    { keten:['017A'], soort:'rij' },
+    { keten:['0114'], soort:'staaf', groep:'Sondes bank 1', ref:0.45 },
+    { keten:['0115'], soort:'staaf', groep:'Sondes bank 1', ref:0.45 },
+    { keten:['0116'], soort:'staaf', groep:'Sondes bank 1', ref:0.45 },
+    { keten:['0117'], soort:'staaf', groep:'Sondes bank 1', ref:0.45 },
+    { keten:['0118'], soort:'staaf', groep:'Sondes bank 2', ref:0.45 },
+    { keten:['0119'], soort:'staaf', groep:'Sondes bank 2', ref:0.45 },
+    { keten:['011A'], soort:'staaf', groep:'Sondes bank 2', ref:0.45 },
+    { keten:['011B'], soort:'staaf', groep:'Sondes bank 2', ref:0.45 } ] },
+  { id:'uitlaat-nabeh', cat:'uitlaat', naam:'EGR, roetfilter en AdBlue', tegels:[
+    { keten:['012C','0169'], soort:'staaf', groep:'EGR en verdamping' },
+    { keten:['012E'], soort:'staaf', groep:'EGR en verdamping' },
+    { keten:['017A'], soort:'staaf', groep:'Roetfilter' },
+    { keten:['017B'], soort:'staaf', groep:'Roetfilter' },
+    { keten:['018B'], soort:'staaf', groep:'Roetfilter' },
+    { keten:['012D'], soort:'rij' },
+    { keten:['0132'], soort:'rij' },
     { keten:['0186'], soort:'rij' },
+    { keten:['0183'], soort:'rij' },
     { keten:['0185'], soort:'rij' },
-    { keten:['0183'], soort:'rij' } ] },
-  { id:'elektrisch', naam:'Elektrisch', ico:'🔋', vul:['elektrisch'], tegels:[
+    { keten:['0173'], soort:'rij' },
+    { keten:['019E'], soort:'rij' } ] },
+  { id:'elektrisch', cat:'elektrisch', naam:'Accu', tegels:[
     { keten:['015B'], soort:'rij' },
     { keten:['0142'], soort:'rij' } ] }
 ];
-const DIA_IDS = DIAS.map(function(d){ return d.id; });
+const CAT_IDS = CATS.map(function(c){ return c.id; });
+function catDef(id){ return CATS.filter(function(c){ return c.id===id; })[0]; }
 
 // ── DE INDELING — puur ──────────────────────────────────────────────
 // o.heeft(pid): staat aan op deze auto; o.heeftKop(pid): kan de kop hem
@@ -145,19 +214,20 @@ function indeling(motor, o){
   const kop=KOP.map(function(s){ return tegel(s, true); }).filter(Boolean);
   let volg=DIAS.slice();
   if(motor==='hybride' || motor==='ev'){
-    const e=volg.filter(function(d){ return d.id==='elektrisch'; });
-    volg=e.concat(volg.filter(function(d){ return d.id!=='elektrisch'; }));
+    const e=volg.filter(function(d){ return d.cat==='elektrisch'; });
+    volg=e.concat(volg.filter(function(d){ return d.cat!=='elektrisch'; }));
   }
-  const aan=volg.filter(function(d){ return uit.indexOf(d.id)<0; });
+  const aan=volg.filter(function(d){ return uit.indexOf(d.cat)<0; });
   let dias=aan.map(function(d){
-    return { id:d.id, naam:d.naam, ico:d.ico, tegels:d.tegels.map(function(s){ return tegel(s, false); }).filter(Boolean) };
+    const c=catDef(d.cat);
+    return { id:d.id, cat:d.cat, naam:c.naam+' · '+d.naam, cnaam:c.naam, ico:c.ico, tegels:d.tegels.map(function(s){ return tegel(s, false); }).filter(Boolean) };
   });
-  // Aanvullen met wat je zelf aan hebt staan, in de dia van zijn categorie.
+  // Aanvullen met wat je zelf aan hebt staan, op de laatste pagina van zijn categorie.
   (o.extra||[]).forEach(function(p){
     if(gebruikt[p] || !heeft(p)) return;
     const c=cat(p); if(!c) return;
-    const bron=aan.filter(function(d){ return d.vul.indexOf(c)>-1; })[0]; if(!bron) return;
-    const d=dias.filter(function(x){ return x.id===bron.id; })[0];
+    const bron=CATS.filter(function(k){ return k.vul.indexOf(c)>-1 && uit.indexOf(k.id)<0; })[0]; if(!bron) return;
+    const d=dias.filter(function(x){ return x.cat===bron.id; }).pop(); if(!d) return;
     gebruikt[p]=1;
     d.tegels.push({ id:'r-'+p, soort:'rij', pids:[p] });
   });
@@ -167,7 +237,11 @@ function indeling(motor, o){
   dias.forEach(function(d){
     const vorig=samen[samen.length-1];
     if(d.tegels.length===1 && vorig && vorig.tegels.length<MAX_PER_DIA){
-      vorig.tegels=vorig.tegels.concat(d.tegels); vorig.naam+=' · '+d.naam; return;
+      vorig.tegels=vorig.tegels.concat(d.tegels);
+      // Dezelfde categorie: de pagina erbij; een andere: alleen de categorienamen.
+      if(d.cat===vorig.cat) vorig.naam+=' · '+d.naam.slice(d.cnaam.length+3);
+      else { vorig.cats=(vorig.cats||[vorig.cnaam]).concat(d.cnaam); vorig.naam=vorig.cats.join(' · '); }
+      return;
     }
     samen.push(d);
   });
@@ -175,7 +249,7 @@ function indeling(motor, o){
   const uitL=[];
   samen.forEach(function(d){
     const n=Math.ceil(d.tegels.length/MAX_PER_DIA);
-    for(let i=0;i<n;i++) uitL.push({ id:d.id+(i?'#'+(i+1):''), naam:d.naam+(n>1?' ('+(i+1)+'/'+n+')':''), ico:d.ico,
+    for(let i=0;i<n;i++) uitL.push({ id:d.id+(i?'#'+(i+1):''), cat:d.cat, naam:d.naam+(n>1?' ('+(i+1)+'/'+n+')':''), ico:d.ico,
       tegels:d.tegels.slice(i*MAX_PER_DIA, (i+1)*MAX_PER_DIA) });
   });
   return { kop:kop, dias:uitL };
@@ -228,8 +302,8 @@ function alarmDia(dias, oordeel){
 }
 function schoonMs(v){ const n=Number(v); return KEUZES_MS.indexOf(n)>-1 ? n : STANDAARD_MS; }
 function schoonUit(l){
-  const u=(Array.isArray(l) ? l : []).filter(function(x, i, a){ return DIA_IDS.indexOf(x)>-1 && a.indexOf(x)===i; });
-  return u.length>=DIA_IDS.length ? [] : u;   // alles uit = niets uit
+  const u=(Array.isArray(l) ? l : []).filter(function(x, i, a){ return CAT_IDS.indexOf(x)>-1 && a.indexOf(x)===i; });
+  return u.length>=CAT_IDS.length ? [] : u;   // alles uit = niets uit
 }
 
 // ══ HET SCHERM ═══════════════════════════════════════════════════════
@@ -337,6 +411,13 @@ function paneelHtml(g){
       '<div class="gband rr-band'+(b.heeft?'':' geen')+'" id="rb-'+p+'"><i style="left:'+b.z0.toFixed(1)+'%;width:'+(b.z1-b.z0).toFixed(1)+'%"></i><u></u></div></div>';
   }).join('')+'</div>';
 }
+// Een knop onder de dia als deze categorie sensoren heeft die uit staan.
+// Aanzetten blijft een keuze (alleAan()): de selectie is van het voertuig.
+function mistHtml(d){
+  const c=d ? d.cat : null, n=nogUit(c).length;
+  if(!n) return '';
+  return '<button type="button" class="rond-mist" id="rondMist" onclick="PLRond.alleAan()">+ '+n+' sensoren '+(c ? 'van '+esc(catDef(c).naam.toLowerCase())+' ' : '')+'staan uit — zet ze aan</button>';
+}
 function kopHtml(){
   return _ind.kop.map(function(t){ const p=t.pids[0]; return '<span class="rond-kv" id="rt-'+p+'" data-s="kop">'+wHtml(p)+'</span>'; }).join('');
 }
@@ -357,6 +438,7 @@ function bouw(g){
       '<button type="button" class="rond-titel" id="rondTitel" onclick="PLRond.stap(1)" aria-label="Volgende categorie">'+
         (d ? esc(d.ico+' '+d.naam) : 'Nog geen sensoren aan — ⚙ zet ze aan')+'<small>'+(n ? (_st.i+1)+' / '+n : '')+'</small></button>'+
       (d ? groepen(d.tegels).map(paneelHtml).join('') : '')+
+      mistHtml(d)+
     '</div>';
   _ind.kop.concat(d ? d.tegels : []).forEach(function(t){ t.pids.forEach(function(p){
     if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); }); });
@@ -444,10 +526,10 @@ function remt(pid){
   return true;
 }
 
-// Wat de auto voor de rondgang heeft maar nog uit staat.
-function nogUit(){
+// Wat de auto voor de rondgang heeft maar nog uit staat; met c alleen die categorie.
+function nogUit(c){
   const vol=indeling(motor(), { heeft:levert, uit:uitLijst() });
-  return vol.dias.reduce(function(a,d){ return a.concat(pidsVan(d.tegels)); }, [])
+  return vol.dias.filter(function(d){ return !c || d.cat===c; }).reduce(function(a,d){ return a.concat(pidsVan(d.tegels)); }, [])
     .filter(function(p){ return !actief(p); });
 }
 function alleAan(){
@@ -467,7 +549,7 @@ function instellingen(){
   _blad.onclick=function(e){ if(e.target===_blad) sluitBlad(); };
   _blad.innerHTML='<div class="dash-blad"><h5>Rondgang in Slim</h5><p>Elke categorie blijft zo lang in beeld</p>'+
     '<div class="dash-keus rond-tijd">'+KEUZES_MS.map(function(m){ return '<button type="button"'+(m===nu?' class="aan"':'')+' onclick="PLRond.zetMs('+m+')">'+(m/1000)+' s</button>'; }).join('')+'</div>'+
-    '<p>Welke categorieën meedoen</p>'+DIAS.map(function(d){
+    '<p>Welke categorieën meedoen</p>'+CATS.map(function(d){
       const op=uit.indexOf(d.id)<0;
       return '<button type="button" class="dash-regel" role="switch" aria-checked="'+op+'" data-dia="'+d.id+'" onclick="PLRond.zetDia(\''+d.id+'\')">'+esc(d.ico+' '+d.naam)+'<small>'+(op?'☑':'☐')+'</small></button>';
     }).join('')+
@@ -480,11 +562,11 @@ function instellingen(){
 
 const api = {
   // de pure kern — voor test-rondgang.js
-  DIAS:DIAS, KOP:KOP, KEUZES_MS:KEUZES_MS, STANDAARD_MS:STANDAARD_MS, HOLD_MS:HOLD_MS, VOOR_MS:VOOR_MS, REM_MS:REM_MS, SNEL_MS:SNEL_MS, MAX_PER_DIA:MAX_PER_DIA,
+  DIAS:DIAS, CATS:CATS, KOP:KOP, KEUZES_MS:KEUZES_MS, STANDAARD_MS:STANDAARD_MS, HOLD_MS:HOLD_MS, VOOR_MS:VOOR_MS, REM_MS:REM_MS, SNEL_MS:SNEL_MS, MAX_PER_DIA:MAX_PER_DIA,
   indeling:indeling, groepen:groepen, midVulling:midVulling, tik:tik, stapPuur:stap, voortgang:voortgang, alarmDia:alarmDia, schoonMs:schoonMs, schoonUit:schoonUit,
   // het scherm
   aan:aan, bouw:bouw, bij:bij, nogUit:nogUit,
-  alleAan:function(){ const n=alleAan(); if(n && typeof showToast==='function') showToast(n+' sensoren aangezet voor de rondgang'); instellingen(); herbouw(); return n; }, remt:remt, instellingen:instellingen, sluit:sluitBlad,
+  alleAan:function(){ const n=alleAan(); if(n && typeof showToast==='function') showToast(n+' sensoren aangezet voor de rondgang'); if(_blad) instellingen(); herbouw(); return n; }, remt:remt, instellingen:instellingen, sluit:sluitBlad,
   staat:function(){ return { i:_st.i, pauze:_st.pauze, alarm:_st.alarm, ms:ms(), dias:_ind.dias.map(function(d){ return { id:d.id, naam:d.naam, pids:pidsVan(d.tegels) }; }), kop:pidsVan(_ind.kop) }; },
   modus:function(m){ schrijf('pl_slim_modus', m==='dash' ? 'dash' : 'rond'); if(m==='dash') stopKlok(); _vorigeI=-1; herbouw(); },
   stap:function(r){ _st=stap(_st, r, Date.now(), _ind.dias.length); herbouw(); },

@@ -2787,6 +2787,22 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Rondgang: meer pagina's per categorie (15-10-2026) ──
+  {
+    issue: 'rondgangpaginas',
+    naam: "Rondgang: Motor en rijden in drie pagina's, verwante sensoren samen, een knop als sensoren uit staan",
+    waarom: 'Motor en rijden toonde maar drie of vier sensoren terwijl de auto er veel meer heeft; met elke 10 s een andere pagina is er plaats voor alles.',
+    proef: async function () {
+      if (!window.PLRond || !Array.isArray(PLRond.CATS)) return { staat: 'FOUT', detail: 'PLRond.CATS ontbreekt — oude pidlane-rondgang.js (herladen?)' };
+      var ind = PLRond.indeling('benzine', { heeft: function () { return true; } });
+      var mot = ind.dias.filter(function (d) { return d.cat === 'motor'; });
+      var n = mot.reduce(function (a, d) { return a + d.tegels.length; }, 0);
+      if (mot.length < 3 || n < 25) return { staat: 'FOUT', detail: 'Motor en rijden: ' + mot.length + " pagina's, " + n + ' sensoren' };
+      var mist = PLRond.nogUit().length;
+      return { staat: 'OK', detail: 'rij: Live → Slim, ' + (mist ? mist + ' sensoren staan nog uit — tik onderaan een pagina op de knop en kijk of alle pagina\'s vol en leesbaar zijn' : 'kijk of alle pagina\'s vol en leesbaar zijn') + '; let op of snelheid en toerental vlot blijven met alles aan' };
+    }
+  },
+
   // ── Slim als rondgang langs de categorieën (15-10-2026) ──
   {
     issue: 'rondgang',

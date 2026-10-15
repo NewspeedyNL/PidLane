@@ -67,13 +67,15 @@ const wacht = (ms) => `await new Promise(function(r){ setTimeout(r, ${ms}); });`
       setPidView('overzicht'); setPidView('slim'); PLRond.stap(1); PLRond.stap(1); ${wacht(500)}
       const terug=activePIDs.has(p), mist=PLRond.nogUit();
       const inDia=PLRond.staat().dias.some(function(d){ return d.pids.indexOf(p)>-1; });
+      let mistKnop=false; for(let k=0;k<PLRond.staat().dias.length && !mistKnop;k++){ mistKnop=!!document.getElementById('rondMist'); if(!mistKnop) PLRond.stap(1); }
       PLRond.instellingen(); const knop=!!document.getElementById('rondAlleAan');
       const n=PLRond.alleAan(); PLRond.sluit(); ${wacht(200)}
-      return { p:p, terug:terug, inDia:inDia, mist:mist, knop:knop, n:n, na:activePIDs.has(p) };
+      return { p:p, terug:terug, inDia:inDia, mist:mist, knop:knop, mistKnop:mistKnop, n:n, na:activePIDs.has(p) };
     })()`);
     toets('een sensor die je uitzet, zet de rondgang niet stil terug', eenB.p && !eenB.terug, JSON.stringify(eenB));
     toets('en hij staat niet als lege tegel op een dia', !eenB.inDia, JSON.stringify(eenB));
     toets('het ⚙-blad telt hem en biedt "Zet ze aan"', eenB.mist.indexOf(eenB.p) > -1 && eenB.knop, JSON.stringify(eenB));
+    toets('een dia van zijn categorie zegt onderaan dat er sensoren uit staan', eenB.mistKnop, JSON.stringify(eenB));
     toets('"Zet ze aan" zet hem aan', eenB.n >= 1 && eenB.na, JSON.stringify(eenB));
 
     console.log('\n2. De klok en Pauze');
