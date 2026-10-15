@@ -317,7 +317,7 @@ function haalZeef(isMode01) {
       { hdr: '7E1', rax: '7E9', cmd: { '22': '1E1C' }, signals: [{ name: 'ATF temperature', fmt: { len: 8, unit: 'fahrenheit' } }] },
       { hdr: '7E0', rax: '7E8', cmd: { '22': 'DD01' }, signals: [{ name: 'Odometer', fmt: { len: 24, blsb: true, unit: 'kilometers' } }] },
       { hdr: '7E0', rax: '7E8', cmd: { '21': '05' }, signals: [{ name: 'Coolant', fmt: { len: 8, add: -40, unit: 'celsius' } }] },
-      { hdr: '6F1', rax: '612', eax: '12', cmd: { '22': '4205' }, signals: [{ name: 'BMW extended', fmt: { len: 8, unit: 'volts' } }] },
+      { hdr: '7E0', rax: '7E8', eax: '12', cmd: { '22': '4205' }, signals: [{ name: 'Extended addressing', fmt: { len: 8, unit: 'volts' } }] },
       { hdr: '7E0', rax: '7EA', cmd: { '22': '0101' }, signals: [{ name: 'Andere antwoordheader', fmt: { len: 8, unit: 'volts' } }] },
       { hdr: '7E0', rax: '7E8', cmd: { '22': '0202' }, signals: [{ name: 'Signed', fmt: { len: 8, sign: true, unit: 'celsius' } }] },
       { hdr: '7E0', rax: '7E8', cmd: { '22': '0303' }, signals: [{ name: 'Hazard switch', fmt: { len: 8, unit: 'scalar' } }, { name: 'Battery', fmt: { bix: 8, len: 8, div: 10, unit: 'volts' } }] },
