@@ -188,6 +188,8 @@ MUTATIES=(
 "public/pidlane-uds.js@@        try { await stuur('ATSH7DF', CFG.atTimeoutMs); }@@        try { }@@test-uds.js@@na de UDS-scan blijft de adapter op het laatste stuurapparaat staan"
 "public/pidlane-uds.js@@      if (!w || isNaN(w) || !(st & FOUTBITS)) continue;@@      if (!w || isNaN(w)) continue;@@test-uds.js@@een record met status 0 telt weer als foutcode"
 "public/pidlane-uds.js@@  var FOUTBITS = 0x01 | 0x02 | 0x04 | 0x08 | 0x20 | 0x80;@@  var FOUTBITS = 0xFF;@@test-uds.js@@\"test nog niet gedraaid\" telt weer als foutcode (Mazda: elf codes in beeld)"
+"public/pidlane-uds.js@@      v.style.cssText = 'position:fixed;inset:0;z-index:var(--z-modal-hoog,9800);@@      v.style.cssText = 'position:fixed;inset:0;z-index:9000;@@bproef-panelen.js@@het stuurapparatenpaneel ligt weer onder Check mijn auto"
+"public/pidlane-mode06.js@@      v.style.cssText = 'position:fixed;inset:0;z-index:var(--z-modal-hoog,9800);@@      v.style.cssText = 'position:fixed;inset:0;z-index:9000;@@bproef-panelen.js@@het mode 06-paneel ligt weer onder de topbalk en de onderbalk (15-10-2026)"
 "public/pidlane-uds.js@@    if (body == null) return weiger ?@@    if (body == null) return false ?@@test-uds.js@@een weigering (7F 19 11) heet weer stilte"
 "public/pidlane-uds.js@@  function rxVan(hdr) { return (parseInt(hdr, 16) + 8)@@  function rxVan(hdr) { return (parseInt(hdr, 16) + 0)@@test-uds.js@@het ontvangstfilter staat op het zendadres in plaats van adres + 8"
 "public/pidlane-uds.js@@      if (!/^A?[68]$/i.test(res.protocol)) { res.nietCan = true; return; }@@@@test-uds.js@@op een bus zonder CAN wordt toch per adres gevraagd"

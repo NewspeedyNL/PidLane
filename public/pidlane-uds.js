@@ -233,12 +233,17 @@
     if (!_p.open) return;
     var v = document.getElementById('plUdsPaneel');
     if (!v) {
+      // Venster over alles heen, ook boven Check mijn auto (--z-modal), met
+      // de veilige rand onderaan: los onderin viel Sluiten achter de
+      // systeembalk van Android (15-10-2026).
       v = document.createElement('div');
       v.id = 'plUdsPaneel';
-      v.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:9700;max-height:80vh;overflow:auto;' +
-        'background:var(--sur);color:var(--tx);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;' +
-        'box-shadow:0 8px 30px rgba(0,0,0,.35);font:500 13px/1.45 var(--f)';
+      v.style.cssText = 'position:fixed;inset:0;z-index:var(--z-modal-hoog,9800);background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;' +
+        'padding:calc(12px + var(--pl-sat,0px)) 12px calc(12px + var(--pl-sab,0px))';
+      v.innerHTML = '<div id="plUdsDoos" style="width:100%;max-width:640px;max-height:100%;overflow:auto;background:var(--sur);color:var(--tx);' +
+        'border:1px solid var(--bd);border-radius:12px;padding:12px 14px;box-shadow:0 8px 30px rgba(0,0,0,.35);font:500 13px/1.45 var(--f)"></div>';
       v.addEventListener('click', function (e) {
+        if (e.target === v) return sluit();
         var a = e.target && e.target.getAttribute && e.target.getAttribute('data-uds');
         if (a === 'scan') open(); else if (a === 'sluit') sluit();
       });
@@ -252,7 +257,7 @@
     else h += render(_p.res);
     h += '<div style="display:flex;gap:8px;margin-top:10px"><button type="button" data-uds="scan" style="' + knop + '"' + (_p.bezig ? ' disabled' : '') + '>Opnieuw lezen</button>' +
       '<button type="button" data-uds="sluit" style="' + knop + '">Sluiten</button></div>';
-    v.innerHTML = h;
+    document.getElementById('plUdsDoos').innerHTML = h;
   }
   async function open() {
     _p.open = true;
