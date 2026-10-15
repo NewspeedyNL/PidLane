@@ -118,7 +118,9 @@ const NEPSERVER = `(function(){
     toets('het detailvenster toont de status en het advies', await wacht(`/Condities/.test(document.getElementById('plGarBody').textContent) && /Advies/.test(document.getElementById('plGarBody').textContent)`));
     // #474: vanuit de sensorkeuzelijst meteen naar Sensoren van dit voertuig.
     toets('de knop "Eigen" staat in de sensorkeuzelijst voor een klant', await wacht(`document.getElementById('pidGarSens').style.display === ''`));
-    await app.ev(`PLGarage.sluit(); document.getElementById('pidGarSens').click(); 'ok'`);
+    await app.ev(`PLGarage.sluit(); openPidChoice(); document.getElementById('pidGarSens').click(); 'ok'`);
+    // 15-10-2026: Mijn voertuigen opende áchter de keuzelade; de lade gaat nu eerst dicht.
+    toets('de sensorkeuzelade gaat dicht, anders opent Mijn voertuigen erachter', await wacht(`!document.getElementById('slPanel').classList.contains('lade-open')`));
     toets('en opent het tabblad Sensoren van het voertuig', await wacht(`(document.querySelector('#plGarBody .gr-tab.aan')||{}).textContent === 'Sensoren'`));
     await app.ev(`PLGarage._tab('overzicht'); 'ok'`);
     toets('het kenteken staat als gele plaat met streepjes', await app.ev(`/AB-123-C/.test(document.querySelector('#plGarBody .gr-kent').textContent)`));

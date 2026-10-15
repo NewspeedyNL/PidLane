@@ -601,7 +601,7 @@ function closeConnOv(){
 
     <!-- ═══ DEUR: LIVE PID-DATA (bekijken · delen · ontvangen) ═══ -->
     <div class="wm-door-panel" id="dp-live" style="display:none">
-      <button class="wm-back" onclick="backToDoors()">← Terug naar Mijn auto</button>
+      <button class="wm-back" onclick="backToDoors()">← Terug naar Home</button>
       <div class="wm-door-h">📡 Live data</div>
       <div class="welcome-choices" style="margin-top:4px">
 
@@ -658,7 +658,7 @@ function closeConnOv(){
 
     <!-- ═══ DEUR: DIAGNOSE ═══ -->
     <div class="wm-door-panel" id="dp-diag" style="display:none">
-      <button class="wm-back" onclick="backToDoors()">← Terug naar Mijn auto</button>
+      <button class="wm-back" onclick="backToDoors()">← Terug naar Home</button>
       <div class="wm-door-h">🔧 Er is iets mis</div>
       <div class="welcome-choices" style="margin-top:4px">
 
@@ -716,7 +716,7 @@ function closeConnOv(){
 
     <!-- ═══ DEUR: VERBRUIK & BESPAREN ═══ -->
     <div class="wm-door-panel" id="dp-saving" style="display:none">
-      <button class="wm-back" onclick="backToDoors()">← Terug naar Mijn auto</button>
+      <button class="wm-back" onclick="backToDoors()">← Terug naar Home</button>
       <div class="wm-door-h">🛣️ Rit starten</div>
       <div class="welcome-choices" style="margin-top:4px">
         <!-- 24-09-2026 — deze deur heette "Verbruik & besparen" en had twee
@@ -752,7 +752,7 @@ function closeConnOv(){
 
     <!-- ═══ DEUR: KOPEN OF VERKOPEN ═══ -->
     <div class="wm-door-panel" id="dp-deal" style="display:none">
-      <button class="wm-back" onclick="backToDoors()">← Terug naar Mijn auto</button>
+      <button class="wm-back" onclick="backToDoors()">← Terug naar Home</button>
       <div class="wm-door-h">🚗 Kopen of verkopen</div>
       <div class="welcome-choices" style="margin-top:4px">
 
@@ -781,7 +781,7 @@ function closeConnOv(){
 
     <!-- ═══ DEUR: VOORBEREIDEN OP… ═══ -->
     <div class="wm-door-panel" id="dp-prep" style="display:none">
-      <button class="wm-back" onclick="backToDoors()">← Terug naar Mijn auto</button>
+      <button class="wm-back" onclick="backToDoors()">← Terug naar Home</button>
       <div class="wm-door-h">📅 Voorbereiden</div>
       <div class="welcome-choices" style="margin-top:4px">
 
@@ -912,8 +912,8 @@ function closeConnOv(){
   <div class="logo"><div class="logo-i" style="background:transparent"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:26px;height:26px"><defs><linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#11161F"/><stop offset="1" stop-color="#0A0E14"/></linearGradient><linearGradient id="grC" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00FF88"/><stop offset="1" stop-color="#00D4FF"/></linearGradient><linearGradient id="spC" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9D8CFF"/><stop offset="0.5" stop-color="#7B61FF"/><stop offset="1" stop-color="#00D4FF"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="url(#bgC)"/><path d="M 84 480 L 198 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><path d="M 428 480 L 314 314" stroke="#222D3B" stroke-width="14" stroke-linecap="round"/><g stroke="#222D3B" stroke-linecap="round"><line x1="256" y1="474" x2="256" y2="440" stroke-width="14"/><line x1="256" y1="418" x2="256" y2="392" stroke-width="12"/></g><path d="M 256 294 C 256 294 220 294 170 294 C 126 294 100 268 100 226 L 100 154 C 100 112 126 86 170 86 L 342 86 C 386 86 412 112 412 154 L 412 226 C 412 268 386 294 342 294 L 296 294 Z" fill="none" stroke="url(#grC)" stroke-width="18" stroke-linejoin="round"/><path d="M 138 190 L 192 190 L 212 148 L 244 236 L 272 164 L 290 190 L 372 190" fill="none" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><circle cx="404" cy="96" r="52" fill="#0E1320"/><path d="M 404 52 C 409 79 417 88 446 96 C 417 104 409 113 404 140 C 399 113 391 104 362 96 C 391 88 399 79 404 52 Z" fill="url(#spC)"/></svg></div>Pid<em>Lane</em></div>
   <button type="button" id="plGear" hidden aria-live="polite" onclick="openGearInstellingen()"></button>
   <!-- Sensoren kiezen (15-10-2026): stond als laatste tab boven het midden;
-       die tabbalk is weg. Rechts in de topbalk, de statuschip schuift naar
-       links. Alleen in beeld als Live open is (body.pl-op-live, PLNav). -->
+       die tabbalk is weg. Links in de topbalk; de statuschip blijft rechts.
+       Alleen in beeld als Live open is (body.pl-op-live, PLNav). -->
   <button type="button" class="tb-sensoren" id="tbSensoren" onclick="openPidChoice()" title="Sensoren kiezen">🎛️ Sensoren</button>
   <div class="tpr">
     <!-- 🔵 Systeem-chip — samengevoegd 27-08-2026 uit de vier losse chips
@@ -1047,7 +1047,7 @@ function closeConnOv(){
         <div class="slttl">
           Sensoren <span class="cnt" id="pidCnt">0</span>
           <button id="showAllPidBtn" onclick="toggleShowAllPIDs()" title="Ook ongezonde/uitgegrijsde PIDs tonen" style="margin-left:auto;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">👁 Toon alles</button>
-          <button id="pidGarSens" type="button" onclick="PLGarage.openSensoren()" title="Eigen en berekende sensoren van dit voertuig, in Mijn voertuigen" style="display:none;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">🚗 Eigen</button>
+          <button id="pidGarSens" type="button" onclick="confirmPidLive();PLGarage.openSensoren()" title="Eigen en berekende sensoren van dit voertuig, in Mijn voertuigen" style="display:none;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);cursor:pointer">🚗 Eigen</button>
           <button id="pidRefreshBtn" onclick="deepRefreshPIDs()" title="Dieper zoeken + namen opzoeken" style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid rgba(0,212,255,.3);background:rgba(0,212,255,.08);color:#00b4cc;cursor:pointer">🔄 Diep zoeken</button>
         </div>
         <div id="pidRefreshStatus" style="font-size:11px;color:var(--tx3);padding:2px 2px 0;min-height:12px"></div>
@@ -1137,7 +1137,7 @@ function closeConnOv(){
              gebruik. Bovenaan drukte de regel de meter van Slim visueel naar
              beneden, en je kijkt vaker dan je opneemt of deelt.
              15-10-2026: Deel live en Meekijken eruit, op verzoek uit het
-             gebruik. Ze staan al als deur 5 op Mijn auto (#wc-liveshare,
+             gebruik. Ze staan al als deur 5 op Home (#wc-liveshare,
              #wc-liveexpert). -->
         <div class="pl-live-acties" id="plLiveActies">
           <button type="button" id="plLiveRec" onclick="openPidRecorder()">⏺ Opnemen</button>
@@ -1367,12 +1367,18 @@ function closeConnOv(){
       <div class="pane" id="pane-dtc">
         <div id="rdyDtc" class="rdy-card off">📡 Verbind adapter om sensorstatus te laden</div>
         <div class="toolbar">
-          <button class="btn pri" onclick="scanDTC()" id="bscan">🔍 Scan foutcodes</button>
-          <button class="btn danger" onclick="clearDTC()" id="bclr" disabled>🗑 Wis codes</button>
+          <!-- 15-10-2026, uit het gebruik: deze knop las alleen mode 03. Nu
+               dezelfde check als "Check mijn auto" (PLFoutcodes): ook 07
+               (in opbouw), 0A (permanent) en de keuringsstatus per systeem.
+               Wissen loopt daar ook, met de poorten (motor uit, stilstand)
+               en het antwoord van de ECU gelezen. scanDTC() blijft voor
+               pidlane-onderdeel.js. -->
+          <button class="btn pri" onclick="PLFoutcodes.open();PLFoutcodes.scan()" id="bscan">🔍 Scan foutcodes en systemen</button>
+          <button class="btn danger" onclick="PLFoutcodes.open()" id="bclr" title="Wissen gaat via de volledige check: eerst uitlezen, dan pas wissen">🗑 Wis codes</button>
           <button class="btn" onclick="exportReport()">💾 Exporteer</button>
         </div>
         <div class="dtc-list" id="dtcList">
-          <div class="emp"><div class="ei">🔎</div><h3>Nog geen scan</h3><p>Klik "Scan foutcodes" om te beginnen</p></div>
+          <div class="emp"><div class="ei">🔎</div><h3>Nog geen scan</h3><p>Klik "Scan foutcodes en systemen" om te beginnen</p></div>
         </div>
       </div>
 
@@ -1658,8 +1664,10 @@ function closeConnOv(){
      pidlane-archief.js vult hem nog altijd op dat id. ══ -->
 <nav class="pl-nav" id="plNav" aria-label="Hoofdnavigatie">
   <button type="button" class="pl-nav-tab" data-tab="auto" onclick="PLNav.tab('auto',event)">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17h14l-1.5-5.5A2 2 0 0 0 15.6 10H8.4a2 2 0 0 0-1.9 1.5z"/><circle cx="8" cy="17.5" r="1.5"/><circle cx="16" cy="17.5" r="1.5"/></svg>
-    <span>Mijn auto</span></button>
+    <!-- "Home" sinds 15-10-2026: "Mijn auto" las als Mijn voertuigen, maar de
+         knop opent het startscherm. data-tab blijft 'auto' (PLNav, tests). -->
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+    <span>Home</span></button>
   <button type="button" class="pl-nav-tab" data-tab="live" onclick="PLNav.tab('live',event)">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>
     <span>Live</span></button>

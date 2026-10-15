@@ -263,8 +263,9 @@ function beoordeel(m) {
       meld.voor.some(k => /Bulk-recorder/.test(k)), 'admin ' + meld.admin + ': ' + meld.voor.join(', '));
     toets('de snelkoppeling zet de rit-monitor echt aan (via PLRun)', meld.aan === true, JSON.stringify(meld));
     toets('daarna staat de rit-monitor in het vak', /Rit-monitor/.test(meld.tekst), meld.tekst);
-    toets('en geen snelkoppeling meer naar caravanrit of bulk-recorder (één tegelijk)',
-      !meld.knoppen.some(k => /Caravanrit|Bulk-recorder|Rit-monitor/.test(k)), meld.knoppen.join(', '));
+    // Twee tegelijk (15-10-2026): de recorder kan er nog bij, een tweede monitor niet.
+    toets('geen snelkoppeling meer naar caravanrit of rit-monitor, de bulk-recorder kan er nog bij',
+      !meld.knoppen.some(k => /Caravanrit|Rit-monitor/.test(k)) && meld.knoppen.some(k => /Bulk-recorder/.test(k)), meld.knoppen.join(', '));
     toets('de waakronde kan er nog bij', meld.knoppen.some(k => /Waakronde/.test(k)), meld.knoppen.join(', '));
     toets('nog een keer tikken zet hem weer uit', meld.uit === true);
     toets('de rit-monitor staat als chip op de rail', meld.chip, JSON.stringify(meld));

@@ -337,10 +337,8 @@ function toggleSysStatus(e){
   if(d.parentElement!==document.body) document.body.appendChild(d);
   d.style.position='fixed';
   d.style.top=((r?r.bottom:46)+6)+'px';
-  // De chip staat sinds 15-10-2026 links in de topbalk: het venster hangt
-  // aan zijn linkerrand en loopt naar rechts uit.
-  d.style.left=(r?Math.max(6,r.left):8)+'px';
-  d.style.right='auto';
+  d.style.right=(r?Math.max(6,window.innerWidth-r.right):8)+'px';
+  d.style.left='auto';
   d.style.zIndex='9560';
   d.classList.add('open');
 }

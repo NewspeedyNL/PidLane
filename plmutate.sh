@@ -1295,7 +1295,9 @@ MUTATIES=(
 "public/pidlane-visueel.js@@    return n<KOEL_KOUD ? 'koud' : 'ok';@@    return 'ok';@@test-visueel.js@@een koude motor kleurt niet meer blauw"
 "public/pidlane-visueel.js@@    if(isFinite(r) && r>MOTOR_DRAAIT && n<ACCU_LAADT) return 'warn';@@@@test-visueel.js@@een dynamo die niet laadt blijft grijs: 12,5 V bij draaiende motor leest als goed"
 "public/pidlane-plload.js@@  const stil=nu-laatste-krediet;@@  const stil=nu-laatste;@@test-visueel.js@@de meter wordt dof zodra een andere lezer de bus even bezet"
-"public/pidlane-visueel.js@@  if(!hoofd.length) HOOFD.forEach(@@  HOOFD.forEach(@@test-visueel.js@@terwijl de caravanrit loopt staan er snelkoppelingen naar rit-monitor en bulk-recorder, en die horen niet tegelijk"
+"public/pidlane-visueel.js@@  if(hoofd.length<HOOFD_MAX) HOOFD.forEach(@@  HOOFD.forEach(@@test-visueel.js@@met rit-monitor én recorder aan staan er nog snelkoppelingen naar een derde"
+"public/pidlane-visueel.js@@    if(MONITOREN.indexOf(h.id)>-1 && hoofd.some(@@    if(false && hoofd.some(@@test-visueel.js@@terwijl de caravanrit loopt staat er een snelkoppeling naar de rit-monitor"
+"public/pidlane-visueel.js@@const HOOFD_MAX = 2;@@const HOOFD_MAX = 1;@@test-visueel.js@@met de recorder aan is de rit-monitor niet meer te starten"
 "public/pidlane-visueel.js@@icoon:'⏺',  snel:true },@@icoon:'⏺',  snel:true, admin:true },@@test-visueel.js@@een gewone gebruiker krijgt de snelkoppeling naar de bulk-recorder weer niet (#478)"
 "public/pidlane-visueel.js@@  Y_LOGO: 112, LOGO_B: 56,@@  Y_LOGO: 140, LOGO_B: 56,@@test-visueel.js@@het embleem zakt op de naaf en de naald draait er niet meer omheen maar erdoorheen"
 "public/pidlane-visueel.js@@    const b=draait ? pct(extra.belasting) : null;@@    const b=pct(extra.belasting);@@test-visueel.js@@in een start/stop-stop staat er een motorbelasting bij een motor die stilstaat"
@@ -1962,6 +1964,7 @@ MUTATIES=(
 "public/pidlane-bt.js@@  } else if(_hervatActief() && !window._plHervat.herscan){@@  } else if(false){@@test-herverbindguard.js@@een automatische herverbinding vraagt meteen om een protocol, zonder eerst zelf nog eens te zoeken"
 "public/pidlane-bt.js@@      if(plAdapterStil(autoResp, ati)){ toonAdapterStil(); return; }\n@@@@bproef-adapterstil.js@@een adapter die niet op pair staat krijgt weer de protocolkeuze (#476)"
 "public/pidlane-data.js@@  return !schoon(autoResp) && !schoon(atiResp);@@  return !schoon(autoResp);@@test-protocolkeuze.js@@een adapter die op ATI antwoordt heet toch stil (#476)"
+"public/pidlane-bt.js@@  if(!heeftAuto){\n    const hint=document.createElement('div');@@  if(false){\n    const hint=document.createElement('div');@@test-protocolkeuze.js@@een mislukte detectie zegt niet meer groot dat het contact waarschijnlijk uit staat"
 "public/pidlane-telemetrie.js@@  const u=zwaarte(ag, aL, aD, ax.voor, ax.rechts);@@  const u=zwaarte(ag, 0, aD, ax.voor, ax.rechts);@@test-telemetrie.js@@remmen leest weer als voorover hellen: de rijversnelling gaat er niet af — #404"
 "public/pidlane-telemetrie.js@@  const aD=(vers && typeof kmh==='number') ? -(kmh/3.6)*_gier : 0;@@  const aD=(vers && typeof kmh==='number') ? (kmh/3.6)*_gier : 0;@@test-telemetrie.js@@de bochtcorrectie heeft het verkeerde teken: een bocht leest als dubbele kanteling — #404"
 "public/pidlane-telemetrie.js@@  _voor=null; _leer={ som:[0,0,0], n:0 };@@  _leer={ som:[0,0,0], n:0 };@@test-telemetrie.js@@na nulstellen in een andere houder blijft de oude rijrichting staan — #404"
@@ -2049,6 +2052,7 @@ MUTATIES=(
 "public/pidlane-foutcodes.js@@      if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }@@      if (wat === 'oorzaak') PLWizard.open('storing');@@bproef-onderzoek.js@@Oorzaak laten zoeken opent weer de lijst losse modules in plaats van het onderzoek"
 "public/pidlane-foutcodes.js@@  function magTerug(s) { return magDoor(s) && stoplicht(s).kleur === 'groen'; }@@  function magTerug(s) { return magDoor(s); }@@test-foutcodes.js@@zelf getikt met een zelftest die nog niet klaar is: het venster gaat toch vanzelf dicht en de Let op-regel is weg"
 "public/pidlane-foutcodes.js@@    _st.doorGewild = !isGarage();@@    _st.doorGewild = !!opties.auto && !isGarage();@@bproef-foutcodes.js@@zelf op Check mijn auto getikt en alles groen: het venster blijft weer staan"
+"public/index.html@@onclick=\"PLFoutcodes.open();PLFoutcodes.scan()\" id=\"bscan\"@@onclick=\"scanDTC()\" id=\"bscan\"@@bproef-foutcodes.js@@de knop in het foutcode-tabblad leest weer alleen mode 03, zonder 07, 0A en keuringsstatus"
 # ── Het verzamelscherm (#443, 07-10-2026). De poort is die van §16; wat hier stil
 # kan breken is wat de klant ziet en wat de AI krijgt.
 "public/pidlane-verzamel.js@@        if (q && q.status === 'onzin') return zet('meetfout'@@        if (false) return zet('meetfout'@@test-verzamel.js@@koelwater 300 °C staat weer als afwijking op het scherm in plaats van als meetfout"

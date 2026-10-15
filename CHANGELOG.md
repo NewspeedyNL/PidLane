@@ -74,6 +74,17 @@
  "Alarmen en herinneringen" met een grijze schakelaar, want die
  machtiging halen we bewust uit het manifest.
 
+ Na de testronde: Sensoren staat toch links en de statuschip rechts,
+ zoals op elk ander scherm. De rit-monitor is weer te starten met de
+ recorder en waakronde aan (twee lopende taken tegelijk, rit-monitor en
+ caravanrit blijven elkaars alternatief). "Eigen" in Sensoren sluit eerst
+ de lade, anders opende Mijn voertuigen erachter; de doelknoppen zijn
+ kleiner. Telemetrie zegt Lengte en Zij in plaats van Lengte-G en Zij-G.
+ De onderbalk zegt Home in plaats van Mijn auto: hij opent het
+ startscherm, niet Mijn voertuigen. De knop in het foutcode-tabblad doet
+ nu de volledige check (07, 0A, keuringsstatus per systeem). Een
+ mislukte protocoldetectie toont "contact uit" als oranje kaart bovenaan.
+
  ═══════════════════════════════════════════════════════════
  14-10-2026 — Contact uit: meetopdracht telt alleen de stilte (#487)
  ═══════════════════════════════════════════════════════════

@@ -840,11 +840,12 @@ body.pl-visueel #plGear { display:none; }
   background:none; color:inherit; font:inherit; font-weight:700; cursor:pointer; }
 #plGearOv .plg-wis.let { border-color:var(--or); }
 .tpr { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
-/* 15-10-2026: de statuschip links, Sensoren rechts. De knop staat in de
-   HTML vóór .tpr; order zet hem achteraan en margin-left:auto duwt hem tegen
-   de rechterrand. Buiten Live (body.pl-op-live, PLNav.ververs) is er niets te
-   kiezen, dan is hij weg. */
-.tb-sensoren { order:2; margin-left:auto; flex:0 0 auto; height:30px; padding:0 10px; box-sizing:border-box;
+/* 15-10-2026: Sensoren links in de topbalk, de statuschip blijft rechts —
+   zoals op elk ander scherm (eerst andersom gebouwd, na een testronde
+   teruggedraaid). Buiten Live (body.pl-op-live, PLNav.ververs) is er niets
+   te kiezen, dan is hij weg. */
+.tpr { margin-left:auto; }
+.tb-sensoren { flex:0 0 auto; height:30px; padding:0 10px; box-sizing:border-box;
   border-radius:999px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2);
   font-family:var(--f); font-size:12px; font-weight:700; white-space:nowrap; cursor:pointer; }
 .tb-sensoren:active { border-color:var(--bl); }
@@ -2557,10 +2558,12 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
   font-family:var(--f); font-size:12.5px; font-weight:700; cursor:pointer;
 }
 .pid-preset-tip{ font-size:11px; line-height:1.45; color:var(--tx3); min-height:14px; }
-.pid-doelen{ display:flex; flex-wrap:wrap; gap:6px; padding:2px 0 4px; }
+/* 15-10-2026: kleiner, uit het gebruik — zes doelen namen bij tekstgrootte L
+   een derde van het keuzescherm. */
+.pid-doelen{ display:flex; flex-wrap:wrap; gap:4px; padding:2px 0 4px; }
 .pid-doelen::-webkit-scrollbar{ display:none; }
-.pid-doel{ flex:none; padding:7px 12px; border-radius:999px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2);
-  font:700 12.5px var(--f); white-space:nowrap; cursor:pointer; }
+.pid-doel{ flex:none; padding:3px 9px; min-height:28px; border-radius:999px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2);
+  font:700 11px var(--f); white-space:nowrap; cursor:pointer; }
 .pid-doel.aan{ border-color:var(--bl); background:var(--bls); color:var(--tx); }
 .pid-doel:active{ transform:scale(.96); }
 .pid-preset-tip.let{ color:var(--or); font-weight:700; }
@@ -3284,3 +3287,11 @@ body[data-rijvorm="compact"] #rijModus .rij-tip { grid-column:1 / 3; }
 #rijModus .rij-p-geen p { font-size:17px; font-weight:700; }
 #rijModus .rij-p-geen .rij-klein { font-size:14px; font-weight:400; max-width:320px; }
 #rijModus .rij-uit { align-self:flex-end; background:none; border:0; color:var(--tx3); font-size:13px; padding:6px 4px; cursor:pointer; }
+
+/* Protocol niet herkend (15-10-2026): de waarschijnlijke oorzaak als kaart
+   bovenaan de lijst, niet als grijze ondertitel. pidlane-bt.js. */
+.proto-hint { display:flex; flex-direction:column; gap:4px; margin:0 0 12px; padding:12px 14px; border-radius:12px;
+  border:1.5px solid var(--or); background:var(--ors); color:var(--tx); text-align:left; }
+.proto-hint b { font-size:15px; font-weight:800; }
+.proto-hint span { font-size:13px; line-height:1.4; }
+.proto-hint small { font-size:12px; color:var(--tx2); }

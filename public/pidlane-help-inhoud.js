@@ -52,7 +52,7 @@ var PL_HULP = {
       tekst:
         '<p>Na het inloggen (of in de demo) staat onderin een balk met vier tabs:</p>' +
         '<ul>' +
-        '<li><b>Mijn auto</b> — het startscherm, met <a data-hulp="check">Check mijn auto</a> en vier tegels.</li>' +
+        '<li><b>Home</b> — het startscherm, met <a data-hulp="check">Check mijn auto</a> en vier tegels.</li>' +
         '<li><b>Live</b> — de metingen van de auto op dit moment. Zie <a data-hulp="live">Live</a>.</li>' +
         '<li><b>Rapporten</b> — wat PidLane heeft vastgelegd. Een getal op de tab zegt hoeveel.</li>' +
         '<li><b>Meer</b> — account, instellingen en hulp. Nog eens tikken sluit het menu. Zie <a data-hulp="meer">Meer</a>.</li>' +
@@ -192,7 +192,7 @@ var PL_HULP = {
     { id: 'live', groep: 'gebruik', titel: 'Live',
       tekst:
         '<p><b>Live</b> in de onderbalk toont de metingen van de auto op dit moment. Bovenaan kies je hoe je kijkt: Overzicht, Slim, Visueel of <b>Grafiek</b>. ' +
-        'Welke sensoren er gemeten worden kies je met <b>🎛️ Sensoren</b> rechtsboven.</p>' +
+        'Welke sensoren er gemeten worden kies je met <b>🎛️ Sensoren</b> linksboven.</p>' +
         '<ul>' +
         '<li><b>Overzicht</b> — alle sensoren, per categorie (Rijden, Motor, Temperaturen, Brandstof, Uitlaat, Elektrisch). ' +
         'Per sensor één rij met een balkje: het groene stuk is normaal voor die sensor, het streepje is nu. Valt hij erbuiten, dan kleurt hij oranje of rood ' +
@@ -207,7 +207,7 @@ var PL_HULP = {
         '</ul>' +
         '<p>Een dubbeltik op een tegel verbergt hem. Hij wordt wel gewoon gemeten en staat daarna in een strook om terug te halen.</p>' +
         '<p>Een automatische bevinding verberg je met het <b>✕</b> of een dubbeltik. De AI krijgt hem nog mee; terughalen doe je via <b>bekijk alles</b>.</p>' +
-        '<p>Onder de meters staat <b>⏺ Opnemen</b>, in de garagemodus ook <b>◉ Bewaken</b>. Delen en meekijken start je op Mijn auto bij <b>Rit starten</b>. ' +
+        '<p>Onder de meters staat <b>⏺ Opnemen</b>, in de garagemodus ook <b>◉ Bewaken</b>. Delen en meekijken start je op Home bij <b>Rit starten</b>. ' +
         'Bij Visueel staan Opnemen en Bewaken er niet: daar start je de bulk-recorder en de waakronde vanuit het vak onder de meter.</p>',
       zie: ['opnemen', 'delen'] },
 
@@ -219,7 +219,7 @@ var PL_HULP = {
 
     { id: 'delen', groep: 'gebruik', titel: 'Delen en meekijken',
       tekst:
-        '<p><b>Deel mijn live data</b> (Mijn auto → Rit starten) laat een expert op afstand meekijken. De expert ziet je sensordata en kan zelf waarden en foutcodes opvragen — ' +
+        '<p><b>Deel mijn live data</b> (Home → Rit starten) laat een expert op afstand meekijken. De expert ziet je sensordata en kan zelf waarden en foutcodes opvragen — ' +
         'alleen lezen: op afstand kan er niets aan de auto veranderd worden.</p>' +
         '<ol>' +
         '<li>Tik op <b>Start delen</b>.</li>' +

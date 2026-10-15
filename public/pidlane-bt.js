@@ -2579,10 +2579,9 @@ function renderNetworkCards(){
   document.getElementById('step2Sub').textContent=
     !discoveredNetworks.length ? 'Controleer verbinding en contact' :
     heeftAuto ? 'Bevestig de herkenning, of kies zelf een ander protocol'
-              // Mislukte detectie komt meestal doordat het contact uit staat.
-              // Handmatig kiezen kan, maar is zelden wat je nodig hebt — dus
-              // eerst die hint, dan pas de lijst.
-              : 'Meestal staat het contact uit. Zet het aan en scan opnieuw, of kies zelf een protocol';
+              // De oorzaak staat sinds 15-10-2026 als kaart bovenaan de lijst
+              // (#protoContactHint): als grijze ondertitel las niemand hem.
+              : 'Niets herkend — kijk eerst hieronder';
 
   const list=document.getElementById('networkList');
   list.innerHTML='';
@@ -2597,6 +2596,19 @@ function renderNetworkCards(){
       <button class="mbtn p" onclick="scanNetworks()">🔄 Opnieuw scannen</button>
       <button class="mbtn s" onclick="resetToStep1()">↺ Terug</button>`;
     return;
+  }
+
+  // Mislukte detectie komt meestal doordat het contact uit staat. Handmatig
+  // kiezen kan, maar is zelden wat je nodig hebt — dus eerst de oorzaak, groot
+  // en bovenaan, dan pas de lijst (15-10-2026, uit het gebruik).
+  if(!heeftAuto){
+    const hint=document.createElement('div');
+    hint.id='protoContactHint';
+    hint.className='proto-hint';
+    hint.innerHTML='<b>🔑 Waarschijnlijk staat het contact uit</b>'+
+      '<span>Draai de sleutel op AAN (of druk op start zonder rem) — de motor hoeft niet te draaien. Tik daarna op Opnieuw scannen.</span>'+
+      '<small>Lukt het dan nog niet, kies hieronder zelf een protocol.</small>';
+    list.appendChild(hint);
   }
 
   // Wat er getekend wordt: de vondst altijd, de handmatige lijst alleen als
