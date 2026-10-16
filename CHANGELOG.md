@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 16-10-2026 — Rondgang: zelf sensoren per categorie
+ ═══════════════════════════════════════════════════════════
+ ⚙-blad van de rondgang: onder elke categorie "＋ Sensor" met een
+ zoekbare lijst van wat de auto geeft (ook eigen codes). De keuze
+ (pl_rond_eigen) wint van de vaste indeling: de sensor staat alleen op
+ de laatste pagina van die categorie, en gaat aan als hij uit stond.
+
+ ═══════════════════════════════════════════════════════════
  16-10-2026 — Sensoren ingedeeld: weergave, analyse, dubbel
  ═══════════════════════════════════════════════════════════
  Eigen sensoren en "Codes voor dit model" staan nu in groepen:
