@@ -196,6 +196,18 @@ function metLaad() {
   toets('sensor wel bekend maar geeft niets: de harde grens blijft (11,9 V meldt)', heeft(ev3, /TEST:LAADSPANNING/), 'kreeg: ' + ev3.join(', '));
 }
 
+// ── 5c. kenmerkpoort: geen vacuüm op een diesel (#532) ─────────────
+console.log('\n5c. Inlaatdruk stationair: een diesel heeft geen gasklep');
+{
+  const stat = (t) => ({ '0105': 90, '0142': 14.1, '010D': 0, '010C': 800 + (Math.round(t * 4) % 2), '010B': 100, '0111': 5, '0106': 0, '0104': 20 });
+  let s = nieuweApp({ vehicleInfo: { brandstof: 'diesel' } });
+  let ev = rij(s, 40, stat);
+  toets('diesel op 100 kPa stationair: geen vacuümmelding', !heeft(ev, /STAT_MAP/), 'kreeg: ' + ev.join(', '));
+  s = nieuweApp({ vehicleInfo: { brandstof: 'benzine' } });
+  ev = rij(s, 40, stat);
+  toets('tegenproef: benzine op 100 kPa stationair meldt wél', heeft(ev, /TEST:STAT_MAP/), 'kreeg: ' + ev.join(', '));
+}
+
 // ── 6. koelwater ──────────────────────────────────────────────────
 console.log('\n6. Koelwater: 110 °C is een VAG op deellast, 113 °C aanhoudend niet');
 {

@@ -208,5 +208,23 @@ console.log('\n── 6. stationair bij een hybride (#430) ──');
     /kachel/.test(p.plStationairUitleg('hybride', basis)) && /onderhoudsmodus/.test(p.plStationairUitleg('hybride', basis)));
 }
 
+// ═══════════════════════════════════════════════════════
+console.log('\n── de derde poort in de systeemtest (#532) ──');
+{
+  const opslag = {};
+  p.localStorage = { getItem: (k) => (k in opslag ? opslag[k] : null), setItem: (k, v) => { opslag[k] = String(v); }, removeItem: (k) => { delete opslag[k]; } };
+  vm.runInContext(lees('pidlane-waarneming.js'), p, { filename: 'pidlane-waarneming.js' });
+  vm.runInContext(lees('pidlane-kenmerk.js'), p, { filename: 'pidlane-kenmerk.js' });
+  const ids = () => { p.PLKenmerk.vergeet(); return p.bscBuildList().map(x => x.id); };
+  p.vehicleInfo = { brandstof: 'benzine' }; p.supportedPIDs = new Set();
+  waar('benzine zonder bijzonderheden: trimtest en smalbandtest doen mee', ids().includes('ltft') && ids().includes('o2_switch'));
+  p.vehicleInfo = { brandstof: 'lpg' };
+  waar('LPG bewezen: geen trimtest (de benzinetrims zeggen niets)', !ids().includes('ltft'));
+  p.vehicleInfo = { brandstof: 'benzine' }; p.supportedPIDs = new Set(['0114', '0134', '0105']);
+  waar('breedband bewezen: geen smalbandtest op 0114', !ids().includes('o2_switch'));
+  p.vehicleInfo = { brandstof: 'diesel' }; p.supportedPIDs = new Set();
+  waar('diesel: geen vacuümtest bij stationair (map_idle is benzine)', !ids().includes('map_idle'));
+}
+
 console.log('\n' + ok + ' goed, ' + fout + ' fout');
 process.exit(fout ? 1 : 0);

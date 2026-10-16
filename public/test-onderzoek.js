@@ -357,6 +357,47 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
     eis(ov && /Overgeslagen/.test(ov.t) && !st2.v.misfire.bewijs.some((b) => b.stap === 'mode06'), 'zonder mode 06 overgeslagen, zonder tegenbewijs');
   }
 
+  console.log('\nDe derde poort (#532): laadspanning, koelwater, LPG en breedband volgens de auto');
+  {
+    // Een tweede app mét PLWaarneming en PLKenmerk, zoals index.html ze laadt.
+    const k = {};
+    k.window = k; k.globalThis = k;
+    k.console = { log() { }, warn() { }, error() { } };
+    const opslag = {};
+    k.localStorage = { getItem: (x) => (x in opslag ? opslag[x] : null), setItem: (x, y) => { opslag[x] = String(y); }, removeItem: (x) => { delete opslag[x]; } };
+    k.document = s.document; k.addEventListener = () => { }; k.navigator = {};
+    k.setTimeout = (fn) => { fn(); return 0; }; k.setInterval = () => 0; k.clearTimeout = () => { }; k.clearInterval = () => { };
+    k.vehicleInfo = { merk: 'Mazda', year: '2018', brandstof: 'benzine', vin: 'JMZKF000000000000' };
+    k.pidVals = {}; k.pidHist = {}; k.supportedPIDs = new Set();
+    vm.createContext(k);
+    ['pidlane-data.js', 'pidlane-foutcodes.js', 'pidlane-mode06.js', 'pidlane-onderzoek.js', 'pidlane-waarneming.js', 'pidlane-kenmerk.js'].forEach((f) =>
+      vm.runInContext(fs.readFileSync(__dirname + '/' + f, 'utf8'), k, { filename: f }));
+    const S = (id) => k.PLOnderzoek.STAPPEN.filter((x) => x.id === id)[0];
+    const reeks = (pid, v) => ({ reeks: { [pid]: Array(10).fill(v) } });
+    let b = S('laden').beoordeel(reeks('0142', 12.8));
+    eis(b.length === 1 && b[0].h === null && b[0].d === 0 && /niet te beoordelen/.test(b[0].t), 'Mazda 2018, 12,8 V stationair: niet te beoordelen, geen "dynamo laadt niet genoeg" in het rapport', JSON.stringify(b));
+    b = S('laden').beoordeel(reeks('0142', 11.9));
+    eis(b[0].h === 'laad' && b[0].d === 2.5, 'tegenproef: 11,9 V is op elke auto een laadfout', JSON.stringify(b));
+    k.PLWaarneming.weerleg('slimladen'); k.PLKenmerk.vergeet();
+    b = S('laden').beoordeel(reeks('0142', 12.8));
+    eis(b[0].h === 'laad' && b[0].d === 2.5, 'gewone dynamo bevestigd door een mens: 12,8 V is wél een laadfout', JSON.stringify(b));
+    b = S('laden_belast').beoordeel(reeks('0142', 12.7));
+    eis(b[0].h === 'laad' && b[0].d === 2, 'laden onder belasting volgt dezelfde grens', JSON.stringify(b));
+    k.vehicleInfo.merk = 'Audi'; k.PLKenmerk.vergeet();
+    b = S('temperatuur').beoordeel({ reeks: { '0105': Array(10).fill(109) } }, { antwoorden: {} });
+    eis(b.some((x) => x.h === null && /kenveld/.test(x.t)) && !b.some((x) => x.h === 'koeling' && x.d > 0), 'Audi op 109 °C: niet te beoordelen, geen "te warm"', JSON.stringify(b));
+    k.vehicleInfo.merk = 'Mazda'; k.PLKenmerk.vergeet();
+    b = S('temperatuur').beoordeel({ reeks: { '0105': Array(10).fill(109) } }, { antwoorden: {} });
+    eis(b.some((x) => x.h === 'koeling' && x.d === 1.25 && /niet zeker/.test(x.t)), 'Mazda op 109 °C: halve weging, niet zeker voor deze auto', JSON.stringify(b));
+    k.vehicleInfo.brandstof = 'lpg'; k.PLKenmerk.vergeet();
+    const st = { metingen: {}, ctx: {} };
+    b = S('stationair').beoordeel({ reeks: { '0106': Array(10).fill(10), '0107': Array(10).fill(10), '010C': Array(10).fill(800) } }, st);
+    eis(!b.some((x) => x.h === 'valselucht' && x.d > 0) && st.metingen.trimStationair === undefined, 'LPG bewezen: de trims gaan niet als valse lucht het rapport in', JSON.stringify(b));
+    k.supportedPIDs = new Set(['0114', '0134']); k.PLKenmerk.vergeet();
+    b = S('lambda').beoordeel({ reeks: { '0114': Array(10).fill(0.45), '0115': Array(10).fill(0.7) } });
+    eis(!b.some((x) => x.h === 'lambda' && x.d > 0), 'breedband bewezen: een vlakke 0114 is geen luie sonde', JSON.stringify(b));
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('  FOUT test brak af: ' + (e.stack || e)); process.exit(1); });
