@@ -130,10 +130,11 @@ __name(originToegestaan, "originToegestaan");
 // LET OP — alles wat hier NIET in staat krijgt Access-Control-Allow-Origin: *
 // en is daarmee vanaf elke website aan te roepen met een geleend of gestolen
 // sessietoken. Dat gold tot 25-08-2026 ook voor /v1/messages en /copilot, de
-// twee routes die tegoed verbruiken. Een nieuwe route hoort hier standaard in;
+// twee routes die tegoed verbruiken (/copilot is op 16-10-2026 weggehaald).
+// Een nieuwe route hoort hier standaard in;
 // laat hem er alleen uit als hij echt publiek moet zijn.
 function isRestrictedPath(pathname) {
-  return pathname.startsWith("/auth/") || pathname.startsWith("/admin/") || pathname.startsWith("/session/") || pathname.startsWith("/pair/") || pathname.startsWith("/code/") || pathname.startsWith("/klant/") || pathname.startsWith("/credits/") || pathname.startsWith("/v1/") || pathname.startsWith("/airtable/") || pathname.startsWith("/verbind/") || pathname === "/copilot" || pathname === "/proxy" || pathname === "/api/config";
+  return pathname.startsWith("/auth/") || pathname.startsWith("/admin/") || pathname.startsWith("/session/") || pathname.startsWith("/pair/") || pathname.startsWith("/code/") || pathname.startsWith("/klant/") || pathname.startsWith("/credits/") || pathname.startsWith("/v1/") || pathname.startsWith("/airtable/") || pathname.startsWith("/verbind/") || pathname === "/proxy" || pathname === "/api/config";
 }
 __name(isRestrictedPath, "isRestrictedPath");
 function lockOrigin(request, resp) {
@@ -467,75 +468,6 @@ async function adminWriteLimited(env, ip) {
   return await rateLimit(env, "admin-write", ip, RL.adminWrite, true);
 }
 __name(adminWriteLimited, "adminWriteLimited");
-var COPILOT_BRIEFING = [
-  "Je bent de ingebouwde ontwikkelassistent van PidLane, een OBD2-diagnose-webapp.",
-  "Je praat met de ontwikkelaar (admin) TIJDENS live gebruik in een auto. Antwoord in het Nederlands, kort en concreet.",
-  "",
-  "ARCHITECTUUR (vast):",
-  "- Losse JS-modules geladen vanuit index.html; scheduler, batchparser en snoei zitten in index.html zelf.",
-  "- PLBus = bus-mutex + statistiek (venGemMs, foutPct, belasting, perSec).",
-  "- PLSched = cadans-register per PID (interval, laatstePoging, laatsteSucces, dood, kwaliteit).",
-  "- PLLoad = automatische busbelasting-regeling (AIMD). Handmatige snelheidskeuze bestaat NIET meer.",
-  "- Watchers/monitor/verify zitten achter closures; van buiten NIET te patchen. Scheduler en parser (window.*) wel.",
-  "",
-  "BESLISSINGEN DIE VASTLIGGEN (niet opnieuw voorstellen):",
-  "- Uitvaldetectie is cadans-relatief (3x eigen interval), nooit een vaste drempel.",
-  "- Snoeien vereist reeks missers EN lage score EN verstreken tijd (>=3x interval) EN gezonde bus.",
-  "- Batch-multiframe komt op EEN regel; splits op elke framemarker, niet alleen regelbegin.",
-  "- STAT_RPM/RPM_CONST gebruiken IQR + richtingswisselingen, nooit rauwe max-min.",
-  "- Rit-monitor start alleen handmatig. Full Survey start nooit automatisch.",
-  "",
-  "WERKWIJZE: vraag om de diagnosebundel als je bytes nodig hebt. Lever nooit een fix zonder bewijs uit de data;",
-  "zeg het als je bewijs mist en vraag dan eerst om een meting. Wees zuinig met woorden."
-].join("\n");
-async function handleCopilot(request, env) {
-  const session = await auth(request, env);
-  if (!session) return json({ error: "unauthorized" }, 401);
-  if (session.r !== "admin")
-    return json({ error: "forbidden_role", hint: "Copiloot is alleen voor beheerders." }, 403);
-  const declared = Number(request.headers.get("Content-Length") || 0);
-  if (declared > 4e5) return json({ error: "payload_too_large" }, 413);
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return json({ error: "bad_json" }, 400);
-  }
-  if (!body || !Array.isArray(body.messages))
-    return json({ error: "bad_payload", hint: "messages-array ontbreekt" }, 400);
-  if (body.messages.length > 40) return json({ error: "too_many_messages" }, 413);
-  let ctxBlok = "";
-  try {
-    if (body.context && typeof body.context === "object") {
-      const c = JSON.stringify(body.context);
-      ctxBlok = "HUIDIGE TOESTAND (momentopname uit de app):\n" + (c.length > 6e4 ? c.slice(0, 6e4) + " \u2026(afgekapt)" : c);
-    }
-  } catch (_) {
-    /* stil: body.context is optioneel; kan niet naar tekst als het circulair is — dan gaat de call zonder context door */
-  }
-  const messages = ctxBlok ? [{ role: "user", content: ctxBlok }, ...body.messages] : body.messages;
-  const payload = {
-    model: typeof body.model === "string" ? body.model : "claude-sonnet-4-6",
-    max_tokens: Math.min(Math.max(Number(body.max_tokens) || 2048, 1), 8192),
-    system: COPILOT_BRIEFING,
-    messages
-  };
-  if (JSON.stringify(payload).length > 35e4) return json({ error: "payload_too_large" }, 413);
-  const apiKey = resolveAnthropicKey(env);
-  if (!apiKey) return json({ error: { message: "Geen API-key in de Worker" } }, 401);
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01"
-    },
-    body: JSON.stringify(payload)
-  });
-  const text = await r.text();
-  return new Response(text, { status: r.status, headers: { "Content-Type": "application/json", ...CORS } });
-}
-__name(handleCopilot, "handleCopilot");
 // ── Tegoed: afrekenen gebeurt HIER, niet in de app ──────────────────
 // De app rekende zichzelf af: pidlane-credits.js schatte de kosten en riep
 // daarna /klant/saldo-muteer aan. Dat is een verzoek, geen controle — wie dat
@@ -6470,8 +6402,6 @@ var worker_default = {
         return lockOrigin(request, await handleMessages(request, env, ctx));
       if (url.pathname === "/v1/ping" && request.method === "GET")
         return lockOrigin(request, await handlePing(request, env));
-      if (url.pathname === "/copilot" && request.method === "POST")
-        return lockOrigin(request, await handleCopilot(request, env));
       if (url.pathname === "/airtable/log" && request.method === "POST")
         return lockOrigin(request, await handleLog(request, env));
       if (url.pathname === "/airtable/veldlab" && request.method === "POST")

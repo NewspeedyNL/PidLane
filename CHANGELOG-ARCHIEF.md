@@ -7,7 +7,2970 @@ alles daarvóór staat hier, ongewijzigd en in dezelfde volgorde.
 je wilt weten wanneer iets gebouwd is en waarom.
 
 Snijlijn bij het aanleggen: alles met een `Build:` vóór 25-08-2026.
+Tweede snede op 16-10-2026: alles met een `Build:` vóór 18-09-2026 — de
+regel stond er, maar was sinds 22-09 niet meer gehaald (363 KB).
 
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17j (CET) — EEN TAK RIJDEN ZONDER
+     HEM LIVE TE ZETTEN
+
+       • 🧪 PREVIEW-BRON. Staat er een preview-adres in het
+         beheerscherm, dan kan een beheerder in het
+         Admin-menu naar die versie springen. Daar draait de
+         code van één tak — getoetst, maar niet live. Zo is
+         een nieuwe proef te rijden zonder dat er iets naar
+         alle gebruikers gaat.
+
+       • ⚠ EN JE ZIET WAAR JE ZIT. Zolang de app niet op de
+         live-bron draait staat er een oranje balk bovenin
+         met het adres en een knop terug. Hij is niet weg te
+         klikken, en de testrun zet de bron ook in zijn
+         verslag — een rit op de verkeerde versie is een rit
+         die je opnieuw moet doen.
+     Build: 2026-09-17i (CET) — DE VOLGENDE METING KOMT
+     UIT DE TABEL
+
+       • 📋 EEN MEETOPDRACHT ZONDER DEPLOY. De testrun haalt
+         voor de rit op wat er gemeten moet worden: welke
+         sensoren, hoe lang, welke vragen aan de bestuurder,
+         en welke waarden binnen welke band horen te vallen.
+         Dat staat in de tabel Meetopdracht en niet in de
+         build — zo kan er tussen twee ritten iets veranderen
+         zonder dat er een versie naar alle gebruikers gaat.
+
+       • 🧱 HET IS DATA EN GEEN SCRIPT, EN DAT IS DE KERN.
+         Een opdracht kan sensoren aanzetten en grenzen
+         noemen. Hij kan geen code draaien, niets aanroepen
+         en niets naar de auto schrijven. Wat er binnenkomt
+         wordt eerst gekeurd; een onbekend veld is een
+         afwijzing, geen waarschuwing.
+
+       • 🔁 EN DE UITSLAG GAAT TERUG. Elke opdrachtproef
+         schrijft zijn uitkomst met de naam van de opdracht
+         naar de live-log, zodat buiten de app te lezen is
+         welke vraag welk antwoord kreeg.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17h (CET) — DE METING BLIJFT IN BEELD
+
+       • ◱ EEN KLEIN VENSTER IN PLAATS VAN EEN STILLE LUS.
+         Schakel je weg terwijl er gemeten wordt, dan blijft
+         PidLane als klein venster in beeld: toerental,
+         snelheid, koelwater en een stip die met de meting
+         meetikt. Zolang hij zichtbaar is, loopt de lus door.
+
+       • 📐 WAAROM DIT WERKT, EN HOE DAT GEMETEN IS. Op de
+         achtergrond viel de meting na ~60 s stil; in
+         split-screen liep hij 99 s door zonder één gat. Het
+         verschil tussen die twee is zichtbaarheid, en dat is
+         precies wat dit venster vasthoudt (#228).
+
+       • 🔕 EN HIJ KAN UIT. In het beheerscherm staat
+         "Meting in beeld houden (PiP)". Uit betekent: de app
+         gaat bij wegschakelen gewoon naar de achtergrond,
+         zoals voorheen. Geen nieuwe build nodig — het venster
+         staat over de navigatie heen en dat hoort een keuze
+         te zijn.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17g (CET) — DE LIVE-LOG ZEGT NU OF
+     HIJ IS AANGEKOMEN
+
+       • 📡 HET KANAAL WERD NAGEMETEN AAN DE ANDERE KANT.
+         De logtabel telde 722 regels en nul daarvan kwam
+         van een testrun, terwijl gewone regels er die
+         avond nog in kwamen. Een mislukte verzending ging
+         alleen naar de console van een telefoon in een
+         rijdende auto — de run zag niets, het verslag zei
+         niets, en een lege tabel las als "niets gemeten".
+
+       • ✅ ELKE VERZENDING LAAT NU EEN SPOOR NA. Geslaagd
+         of niet, met status, aantal en reden. Blok 5 zet
+         een regel klaar, dwingt de verzending af en vraagt
+         wat de Worker antwoordde. Niet ingelogd of geen
+         logadres is LET OP en geen FOUT: dat is een
+         ontbrekende voorwaarde, geen kapot kanaal.
+
+       • 🔍 EN WAT HET NIET BEWIJST STAAT ERBIJ. HTTP 200
+         van de Worker zegt dat de lijn er is, niet dat de
+         regel in de tabel staat — een onbekende veldnaam
+         weigert Airtable zelf.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17f (CET) — EEN STAP DIE DE
+     ACHTERGRONDKWESTIE BESLIST
+
+       • ◧ SPLIT-SCREENPROEF IN DE BEGELEIDE RUN. Twee minuten
+         met PidLane naast een andere app, stilstaand. Blijft de
+         meting lopen terwijl de app zichtbaar is maar niet
+         vooraan, dan is beeld-in-beeld een echte oplossing voor
+         de bevroren meetlus; stopt hij alsnog, dan helpt alleen
+         een native meetlus. Kost geen rit en geen tokens.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17e (CET) — DE AUTO ONTHOUDT WAT HIJ
+     LIET ZIEN
+
+       • Ⓢ START/STOP HOEF JE NOG MAAR ÉÉN KEER TE ZIEN.
+         Zag de app op deze auto ooit een start/stop-stop, dan
+         weet hij dat volgende rit nog — ook als je die rit
+         nergens lang genoeg stilstaat. Tot nu toe begon die
+         kennis bij elke verbinding weer op nul, terwijl het
+         een eigenschap van de AUTO is en niet van de meting.
+       • 🧭 HET VENSTER VÓÓR DE ANALYSE VRAAGT DUS MINDER.
+         Het voorstel bij start/stop zegt er nu bij wanneer de
+         waarneming gedaan is. Nooit "nee" uit stilte: niets
+         gezien hebben blijft geen bewijs.
+       • 🔒 PER AUTO GESCHEIDEN. Koppel je in de werkplaats
+         achter elkaar aan, dan begint de volgende auto schoon —
+         net als bij de geleerde bytelengtes en de geleerde
+         normalen. Zonder herkende auto blijft alles bij deze
+         sessie en wordt er niets weggeschreven.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17d (CET) — DE APP VULT DE START/STOP-
+     VRAAG ZELF IN
+
+       • Ⓢ HET VENSTER VÓÓR DE ANALYSE VRAAGT MINDER BLIND.
+         Van de drie vragen is start/stop de enige die de app
+         zelf kan waarnemen — en sinds de aandrijfbalk dat doet,
+         vult hij hem voor, met de reden eronder. Zag hij deze
+         sessie een start/stop-stop, dan staat "Ja, actief" al
+         aan; zag hij er geen, dan blijft het "weet ik niet".
+         Nooit "nee": niet gezien hebben is geen bewijs dat de
+         auto het niet heeft.
+
+       • 🧾 EN HET ANTWOORD ONTHOUDT WIE HET GAF. Een voorstel
+         dat blijft staan is een antwoord voor de AI maar geen
+         keuze van een mens. Het rapport telt die twee nu apart,
+         zodat de vraag "wordt dit venster werkelijk ingevuld?"
+         (#64) een antwoord houdt in plaats van er een te
+         verzinnen.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17c (CET) — DE PROEF SCHOOF, NIET DE APP
+
+       • 🎯 BLOK 5 WEES EEN WERKEND SCHUIFJE AAN ALS DEFECT. De
+         testrun van 17-09 meldde dat het handmatige tempo niet
+         in pidPollInterval() aankwam: 280 ms werd 308 ms waar
+         een verdubbeling hoorde. Het schuifje deed precies wat
+         het moest; de proef las zijn ijkpunt bij de automaat en
+         die stond al op 55%. Van 55% naar 50% is 10%. Het
+         ijkpunt ligt nu in de handmatige stand zelf — eerst
+         overnemen, dan 100%, dán 50% — en het interval hoort
+         exact te verdubbelen.
+
+       • 🧪 DIE PROEF KON ALLEEN GROEN STAAN BIJ TOEVAL. Dezelfde
+         vergelijking stond in de browserproef, en die draait
+         zonder bus waar de automaat per definitie op 100%
+         staat. Daarom staat de meting nu óók in node, met de
+         stand van 17-09 nagebouwd, en houden twee mutaties in
+         plmutate.sh hem scherp.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17b (CET) — WAT DOET DE AUTO NU?
+
+       • 🅢 EEN AANDRIJFBALK BOVENIN DE LIVE-WEERGAVE. Eén
+         regel die zegt wat de auto op dit moment doet:
+         stationair, rijdt op motor, rijdt op accu, start/stop
+         actief, motor uit, motor start — of eerlijk "onbekend"
+         als de bus wegviel. Bij een hybride staat het
+         brandstofdebiet erbij, zodat "rijdt op accu" een
+         meting is en geen gevolgtrekking.
+
+       • 🧠 START/STOP EN "NOG NIET GESTART" ZIJN UIT ELKAAR
+         GEHAALD. Op één momentopname zijn die identiek: nul
+         toerental, nul snelheid, een ECU die netjes antwoordt.
+         Het verschil is of de motor deze sessie al gedraaid
+         heeft, en dat wordt nu onthouden. Koppel je aan terwijl
+         de auto al voor een stoplicht staat, dan weet de app
+         het alsnog via de motorlooptijd (011F).
+
+       • 🔋 DE EV-MODUS KLEMDE VAST. Zodra de app vaststelde dat
+         er op de accu gereden werd, pauzeerde hij de
+         verbrandingsmotor-PIDs — inclusief het toerental,
+         terwijl dat juist de enige uitgang uit die modus was.
+         De motor kon weer aanslaan zonder dat de app het zag,
+         tot de auto stilstond. Toerental en snelheid blijven nu
+         altijd meedraaien.
+
+       • ⚖️ DE METING BESLIST, NIET HET KENTEKENVELD. De oude
+         EV-detectie sloeg zichzelf over zodra de RDW-gegevens
+         "benzine" zeiden, waardoor start/stop er per
+         constructie nooit uit kon komen. Dat is omgedraaid.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17b (CET) — DE TESTRUN PRAAT TERUG
+     TERWIJL JE RIJDT
+
+       • 📡 ELKE BEVINDING GAAT METEEN NAAR BUITEN. De testrun
+         leverde één ding op: een verslag ná afloop, met de hand
+         geplakt. Wie onderweg wilde weten of blok 7 al goed was,
+         moest stoppen en lezen. Nu schrijft hij tijdens de rit
+         weg: het ritnummer bij de start, elke FOUT en LET OP
+         zodra hij valt, en per blok een regel met de telling.
+         Iemand die meekijkt kan dus zeggen "sla stap 4 over" of
+         "rijd nog een keer stevig op" terwijl je nog rijdt.
+
+       • 🔢 ELKE RIT HEEFT EEN NUMMER. Het staat als eigen regel
+         in het verslag en gaat met elke weggeschreven regel mee.
+         Dat is waarmee je later terugvindt wat er die rit
+         gemeten is, en wat je doorgeeft als iemand meeleest.
+
+       • 🧾 NIET ALLES, MET OPZET. Een volle run doet vijftig
+         stappen. Die allemaal wegschrijven vult het logboek
+         binnen een paar ritten met "ok". Alleen wat je onderweg
+         nodig hebt gaat eruit.
+
+       • 🔌 EN HET DERDE ARGUMENT VAN DE LOG DOET EINDELIJK IETS.
+         `logToSheets(type, bericht, extra)` nam dat derde stuk al
+         sinds het begin aan en gebruikte het nergens. Vijf
+         plekken gaven er context in mee — de PID en de reden bij
+         een uitschieter, het adapteradres bij een verbinding — en
+         dat verdween stilletijd. Nu staat het erbij.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-17a (CET) — "WELK ONDERDEEL?" WEES DE
+     VERKEERDE AAN
+
+       • 🔩 EEN TRAGE SENSOR IS NIET KAPOT. Het paneel meldde
+         "Sensor levert niets meer — sterke aanwijzing" over het
+         brandstofpeil, met "draadbreuk, stekker of sensor"
+         erbij. Die sensor wordt elke 60 seconden gevraagd, en
+         alles wat langer dan 8 seconden zweeg heette hier een
+         defect. De drempel volgt nu het meettempo van de sensor
+         zelf, en alleen "gevraagd én niets teruggekregen" telt
+         als uitval — stil zijn omdat je nog niet aan de beurt
+         bent, niet.
+
+       • 🧮 EEN TELLER HEEFT GEEN DRAAD OM TE BREKEN. "Afstand
+         met MIL aan" is een kilometerstand die het stuurapparaat
+         zelf bijhoudt. Die en zijn soortgenoten worden niet meer
+         als kapot onderdeel aangewezen.
+
+       • 🔑 DE FOUTCODES WORDEN NU ÉCHT GELEZEN. Het paneel keek
+         sinds 27-07 in een variabele die niet bestaat. Elke
+         controle op een foutcode stond daardoor permanent op
+         "onbekend": de halve module deed niets, en dat was van
+         buiten niet te zien. Staat er nog geen scan, dan zegt
+         het paneel dat nu zelf bovenaan.
+
+       • 🚗 MOTOR UIT IS EEN ANDERE AUTO DAN MOTOR AAN. Met het
+         contact aan en de motor uit leest de inlaatdruk de
+         buitenlucht, de luchtmassa 0 en het koelwater koud — en
+         dat leverde "vacuümlek", "EGR-klep" en "thermostaat" op
+         in precies de stand waarin je foutcodes uitleest. Elke
+         regel kijkt nu eerst of de motor draait, en hoe lang.
+
+       • 📏 ÉÉN METING IS GEEN OORDEEL. Een laadspanning die even
+         inzakt als de koplampen aangaan, of één misgelezen frame
+         tegen de eindwaarde van een sensor, is geen diagnose
+         meer. Er wordt over een reeks gekeken, en dat meettempo
+         van de sensor bepaalt hoe lang die reeks moet zijn.
+
+       • 🧪 EN DE PROEF IN DE ECHTE BROWSER VOND ER NOG EEN.
+         Op de demo-auto, die niets mankeert, stond "EGR-klep
+         — zwakke aanwijzing" op het scherm, gedragen door één
+         enkele hint. Er moet nu iets dragen: twee aanwijzingen
+         die elkaar steunen, of één die op zichzelf zwaar genoeg
+         is.
+
+       • ➕ TWAALF ONDERDELEN ERBIJ. De verwarming van een
+         lambdasonde (eigen zekering — een koude sonde ziet eruit
+         als een dode sonde), de achterste sonde apart van de
+         regelsonde, tankdop/EVAP, oliedruk, koelventilator,
+         gloeibougies, nokkenasverstelling apart van de
+         distributieketting, wervelkleppen, secundaire lucht, de
+         automaat, U-codes (het netwerk, geen onderdeel) en het
+         stuurapparaat zelf.
+     Build: 2026-09-16c (CET) — KLEIN GRUT, EN ÉÉN RIT DIE MEER SLUIT
+
+       • 📝 JE KIEST NU ZELF DE BESTANDSNAAM. In het opslaan-
+         venster staat een veld boven de opmerking, voorgevuld
+         met de naam die je anders ook gekregen had. De extensie
+         volgt uit de knop. Een getypte schuine streep, dubbele
+         punt of geplakte regel wordt opgeruimd zonder é en ü te
+         slopen; leeg laten valt netjes terug in plaats van een
+         bestand zonder naam op te leveren (#207).
+
+       • 🔋 BLOK 5 MEET DE BOORDSPANNING. Nieuw: één rit zegt nu
+         of de spanning binnen 11,5–15,2 V bleef. Staat 0142 niet
+         in je selectie, dan leest de proef hem uit de waakronde.
+         Dat is de meting die #217 sluit — vier modules die
+         tegelijk in storing gaan is het beeld van onderspanning,
+         niet van een verstoorde bus.
+
+       • 🎯 DE CAMPAGNE ZEGT WAT ÉÉN RUN AFMAAKT. Bovenaan staat
+         nu welke issues met deze ene rit dicht kunnen en waarop
+         dat rust, in plaats van alleen wat er gemeten wordt.
+
+       • 🧹 EEN TESTREGEL DIE NIETS DEED IS WEG. bproef-vinlek.js
+         zette window.connected, maar dat is een lexicale binding
+         en geen window-eigenschap — de regel leek iets te doen
+         en deed niets (#186).
+
+       • ✅ DRIE ISSUES GESLOTEN MET EEN BESLUIT, NIET MET CODE.
+         De drempel voor "beweegt" blijft 2%, de renderer die na
+         59–60 s stilvalt wordt geaccepteerd, en admin.html blijft
+         staan. De redenen staan in §11 — met de heropen-trigger
+         erbij, zodat het geen stilzwijgen is (#161, #202, #139).
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-16b (CET) — TWEE MOTORKAPPEN GAAN OPEN
+
+       • ◉ DE WAAKRONDE HEEFT EEN SCHERM. Hij meet al lang de
+         sensoren die je niet hebt aangevinkt, maar alles wat
+         hij wist paste in één strook stipjes. Nu een eigen
+         pagina in het ☰-menu: wat hij is en doet, elke sensor
+         die deze sessie gemeten is met zijn laatste waarde en
+         het bereik waarin die viel, de bevindingen met reden
+         erbij, hoe je hem bedient, en een uitgang — JSON, CSV
+         of klembord.
+
+       • 📊 EEN BEREIKMETER PER SENSOR. "87" zegt niets als je
+         niet weet of dat bij 0-120 of bij 80-90 hoort. Achter
+         elke sensor staat nu een balkje dat de laatste waarde
+         tussen de min en max van de definitie zet. Buiten het
+         bereik klemt de marker tegen de rand en kleurt oranje.
+
+       • 🧠 DE WAAKRONDE ONTHOUDT NU DE HELE SESSIE. Tot nu toe
+         ging bij elke nieuwe ronde alles op de vloer: een
+         sensor die drie rondes geleden buiten bereik lag, was
+         onvindbaar. Per sensor blijven nu de tellingen, het
+         laatste oordeel en het gemeten bereik staan.
+
+       • 📈 DE BULK-RECORDER LEEST ZICHZELF TERUG. Hij legde
+         tien uur rijden weg op 1 Hz en kon daar precies één
+         ding mee: een NDJSON-bestand maken voor iemand met een
+         script. Nu vertelt de app zelf wat erin staat — duur,
+         afstand, waar de tijd in ging, gaten in de log, en per
+         sensor min/gemiddeld/max met dekkingsgraad.
+
+       • 🗣️ CONCLUSIES IN GEWONE ZINNEN, MET HET GETAL ERBIJ.
+         "Tijdens klim was het koelwater gemiddeld 103 °C (200
+         regels), tijdens gewoon rijden 88 °C (200 regels) — een
+         stijging van 15 °C." Een oordeel zonder het getal
+         erachter is niet te controleren, dus dat schrijft hij
+         niet. Onder vijftig regels per kant zwijgt de
+         klimvergelijking helemaal.
+
+       • 📉 EEN TIJDBALK DIE OP VOLGORDE LOOPT. Rijden, klim,
+         stilstand en motor-uit als gekleurde balk in de
+         volgorde van de rit — je ziet dus wannéér de klim viel,
+         niet alleen hoeveel het er was. Plus een lijngrafiek
+         voor snelheid, toerental, koelwater en belasting.
+
+       • 🔒 DE VIN GAAT NIET MEE. De waakronde-export is een
+         nieuw uitgaand pad; het voertuigdossier gaat er zonder
+         VIN in. Een test met een volledig dossier mét VIN
+         bewaakt dat, en plmutate.sh zet het lek terug als
+         tegenproef.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-16a (CET) — DE VERBINDING HEEFT EEN SCHERM
+
+       • 🔌 TIK OP DE OBD-CHIP EN JE ZIET DE VERBINDING.
+         Verzoeken per seconde, responstijd, bezetting, fout-
+         graad, onvolledige antwoorden, herhaalde frames, twee
+         grafieken over twaalf minuten, en wat de automaat deed
+         mét de reden per stap. Daar stond tot nu toe één vraag:
+         "OBD-verbinding verbreken?" — de enige plek waar de
+         verbinding zichzelf toonde, en uitgerekend met de vraag
+         die je niet wilde stellen. Verbreken zit nu onderaan
+         het paneel.
+
+       • ✋ HET TEMPO KAN OVER. Automaat blijft de standaard,
+         maar je kunt hem overnemen: tempo in zes stappen en
+         het aantal PIDs per verzoek op 1, 2 of 3. De automaat
+         blijft ondertussen meten, dus je ziet wat hij van de
+         bus vindt terwijl hij niet ingrijpt.
+
+       • ⏱ EN ER ZIT EEN SNELHEIDSTEST IN. Veertig seconden,
+         vier trappen, en hij meet solo én batch. Dat verschil
+         is de hele reden dat hij bestaat: op een goedkope
+         adapter was het eerste getal 0% en het tweede 35%.
+         Daarna volgt een advies met het rekenwerk erbij.
+
+       • 🩹 EEN HERHAALD FRAME LEVERT GEEN VERZONNEN GETAL MEER
+         OP (#210). Een goedkope ELM327-kloon zet soms een
+         tweede lengte-indicator midden in een antwoord. De
+         parser plakte dat frame aan dezelfde hexstroom, en één
+         keer vulden die echobytes de opgegeven lengte precies
+         af: er kwam 166,51 g/s luchtmassa uit terwijl een losse
+         meting in dezelfde seconde 1,45 gaf. Geen waarschuwing,
+         binnen de harde limiet, dus overal doorheen. Hij stopt
+         nu bij het tweede bericht, en op een afgekapt antwoord
+         mag een sensor niet meer ingekort worden om te passen.
+         Een gat dat je ziet in plaats van een getal dat je
+         gelooft.
+
+       • 📉 DE GROEP KRIMPT OP DE ECHO (#211). Drie PIDs van één
+         byte passen niet in één CAN-frame; twee meestal wel.
+         De automaat verkleint nu op herhaalde frames — niet op
+         de foutgraad, want die telt een ontbrekende PID met
+         opzet niet mee. Hij zakt niet door naar 1: dat
+         verdrievoudigt het aantal verzoeken en die keuze hoort
+         bij een mens.
+
+       • 📋 EN DRIE DINGEN IN HET TESTRUNVERSLAG. Blok 10 noemt
+         nu ook het percentage onvolledige antwoorden (#212),
+         de rustmeting gooit mislukte prikken niet meer stil weg
+         en meldt een herverbinding middenin (#213), en de
+         waarschuwing in de kop rekent vanaf de laatste meting
+         in plaats van vanaf de start van de run (#214).
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-12a (CET) — DE BUNDEL HEET COM.PIDLANE.APP
+
+       • 📦 DE PAKKETNAAM IS COM.PIDLANE.APP. De Play Console
+         weigerde de inzending met "Voer een geldige pakket-
+         naam in". De bouwketen bleek in orde — hij zette
+         netjes door wat er in de config stond — maar die
+         naam was `app.pidlane.obd`, en `app` als eerste deel
+         bootst de .app-TLD na van een domein dat niet van
+         ons is. Play wil omgekeerd domein.
+
+       • 🚧 EN ER STAAT NU EEN POORT OP. De pakketnaam ligt na
+         de eerste geslaagde upload onomkeerbaar vast, en was
+         het enige veld in de bundel waar niets naar keek.
+         `test-nativeschil.js` toetst de vorm vóór elke commit;
+         de bundelstap leest hem uit het samengevoegde manifest
+         en legt hem naast `capacitor.config.json`.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11k (CET) — UITLOGGEN VRAAGT NIETS MEER
+
+       • 🚪 UITLOGGEN GAAT WEER. Als admin kwam er eerst een
+         venster met de vraag of de volledige log bewaard
+         moest worden. In de Android-APK bleef dat venster
+         staan, waardoor er nooit werd uitgelogd. De vraag is
+         weg: uitloggen logt uit. De log bewaren doe je vooraf
+         met de hand als je hem nodig hebt.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11j (CET) — LICHT THEMA WEER UIT
+
+       • 🌓 DE THEMAKEUZE IS TERUGGEDRAAID (#141). Licht
+         aanzetten maakte koppen onleesbaar: een groot deel
+         van de app schildert zijn eigen donkere achtergrond,
+         terwijl de tekst erop wel meeschakelt naar zwart.
+         57 plekken, dus dat is een eigen ronde. Wie vandaag
+         Licht koos, start weer gewoon donker.
+
+       • ✅ DE REST VAN DE VORIGE OPLEVERING BLIJFT. Opslaan
+         zonder deelvenster, de tip op het juiste moment, de
+         bushouder in het verslag en de contrastreparaties
+         staan er gewoon — die zijn in het donkere thema
+         gemeten en beter geworden.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11i (CET) — THEMAKEUZE TERUG, EN OPSLAAN KOST DE VERBINDING NIET MEER
+
+       • 🎨 LICHT OF DONKER, JE KIEST HET ZELF (#141). Het
+         lichte thema was volledig uitgewerkt en onbereikbaar:
+         één regel zette de app altijd op donker. Nu staat de
+         keuze in het ☰-menu, naast de tekstgrootte. Donker
+         blijft de standaard — niemands app slaat zomaar om.
+
+       • 👁 ELKE TEKST HAALT NU 4,5:1. Nagemeten over het
+         hoofdscherm en zes vensters, in beide thema's. Er
+         waren er twee die het niet haalden, allebei een
+         kleur die met de hand was opgeschreven in plaats
+         van uit het thema kwam.
+
+       • 💾 OPSLAAN TIJDENS EEN RIT KOST DE VERBINDING NIET
+         MEER (#132). De deelkaart van Android duwt de app
+         naar de achtergrond, en dat sloopt de adapter-
+         verbinding binnen seconden — zeven van de zeven keer
+         gemeten. Staat er een verbinding, dan gaat het
+         bestand nu rechtstreeks naar Documenten/PidLane.
+         Zonder verbinding blijft de deelkaart gewoon.
+
+       • 💡 DE TIP OVER DUBBELTIKKEN KOMT OP HET JUISTE
+         MOMENT (#145). Hij verscheen bij het opstarten, op
+         een scherm zonder tegels — en daarna nooit meer.
+         Nu bij het openen van de Live view.
+
+       • 🔎 HET TESTVERSLAG NOEMT DE BUSHOUDER (#159). Bij een
+         lange wachttijd op de bus stond er wel hoeveel
+         milliseconden, maar niet achter wie. Nu allebei.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11h (CET) — TEKSTGROOTTE L SNIJDT NIETS MEER AF
+
+       • 🔠 DE ONDERKANT VIEL WEG BIJ L (#192). Op een scherm
+         van 640px tekende de app er 723 — 83px buiten beeld,
+         inclusief de knop "start analyse" na het verbinden.
+         Oorzaak: de zoom vermenigvuldigt het resultaat van
+         een berekening, maar de schermhoogte erin niet.
+
+       • 📏 S WON ER OOK BIJ. Daar bleef 59px onderaan
+         ongebruikt. Alle drie de maten eindigen nu op
+         precies dezelfde rand, boven de navigatiebalk.
+
+       • 🧱 ÉÉN TOKEN VOOR DE BALKHOOGTE. De topbalk en de
+         ruimte eronder rekenden met verschillende getallen
+         zodra L aanstond. Dat verschil was exact wat er
+         onderaan wegviel.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11g (CET) — HET RITRAPPORT KOMT ER, OOK NA EEN ONDERBREKING
+
+       • 🚗 GEEN RAPPORT NA EEN RIT MET EEN GAT (#196). Ging de
+         app tijdens de rit naar de achtergrond, dan viel het
+         ritrapport om vóór de AI-call: dertien minuten meten
+         en één regel in het logboek. De onderbrekingen staan
+         nu in hun eigen lijst, los van de fases.
+
+       • 📊 DE AI KRIJGT DE CIJFERS DIE IN HET RAPPORT STAAN.
+         Tot nu ging alleen het gemiddelde per sensor mee,
+         terwijl het tekstbestand min en max wél had. Een
+         piek van 4200 rpm onder een gemiddelde van 1500 was
+         voor het model onzichtbaar. Nu min, max én het
+         aantal metingen.
+
+       • 📍 EN WAAR HET GAT ZAT. Per fase staat erbij hoeveel
+         seconden er weggevallen zijn. Zonder die plaats
+         leest een dun gemeten fase als een sensor die
+         uitvalt — een vals alarm met een factuur eronder.
+
+       • 🔍 DE PROEFRIT VOOR DE KOOPCHECK GAF LEGE BEVINDINGEN
+         DOOR. Hij las twee velden die nooit gevuld worden,
+         dus het aankoopoordeel kreeg fasenamen zonder
+         inhoud — en omdat die regel niet leeg was, viel het
+         niet op. Nu gaat de echte fase-duiding mee.
+
+       • 🔊 EEN MISLUKTE ANALYSE ZEGT NU WAAROM. Het foutblok
+         schreef bij élke fout "geen AI beschikbaar", ook bij
+         een crash. Daardoor was deze bug anderhalve dag
+         alleen als één logregel zichtbaar.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11f (CET) — ELKE ANALYSE ZEGT NU WAT ZE WILDE METEN
+
+       • 🎯 DE DEKKING PER ANALYSE (#188). Twaalf analyses
+         geven nu door welke sensorset ze wilden meten — de
+         naam die ze tóch al noemden. Het rapport krijgt
+         daardoor te horen: dit had ik nodig, dit kreeg ik,
+         en van de rest waaróm niet.
+
+       • 🚫 TWEE PADEN MET OPZET NIET. De verbindingsvraag
+         gaat niet over sensordata. En de oorzakenlijst van
+         Smart Diagnose vraagt om pure JSON — daar zou een
+         model dat netjes uitlegt wat het niet beoordeeld
+         heeft, een antwoord opleveren dat de app weggooit.
+
+       • 🔤 EEN TYPEFOUT IN EEN PROFIELNAAM IS NU ZICHTBAAR.
+         Die verliest anders stil de hele dekking van dat
+         pad, tot iemand die ene knop indrukt. De tests
+         lezen de bron en betrappen hem; blok 5 doet
+         hetzelfde op de rit.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11e (CET) — DE AI HOORT NU HOE GOED DE METING WAS
+
+       • 📦 DE AANLEVERING (#188). De app wist allang hoe goed
+         zijn eigen meting was — gaten, herverbindingen, de
+         tijd dat hij op de achtergrond stond, welke sensor
+         te vertrouwen is. Dat ging naar één lezer: het
+         testrunverslag. De AI-analyse kreeg er niets van
+         mee, en een gat van twee minuten leest dan als een
+         sensor die uitvalt.
+
+       • 🔍 WELKE SENSOREN ONTBRAKEN, EN WAAROM. Elke analyse
+         krijgt nu een dekkingslijst mee: wat had ik nodig,
+         wat leverde data, en van de rest de reden — de auto
+         heeft hem niet, hij stond niet in je selectie, of
+         hij gaf geen antwoord. Die drie vragen om een ander
+         advies. En de harde regel eronder: een sensor die
+         ontbreekt is NIET beoordeeld, dus daar hoort geen
+         "in orde" over te staan.
+
+       • 🕳️ EEN GAT KRIJGT ZIJN NAAM. Viel het terwijl de app
+         op de achtergrond stond, dan is het de telefoon;
+         stond de app in beeld, dan is het de adapter of de
+         bus. Een sprong of een nul rond een herverbinding
+         gaat als MEETARTEFACT mee en niet als defect.
+
+       • 💶 EN HET KOST NIETS ALS ER NIETS TE MELDEN VALT. Is
+         er niet gemeten en vraagt niemand een analyse, dan
+         blijft het blok leeg — een verbindingsvraag betaalt
+         niet voor meetcontext die er niet is.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11d (CET) — DIEP ZOEKEN GEEFT GEEN VALSE DIP MEER
+
+       • 🔎 DE DIP BIJ DIEP ZOEKEN (#191). De sweep over 96
+         PIDs levert met opzet lege antwoorden op — de meeste
+         bestaan niet op jouw auto. PLBus telde ze als fout
+         (PLBusGate dicht, waakronde meldde gezonde sensoren
+         als uitgevallen) en de BT-laag las ze als een dode
+         socket. Gemeld uit het gebruik: dat gaf meerdere
+         waarschuwingen in rapporten.
+
+       • 🔒 DE SWEEP CLAIMT NU DE BUS EN ZET DE SCANVLAG. Die
+         vlag bestond al sinds 04-09 maar was op één plek
+         aangesloten. Nu ook hier — en de pollus meet er niet
+         meer doorheen, en andersom.
+
+       • 🫀 MET EEN HARTSLAG ALS VANGNET. De scanvlag zet de
+         dode-socket-detectie uit, dus stuurt het slot elke
+         60 commando's (of na 25 lege op rij) een ATI en
+         breekt af als die twee keer niets teruggeeft. Zonder
+         dat ruil je valse waarschuwingen in voor een scan
+         die stil doorploetert op een verbinding die weg is.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11c (CET) — HET VERSLAG ZEGT WELKE APK HET IS
+
+       • 📦 EEN REGEL "APK : build N" IN DE KOP (#18). Twee
+         keer op één dag stond de vraag of een meting op de
+         nieuwe schil of op de oude draaide, en het verslag
+         gaf geen antwoord: TESTRUN_VERSIE en APP_VERSION
+         komen allebei uit de webpagina en zijn op elke APK
+         gelijk. Een native wijziging zit alleen in de schil.
+
+       • ⚠️ EN BLOK 5 ZEGT HET VÓÓRAF. Loopt de schil achter
+         op wat er in R2 ligt, dan is dat een LET OP met het
+         aantal builds erbij — een kop lees je pas als de rit
+         al gereden is. Een zelf gebouwde schil die vóórloopt
+         wordt ook gemeld: dat mag, maar wat je meet heeft
+         dan niemand anders.
+
+       • 🚫 EN "NIET TE VERGELIJKEN" IS GEEN "JE BENT BIJ".
+         Ontbreekt de build of antwoordt de Worker niet, dan
+         is de achterstand null en geen 0, met de reden erbij.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11b (CET) — DE CPU BLIJFT NU OOK WAKKER
+
+       • 🔋 EEN WAKE LOCK ERBIJ (#18). De meetdienst hield het
+         proces uit de cached-toestand, maar niet de CPU
+         wakker. Gemeten op de eerste rit: bij 77 s en 310 s
+         weg liep de hartslag perfect (78/78 en 310/310
+         slagen), bij 485 s haalde hij er 373 van de ~485 met
+         een gat vanaf 3,7 minuten — ruim na de
+         schermtime-out. De dienst neemt nu een partial wake
+         lock. Prijs: met het scherm uit blijft de CPU wakker
+         zolang je verbonden bent.
+
+       • 📏 DE RENDERER WORDT STILGEZET, NIET AFGEKNEPEN. 310 s
+         weg, 251 s aaneengesloten stilte in de WebView — bij
+         throttling was de grootste stilte ~60 s geweest. De
+         aanlooptijd is drie keer gemeten op 59, 59 en 60 s,
+         ongeacht hoe lang de app wegblijft. Daarmee is
+         picture-in-picture de volgende stap en een volledig
+         native meetlus waarschijnlijk niet nodig.
+
+       • ⚖️ DE MELDING BEWEERDE ALWEER TE VEEL. 34 s stilte in
+         een afwezigheid van 485 s werd gemeld als "het hele
+         proces is bevroren", terwijl het proces 222 s liep en
+         daarna nog 150 keer tikte. Dezelfde vorm als de fout
+         van 08-09, drie dagen later in nieuwe code. De duiding
+         noemt nu de verhouding en houdt een hapering en een
+         bevriezing uit elkaar.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-11a (CET) — DE METING LOOPT DOOR ALS JE WEGSCHAKELT
+
+       • 🛰️ EEN NATIVE MEETDIENST ACHTER DE APP (#18).
+         Android bevriest de app op de achtergrond: 02-09
+         stationair 36 s doorgelopen en toen 84 s stil, 09-09
+         rijdend 50 s en 132 s. Er draait nu een foreground
+         service zolang de adapter verbonden is, met een
+         melding in de statusbalk. Die houdt het proces uit
+         de cached-toestand, en daarmee buiten het bereik van
+         de freezer die dit veroorzaakt.
+
+       • 💓 EN HIJ MEET ZICHZELF NA. Een foreground service
+         helpt tegen een bevroren PROCES, niet tegen een
+         WebView die Chromium afknijpt — en van buiten zien
+         die twee er identiek uit. De dienst heeft daarom een
+         eigen hartslag naast die van de pagina. Twee tellers
+         over hetzelfde venster: liep native door terwijl de
+         webview stillag, dan is dit niet genoeg en volgt
+         picture-in-picture. Dat is een meting en geen gok.
+
+       • 🧾 EN DE BUNDEL WORDT EROP NAGEKEKEN. De poort op
+         het samengevoegde manifest eist de service, zijn
+         type (connectedDevice), exported=false en de
+         permissie die bij dat type hoort. Android 14 weigert
+         startForeground() als die niet kloppen — dat merk je
+         anders pas als iemand verbindt.
+
+       • 📱 WAT NOG NIET GEMETEN IS: of het op een toestel
+         werkt. Dat is de bevinding van de eerstvolgende rit.
+         De achtergrondstap vraagt er nu naar, en om het enige
+         dat de app zelf niet kan zien: stond de melding er.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10g (CET) — DE BUNDEL VRAAGT WAT HIJ VERKLAART
+
+       • 📍 DE .AAB VROEG LOCATIE OP ELKE ANDROID-VERSIE.
+         Beide BT-plugins declareren ACCESS_FINE_LOCATION en
+         ACCESS_COARSE_LOCATION zonder maxSdkVersion. Het
+         app-manifest noemde ze niet, dus nam de merge die
+         variant over — terwijl Data safety geen locatie
+         verklaart. De injectie zet ze er nu bij met
+         maxSdkVersion=30.
+
+       • 🔍 EN TWEE TOETSEN ZEIDEN VAN NIET. De CI-controle
+         las het app-manifest, dus de invoer van de merge:
+         nul regels gevonden, "OK" gemeld. test-geen-gps.js
+         liep met .every() over diezelfde lege lijst. De
+         controle staat nu na bundleRelease op het
+         samengevoegde manifest en eist dát de permissie er
+         is; de test eist beide regels en draagt zijn eigen
+         tegenproef.
+
+       • 💶 GEEN KOOPKNOP MEER IN DE PLAY-SCHIL. De
+         Tikkie-link komt uit Airtable, dus één veld kon een
+         betaalroute buiten Play om in de beoordeelde app
+         zetten — zonder commit, gate of build. _betaallink()
+         houdt hem in de schil tegen, ook als de detectie
+         stukgaat. De browser houdt de link.
+
+       • ✅ §16A BELOOFT ALLEEN WAT EEN TEST DEKT. De regel
+         over koopknop en APK-distributie noemde een bestand
+         dat daar niets van toetst. test-schilgrenzen.js doet
+         het nu wel, met tegenproeven.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10f (CET) — INLOGGEN KOST GEEN TOKENS
+
+       • 💳 ELKE LOGIN KOSTTE PRECIES ÉÉN CREDIT. Het saldo
+         stond op 40 en na het inloggen op 39, zonder dat er
+         één analyse gedraaid was. Inloggen zelf raakt het
+         tegoed niet — de controle erachter wel: die deed een
+         echte AI-call om "🤖 AI-sleutel ✓" te kunnen tonen,
+         en een AI-call kost minstens één credit, ook eentje
+         die drie woorden terugkrijgt.
+
+       • 🔑 DE CONTROLE GAAT NU LANGS /v1/ping. Die loopt door
+         dezelfde poorten — is er een sessie, mag deze rol AI
+         gebruiken, staat de sleutel in de Worker — maar raakt
+         het model niet aan. De chip belooft daarmee nog
+         precies hetzelfde en kost structureel niets.
+
+       • 🧾 WAAROM DAT NU PAS OPVIEL. Het reviewaccount voor
+         de Play-review krijgt tegoed mee, en een reviewer
+         logt vaker in dan hij analyseert. Dat is het saldo
+         dat op zijn moment niet leeg mag zijn.
+
+       • 🧪 EÉN LOGIN DOOR DE ECHTE KETEN, met tegenproef.
+         De test laat de app, de router en de handler alle
+         drie echt draaien en kijkt naar het saldo; ernaast
+         gaat dezelfde login via de oude route, en dan staat
+         er 39. Zonder die tweede helft bewijst de eerste
+         alleen dat er niets gemeten is.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10e (CET) — KUN JE ERBIJ, OF PAST HET
+
+       • 📏 DE ONDERRAND-PROEF MELDDE ELKE RIT FOUT terwijl er
+         niets aan de hand was. Hij vroeg of het werkscherm
+         binnen de vouw PASTE; op een pagina die scrollt is
+         dat altijd onwaar en nooit iets waard. De bestuurder
+         zag in de toestelronde van 10-09 "Alles vrij — er
+         valt niets weg", en dat was het antwoord waar de
+         proef zelf sinds 01-09 om vroeg.
+
+       • 🔎 DE SCROLLRUIMTE TELT NU MEE. Kun je nog omlaag,
+         dan komt de onderrand mee omhoog. Alleen wat ook
+         volledig uitgescrold achter de navigatiebalk blijft
+         staan, is nog een bevinding — dat is #58 zoals het
+         ooit gemeld werd.
+
+       • 🧪 DE TWEE HELFTEN ZIJN APART GETOETST. De regel in
+         node, met de echte getallen van de rit en een
+         tegenproef; de meting in de browser, waar de proef
+         de situatie zelf forceert met 600px vulling. Een
+         scrollmeting die stilletjes 0 teruggeeft laat elke
+         pagina weer rood staan, en dat is nu zichtbaar.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10d (CET) — WELK GAT BETEKENT WAT, EN
+                                WIE LEEST HET
+
+       • 🚗 EERST WAT WERKTE. Twee ritten met de oogstpoort en
+         het meetgat erin. De rijstap sloot na 2 minuten in
+         plaats van tien af te dwingen; blok 14 wees 89 s
+         loopgat aan de achtergrond toe en 35 s meetgat aan de
+         adaptertrek; en de drie meetcontextvragen kwamen vóór
+         het scherm en haalden de prompt (#64 beantwoord).
+
+       • 🔌 DE ADAPTERSTAP LAS ALLEEN HET LOOPGAT — juist het
+         gat dat een losgetrokken adapter níét maakt. Hij
+         meldde "PLRit ziet geen gat" terwijl er 35 s meetgat
+         stond. Vierde lezer van dezelfde teller; nu telt hij
+         allebei mee.
+
+       • ⏱️ DE #19-PROEF EISTE NOG TIEN MINUTEN én vier
+         aanvragers. De rit viel af op de klok, de toestel-
+         ronde op de aanvragers: geen enkele ronde haalde hem
+         nog. De omstandigheden staan er nu als context bij
+         in plaats van als drempel.
+
+       • 🌫️ MEETGATEN KREGEN GEEN DUIDING. Bij een afgeknepen
+         achtergrond tikt de lus door zonder loopgat, maar
+         staat de data stil — en dat werd aan "de adapter of
+         de bus" toegeschreven. Binnen de achtergrond is het
+         nu de afknijping (#18), erbuiten pas de bus.
+
+       • 🧪 EN DE TESTRUN MAAKTE ZIJN EIGEN GAT. De guard die
+         tijdens een run niet bemonstert, returnde vóór de
+         kloktik werd bijgewerkt: na een run van 70 s stond er
+         een loopgat van 75 s, en het verslag stuurde je naar
+         de bus. Nagemeten en met een tegenproef vastgelegd.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10b (CET) — HET MEETGAT NAAST HET LOOPGAT
+
+       • 🔌 EEN ADAPTER DIE ZIJN VOEDING VERLIEST, GEEFT NU
+         EEN MEETGAT. Op de rit van 10-09 bleef `connected`
+         true terwijl de adapter 39 s weg was — een BT-SPP-
+         socket sterft niet, dus de meetlus (PLRit) bleef
+         gewoon om de 5 s tikken. Het bestaande loopgat meet
+         alleen of díe lus zelf stilstond en zag er daarom
+         niets van: 0 gaten bij een echte onderbreking (#133).
+
+       • 📊 GEEN NIEUWE BRON, ALLEEN ÉÉN NIVEAU HOGER OPGETELD.
+         Een tik waarin geen enkele al bekende PID-stempel
+         verschuift is nu een meetgat, uit dezelfde telling
+         die er al stond. Blok 14 meldt loopgat en meetgat
+         voortaan apart en zegt welke van de twee bij een
+         herverbinding hoort: de achtergrondkwestie (#18) of
+         de adapter en de bus (#133).
+
+       • 🧊 EEN BEVRIEZING IS GEEN MEETGAT. Bij bevriezen staan
+         de pollus en de tiklus samen stil, dus de eerste tik
+         terug leest oude stempels. Nagemeten: 90 s bevriezing
+         gaf een loopgat van 90 s én een meetgat van 5 s — en
+         dan wijst het verslag tegelijk naar de achtergrond en
+         naar de bus. De tik die zelf een loopgat boekt,
+         oordeelt niet meer over de data.
+
+       • 🧪 DE #133-PROEF IN BLOK 5 TELT NU OOK MEE. Die toetste
+         eerst alleen het loopgat tegen het oordeel over de
+         meetkwaliteit, en had de rit van 10-09 zelf niet
+         gevangen. De #75-regel eronder ("herverbinding zonder
+         enig gat") kende ook alleen het loopgat en noemt nu
+         allebei. plmutate.sh bouwt drie nagemaakte fouten
+         terug: de openingstik die zichzelf als meetgat meldt,
+         een meetgat dat na herstel blijft doorgroeien, en de
+         bevriezing die alsnog naar de bus wijst.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10c (CET) — DE RIT KOST ALLEEN NOG WAT
+                                EEN RIT KOST
+
+       • ⏱️ DE TIEN MINUTEN ZIJN WEG. De rijstap eiste ze voor
+         #29 — "vijf pogingen plus vijf herkansingen" — en dat
+         issue is op 02-09 gesloten mét een node-test als
+         tegenproef. Geteld over alle vijftien stappen: negen
+         noemden een issue als reden, en zeven daarvan waren
+         dicht (#19, #15, #29, #68, #66, #79, #58).
+
+       • 🌾 DE RIJSTAP SLUIT NU OP DE OOGST. Niet "hoe lang
+         reed je" maar "is het binnen": snelheid bewezen,
+         spreiding op de MAP gezien, en elke meet-PID uit de
+         selectie twee keer ververst. Je ziet tijdens het
+         rijden wat er nog mist. Een punt dat op deze auto
+         niet te halen is, blokkeert niet.
+
+       • 🚗📱 TWEE RONDES UIT ÉÉN LIJST. De meetrit bevat
+         alleen wat een rijdende auto nodig heeft. De rest —
+         de schermoordelen, het logboek en de meetcontext-
+         vragen — is een toestelronde die stilstaand draait.
+         Elke stap zegt zelf wat hij nodig heeft en welke
+         issues hij voedt, en het verslag sluit af met wat
+         déze ronde werkelijk heeft opgeleverd.
+
+       • ✂️ DE OPTREKSTAP IS WEG. Blok 14 leidt de turbovraag
+         al af uit de min/max van PLRit en had die markering
+         nooit nodig. Wat de stap wél deed, staat nu als punt
+         in de oogstpoort — zonder aparte stop.
+
+       • 🪟 DE DRIE MEETCONTEXTVRAGEN OPENDEN ACHTER HET
+         TESTRUNSCHERM. Dat scherm staat op z-index 9980, het
+         vragenvenster op 9920 en het logboek op 9975. De
+         proef van #64 mislukte daarop: de vragen wáren
+         geopend, alleen onzichtbaar. Het scherm zakt nu
+         onder een venster zolang die stap loopt.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-10a (CET) — DE METING BLIJFT DE METING
+
+       • ✂️ LAAG 2 EN 3 VAN DE MEETKETEN ZIJN WEGGEHAALD.
+         Ze stonden één dag aan (2026-09-09c hieronder) en
+         hebben daarvóór, sinds de eerste commit in deze repo,
+         nooit gedraaid. Wat die dag opleverde beslist dit:
+         laag 2 is inert op zeven van de negen PIDs — koelwater
+         vuurt pas bij een sprong van 89,3 °C terwijl de rit van
+         09-09 5 °C bewoog, en in vier minuten over 31 sensoren
+         sloeg het filter één keer aan: de testrun die er zelf
+         200 °C in duwde.
+
+       • 🔌 EN WEGGOOIEN BETEKENT HIER MEER DAN HET LIJKT. De
+         meetlus kent maar twee uitkomsten: een waarde, of NO
+         DATA van de ECU. Een gefilterde meting werd dus als NO
+         DATA geboekt — geen stempel, een gat in de reeks, en
+         via de kwaliteitsscore uiteindelijk opruimen van de
+         sensor. Niet te onderscheiden van een dode bus, precies
+         de verwarring van #133. Op accuspanning was het filter
+         niet inert maar verkeerd: drempel 0,8 V tegen een
+         gemeten ritswing van 2,76 V.
+
+       • 🌡️ LAAG 3 MIDDELDE OVER TWEE MONSTERS. Koelwater komt
+         als hele graden van de ECU (A−40); de app sloeg daarna
+         89,5 op — een waarde die de sensor niet kán geven. Dat
+         is meetgetrouwheid inleveren voor ruisonderdrukking die
+         op een signaal met 5 °C bereik niets te onderdrukken
+         had. Laag 1 (fysieke grenzen) en 1b (opvallend maar
+         echt) blijven; die doen wél iets.
+
+       • 🔁 DE TOETSEN ZIJN OMGEDRAAID: niet "wordt er gefilterd"
+         maar "komt de meting ongewijzigd door". plmutate.sh
+         bouwt allebei de lagen terug als mutatie — geen
+         verzonnen fout, die code stond er tot vandaag.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-09c (CET) — HET SPIKE-FILTER STOND UIT
+                                VOOR ÁLLE SENSOREN
+
+       • 🧪 LAAG 2 EN 3 VAN DE MEETKETEN DRAAIEN WEER (#158).
+         FILTERED_PIDS stond op suffixen ('05') terwijl
+         validateAndSmooth() de volledige pid toetst ('0105')
+         en de meetketen die vorm doorgeeft. De opzoeking miste
+         dus altijd: spike-filter en smoothing draaiden nergens.
+         Gemeten op de rit van 09-09 — 200 °C koelwater kwam er
+         ongefilterd doorheen, want laag 1 vangt alleen wat
+         fysiek onmogelijk is en 200 valt binnen -40…215.
+
+       • 🔑 DE TABEL VOEGT ZICH NAAR DE REST, NIET ANDERSOM.
+         Niet een .slice(2) erbij in datalog.js, maar de tabel
+         op volledige PIDs: PID_HARD_LIMITS, pidVals, pidHist
+         en getPidDef() zijn dat allemaal al, en die vier worden
+         in dezelfde regels gebruikt. Bijvangst: een suffix is
+         dubbelzinnig over modes heen ('05' is 0105 én 0205), en
+         smoothing over een freeze frame is zinloos.
+
+       • 🔍 TWEE TOETSEN VIELEN OM TOEN HET FILTER AANGING, EN
+         DAT IS HET BEWIJS DAT HET DAARVOOR NIETS DEED. "Koel-
+         water precies op 215 mag door" gaf 152,5 — het gemid-
+         delde van 90 en 215. Allebei meten nu op een verse
+         reeks, zodat ze weer laag 1 meten in plaats van laag 3.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-09b (CET) — ÉÉN LIJST DIE DE RIT STUURT
+
+       • 🧭 DE MEETCONTEXT EN HET ADAPTERGAT ZIJN NU STAPPEN
+         IN DE BEGELEIDE RUN. Ze stonden als tekst in CAMPAGNE
+         en gebeurden daarom niet: de rit van 09-09 volgde de
+         begeleide run — dertien eigen stappen, waar deze twee
+         niet in zaten. Gevolg: #64 meldde "het venster is niet
+         beantwoord" en #133 kwam op "ok" zonder ooit onder
+         spanning te staan. De meetcontextstap opent het venster
+         los (kost geen tokens) en toetst of een gegeven antwoord
+         de promptregel haalt; de adapterstap laat je de stekker
+         er met opzet uittrekken en kijkt of het gat doorkomt in
+         het oordeel over de meetkwaliteit.
+
+       • 📐 EN DE VOLGORDE IS EEN EIS GEWORDEN. meetcontext vóór
+         adapterlos (de vragen beantwoord je met een verbinding
+         die nog heel is), slimweergave vóór adapterlos (het
+         zelfgemaakte gat vervuilt precies de reeks waarop #66
+         beoordeeld is), en allebei vóór het meten. Vastgelegd
+         in test-begeleid.js, met twee tegenproeven. CAMPAGNE
+         somt ze niet meer op maar wijst ernaar — twee lijsten
+         met ritstappen naast elkaar is de vorm die §11 al twee
+         keer de kop kostte.
+
+       • 🔧 #66: DE IJKVRAAG SCHEIDT NU EEN STILSTAANDE REEKS
+         VAN EEN TE GROVE DREMPEL. De proef sloeg op zijn eerste
+         rit alarm en had ongelijk: stationair op 652 rpm gaf
+         het toerental 108 bereik tegen een drempel van 160 —
+         geen kapotte reeks maar een normale stationairloop.
+         Bereik nul bij draaiende motor blijft FOUT; bereik
+         onder de drempel is voortaan LET OP met het getal
+         erbij, want dat is de meetwaarde waar #66 om vroeg.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-09a (CET) — DE RIT SCHRIJFT ZICHZELF OP
+
+       • 📋 DRIE PROEVEN IN BLOK 5 LEGGEN VAST WAT TOT NU TOE
+         VAN OPLETTEN AFHING. Zes open issues wachtten op een
+         rit, en in alle zes stond het gevraagde als "kijk of
+         het klopt". Kijken is geen meten: wat er van zo'n rit
+         terugkomt is een herinnering, en die is er de volgende
+         ronde niet meer. Blok 5 noteert nu per sensor het
+         gemeten bereik tegen de beweeg-drempel (#66), of een
+         beantwoorde meetcontext de AI-prompt werkelijk haalt
+         (#64), en of een weggevallen verbinding in het oordeel
+         over de meetkwaliteit terechtkomt (#133). Alle drie
+         met een echte faaltoestand erin — een blok dat alleen
+         kán rapporteren wordt na twee ritten niet meer gelezen.
+
+       • 🗺️ EN DE CAMPAGNE IS ÉÉN RIT GEWORDEN IN PLAATS VAN
+         ZES. Zes momenten in één rit, geordend op wat elkaar
+         niet in de weg zit: eerst wat stilstaand kan, dan wat
+         rijdend moet, en de twee die de verbinding bewust
+         stukmaken helemaal aan het eind — want daarna is de
+         meetreeks niet meer schoon voor de stap ervoor. De
+         DID-sweep van de kaartmaker gaat op de lange baan
+         (1,9 uur, en F4A6 is gemeten en bestaat niet); de
+         km-standmodule wordt een checklist en vraagt geen
+         meetrit.
+     Build: 2026-09-08f (CET) — DE KOSTENRAMING HING AAN HET
+                                PLAFOND
+
+       • 💶 DE GESCHATTE KOSTEN VOLGEN NU DE UITVOER IN
+         PLAATS VAN HET MAX_TOKENS-PLAFOND. Die raming staat
+         in het kostenvenster én is de poort die een analyse
+         blokkeert bij te weinig tegoed. Hij rekende met
+         plafond × uitvoerfactor, dus het plafond verhogen
+         verviervoudigde de geschatte kosten en zou klanten
+         buitensluiten voor een analyse die in werkelijkheid
+         niets duurder is — je betaalt op wérkelijke uitvoer.
+         Twee dingen maakten dat erger: een afgekapt rapport
+         duwde die factor naar 1,0 (dan ís de uitvoer gelijk
+         aan het plafond), en het bijstelgewicht 1/(n+2)
+         bevriest na honderd calls op ~0,01. Er wordt nu op
+         absolute gemeten uitvoer gekalibreerd, per plafond,
+         met een bodem onder het gewicht. Een vers toestel
+         raamt precies zoals eerst; een bestaande opslag
+         vult zichzelf aan.
+
+       • 🔎 WAAROM DIT ER MOEST KOMEN VOORDAT ER IETS ANDERS
+         KAN. Gemeten: kapt een rapport af op het plafond,
+         dan stuurt de app de volledige invoer nog een of
+         twee keer opnieuw — 2,21× en 3,64× — elk als eigen
+         afboeking. De fix daarvoor is het plafond verhogen,
+         en dat kon niet zolang datzelfde plafond de
+         kostenraming stuurde. Het plafond zelf blijft deze
+         ronde staan.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-08e (CET) — DE WACHTER MAT DE KNOP EN
+                                NIET DE TEKST
+
+       • 📐 DE ONDERSTE REGEL VAN HET RUN-VENSTER VALT NIET
+         MEER ACHTER DE ANDROID-KNOPPEN (#144). De onderrand
+         van dat paneel stond op een vaste 16px en telde de
+         knoppenbalk niet mee. Sinds #123 hangt de
+         bevindingenschakelaar mét zijn uitleg onderaan, en
+         op een kort scherm gaat de bak daardoor scrollen —
+         dan lag die laatste regel er deels achter.
+
+       • 🔍 EN WAAROM DE PROEF DIE ER AL WAS HEM LIET LOPEN.
+         bproef-schermranden.js bewaakt dit sinds #71, en
+         het Run-venster stond er al in, met de conclusie
+         "had geen --pl-sab in de bron en was tóch ruim".
+         Die conclusie klopte op 412×915 en op twee punten
+         niet meer: het paneel groeide (#123), en de proef
+         mat alleen de laagste KNOP. Gemeten op 360×640 met
+         een balk van 48px: de knop stond op 65px (ruim),
+         de tekst eronder op 43px (eronder). Elk vel wordt
+         nu óók op zijn laagste zichtbare TEKST gemeten —
+         dat is wat een mens leest — en de hele reeks van
+         dertien draait een tweede keer op een kort scherm,
+         want een paneel dat moet scrollen is de voorwaarde
+         waaronder deze fout überhaupt bestaat. Blok 5 meet
+         hetzelfde op het echte toestel, waar --pl-sab niet
+         nagebootst is.
+
+       • 📴 DE APP MEET NU HOE LANG HIJ ÉCHT STILLAG (#18).
+         Bij elke terugkomst stond er "de app was 120 s weg
+         — de meetlus stond in die tijd stil". Het eerste is
+         een meting, het tweede een oordeel dat er nooit bij
+         gemeten is: PLAchtergrond hangt aan
+         visibilitychange en weet alleen hoe lang de app
+         onzichtbaar was. Op de rit van 02-09 was dat
+         oordeel aantoonbaar fout — de app deed daarna nog
+         36 seconden werk (een herverbinding met ELM-init,
+         een sensoruitval, een verificatie) voordat Android
+         hem bevroor. Werkelijk stil: 84 s. Er loopt nu een
+         hartslag die alleen tikt terwijl de app weg is; de
+         grootste stilte tussen twee tikken ís de
+         bevriezing. Liep de lus door, dan staat dat er zo,
+         en als bericht in plaats van als waarschuwing.
+
+       • ⏱ DE AANLOOPTIJD STAAT IN HET VERSLAG (#18). Hoe
+         lang blijft de app na het wegschakelen nog draaien
+         voordat Android hem stilzet? Op 02-09 was dat ~36 s,
+         en dat getal kwam er met de hand uit door twee logs
+         naast elkaar te leggen. Nu meet de app het zelf.
+         Het bepaalt welke oplossing zin heeft: een
+         foreground service hoeft geen milliseconden te
+         winnen maar een gat van deze orde te overbruggen.
+         Erbij: afknijpen (Chromium zet een verborgen tab op
+         één tik per minuut) wordt apart gemeld van
+         bevriezen — twee oorzaken met twee oplossingen.
+
+       • 🔍 BLOK 5 VERGELIJKT DE JUISTE TWEE GETALLEN (#18).
+         De proef legde het gat van PLRit naast de
+         afwezigheid van PLAchtergrond en sloeg alarm zodra
+         die een kwart uiteenliepen. Dat is geen bevinding
+         maar de normale uitkomst: de aanlooptijd zit er per
+         definitie tussen. Het BESTAAN blijft het alarm — een
+         gat dat de app niet kent is nog steeds FOUT — maar
+         de DUUR wordt vergeleken tussen twee getallen die
+         hetzelfde meten.
+
+       • 🧭 BLOK 14 WIJST GATEN TOE IN PLAATS VAN ZE TOE TE
+         SCHRIJVEN (#18). Er stond "een gat betekent dat de
+         meetlus niet liep (Android bevriest
+         WebView-timers)" — waar voor het eerste deel, een
+         oorzaak die aan élk gat werd toegekend voor het
+         tweede. Een gat door een dode adapter of een
+         vastgelopen sweep las precies hetzelfde. Elk gat
+         wordt nu naast de vastgelegde achtergrondperioden
+         gelegd; valt het erbuiten, dan lag de lus stil
+         terwijl de app in beeld stond en is het #18 niet.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-08c (CET) — TWEE WACHTERS DIE NET NIET
+                                VER GENOEG REIKTEN
+
+       • 🔐 EEN ZOEKTERM KAN GEEN FORMULE MEER WORDEN (#142).
+         Op vier plekken ging een tekst als letterlijke
+         waarde een Airtable-filterByFormula in, geëscaped
+         met alleen een quote-vervanging. Die vervanging wás
+         globaal — daar zat het niet. De backslash zelf werd
+         niet ontsnapt, en dus sloot invoer als `a\` plus een
+         quote de string alsnog. Wat erachter stond ging als
+         formule-syntax mee naar Airtable: schrijven kan
+         zo'n formule niet, maar filteren wel, en daarmee is
+         het een orakel dat per verzoek één ja/nee over een
+         afgeschermd veld prijsgeeft. Eén gedeelde
+         formuleTekst() doet het nu in de goede volgorde:
+         backslash eerst, quote daarna. Zoeken op een naam
+         met een apostrof blijft gewoon werken.
+
+       • 🖥 DE OPNAMETABEL VAN DE EXPERT BOUWT GEEN HTML MEER
+         UIT PEER-DATA (#142). esc() stond al op de
+         sensornaam en de eenheid, maar de vier
+         cijferkolommen gingen ruw de innerHTML in — en die
+         rijen komen van de andere kant van de
+         remote-sessie. Alles wat als getal getoond wordt
+         moet nu eerst een getal blijken; lukt dat niet, dan
+         staat er een streepje. Meetwaarden, negatieve
+         getallen en nul veranderen niet.
+
+       • 🧪 EN DE TEGENPROEF ERONDER. Twee nieuwe tests plus
+         een elfde deel in test-adminbron.js, die niet
+         kijken óf er geëscaped is — dat deed de kapotte
+         regel ook — maar of de string dichtgaat en of het
+         syntaxskelet van de uitgaande formule gelijk blijft
+         aan dat van een onschuldige zoekterm. Vier mutaties
+         in plmutate.sh houden dat vast.
+     Build: 2026-09-08c (CET) — DE BEHEERPAGINA SLAAT
+                                WEER OP
+
+       • 💾 "OPSLAAN" GAF "NO_ITEMS". De instellingenkaart
+         van de beheerpagina kreeg opslaan niet voor elkaar
+         (#146). saveAll() stuurde een plat object naar
+         POST /api/config, terwijl de Worker een
+         items:[{Key,Value}]-array wil — en die anders met
+         no_items afkapt. Het oude admin.html bouwde die
+         array wel; bij de overstap naar beheer.html (#139)
+         is de vorm niet meegekomen. Nu weer als items.
+
+       • 🧪 DE OEFEN-NEP WAS TE SOEPEL. Waarom niemand het
+         zag: de nep-worker in oefenmodus mergede gewoon een
+         plat object, dus opslaan "werkte" daar precies
+         zolang de fout bestond. De nep eist nu net zo hard
+         items:[…] als de echte route, en bproef-
+         beheerpagina.js meet dat de omgezette schakelaar
+         echt in de config landt — met de oude body wordt
+         die proef rood.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-08b (CET) — HET KASBOEK BESTAAT NU
+                                ECHT
+
+       • 📒 ELKE TOKENMUTATIE LAAT EEN SPOOR NA. Tot nu toe
+         werd er bij een saldowijziging nergens iets
+         weggeschreven (#83). Verdween er tegoed, dan was de
+         enige weg: code lezen — precies wat het op
+         31-07-2026 al een keer kostte, toen testApiKey() bij
+         elke app-start een echte call deed. tegoedLog()
+         schrijft nu bij elke mutatie een regel in TokenLog:
+         moment, klant, soort, credits, saldo erna, het echte
+         tokenverbruik en het model. Vier bronnen: de
+         AI-afboeking, een ingewisselde code, het
+         proeftegoed en een mutatie door de beheerder.
+
+       • ⚠️ OOK — JUIST — ALS HET MISGING. Mislukt de
+         afboeking terwijl de AI al gedraaid heeft, dan komt
+         er een regel met Credits 0 en de reden erbij. Dat is
+         het geval waarvoor dit boek bestaat: verbruikt
+         zonder dat er iets af ging. Hetzelfde geldt voor een
+         code die is afgestempeld maar niet bijgeboekt.
+
+       • 🧾 EN CREDITS IS WAT ER ÉCHT AF GING. Staat er 3 op
+         de teller en kost de analyse er 9, dan gaat er 3 af
+         en staat dat er ook zo in, met het verschil in de
+         details. Anders telt de kolom niet meer op tegen het
+         saldo erna.
+
+       • 👀 TE LEZEN IN BEHEER. Het kasboek staat in
+         beheer.html onder Tabellen, alleen-lezen — een boek
+         dat je kunt bijstellen bewijst alleen nog wat erin
+         staat. De oefenstand toont vijf regels, met de
+         mislukte afboeking erbij.
+
+       • 🛟 HET MAG NOOIT IETS BREKEN. Valt Airtable weg
+         terwijl er net een analyse liep, dan krijgt de klant
+         gewoon zijn antwoord: het schrijven gaat via
+         ctx.waitUntil en alles staat in een try. Het saldo
+         blijft de bron van waarheid; het kasboek is
+         administratie.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-08a (CET) — DE KLOK IN DE NAAM, DE
+                                VOLGORDE IN HET LOGBOEK
+                                EN TWEE UITLEGGEN
+
+       • 🕛 HET LOGBOEK ZETTE DE NACHT BOVENAAN. Een sessie
+         die middernacht passeert kreeg de regels van na
+         twaalven bóven die van 22:00 (#140). Het logboek
+         sorteerde op de kloktijd die voor het SCHERM
+         gemaakt wordt — "HH:MM:SS", zonder datum, en als
+         string is "00:15" kleiner dan "22:14". De tijd was
+         er wél: log() en btDiag() zetten sinds #75 een
+         epoch mee, en dit scherm pakte de andere helft.
+         Nu sorteert het op dat epoch. De twee bronnen die
+         geen epoch hebben (de tekstspiegel en de diagring)
+         krijgen er een afgeleid uit hun eigen volgorde, en
+         de export zet een dagscheiding tussen twee dagen.
+
+       • 📁 DERTIEN EXPORTNAMEN DROEGEN DE VERKEERDE DAG.
+         Wie tussen middernacht en 02:00 een rapport,
+         scanlog, dossier of survey opsloeg, kreeg de datum
+         van gisteren in de bestandsnaam (#112) — precies
+         het venster waarin een testrun vaak eindigt. Ze
+         lopen nu allemaal door plDatumLokaal() en
+         plStempelLokaal(), de helpers die sinds #17 al
+         bestonden. Tijden die als VELD in opgeslagen data
+         gaan blijven UTC, met Z erachter: dat onderscheid
+         is de hele regel.
+
+       • 💡 "DUBBELTIK = SENSOR UITZETTEN" WAS NIET WAAR.
+         Sinds 02-09 verbergt een dubbeltik alleen — de
+         sensor blijft gemeten worden — maar de tekst op de
+         tegels beloofde nog het oude gedrag (#124). Die
+         tekst klopt nu, en omdat een tooltip op een
+         telefoon nooit verschijnt komt de uitleg één keer
+         per toestel als tip in beeld zodra er tegels staan.
+
+       • 🔗 DE BEVINDINGENSCHAKELAAR STAAT NU BIJ DE REST.
+         Hij zat in het ☰-menu en hoort bij wat er in de
+         live view verschijnt, dus staat hij nu in het
+         Run-venster rechtsboven (#123) — met een eigen
+         kopje, want anders dan de vijf erboven draait hij
+         niets op de achtergrond en kost hij geen
+         buscapaciteit.
+
+       • ⚙️ BEHEER: DE SCHAKELAARS ZEGGEN NU WAAR OPSLAAN
+         ZIT. In beheer.html stond bij "Functies aan/uit"
+         niet dat de wijziging pas met "Alles opslaan"
+         onderaan meegaat (#139). admin.html had die regel
+         wel. Een schakelaar die terugveert zonder uitleg
+         leest als kapot.
+
+       • 📱 DRIE VENSTERS VIELEN NOG ACHTER DE ANDROID-
+         KNOPPEN. Twee schermfoto's (#134, #135) bleken twee
+         vormen die de #71-ronde allebei niet raakte, en een
+         scan over alle vensters vond de derde. Gemeten met
+         een navigatiebalk van 48px: de PID-recorder hield
+         14px over onder zijn startknop, het expertvel 29px,
+         en de laatste kaart van het keuzescherm eindigde
+         24px boven de rand. Nu 62, 77 en 72px. De vier
+         volschermvensters uit de koopcheck stonden niet in
+         de bron maar waren wél ruim — vandaar dat dit
+         gemeten is en niet gelezen.
+
+       • 🕵️ EN DE PID-REGELS STONDEN NOOIT OP DE TIJDLIJN.
+         Het logboek las bij de diagnosering een veldnaam
+         die daar niet bestaat, dus élke TX/RX-regel kwam
+         zonder tijd binnen en zakte naar de bak onderaan —
+         precies de regels waarvoor je dat scherm opent. De
+         ring schrijft nu ook een epoch mee, zoals de andere
+         twee bronnen sinds #75.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-04d (CET) — DE VIN, HET GERICHTE
+                                ZOEKEN EN EEN HALVE
+                                WAARHEID MINDER
+
+       • 🔒 DE KAART DRUKTE DE VIN VIER KEER RAUW AF. De
+         tweede kaartrit (04-09, 13:43) vond vier stuur-
+         apparaten die 22F190 beantwoorden, en zette dat
+         nummer als hex in het testrunlogboek — dat geplakt
+         en gedeeld wordt. Precies het VIN-pad dat op 03-09
+         gesloten was. Nu gaat elke reeks bytes door één
+         poort: ziet die er een geldig voertuignummer in,
+         dan bewaart de kaart de staart plus het pseudoniem
+         in plaats van de bytes. Wat je niet vasthoudt, kun
+         je niet lekken.
+
+       • 🆔 EN DAT LEVERDE EEN NIEUWE CONTROLE OP. Alle vier
+         de VIN's waren gelijk; twee andere modules hadden er
+         een van louter nullen. Twee VERSCHILLENDE nummers in
+         één auto kan maar op één manier — één stuurapparaat
+         komt ergens anders vandaan, en bij een teruggezette
+         teller is een vervangen instrumentenpaneel de
+         gebruikelijke weg. De km-check vraagt 22F190 nu op
+         al zijn vijf adressen. Een blanco nummer is LET OP
+         en geen beschuldiging: veel modules krijgen er nooit
+         een.
+
+       • 📊 "WAARVAN 0 BEWEGEND" WAS GEEN NUL MAAR NIETS. De
+         tweede pas zit achter de stopvlag; de rit was met de
+         hand gestopt, dus die pas liep nooit — en tóch stond
+         die nul achttien keer in het verslag. Dezelfde soort
+         fout als "geen enkele identifier bestaat hier" van de
+         rit ervoor, één laag hoger. Er staat nu "tweede pas
+         niet gedraaid" en per datapunt "(niet herlezen)".
+
+       • 🎯 NIEUWE KNOP: GERICHT. De volledige trap kost op een
+         auto met achttien modules 1,9 uur. Deze knop toont de
+         adressen uit de vorige scan en laat je per stuur-
+         apparaat kiezen: OEM-blokken, genormeerd of alles. De
+         adreskaart wordt onder het VIN-PSEUDONIEM bewaard, dus
+         een andere auto krijgt zijn eigen kaart. De sweep over
+         256 adressen — 89 van de 171 seconden van de eerste
+         rit — vervalt dan.
+
+       • 🚫 F4A6 BESTAAT NIET. Het OBD-spiegelblok is volledig
+         afgelopen op 70E en 728 en tot F5C0 op 72E; de
+         odometer-spiegel is op alle drie geweigerd. Alleen
+         F40D en F467 antwoordden. Die draad is dicht — wat nog
+         openstaat is het OEM-blok 60xx op het instrumenten-
+         paneel.
+
+       • ✅ test-kaart.js 85 toetsen, test-kmcheck.js 59,
+         plmutate.sh 115 mutaties — alle 115 gevangen. Blok 5
+         toetst de VIN-poort in de draaiende app, want twee
+         losse modules die elkaars interne functie zoeken is
+         precies waar een hernoeming stil doorheen glipt.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-04c (CET) — DE KAART NA DE EERSTE RIT
+
+       • ✅ HIJ WERKTE. 04-09 om 11:49 op de CX-5: 171 s, 1260
+         commando's, ACHTTIEN stuurapparaten gevonden door
+         waarneming. De VIN uit 22F190 op adres 70E, plus
+         Mazda-onderdeelnummers (B61L-67XK6-B), serienummer en
+         hardwareversie. Op 7E8 vijftig mode 01-PIDs met ruwe
+         bytes. En 01A6 staat er NIET bij — de generieke
+         odometer bestaat op deze auto niet, precies zoals de
+         km-check voorspelde.
+
+       • 🚨 MAAR HET VERSLAG LOOG OVER ZEVENTIEN MODULES. De
+         scan liep per module de hele trap af en brak af bij
+         193 van de 2944 op de EERSTE. De andere zeventien
+         waren nooit aangeraakt — en van elk stond er "geen
+         enkele identifier bestaat hier". Afwezigheid als
+         bewijs, in de module die daar juist tegen is.
+
+       • 🔄 BREEDTE VÓÓR DIEPTE. De buitenste lus is nu de
+         TREDE, de binnenste de module. Dezelfde 171 seconden
+         leveren nu het identificatieblok van álle achttien.
+         Elke module houdt per trede bij of hij volledig,
+         afgebroken na n van m, of NIET BEREIKT is — en het
+         verslag zegt dat met zoveel woorden.
+
+       • 🔌 HET HERSTEL WERD NOOIT BEWEZEN. sendCmd() gooit
+         niet als de ELM-poort dicht staat na een socketdood;
+         hij geeft een lege string. De try/catch ving dus
+         niets en het verslag meldde een geslaagd herstel
+         terwijl geen van de vijf commando's was aangekomen.
+         Nu wordt elke bevestiging gecontroleerd.
+
+       • ⏱️ DE SCHATTING WAS EEN FACTOR VIER MIS. Vooraf wordt
+         met zes modules gerekend; deze auto heeft er achttien,
+         en 136 ms per commando in plaats van 85. "27 min"
+         had ~120 moeten zijn. De schatting wordt nu ná de
+         ontdekking opnieuw gemaakt, met het echte aantal en
+         de gemeten snelheid, vóórdat de trap begint.
+
+       • ⏳ 7F xx 78 IS GEEN WEIGERING maar "antwoord volgt
+         later" (gezien op 73F). Er wordt nu één keer opnieuw
+         gelezen.
+
+       • 📋 test-kaart.js staat op 67 toetsen, plmutate.sh op
+         108 mutaties — alle 108 gevangen.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-04b (CET) — DE DATAPUNTENKAART
+
+       • 🗺️ KNOP "KAART MAKEN" IN DE TESTRUN (blok 15). Neemt
+         de verbinding hélemaal over en levert een volledig
+         overzicht: elk stuurapparaat dat antwoordt, met per
+         stuurapparaat de diensten die leven, de mode 01-PIDs
+         die de ECU zélf declareert, de mode 22-identifiers die
+         bestaan, mode 21, en van elk datapunt de ruwe bytes.
+
+       • 🔍 NIETS WORDT GERADEN. De sweep 700-7FF (of 18DAxxF1
+         bij 29-bit CAN) vraagt elk adres en leest het
+         antwoordadres UIT DE HEADER — niet uit de aanname
+         zender+8. Een module die op 768 antwoordt terwijl je
+         720 vroeg, wordt zo gevonden; met de aanname was hij
+         onzichtbaar.
+
+       • ⚠️ WAAROM ELKE VORIGE SCAN MISLUKTE. Vier oorzaken,
+         geen ervan in de scan zelf. ATH0 stond in beide
+         init-reeksen, dus een antwoord was anoniem. Het
+         busslot brak de houder na drie minuten af. De
+         dode-socket-detectie zag zes lege antwoorden als een
+         kapotte verbinding — een sweep haalt er 250. En de
+         busstatistiek ging naar 100% fout, waarna de waakronde
+         gezonde sensoren als uitgevallen meldde. Alle vier
+         opgelost; zie §11 van PIDLANE.md.
+
+       • 🔒 ALLES IS LEZEND. Eén leespoort (magVerzenden) laat
+         alleen 01/02/03/06/07/09/0A/19/21/22/3E door. Sessie
+         wisselen, resetten, wissen, schrijven, routines,
+         beveiliging: er komt niets van doorheen, ook niet als
+         je het erin duwt.
+
+       • 📈 EN WAT BEWEEGT? Een tweede pas leest elke treffer
+         opnieuw. Wat verandert is een sensor, wat stilstaat is
+         configuratie — dat onderscheid is met geen enkele
+         lijst te raden en kost één ronde.
+
+       • ✅ test-kaart.js: 53 toetsen met een nagebouwde ELM327
+         en CAN-bus eronder (meerdere ECU's, headers aan/uit,
+         ontvangstfilter, ISO-TP-frames, 7F-antwoorden). Vond
+         bij de eerste run twee echte bugs: geen ISO-TP-
+         hersamenstelling en de bitmap-PID die zichzelf als
+         datapunt telde. Negen nieuwe mutaties in plmutate.sh.
+
+       • ⏱️ De volledige sweep over alle 65.536 identifiers
+         wordt vooraf als uren opgegeven, niet stilzwijgend
+         gestart. Begin met de getrapte.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-04 (CET) — DE KILOMETERSTAND-CHECK
+
+       • 🧭 DE APP ZEI DAT DIT NIET KON. Onder het km-veld van
+         de koopcheck stond "OBD2 geeft de echte tellerstand
+         niet vrij". Dat is de stand van 1996. 01 A6 is de
+         generieke totale afstand (SAE J1979-2), en mode 22
+         vraagt per stuurapparaat op zijn eigen CAN-adres:
+         7E0 motorblok, 720 instrumentenpaneel, 726 carrosserie,
+         760/7B0 ABS. Nieuwe knop in stap 2: "Tellerstand
+         narekenen bij de stuurapparaten".
+
+       • 🔍 HET GAAT NIET OM DE STAND MAAR OM HET VERSCHIL.
+         Terugdraaien gebeurt op het instrumentenpaneel; het
+         motorblok en de ABS tellen door. Staat de teller lager
+         dan een rekenende module, dan is dat het patroon — en
+         dat wordt met zoveel woorden gemeld, niet alleen als
+         getal.
+
+       • 📏 TWEE STAPPEN, NIET ÉÉN. Bij een OEM-identifier ligt
+         de schaal niet vast: dezelfde vier bytes zijn kilometers
+         óf tienden. Eerst valt af wat fysiek niet kan (1 –
+         1.600.000 km); blijven er twee over, dan wijst een anker
+         alleen de ORDE VAN GROOTTE aan — precies één kandidaat
+         binnen een factor 5. Lukt dat niet, dan telt de meting
+         niet mee en staat hij mét zijn ruwe bytes in het
+         verslag. Nooit een gok die eruitziet als een meting.
+
+       • 🤐 AFWEZIGHEID IS GEEN BEWIJS. Een stuurapparaat dat
+         niet antwoordt, kent die identifier niet — dat zegt
+         niets over de auto. Een stille bus levert "onbekend"
+         op en geen enkele verdenking. Twee identifiers op
+         hetzelfde adres bevestigen elkaar niet: de kruis-
+         vergelijking groepeert op CAN-adres.
+
+       • 🔌 DE ADAPTER GAAT ALTIJD TERUG. De check zet ATSH en
+         ATCRA om, en zet ze in een finally terug op 7DF. Blijft
+         7E0 staan, dan praat de hele app daarna alleen nog
+         tegen het motorblok — en dat merk je pas veel later.
+         Mislukt het terugzetten, dan staat dát in het verslag.
+
+       • ✅ test-kmcheck.js: 50 toetsen op de geladen module,
+         met een gestuurde nep-adapter eronder. Zeven nieuwe
+         mutaties in plmutate.sh maken ze rood. Blok 5 toetst
+         wat node niet kan zien: hangt de module in de pagina
+         en wijst de knop ergens op.
+
+       • ⚠️ ONGEMETEN: ATCRA is op geen enkele adapter
+         nagemeten, en de identifiers zijn Ford-nummers. Zie
+         CAMPAGNE stap F en §11 van PIDLANE.md.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — SALDO ZETTEN DOOR HET
+                               SALDO-SLOT
+
+       • 🔒 DE VIJFDE SALDOSCHRIJVER GING OM HET SLOT HEEN
+         (#93). Bij #82 zijn vier van de vijf plekken door
+         metSaldoSlot() gehaald en is "saldo zetten" er bewust
+         buiten gelaten, met een reden die goed leek: daar stuurt
+         de beheerder het eindbedrag, dus valt er niets te
+         rekenen. Dat klopt, en het is de verkeerde vraag.
+         Zetten rekent niet, maar het OVERSCHRIJFT: draait de
+         klant op dat moment een analyse, dan boekt die binnen
+         het slot af en schrijft terug, waarna dit patch er het
+         oude getal overheen zet. De afboeking verdwijnt en de
+         klant houdt tokens die hij verbruikt heeft — het
+         spiegelbeeld van #82. Nu loopt ook die vijfde erdoor.
+
+       • ⏱️ EEN SLOT BESCHERMT HET SCHRIJVEN, NIET HET BESLUIT.
+         De knop "Saldo zetten" vulde het veld voor met het saldo
+         uit de klantenlijst — mogelijk minuten oud — en rekende
+         daar in de bevestiging een verschil mee uit: "een
+         verschil van +50 tokens". Staat de klant intussen op 150
+         in plaats van 180, dan wordt het in werkelijkheid +80.
+         Je bevestigt dan precies het getal dat je aan het
+         afwegen bent, en het klopt niet. Dat verschil is nu een
+         voorwaarde: de pagina stuurt mee wat er stond, de Worker
+         telt dat binnen het slot na, en klopt het niet meer dan
+         wordt er NIETS geschreven.
+
+       • 🧑‍💼 DE BEHEERPAGINA ZEGT DAN WAT ER AAN DE HAND IS.
+         Nieuwe code saldo_verschoven: er is niets gewijzigd, het
+         saldo staat nu op zoveel, meestal draaide de klant net
+         een analyse — en wilde je optellen, gebruik dan
+         "Bijboeken", want die rekent zelf.
+
+       • 🔓 NAAM, STATUS EN OPMERKING GAAN BUITEN HET SLOT OM.
+         Een klant deblokkeren hoort niet te wachten op een
+         analyse, en een klant zonder e-mailadres moet
+         hernoembaar blijven — daar is geen naamruimte voor een
+         slot, en dat mag geen naamswijziging blokkeren.
+
+       • 🧪 test-bijboeken.js DEKT NU OOK ZETTEN. De kop van dat
+         bestand legde uit waarom juist dát niet getoetst werd;
+         die redenering is meeveranderd. Zeven nieuwe delen: de
+         volgorde rond het slot, de tegenproef met een verschoven
+         saldo, dat een kloppende voorwaarde gewoon doorgaat, en
+         dat een update zonder saldo het slot niet aanraakt.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — KLAAR VOOR DE PLAY STORE:
+                               HET SCHERM DAT DE REVIEWER ZIET
+
+       • ✅ DE FOUTPAGINA IS OP EEN TOESTEL BEWEZEN. 03-09
+         20:16, vliegtuigmodus aan, koud gestart op build #424:
+         het eigen scherm komt, met "Geen verbinding",
+         app.pidlane.nl erbij en een knop die herlaadt. Geen wit
+         vlak, geen net::ERR_. Daarmee is de laatste onbewezen
+         aanname van deze reeks weg.
+
+         De weg ernaartoe was leerzamer dan de uitkomst: de
+         eerste proef om 18:45 toonde wél de kale WebView-fout.
+         De verleiding was te concluderen dat errorPath niet
+         werkt; wat er werkelijk aan de hand was zat twee lagen
+         dieper. Een mislukte proef is een waarneming over de
+         hele keten, niet over het ding dat je toetste.
+
+       • 📦 DE BUILD KOMT NU BIJ DE TELEFOON. De APK ging naar
+         de artefacten van de workflow-run; /download/pidlane.apk
+         serveert uit R2; niets verbond die twee. Build #424
+         draaide om 14:37 door met de nieuwe foutpagina erin, en
+         om 18:45 stond op het toestel nog de oude schil — er was
+         geen weg waarlangs die APK daar kon komen. Nu publiceert
+         de build naar R2, alleen vanaf main, en hij leest het
+         object terug en vergelijkt de checksum. Zonder
+         Cloudflare-secret slaat hij over met een waarschuwing,
+         niet stilletjes.
+
+       • 🔎 EN DAARMEE IS errorPath NIET WEERLEGD. De bron van
+         Capacitor 8.5.0 is nagelezen: onReceivedError laadt de
+         foutpagina uit de APK zelf (hostname blijft localhost),
+         dus zonder netwerk. De proef mat een oude APK, niet een
+         kapotte opzet.
+
+       • 🖼️ EEN GEWIJZIGD ICOON START WEER EEN BUILD. De trigger
+         noemde icon-512.png in de wortel; het bestand staat in
+         public/. test-icoonpad.js koppelt de trigger aan de
+         zoeklijst van de icoonstap.
+
+       • 🔒 AUTOMERGE IS OPT-IN GEWORDEN. Nagemeten over 56
+         samengevoegde PR's: de mediaan van openen tot mergen was
+         29 SECONDEN, 43 ervan binnen 40 seconden. Er was dus geen
+         moment om in te grijpen — en elke merge is hier een
+         deploy naar 100% van het verkeer. Daarbovenop volgde er
+         14 keer binnen twee uur nóg een PR op dezelfde branch.
+         Vanaf nu: geen label `klaar`, geen merge. `handmatig`
+         blijft als hard veto en wint van `klaar`.
+
+       • ⏱️ EEN VERLOPEN GROENE VLAG TELT NIET MEER. Een PR-run
+         toetst je branch samengevoegd met main zoals main TOEN
+         was. Landt er daarna iets anders, dan zegt dat groene
+         vinkje niets meer over de combinatie die ontstaat — en
+         PR's landen hier 17 minuten na elkaar. De workflow
+         blokkeert nu op een opgeschoven basis en vraagt om
+         Update branch. Zelf bijwerken doet hij met opzet niet:
+         een push met GITHUB_TOKEN start geen testrun, dus dan
+         had je een branch met een ongetoetste head.
+
+       • 🧪 HET BESLUIT STAAT NIET MEER IN DE YAML. Als inline
+         script was het niet te toetsen, en een fout daar merk je
+         pas als er iets verkeerds live staat.
+         automerge-besluit.js is een gewone functie;
+         test-automerge.js voert hem uit met de echte gevallen
+         (#80 als eigen proef) en vier mutaties houden hem
+         scherp. De subtielste: de poort blijft dicht maar zégt
+         het niet meer — dan blijft een PR liggen zoals vóór
+         automerge.
+
+       • 🧊 DE BROWSERPROEVEN VIELEN OM OP HUN EIGEN KOUDE
+         START. main stond na de merge rood: de eerste van de
+         vijf proeven haalde de 30 s niet, terwijl de vier daarna
+         in dezelfde job elk in ~3 s startten. Geen kapotte
+         browser maar een koude runner. Grens naar 90 s, de
+         melding zegt nu hoelang er gewacht is en dat de
+         dbus-regels eronder normaal zijn, en een SIGKILL-vangnet
+         zodat een mislukte start niet als weesproces dóórdraait
+         tijdens de rest van de reeks.
+
+       • 📵 DE SCHIL HAD GEEN SCHERM ALS DE APP NIET LAADT.
+         De APK is een schil om app.pidlane.nl. Kwam die site
+         niet — vliegtuigmodus, parkeergarage, een gastnetwerk
+         dat eerst om een inlogpagina vraagt — dan nam de
+         Android-WebView het over met net::ERR_NAME_NOT_RESOLVED
+         op een wit vlak. Dat leest niet als "geen verbinding"
+         maar als een kapotte app. server.errorPath wijst nu naar
+         een eigen pagina: de host bij naam, drie dingen om te
+         proberen, en een knop die herlaadt. Hij haalt niets van
+         het net — een foutpagina met een lettertype van Google
+         laadt niet op het enige moment waarop hij nodig is.
+
+       • ▷ DE DEMOKNOP IS HEEL OF WEG, NIET HALF. De schakelaar
+         feat_demo dekte alleen de knop in het verbindscherm. De
+         knop op het loginscherm — waar de reviewnotitie letterlijk
+         naar wijst — bleef met feat_demo=false gewoon staan en
+         deed niets meer dan een toast tonen. Een zichtbare knop
+         die niets doet is erger dan geen knop. Beide zitten nu in
+         dezelfde schakelaar.
+
+       • 📋 NIEUW: PLAY-INZENDING.md. Alle tekst die de Play
+         Console als invulveld vraagt, kopieerklaar: naam,
+         beschrijvingen, reviewnotitie, Data safety veld voor
+         veld, contentclassificatie, releasenotities en het
+         screenshotplan. Eén plek — de reviewnotitie stond even in
+         twee bestanden, en dat is de vorm die PIDLANE-WERK.md en
+         §11 eerder de kop kostte. ANDROID-PLAYSTORE.md houdt de
+         redenering, dit document de tekst.
+
+       • 🧪 TWEE NIEUWE CONTROLES. test-foutpagina.js koppelt de
+         naam van de foutpagina in capacitor.config.json aan het
+         bestand dat de workflow werkelijk schrijft, en eist dat
+         die pagina zelfstandig is. test-playteksten.js meet elk
+         invulveld tegen de grens van de Console, controleert dat
+         de privacy- en verwijder-URL naar bestaande bestanden op
+         dezelfde host wijzen, en dat het document nergens BEWEERT
+         dat gegevens anoniem zijn — pseudonimisering is dat niet.
+         plmutate.sh staat op 71 mutaties, alle 71 gevangen.
+
+       • ⚠️ WAT DE GATE NIET KAN ZIEN. Of Capacitor die foutpagina
+         ook werkelijk laadt, is de werking van de schil en vraagt
+         een APK op een toestel zonder netwerk. Dat staat als stap
+         A in CAMPAGNE en is tot die proef een aanname.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — DE BUSPOORT: ÉÉN SLOT, ÉÉN
+                               PARSER, ÉÉN FETCH
+
+       • 🔒 #115: VIJF PLEKKEN CLAIMDEN HET BUSSLOT ZELF, elk
+         met een handgeschreven finally eromheen — de pollus, de
+         monitor, de waakronde, de uitgebreide probe en een
+         hersteltik in de testrun. Wie dat finally vergeet houdt
+         de bus vast tot het einde van de sessie, buiten élke
+         noodrem van PLBus om. withBusOfNiets() kan het niet
+         vergeten; PLBus.claim() staat nu alleen nog in
+         pidlane-data.js.
+
+       • 🧩 #116: ELF PLEKKEN ZOCHTEN ZELF NAAR EEN 41-KOP in
+         plaats van via splitBatchResponse() — de plek waar een
+         antwoord in stukken valt én de meetkwaliteit geteld
+         wordt. Elf, niet acht: de telling zelf liep een lijstje
+         bestandsnamen af waar de testrun en voertuigdata niet
+         in stonden.
+
+       • 🛣 EN ER ZAT EEN ECHTE FOUT ONDER. PID A6 (odometer)
+         ontbrak in PID_BYTE_LEN, dus viel de lengte terug op de
+         bodem van één byte. Zolang veldlab dat PID met de hand
+         uitpakte viel dat niet op — via de helper is die ene
+         tabelregel het verschil tussen 248.000 km en 24 km.
+
+       • 🌐 #117: ZESENTWINTIG LOSSE FETCH-AANROEPEN over elf
+         modules, die elk zelf beslisten over de basis-URL, de
+         kop X-App-Token, wat er bij een 401 gebeurt en of er
+         iets gelogd wordt. plFetch() (pidlane-plfetch.js) neemt
+         die vier. Gevolg: X-PidLane-Saldo wordt nu op élk
+         antwoord van de Worker gevolgd in plaats van alleen in
+         de AI-haak, en een verlopen sessie is nooit meer stil.
+
+       • 🧪 Testrun 7.2. Drie nieuwe proeven in blok 5, twee
+         nieuwe testbestanden (test-uitpakken.js, test-plfetch.js),
+         en plmutate.sh staat op 63 nagebouwde fouten — alle 63
+         gevangen. Blok 11 leest zijn modulelijst voortaan uit de
+         script-regels van index.html, zodat die telling niet
+         meer naast kan meten.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — ÉÉN KLOK VOOR WIE MEELEEST
+
+       • 🕐 #17: RECORDER EN LOGBOEK LIEPEN TWEE UUR UIT ELKAAR.
+         Het sessie-id werd met toISOString() gebouwd (UTC), de
+         app-log ernaast schrijft lokale tijd. Dezelfde seconde
+         stond in het log als 23:16:03 en in de bestandsnaam als
+         21-16-03 — twee bestanden van dezelfde rit die niet bij
+         elkaar leken te horen.
+
+       • 📍 DE FOUT ZAT IN HET ETIKET, NIET IN DE OPSLAG. De
+         blokken dragen epoch-milliseconden en dat was altijd al
+         goed. Wat scheefliep was de omrekening naar kloktijd:
+         één keer UTC, één keer lokaal. Die omrekening staat nu
+         op één plek — plStempelLokaal() en plDatumLokaal().
+
+       • 🅩 DE Z IS ERAF. Die letter betekent UTC, en dat was het
+         niet. Ook de datum van een exportbestand volgt nu de
+         lokale dag: met toISOString() kreeg een export om half
+         één 's nachts die van gisteren.
+
+       • 🌍 GETOETST MET EEN ECHTE TIJDZONE. Op een CI-runner in
+         UTC is deze fout onzichtbaar. test-tijdklok.js en
+         bproef-tijdklok.js zetten daarom zelf TZ=Europe/Amsterdam
+         — de browserproef vóórdat Chromium start, want die erft
+         hem mee — en meten twee uur verschil in plaats van erover
+         te redeneren.
+
+       • 🔬 BLOK 5 IS VAN MELDER TOETS GEWORDEN. Hij meldde alleen
+         dát er verschil was; hij vergelijkt nu het sessie-id met
+         het epoch-moment waarop de recorder begon.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — "ABS. MOTO" IS GEEN NAAM
+
+       • ✂️ #95: DE AFKORTER KAPTE HET VERKEERDE WEG.
+         hudShortLabel() zette het eerste woord op zes tekens en
+         het tweede op vier, dus van "Abs. motorbelasting" bleef
+         de bepaling heel en verdween de grootheid: "ABS. MOTO".
+         Naast "MOTORBELAST" van 0104 op dezelfde plaat.
+
+       • 📊 HET WAREN ER 45. Alle 146 PID-namen zijn in de
+         draaiende app door de functie gehaald: 45 eindigden
+         midden in een woord (TURBOD (RAU, WARMLO SIND,
+         RAILDR (REL). Nu nog één — "Referentiekoppel", één
+         samengesteld woord waar niets aan weg te laten valt.
+
+       • 📐 DE GRENS IS EEN PARAMETER EN GEMETEN. Elf tekens is de
+         HUD-hoekmeter: één regel. De tellerplaat heeft er twee en
+         gaf de helft van zijn ruimte weg. Bij zeven meters is een
+         kolom 54px; tot en met dertien tekens past elke naam in
+         twee regels, vanaf veertien niet meer. Dertien dus — en
+         de HUD blijft op elf, want die parameter is optioneel.
+
+       • 🧭 STAP 3 VERDEELT DE RUIMTE ANDERSOM. Het laatste woord
+         noemt de grootheid en krijgt de ruimte eerst. Blijft er
+         alleen de bepaling over, dan is de grootheid alleen het
+         antwoord: "MOTORBELAST" is een naam, "ABS." niet.
+
+       • 🔬 bproef-plaatnamen.js meet alle 146 namen in het echte
+         element, met tegenproef: bij één teken meer moet er wél
+         iets uitvallen. Blok 5 doet hetzelfde op het toestel —
+         daar telt de tekstgrootte van de gebruiker mee.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — DRIE VELLEN, NIET ÉÉN
+
+       • 📱 #71: DE DEMO-AUTOKIEZER VIEL ACHTER DE ANDROID-KNOPPEN.
+         Het kentekenveld en de Start-knop zaten half onder de drie
+         navigatieknoppen. Het vel wordt met inline styles gebouwd
+         en draagt geen .modal-klasse, dus liep het buiten de
+         veilige-zoneronde van #58 om.
+
+       • 🔎 HET WAREN ER DRIE. Niet gegrept maar gemeten, in de
+         draaiende app met de Android-insets aan: onder de laagste
+         knop bleef 14px over bij de demo-kiezer, 12px bij
+         Rijsituatie en 12px bij Voertuigoverzicht — tegenover een
+         navigatiebalk van 48px. Na de reparatie 62, 60 en 60px.
+
+       • 📐 EEN NIEUWE BROWSERPROEF METEN IN PLAATS VAN LEZEN.
+         bproef-schermranden.js opent elk onderste vel, scrolt naar
+         beneden en meet de laagste knop op. Met tegenproef: zet de
+         marge terug op een vast getal en de proef wordt rood.
+         test-schermranden.js sloot deze vellen bewust uit met een
+         reden die niet klopte; die is herzien, niet weggehaald.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — WIE WACHT, KRIJGT DE BEURT
+
+       • 🚦 #98: MET VIER AANVRAGERS KREEG DE SWEEP HET BUSSLOT NIET.
+         Gemeten in de rit van 02-09: acht seconden wachten zonder
+         resultaat, en daarna meten náást de pollus — 1250 ms per
+         PID in plaats van 200, en 73 s in plaats van 12. Alle 46
+         PIDs kwamen binnen, dus het viel niet op als storing maar
+         als traagheid.
+
+       • 🔍 DE OORZAAK WAS NIET EEN TE KORTE WACHTTIJD, zoals in het
+         issue stond. wait() kijkt elke 50 ms of het slot vrij is;
+         de pollus geeft het vrij en pakt het in dezelfde tel weer
+         terug. Het slot is dan een paar milliseconden vrij en de
+         wachter kijkt er net naast. Langer wachten maakt de kans
+         groter, nooit zeker.
+
+       • 🎟 PLBUS HOUDT NU EEN WACHTRIJ BIJ. Wie via wait()
+         binnenkomt staat erin; een losse claim() gaat niet meer
+         voor. Met dezelfde noodrem als bij de verweesde
+         _pollBusy: een wachter die zijn beurt na vijftien seconden
+         niet gepakt heeft wordt vergeten, zodat één module de bus
+         niet kan gijzelen.
+
+       • 📏 BLOK 3 MEET HET VOORTAAN ZELF. De Busslot-regel draagt
+         de wachttijd in milliseconden, de sweep-regel de duur en
+         het tempo per PID — en zegt erbij of er mét of ZONDER slot
+         gemeten is.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-03 (CET) — DE APP WEET DAT HIJ WEG WAS
+
+       • 📴 #18 IS OP 02-09 GEREPRODUCEERD: twee minuten weg uit de
+         app, en de meetlus stond 190 seconden stil. Van vermoeden
+         naar bevinding. Deze ronde doet er iets aan — niet alles.
+
+       • ⚠ DE BEVRIEZING ZELF BLIJFT. Android bevriest de timers van
+         een WebView; daar is vanuit JavaScript niets tegen te doen.
+         Dat is richting 1 uit het issue en dat is native werk.
+
+       • 🆕 PLACHTERGROND (pidlane-achtergrond.js) — richting 2. Elke
+         onderbreking wordt vastgelegd met duur, korte
+         vensterwissels onder drie seconden niet (anders staat de
+         lijst vol met de bestandskiezer). Vanaf tien seconden wordt
+         de SPP-socket nagekeken, met force UIT: de guard doet dan
+         eerst isConnected() en grijpt alleen in als de socket écht
+         dood is.
+
+       • 🔌 DAT SCHEELT DE ZESTIEN SECONDEN ROMMEL uit het log van
+         23-08. De app hervatte om 23:31:00 en meldde pas zestien
+         seconden later "socket dood na 012E1" — Android had de
+         socket allang opgeruimd, maar dat bleek pas toen de pollus
+         erin probeerde te schrijven.
+
+       • 🧩 ÉÉN EIGENAAR IN PLAATS VAN VIJF HALVE. Er stonden vijf
+         luisteraars op visibilitychange die elk voor zichzelf
+         beslissen wat "weg" betekent en geen van alle het gat
+         vastleggen. Ze doen hun eigen werk (flushen, pauzeren); het
+         oordeel staat nu op één plek.
+
+       • 🧪 test-achtergrond.js (30 toetsen) laadt de module in
+         plaats van hem na te bouwen, met tegenproeven aan beide
+         kanten. sppReconnectGuard staat in KRITIEK — de
+         bedradingscontrole gaf zelf FOUT toen de nieuwe module hem
+         achter een typeof-guard aanriep.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — VERBERGEN IS GEEN UITZETTEN
+
+       • 🙈 EEN DUBBELTIK VERBERGT DE TEGEL, HIJ ZET NIETS UIT.
+         Tot nu toe deed dat gebaar twee dingen tegelijk: de
+         sensor uit de selectie halen — dus stoppen met meten,
+         waarmee ook de historie, de rit-opname en de analyse hem
+         kwijtraakten — én de tegel van het scherm halen. Eén
+         handeling met twee betekenissen, en de dure helft was
+         onzichtbaar: je klikte een tegel weg omdat hij in de weg
+         stond en verloor er stilletjes een meting mee.
+         Nu raakt een dubbeltik alleen het scherm. De sensor
+         blijft geselecteerd, wordt gewoon gemeten en telt gewoon
+         mee in de analyse.
+
+       • 👁 EEN STROOK ONDERAAN MET WAT JE HEBT WEGGEKLIKT.
+         Korte namen, en de kop zegt er met zoveel woorden bij dat
+         er dóórgemeten wordt — zonder die zin is "verborgen" niet
+         van "uit" te onderscheiden. Dubbeltik op een naam haalt
+         de tegel terug: één gebaar, één betekenis, waar je hem
+         ook doet. "Alles tonen" voor wie er tien heeft weggeklikt.
+
+       • ✕ UITZETTEN KAN NOG STEEDS, MAAR HEET NU ZO.
+         Het kruisje naast een naam in die strook haalt de sensor
+         uit de selectie en stopt het meten. Dat is een eigen knop
+         met een eigen melding, in plaats van een tweede betekenis
+         achter hetzelfde gebaar.
+
+       • 🙈 ALLES VERBORGEN ZEGT NIET MEER "GEEN SENSOREN
+         GESELECTEERD". Dat zou de verkeerde oorzaak noemen en je
+         naar het verkeerde scherm sturen: ze zijn wél geselecteerd
+         en ze worden gemeten.
+
+       • ↩️ DE VERBORGEN STAND GELDT VOOR DEZE SESSIE.
+         Na een herstart staan alle tegels er weer. Bewaren per
+         auto is een grotere vraag (#94) — en een tegel die je een
+         maand geleden hebt weggeklikt en niet meer kent, is erger
+         dan een tegel te veel.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — DE MAAT VOLGT HET GEDRAG
+
+       • 📐 EEN TEGEL IS ZO GROOT ALS HIJ NÚ ZEGT (#61).
+         De slimme weergave deelde in op wat voor soort signaal
+         iets was, en dat bepaalde meteen de maat. Een brandstof-
+         peil dat een uur lang 68% aanwijst kreeg zo het grootste
+         cijfer van het scherm. De vorm blijft aan de soort hangen
+         (balk, meter, tegel); de maat komt nu uit het gedrag:
+         staat het oordeel op oranje of rood dan wordt de tegel
+         groot, ligt het signaal na 24 metingen stil dan zakt hij
+         naar één regel in het nieuwe vak "💤 Rustig".
+         De volgorde van die twee regels is het punt: een waarde
+         die vastligt MAAR op oranje staat is juist het gevaarlijk-
+         ste geval, en die mag niet wegzakken omdát hij stilligt.
+
+       • ↕️ OMHOOG MAG ALTIJD, OMLAAG ALLEEN BIJ DE HERWEGING.
+         Eén herweging per opbouw, dertig seconden na het tekenen.
+         Daarna staat de indeling stil, behalve dat een tegel die
+         uit Rustig omhoog moet dat meteen doet — een auto die
+         stilstond en gaat rijden heeft een snelheid die daar niet
+         thuishoort. Tegels die tijdens het rijden van vak wisselen
+         maken het scherm onleesbaar, en dat is erger dan een tegel
+         met het verkeerde formaat.
+
+       • 🎛️ DE TELLERPLAAT DRAAGT LEESBARE NAMEN (#68).
+         Vijf meters pasten niet naast elkaar; hun namen werden
+         afgekapt tot "MOTORTOE…" en "GASKLEP P…", en dan wijst de
+         plaat een signaal aan zonder te zeggen welk. De namen
+         komen nu van hudShortLabel() uit de HUD — afkorten op
+         betekenis, geen tweede lijst — met de garantie erbij die
+         de HUD niet nodig heeft: twee meters dragen nooit dezelfde
+         naam. "Gaspedaal positie D" en "... E" kwamen allebei uit
+         op "GASPED POS"; bij zo'n botsing valt de hele groep terug
+         op de volledige naam. Kolommen van 56px, twee regels voor
+         de naam, en de volledige naam in de tooltip.
+
+       • 🔤 EEN LANG WOORD LIEP BUITEN ZIJN TEGEL.
+         "ONTSTEKINGSTIMING" en "BRANDSTOFVERBRUIK" hebben geen
+         spatie om op af te breken en liepen daardoor over de rand
+         van hun eigen tegel heen.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — BIJBOEKEN DOOR HET SALDO-SLOT
+
+       • 🔒 DE VIERDE SALDOSCHRIJVER GING OM HET SLOT HEEN (#82).
+         metSaldoSlot() houdt gelijktijdige saldowijzigingen per
+         klant uit elkaar. Drie plekken liepen erdoorheen — de
+         AI-afboeking, de activatiecode en het proeftegoed — en
+         bijboeken vanuit de beheerpagina niet. Die las het saldo
+         met een eigen fetch en schreef het opgetelde bedrag
+         terug. Nu loopt hij door hetzelfde slot.
+
+       • ⚠️ DE WAARSCHUWING DIE ER STOND, WEES DE VERKEERDE KANT
+         OP. Ze ging over twee beheerders die op dezelfde seconde
+         bijboeken; die botsing bestaat niet. De botsing die wél
+         bestaat is beheerder × klant: je boekt 100 bij terwijl
+         de klant een analyse draait, en één van beide mutaties
+         verdwijnt geruisloos. Dat gebeurt juist wanneer het het
+         meest voorkomt — een klant belt dat zijn tegoed op is en
+         probeert het opnieuw terwijl jij bijboekt.
+
+       • 🧑‍💼 DE BEHEERPAGINA KRIJGT NU BRUIKBAAR ADVIES. Een
+         bezet slot betekent meestal dat de klant op dit moment
+         een analyse draait: er is niets geschreven en opnieuw
+         proberen is veilig. Dat staat er nu, in plaats van
+         "Onverwachte fout (409)".
+
+       • 🧪 test-bijboeken.js TOETST DE VOLGORDE, niet alleen dat
+         het slot wordt aangeroepen — dicht, lezen, schrijven,
+         open, met twee lezingen waarvan de tweede binnen het
+         slot. plmutate.sh staat op zesentwintig mutaties.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — BLOK 5 IS EEN LIJST
+
+       • 🧾 DE ZEVENTIEN PROEVEN VAN BLOK 5 STAAN NU ALS DATA.
+         Ze zaten in één functie van 585 regels waar elke
+         oplevering in geknipt werd, met bovenaan een banner die
+         opsomde wat erbij kwam en wat eruit ging — en die
+         opsomming stond ook in de campagnetekst. Twee lijsten
+         van hetzelfde, met de hand bijgehouden; precies de vorm
+         die PIDLANE-WERK.md en §11 eerder de kop kostte.
+
+       • 🔁 EEN OPLEVERING IS NU EEN ENTRY ERBIJ OF ERAF. De
+         loper eronder blijft ongemoeid, en de regel "BLOK 5 DEKT
+         DEZE RONDE" wordt uit de lijst afgeleid in plaats van
+         overgeschreven. De proefcode zelf is regel voor regel
+         dezelfde gebleven: nagemeten, zeventien blokken, geen
+         verschil.
+
+       • 🧪 test-blok5lijst.js BEWAAKT DE LIJST. Elke entry moet
+         een issue, een naam, een waarom en een proef hebben,
+         geen twee proeven dragen dezelfde naam, en de
+         campagnetekst moet elk issue uit de lijst noemen. Drie
+         mutaties in plmutate.sh maken die test rood — de
+         tegenproef staat daarmee op tweeëntwintig.
+
+       • Aan wat de app meet verandert deze bouw niets.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — DE RIT OOGST BEWIJS
+
+       • 🎯 VIJF ISSUES WACHTTEN OP EEN RIT, EN ER WAREN ER VIER
+         GEWEEST. Elke keer sneuvelde er één voorwaarde: de
+         caravan-tracker stond niet aan, er werd vier minuten
+         gereden van de tien, of de PID stond niet in de
+         pollronde. Dat bleek dan achteraf, verspreid over blok 4,
+         7 en 14 — nergens stond het oordeel zelf.
+
+       • 🚗 DE BEGELEIDE RIT GAAT VAN 10 NAAR 13 STAPPEN. De app
+         start nu zelf de caravan-tracker, de vierde aanvrager
+         waar #19 en #15 om vragen (dat stond er vier ritten lang
+         als tekst en gebeurde nooit). Nieuw: twee minuten
+         achtergrond met een markering ervoor (#18), en twee
+         oordeelstappen die alleen een mens kan geven — de slimme
+         weergave (#66) en de veilige zones (#79/#58).
+
+       • 📏 0155 EN 0156 IN DE MEET-PIDS (#40). PLPidLen leert
+         bytelengtes uit metingen, dus een PID die niet langskomt
+         levert niets. De vorige run meldde "0 afwijkend", en dat
+         las als opgelost terwijl het "niet gekeken" betekende.
+
+       • 🧾 BLOK 5 — DE RIT-OOGST, zes proeven. Eén per issue: #19,
+         #15, #40, #18, #17 en #29. Ze meten niets nieuws maar
+         lezen PLRit, PLBudget, PLBus, PLPidLen, PLBulk en de gate,
+         en spreken één oordeel uit: dicht, of precies wat er
+         ontbrak. Dat tweede is de helft die miste.
+
+       • ➖ DE #78-PROEF IS ERUIT. Beantwoord in de run van 13:14
+         (55 beoordeeld, 2 niet-ok, geen enkele met een
+         versheidsstempel). De logica staat met een mutatie achter
+         test-healthherziening.js — sterker dan een proef die
+         alleen draait als iemand een testrun doet.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — EERST OORDELEN, DAN STEMPELEN
+
+       • 🩺 DE GEZONDHEIDSCHECK STEMPELDE TE VROEG. initialHealthScan()
+         riep updPID() aan vóór assessPidQuality(). updPID zet
+         _pidLastUpd[pid] — de versheidsbron waar blok 5, blok 14 en
+         de stale-watchdog op draaien — dus een sensor die de scan
+         een regel later afkeurde droeg tóch het stempel "heeft in
+         deze sessie gemeten". De testrun van 02-09 12:05 meldde dat
+         als FOUT op 019D (Turbo temp inlaat B): een atmosferische
+         motor antwoordt daar met 0x00 = -40 °C, precies het
+         definitie-minimum waar de dummy-detectie 'nodata' van maakt.
+
+       • 🔁 GEEN HERZIENINGSFOUT MAAR EEN VOLGORDEFOUT. De proef in
+         blok 5 wees naar plHealthHerzien(), maar die kon het nooit
+         rechtzetten: hij legt dezelfde -40 opnieuw langs dezelfde
+         regel en krijgt hetzelfde antwoord. De scan oordeelt nu
+         eerst en stempelt daarna, en alleen bij 'ok'. Een
+         afgekeurde waarde blijft ook uit pidVals en pidHist.
+
+       • 🧪 DE SCAN HEEFT NU EEN TEST. test-healthherziening.js draait
+         initialHealthScan() in een sandbox met de echte defs, de
+         echte parser, laag 1 en het echte oordeel erachter — en
+         stelt eerst vast dat 019D wél tot -40 parseert en dat het
+         oordeel die -40 afkeurt, anders zou "de scan doet niets"
+         ook groen geven. plmutate.sh zet de oude volgorde terug en
+         verwacht die test rood: zeventien mutaties nu.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — DE TESTREEKS KRIJGT EEN TEGENPROEF
+
+       • 🧪 VIER NAGEBOUWDE FOUTEN KWAMEN DOOR DE GATE HEEN. Er zijn
+         vier plausibele fouten in de meetketen gezet — een off-by-one
+         in de header-echo van parsePID, de harde fysieke limiet
+         uitgezet, de NO DATA-poort van de waakronde open, en het
+         oordeel over onbekende sensoren omgedraaid — en alle 65
+         tests bleven groen, met "Alles goed — veilig om te
+         committen" eronder. Elke push naar main is deployen.
+
+       • 🔍 DRIE TESTS LAADDEN HUN ONDERWERP NIET. test-healthgate,
+         test-mode21 en test-waakronde schreven de te toetsen
+         functie in de test zelf over; zulke tests kunnen niet rood
+         worden. De kopie liep bovendien uit de pas: healthUitProfiel
+         had er in de test twee parameters en gaf een object terug,
+         terwijl de app er één heeft en true/false geeft. Alle drie
+         laden nu hun echte module.
+
+       • 🆕 TEST-PARSER.JS (52 toetsen) — de meetketen van ruwe
+         ELM-bytes tot meetwaarde, op de echte functies en de echte
+         tabellen. Formaat A en B, CAN-headers, de multiframe-regel
+         waar 0107 op wegviel, de Mazda-lengtes (55/56 zijn 1 byte
+         terwijl de tabel 2 zegt), en laag 1 en 1b apart.
+
+       • 🆕 TEST-TOKEN.JS (52 toetsen) — de sessietokens van de
+         worker, met de echte WebCrypto. Een geknoeide handtekening,
+         een payload waarin de rol naar admin is opgehoogd, een
+         verlopen token, een ander geheim, en auth() met het
+         admin-token en de legacy-schakelaar. Die hele kant had tot
+         nu toe geen enkele test.
+
+       • 🆕 TEST-BASELINE.JS (33 toetsen) — leren-van-normaal in
+         pidlane-pids.js, dat in kopie onder test-waakronde stond en
+         daar niet eens thuishoorde.
+
+       • 🔁 PLMUTATE.SH — de tegenproef onder plcheck.sh. Zestien
+         nagebouwde fouten, elk met de test die daarvan rood hoort
+         te worden. plcheck meldt hoeveel tests er gedraaid zijn;
+         dit meldt wat ze zouden merken.
+
+       • ⚠️ BEVINDING, NIET GEREPAREERD: laag 2 en 3 van de
+         meetketen staan uit. FILTERED_PIDS is gevuld met suffixen
+         ('05') terwijl pidlane-datalog.js regel 75 de volledige PID
+         toetst ('0105'), en dat is de vorm die parsePID doorgeeft.
+         Spike-filter en smoothing worden daardoor voor álle PIDs
+         overgeslagen. Blok 5 van testrun 6.3 meldt het als LET OP.
+         Zie PIDLANE.md §11 — aanzetten is een gedragswijziging in
+         de meetketen en verdient een eigen rit.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — HET VERSLAG KLOPT MET DE METING
+                               (#72, #75, #76, #77, #78)
+
+       • 🔬 EEN SENSOR DIE ÉÉN KEER TE TRAAG WAS, BLEEF EEN SESSIE
+         LANG UITGEGRIJSD (issue #78). _pidHealth werd op precies
+         twee momenten gevuld — de gezondheidscheck bij het
+         verbinden, of een bewaard voertuigprofiel — en daarna
+         schreef niets het oordeel ooit nog bij. Die scan doet één
+         uitvraag per PID met een timeout van 1500 ms; komt daar
+         niets uit, dan staat "nodata" er voor de rest van de rit.
+         En omdat het oordeel meegaat in het voertuigprofiel, werd
+         een toevallig misgelopen uitvraag een blijvend feit over
+         die auto.
+
+         Een geslaagde meting spreekt dat oordeel nu tegen: alleen
+         naar boven, alleen als de waarde dezelfde meetlat haalt
+         als de scan, en met een regel in het logboek. Stilletjes
+         beter worden is precies de vorm waarin #29 en #74 maanden
+         bleven staan.
+
+         DAARONDER LAG NOG EEN FOUT. Van de vier PIDs uit de run
+         van 01-09 waren er twee helemaal niet gemist: 0101
+         (motorlampje) en 0121 (afstand met MIL aan) werden actief
+         op "nodata" gezet door de dummy-detectie — een waarde
+         exact op het definitie-minimum heet daar "waarschijnlijk
+         niet aanwezig". Voor de MIL-familie is nul juist het
+         antwoord dat je hoopt te krijgen. Blok 14 van de testrun
+         wist dat allang; de gezondheidscheck wist het
+         tegenovergestelde. Nu één lijst (PID_NUL_NORMAAL) die ze
+         allebei lezen.
+
+       • 📊 BLOK 7 HIELD EEN KOPIE BIJ VAN EEN REGEL DIE VERANDERD
+         WAS (issue #76). "Welke tak zou PLLoad gekozen hebben?"
+         rekende met `bezet >= bezetOp || fout >= foutOp` — precies
+         de OF die op 23-08 uit PLLoad is gehaald omdat bezetting
+         alléén geen tegendruk is. De spiegel verhuisde niet mee.
+
+         Gevolg in de run van 01-09: "Tijd per zone: druk 87%"
+         naast "Tempoverloop: 100% → 100%" en "geen enkele stap
+         omlaag". Die drie zijn alleen te rijmen als de
+         zoneverdeling iets anders meet dan de regeling doet — en
+         met de echte regel was druk 0%. Het rapport las als een
+         defecte regelkring die er niet was. PLLoad.zoneVan() is nu
+         de enige plek waar die beslissing valt; blok 7 leent hem.
+
+         En de Slotsom van datzelfde blok kende twee uitkomsten
+         waar er drie zijn: "nooit geremd" telde als "0 ongevraagd
+         geremd" en zou #15 dus sluiten op een meting die niet
+         heeft plaatsgevonden.
+
+       • 🔌 ELKE SESSIE MELDDE EEN HERVERBINDING DIE ER GEEN WAS
+         (issue #77). PLRit start bij het laden van de app, dus de
+         tikken vóór het verbinden zetten de vlag op false — en de
+         eerste, volstrekt normale verbinding telde daarna mee. Met
+         0 gaten ernaast stuurt de regel eronder je dan naar de bus
+         of de adapter: een gratis vals spoor in de meting die #18
+         moet beantwoorden.
+
+       • 🕑 "MELDINGEN SINDS HET BEGIN VAN DEZE RUN" TELDE DE HELE
+         RINGBUFFER (issue #75). In de run van 01-09 meldde die
+         regel 33 app-logregels; de laatste daarvan was van
+         22:29:21 en de run begon om 22:32:02. Er was niets bij
+         gekomen.
+
+         Dat viel niet te repareren zonder #72: beide logs droegen
+         alleen een kloktijdstring ("22:33:41"), en die is niet met
+         een starttijd te vergelijken zonder een omrekening die om
+         middernacht stukgaat. log() en btDiag() zetten er nu een
+         epoch-tijdstempel bij.
+
+       • 📜 DE APP-LOG KAPTE STIL AF OP 500 REGELS (issue #72). Wie
+         het logboek opensloeg na een rit van een half uur zag een
+         lijst die er compleet uitzag en dat niet was — en wat er
+         als eerste uit rolde was juist het oudste: de opstart, de
+         protocolkeuze, de eerste opruimacties. De BT-log doet dit
+         al goed. Nu de app-log ook: kop, staart, en een zichtbare
+         regel ertussen die zegt hoeveel er weg is. Cap van 500
+         naar 1200, want dit is de rustigste van de twee logs.
+
+       • ✅ TESTS. test-zonespiegel.js, test-meldingenteller.js en
+         test-healthherziening.js zijn nieuw; test-rit.js en
+         test-applog.js zijn uitgebreid. Alle vijf met tegenproef.
+         Testrun 6.2 meet in blok 5 wat er in deze oplevering
+         veranderd is — acht proeven, allemaal gratis.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-02 (CET) — DE TOKENKETEN: DE TELLER VOLGT
+                               DE SERVER, DE CHIP VOLGT DE ROL
+
+       • 🎟️ EEN ACTIVATIECODE KON VERBRANDEN. /credits/redeem
+         stempelde de code eerst af als gebruikt en keek pás
+         daarna of er een ingelogde klant was om hem op bij te
+         schrijven. Was die er niet, dan kwam er ok:true met
+         saldo:null terug: code verbruikt, tegoed nergens, en de
+         klant die er €4,99 voor betaalde staat met lege handen.
+
+         De app haakte daar sinds 29-08 zelf al op af, maar een
+         controle in de app is een verzoek en geen grens — een
+         oudere versie, een herhaald verzoek of een curl kwam er
+         gewoon langs. De sessiecontrole staat nu vóór de eerste
+         schrijfactie. GebruiktDoor komt bovendien uit die sessie
+         in plaats van uit de body, waar de aanvrager zelf kon
+         invullen op wiens naam de code kwam.
+
+       • ⚡ DE TELLER LIEP OP DE SCHATTING. De Worker boekt af op
+         het echte verbruik en stuurt het saldo terug in de header
+         X-PidLane-Saldo. Die header staat in
+         Access-Control-Expose-Headers en §8 van PIDLANE.md
+         beschreef sinds juli dat apiFetch hem uitleest. Er las
+         niemand: nergens in public/ stond die naam.
+
+         Het verschil is niet cosmetisch. Mislukte de PATCH op
+         Airtable, dan ging er niets van het saldo af terwijl de
+         app wel aftrok — de klant zag tokens verdwijnen die hij
+         nog had. PLCredits.volgServer() leest de header nu uit,
+         en bij een 402 het saldo uit de body.
+
+       • 🔋 DE TOKENCHIP VOLGT DE ROL, NIET HET LAADMOMENT
+         (issue #52). De chip werd getekend bij het laden van de
+         pagina — dus vóór de login — en daarna keek er niets meer
+         naar. Een beheerder hield zo "⚡ tokens onbekend" in de
+         linkeronderhoek staan. PLCredits.chip() bestond al als
+         publieke ingang en werd door niemand aangeroepen;
+         finishLogin() en logout() doen dat nu.
+
+         Daarbij kwam een toestand aan het licht die niet in het
+         issue stond: NIEMAND ingelogd viel door alle takken van
+         _vrijgesteld() heen en gold als "betaalt". Er stond dus
+         ook een chip op het loginscherm. De regel is nu één zin:
+         alleen een ingelogde klant betaalt met tokens, en alleen
+         die ziet de chip.
+
+       • 💶 EERSTE FASE BLIJFT HANDMATIG (issue #42). Er komt geen
+         koopknop in de app: tokens verkopen ín de app is precies
+         wat Google's betaalregels raakt, en die vraag is niet
+         beantwoord. Zolang tikkie_kopen leeg staat in de
+         Config-tabel loopt het aanvragen per mail en verstuurt de
+         beheerder de code met de hand.
+
+         Die mail draagt nu het account waar de tokens op moeten,
+         plus het pakket en de prijs. Zonder dat begint elke
+         aanvraag met "en wie ben jij?" en duurt hij een dag
+         langer.
+
+       • 🔎 EN EEN KASBOEK DAT NIET BESTAAT (issue #83). §8
+         beschreef een TokenLog-tabel met negen velden, vier
+         bronnen en een functie tegoedLog() die nooit in worker.js
+         heeft gestaan. Twee keer op één pagina stond er een
+         correcte beschrijving van iets dat niet gebouwd was, en
+         beide keren was dat genoeg om het te laten liggen. §8
+         zegt nu wat er wél staat.
+
+       • ✅ TESTS. test-tokenchip.js (19 toetsen),
+         test-saldokop.js (16) en test-codeverzilver.js (21) zijn
+         nieuw, alle drie met tegenproef: bouw de oude fout terug
+         en er worden er 4, 4 en 1 rood. test-proeftegoed.js logt
+         nu in als klant — een tegoed zonder account bestaat niet
+         meer. Testrun 6.1 meet in blok 5 wat hier veranderd is.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-01 (CET) — DE RITWAARNEMER MEET WEER,
+                               EN DE RIT WORDT BEGELEID
+
+       • 📏 DE RITWAARNEMER TELDE GEHEUGEN IN PLAATS VAN METINGEN
+         (issue #74). PLRit telde elke sleutel in pidVals als monster,
+         en pidVals bewaart de laatst bekende waarde tot de verbinding
+         verbroken wordt. Een sensor die één keer gelezen was — door de
+         gezondheidscheck, een eerdere sweep of blok 6 — leverde daarna
+         eeuwig "monsters met nul veranderingen" op, en blok 14 las dat
+         als "bevroren tijdens het rijden".
+
+         HOE JE HET ZAG. In de run van 01-09 melden alle PIDs precies 56
+         monsters: 010B met 390 busreads net zo goed als 0123 en 0159
+         met nul. Identieke tellingen bij totaal verschillende
+         busactiviteit — dat getal was het aantal tikken, niet het aantal
+         metingen. De conclusie eronder, "dit is een parser- of
+         definitiefout", ging over sensoren die niemand had uitgevraagd.
+
+         DIT HAALT DE SLUITING VAN #19 ONDERUIT. Dat issue ging op 27-08
+         dicht op "0123: 1 wijzigingen, 10130-15040 (108 monsters) — in
+         beweging". Eén wijziging met 4910 kPa spreiding over 108
+         monsters is geen bewegende sensor maar een PID die tweemaal is
+         gelezen. #19 staat weer open.
+
+         DE BRON BESTOND AL. updPID() zet _pidLastUpd[pid] bij elke
+         geparste waarde. Verschuift dat stempel niet tussen twee tikken,
+         dan is er niets gemeten. Ontbreekt de bron helemaal, dan meet
+         PLRit NIETS en zegt blok 14 dat — geen stille terugval, want zo
+         bleef deze fout vier ritten onzichtbaar.
+
+         BLOK 14 SCHEIDT NU VIJF GROEPEN waar er twee waren: bewogen,
+         gemeten maar stil, hoort stil te staan, te weinig gemeten, en
+         niet gemeten. Alleen de tweede is de populatie voor de
+         opruimregel. De steunbitmaskers 0100/0120/0140/0160 en 0102
+         staan nu bij "hoort stil te staan": "0120 vast op 160" was de
+         eerste byte van een bitmasker en betekende niets.
+
+       • 🧭 DE BEGELEIDE RIT — tien stappen in plaats van negen regels
+         tekst om te onthouden. De rit van 01-09 verloor drie vragen
+         tegelijk, geen van drieën door een bug: vijf minuten gereden
+         waar er tien nodig waren, niet genulsteld, en 0123/0159 buiten
+         de pollronde terwijl de hoofdvraag over die twee ging. Het
+         verslag meldde dat pas achteraf, als "staat hij in de actieve
+         selectie?" en "niet uitgevoerd deze run".
+
+         Een voorwaarde die je achteraf meldt is een verwijt; dezelfde
+         voorwaarde vooraf is een knop. Elke stap zegt wat hij is, waarom
+         hij moet, wat de app zojuist zelf deed en wat jij doet — en je
+         bevestigt hem. Overslaan mag, met de reden erbij, en die reden
+         komt in het verslag. Stap 2 zet de meet-PIDs in de selectie,
+         stap 3 zet alle aanvragers aan zodat de bus vol staat, stap 4 is
+         de nulmeting, stap 5 toont tijdens het rijden hoeveel PIDs er
+         ECHT ververst worden.
+
+         PAUZE EN AFRONDEN STAAN BIJ ELKE STAP. Moet je stoppen, dan krijg
+         je een half verslag met de gehaalde stappen, de markeringen en
+         een regel NIET MEER AAN TOEGEKOMEN. Beter dan een verloren rit.
+
+       • 📍 MARKEREN. Eén knop, vier bestemmingen: de app-log, de BT-log,
+         de bulk-recorder en het verslag — met kloktijd, opmerking,
+         snelheid en toerental. Zonder markering is een piek om 22:31:14
+         een getal zonder betekenis.
+
+       • 🧪 test-begeleid.js is nieuw (14 toetsen met tegenproeven) en
+         test-rit.js modelleert de versheidsstempels nu met een Proxy op
+         pidVals, precies zoals updPID ze zet — de oude test slaagde omdat
+         hij de bug modelleerde. Bouw je #74 terug in PLRit, dan worden
+         zeven toetsen rood.
+
+       • ⚠ NIET OPGELOST, en dat staat zo in de campagne: #75 (de
+         meldingenteller telt de hele ringbuffer), #76 (blok 7 rekent met
+         de PLLoad-regel van vóór 23-08), #77 (de eerste verbinding telt
+         als herverbinding) en #78 (een health-oordeel wordt nooit
+         herzien). Elk een eigen commit.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-01 (CET) — BLOK 14 LEEST BIJ DE BRON
+
+       • 🧭 DE OPRUIMMELDING VAN BLOK 14 KLOPT WEER (issue #29). Elke
+         testrun vroeg "is er iets opgeruimd?" en zocht het antwoord door
+         in het log te grepen op het woord "opgeruimd". Op 27-08 meldde
+         hij "niets opgeruimd in 9 min — controleer of hij aanstaat",
+         terwijl het log van diezelfde rit twee opruimacties bevatte. De
+         regel stond aan en had gevuurd; het advies stuurde je naar
+         precies het onderzoek dat je niet moest doen.
+
+         DE OORZAAK IS DE BRON, NIET DE ZOEKACTIE. Allebei de logs zijn
+         ringbuffers: pidlane-auth.js kapt localLog af op 500 regels,
+         pidlane-btflow.js kapt _btLog af op 1400. Een rit van een half
+         uur wist daarmee zijn eigen bewijs — en wat als eerste sneuvelt
+         is het OUDSTE, dus juist de opruimactie van vroeg in de rit.
+         Blok 14 leest nu pidOpgeruimdLijst() uit de gate zelf: een Set
+         die de hele sessie blijft staan, met per PID de reden erbij. Het
+         log levert nog de tijdstippen en beslist verder niets.
+
+         VIER STANDEN, EN GEEN ENKELE STUURT NOG NAAR HET VERKEERDE
+         ONDERZOEK. Gate gevuld = een telling met reden. Gate leeg = ok,
+         mét de bron erbij: geen enkele sensor bleef lang genoeg stil, en
+         dat is een uitkomst en geen storing. Gate leeg terwijl het log er
+         wél een noemt = FOUT, want dan spreken twee plekken die hetzelfde
+         horen te weten elkaar tegen. Geen bron = geen conclusie.
+
+       • 🧪 test-opruimmelding.js is nieuw: 27 toetsen op de melding, met
+         de oude log-lezende versie nagebouwd als tegenproef. Bouw je de
+         fout terug in de echte functie, dan worden er 13 rood.
+
+       • 📋 Testrun 5.9: blok 5 meet de weg naar de gate in de draaiende
+         app — wat een node-test niet kan zien, en precies het gat waar
+         #29 aan leed — en controleert dat de zin "controleer of hij
+         aanstaat" in geen enkele stand meer terugkomt. CAMPAGNE vraagt om
+         de vergelijking die alleen een lange rit kan geven: noemt blok 14
+         sensoren die in het logboek niet meer terug te vinden zijn?
+
+       • ⚠️ NIET OPGELOST, MET OPZET: localLog kapt nog steeds STIL af.
+         shift() laat niets achter dat zegt dat er iets weg is; de BT-log
+         doet dat wél. Blok 14 heeft er geen last meer van, het logboek dat
+         je zelf openslaat nog wel. Staat in §11 van PIDLANE.md.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-01 (CET) — SLIM IS DE STANDAARD
+
+       • 🧠 DE SLIMME WEERGAVE IS DE STARTWEERGAVE. Hij stond sinds
+         vanmiddag achter een knop die je elke keer opnieuw moest
+         indrukken. Onderweg naar deze wijziging kwam een oudere fout boven:
+         setPidView() schreef de gekozen weergave netjes weg in pl_pidview,
+         en NIEMAND las die sleutel ooit terug — de regel in
+         pidlane-theme.js zei het er letterlijk bij ("genegeerde voorkeur").
+         Een instelling die je kiest, die wordt opgeslagen en die de app bij
+         de volgende start weggooit is geen instelling maar een knop die
+         doet alsof. Er waren bovendien drie plekken die iets over de
+         startweergave zeiden, en ze zeiden het alle drie anders:
+         pidViewMode ("dots"), de active-klasse in index.html ("full") en de
+         aanroep in theme.js ("dots"). Nu is er één bron
+         (PID_VIEW_STANDAARD) en één plek die hem toepast
+         (plPidViewHerstel).
+
+       • 🎛️ NIEUW VAK: DE TELLERPLAAT (issue #68). Toerental, gaspedaal,
+         gasklep en motorbelasting staan niet langer los tussen de rest maar
+         naast elkaar als staande meters in één paneel — met een oranje
+         streepje op de waarschuwingsgrens waar die bekend is, en een grijze
+         sleepwijzer op de hoogste waarde van de laatste 60 metingen.
+         DE MEETLAT IS BEWUST ANDERS DAN DIE VAN DE TEMPERATUURBALK: de
+         meter toont de stand binnen het eigen bereik (0-8000 rpm), de balk
+         de marge tot de eigen grens. Een gaspedaal hééft geen gevarengrens
+         — vol gas is geen storing — dus "hoe dicht bij de grens" is daar
+         een vraag zonder antwoord. Liggend en staand zijn daarom twee
+         vormen met twee betekenissen, en niet twee keer hetzelfde plaatje.
+         De EGR-klep en de EVAP-spoelklep blijven er bewust af: ook kleppen
+         in procenten, maar emissieregeling en geen bestuurdersinvoer.
+
+       • 🚪 HET SENSORKEUZESCHERM LAAT DE WEERGAVE MET RUST. toggleLade()
+         zette hem op "dots" zodra de lade openging — een stille
+         overschrijving van een keuze die de gebruiker zelf had gemaakt. Met
+         Slim als standaard zou dat elke sessie raak zijn geweest, want
+         sensoren kiezen is het eerste wat je doet; je had de nieuwe
+         standaard dan nooit gezien.
+
+       • 🌡️ EEN TEMPERATUURBALK ZONDER GRENS ZEGT DAT ZELF (deel van issue
+         #66). Zonder bekende waarschuwings- of gevarengrens valt de schaal
+         terug op het PID-maximum, en dan staat de balk laag omdat de grens
+         onbekend is — niet omdat het koud is. Die balken zijn nu gearceerd,
+         met uitleg in de tooltip. De schaal zelf is niet veranderd: welke
+         getallen kloppen, blijft een vraag voor een rit. Blok 5 van de
+         testrun schrijft nu wél op wélke sensoren van déze auto het
+         betreft, en dat was tot nu toe alleen te raden.
+
+       • 🔬 TESTRUN 5.8. Blok 5 en CAMPAGNE herschreven voor deze ronde; de
+         controles van #59 t/m #62 zijn eruit (afgerond en groen in hun
+         eigen test-bestanden). De #58-proef blijft staan, niet uit
+         gewoonte maar omdat issue #65 er nog op wacht en die meting alleen
+         op een toestel iets zegt. test-slimmeweergave.js ging van 6 naar 10
+         controles met 7 tegenproeven, waaronder de standaardweergave en de
+         teruggelezen voorkeur. 57 tests, allemaal groen.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-01 (CET) — VIJF MELDINGEN UIT HET GEBRUIK
+
+       • 📐 DE ONDERKANT VAN HET SCHERM VALT NIET MEER WEG achter de drie
+         Android-knoppen (issue #58). Oorzaak was niet één te lang venster
+         maar één verouderd getal: .app rekende met calc(100vh - 46px), en
+         46 was de hoogte van de topbalk in de tijd dat die balk ook echt
+         46px hoog was. Sinds edge-to-edge is hij 46px PLUS de statusbalk,
+         en dat verschil viel er onderaan uit — samen met de navigatiebalk,
+         die nergens werd meegeteld. Datzelfde getal stond op negen plekken.
+         Er is nu één token: --pl-top. Onderin tellen .app, body, #fabLane,
+         .ov, .modal, de bottom-sheets en de volschermlade --pl-sab mee.
+         test-schermranden.js wijst voortaan elk kaal calc(100vh - 46px) af.
+
+       • 🔌 HET PROTOCOLSCHERM PAST WEER OP EEN TELEFOON (issue #59). Er
+         staat nog één kaart in beeld — het herkende protocol — met eronder
+         "Handmatig kiezen (n protocollen)". De keuze zelf is niet ingeperkt:
+         PROTOCOLS is ongewijzigd en er valt nog steeds evenveel te kiezen,
+         alleen niet meer allemaal tegelijk. Herkent de adapter niets, dan
+         staat de lijst meteen open; anders kijk je naar een leeg scherm.
+
+       • 🔗 HOOGSTENS TWEE AUTOMATISCHE BEVINDINGEN IN BEELD (issue #60),
+         ernstigste eerst, de rest achter "bekijk alles". Aan/uit staat in
+         het ☰-menu en wordt onthouden. De bron van het vollopen zat NIET in
+         de vijf correlatieregels maar in "leren-van-normaal": dat levert
+         één bevinding per actief PID dat van zijn eigen historie afwijkt,
+         dus met veertig sensoren veertig regels — en demodata wijkt per
+         definitie overal af. De schakelaar is een schermkeuze: de AI krijgt
+         via correlationLines() nog steeds alles, en dat staat ook in het
+         venster zelf.
+
+       • 🧠 NIEUWE WEERGAVE "SLIM" IN DE LIVE VIEW (issue #61). Bovenaan de
+         dashboardwaardes groot (snelheid, brandstofpeil, verbruik, accu),
+         daaronder alle temperaturen als één balkdiagram, onderaan de rest
+         met een trendlijn — maar alleen waar het signaal ook echt beweegt;
+         een rechte streep kost een halve tegel en zegt niets. Toerental,
+         pedaalstand en motorbelasting staan BEWUST niet in het dashboard:
+         die variëren te veel om als tellerstand te lezen.
+         De balken staan voor de marge tot de EIGEN grens en niet voor het
+         aantal graden. Anders is het diagram onleesbaar: koelwater op 90 °C
+         naast uitlaatgas op 600 °C zou een streepje naast een volle balk
+         zijn, terwijl het eerste alarmerend is en het tweede normaal.
+
+       • 🧭 VÓÓR DE ANALYSE ÉÉN VENSTER MET VRAGEN (issue #62), in plaats
+         van alleen de vraag of eerdere rapporten hergebruikt mogen worden.
+         Drie korte vragen plus een tekstveld: heeft deze auto start/stop en
+         stond dat aan, deed de klacht zich tijdens deze meting voor, en liep
+         de meting door zonder gaten. Die laatste is voorgevuld met wat de app
+         zelf uit de reeksen kan afleiden — maar het blijft een voorstel,
+         want alleen de gebruiker weet of de adapter tussendoor los heeft
+         gezeten. "Weet ik niet" levert bewust géén promptregel op.
+         Start/stop is de belangrijkste: een motor die bij stilstand uit gaat
+         ziet er in de data uit als afslaan, en zonder die vraag kan de AI dat
+         verschil niet maken.
+
+       • 🔬 TESTRUN 5.7. Blok 5 en CAMPAGNE herschreven voor deze vijf. De
+         #58-proef meet echte afstanden op het toestel (statusbalk,
+         navigatiebalk, waar de topbalk eindigt, waar het werkscherm ophoudt)
+         — in een browser zijn beide zones 0 en zegt die proef weinig.
+         Nieuw: test-bevindingen.js, test-slimmeweergave.js,
+         test-meetcontext.js; test-schermranden.js en test-protocolkeuze.js
+         kregen er een blok bij. 57 tests, allemaal met tegenproef.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-09-01 (CET) — TWEE LUISTERAARS OP ÉÉN KNOP
+
+       • ⬅️ DE TERUGKNOP SCHAKELT DE APP NIET MEER WEG. De klacht bleef
+         staan na twee reparaties, en beide keren om dezelfde reden: er
+         hingen TWEE luisteraars aan 'backButton'. Eén in
+         pidlane-archief.js (appBack) en één in pidlane-theme.js
+         (closeTopOverlay). Capacitor roept elke luisteraar aan — de een
+         onderdrukt de ander niet. De tweede deed minimizeApp() zodra zijn
+         eigen, kortere lijst niets herkende, en op het welkomstscherm
+         herkende die lijst per definitie niets. Eén tik zette de app dus
+         op de achtergrond, dwars door de melding "tik nogmaals om af te
+         sluiten" van de eerste heen.
+         Beide eerdere reparaties zaten in archief.js. Daar was ook niets
+         mis — de fout stond ernaast, in het bestand dat niemand erbij pakte.
+
+       • 🧩 ÉÉN KETTING. closeTopOverlay() is weg, luisteraar en al. De
+         takken die alleen daar stonden (needsUpdateModal, .pick-overlay,
+         neonDash, climateDash, kebabMenu, connOv) zitten nu in appBack(),
+         op hun plek in de volgorde meest-modaal → minst-modaal. connOv
+         houdt zijn voorwaarde: alleen dicht als er verbinding is of demo
+         draait, anders kijk je naar een leeg scherm zonder weg terug.
+
+       • 🚫 exitApp() IS ERUIT. De terugknop sluit de app niet meer af en
+         minimaliseert hem ook niet. Op de root komt er een korte melding,
+         hooguit eens per twee seconden, zodat de knop niet stuk lijkt.
+         Verlaten gaat met de home-knop of het takenoverzicht — een bewuste
+         handeling, geen tik die er net naast zat.
+
+       • 👁️ _plZichtbaar(): één zichtbaarheidstoets voor de hele ketting,
+         inclusief de .hidden-class. Die kwam uit closeTopOverlay en stond
+         niet in appBack: een venster dat met .hidden dicht staat gold daar
+         als open, dus "sloot" back iets wat allang dicht was en deed de
+         knop in de ogen van de gebruiker niets.
+
+       • 🧪 test-terugknop.js (25 toetsen) draait de échte ketting uit
+         archief.js in een nagebouwde DOM, plus een bronregel-toets die de
+         luisteraars telt. Dat tweede met reden: vanuit JS is een tweede
+         luisteraar niet waarneembaar — Capacitor houdt die lijst native
+         bij. Precies dat maakte de bug twee ronden lang onvindbaar.
+         Drie tegenproeven maken de test rood: de oude theme-handler, de
+         oude exitApp-tik, en een tweede luisteraar.
+
+       • 🔍 WAT HET NIET WAS, nagemeten en niet aangenomen: de www-map (een
+         stub; de app laadt live via server.url), de Capacitor-versie, of
+         het thema. De native AppPlugin sluit de app uit zichzelf nooit af,
+         en de bridge-JS wordt ook bij een remote server.url geïnjecteerd —
+         window.Capacitor.Plugins.App bestaat dus gewoon in de APK.
+
+       • Testrun 5.6: blok 5 meet de terugknop met een verklikker op
+         exitApp/minimizeApp, zodat de proef de app niet echt kan
+         wegschakelen.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-08-29b (CET) — DE BELOFTE ZONDER KNOP
+
+       • 🗑️ ACCOUNT VERWIJDEREN BESTAAT NU ECHT (#41). privacy.html zei
+         letterlijk "Gegevens bij je account verwijder je via Mijn account",
+         en pidlane-privacy.js herhaalde dat in het disclosurescherm. Die knop
+         bestond niet en er was geen verwijderroute in de Worker. Een
+         verklaring over persoonsgegevens die de app niet kon waarmaken — de
+         derde van dezelfde soort op één dag, na #31 en #49.
+         Google eist het bovendien voor elke app waarin je een account kunt
+         aanmaken: een verwijderoptie ín de app én een publieke URL voor het
+         Play Console-veld "Data deletion". Er was geen van beide.
+
+       • ⏳ MARKEREN, NIET METEEN WISSEN. POST /klant/verwijder zet Status op
+         "verwijderd" en het moment in het nieuwe veld VerwijderdOp; het record
+         gaat 30 dagen later definitief weg. Voor de gebruiker is het account
+         meteen weg — inloggen wordt geweigerd en een lopend sessietoken ook —
+         maar een vergissing is in die periode nog te herstellen. Het
+         wachtwoord moet erbij: een sessie is genoeg om je saldo te bekijken,
+         niet voor iets onomkeerbaars op een toestel dat even onbeheerd ligt.
+
+       • 🧹 EN ER RUIMT NU IEMAND OP. Dit was het meeste werk en het
+         makkelijkst over het hoofd te zien: er was geen cron en geen
+         scheduled() in dit project, dus "binnen 30 dagen" hing aan iemand die
+         eraan denkt. Nu draait een dagelijkse cron om 03:00 UTC, én staat er
+         een knop in admin.html die dezelfde functie aanroept. Die twee samen
+         zijn een keuze: een automaat die je niet kunt zien is een automaat
+         waarvan je maar moet aannemen dat hij draait. De adminlijst toont de
+         wachtrij met de datum waarop elk record weggaat.
+         Een record met status "verwijderd" maar zonder bruikbare datum wordt
+         NIET gewist en WEL gemeld — de termijn is dan niet aantoonbaar om, en
+         stil laten staan is hier net zo fout als stil wissen.
+
+       • 🔒 TOEGANG LOOPT LANGS ÉÉN PLEK. Status === "geblokkeerd" stond twee
+         keer los in worker.js, in handleKlantLogin en in handleMessages. Dat
+         is de vorm waarin de tweede plek wordt vergeten zodra er een status
+         bijkomt — en dan kan een verwijderd account met een lopend
+         sessietoken nog gewoon AI gebruiken. klantToegangProbleem() is nu de
+         enige die daarover gaat.
+
+       • 📄 NIEUW: public/verwijderen.html, de publieke pagina voor het Play
+         Console-veld. privacy.html en pidlane-privacy.js zeggen nu wat er
+         écht gebeurt, inclusief dat een resterend tokentegoed vervalt.
+         Het akkoord blijft geldig: er wordt niets méér of anders verwerkt, de
+         belofte is waargemaakt en niet veranderd.
+
+       • ✅ test-account-verwijderen.js, 39 toetsen. Vijf nagebouwde fouten
+         maken hem rood. De scherpste bewaakt dat de bewaartermijn uit
+         worker.js op alle vier de plekken staat waar hij aan de gebruiker
+         verteld wordt — zet KLANT_BEWAARDAGEN op 14 en de teksten liegen
+         zonder dat er iets stukgaat. Testrun 5.5.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-08-29a (CET) — TWEE SPOREN DIE ER NIET WAREN
+
+       • 📡 EEN SENSOR AANZETTEN WERD NIET GELOGD, UITZETTEN WEL (#31). Het log
+         van 27-08 had dertien regels "Sensor uitgezet via dubbeltik" en nul
+         regels over een sensor die erbij kwam, terwijl er wel degelijk
+         sensoren zijn aangezet. Die asymmetrie is misleidend en niet alleen
+         onvolledig: wie hem leest concludeert dat de selectie alleen kleiner
+         is geworden. Bij het nakijken van die rit was daardoor niet te zeggen
+         of de vijftien niet-bewegende sensoren uit blok 14 het gedrag van de
+         auto waren of handmatig aangezette PIDs die de ECU niet kent — het
+         verschil tussen een bevinding en ruis.
+         Vijf handelingen wijzigen de selectie (vinkje, dubbeltik,
+         standaardset, "+ Alles" per categorie, preset) en melden nu alle vijf
+         via plSelectieMeld() in pidlane-pidgate.js. De losse regels die drie
+         van die plekken zelf schreven zijn weg. De melder krijgt géén lijst
+         van wat er zou veranderen maar een momentopname van vóór de
+         handeling, en rekent het verschil zelf uit tegen de echte activePIDs —
+         een aanroeper kán dus niet iets anders melden dan wat er gebeurd is.
+         Een preset van veertig PIDs geeft één regel met het aantal en twee
+         voorbeelden, geen muur.
+
+       • ⚡ HET PROEFTEGOED HING AAN HET TOESTEL (#49). saldo() in
+         pidlane-credits.js deelde CFG.gratisStart (25) uit zodra de
+         localStorage-sleutel ontbrak, dus app-gegevens wissen was een knop die
+         onbeperkt tokens gaf. Onschadelijk zolang de Worker het echte saldo
+         bijhield — maar credits zijn nu het enige verdienmodel, en dan is een
+         tweede plek die tegoed uitdeelt het grootste gat. Het toestel deelde
+         bovendien 25 uit en handleKlantOnboarding 20: twee getallen voor één
+         begrip.
+         De client deelt nu niets meer uit en telt niets meer bij; het
+         proeftegoed komt van /klant/onboarding, dat KLANT_START_SALDO bijboekt
+         en StartTegoedGegeven zet. localStorage is nog een afschrift.
+         Om te voorkomen dat de fix de app onbruikbaar maakt kent saldo() drie
+         toestanden in plaats van twee — zoveel, nul, en ONBEKEND. Onbekend als
+         nul lezen zou elke analyse blokkeren op een getal dat de client zelf
+         verzon. De saldochip, het kostenvenster en preflight() vragen daarom
+         saldoBekend() erbij; onbekend laat door en de Worker weigert alsnog
+         met 402 als het tegoed echt op is.
+         Een activatiecode wordt alleen nog op een account bijgeschreven en
+         haakt af vóór het verzoek als je niet ingelogd bent — anders stempelt
+         de Worker de code af als gebruikt en komen de tokens in localStorage
+         terecht, waar de server ze nooit ziet.
+
+       • 👤 "MIJN ACCOUNT" VOLGT NU DE ROL (#49). pasMenuAan() verbergt
+         kbAccount voor een niet-klant, in dezelfde functie en om dezelfde
+         reden als het adminblok. Dat scherm zei tegen een beheeraccount dat
+         analyses "in je abonnement zitten" — een abonnement dat niet bestaat.
+         Cosmetisch, geen beveiliging: die zit in de Worker, die elk
+         beheerverzoek aan X-Admin-Token toetst.
+
+       • ✅ TWEE NIEUWE TESTS IN DE GATE, allebei met tegenproef:
+         test-selectielog.js (35 toetsen) en test-proeftegoed.js (24 toetsen,
+         vijf nagebouwde fouten die hem rood maken). test-inlog-sessie.js is
+         herzien: die eiste tot nu toe dat de saldosleutel op "0" bleef staan,
+         juist omdat wissen 25 tokens uitdeelde. Die eis draait mee, met de
+         oude reden erbij. Testrun 5.4: blok 5 en CAMPAGNE toetsen wat er in
+         déze update veranderd is.
+
+ ═══════════════════════════════════════════════════════════
+     PidLane — AI-OBD2-diagnose voor autobedrijven
+     Build: 2026-08-28g (CET) — DRIE STILLE FOUTEN IN DE MEETKANT ZELF
+
+       • 🧻 DE APP-LOG KWAM NOOIT BINNEN BIJ DE TESTRUN (#29). Hij werd op DRIE
+         plekken gelezen uit window._appLog en window.logBuffer, en die bestaan
+         nergens in public/. Alle drie kregen dus altijd een lege array, zonder
+         ooit een fout — de terugval op een lege lijst ving het netjes op.
+         Gevolgen, alle drie zichtbaar in de run van 28-08 19:09: blok 14 zei
+         "niets opgeruimd" terwijl de opruimregel twee keer had gevuurd (met
+         als advies "controleer of hij aanstaat" — precies het onderzoek dat je
+         niet moet doen), blok 11 meldde "app-log 0 regels" naast 1183
+         BT-regels, en het opgeslagen rapport had nooit een APP-LOG-sectie.
+         De echte bron is plLokaalLog(), zoals het logboek hem al las. Nu één
+         gedeelde helper _appLogRegels() die een fout MELDT in plaats van stil
+         nul terug te geven.
+
+       • 📉 BLOK 7 PRESENTEERDE EEN NULMETING ALS "GEEN VERSCHIL" (#12). De
+         deel-door-nul-vangst gaf 0 terug en 0 viel door |verschil| < 15 in de
+         tak "vrijwel geen verschil". 0 ms tegen 144 ms werd zo +0% en
+         "bezetting voorspelt hier geen tegendruk" — de omgekeerde conclusie,
+         op de regel die de Slotsom voedt die bepaalt of de PLLoad-vraag dicht
+         kan. Nu vallen nulmetingen vóór de mediaan uit de groep, met
+         vermelding van hoeveel er weg zijn, en krijgen een lege groep en een
+         mediaan van nul allebei een eigen uitkomst.
+
+       • 💶 DE PRIJSTABEL KLOPTE NIET MEER (#48). Opus stond op $15/$75 (Opus
+         3-generatie; huidige Opus is $5/$25) en er stond een introductieprijs
+         voor Sonnet 5 in die niet bestaat — met een klokvergelijking die op
+         01-09 vanzelf naar $3/$15 zou springen. Dat raakt de euroteller voor
+         de beheerder, niet de klantafrekening (die loopt langs tegoedTarief()
+         in worker.js). Tarieven staan nu in dollar met de koers als aparte
+         constante, zonder klok.
+
+         DE VORM VAN ALLE DRIE IS DEZELFDE: de app mat goed en rapporteerde
+         verkeerd. Dat type is van buitenaf niet te onderscheiden van een echte
+         bevinding, en een test die dezelfde verkeerde bron leest staat vrolijk
+         groen mee. Vandaar drie nieuwe tests in de gate mét tegenproef:
+         test-applog.js, test-bezetting.js, test-modelprijs.js.
+
+       • 🧹 Zes dode element-opzoekingen weg (#24 punt 2), ná een verse
+         inventaris — van de 15 nooit-aangemaakte id's bleken er zeven wél te
+         bestaan (dynamisch via _ov(), of in lijsten van te sluiten modals).
+         monitorBtn blijft: dat is een bewuste compatibiliteitsguard met
+         commentaar. refreshAdminLogRow is een hele dode functie en verdient
+         een eigen rondje.
+
+     Build: 2026-08-28f (CET) — BLOK 5 CORRIGEERT DRIE EIGEN FOUTEN
+
+       • 🧪 DE TESTRUN VROOR ZICHZELF DICHT. Na build e meldde een echte run:
+         het venster kwam in beeld, maar geen knop en geen scroll werkten meer.
+         Oorzaak: de nieuwe SPP-controle deed een EIGEN conn.spp.read({address})
+         los van de poll-lus in pidlane-bt.js, die dezelfde verbinding al elke
+         50ms uitleest. Twee gelijktijdige reads op één serial-verbinding, en de
+         plugin bleef hangen — de hele testrun is één lange await-keten, dus
+         alles erna liep vast, óók "Sluiten".
+         Fix: geen eigen read() meer. pidlane-bt.js logt zelf al de eerste
+         read() van elk commando naar _btLog; blok 5 leest die regel nu terug
+         in plaats van er zelf nog een uit te lokken. Les, vastgelegd in
+         PIDLANE.md §11: een controle die meeloopt in de testrun mag nooit I/O
+         doen op een verbinding die de app zelf ook gebruikt.
+       • Twee kleinere zelfgemaakte fouten uit dezelfde ronde, óók gefixt: de
+         "niet verbonden"-melding zocht window._btAdres (bestaat niet — het
+         echte veld is window._sppConn), en de env(safe-area)-scan sloeg aan op
+         zijn EIGEN toelichting in pidlane.css ("Waarom twee lagen...") omdat
+         hij commentaarblokken niet oversloeg. Beide nagemeten: de scan geeft nu
+         0 op de echte css (was 1), een echt lek wordt nog steeds gevonden.
+
+     Build: 2026-08-28e (CET) — OOK DE ANDERE VENSTERS ONDER DE STATUSBALK UIT
+
+       • 📱 DE TOPBALK WAS NIET HET ENIGE VENSTER. Een schermfoto liet zien dat
+         de topbalk (build d, hierboven) netjes onder de statusbalk uitschuift,
+         maar het Logboek niet: "Logboek", "Sluiten" en de regelteller lagen
+         half achter de systeemklok. De topbalk was de enige plek die was
+         aangepakt — de app bouwt ~20 andere volschermvensters zelf op met een
+         losse fixed/inset:0-div, elk met eigen padding en zonder gedeelde
+         class.
+         Nagelopen welke vensters ECHT tegen de rand liggen (geen backdrop
+         ertussen — gecentreerde dialogen en onderaan-uitschuivende vellen
+         blijven bewust ongemoeid) en van --pl-sat/--pl-sab voorzien: het
+         Logboek, het testrunpaneel, het Veldlab-dashboard, de "diepe
+         diagnose"-stappen, en de neon-HUD, rittracker en caravantracker in
+         index.html.
+         test-schermranden.js bewaakt dit met tegenproef: alle vijf
+         teruggedraaide varianten worden rood. Het Logboek is bovendien echt
+         gemeten (Playwright, 412px): zonder inset 12px van de rand, met een
+         gesimuleerde inset van 36px schuift de kop mee naar 48px.
+
+     Build: 2026-08-28d (CET) — CAPACITOR 8, ANDERS NEEMT PLAY DE APP NIET AAN
+
+       • 📱 TARGETSDK 34 → 36. android/ staat niet in de repo: de build maakt
+         hem elke keer uit het template van de Capacitor-versie in package.json.
+         Capacitor 6 brengt API 34 mee, en de Play Store weigert per 31-08-2026
+         alles onder API 36 — nieuwe apps én updates. De bundel die er lag was
+         dus onuploadbaar, met een melding die nergens naar de oorzaak wijst.
+         Capacitor 6 → 8 (niet 7: die geeft 35 en is ook te laag). Daarmee ook
+         AGP 8.2.1→8.13.0, Gradle 8.2.1→8.14.3, Java 17→21, minSdk 22→24
+         (Android 5.0/5.1 vallen af).
+
+       • 🔌 DE SPP-PLUGIN IS VAN EIGENAAR GEWISSELD. @e-is/capacitor-bluetooth-
+         serial staat sinds 31-12-2024 stil op 6.0.3 en kon niet mee. Vervangen
+         door @ascentio-it/capacitor-bluetooth-serial 8.0.1 — een fork die
+         onder dezelfde naam BluetoothSerial registreert, dezelfde methodes
+         heeft en read() nog steeds als {value:"..."} beantwoordt.
+         In public/ verandert daarvoor geen regel code: alles loopt via
+         window.Capacitor.Plugins.<naam> en nergens via een import. Dat is de
+         reden dat een Capacitor-major hier goedkoop is, en die eigenschap is
+         het waard om zo te houden.
+
+       • 📏 VEILIGE ZONE (--pl-sat / --pl-sab). Vanaf targetSdk 35 dwingt
+         Android edge-to-edge af: de WebView tekent onder de status- en
+         navigatiebalk, en bij targetSdk 36 doet de oude ontsnapping
+         (overlaysWebView:false) niets meer. De topbalk had als enige nog geen
+         marge — die stond sticky op top:0 en zou dus onder de klok van Android
+         schuiven, met het logo dat we deze week net hebben rechtgezet.
+         Twee tokens naast de z-index-tokens, om dezelfde reden: één plek. Ze
+         zetten Capacitor's --safe-area-inset-* vóór env(), want WebView onder
+         versie 140 geeft bij env() verkeerde waarden terug.
+         LET OP bij het lezen van de diff: de topbalk heeft DRIE regels (de
+         gewone, die onder 480px en die van uiL) en alle drie zetten padding
+         opnieuw. Twee daarvan gooiden de marge weg terwijl de hoogte hem wél
+         meetelde — dan wordt de balk hoger zonder dat de inhoud meeschuift.
+         Nagemeten: zonder inset is de balk in alle drie de standen exact
+         gelijk aan die van main.
+
+       • 🚦 DE BUILD CONTROLEERT HET API-NIVEAU, EN INJECTEERT HET NIET.
+         PLAY_MIN_TARGET_SDK staat als één getal in build-apk.yml; de build
+         leest android/variables.gradle en stopt als het daaronder zit.
+         Bewust geen injectie: dan staat het getal op twee plekken en is bij de
+         volgende verhoging niet te zien welke wint. Volgend jaar is dit dus
+         één versienummer in package.json en één getal in de workflow.
+         test-capversies.js bewaakt dat de zes Capacitor-pakketten dezelfde
+         major houden en dat de JDK meebeweegt — de halve upgrade is hier de
+         klassieke fout.
+
+     Build: 2026-08-28c (CET) — BETAALLINKS UIT DE CODE (#24)
+
+       • 💶 TIKKIE-LINKS — stonden hardcoded in pidlane-klant.js, in een
+         publieke repo. Komen nu uit de Config-tabel via /api/config, te
+         beheren in admin.html onder "Betaallinks". Niet omdat zo'n link
+         geheim is (wie hem heeft kan betalen, niet incasseren) maar omdat je
+         hem anders niet kunt wisselen zonder een deploy — en dat is precies
+         wat je wilt kunnen als er een verkeerde rondgaat.
+         CFG.tikkieKopen/tikkieDonatie zijn nu GETTERS: de config komt pas ná
+         het inloggen binnen, dus een vaste waarde zou de stand bevriezen op
+         het moment dat het bestand laadt, en dat is altijd leeg.
+         LET OP de nieuwe grens: de waarde komt uit Airtable en belandt in een
+         href. Alleen https://tikkie.me/… wordt geaccepteerd — zonder die
+         toets voert een klik uit wat er in die tabel staat, en _esc() dekt
+         dat niet af (dat ontsnapt HTML, niet het schema van een URL).
+         Leeg laten mag en blijft de bestaande, getoetste toestand: dan toont
+         het scherm "Tokens aanvragen" per mail.
+         De oude links staan nog in de git-geschiedenis; alleen een nieuwe
+         Tikkie haalt die echt uit omloop.
+
+     Build: 2026-08-28b (CET) — DE AIRCO IS GEEN DEFECT (#30)
+
+       • 🌬️ RUW STATIONAIR — de watcher STAT_RPM meldde op 27-08 twee keer
+         "ruw stationair" (65 en 193 rpm) terwijl het de airco was die in- en
+         uitschakelde. De MÉTING klopte; de verdachtenlijst eronder niet, en
+         die komt in een klantrapport terecht. Een monteur naar valse lucht,
+         bobines en bougies sturen voor een normaal werkende airco is duurder
+         dan geen melding.
+         De melding noemt de airco nu eerst, met een handeling die de
+         gebruiker zelf kan doen (zet hem uit en kijk of het blijft). De dure
+         verdachten blijven staan, maar erachter.
+         BEWUST GEEN drempel omhoog: dan verdwijnt 193 rpm, maar echt ruw
+         lopen ook. En bewust nog geen automatisch onderscheid — een
+         inkoppelende compressor is te zien aan een sprong in de
+         motorbelasting, maar valse lucht geeft óók belastingvariatie, en waar
+         die grens ligt is zonder metingen aan een auto met schakelende airco
+         niet te zeggen. Daarom leest de watcher 0104 nu wél mee en zet hij de
+         gemeten belastingspreiding in de melding: dat zijn de cijfers die het
+         onderscheid later mogelijk maken.
+
+     Build: 2026-08-28 (CET) — DE SESSIE: INLOGGEN EN UITLOGGEN (#24)
+
+       • 🔑 INLOGGEN MET EEN E-MAILADRES — doLogin() probeert bij een @ in de
+         gebruikersnaam eerst de klantroute. Een AFGEWEZEN klantlogin deed
+         daar `return`, waardoor de Users-route onbereikbaar was: een
+         medewerker met een e-mailadres als gebruikersnaam kon niet inloggen.
+         Alleen een uitzondering (server onbereikbaar) viel door, een nette
+         afwijzing niet. Nu valt ook een afwijzing door. Een BLOKKADE stopt
+         nog steeds hard — doorlopen zou daar het slot omzeilen, en dat is de
+         helft die niet mee mocht veranderen.
+       • 💳 UITLOGGEN LAAT GEEN SALDO ACHTER — logout() wiste alleen
+         pl_session en pl_autoconn, dus op een gedeeld werkplaatstoestel zag
+         de volgende gebruiker het saldo van de vorige. Er is nu
+         PLCredits.vergeetKlant().
+         LET OP de vorm van die fix: "wis de drie pl_credits_*-sleutels" is
+         de voor de hand liggende oplossing en hij is FOUT. saldo() kent bij
+         een ontbrekende sleutel het gratis proeftegoed toe, dus weggooien
+         maakt uitloggen een knop die 25 tokens uitdeelt, zo vaak als je
+         wilt. De sleutel gaat daarom op nul en wordt niet verwijderd.
+         pl_credits_init (dit toestel kreeg zijn proeftegoed al) en
+         pl_credits_kalib (tekens-per-token van het model, geen klantdata)
+         blijven bewust staan.
+       • 🧪 test-inlog-sessie.js — beide fixes als gedrag, met tegenproef:
+         de oude `return` maakt hem rood, en het verwijderen van de
+         saldosleutel ook.
+
+     Build: 2026-08-27 (CET) — VIER SCHERMFOUTEN OP DE TELEFOON
+
+       • 🔝 TOPBALK — het logo werd doormidden geknipt. .logo is het enige
+         krimpbare kind van een balk met overflow:hidden, dus bleef er een
+         halve icoon staan zodra de chips rechts de ruimte opaten. Onder 480px
+         verdwijnt het logo nu in zijn geheel: versiering wijkt voor bediening.
+       • 🛡️ RIT-MONITOR, TEGELS — de rasters stonden op repeat(4,1fr), en 1fr
+         is minmax(auto,1fr): een spoor mag niet smaller worden dan zijn
+         langste woord. INLAATLUCHT duwde het raster 19px buiten het scherm,
+         waardoor "Verbruik nu" er half afviel en de tegels ongelijk breed
+         werden (103/95/98/83px). Met minmax(0,1fr) zijn ze alle vier 90px.
+       • 🛡️ RIT-MONITOR, KOP — "Waarschuwingen & onderbouwing" kon als flexkind
+         niet krimpen onder zijn langste woord en liep naast de Rapport-knop
+         het scherm uit in plaats van af te breken. min-width:0 haalt die bodem
+         weg; de opmaak zelf verandert niet.
+       • 🇳🇱 TAAL — "Basic system check" en "Start basic check" waren Engels in
+         een Nederlandse app: nu "Basiscontrole systeem" en "Basiscontrole
+         starten". De demoknop op het loginscherm blijft wél Engels — die tekst
+         staat woordelijk in de Play-reviewnotitie.
+       • 🧱 LAAGORDENING — de zwevende chips stonden op vier verschillende
+         hoogtes (8500/9400/9400/9450), dus lag er niets vast en dook er steeds
+         een modal onderuit. Ze delen nu één laag onder de hele modal-band, via
+         benoemde --z-*-variabelen in pidlane.css.
 
      Build: 2026-07-26 22:00 (CET) — UI-OPSCHOONRONDE: MENU, TOPBALK,
      FAVORIETEN, RIT-MONITOR, BLIJVENDE DASHBOARDS
