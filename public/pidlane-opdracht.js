@@ -158,7 +158,17 @@
     'verzamel-wacht-s':       ['PLVerzamel', 'langste live meting tot de uitslag, in seconden'],
     'verzamel-hergebruik':    ['PLVerzamel', 'uitslagen zonder nieuwe meting omdat er net verzameld was'],
     'verzamel-na-rit':        ['PLVerzamel', 'uitslagen uit een rit (rijtest, ritrapport, caravan of de rit van zojuist)'],
-    'verzamel-ai-pct':        ['PLVerzamel', '% van de beslissingen op het verzamelscherm dat de AI gevraagd werd']
+    'verzamel-ai-pct':        ['PLVerzamel', '% van de beslissingen op het verzamelscherm dat de AI gevraagd werd'],
+    // #534 — de snelle scan van het volledige onderzoek op een echte ECU
+    'onderzoek-scans':              ['PLOnderzoek', 'snelle scans van het onderzoek deze sessie'],
+    'onderzoek-scan-ms':            ['PLOnderzoek', 'duur van de momentopname in de laatste snelle scan, in ms'],
+    'onderzoek-ff':                 ['PLOnderzoek', 'de laatste scan las een freeze frame (1) of niet (0)'],
+    'onderzoek-ff-trim':            ['PLOnderzoek', 'dat freeze frame had brandstoftrims (1) of niet (0); leeg = geen freeze frame'],
+    'onderzoek-bank2':              ['PLOnderzoek', 'de momentopname kreeg lange trim bank 2 (0109) terug (1) of niet (0)'],
+    'onderzoek-bankverschil':       ['PLOnderzoek', 'verschil lange trim bank 1 en 2 in de laatste scan, in %-punt'],
+    'onderzoek-kaart-stationair-n': ['PLOnderzoek', 'warme stationaire trimmonsters in de rijkste bron (rit, datalog of live)'],
+    'onderzoek-kaart-deel-n':       ['PLOnderzoek', 'warme trimmonsters tussen 1800 en 3200 tpm in de rijkste bron'],
+    'onderzoek-kaart-afwijking':    ['PLOnderzoek', 'grootste verschil trimkaart tegen de gecontroleerde proef (stationair of 2500 tpm), in %-punt']
   };
   function _appMaat(naam) {
     var bron = APPMATEN[naam];

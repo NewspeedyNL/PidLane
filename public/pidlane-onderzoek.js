@@ -375,6 +375,7 @@
       beoordeel: function (u, st) {
         var rpm = gem(u.reeks['010C']), t = trim(u), s = st.metingen.trimStationair;
         if (rpm == null || rpm < 1800) return [{ h: null, d: 0, t: 'toerental ' + Math.round(rpm || 0) + ' tpm — niet hoog genoeg om iets te zeggen' }];
+        if (t != null) st.metingen.trim2500 = t;   // voor de vergelijking met de trimkaart (#534)
         if (t == null || s == null) return [];
         if (s > 8 && t < s / 2) return [
           { h: 'valselucht', d: 2.5, t: 'trim zakt van +' + r1(s) + ' naar ' + r1(t) + ' % bij ' + Math.round(rpm) + ' tpm — typisch een lek' },
@@ -691,6 +692,18 @@
      met een warme motor (als de temperatuur erin staat). */
   var KAART_MIN = 8;
   function trimKaart(hist, bron) {
+    var vak = trimVakken(hist);
+    if (!vak) return null;
+    var r = { bron: bron || 'een eerdere meting' }, iets = false;
+    Object.keys(vak).forEach(function (x) {
+      r[x] = vak[x].length >= KAART_MIN ? { n: vak[x].length, trim: mediaan(vak[x]) } : null;
+      if (r[x]) iets = true;
+    });
+    return iets ? r : null;
+  }
+  // De vakken zelf, ook onder KAART_MIN: de meetopdracht van #534 wil weten
+  // hoe ver een rit van een kaart af zat, niet alleen dát hij er geen gaf.
+  function trimVakken(hist) {
     hist = hist || {};
     var rpm = hist['010C'] || [], kort = hist['0106'] || [], lang = hist['0107'] || [];
     if (!rpm.length || (!kort.length && !lang.length)) return null;
@@ -712,12 +725,7 @@
       else if (p.v >= 1800 && p.v <= 3200) vak.deel.push(tr);
       else if (p.v > 3200) vak.hoog.push(tr);
     });
-    var r = { bron: bron || 'een eerdere meting' }, iets = false;
-    Object.keys(vak).forEach(function (x) {
-      r[x] = vak[x].length >= KAART_MIN ? { n: vak[x].length, trim: mediaan(vak[x]) } : null;
-      if (r[x]) iets = true;
-    });
-    return iets ? r : null;
+    return vak;
   }
 
   // Het patroon over de vakken. Dezelfde scheiding als de 2500-tpm-proef,
@@ -1239,12 +1247,15 @@
   }
   // De trimkaart komt uit wat er al ligt: de laatste rit, dan de datalog,
   // dan de live-historie van deze sessie. Niets daarvan → geen kaart.
-  function kaartUitBron() {
-    var bronnen = [
+  function kaartBronnen() {
+    return [
       function () { return typeof plRitBron === 'function' ? plRitBron() : null; },
       function () { return typeof plDatalogBron === 'function' ? plDatalogBron() : null; },
       function () { return typeof pidHist !== 'undefined' && pidHist ? { naam: 'de live-meting van deze sessie', hist: pidHist } : null; }
     ];
+  }
+  function kaartUitBron() {
+    var bronnen = kaartBronnen();
     for (var i = 0; i < bronnen.length; i++) {
       var b = null;
       try { b = bronnen[i](); } catch (e) { console.warn('PLOnderzoek: bron voor de trimkaart onleesbaar', e); }
@@ -1252,6 +1263,55 @@
       if (k) return k;
     }
     return null;
+  }
+
+  /* ── App-maten voor de meetopdracht (#534) ──────────────────────────
+     Wat alleen een echte ECU kan beantwoorden: levert hij een freeze frame
+     mét trims, levert hij bank 2, hoe lang duurt de momentopname, vult een
+     rit de trimkaart, en zegt de kaart hetzelfde als de gecontroleerde
+     proef. null = niet gemeten deze sessie, nooit 0. */
+  var _m = { scans: 0, scanMs: null, ff: null, ffTrim: null, bank2: null };
+  function noteerScan(u, ms) {
+    _m.scans++;
+    if (typeof ms === 'number') _m.scanMs = ms;
+    var f = u && u.scan && u.scan.freeze, w = (f && f.waarden) || {};
+    _m.ff = f ? 1 : 0;
+    _m.ffTrim = f ? ((typeof w['0106'] === 'number' || typeof w['0107'] === 'number') ? 1 : 0) : null;
+    _m.bank2 = u && u.snap ? (getallen(u.snap['0109']).length ? 1 : 0) : null;
+  }
+  // De rijkste bron telt: de meetvraag is of een rit genoeg oplevert.
+  function vakTelling() {
+    var best = null;
+    kaartBronnen().forEach(function (f) {
+      var b = null;
+      try { b = f(); } catch (e) { console.warn('PLOnderzoek: bron voor de vaktelling onleesbaar', e); }
+      var v = b && b.hist ? trimVakken(b.hist) : null;
+      if (v && (!best || v.stationair.length + v.deel.length > best.stationair.length + best.deel.length)) best = v;
+    });
+    return best;
+  }
+  function maat(naam) {
+    var m = (_st && _st.metingen) || {};
+    switch (naam) {
+      case 'onderzoek-scans': return _m.scans;
+      case 'onderzoek-scan-ms': return _m.scanMs;
+      case 'onderzoek-ff': return _m.ff;
+      case 'onderzoek-ff-trim': return _m.ffTrim;
+      case 'onderzoek-bank2': return _m.bank2;
+      case 'onderzoek-bankverschil':
+        return m.ltft && m.ltft.b1 != null && m.ltft.b2 != null ? Math.round(Math.abs(m.ltft.b1 - m.ltft.b2) * 10) / 10 : null;
+      case 'onderzoek-kaart-stationair-n': case 'onderzoek-kaart-deel-n': {
+        var v = vakTelling();
+        return v ? v[naam === 'onderzoek-kaart-deel-n' ? 'deel' : 'stationair'].length : null;
+      }
+      case 'onderzoek-kaart-afwijking': {
+        var k = m.kaart, a = [];
+        if (k && k.stationair && typeof m.trimStationair === 'number') a.push(Math.abs(k.stationair.trim - m.trimStationair));
+        if (k && k.deel && typeof m.trim2500 === 'number') a.push(Math.abs(k.deel.trim - m.trim2500));
+        return a.length ? Math.round(Math.max.apply(null, a) * 10) / 10 : null;
+      }
+      default: return null;
+    }
   }
 
   // ── Toestand van het scherm ─────────────────────────────────────────
@@ -1295,7 +1355,10 @@
       else { _ui.melding = 'Bezig met uitlezen…'; teken(); scan = await PLFoutcodes.leesStil(); }
       if (!scan) return { overgeslagen: true, reden: 'de auto gaf geen antwoord' };
       _ui.melding = 'Bijstuurgeheugen en boordspanning…'; teken();
-      return { scan: scan, snap: await momentopname(stap.snapPids || [], stap.id), kaart: kaartUitBron() };
+      var t0s = Date.now(), snap = await momentopname(stap.snapPids || [], stap.id);
+      var uit = { scan: scan, snap: snap, kaart: kaartUitBron() };
+      noteerScan(uit, Date.now() - t0s);
+      return uit;
     }
     if (stap.soort === 'mode06') {
       if (!window.PLM06 || typeof PLM06.scan !== 'function') return { overgeslagen: true, reden: 'mode 06-module niet geladen' };
@@ -1726,7 +1789,8 @@
     beoordeelMode06: beoordeelMode06,
     KENNIS: KENNIS, kennisNaarVerdenking: kennisNaarVerdenking,
     WANNEER: WANNEER, beoordeelFreeze: beoordeelFreeze, beoordeelSnap: beoordeelSnap, trimKaart: trimKaart,
-    beoordeelKaart: beoordeelKaart, inzichten: inzichten,
+    beoordeelKaart: beoordeelKaart, inzichten: inzichten, trimVakken: trimVakken,
+    maat: maat, _noteerScan: noteerScan, _zetStaat: function (st) { _st = st; },
     klachtUitTekst: klachtUitTekst, nieuw: nieuw, volgende: volgende, vooruit: vooruit, verwerk: verwerk,
     verbreed: verbreed, conclusie: conclusie, status: status, draai: draai, alsTekst: alsTekst,
     // Voor PLSamenhang (#446): een verdenking in spel zetten, en de

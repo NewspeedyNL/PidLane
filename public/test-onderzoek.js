@@ -475,6 +475,37 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
     eis(/=== WAT DE AUTO AL WIST ===[\s\S]*Trimkaart uit de rit van zojuist/.test(O.alsTekst(st)), 'het rapport zegt wat de auto al wist');
   }
 
+  console.log('\n21. App-maten voor de meetopdracht (#534)');
+  {
+    eis(O.maat('onderzoek-scans') === 0 && O.maat('onderzoek-ff') === null && O.maat('onderzoek-bank2') === null && O.maat('onderzoek-scan-ms') === null,
+      'vóór een scan: 0 scans, de rest niet gemeten (null, geen 0)');
+    O._noteerScan({ scan: { freeze: { code: 'P0171', waarden: { '010C': 800 } } }, snap: { '0107': [12, 12, 12] } }, 2300);
+    eis(O.maat('onderzoek-scans') === 1 && O.maat('onderzoek-scan-ms') === 2300, 'een scan geteld, met zijn duur');
+    eis(O.maat('onderzoek-ff') === 1 && O.maat('onderzoek-ff-trim') === 0, 'freeze frame zonder trims: ff 1, ff-trim 0');
+    eis(O.maat('onderzoek-bank2') === 0, 'geen 0109 in de momentopname: bank2 0');
+    O._noteerScan({ scan: { freeze: { code: 'P0171', waarden: { '0107': 9 } } }, snap: { '0109': [null, 4, 5] } });
+    eis(O.maat('onderzoek-ff-trim') === 1 && O.maat('onderzoek-bank2') === 1 && O.maat('onderzoek-scan-ms') === 2300, 'met trims en bank 2: allebei 1; zonder duur blijft de vorige staan');
+    O._noteerScan({ scan: {}, snap: {} });
+    eis(O.maat('onderzoek-ff') === 0 && O.maat('onderzoek-ff-trim') === null, 'geen freeze frame: ff 0, ff-trim niet gemeten (null)');
+    O._zetStaat({ metingen: { ltft: { b1: 14.2, b2: 1 }, kaart: { stationair: { trim: 15, n: 20 }, deel: { trim: 3, n: 20 } }, trimStationair: 12, trim2500: 3.5 } });
+    eis(O.maat('onderzoek-bankverschil') === 13.2, 'bankverschil in %-punt', O.maat('onderzoek-bankverschil'));
+    eis(O.maat('onderzoek-kaart-afwijking') === 3, 'kaart tegen de proef: het grootste verschil (stationair 15 tegen 12)', O.maat('onderzoek-kaart-afwijking'));
+    O._zetStaat({ metingen: { ltft: { b1: 14, b2: null }, kaart: { stationair: { trim: 15, n: 20 }, deel: null } } });
+    eis(O.maat('onderzoek-bankverschil') === null && O.maat('onderzoek-kaart-afwijking') === null, 'tegenproef: geen bank 2 en geen proef → niet gemeten, niet 0');
+    s.pidHist = {};
+    ['010C', '0106', '0107', '0105'].forEach((p) => { s.pidHist[p] = []; });
+    for (let i = 0; i < 12; i++) {
+      s.pidHist['010C'].push({ t: i * 1000, v: i < 5 ? 760 : 2400 });
+      s.pidHist['0106'].push({ t: i * 1000, v: 0 }); s.pidHist['0107'].push({ t: i * 1000, v: 2 });
+      s.pidHist['0105'].push({ t: i * 1000, v: i < 3 ? 40 : 90 });
+    }
+    eis(O.maat('onderzoek-kaart-stationair-n') === 2 && O.maat('onderzoek-kaart-deel-n') === 7, 'vaktelling uit de live-historie, koude monsters niet meegeteld, ook onder de kaartgrens',
+      O.maat('onderzoek-kaart-stationair-n') + ' / ' + O.maat('onderzoek-kaart-deel-n'));
+    delete s.pidHist;
+    eis(O.maat('onderzoek-kaart-deel-n') === null, 'zonder bron: niet gemeten');
+    eis(O.maat('bestaat-niet') === null, 'een onbekende naam: null');
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('  FOUT test brak af: ' + (e.stack || e)); process.exit(1); });
