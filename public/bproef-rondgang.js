@@ -91,6 +91,28 @@ const wacht = (ms) => `await new Promise(function(r){ setTimeout(r, ${ms}); });`
     toets('een dia van zijn categorie zegt onderaan dat er sensoren uit staan', eenB.mistKnop, JSON.stringify(eenB));
     toets('"Zet ze aan" zet hem aan', eenB.n >= 1 && eenB.na, JSON.stringify(eenB));
 
+    console.log('\n1c. Zelf een sensor bij een categorie (16-10-2026)');
+    const eenC = await app.ev(`(async function(){
+      const lijst=PLRond.kandidaten('elektrisch','');
+      const p=(lijst.filter(function(k){ return !k.aan; })[0] || lijst[0] || {}).pid;
+      if(!p) return { geen:true };
+      activePIDs.delete(p); manualPIDs.delete(p);
+      PLRond.instellingen();
+      const plus=!!document.querySelector('#rondBlad .rond-eigen[data-cat="elektrisch"] .rond-chip.plus');
+      PLRond.kies('elektrisch'); const inKies=!!document.querySelector('#rondKiesLijst [data-pid="'+p+'"]');
+      PLRond.eigenErbij('elektrisch', p); ${wacht(300)}
+      const chip=Array.prototype.some.call(document.querySelectorAll('#rondBlad .rond-eigen[data-cat="elektrisch"] .rond-chip'), function(b){ return !b.classList.contains('plus'); });
+      const plek=PLRond.staat().dias.filter(function(d){ return d.pids.indexOf(p)>-1; }).map(function(d){ return d.id; });
+      const aanNa=activePIDs.has(p);
+      PLRond.eigenWeg('elektrisch', p); PLRond.sluit(); ${wacht(200)}
+      let bewaard=null; try{ bewaard=localStorage.getItem('pl_rond_eigen'); }catch(e){ bewaard='onleesbaar'; }
+      return { p:p, plus:plus, inKies:inKies, chip:chip, plek:plek, aanNa:aanNa, bewaard:bewaard };
+    })()`);
+    toets('het ⚙-blad heeft per categorie ＋ Sensor', eenC.plus, JSON.stringify(eenC));
+    toets('de kiezer toont wat de auto geeft', eenC.inKies, JSON.stringify(eenC));
+    toets('erbij gezet: als chip in het blad, aan, en op precies één dia', eenC.chip && eenC.aanNa && eenC.plek.length === 1, JSON.stringify(eenC));
+    toets('weghalen haalt hem uit de bewaarde keuze', eenC.bewaard === '{}', JSON.stringify(eenC));
+
     console.log('\n2. De klok en Pauze');
     const twee = await app.ev(`(async function(){
       PLRond.zetMs(5000); PLRond.sluit();

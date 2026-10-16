@@ -18,6 +18,24 @@
  regel in run_worker_first.
 
  ═══════════════════════════════════════════════════════════
+ 16-10-2026 — Rondgang: zelf sensoren per categorie
+ ═══════════════════════════════════════════════════════════
+ ⚙-blad van de rondgang: onder elke categorie "＋ Sensor" met een
+ zoekbare lijst van wat de auto geeft (ook eigen codes). De keuze
+ (pl_rond_eigen) wint van de vaste indeling: de sensor staat alleen op
+ de laatste pagina van die categorie, en gaat aan als hij uit stond.
+
+ ═══════════════════════════════════════════════════════════
+ 16-10-2026 — Sensoren ingedeeld: weergave, analyse, dubbel
+ ═══════════════════════════════════════════════════════════
+ Eigen sensoren en "Codes voor dit model" staan nu in groepen:
+ 📊 voor weergave (op toegevoegde waarde: accustroom, laadtoestand,
+ olie- en ATF-temperatuur bovenaan), 🔬 voor analyse (sensorspanningen,
+ regelsignalen, tellers, wielsnelheden), ♻️ dubbel (ingeklapt) en
+ ✗ werkt niet (ingeklapt). Dubbel = 22F4xx (spiegel van 01xx) of een
+ bekende tweeling, en alleen als de auto die standaard-PID ook geeft.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Codes uit OBDb in plaats van een AI-zoektocht (#526)
  ═══════════════════════════════════════════════════════════
  Sensoren → "Zoek codes in OBDb" haalt het bestand van de open

@@ -520,6 +520,40 @@ function laad(opties) {
     eis(B(null, null).nieuw.length === 0, 'zonder bibliotheek (nog laden) geen fout');
   }
 
+  console.log('\nSensoren: indeling in dubbel, analyse en weergave (16-10-2026, CX-5-lijst)');
+  {
+    const K2 = laad({ rol: 'klant' }).G._kern;
+    const heeft = (p) => ['0104', '0107', '010B', '012E', '0115', '0142', '014C'].indexOf(p) >= 0;
+    const soort = (code, naam, eenheid) => K2.sensSoort({ code, naam, eenheid }, heeft);
+    let s = soort('22F404', 'Engine load', '%');
+    eis(s.groep === 'dubbel' && s.tweeling === '0104', '22F404 is de spiegel van 0104 → dubbel', JSON.stringify(s));
+    s = soort('22F470', 'Turbodruk (boost)', 'bar');
+    eis(s.groep === 'weergave' && s.tweeling === '0170', '22F470: tweeling 0170, maar de auto geeft die niet → niet dubbel', JSON.stringify(s));
+    eis(soort('221166', 'Evaporative purge', '%').groep === 'dubbel', 'evap purge naast 012E → dubbel');
+    eis(soort('22402A', '12V battery voltage', 'V').groep === 'dubbel', '12V-accuspanning naast 0142 → dubbel');
+    s = soort('22057D', 'Ambient temperature, alternate', '°C');
+    eis(s.groep === 'weergave' && s.tweeling === '0146', 'buitentemperatuur zonder 0146 bij de auto → weergave, niet dubbel', JSON.stringify(s));
+    eis(K2.sensSoort({ code: '22057D', naam: 'Ambient temperature, alternate' }, (p) => p === '0146').groep === 'dubbel', '… en mét 0146 wél dubbel');
+    eis(soort('220301', 'MAP voltage', 'V').groep === 'analyse', 'sensorspanning → analyse');
+    eis(soort('2203BA', 'Ambient air temperature sensor voltage', 'V').groep === 'analyse', 'spanning van de buitentempsensor is geen buitentemperatuur → analyse');
+    eis(soort('220304', 'Commanded generator voltage', 'V').groep === 'analyse', 'gevraagde laadspanning: regelsignaal → analyse');
+    eis(soort('22402B', 'Vehicle battery current', 'A').groep === 'weergave', 'accustroom → weergave');
+    eis(soort('222B06', 'Front right wheel speed', 'km/h').groep === 'analyse', 'wielsnelheid → analyse');
+    eis(soort('22DD01', 'Totale afstand', 'km').groep === 'analyse', 'teller → analyse');
+    const g = K2.sensGroepen([
+      { id: 'a', code: '224029', naam: '12V battery temperature', eenheid: '°C', werkt: 9 },
+      { id: 'b', code: '221310', naam: 'Motorolietemperatuur', eenheid: '°C', werkt: 2 },
+      { id: 'c', code: '22402B', naam: 'Vehicle battery current', eenheid: 'A', mijn: 'werkt' },
+      { id: 'd', code: '220519', naam: 'Distance since oil changed', eenheid: 'km', mijn: 'werkt_niet' },
+      { id: 'e', code: '22F477', naam: 'Ladeluchttemperatuur', eenheid: '°C', werkt_niet: 2 },
+      { id: 'f', code: '22F407', naam: 'Fuel trim, long term', eenheid: '%' }
+    ], heeft, true);
+    eis(g.weergave.map((r) => r.b.id).join('') === 'cba', 'weergave op waarde: accustroom, olie, accutemp', g.weergave.map((r) => r.b.id).join(''));
+    eis(g.weigert.map((r) => r.b.id).sort().join('') === 'de', 'eigen weigering of alleen "niet bij anderen" → werkt niet', g.weigert.map((r) => r.b.id).join(''));
+    eis(g.dubbel.length === 1 && g.dubbel[0].b.id === 'f' && g.analyse.length === 0, 'fuel trim long → dubbel');
+    eis(K2.sensGroepen([{ code: '220519', naam: 'Distance since oil changed', mijn: 'werkt_niet' }], heeft, false).analyse.length === 1, 'eigen sensoren: geen "werkt niet"-groep');
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });
