@@ -404,6 +404,7 @@ function duiding(k, v, o){
     if(!getal(u)) return null;
     const U=nl(u,1)+' V';
     if(getal(rpm) && rpm>400){
+      if(o && o.laad && o.laad.tekst) return o.laad.tekst.charAt(0).toUpperCase()+o.laad.tekst.slice(1);
       if(u>=13.2) return 'De dynamo laadt de accu ('+U+')';
       if(u>=12.4) return 'Laadspanning '+U+': een slimme dynamo laadt even niet bij — dat is normaal';
       return 'Motor draait maar de accu krijgt '+U+': blijft dat zo, laat de dynamo nakijken';
@@ -436,6 +437,7 @@ function ms(){ return schoonMs(lees('pl_rond_ms')); }
 function uitLijst(){ try{ return schoonUit(JSON.parse(lees('pl_rond_uit')||'[]')); }catch(e){ console.warn('PLRond: pl_rond_uit onleesbaar', e); return []; } }
 function eigenLijst(){ try{ return schoonEigen(JSON.parse(lees('pl_rond_eigen')||'{}')); }catch(e){ console.warn('PLRond: pl_rond_eigen onleesbaar', e); return {}; } }
 function aan(){ return lees('pl_slim_modus')!=='dash'; }
+function laadNu(){ try{ return (window.PLEigen && PLEigen.laad) ? PLEigen.laad() : null; }catch(e){ console.warn('PLRond: laadoordeel', e); return null; } }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 function def(pid){ try{ return (typeof getPidDef==='function') ? getPidDef(pid) : null; }catch(e){ console.warn('PLRond: getPidDef('+pid+')', e); return null; } }
 function motor(){ try{ return (typeof detectEngineType==='function') ? (detectEngineType() || 'benzine') : 'benzine'; }catch(e){ console.warn('PLRond: motorsoort onleesbaar', e); return 'benzine'; } }
@@ -615,7 +617,7 @@ function duidBij(){
   DUID_PIDS.forEach(function(p){ const x=vers(p); if(x!==undefined) v[p]=x; });
   const ped=['0149','015A','014A','014B'].filter(function(p){ return vers(p)!==undefined; })[0];
   if(ped) v.pedaal=(window.PLToon) ? PLToon.waarde(ped, vers(ped)) : vers(ped);
-  const regels=d.duid.map(function(k){ return duiding(k, v, { zwaai:zwaai, diesel:motor()==='diesel' }); }).filter(Boolean);
+  const regels=d.duid.map(function(k){ return duiding(k, v, { zwaai:zwaai, diesel:motor()==='diesel', laad:laadNu() }); }).filter(Boolean);
   const t=regels.join('\n');
   if(el.textContent!==t) el.textContent=t;
   el.hidden=!t;

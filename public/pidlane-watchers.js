@@ -19,6 +19,18 @@
 (function(){
 'use strict';
 
+// Het laadoordeel over het venster van de watcher: gemiddelden van de
+// gevraagde laadspanning (30 s) en de laatste laadtoestand (60 s) van de
+// eigen sensoren met die rol. null = de auto zegt er niets over.
+function laadOordeelVenster(c, gem){
+  try{
+    if(!window.PLEigen || !PLEigen.laadOordeel || !PLEigen.laadCodes) return null;
+    const lc=PLEigen.laadCodes(), gw=lc.gevraagd ? c.win(lc.gevraagd,30000) : [], sw=lc.soc ? c.win(lc.soc,60000) : [];
+    if(gw.length<2 && !sw.length) return null;
+    return PLEigen.laadOordeel({ u:gem, rpm:c.val('010C'), gevraagd:gw.length>=2 ? gw.reduce((a,b)=>a+b,0)/gw.length : null, soc:sw.length ? sw[sw.length-1] : null });
+  }catch(e){ console.warn('watchers: laadoordeel', e); return null; }
+}
+
 // ── Overbrenging: schakelmoment herkennen (fase 4) ─────────────────
 // De 'constant'-fase kijkt alleen naar de snelheidshelling en ziet een
 // schakelmoment dus niet. Op de i20 gaf een doodnormale terugschakeling bij
@@ -27,6 +39,7 @@
 // Bij een vaste versnelling is rpm/snelheid constant, dus daarop normaliseren
 // we. Een schakeling is één STAP naar een nieuwe stabiele waarde; slip is een
 // geleidelijke DRIFT. Die twee scheiden we hier expliciet.
+
 function _overbrenging(rpm, spd){
   // rpm en spd zijn óf tijd-uitgelijnde paren (zie _paren), óf twee losse
   // reeksen van gelijke lengte (oude aanroep, nog gebruikt door tests).
@@ -220,6 +233,12 @@ const PLWatch = {
       check(c){ if(c.val('010C')<500) return null;   // motor moet draaien
         const v=c.win('0142',30000); if(v.length<4) return null;
         const gem=v.reduce((a,b)=>a+b,0)/v.length;
+        // 16-10-2026 — weet de auto wat hij vraagt (PLEigen.laadOordeel), dan
+        // beslist dat: lage spanning die gevraagd is, is geen storing; een
+        // dynamo die onder de vraag blijft wél, ook boven 12,7 V.
+        const lo=laadOordeelVenster(c, gem);
+        if(lo && lo.staat==='laadt_niet') return `laadspanning: ${lo.tekst} (gemiddeld over 30 s)`;
+        if(lo && gem<=15.2) return null;
         if(gem<12.7) return `laadspanning laag: gemiddeld ${gem.toFixed(1)} V over 30 s bij draaiende motor (lager dan een rustende accu) — dynamo/riem/massaverbinding controleren`;
         if(gem>15.2) return `laadspanning hoog: gemiddeld ${gem.toFixed(1)} V — spanningsregelaar verdacht`;
         return null; } },

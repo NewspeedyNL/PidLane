@@ -461,6 +461,9 @@ window.CORRELATION_RULES =[
     id:'alternator',
     naam:'Mogelijk dynamo-/laadprobleem',
     test:()=>{ const v=pidVals['0142'], rpm=pidVals['010C'];
+      // 16-10-2026: weet de auto wat hij vraagt, dan beslist dat (PLEigen.laad).
+      const lo=(window.PLEigen&&PLEigen.laad)?PLEigen.laad():null;
+      if(lo) return lo.staat==='laadt_niet';
       return v!==undefined&&rpm!==undefined&&rpm>1000&&v<13.0; },
     uitleg:'Accuspanning blijft laag terwijl de motor draait — dynamo laadt mogelijk onvoldoende.'
   },

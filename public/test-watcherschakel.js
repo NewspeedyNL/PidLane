@@ -159,6 +159,28 @@ console.log('\n5. Laadspanning: 12,9 V is een slimme dynamo, 12,3 V laadt niet')
   toets('tegenproef: 12,3 V geeft wél een melding', heeft(ev2, /TEST:LAADSPANNING/), 'kreeg: ' + ev2.join(', '));
 }
 
+// ── 5b. laadspanning: wat de auto zelf vraagt (16-10-2026) ────────
+// De echte PLEigen (pidlane-uitgebreid.js) met de eigen sensoren van de
+// CX-5: 220304 gevraagde laadspanning, 224028 laadtoestand.
+console.log('\n5b. Laadspanning: de gevraagde spanning beslist');
+function metLaad() {
+  const s = nieuweApp({ supportedPIDs: new Set(), activePIDs: new Set(), discoveredPIDDefs: [], vehicleInfo: {}, btDiag() {}, ALL_PID_DEFS: {} });
+  vm.runInContext(lees('pidlane-uitgebreid.js'), s, { filename: 'pidlane-uitgebreid.js' });
+  s.PLEigen.zet([{ code: '220304', naam: 'Commanded generator voltage', eenheid: 'V', formule: '(A*256+B)*0.000488' }], 'CX-5');
+  return s;
+}
+{
+  const s = metLaad();
+  const ev = rij(s, 40, t => ({ '0105': 90, '0142': 12.5, '220304': 12.6, '010D': 60, '010C': 1800 + (Math.round(t * 4) % 2) }));
+  toets('12,5 V terwijl de auto 12,6 V vraagt: geen melding (de oude grens gaf er wél een)', !heeft(ev, /LAADSPANNING/), 'kreeg: ' + ev.join(', '));
+  const s2 = metLaad();
+  const ev2 = rij(s2, 40, t => ({ '0105': 90, '0142': 13.0, '220304': 14.6, '010D': 60, '010C': 1800 + (Math.round(t * 4) % 2) }));
+  toets('13,0 V terwijl de auto 14,6 V vraagt: wél een melding (de oude grens zweeg)', heeft(ev2, /TEST:LAADSPANNING/), 'kreeg: ' + ev2.join(', '));
+  const s3 = metLaad();
+  const ev3 = rij(s3, 40, t => ({ '0105': 90, '0142': 12.3, '010D': 60, '010C': 1800 + (Math.round(t * 4) % 2) }));
+  toets('sensor wel bekend maar geeft niets: de oude grens blijft (12,3 V meldt)', heeft(ev3, /TEST:LAADSPANNING/), 'kreeg: ' + ev3.join(', '));
+}
+
 // ── 6. koelwater ──────────────────────────────────────────────────
 console.log('\n6. Koelwater: 110 °C is een VAG op deellast, 113 °C aanhoudend niet');
 {

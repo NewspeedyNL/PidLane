@@ -68,6 +68,15 @@ function laad(opties) {
   eis(st.kleur === 'oranje' && /Accu zwak/.test(st.punten[0].tekst), 'accu 11,9 V in rust → oranje');
   st = K.status({ laatst_gezien: '2026-09-26T10:00:00Z', gezondheid: { accuRust: 12.6, accuLopend: 14.2, maxKoelwater: 92 }, aantal: { openIssues: 0 } }, nu);
   eis(st.kleur === 'groen' && st.punten.length === 0, 'alles normaal → groen zonder punten', JSON.stringify(st));
+  // 16-10-2026: weet de auto wat hij vroeg, dan beslist dat (PLEigen.laadOordeel).
+  st = K.status({ laatst_gezien: '2026-09-26T10:00:00Z', gezondheid: { accuRust: 12.6, accuLopend: 12.7, laadStaat: 'bewust_laag' } }, nu);
+  eis(st.kleur === 'groen', 'laadspanning 12,7 V die de auto zelf vroeg → groen', JSON.stringify(st));
+  st = K.status({ laatst_gezien: '2026-09-26T10:00:00Z', gezondheid: { accuRust: 12.6, accuLopend: 12.7 } }, nu);
+  eis(st.kleur === 'oranje' && /normaal 13,2/.test(st.punten[0].tekst), 'tegenproef: zonder oordeel van de auto 12,7 V → oranje', JSON.stringify(st));
+  st = K.status({ laatst_gezien: '2026-09-26T10:00:00Z', gezondheid: { accuRust: 12.6, accuLopend: 13.6, laadStaat: 'laadt_niet' } }, nu);
+  eis(st.kleur === 'oranje' && /haalt niet wat/.test(st.punten[0].tekst), '13,6 V terwijl er meer gevraagd wordt → oranje', JSON.stringify(st));
+  st = K.status({ laatst_gezien: '2026-09-26T10:00:00Z', gezondheid: { accuLopend: 15.3, laadStaat: 'laadt' } }, nu);
+  eis(st.kleur === 'oranje', 'te hoog (15,3 V) blijft oranje, ook als de auto het vroeg', JSON.stringify(st));
   st = K.status({}, nu);
   eis(st.kleur === 'groen' && /Nog nooit uitgelezen/.test(st.punten[0].tekst), 'nooit uitgelezen: groen, maar dat staat erbij');
   st = K.status({ laatst_gezien: '2026-09-26T10:00:00Z', kmstand: 90500, onderhoud_km: 90000 }, nu);
@@ -518,6 +527,15 @@ function laad(opties) {
     eis(!d.nieuw.some((b) => b.code === '221E1C') && d.al['221E1C'] && d.al['221E1C'].id === 'b', 'een toegevoegde code staat bij de eigen sensoren, niet in de bibliotheek', JSON.stringify(d));
     eis(d.nieuw.map((b) => b.id).join('') === 'cda', 'de rest: wat het vaakst werkt bovenaan, wat niet werkt onderaan', d.nieuw.map((b) => b.id).join(''));
     eis(B(null, null).nieuw.length === 0, 'zonder bibliotheek (nog laden) geen fout');
+  }
+
+  console.log('\nAdvies: lage laadspanning in ritten, tenzij de auto het zelf zo regelt (16-10-2026)');
+  {
+    const ritten = [{ min_accu: 12.6 }, { min_accu: 12.8 }, { min_accu: 12.7 }];
+    const zonder = K.advies({ gezondheid: {} }, ritten, Date.now()).some((a) => a.soort === 'laden');
+    const met = K.advies({ gezondheid: { laadStaat: 'bewust_laag' } }, ritten, Date.now()).some((a) => a.soort === 'laden');
+    const kapot = K.advies({ gezondheid: { laadStaat: 'laadt_niet' } }, ritten, Date.now()).some((a) => a.soort === 'laden');
+    eis(zonder && !met && kapot, 'laadadvies: zonder oordeel wel, bij bewust laag niet, bij laadt-niet wel', [zonder, met, kapot].join());
   }
 
   console.log('\nSensoren: indeling in dubbel, analyse en weergave (16-10-2026, CX-5-lijst)');
