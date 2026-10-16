@@ -35,19 +35,19 @@ de uitleg bij nieuwe bevindingen schrijf je daar meteen in, met een datumkop.
 Een hoofdstuk dat je moet blijven opschonen wordt niet opgeschoond (#265).
 
 Zoek gericht (`grep`, `sed -n`) in plaats van hele bestanden te laden.
-Gemeten op 22-09-2026 — de getallen die hier stonden waren maanden oud en
-allemaal te laag, wat precies het verkeerde gevoel geeft over wat een `cat`
-kost:
+Gemeten op 16-10-2026, na de tweede changelogsnede. Op 22-09 stonden hier
+getallen die binnen drie weken ver te laag waren; meet opnieuw
+(`wc -c`) voordat je erop vertrouwt:
 
 | bestand | KB |
 |---|---|
-| `public/pidlane-testrun.js` | 495 |
-| `PIDLANE-ARCHIEF.md` | 403 |
-| `worker.js` | 218 |
-| `public/pidlane.css` | 193 |
-| `public/index.html` | 181 |
-| `CHANGELOG.md` | 173 |
-| `PIDLANE.md` | 121 |
+| `public/pidlane-testrun.js` | 698 |
+| `PIDLANE-ARCHIEF.md` | 588 |
+| `worker.js` | 330 |
+| `public/pidlane.css` | 286 |
+| `CHANGELOG.md` | 201 |
+| `public/index.html` | 200 |
+| `PIDLANE.md` | 175 |
 
 Weet je niet welke module?
 Kijk eerst in §4 van `PIDLANE.md`. Een ruw testrun-verslag hoort ook niet heel
