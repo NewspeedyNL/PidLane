@@ -1228,11 +1228,17 @@
     return !!(typeof getPidDef === 'function' && getPidDef(pid));
   }
 
-  // Drie lezingen per PID: genoeg voor een mediaan, kort genoeg om de scan
-  // niet te rekken. Wat de auto niet levert, wordt niet gevraagd.
+  // Twee lezingen per PID (#538, 16-10-2026; waren er drie). Uitgerekend: een
+  // V-motor vraagt 7 PID's, met drie lezingen 21 verzoeken; bij 400 ms per
+  // verzoek (een trage ELM327) is dat 8,4 s, en dan voelt de eerste stap als
+  // hangen. Met twee: 14 verzoeken, hoogstens 5,6 s. Twee lezingen vangen
+  // nog steeds één misgelezen frame op (mediaan van twee = het gemiddelde,
+  // en beoordeelSnap kijkt naar het verloop, niet naar één getal).
+  // Wat de auto niet levert, wordt niet gevraagd.
+  var MOMENT_LEZINGEN = 2;
   async function momentopname(pids, stapId) {
     var r = {};
-    for (var n = 0; n < 3; n++) {
+    for (var n = 0; n < MOMENT_LEZINGEN; n++) {
       for (var i = 0; i < pids.length; i++) {
         if (!beschikbaar(pids[i])) continue;
         var v = await leesPid(pids[i], stapId);
@@ -1786,7 +1792,7 @@
     KENNIS: KENNIS, kennisNaarVerdenking: kennisNaarVerdenking,
     WANNEER: WANNEER, beoordeelFreeze: beoordeelFreeze, beoordeelSnap: beoordeelSnap, trimKaart: trimKaart,
     beoordeelKaart: beoordeelKaart, inzichten: inzichten, trimVakken: trimVakken,
-    maat: maat, _noteerScan: noteerScan, _zetStaat: function (st) { _st = st; },
+    maat: maat, _noteerScan: noteerScan, _momentopname: momentopname, _zetStaat: function (st) { _st = st; },
     klachtUitTekst: klachtUitTekst, nieuw: nieuw, volgende: volgende, vooruit: vooruit, verwerk: verwerk,
     verbreed: verbreed, conclusie: conclusie, status: status, draai: draai, alsTekst: alsTekst,
     // Voor PLSamenhang (#446): een verdenking in spel zetten, en de

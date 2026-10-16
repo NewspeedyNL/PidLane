@@ -357,6 +357,21 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
     eis(ov && /Overgeslagen/.test(ov.t) && !st2.v.misfire.bewijs.some((b) => b.stap === 'mode06'), 'zonder mode 06 overgeslagen, zonder tegenbewijs');
   }
 
+  console.log('\nMomentopname: hoeveel verzoeken (#538)');
+  {
+    let verzoeken = 0;
+    s.demoMode = false; s.supportedPIDs = new Set(['010C', '0105', '0106', '0107', '0108', '0109', '0142']);
+    s.withBus = async (n, f) => f(); s.sendCmd = async () => { verzoeken++; return '41 0C 0B B8'; };
+    s.parsePID = () => 750; s.validateAndSmooth = (p, v) => v;
+    const r = await O._momentopname(['010C', '0105', '0106', '0107', '0108', '0109', '0142'], 'proef');
+    eis(verzoeken === 14, 'V-motor: 7 PID\'s × 2 lezingen = 14 verzoeken (was 21; bij 400 ms per verzoek 5,6 s in plaats van 8,4 s)', 'verzoeken: ' + verzoeken);
+    eis(r['010C'] && r['010C'].length === 2, 'elke PID twee waarden, genoeg voor beoordeelSnap', JSON.stringify(r));
+    verzoeken = 0; s.supportedPIDs = new Set(['010C', '0105']);
+    await O._momentopname(['010C', '0105', '0106', '0107', '0108', '0109', '0142'], 'proef');
+    eis(verzoeken === 4, 'wat de auto niet levert, wordt niet gevraagd', 'verzoeken: ' + verzoeken);
+    s.supportedPIDs = new Set();
+  }
+
   console.log('\nDe derde poort (#532): laadspanning, koelwater, LPG en breedband volgens de auto');
   {
     // Een tweede app mét PLWaarneming en PLKenmerk, zoals index.html ze laadt.
