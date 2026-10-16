@@ -192,11 +192,26 @@
 
     // Marge: 0 = precies op de grens, 0.5 = midden in het venster — in de
     // lezing die het oordeel gaf.
+    //
+    // 16-10-2026: een grens op het uiterste van het getal is GEEN grens maar
+    // "aan deze kant niets": 0 als ondergrens unsigned, 0xFFFF als bovengrens
+    // unsigned, 0x8000/0x7FFF signed. De CX-5 gaf 16 keer "krap": ontstekings-
+    // missers 0 tellingen tussen 0 en 65535 (de beste waarde die er is),
+    // VVT −5 tussen −1500 en 32767. Daar zat de marge tegen een grens die er
+    // niet is, of werd hij gedeeld door een venster van 65535 breed. En dat
+    // "krap" ging zo naar de AI (naarPromptRegels).
+    //   twee echte grenzen → afstand tot de dichtste / breedte van het venster
+    //   één echte grens    → afstand tot die grens / |grens| (minstens 1)
+    //   geen echte grens   → geen marge: de test oordeelt niet, dus nooit krap
     const lees = v => signed ? teken(v) : v;
+    const geenMin = signed ? min === 0x8000 : min === 0;
+    const geenMax = signed ? max === 0x7FFF : max === 0xFFFF;
     const span = lees(max) - lees(min);
-    const marge = span > 0
-      ? Math.max(0, Math.min(lees(waarde) - lees(min), lees(max) - lees(waarde)) / span)
-      : null;
+    const klem = x => Math.max(0, Math.min(1, x));
+    let marge = null;
+    if (!geenMin && !geenMax) marge = span > 0 ? Math.max(0, Math.min(lees(waarde) - lees(min), lees(max) - lees(waarde)) / span) : null;
+    else if (!geenMin) marge = klem((lees(waarde) - lees(min)) / Math.max(1, Math.abs(lees(min))));
+    else if (!geenMax) marge = klem((lees(max) - lees(waarde)) / Math.max(1, Math.abs(lees(max))));
 
     return {
       mid, midNaam: midNaam(mid), tid, tidHex: '0x' + hex2(tid),

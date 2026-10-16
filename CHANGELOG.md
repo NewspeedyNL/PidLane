@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 16-10-2026 — Mode 06: geen "krap" meer tegen een grens die er niet is
+ ═══════════════════════════════════════════════════════════
+ Een grens van 0 of 65535 (unsigned), −32768 of 32767 (signed) is geen
+ grens. 0 ontstekingsmissers tussen 0 en 65535 heette "krap"; op de
+ CX-5 waren dat 16 van de tests, en de AI kreeg ze mee. Nu telt alleen
+ een echte grens; met één echte grens is de marge relatief aan die grens.
+
+ ═══════════════════════════════════════════════════════════
  16-10-2026 — Er is iets mis: eerst wat de auto al weet
  ═══════════════════════════════════════════════════════════
  Het volledige onderzoek begint met een snelle scan: foutcodes plus
