@@ -52,6 +52,8 @@ function toets(naam, waar, uitleg) {
     toets('het onderzoek staat open, de wizard is dicht',
       await app.ev(`getComputedStyle(document.getElementById('plOzOv')).display === 'flex' && getComputedStyle(document.getElementById('wizardNieuwOv')).display === 'none'`));
     toets('de klacht is uit de tekst herkend', await app.ev(`!!document.querySelector('#plOzDoos .oz-chip.aan[data-k="onrustig"]')`));
+    await app.ev(`document.querySelector('#plOzDoos [data-a="wanneer"][data-w="stationair"]').click(); 'ok'`);
+    toets('wanneer het speelt is aan te tikken', await app.ev(`!!document.querySelector('#plOzDoos .oz-chip.aan[data-w="stationair"]')`));
     await foto('intake');
 
     console.log('\n── 2. het onderzoek loopt ──');
@@ -97,16 +99,17 @@ function toets(naam, waar, uitleg) {
     toets('met het motorlampje als klacht (er staan codes)', await app.ev(`!!document.querySelector('#plOzDoos .oz-chip.aan[data-k="lampje"]')`));
     await app.ev(`PLOnderzoek.sluit(); 'ok'`);
 
-    console.log('\n── 4. een klant ziet de stap en de conclusie, geen bord ──');
+    console.log('\n── 4. een klant ziet hetzelfde bord, met wat de auto al wist (16-10-2026) ──');
     await app.ev(`PLNav.zetGarage(false); PLOnderzoek.open({ klacht: 'onrustig stationair' }); document.querySelector('#plOzDoos [data-a="begin"]').click(); 'ok'`);
     toets('het onderzoek loopt', await wacht(`(PLOnderzoek.staat()||{}).gedaan && PLOnderzoek.staat().gedaan.length >= 1`, 10000));
-    toets('geen verdenkingenbord voor een klant', await app.ev(`!document.querySelector('#plOzDoos .oz-v')`));
-    toets('geen tijdlijn voor een klant', await app.ev(`!document.querySelector('#plOzDoos .oz-lijn')`));
-    toets('wel de huidige stap', await wacht(`!!document.querySelector('#plOzDoos .oz-stap')`, 5000));
+    toets('ook een klant ziet het oorzakenbord', await app.ev(`!!document.querySelector('#plOzDoos .oz-v')`));
+    toets('met onder een oorzaak het zwaarste bewijs, zonder te tikken', await app.ev(`!!document.querySelector('#plOzDoos .oz-v .oz-bw')`));
+    toets('de snelle scan zegt wat de auto al wist (demo: bijstuurgeheugen)', await wacht(`/Wat de auto al wist/.test(document.getElementById('plOzDoos').textContent)`, 5000));
+    toets('en de huidige stap zegt wat hij scheidt', await wacht(`!!document.querySelector('#plOzDoos .oz-stap .oz-scheidt')`, 5000));
     await foto('klant-stap');
     await app.ev(`document.querySelector('#plOzDoos [data-a="stop"]').click(); 'ok'`);
     toets('na stoppen staat de conclusie er', await wacht(`!!document.querySelector('#plOzDoos .oz-concl')`, 8000));
-    toets('nog steeds zonder bord', await app.ev(`!document.querySelector('#plOzDoos .oz-v')`));
+    toets('het bord blijft onder de conclusie staan', await app.ev(`!!document.querySelector('#plOzDoos .oz-v')`));
     await app.ev(`PLOnderzoek.sluit(); 'ok'`);
 
     console.log('\n5. Er is iets mis, maar ik merk niets: de brede ronde (#434)');

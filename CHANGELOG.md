@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 16-10-2026 — Er is iets mis: eerst wat de auto al weet
+ ═══════════════════════════════════════════════════════════
+ Het volledige onderzoek begint met een snelle scan: foutcodes plus
+ het freeze frame (mager stationair → lek, mager onder last →
+ brandstofdruk), het bijstuurgeheugen per cilinderbank (verschil →
+ luchtmassameter en brandstofdruk vallen af), de boordspanning, en
+ een trimkaart uit de laatste rit, datalog of live-historie
+ (stationair tegen 1800–3200 tpm: het patroon van de 2500-tpm-proef
+ zonder dat iemand gas hoeft te geven).
+ Nieuw blok "Wat de auto al wist": codes kort geleden gewist, gereden
+ met lampje aan, een code die eraan komt, permanente code, lange trim,
+ bankverschil, trimkaart, bekend bij dit merk.
+ Intake: "Wanneer speelt het?" (koud, warm, stationair, optrekken,
+ constant, regen) weegt vooraf mee, hoogstens 1,5 per oorzaak.
+ Oorzakenbord en tijdlijn nu voor iedereen, met ▲/▼-telling en het
+ zwaarste bewijs zichtbaar; elke stap zegt welke oorzaken hij scheidt.
+
+ ═══════════════════════════════════════════════════════════
  16-10-2026 — De derde poort: geldt deze regel voor déze auto? (#532)
  ═══════════════════════════════════════════════════════════
  Nieuw: pidlane-kenmerk.js (PLKenmerk). Elke auto krijgt een profiel

@@ -15,6 +15,31 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 16-10-2026 — Er is iets mis: het bord terug naar de klant, en eerst lezen wat er al ligt
+
+**Herziening van het besluit van 07-10-2026** ("een klant ziet de stap en de
+conclusie; het bord is werkgereedschap voor de garagemodus"). Gebruikers met
+een eigen OBD-adapter snappen trims en sensoren; wat zij misten was niet
+eenvoud maar het bewijs. Bij een lastig probleem ís het bord de uitkomst. De
+mutatie die het bord voor klanten verbood is vervangen door de omgekeerde.
+
+**Wat er lag en niet gebruikt werd.** `PLFoutcodes` las het freeze frame, de
+tellers sinds wissen (0131/0130/0121) en de readiness al in, maar het
+onderzoek woog alleen de codes. De lange-termijntrim van bank 2 (0109) werd
+nergens gelezen, en een rit of datalog met trims en toerental lag ongebruikt
+naast een onderzoek dat de gebruiker om 2500 tpm vroeg. Professionele
+software (Snap-on Fast-Track/SureTrack, Bosch ESI EBR/SIS, Identifix
+Direct-Hit) begint per code met wat er al bekend is en filtert pas daarna de
+tests; de werkwijze van een monteur begint met het freeze frame vastleggen.
+
+**Bewust niet:** een eigen database met bevestigde reparaties ("Real Fixes")
+— besloten 16-10-2026, geen terugkoppeling van gebruikers. Grenzen (trim
+±10–15 %, bankverschil 10 %) verschillen per bron; ze staan als aanwijzing,
+lichter gewogen dan een gecontroleerde meting.
+
+
+---
+
 ## 16-10-2026 — De derde poort: een regel die voor déze auto niet geldt (#532)
 
 **Herziening van #531.** Daar stond: vijf plekken oordeelden met een vaste

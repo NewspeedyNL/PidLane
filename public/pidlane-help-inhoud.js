@@ -139,7 +139,9 @@ var PL_HULP = {
     { id: 'onderzoek', groep: 'gebruik', titel: 'Volledig onderzoek',
       tekst:
         '<p>Bij <b>Er is iets mis</b> staat bovenaan het plan <b>🧭 Volledig onderzoek</b>. Het werkt zoals een monteur: het stelt verdenkingen op uit je klacht, ' +
-        'en kiest steeds de stap die er de meeste tegelijk kan bevestigen of uitsluiten.</p>' +
+        'en kiest steeds de stap die er de meeste tegelijk kan bevestigen of uitsluiten. Tik bij het begin ook aan <b>wanneer het speelt</b> — koud, stationair, bij optrekken, bij regen: dat scheidt oorzaken die bij dezelfde klacht horen.</p>' +
+        '<p>De eerste stap is de <b>snelle scan</b>: foutcodes, het <b>freeze frame</b> (de motor op het moment van de fout), het <b>bijstuurgeheugen</b> per cilinderbank, de tellers sinds de codes gewist zijn, en de trims uit je laatste rit of datalog. ' +
+        'Wat daaruit blijkt staat onder <b>Wat de auto al wist</b> — bijvoorbeeld dat de codes kort geleden gewist zijn, of dat er een code aankomt die nog geen lampje geeft.</p>' +
         '<p>Merk je niets maar wil je het zeker weten? Kies bij <b>Er is iets mis</b> voor <b>Ik merk niets bijzonders</b>, of tik bij een groene <a data-hulp="check">Check mijn auto</a> op <b>🧭 Toch grondig onderzoeken</b>. ' +
         'Het onderzoek begint dan met een brede ronde: valse lucht, luchtmassameter, lambda en katalysator, thermostaat, accu en laden, en ontsteking. Bij een diesel komen het roetfilter, de EGR-klep en software erbij.</p>' +
         '<p>Kent de app het merk van je auto, dan toetst het onderzoek ook wat bij dat merk bekend is — een kettingspanner, een DSG, een roetfilter. ' +
@@ -152,8 +154,8 @@ var PL_HULP = {
         '<li><b>Een andere richting</b> — wijst een foutcode of meting ergens anders naar, dan komt die verdenking erbij.</li>' +
         '</ul>' +
         '<p>Je ziet steeds de stap waar het onderzoek mee bezig is, en aan het eind de conclusie: wat bevestigd is, wat uitgesloten is en wat er nog openstaat.</p>' +
-        '<p>In de <a data-hulp="garagemodus">garagemodus</a> staan daar de verdenkingen bij, elk met een balk, en het plan van aanpak als tijdlijn. Tik op een verdenking voor het bewijs: ▲ wijst ernaartoe, ▼ ervan af, met de gemeten waarde erbij. ' +
-        'Alleen in de garagemodus komt ook de laaddrukproef, die tijdens het rijden vol optrekken vraagt.</p>' +
+        '<p>Daaronder staat het <b>oorzakenbord</b>: elke verdenking met een balk, het aantal aanwijzingen ervoor (▲) en ertegen (▼), en het zwaarste bewijs met de gemeten waarde. Tik voor al het bewijs. Bij elke stap staat welke oorzaken hij <b>scheidt</b>; het plan van aanpak staat eronder als tijdlijn. ' +
+        'Alleen in de <a data-hulp="garagemodus">garagemodus</a> komt de laaddrukproef, die tijdens het rijden vol optrekken vraagt.</p>' +
         '<p><b>💾 Bewaren</b> legt het hele verloop vast; ' +
         '<b>🤖 Tweede mening</b> laat de AI-uitleg ernaar kijken.</p>' +
         '<p>Het onderzoek wijst aan, het vervangt geen monteur: laat een bevinding bevestigen voordat je onderdelen koopt.</p>',

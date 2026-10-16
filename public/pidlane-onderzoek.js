@@ -140,6 +140,44 @@
   };
   var CONTROLE_DIESEL = ['dpf', 'egr', 'software'];
 
+  // ── Wanneer speelt het (16-10-2026) ─────────────────────────────────
+  // Wat een monteur als tweede vraagt, na "wat merk je". Het moment scheidt
+  // families die bij dezelfde klacht horen: overslaan onder last is meestal
+  // ontsteking, alleen stationair meestal lucht, bij regen een bobine of
+  // bougieput. Dit is voorkennis, geen meting: per verdenking hoogstens
+  // VOORAF_MAX, zodat een antwoord nooit zelf iets bevestigt. Het bepaalt
+  // wel welke stap eerst komt.
+  var WANNEER = {
+    koud:       { naam: 'Koude motor', icoon: '❄️',
+      b: [{ h: 'koelsensor', d: 1 }, { h: 'valselucht', d: 0.5 }, { h: 'injector', d: 0.5 }, { h: 'distributie', d: 0.5 }] },
+    warm:       { naam: 'Warme motor', icoon: '🔥',
+      b: [{ h: 'koeling', d: 0.5 }, { h: 'misfire', d: 0.5 }, { h: 'brandstofdruk', d: 0.5 }] },
+    stationair: { naam: 'Stationair, stilstaand', icoon: '⏱️',
+      b: [{ h: 'valselucht', d: 1 }, { h: 'egr', d: 0.5 }, { h: 'injector', d: 0.5 }] },
+    belast:     { naam: 'Optrekken, heuvel op', icoon: '⛰️',
+      b: [{ h: 'misfire', d: 1 }, { h: 'brandstofdruk', d: 1 }, { h: 'turbo', d: 1 }, { h: 'valselucht', d: -0.5 }] },
+    constant:   { naam: 'Constante snelheid', icoon: '🛣️',
+      b: [{ h: 'lambda', d: 0.5 }, { h: 'egr', d: 0.5 }, { h: 'versnellingsbak', d: 0.5 }] },
+    vocht:      { naam: 'Regen of vochtig weer', icoon: '🌧️',
+      b: [{ h: 'misfire', d: 1.5 }] }
+  };
+  var VOORAF_MAX = 1.5;
+  function vooraf(st, ws) {
+    var som = {};
+    (ws || []).forEach(function (w) {
+      var x = WANNEER[w]; if (!x) return;
+      x.b.forEach(function (b) {
+        if (b.d > 0) speel(st, b.h, 'wanneer: ' + x.naam.toLowerCase());
+        if (!st.v[b.h]) return;
+        var oud = som[b.h] || 0, nw = Math.max(-VOORAF_MAX, Math.min(VOORAF_MAX, oud + b.d)), d = nw - oud;
+        som[b.h] = nw;
+        if (!d) return;
+        st.v[b.h].score += d;
+        st.v[b.h].bewijs.push({ d: d, t: 'je zegt: ' + x.naam.toLowerCase(), stap: 'intake' });
+      });
+    });
+  }
+
   // ── Wat bij dit merk bekend is (09-10-2026) ────────────────────────
   // AUTO_KENNIS (pidlane-data.js) noemt per merk de bekende zwakke punten.
   // Tot nu toe kwamen die alleen als tekst op het scherm ("Wat we al weten")
@@ -246,11 +284,11 @@
   // tijdens het meten doet. beoordeel(u, st) → [{h, d, t}]: verdenking,
   // gewicht (+ bevestigt, − sluit uit) en de tekst met de meetwaarde.
   var STAPPEN = [
-    { id: 'codes', soort: 'lezen', titel: 'Foutcodes en zelftests uitlezen', icoon: '🔍',
-      waarom: 'Wat de auto zelf al gevonden heeft, gaat voor alles. Het kost tien seconden en wijst vaak meteen een richting.',
+    { id: 'codes', soort: 'lezen', titel: 'Snelle scan: foutcodes, freeze frame en ECU-geheugen', icoon: '🔍',
+      waarom: 'Wat de auto zelf al weet, gaat voor alles: foutcodes, de toestand op het moment van de fout, wat de ECU al weken bijstuurt en je laatste rit. Geen opdracht, geen vraag — en vaak wijst het meteen een richting.',
       test: { misfire: 2, lambda: 2, kat: 2, maf: 1.5, valselucht: 1, egr: 1.5, dpf: 1.5, software: 2, thermostaat: 1.5, koelsensor: 1, laad: 1, turbo: 1, injector: 0.5, distributie: 2, versnellingsbak: 1.5 },
-      altijdEerst: true,
-      beoordeel: beoordeelCodes },
+      altijdEerst: true, snapPids: ['010C', '0105', '0106', '0107', '0108', '0109', '0142'],
+      beoordeel: beoordeelScan },
 
     // Mode 06 (13-10-2026): de meetwaarden achter de zelftests. Een missende
     // cilinder telt hier per cilinder, ook als er (nog) geen foutcode is; een
@@ -589,6 +627,184 @@
     return r;
   }
 
+  // ── De snelle scan (16-10-2026) ─────────────────────────────────────
+  // Wat een monteur doet vóór hij één onderdeel test: vastleggen wat de auto
+  // zelf al weet. Het freeze frame (de motor op het moment van de fout), het
+  // bijstuurgeheugen (lange-termijntrim, per bank), de tellers sinds het
+  // wissen, en de rit die er al is. Dat kost geen opdracht en geen vraag,
+  // en het is precies wat de klant niet ziet. Elke regel hier is puur:
+  // u.scan uit PLFoutcodes, u.snap {pid:[waarden]}, u.kaart uit trimKaart().
+
+  // Het freeze frame: onder welke toestand trad de fout op, en wat stuurde de
+  // ECU toen bij. Mager stationair is het lekspoor; mager onder last het
+  // spoor van te weinig brandstof.
+  function beoordeelFreeze(u, st) {
+    var f = u && u.scan && u.scan.freeze;
+    if (!f || !f.waarden) return [];
+    var w = f.waarden, n = function (p) { return typeof w[p] === 'number' && !isNaN(w[p]) ? w[p] : null; };
+    var rpm = n('010C'), kmh = n('010D'), tc = n('0105'), last = n('0104');
+    var heeftTrim = n('0106') != null || n('0107') != null, tr = (n('0106') || 0) + (n('0107') || 0);
+    st.metingen.freeze = { code: f.code, rpm: rpm, kmh: kmh, tc: tc, last: last, trim: heeftTrim ? tr : null };
+    var r = [], stil = rpm != null && rpm < 1100 && (kmh == null || kmh < 5), belast = last != null && last > 50;
+    var bij = 'freeze frame ' + (f.code || '') + ': trim ' + (tr > 0 ? '+' : '') + r1(tr) + ' %';
+    if (heeftTrim && tr > 15 && stil) r.push({ h: 'valselucht', d: 1.5, t: bij + ' stationair — mager waar een lek het zwaarst telt' });
+    else if (heeftTrim && tr > 15 && belast) {
+      r.push({ h: 'brandstofdruk', d: 1, t: bij + ' bij ' + Math.round(last) + ' % last — mager onder last: te weinig brandstof' });
+      r.push({ h: 'maf', d: 0.5, t: bij + ' onder last — of een luchtmassameter die te weinig meet' });
+    } else if (heeftTrim && tr < -15) r.push({ h: 'injector', d: 1, t: bij + ' — te rijk op het moment van de fout' });
+    if (tc != null && tc < 60) r.push({ h: null, d: 0, t: 'de fout trad op met een koude motor (' + Math.round(tc) + ' °C) — warm meten kan hem missen' });
+    return r;
+  }
+
+  // Een momentopname bij het uitlezen: draait de motor warm, dan zegt de
+  // lange-termijntrim wat de ECU al weken bijstuurt, en per bank of de
+  // oorzaak aan één kant zit. Twee banken die verschillen sluiten alles uit
+  // wat ze delen: de luchtmassameter en de brandstofdruk.
+  function beoordeelSnap(u, st) {
+    var s = u && u.snap; if (!s) return [];
+    var rpm = mediaan(s['010C']), tc = mediaan(s['0105']), v = mediaan(s['0142']);
+    var loopt = rpm != null && rpm > CFG.grens.aanRpm, warm = loopt && tc != null && tc >= CFG.grens.warmC;
+    var r = [];
+    if (loopt && v != null && v < 12.8) r.push({ h: 'laad', d: 1.5, t: 'motor draait, boordspanning maar ' + r1(v) + ' V' });
+    if (!loopt && v != null && v > 8 && v < 12.2) r.push({ h: 'accu', d: 1, t: 'contact aan, motor uit: ' + r1(v) + ' V' });
+    if (!warm) return r;
+    var b1 = gem(s['0107']), b2 = gem(s['0109']);
+    st.metingen.ltft = { b1: b1, b2: b2 };
+    if (kmPoort({ lpg: { is: false, gangbaar: true } }) === null) { st.metingen.ltft = null; return r; }
+    if (b1 != null && b2 != null && Math.abs(b1 - b2) > 10) {
+      var hoog = b1 > b2 ? 1 : 2, a = Math.max(b1, b2), b = Math.min(b1, b2);
+      var tk = 'lange trim bank 1 ' + r1(b1) + ' %, bank 2 ' + r1(b2) + ' %';
+      if (a > 10) r.push({ h: 'valselucht', d: 1, t: tk + ' — bank ' + hoog + ' mager: een lek of injector aan die kant' });
+      if (b < -10) r.push({ h: 'injector', d: 1, t: tk + ' — bank ' + (3 - hoog) + ' rijk: een injector aan die kant' });
+      r.push({ h: 'maf', d: -1.5, t: tk + ' — verschil tussen de banken: de luchtmassameter is voor beide gelijk' });
+      r.push({ h: 'brandstofdruk', d: -1.5, t: tk + ' — verschil tussen de banken: de brandstofdruk is voor beide gelijk' });
+    } else if (b1 != null && b2 != null && b1 > 10 && b2 > 10) {
+      r.push({ h: 'maf', d: 0.5, t: 'beide banken mager (' + r1(b1) + ' / ' + r1(b2) + ' %) — iets wat ze delen' });
+      r.push({ h: 'brandstofdruk', d: 0.5, t: 'beide banken mager (' + r1(b1) + ' / ' + r1(b2) + ' %) — ook de brandstofdruk delen ze' });
+    }
+    return r;
+  }
+
+  /* De trimkaart: uit een rit of datalog die er al is, de totale trim per
+     toestand. hist = { pid: [{t, v}] }. Geeft { bron, stationair, deel, hoog }
+     met per vak { n, trim } of null als er te weinig is. Een vak telt alleen
+     met een warme motor (als de temperatuur erin staat). */
+  var KAART_MIN = 8;
+  function trimKaart(hist, bron) {
+    hist = hist || {};
+    var rpm = hist['010C'] || [], kort = hist['0106'] || [], lang = hist['0107'] || [];
+    if (!rpm.length || (!kort.length && !lang.length)) return null;
+    function bij(a, t) {
+      if (!a.length) return null;
+      var lo = 0, hi = a.length - 1;
+      while (lo < hi) { var m = (lo + hi) >> 1; if (a[m].t < t) lo = m + 1; else hi = m; }
+      var beste = a[lo]; if (lo > 0 && Math.abs(a[lo - 1].t - t) < Math.abs(beste.t - t)) beste = a[lo - 1];
+      return Math.abs(beste.t - t) <= 2000 && typeof beste.v === 'number' && !isNaN(beste.v) ? beste.v : null;
+    }
+    var vak = { stationair: [], deel: [], hoog: [] };
+    rpm.forEach(function (p) {
+      if (typeof p.v !== 'number') return;
+      var k = bij(kort, p.t), l = bij(lang, p.t);
+      if (k == null && l == null) return;
+      if (hist['0105'] && hist['0105'].length) { var tc = bij(hist['0105'], p.t); if (tc == null || tc < CFG.grens.warmC) return; }
+      var s = hist['010D'] ? bij(hist['010D'], p.t) : null, tr = (k || 0) + (l || 0);
+      if (p.v > CFG.grens.aanRpm && p.v < 1100 && (s == null || s < 3)) vak.stationair.push(tr);
+      else if (p.v >= 1800 && p.v <= 3200) vak.deel.push(tr);
+      else if (p.v > 3200) vak.hoog.push(tr);
+    });
+    var r = { bron: bron || 'een eerdere meting' }, iets = false;
+    Object.keys(vak).forEach(function (x) {
+      r[x] = vak[x].length >= KAART_MIN ? { n: vak[x].length, trim: mediaan(vak[x]) } : null;
+      if (r[x]) iets = true;
+    });
+    return iets ? r : null;
+  }
+
+  // Het patroon over de vakken. Dezelfde scheiding als de 2500-tpm-proef,
+  // maar op een rit die er al ligt — dus lichter gewogen (geen gecontroleerde
+  // toestand), en zonder dat iemand gas hoeft te geven.
+  function beoordeelKaart(u, st) {
+    var k = u && u.kaart; if (!k) return [];
+    st.metingen.kaart = k;
+    var s = k.stationair && k.stationair.trim, d = k.deel && k.deel.trim;
+    if (s == null || d == null) return [];
+    if (kmPoort({ lpg: { is: false, gangbaar: true } }) === null) return [{ h: null, d: 0, t: 'trimkaart niet beoordeeld — deze auto rijdt op LPG' }];
+    var pre = 'uit ' + k.bron + ': trim stationair ' + (s > 0 ? '+' : '') + r1(s) + ' %, bij 1800–3200 tpm ' + (d > 0 ? '+' : '') + r1(d) + ' %';
+    if (s > 10 && d < s / 2) return [
+      { h: 'valselucht', d: 1.5, t: pre + ' — mager stationair dat herstelt: het lekpatroon' },
+      { h: 'maf', d: -1, t: pre + ' — herstelt bij meer lucht' },
+      { h: 'brandstofdruk', d: -1, t: pre + ' — herstelt bij meer verbruik' }];
+    if (s > 10) return [
+      { h: 'maf', d: 1, t: pre + ' — mager over het hele bereik' },
+      { h: 'brandstofdruk', d: 1, t: pre + ' — mager over het hele bereik' },
+      { h: 'valselucht', d: -1, t: pre + ' — een lek alleen herstelt bij meer toeren' }];
+    if (s < 6 && d > 10) return [
+      { h: 'brandstofdruk', d: 1.5, t: pre + ' — alleen mager als er veel brandstof gevraagd wordt' },
+      { h: 'valselucht', d: -1, t: pre + ' — een lek telt juist stationair' }];
+    if (s < -10 && d > -5) return [{ h: 'injector', d: 1, t: pre + ' — alleen stationair rijk: een injector die nadruppelt' }];
+    if (Math.abs(s) < 6 && Math.abs(d) < 6) return [
+      { h: 'valselucht', d: -1, t: pre + ' — mengsel klopt over het hele bereik' },
+      { h: 'maf', d: -1, t: pre + ' — mengsel klopt over het hele bereik' },
+      { h: 'injector', d: -1, t: pre + ' — mengsel klopt over het hele bereik' }];
+    return [];
+  }
+
+  function beoordeelScan(u, st) {
+    if (u && u.scan) st.metingen.scan = u.scan;
+    return beoordeelCodes(u, st).concat(beoordeelFreeze(u, st), beoordeelSnap(u, st), beoordeelKaart(u, st));
+  }
+
+  /* Wat de klant niet weet — maar de auto wel. Puur uit st.metingen. Elk
+     inzicht: { niveau: 'let'|'info', kop, t }. Geen bewijs voor een
+     verdenking: dit is wat er op tafel ligt vóór er iets gemeten wordt. */
+  function inzichten(st) {
+    var m = st.metingen || {}, s = m.scan || {}, r = [];
+    var c = s.codes || {}, sd = s.sinds || {}, rd = s.readiness;
+    var vast = [].concat(c.bevestigd || [], c.permanent || []);
+    var nietKlaar = (rd && rd.nietKlaar) || [];
+    if (sd.km != null && sd.km < 200 && (sd.warm == null || sd.warm < 20))
+      r.push({ niveau: 'let', kop: 'Foutcodes zijn kort geleden gewist',
+        t: sd.km + ' km' + (sd.warm != null ? ' en ' + sd.warm + '× warmgedraaid' : '') + ' geleden. Wat er vóór die tijd stond is weg' +
+          (nietKlaar.length ? ', en ' + nietKlaar.length + ' zelftest(s) hebben sindsdien nog niet gedraaid: ' + nietKlaar.join(', ') : '') +
+          '. Geen codes zegt nu dus weinig.' });
+    else if (nietKlaar.length)
+      r.push({ niveau: 'info', kop: nietKlaar.length + ' zelftest(s) nog niet klaar', t: nietKlaar.join(', ') + '. Wat niet getest is, kan ook geen code geven.' });
+    if (sd.milKm) r.push({ niveau: 'let', kop: 'Gereden met het motorlampje aan', t: sd.milKm + ' km. Een brandend lampje maskeert een tweede storing: die geeft geen nieuw signaal.' });
+    var wacht = (c.pending || []).filter(function (x) { return vast.indexOf(x) < 0; });
+    if (wacht.length) r.push({ niveau: 'let', kop: 'Er komt iets aan', t: wacht.join(', ') + ' staat in afwachting: één keer gezien, nog geen lampje. Komt hij een volgende rit terug, dan gaat het lampje aan.' });
+    var perm = (c.permanent || []).filter(function (x) { return (c.bevestigd || []).indexOf(x) < 0; });
+    if (perm.length) r.push({ niveau: 'info', kop: 'Permanente code zonder lampje', t: perm.join(', ') + ' — de reparatie is (misschien) gedaan, maar de ECU heeft het nog niet zelf vastgesteld. Wissen helpt niet; rijden wel.' });
+    var f = m.freeze;
+    if (f) {
+      var d = [];
+      if (f.rpm != null) d.push(Math.round(f.rpm) + ' tpm');
+      if (f.kmh != null) d.push(Math.round(f.kmh) + ' km/u');
+      if (f.tc != null) d.push(Math.round(f.tc) + ' °C');
+      if (f.last != null) d.push(Math.round(f.last) + ' % last');
+      if (f.trim != null) d.push('trim ' + (f.trim > 0 ? '+' : '') + r1(f.trim) + ' %');
+      var na = f.kmh != null && f.kmh > 5 ? 'rijdend rond ' + Math.round(f.kmh) + ' km/u' : 'stilstaand';
+      if (f.tc != null) na += f.tc < 60 ? ', met een koude motor' : ', warm';
+      r.push({ niveau: 'info', kop: 'Freeze frame' + (f.code ? ' van ' + f.code : ''),
+        t: 'De ECU legde de motor vast op het moment van de fout: ' + d.join(', ') + '. Wil je hem terugzien, meet dan ' + na + '.' });
+    }
+    var lt = m.ltft;
+    if (lt && lt.b1 != null) {
+      var max = lt.b2 != null && Math.abs(lt.b2) > Math.abs(lt.b1) ? lt.b2 : lt.b1;
+      if (lt.b2 != null && Math.abs(lt.b1 - lt.b2) > 10)
+        r.push({ niveau: 'let', kop: 'De twee cilinderbanken verschillen', t: 'Lange trim bank 1 ' + r1(lt.b1) + ' %, bank 2 ' + r1(lt.b2) + ' %. De oorzaak zit aan één kant; alles wat beide banken delen (luchtmassameter, brandstofdruk) valt af.' });
+      else if (Math.abs(max) > 8)
+        r.push({ niveau: 'let', kop: 'De ECU stuurt al langere tijd bij', t: 'Lange-termijntrim ' + (max > 0 ? '+' : '') + r1(max) + ' %: ' + (max > 0 ? 'hij geeft structureel extra brandstof (mager)' : 'hij neemt structureel brandstof weg (rijk)') + '. Dat voel je niet, maar het is het geheugen van weken rijden.' });
+    }
+    var k = m.kaart;
+    if (k && k.stationair && k.deel)
+      r.push({ niveau: 'info', kop: 'Trimkaart uit ' + k.bron, t: 'Stationair ' + (k.stationair.trim > 0 ? '+' : '') + r1(k.stationair.trim) + ' % (' + k.stationair.n + '×), bij 1800–3200 tpm ' + (k.deel.trim > 0 ? '+' : '') + r1(k.deel.trim) + ' % (' + k.deel.n + '×)' + (k.hoog ? ', boven 3200 tpm ' + (k.hoog.trim > 0 ? '+' : '') + r1(k.hoog.trim) + ' %' : '') + '. Hoe de trim over de toeren loopt, wijst de familie aan vóór er iets getest is.' });
+    var kn = st.kennis;
+    if (kn && kn.merk && kn.getoetst && kn.getoetst.length)
+      r.push({ niveau: 'info', kop: 'Bekend bij ' + kn.merk.charAt(0).toUpperCase() + kn.merk.slice(1), t: kn.getoetst.join('; ') + '. Die toets ik eerst.' });
+    r.sort(function (a, b) { return (a.niveau === 'let' ? 0 : 1) - (b.niveau === 'let' ? 0 : 1); });
+    return r;
+  }
+
   /* Mode 06: welke monitor-ID's bij welke verdenking horen (J1979 bijlage D,
      dezelfde families als FAMILIE in pidlane-mode06.js). */
   // Welke mode 06-tests iets zeggen over welke verdenking staat in
@@ -693,6 +909,7 @@
       CONTROLE_DIESEL.forEach(function (h) { speel(st, h, 'controle (diesel)'); });
     if ((ctx.vervangen || []).length) speel(st, 'software', 'onlangs vervangen');
     kennisInSpel(st, ks);
+    vooraf(st, ctx.wanneer);
     var kop = (ks.length === 1 && ks[0] === 'controle') ? 'Geen klacht, brede controle'
       : 'Klacht: ' + ks.map(function (k) { return KLACHTEN[k] ? KLACHTEN[k].naam : k; }).join(', ');
     st.log.push({ soort: 'start', t: kop + '. ' + Object.keys(st.v).length + ' verdenkingen om te onderzoeken.' });
@@ -924,6 +1141,9 @@
     var c = st.uitkomst || conclusie(st), r = ['PidLane — Volledig onderzoek', 'Datum: ' + new Date().toLocaleString('nl')];
     if (st.ctx.merk) r.push('Voertuig: ' + st.ctx.merk);
     if (st.ctx.klachtTekst) r.push('Klacht: ' + st.ctx.klachtTekst);
+    if ((st.ctx.wanneer || []).length) r.push('Wanneer: ' + st.ctx.wanneer.map(function (w) { return WANNEER[w] ? WANNEER[w].naam : w; }).join(', '));
+    var inz = inzichten(st);
+    if (inz.length) { r.push('', '=== WAT DE AUTO AL WIST ==='); inz.forEach(function (x) { r.push(' ' + (x.niveau === 'let' ? '[let op] ' : '') + x.kop + ' — ' + x.t); }); }
     r.push('', '=== CONCLUSIE ===');
     if (c.oordeel === 'niets') r.push(' Geen oorzaak gevonden die via de diagnosepoort te zien is.');
     c.top.forEach(function (x) {
@@ -1004,6 +1224,36 @@
     return !!(typeof getPidDef === 'function' && getPidDef(pid));
   }
 
+  // Drie lezingen per PID: genoeg voor een mediaan, kort genoeg om de scan
+  // niet te rekken. Wat de auto niet levert, wordt niet gevraagd.
+  async function momentopname(pids, stapId) {
+    var r = {};
+    for (var n = 0; n < 3; n++) {
+      for (var i = 0; i < pids.length; i++) {
+        if (!beschikbaar(pids[i])) continue;
+        var v = await leesPid(pids[i], stapId);
+        (r[pids[i]] || (r[pids[i]] = [])).push(v);
+      }
+    }
+    return r;
+  }
+  // De trimkaart komt uit wat er al ligt: de laatste rit, dan de datalog,
+  // dan de live-historie van deze sessie. Niets daarvan → geen kaart.
+  function kaartUitBron() {
+    var bronnen = [
+      function () { return typeof plRitBron === 'function' ? plRitBron() : null; },
+      function () { return typeof plDatalogBron === 'function' ? plDatalogBron() : null; },
+      function () { return typeof pidHist !== 'undefined' && pidHist ? { naam: 'de live-meting van deze sessie', hist: pidHist } : null; }
+    ];
+    for (var i = 0; i < bronnen.length; i++) {
+      var b = null;
+      try { b = bronnen[i](); } catch (e) { console.warn('PLOnderzoek: bron voor de trimkaart onleesbaar', e); }
+      var k = b && b.hist ? trimKaart(b.hist, b.naam) : null;
+      if (k) return k;
+    }
+    return null;
+  }
+
   // ── Toestand van het scherm ─────────────────────────────────────────
   var _st = null, _ui = { fase: 'intake', live: {}, voortgang: 0, wacht: null, antwoord: null, ai: null, aiBezig: false, intake: null };
 
@@ -1040,10 +1290,12 @@
     if (stap.soort === 'vraag') { var w = await wachtOpKnop('vraag'); return w === '__overslaan' ? { overgeslagen: true, reden: 'geen antwoord' } : { w: w }; }
     if (stap.soort === 'lezen') {
       if (!window.PLFoutcodes || !PLFoutcodes.leesStil) return { overgeslagen: true, reden: 'foutcodemodule niet geladen' };
-      if (st.ctx.scan) { _ui.melding = 'De uitlezing van Check mijn auto wordt gebruikt.'; return { scan: st.ctx.scan }; }
-      _ui.melding = 'Bezig met uitlezen…'; teken();
-      var scan = await PLFoutcodes.leesStil();
-      return scan ? { scan: scan } : { overgeslagen: true, reden: 'de auto gaf geen antwoord' };
+      var scan = st.ctx.scan;
+      if (scan) _ui.melding = 'De uitlezing van Check mijn auto wordt gebruikt.';
+      else { _ui.melding = 'Bezig met uitlezen…'; teken(); scan = await PLFoutcodes.leesStil(); }
+      if (!scan) return { overgeslagen: true, reden: 'de auto gaf geen antwoord' };
+      _ui.melding = 'Bijstuurgeheugen en boordspanning…'; teken();
+      return { scan: scan, snap: await momentopname(stap.snapPids || [], stap.id), kaart: kaartUitBron() };
     }
     if (stap.soort === 'mode06') {
       if (!window.PLM06 || typeof PLM06.scan !== 'function') return { overgeslagen: true, reden: 'mode 06-module niet geladen' };
@@ -1142,6 +1394,12 @@
     '#plOzOv .oz-concl{border-color:var(--gn,#22c55e)}' +
     '#plOzOv .oz-concl.niets{border-color:var(--bd)}' +
     '#plOzOv .oz-ai{background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.45);border-radius:10px;padding:10px;font-size:13.5px;line-height:1.45;margin-top:8px}' +
+    '#plOzOv .oz-tel{margin-left:4px;font-weight:700;color:var(--tx2)}' +
+    '#plOzOv .oz-scheidt{color:var(--tx2);font-weight:600}' +
+    '#plOzOv .oz-i{padding:7px 0;border-top:1px solid var(--bd);font-size:13px;line-height:1.45}' +
+    '#plOzOv .oz-i:first-of-type{border-top:0}' +
+    '#plOzOv .oz-i div{color:var(--tx2)}' +
+    '#plOzOv .oz-i.let b{color:var(--or,#f59e0b)}' +
     '#plOzOv textarea{width:100%;min-height:60px;background:var(--sur2);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:8px;font:14px var(--f);box-sizing:border-box}';
 
   function zorgOv() {
@@ -1181,13 +1439,18 @@
   function tekenIntake() {
     var i = _ui.intake;
     var h = '<div class="oz-kop"><div class="oz-t">🧭 Volledig onderzoek</div><button class="oz-x" data-a="sluit">✕</button></div>' +
-      '<div class="oz-sub">Ik onderzoek stap voor stap: ik meet, stel vragen en geef soms een opdracht. Na elke stap kies ik zelf wat het meest oplevert — en wat niet klopt, sluit ik uit.</div>';
+      '<div class="oz-sub">Eerst lees ik uit wat de auto zelf al weet: foutcodes, het freeze frame, het bijstuurgeheugen per bank en je laatste rit. Daarna meet ik alleen nog wat onderscheid maakt tussen de oorzaken die overblijven.</div>';
     h += '<div class="oz-blok"><div class="oz-bh">Wat merk je? (meer mag)</div><div class="oz-chips">';
     Object.keys(KLACHTEN).forEach(function (k) {
       h += '<button class="oz-chip' + (i.klachten.indexOf(k) >= 0 ? ' aan' : '') + '" data-a="klacht" data-k="' + k + '">' + KLACHTEN[k].icoon + ' ' + esc(KLACHTEN[k].naam) + '</button>';
     });
     h += '</div>';
     if (i.klachtTekst) h += '<div class="oz-meld">Je schreef: “' + esc(i.klachtTekst) + '”</div>';
+    h += '</div><div class="oz-blok"><div class="oz-bh">Wanneer speelt het? (meer mag)</div><div class="oz-chips">';
+    Object.keys(WANNEER).forEach(function (k) {
+      h += '<button class="oz-chip' + (i.wanneer.indexOf(k) >= 0 ? ' aan' : '') + '" data-a="wanneer" data-w="' + k + '">' + WANNEER[k].icoon + ' ' + esc(WANNEER[k].naam) + '</button>';
+    });
+    h += '</div><div class="oz-meld">Het moment scheidt oorzaken die bij dezelfde klacht horen: overslaan bij optrekken is meestal ontsteking, alleen stationair meestal lucht.</div>';
     h += '</div><div class="oz-blok"><div class="oz-bh">Is er onlangs iets aan de auto gedaan?</div><div class="oz-chips">';
     VERVANGEN.forEach(function (v) {
       h += '<button class="oz-chip' + (i.vervangen.indexOf(v) >= 0 ? ' aan' : '') + '" data-a="vervangen" data-k="' + esc(v) + '">' + esc(v) + '</button>';
@@ -1219,6 +1482,8 @@
   function tekenStap(st, stap) {
     var h = '<div class="oz-blok oz-stap"><div class="oz-st">' + esc(stap.icoon) + ' ' + esc(stap.titel) + '</div>' +
       '<div class="oz-waarom">' + esc(stap.waarom) + '</div>';
+    var sch = scheidt(st, stap);
+    if (sch.length) h += '<div class="oz-meld oz-scheidt">Scheidt: ' + esc(sch.join(' · ')) + '</div>';
     var w = _ui.wacht;
     if (stap.soort === 'vraag' && w) {
       h += '<div class="oz-knoppen">';
@@ -1243,20 +1508,44 @@
     return h + '</div>';
   }
 
+  // Welke open verdenkingen deze stap kan scheiden, sterkste eerst.
+  function scheidt(st, stap) {
+    return Object.keys(stap.test || {}).filter(function (h) { return open(st, h); })
+      .sort(function (a, b) { return stap.test[b] - stap.test[a]; })
+      .slice(0, 4).map(function (h) { return VERDENKINGEN[h].naam; });
+  }
+  function telling(x) {
+    var v = x.bewijs.filter(function (b) { return b.d > 0; }).length, t = x.bewijs.filter(function (b) { return b.d < 0; }).length;
+    return v || t ? ' <span class="oz-tel">' + (v ? '▲' + v : '') + (v && t ? ' ' : '') + (t ? '▼' + t : '') + '</span>' : '';
+  }
+  function sterkste(x) {
+    var b = null;
+    x.bewijs.forEach(function (y) { if (!b || Math.abs(y.d) > Math.abs(b.d)) b = y; });
+    return b;
+  }
+  function tekenInzichten(st) {
+    var l = inzichten(st); if (!l.length) return '';
+    var h = '<div class="oz-blok oz-inz"><div class="oz-bh">Wat de auto al wist</div>';
+    l.forEach(function (x) { h += '<div class="oz-i ' + x.niveau + '"><b>' + (x.niveau === 'let' ? '⚠️ ' : 'ℹ️ ') + esc(x.kop) + '</b><div>' + esc(x.t) + '</div></div>'; });
+    return h + '</div>';
+  }
+
   function tekenVerdenkingen(st) {
     var hs = Object.keys(st.v).sort(function (a, b) { return st.v[b].score - st.v[a].score; });
-    var h = '<div class="oz-blok"><div class="oz-bh">Verdenkingen</div>';
+    var h = '<div class="oz-blok"><div class="oz-bh">Oorzakenbord</div>';
     hs.forEach(function (id) {
       var x = st.v[id], s = status(x.score), uit = s === 'uitgesloten' || s === 'onwaarschijnlijk';
       h += '<div class="oz-v' + (uit ? ' uit' : '') + (_nieuw[id] ? ' nieuw' : '') + '" data-a="v" data-k="' + id + '">' +
-        '<div class="oz-vn">' + esc(VERDENKINGEN[id].naam) + (x.bekend ? ' <small>· bekend bij dit merk</small>' : '') + '</div><div class="oz-vs">' + STATUSTEKST[s] + '</div>' +
+        '<div class="oz-vn">' + esc(VERDENKINGEN[id].naam) + (x.bekend ? ' <small>· bekend bij dit merk</small>' : '') + '</div><div class="oz-vs">' + STATUSTEKST[s] + telling(x) + '</div>' +
         '<div class="oz-vb"><i style="width:' + Math.round(balk(x.score) * 100) + '%;background:' + kleur(x.score) + '"></i></div>';
+      var sterk = sterkste(x);
+      if (!_open[id] && sterk && !uit) h += '<div class="oz-bw"><div class="' + (sterk.d > 0 ? 'oz-plus' : 'oz-min') + '">' + (sterk.d > 0 ? '▲ ' : '▼ ') + esc(sterk.t) + '</div></div>';
       if (_open[id]) {
         h += '<div class="oz-bw">' + (x.bewijs.length ? x.bewijs.map(function (b) { return '<div class="' + (b.d > 0 ? 'oz-plus' : 'oz-min') + '">' + (b.d > 0 ? '▲ ' : '▼ ') + esc(b.t) + '</div>'; }).join('') : 'Nog niets gemeten.') + '</div>';
       }
       h += '</div>';
     });
-    return h + '<div class="oz-meld">Tik op een verdenking voor het bewijs. ▲ wijst ernaartoe, ▼ ervan af.</div></div>';
+    return h + '<div class="oz-meld">Onder elke oorzaak het zwaarste bewijs; tik voor alles. ▲ wijst ernaartoe, ▼ ervan af.</div></div>';
   }
 
   function tekenConclusie(st) {
@@ -1300,9 +1589,10 @@
         ' · stap ' + st.gedaan.length + (stap ? ' → ' + (st.gedaan.length + 1) : '') + (isDemo() ? ' · demo' : '') + '</div>';
       if (st.klaar) h += tekenConclusie(st);
       else if (stap) h += tekenStap(st, stap);
-      // Een klant ziet de stap en de conclusie; het verdenkingenbord en de
-      // tijdlijn zijn werkgereedschap voor de garagemodus (besluit 07-10-2026).
-      if (st.ctx.garage) h += tekenVerdenkingen(st) + tekenPlan(st, st.klaar ? null : stap);
+      // Sinds 16-10-2026 voor iedereen: wie een OBD-adapter koopt snapt de
+      // trims, en het bord met de meetwaarden ís de uitkomst bij een lastig
+      // probleem. Tot dan was het werkgereedschap voor de garagemodus.
+      h += tekenInzichten(st) + tekenVerdenkingen(st) + tekenPlan(st, st.klaar ? null : stap);
       if (!st.klaar) h += '<div class="oz-knoppen"><button class="oz-k" data-a="stop">⏹ Stoppen en conclusie</button></div>';
     }
     d.innerHTML = h;
@@ -1315,6 +1605,11 @@
     if (a === 'klacht' || a === 'vervangen') {
       var l = a === 'klacht' ? _ui.intake.klachten : _ui.intake.vervangen, i = l.indexOf(k);
       if (i >= 0) l.splice(i, 1); else l.push(k);
+      return teken();
+    }
+    if (a === 'wanneer') {
+      var lw = _ui.intake.wanneer, w = b.getAttribute('data-w'), j = lw.indexOf(w);
+      if (j >= 0) lw.splice(j, 1); else lw.push(w);
       return teken();
     }
     if (a === 'begin') return begin();
@@ -1345,7 +1640,7 @@
     var i = _ui.intake, v = vehicle();
     _open = {}; _nieuw = {}; _ui.ai = null;
     _st = nieuw({ klachten: i.klachten.slice(), klachtTekst: i.klachtTekst, lampje: i.lampje, meting: i.meting,
-      merk: v.merk, brandstof: v.brandstof, liters: liters(v), vervangen: i.vervangen.slice(), scan: i.scan, beschikbaar: beschikbaar,
+      merk: v.merk, brandstof: v.brandstof, liters: liters(v), vervangen: i.vervangen.slice(), wanneer: i.wanneer.slice(), scan: i.scan, beschikbaar: beschikbaar,
       garage: isGarage() });
     var start = Object.keys(_st.v);
     _ui.fase = 'loopt'; teken();
@@ -1410,7 +1705,7 @@
     var uitLog = (typeof plVervangenRecent === 'function' ? plVervangenRecent() : [])
       .filter(function (x) { return VERVANGEN.indexOf(x) >= 0; });
     _ui = { fase: 'intake', live: {}, voortgang: 0, wacht: null, ai: null, aiBezig: false,
-      intake: { klachten: ks, klachtTekst: opt.klacht || '', lampje: opt.lampje, meting: opt.meting, vervangen: uitLog, scan: opt.scan || null } };
+      intake: { klachten: ks, klachtTekst: opt.klacht || '', lampje: opt.lampje, meting: opt.meting, vervangen: uitLog, wanneer: [], scan: opt.scan || null } };
     _st = null;
     zorgOv().style.display = 'flex';
     teken();
@@ -1430,6 +1725,8 @@
     KLACHTEN: KLACHTEN, VERDENKINGEN: VERDENKINGEN, STAPPEN: STAPPEN, CODEREGELS: CODEREGELS, cfg: CFG,
     beoordeelMode06: beoordeelMode06,
     KENNIS: KENNIS, kennisNaarVerdenking: kennisNaarVerdenking,
+    WANNEER: WANNEER, beoordeelFreeze: beoordeelFreeze, beoordeelSnap: beoordeelSnap, trimKaart: trimKaart,
+    beoordeelKaart: beoordeelKaart, inzichten: inzichten,
     klachtUitTekst: klachtUitTekst, nieuw: nieuw, volgende: volgende, vooruit: vooruit, verwerk: verwerk,
     verbreed: verbreed, conclusie: conclusie, status: status, draai: draai, alsTekst: alsTekst,
     // Voor PLSamenhang (#446): een verdenking in spel zetten, en de
