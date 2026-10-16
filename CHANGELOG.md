@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 16-10-2026 — Snelle scan: twee lezingen per sensor (#538)
+ ═══════════════════════════════════════════════════════════
+ De momentopname van het onderzoek vraagt elke sensor twee keer in
+ plaats van drie. Uitgerekend: een V-motor met een trage adapter kwam
+ op 8,4 s, nu hoogstens 5,6 s. #535 en #536 zijn beantwoord uit de
+ OBD-norm en vakliteratuur, zonder rit.
+
+ ═══════════════════════════════════════════════════════════
  17-10-2026 — Kennis per merk vanzelf binnenhalen (#541)
  ═══════════════════════════════════════════════════════════
  OBDb wordt vanzelf doorzocht zodra een auto herkend is of zijn
