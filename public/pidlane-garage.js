@@ -183,9 +183,8 @@
       var ls = (v.gezondheid || {}).laadStaat;
       return K ? raak(K.laadspanning(r.min_accu, 1000, { prof: prof, laad: ls ? { staat: ls, tekst: '' } : null })) : r.min_accu < 13.0;
     });
-    // Een laadregeling die bewezen doet wat hij moet, verklaart een lage minimumspanning.
-    var laadGoed = v.gezondheid && (v.gezondheid.laadStaat === 'bewust_laag' || v.gezondheid.laadStaat === 'laadt');
-    if (laag.length >= 2 && !laadGoed) uit.push({ soort: 'laden', titel: 'Laadspanning onder 13 V tijdens het rijden',
+    // Wat de auto zelf over het laden zei (laadStaat) zit al in de grens hierboven (#532).
+    if (laag.length >= 2) uit.push({ soort: 'laden', titel: 'Laadspanning onder 13 V tijdens het rijden',
       tekst: 'In ' + laag.length + ' ritten. Dat wijst op een dynamo of accu die het niet bijhoudt; laat de laadspanning meten.' });
     var stat = ritten.map(function (r) { return r.stationair_pct; }).filter(function (x) { return typeof x === 'number'; });
     if (stat.length >= 3 && mediaan(stat) > 30) uit.push({ soort: 'stationair', titel: 'Veel stationair draaien',

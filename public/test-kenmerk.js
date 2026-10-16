@@ -107,6 +107,7 @@ t('108 °C, kenveld bevestigd: ok', C(108, K.profiel({ mens: { kenveldthermostaa
 t('113 °C: op elke motor fout, ook een Golf', C(113, K.profiel({ merk: 'Volkswagen' })), 'fout');
 t('de tabellen volgen dezelfde grens: PIDS 0105 wH/dH = 105/112', (() => { const s = bouw(); const d = s.PIDS.find((x) => x.pid === '0105'); return [d.wH, d.dH]; })(), [K.KOEL_KLASSIEK, K.KOEL_HARD]);
 t('PID_LET_OP 0105 max = KOEL_HARD', bouw().PID_LET_OP['0105'].max, K.KOEL_HARD);
+t('BSC cool_warm: bovengrens = KOEL_HARD', bouw().BSC_TESTS.find((x) => x.id === 'cool_warm').band.hi, K.KOEL_HARD);
 t('laadband: gevraagd 13,1 → vanaf 12,6', K.laadBand(mazda, 13.1).lo, 12.6);
 t('laadband: gewone dynamo bevestigd → 13,2', K.laadBand(klassiek, null).lo, 13.2);
 t('laadband: onbekend → alleen de harde grens', K.laadBand(mazda, null).lo, K.LAAD_HARD_LAAG);
