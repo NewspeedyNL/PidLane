@@ -26,6 +26,9 @@
  constant, regen) weegt vooraf mee, hoogstens 1,5 per oorzaak.
  Oorzakenbord en tijdlijn nu voor iedereen, met ▲/▼-telling en het
  zwaarste bewijs zichtbaar; elke stap zegt welke oorzaken hij scheidt.
+ App-maten onderzoek-* (scans, scanduur, freeze frame met trims,
+ bank 2, bankverschil, trimkaartvakken, kaart tegen proef) voor de
+ meetopdrachten in #535–#538.
 
  ═══════════════════════════════════════════════════════════
  16-10-2026 — De derde poort: geldt deze regel voor déze auto? (#532)
