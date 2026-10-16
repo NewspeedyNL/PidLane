@@ -363,7 +363,7 @@ function haalZeef(isMode01) {
     t('rol: Vehicle battery current = stroom', E.laadRol('Vehicle battery current'), 'stroom');
     t('rol: 12V battery state of charge = soc', E.laadRol('12V battery state of charge'), 'soc');
     t('rol: 12V battery temperature / age', E.laadRol('12V battery temperature') + ' ' + E.laadRol('12V battery age'), 'accutemp leeftijd');
-    t('rol: spanning van een sensor is geen laadspanning', E.laadRol('Ambient air temperature sensor voltage'), null);
+    t('rol: de spanning van de stroomsensor is geen accustroom', E.laadRol('Battery current sensor voltage'), null);
     const O = (o) => { const r = E.laadOordeel(o); return r ? r.staat : null; };
     // De meting uit de sensorlijst van 16-10-2026: 13,2 V gevraagd, accu 13,2 V.
     t('13,2 V gevraagd en gekregen: de dynamo laadt', O({ u: 13.2, rpm: 800, gevraagd: 13.233 }), 'laadt');
