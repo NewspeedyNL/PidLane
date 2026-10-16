@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 17-10-2026 — Kennis per merk vanzelf binnenhalen (#541)
+ ═══════════════════════════════════════════════════════════
+ OBDb wordt vanzelf doorzocht zodra een auto herkend is of zijn
+ sensorlijst opent (gratis, één keer per maand). De nuttigste codes
+ (gevraagde laadspanning, laadtoestand en stroom van de 12V-accu,
+ banden, olie, automaat) staan bovenaan in plaats van willekeurig.
+ Fiat en Honda (29-bit kort adres) leveren nu codes op. De laadrollen
+ herkennen de namen van Renault, Nissan, Volvo, VAG, Kia en Toyota, en
+ zien drempels en de tractie-accu niet meer aan voor de 12V-accu.
+ Fout hersteld: een mode 22-antwoord over meer frames werd verkeerd
+ ontleed (framenummers in de data); eigen sensoren met E–H in de
+ formule gaven daardoor een verkeerde waarde.
+
+ ═══════════════════════════════════════════════════════════
  16-10-2026 — Mode 06: geen "krap" meer tegen een grens die er niet is
  ═══════════════════════════════════════════════════════════
  Een grens van 0 of 65535 (unsigned), −32768 of 32767 (signed) is geen

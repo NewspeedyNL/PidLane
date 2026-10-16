@@ -40,6 +40,34 @@ lichter gewogen dan een gecontroleerde meting.
 
 ---
 
+## 17-10-2026 — Wat OBDb per merk oplevert, en wat de app ermee weggooide (#541)
+
+Onderzocht op de OBDb-bestanden van 27 populaire modellen in NL. OBDb heeft
+bijna overal veel codes (Kia Sportage 884 signalen, Toyota Corolla 996, VW
+Polo 1146). Maar wat de app ervan aanbood, was op 16-10 bij veel merken nul:
+
+| reden | merken | wat er nu mee gebeurt |
+|---|---|---|
+| afwijkend antwoordadres (70E → 778, 6A2 → 682) | VAG, PSA/Opel | nog niet bruikbaar: vraagt ATCRA en eigen flow control, op geen auto nagemeten. Geteld en genoemd in de tekst |
+| extended addressing (`eax`) | BMW | idem |
+| 29-bit in korte OBDb-notatie (`DA10`) | Fiat, Honda | **nu bruikbaar**: wordt `18DA10F1` |
+| lijst afgekapt op 60 zonder volgorde | Audi, Seat, Toyota | **nu op waarde**: laadspanning, laadtoestand, accu, banden, olie, ATF eerst |
+| `laadRol` kende de namen niet | Renault, Nissan, Volvo, VAG | **nu herkend** ("set point", "request", "charge level") |
+| `laadRol` zag drempels en de tractie-accu voor de 12V-accu aan | Ford, BMW, hybrides | **nu uitgesloten** ("too low for start/stop", "Minimum state of charge", "State of charge battery management system") |
+| Skoda Octavia: het bestand heeft geen commando's | — | gat in OBDb |
+
+**Een stille fout die hierbij boven kwam.** `parsePID` haalde bij elk antwoord
+alle niet-hex tekens weg, ook de framenummers en de lengteregel van een
+meer-frame-antwoord. Vanaf de vijfde databyte van een mode 22-antwoord schoof
+alles daardoor een halve byte op: een eigen sensor met E–H in de formule gaf
+een verkeerde waarde, zonder melding. Mogelijk de reden dat 22F470 (turbodruk,
+D en E) "werkt niet" heette. Mode 01 had die regel al sinds fase 4
+(`splitBatchResponse`); nu ook `parsePID` en `PLEigen` (`plIsoTpHex`).
+
+**OBDb zegt iets over het model, niet over de variant.** De CX-5 heeft 13
+turbosignalen omdat het bestand ook de 2.5T dekt. Uit OBDb volgt dus geen
+kenmerk van déze auto; daarvoor blijft het bewijs van de meting zelf nodig.
+
 ## 16-10-2026 — Mode 06: zestien keer "krap" tegen grenzen die er niet zijn
 
 Op de CX-5 meldde de zelftestlijst 16 tests "krap binnen de grens": 0

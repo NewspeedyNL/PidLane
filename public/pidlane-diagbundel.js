@@ -294,7 +294,7 @@ function parsePID(pid,raw){
   // of het de motor was of de batch-splitsing.
   try{ (window._pidRuw=window._pidRuw||{})[pid]=String(raw||'').trim().slice(0,40); }catch(e){ /* stil: alleen een cache voor weergave, geen kernpad */ }
   if(!raw||raw.includes('NO DATA')||raw.includes('ERROR')||raw.includes('UNABLE')||raw.includes('?')) return null;
-  const cleaned=raw.replace(/[^0-9A-Fa-f]/g,'');
+  const cleaned=plIsoTpHex(raw);
   if(cleaned.length<4) return null;
   // Vind data bytes na mode+pid echo
   const hdr=((parseInt(pid.slice(0,2),16)+0x40).toString(16).toUpperCase().padStart(2,'0'))+pid.slice(2).toUpperCase();
@@ -310,6 +310,29 @@ function parsePID(pid,raw){
   else rawVal=b[0]??null;
   return validateAndSmooth(pid,rawVal);
 }
+
+/* Het hex van één antwoord, met de ISO-TP-opmaak van de ELM eruit (17-10-2026).
+   Een antwoord langer dan één CAN-frame komt als
+     "00A\r0:62F47012\r1:3456789ABCDE"   of op één regel "00A 0:62F47012 1:3456…"
+   De lengteregel (00A) en de framenummers (0:, 1:) zijn geen data. parsePID
+   haalde tot vandaag alleen alle niet-hex tekens weg, dus het framecijfer en
+   de lengte belandden in de datastroom: vanaf de vijfde databyte van een
+   mode 22-antwoord schoof alles een halve byte op. Een eigen sensor met E–H in
+   de formule gaf daardoor een verkeerde waarde, zonder melding. Dezelfde
+   regel als splitBatchResponse hierboven: splits op élke framemarker en
+   houd alleen wat erachter staat. Zonder framemarkers verandert er niets. */
+function plIsoTpHex(raw){
+  const regels=String(raw||'').split(/[\r\n]+/);
+  if(!regels.some(l=>/[0-9A-Fa-f]\s*:/.test(l))) return String(raw||'').replace(/[^0-9A-Fa-f]/g,'');
+  let hex='';
+  for(const l of regels){
+    if(!/[0-9A-Fa-f]\s*:/.test(l)) continue;          // de lengteregel op zichzelf
+    const delen=l.split(/[0-9A-Fa-f]\s*:/);           // deel 0: lengte of leeg
+    for(let k=1;k<delen.length;k++) hex+=delen[k].replace(/[^0-9A-Fa-f]/g,'');
+  }
+  return hex;
+}
+window.plIsoTpHex=plIsoTpHex;
 
 // Verwerk al-gesplitste bytes voor één PID (uit een batch-respons)
 function applyParsedBytes(pid,bytes){

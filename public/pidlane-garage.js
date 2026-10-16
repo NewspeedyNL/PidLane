@@ -828,6 +828,40 @@
     if (!kan.length) return { staat: 'LET OP', detail: d + ' — de keuzelijst kent er geen van (eigen PIDs gezet?)' };
     return { staat: 'ok', detail: d + ', en ze staan alle ' + kan.length + ' aan' };
   }
+  /* OBDb binnenhalen voor één voertuig: zoeken, en wat bruikbaar is in de
+     bibliotheek van dit model zetten. Gratis (geen AI, geen tegoed). De tekst
+     zegt ook wat er NIET bruikbaar was en waarom: een afwijkend antwoordadres
+     (VAG, PSA, BMW) kan de app nog niet vragen (#541). */
+  async function obdbBinnenhalen(vid, v) {
+    var r = await PLEigen.zoekObdb(v, function (repo) { return api('obdb_bestand', { repo: repo }); });
+    if (!r.ok) return { tekst: '✗ ' + r.fout };
+    if (!r.repo) return { tekst: 'Dit model staat (nog) niet in OBDb. Gezocht als: ' + (r.geprobeerd || []).join(', ') + '.' };
+    var niet = r.nietBruikbaar ? ' ' + r.nietBruikbaar + ' code' + (r.nietBruikbaar === 1 ? '' : 's') + ' uit OBDb antwoord' + (r.nietBruikbaar === 1 ? 't' : 'en') + ' op een ander adres; die kan de app nog niet vragen.' : '';
+    if (!r.kandidaten.length) return { tekst: 'OBDb kent ' + r.repo + ', maar geen leescode die deze app kan gebruiken.' + niet };
+    try {
+      var d = await api('pidbib_kandidaten', { voertuig_id: vid, lijst: r.kandidaten, bron: 'obdb' });
+      return { erbij: d.erbij, tekst: '✓ ' + d.erbij + ' nieuwe kandidaat' + (d.erbij === 1 ? '' : 'en') + ' in de lijst' +
+        (r.kandidaten.length > d.erbij ? ' (' + (r.kandidaten.length - d.erbij) + ' stonden er al of vielen af)' : '') + '. De nuttigste (laadspanning, accu, banden) staan bovenaan; test ze op je auto.' + niet };
+    } catch (x) { return { tekst: '✗ ' + x.message }; }
+  }
+  /* Vanzelf, één keer per voertuig per dertig dagen (17-10-2026): zodra de
+     auto herkend is of zijn sensorlijst geopend wordt. Bij de CX-5 moest je
+     zelf op "Zoek codes" drukken; wie dat niet weet, krijgt zijn model nooit
+     te zien. Zit er al iets uit OBDb in de bibliotheek, dan niet. */
+  var OBDB_OPNIEUW_MS = 30 * 864e5;
+  async function obdbVanzelf(v, lijst) {
+    if (!v || !v.id || !v.merk || !v.model || !window.PLEigen || !PLEigen.zoekObdb) return null;
+    var sl = 'pl_obdb_vanzelf_' + v.id, nu = Date.now(), eerder = Number(lees(sl) || 0);
+    if (eerder && nu - eerder < OBDB_OPNIEUW_MS) return null;
+    if (Array.isArray(lijst) && lijst.some(function (b) { return b.bron === 'obdb'; })) { schrijf(sl, nu); return null; }
+    schrijf(sl, nu);
+    try {
+      var r = await obdbBinnenhalen(v.id, v);
+      if (r.erbij) melding('📚 ' + r.erbij + ' codes voor je ' + (v.merk || '') + ' uit OBDb klaargezet — Mijn voertuigen → Sensoren');
+      return r;
+    } catch (x) { console.warn('PLGarage: OBDb vanzelf ophalen mislukt', x); return null; }
+  }
+
   async function herkenAuto() {
     var vi = (typeof vehicleInfo !== 'undefined' && vehicleInfo) || {};
     if (!vi.vin || vi.vin === _vinGezien || !(_st.stand && _st.stand.akkoord)) return;
@@ -842,6 +876,9 @@
       _st.onbekend = null;
       if (_st.actiefId !== hit.id) { zetActief(hit.id); melding('🚗 Verbonden met ' + (hit.naam || hit.merk || 'je voertuig')); }
       _st.gekoppeld = hit.id;
+      // De kennis van dit model vanzelf binnenhalen (gratis, één keer per maand).
+      api('pidbib_lijst', { voertuig_id: hit.id }).then(function (d) { return obdbVanzelf(hit, d && d.lijst); })
+        .catch(function (x) { console.warn('PLGarage: bibliotheek voor OBDb vanzelf niet te laden', x); });
       // De vaste sensorselectie van deze auto (Mijn voorkeuren). Alleen na een
       // herkenning op het chassisnummer: de set van een diesel hoort niet op
       // een andere auto terecht te komen.
@@ -1869,7 +1906,12 @@
   }
   async function sensBibLaad(vid) {
     var S = _st.sens;
-    try { var d = await api('pidbib_lijst', { voertuig_id: vid }); if (_st.sens === S) S.bib = { lijst: d.lijst || [] }; }
+    try {
+      var d = await api('pidbib_lijst', { voertuig_id: vid }); if (_st.sens === S) S.bib = { lijst: d.lijst || [] };
+      // Nog niets uit OBDb voor dit model: vanzelf ophalen, en daarna de lijst opnieuw.
+      var r = await obdbVanzelf(voertuig(vid), d.lijst || []);
+      if (r && r.erbij && _st.sens === S) { S.zoek = r.tekst; d = await api('pidbib_lijst', { voertuig_id: vid }); S.bib = { lijst: d.lijst || [] }; }
+    }
     catch (x) { if (_st.sens === S) S.bib = { fout: 'Bibliotheek niet te laden: ' + x.message }; }
     if (_st.sens === S) teken();
   }
@@ -2266,17 +2308,9 @@
       var S = _st.sens, v = S && voertuig(S.vid); if (!S || !v || S.zoek === 'bezig' || !window.PLEigen) return;
       sensNieuw();
       S.zoek = 'bezig'; teken();
-      var r = await PLEigen.zoekObdb(v, function (repo) { return api('obdb_bestand', { repo: repo }); });
-      if (!r.ok) S.zoek = '✗ ' + r.fout;
-      else if (!r.repo) S.zoek = 'Dit model staat (nog) niet in OBDb. Gezocht als: ' + (r.geprobeerd || []).join(', ') + '.';
-      else if (!r.kandidaten.length) S.zoek = 'OBDb kent ' + r.repo + ', maar geen leescode die deze app kan gebruiken.';
-      else {
-        try {
-          var d = await api('pidbib_kandidaten', { voertuig_id: S.vid, lijst: r.kandidaten, bron: 'obdb' });
-          S.zoek = '✓ ' + d.erbij + ' nieuwe kandidaat' + (d.erbij === 1 ? '' : 'en') + ' in de lijst' + (r.kandidaten.length > d.erbij ? ' (' + (r.kandidaten.length - d.erbij) + ' stonden er al of vielen af)' : '') + '. Test ze op je auto.';
-          S.bib = null;
-        } catch (x) { S.zoek = '✗ ' + x.message; }
-      }
+      var r = await obdbBinnenhalen(S.vid, v);
+      S.zoek = r.tekst;
+      if (r.erbij !== undefined) S.bib = null;
       teken();
     },
     _pasSelectieToe: function (v) { return pasSelectieToe(v); },
@@ -2454,7 +2488,7 @@
       doe(function () { return api('rapport_verwijder', { id: r.id }); }, 'Rapport verwijderd').then(function () { delete cacheVan(_st.vid).rapporten; _st.view = 'voertuig'; _st.tab = 'rapporten'; teken(); });
     },
     // pure kern — voor test-garage.js
-    _kern: { sensSoort: sensSoort, sensGroepen: sensGroepen, status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar, ritStand: ritStand,
+    _kern: { obdbVanzelf: obdbVanzelf, sensSoort: sensSoort, sensGroepen: sensGroepen, status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar, ritStand: ritStand,
       rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, voorinvulNieuw: voorinvulNieuw, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
       waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, akkoordVragen: akkoordVragen, bibSplits: bibSplits, cfg: CFG }
   };

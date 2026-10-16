@@ -318,17 +318,34 @@
      dynamo wat er gevraagd wordt, dan is een lage spanning een keuze en
      geen storing. De rol komt uit de naam, zoals bij bandRol: de code
      verschilt per merk, de OBDb-namen niet. Puur; test-mode21.js. */
+  /* 17-10-2026 — nagemeten op de echte OBDb-namen van 27 modellen. Elk merk
+     noemt het anders: "Commanded generator voltage" (Mazda), "Alternator set
+     point voltage" (Renault, Nissan), "Alternator charge voltage request"
+     (Volvo); "12V battery soc", "Battery charge level" (VAG), "Battery state
+     of charge, battery sensor" (Kia/Hyundai), "Auxiliary battery current"
+     (Toyota-hybride = de 12V-accu). En er staan namen tussen die op een rol
+     lijken maar het niet zijn: drempels ("state of charge too low for
+     start/stop", "Minimum state of charge"), vlaggen, voorspellingen, de
+     48V- of tractie-accu, eCall-batterij en de spanning van de sensor zelf.
+     Die moeten eruit: een drempel als laadtoestand lezen is precies de
+     verkeerde conclusie die #532 wil voorkomen. */
+  const LAAD_NIET = /(\b48 ?v?\b|hybrid|\bhv\b|high.voltage|traction|\bpack\b|\bcells?\b|\bunits?\b|module|ecall|bms|battery management|too (low|high)|minimum|maximum|\bmax\b|\bmin\b|delta|average|integrated|accumulated|\bdark\b|\blimit|\bflag|predicted|quiescent|total (dis)?charge|sensor (supply )?volt|current sensor volt|variant|\bstatus\b|\bmode\b|identifier|unknown|inlet|cooling|heater|relay|\braw\b|duty|dc.dc|converter|second(ary)?|battery [b2]\b|\bat ignition|_battery)/;
+  // De 12V-accu met naam en toenaam; alleen dan mag een laadtoestand meetellen.
+  // "State of charge" zonder meer is op een hybride of EV de tractie-accu.
+  const ACCU_12V = /(\b12 ?v\b|\baux(iliary)?\b|service battery|starter battery|battery sensor|vehicle battery|battery charge level|battery estimated state)/;
   function laadRol(naam) {
     const n = String(naam || '').toLowerCase();
-    if (/sensor/.test(n)) return null;
-    const lader = /(generator|alternator|dynamo|laad|charg)/.test(n), accu = /(battery|accu|batterij)/.test(n);
-    if (lader && /(commanded|desired|target|gevraagd|gewenst|doel)/.test(n) && /(volt|spanning)/.test(n)) return 'gevraagd';
-    if (/(state of charge|\bsoc\b|laadtoestand|laadniveau)/.test(n)) return 'soc';
-    if (accu && /(current|stroom)/.test(n)) return 'stroom';
-    if (accu && /temp/.test(n)) return 'accutemp';
+    if (LAAD_NIET.test(n)) return null;
+    const lader = /(generator|alternator|dynamo|\blaad|charg)/.test(n), accu = /\b(battery|accu|batterij)\b/.test(n);
+    if (lader && /(commanded|desired|target|gevraagd|gewenst|doel|set ?point|request)/.test(n) && /(volt|spanning)/.test(n)) return 'gevraagd';
+    if (/(state of charge|\bsoc\b|laadtoestand|laadniveau|charge level)/.test(n)) return (accu && ACCU_12V.test(n)) || /laadtoestand|laadniveau/.test(n) ? 'soc' : null;
+    if (accu && /(current|stroom|\bamps\b)/.test(n)) return 'stroom';
+    if (accu && /temp/.test(n) && !/\d\s*$|\btb\d/.test(n)) return 'accutemp';
     if (accu && /(\bage\b|leeftijd)/.test(n)) return 'leeftijd';
     return null;
   }
+
+
   // u = accuspanning (0142), rpm, gevraagd = gevraagde laadspanning, soc = %.
   // null = de auto zegt er niets over: dan beslist de oude vaste grens.
   const LAAD_MARGE = 0.5;   // V onder de gevraagde spanning mag (meetverschil, traagheid)
@@ -590,7 +607,7 @@
     if (typeof sendCmd !== 'function' || typeof withBus !== 'function') return { ok: false, fout: 'Busfuncties ontbreken' };
     let raw = '';
     await withBus('eigen PID testen', async () => { raw = await eigenVraag(r.code, r.ecu); }, 6000);
-    const schoon = String(raw || '').replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+    const schoon = antwoordHex(raw);
     const echo = ((parseInt(r.code.slice(0, 2), 16) + 0x40).toString(16).toUpperCase()) + r.code.slice(2);
     const at = schoon.indexOf(echo);
     if (at < 0) return { ok: false, raw: String(raw || '').trim().slice(0, 60), fout: /7F/.test(schoon) ? 'De auto weigert deze code (7F)' : 'Geen antwoord op deze code' };
@@ -679,18 +696,49 @@
     return !Array.isArray(filter.years);
   }
 
-  function obdbKandidaten(data, repo, jaar) {
+  /* Wat een kandidaat waard is voor de analyse (17-10-2026). Een model in
+     OBDb heeft soms meer dan 1000 codes; de lijst houdt er 60. Zonder volgorde
+     vielen juist de accu- en laadcodes eraf (Audi A3, Seat Leon, Toyota).
+     Nu eerst wat een oordeel beslist (de gevraagde laadspanning, de
+     laadtoestand van de 12V-accu), dan banden, olie en automaat. */
+  function obdbWaarde(naam) {
+    const r = laadRol(naam);
+    if (r === 'gevraagd') return 120;
+    if (r === 'soc') return 110;
+    if (r) return 100;
+    if (bandRol(naam)) return 90;
+    const n = String(naam || '').toLowerCase();
+    if (/oil temp|olietemp/.test(n)) return 85;
+    if (/(transmission|gearbox|\batf\b).*(temp)|temp.*(transmission|gearbox)/.test(n)) return 80;
+    if (/wheel speed/.test(n)) return 50;
+    return 0;
+  }
+  /* Het adres van een OBDb-commando in de vorm die eigenControleer kent, of
+     null. 11-bit: hdr 7E0, antwoord hdr+8. 29-bit staat in OBDb kort: hdr
+     "DA10" met rax "10" is 18DA10F1, antwoord 18DAF110. Een ander
+     antwoordadres (VAG 70E → 778, PSA 6A2 → 682) of extended addressing
+     (BMW, eax) vraagt ATCRA en een eigen flow control; dat is op geen auto
+     nagemeten, dus die codes tellen we maar bieden we niet aan. */
+  function obdbAdres(c) {
+    const hdr = String(c.hdr || '').toUpperCase();
+    if (c.eax) return null;
+    if (/^DA[0-9A-F]{2}$/.test(hdr)) return (!c.rax || String(c.rax).toUpperCase() === hdr.slice(2)) ? '18' + hdr + 'F1' : null;
+    if (/^18DA[0-9A-F]{2}F1$/.test(hdr)) return (!c.rax || String(c.rax).toUpperCase().slice(-2) === hdr.slice(4, 6)) ? hdr : null;
+    if (c.rax && parseInt(c.rax, 16) !== parseInt(hdr, 16) + 8) return null;
+    return hdr;
+  }
+  function obdbKandidaten(data, repo, jaar, telling) {
     const cmds = (data && Array.isArray(data.commands)) ? data.commands.slice() : [];
     // Geverifieerde commando's eerst; dbg staat voor wat nog in onderzoek is.
     cmds.sort((a, b) => (a && a.dbg ? 1 : 0) - (b && b.dbg ? 1 : 0));
     const url = 'https://github.com/OBDb/' + repo;
     const uit = [], gezien = {};
     cmds.forEach(c => {
-      if (!c || !c.cmd || c.eax || !obdbJaarPast(c.filter, jaar)) return;
+      if (!c || !c.cmd || !obdbJaarPast(c.filter, jaar)) return;
       const dienst = c.cmd['22'] !== undefined ? '22' : c.cmd['21'] !== undefined ? '21' : '';
       if (!dienst) return;
-      const hdr = String(c.hdr || '').toUpperCase();
-      if (c.rax && parseInt(c.rax, 16) !== parseInt(hdr, 16) + 8) return;
+      const hdr = obdbAdres(c);
+      if (hdr === null) { if (telling) telling.adres = (telling.adres || 0) + 1; return; }
       const code = dienst + String(c.cmd[dienst]).toUpperCase();
       for (const g of (Array.isArray(c.signals) ? c.signals : [])) {
         const fmt = (g && g.fmt) || {};
@@ -703,11 +751,14 @@
         const sl = r.code + '@' + r.ecu;
         if (gezien[sl]) break;
         gezien[sl] = 1;
-        uit.push({ code: r.code, ecu: r.ecu, naam: r.def.name, formule: fo.replace(/\s+/g, '').toUpperCase(), eenheid, url });
+        uit.push({ code: r.code, ecu: r.ecu, naam: r.def.name, formule: fo.replace(/\s+/g, '').toUpperCase(), eenheid, url, waarde: obdbWaarde(g.name), i: uit.length });
         break;
       }
     });
-    return uit.slice(0, 60);
+    // Op waarde, en binnen gelijke waarde de volgorde van OBDb (dbg achteraan).
+    uit.sort((a, b) => (b.waarde - a.waarde) || (a.i - b.i));
+    if (telling) telling.weg = Math.max(0, uit.length - 60);
+    return uit.slice(0, 60).map(k => { delete k.waarde; delete k.i; return k; });
   }
 
   /* Zoeken voor een voertuig {merk, model, bouwjaar}. Geen AI, geen tegoed.
@@ -724,7 +775,8 @@
       try { d = await haal(repo); }
       catch (x) { console.warn('PLEigen: OBDb niet bereikbaar', x); return { ok: false, fout: 'OBDb niet bereikbaar (' + String(x && x.message || x) + ')' }; }
       if (!d || !d.gevonden) continue;
-      return { ok: true, repo, kandidaten: obdbKandidaten(d.data, repo, v.bouwjaar) };
+      const telling = {};
+      return { ok: true, repo, kandidaten: obdbKandidaten(d.data, repo, v.bouwjaar, telling), nietBruikbaar: telling.adres || 0, afgekapt: telling.weg || 0 };
     }
     return { ok: true, repo: '', kandidaten: [], geprobeerd: namen };
   }
@@ -765,8 +817,15 @@
     return uit;
   }
   // Positief antwoord op `code` in de ruwe tekst → de bytes, anders null.
+  // Het hex van een antwoord zonder de ISO-TP-opmaak (plIsoTpHex in
+  // pidlane-diagbundel.js); zonder die functie de oude strip.
+  function antwoordHex(raw) {
+    try { if (typeof plIsoTpHex === 'function') return plIsoTpHex(raw).toUpperCase(); }
+    catch (x) { console.warn('PLEigen: plIsoTpHex mislukt — framenummers kunnen in de data staan', x); }
+    return String(raw || '').replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+  }
   function antwoordBytes(code, raw) {
-    const schoon = String(raw || '').replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+    const schoon = antwoordHex(raw);
     const echo = ((parseInt(code.slice(0, 2), 16) + 0x40).toString(16).toUpperCase()) + code.slice(2);
     const at = schoon.indexOf(echo);
     if (at < 0) return null;
@@ -837,7 +896,7 @@
   }
 
   window.PLEigen = { CODE: EIGEN_CODE, MAX: EIGEN_MAX, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
-    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, laadRol, laadOordeel, accuOordeel, laadCodes, laadNu, laad: laadLive, drukOmrekening, standaardBereik,
+    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, laadRol, obdbWaarde, obdbAdres, laadOordeel, accuOordeel, laadCodes, laadNu, laad: laadLive, drukOmrekening, standaardBereik,
     scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, vraag: eigenVraag, obdbNamen, obdbFormule, obdbJaarPast, obdbKandidaten, zoekObdb };
   window.plEigenDefs = eigenDefs;
 
