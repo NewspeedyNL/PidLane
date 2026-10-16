@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 16-10-2026 — Sensoren ingedeeld: weergave, analyse, dubbel
+ ═══════════════════════════════════════════════════════════
+ Eigen sensoren en "Codes voor dit model" staan nu in groepen:
+ 📊 voor weergave (op toegevoegde waarde: accustroom, laadtoestand,
+ olie- en ATF-temperatuur bovenaan), 🔬 voor analyse (sensorspanningen,
+ regelsignalen, tellers, wielsnelheden), ♻️ dubbel (ingeklapt) en
+ ✗ werkt niet (ingeklapt). Dubbel = 22F4xx (spiegel van 01xx) of een
+ bekende tweeling, en alleen als de auto die standaard-PID ook geeft.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Codes uit OBDb in plaats van een AI-zoektocht (#526)
  ═══════════════════════════════════════════════════════════
  Sensoren → "Zoek codes in OBDb" haalt het bestand van de open
