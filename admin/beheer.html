@@ -302,6 +302,7 @@
           <button class="btn-sec btn-sm" onclick="toon('logboek');logLaden()">📜 Logboek ophalen</button>
           <button class="btn-sec btn-sm" onclick="toon('opdrachten')">🎯 Meetopdrachten</button>
           <button class="btn-sec btn-sm" onclick="toon('database');$('sqlVraag').focus()">🧮 SQL-console</button>
+          <button class="btn-sec btn-sm" onclick="toon('bronnen');bronnenControleren()">🌐 Bronnen controleren</button>
           <button class="btn-sec btn-sm" onclick="toon('gereedschap');opruimBekijken()">🧹 Verwijderwachtrij</button>
         </div>
       </div>
@@ -658,6 +659,35 @@
         </div>
         <div id="sqlMsg" class="msg"></div>
         <div class="tabelbox" id="sqlUit" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <!-- ══ BRONNEN ════════════════════════════════════════════
+         De kennis van buiten: OBDb, RDW, NHTSA. Via /admin/bronnen; zie de
+         kop daarvan in worker.js. -->
+    <div class="paneel" id="p-bronnen">
+      <div class="card">
+        <div class="card-kop"><h2>🌐 Kennisbronnen — gezond en bijgewerkt?</h2>
+          <div class="bar">
+            <button class="btn-pri btn-sm" onclick="bronnenControleren()">🔎 Nu controleren</button>
+            <button class="btn-sec btn-sm" onclick="bronnenLaden()">↻ Laatste stand</button>
+          </div></div>
+        <details class="uitleg"><summary>Wat dit nagaat</summary><div class="body">
+          Per bron drie vragen. <b>Bereikbaar?</b> Eén echte aanvraag, met de tijd erbij (boven 4 s is het
+          <i>traag</i>). <b>Nog dezelfde vorm?</b> De velden die de app leest: de RDW-kolommen voor het
+          profiel, de <code>commands</code> van een OBDb-bestand, de <code>Results</code> van vPIC met een
+          openbare voorbeeld-VIN. Ontbreekt er één, dan is de bron <i>kapot</i> voor ons, ook bij HTTP 200.
+          <b>Veranderd?</b> Een vingerafdruk per bron in D1 (<code>bron_stand</code>); is die anders dan bij de
+          vorige controle, dan staat er <span class="pill p-info">nieuw</span>.<br><br>
+          <b>Beperkt</b> is GitHub die ons even niet laat (60 aanvragen per uur zonder
+          <code>GITHUB_TOKEN</code>, gedeeld met andere Workers) — de bron is dan niet stuk.<br><br>
+          Welke OBDb-bestanden: wat er uit OBDb in de PID-bibliotheek kwam, plus de CX-5 als vaste ijkpunt.
+          De app krijgt OBDb via een cache van 24 uur; een update hier is er uiterlijk een dag later.
+          De nachtronde controleert ook, zodat "veranderd" over een dag gaat en niet over je laatste bezoek.
+        </div></details>
+        <div id="brMsg" class="msg"></div>
+        <div class="grid4" id="brKpi" style="margin-top:8px"></div>
+        <div class="tabelbox" id="brLijst" style="margin-top:10px"><div class="leeg">Nog niet geladen.</div></div>
       </div>
     </div>
 
@@ -1306,6 +1336,20 @@ function oefenAntwoord(path, opts){
   if(path.indexOf('/v1/messages') === 0)
     return { content:[{ type:'text', text:'(oefenmodus) Voorbeeldantwoord. De AI-route is niet aangeroepen en er zijn geen tokens verbruikt.' }] };
 
+  /* /admin/bronnen — verzonnen, en dat zegt hij: er gaat niets naar GitHub,
+     de RDW of NHTSA. Eén van elke status, zodat elke kleur te zien is. */
+  if(path.indexOf('/admin/bronnen') === 0){
+    const nu = new Date().toISOString(), gisteren = new Date(Date.now() - 864e5).toISOString();
+    const bronnen = [
+      { sleutel:'obdb', naam:'OBDb — de organisatie (oefen)', link:'https://github.com/OBDb', status:'gezond', http:200, ms:420, versie:gisteren, gewijzigd:gisteren, nieuw:methode === 'POST', detail:'100+ repo\'s; deze week bijgewerkt: Mazda-CX-5, Kia-Niro' },
+      { sleutel:'obdb:Mazda-CX-5', naam:'OBDb — Mazda-CX-5 (oefen)', link:'https://github.com/OBDb/Mazda-CX-5', status:'gezond', http:200, ms:310, versie:gisteren, gewijzigd:null, eerste:true, detail:"48 commando's, 131 signalen" },
+      { sleutel:'rdw:m9d7-ebf2', naam:'RDW — gekentekende voertuigen (oefen)', status:'traag', http:200, ms:5200, versie:nu, detail:'97 kolommen, alle 6 die de app leest aanwezig' },
+      { sleutel:'rdw:8ys7-d773', naam:'RDW — brandstof en vermogen (oefen)', status:'kapot', http:200, ms:640, versie:nu, detail:'kolom weg die de app leest: nettomaximumvermogen' },
+      { sleutel:'nhtsa', naam:'NHTSA vPIC — VIN ontleden (oefen)', status:'beperkt', http:429, ms:900, detail:'te veel aanvragen' }
+    ].map(b => Object.assign({ gecontroleerd:nu }, b));
+    return methode === 'POST' ? { ok:true, oefen:true, gecontroleerd:nu, bronnen } : { ok:true, oefen:true, bronnen };
+  }
+
   if(path.indexOf('/admin/klanten') === 0){
     if(methode === 'GET'){
       const q = (sp.get('q') || '').toLowerCase();
@@ -1627,7 +1671,7 @@ function oefenAntwoord(path, opts){
 const TABBLADEN = [
   ['overzicht','🩺 Overzicht'], ['klanten','👥 Klanten'], ['codes','🎟️ Codes'],
   ['gebruikers','👤 Gebruikers'], ['logboek','📜 Logboek'], ['database','🗄️ Database'],
-  ['opdrachten','🎯 Meetopdrachten'], ['tabellen','🗂️ Tabellen'],
+  ['bronnen','🌐 Bronnen'], ['opdrachten','🎯 Meetopdrachten'], ['tabellen','🗂️ Tabellen'],
   ['instellingen','📱 App-instellingen'], ['gereedschap','🧰 Gereedschap']
 ];
 /* Tien tabbladen naast elkaar was dezelfde vorm als het oude startscherm van
@@ -1638,7 +1682,7 @@ const GROEPEN = [
   ['overzicht','🩺 Overzicht',['overzicht']],
   ['mensen','👥 Klanten',['klanten','codes','gebruikers']],
   ['app','📱 App',['instellingen']],
-  ['data','🗄️ Data',['logboek','database','opdrachten','tabellen']],
+  ['data','🗄️ Data',['logboek','database','bronnen','opdrachten','tabellen']],
   ['gereedschap','🧰 Gereedschap',['gereedschap']]
 ];
 let TAB = 'overzicht';
@@ -1665,6 +1709,7 @@ function toon(naam){
   // een saldo komt bijboeken hoeft er niet op te wachten.
   if(naam === 'opdrachten' && !OPD.rijen.length && TOKEN) opdLaden();
   if(naam === 'database' && !RITTEN.length && TOKEN) rittenLaden();
+  if(naam === 'bronnen' && !BRON.geladen && TOKEN) bronnenLaden();
 }
 
 function enter(){
@@ -2942,6 +2987,53 @@ function ritOpruimen(){
   $('tbOpruimKaart').scrollIntoView({ behavior:'smooth', block:'center' });
 }
 
+/* ── Bronnen ─────────────────────────────────────────────────────
+   GET geeft de laatste stand uit D1 zonder iets naar buiten te sturen; de
+   knop "Nu controleren" (POST) loopt alle bronnen echt na. */
+let BRON = { geladen:false, data:null };
+const BRON_KLEUR = { gezond:'p-ok', traag:'p-wacht', beperkt:'p-wacht', kapot:'p-uit' };
+async function bronnenLaden(){
+  const r = await veilig($('brMsg'), () => callWorker('bronnen','/admin/bronnen',{ headers:H() }), 'Ophalen…');
+  if(!r.ok) return;
+  BRON.geladen = true;
+  bronnenTekenen(r.uit.data, false);
+}
+async function bronnenControleren(){
+  const r = await veilig($('brMsg'), () => callWorker('bronnen','/admin/bronnen',{
+    method:'POST', headers:HJ(), body:JSON.stringify({ actie:'controleer' }) }), 'Alle bronnen nalopen… (tot 10 s)');
+  if(!r.ok) return;
+  BRON.geladen = true;
+  bronnenTekenen(r.uit.data, true);
+}
+function bronnenTekenen(d, vers){
+  BRON.data = d;
+  const lijst = (d && d.bronnen) || [];
+  const tel = (s) => lijst.filter(b => b.status === s).length;
+  const nieuw = lijst.filter(b => b.nieuw).length;
+  const laatst = d.gecontroleerd || lijst.reduce((m,b) => b.gecontroleerd > m ? b.gecontroleerd : m, '');
+  const m = $('brMsg');
+  if(!lijst.length) toon_msg(m, 'info', 'Nog nooit gecontroleerd. Klik op Nu controleren.');
+  else if(tel('kapot')) toon_msg(m, 'err', '✗ ' + tel('kapot') + ' bron(nen) kapot — zie de rode regels.');
+  else toon_msg(m, tel('traag') + tel('beperkt') ? 'warn' : 'ok',
+    (vers ? '✓ Zojuist gecontroleerd' : '✓ Laatste controle ' + dtu(laatst)) +
+    (nieuw ? ' — ' + nieuw + ' bron(nen) veranderd sinds de vorige keer' : ''));
+  const kpi = (t, n) => `<div class="kpi"><div class="n">${esc(n)}</div><div class="l">${esc(t)}</div></div>`;
+  $('brKpi').innerHTML = kpi('gezond', tel('gezond')) + kpi('traag / beperkt', tel('traag') + tel('beperkt')) +
+    kpi('kapot', tel('kapot')) + kpi(vers ? 'veranderd' : 'laatste controle', vers ? nieuw : dtu(laatst));
+  if(!lijst.length){ $('brLijst').innerHTML = '<div class="leeg">Nog geen stand.</div>'; return; }
+  const volgorde = { kapot:0, traag:1, beperkt:2, gezond:3 };
+  const rij = lijst.slice().sort((a,b) => (volgorde[a.status] ?? 9) - (volgorde[b.status] ?? 9) || String(a.sleutel).localeCompare(String(b.sleutel)));
+  $('brLijst').innerHTML = '<table><thead><tr><th>Bron</th><th>Status</th><th>Tijd</th><th>Bijgewerkt bij de bron</th><th>Veranderd</th><th>Wat</th></tr></thead><tbody>' +
+    rij.map(b => `<tr>
+      <td>${b.link ? `<a href="${esc(b.link)}" target="_blank" rel="noopener">${esc(b.naam || b.sleutel)}</a>` : esc(b.naam || b.sleutel)}
+        ${b.gebruik ? `<div class="hint" style="margin:0">${esc(b.gebruik)}</div>` : ''}</td>
+      <td><span class="pill ${BRON_KLEUR[b.status] || 'p-info'}">${esc(b.status)}</span>${b.http != null ? ` <span class="hint mono">${esc(b.http)}</span>` : ''}</td>
+      <td class="mono">${b.ms != null ? esc(b.ms) + ' ms' : '—'}</td>
+      <td>${dtu(b.versie && /^\d{4}-/.test(b.versie) ? b.versie : null)}</td>
+      <td>${b.nieuw ? '<span class="pill p-info">nieuw</span> ' : ''}${b.eerste ? '<span class="hint">eerste meting</span>' : dtu(b.gewijzigd)}</td>
+      <td title="${esc(b.detail)}">${esc(b.detail)}</td></tr>`).join('') + '</tbody></table>';
+}
+
 /* ── SQL-console ─────────────────────────────────────────────────
    De Worker keurt en begrenst; deze pagina keurt niet mee. Een tweede
    keuring hier zou een tweede waarheid zijn die uit de pas gaat lopen —
@@ -2957,11 +3049,29 @@ const SQL_VOORBEELDEN = {
   vangnet:   ['Vangnet: regels met iets in onbekend', "SELECT id, ontvangen, RecordType, onbekend\n  FROM logregels\n WHERE onbekend IS NOT NULL AND onbekend <> ''\n ORDER BY id DESC\n LIMIT 50"],
   opdracht:  ['Meetopdrachten', 'SELECT id, Naam, Actief, Gewijzigd, Reden, length(Opdracht) AS tekens\n  FROM meetopdrachten\n ORDER BY Gewijzigd DESC'],
   kolommen:  ['Kolommen van logregels', "SELECT cid, name, type, pk FROM pragma_table_info('logregels')"],
-  schema:    ['Schema: tabellen, views, indexen', "SELECT type, name, tbl_name, sql\n  FROM sqlite_master\n WHERE name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'\n ORDER BY type, name"]
+  schema:    ['Schema: tabellen, views, indexen', "SELECT type, name, tbl_name, sql\n  FROM sqlite_master\n WHERE name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%'\n ORDER BY type, name"],
+  /* Logcontrole (16-10-2026): de vragen die je na een release of bij een
+     klacht stelt. `ontvangen` is ISO met een T; vergelijk dus met
+     strftime('%Y-%m-%dT…'), niet met datetime() — die zet een spatie, en dan
+     valt de grens binnen een dag verkeerd. */
+  lc_24u:     ['Fouten laatste 24 uur', "SELECT ontvangen, Type, AppVersion, Adapter, SessionId, Message\n  FROM logregels\n WHERE Type IN ('error', 'bug')\n   AND ontvangen >= strftime('%Y-%m-%dT%H:%M:%S', 'now', '-1 day')\n ORDER BY id DESC\n LIMIT 200", 'Logcontrole'],
+  lc_nieuw:   ['Nieuwe fouten: deze week voor het eerst', "SELECT Message, COUNT(*) AS n, COUNT(DISTINCT SessionId) AS ritten,\n       MIN(ontvangen) AS eerst, MAX(AppVersion) AS versie\n  FROM logregels\n WHERE Type IN ('error', 'bug')\n GROUP BY Message\nHAVING MIN(ontvangen) >= strftime('%Y-%m-%dT%H:%M:%S', 'now', '-7 days')\n ORDER BY n DESC\n LIMIT 50", 'Logcontrole'],
+  lc_versie:  ['Foutpercentage per app-versie, 14 dagen', "SELECT AppVersion, COUNT(*) AS regels,\n       SUM(Type = 'error') AS fouten,\n       ROUND(100.0 * SUM(Type = 'error') / COUNT(*), 2) AS pct,\n       MIN(ontvangen) AS eerst, MAX(ontvangen) AS laatst\n  FROM logregels\n WHERE ontvangen >= strftime('%Y-%m-%dT%H:%M:%S', 'now', '-14 days')\n GROUP BY AppVersion\n ORDER BY eerst DESC", 'Logcontrole'],
+  lc_uur:     ['Volume per uur, 48 uur (stiltes en pieken)', "SELECT substr(ontvangen, 1, 13) AS uur, COUNT(*) AS regels,\n       SUM(Type = 'error') AS fouten, COUNT(DISTINCT User) AS gebruikers\n  FROM logregels\n WHERE ontvangen >= strftime('%Y-%m-%dT%H:%M:%S', 'now', '-2 days')\n GROUP BY uur\n ORDER BY uur DESC", 'Logcontrole'],
+  lc_herhaal: ['Herhalers: dezelfde melding vaak in één rit', "SELECT SessionId, Message, COUNT(*) AS n, MIN(ontvangen) AS van, MAX(ontvangen) AS tot\n  FROM logregels\n WHERE SessionId IS NOT NULL AND SessionId <> ''\n   AND ontvangen >= strftime('%Y-%m-%dT%H:%M:%S', 'now', '-7 days')\n GROUP BY SessionId, Message\nHAVING n >= 20\n ORDER BY n DESC\n LIMIT 50", 'Logcontrole'],
+  lc_wie:     ['Gebruikers met de meeste fouten, 7 dagen', "SELECT User, Role, COUNT(*) AS regels, SUM(Type = 'error') AS fouten,\n       COUNT(DISTINCT SessionId) AS ritten, MAX(AppVersion) AS versie\n  FROM logregels\n WHERE ontvangen >= strftime('%Y-%m-%dT%H:%M:%S', 'now', '-7 days')\n GROUP BY User, Role\n ORDER BY fouten DESC\n LIMIT 30", 'Logcontrole'],
+  lc_merk:    ['Fouten per merk en protocol, 30 dagen', "SELECT Merk, Protocol, COUNT(DISTINCT SessionId) AS ritten,\n       SUM(Type = 'error') AS fouten,\n       ROUND(1.0 * SUM(Type = 'error') / MAX(COUNT(DISTINCT SessionId), 1), 1) AS per_rit\n  FROM logregels\n WHERE ontvangen >= strftime('%Y-%m-%dT%H:%M:%S', 'now', '-30 days')\n   AND Merk IS NOT NULL AND Merk <> ''\n GROUP BY Merk, Protocol\n ORDER BY fouten DESC\n LIMIT 40", 'Logcontrole'],
+  lc_demo:    ['Demo tegen echt, 7 dagen', "SELECT CASE WHEN Demo = 1 THEN 'demo' ELSE 'echt' END AS soort,\n       COUNT(*) AS regels, SUM(Type = 'error') AS fouten, COUNT(DISTINCT SessionId) AS ritten\n  FROM logregels\n WHERE ontvangen >= strftime('%Y-%m-%dT%H:%M:%S', 'now', '-7 days')\n GROUP BY soort", 'Logcontrole'],
+  lc_archief: ['Logarchief per dag', "SELECT dag, COUNT(*) AS ritten, SUM(regels) AS regels, SUM(fouten) AS fouten,\n       SUM(uitkomsten) AS uitkomsten, MAX(versie) AS versie\n  FROM log_archief\n GROUP BY dag\n ORDER BY dag DESC\n LIMIT 60", 'Logcontrole'],
+  lc_bronnen: ['Kennisbronnen: laatste stand', "SELECT sleutel, status, gecontroleerd, gewijzigd, versie, detail\n  FROM bron_stand\n ORDER BY status <> 'kapot', sleutel", 'Logcontrole']
 };
 function sqlVoorbeeldenTekenen(){
+  // Gegroepeerd op het derde element; zonder groep is het "Algemeen".
+  const groepen = {};
+  Object.keys(SQL_VOORBEELDEN).forEach(k => { const g = SQL_VOORBEELDEN[k][2] || 'Algemeen'; (groepen[g] = groepen[g] || []).push(k); });
   $('sqlVoorbeeld').innerHTML = '<option value="">Voorbeeldvraag…</option>' +
-    Object.keys(SQL_VOORBEELDEN).map(k => `<option value="${k}">${esc(SQL_VOORBEELDEN[k][0])}</option>`).join('');
+    Object.keys(groepen).map(g => `<optgroup label="${esc(g)}">` +
+      groepen[g].map(k => `<option value="${k}">${esc(SQL_VOORBEELDEN[k][0])}</option>`).join('') + '</optgroup>').join('');
   sqlGeschiedenisTekenen();
 }
 function sqlZet(t){ $('sqlVraag').value = t; if(TAB !== 'database') toon('database'); }
@@ -3383,6 +3493,7 @@ function tekenRoutes(){
     ['GET /admin/tabel','ruwe records uit een van de bekende tabellen'],
     ['POST /admin/tabel','één record wijzigen, wissen, of (D1) opruimen na eerst tellen'],
     ['GET /admin/d1','het overzicht over de hele database, één rit van begin tot eind, of het logarchief'],
+    ['GET/POST /admin/bronnen','de kennisbronnen (OBDb, RDW, NHTSA): laatste stand, of nu alles nalopen — bereikbaar, vorm, veranderd'],
     ['POST /admin/d1','de SQL-console (alleen lezen), logregels archiveren (eerst proef), en meetopdrachten aanmaken, bewaren, activeren, uitzetten'],
     ['POST /v1/messages','de AI-route — alleen voor de statuscheck en de testvraag']
   ];
