@@ -1545,7 +1545,7 @@ MUTATIES=(
 "worker.js@@\"kp_voorkeur\", \"kp_pid_stem\", \"kp_meekijk\", \"kp_akkoord\"]) {@@\"kp_voorkeur\", \"kp_meekijk\", \"kp_akkoord\"]) {@@test-klantplatform.js@@alles wissen laat de stemmen in de PID-bibliotheek staan"
 "worker.js@@    const e = (kpLees(v.eigen_pids) || []).find((x) => x.code === code && (x.ecu || \"\") === ecu);@@    const e = (kpLees(v.eigen_pids) || []).find((x) => true);@@test-klantplatform.js@@delen zet een code in de bibliotheek die niet bij het voertuig staat"
 "public/pidlane-garage.js@@(/weigert|Geen antwoord/.test(r.fout || '') ? 'werkt_niet' : null)@@'werkt_niet'@@bproef-garage.js@@\"niet verbonden\" telt in de bibliotheek als \"werkt niet\""
-"public/pidlane-garage.js@@          (S.ok[e.code] ? '<button class=\"gr-k klein\" onclick=\"PLGarage._sensDeel(@@          (true ? '<button class=\"gr-k klein\" onclick=\"PLGarage._sensDeel(@@bproef-garage.js@@een nooit geteste code kan gedeeld worden als bewezen"
+"public/pidlane-garage.js@@      (S.ok[e.code] ? '<button class=\"gr-k klein\" onclick=\"PLGarage._sensDeel(@@      (true ? '<button class=\"gr-k klein\" onclick=\"PLGarage._sensDeel(@@bproef-garage.js@@een nooit geteste code kan gedeeld worden als bewezen"
 "public/pidlane-garage.js@@      else nieuw.push(b);@@      nieuw.push(b);@@test-garage.js@@een toegevoegde code staat weer twee keer in Sensoren: eigen én bibliotheek"
 "public/pidlane-garage.js@@berAan = ber.filter(function (p) { return S.sel.indexOf(p) >= 0; });@@berAan = ber;@@bproef-garage.js@@alle berekende sensoren staan weer uitgeklapt, ook wat uit staat"
 "public/pidlane-uitgebreid.js@@    const tempo = band ? 'opverzoek' : (EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal');@@    const tempo = EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal';@@test-mode21.js@@acht bandensensoren worden elke 2 s via een ander ECU-adres gevraagd"
@@ -1824,6 +1824,9 @@ MUTATIES=(
 "public/pidlane-garage.js@@    if (v) { _st.tab = 'sensoren'; _st.sens = null; teken(); }@@@@bproef-garage.js@@de knop Eigen in de sensorkeuzelijst opent het overzicht in plaats van Sensoren (#474)"
 "public/pidlane-garage.js@@    if (k.length >= 4 && !al) v.kenteken = k;@@@@test-garage.js@@Voertuig toevoegen vraagt het kenteken van de verbinding opnieuw (#476)"
 "public/pidlane-garage.js@@      _st.voorinvul = voorinvulNieuw(vanVerbinding ? _st.onbekend : null, ken, voertuigen(true));@@      _st.voorinvul = voorinvulNieuw(vanVerbinding ? _st.onbekend : null, '', voertuigen(true));@@bproef-garage.js@@het formulier leest het kenteken van de verbinding niet (#476)"
+"public/pidlane-garage.js@@    if (tw && heeft(tw)) return { groep: 'dubbel'@@    if (tw) return { groep: 'dubbel'@@test-garage.js@@een code heet dubbel ook als de auto de standaard-PID niet geeft (22057D zonder 0146)"
+"public/pidlane-garage.js@@    var m = /^22F4([0-9A-F]{2})$/i.exec(b.code || '');@@    var m = null;@@test-garage.js@@22F4xx wordt niet meer als spiegel van 01xx herkend"
+"public/pidlane-garage.js@@      g[k].sort(function (x, y) { return (y.s.waarde - x.s.waarde) || @@      g[k].sort(function (x, y) { return @@test-garage.js@@weergave staat niet meer op toegevoegde waarde"
 "public/pidlane-meekijk.js@@    if (!(typeof isAdmin === 'function' && isAdmin())) { melding('Meekijken is er voor beheerders'); return; }@@@@bproef-meekijk.js@@een klant opent het beheervenster voor de voertuigen van anderen"
 "public/pidlane-meekijk.js@@    _st = { code: '', data: null, fout: '', bezig: false, form: null };\n  }\n\n  function waarde@@  }\n\n  function waarde@@bproef-meekijk.js@@na sluiten staan de voertuigen van de vorige klant er nog"
 # ── het anker van de BT-log na een herlaad (30-09-2026) ──

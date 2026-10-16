@@ -1103,6 +1103,7 @@
     '#plGarOv .gr-sens input{width:20px;height:20px;flex:0 0 20px;margin-top:1px;accent-color:var(--bl,#3b82f6)}' +
     '#plGarOv .gr-sens small{color:var(--tx3);font-size:11px}' +
     '#plGarOv .gr-meer{border-top:1px solid var(--bd)}#plGarOv .gr-meer>summary{padding:9px 0;font-size:13px;font-weight:600;color:var(--bl,#3b82f6);cursor:pointer}' +
+    '#plGarOv .gr-groep{margin-top:8px}#plGarOv .gr-gk{font:700 13px var(--f);color:var(--tx);padding:6px 0 2px}#plGarOv .gr-soort{color:var(--tx3);font-style:italic}' +
     '#plGarOv .gr-bib small{color:var(--tx3);font-size:11px}#plGarOv .gr-bib a{color:var(--bl,#3b82f6)}' +
     '#plGarOv .gr-tempo{display:flex;align-items:center;gap:8px;margin:6px 0 0;font-size:12px}#plGarOv .gr-tempo select{width:auto;padding:5px 8px;font-size:13px}' +
     '#plGarOv .gr-kies{width:20px;height:20px;flex:0 0 20px;accent-color:var(--bl,#3b82f6)}' +
@@ -1592,18 +1593,10 @@
       '<div class="gr-klein" style="margin-top:6px">De app rekent ze uit. Een berekende sensor verschijnt alleen als de auto de bronnen ervoor geeft.</div></div>';
     var bibDeel = bibSplits(S.bib && S.bib.lijst, S.eigen);
     h += '<div class="gr-blok"><div class="gr-bh">🔧 Eigen sensoren<span class="gr-r">' + S.eigen.length + ' / ' + ((window.PLEigen && PLEigen.MAX) || 20) + '</span></div>' +
-      (S.eigen.length ? S.eigen.map(function (e, i) {
-        var b = bibDeel.al[e.code], t = b ? S.test['bib:' + b.id] || S.test[e.code] : S.test[e.code];
-        return '<div class="gr-item"><label class="gr-sens" style="padding:0"><input type="checkbox" ' + (S.sel.indexOf(e.code) >= 0 ? 'checked ' : '') + 'onchange="PLGarage._sensKies(\'' + esc(e.code) + '\',this.checked)">' +
-          '<span><b>' + esc(e.naam) + '</b> <small>' + esc(e.eenheid || '') + '</small><br><small>' + sensRegel(e) + '</small>' +
-          (b ? '<br><small>📚 ' + esc(bibStand(b)) + '</small>' : '') + '</span></label>' +
-          (t ? '<div class="gr-klein" style="margin-top:4px">' + esc(t) + '</div>' : '') +
-          (isBand(e) ? '<div class="gr-klein" style="margin-top:4px">Hoe vaak: in het bandenvenster, samen met de andere banden</div>'
-            : '<label class="gr-veld gr-tempo">Hoe vaak' + tempoKeuze('onchange="PLGarage._sensTempo(' + i + ',this.value)"', e.tempo) + '</label>') +
-          '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="' + (b ? 'PLGarage._bibTest(\'' + esc(b.id) + '\')' : 'PLGarage._sensTest(' + i + ')') + '">▶ Test</button>' : '') +
-          (S.ok[e.code] ? '<button class="gr-k klein" onclick="PLGarage._sensDeel(' + i + ')">📤 Deel met rijders van dit model</button>' : '') +
-          '<button class="gr-k klein gevaar" onclick="PLGarage._sensWeg(' + i + ')">Weghalen</button></div></div>';
-      }).join('') : '<div class="gr-klein">Nog geen eigen sensoren.</div>') +
+      (S.eigen.length ? (function () {
+        var ge = sensGroepen(S.eigen, sensHeeft(S, nu), false), rij = function (r) { return eigenRij(S, r.b, r.i, r.s, bibDeel, nu); };
+        return ['weergave', 'analyse', 'dubbel'].map(function (k) { return sensGroepHtml(k, ge[k], rij, k === 'dubbel'); }).join('');
+      })() : '<div class="gr-klein">Nog geen eigen sensoren.</div>') +
       (window.PLBanden && window.PLEigen && S.eigen.some(function (e) { return PLEigen.bandRol(e.naam); })
         ? '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLBanden.open()">🛞 Banden bekijken</button></div>' : '') +
       '<div class="gr-labin" style="margin-top:10px"><div class="gr-bh" style="margin:0">Toevoegen</div>' +
@@ -1626,6 +1619,20 @@
     if (S.fout) h += '<div class="gr-melding rood">' + esc(S.fout) + '</div>';
     h += '<div class="gr-knoppen"><button class="gr-k hoofd" ' + (S.gewijzigd ? '' : 'disabled') + ' onclick="PLGarage._sensBewaar()">Bewaren</button></div>';
     return h;
+  }
+  // Eén eigen sensor in de lijst; s = sensSoort (groep en reden).
+  function eigenRij(S, e, i, s, bibDeel, nu) {
+    var b = bibDeel.al[e.code], t = b ? S.test['bib:' + b.id] || S.test[e.code] : S.test[e.code];
+    return '<div class="gr-item"><label class="gr-sens" style="padding:0"><input type="checkbox" ' + (S.sel.indexOf(e.code) >= 0 ? 'checked ' : '') + 'onchange="PLGarage._sensKies(\'' + esc(e.code) + '\',this.checked)">' +
+      '<span><b>' + esc(e.naam) + '</b> <small>' + esc(e.eenheid || '') + '</small><br><small>' + sensRegel(e) + '</small>' +
+      (s.reden ? '<br><small class="gr-soort">' + esc(s.reden) + (s.groep === 'dubbel' ? ' — weghalen maakt een plek vrij' : '') + '</small>' : '') +
+      (b ? '<br><small>📚 ' + esc(bibStand(b)) + '</small>' : '') + '</span></label>' +
+      (t ? '<div class="gr-klein" style="margin-top:4px">' + esc(t) + '</div>' : '') +
+      (isBand(e) ? '<div class="gr-klein" style="margin-top:4px">Hoe vaak: in het bandenvenster, samen met de andere banden</div>'
+        : '<label class="gr-veld gr-tempo">Hoe vaak' + tempoKeuze('onchange="PLGarage._sensTempo(' + i + ',this.value)"', e.tempo) + '</label>') +
+      '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="' + (b ? 'PLGarage._bibTest(\'' + esc(b.id) + '\')' : 'PLGarage._sensTest(' + i + ')') + '">▶ Test</button>' : '') +
+      (S.ok[e.code] ? '<button class="gr-k klein" onclick="PLGarage._sensDeel(' + i + ')">📤 Deel met rijders van dit model</button>' : '') +
+      '<button class="gr-k klein gevaar" onclick="PLGarage._sensWeg(' + i + ')">Weghalen</button></div></div>';
   }
   function sensNieuw() {
     var w = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
@@ -1665,6 +1672,85 @@
     nieuw.sort(function (x, y) { return ((y.werkt || 0) - (y.werkt_niet || 0)) - ((x.werkt || 0) - (x.werkt_niet || 0)); });
     return { al: al, nieuw: nieuw };
   }
+  /* Indeling per code (16-10-2026): met tientallen OBDb-kandidaten werd de
+     lijst een stapel zonder volgorde. Drie vragen, in deze volgorde:
+     1. dubbel — meet hij wat een standaard-PID van deze auto al geeft?
+        22F4xx is per norm (WWH-OBD) de spiegel van 01xx; de rest staat in
+        SENS_TWEELING. Alleen dubbel als die tweeling er ook ís (vaste
+        selectie of ondersteund): geeft de auto 0146 niet, dan is 22057D
+        juist de enige buitentemperatuur.
+     2. analyse — sensorspanningen, regelsignalen, tellers: waardevol in een
+        ritlog of grafiek, ruis op een meter.
+     3. weergave — de rest, op toegevoegde waarde (SENS_WAARDE). */
+  var SENS_TWEELING = [
+    [/evap(orative)? purge/i, '012E'], [/rear o2 voltage/i, '0115'], [/^(12v |vehicle )?battery voltage/i, '0142'],
+    [/throttle control desired|commanded throttle/i, '014C'], [/^accelerator pedal position/i, '0149'],
+    [/^throttle position actual/i, '0111'], [/^ambient (air )?temperature(?!.*voltage)/i, '0146'],
+    [/^engine load/i, '0104'], [/^fuel trim, short/i, '0106'], [/^fuel trim, long/i, '0107'], [/^manifold pressure/i, '010B']
+  ];
+  var SENS_ANALYSE = [
+    [/voltage|spanning/i, 'sensorspanning — voor storingszoeken', function (b) { return /^v$/i.test(b.eenheid || '') && !/battery|accu|generator/i.test(b.naam); }],
+    [/duty|load|control|desired|commanded|field coil|compressor|camshaft|nokkenas|shutter|recirculation|turbocharger|wastegate|koppeling/i, 'regelsignaal — zegt iets in een ritlog, niet op een meter'],
+    [/distance|afstand|odometer|\bage\b|leeftijd/i, 'teller — verandert per rit, niet per seconde'],
+    [/wheel speed|wielsnelheid/i, 'per wiel — vergelijken tussen wielen (slip, bandomtrek)'],
+    [/rempedaal|remvloeistof|brake/i, 'rijstijl — voor de ritanalyse']
+  ];
+  var SENS_WAARDE = [
+    [/battery current|accustroom/i, 90], [/state of charge|\bsoc\b|laadtoestand/i, 85], [/olie|oil temp/i, 85],
+    [/automaatbak|\batf\b|transmission temp/i, 80], [/bandenspanning|tire pressure|tyre pressure/i, 80],
+    [/boost|turbodruk|ladelucht|charge air/i, 70], [/fuel level|brandstof.*liter/i, 70], [/ambient|buitentemp|omgevingstemp/i, 65],
+    [/battery temp|accutemp/i, 60], [/bandtemp|tire temp|tyre temp/i, 60]
+  ];
+  function sensTweeling(b) {
+    var m = /^22F4([0-9A-F]{2})$/i.exec(b.code || '');
+    if (m) return '01' + m[1].toUpperCase();
+    var t = SENS_TWEELING.find(function (r) { return r[0].test(b.naam || ''); });
+    return t ? t[1] : null;
+  }
+  // heeft(pid): geeft deze auto die standaard-PID? (selectie of ondersteund)
+  function sensSoort(b, heeft) {
+    var tw = sensTweeling(b);
+    if (tw && heeft(tw)) return { groep: 'dubbel', tweeling: tw, waarde: 0, reden: 'meet hetzelfde als ' + tw };
+    var a = SENS_ANALYSE.find(function (r) { return r[0].test(b.naam || '') && (!r[2] || r[2](b)); });
+    if (a) return { groep: 'analyse', tweeling: tw, waarde: 0, reden: a[1] };
+    var w = SENS_WAARDE.find(function (r) { return r[0].test(b.naam || ''); });
+    return { groep: 'weergave', tweeling: tw, waarde: w ? w[1] : 40, reden: '' };
+  }
+  function sensHeeft(S, nu) {
+    return function (pid) {
+      if (S.sel.indexOf(pid) >= 0) return true;
+      try { return !!(nu && typeof supportedPIDs !== 'undefined' && supportedPIDs.has && supportedPIDs.has(pid)); }
+      catch (x) { console.warn('PLGarage: supportedPIDs', x); return false; }
+    };
+  }
+  var SENS_GROEP = {
+    weergave: { kop: '📊 Voor weergave', uitleg: 'Op toegevoegde waarde, de sterkste bovenaan.' },
+    analyse: { kop: '🔬 Voor analyse', uitleg: 'Nuttig in een ritlog of grafiek, niet om steeds naar te kijken.' },
+    dubbel: { kop: '♻️ Dubbel', uitleg: 'De auto geeft dit al als standaard-PID. Weghalen maakt een plek vrij.' },
+    weigert: { kop: '✗ Werkt niet op deze auto', uitleg: 'Getest en geweigerd, of bij anderen met dit model nooit gelukt.' }
+  };
+  // Verdeelt in groepen; binnen een groep: waarde, dan wat het vaakst werkt.
+  function sensGroepen(lijst, heeft, metWeigert) {
+    var g = { weergave: [], analyse: [], dubbel: [], weigert: [] };
+    var stem = function (b) { return (b.werkt || 0) - (b.werkt_niet || 0) + (b.mijn === 'werkt' ? 5 : 0); };
+    (lijst || []).forEach(function (b, i) {
+      var s = sensSoort(b, heeft);
+      var weg = metWeigert && b.mijn !== 'werkt' && (!!b.mijn || (!b.werkt && b.werkt_niet > 0));
+      g[weg ? 'weigert' : s.groep].push({ b: b, i: i, s: s });
+    });
+    Object.keys(g).forEach(function (k) {
+      g[k].sort(function (x, y) { return (y.s.waarde - x.s.waarde) || (stem(y.b) - stem(x.b)) || (x.i - y.i); });
+    });
+    return g;
+  }
+  // Een groep als kop + items; dubbel en weigert ingeklapt.
+  function sensGroepHtml(k, rijen, html, open) {
+    if (!rijen.length) return '';
+    var G = SENS_GROEP[k], kop = esc(G.kop) + ' (' + rijen.length + ')';
+    var binnen = '<div class="gr-klein">' + esc(G.uitleg) + '</div>' + rijen.map(html).join('');
+    if (k === 'dubbel' || k === 'weigert') return '<details class="gr-meer gr-groep"' + (open ? ' open' : '') + '><summary>' + kop + '</summary>' + binnen + '</details>';
+    return '<div class="gr-groep"><div class="gr-gk">' + kop + '</div>' + binnen + '</div>';
+  }
   function bibStand(b) {
     return (b.werkt ? '✓ werkt bij ' + b.werkt : '') + (b.werkt_niet ? (b.werkt ? ' · ' : '') + '✗ niet bij ' + b.werkt_niet : '') +
       (!b.werkt && !b.werkt_niet ? (b.bron === 'obdb' ? 'uit OBDb, nog door niemand getest' : b.bron === 'online' ? 'online gevonden, nog door niemand getest' : 'nog niet getest') : '') +
@@ -1681,14 +1767,17 @@
       var nAl = Object.keys(deel.al).length;
       if (!S.bib.lijst.length) h += '<div class="gr-klein">Nog niets voor dit model. Zoek in OBDb, of deel een code die bij jou werkt.</div>';
       else if (!deel.nieuw.length) h += '<div class="gr-klein">Alles uit deze lijst staat bij je sensoren.</div>';
-      deel.nieuw.forEach(function (b) {
-        var t = S.test['bib:' + b.id], stand = bibStand(b);
-        h += '<div class="gr-item gr-bib"><b>' + esc(b.naam) + '</b> <small>' + esc(b.eenheid || '') + '</small><br><small>' + sensRegel(b) + '</small>' +
+      var bibRij = function (r) {
+        var b = r.b, t = S.test['bib:' + b.id], stand = bibStand(b);
+        return '<div class="gr-item gr-bib"><b>' + esc(b.naam) + '</b> <small>' + esc(b.eenheid || '') + '</small><br><small>' + sensRegel(b) + '</small>' +
+          (r.s.reden ? '<div class="gr-klein gr-soort">' + esc(r.s.reden) + '</div>' : '') +
           '<div class="gr-klein">' + esc(stand) + (b.url ? ' · <a href="' + esc(b.url) + '" target="_blank" rel="noopener noreferrer">bron</a>' : '') + '</div>' +
           (t ? '<div class="gr-klein" style="margin-top:4px">' + esc(t) + '</div>' : '') +
           '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="PLGarage._bibTest(\'' + esc(b.id) + '\')">▶ Test</button>' : '') +
           '<button class="gr-k klein" onclick="PLGarage._bibErbij(\'' + esc(b.id) + '\')">➕ Toevoegen</button></div></div>';
-      });
+      };
+      var gb = sensGroepen(deel.nieuw, sensHeeft(S, nu), true);
+      h += ['weergave', 'analyse', 'dubbel', 'weigert'].map(function (k) { return sensGroepHtml(k, gb[k], bibRij); }).join('');
       if (nAl && deel.nieuw.length) h += '<div class="gr-klein" style="margin-top:4px">' + (nAl === 1 ? '1 code uit deze lijst staat' : nAl + ' codes uit deze lijst staan') + ' bij je sensoren, hierboven.</div>';
     }
     var bew = bewezen(S);
@@ -2323,7 +2412,7 @@
       doe(function () { return api('rapport_verwijder', { id: r.id }); }, 'Rapport verwijderd').then(function () { delete cacheVan(_st.vid).rapporten; _st.view = 'voertuig'; _st.tab = 'rapporten'; teken(); });
     },
     // pure kern — voor test-garage.js
-    _kern: { status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar, ritStand: ritStand,
+    _kern: { sensSoort: sensSoort, sensGroepen: sensGroepen, status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar, ritStand: ritStand,
       rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, voorinvulNieuw: voorinvulNieuw, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
       waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, akkoordVragen: akkoordVragen, bibSplits: bibSplits, cfg: CFG }
   };
