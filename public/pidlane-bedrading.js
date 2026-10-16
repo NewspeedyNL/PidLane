@@ -57,6 +57,10 @@ var KRITIEK = [
   // Auto-expert achter een guard aan. Ontbreekt plZonderVin, dan gaat een VIN
   // weer ruw naar de AI zonder dat iets het zegt.
   'plZonderVin','buildAutoExpertContext',
+  // Erbij op 17-10-2026. PLEigen ontleedt mode 22-antwoorden met plIsoTpHex
+  // (pidlane-diagbundel.js) achter een guard. Ontbreekt die, dan vallen de
+  // framenummers weer in de data en geeft een eigen sensor een verkeerd getal.
+  'plIsoTpHex',
   // Erbij op 09-10-2026. De wizard zet de koopcheck klaar (koopRdwLookup) en
   // start een proefrit via de koopcheck (startKoopProefrit); PLWeten leest de
   // merkkennis (autoKennisVoorMerk); blok 5 toetst de AI-stip (aiPingUitslag).
