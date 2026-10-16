@@ -2787,9 +2787,9 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
-  // ── Er is iets mis: eerst wat de auto al weet (16-10-2026) ──
+  // ── Er is iets mis: eerst wat de auto al weet (#534) ──
   {
-    issue: 'onderzoek',
+    issue: '#534',
     naam: 'Volledig onderzoek: snelle scan (freeze frame, bijstuurgeheugen per bank, trimkaart uit de rit) en oorzakenbord voor iedereen',
     waarom: 'Het onderzoek begon met vragen en losse metingen terwijl freeze frame, lange trim en de laatste rit al lagen; een klant zag alleen de stap, niet het bewijs.',
     proef: async function () {
