@@ -541,7 +541,7 @@ function laad(opties) {
     eis(soort('222B06', 'Front right wheel speed', 'km/h').groep === 'analyse', 'wielsnelheid → analyse');
     eis(soort('22DD01', 'Totale afstand', 'km').groep === 'analyse', 'teller → analyse');
     const g = K2.sensGroepen([
-      { id: 'a', code: '224029', naam: '12V battery temperature', eenheid: '°C' },
+      { id: 'a', code: '224029', naam: '12V battery temperature', eenheid: '°C', werkt: 9 },
       { id: 'b', code: '221310', naam: 'Motorolietemperatuur', eenheid: '°C', werkt: 2 },
       { id: 'c', code: '22402B', naam: 'Vehicle battery current', eenheid: 'A', mijn: 'werkt' },
       { id: 'd', code: '220519', naam: 'Distance since oil changed', eenheid: 'km', mijn: 'werkt_niet' },
