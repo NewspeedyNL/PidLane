@@ -15,6 +15,38 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 17-10-2026 — De RDW zei "afgehandeld" en "geen oordeel"; de app las "open" en "onbekend"
+
+Gevonden in het logboek van de CX-5 van 17-10-2026, 00:11: *"Terugroepacties
+R054XD: 1 openstaande terugroepactie"* drie regels onder een RDW-vlag die
+`Nee` zei, en *"RDW weggelaten — Tellerstandoordeel: onbekende RDW-status"*.
+Nagemeten op de open data zelf:
+
+- **Terugroepacties.** `t49b-isb7` kent twee statussen: `O` "Openstaande
+  terugroepactie" (1,0 mln regels) en `P` "Producent heeft herstel gemeld"
+  (4,8 mln). `PLRecall` las alleen de tekst, tegen een lijst met `hersteld`
+  erin — en "herstel gemeld" bevat "herstel", niet "hersteld". Elke
+  afgehandelde actie stond dus als open, in de koopcheck, de kentekencheck,
+  de herinneringen en de AI-prompt. Bij vier van de vijf auto's met ooit
+  een actie. Nu beslist `code_status`; de tekst is terugval, met "herstel
+  gemeld" erbij.
+- **Tellerstandoordeel.** De RDW kent vier waarden: Logisch (8,3 mln),
+  Onlogisch (0,3), Geen oordeel (3,4) en Niet geregistreerd (4,9). De
+  koopcheck liet alleen wat `/logisch/` matchte door; de andere twee gingen
+  weg als "onbekende RDW-status", bij de helft van alle kentekens. De tegel
+  zette bovendien alles wat geen Onlogisch was op groen ✅.
+- **Veldnamen.** `PLRecall` gokte de namen van `j9yg-7rg9` en `9ihi-jgpf`
+  ("weet je de echte namen, scherp dan VELD_VOORKEUR aan"). Ze staan in de
+  metadata: `omschrijving_defect`, `mogelijk_gevaar`,
+  `publicatiedatum_rdw_dt`. Geen van de drie stond in de lijst, dus omschrijving
+  en risico kwamen alleen onder de uitklapper.
+
+**De les is dezelfde als bij OBDb:** de vorm van een bron werd één keer
+aangenomen en nooit nagemeten. De bronnencontrole (`/admin/bronnen`) bewaakt
+nu ook de woordenlijsten van `tellerstandoordeel` en `code_status`; een nieuwe
+waarde maakt de bron "kapot" in beheer, in plaats van stil verkeerd gelezen.
+Tests: `test-rdwwaarden.js`, `test-bronnen.js` deel 4b.
+
 ## 16-10-2026 — Er is iets mis: het bord terug naar de klant, en eerst lezen wat er al ligt
 
 **Herziening van het besluit van 07-10-2026** ("een klant ziet de stap en de
