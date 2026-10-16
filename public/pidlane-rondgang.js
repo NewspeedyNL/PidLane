@@ -412,6 +412,7 @@ function duiding(k, v, o){
       const L=o && o.laad;
       if(L && L.niveau==='onbeslist') return 'Laadspanning '+U+': met een slimme laadregeling normaal — de gevraagde laadspanning maakt het zeker';
       if(L && L.niveau==='fout') return 'Motor draait maar de accu krijgt '+U+': blijft dat zo, laat de dynamo nakijken';
+      if(L && L.niveau==='ok' && u>=13.2) return 'De dynamo laadt de accu ('+U+')';
       if(L && L.tekst) return L.tekst.charAt(0).toUpperCase()+L.tekst.slice(1);
       if(u>=13.2) return 'De dynamo laadt de accu ('+U+')';
       if(u>=12.2) return 'Laadspanning '+U+': met een slimme laadregeling normaal — de gevraagde laadspanning maakt het zeker';
