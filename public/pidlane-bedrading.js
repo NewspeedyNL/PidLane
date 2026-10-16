@@ -202,6 +202,10 @@ var KRITIEK = [
   // allemaal of het software kan zijn. Ontbreekt een van de twee, dan zegt
   // geen van de drie dat nog, en valt een gecodeerde ECU onder "sensor".
   'softwareOorzaken','plVinAfwijkend','plVervangenRecent',
+  // 16-10-2026. De trimkaart van het onderzoek leest de laatste rit en de
+  // datalog. Ontbreekt een van beide, dan valt de kaart stil terug op de
+  // live-historie en vraagt het onderzoek weer om gas te geven.
+  'plRitBron','plDatalogBron',
   // 06-10-2026 (#418). Een telefoon die niet vast zit tekent alleen via
   // applyG; valt die weg, dan blijft de tegel stil op zijn oude waarde staan.
   'applyG',

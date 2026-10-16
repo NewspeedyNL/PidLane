@@ -51,7 +51,7 @@ function nepAuto(opt) {
     if (stap.soort === 'mode06') return opt.m06 ? { m06: opt.m06 } : { overgeslagen: true, reden: 'test' };
     if (stap.soort === 'lezen') {
       if (opt.scan === 'demo') return { scan: await F.leesUit(F.demoStuur()) };
-      return { scan: opt.scan || GEEN_CODES };
+      return { scan: opt.scan || GEEN_CODES, snap: opt.snap, kaart: opt.kaart };
     }
     const reeks = {}, ontbreekt = [];
     stap.pids.forEach((p) => {
@@ -396,6 +396,114 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
     k.supportedPIDs = new Set(['0114', '0134']); k.PLKenmerk.vergeet();
     b = S('lambda').beoordeel({ reeks: { '0114': Array(10).fill(0.45), '0115': Array(10).fill(0.7) } });
     eis(!b.some((x) => x.h === 'lambda' && x.d > 0), 'breedband bewezen: een vlakke 0114 is geen luie sonde', JSON.stringify(b));
+  }
+
+  console.log('\n20. De snelle scan: wat de auto al wist (16-10-2026)');
+  {
+    const leeg = () => ({ metingen: {}, ctx: {} });
+    const ff = (w) => ({ scan: { freeze: { code: 'P0171', waarden: w } } });
+    let st = leeg(), b = O.beoordeelFreeze(ff({ '010C': 780, '010D': 0, '0105': 88, '0104': 22, '0106': 9, '0107': 11 }), st);
+    eis(b.some((x) => x.h === 'valselucht' && x.d === 1.5), 'freeze frame mager stationair → valse lucht', JSON.stringify(b));
+    b = O.beoordeelFreeze(ff({ '010C': 2600, '010D': 70, '0105': 90, '0104': 75, '0106': 8, '0107': 10 }), leeg());
+    eis(b.some((x) => x.h === 'brandstofdruk' && x.d > 0) && !b.some((x) => x.h === 'valselucht'), 'mager onder last → brandstofdruk, geen lek', JSON.stringify(b));
+    b = O.beoordeelFreeze(ff({ '010C': 2200, '010D': 80, '0105': 90, '0104': 30, '0106': 8, '0107': 10 }), leeg());
+    eis(!b.some((x) => x.h), 'tegenproef: mager bij lichte last rijdend zegt nog niets', JSON.stringify(b));
+    b = O.beoordeelFreeze(ff({ '010C': 900, '0105': 35 }), st = leeg());
+    eis(b.some((x) => !x.h && /koude motor/.test(x.t)) && st.metingen.freeze.trim === null, 'koude fout gemeld; zonder trim geen trim verzonnen', JSON.stringify(b));
+
+    const snap = (o) => ({ snap: Object.fromEntries(Object.entries(o).map(([k, v]) => [k, [v, v, v]])) });
+    st = leeg();
+    b = O.beoordeelSnap(snap({ '010C': 750, '0105': 90, '0107': 16, '0109': 1, '0142': 14 }), st);
+    eis(b.some((x) => x.h === 'maf' && x.d < 0) && b.some((x) => x.h === 'brandstofdruk' && x.d < 0) && b.some((x) => x.h === 'valselucht' && x.d > 0 && /bank 1/.test(x.t)),
+      'banken verschillen: lek aan bank 1, luchtmassameter en brandstofdruk vallen af', JSON.stringify(b));
+    b = O.beoordeelSnap(snap({ '010C': 750, '0105': 90, '0107': 14, '0109': 13 }), leeg());
+    eis(!b.some((x) => x.d < 0) && b.some((x) => x.h === 'maf' && x.d > 0), 'tegenproef: beide banken mager sluit niets uit', JSON.stringify(b));
+    b = O.beoordeelSnap(snap({ '010C': 750, '0105': 40, '0107': 16, '0109': 1 }), st = leeg());
+    eis(!b.length && st.metingen.ltft === undefined, 'koude motor: de trims tellen niet', JSON.stringify(b));
+    b = O.beoordeelSnap(snap({ '010C': 760, '0105': 90, '0142': 12.4 }), leeg());
+    eis(b.some((x) => x.h === 'laad' && x.d > 0), 'motor draait op 12,4 V → laadsysteem', JSON.stringify(b));
+    b = O.beoordeelSnap(snap({ '010C': 0, '0142': 12.4 }), leeg());
+    eis(!b.length, 'tegenproef: motor uit op 12,4 V is geen laadfout', JSON.stringify(b));
+
+    const rit = (stat, deel, opt) => {
+      opt = opt || {};
+      const h = { '010C': [], '0106': [], '0107': [], '010D': [], '0105': [] };
+      for (let i = 0; i < 40; i++) {
+        const t = i * 1000, hoog = i >= 20;
+        h['010C'].push({ t, v: hoog ? 2500 : 760 });
+        h['010D'].push({ t, v: hoog ? 60 : 0 });
+        h['0105'].push({ t, v: opt.koud ? 40 : 90 });
+        h['0106'].push({ t: t + (opt.schuif || 0), v: 0 });
+        h['0107'].push({ t: t + (opt.schuif || 0), v: hoog ? deel : stat });
+      }
+      return h;
+    };
+    let k = O.trimKaart(rit(15, 3), 'de testrit');
+    eis(k && k.stationair.n === 20 && k.stationair.trim === 15 && k.deel.trim === 3 && k.bron === 'de testrit', 'trimkaart: stationair en deellast uit één rit', JSON.stringify(k));
+    eis(O.trimKaart(rit(15, 3, { koud: true })) === null, 'koude motor: geen kaart');
+    eis(O.trimKaart(rit(15, 3, { schuif: 100000 })) === null, 'trims die niet bij een toerental horen tellen niet');
+    b = O.beoordeelKaart({ kaart: k }, leeg());
+    eis(b.some((x) => x.h === 'valselucht' && x.d === 1.5) && b.some((x) => x.h === 'maf' && x.d < 0), 'kaart: mager stationair dat herstelt → lekpatroon', JSON.stringify(b));
+    b = O.beoordeelKaart({ kaart: O.trimKaart(rit(14, 13)) }, leeg());
+    eis(b.some((x) => x.h === 'maf' && x.d > 0) && b.some((x) => x.h === 'valselucht' && x.d < 0), 'tegenproef: mager over het hele bereik → luchtmassameter, geen lek', JSON.stringify(b));
+    b = O.beoordeelKaart({ kaart: O.trimKaart(rit(2, 14)) }, leeg());
+    eis(b.some((x) => x.h === 'brandstofdruk' && x.d === 1.5), 'alleen mager bij deellast → brandstofdruk', JSON.stringify(b));
+
+    const sc = (codes, sinds, nietKlaar) => ({ metingen: { scan: { codes, sinds, readiness: { nietKlaar: nietKlaar || [] } } } });
+    let inz = O.inzichten(sc({ bevestigd: [], pending: [], permanent: [] }, { km: 12, warm: 2 }, ['Katalysator']));
+    eis(inz[0] && inz[0].niveau === 'let' && /gewist/.test(inz[0].kop) && /Katalysator/.test(inz[0].t), 'kort geleden gewist: bovenaan, met de zelftests die nog niet draaiden', JSON.stringify(inz));
+    inz = O.inzichten(sc({ bevestigd: [], pending: [], permanent: [] }, { km: 5000, warm: 120 }));
+    eis(!inz.some((x) => /gewist/.test(x.kop)), 'tegenproef: 5000 km na wissen is niet "kort geleden"', JSON.stringify(inz));
+    inz = O.inzichten(sc({ bevestigd: ['P0420'], pending: ['P0420', 'P0302'], permanent: [] }, {}));
+    eis(inz.some((x) => x.kop === 'Er komt iets aan' && /P0302/.test(x.t) && !/P0420/.test(x.t)), 'een code in afwachting die nog niet vast staat: "er komt iets aan"', JSON.stringify(inz));
+    inz = O.inzichten({ metingen: { ltft: { b1: 11, b2: null } } });
+    eis(inz.some((x) => /langere tijd/.test(x.kop) && /\+11 %/.test(x.t)), 'lange trim +11 %: de ECU stuurt al weken bij', JSON.stringify(inz));
+
+    st = O.nieuw({ klachten: ['warm'], wanneer: ['belast', 'vocht'] });
+    eis(!!st.v.misfire && st.v.misfire.score === 1.5, 'wanneer: belast + vocht zet ontsteking in spel, gekapt op 1,5', st.v.misfire && st.v.misfire.score);
+    eis(O.status(st.v.misfire.score) !== 'bevestigd', 'een antwoord bevestigt nooit zelf');
+    st = O.nieuw({ klachten: ['onrustig'], wanneer: ['belast'] });
+    eis(st.v.valselucht.score === -0.5 && st.v.valselucht.bewijs[0].stap === 'intake', 'alleen onder last: een lek iets minder waarschijnlijk, met het antwoord als bewijs', JSON.stringify(st.v.valselucht));
+
+    const lek = (p, stap) => O.demoWaarde(p, stap);
+    st = O.nieuw({ klachten: ['onrustig'], liters: 2.0 });
+    await O.draai(st, nepAuto({ waarde: lek }));
+    const zonder = st.gedaan.length;
+    st = O.nieuw({ klachten: ['onrustig'], liters: 2.0 });
+    await O.draai(st, nepAuto({ waarde: lek, kaart: O.trimKaart(rit(15, 3), 'de rit van zojuist') }));
+    eis(st.uitkomst.top[0] && st.uitkomst.top[0].id === 'valselucht' && st.gedaan.length < zonder, 'met een rit die er al is: zelfde conclusie in minder stappen', st.gedaan.length + ' vs ' + zonder);
+    eis(/=== WAT DE AUTO AL WIST ===[\s\S]*Trimkaart uit de rit van zojuist/.test(O.alsTekst(st)), 'het rapport zegt wat de auto al wist');
+  }
+
+  console.log('\n21. App-maten voor de meetopdracht (#534)');
+  {
+    eis(O.maat('onderzoek-scans') === 0 && O.maat('onderzoek-ff') === null && O.maat('onderzoek-bank2') === null && O.maat('onderzoek-scan-ms') === null,
+      'vóór een scan: 0 scans, de rest niet gemeten (null, geen 0)');
+    O._noteerScan({ scan: { freeze: { code: 'P0171', waarden: { '010C': 800 } } }, snap: { '0107': [12, 12, 12] } }, 2300);
+    eis(O.maat('onderzoek-scans') === 1 && O.maat('onderzoek-scan-ms') === 2300, 'een scan geteld, met zijn duur');
+    eis(O.maat('onderzoek-ff') === 1 && O.maat('onderzoek-ff-trim') === 0, 'freeze frame zonder trims: ff 1, ff-trim 0');
+    eis(O.maat('onderzoek-bank2') === 0, 'geen 0109 in de momentopname: bank2 0');
+    O._noteerScan({ scan: { freeze: { code: 'P0171', waarden: { '0107': 9 } } }, snap: { '0109': [null, 4, 5] } });
+    eis(O.maat('onderzoek-ff-trim') === 1 && O.maat('onderzoek-bank2') === 1 && O.maat('onderzoek-scan-ms') === 2300, 'met trims en bank 2: allebei 1; zonder duur blijft de vorige staan');
+    O._noteerScan({ scan: {}, snap: {} });
+    eis(O.maat('onderzoek-ff') === 0 && O.maat('onderzoek-ff-trim') === null, 'geen freeze frame: ff 0, ff-trim niet gemeten (null)');
+    O._zetStaat({ metingen: { ltft: { b1: 14.2, b2: 1 }, kaart: { stationair: { trim: 15, n: 20 }, deel: { trim: 3, n: 20 } }, trimStationair: 12, trim2500: 3.5 } });
+    eis(O.maat('onderzoek-bankverschil') === 13.2, 'bankverschil in %-punt', O.maat('onderzoek-bankverschil'));
+    eis(O.maat('onderzoek-kaart-afwijking') === 3, 'kaart tegen de proef: het grootste verschil (stationair 15 tegen 12)', O.maat('onderzoek-kaart-afwijking'));
+    O._zetStaat({ metingen: { ltft: { b1: 14, b2: null }, kaart: { stationair: { trim: 15, n: 20 }, deel: null } } });
+    eis(O.maat('onderzoek-bankverschil') === null && O.maat('onderzoek-kaart-afwijking') === null, 'tegenproef: geen bank 2 en geen proef → niet gemeten, niet 0');
+    s.pidHist = {};
+    ['010C', '0106', '0107', '0105'].forEach((p) => { s.pidHist[p] = []; });
+    for (let i = 0; i < 12; i++) {
+      s.pidHist['010C'].push({ t: i * 1000, v: i < 5 ? 760 : 2400 });
+      s.pidHist['0106'].push({ t: i * 1000, v: 0 }); s.pidHist['0107'].push({ t: i * 1000, v: 2 });
+      s.pidHist['0105'].push({ t: i * 1000, v: i < 3 ? 40 : 90 });
+    }
+    eis(O.maat('onderzoek-kaart-stationair-n') === 2 && O.maat('onderzoek-kaart-deel-n') === 7, 'vaktelling uit de live-historie, koude monsters niet meegeteld, ook onder de kaartgrens',
+      O.maat('onderzoek-kaart-stationair-n') + ' / ' + O.maat('onderzoek-kaart-deel-n'));
+    delete s.pidHist;
+    eis(O.maat('onderzoek-kaart-deel-n') === null, 'zonder bron: niet gemeten');
+    eis(O.maat('bestaat-niet') === null, 'een onbekende naam: null');
   }
 
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));

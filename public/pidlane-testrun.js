@@ -2787,6 +2787,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Er is iets mis: eerst wat de auto al weet (#534) ──
+  {
+    issue: '#534',
+    naam: 'Volledig onderzoek: snelle scan (freeze frame, bijstuurgeheugen per bank, trimkaart uit de rit) en oorzakenbord voor iedereen',
+    waarom: 'Het onderzoek begon met vragen en losse metingen terwijl freeze frame, lange trim en de laatste rit al lagen; een klant zag alleen de stap, niet het bewijs.',
+    proef: async function () {
+      if (!window.PLOnderzoek || typeof PLOnderzoek.trimKaart !== 'function' || typeof PLOnderzoek.inzichten !== 'function')
+        return { staat: 'FOUT', detail: 'PLOnderzoek.trimKaart/inzichten ontbreken — oude pidlane-onderzoek.js (herladen?)' };
+      var b = PLOnderzoek.beoordeelSnap({ snap: { '010C': [750, 750, 750], '0105': [90, 90, 90], '0107': [16, 16, 16], '0109': [1, 1, 1] } }, { metingen: {}, ctx: {} });
+      if (!b.some(function (x) { return x.h === 'maf' && x.d < 0; })) return { staat: 'FOUT', detail: 'bankverschil sluit de luchtmassameter niet uit: ' + JSON.stringify(b) };
+      var bron = typeof pidHist !== 'undefined' && pidHist ? PLOnderzoek.trimKaart(pidHist, 'deze sessie') : null;
+      return { staat: 'OK', detail: (bron ? 'trimkaart uit deze sessie: stationair ' + (bron.stationair ? bron.stationair.trim + ' % (' + bron.stationair.n + '×)' : '—') +
+        ', 1800–3200 tpm ' + (bron.deel ? bron.deel.trim + ' % (' + bron.deel.n + '×)' : '—') : 'nog geen trimkaart: rij warm stationair én tussen 1800 en 3200 tpm') +
+        '. Rij: start Er is iets mis → onderzoek, en kijk of "Wat de auto al wist" klopt met wat je weet van deze auto.' };
+    }
+  },
+
   // ── De derde poort: geldt deze regel voor déze auto? (#532) ──
   {
     issue: '#532',
