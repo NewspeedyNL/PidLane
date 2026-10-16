@@ -213,6 +213,7 @@ var PL_HULP = {
         '</ul>' +
         '<p>Een dubbeltik op een tegel verbergt hem. Hij wordt wel gewoon gemeten en staat daarna in een strook om terug te halen.</p>' +
         '<p>Een automatische bevinding verberg je met het <b>✕</b> of een dubbeltik. De AI krijgt hem nog mee; terughalen doe je via <b>bekijk alles</b>.</p>' +
+        '<p>Niet elke regel geldt voor elke auto: een motor met slimme laadregeling laadt bij een volle accu bewust onder 13 V, en sommige motoren draaien bewust 105–110 °C warm. Weet de app dat van jouw auto niet, dan zegt hij <b>niet te beoordelen</b> in plaats van een fout, en de AI trekt er dan ook geen conclusie over. Bij <b>bekijk alles</b> staat onder <b>Niet te beoordelen op deze auto</b> wat dat is, soms met een vraag. Je antwoord (<b>Ja</b> of <b>Nee</b>) onthoudt de app voor deze auto. Klinkt een bevinding met "niet zeker voor deze auto", dan is het een aandachtspunt en geen vastgesteld defect.</p>' +
         '<p>Onder de meters staat <b>⏺ Opnemen</b>, in de garagemodus ook <b>◉ Bewaken</b>. Delen en meekijken start je op Home bij <b>Rit starten</b>. ' +
         'Bij Visueel staan Opnemen en Bewaken er niet: daar start je de bulk-recorder en de waakronde vanuit het vak onder de meter.</p>',
       zie: ['opnemen', 'delen'] },

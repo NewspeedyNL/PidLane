@@ -2183,6 +2183,7 @@ MUTATIES=(
 "public/pidlane-rapport.js@@    const kleur = f.oordeel || c.verdict || 'grijs';@@    const kleur = f.oordeel || c.verdict || 'groen';@@test-rapport.js@@een rapport zonder oordeel zegt op het voorblad dat er geen urgente problemen zijn"
 "public/pidlane-rapport.js@@  const W = 210, H = 297, M = 15, CW = W - 2 * M, ONDER = 278;@@  const W = 210, H = 297, M = 15, CW = W - 2 * M, ONDER = 289;@@test-rapport.js@@de inhoud van het rapport loopt door in de voettekst"
 "public/pidlane-fuel.js@@    const text=await apiFetch(prompt+PLRapport.instructie(),4000,null,null,aanlevering);@@    const text=await apiFetch(prompt,4000,null,null,aanlevering);@@test-rapport.js@@de gedeelde AI-trechter vraagt het rapportblok niet meer: het PDF-rapport valt terug op de koppen"
+"public/pidlane-fuel.js@@  try{ if(window.PLKenmerk) sys += PLKenmerk.blok(); }@@  try{ if(false) sys += PLKenmerk.blok(); }@@bproef-kenmerk.js@@de AI hoort niet welke regels voor deze auto niet te beoordelen zijn"
 "public/pidlane-verzamel.js@@                                hist: histVoorRapport(sam), watVoor@@                                hist: null, watVoor@@bproef-rapport.js@@het verzamelscherm geeft zijn reeksen niet mee: het analyserapport heeft geen grafieken"
 )
 

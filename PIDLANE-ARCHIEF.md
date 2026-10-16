@@ -15,6 +15,59 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 16-10-2026 — De derde poort: een regel die voor déze auto niet geldt (#532)
+
+**Herziening van #531.** Daar stond: vijf plekken oordeelden met een vaste
+grens over de laadspanning. Bij de inventaris voor #532 bleken het er **elf**:
+gemist waren `onderzoek.js` `laden` en `laden_belast` (die gaan als feit het
+betaalde rapport in), `onderdeel.js` `dynamo`, `caravan.js`, `totalcheck.js`
+(`x_laadspanning` en de monitortegel) en de vloer van `conditie.js` `lv`. Op de
+CX-5 kon "de dynamo laadt niet genoeg" dus nog steeds in een rapport komen.
+
+**Koelwater had er ook elf**, van 100 tot 118 °C. Op 04-10 was `ECT_HOOG`
+aangepast voor VAG/BMW (kenveldthermostaat, 105–112 °C), de andere tien niet:
+een gezonde Golf op 108 °C was tegelijk "Koelwater loopt op" (bevinding, naar
+de AI), "te warm" (onderzoek, het rapport in) en rood op het scherm.
+
+**Waarom het in elke analyse terechtkwam:** `correlationLines()` zet elke
+afgegane bevinding als regel in de AI-prompt. Een regel die niet voor de auto
+gold werd zo een stellige AI-conclusie. De AI kreeg wel "bij twijfel
+verifiëren", maar zag niet dát de regel twijfelachtig was.
+
+**Wat er gebouwd is:** `PLKenmerk` (§11 van het contract). Alle 22 plekken
+lezen nu één grens per grootheid; bevindingen, watchers, systeemtests,
+onderzoek en `PID_LET_OP` noemen hun voorwaarden. Tussendoor ook:
+
+- `map_idle` stond in groep *universeel* en zakte op elke diesel (geen gasklep);
+  nu *benzine*. `STAT_MAP` kreeg dezelfde voorwaarde.
+- `PID_LET_OP['010B']` max 110 kPa gaf "let op" op elke turbo bij gas geven;
+  de bovengrens geldt nu alleen bij bewezen geen turbo.
+- De bevinding `thermostaat` ging af na **40 monsters**; bij een snelle pollus
+  is dat een halve minuut. Nu: 10 minuten draaien (011F, anders de reeks).
+- `batt_rust` bovengrens 12,9 V keurde een volle accu net na het rijden af
+  (oppervlaktelading); nu 13,3.
+- Twee stille `catch`-blokken (`runCorrelationEngine`, `bscCurrentBand`) melden
+  nu wat er misging.
+
+**Niet gedaan, en waarom:**
+
+- *Stationaire rust* (`idle_stab` ± 50 tpm, onderzoek `stationair` > 180 tpm):
+  airco, slim laden en cilinderuitschakeling geven onrust, maar geen van drieën
+  is één kenmerk dat aan of uit staat. `STAT_RPM` noemt de airco al.
+- *Wintercheck van de koopcheck* ("warmt traag" > 420 s): hangt af van de
+  buitentemperatuur en of er gereden wordt, een omstandigheid en geen kenmerk.
+- *CVT als keuze in het profiel*: `PLGear.automaat()` kijkt naar
+  `transmissie==='automaat'`; een nieuwe waarde raakt de versnellingsindicator.
+  CVT komt nu uit hybride (waarschijnlijk) of een antwoord van een mens.
+- *Accustroom* (22402B): het teken is nog niet nagemeten (zie #531).
+
+**De afweging die bewust is gemaakt:** zonder bewijs "niet te beoordelen" maakt
+de app stiller. Op de CX-5 2018 is 12,4–13,2 V nu onbeslist tot de gevraagde
+laadspanning (220304) erbij staat. Dat is de bedoeling: een verkeerde conclusie
+is erger dan geen. Om te voorkomen dat alles onbeslist wordt geldt `gangbaar`
+voor de uitzonderingen (LPG, CVT, hybride, breedband), en geven merk en
+bouwjaar een *waarschijnlijk* dat afzwakt in plaats van zwijgt.
+
 ## 16-10-2026 — "Dynamo" op een Mazda die gewoon zuinig laadde
 
 De klant kreeg vaak een dynamo- of laadspanningsmelding op de CX-5 (2018).

@@ -329,3 +329,59 @@ dan staat er in een AI-rapport na een rit met gaten iets als:
 > die sensor nog niet) — dat betekent niet dat er iets mis mee is.
 
 En niet meer wat er nu zou staan: een verhaal over een brandstoftrim van 128%.
+
+---
+
+## 11. De derde laag — geldt de regel voor déze auto? (16-10-2026, #532, gebouwd)
+
+Dit contract legt vast wat een **meetwaarde** is (§3) en hoe compleet de
+**meting** is (§5). Er ontbrak een derde vraag, en die is als eerste gebouwd:
+een waarde kan echt zijn en de meting compleet, terwijl de **regel** die erop
+oordeelt uitgaat van een andere auto. 12,8 V bij draaiende motor is "dynamo" op
+een auto zonder laadregeling en normaal op een Mazda die slim laadt; 108 °C is
+"te heet" met een vaste thermostaat en gewoon bij VAG/BMW.
+
+**Het model is dat van OBD zelf.** Een boordmonitor kent drie standen
+(geslaagd, fout, niet klaar) en **inschakelvoorwaarden**: zolang die niet
+gehaald zijn, is de uitkomst "niet klaar" en nooit "fout". Hier heet dat een
+voorwaarde op een **kenmerk** van de auto.
+
+| begrip | betekenis |
+|---|---|
+| kenmerk | `slimladen`, `kenveldthermostaat`, `turbo`, `diesel`, `hybride`, `lpg`, `cvt`, `breedband_b1s1` — elk met waarde, zekerheid (`bewezen`/`waarschijnlijk`) en bron |
+| bewezen | een meting (de auto vraagt een laadspanning, boost gezien, breedband-PID), RDW/profiel, of een mens |
+| waarschijnlijk | bouwjaar of merk |
+| voorwaarde | `{ kenmerk: waarde }`, of `{ kenmerk: { is, gangbaar:true } }`: zonder enig bewijs geldt dan het gewone geval (LPG, CVT zijn uitzonderingen) |
+
+**De besluiten (#532):**
+
+1. **Alleen bewezen beslist volledig.** Waarschijnlijk mag een fout afzwakken
+   tot *let op* ("niet zeker voor deze auto"), nooit ophogen en nooit
+   wegpoetsen. Onbekend is *niet te beoordelen*. Bewezen afwezig: geen oordeel.
+2. **Harde grenzen gaan nooit door de poort**: onder 12,2 V of boven 15,2 V
+   laden, boven 112 °C koelwater — op elke auto fout.
+3. **Eén grens per grootheid.** Laadspanning en koelwater hadden elk elf
+   plekken met een eigen grens. Ze lezen nu `PLKenmerk.laadspanning()` en
+   `PLKenmerk.koelwater()`; de tabellen (`PIDS['0105']`, `PID_LET_OP`,
+   BSC `cool_warm`) staan op dezelfde getallen en een test bewaakt dat.
+4. **Meten gaat vóór vragen.** Wat niet te meten is (LPG, CVT, kenveld,
+   laadregeling) vraagt de app hoogstens één keer per auto, in het venster
+   van de bevindingen; het antwoord staat in `PLWaarneming` (§ #225), waar
+   alleen een mens "nee" kan zeggen.
+
+**Regel 4 voor afnemers** (naast §7): een afnemer die een oordeel geeft dat
+uitgaat van een kenmerk van de auto, noemt dat kenmerk als voorwaarde en gaat
+door `geldt()`/`toepassen()`. Wat onbeslist is, wordt genoteerd
+(`PLKenmerk.noteer`) en niet als fout of als goed gerapporteerd.
+
+**Wat de AI-prompt krijgt** (aanvulling op §7): na de meetkwaliteit een blok
+`KENMERKEN VAN DEZE AUTO` (alleen wat bekend is, met zekerheid en bron) en
+`NIET TE BEOORDELEN OP DEZE AUTO`, met de instructie daar geen conclusie over
+te trekken. Afgegane regels die alleen waarschijnlijk gelden dragen
+"(niet zeker voor deze auto)".
+
+**Wat nog niet door de poort gaat**, en waarom (zie `PIDLANE-ARCHIEF.md`,
+16-10-2026): de stationaire rust (`idle_stab`, onderzoek `stationair`) en de
+wintercheck van de koopcheck. Daar is de aanname niet aan één kenmerk te
+hangen, of nog niet nagemeten.
+

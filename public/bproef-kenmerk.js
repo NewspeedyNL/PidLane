@@ -72,6 +72,21 @@ const wacht = (ms) => `await new Promise(function(r){ setTimeout(r, ${ms}); });`
     })()`);
     toets('een Mazda krijgt hem als bevinding, met "niet zeker voor deze auto"', !!drie.regel && /niet zeker voor deze auto/.test(drie.regel), JSON.stringify(drie));
 
+    console.log('\n4. Het blok gaat echt mee in apiFetch()');
+    const vier = await app.ev(`(async function(){
+      vehicleInfo.merk='Audi'; PLWaarneming.wis(); PLKenmerk.vergeet(); pidVals['0105']=109; pidVals['010C']=900;
+      const echtDemo=PLDemo.actief, echtFetch=window.plFetch, echtVoor=window.plVoorAnalyse;
+      let sys=null;
+      PLDemo.actief=function(){ return false; };
+      window.plVoorAnalyse=async function(){ return { rapporten:false }; };
+      window.plFetch=async function(url, opt){ sys=opt && opt.json ? opt.json.system : null; throw new Error('proef: niet versturen'); };
+      try{ await apiFetch('Analyseer de koeling', 200); }catch(e){ /* verwacht: de proef stopt de verzending */ }
+      PLDemo.actief=echtDemo; window.plFetch=echtFetch; window.plVoorAnalyse=echtVoor;
+      return { heeft:typeof sys==='string', blok:/KENMERKEN VAN DEZE AUTO/.test(sys||''), onbeslist:/NIET TE BEOORDELEN[\\s\\S]*Koelwater loopt op/.test(sys||'') };
+    })()`);
+    toets('apiFetch stuurt een systeemprompt', vier.heeft, JSON.stringify(vier));
+    toets('met het kenmerkenblok en wat niet te beoordelen is', vier.blok && vier.onbeslist, JSON.stringify(vier));
+
     toets('geen fouten in de console', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     if (app) await app.stop();
