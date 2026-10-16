@@ -237,6 +237,21 @@ console.log('\n── parsePID: de header-echo overslaan ──');
   toets('header wordt gezocht, niet geteld', s.parsePID('0105', '0105\r41055A'), 50);
 }
 
+console.log('\n── parsePID: een mode 22-antwoord over meer frames (17-10-2026) ──');
+{
+  const s = bouw();
+  // Eigen PID met de vijfde en zesde databyte (E, F): die staan in frame 1.
+  s.ALL_PID_DEFS['22F470'] = { name: 'proef', unit: '', parse: (b) => b[4] * 256 + b[5] };
+  // 62 F4 70 | 11 22 33 44 | 55 66 77 …  → E=0x55, F=0x66 → 21862
+  toets('framenummer en lengteregel horen niet in de data (regels)', s.parsePID('22F470', '00A\r0:62F47011223344\r1:556677889900AA'), 0x55 * 256 + 0x66);
+  toets('… ook als alles op één regel staat', s.parsePID('22F470', '00A 0:62F47011223344 1:556677889900AA'), 0x55 * 256 + 0x66);
+  toets('… met spaties tussen de bytes', s.parsePID('22F470', '00A\r0: 62 F4 70 11 22 33 44\r1: 55 66 77 88 99 00 AA'), 0x55 * 256 + 0x66);
+  s.ALL_PID_DEFS['221E1C'] = { name: 'proef', unit: '', parse: (b) => b[0] * 256 + b[1] };
+  toets('een enkel frame verandert niet', s.parsePID('221E1C', '621E1C0A28'), 0x0A28);
+  toets('plIsoTpHex: zonder framemarkers is het de oude strip', s.plIsoTpHex('41 05 5A'), '41055A');
+  toets('plIsoTpHex: met markers alleen de payload', s.plIsoTpHex('00A\r0:62F47011223344\r1:556677'), '62F47011223344556677');
+}
+
 console.log('\n── parsePID: wat er geen waarde is ──');
 {
   const s = bouw();

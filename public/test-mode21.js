@@ -364,6 +364,36 @@ function haalZeef(isMode01) {
     t('rol: 12V battery state of charge = soc', E.laadRol('12V battery state of charge'), 'soc');
     t('rol: 12V battery temperature / age', E.laadRol('12V battery temperature') + ' ' + E.laadRol('12V battery age'), 'accutemp leeftijd');
     t('rol: de spanning van de stroomsensor is geen accustroom', E.laadRol('Battery current sensor voltage'), null);
+    // De echte OBDb-namen van 27 modellen (17-10-2026): elk merk noemt het anders.
+    const R = (n) => E.laadRol(n);
+    t('Renault/Nissan: Alternator set point voltage = gevraagd', [R('Alternator set point voltage'), R('ALTERNATOR set point VOLTAGE')].join(), 'gevraagd,gevraagd');
+    t('Volvo: Alternator charge voltage request = gevraagd', R('Alternator charge voltage request'), 'gevraagd');
+    t('VAG: Battery charge level = soc', R('Battery charge level'), 'soc');
+    t('Kia/Hyundai: Battery state of charge, battery sensor = soc', R('Battery state of charge, battery sensor'), 'soc');
+    t('Toyota-hybride: Auxiliary battery current (de 12V) = stroom', R('Auxiliary battery current'), 'stroom');
+    t('Volvo: Battery charge, amps = stroom', R('Battery charge, amps'), 'stroom');
+    const geen = ['Battery state of charge too low for start/stop', 'Minimum state of charge', 'State of charge battery management system',
+      'State of charge', 'SOC at ignition on', '48V battery current', 'Battery temperature 07', 'Battery pack current', 'Accumulated time of hot temperature',
+      'Measured current of the electromagnetic valve for regulating the pressure in the oil pressure accumulator control system, AMN8 gearbox',
+      'DC-DC converter, target voltage before charging', 'Battery state of charge', 'Desired alternator voltage duty cycle, battery sensor', 'eCall battery charge level', 'Battery current limit, charging'];
+    t('drempels, vlaggen, de tractie-accu, 48V en "accumulator" zijn géén rol', geen.filter((n) => R(n) !== null).join(' | '), '');
+
+    // Welke OBDb-codes de app aanbiedt: op waarde, en de adressen die hij aankan.
+    t('obdbAdres: 11-bit 7E0 met antwoord 7E8', E.obdbAdres({ hdr: '7E0', rax: '7E8' }), '7E0');
+    t('obdbAdres: 29-bit kort DA10 (Fiat, Honda) = 18DA10F1', E.obdbAdres({ hdr: 'DA10', rax: '10' }), '18DA10F1');
+    t('obdbAdres: VAG 70E → 778 (afwijkend antwoordadres) = niet bruikbaar', E.obdbAdres({ hdr: '70E', rax: '778' }), null);
+    t('obdbAdres: BMW extended addressing = niet bruikbaar', E.obdbAdres({ hdr: '6F1', rax: '607', eax: '07' }), null);
+    const veel = [];
+    for (let i = 0; i < 70; i++) veel.push({ hdr: '7E0', rax: '7E8', cmd: { '22': (0x1000 + i).toString(16).toUpperCase() }, signals: [{ name: 'Iets ' + i, fmt: { len: 8, unit: 'celsius' } }] });
+    veel.push({ hdr: '7E0', rax: '7E8', cmd: { '22': 'ED08' }, signals: [{ name: '12V battery state of charge', fmt: { len: 8, unit: 'percent' } }] });
+    veel.push({ hdr: '6A2', rax: '682', cmd: { '22': 'D402' }, signals: [{ name: 'Vehicle speed', fmt: { len: 16, div: 100, unit: 'kilometersPerHour' } }] });
+    const tel = {};
+    const kand = E.obdbKandidaten({ commands: veel }, 'Proef-Model', 2020, tel);
+    t('71 bruikbare codes: de laadtoestand staat vooraan, ook al staat hij in OBDb als 71e', kand[0] && kand[0].code, '22ED08');
+    t('… de lijst blijft 60 lang, en zegt hoeveel er afvielen', kand.length + ' ' + tel.weg, '60 11');
+    t('… en telt wat door het antwoordadres niet bruikbaar is', tel.adres, 1);
+    t('… zonder hulpvelden in de kandidaten', Object.keys(kand[0]).sort().join(','), 'code,ecu,eenheid,formule,naam,url');
+
     const O = (o) => { const r = E.laadOordeel(o); return r ? r.staat : null; };
     // De meting uit de sensorlijst van 16-10-2026: 13,2 V gevraagd, accu 13,2 V.
     t('13,2 V gevraagd en gekregen: de dynamo laadt', O({ u: 13.2, rpm: 800, gevraagd: 13.233 }), 'laadt');

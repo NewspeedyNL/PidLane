@@ -582,6 +582,23 @@ function laad(opties) {
     eis(K2.sensGroepen([{ code: '220519', naam: 'Distance since oil changed', mijn: 'werkt_niet' }], heeft, false).analyse.length === 1, 'eigen sensoren: geen "werkt niet"-groep');
   }
 
+  console.log('\nOBDb vanzelf binnenhalen (17-10-2026)');
+  {
+    let gezocht = 0, gezet = 0;
+    const L = laad({ rol: 'klant', server: { pidbib_kandidaten: (b) => { gezet++; return { ok: true, erbij: b.lijst.length }; } } });
+    L.s.PLEigen = { zoekObdb: async () => { gezocht++; return { ok: true, repo: 'Kia-Ceed', kandidaten: [{ code: '22ED08' }, { code: '22E004' }], nietBruikbaar: 3 }; } };
+    const v = { id: 'v1', merk: 'Kia', model: 'Ceed' };
+    let r = await L.K.obdbVanzelf(v, []);
+    eis(gezocht === 1 && gezet === 1 && r && r.erbij === 2, 'eerste keer: zoeken en in de bibliotheek zetten', JSON.stringify(r));
+    eis(/3 codes uit OBDb antwoorden op een ander adres/.test(r.tekst), 'de tekst zegt wat niet bruikbaar was', r.tekst);
+    r = await L.K.obdbVanzelf(v, []);
+    eis(r === null && gezocht === 1, 'binnen dertig dagen niet opnieuw');
+    r = await L.K.obdbVanzelf({ id: 'v2', merk: 'Mazda', model: 'CX-5' }, [{ bron: 'obdb' }]);
+    eis(r === null && gezocht === 1, 'staat er al iets uit OBDb: niet zoeken');
+    r = await L.K.obdbVanzelf({ id: 'v3', merk: 'Mazda' }, []);
+    eis(r === null && gezocht === 1, 'zonder model: niet zoeken');
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });
