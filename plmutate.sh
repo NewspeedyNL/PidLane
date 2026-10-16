@@ -1276,6 +1276,8 @@ MUTATIES=(
 "worker.js@@  const res = await db.batch(stmts);@@  const res = []; for (const st of stmts) res.push(await st.run());@@test-logarchief.js@@archiveren en wissen in losse stappen: faalt het wissen, dan blijft er een archiefrij die de volgende ronde dubbel telt"
 "worker.js@@proef: b0.proef !== false@@proef: b0.proef === true@@test-logarchief.js@@de beheerknop wist zonder proef:false — een klik zonder proefdraaien gooit regels weg"
 "admin/beheer.html@@  if(AR.proefDagen !== dagen){@@  if(false){@@bproef-beheerpagina.js@@archiveren met een andere termijn dan de proef: je wist iets anders dan je net hebt gezien"
+"admin/beheer.html@@  const volgorde = { kapot:0, traag:1, beperkt:2, gezond:3 };@@  const volgorde = { kapot:3, traag:1, beperkt:2, gezond:0 };@@bproef-beheerpagina.js@@een kapotte bron zakt onderaan de lijst, onder de gezonde: wie de eerste regels leest ziet niets mis"
+"admin/beheer.html@@  else if(tel('kapot')) toon_msg(m, 'err',@@  else if(false) toon_msg(m, 'err',@@bproef-beheerpagina.js@@de melding boven de bronnen zwijgt over wat kapot is"
 # De beheerpagina zelf (bproef-beheerpagina.js). Drie stille fouten die er
 # allemaal goed uitzien: een afgekeurde opdracht gaat tóch aan (de app wijst
 # hem bij de start af en de rit rijdt zonder dat iemand het weet), het vangnet

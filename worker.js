@@ -6695,7 +6695,7 @@ var worker_default = {
       if (url.pathname === "/admin/d1" && request.method === "POST")
         return lockOrigin(request, await handleAdminD1Post(request, env));
       if (url.pathname === "/admin/bronnen" && (request.method === "GET" || request.method === "POST"))
-        return await handleAdminBronnen(request, env);
+        return lockOrigin(request, await handleAdminBronnen(request, env));
       if (url.pathname === "/admin/meekijk" && request.method === "POST")
         return lockOrigin(request, await handleAdminMeekijk(request, env));
       if (url.pathname === "/klant/registreer" && request.method === "POST")
