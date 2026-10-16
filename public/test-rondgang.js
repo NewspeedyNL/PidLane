@@ -169,5 +169,22 @@ waar('wisseltijd: 15 s mag', R.schoonMs('15000') === 15000);
 waar('wisseltijd: onzin of 7 s wordt 10 s', R.schoonMs('x') === 10000 && R.schoonMs(7000) === 10000 && R.STANDAARD_MS === 10000);
 waar('vinkjes: dubbel en onbekend eruit', JSON.stringify(R.schoonUit(['temp', 'temp', 'x'])) === '["temp"]');
 
+console.log('\n4. Eigen keuze per categorie (16-10-2026)');
+const eig = { heeft: uit(['010D', '010C', '0105', '0146', '0142', '221310', '22402B']), eigen: { temp: ['221310'], elektrisch: ['22402B'] } };
+ind = R.indeling('benzine', eig);
+const tempD = ind.dias.filter((d) => d.cat === 'temp').pop(), elD = ind.dias.find((d) => d.cat === 'elektrisch');
+waar('een eigen PID die ovzCat nergens onderbrengt staat in zijn gekozen categorie', tempD && pids(tempD).indexOf('221310') > -1, ids(ind) + ' ' + JSON.stringify(ind.dias.map(pids)));
+waar('accustroom in Elektrisch, onder de accuspanning', elD && pids(elD).join() === '0142,22402B', JSON.stringify(ind.dias.map(pids)));
+ind = R.indeling('benzine', { heeft: uit(['010D', '010C', '0105', '0146', '0142']), eigen: { elektrisch: ['0146'] } });
+const plek = ind.dias.filter((d) => pids(d).indexOf('0146') > -1);
+waar('jouw keuze wint: 0146 in Elektrisch en niet meer bij Temperaturen', plek.length === 1 && plek[0].cat === 'elektrisch', JSON.stringify(ind.dias.map((d) => d.cat + ':' + pids(d))));
+ind = R.indeling('benzine', { heeft: uit(['010D', '010C', '0105']), eigen: { temp: ['221310'] } });
+waar('wat de auto niet geeft, verschijnt ook niet', ind.dias.every((d) => pids(d).indexOf('221310') < 0));
+ind = R.indeling('benzine', { heeft: uit(['010D', '010C', '0105', '221310']), eigen: { temp: ['221310'] }, uit: ['temp'] });
+waar('categorie uit: ook de eigen keuze doet niet mee', ind.dias.every((d) => pids(d).indexOf('221310') < 0));
+const se = JSON.stringify(R.schoonEigen({ temp: ['221310', '221310', 5, '<x>'], motor: ['221310', '0104'], bestaatniet: ['0105'] }));
+waar('schoonEigen: onbekende categorie, rommel en dubbel eruit; de eerste categorie wint', se === '{"motor":["221310","0104"]}', se);
+waar('schoonEigen: geen object → leeg', JSON.stringify(R.schoonEigen('x')) === '{}' && JSON.stringify(R.schoonEigen(['temp'])) === '{}');
+
 console.log('\n' + ok + ' goed, ' + fout + ' fout');
 process.exit(fout ? 1 : 0);

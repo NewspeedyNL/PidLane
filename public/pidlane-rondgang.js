@@ -34,8 +34,15 @@
 // huidige dia, de kop en vlak vóór de wissel (VOOR_MS) de volgende dia
 // houden hun eigen tempo, zodat een nieuwe dia niet met "—" begint.
 //
+// EIGEN KEUZE PER CATEGORIE (16-10-2026, op verzoek). In het ⚙-blad zet
+// je per categorie zelf sensoren erbij (pl_rond_eigen, { cat: [pid] }) —
+// ook een eigen PID als 221310 olietemperatuur, die ovzCat nergens
+// onderbrengt. Jouw keuze wint: zo'n sensor staat alleen op de laatste
+// pagina van die categorie, als rij, en nergens anders. Erbij zetten zet
+// hem ook aan; dat is een tik van de klant, geen stille selectie.
+//
 // Puur en getoetst in test-rondgang.js: indeling(), tik(), stap(),
-// voortgang(), alarmDia(), schoonMs(), schoonUit(). Het scherm:
+// voortgang(), alarmDia(), schoonMs(), schoonUit(), schoonEigen(). Het scherm:
 // bproef-rondgang.js.
 // ══════════════════════════════════════════════════════════════════
 (function(){
@@ -203,14 +210,22 @@ function catDef(id){ return CATS.filter(function(c){ return c.id===id; })[0]; }
 // o.heeft(pid): staat aan op deze auto; o.heeftKop(pid): kan de kop hem
 // tonen (standaard o.heeft); o.extra: PIDs die aan staan (voor het
 // aanvullen); o.cat(pid): de Overzicht-categorie, of null = niet aanvullen;
-// o.uit: dia-ids met het vinkje uit. Eén sensor staat op één plek.
+// o.uit: dia-ids met het vinkje uit; o.eigen: { cat: [pid] } met de hand
+// erbij gezet — die wint van elke andere plek. Eén sensor staat op één plek.
 function indeling(motor, o){
   o=o||{};
   const heeft=o.heeft || function(){ return false; };
   const heeftKop=o.heeftKop || heeft;
   const cat=o.cat || function(){ return null; };
   const uit=schoonUit(o.uit);
+  const eigen=schoonEigen(o.eigen);
   const gebruikt={};
+  // Eerst de eigen keuze reserveren, zodat geen keten hem elders pakt.
+  const handmatig=[];
+  Object.keys(eigen).forEach(function(c){
+    if(uit.indexOf(c)>-1) return;
+    eigen[c].forEach(function(p){ if(!gebruikt[p] && heeft(p)){ gebruikt[p]=1; handmatig.push({ p:p, c:c }); } });
+  });
   function tegel(s, kop){
     const h=kop ? heeftKop : heeft;
     const p=s.keten.filter(function(x){ return !gebruikt[x] && h(x); })[0];
@@ -234,6 +249,10 @@ function indeling(motor, o){
   let dias=aan.map(function(d){
     const c=catDef(d.cat);
     return { id:d.id, cat:d.cat, naam:c.naam+' · '+d.naam, cnaam:c.naam, ico:c.ico, duid:d.duid ? [d.duid] : [], tegels:d.tegels.map(function(s){ return tegel(s, false); }).filter(Boolean) };
+  });
+  handmatig.forEach(function(h){
+    const d=dias.filter(function(x){ return x.cat===h.c; }).pop();
+    if(d) d.tegels.push({ id:'r-'+h.p, soort:'rij', pids:[h.p] });
   });
   // Aanvullen met wat je zelf aan hebt staan, op de laatste pagina van zijn categorie.
   (o.extra||[]).forEach(function(p){
@@ -320,6 +339,20 @@ function schoonUit(l){
   const u=(Array.isArray(l) ? l : []).filter(function(x, i, a){ return CAT_IDS.indexOf(x)>-1 && a.indexOf(x)===i; });
   return u.length>=CAT_IDS.length ? [] : u;   // alles uit = niets uit
 }
+// { cat: [pid] } zonder onbekende categorieën, rommel of dubbelen; een
+// PID in twee categorieën blijft bij de eerste.
+function schoonEigen(o){
+  const uit={}, gezien={};
+  if(!o || typeof o!=='object' || Array.isArray(o)) return uit;
+  CAT_IDS.forEach(function(c){
+    const l=(Array.isArray(o[c]) ? o[c] : []).filter(function(p){
+      if(typeof p!=='string' || !/^[0-9A-Za-z_:.-]{2,24}$/.test(p) || gezien[p]) return false;
+      gezien[p]=1; return true;
+    });
+    if(l.length) uit[c]=l;
+  });
+  return uit;
+}
 
 // ── WAT DIT ZEGT — puur ─────────────────────────────────────────────
 // Eén regel per pagina die de getallen aan elkaar knoopt: wat de klant er
@@ -401,6 +434,7 @@ function lees(k){ try{ return localStorage.getItem(k); }catch(e){ console.warn('
 function schrijf(k, v){ try{ localStorage.setItem(k, v); }catch(e){ console.warn('PLRond: '+k+' niet bewaard', e); } }
 function ms(){ return schoonMs(lees('pl_rond_ms')); }
 function uitLijst(){ try{ return schoonUit(JSON.parse(lees('pl_rond_uit')||'[]')); }catch(e){ console.warn('PLRond: pl_rond_uit onleesbaar', e); return []; } }
+function eigenLijst(){ try{ return schoonEigen(JSON.parse(lees('pl_rond_eigen')||'{}')); }catch(e){ console.warn('PLRond: pl_rond_eigen onleesbaar', e); return {}; } }
 function aan(){ return lees('pl_slim_modus')!=='dash'; }
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 function def(pid){ try{ return (typeof getPidDef==='function') ? getPidDef(pid) : null; }catch(e){ console.warn('PLRond: getPidDef('+pid+')', e); return null; } }
@@ -424,7 +458,7 @@ function catVan(pid){
 function opbouw(){
   let extra=[];
   try{ if(typeof activePIDs!=='undefined') extra=Array.from(activePIDs); }catch(e){ console.warn('PLRond: activePIDs onleesbaar', e); }
-  _ind=indeling(motor(), { heeft:actief, heeftKop:levert, extra:extra, cat:catVan, uit:uitLijst() });
+  _ind=indeling(motor(), { heeft:actief, heeftKop:levert, extra:extra, cat:catVan, uit:uitLijst(), eigen:eigenLijst() });
   if(_st.i>=_ind.dias.length) _st.i=0;
   return _ind;
 }
@@ -645,7 +679,7 @@ function remt(pid){
 
 // Wat de auto voor de rondgang heeft maar nog uit staat; met c alleen die categorie.
 function nogUit(c){
-  const vol=indeling(motor(), { heeft:levert, uit:uitLijst() });
+  const vol=indeling(motor(), { heeft:levert, uit:uitLijst(), eigen:eigenLijst() });
   return vol.dias.filter(function(d){ return !c || d.cat===c; }).reduce(function(a,d){ return a.concat(pidsVan(d.tegels)); }, [])
     .filter(function(p){ return !actief(p); });
 }
@@ -661,14 +695,17 @@ function alleAan(){
 function sluitBlad(){ if(_blad && _blad.parentNode) _blad.parentNode.removeChild(_blad); _blad=null; }
 function instellingen(){
   sluitBlad();
-  const nu=ms(), uit=uitLijst(), mist=nogUit().length;
+  const nu=ms(), uit=uitLijst(), mist=nogUit().length, eigen=eigenLijst();
   _blad=document.createElement('div'); _blad.className='dash-blad-ov'; _blad.id='rondBlad'; _blad.style.zIndex='9900';
   _blad.onclick=function(e){ if(e.target===_blad) sluitBlad(); };
   _blad.innerHTML='<div class="dash-blad"><h5>Rondgang in Slim</h5><p>Elke categorie blijft zo lang in beeld</p>'+
     '<div class="dash-keus rond-tijd">'+KEUZES_MS.map(function(m){ return '<button type="button"'+(m===nu?' class="aan"':'')+' onclick="PLRond.zetMs('+m+')">'+(m/1000)+' s</button>'; }).join('')+'</div>'+
-    '<p>Welke categorieën meedoen</p>'+CATS.map(function(d){
-      const op=uit.indexOf(d.id)<0;
-      return '<button type="button" class="dash-regel" role="switch" aria-checked="'+op+'" data-dia="'+d.id+'" onclick="PLRond.zetDia(\''+d.id+'\')">'+esc(d.ico+' '+d.naam)+'<small>'+(op?'☑':'☐')+'</small></button>';
+    '<p>Welke categorieën meedoen — met ＋ zet je er zelf een sensor bij</p>'+CATS.map(function(d){
+      const op=uit.indexOf(d.id)<0, mijn=eigen[d.id]||[];
+      return '<button type="button" class="dash-regel" role="switch" aria-checked="'+op+'" data-dia="'+d.id+'" onclick="PLRond.zetDia(\''+d.id+'\')">'+esc(d.ico+' '+d.naam)+'<small>'+(op?'☑':'☐')+'</small></button>'+
+        '<div class="rond-eigen" data-cat="'+d.id+'">'+mijn.map(function(p){
+          return '<button type="button" class="rond-chip" title="Weghalen" onclick="PLRond.eigenWeg(\''+d.id+'\',\''+esc(p)+'\')">'+esc(naamVan(p))+' ✕</button>';
+        }).join('')+'<button type="button" class="rond-chip plus" onclick="PLRond.kies(\''+d.id+'\')">＋ Sensor</button></div>';
     }).join('')+
     '<p>De rondgang toont de sensoren die aan staan. '+(mist ? mist+' sensoren van deze auto horen erbij maar staan uit.' : 'Alles wat deze auto ervoor heeft staat aan.')+'</p>'+
     (mist ? '<div class="dash-keus twee" style="grid-template-columns:1fr"><button type="button" id="rondAlleAan" onclick="PLRond.alleAan()">Zet ze aan ('+mist+')</button></div>' : '')+
@@ -677,12 +714,57 @@ function instellingen(){
   document.body.appendChild(_blad);
 }
 
+function naamVan(p){ const d=def(p)||inLijst().filter(function(x){ return x.pid===p; })[0]; return (d && d.name) ? d.name : p; }
+// Wat je bij een categorie kunt zetten: alles wat deze auto levert, op naam,
+// zonder wat er al met de hand in deze categorie staat.
+function kandidaten(c, zoek){
+  const al=eigenLijst()[c]||[], q=String(zoek||'').toLowerCase().trim();
+  return inLijst().map(function(d){ return d.pid; })
+    .filter(function(p, i, a){ return a.indexOf(p)===i && al.indexOf(p)<0 && levert(p); })
+    .map(function(p){ return { pid:p, naam:naamVan(p), aan:actief(p) }; })
+    .filter(function(k){ return !q || k.naam.toLowerCase().indexOf(q)>-1 || k.pid.toLowerCase().indexOf(q)>-1; })
+    .sort(function(a, b){ return (b.aan-a.aan) || a.naam.localeCompare(b.naam, 'nl'); });
+}
+let _kiesCat=null;
+function kiesLijst(){
+  const el=document.getElementById('rondKiesLijst'), z=document.getElementById('rondKiesZoek'); if(!el) return;
+  const k=kandidaten(_kiesCat, z ? z.value : '');
+  el.innerHTML=k.length ? k.slice(0, 80).map(function(x){
+    return '<button type="button" class="dash-regel" data-pid="'+esc(x.pid)+'" onclick="PLRond.eigenErbij(\''+_kiesCat+'\',\''+esc(x.pid)+'\')">'+esc(x.naam)+'<small>'+(x.aan ? 'aan' : 'uit · gaat aan')+'</small></button>';
+  }).join('') : '<p>Niets gevonden. Een sensor die de auto niet geeft, staat hier niet.</p>';
+}
+function kies(c){
+  if(CAT_IDS.indexOf(c)<0) return;
+  sluitBlad(); _kiesCat=c;
+  const d=catDef(c);
+  _blad=document.createElement('div'); _blad.className='dash-blad-ov'; _blad.id='rondBlad'; _blad.style.zIndex='9900';
+  _blad.onclick=function(e){ if(e.target===_blad) instellingen(); };
+  _blad.innerHTML='<div class="dash-blad"><h5>'+esc(d.ico+' '+d.naam)+': sensor erbij</h5>'+
+    '<p>Komt op de laatste pagina van deze categorie, en nergens anders meer.</p>'+
+    '<input id="rondKiesZoek" type="search" placeholder="Zoek op naam of PID…" oninput="PLRond.kiesZoek()" style="width:100%;box-sizing:border-box;margin:0 0 8px">'+
+    '<div id="rondKiesLijst" style="max-height:50vh;overflow:auto"></div>'+
+    '<div class="dash-keus twee" style="grid-template-columns:1fr"><button type="button" onclick="PLRond.instellingen()">Terug</button></div></div>';
+  document.body.appendChild(_blad);
+  kiesLijst();
+}
+function eigenZet(c, p, erbij){
+  const e=eigenLijst();
+  CAT_IDS.forEach(function(k){ if(e[k]) e[k]=e[k].filter(function(x){ return x!==p; }); });
+  if(erbij) e[c]=(e[c]||[]).concat(p);
+  schrijf('pl_rond_eigen', JSON.stringify(schoonEigen(e)));
+  if(erbij && !actief(p) && typeof pidToevoegen==='function'){
+    try{ pidToevoegen([p], { handmatig:true }); }catch(x){ console.warn('PLRond: '+p+' aanzetten mislukt', x); }
+  }
+  instellingen(); herbouw();
+}
+
 const api = {
   // de pure kern — voor test-rondgang.js
   DIAS:DIAS, CATS:CATS, KOP:KOP, KEUZES_MS:KEUZES_MS, STANDAARD_MS:STANDAARD_MS, HOLD_MS:HOLD_MS, VOOR_MS:VOOR_MS, REM_MS:REM_MS, SNEL_MS:SNEL_MS, MAX_PER_DIA:MAX_PER_DIA,
-  indeling:indeling, groepen:groepen, midVulling:midVulling, duiding:duiding, tik:tik, stapPuur:stap, voortgang:voortgang, alarmDia:alarmDia, schoonMs:schoonMs, schoonUit:schoonUit,
+  indeling:indeling, groepen:groepen, midVulling:midVulling, duiding:duiding, tik:tik, stapPuur:stap, voortgang:voortgang, alarmDia:alarmDia, schoonMs:schoonMs, schoonUit:schoonUit, schoonEigen:schoonEigen,
   // het scherm
-  aan:aan, bouw:bouw, bij:bij, nogUit:nogUit,
+  aan:aan, bouw:bouw, bij:bij, nogUit:nogUit, kandidaten:kandidaten,
+  kies:kies, kiesZoek:kiesLijst, eigenErbij:function(c, p){ eigenZet(c, p, true); }, eigenWeg:function(c, p){ eigenZet(c, p, false); },
   alleAan:function(){ const n=alleAan(); if(n && typeof showToast==='function') showToast(n+' sensoren aangezet voor de rondgang'); if(_blad) instellingen(); herbouw(); return n; }, remt:remt, instellingen:instellingen, sluit:sluitBlad,
   staat:function(){ return { i:_st.i, pauze:_st.pauze, alarm:_st.alarm, ms:ms(), dias:_ind.dias.map(function(d){ return { id:d.id, naam:d.naam, duid:d.duid, pids:pidsVan(d.tegels) }; }), kop:pidsVan(_ind.kop) }; },
   modus:function(m){ schrijf('pl_slim_modus', m==='dash' ? 'dash' : 'rond'); if(m==='dash') stopKlok(); _vorigeI=-1; herbouw(); },

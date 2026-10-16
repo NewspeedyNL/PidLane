@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-15', app: '3.2.0' },
+  gecontroleerd: { datum: '2026-10-16', app: '3.2.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -204,6 +204,7 @@ var PL_HULP = {
         'Elke categorie heeft zijn eigen weergave: koppel, gaspedaal, gasklep, katalysatoren en sondes per bank als meters naast elkaar, de trims en de lambda als balk vanuit het midden, het verbruik en de luchtmassa groot met een lijn van de laatste minuut, de lambdasondes met een streep op hun omslagpunt, en de rest als rij met het normale bereik in groen. ' +
         'Wordt een waarde rood, dan springt de rondgang naar die categorie en blijft daar tot het weer normaal is. ' +
         'Met <b>⚙</b> kies je de wisseltijd (5 tot 30 seconden) en welke categorieën meedoen; dat kan ook in <b>Mijn voorkeuren</b> bij <b>Rondgang in Slim</b>. ' +
+        'Onder elke categorie zet je met <b>＋ Sensor</b> zelf een sensor erbij, ook een eigen code; hij komt dan op de laatste pagina van die categorie en nergens anders, en gaat aan als hij uit stond. Tik op zijn naam om hem weer weg te halen. ' +
         '<b>Mijn dashboard</b> onderaan het <b>⚙</b>-blad zet de rondgang uit en toont je eigen tegels, die je met <b>Aanpassen</b> inricht; <b>🔁</b> zet de rondgang weer aan.</li>' +
         '<li><b>Visueel</b> — één vaste meter. De naald toont het toerental; bij een hybride of elektrische auto, en bij een auto die geen toerental geeft, toont hij hoeveel vermogen je met het gaspedaal vraagt. Links van nul, in groen, staat de laadzone: gas los en afremmen, wanneer een hybride energie terugwint. Dat is een schatting uit de vertraging, geen gemeten laadstroom. In de onderrand staan twee bogen, zoals in je dashboard: links het koelwater, rechts de brandstof, koud en leeg onderaan. Onder de snelheid staat in grote cijfers het verbruik van dit moment, en linksonder het bereik met deze tank (daarvoor is de tankinhoud uit Mijn voertuigen nodig; zonder staat er je rit, in kilometers en minuten). Tik op een boog, het getal of het vak linksonder om zelf te kiezen wat daar staat; op een boog kunnen alleen sensoren met een vaste schaal, <b>Automatisch</b> zet de plek terug. Een eigen sensor zonder minimum en maximum staat onderaan die lijst, met de reden erbij; een eigen sensor in % krijgt vanzelf 0 tot 100. Het gaspedaal toont in elke weergave hoeveel je het intrapt: met de voet los is dat 0, ook als de sensor zelf in rust rond de 15 à 20 % staat. Het brandstofpeil is gedempt (de laatste drie metingen), zoals de meter in je auto, zodat het niet meeklotst bij optrekken of in bochten; ' +
         'rechtsboven de accu (bij een hybride de aandrijfaccu én de 12V-accu), rechtsonder een autootje met de vier banden. ' +
