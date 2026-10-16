@@ -2103,7 +2103,7 @@ MUTATIES=(
 "public/pidlane-onderzoek.js@@      return Math.abs(beste.t - t) <= 2000 &&@@      return Math.abs(beste.t - t) <= 1e9 &&@@test-onderzoek.js@@de trimkaart koppelt een trim aan een toerental van een heel ander moment"
 "public/pidlane-onderzoek.js@@  var VOORAF_MAX = 1.5;@@  var VOORAF_MAX = 3;@@test-onderzoek.js@@twee antwoorden op \"wanneer\" bevestigen samen een ontstekingsprobleem"
 "public/pidlane-onderzoek.js@@    if (sd.km != null && sd.km < 200 &&@@    if (sd.km != null && sd.km < 0 &&@@test-onderzoek.js@@kort geleden gewiste foutcodes vallen niet meer op"
-"public/pidlane-onderzoek.js@@: 1 : 0) : null;\n    _m.bank2@@: 1 : 0) : 0;\n    _m.bank2@@test-onderzoek.js@@meetopdracht #534: geen freeze frame telt als \"freeze frame zonder trims\""
+"public/pidlane-onderzoek.js@@? 1 : 0) : null;\n    _m.bank2@@? 1 : 0) : 0;\n    _m.bank2@@test-onderzoek.js@@meetopdracht #534: geen freeze frame telt als \"freeze frame zonder trims\""
 "public/pidlane-onderzoek.js@@Math.round(Math.max.apply(null, a) * 10) / 10 : null;@@Math.round(Math.min.apply(null, a) * 10) / 10 : null;@@test-onderzoek.js@@meetopdracht #534: de trimkaart heet eens met de proef zodra één vak klopt"
 "public/pidlane-onderzoek.js@@    kennisInSpel(st, ks);\n@@\n@@test-onderzoek.js@@de merkkennis komt niet meer in het onderzoek: een bekende ketting wordt nooit getoetst"
 "public/pidlane-onderzoek.js@@  var KENNIS_GEWICHT = 3;@@  var KENNIS_GEWICHT = 1;@@test-onderzoek.js@@een bekend zwak punt telt mee maar komt nooit eerder aan de beurt"
