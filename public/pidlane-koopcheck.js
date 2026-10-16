@@ -296,7 +296,9 @@ async function koopRdwLookup(){
 
     // Tellerstand-kleur
     const tellerOnlogisch = tellerOordeel && /onlogisch/i.test(tellerOordeel);
-    const tellerKleur = tellerOordeel ? (tellerOnlogisch ? '#ef4444' : '#22c55e') : '#6b7280';
+    // Alleen "Logisch" is groen; "Geen oordeel" en "Niet geregistreerd" zijn geen bewijs.
+    const tellerLogisch = !!tellerOordeel && /^logisch$/i.test(tellerOordeel);
+    const tellerKleur = tellerOnlogisch ? '#ef4444' : (tellerLogisch ? '#22c55e' : '#6b7280');
 
     // Render kaarten — alleen plausibele waarden, anms een nette '?' / weglaten
     const kaarten = [
@@ -307,7 +309,7 @@ async function koopRdwLookup(){
       { label:'Eerste NL',      val:datEersteNL + (import_auto ? ' ⚠️ Import' : ''), ico:'🇳🇱' },
       { label:'Huidige eigenaar sinds', val:datTenaam, ico:'👤' },
       { label:'APK geldig tot', val:`${apkVerval}`, ico:'🔧', kleur:apkKleur },
-      { label:'Tellerstandoordeel', val: tellerOordeel ? (tellerOnlogisch?'⚠️ '+tellerOordeel:'✅ '+tellerOordeel) : '?', ico:'⏱️', kleur:tellerKleur },
+      { label:'Tellerstandoordeel', val: tellerOordeel ? (tellerOnlogisch?'⚠️ '+tellerOordeel:(tellerLogisch?'✅ ':'ℹ️ ')+tellerOordeel) : '?', ico:'⏱️', kleur:tellerKleur },
       { label:'Kleur',          val:`${f.kleur||'?'}${_rdwPlausibleName(v.tweede_kleur)?'+'+v.tweede_kleur:''}`, ico:'🎨' },
       { label:'Cilinderinhoud', val:f.cilinderinhoud ? f.cilinderinhoud+' cc' : '?', ico:'⚙️' },
       { label:'Bruto BPM',      val:bpm, ico:'💶' },
@@ -388,6 +390,15 @@ function _rdwPlausibleDate(s){
 
 // Centrale RDW-validatie. Geeft schone velden + een lijst van weggelaten
 // velden met reden, zodat de UI kan tonen WAAROM iets ontbreekt.
+var RDW_TELLEROORDELEN=['logisch','onlogisch','geen oordeel','niet geregistreerd'];
+// Wat het oordeel betekent, voor de AI. Alleen Onlogisch is een fraudesignaal.
+function tellerUitleg(o){
+  o=String(o||'').toLowerCase();
+  if(o==='onlogisch') return ' (LET OP: mogelijk teruggedraaide of onlogische km-historie — sterk risicovol)';
+  if(o==='geen oordeel') return ' (het RDW kan de km-historie niet beoordelen, bv. te weinig registraties — geen fraudesignaal; laat de km-historie zelf zien)';
+  if(o==='niet geregistreerd') return ' (geen km-standen bij het RDW geregistreerd — geen fraudesignaal, wel geen bewijs)';
+  return '';
+}
 function validateRdwVehicle(v){
   const out={ velden:{}, weggelaten:[] };
   const drop=(label,reden)=>out.weggelaten.push({label,reden});
@@ -421,10 +432,14 @@ function validateRdwVehicle(v){
   if(_rdwPlausibleDate(v.vervaldatum_apk)) out.velden.vervaldatum_apk=v.vervaldatum_apk;
   else if(v.vervaldatum_apk) drop('APK-datum','ongeldige datum in RDW-registratie');
 
-  // Tellerstandoordeel — alleen de erkende RDW-waarden toelaten
+  // Tellerstandoordeel — alleen de erkende RDW-waarden toelaten. Het RDW
+  // kent er vier (nagemeten 17-10-2026 over alle 16,9 miljoen kentekens):
+  // Logisch, Onlogisch, Geen oordeel (3,4 mln) en Niet geregistreerd (4,9
+  // mln). Tot vandaag gingen die laatste twee als "onbekende RDW-status" weg,
+  // en hoorde de AI "onbekend" bij de helft van alle auto's.
   const to=String(v.tellerstandoordeel||'').trim();
   if(to){
-    if(/logisch/i.test(to)) out.velden.tellerstandoordeel=to;  // "Logisch"/"Onlogisch"
+    if(RDW_TELLEROORDELEN.indexOf(to.toLowerCase())>=0) out.velden.tellerstandoordeel=to;
     else drop('Tellerstandoordeel','onbekende RDW-status');
   }
 
@@ -484,7 +499,7 @@ APK nog geldig: ${apkMaanden !== null ? apkMaanden+' maanden' : 'onbekend'}
 Serviceboekje: ${boekje}
 Actieve DTC foutcodes: ${dtcCount}
 Bandenstaat: ${bandenLabel||'niet gecontroleerd'}
-RDW tellerstandoordeel: ${tellerOordeel || 'onbekend'}${tellerOordeel&&/onlogisch/i.test(tellerOordeel)?' (LET OP: mogelijk teruggedraaide km — sterk risicovol)':''}
+RDW tellerstandoordeel: ${tellerOordeel || 'onbekend'}${tellerUitleg(tellerOordeel)}
 Openstaande recall: ${recallActief ? 'JA' : 'nee'}${(()=>{try{return window._plRecall&&window.PLRecall?'\n'+PLRecall.naarPromptRegel(window._plRecall):'';}catch(e){return '';}})()}
 Import: ${ink.import}
 ${proefritBlok}
@@ -524,7 +539,7 @@ APK nog geldig: ${apkMaanden !== null ? apkMaanden+' maanden' : 'onbekend'}
 Serviceboekje: ${boekje}
 Actieve DTC foutcodes: ${dtcCount}
 Bandenstaat: ${bandenLabel||'niet gecontroleerd'}
-RDW tellerstandoordeel: ${tellerOordeel || 'onbekend'}${tellerOordeel&&/onlogisch/i.test(tellerOordeel)?' (LET OP: mogelijk teruggedraaide of onlogische km-historie — sterk waardedrukkend en risicovol)':''}
+RDW tellerstandoordeel: ${tellerOordeel || 'onbekend'}${tellerUitleg(tellerOordeel)}
 Openstaande terugroepactie (recall): ${recallActief ? 'JA — nog niet afgehandeld' : 'nee'}
 Geschatte achterstallig onderhoud: €${onderhoudKosten||0}${proefritBlok}
 ${vraagprijs ? (verkoper?'Gewenste verkoopprijs eigenaar: €':'Vraagprijs dealer: €')+parseInt(vraagprijs).toLocaleString('nl') : ''}

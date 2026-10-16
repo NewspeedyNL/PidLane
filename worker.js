@@ -4785,9 +4785,18 @@ var BRON_OBDB_MAX = 12;
 var BRON_OBDB_VAST = "Mazda-CX-5";
 // De kolommen die rdwNaarProfiel() (pidlane-garage.js) en de kentekenstap
 // (pidlane-bt.js) lezen. Hernoemt de RDW er één, dan is dat hier "kapot".
+// `waarden`: een veld met een vaste woordenlijst die de app uitleest. Komt
+// er een waarde bij die de app niet kent, dan is dat "kapot" — zo ging
+// "Producent heeft herstel gemeld" vier jaar lang als open recall door, en
+// "Geen oordeel" als onbekende tellerstand (17-10-2026).
 var BRON_RDW = {
-  "m9d7-ebf2": { naam: "RDW — gekentekende voertuigen", velden: ["kenteken", "merk", "handelsbenaming", "datum_eerste_toelating", "vervaldatum_apk", "cilinderinhoud"] },
-  "8ys7-d773": { naam: "RDW — brandstof en vermogen", velden: ["kenteken", "brandstof_omschrijving", "nettomaximumvermogen"] }
+  "m9d7-ebf2": { naam: "RDW — gekentekende voertuigen", velden: ["kenteken", "merk", "handelsbenaming", "datum_eerste_toelating", "vervaldatum_apk", "cilinderinhoud", "tellerstandoordeel", "openstaande_terugroepactie_indicator"],
+    waarden: { veld: "tellerstandoordeel", bekend: ["Logisch", "Onlogisch", "Geen oordeel", "Niet geregistreerd"] }, gebruik: "kenteken → profiel, koopcheck (tellerstand, recallvlag)" },
+  "8ys7-d773": { naam: "RDW — brandstof en vermogen", velden: ["kenteken", "brandstof_omschrijving", "nettomaximumvermogen"] },
+  "t49b-isb7": { naam: "RDW — terugroepactie per kenteken", velden: ["kenteken", "referentiecode_rdw", "code_status", "status"],
+    waarden: { veld: "code_status", bekend: ["O", "P"] }, gebruik: "PLRecall: open of afgehandeld" },
+  "j9yg-7rg9": { naam: "RDW — terugroepactie, omschrijving", velden: ["referentiecode_rdw", "omschrijving_defect", "publicatiedatum_rdw_dt"], gebruik: "PLRecall: wat er mis is" },
+  "9ihi-jgpf": { naam: "RDW — terugroepactie, risico", velden: ["referentiecode_rdw", "mogelijk_gevaar"], gebruik: "PLRecall: het risico" }
 };
 // Een openbare voorbeeld-VIN (Honda Accord 2003) — geen klant.
 var BRON_NHTSA_VIN = "1HGCM82633A004352";
@@ -4880,7 +4889,7 @@ __name(bronObdbBestand, "bronObdbBestand");
 async function bronRdw(id) {
   const def = BRON_RDW[id];
   const h = await bronHaal("https://opendata.rdw.nl/api/views/" + id + ".json");
-  const u = bronUitslag("rdw:" + id, def.naam, "https://opendata.rdw.nl/d/" + id, "kenteken → profiel in Mijn voertuigen en bij verbinden", h);
+  const u = bronUitslag("rdw:" + id, def.naam, "https://opendata.rdw.nl/d/" + id, def.gebruik || "kenteken → profiel in Mijn voertuigen en bij verbinden", h);
   if (!h.http) return u;
   if (h.http !== 200) { u.status = "kapot"; u.detail = "HTTP " + h.http; return u; }
   const d = bronJson(h.tekst);
@@ -4892,6 +4901,17 @@ async function bronRdw(id) {
   u.vingerafdruk = (u.versie || "") + "|" + kolommen.length;
   if (weg.length) { u.status = "kapot"; u.detail = "kolom weg die de app leest: " + weg.join(", "); return u; }
   u.detail = kolommen.length + " kolommen, alle " + def.velden.length + " die de app leest aanwezig";
+  if (def.waarden) {
+    const veld = def.waarden.veld;
+    const g = await bronHaal("https://opendata.rdw.nl/resource/" + id + ".json?$select=" + veld + ",count(*)&$group=" + veld);
+    const rijen = g.http === 200 ? bronJson(g.tekst) : null;
+    if (!Array.isArray(rijen)) { u.status = "kapot"; u.detail += "; de waarden van " + veld + " niet op te vragen (" + (g.fout || "HTTP " + g.http) + ")"; return u; }
+    const gezien = rijen.map((r) => r && r[veld]).filter((x) => x !== undefined && x !== null && x !== "");
+    const vreemd = gezien.filter((x) => def.waarden.bekend.indexOf(x) < 0);
+    u.vingerafdruk += "|" + gezien.slice().sort().join(",");
+    if (vreemd.length) { u.status = "kapot"; u.detail += "; " + veld + " heeft een waarde die de app niet kent: " + vreemd.slice(0, 5).join(", "); return u; }
+    u.detail += "; " + veld + ": " + gezien.join(", ");
+  }
   return u;
 }
 __name(bronRdw, "bronRdw");

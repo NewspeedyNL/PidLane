@@ -61,12 +61,14 @@
   // Statussen die "klaar" betekenen. RDW gebruikt vrije tekst, dus we
   // matchen op deelstring. Onbekend telt als open — dat is de veilige kant
   // bij een aankoopadvies.
-  const AFGEHANDELD = ['afgehandeld', 'uitgevoerd', 'hersteld', 'beeindigd', 'beëindigd', 'afgesloten'];
+  const AFGEHANDELD = ['afgehandeld', 'uitgevoerd', 'hersteld', 'herstel gemeld', 'beeindigd', 'beëindigd', 'afgesloten'];
 
   const VELD_VOORKEUR = {
-    omschrijving: ['omschrijving', 'omschrijving_terugroepactie', 'onderwerp', 'beschrijving', 'defect_omschrijving'],
-    risico:       ['risico_omschrijving', 'omschrijving_risico', 'risico', 'gevaar_omschrijving', 'omschrijving'],
-    datum:        ['datum_registratie_terugroepactie_dt', 'datum_registratie_terugroepactie', 'startdatum', 'datum']
+    // De eerste naam is wat het RDW werkelijk levert (metadata nagemeten
+    // 17-10-2026); de rest is de oude gok, voor als een dataset hernoemt.
+    omschrijving: ['omschrijving_defect', 'omschrijving', 'omschrijving_terugroepactie', 'onderwerp', 'beschrijving', 'defect_omschrijving'],
+    risico:       ['mogelijk_gevaar', 'risico_omschrijving', 'omschrijving_risico', 'risico', 'gevaar_omschrijving', 'omschrijving'],
+    datum:        ['publicatiedatum_rdw_dt', 'datum_melding_bij_rdw_dt', 'datum_registratie_terugroepactie_dt', 'datum_registratie_terugroepactie', 'startdatum', 'datum']
   };
 
   const _cache = new Map();
@@ -79,7 +81,15 @@
   const esc = s => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-  function afgehandeld(status) {
+  /* code_status beslist, de tekst is de terugval (17-10-2026). t49b-isb7
+     kent er twee: O "Openstaande terugroepactie" en P "Producent heeft
+     herstel gemeld". Die P-tekst bevat "herstel" en niet "hersteld", en tot
+     vandaag stond dus elke afgehandelde actie als open — 4,8 van de 5,8
+     miljoen statusregels, ook op de CX-5 waar de RDW-vlag zelf "Nee" zei. */
+  function afgehandeld(status, code) {
+    const c = String(code || '').trim().toUpperCase();
+    if (c === 'P') return true;
+    if (c === 'O') return false;
     const s = String(status || '').toLowerCase();
     return !!s && AFGEHANDELD.some(a => s.includes(a));
   }
@@ -140,7 +150,7 @@
       return {
         referentiecode: code,
         status: statusTekst,
-        open: !afgehandeld(statusTekst),
+        open: !afgehandeld(statusTekst, st && st.code_status),
         omschrijving: pak(a[0], VELD_VOORKEUR.omschrijving),
         risico: pak(r[0], VELD_VOORKEUR.risico),
         datum: pak(a[0], VELD_VOORKEUR.datum),
