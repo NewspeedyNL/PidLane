@@ -34,7 +34,7 @@ afgegane bevinding als regel in de AI-prompt. Een regel die niet voor de auto
 gold werd zo een stellige AI-conclusie. De AI kreeg wel "bij twijfel
 verifiëren", maar zag niet dát de regel twijfelachtig was.
 
-**Wat er gebouwd is:** `PLKenmerk` (§11 van het contract). Alle 22 plekken
+**Wat er gebouwd is:** `PLKenmerk` (§11 van het contract). Elke plek die een fout meldt
 lezen nu één grens per grootheid; bevindingen, watchers, systeemtests,
 onderzoek en `PID_LET_OP` noemen hun voorwaarden. Tussendoor ook:
 

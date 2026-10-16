@@ -19,7 +19,8 @@
  beoordelen" in plaats van een fout; bij waarschijnlijk "niet zeker
  voor deze auto". Harde grenzen (onder 12,2 V laden, boven 112 °C)
  blijven op elke auto fout.
- Laadspanning en koelwater hebben nu één grens, op alle 22 plekken.
+ Laadspanning en koelwater hebben nu één grens, op elke plek die
+ een fout of let op meldt.
  De AI krijgt een blok met de kenmerken en wat niet te beoordelen is.
  Het venster van de bevindingen stelt de vraag (Ja/Nee) die het
  beslist; het antwoord blijft bij de auto.
