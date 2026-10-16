@@ -879,14 +879,10 @@
     m06Groepen().forEach(function (f) {
       var g = tests.filter(function (t) { return inGroep(t, f) && t.oordeelZeker; });
       if (!g.length) return;
-      // Een telling (UAS 0x24, missers) op 0 is goed, niet "krap": daar telt
-      // alleen de afstand tot de bovengrens.
-      var krapT = function (t) {
-        if (t.uasId !== 0x24) return t.krap;
-        var span = t.ruw.max - t.ruw.min;
-        return t.geslaagd && span > 0 && (t.ruw.max - t.ruw.waarde) / span < 0.15;
-      };
-      var gezakt = g.filter(function (t) { return !t.geslaagd; }), krap = g.filter(krapT);
+      // "Krap" komt uit PLM06 (16-10-2026): een grens op het uiterste van het
+      // getal (0 missers bij 0–65535) telt daar niet als grens. Hier stond
+      // eerst een eigen uitzondering voor UAS 0x24; één plek beslist.
+      var gezakt = g.filter(function (t) { return !t.geslaagd; }), krap = g.filter(function (t) { return t.krap; });
       if (gezakt.length) r.push({ h: f.h, d: 2.5, t: gezakt.length + ' zelftest(s) ' + f.naam + ' buiten de fabrieksgrens (' + gezakt.map(function (t) { return t.midNaam; }).join(', ') + ')' });
       else if (krap.length) r.push({ h: f.h, d: 1, t: krap.length + ' zelftest(s) ' + f.naam + ' krap binnen de grens — nog geen fout, wel bijna' });
       else if (f.sluitUit && (f.h !== 'misfire' || cil.length < 2)) r.push({ h: f.h, d: -1.5, t: g.length + ' zelftest(s) ' + f.naam + ' ruim binnen de fabrieksgrens' });

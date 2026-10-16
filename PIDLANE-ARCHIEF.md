@@ -40,6 +40,22 @@ lichter gewogen dan een gecontroleerde meting.
 
 ---
 
+## 16-10-2026 — Mode 06: zestien keer "krap" tegen grenzen die er niet zijn
+
+Op de CX-5 meldde de zelftestlijst 16 tests "krap binnen de grens": 0
+ontstekingsmissers tussen 0 en 65535, VVT −5 tussen −1500 en 32767, de
+katalysator 153 tussen 89 en 65535. De marge was de afstand tot de
+dichtstbijzijnde grens gedeeld door de breedte van het venster. Een grens op
+het uiterste van het getal (0 of 0xFFFF unsigned, 0x8000/0x7FFF signed) is
+geen grens maar "aan deze kant niets": 0 missers ligt "op" de ondergrens en is
+de beste waarde die er is, en een venster van 65535 breed maakt elke afstand
+klein. `naarPromptRegels()` gaf die "krap" aan de AI.
+
+Nu: twee echte grenzen → zoals het was; één echte grens → afstand gedeeld door
+die grens; geen echte grens → geen marge, nooit krap. Een test met min = max =
+waarde (2459–2459) blijft "ok": daar zegt de ECU alleen zijn waarde, zonder
+venster. `test-mode06.js` gebruikt de waarden van de CX-5.
+
 ## 16-10-2026 — De derde poort: een regel die voor déze auto niet geldt (#532)
 
 **Herziening van #531.** Daar stond: vijf plekken oordeelden met een vaste
