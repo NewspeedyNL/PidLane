@@ -250,6 +250,17 @@ WHERE Type IN ('error', 'opvallend', 'bug')
 CREATE TABLE IF NOT EXISTS log_archief (sleutel TEXT PRIMARY KEY, SessionId TEXT, dag TEXT NOT NULL, begonnen TEXT NOT NULL, geeindigd TEXT NOT NULL, regels INTEGER NOT NULL DEFAULT 0, fouten INTEGER NOT NULL DEFAULT 0, opvallend INTEGER NOT NULL DEFAULT 0, bugs INTEGER NOT NULL DEFAULT 0, uitkomsten INTEGER NOT NULL DEFAULT 0, demo INTEGER, soorten TEXT, issues TEXT, merk TEXT, bouwjaar TEXT, versie TEXT, adapter TEXT, protocol TEXT, bevindingen TEXT, gearchiveerd TEXT NOT NULL);
 
 -- ══════════════════════════════════════════════════════════════════
+--  bron_stand — de kennisbronnen van buiten (16-10-2026)
+-- ──────────────────────────────────────────────────────────────────
+--  Eén rij per bron (obdb, obdb:<repo>, rdw:<dataset>, nhtsa): de laatste
+--  controle van /admin/bronnen of de nachtronde. `vingerafdruk` vergelijkt
+--  met de vorige keer; `gewijzigd` is wanneer die voor het laatst anders was.
+--  De Worker maakt de tabel zelf aan; de tekst is gelijk aan
+--  BRON_STAND_SCHEMA in worker.js, en test-bronnen.js eist dat.
+-- ══════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS bron_stand (sleutel TEXT PRIMARY KEY, naam TEXT, vingerafdruk TEXT, versie TEXT, gewijzigd TEXT, gecontroleerd TEXT NOT NULL, status TEXT NOT NULL, detail TEXT);
+
+-- ══════════════════════════════════════════════════════════════════
 --  KLANTPLATFORM — "Mijn voertuigen" (27-09-2026)
 --  De Worker voert deze statements zelf uit bij de eerste aanroep
 --  (kpSchema in worker.js); hier staan ze om terug te kunnen lezen wat er

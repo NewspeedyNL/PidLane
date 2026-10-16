@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 16-10-2026 — Beheer: kennisbronnen bewaakt, logcontrole in SQL
+ ═══════════════════════════════════════════════════════════
+ Nieuw tabblad Data → Bronnen in beheer.html (route /admin/bronnen).
+ Per bron (OBDb-organisatie, de OBDb-bestanden uit de PID-bibliotheek
+ plus de CX-5, de twee RDW-datasets, NHTSA vPIC): bereikbaar, nog de
+ vorm die de app leest (RDW-kolommen, `commands`, `Results`), en
+ veranderd sinds de vorige controle (vingerafdruk in D1 `bron_stand`).
+ Ook in de nachtronde. De SQL-console heeft een groep Logcontrole:
+ fouten 24 uur, nieuwe fouten van deze week, foutpercentage per versie,
+ volume per uur, herhalers per rit, per gebruiker, per merk/protocol,
+ demo tegen echt, logarchief per dag en de bronnenstand.
+
+ ═══════════════════════════════════════════════════════════
  16-10-2026 — Snelle scan: twee lezingen per sensor (#538)
  ═══════════════════════════════════════════════════════════
  De momentopname van het onderzoek vraagt elke sensor twee keer in

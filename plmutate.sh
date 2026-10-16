@@ -1254,6 +1254,12 @@ MUTATIES=(
 "worker.js@@db.prepare(ingepakt).bind(D1_SQL_MAX_RIJEN + 1).all()@@db.prepare(kern).all()@@test-admind1.js@@de console draait de vraag kaal in plaats van als subquery: zonder de tekstkeuring schrijft hij"
 "worker.js@@  const m = kaal.match(D1_SQL_VERBODEN);@@  const m = null;@@test-admind1.js@@de tekstkeuring laat schrijfwoorden door: alleen de subquery houdt de console nog op lezen"
 "worker.js@@  const skelet = d1SqlSkelet(tekst);@@  const skelet = tekst;@@test-admind1.js@@de keuring leest tekstwaarden mee: een zoekvraag op '%DELETE%' wordt geweigerd"
+"worker.js@@  if (weg.length) { u.status = \"kapot\";@@  if (false) { u.status = \"kapot\";@@test-bronnen.js@@een RDW-kolom die de app leest is weg en de bron heet toch gezond"
+"worker.js@@  const nieuw = !!(v && v.vingerafdruk && uitslag.vingerafdruk && v.vingerafdruk !== uitslag.vingerafdruk);@@  const nieuw = !!(uitslag.vingerafdruk && (!v || v.vingerafdruk !== uitslag.vingerafdruk));@@test-bronnen.js@@de eerste meting van een bron telt als update: dan is alles altijd nieuw"
+"worker.js@@    bewaarVinger: uitslag.vingerafdruk || (v && v.vingerafdruk) || null@@    bewaarVinger: uitslag.vingerafdruk || null@@test-bronnen.js@@een mislukte meting wist de vingerafdruk, en de volgende gezonde meting lijkt een update"
+"worker.js@@  if (h.http === 403 || h.http === 429) {@@  if (h.http === 429) {@@test-bronnen.js@@de GitHub-limiet (403) heet kapot in plaats van beperkt"
+"worker.js@@    if (request.method === \"POST\") return json(await bronnenControleren(env));@@    return json(await bronnenControleren(env));@@test-bronnen.js@@de laatste stand opvragen (GET) stuurt alle aanvragen naar buiten"
+"worker.js@@      if (/^[A-Za-z0-9][A-Za-z0-9-]{1,60}$/.test(repo) && uit.indexOf(repo) < 0) uit.push(repo);@@      if (repo && uit.indexOf(repo) < 0) uit.push(repo);@@test-bronnen.js@@een url uit de bibliotheek gaat ongekeurd als repo-naam naar GitHub"
 "worker.js@@      db.prepare(\"UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1 AND id <> ?\").bind(id),\n@@@@test-admind1.js@@een opdracht aanzetten laat de andere aan staan: de app kiest er dan zelf een, zoals op 22-09"
 "worker.js@@      ? await db.batch([db.prepare(\"UPDATE meetopdrachten SET Actief = 0 WHERE Actief = 1\"), invoeg])@@      ? [await invoeg.run()]@@test-admind1.js@@een nieuwe actieve opdracht zet de oude niet uit"
 "worker.js@@var D1_OPDRACHT_VELDEN = [\"Naam\", \"Reden\", \"Opdracht\", \"Notitie\"];@@var D1_OPDRACHT_VELDEN = [\"Naam\", \"Reden\", \"Opdracht\", \"Notitie\", \"Gewijzigd\"];@@test-admind1.js@@Gewijzigd is met de hand te zetten: dan kies je stil welke opdracht er rijdt"
@@ -1270,6 +1276,8 @@ MUTATIES=(
 "worker.js@@  const res = await db.batch(stmts);@@  const res = []; for (const st of stmts) res.push(await st.run());@@test-logarchief.js@@archiveren en wissen in losse stappen: faalt het wissen, dan blijft er een archiefrij die de volgende ronde dubbel telt"
 "worker.js@@proef: b0.proef !== false@@proef: b0.proef === true@@test-logarchief.js@@de beheerknop wist zonder proef:false — een klik zonder proefdraaien gooit regels weg"
 "admin/beheer.html@@  if(AR.proefDagen !== dagen){@@  if(false){@@bproef-beheerpagina.js@@archiveren met een andere termijn dan de proef: je wist iets anders dan je net hebt gezien"
+"admin/beheer.html@@  const volgorde = { kapot:0, traag:1, beperkt:2, gezond:3 };@@  const volgorde = { kapot:3, traag:1, beperkt:2, gezond:0 };@@bproef-beheerpagina.js@@een kapotte bron zakt onderaan de lijst, onder de gezonde: wie de eerste regels leest ziet niets mis"
+"admin/beheer.html@@  else if(tel('kapot')) toon_msg(m, 'err',@@  else if(false) toon_msg(m, 'err',@@bproef-beheerpagina.js@@de melding boven de bronnen zwijgt over wat kapot is"
 # De beheerpagina zelf (bproef-beheerpagina.js). Drie stille fouten die er
 # allemaal goed uitzien: een afgekeurde opdracht gaat tóch aan (de app wijst
 # hem bij de start af en de rit rijdt zonder dat iemand het weet), het vangnet

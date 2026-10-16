@@ -71,7 +71,7 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('de vijf groepen staan er', tabs === 5, 'gevonden: ' + tabs);
     const bereik = await app.ev(`TABBLADEN.map(t => { toon(t[0]); return t[0] + ':' + (document.getElementById('p-' + t[0]).classList.contains('aan') &&
       !!document.querySelector('#tabs .tab.aan')) + ':' + (groepVan(t[0])[2].length < 2 || !!document.querySelector('#tab-' + t[0] + '.aan')); }).filter(x => /false/.test(x))`);
-    toets('elk van de tien panelen opent via zijn groep, en de goede knop licht op', bereik.length === 0, bereik.join(', '));
+    toets('elk paneel opent via zijn groep, en de goede knop licht op', bereik.length === 0, bereik.join(', '));
     await app.ev('toon("overzicht")');
     const kpi = await app.ev('document.querySelectorAll("#kpiGrid .kpi").length');
     toets('de kerncijfers zijn getekend', kpi === 8, 'gevonden: ' + kpi);
@@ -268,6 +268,25 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
       toets('een gearchiveerde rit zegt dat hij gearchiveerd is', await app.ev('/Gearchiveerd op/.test(document.getElementById("ritMsg").textContent)'),
         'er staat: ' + await app.ev('document.getElementById("ritMsg").textContent'));
     }
+
+    // ── 7c. bronnen en logcontrole (16-10-2026) ─────────────────
+    // De oefennep geeft één bron per status; elke status moet zijn eigen
+    // kleur krijgen, en kapot moet bovenaan en in de melding staan.
+    console.log('\n7c. Bronnen: elke status zichtbaar, kapot bovenaan; logcontrole in de console');
+    await app.ev('toon("bronnen")');
+    await rust(400);
+    await app.ev('bronnenControleren()');
+    await rust(400);
+    const br = await app.ev(`({ rijen: document.querySelectorAll('#brLijst tbody tr').length,
+      eerste: (document.querySelector('#brLijst tbody tr .pill') || {}).textContent || '',
+      kleuren: Array.from(document.querySelectorAll('#brLijst tbody tr td:nth-child(2) .pill')).map(p => p.className).join(' '),
+      melding: document.getElementById('brMsg').textContent, nieuw: document.querySelectorAll('#brLijst .pill.p-info').length })`);
+    toets('vijf bronnen in de lijst, kapot bovenaan', br.rijen === 5 && br.eerste === 'kapot', JSON.stringify(br));
+    toets('gezond groen, traag/beperkt geel, kapot rood', /p-ok/.test(br.kleuren) && /p-wacht/.test(br.kleuren) && /p-uit/.test(br.kleuren), br.kleuren);
+    toets('de melding noemt wat kapot is', /kapot/.test(br.melding), br.melding);
+    toets('een veranderde bron draagt "nieuw"', br.nieuw >= 1, JSON.stringify(br));
+    const lc = await app.ev(`Array.from(document.querySelectorAll('#sqlVoorbeeld optgroup')).map(g => g.label + ':' + g.children.length)`);
+    toets('de SQL-voorbeelden staan in groepen, met Logcontrole erbij', lc.some(x => /^Logcontrole:\d+/.test(x)) && lc.some(x => /^Algemeen:/.test(x)), lc.join(', '));
 
     // ── 8. meetopdrachten ───────────────────────────────────────
     console.log('\n8. Meetopdrachten keuren met de echte keurder en er staat er één aan');

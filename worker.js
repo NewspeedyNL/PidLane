@@ -4759,6 +4759,252 @@ async function handleAdminD1Post(request, env) {
 __name(handleAdminD1Post, "handleAdminD1Post");
 
 
+// ══════════════════════════════════════════════════════════════════
+//  /admin/bronnen — DE KENNISBRONNEN VAN BUITEN (16-10-2026)
+// ──────────────────────────────────────────────────────────────────
+//  De app leunt op data die niet van ons is: OBDb (PIDs en laadrollen per
+//  merk en model, op GitHub), de RDW (kenteken → profiel, twee datasets) en
+//  NHTSA vPIC (VIN → merk en jaar). Gaat er daar iets mis, dan zie je dat in
+//  de app pas als een klant zegt dat zijn auto niet herkend wordt. Hier staat
+//  per bron drie vragen:
+//    1. bereikbaar?  — status en tijd van één echte aanvraag;
+//    2. nog dezelfde vorm? — de velden die de app leest (RDW-kolommen, de
+//       `commands` van OBDb, de `Results` van vPIC). Ontbreekt er één, dan is
+//       de bron "kapot" voor ons, ook al geeft hij HTTP 200;
+//    3. veranderd sinds de vorige controle? — een vingerafdruk per bron in
+//       D1 (`bron_stand`). Anders dan vorige keer = `nieuw`, met de datum.
+//  De OBDb-bestanden die de app ophaalt cachet de Worker 24 uur
+//  (obdb_bestand): een update die hier verschijnt, ziet de app uiterlijk een
+//  dag later. De controle zelf vraagt vers op.
+//  Draait op de knop in beheer.html en in de nachtronde.
+// ══════════════════════════════════════════════════════════════════
+var BRON_STAND_SCHEMA = "CREATE TABLE IF NOT EXISTS bron_stand (sleutel TEXT PRIMARY KEY, naam TEXT, vingerafdruk TEXT, versie TEXT, gewijzigd TEXT, gecontroleerd TEXT NOT NULL, status TEXT NOT NULL, detail TEXT)";
+var BRON_WACHT_MS = 8e3;
+var BRON_TRAAG_MS = 4e3;
+var BRON_OBDB_MAX = 12;
+var BRON_OBDB_VAST = "Mazda-CX-5";
+// De kolommen die rdwNaarProfiel() (pidlane-garage.js) en de kentekenstap
+// (pidlane-bt.js) lezen. Hernoemt de RDW er één, dan is dat hier "kapot".
+var BRON_RDW = {
+  "m9d7-ebf2": { naam: "RDW — gekentekende voertuigen", velden: ["kenteken", "merk", "handelsbenaming", "datum_eerste_toelating", "vervaldatum_apk", "cilinderinhoud"] },
+  "8ys7-d773": { naam: "RDW — brandstof en vermogen", velden: ["kenteken", "brandstof_omschrijving", "nettomaximumvermogen"] }
+};
+// Een openbare voorbeeld-VIN (Honda Accord 2003) — geen klant.
+var BRON_NHTSA_VIN = "1HGCM82633A004352";
+
+async function bronHaal(url, opties = {}) {
+  const ctl = new AbortController();
+  const klok = setTimeout(() => ctl.abort(), BRON_WACHT_MS);
+  const t0 = Date.now();
+  try {
+    const r = await fetch(url, { headers: opties.headers || {}, signal: ctl.signal, cf: { cacheTtl: 0 } });
+    const tekst = await r.text();
+    return { http: r.status, ms: Date.now() - t0, tekst, kop: r.headers };
+  } catch (e) {
+    return { http: 0, ms: Date.now() - t0, tekst: "", fout: ctl.signal.aborted ? "geen antwoord binnen " + BRON_WACHT_MS / 1e3 + " s" : String(e && e.message || e) };
+  } finally {
+    clearTimeout(klok);
+  }
+}
+__name(bronHaal, "bronHaal");
+
+async function bronVinger(tekst) {
+  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(tekst)));
+  return Array.from(new Uint8Array(h)).slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+__name(bronVinger, "bronVinger");
+
+// Eén uitslag. `status`: gezond | traag | beperkt (wij mogen even niet, de
+// bron is niet stuk) | kapot.
+function bronUitslag(sleutel, naam, link, gebruik, h, extra) {
+  const u = { sleutel, naam, link, gebruik, http: h.http, ms: h.ms, status: "gezond", versie: null, vingerafdruk: null, detail: "", ...extra };
+  if (!h.http) { u.status = "kapot"; u.detail = h.fout || "niet bereikbaar"; }
+  else if (u.status === "gezond" && h.ms > BRON_TRAAG_MS) u.status = "traag";
+  return u;
+}
+__name(bronUitslag, "bronUitslag");
+
+function bronJson(tekst) {
+  try { return JSON.parse(tekst); } catch (e) { return undefined; }
+}
+__name(bronJson, "bronJson");
+
+// OBDb als geheel: de lijst van de organisatie, laatst gepusht eerst. Zonder
+// GITHUB_TOKEN is dat 60 aanvragen per uur per IP, en een Cloudflare-IP deel
+// je met anderen; een 403 met "rate limit" is dus "beperkt", niet "kapot".
+async function bronObdbOrg(env) {
+  const kop = { "User-Agent": "pidlane-beheer", Accept: "application/vnd.github+json" };
+  if (env && env.GITHUB_TOKEN) kop.Authorization = "Bearer " + env.GITHUB_TOKEN;
+  const h = await bronHaal("https://api.github.com/orgs/OBDb/repos?per_page=100&sort=pushed&direction=desc", { headers: kop });
+  const u = bronUitslag("obdb", "OBDb — de organisatie", "https://github.com/OBDb", "PID-bibliotheek, laadrollen, OBDb vanzelf", h);
+  u.pushed = {};
+  if (!h.http) return u;
+  const d = bronJson(h.tekst);
+  if (h.http === 403 || h.http === 429) {
+    u.status = "beperkt";
+    u.detail = "GitHub laat ons even niet: " + String(d && d.message || "HTTP " + h.http).slice(0, 160);
+    return u;
+  }
+  if (h.http !== 200 || !Array.isArray(d)) { u.status = "kapot"; u.detail = "HTTP " + h.http + (Array.isArray(d) ? "" : ", geen lijst"); return u; }
+  d.forEach((r) => { if (r && r.name) u.pushed[r.name] = r.pushed_at || null; });
+  const nieuwste = d[0] && d[0].pushed_at || null;
+  const week = new Date(Date.now() - 7 * 864e5).toISOString();
+  const recent = d.filter((r) => r && r.pushed_at && r.pushed_at >= week).map((r) => r.name);
+  u.versie = nieuwste;
+  u.vingerafdruk = nieuwste;
+  u.detail = d.length + (d.length >= 100 ? "+" : "") + " repo's; deze week bijgewerkt: " + (recent.length ? recent.slice(0, 15).join(", ") + (recent.length > 15 ? " …" : "") : "geen");
+  u.recent = recent;
+  return u;
+}
+__name(bronObdbOrg, "bronObdbOrg");
+
+// Eén OBDb-bestand zoals obdb_bestand het haalt. Vorm: `commands` is een lijst.
+async function bronObdbBestand(repo, pushed) {
+  const h = await bronHaal("https://raw.githubusercontent.com/OBDb/" + repo + "/main/signalsets/v3/default.json");
+  const u = bronUitslag("obdb:" + repo, "OBDb — " + repo, "https://github.com/OBDb/" + repo, "kandidaten in Mijn voertuigen → Sensoren", h);
+  if (!h.http) return u;
+  if (h.http === 404) { u.status = "kapot"; u.detail = "bestand bestaat niet (meer) — hernoemd of verplaatst?"; return u; }
+  if (h.http !== 200) { u.status = "kapot"; u.detail = "HTTP " + h.http; return u; }
+  const d = bronJson(h.tekst);
+  if (!d || !Array.isArray(d.commands)) { u.status = "kapot"; u.detail = "geen `commands` — de vorm is veranderd"; return u; }
+  const signalen = d.commands.reduce((t, c) => t + (c && Array.isArray(c.signals) ? c.signals.length : 0), 0);
+  u.vingerafdruk = await bronVinger(h.tekst);
+  u.versie = pushed && pushed[repo] ? pushed[repo] : null;
+  u.detail = d.commands.length + " commando's, " + signalen + " signalen";
+  return u;
+}
+__name(bronObdbBestand, "bronObdbBestand");
+
+// RDW (Socrata): de metadata zegt wanneer de rijen bijgewerkt zijn en welke
+// kolommen er zijn. Eén aanvraag per dataset, geen kenteken.
+async function bronRdw(id) {
+  const def = BRON_RDW[id];
+  const h = await bronHaal("https://opendata.rdw.nl/api/views/" + id + ".json");
+  const u = bronUitslag("rdw:" + id, def.naam, "https://opendata.rdw.nl/d/" + id, "kenteken → profiel in Mijn voertuigen en bij verbinden", h);
+  if (!h.http) return u;
+  if (h.http !== 200) { u.status = "kapot"; u.detail = "HTTP " + h.http; return u; }
+  const d = bronJson(h.tekst);
+  const kolommen = d && Array.isArray(d.columns) ? d.columns.map((c) => c && c.fieldName) : null;
+  if (!kolommen) { u.status = "kapot"; u.detail = "geen kolommenlijst in de metadata"; return u; }
+  const weg = def.velden.filter((v) => kolommen.indexOf(v) < 0);
+  const bij = Number(d.rowsUpdatedAt) || 0;
+  u.versie = bij ? new Date(bij * 1e3).toISOString() : null;
+  u.vingerafdruk = (u.versie || "") + "|" + kolommen.length;
+  if (weg.length) { u.status = "kapot"; u.detail = "kolom weg die de app leest: " + weg.join(", "); return u; }
+  u.detail = kolommen.length + " kolommen, alle " + def.velden.length + " die de app leest aanwezig";
+  return u;
+}
+__name(bronRdw, "bronRdw");
+
+async function bronNhtsa() {
+  const h = await bronHaal("https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/" + BRON_NHTSA_VIN + "?format=json");
+  const u = bronUitslag("nhtsa", "NHTSA vPIC — VIN ontleden", "https://vpic.nhtsa.dot.gov/api/", "merk en bouwjaar uit de VIN bij verbinden", h);
+  if (!h.http) return u;
+  if (h.http !== 200) { u.status = "kapot"; u.detail = "HTTP " + h.http; return u; }
+  const d = bronJson(h.tekst);
+  const res = d && Array.isArray(d.Results) ? d.Results : null;
+  const waarde = (naam) => { const r = (res || []).find((x) => x && x.Variable === naam); return r && r.Value || ""; };
+  if (!res) { u.status = "kapot"; u.detail = "geen `Results` — de vorm is veranderd"; return u; }
+  if (!/honda/i.test(waarde("Make")) || waarde("Model Year") !== "2003") {
+    u.status = "kapot"; u.detail = "de voorbeeld-VIN geeft '" + waarde("Make") + " " + waarde("Model Year") + "' in plaats van Honda 2003"; return u;
+  }
+  u.vingerafdruk = String(res.length);
+  u.versie = null;
+  u.detail = res.length + " velden; voorbeeld-VIN → " + waarde("Make") + " " + waarde("Model") + " " + waarde("Model Year");
+  return u;
+}
+__name(bronNhtsa, "bronNhtsa");
+
+// De OBDb-repo's die de app echt gebruikt: wat er uit OBDb in de
+// PID-bibliotheek kwam, plus één vaste (de Mazda waarop het gebouwd is).
+async function bronObdbInGebruik(db) {
+  const uit = [BRON_OBDB_VAST];
+  try {
+    const r = await db.prepare("SELECT DISTINCT url FROM kp_pid_bib WHERE bron = 'obdb' AND url LIKE 'https://github.com/OBDb/%' LIMIT ?").bind(BRON_OBDB_MAX * 2).all();
+    for (const x of (r && r.results) || []) {
+      const repo = String(x.url || "").slice("https://github.com/OBDb/".length);
+      if (/^[A-Za-z0-9][A-Za-z0-9-]{1,60}$/.test(repo) && uit.indexOf(repo) < 0) uit.push(repo);
+    }
+  } catch (e) {
+    console.warn("[bronnen] kp_pid_bib niet gelezen — alleen de vaste OBDb-repo :: " + String(e && e.message || e));
+  }
+  return uit.slice(0, BRON_OBDB_MAX);
+}
+__name(bronObdbInGebruik, "bronObdbInGebruik");
+
+// Vergelijkt met de vorige stand en schrijft de nieuwe. Puur op de rijen:
+// `nieuw` alleen als er een vorige vingerafdruk was en die anders is — de
+// eerste meting is geen update.
+function bronVergelijk(uitslag, vorige, nu) {
+  const v = vorige || null;
+  const nieuw = !!(v && v.vingerafdruk && uitslag.vingerafdruk && v.vingerafdruk !== uitslag.vingerafdruk);
+  return {
+    ...uitslag,
+    nieuw,
+    eerste: !v,
+    vorigeStatus: v ? v.status : null,
+    gewijzigd: nieuw ? nu : (v && v.gewijzigd) || null,
+    vorigeControle: v ? v.gecontroleerd : null,
+    // Een kapotte meting heeft geen vingerafdruk; dan blijft de oude staan.
+    bewaarVinger: uitslag.vingerafdruk || (v && v.vingerafdruk) || null
+  };
+}
+__name(bronVergelijk, "bronVergelijk");
+
+async function bronnenControleren(env) {
+  const db = env.LOGDB;
+  const nu = new Date().toISOString();
+  await db.prepare(BRON_STAND_SCHEMA).run();
+  const repos = await bronObdbInGebruik(db);
+  const org = await bronObdbOrg(env);
+  const rest = await Promise.all([
+    ...repos.map((r) => bronObdbBestand(r, org.pushed)),
+    ...Object.keys(BRON_RDW).map(bronRdw),
+    bronNhtsa()
+  ]);
+  delete org.pushed;
+  const alle = [org, ...rest];
+  const vorig = {};
+  const r = await db.prepare("SELECT * FROM bron_stand").all();
+  for (const x of (r && r.results) || []) vorig[x.sleutel] = x;
+  const uit = alle.map((u) => bronVergelijk(u, vorig[u.sleutel], nu));
+  await db.batch(uit.map((u) => db.prepare(
+    "INSERT INTO bron_stand (sleutel, naam, vingerafdruk, versie, gewijzigd, gecontroleerd, status, detail) VALUES (?, ?, ?, ?, ?, ?, ?, ?) " +
+    "ON CONFLICT(sleutel) DO UPDATE SET naam = excluded.naam, vingerafdruk = excluded.vingerafdruk, versie = excluded.versie, " +
+    "gewijzigd = excluded.gewijzigd, gecontroleerd = excluded.gecontroleerd, status = excluded.status, detail = excluded.detail"
+  ).bind(u.sleutel, u.naam, u.bewaarVinger, u.versie, u.gewijzigd, nu, u.status, String(u.detail).slice(0, 500))));
+  uit.forEach((u) => { delete u.bewaarVinger; });
+  const tel = (s) => uit.filter((u) => u.status === s).length;
+  return {
+    ok: true, gecontroleerd: nu, bronnen: uit,
+    samenvatting: { totaal: uit.length, gezond: tel("gezond"), traag: tel("traag"), beperkt: tel("beperkt"), kapot: tel("kapot"), nieuw: uit.filter((u) => u.nieuw).length }
+  };
+}
+__name(bronnenControleren, "bronnenControleren");
+
+// ── GET /admin/bronnen            → de laatste stand uit D1, zonder aanvragen
+//    POST /admin/bronnen {actie:'controleer'} → nu alles nalopen
+//  Controleren staat achter de schrijfrem: het zijn zestien aanvragen naar
+//  buiten, en een lus in een pagina hoort GitHub niet te bestoken.
+async function handleAdminBronnen(request, env) {
+  if (request.method === "POST") {
+    const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+    const rl = await adminWriteLimited(env, ip);
+    if (rl.limited) return rateLimitResponse(rl);
+  }
+  if (!adminOnly(request, env)) return json({ ok: false, error: "forbidden" }, 403);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
+  try {
+    if (request.method === "POST") return json(await bronnenControleren(env));
+    await env.LOGDB.prepare(BRON_STAND_SCHEMA).run();
+    const r = await env.LOGDB.prepare("SELECT * FROM bron_stand ORDER BY sleutel").all();
+    return json({ ok: true, bronnen: (r && r.results) || [] });
+  } catch (e) {
+    return json({ ok: false, error: "bronnen_mislukt", detail: String(e && e.message || e) }, 502);
+  }
+}
+__name(handleAdminBronnen, "handleAdminBronnen");
+
 // ── POST /klant/onboarding  { survey, anon, nieuwsbrief } ───────────
 // Legt de akkoorden vast en keert daarna eenmalig het proeftegoed uit.
 //
@@ -6448,6 +6694,8 @@ var worker_default = {
         return lockOrigin(request, await handleAdminD1Get(request, env));
       if (url.pathname === "/admin/d1" && request.method === "POST")
         return lockOrigin(request, await handleAdminD1Post(request, env));
+      if (url.pathname === "/admin/bronnen" && (request.method === "GET" || request.method === "POST"))
+        return lockOrigin(request, await handleAdminBronnen(request, env));
       if (url.pathname === "/admin/meekijk" && request.method === "POST")
         return lockOrigin(request, await handleAdminMeekijk(request, env));
       if (url.pathname === "/klant/registreer" && request.method === "POST")
@@ -6524,6 +6772,19 @@ var worker_default = {
           console.error("[opruimen] niet gelukt: " + JSON.stringify(uit.mislukt).slice(0, 400));
       } catch (e) {
         try { console.error("[opruimen] ronde afgebroken :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+      }
+      // De kennisbronnen (OBDb, RDW, NHTSA): elke nacht een stand, zodat
+      // "veranderd sinds" in beheer.html over een dag gaat en niet over het
+      // laatste bezoek.
+      if (env.LOGDB) {
+        try {
+          const b = await bronnenControleren(env);
+          const s = b.samenvatting;
+          console.log(`[bronnen] ${s.gezond} gezond, ${s.traag} traag, ${s.beperkt} beperkt, ${s.kapot} kapot, ${s.nieuw} veranderd`);
+          if (s.kapot) console.error("[bronnen] kapot: " + b.bronnen.filter((x) => x.status === "kapot").map((x) => x.sleutel + " (" + x.detail + ")").join("; ").slice(0, 400));
+        } catch (e) {
+          try { console.error("[bronnen] controle afgebroken :: " + String(e && e.message || e)); } catch (_) { /* stil: melden mag de stroom nooit breken */ }
+        }
       }
       try {
         const n = await klantMeldingenOpruimen(env);
