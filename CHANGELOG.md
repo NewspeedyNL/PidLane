@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 16-10-2026 — Laadspanning: de auto zegt zelf wat hij vraagt
+ ═══════════════════════════════════════════════════════════
+ Met een eigen sensor "Commanded generator voltage" (Mazda 220304) of
+ "12V battery state of charge" (224028) beslist niet meer een vaste
+ grens van 13,0/13,2 V maar de laadregeling zelf: haalt de dynamo wat
+ er gevraagd wordt, dan is lage spanning geen storing; blijft hij er
+ meer dan 0,5 V onder, dan wél. Geldt voor de rit-monitor, de
+ bevindingen, het accu-oordeel in Visueel, de rondgang en de garage
+ (status en ritadvies). De garage meldt ook een lage laadtoestand en
+ de leeftijd van de accu als de accusensor die geeft.
+
+ ═══════════════════════════════════════════════════════════
  16-10-2026 — Copiloot ook uit de Worker
  ═══════════════════════════════════════════════════════════
  De app riep /copilot al maanden niet meer aan, maar de Worker

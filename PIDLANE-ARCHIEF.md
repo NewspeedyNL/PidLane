@@ -15,6 +15,31 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 16-10-2026 — "Dynamo" op een Mazda die gewoon zuinig laadde
+
+De klant kreeg vaak een dynamo- of laadspanningsmelding op de CX-5 (2018).
+Vijf plekken oordeelden elk met een eigen vaste grens over 0142: de
+bevinding `alternator` (< 13,0 V boven 1000 tpm), de rit-monitor
+`LAADSPANNING` (< 12,7 V over 30 s), het accu-oordeel in Visueel (< 13,2 V),
+de garagestatus (< 13,2 V) en het ritadvies (minimum < 13,0 V in twee
+ritten). Een Mazda met slimme laadregeling vraagt bij een volle accu zelf
+12,5–13 V; vooral de bevinding en de garage meldden dan op een gezonde auto.
+
+Wat het verschil maakt kwam uit de OBDb-kandidaten van die dag: 220304
+*Commanded generator voltage* (gaf 13,23 V, de accu 13,21 V) en 224028
+*12V battery state of charge*. `PLEigen.laadOordeel()` vergelijkt gemeten
+met gevraagd (marge 0,5 V) en valt terug op de laadtoestand (≥ 75 % en
+≥ 12,4 V = bewust laag). Weet de auto niets, dan blijft de oude grens.
+
+Niet gedaan, en waarom:
+- **Accustroom (22402B) beslist niet mee.** Het teken is niet nagemeten: of
+  +2,7 A laden of ontladen is, weet ik pas na een rit met gas los en
+  remmen. Een oordeel op een verkeerd teken is erger dan geen.
+- **De rol komt uit de naam**, zoals bij `bandRol`. Een klant die de sensor
+  zelf "Laadspanning" noemt zonder "gevraagd", krijgt de oude grens.
+- De bewaarde ritten (`min_accu`) weten niet wat er gevraagd werd; het
+  ritadvies leunt daarom op de laatste `laadStaat` van het voertuig.
+
 ## 15-10-2026 — Waar de AI-kosten heen gingen: de zoektool (#526)
 
 Kasboek 10-09 t/m 15-10, 25 klantcalls: 9 daarvan hadden 56k–116k tokens

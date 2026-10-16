@@ -90,7 +90,13 @@
     if (v.onderhoud_km && v.kmstand && v.kmstand >= v.onderhoud_km) p.push({ ernst: 'oranje', tekst: 'Onderhoud: ' + (v.kmstand - v.onderhoud_km).toLocaleString('nl') + ' km over de geplande stand' });
     else if (v.onderhoud_km && v.kmstand && v.onderhoud_km - v.kmstand <= 1000) p.push({ ernst: 'info', tekst: 'Onderhoud over ' + (v.onderhoud_km - v.kmstand).toLocaleString('nl') + ' km' });
     if (typeof g.accuRust === 'number' && g.accuRust < 12.2) p.push({ ernst: 'oranje', tekst: 'Accu zwak in rust (' + nl1(g.accuRust) + ' V)' });
-    if (typeof g.accuLopend === 'number' && (g.accuLopend < 13.2 || g.accuLopend > 14.9)) p.push({ ernst: 'oranje', tekst: 'Laadspanning ' + nl1(g.accuLopend) + ' V (normaal 13,2–14,8)' });
+    // Laadspanning (16-10-2026): weet de auto wat hij vroeg (g.laadStaat, uit
+    // PLEigen.laadOordeel), dan beslist dat; een slimme dynamo vraagt bij een
+    // volle accu bewust onder 13,2 V. Anders de vaste grens.
+    if (g.laadStaat === 'laadt_niet') p.push({ ernst: 'oranje', tekst: 'Laadspanning ' + (typeof g.accuLopend === 'number' ? nl1(g.accuLopend) + ' V' : '') + ' — de dynamo haalt niet wat de motorregeling vraagt' });
+    else if (typeof g.accuLopend === 'number' && (g.accuLopend > 14.9 || (g.accuLopend < 13.2 && !g.laadStaat))) p.push({ ernst: 'oranje', tekst: 'Laadspanning ' + nl1(g.accuLopend) + ' V (normaal 13,2–14,8)' });
+    try { if (window.PLEigen && PLEigen.accuOordeel) PLEigen.accuOordeel({ soc: g.accuSoc, leeftijd: g.accuLeeftijd }).forEach(function (x) { p.push(x); }); }
+    catch (e) { console.warn('PLGarage: accuoordeel', e); }
     if (typeof g.maxKoelwater === 'number' && g.maxKoelwater >= 108) p.push({ ernst: 'rood', tekst: 'Koelwater liep op tot ' + Math.round(g.maxKoelwater) + ' °C' });
     if (Array.isArray(g.readinessNietKlaar) && g.readinessNietKlaar.length) p.push({ ernst: 'info', tekst: g.readinessNietKlaar.length + ' zelftest' + (g.readinessNietKlaar.length === 1 ? '' : 's') + ' nog niet klaar' });
     var gezien = v.laatst_gezien ? Math.round(((nu || Date.now()) - new Date(v.laatst_gezien)) / 864e5) : null;
@@ -158,7 +164,9 @@
     if (heet.length) uit.push({ soort: 'koeling', titel: 'Koelwater liep ' + heet.length + '× boven 105 °C',
       tekst: 'Laat het koelvloeistofpeil, de thermostaat en de koelventilator nakijken. Een motor die te heet wordt, kost snel veel geld.' });
     var laag = ritten.filter(function (r) { return typeof r.min_accu === 'number' && r.min_accu > 5 && r.min_accu < 13.0; });
-    if (laag.length >= 2) uit.push({ soort: 'laden', titel: 'Laadspanning onder 13 V tijdens het rijden',
+    // Een laadregeling die bewezen doet wat hij moet, verklaart een lage minimumspanning.
+    var laadGoed = v.gezondheid && (v.gezondheid.laadStaat === 'bewust_laag' || v.gezondheid.laadStaat === 'laadt');
+    if (laag.length >= 2 && !laadGoed) uit.push({ soort: 'laden', titel: 'Laadspanning onder 13 V tijdens het rijden',
       tekst: 'In ' + laag.length + ' ritten. Dat wijst op een dynamo of accu die het niet bijhoudt; laat de laadspanning meten.' });
     var stat = ritten.map(function (r) { return r.stationair_pct; }).filter(function (x) { return typeof x === 'number'; });
     if (stat.length >= 3 && mediaan(stat) > 30) uit.push({ soort: 'stationair', titel: 'Veel stationair draaien',
@@ -937,8 +945,24 @@
       var rpm = pv('010C'), accu = pv('0142');
       if (typeof accu === 'number') {
         var g = (v.gezondheid = v.gezondheid || {});
-        if (typeof rpm === 'number' && rpm < 100) g.accuRust = accu; else if (typeof rpm === 'number' && rpm > 600) g.accuLopend = accu;
+        if (typeof rpm === 'number' && rpm < 100) g.accuRust = accu;
+        else if (typeof rpm === 'number' && rpm > 600) {
+          g.accuLopend = accu;
+          // Wat de auto zelf over het laden zegt, op hetzelfde moment (16-10-2026).
+          try {
+            var lo = window.PLEigen && PLEigen.laad ? PLEigen.laad() : null;
+            if (lo) g.laadStaat = lo.staat;   // even geen verse waarde: de laatste blijft staan
+          } catch (e) { console.warn('PLGarage: laadoordeel', e); }
+        }
       }
+      try {
+        var ln = window.PLEigen && PLEigen.laadNu ? PLEigen.laadNu() : {};
+        if (typeof ln.soc === 'number' || typeof ln.leeftijd === 'number') {
+          var g2 = (v.gezondheid = v.gezondheid || {});
+          if (typeof ln.soc === 'number') g2.accuSoc = Math.round(ln.soc);
+          if (typeof ln.leeftijd === 'number') g2.accuLeeftijd = Math.round(ln.leeftijd);
+        }
+      } catch (e) { console.warn('PLGarage: accusensor', e); }
     } else if (_peil.stil || (_peil.buf && _peil.buf.length)) {
       _peil = {};   // weer verbinden = een nieuwe stilstand, met een nieuw eerste peil
     }

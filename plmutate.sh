@@ -1310,6 +1310,7 @@ MUTATIES=(
 "public/pidlane-watchers.js@@        if(gem<12.7) return@@        if(gem<13.2) return@@test-watcherschakel.js@@een slimme dynamo op 12,9 V geeft weer een laadspanningsmelding"
 "public/pidlane-watchers.js@@const t=c.val('0105'), GRENS=112, DIRECT=118;@@const t=c.val('0105'), GRENS=108, DIRECT=118;@@test-watcherschakel.js@@110 °C op een VAG bij deellast geeft weer een rode oververhittingsmelding"
 "public/pidlane-watchers.js@@        const aanhoudend = w.length>=2 && w[w.length-1].t-w[i].t>=20000;@@        const aanhoudend = w.length>=2;@@test-watcherschakel.js@@een korte piek van 113 °C na stilstaan geeft al een oververhittingsmelding"
+"public/pidlane-watchers.js@@        if(lo && gem<=15.2) return null;@@        if(false) return null;@@test-watcherschakel.js@@de rit-monitor meldt dynamo terwijl de auto zelf die lage spanning vraagt"
 "public/pidlane-totalcheck.js@@const _MON_ERNSTIG=/^(ECT_HOOG|TEST:ECT_HOOG|@@const _MON_ERNSTIG=/^(ECT_HOOG|@@test-watcherschakel.js@@oververhitting komt in de rit-monitor weer oranje binnen, zonder Verifieer-knop"
 "public/pidlane-monitor.js@@Outcome:(reden==='bug'?'bug':'vals')@@Outcome:'vals'@@test-watcherschakel.js@@een app-bug is in de logtabel niet meer te scheiden van een valse melding"
 "public/pidlane-monitor.js@@    if (!ev || !this.FEEDBACK_REDENEN[reden]) return false;@@    if (!ev) return false;@@test-watcherschakel.js@@een willekeurige reden komt als feedback in de logtabel"
@@ -1830,6 +1831,8 @@ MUTATIES=(
 "public/pidlane-garage.js@@    if (tw && heeft(tw)) return { groep: 'dubbel'@@    if (tw) return { groep: 'dubbel'@@test-garage.js@@een code heet dubbel ook als de auto de standaard-PID niet geeft (22057D zonder 0146)"
 "public/pidlane-garage.js@@    var m = /^22F4([0-9A-F]{2})$/i.exec(b.code || '');@@    var m = null;@@test-garage.js@@22F4xx wordt niet meer als spiegel van 01xx herkend"
 "public/pidlane-garage.js@@      g[k].sort(function (x, y) { return (y.s.waarde - x.s.waarde) || @@      g[k].sort(function (x, y) { return @@test-garage.js@@weergave staat niet meer op toegevoegde waarde"
+"public/pidlane-garage.js@@(g.accuLopend < 13.2 && !g.laadStaat)@@(g.accuLopend < 13.2)@@test-garage.js@@de garagestatus kleurt oranje op een laadspanning die de auto zelf vroeg"
+"public/pidlane-garage.js@@    if (laag.length >= 2 && !laadGoed) uit.push@@    if (laag.length >= 2) uit.push@@test-garage.js@@het ritadvies noemt de dynamo terwijl de laadregeling bewezen werkt"
 "public/pidlane-meekijk.js@@    if (!(typeof isAdmin === 'function' && isAdmin())) { melding('Meekijken is er voor beheerders'); return; }@@@@bproef-meekijk.js@@een klant opent het beheervenster voor de voertuigen van anderen"
 "public/pidlane-meekijk.js@@    _st = { code: '', data: null, fout: '', bezig: false, form: null };\n  }\n\n  function waarde@@  }\n\n  function waarde@@bproef-meekijk.js@@na sluiten staan de voertuigen van de vorige klant er nog"
 # ── het anker van de BT-log na een herlaad (30-09-2026) ──
@@ -1922,6 +1925,9 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@return { min: 0, max: inU(4), dL: inU(1.5), dH: inU(3.5) };@@return { min: 0, max: 4, dL: 1.5, dH: 3.5 };@@test-mode21.js@@de bandenspanning in psi krijgt de grenzen in bar: 30 psi leest als te hoog"
 "public/pidlane-pids.js@@  const top = (d && typeof d.balkVol==='number') ? d.balkVol\n            : (d && typeof d.dH==='number') ? d.dH@@  const top = (d && typeof d.dH==='number') ? d.dH@@test-mode21.js@@de balk van de bandtemperatuur loopt in Slim vol op 65 in plaats van 80 (#370)"
 "public/pidlane-uitgebreid.js@@{ min: -40, max: 80, dH: 65, balkVol: 80 }@@{ min: 0, max: 80, dH: 65, balkVol: 80 }@@test-mode21.js@@een winterband van precies 0 °C leest als dummywaarde"
+"public/pidlane-uitgebreid.js@@      if (u < g - LAAD_MARGE) return { staat: 'laadt_niet'@@      if (u < g - 5) return { staat: 'laadt_niet'@@test-mode21.js@@een dynamo die ver onder de gevraagde spanning blijft, heet toch in orde"
+"public/pidlane-uitgebreid.js@@      if (l && Date.now() - l.t > 20000) return null;@@      if (false) return null;@@test-mode21.js@@een minuut oude gevraagde spanning beslist nog over de spanning van nu"
+"public/pidlane-uitgebreid.js@@    if (/sensor/.test(n)) return null;@@    if (false) return null;@@test-mode21.js@@de spanning van een temperatuursensor telt als laadsignaal"
 # ── geen ruwe VIN in een profielmelding (30-09-2026) ──
 "public/pidlane-pids.js@@btDiag('Geen profiel onder '+_vinSleutelVoorLog(vin)+' — volle discovery','warn')@@btDiag('Geen profiel onder '+sleutel+' — volle discovery','warn')@@test-vin-meldingen.js@@de VIN staat weer voluit in het BT-log, en daarmee in elk gedeeld logboek"
 "public/pidlane-pids.js@@function _vinSleutelVoorLog(vin){ return 'pl_vinprof_…'+String(vin||'').toUpperCase().slice(-6); }@@function _vinSleutelVoorLog(vin){ return vinProfileKey(vin); }@@test-vin-meldingen.js@@de maskerfunctie geeft de hele sleutel terug: elke melding lekt de VIN zonder dat de aanroepen veranderen"

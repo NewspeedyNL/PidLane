@@ -308,6 +308,87 @@
     return { pos: (voor ? 'V' : 'A') + (links ? 'L' : 'R'), soort };
   }
 
+  /* De laadregeling (16-10-2026). Een Mazda (en vrijwel elke auto van na
+     ~2010) laadt met een gestuurde dynamo: bij een volle accu vraagt de
+     motorregeling bewust 12,5–13 V, bij gas los of remmen 14–15 V. Een vaste
+     grens van 13,0 of 13,2 V meldt dan "dynamo" op een gezonde auto. Wat de
+     auto zélf weet maakt het verschil: de GEVRAAGDE laadspanning (Mazda
+     220304 "Commanded generator voltage") en de laadtoestand die de
+     accusensor uitrekent (224028 "12V battery state of charge"). Haalt de
+     dynamo wat er gevraagd wordt, dan is een lage spanning een keuze en
+     geen storing. De rol komt uit de naam, zoals bij bandRol: de code
+     verschilt per merk, de OBDb-namen niet. Puur; test-mode21.js. */
+  function laadRol(naam) {
+    const n = String(naam || '').toLowerCase();
+    if (/sensor/.test(n)) return null;
+    const lader = /(generator|alternator|dynamo|laad|charg)/.test(n), accu = /(battery|accu|batterij)/.test(n);
+    if (lader && /(commanded|desired|target|gevraagd|gewenst|doel)/.test(n) && /(volt|spanning)/.test(n)) return 'gevraagd';
+    if (/(state of charge|\bsoc\b|laadtoestand|laadniveau)/.test(n)) return 'soc';
+    if (accu && /(current|stroom)/.test(n)) return 'stroom';
+    if (accu && /temp/.test(n)) return 'accutemp';
+    if (accu && /(\bage\b|leeftijd)/.test(n)) return 'leeftijd';
+    return null;
+  }
+  // u = accuspanning (0142), rpm, gevraagd = gevraagde laadspanning, soc = %.
+  // null = de auto zegt er niets over: dan beslist de oude vaste grens.
+  const LAAD_MARGE = 0.5;   // V onder de gevraagde spanning mag (meetverschil, traagheid)
+  function laadOordeel(o) {
+    o = o || {};
+    const u = Number(o.u), rpm = Number(o.rpm), g = Number(o.gevraagd), soc = Number(o.soc);
+    const ok = (x) => o[x] !== null && o[x] !== undefined && o[x] !== '';
+    if (!ok('u') || !isFinite(u) || u < 6 || u > 20 || !ok('rpm') || !(rpm >= 500)) return null;
+    const nl1 = (x) => x.toFixed(1).replace('.', ',');
+    if (ok('gevraagd') && isFinite(g) && g >= 11 && g <= 16) {
+      if (u < g - LAAD_MARGE) return { staat: 'laadt_niet', tekst: 'de motorregeling vraagt ' + nl1(g) + ' V, de accu krijgt ' + nl1(u) + ' V — de dynamo haalt niet wat er gevraagd wordt' };
+      if (g < 13.2) return { staat: 'bewust_laag', tekst: 'de motorregeling vraagt zelf maar ' + nl1(g) + ' V (accu vol genoeg, of zuinig rijden) — de dynamo doet wat hij moet' };
+      return { staat: 'laadt', tekst: 'de dynamo laadt: ' + nl1(u) + ' V, gevraagd ' + nl1(g) + ' V' };
+    }
+    if (ok('soc') && isFinite(soc) && soc >= 75 && soc <= 100 && u >= 12.4)
+      return { staat: 'bewust_laag', tekst: 'de accu is volgens de auto ' + Math.round(soc) + '% vol — een slimme dynamo laadt dan weinig' };
+    return null;
+  }
+  // Wat de accusensor over de accu zelf zegt. Leeg = niets te melden.
+  function accuOordeel(o) {
+    o = o || {};
+    const uit = [], soc = Number(o.soc), jaar = Number(o.leeftijd) / 8766;
+    if (o.soc !== null && o.soc !== undefined && isFinite(soc) && soc >= 0 && soc <= 100) {
+      if (soc < 50) uit.push({ ernst: 'oranje', tekst: 'Accu volgens de auto maar ' + Math.round(soc) + '% vol — laat hem testen of laad hem een nacht bij' });
+      else if (soc < 65) uit.push({ ernst: 'info', tekst: 'Accu volgens de auto ' + Math.round(soc) + '% vol — korte ritten laden hem niet vol' });
+    }
+    if (o.leeftijd !== null && o.leeftijd !== undefined && isFinite(jaar) && jaar >= 6 && jaar < 30)
+      uit.push({ ernst: 'info', tekst: 'Accu ongeveer ' + Math.floor(jaar) + ' jaar in gebruik volgens de auto' });
+    return uit;
+  }
+  // De codes van de eigen sensoren per rol, voor deze auto.
+  function laadCodes() {
+    const uit = {};
+    Object.keys(_eigen).forEach(c => { const r = laadRol(_eigen[c] && _eigen[c].name); if (r && !uit[r]) uit[r] = c; });
+    return uit;
+  }
+  // Verse waarde (≤ 20 s), anders null — een oude gevraagde spanning
+  // naast een nieuwe gemeten zegt niets.
+  function laadVers(c) {
+    try {
+      if (!c || typeof pidVals === 'undefined') return null;
+      const h = (typeof pidHist !== 'undefined' && pidHist[c]) || null, l = h && h.length ? h[h.length - 1] : null;
+      if (l && Date.now() - l.t > 20000) return null;
+      const v = pidVals[c];
+      return typeof v === 'number' && isFinite(v) ? v : null;
+    } catch (x) { console.warn('PLEigen: laadwaarde ' + c, x); return null; }
+  }
+  function laadNu() {
+    const c = laadCodes(), uit = {};
+    Object.keys(c).forEach(r => { uit[r] = laadVers(c[r]); });
+    return uit;
+  }
+  function laadLive() {
+    try {
+      const w = laadNu();
+      if (w.gevraagd == null && w.soc == null) return null;
+      return laadOordeel({ u: typeof pidVals !== 'undefined' ? pidVals['0142'] : null, rpm: typeof pidVals !== 'undefined' ? pidVals['010C'] : null, gevraagd: w.gevraagd, soc: w.soc });
+    } catch (x) { console.warn('PLEigen: laadoordeel', x); return null; }
+  }
+
   /* Druk in de eenheid die de klant koos (Mijn voorkeuren → Druk tonen
      als). Een eigen PID met eenheid psi, bar of kPa wordt omgerekend; de
      formule en wat er bewaard is veranderen niet. */
@@ -756,7 +837,7 @@
   }
 
   window.PLEigen = { CODE: EIGEN_CODE, MAX: EIGEN_MAX, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
-    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, drukOmrekening, standaardBereik,
+    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, laadRol, laadOordeel, accuOordeel, laadCodes, laadNu, laad: laadLive, drukOmrekening, standaardBereik,
     scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, vraag: eigenVraag, obdbNamen, obdbFormule, obdbJaarPast, obdbKandidaten, zoekObdb };
   window.plEigenDefs = eigenDefs;
 

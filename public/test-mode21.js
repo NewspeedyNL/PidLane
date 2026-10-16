@@ -353,6 +353,48 @@ function haalZeef(isMode01) {
     t('zonder merk of model: niet zoeken', (await E.zoekObdb({ merk: 'Mazda' }, haal)).ok, false);
   }
 
+  console.log('\n— laadregeling: wat de auto zelf vraagt (16-10-2026) —');
+  {
+    const s = bouw();
+    const E = s.PLEigen;
+    t('rol: Commanded generator voltage = gevraagd', E.laadRol('Commanded generator voltage'), 'gevraagd');
+    t('rol: Generator output voltage is niet wat er gevraagd wordt', E.laadRol('Generator output voltage'), null);
+    t('rol: 12V battery voltage is de gewone spanning, geen rol', E.laadRol('12V battery voltage'), null);
+    t('rol: Vehicle battery current = stroom', E.laadRol('Vehicle battery current'), 'stroom');
+    t('rol: 12V battery state of charge = soc', E.laadRol('12V battery state of charge'), 'soc');
+    t('rol: 12V battery temperature / age', E.laadRol('12V battery temperature') + ' ' + E.laadRol('12V battery age'), 'accutemp leeftijd');
+    t('rol: de spanning van de stroomsensor is geen accustroom', E.laadRol('Battery current sensor voltage'), null);
+    const O = (o) => { const r = E.laadOordeel(o); return r ? r.staat : null; };
+    // De meting uit de sensorlijst van 16-10-2026: 13,2 V gevraagd, accu 13,2 V.
+    t('13,2 V gevraagd en gekregen: de dynamo laadt', O({ u: 13.2, rpm: 800, gevraagd: 13.233 }), 'laadt');
+    t('12,8 V gemeten bij 12,9 V gevraagd: bewust laag, geen storing', O({ u: 12.8, rpm: 2000, gevraagd: 12.9 }), 'bewust_laag');
+    t('12,6 V gemeten bij 14,5 V gevraagd: laadt niet', O({ u: 12.6, rpm: 2000, gevraagd: 14.5 }), 'laadt_niet');
+    t('13,9 V bij 14,5 V gevraagd: binnen de marge van 0,5 V', O({ u: 14.05, rpm: 2000, gevraagd: 14.5 }), 'laadt');
+    t('13,9 V bij 14,5 V gevraagd: net erbuiten', O({ u: 13.9, rpm: 2000, gevraagd: 14.5 }), 'laadt_niet');
+    t('zonder gevraagde spanning: accu 85% vol en 12,7 V is bewust laag', O({ u: 12.7, rpm: 2000, soc: 85 }), 'bewust_laag');
+    t('… maar 60% vol en 12,7 V: de auto verklaart het niet', O({ u: 12.7, rpm: 2000, soc: 60 }), null);
+    t('… en 85% vol maar 12,1 V: te laag om bewust te zijn', O({ u: 12.1, rpm: 2000, soc: 85 }), null);
+    t('motor uit: geen oordeel', O({ u: 12.4, rpm: 0, gevraagd: 14 }), null);
+    t('gevraagde spanning onzin (0 V): genegeerd', O({ u: 12.8, rpm: 2000, gevraagd: 0 }), null);
+    t('niets bekend: null, dan beslist de oude grens', O({ u: 12.8, rpm: 2000 }), null);
+    const A = (o) => E.accuOordeel(o).map((x) => x.ernst).join(',');
+    t('accu 40% vol: oranje', A({ soc: 40 }), 'oranje');
+    t('accu 60% vol: info', A({ soc: 60 }), 'info');
+    t('accu 90% vol, 2 jaar: niets', A({ soc: 90, leeftijd: 2 * 8766 }), '');
+    t('accu 7 jaar: info met het aantal jaren', E.accuOordeel({ leeftijd: 7 * 8766 + 100 })[0].tekst.indexOf('7 jaar') > -1, true);
+    // Live: de rol komt uit de naam van de eigen sensor, de waarde uit pidVals.
+    E.zet([{ code: '220304', naam: 'Commanded generator voltage', eenheid: 'V', formule: '(A*256+B)*0.000488' },
+      { code: '224028', naam: '12V battery state of charge', eenheid: '%', formule: 'A*100/255' }], 'Mazda');
+    t('laadCodes: per rol de code van deze auto', JSON.stringify(E.laadCodes()), '{"gevraagd":"220304","soc":"224028"}');
+    s.pidVals = { '0142': 12.7, '010C': 1800, '220304': 12.8, '224028': 88 };
+    s.pidHist = { '220304': [{ t: Date.now(), v: 12.8 }] };
+    t('live: 12,7 V bij 12,8 V gevraagd = bewust laag', (E.laad() || {}).staat, 'bewust_laag');
+    s.pidHist = { '220304': [{ t: Date.now() - 60000, v: 12.8 }], '224028': [{ t: Date.now() - 60000, v: 88 }] };
+    t('live: een gevraagde spanning van een minuut oud telt niet', E.laad(), null);
+    E.zet(null, 'ander voertuig');
+    t('andere auto zonder die sensoren: geen oordeel', E.laad(), null);
+  }
+
   console.log('\n— banden: herkennen, op verzoek (#396), druk in bar of psi (28-09-2026) —');
   {
     const s = bouw();
