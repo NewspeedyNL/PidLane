@@ -2120,7 +2120,7 @@ MUTATIES=(
 "public/pidlane-mode06.js@@      return p(a) - p(b) || (a.marge ?? 1) - (b.marge ?? 1);@@      return 0;@@test-onderzoek.js@@de zelftests in het rapport staan in scanvolgorde, gezakt niet bovenaan"
 "public/pidlane-mode06.js@@    const geenMax = signed ? max === 0x7FFF : max === 0xFFFF;@@    const geenMax = false;@@test-mode06.js@@een bovengrens van 65535 telt weer als grens: 0 ontstekingsmissers heet krap"
 "public/pidlane-mode06.js@@    else if (!geenMin) marge = klem((lees(waarde) - lees(min)) / Math.max(1, Math.abs(lees(min))));@@    else if (!geenMin) marge = null;@@test-mode06.js@@een echte ondergrens zonder bovengrens wordt nooit krap, ook niet vlak erboven"
-"public/pidlane-onderzoek.js@@        if (t.uasId !== 0x24) return t.krap;@@        return t.krap;@@test-onderzoek.js@@mode 06: nul missers heet krap binnen de grens en telt als bewijs vóór een ontstekingsprobleem"
+"public/pidlane-mode06.js@@    const geenMin = signed ? min === 0x8000 : min === 0;@@    const geenMin = false;@@test-onderzoek.js@@mode 06: nul missers heet krap binnen de grens en telt als bewijs vóór een ontstekingsprobleem"
 "public/pidlane-onderzoek.js@@    [0x0B, 0x0C].forEach(function (tid) {@@    [0x0C, 0x0B].forEach(function (tid) {@@test-onderzoek.js@@mode 06: één rit met missers wint van het gemiddelde over tien ritten"
 "public/pidlane-onderzoek.js@@return inGroep(t, f) && t.oordeelZeker; });@@return inGroep(t, f); });@@test-onderzoek.js@@mode 06: een test met onbekende schaal telt toch als oordeel over de sonde"
 "public/pidlane-onderzoek.js@@          if (q < 0.85) r.push(@@          if (q < 0.5) r.push(@@test-onderzoek.js@@een raildruk die 30 % wegzakt bij meer toeren valt niet op (#428)"
