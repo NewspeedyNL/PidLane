@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 16-10-2026 — Copiloot ook uit de Worker
+ ═══════════════════════════════════════════════════════════
+ De app riep /copilot al maanden niet meer aan, maar de Worker
+ nam hem nog aan: elk model, geen kasboekregel, buiten de poort
+ van #526 om. Route, briefing en handler zijn weg, net als de
+ regel in run_worker_first.
+
+ ═══════════════════════════════════════════════════════════
  15-10-2026 — Codes uit OBDb in plaats van een AI-zoektocht (#526)
  ═══════════════════════════════════════════════════════════
  Sensoren → "Zoek codes in OBDb" haalt het bestand van de open

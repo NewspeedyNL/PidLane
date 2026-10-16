@@ -45,7 +45,6 @@ const isRestrictedPath = new Function(
 const MOET_DICHT = [
   ['/auth/login',        'inloggen levert een sessietoken op'],
   ['/v1/messages',       'verbruikt tegoed van de klant'],
-  ['/copilot',           'beheerderstoegang tot de AI'],
   ['/airtable/log',      'schrijft in de logbase'],
   ['/airtable/veldlab',  'schrijft meetdata weg'],
   ['/airtable/reference','leest referentiewaarden'],

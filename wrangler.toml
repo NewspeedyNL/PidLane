@@ -32,7 +32,6 @@ binding = "ASSETS"
 run_worker_first = [
   "/auth/*",
   "/v1/*",
-  "/copilot",
   "/airtable/*",
   "/session/*",
   "/pair/*",
