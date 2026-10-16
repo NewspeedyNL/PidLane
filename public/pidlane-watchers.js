@@ -146,8 +146,8 @@ const PLWatch = {
         if(g.spreidPct>15) return `toerental onrustig bij constante snelheid (rpm/snelheid varieert ${Math.round(g.spreidPct)}%) — kan wijzen op overslaan of slippende koppeling/omvormer`;
         return null; } },
 
-    // Een CVT verandert zijn overbrenging bij constante snelheid (#532).
     { id:'RATIO_CONST', naam:'overbrengingsverhouding bij constante snelheid', voorwaarden:{ cvt:{ is:false, gangbaar:true } },
+      // Een CVT verandert zijn overbrenging bij constante snelheid (#532).
       fase:['constant'], warm:null, pids:['010C','010D'], duurMs:6000, aandrijving:true,
       // Slip = de verhouding DRIJFT geleidelijk weg. Schakelen = één stap naar
       // een nieuwe stabiele waarde. De oude test kende dat verschil niet en
@@ -204,8 +204,8 @@ const PLWatch = {
         return `ruw stationair: toerental schommelt ${Math.round(spread)} rpm (IQR, ${Math.round(omkPct*100)}% richtingswisselingen${blTekst}) — een in- en uitschakelende airco geeft ditzelfde beeld: zet die eerst uit en kijk of het blijft. Blijft het, denk dan aan valse lucht, bobine/bougie of stationairregeling`;
         } },
 
-    // Een diesel heeft geen gasklep en geen vacuüm (#532).
     { id:'STAT_MAP', naam:'inlaatdruk bij stationair (vacuüm)', voorwaarden:{ diesel:{ is:false, gangbaar:true } },
+      // Een diesel heeft geen gasklep en geen vacuüm (#532).
       fase:['stationair'], warm:true, pids:['010B','0111','0106'], duurMs:5000,
       // guard: alleen met gesloten gasklep én aanwezige trims (benzine-smoorklepmotor);
       // een diesel heeft stationair vrijwel buitendruk en zou vals alarmeren.
@@ -242,8 +242,8 @@ const PLWatch = {
         if(r.niveau==='onbeslist'){ PLKenmerk.noteer('watch_LAADSPANNING', 'laadspanning bij draaiende motor', r.geldt); return null; }
         return `${r.tekst} (gemiddeld over 30 s)`; } },
 
-    // 0114 op een breedbandauto is een plaatshouder, geen luie sonde (#532).
     { id:'O2_ACTIVITEIT', naam:'lambdasonde-activiteit (warm stationair)', voorwaarden:{ breedband_b1s1:{ is:false, gangbaar:true } },
+      // 0114 op een breedbandauto is een plaatshouder, geen luie sonde (#532).
       fase:['stationair'], warm:true, pids:['0114','010C'], duurMs:10000,
       check(c){ const o=c.win('0114',10000); if(o.length<8) return null;
         if(Math.max(...o)-Math.min(...o)<0.2) return `lambdasonde B1S1 nauwelijks actief (spreiding ${(Math.max(...o)-Math.min(...o)).toFixed(2)} V over 10s) — luie of vlakke sonde`;
