@@ -90,14 +90,23 @@
     if (v.onderhoud_km && v.kmstand && v.kmstand >= v.onderhoud_km) p.push({ ernst: 'oranje', tekst: 'Onderhoud: ' + (v.kmstand - v.onderhoud_km).toLocaleString('nl') + ' km over de geplande stand' });
     else if (v.onderhoud_km && v.kmstand && v.onderhoud_km - v.kmstand <= 1000) p.push({ ernst: 'info', tekst: 'Onderhoud over ' + (v.onderhoud_km - v.kmstand).toLocaleString('nl') + ' km' });
     if (typeof g.accuRust === 'number' && g.accuRust < 12.2) p.push({ ernst: 'oranje', tekst: 'Accu zwak in rust (' + nl1(g.accuRust) + ' V)' });
-    // Laadspanning (16-10-2026): weet de auto wat hij vroeg (g.laadStaat, uit
-    // PLEigen.laadOordeel), dan beslist dat; een slimme dynamo vraagt bij een
-    // volle accu bewust onder 13,2 V. Anders de vaste grens.
-    if (g.laadStaat === 'laadt_niet') p.push({ ernst: 'oranje', tekst: 'Laadspanning ' + (typeof g.accuLopend === 'number' ? nl1(g.accuLopend) + ' V' : '') + ' — de dynamo haalt niet wat de motorregeling vraagt' });
-    else if (typeof g.accuLopend === 'number' && (g.accuLopend > 14.9 || (g.accuLopend < 13.2 && !g.laadStaat))) p.push({ ernst: 'oranje', tekst: 'Laadspanning ' + nl1(g.accuLopend) + ' V (normaal 13,2–14,8)' });
+    // Laadspanning en koelwater uit één grens per grootheid (PLKenmerk, #532),
+    // met het profiel van dit voertuig: merk, bouwjaar, brandstof, en wat de
+    // auto bij de laatste verbinding zelf over het laden zei (g.laadStaat).
+    var K = window.PLKenmerk, prof = K ? K.profiel(K.bronVoertuig(v)) : null;
+    if (typeof g.accuLopend === 'number') {
+      var ls = K ? K.laadspanning(g.accuLopend, 1000, { laad: g.laadStaat ? { staat: g.laadStaat, tekst: g.laadStaat === 'laadt_niet' ? 'de dynamo haalt niet wat de motorregeling vraagt' : '' } : null, prof: prof })
+        : (g.laadStaat ? (g.laadStaat === 'laadt_niet' ? { niveau: 'fout' } : null) : ((g.accuLopend < 13.2 || g.accuLopend > 15.2) ? { niveau: 'fout' } : null));
+      if (ls && (ls.niveau === 'fout' || ls.niveau === 'letop'))
+        p.push({ ernst: 'oranje', tekst: 'Laadspanning ' + nl1(g.accuLopend) + ' V' + (g.laadStaat === 'laadt_niet' ? ' — de dynamo haalt niet wat de motorregeling vraagt' : ls.niveau === 'letop' ? ' (niet zeker voor deze auto)' : '') });
+    }
     try { if (window.PLEigen && PLEigen.accuOordeel) PLEigen.accuOordeel({ soc: g.accuSoc, leeftijd: g.accuLeeftijd }).forEach(function (x) { p.push(x); }); }
     catch (e) { console.warn('PLGarage: accuoordeel', e); }
-    if (typeof g.maxKoelwater === 'number' && g.maxKoelwater >= 108) p.push({ ernst: 'rood', tekst: 'Koelwater liep op tot ' + Math.round(g.maxKoelwater) + ' °C' });
+    if (typeof g.maxKoelwater === 'number') {
+      var kw = K ? K.koelwater(g.maxKoelwater, { prof: prof }) : (g.maxKoelwater >= 108 ? { niveau: 'fout', hard: true } : null);
+      if (kw && (kw.niveau === 'fout' || kw.niveau === 'letop'))
+        p.push({ ernst: kw.hard ? 'rood' : 'oranje', tekst: 'Koelwater liep op tot ' + Math.round(g.maxKoelwater) + ' °C' + (kw.niveau === 'letop' ? ' (niet zeker voor deze auto)' : '') });
+    }
     if (Array.isArray(g.readinessNietKlaar) && g.readinessNietKlaar.length) p.push({ ernst: 'info', tekst: g.readinessNietKlaar.length + ' zelftest' + (g.readinessNietKlaar.length === 1 ? '' : 's') + ' nog niet klaar' });
     var gezien = v.laatst_gezien ? Math.round(((nu || Date.now()) - new Date(v.laatst_gezien)) / 864e5) : null;
     if (gezien == null) p.push({ ernst: 'info', tekst: 'Nog nooit uitgelezen' });
@@ -160,10 +169,20 @@
       uit.push({ soort: 'aanhanger', titel: 'Met aanhanger of caravan',
         tekst: 'Houd onderweg het koelwater in de gaten: de Caravanrit-coach in de app waarschuwt bij oplopende temperatuur en schakeladvies.' });
     }
-    var heet = ritten.filter(function (r) { return typeof r.max_koelwater === 'number' && r.max_koelwater >= 105; });
+    // Eén grens per grootheid (PLKenmerk, #532) met het profiel van dit voertuig.
+    var K = window.PLKenmerk, prof = K ? K.profiel(K.bronVoertuig(v)) : null;
+    var raak = function (r) { return !!r && (r.niveau === 'fout' || r.niveau === 'letop'); };
+    var heet = ritten.filter(function (r) {
+      if (typeof r.max_koelwater !== 'number') return false;
+      return K ? raak(K.koelwater(r.max_koelwater, { prof: prof })) : r.max_koelwater >= 105;
+    });
     if (heet.length) uit.push({ soort: 'koeling', titel: 'Koelwater liep ' + heet.length + '× boven 105 °C',
       tekst: 'Laat het koelvloeistofpeil, de thermostaat en de koelventilator nakijken. Een motor die te heet wordt, kost snel veel geld.' });
-    var laag = ritten.filter(function (r) { return typeof r.min_accu === 'number' && r.min_accu > 5 && r.min_accu < 13.0; });
+    var laag = ritten.filter(function (r) {
+      if (!(typeof r.min_accu === 'number' && r.min_accu > 5)) return false;
+      var ls = (v.gezondheid || {}).laadStaat;
+      return K ? raak(K.laadspanning(r.min_accu, 1000, { prof: prof, laad: ls ? { staat: ls, tekst: '' } : null })) : r.min_accu < 13.0;
+    });
     // Een laadregeling die bewezen doet wat hij moet, verklaart een lage minimumspanning.
     var laadGoed = v.gezondheid && (v.gezondheid.laadStaat === 'bewust_laag' || v.gezondheid.laadStaat === 'laadt');
     if (laag.length >= 2 && !laadGoed) uit.push({ soort: 'laden', titel: 'Laadspanning onder 13 V tijdens het rijden',

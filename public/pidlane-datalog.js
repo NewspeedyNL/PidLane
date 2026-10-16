@@ -79,7 +79,8 @@ function validateAndSmooth(pid,rawVal){
      precies de metingen waarvoor je de PID leest — sterke terugregeling van
      de ontsteking bijvoorbeeld. Die weggooien maakt een gemiddelde mooier dan
      de motor is. Dus: melden, onthouden, doorlaten. */
-  const letop=(typeof PID_LET_OP!=='undefined')?PID_LET_OP[pid]:null;
+  // Het bereik voor déze auto (PLKenmerk.letOp, #532): 010B boven 110 kPa is op een turbo gewoon laaddruk.
+  const letop=window.PLKenmerk ? PLKenmerk.letOpLive(pid) : ((typeof PID_LET_OP!=='undefined')?PID_LET_OP[pid]:null);
   if(letop&&(rawVal<letop.min||rawVal>letop.max)){
     const lo=window._pidLetOp=window._pidLetOp||{};
     const eerder=lo[pid];

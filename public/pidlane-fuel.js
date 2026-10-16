@@ -497,6 +497,11 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
   // beslist zelf of er iets te melden valt en geeft anders een lege tekst.
   try{ if(window.PLAanlevering) sys += PLAanlevering.blok(aanlevering); }
   catch(e){ console.warn('Aanlevering niet aan de AI-prompt toegevoegd — de AI weet dan niet welke sensoren ontbreken of waar de gaten in de meting zaten (#188)', e); }
+  // De derde poort (#532): welke kenmerken van deze auto bekend zijn, en wat
+  // NIET te beoordelen is omdat een regel uitgaat van een onbekend kenmerk.
+  // Ná de aanlevering: die rekent de bevindingen door en noteert wat onbeslist is.
+  try{ if(window.PLKenmerk) sys += PLKenmerk.blok(); }
+  catch(e){ console.warn('Kenmerkenblok niet aan de AI-prompt toegevoegd — de AI weet dan niet welke regels voor deze auto niet gelden (#532)', e); }
 
   const mdl = model || 'claude-sonnet-5';
 

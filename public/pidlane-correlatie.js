@@ -154,8 +154,11 @@ function runCorrelationEngine(){
   for(const r of CORRELATION_RULES){
     // ernst 2: een regel beschrijft een bekend defectpatroon en gaat dus vóór
     // een statistische afwijking, die alleen zegt "anders dan anders".
-    try{ if(r.test()) hits.push({id:r.id, naam:r.naam, uitleg:r.uitleg, ernst:2, rang:0}); }
-    catch(e){ /* stil: sonde — test alleen of dit patroon matcht */ }
+    // Let op (de regel geldt waarschijnlijk, niet zeker voor deze auto) is
+    // ernst 1,5; onbeslist komt niet in de balk maar in het venster (#532).
+    const o=bevOordeel(r);
+    if(o && (o.niveau==='fout' || o.niveau==='letop'))
+      hits.push({id:r.id, naam:r.naam, uitleg:bevUitleg(r, o), ernst:o.niveau==='fout'?2:1.5, rang:0, niveau:o.niveau});
   }
   // Idee 3: leren-van-normaal — voeg statistische afwijkingen t.o.v. de
   // eigen voertuighistorie toe als bevinding (alleen voor actieve PIDs).
@@ -259,14 +262,66 @@ function _bevSheetBij(forceer){
       '<div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--tx3);margin-bottom:4px"><span style="flex:1">In de live view staan de '+BEV_MAX+' ernstigste; hieronder staat alles. ✕ of dubbeltik in de live view verbergt er een.</span>'+
         (_bevVerborgen.size ? '<button type="button" class="bev-x bev-terug" onclick="bevindingToonAlles()">alles weer tonen ('+_bevVerborgen.size+')</button>' : '')+'</div>'+
       '<div style="border:1px solid var(--bd);border-radius:10px;overflow:hidden">'+rijen+'</div>'+
+      _bevOnbeslistHtml()+
     '</div>'+
   '</div>';
 }
+// Wat niet te beoordelen is op deze auto, met de vragen die het beslissen
+// (#532). Eén antwoord per auto; het blijft bewaard in PLWaarneming.
+function _bevOnbeslistHtml(){
+  if(!window.PLKenmerk) return '';
+  let lijst=[], vr=[];
+  try{ lijst=PLKenmerk.onbeslist(); vr=PLKenmerk.vragen(lijst); }
+  catch(e){ console.warn('bevindingen: onbeslist onleesbaar', e); return ''; }
+  if(!lijst.length) return '';
+  const esc=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  return '<div id="bevOnbeslist" style="margin-top:12px;border:1px dashed var(--bd);border-radius:10px;padding:9px 10px">'+
+    '<div style="font-size:12px;font-weight:800;color:var(--tx2)">❔ Niet te beoordelen op deze auto ('+lijst.length+')</div>'+
+    '<div style="font-size:11px;color:var(--tx3);margin:2px 0 6px">De regel gaat uit van iets wat van deze auto niet bekend is. Daarom geen oordeel, ook niet bij de AI.</div>'+
+    lijst.map(o=>'<div style="font-size:12px;padding:4px 0;border-top:1px solid var(--bd)"><b>'+esc(o.naam)+'</b>'+(o.reden?'<br><span style="color:var(--tx3)">'+esc(o.reden)+'</span>':'')+'</div>').join('')+
+    vr.map(q=>'<div class="bev-vraag" data-kenmerk="'+esc(q.id)+'" style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px">'+
+      '<span style="flex:1">'+esc(q.vraag)+'</span>'+
+      '<button type="button" class="kb-seg" onclick="bevKenmerk(\''+esc(q.id)+'\',true)">Ja</button>'+
+      '<button type="button" class="kb-seg" onclick="bevKenmerk(\''+esc(q.id)+'\',false)">Nee</button></div>').join('')+
+  '</div>';
+}
+function bevKenmerk(id, ja){
+  if(window.PLKenmerk && PLKenmerk.antwoord(id, ja)){
+    if(typeof showToast==='function') showToast('Bewaard voor deze auto');
+    try{ runCorrelationEngine(); }catch(e){ console.warn('bevindingen: herberekenen na antwoord mislukt', e); }
+    _bevSheetBij(true);
+  }
+}
 
-// Tekstregels voor in AI-prompts en rapporten
+// Het oordeel van één regel, door de derde poort (#532). Onbeslist wordt
+// genoteerd bij PLKenmerk: dat gaat als eigen blok naar de AI ("niet te
+// beoordelen") en staat met een vraag in het venster. Een regel die niet
+// meer onbeslist is, haalt zijn notitie weg.
+function bevOordeel(r){
+  let o=null;
+  try{ o=(typeof r.oordeel==='function') ? r.oordeel() : (r.test() ? {niveau:'fout'} : null); }
+  catch(e){ console.warn('bevinding '+r.id+': oordeel mislukt — telt niet mee', e); return null; }
+  try{
+    if(window.PLKenmerk){
+      if(o && o.niveau==='onbeslist') PLKenmerk.noteer('bev_'+r.id, r.naam, o.geldt || null);
+      else PLKenmerk.wisNotitie('bev_'+r.id);
+    }
+  }catch(e){ console.warn('bevinding '+r.id+': notitie onbewaard', e); }
+  return o;
+}
+function bevUitleg(r, o){
+  const t=(o && o.tekst) ? o.tekst.charAt(0).toUpperCase()+o.tekst.slice(1)+'.' : r.uitleg;
+  return t+(o && o.niveau==='letop' && !/niet zeker voor deze auto/.test(t) ? ' (niet zeker voor deze auto)' : '');
+}
+
+// Tekstregels voor in AI-prompts en rapporten. Alleen wat voor déze auto
+// geldt of waarschijnlijk geldt; onbeslist gaat via PLKenmerk.blok().
 function correlationLines(){
-  const lines=CORRELATION_RULES.filter(r=>{try{return r.test();}catch(e){return false;}})
-    .map(r=>`• ${r.naam}: ${r.uitleg}`);
+  const lines=[];
+  CORRELATION_RULES.forEach(r=>{
+    const o=bevOordeel(r);
+    if(o && (o.niveau==='fout' || o.niveau==='letop')) lines.push(`• ${r.naam}: ${bevUitleg(r, o)}`);
+  });
   for(const pid of activePIDs){
     const v=pidVals[pid]; if(v===undefined) continue;
     const w=baselineWarning(pid,v); if(w) lines.push('• '+w);

@@ -47,6 +47,9 @@ function nieuweApp(extra) {
   vm.runInContext('Date.now=()=>globalThis.__T;', s);
   vm.runInContext(lees('pidlane-monitor.js'), s, { filename: 'pidlane-monitor.js' });
   vm.runInContext(lees('pidlane-watchers.js'), s, { filename: 'pidlane-watchers.js' });
+  // De derde poort (#532) hoort bij de echte app: PLWaarneming en PLKenmerk.
+  vm.runInContext(lees('pidlane-waarneming.js'), s, { filename: 'pidlane-waarneming.js' });
+  vm.runInContext(lees('pidlane-kenmerk.js'), s, { filename: 'pidlane-kenmerk.js' });
   if (!s.PLMon || !s.PLWatch) { console.error('FOUT: PLMon of PLWatch niet geladen'); process.exit(1); }
   s.PLMon.active = true; s.PLMon.events = {}; s._order = s.PLMon._order = []; s.PLMon.startedAt = s.__T;
   return s;
@@ -149,14 +152,26 @@ console.log('\n4. Uitrollen met gas los: gasklep en belasting staan terecht stil
 }
 
 // ── 5. laadspanning met slimme dynamo ─────────────────────────────
-console.log('\n5. Laadspanning: 12,9 V is een slimme dynamo, 12,3 V laadt niet');
+console.log('\n5. Laadspanning: één grens (PLKenmerk, #532) — hard onder 12,2 V, daarboven alleen bij een gewone dynamo');
 {
-  const s = nieuweApp();
-  const ev = rij(s, 40, t => ({ '0105': 90, '0142': 12.9, '010D': 0, '010C': 800 + (Math.round(t * 4) % 2) }));
-  toets('12,9 V geeft geen melding', !heeft(ev, /LAADSPANNING/), 'kreeg: ' + ev.join(', '));
-  const s2 = nieuweApp();
-  const ev2 = rij(s2, 40, t => ({ '0105': 90, '0142': 12.3, '010D': 0, '010C': 800 + (Math.round(t * 4) % 2) }));
-  toets('tegenproef: 12,3 V geeft wél een melding', heeft(ev2, /TEST:LAADSPANNING/), 'kreeg: ' + ev2.join(', '));
+  const stat = (u) => (t) => ({ '0105': 90, '0142': u, '010D': 0, '010C': 800 + (Math.round(t * 4) % 2) });
+  let s = nieuweApp();
+  let ev = rij(s, 40, stat(12.9));
+  toets('12,9 V op een onbekende auto: geen melding', !heeft(ev, /LAADSPANNING/), 'kreeg: ' + ev.join(', '));
+  s = nieuweApp();
+  ev = rij(s, 40, stat(12.4));
+  toets('12,4 V op een onbekende auto: niet te beoordelen, geen melding', !heeft(ev, /LAADSPANNING/), 'kreeg: ' + ev.join(', '));
+  toets('… en genoteerd als onbeslist', s.PLKenmerk.onbeslist().some((o) => o.id === 'watch_LAADSPANNING'), JSON.stringify(s.PLKenmerk.onbeslist()));
+  s = nieuweApp();
+  ev = rij(s, 40, stat(11.9));
+  toets('tegenproef: 11,9 V geeft op elke auto een melding (harde grens)', heeft(ev, /TEST:LAADSPANNING/), 'kreeg: ' + ev.join(', '));
+  s = nieuweApp();
+  s.PLWaarneming.weerleg('slimladen');
+  ev = rij(s, 40, stat(12.6));
+  toets('tegenproef: 12,6 V op een auto zonder slimme laadregeling (door een mens bevestigd) meldt wél', heeft(ev, /TEST:LAADSPANNING/), 'kreeg: ' + ev.join(', '));
+  s = nieuweApp({ vehicleInfo: { merk: 'Opel', year: '2001' } });
+  ev = rij(s, 40, stat(12.6));
+  toets('12,6 V op een Opel uit 2001 (waarschijnlijk gewone dynamo): melding, met "niet zeker"', heeft(ev, /TEST:LAADSPANNING/) && /niet zeker voor deze auto/.test(JSON.stringify(s.PLMon.events)), 'kreeg: ' + ev.join(', '));
 }
 
 // ── 5b. laadspanning: wat de auto zelf vraagt (16-10-2026) ────────
@@ -177,8 +192,8 @@ function metLaad() {
   const ev2 = rij(s2, 40, t => ({ '0105': 90, '0142': 13.0, '220304': 14.6, '010D': 60, '010C': 1800 + (Math.round(t * 4) % 2) }));
   toets('13,0 V terwijl de auto 14,6 V vraagt: wél een melding (de oude grens zweeg)', heeft(ev2, /TEST:LAADSPANNING/), 'kreeg: ' + ev2.join(', '));
   const s3 = metLaad();
-  const ev3 = rij(s3, 40, t => ({ '0105': 90, '0142': 12.3, '010D': 60, '010C': 1800 + (Math.round(t * 4) % 2) }));
-  toets('sensor wel bekend maar geeft niets: de oude grens blijft (12,3 V meldt)', heeft(ev3, /TEST:LAADSPANNING/), 'kreeg: ' + ev3.join(', '));
+  const ev3 = rij(s3, 40, t => ({ '0105': 90, '0142': 11.9, '010D': 60, '010C': 1800 + (Math.round(t * 4) % 2) }));
+  toets('sensor wel bekend maar geeft niets: de harde grens blijft (11,9 V meldt)', heeft(ev3, /TEST:LAADSPANNING/), 'kreeg: ' + ev3.join(', '));
 }
 
 // ── 6. koelwater ──────────────────────────────────────────────────

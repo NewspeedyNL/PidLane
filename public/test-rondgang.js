@@ -123,7 +123,10 @@ waar('mengsel: koude motor = geen oordeel over de trims', /nog koud/.test(D('men
 waar('warmte: 45 °C warmt op, met het verschil met buiten', D('warmte', { '0105': 45, '0146': 15 }) === 'Motor warmt op: koud verbruikt en slijt hij meer, dus nog even rustig aan — 30 °C warmer dan buiten');
 waar('warmte: 90 °C op temperatuur, 110 °C heet', /op temperatuur$/.test(D('warmte', { '0105': 90 })) && /heet/.test(D('warmte', { '0105': 110 })));
 waar('laden: 14,1 V met draaiende motor = de dynamo laadt', D('laden', { '0142': 14.07, '010C': 1600 }) === 'De dynamo laadt de accu (14,1 V)', D('laden', { '0142': 14.07, '010C': 1600 }));
-waar('laden: 12,6 V draaiend is een slimme dynamo, geen defect', /slimme dynamo.*normaal/.test(D('laden', { '0142': 12.6, '010C': 1600 })));
+waar('laden: 12,6 V draaiend is met een slimme laadregeling normaal, geen defect', /slimme laadregeling normaal/.test(D('laden', { '0142': 12.6, '010C': 1600 })));
+waar('laden: onbeslist (PLKenmerk) zegt niet "nakijken"', /slimme laadregeling normaal/.test(D('laden', { '0142': 12.5, '010C': 1600 }, { laad: { niveau: 'onbeslist', tekst: 'x' } })) && !/nakijken/.test(D('laden', { '0142': 12.5, '010C': 1600 }, { laad: { niveau: 'onbeslist' } })));
+waar('laden: fout (PLKenmerk) zegt wél nakijken', /nakijken/.test(D('laden', { '0142': 12.8, '010C': 1600 }, { laad: { niveau: 'fout', tekst: 'x' } })));
+waar('warmte: 108 °C onbeslist (kenveld) is niet "heet"', !/heet/.test(D('warmte', { '0105': 108 }, { koel: { niveau: 'onbeslist' } })) && /heet/.test(D('warmte', { '0105': 108 })));
 waar('laden: 12,0 V draaiend = laat nakijken', /nakijken/.test(D('laden', { '0142': 12.0, '010C': 1600 })));
 waar('laden: motor uit, 12,7 V = vol; 12,0 V = zwak', /vol$/.test(D('laden', { '0142': 12.7, '010C': 0 })) && /zwak/.test(D('laden', { '0142': 12.0, '010C': 0 })));
 waar('laden: zonder toerental (EV) alleen "wordt geladen"', D('laden', { '0142': 12.5 }) === null && /geladen/.test(D('laden', { '0142': 14 })));

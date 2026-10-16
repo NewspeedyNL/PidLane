@@ -115,6 +115,9 @@
     { id: 'koel', deel: 'motor', naam: 'Hoogste koelwatertemperatuur', eenheid: '°C', soort: 'stijging', dood: 5, vol: 15, gewicht: 1,
       uitleg: 'De motor wordt warmer dan eerst: koelvloeistof, thermostaat, waterpomp of radiateur.' },
     { id: 'lv', deel: 'accu', naam: 'Laadspanning', eenheid: 'V', soort: 'daling', dood: 0.2, vol: 1.0, gewicht: 2, vloer: 13.2, vloerVol: 0.8,
+      // De vloer van 13,2 V is die van een gewone dynamo; een slimme laadregeling
+      // laadt bewust lager (#532). Alleen als dat voor dit voertuig geldt.
+      vloerVoorwaarden: { slimladen: false },
       uitleg: 'De dynamo laadt minder: dynamo, spanningsregelaar of een accu die stroom blijft vragen.' }
   ];
   var KENMERK = {}; KENMERKEN.forEach(function (k) { KENMERK[k.id] = k; });
@@ -357,6 +360,16 @@
     return { klaar: true, nodig: 0, basis: basis, recent: rs.slice(-R), bron: bron };
   }
 
+  /* Een vaste vloer geldt alleen als zijn voorwaarde voor dit voertuig
+     (waarschijnlijk) klopt (PLKenmerk, #532); anders telt alleen de daling. */
+  function metVloer(k, v) {
+    if (!k.vloer || !k.vloerVoorwaarden || !window.PLKenmerk) return k;
+    try {
+      var g = PLKenmerk.geldt(k.vloerVoorwaarden, PLKenmerk.profiel(PLKenmerk.bronVoertuig(v)));
+      return (g.uitkomst === 'geldt' || g.uitkomst === 'waarschijnlijk') ? k : Object.assign({}, k, { vloer: null });
+    } catch (e) { console.warn('PLConditie: kenmerkpoort onleesbaar — vloer blijft', e); return k; }
+  }
+
   /* Hoeveel van het gewicht van een kenmerk is weg: 0 (ruis) tot 1. */
   function verlies(k, b, r) {
     if (b === null || r === null) return null;
@@ -407,7 +420,7 @@
         var b = vs.basis.map(function (r) { return waarde(r, k.id); }).filter(function (w) { return w !== null; });
         var r = vs.recent.map(function (rr) { return waarde(rr, k.id); }).filter(function (w) { return w !== null; });
         if (b.length < CFG.minWaarden || r.length < CFG.minWaarden) return;
-        var l = verlies(k, mediaan(b), mediaan(r));
+        var l = verlies(metVloer(k, v), mediaan(b), mediaan(r));
         if (!l) return;
         x.basis = rond(mediaan(b), 2); x.nu = rond(mediaan(r), 2); x.d = rond(l.d, 1); x.verlies = l.verlies;
       }

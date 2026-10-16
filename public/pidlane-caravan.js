@@ -46,6 +46,15 @@ const CARAVAN_HIST_CAP  = 400;    // ~6.5 min bij 1s
    een vrijwel constante snelheid. Of deze getallen kloppen is een ritvraag. */
 const CARAVAN_HELLING   = { drempel:2.5, maxTrend:1 };   // °, km/h per s
 
+// Het niveau van de laadspanning (PLKenmerk.laadLive, #532), of de oude
+// grens van 13,0 V als PLKenmerk er niet is.
+function _carLaad(volt, rpm){
+  if(typeof volt!=='number'||!(volt>0)||typeof rpm!=='number'||rpm<=400) return null;
+  if(!window.PLKenmerk) return volt<13.0 ? 'fout' : 'ok';
+  try{ const r=PLKenmerk.laadLive(volt, rpm); return r ? r.niveau : null; }
+  catch(e){ console.warn('caravan: laadoordeel', e); return volt<13.0 ? 'fout' : 'ok'; }
+}
+
 // ═══════════════════ OPEN / RESET ═══════════════════
 function openCaravan(){
   const w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
@@ -334,8 +343,11 @@ function caravanCheckRules(ctx){
     }
   }
   // 9) Boordspanning laag terwijl de motor draait
-  if(typeof volt==='number'&&volt>0&&volt<13.0&&typeof rpm==='number'&&rpm>400){
-    _carAlert('volt',`🔋 Boordspanning laag (${volt.toFixed(1)}V) met draaiende motor — dynamo werkt hard; laat riem/accu nakijken als dit aanhoudt.`,'warn',180000);
+  // Eén grens voor de laadspanning (PLKenmerk, #532): een slimme
+  // laadregeling laadt bij een volle accu bewust onder 13 V.
+  const _ls=_carLaad(volt, rpm);
+  if(_ls==='fout'||_ls==='letop'){
+    _carAlert('volt',`🔋 Boordspanning laag (${volt.toFixed(1)}V) met draaiende motor${_ls==='letop'?' (niet zeker voor deze auto)':''} — laat riem/accu nakijken als dit aanhoudt.`,'warn',180000);
   }
   // 10) Boven de ingestelde caravan-limiet
   if(typeof speed==='number'&&speed>limit+4){
@@ -481,7 +493,7 @@ function caravanRenderLive(ctx,pw){
 
   // boordspanning
   let vTxt='—', vClr='#8fd3ff';
-  if(typeof ctx.volt==='number'&&ctx.volt>0){ vTxt=ctx.volt.toFixed(1)+'V'; vClr=ctx.volt<13.0?'#ffb020':'#8fd3ff'; }
+  if(typeof ctx.volt==='number'&&ctx.volt>0){ vTxt=ctx.volt.toFixed(1)+'V'; const n=_carLaad(ctx.volt, pidVals['010C']); vClr=(n==='fout'||n==='letop')?'#ffb020':'#8fd3ff'; }
   set('carVolt',vTxt,vClr);
 
   // trip-balk

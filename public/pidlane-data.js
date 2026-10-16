@@ -26,7 +26,7 @@ window.PIDS = [
   {cat:'Motor',     pid:'010F',name:'Inlaatlucht temp',      unit:'°C',  min:-40, max:150,  wH:55},
   {cat:'Motor',     pid:'010E',name:'Ontstekingstiming',     unit:'°',   min:-64, max:64},
   {cat:'Motor',     pid:'010A',name:'Brandstofdruk',         unit:'kPa', min:0,   max:765,  wL:200},
-  {cat:'Temp',      pid:'0105',name:'Koelwater temp',        unit:'°C',  min:-40, max:215,  wH:100, dH:110},
+  {cat:'Temp',      pid:'0105',name:'Koelwater temp',        unit:'°C',  min:-40, max:215,  wH:105, dH:112},   // = PLKenmerk.KOEL_KLASSIEK/KOEL_HARD (#532)
   {cat:'Temp',      pid:'015C',name:'Motorolie temp',        unit:'°C',  min:-40, max:215,  wH:130, dH:150},
   {cat:'Temp',      pid:'0146',name:'Omgevingstemperatuur',  unit:'°C',  min:-40, max:85},
   {cat:'Brandstof', pid:'012F',name:'Brandstofpeil',         unit:'%',   min:0,   max:100,  wL:10},
@@ -104,13 +104,15 @@ window.PID_HARD_LIMITS = {
 window.PID_LET_OP = {
   // −10 was te streng: een gezonde SkyActiv-G ging op 23-09 naar −20° (#231).
   '010E':{min:-25, max:55,  waarom:'sterke terugregeling van de ontsteking — katalysator-opwarming of klopregeling'},
-  '0105':{min:-15, max:110, waarom:'koelwater boven bedrijfstemperatuur'},
+  '0105':{min:-15, max:112, waarom:'koelwater boven bedrijfstemperatuur'},   // 112 = PLKenmerk.KOEL_HARD (#532)
   '015C':{min:-15, max:140, waarom:'olietemperatuur boven normaal'},
   '010F':{min:-25, max:70,  waarom:'inlaatlucht warm — heat-soak of hoge buitentemperatuur'},
   '0142':{min:11.5,max:15.2,waarom:'boordspanning buiten het normale laadbereik'},
-  '0106':{min:-25, max:25,  waarom:'korte-termijn brandstoftrim ver buiten neutraal'},
-  '0107':{min:-25, max:25,  waarom:'lange-termijn brandstoftrim ver buiten neutraal'},
-  '010B':{min:15,  max:110, waarom:'inlaatspruitstukdruk buiten het gebruikelijke bereik'},
+  '0106':{min:-25, max:25,  waarom:'korte-termijn brandstoftrim ver buiten neutraal', voorwaarden:{ lpg:{ is:false, gangbaar:true } }},
+  '0107':{min:-25, max:25,  waarom:'lange-termijn brandstoftrim ver buiten neutraal', voorwaarden:{ lpg:{ is:false, gangbaar:true } }},
+  // Boven 110 kPa is gewoon laaddruk op een turbomotor (#532): de bovengrens
+  // geldt alleen zonder turbo. maxMet: met turbo ruim boven elke normale laaddruk.
+  '010B':{min:15,  max:110, waarom:'inlaatspruitstukdruk buiten het gebruikelijke bereik', maxVoorwaarden:{ turbo:false }, maxMet:300},
   '010C':{min:0,   max:7000,waarom:'toerental boven het gebruikelijke maximum'},
   '015E':{min:0,   max:60,  waarom:'hoog brandstofdebiet'},
   '0146':{min:-25, max:45,  waarom:'omgevingstemperatuur buiten het gebruikelijke bereik'},
@@ -456,44 +458,73 @@ window.ANALYSE_CATS = {
 };
 
 // ── CORRELATION_RULES (was index.html regel 5605) ──
+// ── De derde poort (#532, 16-10-2026) ──
+// Een regel heeft nu een oordeel() met een NIVEAU: 'fout', 'letop' (de
+// regel geldt waarschijnlijk, niet zeker voor deze auto) of 'onbeslist'
+// (de regel gaat uit van een kenmerk dat hier onbekend is). test() blijft
+// voor de oude lezers: waar bij fout of let op. Laadspanning en koelwater
+// komen uit één functie (PLKenmerk.laadLive / koelLive) in plaats van een
+// eigen grens per plek; de rest gaat door PLKenmerk.geldtLive(voorwaarden).
+// Ontbreekt PLKenmerk (laadt laat, of een test zonder), dan de oude grens.
+function _bevPoort(voorwaarden){
+  try{ return (window.PLKenmerk && PLKenmerk.geldtLive) ? PLKenmerk.toepassen('fout', PLKenmerk.geldtLive(voorwaarden)) : 'fout'; }
+  catch(e){ console.warn('bevinding: kenmerkpoort onleesbaar — oud gedrag', e); return 'fout'; }
+}
+function _bevRegel(r){
+  r.test=function(){ const o=r.oordeel(); return !!o && (o.niveau==='fout' || o.niveau==='letop'); };
+  return r;
+}
 window.CORRELATION_RULES =[
-  {
+  _bevRegel({
     id:'alternator',
     naam:'Mogelijk dynamo-/laadprobleem',
-    test:()=>{ const v=pidVals['0142'], rpm=pidVals['010C'];
-      // 16-10-2026: weet de auto wat hij vraagt, dan beslist dat (PLEigen.laad).
-      const lo=(window.PLEigen&&PLEigen.laad)?PLEigen.laad():null;
-      if(lo) return lo.staat==='laadt_niet';
-      return v!==undefined&&rpm!==undefined&&rpm>1000&&v<13.0; },
+    oordeel:()=>{ const v=pidVals['0142'], rpm=pidVals['010C'];
+      if(v===undefined||rpm===undefined||rpm<=1000) return null;
+      if(!window.PLKenmerk) return v<13.0 ? {niveau:'fout'} : null;
+      const r=PLKenmerk.laadLive(v, rpm);
+      return (r && r.niveau!=='ok') ? {niveau:r.niveau, tekst:r.tekst, geldt:r.geldt} : null; },
     uitleg:'Accuspanning blijft laag terwijl de motor draait — dynamo laadt mogelijk onvoldoende.'
-  },
-  {
+  }),
+  _bevRegel({
     id:'vacuumlek',
     naam:'Mogelijk vacuümlek',
-    test:()=>{ const stft=pidVals['0106'], ltft=pidVals['0107'], tps=pidVals['0111'];
-      return stft!==undefined&&ltft!==undefined&&(stft+ltft)>18&&(tps===undefined||tps<15); },
+    // Op LPG zeggen de trims van de benzine-ECU niets; zonder bewijs het gewone geval.
+    oordeel:()=>{ const stft=pidVals['0106'], ltft=pidVals['0107'], tps=pidVals['0111'];
+      if(!(stft!==undefined&&ltft!==undefined&&(stft+ltft)>18&&(tps===undefined||tps<15))) return null;
+      const n=_bevPoort({ lpg:{ is:false, gangbaar:true } }); return n ? {niveau:n} : null; },
     uitleg:'Brandstoftrims staan hoog positief bij gesloten gasklep — wijst op bijgemengde valse lucht (vacuümlek).'
-  },
-  {
+  }),
+  _bevRegel({
     id:'maf',
     naam:'Mogelijk vuile MAF / verstopt luchtfilter',
-    test:()=>{ const maf=pidVals['0110'], rpm=pidVals['010C'], load=pidVals['0104'];
-      return maf!==undefined&&rpm!==undefined&&rpm>1500&&load>40&&maf<3; },
+    oordeel:()=>{ const maf=pidVals['0110'], rpm=pidVals['010C'], load=pidVals['0104'];
+      return (maf!==undefined&&rpm!==undefined&&rpm>1500&&load>40&&maf<3) ? {niveau:'fout'} : null; },
     uitleg:'Luchtmassa blijft laag bij hoog toerental en belasting — mogelijk vervuilde MAF of luchtfilter.'
-  },
-  {
+  }),
+  _bevRegel({
     id:'thermostaat',
     naam:'Mogelijk thermostaatprobleem',
-    test:()=>{ const ect=pidVals['0105'];
-      return ect!==undefined&&pidHist['0105']?.length>40&&ect<70; },
-    uitleg:'Koelwater blijft langdurig onder bedrijfstemperatuur — thermostaat mogelijk vast open.'
-  },
-  {
+    // Tot 16-10-2026: "meer dan 40 monsters". Bij een snelle pollus is dat
+    // een halve minuut, en een koude motor is dan gewoon nog koud. Nu: de
+    // motor draait minstens 10 minuten (011F, anders de lengte van de reeks).
+    // Een hybride zet de motor tussendoor uit; zonder bewijs het gewone geval.
+    oordeel:()=>{ const ect=pidVals['0105'], rpm=pidVals['010C'], h=pidHist['0105']||[];
+      if(ect===undefined||ect>=70||!(rpm>400)) return null;
+      const loop=pidVals['011F'];
+      const lang=(typeof loop==='number') ? loop>=600 : (h.length>1 && h[h.length-1].t-h[0].t>=600000);
+      if(!lang) return null;
+      const n=_bevPoort({ hybride:{ is:false, gangbaar:true } }); return n ? {niveau:n} : null; },
+    uitleg:'Koelwater blijft na tien minuten draaien onder bedrijfstemperatuur — thermostaat mogelijk vast open.'
+  }),
+  _bevRegel({
     id:'oververhitting',
     naam:'Koelwater loopt op',
-    test:()=>{ const ect=pidVals['0105']; return ect!==undefined&&ect>105; },
+    oordeel:()=>{ const ect=pidVals['0105']; if(ect===undefined) return null;
+      if(!window.PLKenmerk) return ect>105 ? {niveau:'fout'} : null;
+      const r=PLKenmerk.koelLive(ect);
+      return (r && r.niveau!=='ok') ? {niveau:r.niveau, tekst:r.tekst, geldt:r.geldt} : null; },
     uitleg:'Koelvloeistoftemperatuur is hoog — controleer koeling vóór doorrijden.'
-  },
+  }),
 ];
 
 // ── CHK_CAT_META (was index.html regel 5699) ──
@@ -512,8 +543,9 @@ window.BSC_TESTS = [
    uitleg:'RPM stabiel binnen ±50 rpm', hold:5,
    band:(v,h)=>{ const b=bscBaseline(h['010C'],3); return b==null?null:{lo:b-50,hi:b+50,ref:b}; }},
   {id:'cool_warm', sit:'draaiend', groep:'universeel', naam:'Koelvloeistof opwarmen', pids:['0105'],
-   uitleg:'Geleidelijke stijging naar bedrijfstemperatuur (80–100 °C)', hold:4,
-   band:{lo:70,hi:105}, trend:'stijgend'},
+   uitleg:'Geleidelijke stijging naar bedrijfstemperatuur (80–100 °C, bij een kenveldthermostaat tot 112 °C)', hold:4,
+   // hi 112 = PLKenmerk.KOEL_HARD (#532): VAG/BMW draaien bewust 105–112 °C.
+   band:{lo:70,hi:112}, trend:'stijgend'},
   /* 27-07-2026 — deze test toetste tegen de LAADband (13,3-15,0 V) maar had
      geen enkele voorwaarde. Met de motor uit staat een gezonde accu op ~12,5 V
      en zakte hij dus altijd. De laadspanning wordt al correct getest door
@@ -523,8 +555,12 @@ window.BSC_TESTS = [
   {id:'batt_rust', sit:'motoruit', groep:'universeel', naam:'Accuspanning in rust', pids:['0142'],
    uitleg:'Contact aan maar motor uit: een gezonde accu staat op 12,4-12,8 V. Onder 12,2 V is hij half leeg of versleten.',
    hold:4,
-   band:{lo:12.2,hi:12.9, ref:12.6}},
-  {id:'map_idle', sit:'stationair', groep:'universeel', naam:'MAP-druk stationair', pids:['010B'],
+   // hi 13,3 (#532): net na het rijden staat er een oppervlaktelading op de
+   // accu en een AGM/EFB rust hoger. 12,9 keurde een volle accu af.
+   band:{lo:12.2,hi:13.3, ref:12.6}},
+  // groep benzine (#532): een diesel heeft geen gasklep en staat stationair op
+  // ≈ buitenluchtdruk; als "universeel" zakte elke diesel voor deze test.
+  {id:'map_idle', sit:'stationair', groep:'benzine', naam:'MAP-druk stationair', pids:['010B'],
    uitleg:'30–40 kPa stationair = geen vacuümlek', hold:4, band:{lo:25,hi:45}},
   {id:'tps_lin', sit:'draaiend', groep:'universeel', naam:'Gasklep respons', pids:['0111'],
    uitleg:'Trap gas rustig in: 0→100 % vloeiend', hold:3, band:{lo:0,hi:100}, dynamiek:true},
@@ -532,7 +568,8 @@ window.BSC_TESTS = [
    uitleg:'IAT ≈ buitentemperatuur bij koude motor', hold:3,
    band:(v)=>{ const amb=v['0146']; return amb==null?{lo:-10,hi:45}:{lo:amb-8,hi:amb+15,ref:amb}; }},
   {id:'ltft', sit:'draaiend', warm:true, groep:'universeel', naam:'Brandstoftrim (LTFT)', pids:['0107'],
-   uitleg:'Lange trim tussen −10 % en +10 %', hold:4, band:{lo:-10,hi:10}},
+   uitleg:'Lange trim tussen −10 % en +10 %', hold:4, band:{lo:-10,hi:10},
+   voorwaarden:{ lpg:{ is:false, gangbaar:true } }},   // op LPG zeggen de benzinetrims niets (#532)
   {id:'misfire', sit:'constant', motor:true, groep:'universeel', naam:'Misfire-monitor', pids:['010C','0104'],
    uitleg:'RPM mag niet plots inzakken onder lichte belasting (indirecte misfire)', hold:5,
    band:(v,h)=>{ const b=bscBaseline(h['010C'],4); return b==null?null:{lo:b-120,hi:b+400,ref:b}; }},
@@ -554,7 +591,9 @@ window.BSC_TESTS = [
   {id:'o2_switch', sit:'stationair', warm:true, groep:'universeel', naam:'Lambdasensor schakelt (smalband)', pids:['0114'],
    uitleg:'Motor warm en stationair: de voorste smalbandsensor hoort meerdere keren per seconde tussen 0,1 en 0,9 V te pendelen.',
    hold:4,
-   band:{lo:0.05,hi:0.95}, oscilleren:true},
+   band:{lo:0.05,hi:0.95}, oscilleren:true,
+   // Een breedbandauto kan 0114 als dode plaatshouder aanbieden (b1s1Line).
+   voorwaarden:{ breedband_b1s1:{ is:false, gangbaar:true } }},
   /* Achterste sensor (ná de katalysator). Die hoort zich juist ANDERS te
      gedragen dan de voorste: een werkende kat buffert zuurstof, waardoor de
      achterste sensor traag en vlak rond 0,6-0,8 V blijft hangen. Gaat hij
