@@ -75,7 +75,14 @@
      lege waarneming maken die nergens meer uit komt — en die zou er als
      "onbekend" uitzien, wat hier niets betekent maar wel geruststelt. */
   var KENT = {
-    startstop: 'start/stop-systeem'
+    startstop: 'start/stop-systeem',
+    // Kenmerken voor de derde poort (PLKenmerk, #532). Gezien door een meting
+    // of een mens; "nee" alleen door een mens (weerleg).
+    slimladen: 'gestuurde laadregeling (slim laden)',
+    kenveldthermostaat: 'kenveldthermostaat',
+    turbo: 'turbo',
+    lpg: 'LPG-installatie',
+    cvt: 'traploze automaat (CVT)'
   };
 
   var _reg = {};          // wat, → { status, bron, wanneer, bewijs, weerlegdOp }
@@ -213,7 +220,8 @@
     _synchroniseer();
     var o = opties || {};
     var t = (typeof o.wanneer === 'number' && o.wanneer > 0) ? o.wanneer : _nu();
-    _leg(wat, { status: 'gezien', bron: 'meting', wanneer: t, bewijs: _schoon(o.bewijs) });
+    // Een mens kan ook "ja" zeggen (PLKenmerk.antwoord, #532): nog steeds gezien.
+    _leg(wat, { status: 'gezien', bron: o.bron === 'mens' ? 'mens' : 'meting', wanneer: t, bewijs: _schoon(o.bewijs) });
     _bewaar();
     return lees(wat);
   }

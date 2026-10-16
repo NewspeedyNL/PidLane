@@ -194,6 +194,42 @@
   function max(a) { a = getallen(a); return a.length ? Math.max.apply(null, a) : null; }
   function genoeg(a, n) { return getallen(a).length >= (n || 5); }
   function r1(v) { return v == null ? '?' : (Math.round(v * 10) / 10).toLocaleString('nl'); }
+
+  /* De derde poort (#532). Een stap levert bewijs {h, d, t}; als de regel
+     uitgaat van een kenmerk van de auto, gaat dat bewijs eerst door
+     PLKenmerk: fout → volle weging, let op → halve weging met "niet zeker",
+     onbeslist → {h:null, d:0} en "niet te beoordelen" (zo kent het rapport
+     het al), geldt niet → geen bewijs. Zonder PLKenmerk: de oude regel. */
+  function kmPoort(voorwaarden) {
+    try { return window.PLKenmerk ? PLKenmerk.toepassen('fout', PLKenmerk.geldtLive(voorwaarden)) : 'fout'; }
+    catch (e) { console.warn('PLOnderzoek: kenmerkpoort onleesbaar — oud gedrag', e); return 'fout'; }
+  }
+  function kmBewijs(niveau, h, d, t, r) {
+    if (!niveau) return null;
+    if (niveau === 'onbeslist') return { h: null, d: 0, t: (r && r.tekst) || (t + ' — niet te beoordelen op deze auto') };
+    if (niveau === 'letop') return { h: h, d: d / 2, t: t + ' (niet zeker voor deze auto)' };
+    return { h: h, d: d, t: t };
+  }
+  function kmKoel(t) {
+    try { return window.PLKenmerk ? PLKenmerk.koelLive(t) : (t >= 106 ? { niveau: 'fout' } : { niveau: 'ok' }); }
+    catch (e) { console.warn('PLOnderzoek: koelwateroordeel', e); return null; }
+  }
+  // Laadspanning: één grens (PLKenmerk.laadspanning), stationair = 800 tpm.
+  function laadBewijs(v, dFout, dOk, voor) {
+    var t0 = (voor ? voor + ' ' : 'laadspanning ') + r1(v) + ' V';
+    var r = null;
+    try { r = window.PLKenmerk ? PLKenmerk.laadLive(v, 800) : null; }
+    catch (e) { console.warn('PLOnderzoek: laadoordeel', e); }
+    if (!r) {
+      if (v < 13.0) return [{ h: 'laad', d: dFout, t: t0 + ' — de dynamo laadt niet genoeg' }];
+      if (v > 15.0) return [{ h: 'laad', d: dFout, t: t0 + ' — te hoog, de regelaar knijpt niet af' }];
+      return v >= 13.4 ? [{ h: 'laad', d: dOk, t: t0 + ' — de dynamo laadt' }] : [];
+    }
+    if (r.niveau === 'ok') return [{ h: 'laad', d: dOk, t: t0 + ' — ' + r.tekst.replace(/^laadspanning [\d,]+ V — /, '') }];
+    if (r.niveau === 'onbeslist') return [kmBewijs('onbeslist', 'laad', dFout, t0, r)];
+    // r.tekst is al een volledige zin, met "(niet zeker voor deze auto)" bij let op.
+    return [{ h: 'laad', d: r.niveau === 'letop' ? dFout / 2 : dFout, t: (voor ? voor + ': ' : '') + r.tekst }];
+  }
   // Totale brandstoftrim van bank 1: kort + lang. Dat is wat de ECU werkelijk
   // bijstuurt; alleen de lange trim mist een lek dat net is ontstaan.
   function trim(u) {
@@ -238,15 +274,12 @@
       } },
 
     { id: 'laden', soort: 'meten', titel: 'Laadspanning bij stationair', icoon: '⚡',
-      waarom: 'Met draaiende motor hoort de dynamo tussen 13,4 en 14,8 V te leveren.',
+      waarom: 'Met draaiende motor hoort de dynamo te laden. Een slimme laadregeling vraagt bij een volle accu bewust 12,5–13 V; de gevraagde laadspanning zegt dan of hij doet wat hij moet.',
       voorwaarde: 'motor_aan', pids: ['0142', '010C'], duurMs: 15000,
       test: { laad: 2.5, accu: 0.5 },
       beoordeel: function (u) {
         var v = gem(u.reeks['0142']); if (!genoeg(u.reeks['0142'], 4)) return [];
-        if (v < 13.0) return [{ h: 'laad', d: 2.5, t: 'laadspanning ' + r1(v) + ' V — de dynamo laadt niet genoeg' }];
-        if (v > 15.0) return [{ h: 'laad', d: 2.5, t: 'laadspanning ' + r1(v) + ' V — te hoog, de regelaar knijpt niet af' }];
-        if (v >= 13.4) return [{ h: 'laad', d: -2, t: 'laadspanning ' + r1(v) + ' V — de dynamo laadt' }];
-        return [{ h: 'laad', d: 0.5, t: 'laadspanning ' + r1(v) + ' V — net onder de norm' }];
+        return laadBewijs(v, 2.5, -2);
       } },
 
     { id: 'laden_belast', soort: 'meten', titel: 'Laden onder belasting', icoon: '💡',
@@ -256,9 +289,7 @@
       test: { laad: 2 },
       beoordeel: function (u) {
         var v = gem(u.reeks['0142']); if (!genoeg(u.reeks['0142'], 4)) return [];
-        if (v < 12.9) return [{ h: 'laad', d: 2, t: 'onder belasting ' + r1(v) + ' V — de dynamo houdt het niet bij' }];
-        if (v >= 13.2) return [{ h: 'laad', d: -1.5, t: 'onder belasting ' + r1(v) + ' V — de dynamo houdt het bij' }];
-        return [];
+        return laadBewijs(v, 2, -1.5, 'onder belasting');
       } },
 
     { id: 'stationair', soort: 'meten', titel: 'Stationair: trims, luchtmassa en rust', icoon: '⏱️',
@@ -272,6 +303,8 @@
           if (rpmS > 180) { r.push({ h: 'misfire', d: 1, t: 'toerental schommelt ' + Math.round(rpmS) + ' tpm stationair' }); r.push({ h: 'valselucht', d: 0.5, t: 'onrustig stationair (' + Math.round(rpmS) + ' tpm)' }); }
           else if (rpmS < 60) r.push({ h: 'misfire', d: -1, t: 'stationair rustig (' + Math.round(rpmS) + ' tpm spreiding)' });
         }
+        // Op LPG zeggen de trims van de benzine-ECU niets (#532); zonder bewijs het gewone geval.
+        if (t != null && kmPoort({ lpg: { is: false, gangbaar: true } }) === null) { r.push({ h: null, d: 0, t: 'brandstoftrim niet beoordeeld — deze auto rijdt op LPG' }); t = null; }
         if (t != null && genoeg(u.reeks['0106'] || u.reeks['0107'], 5)) {
           st.metingen.trimStationair = t;
           if (t > 12) {
@@ -323,6 +356,8 @@
       test: { lambda: 2.5, kat: 2.5 },
       beoordeel: function (u) {
         var r = [], v = sprei(u.reeks['0114']), a = sprei(u.reeks['0115']);
+        // Op een breedbandauto is 0114 een plaatshouder, geen luie sonde (#532).
+        if (v != null && kmPoort({ breedband_b1s1: { is: false, gangbaar: true } }) === null) { r.push({ h: null, d: 0, t: 'smalband 0114 niet beoordeeld — deze auto meet vóór de katalysator met een breedbandsonde' }); v = null; }
         if (v != null && genoeg(u.reeks['0114'], 8)) {
           if (v < 0.3) r.push({ h: 'lambda', d: 2.5, t: 'voorste sonde wisselt maar ' + r1(v) + ' V — traag of defect' });
           else r.push({ h: 'lambda', d: -2, t: 'voorste sonde wisselt ' + r1(v) + ' V — reageert goed' });
@@ -398,7 +433,8 @@
       beoordeel: function (u, st) {
         var r = [], hoog = max(u.reeks['0105']), eind = gem((u.reeks['0105'] || []).slice(-5));
         if (!genoeg(u.reeks['0105'], 5)) return r;
-        if (hoog >= 106) r.push({ h: 'koeling', d: 2.5, t: 'koelwater tot ' + Math.round(hoog) + ' °C — te warm' });
+        var kw = kmKoel(hoog);
+        if (kw && kw.niveau !== 'ok') r.push(kmBewijs(kw.niveau, 'koeling', 2.5, 'koelwater tot ' + Math.round(hoog) + ' °C — te warm', kw));
         else r.push({ h: 'koeling', d: -1.5, t: 'koelwater hoogstens ' + Math.round(hoog) + ' °C — binnen de norm' });
         var lang = st.antwoorden.looptijd === 'lang';
         if (lang && eind < 78) r.push({ h: 'thermostaat', d: 2.5, t: 'na meer dan 15 minuten pas ' + Math.round(eind) + ' °C — de motor komt niet op temperatuur' });
@@ -431,7 +467,8 @@
         for (var i = 0; i < map.length; i++) if (last[i] >= 80 && typeof map[i] === 'number') beste = Math.max(beste == null ? 0 : beste, map[i] - baro);
         if (beste == null) return [{ h: null, d: 0, t: 'geen moment met vollast gemeten — de laaddruk is niet beoordeeld' }];
         if (beste < 15) return [{ h: null, d: 0, t: 'laaddruk ' + Math.round(beste) + ' kPa boven de buitenlucht — dit lijkt een motor zonder turbo' }];
-        if (beste < 60) return [{ h: 'turbo', d: 2.5, t: 'laaddruk onder vollast maar ' + Math.round(beste) + ' kPa — te weinig voor een turbomotor' }];
+        // "Te weinig voor een turbo" veronderstelt een turbo met gewone laaddruk (#532).
+        if (beste < 60) return [kmBewijs(kmPoort({ turbo: true }), 'turbo', 2.5, 'laaddruk onder vollast maar ' + Math.round(beste) + ' kPa — te weinig voor een turbomotor')].filter(Boolean);
         return [{ h: 'turbo', d: -2.5, t: 'laaddruk ' + Math.round(beste) + ' kPa onder vollast — de turbo levert' }];
       } },
 

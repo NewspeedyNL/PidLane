@@ -51,6 +51,8 @@ function laad(opties) {
   vm.createContext(s);
   // De conditiescore (#475) hangt in de app vóór de garage; alleen als de toets erom vraagt.
   if (o.conditie) vm.runInContext(fs.readFileSync(__dirname + '/pidlane-conditie.js', 'utf8'), s, { filename: 'pidlane-conditie.js' });
+  // De derde poort (#532) hoort bij de echte app; zonder hem rekent de garage met de oude grenzen.
+  if (o.kenmerk !== false) vm.runInContext(fs.readFileSync(__dirname + '/pidlane-kenmerk.js', 'utf8'), s, { filename: 'pidlane-kenmerk.js' });
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-garage.js', 'utf8'), s, { filename: 'pidlane-garage.js' });
   return { G: s.PLGarage, K: s.PLGarage._kern, verzoeken, opslag, s };
 }
@@ -71,8 +73,12 @@ function laad(opties) {
   // 16-10-2026: weet de auto wat hij vroeg, dan beslist dat (PLEigen.laadOordeel).
   st = K.status({ laatst_gezien: '2026-09-26T10:00:00Z', gezondheid: { accuRust: 12.6, accuLopend: 12.7, laadStaat: 'bewust_laag' } }, nu);
   eis(st.kleur === 'groen', 'laadspanning 12,7 V die de auto zelf vroeg → groen', JSON.stringify(st));
+  st = K.status({ laatst_gezien: '2026-09-26T10:00:00Z', merk: 'Opel', bouwjaar: 2001, gezondheid: { accuRust: 12.6, accuLopend: 12.7 } }, nu);
+  eis(st.kleur === 'oranje' && /12,7 V \(niet zeker voor deze auto\)/.test(st.punten[0].tekst), 'tegenproef: Opel uit 2001 (waarschijnlijk gewone dynamo), 12,7 V → oranje, met "niet zeker"', JSON.stringify(st));
   st = K.status({ laatst_gezien: '2026-09-26T10:00:00Z', gezondheid: { accuRust: 12.6, accuLopend: 12.7 } }, nu);
-  eis(st.kleur === 'oranje' && /normaal 13,2/.test(st.punten[0].tekst), 'tegenproef: zonder oordeel van de auto 12,7 V → oranje', JSON.stringify(st));
+  eis(st.kleur === 'groen', 'van de auto niets bekend, 12,7 V: niet te beoordelen, dus geen oranje (#532)', JSON.stringify(st));
+  st = K.status({ laatst_gezien: '2026-09-26T10:00:00Z', gezondheid: { accuRust: 12.6, accuLopend: 11.9 } }, nu);
+  eis(st.kleur === 'oranje', 'tegenproef: 11,9 V bij draaiende motor is op elke auto oranje (harde grens)', JSON.stringify(st));
   st = K.status({ laatst_gezien: '2026-09-26T10:00:00Z', gezondheid: { accuRust: 12.6, accuLopend: 13.6, laadStaat: 'laadt_niet' } }, nu);
   eis(st.kleur === 'oranje' && /haalt niet wat/.test(st.punten[0].tekst), '13,6 V terwijl er meer gevraagd wordt → oranje', JSON.stringify(st));
   st = K.status({ laatst_gezien: '2026-09-26T10:00:00Z', gezondheid: { accuLopend: 15.3, laadStaat: 'laadt' } }, nu);
@@ -266,8 +272,12 @@ function laad(opties) {
   eis(adv.some((a) => a.soort === 'rijprofiel' && /roetfilter/.test(a.tekst)), 'diesel met korte ritten → roetfilteradvies');
   adv = K.advies({ brandstof: 'benzine' }, [1, 2, 3, 4, 5].map(() => ({ km: 4 })), nu);
   eis(adv.some((a) => a.soort === 'rijprofiel') && !adv.some((a) => /roetfilter/.test(a.tekst)), 'benzine met korte ritten: geen roetfilter');
-  adv = K.advies({}, [{ km: 20, max_koelwater: 109 }], nu);
-  eis(adv.some((a) => a.soort === 'koeling'), 'koelwater boven 105 → koeling nakijken');
+  adv = K.advies({ merk: 'Mazda' }, [{ km: 20, max_koelwater: 109 }], nu);
+  eis(adv.some((a) => a.soort === 'koeling'), 'koelwater 109 °C op een Mazda (vaste thermostaat waarschijnlijk) → koeling nakijken');
+  adv = K.advies({ merk: 'Volkswagen' }, [{ km: 20, max_koelwater: 109 }], nu);
+  eis(!adv.some((a) => a.soort === 'koeling'), '109 °C op een Volkswagen (kenveldthermostaat waarschijnlijk): niet te beoordelen, geen advies (#532)');
+  adv = K.advies({ merk: 'Volkswagen' }, [{ km: 20, max_koelwater: 115 }], nu);
+  eis(adv.some((a) => a.soort === 'koeling'), 'tegenproef: 115 °C is op elke motor te heet, ook op een Volkswagen');
   adv = K.advies({ apk_tot: '2026-11-01' }, [], nu);
   eis(adv.some((a) => a.soort === 'apk'), 'APK binnen 60 dagen → plannen');
   eis(K.advies({}, [], nu).length === 0, 'geen gegevens → geen advies');
@@ -532,7 +542,7 @@ function laad(opties) {
   console.log('\nAdvies: lage laadspanning in ritten, tenzij de auto het zelf zo regelt (16-10-2026)');
   {
     const ritten = [{ min_accu: 12.6 }, { min_accu: 12.8 }, { min_accu: 12.7 }];
-    const zonder = K.advies({ gezondheid: {} }, ritten, Date.now()).some((a) => a.soort === 'laden');
+    const zonder = K.advies({ bouwjaar: 2001, gezondheid: {} }, ritten, Date.now()).some((a) => a.soort === 'laden');
     const met = K.advies({ gezondheid: { laadStaat: 'bewust_laag' } }, ritten, Date.now()).some((a) => a.soort === 'laden');
     const kapot = K.advies({ gezondheid: { laadStaat: 'laadt_niet' } }, ritten, Date.now()).some((a) => a.soort === 'laden');
     eis(zonder && !met && kapot, 'laadadvies: zonder oordeel wel, bij bewust laag niet, bij laadt-niet wel', [zonder, met, kapot].join());

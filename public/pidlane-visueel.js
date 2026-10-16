@@ -547,11 +547,14 @@ function plekOordeel(rol, v, def, rpm){
   if(rol==='accu'){
     if(n<ACCU_LAAG || n>ACCU_HOOG) return 'danger';
     const r=Number(rpm);
-    // Weet de auto wat hij vraagt (PLEigen.laad), dan is lage spanning die
-    // gevraagd is geen waarschuwing — en onder de vraag blijven wél.
-    let lo=null;
-    try{ lo=(window.PLEigen && PLEigen.laad) ? PLEigen.laad() : null; }catch(e){ console.warn('PLVisueel: laadoordeel', e); }
-    if(lo) return lo.staat==='laadt_niet' ? 'warn' : 'ok';
+    // Eén grens voor de laadspanning (PLKenmerk.laadspanning, #532): de
+    // gevraagde spanning als de auto die geeft, 13,2 V alleen bij een gewone
+    // dynamo. Niet te beoordelen is hier geen oranje.
+    if(isFinite(r) && r>MOTOR_DRAAIT && window.PLKenmerk){
+      let lo=null;
+      try{ lo=PLKenmerk.laadLive(n, r); }catch(e){ console.warn('PLVisueel: laadoordeel', e); }
+      if(lo) return (lo.niveau==='fout' || lo.niveau==='letop') ? 'warn' : 'ok';
+    }
     if(isFinite(r) && r>MOTOR_DRAAIT && n<ACCU_LAADT) return 'warn';
     return 'ok';
   }

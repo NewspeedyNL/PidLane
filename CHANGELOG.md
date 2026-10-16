@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 16-10-2026 — De derde poort: geldt deze regel voor déze auto? (#532)
+ ═══════════════════════════════════════════════════════════
+ Nieuw: pidlane-kenmerk.js (PLKenmerk). Elke auto krijgt een profiel
+ van kenmerken (slim laden, kenveldthermostaat, turbo, diesel, hybride,
+ LPG, CVT, breedbandsonde), bewezen of waarschijnlijk, met de bron.
+ Een regel die uitgaat van een kenmerk dat onbekend is, zegt "niet te
+ beoordelen" in plaats van een fout; bij waarschijnlijk "niet zeker
+ voor deze auto". Harde grenzen (onder 12,2 V laden, boven 112 °C)
+ blijven op elke auto fout.
+ Laadspanning en koelwater hebben nu één grens, op elke plek die
+ een fout of let op meldt.
+ De AI krijgt een blok met de kenmerken en wat niet te beoordelen is.
+ Het venster van de bevindingen stelt de vraag (Ja/Nee) die het
+ beslist; het antwoord blijft bij de auto.
+ Ook: vacuümtest niet meer op diesels, inlaatdruk boven 110 kPa geen
+ "let op" meer op een turbo, thermostaatbevinding pas na 10 minuten.
+
+ ═══════════════════════════════════════════════════════════
  16-10-2026 — Laadspanning: de auto zegt zelf wat hij vraagt
  ═══════════════════════════════════════════════════════════
  Met een eigen sensor "Commanded generator voltage" (Mazda 220304) of

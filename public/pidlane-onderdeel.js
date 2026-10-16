@@ -349,6 +349,22 @@ function railTreffers(c){
   return uit;
 }
 
+/* De derde poort (#532): koelwater en laadspanning uit één grens per
+   grootheid. kmKoelRaak → true (te warm voor deze auto), false, of null
+   (niet te beoordelen = geen data). kmLaad → niveau of null. */
+function kmKoelRaak(t){
+  if(!window.PLKenmerk) return t>105;
+  var r=null;
+  try{ r=PLKenmerk.koelLive(t); }catch(e){ console.warn('PLOnderdeel: koelwateroordeel', e); return t>105; }
+  if(!r) return null;
+  return r.niveau==='onbeslist' ? null : (r.niveau==='fout' || r.niveau==='letop');
+}
+function kmLaad(u, rpm){
+  if(!window.PLKenmerk) return (typeof u==='number' && u<13.2) ? 'fout' : 'ok';
+  try{ var r=PLKenmerk.laadLive(u, rpm); return r ? r.niveau : null; }
+  catch(e){ console.warn('PLOnderdeel: laadoordeel', e); return (typeof u==='number' && u<13.2) ? 'fout' : 'ok'; }
+}
+
 /* Een voorwaarde: {tekst, w, test}
    test(c) geeft true (bevestigt), false (spreekt tegen) of null (geen data).
    `c` is de motorstand uit context(). */
@@ -549,9 +565,9 @@ var REGELS = [
         if(c.looptijd!==null) return c.looptijd>=600;
         return reeksOordeel(aanhoudend('0105', function(v){ return v<75; }, 600000, 10));
       }, {xor:'temp'}),
-      C('Koelwater boven 105 °C', 4, function(c){
+      C('Koelwater boven 105 °C (112 °C bij een kenveldthermostaat)', 4, function(c){
         if(c.draait!==true) return null;
-        return c.ect===null?null:(c.ect>105);
+        return c.ect===null?null:kmKoelRaak(c.ect);
       }, {xor:'temp'})
     ]
   },
@@ -560,10 +576,11 @@ var REGELS = [
     hint:'Wordt heet in de file en koelt juist af zodra je rijdt — precies andersom dan bij een thermostaat.',
     vc:[
       C('Ventilatorcode aanwezig (P048x)', 5, dtcProef(/^P048[0-9A-F]$/)),
-      C('Koelwater boven 102 °C terwijl de auto stilstaat', 4, function(c){
+      C('Koelwater boven 105 °C terwijl de auto stilstaat', 4, function(c){
         if(c.draait!==true) return null;
         if(c.snelheid===null || c.snelheid>5) return null;
-        return c.ect===null?null:(c.ect>102);
+        // Tot 16-10-2026 stond hier 102 °C; één grens voor koelwater (#532).
+        return c.ect===null?null:kmKoelRaak(c.ect);
       })
     ]
   },
@@ -588,7 +605,10 @@ var REGELS = [
         // Eén meting is hier te weinig: bij het inschakelen van een zware
         // verbruiker zakt de spanning even in. Een reeks die laag blijft is
         // een laadfout; één dip is een koplamp.
-        return reeksOordeel(aanhoudend('0142', function(v){ return v<13.2; }, 5000, 3));
+        // Eén grens voor de laadspanning (PLKenmerk, #532): op een auto die
+        // slim laadt is lager dan 13,2 V geen bewijs; onbeslist = geen data.
+        if(kmLaad(V('0142'), c.rpm)==='onbeslist') return null;
+        return reeksOordeel(aanhoudend('0142', function(v){ var n=kmLaad(v, c.rpm); return n==='fout'||n==='letop'; }, 5000, 3));
       }, {xor:'laad'}),
       C('Laadspanning te hoog — regelaar regelt niet af', 5, function(c){
         if(c.draait!==true) return null;

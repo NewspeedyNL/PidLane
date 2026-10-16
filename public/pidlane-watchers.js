@@ -134,7 +134,7 @@ const PLWatch = {
   // duurMs: hoe lang de fase minimaal moet aanhouden vóór meten (in-schakel-rust)
   // check(c): null = geslaagd/geen bevinding; string = melding
   tests: [
-    { id:'RPM_CONST', naam:'toerentalstabiliteit bij constante snelheid',
+    { id:'RPM_CONST', naam:'toerentalstabiliteit bij constante snelheid', voorwaarden:{ cvt:{ is:false, gangbaar:true } },
       fase:['constant'], warm:null, pids:['010C','010D'], duurMs:5000, aandrijving:true,
       // Rauwe max-min op het toerental weet niet dat een hoger toerental bij
       // een hogere snelheid gewoon klopt: bij 22->29 km/h gaf dat 558 rpm
@@ -146,7 +146,8 @@ const PLWatch = {
         if(g.spreidPct>15) return `toerental onrustig bij constante snelheid (rpm/snelheid varieert ${Math.round(g.spreidPct)}%) — kan wijzen op overslaan of slippende koppeling/omvormer`;
         return null; } },
 
-    { id:'RATIO_CONST', naam:'overbrengingsverhouding bij constante snelheid',
+    { id:'RATIO_CONST', naam:'overbrengingsverhouding bij constante snelheid', voorwaarden:{ cvt:{ is:false, gangbaar:true } },
+      // Een CVT verandert zijn overbrenging bij constante snelheid (#532).
       fase:['constant'], warm:null, pids:['010C','010D'], duurMs:6000, aandrijving:true,
       // Slip = de verhouding DRIJFT geleidelijk weg. Schakelen = één stap naar
       // een nieuwe stabiele waarde. De oude test kende dat verschil niet en
@@ -203,7 +204,8 @@ const PLWatch = {
         return `ruw stationair: toerental schommelt ${Math.round(spread)} rpm (IQR, ${Math.round(omkPct*100)}% richtingswisselingen${blTekst}) — een in- en uitschakelende airco geeft ditzelfde beeld: zet die eerst uit en kijk of het blijft. Blijft het, denk dan aan valse lucht, bobine/bougie of stationairregeling`;
         } },
 
-    { id:'STAT_MAP', naam:'inlaatdruk bij stationair (vacuüm)',
+    { id:'STAT_MAP', naam:'inlaatdruk bij stationair (vacuüm)', voorwaarden:{ diesel:{ is:false, gangbaar:true } },
+      // Een diesel heeft geen gasklep en geen vacuüm (#532).
       fase:['stationair'], warm:true, pids:['010B','0111','0106'], duurMs:5000,
       // guard: alleen met gesloten gasklep én aanwezige trims (benzine-smoorklepmotor);
       // een diesel heeft stationair vrijwel buitendruk en zou vals alarmeren.
@@ -223,27 +225,25 @@ const PLWatch = {
 
     { id:'LAADSPANNING', naam:'laadspanning bij draaiende motor',
       fase:null, warm:null, pids:['0142','010C'], duurMs:0,
-      // 04-10-2026 — SLIMME LAADREGELING. De grens stond op 13,2 V over 8 s.
-      // Vrijwel elke auto van na ~2010 laadt met een gestuurde dynamo: bij een
-      // volle accu en bij constant rijden zakt de spanning bewust naar
-      // 12,5-13 V, en bij gas los of remmen gaat hij omhoog (terugwinnen).
-      // 12,9 V op de snelweg is daar dus gezond. Een dynamo die écht niet laadt
-      // laat de spanning onder de rustspanning van de accu (~12,6 V) zakken en
-      // blijft daar; vandaar 12,7 V gemiddeld over 30 s.
+      // 04-10-2026 — SLIMME LAADREGELING: een gestuurde dynamo laadt bij een
+      // volle accu bewust 12,5-13 V. 16-10-2026 (#531/#532): het oordeel komt
+      // nu uit één functie, PLKenmerk.laadspanning(): de gevraagde laadspanning
+      // als de auto die geeft, anders 13,2 V alleen bij een gewone dynamo en
+      // altijd fout onder 12,2 of boven 15,2 V. Gemiddeld over 30 s.
       check(c){ if(c.val('010C')<500) return null;   // motor moet draaien
         const v=c.win('0142',30000); if(v.length<4) return null;
         const gem=v.reduce((a,b)=>a+b,0)/v.length;
-        // 16-10-2026 — weet de auto wat hij vraagt (PLEigen.laadOordeel), dan
-        // beslist dat: lage spanning die gevraagd is, is geen storing; een
-        // dynamo die onder de vraag blijft wél, ook boven 12,7 V.
-        const lo=laadOordeelVenster(c, gem);
-        if(lo && lo.staat==='laadt_niet') return `laadspanning: ${lo.tekst} (gemiddeld over 30 s)`;
-        if(lo && gem<=15.2) return null;
-        if(gem<12.7) return `laadspanning laag: gemiddeld ${gem.toFixed(1)} V over 30 s bij draaiende motor (lager dan een rustende accu) — dynamo/riem/massaverbinding controleren`;
-        if(gem>15.2) return `laadspanning hoog: gemiddeld ${gem.toFixed(1)} V — spanningsregelaar verdacht`;
-        return null; } },
+        if(!window.PLKenmerk){
+          if(gem<12.7) return `laadspanning laag: gemiddeld ${gem.toFixed(1)} V over 30 s bij draaiende motor`;
+          return gem>15.2 ? `laadspanning hoog: gemiddeld ${gem.toFixed(1)} V — spanningsregelaar verdacht` : null;
+        }
+        const r=PLKenmerk.laadspanning(gem, c.val('010C'), { laad:laadOordeelVenster(c, gem), prof:PLKenmerk.live() });
+        if(!r || r.niveau==='ok') { PLKenmerk.wisNotitie('watch_LAADSPANNING'); return null; }
+        if(r.niveau==='onbeslist'){ PLKenmerk.noteer('watch_LAADSPANNING', 'laadspanning bij draaiende motor', r.geldt); return null; }
+        return `${r.tekst} (gemiddeld over 30 s)`; } },
 
-    { id:'O2_ACTIVITEIT', naam:'lambdasonde-activiteit (warm stationair)',
+    { id:'O2_ACTIVITEIT', naam:'lambdasonde-activiteit (warm stationair)', voorwaarden:{ breedband_b1s1:{ is:false, gangbaar:true } },
+      // 0114 op een breedbandauto is een plaatshouder, geen luie sonde (#532).
       fase:['stationair'], warm:true, pids:['0114','010C'], duurMs:10000,
       check(c){ const o=c.win('0114',10000); if(o.length<8) return null;
         if(Math.max(...o)-Math.min(...o)<0.2) return `lambdasonde B1S1 nauwelijks actief (spreiding ${(Math.max(...o)-Math.min(...o)).toFixed(2)} V over 10s) — luie of vlakke sonde`;
@@ -508,6 +508,17 @@ const PLWatch = {
       if(t.pids && t.pids.some(p=>{
         const arr=h[p]; return !(Array.isArray(arr)&&arr.length&&nu-arr[arr.length-1].t<10000);
       })) continue;
+      // 4. kenmerk-poort (#532): de test gaat uit van een kenmerk van de auto.
+      // Bewezen afwezig: overslaan. Onbekend: niet te beoordelen, genoteerd.
+      // Waarschijnlijk: hij draait, maar de melding zegt dat het niet zeker is.
+      let kmZeker=true;
+      if(t.voorwaarden && window.PLKenmerk){
+        let g=null;
+        try{ g=PLKenmerk.geldtLive(t.voorwaarden); }catch(e){ console.warn('watcher '+t.id+': kenmerkpoort onleesbaar', e); }
+        if(g && g.uitkomst==='geldt_niet') continue;
+        if(g && g.uitkomst==='onbekend'){ PLKenmerk.noteer('watch_'+t.id, t.naam, g); continue; }
+        kmZeker=!(g && g.uitkomst==='waarschijnlijk');
+      }
       // → test draait daadwerkelijk: dekking bijhouden
       const d=this._dekking[t.id]||(this._dekking[t.id]={runs:0,hits:0});
       d.runs++;
@@ -515,7 +526,7 @@ const PLWatch = {
       try{ uitkomst=t.check(ctx); }catch(e){ console.warn('t.check mislukt:', e); }
       if(uitkomst){
         d.hits++;
-        this._meldTest('TEST:'+t.id, uitkomst);
+        this._meldTest('TEST:'+t.id, uitkomst+(kmZeker?'':' (niet zeker voor deze auto)'));
       }
     }
   },

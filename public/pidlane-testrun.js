@@ -2787,6 +2787,27 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── De derde poort: geldt deze regel voor déze auto? (#532) ──
+  {
+    issue: '#532',
+    naam: 'Kenmerken van de auto beslissen of een regel geldt: slim laden, kenveldthermostaat, turbo, LPG, breedband',
+    waarom: 'Op 16-10-2026 meldde de app "dynamo" op een gezonde CX-5 die slim laadt; elf plekken oordeelden over laadspanning en elf over koelwater, elk met een eigen vaste grens, en de bevindingen gingen als feit naar de AI.',
+    proef: async function () {
+      if (!window.PLKenmerk || typeof PLKenmerk.live !== 'function') return { staat: 'FOUT', detail: 'PLKenmerk ontbreekt — pidlane-kenmerk.js niet geladen (herladen?)' };
+      var vw = PLKenmerk.koelwater(108, { prof: PLKenmerk.profiel({ merk: 'Volkswagen' }) });
+      if (!vw || vw.niveau !== 'onbeslist') return { staat: 'FOUT', detail: '108 °C op een Volkswagen is ' + (vw && vw.niveau) + ', verwacht niet te beoordelen' };
+      var p = PLKenmerk.live(), bekend = Object.keys(PLKenmerk.NAAM).filter(function (k) { return p[k] && p[k].waarde !== null; })
+        .map(function (k) { return k + ' ' + (p[k].waarde ? 'ja' : 'nee') + ' (' + p[k].zeker + ')'; });
+      var u = typeof pidVals !== 'undefined' ? pidVals['0142'] : null, rpm = typeof pidVals !== 'undefined' ? pidVals['010C'] : null;
+      var l = (typeof u === 'number' && typeof rpm === 'number') ? PLKenmerk.laadLive(u, rpm) : null;
+      var open = PLKenmerk.onbeslist().map(function (o) { return o.naam; });
+      return { staat: 'OK', detail: 'deze auto: ' + (bekend.join(', ') || 'nog niets bekend') +
+        (l ? '; laadspanning nu ' + l.niveau + ' — ' + l.tekst : '; laadspanning: motor draait niet') +
+        (open.length ? '; niet te beoordelen: ' + open.join(', ') : '') +
+        '. Rij: kijk in Live → bevindingen of de dynamo-melding weg is, en of "Niet te beoordelen" de juiste vraag stelt.' };
+    }
+  },
+
   // ── Codes zoeken in OBDb in plaats van met de AI (#526) ──
   {
     issue: '#526',

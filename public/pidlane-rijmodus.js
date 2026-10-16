@@ -91,7 +91,8 @@
     var hard = (typeof PID_HARD_LIMITS !== 'undefined' && PID_HARD_LIMITS) ? PID_HARD_LIMITS[pid] : null;
     if (hard && (v < hard.min || v > hard.max)) return 'meetfout';
     if (typeof ouderdomMs === 'number' && ouderdomMs > OUD_MS) return 'oud';
-    var lo = (typeof PID_LET_OP !== 'undefined' && PID_LET_OP) ? PID_LET_OP[pid] : null;
+    // Het bereik voor déze auto (PLKenmerk.letOp, #532).
+    var lo = window.PLKenmerk ? PLKenmerk.letOpLive(pid) : ((typeof PID_LET_OP !== 'undefined' && PID_LET_OP) ? PID_LET_OP[pid] : null);
     if (!lo) return 'ok';
     var buiten = v > lo.max ? v - lo.max : (v < lo.min ? lo.min - v : 0);
     if (buiten <= 0) return 'ok';

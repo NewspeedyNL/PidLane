@@ -397,6 +397,9 @@ function duiding(k, v, o){
     if(koel<60) return 'Motor warmt op: koud verbruikt en slijt hij meer, dus nog even rustig aan'+plus;
     if(koel<80) return 'Motor bijna op temperatuur'+plus;
     if(koel<=105) return 'Motor op temperatuur'+plus;
+    // 105–112 °C: één grens (PLKenmerk.koelwater, #532) — bij een
+    // kenveldthermostaat normaal, dan zegt de rondgang dat niet als "heet".
+    if(koel<=112 && o && o.koel && o.koel.niveau==='onbeslist') return 'Motor warm: deze motor draait mogelijk bewust zo warm'+plus;
     return 'Motor heet: houd de temperatuur in de gaten'+plus;
   }
   if(k==='laden'){
@@ -404,9 +407,15 @@ function duiding(k, v, o){
     if(!getal(u)) return null;
     const U=nl(u,1)+' V';
     if(getal(rpm) && rpm>400){
-      if(o && o.laad && o.laad.tekst) return o.laad.tekst.charAt(0).toUpperCase()+o.laad.tekst.slice(1);
+      // o.laad = PLKenmerk.laadspanning() (#532): één grens, met de
+      // gevraagde laadspanning als de auto die geeft.
+      const L=o && o.laad;
+      if(L && L.niveau==='onbeslist') return 'Laadspanning '+U+': met een slimme laadregeling normaal — de gevraagde laadspanning maakt het zeker';
+      if(L && L.niveau==='fout') return 'Motor draait maar de accu krijgt '+U+': blijft dat zo, laat de dynamo nakijken';
+      if(L && L.niveau==='ok' && u>=13.2) return 'De dynamo laadt de accu ('+U+')';
+      if(L && L.tekst) return L.tekst.charAt(0).toUpperCase()+L.tekst.slice(1);
       if(u>=13.2) return 'De dynamo laadt de accu ('+U+')';
-      if(u>=12.4) return 'Laadspanning '+U+': een slimme dynamo laadt even niet bij — dat is normaal';
+      if(u>=12.2) return 'Laadspanning '+U+': met een slimme laadregeling normaal — de gevraagde laadspanning maakt het zeker';
       return 'Motor draait maar de accu krijgt '+U+': blijft dat zo, laat de dynamo nakijken';
     }
     if(getal(rpm)){
@@ -437,7 +446,14 @@ function ms(){ return schoonMs(lees('pl_rond_ms')); }
 function uitLijst(){ try{ return schoonUit(JSON.parse(lees('pl_rond_uit')||'[]')); }catch(e){ console.warn('PLRond: pl_rond_uit onleesbaar', e); return []; } }
 function eigenLijst(){ try{ return schoonEigen(JSON.parse(lees('pl_rond_eigen')||'{}')); }catch(e){ console.warn('PLRond: pl_rond_eigen onleesbaar', e); return {}; } }
 function aan(){ return lees('pl_slim_modus')!=='dash'; }
-function laadNu(){ try{ return (window.PLEigen && PLEigen.laad) ? PLEigen.laad() : null; }catch(e){ console.warn('PLRond: laadoordeel', e); return null; } }
+function laadNu(){
+  try{ return (window.PLKenmerk && typeof pidVals!=='undefined') ? PLKenmerk.laadLive(pidVals['0142'], pidVals['010C']) : null; }
+  catch(e){ console.warn('PLRond: laadoordeel', e); return null; }
+}
+function koelNu(){
+  try{ return (window.PLKenmerk && typeof pidVals!=='undefined' && typeof pidVals['0105']==='number') ? PLKenmerk.koelLive(pidVals['0105']) : null; }
+  catch(e){ console.warn('PLRond: koelwateroordeel', e); return null; }
+}
 function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 function def(pid){ try{ return (typeof getPidDef==='function') ? getPidDef(pid) : null; }catch(e){ console.warn('PLRond: getPidDef('+pid+')', e); return null; } }
 function motor(){ try{ return (typeof detectEngineType==='function') ? (detectEngineType() || 'benzine') : 'benzine'; }catch(e){ console.warn('PLRond: motorsoort onleesbaar', e); return 'benzine'; } }
@@ -617,7 +633,7 @@ function duidBij(){
   DUID_PIDS.forEach(function(p){ const x=vers(p); if(x!==undefined) v[p]=x; });
   const ped=['0149','015A','014A','014B'].filter(function(p){ return vers(p)!==undefined; })[0];
   if(ped) v.pedaal=(window.PLToon) ? PLToon.waarde(ped, vers(ped)) : vers(ped);
-  const regels=d.duid.map(function(k){ return duiding(k, v, { zwaai:zwaai, diesel:motor()==='diesel', laad:laadNu() }); }).filter(Boolean);
+  const regels=d.duid.map(function(k){ return duiding(k, v, { zwaai:zwaai, diesel:motor()==='diesel', laad:laadNu(), koel:koelNu() }); }).filter(Boolean);
   const t=regels.join('\n');
   if(el.textContent!==t) el.textContent=t;
   el.hidden=!t;

@@ -404,8 +404,11 @@ function bscConditie(t, situaties){
      band:{lo:0,hi:25}},
     {id:'x_laadspanning', groep:'universeel', naam:'Laadspanning bij draaiende motor',
      pids:['0142'], hold:4, sit:'draaiend',
-     uitleg:'Met draaiende motor hoort de dynamo 13,2\u201315,2 V te leveren. Daaronder: dynamo/riem/massa. Daarboven: spanningsregelaar.',
-     band:{lo:13.2,hi:15.2}},
+     uitleg:'Met draaiende motor hoort de dynamo te laden. Hoeveel hangt af van de auto: een slimme laadregeling vraagt bij een volle accu bewust 12,5\u201313 V. Onder 12,2 V of boven 15,2 V is op elke auto fout.',
+     // De band van déze auto (#532): gevraagde laadspanning als die er is,
+     // 13,2 V alleen bij een bewezen gewone dynamo, anders de harde grens.
+     band:()=>{ try{ return window.PLKenmerk ? PLKenmerk.laadBandLive() : {lo:13.2,hi:15.2}; }
+       catch(e){ console.warn('systeemtest: laadband onleesbaar — vaste band', e); return {lo:13.2,hi:15.2}; } }},
     {id:'x_map_stat', groep:'benzine', naam:'Vacu\u00fcm stationair (inlaatdruk)',
      pids:['010B'], hold:4, sit:'stationair', warm:true,
      uitleg:'Een warme benzinemotor trekt stationair 20\u201345 kPa. Hogere inlaatdruk wijst op valse lucht of lage compressie.',
@@ -569,6 +572,11 @@ function _monTegel(id, v, warnCls){
   e.textContent=(v===undefined||v===null||isNaN(v))?'—':(typeof fv==='function'?fv(v):v);
   t.className='mon-tile'+(warnCls?' '+warnCls:'');
 }
+function _monNiveau(r, oudAlarm){
+  if(!r) return oudAlarm ? 'alarm' : '';
+  if(r.niveau==='fout') return r.hard ? 'alarm' : 'warn';
+  return r.niveau==='letop' ? 'warn' : '';
+}
 function _monTick(){
   if(!_monPaneZichtbaar()) return;                      // pane niet in beeld: niks doen
   if(_monPidLadeOpen()) _monSluitPidLade();             // lade sluipt terug? dicht ermee
@@ -579,9 +587,11 @@ function _monTick(){
   const trim=(typeof st6==='number'&&typeof lt7==='number')?Math.round((st6+lt7)*10)/10:undefined;
   // Tegels + kleuring op basis van dezelfde grenzen als de watchers
   _monTegel('spd',spd); _monTegel('rpm',rpm!==undefined?Math.round(rpm):undefined);
-  _monTegel('ect',ect, (typeof ect==='number'&&ect>112)?'alarm':(typeof ect==='number'&&ect>108)?'warn':'');
+  // Koelwater en laadspanning uit één grens per grootheid (PLKenmerk, #532):
+  // hard fout = alarm, fout of let op voor déze auto = warn, onbeslist = niets.
+  _monTegel('ect',ect, _monNiveau(window.PLKenmerk && typeof ect==='number' ? PLKenmerk.koelLive(ect) : null, typeof ect==='number'&&ect>112));
   _monTegel('load',load);
-  _monTegel('volt',volt, (typeof volt==='number'&&typeof rpm==='number'&&rpm>500&&(volt<12.7||volt>15.2))?'warn':'');
+  _monTegel('volt',volt, _monNiveau(window.PLKenmerk && typeof volt==='number' && typeof rpm==='number' ? PLKenmerk.laadLive(volt, rpm) : null, false));
   _monTegel('trim',trim, (typeof trim==='number'&&Math.abs(trim)>20&&typeof ect==='number'&&ect>=65)?'warn':'');
   _monTegel('map',map);
   // ── Extra meetwaarden ──
@@ -748,6 +758,15 @@ function bscBuildList(){
   const list=[];
   for(const t of BSC_TESTS){
     if(!groepen.has(t.groep)) continue;
+    // De derde poort (#532): een test die uitgaat van een kenmerk dat deze
+    // auto aantoonbaar niet heeft, vervalt; is het onbekend, dan is hij
+    // niet te beoordelen en staat hij genoteerd in plaats van te zakken.
+    if(t.voorwaarden && window.PLKenmerk){
+      let g=null;
+      try{ g=PLKenmerk.geldtLive(t.voorwaarden); }catch(e){ console.warn('systeemtest: kenmerkpoort onleesbaar voor '+t.id, e); }
+      if(g && g.uitkomst==='geldt_niet') continue;
+      if(g && g.uitkomst==='onbekend'){ PLKenmerk.noteer('bsc_'+t.id, t.naam, g); continue; }
+    }
     // Kies de eerste ondersteunde PID uit t.pids als hoofdmeter; test vervalt
     // als de auto geen enkele bijbehorende PID levert.
     const bruik=t.pids.filter(heeft);
@@ -777,7 +796,7 @@ function bscCurrentBand(t){
   try{
     if(typeof t.band==='function') return t.band(pidVals, pidHist)||null;
     return t.band||null;
-  }catch(e){ return null; }
+  }catch(e){ console.warn('systeemtest: band van '+t.id+' niet te bepalen', e); return null; }
 }
 
 // Binnen de band? Plus de oscillatie- en dynamiek-eisen van sommige tests.

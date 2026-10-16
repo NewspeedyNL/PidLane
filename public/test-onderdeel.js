@@ -96,6 +96,13 @@ function laad(opt) {
     body: { appendChild() { } }
   };
   vm.createContext(s);
+  // Met opt.auto: de derde poort zoals index.html hem laadt (#532).
+  if (opt.auto) {
+    s.vehicleInfo = opt.auto;
+    const opslag = {};
+    s.localStorage = { getItem: (k) => (k in opslag ? opslag[k] : null), setItem: (k, v) => { opslag[k] = String(v); }, removeItem: (k) => { delete opslag[k]; } };
+    ['pidlane-waarneming.js', 'pidlane-kenmerk.js'].forEach((f) => vm.runInContext(fs.readFileSync(__dirname + '/' + f, 'utf8'), s, { filename: f }));
+  }
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-onderdeel.js', 'utf8'), s,
     { filename: 'pidlane-onderdeel.js' });
   if (!s.PLOnderdeel || typeof s.PLOnderdeel.stilteBeeld !== 'function')
@@ -446,6 +453,20 @@ console.log('\n10. De laadspanning wordt aan een reeks afgelezen, niet aan één
   const ids = a.PLOnderdeel.beoordeel().map(r => r.id);
   toets('11,9 V met de motor uit wijst naar de accu, niet naar de dynamo',
     ids.indexOf('accu') >= 0 && ids.indexOf('dynamo') < 0, 'gevonden: ' + ids.join(', '));
+
+  // De derde poort (#532): op een Mazda 2018 die slim laadt is 12,6 V geen bewijs.
+  const m = laad({ auto: { merk: 'Mazda', year: '2018', brandstof: 'benzine' } });
+  m._didDTCScan = true;
+  sensor(m, '010C', 1500, 300);
+  sensor(m, '0142', 12.6, 500, { n: 5 });
+  toets('Mazda 2018, vijf metingen 12,6 V: geen dynamo (slimme laadregeling, niet te beoordelen)',
+    m.PLOnderdeel.beoordeel().every(r => r.id !== 'dynamo'));
+  const m2 = laad({ auto: { merk: 'Mazda', year: '2018', brandstof: 'benzine' } });
+  m2._didDTCScan = true;
+  sensor(m2, '010C', 1500, 300);
+  sensor(m2, '0142', 11.9, 500, { n: 5 });
+  toets('TEGENPROEF: 11,9 V is op elke auto de dynamo',
+    m2.PLOnderdeel.beoordeel().some(r => r.id === 'dynamo'));
 }
 
 // ══════════════════════════════════════════════════════════════════
