@@ -1824,6 +1824,9 @@ MUTATIES=(
 "public/pidlane-garage.js@@    if (v) { _st.tab = 'sensoren'; _st.sens = null; teken(); }@@@@bproef-garage.js@@de knop Eigen in de sensorkeuzelijst opent het overzicht in plaats van Sensoren (#474)"
 "public/pidlane-garage.js@@    if (k.length >= 4 && !al) v.kenteken = k;@@@@test-garage.js@@Voertuig toevoegen vraagt het kenteken van de verbinding opnieuw (#476)"
 "public/pidlane-garage.js@@      _st.voorinvul = voorinvulNieuw(vanVerbinding ? _st.onbekend : null, ken, voertuigen(true));@@      _st.voorinvul = voorinvulNieuw(vanVerbinding ? _st.onbekend : null, '', voertuigen(true));@@bproef-garage.js@@het formulier leest het kenteken van de verbinding niet (#476)"
+"public/pidlane-garage.js@@    if (tw && heeft(tw)) return { groep: 'dubbel'@@    if (tw) return { groep: 'dubbel'@@test-garage.js@@een code heet dubbel ook als de auto de standaard-PID niet geeft (22057D zonder 0146)"
+"public/pidlane-garage.js@@    var m = /^22F4([0-9A-F]{2})$/i.exec(b.code || '');@@    var m = null;@@test-garage.js@@22F4xx wordt niet meer als spiegel van 01xx herkend"
+"public/pidlane-garage.js@@      g[k].sort(function (x, y) { return (y.s.waarde - x.s.waarde) || @@      g[k].sort(function (x, y) { return @@test-garage.js@@weergave staat niet meer op toegevoegde waarde"
 "public/pidlane-meekijk.js@@    if (!(typeof isAdmin === 'function' && isAdmin())) { melding('Meekijken is er voor beheerders'); return; }@@@@bproef-meekijk.js@@een klant opent het beheervenster voor de voertuigen van anderen"
 "public/pidlane-meekijk.js@@    _st = { code: '', data: null, fout: '', bezig: false, form: null };\n  }\n\n  function waarde@@  }\n\n  function waarde@@bproef-meekijk.js@@na sluiten staan de voertuigen van de vorige klant er nog"
 # ── het anker van de BT-log na een herlaad (30-09-2026) ──
