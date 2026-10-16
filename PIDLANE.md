@@ -452,6 +452,7 @@ als een routingfout):
 | `/admin/d1` | de logdatabase als geheel: overzicht over álle rijen, één rit compleet en het logarchief (GET); SQL-console die alleen leest, logregels archiveren (eerst proef), en meetopdrachten aanmaken, bewaren, activeren, uitzetten (POST) — zie **De databasekant** hieronder |
 | `/admin/tabel` | de bekende bronnen lezen (GET) — sinds 01-10-2026 allemaal D1 — één record wijzigen, wissen, of (D1) opruimen na tellen (POST) — zie **De adminbrowser** hieronder |
 | `/admin/d1` | de logdatabase als geheel: overzicht over álle rijen en één rit compleet (GET); SQL-console die alleen leest, en meetopdrachten aanmaken, bewaren, activeren, uitzetten (POST) — zie **De databasekant** hieronder |
+| `/admin/bronnen` | de kennisbronnen van buiten (OBDb, RDW, NHTSA): GET de laatste stand uit D1 (`bron_stand`), POST alles nu nalopen — bereikbaar, nog de vorm die de app leest, veranderd sinds vorige keer. Draait ook in de nachtronde. Optioneel secret `GITHUB_TOKEN` tegen de GitHub-limiet. Test: `test-bronnen.js`, `bproef-beheerpagina.js` deel 7c (16-10-2026) |
 | `/api/config` | de app-instellingen: GET voor elke ingelogde sessie, POST alleen beheer. Sinds 01-10-2026 in D1 (`app_config`, `CONFIG_SCHEMA` = `schema.sql`); de Worker zette AppConfig één keer zelf over uit Airtable en noteert dat in `d1_overzet`. Test: `test-appconfig.js` |
 | `/proxy` | generieke uitgaande proxy (RDW/NHTSA), whitelist op host |
 | `/download/*`, `/version.json` | APK uit R2 |
