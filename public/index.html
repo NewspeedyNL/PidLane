@@ -573,6 +573,24 @@ function closeConnOv(){
     <div id="plGarageKaart"></div>
     <div id="plZonderKaart"></div>
     <div id="wmDoors" class="pl-home">
+      <!-- Expert op afstand (17-10-2026): de kern van PidLane is dat iemand die
+           er verstand van heeft live meekijkt in jouw auto. Daarom staat het
+           bovenaan, met twee ingangen: de bestuurder deelt, de expert ontvangt.
+           Dezelfde vensters als de kaarten in Live data (#wc-liveshare,
+           #wc-liveexpert); die blijven daar ook staan. -->
+      <section class="pl-expert" id="plExpert" aria-labelledby="plExpertT">
+        <div class="pl-expert-kop">
+          <span class="pl-expert-ic" aria-hidden="true">🧑‍🔧</span>
+          <span class="pl-expert-tx">
+            <span class="pl-expert-t" id="plExpertT">Expert op afstand</span>
+            <span class="pl-expert-d">Je monteur of een kenner kijkt live mee in je auto — waar hij ook is. Alleen lezen.</span>
+          </span>
+        </div>
+        <div class="pl-expert-knoppen">
+          <button type="button" class="pl-expert-k hoofd" id="plExpertDeel" onclick="PLNav.expert('deel')">📡 Laat iemand meekijken</button>
+          <button type="button" class="pl-expert-k" id="plExpertOntvang" onclick="PLNav.expert('ontvang')">🔭 Ik ben de expert</button>
+        </div>
+      </section>
       <button type="button" class="pl-check" id="plCheckBtn" onclick="PLNav.check()">
         <span class="pl-check-ic" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 1 16 0"/><path d="M12 12l4-4"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M6 18h12"/></svg>
@@ -590,7 +608,7 @@ function closeConnOv(){
         <button type="button" class="pl-tegel tg-handel" onclick="PLNav.tegel('handel')">
           <span class="pl-tegel-ic" aria-hidden="true">🚗</span><span class="pl-tegel-t">Kopen of verkopen</span><span class="pl-tegel-d">Staat, historie en waarde</span></button>
         <button type="button" class="pl-tegel tg-rit" onclick="PLNav.tegel('onderweg')">
-          <span class="pl-tegel-ic" aria-hidden="true">🛣️</span><span class="pl-tegel-t">Rit starten</span><span class="pl-tegel-d">Meekijken, zuinig, caravan</span></button>
+          <span class="pl-tegel-ic" aria-hidden="true">🛣️</span><span class="pl-tegel-t">Rit starten</span><span class="pl-tegel-d">Ritmonitor, zuinig, caravan</span></button>
         <button type="button" class="pl-tegel tg-voorb" onclick="PLNav.tegel('voorbereiding')">
           <span class="pl-tegel-ic" aria-hidden="true">📅</span><span class="pl-tegel-t">Voorbereiden</span><span class="pl-tegel-d">Winter, lange rit, onderhoud</span></button>
       </div>

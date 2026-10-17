@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 17-10-2026 — Expert op afstand voorop
+ ═══════════════════════════════════════════════════════════
+
+ - Home: een blok Expert op afstand boven Check mijn auto, met Laat iemand
+   meekijken (deelvenster) en Ik ben de expert (codeveld) — PLNav.expert().
+   De kaarten in Live data blijven. Rit starten zegt niet meer Meekijken.
+ - Handleiding: startscherm en Delen en meekijken wijzen naar het nieuwe blok.
+ - PLAY-INZENDING.md: korte en volledige beschrijving, feature graphic,
+   screenshotvolgorde en release notes leiden met het meekijken.
+
+ ═══════════════════════════════════════════════════════════
  17-10-2026 — Rondgang in Slim: elke pagina op één scherm
  ═══════════════════════════════════════════════════════════
 
