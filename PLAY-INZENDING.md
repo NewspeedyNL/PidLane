@@ -3,7 +3,9 @@
 Opgesteld 03-09-2026, bijgewerkt 10-09-2026 (§7, §16 en de taalkeuze) en
 27-09-2026 (versie 3.1.0: Mijn voertuigen en Mijn voorkeuren in §3, §11, §12
 en §14; beeld-in-beeld in §13 en §16b) en 08-10-2026 (3.2.0: één contactadres,
-§11 zonder chassisnummer naar de AI, §16b voor de laatste wijzigingen). Dit bestand is
+§11 zonder chassisnummer naar de AI, §16b voor de laatste wijzigingen) en 17-10-2026
+(3.3.0: lampjesgids met foto in §3 en §11, kenteken-check en conditiescore in
+§3, nieuwe release notes in §14, §16b voor 3.3). Dit bestand is
 **kopieerwerk**: elk kopje hieronder is
 een veld in de Play Console, en wat eronder staat gaat er letterlijk in.
 
@@ -90,13 +92,12 @@ hardware aan te pas komt die een browser niet kan aansturen.
 
 ```
 PidLane maakt via Bluetooth verbinding met een OBD2-adapter in de
-diagnosepoort van je auto en leest daar rechtstreeks de boordcomputer mee
-uit. Geen omweg, geen handmatige invoer: de app praat met de ECU van het
-voertuig en toont wat er werkelijk gemeten wordt.
+diagnosepoort van je auto en leest rechtstreeks de boordcomputer uit. Geen
+handmatige invoer: de app praat met de ECU en toont wat er werkelijk
+gemeten wordt.
 
-Gemaakt voor monteurs, occasionhandelaren en wagenparkbeheerders — en
-bruikbaar voor iedereen die wil weten wat dat lampje op zijn dashboard
-betekent.
+Voor monteurs, occasionhandelaren en wagenparkbeheerders — en voor
+iedereen die wil weten wat dat lampje op het dashboard betekent.
 
 WAT PIDLANE DOET
 
@@ -106,26 +107,27 @@ WAT PIDLANE DOET
   lambdawaarden en meer, als meters of als grafiek over de tijd.
 • Diagnoserapport — de meting wordt uitgelegd in gewone taal: wat is er aan
   de hand, hoe zeker is dat, en welk onderdeel is de eerste verdachte.
-• Ritmonitor — laat de app tijdens het rijden meekijken. Hij let op
-  sensoruitval, bevroren waarden en uitschieters, en test verdachte
-  signalen daarna gericht opnieuw.
-• Koopcheck — een vaste doorloop voor wie een tweedehands auto beoordeelt,
-  inclusief de readiness-monitors die verraden of er kort geleden fouten
-  zijn gewist.
+• Ritmonitor — kijkt tijdens het rijden mee op sensoruitval, bevroren
+  waarden en uitschieters, en test verdachte signalen gericht opnieuw.
+• Koopcheck — een vaste doorloop voor een tweedehands auto, met de
+  readiness-monitors die verraden of er kort geleden fouten zijn gewist.
 • Onderdeelaanwijzer — koppelt foutcode en meting aan het onderdeel dat er
   waarschijnlijk achter zit.
+• Alle stuurapparaten — ook foutcodes van ABS, airbag en versnellingsbak.
+• Lampjesgids — wat een dashboardlampje betekent, ook vanaf een foto.
 • Diagnose op afstand — een expert kijkt mee via een sessiecode of QR, zonder
   zelf een adapter nodig te hebben.
-• Kenteken invullen (Nederland) — haalt merk, model en bouwjaar op bij de
-  open data van de RDW.
-• Mijn voertuigen — bewaar tot drie auto's in je account, met hun rapporten,
-  ritten en open punten, op elk toestel waarop je inlogt.
-• Meting in beeld — schakel je tijdens het meten naar een andere app, dan
-  loopt de meting door in een klein venster.
-• Slim visueel — de belangrijkste waarden als dashboard: toerental,
-  snelheid, de accu als lampje en je banden in een autootje.
+• Kenteken-check (Nederland) — merk, model, APK, verzekering en open
+  terugroepacties uit de open data van de RDW.
+• Mijn voertuigen — tot drie auto's in je account, met rapporten en ritten,
+  op elk toestel waarop je inlogt.
+• Conditiescore — hoe je auto ervoor staat, uit onderhoud en ritten.
+• Meting in beeld — wissel je van app, dan loopt de meting door in een
+  klein venster.
+• Slim visueel — de belangrijkste waarden als dashboard, met de accu als
+  lampje en je banden in een autootje.
 • Telemetrie — met de sensoren van je telefoon: hoe schuin de auto staat en
-  hoeveel G hij trekt bij optrekken, remmen en in de bocht.
+  hoeveel G hij trekt.
 • Rapporten opslaan en delen als PDF.
 
 WAT JE NODIG HEBT
@@ -136,7 +138,7 @@ personenauto vanaf bouwjaar 2001 (benzine) of 2004 (diesel) heeft een
 OBD2-poort.
 
 Zonder adapter kun je de app toch bekijken: er zit een demomodus in met
-opgenomen meetdata van een echte auto. Geen account nodig.
+een gesimuleerde auto. Geen account nodig.
 
 OVER DE AI-ANALYSE
 
@@ -145,8 +147,8 @@ account en tegoed nodig; vóór elke analyse zie je precies wat hij kost. De
 rest van de app — uitlezen, meten, grafieken, foutcodes opzoeken — werkt
 zonder tegoed.
 
-Een rapport is een hulpmiddel, geen uitspraak van een monteur. Het vervangt
-geen inspectie en geen APK.
+Een rapport is een hulpmiddel, geen uitspraak van een monteur, en vervangt
+geen inspectie of APK.
 
 PRIVACY
 
@@ -157,7 +159,9 @@ Telemetrie gebruikt de bewegingssensoren van je telefoon, niet je locatie.
 
 Metingen staan op je toestel. Vraag je een analyse, dan gaan de meetwaarden
 en voertuiggegevens naar onze server en naar de aanbieder van het taalmodel.
-Je naam, e-mailadres en kenteken gaan daar niet mee. Deel je meetdata voor
+Je naam, e-mailadres en kenteken gaan daar niet mee. Laat je een lampje op
+een foto herkennen, dan gaat die foto dezelfde weg; hij wordt niet bewaard.
+Deel je meetdata voor
 referentiewaarden, dan gaat je chassisnummer niet mee maar een daaruit
 berekende code — dat is pseudonimisering, geen anonimisering, en we
 behandelen die gegevens dan ook als persoonsgegevens.
@@ -200,7 +204,7 @@ auto"**.
 
 De eerste twee zijn de enige die in de zoekresultaten worden getoond, dus daar
 moet de kern in staan. Schiet ze in **demomodus** op een echt toestel: dan
-staat er echte meetdata op en geen mockup, en dat is precies wat de
+is het de echte app en geen mockup, en dat is precies wat de
 "minimum functionality"-toets wil zien.
 
 | # | scherm | bijschrift (max ~40 tekens) |
@@ -287,7 +291,7 @@ daarom niet volledig te beoordelen zonder beide.
 Voor de review is er een demomodus die zonder adapter en zonder auto werkt.
 Op het inlogscherm staat de knop "Try demo — no adapter needed", direct
 onder de knop Inloggen. Daarna kies je een voorbeeldvoertuig (of vult een
-Nederlands kenteken in) en draait de app op opgenomen meetdata: live
+Nederlands kenteken in) en draait de app op een gesimuleerde auto: live
 sensorwaarden, foutcodes, grafieken en een voorbeeld van het
 diagnoserapport.
 
@@ -481,6 +485,24 @@ voorkeuren
 | Verplicht of optioneel | Optioneel |
 | Doel | App functionality |
 
+**Photos and videos → Photos** — sinds 3.3.0 aangevinkt. De lampjesgids
+stuurt, als de gebruiker daar zelf om vraagt en apart akkoord geeft, één
+verkleinde foto van het dashboard via de eigen server naar Anthropic
+(`pidlane-lampjes.js` → `apiFetch` met `extra.afbeelding`). Tot 3.2.0 stond
+dit onder "niet aanvinken" met de reden dat de camera alleen een QR-code
+leest; sinds #492 (14-10-2026) klopte dat niet meer. De foto wordt nergens
+bewaard, dus *ephemeral* is waar. Anthropic verwerkt hem als dienstverlener
+in opdracht, en dat telt voor Google niet als delen — maar §3 en
+`privacy.html` noemen het wél, zodat formulier en verklaring niet uiteenlopen.
+
+| veld | antwoord |
+|---|---|
+| Verzameld | Ja |
+| Gedeeld | Nee (Anthropic is verwerker in opdracht, zie hierboven) |
+| Tijdelijk verwerkt (ephemeral) | Ja — niet opgeslagen, niet bij ons en niet bij het account |
+| Verplicht of optioneel | Optioneel |
+| Doel | App functionality |
+
 **App info and performance → Diagnostics** — sinds 01-10-2026 aangevinkt.
 Een ingelogde app stuurt technische logregels naar de eigen server
 (`logToSheets()` in `pidlane-auth.js` → `/airtable/log` → D1 `logregels`):
@@ -504,7 +526,6 @@ e-mailadres gaat sinds dezelfde dag niet meer mee (`_vlGeenEmail()`).
 | Financial info | Geen betaling in de app |
 | Health and fitness | — |
 | Messages | De remote-sessie stuurt meetdata, geen berichten |
-| Photos and videos | De camera scant een QR-code; er wordt geen beeld opgeslagen of verzonden. De verklaring zegt dat nu met zoveel woorden — zie het kopje *Camera en QR-codes* in `privacy.html` |
 | Audio files | — |
 | Files and docs | Rapporten schrijft de app naar `Documents/PidLane/` op het toestel zelf. Ze gaan nergens heen tot de gebruiker ze deelt, en de app leest geen bestanden die hij niet zelf geschreven heeft |
 | Calendar, Contacts | — |
@@ -639,6 +660,12 @@ hand hetzelfde beschrijven, lopen hier uit de pas. Dat is de fout die §16 op
 controleert daarom dat elke functie die dit veld noemt óók in §3 staat**; noem
 je hier iets nieuws, dan hoort het daar eerst.
 
+**Nagelezen tegen de code op 17-10-2026, voor 3.3.0.** De lampjesgids met foto
+is `pidlane-lampjes.js` (#492), alle stuurapparaten is UDS 0x19, de
+kenteken-check in Mijn voertuigen en de terugroepmelding staan in
+`pidlane-garage.js` (#493), de conditiescore is #475, tankbeurten #469 en de
+rondgang `pidlane-rondgang.js`.
+
 **Nagelezen tegen de code op 06-10-2026, voor 3.2.0.** Slim visueel is
 `pidlane-visueel.js` met de schermen uit `pidlane-visprofiel.js`, telemetrie is
 `pidlane-telemetrie.js`, het inmeten is `PLVerbind` in `pidlane-bt.js` (#388),
@@ -658,16 +685,15 @@ toetst hij niet.
 10-09-2026 ook een en-US-blok, net als §2, terwijl §3 er geen had (#177).
 
 ```
-Versie 3.2
-Met slim visueel en telemetrie.
+Versie 3.3
+Met lampjesgids en conditiescore.
 
-- Slim visueel: je auto als dashboard, met de accu als lampje en je
-  banden in een autootje. Nieuw: helling en G-kracht op één scherm.
-- Elke auto wordt bij het verbinden ingemeten, voor een snellere en
-  stabielere verbinding.
-- Staat Bluetooth uit, dan zegt de app dat meteen.
-- Herinneringen voor APK en onderhoud.
-- De rit-monitor meldt niets meer bij gewoon schakelen.
+- Lampjesgids: maak een foto van je dashboard en zie welk lampje brandt.
+- Foutcodes van alle stuurapparaten, niet alleen motor en bak.
+- Kenteken-check in Mijn voertuigen, met een melding bij een nieuwe
+  terugroepactie.
+- Conditiescore en tankbeurten per voertuig.
+- Slim toont je auto als rondgang langs de categorieën.
 
 Geen adapter? Probeer de demomodus op het startscherm.
 ```
@@ -731,7 +757,7 @@ zijn.
 
 | punt | bewaakt door |
 |---|---|
-| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.2.0) | `test-playteksten.js` |
+| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.3.0) | `test-playteksten.js` |
 | Geen locatie: manifest, code en de drie verklaringen zeggen hetzelfde | `test-geen-gps.js` |
 | Foutpagina in de schil als de app niet laadt (`server.errorPath`) | `test-foutpagina.js` |
 | `feat_demo` dekt beide demoknoppen — geen dode knop op het loginscherm | `test-demo-toegang.js` |
@@ -779,7 +805,16 @@ want hij gaat over één bepaalde bundel. Vul hem dus bij, tik hem niet af.
 | Bluetooth uit (sinds 3.2.0, #359): op Verbinden tikken met Bluetooth uit geeft de systeemvraag van Android; weigeren geeft meteen "Bluetooth staat uit", zonder anderhalve minuut zoeken | nog niet bewezen |
 | Telemetrie (sinds 3.2.0): Slim visueel → Telemetrie toont horizon, G-cirkel en de twee autootjes op één scherm, en ze bewegen mee; Nulstellen wist het piekballetje | nog niet bewezen |
 | Basismeter (08-10-2026): Slim visueel → Basis toont koelwater en brandstof als bogen onderin, het verbruik onder de km/h en het bereik of de rit linksonder; op een plek tikken laat je kiezen, *Automatisch* zet hem terug | nog niet bewezen |
+| Lampjesgids-foto (sinds 3.3.0, #492): 📷 Foto van het dashboard geeft eerst het eigen akkoordscherm, daarna de camera van Android; de gids opent op het herkende lampje. In de demo en zonder tegoed geen verzending | nog niet bewezen |
+| Alle stuurapparaten (sinds 3.3.0): 🧩 geeft per stuurapparaat een antwoord of een nette melding, en de app blijft verbonden | nog niet bewezen |
+| Terugroepmelding (sinds 3.3.0, #493): met herinneringen aan een Android-melding bij een nieuwe open terugroepactie, en geen melding voor een actie die de fabrikant als hersteld meldt | nog niet bewezen |
 | Herverbinden (08-10-2026, #453): adapter even uit de OBD-poort trekken met de motor aan, terugsteken, niets aanraken — de app hervat zonder protocolvraag. Daarna blok 5 draaien | nog niet bewezen |
+
+**Let op bij 3.3.0.** Tussen 08-10 en 17-10 is veel verbouwd: Slim als
+rondgang, één meetscherm (#452), mode 06 en UDS in het onderzoek, de
+lampjesgids met foto, de kenteken-check, conditiescore en tankbeurten. Geen
+regel in de tabel hierboven is op een build van ná 08-10 bewezen; loop ze op de
+upload-build na, de demo en de begeleide run voorop.
 
 **Let op bij 3.2.0.** Na de geslaagde gesloten test (#408) zijn Slim visueel,
 het inmeten van de verbinding, de demo (stuurt niets meer) en het verbinden met

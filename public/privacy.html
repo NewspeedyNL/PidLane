@@ -40,7 +40,7 @@
 <main>
 
   <h1>Privacyverklaring</h1>
-  <div class="sub">PidLane — laatst bijgewerkt: 14 oktober 2026</div>
+  <div class="sub">PidLane — laatst bijgewerkt: 17 oktober 2026</div>
 
   <p>PidLane leest de boordcomputer van je auto uit via een OBD2-adapter en maakt daar een
   diagnose van. Deze verklaring beschrijft welke gegevens daarbij worden verwerkt, waarom,
@@ -131,14 +131,17 @@
   </div>
 
   <h2>Camera en QR-codes</h2>
-  <p>PidLane vraagt toegang tot de camera voor één ding: het scannen van een QR-code
-  waarmee je een sessie koppelt aan iemand die op afstand meekijkt. De camera gaat alleen
-  aan op het moment dat je die scanner zelf opent.</p>
-  <p><strong>Er wordt geen beeld opgeslagen en geen beeld verzonden.</strong> Het camerabeeld
+  <p>PidLane gebruikt de camera voor twee dingen, en alleen op het moment dat je die zelf
+  opent: het scannen van een QR-code waarmee je een sessie koppelt aan iemand die op afstand
+  meekijkt, en een foto van je dashboard in de lampjesgids.</p>
+  <p><strong>Bij de QR-scanner wordt geen beeld opgeslagen en geen beeld verzonden.</strong> Het camerabeeld
   blijft in het geheugen van je toestel en wordt alleen gelezen om de code erin te herkennen.
   Zodra de code gelezen is of je het scherm sluit, stopt de camera. Koppelen kan ook zonder
   camera: je kunt de code met de hand overnemen. Daarom staat de camera in de app als
   optioneel — de app installeert en werkt ook op een toestel zonder.</p>
+  <p><strong>De foto van je dashboard</strong> gaat wél de deur uit, maar alleen als je daar zelf om
+  vraagt en de eerste keer apart akkoord hebt gegeven: verkleind, via onze server naar Anthropic,
+  om het lampje te herkennen. Hij wordt nergens bewaard. Zie hierboven bij de AI-analyse.</p>
 
   <h2>Meten terwijl de app op de achtergrond staat</h2>
   <p>Een meting loopt vaak door terwijl je iets anders doet op je telefoon. Android zet apps
@@ -165,6 +168,9 @@
   er gaat niets naar een server, en de melding bevat alleen wat je in de app al ziet: het
   kenteken, de naam van je auto en de datum. Uitzetten kan met dezelfde knop, of voor alle
   meldingen van PidLane in de instellingen van Android.</p>
+  <p>Met herinneringen aan kijkt de app daarnaast één keer per dag, als je hem opent, of er
+  een nieuwe terugroepactie is voor je auto. Daarvoor gaat alleen het kenteken via onze server
+  naar de RDW, net als bij een kenteken-check; de uitkomst blijft op je toestel.</p>
 
   <h2>Bestanden op je toestel</h2>
   <p>Rapporten en meetopnamen die je opslaat komen in de map <code>Documents/PidLane</code>
@@ -180,7 +186,8 @@
     <li>Geen locatiebepaling, punt. PidLane vraagt je positie niet op en slaat hem niet op.
     Tot augustus 2026 kon de ritopname optioneel de hoogte meenemen; die functie is
     verwijderd.</li>
-    <li>Geen opslag of verzending van camerabeeld — de scanner leest alleen de QR-code.</li>
+    <li>Geen opslag of verzending van camerabeeld door de QR-scanner — die leest alleen de code.
+    Een dashboardfoto in de lampjesgids gaat alleen weg als je daar zelf om vraagt.</li>
     <li>Niets van de demo. Een demo werkt met een verzonnen auto: er wordt niets bewaard, en er
     gaan geen logregels, AI-vragen of meetgegevens naar onze server.</li>
     <li>Geen toegang tot je contacten, agenda, foto's, sms of belgeschiedenis.</li>
