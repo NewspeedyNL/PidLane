@@ -666,7 +666,7 @@ MUTATIES=(
 # zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop
 # kostte: twee velden die een reviewer allebei leest, met verschillende
 # beloftes. Het valt niemand op tot het in de Console staat.
-"PLAY-INZENDING.md@@Met lampjesgids en conditiescore.@@Met lampjesgids en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
+"PLAY-INZENDING.md@@Met expert op afstand, lampjesgids en conditiescore.@@Met expert op afstand, lampjesgids en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
 # En andersom: §3 hernoemt een functie, §14 blijft de oude naam beloven. Dat is
 # de stillere van de twee — je verbetert de beschrijving en raakt het veld
 # ernaast niet aan.
@@ -684,7 +684,7 @@ MUTATIES=(
 # en-US-blok en §3 zonder. Vandaar twee mutaties, één per richting. De tweede
 # is de stillere: je vertaalt de volledige beschrijving en vergeet de twee
 # velden ernaast, en dan leest een reviewer alsnog twee talen door elkaar.
-"PLAY-INZENDING.md@@Lees je auto uit via een OBD2-adapter en krijg een diagnose in gewone taal.\n\`\`\`\n@@Lees je auto uit via een OBD2-adapter en krijg een diagnose in gewone taal.\n\`\`\`\n\n**Engels (en-US), als je een tweede taal aanzet:**\n\n\`\`\`\nRead your car through an OBD2 adapter and get a diagnosis in plain language.\n\`\`\`\n@@test-playteksten.js@@§2 krijgt een tweede taal terug terwijl §3 er geen heeft (#177)"
+"PLAY-INZENDING.md@@Laat je monteur op afstand live meekijken in je auto, via een OBD2-adapter.\n\`\`\`\n@@Laat je monteur op afstand live meekijken in je auto, via een OBD2-adapter.\n\`\`\`\n\n**Engels (en-US), als je een tweede taal aanzet:**\n\n\`\`\`\nRead your car through an OBD2 adapter and get a diagnosis in plain language.\n\`\`\`\n@@test-playteksten.js@@§2 krijgt een tweede taal terug terwijl §3 er geen heeft (#177)"
 "PLAY-INZENDING.md@@De volledige privacyverklaring: app.pidlane.nl/privacy.html\nVragen: support@pidlane.nl\n\`\`\`\n@@De volledige privacyverklaring: app.pidlane.nl/privacy.html\nVragen: support@pidlane.nl\n\`\`\`\n\n**en-US:**\n\n\`\`\`\nPidLane connects over Bluetooth to an OBD2 adapter in your car.\n\`\`\`\n@@test-playteksten.js@@§3 wordt als enige vertaald en loopt weg bij de velden ernaast (#177)"
 "public/privacy.html@@<a href=\"mailto:support@pidlane.nl\">support@pidlane.nl</a>@@<a href=\"mailto:info@pidlane.nl\">info@pidlane.nl</a>@@test-playteksten.js@@de privacyverklaring noemt weer een ander contactadres dan de verwijderpagina: een verwijderverzoek valt in de verkeerde bus"
 "public/pidlane-auth.js@@    const resp=await plFetch('/v1/ping');@@    const resp=await plFetch('/v1/messages',{method:'POST',json:{model:'claude-sonnet-5',max_tokens:20,messages:[{role:'user',content:'ping'}]}});@@test-inlogkosten.js@@testApiKey() doet bij elke login weer een echte AI-call (#179)"
@@ -1733,6 +1733,7 @@ MUTATIES=(
 "public/pidlane-foutcodes.js@@    var ongelezen = ['bevestigd', 'pending', 'permanent'].filter(function (k) { return !g[k]; }).length;@@    var ongelezen = 0;@@test-foutcodes.js@@het stoplicht telt een niet-gelezen soort code als \"geen codes\" en wordt groen"
 "public/pidlane-foutcodes.js@@    var vast = uniek([].concat(c.bevestigd || [], c.permanent || [])).length;@@    var vast = [].concat(c.bevestigd || [], c.permanent || []).length;@@test-foutcodes.js@@een code die bevestigd én permanent is, telt twee keer in de kop"
 "public/pidlane-nav.js@@    schrijf(OPSLAG.autocheck, '0');   // eenmalig@@    void 0;                           // eenmalig@@bproef-navigatie.js@@de automatische check blijft aan en springt bij elke volgende verbinding opnieuw open (02-10-2026: eenmalig)"
+"public/pidlane-nav.js@@    try { if (w === 'ontvang') PLRemote.openExpert(); else PLRemote.openShare(); }@@    try { PLRemote.openShare(); }@@bproef-navigatie.js@@Ik ben de expert opent het deelvenster: de expert krijgt een code om zelf te delen in plaats van een codeveld"
 "public/pidlane.css@@no-repeat; contain:strict; }@@no-repeat; contain:strict; animation:softblink 2.6s ease-in-out infinite; }@@bproef-navigatie.js@@de achtergrond van het startscherm beweegt weer eindeloos: de telefoon tekent hem bij elk beeldje opnieuw (#302)"
 "public/pidlane-fuel.js@@  door_saving_active: 'tg-rit',@@  door_saving_active: 'tg-onderweg',@@bproef-navigatie.js@@de beheerschakelaar voor Rit starten wijst naar een tegel die er niet is"
 "admin/beheer.html@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], true));@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], false));@@bproef-beheerpagina.js@@beheer toont een nooit opgeslagen tegel als uit, en Alles opslaan zet hem dan echt uit"

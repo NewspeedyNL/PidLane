@@ -204,6 +204,14 @@
     catch (e) { console.warn('PLNav: tegel ' + t + ' opent niet', e); if (typeof showToast === 'function') showToast('Dit opent nu niet — probeer het opnieuw'); }
   }
 
+  /* Expert op afstand, bovenaan Home (17-10-2026): deel opent het deelvenster
+     voor de bestuurder, ontvang het codeveld voor de expert. */
+  function expert(w) {
+    logGebruik('expert', w);
+    try { if (w === 'ontvang') PLRemote.openExpert(); else PLRemote.openShare(); }
+    catch (e) { console.warn('PLNav: expert op afstand (' + w + ') opent niet', e); if (typeof showToast === 'function') showToast('Meekijken opent nu niet — probeer het opnieuw'); }
+  }
+
   /* Na een verbinding de check vanzelf laten lopen. Aangeroepen vanuit
      wizFinish(), het ene punt waar elke verbinding langskomt: zonder
      samenvatting direct, met samenvatting pas als de klant hem wegtikt — twee
@@ -274,6 +282,7 @@
     tab: tab,
     check: check,
     tegel: tegel,
+    expert: expert,
     naVerbinding: naVerbinding,
     garage: garage,
     zetGarage: zetGarage,
