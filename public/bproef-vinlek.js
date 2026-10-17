@@ -131,6 +131,22 @@ function toets(naam, waar, uitleg) {
     const vuil = await scan();
     toets('de scan ziet een ruwe VIN wél als hij er staat', vuil.ruw === true,
           'de scan uit stap 4 meet niets — hij zou een lek niet opmerken');
+
+    // ── 6. DE VSTATE NAAR DE EXPERT (17-10-2026) ─────────────────
+    // Het vierde pad: buildVState() in pidlane-remote.js stuurde veh.vin ruw
+    // naar de Worker. Nu WMI + pseudoniem; het pseudoniem is async en komt
+    // na één tik. Dezelfde vraag als stap 4: staat de VIN ergens in?
+    const vst = async () => JSON.parse(await app.ev(`(function(){
+      vehicleInfo.vin = ${JSON.stringify(VIN)};
+      const v = PLRemote._buildVState();
+      return JSON.stringify({ ruw: JSON.stringify(v).indexOf(${JSON.stringify(VIN)}) >= 0, veh: v.veh || null, vk: !!v.voorkennis });
+    })()`));
+    await vst();
+    await new Promise(r => setTimeout(r, 300));
+    const vs = await vst();
+    toets('de vstate voor de expert draagt geen ruwe VIN', vs.ruw === false, JSON.stringify(vs.veh));
+    toets('wel de WMI en het pseudoniem', vs.veh && vs.veh.wmi === 'WVW' && /^[0-9a-f]{16}$/.test(String(vs.veh.vin_pseudo)), JSON.stringify(vs.veh));
+    toets('en de voorkennis', vs.vk === true);
   } finally {
     if (app) await app.stop();
   }

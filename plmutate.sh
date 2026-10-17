@@ -516,6 +516,15 @@ MUTATIES=(
 "worker.js@@  return \"%\" + String(q).replace(/[\\\\%_]/g, (t) => \"\\\\\" + t) + \"%\";@@  return \"%\" + String(q) + \"%\";@@test-formule-escape.js@@een % of _ in het zoekvak van beheer vindt elke rij in plaats van wat er staat (sinds #327 de opvolger van #142)"
 "public/pidlane-remote.js@@+getal(r.mn)+@@+r.mn+@@test-remote-tabel.js@@een cijferkolom van de opnametabel gaat weer ruw de HTML in"
 "public/pidlane-remote.js@@+getal(r.n)+@@+r.n+@@test-remote-tabel.js@@het aantal metingen gaat weer ruw de HTML in"
+"public/pidlane-remote.js@@      o.veh=Object.assign({merk:v.merk||'',@@      o.veh=Object.assign({vin:v.vin||'',merk:v.merk||'',@@test-vstate-vin.js@@de ruwe VIN gaat weer mee in de vstate naar de expert"
+"public/pidlane-remote.js@@    return{wmi:vin.slice(0,3),vin_pseudo:_vinPs.ps};@@    return{wmi:vin.slice(0,3),vin_pseudo:_vinPs.ps,vin:vin};@@test-vstate-vin.js@@_vinVoorExpert geeft de VIN zelf mee naast het pseudoniem"
+"public/pidlane-remote.js@@        _vlVinPseudoniem(vin).then(ps=>{if(_vinPs.vin===vin&&ps){_vinPs.ps=ps;sendVStateSoon();}})@@        _vlVinPseudoniem(vin).then(ps=>{if(_vinPs.vin===vin&&ps){_vinPs.ps=ps;}})@@test-vstate-vin.js@@het pseudoniem komt nooit bij de expert: na het berekenen volgt geen nieuwe vstate"
+"worker.js@@    delete veh.vin;\n    if (!veh.wmi && ruw)@@    if (!veh.wmi && ruw)@@test-vstate-vin.js@@de Worker bewaart een ruwe VIN van een oude app weer in de opslag"
+"public/pidlane-voorkennis.js@@            vd[h].score += KENNIS_DUW; vd[h].bekend = true; raakt = true;@@            vd[h].bekend = true; raakt = true;@@test-voorkennis.js@@merkkennis duwt niet meer: een bekend zwak punt met bewijs gaat niet voor"
+"public/pidlane-voorkennis.js@@    var rapporten = (ctx.rapporten || []).filter(function (r) { return r && r.id && !r.demo && r.type !== 'pdf'; })@@    var rapporten = (ctx.rapporten || []).filter(function (r) { return r && r.id; })@@test-voorkennis.js@@een demorapport gaat als echt rapport naar de expert"
+"public/pidlane-voorkennis.js@@      if (r && r.id === id && !r.demo && r.type !== 'pdf') {@@      if (r && r.id === id) {@@test-voorkennis.js@@de expert kan de tekst van een demorapport opvragen"
+"public/pidlane-voorkennis.js@@        h += '<div class=\"rem-stat\"><b>' + (i + 1) + '. ' + esc(k.naam) + '</b>'@@        h += '<div class=\"rem-stat\"><b>' + (i + 1) + '. ' + k.naam + '</b>'@@test-voorkennis.js@@de naam van een verdenking van de peer gaat ruw de HTML van de expert in"
+"public/pidlane-voorkennis.js@@          (opties.knop && /^sr\\d+_\\d+$/.test(id) ?@@          (opties.knop ?@@test-voorkennis.js@@een rapport-id van de peer belandt ongetoetst in een onclick"
 # ── het proeftegoed hangt aan het account, niet aan het toestel (#113, 08-09-2026) ──
 # StartTegoedGegeven is de hele grendel. Legt iemand alGehad plat, dan keert
 # elke onboarding-call opnieuw KLANT_START_SALDO uit — hetzelfde gat als het

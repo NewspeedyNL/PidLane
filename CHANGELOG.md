@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 17-10-2026 — Voorkennis voor de expert, VIN niet meer ruw in de vstate
+ ═══════════════════════════════════════════════════════════
+
+ - Expert op afstand: bij het verbinden ziet de expert wat de app al wist —
+   "Eerst kijken naar" (foutcodes en mode 06 als verdenking, merkkennis als
+   duw), bekende zwakke punten zonder bewijs apart, foutcodes met aantal,
+   fase en freeze frame, mode 06, waarnemingen, eerdere rapporten (tekst op
+   verzoek met Lees). Nieuw: pidlane-voorkennis.js (PLVoorkennis).
+ - Privacy: de vstate droeg de ruwe VIN naar de Worker en elke expert. Nu
+   WMI + pseudoniem; de Worker haalt een veh.vin ook zelf weg.
+ - Mode 06 bewaart de laatste uitlezing (PLM06.laatste) en werkt een
+   meekijkende expert direct bij; een DTC-verzoek van de expert ook.
+ - Worker: request-rapport (alleen een archief-id).
+
+ ═══════════════════════════════════════════════════════════
  17-10-2026 — Expert op afstand voorop
  ═══════════════════════════════════════════════════════════
 

@@ -2787,6 +2787,29 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── De expert begint niet bij nul: voorkennis in de vstate, zonder VIN ──
+  {
+    issue: 'voorkennis',
+    naam: 'Expert op afstand: voorkennis bij het verbinden (kansen, foutcodes met geschiedenis, mode 06, rapporttitels), VIN alleen als pseudoniem',
+    waarom: 'De expert kreeg alleen het nu, en de vstate droeg de ruwe VIN naar de Worker en elke expert.',
+    proef: async function () {
+      if (!window.PLVoorkennis || typeof PLVoorkennis.uitApp !== 'function' || !window.PLRemote || typeof PLRemote._buildVState !== 'function')
+        return { staat: 'FOUT', detail: 'PLVoorkennis.uitApp of PLRemote._buildVState ontbreekt — oude pidlane-voorkennis.js/pidlane-remote.js (herladen?)' };
+      var v = PLRemote._buildVState(), js = JSON.stringify(v);
+      var vin = (typeof vehicleInfo !== 'undefined' && vehicleInfo && vehicleInfo.vin) ? String(vehicleInfo.vin) : '';
+      if (vin && js.indexOf(vin) >= 0) return { staat: 'FOUT', detail: 'de ruwe VIN staat in de vstate voor de expert' };
+      if (v.veh && 'vin' in v.veh) return { staat: 'FOUT', detail: 'veh.vin bestaat nog in de vstate' };
+      if (!v.voorkennis) return { staat: 'FOUT', detail: 'geen voorkennis in de vstate' };
+      if (js.length > 32768) return { staat: 'FOUT', detail: 'vstate is ' + js.length + ' tekens; de Worker weigert alles boven 32768' };
+      var vk = v.voorkennis;
+      var d = vk.kansen.length + ' kans(en), ' + vk.bekend.length + ' bekend bij ' + (vk.merk || 'onbekend merk') + ', ' + vk.foutcodes.length + ' foutcode(s), ' +
+        (vk.mode06 ? 'mode 06 gelezen' : 'geen mode 06') + ', ' + vk.rapporten.length + ' rapport(en); vstate ' + js.length + ' tekens';
+      if (!vin) return { staat: 'LET OP', detail: d + '. Geen VIN gelezen, dus het pseudoniem is niet getoetst — verbind met de auto' };
+      return { staat: 'OK', detail: d + (v.veh && v.veh.vin_pseudo ? ', VIN als pseudoniem' : ', alleen de WMI (pseudoniem nog onderweg)') +
+        '. Rij: deel een sessie, kijk mee als expert en controleer dat "Eerst kijken naar" klopt met de foutcodes.' };
+    }
+  },
+
   // ── Rondgang: elke pagina op één scherm, een lege pagina krijgt verwante sensoren ──
   {
     issue: 'rondgang',
