@@ -1319,6 +1319,35 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .rr.warn b { color:var(--or); } .rr.danger b { color:var(--rd); }
 .rr .rr-band { grid-column:1 / -1; margin-top:7px; }
 .rond-dia.rond-in { animation:rondIn .3s ease-out; }
+/* Verwante sensoren die een te lege dia aanvullen (VERWANT): context, dus de naam iets stiller. */
+.rr.vul > span { color:var(--tx3); }
+/* Alles op één scherm (17-10-2026, PLRond.pasIn()): steekt de dia onder de
+   navigatie uit, dan eerst kleiner (dicht1), dan rijen in twee kolommen en
+   de held met zijn lijn ernaast (dicht2). Niet splitsen: één onderwerp blijft één scherm. */
+.rond-dia.dicht1 { gap:6px; }
+.rond-dia.dicht1 .rond-titel { font-size:15px; margin-bottom:0; }
+.rond-dia.dicht1 .rond-duid { padding:5px 10px; font-size:12px; }
+.rond-dia.dicht1 .rk { padding:8px 12px; }
+.rond-dia.dicht1 .rk h4 { margin-bottom:6px; }
+.rond-dia.dicht1 .rk-held .rk-w b { font-size:30px; }
+.rond-dia.dicht1 .rk-lijn { height:26px; margin-top:4px; }
+.rond-dia.dicht1 .rs-buis { height:64px; }
+.rond-dia.dicht1 .rs-w b { font-size:15px; }
+.rond-dia.dicht1 .rr { padding:4px 0; }
+.rond-dia.dicht1 .rr-w b { font-size:17px; }
+.rond-dia.dicht1 .rr .rr-band { margin-top:4px; }
+.rond-dia.dicht1 .rm { padding:2px 0; }
+.rond-dia.dicht2 .rk-rijen { display:grid; grid-template-columns:1fr 1fr; column-gap:12px; }
+.rond-dia.dicht2 .rk-rijen > h4 { grid-column:1 / -1; }
+.rond-dia.dicht2 .rr + .rr { border-top:0; }
+.rond-dia.dicht2 .rr { grid-template-columns:minmax(0,1fr); }
+.rond-dia.dicht2 .rr > span { font-size:11px; }
+.rond-dia.dicht2 .rr-w b { font-size:15px; }
+.rond-dia.dicht2 .rk-held { display:grid; grid-template-columns:auto 1fr; column-gap:12px; align-items:center; }
+.rond-dia.dicht2 .rk-held h4 { grid-column:1 / -1; }
+.rond-dia.dicht2 .rk-held .rk-w b { font-size:24px; }
+.rond-dia.dicht2 .rk-lijn { margin-top:0; }
+.rond-dia.dicht2 .rs-buis { height:44px; }
 @keyframes rondIn { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:none; } }
 .rond-tijd { grid-template-columns:repeat(5,1fr); }
 @media (prefers-reduced-motion:reduce){ .rond-dia.rond-in { animation:none; } .rond-voort i, .rs-buis i, .rm-baan i { transition:none; } }

@@ -60,6 +60,27 @@ const wacht = (ms) => `await new Promise(function(r){ setTimeout(r, ${ms}); });`
     toets('geen Aanpassen in de rondgang', !een.aanpassen);
     toets('past op het scherm', een.breed <= een.venster, JSON.stringify(een));
 
+    // Alles aflezen zonder scrollen (17-10-2026): elke dia, alle sensoren
+    // aan, op een telefoon van 385×800. Past hij niet, dan tekent pasIn()
+    // hem dichter — niet in tweeën.
+    await app.venster(385, 800);
+    const pas = await app.ev(`(async function(){
+      PLRond.alleAan(); PLRond.pauze(); ${wacht(300)}
+      const n=PLRond.staat().dias.length, nav=document.getElementById('plNav').getBoundingClientRect().top, uit=[];
+      let dicht=0;
+      for(let i=0;i<n;i++){
+        const r=document.getElementById('rondDia'), b=Math.round(r.getBoundingClientRect().bottom);
+        if(/dicht/.test(r.className)) dicht++;
+        if(b>nav) uit.push(PLRond.staat().dias[PLRond.staat().i].id+':'+b+'>'+Math.round(nav));
+        PLRond.stap(1); ${wacht(150)}
+      }
+      PLRond.pauze();
+      return { n:n, uit:uit, dicht:dicht, nav:Math.round(nav) };
+    })()`);
+    toets('elke dia past boven de navigatie, zonder splitsen', pas.n >= 3 && pas.uit.length === 0, JSON.stringify(pas));
+    toets('en minstens één dia werd daarvoor dichter getekend', pas.dicht >= 1, JSON.stringify(pas));
+    await app.venster(412, 915);
+
     // De regel "wat dit zegt": in de demo geeft de accu altijd een waarde
     // en draait de motor, dus de pagina met 'laden' hoort een zin te dragen.
     const duid = await app.ev(`(async function(){

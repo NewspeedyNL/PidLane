@@ -55,6 +55,7 @@ const VOOR_MS = 2500;    // zo lang vóór de wissel wordt de volgende dia al sn
 const REM_MS = 2000;     // tempo voor de snelle sensoren van de andere dia's
 const SNEL_MS = 300;     // wat "snel" is in PID_POLL_CLASS — dezelfde grens als Visueel
 const MAX_PER_DIA = 12;
+const VUL_TOT = 6;       // een dia met minder tegels wordt aangevuld met verwante sensoren (VERWANT)
 const TIK_MS = 250;
 
 // De kop: altijd in beeld, klein, op één regel met ⏸ en ⚙. Een EV zonder
@@ -203,6 +204,28 @@ const DIAS = [
     { keten:['015B'], soort:'rij' },
     { keten:['0142'], soort:'rij' } ] }
 ];
+// VERWANT (17-10-2026, op verzoek): een dia met weinig sensoren is een
+// half leeg scherm. Hij wordt aangevuld met wat je ERNAAST wilt zien om
+// hem te lezen — niet met wat toevallig van dezelfde soort is. Raildruk
+// lees je tegen belasting en luchtmassa (vraagt de motor meer?) en de
+// trims (komt er genoeg aan?); uitlaatgas tegen belasting en kat;
+// ontsteking tegen belasting en temperatuur (de ECU trekt hem terug als
+// het warm of zwaar wordt). Zo'n sensor mag elders óók staan: hier is hij
+// context, als rij, met de klasse vul. Eerst wat nergens anders staat.
+const VERWANT = {
+  'motor-gas':['0110','010B','010E'],
+  'motor':['0104','0110','010B','0111','010E'],
+  'motor-ontsteking':['0104','0105','010F','010B','0106'],
+  'temp':['0104','0142','015C','0146'],
+  'temp-uitlaat':['0104','013C','0110','010E','0105'],
+  'brandstof':['0104','0110','0106','0107','012F'],
+  'mengsel':['0110','0104','0114','0115'],
+  'brandstof-druk':['0104','0110','010B','0106','0107','0144'],
+  'lucht':['0104','010F','0111','0106'],
+  'uitlaat':['0106','0107','0144','0110','0105'],
+  'uitlaat-nabeh':['0104','010B','0110','0178'],
+  'elektrisch':['011F','0105','0104','0146']
+};
 const CAT_IDS = CATS.map(function(c){ return c.id; });
 function catDef(id){ return CATS.filter(function(c){ return c.id===id; })[0]; }
 
@@ -211,7 +234,9 @@ function catDef(id){ return CATS.filter(function(c){ return c.id===id; })[0]; }
 // tonen (standaard o.heeft); o.extra: PIDs die aan staan (voor het
 // aanvullen); o.cat(pid): de Overzicht-categorie, of null = niet aanvullen;
 // o.uit: dia-ids met het vinkje uit; o.eigen: { cat: [pid] } met de hand
-// erbij gezet — die wint van elke andere plek. Eén sensor staat op één plek.
+// erbij gezet — die wint van elke andere plek. Eén sensor staat op één plek,
+// behalve met o.vullen: dan krijgt een dia onder VUL_TOT tegels verwante
+// sensoren als rij (vul:true), en die mogen elders ook staan.
 function indeling(motor, o){
   o=o||{};
   const heeft=o.heeft || function(){ return false; };
@@ -278,6 +303,18 @@ function indeling(motor, o){
     }
     samen.push(d);
   });
+  // Te leeg (o.vullen): verwante sensoren erbij, eerst wat nog nergens staat. Nooit de kop.
+  if(o.vullen){
+    const inKop=pidsVan(kop);
+    samen.forEach(function(d){
+      const hier=pidsVan(d.tegels), lijst=(VERWANT[d.id]||[]).filter(function(p){ return heeft(p) && hier.indexOf(p)<0 && inKop.indexOf(p)<0; });
+      lijst.filter(function(p){ return !gebruikt[p]; }).concat(lijst.filter(function(p){ return gebruikt[p]; })).forEach(function(p){
+        if(d.tegels.length>=VUL_TOT) return;
+        gebruikt[p]=1;
+        d.tegels.push({ id:'r-'+p, soort:'rij', pids:[p], vul:true });
+      });
+    });
+  }
   // Te vol: in delen van hoogstens MAX_PER_DIA.
   const uitL=[];
   samen.forEach(function(d){
@@ -476,7 +513,7 @@ function catVan(pid){
 function opbouw(){
   let extra=[];
   try{ if(typeof activePIDs!=='undefined') extra=Array.from(activePIDs); }catch(e){ console.warn('PLRond: activePIDs onleesbaar', e); }
-  _ind=indeling(motor(), { heeft:actief, heeftKop:levert, extra:extra, cat:catVan, uit:uitLijst(), eigen:eigenLijst() });
+  _ind=indeling(motor(), { heeft:actief, heeftKop:levert, extra:extra, cat:catVan, uit:uitLijst(), eigen:eigenLijst(), vullen:true });
   if(_st.i>=_ind.dias.length) _st.i=0;
   return _ind;
 }
@@ -547,7 +584,7 @@ function paneelHtml(g){
   }).join('')+'</div>';
   return '<div class="rk rk-rijen">'+kop+g.tegels.map(function(t){
     const p=t.pids[0], d=def(p), b=(typeof ovzBand==='function') ? ovzBand(d, null) : { heeft:false, z0:0, z1:100 };
-    return '<div class="rr" id="rt-'+p+'" data-s="rij"><span>'+esc(naam(p))+'</span><div class="rr-w">'+wHtml(p)+'</div>'+
+    return '<div class="rr'+(t.vul?' vul':'')+'" id="rt-'+p+'" data-s="rij"><span>'+esc(naam(p))+'</span><div class="rr-w">'+wHtml(p)+'</div>'+
       '<div class="gband rr-band'+(b.heeft?'':' geen')+'" id="rb-'+p+'"><i style="left:'+b.z0.toFixed(1)+'%;width:'+(b.z1-b.z0).toFixed(1)+'%"></i><u></u></div></div>';
   }).join('')+'</div>';
 }
@@ -675,7 +712,24 @@ function na(){
       if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)*1.5) api.stap(dx<0 ? 1 : -1);
     }, { passive:true });
   }
-  voortBij(); startKlok();
+  pasIn(); voortBij(); startKlok();
+}
+// Alles op één scherm (17-10-2026): niet splitsen maar dichter tekenen.
+// Steekt de dia onder de navigatie uit, dan eerst kleinere getallen en
+// lagere staven (dicht1), dan de rijen in twee kolommen en een held met
+// zijn lijn ernaast (dicht2). Gemeten, niet geschat: de duidingsregel,
+// een titel op twee regels en de knop onderaan tellen gewoon mee.
+function grens(){
+  const n=document.getElementById('plNav'), t=n ? n.getBoundingClientRect().top : 0;
+  return (t>0 && t<=window.innerHeight ? t : window.innerHeight)-8;
+}
+function pasIn(){
+  const r=document.getElementById('rondDia'); if(!r || !r.getClientRects().length) return 0;
+  r.classList.remove('dicht1', 'dicht2');
+  const past=function(){ return r.getBoundingClientRect().bottom<=grens(); };
+  if(past()) return 0;
+  r.classList.add('dicht1'); if(past()) return 1;
+  r.classList.add('dicht2'); return 2;
 }
 
 // ── Remmen op de bus — gelezen in pidPollInterval() ──
@@ -689,9 +743,11 @@ function remt(pid){
   if(!(typeof klasse==='number' && klasse<=SNEL_MS)) return false;
   if(pidsVan(_ind.kop).indexOf(pid)>-1) return false;
   const n=_ind.dias.length; if(n<2) return false;
-  const iDia=_ind.dias.findIndex(function(d){ return pidsVan(d.tegels).indexOf(pid)>-1; });
-  if(iDia<0 || iDia===_st.i) return false;
-  if(_st.alarm<0 && !_st.pauze && iDia===(_st.i+1)%n && ms()*(1-voortgang(_st, Date.now(), ms()))<=VOOR_MS) return false;
+  // Een verwante sensor staat op meer dan één dia: hij remt alleen als hij
+  // op de dia in beeld niet staat (en op de volgende niet, vlak voor de wissel).
+  const op=function(i){ return !!_ind.dias[i] && pidsVan(_ind.dias[i].tegels).indexOf(pid)>-1; };
+  if(!_ind.dias.some(function(d, i){ return op(i); }) || op(_st.i)) return false;
+  if(_st.alarm<0 && !_st.pauze && op((_st.i+1)%n) && ms()*(1-voortgang(_st, Date.now(), ms()))<=VOOR_MS) return false;
   return true;
 }
 
@@ -779,9 +835,9 @@ function eigenZet(c, p, erbij){
 const api = {
   // de pure kern — voor test-rondgang.js
   DIAS:DIAS, CATS:CATS, KOP:KOP, KEUZES_MS:KEUZES_MS, STANDAARD_MS:STANDAARD_MS, HOLD_MS:HOLD_MS, VOOR_MS:VOOR_MS, REM_MS:REM_MS, SNEL_MS:SNEL_MS, MAX_PER_DIA:MAX_PER_DIA,
-  indeling:indeling, groepen:groepen, midVulling:midVulling, duiding:duiding, tik:tik, stapPuur:stap, voortgang:voortgang, alarmDia:alarmDia, schoonMs:schoonMs, schoonUit:schoonUit, schoonEigen:schoonEigen,
+  VUL_TOT:VUL_TOT, VERWANT:VERWANT, indeling:indeling, groepen:groepen, midVulling:midVulling, duiding:duiding, tik:tik, stapPuur:stap, voortgang:voortgang, alarmDia:alarmDia, schoonMs:schoonMs, schoonUit:schoonUit, schoonEigen:schoonEigen,
   // het scherm
-  aan:aan, bouw:bouw, bij:bij, nogUit:nogUit, kandidaten:kandidaten,
+  aan:aan, bouw:bouw, bij:bij, pasIn:pasIn, nogUit:nogUit, kandidaten:kandidaten,
   kies:kies, kiesZoek:kiesLijst, eigenErbij:function(c, p){ eigenZet(c, p, true); }, eigenWeg:function(c, p){ eigenZet(c, p, false); },
   alleAan:function(){ const n=alleAan(); if(n && typeof showToast==='function') showToast(n+' sensoren aangezet voor de rondgang'); if(_blad) instellingen(); herbouw(); return n; }, remt:remt, instellingen:instellingen, sluit:sluitBlad,
   staat:function(){ return { i:_st.i, pauze:_st.pauze, alarm:_st.alarm, ms:ms(), dias:_ind.dias.map(function(d){ return { id:d.id, naam:d.naam, duid:d.duid, pids:pidsVan(d.tegels) }; }), kop:pidsVan(_ind.kop) }; },

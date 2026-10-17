@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 17-10-2026 — Rondgang in Slim: elke pagina op één scherm
+ ═══════════════════════════════════════════════════════════
+
+ - Een volle pagina viel onder de navigatie. pasIn() meet na het tekenen
+   en tekent dan dichter: kleinere getallen en lagere staven, daarna
+   rijen in twee kolommen en de grote waarde met zijn lijn ernaast.
+   Bewust niet splitsen: één onderwerp blijft één scherm.
+ - Een half lege pagina (Uitlaatgas, Brandstofdruk) krijgt verwante
+   sensoren als rij (VERWANT): raildruk naast belasting en trim,
+   uitlaatgas naast belasting en kat. remt() remt een sensor niet meer
+   die op de dia in beeld staat, ook als hij elders thuishoort.
+
+ ═══════════════════════════════════════════════════════════
  17-10-2026 — Play-teksten en privacyverklaring voor 3.3.0
  ═══════════════════════════════════════════════════════════
 

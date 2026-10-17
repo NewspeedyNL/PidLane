@@ -2787,6 +2787,26 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Rondgang: elke pagina op één scherm, een lege pagina krijgt verwante sensoren ──
+  {
+    issue: 'rondgang',
+    naam: 'Rondgang in Slim: dichter tekenen in plaats van splitsen, verwante sensoren op een half lege pagina',
+    waarom: 'Volle pagina\'s vielen onder de navigatie en Uitlaatgas of Brandstofdruk waren een half leeg scherm.',
+    proef: async function () {
+      if (!window.PLRond || typeof PLRond.pasIn !== 'function' || !PLRond.VERWANT)
+        return { staat: 'FOUT', detail: 'PLRond.pasIn/VERWANT ontbreken — oude pidlane-rondgang.js (herladen?)' };
+      var h = function (p) { return ['0123', '016E', '0104', '0106', '0110'].indexOf(p) > -1; };
+      var d = PLRond.indeling('benzine', { heeft: h, vullen: true }).dias.filter(function (x) { return x.id === 'brandstof-druk'; })[0];
+      var vul = d ? d.tegels.filter(function (t) { return t.vul; }).map(function (t) { return t.pids[0]; }) : [];
+      if (vul.indexOf('0104') < 0) return { staat: 'FOUT', detail: 'brandstofdruk krijgt geen belasting ernaast: ' + JSON.stringify(d) };
+      var r = document.getElementById('rondDia');
+      if (!r || !r.getClientRects().length) return { staat: 'LET OP', detail: 'verwant klopt (' + vul.join(', ') + '); de rondgang is niet in beeld, dus passen niet gemeten — open Live → Slim' };
+      var n = PLRond.pasIn(), nav = document.getElementById('plNav'), b = r.getBoundingClientRect().bottom, t = nav ? nav.getBoundingClientRect().top : window.innerHeight;
+      return b <= t ? { staat: 'OK', detail: 'dia past (dichtheid ' + n + '), verwant: ' + vul.join(', ') }
+                    : { staat: 'LET OP', detail: 'dia steekt ' + Math.round(b - t) + ' px onder de navigatie uit, ook op dichtheid ' + n };
+    }
+  },
+
   // ── Er is iets mis: eerst wat de auto al weet (#534) ──
   {
     issue: '#534',

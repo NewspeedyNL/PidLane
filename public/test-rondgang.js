@@ -189,5 +189,18 @@ const se = JSON.stringify(R.schoonEigen({ temp: ['221310', '221310', 5, '<x>'], 
 waar('schoonEigen: onbekende categorie, rommel en dubbel eruit; de eerste categorie wint', se === '{"motor":["221310","0104"]}', se);
 waar('schoonEigen: geen object → leeg', JSON.stringify(R.schoonEigen('x')) === '{}' && JSON.stringify(R.schoonEigen(['temp'])) === '{}');
 
+console.log('\n5. Te lege dia: verwante sensoren erbij (17-10-2026)');
+const vh = uit(['010D', '010C', '0123', '016E', '0104', '0110', '0106']);
+const zonderV = R.indeling('benzine', { heeft: vh });
+waar('zonder vullen geen verwante rijen (nogUit en de vaste indeling blijven zoals ze waren)', zonderV.dias.every((d) => d.tegels.every((t) => !t.vul)));
+const metV = R.indeling('benzine', { heeft: vh, vullen: true });
+const drk = metV.dias.find((d) => d.id === 'brandstof-druk');
+const vulP = drk ? drk.tegels.filter((t) => t.vul).map((t) => t.pids[0]) : [];
+waar('raildruk krijgt belasting en trim ernaast, als rij', !!drk && vulP.join() === '0104,0106' && drk.tegels.filter((t) => t.vul).every((t) => t.soort === 'rij'), JSON.stringify(drk));
+waar('nooit de kop als vulling, nooit twee keer op één dia', metV.dias.every((d) => { const p = pids(d); return new Set(p).size === p.length && p.indexOf('010D') < 0 && p.indexOf('010C') < 0; }), JSON.stringify(metV.dias.map(pids)));
+const volV = R.indeling('benzine', { heeft: alles, vullen: true });
+waar('vullen tot ' + R.VUL_TOT + ' en niet verder; een volle dia krijgt niets', volV.dias.every((d) => !d.tegels.some((t) => t.vul) || d.tegels.length <= R.VUL_TOT) && volV.dias.filter((d) => d.tegels.some((t) => t.vul)).length >= 2, volV.dias.map((d) => d.id + ':' + d.tegels.length).join(' '));
+waar('elke VERWANT-sleutel is een bestaande pagina', Object.keys(R.VERWANT).every((k) => R.DIAS.some((d) => d.id === k)));
+
 console.log('\n' + ok + ' goed, ' + fout + ' fout');
 process.exit(fout ? 1 : 0);
