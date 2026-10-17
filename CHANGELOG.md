@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 17-10-2026 — RDW: terugroepacties en tellerstand goed gelezen
+ ═══════════════════════════════════════════════════════════
+ Een terugroepactie die de fabrikant als hersteld heeft gemeld, staat
+ niet meer als open recall in de kentekencheck, de koopcheck en de
+ AI-prompt. "Geen oordeel" en "Niet geregistreerd" bij de tellerstand
+ worden getoond en uitgelegd (geen fraudesignaal) in plaats van
+ weggelaten; alleen "Logisch" is nog groen. Omschrijving en risico van
+ een terugroepactie komen uit de echte RDW-velden. De bronnencontrole in
+ beheer bewaakt nu ook de drie terugroeptabellen en de woordenlijsten.
+
+ ═══════════════════════════════════════════════════════════
  16-10-2026 — Beheer: kennisbronnen bewaakt, logcontrole in SQL
  ═══════════════════════════════════════════════════════════
  Nieuw tabblad Data → Bronnen in beheer.html (route /admin/bronnen).

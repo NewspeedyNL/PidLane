@@ -48,8 +48,16 @@ function maakD1(db) {
 
 // ── De buitenwereld ─────────────────────────────────────────────
 const RDW_KOL = {
-  'm9d7-ebf2': ['kenteken', 'merk', 'handelsbenaming', 'datum_eerste_toelating', 'vervaldatum_apk', 'cilinderinhoud', 'voertuigsoort'],
-  '8ys7-d773': ['kenteken', 'brandstof_omschrijving', 'nettomaximumvermogen', 'brandstof_volgnummer']
+  'm9d7-ebf2': ['kenteken', 'merk', 'handelsbenaming', 'datum_eerste_toelating', 'vervaldatum_apk', 'cilinderinhoud', 'voertuigsoort', 'tellerstandoordeel', 'openstaande_terugroepactie_indicator'],
+  '8ys7-d773': ['kenteken', 'brandstof_omschrijving', 'nettomaximumvermogen', 'brandstof_volgnummer'],
+  't49b-isb7': ['kenteken', 'referentiecode_rdw', 'code_status', 'status'],
+  'j9yg-7rg9': ['referentiecode_rdw', 'omschrijving_defect', 'publicatiedatum_rdw_dt', 'categorie_defect'],
+  '9ihi-jgpf': ['referentiecode_rdw', 'code_mogelijk_gevaar', 'mogelijk_gevaar']
+};
+// De woordenlijsten zoals het RDW ze op 17-10-2026 gaf.
+const RDW_WAARDEN = {
+  'm9d7-ebf2': { tellerstandoordeel: ['Geen oordeel', 'Logisch', 'Niet geregistreerd', 'Onlogisch'] },
+  't49b-isb7': { code_status: ['O', 'P'] }
 };
 const wereld = {
   orgStatus: 200,
@@ -59,6 +67,7 @@ const wereld = {
     'Kia-Niro': JSON.stringify({ commands: [{ cmd: { 22: '0101' }, signals: [{ id: 'C' }] }] })
   },
   rdwKol: JSON.parse(JSON.stringify(RDW_KOL)),
+  rdwWaarden: JSON.parse(JSON.stringify(RDW_WAARDEN)),
   rdwBij: 1760000000,
   nhtsa: { Make: 'HONDA', Model: 'Accord', 'Model Year': '2003' },
   onbereikbaar: {}
@@ -76,6 +85,11 @@ async function nepFetch(url) {
   if (u.hostname === 'raw.githubusercontent.com') {
     const repo = u.pathname.split('/')[2];
     return wereld.obdb[repo] ? antw(200, wereld.obdb[repo]) : antw(404, '404: Not Found');
+  }
+  if (u.hostname === 'opendata.rdw.nl' && /^\/resource\//.test(u.pathname)) {
+    const id = /resource\/([a-z0-9-]+)\.json/.exec(u.pathname)[1];
+    const veld = u.searchParams.get('$group');
+    return antw(200, ((wereld.rdwWaarden[id] || {})[veld] || []).map((w) => ({ [veld]: w, count: '1' })));
   }
   if (u.hostname === 'opendata.rdw.nl') {
     const id = /views\/([a-z0-9-]+)\.json/.exec(u.pathname)[1];
@@ -117,9 +131,10 @@ const verzoek = (methode, token) => ({ method: methode, headers: new Map([['X-Ad
   console.log('\n2. Eerste meting: alles gezond, niets "nieuw"');
   let u = await W.bronnenControleren(env);
   let p = per(u);
-  t('zes bronnen: OBDb, CX-5, Niro uit de bibliotheek, twee RDW, NHTSA', Object.keys(p).sort().join(',') === 'nhtsa,obdb,obdb:Kia-Niro,obdb:Mazda-CX-5,rdw:8ys7-d773,rdw:m9d7-ebf2', Object.keys(p).join(','));
+  t('negen bronnen: OBDb, CX-5, Niro uit de bibliotheek, vijf RDW, NHTSA', Object.keys(p).sort().join(',') === 'nhtsa,obdb,obdb:Kia-Niro,obdb:Mazda-CX-5,rdw:8ys7-d773,rdw:9ihi-jgpf,rdw:j9yg-7rg9,rdw:m9d7-ebf2,rdw:t49b-isb7', Object.keys(p).join(','));
   t('een url met ../ uit de bibliotheek wordt geen aanvraag', !aanvragen.some((x) => /evil/.test(x)), aanvragen.join(' '));
-  t('alles gezond', u.samenvatting.gezond === 6 && u.samenvatting.kapot === 0, JSON.stringify(u.samenvatting));
+  t('alles gezond', u.samenvatting.gezond === 9 && u.samenvatting.kapot === 0, JSON.stringify(u.samenvatting));
+  t('de woordenlijst staat in het detail', /tellerstandoordeel: Geen oordeel, Logisch/.test(p['rdw:m9d7-ebf2'].detail) && /code_status: O, P/.test(p['rdw:t49b-isb7'].detail), p['rdw:m9d7-ebf2'].detail + ' | ' + p['rdw:t49b-isb7'].detail);
   t('de eerste meting is geen update', u.samenvatting.nieuw === 0 && u.bronnen.every((x) => x.eerste), JSON.stringify(u.bronnen.map((x) => [x.sleutel, x.nieuw, x.eerste])));
   t('OBDb-bestand telt commando\'s en signalen', /1 commando's, 2 signalen/.test(p['obdb:Mazda-CX-5'].detail), p['obdb:Mazda-CX-5'].detail);
   t('… en draagt de pushdatum uit de organisatielijst', p['obdb:Mazda-CX-5'].versie === '2026-10-15T10:00:00Z', p['obdb:Mazda-CX-5'].versie);
@@ -140,6 +155,14 @@ const verzoek = (methode, token) => ({ method: methode, headers: new Map([['X-Ad
   t('… ook al gaf hij HTTP 200', p['rdw:8ys7-d773'].http === 200);
   t('de andere RDW-dataset blijft gezond', p['rdw:m9d7-ebf2'].status === 'gezond');
   wereld.rdwKol['8ys7-d773'] = RDW_KOL['8ys7-d773'].slice();
+
+  console.log('\n4b. Een waarde die de app niet kent (zo ging "herstel gemeld" als open recall door)');
+  wereld.rdwWaarden['t49b-isb7'].code_status = ['O', 'P', 'X'];
+  u = await W.bronnenControleren(env); p = per(u);
+  t('code_status met een nieuwe waarde: kapot, met de waarde erbij', p['rdw:t49b-isb7'].status === 'kapot' && /niet kent: X/.test(p['rdw:t49b-isb7'].detail), JSON.stringify(p['rdw:t49b-isb7']));
+  wereld.rdwWaarden['t49b-isb7'].code_status = ['O', 'P'];
+  u = await W.bronnenControleren(env); p = per(u);
+  t('terug naar O en P: weer gezond', p['rdw:t49b-isb7'].status === 'gezond', JSON.stringify(p['rdw:t49b-isb7']));
 
   console.log('\n5. GitHub laat ons even niet');
   wereld.orgStatus = 403;
@@ -177,7 +200,7 @@ const verzoek = (methode, token) => ({ method: methode, headers: new Map([['X-Ad
   t('zonder geldige token: 403', zonder.status === 403);
   const n0 = aanvragen.length;
   const stand = await W.handleAdminBronnen(verzoek('GET', 'geheim'), env);
-  t('GET geeft de stand uit D1', stand.status === 200 && stand.body.bronnen.length === 6, JSON.stringify(stand.body).slice(0, 200));
+  t('GET geeft de stand uit D1', stand.status === 200 && stand.body.bronnen.length === 9, JSON.stringify(stand.body).slice(0, 200));
   t('… zonder één aanvraag naar buiten', aanvragen.length === n0, aanvragen.slice(n0).join(' '));
   const post = await W.handleAdminBronnen(verzoek('POST', 'geheim'), env);
   t('POST controleert echt', post.status === 200 && post.body.samenvatting && aanvragen.length > n0);
