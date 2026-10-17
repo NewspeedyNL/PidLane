@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 17-10-2026 — Play-teksten en privacyverklaring voor 3.3.0
+ ═══════════════════════════════════════════════════════════
+
+ - Versie 3.3.0. PLAY-INZENDING.md: §3 met lampjesgids, alle
+   stuurapparaten, kenteken-check en conditiescore (3970/4000 tekens),
+   §14 nieuwe release notes, §16b de toestelproeven voor 3.3.
+ - Data safety §11: Photos aangevinkt — de lampjesgids stuurt een
+   dashboardfoto naar de AI (#492); dat stond nog onder "niet aanvinken".
+ - De demo heet in §3 en §7 een gesimuleerde auto, zoals in de app zelf.
+ - privacy.html: camera ook voor de dashboardfoto; de dagelijkse
+   terugroepcheck stuurt het kenteken via de server naar de RDW.
+
+ ═══════════════════════════════════════════════════════════
  17-10-2026 — RDW: terugroepacties en tellerstand goed gelezen
  ═══════════════════════════════════════════════════════════
  Een terugroepactie die de fabrikant als hersteld heeft gemeld, staat
