@@ -670,7 +670,7 @@ MUTATIES=(
 # En andersom: §3 hernoemt een functie, §14 blijft de oude naam beloven. Dat is
 # de stillere van de twee — je verbetert de beschrijving en raakt het veld
 # ernaast niet aan.
-"PLAY-INZENDING.md@@• Slim visueel — de belangrijkste@@• Dashboardweergave — de belangrijkste@@test-playteksten.js@@§3 hernoemt een functie en §14 belooft de oude naam nog"
+"PLAY-INZENDING.md@@• Lampjesgids — wat een@@• Dashboardlampjes — wat een@@test-playteksten.js@@§3 hernoemt een functie en §14 belooft de oude naam nog"
 # ── Inloggen kost geen credit meer (#179, 10-09-2026) ──
 # Vijf fouten die deze reparatie ongedaan maken, en ze zijn geen van vijven
 # verzonnen: de eerste is precies hoe het er tot vandaag in stond, en de
