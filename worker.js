@@ -2096,6 +2096,23 @@ async function handleCodeResolve(request, env) {
   return new Response(text, { status: r.status, headers: { "Content-Type": "application/json", ...CORS } });
 }
 __name(handleCodeResolve, "handleCodeResolve");
+// De VIN gaat nooit ruw de telefoon uit (§7). De app stuurt sinds 17-10-2026
+// alleen WMI + pseudoniem in vstate; dit is de tweede deur: een oude app-versie
+// (of een gemanipuleerde local) kan nog een `veh.vin` meesturen, en die mag niet
+// in de Durable Object-opslag of bij een expert belanden. Ook toegepast op een
+// vstate die al in de opslag stond van vóór deze datum.
+function vstateZonderVin(d) {
+  if (!d || typeof d !== "object") return d;
+  if (d.veh && typeof d.veh === "object" && "vin" in d.veh) {
+    const veh = { ...d.veh };
+    const ruw = String(veh.vin || "").toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, "");
+    delete veh.vin;
+    if (!veh.wmi && ruw) veh.wmi = ruw.slice(0, 3);
+    return { ...d, veh };
+  }
+  return d;
+}
+__name(vstateZonderVin, "vstateZonderVin");
 var RemoteSessionDO = class {
   static {
     __name(this, "RemoteSessionDO");
@@ -2111,7 +2128,7 @@ var RemoteSessionDO = class {
       this._meta = await this.ctx.storage.get("meta") || null;
       this.frames = await this.ctx.storage.get("frames") || [];
       this.audit = await this.ctx.storage.get("audit") || [];
-      this.vstate = await this.ctx.storage.get("vstate") || null;
+      this.vstate = vstateZonderVin(await this.ctx.storage.get("vstate") || null);
     });
   }
   // Gedeelde implementatie achter redeem-lock/-unlock EN saldo-lock/-unlock:
@@ -2408,6 +2425,12 @@ var RemoteSessionDO = class {
     const reqId = typeof m.reqId === "string" && m.reqId.slice(0, 40) || crypto.randomUUID().slice(0, 8);
     if (m.type === "request-dtc") return { type: "request-dtc", reqId };
     if (m.type === "request-vstate") return { type: "request-vstate", reqId };
+    // Eén eerder rapport uit het archief van de local (voorkennis, 17-10-2026).
+    // Alleen een archief-id: de local zoekt hem op, er gaat niets naar de auto.
+    if (m.type === "request-rapport") {
+      const id = typeof m.id === "string" && /^sr\d{1,6}_\d{10,16}$/.test(m.id) ? m.id : null;
+      return id ? { type: "request-rapport", id, reqId } : null;
+    }
     if (m.type === "request-pids") {
       if (!Array.isArray(m.pids)) return null;
       const pids = m.pids.filter((p) => typeof p === "string" && /^[0-9A-Fa-f]{2}$/.test(p)).slice(0, 12);
@@ -2507,13 +2530,14 @@ var RemoteSessionDO = class {
         d = null;
       }
       if (d) {
+        d = vstateZonderVin(d);
         this.vstate = d;
         await this.ctx.storage.put("vstate", d);
         this.broadcastTo("expert", { type: "vstate", data: d, t: Date.now() });
       }
       return;
     }
-    if (role === "expert" && (m.type === "request-pids" || m.type === "request-dtc" || m.type === "request-poll" || m.type === "request-record" || m.type === "request-analyze" || m.type === "request-vstate")) {
+    if (role === "expert" && (m.type === "request-pids" || m.type === "request-dtc" || m.type === "request-poll" || m.type === "request-record" || m.type === "request-analyze" || m.type === "request-vstate" || m.type === "request-rapport")) {
       const now = Date.now();
       this._reqTimes = (this._reqTimes || []).filter((t) => now - t < 1e4);
       if (this._reqTimes.length >= 20) {

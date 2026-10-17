@@ -15,6 +15,27 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 17-10-2026 — Het vierde VIN-pad: de vstate naar de expert
+
+`buildVState()` in `pidlane-remote.js` zette `veh.vin` onbewerkt in de
+momentopname die de local bij elk verbinden naar de Worker stuurt. De Worker
+bewaarde die in de Durable Object-opslag (`storage.put("vstate")`) voor late
+instappers en gaf hem door aan elke expert, die hem op zijn beurt in
+`vehicleInfo.vin` zette. De tabel in §7 noemde vier paden en dit was een
+vijfde — dezelfde vorm als #102: het pad werd niet gezien omdat het geen
+"log" of "Airtable" heette. Gevonden bij het bouwen van de voorkennis voor de
+expert, niet door een test: geen enkele toets keek naar de vstate.
+
+Gedicht aan twee kanten. De app stuurt alleen WMI en het pseudoniem van
+`_vlVinPseudoniem()` (async, dus de eerste vstate heeft alleen de WMI en er
+volgt een tweede). De Worker haalt met `vstateZonderVin()` een `veh.vin` eruit,
+óók uit een vstate die al in de opslag stond — een oude app-versie in het veld
+blijft hem tenslotte sturen. De expert zet het pseudoniem niet in
+`vehicleInfo.vin`: dat is geen VIN, en een tweede keer pseudonimiseren gaf
+een ander id dan dat van de klant.
+
+---
+
 ## 17-10-2026 — De RDW zei "afgehandeld" en "geen oordeel"; de app las "open" en "onbekend"
 
 Gevonden in het logboek van de CX-5 van 17-10-2026, 00:11: *"Terugroepacties

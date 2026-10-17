@@ -1903,6 +1903,7 @@ function closeConnOv(){
 <script src="pidlane-uds.js"></script><!-- foutcodes van alle stuurapparaten, UDS 0x19 (PLUds) — vereist sendCmd + withBus -->
 <script src="pidlane-foutcodes.js"></script><!-- foutcodes &amp; keuringsstatus (PLFoutcodes) — vereist sendCmd + withBus + ALL_PID_DEFS -->
 <script src="pidlane-onderzoek.js"></script><!-- volledig onderzoek (PLOnderzoek) — vereist PLFoutcodes.leesStil + softwareOorzaken -->
+<script src="pidlane-voorkennis.js"></script><!-- voorkennis voor de expert (PLVoorkennis) — ná PLOnderzoek (CODEREGELS, kennisNaarVerdenking), vóór pidlane-remote.js -->
 <script src="pidlane-samenhang.js"></script><!-- samenhang (PLSamenhang, #446) — toestanden + de stappen van PLOnderzoek op een meting die er al is -->
 <script src="pidlane-verzamel.js"></script><!-- verzamelscherm vóór een AI-rapport (PLVerzamel) — vereist plMeetTekort + plKernStatus uit pidlane-fuel.js, pas bij aanroep -->
 <script src="pidlane-rapport.js"></script><!-- analyserapport (PLRapport) — vaste secties, AI-velden, grafieken; jsPDF via loadJsPDF, pas bij aanroep -->
@@ -2071,6 +2072,7 @@ function closeConnOv(){
     <div class="rem-stat" id="remExpStat">—</div>
     <button class="rem-btn pri" style="width:100%;margin:4px 0 8px" onclick="PLRemote.enterDrive()">🚗 Open in app — deuren, analyses &amp; AI-rapport</button>
     <div class="rem-grid" id="remTiles"></div>
+    <div id="remVoorkennis"></div>
     <div class="rem-lbl">PID's opvragen (bv. 0C 05 0D)</div>
     <div class="rem-flex"><input class="rem-in" id="remReqPids" value="0C 05 0D"><button class="rem-btn pri" onclick="PLRemote.reqPids()">Vraag op</button><button class="rem-btn" onclick="PLRemote.reqDtc()">DTC’s</button></div>
     <div class="rem-lbl" style="margin-top:12px">Opname op de local — volle busfrequentie, verwerking daar</div>

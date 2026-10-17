@@ -238,6 +238,7 @@ var PL_HULP = {
         '<li>Je ziet hoeveel experts meekijken. Klaar? Tik op <b>Stop delen</b>.</li>' +
         '</ol>' +
         '<p>Ben jij de expert? Tik op <b>Ik ben de expert</b> en typ de code, of plak de link die je kreeg.</p>' +
+        '<p>Bij het verbinden ziet de expert meteen wat de app al over de auto weet: waar eerst naar te kijken (foutcodes en monitortests, met de bekende zwakke plekken van het merk erbij), de foutcodes met hoe vaak en wanneer ze opkwamen, wat er eerder op deze auto gezien is, en de titels van eerdere rapporten. De tekst van een rapport gaat pas mee als de expert op <b>Lees</b> tikt. Het chassisnummer gaat niet mee, alleen een pseudoniem.</p>' +
         '<p>De data loopt via de beveiligde PidLane-server. De link verloopt vanzelf met de sessie.</p>',
       zie: ['live'] },
 

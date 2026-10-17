@@ -230,6 +230,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 
 | # | Module | KB | Doet |
 |---|---|---|---|
+| 32b | `pidlane-voorkennis.js` | 15 | `PLVoorkennis` — **wat de expert weet zodra hij verbindt** (17-10-2026). `bouw(ctx)` is puur: foutcodes en mode 06 worden verdenkingen via de regels van `PLOnderzoek` (`CODEREGELS`, `beoordeelMode06`), merkkennis (`kennisNaarVerdenking`) duwt alleen waar al bewijs is (`KENNIS_DUW`), de rest staat als `bekend`. Plus foutcodes met de geschiedenis uit `PLMon` (aantal, fase, freeze frame), `PLM06.laatste`, `PLWaarneming` en de titels van eerdere rapporten — de tekst pas op verzoek (`rapport(id)`, `request-rapport`). Gaat mee in de vstate van `PLRemote`; `html()` tekent het in `#remVoorkennis`. Laadt ná `pidlane-onderzoek.js`. Test: `test-voorkennis.js` |
 | 33 | `pidlane-remote.js` | 50 | `PLRemote` — remote-expertsessies, Durable Object, WebSocket-fanout, QR-pairing, vstate |
 | 34 | `pidlane-caravan.js` | 30 | caravan-rittracker, live brandstofcoach, 10 coachregels met cooldowns. Terrein (klim/afdaling/vlak) via `caravanTerrein()` (#463): de helling uit `PLTelemetrie.hellingVast()` beslist (2,5°, alleen bij ≤ 1 km/u per s snelheidsverandering), anders `caravanDetectClimb()` op belasting en snelheid; `caravanTerreinBron` telt de seconden per bron voor het rapport. Tests: `test-helling.js` |
 | 34b | `pidlane-weten.js` | 22 | `PLWeten` — **"Wat we al weten"** (09-10-2026). De kaart vóór de eerste vraag van een wizardtak: RDW-regels uit `PLZonder.haal()`/`rdwOverzicht()` (welke per tak: `RDW_LABELS`), open terugroepacties (`PLRecall.check`), het dossier (`PLGarage._kern.status` op `actief()`) en de laatste uitlezing (`PLFoutcodes.staat().scan`) — die twee alleen voor je eigen auto, nooit bij handel — en de merkkennis (`autoKennisVoorMerk`). Voor een koper ook proefrittips (`proefritPunten()`, uit `PROEF`) en een eerlijke regel over schadehistorie. `adviesMeting()` geeft rit10 als een zwak punt pas onder belasting boven komt. Puur: `proefritPunten`, `adviesMeting`, `kaart`, `aiPrompt`; `teken(doel, {tak, rol, kent, klaar})` haalt en tekent; alleen het RDW-deel wordt 10 min bewaard, dossier en uitlezing komen vers. "Meer over dit model" vraagt de AI (`apiFetch`, `{meet:false}`), alleen op een tik, gelabeld als niet geverifieerd. Laadt vóór `pidlane-wizard.js`. Tests: `test-weten.js`, `bproef-koopstroom.js`, blok 5 |
@@ -625,6 +626,7 @@ onthouden, want de eerste fix wekte de indruk dat het klaar was:
 | Logregels → `Logs` | `_plVinVoorLog()` in `pidlane-auth.js` | 27-08-2026 |
 | App-logbuffer → testrunverslag | `_plVinVoorLog()` op de schrijvers | 03-09-2026 |
 | Bugmelding → `Logs` (Type=bug) | `_bugDiagMetVin()` → `_plVinVoorLog()` in `pidlane-auth.js` | 30-09-2026 |
+| Expert op afstand → Worker (vstate) | `_vinVoorExpert()` in `pidlane-remote.js` (WMI + pseudoniem); `vstateZonderVin()` in `worker.js` als tweede deur | 17-10-2026 |
 
 Het tweede pad was het ergere van de twee en werd bij de eerste ronde gemist:
 `logToSheets()` schreef de volledige VIN in een **eigen kolom**, op élke
