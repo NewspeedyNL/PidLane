@@ -629,12 +629,26 @@ jobs:
           else:
               nieuwTag = nieuwTag[:-1].rstrip() + '\n            android:configChanges="%s">' % "|".join(nodigCfg)
           xml = xml.replace(tag, nieuwTag, 1)
+          # ── App Links (17-10-2026) ───────────────────────────────────────
+          # Links naar https://app.pidlane.nl openen de app in plaats van Chrome.
+          # autoVerify laat Android public/.well-known/assetlinks.json ophalen;
+          # die moet de Play-sleutel (app-ondertekening) noemen.
+          if 'android:host="app.pidlane.nl"' not in xml:
+              filt = ('\n            <intent-filter android:autoVerify="true">'
+                      '\n                <action android:name="android.intent.action.VIEW" />'
+                      '\n                <category android:name="android.intent.category.DEFAULT" />'
+                      '\n                <category android:name="android.intent.category.BROWSABLE" />'
+                      '\n                <data android:scheme="https" android:host="app.pidlane.nl" />'
+                      '\n            </intent-filter>')
+              xml = xml.replace(nieuwTag, nieuwTag + filt, 1)
           pad.write_text(xml)
           print("── MainActivity-activiteit NA de PiP-injectie ──"); print(nieuwTag)
 
           for naam, waarvoor in [
               ('android:supportsPictureInPicture="true"', 'de activiteit mag in een klein venster (#228)'),
               ('android:resizeableActivity="true"', 'de activiteit mag in split-screen naast de kaart (rijmodus)'),
+              ('android:autoVerify="true"', 'App Links voor app.pidlane.nl'),
+              ('android:host="app.pidlane.nl"', 'App Links-host'),
               ('FOREGROUND_SERVICE_CONNECTED_DEVICE', 'het servicetype dat bij een gekoppelde adapter hoort'),
               ('POST_NOTIFICATIONS', 'de melding die bij een foreground service hoort'),
               ('WAKE_LOCK', 'de partial wake lock die de CPU wakker houdt'),
