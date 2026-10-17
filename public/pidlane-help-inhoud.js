@@ -52,7 +52,7 @@ var PL_HULP = {
       tekst:
         '<p>Na het inloggen (of in de demo) staat onderin een balk met vier tabs:</p>' +
         '<ul>' +
-        '<li><b>Home</b> — het startscherm, met <a data-hulp="check">Check mijn auto</a> en vier tegels.</li>' +
+        '<li><b>Home</b> — het startscherm, met Expert op afstand, <a data-hulp="check">Check mijn auto</a> en vier tegels.</li>' +
         '<li><b>Live</b> — de metingen van de auto op dit moment. Zie <a data-hulp="live">Live</a>.</li>' +
         '<li><b>Rapporten</b> — wat PidLane heeft vastgelegd. Een getal op de tab zegt hoeveel.</li>' +
         '<li><b>Meer</b> — account, instellingen en hulp. Nog eens tikken sluit het menu. Zie <a data-hulp="meer">Meer</a>.</li>' +
@@ -61,12 +61,13 @@ var PL_HULP = {
 
     { id: 'startscherm', groep: 'start', titel: 'Het startscherm',
       tekst:
-        '<p>Bovenaan staat <a data-hulp="check">Check mijn auto</a>: foutcodes en keuringsstatus in ongeveer 30 seconden.</p>' +
+        '<p>Bovenaan staat <a data-hulp="delen">Expert op afstand</a>: <b>Laat iemand meekijken</b> deelt je live data met je monteur of een kenner, <b>Ik ben de expert</b> is voor wie meekijkt.</p>' +
+        '<p>Daaronder <a data-hulp="check">Check mijn auto</a>: foutcodes en keuringsstatus in ongeveer 30 seconden.</p>' +
         '<p>Daaronder, onder <b>Ik wil…</b>, vier tegels. Elke tegel opent een korte wizard voor die vraag:</p>' +
         '<ul>' +
         '<li><b>Er is iets mis</b> — een klacht, lampje of geluid.</li>' +
         '<li><b>Kopen of verkopen</b> — staat, historie en waarde. Je geeft eerst het kenteken; dan zie je wat het RDW weet, waar je bij dit merk op let en wat je tijdens de proefrit voelt of hoort. Daarna vul je km-stand en prijs in, en pas dan kies je hoe lang je meet. Wat je invult staat straks al in de koopcheck.</li>' +
-        '<li><b>Rit starten</b> — meekijken, zuinig rijden, caravan.</li>' +
+        '<li><b>Rit starten</b> — ritmonitor, zuinig rijden, caravan.</li>' +
         '<li><b>Voorbereiden</b> — winter, lange rit, onderhoud.</li>' +
         '</ul>' +
         '<p>Elke wizard begint met <b>Wat we al weten</b>: wat de app al over je auto heeft, zoals de laatste foutcodes of een openstaande terugroepactie. Weet hij nog niets, dan blijft dat blok weg.</p>' +
@@ -216,7 +217,7 @@ var PL_HULP = {
         '<p>Een dubbeltik op een tegel verbergt hem. Hij wordt wel gewoon gemeten en staat daarna in een strook om terug te halen.</p>' +
         '<p>Een automatische bevinding verberg je met het <b>✕</b> of een dubbeltik. De AI krijgt hem nog mee; terughalen doe je via <b>bekijk alles</b>.</p>' +
         '<p>Niet elke regel geldt voor elke auto: een motor met slimme laadregeling laadt bij een volle accu bewust onder 13 V, en sommige motoren draaien bewust 105–110 °C warm. Weet de app dat van jouw auto niet, dan zegt hij <b>niet te beoordelen</b> in plaats van een fout, en de AI trekt er dan ook geen conclusie over. Bij <b>bekijk alles</b> staat onder <b>Niet te beoordelen op deze auto</b> wat dat is, soms met een vraag. Je antwoord (<b>Ja</b> of <b>Nee</b>) onthoudt de app voor deze auto. Klinkt een bevinding met "niet zeker voor deze auto", dan is het een aandachtspunt en geen vastgesteld defect.</p>' +
-        '<p>Onder de meters staat <b>⏺ Opnemen</b>, in de garagemodus ook <b>◉ Bewaken</b>. Delen en meekijken start je op Home bij <b>Rit starten</b>. ' +
+        '<p>Onder de meters staat <b>⏺ Opnemen</b>, in de garagemodus ook <b>◉ Bewaken</b>. Delen en meekijken start je bovenaan Home bij <b>Expert op afstand</b>. ' +
         'Bij Visueel staan Opnemen en Bewaken er niet: daar start je de bulk-recorder en de waakronde vanuit het vak onder de meter.</p>',
       zie: ['opnemen', 'delen'] },
 
@@ -228,7 +229,7 @@ var PL_HULP = {
 
     { id: 'delen', groep: 'gebruik', titel: 'Delen en meekijken',
       tekst:
-        '<p><b>Deel mijn live data</b> (Home → Rit starten) laat een expert op afstand meekijken. De expert ziet je sensordata en kan zelf waarden en foutcodes opvragen — ' +
+        '<p><b>Laat iemand meekijken</b> (bovenaan Home, bij Expert op afstand) laat je monteur of een kenner live meekijken, waar hij ook is. Handig als de klacht alleen onderweg optreedt of de garage ver weg is. De expert ziet je sensordata en kan zelf waarden en foutcodes opvragen — ' +
         'alleen lezen: op afstand kan er niets aan de auto veranderd worden.</p>' +
         '<ol>' +
         '<li>Tik op <b>Start delen</b>.</li>' +
@@ -236,7 +237,7 @@ var PL_HULP = {
         'Alleen die manier staat dan in beeld; de app onthoudt je keuze.</li>' +
         '<li>Je ziet hoeveel experts meekijken. Klaar? Tik op <b>Stop delen</b>.</li>' +
         '</ol>' +
-        '<p>Ben jij de expert? Tik op <b>Ontvang data op afstand</b> en typ de code, of plak de link die je kreeg.</p>' +
+        '<p>Ben jij de expert? Tik op <b>Ik ben de expert</b> en typ de code, of plak de link die je kreeg.</p>' +
         '<p>De data loopt via de beveiligde PidLane-server. De link verloopt vanzelf met de sessie.</p>',
       zie: ['live'] },
 
@@ -351,6 +352,10 @@ var PL_HULP = {
       tekst: 'De kleur is de ernstigste van auto-dossier, adapter en AI samen. Tik voor de vier regels met uitleg.' },
     { id: 'opnemen', anker: '#plLiveRec', bron: 'index.html', onderwerp: 'opnemen',
       tekst: 'Kies sensoren, start de opname, rijd en laat het probleem gebeuren. Stop daarna de opname.' },
+    { id: 'expertdeel', anker: '#plExpertDeel', bron: 'index.html', onderwerp: 'delen',
+      tekst: 'Je monteur of een kenner kijkt live mee en kan waarden en foutcodes opvragen — alleen lezen. Deel de code alleen met iemand die je vertrouwt.' },
+    { id: 'expertontvang', anker: '#plExpertOntvang', bron: 'index.html', onderwerp: 'delen',
+      tekst: 'Voor de expert: typ de meekijk-code of plak de link die je kreeg.' },
     { id: 'deel', anker: '#wc-liveshare', bron: 'index.html', onderwerp: 'delen',
       tekst: 'Een expert kijkt live mee en kan waarden en foutcodes opvragen — alleen lezen. Deel de code alleen met iemand die je vertrouwt en tik op Stop delen als je klaar bent.' },
     { id: 'meekijken', anker: '#wc-liveexpert', bron: 'index.html', onderwerp: 'delen',
