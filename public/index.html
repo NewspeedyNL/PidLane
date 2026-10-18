@@ -1904,7 +1904,8 @@ function closeConnOv(){
 <script src="pidlane-uds.js"></script><!-- foutcodes van alle stuurapparaten, UDS 0x19 (PLUds) — vereist sendCmd + withBus -->
 <script src="pidlane-foutcodes.js"></script><!-- foutcodes &amp; keuringsstatus (PLFoutcodes) — vereist sendCmd + withBus + ALL_PID_DEFS -->
 <script src="pidlane-onderzoek.js"></script><!-- volledig onderzoek (PLOnderzoek) — vereist PLFoutcodes.leesStil + softwareOorzaken -->
-<script src="pidlane-voorkennis.js"></script><!-- voorkennis voor de expert (PLVoorkennis) — ná PLOnderzoek (CODEREGELS, kennisNaarVerdenking), vóór pidlane-remote.js -->
+<script src="pidlane-voorkennis.js"></script>
+<script src="pidlane-expertwerk.js"></script><!-- PLExpertWerk: de werkplek van de expert op een laptop — ná PLVoorkennis, vóór pidlane-remote.js, geen bus-I/O --><!-- voorkennis voor de expert (PLVoorkennis) — ná PLOnderzoek (CODEREGELS, kennisNaarVerdenking), vóór pidlane-remote.js -->
 <script src="pidlane-samenhang.js"></script><!-- samenhang (PLSamenhang, #446) — toestanden + de stappen van PLOnderzoek op een meting die er al is -->
 <script src="pidlane-verzamel.js"></script><!-- verzamelscherm vóór een AI-rapport (PLVerzamel) — vereist plMeetTekort + plKernStatus uit pidlane-fuel.js, pas bij aanroep -->
 <script src="pidlane-rapport.js"></script><!-- analyserapport (PLRapport) — vaste secties, AI-velden, grafieken; jsPDF via loadJsPDF, pas bij aanroep -->
@@ -2054,7 +2055,8 @@ function closeConnOv(){
 
 <div class="rem-ov" id="remExpertOv">
  <div class="rem-card">
-  <div class="rem-h"><h3>🔭 Meekijken met sessie</h3><button class="rem-x" onclick="PLRemote.expertClose()">✕</button></div>
+  <div class="rem-h"><h3>🔭 Meekijken met sessie</h3><button class="rem-btn rem-werk-knop" id="remWerkKnop" onclick="PLExpertWerk.wissel()" title="Tik om te wisselen: automatisch (meet of dit een laptop is), aan, uit">Expertweergave</button><button class="rem-x" onclick="PLRemote.expertClose()">✕</button></div>
+  <div id="remWerkplek"></div>
   <div id="remExpConn">
     <div class="rem-lbl">Typ de meekijk-code, of plak de link/code die je ontving</div>
     <div class="rem-flex"><input class="rem-in" id="remJoinIn" inputmode="numeric" placeholder="123 456 7890  ·  of  https://…#remote=…" autocomplete="off"><button class="rem-btn pri" onclick="PLRemote.expertConnect()">Verbind</button></div>

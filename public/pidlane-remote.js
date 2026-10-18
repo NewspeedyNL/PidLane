@@ -387,7 +387,9 @@ window.PLRemote=(function(){
     try{$('remShort').value='';$('remShort').placeholder='··· ··· ····';}catch(_){ /* stil: element kan al weg zijn */ }}
 
   /* ── EXPERT: meekijken ────────────────────────────────────────── */
-  function openExpert(){$('remExpertOv').classList.add('open');}
+  function openExpert(){$('remExpertOv').classList.add('open');werkplek();}
+  // De werkplek van de expert op een laptop (pidlane-expertwerk.js, 18-10-2026).
+  function werkplek(){try{if(window.PLExpertWerk)PLExpertWerk.toon(S.vstate,S.expMeta);}catch(_){ console.warn('Expertwerkplek niet getekend — het gewone meekijkvenster blijft', _); }}
   function expertClose(){$('remExpertOv').classList.remove('open');pairStop();}
   function setExpStat(s){$('remExpStat').textContent=s;}
   /* ── OMGEKEERDE KOPPELING: expert toont QR, local scant ──
@@ -557,13 +559,14 @@ window.PLRemote=(function(){
   }
   function handleExpMsg(m){
     if(m.type==='meta'){S.expMeta=m.meta;
-      setExpStat('✅ Live — '+(m.meta.vehicle||'voertuig onbekend')+' · gedeeld door '+(m.meta.ownerLabel||m.meta.owner));return;}
+      setExpStat('✅ Live — '+(m.meta.vehicle||'voertuig onbekend')+' · gedeeld door '+(m.meta.ownerLabel||m.meta.owner));werkplek();return;}
     if(m.type==='backfill'){(m.frames||[]).forEach(f=>{mergeVals(f&&f.data);driveFeed(f&&f.data,true);});renderTiles();
       expLog('↺ '+((m.frames||[]).length)+' frame(s) historie ontvangen');return;}
     if(m.type==='frame'){mergeVals(m.frame&&m.frame.data);driveFeed(m.frame&&m.frame.data);renderTiles();return;}
     if(m.type==='vstate'){S.vstate=m.data||null;
       if(window._remoteVehicleMode)applyVState(S.vstate);
       try{const el=$('remVoorkennis');if(el&&window.PLVoorkennis)el.innerHTML=PLVoorkennis.html(S.vstate&&S.vstate.voorkennis,{knop:true});}catch(_){ console.warn('Voorkennis niet getoond aan de expert', _); }
+      werkplek();
       const n=((S.vstate&&S.vstate.pids&&S.vstate.pids.length)|0);
       const vh=(S.vstate&&S.vstate.veh)||{};
       if(n)expLog('🚗 Voertuigprofiel — '+n+' sensoren'+(vh.merk?(' · '+(vh.merk+' '+(vh.model||'')).trim()):'')
@@ -802,7 +805,7 @@ window.PLRemote=(function(){
     try{if(S.ews)S.ews.close();}catch(_){ /* stil: opruimen: kan al gebeurd zijn */ }
     S.ews=null;S.vals={};S.expClosed=false;S.expMeta=null;S.pending={};S.vstate=null;
     $('remExpLive').style.display='none';$('remExpConn').style.display='';
-    $('remExpErr').textContent='';setExpStat('—');}
+    $('remExpErr').textContent='';setExpStat('—');werkplek();}
 
   /* ── Deep link + wrappers (additief inhaken op de app) ────────── */
   let pendingJoin=null,pendingPair=null;
@@ -828,7 +831,7 @@ window.PLRemote=(function(){
       shareStart();
       return;
     }
-    if(!pendingJoin)return;
+    if(!pendingJoin){try{if(window.PLExpertWerk)PLExpertWerk.naLogin();}catch(_){ console.warn('Expertwerkplek niet geopend na het inloggen', _); }return;}
     const p=pendingJoin;pendingJoin=null;
     openExpert();
     try{$('remJoinIn').value=p.sid+'~'+p.jt;}catch(_){ console.warn('Code-veld niet vooringevuld na deep-link', _); }
@@ -946,7 +949,7 @@ window.PLRemote=(function(){
   }
 
   return {openShare,deelMethode,closeShare,shareStart,shareStop,copy,
-          openExpert,expertClose,expertConnect,expertDisconnect,reqPids,reqDtc,reqRapport,enterDrive,
+          openExpert,expertClose,expertConnect,expertDisconnect,_staat:()=>({vstate:S.vstate,expMeta:S.expMeta}),reqPids,reqDtc,reqRapport,enterDrive,
           vernieuw:sendVStateSoon,_buildVState:buildVState,
           remRecStart,remRecStop,remRecCsv,remAnalyze,pairStart,
           stopQrScan,scanForJoin,scanForPair};
