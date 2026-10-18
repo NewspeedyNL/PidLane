@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 18-10-2026 — Visueel op het volle scherm, met thema's
+ ═══════════════════════════════════════════════════════════
+
+ - Slim visueel: knop volledig scherm boven de meter. Daar kies je met 🎨
+   een thema: Neon, Spectrum, Chroom, Carbon of Nachtrood. Bij openen en
+   wisselen zwaait de naald één keer vol uit; het scherm blijft aan.
+   Buiten het volle scherm blijft de gewone weergave. Nieuw:
+   pidlane-visthema.js (PLVisThema), test-visthema.js, bproef-visthema.js.
+
+ ═══════════════════════════════════════════════════════════
  17-10-2026 — Voorkennis voor de expert, VIN niet meer ruw in de vstate
  ═══════════════════════════════════════════════════════════
 

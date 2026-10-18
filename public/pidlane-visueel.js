@@ -1381,6 +1381,12 @@ function herbouwReden(gegeven){
   catch(e){ console.warn('PLVisueel: testrunstand onleesbaar', e); }
   return 'scherm';
 }
+// Volledig scherm en thema (18-10-2026, pidlane-visthema.js): na elke opbouw
+// de knoppen en het thema er weer in, want innerHTML gooit ze weg.
+function themaBij(g){
+  try{ if(window.PLVisThema) PLVisThema.pas(g.querySelector('.vis')); }
+  catch(e){ console.warn('PLVisueel: thema zetten mislukt', e); }
+}
 function bouw(g, reden){
   const r=herbouwReden(reden);
   try{ zorgPids(); }catch(e){ console.warn('PLVisueel: sensoren aanzetten mislukt', e); }
@@ -1410,6 +1416,7 @@ function bouw(g, reden){
       const t=e.target && e.target.closest ? e.target.closest('[id^="vpf-p-"]') : null;
       if(t) kiesPlek(t.id.slice(6));
     });
+    themaBij(g);
     return;
   }
   // Zonder naald gaat de meter tóch open (07-10-2026, #432). Tot dan stond
@@ -1450,6 +1457,7 @@ function bouw(g, reden){
   _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
   ritBij();
   meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
+  themaBij(g);
   // De banden gaan niet de pollus in (#396): één keer per verbinding vragen.
   try{ if(window.PLBanden && PLBanden.eenmaal) PLBanden.eenmaal(); }catch(e){ console.warn('PLVisueel: banden niet gevraagd', e); }
 }
@@ -1868,6 +1876,7 @@ function stop(){
   const was=_staat.aan;
   _staat.aan=false;
   lichaam(false);
+  try{ if(window.PLVisThema) PLVisThema.uit(); }catch(e){ console.warn('PLVisueel: volledig scherm sluiten mislukt', e); }
   if(_staat.timer){ clearInterval(_staat.timer); _staat.timer=null; }
   _staat.ind=null; _staat.gebruik=new Set();
   if(was) balkBij();

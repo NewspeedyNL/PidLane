@@ -1704,6 +1704,107 @@ rect.vis-tik { fill:transparent; cursor:pointer; pointer-events:all; }
 .bev-regel.verborgen { opacity:.55; }
 .bev-x { flex:none; min-width:24px; height:24px; padding:0 7px; border-radius:6px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); font-family:var(--f); font-size:11px; font-weight:800; cursor:pointer; line-height:1; }
 .bev-x.bev-terug { color:var(--bl); border-color:var(--bl); }
+/* ── Volledig scherm en thema's van Slim visueel (18-10-2026, pidlane-visthema.js) ──
+   ⛶ boven de meter zet body.pl-vis-vol: de .vis wordt schermvullend en ligt
+   over de rest van de app. Het thema (data-vthema op .vis) bestaat alleen
+   daar; het zet de kleurvariabelen om en voegt gloed of een verloop toe.
+   Wat beweegt blijft van pidlane-visueel.js. */
+.vt-knoppen { position:absolute; top:0; left:50%; transform:translateX(-50%); z-index:2; display:flex; gap:8px; }
+.vt-knop { width:34px; height:34px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%;
+  border:1px solid var(--bd); background:var(--sur); color:var(--tx2); font-size:16px; line-height:1; cursor:pointer; }
+.vt-knop svg { width:18px; height:18px; }
+.vt-knop:active { transform:scale(.92); }
+.vt-thema, .vt-uit { display:none; }
+body.pl-vis-vol { overflow:hidden; }
+body.pl-vis-vol .vis { position:fixed; inset:0; z-index:var(--z-modal); margin:0; overflow:auto; justify-content:center;
+  padding:calc(var(--pl-sat, 0px) + 56px) 14px calc(var(--pl-sab, 0px) + 16px); box-sizing:border-box;
+  background:var(--vt-bg, radial-gradient(ellipse at 50% 35%, #16213a, var(--bg) 70%)); color:var(--tx); }
+body.pl-vis-vol .vis-bak { max-width:min(100%, calc(var(--pl-vh) - 140px), 760px); }
+body.pl-vis-vol .vis-meter { max-width:none; position:relative; z-index:0; overflow:visible; }
+body.pl-vis-vol .vis-rail, body.pl-vis-vol .vis-snelk { display:none; }
+body.pl-vis-vol .vis-meldingen { max-width:min(100%, 560px); }
+body.pl-vis-vol .vt-knoppen { position:fixed; top:calc(var(--pl-sat, 0px) + 10px); right:12px; left:auto; transform:none; }
+body.pl-vis-vol .vt-knop { width:42px; height:42px; font-size:19px; background:rgba(0,0,0,.35); border-color:rgba(255,255,255,.18); color:#fff;
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+body.pl-vis-vol .vt-vol { display:none; }
+body.pl-vis-vol .vt-thema, body.pl-vis-vol .vt-uit { display:inline-flex; }
+@media (orientation:landscape) {
+  body.pl-vis-vol .vis { padding-top:calc(var(--pl-sat, 0px) + 8px); }
+  body.pl-vis-vol .vis-bak { max-width:min(100%, calc(var(--pl-vh) - 60px), 760px); }
+  /* Liggend staan meldingen en trekstrook rechts naast de meter, niet eronder. */
+  body.pl-vis-vol .vis-meldingen, body.pl-vis-vol .vis-trek { position:fixed; right:12px; width:min(28%, 300px); }
+  body.pl-vis-vol .vis-meldingen { bottom:calc(var(--pl-sab, 0px) + 12px); }
+  body.pl-vis-vol .vis-trek { top:calc(var(--pl-sat, 0px) + 64px); }
+}
+/* De keuzestrook onderin: een rondje per thema, met de naam eronder. */
+.vt-strook { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(var(--pl-sab, 0px) + 14px); z-index:3; display:flex; gap:10px;
+  max-width:calc(100% - 24px); overflow-x:auto; padding:10px 12px; border-radius:20px; box-sizing:border-box;
+  background:rgba(8,10,18,.72); border:1px solid rgba(255,255,255,.12); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+  animation:vt-op .25s ease-out; }
+.vt-keus { flex:none; display:flex; flex-direction:column; align-items:center; gap:5px; padding:0; border:0; background:none; color:#cbd5e1; font:600 11px var(--f); cursor:pointer; }
+.vt-keus i { width:46px; height:46px; border-radius:50%; border:2px solid rgba(255,255,255,.18); box-sizing:border-box; transition:transform .15s, border-color .15s; }
+.vt-keus.aan { color:#fff; }
+.vt-keus.aan i { border-color:#fff; transform:scale(1.08); box-shadow:0 0 14px rgba(255,255,255,.35); }
+@keyframes vt-op { from { opacity:0; transform:translate(-50%, 16px); } to { opacity:1; transform:translate(-50%, 0); } }
+/* De zwaai bij het openen en bij een nieuw thema: naald en boog één keer vol uit. */
+.vis-meter.vt-sweep .vis-naald { animation:vt-zwaai 1.4s cubic-bezier(.45,0,.25,1); }
+.vis-meter.vt-sweep #vis-toerenboog { animation:vt-vul 1.4s cubic-bezier(.45,0,.25,1); }
+@keyframes vt-zwaai { 0% { transform:rotate(-120deg); } 48% { transform:rotate(120deg); } 100% { transform:rotate(-120deg); } }
+@keyframes vt-vul { 0% { stroke-dasharray:0 200; } 48% { stroke-dasharray:100 200; } 100% { stroke-dasharray:0 200; } }
+/* Een zachte, ademende gloed achter de cirkel (neon, carbon). Opacity is
+   goedkoop: geen herberekening van de meter zelf. */
+.vis[data-vthema] .vis-bak::before { content:''; position:absolute; left:6%; right:6%; top:6%; aspect-ratio:1; border-radius:50%;
+  pointer-events:none; z-index:0; filter:blur(22px); opacity:0; }
+@keyframes vt-adem { 0%, 100% { opacity:.55; } 50% { opacity:1; } }
+
+/* Neon: cyaan en magenta op diep blauw. */
+.vis[data-vthema="neon"] { --vt-bg:radial-gradient(ellipse at 50% 38%, #1a1446 0%, #070a1f 55%, #02030a 100%);
+  --sur:#0a0f2a; --sur2:#161c48; --bd:#2b2f6e; --bd2:#22d3ee; --tx:#e0f7ff; --tx2:#7dd3fc; --tx3:#6b7bbd;
+  --bl:#22d3ee; --gn:#34f5c5; --or:#f0abfc; --rd:#ff2d95; }
+.vis[data-vthema="neon"] .vis-bak::before { background:radial-gradient(closest-side, rgba(34,211,238,.32), rgba(217,70,239,.22) 70%, transparent); animation:vt-adem 4s ease-in-out infinite; }
+.vis[data-vthema="neon"] .vis-plaat { fill:#060a20; stroke:#22d3ee; stroke-width:2.5; filter:drop-shadow(0 0 5px #22d3ee) drop-shadow(0 0 16px rgba(217,70,239,.6)); }
+.vis[data-vthema="neon"] .vis-vul { filter:drop-shadow(0 0 4px #22d3ee); }
+.vis[data-vthema="neon"] .vis-streep.groot { stroke:#a5f3fc; filter:drop-shadow(0 0 3px #22d3ee); }
+.vis[data-vthema="neon"] .vis-naald line { stroke:#ff2d95; filter:drop-shadow(0 0 6px #ff2d95); }
+.vis[data-vthema="neon"] .vis-snel { fill:#fff; filter:drop-shadow(0 0 8px #22d3ee); }
+.vis[data-vthema="neon"] .vis-naaf { fill:#0a0f2a; stroke:#ff2d95; }
+
+/* Spectrum: de toerenboog loopt van blauw via groen en geel naar rood. */
+.vis[data-vthema="spectrum"] { --vt-bg:radial-gradient(ellipse at 50% 40%, #1f2937, #050608 70%);
+  --sur:#0b0d10; --sur2:#1c1f24; --bd:#2a2e35; --bd2:#3a3f48; --tx:#f8fafc; --tx2:#cbd5e1; --tx3:#7c8796; }
+.vis[data-vthema="spectrum"] .vis-plaat { fill:#07080a; stroke:#30343b; stroke-width:3; }
+.vis[data-vthema="spectrum"] .vis-meter > .vis-spoor { stroke:url(#vtSpectrum); stroke-opacity:.16; stroke-width:12; }
+.vis[data-vthema="spectrum"] #vis-toerenboog { stroke:url(#vtSpectrum); stroke-width:12; filter:drop-shadow(0 0 6px rgba(250,204,21,.45)); }
+.vis[data-vthema="spectrum"] .vis-zone { stroke-opacity:0; }
+.vis[data-vthema="spectrum"] .vis-naald line { stroke:#fff; filter:drop-shadow(0 0 4px rgba(255,255,255,.7)); }
+.vis[data-vthema="spectrum"] .vis-naaf { fill:#111; stroke:#fff; }
+
+/* Chroom: een zilveren plaat met donkere cijfers, als een klassieke klok. */
+.vis[data-vthema="chroom"] { --vt-bg:radial-gradient(ellipse at 50% 30%, #3b4a63, #0f1623 70%); }
+.vis[data-vthema="chroom"] .vis-meter { --tx:#0f172a; --tx2:#334155; --tx3:#475569; --sur2:#94a3b8; --bd2:#64748b; --bl:#1d4ed8; --gn:#047857; --or:#c2410c; --rd:#b91c1c; }
+.vis[data-vthema="chroom"] .vis-plaat { fill:url(#vtChroom); stroke:url(#vtChroomRand); stroke-width:7; filter:drop-shadow(0 6px 14px rgba(0,0,0,.55)); }
+.vis[data-vthema="chroom"] .vis-naald line { stroke:#dc2626; stroke-width:4; filter:drop-shadow(2px 3px 2px rgba(0,0,0,.4)); }
+.vis[data-vthema="chroom"] .vis-naaf { fill:url(#vtChroomRand); stroke:#334155; r:11; }
+.vis[data-vthema="chroom"] .vis-logo { filter:grayscale(1) brightness(.35); }
+
+/* Carbon: koolstofweefsel met een turquoise rand. */
+.vis[data-vthema="carbon"] { --vt-bg:radial-gradient(ellipse at 50% 40%, transparent, #000 75%), repeating-linear-gradient(45deg, #15181c 0 6px, #0a0b0d 6px 12px);
+  --sur:#0d0f12; --sur2:#23272d; --bd:#2a2f36; --bd2:#14b8a6; --tx:#f1f5f9; --tx2:#99f6e4; --tx3:#64748b; --bl:#14b8a6; --or:#f59e0b; }
+.vis[data-vthema="carbon"] .vis-bak::before { background:radial-gradient(closest-side, rgba(20,184,166,.28), transparent); animation:vt-adem 6s ease-in-out infinite; }
+.vis[data-vthema="carbon"] .vis-plaat { fill:url(#vtCarbon); stroke:#14b8a6; stroke-width:3; filter:drop-shadow(0 0 8px rgba(20,184,166,.6)); }
+.vis[data-vthema="carbon"] .vis-vul { filter:drop-shadow(0 0 4px rgba(20,184,166,.8)); }
+.vis[data-vthema="carbon"] .vis-naald line { stroke:#ef4444; filter:drop-shadow(0 0 4px rgba(239,68,68,.8)); }
+.vis[data-vthema="carbon"] .vis-naaf { fill:#0d0f12; stroke:#14b8a6; }
+
+/* Nachtrood: alles in gedempt rood op zwart, voor 's nachts rijden — rood
+   licht verblindt het minst. */
+.vis[data-vthema="nacht"] { --vt-bg:#000; --sur:#0a0000; --sur2:#1c0404; --bd:#2a0606; --bd2:#4a0a0a;
+  --tx:#ff4d4d; --tx2:#b32424; --tx3:#7a1a1a; --bl:#c81e1e; --gn:#e11d1d; --or:#ff6b2b; --rd:#ff1a1a;
+  --gns:rgba(255,0,0,.08); --ors:rgba(255,80,0,.1); --rds:rgba(255,0,0,.14); }
+.vis[data-vthema="nacht"] .vis-plaat { fill:#050000; stroke:#3a0707; }
+.vis[data-vthema="nacht"] .vis-logo, .vis[data-vthema="nacht"] .vis-meld-ic, .vis[data-vthema="nacht"] .vis-chip-ic { filter:grayscale(1) sepia(1) saturate(6) hue-rotate(-50deg) brightness(.55); }
+.vis[data-vthema="nacht"] .vt-knop { color:#ff4d4d; }
+
 /* ── De vijf weergaven van Slim visueel (02-10-2026, pidlane-visprofiel.js) ──
    Wisselen gaat sinds 15-10-2026 met vegen over het vak (PLVisueel.veeg);
    de keuzestrook met stipjes en "Volgende" is weg. Het vak
