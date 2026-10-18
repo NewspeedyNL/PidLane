@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 18-10-2026 — De expert op een laptop krijgt een werkplek
+ ═══════════════════════════════════════════════════════════
+
+ - Meekijken op een laptop (gemeten, of met de knop Expertweergave):
+   het venster opent na het inloggen vanzelf, schermvullend, met de auto,
+   wat nu afwijkt, wat er al gedaan is en procedures voor deze auto
+   (meetstappen, werkplaatsactie, controleplan per foutcode). De
+   garagemodus gaat vanzelf aan. Nieuw: pidlane-expertwerk.js
+   (PLExpertWerk), test-expertwerk.js, bproef-expertwerk.js.
+
+ ═══════════════════════════════════════════════════════════
  18-10-2026 — Visueel op het volle scherm, met thema's
  ═══════════════════════════════════════════════════════════
 
