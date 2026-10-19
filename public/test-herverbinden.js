@@ -33,7 +33,10 @@ if (van < 0 || tot < van) {
   console.log('  FOUT  connectSerial() niet gevonden in pidlane-bt.js — het anker is weg, deze test toetst niets meer');
   process.exit(1);
 }
-const fnBron = bron.slice(van, tot);
+// Het snel-verbindenblok (19-10-2026) mee: connectSerial() roept het aan.
+const snelVan = bron.indexOf('/* SNEL VERBINDEN'), snelTot = bron.indexOf('\n/* Het slot van een hervatting', snelVan);
+if (snelVan < 0 || snelTot < snelVan) { console.log('  FOUT  snel-verbindenblok niet gevonden in pidlane-bt.js'); process.exit(1); }
+const fnBron = bron.slice(snelVan, snelTot) + '\n' + bron.slice(van, tot);
 
 function laad(o) {
   const opslag = Object.assign({ spp_address: '00:04:3E:8B:7B:32', spp_name: 'OBDLink MX+', pl_lastTransport: 'spp' }, o.opslag || {});

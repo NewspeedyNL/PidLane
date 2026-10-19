@@ -664,7 +664,7 @@ function btDiagDevice(name, address, rssi){
   listEl.style.display='block';
   const key=(address||name||'?').replace(/[^a-z0-9]/gi,'_');
   if(devEl.querySelector(`[data-key="${key}"]`)) return; // al toegevoegd
-  const isOBD=!!(name||'').toLowerCase().match(/obd|elm|vgate|icar|mx\+|obdlink|link|scan/);
+  const isOBD=isObdNaam(name);
   const dev=document.createElement('div');
   dev.setAttribute('data-key',key);
   dev.style.cssText=`display:flex;align-items:center;gap:6px;padding:3px 7px;background:var(--bg);border:1px solid ${isOBD?'var(--gn)':'var(--bd)'};border-radius:5px;font-size:12px;`;

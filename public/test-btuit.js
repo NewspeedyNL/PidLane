@@ -35,7 +35,8 @@ function knip(kop, staart) {
 }
 // connectSerial() tot resetConnectBtn(): daartussen staan ook btUitFout()
 // en btAanVoorKeten(), dus die komen vanzelf mee.
-const serialBron = knip('async function connectSerial(opt){', '\nfunction resetConnectBtn(){');
+const serialBron = knip('/* SNEL VERBINDEN', '\n/* Het slot van een hervatting') + '\n' +
+  knip('async function connectSerial(opt){', '\nfunction resetConnectBtn(){');
 const sppBron = knip('async function connectSPP(spp){', '\nasync function sppOudeSluiten(');
 
 /* o.spp:        de nep-SPP-plugin (isEnabled, enable, …)

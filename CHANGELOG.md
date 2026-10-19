@@ -10,6 +10,25 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 19-10-2026 — Snel verbinden met een bekende auto
+ ═══════════════════════════════════════════════════════════
+
+ - Ingelogd, adapter, kenteken, protocol en voertuigprofiel bekend: de
+   knop verbindt zonder kentekenvraag, protocolkeuze, scanvraag of
+   samenvatting; het venster toont alleen "Verbinden met voertuig…".
+   Alleen de bekende adapter, één ronde; antwoordt hij niet, dan zegt de
+   melding: druk op de pair-knop. Nieuw: test-snelverbinden.js.
+
+ ═══════════════════════════════════════════════════════════
+ 19-10-2026 — Een Bose-speaker is geen OBD2-adapter
+ ═══════════════════════════════════════════════════════════
+
+ - Bij een Bluetooth-scan verbond de app eerst met een "SoundLink"-
+   speaker: de SPP-keuze had een eigen naamlijst met een kale 'link' en
+   'scan'. Scanlijst en verbindkeuze gebruiken nu één oordeel,
+   isObdNaam() in pidlane-bt.js. Nieuw: test-obdnaam.js.
+
+ ═══════════════════════════════════════════════════════════
  18-10-2026 — De expert op een laptop krijgt een werkplek
  ═══════════════════════════════════════════════════════════
 

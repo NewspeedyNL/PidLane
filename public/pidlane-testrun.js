@@ -2787,6 +2787,35 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Bekende adapter en auto: klik, wacht, klaar ──
+  {
+    issue: 'snelverbinden',
+    naam: 'Snel verbinden: bij een bekende adapter, auto en login alleen "Verbinden met voertuig…", geen vragen; adapter stil → pair-knop',
+    waarom: 'Bij een bekende auto zag de gebruiker vijf vensters (kenteken, protocol, scanvraag, samenvatting) voor antwoorden die al bekend waren.',
+    proef: async function () {
+      if (typeof plSnelBekend !== 'function' || !document.getElementById('snelStatus'))
+        return { staat: 'FOUT', detail: 'plSnelBekend() of #snelStatus ontbreekt — oude pidlane-bt.js/index.html (herladen?)' };
+      var l = function (o) { return function (k) { return k in o ? o[k] : null; }; };
+      var alles = { spp_address: 'x', pl_kenteken: 'x', pl_proto_id: 'A6', pl_vinprof_x: '{}' };
+      if (!plSnelBekend(l(alles), Object.keys(alles), true)) return { staat: 'FOUT', detail: 'alles bekend en toch geen snelle stand' };
+      if (plSnelBekend(l(alles), Object.keys(alles), false)) return { staat: 'FOUT', detail: 'snelle stand zonder login' };
+      return { staat: 'OK', detail: 'Rij: verbind twee keer met dezelfde auto; de tweede keer hoort alleen "Verbinden met voertuig…" te verschijnen. Zet de adapter uit: dan hoort de melding de pair-knop te noemen.' };
+    }
+  },
+
+  // ── Een Bose-speaker is geen OBD2-adapter ──
+  {
+    issue: 'obdnaam',
+    naam: 'Adapterkeuze bij een SPP-scan: één naamoordeel, een SoundLink-speaker telt niet als OBD2-adapter',
+    waarom: 'Op 19-10 verbond de app eerst met "LE-Bose Revolve SoundLink" (kale \'link\' in de SPP-lijst) en had een tweede scanronde nodig.',
+    proef: async function () {
+      if (typeof isObdNaam !== 'function') return { staat: 'FOUT', detail: 'isObdNaam() ontbreekt — oude pidlane-bt.js (herladen?)' };
+      if (isObdNaam('LE-Bose Revolve SoundLink')) return { staat: 'FOUT', detail: 'een SoundLink-speaker telt als OBD2-adapter' };
+      if (!isObdNaam('OBDLink MX+ 90011') || !isObdNaam('vLinker MC+')) return { staat: 'FOUT', detail: 'een echte adapternaam wordt niet herkend' };
+      return { staat: 'OK', detail: 'Rij: verbind met Bluetooth-audio in de buurt aan; in het logboek hoort alleen de adapter als "OBD2 adapter" te staan en de eerste poging naar de adapter te gaan.' };
+    }
+  },
+
   // ── De expert begint niet bij nul: voorkennis in de vstate, zonder VIN ──
   {
     issue: 'voorkennis',

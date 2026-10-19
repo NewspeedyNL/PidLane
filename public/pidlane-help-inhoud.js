@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-18', app: '3.3.0' },
+  gecontroleerd: { datum: '2026-10-19', app: '3.3.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -98,6 +98,7 @@ var PL_HULP = {
         '<li>Tik op <b>⚡ Plug in. Let\'s go.</b> De eerste keer legt PidLane eerst uit waarvoor Bluetooth nodig is.</li>' +
         '<li>PidLane zoekt de adapter en daarna de auto. Bij <b>Verbinding inmeten…</b> meet hij hoe snel jouw auto antwoordt; dat duurt meestal minder dan een seconde. Na afloop zie je de sensoren van jouw auto.</li>' +
         '</ol>' +
+        '<p>Ben je ingelogd en heb je met deze adapter en auto al eens verbonden, dan stelt PidLane geen vragen meer: je ziet alleen <b>Verbinden met voertuig…</b> en daarna je sensoren. Antwoordt de adapter niet, druk dan op de pair-knop van de adapter en tik op <b>Opnieuw proberen</b>.</p>' +
         '<p>Zet je <b>Check na verbinden</b> aan (Meer → Mijn voorkeuren), dan opent <a data-hulp="check">Check mijn auto</a> bij de volgende verbinding één keer vanzelf; daarna staat de schakelaar weer uit. ' +
         'Vindt hij niets, dan gaat de app na 5 seconden door naar Live; tik in het venster of op <b>Blijf hier</b> om te blijven. Tik je zelf op <b>Check mijn auto</b> en is alles in orde, dan ga je na 5 seconden vanzelf terug naar het hoofdscherm.</p>' +
         '<p>In hetzelfde scherm: <b>Simuleer verbinding</b> (demo), <b>Zonder adapter</b> en, als regel eronder, ' +
