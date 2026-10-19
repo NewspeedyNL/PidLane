@@ -76,6 +76,41 @@ function _hervatActief(){
   return !!(h && (Date.now() - h.t) < HERVAT_MS);
 }
 
+/* SNEL VERBINDEN (19-10-2026). Ingelogd, een adapter die al eens verbond,
+   een bevestigd kenteken, een onthouden protocol en een voertuigprofiel:
+   dan loopt de knop als een hervatting, zonder kentekenvraag,
+   protocolkeuze, scanvraag of samenvatting, en het venster toont alleen
+   "Verbinden met voertuig…". Leest de VIN een andere auto, dan is er
+   geen profiel en draait de scan zoals altijd. Elk punt waar de app iets
+   moet vragen (geen protocol, adapter stil, mislukt) zet het gewone
+   venster terug via _snelUit(). */
+function plSnelBekend(lees, sleutels, ingelogd){
+  if(!ingelogd) return false;
+  if(!lees('spp_address') || !lees('pl_kenteken') || !lees('pl_proto_id')) return false;
+  return (sleutels||[]).some(function(k){ return String(k).indexOf('pl_vinprof_')===0; });
+}
+function _snelMag(){
+  try{
+    const ls=window.localStorage;
+    const sleutels=[]; for(let i=0;i<ls.length;i++) sleutels.push(ls.key(i));
+    return plSnelBekend(function(k){ return ls.getItem(k); }, sleutels, !!(window.currentUser && window.currentUser.user));
+  }catch(e){
+    btDiag('Snel verbinden niet beoordeeld — gewone flow: '+(e.message||e),'warn');
+    return false;
+  }
+}
+function _snelScherm(aan){
+  const ov=document.getElementById('connOv');
+  if(ov && ov.classList) ov.classList.toggle('pl-snel', !!aan);
+}
+function _snelUit(reden){
+  const h=window._plHervat;
+  if(!(h && h.snel)) return;
+  window._plHervat=null;
+  _snelScherm(false);
+  btDiag('Snel verbinden gestopt: '+reden+' — gewone vensters terug','warn');
+}
+
 /* Het slot van een hervatting. "Klaar voor gebruik" deed twee dingen: een
    samenvatting tonen en de standaardset aanzetten (_wizStep6). Het eerste
    hoort bij een hervatting niet, het tweede wel — anders staan er na een crash
@@ -102,7 +137,11 @@ function _hervatAfronden(h){
 async function connectSerial(opt){
   // Alleen een expliciete hervatting zet de stand; elke andere aanroep (de
   // knop, een klik-event) wist hem.
-  window._plHervat = (opt && typeof opt.hervat === 'string') ? { t: Date.now(), reden: opt.hervat } : null;
+  // Een bekende adapter + auto (plSnelBekend) loopt sinds 19-10-2026 ook zo.
+  window._plHervat = (opt && typeof opt.hervat === 'string') ? { t: Date.now(), reden: opt.hervat }
+    : (_snelMag() ? { t: Date.now(), reden: 'bekende auto', snel: true } : null);
+  _snelScherm(!!(window._plHervat && window._plHervat.snel));
+  if(window._plHervat && window._plHervat.snel) btDiag('Snel verbinden: bekende adapter en auto — geen vragen','info');
   // Prominente disclosure vóór álles. Google Play eist dat de gebruiker weet
   // waarom Bluetooth wordt gevraagd vóórdat het systeemdialoog verschijnt —
   // niet erna, en niet weggestopt in een menu. Eenmalig; PLPrivacy onthoudt
@@ -252,12 +291,18 @@ async function connectSerial(opt){
   try{ if(window.PLStart) PLStart.begin(); }
   catch(e){ btDiag('Startscherm (begin) mislukt: '+(e.message||e),'warn'); }
 
+  // Snel: de adapter is bekend, dus geen BLE-scan en geen tweede ronde.
+  // Antwoordt hij niet, dan staat hij vrijwel altijd niet op pair.
+  const snel = !!(window._plHervat && window._plHervat.snel);
+  if (snel && chain.length && /laatst gebruikte adapter/.test(chain[0][0])) chain.splice(1);
+  const rondes = snel ? 1 : 2;
+
   let lastErr = null;
   let permissionBlocked = false;
   // 2 pogingen: de eerste scan mist de adapter vaak (BLE-cache koud);
   // een automatische tweede ronde vindt 'm dan meestal wel. Dit maakt het
   // bekende "tweede keer verbinden lukt wel" onzichtbaar voor de gebruiker.
-  for (let pass = 1; pass <= 2 && !connected && !permissionBlocked; pass++){
+  for (let pass = 1; pass <= rondes && !connected && !permissionBlocked; pass++){
     if (pass === 2) btDiag('↻ Automatische tweede scanronde...', 'proto');
     for (const [label, fn] of chain){
       btDiag(`▶ Poging${pass>1?' (ronde '+pass+')':''}: ${label}`, 'proto');
@@ -331,6 +376,10 @@ async function connectSerial(opt){
 
   window._plHervat = null;   // mislukt is geen hervatting meer; de volgende poging vraagt weer
   resetConnectBtn();
+  if (snel && !permissionBlocked){
+    showConnError('De adapter antwoordt niet.\n\nDruk op de pair-knop van de adapter en tik op Opnieuw proberen.');
+    return;
+  }
   showConnError((lastErr?.message || 'Geen OBD2-adapter gevonden.') +
     '\n\n💡 Open 📡 Log en kopieer de inhoud voor diagnose.');
 }
@@ -1727,6 +1776,7 @@ function pulseConnGate(){
 // → ALL_PID_DEFS verplaatst naar pidlane-data.js
 
 function showConnError(msg){
+  _snelScherm(false);
   document.getElementById('step1').style.display='';
   document.getElementById('step2').style.display='none';
   document.getElementById('step3').style.display='none';
@@ -2527,6 +2577,7 @@ async function scanNetworks(){
    staat hij niet op pair of half aan; opnieuw verbinden lost het op. Wie het
    beter weet kan toch zelf een protocol kiezen. */
 function toonAdapterStil(){
+  _snelUit('adapter antwoordt niet op 0100');
   btDiag('Adapter reageert niet op 0100 en ATI — geen protocolkeuze, maar opnieuw verbinden','warn');
   document.getElementById('step2Title').textContent='Adapter reageert niet';
   document.getElementById('step2Sub').textContent='Zet de adapter aan of op pair, en verbind opnieuw. Een protocol kiezen helpt hier niet.';
@@ -2687,6 +2738,8 @@ function renderNetworkCards(){
     window._plHervat.protocol = true;   // één keer: opnieuw tekenen is geen tweede start
     btDiag('Hervatten ('+window._plHervat.reden+'): herkend protocol '+String(selectedNetwork.name||'')+' zonder te vragen','info');
     startDiscovery();
+  } else if(!(window._plHervat && window._plHervat.protocol)){
+    _snelUit('protocol niet herkend');
   }
 }
 
@@ -2965,6 +3018,7 @@ async function startDiscovery(){
 
   // Sluit verbind-modal, open wizard
   document.getElementById('connOv').classList.add('hidden');
+  _snelScherm(false);
   resetToStep1();
   setConn(true);
   startPoll();

@@ -1965,6 +1965,10 @@ MUTATIES=(
 "public/pidlane-bt.js@@    if(ble && typeof ble.requestEnable === 'function') await ble.requestEnable();@@    if(false) await ble.requestEnable();@@test-btuit.js@@Android wordt niet gevraagd om Bluetooth aan te zetten, ook waar dat kan"
 "public/pidlane-bt.js@@  return OBD_NAME_RX.test(n) && !NON_OBD_RX.test(n);@@  return OBD_NAME_RX.test(n) || /link|scan/i.test(n);@@test-obdnaam.js@@de oude SPP-lijst terug: een SoundLink-speaker telt als adapter en krijgt de eerste verbindpoging"
 "public/pidlane-bt.js@@  let target = devices.find(d => isObdNaam(d.name));@@  let target = devices.find(d => d.name && d.name !== '?');@@test-obdnaam.js@@connectSPP pakt weer het eerste apparaat met een naam, adapter of niet"
+"public/pidlane-bt.js@@  if(!lees('spp_address') || !lees('pl_kenteken') || !lees('pl_proto_id')) return false;@@  if(!lees('spp_address')) return false;@@test-snelverbinden.js@@een nieuwe auto met een oude adapter krijgt geen kentekenvraag en het kenteken van gisteren"
+"public/pidlane-bt.js@@  if(!ingelogd) return false;@@  if(false) return false;@@test-snelverbinden.js@@zonder login loopt de snelle stand toch"
+"public/pidlane-bt.js@@  const rondes = snel ? 1 : 2;@@  const rondes = 2;@@test-snelverbinden.js@@een bekende adapter die niet antwoordt kost weer twee volle rondes"
+"public/pidlane-bt.js@@  if (snel && !permissionBlocked){@@  if (false){@@test-snelverbinden.js@@adapter niet op pair en de melding zegt niet dat je op de pair-knop moet drukken"
 "public/pidlane-bt.js@@— keten loopt zoals altijd', 'warn'); return 'onbekend'; }@@— keten loopt zoals altijd', 'warn'); return 'uit'; }@@test-btuit.js@@een plugin die de stand niet geeft houdt elke verbinding tegen"
 # ── eigen PIDs krijgen een standaardbereik: banden en olie (30-09-2026) ──
 "public/pidlane-uitgebreid.js@@['wH', 'dH', 'dL'].forEach@@['wH'].forEach@@test-mode21.js@@een bandtemperatuur van 70 °C en een band op 1 bar blijven groen: de gevarengrenzen gaan niet mee (#370)"

@@ -2787,6 +2787,22 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Bekende adapter en auto: klik, wacht, klaar ──
+  {
+    issue: 'snelverbinden',
+    naam: 'Snel verbinden: bij een bekende adapter, auto en login alleen "Verbinden met voertuig…", geen vragen; adapter stil → pair-knop',
+    waarom: 'Bij een bekende auto zag de gebruiker vijf vensters (kenteken, protocol, scanvraag, samenvatting) voor antwoorden die al bekend waren.',
+    proef: async function () {
+      if (typeof plSnelBekend !== 'function' || !document.getElementById('snelStatus'))
+        return { staat: 'FOUT', detail: 'plSnelBekend() of #snelStatus ontbreekt — oude pidlane-bt.js/index.html (herladen?)' };
+      var l = function (o) { return function (k) { return k in o ? o[k] : null; }; };
+      var alles = { spp_address: 'x', pl_kenteken: 'x', pl_proto_id: 'A6', pl_vinprof_x: '{}' };
+      if (!plSnelBekend(l(alles), Object.keys(alles), true)) return { staat: 'FOUT', detail: 'alles bekend en toch geen snelle stand' };
+      if (plSnelBekend(l(alles), Object.keys(alles), false)) return { staat: 'FOUT', detail: 'snelle stand zonder login' };
+      return { staat: 'OK', detail: 'Rij: verbind twee keer met dezelfde auto; de tweede keer hoort alleen "Verbinden met voertuig…" te verschijnen. Zet de adapter uit: dan hoort de melding de pair-knop te noemen.' };
+    }
+  },
+
   // ── Een Bose-speaker is geen OBD2-adapter ──
   {
     issue: 'obdnaam',
