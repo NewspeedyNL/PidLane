@@ -15,6 +15,22 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 19-10-2026 — Een Bose-speaker als eerste OBD2-kandidaat
+
+Logboek 19-10 19:04: de SPP-scan gaf 21 apparaten, het logboek noemde er
+twee "OBD2 adapter" — "LE-Bose Revolve SoundLink" en "OBDLink MX+ 90011" —
+en `connectSPP()` verbond met de eerste. Mislukt na 6 s, daarna een volle
+tweede ronde (BLE 12 s) voordat de OBDLink aan de beurt kwam.
+
+Oorzaak: twee naamlijsten. `OBD_NAME_RX` (BLE-pad) was streng; de lijst in
+`connectSPP()` en de regex in `btDiagDevice()` hadden een kale `'link'` en
+`'scan'`, en `SoundLink` bevat `link`. `NON_OBD_RX` had wel `speaker` maar
+die naam zegt dat niet. Nu één oordeel, `isObdNaam()`, en `v-?link` in
+`OBD_NAME_RX` zodat vLinker/V-LINK dat ruime `link` niet nodig hebben.
+`find()` pakt nog steeds de eerste match in scanvolgorde, niet de beste;
+met één oordeel is dat pas een probleem als twee echte adapters in de buurt
+zijn.
+
 ## 17-10-2026 — Het vierde VIN-pad: de vstate naar de expert
 
 `buildVState()` in `pidlane-remote.js` zette `veh.vin` onbewerkt in de

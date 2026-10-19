@@ -31,10 +31,18 @@ const BLE_CHANNELS = [
   ['0000ffe0-0000-1000-8000-00805f9b34fb','0000ffe1-0000-1000-8000-00805f9b34fb','0000ffe1-0000-1000-8000-00805f9b34fb'],
   [BLE_SERVICE2, BLE_SERVICE2, BLE_SERVICE2],
 ];
-const OBD_NAME_RX = /obd|elm|vgate|mx\+|icar|viecar|konnwei|vlink|obdii|obd2|eobd|scantool/i;
+const OBD_NAME_RX = /obd|elm|vgate|mx\+|icar|viecar|konnwei|v-?link|obdii|obd2|eobd|scantool/i;
 // Apparaten die zéker geen OBD2-adapter zijn — nooit als kandidaat scoren.
 // Voorkomt dat PidLane verbindt met een Shelly-stekker, oordopjes, TV, etc.
-const NON_OBD_RX = /shelly|govee|buds|airpod|watch|band|mi\s?smart|tv|cast|chromecast|speaker|soundbar|tile|tracker|printer|mouse|keyboard|fitbit|garmin|tag|beacon|lamp|bulb|hue|led|thermo|kettle|plug|socket/i;
+const NON_OBD_RX = /shelly|govee|buds|airpod|watch|band|mi\s?smart|tv|cast|chromecast|speaker|soundbar|soundlink|bose|jbl|headphone|headset|tile|tracker|printer|mouse|keyboard|fitbit|garmin|tag|beacon|lamp|bulb|hue|led|thermo|kettle|plug|socket/i;
+// Eén oordeel over "lijkt dit op een OBD2-adapter", voor de scanlijst én de
+// keuze in connectSPP(). Die twee hadden elk een eigen lijst, en die van SPP
+// had een kale 'link' en 'scan': op 19-10-2026 verbond de app eerst met een
+// "LE-Bose Revolve SoundLink" en kostte dat een tweede scanronde.
+function isObdNaam(name){
+  const n = String(name || '');
+  return OBD_NAME_RX.test(n) && !NON_OBD_RX.test(n);
+}
 
 // ── Omgevingsdump bovenaan de log (voor triage) ────────────────────
 function btEnvDump(){
@@ -412,14 +420,12 @@ async function connectSPP(spp){
     if (btUitFout(se.message)){ const f = new Error(BT_UIT_TEKST); f.__plBtUit = true; throw f; }
   }
 
-  const OBD = ['obdlink','obd','elm','vgate','icar','eobd','scan','link'];
-  // Bekende niet-OBD apparaten (Shelly, watches, buds...) nooit als kandidaat.
-  const usable = devices.filter(d => !NON_OBD_RX.test(d.name || ''));
   // ALLEEN verbinden met iets dat op een OBD2-adapter lijkt. De oude fallback
   // "pak dan maar het eerste apparaat" verbond met Shelly's en smartwatches —
   // en de echte adapter ontbreekt vaak juist in de scan omdat de OS-verbinding
   // nog bestaat. Daarom: naam-match → opgeslagen adres → anders eerlijk falen.
-  let target = usable.find(d => OBD.some(n => (d.name || '').toLowerCase().includes(n)));
+  // Bekende niet-OBD apparaten (Shelly, watches, buds...) nooit als kandidaat.
+  let target = devices.find(d => isObdNaam(d.name));
 
   if (!target){
     try {

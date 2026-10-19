@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 19-10-2026 — Een Bose-speaker is geen OBD2-adapter
+ ═══════════════════════════════════════════════════════════
+
+ - Bij een Bluetooth-scan verbond de app eerst met een "SoundLink"-
+   speaker: de SPP-keuze had een eigen naamlijst met een kale 'link' en
+   'scan'. Scanlijst en verbindkeuze gebruiken nu één oordeel,
+   isObdNaam() in pidlane-bt.js. Nieuw: test-obdnaam.js.
+
+ ═══════════════════════════════════════════════════════════
  18-10-2026 — De expert op een laptop krijgt een werkplek
  ═══════════════════════════════════════════════════════════
 

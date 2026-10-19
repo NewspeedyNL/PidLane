@@ -1963,6 +1963,8 @@ MUTATIES=(
 "public/pidlane-bt.js@@    if (btUitFout(se.message)){ const f@@    if (false){ const f@@test-btuit.js@@de SPP-scan zegt Bluetooth is disabled en de app zegt geen adapter gevonden"
 "public/pidlane-bt.js@@const BT_UIT_RX = /\\b(bluetooth|ble)\\b( adapter)? @@const BT_UIT_RX = /( adapter)? @@test-btuit.js@@locatie uit leest als Bluetooth uit: de gebruiker zet iets aan dat al aan stond"
 "public/pidlane-bt.js@@    if(ble && typeof ble.requestEnable === 'function') await ble.requestEnable();@@    if(false) await ble.requestEnable();@@test-btuit.js@@Android wordt niet gevraagd om Bluetooth aan te zetten, ook waar dat kan"
+"public/pidlane-bt.js@@  return OBD_NAME_RX.test(n) && !NON_OBD_RX.test(n);@@  return OBD_NAME_RX.test(n) || /link|scan/i.test(n);@@test-obdnaam.js@@de oude SPP-lijst terug: een SoundLink-speaker telt als adapter en krijgt de eerste verbindpoging"
+"public/pidlane-bt.js@@  let target = devices.find(d => isObdNaam(d.name));@@  let target = devices.find(d => d.name && d.name !== '?');@@test-obdnaam.js@@connectSPP pakt weer het eerste apparaat met een naam, adapter of niet"
 "public/pidlane-bt.js@@— keten loopt zoals altijd', 'warn'); return 'onbekend'; }@@— keten loopt zoals altijd', 'warn'); return 'uit'; }@@test-btuit.js@@een plugin die de stand niet geeft houdt elke verbinding tegen"
 # ── eigen PIDs krijgen een standaardbereik: banden en olie (30-09-2026) ──
 "public/pidlane-uitgebreid.js@@['wH', 'dH', 'dL'].forEach@@['wH'].forEach@@test-mode21.js@@een bandtemperatuur van 70 °C en een band op 1 bar blijven groen: de gevarengrenzen gaan niet mee (#370)"

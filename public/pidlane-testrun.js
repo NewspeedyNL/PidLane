@@ -2787,6 +2787,19 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Een Bose-speaker is geen OBD2-adapter ──
+  {
+    issue: 'obdnaam',
+    naam: 'Adapterkeuze bij een SPP-scan: één naamoordeel, een SoundLink-speaker telt niet als OBD2-adapter',
+    waarom: 'Op 19-10 verbond de app eerst met "LE-Bose Revolve SoundLink" (kale \'link\' in de SPP-lijst) en had een tweede scanronde nodig.',
+    proef: async function () {
+      if (typeof isObdNaam !== 'function') return { staat: 'FOUT', detail: 'isObdNaam() ontbreekt — oude pidlane-bt.js (herladen?)' };
+      if (isObdNaam('LE-Bose Revolve SoundLink')) return { staat: 'FOUT', detail: 'een SoundLink-speaker telt als OBD2-adapter' };
+      if (!isObdNaam('OBDLink MX+ 90011') || !isObdNaam('vLinker MC+')) return { staat: 'FOUT', detail: 'een echte adapternaam wordt niet herkend' };
+      return { staat: 'OK', detail: 'Rij: verbind met Bluetooth-audio in de buurt aan; in het logboek hoort alleen de adapter als "OBD2 adapter" te staan en de eerste poging naar de adapter te gaan.' };
+    }
+  },
+
   // ── De expert begint niet bij nul: voorkennis in de vstate, zonder VIN ──
   {
     issue: 'voorkennis',
