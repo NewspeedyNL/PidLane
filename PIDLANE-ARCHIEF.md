@@ -15,6 +15,41 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 20-10-2026 — De totaalcheck uit week 1 vervangen: stilstand, rijden, verdiepen
+
+**Wat er stond.** Een vragenlijst van zeven vragen (ja/soms/nee) die de
+uitslag als "Bestuurder"-regels kreeg, daarna het verzamelscherm op niveau
+`rit` — en dat eist 90 s rijden, dus stilstaand was de enige uitweg
+"🚗 Rijtest starten": de ritanalyse van tien minuten in vijf fases van twee
+minuten. De antwoorden zeiden niets wat de meting niet zelf zag ("koelwater
+stabiel?" naast een gemeten koelwater), en de fases vroegen een route.
+
+**Wat andere apps doen.** FIXD en BlueDriver lezen foutcodes, readiness en
+freeze frame en leggen de code uit (BlueDriver met een database van
+gemelde reparaties, FIXD met ernst en kosten); live data is een grafiek die de
+klant zelf leest. Carly is vooral merkcodering. Geen van drieën oordeelt over
+live waarden in hun toestand. Dat is hier het verschil, en het zat al in de
+app (PLVerzamel.beoordeel over het hele venster, PLSamenhang); het werd alleen
+nooit per toestand toegepast.
+
+**Gekozen.** Twee delen, elk beoordeeld op alleen zijn eigen monsters:
+`PLTotaal.deelHist()` splitst op de snelheid van het dichtstbijzijnde
+snelheidsmonster, met dezelfde grens als de meetpoort (`MEET_RIJ_KMH`). Een
+monster zonder snelheid binnen `MEET_RIJ_GAT_MS` telt in geen van beide:
+liever minder monsters dan een stilstaande waarde in het rijdeel. Het rijdeel
+is hetzelfde verzamelscherm zonder rijtest-knop en met een kwartier tijd;
+het stopt vanzelf als de poort genoeg rijtijd ziet.
+
+**Bewust niet.** Grens "stil" is ≤ 15 km/h, niet 0: stapvoets telt als
+stilstand. Een eigen stationair-grens zou een tweede tabel naast die van de
+poort zijn. Mode 06 (misfire-tellers) zit er niet in: de scan kost seconden
+per MID en staat al in het foutcodescherm; als dat nodig blijkt, is het een
+eigen categorie. De focusmeting zet alleen de sensoren van de categorie aan
+(`ensurePIDListActive`), zodat ze vaker per seconde langskomen — of dat op de
+CX-5 merkbaar sneller is, is een vraag voor de rit (CAMPAGNE).
+
+---
+
 ## 20-10-2026 — De winter: weer zonder locatie, en wat er bewust niet in zit (#555–#560)
 
 **Locatie.** Het plan in #556 was GPS, afgerond op ±10 km. Bij het bouwen bleek
