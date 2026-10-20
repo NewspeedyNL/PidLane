@@ -1353,6 +1353,8 @@ MUTATIES=(
 "public/pidlane-watchers.js@@        const aanhoudend = w.length>=2 && w[w.length-1].t-w[i].t>=20000;@@        const aanhoudend = w.length>=2;@@test-watcherschakel.js@@een korte piek van 113 °C na stilstaan geeft al een oververhittingsmelding"
 "public/pidlane-watchers.js@@        if(!r || r.niveau==='ok') { PLKenmerk.wisNotitie@@        if(!r) { PLKenmerk.wisNotitie@@test-watcherschakel.js@@de rit-monitor meldt dynamo terwijl de auto zelf die lage spanning vraagt"
 "public/pidlane-watchers.js@@        if(g && g.uitkomst==='geldt_niet') continue;@@@@test-watcherschakel.js@@een watcher draait ook als de auto het kenmerk aantoonbaar niet heeft (vacuüm op een diesel)"
+"public/pidlane-watchers.js@@        const spread=r3-r1;@@        const spread=q3-q1;@@test-stationair-airco.js@@STAT_RPM meet de schommeling weer op de ruwe reeks: een toerental dat na een stop wegzakt heet ruw stationair (#567)"
+"public/pidlane-watchers.js@@.filter(([,v])=>v>=q1-hek && v<=q3+hek);@@.filter(()=>true);@@test-stationair-airco.js@@één parse-hik trekt het verloop van STAT_RPM scheef en wordt zelf een melding over ruw stationair"
 "public/pidlane-totalcheck.js@@const _MON_ERNSTIG=/^(ECT_HOOG|TEST:ECT_HOOG|@@const _MON_ERNSTIG=/^(ECT_HOOG|@@test-watcherschakel.js@@oververhitting komt in de rit-monitor weer oranje binnen, zonder Verifieer-knop"
 "public/pidlane-monitor.js@@Outcome:(reden==='bug'?'bug':'vals')@@Outcome:'vals'@@test-watcherschakel.js@@een app-bug is in de logtabel niet meer te scheiden van een valse melding"
 "public/pidlane-monitor.js@@    if (!ev || !this.FEEDBACK_REDENEN[reden]) return false;@@    if (!ev) return false;@@test-watcherschakel.js@@een willekeurige reden komt als feedback in de logtabel"

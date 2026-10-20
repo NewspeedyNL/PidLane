@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 20-10-2026 — Ruw stationair: wegzakken na een stop telt niet (#567)
+ ═══════════════════════════════════════════════════════════
+
+ - De rit-monitor meet de schommeling van het stationair toerental rond
+   zijn verloop. Een toerental dat na een stop wegzakt, met ruis erop, gaf
+   "ruw stationair" (rit 20-10, 238 rpm); echte ruwloop en de airco blijven
+   een melding.
+
+ ═══════════════════════════════════════════════════════════
  20-10-2026 — Eén aanlevering voor alle analyses
  ═══════════════════════════════════════════════════════════
 

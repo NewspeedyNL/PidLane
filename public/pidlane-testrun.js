@@ -2787,6 +2787,24 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── #567: STAT_RPM meet de schommeling rond het verloop, niet het wegzakken zelf ──
+  {
+    issue: '567',
+    naam: 'Ruw stationair (STAT_RPM): een toerental dat na een stop wegzakt met ruis erop is geen melding meer; echte ruwloop en één parse-hik blijven zoals ze waren',
+    waarom: 'Op de rit van 20-10 om 19:02 gaf een wegzakkend toerental 238 rpm "schommeling" bij 26% richtingswisselingen, net boven de poort van 25%.',
+    proef: async function () {
+      var t = window.PLWatch && (PLWatch.tests || []).find(function (x) { return x.id === 'STAT_RPM'; });
+      if (!t) return { staat: 'FOUT', detail: 'STAT_RPM ontbreekt in PLWatch.tests — oude pidlane-watchers.js (herladen?)' };
+      var ctx = function (r) { return { win: function (p) { return p === '010C' ? r : []; }, val: function () { return 0; } }; };
+      var ruis = [0, 12, -8, 15, -14, 6, -10, 14, -5, 9, -15, 4, 11, -9, 13, -6, 8, -12, 10, -4];
+      var zakt = ruis.map(function (e, i) { return Math.round(700 + 400 * Math.exp(-i / 6) + e); });
+      var ruw = ruis.map(function (e, i) { return 800 + (i % 2 ? 100 : -100); });
+      if (t.check(ctx(zakt)) !== null) return { staat: 'FOUT', detail: 'een wegzakkend toerental met ruis heet nog ruw stationair' };
+      if (!t.check(ctx(ruw))) return { staat: 'FOUT', detail: 'echt oscillerend stationair geeft geen melding meer' };
+      return { staat: 'OK', detail: 'Rij: stop na een stuk rijden en laat de motor warm stationair draaien; de rit-monitor hoort binnen de eerste 15 s na de stop geen "ruw stationair" te melden, en met de airco aan/uit wel zoals voorheen.' };
+    }
+  },
+
   // ── Eén aanlevering voor alle analyses: profiel uit de meting, kwaliteit één keer ──
   {
     issue: 'aanlevering',

@@ -176,9 +176,34 @@ const PLWatch = {
         // opstarttransient) geeft max-min ~380 terwijl de motor rustig loopt.
         // IQR laat zich daar niet door verstoren: 2 rpm bij een piek in een
         // vlakke reeks, 160 rpm bij écht ruw stationair.
-        const s2=r.slice().sort((a,b)=>a-b), n=s2.length;
-        const spread=s2[Math.floor(3*n/4)]-s2[Math.floor(n/4)];
-        if(spread<=60) return null;
+        //
+        // 20-10-2026 (#567) — EERST HET VERLOOP ERUIT. De richtingstoets
+        // hierboven vangt alleen een ZUIVER dalend toerental. Na een stop
+        // zakt het van rijden naar stationair met ruis erop, en dan haalt het
+        // de 25% wisselingen gewoon (rit van 20-10, 19:02: 238 rpm, 26%). De
+        // IQR mat dan het wegzakken zelf. Daarom een kwadratisch verloop door
+        // het venster leggen en de IQR nemen van wat eromheen schommelt:
+        // een daling met ruis houdt ~25 rpm over, ruwloop (heen en weer van
+        // monster tot monster) ~200 en een trage pendel van de
+        // stationairregeling ~100. Kwadratisch en niet lineair: een
+        // wegzakkend toerental is een kromme, en een rechte lijn laat de
+        // bocht als "schommeling" achter.
+        // Een losse uitschieter (parse-hik) trekt zo'n fit scheef en laat dan
+        // zelf "schommeling" achter; daarom eerst wat ver buiten de ruwe reeks
+        // valt eruit (3× de IQR, Tukeys "far out"). Bij een daling of echte
+        // ruwloop is de ruwe IQR groot genoeg dat er niets afvalt.
+        const iqr=a=>{ const z=a.slice().sort((x,y)=>x-y), m=z.length; return [z[Math.floor(m/4)], z[Math.floor(3*m/4)]]; };
+        const [q1,q3]=iqr(r), hek=3*(q3-q1);
+        const pt=r.map((v,i)=>[i,v]).filter(([,v])=>v>=q1-hek && v<=q3+hek);
+        const n=pt.length, xm=pt.reduce((a,[i])=>a+i,0)/n, S=[0,0,0,0,0], T=[0,0,0];
+        pt.forEach(([i,v])=>{ const x=i-xm; let p=1; for(let k=0;k<5;k++){ S[k]+=p; p*=x; } T[0]+=v; T[1]+=v*x; T[2]+=v*x*x; });
+        const M=[[S[0],S[1],S[2]],[S[1],S[2],S[3]],[S[2],S[3],S[4]]];
+        const det=m=>m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])-m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])+m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+        const D=det(M);
+        const kc=[0,1,2].map(j=>det(M.map((rij,i)=>rij.map((v,k)=>k===j?T[i]:v)))/D);
+        const [r1,r3]=iqr(pt.map(([i,v])=>{ const x=i-xm; return v-(kc[0]+kc[1]*x+kc[2]*x*x); }));
+        const spread=r3-r1;
+        if(!(spread>60)) return null;   // ook NaN (D=0) is geen bevinding
         // 28-08-2026 — DE AIRCO. Op de rit van 27-08 gaf deze test twee keer
         // "ruw stationair" (65 en 193 rpm) terwijl het de airco was die in- en
         // uitschakelde: de compressor koppelt in, het toerental zakt, de
@@ -201,7 +226,7 @@ const PLWatch = {
           const b2=bl.slice().sort((a,b)=>a-b), bn=b2.length;
           blTekst=`, motorbelasting varieert ${Math.round(b2[Math.floor(3*bn/4)]-b2[Math.floor(bn/4)])}%`;
         }
-        return `ruw stationair: toerental schommelt ${Math.round(spread)} rpm (IQR, ${Math.round(omkPct*100)}% richtingswisselingen${blTekst}) — een in- en uitschakelende airco geeft ditzelfde beeld: zet die eerst uit en kijk of het blijft. Blijft het, denk dan aan valse lucht, bobine/bougie of stationairregeling`;
+        return `ruw stationair: toerental schommelt ${Math.round(spread)} rpm rond zijn verloop (IQR, ${Math.round(omkPct*100)}% richtingswisselingen${blTekst}) — een in- en uitschakelende airco geeft ditzelfde beeld: zet die eerst uit en kijk of het blijft. Blijft het, denk dan aan valse lucht, bobine/bougie of stationairregeling`;
         } },
 
     { id:'STAT_MAP', naam:'inlaatdruk bij stationair (vacuüm)', voorwaarden:{ diesel:{ is:false, gangbaar:true } },
