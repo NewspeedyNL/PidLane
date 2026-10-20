@@ -127,7 +127,7 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('de kaart toont P0301', await wacht(`${kaart}.indexOf('P0301')>-1`, 4000), await app.ev(kaart));
     toets('en staat vóór de vraag', await app.ev(`(function(){ var w=document.getElementById('wzWeten'), v=document.querySelector('#wizardNieuwOv .wz-vraag');
       return !!w && !!v && !!(w.compareDocumentPosition(v) & Node.DOCUMENT_POSITION_FOLLOWING); })()`));
-    toets('de vraag zelf is ongewijzigd', (await app.ev(vraag)) === 'Wanneer merk je het?');
+    toets('de vraag zelf is ongewijzigd', (await app.ev(vraag)) === 'Wat merk je?');
     await app.ev(`PLWizard.sluit(); PLFoutcodes.staat().scan={ tijd:Date.now(), codes:{ bevestigd:['P0420'], pending:[], permanent:[] } }; PLWizard.open('storing'); 'ok'`);
     toets('een nieuwe uitlezing staat er meteen, niet de vorige  <- tegenproef: geen oude cache', await wacht(`${kaart}.indexOf('P0420')>-1 && ${kaart}.indexOf('P0301')<0`, 4000), await app.ev(kaart));
     await app.ev(`PLFoutcodes.staat().scan=null; PLWizard.sluit(); 'ok'`);

@@ -1941,6 +1941,7 @@ MUTATIES=(
 "public/pidlane-visprofiel.js@@  try{ let v=localStorage.getItem(SLEUTEL); if(OUD_PROFIEL[v]) v=OUD_PROFIEL[v];@@  try{ let v=localStorage.getItem(SLEUTEL);@@test-visprofiel.js@@wie een van de oude telemetrieschermen gekozen had, valt terug op Basis"
 # ── het emissiescherm is donker (06-10-2026) ──
 "public/pidlane.css@@.vpf-licht { background:#0f141d;@@.vpf-licht { background:#f7f8fb;@@test-visprofiel.js@@het emissiescherm is weer wit en verblindt 's avonds in de auto"
+"public/pidlane.css@@.wz-body:has(+ .wz-foot:empty){ padding-bottom:calc(24px + var(--pl-sab, 0px)); }@@@@bproef-onderzoek.js@@de laatste keuze van de wizard verdwijnt weer achter de Android-knoppen"
 # ── nooit een VIN als voertuignaam rechtsboven (06-10-2026) ──
 "public/pidlane-uihelpers.js@@  el.dataset.naam = t ? (sysNaam(t, merk, vi.model) || 'Voertuig') : '';@@  el.dataset.naam = t||'';@@test-nav.js@@showVtag bewaart een VIN als naam: rechtsboven staan 17 tekens in plaats van de auto"
 # ── het acculampje flitst niet meer weg bij een oude spanning (06-10-2026) ──
@@ -2199,6 +2200,8 @@ MUTATIES=(
 "public/pidlane-onderzoek.js@@        if (sp != null && sp < 0.02) r.push({ h: 'lambda'@@        if (sp != null && sp < 0) r.push({ h: 'lambda'@@test-onderzoek.js@@een breedbandsonde die stilstaat valt niet op (#428)"
 "public/pidlane-onderzoek.js@@        return laadBewijs(v, 2.5, -2);@@        return v < 13.0 ? [{ h: 'laad', d: 2.5, t: 'laadspanning ' + r1(v) + ' V — de dynamo laadt niet genoeg' }] : [];@@test-onderzoek.js@@het rapport zegt weer dat de dynamo niet genoeg laadt op een auto die slim laadt"
 "public/pidlane-onderzoek.js@@  var MOMENT_LEZINGEN = 2;@@  var MOMENT_LEZINGEN = 3;@@test-onderzoek.js@@de momentopname vraagt weer drie keer per PID: 8,4 s op een V-motor met een trage adapter (#538)"
+"public/pidlane-onderzoek.js@@Math.min(VOORAF_MAX, oud + rg.d * 0.5)@@oud + rg.d@@test-onderzoek.js@@een opgegeven foutcode bevestigt zelf een verdenking, zonder dat de auto iets zei"
+"public/pidlane-onderzoek.js@@    (opt.klachten || []).forEach(function (k) { if (KLACHTEN[k] && ks.indexOf(k) < 0) ks.push(k); });@@@@bproef-onderzoek.js@@de tegels uit de wizard gaan verloren: het onderzoek kent alleen de tekst"
 "public/pidlane-foutcodes.js@@      if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }@@      if (wat === 'oorzaak') PLWizard.open('storing');@@bproef-onderzoek.js@@Oorzaak laten zoeken opent weer de lijst losse modules in plaats van het onderzoek"
 "public/pidlane-foutcodes.js@@  function magTerug(s) { return magDoor(s) && stoplicht(s).kleur === 'groen'; }@@  function magTerug(s) { return magDoor(s); }@@test-foutcodes.js@@zelf getikt met een zelftest die nog niet klaar is: het venster gaat toch vanzelf dicht en de Let op-regel is weg"
 "public/pidlane-foutcodes.js@@    _st.doorGewild = !isGarage();@@    _st.doorGewild = !!opties.auto && !isGarage();@@bproef-foutcodes.js@@zelf op Check mijn auto getikt en alles groen: het venster blijft weer staan"
@@ -2235,6 +2238,9 @@ MUTATIES=(
 "public/pidlane-wizard.js@@    if(GEEN_MEETEIS[k] || EIGEN_METING[k] || typeof PLVerzamel@@    if(GEEN_MEETEIS[k] || typeof PLVerzamel@@bproef-verzamel.js@@de AI-monteur krijgt weer een meetscherm zonder AI-knop vóór zijn eigen verzamelscherm"
 "public/pidlane-wizard.js@@    if(GEEN_MEETEIS[k] || EIGEN_METING[k] || typeof PLVerzamel!=='object'){ open(); return; }@@    if(true){ open(); return; }@@bproef-verzamel.js@@de Systeemtest uit het plan draait weer zonder meting"
 "public/pidlane-wizard.js@@    PLVerzamel.meet({ niveau:'normaal', profiel:MODULE_PROFIEL[k] || false, watVoor:M.n, ai:false,@@    PLVerzamel.meet({ niveau:'normaal', profiel:MODULE_PROFIEL[k] || false, watVoor:M.n,@@bproef-verzamel.js@@de Systeemtest krijgt een AI-knop terwijl er geen AI-vraag bij hoort"
+"public/pidlane-wizard.js@@  if(heeft('koud') || heeft('vocht') || heeft('soms')) return 'monitor';@@  if(heeft('koud') || heeft('vocht')) return 'monitor';@@test-wizardtakken.js@@wie zegt dat het onvoorspelbaar is, krijgt weer een stilstaande meting in plaats van meelopen"
+"public/pidlane-wizard.js@@ var c = m[1].toUpperCase(); if(r.indexOf(c)<0) r.push(c);@@ var c = m[1]; if(r.indexOf(c)<0) r.push(c);@@test-wizardtakken.js@@een getypte p0171 gaat in kleine letters naar het onderzoek en past op geen enkele coderegel"
+"public/pidlane-wizard.js@@wanneer: (job.wanneer||[]).filter(function(w){ return !WANNEER_EXTRA[w]; }),@@wanneer: [],@@bproef-onderzoek.js@@het moment uit de wizard komt niet meer aan in het onderzoek"
 # ── #443 ronde 2: alle analyses via het scherm, de rit en de datalog als bron.
 "public/pidlane-verzamel.js@@    if (!bron && o.ritBron !== false) { bron = ritVanZojuist(eis); ritBron = !!bron; }@@@@test-verzamel.js@@na een rijtest meet het scherm opnieuw over de laatste minuten in plaats van de rit te nemen"
 "public/pidlane-verzamel.js@@    if (!b || !getal(b.eind) || Date.now() - b.eind > RIT_GELDIG_MS) return null;@@    if (!b) return null;@@test-verzamel.js@@een rit van een uur geleden telt nog als de meting van nu"

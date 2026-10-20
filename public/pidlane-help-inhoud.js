@@ -155,11 +155,12 @@ var PL_HULP = {
 
     { id: 'onderzoek', groep: 'gebruik', titel: 'Volledig onderzoek',
       tekst:
+        '<p>Bij <b>Er is iets mis</b> kies je eerst <b>wat je merkt</b>: tik de tegels aan die passen (meer mag), of beschrijf het zelf — de app herkent wat je typt en neemt het mee. Heb je al een <b>foutcode</b> van de garage of een andere app, vul die dan in: hij telt als aanwijzing, de uitlezing van de auto beslist. Daarna kies je <b>wanneer</b> het speelt; daaruit volgt hoe de app meet. Met <b>Ik merk niets bijzonders</b> krijg je een algemene check.</p>' +
         '<p>Bij <b>Er is iets mis</b> staat bovenaan het plan <b>🧭 Volledig onderzoek</b>. Het werkt zoals een monteur: het stelt verdenkingen op uit je klacht, ' +
         'en kiest steeds de stap die er de meeste tegelijk kan bevestigen of uitsluiten. Tik bij het begin ook aan <b>wanneer het speelt</b> — koud, stationair, bij optrekken, bij regen: dat scheidt oorzaken die bij dezelfde klacht horen.</p>' +
         '<p>De eerste stap is de <b>snelle scan</b>: foutcodes, het <b>freeze frame</b> (de motor op het moment van de fout), het <b>bijstuurgeheugen</b> per cilinderbank, de tellers sinds de codes gewist zijn, en de trims uit je laatste rit of datalog. ' +
         'Wat daaruit blijkt staat onder <b>Wat de auto al wist</b> — bijvoorbeeld dat de codes kort geleden gewist zijn, of dat er een code aankomt die nog geen lampje geeft.</p>' +
-        '<p>Merk je niets maar wil je het zeker weten? Kies bij <b>Er is iets mis</b> voor <b>Ik merk niets bijzonders</b>, of tik bij een groene <a data-hulp="check">Check mijn auto</a> op <b>🧭 Toch grondig onderzoeken</b>. ' +
+        '<p>Merk je niets maar wil je het zeker weten? Kies bij <b>Er is iets mis</b> voor <b>Ik merk niets bijzonders</b>: bovenaan het plan staat dan <b>🚦 Algemene check</b> (de totaalcheck, stilstaand en rijdend), met het onderzoek eronder. Of tik bij een groene <a data-hulp="check">Check mijn auto</a> op <b>🧭 Toch grondig onderzoeken</b>. ' +
         'Het onderzoek begint dan met een brede ronde: valse lucht, luchtmassameter, lambda en katalysator, thermostaat, accu en laden, en ontsteking. Bij een diesel komen het roetfilter, de EGR-klep en software erbij.</p>' +
         '<p>Kent de app het merk van je auto, dan toetst het onderzoek ook wat bij dat merk bekend is — een kettingspanner, een DSG, een roetfilter. ' +
         'Die verdenkingen staan erbij met <b>bekend bij dit merk</b> en komen eerder aan de beurt, maar zijn geen bewijs: alleen een meting, foutcode of antwoord telt. ' +
