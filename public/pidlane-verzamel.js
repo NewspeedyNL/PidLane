@@ -414,7 +414,8 @@
         let sec, rijSec;
         if (bron) { sec = bron.sec; rijSec = bron.rijSec; }
         else { const m = laatste || meting(); sec = m.r.st.sec; rijSec = m.r.st.rijSec; }
-        const res = { door: true, ai: !!ai, sam, sec, rijSec, bron: bron ? bron.naam : null, beperkt: window._meetBeperkt || '' };
+        const res = { door: true, ai: !!ai, sam, sec, rijSec, bron: bron ? bron.naam : null, beperkt: window._meetBeperkt || '',
+                      profiel: bron ? null : prof };
         // Het analyserapport (PLRapport) bouwt zijn tabellen en grafieken uit
         // deze meting: de reeksen zelf, en waarvoor en waarom er gemeten werd.
         window._plVerzameld = { sam, sec, rijSec, beperkt: res.beperkt, bron: res.bron, ts: Date.now(),
@@ -606,6 +607,26 @@
 
   /* De samenvatting van een gegeven bron ({hist, pids?}), zoals het scherm
      hem toont. Voor een rapport dat de bron zelf heeft (het ritrapport). */
+  /* WAT DE MEETFASE AAN DE AI-HAAK DOORGEEFT (20-10-2026). De vijfde
+     parameter van apiFetch() — de aanlevering, #188 — werd op elke plek met
+     de hand opgeschreven, en het profiel daarin met de hand overgetikt van de
+     regel waarin gemeten werd. Dat liep uit de pas: de oorzaakanalyse mat de
+     selectie (`profiel:false`) en beloofde de AI een dekking over het
+     emissieprofiel. Hier komt het profiel uit de meting zelf; alleen een
+     meting uit een gegeven bron (datalog, rit) heeft er geen, en die mag het
+     noemen. `zichtbaar` is wat promptBlok() de AI liet zien: daarover gaat
+     het kwaliteitsoordeel van de aanlevering, zodat geen aanroeper er een
+     eigen DATAKWALITEIT-blok naast hoeft te plakken. */
+  function aanlevering(uit, vraag, profiel) {
+    const a = { vraag: String(vraag || '').trim() || null };
+    const p = (uit && uit.profiel) || (uit && uit.bron ? profiel : null) || null;
+    if (p) a.profiel = p;
+    const rijen = (uit && uit.sam && Array.isArray(uit.sam.rijen)) ? uit.sam.rijen : [];
+    const zichtbaar = rijen.map(r => r && r.pid).filter(Boolean);
+    if (zichtbaar.length) a.zichtbaar = zichtbaar;
+    return a;
+  }
+
   function vanBron(b) {
     if (!b) return null;
     const pids = (b.pids && b.pids.length) ? b.pids
@@ -627,6 +648,6 @@
     return h;
   }
 
-  window.PLVerzamel = { MIN_MS, RIT_GELDIG_MS, EIGEN_MAX, rijTel, samenvoeg, beoordeel, samenvatting, promptBlok, fase, meet, naRit, maat, histUit, vanBron, rijSecUit, metSamenhang,
+  window.PLVerzamel = { MIN_MS, RIT_GELDIG_MS, EIGEN_MAX, rijTel, samenvoeg, beoordeel, samenvatting, promptBlok, aanlevering, fase, meet, naRit, maat, histUit, vanBron, rijSecUit, metSamenhang,
     open: function () { return !!lopend; } };
 })();

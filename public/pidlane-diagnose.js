@@ -346,13 +346,14 @@ async function runDiagAI(causeName){
   const desc=document.getElementById('diagDesc').value;
   const chips=[...document.querySelectorAll('#diagChips .chip.on')].map(c=>c.textContent).join(', ');
   const pdata=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});
-  const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor));
-  const prompt=`Voertuig: ${v.merk} ${v.model} ${v.year}\nProbleem: ${desc}\nSymptomen: ${chips}\nOorzaak: ${causeName}\nPID data:${pdata||'\n(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}${qBlok}\n\nGeef: SAMENVATTING, REPARATIE STAPPEN, KAN IK HET ZELF?, KOSTEN SCHATTING, URGENTIE`;
+  const prompt=`Voertuig: ${v.merk} ${v.model} ${v.year}\nProbleem: ${desc}\nSymptomen: ${chips}\nOorzaak: ${causeName}\nPID data:${pdata||'\n(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}\n\nGeef: SAMENVATTING, REPARATIE STAPPEN, KAN IK HET ZELF?, KOSTEN SCHATTING, URGENTIE`;
   const btn=document.getElementById('aiBtn'); if(btn) btn.disabled=true;
   const diagOut=document.getElementById('aiContentDiag');
-  await callAI(prompt,diagOut,{
-    vraag:'Bevestig of ontkracht deze oorzaak met de gemeten sensordata, en geef de reparatiestappen.',
-    profiel:'emissie'});
+  // Geen profiel: er is gemeten op de selectie van deze oorzaak, en tot
+  // 20-10-2026 beloofde dit de AI hier een dekking over het emissieprofiel —
+  // ook bij een bobine of een thermostaat.
+  await callAI(prompt,diagOut,PLVerzamel.aanlevering(uit,
+    'Bevestig of ontkracht deze oorzaak met de gemeten sensordata, en geef de reparatiestappen.'));
   try{ diagOut.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ }
   if(btn) btn.disabled=false;
 }

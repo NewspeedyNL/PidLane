@@ -183,8 +183,8 @@ function buildAutoExpertContext(){
     lines.push(`BEKENDE ${know.merk.toUpperCase()}-ZWAKKE PUNTEN: ${know.zwak.join('; ')}`);
     if(know.let_op) lines.push(`LET OP: ${know.let_op}`);
   }
-  const pairsAE=[...activePIDs].filter(pid=>pidVals[pid]!==undefined).map(pid=>[pid,pidVals[pid]]);
-  if(pairsAE.length){ const q=buildQualityReport(pairsAE); lines.push(q.promptBlok); }
+  // Het DATAKWALITEIT-blok over de selectie zet de aanlevering erbij (#188);
+  // tot 20-10-2026 stond het hier een tweede keer.
   return lines.join('\n');
 }
 

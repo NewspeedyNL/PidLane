@@ -90,7 +90,7 @@ const wacht = () => new Promise((r) => setImmediate(r));
         // Sinds 07-10-2026 het verzamelscherm: `door` is hier "ja, laat de AI
         // dit onderzoeken"; nee is sluiten zonder AI.
         s.PLVerzamel = { meet: (o) => { s.gevraagd.push([o.niveau, o.watVoor, o.profiel]); return Promise.resolve({ door, ai: door, sam: { rijen: [] } }); },
-                         promptBlok: () => '' };
+                         promptBlok: () => '', aanlevering: () => ({}) };
         s.callAI = () => { s.verstuurd++; return Promise.resolve(); };
         vm.createContext(s); vm.runInContext(RUN, s); return s;
       };

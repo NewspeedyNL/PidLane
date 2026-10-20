@@ -15,6 +15,51 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 20-10-2026 — De analyses naast elkaar: meetfase en aanlevering gelijkgetrokken
+
+Alle AI-aanroepen vergeleken op vijf punten: gaat er een **meetfase**
+(`PLVerzamel.meet`) aan vooraf, krijgt de AI de **samenvatting over het
+venster** (`promptBlok`), draagt de aanlevering (#188) een **vraag**, klopt het
+**profiel** met de meting, en staat het **DATAKWALITEIT-blok** er één keer in.
+
+**De beste opzet was de AI-monteur (`runQuickAI`)**: meetfase met profiel,
+samenvatting, `callAI` met vraag en profiel, rapportblok. Maar ook die stuurde
+het kwaliteitsblok en de correlatielijst twee keer — in de prompt én via de
+aanlevering, die ze sinds 11-09 zelf toevoegt. Dat bleek de vorm van bijna
+alles:
+
+| analyse | meetfase | vraag | profiel = meting | dubbel blok |
+|---|---|---|---|---|
+| AI-monteur / AI-rapport | ja | ja | ja | **ja** (kwaliteit + correlatie) |
+| Brandstof | ja | ja | ja | **ja** |
+| Oorzaak uitwerken | ja | ja | **nee**: mat de selectie, beloofde `emissie` | **ja** |
+| Datalog | bron | ja | (bron) | **ja** |
+| Onderhoud / EV | ja | ja | ja | **ja** |
+| Lange rit | ja | ja | ja | nee (blok berekend, nooit gebruikt) |
+| Totaalcheck | twee delen | ja | ja | **ja** |
+| Totaalcheck-verdieping | focus | ja | **nee**: één systeem, dekking over heel `totaal` | nee |
+| Diepe storingscheck | ja | **nee** | — | nee |
+| Klimaat (airco/winter) | bron | **nee** | — | nee |
+| Opname (pidRec) | eigen buffer | **nee** | — | nee |
+| AI-Automonteur (vrije vraag) | nee | ja | — | **ja** |
+| Koop: prijs, lease, inkoop | — | **nee**, betaalde wel het meetblok | — | — |
+| Rapport herzien | — | **nee**, kreeg de meting van nú bij een rapport van toen | — | — |
+
+**Wat er veranderde.** `PLVerzamel.aanlevering(uit, vraag, profiel)` maakt de
+aanlevering uit het meetresultaat: het profiel komt uit de meting (alleen een
+meting uit een gegeven bron mag er zelf een noemen), en `zichtbaar` is de lijst
+sensoren die `promptBlok` liet zien. `PLAanlevering` oordeelt over de kwaliteit
+van dekking ∪ zichtbaar — daarmee was het eigen blok op de aanroepplekken
+overbodig, en is het weg. Prijs, lease, inkoop en de herziening krijgen
+`{meet:false}`; de verdieping krijgt de PID's van zijn systeem als dekking.
+`test-verzamelroutes.js` stelt nu per route dezelfde vijf vragen; tegen de oude
+bron werden er 20 van de 71 rood.
+
+**Bewust niet in deze ronde** (zie het issue): de AI-Automonteur en de opname
+hebben nog geen meetfase; onderhoud, EV en lange rit zetten na de meetfase nog
+een keer `ensurePIDsActive` aan, wat alleen bustijd kost; het ritrapport geeft
+zijn aanlevering nog met de hand op (wel correct).
+
 ## 20-10-2026 — "Er is iets mis" opnieuw: eerst wat, dan wanneer; en tractie-ingrijpen (#560)
 
 **De intake.** Begon met "Wanneer merk je het?" (vijf vaste keuzes, één

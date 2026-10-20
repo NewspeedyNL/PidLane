@@ -248,17 +248,15 @@ async function runDatalogAI(){
   const statLines=Object.values(stats).map(s=>
     `• ${s.name}: gem=${fv(s.avg)} ${s.unit}, min=${fv(s.min)}, max=${fv(s.max)}, trend=${s.trend} (${s.count} metingen)`
   ).join('\n');
-  // Datalog is al 3-laags gefilterd (validateAndSmooth vult de buffer),
-  // maar 'twijfel'-vlaggen (bevroren sensor, net-over-drempel) horen er
-  // óók bij — zelfde kwaliteitscontext als de andere analyses.
-  const qBlok=_qualityBlokFor(Object.keys(stats));
+  // De 'twijfel'-vlaggen (bevroren sensor, net-over-drempel) zet de
+  // aanlevering erbij, over de sensoren van deze datalog.
   const prompt=`Je bent expert automonteur. Analyseer deze 20-seconden datalog in het Nederlands.
 
 Voertuig: ${v.merk||'?'} ${v.year||''}
 DTC codes: ${formatDtcCodes(dtcCodes)}
 
 DATALOG — 20 seconden live meting:
-${statLines}${qBlok}${PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec})}
+${statLines}${PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec})}
 
 Let specifiek op:
 - Correlaties (spanning daalt als RPM stijgt = alternator)
@@ -307,9 +305,8 @@ AANBEVOLEN VERVOLGONDERZOEK
 Een korte lijst met concrete meet- of controlestappen om de diagnose te bevestigen.`;
 
   const btn=document.getElementById('aiBtn'); btn.disabled=true;
-  await callAI(prompt,document.getElementById('aiContent'),{
-    vraag:'Datalog-analyse: wat laat de opgenomen reeks zien over de staat van het voertuig?',
-    profiel:'rit'});
+  await callAI(prompt,document.getElementById('aiContent'),PLVerzamel.aanlevering(uit,
+    'Datalog-analyse: wat laat de opgenomen reeks zien over de staat van het voertuig?','rit'));
   btn.disabled=false;
   log('Datalog AI analyse klaar','ok');
 }

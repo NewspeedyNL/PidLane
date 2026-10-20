@@ -139,7 +139,7 @@ console.log('\nE. runQuickAI: eerst het scherm, dan pas de AI');
   const RUN = fuel.slice(a, b);
   const maak = (uit) => {
     const c = { console: { warn() {} }, verstuurd: [], gevraagd: [], pane: 0,
-      PLVerzamel: { meet: (o) => { c.gevraagd.push(o); return Promise.resolve(uit); }, promptBlok: V.promptBlok },
+      PLVerzamel: { meet: (o) => { c.gevraagd.push(o); return Promise.resolve(uit); }, promptBlok: V.promptBlok, aanlevering: V.aanlevering },
       activateAIPane() { c.pane++; }, getVehicle: () => ({ merk: 'Mazda', model: 'CX-5', year: 2018 }),
       plMeetPromptBlok: () => '', correlationLines: () => [], _qualityBlokFor: () => '', formatDtcCodes: () => 'geen',
       dtcCodes: [], activePIDs: new Set(['0105']), isReportableSensor: () => true,

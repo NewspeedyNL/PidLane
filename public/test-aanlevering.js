@@ -397,6 +397,31 @@ console.log('\n9. Een analyseprofiel levert de kernset die de analyse ook echt o
     /analyseprofiel "brandstof"/.test(B.blok({ profiel: prof })));
 }
 
+console.log('\n9b. Het kwaliteitsoordeel gaat over wat de AI te zien kreeg (20-10-2026)');
+/* Tot deze datum plakten acht aanroepplekken hun eigen DATAKWALITEIT-blok in
+   de prompt, omdat dit blok alleen over de dekking van het profiel oordeelde
+   en de meetfase daarbuiten meer liet zien. Nu geeft de meetfase die lijst
+   mee als `zichtbaar`, en dan moet een sensor daarbuiten óók zijn oordeel
+   krijgen — anders verdwijnt met het dubbele blok ook de waarschuwing. */
+{
+  const buiten = Object.keys(data.PID_HARD_LIMITS).find(function (p) {
+    return NODIG.indexOf(p) < 0 && data.ALL_PID_DEFS[p] && typeof data.PID_HARD_LIMITS[p].max === 'number';
+  });
+  const onmogelijk = data.PID_HARD_LIMITS[buiten].max + 1000;
+  const vals = { [NODIG[0]]: 20 }; vals[buiten] = onmogelijk;
+  const Z = bouw({ supported: NODIG.concat([buiten]), active: [NODIG[0], buiten], vals: vals });
+  const naam = data.ALL_PID_DEFS[buiten].name;
+  const met = Z.blok({ set: SET, zichtbaar: [buiten] });
+  toets('een zichtbare sensor buiten het profiel krijgt zijn UITGESLOTEN-oordeel',
+    /UITGESLOTEN/.test(met) && met.indexOf(naam) > 0, buiten + ' ' + naam + '\n' + met);
+  const zonder = Z.blok({ set: SET });
+  toets('TEGENPROEF: zonder zichtbaar blijft het oordeel bij de dekking',
+    zonder.indexOf(naam) < 0, zonder);
+  toets('dekking en zichtbaar samen, zonder dubbele PIDs',
+    JSON.stringify(Z.kwaliteitsPids({ geleverd: ['a', 'b'] }, ['b', 'c'])) === '["a","b","c"]' &&
+    Z.kwaliteitsPids(null, []) === null);
+}
+
 console.log('\n10. Elke profielnaam in de aanroepplekken bestaat ook echt');
 /* DIT IS BRONCODE LEZEN, EN DAT IS HIER DE JUISTE VORM.
 
@@ -420,6 +445,10 @@ console.log('\n10. Elke profielnaam in de aanroepplekken bestaat ook echt');
     const rx = /[{,]\s*profiel\s*:\s*'([a-z]+)'/g;
     let m;
     while ((m = rx.exec(tekst)) !== null) gevonden.push({ bestand: f, naam: m[1] });
+    // Sinds 20-10-2026 ook de derde parameter van PLVerzamel.aanlevering(uit,
+    // vraag, profiel): daar staat de naam nu op de meeste plekken.
+    const rx2 = /PLVerzamel\.aanlevering\([^;]*?,\s*'([a-z]+)'\)/g;
+    while ((m = rx2.exec(tekst)) !== null) gevonden.push({ bestand: f, naam: m[1] });
   });
   toets('er zijn aanroepplekken die een profiel meegeven',
     gevonden.length >= 5, gevonden.length + ' gevonden');
