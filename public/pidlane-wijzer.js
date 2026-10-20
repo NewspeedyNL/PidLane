@@ -49,7 +49,11 @@
   // Diesel: brandstoftoeslag per 100 kg. Elektrisch 2026: 70 % van benzine.
   // Plug-in hybride: vanaf 2026 het volle tarief.
   var MRB = { anker: 126, ankerKg: 1100, per100: 26, diesel100: 12.5, evFactor: 0.7, marge: 0.15 };
-  var PRIJS = { benzine: 1.95, diesel: 1.70, lpg: 0.85, stroom: 0.35 };   // € per l of kWh
+  // Pompprijzen (#505): CBS 80416NED, dagprijs 13-07-2026 — Euro95 2,297,
+  // diesel 2,149, LPG rond 0,95 (juni–juli). Tot 20-10-2026 stond hier
+  // 1,95 / 1,70 / 0,85: ruim 15 % te laag, dus "kosten per maand" ook.
+  // Stroom is een thuistarief en niet nagekeken.
+  var PRIJS = { benzine: 2.30, diesel: 2.15, lpg: 0.95, stroom: 0.35 };   // € per l of kWh
   var PRAKTIJK = 1.15;   // het verbruik op de weg ligt hoger dan de typekeuring
   var KM_MAAND = 1250;   // 15.000 km per jaar
 
