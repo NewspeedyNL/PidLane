@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 20-10-2026 — Eén aanlevering voor alle analyses
+ ═══════════════════════════════════════════════════════════
+
+ - De AI krijgt het datakwaliteitsblok en de correlatiebevindingen één
+   keer; acht analyses stuurden ze dubbel (en betaalden dubbel).
+ - Het profiel van de aanlevering komt uit de meting (PLVerzamel.aanlevering);
+   de oorzaakanalyse beloofde een emissiedekking, de totaalcheck-verdieping
+   een dekking over het hele totaalprofiel.
+ - Diepe storingscheck, klimaatcheck en opname geven hun vraag mee;
+   prijs, lease, inkoop en "rapport herzien" sturen geen meetblok meer.
+
+ ═══════════════════════════════════════════════════════════
  20-10-2026 — Er is iets mis, opnieuw; tractie-ingrijpen (#560)
  ═══════════════════════════════════════════════════════════
 

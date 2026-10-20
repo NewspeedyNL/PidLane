@@ -2787,6 +2787,28 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Eén aanlevering voor alle analyses: profiel uit de meting, kwaliteit één keer ──
+  {
+    issue: 'aanlevering',
+    naam: 'De AI krijgt het DATAKWALITEIT-blok één keer, over de sensoren die de prompt laat zien; het profiel van de aanlevering komt uit de meting',
+    waarom: 'Acht analyses stuurden het kwaliteitsblok en de correlatielijst twee keer mee, en de oorzaakanalyse beloofde een emissiedekking over een meting van de selectie.',
+    proef: async function () {
+      if (!window.PLVerzamel || typeof PLVerzamel.aanlevering !== 'function' || !window.PLAanlevering || typeof PLAanlevering.kwaliteitsPids !== 'function')
+        return { staat: 'FOUT', detail: 'PLVerzamel.aanlevering of PLAanlevering.kwaliteitsPids ontbreekt — oude pidlane-verzamel.js/pidlane-aanlevering.js (herladen?)' };
+      var sam = { rijen: [{ pid: '0105' }, { pid: '010C' }] };
+      var a = PLVerzamel.aanlevering({ profiel: null, bron: null, sam: sam }, 'Toets', 'emissie');
+      if (a.profiel) return { staat: 'FOUT', detail: 'een meting zonder profiel krijgt toch een profiel in de aanlevering: ' + a.profiel };
+      var b = PLVerzamel.aanlevering({ profiel: 'basis', bron: null, sam: sam }, 'Toets');
+      if (b.profiel !== 'basis' || !b.zichtbaar || b.zichtbaar.join() !== '0105,010C') return { staat: 'FOUT', detail: 'profiel of zichtbare sensoren komen niet uit de meting: ' + JSON.stringify(b) };
+      var t = PLAanlevering.blok(b);
+      var keer = (t.match(/DATAKWALITEIT \(/g) || []).length;
+      var heeft = typeof pidVals !== 'undefined' && typeof pidVals['0105'] === 'number';
+      if (heeft && keer !== 1) return { staat: 'FOUT', detail: 'het DATAKWALITEIT-blok staat ' + keer + '× in de aanlevering' };
+      return { staat: heeft ? 'OK' : 'LET OP', detail: (heeft ? 'één kwaliteitsblok over wat de meting liet zien.' : 'geen koelwaterwaarde nu — het blok zelf is niet getoetst.') +
+        ' Rij: AI-monteur → "Laat de AI dit onderzoeken"; het rapport hoort niet twee keer dezelfde UITGESLOTEN/ONZEKER-lijst te noemen.' };
+    }
+  },
+
   // ── #560: tractie-ingrijpen afgeleid uit gaspedaal, gasklep, toeren en snelheid ──
   {
     issue: '560',

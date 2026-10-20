@@ -382,6 +382,23 @@
     }
   }
 
+  /* Over WELKE sensoren het kwaliteitsoordeel gaat (20-10-2026). Tot nu toe
+     alleen de dekking van het profiel. Maar de prompt toont ook wat de
+     meetfase (PLVerzamel) daarbuiten zag — de AI-monteur meet de hele
+     selectie, het profiel "basis" is daar een deel van. Om die sensoren alsnog
+     een oordeel te geven, plakten acht aanroepplekken hun eigen
+     DATAKWALITEIT-blok in de prompt, naast dit blok: hetzelfde oordeel twee
+     keer over de lijn, en twee keer op de rekening. `zichtbaar` is de lijst
+     die de meetfase in de prompt zette; samen met de dekking is dat precies
+     wat de AI te zien krijgt, en dan is één blok genoeg. */
+  function kwaliteitsPids(dek, zichtbaar) {
+    var uit = [];
+    (dek ? dek.geleverd : []).concat(Array.isArray(zichtbaar) ? zichtbaar : []).forEach(function (p) {
+      if (p && uit.indexOf(p) < 0) uit.push(p);
+    });
+    return uit.length ? uit : null;
+  }
+
   // Is er überhaupt iets gemeten? Dit is de poort die bepaalt of het blok
   // meegaat bij een aanroep zonder opties. Zie de kop van dit bestand.
   function ergensGemeten() {
@@ -406,7 +423,7 @@
       dekking: dek,
       venster: venster(),
       onderbreking: onderbrekingen(),
-      kwaliteit: kwaliteit(dek ? dek.geleverd : null),
+      kwaliteit: kwaliteit(kwaliteitsPids(dek, o.zichtbaar)),
       bevindingen: (function () {
         try { return (typeof correlationLines === 'function') ? correlationLines() : null; }
         catch (e) { console.warn('aanlevering: correlatiebevindingen niet op te halen', e); return null; }
@@ -530,6 +547,7 @@
     venster: venster,
     onderbrekingen: onderbrekingen,
     kwaliteit: kwaliteit,
+    kwaliteitsPids: kwaliteitsPids,
     ergensGemeten: ergensGemeten,
     setnamen: setnamen
   };

@@ -10,6 +10,16 @@
 //   2. zegt hij ja, krijgt de AI dan de samenvatting van het scherm
 //      ("GEMETEN OVER HET MEETVENSTER") in zijn prompt?
 //
+// En sinds 20-10-2026 drie over de AANLEVERING (de vijfde parameter van
+// apiFetch, #188), omdat de routes daar uit elkaar liepen:
+//
+//   3. gaat er een vraag mee, en een kwaliteitsoordeel over precies de
+//      sensoren die de prompt laat zien (`zichtbaar`)?
+//   4. staat het DATAKWALITEIT-blok of de correlatielijst NIET nog een keer
+//      in de prompt? De aanlevering zet ze er al bij; dubbel is dubbel betalen.
+//   5. is het profiel van de aanlevering het profiel waarmee gemeten werd?
+//      De oorzaakanalyse mat de selectie en beloofde een emissiedekking.
+//
 // HOE. Elke functie wordt uit zijn échte bronbestand geknipt, op zijn eigen
 // kop, en draait in een omgeving waarin alles wat hij aanroept bestaat maar
 // niets doet (een `with`-proxy). Alleen drie dingen zijn echt of gevangen:
@@ -41,6 +51,9 @@ const echt = w.PLVerzamel;
 const SAM = { rijen: [{ pid: '0105', naam: 'Koelwater temp', eenheid: '°C', n: 20, min: 85, max: 112, gem: 90, laatste: 95, oordeel: 'afwijkend', reden: 'boven de alarmgrens 110', buiten: 1 }],
               tel: { afwijkend: 1, let: 0, meetfout: 0, twijfel: 0, ok: 0, nodata: 0 }, opvallend: 1 };
 const MERK = 'GEMETEN OVER HET MEETVENSTER';
+// Wat een aanroeper NIET meer zelf in de prompt hoort te zetten.
+const DUBBEL_DK = '\n\nDATAKWALITEIT (verplicht meenemen vóór je een diagnose stelt):\n- dubbel';
+const DUBBEL_CORR = '• CORRELATIE-DUBBEL';
 
 // ── een wereld waarin alles bestaat en niets iets doet ────────────
 // Iets dat je kunt aanroepen, uitlezen, beschrijven, doorlopen en in een
@@ -75,12 +88,18 @@ function knip(bestand, kop) {
 /* Draait één analyse. `antwoord` is wat het scherm teruggeeft. Geeft terug
    wat er gevraagd en verstuurd is. */
 async function draai(r, antwoord) {
-  const gevraagd = [], verstuurd = [];
+  const gevraagd = [], verstuurd = [], aan = [];
   const eigen = {
-    PLVerzamel: { meet: (o) => { gevraagd.push(o); return Promise.resolve(antwoord); },
-                  promptBlok: echt.promptBlok, rijSecUit: echt.rijSecUit, histUit: echt.histUit },
-    apiFetch: (p) => { verstuurd.push(String(p)); return Promise.resolve('SAMENVATTING: goed.'); },
-    callAI: (p) => { verstuurd.push(String(p)); return Promise.resolve(); },
+    // meet() geeft, zoals de echte, het profiel terug waarmee gemeten werd —
+    // geen, als er uit een gegeven bron gemeten werd.
+    PLVerzamel: { meet: (o) => { gevraagd.push(o);
+                    return Promise.resolve(antwoord.door ? Object.assign({ profiel: o.bron || o.profiel === false ? null : (o.profiel || null),
+                                                                         bron: o.bron ? o.bron.naam || 'bron' : null }, antwoord) : antwoord); },
+                  promptBlok: echt.promptBlok, aanlevering: echt.aanlevering, rijSecUit: echt.rijSecUit, histUit: echt.histUit },
+    apiFetch: (p, t, s, m, a) => { verstuurd.push(String(p)); aan.push(a); return Promise.resolve('SAMENVATTING: goed.'); },
+    callAI: (p, el, a) => { verstuurd.push(String(p)); aan.push(a); return Promise.resolve(); },
+    _qualityBlokFor: () => DUBBEL_DK, buildQualityReport: () => ({ promptBlok: DUBBEL_DK }),
+    correlationLines: () => [DUBBEL_CORR], analysisPidData: () => ({ pairs: [], quality: { promptBlok: DUBBEL_DK } }),
     // Wat een analyse vóór het scherm leest en wat er dan uit moet komen.
     vehicleFuelType: () => r.brandstof || 'benzine',
     probleem: 'trilt', datalogBuffer: r.datalog || {},
@@ -106,7 +125,7 @@ async function draai(r, antwoord) {
   const fn = maak(wereld);
   await Promise.race([fn.apply(null, r.args || []), new Promise((res) => setTimeout(res, 500))]);
   await new Promise((res) => setImmediate(res));
-  return { gevraagd, verstuurd };
+  return { gevraagd, verstuurd, aan };
 }
 
 const ROUTES = [
@@ -138,6 +157,16 @@ const ROUTES = [
       'verstuurd=' + ja.verstuurd.length + ' ' + (ja.verstuurd[0] || '').slice(0, 120));
     if (r.rit) toets('op het niveau van een rit, en met een weg terug na de rijtest', nee.gevraagd[0].niveau === 'rit' && typeof nee.gevraagd[0].naRit === 'function',
       JSON.stringify({ niveau: nee.gevraagd[0] && nee.gevraagd[0].niveau }));
+    const a = ja.aan[0] || {};
+    toets('de aanlevering draagt een vraag', typeof a.vraag === 'string' && a.vraag.length > 10, JSON.stringify(a));
+    toets('en oordeelt over de sensoren die de prompt laat zien', Array.isArray(a.zichtbaar) && a.zichtbaar.indexOf('0105') >= 0, JSON.stringify(a));
+    toets('geen tweede DATAKWALITEIT-blok of correlatielijst in de prompt',
+      !ja.verstuurd.some((p) => p.indexOf('- dubbel') >= 0 || p.indexOf(DUBBEL_CORR) >= 0),
+      (ja.verstuurd.find((p) => p.indexOf('- dubbel') >= 0 || p.indexOf(DUBBEL_CORR) >= 0) || '').slice(-300));
+    const pv = ja.gevraagd[0] && ja.gevraagd[0].profiel;
+    if (!(ja.gevraagd[0] && ja.gevraagd[0].bron))
+      toets('het profiel van de aanlevering is het profiel van de meting',
+        typeof pv === 'string' ? a.profiel === pv : !a.profiel, 'meting=' + JSON.stringify(pv) + ' aanlevering=' + JSON.stringify(a.profiel));
     if (r.bronMeting) toets('met de eigen meting als bron, niet een nieuwe', !!(nee.gevraagd[0] && nee.gevraagd[0].bron), JSON.stringify(Object.keys(nee.gevraagd[0] || {})));
   }
   console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + n : 'Alles goed — ' + n + ' controles'));

@@ -719,7 +719,7 @@ MUTATIES=(
 # niet, dan meldt de dekking iets over andere sensoren dan de analyse gebruikte.
 "public/pidlane-aanlevering.js@@    basis.concat(prof).forEach@@    [].concat(prof).forEach@@test-aanlevering.js@@BASIS_PIDS loopt niet meer mee: de dekking mist de motorcontext die elke analyse gebruikt"
 "public/pidlane-aanlevering.js@@    if (!Array.isArray(prof)) return null;@@    if (!Array.isArray(prof)) return [];@@test-aanlevering.js@@een onbekende profielnaam levert een lege dekking in plaats van geen dekking"
-"public/pidlane-fuel.js@@      profiel:'brandstof'});@@      profiel:'brandstoff'});@@test-aanlevering.js@@een typefout in een profielnaam: de brandstofanalyse verliest stil haar dekking"
+"public/pidlane-fuel.js@@verhelpen?','brandstof'));@@verhelpen?','brandstoff'));@@test-aanlevering.js@@een typefout in een profielnaam: de brandstofanalyse verliest stil haar dekking"
 
 # ── Het ritrapport (#196, 11-09-2026). Hier eindigt de keten: de aanlevering
 # hierboven bereikt pas een model als dit rapport overeind blijft. Op de rit van
@@ -2256,6 +2256,9 @@ MUTATIES=(
 "public/pidlane-koopcheck.js@@watVoor:'het onderhoudsadvies'});\n  if(!uit || !uit.ai){ res.innerHTML=''; return; }@@watVoor:'het onderhoudsadvies'});@@test-verzamelroutes.js@@sluiten zonder AI op het onderhoudsscherm vraagt toch een betaald advies"
 "public/pidlane-koopcheck.js@@  if(mm){\n    window._ddSteps=@@  if(false){\n    window._ddSteps=@@bproef-koopstroom.js@@de diepe storingsanalyse vraagt weer merk en model terwijl de app ze kent"
 "public/pidlane-koopcheck.js@@'onbekend';\n  // Wat de AI over de sensoren hoort is wat de klant net zag: de samenvatting\n  // over het meetvenster, niet de laatste waarde per sensor (#443).\n  const pdata=PLVerzamel.promptBlok(@@'onbekend';\n  const pdata=String(@@test-verzamelroutes.js@@de EV-check stuurt de samenvatting van het scherm niet meer mee"
+"public/pidlane-koopcheck.js@@||'geen'}\n\nFocus op: accu@@||'geen'}\${_qualityBlokFor([])}\n\nFocus op: accu@@test-verzamelroutes.js@@de EV-check plakt weer een eigen DATAKWALITEIT-blok naast dat van de aanlevering: hetzelfde oordeel twee keer betaald"
+"public/pidlane-verzamel.js@@    if (zichtbaar.length) a.zichtbaar = zichtbaar;@@@@test-verzamelroutes.js@@de meetfase zegt niet meer welke sensoren de AI zag: het kwaliteitsoordeel krimpt stil tot het profiel"
+"public/pidlane-aanlevering.js@@      kwaliteit: kwaliteit(kwaliteitsPids(dek, o.zichtbaar)),@@      kwaliteit: kwaliteit(dek ? dek.geleverd : null),@@test-aanlevering.js@@een zichtbare sensor buiten het profiel krijgt geen kwaliteitsoordeel meer, nu het dubbele blok weg is"
 "public/pidlane-totalcheck.js@@PLTotaal.promptBlok(_tc, cats, PLVerzamel.promptBlok)@@PLTotaal.promptBlok(_tc, cats, null)@@test-totaalcheck.js@@de totaalcheck geeft de samenvatting van het scherm niet door aan de AI"
 "public/pidlane-totalcheck.js@@      if(g && g.uitkomst==='geldt_niet') continue;\n      if(g && g.uitkomst==='onbekend')@@      if(g && g.uitkomst==='onbekend')@@test-hybridebasis.js@@de systeemtest toetst de benzinetrims ook op een auto die op LPG rijdt"
 "public/pidlane-fuel.js@@    if(!uit || !uit.ai) return;\n  }\n  activateAIPane();@@    if(!uit) return;\n  }\n  activateAIPane();@@test-verzamelroutes.js@@nee op het scherm van de verbruiksanalyse verstuurt toch een rapport"

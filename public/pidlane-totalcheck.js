@@ -295,7 +295,9 @@ async function tcFocusAI(cat){
   const v=getVehicle(), m=CHK_CAT_META[cat]||{l:cat};
   const regels=c.pids.map(p=>'- '+p.naam+': '+_tcWaarde(p)+(p.oordeel!=='ok'?' — '+(p.stil&&p.stil.reden||p.rij&&p.rij.reden||p.oordeel):'')).join('\n');
   const prompt=`Je bent expert automonteur. De totaalcheck vond een afwijking in één systeem: ${m.l}. Onderzoek alleen dat systeem, in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}\n\nUIT DE TOTAALCHECK (stilstaand en rijdend apart):\n${regels}\n\nFOCUSMETING (${f.rijden?'rijdend':'stilstaand'}, alleen de sensoren van dit systeem, dus vaker gemeten):${PLVerzamel.promptBlok(f.sam,{sec:f.sec, rijSec:f.rijSec})}\n\nGeef in deze volgorde, zonder sterretjes of emoji: BEVINDING (koppel elk punt aan een gemeten waarde; zegt de focusmeting iets anders dan de check, noem dat), WAARSCHIJNLIJKE OORZAAK (tabel Diagnose | Kans | Vertrouwen), CONTROLE (concrete meet- of controlestappen), KOSTENINDICATIE (tabel Handeling | Indicatie in euro).\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
-  await callAI(prompt,document.getElementById('aiContent'),{ vraag:'Totaalcheck — verdieping '+m.l+'.', profiel:'totaal' });
+  // De dekking gaat over dit ene systeem, niet over het hele totaalprofiel:
+  // anders hoort de AI dat er sensoren "ontbreken" die deze vraag nooit nodig had.
+  await callAI(prompt,document.getElementById('aiContent'),{ vraag:'Totaalcheck — verdieping '+m.l+'.', pids:c.pids.map(p=>p.pid) });
 }
 function _tcWaarde(p){
   const r=x=>x?(x.min===x.max?fv(x.min):fv(x.min)+'–'+fv(x.max))+' '+(p.eenheid||''):null;
@@ -375,8 +377,6 @@ async function runCheckAI(){
   const btn=document.getElementById('aiBtn'); if(btn) btn.disabled=true;
   const v=getVehicle();
   const cats=_tcCats();
-  const pairs=[]; cats.forEach(c=>c.pids.forEach(p=>pairs.push([p.pid, (typeof pidVals!=='undefined'?pidVals[p.pid]:undefined)])));
-  const q=buildQualityReport(pairs);
   // Het analyserapport (PLRapport) leest window._plVerzameld. Dat was het
   // laatst gemeten deel ("Rijdeel van de totaalcheck", 20 s): nu beide delen.
   const rm=PLTotaal.rapportMeting(_tc);
@@ -401,7 +401,7 @@ async function runCheckAI(){
   } else if(ft==='diesel'){
     fuelNote=`\nDit is een DIESEL: brandstoftrim-logica wijkt af; let op roetfilter (DPF), AdBlue/SCR en NOx waar relevant.`;
   }
-  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}${fuelNote}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nDe check meet in twee delen, elk alleen in zijn eigen toestand: stilstaand en rijdend. Vergelijk ze waar dezelfde sensor in beide staat; een verschil tussen stationair en rijdend is vaak de diagnose.${PLTotaal.promptBlok(_tc, cats, PLVerzamel.promptBlok)}\nDTC (lijst van de app): ${formatDtcCodes(dtcCodes)}${q.promptBlok}${scenNote}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
+  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}${fuelNote}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nDe check meet in twee delen, elk alleen in zijn eigen toestand: stilstaand en rijdend. Vergelijk ze waar dezelfde sensor in beide staat; een verschil tussen stationair en rijdend is vaak de diagnose.${PLTotaal.promptBlok(_tc, cats, PLVerzamel.promptBlok)}\nDTC (lijst van de app): ${formatDtcCodes(dtcCodes)}${scenNote}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
 
 Voertuigscore: <0-100>/100
 Diagnosebetrouwbaarheid: <0-100>%
@@ -440,9 +440,12 @@ Een tabel met kolommen: Handeling | Kans | Indicatie. Indicatie is een prijsbere
 
 AANBEVOLEN VERVOLGONDERZOEK
 Een korte lijst met concrete meet- of controlestappen om de diagnose te bevestigen.\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
+  // De aanlevering oordeelt over de kwaliteit van precies de sensoren die de
+  // prompt laat zien (beide delen); tot 20-10-2026 stond dat oordeel er ook
+  // nog als eigen blok in de prompt.
   await callAI(prompt,document.getElementById('aiContent'),{
     vraag:'Volledige doorlichting: beoordeel de staat van het voertuig op alle uitgelezen systemen, stilstaand en rijdend.',
-    profiel:'totaal'});
+    profiel:'totaal', zichtbaar:cats.flatMap(c=>c.pids.map(p=>p.pid))});
   if(btn) btn.disabled=false;
 }
 function exportCheckReport(){
