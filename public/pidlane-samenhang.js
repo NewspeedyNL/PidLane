@@ -41,6 +41,21 @@
   // Twee monsters horen bij hetzelfde moment als ze hooguit zo ver uit
   // elkaar liggen. Een trage sensor (1 s) en een snelle pollus passen erin.
   const TOL_MS = 2500;
+  const TRAAG_MS = 60000;
+  /* De waarde van een trage sensor op moment i: die van dat moment, anders
+     de dichtstbijzijnde binnen TRAAG_MS. Puur. */
+  function traag(tl, p, i) {
+    const k = tl.kol[p];
+    if (!k) return null;
+    if (getal(k[i])) return k[i];
+    for (let d = 1; d < k.length; d++) {
+      const a = i - d, b = i + d;
+      if ((a < 0 || tl.t[i] - tl.t[a] > TRAAG_MS) && (b >= k.length || tl.t[b] - tl.t[i] > TRAAG_MS)) return null;
+      if (a >= 0 && tl.t[i] - tl.t[a] <= TRAAG_MS && getal(k[a])) return k[a];
+      if (b < k.length && tl.t[b] - tl.t[i] <= TRAAG_MS && getal(k[b])) return k[b];
+    }
+    return null;
+  }
   // Boven dit toerental is stilstaand geen stationair meer, maar gas geven.
   const STATIONAIR_MAX = 1200;
 
@@ -113,7 +128,11 @@
   /* De toestand op moment i. g = PLOnderzoek.cfg.grens. Puur. */
   function toestandOp(tl, i, g) {
     const v = p => (tl.kol[p] ? tl.kol[p][i] : null);
-    const rpm = v('010C'), snel = v('010D'), ect = v('0105'), last = v('0104');
+    const rpm = v('010C'), snel = v('010D'), last = v('0104');
+    // Koelwater komt traag binnen (op de CX-5 eens per ~6 s): zonder monster
+    // binnen TOL_MS las een warme motor als "rijden koud" (20-10-2026). Het
+    // dichtstbijzijnde koelwater binnen TRAAG_MS telt; dat zakt geen 20 graden.
+    const ect = traag(tl, '0105', i);
     if (!getal(rpm) || rpm < g.uitRpm) return 'uit';
     if (rpm <= g.aanRpm) return 'start';
     const warm = getal(ect) && ect >= g.warmC;

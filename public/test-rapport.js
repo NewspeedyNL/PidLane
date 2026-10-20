@@ -145,8 +145,13 @@ console.log('\nC. De cijfers komen van de app');
   toets('stoplicht per systeem: koeling rood', koel && koel.kleur === 'rood', JSON.stringify(st.items));
   const a = m.bijlagen[0].blokken[0];
   toets('bijlage A: elke gevraagde sensor een regel', a.rijen.length === PIDS.length, a.rijen.length + ' van ' + PIDS.length);
-  toets('het testplan komt uit de samenhang: uitgevoerd én niet uitgevoerd met reden',
-    blokken(m, 4, 'tabel')[0].rijen.some((r) => r.cellen[1] === 'uitgevoerd') && blokken(m, 4, 'tabel')[0].rijen.some((r) => r.cellen[1] === 'niet uitgevoerd' && r.cellen[2]));
+  // Sinds 20-10-2026 alleen wat uitgevoerd is: de regels van de samenhang
+  // lopen op elke meting mee maar zijn niet gevraagd.
+  toets('het testplan komt uit de samenhang, en noemt alleen wat uitgevoerd is',
+    blokken(m, 4, 'tabel')[0].rijen.some((r) => r.cellen[1] === 'uitgevoerd') && blokken(m, 4, 'tabel')[0].rijen.every((r) => r.cellen[1] === 'uitgevoerd'));
+  const grens = blokken(m, 8, 'lijst')[0];
+  toets('… en de grenzen van de meting noemen geen proef die niet gevraagd was',
+    !grens || !grens.items.some((t) => /stationair|lambdasondes|2500 tpm|laaddruk/i.test(t)), JSON.stringify(grens && grens.items));
   const tst = blokken(m, 5, 'tabel').find((b) => /Toestanden/.test(b.titel));
   toets('de toestanden van de motor met hun duur', tst && tst.rijen.some((r) => r.cellen[0] === S.NAAM.stationair_warm), JSON.stringify(tst && tst.rijen));
   const d = R.model(ctx({ dtc: { gelezen: true, bevestigd: ['P0420'], pending: ['P0171'], permanent: ['P0420'] } }));

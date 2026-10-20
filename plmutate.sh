@@ -2216,6 +2216,16 @@ MUTATIES=(
 "public/pidlane-totalcheck.js@@ + titel + ': NIET GEMETEN. ' + uitleg; return; }@@ + ''; return; }@@test-totaalcheck.js@@de AI hoort niet meer dat rijden niet gemeten is en mag er dus over oordelen"
 "public/pidlane-totalcheck.js@@  const s=PLTotaal.stand(_tc);\n  if(!s.aiMag) return;\n@@  const s=PLTotaal.stand(_tc);\n@@test-totaalcheck.js@@het AI-rapport gaat weer weg zonder meting"
 "public/pidlane-totalcheck.js@@watVoor:'het rijdeel van de totaalcheck', ai:false, rijtest:false,@@watVoor:'het rijdeel van de totaalcheck', ai:false,@@test-totaalcheck.js@@het rijdeel biedt weer de ritanalyse met fases van twee minuten aan"
+# Uit de rit van 20-10-2026: rijtijd bleef op 20 s, vaste waarden heetten
+# bevroren, een trimpiek heette "let op", een warme motor reed "koud".
+"public/pidlane-fuel.js@@  if(typeof x.rijSec==='number' && isFinite(x.rijSec) && (st.rijSec===null || x.rijSec>st.rijSec)) st.rijSec=Math.round(x.rijSec);@@@@test-totaalcheck.js@@de poort ziet weer alleen de 20 s snelheid uit pidHist: een rijmeting loopt nooit vol"
+"public/pidlane-verzamel.js@@ && v >= kmh && acc.v >= kmh) acc.ms += t - acc.t;@@ && v >= kmh && acc.v >= kmh) acc.ms += 0;@@test-totaalcheck.js@@het verzamelscherm telt zijn eigen rijtijd niet meer"
+"public/pidlane-verzamel.js@@    const blijft = b => b >= 2 || vals.length < 10;@@    const blijft = b => true;@@test-totaalcheck.js@@één trimpiek van 10,2 % staat weer als let op"
+"public/pidlane-kwaliteit.js@@['0C','0D','04','11','0B','10','06','14','24','34']@@['0C','0D','04','11','0B','10','06','07','14','24','34']@@test-totaalcheck.js@@een langetermijntrim die vast staat heet weer een bevroren sensor"
+"public/pidlane-kwaliteit.js@@ && !(stilNu && (kort==='0D'||kort==='11'));@@;@@test-totaalcheck.js@@gasklep 11 % bij stationair heet weer vastgelopen"
+"public/pidlane-samenhang.js@@    const ect = traag(tl, '0105', i);@@    const ect = v('0105');@@test-samenhang.js@@een warme motor met traag koelwater rijdt weer koud"
+"public/pidlane-rapport.js@@    if (m && m.beperkt) grenzenMeting.push('Meting: ' + m.beperkt);@@    if (sh && !sh.geen) (sh.niet || []).forEach(x => grenzenMeting.push(x.titel + ': ' + x.reden));\n    if (m && m.beperkt) grenzenMeting.push('Meting: ' + m.beperkt);@@test-rapport.js@@het rapport somt weer elke proef op die niet gevraagd en niet uitgevoerd is"
+"public/pidlane-totalcheck.js@@    hist:rm.hist, watVoor:'de totaalcheck'@@    hist:{}, watVoor:'de totaalcheck'@@test-totaalcheck.js@@het rapport van de totaalcheck draagt weer niet de monsters van beide delen"
 "public/pidlane-fuel.js@@  if(!uit || !uit.ai) return;\n  activateAIPane();@@  if(!uit) return;\n  activateAIPane();@@test-verzamel.js@@sluiten zonder AI op het verzamelscherm verstuurt toch een betaald rapport"
 "public/pidlane-fuel.js@@  const v=getVehicle();\n  const meetBlok=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});@@  const v=getVehicle();\n  const meetBlok='';@@test-verzamel.js@@het AI-rapport krijgt de samenvatting van het scherm niet meer mee"
 "public/pidlane-wizard.js@@    if(GEEN_MEETEIS[k] || EIGEN_METING[k] || typeof PLVerzamel@@    if(GEEN_MEETEIS[k] || typeof PLVerzamel@@bproef-verzamel.js@@de AI-monteur krijgt weer een meetscherm zonder AI-knop vóór zijn eigen verzamelscherm"

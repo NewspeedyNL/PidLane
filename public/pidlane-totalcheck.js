@@ -153,7 +153,29 @@ window.PLTotaal = (function () {
     return t;
   }
 
-  return { RANG, deelHist, categorieen, focusPlan, stand, promptBlok };
+  /* Beide delen als één meting voor het analyserapport: per sensor de
+     monsters van allebei, op tijd, zonder dubbele. Plus de duur en wat er
+     ontbreekt. Puur. */
+  function rapportMeting(st) {
+    const s = st || {}, hist = {};
+    ['stil', 'rij'].forEach(k => {
+      const h = (s[k] && s[k].hist) || {};
+      Object.keys(h).forEach(p => { hist[p] = (hist[p] || []).concat(h[p] || []); });
+    });
+    let t0 = Infinity, t1 = -Infinity;
+    Object.keys(hist).forEach(p => {
+      const gezien = {};
+      hist[p] = hist[p].filter(m => m && getal(m.t) && !gezien[m.t] && (gezien[m.t] = true)).sort((a, b) => a.t - b.t);
+      if (hist[p].length) { t0 = Math.min(t0, hist[p][0].t); t1 = Math.max(t1, hist[p][hist[p].length - 1].t); }
+    });
+    const ontbreekt = [];
+    if (!(s.stil && s.stil.sam)) ontbreekt.push('stilstand niet gemeten');
+    if (!(s.rij && s.rij.sam)) ontbreekt.push('rijden niet gemeten');
+    return { hist, sec: t1 > t0 ? Math.round((t1 - t0) / 1000) : 0,
+             rijSec: (s.rij && getal(s.rij.rijSec)) ? s.rij.rijSec : 0, beperkt: ontbreekt.join('; ') };
+  }
+
+  return { RANG, deelHist, categorieen, focusPlan, stand, promptBlok, rapportMeting };
 })();
 // ── PLTotaal kern eind ──
 
@@ -213,7 +235,7 @@ let _tcBezig = '';
 function _tcDeel(uit, soort){
   const V = window._plVerzameld || {};
   const d = PLTotaal.deelHist(V.hist || {}, soort, MEET_RIJ_KMH, MEET_RIJ_GAT_MS);
-  return { sam: PLVerzamel.vanBron({ hist: d.hist }), sec: uit.sec, rijSec: uit.rijSec, ts: Date.now(), zonderSnelheid: d.zonderSnelheid };
+  return { sam: PLVerzamel.vanBron({ hist: d.hist }), hist: d.hist, sec: uit.sec, rijSec: uit.rijSec, ts: Date.now(), zonderSnelheid: d.zonderSnelheid };
 }
 
 // Deel 1: stilstaand meten, dan foutcodes en zelftests.
@@ -355,6 +377,11 @@ async function runCheckAI(){
   const cats=_tcCats();
   const pairs=[]; cats.forEach(c=>c.pids.forEach(p=>pairs.push([p.pid, (typeof pidVals!=='undefined'?pidVals[p.pid]:undefined)])));
   const q=buildQualityReport(pairs);
+  // Het analyserapport (PLRapport) leest window._plVerzameld. Dat was het
+  // laatst gemeten deel ("Rijdeel van de totaalcheck", 20 s): nu beide delen.
+  const rm=PLTotaal.rapportMeting(_tc);
+  window._plVerzameld={ sam:PLVerzamel.vanBron({hist:rm.hist}), sec:rm.sec, rijSec:rm.rijSec, beperkt:rm.beperkt, bron:null, ts:Date.now(),
+    hist:rm.hist, watVoor:'de totaalcheck', klacht:'', eisNaam:'stilstand en rijden' };
   // Als een test-scenario actief is: laat de AI weten dat deze data handmatig
   // is gezet (testdoeleinden), zodat het oordeel daar rekening mee houdt.
   let scenNote='';

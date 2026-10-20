@@ -1169,9 +1169,16 @@ function plMeetNiveau(gevraagd){
   }catch(e){ console.warn('Wizardplan-niveau niet uitgelezen, meeteis blijft op het gevraagde niveau', e); }
   return niveau;
 }
-function plMeetTekort(niveau){
+/* extern = {sec, rijSec}: wat een aanroeper zelf langer bijhield dan pidHist
+   (120 monsters per sensor — 010D is daarin op ~6 Hz maar 20 s). Alleen
+   ophogen: het verzamelscherm (20-10-2026) telt de rijtijd van zijn eigen
+   meting, en zonder dat kwam een rijmeting nooit boven de 20 s uit. */
+function plMeetTekort(niveau, extern){
   const eis = MEET_EIS[niveau] || MEET_EIS.normaal;
   const st  = plMeetStatus();
+  const x = extern || {};
+  if(typeof x.sec==='number' && isFinite(x.sec) && x.sec>st.sec) st.sec=Math.round(x.sec);
+  if(typeof x.rijSec==='number' && isFinite(x.rijSec) && (st.rijSec===null || x.rijSec>st.rijSec)) st.rijSec=Math.round(x.rijSec);
   const tekort=[];
   if(st.sec < eis.sec)          tekort.push('gemeten over '+st.sec+' s, nodig '+eis.sec+' s');
   if(st.maxN < eis.n)           tekort.push('hoogstens '+st.maxN+' monsters per sensor, nodig '+eis.n);

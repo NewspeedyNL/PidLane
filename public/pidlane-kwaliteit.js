@@ -82,7 +82,14 @@ function assessPidQuality(pid, val, scanMode=false){
   if(n>=8){
     const recent=hist.slice(-Math.min(n,10)).map(h=>typeof h==='object'?h.v:h);
     const spread=Math.max(...recent)-Math.min(...recent);
-    const dynamisch=['0C','0D','04','11','0B','10','06','07','13','14','24','34'].includes(pid.slice(2).toUpperCase());
+    // Niet in de lijst (20-10-2026): 07, de langetermijntrim — een geleerde
+    // waarde die minutenlang op één getal staat — en 13, een bitmap van welke
+    // O2-sensoren er zíjn. Allebei stonden als "exact vast" in een rapport.
+    // Snelheid en gasklep staan bij stilstand vanzelf stil; alleen rijdend
+    // zegt een vlakke lijn iets.
+    const kort=pid.slice(2).toUpperCase();
+    const stilNu=(typeof pidVals!=='undefined' && pidVals && pidVals['010D']===0);
+    const dynamisch=['0C','0D','04','11','0B','10','06','14','24','34'].includes(kort) && !(d&&d.bitmap) && !(stilNu && (kort==='0D'||kort==='11'));
     if(spread===0 && dynamisch)
       return {status:'twijfel', reden:'sensor staat exact vast (0 variatie) — mogelijk dode sensor of verbindingsfout, niet per se een motordefect', name, val, unit};
     if(dynamisch && Math.abs(val)<0.01 && spread<0.01)
