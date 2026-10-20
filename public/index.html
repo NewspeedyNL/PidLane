@@ -575,6 +575,8 @@ function closeConnOv(){
     <!-- Mijn voertuigen: het actieve voertuig met zijn status. Leeg voor wie geen klant is (PLGarage.tekenKaart). -->
     <div id="plGarageKaart"></div>
     <div id="plZonderKaart"></div>
+    <!-- Winter (#556): de seizoensbanner, daarna drie dagen weer en hoogstens één advies. Alleen in het winterseizoen (PLWinter.teken). -->
+    <div id="plWinterKaart"></div>
     <div id="wmDoors" class="pl-home">
       <!-- Expert op afstand (17-10-2026): de kern van PidLane is dat iemand die
            er verstand van heeft live meekijkt in jouw auto. Daarom staat het
@@ -1914,6 +1916,7 @@ function closeConnOv(){
 <script src="pidlane-rapport.js"></script><!-- analyserapport (PLRapport) — vaste secties, AI-velden, grafieken; jsPDF via loadJsPDF, pas bij aanroep -->
 <script src="pidlane-tank.js"></script><!-- tankbeurten (PLTank) — puur; het tabblad in PLGarage roept hem aan -->
 <script src="pidlane-conditie.js"></script><!-- conditiescore (PLConditie) — puur; het tabblad Conditie in PLGarage roept hem aan (#475) -->
+<script src="pidlane-winterrit.js"></script><!-- PLWinterRit (#557/#558): korte ritten en thermostaat uit het patroon van de ritten — puur; PLGarage.advies() roept hem aan -->
 <script src="pidlane-garage.js"></script><!-- Mijn voertuigen (PLGarage) — het klantplatform; vereist plFetch, registerSessionReport, _vlVinPseudoniem -->
 <script src="pidlane-kaart.js"></script><!-- datapuntenkaart (PLKaart) — neemt de verbinding over; vereist sendCmd + PLBus -->
 <script src="pidlane-demo.js"></script>
@@ -2126,6 +2129,8 @@ function closeConnOv(){
 <script src="pidlane-afsluiten.js"></script><!-- Rit beëindigen (PLAfsluiten) — rit afronden, verbreken, uitloggen, app sluiten; vereist PLGarage, handleConnect, logout, plSluitApp -->
 <script src="pidlane-nav.js"></script><!-- PLNav: onderbalk, startscherm (Check mijn auto + tegels) en garagemodus; vereist ná datalog, archief, uihelpers, wizard, foutcodes en afsluiten -->
 <script src="pidlane-zonder.js"></script><!-- PLZonder: zonder adapter — kenteken-check (RDW), foutcode opzoeken, simulatie; vereist plFetch, PLRecall, dtcInfo, PLGarage -->
+<script src="pidlane-weer.js"></script><!-- PLWeer (#556): de verwachting voor een plaats uit een lijst, via /weer — locatievrij; vereist plFetch -->
+<script src="pidlane-winter.js"></script><!-- PLWinter (#556/#559): winterprofiel, winterkaart op het startscherm en bandentabel; vereist ná pidlane-zonder.js (PLZonder._blad) en pidlane-weer.js; leest PLGarage -->
 <script src="pidlane-herinner.js"></script><!-- PLHerinner: APK en onderhoud als Android-melding (LocalNotifications), met terugval in de app; vereist PLZonder, PLGarage -->
 <script src="pidlane-lampjes.js"></script><!-- PLLampjes: welk lampje brandt er en mag ik doorrijden — zonder net en zonder adapter -->
 <script src="pidlane-wijzer.js"></script><!-- PLWijzer: milieuzones, kosten per maand, klachtenwijzer, past een adapter — vereist PLZonder._blad, PLOnderzoek -->

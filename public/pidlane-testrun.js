@@ -2787,6 +2787,27 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Winter (#556–#559): profiel, weer, banner, bandentabel, ritpatroon ──
+  {
+    issue: '556',
+    naam: 'Winter: winterkaart op het startscherm, profiel (banden, sproeier, plaats), bandentabel; korte ritten en thermostaat uit de ritten; per rit bt/wt/kz',
+    waarom: 'De wintercheck mat één opwarming; zomervloeistof, zomerbanden bij 3 °C en een openhangende thermostaat bleven onbenoemd.',
+    proef: async function () {
+      if (!window.PLWinter || !window.PLWeer || !window.PLWinterRit || !document.getElementById('plWinterKaart'))
+        return { staat: 'FOUT', detail: 'PLWinter, PLWeer, PLWinterRit of #plWinterKaart ontbreekt — oude index.html of modules (herladen?)' };
+      var K = PLWinter._kern, nov = new Date(2026, 10, 20, 12).getTime();
+      var vorst = PLWeer._kern.samenvat([{ datum: PLWeer._kern.lokaleDatum(nov), min: -3, max: 2 }], nov);
+      var a = K.adviezen({ nu: nov, profiel: { sproeier: 'zomer', banden: 'zomer' }, weer: vorst });
+      if (!a.length || a[0].ernst !== 'rood') return { staat: 'FOUT', detail: 'zomervloeistof en zomerbanden bij vorst geven geen rood advies' };
+      if (K.bandenStand('winter', 17).label === 'past goed') return { staat: 'FOUT', detail: 'een winterband bij 17 °C heet "past goed"' };
+      var cs = window.PLConditie ? PLConditie.samenvat(PLConditie.tik(null, { kmh: 40, rpm: 1500, koelwater: 30, buiten: 2 }, 2)) : null;
+      if (!cs || cs.bt !== 2)
+        return { staat: 'FOUT', detail: 'PLConditie legt de buitentemperatuur niet vast — oude pidlane-conditie.js' };
+      var b = typeof pidVals !== 'undefined' && pidVals && typeof pidVals['0146'] === 'number' ? 'deze auto geeft 0146 (' + pidVals['0146'] + ' °C)' : 'geen 0146 nu — de inlaatlucht van een koude start telt dan';
+      return { staat: 'OK', detail: b + '. Rij: een koude start en een stuk snelweg; daarna hoort de rit in Mijn voertuigen extra.cd.bt, wt en kz te hebben.' };
+    }
+  },
+
   // ── Bekende adapter en auto: klik, wacht, klaar ──
   {
     issue: 'snelverbinden',
@@ -11047,6 +11068,9 @@ const CAMPAGNE = {
     'TELEFOON VAST EN GENULD. Zet hem in de houder, sta stil op vlakke grond en tik Nulstellen (Telemetrie). Zonder dat telt de helling nergens mee en schat de app zoals vroeger uit de motor.',
     'CARAVANRIT. De badge zegt nu ook de hoek ("⛰️ Klim · +3.2°") als hij gemeten is. Rij een oprit of dijk op: klopt de hoek ongeveer, en springt hij op Klim? Op vlakke snelweg met tegenwind hoort hij op Vlak te blijven. Onderaan het rapport staat of de terreinverdeling gemeten of geschat was.',
     'RITANALYSE. Rij een fase door heuvels: de faseduiding hoort "bergop", "bergaf" of "heuvelachtig" te zeggen, en Helling (telefoon) staat bij de cijfers. Is 2,5° te gevoelig of te traag, zet het in #463.',
+    '── #555–#559: DE WINTER ────────',
+    'DE BANNER. Op het startscherm hoort één keer "Het wordt kouder" te staan. Tik Profiel aanpassen: kies je plaats, je banden en je sproeiervloeistof, en bewaar. Daarna hoort de kaart drie dagen weer en hoogstens één advies te tonen. Komt de banner na een herstart terug, of klopt het weer niet met je weerapp: zet het in #556.',
+    'EEN KOUDE START MET SNELWEG. Start koud en rij minstens tien minuten snelweg. Blok 5 zegt of je auto zelf de buitentemperatuur (0146) geeft. Na een week ritten hoort Mijn voertuigen → Advies niets over de thermostaat te zeggen als je motor gewoon warm wordt; zegt hij het toch, plak dat advies in #558.',
     '── #469: TANKEN HERKENNEN ────────',
     'ZET HET AAN. Mijn voertuigen → je auto → Profiel → Tankbeurten bijhouden: aan. Het staat standaard uit.',
     'TANK MET DE APP VERBONDEN, OF ERNA. Sta stil vóór het tanken (de app legt het peil vast), tank, en verbind daarna weer of laat hem verbonden. Komt de vraag "Getankt?" met een peil dat klopt met wat je dashboard zegt? Komt hij maar één keer? Komt hij nooit bij een helling of een bocht zonder tanken? Zo niet: plak het peil vóór en na uit de vraag in #469.',

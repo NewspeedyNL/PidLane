@@ -49,6 +49,7 @@ const MOET_DICHT = [
   ['/airtable/veldlab',  'schrijft meetdata weg'],
   ['/airtable/reference','leest referentiewaarden'],
   ['/proxy',             'praat namens ons met RDW'],
+  ['/weer',              'praat namens ons met Open-Meteo (#556)'],
   ['/api/config',        'feature-flags en instellingen'],
   ['/admin/users',       'beheer'],
   ['/admin/klanten',     'klantgegevens'],

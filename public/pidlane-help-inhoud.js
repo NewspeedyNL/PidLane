@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-19', app: '3.3.0' },
+  gecontroleerd: { datum: '2026-10-20', app: '3.3.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -62,6 +62,7 @@ var PL_HULP = {
     { id: 'startscherm', groep: 'start', titel: 'Het startscherm',
       tekst:
         '<p>Bovenaan staat <a data-hulp="delen">Expert op afstand</a>: <b>Laat iemand meekijken</b> deelt je live data met je monteur of een kenner, <b>Ik ben de expert</b> is voor wie meekijkt.</p>' +
+        '<p>Van oktober tot en met maart staat daarboven de <a data-hulp="winter">winterkaart</a>.</p>' +
         '<p>Daaronder <a data-hulp="check">Check mijn auto</a>: foutcodes en keuringsstatus in ongeveer 30 seconden.</p>' +
         '<p>Daaronder, onder <b>Ik wil…</b>, vier tegels. Elke tegel opent een korte wizard voor die vraag:</p>' +
         '<ul>' +
@@ -88,6 +89,20 @@ var PL_HULP = {
         '<p>Na een kenteken-check kun je <b>Dit is mijn auto</b> kiezen. Staat er een APK-datum bij, dan verschijnt ook <b>Herinner me</b>. Met herinneringen aan kijkt de app ook één keer per dag of er een nieuwe terugroepactie is voor je auto, en meldt hij die.</p>' +
         '<p>In het verbindscherm brengt <b>Zonder adapter</b> je hier ook.</p>',
       zie: ['wat', 'verbinden'] },
+
+    { id: 'winter', groep: 'start', titel: 'De winterkaart',
+      tekst:
+        '<p>Van oktober tot en met maart staat bovenaan het startscherm een kaart voor de winter. De eerste keer vraagt hij je <b>profiel aan te passen voor de winterperiode</b>. Met <b>Later</b> komt die vraag dit seizoen niet meer terug.</p>' +
+        '<p>Daarna zie je het weer van vandaag, morgen en overmorgen voor je plaats, en hoogstens één advies. Met ✕ tik je een advies weg; een advies over het weer komt na een week terug als het dan nog geldt.</p>' +
+        '<p>In het <b>winterprofiel</b> zet je:</p>' +
+        '<ul>' +
+        '<li><b>Plaats voor het weer</b> — een stad uit de lijst, de dichtstbijzijnde. Niet je adres: je telefoon geeft geen locatie door.</li>' +
+        '<li><b>Banden</b> — zomer, winter of all-season, het symbool op de zijkant, de DOT-code (week en jaar) en het profiel.</li>' +
+        '<li><b>Ruitensproeiervloeistof</b> — zomer of winter, tot hoeveel graden, en wanneer je bijvulde.</li>' +
+        '</ul>' +
+        '<p>De app waarschuwt dan vóór het gaat vriezen: zomervloeistof die kan bevriezen, zomerbanden onder 7 °C, gladheid. De <b>bandentabel</b> laat zien hoe goed elk soort band past van −10 tot 25 °C, met jouw band en de komende dagen erop. Dat is een model op basis van bandentests, geen meting: de app kan je banden niet zien.</p>' +
+        '<p>Met een account staat het winterprofiel bij je actieve voertuig in Mijn voertuigen, en zie je daar onder <b>Advies</b> ook wat je ritten zeggen: veel ritten waarin de motor niet warm werd, of een koelwater dat op de snelweg terugzakt (de thermostaat).</p>',
+      zie: ['startscherm', 'privacy'] },
 
     { id: 'verbinden', groep: 'start', titel: 'Verbinden met de auto',
       tekst:

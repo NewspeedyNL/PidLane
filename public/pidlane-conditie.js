@@ -50,7 +50,8 @@
     koudHoogRpm: 3000,    // toeren met een koude motor (< koudGrens) belasten de olie
     koudGrens: 60,
     lastMin: 50,          // % berekende belasting (0104) voor "bij belasting"
-    minTik: { tw: 15, sr: 15, vl: 5, rd: 5, lv: 10 },   // tikken van 2 s per kenmerk
+    minTik: { tw: 15, sr: 15, vl: 5, rd: 5, lv: 10, kz: 30 },   // kz: een minuut snelweg
+    snelweg: 80,          // km/u: vanaf hier koelt de rijwind het hardst (kz)   // tikken van 2 s per kenmerk
     lijnMax: 40,          // punten in de scorelijn
     dalingDagen: 21,
     dalingPunten: 8,
@@ -137,7 +138,7 @@
   // ════════════════════════════════════════════════════════════════
   //  PER RIT: verzamelen (tik) en samenvatten
   // ════════════════════════════════════════════════════════════════
-  /* m: { kmh, rpm, koelwater, accu, stft, ltft, vervroeg, last, raildruk }
+  /* m: { kmh, rpm, koelwater, accu, stft, ltft, vervroeg, last, raildruk, buiten, inlaat }
      — elk mag ontbreken. dt in seconden. Leest alleen wat er al gemeten
      wordt: geen busverkeer. */
   function tik(a, m, dt) {
@@ -166,6 +167,19 @@
     var acc = getal(m.accu);
     if (acc !== null && rpm !== null && rpm > 1200) { a.lvS = (a.lvS || 0) + acc; a.lvN = (a.lvN || 0) + 1; }
     if (k !== null && k < CFG.koudGrens && rpm !== null && rpm > CFG.koudHoogRpm) a.kh = (a.kh || 0) + dt;
+    // Voor de winter (#557/#558, 20-10-2026). De buitentemperatuur bij het
+    // begin: 0146 als de auto hem geeft, anders de inlaatlucht (010F) in de
+    // eerste minuut van een koude start — dan is die nog niet opgewarmd.
+    var bt = getal(m.buiten), il = getal(m.inlaat);
+    if (a.bt === undefined && bt !== null) a.bt = bt;
+    if (a.bt === undefined && a.bti === undefined && il !== null && a.k0 !== undefined && a.k0 < CFG.koudStart && a.t <= 60) a.bti = il;
+    // Hoe lang de motor op temperatuur was, en of het koelwater daarna op de
+    // snelweg weer zakte: het teken van een thermostaat die open blijft hangen.
+    if (k !== null && k >= CFG.opgewarmd) { a.wt = (a.wt || 0) + dt; a.wg = 1; }
+    if (a.wg && k !== null && kmh !== null && kmh >= CFG.snelweg) {
+      a.kzN = (a.kzN || 0) + 1;
+      a.kz = a.kz === undefined ? k : Math.min(a.kz, k);
+    }
     return a;
   }
 
@@ -183,6 +197,10 @@
     if (a.ow !== undefined) o.ow = Math.round(a.ow);
     if (a.kh) o.kh = Math.round(a.kh);
     if (getal(a.mf) !== null) o.mf = a.mf;
+    if (a.bt !== undefined) o.bt = rond(a.bt, 0);
+    else if (a.bti !== undefined) o.bt = rond(a.bti, 0);
+    if (a.wt) o.wt = Math.round(a.wt);
+    if ((a.kzN || 0) >= n.kz) o.kz = rond(a.kz, 0);
     return Object.keys(o).length ? o : null;
   }
 

@@ -15,6 +15,40 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 20-10-2026 — De winter: weer zonder locatie, en wat er bewust niet in zit (#555–#560)
+
+**Locatie.** Het plan in #556 was GPS, afgerond op ±10 km. Bij het bouwen bleek
+dat de app sinds 21-08-2026 bewust locatievrij is (`test-geen-gps.js`, de
+Data safety-verklaring, het manifest). Gekozen is een plaats uit een lijst van
+44 steden: alleen het id gaat de telefoon uit, de coördinaten staan alleen in
+de Worker, en Open-Meteo ziet het IP-adres van de klant niet. `privacy.html`
+zegt het erbij; "Geen locatiebepaling" blijft waar. De akkoordtekst van Mijn
+voertuigen ging naar `2026-10-20`: het winterprofiel en de buitentemperatuur
+per rit zijn nieuwe verwerking, dus een eerder akkoord vervalt.
+
+**Open-Meteo was vanuit de bouwomgeving niet bereikbaar** (time-out). De
+vorm van het antwoord in `test-weer.js` is daarom nagebouwd naar de
+documentatie (`daily.time`, `temperature_2m_min/max`, `precipitation_sum`,
+`snowfall_sum`). Klopt een veldnaam niet, dan geeft `/weer` 502
+`weer_onleesbaar` en toont de kaart "geen verwachting" — zichtbaar, niet stil.
+
+**Vaseline staat er bewust níét in.** Het lag in de brainstorm voor de
+deurrubbers; het is aardolie en laat EPDM opzwellen. Het advies noemt
+siliconenspray, glycerine of talk en zegt waarom geen vaseline.
+
+**Tractiecontrole (#560) is niet gebouwd.** Methode 3 (pedaal tegen gasklep,
+toerental/snelheid tegen de versnelling) vraagt monsters van een paar
+honderd ms; de ritwaarnemer van `PLGarage` tikt elke 2 s, en `0149`/`0111`
+worden niet standaard gepold. Dat is een eigen stuk werk, niet iets om in
+deze PR mee te nemen. De accu-koudstartmeting ook niet: die vraagt eerst een
+rit met de adapter tijdens het starten.
+
+**De bandentabel is een model.** `bandenStand()` is een stuksgewijze lijn
+door de richting uit bandentests (ADAC, TÜV); er staan geen remwegpercentages
+in beeld, alleen kleur en woord. Het omslagpunt van 7 °C is een vuistregel.
+
+---
+
 ## 19-10-2026 — Een Bose-speaker als eerste OBD2-kandidaat
 
 Logboek 19-10 19:04: de SPP-scan gaf 21 apparaten, het logboek noemde er

@@ -154,7 +154,16 @@
     }
     var kms = ritten.map(function (r) { return r.km; }).filter(function (x) { return typeof x === 'number'; });
     var mk = kms.length >= 5 ? mediaan(kms) : null;
-    if (v.rijprofiel === 'korte ritten' || (mk != null && mk < 8)) {
+    // De winter (#557/#558): wat het patroon van de ritten zegt. Gaat vóór
+    // het algemene advies over korte ritten — één advies, niet twee.
+    var WR = window.PLWinterRit, kr = null, th = null;
+    if (WR) {
+      try { kr = WR.korteRitten(ritten, { nu: nu || Date.now(), diesel: diesel }); th = WR.thermostaat(ritten, { nu: nu || Date.now() }); }
+      catch (e) { console.warn('PLGarage: winteradvies uit de ritten', e); }
+    }
+    if (kr) uit.push(kr);
+    if (th) uit.push(th);
+    if (!kr && (v.rijprofiel === 'korte ritten' || (mk != null && mk < 8))) {
       uit.push({ soort: 'rijprofiel', titel: 'Veel korte ritten',
         tekst: (mk != null ? 'De helft van je ritten is korter dan ' + mk.toLocaleString('nl') + ' km. ' : '') +
           (diesel ? 'Een roetfilter regenereert pas na zo’n 15–20 minuten doorrijden. Rij af en toe een stuk snelweg, anders loopt het filter vol.'
@@ -990,7 +999,7 @@
       }
       if (r) {
         ritTik(r, { kmh: kmh, rpm: pv('010C'), koelwater: pv('0105'), accu: pv('0142'), lph: pv('015E'), maf: pv('0110'), trim: pv('0107'),
-          ltft: pv('0107'), stft: pv('0106'), vervroeg: pv('010E'), last: pv('0104'), raildruk: pv('0123') }, nu, v.brandstof);
+          ltft: pv('0107'), stft: pv('0106'), vervroeg: pv('010E'), last: pv('0104'), raildruk: pv('0123'), buiten: pv('0146'), inlaat: pv('010F') }, nu, v.brandstof);
         try { (typeof dtcCodes !== 'undefined' && Array.isArray(dtcCodes) ? dtcCodes : []).forEach(function (c) { if (r.codes.indexOf(c) < 0) r.codes.push(c); }); }
         catch (e) { console.warn('PLGarage: codes van de rit', e); }
         r._weg = false;
@@ -1254,7 +1263,8 @@
       '<li><b>Je kenteken versleuteld.</b> Het chassisnummer (VIN) alleen als een uit dat nummer berekende code, zoals elders in de app. Dat is pseudonimisering: wie je VIN kent, kan die code narekenen.</li>' +
       '<li><b>Rapporten</b> die de app voor dit voertuig maakt (AI-rapporten en foutcode-uitlezingen).</li>' +
       '<li><b>Ritten als samenvatting:</b> datum, duur, afstand, snelheid, verbruik, temperatuur en accuspanning, en het label dat je er zelf aan geeft. Geen locatie, geen route. De meting per seconde blijft op je telefoon.</li>' +
-      '<li><b>Per rit ook een paar meetkenmerken van de motor</b>, voor de conditiescore: brandstoftrim, hoe rustig het stationair toerental is, hoe lang het opwarmen duurt, ontstekingsvervroeging en brandstofdruk bij belasting, laadspanning, of de rit met een koude motor begon en hoe lang je met een koude motor hoge toeren maakte. Ontstekingsmissers alleen als je zelf de monitortests (mode 06) leest. Ook als de score uit staat, zodat hij meteen iets kan zeggen als je hem aanzet.</li>' +
+      '<li><b>Per rit ook een paar meetkenmerken van de motor</b>, voor de conditiescore: brandstoftrim, hoe rustig het stationair toerental is, hoe lang het opwarmen duurt, ontstekingsvervroeging en brandstofdruk bij belasting, laadspanning, of de rit met een koude motor begon en hoe lang je met een koude motor hoge toeren maakte, hoe lang de motor op temperatuur was en hoe warm hij op de snelweg bleef. Ontstekingsmissers alleen als je zelf de monitortests (mode 06) leest. Ook als de score uit staat, zodat hij meteen iets kan zeggen als je hem aanzet.</li>' +
+      '<li><b>Je winterprofiel</b>, als je het invult: welke banden eronder zitten (soort, symbool, DOT-week, profiel), welke ruitensproeiervloeistof erin zit en sinds wanneer, en de plaats die je kiest voor het weer. Dat is een stad uit een lijst, niet je adres; je telefoon geeft geen locatie door. Per rit ook de buitentemperatuur die de auto meet, voor de winteradviezen over korte ritten en de thermostaat.</li>' +
       '<li><b>Je onderhoudslogboek</b>, als je de conditiescore aanzet: de datum en km-stand van een beurt, wat er gedaan is, je notitie en het interval uit je onderhoudsboekje.</li>' +
       '<li><b>Tankbeurten die je zelf invult:</b> datum, liters, literprijs of bedrag, de afgelezen kilometerstand, of de tank vol was, het bereik op je dashboard en je notitie. Geen locatie, geen tankstation tenzij je het zelf in de notitie zet.</li>' +
       '<li><b>Wat de versnellingsindicator over je auto leert:</b> de verhouding tussen snelheid en toerental per versnelling, en je correcties. Geen locatie, geen tijdstippen van ritten.</li>' +
@@ -1414,7 +1424,8 @@
         '</div><div class="gr-klein" style="margin-top:6px">Bijgewerkt na elke rit en elke foutcode-uitlezing met dit voertuig actief.</div></div>';
       var adv = advies(v, c.ritten || []);
       h += '<div class="gr-blok"><div class="gr-bh">💡 Advies</div>' + (adv.length ? adv.map(function (a) {
-        return '<div class="gr-item"><b>' + esc(a.titel) + '</b><div class="gr-klein" style="margin-top:2px">' + esc(a.tekst) + '</div></div>';
+        return '<div class="gr-item"><b>' + esc(a.titel) + '</b><div class="gr-klein" style="margin-top:2px">' + esc(a.tekst) + '</div>' +
+          (a.bron ? '<div class="gr-klein" style="margin-top:3px">Op basis van ' + esc(a.bron) + '</div>' : '') + '</div>';
       }).join('') : '<div class="gr-klein">' + (c.ritten ? 'Nog geen advies. Rij een paar ritten met dit voertuig actief en vul je profiel aan.' : '⏳') + '</div>') + '</div>';
       h += tekenVersnellingen(v);
       h += '<div class="gr-knoppen"><button class="gr-k" onclick="PLGarage.sluit();try{PLFoutcodes.open()}catch(e){console.warn(e)}">🩺 Foutcodes uitlezen</button></div>';
@@ -1515,8 +1526,13 @@
         rijProf('Conditiescore', scoreAan(v) ? 'aan' : 'uit') +
         rijProf('Onderhoudsinterval', [v.onderhoud_interval_km ? v.onderhoud_interval_km.toLocaleString('nl') + ' km' : null, v.onderhoud_interval_mnd ? v.onderhoud_interval_mnd + ' maanden' : null].filter(Boolean).join(' of ')) +
         rijProf('Gekoppeld aan de auto', v.vin_pseudo ? 'ja (via het chassisnummer)' : 'nog niet') +
+        // Het winterprofiel (#556) bewerk je in zijn eigen venster (PLWinter).
+        rijProf('Banden', v.banden ? v.banden + (v.banden_alpine && v.banden_alpine !== 'weet niet' ? ' · ' + (v.banden_alpine === 'ja' ? 'bergsymbool' : 'alleen M+S') : '') : null) +
+        rijProf('Ruitensproeiervloeistof', v.sproeier ? v.sproeier + (v.sproeier === 'winter' && v.sproeier_tot != null ? ' tot ' + v.sproeier_tot + ' °C' : '') : null) +
+        rijProf('Plaats voor het weer', v.plaats && window.PLWeer ? PLWeer.naam(v.plaats) : null) +
         '</div>' + (v.notities ? '<div class="gr-klein" style="margin-top:8px">' + esc(v.notities) + '</div>' : '') + '</div>' +
-        '<div class="gr-knoppen"><button class="gr-k hoofd" onclick="PLGarage._bewerk(\'' + esc(v.id) + '\')">✏️ Profiel aanpassen</button></div>' +
+        '<div class="gr-knoppen"><button class="gr-k hoofd" onclick="PLGarage._bewerk(\'' + esc(v.id) + '\')">✏️ Profiel aanpassen</button>' +
+        (window.PLWinter && v.id === _st.actiefId ? '<button class="gr-k" onclick="PLGarage.sluit();PLWinter.open()">❄️ Winterprofiel</button>' : '') + '</div>' +
         (v.status === 'actief' ? '<div class="gr-knoppen"><button class="gr-k" onclick="PLGarage._archiveer(\'' + esc(v.id) + '\')">Archiveren (verkocht of weg)</button></div>' : '');
     }
     return h;
@@ -2100,6 +2116,27 @@
     gekoppeld: function () { return versnellingsVoertuig(); },
     selectieOordeel: selectieOordeel,
     staat: function () { return _st; },
+    /* Het winterprofiel (#556, pidlane-winter.js) van het actieve voertuig
+       bewaren: alleen de velden die meekomen, de rest blijft staan. */
+    winterBewaar: async function (velden) {
+      var v = actief();
+      if (!v) throw new Error('geen actief voertuig');
+      var d = await api('voertuig_opslaan', { voertuig: Object.assign({}, velden, { id: v.id }) });
+      var l = (_st.stand && _st.stand.voertuigen) || [];
+      for (var i = 0; i < l.length; i++) if (l[i].id === d.voertuig.id) l[i] = d.voertuig;
+      tekenKaart();
+      return d.voertuig;
+    },
+    /* De ritten van een voertuig zoals ze al opgehaald zijn, of null. Haalt
+       ze op de achtergrond op als ze er nog niet zijn; geen busverkeer. */
+    rittenVan: function (vid) {
+      if (!vid || !magPlatform()) return null;
+      var c = cacheVan(vid);
+      if (c.ritten) return c.ritten;
+      if (c.condRitten) return c.condRitten;
+      if (!c.rittenFout) laad(vid, 'ritten');
+      return null;
+    },
     /* Voor "Rit beëindigen" (pidlane-afsluiten.js): de lopende rit zoals hij
        nu zou worden vastgelegd, zonder hem af te sluiten. null = geen rit. */
     ritNu: function () {
