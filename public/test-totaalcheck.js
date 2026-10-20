@@ -130,7 +130,7 @@ const fn = (kop, naam) => new Function('w', 'with (w) { ' + knipFn(bron, kop) + 
   toets('AI-rapport zonder meting: er gaat niets naar de AI', verstuurd.length === 0);
   w._tc.stil = { sam: stil, sec: 60, rijSec: 0, ts: 1 };
   await ai();
-  toets('AI-rapport na de stilstand: één vraag, met beide delen benoemd', verstuurd.length === 1 && /DEEL 1/.test(verstuurd[0]) && /DEEL 2[^\n]*NIET GEMETEN/.test(verstuurd[0]), (verstuurd[0] || '').slice(0, 80));
+  toets('AI-rapport na de stilstand: één vraag, met beide delen benoemd', verstuurd.length === 1 && /DEEL 1/.test(verstuurd[0]) && verstuurd[0].indexOf('GEMETEN OVER HET MEETVENSTER') >= 0 && /DEEL 2[^\n]*NIET GEMETEN/.test(verstuurd[0]), (verstuurd[0] || '').slice(0, 80));
   console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + n : 'Alles goed — ' + n + ' controles'));
   process.exit(fout ? 1 : 0);
 })();
