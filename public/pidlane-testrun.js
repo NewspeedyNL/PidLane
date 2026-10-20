@@ -2793,8 +2793,8 @@ const PROEVEN_B5 = [
     naam: 'Totaalcheck in twee delen: stilstand (met foutcodes en zelftests) en gewoon rijden, uitslag per categorie, focusmeting alleen waar iets afwijkt',
     waarom: 'De check uit week 1 was een vragenlijst en daarna een rijtest van vijf fases van twee minuten; de vragen voegden niets toe en de fases kostten tien minuten.',
     proef: async function () {
-      if (!window.PLTotaal || typeof runTotalCheckRij !== 'function' || !document.getElementById('tcStappen') || document.querySelector('#pane-check .chk-qrow'))
-        return { staat: 'FOUT', detail: 'PLTotaal, runTotalCheckRij of #tcStappen ontbreekt, of de oude vragenlijst staat er nog — oude pidlane-totalcheck.js/index.html (herladen?)' };
+      if (!window.PLTotaal || !document.getElementById('tcStappen') || document.querySelector('#pane-check .chk-qrow'))
+        return { staat: 'FOUT', detail: 'PLTotaal of #tcStappen ontbreekt, of de oude vragenlijst staat er nog — oude pidlane-totalcheck.js/index.html (herladen?)' };
       var H = { '010D': [{ t: 0, v: 0 }, { t: 1000, v: 60 }], '0105': [{ t: 0, v: 90 }, { t: 1000, v: 95 }] };
       var st = PLTotaal.deelHist(H, 'stil', MEET_RIJ_KMH, MEET_RIJ_GAT_MS), rj = PLTotaal.deelHist(H, 'rij', MEET_RIJ_KMH, MEET_RIJ_GAT_MS);
       if (st.hist['0105'].length !== 1 || st.hist['0105'][0].v !== 90 || rj.hist['0105'][0].v !== 95)
