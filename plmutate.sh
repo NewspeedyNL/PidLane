@@ -1061,7 +1061,6 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  if(heeftVraag) return 'vermogen';\n  return null;@@  return null;@@test-visueel.js@@zonder toerental weer geen naald, ook als het pedaal er is"
 "public/pidlane-visprofiel.js@@  if(elektrisch(motor) && p.hybride) return p.hybride.plekken;\n@@@@test-visprofiel.js@@een hybride krijgt weer de benzine-Neon: toerental 0 in het midden terwijl hij 50 rijdt (#435)"
 "public/pidlane-visprofiel.js@@function standaard(motor){ return elektrisch(motor) ? 'motor' : 'basis'; }@@function standaard(motor){ return 'basis'; }@@test-visprofiel.js@@een hybride opent weer op de toerennaald in plaats van de energieweergave"
-"public/pidlane-visthema.js@@function themaVoor(vol, gekozen){ return vol ? (geldig(gekozen) ? gekozen : STANDAARD) : null; }@@function themaVoor(vol, gekozen){ return geldig(gekozen) ? gekozen : STANDAARD; }@@test-visthema.js@@het thema blijft hangen buiten het volle scherm: de gewone weergave is niet meer standaard"
 "public/pidlane-expertwerk.js@@    if (!(getal(omg.breed) >= LAPTOP_BREED)) redenen.push@@    if (false) redenen.push@@test-expertwerk.js@@een telefoon met een muis in een smal venster krijgt de laptopwerkplek"
 "public/pidlane-expertwerk.js@@    if (stand === 'uit') return false;@@@@test-expertwerk.js@@de expert zet de werkplek uit en hij komt op een laptop toch terug"
 "public/pidlane-expertwerk.js@@      .filter(function (s) { return s && !s.altijdEerst && s.test && (s.test[h] || 0) >= STAP_MIN; })@@      .filter(function (s) { return s && s.test; })@@test-expertwerk.js@@elke meetstap komt in elke procedure, ook als hij het probleem niet toetst"
@@ -2054,7 +2053,7 @@ MUTATIES=(
 # ── verbindprofiel als app-maat (#394, 03-10-2026) ──
 "public/pidlane-adapter.js@@return (st.msMet > 0 && st.msZonder > 0) ? Math.round((1 - st.msMet / st.msZonder) * 100) : null;@@return (st.msMet > 0 && st.msZonder > 0) ? Math.round((st.msMet / st.msZonder) * 100) : null;@@test-opdrachtappmaat.js@@de antwoordcijferwinst meldt de verhouding in plaats van de besparing: een cijfer dat niets doet lijkt 100% winst — #394"
 "public/pidlane-adapter.js@@return st.totaal ? Math.round(st.bad / st.totaal * 100) : null;@@return st.foutPct;@@test-opdrachtappmaat.js@@het foutpercentage van de meetopdracht kijkt naar het venster van 10 s in plaats van de hele sessie — #394"
-"public/pidlane-adapter.js@@'position:' + (hand ? 'static' : 'sticky')@@'position:' + 'sticky'@@bproef-adapterpaneel.js@@onder Handmatig plakt het knoppenvak weer over de getallen"
+"public/pidlane-adapter.js@@position:' + (hand ? 'static' : 'sticky')@@position:' + 'sticky'@@bproef-adapterpaneel.js@@onder Handmatig plakt het knoppenvak weer over de getallen"
 "public/pidlane-adapter.js@@!m[3] || rest ? '' :@@!m[3] ? '' :@@test-adapterpaneel.js@@het effect van een wijziging krijgt een oordeel voordat het venster van 10 s om is"
 # ── verbinding met de hand (#394, 04-10-2026) ──
 "public/pidlane-bt.js@@&& parseInt(st,16)>=0x0C) r.st=st;@@) r.st=st;@@test-verbindprofiel.js@@met de hand kan ATST onder de 48 ms-bodem — #394"
