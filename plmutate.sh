@@ -2271,7 +2271,7 @@ MUTATIES=(
 "public/pidlane-koopcheck.js@@  if(uit && uit.ai){\n    try{\n      const prompt = (airco@@  if(true){\n    try{\n      const prompt = (airco@@test-verzamelroutes.js@@nee op het scherm van de klimaatcheck vraagt toch de AI"
 "public/pidlane-koopcheck.js@@  if(!uit || !uit.ai) return;\n  try{ ['ddProgRow',@@  try{ ['ddProgRow',@@test-verzamelroutes.js@@nee op het scherm van de diepe analyse vraagt toch de AI"
 "public/pidlane-rit.js@@  if(!_uit || !_uit.ai){@@  if(false){@@test-ritrapport.js@@nee op het scherm na de rit maakt toch een betaald ritrapport"
-"public/pidlane-rit.js@@    try{ const _rb=plRitBron(); const _rs=PLVerzamel.vanBron(_rb);@@    try{ const _rb=null; const _rs=PLVerzamel.vanBron(_rb);@@test-ritrapport.js@@het ritrapport krijgt de samenvatting over de hele rit niet meer"
+"public/pidlane-rit.js@@    try{ const _rb=plRitBron(); _rs=PLVerzamel.vanBron(_rb);@@    try{ const _rb=null; _rs=PLVerzamel.vanBron(_rb);@@test-ritrapport.js@@het ritrapport krijgt de samenvatting over de hele rit niet meer"
 # ── #446: de samenhang. Elk van deze is een fout die een monteur niet zou maken.
 "public/pidlane-samenhang.js@@      if (gesloten) { const g = geslotenOp(tl, i); if (g === false) continue; }@@@@test-samenhang.js@@trims worden in open lus gelezen: een koude of vollast-motor leest als een lek"
 "public/pidlane-samenhang.js@@    if (rpm > STATIONAIR_MAX) return 'stil_gas';@@@@test-samenhang.js@@stilstaand gas geven telt als stationair: een paar tikken op het gas lezen als overslaan"
