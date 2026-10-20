@@ -42,6 +42,33 @@
   // kwartier geleden.
   const MIN_MS = 10000;
   const SPARK_N = 40;
+  // Eigen buffer per meting: pidHist houdt 120 monsters per sensor, en dat is
+  // voor de snelheid op ~6 Hz maar 20 s. Een rijmeting van 90 s liep daardoor
+  // nooit vol en de teller liep terug (rit van 20-10-2026). 4000 monsters op
+  // de tik van 2 Hz is ruim een half uur.
+  const EIGEN_MAX = 4000;
+
+  /* Rijtijd bijhouden uit losse snelheidsmonsters {t, v}. Puur: acc =
+     {ms, t, v}. Zelfde drempels als de poort (MEET_RIJ_KMH, MEET_RIJ_GAT_MS). */
+  function rijTel(acc, t, v, kmh, gatMs) {
+    if (!getal(t) || !getal(v)) return acc;
+    if (acc.t !== null && t > acc.t && t - acc.t <= gatMs && v >= kmh && acc.v >= kmh) acc.ms += t - acc.t;
+    if (acc.t === null || t > acc.t) { acc.t = t; acc.v = v; }
+    return acc;
+  }
+  /* De reeksen van vóór de meting (pidHist) aangevuld met de eigen buffer.
+     Puur: wat in de eigen buffer zit wint, het oude telt tot de eerste eigen
+     tijd. */
+  function samenvoeg(oud, eigen) {
+    const uit = {}, o = oud || {}, e = eigen || {};
+    Object.keys(o).concat(Object.keys(e)).forEach(p => {
+      if (uit[p]) return;
+      const er = e[p] || [];
+      const vanaf = er.length ? er[0].t : Infinity;
+      uit[p] = (o[p] || []).filter(m => m && m.t < vanaf).concat(er);
+    });
+    return uit;
+  }
   const RANG = { afwijkend: 0, let: 1, meetfout: 2, twijfel: 3, ok: 4, nodata: 5 };
 
   const getal = v => typeof v === 'number' && isFinite(v);
@@ -81,8 +108,12 @@
     if (getal(d.dH) && r.max >= d.dH) return zet('afwijkend', 'hoogste waarde ' + fmt(r.max) + ' ' + r.eenheid + ' boven de alarmgrens ' + fmt(d.dH), tel(v => v >= d.dH));
     if (getal(d.dL) && r.min <= d.dL) return zet('afwijkend', 'laagste waarde ' + fmt(r.min) + ' ' + r.eenheid + ' onder de alarmgrens ' + fmt(d.dL), tel(v => v <= d.dL));
     // 3. Waarschuwingsgrens.
-    if (getal(d.wH) && r.max >= d.wH) return zet('let', 'hoogste waarde ' + fmt(r.max) + ' ' + r.eenheid + ' boven de waarschuwingsgrens ' + fmt(d.wH), tel(v => v >= d.wH));
-    if (getal(d.wL) && r.min <= d.wL) return zet('let', 'laagste waarde ' + fmt(r.min) + ' ' + r.eenheid + ' onder de waarschuwingsgrens ' + fmt(d.wL), tel(v => v <= d.wL));
+    //    Eén monster over de waarschuwingsgrens in een volle reeks is een
+    //    uitschieter, geen toestand: een korte trim van 10,2 % bij gas geven
+    //    stond op 20-10 als "let op". De alarmgrens hierboven telt wél op één.
+    const blijft = b => b >= 2 || vals.length < 10;
+    if (getal(d.wH) && r.max >= d.wH && blijft(tel(v => v >= d.wH))) return zet('let', 'hoogste waarde ' + fmt(r.max) + ' ' + r.eenheid + ' boven de waarschuwingsgrens ' + fmt(d.wH), tel(v => v >= d.wH));
+    if (getal(d.wL) && r.min <= d.wL && blijft(tel(v => v <= d.wL))) return zet('let', 'laagste waarde ' + fmt(r.min) + ' ' + r.eenheid + ' onder de waarschuwingsgrens ' + fmt(d.wL), tel(v => v <= d.wL));
     // 4. Buiten het gebruikelijke bereik (PID_LET_OP, laag 1b).
     const lo = letOp && letOp[pid];
     if (lo && getal(lo.max) && r.max > lo.max) return zet('let', lo.waarom || 'boven het gebruikelijke bereik', tel(v => v > lo.max));
@@ -137,7 +168,7 @@
     s += groep('BINNEN HET GEBRUIKELIJKE BEREIK', r => r.oordeel === 'ok');
     const leeg = sam.rijen.filter(r => r.oordeel === 'nodata');
     if (leeg.length) s += '\nGEEN DATA ONTVANGEN: ' + leeg.map(r => r.naam).join(', ') + '. Doe geen uitspraken over wat deze sensoren afdekken.';
-    s += '\nREGEL: toets elke opvallende waarde tegen de toestand van de motor (koud/warm, stationair/rijdend, motor aan/uit) voordat je hem een bevinding noemt; een vlag op een vaste grens kan in deze toestand normaal zijn. Een waarde die alleen even buiten de grens kwam (weinig metingen buiten de grens) weegt minder dan een die er bleef.';
+    s += '\nREGEL: toets elke opvallende waarde tegen de toestand van de motor (koud/warm, stationair/rijdend, motor aan/uit) voordat je hem een bevinding noemt; een vlag op een vaste grens kan in deze toestand normaal zijn. Een waarde die alleen even buiten de grens kwam (weinig metingen buiten de grens) weegt minder dan een die er bleef. Een waarde die in deze toestand vanzelf constant is — gasklep en snelheid bij stilstand, de langetermijntrim (een geleerde waarde), statuscodes en bitmaps — is geen vastgelopen sensor en geen meetartefact.';
     return s;
   }
 
@@ -338,16 +369,34 @@
       const rijtestMag = o.rijtest !== false;
       let staat = 'meten', tik = null, klaar = false, laatste = null, getekend = '', uitslagSam = null;
 
+      // De eigen buffer (zie EIGEN_MAX) en de rijtijd van deze meting.
+      const eigen = {}, gezien = {};
+      const rij = { ms: 0, t: null, v: null };
+      const kmh = (typeof MEET_RIJ_KMH !== 'undefined') ? MEET_RIJ_KMH : null;
+      const gatMs = (typeof MEET_RIJ_GAT_MS !== 'undefined') ? MEET_RIJ_GAT_MS : null;
+      const verzamel = () => {
+        const upd = (typeof _pidLastUpd !== 'undefined' && _pidLastUpd) || {};
+        const vals = (typeof pidVals !== 'undefined' && pidVals) || {};
+        sensorPids().concat(['010D']).forEach(pid => {
+          const t = upd[pid], v = vals[pid];
+          if (!getal(t) || !getal(v) || gezien[pid] === t) return;
+          gezien[pid] = t;
+          const r = eigen[pid] || (eigen[pid] = []);
+          if (!r.length || r[r.length - 1].t !== t) { r.push({ t, v }); if (r.length > EIGEN_MAX) r.shift(); }
+          if (pid === '010D' && kmh !== null && gatMs !== null) rijTel(rij, t, v, kmh, gatMs);
+        });
+      };
+      const histNu = () => bron ? (bron.hist || {}) : samenvoeg(appBron().hist, eigen);
       const meting = () => {
-        const r = plMeetTekort(niveau);
+        const r = plMeetTekort(niveau, { sec: verstreken / 1000, rijSec: rij.t !== null ? rij.ms / 1000 : null });
         const k = prof ? plKernStatus(prof) : null;
         return { r, k };
       };
       const quotaVan = k => quotaFn(k, quota);
       const verbonden = () => (typeof connected !== 'undefined' && connected) || (typeof demoMode !== 'undefined' && demoMode);
-      const samNu = () => bron ? vanBron(bron) : samenvatting(sensorPids());
+      const samNu = () => bron ? vanBron(bron) : samenvatting(sensorPids(), Object.assign(appBron(), { hist: histNu() }));
       const histVoorRapport = (sam) => {
-        const h = bron ? (bron.hist || {}) : appBron().hist, uit = {};
+        const h = histNu(), uit = {};
         sam.rijen.map(r => r.pid).concat(PLRapport.TOESTAND_PIDS)
           .forEach(p => { if (h[p] && h[p].length) uit[p] = h[p].slice(); });
         return uit;
@@ -465,7 +514,7 @@
           if (m.k && m.k.stil && m.k.stil.length) t.push('geen data van ' + m.k.stil.map(i => i.naam).join(', '));
           window._meetBeperkt = t.length ? t.join('; ') : 'meting vroegtijdig gestopt';
         }
-        uitslagSam = metSamenhang(samNu(), appBron().hist);
+        uitslagSam = metSamenhang(samNu(), histNu());
         tekenUitslag(m.r.st, m.k, uitslagSam, m.r.rijTekort);
         noteer(uitslagSam, { watVoor: o.watVoor, reden, ms: verstreken, hergebruik: vers && verstreken < MIN_MS, rijSec: m.r.st.rijSec });
       };
@@ -517,6 +566,7 @@
         if (typeof document.visibilityState === 'undefined' || document.visibilityState !== 'hidden') verstreken += nu - laatsteTik;
         laatsteTik = nu;
         if (staat !== 'meten') return;
+        if (!bron) verzamel();
         laatste = meting();
         const f = fase({ verbonden: verbonden(), ok: laatste.r.ok, kernCompleet: laatste.k ? laatste.k.compleet : null,
                          verstreken, minMs, maxMs });
@@ -577,6 +627,6 @@
     return h;
   }
 
-  window.PLVerzamel = { MIN_MS, RIT_GELDIG_MS, beoordeel, samenvatting, promptBlok, fase, meet, naRit, maat, histUit, vanBron, rijSecUit, metSamenhang,
+  window.PLVerzamel = { MIN_MS, RIT_GELDIG_MS, EIGEN_MAX, rijTel, samenvoeg, beoordeel, samenvatting, promptBlok, fase, meet, naRit, maat, histUit, vanBron, rijSecUit, metSamenhang,
     open: function () { return !!lopend; } };
 })();

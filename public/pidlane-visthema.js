@@ -7,9 +7,11 @@
 // weer standaard." Dus:
 //   • de knop ⛶ boven de meter zet body.pl-vis-vol; pidlane.css maakt de
 //     .vis dan schermvullend en verbergt de rest van de app;
-//   • het thema geldt alléén op het volle scherm (data-vthema op .vis);
-//     daarbuiten blijft de gewone weergave, en de keuze wordt onthouden
-//     voor de volgende keer (localStorage pl_vis_thema);
+//   • het thema staat als data-vthema op .vis en wordt onthouden
+//     (localStorage pl_vis_thema). Tot 20-10-2026 gold het alléén op het
+//     volle scherm ("uit volledig scherm is gewoon weer standaard"); uit het
+//     gebruik daarna: ook in de gewone weergave, voor alle thema's. De
+//     standaardkeuze ís de gewone weergave;
 //   • een thema is CSS: het zet de kleurvariabelen van de meter om en
 //     voegt gloed of een verloop toe. De meetwaarden blijven via
 //     PLVisueel lopen; dit bestand raakt geen PID en geen bus.
@@ -45,8 +47,8 @@ function bewaar(id){
   catch(e){ console.warn('PLVisThema: themakeuze niet bewaard', e); }
   return true;
 }
-// Het thema dat een .vis krijgt: alleen op het volle scherm (zie de kop).
-function themaVoor(vol, gekozen){ return vol ? (geldig(gekozen) ? gekozen : STANDAARD) : null; }
+// Het thema dat een .vis krijgt, op het volle scherm én daarbuiten (zie de kop).
+function themaVoor(gekozen){ return geldig(gekozen) ? gekozen : STANDAARD; }
 
 // ── SVG: verlopen die CSS niet zelf kan maken ────────────────────────
 // Spectrum loopt van links (0 tpm) over boven naar rechts (rood): een
@@ -88,15 +90,12 @@ function strookHtml(nu){
 function pas(vis){
   vis = vis || visEl();
   if(!vis) return;
-  const t=themaVoor(vol(), lees());
-  if(t) vis.setAttribute('data-vthema', t); else vis.removeAttribute('data-vthema');
+  vis.setAttribute('data-vthema', themaVoor(lees()));
   if(!vis.querySelector('.vt-knoppen')){
     const bak=vis.querySelector('.vis-bak') || vis;
     bak.insertAdjacentHTML('afterbegin', knoppenHtml());
   }
   vis.querySelectorAll('svg.vis-meter').forEach(function(s){ if(!s.querySelector('.vt-defs')) s.insertAdjacentHTML('afterbegin', DEFS); });
-  const oud=vis.querySelector('.vt-strook');
-  if(oud && !vol()) oud.remove();
 }
 
 // De naald zwaait één keer helemaal uit, zoals een echt dashboard bij het
@@ -142,11 +141,14 @@ function uit(){
     try{ if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(e){ console.warn('PLVisThema: systeemvolscherm sluiten mislukt', e); }); }
     catch(e){ console.warn('PLVisThema: systeemvolscherm sluiten mislukt', e); }
   }
+  // De keuzestrook hoort bij het scherm waarop hij openging.
+  const vis=visEl(), o=vis && vis.querySelector('.vt-strook');
+  if(o) o.remove();
   if(was) pas();
 }
 function kies(){
   const vis=visEl();
-  if(!vis || !vol()) return;
+  if(!vis) return;
   const o=vis.querySelector('.vt-strook');
   if(o){ o.remove(); return; }
   vis.insertAdjacentHTML('beforeend', strookHtml(lees()));

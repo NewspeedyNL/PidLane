@@ -207,6 +207,22 @@ const beeld = (r) => r.conclusie.alle.map((x) => x.id + ':' + Math.round(x.score
     toets('en een eerlijke regel als er niets te lezen viel', /niet bepaald — zonder toerental/.test(S.promptBlok({ geen: 'zonder toerental is niet vast te stellen of de motor draaide' })));
   }
 
+  {
+    // 20-10-2026: koelwater eens per 6 s, toerental en snelheid twee keer per
+    // seconde. Zonder monster binnen TOL_MS las een warme motor als koud.
+    console.log('\nTraag koelwater');
+    const h = { '010C': [], '010D': [], '0105': [] };
+    for (let t = 0; t < 30000; t += 500) { h['010C'].push({ t, v: 2000 }); h['010D'].push({ t, v: 50 }); }
+    for (let t = 0; t < 30000; t += 6000) h['0105'].push({ t, v: 90 });
+    const tl = S.tijdlijn(h), tel = {};
+    tl.t.forEach((_, i) => { const x = S.toestandOp(tl, i, O.cfg.grens); tel[x] = (tel[x] || 0) + 1; });
+    toets('een warme motor met traag koelwater is rijden warm, op elk moment', tel.rijden_warm === tl.t.length, JSON.stringify(tel));
+    const ver = { '010C': h['010C'], '010D': h['010D'], '0105': [{ t: 0, v: 90 }] };
+    const tl2 = S.tijdlijn(ver);
+    const laat = S.toestandOp(tl2, tl2.t.length - 1, O.cfg.grens);
+    toets('… maar een koelwatermonster van een halve minuut terug telt wél, van verder weg niet', laat === 'rijden_warm' && S.toestandOp(S.tijdlijn({ '010C': [{ t: 0, v: 2000 }, { t: 90000, v: 2000 }], '010D': [{ t: 0, v: 50 }, { t: 90000, v: 50 }], '0105': [{ t: 0, v: 90 }] }), 1, O.cfg.grens) === 'rijden_koud', laat);
+  }
+
   console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + n : 'Alles goed — ' + n + ' controles'));
   process.exit(fout ? 1 : 0);
 })();
