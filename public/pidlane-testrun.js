@@ -2787,6 +2787,27 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Totaalcheck: stilstand en rijden apart, verdiepen waar iets afwijkt ──
+  {
+    issue: 'totaalcheck',
+    naam: 'Totaalcheck in twee delen: stilstand (met foutcodes en zelftests) en gewoon rijden, uitslag per categorie, focusmeting alleen waar iets afwijkt',
+    waarom: 'De check uit week 1 was een vragenlijst en daarna een rijtest van vijf fases van twee minuten; de vragen voegden niets toe en de fases kostten tien minuten.',
+    proef: async function () {
+      if (!window.PLTotaal || !document.getElementById('tcStappen') || document.querySelector('#pane-check .chk-qrow'))
+        return { staat: 'FOUT', detail: 'PLTotaal of #tcStappen ontbreekt, of de oude vragenlijst staat er nog — oude pidlane-totalcheck.js/index.html (herladen?)' };
+      var H = { '010D': [{ t: 0, v: 0 }, { t: 1000, v: 60 }], '0105': [{ t: 0, v: 90 }, { t: 1000, v: 95 }] };
+      var st = PLTotaal.deelHist(H, 'stil', MEET_RIJ_KMH, MEET_RIJ_GAT_MS), rj = PLTotaal.deelHist(H, 'rij', MEET_RIJ_KMH, MEET_RIJ_GAT_MS);
+      if (st.hist['0105'].length !== 1 || st.hist['0105'][0].v !== 90 || rj.hist['0105'][0].v !== 95)
+        return { staat: 'FOUT', detail: 'stilstand en rijden worden niet op de snelheid gesplitst' };
+      var sam = function (o) { return { rijen: [{ pid: '0105', naam: 'Koelwater temp', n: 10, min: 90, max: 90, oordeel: o }] }; };
+      var c = PLTotaal.categorieen({ stil: sam('ok'), rij: sam('afwijkend') }, null, function () { return 'Temp'; }, CHK_CAT_ORDER)[0];
+      if (!c || !c.focus || !PLTotaal.focusPlan(c).rijden) return { staat: 'FOUT', detail: 'een afwijking alleen rijdend geeft geen rijdende focusmeting' };
+      if (PLTotaal.categorieen({ stil: sam('ok') }, null, function () { return 'Temp'; }, CHK_CAT_ORDER)[0].open)
+        return { staat: 'FOUT', detail: 'een categorie die klopt gaat toch open' };
+      return { staat: 'OK', detail: 'Rij: Totaalcheck → Start stilstand (± 1 min, daarna foutcodes), dan Start rijden en gewoon wegrijden; het scherm hoort na zo’n anderhalve minuut rijden vanzelf naar de uitslag te gaan, zonder "Rijtest starten".' };
+    }
+  },
+
   // ── Winter (#556–#559): profiel, weer, banner, bandentabel, ritpatroon ──
   {
     issue: '556',
@@ -11068,6 +11089,9 @@ const CAMPAGNE = {
     'TELEFOON VAST EN GENULD. Zet hem in de houder, sta stil op vlakke grond en tik Nulstellen (Telemetrie). Zonder dat telt de helling nergens mee en schat de app zoals vroeger uit de motor.',
     'CARAVANRIT. De badge zegt nu ook de hoek ("⛰️ Klim · +3.2°") als hij gemeten is. Rij een oprit of dijk op: klopt de hoek ongeveer, en springt hij op Klim? Op vlakke snelweg met tegenwind hoort hij op Vlak te blijven. Onderaan het rapport staat of de terreinverdeling gemeten of geschat was.',
     'RITANALYSE. Rij een fase door heuvels: de faseduiding hoort "bergop", "bergaf" of "heuvelachtig" te zeggen, en Helling (telefoon) staat bij de cijfers. Is 2,5° te gevoelig of te traag, zet het in #463.',
+    '── DE TOTAALCHECK: STILSTAND EN RIJDEN ────────',
+    'STILSTAND. Live → Totaalcheck → Start stilstand. Na ± een minuut haalt hij de foutcodes en zelftests op; daarna staat de uitslag per categorie. Wat klopt staat dicht; open staat alleen wat afwijkt, met een Focusmeting.',
+    'RIJDEN. Start rijden en rij gewoon weg — geen fases, geen route. Na zo’n anderhalve minuut boven 15 km/h hoort het scherm vanzelf naar de uitslag te gaan. Wijkt een sensor rijdend af en stilstaand niet, dan hoort de focusmeting rijdend te meten. Valt er op een gezonde CX-5 iets op, plak dan die categorie.',
     '── #555–#559: DE WINTER ────────',
     'DE BANNER. Op het startscherm hoort één keer "Het wordt kouder" te staan. Tik Profiel aanpassen: kies je plaats, je banden en je sproeiervloeistof, en bewaar. Daarna hoort de kaart drie dagen weer en hoogstens één advies te tonen. Komt de banner na een herstart terug, of klopt het weer niet met je weerapp: zet het in #556.',
     'EEN KOUDE START MET SNELWEG. Start koud en rij minstens tien minuten snelweg. Blok 5 zegt of je auto zelf de buitentemperatuur (0146) geeft. Na een week ritten hoort Mijn voertuigen → Advies niets over de thermostaat te zeggen als je motor gewoon warm wordt; zegt hij het toch, plak dat advies in #558.',

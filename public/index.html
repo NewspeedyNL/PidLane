@@ -1170,20 +1170,11 @@ function closeConnOv(){
 
       <!-- CHECK -->
       <div class="pane" id="pane-check">
-        <div class="chk-intro"><h3>🚦 Voertuig Totaalcheck</h3><p>Beantwoord de vragen voor een gerichte check. AI combineert je antwoorden met live sensordata.</p></div>
-        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:12px;margin-bottom:12px;box-shadow:var(--ss)">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:8px">Beantwoord voor nauwkeurigere check:</div>
-          <div class="chk-qrow"><label>Goede koude start?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'start','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'start','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'start','nee')">Nee</div></div></div>
-          <div class="chk-qrow"><label>Rijdt goed op snelweg?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'highway','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'highway','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'highway','nee')">Nee</div></div></div>
-          <div class="chk-qrow"><label>Brandstofverbruik normaal?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'fuel','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'fuel','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'fuel','nee')">Nee</div></div></div>
-          <div class="chk-qrow"><label>Olie niveau OK?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'oil','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'oil','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'oil','nee')">Nee</div></div></div>
-          <div class="chk-qrow"><label>Koelwater stabiel?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'cool','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'cool','soms')">Daalt</div><div class="chk-opt" onclick="setQ(this,'cool','nee')">Verlies</div></div></div>
-          <div class="chk-qrow"><label>Geen vreemde geluiden?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'noise','ja')">Geen</div><div class="chk-opt" onclick="setQ(this,'noise','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'noise','nee')">Ja</div></div></div>
-          <div class="chk-qrow"><label>Geen dashboardlampen?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'warn','ja')">Geen</div><div class="chk-opt" onclick="setQ(this,'warn','soms')">1-2</div><div class="chk-opt" onclick="setQ(this,'warn','nee')">Meerdere</div></div></div>
-        </div>
+        <div class="chk-intro"><h3>🚦 Voertuig Totaalcheck</h3><p>Twee metingen, elk in zijn eigen toestand: eerst stilstaand (met foutcodes en zelftests), dan gewoon rijden. Waar iets afwijkt gaat de check dieper; wat klopt blijft dicht.</p></div>
+        <div id="tcStappen" class="tc-stappen"></div>
         <div class="toolbar">
           <div id="rdyTotaal" class="rdy-card off">📡 Verbind adapter om sensorstatus te laden</div>
-          <button class="btn pri" onclick="runTotalCheck()" id="btnChk">🚦 Start totaalcheck</button>
+          <button class="btn" onclick="runCheckAI()" id="btnChkAI" disabled>🤖 AI-rapport</button>
           <button class="btn" onclick="exportCheckReport()">💾 Exporteer</button>
         </div>
         <div id="chkSummary" style="display:none" class="chk-summary">

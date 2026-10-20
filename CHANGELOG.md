@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 20-10-2026 — De totaalcheck op de schop: stilstand en rijden
+ ═══════════════════════════════════════════════════════════
+
+ - Weg: de vragenlijst (koude start, olie, geluiden: ja/soms/nee) en de
+   rijtest met vijf fases van twee minuten vanuit de totaalcheck.
+ - Twee stappen: 🅿️ Stilstand (verzamelscherm, daarna foutcodes 03/07/0A
+   en zelftests) en 🚗 Rijden (gewoon wegrijden, het scherm stopt vanzelf
+   na ± 90 s rijtijd). Elk deel wordt beoordeeld op alleen zijn eigen
+   monsters, gesplitst op de snelheid van dat moment.
+ - Uitslag per categorie: wat klopt blijft dicht; een categorie met een
+   afwijking gaat open met een focusmeting (alleen die sensoren, in de
+   toestand waarin de afwijking zat) en een AI-vraag over alleen dat
+   systeem. Het AI-rapport kan pas na een meting en noemt een niet
+   gemeten deel als niet gemeten.
+ - PLVerzamel.meet(): opts.rijtest:false en opts.maxMs.
+ - Nieuw: test-totaalcheck.js, acht mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
  20-10-2026 — De winter (#555–#559)
  ═══════════════════════════════════════════════════════════
 

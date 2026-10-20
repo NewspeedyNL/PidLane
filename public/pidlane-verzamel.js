@@ -286,7 +286,8 @@
 
   /* Opent het scherm en lost op met {door, ai, sam, sec, rijSec}.
      opts: {niveau, profiel, watVoor, klacht (voor het rapport), ai:false (geen AI-knop), aiTekst,
-            naRit (functie die na een rijtest opnieuw begint),
+            naRit (functie die na een rijtest opnieuw begint), rijtest:false (geen rijtest-knop),
+            maxMs (hoe lang hoogstens gemeten wordt),
             bron: {naam, hist, pids?, sec, rijSec} — een meting die er al is
             (een datalog, de ritfases): dan meteen de uitslag, zonder poort} */
   function meet(opts) {
@@ -330,7 +331,11 @@
       ov.style.display = 'flex';
 
       let verstreken = 0, laatsteTik = Date.now(), minMs = vers ? 0 : MIN_MS;
-      let maxMs = eis.sec * 1000 + KERN_MAX_WACHT_MS;
+      // opts.maxMs: een rijmeting wacht langer, de klant moet nog instappen.
+      let maxMs = getal(o.maxMs) ? o.maxMs : eis.sec * 1000 + KERN_MAX_WACHT_MS;
+      // opts.rijtest:false — geen "Rijtest starten" (de ritanalyse met fases):
+      // de meting zelf loopt door terwijl de klant rijdt (totaalcheck, 20-10).
+      const rijtestMag = o.rijtest !== false;
       let staat = 'meten', tik = null, klaar = false, laatste = null, getekend = '', uitslagSam = null;
 
       const meting = () => {
@@ -387,13 +392,14 @@
           (m.k ? ': <b>' + m.k.gereed.length + ' van ' + m.k.haalbaar.length + '</b> zijn klaar' : '') +
           (over ? ' — nog zo’n ' + over + ' s.' : '.') +
           (sam.opvallend ? ' <b class="vz-opval">' + sam.opvallend + ' waarde' + (sam.opvallend === 1 ? ' valt' : 'n vallen') + ' nu al op.</b>' : '') +
-          (m.r.rijTekort ? '<br>Voor een ' + esc(eis.naam) + ' is rijden nodig; stilstaand loopt dat niet in.' : '');
+          (!m.r.rijTekort ? '' : rijtestMag ? '<br>Voor een ' + esc(eis.naam) + ' is rijden nodig; stilstaand loopt dat niet in.'
+            : '<br>Rij gewoon weg: <b>' + Math.round(st.rijSec || 0) + ' van ' + eis.rij + ' s</b> gereden. Geen fases, geen route — ik stop vanzelf.');
         // Tijdens het meten op naam: een lijst die elke halve seconde herschikt
         // is niet te lezen. De kleur zegt al wat er opvalt.
         document.getElementById('plVzLijst').innerHTML = sam.rijen.slice()
           .sort((x, y) => String(x.naam).localeCompare(String(y.naam)))
           .map(r => rijHtml(r, quotaVan(m.k), false)).join('');
-        const rit = m.r.rijTekort && typeof openRitAnalyse === 'function';
+        const rit = rijtestMag && m.r.rijTekort && typeof openRitAnalyse === 'function';
         knoppen((rit ? '<button class="mg-pri" data-a="rit">🚗 Rijtest starten</button>' : '') +
                 '<button class="mg-sec" data-a="nu">Nu bekijken met wat er is</button>' +
                 '<button class="mg-ter" data-a="annuleer">Annuleren</button>');
@@ -426,7 +432,7 @@
           sectie('Meting twijfelachtig', r => r.oordeel === 'meetfout' || r.oordeel === 'twijfel', true) +
           sectie('Binnen het gebruikelijke bereik', r => r.oordeel === 'ok', false) +
           sectie('Geen data', r => r.oordeel === 'nodata', false);
-        const rit = rijTekort && typeof openRitAnalyse === 'function';
+        const rit = rijtestMag && rijTekort && typeof openRitAnalyse === 'function';
         // Langer meten kan alleen live. De rit van zojuist mag de klant
         // vervangen door een verse meting; een datalog of ritrapport niet.
         const verder = !bron ? '<button class="mg-sec" data-a="langer">⏳ Langer meten</button>'
