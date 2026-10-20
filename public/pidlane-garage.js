@@ -154,7 +154,16 @@
     }
     var kms = ritten.map(function (r) { return r.km; }).filter(function (x) { return typeof x === 'number'; });
     var mk = kms.length >= 5 ? mediaan(kms) : null;
-    if (v.rijprofiel === 'korte ritten' || (mk != null && mk < 8)) {
+    // De winter (#557/#558): wat het patroon van de ritten zegt. Gaat vóór
+    // het algemene advies over korte ritten — één advies, niet twee.
+    var WR = window.PLWinterRit, kr = null, th = null;
+    if (WR) {
+      try { kr = WR.korteRitten(ritten, { nu: nu || Date.now(), diesel: diesel }); th = WR.thermostaat(ritten, { nu: nu || Date.now() }); }
+      catch (e) { console.warn('PLGarage: winteradvies uit de ritten', e); }
+    }
+    if (kr) uit.push(kr);
+    if (th) uit.push(th);
+    if (!kr && (v.rijprofiel === 'korte ritten' || (mk != null && mk < 8))) {
       uit.push({ soort: 'rijprofiel', titel: 'Veel korte ritten',
         tekst: (mk != null ? 'De helft van je ritten is korter dan ' + mk.toLocaleString('nl') + ' km. ' : '') +
           (diesel ? 'Een roetfilter regenereert pas na zo’n 15–20 minuten doorrijden. Rij af en toe een stuk snelweg, anders loopt het filter vol.'
