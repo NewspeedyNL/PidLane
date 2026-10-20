@@ -15,7 +15,9 @@
 //   1. hij vuurt nog steeds bij echt oscillerend stationair;
 //   2. hij zwijgt nog steeds bij een wegzakkend fast-idle (die tegenproef zat
 //      al in de code en mocht niet sneuvelen);
-//   3. de melding noemt de airco vóór de dure verdachten.
+//   3. de melding noemt de airco vóór de dure verdachten;
+//   4. (#567) een toerental dat na een stop wegzakt MET RUIS erop blijft
+//      stil — de richtingstoets vangt alleen een zuivere daling.
 //
 // Punt 3 is de eigenlijke fix, en punt 2 is waarom het geen "drempel omhoog"
 // is geworden: dan zou 193 rpm verdwijnen, maar echt ruw lopen ook.
@@ -105,6 +107,32 @@ toets('de belastingspreiding staat in de melding', /motorbelasting varieert \d+%
 const zonder = String(W.check(ctx(alsOp2708, [])) || '');
 toets('zonder 0104 komt er nog steeds een leesbare melding', zonder.length > 0 &&
       !/undefined|NaN/.test(zonder), 'melding: ' + zonder);
+
+console.log('\n4. Wegzakken na een stop is geen ruwloop (#567, rit 20-10-2026 19:02)');
+/* 238 rpm, 26% richtingswisselingen, 14 s na een stop. De richtingstoets liet
+   hem door omdat de ruis op de daling genoeg wisselingen gaf, en de IQR mat
+   het wegzakken zelf. Hier dezelfde vorm: 1100 → ~710 rpm, ±15 rpm ruis. */
+const ruis = [0, 12, -8, 15, -14, 6, -10, 14, -5, 9, -15, 4, 11, -9, 13, -6, 8, -12, 10, -4];
+const zakt = ruis.map((e, i) => Math.round(700 + 400 * Math.exp(-i / 6) + e));
+// Eerst bewijzen dat deze reeks de OUDE maat haalde; anders onderscheidt
+// de toets niets.
+const d = zakt.slice(1).map((v, i) => v - zakt[i]);
+const omk = d.slice(1).filter((x, i) => x * d[i] < 0).length / (d.length - 1);
+const z = zakt.slice().sort((a, b) => a - b);
+const ruweIqr = z[Math.floor(3 * z.length / 4)] - z[Math.floor(z.length / 4)];
+toets('TEGENPROEF: de reeks haalt de oude poort (wisselingen ≥ 25%, ruwe IQR > 60)',
+      omk >= 0.25 && ruweIqr > 60, 'omk=' + omk.toFixed(2) + ' iqr=' + ruweIqr);
+toets('een wegzakkend toerental met ruis blijft stil', W.check(ctx(zakt, [20, 21, 20, 22])) === null,
+      'kreeg: ' + W.check(ctx(zakt, [])));
+// En de fix mag echte ruwloop niet verbergen, ook niet als die tijdens het
+// wegzakken optreedt.
+const ruwTijdensZakken = ruw.map((v, i) => v + Math.round(400 * Math.exp(-i / 6)));
+toets('ruwloop tijdens het wegzakken geeft nog steeds een melding', !!W.check(ctx(ruwTijdensZakken, [])),
+      'kreeg: ' + W.check(ctx(ruwTijdensZakken, [])));
+// (Een trage pendel — twee golven in vijf seconden — haalt de richtingstoets
+// niet, met of zonder deze fix: 22% wisselingen. Dat is een bestaand gat en
+// geen onderwerp van #567.)
+toets('de melding zegt dat de schommeling rond het verloop gemeten is', /rond zijn verloop/.test(String(W.check(ctx(ruw, [])))));
 
 console.log('\n' + (fouten ? fouten + ' FOUT(en)' : 'alles goed'));
 process.exit(fouten ? 1 : 0);

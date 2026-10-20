@@ -15,6 +15,27 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 20-10-2026 — STAT_RPM: de schommeling rond het verloop, niet het wegzakken (#567)
+
+Rit van 20-10 (Mazda CX-5): om 19:02:25, 14 s na een stop, "ruw stationair"
+met 238 rpm IQR en **26 %** richtingswisselingen. De poort tegen een
+wegzakkend fast-idle (28-08) keek alleen of de reeks van richting wisselde, met
+25 % als grens. Dat vangt een *zuivere* daling (0 %); een daling met ruis erop
+haalt 25 % gewoon — op een nagebouwde reeks 1100→710 rpm met ±15 rpm ruis zelfs
+56 %. De IQR mat daarna het wegzakken zelf.
+
+Eerst geprobeerd: een lineaire trend eraf. Een wegzakkend toerental is een
+kromme, dus de bocht bleef als schommeling over. Kwadratisch werkt (die reeks:
+154 → 24 rpm), maar één parse-hik trok de fit scheef en werd zelf een melding
+van 75 rpm — de toets "één losse uitschieter vuurt niet" werd rood. Daarom
+gaan eerst de punten buiten 3× de ruwe IQR eruit (Tukey "far out"); bij een
+daling of echte ruwloop is de ruwe IQR zo groot dat er niets afvalt.
+
+Echte ruwloop blijft ~200 rpm, de airco-vorm van 27-08 ~190 rpm. **Niet
+bevestigd op de echte reeks**: die zat niet in het logboek (geheugen-cap).
+**Bestaand gat, niet aangeraakt:** een trage pendel (twee golven in 5 s) haalt
+de richtingstoets niet (22 %), met of zonder deze wijziging.
+
 ## 20-10-2026 — De analyses naast elkaar: meetfase en aanlevering gelijkgetrokken
 
 Alle AI-aanroepen vergeleken op vijf punten: gaat er een **meetfase**
