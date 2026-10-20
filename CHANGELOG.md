@@ -10,6 +10,25 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 20-10-2026 — De winter (#555–#559)
+ ═══════════════════════════════════════════════════════════
+
+ - Winterkaart boven het startscherm, oktober–maart: één keer per
+   seizoen "Het wordt kouder — pas je profiel aan voor de winterperiode",
+   daarna drie dagen weer en hoogstens één advies (weg te tikken).
+ - Winterprofiel: plaats uit een lijst (geen locatie), banden met symbool,
+   DOT en profiel, ruitensproeiervloeistof met grens en datum. Bij een
+   klant in kp_voertuig, anders op het toestel. Bandentabel: elk soort
+   band van −10 tot 25 °C, jouw band en de komende dagen erop (een model).
+ - Worker: /weer (Open-Meteo via de Worker, randcache per plaats), negen
+   kolommen in kp_voertuig, akkoordtekst 2026-10-20.
+ - Per rit ook buitentemperatuur, tijd op temperatuur en het laagste
+   koelwater op de snelweg; Mijn voertuigen → Advies zegt nu iets over
+   korte ritten in de kou en een thermostaat die open blijft hangen.
+ - Nieuw: pidlane-weer.js, pidlane-winter.js, pidlane-winterrit.js,
+   test-weer.js, test-winter.js, test-winterrit.js, bproef-winter.js.
+
+ ═══════════════════════════════════════════════════════════
  19-10-2026 — Snel verbinden met een bekende auto
  ═══════════════════════════════════════════════════════════
 
