@@ -26,6 +26,11 @@
    gemeten deel als niet gemeten.
  - PLVerzamel.meet(): opts.rijtest:false en opts.maxMs.
  - Nieuw: test-totaalcheck.js, acht mutaties, blok 5-proef.
+ - Na de eerste rit: de rijmeting telt zijn eigen rijtijd (pidHist hield
+   maar 20 s snelheid vast); gasklep bij stationair, langetermijntrim en
+   bitmaps heten niet meer "vast"; één trimpiek is geen "let op"; traag
+   koelwater maakt een warme motor niet koud; het rapport noemt alleen
+   uitgevoerde proeven en gaat over beide delen.
 
  ═══════════════════════════════════════════════════════════
  20-10-2026 — De winter (#555–#559)

@@ -15,6 +15,44 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 20-10-2026 — Eerste rit met de nieuwe totaalcheck: vijf fouten uit één rapport
+
+Rapport "Rijdeel van de totaalcheck", CX-5, 13:29. Meting 6:11 min, "waarvan
+20 s rijdend" — terwijl er minuten gereden was.
+
+1. **Rijtijd liep niet vol en terug.** `plMeetRijSec()` telt uit
+   `pidHist['010D']`, en `updPID()` houdt daar 120 monsters van. De snelheid
+   komt op ~6 Hz binnen: 120 monsters is 20 s. Daarboven schuift het oudste
+   rijstuk eruit, en als er een stoplicht in zat liep de teller terug. Dat gat
+   bestond al sinds §16, maar viel niet op: wie rijden nodig had, ging via de
+   ritanalyse, die elke fase volledig bewaart. Nu houdt het verzamelscherm een
+   eigen buffer bij (`EIGEN_MAX`, op de tik van 2 Hz) en een eigen rijteller
+   (`rijTel`), en geeft die aan `plMeetTekort(niveau, extern)` — alleen
+   ophogen. Ook de uitslag en het rapport lezen die buffer: de accuspanning
+   had in het rijdeel 1 monster.
+2. **"Sensor staat exact vast".** De lijst van `dynamisch` in
+   `assessPidQuality` had 07 (langetermijntrim: een geleerde waarde) en 13
+   (een bitmap van welke O2-sensoren er zijn). Gasklep en snelheid staan bij
+   stilstand vanzelf stil. De AI las het als "sensorbevriezing door de
+   herverbinding" en schreef dat als waarschijnlijkste oorzaak.
+3. **Trim 10,2 % als "let op".** Eén monster over de waarschuwingsgrens van
+   120. Sindsdien telt een waarschuwing pas vanaf twee monsters (of een korte
+   reeks); de alarmgrens telt nog steeds op één.
+4. **"Rijden koud" bij 90 °C.** Koelwater kwam eens per ~6 s binnen, de
+   tijdlijn zoekt binnen `TOL_MS` (2,5 s): zonder monster las de motor als
+   koud. Nu de dichtstbijzijnde binnen `TRAAG_MS` (60 s).
+5. **Een testplan van acht keer "niet uitgevoerd".** De regels van de
+   samenhang lopen op elke meting mee; ze zijn alleen gevraagd in het volledig
+   onderzoek. Het rapport noemt nu alleen wat uitgevoerd is, ook bij §8. En
+   het rapport ging over het laatst gemeten deel; nu over beide
+   (`PLTotaal.rapportMeting`).
+
+**Niet aangepakt.** De AI noemde 540–560 tpm warm stationair "licht laag"
+tegen 600–900. Dat is een referentie van de AI, niet van de app; of het bij
+een SkyActiv-G klopt is een vraag voor een rit met een tweede auto.
+
+---
+
 ## 20-10-2026 — De totaalcheck uit week 1 vervangen: stilstand, rijden, verdiepen
 
 **Wat er stond.** Een vragenlijst van zeven vragen (ja/soms/nee) die de
