@@ -15,6 +15,46 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 20-10-2026 — "Er is iets mis" opnieuw: eerst wat, dan wanneer; en tractie-ingrijpen (#560)
+
+**De intake.** Begon met "Wanneer merk je het?" (vijf vaste keuzes, één
+antwoord), dan een verplicht tekstveld, dan het lampje. Uit het gebruik: te
+beperkt, en het paste vaak niet. FIXD en BlueDriver beginnen bij de foutcode;
+een klacht zonder code hebben ze niet. Een monteur vraagt eerst wát je merkt en
+dan wanneer, en meer dan één antwoord is normaal. Nu: tegels uit
+`PLOnderzoek.KLACHTEN` (meer mag, plus "Vreemd geluid of trilling"), zelf
+beschrijven met live herkenning (`klachtUitTekst`), een foutcode die je al
+hebt, en "Ik merk niets bijzonders" als algemene check (de totaalcheck
+bovenaan het plan). Daarna de momenten van `PLOnderzoek.WANNEER` plus altijd
+en onvoorspelbaar; daaruit volgt de meting (`metingUit`). Het onderzoek krijgt
+alles mee, dus zijn intake staat al ingevuld.
+
+**Een opgegeven code is voorkennis, geen meting.** Dezelfde `CODEREGELS` als
+een uitgelezen code, maar met de helft van het gewicht en hoogstens
+`VOORAF_MAX` per verdenking: twee codes van de garage bevestigen niets, de
+auto beslist.
+
+**Het probleem onderin.** Een keuzescherm zonder knoppenbalk (`.wz-foot` leeg)
+had 6 px onderrand: de laatste keuze lag achter de Android-knoppen. Nu
+`calc(24px + --pl-sab)` als de balk leeg is.
+
+**Tractie (#560, methode 3).** Koppelreductie (pedaal blijft, gasklep zakt) en
+wielspin (toeren springen omhoog bij vast pedaal en vallen terug), per rit in
+`cd.tc`. De valkuil was schakelen: een automaat neemt bij elke schakeling zelf
+gas terug, en terugschakelen verhoogt de verhouding blijvend. Daarom beslist
+de vólgende tik (verhouding nog gelijk = zelfde versnelling). Ook een
+gaspedaal dat seconden niet ververst is, zegt niet dat iemand het vasthield:
+alleen verse monsters (`_pidLastUpd`). Op tikken van 2 s mis je korte pieken,
+en remingrepen zijn via mode 01 niet te zien: het advies zegt "mogelijk" en
+de bron zegt dat. Methode 1 (mode 22 in de ABS-module) en 2 (ATMA) staan nog
+open in #560.
+
+**Pompprijzen (#505).** `PRIJS` stond op 1,95 / 1,70 / 0,85; CBS gaf op
+13-07-2026 2,297 / 2,149 / ±0,95. Het MRB-model is niet nagekeken: dat vraagt
+de rekenhulp van de Belastingdienst.
+
+---
+
 ## 20-10-2026 — Drie dingen uit het gebruik: verversen, Handmatig, thema's
 
 **Adapterpaneel onder Handmatig.** Het knoppenvak plakt sinds 02-10 onderaan
