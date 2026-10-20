@@ -46,6 +46,17 @@ function toets(naam, waar, uitleg) {
       const plaat = () => getComputedStyle(document.querySelector('.vis-plaat')).fill;
       const r = { knop: !!vis().querySelector('.vt-vol'), zichtbaar: getComputedStyle(vis().querySelector('.vt-vol')).display !== 'none',
                   defs: !!vis().querySelector('svg.vis-meter .vt-defs'), plaat0: plaat(), thema0: vis().getAttribute('data-vthema') };
+      // Sinds 20-10-2026: kiezen kan ook in de gewone weergave.
+      r.themaKnopGewoon = getComputedStyle(vis().querySelector('.vt-thema')).display !== 'none';
+      vis().querySelector('.vt-thema').click();
+      r.strookGewoon = vis().querySelectorAll('.vt-keus').length;
+      vis().querySelector('.vt-keus[data-thema="neon"]').click();
+      await wacht(100);
+      r.themaGewoon = vis().getAttribute('data-vthema'); r.plaatGewoon = plaat();
+      vis().querySelector('.vt-keus[data-thema="standaard"]').click();
+      await wacht(100);
+      r.plaatTerug = plaat();
+      vis().querySelector('.vt-thema').click();   // strook dicht
       vis().querySelector('.vt-vol').click();
       await wacht(300);
       const b = vis().getBoundingClientRect();
@@ -87,7 +98,10 @@ function toets(naam, waar, uitleg) {
     })()`);
     toets('de knop ⛶ staat boven de meter', r.knop && r.zichtbaar, JSON.stringify(r));
     toets('de verlopen staan in de meter', r.defs, JSON.stringify(r));
-    toets('buiten het volle scherm geen thema', r.thema0 === null, JSON.stringify(r));
+    toets('zonder keuze: Standaard, de gewone meter', r.thema0 === 'standaard', JSON.stringify(r));
+    toets('de themaknop staat ook in de gewone weergave, met alle thema\'s', r.themaKnopGewoon && r.strookGewoon === r.n, JSON.stringify(r));
+    toets('Neon kiezen in de gewone weergave verandert de plaat', r.themaGewoon === 'neon' && r.plaatGewoon !== r.plaat0, JSON.stringify(r));
+    toets('…en Standaard geeft de gewone meter terug (tegenproef)', r.plaatTerug === r.plaat0, JSON.stringify(r));
     console.log('\n2. Volledig scherm en een thema kiezen');
     toets('tikken zet het volle scherm aan', r.vol, JSON.stringify(r));
     toets('…en de meter bedekt het hele scherm, boven de navigatie', r.dekt && r.bovenop, JSON.stringify(r));
@@ -96,9 +110,9 @@ function toets(naam, waar, uitleg) {
     toets('Chroom kiezen verandert de plaat en wordt onthouden', r.thema2 === 'chroom' && r.plaat2 !== r.plaat0 && r.bewaard === 'chroom', JSON.stringify(r));
     toets('een herbouw van de meter houdt het thema en de knoppen', r.naHerbouw === 'chroom' && r.knopNaHerbouw, JSON.stringify(r));
     toets('ook een profiel houdt op het volle scherm het thema en de knoppen', r.profiel !== 'basis' && r.profielThema === 'chroom' && r.profielKnop, JSON.stringify(r));
-    console.log('\n3. Terug naar standaard (tegenproef)');
+    console.log('\n3. Terug uit het volle scherm');
     toets('de terugknop sluit het volle scherm', r.dichtNaTerug, JSON.stringify(r));
-    toets('…en de meter heeft weer de standaardkleuren', r.thema3 === null && r.plaat3 === r.plaat0 && r.strookWeg, JSON.stringify(r));
+    toets('…en het gekozen thema blijft in de gewone weergave, zonder open strook', r.thema3 === 'chroom' && r.plaat3 === r.plaat2 && r.strookWeg, JSON.stringify(r));
     toets('weer openen geeft het onthouden thema', r.themaWeer === 'chroom', JSON.stringify(r));
     toets('een andere weergave kiezen sluit het volle scherm', r.dichtNaWissel, JSON.stringify(r));
 

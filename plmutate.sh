@@ -1069,6 +1069,8 @@ MUTATIES=(
 "public/pidlane.css@@#remExpertOv.pl-expertwerk .rem-card { max-width:none; width:100%;@@#remExpertOv.pl-expertwerk .rem-card { max-width:560px; width:100%;@@bproef-expertwerk.js@@de werkplek blijft het smalle telefoonvel op een laptop"
 "public/pidlane-expertwerk.js@@      try { if (window.PLNav && !PLNav.garage()) PLNav.zetGarage(true); }@@      try { }@@bproef-expertwerk.js@@de werkplek opent zonder garagemodus"
 "public/pidlane-visthema.js@@  try{ const v=localStorage.getItem(SLEUTEL); return geldig(v) ? v : STANDAARD; }@@  try{ return localStorage.getItem(SLEUTEL) || STANDAARD; }@@test-visthema.js@@een onbekende themakeuze komt ongekeurd op de meter"
+"public/pidlane-visthema.js@@function themaVoor(gekozen){ return geldig(gekozen) ? gekozen : STANDAARD; }@@function themaVoor(gekozen){ return STANDAARD; }@@test-visthema.js@@het gekozen thema geldt nergens meer"
+"public/pidlane-visthema.js@@  if(!vis) return;\n  const o=vis.querySelector('.vt-strook');@@  if(!vis || !vol()) return;\n  const o=vis.querySelector('.vt-strook');@@bproef-visthema.js@@in de gewone weergave opent 🎨 weer niets"
 "public/pidlane-visueel.js@@    themaBij(g);\n    return;@@    return;@@bproef-visthema.js@@een herbouw van een profiel gooit de knop volledig scherm weg"
 "public/pidlane-visueel.js@@  lichaam(false);\n  try{ if(window.PLVisThema) PLVisThema.uit(); }@@  lichaam(false);\n  try{ }@@bproef-visthema.js@@een andere weergave kiezen laat het volle scherm over de app liggen"
 "public/pidlane.css@@body.pl-vis-vol .vis { position:fixed; inset:0; z-index:var(--z-modal);@@body.pl-vis-vol .vis { position:fixed; inset:0; z-index:9000;@@bproef-visthema.js@@het volle scherm ligt onder de navigatiebalk"
@@ -2052,6 +2054,8 @@ MUTATIES=(
 # ── verbindprofiel als app-maat (#394, 03-10-2026) ──
 "public/pidlane-adapter.js@@return (st.msMet > 0 && st.msZonder > 0) ? Math.round((1 - st.msMet / st.msZonder) * 100) : null;@@return (st.msMet > 0 && st.msZonder > 0) ? Math.round((st.msMet / st.msZonder) * 100) : null;@@test-opdrachtappmaat.js@@de antwoordcijferwinst meldt de verhouding in plaats van de besparing: een cijfer dat niets doet lijkt 100% winst — #394"
 "public/pidlane-adapter.js@@return st.totaal ? Math.round(st.bad / st.totaal * 100) : null;@@return st.foutPct;@@test-opdrachtappmaat.js@@het foutpercentage van de meetopdracht kijkt naar het venster van 10 s in plaats van de hele sessie — #394"
+"public/pidlane-adapter.js@@'position:' + (hand ? 'static' : 'sticky')@@'position:' + 'sticky'@@bproef-adapterpaneel.js@@onder Handmatig plakt het knoppenvak weer over de getallen"
+"public/pidlane-adapter.js@@!m[3] || rest ? '' :@@!m[3] ? '' :@@test-adapterpaneel.js@@het effect van een wijziging krijgt een oordeel voordat het venster van 10 s om is"
 # ── verbinding met de hand (#394, 04-10-2026) ──
 "public/pidlane-bt.js@@&& parseInt(st,16)>=0x0C) r.st=st;@@) r.st=st;@@test-verbindprofiel.js@@met de hand kan ATST onder de 48 ms-bodem — #394"
 "public/pidlane-data.js@@(c==='ATAT1' ? 'ATAT'+at : c)@@c@@test-verbindprofiel.js@@de terugrol zet een met de hand gekozen ATAT weer op 1 — #394"
@@ -2138,6 +2142,7 @@ MUTATIES=(
 "public/pidlane-winter.js@@      var grens = p.sproeier === 'winter' ? (getal(p.sproeier_tot) !== null ? p.sproeier_tot : CFG.sproeierWinter) : CFG.sproeierZomer;@@      var grens = p.sproeier === 'winter' ? (getal(p.sproeier_tot) !== null ? p.sproeier_tot : CFG.sproeierZomer) : CFG.sproeierZomer;@@test-winter.js@@wintervloeistof zonder opgegeven grens slaat bij elke vorst alarm"
 "public/pidlane-winter.js@@if (w && w.onderOmslag && p.banden === 'zomer') {@@if (w && w.onderOmslag && p.banden !== 'winter') {@@test-winter.js@@all-season krijgt het advies om winterbanden te nemen"
 "public/pidlane-winter.js@@    winter: [[-20, 1], [7, 1], [15, 0.7], [25, 0.4], [45, 0.3]],@@    winter: [[-20, 1], [7, 1], [20, 1], [25, 0.4], [45, 0.3]],@@test-winter.js@@een winterband bij 17 °C heet past goed"
+"public/pidlane-winter.js@@    return PLWeer.haal(p.plaats, { forceer: true })@@    return PLWeer.haal(p.plaats)@@bproef-winter.js@@de verversknop haalt binnen het uur niets nieuws: hij geeft de oude verwachting terug"
 "worker.js@@  if (werk.length) o.werk = werk;@@@@test-klantplatform.js@@de Worker gooit het andere werk van een beurt weg (#426)"
 "public/pidlane-data.js@@    return PLConditie.recentVervangen(v, Date.now());@@    return [];@@test-softwareoorzaak.js@@het onderhoudslogboek komt nooit bij softwareOorzaken() aan (#426)"
 "public/pidlane-foutcodes.js@@      vervangen: typeof plVervangenRecent === 'function' ? plVervangenRecent() : [],\n@@@@test-softwareoorzaak.js@@Foutcodes geeft het logboek niet mee (#426)"

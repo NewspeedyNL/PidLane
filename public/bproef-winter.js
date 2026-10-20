@@ -76,6 +76,11 @@ function toets(naam, waar, uitleg) {
     toets('de plaats staat erbij', /Utrecht/.test(t));
     toets('één advies, het zwaarste: de sproeier (rood)', await app.ev(`document.querySelectorAll('#plWinterKaart .plw-adv').length === 1 && document.querySelector('#plWinterKaart .plw-adv').classList.contains('rood')`) && /Zomervloeistof/.test(t), t);
     toets('met de bron erbij', /Op basis van je profiel en de verwachting voor Utrecht/.test(t), t);
+    toets('met de tijd van de verwachting en een verversknop', /Bijgewerkt om \d\d:\d\d/.test(t) && await app.ev(`!!document.querySelector('#plWinterKaart .plw-ver')`), t);
+    const vers = await app.ev(`(function(){ var echt = PLWeer.haal, gevraagd = null;
+      PLWeer.haal = function (p, o) { gevraagd = { p: p, o: o }; return Promise.resolve(PLWeer.laatst(p)); };
+      return PLWinter._ververs().then(function () { PLWeer.haal = echt; return JSON.stringify(gevraagd); }); })()`);
+    toets('verversen haalt opnieuw, ook binnen het uur (forceer)', /"p":"utrecht"/.test(vers) && /"forceer":true/.test(vers), vers);
     toets('en hoeveel er nog meer zijn', /nog \d+ adviezen in je winterprofiel/.test(t), t);
     await app.ev(`document.querySelector('#plWinterKaart .plw-x').click()`);
     t = await kaart();

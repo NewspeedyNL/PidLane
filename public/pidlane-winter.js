@@ -384,12 +384,13 @@
     }).join('') + '</div>';
   }
 
-  var _laatst = '';
+  var _laatst = '', _vers = false;
   function teken(forceer) {
     var doel = document.getElementById('plWinterKaart');
     if (!doel) return;
     var nu = Date.now(), st = staat(nu);
-    var sleutel = JSON.stringify([st.banner, st.advies && st.advies.id, st.advies && st.advies.tekst, st.meer, st.toon, st.ctx.weer, st.ctx.profiel.plaats, isDemo()]);
+    var bij = st.ctx.profiel.plaats && window.PLWeer ? PLWeer.laatst(st.ctx.profiel.plaats) : null;
+    var sleutel = JSON.stringify([st.banner, st.advies && st.advies.id, st.advies && st.advies.tekst, st.meer, st.toon, st.ctx.weer, st.ctx.profiel.plaats, isDemo(), _vers, bij && bij.t]);
     if (!forceer && sleutel === _laatst) return;
     _laatst = sleutel;
     if (!st.toon || isDemo()) { doel.innerHTML = ''; return; }
@@ -405,6 +406,10 @@
     var ctx = st.ctx, a = st.advies;
     var h = '<section class="plw" aria-labelledby="plwT"><div class="plw-rij1"><div class="plw-kop" id="plwT">❄️ Winter</div>' +
       '<button type="button" class="plw-plaats" onclick="PLWinter.open()">' + (ctx.plaatsNaam ? '📍 ' + esc(ctx.plaatsNaam) : 'Winterprofiel') + '</button></div>' + strook(ctx);
+    // Verversen (20-10-2026): de verwachting is een uur geldig, en wie 's
+    // ochtends kijkt wil niet wachten tot het kwartier om is.
+    if (ctx.profiel.plaats) h += '<div class="plw-bij"><span>' + (bij && bij.t ? 'Bijgewerkt om ' + new Date(bij.t).toLocaleTimeString('nl', { hour: '2-digit', minute: '2-digit' }) : 'Nog geen verwachting') + '</span>' +
+      '<button type="button" class="plw-ver" onclick="PLWinter._ververs()"' + (_vers ? ' disabled' : '') + ' aria-label="Weer verversen">' + (_vers ? 'Bezig…' : '↻ Verversen') + '</button></div>';
     if (a) h += '<div class="plw-adv ' + a.ernst + '"><div class="plw-adv-tx"><b>' + esc(a.titel) + '</b><div>' + esc(a.tekst) + '</div>' +
       '<small>Op basis van ' + esc(a.bron) + (st.meer ? ' · nog ' + st.meer + ' ' + (st.meer === 1 ? 'advies' : 'adviezen') + ' in je winterprofiel' : '') + '</small></div>' +
       '<button type="button" class="plw-x" aria-label="Dit advies wegtikken" title="Wegtikken" onclick="PLWinter._weg(\'' + esc(a.id) + '\',\'' + esc(a.duur) + '\')">✕</button></div>';
@@ -537,6 +542,9 @@
       '.plw-adv-tx{flex:1;min-width:0;font-size:12.5px;line-height:1.4;color:var(--tx2)}.plw-adv-tx b{display:block;color:var(--tx);font-size:13px;margin-bottom:2px}' +
       '.plw-adv-tx small{display:block;margin-top:4px;font-size:11px;color:var(--tx3)}' +
       '.plw-x{flex:0 0 auto;width:28px;height:28px;border-radius:8px;border:1px solid var(--bd);background:var(--sur);color:var(--tx3);cursor:pointer}' +
+      '.plw-bij{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;font:500 11.5px var(--f);color:var(--tx3)}' +
+      '.plw-ver{border:1px solid var(--bd);background:var(--sur);color:var(--tx2);border-radius:999px;padding:4px 10px;font:600 12px var(--f);cursor:pointer}' +
+      '.plw-ver[disabled]{opacity:.6;cursor:default}' +
       '.plw-link{display:flex;justify-content:space-between;width:100%;margin-top:9px;padding:0;border:0;background:none;color:var(--bl);font:700 12.5px var(--f);cursor:pointer}' +
       '.plw-knoppen{display:flex;gap:8px;flex-wrap:wrap}' +
       '.plw-k{padding:8px 13px;border-radius:10px;border:1px solid var(--bd);background:var(--sur);color:var(--tx);font:700 13px var(--f);cursor:pointer}' +
@@ -573,6 +581,15 @@
     PLWeer.haal(p.plaats).then(function () { teken(); })
       .catch(function (e) { console.warn('PLWinter: weer niet ververst', e); });
   }
+  // De knop: altijd opnieuw halen, ook binnen het uur.
+  function verversNu() {
+    var p = profiel();
+    if (_vers || !p.plaats || !window.PLWeer) return Promise.resolve(null);
+    _vers = true; teken(true);
+    return PLWeer.haal(p.plaats, { forceer: true })
+      .catch(function (e) { console.warn('PLWinter: weer niet ververst', e); return null; })
+      .then(function (c) { _vers = false; teken(true); return c; });
+  }
   function start() {
     teken(true);
     ververs();
@@ -594,6 +611,7 @@
     _bewaar: bewaarForm,
     _later: later,
     _weg: weg,
+    _ververs: verversNu,
     _kern: { seizoen: seizoen, bannerNodig: bannerNodig, adviezen: adviezen, bandenStand: bandenStand, bandenTabel: bandenTabel,
       opwarmMin: opwarmMin, controleer: controleer, dotLeeftijd: dotLeeftijd, klaarVoorWinter: klaarVoorWinter, CFG: CFG }
   };

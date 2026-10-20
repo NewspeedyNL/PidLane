@@ -1706,15 +1706,22 @@ rect.vis-tik { fill:transparent; cursor:pointer; pointer-events:all; }
 .bev-x.bev-terug { color:var(--bl); border-color:var(--bl); }
 /* ── Volledig scherm en thema's van Slim visueel (18-10-2026, pidlane-visthema.js) ──
    ⛶ boven de meter zet body.pl-vis-vol: de .vis wordt schermvullend en ligt
-   over de rest van de app. Het thema (data-vthema op .vis) bestaat alleen
-   daar; het zet de kleurvariabelen om en voegt gloed of een verloop toe.
+   over de rest van de app. Het thema (data-vthema op .vis) geldt sinds
+   20-10-2026 ook in de gewone weergave; het zet de kleurvariabelen om en
+   voegt gloed of een verloop toe.
    Wat beweegt blijft van pidlane-visueel.js. */
 .vt-knoppen { position:absolute; top:0; left:50%; transform:translateX(-50%); z-index:2; display:flex; gap:8px; }
 .vt-knop { width:34px; height:34px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%;
   border:1px solid var(--bd); background:var(--sur); color:var(--tx2); font-size:16px; line-height:1; cursor:pointer; }
 .vt-knop svg { width:18px; height:18px; }
 .vt-knop:active { transform:scale(.92); }
-.vt-thema, .vt-uit { display:none; }
+.vt-uit { display:none; }
+/* Gewone weergave met een thema: de achtergrond van het thema in een vlak
+   met ronde hoeken, en de keuzestrook onder de knoppen in plaats van over de
+   navigatie onderin. */
+body:not(.pl-vis-vol) .vis { position:relative; }
+body:not(.pl-vis-vol) .vis[data-vthema]:not([data-vthema="standaard"]) { background:var(--vt-bg); border-radius:18px; }
+body:not(.pl-vis-vol) .vt-strook { position:absolute; bottom:auto; top:44px; animation:none; }
 body.pl-vis-vol { overflow:hidden; }
 body.pl-vis-vol .vis { position:fixed; inset:0; z-index:var(--z-modal); margin:0; overflow:auto; justify-content:center;
   padding:calc(var(--pl-sat, 0px) + 56px) 14px calc(var(--pl-sab, 0px) + 16px); box-sizing:border-box;

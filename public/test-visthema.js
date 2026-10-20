@@ -3,8 +3,8 @@
 // ──────────────────────────────────────────────────────────────────
 // Laadt de echte pidlane-visthema.js in een vm en toetst:
 //   • een onbekende of kapotte keuze wordt Standaard, en wordt niet bewaard;
-//   • het thema bestaat alléén op het volle scherm ("uit volledig scherm is
-//     gewoon weer standaard");
+//   • het gekozen thema geldt overal, sinds 20-10-2026 ook buiten het volle
+//     scherm; een onbekende keuze is Standaard;
 //   • elk thema heeft regels in pidlane.css, en de CSS kent geen thema dat
 //     de keuzestrook niet heeft — anders kies je er een dat niets doet;
 //   • de url(#…)-verlopen in de CSS staan in de defs die pas() in de meter zet.
@@ -49,12 +49,11 @@ console.log('\n1. Keuze lezen en bewaren');
   waar('een opslag die gooit: Standaard, en bewaren breekt niet', c2.PLVisThema.lees() === 'standaard' && c2.PLVisThema.bewaar('carbon') === true);
 }
 
-console.log('\n2. Het thema geldt alleen op het volle scherm');
+console.log('\n2. Het thema geldt op het volle scherm én daarbuiten (20-10-2026)');
 {
   const T = laad({});
-  waar('niet vol: geen thema, ook als er een gekozen is', T.themaVoor(false, 'neon') === null);
-  waar('vol: het gekozen thema', T.themaVoor(true, 'chroom') === 'chroom');
-  waar('vol met een onbekende keuze: Standaard', T.themaVoor(true, 'xx') === 'standaard');
+  waar('het gekozen thema', T.themaVoor('neon') === 'neon' && T.themaVoor('chroom') === 'chroom');
+  waar('een onbekende keuze: Standaard', T.themaVoor('xx') === 'standaard' && T.themaVoor(null) === 'standaard');
 }
 
 console.log('\n3. De thema\'s en pidlane.css lopen gelijk');

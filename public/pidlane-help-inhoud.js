@@ -93,7 +93,7 @@ var PL_HULP = {
     { id: 'winter', groep: 'start', titel: 'De winterkaart',
       tekst:
         '<p>Van oktober tot en met maart staat bovenaan het startscherm een kaart voor de winter. De eerste keer vraagt hij je <b>profiel aan te passen voor de winterperiode</b>. Met <b>Later</b> komt die vraag dit seizoen niet meer terug.</p>' +
-        '<p>Daarna zie je het weer van vandaag, morgen en overmorgen voor je plaats, en hoogstens één advies. Met ✕ tik je een advies weg; een advies over het weer komt na een week terug als het dan nog geldt.</p>' +
+        '<p>Daarna zie je het weer van vandaag, morgen en overmorgen voor je plaats, en hoogstens één advies. Onder het weer staat hoe laat de verwachting is opgehaald; met <b>↻ Verversen</b> haal je hem meteen opnieuw. Met ✕ tik je een advies weg; een advies over het weer komt na een week terug als het dan nog geldt.</p>' +
         '<p>In het <b>winterprofiel</b> zet je:</p>' +
         '<ul>' +
         '<li><b>Plaats voor het weer</b> — een stad uit de lijst, de dichtstbijzijnde. Niet je adres: je telefoon geeft geen locatie door.</li>' +
@@ -235,7 +235,7 @@ var PL_HULP = {
         '<p>Niet elke regel geldt voor elke auto: een motor met slimme laadregeling laadt bij een volle accu bewust onder 13 V, en sommige motoren draaien bewust 105–110 °C warm. Weet de app dat van jouw auto niet, dan zegt hij <b>niet te beoordelen</b> in plaats van een fout, en de AI trekt er dan ook geen conclusie over. Bij <b>bekijk alles</b> staat onder <b>Niet te beoordelen op deze auto</b> wat dat is, soms met een vraag. Je antwoord (<b>Ja</b> of <b>Nee</b>) onthoudt de app voor deze auto. Klinkt een bevinding met "niet zeker voor deze auto", dan is het een aandachtspunt en geen vastgesteld defect.</p>' +
         '<p>Onder de meters staat <b>⏺ Opnemen</b>, in de garagemodus ook <b>◉ Bewaken</b>. Delen en meekijken start je bovenaan Home bij <b>Expert op afstand</b>. ' +
         'Bij Visueel staan Opnemen en Bewaken er niet: daar start je de bulk-recorder en de waakronde vanuit het vak onder de meter. ' +
-        'Met de knop <b>volledig scherm</b> boven de meter vult hij het hele scherm; daar kies je met 🎨 een thema (Neon, Spectrum, Chroom, Carbon, Nachtrood). Het ✕ of de terugknop brengt je terug naar de gewone weergave; het thema wordt onthouden voor de volgende keer.</p>',
+        'Met 🎨 boven de meter kies je een thema (Neon, Spectrum, Chroom, Carbon, Nachtrood), in de gewone weergave en op het volle scherm; Standaard is de gewone meter. Met de knop <b>volledig scherm</b> vult hij het hele scherm. Het ✕ of de terugknop brengt je terug naar de gewone weergave; het thema blijft en wordt onthouden voor de volgende keer.</p>',
       zie: ['opnemen', 'delen'] },
 
     { id: 'opnemen', groep: 'gebruik', titel: 'Opnemen',
