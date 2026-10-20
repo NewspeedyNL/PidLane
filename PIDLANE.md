@@ -749,9 +749,13 @@ rekent dat uit als `akkoordActueel` (§11, "Opgelost op 27-08"), getest in
   met `{meet:false}` als vijfde parameter van `apiFetch`. Zie §11 11-09.
   **Sinds 20-10-2026 maakt de meetfase die parameter:**
   `PLVerzamel.aanlevering(uit, vraag, profiel)` neemt het profiel uit de
-  meting en geeft als `zichtbaar` de sensoren mee die `promptBlok` liet zien;
-  het kwaliteitsoordeel gaat over dekking ∪ zichtbaar. Een aanroeper zet dus
-  géén eigen DATAKWALITEIT-blok of correlatielijst meer in zijn prompt.
+  meting en geeft als `zichtbaar` de sensoren mee die `promptBlok` liet zien.
+  Die zijn daar al beoordeeld, over het hele venster (MEETKWALITEIT
+  TWIJFELACHTIG); het DATAKWALITEIT-blok van de aanlevering oordeelt alleen
+  over de dekking daarbuiten, op de live waarde. Eén oordeel per sensor. Een
+  aanroeper zet dus géén eigen DATAKWALITEIT-blok of correlatielijst meer in
+  zijn prompt. Ook de AI-Automonteur en de opname lopen sinds #565 via
+  `vanBron` + `promptBlok` + `PLVerzamel.aanlevering`, zonder scherm.
 
 ### Twee accountsoorten, één verdienmodel — besluit 03-09-2026 (#49)
 

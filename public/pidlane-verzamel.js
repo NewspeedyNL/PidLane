@@ -605,8 +605,6 @@
     return sam;
   }
 
-  /* De samenvatting van een gegeven bron ({hist, pids?}), zoals het scherm
-     hem toont. Voor een rapport dat de bron zelf heeft (het ritrapport). */
   /* WAT DE MEETFASE AAN DE AI-HAAK DOORGEEFT (20-10-2026). De vijfde
      parameter van apiFetch() — de aanlevering, #188 — werd op elke plek met
      de hand opgeschreven, en het profiel daarin met de hand overgetikt van de
@@ -627,6 +625,8 @@
     return a;
   }
 
+  /* De samenvatting van een gegeven bron ({hist, pids?}), zoals het scherm
+     hem toont. Voor een rapport dat de bron zelf heeft (het ritrapport). */
   function vanBron(b) {
     if (!b) return null;
     const pids = (b.pids && b.pids.length) ? b.pids
