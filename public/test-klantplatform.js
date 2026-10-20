@@ -123,6 +123,15 @@ async function laadWorker() {
   toets('brandstof als keuze, in kleine letters', rij.brandstof === 'benzine');
   toets('een ongeldige keuze wordt geweigerd', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { turbo: 'misschien' } }))._status === 400);
   toets('geen kenteken als kenteken', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { kenteken: '!!!' } }))._status === 400);
+  // Het winterprofiel (#556): alleen een plaats uit de lijst, en bewaren laat de rest staan.
+  const wi = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, plaats: 'utrecht', banden: 'Winter', banden_dot: '4521', banden_mm: 6.5, sproeier: 'winter', sproeier_tot: -20, sproeier_datum: '2026-11-01', winter_gezien: 'winter-2026' } });
+  const wiRij = db.prepare('SELECT * FROM kp_voertuig WHERE id = ?').get(v1.voertuig.id);
+  toets('winterprofiel bewaard, de rest van het profiel blijft staan', wi.ok && wiRij.plaats === 'utrecht' && wiRij.banden === 'winter' && wiRij.banden_mm === 6.5 && wiRij.sproeier_tot === -20 && wiRij.winter_gezien === 'winter-2026' && wiRij.merk === 'Mazda', JSON.stringify(wi));
+  toets('en komt terug naar de app', wi.voertuig && wi.voertuig.plaats === 'utrecht' && wi.voertuig.banden_dot === '4521');
+  toets('een adres als plaats wordt geweigerd', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, plaats: 'Dorpsstraat 1, Utrecht' } }))._status === 400);
+  toets('een coördinaat als plaats wordt geweigerd', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, plaats: '52.09,5.12' } }))._status === 400);
+  toets('DOT week 55 wordt geweigerd', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, banden_dot: '5521' } }))._status === 400);
+  toets('een vreemde bannersleutel wordt geweigerd', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, winter_gezien: '<script>' } }))._status === 400);
 
   const env2 = Object.assign({}, env, { KENTEKEN_SLEUTEL: '' });
   const zs = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { naam: 'Clio', kenteken: '12-XYZ-3' } }, env2);
