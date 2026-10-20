@@ -397,29 +397,39 @@ console.log('\n9. Een analyseprofiel levert de kernset die de analyse ook echt o
     /analyseprofiel "brandstof"/.test(B.blok({ profiel: prof })));
 }
 
-console.log('\n9b. Het kwaliteitsoordeel gaat over wat de AI te zien kreeg (20-10-2026)');
-/* Tot deze datum plakten acht aanroepplekken hun eigen DATAKWALITEIT-blok in
-   de prompt, omdat dit blok alleen over de dekking van het profiel oordeelde
-   en de meetfase daarbuiten meer liet zien. Nu geeft de meetfase die lijst
-   mee als `zichtbaar`, en dan moet een sensor daarbuiten óók zijn oordeel
-   krijgen — anders verdwijnt met het dubbele blok ook de waarschuwing. */
+console.log('\n9b. Eén kwaliteitsoordeel per sensor: wat de samenvatting toont, is daar beoordeeld (20-10-2026)');
+/* De samenvatting van de meetfase beoordeelt elke sensor die hij toont over
+   het hele meetvenster (MEETKWALITEIT TWIJFELACHTIG). Dit blok keek naar de
+   live waarde van nu. Over dezelfde sensor twee oordelen, die elkaar kunnen
+   tegenspreken: dus valt wat `zichtbaar` is hier weg, en oordeelt dit blok
+   alleen nog over de dekking daarbuiten. */
 {
-  const buiten = Object.keys(data.PID_HARD_LIMITS).find(function (p) {
-    return NODIG.indexOf(p) < 0 && data.ALL_PID_DEFS[p] && typeof data.PID_HARD_LIMITS[p].max === 'number';
-  });
-  const onmogelijk = data.PID_HARD_LIMITS[buiten].max + 1000;
-  const vals = { [NODIG[0]]: 20 }; vals[buiten] = onmogelijk;
-  const Z = bouw({ supported: NODIG.concat([buiten]), active: [NODIG[0], buiten], vals: vals });
-  const naam = data.ALL_PID_DEFS[buiten].name;
-  const met = Z.blok({ set: SET, zichtbaar: [buiten] });
-  toets('een zichtbare sensor buiten het profiel krijgt zijn UITGESLOTEN-oordeel',
-    /UITGESLOTEN/.test(met) && met.indexOf(naam) > 0, buiten + ' ' + naam + '\n' + met);
-  const zonder = Z.blok({ set: SET });
-  toets('TEGENPROEF: zonder zichtbaar blijft het oordeel bij de dekking',
-    zonder.indexOf(naam) < 0, zonder);
-  toets('dekking en zichtbaar samen, zonder dubbele PIDs',
-    JSON.stringify(Z.kwaliteitsPids({ geleverd: ['a', 'b'] }, ['b', 'c'])) === '["a","b","c"]' &&
-    Z.kwaliteitsPids(null, []) === null);
+  // Gewone waarden: dan levert elke sensor, staat hij in de dekking, en is
+  // er dus iets om dubbel te beoordelen. Een onmogelijke waarde zou hier niets
+  // onderscheiden — die valt al bij de dekking af ("gemeten, maar uitgesloten").
+  const a = NODIG[0], b = NODIG[1];
+  const vals = NODIG.reduce(function (o, p, i) { o[p] = 20 + i; return o; }, {});
+  const Z = bouw({ supported: NODIG, active: NODIG, vals: vals });
+  const naam = function (p) { return (data.ALL_PID_DEFS[p] || {}).name || p; };
+  const beoordeeld = function (m) {
+    const k = m.kwaliteit; if (!k) return [];
+    return k.betrouwbaar.concat(k.twijfel, k.onzin).map(function (q) { return q.name; });
+  };
+  const met = Z.meet({ set: SET, zichtbaar: [a] });
+  toets('een sensor uit de samenvatting krijgt hier géén tweede oordeel',
+    beoordeeld(met).indexOf(naam(a)) < 0, JSON.stringify(beoordeeld(met)));
+  toets('een sensor van de dekking buiten de samenvatting wél',
+    beoordeeld(met).indexOf(naam(b)) >= 0, JSON.stringify(beoordeeld(met)));
+  toets('TEGENPROEF: zonder zichtbaar oordeelt het blok over beide',
+    beoordeeld(Z.meet({ set: SET })).indexOf(naam(a)) >= 0);
+  toets('en het blok zegt waar het oordeel over de samenvatting wél staat',
+    /beoordeeld over het hele meetvenster/.test(Z.blok({ set: SET, zichtbaar: [a] })));
+  toets('alles zichtbaar: geen DATAKWALITEIT-blok, en geen terugval op de hele selectie',
+    Z.blok({ set: SET, zichtbaar: NODIG }).indexOf('DATAKWALITEIT (verplicht') < 0 &&
+    Z.blok({ set: SET }).indexOf('DATAKWALITEIT (verplicht') > 0);
+  toets('kwaliteitsPids: dekking min zichtbaar; zonder zichtbaar ongewijzigd',
+    JSON.stringify(Z.kwaliteitsPids({ geleverd: ['x', 'y'] }, ['y', 'z'])) === '["x"]' &&
+    JSON.stringify(Z.kwaliteitsPids(null, [])) === '[]' && Z.kwaliteitsPids({ geleverd: [] }) === null);
 }
 
 console.log('\n10. Elke profielnaam in de aanroepplekken bestaat ook echt');

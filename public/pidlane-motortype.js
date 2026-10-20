@@ -153,8 +153,23 @@ function autoKennisVoorMerk(merk, brandstof, auto){
 
 function closeAutoExpert(){ document.getElementById('autoExpertSheet').classList.add('hidden'); }
 
-// Bouwt de context-string: voertuig + live PIDs + DTC's + merk-kennis
-function buildAutoExpertContext(){
+// De sensoren voor de AI-Automonteur, als dezelfde samenvatting die elk
+// ander rapport krijgt (#565): min–max, gemiddelde en het oordeel per sensor
+// over wat pidHist nog bewaart, in plaats van alleen de laatste waarde. Geen
+// verzamelscherm ervoor: dit is een vraag-en-antwoordvenster, en tien seconden
+// meten vóór elke vraag maakt dat een formulier. Wat er wél gemeten is, krijgt
+// zo hetzelfde oordeel als overal.
+function _aexMeting(){
+  const hist=(typeof pidHist!=='undefined'&&pidHist)||{};
+  const pids=[...activePIDs].filter(p=>isReportableSensor(p)&&(hist[p]||[]).length);
+  let t0=Infinity, t1=0;
+  pids.forEach(p=>{ const h=hist[p]; t0=Math.min(t0,h[0].t); t1=Math.max(t1,h[h.length-1].t); });
+  const sam=pids.length?PLVerzamel.vanBron({hist, pids}):null;
+  return { sam, bron:'de historie van de app', sec:t1>t0?Math.round((t1-t0)/1000):null };
+}
+
+// Bouwt de context-string: voertuig + sensoren + DTC's + merk-kennis
+function buildAutoExpertContext(meting){
   const v=getVehicle()||{};
   const lines=[];
   const merkModel=[v.merk,v.model,v.year].filter(Boolean).join(' ');
@@ -164,14 +179,11 @@ function buildAutoExpertContext(){
   const _ft=vehicleFuelType();
   if(_ft==='elektrisch') lines.push('AANDRIJVING: volledig elektrisch — geen verbrandingsmotor, brandstof, trim, lambda of uitlaat. Praat niet over brandstofzaken.');
   else if(_ft==='diesel') lines.push('AANDRIJVING: diesel — let op DPF/roetfilter, AdBlue/SCR en NOx waar relevant.');
-  // Live PID-waarden
-  const pidLines=[...activePIDs].map(pid=>{
-    const d=getPidDef(pid);
-    if(d && pidVals[pid]!==undefined) return `  ${d.name}: ${fv(pidVals[pid])} ${d.unit||''}`;
-    return null;
-  }).filter(Boolean);
-  if(pidLines.length){ lines.push('LIVE SENSORDATA:'); lines.push(...pidLines); }
-  else lines.push('LIVE SENSORDATA: (nog geen actieve sensoren)');
+  // Sensoren: de samenvatting over het venster (zie _aexMeting).
+  const m=meting||_aexMeting();
+  const blok=m.sam?PLVerzamel.promptBlok(m.sam,{sec:m.sec}):'';
+  if(blok) lines.push(blok.trim());
+  else lines.push('SENSORDATA: (nog geen actieve sensoren)');
   // DTC's
   if(typeof dtcCodes!=='undefined' && dtcCodes.length){
     lines.push('ACTIEVE FOUTCODES:');
@@ -202,8 +214,9 @@ async function autoExpertAsk(mode){
     vraag='Leg de actieve foutcodes uit in begrijpelijke taal, geef per code de waarschijnlijke oorzaak (merk-specifiek waar relevant) en de aanbevolen vervolgstap.';
   }
   ansEl.innerHTML='<div class="ai-ld" style="padding:20px;text-align:center"><div class="spin"></div> Automonteur denkt na...</div>';
-  const context=buildAutoExpertContext();
-  const sys='Jij bent de PidLane AI-Automonteur: een ervaren, no-nonsense Nederlandse automonteur die OBD2-data leest en merk-specifieke kennis heeft. Antwoord in helder Nederlands, kort en praktisch. Gebruik de meegeleverde live sensordata, foutcodes en merk-kennis. Structureer met korte kopjes waar nuttig. Respecteer de meegeleverde DATAKWALITEIT-sectie strikt.\n'+pidlaneBasisRegels();
+  const meting=_aexMeting();
+  const context=buildAutoExpertContext(meting);
+  const sys='Jij bent de PidLane AI-Automonteur: een ervaren, no-nonsense Nederlandse automonteur die OBD2-data leest en merk-specifieke kennis heeft. Antwoord in helder Nederlands, kort en praktisch. Gebruik de meegeleverde sensordata, foutcodes en merk-kennis. Structureer met korte kopjes waar nuttig. Respecteer de meegeleverde MEETKWALITEIT- en DATAKWALITEIT-secties strikt.\n'+pidlaneBasisRegels();
   const prompt=`${context}\n\nVRAAG VAN DE DEALER: ${vraag}`;
   try{
     // Geen profiel: de AI-Automonteur draait op wat er op DIT moment in de
@@ -211,7 +224,7 @@ async function autoExpertAsk(mode){
     // beloven over een set die deze vraag nooit heeft opgevraagd — en een
     // verkeerde dekking is erger dan geen. De onderbrekingen, de datakwaliteit
     // en de weegregels gaan wél gewoon mee (#188).
-    const txt=await apiFetch(prompt, 1100, sys, null, { vraag: vraag });
+    const txt=await apiFetch(prompt, 1100, sys, null, PLVerzamel.aanlevering(meting, vraag));
     ansEl.innerHTML='';
     if(typeof renderAIText==='function'){ renderAIText(txt, ansEl); }
     else ansEl.textContent=txt;

@@ -48,17 +48,27 @@ alles:
 **Wat er veranderde.** `PLVerzamel.aanlevering(uit, vraag, profiel)` maakt de
 aanlevering uit het meetresultaat: het profiel komt uit de meting (alleen een
 meting uit een gegeven bron mag er zelf een noemen), en `zichtbaar` is de lijst
-sensoren die `promptBlok` liet zien. `PLAanlevering` oordeelt over de kwaliteit
-van dekking ∪ zichtbaar — daarmee was het eigen blok op de aanroepplekken
-overbodig, en is het weg. Prijs, lease, inkoop en de herziening krijgen
+sensoren die `promptBlok` liet zien. Het eigen blok op de aanroepplekken is
+weg.
+
+**Herzien, dezelfde dag (#565).** Eerst oordeelde `PLAanlevering` over dekking
+∪ zichtbaar. Dat was één dubbeling te weinig opgeruimd: `promptBlok` beoordeelt
+elke sensor die hij toont al zelf, over het hele venster (MEETKWALITEIT
+TWIJFELACHTIG), terwijl de aanlevering naar de live waarde van nú keek. Een
+onmogelijke piek midden in de rit en een nette waarde bij het stoppen gaven
+dan "meetfout" en "betrouwbaar" over dezelfde sensor. Nu is het dekking
+**min** zichtbaar: wat de samenvatting toont, is daar beoordeeld. Prijs, lease, inkoop en de herziening krijgen
 `{meet:false}`; de verdieping krijgt de PID's van zijn systeem als dekking.
 `test-verzamelroutes.js` stelt nu per route dezelfde vijf vragen; tegen de oude
 bron werden er 20 van de 71 rood.
 
-**Bewust niet in deze ronde** (zie het issue): de AI-Automonteur en de opname
-hebben nog geen meetfase; onderhoud, EV en lange rit zetten na de meetfase nog
-een keer `ensurePIDsActive` aan, wat alleen bustijd kost; het ritrapport geeft
-zijn aanlevering nog met de hand op (wel correct).
+**Ronde 2 (#565).** De AI-Automonteur en de opname krijgen de samenvatting via
+`vanBron` (de Automonteur over `pidHist`, zonder verzamelscherm: tien seconden
+meten vóór elke vraag maakt een vraagvenster een formulier). Onderhoud, EV en
+lange rit zetten na de meetfase geen profiel meer aan — na een rit zette dat
+een selectie aan die de rit nooit had, en zei de dekking "geleverd" over
+sensoren die niet in de samenvatting stonden. Het ritrapport en de
+totaalcheck-verdieping geven `zichtbaar` mee.
 
 ## 20-10-2026 — "Er is iets mis" opnieuw: eerst wat, dan wanneer; en tractie-ingrijpen (#560)
 
