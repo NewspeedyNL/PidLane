@@ -15,6 +15,26 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 20-10-2026 — Drie dingen uit het gebruik: verversen, Handmatig, thema's
+
+**Adapterpaneel onder Handmatig.** Het knoppenvak plakt sinds 02-10 onderaan
+(`position:sticky`, "alle knoppen onderin"). Onder Handmatig kwamen daar
+tempo, groep en de verbindingsknoppen (#394) bij, en werd het vak hoger dan
+het scherm: de getallen erboven waren niet meer te zien, precies wanneer je
+wilt weten wat je knop doet. Een eigen schuifbalk in het vak werkt niet: het
+paneel tekent elke 2 s opnieuw en zet hem terug. Nu plakt het vak alleen bij
+de automaat, en staat bovenaan de handmatige knoppen een strook met de bus
+van nú naast die van vlak vóór de laatste wijziging (`_merkWijziging`,
+`effect()`). Oordeel pas na het venster van `PLBus.stats()` (10 s); "bus
+bezet" krijgt geen oordeel, want hoger is daar niet beter of slechter.
+
+**Thema's in de gewone weergave.** Op 18-10 bewust alleen op het volle
+scherm ("uit volledig scherm is gewoon weer standaard"). Op 20-10 andersom
+gevraagd: ook in Visueel zelf. Standaard is daar de gewone meter, zodat wie
+niets kiest niets ziet veranderen.
+
+---
+
 ## 20-10-2026 — Eerste rit met de nieuwe totaalcheck: vijf fouten uit één rapport
 
 Rapport "Rijdeel van de totaalcheck", CX-5, 13:29. Meting 6:11 min, "waarvan

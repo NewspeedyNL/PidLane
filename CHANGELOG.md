@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 20-10-2026 — Verversen, Handmatig, thema's in Visueel
+ ═══════════════════════════════════════════════════════════
+
+ - Winterkaart: "Bijgewerkt om …" en ↻ Verversen (haalt meteen opnieuw,
+   ook binnen het uur).
+ - Adapterpaneel onder ✋ Handmatig: het knoppenvak plakt niet meer over
+   de getallen, en bovenaan staat wat je laatste wijziging doet — nu naast
+   vóór, met beter/slechter na het venster van 10 s.
+ - Slim visueel: thema's ook in de gewone weergave, 🎨 staat er altijd.
+
+ ═══════════════════════════════════════════════════════════
  20-10-2026 — De totaalcheck op de schop: stilstand en rijden
  ═══════════════════════════════════════════════════════════
 
