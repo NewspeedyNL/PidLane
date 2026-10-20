@@ -2154,13 +2154,26 @@ body.pl-visueel:has(#pane-live.active) #blkChipFab { display:none !important; }
 .chk-intro { background:linear-gradient(135deg,var(--bls),var(--sur2)); border:1px solid var(--bd); border-radius:var(--r); padding:14px; margin-bottom:12px; }
 .chk-intro h3 { font-size:14px; font-weight:700; margin-bottom:3px; }
 .chk-intro p { font-size:13px; color:var(--tx2); line-height:1.6; }
-.chk-qrow { display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--bd); font-size:13px; }
-.chk-qrow:last-child { border-bottom:none; }
-.chk-opts { display:flex; gap:4px; }
-.chk-opt { padding:3px 9px; border-radius:999px; border:1px solid var(--bd); font-size:12px; font-weight:600; cursor:pointer; background:var(--sur2); color:var(--tx2); transition:all .12s; }
-.chk-opt.sel-ja { background:var(--gns); border-color:var(--gn); color:var(--gn); }
-.chk-opt.sel-nee { background:var(--rds); border-color:var(--rd); color:var(--rd); }
-.chk-opt.sel-soms { background:var(--ors); border-color:var(--or); color:var(--or); }
+/* Totaalcheck (20-10-2026): twee stappen en een kaart per categorie */
+.tc-stappen { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+@media (max-width:520px){ .tc-stappen { grid-template-columns:1fr; } }
+.tc-stap { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:12px; display:flex; flex-direction:column; gap:6px; box-shadow:var(--ss); }
+.tc-stap.gedaan { border-color:var(--gn); }
+.tc-stap-t { font-size:14px; font-weight:700; }
+.tc-stap-u { font-size:12px; color:var(--tx2); line-height:1.5; }
+.tc-stap-s { font-size:12px; color:var(--tx3); flex:1; }
+.tc-cat { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); margin-bottom:8px; box-shadow:var(--ss); }
+.tc-cat.bad { border-color:var(--rd); } .tc-cat.warn { border-color:var(--or); }
+.tc-cat > summary { display:flex; align-items:center; gap:8px; padding:10px 12px; cursor:pointer; list-style:none; }
+.tc-cat > summary::-webkit-details-marker { display:none; }
+.tc-cat[open] > summary { border-bottom:1px solid var(--bd); }
+.tc-cat > :not(summary) { margin:8px 12px; }
+.tc-cat-i { font-size:16px; }
+.tc-cat-n { font-size:13px; font-weight:700; }
+.tc-cat-k { flex:1; font-size:12px; color:var(--tx3); min-width:0; }
+.tc-noot { font-size:12px; color:var(--tx2); line-height:1.5; }
+.tc-gat { background:var(--ors); border-radius:var(--r); padding:8px 10px; margin-bottom:8px; }
+.tc-knoppen { display:flex; flex-wrap:wrap; gap:8px; }
 .chk-summary { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px; }
 .chk-sum { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:12px 8px; text-align:center; box-shadow:var(--ss); }
 .chk-sum-num { font-family:var(--m); font-size:24px; font-weight:500; margin-bottom:2px; }

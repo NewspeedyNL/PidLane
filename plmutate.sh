@@ -2206,6 +2206,16 @@ MUTATIES=(
 "public/pidlane-verzamel.js@@    if (t.verstreken < t.minMs) return 'meten';\n@@@@test-verzamel.js@@met genoeg historie springt het scherm meteen naar de uitslag: de klant ziet niets binnenkomen"
 "public/pidlane-verzamel.js@@    if (t.ok && t.kernCompleet !== false) return 'klaar';@@    if (t.ok) return 'klaar';@@test-verzamel.js@@het scherm is klaar terwijl de kernsensoren nog niet binnen zijn"
 "public/pidlane-verzamel.js@@(r.buiten ? '; ' + r.buiten + ' daarvan buiten de grens'@@(false ? '; ' + r.buiten + ' daarvan buiten de grens'@@test-verzamel.js@@de AI hoort niet meer hoe vaak een waarde buiten de grens kwam: een piek weegt even zwaar als een blijvende afwijking"
+# ── De totaalcheck in twee delen (20-10-2026): stilstand en rijden gesplitst,
+# verdiepen alleen waar iets afwijkt, niet gemeten is nooit goed.
+"public/pidlane-totalcheck.js@@        return soort === 'rij' ? v > kmh : v <= kmh;@@        return true;@@test-totaalcheck.js@@stilstand en rijden krijgen weer dezelfde monsters: 13,1 V rijdend leest als stilstaand"
+"public/pidlane-totalcheck.js@@        if (v === null) return false;@@        if (v === null) return true;@@test-totaalcheck.js@@een monster zonder snelheid in de buurt telt weer mee, in beide delen"
+"public/pidlane-totalcheck.js@@focus: oordeel === 'afwijkend' || oordeel === 'let', open: oordeel !== 'ok'@@focus: true, open: true@@test-totaalcheck.js@@elke categorie gaat weer open met een focusmeting, ook als hij klopt"
+"public/pidlane-totalcheck.js@@[dtc.licht.kleur] || 'nodata';@@[dtc.licht.kleur] || 'ok';@@test-totaalcheck.js@@foutcodes die niet uitgelezen zijn heten weer goed"
+"public/pidlane-totalcheck.js@@      rijden: afw.length > 0 && afw.every(p => !afStil(p) && p.rij)@@      rijden: false@@test-totaalcheck.js@@een afwijking die alleen rijdend zat krijgt een focusmeting stilstaand, waar er niets te zien is"
+"public/pidlane-totalcheck.js@@      if (!x || !x.sam) { t += '\n\n' + titel + ': NIET GEMETEN. ' + uitleg; return; }@@      if (!x || !x.sam) return;@@test-totaalcheck.js@@de AI hoort niet meer dat rijden niet gemeten is en mag er dus over oordelen"
+"public/pidlane-totalcheck.js@@  const s=PLTotaal.stand(_tc);\n  if(!s.aiMag) return;\n@@  const s=PLTotaal.stand(_tc);\n@@test-totaalcheck.js@@het AI-rapport gaat weer weg zonder meting"
+"public/pidlane-totalcheck.js@@watVoor:'het rijdeel van de totaalcheck', ai:false, rijtest:false,@@watVoor:'het rijdeel van de totaalcheck', ai:false,@@test-totaalcheck.js@@het rijdeel biedt weer de ritanalyse met fases van twee minuten aan"
 "public/pidlane-fuel.js@@  if(!uit || !uit.ai) return;\n  activateAIPane();@@  if(!uit) return;\n  activateAIPane();@@test-verzamel.js@@sluiten zonder AI op het verzamelscherm verstuurt toch een betaald rapport"
 "public/pidlane-fuel.js@@  const v=getVehicle();\n  const meetBlok=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});@@  const v=getVehicle();\n  const meetBlok='';@@test-verzamel.js@@het AI-rapport krijgt de samenvatting van het scherm niet meer mee"
 "public/pidlane-wizard.js@@    if(GEEN_MEETEIS[k] || EIGEN_METING[k] || typeof PLVerzamel@@    if(GEEN_MEETEIS[k] || typeof PLVerzamel@@bproef-verzamel.js@@de AI-monteur krijgt weer een meetscherm zonder AI-knop vóór zijn eigen verzamelscherm"

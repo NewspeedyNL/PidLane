@@ -2,8 +2,8 @@
 // test-verzamelroutes.js — elke analyse via het verzamelscherm (#443)
 // ──────────────────────────────────────────────────────────────────
 // test-verzamel.js toetst het scherm zelf. Deze test toetst de AANROEPERS:
-// tien analyses die sinds #443 eerst PLVerzamel.meet() vragen. Per analyse
-// twee vragen, en die zijn voor alle tien dezelfde:
+// de analyses die sinds #443 eerst PLVerzamel.meet() vragen. Per analyse
+// twee vragen, en die zijn voor allemaal dezelfde:
 //
 //   1. zegt de klant nee (of sluit hij het scherm), gaat er dan echt niets
 //      naar de AI? Dat is tegoed.
@@ -14,7 +14,7 @@
 // kop, en draait in een omgeving waarin alles wat hij aanroept bestaat maar
 // niets doet (een `with`-proxy). Alleen drie dingen zijn echt of gevangen:
 // PLVerzamel (de echte promptBlok, een meet() die ja of nee zegt) en de twee
-// wegen naar de AI, apiFetch en callAI. Zo hoeft deze test de tien schermen
+// wegen naar de AI, apiFetch en callAI. Zo hoeft deze test de schermen
 // niet na te bouwen, en wordt hij rood op precies de twee vragen hierboven.
 //
 // Draaien vanuit public/:  node test-verzamelroutes.js   (exit 0 = goed)
@@ -112,9 +112,9 @@ async function draai(r, antwoord) {
 const ROUTES = [
   { naam: 'runQuickAI',        bestand: 'pidlane-fuel.js',       kop: 'async function runQuickAI(opts){' },
   { naam: 'runFuelAnalysis',   bestand: 'pidlane-fuel.js',       kop: 'async function runFuelAnalysis(){', rit: true },
-  { naam: 'runTotalCheck',     bestand: 'pidlane-totalcheck.js', kop: 'async function runTotalCheck(){', rit: true,
-    // De totaalcheck geeft de uitkomst door aan runCheckAI; die knippen we mee.
-    extra: ['async function runCheckAI(items, uit){'] },
+  // runTotalCheck staat hier sinds 20-10-2026 niet meer: hij meet in twee
+  // delen zonder AI-knop en de AI-vraag is een eigen knop over beide delen.
+  // test-totaalcheck.js toetst dat die alleen kan na een meting.
   { naam: 'runDiagAI',         bestand: 'pidlane-diagnose.js',   kop: 'async function runDiagAI(causeName){', args: ['Bobine'] },
   { naam: 'runOnderhoud',      bestand: 'pidlane-koopcheck.js',  kop: 'async function runOnderhoud(){' },
   { naam: 'runEVCheck',        bestand: 'pidlane-koopcheck.js',  kop: 'async function runEVCheck(){' },
