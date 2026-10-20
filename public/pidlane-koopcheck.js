@@ -988,19 +988,21 @@ function pidRecToAI(){
 // Headless AI-analyse van de laatste opname — gedeeld door de recorder-UI
 // én de remote-besturing (expert stuurt commando, LOCAL draait de analyse).
 async function pidRecAiText(prob){
-  var rows=_recStats(); var d=window._recData; var ds='';
-  rows.forEach(function(r){ ds+='- '+r.name+': '+r.n+' metingen, bereik '+(r.mn==null?'—':fv(r.mn))+' t/m '+(r.mx==null?'—':fv(r.mx))+', gemiddeld '+(r.av==null?'—':fv(r.av))+' '+r.unit+'\n'; });
+  var d=window._recData;
+  // De opname ís de meting, en gaat als bron door dezelfde samenvatting als
+  // elk ander rapport (#565): min–max per sensor, met het oordeel over het
+  // hele venster. Tot nu toe stond hier een eigen statistiek zonder oordeel,
+  // en keek de aanlevering naar de live waarde van ná de opname.
+  var uit={ bron:'de opname', sam:PLVerzamel.vanBron({ hist:(d&&d.buffer)||{}, pids:(d&&d.pids)||[] }) };
   var vi=(typeof vehicleInfo!=='undefined'&&vehicleInfo)?vehicleInfo:{};
   var mm=[vi.merk||vi.make||'',vi.model||''].filter(Boolean).join(' ');
   var p='Je bent een ervaren AI-automonteur. Een gebruiker heeft tijdens het rijden zelf een dataset opgenomen om een probleem te reproduceren. Gebruik UITSLUITEND deze opgenomen sensordata als bewijs om de mogelijke oorzaak te VINDEN of juist te ONTKRACHTEN.\n\n'+
     'KLACHT: '+prob+'\n'+(mm?('MERK/MODEL: '+mm+'\n'):'')+
-    'OPNAMEDUUR: '+(d?d.dur:0)+' seconden\n'+
-    'OPGENOMEN SENSORDATA:\n'+ds+'\n'+
+    'OPNAMEDUUR: '+(d?d.dur:0)+' seconden'+
+    (PLVerzamel.promptBlok(uit.sam,{sec:d?d.dur:null})||'\nOPGENOMEN SENSORDATA: (geen)')+'\n\n'+
     'Geef je antwoord in EXACT deze secties met deze koppen (hoofdletters):\n'+
     'MOGELIJKE OORZAAK\nDATA-OORDEEL\nADVIES'+PLRapport.instructie();
-  // Geen meetfase hier: de opname ís de meting. De vraag gaat wél mee, zodat
-  // de aanlevering zegt waar het over gaat en de weegregels erbij komen.
-  var txt=await apiFetch(p,2000,null,null,{ vraag:'Opname tijdens het rijden — klacht: '+prob, zichtbaar:(d&&d.pids)||[] });
+  var txt=await apiFetch(p,2000,null,null,PLVerzamel.aanlevering(uit,'Opname tijdens het rijden — klacht: '+prob));
   return _withDisclaimer(txt);
 }
 async function pidRecRunAI(){
@@ -1225,7 +1227,11 @@ async function runOnderhoud(){
   const uit=await PLVerzamel.meet({niveau:'normaal', profiel:'totaal', watVoor:'het onderhoudsadvies'});
   if(!uit || !uit.ai){ res.innerHTML=''; return; }
   res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 AI analyseert het onderhoud…</div>`;
-  try{ await ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet vers gezet vóór het onderhoudsadvies — het advies kan op oude data draaien: '+(e.message||e),'warn'); _plSensorVlag('De sensoren voor het onderhoudsadvies'); }
+  // Geen ensurePIDsActive meer ná de meetfase (#565): die zette het profiel
+  // al aan vóór het meten, en na het meten wordt er niets meer gemeten. Na
+  // een rit (de rit is dan de meting) zette hij zelfs een selectie aan die
+  // de rit nooit had, en zei de dekking daardoor "geleverd" over sensoren
+  // die niet in de samenvatting stonden.
   const v=getVehicle();
   const laatste=parseInt(document.getElementById('ondLaatste')?.value)||0;
   // Wat de AI over de sensoren hoort is wat de klant net zag: de samenvatting
@@ -1298,7 +1304,7 @@ async function runEVCheck(){
   const uit=await PLVerzamel.meet({niveau:'normaal', profiel:'accu', watVoor:'de accu- en EV-check'});
   if(!uit || !uit.ai){ res.innerHTML=''; return; }
   res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 AI analyseert accu & systemen…</div>`;
-  try{ await ensurePIDsActive('accu'); }catch(e){ log('Sensoren niet vers gezet vóór de EV/accu-check — de beoordeling kan op oude data draaien: '+(e.message||e),'warn'); _plSensorVlag('De accu- en systeemsensoren'); }
+  // Geen ensurePIDsActive ná de meetfase: zie het onderhoudsadvies (#565).
   const v=getVehicle();
   const ft=(typeof vehicleFuelType==='function')?vehicleFuelType():'onbekend';
   // Wat de AI over de sensoren hoort is wat de klant net zag: de samenvatting
@@ -1372,7 +1378,7 @@ async function runLangeRitTech(){
   const uit=await PLVerzamel.meet({niveau:'normaal', profiel:'totaal', watVoor:'de lange-rit-check'});
   if(!uit || !uit.ai){ res.innerHTML=''; return; }
   res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 Technische go/no-go…</div>`;
-  try{ await ensurePIDsActive('totaal'); }catch(e){ log('Sensoren niet vers gezet vóór de lange-rit-check — de go/no-go kan op oude data draaien: '+(e.message||e),'warn'); _plSensorVlag('De sensoren voor de go/no-go'); }
+  // Geen ensurePIDsActive ná de meetfase: zie het onderhoudsadvies (#565).
   const v=getVehicle();
   // Wat de AI over de sensoren hoort is wat de klant net zag: de samenvatting
   // over het meetvenster, niet de laatste waarde per sensor (#443).

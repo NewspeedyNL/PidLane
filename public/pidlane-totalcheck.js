@@ -297,7 +297,7 @@ async function tcFocusAI(cat){
   const prompt=`Je bent expert automonteur. De totaalcheck vond een afwijking in één systeem: ${m.l}. Onderzoek alleen dat systeem, in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}\n\nUIT DE TOTAALCHECK (stilstaand en rijdend apart):\n${regels}\n\nFOCUSMETING (${f.rijden?'rijdend':'stilstaand'}, alleen de sensoren van dit systeem, dus vaker gemeten):${PLVerzamel.promptBlok(f.sam,{sec:f.sec, rijSec:f.rijSec})}\n\nGeef in deze volgorde, zonder sterretjes of emoji: BEVINDING (koppel elk punt aan een gemeten waarde; zegt de focusmeting iets anders dan de check, noem dat), WAARSCHIJNLIJKE OORZAAK (tabel Diagnose | Kans | Vertrouwen), CONTROLE (concrete meet- of controlestappen), KOSTENINDICATIE (tabel Handeling | Indicatie in euro).\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
   // De dekking gaat over dit ene systeem, niet over het hele totaalprofiel:
   // anders hoort de AI dat er sensoren "ontbreken" die deze vraag nooit nodig had.
-  await callAI(prompt,document.getElementById('aiContent'),{ vraag:'Totaalcheck — verdieping '+m.l+'.', pids:c.pids.map(p=>p.pid) });
+  await callAI(prompt,document.getElementById('aiContent'),{ vraag:'Totaalcheck — verdieping '+m.l+'.', pids:c.pids.map(p=>p.pid), zichtbaar:c.pids.map(p=>p.pid) });
 }
 function _tcWaarde(p){
   const r=x=>x?(x.min===x.max?fv(x.min):fv(x.min)+'–'+fv(x.max))+' '+(p.eenheid||''):null;

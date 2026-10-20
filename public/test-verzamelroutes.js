@@ -88,16 +88,18 @@ function knip(bestand, kop) {
 /* Draait één analyse. `antwoord` is wat het scherm teruggeeft. Geeft terug
    wat er gevraagd en verstuurd is. */
 async function draai(r, antwoord) {
-  const gevraagd = [], verstuurd = [], aan = [];
+  const gevraagd = [], verstuurd = [], aan = [], gezet = [];
   const eigen = {
     // meet() geeft, zoals de echte, het profiel terug waarmee gemeten werd —
     // geen, als er uit een gegeven bron gemeten werd.
     PLVerzamel: { meet: (o) => { gevraagd.push(o);
                     return Promise.resolve(antwoord.door ? Object.assign({ profiel: o.bron || o.profiel === false ? null : (o.profiel || null),
                                                                          bron: o.bron ? o.bron.naam || 'bron' : null }, antwoord) : antwoord); },
-                  promptBlok: echt.promptBlok, aanlevering: echt.aanlevering, rijSecUit: echt.rijSecUit, histUit: echt.histUit },
+                  promptBlok: echt.promptBlok, aanlevering: echt.aanlevering, vanBron: echt.vanBron, rijSecUit: echt.rijSecUit, histUit: echt.histUit },
     apiFetch: (p, t, s, m, a) => { verstuurd.push(String(p)); aan.push(a); return Promise.resolve('SAMENVATTING: goed.'); },
     callAI: (p, el, a) => { verstuurd.push(String(p)); aan.push(a); return Promise.resolve(); },
+    ensurePIDsActive: (prof) => { gezet.push(prof); return Promise.resolve(); },
+    pidHist: r.hist || {}, activePIDs: new Set(['0105']), isReportableSensor: () => true,
     _qualityBlokFor: () => DUBBEL_DK, buildQualityReport: () => ({ promptBlok: DUBBEL_DK }),
     correlationLines: () => [DUBBEL_CORR], analysisPidData: () => ({ pairs: [], quality: { promptBlok: DUBBEL_DK } }),
     // Wat een analyse vóór het scherm leest en wat er dan uit moet komen.
@@ -112,7 +114,7 @@ async function draai(r, antwoord) {
     _deepPidOverview: () => ({ summary: 'geen', html: '', useLog: true }),
     _carStats: () => null,
     plDatalogBron: () => ({ naam: 'de datalog', hist: {}, sec: 20, rijSec: null }),
-    window: {}, items: [], console: { warn() {}, log() {}, error() {} }
+    window: r.window || {}, items: [], console: { warn() {}, log() {}, error() {} }
   };
   if (r.dd) eigen.document = { getElementById: (id) => (id === 'dd_probleem' ? { value: 'trilt' } : iets()), querySelectorAll: () => [] };
   const wereld = new Proxy(eigen, {
@@ -125,7 +127,7 @@ async function draai(r, antwoord) {
   const fn = maak(wereld);
   await Promise.race([fn.apply(null, r.args || []), new Promise((res) => setTimeout(res, 500))]);
   await new Promise((res) => setImmediate(res));
-  return { gevraagd, verstuurd, aan };
+  return { gevraagd, verstuurd, aan, gezet };
 }
 
 const ROUTES = [
@@ -135,9 +137,9 @@ const ROUTES = [
   // delen zonder AI-knop en de AI-vraag is een eigen knop over beide delen.
   // test-totaalcheck.js toetst dat die alleen kan na een meting.
   { naam: 'runDiagAI',         bestand: 'pidlane-diagnose.js',   kop: 'async function runDiagAI(causeName){', args: ['Bobine'] },
-  { naam: 'runOnderhoud',      bestand: 'pidlane-koopcheck.js',  kop: 'async function runOnderhoud(){' },
-  { naam: 'runEVCheck',        bestand: 'pidlane-koopcheck.js',  kop: 'async function runEVCheck(){' },
-  { naam: 'runLangeRitTech',   bestand: 'pidlane-koopcheck.js',  kop: 'async function runLangeRitTech(){' },
+  { naam: 'runOnderhoud',      bestand: 'pidlane-koopcheck.js',  kop: 'async function runOnderhoud(){', nietNaMeten: true },
+  { naam: 'runEVCheck',        bestand: 'pidlane-koopcheck.js',  kop: 'async function runEVCheck(){', nietNaMeten: true },
+  { naam: 'runLangeRitTech',   bestand: 'pidlane-koopcheck.js',  kop: 'async function runLangeRitTech(){', nietNaMeten: true },
   { naam: 'runDatalogAI',      bestand: 'pidlane-datalog.js',    kop: 'async function runDatalogAI(){', datalog: { '0105': [{ t: 0, v: 90 }] }, bronMeting: true },
   { naam: 'runDeepDiag',       bestand: 'pidlane-koopcheck.js',  kop: 'async function runDeepDiag(){', dd: true },
   { naam: 'climateVerdict',    bestand: 'pidlane-koopcheck.js',  kop: 'async function climateVerdict(){', bronMeting: true },
@@ -167,8 +169,34 @@ const ROUTES = [
     if (!(ja.gevraagd[0] && ja.gevraagd[0].bron))
       toets('het profiel van de aanlevering is het profiel van de meting',
         typeof pv === 'string' ? a.profiel === pv : !a.profiel, 'meting=' + JSON.stringify(pv) + ' aanlevering=' + JSON.stringify(a.profiel));
+    if (r.nietNaMeten) toets('na de meetfase zet hij geen profiel meer aan (#565): er wordt daarna niets meer gemeten',
+      ja.gezet.length === 0, 'ensurePIDsActive(' + ja.gezet.join(', ') + ')');
     if (r.bronMeting) toets('met de eigen meting als bron, niet een nieuwe', !!(nee.gevraagd[0] && nee.gevraagd[0].bron), JSON.stringify(Object.keys(nee.gevraagd[0] || {})));
   }
+  /* Twee AI-paden zonder verzamelscherm (#565): de opname ís al een meting,
+     en de AI-Automonteur is een vraag-en-antwoordvenster. Ook die krijgen
+     sindsdien de samenvatting over het venster en een aanlevering uit die
+     samenvatting — dezelfde drie vragen als hierboven. */
+  const reeks = [85, 88, 90, 112, 95, 91, 89, 90].map((v, i) => ({ t: 1000 + i * 2000, v }));
+  w.getPidDef = () => ({ name: 'Koelwater temp', unit: '°C' }); w.isReportableSensor = () => true;
+  const ZONDER = [
+    { naam: 'pidRecAiText', bestand: 'pidlane-koopcheck.js', kop: 'async function pidRecAiText(prob){', args: ['trilt'],
+      window: { _recData: { pids: ['0105'], buffer: { '0105': reeks }, dur: 14 } } },
+    { naam: 'autoExpertAsk', bestand: 'pidlane-motortype.js', kop: 'async function autoExpertAsk(mode){', args: ['livedata'],
+      extra: ['function _aexMeting(){', 'function buildAutoExpertContext(meting){'], hist: { '0105': reeks } }
+  ];
+  for (const r of ZONDER) {
+    r.bron = knip(r.bestand, r.kop) + (r.extra || []).map((k) => knip(r.bestand, k)).join('');
+    console.log('\n' + r.naam + ' (' + r.bestand + ', zonder verzamelscherm)');
+    const ja = await draai(r, null);
+    const p = ja.verstuurd[0] || '', a = ja.aan[0] || {};
+    toets('de prompt draagt de samenvatting over het venster', p.indexOf(MERK) >= 0 && /Koelwater temp: 85–112/.test(p), p.slice(0, 400));
+    toets('de aanlevering draagt de vraag en de zichtbare sensoren',
+      typeof a.vraag === 'string' && a.vraag.length > 10 && Array.isArray(a.zichtbaar) && a.zichtbaar.indexOf('0105') >= 0, JSON.stringify(a));
+    toets('geen profiel: er is op geen profiel gemeten', !a.profiel, JSON.stringify(a.profiel));
+    toets('geen tweede DATAKWALITEIT-blok in de prompt', p.indexOf('- dubbel') < 0 && p.indexOf(DUBBEL_CORR) < 0);
+  }
+
   console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + n : 'Alles goed — ' + n + ' controles'));
   process.exit(fout ? 1 : 0);
 })();

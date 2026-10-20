@@ -2808,8 +2808,8 @@ const PROEVEN_B5 = [
   // ── Eén aanlevering voor alle analyses: profiel uit de meting, kwaliteit één keer ──
   {
     issue: 'aanlevering',
-    naam: 'De AI krijgt het DATAKWALITEIT-blok één keer, over de sensoren die de prompt laat zien; het profiel van de aanlevering komt uit de meting',
-    waarom: 'Acht analyses stuurden het kwaliteitsblok en de correlatielijst twee keer mee, en de oorzaakanalyse beloofde een emissiedekking over een meting van de selectie.',
+    naam: 'Eén kwaliteitsoordeel per sensor: wat de samenvatting toont is over het venster beoordeeld, de aanlevering oordeelt over de rest; het profiel komt uit de meting',
+    waarom: 'Acht analyses stuurden het kwaliteitsblok en de correlatielijst twee keer mee, de aanlevering oordeelde nog eens op de live waarde, en de oorzaakanalyse beloofde een emissiedekking over een meting van de selectie (#565).',
     proef: async function () {
       if (!window.PLVerzamel || typeof PLVerzamel.aanlevering !== 'function' || !window.PLAanlevering || typeof PLAanlevering.kwaliteitsPids !== 'function')
         return { staat: 'FOUT', detail: 'PLVerzamel.aanlevering of PLAanlevering.kwaliteitsPids ontbreekt — oude pidlane-verzamel.js/pidlane-aanlevering.js (herladen?)' };
@@ -2818,11 +2818,13 @@ const PROEVEN_B5 = [
       if (a.profiel) return { staat: 'FOUT', detail: 'een meting zonder profiel krijgt toch een profiel in de aanlevering: ' + a.profiel };
       var b = PLVerzamel.aanlevering({ profiel: 'basis', bron: null, sam: sam }, 'Toets');
       if (b.profiel !== 'basis' || !b.zichtbaar || b.zichtbaar.join() !== '0105,010C') return { staat: 'FOUT', detail: 'profiel of zichtbare sensoren komen niet uit de meting: ' + JSON.stringify(b) };
+      var k = PLAanlevering.kwaliteitsPids({ geleverd: ['0105', '0142'] }, b.zichtbaar);
+      if (k.join() !== '0142') return { staat: 'FOUT', detail: 'een sensor uit de samenvatting krijgt nog een oordeel op zijn live waarde: ' + k.join() };
       var t = PLAanlevering.blok(b);
       var keer = (t.match(/DATAKWALITEIT \(/g) || []).length;
+      if (keer > 1 || !/beoordeeld over het hele meetvenster/.test(t)) return { staat: 'FOUT', detail: 'het blok zegt niet waar het oordeel over de samenvatting staat, of oordeelt ' + keer + '×' };
       var heeft = typeof pidVals !== 'undefined' && typeof pidVals['0105'] === 'number';
-      if (heeft && keer !== 1) return { staat: 'FOUT', detail: 'het DATAKWALITEIT-blok staat ' + keer + '× in de aanlevering' };
-      return { staat: heeft ? 'OK' : 'LET OP', detail: (heeft ? 'één kwaliteitsblok over wat de meting liet zien.' : 'geen koelwaterwaarde nu — het blok zelf is niet getoetst.') +
+      return { staat: heeft ? 'OK' : 'LET OP', detail: (heeft ? 'de samenvatting oordeelt over het venster, de aanlevering over de rest.' : 'geen koelwaterwaarde nu — de live kant is niet getoetst.') +
         ' Rij: AI-monteur → "Laat de AI dit onderzoeken"; het rapport hoort niet twee keer dezelfde UITGESLOTEN/ONZEKER-lijst te noemen.' };
     }
   },

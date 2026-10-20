@@ -29,6 +29,11 @@
    een dekking over het hele totaalprofiel.
  - Diepe storingscheck, klimaatcheck en opname geven hun vraag mee;
    prijs, lease, inkoop en "rapport herzien" sturen geen meetblok meer.
+ - Eén kwaliteitsoordeel per sensor: wat de samenvatting toont is over het
+   venster beoordeeld, de aanlevering oordeelt alleen over de rest (#565).
+ - AI-Automonteur en opname krijgen dezelfde samenvatting (min–max en
+   oordeel) in plaats van losse waarden; onderhoud, EV en lange rit zetten
+   na het meten geen profiel meer aan.
 
  ═══════════════════════════════════════════════════════════
  20-10-2026 — Er is iets mis, opnieuw; tractie-ingrijpen (#560)
