@@ -38,7 +38,10 @@
     kzGrens: 75,          // °C: zakt het koelwater op de snelweg hieronder, dan hangt de thermostaat open
     kzMin: 2,             // zo vaak gezien voor een oordeel
     langS: 1200,          // een rit van 20 minuten hoort warm te worden
-    langMin: 2
+    langMin: 2,
+    tcKou: 3,             // °C buiten: rond en onder nul is het glad
+    tcMinKou: 2,          // zo vaak mogelijk ingrijpen gezien voor een advies, in de kou
+    tcMinWarm: 4          // en daarboven — zonder vorst een hogere drempel
   };
 
   function getal(x) { return typeof x === 'number' && isFinite(x) ? x : null; }
@@ -122,5 +125,33 @@
     };
   }
 
-  window.PLWinterRit = { korteRitten: korteRitten, thermostaat: thermostaat, CFG: CFG, _kern: { warmGeweest: warmGeweest, recent: recent } };
+  /* #560 — mogelijk wielslip, uit de koppelreductie en wielspin die
+     PLConditie per rit telt (cd.tc). ctx: { nu, banden }. Geen oordeel over
+     de bestuurder; één advies, en alleen als het vaker gezien is. Een rit
+     zonder cd.tc is niet gemeten en telt niet mee. */
+  function tractie(ritten, ctx) {
+    ctx = ctx || {};
+    var rs = recent(ritten, ctx.nu).filter(function (r) { return getal(cd(r).tc) !== null; });
+    if (!rs.length) return null;
+    var kou = function (r) { var b = getal(cd(r).bt); return b !== null && b <= CFG.tcKou; };
+    var inKou = rs.filter(function (r) { return kou(r) && cd(r).tc > 0; });
+    var nKou = inKou.reduce(function (s, r) { return s + cd(r).tc; }, 0);
+    var nAl = rs.reduce(function (s, r) { return s + cd(r).tc; }, 0);
+    var koud = nKou >= CFG.tcMinKou;
+    if (!koud && nAl < CFG.tcMinWarm) return null;
+    var met = (koud ? inKou : rs.filter(function (r) { return cd(r).tc > 0; }));
+    var bt = mediaan(met.map(function (r) { return getal(cd(r).bt); }));
+    var n = koud ? nKou : nAl;
+    var zomer = ctx.banden === 'zomer';
+    return {
+      soort: 'tractie',
+      titel: n + '× mogelijk wielslip' + (bt !== null ? ' bij ' + Math.round(bt) + ' °C' : ''),
+      tekst: 'In ' + met.length + ' rit' + (met.length === 1 ? '' : 'ten') + ' nam de motorregeling gas terug terwijl je het gaspedaal vasthield, of draaide de motor ineens sneller dan de snelheid toeliet. Dat is wat tractiecontrole doet bij slip. ' +
+        'Rustiger optrekken en zachter gas in de bocht helpen.' +
+        (zomer && koud ? ' Je rijdt op zomerbanden: bij deze temperatuur grijpen die slecht — overweeg winter- of all-seasonbanden.' : ''),
+      bron: 'afgeleid uit gaspedaal, gasklep, toerental en snelheid in ' + rs.length + ' ritten — de ESP-module zelf leest de app niet, dus remingrepen zijn niet te zien'
+    };
+  }
+
+  window.PLWinterRit = { korteRitten: korteRitten, thermostaat: thermostaat, tractie: tractie, CFG: CFG, _kern: { warmGeweest: warmGeweest, recent: recent } };
 })();

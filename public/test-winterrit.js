@@ -100,5 +100,36 @@ toets('een warme start telt de inlaatlucht niet als buiten', (() => { let x = nu
 toets('stadsverkeer na het opwarmen geeft geen snelwegwaarde', (() => { let x = null; for (let s = 0; s < 200; s++) x = C.tik(x, { kmh: 45, rpm: 1700, koelwater: 88 }, 1); return C.samenvat(x).kz === undefined; })());
 toets('een halve minuut snelweg is te kort voor kz', (() => { let x = null; for (let s = 0; s < 20; s++) x = C.tik(x, { kmh: 110, rpm: 2600, koelwater: 70 }, 1); for (let s = 0; s < 20; s++) x = C.tik(x, { kmh: 110, rpm: 2600, koelwater: 85 }, 1); return C.samenvat(x).kz === undefined; })());
 
+console.log('\n#560 — tractie-ingrijpen, afgeleid');
+{
+  // Een rit van ~2 min op 50 km/h in de 3e (rpm/kmh 40), gaspedaal 30 %, gasklep 25 %.
+  // Elke tik is 2 s en een vers monster (de updatetijd loopt mee).
+  const tiks = (gebeurt) => {
+    let a = null, t = 0;
+    for (let i = 0; i < 60; i++) {
+      let m = { kmh: 50, rpm: 2000, pedaal: 30, gasklep: 25 };
+      m = Object.assign(m, gebeurt(i) || {});
+      t += 2000; m.pedaalT = m.pedaalT === undefined ? t : m.pedaalT; m.gasklepT = m.gasklepT === undefined ? t : m.gasklepT;
+      a = C.tik(a, m, 2);
+    }
+    return C.samenvat(a);
+  };
+  toets('rustig rijden: gemeten, en nul ingrepen', tiks(() => null).tc === 0);
+  toets('koppelreductie: pedaal blijft, gasklep zakt, zelfde versnelling', tiks((i) => (i === 20 ? { gasklep: 12 } : null)).tc === 1);
+  toets('tegenproef: een opschakeling (verhouding zakt de tik erna) telt niet', tiks((i) => (i === 20 ? { gasklep: 12 } : i > 20 ? { rpm: 1500 } : null)).tc === 0);
+  toets('tegenproef: gas los (pedaal zakt mee) telt niet', tiks((i) => (i === 20 ? { gasklep: 12, pedaal: 5 } : null)).tc === 0);
+  toets('wielspin: toeren springen omhoog bij vast pedaal en vallen terug', tiks((i) => (i === 30 ? { rpm: 2600 } : null)).tc === 1);
+  toets('tegenproef: een terugschakeling (verhouding blijft hoog) telt niet', tiks((i) => (i >= 30 ? { rpm: 2600 } : null)).tc === 0);
+  toets('tegenproef: een gaspedaal dat niet ververst wordt, telt niet', tiks((i) => (i === 20 ? { pedaalT: 40000, gasklep: 12 } : null)).tc === 0);
+  toets('zonder gaspedaal-PID: niet gemeten, geen 0', (tiks(() => ({ pedaal: undefined })) || {}).tc === undefined);
+
+  const tr = (bt, tc) => rit({ duur_s: 900, km: 10, max_koelwater: 88, cd: { bt, tc } });
+  toets('twee keer in de kou: een advies, met de temperatuur', /2× mogelijk wielslip bij -1 °C/.test((WR.tractie([tr(-1, 1), tr(-1, 1), tr(-1, 0)], { nu: NU }) || {}).titel || ''));
+  toets('… en met zomerbanden het bandenadvies', /zomerbanden/.test((WR.tractie([tr(-1, 2)], { nu: NU, banden: 'zomer' }) || {}).tekst || ''));
+  toets('twee keer zonder vorst: nog geen advies (hogere drempel)', WR.tractie([tr(12, 1), tr(12, 1)], { nu: NU }) === null);
+  toets('ritten zonder meting tellen niet als nul ingrepen', WR.tractie([rit({ duur_s: 900, cd: { bt: -2 } })], { nu: NU }) === null);
+  toets('de bron zegt dat remingrepen niet te zien zijn', /remingrepen zijn niet te zien/.test((WR.tractie([tr(-1, 3)], { nu: NU }) || {}).bron || ''));
+}
+
 console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' toetsen goed'));
 process.exit(fout ? 1 : 0);

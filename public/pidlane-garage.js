@@ -163,6 +163,13 @@
     }
     if (kr) uit.push(kr);
     if (th) uit.push(th);
+    // #560: mogelijk wielslip, met de banden uit het winterprofiel.
+    if (WR && typeof WR.tractie === 'function') {
+      var tc = null;
+      try { tc = WR.tractie(ritten, { nu: nu || Date.now(), banden: window.PLWinter ? (PLWinter.profiel() || {}).banden : null }); }
+      catch (e) { console.warn('PLGarage: tractieadvies uit de ritten', e); }
+      if (tc) uit.push(tc);
+    }
     if (!kr && (v.rijprofiel === 'korte ritten' || (mk != null && mk < 8))) {
       uit.push({ soort: 'rijprofiel', titel: 'Veel korte ritten',
         tekst: (mk != null ? 'De helft van je ritten is korter dan ' + mk.toLocaleString('nl') + ' km. ' : '') +
@@ -768,6 +775,12 @@
     try { var x = (typeof pidVals !== 'undefined') ? pidVals[pid] : undefined; return typeof x === 'number' && isFinite(x) ? x : undefined; }
     catch (e) { return undefined; }
   }
+  // Wanneer een PID voor het laatst ververst werd (#560): de tractieherkenning
+  // telt alleen verse monsters.
+  function pvT(pid) {
+    try { var t = (typeof _pidLastUpd !== 'undefined') ? _pidLastUpd[pid] : undefined; return typeof t === 'number' ? t : undefined; }
+    catch (e) { console.warn('PLGarage: updatetijd van ' + pid + ' niet leesbaar', e); return undefined; }
+  }
   /* De toestemming meteen na inloggen vragen (14-10-2026). Daarvóór kwam ze
      pas als je zelf Mijn voertuigen opende; tot dan herkende de app de auto
      niet en zette ze de vaste sensoren en displays van het voertuig niet aan.
@@ -999,7 +1012,8 @@
       }
       if (r) {
         ritTik(r, { kmh: kmh, rpm: pv('010C'), koelwater: pv('0105'), accu: pv('0142'), lph: pv('015E'), maf: pv('0110'), trim: pv('0107'),
-          ltft: pv('0107'), stft: pv('0106'), vervroeg: pv('010E'), last: pv('0104'), raildruk: pv('0123'), buiten: pv('0146'), inlaat: pv('010F') }, nu, v.brandstof);
+          ltft: pv('0107'), stft: pv('0106'), vervroeg: pv('010E'), last: pv('0104'), raildruk: pv('0123'), buiten: pv('0146'), inlaat: pv('010F'),
+          pedaal: pv('0149'), gasklep: pv('0111'), pedaalT: pvT('0149'), gasklepT: pvT('0111') }, nu, v.brandstof);
         try { (typeof dtcCodes !== 'undefined' && Array.isArray(dtcCodes) ? dtcCodes : []).forEach(function (c) { if (r.codes.indexOf(c) < 0) r.codes.push(c); }); }
         catch (e) { console.warn('PLGarage: codes van de rit', e); }
         r._weg = false;
