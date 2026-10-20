@@ -122,7 +122,7 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     console.log('\n5. Een tegel landt op zijn eigen wizardvraag');
     await app.ev(`PLNav.tab('auto'); document.querySelector('.pl-tegel.tg-storing').click(); 'ok'`);
     const vraag = await app.ev(`(document.querySelector('#wizardNieuwOv .wz-vraag')||{}).textContent||''`);
-    toets('"Er is iets mis" vraagt meteen wanneer je het merkt', /Wanneer merk je het/.test(vraag), vraag);
+    toets('"Er is iets mis" vraagt meteen wat je merkt', /Wat merk je/.test(vraag), vraag);
     await app.ev(`PLWizard.sluit(); document.querySelector('.pl-tegel.tg-rit').click(); 'ok'`);
     const rit = await app.ev(`(document.querySelector('#wizardNieuwOv .wz-vraag')||{}).textContent||''`);
     toets('"Rit starten" vraagt wat je onderweg wilt', /onderweg/.test(rit), rit);

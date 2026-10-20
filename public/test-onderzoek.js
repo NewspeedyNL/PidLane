@@ -521,6 +521,20 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
     eis(O.maat('bestaat-niet') === null, 'een onbekende naam: null');
   }
 
+  console.log('\nDe intake uit de wizard (20-10-2026): geluid en een opgegeven foutcode');
+  {
+    eis(O.klachtUitTekst('hij tikt bij een koude start').indexOf('geluid') >= 0, '"tikt" is een geluid');
+    eis(O.KLACHTEN.geluid.h.every((h) => !!O.VERDENKINGEN[h]), 'elke verdenking bij geluid bestaat');
+    const zonder = O.nieuw({ klachten: ['onrustig'] }), met = O.nieuw({ klachten: ['onrustig'], codesHand: ['P0171', 'P0174'] });
+    const vl = met.v.valselucht;
+    eis(vl.score > zonder.v.valselucht.score && vl.score <= O.cfg.bevestigd / 2, 'een opgegeven P0171 maakt valse lucht waarschijnlijker, maar hoogstens de helft van bevestigd',
+      zonder.v.valselucht.score + ' → ' + vl.score);
+    eis(vl.bewijs.some((b) => /door jou opgegeven/.test(b.t)), '… en het bewijs zegt dat de code van de klant kwam');
+    eis(O.status(vl) !== 'bevestigd', 'twee opgegeven codes bevestigen niets: de auto beslist');
+    const brand = O.nieuw({ klachten: ['onrustig'], codesHand: ['P0171'] });
+    eis(!!brand.v.brandstofdruk, 'een opgegeven code zet ook zijn andere verdenkingen in spel (brandstofdruk bij P0171)');
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('  FOUT test brak af: ' + (e.stack || e)); process.exit(1); });

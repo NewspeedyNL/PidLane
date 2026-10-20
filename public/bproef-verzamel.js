@@ -47,7 +47,7 @@ function toets(naam, waar, uitleg) {
     // De AI-aanroep afvangen: de prompt bewaren, een kort rapport teruggeven.
     await app.ev(`window.__prompts = []; window.apiFetch = function (p) { window.__prompts.push(String(p)); return Promise.resolve('Voertuigscore: 80/100'); }; 'ok'`);
     await app.ev(`PLNav.tab('auto'); document.querySelector('.pl-tegel.tg-storing').click(); 'ok'`);
-    await app.ev(`PLWizard.kies(0); document.getElementById('wzTekst').value = 'Temperatuurmeter loopt op in de file'; PLWizard.tekstVerder(); PLWizard.kies(2); 'ok'`);
+    await app.ev(`document.getElementById('wzTekst').value = 'Temperatuurmeter loopt op in de file'; PLWizard.klachtTyp(); PLWizard.klachtVerder(); PLWizard.wanneerVerder(true); 'ok'`);
     toets('het plan heeft een knop voor de AI-monteur', await app.ev(`!!document.querySelector('.wz-mod-run[onclick*="aimonteur"]')`));
     await app.ev(`document.querySelector('.wz-mod-run[onclick*="aimonteur"]').click(); 'ok'`);
     toets('het verzamelscherm staat open', await wacht(zichtbaar('plVzOv'), 5000));

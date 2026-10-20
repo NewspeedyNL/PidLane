@@ -73,7 +73,7 @@ var BOOM = {
     v:'Waarom kijk je naar deze auto?',
     sub:'Eén vraag, daarna stel ik het onderzoek samen.',
     opt:[
-      {t:'🔧 Er is iets mis',            d:'Een klacht, vreemd geluid, of ik vertrouw het niet', set:{doel:'storing'},       next:'storing_wanneer'},
+      {t:'🔧 Er is iets mis',            d:'Een klacht, vreemd geluid, of ik vertrouw het niet', set:{doel:'storing'},       next:'storing_wat'},
       {t:'🚗 Kopen, verkopen of inruilen',d:'Ik wil weten wat hij waard is — en wat hij verbergt', set:{doel:'handel'},       next:'handel_rol'},
       {t:'⛽ Verbruik en besparen',       d:'Wat kost hij echt, en hoe kan het zuiniger',          set:{doel:'verbruik'},     next:'verbruik_wat'},
       {t:'🩺 Gewoon een controle',        d:'Geen klacht — ik wil weten hoe hij ervoor staat',     set:{doel:'conditie'},     next:'conditie_diep'},
@@ -81,39 +81,31 @@ var BOOM = {
     ]
   },
 
-  /* ── Storing ── de vraag die het meeste werk doet: wanneer merk je het?
-       Dat bepaalt namelijk of stilstaand meten volstaat, of dat we moeten
-       rijden, of dat we passief moeten meelopen tot het zich voordoet. */
+  /* ── Storing (20-10-2026) ── eerst WAT, dan WANNEER, en dan het plan.
+       Tot die datum begon het met "Wanneer merk je het?" (vijf vaste keuzes,
+       één antwoord), dan een verplicht tekstveld en dan het lampje. Uit het
+       gebruik: te beperkt, en het paste vaak niet. Een monteur vraagt eerst
+       wat je merkt en dan wanneer — en meer dan één antwoord is normaal.
+       Nu:
+         storing_wat     symptoomtegels (meer mag), zelf beschrijven met live
+                         herkenning, een foutcode die je al hebt, of "niets
+                         bijzonders — algemene check";
+         storing_wanneer de momenten van PLOnderzoek.WANNEER, plus altijd en
+                         onvoorspelbaar (meer mag). Daaruit volgt de meting.
+       Het lampje is een tegel geworden; met "onvoorspelbaar" erbij brandt
+       het af en toe. De tegels en momenten zijn die van het onderzoek zelf,
+       dus de intake daar staat al ingevuld. */
+  storing_wat: {
+    v:'Wat merk je?',
+    sub:'Tik aan wat past — meer mag. Of beschrijf het zelf: ik lees mee.',
+    type:'klacht', weten:'storing',
+    next:'storing_wanneer'
+  },
   storing_wanneer: {
     v:'Wanneer merk je het?',
-    sub:'Hiermee bepaal ik hoe we moeten meten.',
-    weten:'storing',
-    opt:[
-      {t:'Nu, ook stilstaand',       d:'Het is er zodra de motor draait',            set:{meting:'stil'},    next:'storing_klacht'},
-      {t:'Alleen tijdens het rijden',d:'Onder belasting, bij optrekken of snelheid', set:{meting:'rit10'},   next:'storing_klacht'},
-      {t:'Alleen bij een koude motor',d:'Verdwijnt als hij op temperatuur is',       set:{meting:'monitor'}, next:'storing_klacht'},
-      {t:'Onvoorspelbaar',           d:'Soms wel, soms niet — lastig op te wekken',  set:{meting:'monitor'}, next:'storing_klacht'},
-      // #434: wie niets merkt maar het niet vertrouwt, hoeft geen klacht te
-      // verzinnen. Het plan opent dan met het volledige onderzoek, brede ronde.
-      {t:'Ik merk niets bijzonders', d:'Maar ik wil het zeker weten',                set:{meting:'stil', controle:true}, next:null}
-    ]
-  },
-  storing_klacht: {
-    v:'Wat gebeurt er precies?',
-    sub:'Hoe concreter, hoe gerichter de analyse. Noem toerental, snelheid of temperatuur als je die weet.',
-    type:'tekst', veld:'klacht', verplicht:true,
-    plaats:'bijv. trilt bij optrekken tussen 2000 en 3000 tpm, alleen met koude motor',
-    next:'storing_lampje'
-  },
-  storing_lampje: {
-    v:'Brandt het motorstoringslampje?',
-    sub:'',
-    opt:[
-      {t:'Ja, het brandt nu',        d:'', set:{lampje:'aan'},   next:null},
-      {t:'Het brandt af en toe',     d:'', set:{lampje:'soms'},  next:null},
-      {t:'Nee',                      d:'', set:{lampje:'nee'},   next:null},
-      {t:'Weet ik niet',             d:'', set:{lampje:'?'},     next:null}
-    ]
+    sub:'Meer mag. Hiermee bepaal ik hoe en wanneer we meten.',
+    type:'wanneer',
+    next:null
   },
 
   /* ── Handel ── rol bepaalt de toon van het rapport, tijd bepaalt de meting.
@@ -233,7 +225,7 @@ var BOOM = {
 var MODULES = {
   dtc:       {n:'Foutcodes & readiness', d:'Opgeslagen, sluimerende en permanente codes, met freeze frame', run:function(){ startChoice('dtc'); }},
   systeem:   {n:'Systeemtest',           d:'Sensoren tegen hun verwachte gedrag, stilstaand en rijdend',                run:function(){ startChoice('basiccheck'); }},
-  conditie:  {n:'Conditie per systeem',  d:'Oordeel per systeem, met de meetwaarde eronder',                run:function(){ startChoice('check'); }},
+  conditie:  {n:'Totaalcheck',           d:'Stilstand en rijden apart, per systeem; dieper waar iets afwijkt', run:function(){ startChoice('check'); }},
   verbruik:  {n:'Verbruik & rijgedrag',  d:'Werkelijk verbruik en wat je rijstijl kost',                    run:function(){ startChoice('fuel'); }},
   aimonteur: {n:'AI-monteur',            d:'Analyse van je klacht tegen de gemeten waarden',
               run:function(j){ veilig(function(){ el('welcomeScreen').classList.add('hidden'); }); runQuickAI({klacht:j.klacht}); }},
@@ -358,13 +350,52 @@ function bouwPlan(j){
   return m.filter(moduleAan);
 }
 
+/* ── De storingsintake: puur (test-wizardtakken.js) ─────────────────────
+   Foutcodes uit vrije tekst: P/C/B/U, een cijfer 0–3, drie hexcijfers. Wie
+   "p0171 en P0174" typt krijgt er twee; dubbel telt één keer. */
+function codesUit(tekst){
+  var r = [], re = /\b([PCBU][0-3][0-9A-F]{3})\b/gi, m;
+  var t = String(tekst||'');
+  while((m = re.exec(t))){ var c = m[1].toUpperCase(); if(r.indexOf(c)<0) r.push(c); }
+  return r;
+}
+/* De extra momenten naast PLOnderzoek.WANNEER: die zeggen iets over hoe we
+   meten, niet over welke oorzaak — ze gaan niet mee naar het onderzoek. */
+var WANNEER_EXTRA = {
+  altijd: { naam:'Altijd, zodra hij draait', icoon:'✅' },
+  soms:   { naam:'Onvoorspelbaar, soms wel soms niet', icoon:'🎲' }
+};
+/* Hoe we meten volgt uit wanneer het speelt. Koud, vocht en onvoorspelbaar
+   zijn niet op te wekken: dan kijkt de app mee tot het zich voordoet.
+   Optrekken of constant rijden vraagt een rit. De rest kan stilstaand. */
+function metingUit(ws){
+  ws = ws || [];
+  var heeft = function(k){ return ws.indexOf(k)>=0; };
+  if(heeft('koud') || heeft('vocht') || heeft('soms')) return 'monitor';
+  if(heeft('belast') || heeft('constant')) return 'rit10';
+  return 'stil';
+}
+function lampjeUit(klachten, ws){
+  if((klachten||[]).indexOf('lampje')<0) return '?';
+  return (ws||[]).indexOf('soms')>=0 ? 'soms' : 'aan';
+}
+function klachtenLijst(){
+  var K = veilig(function(){ return PLOnderzoek.KLACHTEN; }, null) || {};
+  return Object.keys(K).filter(function(k){ return k!=='controle'; })
+    .map(function(k){ return { k:k, naam:K[k].naam, icoon:K[k].icoon }; });
+}
+function herkendUit(tekst){
+  return veilig(function(){ return PLOnderzoek.klachtUitTekst(tekst); }, []) || [];
+}
+function esc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 /* ── Takken ─────────────────────────────────────────────────────────────
    De vier tegels op het startscherm (29-09-2026) openen de wizard niet op de
    eerste vraag maar meteen op hun eigen tak: wie op "Er is iets mis" tikt,
    heeft die vraag al beantwoord. `conditie` is de vervolgstap vanuit Check
    mijn auto ("grondiger laten kijken"). Zonder tak begint hij bij start. */
 var TAKKEN = {
-  storing:       {nu:'storing_wanneer', set:{doel:'storing'}},
+  storing:       {nu:'storing_wat',     set:{doel:'storing'}},
   handel:        {nu:'handel_rol',      set:{doel:'handel'}},
   onderweg:      {nu:'onderweg_wat',    set:{}},
   voorbereiding: {nu:'voorb_wat',       set:{doel:'voorbereiding'}},
@@ -519,6 +550,46 @@ function toonVraag(){
     return;
   }
 
+  if(k.type==='klacht'){
+    var gekozen = job.klachten || [];
+    h += '<div class="wz-chips" id="wzChips">';
+    klachtenLijst().forEach(function(x){
+      h += '<button type="button" class="wz-chip'+(gekozen.indexOf(x.k)>=0?' aan':'')+'" data-k="'+x.k+'" onclick="PLWizard.klachtChip(\''+x.k+'\')">'+
+           '<span class="wz-chip-i" aria-hidden="true">'+x.icoon+'</span><span>'+esc(x.naam)+'</span></button>';
+    });
+    h += '</div>';
+    h += '<label class="wz-veld wz-eigen"><span>✍️ Zelf beschrijven <i>(mag ook in plaats van de tegels)</i></span>'+
+         '<textarea class="wz-tekst" id="wzTekst" rows="3" oninput="PLWizard.klachtTyp()" placeholder="bijv. trilt bij optrekken tussen 2000 en 3000 tpm, alleen met koude motor">'+esc(job.klacht||'')+'</textarea></label>'+
+         '<div class="wz-herkend" id="wzHerkend"></div>'+
+         '<label class="wz-veld"><span>🔢 Heb je al een foutcode? <i>(van de garage of een andere app)</i></span>'+
+         '<input id="wzCodes" type="text" autocomplete="off" autocapitalize="characters" oninput="PLWizard.klachtTyp()" placeholder="bijv. P0171, P0300" value="'+esc((job.codes||[]).join(', '))+'"></label>'+
+         '<button type="button" class="wz-opt wz-algemeen" onclick="PLWizard.algemeen()">'+
+           '<span class="wz-opt-t">🩺 Ik merk niets bijzonders</span>'+
+           '<span class="wz-opt-d">Doe een algemene check: foutcodes, zelftests en alle sensoren, stilstaand en rijdend. Dieper alleen waar iets afwijkt.</span></button>';
+    body.innerHTML = h;
+    foot.innerHTML = '<button class="wz-pri" id="wzKlachtVerder" onclick="PLWizard.klachtVerder()">Volgende →</button>';
+    window.PLWizard.klachtTyp();
+    if(k.weten) tekenWeten(k.weten);
+    return;
+  }
+  if(k.type==='wanneer'){
+    var W = veilig(function(){ return PLOnderzoek.WANNEER; }, null) || {};
+    var ws = job.wanneer || [];
+    var lijst = Object.keys(WANNEER_EXTRA).map(function(x){ return [x, WANNEER_EXTRA[x]]; })
+      .concat(Object.keys(W).map(function(x){ return [x, W[x]]; }));
+    h += '<div class="wz-chips">';
+    lijst.forEach(function(p){
+      h += '<button type="button" class="wz-chip'+(ws.indexOf(p[0])>=0?' aan':'')+'" data-w="'+p[0]+'" onclick="PLWizard.wanneerChip(\''+p[0]+'\')">'+
+           '<span class="wz-chip-i" aria-hidden="true">'+p[1].icoon+'</span><span>'+esc(p[1].naam)+'</span></button>';
+    });
+    h += '</div><div class="wz-meet" id="wzMeet"></div>';
+    body.innerHTML = h;
+    foot.innerHTML = '<button class="wz-sec" onclick="PLWizard.wanneerVerder(true)">Weet ik niet</button>'+
+                     '<button class="wz-pri" onclick="PLWizard.wanneerVerder(false)">Plan maken →</button>';
+    window.PLWizard._meetRegel();
+    return;
+  }
+
   if(k.type==='tekst'){
     h += '<textarea class="wz-tekst" id="wzTekst" rows="5" placeholder="'+(k.plaats||'')+'">'+
          (job[k.veld]||'').replace(/</g,'&lt;')+'</textarea>';
@@ -582,6 +653,23 @@ function _veld(id,label,plaats,type){
          '<input id="wz_'+id+'" type="'+type+'" placeholder="'+plaats+'" value="'+(job[id]||'')+'"></label>';
 }
 
+/* Wat je antwoordde, bovenaan het plan: tegels, moment en codes, met wat de
+   codetabel van de app erover zegt. Zonder klacht niets. */
+function samenvatting(){
+  if(job.doel!=='storing') return '';
+  var K = veilig(function(){ return PLOnderzoek.KLACHTEN; }, null) || {};
+  var W = veilig(function(){ return PLOnderzoek.WANNEER; }, null) || {};
+  var tag = function(i, n){ return '<span class="wz-tag">'+i+' '+esc(n)+'</span>'; };
+  var t = (job.klachten||[]).map(function(k){ return K[k] ? tag(K[k].icoon, K[k].naam) : ''; }).join('') +
+          (job.wanneer||[]).map(function(w){ var x = WANNEER_EXTRA[w] || W[w]; return x ? tag(x.icoon, x.naam) : ''; }).join('');
+  var c = (job.codes||[]).map(function(code){
+    var info = veilig(function(){ return dtcInfo(code); }, null);
+    return '<div class="wz-code"><b>'+esc(code)+'</b> '+esc(info && info.desc ? info.desc : 'betekenis onbekend')+'</div>';
+  }).join('');
+  if(!t && !c) return '';
+  return '<div class="wz-plan-kop">Wat je merkt</div><div class="wz-tags">'+t+'</div>'+c;
+}
+
 function toonPlan(){
   var mods = bouwPlan(job);
   var meting = METING[job.meting] || METING.stil;
@@ -596,6 +684,12 @@ function toonPlan(){
             (af ? af+' van de '+mods.length+' klaar. Ga verder waar je gebleven was — je antwoorden staan er nog.'
                 : 'Op basis van je antwoorden. Je kunt hier nog terug.')+
           '</div>'+
+          samenvatting()+
+          // Geen klacht: de algemene check (de totaalcheck) staat bovenaan.
+          (job.doel==='storing' && job.controle && MODULES.conditie && moduleAan('conditie') ?
+            '<div class="wz-plan-item" id="wzAlgemeen" style="border-color:#22d3ee"><b>🚦 Algemene check</b>'+
+              '<span>Stilstaand met foutcodes en zelftests, daarna gewoon rijden. Per systeem een oordeel; dieper alleen waar iets afwijkt.</span>'+
+              '<button class="wz-mod-run" onclick="PLWizard.draai(\'conditie\')">Starten</button></div>' : '')+
           // #428: bij een klacht staat het volledige onderzoek bovenaan. Het
           // meet, vraagt en sluit uit tot het iets vindt; de losse modules
           // hieronder blijven voor wie zelf wil kiezen.
@@ -664,7 +758,8 @@ window.PLWizard = {
   onderzoek: function(){
     var ov=el('wizardNieuwOv'); if(ov) ov.style.display='none';
     actief=false; chipTick();
-    PLOnderzoek.open({ klacht: job.klacht, meting: job.meting, lampje: job.lampje, controle: !!job.controle });
+    PLOnderzoek.open({ klacht: job.klacht, klachten: job.klachten, wanneer: (job.wanneer||[]).filter(function(w){ return !WANNEER_EXTRA[w]; }),
+                       codes: job.codes, meting: job.meting, lampje: job.lampje, controle: !!job.controle });
   },
   opnieuw: function(){
     beginVan(tak);
@@ -689,6 +784,63 @@ window.PLWizard = {
     }
     pad.push(nu);
     nu = o.next;
+    if(nu) toonVraag(); else toonPlan();
+  },
+  // ── De storingsintake ──
+  klachtChip: function(k){
+    var l = job.klachten = (job.klachten || []).slice(), i = l.indexOf(k);
+    if(i>=0) l.splice(i,1); else l.push(k);
+    var b = document.querySelector('#wzChips [data-k="'+k+'"]'); if(b) b.classList.toggle('aan', i<0);
+    this.klachtTyp();
+  },
+  // Live: wat de tekst herkent licht op, wat de code-invoer vindt staat erbij.
+  klachtTyp: function(){
+    var tekst = (el('wzTekst')||{}).value || '', codes = codesUit(((el('wzCodes')||{}).value||'')+' '+tekst);
+    var her = herkendUit(tekst), K = veilig(function(){ return PLOnderzoek.KLACHTEN; }, null) || {};
+    document.querySelectorAll('#wzChips .wz-chip').forEach(function(b){ b.classList.toggle('herkend', her.indexOf(b.getAttribute('data-k'))>=0); });
+    var r = [];
+    var nieuw = her.filter(function(k){ return (job.klachten||[]).indexOf(k)<0 && K[k]; });
+    if(nieuw.length) r.push('Herkend in je tekst: '+nieuw.map(function(k){ return K[k].icoon+' '+esc(K[k].naam); }).join(', ')+' — die neem ik mee.');
+    if(codes.length) r.push('Foutcode'+(codes.length===1?'':'s')+': <b>'+codes.join(', ')+'</b> — telt als aanwijzing, de uitlezing van de auto beslist.');
+    var d = el('wzHerkend'); if(d) d.innerHTML = r.map(function(x){ return '<div>'+x+'</div>'; }).join('');
+    var knop = el('wzKlachtVerder');
+    if(knop) knop.disabled = !((job.klachten||[]).length || tekst.trim() || codes.length);
+  },
+  klachtVerder: function(){
+    var tekst = ((el('wzTekst')||{}).value||'').trim();
+    var codes = codesUit(((el('wzCodes')||{}).value||'')+' '+tekst);
+    var ks = (job.klachten||[]).slice();
+    herkendUit(tekst).forEach(function(k){ if(ks.indexOf(k)<0) ks.push(k); });
+    // Een code zonder tegel of tekst: dan is het lampje de klacht.
+    if(!ks.length && !tekst && codes.length) ks.push('lampje');
+    if(!ks.length && !tekst){ veilig(function(){ showToast('Tik aan wat je merkt, beschrijf het, of kies de algemene check'); }); return; }
+    job.klachten = ks; job.klacht = tekst; job.codes = codes; delete job.controle;
+    pad.push(nu); nu = BOOM[nu].next;
+    if(nu) toonVraag(); else toonPlan();
+  },
+  algemeen: function(){
+    job.klachten = []; job.klacht = ''; job.codes = codesUit((el('wzCodes')||{}).value||'');
+    job.controle = true; job.meting = 'stil'; job.wanneer = []; job.lampje = '?';
+    pad.push(nu); nu = null;
+    toonPlan();
+  },
+  wanneerChip: function(w){
+    var l = job.wanneer = (job.wanneer || []).slice(), i = l.indexOf(w);
+    if(i>=0) l.splice(i,1); else l.push(w);
+    // Altijd en onvoorspelbaar sluiten elkaar uit.
+    if(i<0 && (w==='altijd'||w==='soms')){ var a = w==='altijd'?'soms':'altijd', j = l.indexOf(a); if(j>=0) l.splice(j,1); }
+    document.querySelectorAll('.wz-chip[data-w]').forEach(function(b){ b.classList.toggle('aan', l.indexOf(b.getAttribute('data-w'))>=0); });
+    this._meetRegel();
+  },
+  _meetRegel: function(){
+    var M = METING[metingUit(job.wanneer)], d = el('wzMeet');
+    if(d && M) d.innerHTML = '📏 Dan meet ik zo: <b>'+esc(M.n)+'</b> — '+esc(M.d)+' ('+esc(M.tijd)+')';
+  },
+  wanneerVerder: function(weetNiet){
+    if(weetNiet) job.wanneer = [];
+    job.meting = metingUit(job.wanneer);
+    job.lampje = lampjeUit(job.klachten, job.wanneer);
+    pad.push(nu); nu = BOOM[nu].next;
     if(nu) toonVraag(); else toonPlan();
   },
   tekstVerder: function(){
@@ -805,7 +957,8 @@ window.PLWizard = {
   _job:  function(){ return JSON.parse(JSON.stringify(job)); },
   _actief: function(){ return actief; },
   _gedaan: function(){ return Object.keys(gedaan); },
-  _boom: BOOM, _modules: MODULES, _takken: TAKKEN, _feat: MODULE_FEAT
+  _boom: BOOM,
+  _kern: { codesUit: codesUit, metingUit: metingUit, lampjeUit: lampjeUit, WANNEER_EXTRA: WANNEER_EXTRA }, _modules: MODULES, _takken: TAKKEN, _feat: MODULE_FEAT
 };
 
 })();

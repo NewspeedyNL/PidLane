@@ -128,6 +128,12 @@
     elektrisch: { naam: 'Accu of elektrisch', icoon: '🔋',
       kw: ['accu', 'batterij', 'dynamo', 'spanning', 'lampjes flikkeren', 'laadt niet', 'leeg'],
       h: ['accu', 'laad'] },
+    // Geluid (20-10-2026, uit de nieuwe intake van de wizard). Het meeste
+    // geluid is mechanisch en niet via OBD te zien; dat zegt niet_obd. Een
+    // tikkende of ratelende motor kan wel distributie of overslaan zijn.
+    geluid:   { naam: 'Vreemd geluid of trilling', icoon: '🔊',
+      kw: ['geluid', 'tikt', 'tikken', 'rammel', 'ratel', 'piep', 'gier', 'brom', 'klop', 'fluit', 'zoem', 'knars'],
+      h: ['niet_obd', 'distributie', 'misfire'] },
     // Geen klacht (07-10-2026, #434). Tot dan begon het onderzoek altijd
     // vanuit een klacht, en wie bij een groene "Check mijn auto" toch wilde
     // weten hoe het ervoor stond, kwam er niet in. Dit is de brede ronde:
@@ -162,6 +168,25 @@
       b: [{ h: 'misfire', d: 1.5 }] }
   };
   var VOORAF_MAX = 1.5;
+  /* Een foutcode die de klant zelf opgeeft (20-10-2026): van de garage, een
+     andere app, of van vóór een wis. Dezelfde CODEREGELS als een uitgelezen
+     code, maar als voorkennis: hoogstens VOORAF_MAX per verdenking, zodat de
+     auto zelf beslist. Een code die de uitlezing óók vindt, telt daar. */
+  function codesVooraf(st, codes) {
+    var som = {};
+    (codes || []).forEach(function (code) {
+      CODEREGELS.forEach(function (rg) {
+        var m = String(code).toUpperCase().match(rg.re);
+        if (!m) return;
+        speel(st, rg.h, 'opgegeven code ' + code);
+        var oud = som[rg.h] || 0, nw = Math.min(VOORAF_MAX, oud + rg.d * 0.5), d = nw - oud;
+        som[rg.h] = nw;
+        if (!d) return;
+        st.v[rg.h].score += d;
+        st.v[rg.h].bewijs.push({ d: d, t: rg.t(code, m) + ' (door jou opgegeven, niet uitgelezen)', stap: 'intake' });
+      });
+    });
+  }
   function vooraf(st, ws) {
     var som = {};
     (ws || []).forEach(function (w) {
@@ -914,6 +939,7 @@
     if ((ctx.vervangen || []).length) speel(st, 'software', 'onlangs vervangen');
     kennisInSpel(st, ks);
     vooraf(st, ctx.wanneer);
+    codesVooraf(st, ctx.codesHand);
     var kop = (ks.length === 1 && ks[0] === 'controle') ? 'Geen klacht, brede controle'
       : 'Klacht: ' + ks.map(function (k) { return KLACHTEN[k] ? KLACHTEN[k].naam : k; }).join(', ');
     st.log.push({ soort: 'start', t: kop + '. ' + Object.keys(st.v).length + ' verdenkingen om te onderzoeken.' });
@@ -1145,6 +1171,7 @@
     var c = st.uitkomst || conclusie(st), r = ['PidLane — Volledig onderzoek', 'Datum: ' + new Date().toLocaleString('nl')];
     if (st.ctx.merk) r.push('Voertuig: ' + st.ctx.merk);
     if (st.ctx.klachtTekst) r.push('Klacht: ' + st.ctx.klachtTekst);
+    if ((st.ctx.codesHand || []).length) r.push('Opgegeven foutcodes (niet uitgelezen): ' + st.ctx.codesHand.join(', '));
     if ((st.ctx.wanneer || []).length) r.push('Wanneer: ' + st.ctx.wanneer.map(function (w) { return WANNEER[w] ? WANNEER[w].naam : w; }).join(', '));
     var inz = inzichten(st);
     if (inz.length) { r.push('', '=== WAT DE AUTO AL WIST ==='); inz.forEach(function (x) { r.push(' ' + (x.niveau === 'let' ? '[let op] ' : '') + x.kop + ' — ' + x.t); }); }
@@ -1511,6 +1538,7 @@
     });
     h += '</div>';
     if (i.klachtTekst) h += '<div class="oz-meld">Je schreef: “' + esc(i.klachtTekst) + '”</div>';
+    if ((i.codes || []).length) h += '<div class="oz-meld">Je gaf de foutcode' + (i.codes.length === 1 ? '' : 's') + ' ' + esc(i.codes.join(', ')) + ' op. Die tellen als aanwijzing; wat de auto zelf opslaat, lees ik straks uit.</div>';
     h += '</div><div class="oz-blok"><div class="oz-bh">Wanneer speelt het? (meer mag)</div><div class="oz-chips">';
     Object.keys(WANNEER).forEach(function (k) {
       h += '<button class="oz-chip' + (i.wanneer.indexOf(k) >= 0 ? ' aan' : '') + '" data-a="wanneer" data-w="' + k + '">' + WANNEER[k].icoon + ' ' + esc(WANNEER[k].naam) + '</button>';
@@ -1705,7 +1733,7 @@
     var i = _ui.intake, v = vehicle();
     _open = {}; _nieuw = {}; _ui.ai = null;
     _st = nieuw({ klachten: i.klachten.slice(), klachtTekst: i.klachtTekst, lampje: i.lampje, meting: i.meting,
-      merk: v.merk, brandstof: v.brandstof, liters: liters(v), vervangen: i.vervangen.slice(), wanneer: i.wanneer.slice(), scan: i.scan, beschikbaar: beschikbaar,
+      merk: v.merk, brandstof: v.brandstof, liters: liters(v), vervangen: i.vervangen.slice(), wanneer: i.wanneer.slice(), codesHand: (i.codes || []).slice(), scan: i.scan, beschikbaar: beschikbaar,
       garage: isGarage() });
     var start = Object.keys(_st.v);
     _ui.fase = 'loopt'; teken();
@@ -1757,6 +1785,8 @@
     opt = opt || {};
     if (_st && !_st.klaar && !_st.gestopt) { zorgOv().style.display = 'flex'; teken(); return; }
     var ks = klachtUitTekst(opt.klacht);
+    // De tegels uit de wizard (20-10-2026) tellen naast wat de tekst herkent.
+    (opt.klachten || []).forEach(function (k) { if (KLACHTEN[k] && ks.indexOf(k) < 0) ks.push(k); });
     if (opt.lampje === 'aan' && ks.indexOf('lampje') < 0) ks.push('lampje');
     if (opt.scan && ks.indexOf('lampje') < 0) {
       var c = opt.scan.codes || {};
@@ -1770,7 +1800,8 @@
     var uitLog = (typeof plVervangenRecent === 'function' ? plVervangenRecent() : [])
       .filter(function (x) { return VERVANGEN.indexOf(x) >= 0; });
     _ui = { fase: 'intake', live: {}, voortgang: 0, wacht: null, ai: null, aiBezig: false,
-      intake: { klachten: ks, klachtTekst: opt.klacht || '', lampje: opt.lampje, meting: opt.meting, vervangen: uitLog, wanneer: [], scan: opt.scan || null } };
+      intake: { klachten: ks, klachtTekst: opt.klacht || '', lampje: opt.lampje, meting: opt.meting, vervangen: uitLog,
+        wanneer: (opt.wanneer || []).filter(function (w) { return !!WANNEER[w]; }), codes: (opt.codes || []).slice(), scan: opt.scan || null } };
     _st = null;
     zorgOv().style.display = 'flex';
     teken();

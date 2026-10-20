@@ -2787,6 +2787,41 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── #560: tractie-ingrijpen afgeleid uit gaspedaal, gasklep, toeren en snelheid ──
+  {
+    issue: '560',
+    naam: 'Mogelijk wielslip per rit (cd.tc): koppelreductie en wielspin in dezelfde versnelling, alleen verse monsters; advies in Mijn voertuigen bij kou',
+    waarom: 'Generieke OBD ziet de ESP-module niet; het koppelpad wel. Schakelmomenten en een niet-ververst gaspedaal mogen niet als slip tellen.',
+    proef: async function () {
+      if (!window.PLConditie || !window.PLWinterRit || typeof PLWinterRit.tractie !== 'function')
+        return { staat: 'FOUT', detail: 'PLWinterRit.tractie ontbreekt — oude pidlane-winterrit.js/pidlane-conditie.js (herladen?)' };
+      var a = null, t = 0;
+      for (var i = 0; i < 40; i++) { t += 2000; a = PLConditie.tik(a, { kmh: 50, rpm: 2000, pedaal: 30, gasklep: i === 20 ? 12 : 25, pedaalT: t, gasklepT: t }, 2); }
+      var cs = PLConditie.samenvat(a);
+      if (!cs || cs.tc !== 1) return { staat: 'FOUT', detail: 'een gasklep die zakt bij een vast gaspedaal telt niet als mogelijk ingrijpen' };
+      var heeft = typeof pidVals !== 'undefined' && typeof pidVals['0149'] === 'number' && typeof pidVals['0111'] === 'number';
+      return { staat: heeft ? 'OK' : 'LET OP', detail: (heeft ? 'deze auto geeft gaspedaal (0149) en gasklep (0111).' : 'geen 0149 of 0111 nu — dan meet de rit niets voor tractie.') +
+        ' Rij: op een gladde dag kort stevig optrekken; daarna hoort de rit in Mijn voertuigen extra.cd.tc te hebben.' };
+    }
+  },
+
+  // ── Er is iets mis: eerst wat, dan wanneer, met codes en een algemene check ──
+  {
+    issue: 'intake',
+    naam: 'Er is iets mis: tegels "Wat merk je?" (meer mag), zelf beschrijven met live herkenning, een foutcode invoeren, algemene check; daarna "Wanneer?" met meerkeuze',
+    waarom: 'De intake begon met vijf vaste antwoorden op "Wanneer merk je het?", één keuze, en een verplicht tekstveld — te beperkt; de laatste keuze viel achter de Android-knoppen.',
+    proef: async function () {
+      if (!window.PLWizard || !PLWizard._kern || !PLWizard._boom.storing_wat || !PLOnderzoek.KLACHTEN.geluid)
+        return { staat: 'FOUT', detail: 'de nieuwe intake (storing_wat, PLWizard._kern, klacht geluid) ontbreekt — oude pidlane-wizard.js/pidlane-onderzoek.js (herladen?)' };
+      var K = PLWizard._kern;
+      if (K.codesUit('p0171').join() !== 'P0171') return { staat: 'FOUT', detail: 'een getypte foutcode wordt niet herkend' };
+      if (K.metingUit(['soms', 'belast']) !== 'monitor' || K.metingUit(['belast']) !== 'rit10') return { staat: 'FOUT', detail: 'het moment geeft niet de goede meting' };
+      var st = PLOnderzoek.nieuw({ klachten: ['onrustig'], codesHand: ['P0171', 'P0174'] });
+      if (!st.v.valselucht || st.v.valselucht.score > PLOnderzoek.cfg.bevestigd / 2) return { staat: 'FOUT', detail: 'een opgegeven code weegt te zwaar of telt niet' };
+      return { staat: 'OK', detail: 'Rij: Er is iets mis → tik "Onrustig", typ "hapert bij optrekken" en een code als je er een hebt; bij Wanneer "Optrekken". Het plan hoort te zeggen wat je merkt en wat de code betekent, en de laatste keuze moet boven de Android-knoppen staan.' };
+    }
+  },
+
   // ── Totaalcheck: stilstand en rijden apart, verdiepen waar iets afwijkt ──
   {
     issue: 'totaalcheck',

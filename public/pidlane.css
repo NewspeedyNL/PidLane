@@ -2862,6 +2862,31 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .wz-balk-in{ height:100%; width:0; background:linear-gradient(90deg,#00ff88,#22d3ee); transition:width .3s ease; }
 
 .wz-body{ flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 18px 6px; }
+/* Zonder knoppenbalk eronder (een keuzescherm) lag de laatste kaart achter
+   de drie Android-knoppen (20-10-2026): de onderrand hoort dan bij de body. */
+.wz-body:has(+ .wz-foot:empty){ padding-bottom:calc(24px + var(--pl-sab, 0px)); }
+
+/* De storingsintake (20-10-2026): tegels in twee kolommen, meer mag. */
+.wz-chips{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin-bottom:14px; }
+.wz-chip{
+  display:flex; align-items:center; gap:9px; min-height:54px; padding:10px 12px; text-align:left;
+  border-radius:13px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx);
+  font:700 13.5px/1.3 var(--f); cursor:pointer; transition:border-color .15s, background .15s;
+}
+.wz-chip-i{ font-size:20px; flex:0 0 auto; }
+.wz-chip.aan{ border-color:#22d3ee; background:rgba(34,211,238,.12); box-shadow:inset 0 0 0 1px #22d3ee; }
+.wz-chip.herkend:not(.aan){ border-style:dashed; border-color:#22d3ee; }
+.wz-eigen i, .wz-veld i{ font-style:normal; font-weight:500; color:var(--tx3); }
+.wz-herkend{ font-size:12.5px; line-height:1.5; color:#22d3ee; margin:6px 0 12px; }
+.wz-herkend:empty{ display:none; }
+.wz-algemeen{ margin-top:14px; border-color:rgba(34,211,238,.45); }
+.wz-meet{ margin-top:4px; padding:11px 13px; border-radius:12px; background:var(--sur2); border:1px solid var(--bd); font-size:13px; line-height:1.5; color:var(--tx2); }
+.wz-tags{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+.wz-tag{ padding:5px 10px; border-radius:999px; background:var(--sur2); border:1px solid var(--bd); font-size:12.5px; font-weight:600; color:var(--tx2); }
+.wz-code{ font-size:12.5px; line-height:1.45; color:var(--tx2); margin:4px 0; }
+.wz-code b{ font-family:var(--m); color:var(--tx); margin-right:4px; }
+.wz-pri:disabled{ opacity:.45; cursor:default; }
+@media (max-width:340px){ .wz-chips{ grid-template-columns:1fr; } }
 .wz-vraag{ font-size:25px; font-weight:800; line-height:1.22; margin-bottom:8px; }
 .wz-sub{ font-size:14px; line-height:1.55; color:var(--tx2); margin-bottom:20px; }
 

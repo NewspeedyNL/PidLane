@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 20-10-2026 — Er is iets mis, opnieuw; tractie-ingrijpen (#560)
+ ═══════════════════════════════════════════════════════════
+
+ - "Wat merk je?": tegels (meer mag), zelf beschrijven met live
+   herkenning, een foutcode invoeren, en "Ik merk niets bijzonders" als
+   algemene check. Daarna "Wanneer?" met meerkeuze; daaruit volgt de
+   meting. Het plan toont wat je merkt en wat de code betekent.
+ - Het onderzoek neemt tegels, moment en opgegeven codes over; een
+   opgegeven code telt als voorkennis, nooit als bevestiging. Klacht
+   "Vreemd geluid of trilling" erbij.
+ - De laatste keuze valt niet meer achter de Android-knoppen.
+ - Per rit "mogelijk wielslip" (cd.tc) uit gaspedaal, gasklep, toeren en
+   snelheid; advies in Mijn voertuigen bij kou, met de banden erbij.
+ - Kosten per maand: pompprijzen naar CBS juli 2026 (#505).
+
+ ═══════════════════════════════════════════════════════════
  20-10-2026 — Verversen, Handmatig, thema's in Visueel
  ═══════════════════════════════════════════════════════════
 
