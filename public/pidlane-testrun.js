@@ -2787,6 +2787,42 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Toestandsgrenzen: start, stilstand en rijden hebben hun eigen grens; één alarmmonster is een uitschieter ──
+  {
+    issue: 'toestandgrens',
+    naam: 'Oordeel van de app: één meting over de alarmgrens is let op, de startdip van de accu, hoge belasting bij het rijden en warme inlaatlucht bij stilstand zijn geen vlag',
+    waarom: 'De AI noemde het oordeel van de conditiecheck "te kort door de bocht": een vaste band kent geen start, geen stilstand en geen vol gas.',
+    proef: async function () {
+      if (!window.PLVerzamel || typeof PLVerzamel.toestandUit !== 'function' || !window.PID_TOESTAND)
+        return { staat: 'FOUT', detail: 'PLVerzamel.toestandUit of PID_TOESTAND ontbreekt — oude pidlane-verzamel.js/pidlane-data.js (herladen?)' };
+      var r = function (n, f) { var a = []; for (var i = 0; i < n; i++) a.push({ t: i * 500, v: f(i) }); return a; };
+      var rpm = r(60, function (i) { return i < 10 ? 0 : 800; });
+      var acc = r(60, function (i) { return (i === 9 || i === 10) ? 10.1 : (i < 9 ? 12.5 : 14.2); });
+      var tst = PLVerzamel.toestandUit({ '010C': rpm });
+      var b = PLVerzamel.beoordeel('0142', acc, getPidDef('0142'), window.PID_LET_OP, null, PID_TOESTAND['0142'], tst);
+      if (b.oordeel !== 'ok') return { staat: 'FOUT', detail: 'de startdip van 10,1 V heet nog ' + b.oordeel + ': ' + b.reden };
+      var los = PLVerzamel.beoordeel('0105', r(20, function (i) { return i === 7 ? 112 : 90; }), getPidDef('0105'), window.PID_LET_OP, null);
+      if (los.oordeel !== 'let') return { staat: 'FOUT', detail: 'één meting van 112 °C koelwater heet ' + los.oordeel + ' in plaats van let op' };
+      return { staat: 'OK', detail: 'startdip geen vlag, één alarmmonster is let op. Rij: conditiecheck met een koude start in het stilstanddeel en flink optrekken in het rijdeel; accuspanning en motorbelasting horen niet rood of oranje te staan, en het AI-rapport hoort het oordeel van de app niet meer "te kort door de bocht" te noemen.' };
+    }
+  },
+
+  // ── Tokens: eerdere rapporten als kern, korte vragen naar het lichte model ──
+  {
+    issue: 'tokens',
+    naam: 'AI-kosten: een eerder rapport gaat als conclusie en advies mee in plaats van zijn eerste 1.800 tekens; korte vragen zonder meetdata gaan naar het lichte model',
+    waarom: 'Het begin van een eerder rapport was voertuiggegevens en een sensortabel die de analyse al vers krijgt — betaalde invoer zonder nut.',
+    proef: async function () {
+      if (typeof plRapportKern !== 'function') return { staat: 'FOUT', detail: 'plRapportKern ontbreekt — oude pidlane-archief.js (herladen?)' };
+      var tabel = 'VOERTUIGGEGEVENS\nVW Golf\n\nSENSORANALYSE\n'; for (var i = 0; i < 40; i++) tabel += '| 01' + i + ' | ' + i + ' | normaal |\n';
+      var k = plRapportKern(tabel + '\nCONCLUSIE\nLek in de inlaat.\n\nADVIES\n- Rookproef\n');
+      if (k.indexOf('Lek in de inlaat') < 0 || k.indexOf('| 01') >= 0) return { staat: 'FOUT', detail: 'de kern is niet de conclusie: ' + k.slice(0, 120) };
+      // Het model van een aanroep is alleen in een echte call te zien; hier de constante zelf.
+      if (typeof AI_LICHT !== 'string' || !/haiku/i.test(AI_LICHT)) return { staat: 'FOUT', detail: 'AI_LICHT ontbreekt of is geen Haiku — oude pidlane-fuel.js (herladen?)' };
+      return { staat: 'OK', detail: 'kern = conclusie en advies, AI_LICHT = ' + AI_LICHT + '. Rij: twee analyses na elkaar met "eerdere rapporten mee"; het kasboek hoort bij de tweede minder tokensIn te tonen dan vóór 21-10, en een lampjesfoto of "Meer over dit model" hoort met model haiku in het kasboek te staan.' };
+    }
+  },
+
   // ── #567: STAT_RPM meet de schommeling rond het verloop, niet het wegzakken zelf ──
   {
     issue: '567',

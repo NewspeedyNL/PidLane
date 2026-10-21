@@ -15,6 +15,63 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 21-10-2026 — Het oordeel van de app kende geen toestand
+
+**Wat er gebeurde.** Bij de conditiecheck schreef de app een oordeel per
+systeem, en het AI-rapport daarna noemde dat oordeel "te kort door de bocht".
+De AI had gelijk: `beoordeel()` in `pidlane-verzamel.js` toetste elk monster
+tegen één vaste band, en de alarmgrens ging af op één monster. De AI krijgt
+wél de toestand van de motor mee (regel 6 en 7 van de systeemprompt).
+
+**Wat er veranderde.**
+- Eén monster over `dH`/`dL` is "let op" met "uitschieter", niet "afwijkend".
+  Dezelfde regel gold al sinds 20-10 voor de waarschuwingsgrens; hij geldt nu
+  voor alle drie de grenzen (ook PID_LET_OP).
+- `PID_TOESTAND` in `pidlane-data.js`: monsters in een toestand gaan langs
+  een eigen grens. De toestand komt uit 010C en 010D (`toestandUit()`); is
+  die er niet, dan geldt de vaste grens — een ontbrekende reeks maakt het
+  oordeel nooit milder.
+
+**Waarom deze vier, en waar de getallen vandaan komen.**
+- *Accu bij het starten (0142).* De startmotor trekt de spanning omlaag;
+  9,6 V is de gangbare ondergrens voor een gezonde accu tijdens het starten
+  (vuistregel uit de werkplaats, geen fabrieksnorm). Venster: 5 s vóór tot
+  3 s na de overgang van < 400 naar ≥ 400 rpm.
+  [youcanic](https://www.youcanic.com/glossary/cranking-test/)
+- *Motorbelasting (0104).* Berekende belasting is gedefinieerd als luchtstroom
+  gedeeld door de maximale luchtstroom bij vol gas: bij vol gas hoort 100 %,
+  ook op een turbo. `wH:90` gold dus juist bij gezond optrekken. Stationair
+  blijft de grens. [MOTOR, dec. 2015](https://www.motor.com/magazine-summary/driveability-corner-december-2015/)
+- *Inlaatlucht (010F).* Stilstaand warmt de lucht op onder de motorkap
+  (heat soak) en zakt bij wegrijden; dat is gewoon gedrag, geen fout.
+- *Kortetermijntrim (0106/0108).* Springt bij elke gasverandering; de ±10 %
+  geldt voor een constant toerental, de langetermijntrim is het signaal. Daarom
+  telt de waarschuwingsgrens pas als 25 % van de monsters erbuiten ligt. De
+  langetermijntrim (0107/0109) houdt de oude regel.
+  [Rick's Free Auto Repair](https://ricksfreeautorepairadvice.com/fuel-trim-what-the-numbers-mean/),
+  [MEMS FCR](https://memsfcr.co.uk/2020/07/10/understanding-fuel-trim-in-detail/)
+
+**Wat dit niet oplost.** Koud/warm zit er nog niet in (koelwater als
+toestand), en een gesloten of open regelkring (PID 0103) ook niet. Of de 25 %
+voor de kortetermijntrim goed ligt, zegt pas een rit: blok 5, "toestandgrens".
+
+---
+
+## 21-10-2026 — Minder AI-tokens: eerdere rapporten als kern, korte vragen naar Haiku
+
+Eerdere rapporten gingen als context mee met hun begin (sessie tot 1.800,
+voertuig 1.300 tekens per rapport). Dat begin was meestal voertuiggegevens en
+een sensortabel die de analyse al vers krijgt. `plRapportKern()` neemt nu
+conclusie en advies (via `PLRapport.leesAI`), hoogstens 600 tekens.
+
+Korte vragen zonder meetdata gaan naar `AI_LICHT` (Haiku 4.5, ruwweg een derde
+van Sonnet). Het tarief per credit (`tegoedTarief`) is gelijk voor elk model,
+dus dat voordeel komt niet bij de klant terecht zolang dat zo blijft. Prompt
+caching is bewust niet meegenomen: dan moet `tegoedKosten()` ook de
+cache-tokens afrekenen, en dat is een eigen PR.
+
+---
+
 ## 20-10-2026 — STAT_RPM: de schommeling rond het verloop, niet het wegzakken (#567)
 
 Rit van 20-10 (Mazda CX-5): om 19:02:25, 14 s na een stop, "ruw stationair"

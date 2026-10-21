@@ -10,6 +10,29 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 21-10-2026 — Oordeel van de app houdt rekening met de toestand
+ ═══════════════════════════════════════════════════════════
+
+ - Eén meting over de alarmgrens is "let op" (uitschieter), niet meer
+   "afwijkend"; twee of meer blijven rood. Ook de PID_LET_OP-grens vraagt
+   nu twee monsters.
+ - PID_TOESTAND (pidlane-data.js): de startdip van de accu telt pas onder
+   9,6 V, motorbelasting rijdend geen vlag (vol gas = 100 %), inlaatlucht
+   stilstaand geen vlag (heat soak), kortetermijntrim pas als hij 25 % van
+   de tijd buiten ±10 % ligt. Toestand uit toerental en snelheid
+   (PLVerzamel.toestandUit); onbekend = de vaste grens.
+
+ ═══════════════════════════════════════════════════════════
+ 21-10-2026 — Minder AI-tokens per analyse
+ ═══════════════════════════════════════════════════════════
+
+ - Eerdere rapporten (sessie en voertuig) gaan als conclusie en advies mee,
+   hoogstens 600 tekens (plRapportKern), in plaats van hun begin.
+ - Korte vragen zonder meetdata naar Haiku (AI_LICHT): adapteradvies,
+   koopcheck-prijs/onderhoudsvragen, onderhoudsschema, lampjesfoto,
+   "Meer over dit model". Het tarief per credit is gelijk gebleven.
+
+ ═══════════════════════════════════════════════════════════
  20-10-2026 — Ruw stationair: wegzakken na een stop telt niet (#567)
  ═══════════════════════════════════════════════════════════
 
