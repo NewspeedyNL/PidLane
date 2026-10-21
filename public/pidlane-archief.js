@@ -477,9 +477,28 @@ function srSetCtxMode(m){
   window._srUseContext = m==='on' ? true : m==='off' ? false : null;
   try{ openReportsOverview(); }catch(e){ console.warn('openReportsOverview mislukt:', e); }   // overzicht verversen met nieuwe stand
 }
+// De kern van een eerder rapport als context: conclusie en advies, niet de
+// eerste N tekens. Die begin was meestal voertuiggegevens en een tabel die de
+// AI in deze analyse toch al vers krijgt — betaald, zonder dat er iets bij kwam.
+// Valt terug op het begin als er geen conclusie of advies te vinden is.
+const RAPPORT_KERN_MAX=600;
+function plRapportKern(tekst, max){
+  const t=String(tekst==null?'':tekst).replace(/[ \t]+\n/g,'\n').trim();
+  const cap=max||RAPPORT_KERN_MAX;
+  let kern='';
+  try{
+    const v=(window.PLRapport&&PLRapport.leesAI)?PLRapport.leesAI(t).velden:null;
+    if(v){
+      const adv=(v.advies||[]).map(a=>a.wat).filter(Boolean).join('; ');
+      kern=[v.conclusie, adv?'Advies: '+adv:''].filter(Boolean).join('\n');
+    }
+  }catch(e){ console.warn('Kern van een eerder rapport niet te lezen, het begin gaat mee', e); }
+  if(!kern) kern=(window.PLRapport&&PLRapport.zonderBlok)?PLRapport.zonderBlok(t).trim():t;
+  return kern.length>cap ? kern.slice(0,cap)+' […]' : kern;
+}
 // Contextblok met eerdere sessie-rapporten voor AI-prompts.
 // Compact gehouden (tokenbudget): max 4 rapporten, nieuwste eerst gekozen maar
-// chronologisch gepresenteerd, per rapport ingekort, totaal ~6000 tekens.
+// chronologisch gepresenteerd, per rapport alleen de kern (plRapportKern).
 function _sessionReportsPromptBlock(currentPrompt){
   try{
     const list=(window._sessionReports||[]).filter(r=>r.text && r.type!=='pdf');
@@ -495,13 +514,9 @@ function _sessionReportsPromptBlock(currentPrompt){
       seen.push(t); picked.unshift(list[i]);
     }
     if(!picked.length) return '';
-    let out='\n\nEERDERE RAPPORTEN DEZE SESSIE (zelfde meetsessie — gebruik als context en verwijs ernaar waar relevant, bv. of een eerdere bevinding is verbeterd/verslechterd; herhaal ze niet integraal):';
-    let budget=6000;
+    let out='\n\nEERDERE RAPPORTEN DEZE SESSIE (zelfde meetsessie — gebruik als context en verwijs ernaar waar relevant, bv. of een eerdere bevinding is verbeterd/verslechterd; alleen conclusie en advies, herhaal ze niet):';
     picked.forEach((r,i)=>{
-      let t=r.text.replace(/[ \t]+\n/g,'\n').trim();
-      const cap=Math.max(400,Math.min(1800,budget));
-      if(t.length>cap) t=t.slice(0,cap)+'\n[...rapport ingekort voor context...]';
-      budget-=t.length;
+      const t=plRapportKern(r.text);
       out+='\n--- Rapport '+(i+1)+' ('+_srTypeMeta(r.type).lbl+', '+r.ts.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})+') ---\n'+t;
     });
     return out;
