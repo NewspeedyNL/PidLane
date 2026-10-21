@@ -171,37 +171,109 @@
       });
   }
 
-  /* ── HET KLEINE VENSTER ──────────────────────────────────────────
-     Een PiP-venster is ongeveer 240x135 dp. De gewone Live-weergave past daar
-     niet in: je ziet dan een uitsnede van een tegel en niets dat zegt dát er
-     gemeten wordt. Daarom een eigen, kale weergave — drie waarden en een
-     hartslagstip.
+  /* ── HET KLEINE VENSTER: EEN KLOKJE ─────────────────────────────
+     Een PiP-venster is klein, en de gewone Live-weergave past er niet in.
+     Daarom een eigen weergave: een toerenteller met naald, de snelheid in
+     het midden en het koelwater eronder. Vierkant, want PLPip.java vraagt
+     het venster sinds 21-10-2026 in 1:1 aan.
+
+     RUSTIG TOT ER IETS IS. De eerste versie had een stip die elke seconde
+     knipperde; dat trok de aandacht weg van de navigatie, ook als alles in
+     orde was. Nu kleurt het venster alleen bij een afwijking: oranje vanaf
+     de waarschuwingsgrens van het koelwater, rood vanaf de alarmgrens. Die
+     grenzen komen uit PIDS (wH/dH), niet uit een eigen tabel hier.
 
      Hij wordt pas gemaakt als hij nodig is, en hij hangt niet in index.html:
      dit is één ding met één betekenis, en het hoort bij deze module. */
+  var SCHAAL_MAX = 7000;   // tpm aan het eind van de boog
+  var BOOG_GRADEN = 240;   // de boog loopt van 150° tot 390°, onderaan open
+  var BOOG_LENGTE = 301.59; // 240/360 van 2π·72 — de straal in het SVG hieronder
+
+  function _grens(pid, sleutel, terugval) {
+    try {
+      var l = (typeof PIDS !== 'undefined' && PIDS) ? PIDS : (window.PIDS || []);
+      for (var i = 0; i < l.length; i++) if (l[i].pid === pid && typeof l[i][sleutel] === 'number') return l[i][sleutel];
+    } catch (e) { console.warn('PiP: grens ' + pid + '.' + sleutel + ' niet leesbaar uit PIDS', e); }
+    return terugval;
+  }
+
+  /* De stand van het klokje uit de ruwe waarden, puur. Apart van het
+     tekenen, zodat test-pip.js de grenzen en de naaldhoek kan toetsen zonder
+     DOM. Een ontbrekende waarde is null en wordt een streep — niet 0, want
+     0 km/u is een meting en een streep is er geen. */
+  function meterStand(v) {
+    v = v || {};
+    var num = function (x) { return (x === undefined || x === null || x === '' || isNaN(x)) ? null : Number(x); };
+    var rpm = num(v['010C']), kmh = num(v['010D']), temp = num(v['0105']);
+    var frac = rpm === null ? 0 : Math.max(0, Math.min(1, rpm / SCHAAL_MAX));
+    var wH = _grens('0105', 'wH', 105), dH = _grens('0105', 'dH', 112);
+    var staat = 'rustig', melding = '';
+    if (rpm === null && kmh === null && temp === null) { staat = 'leeg'; melding = 'wacht op waarden'; }
+    else if (temp !== null && temp >= dH) { staat = 'alarm'; melding = 'motor te heet'; }
+    else if (temp !== null && temp >= wH) { staat = 'let'; melding = 'motor warm'; }
+    return {
+      rpm: rpm, kmh: kmh, temp: temp, staat: staat, melding: melding,
+      hoek: 150 + frac * BOOG_GRADEN,
+      boog: Math.round(frac * BOOG_LENGTE * 10) / 10
+    };
+  }
+
+  function _streepjes() {
+    var r = '';
+    for (var i = 0; i <= 7; i++)
+      r += '<line x1="151" y1="100" x2="157" y2="100" transform="rotate(' + (150 + i * BOOG_GRADEN / 7).toFixed(1) + ' 95 100)"></line>';
+    return r;
+  }
+
   function _maakMini() {
     if (_mini) return _mini;
     var d = document.createElement('div');
     d.id = 'pipMini';
     d.setAttribute('aria-hidden', 'true');
+    var rood = (6000 / SCHAAL_MAX) * BOOG_LENGTE;
     d.innerHTML =
-      '<div class="pip-kop"><span class="pip-stip"></span><span>PidLane meet door</span></div>' +
-      '<div class="pip-rij"><b id="pipRpm">—</b><span>tpm</span></div>' +
-      '<div class="pip-rij"><b id="pipKmh">—</b><span>km/u</span></div>' +
-      '<div class="pip-rij"><b id="pipTemp">—</b><span>°C</span></div>';
+      '<svg viewBox="0 0 190 190" preserveAspectRatio="xMidYMid meet">' +
+      '<circle class="pip-baan" cx="95" cy="100" r="72" stroke-dasharray="' + BOOG_LENGTE + ' 452.39" transform="rotate(150 95 100)"></circle>' +
+      '<circle class="pip-rood" cx="95" cy="100" r="72" stroke-dasharray="0 ' + rood.toFixed(2) + ' ' + (BOOG_LENGTE - rood).toFixed(2) + ' 452.39" transform="rotate(150 95 100)"></circle>' +
+      '<circle id="pipBoog" class="pip-boog" cx="95" cy="100" r="72" stroke-dasharray="0 452.39" transform="rotate(150 95 100)"></circle>' +
+      '<g class="pip-streep">' + _streepjes() + '</g>' +
+      '<g class="pip-schaal"><text x="58" y="120">0</text><text x="62" y="73">2</text><text x="107" y="58">4</text><text x="138" y="97">6</text></g>' +
+      '<g id="pipNaald" transform="rotate(150 95 100)"><line class="pip-naald" x1="88" y1="100" x2="158" y2="100"></line></g>' +
+      '<circle class="pip-as" cx="95" cy="100" r="6"></circle><circle class="pip-asgat" cx="95" cy="100" r="2.5"></circle>' +
+      '<text id="pipKmh" class="pip-kmh" x="95" y="138">—</text>' +
+      '<text class="pip-eenh" x="95" y="154">km/u</text>' +
+      '<circle class="pip-tstip" cx="76" cy="176" r="3"></circle>' +
+      '<text id="pipTemp" class="pip-temp" x="84" y="180">—</text>' +
+      '</svg>';
     var st = document.createElement('style');
     st.id = 'pipMiniCss';
     st.textContent =
-      '#pipMini{display:none;position:fixed;inset:0;z-index:9800;background:#0d1117;color:#e6edf3;' +
-      'font-family:var(--f,system-ui);padding:10px 12px;flex-direction:column;justify-content:center;gap:2px}' +
+      '#pipMini{display:none;position:fixed;inset:0;z-index:9800;background:#12161c;color:#e6edf3;' +
+      'font-family:var(--f,system-ui);align-items:center;justify-content:center;box-sizing:border-box}' +
       'body.pl-pip #pipMini{display:flex}' +
       'body.pl-pip>*:not(#pipMini):not(script):not(style){display:none !important}' +
-      '#pipMini .pip-kop{display:flex;align-items:center;gap:6px;font-size:11px;color:#8b949e;margin-bottom:4px}' +
-      '#pipMini .pip-stip{width:7px;height:7px;border-radius:50%;background:#00ff88;animation:pipTik 1s infinite}' +
-      '#pipMini .pip-rij{display:flex;align-items:baseline;gap:5px;line-height:1.1}' +
-      '#pipMini .pip-rij b{font-size:20px;font-weight:800}' +
-      '#pipMini .pip-rij span{font-size:11px;color:#8b949e}' +
-      '@keyframes pipTik{0%,100%{opacity:1}50%{opacity:.25}}';
+      '#pipMini svg{width:100%;height:100%}' +
+      '#pipMini circle{fill:none;stroke-width:8}' +
+      '#pipMini .pip-baan{stroke:#252c36;stroke-linecap:round}' +
+      '#pipMini .pip-rood{stroke:#f85149;stroke-opacity:.55}' +
+      '#pipMini .pip-boog{stroke:#58a6ff;stroke-linecap:round;transition:stroke-dasharray .4s}' +
+      '#pipMini .pip-streep line{stroke:#5b6573;stroke-width:2;stroke-linecap:round}' +
+      '#pipMini .pip-schaal text{fill:#6e7681;font-size:10px;text-anchor:middle;dominant-baseline:middle}' +
+      '#pipMini #pipNaald{transition:transform .4s}' +
+      '#pipMini .pip-naald{stroke:#ff7b39;stroke-width:3;stroke-linecap:round}' +
+      '#pipMini .pip-as{fill:#ff7b39;stroke:none}' +
+      '#pipMini .pip-asgat{fill:#12161c;stroke:none}' +
+      '#pipMini .pip-kmh{fill:#e6edf3;font-size:26px;font-weight:700;text-anchor:middle}' +
+      '#pipMini .pip-eenh{fill:#8b949e;font-size:10px;text-anchor:middle}' +
+      '#pipMini .pip-tstip{fill:#3fb950;stroke:none}' +
+      '#pipMini .pip-temp{fill:#c9d1d9;font-size:12px;font-weight:600}' +
+      '#pipMini.pip-let{background:#1f1608;box-shadow:inset 0 0 0 3px #d29922}' +
+      '#pipMini.pip-let .pip-asgat{fill:#1f1608}' +
+      '#pipMini.pip-let .pip-tstip{fill:#f0b43c}#pipMini.pip-let .pip-temp{fill:#f0b43c;font-weight:700}' +
+      '#pipMini.pip-alarm{background:#2a0f12;box-shadow:inset 0 0 0 3px #f85149}' +
+      '#pipMini.pip-alarm .pip-asgat{fill:#2a0f12}' +
+      '#pipMini.pip-alarm .pip-tstip{fill:#ff7b72}#pipMini.pip-alarm .pip-temp{fill:#ff7b72;font-weight:700}' +
+      '#pipMini.pip-leeg .pip-naald,#pipMini.pip-leeg .pip-as{opacity:.35}';
     try {
       document.head.appendChild(st);
       document.body.appendChild(d);
@@ -213,25 +285,49 @@
     return d;
   }
 
-  // De drie waarden bijwerken. Geen eigen timer: hij hangt aan de tik die er
-  // al is (zie de haak onderaan), want een tweede klok naast de meetlus is
+  // Het klokje bijwerken. Geen eigen timer: hij hangt aan de tik die er al
+  // is (zie de haak onderaan), want een tweede klok naast de meetlus is
   // precies het soort dubbele bron dat hier al drie keer een bug was.
   function ververs() {
     if (!_inPip || !_mini) return;
     try {
-      var v = (typeof pidVals !== 'undefined' && pidVals) ? pidVals : {};
-      var zet = function (id, pid, cijfers) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        var w = v[pid];
-        el.textContent = (w === undefined || w === null || isNaN(w)) ? '—' : Number(w).toFixed(cijfers || 0);
-      };
-      zet('pipRpm', '010C', 0);
-      zet('pipKmh', '010D', 0);
-      zet('pipTemp', '0105', 0);
+      var m = meterStand((typeof pidVals !== 'undefined' && pidVals) ? pidVals : {});
+      var el = function (id) { return document.getElementById(id); };
+      var n = el('pipNaald'); if (n) n.setAttribute('transform', 'rotate(' + m.hoek.toFixed(1) + ' 95 100)');
+      var b = el('pipBoog'); if (b) b.setAttribute('stroke-dasharray', m.boog + ' 452.39');
+      var k = el('pipKmh'); if (k) k.textContent = m.kmh === null ? '—' : m.kmh.toFixed(0);
+      var t = el('pipTemp'); if (t) t.textContent = m.temp === null ? '—' : m.temp.toFixed(0) + '°';
+      _mini.className = m.staat === 'rustig' ? '' : 'pip-' + m.staat;
     } catch (e) {
       console.warn('PiP: het kleine venster is niet bijgewerkt (#228)', e);
     }
+  }
+
+  /* DE STOPKNOP IN HET VENSTER (21-10-2026). Android tekent na een tik op
+     het venster zijn eigen knoppenlaag; PLPip.java zet daar "Stop meten"
+     bij. Die knop komt hier binnen als `pipStop`. Wat hij doet is wat de
+     verbreekknop in de app doet — handleConnect(), met saveSession en het
+     vrijgeven van de bus — en daarna gaat het venster dicht. Niet andersom:
+     dicht eerst en de webview wordt gesmoord voordat de rit bewaard is. */
+  function stop() {
+    _log('Stop meten vanuit het beeld-in-beeld-venster', 'info');
+    var los = Promise.resolve();
+    try {
+      if (typeof connected !== 'undefined' && connected && typeof handleConnect === 'function')
+        los = Promise.resolve(handleConnect());
+    } catch (e) { console.warn('PiP: verbreken vanuit het venster mislukt', e); }
+    return los
+      .catch(function (e) { console.warn('PiP: verbreken vanuit het venster mislukt', e); })
+      .then(function () { return sync(); })
+      .then(function () {
+        var p = _plug();
+        if (!p) return { ok: false, reden: 'geen native schil' };
+        return Promise.resolve(p.sluit()).then(function () { return { ok: true }; });
+      })
+      .catch(function (e) {
+        console.warn('PiP: het venster ging niet dicht na stop', e);
+        return { ok: false, reden: (e && e.message) || String(e) };
+      });
   }
 
   /* De modus is gewijzigd — dit komt van native, via de gebeurtenis of via de
@@ -403,6 +499,7 @@
       var p = _plug();
       if (!p || typeof p.addListener !== 'function') return false;
       p.addListener('pipModus', function (ev) { modus(!!(ev && ev.in)); });
+      p.addListener('pipStop', function () { stop(); });
       _gekoppeld = true;
       return true;
     } catch (e) {
@@ -432,6 +529,8 @@
     nu: nu,
     modus: modus,
     ververs: ververs,
+    meterStand: meterStand,
+    stop: stop,
     inPip: function () { return _inPip; },
     perioden: perioden,
     oordeel: oordeel,

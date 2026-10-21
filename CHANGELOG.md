@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 21-10-2026 — Beeld-in-beeld wordt een klokje met naald
+ ═══════════════════════════════════════════════════════════
+
+ - Het PiP-venster is vierkant (was 16:9) en toont een toerenteller met
+   naald, de snelheid in het midden en het koelwater eronder. De
+   knipperende stip is weg: het venster blijft rustig.
+ - Kleur alleen bij een afwijking: oranje vanaf wH, rood vanaf dH van
+   0105 in PIDS (nu 105 en 112 °C).
+ - Stopknop in de knoppenlaag van Android (PLPip.java, RemoteAction):
+   verbreekt via handleConnect() en sluit daarna het venster (sluit()).
+ - test-pip.js blok 9, test-nativeschil.js pipStop, 4 mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  21-10-2026 — Aankooprapport voor occasionkopers (PLAankoop)
  ═══════════════════════════════════════════════════════════
 
