@@ -2787,6 +2787,24 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── PiP-klokje: naald voor de toeren, kleur alleen bij een warme motor, stopknop in het venster ──
+  {
+    issue: 'pip-klokje',
+    naam: 'Beeld-in-beeld: het kleine venster is een toerenteller met naald, kleurt pas bij de koelwatergrens uit PIDS, en de stopknop verbreekt vóór het venster sluit',
+    waarom: 'Het oude venster knipperde elke seconde en stond als een hoge witte kolom over de navigatie; klanten vonden het irritant.',
+    proef: async function () {
+      if (!window.PLPip || typeof PLPip.meterStand !== 'function' || typeof PLPip.stop !== 'function')
+        return { staat: 'FOUT', detail: 'PLPip.meterStand of PLPip.stop ontbreekt — oude pidlane-pip.js (herladen?)' };
+      var koel = (window.PIDS || []).filter(function (x) { return x.pid === '0105'; })[0];
+      if (!koel) return { staat: 'FOUT', detail: 'PIDS kent 0105 niet — de grens van het klokje heeft geen bron' };
+      var r = PLPip.meterStand({ '010C': 782, '010D': 0, '0105': 69 });
+      if (r.staat !== 'rustig') return { staat: 'FOUT', detail: 'stationair en koud geeft ' + r.staat + ' in plaats van rustig' };
+      if (PLPip.meterStand({ '0105': koel.wH }).staat !== 'let') return { staat: 'FOUT', detail: koel.wH + ' °C koelwater kleurt het venster niet oranje' };
+      if (PLPip.meterStand({ '010C': 9000 }).hoek !== 390) return { staat: 'FOUT', detail: 'boven de schaal draait de naald door' };
+      return { staat: 'OK', detail: 'rustig bij ' + r.rpm + ' tpm, oranje vanaf ' + koel.wH + ' °C, rood vanaf ' + koel.dH + ' °C. Rij: verbind, schakel naar de navigatie; het venster is vierkant met een naald die de toeren volgt. Tik erop: de knop "Stop meten" verbreekt en het venster verdwijnt; de rit staat daarna in de historie.' };
+    }
+  },
+
   // ── Aankooprapport: vers gewiste codes zijn rood, een onvolledige meting krijgt geen groen, het VIN gaat niet mee ──
   {
     issue: 'aankooprapport',

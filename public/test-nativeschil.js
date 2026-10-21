@@ -309,6 +309,12 @@ console.log('\n── de tweede plugin: de meting in beeld houden (#228) ──'
   const ev = (pipPlugin.match(/notifyListeners\(\s*"([^"]+)"/) || [])[1];
   toets('de plugin stuurt een gebeurtenis', typeof ev, 'string');
   bevat('en de app luistert naar diezelfde naam', pipJs, "addListener('" + ev + "'");
+  /* De stopknop in het venster (21-10-2026): een tweede gebeurtenis, met
+     dezelfde valkuil. Heet hij aan één kant anders, dan doet de knop niets. */
+  bevat('de plugin stuurt de stopknop als pipStop', pipPlugin, 'notifyListeners("pipStop"');
+  bevat('en de app luistert naar pipStop', pipJs, "addListener('pipStop'");
+  bevat('de stopknop zit in de PiP-aanvraag', pip, 'b.setActions(');
+  bevat('de ontvanger staat niet open voor andere apps', pip, 'Context.RECEIVER_NOT_EXPORTED');
 
   /* Het enige moment waarop Android PiP toestaat, en de weg terug. */
   bevat('de workflow registreert de PiP-plugin', wf, 'registerPlugin(PLPipPlugin');
