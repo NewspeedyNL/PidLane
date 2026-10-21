@@ -575,7 +575,7 @@
     }
     inkt(RGB.wit); font('bold', 26); doc.text('PidLane', tx, 25);
     font('normal', 10); doc.text('Your car talks. We translate.', tx, 32);
-    font('bold', 12); doc.text('ANALYSERAPPORT', W - M, 22, { align: 'right' });
+    font('bold', 12); doc.text(schoon(o.label || 'ANALYSERAPPORT'), W - M, 22, { align: 'right' });
     font('normal', 9); doc.text(schoon(mod.datum), W - M, 29, { align: 'right' });
     y = 66;
     inkt(RGB.donker); font('bold', 20); doc.text(doc.splitTextToSize(schoon(mod.titel), CW), M, y); y += 10;

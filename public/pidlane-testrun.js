@@ -2787,6 +2787,30 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Aankooprapport: vers gewiste codes zijn rood, een onvolledige meting krijgt geen groen, het VIN gaat niet mee ──
+  {
+    issue: 'aankooprapport',
+    naam: 'Aankooprapport: een auto met 12 km sinds wissen en een permanente code is rood, zonder zelftests is er geen groen, en het VIN staat niet in het rapport',
+    waarom: 'Het aankooprapport is nieuw; het oordeel komt uit regels in de app, en een niet gelezen onderdeel mag nooit als "in orde" lezen.',
+    proef: async function () {
+      if (!window.PLAankoop || typeof PLAankoop.model !== 'function')
+        return { staat: 'FOUT', detail: 'PLAankoop ontbreekt — oude index.html of pidlane-aankooprapport.js niet geladen (herladen?)' };
+      var basis = function () {
+        return { kenteken: 'R054XD', ts: Date.now(), rdw: { merk: 'MAZDA', handelsbenaming: 'CX-5', tellerstandoordeel: 'Logisch' },
+          obd: { verbonden: true, vin: 'WVWZZZ1JZXW000001', dtc: { actief: [], pending: [], permanent: [] },
+            readiness: { mil: false, monitors: [{ monitor: 'Misfire', gereed: true }], nietGereed: [] }, kmSindsWissen: 9000, warmupsSindsWissen: 200 } };
+      };
+      var vers = basis(); vers.obd.kmSindsWissen = 12; vers.obd.dtc.permanent = ['P0420'];
+      var m1 = PLAankoop.model(vers);
+      if (m1.kleur !== 'rood') return { staat: 'FOUT', detail: 'vers gewist met permanente code geeft ' + m1.kleur + ' in plaats van rood' };
+      var zonder = basis(); zonder.obd.readiness = null;
+      var m2 = PLAankoop.model(zonder);
+      if (m2.kleur === 'groen') return { staat: 'FOUT', detail: 'zonder zelftests toch groen — een niet gelezen onderdeel leest als goed' };
+      if (JSON.stringify({ v: m1.voorblad, s: m1.secties }).indexOf('WVWZZZ1JZXW000001') >= 0) return { staat: 'FOUT', detail: 'het VIN staat in het rapport dat gedeeld wordt' };
+      return { staat: 'OK', detail: 'vers gewist rood, onvolledig ' + m2.kleur + ', VIN niet in het rapport. Rij: koopcheck → 📄 Aankooprapport maken, met en zonder plaats; lees de PDF na op voorblad, vragen en disclaimer' };
+    }
+  },
+
   // ── Toestandsgrenzen: start, stilstand en rijden hebben hun eigen grens; één alarmmonster is een uitschieter ──
   {
     issue: 'toestandgrens',

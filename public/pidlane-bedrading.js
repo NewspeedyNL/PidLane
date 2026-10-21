@@ -178,6 +178,11 @@ var KRITIEK = [
   // valt _plVinVoorLog terug op alleen de WMI en gaat er stil minder mee dan
   // bedoeld -- daarom hoort hij hier en niet in GEEN_GLOBALE.
   '_vlVinPseudoniem',
+  // Het aankooprapport (pidlane-aankooprapport.js) leest de adapter met de
+  // ontleders van het veldlab en maakt de PDF met loadJsPDF. Verdwijnt er één,
+  // dan blijft dat veld leeg en zegt de invoercheck "ontbreekt" -- terwijl de
+  // auto het wél gaf. Daarom hier.
+  '_svAsciiAfter','_svDtc','_svHexRecs','_svReadiness','loadJsPDF',
   // PLVerbind (pidlane-bt.js, #388) leest en schrijft het verbindgeheugen in
   // het voertuigprofiel via deze sleutel. Verdwijnt hij, dan onthoudt de app
   // stil niets meer en begint elke verbinding weer op de standaard-ATST.
