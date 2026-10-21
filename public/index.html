@@ -1619,6 +1619,15 @@ function closeConnOv(){
         <!-- Resultaten -->
         <div id="koopResults"></div>
 
+        <!-- Aankooprapport (PLAankoop, pidlane-aankooprapport.js) -->
+        <div id="koopAankoopBlok" style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:11px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px">📄 Aankooprapport</div>
+          <div style="font-size:12px;color:var(--tx2);line-height:1.5;margin-bottom:8px">Foutcodes, zelftests, vers gewiste codes, kilometerstand en RDW in één PDF, met datum en tijd. Met de vragen die je de verkoper stelt. Geen keuring — wel een goede eerste stap.</div>
+          <input id="koopAankoopPlaats" class="api-inp" type="text" maxlength="80" placeholder="Plaats van de bezichtiging (optioneel), bijv. Utrecht" style="width:100%;font-size:12px;margin-bottom:8px">
+          <button class="btn-sec" id="koopAankoopBtn" style="width:100%;font-size:12px;font-weight:700" onclick="PLAankoop.draaiUI(this)">📄 Aankooprapport maken</button>
+          <div id="koopAankoopUit"></div>
+        </div>
+
         <!-- Scan log download -->
         <div style="display:flex;justify-content:flex-end;margin-top:8px">
           <button onclick="downloadScanLog()" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;border:1px solid var(--bd);background:transparent;color:var(--tx3);cursor:pointer">💾 Scan log downloaden</button>
@@ -1905,6 +1914,7 @@ function closeConnOv(){
 <script src="pidlane-samenhang.js"></script><!-- samenhang (PLSamenhang, #446) — toestanden + de stappen van PLOnderzoek op een meting die er al is -->
 <script src="pidlane-verzamel.js"></script><!-- verzamelscherm vóór een AI-rapport (PLVerzamel) — vereist plMeetTekort + plKernStatus uit pidlane-fuel.js, pas bij aanroep -->
 <script src="pidlane-rapport.js"></script><!-- analyserapport (PLRapport) — vaste secties, AI-velden, grafieken; jsPDF via loadJsPDF, pas bij aanroep -->
+<script src="pidlane-aankooprapport.js"></script><!-- aankooprapport (PLAankoop) — oordeel uit regels, PDF via PLRapport.pdf; leest de adapter pas bij aanroep -->
 <script src="pidlane-tank.js"></script><!-- tankbeurten (PLTank) — puur; het tabblad in PLGarage roept hem aan -->
 <script src="pidlane-conditie.js"></script><!-- conditiescore (PLConditie) — puur; het tabblad Conditie in PLGarage roept hem aan (#475) -->
 <script src="pidlane-winterrit.js"></script><!-- PLWinterRit (#557/#558): korte ritten en thermostaat uit het patroon van de ritten — puur; PLGarage.advies() roept hem aan -->

@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-20', app: '3.3.0' },
+  gecontroleerd: { datum: '2026-10-21', app: '3.3.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -67,7 +67,7 @@ var PL_HULP = {
         '<p>Daaronder, onder <b>Ik wil…</b>, vier tegels. Elke tegel opent een korte wizard voor die vraag:</p>' +
         '<ul>' +
         '<li><b>Er is iets mis</b> — een klacht, lampje of geluid.</li>' +
-        '<li><b>Kopen of verkopen</b> — staat, historie en waarde. Je geeft eerst het kenteken; dan zie je wat het RDW weet, waar je bij dit merk op let en wat je tijdens de proefrit voelt of hoort. Daarna vul je km-stand en prijs in, en pas dan kies je hoe lang je meet. Wat je invult staat straks al in de koopcheck.</li>' +
+        '<li><b>Kopen of verkopen</b> — staat, historie en waarde. Je geeft eerst het kenteken; dan zie je wat het RDW weet, waar je bij dit merk op let en wat je tijdens de proefrit voelt of hoort. Daarna vul je km-stand en prijs in, en pas dan kies je hoe lang je meet. Wat je invult staat straks al in de koopcheck. Met <b>📄 Aankooprapport maken</b> krijg je een PDF met foutcodes, zelftests, vers gewiste codes, kilometerstand en RDW-gegevens, plus de vragen voor de verkoper. Dat rapport is een momentopname en geen keuring.</li>' +
         '<li><b>Rit starten</b> — ritmonitor, zuinig rijden, caravan.</li>' +
         '<li><b>Voorbereiden</b> — winter, lange rit, onderhoud.</li>' +
         '</ul>' +

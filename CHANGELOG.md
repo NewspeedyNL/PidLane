@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 21-10-2026 — Aankooprapport voor occasionkopers (PLAankoop)
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw: pidlane-aankooprapport.js. Knop "📄 Aankooprapport maken" in de
+   koopcheck: foutcodes (actief/wachtend/permanent), zelftests, mode 06,
+   CALID/CVN, km en warm-ups sinds wissen, km met lampje aan, km-check
+   (PLKm), RDW en terugroepacties in één PDF met datum, tijd en een zelf
+   getypte plaats van bezichtiging. Geen GPS: de app blijft locatievrij
+   (test-geen-gps.js, Data safety).
+ - Oordeel uit regels, niet uit de AI: vers gewist (< 100 km of < 10
+   warm-ups) is rood, permanente code na wissen ook. Rood wint altijd;
+   groen/oranje alleen op een complete meting, anders grijs.
+ - Invoercheck per onderdeel (compleet/deels/ontbreekt + gevolg), vragen
+   voor de verkoper, B1-disclaimer. AI schrijft alleen de samenvatting.
+ - Het VIN staat niet in het rapport. PLRapport.pdf() kreeg opts.label.
+ - test-aankooprapport.js (82 toetsen), 6 mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
  21-10-2026 — Oordeel van de app houdt rekening met de toestand
  ═══════════════════════════════════════════════════════════
 
