@@ -1824,6 +1824,9 @@ MUTATIES=(
 "public/pidlane-wijzer.js@@    if (d >= grens) {@@    if (d > grens) {@@test-wijzer.js@@een auto van precies de OBD-plichtdatum heet \"waarschijnlijk\""
 "public/pidlane-wijzer.js@@if (w) kwh = w / 1000; }@@if (w) kwh = w; }@@test-wijzer.js@@het stroomverbruik in Wh/km wordt als kWh/km gerekend: duizend keer te duur"
 "public/pidlane-wijzer.js@@    if (s && st.gedaan.indexOf(id) < 0) O.verwerk(st, s, { w: w });@@    if (s) O.verwerk(st, s, { w: w });@@test-wijzer.js@@een dubbel antwoord in de klachtenwijzer telt twee keer mee"
+"public/pidlane-wijzer.js@@    return top[1] + Math.ceil((kg - top[0]) / 100) * per100;@@    return top[1] + (kg - top[0]) / 100 * per100;@@test-wijzer.js@@de wegenbelasting rekent per kilo in plaats van per begonnen 100 kg: 1.001 kg kost bijna niets meer dan 1.000 (#505)"
+"public/pidlane-wijzer.js@@    if (soort === 'diesel' || soort === 'hybride-diesel') basis += tarief(MRB.diesel, MRB.dieselPer100, kg);@@    if (soort === 'diesel' || soort === 'hybride-diesel') basis += tarief(MRB.diesel, MRB.dieselPer100, kg) * opc;@@test-wijzer.js@@de dieseltoeslag krijgt de opcenten van het rijksdeel erbij: een diesel lijkt ruim de helft duurder dan de wet zegt (#505)"
+"public/pidlane-berekend.js@@const PRIJS_STANDAARD = { benzine:2.64,@@const PRIJS_STANDAARD = { benzine:1.95,@@test-wijzer.js@@de ritkosten rekenen met een oude benzineprijs terwijl de kosten per maand de nieuwe hebben (#505)"
 "public/pidlane-zonder.js@@    var k = ['kenteken', 'klacht', 'lampje', 'foutcode'];@@    var k = ['kenteken', 'lampje', 'foutcode'];@@test-zonder.js@@de klachtenwijzer verdwijnt van de kaart zonder adapter"
 # ── Herinneringen en de lampjesgids (29-09-2026) ──
 # Een herinnering die op de verkeerde dag komt, dubbel, of vanuit de demo, is
