@@ -35,7 +35,7 @@
 (function () {
   'use strict';
 
-  var PEIL = '13-10-2026';
+  var PEIL = '21-10-2026';
 
   // ── 1. Milieuklasse ─────────────────────────────────────────────────
   // Geen zonetabel per stad: die regels verschillen per gemeente en veranderen
@@ -44,16 +44,29 @@
   var MILIEUZONES_URL = 'https://www.milieuzones.nl';
 
   // ── 2. Wegenbelasting, indicatie ────────────────────────────────────
-  // Per kwartaal, gemiddelde provincie, op massa rijklaar (sinds 01-07-2026).
-  // Anker: € 126 voor benzine op 1.100 kg rijklaar (voorbeeld Belastingdienst).
-  // Diesel: brandstoftoeslag per 100 kg. Elektrisch 2026: 70 % van benzine.
-  // Plug-in hybride: vanaf 2026 het volle tarief.
-  var MRB = { anker: 126, ankerKg: 1100, per100: 26, diesel100: 12.5, evFactor: 0.7, marge: 0.15 };
-  // Pompprijzen (#505): CBS 80416NED, dagprijs 13-07-2026 — Euro95 2,297,
-  // diesel 2,149, LPG rond 0,95 (juni–juli). Tot 20-10-2026 stond hier
-  // 1,95 / 1,70 / 0,85: ruim 15 % te laag, dus "kosten per maand" ook.
-  // Stroom is een thuistarief en niet nagekeken.
-  var PRIJS = { benzine: 2.30, diesel: 2.15, lpg: 0.95, stroom: 0.35 };   // € per l of kWh
+  // Nagekeken 21-10-2026 (#505) tegen de wettekst: Wet op de
+  // motorrijtuigenbelasting 1994, art. 23, versie 01-07-2026 (wetten.overheid.nl,
+  // BWBR0006324). Lid 1 is het rijksdeel per kwartaal op massa rijklaar; lid 2a
+  // de dieseltoeslag. De provinciale opcenten verschillen per provincie en staan
+  // niet in de wet: OPC schaalt het rijksdeel zó dat het voorbeeld van de
+  // Belastingdienst klopt (benzine, 1.100 kg rijklaar = € 126 per kwartaal,
+  // gemiddelde provincie). De dieseltoeslag gaat er zonder opcenten en zonder
+  // fijnstoftoeslag (lid 4, hangt af van de uitstoot) bij: dus eerder te laag.
+  // Tot 21-10-2026 stond hier één lineaire lijn met € 12,50 per 100 kg diesel;
+  // de wet zegt € 153 plus € 16,57 per 100 kg boven 1.000 kg.
+  var MRB = {
+    rijk: [[600, 21.46], [700, 29.12], [800, 37.00], [900, 48.30], [1000, 64.24]], rijkPer100: 17.27,
+    diesel: [[600, 84.14], [700, 99.59], [800, 115.03], [900, 130.76], [1000, 153.00]], dieselPer100: 16.57,
+    zwaar: 3400, zwaarBasis: 474.12, zwaarPer100: 12.00,
+    anker: 126, ankerKg: 1100, evFactor: 0.7, marge: 0.15
+  };
+  // Pompprijzen (#505): landelijke adviesprijs (GLA) van 20-10-2026, zoals
+  // UnitedConsumers en Carblogger hem dagelijks geven: Euro95 2,64, diesel
+  // 2,69, LPG 1,29. Tot 21-10-2026 stond hier de CBS-pompprijs van juli
+  // (2,30 / 2,15 / 0,95): het CBS-gemiddelde loopt weken achter en ligt onder
+  // wat de meeste klanten aan de pomp zien. Let op: diesel is nu duurder dan
+  // benzine. Stroom is een thuistarief en niet nagekeken.
+  var PRIJS = { benzine: 2.64, diesel: 2.69, lpg: 1.29, stroom: 0.35 };   // € per l of kWh
   var PRAKTIJK = 1.15;   // het verbruik op de weg ligt hoger dan de typekeuring
   var KM_MAAND = 1250;   // 15.000 km per jaar
 
@@ -113,6 +126,16 @@
     return { soort: soort, klasse: ek.klasse, bron: ek.bron, kop: kop, uitleg: uitleg };
   }
 
+  /* Art. 23 als tabel: tot en met 1.000 kg per klasse van 100 kg (naar boven
+     afgerond, zoals de wet de klassen telt), daarboven per begonnen 100 kg;
+     vanaf MRB.zwaar het eigen tarief (alleen lid 1). */
+  function tarief(tabel, per100, kg) {
+    if (tabel === MRB.rijk && kg >= MRB.zwaar) return MRB.zwaarBasis + Math.ceil((kg - MRB.zwaar) / 100) * MRB.zwaarPer100;
+    for (var i = 0; i < tabel.length; i++) if (kg <= tabel[i][0]) return tabel[i][1];
+    var top = tabel[tabel.length - 1];
+    return top[1] + Math.ceil((kg - top[0]) / 100) * per100;
+  }
+
   /* Wegenbelasting per maand, als indicatie. { perMaand, laag, hoog, kwartaal, uitleg } of { onbekend } */
   function mrb(rij, bs) {
     rij = rij || {};
@@ -120,13 +143,14 @@
     if (!/personenauto/i.test(String(rij.voertuigsoort || 'Personenauto'))) return { onbekend: 'alleen voor personenauto\'s' };
     if (!kg || kg < 400) return { onbekend: 'het gewicht staat niet bij het RDW' };
     if (soort === 'onbekend' || soort === 'lpg') return { onbekend: soort === 'lpg' ? 'LPG heeft een eigen toeslag die hier niet in zit' : 'de brandstof is onbekend' };
-    var basis = MRB.anker + (Math.max(kg, 650) - MRB.ankerKg) / 100 * MRB.per100;
-    if (soort === 'diesel' || soort === 'hybride-diesel') basis += kg / 100 * MRB.diesel100;
+    var opc = MRB.anker / tarief(MRB.rijk, MRB.rijkPer100, MRB.ankerKg);
+    var basis = tarief(MRB.rijk, MRB.rijkPer100, kg) * opc;
+    if (soort === 'diesel' || soort === 'hybride-diesel') basis += tarief(MRB.diesel, MRB.dieselPer100, kg);
     if (soort === 'elektrisch') basis *= MRB.evFactor;
     basis = Math.max(basis, 15);
     var pm = basis / 3;
     return { perMaand: pm, laag: pm * (1 - MRB.marge), hoog: pm * (1 + MRB.marge), kwartaal: basis,
-      uitleg: Math.round(kg) + ' kg rijklaar, ' + soort.replace('-', ' ') + (soort === 'elektrisch' ? ' (2026: 70 % van het tarief)' : '') + ', gemiddelde provincie' };
+      uitleg: Math.round(kg) + ' kg rijklaar, ' + soort.replace('-', ' ') + (soort === 'elektrisch' ? ' (2026: 70 % van het tarief)' : '') + (/diesel/.test(soort) ? ', dieseltoeslag zonder fijnstoftoeslag' : '') + ', gemiddelde provincie' };
   }
 
   /* Brandstof of stroom per maand. opt = { km, prijs:{…} }. { perMaand, uitleg } of { onbekend } */
@@ -339,7 +363,7 @@
     _schema: schema,
     _kies: kies, _verder: verder, _antwoord: antwoord, _uitkomst: tekenUitkomst,
     // pure kern — voor test-wijzer.js
-    _kern: { PEIL: PEIL, MILIEUZONES_URL: MILIEUZONES_URL, MRB: MRB, OBD: OBD, VRAGEN: VRAGEN,
+    _kern: { PEIL: PEIL, PRIJS: PRIJS, tarief: tarief, MILIEUZONES_URL: MILIEUZONES_URL, MRB: MRB, OBD: OBD, VRAGEN: VRAGEN,
       soortBrandstof: soortBrandstof, euroKlasse: euroKlasse, milieuklasse: milieuklasse, mrb: mrb, brandstofKosten: brandstofKosten,
       kosten: kosten, adapter: adapter, wijzerStart: wijzerStart, wijzerVragen: wijzerVragen, wijzerAntwoord: wijzerAntwoord, wijzerUitkomst: wijzerUitkomst }
   };

@@ -2787,6 +2787,22 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Kosten per maand: wegenbelasting uit de wettekst, pompprijs op adviesprijs, één prijstabel (#505) ──
+  {
+    issue: '505',
+    naam: 'Kosten per maand: dieseltoeslag volgens art. 23 (€ 153 + € 16,57 per 100 kg), pompprijzen op de adviesprijs van oktober, en ritkosten en wijzer rekenen met dezelfde prijs',
+    waarom: 'De pompprijzen stonden op de CBS-stand van juli en de ritkosten nog op 1,95/1,70; de dieseltoeslag was een eigen lijn in plaats van de wettabel.',
+    proef: async function () {
+      var W = window.PLWijzer && PLWijzer._kern;
+      if (!W || typeof W.tarief !== 'function' || !W.PRIJS) return { staat: 'FOUT', detail: 'PLWijzer._kern.tarief of PRIJS ontbreekt — oude pidlane-wijzer.js (herladen?)' };
+      var B = window.PLBerekend && PLBerekend.PRIJS_STANDAARD;
+      if (!B) return { staat: 'FOUT', detail: 'PLBerekend.PRIJS_STANDAARD ontbreekt' };
+      if (B.benzine !== W.PRIJS.benzine || B.diesel !== W.PRIJS.diesel) return { staat: 'FOUT', detail: 'twee pompprijzen in de app: ritkosten ' + B.benzine + '/' + B.diesel + ', kosten per maand ' + W.PRIJS.benzine + '/' + W.PRIJS.diesel };
+      if (W.tarief(W.MRB.diesel, W.MRB.dieselPer100, 1100) !== 169.57) return { staat: 'FOUT', detail: 'dieseltoeslag 1.100 kg is niet € 169,57' };
+      return { staat: 'OK', detail: 'één prijs (benzine ' + W.PRIJS.benzine + ', diesel ' + W.PRIJS.diesel + ', peil ' + W.PEIL + '). Rij: kenteken-check van een diesel en een benzine van jouw gewicht; vergelijk de wegenbelasting met belastingdienst.nl/mrb-berekenen in je eigen provincie — binnen de bandbreedte?' };
+    }
+  },
+
   // ── Wintercheck en ritpatroon: één thermostaatoordeel (#558) ──
   {
     issue: '558',
