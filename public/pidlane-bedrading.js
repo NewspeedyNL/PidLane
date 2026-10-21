@@ -57,6 +57,10 @@ var KRITIEK = [
   // Auto-expert achter een guard aan. Ontbreekt plZonderVin, dan gaat een VIN
   // weer ruw naar de AI zonder dat iets het zegt.
   'plZonderVin','buildAutoExpertContext',
+  // Erbij op 21-10-2026. PLGarage en blok 5 roepen de kern van een eerder
+  // rapport achter een guard aan; ontbreekt hij, dan gaat het hele begin weer
+  // als context mee en betaalt de klant dat zonder dat iemand het ziet.
+  'plRapportKern',
   // Erbij op 17-10-2026. PLEigen ontleedt mode 22-antwoorden met plIsoTpHex
   // (pidlane-diagbundel.js) achter een guard. Ontbreekt die, dan vallen de
   // framenummers weer in de data en geeft een eigen sensor een verkeerd getal.
