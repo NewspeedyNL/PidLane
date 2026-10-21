@@ -262,7 +262,7 @@ Als de verbinding al goed loopt (responstijden onder ~150ms, weinig fouten): {"o
     // {meet:false} met opzet (#188): dit gaat over de verbinding met de
     // adapter, niet over sensordata. De aanlevering zou hier een blok meesturen
     // dat nergens over gaat, en promptcaching staat uit — dat is geld.
-    const raw=await apiFetch(prompt,600,null,null,{meet:false});
+    const raw=await apiFetch(prompt,600,null,AI_LICHT,{meet:false});
     // Robuuste JSON-extractie: pak alles tussen eerste { en laatste }
     // (AI zet er soms tekst of ```fences omheen)
     let plan;
@@ -664,7 +664,7 @@ function btDiagDevice(name, address, rssi){
   listEl.style.display='block';
   const key=(address||name||'?').replace(/[^a-z0-9]/gi,'_');
   if(devEl.querySelector(`[data-key="${key}"]`)) return; // al toegevoegd
-  const isOBD=!!(name||'').toLowerCase().match(/obd|elm|vgate|icar|mx\+|obdlink|link|scan/);
+  const isOBD=isObdNaam(name);
   const dev=document.createElement('div');
   dev.setAttribute('data-key',key);
   dev.style.cssText=`display:flex;align-items:center;gap:6px;padding:3px 7px;background:var(--bg);border:1px solid ${isOBD?'var(--gn)':'var(--bd)'};border-radius:5px;font-size:12px;`;

@@ -36,7 +36,7 @@
 // `typeof X === 'function'` doet: dat zijn precies de aanroepen die stil falen.
 var KRITIEK = [
   '_niceReportName','aiBusyBegin','aiBusyEnd','_srUpdateBadge','_noteMap','_recStats',
-  'appBack','btDiag','btLogAfkappen','btLogDomAfkappen','sppOudeSluiten','_pollWacht','buildDiscoveredPIDList',
+  'appBack','btDiag','btLogAfkappen','btLogDomAfkappen','sppOudeSluiten','isObdNaam','plSnelBekend','_pollWacht','buildDiscoveredPIDList',
   'clearDTC','clearSLAutoHide','closeCaravanDash','closeKebab','closeLades','closeRitAnalyse',
   'demo','detectEngineType','disconnectWebSerial','doLogin','download','dtcInfo','dtcPlan',
   'ensurePIDListActive','ensurePIDsActive',
@@ -57,6 +57,10 @@ var KRITIEK = [
   // Auto-expert achter een guard aan. Ontbreekt plZonderVin, dan gaat een VIN
   // weer ruw naar de AI zonder dat iets het zegt.
   'plZonderVin','buildAutoExpertContext',
+  // Erbij op 21-10-2026. PLGarage en blok 5 roepen de kern van een eerder
+  // rapport achter een guard aan; ontbreekt hij, dan gaat het hele begin weer
+  // als context mee en betaalt de klant dat zonder dat iemand het ziet.
+  'plRapportKern',
   // Erbij op 17-10-2026. PLEigen ontleedt mode 22-antwoorden met plIsoTpHex
   // (pidlane-diagbundel.js) achter een guard. Ontbreekt die, dan vallen de
   // framenummers weer in de data en geeft een eigen sensor een verkeerd getal.
@@ -174,6 +178,11 @@ var KRITIEK = [
   // valt _plVinVoorLog terug op alleen de WMI en gaat er stil minder mee dan
   // bedoeld -- daarom hoort hij hier en niet in GEEN_GLOBALE.
   '_vlVinPseudoniem',
+  // Het aankooprapport (pidlane-aankooprapport.js) leest de adapter met de
+  // ontleders van het veldlab en maakt de PDF met loadJsPDF. Verdwijnt er één,
+  // dan blijft dat veld leeg en zegt de invoercheck "ontbreekt" -- terwijl de
+  // auto het wél gaf. Daarom hier.
+  '_svAsciiAfter','_svDtc','_svHexRecs','_svReadiness','loadJsPDF',
   // PLVerbind (pidlane-bt.js, #388) leest en schrijft het verbindgeheugen in
   // het voertuigprofiel via deze sleutel. Verdwijnt hij, dan onthoudt de app
   // stil niets meer en begint elke verbinding weer op de standaard-ATST.

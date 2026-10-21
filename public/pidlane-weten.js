@@ -362,7 +362,7 @@
     if (typeof apiFetch !== 'function') { vak.innerHTML = '<div class="plw-ai">De AI is in deze versie niet beschikbaar.</div>'; return; }
     if (knop) { knop.disabled = true; knop.textContent = '⏳ De AI zoekt het op…'; }
     try {
-      var t = String(await apiFetch(aiPrompt(_laatste.bron), 600, null, null, { meet: false }) || '').trim();
+      var t = String(await apiFetch(aiPrompt(_laatste.bron), 600, null, AI_LICHT, { meet: false }) || '').trim();
       vak.innerHTML = '<div class="plw-ai"><b>Volgens de AI — niet geverifieerd</b>\n' + esc(t || 'De AI gaf geen antwoord.') + '</div>';
       if (knop) knop.style.display = 'none';
     } catch (e) {

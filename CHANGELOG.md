@@ -10,6 +10,234 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 21-10-2026 — Beeld-in-beeld wordt een klokje met naald
+ ═══════════════════════════════════════════════════════════
+
+ - Het PiP-venster is vierkant (was 16:9) en toont een toerenteller met
+   naald, de snelheid in het midden en het koelwater eronder. De
+   knipperende stip is weg: het venster blijft rustig.
+ - Kleur alleen bij een afwijking: oranje vanaf wH, rood vanaf dH van
+   0105 in PIDS (nu 105 en 112 °C).
+ - Stopknop in de knoppenlaag van Android (PLPip.java, RemoteAction):
+   verbreekt via handleConnect() en sluit daarna het venster (sluit()).
+ - test-pip.js blok 9, test-nativeschil.js pipStop, 4 mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
+ 21-10-2026 — Aankooprapport voor occasionkopers (PLAankoop)
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw: pidlane-aankooprapport.js. Knop "📄 Aankooprapport maken" in de
+   koopcheck: foutcodes (actief/wachtend/permanent), zelftests, mode 06,
+   CALID/CVN, km en warm-ups sinds wissen, km met lampje aan, km-check
+   (PLKm), RDW en terugroepacties in één PDF met datum, tijd en een zelf
+   getypte plaats van bezichtiging. Geen GPS: de app blijft locatievrij
+   (test-geen-gps.js, Data safety).
+ - Oordeel uit regels, niet uit de AI: vers gewist (< 100 km of < 10
+   warm-ups) is rood, permanente code na wissen ook. Rood wint altijd;
+   groen/oranje alleen op een complete meting, anders grijs.
+ - Invoercheck per onderdeel (compleet/deels/ontbreekt + gevolg), vragen
+   voor de verkoper, B1-disclaimer. AI schrijft alleen de samenvatting.
+ - Het VIN staat niet in het rapport. PLRapport.pdf() kreeg opts.label.
+ - test-aankooprapport.js (82 toetsen), 6 mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
+ 21-10-2026 — Oordeel van de app houdt rekening met de toestand
+ ═══════════════════════════════════════════════════════════
+
+ - Eén meting over de alarmgrens is "let op" (uitschieter), niet meer
+   "afwijkend"; twee of meer blijven rood. Ook de PID_LET_OP-grens vraagt
+   nu twee monsters.
+ - PID_TOESTAND (pidlane-data.js): de startdip van de accu telt pas onder
+   9,6 V, motorbelasting rijdend geen vlag (vol gas = 100 %), inlaatlucht
+   stilstaand geen vlag (heat soak), kortetermijntrim pas als hij 25 % van
+   de tijd buiten ±10 % ligt. Toestand uit toerental en snelheid
+   (PLVerzamel.toestandUit); onbekend = de vaste grens.
+
+ ═══════════════════════════════════════════════════════════
+ 21-10-2026 — Minder AI-tokens per analyse
+ ═══════════════════════════════════════════════════════════
+
+ - Eerdere rapporten (sessie en voertuig) gaan als conclusie en advies mee,
+   hoogstens 600 tekens (plRapportKern), in plaats van hun begin.
+ - Korte vragen zonder meetdata naar Haiku (AI_LICHT): adapteradvies,
+   koopcheck-prijs/onderhoudsvragen, onderhoudsschema, lampjesfoto,
+   "Meer over dit model". Het tarief per credit is gelijk gebleven.
+
+ ═══════════════════════════════════════════════════════════
+ 20-10-2026 — Ruw stationair: wegzakken na een stop telt niet (#567)
+ ═══════════════════════════════════════════════════════════
+
+ - De rit-monitor meet de schommeling van het stationair toerental rond
+   zijn verloop. Een toerental dat na een stop wegzakt, met ruis erop, gaf
+   "ruw stationair" (rit 20-10, 238 rpm); echte ruwloop en de airco blijven
+   een melding.
+
+ ═══════════════════════════════════════════════════════════
+ 20-10-2026 — Eén aanlevering voor alle analyses
+ ═══════════════════════════════════════════════════════════
+
+ - De AI krijgt het datakwaliteitsblok en de correlatiebevindingen één
+   keer; acht analyses stuurden ze dubbel (en betaalden dubbel).
+ - Het profiel van de aanlevering komt uit de meting (PLVerzamel.aanlevering);
+   de oorzaakanalyse beloofde een emissiedekking, de totaalcheck-verdieping
+   een dekking over het hele totaalprofiel.
+ - Diepe storingscheck, klimaatcheck en opname geven hun vraag mee;
+   prijs, lease, inkoop en "rapport herzien" sturen geen meetblok meer.
+ - Eén kwaliteitsoordeel per sensor: wat de samenvatting toont is over het
+   venster beoordeeld, de aanlevering oordeelt alleen over de rest (#565).
+ - AI-Automonteur en opname krijgen dezelfde samenvatting (min–max en
+   oordeel) in plaats van losse waarden; onderhoud, EV en lange rit zetten
+   na het meten geen profiel meer aan.
+
+ ═══════════════════════════════════════════════════════════
+ 20-10-2026 — Er is iets mis, opnieuw; tractie-ingrijpen (#560)
+ ═══════════════════════════════════════════════════════════
+
+ - "Wat merk je?": tegels (meer mag), zelf beschrijven met live
+   herkenning, een foutcode invoeren, en "Ik merk niets bijzonders" als
+   algemene check. Daarna "Wanneer?" met meerkeuze; daaruit volgt de
+   meting. Het plan toont wat je merkt en wat de code betekent.
+ - Het onderzoek neemt tegels, moment en opgegeven codes over; een
+   opgegeven code telt als voorkennis, nooit als bevestiging. Klacht
+   "Vreemd geluid of trilling" erbij.
+ - De laatste keuze valt niet meer achter de Android-knoppen.
+ - Per rit "mogelijk wielslip" (cd.tc) uit gaspedaal, gasklep, toeren en
+   snelheid; advies in Mijn voertuigen bij kou, met de banden erbij.
+ - Kosten per maand: pompprijzen naar CBS juli 2026 (#505).
+
+ ═══════════════════════════════════════════════════════════
+ 20-10-2026 — Verversen, Handmatig, thema's in Visueel
+ ═══════════════════════════════════════════════════════════
+
+ - Winterkaart: "Bijgewerkt om …" en ↻ Verversen (haalt meteen opnieuw,
+   ook binnen het uur).
+ - Adapterpaneel onder ✋ Handmatig: het knoppenvak plakt niet meer over
+   de getallen, en bovenaan staat wat je laatste wijziging doet — nu naast
+   vóór, met beter/slechter na het venster van 10 s.
+ - Slim visueel: thema's ook in de gewone weergave, 🎨 staat er altijd.
+
+ ═══════════════════════════════════════════════════════════
+ 20-10-2026 — De totaalcheck op de schop: stilstand en rijden
+ ═══════════════════════════════════════════════════════════
+
+ - Weg: de vragenlijst (koude start, olie, geluiden: ja/soms/nee) en de
+   rijtest met vijf fases van twee minuten vanuit de totaalcheck.
+ - Twee stappen: 🅿️ Stilstand (verzamelscherm, daarna foutcodes 03/07/0A
+   en zelftests) en 🚗 Rijden (gewoon wegrijden, het scherm stopt vanzelf
+   na ± 90 s rijtijd). Elk deel wordt beoordeeld op alleen zijn eigen
+   monsters, gesplitst op de snelheid van dat moment.
+ - Uitslag per categorie: wat klopt blijft dicht; een categorie met een
+   afwijking gaat open met een focusmeting (alleen die sensoren, in de
+   toestand waarin de afwijking zat) en een AI-vraag over alleen dat
+   systeem. Het AI-rapport kan pas na een meting en noemt een niet
+   gemeten deel als niet gemeten.
+ - PLVerzamel.meet(): opts.rijtest:false en opts.maxMs.
+ - Nieuw: test-totaalcheck.js, acht mutaties, blok 5-proef.
+ - Na de eerste rit: de rijmeting telt zijn eigen rijtijd (pidHist hield
+   maar 20 s snelheid vast); gasklep bij stationair, langetermijntrim en
+   bitmaps heten niet meer "vast"; één trimpiek is geen "let op"; traag
+   koelwater maakt een warme motor niet koud; het rapport noemt alleen
+   uitgevoerde proeven en gaat over beide delen.
+
+ ═══════════════════════════════════════════════════════════
+ 20-10-2026 — De winter (#555–#559)
+ ═══════════════════════════════════════════════════════════
+
+ - Winterkaart boven het startscherm, oktober–maart: één keer per
+   seizoen "Het wordt kouder — pas je profiel aan voor de winterperiode",
+   daarna drie dagen weer en hoogstens één advies (weg te tikken).
+ - Winterprofiel: plaats uit een lijst (geen locatie), banden met symbool,
+   DOT en profiel, ruitensproeiervloeistof met grens en datum. Bij een
+   klant in kp_voertuig, anders op het toestel. Bandentabel: elk soort
+   band van −10 tot 25 °C, jouw band en de komende dagen erop (een model).
+ - Worker: /weer (Open-Meteo via de Worker, randcache per plaats), negen
+   kolommen in kp_voertuig, akkoordtekst 2026-10-20.
+ - Per rit ook buitentemperatuur, tijd op temperatuur en het laagste
+   koelwater op de snelweg; Mijn voertuigen → Advies zegt nu iets over
+   korte ritten in de kou en een thermostaat die open blijft hangen.
+ - Nieuw: pidlane-weer.js, pidlane-winter.js, pidlane-winterrit.js,
+   test-weer.js, test-winter.js, test-winterrit.js, bproef-winter.js.
+
+ ═══════════════════════════════════════════════════════════
+ 19-10-2026 — Snel verbinden met een bekende auto
+ ═══════════════════════════════════════════════════════════
+
+ - Ingelogd, adapter, kenteken, protocol en voertuigprofiel bekend: de
+   knop verbindt zonder kentekenvraag, protocolkeuze, scanvraag of
+   samenvatting; het venster toont alleen "Verbinden met voertuig…".
+   Alleen de bekende adapter, één ronde; antwoordt hij niet, dan zegt de
+   melding: druk op de pair-knop. Nieuw: test-snelverbinden.js.
+
+ ═══════════════════════════════════════════════════════════
+ 19-10-2026 — Een Bose-speaker is geen OBD2-adapter
+ ═══════════════════════════════════════════════════════════
+
+ - Bij een Bluetooth-scan verbond de app eerst met een "SoundLink"-
+   speaker: de SPP-keuze had een eigen naamlijst met een kale 'link' en
+   'scan'. Scanlijst en verbindkeuze gebruiken nu één oordeel,
+   isObdNaam() in pidlane-bt.js. Nieuw: test-obdnaam.js.
+
+ ═══════════════════════════════════════════════════════════
+ 18-10-2026 — De expert op een laptop krijgt een werkplek
+ ═══════════════════════════════════════════════════════════
+
+ - Meekijken op een laptop (gemeten, of met de knop Expertweergave):
+   het venster opent na het inloggen vanzelf, schermvullend, met de auto,
+   wat nu afwijkt, wat er al gedaan is en procedures voor deze auto
+   (meetstappen, werkplaatsactie, controleplan per foutcode). De
+   garagemodus gaat vanzelf aan. Nieuw: pidlane-expertwerk.js
+   (PLExpertWerk), test-expertwerk.js, bproef-expertwerk.js.
+
+ ═══════════════════════════════════════════════════════════
+ 18-10-2026 — Visueel op het volle scherm, met thema's
+ ═══════════════════════════════════════════════════════════
+
+ - Slim visueel: knop volledig scherm boven de meter. Daar kies je met 🎨
+   een thema: Neon, Spectrum, Chroom, Carbon of Nachtrood. Bij openen en
+   wisselen zwaait de naald één keer vol uit; het scherm blijft aan.
+   Buiten het volle scherm blijft de gewone weergave. Nieuw:
+   pidlane-visthema.js (PLVisThema), test-visthema.js, bproef-visthema.js.
+
+ ═══════════════════════════════════════════════════════════
+ 17-10-2026 — Voorkennis voor de expert, VIN niet meer ruw in de vstate
+ ═══════════════════════════════════════════════════════════
+
+ - Expert op afstand: bij het verbinden ziet de expert wat de app al wist —
+   "Eerst kijken naar" (foutcodes en mode 06 als verdenking, merkkennis als
+   duw), bekende zwakke punten zonder bewijs apart, foutcodes met aantal,
+   fase en freeze frame, mode 06, waarnemingen, eerdere rapporten (tekst op
+   verzoek met Lees). Nieuw: pidlane-voorkennis.js (PLVoorkennis).
+ - Privacy: de vstate droeg de ruwe VIN naar de Worker en elke expert. Nu
+   WMI + pseudoniem; de Worker haalt een veh.vin ook zelf weg.
+ - Mode 06 bewaart de laatste uitlezing (PLM06.laatste) en werkt een
+   meekijkende expert direct bij; een DTC-verzoek van de expert ook.
+ - Worker: request-rapport (alleen een archief-id).
+
+ ═══════════════════════════════════════════════════════════
+ 17-10-2026 — Expert op afstand voorop
+ ═══════════════════════════════════════════════════════════
+
+ - Home: een blok Expert op afstand boven Check mijn auto, met Laat iemand
+   meekijken (deelvenster) en Ik ben de expert (codeveld) — PLNav.expert().
+   De kaarten in Live data blijven. Rit starten zegt niet meer Meekijken.
+ - Handleiding: startscherm en Delen en meekijken wijzen naar het nieuwe blok.
+ - PLAY-INZENDING.md: korte en volledige beschrijving, feature graphic,
+   screenshotvolgorde en release notes leiden met het meekijken.
+
+ ═══════════════════════════════════════════════════════════
+ 17-10-2026 — Rondgang in Slim: elke pagina op één scherm
+ ═══════════════════════════════════════════════════════════
+
+ - Een volle pagina viel onder de navigatie. pasIn() meet na het tekenen
+   en tekent dan dichter: kleinere getallen en lagere staven, daarna
+   rijen in twee kolommen en de grote waarde met zijn lijn ernaast.
+   Bewust niet splitsen: één onderwerp blijft één scherm.
+ - Een half lege pagina (Uitlaatgas, Brandstofdruk) krijgt verwante
+   sensoren als rij (VERWANT): raildruk naast belasting en trim,
+   uitlaatgas naast belasting en kat. remt() remt een sensor niet meer
+   die op de dia in beeld staat, ook als hij elders thuishoort.
+
+ ═══════════════════════════════════════════════════════════
  17-10-2026 — Play-teksten en privacyverklaring voor 3.3.0
  ═══════════════════════════════════════════════════════════
 

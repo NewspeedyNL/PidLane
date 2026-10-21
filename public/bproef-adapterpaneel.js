@@ -193,6 +193,16 @@ function toets(naam, waar, uitleg) {
           await app.ev(`document.documentElement.scrollWidth <= window.innerWidth`) === true);
     await app.ev(`PLAdapter.zetModus(false); 'ok'`);
 
+    console.log('\n── 7b. onder Handmatig blijven de getallen te zien, met het effect ──');
+    await app.venster(360, 640);
+    await app.ev(`PLAdapter.zetModus(true); PLAdapter.zetTempo(50); PLAdapter.teken(); 'ok'`);
+    const hand = await app.ev(`(function(){ var b=document.getElementById('plAdapterBediening');
+      return { pos: getComputedStyle(b).position, tekst: b.innerText }; })()`);
+    toets('het knoppenvak plakt niet meer over de getallen', hand.pos === 'static', hand.pos);
+    toets('bovenaan de knoppen: wat de wijziging doet, nu naast vóór', /EFFECT VAN: tempo 50%/.test(hand.tekst) && /was /.test(hand.tekst), hand.tekst.slice(0, 160));
+    await app.ev(`PLAdapter.zetModus(false); PLAdapter.teken(); 'ok'`);
+    toets('bij de automaat plakt het vak weer onderaan', await app.ev(`getComputedStyle(document.getElementById('plAdapterBediening')).position`) === 'sticky');
+
     console.log('\n── 9. opnieuw verbinden: verbreken, hervatten, selectie blijft ──');
     /* De knop moet door de echte paneelcode heen: selectie bewaren, dan
        handleConnect() (verbreken) en pas daarna connectSerial() in de

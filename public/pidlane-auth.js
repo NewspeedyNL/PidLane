@@ -583,7 +583,6 @@ let _focusPIDs=new Set();       // deze PIDs krijgen het snelste interval
 // ── Idee 1/2/3: sessie-stats verzameld tijdens de huidige rit ──
 let _sessionStats={};           // pid -> {n,sum,min,max,last}
 let dtcCodes=[], pollTimer=null;
-let checkAnswers={}, checkResults=[];
 let diagCauses=[], selectedCause=null;
 let selectedProto='0';
 if(!window.anthropicKey) window.anthropicKey=''; // Niet overschrijven als login al key heeft gezet

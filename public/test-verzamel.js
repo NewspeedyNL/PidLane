@@ -60,10 +60,15 @@ console.log('A. Het oordeel per sensor, over het hele venster');
 {
   // De kern van dit scherm: de laatste waarde is gewoon, maar onderweg kwam
   // hij boven de alarmgrens. Een momentopname had dit gemist.
-  const v = rond(85, 95); v[7] = 112;
+  const v = rond(85, 95); v[7] = 112; v[8] = 112;
   const r = een('0105', v);
-  toets('koelwater even 112 °C, laatste 95: afwijkend (alarmgrens dH 110)', r.oordeel === 'afwijkend', JSON.stringify(r));
-  toets('en hij telt hoe vaak: 1 van 20', r.buiten === 1 && /alarmgrens/.test(r.reden), JSON.stringify(r));
+  toets('koelwater twee keer 112 °C, laatste 95: afwijkend (alarmgrens dH 110)', r.oordeel === 'afwijkend', JSON.stringify(r));
+  toets('en hij telt hoe vaak: 2 van 20', r.buiten === 2 && /alarmgrens/.test(r.reden), JSON.stringify(r));
+  // Eén monster over de alarmgrens is een uitschieter (21-10-2026): let op,
+  // niet rood. Koelwater springt niet in een seconde van 95 naar 112 en terug.
+  const v1 = rond(85, 95); v1[7] = 112;
+  const r1 = een('0105', v1);
+  toets('één meting van 112 °C: let op met "uitschieter", niet afwijkend  <- tegenproef', r1.oordeel === 'let' && /uitschieter/.test(r1.reden) && r1.buiten === 1, JSON.stringify(r1));
 }
 {
   const r = een('0105', rond(90, 104));
@@ -96,7 +101,7 @@ console.log('A. Het oordeel per sensor, over het hele venster');
 console.log('\nB. Wat opvalt staat bovenaan');
 let sam;
 {
-  const hoog = rond(85, 95); hoog[7] = 112;
+  const hoog = rond(85, 95); hoog[7] = 112; hoog[8] = 112;
   zet({ '010C': reeks(rond(750, 2400)), '0105': reeks(hoog), '0142': reeks(rond(11.2, 14.2)), '0106': reeks(rond(-3, 3)) });
   sam = V.samenvatting(['010C', '0106', '0142', '0105', '0110']);
   const volg = sam.rijen.map(r => r.pid + ':' + r.oordeel);
@@ -110,7 +115,7 @@ console.log('\nC. Wat de AI krijgt');
   const p = V.promptBlok(sam, { sec: 75, rijSec: 0 });
   const opv = p.slice(p.indexOf('OPVALLEND'), p.indexOf('BINNEN HET GEBRUIKELIJKE'));
   toets('een kop met de duur van het venster', /GEMETEN OVER HET MEETVENSTER \(75 s/.test(p), p.slice(0, 160));
-  toets('koelwater staat onder OPVALLEND, met min–max en aantal buiten de grens', /Koelwater temp: 85–112 °C/.test(opv) && /1 daarvan buiten de grens/.test(opv), opv);
+  toets('koelwater staat onder OPVALLEND, met min–max en aantal buiten de grens', /Koelwater temp: 85–112 °C/.test(opv) && /2 daarvan buiten de grens/.test(opv), opv);
   toets('het toerental staat onder binnen het bereik, niet onder opvallend', !/Motortoerental/.test(opv) && /BINNEN[\s\S]*Motortoerental/.test(p), p);
   toets('sensoren zonder data worden genoemd, met de regel erbij', /GEEN DATA ONTVANGEN: [^\n]*\. Doe geen uitspraken/.test(p), p);
   toets('de AI hoort dat "opvallend" een vlag is en geen diagnose', /nog geen diagnose/.test(p) && /toestand van de motor/.test(p));
@@ -139,7 +144,7 @@ console.log('\nE. runQuickAI: eerst het scherm, dan pas de AI');
   const RUN = fuel.slice(a, b);
   const maak = (uit) => {
     const c = { console: { warn() {} }, verstuurd: [], gevraagd: [], pane: 0,
-      PLVerzamel: { meet: (o) => { c.gevraagd.push(o); return Promise.resolve(uit); }, promptBlok: V.promptBlok },
+      PLVerzamel: { meet: (o) => { c.gevraagd.push(o); return Promise.resolve(uit); }, promptBlok: V.promptBlok, aanlevering: V.aanlevering },
       activateAIPane() { c.pane++; }, getVehicle: () => ({ merk: 'Mazda', model: 'CX-5', year: 2018 }),
       plMeetPromptBlok: () => '', correlationLines: () => [], _qualityBlokFor: () => '', formatDtcCodes: () => 'geen',
       dtcCodes: [], activePIDs: new Set(['0105']), isReportableSensor: () => true,
@@ -182,7 +187,7 @@ console.log('\nF. Rijtijd, momentopnames en een gegeven bron');
   const h = V.histUit([{ t: 0, coolant: 80, rpm: 800 }, { t: 2000, coolant: 82, rpm: null }], { coolant: '0105', rpm: '010C' });
   toets('momentopnames worden reeksen per PID, zonder lege waarden', h['0105'].length === 2 && h['010C'].length === 1 && h['0105'][1].v === 82, JSON.stringify(h));
   s.isReportableSensor = () => true;
-  const v = rond(85, 95); v[7] = 112;
+  const v = rond(85, 95); v[7] = 112; v[8] = 112;
   const sb = V.vanBron({ hist: { '0105': reeks(v), '010C': [] } });
   toets('een gegeven bron krijgt hetzelfde oordeel als het scherm', sb.rijen[0].pid === '0105' && sb.rijen[0].oordeel === 'afwijkend' && sb.rijen.length === 1, JSON.stringify(sb.rijen.map(r => r.pid)));
 }
@@ -227,7 +232,7 @@ console.log('\nG. Het scherm zelf: bron, de rit van zojuist, terugkeer na een ri
   toets('vóór de eerste uitslag is elke maat null', ['verzamel-uitslagen', 'verzamel-afwijkend', 'verzamel-ai-pct', 'verzamel-hergebruik', 'verzamel-na-rit'].every(m => V.maat(m) === null));
 
   // 1. Een gegeven bron (de datalog): meteen de uitslag, geen poort.
-  const piek = rond(85, 95); piek[7] = 112;
+  const piek = rond(85, 95); piek[7] = 112; piek[8] = 112;
   let u = null;
   V.meet({ bron: { naam: 'de datalog', hist: { '0105': reeks(piek) }, sec: 20, rijSec: null }, watVoor: 'proef' }).then(x => { u = x; });
   await wacht();

@@ -279,6 +279,7 @@ MUTATIES=(
 "public/pidlane-testrun.js@@    issue: '#29',@@    issue: '',@@test-blok5lijst.js@@een proef in blok 5 is zijn issue kwijt en valt daarmee uit de dekking"
 "public/pidlane-testrun.js@@'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ')@@'BLOK 5 DEKT DEZE RONDE: #19, #15'@@test-blok5lijst.js@@de dekkingsregel in CAMPAGNE is weer met de hand overgeschreven"
 "public/pidlane-uitgebreid.js@@schoon.indexOf(hdr) >= 0;@@true;@@test-mode21.js@@de uitgebreide probe accepteert elk antwoord"
+"public/pidlane-uitgebreid.js@@  const UITGEBREID_DEFS = {\n@@  const UITGEBREID_DEFS = {\n    '2101': { name: 'Motorolie temp', unit: '°C', cat: 'Temperatuur', min: -40, max: 150, merk: 'MAZDA', vervangt: '015C', parse: b => b[0] - 40 },\n@@test-mode21.js@@2101 staat weer als Mazda-vervanger van 015C, terwijl hij op de CX-5 NO DATA geeft (19-08-2026)"
 "public/pidlane-uihelpers.js@@'T' + _plTweeCijfers(d.getHours())@@'T' + _plTweeCijfers(d.getUTCHours())@@test-tijdklok.js@@de stempel valt terug op het UTC-uur (#17)"
 "public/pidlane-privacy.js@@    if (klant)@@    if (true)@@test-account-verwijderen.js@@personeel wordt weer naar een knop gestuurd die het niet heeft (#69)"
 "public/pidlane-uihelpers.js@@'-' + String(d.getMilliseconds()).padStart(3,'0');@@'-' + String(d.getMilliseconds());@@test-tijdklok.js@@milliseconden verliezen hun voorloopnullen en sorteren verkeerd (#17)"
@@ -516,6 +517,15 @@ MUTATIES=(
 "worker.js@@  return \"%\" + String(q).replace(/[\\\\%_]/g, (t) => \"\\\\\" + t) + \"%\";@@  return \"%\" + String(q) + \"%\";@@test-formule-escape.js@@een % of _ in het zoekvak van beheer vindt elke rij in plaats van wat er staat (sinds #327 de opvolger van #142)"
 "public/pidlane-remote.js@@+getal(r.mn)+@@+r.mn+@@test-remote-tabel.js@@een cijferkolom van de opnametabel gaat weer ruw de HTML in"
 "public/pidlane-remote.js@@+getal(r.n)+@@+r.n+@@test-remote-tabel.js@@het aantal metingen gaat weer ruw de HTML in"
+"public/pidlane-remote.js@@      o.veh=Object.assign({merk:v.merk||'',@@      o.veh=Object.assign({vin:v.vin||'',merk:v.merk||'',@@test-vstate-vin.js@@de ruwe VIN gaat weer mee in de vstate naar de expert"
+"public/pidlane-remote.js@@    return{wmi:vin.slice(0,3),vin_pseudo:_vinPs.ps};@@    return{wmi:vin.slice(0,3),vin_pseudo:_vinPs.ps,vin:vin};@@test-vstate-vin.js@@_vinVoorExpert geeft de VIN zelf mee naast het pseudoniem"
+"public/pidlane-remote.js@@        _vlVinPseudoniem(vin).then(ps=>{if(_vinPs.vin===vin&&ps){_vinPs.ps=ps;sendVStateSoon();}})@@        _vlVinPseudoniem(vin).then(ps=>{if(_vinPs.vin===vin&&ps){_vinPs.ps=ps;}})@@test-vstate-vin.js@@het pseudoniem komt nooit bij de expert: na het berekenen volgt geen nieuwe vstate"
+"worker.js@@    delete veh.vin;\n    if (!veh.wmi && ruw)@@    if (!veh.wmi && ruw)@@test-vstate-vin.js@@de Worker bewaart een ruwe VIN van een oude app weer in de opslag"
+"public/pidlane-voorkennis.js@@            vd[h].score += KENNIS_DUW; vd[h].bekend = true; raakt = true;@@            vd[h].bekend = true; raakt = true;@@test-voorkennis.js@@merkkennis duwt niet meer: een bekend zwak punt met bewijs gaat niet voor"
+"public/pidlane-voorkennis.js@@    var rapporten = (ctx.rapporten || []).filter(function (r) { return r && r.id && !r.demo && r.type !== 'pdf'; })@@    var rapporten = (ctx.rapporten || []).filter(function (r) { return r && r.id; })@@test-voorkennis.js@@een demorapport gaat als echt rapport naar de expert"
+"public/pidlane-voorkennis.js@@      if (r && r.id === id && !r.demo && r.type !== 'pdf') {@@      if (r && r.id === id) {@@test-voorkennis.js@@de expert kan de tekst van een demorapport opvragen"
+"public/pidlane-voorkennis.js@@        h += '<div class=\"rem-stat\"><b>' + (i + 1) + '. ' + esc(k.naam) + '</b>'@@        h += '<div class=\"rem-stat\"><b>' + (i + 1) + '. ' + k.naam + '</b>'@@test-voorkennis.js@@de naam van een verdenking van de peer gaat ruw de HTML van de expert in"
+"public/pidlane-voorkennis.js@@          (opties.knop && /^sr\\d+_\\d+$/.test(id) ?@@          (opties.knop ?@@test-voorkennis.js@@een rapport-id van de peer belandt ongetoetst in een onclick"
 # ── het proeftegoed hangt aan het account, niet aan het toestel (#113, 08-09-2026) ──
 # StartTegoedGegeven is de hele grendel. Legt iemand alGehad plat, dan keert
 # elke onboarding-call opnieuw KLANT_START_SALDO uit — hetzelfde gat als het
@@ -666,7 +676,7 @@ MUTATIES=(
 # zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop
 # kostte: twee velden die een reviewer allebei leest, met verschillende
 # beloftes. Het valt niemand op tot het in de Console staat.
-"PLAY-INZENDING.md@@Met lampjesgids en conditiescore.@@Met lampjesgids en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
+"PLAY-INZENDING.md@@Met expert op afstand, lampjesgids en conditiescore.@@Met expert op afstand, lampjesgids en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
 # En andersom: §3 hernoemt een functie, §14 blijft de oude naam beloven. Dat is
 # de stillere van de twee — je verbetert de beschrijving en raakt het veld
 # ernaast niet aan.
@@ -684,7 +694,7 @@ MUTATIES=(
 # en-US-blok en §3 zonder. Vandaar twee mutaties, één per richting. De tweede
 # is de stillere: je vertaalt de volledige beschrijving en vergeet de twee
 # velden ernaast, en dan leest een reviewer alsnog twee talen door elkaar.
-"PLAY-INZENDING.md@@Lees je auto uit via een OBD2-adapter en krijg een diagnose in gewone taal.\n\`\`\`\n@@Lees je auto uit via een OBD2-adapter en krijg een diagnose in gewone taal.\n\`\`\`\n\n**Engels (en-US), als je een tweede taal aanzet:**\n\n\`\`\`\nRead your car through an OBD2 adapter and get a diagnosis in plain language.\n\`\`\`\n@@test-playteksten.js@@§2 krijgt een tweede taal terug terwijl §3 er geen heeft (#177)"
+"PLAY-INZENDING.md@@Laat je monteur op afstand live meekijken in je auto, via een OBD2-adapter.\n\`\`\`\n@@Laat je monteur op afstand live meekijken in je auto, via een OBD2-adapter.\n\`\`\`\n\n**Engels (en-US), als je een tweede taal aanzet:**\n\n\`\`\`\nRead your car through an OBD2 adapter and get a diagnosis in plain language.\n\`\`\`\n@@test-playteksten.js@@§2 krijgt een tweede taal terug terwijl §3 er geen heeft (#177)"
 "PLAY-INZENDING.md@@De volledige privacyverklaring: app.pidlane.nl/privacy.html\nVragen: support@pidlane.nl\n\`\`\`\n@@De volledige privacyverklaring: app.pidlane.nl/privacy.html\nVragen: support@pidlane.nl\n\`\`\`\n\n**en-US:**\n\n\`\`\`\nPidLane connects over Bluetooth to an OBD2 adapter in your car.\n\`\`\`\n@@test-playteksten.js@@§3 wordt als enige vertaald en loopt weg bij de velden ernaast (#177)"
 "public/privacy.html@@<a href=\"mailto:support@pidlane.nl\">support@pidlane.nl</a>@@<a href=\"mailto:info@pidlane.nl\">info@pidlane.nl</a>@@test-playteksten.js@@de privacyverklaring noemt weer een ander contactadres dan de verwijderpagina: een verwijderverzoek valt in de verkeerde bus"
 "public/pidlane-auth.js@@    const resp=await plFetch('/v1/ping');@@    const resp=await plFetch('/v1/messages',{method:'POST',json:{model:'claude-sonnet-5',max_tokens:20,messages:[{role:'user',content:'ping'}]}});@@test-inlogkosten.js@@testApiKey() doet bij elke login weer een echte AI-call (#179)"
@@ -710,7 +720,7 @@ MUTATIES=(
 # niet, dan meldt de dekking iets over andere sensoren dan de analyse gebruikte.
 "public/pidlane-aanlevering.js@@    basis.concat(prof).forEach@@    [].concat(prof).forEach@@test-aanlevering.js@@BASIS_PIDS loopt niet meer mee: de dekking mist de motorcontext die elke analyse gebruikt"
 "public/pidlane-aanlevering.js@@    if (!Array.isArray(prof)) return null;@@    if (!Array.isArray(prof)) return [];@@test-aanlevering.js@@een onbekende profielnaam levert een lege dekking in plaats van geen dekking"
-"public/pidlane-fuel.js@@      profiel:'brandstof'});@@      profiel:'brandstoff'});@@test-aanlevering.js@@een typefout in een profielnaam: de brandstofanalyse verliest stil haar dekking"
+"public/pidlane-fuel.js@@verhelpen?','brandstof'));@@verhelpen?','brandstoff'));@@test-aanlevering.js@@een typefout in een profielnaam: de brandstofanalyse verliest stil haar dekking"
 
 # ── Het ritrapport (#196, 11-09-2026). Hier eindigt de keten: de aanlevering
 # hierboven bereikt pas een model als dit rapport overeind blijft. Op de rit van
@@ -948,6 +958,11 @@ MUTATIES=(
 "public/pidlane-pip.js@@    return Promise.resolve(p.zetGewenst({ aan: b.aan }))@@    return Promise.resolve(p.zetGewenst({ aan: true }))@@test-pip.js@@de vlag gaat nooit meer uit: de app springt in een klein venster terwijl er niets gemeten wordt"
 "public/pidlane-pip.js@@      if (document.body) document.body.classList[_inPip ? 'add' : 'remove']('pl-pip');@@      if (document.body) document.body.classList.add('pl-pip');@@test-pip.js@@de PiP-weergave gaat er nooit meer af: na een keer wegschakelen is de app een zwart scherm met drie getallen"
 "public/pidlane-pip.js@@      p.addListener('pipModus', function (ev) { modus(!!(ev && ev.in)); });@@      p.addListener('pipMode', function (ev) { modus(!!(ev && ev.in)); });@@test-pip.js@@de gebeurtenis heet anders dan wat java stuurt: het kleine venster verschijnt nooit en de volle weergave staat in 240x135"
+"public/pidlane-pip.js@@    else if (temp !== null && temp >= wH) { staat = 'let';@@    else if (temp !== null && temp > wH) { staat = 'let';@@test-pip.js@@het klokje kleurt pas een graad boven de waarschuwingsgrens: op 105 °C precies blijft het rustig"
+"public/pidlane-pip.js@@    var frac = rpm === null ? 0 : Math.max(0, Math.min(1, rpm / SCHAAL_MAX));@@    var frac = rpm === null ? 0 : rpm / SCHAAL_MAX;@@test-pip.js@@boven 7000 tpm draait de naald voorbij het eind van de boog door"
+"public/pidlane-pip.js@@        los = Promise.resolve(handleConnect());@@        los = Promise.resolve();@@test-pip.js@@de stopknop sluit het venster zonder te verbreken: de meting loopt onzichtbaar door"
+"native/PLPipPlugin.java@@        notifyListeners(\"pipStop\", new JSObject());@@        notifyListeners(\"pipStoppen\", new JSObject());@@test-nativeschil.js@@de stopknop vertrekt onder een andere naam dan waarop de app luistert: hij doet niets"
+"public/pidlane-pip.js@@      var n = el('pipNaald'); if (n) n.setAttribute('transform', 'rotate(' + m.hoek.toFixed(1) + ' 95 100)');@@      var n = el('pipNaald');@@bproef-pip.js@@de naald blijft op nul staan terwijl de meetlus waarden binnenkrijgt: het venster lijkt dood"
 "native/PLPip.java@@        if (!gewenst) return;@@        if (false) return;@@test-nativeschil.js@@het venster komt op ongeacht wat de app besloot — ook met de functie uitgezet in de Config"
 ".github/workflows/build-apk.yml@@                  \"        PLPip.leaveHint(this);\",@@                  \"        // haak eruit\",@@test-nativeschil.js@@de enige haak waarop Android PiP toestaat valt weg: alles lijkt in orde en het venster gaat nooit aan"
 # ── #277: één rit, alle opdrachten, en groen is gesloten (23-09-2026) ──
@@ -1052,6 +1067,18 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  if(heeftVraag) return 'vermogen';\n  return null;@@  return null;@@test-visueel.js@@zonder toerental weer geen naald, ook als het pedaal er is"
 "public/pidlane-visprofiel.js@@  if(elektrisch(motor) && p.hybride) return p.hybride.plekken;\n@@@@test-visprofiel.js@@een hybride krijgt weer de benzine-Neon: toerental 0 in het midden terwijl hij 50 rijdt (#435)"
 "public/pidlane-visprofiel.js@@function standaard(motor){ return elektrisch(motor) ? 'motor' : 'basis'; }@@function standaard(motor){ return 'basis'; }@@test-visprofiel.js@@een hybride opent weer op de toerennaald in plaats van de energieweergave"
+"public/pidlane-expertwerk.js@@    if (!(getal(omg.breed) >= LAPTOP_BREED)) redenen.push@@    if (false) redenen.push@@test-expertwerk.js@@een telefoon met een muis in een smal venster krijgt de laptopwerkplek"
+"public/pidlane-expertwerk.js@@    if (stand === 'uit') return false;@@@@test-expertwerk.js@@de expert zet de werkplek uit en hij komt op een laptop toch terug"
+"public/pidlane-expertwerk.js@@      .filter(function (s) { return s && !s.altijdEerst && s.test && (s.test[h] || 0) >= STAP_MIN; })@@      .filter(function (s) { return s && s.test; })@@test-expertwerk.js@@elke meetstap komt in elke procedure, ook als hij het probleem niet toetst"
+"public/pidlane-expertwerk.js@@        if (!p || !arr(p.stappen).length) return;@@        if (!p || !arr(p.stappen).length || true) return;@@test-expertwerk.js@@een foutcode krijgt geen controleplan meer bij de expert"
+"public/pidlane.css@@#remExpertOv.pl-expertwerk .rem-card { max-width:none; width:100%;@@#remExpertOv.pl-expertwerk .rem-card { max-width:560px; width:100%;@@bproef-expertwerk.js@@de werkplek blijft het smalle telefoonvel op een laptop"
+"public/pidlane-expertwerk.js@@      try { if (window.PLNav && !PLNav.garage()) PLNav.zetGarage(true); }@@      try { }@@bproef-expertwerk.js@@de werkplek opent zonder garagemodus"
+"public/pidlane-visthema.js@@  try{ const v=localStorage.getItem(SLEUTEL); return geldig(v) ? v : STANDAARD; }@@  try{ return localStorage.getItem(SLEUTEL) || STANDAARD; }@@test-visthema.js@@een onbekende themakeuze komt ongekeurd op de meter"
+"public/pidlane-visthema.js@@function themaVoor(gekozen){ return geldig(gekozen) ? gekozen : STANDAARD; }@@function themaVoor(gekozen){ return STANDAARD; }@@test-visthema.js@@het gekozen thema geldt nergens meer"
+"public/pidlane-visthema.js@@  if(!vis) return;\n  const o=vis.querySelector('.vt-strook');@@  if(!vis || !vol()) return;\n  const o=vis.querySelector('.vt-strook');@@bproef-visthema.js@@in de gewone weergave opent 🎨 weer niets"
+"public/pidlane-visueel.js@@    themaBij(g);\n    return;@@    return;@@bproef-visthema.js@@een herbouw van een profiel gooit de knop volledig scherm weg"
+"public/pidlane-visueel.js@@  lichaam(false);\n  try{ if(window.PLVisThema) PLVisThema.uit(); }@@  lichaam(false);\n  try{ }@@bproef-visthema.js@@een andere weergave kiezen laat het volle scherm over de app liggen"
+"public/pidlane.css@@body.pl-vis-vol .vis { position:fixed; inset:0; z-index:var(--z-modal);@@body.pl-vis-vol .vis { position:fixed; inset:0; z-index:9000;@@bproef-visthema.js@@het volle scherm ligt onder de navigatiebalk"
 "public/pidlane-visprofiel.js@@  if(stand && stand.laden) return 'Laden';\n@@@@test-visprofiel.js@@terugwinnen met draaiende motor heet 'Motor': het moment waar een hybride om draait is onzichtbaar"
 "public/pidlane-visprofiel.js@@    if(x.soort==='energie' || x.soort==='afgeleid') return;\n@@@@test-visprofiel.js@@de ruwe pedaalwaarde overschrijft de energiering: in rust staat hij op 15% vraag"
 "public/pidlane-onderzoek.js@@    if (ks.indexOf('controle') >= 0 && /diesel/i.test(String(ctx.brandstof || '')))@@    if (false)@@test-onderzoek.js@@een diesel zonder klacht wordt niet op roetfilter en EGR gecontroleerd (#434)"
@@ -1094,7 +1121,11 @@ MUTATIES=(
 "public/pidlane-rondgang.js@@  const aan=volg.filter(function(d){ return uit.indexOf(d.cat)<0; });@@  const aan=volg.filter(function(d){ return uit.indexOf(d.id)<0; });@@test-rondgang.js@@een categorie uitvinken haalt alleen zijn eerste pagina weg"
 "public/pidlane-rondgang.js@@n=nogUit(c).length;\n  if(!n) return '';@@n=nogUit(c).length;\n  return '';@@bproef-rondgang.js@@een dia zegt niet meer dat er sensoren van zijn categorie uit staan"
 "public/pidlane-dashboard.js@@  if(window.PLRond && PLRond.aan() && !_bewerk){ PLRond.bij(pid, val); return; }@@  void 0;@@bproef-rondgang.js@@een waarde komt niet in de rondgang aan: de panelen blijven op een streepje"
-"public/pidlane-rondgang.js@@  if(iDia<0 || iDia===_st.i) return false;@@  if(iDia<0) return false;@@bproef-rondgang.js@@de sensoren van de dia die in beeld is worden op de bus geremd"
+"public/pidlane-rondgang.js@@ || op(_st.i)) return false;@@) return false;@@bproef-rondgang.js@@de sensoren van de dia die in beeld is worden op de bus geremd"
+"public/pidlane-rondgang.js@@  if(o.vullen){\n@@  if(false){\n@@test-rondgang.js@@een dia met drie sensoren blijft een half leeg scherm: er komt niets verwants bij"
+"public/pidlane-rondgang.js@@        if(d.tegels.length>=VUL_TOT) return;@@        void 0;@@test-rondgang.js@@het aanvullen houdt niet op: een volle dia krijgt er nog verwante rijen bij"
+"public/pidlane-rondgang.js@@ && hier.indexOf(p)<0 && inKop@@ && inKop@@test-rondgang.js@@een verwante sensor komt dubbel op een dia waar hij al staat"
+"public/pidlane-rondgang.js@@  pasIn(); voortBij(); startKlok();@@  voortBij(); startKlok();@@bproef-rondgang.js@@een volle dia steekt onder de navigatie uit: niet alles is af te lezen"
 "public/pidlane-rondgang.js@@    eigen[c].forEach(function(p){ if(!gebruikt[p] && heeft(p)){ gebruikt[p]=1; handmatig.push@@    eigen[c].forEach(function(p){ if(!gebruikt[p] && heeft(p)){ handmatig.push@@test-rondgang.js@@een met de hand gekozen sensor staat ook nog op zijn gewone plek"
 "public/pidlane-rondgang.js@@      if(typeof p!=='string' || !/^[0-9A-Za-z_:.-]{2,24}$/.test(p) || gezien[p]) return false;@@      if(typeof p!=='string' || !/^[0-9A-Za-z_:.-]{2,24}$/.test(p)) return false;@@test-rondgang.js@@schoonEigen laat één PID in twee categorieën staan"
 "public/pidlane-rondgang.js@@  if(erbij && !actief(p) && typeof pidToevoegen==='function'){@@  if(false){@@bproef-rondgang.js@@een sensor die je bij een categorie zet, blijft uit en verschijnt dus nergens"
@@ -1207,7 +1238,7 @@ MUTATIES=(
 "public/pidlane-bt.js@@  if(heeftAuto && selectedNetwork && selectedNetwork.auto && _hervatActief() && !window._plHervat.protocol){@@  if(false){@@test-hervatten.js@@na een crash moet het protocol weer met de hand bevestigd worden (#229)"
 "public/pidlane-bt.js@@    window._plHervat.protocol = true;@@    void 0;@@test-hervatten.js@@elke hertekening start de protocolscan opnieuw: twee scans door elkaar op de bus (#229)"
 "public/pidlane-bt.js@@          kentekenOverslaan();\n        }\n      }).catch(@@        }\n      }).catch(@@test-hervatten.js@@zonder bereik blijft een hervatting op het kentekenscherm hangen (#229)"
-"public/pidlane-bt.js@@  window._plHervat = (opt && typeof opt.hervat === 'string') ? { t: Date.now(), reden: opt.hervat } : null;@@  window._plHervat = { t: Date.now(), reden: 'altijd' };@@test-herverbinden.js@@ook de knop slaat de vragen over: een andere auto krijgt het kenteken van gisteren (#229)"
+"public/pidlane-bt.js@@  window._plHervat = (opt && typeof opt.hervat === 'string') ? { t: Date.now(), reden: opt.hervat }@@  window._plHervat = true ? { t: Date.now(), reden: (opt && opt.hervat) || 'altijd' }@@test-herverbinden.js@@ook de knop slaat de vragen over: een andere auto krijgt het kenteken van gisteren (#229)"
 "public/pidlane-auth.js@@  if(!vorige || !vorige.id || (Date.now()-(vorige.t||0))>=SESSIE_HERLAAD_MS) return null;@@  return null;@@test-sessiedoorloop.js@@na een crash begint weer een nieuwe sessie: de rit staat in twee stukken in de logtabel (#229)"
 "public/pidlane-testrun.js@@  if (window._plDoorlopendeSessie) {@@  if (false) {@@test-sessiedoorloop.js@@de testrun negeert de doorlopende sessie: meetopdrachten na de crash krijgen een ander nummer dan de rest (#229)"
 "public/pidlane-testrun.js@@    window._plDoorlopendeSessie = null;\n@@@@test-sessiedoorloop.js@@een nieuwe opdracht kiezen na een crash valt terug op het oude nummer: twee vragen onder een sessie (#229)"
@@ -1308,6 +1339,7 @@ MUTATIES=(
 # ── PID-tabel naar SAE J1979 (26-09-2026) ──
 # Vanaf 0169 stonden namen en formules op de verkeerde nummers, en lazen de
 # formules de steunbitmap als databyte. De fouten hieronder zijn die van toen.
+"public/pidlane-data.js@@max:400,                     parse:b=>((b[0]*256+b[1])*100/255)}@@max:400,                     parse:b=>((b[0]*256+b[1])/655.35)}@@test-piddefs.js@@0143 rekent weer met de deler 655,35: absolute belasting 256x te laag (21-08-2026)"
 "public/pidlane-data.js@@  '019E':{name:'Uitlaatgasdebiet',       unit:'kg/h',cat:'Emissie',  min:0,max:1311, parse:b=>((b[0]*256+b[1])/50)},@@  '019E':{name:'Turbo temp uitlaat A',   unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},@@test-piddefs.js@@019E is weer een turbotemperatuur van −38 °C op een auto zonder turbo"
 "public/pidlane-data.js@@parse:b=>((b[0]&4)?(b[5]*100/255):null)},@@parse:b=>(b[5]*100/255)},@@test-piddefs.js@@AdBlue-tankniveau leest ook als het steunbit uit staat, en geeft dan een getal dat nergens op slaat"
 "public/pidlane-data.js@@  '014A':{name:'Gaspedaal positie E',    @@  '014A':{name:'Gaspedaal positie D',    @@test-piddefs.js@@twee pedaalsensoren heten allebei D en de derde staat onder de naam van de tweede"
@@ -1328,6 +1360,8 @@ MUTATIES=(
 "public/pidlane-watchers.js@@        const aanhoudend = w.length>=2 && w[w.length-1].t-w[i].t>=20000;@@        const aanhoudend = w.length>=2;@@test-watcherschakel.js@@een korte piek van 113 °C na stilstaan geeft al een oververhittingsmelding"
 "public/pidlane-watchers.js@@        if(!r || r.niveau==='ok') { PLKenmerk.wisNotitie@@        if(!r) { PLKenmerk.wisNotitie@@test-watcherschakel.js@@de rit-monitor meldt dynamo terwijl de auto zelf die lage spanning vraagt"
 "public/pidlane-watchers.js@@        if(g && g.uitkomst==='geldt_niet') continue;@@@@test-watcherschakel.js@@een watcher draait ook als de auto het kenmerk aantoonbaar niet heeft (vacuüm op een diesel)"
+"public/pidlane-watchers.js@@        const spread=r3-r1;@@        const spread=q3-q1;@@test-stationair-airco.js@@STAT_RPM meet de schommeling weer op de ruwe reeks: een toerental dat na een stop wegzakt heet ruw stationair (#567)"
+"public/pidlane-watchers.js@@.filter(([,v])=>v>=q1-hek && v<=q3+hek);@@.filter(()=>true);@@test-stationair-airco.js@@één parse-hik trekt het verloop van STAT_RPM scheef en wordt zelf een melding over ruw stationair"
 "public/pidlane-totalcheck.js@@const _MON_ERNSTIG=/^(ECT_HOOG|TEST:ECT_HOOG|@@const _MON_ERNSTIG=/^(ECT_HOOG|@@test-watcherschakel.js@@oververhitting komt in de rit-monitor weer oranje binnen, zonder Verifieer-knop"
 "public/pidlane-monitor.js@@Outcome:(reden==='bug'?'bug':'vals')@@Outcome:'vals'@@test-watcherschakel.js@@een app-bug is in de logtabel niet meer te scheiden van een valse melding"
 "public/pidlane-monitor.js@@    if (!ev || !this.FEEDBACK_REDENEN[reden]) return false;@@    if (!ev) return false;@@test-watcherschakel.js@@een willekeurige reden komt als feedback in de logtabel"
@@ -1729,6 +1763,7 @@ MUTATIES=(
 "public/pidlane-foutcodes.js@@    var ongelezen = ['bevestigd', 'pending', 'permanent'].filter(function (k) { return !g[k]; }).length;@@    var ongelezen = 0;@@test-foutcodes.js@@het stoplicht telt een niet-gelezen soort code als \"geen codes\" en wordt groen"
 "public/pidlane-foutcodes.js@@    var vast = uniek([].concat(c.bevestigd || [], c.permanent || [])).length;@@    var vast = [].concat(c.bevestigd || [], c.permanent || []).length;@@test-foutcodes.js@@een code die bevestigd én permanent is, telt twee keer in de kop"
 "public/pidlane-nav.js@@    schrijf(OPSLAG.autocheck, '0');   // eenmalig@@    void 0;                           // eenmalig@@bproef-navigatie.js@@de automatische check blijft aan en springt bij elke volgende verbinding opnieuw open (02-10-2026: eenmalig)"
+"public/pidlane-nav.js@@    try { if (w === 'ontvang') PLRemote.openExpert(); else PLRemote.openShare(); }@@    try { PLRemote.openShare(); }@@bproef-navigatie.js@@Ik ben de expert opent het deelvenster: de expert krijgt een code om zelf te delen in plaats van een codeveld"
 "public/pidlane.css@@no-repeat; contain:strict; }@@no-repeat; contain:strict; animation:softblink 2.6s ease-in-out infinite; }@@bproef-navigatie.js@@de achtergrond van het startscherm beweegt weer eindeloos: de telefoon tekent hem bij elk beeldje opnieuw (#302)"
 "public/pidlane-fuel.js@@  door_saving_active: 'tg-rit',@@  door_saving_active: 'tg-onderweg',@@bproef-navigatie.js@@de beheerschakelaar voor Rit starten wijst naar een tegel die er niet is"
 "admin/beheer.html@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], true));@@  ['door_saving_active','door_deal_active','door_prep_active'].forEach(k => zetToggle(k, c[k], false));@@bproef-beheerpagina.js@@beheer toont een nooit opgeslagen tegel als uit, en Alles opslaan zet hem dan echt uit"
@@ -1915,6 +1950,7 @@ MUTATIES=(
 "public/pidlane-visprofiel.js@@  try{ let v=localStorage.getItem(SLEUTEL); if(OUD_PROFIEL[v]) v=OUD_PROFIEL[v];@@  try{ let v=localStorage.getItem(SLEUTEL);@@test-visprofiel.js@@wie een van de oude telemetrieschermen gekozen had, valt terug op Basis"
 # ── het emissiescherm is donker (06-10-2026) ──
 "public/pidlane.css@@.vpf-licht { background:#0f141d;@@.vpf-licht { background:#f7f8fb;@@test-visprofiel.js@@het emissiescherm is weer wit en verblindt 's avonds in de auto"
+"public/pidlane.css@@.wz-body:has(+ .wz-foot:empty){ padding-bottom:calc(24px + var(--pl-sab, 0px)); }@@@@bproef-onderzoek.js@@de laatste keuze van de wizard verdwijnt weer achter de Android-knoppen"
 # ── nooit een VIN als voertuignaam rechtsboven (06-10-2026) ──
 "public/pidlane-uihelpers.js@@  el.dataset.naam = t ? (sysNaam(t, merk, vi.model) || 'Voertuig') : '';@@  el.dataset.naam = t||'';@@test-nav.js@@showVtag bewaart een VIN als naam: rechtsboven staan 17 tekens in plaats van de auto"
 # ── het acculampje flitst niet meer weg bij een oude spanning (06-10-2026) ──
@@ -1938,6 +1974,12 @@ MUTATIES=(
 "public/pidlane-bt.js@@    if (btUitFout(se.message)){ const f@@    if (false){ const f@@test-btuit.js@@de SPP-scan zegt Bluetooth is disabled en de app zegt geen adapter gevonden"
 "public/pidlane-bt.js@@const BT_UIT_RX = /\\b(bluetooth|ble)\\b( adapter)? @@const BT_UIT_RX = /( adapter)? @@test-btuit.js@@locatie uit leest als Bluetooth uit: de gebruiker zet iets aan dat al aan stond"
 "public/pidlane-bt.js@@    if(ble && typeof ble.requestEnable === 'function') await ble.requestEnable();@@    if(false) await ble.requestEnable();@@test-btuit.js@@Android wordt niet gevraagd om Bluetooth aan te zetten, ook waar dat kan"
+"public/pidlane-bt.js@@  return OBD_NAME_RX.test(n) && !NON_OBD_RX.test(n);@@  return OBD_NAME_RX.test(n) || /link|scan/i.test(n);@@test-obdnaam.js@@de oude SPP-lijst terug: een SoundLink-speaker telt als adapter en krijgt de eerste verbindpoging"
+"public/pidlane-bt.js@@  let target = devices.find(d => isObdNaam(d.name));@@  let target = devices.find(d => d.name && d.name !== '?');@@test-obdnaam.js@@connectSPP pakt weer het eerste apparaat met een naam, adapter of niet"
+"public/pidlane-bt.js@@  if(!lees('spp_address') || !lees('pl_kenteken') || !lees('pl_proto_id')) return false;@@  if(!lees('spp_address')) return false;@@test-snelverbinden.js@@een nieuwe auto met een oude adapter krijgt geen kentekenvraag en het kenteken van gisteren"
+"public/pidlane-bt.js@@  if(!ingelogd) return false;@@  if(false) return false;@@test-snelverbinden.js@@zonder login loopt de snelle stand toch"
+"public/pidlane-bt.js@@  const rondes = snel ? 1 : 2;@@  const rondes = 2;@@test-snelverbinden.js@@een bekende adapter die niet antwoordt kost weer twee volle rondes"
+"public/pidlane-bt.js@@  if (snel && !permissionBlocked){@@  if (false){@@test-snelverbinden.js@@adapter niet op pair en de melding zegt niet dat je op de pair-knop moet drukken"
 "public/pidlane-bt.js@@— keten loopt zoals altijd', 'warn'); return 'onbekend'; }@@— keten loopt zoals altijd', 'warn'); return 'uit'; }@@test-btuit.js@@een plugin die de stand niet geeft houdt elke verbinding tegen"
 # ── eigen PIDs krijgen een standaardbereik: banden en olie (30-09-2026) ──
 "public/pidlane-uitgebreid.js@@['wH', 'dH', 'dL'].forEach@@['wH'].forEach@@test-mode21.js@@een bandtemperatuur van 70 °C en een band op 1 bar blijven groen: de gevarengrenzen gaan niet mee (#370)"
@@ -2021,6 +2063,8 @@ MUTATIES=(
 # ── verbindprofiel als app-maat (#394, 03-10-2026) ──
 "public/pidlane-adapter.js@@return (st.msMet > 0 && st.msZonder > 0) ? Math.round((1 - st.msMet / st.msZonder) * 100) : null;@@return (st.msMet > 0 && st.msZonder > 0) ? Math.round((st.msMet / st.msZonder) * 100) : null;@@test-opdrachtappmaat.js@@de antwoordcijferwinst meldt de verhouding in plaats van de besparing: een cijfer dat niets doet lijkt 100% winst — #394"
 "public/pidlane-adapter.js@@return st.totaal ? Math.round(st.bad / st.totaal * 100) : null;@@return st.foutPct;@@test-opdrachtappmaat.js@@het foutpercentage van de meetopdracht kijkt naar het venster van 10 s in plaats van de hele sessie — #394"
+"public/pidlane-adapter.js@@position:' + (hand ? 'static' : 'sticky')@@position:' + 'sticky'@@bproef-adapterpaneel.js@@onder Handmatig plakt het knoppenvak weer over de getallen"
+"public/pidlane-adapter.js@@!m[3] || rest ? '' :@@!m[3] ? '' :@@test-adapterpaneel.js@@het effect van een wijziging krijgt een oordeel voordat het venster van 10 s om is"
 # ── verbinding met de hand (#394, 04-10-2026) ──
 "public/pidlane-bt.js@@&& parseInt(st,16)>=0x0C) r.st=st;@@) r.st=st;@@test-verbindprofiel.js@@met de hand kan ATST onder de 48 ms-bodem — #394"
 "public/pidlane-data.js@@(c==='ATAT1' ? 'ATAT'+at : c)@@c@@test-verbindprofiel.js@@de terugrol zet een met de hand gekozen ATAT weer op 1 — #394"
@@ -2092,6 +2136,26 @@ MUTATIES=(
 "public/pidlane-data.js@@  const hangt = (sinds.km != null && sinds.km >= grens.km) || (sinds.warm != null && sinds.warm >= grens.warm);@@  const hangt = true;@@test-softwareoorzaak.js@@een monitor 40 km na wissen telt al als hangen: elke verse wis wordt een inleerprobleem"
 "public/pidlane-conditie.js@@      if (t < van || t > (nu || Date.now()) + 864e5) return;@@      if (t > (nu || Date.now()) + 864e5) return;@@test-conditie.js@@een gasklep van jaren terug telt nog als onlangs vervangen (#426)"
 "public/pidlane-conditie.js@@    if (werk.length) b.werk = werk;@@@@test-conditie.js@@het andere werk valt weg bij het bewaren van een beurt (#426)"
+"public/pidlane-conditie.js@@if (a.bt === undefined && a.bti === undefined && il !== null && a.k0 !== undefined && a.k0 < CFG.koudStart && a.t <= 60)@@if (a.bt === undefined && a.bti === undefined && il !== null && a.t <= 60)@@test-winterrit.js@@de inlaatlucht van een warme start telt als buitentemperatuur"
+"public/pidlane-conditie.js@@    if (a.wg && k !== null && kmh !== null && kmh >= CFG.snelweg) {@@    if (k !== null && kmh !== null && kmh >= CFG.snelweg) {@@test-winterrit.js@@een koude motor op de snelweg telt als teruggezakt koelwater"
+"public/pidlane-winterrit.js@@r.max_koelwater < CFG.warmGrens;\n    });@@warmGeweest(r) === false;\n    });@@test-winterrit.js@@een rit die in de vrieskou lang over opwarmen deed, heet een openhangende thermostaat"
+"public/pidlane-winterrit.js@@    kzGrens: 75,@@    kzGrens: 92,@@test-winterrit.js@@een kenveldthermostaat op de snelweg (90 °C) wordt afgekeurd"
+"public/pidlane-winterrit.js@@    if (!k.koud) return null;@@@@test-winterrit.js@@korte ritten in de zomer geven een winteradvies"
+"public/pidlane-conditie.js@@    if (a.tcK !== undefined) { if (zelfde(r, a.tcK)) a.tcn@@    if (a.tcK !== undefined) { if (true) a.tcn@@test-winterrit.js@@elke opschakeling van een automaat telt weer als tractie-ingrijpen"
+"public/pidlane-conditie.js@@      m.pedaalT !== a.tcPt && m.gasklepT !== a.tcGt;@@      true;@@test-winterrit.js@@een gaspedaal dat al seconden niet ververst is, telt weer als vastgehouden"
+"public/pidlane-conditie.js@@    if ((a.tcD || 0) >= CFG.tc.minS) o.tc = a.tcn || 0;@@    o.tc = a.tcn || 0;@@test-winterrit.js@@een auto zonder gaspedaal-PID heet weer nul keer wielslip in plaats van niet gemeten"
+"public/pidlane-winterrit.js@@    if (!koud && nAl < CFG.tcMinWarm) return null;@@    if (!koud && nAl < 1) return null;@@test-winterrit.js@@zonder vorst komt het slipadvies weer na twee keer, met dezelfde drempel als bij gladheid"
+"public/pidlane-weer.js@@d.datum >= vandaag && (getal@@true && (getal@@test-weer.js@@de verwachting van gisteren telt mee in de komende dagen"
+"public/pidlane-weer.js@@return m !== null && m <= CFG.gladMin && (@@return m !== null && (@@test-weer.js@@regen bij 4 °C heet kans op gladheid"
+"worker.js@@const p = Object.prototype.hasOwnProperty.call(WEER_PLAATSEN, id) ? WEER_PLAATSEN[id] : null;@@const p = WEER_PLAATSEN[id] || null;@@test-weer.js@@__proto__ als plaats gaat door naar Open-Meteo"
+"worker.js@@const sleutel = new Request(\"https://weer.pidlane.intern/\" + id);@@const sleutel = new Request(request.url);@@test-weer.js@@de cachesleutel is de vraag van de klant in plaats van de plaats"
+"worker.js@@  plaats: { soort: \"keuze\", uit: Object.keys(WEER_PLAATSEN) },@@  plaats: { soort: \"tekst\", max: 60 },@@test-klantplatform.js@@een adres als plaats komt de database in"
+"public/pidlane-winter.js@@    if (ctx.gezien === s.sleutel) return null;@@    if (false) return null;@@test-winter.js@@de seizoensbanner komt elke keer terug"
+"public/pidlane-winter.js@@    if (ctx.gezien === s.sleutel) return null;@@    if (false) return null;@@bproef-winter.js@@Later zet de banner in de echte app niet weg"
+"public/pidlane-winter.js@@      var grens = p.sproeier === 'winter' ? (getal(p.sproeier_tot) !== null ? p.sproeier_tot : CFG.sproeierWinter) : CFG.sproeierZomer;@@      var grens = p.sproeier === 'winter' ? (getal(p.sproeier_tot) !== null ? p.sproeier_tot : CFG.sproeierZomer) : CFG.sproeierZomer;@@test-winter.js@@wintervloeistof zonder opgegeven grens slaat bij elke vorst alarm"
+"public/pidlane-winter.js@@if (w && w.onderOmslag && p.banden === 'zomer') {@@if (w && w.onderOmslag && p.banden !== 'winter') {@@test-winter.js@@all-season krijgt het advies om winterbanden te nemen"
+"public/pidlane-winter.js@@    winter: [[-20, 1], [7, 1], [15, 0.7], [25, 0.4], [45, 0.3]],@@    winter: [[-20, 1], [7, 1], [20, 1], [25, 0.4], [45, 0.3]],@@test-winter.js@@een winterband bij 17 °C heet past goed"
+"public/pidlane-winter.js@@    return PLWeer.haal(p.plaats, { forceer: true })@@    return PLWeer.haal(p.plaats)@@bproef-winter.js@@de verversknop haalt binnen het uur niets nieuws: hij geeft de oude verwachting terug"
 "worker.js@@  if (werk.length) o.werk = werk;@@@@test-klantplatform.js@@de Worker gooit het andere werk van een beurt weg (#426)"
 "public/pidlane-data.js@@    return PLConditie.recentVervangen(v, Date.now());@@    return [];@@test-softwareoorzaak.js@@het onderhoudslogboek komt nooit bij softwareOorzaken() aan (#426)"
 "public/pidlane-foutcodes.js@@      vervangen: typeof plVervangenRecent === 'function' ? plVervangenRecent() : [],\n@@@@test-softwareoorzaak.js@@Foutcodes geeft het logboek niet mee (#426)"
@@ -2149,6 +2213,8 @@ MUTATIES=(
 "public/pidlane-onderzoek.js@@        if (sp != null && sp < 0.02) r.push({ h: 'lambda'@@        if (sp != null && sp < 0) r.push({ h: 'lambda'@@test-onderzoek.js@@een breedbandsonde die stilstaat valt niet op (#428)"
 "public/pidlane-onderzoek.js@@        return laadBewijs(v, 2.5, -2);@@        return v < 13.0 ? [{ h: 'laad', d: 2.5, t: 'laadspanning ' + r1(v) + ' V — de dynamo laadt niet genoeg' }] : [];@@test-onderzoek.js@@het rapport zegt weer dat de dynamo niet genoeg laadt op een auto die slim laadt"
 "public/pidlane-onderzoek.js@@  var MOMENT_LEZINGEN = 2;@@  var MOMENT_LEZINGEN = 3;@@test-onderzoek.js@@de momentopname vraagt weer drie keer per PID: 8,4 s op een V-motor met een trage adapter (#538)"
+"public/pidlane-onderzoek.js@@Math.min(VOORAF_MAX, oud + rg.d * 0.5)@@oud + rg.d@@test-onderzoek.js@@een opgegeven foutcode bevestigt zelf een verdenking, zonder dat de auto iets zei"
+"public/pidlane-onderzoek.js@@    (opt.klachten || []).forEach(function (k) { if (KLACHTEN[k] && ks.indexOf(k) < 0) ks.push(k); });@@@@bproef-onderzoek.js@@de tegels uit de wizard gaan verloren: het onderzoek kent alleen de tekst"
 "public/pidlane-foutcodes.js@@      if (wat === 'oorzaak') { if (window.PLOnderzoek) PLOnderzoek.open({ scan: _st.scan }); else PLWizard.open('storing'); }@@      if (wat === 'oorzaak') PLWizard.open('storing');@@bproef-onderzoek.js@@Oorzaak laten zoeken opent weer de lijst losse modules in plaats van het onderzoek"
 "public/pidlane-foutcodes.js@@  function magTerug(s) { return magDoor(s) && stoplicht(s).kleur === 'groen'; }@@  function magTerug(s) { return magDoor(s); }@@test-foutcodes.js@@zelf getikt met een zelftest die nog niet klaar is: het venster gaat toch vanzelf dicht en de Let op-regel is weg"
 "public/pidlane-foutcodes.js@@    _st.doorGewild = !isGarage();@@    _st.doorGewild = !!opties.auto && !isGarage();@@bproef-foutcodes.js@@zelf op Check mijn auto getikt en alles groen: het venster blijft weer staan"
@@ -2156,15 +2222,43 @@ MUTATIES=(
 # ── Het verzamelscherm (#443, 07-10-2026). De poort is die van §16; wat hier stil
 # kan breken is wat de klant ziet en wat de AI krijgt.
 "public/pidlane-verzamel.js@@        if (q && q.status === 'onzin') return zet('meetfout'@@        if (false) return zet('meetfout'@@test-verzamel.js@@koelwater 300 °C staat weer als afwijking op het scherm in plaats van als meetfout"
-"public/pidlane-verzamel.js@@    if (getal(d.dH) && r.max >= d.dH) return zet('afwijkend'@@    if (getal(d.dH) && r.laatste >= d.dH) return zet('afwijkend'@@test-verzamel.js@@het oordeel kijkt weer alleen naar de laatste waarde: een uitschieter onderweg verdwijnt"
+"public/pidlane-verzamel.js@@      if (getal(g.dH) && mx >= g.dH) {@@      if (getal(g.dH) && r.laatste >= g.dH) {@@test-verzamel.js@@het oordeel kijkt weer alleen naar de laatste waarde: een uitschieter onderweg verdwijnt"
+"public/pidlane-verzamel.js@@        return blijft(b) ? uit('afwijkend', 'hoogste waarde '@@        return true ? uit('afwijkend', 'hoogste waarde '@@test-verzamel.js@@één meting boven de alarmgrens staat weer als afwijkend: een uitschieter kleurt de conditiecheck rood"
+"public/pidlane-verzamel.js@@        (z && z[regel.toestand] === true ? inT : gewoon).push(m.v); });@@        (false ? inT : gewoon).push(m.v); });@@test-toestandgrens.js@@de toestand telt niet meer: de startdip van de accu staat weer als afwijkend"
+"public/pidlane-verzamel.js@@(!aandeel || vs.length < 10 || b >= aandeel * vs.length)@@(true)@@test-toestandgrens.js@@een kortetermijntrim die even heen en weer gaat staat weer als let op"
+"public/pidlane-verzamel.js@@    for (let i = 1; i < rpm.length; i++) if (rpm[i - 1].v < START_RPM && rpm[i].v >= START_RPM) starts.push(rpm[i].t);@@@@test-toestandgrens.js@@het aanslaan van de motor wordt niet meer herkend"
+"public/pidlane-data.js@@  '0104':{toestand:'rijdend',@@  '0104':{toestand:'stil',@@test-toestandgrens.js@@de belastingsgrens geldt weer bij vol gas en niet meer stationair"
 "public/pidlane-verzamel.js@@    if (t.verstreken < t.minMs) return 'meten';\n@@@@test-verzamel.js@@met genoeg historie springt het scherm meteen naar de uitslag: de klant ziet niets binnenkomen"
 "public/pidlane-verzamel.js@@    if (t.ok && t.kernCompleet !== false) return 'klaar';@@    if (t.ok) return 'klaar';@@test-verzamel.js@@het scherm is klaar terwijl de kernsensoren nog niet binnen zijn"
 "public/pidlane-verzamel.js@@(r.buiten ? '; ' + r.buiten + ' daarvan buiten de grens'@@(false ? '; ' + r.buiten + ' daarvan buiten de grens'@@test-verzamel.js@@de AI hoort niet meer hoe vaak een waarde buiten de grens kwam: een piek weegt even zwaar als een blijvende afwijking"
+# ── De totaalcheck in twee delen (20-10-2026): stilstand en rijden gesplitst,
+# verdiepen alleen waar iets afwijkt, niet gemeten is nooit goed.
+"public/pidlane-totalcheck.js@@        return soort === 'rij' ? v > kmh : v <= kmh;@@        return true;@@test-totaalcheck.js@@stilstand en rijden krijgen weer dezelfde monsters: 13,1 V rijdend leest als stilstaand"
+"public/pidlane-totalcheck.js@@        if (v === null) return false;@@        if (v === null) return true;@@test-totaalcheck.js@@een monster zonder snelheid in de buurt telt weer mee, in beide delen"
+"public/pidlane-totalcheck.js@@focus: oordeel === 'afwijkend' || oordeel === 'let', open: oordeel !== 'ok'@@focus: true, open: true@@test-totaalcheck.js@@elke categorie gaat weer open met een focusmeting, ook als hij klopt"
+"public/pidlane-totalcheck.js@@[dtc.licht.kleur] || 'nodata';@@[dtc.licht.kleur] || 'ok';@@test-totaalcheck.js@@foutcodes die niet uitgelezen zijn heten weer goed"
+"public/pidlane-totalcheck.js@@      rijden: afw.length > 0 && afw.every(p => !afStil(p) && p.rij)@@      rijden: false@@test-totaalcheck.js@@een afwijking die alleen rijdend zat krijgt een focusmeting stilstaand, waar er niets te zien is"
+"public/pidlane-totalcheck.js@@ + titel + ': NIET GEMETEN. ' + uitleg; return; }@@ + ''; return; }@@test-totaalcheck.js@@de AI hoort niet meer dat rijden niet gemeten is en mag er dus over oordelen"
+"public/pidlane-totalcheck.js@@  const s=PLTotaal.stand(_tc);\n  if(!s.aiMag) return;\n@@  const s=PLTotaal.stand(_tc);\n@@test-totaalcheck.js@@het AI-rapport gaat weer weg zonder meting"
+"public/pidlane-totalcheck.js@@watVoor:'het rijdeel van de totaalcheck', ai:false, rijtest:false,@@watVoor:'het rijdeel van de totaalcheck', ai:false,@@test-totaalcheck.js@@het rijdeel biedt weer de ritanalyse met fases van twee minuten aan"
+# Uit de rit van 20-10-2026: rijtijd bleef op 20 s, vaste waarden heetten
+# bevroren, een trimpiek heette "let op", een warme motor reed "koud".
+"public/pidlane-fuel.js@@  if(typeof x.rijSec==='number' && isFinite(x.rijSec) && (st.rijSec===null || x.rijSec>st.rijSec)) st.rijSec=Math.round(x.rijSec);@@@@test-totaalcheck.js@@de poort ziet weer alleen de 20 s snelheid uit pidHist: een rijmeting loopt nooit vol"
+"public/pidlane-verzamel.js@@ && v >= kmh && acc.v >= kmh) acc.ms += t - acc.t;@@ && v >= kmh && acc.v >= kmh) acc.ms += 0;@@test-totaalcheck.js@@het verzamelscherm telt zijn eigen rijtijd niet meer"
+"public/pidlane-verzamel.js@@      const blijft = b => b >= 2 || vs.length < 10;@@      const blijft = b => true;@@test-totaalcheck.js@@één trimpiek van 10,2 % staat weer als let op"
+"public/pidlane-kwaliteit.js@@['0C','0D','04','11','0B','10','06','14','24','34']@@['0C','0D','04','11','0B','10','06','07','14','24','34']@@test-totaalcheck.js@@een langetermijntrim die vast staat heet weer een bevroren sensor"
+"public/pidlane-kwaliteit.js@@ && !(stilNu && (kort==='0D'||kort==='11'));@@;@@test-totaalcheck.js@@gasklep 11 % bij stationair heet weer vastgelopen"
+"public/pidlane-samenhang.js@@    const ect = traag(tl, '0105', i);@@    const ect = v('0105');@@test-samenhang.js@@een warme motor met traag koelwater rijdt weer koud"
+"public/pidlane-rapport.js@@    if (m && m.beperkt) grenzenMeting.push('Meting: ' + m.beperkt);@@    if (sh && !sh.geen) (sh.niet || []).forEach(x => grenzenMeting.push(x.titel + ': ' + x.reden));\n    if (m && m.beperkt) grenzenMeting.push('Meting: ' + m.beperkt);@@test-rapport.js@@het rapport somt weer elke proef op die niet gevraagd en niet uitgevoerd is"
+"public/pidlane-totalcheck.js@@    hist:rm.hist, watVoor:'de totaalcheck'@@    hist:{}, watVoor:'de totaalcheck'@@test-totaalcheck.js@@het rapport van de totaalcheck draagt weer niet de monsters van beide delen"
 "public/pidlane-fuel.js@@  if(!uit || !uit.ai) return;\n  activateAIPane();@@  if(!uit) return;\n  activateAIPane();@@test-verzamel.js@@sluiten zonder AI op het verzamelscherm verstuurt toch een betaald rapport"
 "public/pidlane-fuel.js@@  const v=getVehicle();\n  const meetBlok=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});@@  const v=getVehicle();\n  const meetBlok='';@@test-verzamel.js@@het AI-rapport krijgt de samenvatting van het scherm niet meer mee"
 "public/pidlane-wizard.js@@    if(GEEN_MEETEIS[k] || EIGEN_METING[k] || typeof PLVerzamel@@    if(GEEN_MEETEIS[k] || typeof PLVerzamel@@bproef-verzamel.js@@de AI-monteur krijgt weer een meetscherm zonder AI-knop vóór zijn eigen verzamelscherm"
 "public/pidlane-wizard.js@@    if(GEEN_MEETEIS[k] || EIGEN_METING[k] || typeof PLVerzamel!=='object'){ open(); return; }@@    if(true){ open(); return; }@@bproef-verzamel.js@@de Systeemtest uit het plan draait weer zonder meting"
 "public/pidlane-wizard.js@@    PLVerzamel.meet({ niveau:'normaal', profiel:MODULE_PROFIEL[k] || false, watVoor:M.n, ai:false,@@    PLVerzamel.meet({ niveau:'normaal', profiel:MODULE_PROFIEL[k] || false, watVoor:M.n,@@bproef-verzamel.js@@de Systeemtest krijgt een AI-knop terwijl er geen AI-vraag bij hoort"
+"public/pidlane-wizard.js@@  if(heeft('koud') || heeft('vocht') || heeft('soms')) return 'monitor';@@  if(heeft('koud') || heeft('vocht')) return 'monitor';@@test-wizardtakken.js@@wie zegt dat het onvoorspelbaar is, krijgt weer een stilstaande meting in plaats van meelopen"
+"public/pidlane-wizard.js@@ var c = m[1].toUpperCase(); if(r.indexOf(c)<0) r.push(c);@@ var c = m[1]; if(r.indexOf(c)<0) r.push(c);@@test-wizardtakken.js@@een getypte p0171 gaat in kleine letters naar het onderzoek en past op geen enkele coderegel"
+"public/pidlane-wizard.js@@wanneer: (job.wanneer||[]).filter(function(w){ return !WANNEER_EXTRA[w]; }),@@wanneer: [],@@bproef-onderzoek.js@@het moment uit de wizard komt niet meer aan in het onderzoek"
 # ── #443 ronde 2: alle analyses via het scherm, de rit en de datalog als bron.
 "public/pidlane-verzamel.js@@    if (!bron && o.ritBron !== false) { bron = ritVanZojuist(eis); ritBron = !!bron; }@@@@test-verzamel.js@@na een rijtest meet het scherm opnieuw over de laatste minuten in plaats van de rit te nemen"
 "public/pidlane-verzamel.js@@    if (!b || !getal(b.eind) || Date.now() - b.eind > RIT_GELDIG_MS) return null;@@    if (!b) return null;@@test-verzamel.js@@een rit van een uur geleden telt nog als de meting van nu"
@@ -2176,7 +2270,13 @@ MUTATIES=(
 "public/pidlane-koopcheck.js@@watVoor:'het onderhoudsadvies'});\n  if(!uit || !uit.ai){ res.innerHTML=''; return; }@@watVoor:'het onderhoudsadvies'});@@test-verzamelroutes.js@@sluiten zonder AI op het onderhoudsscherm vraagt toch een betaald advies"
 "public/pidlane-koopcheck.js@@  if(mm){\n    window._ddSteps=@@  if(false){\n    window._ddSteps=@@bproef-koopstroom.js@@de diepe storingsanalyse vraagt weer merk en model terwijl de app ze kent"
 "public/pidlane-koopcheck.js@@'onbekend';\n  // Wat de AI over de sensoren hoort is wat de klant net zag: de samenvatting\n  // over het meetvenster, niet de laatste waarde per sensor (#443).\n  const pdata=PLVerzamel.promptBlok(@@'onbekend';\n  const pdata=String(@@test-verzamelroutes.js@@de EV-check stuurt de samenvatting van het scherm niet meer mee"
-"public/pidlane-totalcheck.js@@  runCheckAI(items, uit);@@  runCheckAI(items);@@test-verzamelroutes.js@@de totaalcheck geeft de samenvatting niet door aan de AI"
+"public/pidlane-koopcheck.js@@||'geen'}\n\nFocus op: accu@@||'geen'}\${_qualityBlokFor([])}\n\nFocus op: accu@@test-verzamelroutes.js@@de EV-check plakt weer een eigen DATAKWALITEIT-blok naast dat van de aanlevering: hetzelfde oordeel twee keer betaald"
+"public/pidlane-verzamel.js@@    if (zichtbaar.length) a.zichtbaar = zichtbaar;@@@@test-verzamelroutes.js@@de meetfase zegt niet meer welke sensoren de AI zag: het kwaliteitsoordeel krimpt stil tot het profiel"
+"public/pidlane-aanlevering.js@@      kwaliteit: kwaliteit(kwaliteitsPids(dek, o.zichtbaar)),@@      kwaliteit: kwaliteit(dek ? dek.geleverd : null),@@test-aanlevering.js@@een sensor uit de samenvatting krijgt weer een tweede kwaliteitsoordeel, op zijn live waarde van nu"
+"public/pidlane-aanlevering.js@@      if (pids === null || pids === undefined) {@@      if (!lijst.length) {@@test-aanlevering.js@@staat alles in de samenvatting, dan valt het kwaliteitsblok terug op de hele selectie en oordeelt het alsnog dubbel"
+"public/pidlane-koopcheck.js@@  // Geen ensurePIDsActive ná de meetfase: zie het onderhoudsadvies (#565).\n  const v=getVehicle();\n  const ft=@@  await ensurePIDsActive('accu');\n  const v=getVehicle();\n  const ft=@@test-verzamelroutes.js@@de EV-check zet na de meting opnieuw het profiel aan: bustijd voor niets, en na een rit een dekking over sensoren die de rit nooit had"
+"public/pidlane-motortype.js@@  const blok=m.sam?PLVerzamel.promptBlok(m.sam,{sec:m.sec}):'';@@  const blok='';@@test-verzamelroutes.js@@de AI-Automonteur krijgt de samenvatting over het venster niet meer mee"
+"public/pidlane-totalcheck.js@@PLTotaal.promptBlok(_tc, cats, PLVerzamel.promptBlok)@@PLTotaal.promptBlok(_tc, cats, null)@@test-totaalcheck.js@@de totaalcheck geeft de samenvatting van het scherm niet door aan de AI"
 "public/pidlane-totalcheck.js@@      if(g && g.uitkomst==='geldt_niet') continue;\n      if(g && g.uitkomst==='onbekend')@@      if(g && g.uitkomst==='onbekend')@@test-hybridebasis.js@@de systeemtest toetst de benzinetrims ook op een auto die op LPG rijdt"
 "public/pidlane-fuel.js@@    if(!uit || !uit.ai) return;\n  }\n  activateAIPane();@@    if(!uit) return;\n  }\n  activateAIPane();@@test-verzamelroutes.js@@nee op het scherm van de verbruiksanalyse verstuurt toch een rapport"
 "public/pidlane-fuel.js@@watVoor:'de verbruiksanalyse', naRit:runFuelAnalysis});@@watVoor:'de verbruiksanalyse'});@@test-verzamelroutes.js@@na de rijtest voor de verbruiksanalyse komt de analyse niet terug"
@@ -2185,7 +2285,7 @@ MUTATIES=(
 "public/pidlane-koopcheck.js@@  if(uit && uit.ai){\n    try{\n      const prompt = (airco@@  if(true){\n    try{\n      const prompt = (airco@@test-verzamelroutes.js@@nee op het scherm van de klimaatcheck vraagt toch de AI"
 "public/pidlane-koopcheck.js@@  if(!uit || !uit.ai) return;\n  try{ ['ddProgRow',@@  try{ ['ddProgRow',@@test-verzamelroutes.js@@nee op het scherm van de diepe analyse vraagt toch de AI"
 "public/pidlane-rit.js@@  if(!_uit || !_uit.ai){@@  if(false){@@test-ritrapport.js@@nee op het scherm na de rit maakt toch een betaald ritrapport"
-"public/pidlane-rit.js@@    try{ const _rb=plRitBron(); const _rs=PLVerzamel.vanBron(_rb);@@    try{ const _rb=null; const _rs=PLVerzamel.vanBron(_rb);@@test-ritrapport.js@@het ritrapport krijgt de samenvatting over de hele rit niet meer"
+"public/pidlane-rit.js@@    try{ const _rb=plRitBron(); _rs=PLVerzamel.vanBron(_rb);@@    try{ const _rb=null; _rs=PLVerzamel.vanBron(_rb);@@test-ritrapport.js@@het ritrapport krijgt de samenvatting over de hele rit niet meer"
 # ── #446: de samenhang. Elk van deze is een fout die een monteur niet zou maken.
 "public/pidlane-samenhang.js@@      if (gesloten) { const g = geslotenOp(tl, i); if (g === false) continue; }@@@@test-samenhang.js@@trims worden in open lus gelezen: een koude of vollast-motor leest als een lek"
 "public/pidlane-samenhang.js@@    if (rpm > STATIONAIR_MAX) return 'stil_gas';@@@@test-samenhang.js@@stilstaand gas geven telt als stationair: een paar tikken op het gas lezen als overslaan"
@@ -2195,7 +2295,7 @@ MUTATIES=(
 "public/pidlane-samenhang.js@@      if (k.ms < l.minMs) {@@      if (false) {@@test-samenhang.js@@een stap wordt op een paar seconden data beoordeeld"
 "public/pidlane-samenhang.js@@    if (warm && rpm >= 2200 && rpm <= 2900) return 'toeren2500';@@@@test-samenhang.js@@de scheidingstest bij 2500 tpm wordt nooit gelezen: lek en luchtmassameter blijven op één hoop"
 "public/pidlane-samenhang.js@@    if (!r.gelezen.length) s += @@    if (false) s += @@test-samenhang.js@@een meting waarin niets te lezen viel, gaat naar de AI als \"geen verdenking\""
-"public/pidlane-verzamel.js@@        uitslagSam = metSamenhang(samNu(), appBron().hist);@@        uitslagSam = samNu();@@bproef-verzamel.js@@het scherm toont de samenhang niet meer"
+"public/pidlane-verzamel.js@@        uitslagSam = metSamenhang(samNu(), histNu());@@        uitslagSam = samNu();@@bproef-verzamel.js@@het scherm toont de samenhang niet meer"
 "public/pidlane-verzamel.js@@    let s = (sam.samenhangTekst || '') + @@    let s = '' + @@test-verzamel.js@@de AI krijgt de samenhang niet meer"
 # ── 07-10-2026: wat een weergave toont (PLToon). Pedaal "vast op 20" en een tank die per scherm verschilde.
 "public/pidlane-toon.js@@      if (ABSOLUUT.indexOf(pid) >= 0 && val < ABS_ONDER) return 0;\n@@@@test-toon.js@@een verminkte 0 van het absolute pedaal verpest de geleerde rust: los leest daarna als 20 %"
@@ -2214,6 +2314,12 @@ MUTATIES=(
 "public/pidlane-rapport.js@@    for (let i = 1; i <= n; i++) {\n      doc.setPage(i);@@    for (let i = 1; i < n; i++) {\n      doc.setPage(i);@@test-rapport.js@@de laatste pagina van het rapport krijgt geen voettekst"
 "public/pidlane-rapport.js@@    const kleur = f.oordeel || c.verdict || 'grijs';@@    const kleur = f.oordeel || c.verdict || 'groen';@@test-rapport.js@@een rapport zonder oordeel zegt op het voorblad dat er geen urgente problemen zijn"
 "public/pidlane-rapport.js@@  const W = 210, H = 297, M = 15, CW = W - 2 * M, ONDER = 278;@@  const W = 210, H = 297, M = 15, CW = W - 2 * M, ONDER = 289;@@test-rapport.js@@de inhoud van het rapport loopt door in de voettekst"
+"public/pidlane-aankooprapport.js@@    const versKm = kmW !== null && kmW < CFG.versWisKm;@@    const versKm = kmW !== null && kmW <= CFG.versWisKm;@@test-aankooprapport.js@@het aankooprapport noemt een auto op precies de wisgrens vers gewist"
+"public/pidlane-aankooprapport.js@@    if (check && !check.kanOordelen) return 'grijs';@@    // (geen poort op volledigheid)@@test-aankooprapport.js@@het aankooprapport geeft groen op een meting waarin de zelftests nooit gelezen zijn"
+"public/pidlane-aankooprapport.js@@s('permanent', 'Permanente foutcodes', vers ? 'rood' : 'oranje',@@s('permanent', 'Permanente foutcodes', 'oranje',@@test-aankooprapport.js@@een permanente code na vers wissen blijft oranje: de schoonpoets valt niet op"
+"public/pidlane-aankooprapport.js@@    const ernstigNietGereed = nietGereed.filter(m => MONITOR_MILD.indexOf(m) < 0);@@    const ernstigNietGereed = nietGereed.slice();@@test-aankooprapport.js@@alleen EVAP niet gereed wordt al een aandachtspunt"
+"public/pidlane-aankooprapport.js@@    } else if (o.kmMetMil !== null && o.kmMetMil > 0 && o.kmMetMil < CFG.tellerMax) {@@    } else if (o.kmMetMil !== null && o.kmMetMil > 0) {@@test-aankooprapport.js@@een vastgelopen teller (65535) leest als gereden met het storingslampje aan"
+"public/pidlane-aankooprapport.js@@    if ((sig || []).some(x => x.kleur === 'rood')) return 'rood';@@    // (rood wacht op volledigheid)@@test-aankooprapport.js@@een gevonden rode vlag verdwijnt achter grijs zodra één onderdeel niet gelezen is"
 "public/pidlane-fuel.js@@    const text=await apiFetch(prompt+PLRapport.instructie(),4000,null,null,aanlevering);@@    const text=await apiFetch(prompt,4000,null,null,aanlevering);@@test-rapport.js@@de gedeelde AI-trechter vraagt het rapportblok niet meer: het PDF-rapport valt terug op de koppen"
 "public/pidlane-fuel.js@@  try{ if(window.PLKenmerk) sys += PLKenmerk.blok(); }@@  try{ if(false) sys += PLKenmerk.blok(); }@@bproef-kenmerk.js@@de AI hoort niet welke regels voor deze auto niet te beoordelen zijn"
 "public/pidlane-verzamel.js@@                                hist: histVoorRapport(sam), watVoor@@                                hist: null, watVoor@@bproef-rapport.js@@het verzamelscherm geeft zijn reeksen niet mee: het analyserapport heeft geen grafieken"

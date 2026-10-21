@@ -998,6 +998,55 @@
     '</div>';
   }
 
+  /* ── WAT EEN WIJZIGING DOET (20-10-2026) ───────────────────────────
+     Onder Handmatig zag je de getallen niet meer: het knoppenvak plakte
+     onderaan en werd met tempo, groep en verbinding hoger dan het scherm. Nu
+     plakt het alleen bij de automaat, en staat bovenaan de knoppen wat de bus
+     nú doet naast wat hij deed vlak vóór je laatste wijziging. De getallen
+     zijn die van PLBus.stats() (een venster van 10 s): pas na dat venster zegt
+     de vergelijking iets, en dat staat erbij. */
+  const EFFECT_MS = 10000;
+  const EFFECT_MATEN = [
+    ['perSec', 'verzoeken/s', '', 1], ['venGemMs', 'responstijd', ' ms', -1],
+    ['belasting', 'bus bezet', '%', 0], ['foutPct', 'fout', '%', -1], ['onvolPct', 'onvolledig', '%', -1]
+  ];
+  let _wijz = null;   // {wat, ts, voor:{perSec,…}}
+  function _merkWijziging(wat) {
+    const s = _stats() || {}, voor = {};
+    EFFECT_MATEN.forEach(function (m) { voor[m[0]] = s[m[0]]; });
+    _wijz = { wat: wat, ts: Date.now(), voor: voor };
+  }
+  /* Puur: de vergelijking. richting 1 = hoger is beter, -1 = lager is beter,
+     0 = geen oordeel. */
+  function effect(wijz, nu, tNu) {
+    if (!wijz) return null;
+    const rest = Math.max(0, Math.ceil((EFFECT_MS - (tNu - wijz.ts)) / 1000));
+    return { wat: wijz.wat, wacht: rest, maten: EFFECT_MATEN.map(function (m) {
+      const a = wijz.voor[m[0]], b = (nu || {})[m[0]];
+      const getal = function (x) { return typeof x === 'number' && isFinite(x); };
+      const d = getal(a) && getal(b) ? b - a : null;
+      const oordeel = d === null || !m[3] || rest ? '' : (d * m[3] > 0 ? 'beter' : d * m[3] < 0 ? 'slechter' : '');
+      return { sleutel: m[0], label: m[1], eenheid: m[2], voor: a, nu: b, verschil: d, oordeel: oordeel };
+    }) };
+  }
+  function _effectBlok() {
+    const s = _stats();
+    const fx = (v, e) => (typeof v === 'number' && isFinite(v) ? (Math.round(v * 10) / 10) + e : '–');
+    const e = effect(_wijz, s, Date.now());
+    const cel = function (m) {
+      const kl = m.oordeel === 'beter' ? 'var(--gn)' : m.oordeel === 'slechter' ? 'var(--rd)' : 'var(--tx)';
+      return '<div style="flex:1 1 18%;min-width:58px;background:var(--sur);border:1px solid var(--bd);border-radius:8px;padding:6px 7px">' +
+        '<div style="font:800 13px var(--m);color:' + kl + '">' + fx(m.nu, m.eenheid) + '</div>' +
+        '<div style="font:600 9.5px var(--f);color:var(--tx3)">' + m.label + '</div>' +
+        (e ? '<div style="font:400 9.5px var(--f);color:var(--tx3)">was ' + fx(m.voor, m.eenheid) + '</div>' : '') + '</div>';
+    };
+    const maten = e ? e.maten : EFFECT_MATEN.map(function (m) { return { label: m[1], eenheid: m[2], nu: s ? s[m[0]] : null, oordeel: '' }; });
+    return '<div style="margin-top:9px">' +
+      '<div style="font:700 10px var(--f);color:var(--tx3);margin-bottom:4px">' +
+        (e ? 'EFFECT VAN: ' + e.wat + (e.wacht ? ' — nog ' + e.wacht + ' s meten' : '') : 'NU — kies hieronder een stand en zie wat hij doet') + '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:4px">' + maten.map(cel).join('') + '</div></div>';
+  }
+
   function _regelingBlok() {
     const l = _load();
     const hand = !!(l && l.handmatig);
@@ -1011,7 +1060,7 @@
     if (hand) {
       const nu = l ? l.tempoPct : 100;
       const stappen = [17, 25, 33, 50, 70, 100];
-      stuur = '<div style="margin-top:9px">' +
+      stuur = _effectBlok() + '<div style="margin-top:9px">' +
         '<div style="font:700 10px var(--f);color:var(--tx3);margin-bottom:4px">TEMPO — hoe vaak de sensoren gevraagd worden</div>' +
         '<div style="display:flex;gap:4px;flex-wrap:wrap">' +
           stappen.map(function (p) {
@@ -1097,7 +1146,7 @@
   async function _handZet(veld, waarde, wat) {
     const V = window.PLVerbind;
     if (!V || typeof V.zetHand !== 'function') { _melding('De verbindingsmodule ontbreekt'); return; }
-    _handBezig = wat; _teken();
+    _handBezig = wat; _merkWijziging(wat.replace(/…$/, '')); _teken();
     let r = null;
     try { r = await V.zetHand(veld, waarde); }
     catch (e) { r = { ok: false, reden: (e && e.message) || String(e) }; }
@@ -1267,7 +1316,8 @@
         tekst + '<br><span style="font:600 10px var(--f);color:var(--tx3)">' + sub + '</span></button>';
     };
     const bezig = _meetBezig || _gpBezig;
-    return '<div id="plAdapterBediening" style="position:sticky;bottom:calc(-16px - var(--pl-sab,0px));margin:14px -14px -14px;' +
+    const l = _load(), hand = !!(l && l.handmatig);
+    return '<div id="plAdapterBediening" style="position:' + (hand ? 'static' : 'sticky') + ';bottom:calc(-16px - var(--pl-sab,0px));margin:14px -14px -14px;' +
         'padding:12px 14px calc(14px + var(--pl-sab,0px));background:var(--sur2);border-top:1px solid var(--bd);' +
         'border-radius:0 0 14px 14px;box-shadow:0 -10px 24px rgba(0,0,0,.25)">' +
       _regelingBlok() +
@@ -1359,6 +1409,7 @@
     try {
       if (!window.PLLoad || typeof PLLoad.zetTempo !== 'function') { _melding('PLLoad kent zetTempo() niet'); return; }
       if (!PLLoad.isHandmatig()) PLLoad.handmatig(true, 'tempo met de hand gezet');
+      _merkWijziging('tempo ' + pct + '%');
       PLLoad.zetTempo(pct);
     } catch (e) { _melding('Tempo zetten mislukt: ' + ((e && e.message) || e)); }
     _teken();
@@ -1376,6 +1427,7 @@
       if (window.PLLoad && typeof PLLoad.isHandmatig === 'function' && !PLLoad.isHandmatig()) {
         PLLoad.handmatig(true, 'groepsgrootte met de hand gezet');
       }
+      _merkWijziging(n + ' PID' + (n === 1 ? '' : 's') + ' per verzoek');
       const naar = PLBus.batchZet(n, true);
       if (window.PLLoad && typeof PLLoad.boekActie === 'function') {
         PLLoad.boekActie('groep', van, naar, 'met de hand gezet via het adapterpaneel');
@@ -1552,6 +1604,7 @@
     historie: historie,
     monster: monster,
     zetModus: zetModus,
+    _effect: effect,
     zetTempo: zetTempo,
     zetGroep: zetGroep,
     neemAdviesOver: neemAdviesOver,

@@ -118,6 +118,28 @@ window.PID_LET_OP = {
   '0146':{min:-25, max:45,  waarom:'omgevingstemperatuur buiten het gebruikelijke bereik'},
 };
 
+// Grenzen die van de TOESTAND van de motor afhangen (21-10-2026). Een vaste
+// band kent geen start, geen stilstand en geen vol gas; de AI wel, en die noemde
+// het oordeel van de app daardoor "te kort door de bocht". Monsters in
+// `toestand` (start | stil | rijdend, uit PLVerzamel.toestandUit) gaan langs
+// `grenzen` in plaats van de vaste grens en PID_LET_OP. `aandeel`: de
+// waarschuwingsgrens telt pas als zo'n deel van de monsters erbuiten ligt.
+// Bronnen en uitleg: PIDLANE-ARCHIEF.md, 21-10-2026.
+window.PID_TOESTAND = {
+  // De startmotor trekt de spanning omlaag; een gezonde accu blijft boven 9,6 V.
+  '0142':{toestand:'start',   naam:'tijdens het starten', grenzen:{dL:9.6},
+          waarom:'de startmotor trekt de spanning omlaag; pas onder 9,6 V wijst dat op een zwakke accu'},
+  // Berekende belasting is per definitie 100 % bij vol gas, ook op een turbo.
+  '0104':{toestand:'rijdend', naam:'tijdens het rijden',  grenzen:{},
+          waarom:'bij accelereren is hoge belasting normaal — vol gas is per definitie 100 %'},
+  // Stilstaand warmt de inlaatlucht op onder de motorkap (heat soak); bij wegrijden zakt hij.
+  '010F':{toestand:'stil',    naam:'bij stilstand',       grenzen:{},
+          waarom:'stilstaand warmt de inlaatlucht op onder de motorkap; bij wegrijden zakt hij weer'},
+  // De kortetermijntrim springt bij elke gasverandering; een blijvende afwijking is het signaal.
+  '0106':{aandeel:0.25},
+  '0108':{aandeel:0.25},
+};
+
 // ── MODELS (was index.html regel 3029) ──
 window.MODELS ={Ford:['Focus','Fiesta','Mondeo','Kuga','Puma','Transit','Ranger'],Volkswagen:['Golf','Polo','Passat','Tiguan','T-Roc','ID.3','ID.4'],BMW:['1 Serie','3 Serie','5 Serie','X1','X3','X5','M3'],Mercedes:['A-Klasse','C-Klasse','E-Klasse','GLA','GLC','GLE'],Audi:['A3','A4','A6','Q3','Q5','Q7'],Opel:['Astra','Corsa','Insignia','Mokka'],Peugeot:['208','308','2008','3008'],Renault:['Clio','Megane','Captur','Zoe'],Toyota:['Yaris','Corolla','RAV4','Prius'],Skoda:['Fabia','Octavia','Superb','Karoq'],Seat:['Ibiza','Leon','Ateca'],Hyundai:['i20','i30','Tucson','Kona'],Kia:['Picanto','Ceed','Sportage','EV6'],Volvo:['V60','XC40','XC60','XC90'],Nissan:['Juke','Qashqai','X-Trail','Leaf'],Citroën:['C3','C4','Berlingo'],Fiat:['500','Panda','Tipo'],Honda:['Jazz','Civic','CR-V']};
 

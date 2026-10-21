@@ -352,6 +352,12 @@
       res.duurMs = Date.now() - t0;
       res.onbekendeUas = Object.keys(_onbekendeUas).length ? _onbekendeUas : null;
       res.samenvatting = PLM06.samenvat(res);
+      // De laatste uitlezing blijft staan voor de voorkennis van een expert
+      // (PLVoorkennis); een meekijkende expert krijgt hem meteen.
+      res.t = Date.now();
+      PLM06.laatste = res;
+      try { if (window.PLRemote && typeof PLRemote.vernieuw === 'function') PLRemote.vernieuw(); }
+      catch (e) { console.warn('PLM06: expert niet bijgewerkt', e); }
       // Tijdens een rit gaan de ontstekingsmissers mee naar de conditiescore
       // (#475). Passief: dit is de scan die de klant zelf startte.
       try { if (window.PLGarage && typeof PLGarage.mode06 === 'function') PLGarage.mode06(res); }

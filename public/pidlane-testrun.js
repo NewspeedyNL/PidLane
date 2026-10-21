@@ -2787,6 +2787,275 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── PiP-klokje: naald voor de toeren, kleur alleen bij een warme motor, stopknop in het venster ──
+  {
+    issue: 'pip-klokje',
+    naam: 'Beeld-in-beeld: het kleine venster is een toerenteller met naald, kleurt pas bij de koelwatergrens uit PIDS, en de stopknop verbreekt vóór het venster sluit',
+    waarom: 'Het oude venster knipperde elke seconde en stond als een hoge witte kolom over de navigatie; klanten vonden het irritant.',
+    proef: async function () {
+      if (!window.PLPip || typeof PLPip.meterStand !== 'function' || typeof PLPip.stop !== 'function')
+        return { staat: 'FOUT', detail: 'PLPip.meterStand of PLPip.stop ontbreekt — oude pidlane-pip.js (herladen?)' };
+      var koel = (window.PIDS || []).filter(function (x) { return x.pid === '0105'; })[0];
+      if (!koel) return { staat: 'FOUT', detail: 'PIDS kent 0105 niet — de grens van het klokje heeft geen bron' };
+      var r = PLPip.meterStand({ '010C': 782, '010D': 0, '0105': 69 });
+      if (r.staat !== 'rustig') return { staat: 'FOUT', detail: 'stationair en koud geeft ' + r.staat + ' in plaats van rustig' };
+      if (PLPip.meterStand({ '0105': koel.wH }).staat !== 'let') return { staat: 'FOUT', detail: koel.wH + ' °C koelwater kleurt het venster niet oranje' };
+      if (PLPip.meterStand({ '010C': 9000 }).hoek !== 390) return { staat: 'FOUT', detail: 'boven de schaal draait de naald door' };
+      return { staat: 'OK', detail: 'rustig bij ' + r.rpm + ' tpm, oranje vanaf ' + koel.wH + ' °C, rood vanaf ' + koel.dH + ' °C. Rij: verbind, schakel naar de navigatie; het venster is vierkant met een naald die de toeren volgt. Tik erop: de knop "Stop meten" verbreekt en het venster verdwijnt; de rit staat daarna in de historie.' };
+    }
+  },
+
+  // ── Aankooprapport: vers gewiste codes zijn rood, een onvolledige meting krijgt geen groen, het VIN gaat niet mee ──
+  {
+    issue: 'aankooprapport',
+    naam: 'Aankooprapport: een auto met 12 km sinds wissen en een permanente code is rood, zonder zelftests is er geen groen, en het VIN staat niet in het rapport',
+    waarom: 'Het aankooprapport is nieuw; het oordeel komt uit regels in de app, en een niet gelezen onderdeel mag nooit als "in orde" lezen.',
+    proef: async function () {
+      if (!window.PLAankoop || typeof PLAankoop.model !== 'function')
+        return { staat: 'FOUT', detail: 'PLAankoop ontbreekt — oude index.html of pidlane-aankooprapport.js niet geladen (herladen?)' };
+      var basis = function () {
+        return { kenteken: 'R054XD', ts: Date.now(), rdw: { merk: 'MAZDA', handelsbenaming: 'CX-5', tellerstandoordeel: 'Logisch' },
+          obd: { verbonden: true, vin: 'WVWZZZ1JZXW000001', dtc: { actief: [], pending: [], permanent: [] },
+            readiness: { mil: false, monitors: [{ monitor: 'Misfire', gereed: true }], nietGereed: [] }, kmSindsWissen: 9000, warmupsSindsWissen: 200 } };
+      };
+      var vers = basis(); vers.obd.kmSindsWissen = 12; vers.obd.dtc.permanent = ['P0420'];
+      var m1 = PLAankoop.model(vers);
+      if (m1.kleur !== 'rood') return { staat: 'FOUT', detail: 'vers gewist met permanente code geeft ' + m1.kleur + ' in plaats van rood' };
+      var zonder = basis(); zonder.obd.readiness = null;
+      var m2 = PLAankoop.model(zonder);
+      if (m2.kleur === 'groen') return { staat: 'FOUT', detail: 'zonder zelftests toch groen — een niet gelezen onderdeel leest als goed' };
+      if (JSON.stringify({ v: m1.voorblad, s: m1.secties }).indexOf('WVWZZZ1JZXW000001') >= 0) return { staat: 'FOUT', detail: 'het VIN staat in het rapport dat gedeeld wordt' };
+      return { staat: 'OK', detail: 'vers gewist rood, onvolledig ' + m2.kleur + ', VIN niet in het rapport. Rij: koopcheck → 📄 Aankooprapport maken, met en zonder plaats; lees de PDF na op voorblad, vragen en disclaimer' };
+    }
+  },
+
+  // ── Toestandsgrenzen: start, stilstand en rijden hebben hun eigen grens; één alarmmonster is een uitschieter ──
+  {
+    issue: 'toestandgrens',
+    naam: 'Oordeel van de app: één meting over de alarmgrens is let op, de startdip van de accu, hoge belasting bij het rijden en warme inlaatlucht bij stilstand zijn geen vlag',
+    waarom: 'De AI noemde het oordeel van de conditiecheck "te kort door de bocht": een vaste band kent geen start, geen stilstand en geen vol gas.',
+    proef: async function () {
+      if (!window.PLVerzamel || typeof PLVerzamel.toestandUit !== 'function' || !window.PID_TOESTAND)
+        return { staat: 'FOUT', detail: 'PLVerzamel.toestandUit of PID_TOESTAND ontbreekt — oude pidlane-verzamel.js/pidlane-data.js (herladen?)' };
+      var r = function (n, f) { var a = []; for (var i = 0; i < n; i++) a.push({ t: i * 500, v: f(i) }); return a; };
+      var rpm = r(60, function (i) { return i < 10 ? 0 : 800; });
+      var acc = r(60, function (i) { return (i === 9 || i === 10) ? 10.1 : (i < 9 ? 12.5 : 14.2); });
+      var tst = PLVerzamel.toestandUit({ '010C': rpm });
+      var b = PLVerzamel.beoordeel('0142', acc, getPidDef('0142'), window.PID_LET_OP, null, PID_TOESTAND['0142'], tst);
+      if (b.oordeel !== 'ok') return { staat: 'FOUT', detail: 'de startdip van 10,1 V heet nog ' + b.oordeel + ': ' + b.reden };
+      var los = PLVerzamel.beoordeel('0105', r(20, function (i) { return i === 7 ? 112 : 90; }), getPidDef('0105'), window.PID_LET_OP, null);
+      if (los.oordeel !== 'let') return { staat: 'FOUT', detail: 'één meting van 112 °C koelwater heet ' + los.oordeel + ' in plaats van let op' };
+      return { staat: 'OK', detail: 'startdip geen vlag, één alarmmonster is let op. Rij: conditiecheck met een koude start in het stilstanddeel en flink optrekken in het rijdeel; accuspanning en motorbelasting horen niet rood of oranje te staan, en het AI-rapport hoort het oordeel van de app niet meer "te kort door de bocht" te noemen.' };
+    }
+  },
+
+  // ── Tokens: eerdere rapporten als kern, korte vragen naar het lichte model ──
+  {
+    issue: 'tokens',
+    naam: 'AI-kosten: een eerder rapport gaat als conclusie en advies mee in plaats van zijn eerste 1.800 tekens; korte vragen zonder meetdata gaan naar het lichte model',
+    waarom: 'Het begin van een eerder rapport was voertuiggegevens en een sensortabel die de analyse al vers krijgt — betaalde invoer zonder nut.',
+    proef: async function () {
+      if (typeof plRapportKern !== 'function') return { staat: 'FOUT', detail: 'plRapportKern ontbreekt — oude pidlane-archief.js (herladen?)' };
+      var tabel = 'VOERTUIGGEGEVENS\nVW Golf\n\nSENSORANALYSE\n'; for (var i = 0; i < 40; i++) tabel += '| 01' + i + ' | ' + i + ' | normaal |\n';
+      var k = plRapportKern(tabel + '\nCONCLUSIE\nLek in de inlaat.\n\nADVIES\n- Rookproef\n');
+      if (k.indexOf('Lek in de inlaat') < 0 || k.indexOf('| 01') >= 0) return { staat: 'FOUT', detail: 'de kern is niet de conclusie: ' + k.slice(0, 120) };
+      // Het model van een aanroep is alleen in een echte call te zien; hier de constante zelf.
+      if (typeof AI_LICHT !== 'string' || !/haiku/i.test(AI_LICHT)) return { staat: 'FOUT', detail: 'AI_LICHT ontbreekt of is geen Haiku — oude pidlane-fuel.js (herladen?)' };
+      return { staat: 'OK', detail: 'kern = conclusie en advies, AI_LICHT = ' + AI_LICHT + '. Rij: twee analyses na elkaar met "eerdere rapporten mee"; het kasboek hoort bij de tweede minder tokensIn te tonen dan vóór 21-10, en een lampjesfoto of "Meer over dit model" hoort met model haiku in het kasboek te staan.' };
+    }
+  },
+
+  // ── #567: STAT_RPM meet de schommeling rond het verloop, niet het wegzakken zelf ──
+  {
+    issue: '567',
+    naam: 'Ruw stationair (STAT_RPM): een toerental dat na een stop wegzakt met ruis erop is geen melding meer; echte ruwloop en één parse-hik blijven zoals ze waren',
+    waarom: 'Op de rit van 20-10 om 19:02 gaf een wegzakkend toerental 238 rpm "schommeling" bij 26% richtingswisselingen, net boven de poort van 25%.',
+    proef: async function () {
+      var t = window.PLWatch && (PLWatch.tests || []).find(function (x) { return x.id === 'STAT_RPM'; });
+      if (!t) return { staat: 'FOUT', detail: 'STAT_RPM ontbreekt in PLWatch.tests — oude pidlane-watchers.js (herladen?)' };
+      var ctx = function (r) { return { win: function (p) { return p === '010C' ? r : []; }, val: function () { return 0; } }; };
+      var ruis = [0, 12, -8, 15, -14, 6, -10, 14, -5, 9, -15, 4, 11, -9, 13, -6, 8, -12, 10, -4];
+      var zakt = ruis.map(function (e, i) { return Math.round(700 + 400 * Math.exp(-i / 6) + e); });
+      var ruw = ruis.map(function (e, i) { return 800 + (i % 2 ? 100 : -100); });
+      if (t.check(ctx(zakt)) !== null) return { staat: 'FOUT', detail: 'een wegzakkend toerental met ruis heet nog ruw stationair' };
+      if (!t.check(ctx(ruw))) return { staat: 'FOUT', detail: 'echt oscillerend stationair geeft geen melding meer' };
+      return { staat: 'OK', detail: 'Rij: stop na een stuk rijden en laat de motor warm stationair draaien; de rit-monitor hoort binnen de eerste 15 s na de stop geen "ruw stationair" te melden, en met de airco aan/uit wel zoals voorheen.' };
+    }
+  },
+
+  // ── Eén aanlevering voor alle analyses: profiel uit de meting, kwaliteit één keer ──
+  {
+    issue: 'aanlevering',
+    naam: 'Eén kwaliteitsoordeel per sensor: wat de samenvatting toont is over het venster beoordeeld, de aanlevering oordeelt over de rest; het profiel komt uit de meting',
+    waarom: 'Acht analyses stuurden het kwaliteitsblok en de correlatielijst twee keer mee, de aanlevering oordeelde nog eens op de live waarde, en de oorzaakanalyse beloofde een emissiedekking over een meting van de selectie (#565).',
+    proef: async function () {
+      if (!window.PLVerzamel || typeof PLVerzamel.aanlevering !== 'function' || !window.PLAanlevering || typeof PLAanlevering.kwaliteitsPids !== 'function')
+        return { staat: 'FOUT', detail: 'PLVerzamel.aanlevering of PLAanlevering.kwaliteitsPids ontbreekt — oude pidlane-verzamel.js/pidlane-aanlevering.js (herladen?)' };
+      var sam = { rijen: [{ pid: '0105' }, { pid: '010C' }] };
+      var a = PLVerzamel.aanlevering({ profiel: null, bron: null, sam: sam }, 'Toets', 'emissie');
+      if (a.profiel) return { staat: 'FOUT', detail: 'een meting zonder profiel krijgt toch een profiel in de aanlevering: ' + a.profiel };
+      var b = PLVerzamel.aanlevering({ profiel: 'basis', bron: null, sam: sam }, 'Toets');
+      if (b.profiel !== 'basis' || !b.zichtbaar || b.zichtbaar.join() !== '0105,010C') return { staat: 'FOUT', detail: 'profiel of zichtbare sensoren komen niet uit de meting: ' + JSON.stringify(b) };
+      var k = PLAanlevering.kwaliteitsPids({ geleverd: ['0105', '0142'] }, b.zichtbaar);
+      if (k.join() !== '0142') return { staat: 'FOUT', detail: 'een sensor uit de samenvatting krijgt nog een oordeel op zijn live waarde: ' + k.join() };
+      var t = PLAanlevering.blok(b);
+      var keer = (t.match(/DATAKWALITEIT \(/g) || []).length;
+      if (keer > 1 || !/beoordeeld over het hele meetvenster/.test(t)) return { staat: 'FOUT', detail: 'het blok zegt niet waar het oordeel over de samenvatting staat, of oordeelt ' + keer + '×' };
+      var heeft = typeof pidVals !== 'undefined' && typeof pidVals['0105'] === 'number';
+      return { staat: heeft ? 'OK' : 'LET OP', detail: (heeft ? 'de samenvatting oordeelt over het venster, de aanlevering over de rest.' : 'geen koelwaterwaarde nu — de live kant is niet getoetst.') +
+        ' Rij: AI-monteur → "Laat de AI dit onderzoeken"; het rapport hoort niet twee keer dezelfde UITGESLOTEN/ONZEKER-lijst te noemen.' };
+    }
+  },
+
+  // ── #560: tractie-ingrijpen afgeleid uit gaspedaal, gasklep, toeren en snelheid ──
+  {
+    issue: '560',
+    naam: 'Mogelijk wielslip per rit (cd.tc): koppelreductie en wielspin in dezelfde versnelling, alleen verse monsters; advies in Mijn voertuigen bij kou',
+    waarom: 'Generieke OBD ziet de ESP-module niet; het koppelpad wel. Schakelmomenten en een niet-ververst gaspedaal mogen niet als slip tellen.',
+    proef: async function () {
+      if (!window.PLConditie || !window.PLWinterRit || typeof PLWinterRit.tractie !== 'function')
+        return { staat: 'FOUT', detail: 'PLWinterRit.tractie ontbreekt — oude pidlane-winterrit.js/pidlane-conditie.js (herladen?)' };
+      var a = null, t = 0;
+      for (var i = 0; i < 40; i++) { t += 2000; a = PLConditie.tik(a, { kmh: 50, rpm: 2000, pedaal: 30, gasklep: i === 20 ? 12 : 25, pedaalT: t, gasklepT: t }, 2); }
+      var cs = PLConditie.samenvat(a);
+      if (!cs || cs.tc !== 1) return { staat: 'FOUT', detail: 'een gasklep die zakt bij een vast gaspedaal telt niet als mogelijk ingrijpen' };
+      var heeft = typeof pidVals !== 'undefined' && typeof pidVals['0149'] === 'number' && typeof pidVals['0111'] === 'number';
+      return { staat: heeft ? 'OK' : 'LET OP', detail: (heeft ? 'deze auto geeft gaspedaal (0149) en gasklep (0111).' : 'geen 0149 of 0111 nu — dan meet de rit niets voor tractie.') +
+        ' Rij: op een gladde dag kort stevig optrekken; daarna hoort de rit in Mijn voertuigen extra.cd.tc te hebben.' };
+    }
+  },
+
+  // ── Er is iets mis: eerst wat, dan wanneer, met codes en een algemene check ──
+  {
+    issue: 'intake',
+    naam: 'Er is iets mis: tegels "Wat merk je?" (meer mag), zelf beschrijven met live herkenning, een foutcode invoeren, algemene check; daarna "Wanneer?" met meerkeuze',
+    waarom: 'De intake begon met vijf vaste antwoorden op "Wanneer merk je het?", één keuze, en een verplicht tekstveld — te beperkt; de laatste keuze viel achter de Android-knoppen.',
+    proef: async function () {
+      if (!window.PLWizard || !PLWizard._kern || !PLWizard._boom.storing_wat || !PLOnderzoek.KLACHTEN.geluid)
+        return { staat: 'FOUT', detail: 'de nieuwe intake (storing_wat, PLWizard._kern, klacht geluid) ontbreekt — oude pidlane-wizard.js/pidlane-onderzoek.js (herladen?)' };
+      var K = PLWizard._kern;
+      if (K.codesUit('p0171').join() !== 'P0171') return { staat: 'FOUT', detail: 'een getypte foutcode wordt niet herkend' };
+      if (K.metingUit(['soms', 'belast']) !== 'monitor' || K.metingUit(['belast']) !== 'rit10') return { staat: 'FOUT', detail: 'het moment geeft niet de goede meting' };
+      var st = PLOnderzoek.nieuw({ klachten: ['onrustig'], codesHand: ['P0171', 'P0174'] });
+      if (!st.v.valselucht || st.v.valselucht.score > PLOnderzoek.cfg.bevestigd / 2) return { staat: 'FOUT', detail: 'een opgegeven code weegt te zwaar of telt niet' };
+      return { staat: 'OK', detail: 'Rij: Er is iets mis → tik "Onrustig", typ "hapert bij optrekken" en een code als je er een hebt; bij Wanneer "Optrekken". Het plan hoort te zeggen wat je merkt en wat de code betekent, en de laatste keuze moet boven de Android-knoppen staan.' };
+    }
+  },
+
+  // ── Totaalcheck: stilstand en rijden apart, verdiepen waar iets afwijkt ──
+  {
+    issue: 'totaalcheck',
+    naam: 'Totaalcheck in twee delen: stilstand (met foutcodes en zelftests) en gewoon rijden, uitslag per categorie, focusmeting alleen waar iets afwijkt',
+    waarom: 'De check uit week 1 was een vragenlijst en daarna een rijtest van vijf fases van twee minuten; de vragen voegden niets toe en de fases kostten tien minuten.',
+    proef: async function () {
+      if (!window.PLTotaal || !document.getElementById('tcStappen') || document.querySelector('#pane-check .chk-qrow'))
+        return { staat: 'FOUT', detail: 'PLTotaal of #tcStappen ontbreekt, of de oude vragenlijst staat er nog — oude pidlane-totalcheck.js/index.html (herladen?)' };
+      var H = { '010D': [{ t: 0, v: 0 }, { t: 1000, v: 60 }], '0105': [{ t: 0, v: 90 }, { t: 1000, v: 95 }] };
+      var st = PLTotaal.deelHist(H, 'stil', MEET_RIJ_KMH, MEET_RIJ_GAT_MS), rj = PLTotaal.deelHist(H, 'rij', MEET_RIJ_KMH, MEET_RIJ_GAT_MS);
+      if (st.hist['0105'].length !== 1 || st.hist['0105'][0].v !== 90 || rj.hist['0105'][0].v !== 95)
+        return { staat: 'FOUT', detail: 'stilstand en rijden worden niet op de snelheid gesplitst' };
+      var sam = function (o) { return { rijen: [{ pid: '0105', naam: 'Koelwater temp', n: 10, min: 90, max: 90, oordeel: o }] }; };
+      var c = PLTotaal.categorieen({ stil: sam('ok'), rij: sam('afwijkend') }, null, function () { return 'Temp'; }, CHK_CAT_ORDER)[0];
+      if (!c || !c.focus || !PLTotaal.focusPlan(c).rijden) return { staat: 'FOUT', detail: 'een afwijking alleen rijdend geeft geen rijdende focusmeting' };
+      if (PLTotaal.categorieen({ stil: sam('ok') }, null, function () { return 'Temp'; }, CHK_CAT_ORDER)[0].open)
+        return { staat: 'FOUT', detail: 'een categorie die klopt gaat toch open' };
+      return { staat: 'OK', detail: 'Rij: Totaalcheck → Start stilstand (± 1 min, daarna foutcodes), dan Start rijden en gewoon wegrijden; het scherm hoort na zo’n anderhalve minuut rijden vanzelf naar de uitslag te gaan, zonder "Rijtest starten".' };
+    }
+  },
+
+  // ── Winter (#556–#559): profiel, weer, banner, bandentabel, ritpatroon ──
+  {
+    issue: '556',
+    naam: 'Winter: winterkaart op het startscherm, profiel (banden, sproeier, plaats), bandentabel; korte ritten en thermostaat uit de ritten; per rit bt/wt/kz',
+    waarom: 'De wintercheck mat één opwarming; zomervloeistof, zomerbanden bij 3 °C en een openhangende thermostaat bleven onbenoemd.',
+    proef: async function () {
+      if (!window.PLWinter || !window.PLWeer || !window.PLWinterRit || !document.getElementById('plWinterKaart'))
+        return { staat: 'FOUT', detail: 'PLWinter, PLWeer, PLWinterRit of #plWinterKaart ontbreekt — oude index.html of modules (herladen?)' };
+      var K = PLWinter._kern, nov = new Date(2026, 10, 20, 12).getTime();
+      var vorst = PLWeer._kern.samenvat([{ datum: PLWeer._kern.lokaleDatum(nov), min: -3, max: 2 }], nov);
+      var a = K.adviezen({ nu: nov, profiel: { sproeier: 'zomer', banden: 'zomer' }, weer: vorst });
+      if (!a.length || a[0].ernst !== 'rood') return { staat: 'FOUT', detail: 'zomervloeistof en zomerbanden bij vorst geven geen rood advies' };
+      if (K.bandenStand('winter', 17).label === 'past goed') return { staat: 'FOUT', detail: 'een winterband bij 17 °C heet "past goed"' };
+      var cs = window.PLConditie ? PLConditie.samenvat(PLConditie.tik(null, { kmh: 40, rpm: 1500, koelwater: 30, buiten: 2 }, 2)) : null;
+      if (!cs || cs.bt !== 2)
+        return { staat: 'FOUT', detail: 'PLConditie legt de buitentemperatuur niet vast — oude pidlane-conditie.js' };
+      var b = typeof pidVals !== 'undefined' && pidVals && typeof pidVals['0146'] === 'number' ? 'deze auto geeft 0146 (' + pidVals['0146'] + ' °C)' : 'geen 0146 nu — de inlaatlucht van een koude start telt dan';
+      return { staat: 'OK', detail: b + '. Rij: een koude start en een stuk snelweg; daarna hoort de rit in Mijn voertuigen extra.cd.bt, wt en kz te hebben.' };
+    }
+  },
+
+  // ── Bekende adapter en auto: klik, wacht, klaar ──
+  {
+    issue: 'snelverbinden',
+    naam: 'Snel verbinden: bij een bekende adapter, auto en login alleen "Verbinden met voertuig…", geen vragen; adapter stil → pair-knop',
+    waarom: 'Bij een bekende auto zag de gebruiker vijf vensters (kenteken, protocol, scanvraag, samenvatting) voor antwoorden die al bekend waren.',
+    proef: async function () {
+      if (typeof plSnelBekend !== 'function' || !document.getElementById('snelStatus'))
+        return { staat: 'FOUT', detail: 'plSnelBekend() of #snelStatus ontbreekt — oude pidlane-bt.js/index.html (herladen?)' };
+      var l = function (o) { return function (k) { return k in o ? o[k] : null; }; };
+      var alles = { spp_address: 'x', pl_kenteken: 'x', pl_proto_id: 'A6', pl_vinprof_x: '{}' };
+      if (!plSnelBekend(l(alles), Object.keys(alles), true)) return { staat: 'FOUT', detail: 'alles bekend en toch geen snelle stand' };
+      if (plSnelBekend(l(alles), Object.keys(alles), false)) return { staat: 'FOUT', detail: 'snelle stand zonder login' };
+      return { staat: 'OK', detail: 'Rij: verbind twee keer met dezelfde auto; de tweede keer hoort alleen "Verbinden met voertuig…" te verschijnen. Zet de adapter uit: dan hoort de melding de pair-knop te noemen.' };
+    }
+  },
+
+  // ── Een Bose-speaker is geen OBD2-adapter ──
+  {
+    issue: 'obdnaam',
+    naam: 'Adapterkeuze bij een SPP-scan: één naamoordeel, een SoundLink-speaker telt niet als OBD2-adapter',
+    waarom: 'Op 19-10 verbond de app eerst met "LE-Bose Revolve SoundLink" (kale \'link\' in de SPP-lijst) en had een tweede scanronde nodig.',
+    proef: async function () {
+      if (typeof isObdNaam !== 'function') return { staat: 'FOUT', detail: 'isObdNaam() ontbreekt — oude pidlane-bt.js (herladen?)' };
+      if (isObdNaam('LE-Bose Revolve SoundLink')) return { staat: 'FOUT', detail: 'een SoundLink-speaker telt als OBD2-adapter' };
+      if (!isObdNaam('OBDLink MX+ 90011') || !isObdNaam('vLinker MC+')) return { staat: 'FOUT', detail: 'een echte adapternaam wordt niet herkend' };
+      return { staat: 'OK', detail: 'Rij: verbind met Bluetooth-audio in de buurt aan; in het logboek hoort alleen de adapter als "OBD2 adapter" te staan en de eerste poging naar de adapter te gaan.' };
+    }
+  },
+
+  // ── De expert begint niet bij nul: voorkennis in de vstate, zonder VIN ──
+  {
+    issue: 'voorkennis',
+    naam: 'Expert op afstand: voorkennis bij het verbinden (kansen, foutcodes met geschiedenis, mode 06, rapporttitels), VIN alleen als pseudoniem',
+    waarom: 'De expert kreeg alleen het nu, en de vstate droeg de ruwe VIN naar de Worker en elke expert.',
+    proef: async function () {
+      if (!window.PLVoorkennis || typeof PLVoorkennis.uitApp !== 'function' || !window.PLRemote || typeof PLRemote._buildVState !== 'function')
+        return { staat: 'FOUT', detail: 'PLVoorkennis.uitApp of PLRemote._buildVState ontbreekt — oude pidlane-voorkennis.js/pidlane-remote.js (herladen?)' };
+      var v = PLRemote._buildVState(), js = JSON.stringify(v);
+      var vin = (typeof vehicleInfo !== 'undefined' && vehicleInfo && vehicleInfo.vin) ? String(vehicleInfo.vin) : '';
+      if (vin && js.indexOf(vin) >= 0) return { staat: 'FOUT', detail: 'de ruwe VIN staat in de vstate voor de expert' };
+      if (v.veh && 'vin' in v.veh) return { staat: 'FOUT', detail: 'veh.vin bestaat nog in de vstate' };
+      if (!v.voorkennis) return { staat: 'FOUT', detail: 'geen voorkennis in de vstate' };
+      if (js.length > 32768) return { staat: 'FOUT', detail: 'vstate is ' + js.length + ' tekens; de Worker weigert alles boven 32768' };
+      var vk = v.voorkennis;
+      var d = vk.kansen.length + ' kans(en), ' + vk.bekend.length + ' bekend bij ' + (vk.merk || 'onbekend merk') + ', ' + vk.foutcodes.length + ' foutcode(s), ' +
+        (vk.mode06 ? 'mode 06 gelezen' : 'geen mode 06') + ', ' + vk.rapporten.length + ' rapport(en); vstate ' + js.length + ' tekens';
+      if (!vin) return { staat: 'LET OP', detail: d + '. Geen VIN gelezen, dus het pseudoniem is niet getoetst — verbind met de auto' };
+      return { staat: 'OK', detail: d + (v.veh && v.veh.vin_pseudo ? ', VIN als pseudoniem' : ', alleen de WMI (pseudoniem nog onderweg)') +
+        '. Rij: deel een sessie, kijk mee als expert en controleer dat "Eerst kijken naar" klopt met de foutcodes.' };
+    }
+  },
+
+  // ── Rondgang: elke pagina op één scherm, een lege pagina krijgt verwante sensoren ──
+  {
+    issue: 'rondgang',
+    naam: 'Rondgang in Slim: dichter tekenen in plaats van splitsen, verwante sensoren op een half lege pagina',
+    waarom: 'Volle pagina\'s vielen onder de navigatie en Uitlaatgas of Brandstofdruk waren een half leeg scherm.',
+    proef: async function () {
+      if (!window.PLRond || typeof PLRond.pasIn !== 'function' || !PLRond.VERWANT)
+        return { staat: 'FOUT', detail: 'PLRond.pasIn/VERWANT ontbreken — oude pidlane-rondgang.js (herladen?)' };
+      var h = function (p) { return ['0123', '016E', '0104', '0106', '0110'].indexOf(p) > -1; };
+      var d = PLRond.indeling('benzine', { heeft: h, vullen: true }).dias.filter(function (x) { return x.id === 'brandstof-druk'; })[0];
+      var vul = d ? d.tegels.filter(function (t) { return t.vul; }).map(function (t) { return t.pids[0]; }) : [];
+      if (vul.indexOf('0104') < 0) return { staat: 'FOUT', detail: 'brandstofdruk krijgt geen belasting ernaast: ' + JSON.stringify(d) };
+      var r = document.getElementById('rondDia');
+      if (!r || !r.getClientRects().length) return { staat: 'LET OP', detail: 'verwant klopt (' + vul.join(', ') + '); de rondgang is niet in beeld, dus passen niet gemeten — open Live → Slim' };
+      var n = PLRond.pasIn(), nav = document.getElementById('plNav'), b = r.getBoundingClientRect().bottom, t = nav ? nav.getBoundingClientRect().top : window.innerHeight;
+      return b <= t ? { staat: 'OK', detail: 'dia past (dichtheid ' + n + '), verwant: ' + vul.join(', ') }
+                    : { staat: 'LET OP', detail: 'dia steekt ' + Math.round(b - t) + ' px onder de navigatie uit, ook op dichtheid ' + n };
+    }
+  },
+
   // ── Er is iets mis: eerst wat de auto al weet (#534) ──
   {
     issue: '#534',
@@ -10975,6 +11244,12 @@ const CAMPAGNE = {
     'TELEFOON VAST EN GENULD. Zet hem in de houder, sta stil op vlakke grond en tik Nulstellen (Telemetrie). Zonder dat telt de helling nergens mee en schat de app zoals vroeger uit de motor.',
     'CARAVANRIT. De badge zegt nu ook de hoek ("⛰️ Klim · +3.2°") als hij gemeten is. Rij een oprit of dijk op: klopt de hoek ongeveer, en springt hij op Klim? Op vlakke snelweg met tegenwind hoort hij op Vlak te blijven. Onderaan het rapport staat of de terreinverdeling gemeten of geschat was.',
     'RITANALYSE. Rij een fase door heuvels: de faseduiding hoort "bergop", "bergaf" of "heuvelachtig" te zeggen, en Helling (telefoon) staat bij de cijfers. Is 2,5° te gevoelig of te traag, zet het in #463.',
+    '── DE TOTAALCHECK: STILSTAND EN RIJDEN ────────',
+    'STILSTAND. Live → Totaalcheck → Start stilstand. Na ± een minuut haalt hij de foutcodes en zelftests op; daarna staat de uitslag per categorie. Wat klopt staat dicht; open staat alleen wat afwijkt, met een Focusmeting.',
+    'RIJDEN. Start rijden en rij gewoon weg — geen fases, geen route. Na zo’n anderhalve minuut boven 15 km/h hoort het scherm vanzelf naar de uitslag te gaan. Wijkt een sensor rijdend af en stilstaand niet, dan hoort de focusmeting rijdend te meten. Valt er op een gezonde CX-5 iets op, plak dan die categorie.',
+    '── #555–#559: DE WINTER ────────',
+    'DE BANNER. Op het startscherm hoort één keer "Het wordt kouder" te staan. Tik Profiel aanpassen: kies je plaats, je banden en je sproeiervloeistof, en bewaar. Daarna hoort de kaart drie dagen weer en hoogstens één advies te tonen. Komt de banner na een herstart terug, of klopt het weer niet met je weerapp: zet het in #556.',
+    'EEN KOUDE START MET SNELWEG. Start koud en rij minstens tien minuten snelweg. Blok 5 zegt of je auto zelf de buitentemperatuur (0146) geeft. Na een week ritten hoort Mijn voertuigen → Advies niets over de thermostaat te zeggen als je motor gewoon warm wordt; zegt hij het toch, plak dat advies in #558.',
     '── #469: TANKEN HERKENNEN ────────',
     'ZET HET AAN. Mijn voertuigen → je auto → Profiel → Tankbeurten bijhouden: aan. Het staat standaard uit.',
     'TANK MET DE APP VERBONDEN, OF ERNA. Sta stil vóór het tanken (de app legt het peil vast), tank, en verbind daarna weer of laat hem verbonden. Komt de vraag "Getankt?" met een peil dat klopt met wat je dashboard zegt? Komt hij maar één keer? Komt hij nooit bij een helling of een bocht zonder tanken? Zo niet: plak het peil vóór en na uit de vraag in #469.',

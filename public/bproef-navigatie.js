@@ -101,10 +101,28 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('een andere tab sluit Meer', !(await app.ev(`document.getElementById('kebabMenu').classList.contains('open')`)));
     toets('en gaat naar Live', (await app.ev(tab)) === 'live', await app.ev(tab));
 
+    console.log('\n4b. Expert op afstand staat bovenaan Home en opent het goede venster');
+    const ex = await app.ev(`(function(){
+      PLNav.tab('auto');
+      const e=document.getElementById('plExpert'), c=document.getElementById('plCheckBtn');
+      const boven=!!e && !!c && e.getBoundingClientRect().top < c.getBoundingClientRect().top && e.getBoundingClientRect().height>0;
+      document.getElementById('plExpertDeel').click();
+      const deel=document.getElementById('remShareOv').classList.contains('open');
+      PLRemote.closeShare();
+      document.getElementById('plExpertOntvang').click();
+      const ontv=document.getElementById('remExpertOv').classList.contains('open');
+      const ontvDeel=document.getElementById('remShareOv').classList.contains('open');
+      document.getElementById('remExpertOv').classList.remove('open');
+      return { boven:boven, deel:deel, ontv:ontv, ontvDeel:ontvDeel };
+    })()`);
+    toets('Expert op afstand staat boven Check mijn auto', ex.boven, JSON.stringify(ex));
+    toets('Laat iemand meekijken opent het deelvenster', ex.deel, JSON.stringify(ex));
+    toets('Ik ben de expert opent het codeveld, niet het deelvenster', ex.ontv && !ex.ontvDeel, JSON.stringify(ex));
+
     console.log('\n5. Een tegel landt op zijn eigen wizardvraag');
     await app.ev(`PLNav.tab('auto'); document.querySelector('.pl-tegel.tg-storing').click(); 'ok'`);
     const vraag = await app.ev(`(document.querySelector('#wizardNieuwOv .wz-vraag')||{}).textContent||''`);
-    toets('"Er is iets mis" vraagt meteen wanneer je het merkt', /Wanneer merk je het/.test(vraag), vraag);
+    toets('"Er is iets mis" vraagt meteen wat je merkt', /Wat merk je/.test(vraag), vraag);
     await app.ev(`PLWizard.sluit(); document.querySelector('.pl-tegel.tg-rit').click(); 'ok'`);
     const rit = await app.ev(`(document.querySelector('#wizardNieuwOv .wz-vraag')||{}).textContent||''`);
     toets('"Rit starten" vraagt wat je onderweg wilt', /onderweg/.test(rit), rit);

@@ -313,6 +313,9 @@ function closeConnOv(){
     <button onclick="closeConnOv()" title="Sluiten (verbinding blijft actief)" style="position:absolute;top:12px;right:12px;z-index:10;width:32px;height:32px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:var(--tx2);font-size:14px;font-weight:700;cursor:pointer;line-height:1">✕</button>
     <div class="modal-scroll">
 
+      <!-- Snel verbinden (19-10-2026): bekende adapter en auto, alleen deze regel -->
+      <div id="snelStatus"><div class="ai-ld" style="justify-content:center"><div class="spin"></div> 🚗 Verbinden met voertuig…</div></div>
+
       <!-- STAP 1: Start -->
       <div id="step1">
         <div class="mh">
@@ -572,7 +575,27 @@ function closeConnOv(){
     <!-- Mijn voertuigen: het actieve voertuig met zijn status. Leeg voor wie geen klant is (PLGarage.tekenKaart). -->
     <div id="plGarageKaart"></div>
     <div id="plZonderKaart"></div>
+    <!-- Winter (#556): de seizoensbanner, daarna drie dagen weer en hoogstens één advies. Alleen in het winterseizoen (PLWinter.teken). -->
+    <div id="plWinterKaart"></div>
     <div id="wmDoors" class="pl-home">
+      <!-- Expert op afstand (17-10-2026): de kern van PidLane is dat iemand die
+           er verstand van heeft live meekijkt in jouw auto. Daarom staat het
+           bovenaan, met twee ingangen: de bestuurder deelt, de expert ontvangt.
+           Dezelfde vensters als de kaarten in Live data (#wc-liveshare,
+           #wc-liveexpert); die blijven daar ook staan. -->
+      <section class="pl-expert" id="plExpert" aria-labelledby="plExpertT">
+        <div class="pl-expert-kop">
+          <span class="pl-expert-ic" aria-hidden="true">🧑‍🔧</span>
+          <span class="pl-expert-tx">
+            <span class="pl-expert-t" id="plExpertT">Expert op afstand</span>
+            <span class="pl-expert-d">Je monteur of een kenner kijkt live mee in je auto — waar hij ook is. Alleen lezen.</span>
+          </span>
+        </div>
+        <div class="pl-expert-knoppen">
+          <button type="button" class="pl-expert-k hoofd" id="plExpertDeel" onclick="PLNav.expert('deel')">📡 Laat iemand meekijken</button>
+          <button type="button" class="pl-expert-k" id="plExpertOntvang" onclick="PLNav.expert('ontvang')">🔭 Ik ben de expert</button>
+        </div>
+      </section>
       <button type="button" class="pl-check" id="plCheckBtn" onclick="PLNav.check()">
         <span class="pl-check-ic" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 1 16 0"/><path d="M12 12l4-4"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M6 18h12"/></svg>
@@ -590,7 +613,7 @@ function closeConnOv(){
         <button type="button" class="pl-tegel tg-handel" onclick="PLNav.tegel('handel')">
           <span class="pl-tegel-ic" aria-hidden="true">🚗</span><span class="pl-tegel-t">Kopen of verkopen</span><span class="pl-tegel-d">Staat, historie en waarde</span></button>
         <button type="button" class="pl-tegel tg-rit" onclick="PLNav.tegel('onderweg')">
-          <span class="pl-tegel-ic" aria-hidden="true">🛣️</span><span class="pl-tegel-t">Rit starten</span><span class="pl-tegel-d">Meekijken, zuinig, caravan</span></button>
+          <span class="pl-tegel-ic" aria-hidden="true">🛣️</span><span class="pl-tegel-t">Rit starten</span><span class="pl-tegel-d">Ritmonitor, zuinig, caravan</span></button>
         <button type="button" class="pl-tegel tg-voorb" onclick="PLNav.tegel('voorbereiding')">
           <span class="pl-tegel-ic" aria-hidden="true">📅</span><span class="pl-tegel-t">Voorbereiden</span><span class="pl-tegel-d">Winter, lange rit, onderhoud</span></button>
       </div>
@@ -1147,20 +1170,11 @@ function closeConnOv(){
 
       <!-- CHECK -->
       <div class="pane" id="pane-check">
-        <div class="chk-intro"><h3>🚦 Voertuig Totaalcheck</h3><p>Beantwoord de vragen voor een gerichte check. AI combineert je antwoorden met live sensordata.</p></div>
-        <div style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:12px;margin-bottom:12px;box-shadow:var(--ss)">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);margin-bottom:8px">Beantwoord voor nauwkeurigere check:</div>
-          <div class="chk-qrow"><label>Goede koude start?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'start','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'start','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'start','nee')">Nee</div></div></div>
-          <div class="chk-qrow"><label>Rijdt goed op snelweg?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'highway','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'highway','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'highway','nee')">Nee</div></div></div>
-          <div class="chk-qrow"><label>Brandstofverbruik normaal?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'fuel','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'fuel','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'fuel','nee')">Nee</div></div></div>
-          <div class="chk-qrow"><label>Olie niveau OK?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'oil','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'oil','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'oil','nee')">Nee</div></div></div>
-          <div class="chk-qrow"><label>Koelwater stabiel?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'cool','ja')">Ja</div><div class="chk-opt" onclick="setQ(this,'cool','soms')">Daalt</div><div class="chk-opt" onclick="setQ(this,'cool','nee')">Verlies</div></div></div>
-          <div class="chk-qrow"><label>Geen vreemde geluiden?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'noise','ja')">Geen</div><div class="chk-opt" onclick="setQ(this,'noise','soms')">Soms</div><div class="chk-opt" onclick="setQ(this,'noise','nee')">Ja</div></div></div>
-          <div class="chk-qrow"><label>Geen dashboardlampen?</label><div class="chk-opts"><div class="chk-opt" onclick="setQ(this,'warn','ja')">Geen</div><div class="chk-opt" onclick="setQ(this,'warn','soms')">1-2</div><div class="chk-opt" onclick="setQ(this,'warn','nee')">Meerdere</div></div></div>
-        </div>
+        <div class="chk-intro"><h3>🚦 Voertuig Totaalcheck</h3><p>Twee metingen, elk in zijn eigen toestand: eerst stilstaand (met foutcodes en zelftests), dan gewoon rijden. Waar iets afwijkt gaat de check dieper; wat klopt blijft dicht.</p></div>
+        <div id="tcStappen" class="tc-stappen"></div>
         <div class="toolbar">
           <div id="rdyTotaal" class="rdy-card off">📡 Verbind adapter om sensorstatus te laden</div>
-          <button class="btn pri" onclick="runTotalCheck()" id="btnChk">🚦 Start totaalcheck</button>
+          <button class="btn" onclick="runCheckAI()" id="btnChkAI" disabled>🤖 AI-rapport</button>
           <button class="btn" onclick="exportCheckReport()">💾 Exporteer</button>
         </div>
         <div id="chkSummary" style="display:none" class="chk-summary">
@@ -1605,6 +1619,15 @@ function closeConnOv(){
         <!-- Resultaten -->
         <div id="koopResults"></div>
 
+        <!-- Aankooprapport (PLAankoop, pidlane-aankooprapport.js) -->
+        <div id="koopAankoopBlok" style="background:var(--sur);border:1px solid var(--bd);border-radius:var(--r);padding:11px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px">📄 Aankooprapport</div>
+          <div style="font-size:12px;color:var(--tx2);line-height:1.5;margin-bottom:8px">Foutcodes, zelftests, vers gewiste codes, kilometerstand en RDW in één PDF, met datum en tijd. Met de vragen die je de verkoper stelt. Geen keuring — wel een goede eerste stap.</div>
+          <input id="koopAankoopPlaats" class="api-inp" type="text" maxlength="80" placeholder="Plaats van de bezichtiging (optioneel), bijv. Utrecht" style="width:100%;font-size:12px;margin-bottom:8px">
+          <button class="btn-sec" id="koopAankoopBtn" style="width:100%;font-size:12px;font-weight:700" onclick="PLAankoop.draaiUI(this)">📄 Aankooprapport maken</button>
+          <div id="koopAankoopUit"></div>
+        </div>
+
         <!-- Scan log download -->
         <div style="display:flex;justify-content:flex-end;margin-top:8px">
           <button onclick="downloadScanLog()" style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;border:1px solid var(--bd);background:transparent;color:var(--tx3);cursor:pointer">💾 Scan log downloaden</button>
@@ -1862,6 +1885,7 @@ function closeConnOv(){
 <script src="pidlane-toon.js"></script><!-- PLToon: wat een weergave van een sensor toont (pedaal vanaf de rust) — vóór pidlane-pids.js, geen bus-I/O -->
 <script src="pidlane-pids.js"></script>
 <script src="pidlane-visprofiel.js"></script><!-- PLVisProfiel: de vier profielweergaven van Slim visueel — vóór pidlane-visueel.js, geen bus-I/O -->
+<script src="pidlane-visthema.js"></script><!-- PLVisThema: volledig scherm en thema's van Slim visueel — alleen CSS-klassen, geen bus-I/O -->
 <script src="pidlane-visueel.js"></script>
 <script src="pidlane-dashboard.js"></script><!-- PLDash: Slim als eigen dashboard (#439) — ná pidlane-pids.js (ovzBand, pidOordeel, fv) -->
 <script src="pidlane-rondgang.js"></script><!-- PLRond: Slim als rondgang langs de categorieën — ná pidlane-dashboard.js -->
@@ -1885,11 +1909,15 @@ function closeConnOv(){
 <script src="pidlane-uds.js"></script><!-- foutcodes van alle stuurapparaten, UDS 0x19 (PLUds) — vereist sendCmd + withBus -->
 <script src="pidlane-foutcodes.js"></script><!-- foutcodes &amp; keuringsstatus (PLFoutcodes) — vereist sendCmd + withBus + ALL_PID_DEFS -->
 <script src="pidlane-onderzoek.js"></script><!-- volledig onderzoek (PLOnderzoek) — vereist PLFoutcodes.leesStil + softwareOorzaken -->
+<script src="pidlane-voorkennis.js"></script>
+<script src="pidlane-expertwerk.js"></script><!-- PLExpertWerk: de werkplek van de expert op een laptop — ná PLVoorkennis, vóór pidlane-remote.js, geen bus-I/O --><!-- voorkennis voor de expert (PLVoorkennis) — ná PLOnderzoek (CODEREGELS, kennisNaarVerdenking), vóór pidlane-remote.js -->
 <script src="pidlane-samenhang.js"></script><!-- samenhang (PLSamenhang, #446) — toestanden + de stappen van PLOnderzoek op een meting die er al is -->
 <script src="pidlane-verzamel.js"></script><!-- verzamelscherm vóór een AI-rapport (PLVerzamel) — vereist plMeetTekort + plKernStatus uit pidlane-fuel.js, pas bij aanroep -->
 <script src="pidlane-rapport.js"></script><!-- analyserapport (PLRapport) — vaste secties, AI-velden, grafieken; jsPDF via loadJsPDF, pas bij aanroep -->
+<script src="pidlane-aankooprapport.js"></script><!-- aankooprapport (PLAankoop) — oordeel uit regels, PDF via PLRapport.pdf; leest de adapter pas bij aanroep -->
 <script src="pidlane-tank.js"></script><!-- tankbeurten (PLTank) — puur; het tabblad in PLGarage roept hem aan -->
 <script src="pidlane-conditie.js"></script><!-- conditiescore (PLConditie) — puur; het tabblad Conditie in PLGarage roept hem aan (#475) -->
+<script src="pidlane-winterrit.js"></script><!-- PLWinterRit (#557/#558): korte ritten en thermostaat uit het patroon van de ritten — puur; PLGarage.advies() roept hem aan -->
 <script src="pidlane-garage.js"></script><!-- Mijn voertuigen (PLGarage) — het klantplatform; vereist plFetch, registerSessionReport, _vlVinPseudoniem -->
 <script src="pidlane-kaart.js"></script><!-- datapuntenkaart (PLKaart) — neemt de verbinding over; vereist sendCmd + PLBus -->
 <script src="pidlane-demo.js"></script>
@@ -2034,7 +2062,8 @@ function closeConnOv(){
 
 <div class="rem-ov" id="remExpertOv">
  <div class="rem-card">
-  <div class="rem-h"><h3>🔭 Meekijken met sessie</h3><button class="rem-x" onclick="PLRemote.expertClose()">✕</button></div>
+  <div class="rem-h"><h3>🔭 Meekijken met sessie</h3><button class="rem-btn rem-werk-knop" id="remWerkKnop" onclick="PLExpertWerk.wissel()" title="Tik om te wisselen: automatisch (meet of dit een laptop is), aan, uit">Expertweergave</button><button class="rem-x" onclick="PLRemote.expertClose()">✕</button></div>
+  <div id="remWerkplek"></div>
   <div id="remExpConn">
     <div class="rem-lbl">Typ de meekijk-code, of plak de link/code die je ontving</div>
     <div class="rem-flex"><input class="rem-in" id="remJoinIn" inputmode="numeric" placeholder="123 456 7890  ·  of  https://…#remote=…" autocomplete="off"><button class="rem-btn pri" onclick="PLRemote.expertConnect()">Verbind</button></div>
@@ -2053,6 +2082,7 @@ function closeConnOv(){
     <div class="rem-stat" id="remExpStat">—</div>
     <button class="rem-btn pri" style="width:100%;margin:4px 0 8px" onclick="PLRemote.enterDrive()">🚗 Open in app — deuren, analyses &amp; AI-rapport</button>
     <div class="rem-grid" id="remTiles"></div>
+    <div id="remVoorkennis"></div>
     <div class="rem-lbl">PID's opvragen (bv. 0C 05 0D)</div>
     <div class="rem-flex"><input class="rem-in" id="remReqPids" value="0C 05 0D"><button class="rem-btn pri" onclick="PLRemote.reqPids()">Vraag op</button><button class="rem-btn" onclick="PLRemote.reqDtc()">DTC’s</button></div>
     <div class="rem-lbl" style="margin-top:12px">Opname op de local — volle busfrequentie, verwerking daar</div>
@@ -2100,6 +2130,8 @@ function closeConnOv(){
 <script src="pidlane-afsluiten.js"></script><!-- Rit beëindigen (PLAfsluiten) — rit afronden, verbreken, uitloggen, app sluiten; vereist PLGarage, handleConnect, logout, plSluitApp -->
 <script src="pidlane-nav.js"></script><!-- PLNav: onderbalk, startscherm (Check mijn auto + tegels) en garagemodus; vereist ná datalog, archief, uihelpers, wizard, foutcodes en afsluiten -->
 <script src="pidlane-zonder.js"></script><!-- PLZonder: zonder adapter — kenteken-check (RDW), foutcode opzoeken, simulatie; vereist plFetch, PLRecall, dtcInfo, PLGarage -->
+<script src="pidlane-weer.js"></script><!-- PLWeer (#556): de verwachting voor een plaats uit een lijst, via /weer — locatievrij; vereist plFetch -->
+<script src="pidlane-winter.js"></script><!-- PLWinter (#556/#559): winterprofiel, winterkaart op het startscherm en bandentabel; vereist ná pidlane-zonder.js (PLZonder._blad) en pidlane-weer.js; leest PLGarage -->
 <script src="pidlane-herinner.js"></script><!-- PLHerinner: APK en onderhoud als Android-melding (LocalNotifications), met terugval in de app; vereist PLZonder, PLGarage -->
 <script src="pidlane-lampjes.js"></script><!-- PLLampjes: welk lampje brandt er en mag ik doorrijden — zonder net en zonder adapter -->
 <script src="pidlane-wijzer.js"></script><!-- PLWijzer: milieuzones, kosten per maand, klachtenwijzer, past een adapter — vereist PLZonder._blad, PLOnderzoek -->

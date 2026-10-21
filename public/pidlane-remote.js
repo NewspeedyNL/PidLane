@@ -177,6 +177,7 @@ window.PLRemote=(function(){
     if(m.type==='request-vstate'){sendVState();return;}
     if(m.type==='request-record'){await answerRecord(m);return;}
     if(m.type==='request-analyze'){await answerAnalyze(m);return;}
+    if(m.type==='request-rapport'){answerRapport(m);return;}
   }
   // Expert wil PIDs (blijvend) volgen → UNIE met de eigen actieve set. De
   // expert voegt toe, maar haalt nooit lokale keuzes weg — en het is altijd
@@ -191,6 +192,14 @@ window.PLRemote=(function(){
     }catch(_){ console.warn('Expert-PID-verzoek niet verwerkt — de respons meldt toch \'ok\' terug', _); }
     sendWs({type:'response',reqId:m.reqId,data:{poll:'ok'}});
   }
+  // Eén eerder rapport voor de expert, alleen op zijn verzoek (voorkennis
+  // stuurt alleen de titels mee). De Worker laat alleen een archief-id door.
+  function answerRapport(m){
+    let r=null;
+    try{r=window.PLVoorkennis?PLVoorkennis.rapport(String(m.id||'')):null;}catch(_){ console.warn('Rapport voor de expert niet opgezocht', _); }
+    logA('🔭 Expert las rapport: '+(r?r.title:'(niet gevonden)'),'info');
+    sendWs({type:'response',reqId:m.reqId,data:{rapport:r,err:r?undefined:'niet gevonden'}});
+  }
   /* ── VOERTUIGPROFIEL (vstate) ─────────────────────────────────────
      De expert-app is dezelfde app, maar zonder BT-discovery: zijn
      PID-keuzelijst en deuren zouden leeg blijven. Daarom deelt de local
@@ -203,13 +212,36 @@ window.PLRemote=(function(){
     const o={t:Date.now()};
     try{o.pids=(typeof supportedPIDs!=='undefined')?[...supportedPIDs].slice(0,200):[];}catch(_){o.pids=[];}
     try{const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
-      o.veh={merk:v.merk||'',model:v.model||'',year:v.year||'',vin:v.vin||'',brandstof:v.brandstof||'',motor:v.motor||''};}catch(_){ console.warn('Voertuiginfo niet in het vstate-snapshot gezet — de expert ziet dan geen voertuig', _); }
+      o.veh=Object.assign({merk:v.merk||'',model:v.model||'',year:v.year||'',brandstof:v.brandstof||'',motor:v.motor||''},_vinVoorExpert(v.vin));}catch(_){ console.warn('Voertuiginfo niet in het vstate-snapshot gezet — de expert ziet dan geen voertuig', _); }
     try{o.active=(typeof activePIDs!=='undefined')?[...activePIDs].slice(0,60):[];}catch(_){ console.warn('Actieve PIDs niet in het vstate-snapshot gezet', _); }
     try{const h={};if(typeof _pidHealth!=='undefined'){for(const k in _pidHealth){if(_pidHealth[k]&&_pidHealth[k]!=='ok')h[k]=_pidHealth[k];}}o.health=h;}catch(_){ console.warn('Sensor-gezondheid niet in het vstate-snapshot gezet', _); }
     try{o.dtc=(typeof dtcCodes!=='undefined'&&Array.isArray(dtcCodes))?dtcCodes.slice(0,40):[];}catch(_){ console.warn('Foutcodes niet in het vstate-snapshot gezet', _); }
     try{o.demo=(typeof demoMode!=='undefined')&&!!demoMode;}catch(_){ console.warn('Demo-vlag niet in het vstate-snapshot gezet', _); }
     try{o.rps=(typeof _connSpeed!=='undefined'&&_connSpeed&&_connSpeed.readsPerSec)||null;}catch(_){ console.warn('Leessnelheid niet in het vstate-snapshot gezet', _); }
+    // Wat de app al wist over deze auto (pidlane-voorkennis.js): de expert
+    // begint niet bij nul. Geen VIN, geen rapporttekst — alleen titels.
+    try{if(window.PLVoorkennis)o.voorkennis=PLVoorkennis.uitApp();}catch(_){ console.warn('Voorkennis niet in het vstate-snapshot gezet — de expert ziet dan alleen het nu', _); }
     return o;
+  }
+  /* De VIN gaat nooit ruw de telefoon uit (§7). Tot 17-10-2026 deed hij dat
+     hier wél: vstate ging met de volle VIN naar de Worker, die hem in de
+     Durable Object-opslag bewaarde en aan elke expert doorgaf. Nu gaan alleen
+     de WMI (fabrikantcode, zegt niets over één auto) en het pseudoniem van
+     _vlVinPseudoniem() mee. Dat is async en buildVState niet: het pseudoniem
+     wordt één keer berekend en daarna volgt een nieuwe vstate. Tot dan gaat
+     alleen de WMI mee — nooit de ruwe VIN. */
+  let _vinPs={vin:'',ps:null};
+  function _vinVoorExpert(ruw){
+    const vin=String(ruw||'').toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'');
+    if(!vin)return{wmi:'',vin_pseudo:null};
+    if(_vinPs.vin!==vin){
+      _vinPs={vin:vin,ps:null};
+      if(typeof _vlVinPseudoniem==='function'){
+        _vlVinPseudoniem(vin).then(ps=>{if(_vinPs.vin===vin&&ps){_vinPs.ps=ps;sendVStateSoon();}})
+          .catch(e=>console.warn('VIN-pseudoniem voor de expert niet berekend — alleen de WMI gaat mee',e));
+      }
+    }
+    return{wmi:vin.slice(0,3),vin_pseudo:_vinPs.ps};
   }
   let _vstT=null;
   function sendVState(){ if(S.mode!=='local')return; sendWs({type:'vstate',data:buildVState()}); }
@@ -324,6 +356,7 @@ window.PLRemote=(function(){
       else if(typeof connected!=='undefined'&&connected&&typeof realScanDTC==='function'){codes=await withBtLock(()=>realScanDTC());}
     }catch(_){codes=[];}
     sendWs({type:'response',reqId:m.reqId,data:{dtc:codes}});
+    sendVStateSoon();   // nieuwe codes → de voorkennis van de expert schuift mee
     logA('🔭 Expert las foutcodes uit ('+codes.length+' code'+(codes.length===1?'':'s')+')','info');
   }
   function sendWs(o){try{if(S.ws&&S.ws.readyState===1)S.ws.send(JSON.stringify(o));}catch(_){ console.warn('Bericht niet naar de expert verstuurd', _); }}
@@ -354,7 +387,9 @@ window.PLRemote=(function(){
     try{$('remShort').value='';$('remShort').placeholder='··· ··· ····';}catch(_){ /* stil: element kan al weg zijn */ }}
 
   /* ── EXPERT: meekijken ────────────────────────────────────────── */
-  function openExpert(){$('remExpertOv').classList.add('open');}
+  function openExpert(){$('remExpertOv').classList.add('open');werkplek();}
+  // De werkplek van de expert op een laptop (pidlane-expertwerk.js, 18-10-2026).
+  function werkplek(){try{if(window.PLExpertWerk)PLExpertWerk.toon(S.vstate,S.expMeta);}catch(_){ console.warn('Expertwerkplek niet getekend — het gewone meekijkvenster blijft', _); }}
   function expertClose(){$('remExpertOv').classList.remove('open');pairStop();}
   function setExpStat(s){$('remExpStat').textContent=s;}
   /* ── OMGEKEERDE KOPPELING: expert toont QR, local scant ──
@@ -524,12 +559,14 @@ window.PLRemote=(function(){
   }
   function handleExpMsg(m){
     if(m.type==='meta'){S.expMeta=m.meta;
-      setExpStat('✅ Live — '+(m.meta.vehicle||'voertuig onbekend')+' · gedeeld door '+(m.meta.ownerLabel||m.meta.owner));return;}
+      setExpStat('✅ Live — '+(m.meta.vehicle||'voertuig onbekend')+' · gedeeld door '+(m.meta.ownerLabel||m.meta.owner));werkplek();return;}
     if(m.type==='backfill'){(m.frames||[]).forEach(f=>{mergeVals(f&&f.data);driveFeed(f&&f.data,true);});renderTiles();
       expLog('↺ '+((m.frames||[]).length)+' frame(s) historie ontvangen');return;}
     if(m.type==='frame'){mergeVals(m.frame&&m.frame.data);driveFeed(m.frame&&m.frame.data);renderTiles();return;}
     if(m.type==='vstate'){S.vstate=m.data||null;
       if(window._remoteVehicleMode)applyVState(S.vstate);
+      try{const el=$('remVoorkennis');if(el&&window.PLVoorkennis)el.innerHTML=PLVoorkennis.html(S.vstate&&S.vstate.voorkennis,{knop:true});}catch(_){ console.warn('Voorkennis niet getoond aan de expert', _); }
+      werkplek();
       const n=((S.vstate&&S.vstate.pids&&S.vstate.pids.length)|0);
       const vh=(S.vstate&&S.vstate.veh)||{};
       if(n)expLog('🚗 Voertuigprofiel — '+n+' sensoren'+(vh.merk?(' · '+(vh.merk+' '+(vh.model||'')).trim()):'')
@@ -554,6 +591,9 @@ window.PLRemote=(function(){
         if(o)o.innerHTML='<div style="background:#0c1018;border:1px solid #232c40;border-radius:8px;padding:10px;font-size:12px;line-height:1.55;white-space:pre-wrap;max-height:40vh;overflow-y:auto">'+esc(d.analysis)+'</div>';
         expLog('🤖 AI-analyse ontvangen van de local');}
       if(d.analysis===null&&d.err){const o=$('remRecOut');if(o)o.innerHTML='<div class="rem-stat">✖ '+esc(d.err)+'</div>';expLog('✖ analyse: '+d.err);}
+      if(d.rapport!==undefined){const o=$('remRecOut');const r=d.rapport;
+        if(o)o.innerHTML=r?('<div style="background:#0c1018;border:1px solid #232c40;border-radius:8px;padding:10px;font-size:12px;line-height:1.55;white-space:pre-wrap;max-height:40vh;overflow-y:auto"><b>'+esc(r.title||'')+'</b>\n'+esc(r.text||'')+'</div>'):'<div class="rem-stat">✖ rapport niet gevonden op de local</div>';
+        expLog(r?('📄 Rapport ontvangen: '+(r.title||'')):'✖ rapport niet gevonden');}
       if(d.dtc&&m.reqId&&S.pending[m.reqId]){const f=S.pending[m.reqId];delete S.pending[m.reqId];f([...d.dtc]);}
       if(d.pids){mergeVals(d.pids);driveFeed(d.pids);renderTiles();
         expLog('✔ Antwoord: '+Object.entries(d.pids).map(([k,v])=>k+'='+(v==null?'—':v)).join('  '));}
@@ -597,9 +637,12 @@ window.PLRemote=(function(){
   function applyVState(v){
     if(!v||typeof v!=='object'||!window._remoteVehicleMode)return;
     try{
-      if(v.veh&&(v.veh.merk||v.veh.vin)){
-        try{mergeVehicleData('vin',v.veh);}catch(_){ console.warn('Voertuigdata van de local niet overgenomen', _); }
-        try{if(v.veh.vin)vehicleInfo.vin=v.veh.vin;}catch(_){ console.warn('VIN niet overgenomen van de local', _); }
+      // Geen VIN meer van de local (17-10-2026): alleen WMI en pseudoniem.
+      // Die gaan niet in vehicleInfo.vin — een pseudoniem is geen VIN, en een
+      // tweede keer pseudonimiseren gaf een ander id dan dat van de klant.
+      if(v.veh&&(v.veh.merk||v.veh.wmi)){
+        const veh=Object.assign({},v.veh);delete veh.vin;
+        try{mergeVehicleData('vin',veh);}catch(_){ console.warn('Voertuigdata van de local niet overgenomen', _); }
         try{const lbl=((vehicleInfo.merk||'')+' '+(vehicleInfo.model||'')).trim();
             showVtag(lbl||'Remote voertuig');}catch(_){ console.warn('Voertuigtag niet bijgewerkt', _); }
       }
@@ -718,6 +761,8 @@ window.PLRemote=(function(){
   }
   function reqDtc(){if(S.ews&&S.ews.readyState===1)
     S.ews.send(JSON.stringify({type:'request-dtc',reqId:Math.random().toString(36).slice(2,8)}));}
+  function reqRapport(id){if(S.ews&&S.ews.readyState===1&&/^sr\d+_\d+$/.test(String(id||'')))
+    S.ews.send(JSON.stringify({type:'request-rapport',id:String(id),reqId:Math.random().toString(36).slice(2,8)}));}
   /* ── Opname & analyse op afstand: expert stuurt, LOCAL doet het werk ── */
   function _rid(){return Math.random().toString(36).slice(2,8);}
   function remRecStart(){
@@ -760,7 +805,7 @@ window.PLRemote=(function(){
     try{if(S.ews)S.ews.close();}catch(_){ /* stil: opruimen: kan al gebeurd zijn */ }
     S.ews=null;S.vals={};S.expClosed=false;S.expMeta=null;S.pending={};S.vstate=null;
     $('remExpLive').style.display='none';$('remExpConn').style.display='';
-    $('remExpErr').textContent='';setExpStat('—');}
+    $('remExpErr').textContent='';setExpStat('—');werkplek();}
 
   /* ── Deep link + wrappers (additief inhaken op de app) ────────── */
   let pendingJoin=null,pendingPair=null;
@@ -786,7 +831,7 @@ window.PLRemote=(function(){
       shareStart();
       return;
     }
-    if(!pendingJoin)return;
+    if(!pendingJoin){try{if(window.PLExpertWerk)PLExpertWerk.naLogin();}catch(_){ console.warn('Expertwerkplek niet geopend na het inloggen', _); }return;}
     const p=pendingJoin;pendingJoin=null;
     openExpert();
     try{$('remJoinIn').value=p.sid+'~'+p.jt;}catch(_){ console.warn('Code-veld niet vooringevuld na deep-link', _); }
@@ -904,7 +949,8 @@ window.PLRemote=(function(){
   }
 
   return {openShare,deelMethode,closeShare,shareStart,shareStop,copy,
-          openExpert,expertClose,expertConnect,expertDisconnect,reqPids,reqDtc,enterDrive,
+          openExpert,expertClose,expertConnect,expertDisconnect,_staat:()=>({vstate:S.vstate,expMeta:S.expMeta}),reqPids,reqDtc,reqRapport,enterDrive,
+          vernieuw:sendVStateSoon,_buildVState:buildVState,
           remRecStart,remRecStop,remRecCsv,remAnalyze,pairStart,
           stopQrScan,scanForJoin,scanForPair};
 })();

@@ -5,24 +5,186 @@
 // geen module, geen IIFE — globals blijven globaal voor inline handlers.
 // ══════════════════════════════════════════════════════════════════
 // ════════════════════════════════════════
-// TOTAL CHECK
+// TOTAALCHECK — stilstaand en rijdend, verdiepen waar iets afwijkt (20-10-2026)
 // ════════════════════════════════════════
-function setQ(el,key,val){
-  el.closest('.chk-opts').querySelectorAll('.chk-opt').forEach(o=>o.className='chk-opt');
-  el.classList.add('sel-'+val); checkAnswers[key]=val;
-}
+// De check uit week 1 was een vragenlijst (koude start, olie, geluiden: ja,
+// soms, nee) en daarna een momentopname van elke sensor, met een rijtest van
+// vijf fases van twee minuten als je onder belasting wilde meten. De vragen
+// voegden niets toe dat de meting niet zelf zag, en de fases kostten tien
+// minuten aan een route die de klant moest volgen.
+//
+// Nu twee delen, elk in zijn eigen toestand:
+//   🅿️ STILSTAND  het verzamelscherm (PLVerzamel) op niveau 'normaal', daarna
+//                 foutcodes en zelftests (PLFoutcodes.leesStil: 03/07/0A en
+//                 de readiness uit 0101);
+//   🚗 RIJDEN     hetzelfde scherm op niveau 'rit', zonder rijtest-knop: de
+//                 klant rijdt gewoon weg en het scherm stopt vanzelf zodra de
+//                 poort van §16 genoeg rijtijd ziet. Geen fases, geen route.
+// Elk deel wordt beoordeeld op alleen zijn eigen monsters: deelHist() splitst
+// de reeksen op de snelheid op dat moment, met de grens van de meetpoort
+// (MEET_RIJ_KMH). Zo is 13,1 V stilstaand iets anders dan 13,1 V rijdend, en
+// zegt de uitslag dat ook.
+//
+// VERDIEPEN ALLEEN WAAR IETS AFWIJKT. De uitslag is per categorie. Een
+// categorie die klopt blijft dicht; een met een afwijking gaat open en krijgt
+// een focusmeting: alleen de sensoren van die categorie aan (dus vaker per
+// seconde gemeten), in de toestand waarin de afwijking zat, en daarna een
+// AI-vraag over alleen die categorie.
+//
+// WAT ANDERE APPS DOEN (20-10-2026). FIXD en BlueDriver lezen foutcodes,
+// readiness en freeze frame en leggen de code uit; live data is een grafiek
+// die de klant zelf moet lezen. Geen van beide oordeelt over live waarden per
+// toestand. Dat is hier het verschil: oordeel per sensor over het hele
+// venster (PLVerzamel.beoordeel), de samenhang van een monteur (PLSamenhang),
+// stilstand en rijden apart, en niet-gemeten heet nooit goed.
+//
+// De kern (PLTotaal) is puur; test-totaalcheck.js laadt hem uit dit bestand.
+// ── PLTotaal kern begin ──
+window.PLTotaal = (function () {
+  'use strict';
+  const RANG = { afwijkend: 0, let: 1, meetfout: 2, twijfel: 3, ok: 4, nodata: 5 };
+  const getal = v => typeof v === 'number' && isFinite(v);
+
+  /* De reeksen van één deel: 'stil' of 'rij'. Per monster telt de snelheid
+     die het dichtst bij lag, mits binnen gatMs; verder weg weet je het niet
+     en telt het monster in geen van beide. Levert het voertuig geen snelheid,
+     dan is er niets te splitsen en krijgt het deel alles (zonderSnelheid). */
+  function deelHist(hist, soort, kmh, gatMs) {
+    const h = hist || {};
+    const sp = (h['010D'] || []).filter(m => m && getal(m.t) && getal(m.v)).sort((a, b) => a.t - b.t);
+    if (!sp.length) return { hist: Object.assign({}, h), zonderSnelheid: true };
+    const snelheidOp = t => {
+      let lo = 0, hi = sp.length - 1;
+      while (lo < hi) { const mid = (lo + hi) >> 1; if (sp[mid].t < t) lo = mid + 1; else hi = mid; }
+      let best = sp[lo];
+      if (lo > 0 && Math.abs(sp[lo - 1].t - t) < Math.abs(best.t - t)) best = sp[lo - 1];
+      return Math.abs(best.t - t) <= gatMs ? best.v : null;
+    };
+    const uit = {};
+    Object.keys(h).forEach(pid => {
+      const r = (h[pid] || []).filter(m => {
+        if (!m || !getal(m.t)) return false;
+        const v = snelheidOp(m.t);
+        if (v === null) return false;
+        return soort === 'rij' ? v > kmh : v <= kmh;
+      });
+      if (r.length) uit[pid] = r;
+    });
+    return { hist: uit, zonderSnelheid: false };
+  }
+
+  const erger = (a, b) => (RANG[a] <= RANG[b] ? a : b);
+
+  /* De uitslag per categorie. delen = {stil: sam|null, rij: sam|null} (een
+     samenvatting van PLVerzamel), dtc = {licht:{kleur,kop,tekst}} of null,
+     catVan(pid) = de categorie uit de PID-definitie, volgorde = CHK_CAT_ORDER.
+     focus: er zit een afwijking in (afwijkend of let op) — alleen die
+     categorieën gaan open en krijgen een focusmeting. */
+  function categorieen(delen, dtc, catVan, volgorde) {
+    const d = delen || {}, per = {};
+    ['stil', 'rij'].forEach(soort => {
+      const sam = d[soort];
+      ((sam && sam.rijen) || []).forEach(r => {
+        if (!r || r.oordeel === 'nodata' || !r.n) return;
+        const cat = (catVan && catVan(r.pid)) || 'Overig';
+        const c = per[cat] || (per[cat] = { cat, pids: {} });
+        const p = c.pids[r.pid] || (c.pids[r.pid] = { pid: r.pid, naam: r.naam, eenheid: r.eenheid, stil: null, rij: null, oordeel: 'ok' });
+        p[soort] = r;
+        p.oordeel = erger(p.oordeel, r.oordeel);
+      });
+    });
+    const lijst = Object.keys(per).map(k => {
+      const c = per[k];
+      const pids = Object.keys(c.pids).map(p => c.pids[p])
+        .sort((x, y) => (RANG[x.oordeel] - RANG[y.oordeel]) || String(x.naam).localeCompare(String(y.naam)));
+      const oordeel = pids.reduce((a, p) => erger(a, p.oordeel), 'ok');
+      return { cat: k, pids, oordeel, focus: oordeel === 'afwijkend' || oordeel === 'let', open: oordeel !== 'ok' };
+    });
+    if (dtc && dtc.licht) {
+      const o = { rood: 'afwijkend', oranje: 'let', groen: 'ok' }[dtc.licht.kleur] || 'nodata';
+      // Een code is geen meting om te herhalen: hij gaat open, maar de
+      // verdieping is het foutcodescherm, geen focusmeting.
+      lijst.push({ cat: 'Foutcodes', pids: [], oordeel: o, focus: false, open: o !== 'ok', dtc: dtc });
+    }
+    const pos = c => { const i = (volgorde || []).indexOf(c.cat); return i < 0 ? 999 : i; };
+    return lijst.sort((a, b) => ((a.open ? 0 : 1) - (b.open ? 0 : 1)) || (RANG[a.oordeel] - RANG[b.oordeel]) || (pos(a) - pos(b)));
+  }
+
+  /* Wat een focusmeting meet: de sensoren van de categorie, de afwijkende
+     eerst, hoogstens `max`. Rijdend als de afwijking alleen rijdend zat —
+     anders zou de focus meten in een toestand waarin er niets te zien was. */
+  function focusPlan(c, max) {
+    const pids = (c && c.pids) || [];
+    const af = p => p.oordeel === 'afwijkend' || p.oordeel === 'let';
+    const afStil = p => p.stil && (p.stil.oordeel === 'afwijkend' || p.stil.oordeel === 'let');
+    const afw = pids.filter(af);
+    return {
+      pids: afw.concat(pids.filter(p => !af(p))).slice(0, max || 8).map(p => p.pid),
+      rijden: afw.length > 0 && afw.every(p => !afStil(p) && p.rij)
+    };
+  }
+
+  /* Waar staat de check? Geen enkel deel gemeten = geen AI-rapport: dan is er
+     niets om over te oordelen, en de AI zou het uit losse pidVals halen. */
+  function stand(st) {
+    const s = st || {};
+    const stil = !!(s.stil && s.stil.sam), rij = !!(s.rij && s.rij.sam);
+    return { stil, rij, aiMag: stil || rij, volgende: !stil ? 'stil' : (!rij ? 'rij' : 'klaar') };
+  }
+
+  /* Wat de AI krijgt. blok(sam, meta) is PLVerzamel.promptBlok. Een deel dat
+     niet gemeten is, staat er als niet gemeten in — nooit als goed. */
+  function promptBlok(st, cats, blok) {
+    const s = st || {};
+    let t = '';
+    const deel = (k, titel, uitleg) => {
+      const x = s[k];
+      if (!x || !x.sam) { t += '\n\n' + titel + ': NIET GEMETEN. ' + uitleg; return; }
+      t += '\n\n' + titel + (x.zonderSnelheid ? ' (dit voertuig geeft geen snelheid; het deel is niet op stilstand en rijden gesplitst)' : '') + ':' +
+           (blok ? blok(x.sam, { sec: x.sec, rijSec: x.rijSec }) : '');
+    };
+    deel('stil', 'DEEL 1 — STILSTAND (alleen monsters met het voertuig stil)', 'Doe geen uitspraak over stationair gedrag.');
+    deel('rij', 'DEEL 2 — RIJDEND (alleen monsters boven de rijgrens)', 'Doe geen uitspraak over gedrag onder belasting: laadspanning, brandstoftrim bij kruissnelheid, inlaatdruk en temperatuur onder belasting zijn dan niet beoordeeld.');
+    const af = (cats || []).filter(c => c.focus);
+    t += '\n\nCATEGORIEËN MET EEN AFWIJKING: ' + (af.length ? af.map(c => c.cat + ' (' + c.pids.filter(p => p.oordeel === 'afwijkend' || p.oordeel === 'let').map(p => p.naam).join(', ') + ')').join('; ') : 'geen');
+    const f = s.dtc;
+    if (f && f.licht) t += '\nFOUTCODES EN ZELFTESTS: ' + f.licht.kop + (f.licht.tekst ? ' — ' + f.licht.tekst : '') + (f.tekst ? '\n' + f.tekst : '');
+    else t += '\nFOUTCODES EN ZELFTESTS: niet uitgelezen in deze check.';
+    return t;
+  }
+
+  /* Beide delen als één meting voor het analyserapport: per sensor de
+     monsters van allebei, op tijd, zonder dubbele. Plus de duur en wat er
+     ontbreekt. Puur. */
+  function rapportMeting(st) {
+    const s = st || {}, hist = {};
+    ['stil', 'rij'].forEach(k => {
+      const h = (s[k] && s[k].hist) || {};
+      Object.keys(h).forEach(p => { hist[p] = (hist[p] || []).concat(h[p] || []); });
+    });
+    let t0 = Infinity, t1 = -Infinity;
+    Object.keys(hist).forEach(p => {
+      const gezien = {};
+      hist[p] = hist[p].filter(m => m && getal(m.t) && !gezien[m.t] && (gezien[m.t] = true)).sort((a, b) => a.t - b.t);
+      if (hist[p].length) { t0 = Math.min(t0, hist[p][0].t); t1 = Math.max(t1, hist[p][hist[p].length - 1].t); }
+    });
+    const ontbreekt = [];
+    if (!(s.stil && s.stil.sam)) ontbreekt.push('stilstand niet gemeten');
+    if (!(s.rij && s.rij.sam)) ontbreekt.push('rijden niet gemeten');
+    return { hist, sec: t1 > t0 ? Math.round((t1 - t0) / 1000) : 0,
+             rijSec: (s.rij && getal(s.rij.rijSec)) ? s.rij.rijSec : 0, beperkt: ontbreekt.join('; ') };
+  }
+
+  return { RANG, deelHist, categorieen, focusPlan, stand, promptBlok, rapportMeting };
+})();
+// ── PLTotaal kern eind ──
+
 // ── ONDERDELEN-KEUZE (modal) ────────────────────────────────────────
 // Laat de gebruiker vóór een langdurige analyse kiezen: compleet (alles aan)
-// of een selectie. Belooft de gekozen keys, of null bij annuleren.
+// of een selectie. Belooft de gekozen keys, of null bij annuleren. De
+// ritanalyse gebruikt hem voor zijn fases.
 // → CHK_CAT_META verplaatst naar pidlane-data.js
 // → CHK_CAT_ORDER verplaatst naar pidlane-data.js
-function catsFromItems(items){
-  const cnt={}; items.forEach(i=>{ const c=i.cat||'Overig'; cnt[c]=(cnt[c]||0)+1; });
-  return CHK_CAT_ORDER.filter(c=>cnt[c]).map(c=>{
-    const m=CHK_CAT_META[c]||{l:c,i:'•'};
-    return {key:c, label:m.l, icon:m.i, sub:cnt[c]+(cnt[c]===1?' item':' items')};
-  });
-}
 function pickOnderdelen(title, options){
   return new Promise(resolve=>{
     const ov=document.createElement('div');
@@ -65,130 +227,161 @@ function pickOnderdelen(title, options){
   });
 }
 
+// ── Het scherm ───────────────────────────────────────────────────────
+// _tc: {stil, rij: {sam, sec, rijSec, ts, zonderSnelheid}, dtc, focus:{cat→{sam, ts, rijden}}}
+let _tc = { stil: null, rij: null, dtc: null, focus: {} };
+let _tcBezig = '';
+
+function _tcDeel(uit, soort){
+  const V = window._plVerzameld || {};
+  const d = PLTotaal.deelHist(V.hist || {}, soort, MEET_RIJ_KMH, MEET_RIJ_GAT_MS);
+  return { sam: PLVerzamel.vanBron({ hist: d.hist }), hist: d.hist, sec: uit.sec, rijSec: uit.rijSec, ts: Date.now(), zonderSnelheid: d.zonderSnelheid };
+}
+
+// Deel 1: stilstaand meten, dan foutcodes en zelftests.
 async function runTotalCheck(){
-  // Het verzamelscherm (#443): eerst de data en wat opvalt, dan pas de
-  // controle met de AI. Een rijtest vanuit het scherm komt hier terug (naRit).
-  const uit=await PLVerzamel.meet({niveau:'rit', profiel:'totaal', watVoor:'de totaalcheck', naRit:runTotalCheck});
-  if(!uit || !uit.ai) return;
+  if(_tcBezig) return;
+  const uit=await PLVerzamel.meet({niveau:'normaal', profiel:'totaal', watVoor:'het stilstanddeel van de totaalcheck', ai:false, ritBron:false, rijtest:false});
+  if(!uit || !uit.door) return;
   window._didTotalCheck=true;
+  _tc.stil=_tcDeel(uit,'stil'); _tc.focus={};
+  _tcBezig='Foutcodes en zelftests uitlezen…'; tcTeken();
+  try{
+    if(window.PLFoutcodes && typeof PLFoutcodes.leesStil==='function'){
+      const s=await PLFoutcodes.leesStil();
+      _tc.dtc={ licht:PLFoutcodes.stoplicht(s), rd:PLFoutcodes.oordeelReadiness(s.readiness, s.sinds), scan:s,
+                tekst:(typeof PLFoutcodes.alsTekst==='function'?PLFoutcodes.alsTekst(s):'') };
+    }
+  }catch(e){
+    console.warn('Totaalcheck: foutcodes niet uitgelezen', e);
+    log('Totaalcheck: foutcodes niet uitgelezen ('+((e&&e.message)||e)+') — de uitslag zegt dat erbij','warn');
+    _tc.dtc=null;
+  }finally{ _tcBezig=''; }
+  tcTeken();
+}
+// Deel 2: gewoon rijden. Het scherm wacht tot er genoeg rijtijd is, hoogstens
+// een kwartier: wie nog moet instappen en wegrijden heeft die tijd nodig.
+async function runTotalCheckRij(){
+  if(_tcBezig) return;
+  const uit=await PLVerzamel.meet({niveau:'rit', profiel:'totaal', watVoor:'het rijdeel van de totaalcheck', ai:false, rijtest:false, maxMs:15*60*1000});
+  if(!uit || !uit.door) return;
+  window._didTotalCheck=true;
+  _tc.rij=_tcDeel(uit,'rij'); _tc.focus={};
+  tcTeken();
+}
+function _tcCats(){
+  return PLTotaal.categorieen({stil:_tc.stil&&_tc.stil.sam, rij:_tc.rij&&_tc.rij.sam}, _tc.dtc,
+    pid=>(getPidDef(pid)||{}).cat, CHK_CAT_ORDER);
+}
+// Verdiepen: alleen de sensoren van deze categorie, dus vaker gemeten.
+async function tcFocus(cat){
+  if(_tcBezig) return;
+  const c=_tcCats().find(x=>x.cat===cat); if(!c||!c.focus) return;
+  const plan=PLTotaal.focusPlan(c);
+  await ensurePIDListActive(plan.pids);
+  const m=CHK_CAT_META[cat]||{l:cat};
+  const uit=await PLVerzamel.meet({niveau:plan.rijden?'kortrit':'snel', profiel:false, ritBron:false, rijtest:false, ai:false,
+    watVoor:'de focusmeting '+m.l.toLowerCase()+' ('+(plan.rijden?'rijdend':'stilstaand')+')', maxMs:plan.rijden?10*60*1000:undefined});
+  if(!uit || !uit.door) return;
+  const d=_tcDeel(uit, plan.rijden?'rij':'stil');
+  _tc.focus[cat]={sam:d.sam, ts:d.ts, rijden:plan.rijden, sec:uit.sec, rijSec:uit.rijSec};
+  tcTeken();
+}
+async function tcFocusAI(cat){
+  const c=_tcCats().find(x=>x.cat===cat), f=_tc.focus[cat];
+  if(!c||!f) return;
   if(!(await preAnalysisCheck())) return;
-  await ensurePIDsActive('totaal');
-  const btn=document.getElementById('btnChk'); btn.disabled=true;
-  document.getElementById('chkSummary').style.display='none';
-  document.getElementById('chkResults').innerHTML='<div class="ai-ld"><div class="spin"></div> Systemen controleren...</div>';
-  await delay(demoMode?1000:1500);
-  const allItems=buildCheckItems(); 
-  // Onderdelen-keuze: compleet of een selectie van categorieën
-  const cats=catsFromItems(allItems);
-  document.getElementById('chkResults').innerHTML='';
-  btn.disabled=false;
-  let items=allItems;
-  if(cats.length>1){
-    const sel=await pickOnderdelen('Totaalcheck — welke onderdelen?', cats);
-    if(sel===null) return;                         // geannuleerd
-    if(sel.length && sel.length<cats.length) items=allItems.filter(i=>sel.includes(i.cat||'Overig'));
-  }
-  document.getElementById('chkResults').innerHTML='<div class="ai-ld"><div class="spin"></div> Resultaten opbouwen...</div>';
-  await delay(demoMode?300:400);
-  checkResults=items;
-  renderCheckResults(items);
-  runCheckAI(items, uit);
-}
-function buildCheckItems(){
-  const items=[];
-  const pc=(pid,name,verplicht=false)=>{
-    // Sla over als de auto dit PID niet ondersteunt of de waarde fysiek
-    // onmogelijk is (nodata = niet aanwezig, onzin = meet-/parsefout).
-    // Zo ziet de itemlijst exact dezelfde schone set als de AI-prompt.
-    if(!verplicht){
-      const health=_pidHealth[pid];
-      if(health==='nodata'||health==='onzin') return null;
-      if(!vehiclePlausiblePid(pid)) return null; // diesel/SCR-sensor op benzineauto
-      if(!demoMode && typeof supportedPIDs!=='undefined' && supportedPIDs.size>0 && !supportedPIDs.has(pid)) return null;
-    }
-    const val=pidVals[pid]; const d=getPidDef(pid);
-    if(val===undefined) return null;  // geen data = niet tonen
-    let status='ok',detail='Normaal.';
-    if(d){
-      if((d.dH&&val>=d.dH)||(d.dL&&val<=d.dL)){status='bad';detail='Kritieke afwijking!';}
-      else if((d.wH&&val>=d.wH)||(d.wL&&val<=d.wL)){status='warn';detail='Buiten aanbevolen bereik.';}
-    }
-    return {pid,name,display:`${fv(val)} ${d?.unit||''}`,status,detail,cat:(d&&d.cat)||'Overig'};
-  };
-  // Kern-PIDs — alleen als aanwezig op dit voertuig
-  const kernPids=[
-    ['0105','Koelwater temp'],['0142','Accuspanning'],['015C','Motorolie temp'],
-    ['0106','Brandstoftrim kort'],['0107','Brandstoftrim lang'],
-    ['0110','MAF luchtmassameter'],['012F','Brandstofpeil'],
-    ['010C','Motortoerental'],['010D','Voertuigsnelheid'],
-    ['0104','Motorbelasting'],['010B','Inlaatdruk'],['010F','Inlaatlucht temp'],
-    ['013C','Uitlaatgas temp B1S1'],['0159','Raildruk (direct)'],
-    ['017A','DPF drukverschil'],['0183','NOx B1S1'],
-    ['0185','AdBlue tankniveau'],['015B','HV accu SoC'],['0142','Accuspanning'],
-  ];
-  kernPids.forEach(([pid,name])=>{ const i=pc(pid,name); if(i) items.push(i); });
-  // Vul aan met ELKE relevante gezonde sensor die de auto óók levert maar niet
-  // in de kernlijst staat — zo wordt niets relevants overgeslagen, terwijl de
-  // kernlijst de gegarandeerde basis blijft.
-  const kernSet=new Set(kernPids.map(k=>k[0]));
-  relevantSupportedPIDs('totaal').forEach(pid=>{
-    if(kernSet.has(pid)) return;
-    const d=getPidDef(pid); if(!d) return;
-    const i=pc(pid,d.name||pid); if(i) items.push(i);
-  });
-  // DTC altijd
-  items.push({name:'DTC Foutcodes',display:dtcCodes.length===0?'Geen codes':dtcCodes.join(', '),status:dtcCodes.length===0?'ok':dtcCodes.some(c=>dtcInfo(c)?.sev==='high')?'bad':'warn',detail:dtcCodes.length===0?'Geen actieve foutcodes.':dtcCodes.length+' code(s).',cat:'Foutcodes'});
-  // Bestuurder-vragen
-  const qa=[['start','Koude start',{nee:'bad',soms:'warn',ja:'ok'}],['oil','Olie niveau',{nee:'bad',soms:'warn',ja:'ok'}],['cool','Koelwater niveau',{nee:'bad',soms:'warn',ja:'ok'}],['noise','Geluidscheck',{nee:'warn',soms:'warn',ja:'ok'}],['warn','Dashboard lampen',{nee:'warn',soms:'warn',ja:'ok'}],['fuel','Brandstofverbruik',{nee:'warn',soms:'warn',ja:'ok'}]];
-  qa.forEach(([key,name,smap])=>{const ans=checkAnswers[key];if(ans)items.push({name,display:ans==='ja'?'Normaal':ans==='soms'?'Soms probleem':'Probleem',status:smap[ans]||'ok',detail:'Door bestuurder gerapporteerd.',cat:'Bestuurder'});});
-  return items;
-}
-function renderCheckResults(items){
-  const sum=document.getElementById('chkSummary'); sum.style.display='grid';
-  document.getElementById('csOk').textContent=items.filter(i=>i.status==='ok').length;
-  document.getElementById('csWarn').textContent=items.filter(i=>i.status==='warn').length;
-  document.getElementById('csBad').textContent=items.filter(i=>i.status==='bad').length;
-  const res=document.getElementById('chkResults'); res.innerHTML='';
-  const sev={bad:0,warn:1,ok:2};
-  const renderItem=item=>{
-    const el=document.createElement('div'); el.className='chk-item';
-    const bt=item.status==='ok'?'✅ Goed':item.status==='warn'?'⚠️ Let op':'🔴 Probleem';
-    // Betrouwbaarheidslabel: alleen tonen bij afwijkende items met twijfel/onzin
-    let qLabel='';
-    if(item.status!=='ok' && item.pid && typeof pidVals!=='undefined' && pidVals[item.pid]!==undefined){
-      const q=assessPidQuality(item.pid, pidVals[item.pid]);
-      if(q.status==='onzin') qLabel='<div style="font-size:11px;color:var(--rd);margin-top:2px">⚠ Mogelijk meetfout — niet betrouwbaar, controleer sensor/verbinding</div>';
-      else if(q.status==='twijfel') qLabel='<div style="font-size:11px;color:var(--or);margin-top:2px">⚠ Verifieer eerst — kan meetonzekerheid zijn</div>';
-    }
-    el.innerHTML=`<div class="chk-dot ${item.status}"></div><div style="flex:1"><div class="chk-name">${item.name}</div><div class="chk-val">${item.display} — ${item.detail}</div>${qLabel}</div><div class="chk-bdg ${item.status}">${bt}</div>`;
-    res.appendChild(el);
-  };
-  // Groepeer per categorie (vaste volgorde), met een kop per groep.
-  CHK_CAT_ORDER.forEach(cat=>{
-    const grp=items.filter(i=>(i.cat||'Overig')===cat);
-    if(!grp.length) return;
-    const m=CHK_CAT_META[cat]||{l:cat,i:'•'};
-    const bad=grp.filter(i=>i.status==='bad').length, warn=grp.filter(i=>i.status==='warn').length;
-    const badge=bad?`<span style="color:var(--rd)">${bad} probleem</span>`:warn?`<span style="color:var(--or)">${warn} let op</span>`:`<span style="color:var(--gr,#3fbf6f)">ok</span>`;
-    const hd=document.createElement('div');
-    hd.style.cssText='display:flex;align-items:center;gap:8px;margin:14px 0 6px;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--tx3)';
-    hd.innerHTML=`<span style="font-size:14px">${m.i}</span><span style="flex:1">${m.l}</span><span style="font-size:12px;font-weight:600;text-transform:none">${badge}</span>`;
-    res.appendChild(hd);
-    grp.sort((a,b)=>sev[a.status]-sev[b.status]).forEach(renderItem);
-  });
-}
-async function runCheckAI(items, uit){
   activateAIPane();
-  const btn=document.getElementById('aiBtn'); btn.disabled=true;
+  const v=getVehicle(), m=CHK_CAT_META[cat]||{l:cat};
+  const regels=c.pids.map(p=>'- '+p.naam+': '+_tcWaarde(p)+(p.oordeel!=='ok'?' — '+(p.stil&&p.stil.reden||p.rij&&p.rij.reden||p.oordeel):'')).join('\n');
+  const prompt=`Je bent expert automonteur. De totaalcheck vond een afwijking in één systeem: ${m.l}. Onderzoek alleen dat systeem, in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}\n\nUIT DE TOTAALCHECK (stilstaand en rijdend apart):\n${regels}\n\nFOCUSMETING (${f.rijden?'rijdend':'stilstaand'}, alleen de sensoren van dit systeem, dus vaker gemeten):${PLVerzamel.promptBlok(f.sam,{sec:f.sec, rijSec:f.rijSec})}\n\nGeef in deze volgorde, zonder sterretjes of emoji: BEVINDING (koppel elk punt aan een gemeten waarde; zegt de focusmeting iets anders dan de check, noem dat), WAARSCHIJNLIJKE OORZAAK (tabel Diagnose | Kans | Vertrouwen), CONTROLE (concrete meet- of controlestappen), KOSTENINDICATIE (tabel Handeling | Indicatie in euro).\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
+  // De dekking gaat over dit ene systeem, niet over het hele totaalprofiel:
+  // anders hoort de AI dat er sensoren "ontbreken" die deze vraag nooit nodig had.
+  await callAI(prompt,document.getElementById('aiContent'),{ vraag:'Totaalcheck — verdieping '+m.l+'.', pids:c.pids.map(p=>p.pid), zichtbaar:c.pids.map(p=>p.pid) });
+}
+function _tcWaarde(p){
+  const r=x=>x?(x.min===x.max?fv(x.min):fv(x.min)+'–'+fv(x.max))+' '+(p.eenheid||''):null;
+  const s=r(p.stil), j=r(p.rij);
+  return [s?'stil '+s:'', j?'rijdend '+j:''].filter(Boolean).join(' · ');
+}
+const _TC_KLS={afwijkend:'bad', let:'warn', meetfout:'warn', twijfel:'warn', ok:'ok', nodata:''};
+const _TC_LBL={afwijkend:'🔴 Afwijkend', let:'⚠️ Let op', meetfout:'⚠️ Meetfout', twijfel:'⚠️ Twijfel', ok:'✅ Goed', nodata:'⚪ Niet gelezen'};
+function _tcEsc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _tcTijd(ts){ return ts?new Date(ts).toLocaleTimeString('nl',{hour:'2-digit',minute:'2-digit'}):''; }
+function _tcStapHtml(soort){
+  const x=_tc[soort], stil=soort==='stil';
+  const titel=stil?'🅿️ Stilstand':'🚗 Rijden';
+  const uitleg=stil?'Motor stationair, ± 1 minuut. Daarna foutcodes en zelftests.'
+                   :'Rij gewoon weg: anderhalve minuut boven 15 km/h is genoeg. Geen fases, geen route — het scherm stopt vanzelf.';
+  let st='Nog niet gemeten';
+  if(x&&x.sam){ const n=x.sam.rijen.filter(r=>r.oordeel!=='nodata').length;
+    st='Gemeten om '+_tcTijd(x.ts)+' — '+n+' sensoren'+(x.sam.opvallend?', <b class="vz-opval">'+x.sam.opvallend+' vallen op</b>':', niets opvallend'); }
+  const fn=stil?'runTotalCheck()':'runTotalCheckRij()';
+  return `<div class="tc-stap${x&&x.sam?' gedaan':''}"><div class="tc-stap-t">${titel}</div><div class="tc-stap-u">${uitleg}</div>`+
+    `<div class="tc-stap-s">${st}</div><button class="btn${(!x&&(stil||_tc.stil))?' pri':''}" onclick="${fn}" ${_tcBezig?'disabled':''}>${x&&x.sam?'↻ Opnieuw':(stil?'Start stilstand':'Start rijden')}</button></div>`;
+}
+function _tcPidHtml(p){
+  const k=_TC_KLS[p.oordeel]||'';
+  const reden=(p.stil&&p.stil.oordeel!=='ok'&&p.stil.reden)||(p.rij&&p.rij.oordeel!=='ok'&&p.rij.reden)||'';
+  return `<div class="chk-item"><div class="chk-dot ${k}"></div><div style="flex:1"><div class="chk-name">${_tcEsc(p.naam)}</div>`+
+    `<div class="chk-val">${_tcEsc(_tcWaarde(p))}${reden?' — '+_tcEsc(reden):''}</div></div><div class="chk-bdg ${k}">${_TC_LBL[p.oordeel]||''}</div></div>`;
+}
+function _tcCatHtml(c){
+  const m=CHK_CAT_META[c.cat]||{l:c.cat,i:'•'};
+  const k=_TC_KLS[c.oordeel]||'';
+  const afw=c.pids.filter(p=>p.oordeel!=='ok'), rest=c.pids.filter(p=>p.oordeel==='ok');
+  let kop=c.dtc?_tcEsc(c.dtc.licht.kop):(afw.length?afw.length+' van '+c.pids.length+' wijkt af':c.pids.length+' sensor'+(c.pids.length===1?'':'en')+', alles binnen bereik');
+  let body='';
+  if(c.dtc){
+    body+=`<div class="tc-noot">${_tcEsc(c.dtc.licht.tekst)}</div>`+(c.dtc.rd?`<div class="tc-noot"><b>${_tcEsc(c.dtc.rd.kop)}</b> — ${_tcEsc(c.dtc.rd.tekst)}</div>`:'')+
+      (c.open?'<button class="btn" onclick="PLFoutcodes.open()">⚠️ Open foutcodes</button>':'');
+  } else {
+    body+=afw.map(_tcPidHtml).join('');
+    if(rest.length) body+=(afw.length?`<details class="vz-meer"><summary>Binnen bereik (${rest.length})</summary>${rest.map(_tcPidHtml).join('')}</details>`:rest.map(_tcPidHtml).join(''));
+    if(c.focus){
+      const plan=PLTotaal.focusPlan(c), f=_tc.focus[c.cat];
+      body+=`<div class="tc-noot">Focusmeting: alleen ${plan.pids.length} sensor${plan.pids.length===1?'':'en'} van ${_tcEsc(m.l.toLowerCase())}, ${plan.rijden?'rijdend — de afwijking zat alleen onder het rijden':'stilstaand'}. Minder sensoren betekent vaker gemeten.</div>`;
+      if(f){ const fo=f.sam.rijen.filter(r=>r.oordeel==='afwijkend'||r.oordeel==='let');
+        body+=`<div class="tc-noot"><b>Focusmeting ${_tcTijd(f.ts)}:</b> ${fo.length?fo.map(r=>_tcEsc(r.naam)+' '+fv(r.min)+'–'+fv(r.max)+' '+_tcEsc(r.eenheid)).join('; '):'binnen bereik — de afwijking kwam in deze meting niet terug'}</div>`; }
+      body+=`<div class="tc-knoppen"><button class="btn${f?'':' pri'}" onclick="tcFocus('${_tcEsc(c.cat)}')" ${_tcBezig?'disabled':''}>🔍 ${f?'Opnieuw focussen':'Focusmeting'}</button>`+
+        (f?`<button class="btn pri" onclick="tcFocusAI('${_tcEsc(c.cat)}')">🤖 Laat de AI ${_tcEsc(m.l.toLowerCase())} onderzoeken</button>`:'')+'</div>';
+    }
+  }
+  return `<details class="tc-cat ${k}"${c.open?' open':''}><summary><span class="tc-cat-i">${m.i}</span><span class="tc-cat-n">${_tcEsc(m.l)}</span>`+
+    `<span class="tc-cat-k">${kop}</span><span class="chk-bdg ${k}">${_TC_LBL[c.oordeel]||''}</span></summary>${body}</details>`;
+}
+function tcTeken(){
+  const stap=document.getElementById('tcStappen'), res=document.getElementById('chkResults'), sum=document.getElementById('chkSummary');
+  if(!stap||!res) return;
+  stap.innerHTML=_tcStapHtml('stil')+_tcStapHtml('rij');
+  const s=PLTotaal.stand(_tc);
+  const ai=document.getElementById('btnChkAI'); if(ai) ai.disabled=!s.aiMag||!!_tcBezig;
+  if(!s.aiMag){ res.innerHTML=''; if(sum) sum.style.display='none'; return; }
+  const cats=_tcCats();
+  if(sum){ sum.style.display='grid';
+    document.getElementById('csOk').textContent=cats.filter(c=>c.oordeel==='ok').length;
+    document.getElementById('csWarn').textContent=cats.filter(c=>c.oordeel!=='ok'&&c.oordeel!=='afwijkend'&&c.oordeel!=='nodata').length;
+    document.getElementById('csBad').textContent=cats.filter(c=>c.oordeel==='afwijkend').length; }
+  let h='';
+  if(_tcBezig) h+=`<div class="ai-ld"><div class="spin"></div> ${_tcEsc(_tcBezig)}</div>`;
+  if(!s.rij) h+='<div class="tc-noot tc-gat">Rijden is nog niet gemeten. Wat alleen onder belasting zichtbaar wordt — laadspanning, brandstoftrim bij kruissnelheid, inlaatdruk — is dus níét beoordeeld.</div>';
+  if(!s.stil) h+='<div class="tc-noot tc-gat">Stilstand is nog niet gemeten: geen foutcodes, geen zelftests en geen stationair gedrag in deze uitslag.</div>';
+  h+=cats.map(_tcCatHtml).join('');
+  res.innerHTML=h;
+}
+async function runCheckAI(){
+  const s=PLTotaal.stand(_tc);
+  if(!s.aiMag) return;
+  if(!(await preAnalysisCheck())) return;
+  activateAIPane();
+  const btn=document.getElementById('aiBtn'); if(btn) btn.disabled=true;
   const v=getVehicle();
-  const probItems=items.filter(i=>i.status!=='ok');
-  const prob=probItems.map(i=>`• ${i.name}: ${i.display} — ${i.detail}`).join('\n');
-  // FIX 09-07: stuur ALLE gemeten waarden mee, niet alleen afwijkingen. Op een
-  // gezonde auto was prob leeg → de AI kreeg nul sensordata en schreef terecht
-  // "geen beschikking over sensoren", terwijl de tegels wél waarden toonden.
-  const meet=items.filter(i=>i.pid).slice(0,40).map(i=>`• ${i.name}: ${i.display}${i.status!=='ok'?'  ⚠ '+i.detail:''}`).join('\n');
-  const pairs=items.filter(i=>i.pid).map(i=>[i.pid, (typeof pidVals!=='undefined'?pidVals[i.pid]:undefined)]);
-  const q=buildQualityReport(pairs);
+  const cats=_tcCats();
+  // Het analyserapport (PLRapport) leest window._plVerzameld. Dat was het
+  // laatst gemeten deel ("Rijdeel van de totaalcheck", 20 s): nu beide delen.
+  const rm=PLTotaal.rapportMeting(_tc);
+  window._plVerzameld={ sam:PLVerzamel.vanBron({hist:rm.hist}), sec:rm.sec, rijSec:rm.rijSec, beperkt:rm.beperkt, bron:null, ts:Date.now(),
+    hist:rm.hist, watVoor:'de totaalcheck', klacht:'', eisNaam:'stilstand en rijden' };
   // Als een test-scenario actief is: laat de AI weten dat deze data handmatig
   // is gezet (testdoeleinden), zodat het oordeel daar rekening mee houdt.
   let scenNote='';
@@ -208,7 +401,7 @@ async function runCheckAI(items, uit){
   } else if(ft==='diesel'){
     fuelNote=`\nDit is een DIESEL: brandstoftrim-logica wijkt af; let op roetfilter (DPF), AdBlue/SCR en NOx waar relevant.`;
   }
-  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}${fuelNote}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nGemeten sensordata (${items.length} sensoren):\n${meet||'(geen meetdata — sensoren leverden nog geen waarden; zeg dit eerlijk in het rapport)'}\nAfwijkingen:\n${prob||'Geen'}\nDTC: ${formatDtcCodes(dtcCodes)}${q.promptBlok}${uit?PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec}):''}${scenNote}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
+  const prompt=`Je bent expert automonteur. Analyseer deze totaalcheck in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.brandstof?'('+v.brandstof+')':''}${fuelNote}\nAlleen sensoren die aanwezig zijn op dit voertuig zijn meegenomen. Beoordeel uitsluitend op basis van de meegeleverde data — maak geen aannames over turbo, diesel, AdBlue of hybride als dat niet blijkt uit het voertuig of de data.\nDe check meet in twee delen, elk alleen in zijn eigen toestand: stilstaand en rijdend. Vergelijk ze waar dezelfde sensor in beide staat; een verschil tussen stationair en rijdend is vaak de diagnose.${PLTotaal.promptBlok(_tc, cats, PLVerzamel.promptBlok)}\nDTC (lijst van de app): ${formatDtcCodes(dtcCodes)}${scenNote}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
 
 Voertuigscore: <0-100>/100
 Diagnosebetrouwbaarheid: <0-100>%
@@ -228,16 +421,16 @@ VOERTUIGGEGEVENS
 Merk, model, bouwjaar, brandstof en motor — kort.
 
 SYSTEEMSTATUS
-Een of twee regels over de algehele staat op dit moment.
+Een of twee regels over de algehele staat op dit moment. Noem welk deel (stilstand, rijden) niet gemeten is.
 
 FOUTCODES
 De actieve DTC-codes met korte uitleg, of: Geen actieve foutcodes.
 
 SENSORANALYSE
-Een tabel met exact deze kolommen: Sensor | Waarde | Referentie | Status. Status is precies een van: Normaal, Controle aanbevolen, Direct aandacht. Neem alleen sensoren op waarvoor meetdata beschikbaar is.
+Een tabel met exact deze kolommen: Sensor | Stilstand | Rijdend | Referentie | Status. Status is precies een van: Normaal, Controle aanbevolen, Direct aandacht. Neem alleen sensoren op waarvoor meetdata beschikbaar is.
 
 BEVINDINGEN
-Korte, feitelijke punten; koppel elk punt aan een gemeten waarde.
+Korte, feitelijke punten; koppel elk punt aan een gemeten waarde en de toestand waarin hij gemeten is.
 
 WAARSCHIJNLIJKE OORZAAK
 Een tabel met kolommen: Diagnose | Kans | Vertrouwen. Kans is Hoog, Gemiddeld of Laag; Vertrouwen is een percentage. Daarna een korte alinea van maximaal vier zinnen met de meest waarschijnlijke oorzaak en of er aanwijzingen voor ernstige schade zijn.
@@ -246,18 +439,29 @@ KOSTENINDICATIE
 Een tabel met kolommen: Handeling | Kans | Indicatie. Indicatie is een prijsbereik in euro.
 
 AANBEVOLEN VERVOLGONDERZOEK
-Een korte lijst met concrete meet- of controlestappen om de diagnose te bevestigen..\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
+Een korte lijst met concrete meet- of controlestappen om de diagnose te bevestigen.\nSluit af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}`;
+  // De aanlevering oordeelt over de kwaliteit van precies de sensoren die de
+  // prompt laat zien (beide delen); tot 20-10-2026 stond dat oordeel er ook
+  // nog als eigen blok in de prompt.
   await callAI(prompt,document.getElementById('aiContent'),{
-    vraag:'Volledige doorlichting: beoordeel de staat van het voertuig op alle uitgelezen systemen.',
-    profiel:'totaal'});
-  btn.disabled=false;
+    vraag:'Volledige doorlichting: beoordeel de staat van het voertuig op alle uitgelezen systemen, stilstaand en rijdend.',
+    profiel:'totaal', zichtbaar:cats.flatMap(c=>c.pids.map(p=>p.pid))});
+  if(btn) btn.disabled=false;
 }
 function exportCheckReport(){
   const v=getVehicle();
   const lines=[`PidLane — Totaalcheck`,`Datum: ${new Date().toLocaleString('nl')}`,v.merk?`Voertuig: ${v.merk} ${v.model} ${v.year}`:'',''];
-  checkResults.forEach(i=>lines.push(`[${i.status.toUpperCase()}] ${i.name}: ${i.display}\n  ${i.detail}\n`));
+  const s=PLTotaal.stand(_tc);
+  lines.push('Stilstand: '+(s.stil?'gemeten om '+_tcTijd(_tc.stil.ts):'niet gemeten'), 'Rijden: '+(s.rij?'gemeten om '+_tcTijd(_tc.rij.ts):'niet gemeten'), '');
+  if(s.aiMag) _tcCats().forEach(c=>{
+    lines.push(`[${String(c.oordeel).toUpperCase()}] ${(CHK_CAT_META[c.cat]||{l:c.cat}).l}`+(c.dtc?' — '+c.dtc.licht.kop:''));
+    c.pids.forEach(p=>lines.push(`  ${p.naam}: ${_tcWaarde(p)}${p.oordeel!=='ok'?' ('+p.oordeel+')':''}`));
+    lines.push('');
+  });
   download(plBestandsnaam('totaalcheck','txt'),lines.join('\n'));   // #326: geen vaste naam
 }
+// De twee stappen staan er meteen; het venster staat al in de DOM.
+if(typeof document!=='undefined') tcTeken();
 
 /* ══════════════════════════════════════════════════════════════════════════
    BASIC SYSTEM CHECK (deur 1) — 09-07-2026

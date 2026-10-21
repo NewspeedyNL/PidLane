@@ -79,8 +79,13 @@ Maximaal 80 tekens. Dit is de regel onder de titel in de zoekresultaten en
 het is de enige tekst die iedereen leest.
 
 ```
-Lees je auto uit via een OBD2-adapter en krijg een diagnose in gewone taal.
+Laat je monteur op afstand live meekijken in je auto, via een OBD2-adapter.
 ```
+
+**Sinds 17-10-2026 staat Expert op afstand voorop** (besluit van die dag): de
+bestuurder deelt zijn live data, een monteur of kenner kijkt mee. "OBD2-adapter"
+blijft in de regel staan — dat is de hardware die de minimum
+functionality-toets wil zien, en het zoekwoord.
 
 ---
 
@@ -92,42 +97,43 @@ hardware aan te pas komt die een browser niet kan aansturen.
 
 ```
 PidLane maakt via Bluetooth verbinding met een OBD2-adapter in de
-diagnosepoort van je auto en leest rechtstreeks de boordcomputer uit. Geen
-handmatige invoer: de app praat met de ECU en toont wat er werkelijk
-gemeten wordt.
+diagnosepoort van je auto, leest rechtstreeks de boordcomputer uit — en laat
+iemand die er verstand van heeft live meekijken, waar hij ook is.
 
-Voor monteurs, occasionhandelaren en wagenparkbeheerders — en voor
-iedereen die wil weten wat dat lampje op het dashboard betekent.
+Je monteur of een kenner ziet op zijn eigen telefoon wat jouw auto nu meet.
+Voor de storing die alleen onderweg optreedt, of de garage die ver weg zit.
 
-WAT PIDLANE DOET
+HOE MEEKIJKEN WERKT
 
+1. Adapter in de OBD2-poort, tik op Laat iemand meekijken.
+2. Deel de code, QR of link — voorlezen, scannen of via WhatsApp.
+3. De expert tikt op Ik ben de expert en ziet je live data. Hij kan zelf
+   waarden en foutcodes opvragen, maar niets veranderen: alleen lezen.
+
+De expert heeft geen adapter nodig, alleen PidLane en een account. Stop
+delen wanneer je wilt; de link verloopt met de sessie.
+
+WAT PIDLANE NOG MEER DOET
+
+• Expert op afstand — live meekijken via code, QR of link.
 • Foutcodes uitlezen — actuele, permanente en pending codes, plus de
   freeze frame: de momentopname van wat de auto deed toen de fout ontstond.
 • Live sensorwaarden — toerental, temperaturen, druk, brandstoftrims,
   lambdawaarden en meer, als meters of als grafiek over de tijd.
 • Diagnoserapport — de meting wordt uitgelegd in gewone taal: wat is er aan
   de hand, hoe zeker is dat, en welk onderdeel is de eerste verdachte.
-• Ritmonitor — kijkt tijdens het rijden mee op sensoruitval, bevroren
-  waarden en uitschieters, en test verdachte signalen gericht opnieuw.
+• Ritmonitor — let tijdens het rijden op sensoruitval en uitschieters.
 • Koopcheck — een vaste doorloop voor een tweedehands auto, met de
   readiness-monitors die verraden of er kort geleden fouten zijn gewist.
-• Onderdeelaanwijzer — koppelt foutcode en meting aan het onderdeel dat er
-  waarschijnlijk achter zit.
+• Onderdeelaanwijzer — van foutcode en meting naar het onderdeel.
 • Alle stuurapparaten — ook foutcodes van ABS, airbag en versnellingsbak.
 • Lampjesgids — wat een dashboardlampje betekent, ook vanaf een foto.
-• Diagnose op afstand — een expert kijkt mee via een sessiecode of QR, zonder
-  zelf een adapter nodig te hebben.
 • Kenteken-check (Nederland) — merk, model, APK, verzekering en open
   terugroepacties uit de open data van de RDW.
 • Mijn voertuigen — tot drie auto's in je account, met rapporten en ritten,
   op elk toestel waarop je inlogt.
 • Conditiescore — hoe je auto ervoor staat, uit onderhoud en ritten.
-• Meting in beeld — wissel je van app, dan loopt de meting door in een
-  klein venster.
-• Slim visueel — de belangrijkste waarden als dashboard, met de accu als
-  lampje en je banden in een autootje.
-• Telemetrie — met de sensoren van je telefoon: hoe schuin de auto staat en
-  hoeveel G hij trekt.
+• Slim visueel — de belangrijkste waarden als dashboard.
 • Rapporten opslaan en delen als PDF.
 
 WAT JE NODIG HEBT
@@ -197,8 +203,8 @@ Vragen: support@pidlane.nl
 
 Geen tekst die in de kleine weergave wegvalt. Werkende opzet: het logo links,
 rechts een uitsnede van een gauge-scherm, donkere achtergrond (`#0D1117`,
-dezelfde als de app). Eén regel tekst, hooguit: **"Diagnose uit je eigen
-auto"**.
+dezelfde als de app). Eén regel tekst, hooguit: **"Je monteur kijkt live
+mee"** (sinds 17-10-2026; daarvoor "Diagnose uit je eigen auto").
 
 ### Screenshots — schiet deze acht, in deze volgorde
 
@@ -209,14 +215,18 @@ is het de echte app en geen mockup, en dat is precies wat de
 
 | # | scherm | bijschrift (max ~40 tekens) |
 |---|---|---|
-| 1 | Live gauges met draaiende waarden | Live meetwaarden uit je eigen auto |
-| 2 | Foutcodelijst met een uitgeklapte DTC | Foutcodes met uitleg, geen code |
-| 3 | Diagnoserapport | Wat er aan de hand is, in gewone taal |
-| 4 | Grafiek over de tijd | Zie het verloop, niet één moment |
-| 5 | Verbindscherm met adapterlijst | Verbindt met je OBD2-adapter |
-| 6 | Koopcheck | Weet wat je koopt |
-| 7 | Ritmonitor tijdens een rit | Meekijken terwijl je rijdt |
-| 8 | Onderdeelaanwijzer | Van foutcode naar onderdeel |
+| 1 | Home met Expert op afstand bovenaan | Je monteur kijkt live mee |
+| 2 | Deelvenster met code en QR | Delen met een code, QR of link |
+| 3 | Live gauges met draaiende waarden (bij de expert) | Hij ziet wat jouw auto meet |
+| 4 | Foutcodelijst met een uitgeklapte DTC | Foutcodes met uitleg, geen code |
+| 5 | Diagnoserapport | Wat er aan de hand is, in gewone taal |
+| 6 | Grafiek over de tijd | Zie het verloop, niet één moment |
+| 7 | Verbindscherm met adapterlijst | Verbindt met je OBD2-adapter |
+| 8 | Koopcheck | Weet wat je koopt |
+
+Sinds 17-10-2026 tonen de eerste twee het meekijken: dat zijn de enige die in
+de zoekresultaten staan, en de kernbelofte moet daar zichtbaar zijn. Schiet
+nummer 3 op een tweede toestel dat meekijkt met de demo van het eerste.
 
 Zet **geen** verzonnen waarden in een screenshot en plak er geen randen of
 telefoons omheen die suggereren dat het een ander toestel is. Een screenshot
@@ -664,7 +674,8 @@ je hier iets nieuws, dan hoort het daar eerst.
 is `pidlane-lampjes.js` (#492), alle stuurapparaten is UDS 0x19, de
 kenteken-check in Mijn voertuigen en de terugroepmelding staan in
 `pidlane-garage.js` (#493), de conditiescore is #475, tankbeurten #469 en de
-rondgang `pidlane-rondgang.js`.
+rondgang `pidlane-rondgang.js`. Expert op afstand is het blok `#plExpert` op
+Home (`PLNav.expert()`), dat de vensters van `pidlane-remote.js` opent.
 
 **Nagelezen tegen de code op 06-10-2026, voor 3.2.0.** Slim visueel is
 `pidlane-visueel.js` met de schermen uit `pidlane-visprofiel.js`, telemetrie is
@@ -686,14 +697,14 @@ toetst hij niet.
 
 ```
 Versie 3.3
-Met lampjesgids en conditiescore.
+Met expert op afstand, lampjesgids en conditiescore.
 
+- Expert op afstand bovenaan Home: laat je monteur live meekijken.
 - Lampjesgids: maak een foto van je dashboard en zie welk lampje brandt.
 - Foutcodes van alle stuurapparaten, niet alleen motor en bak.
-- Kenteken-check in Mijn voertuigen, met een melding bij een nieuwe
-  terugroepactie.
+- Kenteken-check met melding bij een nieuwe terugroepactie.
 - Conditiescore en tankbeurten per voertuig.
-- Slim toont je auto als rondgang langs de categorieën.
+- Slim toont je auto als rondgang; elke pagina past op één scherm.
 
 Geen adapter? Probeer de demomodus op het startscherm.
 ```

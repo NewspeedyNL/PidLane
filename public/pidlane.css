@@ -1319,6 +1319,35 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .rr.warn b { color:var(--or); } .rr.danger b { color:var(--rd); }
 .rr .rr-band { grid-column:1 / -1; margin-top:7px; }
 .rond-dia.rond-in { animation:rondIn .3s ease-out; }
+/* Verwante sensoren die een te lege dia aanvullen (VERWANT): context, dus de naam iets stiller. */
+.rr.vul > span { color:var(--tx3); }
+/* Alles op één scherm (17-10-2026, PLRond.pasIn()): steekt de dia onder de
+   navigatie uit, dan eerst kleiner (dicht1), dan rijen in twee kolommen en
+   de held met zijn lijn ernaast (dicht2). Niet splitsen: één onderwerp blijft één scherm. */
+.rond-dia.dicht1 { gap:6px; }
+.rond-dia.dicht1 .rond-titel { font-size:15px; margin-bottom:0; }
+.rond-dia.dicht1 .rond-duid { padding:5px 10px; font-size:12px; }
+.rond-dia.dicht1 .rk { padding:8px 12px; }
+.rond-dia.dicht1 .rk h4 { margin-bottom:6px; }
+.rond-dia.dicht1 .rk-held .rk-w b { font-size:30px; }
+.rond-dia.dicht1 .rk-lijn { height:26px; margin-top:4px; }
+.rond-dia.dicht1 .rs-buis { height:64px; }
+.rond-dia.dicht1 .rs-w b { font-size:15px; }
+.rond-dia.dicht1 .rr { padding:4px 0; }
+.rond-dia.dicht1 .rr-w b { font-size:17px; }
+.rond-dia.dicht1 .rr .rr-band { margin-top:4px; }
+.rond-dia.dicht1 .rm { padding:2px 0; }
+.rond-dia.dicht2 .rk-rijen { display:grid; grid-template-columns:1fr 1fr; column-gap:12px; }
+.rond-dia.dicht2 .rk-rijen > h4 { grid-column:1 / -1; }
+.rond-dia.dicht2 .rr + .rr { border-top:0; }
+.rond-dia.dicht2 .rr { grid-template-columns:minmax(0,1fr); }
+.rond-dia.dicht2 .rr > span { font-size:11px; }
+.rond-dia.dicht2 .rr-w b { font-size:15px; }
+.rond-dia.dicht2 .rk-held { display:grid; grid-template-columns:auto 1fr; column-gap:12px; align-items:center; }
+.rond-dia.dicht2 .rk-held h4 { grid-column:1 / -1; }
+.rond-dia.dicht2 .rk-held .rk-w b { font-size:24px; }
+.rond-dia.dicht2 .rk-lijn { margin-top:0; }
+.rond-dia.dicht2 .rs-buis { height:44px; }
 @keyframes rondIn { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:none; } }
 .rond-tijd { grid-template-columns:repeat(5,1fr); }
 @media (prefers-reduced-motion:reduce){ .rond-dia.rond-in { animation:none; } .rond-voort i, .rs-buis i, .rm-baan i { transition:none; } }
@@ -1675,6 +1704,114 @@ rect.vis-tik { fill:transparent; cursor:pointer; pointer-events:all; }
 .bev-regel.verborgen { opacity:.55; }
 .bev-x { flex:none; min-width:24px; height:24px; padding:0 7px; border-radius:6px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); font-family:var(--f); font-size:11px; font-weight:800; cursor:pointer; line-height:1; }
 .bev-x.bev-terug { color:var(--bl); border-color:var(--bl); }
+/* ── Volledig scherm en thema's van Slim visueel (18-10-2026, pidlane-visthema.js) ──
+   ⛶ boven de meter zet body.pl-vis-vol: de .vis wordt schermvullend en ligt
+   over de rest van de app. Het thema (data-vthema op .vis) geldt sinds
+   20-10-2026 ook in de gewone weergave; het zet de kleurvariabelen om en
+   voegt gloed of een verloop toe.
+   Wat beweegt blijft van pidlane-visueel.js. */
+.vt-knoppen { position:absolute; top:0; left:50%; transform:translateX(-50%); z-index:2; display:flex; gap:8px; }
+.vt-knop { width:34px; height:34px; padding:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%;
+  border:1px solid var(--bd); background:var(--sur); color:var(--tx2); font-size:16px; line-height:1; cursor:pointer; }
+.vt-knop svg { width:18px; height:18px; }
+.vt-knop:active { transform:scale(.92); }
+.vt-uit { display:none; }
+/* Gewone weergave met een thema: de achtergrond van het thema in een vlak
+   met ronde hoeken, en de keuzestrook onder de knoppen in plaats van over de
+   navigatie onderin. */
+body:not(.pl-vis-vol) .vis { position:relative; }
+body:not(.pl-vis-vol) .vis[data-vthema]:not([data-vthema="standaard"]) { background:var(--vt-bg); border-radius:18px; }
+body:not(.pl-vis-vol) .vt-strook { position:absolute; bottom:auto; top:44px; animation:none; }
+body.pl-vis-vol { overflow:hidden; }
+body.pl-vis-vol .vis { position:fixed; inset:0; z-index:var(--z-modal); margin:0; overflow:auto; justify-content:center;
+  padding:calc(var(--pl-sat, 0px) + 56px) 14px calc(var(--pl-sab, 0px) + 16px); box-sizing:border-box;
+  background:var(--vt-bg, radial-gradient(ellipse at 50% 35%, #16213a, var(--bg) 70%)); color:var(--tx); }
+body.pl-vis-vol .vis-bak { max-width:min(100%, calc(var(--pl-vh) - 140px), 760px); }
+body.pl-vis-vol .vis-meter { max-width:none; position:relative; z-index:0; overflow:visible; }
+body.pl-vis-vol .vis-rail, body.pl-vis-vol .vis-snelk { display:none; }
+body.pl-vis-vol .vis-meldingen { max-width:min(100%, 560px); }
+body.pl-vis-vol .vt-knoppen { position:fixed; top:calc(var(--pl-sat, 0px) + 10px); right:12px; left:auto; transform:none; }
+body.pl-vis-vol .vt-knop { width:42px; height:42px; font-size:19px; background:rgba(0,0,0,.35); border-color:rgba(255,255,255,.18); color:#fff;
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+body.pl-vis-vol .vt-vol { display:none; }
+body.pl-vis-vol .vt-thema, body.pl-vis-vol .vt-uit { display:inline-flex; }
+@media (orientation:landscape) {
+  body.pl-vis-vol .vis { padding-top:calc(var(--pl-sat, 0px) + 8px); }
+  body.pl-vis-vol .vis-bak { max-width:min(100%, calc(var(--pl-vh) - 60px), 760px); }
+  /* Liggend staan meldingen en trekstrook rechts naast de meter, niet eronder. */
+  body.pl-vis-vol .vis-meldingen, body.pl-vis-vol .vis-trek { position:fixed; right:12px; width:min(28%, 300px); }
+  body.pl-vis-vol .vis-meldingen { bottom:calc(var(--pl-sab, 0px) + 12px); }
+  body.pl-vis-vol .vis-trek { top:calc(var(--pl-sat, 0px) + 64px); }
+}
+/* De keuzestrook onderin: een rondje per thema, met de naam eronder. */
+.vt-strook { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(var(--pl-sab, 0px) + 14px); z-index:3; display:flex; gap:10px;
+  max-width:calc(100% - 24px); overflow-x:auto; padding:10px 12px; border-radius:20px; box-sizing:border-box;
+  background:rgba(8,10,18,.72); border:1px solid rgba(255,255,255,.12); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+  animation:vt-op .25s ease-out; }
+.vt-keus { flex:none; display:flex; flex-direction:column; align-items:center; gap:5px; padding:0; border:0; background:none; color:#cbd5e1; font:600 11px var(--f); cursor:pointer; }
+.vt-keus i { width:46px; height:46px; border-radius:50%; border:2px solid rgba(255,255,255,.18); box-sizing:border-box; transition:transform .15s, border-color .15s; }
+.vt-keus.aan { color:#fff; }
+.vt-keus.aan i { border-color:#fff; transform:scale(1.08); box-shadow:0 0 14px rgba(255,255,255,.35); }
+@keyframes vt-op { from { opacity:0; transform:translate(-50%, 16px); } to { opacity:1; transform:translate(-50%, 0); } }
+/* De zwaai bij het openen en bij een nieuw thema: naald en boog één keer vol uit. */
+.vis-meter.vt-sweep .vis-naald { animation:vt-zwaai 1.4s cubic-bezier(.45,0,.25,1); }
+.vis-meter.vt-sweep #vis-toerenboog { animation:vt-vul 1.4s cubic-bezier(.45,0,.25,1); }
+@keyframes vt-zwaai { 0% { transform:rotate(-120deg); } 48% { transform:rotate(120deg); } 100% { transform:rotate(-120deg); } }
+@keyframes vt-vul { 0% { stroke-dasharray:0 200; } 48% { stroke-dasharray:100 200; } 100% { stroke-dasharray:0 200; } }
+/* Een zachte, ademende gloed achter de cirkel (neon, carbon). Opacity is
+   goedkoop: geen herberekening van de meter zelf. */
+.vis[data-vthema] .vis-bak::before { content:''; position:absolute; left:6%; right:6%; top:6%; aspect-ratio:1; border-radius:50%;
+  pointer-events:none; z-index:0; filter:blur(22px); opacity:0; }
+@keyframes vt-adem { 0%, 100% { opacity:.55; } 50% { opacity:1; } }
+
+/* Neon: cyaan en magenta op diep blauw. */
+.vis[data-vthema="neon"] { --vt-bg:radial-gradient(ellipse at 50% 38%, #1a1446 0%, #070a1f 55%, #02030a 100%);
+  --sur:#0a0f2a; --sur2:#161c48; --bd:#2b2f6e; --bd2:#22d3ee; --tx:#e0f7ff; --tx2:#7dd3fc; --tx3:#6b7bbd;
+  --bl:#22d3ee; --gn:#34f5c5; --or:#f0abfc; --rd:#ff2d95; }
+.vis[data-vthema="neon"] .vis-bak::before { background:radial-gradient(closest-side, rgba(34,211,238,.32), rgba(217,70,239,.22) 70%, transparent); animation:vt-adem 4s ease-in-out infinite; }
+.vis[data-vthema="neon"] .vis-plaat { fill:#060a20; stroke:#22d3ee; stroke-width:2.5; filter:drop-shadow(0 0 5px #22d3ee) drop-shadow(0 0 16px rgba(217,70,239,.6)); }
+.vis[data-vthema="neon"] .vis-vul { filter:drop-shadow(0 0 4px #22d3ee); }
+.vis[data-vthema="neon"] .vis-streep.groot { stroke:#a5f3fc; filter:drop-shadow(0 0 3px #22d3ee); }
+.vis[data-vthema="neon"] .vis-naald line { stroke:#ff2d95; filter:drop-shadow(0 0 6px #ff2d95); }
+.vis[data-vthema="neon"] .vis-snel { fill:#fff; filter:drop-shadow(0 0 8px #22d3ee); }
+.vis[data-vthema="neon"] .vis-naaf { fill:#0a0f2a; stroke:#ff2d95; }
+
+/* Spectrum: de toerenboog loopt van blauw via groen en geel naar rood. */
+.vis[data-vthema="spectrum"] { --vt-bg:radial-gradient(ellipse at 50% 40%, #1f2937, #050608 70%);
+  --sur:#0b0d10; --sur2:#1c1f24; --bd:#2a2e35; --bd2:#3a3f48; --tx:#f8fafc; --tx2:#cbd5e1; --tx3:#7c8796; }
+.vis[data-vthema="spectrum"] .vis-plaat { fill:#07080a; stroke:#30343b; stroke-width:3; }
+.vis[data-vthema="spectrum"] .vis-meter > .vis-spoor { stroke:url(#vtSpectrum); stroke-opacity:.16; stroke-width:12; }
+.vis[data-vthema="spectrum"] #vis-toerenboog { stroke:url(#vtSpectrum); stroke-width:12; filter:drop-shadow(0 0 6px rgba(250,204,21,.45)); }
+.vis[data-vthema="spectrum"] .vis-zone { stroke-opacity:0; }
+.vis[data-vthema="spectrum"] .vis-naald line { stroke:#fff; filter:drop-shadow(0 0 4px rgba(255,255,255,.7)); }
+.vis[data-vthema="spectrum"] .vis-naaf { fill:#111; stroke:#fff; }
+
+/* Chroom: een zilveren plaat met donkere cijfers, als een klassieke klok. */
+.vis[data-vthema="chroom"] { --vt-bg:radial-gradient(ellipse at 50% 30%, #3b4a63, #0f1623 70%); }
+.vis[data-vthema="chroom"] .vis-meter { --tx:#0f172a; --tx2:#334155; --tx3:#475569; --sur2:#94a3b8; --bd2:#64748b; --bl:#1d4ed8; --gn:#047857; --or:#c2410c; --rd:#b91c1c; }
+.vis[data-vthema="chroom"] .vis-plaat { fill:url(#vtChroom); stroke:url(#vtChroomRand); stroke-width:7; filter:drop-shadow(0 6px 14px rgba(0,0,0,.55)); }
+.vis[data-vthema="chroom"] .vis-naald line { stroke:#dc2626; stroke-width:4; filter:drop-shadow(2px 3px 2px rgba(0,0,0,.4)); }
+.vis[data-vthema="chroom"] .vis-naaf { fill:url(#vtChroomRand); stroke:#334155; r:11; }
+.vis[data-vthema="chroom"] .vis-logo { filter:grayscale(1) brightness(.35); }
+
+/* Carbon: koolstofweefsel met een turquoise rand. */
+.vis[data-vthema="carbon"] { --vt-bg:radial-gradient(ellipse at 50% 40%, transparent, #000 75%), repeating-linear-gradient(45deg, #15181c 0 6px, #0a0b0d 6px 12px);
+  --sur:#0d0f12; --sur2:#23272d; --bd:#2a2f36; --bd2:#14b8a6; --tx:#f1f5f9; --tx2:#99f6e4; --tx3:#64748b; --bl:#14b8a6; --or:#f59e0b; }
+.vis[data-vthema="carbon"] .vis-bak::before { background:radial-gradient(closest-side, rgba(20,184,166,.28), transparent); animation:vt-adem 6s ease-in-out infinite; }
+.vis[data-vthema="carbon"] .vis-plaat { fill:url(#vtCarbon); stroke:#14b8a6; stroke-width:3; filter:drop-shadow(0 0 8px rgba(20,184,166,.6)); }
+.vis[data-vthema="carbon"] .vis-vul { filter:drop-shadow(0 0 4px rgba(20,184,166,.8)); }
+.vis[data-vthema="carbon"] .vis-naald line { stroke:#ef4444; filter:drop-shadow(0 0 4px rgba(239,68,68,.8)); }
+.vis[data-vthema="carbon"] .vis-naaf { fill:#0d0f12; stroke:#14b8a6; }
+
+/* Nachtrood: alles in gedempt rood op zwart, voor 's nachts rijden — rood
+   licht verblindt het minst. */
+.vis[data-vthema="nacht"] { --vt-bg:#000; --sur:#0a0000; --sur2:#1c0404; --bd:#2a0606; --bd2:#4a0a0a;
+  --tx:#ff4d4d; --tx2:#b32424; --tx3:#7a1a1a; --bl:#c81e1e; --gn:#e11d1d; --or:#ff6b2b; --rd:#ff1a1a;
+  --gns:rgba(255,0,0,.08); --ors:rgba(255,80,0,.1); --rds:rgba(255,0,0,.14); }
+.vis[data-vthema="nacht"] .vis-plaat { fill:#050000; stroke:#3a0707; }
+.vis[data-vthema="nacht"] .vis-logo, .vis[data-vthema="nacht"] .vis-meld-ic, .vis[data-vthema="nacht"] .vis-chip-ic { filter:grayscale(1) sepia(1) saturate(6) hue-rotate(-50deg) brightness(.55); }
+.vis[data-vthema="nacht"] .vt-knop { color:#ff4d4d; }
+
 /* ── De vijf weergaven van Slim visueel (02-10-2026, pidlane-visprofiel.js) ──
    Wisselen gaat sinds 15-10-2026 met vegen over het vak (PLVisueel.veeg);
    de keuzestrook met stipjes en "Volgende" is weg. Het vak
@@ -2024,13 +2161,26 @@ body.pl-visueel:has(#pane-live.active) #blkChipFab { display:none !important; }
 .chk-intro { background:linear-gradient(135deg,var(--bls),var(--sur2)); border:1px solid var(--bd); border-radius:var(--r); padding:14px; margin-bottom:12px; }
 .chk-intro h3 { font-size:14px; font-weight:700; margin-bottom:3px; }
 .chk-intro p { font-size:13px; color:var(--tx2); line-height:1.6; }
-.chk-qrow { display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--bd); font-size:13px; }
-.chk-qrow:last-child { border-bottom:none; }
-.chk-opts { display:flex; gap:4px; }
-.chk-opt { padding:3px 9px; border-radius:999px; border:1px solid var(--bd); font-size:12px; font-weight:600; cursor:pointer; background:var(--sur2); color:var(--tx2); transition:all .12s; }
-.chk-opt.sel-ja { background:var(--gns); border-color:var(--gn); color:var(--gn); }
-.chk-opt.sel-nee { background:var(--rds); border-color:var(--rd); color:var(--rd); }
-.chk-opt.sel-soms { background:var(--ors); border-color:var(--or); color:var(--or); }
+/* Totaalcheck (20-10-2026): twee stappen en een kaart per categorie */
+.tc-stappen { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+@media (max-width:520px){ .tc-stappen { grid-template-columns:1fr; } }
+.tc-stap { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:12px; display:flex; flex-direction:column; gap:6px; box-shadow:var(--ss); }
+.tc-stap.gedaan { border-color:var(--gn); }
+.tc-stap-t { font-size:14px; font-weight:700; }
+.tc-stap-u { font-size:12px; color:var(--tx2); line-height:1.5; }
+.tc-stap-s { font-size:12px; color:var(--tx3); flex:1; }
+.tc-cat { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); margin-bottom:8px; box-shadow:var(--ss); }
+.tc-cat.bad { border-color:var(--rd); } .tc-cat.warn { border-color:var(--or); }
+.tc-cat > summary { display:flex; align-items:center; gap:8px; padding:10px 12px; cursor:pointer; list-style:none; }
+.tc-cat > summary::-webkit-details-marker { display:none; }
+.tc-cat[open] > summary { border-bottom:1px solid var(--bd); }
+.tc-cat > :not(summary) { margin:8px 12px; }
+.tc-cat-i { font-size:16px; }
+.tc-cat-n { font-size:13px; font-weight:700; }
+.tc-cat-k { flex:1; font-size:12px; color:var(--tx3); min-width:0; }
+.tc-noot { font-size:12px; color:var(--tx2); line-height:1.5; }
+.tc-gat { background:var(--ors); border-radius:var(--r); padding:8px 10px; margin-bottom:8px; }
+.tc-knoppen { display:flex; flex-wrap:wrap; gap:8px; }
 .chk-summary { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px; }
 .chk-sum { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:12px 8px; text-align:center; box-shadow:var(--ss); }
 .chk-sum-num { font-family:var(--m); font-size:24px; font-weight:500; margin-bottom:2px; }
@@ -2712,6 +2862,31 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .wz-balk-in{ height:100%; width:0; background:linear-gradient(90deg,#00ff88,#22d3ee); transition:width .3s ease; }
 
 .wz-body{ flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 18px 6px; }
+/* Zonder knoppenbalk eronder (een keuzescherm) lag de laatste kaart achter
+   de drie Android-knoppen (20-10-2026): de onderrand hoort dan bij de body. */
+.wz-body:has(+ .wz-foot:empty){ padding-bottom:calc(24px + var(--pl-sab, 0px)); }
+
+/* De storingsintake (20-10-2026): tegels in twee kolommen, meer mag. */
+.wz-chips{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin-bottom:14px; }
+.wz-chip{
+  display:flex; align-items:center; gap:9px; min-height:54px; padding:10px 12px; text-align:left;
+  border-radius:13px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx);
+  font:700 13.5px/1.3 var(--f); cursor:pointer; transition:border-color .15s, background .15s;
+}
+.wz-chip-i{ font-size:20px; flex:0 0 auto; }
+.wz-chip.aan{ border-color:#22d3ee; background:rgba(34,211,238,.12); box-shadow:inset 0 0 0 1px #22d3ee; }
+.wz-chip.herkend:not(.aan){ border-style:dashed; border-color:#22d3ee; }
+.wz-eigen i, .wz-veld i{ font-style:normal; font-weight:500; color:var(--tx3); }
+.wz-herkend{ font-size:12.5px; line-height:1.5; color:#22d3ee; margin:6px 0 12px; }
+.wz-herkend:empty{ display:none; }
+.wz-algemeen{ margin-top:14px; border-color:rgba(34,211,238,.45); }
+.wz-meet{ margin-top:4px; padding:11px 13px; border-radius:12px; background:var(--sur2); border:1px solid var(--bd); font-size:13px; line-height:1.5; color:var(--tx2); }
+.wz-tags{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+.wz-tag{ padding:5px 10px; border-radius:999px; background:var(--sur2); border:1px solid var(--bd); font-size:12.5px; font-weight:600; color:var(--tx2); }
+.wz-code{ font-size:12.5px; line-height:1.45; color:var(--tx2); margin:4px 0; }
+.wz-code b{ font-family:var(--m); color:var(--tx); margin-right:4px; }
+.wz-pri:disabled{ opacity:.45; cursor:default; }
+@media (max-width:340px){ .wz-chips{ grid-template-columns:1fr; } }
 .wz-vraag{ font-size:25px; font-weight:800; line-height:1.22; margin-bottom:8px; }
 .wz-sub{ font-size:14px; line-height:1.55; color:var(--tx2); margin-bottom:20px; }
 
@@ -3105,6 +3280,22 @@ body:not(.pl-garage) .alleen-garage { display:none !important; }
 /* Startscherm: de check, vier tegels, en voor de garage "Alle functies". */
 .welcome-sub { font-size:14px; color:#c3cee2; margin-top:2px; }
 .pl-home { max-width:720px; margin:0 auto; }
+/* Expert op afstand, bovenaan Home (17-10-2026): de kernbelofte, dus het
+   eerste blok. Eigen accent (groenblauw) zodat het niet samenvalt met de check eronder. */
+.pl-expert { margin:0 0 14px; padding:16px; border-radius:18px; color:#fff;
+  background:linear-gradient(135deg,#0d9488 0%,#1f5eff 100%); box-shadow:0 12px 30px -10px rgba(13,148,136,.6); }
+.pl-expert-kop { display:flex; align-items:center; gap:12px; }
+.pl-expert-ic { flex:0 0 46px; height:46px; border-radius:14px; background:rgba(255,255,255,.16); display:flex; align-items:center; justify-content:center; font-size:24px; }
+.pl-expert-tx { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+.pl-expert-t { font-size:21px; font-weight:800; }
+.pl-expert-d { font-size:14px; line-height:1.35; color:rgba(255,255,255,.92); }
+.pl-expert-knoppen { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
+.pl-expert-k { min-height:46px; padding:10px; border-radius:12px; border:1px solid rgba(255,255,255,.35); background:rgba(255,255,255,.12);
+  color:#fff; font:700 14px var(--f); cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform .12s; }
+.pl-expert-k.hoofd { background:#fff; color:#0b3b6b; border-color:#fff; }
+.pl-expert-k:active { transform:scale(.97); }
+.pl-expert-k:focus-visible { outline:3px solid #fff; outline-offset:2px; }
+@media (max-width:360px){ .pl-expert-knoppen { grid-template-columns:1fr; } }
 .pl-check { width:100%; display:flex; align-items:center; gap:14px; text-align:left; cursor:pointer;
   padding:20px 18px; border-radius:18px; border:0; color:#fff; font-family:var(--f);
   background:linear-gradient(135deg,#1f5eff 0%,#0a8fb8 100%); box-shadow:0 12px 30px -10px rgba(31,94,255,.65);
@@ -3375,3 +3566,57 @@ body[data-rijvorm="compact"] #rijModus .rij-tip { grid-column:1 / 3; }
 .proto-hint b { font-size:15px; font-weight:800; }
 .proto-hint span { font-size:13px; line-height:1.4; }
 .proto-hint small { font-size:12px; color:var(--tx2); }
+
+/* ── De werkplek van de expert op een laptop (18-10-2026, pidlane-expertwerk.js) ──
+   Het meekijkvenster wordt schermvullend als PLExpertWerk.actief() — gemeten
+   laptop of met de hand aangezet — en krijgt drie kolommen: auto en wat nu
+   afwijkt, wat er al gedaan is, procedures voor deze auto. De voorkennis in
+   de oude kolom (#remVoorkennis) staat dan al in de kaarten. */
+.rem-werk-knop { font-size:11px; padding:6px 10px; font-weight:600; max-width:46%; overflow:hidden; text-overflow:ellipsis; }
+#remExpertOv:not(.pl-expertwerk) #remWerkplek { display:none; }
+#remExpertOv.pl-expertwerk { align-items:stretch; justify-content:stretch; background:var(--bg); }
+#remExpertOv.pl-expertwerk .rem-card { max-width:none; width:100%; max-height:none; height:100%; border-radius:0; border:0; padding:16px 24px 28px; box-sizing:border-box; }
+#remExpertOv.pl-expertwerk .rem-h h3 { font-size:18px; }
+#remExpertOv.pl-expertwerk #remVoorkennis { display:none; }
+#remExpertOv.pl-expertwerk #remExpConn, #remExpertOv.pl-expertwerk #remExpLive { max-width:1400px; }
+#remExpertOv.pl-expertwerk .rem-grid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
+.ew { display:grid; grid-template-columns:minmax(260px, 1fr) minmax(300px, 1.2fr) minmax(340px, 1.4fr); gap:14px; align-items:start; margin:4px 0 16px; max-width:1400px; }
+.ew-kol { display:flex; flex-direction:column; gap:14px; min-width:0; }
+.ew-kaart { background:var(--sur2); border:1px solid var(--bd); border-radius:12px; padding:12px 14px; min-width:0; }
+.ew-kaart.ew-breed { grid-column:1 / -1; }
+.ew-kaart.ew-alarm { border-color:var(--rd); }
+.ew-kaart h4 { margin:0 0 8px; font-size:12px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; color:var(--tx3); }
+.ew-auto { font-size:20px; font-weight:800; margin-bottom:8px; }
+.ew-rij { display:flex; justify-content:space-between; gap:10px; font-size:13px; padding:3px 0; border-top:1px solid var(--bd); }
+.ew-rij span { color:var(--tx3); }
+.ew-rij b { text-align:right; overflow-wrap:anywhere; }
+.ew-let { margin-top:8px; font-size:12.5px; color:var(--or); }
+.ew-leeg { font-size:13px; color:var(--tx3); }
+.ew-sub { margin:10px 0 4px; font-size:11px; font-weight:800; color:var(--tx3); text-transform:uppercase; letter-spacing:.4px; }
+.ew-lijst { margin:0; padding-left:18px; font-size:13px; }
+.ew-lijst li { margin:3px 0; }
+.ew-lijst li small { display:block; color:var(--tx3); font-size:11.5px; }
+.ew-lijst li .rem-btn { padding:3px 9px; font-size:11px; margin-top:3px; }
+.ew-lijst li.ew-rood { color:var(--rd); }
+.ew-lijst li.ew-oranje { color:var(--or); }
+.ew-tag { display:inline-block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.3px; padding:1px 6px; border-radius:6px;
+  background:var(--sur); border:1px solid var(--bd); color:var(--tx2); margin-right:6px; vertical-align:1px; }
+.ew-tag.ew-kans { color:var(--rd); border-color:var(--rd); }
+.ew-tag.ew-bekend { color:var(--or); border-color:var(--or); }
+.ew-tag.ew-code { color:var(--bl); border-color:var(--bl); }
+.ew-proc { border-top:1px solid var(--bd); padding:8px 0; }
+.ew-proc summary { cursor:pointer; font-size:13.5px; font-weight:700; }
+.ew-waarom { font-size:12px; color:var(--tx3); margin:4px 0 0; }
+.ew-proc ol { margin:6px 0 0; padding-left:20px; font-size:13px; }
+.ew-proc li { margin:4px 0; }
+.ew-proc li small { display:block; color:var(--tx3); font-size:11.5px; }
+.ew-st-meten b { color:var(--bl); }
+@media (max-width:1100px) { .ew { grid-template-columns:1fr 1fr; } .ew-kol:last-child { grid-column:1 / -1; } }
+
+/* Snel verbinden (19-10-2026): bij een bekende adapter en auto alleen één
+   regel. _snelScherm() in pidlane-bt.js zet de class; elk punt waar de app
+   iets moet vragen haalt hem weg. */
+#snelStatus{display:none;padding:28px 20px;font-size:15px}
+#connOv.pl-snel #snelStatus{display:block}
+#connOv.pl-snel .modal-scroll > div:not(#snelStatus),
+#connOv.pl-snel #connActions{display:none!important}

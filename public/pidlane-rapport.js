@@ -316,11 +316,14 @@
         ['Aanpak van de app', 'eerst de toestand van de motor vaststellen, dan elke waarde alleen beoordelen waar hij iets zegt (warm, stationair, rijdend)']
       ] });
     }
+    // Alleen wat er wérkelijk uitgevoerd is (20-10-2026). De regels van de
+    // samenhang lopen mee op elke meting, maar zijn niet gevraagd: een tabel
+    // van acht keer "niet uitgevoerd" onder een totaalcheck zei alleen dat de
+    // auto niet in de toestand van een ánder onderzoek had gestaan.
     if (sh && !sh.geen) {
-      const rijen = (sh.gelezen || []).map(x => ({ cellen: [x.titel, 'uitgevoerd', 'op ' + duur(x.ms / 1000) + ' passende meting'], kleur: 'groen' }))
-        .concat((sh.niet || []).map(x => ({ cellen: [x.titel, 'niet uitgevoerd', x.reden], kleur: 'grijs' })));
+      const rijen = (sh.gelezen || []).map(x => ({ cellen: [x.titel, 'uitgevoerd', 'op ' + duur(x.ms / 1000) + ' passende meting'], kleur: 'groen' }));
       if (rijen.length) plan.push({ soort: 'tabel', titel: 'Testplan', kop: ['Test', 'Status', 'Toelichting'], breedtes: [0.32, 0.2, 0.48], statusKol: 1, rijen });
-    } else if (sh && sh.geen) plan.push({ soort: 'leeg', tekst: 'Testplan niet uit te voeren: ' + sh.geen + '.' });
+    }
     if (!plan.length) plan.push({ soort: 'leeg', tekst: 'Geen meting bij dit rapport, dus ook geen testplan.' });
     sectie('Plan van aanpak en testplan', plan);
 
@@ -376,7 +379,6 @@
 
     // ── 8 disclaimer en grenzen ──
     const grenzenMeting = [];
-    if (sh && !sh.geen) (sh.niet || []).forEach(x => grenzenMeting.push(x.titel + ': ' + x.reden));
     if (sam) { const leeg = sam.rijen.filter(r => r.oordeel === 'nodata').map(r => r.naam); if (leeg.length) grenzenMeting.push('Geen data van: ' + leeg.join(', ')); }
     if (m && m.beperkt) grenzenMeting.push('Meting: ' + m.beperkt);
     sectie('Disclaimer en grenzen van deze meting', [
@@ -573,7 +575,7 @@
     }
     inkt(RGB.wit); font('bold', 26); doc.text('PidLane', tx, 25);
     font('normal', 10); doc.text('Your car talks. We translate.', tx, 32);
-    font('bold', 12); doc.text('ANALYSERAPPORT', W - M, 22, { align: 'right' });
+    font('bold', 12); doc.text(schoon(o.label || 'ANALYSERAPPORT'), W - M, 22, { align: 'right' });
     font('normal', 9); doc.text(schoon(mod.datum), W - M, 29, { align: 'right' });
     y = 66;
     inkt(RGB.donker); font('bold', 20); doc.text(doc.splitTextToSize(schoon(mod.titel), CW), M, y); y += 10;

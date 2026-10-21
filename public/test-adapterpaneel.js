@@ -505,6 +505,20 @@ console.log('\n── de app-maten van de meetrit (#302, #333; 01-10-2026) ─�
   toets('zonder sessie: null', [P.sessieMaat('adapter-drift-pct', [], []), P.maat('adapter-sessie-min')], [null, null]);
 }
 
+// ── Wat een wijziging doet (20-10-2026) ──
+{
+  console.log('\nEffect van een wijziging onder Handmatig');
+  const E = bouw().PLAdapter._effect;
+  const w = { wat: 'tempo 50%', ts: 0, voor: { perSec: 30, venGemMs: 40, belasting: 94, foutPct: 2, onvolPct: 0 } };
+  const nu = { perSec: 20, venGemMs: 25, belasting: 60, foutPct: 0, onvolPct: 0 };
+  const vroeg = E(w, nu, 4000), laat = E(w, nu, 11000);
+  toets('binnen het venster van 10 s: nog meten, geen oordeel', [vroeg.wacht, vroeg.maten.every((m) => m.oordeel === '')], [6, true]);
+  toets('daarna: minder verzoeken slechter, kortere responstijd en minder fout beter, bus bezet zonder oordeel',
+    laat.maten.map((m) => m.sleutel + ':' + m.oordeel), ['perSec:slechter', 'venGemMs:beter', 'belasting:', 'foutPct:beter', 'onvolPct:']);
+  toets('het verschil staat erbij', laat.maten[0].verschil, -10);
+  toets('zonder wijziging: niets te vergelijken', E(null, nu, 0), null);
+}
+
 console.log('\n─────────────────────────────────────────');
 console.log(n + ' controles, ' + fout + ' fout');
 if (fout) { console.log('test-adapterpaneel: FOUT\n'); process.exit(1); }

@@ -307,6 +307,16 @@ ALTER TABLE kp_voertuig ADD COLUMN score TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN onderhoud_log TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN onderhoud_interval_km INTEGER;
 ALTER TABLE kp_voertuig ADD COLUMN onderhoud_interval_mnd INTEGER;
+-- Het winterprofiel (#556, 20-10-2026).
+ALTER TABLE kp_voertuig ADD COLUMN plaats TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN banden TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN banden_alpine TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN banden_dot TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN banden_mm REAL;
+ALTER TABLE kp_voertuig ADD COLUMN sproeier TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN sproeier_tot INTEGER;
+ALTER TABLE kp_voertuig ADD COLUMN sproeier_datum TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN winter_gezien TEXT;
 
 -- ══════════════════════════════════════════════════════════════════
 --  APPCONFIG (#327, 01-10-2026)

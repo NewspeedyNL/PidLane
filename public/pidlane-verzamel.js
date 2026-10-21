@@ -42,6 +42,33 @@
   // kwartier geleden.
   const MIN_MS = 10000;
   const SPARK_N = 40;
+  // Eigen buffer per meting: pidHist houdt 120 monsters per sensor, en dat is
+  // voor de snelheid op ~6 Hz maar 20 s. Een rijmeting van 90 s liep daardoor
+  // nooit vol en de teller liep terug (rit van 20-10-2026). 4000 monsters op
+  // de tik van 2 Hz is ruim een half uur.
+  const EIGEN_MAX = 4000;
+
+  /* Rijtijd bijhouden uit losse snelheidsmonsters {t, v}. Puur: acc =
+     {ms, t, v}. Zelfde drempels als de poort (MEET_RIJ_KMH, MEET_RIJ_GAT_MS). */
+  function rijTel(acc, t, v, kmh, gatMs) {
+    if (!getal(t) || !getal(v)) return acc;
+    if (acc.t !== null && t > acc.t && t - acc.t <= gatMs && v >= kmh && acc.v >= kmh) acc.ms += t - acc.t;
+    if (acc.t === null || t > acc.t) { acc.t = t; acc.v = v; }
+    return acc;
+  }
+  /* De reeksen van vóór de meting (pidHist) aangevuld met de eigen buffer.
+     Puur: wat in de eigen buffer zit wint, het oude telt tot de eerste eigen
+     tijd. */
+  function samenvoeg(oud, eigen) {
+    const uit = {}, o = oud || {}, e = eigen || {};
+    Object.keys(o).concat(Object.keys(e)).forEach(p => {
+      if (uit[p]) return;
+      const er = e[p] || [];
+      const vanaf = er.length ? er[0].t : Infinity;
+      uit[p] = (o[p] || []).filter(m => m && m.t < vanaf).concat(er);
+    });
+    return uit;
+  }
   const RANG = { afwijkend: 0, let: 1, meetfout: 2, twijfel: 3, ok: 4, nodata: 5 };
 
   const getal = v => typeof v === 'number' && isFinite(v);
@@ -53,11 +80,43 @@
     return String(a >= 100 ? Math.round(v) : a >= 10 ? Math.round(v * 10) / 10 : Math.round(v * 100) / 100);
   }
 
+  /* De toestand van de motor op elk moment, uit de reeksen zelf: toerental
+     (010C) en snelheid (010D). Puur. Geeft per tijdstip {start, stil, rijdend},
+     elk true/false, of null als de reeks die het moet zeggen er niet is —
+     onbekend telt nooit als "in die toestand", dus dan geldt de gewone grens. */
+  const TOESTAND_GAT_MS = 3000;          // verder weg dan dit zegt een monster niets over nu
+  const START_RPM = 400;                 // daaronder draait de startmotor of staat de motor stil
+  const START_VOOR_MS = 5000, START_NA_MS = 3000;
+  function toestandUit(hist) {
+    const h = hist || {};
+    const rij = p => (h[p] || []).filter(m => m && getal(m.t) && getal(m.v)).slice().sort((x, y) => x.t - y.t);
+    const rpm = rij('010C'), spd = rij('010D');
+    const dichtst = (r, t) => {
+      let best = null;
+      for (const m of r) if (Math.abs(m.t - t) <= TOESTAND_GAT_MS && (!best || Math.abs(m.t - t) < Math.abs(best.t - t))) best = m;
+      return best ? best.v : null;
+    };
+    const starts = [];
+    for (let i = 1; i < rpm.length; i++) if (rpm[i - 1].v < START_RPM && rpm[i].v >= START_RPM) starts.push(rpm[i].t);
+    return t => {
+      const n = rpm.length ? dichtst(rpm, t) : null, v = spd.length ? dichtst(spd, t) : null;
+      return {
+        start: rpm.length ? (starts.some(s => t >= s - START_VOOR_MS && t <= s + START_NA_MS) || (n !== null && n > 0 && n < START_RPM)) : null,
+        stil: v === null ? null : v <= 2,
+        rijdend: v === null ? null : v > 5
+      };
+    };
+  }
+
   /* Eén sensor over het meetvenster. Puur: alles wat hij weet zit in de
-     argumenten. `kwal(pid, waarde)` is assessPidQuality in de app. */
-  function beoordeel(pid, reeks, def, letOp, kwal) {
+     argumenten. `kwal(pid, waarde)` is assessPidQuality in de app.
+     `regel` is PID_TOESTAND[pid] (pidlane-data.js), `toestand` wat
+     toestandUit() teruggeeft: monsters in regel.toestand gaan langs
+     regel.grenzen in plaats van de vaste grens en PID_LET_OP. */
+  function beoordeel(pid, reeks, def, letOp, kwal, regel, toestand) {
     const d = def || {};
-    const vals = (reeks || []).map(h => (h && typeof h === 'object') ? h.v : h).filter(getal);
+    const paren = (reeks || []).map(h => (h && typeof h === 'object') ? { t: h.t, v: h.v } : { t: null, v: h }).filter(m => getal(m.v));
+    const vals = paren.map(m => m.v);
     const r = { pid, naam: d.name || pid, eenheid: d.unit || '', n: vals.length,
                 min: null, max: null, gem: null, laatste: null, oordeel: 'nodata', reden: '', buiten: 0,
                 reeks: vals.slice(-SPARK_N) };
@@ -65,7 +124,6 @@
     r.min = Math.min.apply(null, vals); r.max = Math.max.apply(null, vals);
     r.gem = vals.reduce((a, b) => a + b, 0) / vals.length;
     r.laatste = vals[vals.length - 1];
-    const tel = f => vals.filter(f).length;
     const zet = (oordeel, reden, buiten) => { r.oordeel = oordeel; r.reden = reden; r.buiten = buiten || 0; return r; };
 
     // 1. Fysiek onmogelijk: geen afwijking maar een meetfout. Gaat vóór alles,
@@ -77,22 +135,62 @@
         if (q && q.status === 'onzin') return zet('meetfout', q.reden || 'fysiek onmogelijke waarde');
       }
     }
-    // 2. Alarmgrens uit de PID-definitie.
-    if (getal(d.dH) && r.max >= d.dH) return zet('afwijkend', 'hoogste waarde ' + fmt(r.max) + ' ' + r.eenheid + ' boven de alarmgrens ' + fmt(d.dH), tel(v => v >= d.dH));
-    if (getal(d.dL) && r.min <= d.dL) return zet('afwijkend', 'laagste waarde ' + fmt(r.min) + ' ' + r.eenheid + ' onder de alarmgrens ' + fmt(d.dL), tel(v => v <= d.dL));
-    // 3. Waarschuwingsgrens.
-    if (getal(d.wH) && r.max >= d.wH) return zet('let', 'hoogste waarde ' + fmt(r.max) + ' ' + r.eenheid + ' boven de waarschuwingsgrens ' + fmt(d.wH), tel(v => v >= d.wH));
-    if (getal(d.wL) && r.min <= d.wL) return zet('let', 'laagste waarde ' + fmt(r.min) + ' ' + r.eenheid + ' onder de waarschuwingsgrens ' + fmt(d.wL), tel(v => v <= d.wL));
-    // 4. Buiten het gebruikelijke bereik (PID_LET_OP, laag 1b).
-    const lo = letOp && letOp[pid];
-    if (lo && getal(lo.max) && r.max > lo.max) return zet('let', lo.waarom || 'boven het gebruikelijke bereik', tel(v => v > lo.max));
-    if (lo && getal(lo.min) && r.min < lo.min) return zet('let', lo.waarom || 'onder het gebruikelijke bereik', tel(v => v < lo.min));
+
+    // De grenzen, over een deel van de monsters. Geeft {oordeel, reden, buiten} of null.
+    const aandeel = regel && getal(regel.aandeel) ? regel.aandeel : 0;
+    const grenzen = (vs, g, lo) => {
+      if (!vs.length) return null;
+      const mn = Math.min.apply(null, vs), mx = Math.max.apply(null, vs);
+      const tel = f => vs.filter(f).length;
+      const uit = (oordeel, reden, buiten) => ({ oordeel, reden, buiten });
+      // Eén monster over een grens in een volle reeks is een uitschieter, geen
+      // toestand: een korte trim van 10,2 % bij gas geven stond op 20-10 als
+      // "let op", een startdip van één monster als "afwijkend". Sinds 21-10
+      // geldt dat ook voor de alarmgrens: één monster daarover is let op.
+      const blijft = b => b >= 2 || vs.length < 10;
+      // Een sensor die van nature heen en weer gaat (de kortetermijntrim)
+      // zegt pas iets als hij er een deel van de tijd buiten blijft.
+      const blijftW = b => blijft(b) && (!aandeel || vs.length < 10 || b >= aandeel * vs.length);
+      // 2. Alarmgrens uit de PID-definitie.
+      if (getal(g.dH) && mx >= g.dH) { const b = tel(v => v >= g.dH);
+        return blijft(b) ? uit('afwijkend', 'hoogste waarde ' + fmt(mx) + ' ' + r.eenheid + ' boven de alarmgrens ' + fmt(g.dH), b)
+                         : uit('let', 'één meting van ' + fmt(mx) + ' ' + r.eenheid + ' boven de alarmgrens ' + fmt(g.dH) + ' — een uitschieter, geen toestand', b); }
+      if (getal(g.dL) && mn <= g.dL) { const b = tel(v => v <= g.dL);
+        return blijft(b) ? uit('afwijkend', 'laagste waarde ' + fmt(mn) + ' ' + r.eenheid + ' onder de alarmgrens ' + fmt(g.dL), b)
+                         : uit('let', 'één meting van ' + fmt(mn) + ' ' + r.eenheid + ' onder de alarmgrens ' + fmt(g.dL) + ' — een uitschieter, geen toestand', b); }
+      // 3. Waarschuwingsgrens.
+      if (getal(g.wH) && mx >= g.wH && blijftW(tel(v => v >= g.wH))) return uit('let', 'hoogste waarde ' + fmt(mx) + ' ' + r.eenheid + ' boven de waarschuwingsgrens ' + fmt(g.wH), tel(v => v >= g.wH));
+      if (getal(g.wL) && mn <= g.wL && blijftW(tel(v => v <= g.wL))) return uit('let', 'laagste waarde ' + fmt(mn) + ' ' + r.eenheid + ' onder de waarschuwingsgrens ' + fmt(g.wL), tel(v => v <= g.wL));
+      // 4. Buiten het gebruikelijke bereik (PID_LET_OP, laag 1b).
+      if (lo && getal(lo.max) && mx > lo.max && blijftW(tel(v => v > lo.max))) return uit('let', lo.waarom || 'boven het gebruikelijke bereik', tel(v => v > lo.max));
+      if (lo && getal(lo.min) && mn < lo.min && blijftW(tel(v => v < lo.min))) return uit('let', lo.waarom || 'onder het gebruikelijke bereik', tel(v => v < lo.min));
+      return null;
+    };
+
+    // Toestand (PID_TOESTAND): monsters in die toestand gaan langs hun eigen
+    // grenzen. Zonder tijd of zonder toestandsbron gaat alles langs de gewone.
+    let inT = [], gewoon = vals;
+    if (regel && regel.toestand && toestand) {
+      inT = []; gewoon = [];
+      paren.forEach(m => { let z = null;
+        try { z = getal(m.t) ? toestand(m.t) : null; } catch (e) { console.warn('PLVerzamel: toestand onleesbaar voor ' + pid, e); }
+        (z && z[regel.toestand] === true ? inT : gewoon).push(m.v); });
+    }
+    const a = grenzen(gewoon, d, letOp && letOp[pid]);
+    let b = grenzen(inT, regel && regel.grenzen || {}, null);
+    if (b) b.reden += ' (' + (regel.naam || regel.toestand) + ')';
+    const erger = (!a ? b : !b ? a : (RANG[b.oordeel] < RANG[a.oordeel] ? b : a));
+    if (erger) return zet(erger.oordeel, erger.reden, erger.buiten);
+
     // 5. Twijfel over de meting zelf.
     if (kwal) {
       let q = null;
       try { q = kwal(pid, r.laatste); } catch (e) { console.warn('PLVerzamel: kwaliteitsoordeel faalde voor ' + pid, e); }
       if (q && q.status === 'twijfel') return zet('twijfel', q.reden || 'meting twijfelachtig');
     }
+    // Wat de vaste grens had gevlagd maar in deze toestand normaal is, zegt de
+    // reden erbij: de AI ziet de min en max, en hoort dan waarom die geen vlag is.
+    if (inT.length && grenzen(inT, d, letOp && letOp[pid])) return zet('ok', inT.length + ' metingen ' + (regel.naam || regel.toestand) + ' langs hun eigen grens: ' + (regel.waarom || ''));
     return zet('ok', '');
   }
 
@@ -100,7 +198,9 @@
      hij de app (pidHist, getPidDef, PID_LET_OP, assessPidQuality). */
   function samenvatting(pids, bron) {
     const b = bron || appBron();
-    const rijen = (pids || []).map(pid => beoordeel(pid, (b.hist || {})[pid], b.def ? b.def(pid) : null, b.letOp, b.kwal));
+    const regels = b.toestandRegels || {};
+    const tst = toestandUit(b.hist);
+    const rijen = (pids || []).map(pid => beoordeel(pid, (b.hist || {})[pid], b.def ? b.def(pid) : null, b.letOp, b.kwal, regels[pid], tst));
     rijen.sort((x, y) => (RANG[x.oordeel] - RANG[y.oordeel]) || String(x.naam).localeCompare(String(y.naam)));
     const tel = { afwijkend: 0, let: 0, meetfout: 0, twijfel: 0, ok: 0, nodata: 0 };
     rijen.forEach(r => { tel[r.oordeel]++; });
@@ -112,6 +212,7 @@
       hist: (typeof pidHist !== 'undefined' && pidHist) || {},
       def: pid => (typeof getPidDef === 'function' ? getPidDef(pid) : null),
       letOp: window.PID_LET_OP || {},
+      toestandRegels: window.PID_TOESTAND || {},
       kwal: (typeof assessPidQuality === 'function') ? assessPidQuality : null
     };
   }
@@ -137,7 +238,7 @@
     s += groep('BINNEN HET GEBRUIKELIJKE BEREIK', r => r.oordeel === 'ok');
     const leeg = sam.rijen.filter(r => r.oordeel === 'nodata');
     if (leeg.length) s += '\nGEEN DATA ONTVANGEN: ' + leeg.map(r => r.naam).join(', ') + '. Doe geen uitspraken over wat deze sensoren afdekken.';
-    s += '\nREGEL: toets elke opvallende waarde tegen de toestand van de motor (koud/warm, stationair/rijdend, motor aan/uit) voordat je hem een bevinding noemt; een vlag op een vaste grens kan in deze toestand normaal zijn. Een waarde die alleen even buiten de grens kwam (weinig metingen buiten de grens) weegt minder dan een die er bleef.';
+    s += '\nREGEL: toets elke opvallende waarde tegen de toestand van de motor (koud/warm, stationair/rijdend, motor aan/uit) voordat je hem een bevinding noemt; een vlag op een vaste grens kan in deze toestand normaal zijn. Een waarde die alleen even buiten de grens kwam (weinig metingen buiten de grens) weegt minder dan een die er bleef. Een waarde die in deze toestand vanzelf constant is — gasklep en snelheid bij stilstand, de langetermijntrim (een geleerde waarde), statuscodes en bitmaps — is geen vastgelopen sensor en geen meetartefact.';
     return s;
   }
 
@@ -286,7 +387,8 @@
 
   /* Opent het scherm en lost op met {door, ai, sam, sec, rijSec}.
      opts: {niveau, profiel, watVoor, klacht (voor het rapport), ai:false (geen AI-knop), aiTekst,
-            naRit (functie die na een rijtest opnieuw begint),
+            naRit (functie die na een rijtest opnieuw begint), rijtest:false (geen rijtest-knop),
+            maxMs (hoe lang hoogstens gemeten wordt),
             bron: {naam, hist, pids?, sec, rijSec} — een meting die er al is
             (een datalog, de ritfases): dan meteen de uitslag, zonder poort} */
   function meet(opts) {
@@ -330,19 +432,41 @@
       ov.style.display = 'flex';
 
       let verstreken = 0, laatsteTik = Date.now(), minMs = vers ? 0 : MIN_MS;
-      let maxMs = eis.sec * 1000 + KERN_MAX_WACHT_MS;
+      // opts.maxMs: een rijmeting wacht langer, de klant moet nog instappen.
+      let maxMs = getal(o.maxMs) ? o.maxMs : eis.sec * 1000 + KERN_MAX_WACHT_MS;
+      // opts.rijtest:false — geen "Rijtest starten" (de ritanalyse met fases):
+      // de meting zelf loopt door terwijl de klant rijdt (totaalcheck, 20-10).
+      const rijtestMag = o.rijtest !== false;
       let staat = 'meten', tik = null, klaar = false, laatste = null, getekend = '', uitslagSam = null;
 
+      // De eigen buffer (zie EIGEN_MAX) en de rijtijd van deze meting.
+      const eigen = {}, gezien = {};
+      const rij = { ms: 0, t: null, v: null };
+      const kmh = (typeof MEET_RIJ_KMH !== 'undefined') ? MEET_RIJ_KMH : null;
+      const gatMs = (typeof MEET_RIJ_GAT_MS !== 'undefined') ? MEET_RIJ_GAT_MS : null;
+      const verzamel = () => {
+        const upd = (typeof _pidLastUpd !== 'undefined' && _pidLastUpd) || {};
+        const vals = (typeof pidVals !== 'undefined' && pidVals) || {};
+        sensorPids().concat(['010D']).forEach(pid => {
+          const t = upd[pid], v = vals[pid];
+          if (!getal(t) || !getal(v) || gezien[pid] === t) return;
+          gezien[pid] = t;
+          const r = eigen[pid] || (eigen[pid] = []);
+          if (!r.length || r[r.length - 1].t !== t) { r.push({ t, v }); if (r.length > EIGEN_MAX) r.shift(); }
+          if (pid === '010D' && kmh !== null && gatMs !== null) rijTel(rij, t, v, kmh, gatMs);
+        });
+      };
+      const histNu = () => bron ? (bron.hist || {}) : samenvoeg(appBron().hist, eigen);
       const meting = () => {
-        const r = plMeetTekort(niveau);
+        const r = plMeetTekort(niveau, { sec: verstreken / 1000, rijSec: rij.t !== null ? rij.ms / 1000 : null });
         const k = prof ? plKernStatus(prof) : null;
         return { r, k };
       };
       const quotaVan = k => quotaFn(k, quota);
       const verbonden = () => (typeof connected !== 'undefined' && connected) || (typeof demoMode !== 'undefined' && demoMode);
-      const samNu = () => bron ? vanBron(bron) : samenvatting(sensorPids());
+      const samNu = () => bron ? vanBron(bron) : samenvatting(sensorPids(), Object.assign(appBron(), { hist: histNu() }));
       const histVoorRapport = (sam) => {
-        const h = bron ? (bron.hist || {}) : appBron().hist, uit = {};
+        const h = histNu(), uit = {};
         sam.rijen.map(r => r.pid).concat(PLRapport.TOESTAND_PIDS)
           .forEach(p => { if (h[p] && h[p].length) uit[p] = h[p].slice(); });
         return uit;
@@ -360,7 +484,8 @@
         let sec, rijSec;
         if (bron) { sec = bron.sec; rijSec = bron.rijSec; }
         else { const m = laatste || meting(); sec = m.r.st.sec; rijSec = m.r.st.rijSec; }
-        const res = { door: true, ai: !!ai, sam, sec, rijSec, bron: bron ? bron.naam : null, beperkt: window._meetBeperkt || '' };
+        const res = { door: true, ai: !!ai, sam, sec, rijSec, bron: bron ? bron.naam : null, beperkt: window._meetBeperkt || '',
+                      profiel: bron ? null : prof };
         // Het analyserapport (PLRapport) bouwt zijn tabellen en grafieken uit
         // deze meting: de reeksen zelf, en waarvoor en waarom er gemeten werd.
         window._plVerzameld = { sam, sec, rijSec, beperkt: res.beperkt, bron: res.bron, ts: Date.now(),
@@ -387,13 +512,14 @@
           (m.k ? ': <b>' + m.k.gereed.length + ' van ' + m.k.haalbaar.length + '</b> zijn klaar' : '') +
           (over ? ' — nog zo’n ' + over + ' s.' : '.') +
           (sam.opvallend ? ' <b class="vz-opval">' + sam.opvallend + ' waarde' + (sam.opvallend === 1 ? ' valt' : 'n vallen') + ' nu al op.</b>' : '') +
-          (m.r.rijTekort ? '<br>Voor een ' + esc(eis.naam) + ' is rijden nodig; stilstaand loopt dat niet in.' : '');
+          (!m.r.rijTekort ? '' : rijtestMag ? '<br>Voor een ' + esc(eis.naam) + ' is rijden nodig; stilstaand loopt dat niet in.'
+            : '<br>Rij gewoon weg: <b>' + Math.round(st.rijSec || 0) + ' van ' + eis.rij + ' s</b> gereden. Geen fases, geen route — ik stop vanzelf.');
         // Tijdens het meten op naam: een lijst die elke halve seconde herschikt
         // is niet te lezen. De kleur zegt al wat er opvalt.
         document.getElementById('plVzLijst').innerHTML = sam.rijen.slice()
           .sort((x, y) => String(x.naam).localeCompare(String(y.naam)))
           .map(r => rijHtml(r, quotaVan(m.k), false)).join('');
-        const rit = m.r.rijTekort && typeof openRitAnalyse === 'function';
+        const rit = rijtestMag && m.r.rijTekort && typeof openRitAnalyse === 'function';
         knoppen((rit ? '<button class="mg-pri" data-a="rit">🚗 Rijtest starten</button>' : '') +
                 '<button class="mg-sec" data-a="nu">Nu bekijken met wat er is</button>' +
                 '<button class="mg-ter" data-a="annuleer">Annuleren</button>');
@@ -426,7 +552,7 @@
           sectie('Meting twijfelachtig', r => r.oordeel === 'meetfout' || r.oordeel === 'twijfel', true) +
           sectie('Binnen het gebruikelijke bereik', r => r.oordeel === 'ok', false) +
           sectie('Geen data', r => r.oordeel === 'nodata', false);
-        const rit = rijTekort && typeof openRitAnalyse === 'function';
+        const rit = rijtestMag && rijTekort && typeof openRitAnalyse === 'function';
         // Langer meten kan alleen live. De rit van zojuist mag de klant
         // vervangen door een verse meting; een datalog of ritrapport niet.
         const verder = !bron ? '<button class="mg-sec" data-a="langer">⏳ Langer meten</button>'
@@ -459,7 +585,7 @@
           if (m.k && m.k.stil && m.k.stil.length) t.push('geen data van ' + m.k.stil.map(i => i.naam).join(', '));
           window._meetBeperkt = t.length ? t.join('; ') : 'meting vroegtijdig gestopt';
         }
-        uitslagSam = metSamenhang(samNu(), appBron().hist);
+        uitslagSam = metSamenhang(samNu(), histNu());
         tekenUitslag(m.r.st, m.k, uitslagSam, m.r.rijTekort);
         noteer(uitslagSam, { watVoor: o.watVoor, reden, ms: verstreken, hergebruik: vers && verstreken < MIN_MS, rijSec: m.r.st.rijSec });
       };
@@ -511,6 +637,7 @@
         if (typeof document.visibilityState === 'undefined' || document.visibilityState !== 'hidden') verstreken += nu - laatsteTik;
         laatsteTik = nu;
         if (staat !== 'meten') return;
+        if (!bron) verzamel();
         laatste = meting();
         const f = fase({ verbonden: verbonden(), ok: laatste.r.ok, kernCompleet: laatste.k ? laatste.k.compleet : null,
                          verstreken, minMs, maxMs });
@@ -548,6 +675,26 @@
     return sam;
   }
 
+  /* WAT DE MEETFASE AAN DE AI-HAAK DOORGEEFT (20-10-2026). De vijfde
+     parameter van apiFetch() — de aanlevering, #188 — werd op elke plek met
+     de hand opgeschreven, en het profiel daarin met de hand overgetikt van de
+     regel waarin gemeten werd. Dat liep uit de pas: de oorzaakanalyse mat de
+     selectie (`profiel:false`) en beloofde de AI een dekking over het
+     emissieprofiel. Hier komt het profiel uit de meting zelf; alleen een
+     meting uit een gegeven bron (datalog, rit) heeft er geen, en die mag het
+     noemen. `zichtbaar` is wat promptBlok() de AI liet zien: daarover gaat
+     het kwaliteitsoordeel van de aanlevering, zodat geen aanroeper er een
+     eigen DATAKWALITEIT-blok naast hoeft te plakken. */
+  function aanlevering(uit, vraag, profiel) {
+    const a = { vraag: String(vraag || '').trim() || null };
+    const p = (uit && uit.profiel) || (uit && uit.bron ? profiel : null) || null;
+    if (p) a.profiel = p;
+    const rijen = (uit && uit.sam && Array.isArray(uit.sam.rijen)) ? uit.sam.rijen : [];
+    const zichtbaar = rijen.map(r => r && r.pid).filter(Boolean);
+    if (zichtbaar.length) a.zichtbaar = zichtbaar;
+    return a;
+  }
+
   /* De samenvatting van een gegeven bron ({hist, pids?}), zoals het scherm
      hem toont. Voor een rapport dat de bron zelf heeft (het ritrapport). */
   function vanBron(b) {
@@ -571,6 +718,6 @@
     return h;
   }
 
-  window.PLVerzamel = { MIN_MS, RIT_GELDIG_MS, beoordeel, samenvatting, promptBlok, fase, meet, naRit, maat, histUit, vanBron, rijSecUit, metSamenhang,
+  window.PLVerzamel = { MIN_MS, RIT_GELDIG_MS, EIGEN_MAX, rijTel, samenvoeg, toestandUit, beoordeel, samenvatting, promptBlok, aanlevering, fase, meet, naRit, maat, histUit, vanBron, rijSecUit, metSamenhang,
     open: function () { return !!lopend; } };
 })();

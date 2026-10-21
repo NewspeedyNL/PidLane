@@ -1,11 +1,12 @@
 // ══════════════════════════════════════════════════════════════════
 //  PLPipPlugin.java — de brug tussen de app en PLPip (#228)
 // ──────────────────────────────────────────────────────────────────
-//  Drie methoden, en met opzet niet meer:
+//  Vier methoden, en met opzet niet meer:
 //
 //    status()      kan dit toestel PiP, staat de vlag aan, zitten we er nu in
 //    zetGewenst()  de vlag die pidlane-pip.js uitrekent
 //    nu()          meteen naar PiP — voor de begeleide run en het beheerscherm
+//    sluit()       het venster weg na "Stop meten" (21-10-2026)
 //
 //  Alles wat een oordeel is — mag PiP aan, is er een meting die stil kan
 //  vallen, staat de functie uit in de Config — gebeurt in pidlane-pip.js.
@@ -70,6 +71,12 @@ public class PLPipPlugin extends Plugin {
         call.resolve(r);
     }
 
+    @PluginMethod
+    public void sluit(PluginCall call) {
+        PLPip.sluit(getActivity());
+        call.resolve();
+    }
+
     /* Van PLPip naar JavaScript. De naam `pipModus` staat ook in
        pidlane-pip.js; test-nativeschil.js legt die twee naast elkaar, want een
        gebeurtenis die onder een andere naam vertrekt dan waarop geluisterd
@@ -78,5 +85,11 @@ public class PLPipPlugin extends Plugin {
         JSObject ev = new JSObject();
         ev.put("in", in);
         notifyListeners("pipModus", ev);
+    }
+
+    /* De stopknop in het venster. pidlane-pip.js luistert op `pipStop`,
+       verbreekt de meting en vraagt daarna sluit(). */
+    void meldStop() {
+        notifyListeners("pipStop", new JSObject());
     }
 }

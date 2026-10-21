@@ -115,10 +115,28 @@ console.log('\n7. Kopen en verkopen: eerst wat we weten, dan invullen, dan meten
 }
 
 console.log('\n8. Elke tak begint met wat we al weten');
-['storing_wanneer', 'conditie_diep', 'verbruik_wat', 'voorb_wat'].forEach(function (k) {
+['storing_wat', 'conditie_diep', 'verbruik_wat', 'voorb_wat'].forEach(function (k) {
   eis(k + ' toont de kaart', !!BOOM[k].weten);
 });
 eis('onderweg niet: tijdens het rijden geen extra scherm', !BOOM.onderweg_wat.weten && !BOOM.verbruik_nu.weten);
+
+console.log('\n9. Er is iets mis: eerst wat, dan wanneer (20-10-2026)');
+{
+  const K = W._kern;
+  eis('de tegel landt op "Wat merk je?", een eigen scherm met tegels', TAK.storing.nu === 'storing_wat' && BOOM.storing_wat.type === 'klacht');
+  eis('daarna wanneer, en dan het plan', BOOM.storing_wat.next === 'storing_wanneer' && BOOM.storing_wanneer.type === 'wanneer' && BOOM.storing_wanneer.next === null);
+  eis('geen verplicht tekstveld en geen aparte lampjesvraag meer', !BOOM.storing_klacht && !BOOM.storing_lampje);
+  eis('foutcodes uit vrije tekst: hoofdletters, dubbel één keer', JSON.stringify(K.codesUit('p0171 en P0174, nog eens p0171')) === '["P0171","P0174"]', JSON.stringify(K.codesUit('p0171 en P0174, nog eens p0171')));
+  eis('… ook C, B en U, maar geen onzin', JSON.stringify(K.codesUit('U0100 C1234 b0001 P4171 PX123 P01711')) === '["U0100","C1234","B0001"]', JSON.stringify(K.codesUit('U0100 C1234 b0001 P4171 PX123 P01711')));
+  eis('niets gezegd: stilstaand meten', K.metingUit([]) === 'stil' && K.metingUit(['altijd', 'stationair']) === 'stil');
+  eis('optrekken of constant: een rit', K.metingUit(['belast']) === 'rit10' && K.metingUit(['constant', 'warm']) === 'rit10');
+  eis('koud, vocht of onvoorspelbaar: meelopen, ook als er optrekken bij staat', K.metingUit(['koud', 'belast']) === 'monitor' && K.metingUit(['soms']) === 'monitor' && K.metingUit(['vocht']) === 'monitor');
+  eis('het lampje: aan, af en toe, of niet gezegd', K.lampjeUit(['lampje'], []) === 'aan' && K.lampjeUit(['lampje', 'onrustig'], ['soms']) === 'soms' && K.lampjeUit(['onrustig'], ['soms']) === '?');
+  eis('het plan van een algemene check heeft de totaalcheck', W._plan({ doel: 'storing', controle: true, meting: 'stil' }).indexOf('conditie') > -1);
+  // De extra momenten gaan niet mee naar het onderzoek: dat kent ze niet.
+  const oz = fs.readFileSync(__dirname + '/pidlane-onderzoek.js', 'utf8');
+  eis('altijd en soms bestaan niet in PLOnderzoek.WANNEER', Object.keys(K.WANNEER_EXTRA).every(function (k) { return !new RegExp('\\n    ' + k + ':\\s+\\{ naam').test(oz); }));
+}
 
 console.log('\n' + (fout ? fout + ' van ' + n + ' FAAL' : 'Alle ' + n + ' goed'));
 process.exit(fout ? 1 : 0);

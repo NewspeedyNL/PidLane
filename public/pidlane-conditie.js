@@ -50,13 +50,16 @@
     koudHoogRpm: 3000,    // toeren met een koude motor (< koudGrens) belasten de olie
     koudGrens: 60,
     lastMin: 50,          // % berekende belasting (0104) voor "bij belasting"
-    minTik: { tw: 15, sr: 15, vl: 5, rd: 5, lv: 10 },   // tikken van 2 s per kenmerk
+    minTik: { tw: 15, sr: 15, vl: 5, rd: 5, lv: 10, kz: 30 },   // kz: een minuut snelweg
+    snelweg: 80,          // km/u: vanaf hier koelt de rijwind het hardst (kz)   // tikken van 2 s per kenmerk
     lijnMax: 40,          // punten in de scorelijn
     dalingDagen: 21,
     dalingPunten: 8,
     gewicht: { onderhoud: 35, motor: 25, brandstof: 25, accu: 15 },
     logMax: 60,
-    vervangenDagen: 90     // zo lang telt een vervanging als "onlangs" (#426)
+    vervangenDagen: 90,    // zo lang telt een vervanging als "onlangs" (#426)
+    // Tractie (#560, methode 3): afgeleid uit mode 01, zie tractieTik().
+    tc: { kmh: 8, pedaal: 15, gasDaal: 8, zelfdeGang: 0.06, spin: 0.15, minS: 60 }
   };
 
   // ── Het onderhoudslogboek ─────────────────────────────────────────
@@ -137,7 +140,7 @@
   // ════════════════════════════════════════════════════════════════
   //  PER RIT: verzamelen (tik) en samenvatten
   // ════════════════════════════════════════════════════════════════
-  /* m: { kmh, rpm, koelwater, accu, stft, ltft, vervroeg, last, raildruk }
+  /* m: { kmh, rpm, koelwater, accu, stft, ltft, vervroeg, last, raildruk, buiten, inlaat }
      — elk mag ontbreken. dt in seconden. Leest alleen wat er al gemeten
      wordt: geen busverkeer. */
   function tik(a, m, dt) {
@@ -166,7 +169,57 @@
     var acc = getal(m.accu);
     if (acc !== null && rpm !== null && rpm > 1200) { a.lvS = (a.lvS || 0) + acc; a.lvN = (a.lvN || 0) + 1; }
     if (k !== null && k < CFG.koudGrens && rpm !== null && rpm > CFG.koudHoogRpm) a.kh = (a.kh || 0) + dt;
+    // Voor de winter (#557/#558, 20-10-2026). De buitentemperatuur bij het
+    // begin: 0146 als de auto hem geeft, anders de inlaatlucht (010F) in de
+    // eerste minuut van een koude start — dan is die nog niet opgewarmd.
+    var bt = getal(m.buiten), il = getal(m.inlaat);
+    if (a.bt === undefined && bt !== null) a.bt = bt;
+    if (a.bt === undefined && a.bti === undefined && il !== null && a.k0 !== undefined && a.k0 < CFG.koudStart && a.t <= 60) a.bti = il;
+    // Hoe lang de motor op temperatuur was, en of het koelwater daarna op de
+    // snelweg weer zakte: het teken van een thermostaat die open blijft hangen.
+    if (k !== null && k >= CFG.opgewarmd) { a.wt = (a.wt || 0) + dt; a.wg = 1; }
+    if (a.wg && k !== null && kmh !== null && kmh >= CFG.snelweg) {
+      a.kzN = (a.kzN || 0) + 1;
+      a.kz = a.kz === undefined ? k : Math.min(a.kz, k);
+    }
+    tractieTik(a, m, dt, kmh, rpm);
     return a;
+  }
+
+  /* ── Tractie-ingrijpen, afgeleid (#560, methode 3, 20-10-2026) ────
+     Generieke OBD praat met de motor, niet met de ESP-module: "ESP grijpt
+     in" bestaat niet als PID. Wat wel te zien is, is het koppelpad:
+       • koppelreductie — het gaspedaal (0149) blijft of stijgt, de gasklep
+         (0111) zakt duidelijk, in dezelfde versnelling;
+       • wielspin — de verhouding toerental/snelheid springt omhoog bij een
+         vast gaspedaal en een snelheid die niet zakt, en valt daarna terug.
+     DEZELFDE VERSNELLING IS DE PROEF. Een automaat neemt bij elke schakeling
+     zelf gas terug, en een terugschakeling verhoogt de verhouding blijvend.
+     Daarom beslist pas de vólgende tik: koppelreductie telt als de
+     verhouding toen nog dezelfde was, wielspin als hij weer terug is.
+     Alleen verse monsters tellen (m.pedaalT/m.gasklepT, de tijd van de
+     laatste update): een gaspedaal dat al seconden niet ververst is, zegt
+     niet dat de bestuurder het vasthield. Remingrepen zijn zo niet te zien
+     en op tikken van 2 s mis je korte pieken: dit zegt "mogelijk", nooit
+     "geen ingrijpen". */
+  function tractieTik(a, m, dt, kmh, rpm) {
+    var c = CFG.tc, ped = getal(m.pedaal), gk = getal(m.gasklep);
+    var vers = getal(m.pedaalT) !== null && getal(m.gasklepT) !== null &&
+      m.pedaalT !== a.tcPt && m.gasklepT !== a.tcGt;
+    if (kmh === null || rpm === null || kmh <= c.kmh || ped === null || gk === null || !vers) {
+      if (kmh === null || kmh <= c.kmh) { delete a.tcR; delete a.tcK; delete a.tcS; }
+      return;
+    }
+    a.tcD = (a.tcD || 0) + dt;
+    var r = rpm / kmh, zelfde = function (x, y) { return Math.abs(x - y) / y <= c.zelfdeGang; };
+    // De kandidaten van de vorige tik beslissen.
+    if (a.tcK !== undefined) { if (zelfde(r, a.tcK)) a.tcn = (a.tcn || 0) + 1; delete a.tcK; }
+    if (a.tcS !== undefined) { if (zelfde(r, a.tcS)) a.tcn = (a.tcn || 0) + 1; delete a.tcS; }
+    if (a.tcR !== undefined && ped >= c.pedaal) {
+      if (zelfde(r, a.tcR) && ped >= a.tcP - 1 && a.tcG - gk >= c.gasDaal) a.tcK = r;
+      else if (r > a.tcR * (1 + c.spin) && Math.abs(ped - a.tcP) <= 3 && kmh >= a.tcV) a.tcS = a.tcR;
+    }
+    a.tcR = r; a.tcP = ped; a.tcG = gk; a.tcV = kmh; a.tcPt = m.pedaalT; a.tcGt = m.gasklepT;
   }
 
   /* De kenmerken van één rit, klein genoeg voor rit.extra.cd. Alleen wat
@@ -183,6 +236,12 @@
     if (a.ow !== undefined) o.ow = Math.round(a.ow);
     if (a.kh) o.kh = Math.round(a.kh);
     if (getal(a.mf) !== null) o.mf = a.mf;
+    if (a.bt !== undefined) o.bt = rond(a.bt, 0);
+    else if (a.bti !== undefined) o.bt = rond(a.bti, 0);
+    if (a.wt) o.wt = Math.round(a.wt);
+    if ((a.kzN || 0) >= n.kz) o.kz = rond(a.kz, 0);
+    // Tractie: alleen als het lang genoeg te zien was. Niet gemeten is geen 0.
+    if ((a.tcD || 0) >= CFG.tc.minS) o.tc = a.tcn || 0;
     return Object.keys(o).length ? o : null;
   }
 

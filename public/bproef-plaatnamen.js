@@ -59,13 +59,18 @@ const METERS = ['0104', '0111', '0149', '0143', '010C', '0145', '014A'];
     await new Promise(r => setTimeout(r, 1200));
     /* Sinds #439 toont Slim het dashboard (PLDash) en staat de oude tellerplaat
        niet meer in beeld. De plaat en slimMeterLabels() staan nog in de bron
-       tot de opruim-PR; zolang toetst deze proef ze door PLDash even weg te
+       tot de opruim-PR; zolang toetst deze proef ze door PLDash weg te
        zetten, zodat renderGauges() de oude weg neemt. Gaat de plaat eruit,
-       dan gaat deze proef mee. */
+       dan gaat deze proef mee.
+       PLDash blijft weg tot het eind (18-10-2026). Tot dan kwam hij meteen
+       terug, en tekende de demo-auto in de 700 ms wachttijd de weergave
+       opnieuw, dan stond het dashboard er weer en was de plaat weg: "geen
+       naam op de tellerplaat", vaak op een trage CI-runner, lokaal zelden. */
     await app.ev(`(function(){ ${JSON.stringify(METERS)}.forEach(function(p){ activePIDs.add(p); });
-      setPidView('slim'); const d = window.PLDash; window.PLDash = null;
-      try { renderGauges(); } finally { window.PLDash = d; } return true; })()`);
-    await new Promise(r => setTimeout(r, 700));
+      setPidView('slim'); window.PLDash = null; renderGauges(); return true; })()`);
+    // Wachten tot de plaat er staat, niet een vaste tijd.
+    await app.ev(`new Promise(function(klaar){ const t0 = Date.now();
+      (function kijk(){ if (document.querySelector('.slim-meter .gn2') || Date.now() - t0 > 5000) klaar(true); else setTimeout(kijk, 100); })(); })`);
 
     const opzet = await app.ev(`(function(){
       const el = document.querySelector('.slim-meter .gn2');

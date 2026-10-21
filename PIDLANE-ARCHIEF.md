@@ -15,6 +15,343 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 21-10-2026 — Het oordeel van de app kende geen toestand
+
+**Wat er gebeurde.** Bij de conditiecheck schreef de app een oordeel per
+systeem, en het AI-rapport daarna noemde dat oordeel "te kort door de bocht".
+De AI had gelijk: `beoordeel()` in `pidlane-verzamel.js` toetste elk monster
+tegen één vaste band, en de alarmgrens ging af op één monster. De AI krijgt
+wél de toestand van de motor mee (regel 6 en 7 van de systeemprompt).
+
+**Wat er veranderde.**
+- Eén monster over `dH`/`dL` is "let op" met "uitschieter", niet "afwijkend".
+  Dezelfde regel gold al sinds 20-10 voor de waarschuwingsgrens; hij geldt nu
+  voor alle drie de grenzen (ook PID_LET_OP).
+- `PID_TOESTAND` in `pidlane-data.js`: monsters in een toestand gaan langs
+  een eigen grens. De toestand komt uit 010C en 010D (`toestandUit()`); is
+  die er niet, dan geldt de vaste grens — een ontbrekende reeks maakt het
+  oordeel nooit milder.
+
+**Waarom deze vier, en waar de getallen vandaan komen.**
+- *Accu bij het starten (0142).* De startmotor trekt de spanning omlaag;
+  9,6 V is de gangbare ondergrens voor een gezonde accu tijdens het starten
+  (vuistregel uit de werkplaats, geen fabrieksnorm). Venster: 5 s vóór tot
+  3 s na de overgang van < 400 naar ≥ 400 rpm.
+  [youcanic](https://www.youcanic.com/glossary/cranking-test/)
+- *Motorbelasting (0104).* Berekende belasting is gedefinieerd als luchtstroom
+  gedeeld door de maximale luchtstroom bij vol gas: bij vol gas hoort 100 %,
+  ook op een turbo. `wH:90` gold dus juist bij gezond optrekken. Stationair
+  blijft de grens. [MOTOR, dec. 2015](https://www.motor.com/magazine-summary/driveability-corner-december-2015/)
+- *Inlaatlucht (010F).* Stilstaand warmt de lucht op onder de motorkap
+  (heat soak) en zakt bij wegrijden; dat is gewoon gedrag, geen fout.
+- *Kortetermijntrim (0106/0108).* Springt bij elke gasverandering; de ±10 %
+  geldt voor een constant toerental, de langetermijntrim is het signaal. Daarom
+  telt de waarschuwingsgrens pas als 25 % van de monsters erbuiten ligt. De
+  langetermijntrim (0107/0109) houdt de oude regel.
+  [Rick's Free Auto Repair](https://ricksfreeautorepairadvice.com/fuel-trim-what-the-numbers-mean/),
+  [MEMS FCR](https://memsfcr.co.uk/2020/07/10/understanding-fuel-trim-in-detail/)
+
+**Wat dit niet oplost.** Koud/warm zit er nog niet in (koelwater als
+toestand), en een gesloten of open regelkring (PID 0103) ook niet. Of de 25 %
+voor de kortetermijntrim goed ligt, zegt pas een rit: blok 5, "toestandgrens".
+
+---
+
+## 21-10-2026 — Minder AI-tokens: eerdere rapporten als kern, korte vragen naar Haiku
+
+Eerdere rapporten gingen als context mee met hun begin (sessie tot 1.800,
+voertuig 1.300 tekens per rapport). Dat begin was meestal voertuiggegevens en
+een sensortabel die de analyse al vers krijgt. `plRapportKern()` neemt nu
+conclusie en advies (via `PLRapport.leesAI`), hoogstens 600 tekens.
+
+Korte vragen zonder meetdata gaan naar `AI_LICHT` (Haiku 4.5, ruwweg een derde
+van Sonnet). Het tarief per credit (`tegoedTarief`) is gelijk voor elk model,
+dus dat voordeel komt niet bij de klant terecht zolang dat zo blijft. Prompt
+caching is bewust niet meegenomen: dan moet `tegoedKosten()` ook de
+cache-tokens afrekenen, en dat is een eigen PR.
+
+---
+
+## 20-10-2026 — STAT_RPM: de schommeling rond het verloop, niet het wegzakken (#567)
+
+Rit van 20-10 (Mazda CX-5): om 19:02:25, 14 s na een stop, "ruw stationair"
+met 238 rpm IQR en **26 %** richtingswisselingen. De poort tegen een
+wegzakkend fast-idle (28-08) keek alleen of de reeks van richting wisselde, met
+25 % als grens. Dat vangt een *zuivere* daling (0 %); een daling met ruis erop
+haalt 25 % gewoon — op een nagebouwde reeks 1100→710 rpm met ±15 rpm ruis zelfs
+56 %. De IQR mat daarna het wegzakken zelf.
+
+Eerst geprobeerd: een lineaire trend eraf. Een wegzakkend toerental is een
+kromme, dus de bocht bleef als schommeling over. Kwadratisch werkt (die reeks:
+154 → 24 rpm), maar één parse-hik trok de fit scheef en werd zelf een melding
+van 75 rpm — de toets "één losse uitschieter vuurt niet" werd rood. Daarom
+gaan eerst de punten buiten 3× de ruwe IQR eruit (Tukey "far out"); bij een
+daling of echte ruwloop is de ruwe IQR zo groot dat er niets afvalt.
+
+Echte ruwloop blijft ~200 rpm, de airco-vorm van 27-08 ~190 rpm. **Niet
+bevestigd op de echte reeks**: die zat niet in het logboek (geheugen-cap).
+**Bestaand gat, niet aangeraakt:** een trage pendel (twee golven in 5 s) haalt
+de richtingstoets niet (22 %), met of zonder deze wijziging.
+
+## 20-10-2026 — De analyses naast elkaar: meetfase en aanlevering gelijkgetrokken
+
+Alle AI-aanroepen vergeleken op vijf punten: gaat er een **meetfase**
+(`PLVerzamel.meet`) aan vooraf, krijgt de AI de **samenvatting over het
+venster** (`promptBlok`), draagt de aanlevering (#188) een **vraag**, klopt het
+**profiel** met de meting, en staat het **DATAKWALITEIT-blok** er één keer in.
+
+**De beste opzet was de AI-monteur (`runQuickAI`)**: meetfase met profiel,
+samenvatting, `callAI` met vraag en profiel, rapportblok. Maar ook die stuurde
+het kwaliteitsblok en de correlatielijst twee keer — in de prompt én via de
+aanlevering, die ze sinds 11-09 zelf toevoegt. Dat bleek de vorm van bijna
+alles:
+
+| analyse | meetfase | vraag | profiel = meting | dubbel blok |
+|---|---|---|---|---|
+| AI-monteur / AI-rapport | ja | ja | ja | **ja** (kwaliteit + correlatie) |
+| Brandstof | ja | ja | ja | **ja** |
+| Oorzaak uitwerken | ja | ja | **nee**: mat de selectie, beloofde `emissie` | **ja** |
+| Datalog | bron | ja | (bron) | **ja** |
+| Onderhoud / EV | ja | ja | ja | **ja** |
+| Lange rit | ja | ja | ja | nee (blok berekend, nooit gebruikt) |
+| Totaalcheck | twee delen | ja | ja | **ja** |
+| Totaalcheck-verdieping | focus | ja | **nee**: één systeem, dekking over heel `totaal` | nee |
+| Diepe storingscheck | ja | **nee** | — | nee |
+| Klimaat (airco/winter) | bron | **nee** | — | nee |
+| Opname (pidRec) | eigen buffer | **nee** | — | nee |
+| AI-Automonteur (vrije vraag) | nee | ja | — | **ja** |
+| Koop: prijs, lease, inkoop | — | **nee**, betaalde wel het meetblok | — | — |
+| Rapport herzien | — | **nee**, kreeg de meting van nú bij een rapport van toen | — | — |
+
+**Wat er veranderde.** `PLVerzamel.aanlevering(uit, vraag, profiel)` maakt de
+aanlevering uit het meetresultaat: het profiel komt uit de meting (alleen een
+meting uit een gegeven bron mag er zelf een noemen), en `zichtbaar` is de lijst
+sensoren die `promptBlok` liet zien. Het eigen blok op de aanroepplekken is
+weg.
+
+**Herzien, dezelfde dag (#565).** Eerst oordeelde `PLAanlevering` over dekking
+∪ zichtbaar. Dat was één dubbeling te weinig opgeruimd: `promptBlok` beoordeelt
+elke sensor die hij toont al zelf, over het hele venster (MEETKWALITEIT
+TWIJFELACHTIG), terwijl de aanlevering naar de live waarde van nú keek. Een
+onmogelijke piek midden in de rit en een nette waarde bij het stoppen gaven
+dan "meetfout" en "betrouwbaar" over dezelfde sensor. Nu is het dekking
+**min** zichtbaar: wat de samenvatting toont, is daar beoordeeld. Prijs, lease, inkoop en de herziening krijgen
+`{meet:false}`; de verdieping krijgt de PID's van zijn systeem als dekking.
+`test-verzamelroutes.js` stelt nu per route dezelfde vijf vragen; tegen de oude
+bron werden er 20 van de 71 rood.
+
+**Ronde 2 (#565).** De AI-Automonteur en de opname krijgen de samenvatting via
+`vanBron` (de Automonteur over `pidHist`, zonder verzamelscherm: tien seconden
+meten vóór elke vraag maakt een vraagvenster een formulier). Onderhoud, EV en
+lange rit zetten na de meetfase geen profiel meer aan — na een rit zette dat
+een selectie aan die de rit nooit had, en zei de dekking "geleverd" over
+sensoren die niet in de samenvatting stonden. Het ritrapport en de
+totaalcheck-verdieping geven `zichtbaar` mee.
+
+## 20-10-2026 — "Er is iets mis" opnieuw: eerst wat, dan wanneer; en tractie-ingrijpen (#560)
+
+**De intake.** Begon met "Wanneer merk je het?" (vijf vaste keuzes, één
+antwoord), dan een verplicht tekstveld, dan het lampje. Uit het gebruik: te
+beperkt, en het paste vaak niet. FIXD en BlueDriver beginnen bij de foutcode;
+een klacht zonder code hebben ze niet. Een monteur vraagt eerst wát je merkt en
+dan wanneer, en meer dan één antwoord is normaal. Nu: tegels uit
+`PLOnderzoek.KLACHTEN` (meer mag, plus "Vreemd geluid of trilling"), zelf
+beschrijven met live herkenning (`klachtUitTekst`), een foutcode die je al
+hebt, en "Ik merk niets bijzonders" als algemene check (de totaalcheck
+bovenaan het plan). Daarna de momenten van `PLOnderzoek.WANNEER` plus altijd
+en onvoorspelbaar; daaruit volgt de meting (`metingUit`). Het onderzoek krijgt
+alles mee, dus zijn intake staat al ingevuld.
+
+**Een opgegeven code is voorkennis, geen meting.** Dezelfde `CODEREGELS` als
+een uitgelezen code, maar met de helft van het gewicht en hoogstens
+`VOORAF_MAX` per verdenking: twee codes van de garage bevestigen niets, de
+auto beslist.
+
+**Het probleem onderin.** Een keuzescherm zonder knoppenbalk (`.wz-foot` leeg)
+had 6 px onderrand: de laatste keuze lag achter de Android-knoppen. Nu
+`calc(24px + --pl-sab)` als de balk leeg is.
+
+**Tractie (#560, methode 3).** Koppelreductie (pedaal blijft, gasklep zakt) en
+wielspin (toeren springen omhoog bij vast pedaal en vallen terug), per rit in
+`cd.tc`. De valkuil was schakelen: een automaat neemt bij elke schakeling zelf
+gas terug, en terugschakelen verhoogt de verhouding blijvend. Daarom beslist
+de vólgende tik (verhouding nog gelijk = zelfde versnelling). Ook een
+gaspedaal dat seconden niet ververst is, zegt niet dat iemand het vasthield:
+alleen verse monsters (`_pidLastUpd`). Op tikken van 2 s mis je korte pieken,
+en remingrepen zijn via mode 01 niet te zien: het advies zegt "mogelijk" en
+de bron zegt dat. Methode 1 (mode 22 in de ABS-module) en 2 (ATMA) staan nog
+open in #560.
+
+**Pompprijzen (#505).** `PRIJS` stond op 1,95 / 1,70 / 0,85; CBS gaf op
+13-07-2026 2,297 / 2,149 / ±0,95. Het MRB-model is niet nagekeken: dat vraagt
+de rekenhulp van de Belastingdienst.
+
+---
+
+## 20-10-2026 — Drie dingen uit het gebruik: verversen, Handmatig, thema's
+
+**Adapterpaneel onder Handmatig.** Het knoppenvak plakt sinds 02-10 onderaan
+(`position:sticky`, "alle knoppen onderin"). Onder Handmatig kwamen daar
+tempo, groep en de verbindingsknoppen (#394) bij, en werd het vak hoger dan
+het scherm: de getallen erboven waren niet meer te zien, precies wanneer je
+wilt weten wat je knop doet. Een eigen schuifbalk in het vak werkt niet: het
+paneel tekent elke 2 s opnieuw en zet hem terug. Nu plakt het vak alleen bij
+de automaat, en staat bovenaan de handmatige knoppen een strook met de bus
+van nú naast die van vlak vóór de laatste wijziging (`_merkWijziging`,
+`effect()`). Oordeel pas na het venster van `PLBus.stats()` (10 s); "bus
+bezet" krijgt geen oordeel, want hoger is daar niet beter of slechter.
+
+**Thema's in de gewone weergave.** Op 18-10 bewust alleen op het volle
+scherm ("uit volledig scherm is gewoon weer standaard"). Op 20-10 andersom
+gevraagd: ook in Visueel zelf. Standaard is daar de gewone meter, zodat wie
+niets kiest niets ziet veranderen.
+
+---
+
+## 20-10-2026 — Eerste rit met de nieuwe totaalcheck: vijf fouten uit één rapport
+
+Rapport "Rijdeel van de totaalcheck", CX-5, 13:29. Meting 6:11 min, "waarvan
+20 s rijdend" — terwijl er minuten gereden was.
+
+1. **Rijtijd liep niet vol en terug.** `plMeetRijSec()` telt uit
+   `pidHist['010D']`, en `updPID()` houdt daar 120 monsters van. De snelheid
+   komt op ~6 Hz binnen: 120 monsters is 20 s. Daarboven schuift het oudste
+   rijstuk eruit, en als er een stoplicht in zat liep de teller terug. Dat gat
+   bestond al sinds §16, maar viel niet op: wie rijden nodig had, ging via de
+   ritanalyse, die elke fase volledig bewaart. Nu houdt het verzamelscherm een
+   eigen buffer bij (`EIGEN_MAX`, op de tik van 2 Hz) en een eigen rijteller
+   (`rijTel`), en geeft die aan `plMeetTekort(niveau, extern)` — alleen
+   ophogen. Ook de uitslag en het rapport lezen die buffer: de accuspanning
+   had in het rijdeel 1 monster.
+2. **"Sensor staat exact vast".** De lijst van `dynamisch` in
+   `assessPidQuality` had 07 (langetermijntrim: een geleerde waarde) en 13
+   (een bitmap van welke O2-sensoren er zijn). Gasklep en snelheid staan bij
+   stilstand vanzelf stil. De AI las het als "sensorbevriezing door de
+   herverbinding" en schreef dat als waarschijnlijkste oorzaak.
+3. **Trim 10,2 % als "let op".** Eén monster over de waarschuwingsgrens van
+   120. Sindsdien telt een waarschuwing pas vanaf twee monsters (of een korte
+   reeks); de alarmgrens telt nog steeds op één.
+4. **"Rijden koud" bij 90 °C.** Koelwater kwam eens per ~6 s binnen, de
+   tijdlijn zoekt binnen `TOL_MS` (2,5 s): zonder monster las de motor als
+   koud. Nu de dichtstbijzijnde binnen `TRAAG_MS` (60 s).
+5. **Een testplan van acht keer "niet uitgevoerd".** De regels van de
+   samenhang lopen op elke meting mee; ze zijn alleen gevraagd in het volledig
+   onderzoek. Het rapport noemt nu alleen wat uitgevoerd is, ook bij §8. En
+   het rapport ging over het laatst gemeten deel; nu over beide
+   (`PLTotaal.rapportMeting`).
+
+**Niet aangepakt.** De AI noemde 540–560 tpm warm stationair "licht laag"
+tegen 600–900. Dat is een referentie van de AI, niet van de app; of het bij
+een SkyActiv-G klopt is een vraag voor een rit met een tweede auto.
+
+---
+
+## 20-10-2026 — De totaalcheck uit week 1 vervangen: stilstand, rijden, verdiepen
+
+**Wat er stond.** Een vragenlijst van zeven vragen (ja/soms/nee) die de
+uitslag als "Bestuurder"-regels kreeg, daarna het verzamelscherm op niveau
+`rit` — en dat eist 90 s rijden, dus stilstaand was de enige uitweg
+"🚗 Rijtest starten": de ritanalyse van tien minuten in vijf fases van twee
+minuten. De antwoorden zeiden niets wat de meting niet zelf zag ("koelwater
+stabiel?" naast een gemeten koelwater), en de fases vroegen een route.
+
+**Wat andere apps doen.** FIXD en BlueDriver lezen foutcodes, readiness en
+freeze frame en leggen de code uit (BlueDriver met een database van
+gemelde reparaties, FIXD met ernst en kosten); live data is een grafiek die de
+klant zelf leest. Carly is vooral merkcodering. Geen van drieën oordeelt over
+live waarden in hun toestand. Dat is hier het verschil, en het zat al in de
+app (PLVerzamel.beoordeel over het hele venster, PLSamenhang); het werd alleen
+nooit per toestand toegepast.
+
+**Gekozen.** Twee delen, elk beoordeeld op alleen zijn eigen monsters:
+`PLTotaal.deelHist()` splitst op de snelheid van het dichtstbijzijnde
+snelheidsmonster, met dezelfde grens als de meetpoort (`MEET_RIJ_KMH`). Een
+monster zonder snelheid binnen `MEET_RIJ_GAT_MS` telt in geen van beide:
+liever minder monsters dan een stilstaande waarde in het rijdeel. Het rijdeel
+is hetzelfde verzamelscherm zonder rijtest-knop en met een kwartier tijd;
+het stopt vanzelf als de poort genoeg rijtijd ziet.
+
+**Bewust niet.** Grens "stil" is ≤ 15 km/h, niet 0: stapvoets telt als
+stilstand. Een eigen stationair-grens zou een tweede tabel naast die van de
+poort zijn. Mode 06 (misfire-tellers) zit er niet in: de scan kost seconden
+per MID en staat al in het foutcodescherm; als dat nodig blijkt, is het een
+eigen categorie. De focusmeting zet alleen de sensoren van de categorie aan
+(`ensurePIDListActive`), zodat ze vaker per seconde langskomen — of dat op de
+CX-5 merkbaar sneller is, is een vraag voor de rit (CAMPAGNE).
+
+---
+
+## 20-10-2026 — De winter: weer zonder locatie, en wat er bewust niet in zit (#555–#560)
+
+**Locatie.** Het plan in #556 was GPS, afgerond op ±10 km. Bij het bouwen bleek
+dat de app sinds 21-08-2026 bewust locatievrij is (`test-geen-gps.js`, de
+Data safety-verklaring, het manifest). Gekozen is een plaats uit een lijst van
+44 steden: alleen het id gaat de telefoon uit, de coördinaten staan alleen in
+de Worker, en Open-Meteo ziet het IP-adres van de klant niet. `privacy.html`
+zegt het erbij; "Geen locatiebepaling" blijft waar. De akkoordtekst van Mijn
+voertuigen ging naar `2026-10-20`: het winterprofiel en de buitentemperatuur
+per rit zijn nieuwe verwerking, dus een eerder akkoord vervalt.
+
+**Open-Meteo was vanuit de bouwomgeving niet bereikbaar** (time-out). De
+vorm van het antwoord in `test-weer.js` is daarom nagebouwd naar de
+documentatie (`daily.time`, `temperature_2m_min/max`, `precipitation_sum`,
+`snowfall_sum`). Klopt een veldnaam niet, dan geeft `/weer` 502
+`weer_onleesbaar` en toont de kaart "geen verwachting" — zichtbaar, niet stil.
+
+**Vaseline staat er bewust níét in.** Het lag in de brainstorm voor de
+deurrubbers; het is aardolie en laat EPDM opzwellen. Het advies noemt
+siliconenspray, glycerine of talk en zegt waarom geen vaseline.
+
+**Tractiecontrole (#560) is niet gebouwd.** Methode 3 (pedaal tegen gasklep,
+toerental/snelheid tegen de versnelling) vraagt monsters van een paar
+honderd ms; de ritwaarnemer van `PLGarage` tikt elke 2 s, en `0149`/`0111`
+worden niet standaard gepold. Dat is een eigen stuk werk, niet iets om in
+deze PR mee te nemen. De accu-koudstartmeting ook niet: die vraagt eerst een
+rit met de adapter tijdens het starten.
+
+**De bandentabel is een model.** `bandenStand()` is een stuksgewijze lijn
+door de richting uit bandentests (ADAC, TÜV); er staan geen remwegpercentages
+in beeld, alleen kleur en woord. Het omslagpunt van 7 °C is een vuistregel.
+
+---
+
+## 19-10-2026 — Een Bose-speaker als eerste OBD2-kandidaat
+
+Logboek 19-10 19:04: de SPP-scan gaf 21 apparaten, het logboek noemde er
+twee "OBD2 adapter" — "LE-Bose Revolve SoundLink" en "OBDLink MX+ 90011" —
+en `connectSPP()` verbond met de eerste. Mislukt na 6 s, daarna een volle
+tweede ronde (BLE 12 s) voordat de OBDLink aan de beurt kwam.
+
+Oorzaak: twee naamlijsten. `OBD_NAME_RX` (BLE-pad) was streng; de lijst in
+`connectSPP()` en de regex in `btDiagDevice()` hadden een kale `'link'` en
+`'scan'`, en `SoundLink` bevat `link`. `NON_OBD_RX` had wel `speaker` maar
+die naam zegt dat niet. Nu één oordeel, `isObdNaam()`, en `v-?link` in
+`OBD_NAME_RX` zodat vLinker/V-LINK dat ruime `link` niet nodig hebben.
+`find()` pakt nog steeds de eerste match in scanvolgorde, niet de beste;
+met één oordeel is dat pas een probleem als twee echte adapters in de buurt
+zijn.
+
+## 17-10-2026 — Het vierde VIN-pad: de vstate naar de expert
+
+`buildVState()` in `pidlane-remote.js` zette `veh.vin` onbewerkt in de
+momentopname die de local bij elk verbinden naar de Worker stuurt. De Worker
+bewaarde die in de Durable Object-opslag (`storage.put("vstate")`) voor late
+instappers en gaf hem door aan elke expert, die hem op zijn beurt in
+`vehicleInfo.vin` zette. De tabel in §7 noemde vier paden en dit was een
+vijfde — dezelfde vorm als #102: het pad werd niet gezien omdat het geen
+"log" of "Airtable" heette. Gevonden bij het bouwen van de voorkennis voor de
+expert, niet door een test: geen enkele toets keek naar de vstate.
+
+Gedicht aan twee kanten. De app stuurt alleen WMI en het pseudoniem van
+`_vlVinPseudoniem()` (async, dus de eerste vstate heeft alleen de WMI en er
+volgt een tweede). De Worker haalt met `vstateZonderVin()` een `veh.vin` eruit,
+óók uit een vstate die al in de opslag stond — een oude app-versie in het veld
+blijft hem tenslotte sturen. De expert zet het pseudoniem niet in
+`vehicleInfo.vin`: dat is geen VIN, en een tweede keer pseudonimiseren gaf
+een ander id dan dat van de klant.
+
+---
+
 ## 17-10-2026 — De RDW zei "afgehandeld" en "geen oordeel"; de app las "open" en "onbekend"
 
 Gevonden in het logboek van de CX-5 van 17-10-2026, 00:11: *"Terugroepacties

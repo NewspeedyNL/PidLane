@@ -134,7 +134,7 @@ __name(originToegestaan, "originToegestaan");
 // Een nieuwe route hoort hier standaard in;
 // laat hem er alleen uit als hij echt publiek moet zijn.
 function isRestrictedPath(pathname) {
-  return pathname.startsWith("/auth/") || pathname.startsWith("/admin/") || pathname.startsWith("/session/") || pathname.startsWith("/pair/") || pathname.startsWith("/code/") || pathname.startsWith("/klant/") || pathname.startsWith("/credits/") || pathname.startsWith("/v1/") || pathname.startsWith("/airtable/") || pathname.startsWith("/verbind/") || pathname === "/proxy" || pathname === "/api/config";
+  return pathname.startsWith("/auth/") || pathname.startsWith("/admin/") || pathname.startsWith("/session/") || pathname.startsWith("/pair/") || pathname.startsWith("/code/") || pathname.startsWith("/klant/") || pathname.startsWith("/credits/") || pathname.startsWith("/v1/") || pathname.startsWith("/airtable/") || pathname.startsWith("/verbind/") || pathname === "/proxy" || pathname === "/weer" || pathname === "/api/config";
 }
 __name(isRestrictedPath, "isRestrictedPath");
 function lockOrigin(request, resp) {
@@ -1288,6 +1288,86 @@ async function handleProxy(request, env) {
   });
 }
 __name(handleProxy, "handleProxy");
+// ── Het weer voor de winterkaart (#556, 20-10-2026) ──────────────────
+// De app is sinds 21-08-2026 locatievrij (test-geen-gps.js): geen GPS, geen
+// postcode. De klant kiest een plaats uit deze lijst — de dichtstbijzijnde,
+// niet zijn adres — en de app stuurt alleen het id. De coördinaten staan
+// hier en nergens anders; de vraag aan Open-Meteo gaat van de Worker uit,
+// zodat het IP-adres van de klant daar niet aankomt. Niets wordt bewaard
+// behalve het weer zelf, een uur in de randcache per plaats.
+// Zelfde ids en namen als PLAATSEN in public/pidlane-weer.js; test-weer.js
+// vergelijkt de twee.
+var WEER_PLAATSEN = {
+  alkmaar: ["Alkmaar", 52.6, 4.7], almere: ["Almere", 52.4, 5.2], amersfoort: ["Amersfoort", 52.2, 5.4],
+  amsterdam: ["Amsterdam", 52.4, 4.9], apeldoorn: ["Apeldoorn", 52.2, 6], arnhem: ["Arnhem", 52, 5.9],
+  assen: ["Assen", 53, 6.6], breda: ["Breda", 51.6, 4.8], denbosch: ["’s-Hertogenbosch", 51.7, 5.3],
+  denhaag: ["Den Haag", 52.1, 4.3], denhelder: ["Den Helder", 52.9, 4.8], deventer: ["Deventer", 52.3, 6.2],
+  dordrecht: ["Dordrecht", 51.8, 4.7], drachten: ["Drachten", 53.1, 6.1], eindhoven: ["Eindhoven", 51.4, 5.5],
+  emmen: ["Emmen", 52.8, 6.9], enschede: ["Enschede", 52.2, 6.9], goes: ["Goes", 51.5, 3.9],
+  groningen: ["Groningen", 53.2, 6.6], haarlem: ["Haarlem", 52.4, 4.6], harderwijk: ["Harderwijk", 52.3, 5.6],
+  heerlen: ["Heerlen", 50.9, 6], hoorn: ["Hoorn", 52.6, 5.1], leeuwarden: ["Leeuwarden", 53.2, 5.8],
+  leiden: ["Leiden", 52.2, 4.5], lelystad: ["Lelystad", 52.5, 5.5], maastricht: ["Maastricht", 50.9, 5.7],
+  middelburg: ["Middelburg", 51.5, 3.6], nijmegen: ["Nijmegen", 51.8, 5.9], roermond: ["Roermond", 51.2, 6],
+  rotterdam: ["Rotterdam", 51.9, 4.5], tilburg: ["Tilburg", 51.6, 5.1], utrecht: ["Utrecht", 52.1, 5.1],
+  venlo: ["Venlo", 51.4, 6.2], zwolle: ["Zwolle", 52.5, 6.1],
+  aarlen: ["Aarlen", 49.7, 5.8], antwerpen: ["Antwerpen", 51.2, 4.4], brugge: ["Brugge", 51.2, 3.2],
+  brussel: ["Brussel", 50.8, 4.4], gent: ["Gent", 51.1, 3.7], hasselt: ["Hasselt", 50.9, 5.3],
+  leuven: ["Leuven", 50.9, 4.7], luik: ["Luik", 50.6, 5.6], namen: ["Namen", 50.5, 4.9]
+};
+var WEER_CACHE_S = 3600;
+// Wat de app van een dag nodig heeft, en niets meer: laagste en hoogste
+// temperatuur, neerslag en sneeuw. Getallen buiten wat kan worden null.
+function weerDagen(d) {
+  const dl = d && d.daily || {};
+  const t = Array.isArray(dl.time) ? dl.time : [];
+  const getal = (l, i, min, max) => {
+    const x = Array.isArray(l) ? Number(l[i]) : NaN;
+    return isFinite(x) && x >= min && x <= max ? Math.round(x * 10) / 10 : null;
+  };
+  return t.slice(0, 4).map((datum, i) => ({
+    datum: String(datum).slice(0, 10),
+    min: getal(dl.temperature_2m_min, i, -60, 60),
+    max: getal(dl.temperature_2m_max, i, -60, 60),
+    neerslag: getal(dl.precipitation_sum, i, 0, 500),
+    sneeuw: getal(dl.snowfall_sum, i, 0, 500)
+  })).filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.datum));
+}
+__name(weerDagen, "weerDagen");
+async function handleWeer(request, env, ctx) {
+  if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
+  const id = new URL(request.url).searchParams.get("plaats") || "";
+  const p = Object.prototype.hasOwnProperty.call(WEER_PLAATSEN, id) ? WEER_PLAATSEN[id] : null;
+  if (!p) return json({ error: "onbekende_plaats" }, 400);
+  const bron = "https://api.open-meteo.com/v1/forecast?latitude=" + p[1] + "&longitude=" + p[2] +
+    "&daily=temperature_2m_min,temperature_2m_max,precipitation_sum,snowfall_sum&forecast_days=4&timezone=Europe%2FAmsterdam";
+  // De sleutel is de plaats, nooit iets van de klant.
+  const sleutel = new Request("https://weer.pidlane.intern/" + id);
+  const cache = typeof caches !== "undefined" && caches.default ? caches.default : null;
+  if (cache) {
+    try { const hit = await cache.match(sleutel); if (hit) return hit; }
+    catch (e) { console.error("[weer] cache onleesbaar — opnieuw opgehaald", e && e.message || e); }
+  }
+  let d;
+  try {
+    const r = await fetch(bron, { headers: { Accept: "application/json" } });
+    if (!r.ok) return json({ error: "weer_niet_beschikbaar", status: r.status }, 502);
+    d = await r.json();
+  } catch (e) {
+    return json({ error: "weer_niet_beschikbaar", detail: String(e && e.message || e).slice(0, 120) }, 502);
+  }
+  const dagen = weerDagen(d);
+  if (!dagen.length) return json({ error: "weer_onleesbaar" }, 502);
+  const resp = new Response(JSON.stringify({ plaats: id, naam: p[0], dagen, bron: "Open-Meteo", op: (/* @__PURE__ */ new Date()).toISOString() }), {
+    status: 200,
+    headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=" + WEER_CACHE_S, ...CORS }
+  });
+  if (cache) {
+    const opslaan = cache.put(sleutel, resp.clone()).catch((e) => console.error("[weer] niet in de cache gezet", e && e.message || e));
+    if (ctx && ctx.waitUntil) ctx.waitUntil(opslaan);
+  }
+  return resp;
+}
+__name(handleWeer, "handleWeer");
 // ── AppConfig in D1 (#327, 01-10-2026) ──────────────────────────────
 // Stond in de Airtable-base Config, en elke opstart van de app was een call
 // in een werkruimte met een plafond van 1.000 per maand: de randcache van
@@ -2096,6 +2176,23 @@ async function handleCodeResolve(request, env) {
   return new Response(text, { status: r.status, headers: { "Content-Type": "application/json", ...CORS } });
 }
 __name(handleCodeResolve, "handleCodeResolve");
+// De VIN gaat nooit ruw de telefoon uit (§7). De app stuurt sinds 17-10-2026
+// alleen WMI + pseudoniem in vstate; dit is de tweede deur: een oude app-versie
+// (of een gemanipuleerde local) kan nog een `veh.vin` meesturen, en die mag niet
+// in de Durable Object-opslag of bij een expert belanden. Ook toegepast op een
+// vstate die al in de opslag stond van vóór deze datum.
+function vstateZonderVin(d) {
+  if (!d || typeof d !== "object") return d;
+  if (d.veh && typeof d.veh === "object" && "vin" in d.veh) {
+    const veh = { ...d.veh };
+    const ruw = String(veh.vin || "").toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, "");
+    delete veh.vin;
+    if (!veh.wmi && ruw) veh.wmi = ruw.slice(0, 3);
+    return { ...d, veh };
+  }
+  return d;
+}
+__name(vstateZonderVin, "vstateZonderVin");
 var RemoteSessionDO = class {
   static {
     __name(this, "RemoteSessionDO");
@@ -2111,7 +2208,7 @@ var RemoteSessionDO = class {
       this._meta = await this.ctx.storage.get("meta") || null;
       this.frames = await this.ctx.storage.get("frames") || [];
       this.audit = await this.ctx.storage.get("audit") || [];
-      this.vstate = await this.ctx.storage.get("vstate") || null;
+      this.vstate = vstateZonderVin(await this.ctx.storage.get("vstate") || null);
     });
   }
   // Gedeelde implementatie achter redeem-lock/-unlock EN saldo-lock/-unlock:
@@ -2408,6 +2505,12 @@ var RemoteSessionDO = class {
     const reqId = typeof m.reqId === "string" && m.reqId.slice(0, 40) || crypto.randomUUID().slice(0, 8);
     if (m.type === "request-dtc") return { type: "request-dtc", reqId };
     if (m.type === "request-vstate") return { type: "request-vstate", reqId };
+    // Eén eerder rapport uit het archief van de local (voorkennis, 17-10-2026).
+    // Alleen een archief-id: de local zoekt hem op, er gaat niets naar de auto.
+    if (m.type === "request-rapport") {
+      const id = typeof m.id === "string" && /^sr\d{1,6}_\d{10,16}$/.test(m.id) ? m.id : null;
+      return id ? { type: "request-rapport", id, reqId } : null;
+    }
     if (m.type === "request-pids") {
       if (!Array.isArray(m.pids)) return null;
       const pids = m.pids.filter((p) => typeof p === "string" && /^[0-9A-Fa-f]{2}$/.test(p)).slice(0, 12);
@@ -2507,13 +2610,14 @@ var RemoteSessionDO = class {
         d = null;
       }
       if (d) {
+        d = vstateZonderVin(d);
         this.vstate = d;
         await this.ctx.storage.put("vstate", d);
         this.broadcastTo("expert", { type: "vstate", data: d, t: Date.now() });
       }
       return;
     }
-    if (role === "expert" && (m.type === "request-pids" || m.type === "request-dtc" || m.type === "request-poll" || m.type === "request-record" || m.type === "request-analyze" || m.type === "request-vstate")) {
+    if (role === "expert" && (m.type === "request-pids" || m.type === "request-dtc" || m.type === "request-poll" || m.type === "request-record" || m.type === "request-analyze" || m.type === "request-vstate" || m.type === "request-rapport")) {
       const now = Date.now();
       this._reqTimes = (this._reqTimes || []).filter((t) => now - t < 1e4);
       if (this._reqTimes.length >= 20) {
@@ -5256,7 +5360,9 @@ var KP_MAX_TEKST = 120000;       // tekens per rapport
 // 2026-10-10: tankbeurten (kp_tank, #469) kwamen erbij.
 // 2026-10-13: de conditiescore (#475): een onderhoudslogboek en per rit
 // meetkenmerken van de motor en het rijpatroon (rit.extra.cd).
-var KP_AKKOORD_VERSIE = "2026-10-13";
+// 2026-10-20: het winterprofiel (#556): banden, ruitensproeiervloeistof en
+// een plaats uit een lijst voor het weer; per rit de buitentemperatuur.
+var KP_AKKOORD_VERSIE = "2026-10-20";
 
 var KP_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS kp_akkoord (klant_id TEXT PRIMARY KEY, versie TEXT NOT NULL, op TEXT NOT NULL)",
@@ -5304,7 +5410,17 @@ var KP_MIGRATIES = [
   "ALTER TABLE kp_voertuig ADD COLUMN score TEXT",
   "ALTER TABLE kp_voertuig ADD COLUMN onderhoud_log TEXT",
   "ALTER TABLE kp_voertuig ADD COLUMN onderhoud_interval_km INTEGER",
-  "ALTER TABLE kp_voertuig ADD COLUMN onderhoud_interval_mnd INTEGER"
+  "ALTER TABLE kp_voertuig ADD COLUMN onderhoud_interval_mnd INTEGER",
+  // Het winterprofiel (#556, 20-10-2026).
+  "ALTER TABLE kp_voertuig ADD COLUMN plaats TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN banden TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN banden_alpine TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN banden_dot TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN banden_mm REAL",
+  "ALTER TABLE kp_voertuig ADD COLUMN sproeier TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN sproeier_tot INTEGER",
+  "ALTER TABLE kp_voertuig ADD COLUMN sproeier_datum TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN winter_gezien TEXT"
 ];
 var _kpSchemaKlaar = false;
 
@@ -5414,7 +5530,21 @@ var KP_VELDEN = {
   // 22xxxx, een formule met alleen A–H, getallen, + - * / en haakjes. Zelfde
   // regels als PLEigen.controleer() in pidlane-uitgebreid.js.
   eigen_pids: { soort: "eigenpids", max: 20 },
-  vin_pseudo: { soort: "tekst", max: 32, patroon: /^[0-9a-f]{8,32}$/ }
+  vin_pseudo: { soort: "tekst", max: 32, patroon: /^[0-9a-f]{8,32}$/ },
+  // Het winterprofiel (#556, 20-10-2026). Zelfde keuzes als WINTER_KEUZES in
+  // public/pidlane-winter.js; test-winter.js vergelijkt de twee. De plaats is
+  // een id uit WEER_PLAATSEN: waar de auto 's nachts staat, op een stad na.
+  plaats: { soort: "keuze", uit: Object.keys(WEER_PLAATSEN) },
+  banden: { soort: "keuze", uit: ["zomer", "winter", "all-season", "weet niet"] },
+  banden_alpine: { soort: "keuze", uit: ["ja", "alleen m+s", "weet niet"] },
+  // DOT-code: week en jaar, vier cijfers (4521 = week 45 van 2021).
+  banden_dot: { soort: "tekst", max: 4, patroon: /^(0[1-9]|[1-4][0-9]|5[0-3])[0-9]{2}$/ },
+  banden_mm: { soort: "getal", min: 0, max: 15 },
+  sproeier: { soort: "keuze", uit: ["zomer", "winter", "weet niet"] },
+  sproeier_tot: { soort: "geheel", min: -60, max: 0 },
+  sproeier_datum: { soort: "datum" },
+  // Welke seizoensbanner deze klant al zag: "winter-2026", "zomer-2027".
+  winter_gezien: { soort: "tekst", max: 12, patroon: /^(winter|zomer)-\d{4}$/ }
 };
 
 // Eén beurt uit het onderhoudslogboek (#475). Een datum die niet in de
@@ -6742,6 +6872,8 @@ var worker_default = {
         return lockOrigin(request, await handleCreditsRedeem(request, env, ctx));
       if (url.pathname === "/proxy" && request.method === "GET")
         return lockOrigin(request, await handleProxy(request, env));
+      if (url.pathname === "/weer" && request.method === "GET")
+        return lockOrigin(request, await handleWeer(request, env, ctx));
       if (url.pathname === "/api/config") {
         if (request.method === "GET") return lockOrigin(request, await handleConfigGet(request, env, ctx));
         if (request.method === "POST") return lockOrigin(request, await handleConfigPost(request, env, ctx));

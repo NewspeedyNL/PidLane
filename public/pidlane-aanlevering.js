@@ -366,8 +366,8 @@
   function kwaliteit(pids) {
     try {
       if (typeof buildQualityReport !== 'function') return null;
-      var lijst = pids && pids.length ? pids : [];
-      if (!lijst.length) {
+      var lijst = pids || [];
+      if (pids === null || pids === undefined) {
         try { if (typeof activePIDs !== 'undefined' && activePIDs) lijst = Array.from(activePIDs); }
         catch (e) { console.warn('aanlevering: selectie niet leesbaar voor het kwaliteitsblok', e); }
       }
@@ -380,6 +380,30 @@
       console.warn('aanlevering: kwaliteitsrapport niet op te bouwen — de AI krijgt dan geen betrouwbaarheidsoordeel mee', e);
       return null;
     }
+  }
+
+  /* Over WELKE sensoren het kwaliteitsoordeel gaat (20-10-2026).
+
+     Acht aanroepplekken plakten hun eigen DATAKWALITEIT-blok in de prompt,
+     naast dit blok: hetzelfde oordeel twee keer over de lijn en twee keer op
+     de rekening. Dat is opgeruimd. Maar er stond nog een derde oordeel naast:
+     de samenvatting van de meetfase (PLVerzamel.promptBlok) beoordeelt elke
+     sensor die hij toont al zelf, over het hele meetvenster, onder
+     MEETKWALITEIT TWIJFELACHTIG. Dit blok keek naar de live waarde van NU.
+     Die twee kunnen elkaar tegenspreken — een onmogelijke piek midden in de
+     rit en een nette waarde bij het stoppen — en dan krijgt de AI over
+     dezelfde sensor "meetfout" en "betrouwbaar" te lezen.
+
+     Daarom: wat de meetfase liet zien (`zichtbaar`) is daar beoordeeld, over
+     het venster waar het rapport over gaat, en valt hier weg. Dit blok
+     oordeelt alleen nog over de sensoren van de dekking die NIET in de
+     samenvatting staan. Een lege lijst betekent dan ook echt "niets te
+     beoordelen", en niet "val terug op de hele selectie". Zonder `zichtbaar`
+     verandert er niets: dekking, of anders de selectie. */
+  function kwaliteitsPids(dek, zichtbaar) {
+    var geleverd = dek ? dek.geleverd : [];
+    if (!Array.isArray(zichtbaar)) return geleverd.length ? geleverd.slice() : null;
+    return geleverd.filter(function (p) { return zichtbaar.indexOf(p) < 0; });
   }
 
   // Is er überhaupt iets gemeten? Dit is de poort die bepaalt of het blok
@@ -406,7 +430,8 @@
       dekking: dek,
       venster: venster(),
       onderbreking: onderbrekingen(),
-      kwaliteit: kwaliteit(dek ? dek.geleverd : null),
+      kwaliteit: kwaliteit(kwaliteitsPids(dek, o.zichtbaar)),
+      zichtbaar: Array.isArray(o.zichtbaar) ? o.zichtbaar.length : null,
       bevindingen: (function () {
         try { return (typeof correlationLines === 'function') ? correlationLines() : null; }
         catch (e) { console.warn('aanlevering: correlatiebevindingen niet op te halen', e); return null; }
@@ -499,6 +524,8 @@
     // ── datakwaliteit ──
     // Het bestaande blok uit pidlane-kwaliteit.js, nu zonder dat een
     // aanroepplek eraan moet denken.
+    if (m.zichtbaar)
+      r.push('\nDATAKWALITEIT van de ' + m.zichtbaar + ' sensoren in de samenvatting: beoordeeld over het hele meetvenster, onder MEETKWALITEIT TWIJFELACHTIG in de prompt. Een live waarde van nu weegt daar niet tegenin.');
     if (m.kwaliteit && m.kwaliteit.promptBlok) r.push(m.kwaliteit.promptBlok);
 
     // ── bevindingen ──
@@ -516,7 +543,7 @@
     r.push('1. Een sensor onder ONTBREEKT is NIET beoordeeld. Zeg dat met zoveel woorden en concludeer nooit dat het bijbehorende onderdeel in orde is — afwezige data is geen goed nieuws.');
     r.push('2. Een waarde die rond een ONDERBREKING ontbreekt, springt, nul wordt of bevroren lijkt, is eerst een meetartefact en pas daarna een defect. Noem dat onderscheid expliciet.');
     r.push('3. Waarden die onder DATAKWALITEIT zijn UITGESLOTEN gebruik je niet, ook niet als zijdelingse onderbouwing.');
-    r.push('4. Waarden die daar ONZEKER heten leiden hoogstens tot "hermeten of sensor controleren", nooit rechtstreeks tot een reparatieadvies.');
+    r.push('4. Waarden die daar ONZEKER heten, of in de samenvatting onder MEETKWALITEIT TWIJFELACHTIG staan, leiden hoogstens tot "hermeten of sensor controleren", nooit rechtstreeks tot een reparatieadvies.');
     r.push('5. Kun je de vraag met deze data niet beantwoorden, zeg dat dan. Een eerlijk "hiervoor is te weinig gemeten, meet X erbij" is hier meer waard dan een conclusie met een slag om de arm.');
 
     return r.join('\n');
@@ -530,6 +557,7 @@
     venster: venster,
     onderbrekingen: onderbrekingen,
     kwaliteit: kwaliteit,
+    kwaliteitsPids: kwaliteitsPids,
     ergensGemeten: ergensGemeten,
     setnamen: setnamen
   };

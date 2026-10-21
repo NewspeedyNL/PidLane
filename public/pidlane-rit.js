@@ -687,19 +687,23 @@ Geef: SAMENVATTING, TECHNISCHE BEVINDINGEN, RIJGEDRAG, PRIORITEIT ACTIES (🔴/�
       : _ftr==='diesel' ? '\nDit is een diesel — let op DPF/roetfilter en AdBlue/SCR waar relevant.' : '';
     // Dezelfde samenvatting over de hele rit als op het verzamelscherm (#443),
     // naast de cijfers per fase: zo leest elk rapport zijn sensoren in één vorm.
-    let ritMeetBlok='';
-    try{ const _rb=plRitBron(); const _rs=PLVerzamel.vanBron(_rb); if(_rs) ritMeetBlok=PLVerzamel.promptBlok(_rs,{sec:_rb.sec,rijSec:_rb.rijSec}); }
+    let ritMeetBlok='', _rs=null;
+    try{ const _rb=plRitBron(); _rs=PLVerzamel.vanBron(_rb); if(_rs) ritMeetBlok=PLVerzamel.promptBlok(_rs,{sec:_rb.sec,rijSec:_rb.rijSec}); }
     catch(e){ console.warn('Rit rapport: samenvatting over de hele rit niet gemaakt (#443)', e); }
     const totalAnalysis=await apiFetch(
       `${focusPrompt}${ritFuelNote}\n\nRit van ${mins} minuten met een ${v.merk||'auto'} ${v.model||''}. Antwoord in het Nederlands.\n\nFase data:\n${allStats}${ritMeetBlok}${sweepBlok}\n\nSluit het rapport af met deze exacte zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}${PLRapport.instructie()}`,
       3000, null, null,
       // De onderbrekingen tellen hier dubbel: dit rapport gaat over een reeks
       // over tijd, en juist daar leest een gat als een sensor die uitvalt (#188).
-      { vraag: focusLabel + ' over een rit van ' + mins + ' minuten — ' +
+      // Via de meetfase (#565): de sensoren uit de samenvatting zijn daar over
+      // de hele rit beoordeeld, en krijgen geen tweede oordeel op hun waarde
+      // van nu.
+      PLVerzamel.aanlevering({ bron:'de rit', sam:_rs },
+        focusLabel + ' over een rit van ' + mins + ' minuten — ' +
                (focus==='techniek' ? 'uitsluitend de technische staat.'
                 : focus==='rijgedrag' ? 'uitsluitend de rijstijl van de bestuurder.'
                 : 'techniek én rijgedrag.'),
-        profiel: 'rit' }
+        'rit')
     );
     // Rapport beschikbaar maken voor PDF-export
     lines.push('═══════════════════════════════════');

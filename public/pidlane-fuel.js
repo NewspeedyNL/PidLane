@@ -46,9 +46,8 @@ async function runFuelAnalysis(){
       if(val!==null&&val!==undefined) updPID(pid,val);
     }
   }
-  // Centrale PID-check: relevant ∩ aanwezig ∩ niet-onzin/nodata + kwaliteitsblok.
+  // Centrale PID-check: relevant ∩ aanwezig ∩ niet-onzin/nodata.
   const fd=analysisPidData('brandstof',curatedFuel);
-  const q=fd.quality;
   const measurements=fd.pairs.map(([pid,val])=>{
     const d=getPidDef(pid), meta=fuelMeta[pid];
     const ok=meta?meta.ok:null;
@@ -61,13 +60,14 @@ async function runFuelAnalysis(){
   const jaarKm=parseInt(document.getElementById('yearKm').value)||15000;
   const v=getVehicle();
   const mData=measurements.filter(m=>m.val!==null&&m.val!==undefined).map(m=>`• ${m.name}: ${fv(m.val)} ${m.unit} [${m.status.toUpperCase()}] — ${m.desc}`).join('\n');
+  // Het DATAKWALITEIT-blok staat niet meer in deze prompt: de aanlevering zet
+  // het erbij, over dezelfde sensoren plus wat de meetfase liet zien.
   const meetBlok=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});
-  const prompt=`Je bent brandstofefficiëntie specialist. Analyseer deze OBD2 data en geef besparingsadvies in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}\nBrandstofprijs: €${prijs}/liter | Jaarkilometers: ${jaarKm.toLocaleString('nl')} km\nDTC: ${formatDtcCodes(dtcCodes)}\n\nLIVE METINGEN (laatste waarde, met de brandstofreferentie):\n${mData||'(geen data)'}${q.promptBlok}${meetBlok}\n\nGeef: HUIDIGE SITUATIE, GEVONDEN INEFFICIËNTIES, BESPAARTIPS (€/jaar), TOTALE BESPARING, RIJSTIJL TIPS`;
+  const prompt=`Je bent brandstofefficiëntie specialist. Analyseer deze OBD2 data en geef besparingsadvies in het Nederlands.\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}\nBrandstofprijs: €${prijs}/liter | Jaarkilometers: ${jaarKm.toLocaleString('nl')} km\nDTC: ${formatDtcCodes(dtcCodes)}\n\nLIVE METINGEN (laatste waarde, met de brandstofreferentie):\n${mData||'(geen data)'}${meetBlok}\n\nGeef: HUIDIGE SITUATIE, GEVONDEN INEFFICIËNTIES, BESPAARTIPS (€/jaar), TOTALE BESPARING, RIJSTIJL TIPS`;
   try{
     // Het <rapport>-blok is voor de PDF; dit scherm toont de tekst zonder.
-    const ruw=await apiFetch(prompt+PLRapport.instructie(),2000,null,null,{
-      vraag:'Brandstofefficiëntie: waar gaat er brandstof verloren en wat levert het op om dat te verhelpen?',
-      profiel:'brandstof'});
+    const ruw=await apiFetch(prompt+PLRapport.instructie(),2000,null,null,PLVerzamel.aanlevering(uit,
+      'Brandstofefficiëntie: waar gaat er brandstof verloren en wat levert het op om dat te verhelpen?','brandstof'));
     const text=PLRapport.zonderBlok(ruw);
     const secs=[{k:'HUIDIGE SITUATIE',i:'📊',c:'blue'},{k:'GEVONDEN INEFFICIËNTIES',i:'🔍',c:'orange'},{k:'BESPAARTIPS',i:'💡',c:'green'},{k:'TOTALE BESPARING',i:'💶',c:'purple'},{k:'RIJSTIJL TIPS',i:'🚗',c:'blue'}];
     const found=[];
@@ -403,6 +403,11 @@ function plAnalyseRol(prompt, aanlevering){
   const eerste=String(prompt||'').split(/(?<=[.!?:])\s|\n/)[0];
   return kort(eerste,80);
 }
+// Het lichte model voor korte vragen zonder meetdata om te wegen: een JSON-
+// advies over de adapter, een interval uit het onderhoudsboekje, een foto van
+// een lampje. Ruim een derde van Sonnet. Een analyse van een meting blijft op
+// het standaardmodel; wie hier iets bij zet, kiest dat per aanroep.
+const AI_LICHT='claude-haiku-4-5-20251001';
 async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, aanlevering=null, extra=null){
   // Demo: een voorbeeldrapport uit de gesimuleerde waarden, geen AI-call en
   // geen tegoed. Een rapport over een verzonnen auto is geen echt rapport.
@@ -803,7 +808,9 @@ async function aiReplyRevise(){
     // Snel = Haiku 4.5 (vlot/goedkoop), Diep = standaardmodel (Sonnet 5).
     // Fix 15-07: voorheen wezen béide knoppen naar hetzelfde model — de keuze deed niets.
     var _mdl=(window._aiReplyModel==='deep')?null:'claude-haiku-4-5-20251001';
-    var txt=await apiFetch(p,1600,null,_mdl);
+    // Geen aanlevering: de herziening rust op het eerdere rapport en zijn
+    // meting, niet op wat er nu toevallig aanstaat.
+    var txt=await apiFetch(p,1600,null,_mdl,{meet:false});
     txt=_withDisclaimer(txt);
     window._lastAIReport={ text:txt, html:_aiReportHtml(txt), ts:new Date(), meting:r.meting, oordeel:aiVerdict(PLRapport.zonderBlok(txt)).vc };
     openAIReportSheet();
@@ -1169,9 +1176,16 @@ function plMeetNiveau(gevraagd){
   }catch(e){ console.warn('Wizardplan-niveau niet uitgelezen, meeteis blijft op het gevraagde niveau', e); }
   return niveau;
 }
-function plMeetTekort(niveau){
+/* extern = {sec, rijSec}: wat een aanroeper zelf langer bijhield dan pidHist
+   (120 monsters per sensor — 010D is daarin op ~6 Hz maar 20 s). Alleen
+   ophogen: het verzamelscherm (20-10-2026) telt de rijtijd van zijn eigen
+   meting, en zonder dat kwam een rijmeting nooit boven de 20 s uit. */
+function plMeetTekort(niveau, extern){
   const eis = MEET_EIS[niveau] || MEET_EIS.normaal;
   const st  = plMeetStatus();
+  const x = extern || {};
+  if(typeof x.sec==='number' && isFinite(x.sec) && x.sec>st.sec) st.sec=Math.round(x.sec);
+  if(typeof x.rijSec==='number' && isFinite(x.rijSec) && (st.rijSec===null || x.rijSec>st.rijSec)) st.rijSec=Math.round(x.rijSec);
   const tekort=[];
   if(st.sec < eis.sec)          tekort.push('gemeten over '+st.sec+' s, nodig '+eis.sec+' s');
   if(st.maxN < eis.n)           tekort.push('hoogstens '+st.maxN+' monsters per sensor, nodig '+eis.n);
@@ -1334,10 +1348,9 @@ async function runQuickAI(opts){
   const v=getVehicle();
   const meetBlok=PLVerzamel.promptBlok(uit.sam,{sec:uit.sec, rijSec:uit.rijSec});
   const klachtBlok=klacht?`\nKlacht van de gebruiker: ${klacht}\nBetrek elke bevinding op deze klacht, en zeg ook wat deze meting over de klacht níét kan zeggen.`:'';
-  const corr=correlationLines();
-  const corrBlock=corr.length?`\nAutomatische bevindingen (correlatie-engine):\n${corr.join('\n')}`:'';
-  const qBlok=_qualityBlokFor([...activePIDs].filter(isReportableSensor)); // zelfde gate als Totaalcheck
-  const prompt=`${plMeetPromptBlok()}\nAnalyseer dit voertuig in het Nederlands als expert automonteur.${klachtBlok}\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:${meetBlok||'\n(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}${corrBlock}${qBlok}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
+  // De correlatiebevindingen en het DATAKWALITEIT-blok zet de aanlevering
+  // erbij (#188); hier stonden ze tot 20-10-2026 een tweede keer.
+  const prompt=`${plMeetPromptBlok()}\nAnalyseer dit voertuig in het Nederlands als expert automonteur.${klachtBlok}\n\nVoertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''} ${v.motor||''}\nSensordata:${meetBlok||'\n(geen)'}\nDTC: ${formatDtcCodes(dtcCodes)}\n\nGeef: Structureer je antwoord EXACT in onderstaande volgorde. Gebruik nergens sterretjes, emoji of woorden in hoofdletters in de lopende tekst; zet elke sectienaam op een eigen regel.
 
 Voertuigscore: <0-100>/100
 Diagnosebetrouwbaarheid: <0-100>%
@@ -1377,8 +1390,7 @@ Een tabel met kolommen: Handeling | Kans | Indicatie. Indicatie is een prijsbere
 AANBEVOLEN VERVOLGONDERZOEK
 Een korte lijst met concrete meet- of controlestappen om de diagnose te bevestigen.`;
   const btn=document.getElementById('aiBtn'); btn.disabled=true;
-  await callAI(prompt,document.getElementById('aiContent'),{
-    vraag:klacht||'Algehele staat van het voertuig: wat valt op in de live sensordata en wat vraagt aandacht?',
-    profiel:'basis'});
+  await callAI(prompt,document.getElementById('aiContent'),PLVerzamel.aanlevering(uit,
+    klacht||'Algehele staat van het voertuig: wat valt op in de live sensordata en wat vraagt aandacht?','basis'));
   btn.disabled=false;
 }

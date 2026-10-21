@@ -397,6 +397,41 @@ console.log('\n9. Een analyseprofiel levert de kernset die de analyse ook echt o
     /analyseprofiel "brandstof"/.test(B.blok({ profiel: prof })));
 }
 
+console.log('\n9b. Eén kwaliteitsoordeel per sensor: wat de samenvatting toont, is daar beoordeeld (20-10-2026)');
+/* De samenvatting van de meetfase beoordeelt elke sensor die hij toont over
+   het hele meetvenster (MEETKWALITEIT TWIJFELACHTIG). Dit blok keek naar de
+   live waarde van nu. Over dezelfde sensor twee oordelen, die elkaar kunnen
+   tegenspreken: dus valt wat `zichtbaar` is hier weg, en oordeelt dit blok
+   alleen nog over de dekking daarbuiten. */
+{
+  // Gewone waarden: dan levert elke sensor, staat hij in de dekking, en is
+  // er dus iets om dubbel te beoordelen. Een onmogelijke waarde zou hier niets
+  // onderscheiden — die valt al bij de dekking af ("gemeten, maar uitgesloten").
+  const a = NODIG[0], b = NODIG[1];
+  const vals = NODIG.reduce(function (o, p, i) { o[p] = 20 + i; return o; }, {});
+  const Z = bouw({ supported: NODIG, active: NODIG, vals: vals });
+  const naam = function (p) { return (data.ALL_PID_DEFS[p] || {}).name || p; };
+  const beoordeeld = function (m) {
+    const k = m.kwaliteit; if (!k) return [];
+    return k.betrouwbaar.concat(k.twijfel, k.onzin).map(function (q) { return q.name; });
+  };
+  const met = Z.meet({ set: SET, zichtbaar: [a] });
+  toets('een sensor uit de samenvatting krijgt hier géén tweede oordeel',
+    beoordeeld(met).indexOf(naam(a)) < 0, JSON.stringify(beoordeeld(met)));
+  toets('een sensor van de dekking buiten de samenvatting wél',
+    beoordeeld(met).indexOf(naam(b)) >= 0, JSON.stringify(beoordeeld(met)));
+  toets('TEGENPROEF: zonder zichtbaar oordeelt het blok over beide',
+    beoordeeld(Z.meet({ set: SET })).indexOf(naam(a)) >= 0);
+  toets('en het blok zegt waar het oordeel over de samenvatting wél staat',
+    /beoordeeld over het hele meetvenster/.test(Z.blok({ set: SET, zichtbaar: [a] })));
+  toets('alles zichtbaar: geen DATAKWALITEIT-blok, en geen terugval op de hele selectie',
+    Z.blok({ set: SET, zichtbaar: NODIG }).indexOf('DATAKWALITEIT (verplicht') < 0 &&
+    Z.blok({ set: SET }).indexOf('DATAKWALITEIT (verplicht') > 0);
+  toets('kwaliteitsPids: dekking min zichtbaar; zonder zichtbaar ongewijzigd',
+    JSON.stringify(Z.kwaliteitsPids({ geleverd: ['x', 'y'] }, ['y', 'z'])) === '["x"]' &&
+    JSON.stringify(Z.kwaliteitsPids(null, [])) === '[]' && Z.kwaliteitsPids({ geleverd: [] }) === null);
+}
+
 console.log('\n10. Elke profielnaam in de aanroepplekken bestaat ook echt');
 /* DIT IS BRONCODE LEZEN, EN DAT IS HIER DE JUISTE VORM.
 
@@ -420,6 +455,10 @@ console.log('\n10. Elke profielnaam in de aanroepplekken bestaat ook echt');
     const rx = /[{,]\s*profiel\s*:\s*'([a-z]+)'/g;
     let m;
     while ((m = rx.exec(tekst)) !== null) gevonden.push({ bestand: f, naam: m[1] });
+    // Sinds 20-10-2026 ook de derde parameter van PLVerzamel.aanlevering(uit,
+    // vraag, profiel): daar staat de naam nu op de meeste plekken.
+    const rx2 = /PLVerzamel\.aanlevering\([^;]*?,\s*'([a-z]+)'\)/g;
+    while ((m = rx2.exec(tekst)) !== null) gevonden.push({ bestand: f, naam: m[1] });
   });
   toets('er zijn aanroepplekken die een profiel meegeven',
     gevonden.length >= 5, gevonden.length + ' gevonden');

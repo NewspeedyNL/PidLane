@@ -47,7 +47,7 @@ function toets(naam, waar, uitleg) {
     // De AI-aanroep afvangen: de prompt bewaren, een kort rapport teruggeven.
     await app.ev(`window.__prompts = []; window.apiFetch = function (p) { window.__prompts.push(String(p)); return Promise.resolve('Voertuigscore: 80/100'); }; 'ok'`);
     await app.ev(`PLNav.tab('auto'); document.querySelector('.pl-tegel.tg-storing').click(); 'ok'`);
-    await app.ev(`PLWizard.kies(0); document.getElementById('wzTekst').value = 'Temperatuurmeter loopt op in de file'; PLWizard.tekstVerder(); PLWizard.kies(2); 'ok'`);
+    await app.ev(`document.getElementById('wzTekst').value = 'Temperatuurmeter loopt op in de file'; PLWizard.klachtTyp(); PLWizard.klachtVerder(); PLWizard.wanneerVerder(true); 'ok'`);
     toets('het plan heeft een knop voor de AI-monteur', await app.ev(`!!document.querySelector('.wz-mod-run[onclick*="aimonteur"]')`));
     await app.ev(`document.querySelector('.wz-mod-run[onclick*="aimonteur"]').click(); 'ok'`);
     toets('het verzamelscherm staat open', await wacht(zichtbaar('plVzOv'), 5000));
@@ -65,14 +65,15 @@ function toets(naam, waar, uitleg) {
 
     console.log('\n── 3. langer meten, met een uitschieter onderweg ──');
     // Zeventig seconden historie voor elke sensor die aanstaat: genoeg voor
-    // de poort, met één koelwaterpiek van 112 °C halverwege.
+    // de poort, met een koelwaterpiek van 112 °C halverwege — twee monsters: één
+    // is sinds 21-10-2026 een uitschieter (let op), geen afwijking.
     await app.ev(`(function(){
       var nu = Date.now(), pids = Array.from(activePIDs);
       ['0105','010C','0142'].forEach(function (p) { if (pids.indexOf(p) < 0) pids.push(p); activePIDs.add(p); });
       pids.forEach(function (p) {
         var h = []; for (var i = 0; i < 40; i++) {
           var v = typeof pidVals[p] === 'number' ? pidVals[p] : 10;
-          if (p === '0105') v = (i === 20) ? 112 : 88 + (i % 4);
+          if (p === '0105') v = (i === 20 || i === 21) ? 112 : 88 + (i % 4);
           h.push({ t: nu - 70000 + i * 1750, v: v });
         }
         pidHist[p] = h;
@@ -123,7 +124,7 @@ function toets(naam, waar, uitleg) {
 
     console.log('\n── 7. de datalog is de meting ──');
     await app.ev(`(function(){ datalogBuffer = { '0105': [], '010C': [] };
-      for (var i = 0; i < 20; i++) { datalogBuffer['0105'].push({ t: i * 1000, v: i === 9 ? 113 : 90 }); datalogBuffer['010C'].push({ t: i * 1000, v: 800 + i }); }
+      for (var i = 0; i < 20; i++) { datalogBuffer['0105'].push({ t: i * 1000, v: (i === 9 || i === 10) ? 113 : 90 }); datalogBuffer['010C'].push({ t: i * 1000, v: 800 + i }); }
       runDatalogAI(); return 1; })()`);
     toets('het scherm toont meteen de uitslag uit de datalog', await wacht(`/de datalog/.test(document.getElementById('plVzSub').innerHTML)`, 3000),
       await app.ev(`(document.getElementById('plVzSub')||{}).innerHTML`));
