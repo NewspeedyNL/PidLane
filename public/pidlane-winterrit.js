@@ -38,6 +38,9 @@
     kzGrens: 75,          // °C: zakt het koelwater op de snelweg hieronder, dan hangt de thermostaat open
     kzMin: 2,             // zo vaak gezien voor een oordeel
     langS: 1200,          // een rit van 20 minuten hoort warm te worden
+    bedrijf: 85,          // °C: eindtemperatuur van de wintercheck — daaronder niet warm geworden
+    opwarmTot: 88,        // °C: de wintercheck klokt de opwarmtijd tot hier
+    traagS: 420,          // s: langer dan 7 minuten tot opwarmTot is traag
     langMin: 2,
     tcKou: 3,             // °C buiten: rond en onder nul is het glad
     tcMinKou: 2,          // zo vaak mogelijk ingrijpen gezien voor een advies, in de kou
@@ -125,6 +128,23 @@
     };
   }
 
+  /* ÉÉN OORDEEL OVER ÉÉN OPWARMING (#558, 21-10-2026). De wintercheck in
+     pidlane-koopcheck.js rekende met eigen grenzen (85, 88 °C, 420 s) en
+     keek niet of het koelwater na het opwarmen terugzakte — precies het
+     teken waar thermostaat() hierboven over de ritten naar kijkt. Nu leest
+     hij deze functie, met de grenzen uit CFG: één tabel, één oordeel.
+     m: { eind, tijdWarm (s tot opwarmTot, null = niet bereikt), minNaWarm }.
+     Puur; geeft { niveau: ok|let|fout|onbekend, tekst }. */
+  function opwarming(m) {
+    m = m || {};
+    var eind = getal(m.eind), tijd = getal(m.tijdWarm), min = getal(m.minNaWarm);
+    if (eind === null) return { niveau: 'onbekend', tekst: 'Geen koelwatertemperatuur gemeten — opwarming niet te beoordelen' };
+    if (eind < CFG.bedrijf) return { niveau: 'fout', tekst: 'Bereikt geen bedrijfstemperatuur \u2014 thermostaat mogelijk open vast' };
+    if (min !== null && min < CFG.kzGrens) return { niveau: 'fout', tekst: 'Koelwater zakt terug tot ' + Math.round(min) + ' \u00b0C nadat het warm was \u2014 thermostaat blijft mogelijk open hangen' };
+    if (tijd !== null && tijd > CFG.traagS) return { niveau: 'let', tekst: 'Warmt traag op \u2014 thermostaat of circulatie controleren' };
+    return { niveau: 'ok', tekst: 'Thermostaat en opwarming OK' };
+  }
+
   /* #560 — mogelijk wielslip, uit de koppelreductie en wielspin die
      PLConditie per rit telt (cd.tc). ctx: { nu, banden }. Geen oordeel over
      de bestuurder; één advies, en alleen als het vaker gezien is. Een rit
@@ -153,5 +173,5 @@
     };
   }
 
-  window.PLWinterRit = { korteRitten: korteRitten, thermostaat: thermostaat, tractie: tractie, CFG: CFG, _kern: { warmGeweest: warmGeweest, recent: recent } };
+  window.PLWinterRit = { korteRitten: korteRitten, thermostaat: thermostaat, opwarming: opwarming, tractie: tractie, CFG: CFG, _kern: { warmGeweest: warmGeweest, recent: recent } };
 })();

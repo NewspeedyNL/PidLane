@@ -2148,6 +2148,8 @@ MUTATIES=(
 "public/pidlane-conditie.js@@      m.pedaalT !== a.tcPt && m.gasklepT !== a.tcGt;@@      true;@@test-winterrit.js@@een gaspedaal dat al seconden niet ververst is, telt weer als vastgehouden"
 "public/pidlane-conditie.js@@    if ((a.tcD || 0) >= CFG.tc.minS) o.tc = a.tcn || 0;@@    o.tc = a.tcn || 0;@@test-winterrit.js@@een auto zonder gaspedaal-PID heet weer nul keer wielslip in plaats van niet gemeten"
 "public/pidlane-winterrit.js@@    if (!koud && nAl < CFG.tcMinWarm) return null;@@    if (!koud && nAl < 1) return null;@@test-winterrit.js@@zonder vorst komt het slipadvies weer na twee keer, met dezelfde drempel als bij gladheid"
+"public/pidlane-winterrit.js@@    if (min !== null && min < CFG.kzGrens) return@@    if (false) return@@test-winterrit.js@@de wintercheck ziet een thermostaat die na het opwarmen openblijft weer als OK (#558)"
+"public/pidlane-koopcheck.js@@    else if(minNaWarm==null||s.coolant<minNaWarm) minNaWarm=s.coolant;@@    else {}@@test-winterrit.js@@de wintercheck geeft het terugzakken na het opwarmen niet door: één oordeel op papier, twee in de praktijk (#558)"
 "public/pidlane-weer.js@@d.datum >= vandaag && (getal@@true && (getal@@test-weer.js@@de verwachting van gisteren telt mee in de komende dagen"
 "public/pidlane-weer.js@@return m !== null && m <= CFG.gladMin && (@@return m !== null && (@@test-weer.js@@regen bij 4 °C heet kans op gladheid"
 "worker.js@@const p = Object.prototype.hasOwnProperty.call(WEER_PLAATSEN, id) ? WEER_PLAATSEN[id] : null;@@const p = WEER_PLAATSEN[id] || null;@@test-weer.js@@__proto__ als plaats gaat door naar Open-Meteo"
