@@ -76,6 +76,23 @@ const mb = K.mrb(pa('20180101', 1100), bs(['Benzine']));
 toets('benzine 1.100 kg rijklaar: het anker van de Belastingdienst (€ 126 per kwartaal)', Math.round(mb.kwartaal) === 126, mb.kwartaal);
 const md = K.mrb(pa('20180101', 1100), bs(['Diesel']));
 toets('diesel kost meer dan benzine bij hetzelfde gewicht', md.kwartaal > mb.kwartaal);
+// #505: de wettekst (art. 23, versie 01-07-2026), niet een lijn door één punt.
+toets('dieseltoeslag 1.100 kg: € 153 + € 16,57 (art. 23 lid 2a)', Math.abs(md.kwartaal - mb.kwartaal - 169.57) < 0.01, md.kwartaal - mb.kwartaal);
+toets('rijksdeel 1.000 kg rijklaar: € 64,24, 1.001 kg al de volgende 100 kg', K.tarief(K.MRB.rijk, K.MRB.rijkPer100, 1000) === 64.24 && Math.abs(K.tarief(K.MRB.rijk, K.MRB.rijkPer100, 1001) - 81.51) < 0.001);
+toets('lichte auto (850 kg): de klasse van 900 kg, niet een doorgetrokken lijn', K.tarief(K.MRB.rijk, K.MRB.rijkPer100, 850) === 48.30);
+toets('zware auto (3.500 kg): het eigen tarief vanaf 3.400 kg', Math.abs(K.tarief(K.MRB.rijk, K.MRB.rijkPer100, 3500) - 486.12) < 0.001);
+toets('de uitleg zegt dat de fijnstoftoeslag er niet in zit', /zonder fijnstoftoeslag/.test(md.uitleg));
+{
+  // Eén prijs per brandstof in de app: PLBerekend (de ritkosten) en de
+  // wijzer (kosten per maand) lazen tot #505 twee verschillende tabellen.
+  const ctx = { window: {}, console: { warn() {}, log() {}, error() {} } };
+  ctx.window = ctx;
+  require('vm').createContext(ctx);
+  require('vm').runInContext(require('fs').readFileSync(__dirname + '/pidlane-berekend.js', 'utf8'), ctx);
+  const P = (ctx.PLBerekend || {}).PRIJS_STANDAARD, W = K.PRIJS;
+  toets('ritkosten en kosten per maand gebruiken dezelfde pompprijs',
+    P && P.benzine === W.benzine && P.diesel === W.diesel && P.lpg === W.lpg, JSON.stringify({ berekend: P, wijzer: W }));
+}
 const mz = K.mrb(pa('20180101', 1600), bs(['Benzine']));
 toets('zwaarder kost meer', mz.kwartaal > mb.kwartaal);
 const me = K.mrb(pa('20230101', 1100), bs(['Elektriciteit']));

@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 21-10-2026 — Kosten per maand: wettabel MRB en pompprijs van nu (#505)
+ ═══════════════════════════════════════════════════════════
+
+ - Wegenbelasting uit art. 23 Wet MRB 1994 (versie 01-07-2026): rijksdeel
+   per klasse en per begonnen 100 kg, dieseltoeslag € 153 + € 16,57 per
+   100 kg (was een lijn met € 12,50 per 100 kg). Opcenten via het anker
+   van de Belastingdienst (1.100 kg benzine = € 126). Zonder fijnstoftoeslag.
+ - Pompprijzen naar de adviesprijs van 20-10-2026: Euro95 2,64, diesel
+   2,69, LPG 1,29 (was CBS juli: 2,30 / 2,15 / 0,95).
+ - PLBerekend.PRIJS_STANDAARD (ritkosten) stond nog op 1,95 / 1,70 / 0,85;
+   nu gelijk aan de wijzer, en test-wijzer.js houdt ze gelijk.
+ - test-wijzer.js +6, 3 mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  21-10-2026 — Beeld-in-beeld wordt een klokje met naald
  ═══════════════════════════════════════════════════════════
 
