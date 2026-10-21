@@ -184,7 +184,7 @@ console.log('\n4. de vlag gaat naar native, en alleen als hij verandert');
           zetGewenst: function (o) { gestuurd.push(!!(o && o.aan)); return Promise.resolve({ gewenst: !!(o && o.aan) }); },
           status: function () { return Promise.resolve({ beschikbaar: true, ondersteund: true, gewenst: true, inPip: false }); },
           nu: function () { return Promise.resolve({ ok: true }); },
-          addListener: function (naam, fn) { vangst.naam = naam; vangst.fn = fn; }
+          addListener: function (naam, fn) { if (naam === 'pipModus') { vangst.naam = naam; vangst.fn = fn; } }
         }
       }
     }
@@ -292,6 +292,55 @@ console.log('\n4. de vlag gaat naar native, en alleen als hij verandert');
   toets('3 min klein zonder verbonden auto telt niet: 0 s', los.PLPip.maat('pip-langst-s') === 0,
     'gaf: ' + los.PLPip.maat('pip-langst-s') + ' — dan haalt een opdracht zijn voorwaarde op de oprit');
   toets('een onbekende naam is null', m.PLPip.maat('pip-bestaat-niet') === null);
+
+  // ══════════════════════════════════════════════════════════════════
+  console.log('\n9. het klokje: naald, grenzen uit PIDS, en de stopknop (21-10-2026)');
+  // ══════════════════════════════════════════════════════════════════
+  {
+    // De echte grenzen: pidlane-data.js laden, geen eigen tabel.
+    const d = { console: { warn() { }, log() { }, error() { } } }; d.window = d;
+    vm.createContext(d);
+    vm.runInContext(fs.readFileSync(__dirname + '/pidlane-data.js', 'utf8'), d, { filename: 'pidlane-data.js' });
+    const koel = (d.PIDS || []).find(function (x) { return x.pid === '0105'; });
+    toets('pidlane-data.js levert de koelwatergrenzen', koel && typeof koel.wH === 'number' && typeof koel.dH === 'number');
+    const k = laad({ PIDS: d.PIDS });
+    const M = k.PLPip.meterStand;
+
+    const rust = M({ '010C': 782, '010D': 0, '0105': 69 });
+    toets('782 tpm, 69 °C: rustig, geen kleur', rust.staat === 'rustig', JSON.stringify(rust));
+    toets('0 km/u is een meting, geen streep', rust.kmh === 0);
+    toets('de naald staat bij 782 tpm net voorbij het begin (150° + 26,8°)',
+      Math.abs(rust.hoek - (150 + 782 / 7000 * 240)) < 0.01, 'hoek ' + rust.hoek);
+    toets('stilstaande motor: naald op het begin', M({ '010C': 0 }).hoek === 150);
+    toets('boven de schaal blijft de naald aan het eind en draait niet rond', M({ '010C': 9000 }).hoek === 390);
+
+    const net = M({ '0105': koel.wH - 1 });
+    toets('één graad onder de waarschuwingsgrens: nog rustig', net.staat === 'rustig', JSON.stringify(net));
+    toets('op de waarschuwingsgrens (' + koel.wH + ' °C): let op', M({ '0105': koel.wH }).staat === 'let');
+    toets('op de alarmgrens (' + koel.dH + ' °C): alarm', M({ '0105': koel.dH }).staat === 'alarm');
+    toets('geen enkele waarde: leeg, niet rustig', M({}).staat === 'leeg');
+    toets('een ontbrekende snelheid is null, niet 0', M({ '010C': 800 }).kmh === null);
+
+    // DE STOPKNOP. Eerst verbreken (rit bewaard), dan pas het venster dicht.
+    const volgorde = [];
+    const st = laad({
+      PIDS: d.PIDS, connected: true, activePIDs: new Set(['010C']),
+      handleConnect: function () { volgorde.push('verbreek'); st.connected = false; return Promise.resolve(); },
+      Capacitor: { Plugins: { PLPip: {
+        zetGewenst: function () { return Promise.resolve(); },
+        sluit: function () { volgorde.push('sluit'); return Promise.resolve(); },
+        addListener: function (naam, fn) { (st.luister = st.luister || {})[naam] = fn; }
+      } } }
+    });
+    st.PLPip.sync();
+    toets('de app luistert naar de stopknop van het venster', st.luister && typeof st.luister.pipStop === 'function');
+    const r = await st.PLPip.stop();
+    toets('stop: eerst verbreken, dan het venster dicht', volgorde.join(',') === 'verbreek,sluit', 'volgorde: ' + volgorde.join(','));
+    toets('en dat meldt ok', r && r.ok === true, JSON.stringify(r));
+    const niet = laad({ PIDS: d.PIDS, connected: false, handleConnect: function () { volgorde.push('fout'); } });
+    await niet.PLPip.stop();
+    toets('niet verbonden: stop verbreekt niets (handleConnect zou juist verbinden)', volgorde.indexOf('fout') === -1);
+  }
 
   console.log('\n' + (fout ? 'FOUT: ' + fout + ' van de ' + n + ' controles'
                             : 'goed: alle ' + n + ' controles') + '\n');
