@@ -204,13 +204,27 @@ function toets(naam, waar, uitleg) {
     // DIT IS WAAROM DE KEUZE EEN KNOP IS. Twee opdrachten onder één ritnummer
     // betekent dat buiten de app niet te zien is welke regel bij welke vraag
     // hoorde — en de hele lus rust op die koppeling.
+    //
+    // DE KLOK STAAT STIL (#571). Het ritnummer heeft minuutresolutie; liep
+    // deze proef over een minuutgrens, dan verschilden de twee nummers al door
+    // de klok en ontsnapte de mutatie op het volgnummer. Nu twee sessies op
+    // één vaste minuut: alleen het volgnummer kan ze nog uit elkaar houden.
     const ses = JSON.parse(await app.ev(`(function(){
-      var voor = PLTestrunLive.ritId();
-      var na = PLTestrunLive.nieuweSessie('proef uit bproef-meetkamer');
-      return JSON.stringify({ voor: voor, na: na, nu: PLTestrunLive.ritId(), anders: voor !== na });
+      var Echt = Date, vast = new Echt(2026, 9, 21, 14, 30, 15).getTime();
+      function Stil(a) { return arguments.length ? new (Function.prototype.bind.apply(Echt, [null].concat([].slice.call(arguments))))() : new Echt(vast); }
+      Stil.now = function () { return vast; };
+      Stil.prototype = Echt.prototype; Stil.UTC = Echt.UTC; Stil.parse = Echt.parse;
+      window.Date = Stil;
+      try {
+        var een = PLTestrunLive.nieuweSessie('proef uit bproef-meetkamer');
+        var twee = PLTestrunLive.nieuweSessie('proef uit bproef-meetkamer, tweede');
+        return JSON.stringify({ een: een, twee: twee, nu: PLTestrunLive.ritId(), anders: een !== twee,
+          zelfdeMinuut: een.slice(0, 15) === twee.slice(0, 15) });
+      } finally { window.Date = Echt; }
     })()`));
+    toets('de klok stond echt stil: beide nummers in dezelfde minuut', ses.zelfdeMinuut, JSON.stringify(ses));
     toets('het ritnummer verandert', ses.anders, JSON.stringify(ses));
-    toets('en blijft daarna staan', ses.na === ses.nu, JSON.stringify(ses));
+    toets('en blijft daarna staan', ses.twee === ses.nu, JSON.stringify(ses));
 
     console.log('\n5. Het paneel verschuift de opmaak van de app niet');
     // Dezelfde les als bij de previewbanner (#242): een paneel dat de app
