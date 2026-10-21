@@ -388,7 +388,7 @@
       'De kilometercheck is een aanwijzing, geen juridisch bewijs. Het officiële tellerstandoordeel (NAP) komt van het RDW.',
       'Monitortests en software-ID worden niet vergeleken met gegevens van de fabrikant. Niet elke auto geeft alle gegevens door; wat ontbreekt staat in het hoofdstuk "Volledigheid".',
       heeftAI ? 'De samenvatting in gewone taal is geschreven door AI op basis van de gegevens in dit rapport en kan fouten bevatten. De kleuren, tabellen en meetwaarden maakt de app zelf, niet de AI.' : null,
-      'Twijfel je, of gaat het om veel geld? Laat de auto dan altijd ook keuren door een onafhankelijke garage of keuringsinstantie.',
+      'Twijfel je, of gaat het om veel geld? Laat de auto dan altijd ook keuren door een onafhankelijke garage of keuringsinstantie. Zo\'n fysieke aankoopkeuring kost ongeveer € 150 tot € 350 (indicatie, onder meer bij de ANWB).',
       'PidLane is, voor zover de wet dat toestaat, niet aansprakelijk voor een koopbeslissing die op dit rapport is gebaseerd.',
       'Privacy: dit rapport bevat het kenteken en, als die is ingevuld, de plaats van de bezichtiging. Het chassisnummer (VIN) staat er bewust niet in.'
     ].filter(Boolean);

@@ -178,6 +178,7 @@ console.log('\nG. Disclaimer en privacy');
   const m = A.model(schoon());
   const zicht = JSON.stringify({ v: m.voorblad, s: m.secties });
   toets('disclaimer: geen aankoopkeuring, geen garantie', /geen aankoopkeuring/.test(zicht) && /geen garantie/.test(zicht));
+  toets('disclaimer: fysieke keuring met prijsindicatie', /ongeveer € 150 tot € 350/.test(zicht));
   toets('disclaimer: noemt wat níét bekeken is (carrosserie, remmen)', /carrosserie/.test(zicht) && /remmen/.test(zicht));
   toets('nergens "anoniem"', !/anoniem/i.test(zicht));
   toets('het VIN staat niet in het rapport', zicht.indexOf(VIN) < 0);
