@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "nl.pidlane.app",
+      "sha256_cert_fingerprints": [
+        "88:DC:74:7C:7E:1F:3F:DB:CF:FF:E5:D6:2C:F0:35:4E:E9:84:BE:64:78:85:6E:6E:50:F0:66:91:16:9B:96:88"
+      ]
+    }
+  }
+]
