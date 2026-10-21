@@ -279,6 +279,7 @@ MUTATIES=(
 "public/pidlane-testrun.js@@    issue: '#29',@@    issue: '',@@test-blok5lijst.js@@een proef in blok 5 is zijn issue kwijt en valt daarmee uit de dekking"
 "public/pidlane-testrun.js@@'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ')@@'BLOK 5 DEKT DEZE RONDE: #19, #15'@@test-blok5lijst.js@@de dekkingsregel in CAMPAGNE is weer met de hand overgeschreven"
 "public/pidlane-uitgebreid.js@@schoon.indexOf(hdr) >= 0;@@true;@@test-mode21.js@@de uitgebreide probe accepteert elk antwoord"
+"public/pidlane-uitgebreid.js@@  const UITGEBREID_DEFS = {\n@@  const UITGEBREID_DEFS = {\n    '2101': { name: 'Motorolie temp', unit: '°C', cat: 'Temperatuur', min: -40, max: 150, merk: 'MAZDA', vervangt: '015C', parse: b => b[0] - 40 },\n@@test-mode21.js@@2101 staat weer als Mazda-vervanger van 015C, terwijl hij op de CX-5 NO DATA geeft (19-08-2026)"
 "public/pidlane-uihelpers.js@@'T' + _plTweeCijfers(d.getHours())@@'T' + _plTweeCijfers(d.getUTCHours())@@test-tijdklok.js@@de stempel valt terug op het UTC-uur (#17)"
 "public/pidlane-privacy.js@@    if (klant)@@    if (true)@@test-account-verwijderen.js@@personeel wordt weer naar een knop gestuurd die het niet heeft (#69)"
 "public/pidlane-uihelpers.js@@'-' + String(d.getMilliseconds()).padStart(3,'0');@@'-' + String(d.getMilliseconds());@@test-tijdklok.js@@milliseconden verliezen hun voorloopnullen en sorteren verkeerd (#17)"
@@ -1333,6 +1334,7 @@ MUTATIES=(
 # ── PID-tabel naar SAE J1979 (26-09-2026) ──
 # Vanaf 0169 stonden namen en formules op de verkeerde nummers, en lazen de
 # formules de steunbitmap als databyte. De fouten hieronder zijn die van toen.
+"public/pidlane-data.js@@max:400,                     parse:b=>((b[0]*256+b[1])*100/255)}@@max:400,                     parse:b=>((b[0]*256+b[1])/655.35)}@@test-piddefs.js@@0143 rekent weer met de deler 655,35: absolute belasting 256x te laag (21-08-2026)"
 "public/pidlane-data.js@@  '019E':{name:'Uitlaatgasdebiet',       unit:'kg/h',cat:'Emissie',  min:0,max:1311, parse:b=>((b[0]*256+b[1])/50)},@@  '019E':{name:'Turbo temp uitlaat A',   unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},@@test-piddefs.js@@019E is weer een turbotemperatuur van −38 °C op een auto zonder turbo"
 "public/pidlane-data.js@@parse:b=>((b[0]&4)?(b[5]*100/255):null)},@@parse:b=>(b[5]*100/255)},@@test-piddefs.js@@AdBlue-tankniveau leest ook als het steunbit uit staat, en geeft dan een getal dat nergens op slaat"
 "public/pidlane-data.js@@  '014A':{name:'Gaspedaal positie E',    @@  '014A':{name:'Gaspedaal positie D',    @@test-piddefs.js@@twee pedaalsensoren heten allebei D en de derde staat onder de naam van de tweede"
