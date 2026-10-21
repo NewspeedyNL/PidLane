@@ -962,6 +962,7 @@ MUTATIES=(
 "public/pidlane-pip.js@@    var frac = rpm === null ? 0 : Math.max(0, Math.min(1, rpm / SCHAAL_MAX));@@    var frac = rpm === null ? 0 : rpm / SCHAAL_MAX;@@test-pip.js@@boven 7000 tpm draait de naald voorbij het eind van de boog door"
 "public/pidlane-pip.js@@        los = Promise.resolve(handleConnect());@@        los = Promise.resolve();@@test-pip.js@@de stopknop sluit het venster zonder te verbreken: de meting loopt onzichtbaar door"
 "native/PLPipPlugin.java@@        notifyListeners(\"pipStop\", new JSObject());@@        notifyListeners(\"pipStoppen\", new JSObject());@@test-nativeschil.js@@de stopknop vertrekt onder een andere naam dan waarop de app luistert: hij doet niets"
+"public/pidlane-pip.js@@      var n = el('pipNaald'); if (n) n.setAttribute('transform', 'rotate(' + m.hoek.toFixed(1) + ' 95 100)');@@      var n = el('pipNaald');@@bproef-pip.js@@de naald blijft op nul staan terwijl de meetlus waarden binnenkrijgt: het venster lijkt dood"
 "native/PLPip.java@@        if (!gewenst) return;@@        if (false) return;@@test-nativeschil.js@@het venster komt op ongeacht wat de app besloot — ook met de functie uitgezet in de Config"
 ".github/workflows/build-apk.yml@@                  \"        PLPip.leaveHint(this);\",@@                  \"        // haak eruit\",@@test-nativeschil.js@@de enige haak waarop Android PiP toestaat valt weg: alles lijkt in orde en het venster gaat nooit aan"
 # ── #277: één rit, alle opdrachten, en groen is gesloten (23-09-2026) ──

@@ -216,13 +216,14 @@ const NEP_BRIDGE = `(function(){
       window.__pip.luisteraars['pipModus']({ in: true });
       updPID('010C', 1234);
       await new Promise(function(r){ setTimeout(r, 30); });
-      var el = document.getElementById('pipRpm');
-      var uit = { tekst: el ? el.textContent : null };
+      var el = document.getElementById('pipNaald');
+      var uit = { stand: el ? el.getAttribute('transform') : null };
       window.__pip.luisteraars['pipModus']({ in: false });
       return JSON.stringify(uit);
     })()`));
-    toets('een binnengekomen waarde komt in het kleine venster',
-      ververst.tekst && ververst.tekst !== '—',
+    // 1234 tpm op een schaal tot 7000 over 240°: 150 + 42,3 = 192,3°.
+    toets('een binnengekomen toerental zet de naald in het kleine venster',
+      /^rotate\(192\.3 /.test(ververst.stand || ''),
       'gaf: ' + JSON.stringify(ververst) + ' — dan blijft het venster op streepjes staan en zegt het niets over doorlopen');
 
     console.log('\nbproef-pip: ' + (fouten ? fouten + ' FOUT' : 'alles goed'));
