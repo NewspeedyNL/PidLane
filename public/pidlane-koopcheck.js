@@ -1729,16 +1729,24 @@ function winterLocalVerdict(){
   const samples=_climateData.samples||[];
   const b=_climateData.baseline||{}, e=_climateData.eind||{};
   const startCoolant=b.coolant, eindCoolant=e.coolant;
-  // Opwarmtijd tot 88C
-  let tijd88=null;
-  for(const s of samples){ if(s.coolant!=null&&s.coolant>=88){ tijd88=Math.round(s.t); break; } }
-  const bereiktBedrijfstemp = eindCoolant!=null && eindCoolant>=85;
+  // Opwarming: grenzen en oordeel uit PLWinterRit (#558), zodat de
+  // wintercheck en het ritpatroon hetzelfde zeggen over dezelfde thermostaat.
+  const WR=window.PLWinterRit;
+  const tot=WR?WR.CFG.opwarmTot:88;
+  let tijd88=null, minNaWarm=null;
+  for(const s of samples){
+    if(s.coolant==null) continue;
+    if(tijd88==null){ if(s.coolant>=tot) tijd88=Math.round(s.t); }
+    else if(minNaWarm==null||s.coolant<minNaWarm) minNaWarm=s.coolant;
+  }
+  let oo;
+  if(WR&&typeof WR.opwarming==='function') oo=WR.opwarming({ eind:eindCoolant, tijdWarm:tijd88, minNaWarm });
+  else { console.warn('Wintercheck: PLWinterRit.opwarming ontbreekt — geen thermostaatoordeel (#558)'); oo={ niveau:'onbekend', tekst:'Thermostaat niet te beoordelen (module ontbreekt)' }; }
+  const bereiktBedrijfstemp = eindCoolant!=null && eindCoolant>=(WR?WR.CFG.bedrijf:85);
   const oilFollows = (e.oil!=null&&eindCoolant!=null)? (e.oil>=eindCoolant-30):null;
   const voltKoud = b.volt;
-  let thermostaat, kleur;
-  if(!bereiktBedrijfstemp){ thermostaat='Bereikt geen bedrijfstemperatuur \u2014 thermostaat mogelijk open vast'; kleur='#ef4444'; }
-  else if(tijd88!=null && tijd88>420){ thermostaat='Warmt traag op \u2014 thermostaat of circulatie controleren'; kleur='#f59e0b'; }
-  else { thermostaat='Thermostaat en opwarming OK'; kleur='#22c55e'; }
+  const thermostaat=oo.tekst;
+  const kleur={ ok:'#22c55e', let:'#f59e0b', fout:'#ef4444' }[oo.niveau]||'#8b949e';
   let accu;
   if(voltKoud==null) accu='onbekend';
   else if(voltKoud<11.8) accu='zwak \u2014 koude accu, overweeg test/vervanging';
