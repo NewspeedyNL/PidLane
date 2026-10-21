@@ -1694,6 +1694,8 @@ MUTATIES=(
 "worker.js@@      if (f.TegoedUit === true && b.ontwikkelaar !== true) {@@      if (false) {@@test-tegoeduit.js@@Tegoed uit is te zetten bij een klant zonder Ontwikkelaar"
 "worker.js@@    tegoedUit: klantTegoedUit(f)@@    tegoedUit: f.TegoedUit === true@@test-tegoeduit.js@@/klant/mij meldt tegoed uit terwijl de Worker wel afboekt"
 "public/pidlane-credits.js@@    try { return window.currentUser.tegoedUit === true; }@@    try { return !!window.currentUser.tegoedUit; }@@test-tokenchip.js@@een vlag \"ja\" zet in de app de kostencontrole uit"
+"public/pidlane-credits.js@@      res.gemeld = true;\n      const kosten = res.kosten || res.credits;@@      const kosten = res.kosten || res.credits;@@test-saldokop.js@@een afboeking komt twee keer in het logboek: wie de kosten optelt, telt dubbel (#524)"
+"public/pidlane-credits.js@@saldo() + ' tokens (laatst bekend op dit toestel, nog niet bij de server nagevraagd)'@@saldo() + ' tokens'@@test-saldokop.js@@de laadregel brengt het getal van dit toestel als feit, en het logboek leest daarna als een rekenfout (#524)"
 
 # ── 28-09-2026: een demo-auto laat niets achter. Elke mutatie haalt één
 # demotoets weg; de fout die dan stil gebeurt staat erachter.

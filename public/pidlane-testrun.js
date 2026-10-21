@@ -2787,6 +2787,19 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Tegoed: de afboekregel draagt het serversaldo, en de laadregel zegt dat zijn getal van dit toestel komt (#524) ──
+  {
+    issue: '524',
+    naam: 'Tegoed: na een analyse noemt het logboek het saldo van de server, één keer, met de analyse erbij',
+    waarom: 'Op 15-10-2026 zei het logboek "-85 (saldo 0)" terwijl de server 15 had; de laadregel "saldo 100" was het getal van het toestel.',
+    proef: async function () {
+      if (!window.PLCredits || typeof PLCredits.meld !== 'function' || typeof PLCredits.volgServer !== 'function')
+        return { staat: 'FOUT', detail: 'PLCredits.meld of volgServer ontbreekt — oude pidlane-credits.js (herladen?)' };
+      if (!PLCredits.saldoBekend()) return { staat: 'LET OP', detail: 'nog geen saldo bekend op dit toestel — log in als klant en draai opnieuw' };
+      return { staat: 'OK', detail: 'saldo nu ' + PLCredits.saldo() + '. Rij: ingelogd als klant één analyse draaien; in het logboek staat één regel "Tegoed afgeboekt: -N voor <analyse> (saldo M …)" en M is wat Meer → Mijn account en tegoed zegt.' };
+    }
+  },
+
   // ── Wintercheck en ritpatroon: één thermostaatoordeel (#558) ──
   {
     issue: '558',

@@ -144,5 +144,48 @@ console.log('\n6. TEGENPROEF — de haak zit in apiFetch, niet alleen in deze mo
         'zonder expose-header geeft headers.get() in de browser null terug, ook al staat hij op de lijn');
 }
 
+console.log('\n7. #524: de logregel noemt het saldo van de server, niet de tussenstand');
+{
+  // Het geval van 15-10-2026, nagebouwd: het toestel dacht 80, de server had
+  // 100, de analyse kostte 85. boek() zakt lokaal naar 0; de server zegt 15.
+  const { PLC } = laad();
+  const regels = [];
+  global.window.log = (m) => regels.push(String(m));
+  PLC.zetServerSaldo(80);
+  const res = { credits: 7, tekensIn: 2900, maxTokens: 1000, model: 'x', geboekt: false };
+  PLC.boek(res, { input_tokens: 116015, output_tokens: 945 });
+  toets('boek() schrijft zelf geen regel (dat is nog de schatting)', !regels.some((r) => /afgeboekt/.test(r)), JSON.stringify(regels));
+  const vanServer = PLC.volgServer(kop('15'), {});
+  PLC.meld(res, vanServer, 'online zoeken');
+  const r = regels.filter((x) => /Tegoed afgeboekt/.test(x));
+  toets('één regel, met saldo 15 van de server', r.length === 1 && /saldo 15[ ,)]/.test(r[0]), JSON.stringify(r));
+  toets('en welke analyse het was', /voor online zoeken/.test(r[0] || ''));
+  toets('niet "saldo 0" zoals in het logboek van 15-10', !/saldo 0[ ,)]/.test(r[0] || ''));
+  PLC.meld(res, vanServer, 'online zoeken');
+  toets('twee keer meld() geeft geen tweede regel', regels.filter((x) => /Tegoed afgeboekt/.test(x)).length === 1);
+
+  const zonder = laad();
+  const regels2 = [];
+  global.window.log = (m) => regels2.push(String(m));
+  zonder.PLC.zetServerSaldo(50);
+  const res2 = { credits: 5, tekensIn: 100, maxTokens: 100, model: 'x', geboekt: false };
+  zonder.PLC.boek(res2, { input_tokens: 1000, output_tokens: 100 });
+  zonder.PLC.meld(res2, zonder.PLC.volgServer(kop(undefined), {}), null);
+  toets('geen getal van de server: de regel zegt "geschat"', regels2.some((x) => /geschat/.test(x)), JSON.stringify(regels2));
+}
+
+console.log('\n8. Het saldo bij het laden is het laatst bekende, geen feit van de server');
+{
+  const opslag = {};
+  global.localStorage = { getItem: (k) => (k in opslag ? opslag[k] : null), setItem: (k, v) => { opslag[k] = String(v); }, removeItem: (k) => { delete opslag[k]; } };
+  const regels = [];
+  global.window = { currentUser: { role: 'klant' }, log: (m) => regels.push(String(m)) };
+  opslag['pl_credits_saldo'] = '100';   // CFG.lsSaldo; test-saldokop.js stopt als die sleutel verandert
+  if (!/lsSaldo: 'pl_credits_saldo'/.test(fs.readFileSync(__dirname + '/pidlane-credits.js', 'utf8'))) { console.log('  FOUT de saldosleutel heet anders — pas deze toets aan'); process.exit(1); }
+  eval(fs.readFileSync(__dirname + '/pidlane-credits.js', 'utf8'));
+  const g = regels.find((x) => /geladen/.test(x)) || '';
+  toets('de laadregel zegt dat het getal van dit toestel komt', /saldo 100 tokens \(laatst bekend op dit toestel/.test(g), g);
+}
+
 console.log('\n' + (fouten ? fouten + ' FOUT(en)' : 'alles goed'));
 process.exit(fouten ? 1 : 0);
