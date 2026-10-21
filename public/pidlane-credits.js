@@ -1070,6 +1070,10 @@
     _chipVerversen();
   }
 
+  // Bij het laden is er nog nooit een serversaldo binnen: wat hier staat komt
+  // uit de opslag van dit toestel. Op 15-10-2026 (#524) stond hier "saldo 100
+  // tokens" als feit, en las het logboek daarna als een rekenfout. Het is het
+  // laatst bekende getal; de server heeft het laatste woord (volgServer).
   _log('pidlane-credits.js geladen \u2014 saldo ' +
-       (saldoBekend() ? saldo() + ' tokens' : 'nog onbekend (komt van de server)'), 'info');
+       (saldoBekend() ? saldo() + ' tokens (laatst bekend op dit toestel, nog niet bij de server nagevraagd)' : 'nog onbekend (komt van de server)'), 'info');
 })();

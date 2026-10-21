@@ -407,7 +407,7 @@ var PL_HULP = {
       a: 'In de tab Rapporten. Met een klantaccount ook in Meer → Mijn voertuigen.',
       zie: 'rapporten' },
     { v: 'Wat zijn tokens?',
-      a: 'Tokens zijn tegoed voor AI-analyses. Uitlezen en live meten kosten geen tokens. Je saldo staat in Meer → Mijn account en tegoed.',
+      a: 'Tokens zijn tegoed voor AI-analyses. Uitlezen en live meten kosten geen tokens. Vooraf zie je een schatting; afgerekend wordt wat de analyse echt kostte. Kost hij meer dan je nog had, dan gaat je saldo naar 0 en niet eronder. Je saldo staat in Meer → Mijn account en tegoed.',
       zie: 'account' },
     { v: 'Die i-rondjes zitten in de weg.',
       a: 'Ze staan standaard uit; aan- of uitzetten doe je met Meer → Mijn voorkeuren → Uitleg bij knoppen. De handleiding blijft bereikbaar via Meer → Handleiding.',

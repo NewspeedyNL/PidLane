@@ -15,6 +15,23 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 21-10-2026 — #524 afgesloten: wat er van de drie vragen over is
+
+- **De logregel** was op 15-10 al hersteld (`meld()` na `volgServer()`); nu
+  ook nagebouwd in `test-saldokop.js` met de getallen van die avond.
+- **"saldo 100" bij het laden** kwam uit de opslag van het toestel, niet van
+  de server. Waarom dat getal toen hoger stond dan wat de app een paar
+  minuten later dacht, is niet achterhaald en is niet meer na te gaan; het
+  doet er ook niet meer toe, want geen regel in het logboek leunt er nog op.
+  De laadregel zegt nu wat het is.
+- **116k invoertokens** kwamen van `PLEigen.zoekOnline` met `web_search`.
+  Die functie is met #526 weggehaald (OBDb in plaats van een AI-zoektocht),
+  dus de voorgestelde opslag voor zoekopdrachten in `preflight` is niet meer
+  nodig.
+- **Afkappen op 0** in de Worker is bewust: de schatting vooraf kan te laag
+  zijn, en een klant met 15 tokens krijgt de analyse van 85 en zakt naar 0.
+  Het kasboek noteert het tekort. Dat staat nu in de helptekst.
+
 ## 21-10-2026 — Het oordeel van de app kende geen toestand
 
 **Wat er gebeurde.** Bij de conditiecheck schreef de app een oordeel per

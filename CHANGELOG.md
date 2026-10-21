@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 21-10-2026 — Tegoed: de laatste stukken van #524
+ ═══════════════════════════════════════════════════════════
+
+ - Laadregel: "saldo N tokens (laatst bekend op dit toestel, nog niet bij
+   de server nagevraagd)" — het getal kwam uit de opslag, niet van de server.
+ - Help (Wat zijn tokens?): vooraf een schatting, afgerekend wat het echt
+   kostte; kost het meer dan je had, dan gaat het saldo naar 0, niet eronder.
+ - test-saldokop.js: het geval van 15-10 nagebouwd (lokaal 80, server 15,
+   kosten 85): één regel met saldo 15 en de analyse erbij. 2 mutaties.
+
+ ═══════════════════════════════════════════════════════════
  21-10-2026 — Kosten per maand: wettabel MRB en pompprijs van nu (#505)
  ═══════════════════════════════════════════════════════════
 
