@@ -2215,7 +2215,12 @@ MUTATIES=(
 # ── Het verzamelscherm (#443, 07-10-2026). De poort is die van §16; wat hier stil
 # kan breken is wat de klant ziet en wat de AI krijgt.
 "public/pidlane-verzamel.js@@        if (q && q.status === 'onzin') return zet('meetfout'@@        if (false) return zet('meetfout'@@test-verzamel.js@@koelwater 300 °C staat weer als afwijking op het scherm in plaats van als meetfout"
-"public/pidlane-verzamel.js@@    if (getal(d.dH) && r.max >= d.dH) return zet('afwijkend'@@    if (getal(d.dH) && r.laatste >= d.dH) return zet('afwijkend'@@test-verzamel.js@@het oordeel kijkt weer alleen naar de laatste waarde: een uitschieter onderweg verdwijnt"
+"public/pidlane-verzamel.js@@      if (getal(g.dH) && mx >= g.dH) {@@      if (getal(g.dH) && r.laatste >= g.dH) {@@test-verzamel.js@@het oordeel kijkt weer alleen naar de laatste waarde: een uitschieter onderweg verdwijnt"
+"public/pidlane-verzamel.js@@        return blijft(b) ? uit('afwijkend', 'hoogste waarde '@@        return true ? uit('afwijkend', 'hoogste waarde '@@test-verzamel.js@@één meting boven de alarmgrens staat weer als afwijkend: een uitschieter kleurt de conditiecheck rood"
+"public/pidlane-verzamel.js@@        (z && z[regel.toestand] === true ? inT : gewoon).push(m.v); });@@        (false ? inT : gewoon).push(m.v); });@@test-toestandgrens.js@@de toestand telt niet meer: de startdip van de accu staat weer als afwijkend"
+"public/pidlane-verzamel.js@@(!aandeel || vs.length < 10 || b >= aandeel * vs.length)@@(true)@@test-toestandgrens.js@@een kortetermijntrim die even heen en weer gaat staat weer als let op"
+"public/pidlane-verzamel.js@@    for (let i = 1; i < rpm.length; i++) if (rpm[i - 1].v < START_RPM && rpm[i].v >= START_RPM) starts.push(rpm[i].t);@@@@test-toestandgrens.js@@het aanslaan van de motor wordt niet meer herkend"
+"public/pidlane-data.js@@  '0104':{toestand:'rijdend',@@  '0104':{toestand:'stil',@@test-toestandgrens.js@@de belastingsgrens geldt weer bij vol gas en niet meer stationair"
 "public/pidlane-verzamel.js@@    if (t.verstreken < t.minMs) return 'meten';\n@@@@test-verzamel.js@@met genoeg historie springt het scherm meteen naar de uitslag: de klant ziet niets binnenkomen"
 "public/pidlane-verzamel.js@@    if (t.ok && t.kernCompleet !== false) return 'klaar';@@    if (t.ok) return 'klaar';@@test-verzamel.js@@het scherm is klaar terwijl de kernsensoren nog niet binnen zijn"
 "public/pidlane-verzamel.js@@(r.buiten ? '; ' + r.buiten + ' daarvan buiten de grens'@@(false ? '; ' + r.buiten + ' daarvan buiten de grens'@@test-verzamel.js@@de AI hoort niet meer hoe vaak een waarde buiten de grens kwam: een piek weegt even zwaar als een blijvende afwijking"
@@ -2233,7 +2238,7 @@ MUTATIES=(
 # bevroren, een trimpiek heette "let op", een warme motor reed "koud".
 "public/pidlane-fuel.js@@  if(typeof x.rijSec==='number' && isFinite(x.rijSec) && (st.rijSec===null || x.rijSec>st.rijSec)) st.rijSec=Math.round(x.rijSec);@@@@test-totaalcheck.js@@de poort ziet weer alleen de 20 s snelheid uit pidHist: een rijmeting loopt nooit vol"
 "public/pidlane-verzamel.js@@ && v >= kmh && acc.v >= kmh) acc.ms += t - acc.t;@@ && v >= kmh && acc.v >= kmh) acc.ms += 0;@@test-totaalcheck.js@@het verzamelscherm telt zijn eigen rijtijd niet meer"
-"public/pidlane-verzamel.js@@    const blijft = b => b >= 2 || vals.length < 10;@@    const blijft = b => true;@@test-totaalcheck.js@@één trimpiek van 10,2 % staat weer als let op"
+"public/pidlane-verzamel.js@@      const blijft = b => b >= 2 || vs.length < 10;@@      const blijft = b => true;@@test-totaalcheck.js@@één trimpiek van 10,2 % staat weer als let op"
 "public/pidlane-kwaliteit.js@@['0C','0D','04','11','0B','10','06','14','24','34']@@['0C','0D','04','11','0B','10','06','07','14','24','34']@@test-totaalcheck.js@@een langetermijntrim die vast staat heet weer een bevroren sensor"
 "public/pidlane-kwaliteit.js@@ && !(stilNu && (kort==='0D'||kort==='11'));@@;@@test-totaalcheck.js@@gasklep 11 % bij stationair heet weer vastgelopen"
 "public/pidlane-samenhang.js@@    const ect = traag(tl, '0105', i);@@    const ect = v('0105');@@test-samenhang.js@@een warme motor met traag koelwater rijdt weer koud"
