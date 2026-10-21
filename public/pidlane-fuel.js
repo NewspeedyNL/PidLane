@@ -403,6 +403,11 @@ function plAnalyseRol(prompt, aanlevering){
   const eerste=String(prompt||'').split(/(?<=[.!?:])\s|\n/)[0];
   return kort(eerste,80);
 }
+// Het lichte model voor korte vragen zonder meetdata om te wegen: een JSON-
+// advies over de adapter, een interval uit het onderhoudsboekje, een foto van
+// een lampje. Ruim een derde van Sonnet. Een analyse van een meting blijft op
+// het standaardmodel; wie hier iets bij zet, kiest dat per aanroep.
+const AI_LICHT='claude-haiku-4-5-20251001';
 async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, aanlevering=null, extra=null){
   // Demo: een voorbeeldrapport uit de gesimuleerde waarden, geen AI-call en
   // geen tegoed. Een rapport over een verzonnen auto is geen echt rapport.

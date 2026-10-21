@@ -130,7 +130,7 @@
     var knop = el('plsVraag'); if (knop) { knop.disabled = true; knop.textContent = '⏳ De AI zoekt het op…'; }
     var lijst = onderdelen(), r;
     try {
-      var t = await apiFetch(prompt(_auto, lijst), 900, null, null, { meet: false });
+      var t = await apiFetch(prompt(_auto, lijst), 900, null, AI_LICHT, { meet: false });
       r = lees(t, lijst);
     } catch (e) {
       console.warn('PLSchema: AI-vraag mislukt', e);

@@ -406,7 +406,7 @@
     try {
       var data = await verklein(bestand, 800, 0.7);
       if (data.length > 230000) data = await verklein(bestand, 560, 0.6);
-      var t = await apiFetch(fotoPrompt(LAMPJES), 200, null, null, { meet: false }, { afbeelding: { type: 'image/jpeg', data: data } });
+      var t = await apiFetch(fotoPrompt(LAMPJES), 200, null, AI_LICHT, { meet: false }, { afbeelding: { type: 'image/jpeg', data: data } });
       var r = leesFoto(t, LAMPJES);
       if (r.fout) console.warn('PLLampjes: ' + r.fout);
       if (!r.ids.length) {

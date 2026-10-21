@@ -1913,7 +1913,7 @@ async function runKoopcheck(){
     // Geen aanlevering: dit is een prijsoordeel, geen sensoroordeel. Het
     // meetblok ging al mee met de onderhoudscheck hierboven; hier zou het
     // alleen nog een keer betaald worden.
-    const text2 = await apiFetch(prompt2, 900, null, null, { meet:false }) || 'Geen reactie';
+    const text2 = await apiFetch(prompt2, 900, null, AI_LICHT, { meet:false }) || 'Geen reactie';
     document.getElementById('koopPrijsRes').innerHTML = formatKoopAI(text2, 'prijs');
 
     scanEntry.prijs_ai = text2.slice(0,300);
@@ -1939,7 +1939,7 @@ async function runKoopcheck(){
       </div>`;
     try {
       const prompt3 = buildLeasePrompt(merk, model, jaar, km, apkMaanden, boekje, dtcCount, bandenLabel, proefritData, lease);
-      const text3 = await apiFetch(prompt3, 900, null, null, { meet:false }) || 'Geen reactie';   // zie de prijsschatting
+      const text3 = await apiFetch(prompt3, 900, null, AI_LICHT, { meet:false }) || 'Geen reactie';   // zie de prijsschatting
       document.getElementById('koopLeaseRes').innerHTML = formatKoopAI(text3, 'lease');
       scanEntry.lease_ai = text3.slice(0,300);
       _koopArch.push('— LEASE-INLEVERCHECK —\n'+text3);
@@ -1967,7 +1967,7 @@ async function runKoopcheck(){
       </div>`;
     try {
       const prompt3 = buildInkoopPrompt(merk, model, jaar, km, apkMaanden, boekje, dtcCount, onderhoudKosten, tellerOordeel, recallActief, bandenLabel, proefritData, ink);
-      const text3 = await apiFetch(prompt3, 900, null, null, { meet:false }) || 'Geen reactie';   // zie de prijsschatting
+      const text3 = await apiFetch(prompt3, 900, null, AI_LICHT, { meet:false }) || 'Geen reactie';   // zie de prijsschatting
       document.getElementById('koopInkoopRes').innerHTML = formatKoopAI(text3, 'inkoop');
       scanEntry.inkoop_ai = text3.slice(0,300);
       _koopArch.push('— INKOOPCALCULATIE —\n'+text3);
