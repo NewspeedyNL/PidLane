@@ -687,7 +687,7 @@
   /* Eerdere rapporten van het actieve voertuig als context voor een analyse
      ("oude data meenemen", Mijn voorkeuren). Opgehaald zodra het voertuig
      bekend is, want de analyse zelf wacht niet op het netwerk. Hoogstens drie,
-     elk hoogstens 1.300 tekens. */
+     van elk alleen de kern (plRapportKern in pidlane-archief.js). */
   var _eerder = { vid: null, blok: '', n: 0, bezig: false };
   async function eerderHalen() {
     var v = actief();
@@ -698,7 +698,7 @@
       var delen = [];
       for (var i = 0; i < lijst.length; i++) {
         var r = (await api('rapport', { id: lijst[i].id })).rapport;
-        if (r && r.tekst) delen.push('--- ' + (r.titel || r.soort) + ' (' + String(r.aangemaakt).slice(0, 10) + ') ---\n' + String(r.tekst).slice(0, 1300));
+        if (r && r.tekst) delen.push('--- ' + (r.titel || r.soort) + ' (' + String(r.aangemaakt).slice(0, 10) + ') ---\n' + (window.plRapportKern ? plRapportKern(r.tekst) : String(r.tekst).slice(0, 600)));
       }
       _eerder = { vid: v.id, n: delen.length, bezig: false,
         blok: delen.length ? '\n\nEERDERE RAPPORTEN VAN DIT VOERTUIG (uit eerdere sessies, nieuwste eerst — vergelijk: wat is verbeterd, verslechterd of nieuw; herhaal ze niet):\n' + delen.join('\n') : '' };

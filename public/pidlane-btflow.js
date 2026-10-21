@@ -262,7 +262,7 @@ Als de verbinding al goed loopt (responstijden onder ~150ms, weinig fouten): {"o
     // {meet:false} met opzet (#188): dit gaat over de verbinding met de
     // adapter, niet over sensordata. De aanlevering zou hier een blok meesturen
     // dat nergens over gaat, en promptcaching staat uit — dat is geld.
-    const raw=await apiFetch(prompt,600,null,null,{meet:false});
+    const raw=await apiFetch(prompt,600,null,AI_LICHT,{meet:false});
     // Robuuste JSON-extractie: pak alles tussen eerste { en laatste }
     // (AI zet er soms tekst of ```fences omheen)
     let plan;

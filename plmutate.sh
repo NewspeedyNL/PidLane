@@ -279,6 +279,7 @@ MUTATIES=(
 "public/pidlane-testrun.js@@    issue: '#29',@@    issue: '',@@test-blok5lijst.js@@een proef in blok 5 is zijn issue kwijt en valt daarmee uit de dekking"
 "public/pidlane-testrun.js@@'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ')@@'BLOK 5 DEKT DEZE RONDE: #19, #15'@@test-blok5lijst.js@@de dekkingsregel in CAMPAGNE is weer met de hand overgeschreven"
 "public/pidlane-uitgebreid.js@@schoon.indexOf(hdr) >= 0;@@true;@@test-mode21.js@@de uitgebreide probe accepteert elk antwoord"
+"public/pidlane-uitgebreid.js@@  const UITGEBREID_DEFS = {\n@@  const UITGEBREID_DEFS = {\n    '2101': { name: 'Motorolie temp', unit: '°C', cat: 'Temperatuur', min: -40, max: 150, merk: 'MAZDA', vervangt: '015C', parse: b => b[0] - 40 },\n@@test-mode21.js@@2101 staat weer als Mazda-vervanger van 015C, terwijl hij op de CX-5 NO DATA geeft (19-08-2026)"
 "public/pidlane-uihelpers.js@@'T' + _plTweeCijfers(d.getHours())@@'T' + _plTweeCijfers(d.getUTCHours())@@test-tijdklok.js@@de stempel valt terug op het UTC-uur (#17)"
 "public/pidlane-privacy.js@@    if (klant)@@    if (true)@@test-account-verwijderen.js@@personeel wordt weer naar een knop gestuurd die het niet heeft (#69)"
 "public/pidlane-uihelpers.js@@'-' + String(d.getMilliseconds()).padStart(3,'0');@@'-' + String(d.getMilliseconds());@@test-tijdklok.js@@milliseconden verliezen hun voorloopnullen en sorteren verkeerd (#17)"
@@ -1333,6 +1334,7 @@ MUTATIES=(
 # ── PID-tabel naar SAE J1979 (26-09-2026) ──
 # Vanaf 0169 stonden namen en formules op de verkeerde nummers, en lazen de
 # formules de steunbitmap als databyte. De fouten hieronder zijn die van toen.
+"public/pidlane-data.js@@max:400,                     parse:b=>((b[0]*256+b[1])*100/255)}@@max:400,                     parse:b=>((b[0]*256+b[1])/655.35)}@@test-piddefs.js@@0143 rekent weer met de deler 655,35: absolute belasting 256x te laag (21-08-2026)"
 "public/pidlane-data.js@@  '019E':{name:'Uitlaatgasdebiet',       unit:'kg/h',cat:'Emissie',  min:0,max:1311, parse:b=>((b[0]*256+b[1])/50)},@@  '019E':{name:'Turbo temp uitlaat A',   unit:'°C',  cat:'Temp',     min:-40,max:215,parse:b=>(b[0]-40)},@@test-piddefs.js@@019E is weer een turbotemperatuur van −38 °C op een auto zonder turbo"
 "public/pidlane-data.js@@parse:b=>((b[0]&4)?(b[5]*100/255):null)},@@parse:b=>(b[5]*100/255)},@@test-piddefs.js@@AdBlue-tankniveau leest ook als het steunbit uit staat, en geeft dan een getal dat nergens op slaat"
 "public/pidlane-data.js@@  '014A':{name:'Gaspedaal positie E',    @@  '014A':{name:'Gaspedaal positie D',    @@test-piddefs.js@@twee pedaalsensoren heten allebei D en de derde staat onder de naam van de tweede"
@@ -2215,7 +2217,12 @@ MUTATIES=(
 # ── Het verzamelscherm (#443, 07-10-2026). De poort is die van §16; wat hier stil
 # kan breken is wat de klant ziet en wat de AI krijgt.
 "public/pidlane-verzamel.js@@        if (q && q.status === 'onzin') return zet('meetfout'@@        if (false) return zet('meetfout'@@test-verzamel.js@@koelwater 300 °C staat weer als afwijking op het scherm in plaats van als meetfout"
-"public/pidlane-verzamel.js@@    if (getal(d.dH) && r.max >= d.dH) return zet('afwijkend'@@    if (getal(d.dH) && r.laatste >= d.dH) return zet('afwijkend'@@test-verzamel.js@@het oordeel kijkt weer alleen naar de laatste waarde: een uitschieter onderweg verdwijnt"
+"public/pidlane-verzamel.js@@      if (getal(g.dH) && mx >= g.dH) {@@      if (getal(g.dH) && r.laatste >= g.dH) {@@test-verzamel.js@@het oordeel kijkt weer alleen naar de laatste waarde: een uitschieter onderweg verdwijnt"
+"public/pidlane-verzamel.js@@        return blijft(b) ? uit('afwijkend', 'hoogste waarde '@@        return true ? uit('afwijkend', 'hoogste waarde '@@test-verzamel.js@@één meting boven de alarmgrens staat weer als afwijkend: een uitschieter kleurt de conditiecheck rood"
+"public/pidlane-verzamel.js@@        (z && z[regel.toestand] === true ? inT : gewoon).push(m.v); });@@        (false ? inT : gewoon).push(m.v); });@@test-toestandgrens.js@@de toestand telt niet meer: de startdip van de accu staat weer als afwijkend"
+"public/pidlane-verzamel.js@@(!aandeel || vs.length < 10 || b >= aandeel * vs.length)@@(true)@@test-toestandgrens.js@@een kortetermijntrim die even heen en weer gaat staat weer als let op"
+"public/pidlane-verzamel.js@@    for (let i = 1; i < rpm.length; i++) if (rpm[i - 1].v < START_RPM && rpm[i].v >= START_RPM) starts.push(rpm[i].t);@@@@test-toestandgrens.js@@het aanslaan van de motor wordt niet meer herkend"
+"public/pidlane-data.js@@  '0104':{toestand:'rijdend',@@  '0104':{toestand:'stil',@@test-toestandgrens.js@@de belastingsgrens geldt weer bij vol gas en niet meer stationair"
 "public/pidlane-verzamel.js@@    if (t.verstreken < t.minMs) return 'meten';\n@@@@test-verzamel.js@@met genoeg historie springt het scherm meteen naar de uitslag: de klant ziet niets binnenkomen"
 "public/pidlane-verzamel.js@@    if (t.ok && t.kernCompleet !== false) return 'klaar';@@    if (t.ok) return 'klaar';@@test-verzamel.js@@het scherm is klaar terwijl de kernsensoren nog niet binnen zijn"
 "public/pidlane-verzamel.js@@(r.buiten ? '; ' + r.buiten + ' daarvan buiten de grens'@@(false ? '; ' + r.buiten + ' daarvan buiten de grens'@@test-verzamel.js@@de AI hoort niet meer hoe vaak een waarde buiten de grens kwam: een piek weegt even zwaar als een blijvende afwijking"
@@ -2233,7 +2240,7 @@ MUTATIES=(
 # bevroren, een trimpiek heette "let op", een warme motor reed "koud".
 "public/pidlane-fuel.js@@  if(typeof x.rijSec==='number' && isFinite(x.rijSec) && (st.rijSec===null || x.rijSec>st.rijSec)) st.rijSec=Math.round(x.rijSec);@@@@test-totaalcheck.js@@de poort ziet weer alleen de 20 s snelheid uit pidHist: een rijmeting loopt nooit vol"
 "public/pidlane-verzamel.js@@ && v >= kmh && acc.v >= kmh) acc.ms += t - acc.t;@@ && v >= kmh && acc.v >= kmh) acc.ms += 0;@@test-totaalcheck.js@@het verzamelscherm telt zijn eigen rijtijd niet meer"
-"public/pidlane-verzamel.js@@    const blijft = b => b >= 2 || vals.length < 10;@@    const blijft = b => true;@@test-totaalcheck.js@@één trimpiek van 10,2 % staat weer als let op"
+"public/pidlane-verzamel.js@@      const blijft = b => b >= 2 || vs.length < 10;@@      const blijft = b => true;@@test-totaalcheck.js@@één trimpiek van 10,2 % staat weer als let op"
 "public/pidlane-kwaliteit.js@@['0C','0D','04','11','0B','10','06','14','24','34']@@['0C','0D','04','11','0B','10','06','07','14','24','34']@@test-totaalcheck.js@@een langetermijntrim die vast staat heet weer een bevroren sensor"
 "public/pidlane-kwaliteit.js@@ && !(stilNu && (kort==='0D'||kort==='11'));@@;@@test-totaalcheck.js@@gasklep 11 % bij stationair heet weer vastgelopen"
 "public/pidlane-samenhang.js@@    const ect = traag(tl, '0105', i);@@    const ect = v('0105');@@test-samenhang.js@@een warme motor met traag koelwater rijdt weer koud"

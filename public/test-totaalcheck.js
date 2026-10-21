@@ -120,7 +120,8 @@ const trim = (piek) => Array.from({ length: 120 }, (_, i) => ({ t: i * 700, v: i
 const bo = (reeks) => V.beoordeel('0106', reeks, s.getPidDef('0106'), s.PID_LET_OP, null).oordeel;
 toets('één korte trim van 10,2 % in een volle reeks is geen let op', bo(trim(1)) === 'ok', bo(trim(1)));
 toets('… twee wel', bo(trim(2)) === 'let', bo(trim(2)));
-toets('… en op de alarmgrens telt één monster nog steeds', V.beoordeel('0105', [{ t: 0, v: 90 }, { t: 1, v: 111 }].concat(Array.from({ length: 20 }, (_, i) => ({ t: i + 2, v: 90 }))), s.getPidDef('0105'), s.PID_LET_OP, null).oordeel === 'afwijkend');
+toets('… en op de alarmgrens is één monster sinds 21-10 ook een uitschieter: let op, niet afwijkend', V.beoordeel('0105', [{ t: 0, v: 90 }, { t: 1, v: 111 }].concat(Array.from({ length: 20 }, (_, i) => ({ t: i + 2, v: 90 }))), s.getPidDef('0105'), s.PID_LET_OP, null).oordeel === 'let');
+toets('… twee monsters op de alarmgrens wel', V.beoordeel('0105', [{ t: 0, v: 111 }, { t: 1, v: 111 }].concat(Array.from({ length: 20 }, (_, i) => ({ t: i + 2, v: 90 }))), s.getPidDef('0105'), s.PID_LET_OP, null).oordeel === 'afwijkend');
 s.fv = (v) => String(v);
 const vlak = (pid, v) => { s.pidHist[pid] = Array.from({ length: 12 }, (_, i) => ({ t: i * 1000, v })); return s.assessPidQuality(pid, v).status; };
 toets('langetermijntrim die vast staat: geen twijfel (een geleerde waarde)', vlak('0107', 1.56) !== 'twijfel', vlak('0107', 1.56));

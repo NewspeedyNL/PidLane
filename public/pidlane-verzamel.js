@@ -80,11 +80,43 @@
     return String(a >= 100 ? Math.round(v) : a >= 10 ? Math.round(v * 10) / 10 : Math.round(v * 100) / 100);
   }
 
+  /* De toestand van de motor op elk moment, uit de reeksen zelf: toerental
+     (010C) en snelheid (010D). Puur. Geeft per tijdstip {start, stil, rijdend},
+     elk true/false, of null als de reeks die het moet zeggen er niet is —
+     onbekend telt nooit als "in die toestand", dus dan geldt de gewone grens. */
+  const TOESTAND_GAT_MS = 3000;          // verder weg dan dit zegt een monster niets over nu
+  const START_RPM = 400;                 // daaronder draait de startmotor of staat de motor stil
+  const START_VOOR_MS = 5000, START_NA_MS = 3000;
+  function toestandUit(hist) {
+    const h = hist || {};
+    const rij = p => (h[p] || []).filter(m => m && getal(m.t) && getal(m.v)).slice().sort((x, y) => x.t - y.t);
+    const rpm = rij('010C'), spd = rij('010D');
+    const dichtst = (r, t) => {
+      let best = null;
+      for (const m of r) if (Math.abs(m.t - t) <= TOESTAND_GAT_MS && (!best || Math.abs(m.t - t) < Math.abs(best.t - t))) best = m;
+      return best ? best.v : null;
+    };
+    const starts = [];
+    for (let i = 1; i < rpm.length; i++) if (rpm[i - 1].v < START_RPM && rpm[i].v >= START_RPM) starts.push(rpm[i].t);
+    return t => {
+      const n = rpm.length ? dichtst(rpm, t) : null, v = spd.length ? dichtst(spd, t) : null;
+      return {
+        start: rpm.length ? (starts.some(s => t >= s - START_VOOR_MS && t <= s + START_NA_MS) || (n !== null && n > 0 && n < START_RPM)) : null,
+        stil: v === null ? null : v <= 2,
+        rijdend: v === null ? null : v > 5
+      };
+    };
+  }
+
   /* Eén sensor over het meetvenster. Puur: alles wat hij weet zit in de
-     argumenten. `kwal(pid, waarde)` is assessPidQuality in de app. */
-  function beoordeel(pid, reeks, def, letOp, kwal) {
+     argumenten. `kwal(pid, waarde)` is assessPidQuality in de app.
+     `regel` is PID_TOESTAND[pid] (pidlane-data.js), `toestand` wat
+     toestandUit() teruggeeft: monsters in regel.toestand gaan langs
+     regel.grenzen in plaats van de vaste grens en PID_LET_OP. */
+  function beoordeel(pid, reeks, def, letOp, kwal, regel, toestand) {
     const d = def || {};
-    const vals = (reeks || []).map(h => (h && typeof h === 'object') ? h.v : h).filter(getal);
+    const paren = (reeks || []).map(h => (h && typeof h === 'object') ? { t: h.t, v: h.v } : { t: null, v: h }).filter(m => getal(m.v));
+    const vals = paren.map(m => m.v);
     const r = { pid, naam: d.name || pid, eenheid: d.unit || '', n: vals.length,
                 min: null, max: null, gem: null, laatste: null, oordeel: 'nodata', reden: '', buiten: 0,
                 reeks: vals.slice(-SPARK_N) };
@@ -92,7 +124,6 @@
     r.min = Math.min.apply(null, vals); r.max = Math.max.apply(null, vals);
     r.gem = vals.reduce((a, b) => a + b, 0) / vals.length;
     r.laatste = vals[vals.length - 1];
-    const tel = f => vals.filter(f).length;
     const zet = (oordeel, reden, buiten) => { r.oordeel = oordeel; r.reden = reden; r.buiten = buiten || 0; return r; };
 
     // 1. Fysiek onmogelijk: geen afwijking maar een meetfout. Gaat vóór alles,
@@ -104,26 +135,62 @@
         if (q && q.status === 'onzin') return zet('meetfout', q.reden || 'fysiek onmogelijke waarde');
       }
     }
-    // 2. Alarmgrens uit de PID-definitie.
-    if (getal(d.dH) && r.max >= d.dH) return zet('afwijkend', 'hoogste waarde ' + fmt(r.max) + ' ' + r.eenheid + ' boven de alarmgrens ' + fmt(d.dH), tel(v => v >= d.dH));
-    if (getal(d.dL) && r.min <= d.dL) return zet('afwijkend', 'laagste waarde ' + fmt(r.min) + ' ' + r.eenheid + ' onder de alarmgrens ' + fmt(d.dL), tel(v => v <= d.dL));
-    // 3. Waarschuwingsgrens.
-    //    Eén monster over de waarschuwingsgrens in een volle reeks is een
-    //    uitschieter, geen toestand: een korte trim van 10,2 % bij gas geven
-    //    stond op 20-10 als "let op". De alarmgrens hierboven telt wél op één.
-    const blijft = b => b >= 2 || vals.length < 10;
-    if (getal(d.wH) && r.max >= d.wH && blijft(tel(v => v >= d.wH))) return zet('let', 'hoogste waarde ' + fmt(r.max) + ' ' + r.eenheid + ' boven de waarschuwingsgrens ' + fmt(d.wH), tel(v => v >= d.wH));
-    if (getal(d.wL) && r.min <= d.wL && blijft(tel(v => v <= d.wL))) return zet('let', 'laagste waarde ' + fmt(r.min) + ' ' + r.eenheid + ' onder de waarschuwingsgrens ' + fmt(d.wL), tel(v => v <= d.wL));
-    // 4. Buiten het gebruikelijke bereik (PID_LET_OP, laag 1b).
-    const lo = letOp && letOp[pid];
-    if (lo && getal(lo.max) && r.max > lo.max) return zet('let', lo.waarom || 'boven het gebruikelijke bereik', tel(v => v > lo.max));
-    if (lo && getal(lo.min) && r.min < lo.min) return zet('let', lo.waarom || 'onder het gebruikelijke bereik', tel(v => v < lo.min));
+
+    // De grenzen, over een deel van de monsters. Geeft {oordeel, reden, buiten} of null.
+    const aandeel = regel && getal(regel.aandeel) ? regel.aandeel : 0;
+    const grenzen = (vs, g, lo) => {
+      if (!vs.length) return null;
+      const mn = Math.min.apply(null, vs), mx = Math.max.apply(null, vs);
+      const tel = f => vs.filter(f).length;
+      const uit = (oordeel, reden, buiten) => ({ oordeel, reden, buiten });
+      // Eén monster over een grens in een volle reeks is een uitschieter, geen
+      // toestand: een korte trim van 10,2 % bij gas geven stond op 20-10 als
+      // "let op", een startdip van één monster als "afwijkend". Sinds 21-10
+      // geldt dat ook voor de alarmgrens: één monster daarover is let op.
+      const blijft = b => b >= 2 || vs.length < 10;
+      // Een sensor die van nature heen en weer gaat (de kortetermijntrim)
+      // zegt pas iets als hij er een deel van de tijd buiten blijft.
+      const blijftW = b => blijft(b) && (!aandeel || vs.length < 10 || b >= aandeel * vs.length);
+      // 2. Alarmgrens uit de PID-definitie.
+      if (getal(g.dH) && mx >= g.dH) { const b = tel(v => v >= g.dH);
+        return blijft(b) ? uit('afwijkend', 'hoogste waarde ' + fmt(mx) + ' ' + r.eenheid + ' boven de alarmgrens ' + fmt(g.dH), b)
+                         : uit('let', 'één meting van ' + fmt(mx) + ' ' + r.eenheid + ' boven de alarmgrens ' + fmt(g.dH) + ' — een uitschieter, geen toestand', b); }
+      if (getal(g.dL) && mn <= g.dL) { const b = tel(v => v <= g.dL);
+        return blijft(b) ? uit('afwijkend', 'laagste waarde ' + fmt(mn) + ' ' + r.eenheid + ' onder de alarmgrens ' + fmt(g.dL), b)
+                         : uit('let', 'één meting van ' + fmt(mn) + ' ' + r.eenheid + ' onder de alarmgrens ' + fmt(g.dL) + ' — een uitschieter, geen toestand', b); }
+      // 3. Waarschuwingsgrens.
+      if (getal(g.wH) && mx >= g.wH && blijftW(tel(v => v >= g.wH))) return uit('let', 'hoogste waarde ' + fmt(mx) + ' ' + r.eenheid + ' boven de waarschuwingsgrens ' + fmt(g.wH), tel(v => v >= g.wH));
+      if (getal(g.wL) && mn <= g.wL && blijftW(tel(v => v <= g.wL))) return uit('let', 'laagste waarde ' + fmt(mn) + ' ' + r.eenheid + ' onder de waarschuwingsgrens ' + fmt(g.wL), tel(v => v <= g.wL));
+      // 4. Buiten het gebruikelijke bereik (PID_LET_OP, laag 1b).
+      if (lo && getal(lo.max) && mx > lo.max && blijftW(tel(v => v > lo.max))) return uit('let', lo.waarom || 'boven het gebruikelijke bereik', tel(v => v > lo.max));
+      if (lo && getal(lo.min) && mn < lo.min && blijftW(tel(v => v < lo.min))) return uit('let', lo.waarom || 'onder het gebruikelijke bereik', tel(v => v < lo.min));
+      return null;
+    };
+
+    // Toestand (PID_TOESTAND): monsters in die toestand gaan langs hun eigen
+    // grenzen. Zonder tijd of zonder toestandsbron gaat alles langs de gewone.
+    let inT = [], gewoon = vals;
+    if (regel && regel.toestand && toestand) {
+      inT = []; gewoon = [];
+      paren.forEach(m => { let z = null;
+        try { z = getal(m.t) ? toestand(m.t) : null; } catch (e) { console.warn('PLVerzamel: toestand onleesbaar voor ' + pid, e); }
+        (z && z[regel.toestand] === true ? inT : gewoon).push(m.v); });
+    }
+    const a = grenzen(gewoon, d, letOp && letOp[pid]);
+    let b = grenzen(inT, regel && regel.grenzen || {}, null);
+    if (b) b.reden += ' (' + (regel.naam || regel.toestand) + ')';
+    const erger = (!a ? b : !b ? a : (RANG[b.oordeel] < RANG[a.oordeel] ? b : a));
+    if (erger) return zet(erger.oordeel, erger.reden, erger.buiten);
+
     // 5. Twijfel over de meting zelf.
     if (kwal) {
       let q = null;
       try { q = kwal(pid, r.laatste); } catch (e) { console.warn('PLVerzamel: kwaliteitsoordeel faalde voor ' + pid, e); }
       if (q && q.status === 'twijfel') return zet('twijfel', q.reden || 'meting twijfelachtig');
     }
+    // Wat de vaste grens had gevlagd maar in deze toestand normaal is, zegt de
+    // reden erbij: de AI ziet de min en max, en hoort dan waarom die geen vlag is.
+    if (inT.length && grenzen(inT, d, letOp && letOp[pid])) return zet('ok', inT.length + ' metingen ' + (regel.naam || regel.toestand) + ' langs hun eigen grens: ' + (regel.waarom || ''));
     return zet('ok', '');
   }
 
@@ -131,7 +198,9 @@
      hij de app (pidHist, getPidDef, PID_LET_OP, assessPidQuality). */
   function samenvatting(pids, bron) {
     const b = bron || appBron();
-    const rijen = (pids || []).map(pid => beoordeel(pid, (b.hist || {})[pid], b.def ? b.def(pid) : null, b.letOp, b.kwal));
+    const regels = b.toestandRegels || {};
+    const tst = toestandUit(b.hist);
+    const rijen = (pids || []).map(pid => beoordeel(pid, (b.hist || {})[pid], b.def ? b.def(pid) : null, b.letOp, b.kwal, regels[pid], tst));
     rijen.sort((x, y) => (RANG[x.oordeel] - RANG[y.oordeel]) || String(x.naam).localeCompare(String(y.naam)));
     const tel = { afwijkend: 0, let: 0, meetfout: 0, twijfel: 0, ok: 0, nodata: 0 };
     rijen.forEach(r => { tel[r.oordeel]++; });
@@ -143,6 +212,7 @@
       hist: (typeof pidHist !== 'undefined' && pidHist) || {},
       def: pid => (typeof getPidDef === 'function' ? getPidDef(pid) : null),
       letOp: window.PID_LET_OP || {},
+      toestandRegels: window.PID_TOESTAND || {},
       kwal: (typeof assessPidQuality === 'function') ? assessPidQuality : null
     };
   }
@@ -648,6 +718,6 @@
     return h;
   }
 
-  window.PLVerzamel = { MIN_MS, RIT_GELDIG_MS, EIGEN_MAX, rijTel, samenvoeg, beoordeel, samenvatting, promptBlok, aanlevering, fase, meet, naRit, maat, histUit, vanBron, rijSecUit, metSamenhang,
+  window.PLVerzamel = { MIN_MS, RIT_GELDIG_MS, EIGEN_MAX, rijTel, samenvoeg, toestandUit, beoordeel, samenvatting, promptBlok, aanlevering, fase, meet, naRit, maat, histUit, vanBron, rijSecUit, metSamenhang,
     open: function () { return !!lopend; } };
 })();
