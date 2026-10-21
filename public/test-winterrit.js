@@ -131,5 +131,32 @@ console.log('\n#560 — tractie-ingrijpen, afgeleid');
   toets('de bron zegt dat remingrepen niet te zien zijn', /remingrepen zijn niet te zien/.test((WR.tractie([tr(-1, 3)], { nu: NU }) || {}).bron || ''));
 }
 
+console.log('\n#558 — één oordeel: de wintercheck leest PLWinterRit.opwarming');
+{
+  const O = WR.opwarming;
+  toets('warm in 5 minuten en blijft warm: ok', O({ eind: 90, tijdWarm: 300, minNaWarm: 87 }).niveau === 'ok');
+  toets('blijft onder de bedrijfstemperatuur: fout', O({ eind: WR.CFG.bedrijf - 1, tijdWarm: null }).niveau === 'fout');
+  toets('op de bedrijfstemperatuur precies: niet afgekeurd', O({ eind: WR.CFG.bedrijf, tijdWarm: 300 }).niveau !== 'fout');
+  toets('warm, daarna terug onder de snelweggrens: fout, met de temperatuur',
+    O({ eind: 90, tijdWarm: 300, minNaWarm: WR.CFG.kzGrens - 3 }).niveau === 'fout' && /zakt terug tot 72/.test(O({ eind: 90, tijdWarm: 300, minNaWarm: 72 }).tekst));
+  toets('traag (8 minuten): let op', O({ eind: 90, tijdWarm: WR.CFG.traagS + 60 }).niveau === 'let');
+  toets('geen koelwater gemeten: onbekend, geen vals "open vast"', O({}).niveau === 'onbekend');
+
+  // De echte winterLocalVerdict uit pidlane-koopcheck.js, losgeknipt op zijn
+  // naam. Verdwijnt het anker, dan stopt deze toets in plaats van groen te staan.
+  const src = fs.readFileSync(__dirname + '/pidlane-koopcheck.js', 'utf8');
+  const van = src.indexOf('function winterLocalVerdict(){');
+  const tot = src.indexOf('\nfunction ', van + 10);
+  if (van < 0 || tot < 0) { console.error('FOUT: winterLocalVerdict niet gevonden in pidlane-koopcheck.js'); process.exit(1); }
+  const maak = new Function('window', '_climateData', src.slice(van, tot) + '\nreturn winterLocalVerdict();');
+  const ms = function (lijst) { return lijst.map(function (c, i) { return { t: i * 30, coolant: c }; }); };
+  const zakt = maak({ PLWinterRit: WR }, { baseline: { coolant: 10, volt: 12.4 }, eind: { coolant: 86 }, samples: ms([20, 50, 80, 89, 92, 74, 70, 86]) });
+  toets('wintercheck: terugzakken na het opwarmen wordt nu gezien (oude code zei OK)', /zakt terug/.test(zakt.oordeel) && zakt.kleur === '#ef4444', JSON.stringify(zakt));
+  const goed = maak({ PLWinterRit: WR }, { baseline: { coolant: 10 }, eind: { coolant: 90 }, samples: ms([20, 50, 80, 89, 90, 90]) });
+  toets('wintercheck: gezonde opwarming is groen, opwarmtijd tot 88 °C = 90 s', goed.kleur === '#22c55e' && goed.tijd88 === 90, JSON.stringify(goed));
+  const zonder = maak({}, { baseline: {}, eind: { coolant: 90 }, samples: [] });
+  toets('wintercheck zonder PLWinterRit: onbekend, en niet stil', zonder.kleur === '#8b949e');
+}
+
 console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' toetsen goed'));
 process.exit(fout ? 1 : 0);

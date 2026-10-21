@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 21-10-2026 — Wintercheck: één thermostaatoordeel (#558)
+ ═══════════════════════════════════════════════════════════
+
+ - De wintercheck (pidlane-koopcheck.js) oordeelt via
+   PLWinterRit.opwarming(), met de grenzen uit PLWinterRit.CFG
+   (85/88 °C, 420 s, terugzakken onder 75 °C).
+ - Nieuw: koelwater dat na het opwarmen terugzakt is rood ("thermostaat
+   blijft mogelijk open hangen"). Geen koelwater gemeten is nu onbekend,
+   niet meer "open vast".
+ - test-winterrit.js (+10, met de echte winterLocalVerdict), 2 mutaties,
+   blok 5.
+
+ ═══════════════════════════════════════════════════════════
  21-10-2026 — Beeld-in-beeld wordt een klokje met naald
  ═══════════════════════════════════════════════════════════
 

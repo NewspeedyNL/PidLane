@@ -2787,6 +2787,21 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Wintercheck en ritpatroon: één thermostaatoordeel (#558) ──
+  {
+    issue: '558',
+    naam: 'Wintercheck: het thermostaatoordeel komt uit PLWinterRit.opwarming, en een koelwater dat na het opwarmen terugzakt is rood',
+    waarom: 'De wintercheck had eigen grenzen en zag het terugzakken niet, terwijl het ritpatroon daar juist op oordeelt: twee oordelen over één thermostaat.',
+    proef: async function () {
+      if (!window.PLWinterRit || typeof PLWinterRit.opwarming !== 'function')
+        return { staat: 'FOUT', detail: 'PLWinterRit.opwarming ontbreekt — oude pidlane-winterrit.js (herladen?)' };
+      var o = PLWinterRit.opwarming({ eind: 90, tijdWarm: 300, minNaWarm: 70 });
+      if (o.niveau !== 'fout') return { staat: 'FOUT', detail: 'terugzakken tot 70 °C na het opwarmen geeft ' + o.niveau };
+      if (PLWinterRit.opwarming({}).niveau !== 'onbekend') return { staat: 'FOUT', detail: 'zonder koelwater toch een oordeel' };
+      return { staat: 'OK', detail: 'één oordeel, grenzen ' + PLWinterRit.CFG.bedrijf + '/' + PLWinterRit.CFG.opwarmTot + ' °C en ' + PLWinterRit.CFG.traagS + ' s. Rij: Klimaat → Wintercheck op een koude motor; het oordeel hoort hetzelfde te zeggen als het thermostaatadvies in de garage.' };
+    }
+  },
+
   // ── PiP-klokje: naald voor de toeren, kleur alleen bij een warme motor, stopknop in het venster ──
   {
     issue: 'pip-klokje',
