@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Dekking van het NL-wagenpark (RDW × OBDb)
+ ═══════════════════════════════════════════════════════════
+
+ - OBDb-model gevonden voor 82% van de NL-auto's sinds 2001 (was 51%):
+   merk uit de RDW-naam, Opel = VauxhallOpel, zustermodellen, EV-voorkeur.
+ - Eigen codes met een ander antwoordadres (70E>778, 6A2>682) en bytes
+   voorbij H ([n]): VAG, PSA, Opel, Honda, Kia/Hyundai krijgen codes.
+ - Per OBDb-commando de waardevolste waarde; de HV-accu van een EV vooraan.
+ - Uitgebreide test: EV niet meer begrensd op "geen toerental".
+ - Koopcheck: Peugeot 208, UP!, KA+, MG ZS zijn geldige modelnamen.
+ - Foutcodes: fabrikantcodes lenen geen tekst van een ander merk.
+ - VIN: MG, BYD, Polestar, Volvo uit China.
+ - Nieuw: bproef-adres.js, test-obdbkoppel.js, test-rdwnaam.js; vijf EV's in
+   nepauto-profielen.js.
+
+ ═══════════════════════════════════════════════════════════
  22-10-2026 — Zes fouten uit de nagebouwde merken gerepareerd (#584–#589)
  ═══════════════════════════════════════════════════════════
 

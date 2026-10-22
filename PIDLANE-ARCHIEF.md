@@ -15,6 +15,47 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 22-10-2026 — Dekking van het NL-wagenpark: RDW × OBDb gemeten, en wat ervan wegviel
+
+- **Bronnen.** RDW open data (`opendata.rdw.nl`, m9d7-ebf2 en 8ys7-d773):
+  personenauto's sinds 2001, niet geëxporteerd — 9,57 miljoen; de 1500
+  grootste merk/handelsbenaming-combinaties zijn 97% daarvan. OBDb-index
+  (`obdb.community/data/matrix_data.json`: 591 modellen, 179.082 signalen) en
+  de signalsets zelf (`raw.githubusercontent.com/OBDb/<repo>/main/signalsets/v3/default.json`),
+  287 stuks voor wat in NL rijdt.
+- **Naam → model.** `obdbNamen()` vond voor 51% van de vloot een OBDb-model.
+  RDW zet het merk in het model ("TOYOTA AYGO", "MAZDA CX-5"), OBDb noemt Opel
+  `VauxhallOpel`, "UP!", "CEE D", "I 10", "3ER REIHE", "ID.3 PRO 150 KW" vonden
+  niets. Nu `obdbKoppel()` met de OBDb-index in de app, merkaliassen, een
+  brandstofvoorkeur (Niro elektrisch → Niro-EV) en platformtweelingen
+  (Octavia → Golf, C3 → 208, 108/C1 → 107, ID.4/Enyaq → ID.5): **82,1%**. De
+  rest staat niet in OBDb (Tesla heeft geen gewone OBD-poort; oude
+  Opel/Suzuki/Mitsubishi).
+- **Model → bruikbare code.** Van de gekoppelde vloot kreeg ruim een derde
+  geen code: VAG (70E>778), PSA/Opel (6A2>682) en Nissan antwoorden niet op
+  zendadres + 8, en Honda en Kia/Hyundai hebben hun waarden voorbij byte H.
+  Nu "tx>rx" (ATCRA + ATFCSH/FCSD/FCSM1, daarna alles terug) en `[n]` in de
+  formule: ≥1 code **74,2%**, ≥5 codes 72,8%, laadspanning of SoC 37,0%,
+  banden 22,8%. Nog niet: BMW/MINI (extended addressing, vraagt ATCER van ELM
+  2.2) en Volvo/Polestar (eigen 29-bit-schema) — samen ~8%.
+- **Eén code per commando** nam het eerste signaal; bij een Kona Electric zat
+  de HV-laadtoestand als zevende in 22E003. Nu het waardevolste, en de
+  HV-accu (SoC, SoH, bereik) staat vooraan.
+- **EV.** Een Kia Niro EV biedt in mode 01 `01 21 30 31 5B` (OBDb) en kreeg in
+  de uitgebreide test cijfer 5 ("geen toerental"). Nu een EV-kern (snelheid,
+  accu) en de motorweergaven tellen niet mee.
+- **Ook gevonden:** `_rdwPlausibleName()` keurde 6% van de vloot af (elke
+  Peugeot, UP!, KA+, MG ZS, SMART #1); `_dtcBron()` leende fabrikantcodes van
+  een ander merk (Peugeot P1340 → BMW-tekst); `B1318` stond in de algemene
+  tabel; MG/BYD/Polestar uit China waren "Onbekend merk".
+- **Wat de nep-adapter hier aanneemt** (`nepauto.js`): zonder ATCRA neemt een
+  ELM alleen 7E8–7EF aan, en zonder ATFCSM1 gaat de flow control naar rx − 8.
+  Dat is het datasheetgedrag zoals ik het lees, niet op een auto gemeten; de
+  blok-5-proef "antwoordadres" staat daarom op LET OP tot een rit.
+
+
+---
+
 ## 22-10-2026 — #541 zonder rit: zestien auto's uit echte data, en wat de app ermee deed
 
 - **Waarom simuleren.** Andere merken dan de CX-5 zijn niet beschikbaar. Wat
