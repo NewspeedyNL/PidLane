@@ -360,7 +360,8 @@
   // ════════════════════════════════════════════════════════════════
 
   function isCanNu() {
-    try { return /^[6-9A-C]/i.test(String((typeof selectedNetwork !== 'undefined' && selectedNetwork && selectedNetwork.id) || '6')); }
+    // plProtocolBits (pidlane-bt.js): 'A5' is automatisch gevonden KWP, geen CAN (#584)
+    try { return plProtocolBits((typeof selectedNetwork !== 'undefined' && selectedNetwork && selectedNetwork.id) || '6') > 0; }
     catch (e) { console.warn('PLFoutcodes: protocol onbekend, ga uit van CAN', e); return true; }
   }
 

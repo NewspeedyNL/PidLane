@@ -295,7 +295,8 @@ async function realScanDTC(){
     let body=hex.slice(idx+2);
     // CAN (protocol 6-9/A-C): eerste byte na 43 is het AANTAL codes.
     // K-line/J1850 (protocol 1-5): codes volgen direct, geen count byte.
-    const isCAN=/^[6-9A-Ca-c]/.test(String(selectedNetwork?.id||'6'));
+    // Niet op de eerste letter: 'A5' is automatisch gevonden KWP (#584).
+    const isCAN=plProtocolBits(selectedNetwork?.id||'6')>0;
     if(isCAN&&body.length>=2){
       const cnt=parseInt(body.slice(0,2),16);
       if(cnt>=0&&cnt<=20&&body.length-2>=cnt*4){

@@ -522,7 +522,8 @@
   }
 
   function _isCAN() {
-    try { return /^[6-9A-Ca-c]/.test(String((typeof selectedNetwork !== 'undefined' && selectedNetwork && selectedNetwork.id) || '')); }
+    // plProtocolBits (pidlane-bt.js): 'A5' is automatisch gevonden KWP, geen CAN (#584)
+    try { return plProtocolBits((typeof selectedNetwork !== 'undefined' && selectedNetwork && selectedNetwork.id) || '') > 0; }
     catch (e) { return false; }
   }
 

@@ -1027,6 +1027,8 @@ MUTATIES=(
 # tijdens de scan en na een fout "geen foutcodes" in plaats van "niet uitgelezen".
 "public/pidlane-graph.js@@async function scanDTC(){\n  document.getElementById('bscan').disabled=true;@@async function scanDTC(){\n  window._didDTCScan=true;\n  document.getElementById('bscan').disabled=true;@@test-dtcvlag.js@@de DTC-vlag gaat weer aan vóór het antwoord: tijdens de scan en na een fout heet het geen foutcodes"
 "public/pidlane-graph.js@@        body=body.slice(2,2+cnt*4);@@        body=body.slice(0,cnt*4);@@bproef-merken.js@@op CAN telt de telbyte na 43 weer mee als foutcode: de Peugeot met P0420 krijgt P0104"
+"public/pidlane-graph.js@@    const isCAN=plProtocolBits(selectedNetwork?.id||'6')>0;@@    const isCAN=/^[6-9A-Ca-c]/.test(String(selectedNetwork?.id||'6'));@@test-dtcprotocol.js@@de A van AUTO maakt K-lijn weer CAN: P0170 + P1570 wordt C3015"
+"public/pidlane-graph.js@@    const isCAN=plProtocolBits(selectedNetwork?.id||'6')>0;@@    const isCAN=/^[6-9A-Ca-c]/.test(String(selectedNetwork?.id||'6'));@@bproef-merken.js@@de A van AUTO maakt K-lijn weer CAN: de Mercedes uit 2000 krijgt een spookcode"
 # ── #261: afmelden opent geen verbindingsscherm, sluiten verbreekt eerst (22-09-2026) ──
 "public/pidlane-auth.js@@  if(typeof connected!=='undefined' && connected) handleConnect();\n}@@  handleConnect();\n}@@test-afmelden.js@@afmelden roept de verbindingsschakelaar weer blind aan en opent zonder verbinding het verbindingsscherm"
 "public/pidlane-auth.js@@  try{ if(typeof connected!=='undefined' && connected) await binnen(handleConnect()); }@@  try{ }@@test-afmelden.js@@Sluit de app sluit met een open verbinding: de sessie wordt niet bewaard en de adapter blijft bezet"

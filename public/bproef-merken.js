@@ -55,7 +55,6 @@ const BEKEND = {
   'nul:012C': '#585 nul stationair = "niet aanwezig"',
   'nul:012E': '#585 nul stationair = "niet aanwezig"',
   'nul:0169': '#585 nul stationair = "niet aanwezig"',
-  'dtc:merc00': '#584 spookcode op K-lijn bij automatisch protocol',
   'tweede-ecu': '#586 alleen de eerste ECU telt bij de discovery',
   'iupr:auris': '#587 IUPR met ISO-TP-opvulling',
   'merk:auris': '#588 Europese fabriekscodes (WMI)',

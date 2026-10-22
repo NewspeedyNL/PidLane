@@ -525,7 +525,7 @@ async function vlFullSurvey(){
     }
 
     _vlSvUI('Multi-PID batchtrap (2→4→6)…');
-    const isCAN=/^[6-9A-C]/i.test(String(selectedNetwork?.id||''));
+    const isCAN=plProtocolBits(selectedNetwork?.id||'')>0;   // 'A5' = KWP, geen CAN (#584)
     if(isCAN){
       // Oplopend testen hoeveel PIDs deze auto per request aankan — voedt de
       // startwaarde van de adaptieve batch sizing per voertuigcel.
