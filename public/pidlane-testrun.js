@@ -2787,6 +2787,21 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Alle sensoren zoeken: elke kandidaat één keer op de auto, alleen een plausibele waarde voorgesteld ──
+  {
+    issue: 'pidzoek',
+    naam: 'Alle sensoren zoeken: de keuring houdt een onmogelijke waarde, alleen FF en −40 °C buiten het voorstel',
+    waarom: 'Voor de Mazda kostte het weken om per code te testen of het getal klopte; nu doet één knop in Mijn voertuigen → Sensoren dat voor het hele model.',
+    proef: async function () {
+      if (!window.PLPidZoek || typeof PLPidZoek.plausibel !== 'function' || typeof PLPidZoek.zoek !== 'function')
+        return { staat: 'FOUT', detail: 'PLPidZoek ontbreekt — pidlane-pidzoek.js niet geladen (herladen?)' };
+      var P = function (b, w, u) { return PLPidZoek.plausibel({ ok: true, bytes: b, waarde: w, eenheid: u }, { naam: 'x' }).ok; };
+      if (!P([0x21, 0x50], 85, '°C')) return { staat: 'FOUT', detail: '85 °C wordt afgekeurd' };
+      if (P([0xFF, 0xFF], 65.5, 'V') || P([0x00], -40, '°C') || P([0x02], 600, '°C')) return { staat: 'FOUT', detail: 'FF, −40 °C of 600 °C komt door de keuring' };
+      return { staat: 'OK', detail: 'keuring werkt. Rij: verbonden, Mijn voertuigen → Sensoren → 🚀 Zoek alle sensoren; het overzicht staat in dezelfde groepen als je eigen sensoren en Neem N op bewaart ze' };
+    }
+  },
+
   // ── Tegoed: de afboekregel draagt het serversaldo, en de laadregel zegt dat zijn getal van dit toestel komt (#524) ──
   {
     issue: '524',

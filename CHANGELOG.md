@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Alle sensoren zoeken, met keuring op een plausibele waarde
+ ═══════════════════════════════════════════════════════════
+
+ - pidlane-pidzoek.js (PLPidZoek) nieuw; blok 🚀 in Mijn voertuigen →
+   Sensoren: test elke bibliotheek/OBDb-code één keer, stelt alleen een
+   plausibele waarde voor, in de groepen van de eigen sensoren, met vinkjes.
+ - test-pidzoek.js, drie mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
  22-10-2026 — Slim visueel: vegen staat stil zolang de themakeuze open is
  ═══════════════════════════════════════════════════════════
 
