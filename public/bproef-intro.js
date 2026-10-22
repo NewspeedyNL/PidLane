@@ -62,7 +62,7 @@ const WAT_LIGT_ER = `(function(){
     const tijdens = await app.ev(WAT_LIGT_ER);
     toets('tijdens het spelen ligt de intro erover', tijdens === 'intro', 'op die plek ligt: ' + tijdens);
     await wacht(1700);
-    // Halverwege moet het logo in beeld staan. Een verschreven keyframe-naam
+    // Op 1,7 s moet het logo in beeld staan. Een verschreven keyframe-naam
     // geeft géén fout: het logo blijft dan op zijn begin-opaciteit 0 staan.
     const logo = await app.ev(`parseFloat(getComputedStyle(document.querySelector('#plIntro .pli-logo')).opacity)`);
     toets('op 1,7 s staat het logo in beeld', logo > 0.9, 'opaciteit ' + logo);
@@ -70,7 +70,10 @@ const WAT_LIGT_ER = `(function(){
     toets('op 1,7 s staat "PidLane" in beeld', naam > 0.5, 'opaciteit ' + naam);
     toets('onthouden voor deze sessie', await app.ev(`sessionStorage.getItem(PLIntro.SLEUTEL) === '1'`));
 
-    await wacht(1600);  // samen 3,3 s — ruim na DUUR_MS (2,9 s)
+    await wacht(1200);  // 2,9 s: de eerste kaart (begint op 2,15 s) staat op de rijbaan
+    const kaart = await app.ev(`Math.max.apply(null, [...document.querySelectorAll('#plIntro .pli-kaart')].map(k => parseFloat(getComputedStyle(k).opacity)))`);
+    toets('op 2,9 s komt er een kaart met een stukje app over de baan', kaart > 0.5, 'hoogste opaciteit ' + kaart);
+    await wacht(2200);  // samen 5,1 s — ruim na DUUR_MS (4,9 s)
     toets('na afloop verborgen', await app.ev(`document.getElementById('plIntro').hidden === true`));
     const na = await app.ev(WAT_LIGT_ER);
     toets('na afloop is het veld weer aan te tikken', na === 'loginUser', 'op die plek ligt: ' + na);

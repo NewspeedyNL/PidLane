@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Intro: drie stukjes app komen over de rijbaan op je af
+ ═══════════════════════════════════════════════════════════
+
+ - Na het logo komen drie kaarten over de neonbaan: Live meten (naald slaat
+   uit), Check mijn auto (stoplicht springt op groen), Ritanalyse (lijn
+   tekent zich). "tik om over te slaan" onderaan. DUUR_MS 2900 → 4900;
+   eindregel 4,85 s; bproef-intro.js kijkt op 2,9 s of er een kaart staat.
+
+ ═══════════════════════════════════════════════════════════
  22-10-2026 — Full survey V2 (schema 3) voor de rittencampagne #541
  ═══════════════════════════════════════════════════════════
 

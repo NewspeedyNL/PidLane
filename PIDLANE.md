@@ -183,7 +183,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 
 | # | Module | KB | Doet |
 |---|---|---|---|
-| 4b | `pidlane-intro.js` | 5 | `PLIntro` — de opstart-intro op `#plIntro`: neon rijbaan, logo in 3D, doorzoom naar wat eronder klaarstaat. Staat **direct na het vlak en vóór elk ander script**, zodat hij beslist vóór de eerste frame. Eén keer per sessie, weg met een tik, niet bij minder beweging, een trage opstart of automatisering. De tijdlijn staat in `pidlane.css` bij `#plIntro`, met een noodrem die ook werkt als het script niet loopt |
+| 4b | `pidlane-intro.js` | 5 | `PLIntro` — de opstart-intro op `#plIntro`: neon rijbaan, logo in 3D, drie featurekaarten over de baan (`.pli-kaart`, sinds 22-10-2026; 4,9 s), doorzoom naar wat eronder klaarstaat. Staat **direct na het vlak en vóór elk ander script**, zodat hij beslist vóór de eerste frame. Eén keer per sessie, weg met een tik, niet bij minder beweging, een trage opstart of automatisering. De tijdlijn staat in `pidlane.css` bij `#plIntro`, met een noodrem die ook werkt als het script niet loopt |
 
 ### Fase 2 — kern (in `<body>`, rond regel 2128)
 
