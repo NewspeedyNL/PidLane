@@ -52,9 +52,6 @@ const PLNepAuto = require('./nepauto.js');
 // Zes die samen elk protocol, elke brandstof en de echte opname dekken.
 const KEUZE = ['cx5', 'p208', 'auris', 'fiat500', 'merc00', 'mercdiesel'];
 const BEKEND = {
-  'merk:auris': '#588 Europese fabriekscodes (WMI)',
-  'merk:corolla21': '#588 Europese fabriekscodes (WMI)',
-  'merk:tucson18': '#588 Europese fabriekscodes (WMI)'
 };
 
 let fouten = 0, letop = 0;

@@ -257,6 +257,28 @@ function decodeVIN(vin){
     'YV1':'Volvo','YV4':'Volvo',
     'ZAR':'Alfa Romeo','ZFA':'Fiat','ZFF':'Ferrari',
     'SAJ':'Jaguar','SAL':'Land Rover',
+    // Europese en andere fabrieken (#588, 22-10-2026). In NL rijden vooral
+    // auto's die níét in Japan of Korea gebouwd zijn: een Toyota Corolla of
+    // C-HR komt uit Turkije (NMT), een Yaris uit Frankrijk (VNK), een Auris
+    // uit Engeland (SB1). Zonder deze regels werd het "Onbekend merk", en viel
+    // alles weg wat op het merk leunt (DTC-lookup, kenveldthermostaat, OBDb).
+    'SB1':'Toyota','NMT':'Toyota','VNK':'Toyota','JTD':'Toyota','JTE':'Toyota','JTM':'Toyota','JTN':'Toyota',
+    'JTH':'Lexus',
+    'U5Y':'Kia','KNE':'Kia',
+    'TMA':'Hyundai','NLH':'Hyundai','MAL':'Hyundai',
+    'UU1':'Dacia',
+    'SJN':'Nissan','VSK':'Nissan',
+    'TSM':'Suzuki','JSA':'Suzuki',
+    'SHH':'Honda','SHS':'Honda',
+    'XMC':'Mitsubishi','JMB':'Mitsubishi',
+    'VXK':'Opel',
+    'VR3':'Peugeot','VR7':'Citroën','VR1':'DS',
+    'WV1':'Volkswagen','WV2':'Volkswagen',
+    'TRU':'Audi',
+    'WDB':'Mercedes-Benz','W1K':'Mercedes-Benz','W1N':'Mercedes-Benz',
+    'WMW':'Mini','WME':'Smart',
+    'WP0':'Porsche','WP1':'Porsche',
+    'XP7':'Tesla','LRW':'Tesla','5YJ':'Tesla',
   };
   const merk=wmiMap[wmi]||null;
   // Positie-10 jaarcode heeft een 30-jaars cyclus: dezelfde code staat voor
