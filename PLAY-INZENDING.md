@@ -5,7 +5,9 @@ Opgesteld 03-09-2026, bijgewerkt 10-09-2026 (§7, §16 en de taalkeuze) en
 en §14; beeld-in-beeld in §13 en §16b) en 08-10-2026 (3.2.0: één contactadres,
 §11 zonder chassisnummer naar de AI, §16b voor de laatste wijzigingen) en 17-10-2026
 (3.3.0: lampjesgids met foto in §3 en §11, kenteken-check en conditiescore in
-§3, nieuwe release notes in §14, §16b voor 3.3). Dit bestand is
+§3, nieuwe release notes in §14, §16b voor 3.3) en 22-10-2026 (3.4.0:
+aankooprapport en wintercheck in §3, nieuwe release notes in §14, §16b voor
+3.4). Dit bestand is
 **kopieerwerk**: elk kopje hieronder is
 een veld in de Play Console, en wat eronder staat gaat er letterlijk in.
 
@@ -101,7 +103,7 @@ diagnosepoort van je auto, leest rechtstreeks de boordcomputer uit — en laat
 iemand die er verstand van heeft live meekijken, waar hij ook is.
 
 Je monteur of een kenner ziet op zijn eigen telefoon wat jouw auto nu meet.
-Voor de storing die alleen onderweg optreedt, of de garage die ver weg zit.
+Voor de storing die alleen onderweg optreedt.
 
 HOE MEEKIJKEN WERKT
 
@@ -118,21 +120,23 @@ WAT PIDLANE NOG MEER DOET
 • Expert op afstand — live meekijken via code, QR of link.
 • Foutcodes uitlezen — actuele, permanente en pending codes, plus de
   freeze frame: de momentopname van wat de auto deed toen de fout ontstond.
-• Live sensorwaarden — toerental, temperaturen, druk, brandstoftrims,
-  lambdawaarden en meer, als meters of als grafiek over de tijd.
+• Live sensorwaarden — toerental, temperaturen, druk, trims en meer,
+  als meters of als grafiek.
 • Diagnoserapport — de meting wordt uitgelegd in gewone taal: wat is er aan
   de hand, hoe zeker is dat, en welk onderdeel is de eerste verdachte.
 • Ritmonitor — let tijdens het rijden op sensoruitval en uitschieters.
-• Koopcheck — een vaste doorloop voor een tweedehands auto, met de
-  readiness-monitors die verraden of er kort geleden fouten zijn gewist.
-• Onderdeelaanwijzer — van foutcode en meting naar het onderdeel.
+• Koopcheck — een vaste doorloop voor een tweedehands auto: verraden de
+  readiness-monitors dat er kort geleden fouten zijn gewist?
+• Aankooprapport — de koopcheck als PDF, met een oordeel uit vaste regels.
+• Onderdeelaanwijzer — van foutcode naar het onderdeel.
 • Alle stuurapparaten — ook foutcodes van ABS, airbag en versnellingsbak.
 • Lampjesgids — wat een dashboardlampje betekent, ook vanaf een foto.
 • Kenteken-check (Nederland) — merk, model, APK, verzekering en open
   terugroepacties uit de open data van de RDW.
 • Mijn voertuigen — tot drie auto's in je account, met rapporten en ritten,
-  op elk toestel waarop je inlogt.
+  op elk toestel.
 • Conditiescore — hoe je auto ervoor staat, uit onderhoud en ritten.
+• Wintercheck — banden, ruitensproeier en het weerbericht.
 • Slim visueel — de belangrijkste waarden als dashboard.
 • Rapporten opslaan en delen als PDF.
 
@@ -158,8 +162,7 @@ geen inspectie of APK.
 
 PRIVACY
 
-PidLane vraagt toegang tot Bluetooth om de adapter te vinden en ermee te
-praten — meer niet. De scanpermissie is aangevraagd met de markering
+PidLane vraagt toegang tot Bluetooth om de adapter te vinden, meer niet. De scanpermissie is aangevraagd met de markering
 neverForLocation: de app bepaalt je locatie niet en slaat hem niet op.
 Telemetrie gebruikt de bewegingssensoren van je telefoon, niet je locatie.
 
@@ -167,9 +170,8 @@ Metingen staan op je toestel. Vraag je een analyse, dan gaan de meetwaarden
 en voertuiggegevens naar onze server en naar de aanbieder van het taalmodel.
 Je naam, e-mailadres en kenteken gaan daar niet mee. Laat je een lampje op
 een foto herkennen, dan gaat die foto dezelfde weg; hij wordt niet bewaard.
-Deel je meetdata voor
-referentiewaarden, dan gaat je chassisnummer niet mee maar een daaruit
-berekende code — dat is pseudonimisering, geen anonimisering, en we
+Deel je meetdata voor referentiewaarden, dan gaat je chassisnummer niet mee
+maar een berekende code — dat is pseudonimisering, geen anonimisering, en we
 behandelen die gegevens dan ook als persoonsgegevens.
 
 Zet je Mijn voertuigen aan, dan bewaren we je voertuigen, rapporten en ritten
@@ -670,6 +672,13 @@ hand hetzelfde beschrijven, lopen hier uit de pas. Dat is de fout die §16 op
 controleert daarom dat elke functie die dit veld noemt óók in §3 staat**; noem
 je hier iets nieuws, dan hoort het daar eerst.
 
+**Nagelezen tegen de code op 22-10-2026, voor 3.4.0.** Het aankooprapport is
+`pidlane-aankooprapport.js` (`PLAankoop`, knop in de koopcheck), de wintercheck
+is `pidlane-winter.js` met `pidlane-weer.js` (`/weer` in `worker.js`, plaats
+uit een lijst, geen locatie) en `pidlane-winterrit.js`, het klokje in
+beeld-in-beeld met de stopknop is `pidlane-pip.js` met `native/PLPip.java`, en
+snel verbinden met een bekende auto staat in `pidlane-bt.js`.
+
 **Nagelezen tegen de code op 17-10-2026, voor 3.3.0.** De lampjesgids met foto
 is `pidlane-lampjes.js` (#492), alle stuurapparaten is UDS 0x19, de
 kenteken-check in Mijn voertuigen en de terugroepmelding staan in
@@ -696,15 +705,15 @@ toetst hij niet.
 10-09-2026 ook een en-US-blok, net als §2, terwijl §3 er geen had (#177).
 
 ```
-Versie 3.3
-Met expert op afstand, lampjesgids en conditiescore.
+Versie 3.4
+Met aankooprapport en wintercheck.
 
-- Expert op afstand bovenaan Home: laat je monteur live meekijken.
-- Lampjesgids: maak een foto van je dashboard en zie welk lampje brandt.
-- Foutcodes van alle stuurapparaten, niet alleen motor en bak.
-- Kenteken-check met melding bij een nieuwe terugroepactie.
-- Conditiescore en tankbeurten per voertuig.
-- Slim toont je auto als rondgang; elke pagina past op één scherm.
+- Aankooprapport: de koopcheck als PDF, met een oordeel uit vaste regels.
+- Wintercheck: banden, ruitensproeier en het weer voor je woonplaats.
+- Beeld-in-beeld is een klokje met naald, met een stopknop.
+- Snel verbinden met een auto die de app al kent.
+- Het oordeel houdt rekening met stilstaan of rijden.
+- Kosten per maand met de wegenbelasting en pompprijzen van nu.
 
 Geen adapter? Probeer de demomodus op het startscherm.
 ```
@@ -768,7 +777,7 @@ zijn.
 
 | punt | bewaakt door |
 |---|---|
-| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.3.0) | `test-playteksten.js` |
+| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.4.0) | `test-playteksten.js` |
 | Geen locatie: manifest, code en de drie verklaringen zeggen hetzelfde | `test-geen-gps.js` |
 | Foutpagina in de schil als de app niet laadt (`server.errorPath`) | `test-foutpagina.js` |
 | `feat_demo` dekt beide demoknoppen — geen dode knop op het loginscherm | `test-demo-toegang.js` |
@@ -819,7 +828,16 @@ want hij gaat over één bepaalde bundel. Vul hem dus bij, tik hem niet af.
 | Lampjesgids-foto (sinds 3.3.0, #492): 📷 Foto van het dashboard geeft eerst het eigen akkoordscherm, daarna de camera van Android; de gids opent op het herkende lampje. In de demo en zonder tegoed geen verzending | nog niet bewezen |
 | Alle stuurapparaten (sinds 3.3.0): 🧩 geeft per stuurapparaat een antwoord of een nette melding, en de app blijft verbonden | nog niet bewezen |
 | Terugroepmelding (sinds 3.3.0, #493): met herinneringen aan een Android-melding bij een nieuwe open terugroepactie, en geen melding voor een actie die de fabrikant als hersteld meldt | nog niet bewezen |
+| Aankooprapport (sinds 3.4.0): koopcheck doorlopen, 📄 Aankooprapport maken, de PDF opent met datum, tijd en de getypte plaats, zonder chassisnummer | nog niet bewezen |
+| Beeld-in-beeld-klokje (sinds 3.4.0): vierkant venster met naald; de stopknop van Android verbreekt de verbinding en sluit het venster | nog niet bewezen |
+| Wintercheck (sinds 3.4.0): winterkaart op het startscherm, plaats uit de lijst, weerbericht komt binnen zonder locatiepermissie | nog niet bewezen |
 | Herverbinden (08-10-2026, #453): adapter even uit de OBD-poort trekken met de motor aan, terugsteken, niets aanraken — de app hervat zonder protocolvraag. Daarna blok 5 draaien | nog niet bewezen |
+
+**Let op bij 3.4.0.** Tussen 17-10 en 22-10 kwamen het aankooprapport, de
+wintercheck met weer via de Worker, het beeld-in-beeld-klokje, snel verbinden
+en het oordeel naar toestand erbij. Geen regel in de tabel is op een build van
+ná 17-10 bewezen; loop ze op de upload-build na, de demo en de begeleide run
+voorop.
 
 **Let op bij 3.3.0.** Tussen 08-10 en 17-10 is veel verbouwd: Slim als
 rondgang, één meetscherm (#452), mode 06 en UDS in het onderzoek, de
