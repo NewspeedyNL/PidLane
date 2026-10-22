@@ -207,8 +207,6 @@ window.DTCDB ={
   U0001:{desc:'CAN bus communicatie fout',        body:'CAN bus bedrading of module defect.',                        sev:'high'},
   U0100:{desc:'Communicatie PCM verloren',        body:'PCM voeding of CAN bus probleem.',                           sev:'high'},
   U0101:{desc:'Communicatie TCM verloren',        body:'TCM of CAN bus probleem.',                                   sev:'high'},
-  // B-codes
-  B1318:{desc:'Accu spanning laag',               body:'Accu, alternator of lekstroom.',                             sev:'med'}
 };
 
 // ── DTC_OMSCHRIJVING — generieke codes met alleen een omschrijving ──
@@ -338,6 +336,8 @@ window.DTC_MERK = {
     P0A0F:{desc:'Aandrijfsysteem noodloopprogramma',        body:'Mazda M Hybrid: systeem vereist diagnose.',           sev:'high'},
     C1155:{desc:'ABS linksvoor wielsnelheid sensor',        body:'Wielsnelheidsensor of tand-ring defect.',             sev:'high'},
     C1165:{desc:'ABS rechtsvoor wielsnelheid sensor',       body:'Wielsnelheidsensor of tand-ring defect.',             sev:'high'},
+    // B1318 stond tot 22-10-2026 in de algemene DTCDB; het is een Ford/Mazda-code.
+    B1318:{desc:'Accu spanning laag',                       body:'Accu, alternator of lekstroom.',                      sev:'med'},
   },
   // ── VOLKSWAGEN / AUDI / SKODA / SEAT (VAG) ──
   VAG: {
@@ -363,6 +363,7 @@ window.DTC_MERK = {
     P0340:{desc:'Nokkenas positiesensor circuit A', body:'CMP sensor of kettingrek. Ford 1.6 TDCi veel voorkomend.',sev:'high'},
     P246A:{desc:'Dieselroetfilter te vol',          body:'Ford TDCi: DPF regeneratie mislukt — snelweg rijden.',     sev:'med'},
     P2263:{desc:'Turbo/supercharger boost sensor',  body:'Ford EcoBoost: boost sensor of inlaatleiding lek.',        sev:'med'},
+    B1318:{desc:'Accu spanning laag',               body:'Accu, alternator of lekstroom.',                            sev:'med'},
   },
   // ── OPEL / VAUXHALL ──
   OPEL: {

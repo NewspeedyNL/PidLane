@@ -55,6 +55,15 @@ console.log('\n2. De codes van de Mazda en van UDS hebben een tekst');
 eis(s.dtcInfo('P0524').sev === 'high', 'lage oliedruk is ernstig');
 eis(s.dtcInfo('P0171').desc === s.DTCDB.P0171.desc, 'TEGENPROEF: een code uit DTCDB houdt zijn eigen tekst');
 
+console.log('\n2b. Een fabrikantcode leent geen tekst van een ander merk (22-10-2026)');
+const metMerk = (m, c) => { s.vehicleInfo = { merk: m }; const r = s.dtcInfo(c); s.vehicleInfo = { merk: 'Mazda' }; return r; };
+eis(/krukas/i.test(metMerk('BMW', 'P1340').desc), 'BMW P1340: de BMW-tekst', metMerk('BMW', 'P1340').desc);
+eis(/^Onbekende code — fabrikantspecifiek/.test(metMerk('Peugeot', 'P1340').desc), 'Peugeot P1340: geen BMW-uitleg, wel de opbouw', metMerk('Peugeot', 'P1340').desc);
+eis(/^Onbekende code — fabrikantspecifiek/.test(metMerk('Renault', 'B1318').desc), 'Renault B1318: de Ford/Mazda-accucode geldt daar niet', metMerk('Renault', 'B1318').desc);
+eis(/Accu spanning laag/.test(metMerk('Mazda', 'B1318').desc) && /Accu spanning laag/.test(metMerk('Ford', 'B1318').desc), 'Mazda en Ford B1318: accuspanning laag');
+const p0016 = metMerk('Peugeot', 'P0016');
+eis(!/^Onbekende/.test(p0016.desc), 'TEGENPROEF: een algemene code (P0016) mag wél lenen', p0016.desc);
+
 console.log('\n3. Wat de opbouw zegt als hij nergens staat');
 let i = s.dtcInfo('P117A');
 eis(/^Onbekende code — fabrikantspecifiek, aandrijving: brandstof en lucht$/.test(i.desc), 'P117A: fabrikantspecifiek, brandstof en lucht', i.desc);
