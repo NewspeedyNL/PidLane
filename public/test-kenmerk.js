@@ -59,7 +59,10 @@ t('turbo gezien (PLGate): bewezen', kort(K.profiel({ turboGezien: true }).turbo)
 t('turbo "nee" in het profiel: bewezen nee', kort(K.profiel({ turboProfiel: 'nee' }).turbo), 'nee/bewezen');
 t('diesel 2010 zonder meting: turbo waarschijnlijk', kort(K.profiel({ brandstof: 'diesel', jaar: 2010 }).turbo), 'ja/waarschijnlijk');
 t('brandstof lpg: LPG bewezen', kort(K.profiel({ brandstof: 'lpg' }).lpg), 'ja/bewezen');
-t('hybride: CVT waarschijnlijk', kort(K.profiel({ brandstof: 'hybride' }).cvt), 'ja/waarschijnlijk');
+t('Toyota hybride: CVT waarschijnlijk', kort(K.profiel({ brandstof: 'hybride', merk: 'Toyota' }).cvt), 'ja/waarschijnlijk');
+t('Kia hybride: geen CVT maar een DCT (#589)', kort(K.profiel({ brandstof: 'hybride', merk: 'Kia' }).cvt), 'nee/waarschijnlijk');
+t('Honda hybride: CVT onbekend (#589)', kort(K.profiel({ brandstof: 'hybride', merk: 'Honda' }).cvt), 'onbekend');
+t('hybride zonder merk: CVT onbekend (#589)', kort(K.profiel({ brandstof: 'hybride' }).cvt), 'onbekend');
 t('handgeschakeld: CVT bewezen nee', kort(K.profiel({ transmissie: 'handgeschakeld' }).cvt), 'nee/bewezen');
 t('0134 aangeboden: breedband bewezen', kort(K.profiel({ supported: ['0114', '0134'] }).breedband_b1s1), 'ja/bewezen');
 t('alleen 0114: breedband waarschijnlijk nee', kort(K.profiel({ supported: ['0105', '0114'] }).breedband_b1s1), 'nee/waarschijnlijk');
@@ -75,7 +78,15 @@ t('waarschijnlijk onwaar → onbekend (niet te beoordelen)', G({ kenveldthermost
 t('niets bekend → onbekend', G({ kenveldthermostaat: false }, K.profiel({})), 'onbekend');
 t('niets bekend, gangbaar → geldt', G({ lpg: { is: false, gangbaar: true } }, K.profiel({})), 'geldt');
 t('gangbaar, maar bewezen LPG → geldt niet', G({ lpg: { is: false, gangbaar: true } }, K.profiel({ brandstof: 'lpg' })), 'geldt_niet');
-t('gangbaar, aanwijzing voor het tegendeel → onbekend', G({ cvt: { is: false, gangbaar: true } }, K.profiel({ brandstof: 'hybride' })), 'onbekend');
+t('gangbaar, aanwijzing voor het tegendeel → onbekend', G({ cvt: { is: false, gangbaar: true } }, K.profiel({ brandstof: 'hybride', merk: 'Toyota' })), 'onbekend');
+// #589: de echte voorwaarden van RPM_CONST uit pidlane-watchers.js. Een
+// Kia-hybride heeft geen CVT, maar ontkoppelt de motor wél: niet meten.
+const _w = require('fs').readFileSync(__dirname + '/pidlane-watchers.js', 'utf8').match(/id:'RPM_CONST'[^\n]*voorwaarden:(\{[^\n]*?\} \}),/);
+const RPMV = _w ? new Function('return ' + _w[1])() : null;
+t('RPM_CONST-voorwaarden gevonden', !!RPMV, true);
+t('Kia-hybride: RPM_CONST geldt niet (#589)', RPMV && G(RPMV, K.profiel({ brandstof: 'hybride', merk: 'Kia' })), 'geldt_niet');
+t('Honda-hybride: RPM_CONST geldt niet (#589)', RPMV && G(RPMV, K.profiel({ brandstof: 'hybride', merk: 'Honda' })), 'geldt_niet');
+t('benzine met handbak: RPM_CONST geldt', RPMV && G(RPMV, K.profiel({ brandstof: 'benzine', transmissie: 'handgeschakeld' })), 'geldt');
 t('twee voorwaarden: de ergste telt', G({ diesel: false, kenveldthermostaat: false }, K.profiel({ brandstof: 'benzine', merk: 'Audi' })), 'onbekend');
 t('de open kenmerken worden genoemd', K.geldt({ kenveldthermostaat: false }, K.profiel({ merk: 'BMW' })).open, ['kenveldthermostaat']);
 t('toepassen: fout + geldt = fout', K.toepassen('fout', { uitkomst: 'geldt' }), 'fout');

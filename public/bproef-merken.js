@@ -143,6 +143,10 @@ async function rij(id) {
     toets('derde poort: diesel ' + (bs === 'diesel' ? 'ja' : 'nee'), /^(ja|nee)/.test(km.diesel || '') && /^ja/.test(km.diesel) === (bs === 'diesel'), km.diesel);
     toets('derde poort: hybride ' + (p.brandstof === 'hybride' ? 'ja' : 'nee'), /^(ja|nee)/.test(km.hybride || '') && /^ja/.test(km.hybride) === (p.brandstof === 'hybride'), km.hybride);
 
+    if (p.brandstof === 'hybride') {
+      const cvt = p.merk === 'Toyota' ? 'ja' : p.merk === 'Kia' ? 'nee' : null;
+      if (cvt) toets('derde poort: cvt ' + cvt + ' bij een ' + p.merk + '-hybride (#589)', new RegExp('^' + cvt).test(km.cvt || ''), km.cvt);
+    }
     // IUPR en mode 06 uit de opname: het verwachte getal staat in de bytes.
     const op = p.ecus[0].opname || {};
     if (op['0908']) {

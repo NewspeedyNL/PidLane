@@ -2018,6 +2018,8 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@    if (/^DA[0-9A-F]{2}$/.test(hdr)) return@@    if (false) return@@test-mode21.js@@de korte 29-bitsnotatie van OBDb (DA10) wordt weer weggegooid: Fiat en Honda zonder kandidaten"
 "public/pidlane-diagbundel.js@@  const cleaned=plIsoTpHex(raw);@@  const cleaned=raw.replace(/[^0-9A-Fa-f]/g,'');@@test-parser.js@@framenummers van een meer-frame mode 22-antwoord belanden weer in de data"
 "public/pidlane-garage.js@@    if (eerder && nu - eerder < OBDB_OPNIEUW_MS) return null;@@@@test-garage.js@@OBDb wordt bij elke herkenning opnieuw gezocht"
+"public/pidlane-kenmerk.js@@  var ECVT_MERK = /^(toyota|lexus|ford|suzuki)\\b/;@@  var ECVT_MERK = /./;@@test-kenmerk.js@@elke hybride heet weer e-CVT, ook een Kia met DCT (#589)"
+"public/pidlane-watchers.js@@voorwaarden:{ cvt:{ is:false, gangbaar:true }, hybride:{ is:false, gangbaar:true } },\n      fase:['constant'], warm:null, pids:['010C','010D'], duurMs:5000@@voorwaarden:{ cvt:{ is:false, gangbaar:true } },\n      fase:['constant'], warm:null, pids:['010C','010D'], duurMs:5000@@test-kenmerk.js@@RPM_CONST meet weer op een hybride zonder e-CVT, waar de motor ontkoppelt (#589)"
 "public/pidlane-kenmerk.js@@    if (u === 'waarschijnlijk') return 'letop';@@    if (u === 'waarschijnlijk') return ruw;@@test-kenmerk.js@@een regel die alleen waarschijnlijk geldt meldt toch een harde fout (afzwakken weg)"
 "public/pidlane-kenmerk.js@@    if (u === 'onbekend') return 'onbeslist';@@    if (u === 'onbekend') return ruw;@@test-kenmerk.js@@een regel waarvan het kenmerk onbekend is oordeelt toch (de derde poort open)"
 "public/pidlane-kenmerk.js@@    if (u < LAAD_HARD_LAAG) return {@@    if (false) return {@@test-kenmerk.js@@onder 12,2 V laden is niet meer op elke auto fout"

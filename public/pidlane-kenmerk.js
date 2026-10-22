@@ -52,6 +52,7 @@
   // (kenveldthermostaat). Zelfde lijst als de aanpassing van ECT_HOOG op
   // 04-10-2026; Mercedes wisselt per motor en staat er dus niet in.
   var KENVELD_MERK = /^(volkswagen|vw|audi|skoda|škoda|seat|cupra|bmw|mini)\b/;
+  var ECVT_MERK = /^(toyota|lexus|ford|suzuki)\b/;
   var BREEDBAND = ['0124', '0125', '0126', '0127', '0128', '0129', '012A', '012B', '0134', '0135', '0136', '0137', '0138', '0139', '013A', '013B'];
 
   var NAAM = {
@@ -105,7 +106,13 @@
     p.diesel = bs ? k(/diesel/.test(bs), 'bewezen', 'brandstof ' + bs) : ONBEKEND;
     p.hybride = bs ? k(/hybr/.test(bs), 'bewezen', 'brandstof ' + bs) : ONBEKEND;
     p.lpg = uitMens('lpg') || (/lpg|cng/.test(bs) ? k(true, 'bewezen', 'brandstof ' + bs) : ONBEKEND);
-    p.cvt = uitMens('cvt') || (/hybr/.test(bs) ? k(true, 'waarschijnlijk', 'hybride (meestal e-CVT)') :
+    // Hybride ≠ e-CVT (#589). Het planetaire stelsel van Toyota (en Lexus, en
+    // Ford, en de Suzuki's die een Toyota zijn) wél; Kia en Hyundai rijden
+    // hybride met een DCT, Honda e:HEV met een vaste overbrenging, Renault
+    // E-Tech met een klauwbak, VAG met een DSG. Zonder merk: niet te zeggen.
+    p.cvt = uitMens('cvt') || (/hybr/.test(bs) ?
+      (ECVT_MERK.test(merk) ? k(true, 'waarschijnlijk', 'hybride van ' + b.merk + ' (e-CVT)') :
+        /^(kia|hyundai)\b/.test(merk) ? k(false, 'waarschijnlijk', 'hybride van ' + b.merk + ' (DCT)') : ONBEKEND) :
       /hand/.test(String(b.transmissie || '')) ? k(false, 'bewezen', 'handgeschakeld') : ONBEKEND);
     var bb = sup.some(function (x) { return BREEDBAND.indexOf(String(x).toUpperCase()) > -1; });
     p.breedband_b1s1 = bb ? k(true, 'bewezen', 'de auto levert een breedband-lambda') :

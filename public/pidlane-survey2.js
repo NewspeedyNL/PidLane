@@ -201,7 +201,7 @@
         v2.uds = { gevraagd: mods.length, antwoord: mods.filter(function (m) { return m.staat !== 'stil'; }).length,
           codes: mods.reduce(function (s, m) { return s + ((m.codes || []).length); }, 0),
           modules: mods.map(function (m) { return { hdr: m.hdr, naam: m.naam, staat: m.staat, n: (m.codes || []).length }; }) };
-        if (res && res.nietCan) v2.uds.fout = 'geen CAN';
+        if (res && res.nietCan) v2.uds.fout = 'geen 11-bit CAN';   // PLUds is 11-bit; 29-bit (Renault, VAG 2024+) volgt nog
       } catch (e) { v2.uds = { fout: String((e && e.message) || e).slice(0, 80), gevraagd: 0, antwoord: 0, codes: 0 }; }
     });
     await stap('kenmerk', async function () {
