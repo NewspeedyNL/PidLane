@@ -35,7 +35,7 @@
 // stationair aangenomen, een volle bus bestaat hier niet, en UDS en mode 06
 // antwoorden alleen waar de opname ze heeft. Dat blijft voor CAMPAGNE.
 //
-// Draaien vanuit public/:  node bproef-merken.js          (zes auto's)
+// Draaien vanuit public/:  node bproef-merken.js          (zeven auto's)
 //                          node bproef-merken.js --alle   (alle 21)
 //                          node bproef-merken.js golf16   (één auto)
 // TEGENPROEF: plmutate.sh telt in realScanDTC() de telbyte mee als code;
