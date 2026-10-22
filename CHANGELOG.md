@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Handleiding: beeld in plaats van tekst
+ ═══════════════════════════════════════════════════════════
+
+ - Inhoud als tegels met icoon en één zin per onderwerp; elk onderwerp opent
+   met icoon, korte zin, genummerde stappenkaarten, een schema (stroom,
+   tegels, onderbalk met de echte iconen, stoplichtlegenda) en Tip/Let op-
+   kaders. De lange tekst staat onder "Meer uitleg" en blijft doorzoekbaar.
+ - Opzet volgens gangbare handleidingpraktijk: progressive disclosure,
+   genummerde callouts links→rechts, bekende iconen, kaders voor waarschuwingen.
+ - test-help.js deel 9 rendert de echte weergave; drie mutaties in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  22-10-2026 — Kasboek: vervolgdelen bij max_tokens te tellen (#526, punt 4)
  ═══════════════════════════════════════════════════════════
 
