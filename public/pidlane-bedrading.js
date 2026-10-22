@@ -46,6 +46,9 @@ var KRITIEK = [
   // geladen is. Ontbreekt die functie, dan meldt de proef dat en zwijgt hij
   // niet — maar zonder deze regel zou de guard zelf de stille fout zijn.
   'applyFeatureToggles','featOn','finishLogin','fv',
+  // Blok 5 van #584–#589 (22-10-2026): die proeven vragen deze drie achter
+  // een typeof-guard, zodat een niet-geladen module een FOUT-regel geeft.
+  'decodeVIN','plProtocolBits','plSteunbitsUit',
   'getPidDef','getVehicle','goHome',
   // Erbij op 16-09-2026. Het adapterpaneel (pidlane-adapter.js) heeft de
   // verbreek-knop van de OBD-chip overgenomen en roept handleConnect() achter
