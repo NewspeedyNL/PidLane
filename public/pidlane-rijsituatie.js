@@ -376,6 +376,26 @@ window.ecuSteunt = ecuSteunt;
 window.magToevoegen = magToevoegen;
 window.steunbitsRuw = function(){ return Object.assign({}, _steunbits); };
 
+// Puur. De steunbits van ÉÉN bitmapvraag (0100, 0120, …) over alle ECU's
+// samen (#586). Op een functionele vraag antwoordt elke emissie-ECU met zijn
+// eigen regel: motor, bak, hybride-ECU. Wat één ECU aanbiedt, biedt de auto
+// aan; 015B (hybride accu) komt bij Toyota alleen van 7EA. Tot 22-10-2026 las
+// de discovery alleen de eerste regel. null = geen enkele leesbare bitmap.
+function plSteunbitsUit(raw, q){
+  const kop='41'+String(q).slice(2).toUpperCase();
+  let w=null;
+  String(raw||'').split(/[\r\n]+/).forEach(function(l){
+    const hex=l.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+    const i=hex.indexOf(kop);
+    if(i<0) return;
+    const d=hex.slice(i+kop.length, i+kop.length+8);
+    if(d.length<8) return;
+    const v=parseInt(d,16);
+    if(!isNaN(v)) w=((w||0)|v)>>>0;
+  });
+  return w;
+}
+
 async function profielTegenSteunbits(){
   if(typeof supportedPIDs==='undefined' || !supportedPIDs.size) return 0;
   const bits={};
@@ -383,14 +403,8 @@ async function profielTegenSteunbits(){
     let r='';
     try{ r=await sendCmd(q,3000); }catch(e){ console.warn('sendCmd mislukt:', e); }
     if(!r || /NO DATA|UNABLE|ERROR|STOPPED/i.test(r)) continue;
-    const hex=String(r).replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
-    const kop='41'+q.slice(2).toUpperCase();
-    const i=hex.indexOf(kop);
-    if(i<0) continue;
-    const d=hex.slice(i+4,i+12);
-    if(d.length<8) continue;
-    const w=parseInt(d,16);
-    if(isNaN(w)) continue;
+    const w=plSteunbitsUit(r, q);                          // alle ECU's samen (#586)
+    if(w===null) continue;
     bits[parseInt(q.slice(2),16)]=w;
     _steunbitsOnthoud(parseInt(q.slice(2),16), w);   // ook bewaren voor andere modules
   }
@@ -430,26 +444,10 @@ async function discoverPIDsBitmap(){
     const resp=await sendCmd(rangeCmd);
     if(!resp||resp.includes('NO DATA')||resp.includes('UNABLE')||resp.includes('ERROR')) continue;
 
-    // Per lijn strippen zoals PiOBDII doet
-    // Zoek '41 XX' patroon in elke lijn
-    const lines=resp.split(/[\r\n]+/).filter(l=>l.trim().length>0);
-    let bitmapHex='';
-
-    for(const line of lines){
-      const hex=line.replace(/[\s:]/g,'').toUpperCase();
-      const expected='41'+rangeCmd.slice(2).toUpperCase();
-      const idx=hex.indexOf(expected);
-      if(idx>=0){
-        bitmapHex=hex.slice(idx+expected.length, idx+expected.length+8);
-        break;
-      }
-      // Fallback: zoek gewoon 41xx
-      const alt=hex.match(/41[0-9A-F]{2}([0-9A-F]{8})/);
-      if(alt){ bitmapHex=alt[1]; break; }
-    }
-
-    if(!bitmapHex||bitmapHex.length<8) continue;
-    const bitmap=parseInt(bitmapHex,16);
+    // Alle ECU's samen (#586): de bak en de hybride-ECU hebben eigen PIDs.
+    const bitmap=plSteunbitsUit(resp, rangeCmd);
+    if(bitmap===null) continue;
+    const bitmapHex=bitmap.toString(16).toUpperCase().padStart(8,'0');
     // De discovery leest exact dezelfde vier bitmaps als profielTegenSteunbits().
     // Hier bewaren betekent dat de preset straks weet wat de ECU ontkent, ook
     // als die controle niet meer apart draait (verse discovery slaat hem over).

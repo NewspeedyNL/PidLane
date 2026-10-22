@@ -112,6 +112,8 @@ MUTATIES=(
 "public/pidlane-datalog.js@@  return Math.round(rawVal*100)/100;\n}@@  if(FILTERED_PIDS.has(pid)&&pidVals[pid]!=null&&Math.abs(rawVal-pidVals[pid])/Math.max(1e-6,(def?.max??255)-(def?.min??0))*100>35) return null;\n  return Math.round(rawVal*100)/100;\n}@@test-parser.js@@het spike-filter van laag 2 is terug: een echte sprong wordt weer als NO DATA geboekt"
 "public/pidlane-waakronde.js@@if (/NO DATA|ERROR|UNABLE|STOPPED|SEARCHING|\?/i.test(s)) return false;@@if (false) return false;@@test-waakronde.js@@de waakronde leest een foutmelding als een antwoord"
 "public/pidlane-waakronde.js@@const marge = (d.max - d.min) * 0.02;@@const marge = 0;@@test-waakronde.js@@de 2%-marge op het verwachte bereik is weg"
+"public/pidlane-rijsituatie.js@@    if(!isNaN(v)) w=((w||0)|v)>>>0;@@    if(!isNaN(v) && w===null) w=v>>>0;@@test-steunbits.js@@de discovery leest weer alleen de eerste ECU: 015B van de hybride-ECU valt weg (#586)"
+"public/pidlane-rijsituatie.js@@    if(!isNaN(v)) w=((w||0)|v)>>>0;@@    if(!isNaN(v) && w===null) w=v>>>0;@@bproef-merken.js@@de discovery leest weer alleen de eerste ECU: de Toyota-hybride mist 015B (#586)"
 "public/pidlane-rijsituatie.js@@_pidHealth[pid] = (h==='ok'||h==='twijfel'||h==='onzin'||h==='nodata') ? h : 'ok';@@_pidHealth[pid] = h;@@test-healthgate.js@@een onbekende sensor wordt uitgegrijsd in plaats van kiesbaar"
 "public/pidlane-rijsituatie.js@@if(ok===0 && geen<pids.length){@@if(false){@@test-healthgate.js@@de veiligheidsfallback van de gezondheidscheck staat uit"
 
