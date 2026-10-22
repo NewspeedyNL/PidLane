@@ -279,6 +279,7 @@ function decodeVIN(vin){
     'WMW':'Mini','WME':'Smart',
     'WP0':'Porsche','WP1':'Porsche',
     'XP7':'Tesla','LRW':'Tesla','5YJ':'Tesla',
+    'LSJ':'MG','LGX':'BYD','LPS':'Polestar','LYV':'Volvo',   // gebouwd in China
   };
   const merk=wmiMap[wmi]||null;
   // Positie-10 jaarcode heeft een 30-jaars cyclus: dezelfde code staat voor

@@ -30,7 +30,7 @@ console.log('\n1. Europese fabrieken');
  ['VNKKD3D310A123456', 'Toyota', 'Yaris, Frankrijk'], ['U5YH2512AJL000001', 'Kia', 'Ceed, Slowakije'],
  ['TMAJ38LADJJ000001', 'Hyundai', 'Tucson, Tsjechië'], ['NLHBT51BAMZ000001', 'Hyundai', 'i20, Turkije'],
  ['UU1DJF00X67000001', 'Dacia', 'Roemenië'], ['W1K2050421R000001', 'Mercedes-Benz', 'sinds 2019'],
- ['VR3UHZKXZMT000001', 'Peugeot', '208 II'], ['XMCGCDA1A5F000001', 'Mitsubishi', 'NedCar Born']
+ ['VR3UHZKXZMT000001', 'Peugeot', '208 II'], ['XMCGCDA1A5F000001', 'Mitsubishi', 'NedCar Born'], ['LSJW74A95MZ000001', 'MG', 'ZS EV, China'], ['LPSVSEDEEML000001', 'Polestar', 'Polestar 2, China']
 ].forEach(([vin, merk, waar]) => {
   const m = decodeVIN(vin).merk;
   toets(vin.slice(0, 3) + ' = ' + merk + ' (' + waar + ')', m === merk, m);
