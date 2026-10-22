@@ -1701,6 +1701,7 @@
         berUit.map(berRij).join('') + '</details>' : '') +
       '<div class="gr-klein" style="margin-top:6px">De app rekent ze uit. Een berekende sensor verschijnt alleen als de auto de bronnen ervoor geeft.</div></div>';
     var bibDeel = bibSplits(S.bib && S.bib.lijst, S.eigen);
+    h += tekenPidZoek(S, nu);
     h += '<div class="gr-blok"><div class="gr-bh">🔧 Eigen sensoren<span class="gr-r">' + S.eigen.length + ' / ' + ((window.PLEigen && PLEigen.MAX) || 20) + '</span></div>' +
       (S.eigen.length ? (function () {
         var ge = sensGroepen(S.eigen, sensHeeft(S, nu), false), rij = function (r) { return eigenRij(S, r.b, r.i, r.s, bibDeel, nu); };
@@ -1898,6 +1899,52 @@
       (nu ? '' : ' Testen kan als deze auto verbonden is.') + '</div></div>';
     h += tekenScan(S, bew, nu);
     return h;
+  }
+  /* Alle sensoren zoeken (22-10-2026): elke kandidaat uit de bibliotheek één
+     keer op de auto, alleen een plausibele waarde wordt voorgesteld, in de
+     indeling van hieronder. De ronde zelf staat in pidlane-pidzoek.js. */
+  function pzVrij(S) { return Math.max(0, ((window.PLEigen && PLEigen.MAX) || 20) - S.eigen.length); }
+  function pzGroepen(S, nu) {
+    var pz = S.pz, past = PLPidZoek.kandidaten(pz.res.past.map(function (p) { return p.c; }), S.eigen);
+    return sensGroepen(past, sensHeeft(S, nu), false);
+  }
+  function tekenPidZoek(S, nu) {
+    if (!window.PLPidZoek || !window.PLEigen) return '';
+    var pz = S.pz || {};
+    var h = '<div class="gr-blok gr-pz"><div class="gr-bh">🚀 Alle sensoren zoeken<span class="gr-r">' + (nu ? 'verbonden' : 'niet verbonden') + '</span></div>';
+    if (pz.bezig) {
+      return h + '<div class="gr-klein">⏳ ' + esc(pz.stap || '') + (pz.totaal ? ' ' + pz.gedaan + ' / ' + pz.totaal + ' getest · ' + pz.n + ' met een plausibele waarde' : '') + '</div>' +
+        '<div class="gr-knoppen"><button class="gr-k klein gevaar" onclick="PLGarage._pzStop()">■ Stop</button></div></div>';
+    }
+    if (!pz.res) {
+      h += '<div class="gr-klein">Vraagt elke bekende code voor dit model één keer aan de auto (OBDb en wat anderen met dit model deelden), keurt het antwoord op een plausibele waarde, en zet wat klopt in een overzicht. Daar kies je wat je opneemt. Alleen lezen; de meting loopt ertussendoor.</div>' +
+        (pz.fout ? '<div class="gr-melding rood">' + esc(pz.fout) + '</div>' : '') + (pz.tekst ? '<div class="gr-klein">' + esc(pz.tekst) + '</div>' : '') +
+        '<div class="gr-knoppen">' + (nu ? '<button class="gr-k hoofd" onclick="PLGarage._pzStart()">🚀 Zoek alle sensoren</button>'
+          : '<span class="gr-klein">Verbind eerst met deze auto.</span>') + '</div>';
+      return h + '</div>';
+    }
+    var r = pz.res, g = pzGroepen(S, nu), kies = pz.kies || {}, vrij = pzVrij(S);
+    var aantal = ['weergave', 'analyse', 'dubbel'].reduce(function (n, k) { return n + g[k].filter(function (x) { return kies[PLPidZoek.sleutel(x.b)]; }).length; }, 0);
+    var waardeVan = {}; r.past.forEach(function (p) { waardeVan[PLPidZoek.sleutel(p.c)] = p; });
+    h += '<div class="gr-klein">' + r.gedaan + ' van ' + r.totaal + ' codes getest' + (r.gestopt ? ' (gestopt)' : '') + (r.afgebroken ? ' — afgebroken: ' + esc(r.afgebroken) : '') + ': <b>' +
+      r.past.length + ' plausibel</b>, ' + r.vreemd.length + ' met een vreemde waarde, ' + r.nee.length + ' weigert de auto' + (r.fout.length ? ', ' + r.fout.length + ' met een busfout' : '') + '.</div>';
+    var rij = function (x) {
+      var k = PLPidZoek.sleutel(x.b), w = waardeVan[k], b = x.b;
+      return '<label class="gr-sens"><input type="checkbox" ' + (kies[k] ? 'checked ' : '') + 'onchange="PLGarage._pzKies(\'' + esc(k) + '\',this.checked)">' +
+        '<span><b>' + esc(b.naam) + '</b> <small>' + esc(b.eenheid || '') + '</small><br><small>' + esc(b.code) + (b.ecu ? ' @ ' + esc(b.ecu) : '') +
+        (w ? ' · nu ' + esc(String(Math.round(w.waarde * 100) / 100).replace('.', ',') + ' ' + (w.eenheid || '')) : '') + '</small>' +
+        (x.s.reden ? '<br><small class="gr-soort">' + esc(x.s.reden) + '</small>' : '') + '</span></label>';
+    };
+    var lijst = ['weergave', 'analyse', 'dubbel'].map(function (k) { return sensGroepHtml(k, g[k], rij, false); }).join('');
+    h += lijst || '<div class="gr-klein">Niets nieuws met een plausibele waarde.</div>';
+    if (r.vreemd.length) h += '<details class="gr-meer gr-groep"><summary>⚠️ Vreemde waarde (' + r.vreemd.length + ')</summary><div class="gr-klein">Antwoordt wel, maar het getal klopt niet — vaak een verkeerde formule. Niet voorgesteld.</div>' +
+      r.vreemd.map(function (v) { return '<div class="gr-item"><b>' + esc(v.c.naam) + '</b> <small>' + esc(v.c.code) + '</small><br><small>' + esc(v.reden) + '</small></div>'; }).join('') + '</details>';
+    if (lijst) h += '<div class="gr-klein" style="margin-top:6px">' + aantal + ' gekozen · ' + vrij + ' plek' + (vrij === 1 ? '' : 'ken') + ' vrij</div>' +
+      (aantal > vrij ? '<div class="gr-melding rood">Te veel gekozen: er zijn nog ' + vrij + ' plekken voor eigen sensoren.</div>' : '');
+    h += '<div class="gr-knoppen">' + (lijst ? '<button class="gr-k hoofd" ' + (aantal && aantal <= vrij ? '' : 'disabled ') + 'onclick="PLGarage._pzOpnemen()">➕ Neem ' + aantal + ' op in mijn sensoren</button>' : '') +
+      (nu ? '<button class="gr-k klein" onclick="PLGarage._pzStart()">↻ Opnieuw zoeken</button>' : '') + '</div>';
+    if (pz.tekst) h += '<div class="gr-klein">' + esc(pz.tekst) + '</div>';
+    return h + '</div>';
   }
   /* Wat op deze auto bewezen werkt: uit de bibliotheek (een "werkt"-stem)
      en de eigen sensoren die deze sessie een geslaagde test hadden. */
@@ -2345,6 +2392,57 @@
       S.scan = r.ok ? { blok: naam, gevonden: r.gevonden, gestopt: r.gestopt } : { blok: naam, fout: r.fout };
       teken();
     },
+    _pzStart: async function () {
+      var S = _st.sens, v = S && voertuig(S.vid); if (!S || !v || !window.PLPidZoek || !window.PLEigen || (S.pz && S.pz.bezig)) return;
+      sensNieuw();
+      if (!isVerbonden()) { S.pz = { fout: 'Niet verbonden met een auto' }; teken(); return; }
+      S.pz = { bezig: true, stap: 'Bibliotheek laden…', gedaan: 0, totaal: 0, n: 0 }; teken();
+      var pz = S.pz, lijst = [];
+      try {
+        var d = await api('pidbib_lijst', { voertuig_id: S.vid }); lijst = d.lijst || [];
+        // Nog niets voor dit model: eerst OBDb, dan de lijst opnieuw.
+        if (!lijst.length) {
+          pz.stap = 'Codes zoeken in OBDb…'; teken();
+          var o = await obdbBinnenhalen(S.vid, v); pz.tekst = o.tekst;
+          d = await api('pidbib_lijst', { voertuig_id: S.vid }); lijst = d.lijst || [];
+        }
+      } catch (x) { if (_st.sens === S) { S.pz = { fout: 'Bibliotheek niet te laden: ' + x.message }; teken(); } return; }
+      if (_st.sens !== S) return;
+      S.bib = { lijst: lijst };
+      var kand = PLPidZoek.kandidaten(lijst, S.eigen);
+      if (!kand.length) { S.pz = { tekst: (pz.tekst ? pz.tekst + ' ' : '') + 'Geen nieuwe codes om te testen voor dit model.' }; teken(); return; }
+      pz.stap = 'Testen:'; pz.totaal = kand.length; teken();
+      var laatst = 0;
+      var res = await PLPidZoek.zoek(kand, {
+        test: function (b) { return PLEigen.test({ code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid, ecu: b.ecu }); },
+        stem: function (b, uitkomst) { return api('pidbib_stem', { voertuig_id: S.vid, id: b.id, uitkomst: uitkomst }).then(function () { b.mijn = uitkomst; }); },
+        stop: function () { return !!pz.stop || _st.sens !== S; },
+        voortgang: function (st) { pz.gedaan = st.gedaan; pz.n = st.past.length; if (Date.now() - laatst > 700) { laatst = Date.now(); teken(); } }
+      });
+      if (_st.sens !== S) return;
+      var g = sensGroepen(PLPidZoek.kandidaten(res.past.map(function (p) { return p.c; }), S.eigen), sensHeeft(S, true), false), kies = {};
+      PLPidZoek.voorkeus(g, pzVrij(S)).forEach(function (k) { kies[k] = true; });
+      S.pz = { res: res, kies: kies, tekst: pz.tekst || '' };
+      teken();
+    },
+    _pzStop: function () { var S = _st.sens; if (S && S.pz) S.pz.stop = true; },
+    _pzKies: function (k, aan) { var S = _st.sens; if (!S || !S.pz || !S.pz.res) return; sensNieuw(); S.pz.kies = S.pz.kies || {}; if (aan) S.pz.kies[k] = true; else delete S.pz.kies[k]; teken(); },
+    _pzOpnemen: async function () {
+      var S = _st.sens; if (!S || !S.pz || !S.pz.res) return;
+      sensNieuw();
+      var kies = S.pz.kies || {}, n = 0;
+      var past = PLPidZoek.kandidaten(S.pz.res.past.map(function (p) { return p.c; }), S.eigen);
+      past.forEach(function (b) {
+        if (!kies[PLPidZoek.sleutel(b)] || S.eigen.length >= PLEigen.MAX) return;
+        S.eigen.push({ code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid || '', ecu: b.ecu || '' });
+        if (S.sel.indexOf(b.code) < 0) S.sel.push(b.code);
+        S.ok[b.code] = true; n++;
+      });
+      if (!n) return;
+      S.pz.kies = {}; S.pz.tekst = '✓ ' + n + ' sensor' + (n === 1 ? '' : 'en') + ' opgenomen.';
+      S.gewijzigd = true;
+      await PLGarage._sensBewaar();
+    },
     _scanStop: function () { try { if (window.PLEigen) PLEigen.buurScanStop(); } catch (e) { console.warn('PLGarage: scan stoppen', e); } },
     _scanErbij: function (code) {
       var S = _st.sens; if (!S || !S.scan || !S.scan.gevonden) return;
@@ -2539,7 +2637,7 @@
       doe(function () { return api('rapport_verwijder', { id: r.id }); }, 'Rapport verwijderd').then(function () { delete cacheVan(_st.vid).rapporten; _st.view = 'voertuig'; _st.tab = 'rapporten'; teken(); });
     },
     // pure kern — voor test-garage.js
-    _kern: { obdbVanzelf: obdbVanzelf, sensSoort: sensSoort, sensGroepen: sensGroepen, status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar, ritStand: ritStand,
+    _kern: { obdbVanzelf: obdbVanzelf, sensSoort: sensSoort, sensGroepen: sensGroepen, tekenPidZoek: tekenPidZoek, status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar, ritStand: ritStand,
       rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, voorinvulNieuw: voorinvulNieuw, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
       waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, akkoordVragen: akkoordVragen, bibSplits: bibSplits, cfg: CFG }
   };
