@@ -16,7 +16,10 @@
  - apiFetch stuurt bij deel 2 en 3 `pl_deel` mee; de Worker haalt het eraf
    vóór Anthropic en zet "vervolgdeel N" achter Details (afboeking én
    ai-verbruik). Zo is te meten hoe vaak de volle invoer opnieuw betaald wordt.
- - test-kasboek.js deel 14b; mutatie in plmutate.sh.
+ - apiFetch vraagt 2× het plafond van de aanroeper (max 8192). In D1 stopten
+   alle 6 vervolgdelen sinds 10-09 op een te krap plafond; nu één call.
+ - test-kasboek.js deel 14b, test-vervolgdeel.js (draait de echte apiFetch);
+   drie mutaties in plmutate.sh.
 
  ═══════════════════════════════════════════════════════════
  22-10-2026 — Versie 3.4.0 voor de release

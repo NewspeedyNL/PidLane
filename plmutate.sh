@@ -350,6 +350,8 @@ MUTATIES=(
 "worker.js@@  if (payload.tools !== undefined) return@@  if (false) return@@test-kasboek.js@@web_search en andere tools gaan weer ongezien naar Anthropic (#526)"
 "worker.js@@  if (AI_MODELLEN.indexOf(payload.model) < 0) return@@  if (false) return@@test-kasboek.js@@elk model mag weer, ook Opus, tegen het Sonnet-tarief (#526)"
 "worker.js@@  if (!(Number.isInteger(d) && d >= 2 && d <= 9)) return rol;@@  return rol;@@test-kasboek.js@@een vervolgdeel bij max_tokens leest in het kasboek weer als een nieuwe analyse (#526)"
+"public/pidlane-fuel.js@@Number(maxTokens)||2048)*2);@@Number(maxTokens)||2048));@@test-vervolgdeel.js@@deel 1 stopt weer op het plafond van de aanroeper en de volle invoer gaat opnieuw (#526)"
+"public/pidlane-fuel.js@@      if(part>0) body.pl_deel=part+1;@@      if(false) body.pl_deel=part+1;@@test-vervolgdeel.js@@apiFetch meldt het vervolgdeel niet meer aan het kasboek (#526)"
 "worker.js@@  for (const k of Object.keys(payload)) if (AI_VELDEN.indexOf(k) < 0) delete payload[k];@@@@test-kasboek.js@@onbekende velden gaan weer mee naar Anthropic (#526)"
 "worker.js@@  if (r.ok && env && env.LOGDB)\n    await tegoedLog(@@  if (false && env && env.LOGDB)\n    await tegoedLog(@@test-kasboek.js@@calls van personeel en de beheerder laten weer geen spoor na (#526)"
 "worker.js@@            kasboek: r.ok ? aiVerbruikRegel(session.u, text, rol, \"tegoed uit\") : null@@            kasboek: null@@test-kasboek.js@@tegoed uit laat weer geen spoor na in het kasboek (#526)"
