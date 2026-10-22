@@ -31,6 +31,11 @@
 const GEWICHT = { verbinding:0.25, basis:0.20, dekking:0.20, weergaven:0.20, afwijkend:0.15 };
 // Zonder deze kan de app zijn kernwerk niet: meter, rijden, motortemperatuur.
 const KERN = ['010C','010D','0105','0104'];
+// Een elektrische auto heeft geen toerental, geen koelwater van een motor en
+// geen motorlast (22-10-2026). Wat daar de kern is: snelheid en de accu. Een
+// Kia Niro EV biedt in mode 01 alleen 01 21 30 31 5B (OBDb) en kreeg met de
+// benzinekern cijfer 5, "geen toerental".
+const KERN_EV = ['010D','015B'];
 // Responstijd per PID (ms) → deelscore. K-line/ISO 9141 is van nature trager
 // dan CAN; dezelfde 150 ms is daar goed en op CAN matig.
 const TEMPO_CAN    = [[60,10],[100,9],[150,8],[250,6],[400,4],[700,2]];
@@ -108,12 +113,12 @@ function oordeelBasis(sv, ctx){
 }
 
 /* ── 3. Dekking ── */
-function oordeelDekking(sv){
+function oordeelDekking(sv, brandstof){
   const d=(sv.pids && sv.pids.detail) || [];
   const gevraagd=d.filter(x=>x.st!=='transport').length;
   const ok=d.filter(x=>x.st==='ok').length;
   const okSet=new Set(d.filter(x=>x.st==='ok').map(x=>x.pid));
-  const kernMis=KERN.filter(p=>!okSet.has(p));
+  const kernMis=(brandstof==='elektrisch' ? KERN_EV : KERN).filter(p=>!okSet.has(p));
   let sc=gevraagd ? 10*ok/gevraagd : 0;
   // Een auto met 12 PIDs die allemaal werken is bruikbaar, maar minder dan 30.
   if(ok<10) sc=Math.min(sc, 3+ok*0.4);
@@ -148,9 +153,10 @@ function oordeelWeergaven(sv, ctx, brandstof){
     if(/^tel(-|emetrie$)/.test(p.id)) return;   // telefoonsensoren: geen oordeel over de auto (één scherm sinds 06-10-2026)
     const r={ id:p.id, naam:p.naam, oordeel:'goed', gevuld:0, plekken:0, reden:'', indeling:{} };
     if(!p.plekken){   // basis: de vaste meter
-      const heeft=okSet.has('010C') && okSet.has('010D');
+      // Een EV heeft geen toerental om te lezen: snelheid is genoeg.
+      const heeft=okSet.has('010D') && (elektrisch || okSet.has('010C'));
       r.oordeel=heeft ? 'goed' : (okSet.has('010D') ? 'matig' : 'ongeschikt');
-      r.reden=heeft ? 'toerental en snelheid lezen' : 'toerental of snelheid ontbreekt';
+      r.reden=heeft ? (elektrisch ? 'snelheid lezen' : 'toerental en snelheid lezen') : (elektrisch ? 'snelheid ontbreekt' : 'toerental of snelheid ontbreekt');
       uit.push(r); return;
     }
     plekkenVan(p, brandstof).forEach(function(x){
@@ -177,7 +183,10 @@ function oordeelWeergaven(sv, ctx, brandstof){
     uit.push(r);
   });
   const w={goed:10, matig:6, ongeschikt:0};
-  const tel=uit.length ? uit.reduce((a,r)=>a+w[r.oordeel],0)/uit.length : 0;
+  // Een weergave voor de verbrandingsmotor zegt over een EV niets: die telt
+  // niet mee in het cijfer (wel in de lijst, met de reden).
+  const telt=uit.filter(r=>!(elektrisch && r.reden==='geen verbrandingsmotor'));
+  const tel=telt.length ? telt.reduce((a,r)=>a+w[r.oordeel],0)/telt.length : (elektrisch ? 10 : 0);
   return { score:r1(klem(tel)), lijst:uit, aanbevolen:uit.filter(r=>r.oordeel==='goed').map(r=>r.id) };
 }
 
@@ -256,7 +265,7 @@ function beoordeel(sv, ctx){
   const brandstof=brandstofVan(ctx.brandstofOpgegeven, sv.ecuFuel);
   const verbinding=oordeelVerbinding(sv, ctx);
   const basis=oordeelBasis(sv, ctx);
-  const dekking=oordeelDekking(sv);
+  const dekking=oordeelDekking(sv, brandstof);
   const weergaven=oordeelWeergaven(sv, ctx, brandstof);
   const afwijkend=oordeelAfwijkend(sv, ctx);
   const delen={verbinding, basis, dekking, weergaven, afwijkend};
@@ -264,7 +273,7 @@ function beoordeel(sv, ctx){
   // Plafonds: een gemiddelde mag een ramp niet wegpoetsen.
   const plafond=[];
   if(verbinding.transport/(((sv.pids&&sv.pids.detail)||[]).length||1)>0.2){ c=Math.min(c,4); plafond.push('meer dan 20% transportfouten'); }
-  if(dekking.kernMis.indexOf('010C')>-1){ c=Math.min(c,5); plafond.push('geen toerental'); }
+  if(brandstof!=='elektrisch' && dekking.kernMis.indexOf('010C')>-1){ c=Math.min(c,5); plafond.push('geen toerental'); }
   if(!(sv.pids && sv.pids.total)){ c=1; plafond.push('geen PIDs'); }
   const cijfer=Math.max(1, Math.min(10, Math.round(c*10)/10));
   return { cijfer, oordeel: cijfer>=8 ? 'goed bruikbaar' : cijfer>=6 ? 'bruikbaar met beperkingen' : cijfer>=4 ? 'matig' : 'niet bruikbaar',
@@ -317,6 +326,6 @@ function html(res){
   return '<div style="text-align:left;font-weight:400;font-size:13px;line-height:1.45;max-height:62vh;overflow:auto;width:min(560px,92vw)">'+h+'</div>';
 }
 
-const API={ GEWICHT, KERN, beoordeel, compact, html, bruikbaar, brandstofVan };
+const API={ GEWICHT, KERN, KERN_EV, beoordeel, compact, html, bruikbaar, brandstofVan };
 if(typeof window!=='undefined') window.PLFunctieTest=API;
 })();

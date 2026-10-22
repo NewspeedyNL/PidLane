@@ -141,6 +141,26 @@ waar('ECU zegt diesel, opgegeven benzine → notitie en lagere basis', mis(F).sc
   JSON.stringify(mis(F)));
 waar('tegenproef: zonder de kruiscontrole geen notitie', !mis(laad(BRON.replace('ecu!==opg', 'false'))).notities.some(n => /wijkt af/.test(n)));
 
+console.log('\n7b. Een elektrische auto (22-10-2026)');
+// De mode-01-set van een Kia Niro EV 2022 uit OBDb: 01 21 30 31 5B, geen
+// snelheid, geen toerental. Met de benzinekern werd dat cijfer 5.
+const NIRO_EV = { '0101': 0, '0121': 0, '0130': 12, '0131': 900, '015B': 60 };
+function evCijfer(Fx) { return keur(Fx, survey(NIRO_EV, { ecuFuel: { code: 8 } }), { brandstofOpgegeven: 'elektrisch' }); }
+const ev = evCijfer(F);
+waar('Niro EV: geen plafond "geen toerental"', ev.plafond.indexOf('geen toerental') < 0, ev.plafond.join());
+waar('Niro EV: de kern is snelheid en accu, alleen 010D ontbreekt', ev.delen.dekking.kernMis.join() === '010D', ev.delen.dekking.kernMis.join());
+waar('Niro EV: de motorweergaven staan erbij met de reden', ev.delen.weergaven.lijst.some((r) => r.reden === 'geen verbrandingsmotor'));
+// MG ZS EV 2021 (OBDb): snelheid, twee temperaturen, accuspanning.
+const MG = { '0101': 0, '0105': 30, '010C': 0, '010D': 0, '011F': 300, '0121': 0, '0130': 12, '0131': 900, '0142': 14.1, '0146': 15, '014E': 600 };
+const mg = keur(F, survey(MG, { ecuFuel: { code: 8 } }), { brandstofOpgegeven: 'elektrisch' });
+waar('MG ZS EV: basismeter goed op snelheid alleen', mg.delen.weergaven.lijst.find((r) => r.id === 'basis').oordeel === 'goed', JSON.stringify(mg.delen.weergaven.lijst.find((r) => r.id === 'basis')));
+waar('MG ZS EV: motorweergaven tellen niet mee, de rest wel', mg.delen.weergaven.score >= 5, String(mg.delen.weergaven.score));
+waar('MG ZS EV: cijfer ≥ 8', mg.cijfer >= 8, String(mg.cijfer) + ' ' + mg.plafond.join());
+waar('Niro EV: cijfer boven de 5', ev.cijfer > 5, String(ev.cijfer));
+waar('TEGENPROEF: een benzine zonder toerental blijft begrensd op 5', keur(F, survey({ '010D': 0, '0105': 88, '0104': 20 }), { brandstofOpgegeven: 'benzine' }).cijfer <= 5);
+const oudEV = evCijfer(laad(BRON.replace("(brandstof==='elektrisch' ? KERN_EV : KERN)", 'KERN').replace("if(brandstof!=='elektrisch' && dekking.kernMis", "if(dekking.kernMis")));
+waar('TEGENPROEF: met het oude plafond is de Niro EV weer 5', oudEV.cijfer <= 5, String(oudEV.cijfer));
+
 console.log('\n8. Lege survey breekt niet');
 let leeg = null; try { leeg = F.beoordeel({}, {}); } catch (e) { leeg = e; }
 waar('beoordeel({}) geeft cijfer 1', leeg && leeg.cijfer === 1, String(leeg && (leeg.stack || leeg.cijfer)));
