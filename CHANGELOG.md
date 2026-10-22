@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Versie 3.4.0 voor de release
+ ═══════════════════════════════════════════════════════════
+
+ - APP_VERSION en package.json naar 3.4.0; mutatie in plmutate.sh mee.
+ - PLAY-INZENDING.md: aankooprapport en wintercheck in §3 (ingekort tot
+   onder 4000 tekens), release notes 3.4 in §14, drie toestelregels en
+   "Let op bij 3.4.0" in §16b.
+ - Handleiding gecontroleerd tegen 3.4.0.
+
+ ═══════════════════════════════════════════════════════════
  21-10-2026 — Tegoed: de laatste stukken van #524
  ═══════════════════════════════════════════════════════════
 
