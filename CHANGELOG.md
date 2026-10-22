@@ -10,13 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
- 22-10-2026 — README vernieuwd en releasevideo 3.4
+ 22-10-2026 — README vernieuwd en video "nieuw in PidLane"
  ═══════════════════════════════════════════════════════════
 
  - README.md: "Nieuw in 3.4" uit de release notes (PLAY-INZENDING.md §14),
    functies, hardware, architectuur, ontwikkelen en privacy opnieuw ingedeeld.
- - marketing/release-34.html → pidlane-3.4.mp4 (1080x1920, 16 s) voor
-   TikTok, Reels en Facebook; zelfde render(t)-opzet als tiktok.html.
+ - marketing/nieuw.html → pidlane-nieuw.mp4 (1080x1920, 16 s) voor TikTok,
+   Reels en Facebook; zonder versienummer in beeld. Opzet als tiktok.html.
 
  ═══════════════════════════════════════════════════════════
  22-10-2026 — Handleiding: beeld in plaats van tekst

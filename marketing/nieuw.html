@@ -2,11 +2,11 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<title>PidLane 3.4-animatie</title>
-<!-- Releasevideo 3.4 voor Facebook/TikTok/Reels (1080x1920, 16 s). Zelfde opzet als
+<title>PidLane nieuw-animatie</title>
+<!-- Video "nieuw in PidLane" voor Facebook/TikTok/Reels (1080x1920, 16 s). Zelfde opzet als
      tiktok.html: elk beeld komt uit render(t), dus elk frame is reproduceerbaar.
-     Maak de video met: PAGINA=marketing/release-34.html node marketing/render-video.mjs marketing/pidlane-3.4.mp4
-     Inhoud volgt de release notes 3.4 in PLAY-INZENDING.md §14 — niets meer beloven dan daar. -->
+     Maak de video met: PAGINA=marketing/nieuw.html node marketing/render-video.mjs marketing/pidlane-nieuw.mp4
+     Inhoud volgt de release notes in PLAY-INZENDING.md §14 — niets meer beloven dan daar. -->
 <style>
 @font-face{font-family:"Bricolage";src:url(fonts/bricolage.woff2) format("woff2");font-weight:200 800}
 @font-face{font-family:"Serif";src:url(fonts/instrument-serif-italic.woff2) format("woff2");font-style:italic}
@@ -31,7 +31,7 @@ html,body{background:var(--ink);overflow:hidden}
 
 /* 1 · titel */
 #s1 .groot{position:absolute;left:0;right:0;top:640px;text-align:center}
-#s1 .groot b{display:block;font:800 400px/1 "Bricolage";letter-spacing:-18px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+#s1 .groot b{display:block;font:800 280px/1 "Bricolage";letter-spacing:-12px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
 #s1 .groot small{display:block;font:italic 74px "Serif";color:var(--mu);margin-top:10px}
 /* 2 · aankooprapport */
 .pdf{position:absolute;left:190px;right:190px;top:700px;height:900px;border-radius:26px;background:#f4f6fa;color:#141a24;padding:52px 50px;box-shadow:0 50px 120px rgba(0,0,0,.7)}
@@ -80,8 +80,8 @@ html,body{background:var(--ink);overflow:hidden}
 
   <!-- 1 · nieuw -->
   <section class="sc" id="s1">
-    <div class="kop"><h1>Nieuw in PidLane</h1><p>Klaar voor de winter.</p></div>
-    <div class="groot"><b id="ver">3.4</b><small>nu in de app</small></div>
+    <div class="kop"><h1>Klaar voor de winter?</h1><p>PidLane heeft er wat bij.</p></div>
+    <div class="groot"><b id="ver">Nieuw</b><small>nu in de app</small></div>
   </section>
 
   <!-- 2 · aankooprapport -->
@@ -142,7 +142,7 @@ html,body{background:var(--ink);overflow:hidden}
   <section class="sc" id="s6">
     <div id="eind" style="position:absolute;inset:0;padding-bottom:160px">
       <svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#1fd189"/><stop offset="1" stop-color="#4fd6f0"/></linearGradient></defs><rect x="6" y="12" width="52" height="34" rx="11" fill="none" stroke="url(#lg)" stroke-width="4.5"/><path id="hart" d="M14 29h10l5-10 7 18 5-8h9" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></svg>
-      <h2>PidLane 3.4</h2>
+      <h2>PidLane</h2>
       <div class="sl">Your car talks. We translate.</div>
       <div class="cta">pidlane.nl</div>
       <div class="sm">Geen adapter? Probeer de demomodus.</div>
@@ -175,7 +175,7 @@ function inSchuif(el,x,d){ el.style.opacity=x; el.style.transform='translateY('+
 function render(t){
   SC.forEach(s=>scene(t,s[0],s[1],s[2]));
 
-  // 1 · "3.4" zoomt in
+  // 1 · "Nieuw" zoomt in
   const z=uit((t-.3)/.9);
   $('ver').style.transform='scale('+(0.6+0.4*z)+')'; $('ver').style.opacity=z;
 
