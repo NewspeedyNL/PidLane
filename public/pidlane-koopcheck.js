@@ -358,16 +358,21 @@ function _rdwPlausibleName(s){
   if(!t) return false;
   if(t.length<2) return false;                       // te kort
   const letters=(t.match(/[A-Za-z]/g)||[]).length;
-  if(letters<1) return false;                        // moet minstens 1 letter hebben
+  // Alleen cijfers is een echte modelnaam bij Peugeot (208, 3008), Fiat
+  // (500) en Zeekr (001): 6% van het NL-wagenpark (RDW, 22-10-2026) werd
+  // hier als "onbetrouwbaar" weggegooid.
+  if(letters<1) return /^(#\d{1,3}|\d[\d-]{1,5}\+?)$/.test(t);   // ook SMART #1, SAAB 9-3
   // Modelnamen als "320i","A3","Q5" zijn legitiem (cijfer-zwaar), dus we eisen
   // niet dat het overwegend letters is. Wel weren we tekenrommel.
-  const symbols=(t.match(/[^A-Za-z0-9\s.\-]/g)||[]).length;
+  // ! + # & / horen bij echte namen: UP!, KA+, SMART #1, LYNK & CO, KARL / VIVA.
+  const symbols=(t.match(/[^A-Za-z0-9\s.\-!+#&/]/g)||[]).length;
   const nonSpace=t.replace(/\s/g,'').length;
   if(nonSpace>0 && symbols/nonSpace > 0.3) return false; // >30% rare tekens = rommel
   // Klinker aanwezig? Langere echte namen (>4) hebben er vrijwel altijd een.
   // Korte tokens (BMW, MG, A3, CX-5) zijn legitiem en mogen zonder klinker door —
   // modelnamen bevatten juist vaak cijfers, dus die laten we staan.
-  if(t.length>4 && !/[aeiouyAEIOUY]/.test(t) && !/[0-9]/.test(t)) return false;
+  // Per woord: "MG ZS" is twee korte tokens, geen rommel.
+  if(t.split(/\s+/).some(w=>w.length>4 && !/[aeiouyAEIOUY]/.test(w) && !/[0-9]/.test(w))) return false;
   // Vijf+ identieke tekens op rij = toetsenbordrommel
   if(/(.)\1{4,}/.test(t)) return false;
   return true;
