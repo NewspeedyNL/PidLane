@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// nepauto-profielen.js — zestien auto's voor PLNepAuto (#541)
+// nepauto-profielen.js — de nagebouwde auto's voor PLNepAuto (#541)
 // ───────────────────────────────────────────────────────────────────
 // DATA, GEEN CODE. Gegenereerd op 22-10-2026 uit:
 //   • OBDb (github.com/OBDb/<Merk-Model>, tests/test_cases/<jaar>/
@@ -17,14 +17,15 @@
 //   • de ECU-adressen bij 29-bit (18DAF110; de Golf 2026 heeft DA01 en dus
 //     18DAF101), de opvulbyte per merk, de foutcodes, en de VIN's (WMI en
 //     modeljaarteken kloppen, de rest is nul).
+//   • de UDS-codes bij golf16 en p208 (22-10-2026): code, adres en
+//     omrekening uit OBDb (Volkswagen-Golf, Peugeot-208), de waarden niet.
 //   • de diesel: OBDb komt uit de VS en heeft vrijwel geen diesels. De set
 //     van "mercdiesel" is de enige met een dieselvingerafdruk (0123, geen
 //     O2, geen ontsteking) — het bouwjaar is daar onzeker.
 //   • of een niet-CAN-ECU een meer-PID-vraag negeert (hier: NO DATA).
 // ═══════════════════════════════════════════════════════════════════
 'use strict';
-const PL_NEPAUTO_PROFIELEN = 
-[
+const PL_NEPAUTO_PROFIELEN = [
  {
   "id": "cx5",
   "naam": "Mazda CX-5 2018 (controle: op deze auto is de test goed)",
@@ -66,6 +67,26 @@ const PL_NEPAUTO_PROFIELEN =
     "adres": "7E9",
     "naam": "TCM-Transmission",
     "pids": "01 04 05 0C 0D 41 42 49"
+   },
+   {
+    "adres": "77A",
+    "tx": "710",
+    "naam": "Accu (OBDb 710>77A)",
+    "pids": "",
+    "did": {
+     "222A0C": "4B",
+     "222A07": "21 34"
+    }
+   },
+   {
+    "adres": "77D",
+    "tx": "713",
+    "naam": "ABS (OBDb 713>77D)",
+    "pids": "",
+    "did": {
+     "221821": "00 00 01 E2 40",
+     "221800": "00 00"
+    }
    }
   ],
   "bron": "OBDb Volkswagen-Golf 2016",
@@ -242,6 +263,16 @@ const PL_NEPAUTO_PROFIELEN =
    {
     "adres": "7E8",
     "pids": "01 03 04 05 06 07 0B 0C 0D 0E 0F 10 11 13 14 15 1C 1F 21 23 2C 2D 2E 30 31 33 34 3C 42 44 46 47 49 4A 4C 4D 4E 4F 50 51 72"
+   },
+   {
+    "adres": "682",
+    "tx": "6A2",
+    "naam": "BSI (OBDb 6A2>682)",
+    "pids": "",
+    "did": {
+     "22D49C": "01 E2 40",
+     "22D402": "00 00"
+    }
    }
   ],
   "bron": "OBDb Peugeot-208 2019",
@@ -461,7 +492,120 @@ const PL_NEPAUTO_PROFIELEN =
   "bron": "OBDb Mercedes-Benz-C-Class \"2000\", ECU 7E0: dieselvingerafdruk (0123, geen 0106/0113/010E)",
   "pad": "00",
   "turbo": true
+ },
+ {
+  "id": "niroev",
+  "naam": "Kia Niro EV 2022 (elektrisch, mode 01 bijna leeg)",
+  "merk": "Kia",
+  "model": "Niro",
+  "jaar": 2022,
+  "brandstof": "elektrisch",
+  "proto": "6",
+  "vin": "KNACC8AGXN5000001",
+  "pad": "AA",
+  "ecus": [
+   {
+    "adres": "7EB",
+    "naam": "VCU",
+    "pids": "01 21 30 31"
+   },
+   {
+    "adres": "7EC",
+    "naam": "BMS",
+    "pids": "01 21 30 31 5B"
+   }
+  ],
+  "bron": "OBDb Kia-Niro-EV 2022",
+  "readiness": "000000"
+ },
+ {
+  "id": "konaev",
+  "naam": "Hyundai Kona Electric 2021",
+  "merk": "Hyundai",
+  "model": "Kona",
+  "jaar": 2021,
+  "brandstof": "elektrisch",
+  "proto": "6",
+  "vin": "KMHK38AGXMU000001",
+  "pad": "AA",
+  "ecus": [
+   {
+    "adres": "7EB",
+    "naam": "VCU",
+    "pids": "01 21 30 31"
+   },
+   {
+    "adres": "7EC",
+    "naam": "BMS",
+    "pids": "01 21 30 31 5B"
+   }
+  ],
+  "bron": "OBDb Hyundai-Kona-Electric 2021",
+  "readiness": "000000"
+ },
+ {
+  "id": "id3",
+  "naam": "Volkswagen ID.3 2021 (elektrisch, 29-bit)",
+  "merk": "Volkswagen",
+  "model": "ID.3",
+  "jaar": 2021,
+  "brandstof": "elektrisch",
+  "proto": "7",
+  "vin": "WVWZZZE1ZMP000001",
+  "pad": "AA",
+  "ecus": [
+   {
+    "adres": "18DAF101",
+    "pids": "01 0D 1C 42 49"
+   },
+   {
+    "adres": "18DAF105",
+    "naam": "BMS",
+    "pids": "01 04 05 0C 0D 41 42 49 5B 9A"
+   }
+  ],
+  "bron": "OBDb Volkswagen-ID3 2021 (DA01 + DA05)",
+  "readiness": "000000"
+ },
+ {
+  "id": "zoe",
+  "naam": "Renault ZOE 2021 (elektrisch, 29-bit)",
+  "merk": "Renault",
+  "model": "Zoe",
+  "jaar": 2021,
+  "brandstof": "elektrisch",
+  "proto": "7",
+  "vin": "VF1AG0A0XM4000001",
+  "pad": "55",
+  "ecus": [
+   {
+    "adres": "18DAF1DA",
+    "pids": "01 04 05 0A 0C 0D 0F 11 1C 1E 1F 21 22 23 30 31 33 41 42 43 45 46 47 49 4A 4D 4E 51 52 53 59 5B 5C 65 9A 9D"
+   }
+  ],
+  "bron": "OBDb Renault-ZOE 2021 (DADA + DB33)",
+  "readiness": "000000"
+ },
+ {
+  "id": "mgzsev",
+  "naam": "MG ZS EV 2021",
+  "merk": "MG",
+  "model": "ZS EV",
+  "jaar": 2021,
+  "brandstof": "elektrisch",
+  "proto": "6",
+  "vin": "LSJW74A95MZ000001",
+  "pad": "00",
+  "ecus": [
+   {
+    "adres": "7EB",
+    "pids": "01 05 0C 0D 1C 1F 21 30 31 42 46 4E 51 5A"
+   }
+  ],
+  "bron": "OBDb MG-ZS-EV 2021",
+  "readiness": "000000"
  }
-];
+]
+;
 if (typeof window !== 'undefined') window.PL_NEPAUTO_PROFIELEN = PL_NEPAUTO_PROFIELEN;
 if (typeof module !== 'undefined' && module.exports) module.exports = PL_NEPAUTO_PROFIELEN;

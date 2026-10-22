@@ -82,7 +82,7 @@ const ROUTE = (id) => `(async function(){
   u.net = selectedNetwork && selectedNetwork.id;
   // …maar de brandstof wel: die zet de kentekenpoort uit de RDW, en zonder
   // vraagt brandstofPoort() erom en wacht de discovery op een mens.
-  vehicleInfo.brandstof = normBrandstof({ benzine: 'Benzine', diesel: 'Diesel', hybride: 'Benzine/Elektriciteit' }[p.brandstof]);
+  vehicleInfo.brandstof = normBrandstof({ benzine: 'Benzine', diesel: 'Diesel', hybride: 'Benzine/Elektriciteit', elektrisch: 'Elektriciteit' }[p.brandstof]);
   try { await tijd(startDiscovery(), 120000, 'startDiscovery'); } catch (e) { u.fout.push(e.message); }
   u.supported = [...supportedPIDs];
   u.verwacht = a.pids();
@@ -137,7 +137,7 @@ async function rij(id) {
     if (/^[6-9]$/.test(p.proto)) toets('ECU\'s op de bus: ' + p.ecus.length, sv.ecus.n === p.ecus.length, JSON.stringify(sv.ecus));
 
     toets('cijfer van de uitgebreide test ≥ 8', sv.ft && sv.ft.cijfer >= 8, sv.ft && (sv.ft.cijfer + ' ' + (sv.ft.plafond || []).join(', ')));
-    const bs = p.brandstof === 'diesel' ? 'diesel' : 'benzine';
+    const bs = p.brandstof === 'diesel' ? 'diesel' : p.brandstof === 'elektrisch' ? 'elektrisch' : 'benzine';
     toets('brandstof in het oordeel: ' + bs, sv.ft && sv.ft.brandstof === bs, sv.ft && sv.ft.brandstof);
     const km = (sv.v2 && sv.v2.kenmerk) || {};
     toets('derde poort: diesel ' + (bs === 'diesel' ? 'ja' : 'nee'), /^(ja|nee)/.test(km.diesel || '') && /^ja/.test(km.diesel) === (bs === 'diesel'), km.diesel);

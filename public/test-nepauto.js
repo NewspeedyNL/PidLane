@@ -44,10 +44,11 @@ console.log('\n1. Elk profiel bouwt, met een bron en een bestaand protocol');
 P.forEach(function (p) {
   let a = null, e = '';
   try { a = N.maak(p); } catch (x) { e = x.message; }
-  waar(p.id + ': bouwt (' + (a ? a.pids().length : 0) + ' PIDs)', a && a.pids().length >= 15, e);
+  // Een EV biedt er weinig: de Niro EV heeft er in OBDb vijf (01 21 30 31 5B).
+  waar(p.id + ': bouwt (' + (a ? a.pids().length : 0) + ' PIDs)', a && a.pids().length >= (p.brandstof === 'elektrisch' ? 4 : 15), e);
   waar(p.id + ': bron en protocol', /\S/.test(p.bron) && !!N.PROTO_NAAM[p.proto], p.bron + ' / ' + p.proto);
 });
-waar('zestien auto\'s, vier protocolsoorten', P.length === 16 && new Set(P.map((p) => p.proto)).size === 4);
+waar('minstens twintig auto\'s, vier protocolsoorten, elke brandstof', P.length >= 20 && new Set(P.map((p) => p.proto)).size === 4 && ['benzine', 'diesel', 'hybride', 'elektrisch'].every((b) => P.some((p) => p.brandstof === b)));
 
 console.log('\n2. De bitmap tegen de échte Auris-opname');
 // Opgenomen van de auto (ELM327-emulator, scenario car): 41 00 BE 3F A8 13.
@@ -127,6 +128,21 @@ waar('een PID die de auto niet heeft: NO DATA', e1.stuur('015C').tekst === 'NO D
 const diesel = klaar('mercdiesel', ['0100']);
 waar('diesel: readiness met het compressiebit', (parseInt(diesel.stuur('0101').tekst.split(' ')[3], 16) & 8) === 8);
 waar('diesel: geen O2 en geen ontsteking', diesel.stuur('0113').tekst === 'NO DATA' && diesel.stuur('010E').tekst === 'NO DATA');
+
+console.log('\n8. Ander antwoordadres (VAG 713>77D): ontvangstfilter en flow control');
+const vag = klaar('golf16', ['0100', 'ATSH713']);
+waar('zonder ATCRA komt 77D niet door: NO DATA', lijn(vag, '2218211') === 'NO DATA', lijn(vag, '2218211'));
+lijn(vag, 'ATCRA77D');
+waar('met ATCRA, zonder flow control: alleen het eerste frame', lijn(vag, '2218211') === '008\r0: 62 18 21 00 00 01', JSON.stringify(lijn(vag, '2218211')));
+['ATFCSH713', 'ATFCSD300000', 'ATFCSM1'].forEach((c) => lijn(vag, c));
+waar('met flow control naar 713: het hele antwoord', /\r1: E2 40 AA/.test(lijn(vag, '2218211')), JSON.stringify(lijn(vag, '2218211')));
+waar('een code die de ECU niet kent: 7F 22 31', lijn(vag, '22FFFF1') === '7F 22 31');
+const fcVerkeerd = klaar('golf16', ['0100', 'ATSH713', 'ATCRA77D', 'ATFCSH7E0', 'ATFCSD300000', 'ATFCSM1']);
+waar('flow control naar het verkeerde adres: afgebroken', !/\r1:/.test(lijn(fcVerkeerd, '2218211')));
+const fcHalf = klaar('golf16', ['0100']);
+waar('ATFCSM1 zonder FCSH/FCSD: ?', lijn(fcHalf, 'ATFCSM1') === '?');
+const psa = klaar('p208', ['0100', 'ATSH6A2', 'ATCRA682']);
+waar('PSA 6A2>682: km-stand 01 E2 40', lijn(psa, '22D49C1') === '62 D4 9C 01 E2 40', lijn(psa, '22D49C1'));
 
 console.log('\n' + (fout ? 'test-nepauto: ' + fout + ' fout(en), ' + ok + ' goed' : 'test-nepauto: alles goed (' + ok + ')'));
 process.exit(fout ? 1 : 0);

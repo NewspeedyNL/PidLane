@@ -60,6 +60,8 @@
   // Hybride met de verbrandingsmotor uit: toerental, last en luchtmassa 0.
   // Dat is geen dode sensor, dat is een Toyota bij een stoplicht.
   const MOTOR_UIT = { '04': '00', '0C': '0000', '10': '0000', '0E': '80', '43': '0000', '5E': '0000', '51': '11' };
+  // Elektrisch stilstaand: geen verbranding, brandstoftype 08 (J1979).
+  const ELEKTRISCH = { '04': '00', '0C': '0000', '51': '08' };
 
   const hx = (n) => ('0' + (n & 255).toString(16).toUpperCase()).slice(-2);
   const bytes = (h) => String(h || '').replace(/\s+/g, '').match(/../g) || [];
@@ -87,13 +89,16 @@
       let v = STATIONAIR[p];
       if (brandstof === 'diesel' && DIESEL[p]) v = DIESEL[p];
       if (profiel.motorUit && MOTOR_UIT[p]) v = MOTOR_UIT[p];
+      if (brandstof === 'elektrisch' && ELEKTRISCH[p]) v = ELEKTRISCH[p];
       if (e.waarden && e.waarden[p]) v = e.waarden[p];
       if (p === '01' || p === '41') v = null;                 // hieronder, uit de DTC's
       if (v === undefined) throw new Error('nepauto: geen waarde voor PID ' + p);
       if (v !== null && bytes(v).length !== LEN[p]) throw new Error('nepauto: PID ' + p + ' heeft ' + bytes(v).length + ' bytes, J1979 zegt ' + LEN[p]);
       pids[p] = v;
     });
-    return { adres: e.adres, naam: e.naam || '', pids: pids, opname: e.opname || {}, m09: e.m09 !== false, m06: !!e.m06 };
+    const did = {};
+    Object.keys(e.did || {}).forEach((k) => { did[k.toUpperCase()] = bytes(e.did[k]); });
+    return { adres: e.adres, tx: e.tx || null, naam: e.naam || '', pids: pids, did: did, opname: e.opname || {}, m09: e.m09 !== false && lijst.length > 0, m06: !!e.m06 };
   }
 
   // Bitmap 00/20/40/...: elk bit een PID, het laatste bit "er is nog een blok".
@@ -113,7 +118,12 @@
     const proto = String(profiel.proto);
     const can = isCan(proto);
     const bit29 = proto === '7' || proto === '9';
-    const st = { E: true, H: false, S: true, L: true, sp: '0', gezocht: false, init: false, sh: null, cra: null, log: [] };
+    // cra: ontvangstfilter (ATCRA). fcsh/fcsd/fcsm: flow control (ATFCSH,
+    // ATFCSD, ATFCSM). Zonder ATCRA neemt de ELM hier alleen de OBD-
+    // antwoordadressen aan (7E8–7EF, 18DAF1xx) — AANNAME: zo gedraagt een
+    // ELM327 zich met de standaardfilters; een antwoord van 778 komt pas
+    // door met ATCRA778. Zonder ATFCSM1 gaat de flow control naar rx − 8.
+    const st = { E: true, H: false, S: true, L: true, sp: '0', gezocht: false, init: false, sh: null, cra: null, fcsh: null, fcsd: null, fcsm: 0, log: [] };
 
     function readiness() {
       const actief = (profiel.dtc && profiel.dtc['03']) || [];
@@ -176,6 +186,12 @@
         let b = null;
         const m = cmd.slice(0, 2), rest = cmd.slice(2);
         if (e.opname[cmd]) { uit.push({ adres: e.adres, bytes: bytes(e.opname[cmd]) }); return; }
+        // UDS-lezen (21xx, 22xxxx): alleen fysiek gevraagd, alleen wat de ECU kent.
+        if (/^2[12]/.test(cmd)) {
+          if (st.sh && e.did[cmd]) uit.push({ adres: e.adres, bytes: [hx(parseInt(m, 16) + 0x40)].concat(bytes(rest), e.did[cmd]) });
+          else if (st.sh && Object.keys(e.did).length) uit.push({ adres: e.adres, bytes: ['7F', m, '31'] });
+          return;
+        }
         if (m === '01' && rest.length >= 2 && rest.length % 2 === 0) {
           const lijst = rest.match(/../g);
           if (lijst.length > 1 && !can) return;               // meer-PID bestaat alleen op CAN
@@ -194,6 +210,7 @@
     }
 
     function fysiekVan(e) {
+      if (e.tx) return e.tx;
       // 7E8 ← 7E0; 18DAF110 ← DA10F1
       if (/^7E[89A-F]$/.test(e.adres)) return '7E' + (parseInt(e.adres[2], 16) - 8).toString(16).toUpperCase();
       if (/^18DAF1/.test(e.adres)) return 'DA' + e.adres.slice(6) + 'F1';
@@ -223,6 +240,12 @@
           return;
         }
         if (b.length <= 7) { uit.push(koppen(m.adres, (st.H ? [hx(b.length)] : []).concat(b).join(sep()))); return; }
+        if (m.afgebroken) {
+          // Alleen het eerste frame: de ECU wacht op een flow control die niet komt.
+          uit.push(st.H ? koppen(m.adres, ['1' + hx(b.length >> 8).slice(1), hx(b.length)].concat(b.slice(0, 6)).join(sep()))
+            : ('00' + b.length.toString(16).toUpperCase()).slice(-3) + '\r0:' + sep() + b.slice(0, 6).join(sep()));
+          return;
+        }
         // ISO-TP: eerste frame 6 bytes, dan volgframes van 7, aangevuld met
         // de opvulbyte van het merk (VAG: AA, Toyota: 00, PSA: 55).
         const pad = profiel.pad || '00';
@@ -242,7 +265,7 @@
 
     function at(c) {
       const a = c.slice(2);
-      if (a === 'Z' || a === 'WS') { st.E = true; st.H = false; st.S = true; st.sh = null; st.cra = null; st.init = false; return 'ELM327 v1.5'; }
+      if (a === 'Z' || a === 'WS') { st.E = true; st.H = false; st.S = true; st.sh = null; st.cra = null; st.fcsh = null; st.fcsd = null; st.fcsm = 0; st.init = false; return 'ELM327 v1.5'; }
       if (a === 'I') return 'ELM327 v1.5';
       if (a === '@1') return 'OBDII to RS232 Interpreter';
       if (a === 'RV') return profiel.accu || '14.1V';
@@ -256,6 +279,10 @@
       if (a === 'DP') return (st.sp === '0' ? 'AUTO, ' : '') + (PROTO_NAAM[st.sp === '0' ? proto : st.sp] || 'AUTOMATIC');
       if (/^SH/.test(a)) { const h = a.slice(2); st.sh = (h === '7DF' || /^DB33F1$/.test(h) || /^18DB33F1$/.test(h)) ? null : (h.length === 8 ? h.slice(2) : h); return 'OK'; }
       if (/^CRA/.test(a)) { st.cra = a.slice(3) || null; return 'OK'; }
+      if (profiel.kloonZonderFc && /^FC/.test(a)) return '?';
+      if (/^FCSH[0-9A-F]{3,8}$/.test(a)) { st.fcsh = a.slice(4); return 'OK'; }
+      if (/^FCSD[0-9A-F]{2,10}$/.test(a)) { st.fcsd = a.slice(4); return 'OK'; }
+      if (/^FCSM[012]$/.test(a)) { if (a[4] === '1' && !(st.fcsh && st.fcsd)) return '?'; st.fcsm = +a[4]; return 'OK'; }
       if (/^(AT[0-2]|ST[0-9A-F]{2}|CAF[01]|CFC[01]|D|D[01]|M[01]|AL|NL|R[01]|FC.*|CEA.*|TA.*|SW.*|IB.*|KW.*|BI|PC|LP|SI|FI|AR|V[01]|CS|MA|BRD.*)$/.test(a)) return 'OK';
       return '?';
     }
@@ -288,8 +315,19 @@
       let body = c;
       if (/^01/.test(c) && (c.length - 2) % 2 === 1) body = c.slice(0, -1);
       if (/^09/.test(c) && c.length === 5) body = c.slice(0, -1);
+      if (/^2[12]/.test(c) && c.length % 2 === 1) body = c.slice(0, -1);
       let ber = antwoordBytes(body);
       if (st.cra) ber = ber.filter((m) => m.adres === st.cra || m.adres.endsWith(st.cra));
+      else ber = ber.filter((m) => !can || /^7E[89A-F]$|^18DAF1/.test(m.adres) || !isCan(proto));
+      // Meer dan 7 bytes: het tweede frame komt pas na een flow control op
+      // het zendadres van de ECU. Gaat die ergens anders heen, dan blijft
+      // het bij het eerste frame.
+      ber = ber.map(function (m) {
+        if (!can || m.bytes.length <= 7) return m;
+        const e = ecus.find((x) => x.adres === m.adres);
+        const doel = st.fcsm === 1 ? st.fcsh : (/^[0-9A-F]{3}$/.test(m.adres) ? (parseInt(m.adres, 16) - 8).toString(16).toUpperCase() : 'DA' + m.adres.slice(6) + 'F1');
+        return (e && doel !== fysiekVan(e) && !(st.fcsm === 1 && doel && doel.endsWith(fysiekVan(e)))) ? Object.assign({}, m, { afgebroken: true }) : m;
+      });
       if (!ber.length) return { tekst: echo(voor + 'NO DATA'), ms: ms + (can ? 60 : 120) };
       const r = regels(ber);
       ms += (r.length - 1) * (can ? 4 : 50);
