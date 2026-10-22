@@ -15,6 +15,44 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 22-10-2026 — #541 zonder rit: zestien auto's uit echte data, en wat de app ermee deed
+
+- **Waarom simuleren.** Andere merken dan de CX-5 zijn niet beschikbaar. Wat
+  wél openbaar is: OBDb (`github.com/OBDb/<Merk-Model>`, per bouwjaar
+  `command_support.yaml`) bewaart welke mode-01-PIDs een échte auto aanbood,
+  per ECU — en de ECU-sleutel verraadt het protocol (`7E0` CAN 11-bit,
+  `DB33`/`DA01` 29-bit, `C233` KWP2000, `686A` ISO 9141). Ircama/ELM327-emulator
+  heeft één volledige opname van een Toyota Auris hybride (139 antwoorden,
+  mode 06, IUPR, hybride-ECU 7EA). Gezocht en níét gevonden: ruwe ELM-logs van
+  VAG/PSA-diesels (forums, python-OBD-issues, KIT-dataset heeft alleen
+  waarden). OBDb komt uit de VS en heeft vrijwel geen diesels.
+- **Hoe.** `nepauto.js` is een virtuele ELM327 (echo, headers, SEARCHING...,
+  BUS INIT, ISO-TP met opvulbyte per merk, meerdere ECU's, niet-CAN-vormen);
+  `test-nepauto.js` toetst hem tegen de datasheet en tegen de Auris-opname —
+  de berekende 0100-bitmap is exact `BE 3F A8 13`. `bproef-merken.js` laat de
+  echte app de klantroute lopen: `initELM327` → `scanNetworks` →
+  `startDiscovery` → `vlFullSurvey`.
+- **Gevonden:** #584 spookcode op K-lijn (`A5` matcht `/^[6-9A-C]/`, zes
+  plekken); #585 0 % EGR/EVAP stationair heet "niet aanwezig" (de echte Auris
+  geeft `41 2C 00`, `41 2E 00`); #586 de discovery leest alleen de eerste ECU
+  (015B van de hybride-ECU, 7E9 bij Skoda); #587 IUPR een byte verschoven door
+  ISO-TP-opvulling (echte Auris: 24 ritten, app 5120); #588 Europese WMI's
+  (SB1/NMT/VNK Toyota, U5Y, TMA) onbekend; #589 hybride → e-CVT ook bij
+  Kia/Hyundai.
+- **Wat goed ging** op alle zestien: protocolherkenning (11-bit, 29-bit, KWP,
+  ISO 9141), VIN, groepsvragen, readiness, mode 06 en ECU-namen uit de echte
+  opname, diesel- en hybride-oordeel na `normBrandstof()`.
+- **Eigen vergissing onderweg.** In de eerste run zette ik de ruwe RDW-tekst
+  `Benzine/Elektriciteit` in `vehicleInfo.brandstof`; de app las de hybrides
+  toen als "elektrisch". Dat was de opzet, niet de app: de RDW-route gaat via
+  `normBrandstof()`. Een eigen tegenproef had dit eerder gezien.
+- **Grenzen.** Waarden bij OBDb-auto's zijn aangenomen (stationair, warm);
+  29-bit ECU-adressen, opvulbytes en foutcodes ook. Een volle bus, UDS en
+  mode 06 buiten de opname blijven voor `CAMPAGNE`.
+
+
+---
+
 ## 22-10-2026 — #526 afgesloten: vervolgdelen, gemeten in D1
 
 - **Punt 4 bleek achteraf meetbaar.** Een vervolgdeel heeft als invoer precies

@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-10-2026 — #541 zonder rit: de uitgebreide test op zestien auto's
+ ═══════════════════════════════════════════════════════════
+
+ - public/nepauto.js: virtuele ELM327 met een auto erachter (PLNepAuto).
+ - public/nepauto-profielen.js: zestien auto's uit OBDb plus de opname van
+   een Toyota Auris hybride; bron per auto, aannames in de kop.
+ - public/test-nepauto.js: de nepauto tegen de datasheet en de opname.
+ - public/bproef-merken.js: de echte app verbindt, ontdekt en draait de
+   survey; bekende bevindingen (#584–#589) zijn LET OP, de rest FOUT.
+
+ ═══════════════════════════════════════════════════════════
  22-10-2026 — README vernieuwd en video "nieuw in PidLane"
  ═══════════════════════════════════════════════════════════
 
