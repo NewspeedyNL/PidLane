@@ -2043,6 +2043,11 @@ MUTATIES=(
 "public/index.html@@id=\"wc-liveshare\"@@id=\"wc-livedelen\"@@test-help.js@@een knop met een uitroepteken is hernoemd en de tip vindt hem niet meer"
 "public/index.html@@🩺 Check na verbinden<span@@🩺 Check na het verbinden<span@@test-help.js@@een menuregel is hernoemd en de handleiding noemt de oude tekst"
 "public/pidlane-help-inhoud.js@@Codes worden met de hand verstuurd.@@Codes kosten € 4,99.@@test-help.js@@er staat een prijs in de handleiding"
+# De beeldtaal (22-10-2026): een knoplabel in een stappenkaart veroudert net zo
+# stil als een in de tekst, en de weergave kan het beeld laten vallen.
+"public/pidlane-help-inhoud.js@@<b>● Start opname</b>' }@@<b>● Begin opname</b>' }@@test-help.js@@een knoplabel in een stappenkaart is verouderd en de test leest alleen de tekst"
+"public/pidlane-help.js@@(beeld ? '<details class=\"plh-meer\">@@(false ? '<details class=\"plh-meer\">@@test-help.js@@de lange tekst staat weer open onder de stappen in plaats van onder Meer uitleg"
+"public/pidlane-help.js@@    return svg ? svg.outerHTML : '';@@    return '';@@test-help.js@@het balkschema tekent zonder de echte iconen van de onderbalk"
 # ── berekende PIDs uit bronnen van één moment (#337, 01-10-2026) ──
 "public/pidlane-berekend.js@@      if (!samen(tijden)){@@      if (false){@@test-berekend.js@@bronnen van verschillende momenten rekenen weer samen: 96,7% rendement bij gas los"
 "public/pidlane-berekend.js@@  return Math.max.apply(null, t)-Math.min.apply(null, t)<=SAMEN_MS;@@  return Math.max.apply(null, t)-Math.min.apply(null, t)<=VERS_MS;@@test-berekend.js@@de bronnen van één berekening mogen weer 3 s uit elkaar liggen"

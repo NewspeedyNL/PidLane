@@ -3463,6 +3463,47 @@ body:not(.pl-garage) .choice-out { display:none; }
 .plh-geen { color:var(--tx3); }
 .plh-voet { font-size:13px; color:var(--tx3); margin-top:24px; }
 .plh-body [hidden] { display:none !important; }
+/* De beeldtaal van de handleiding (22-10-2026): tegels als inhoud, genummerde
+   stappen, schema's en kaders. Eerst het nodige; de lange tekst onder "Meer uitleg". */
+.plh-toc { background:none; border:none; padding:0; }
+.plh-toc ul { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap:8px; }
+.plh-toc li { padding:0; }
+.plh-body a.plh-toc-tegel { display:flex; gap:10px; align-items:flex-start; min-height:44px; box-sizing:border-box; height:100%; padding:10px 12px; border:1px solid var(--bd); border-radius:12px; background:var(--sur); color:var(--tx); text-decoration:none; }
+.plh-body a.plh-toc-tegel:active { background:var(--sur2); }
+.plh-toc-i { flex:none; width:36px; height:36px; border-radius:10px; background:var(--sur2); display:flex; align-items:center; justify-content:center; font-size:20px; }
+.plh-toc-t { font-weight:700; font-size:14px; line-height:1.3; }
+.plh-toc-t small { display:block; font-weight:400; font-size:12.5px; color:var(--tx3); margin-top:2px; }
+.plh-ond h3 { display:flex; align-items:center; gap:10px; }
+.plh-ond-i { flex:none; width:38px; height:38px; border-radius:10px; background:var(--sur2); display:flex; align-items:center; justify-content:center; font-size:21px; }
+.plh-kort { font-size:15.5px; font-weight:600; color:var(--tx2); }
+.plh-ond ol.plh-stappen { list-style:none; margin:10px 0; padding:0; display:grid; gap:8px; }
+.plh-ond .plh-stap { display:flex; align-items:center; gap:10px; margin:0; padding:10px 12px; border:1px solid var(--bd); border-radius:10px; background:var(--sur2); }
+.plh-stap-n { flex:none; width:26px; height:26px; border-radius:50%; background:var(--bl); color:#fff; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; }
+.plh-stap-i { flex:none; font-size:22px; width:28px; text-align:center; }
+.plh-stap-t { line-height:1.35; }
+.plh-stap-t small { display:block; font-size:13px; color:var(--tx3); }
+.plh-stroom { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px; margin:10px 0; padding:12px 8px; border-radius:12px; background:var(--sur2); }
+.plh-stroom-d { display:flex; flex-direction:column; align-items:center; gap:4px; min-width:64px; font-size:12.5px; font-weight:700; text-align:center; }
+.plh-stroom-i { width:44px; height:44px; border-radius:50%; background:var(--sur); border:1px solid var(--bd); display:flex; align-items:center; justify-content:center; font-size:22px; }
+.plh-stroom-p { color:var(--tx3); font-size:20px; font-weight:800; padding-bottom:18px; }
+.plh-tegels { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 140px), 1fr)); gap:8px; margin:10px 0; }
+.plh-tegel { display:flex; flex-direction:column; gap:2px; padding:10px; border:1px solid var(--bd); border-radius:10px; background:var(--sur2); font-size:14px; line-height:1.3; }
+.plh-tegel-i { font-size:22px; }
+.plh-tegel small { font-size:12.5px; color:var(--tx3); }
+.plh-balk { display:grid; grid-template-columns:repeat(4, 1fr); margin:12px 0 6px; border:1px solid var(--bd2); border-radius:14px; background:var(--sur2); overflow:hidden; }
+.plh-balk-tab { position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; padding:10px 2px 8px; font-size:11.5px; font-weight:700; }
+.plh-balk-tab svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.plh-balk-n { position:absolute; top:4px; left:6px; width:18px; height:18px; border-radius:50%; background:var(--bl); color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; }
+.plh-ond ol.plh-balk-uitleg { margin:6px 0 6px 22px; }
+.plh-ond ul.plh-legenda { list-style:none; margin:10px 0; padding:0; display:grid; gap:6px; }
+.plh-legenda li { display:flex; align-items:center; gap:10px; margin:0; }
+.plh-stippen { flex:none; display:flex; gap:3px; min-width:34px; }
+.plh-stip { width:14px; height:14px; border-radius:50%; box-shadow:0 0 0 2px var(--sur); }
+.plh-kader { margin:10px 0; padding:10px 12px; border-radius:10px; border-left:4px solid var(--bl); background:var(--bls, var(--sur2)); font-size:14.5px; }
+.plh-kader > b { display:block; font-size:13px; margin-bottom:2px; }
+.plh-kader-let { border-left-color:var(--or); background:var(--ors, var(--sur2)); }
+.plh-meer { margin-top:8px; border-top:1px dashed var(--bd); }
+.plh-meer > summary { cursor:pointer; min-height:44px; display:flex; align-items:center; font-weight:700; color:var(--bl); }
 
 .plh-houder { position:relative; }
 /* Een glazen knikker met een i (30-09-2026, keuze B uit vijf voorbeelden). Het
