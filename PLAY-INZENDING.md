@@ -807,11 +807,11 @@ want hij gaat over één bepaalde bundel. Vul hem dus bij, tik hem niet af.
 > buildnummer bij waarop je het gezien hebt. Staat er een ouder nummer dan de
 > build hierboven, dan is dat punt niet nagekeken.
 >
-> **Upload-build: `#___`  (datum: __-__-2026)**
+> **Upload-build: `#559`  (datum: 22-10-2026, versie 3.4.0)**
 
 | punt | laatst bewezen op |
 |---|---|
-| `.aab` gebouwd én ondertekend, `versionCode` loopt mee met `run_number` | build #435, 10-09-2026 — `versionCode 435` bij `run_number` 435, en *Verify signature* meldde "Bundle is ondertekend" |
+| `.aab` gebouwd én ondertekend, `versionCode` loopt mee met `run_number` | build #559, 22-10-2026 — `versionCode 559 versionName 3.4.0`, en *Verify signature* meldde "Bundle is ondertekend" |
 | Foutpagina doet het echt: vliegtuigmodus aan, koud gestart, eigen scherm in plaats van `net::ERR_` | build #423, 03-09-2026 om 20:16 |
 | Demo één keer helemaal doorlopen op een schoon toestel zonder adapter | build #423, 03-09-2026 |
 | Disclosure verschijnt vóór het Android-permissiedialoog, niet erna | nog niet bewezen |
