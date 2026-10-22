@@ -553,6 +553,9 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
       };
       // Alleen voor het kasboek (#524): de Worker haalt het eraf vóór Anthropic.
       if(_plRol) body.pl_rol=_plRol;
+      // Vervolgdelen sturen de hele invoer opnieuw (#526, punt 4): het kasboek
+      // moet kunnen laten zien hoe vaak dat gebeurt en wat het kost.
+      if(part>0) body.pl_deel=part+1;
       // Extended thinking bewust UIT: voor OBD2-rapporten met vaste structuur
       // geen meerwaarde, wel trager/duurder en vreet uit het token-budget.
       // thinking:{type:'disabled'} is geldig op Sonnet 5 (geverifieerd 15-07-2026
