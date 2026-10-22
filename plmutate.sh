@@ -1953,6 +1953,9 @@ MUTATIES=(
 "public/pidlane-pidzoek.js@@    if (bytes.every(function (b) { return b === 0xFF; })) return@@    if (false) return@@test-pidzoek.js@@een antwoord van alleen FF (sensor niet beschikbaar) wordt als werkende sensor voorgesteld"
 "public/pidlane-pidzoek.js@@        if (p.ok && o.stem) await stem(o, c, 'werkt');@@        if (o.stem) await stem(o, c, 'werkt');@@test-pidzoek.js@@een code met een onmogelijke waarde krijgt in de bibliotheek een werkt-stem voor iedereen met dit model"
 "public/pidlane-pidzoek.js@@    if (u === '°C' && w <= -40) return@@    if (false) return@@test-pidzoek.js@@een ontbrekende temperatuursensor (−40 °C) wordt voorgesteld"
+"public/pidlane-survey2.js@@    if (b[0] * 2 === b.length - 1) b = b.slice(1);@@@@test-survey2.js@@de telbyte van IUPR wordt als teller gelezen: elke monitor schuift een plek op"
+"public/pidlane-survey2.js@@      if (!d || d.st !== 'ok' || typeof d.val !== 'number') return false;@@      if (!d || typeof d.val !== 'number') return false;@@test-survey2.js@@een PID die NO DATA gaf telt mee als plaatshouder"
+"public/pidlane-survey2.js@@      : rij('Mode 06', !m6.aantalTests ? '✗' : m6.aantalGezakt ? '~' : '✓'@@      : rij('Mode 06', m6.aantalGezakt ? '~' : '✓'@@test-survey2.js@@een auto zonder één monitortest krijgt een vinkje bij mode 06 in de campagnetabel"
 "public/pidlane.css@@body.pl-visueel #plLiveWaak, body.pl-visueel #plLiveRec { display:none !important; }@@@@bproef-visueel.js@@Bewaken en Opnemen staan weer onder Slim visueel, naast de waakronde en de recorder in het vak"
 # ── helling en G-kracht op één scherm (06-10-2026) ──
 "public/pidlane-visprofiel.js@@  return '<div class=\"vpf-tel-boven\"><div>'+htmlHorizon(p, ind, 'hz-', false)@@  return '<div class=\"vpf-tel-boven\"><div>'+htmlHorizon(p, ind, '', false)@@test-visprofiel.js@@de horizon en de autootjes delen hun element-id's: de horizon beweegt niet en een autootje draait verkeerd"

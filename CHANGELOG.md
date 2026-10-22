@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Full survey V2 (schema 3) voor de rittencampagne #541
+ ═══════════════════════════════════════════════════════════
+
+ - pidlane-survey2.js (PLSurvey2) nieuw: mode 09 (ECU-namen, IUPR),
+   OBDonUDS/J1979-2 (22F400), plaatshouders, mode 06, UDS alle
+   stuurapparaten, derde poort, eigen sensoren; de acht stappen van #541
+   als ✓/~/✗ plus een tabelregel om te plakken. Bitmaps 01A0/01C0 erbij.
+ - PLPidZoek.laatste() voor stap 7. test-survey2.js, drie mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  22-10-2026 — Alle sensoren zoeken, met keuring op een plausibele waarde
  ═══════════════════════════════════════════════════════════
 

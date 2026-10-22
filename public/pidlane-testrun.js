@@ -2787,6 +2787,21 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Full survey V2 (schema 3): de acht stappen van #541 als tabelregel ──
+  {
+    issue: '541',
+    naam: 'Full survey V2: schema 3 meet mode 09, OBDonUDS, mode 06 en UDS erbij en zet de campagnetabel van #541 in de uitkomst',
+    waarom: 'De rittencampagne begint; per auto vraagt #541 acht stappen en een tabel met ✓/✗. Schema 2 dekte stap 1–3.',
+    proef: async function () {
+      if (!window.PLSurvey2 || typeof PLSurvey2.meet !== 'function' || PLSurvey2.SCHEMA !== 3)
+        return { staat: 'FOUT', detail: 'PLSurvey2 (schema 3) ontbreekt — pidlane-survey2.js niet geladen (herladen?)' };
+      var c = PLSurvey2.campagne({ pids: { total: 1, ok: 1 } });
+      if (c.length !== 8) return { staat: 'FOUT', detail: 'de campagne heeft ' + c.length + ' stappen in plaats van 8' };
+      if (!PLSurvey2.obdOnUds('62 F4 00 80 00 00 00').ja) return { staat: 'FOUT', detail: 'een OBDonUDS-antwoord wordt niet herkend' };
+      return { staat: 'OK', detail: 'Rij: verbonden, ⋯ → Full function test; onderaan staat "Campagne #541 — survey V2" met acht regels en een tabelregel om in #541 te plakken. Draai eerst Alle sensoren zoeken, dan vult stap 7 zich' };
+    }
+  },
+
   // ── Alle sensoren zoeken: elke kandidaat één keer op de auto, alleen een plausibele waarde voorgesteld ──
   {
     issue: 'pidzoek',

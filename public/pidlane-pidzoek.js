@@ -79,6 +79,7 @@
   /* De ronde. o.test(c) → Promise van PLEigen.test-uitvoer; o.stem(c, uitkomst)
      optioneel; o.stop() → true om te stoppen; o.voortgang(staat). Een test die
      zegt dat de auto niet meer verbonden is, stopt de ronde. */
+  let _laatste = null;
   async function zoek(lijst, o) {
     o = o || {};
     const st = { gedaan: 0, totaal: (lijst || []).length, past: [], vreemd: [], nee: [], fout: [], gestopt: false, afgebroken: '' };
@@ -106,6 +107,7 @@
         try { o.voortgang(st); } catch (x) { console.warn('PLPidZoek: voortgang', x); }
       }
     }
+    _laatste = st;   // voor de survey V2 (stap 7 van #541)
     return st;
   }
   async function stem(o, c, uitkomst) {
@@ -113,5 +115,5 @@
     catch (x) { console.warn('PLPidZoek: stem voor ' + c.code + ' niet bewaard', x); }
   }
 
-  window.PLPidZoek = { GRENS: GRENS, plausibel: plausibel, kandidaten: kandidaten, voorkeus: voorkeus, zoek: zoek, sleutel: sleutel };
+  window.PLPidZoek = { GRENS: GRENS, plausibel: plausibel, kandidaten: kandidaten, voorkeus: voorkeus, zoek: zoek, sleutel: sleutel, laatste: function () { return _laatste; } };
 })();
