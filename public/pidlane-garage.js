@@ -852,18 +852,21 @@
   }
   /* OBDb binnenhalen voor één voertuig: zoeken, en wat bruikbaar is in de
      bibliotheek van dit model zetten. Gratis (geen AI, geen tegoed). De tekst
-     zegt ook wat er NIET bruikbaar was en waarom: een afwijkend antwoordadres
-     (VAG, PSA, BMW) kan de app nog niet vragen (#541). */
+     zegt ook wat er NIET bruikbaar was en waarom: extended addressing (BMW,
+     MINI) en het 29-bit-schema van Volvo kan de app nog niet vragen; een
+     ander antwoordadres (VAG, PSA, Opel) wel, sinds 22-10-2026. Kwam de code
+     van een zustermodel (Skoda Octavia → Golf), dan zegt de tekst dat. */
   async function obdbBinnenhalen(vid, v) {
     var r = await PLEigen.zoekObdb(v, function (repo) { return api('obdb_bestand', { repo: repo }); });
     if (!r.ok) return { tekst: '✗ ' + r.fout };
     if (!r.repo) return { tekst: 'Dit model staat (nog) niet in OBDb. Gezocht als: ' + (r.geprobeerd || []).join(', ') + '.' };
-    var niet = r.nietBruikbaar ? ' ' + r.nietBruikbaar + ' code' + (r.nietBruikbaar === 1 ? '' : 's') + ' uit OBDb antwoord' + (r.nietBruikbaar === 1 ? 't' : 'en') + ' op een ander adres; die kan de app nog niet vragen.' : '';
+    var niet = r.nietBruikbaar ? ' ' + r.nietBruikbaar + ' code' + (r.nietBruikbaar === 1 ? '' : 's') + ' uit OBDb gebruik' + (r.nietBruikbaar === 1 ? 't' : 'en') + ' een adressering die de app nog niet kent (BMW, Volvo).' : '';
+    var zus = r.tweeling ? ' Je model staat niet in OBDb; deze codes komen van ' + r.repo + ', dezelfde auto onder een ander merk.' : '';
     if (!r.kandidaten.length) return { tekst: 'OBDb kent ' + r.repo + ', maar geen leescode die deze app kan gebruiken.' + niet };
     try {
       var d = await api('pidbib_kandidaten', { voertuig_id: vid, lijst: r.kandidaten, bron: 'obdb' });
-      return { erbij: d.erbij, tekst: '✓ ' + d.erbij + ' nieuwe kandidaat' + (d.erbij === 1 ? '' : 'en') + ' in de lijst' +
-        (r.kandidaten.length > d.erbij ? ' (' + (r.kandidaten.length - d.erbij) + ' stonden er al of vielen af)' : '') + '. De nuttigste (laadspanning, accu, banden) staan bovenaan; test ze op je auto.' + niet };
+      return { erbij: d.erbij, tekst: '✓ ' + d.erbij + ' nieuwe kandida' + (d.erbij === 1 ? 'at' : 'ten') + ' in de lijst' +
+        (r.kandidaten.length > d.erbij ? ' (' + (r.kandidaten.length - d.erbij) + ' stonden er al of vielen af)' : '') + '. De nuttigste (laadspanning, accu, banden) staan bovenaan; test ze op je auto.' + zus + niet };
     } catch (x) { return { tekst: '✗ ' + x.message }; }
   }
   /* Vanzelf, één keer per voertuig per dertig dagen (17-10-2026): zodra de
@@ -1717,8 +1720,8 @@
       '<div class="gr-2"><label class="gr-veld">Minimum (mag leeg)<input id="grsMin" type="number"' + F('min') + '></label><label class="gr-veld">Maximum (mag leeg)<input id="grsMax" type="number"' + F('max') + '></label></div>' +
       '<div class="gr-2"><label class="gr-veld">ECU-adres (mag leeg)<input id="grsEcu" maxlength="8" autocapitalize="characters" placeholder="bijv. 7E1"' + F('ecu') + '></label>' +
       '<label class="gr-veld">Hoe vaak' + tempoKeuze('id="grsTempo"', S.form && S.form.tempo) + '</label></div>' +
-      '<div class="gr-klein" style="margin-top:4px">Alleen leescodes: 21xx of 22xxxx. A is het eerste antwoordbyte, B het tweede, enzovoort. Codes die iets aansturen of wissen weigert de app. ' +
-      'Het ECU-adres is nodig als de code bij één regeleenheid hoort (7E1 is meestal de automaat); leeg = alle regeleenheden.</div>' +
+      '<div class="gr-klein" style="margin-top:4px">Alleen leescodes: 21xx of 22xxxx. A is het eerste antwoordbyte, B het tweede, enzovoort; voorbij H schrijf je [8], [9], …. Codes die iets aansturen of wissen weigert de app. ' +
+      'Het ECU-adres is nodig als de code bij één regeleenheid hoort (7E1 is meestal de automaat); leeg = alle regeleenheden. Komt het antwoord van een ander adres, schrijf dan zend&gt;ontvang, bijv. 70E&gt;778 (VW) of 6A2&gt;682 (Peugeot).</div>' +
       '<div class="gr-knoppen">' + (nu ? '<button class="gr-k klein" onclick="PLGarage._sensTest(-1)">▶ Test op de auto</button>' : '<span class="gr-klein">Testen kan als deze auto verbonden is.</span>') +
       '<button class="gr-k klein hoofd" onclick="PLGarage._sensErbij()">➕ Toevoegen</button></div>' +
       (S.test.nieuw ? '<div class="gr-klein" style="margin-top:4px">' + esc(S.test.nieuw) + '</div>' : '') + '</div></div>';

@@ -590,7 +590,7 @@ function laad(opties) {
     const v = { id: 'v1', merk: 'Kia', model: 'Ceed' };
     let r = await L.K.obdbVanzelf(v, []);
     eis(gezocht === 1 && gezet === 1 && r && r.erbij === 2, 'eerste keer: zoeken en in de bibliotheek zetten', JSON.stringify(r));
-    eis(/3 codes uit OBDb antwoorden op een ander adres/.test(r.tekst), 'de tekst zegt wat niet bruikbaar was', r.tekst);
+    eis(/3 codes uit OBDb gebruiken een adressering die de app nog niet kent/.test(r.tekst), 'de tekst zegt wat niet bruikbaar was', r.tekst);
     r = await L.K.obdbVanzelf(v, []);
     eis(r === null && gezocht === 1, 'binnen dertig dagen niet opnieuw');
     r = await L.K.obdbVanzelf({ id: 'v2', merk: 'Mazda', model: 'CX-5' }, [{ bron: 'obdb' }]);

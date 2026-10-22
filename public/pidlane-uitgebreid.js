@@ -286,7 +286,10 @@
   // ECU-adres (optioneel): een FYSIEK adres. 7xx op 11-bit CAN (7E0 motor,
   // 7E1 automaat, …), 18DAxxF1 op 29-bit. Het functionele 7DF/18DB33F1 is
   // de standaard en hoeft niet ingevuld; het na afloop terugzetten zit in vraag().
-  const EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1)$/;
+  // Een ANDER antwoordadres (22-10-2026): "70E>778" — zenden op 70E, het
+  // antwoord komt van 778. Zo praten VAG (70E>778), PSA en Opel (6A2>682) en
+  // Nissan (740>760); de oude regel "antwoord = adres + 8" sloot ze uit.
+  const EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1|[67][0-9A-F]{2}>[0-9A-F]{3})$/;
   const EIGEN_TEMPO = { snel: 1000, normaal: 2000, traag: 10000, minuut: 60000 };
   // Op verzoek is geen tempo: 999999 is hier "niet in de pollus", net als in
   // de EV-modus van pidPollInterval, en zo leest PLMon het ook (#396).
@@ -454,7 +457,9 @@
   function formule(tekst) {
     const t = String(tekst || '').replace(/\s+/g, '').toUpperCase().replace(/,/g, '.');
     if (!t || t.length > 80) throw new Error('formule leeg of te lang');
-    if (!/^[A-H0-9.+\-*/()]+$/.test(t)) throw new Error('alleen A–H, getallen, + - * / en haakjes');
+    // [n] is byte n (A = [0]): een lang antwoord, zoals de accu van een Kia
+    // of de 22-codes van Honda, heeft zijn waarde voorbij H (#541-dekking).
+    if (!/^[A-H0-9.+\-*/()[\]]+$/.test(t)) throw new Error('alleen A–H, [n], getallen, + - * / en haakjes');
     let i = 0;
     const kijk = () => t[i];
     function getal() {
@@ -468,6 +473,12 @@
       if (c === '-') { i++; const f = factor(); return (b) => { const v = f(b); return v === null ? null : -v; }; }
       if (c === '(') { i++; const e = expr(); if (kijk() !== ')') throw new Error('haakje sluiten ontbreekt'); i++; return e; }
       if (c && /[A-H]/.test(c)) { i++; const k = c.charCodeAt(0) - 65; return (b) => (b && typeof b[k] === 'number') ? b[k] : null; }
+      if (c === '[') {
+        const m = /^\[(\d{1,3})\]/.exec(t.slice(i));
+        if (!m || Number(m[1]) > 255) throw new Error('byte [n] met n van 0 tot 255');
+        i += m[0].length; const k = Number(m[1]);
+        return (b) => (b && typeof b[k] === 'number') ? b[k] : null;
+      }
       return getal();
     }
     function term() {
@@ -499,7 +510,7 @@
     const naam = String(e.naam || '').trim().slice(0, 40);
     if (!naam) return { ok: false, fout: 'Geef de sensor een naam' };
     const ecu = String(e.ecu || '').toUpperCase().replace(/\s+/g, '');
-    if (ecu && !EIGEN_ECU.test(ecu)) return { ok: false, fout: 'ECU-adres: 7xx (bijv. 7E1) of 18DAxxF1, of leeg laten' };
+    if (ecu && !EIGEN_ECU.test(ecu)) return { ok: false, fout: 'ECU-adres: 7xx (bijv. 7E1), 18DAxxF1, tx>rx (bijv. 70E>778) of leeg laten' };
     // Een band is altijd op verzoek (#396) — PLBanden.ververs() vraagt de
     // vier banden bij het openen van Slim visueel en van het bandenvenster,
     // en met het vinkje elke vijf minuten. Acht PIDs via een ander ECU-adres
@@ -586,12 +597,34 @@
     const cmd = (typeof pidCmd === 'function') ? pidCmd(code, true) : code + '1';
     if (_terug) { await sendCmd(_terug, 1500); _terug = null; }
     if (!ecu) return sendCmd(cmd, 2500);
-    const functioneel = 'ATSH' + (ecu.length === 8 ? '18DB33F1' : '7DF');
-    await sendCmd('ATSH' + ecu, 1500);
+    const terug = await adresZet(ecu);
     try { return await sendCmd(cmd, 2500); }
-    finally {
-      try { await sendCmd(functioneel, 1500); }
-      catch (x) { _terug = functioneel; btDiagSafe('Header terugzetten na ' + code + ' mislukt — volgende vraag probeert het opnieuw: ' + (x && x.message || x)); }
+    finally { await adresTerug(terug, code); }
+  }
+
+  /* Het adres zetten, en wat er daarna terug moet. Bij "tx>rx" ook het
+     ontvangstfilter (ATCRA) en de flow control: een antwoord van meer dan
+     zeven bytes komt in frames, en de ECU stuurt het tweede pas na een
+     flow control op ZIJN adres. Zonder ATFCSH stuurt de ELM die naar
+     rx − 8, en dat is bij 778 niet 70E. ATFCSD/ATFCSM bestaan vanaf ELM
+     1.3; een kloon die '?' zegt krijgt nog wel de korte antwoorden. */
+  async function adresZet(ecu) {
+    const functioneel = 'ATSH' + (ecu.length === 8 ? '18DB33F1' : '7DF');
+    const p = ecu.split('>');
+    if (p.length === 1) { await sendCmd('ATSH' + ecu, 1500); return [functioneel]; }
+    await sendCmd('ATSH' + p[0], 1500);
+    await sendCmd('ATCRA' + p[1], 1500);
+    for (const c of ['ATFCSH' + p[0], 'ATFCSD300000', 'ATFCSM1']) {
+      let r = '';
+      try { r = String(await sendCmd(c, 1500) || ''); } catch (x) { r = '?'; }
+      if (/\?/.test(r)) { btDiagSafe('Adapter kent ' + c + ' niet — lange antwoorden van ' + ecu + ' kunnen afbreken'); break; }
+    }
+    return ['ATFCSM0', 'ATCRA', functioneel];
+  }
+  async function adresTerug(lijst, code) {
+    for (const c of lijst) {
+      try { await sendCmd(c, 1500); }
+      catch (x) { _terug = lijst[lijst.length - 1]; btDiagSafe(c + ' terugzetten na ' + code + ' mislukt — volgende vraag probeert het opnieuw: ' + (x && x.message || x)); }
     }
   }
 
@@ -628,10 +661,11 @@
      code, het ECU-adres en de omrekening — gratis, herhaalbaar, met bron. De
      keuring blijft de test op de auto.
 
-     Wat we overnemen: alleen leesdiensten 21/22 op een 7xx-adres met het
-     antwoord op +8 (geen extended addressing: dat kan de eigen-PID-route
-     niet), hele bytes binnen A–H, zonder teken of opzoektabel. Eén code per
-     commando: de bibliotheek kent per code één formule. */
+     Wat we overnemen: alleen leesdiensten 21/22, op 7xx met het antwoord op
+     +8, op 29-bit, of met een ander antwoordadres als "tx>rx" (sinds
+     22-10-2026: VAG, PSA, Opel, Nissan); geen extended addressing (BMW).
+     Hele bytes, ook voorbij H als [n], zonder teken of opzoektabel. Eén
+     code per commando: de bibliotheek kent per code één formule. */
   const OBDB_EENHEID = {
     celsius: '°C', bars: 'bar', psi: 'psi', kilopascal: 'kPa', percent: '%', volts: 'V', amps: 'A',
     kilometers: 'km', kilometersPerHour: 'km/h', meters: 'm', millimeters: 'mm', degrees: '°', rpm: 'rpm',
@@ -644,21 +678,158 @@
   // Omrekenen naar metrisch: [eenheid, vóór, na] om de ruwe formule heen.
   const OBDB_OM = { fahrenheit: ['°C', '((', ')-32)*5/9'], miles: ['km', '(', ')*1.609344'] };
 
-  /* De repo-namen om te proberen. GitHub is hoofdletterongevoelig, dus het
-     gaat alleen om de vorm: RDW zegt "CX5" of "320D XDRIVE", OBDb "CX-5" en
-     "3-Series". */
-  function obdbNamen(merk, model) {
-    const m = String(merk || '').trim().replace(/\s+/g, '-');
-    const vol = String(model || '').trim();
-    if (!m || !vol) return [];
-    const eerste = vol.split(/\s+/)[0];
-    const uit = [vol.replace(/\s+/g, '-'), eerste, eerste.replace(/^([A-Za-z]+)(\d)/, '$1-$2')];
-    const mk = m.toLowerCase();
-    let r;
-    if (mk === 'bmw' && (r = /^([1-8])\d{2}/.exec(eerste))) uit.push(r[1] + '-Series');
-    if (/^mercedes/.test(mk) && (r = /^([A-Z]{1,3})\s*\d{2,3}/i.exec(vol))) uit.push(r[1].toUpperCase() + '-Class');
-    return Array.from(new Set(uit.filter(Boolean))).map(x => m + '-' + x).slice(0, 5);
+  /* ── Van RDW-naam naar OBDb-model (#541-dekking, 22-10-2026) ────────
+     Gemeten tegen het échte NL-wagenpark (RDW open data, 9,3 miljoen auto's
+     sinds 2001, top-1500 merk/handelsbenaming): de oude vorm vond voor 51%
+     een OBDb-bestand. RDW schrijft het merk vaak in het model ("TOYOTA
+     AYGO", "MAZDA CX-5"), OBDb noemt Opel "VauxhallOpel", de ID.3 "ID3" en
+     een BMW "3-Series"; "UP!", "CEE D" en "I 10" vonden niets.
+
+     OBDB_MODELLEN is de index van OBDb (obdb.community/data/matrix_data.json,
+     22-10-2026: de 591 modellen met codes). Daarmee kiest de app zelf de
+     goede naam, zonder vijf keer te proberen. Een model dat er later bij
+     komt, vindt de oude vorm nog (achteraan in de lijst). */
+  const OBDB_MODELLEN = {
+    Acura: "CSX|ILX|Integra|MDX|RDX|TL|TLX|TSX|ZDX",
+    Aiways: "U5",
+    Audi: "A1|A3|A3-e-tron|A4|A5|A6|A7|e-tron|e-tron-GT|Q2|Q3|Q4-e-tron|Q5|Q7|Q8|Q8-e-tron|RS-3|RS-5|RS-e-tron|S3|S4|S5|S6|SQ2|SQ5|SQ7|SQ8|TT|TTS",
+    Bentley: "Bentayga",
+    BMW: "1-Series|2-Series|2-Series-Plug-in-Hybrid|3-Series|3-Series-eDrive|4-Series|5-Series|6-Series|6-Series-Gran-Coupe|6-Series-Gran-Turismo|7-Series|ALPINA-XB7|i3|I3s|i3s|i4|i5|i8|iX|iX3|M2|M3|M3-CS|M4|M5|X1|X2|X3|X4|X5|X5-M|X6|X7|XM|Z4",
+    Buick: "Enclave|Encore|Envision|LaCrosse",
+    BYD: "Sealion-6",
+    Cadillac: "CT4|CT5|CT6|CTS|DTS|ELR|Escalade|LYRIQ|SRX|XT5",
+    Chevrolet: "Avalanche|Aveo|Blazer|Bolt-EUV|Bolt-EV|Camaro|Caprice|Cobalt|Colorado|Corvette|Cruze|Cruze-Limited|Equinox|Equinox-EV|Express|Express-Cargo|HHR|Impala|Impala-Limited|Malibu|Orlando|S-10|Sail|Silverado|Silverado-1500|Silverado-2500|Silverado-3500|Sonic|Spark|Spin|Tahoe|Trailblazer|Traverse|Trax|Volt",
+    Chrysler: "200|300|Pacifica",
+    Citroen: "eC4-X",
+    Cupra: "Born|Formentor|Leon|Tavascan|Terramar",
+    Dacia: "Dokker|Duster|Sandero|Spring",
+    Daihatsu: "Hijet|Terios",
+    Dodge: "Caliber|Challenger|Charger|Dakota|Dart|Durango|Grand-Caravan|Hornet|Journey",
+    FIAT: "500|500e|500X|Bravo|Fastback|Panda|Qubo",
+    Ford: "B-Max|Bronco|Bronco-Sport|C-Max|C-Max-Energi|C-Max-Hybrid|Crown-Victoria|E-Series|E-Series-Wagon|EcoSport|Edge|Escape|Everest|Expedition|Explorer|Explorer-Sport-Trac|F-150|F-150-Lightning|F-250|F-350|Fiesta|Flex|Focus|Focus-Electric|Focus-RS|Focus-ST|Fusion|Fusion-Energi|Fusion-Hybrid|Kuga|Maverick|Mondeo|Mustang|Mustang-Mach-E|Puma|Ranger|S-Max|Taurus|Taurus-X|Territory|Tourneo|Transit|Transit-Connect",
+    Genesis: "G70|G80|GV60|GV80",
+    GMC: "Acadia|Canyon|Sierra-1500|Sierra-2500HD|Sierra-3500HD|Terrain|Yukon|Yukon-XL",
+    Haval: "H6-HEV|Jolion|Jolion-HEV",
+    Holden: "Colorado|Commodore|Cruze",
+    Honda: "Accord|Accord-Hybrid|City|Civic|Clarity|CR-V|CR-V-Hybrid|CR-Z|Crosstour|Element|Fit|HR-V|Insight|Jazz|Odyssey|Pilot|Prelude|Prologue|Ridgeline|S2000|Shuttle|ZR-V",
+    Hyundai: "Accent|Avante|Azera|Elantra|HB20|HB20S|i10|i20|i30|i40|IONIQ-5|IONIQ-6|IONIQ-9|IONIQ-Electric|IONIQ-PlugIn-Hybrid|Kona|Kona-Electric|Palisade|Santa-Cruz|Santa-Fe|Santa-Fe-Hybrid|Sonata|Tucson|Tucson-Hybrid|Veloster|Venue|Veracruz|Verna",
+    INFINITI: "Q50|Q60|QX50|QX55|QX60|QX70|QX80",
+    Jaguar: "E-PACE|F-PACE|F-TYPE|I-PACE",
+    Jeep: "Avenger|Cherokee|Compass|Gladiator|Grand-Cherokee|Grand-Wagoneer|Patriot|Renegade|Wagoneer-L|Wrangler|Wrangler-4xe|Wrangler-JK",
+    Kia: "Cadenza|Carens|Carnival|Ceed|Cerato|EV3|EV6|EV9|Forte|K4|K5|Niro|Niro-EV|Optima|Picanto|Rio|Seltos|Sonet|Sorento|Soul|Soul-EV|Sportage|Sportage-HEV|Stinger|Stonic|Tasman|Telluride|XCeed",
+    "Land-Rover": "|Defender|Discovery|LR4|Range-Rover|Range-Rover-Evoque|Range-Rover-Velar",
+    Lexus: "CT-200h|ES|ES-300h|GX|GX-460|GX-470|IS|IS-300|LS-600h-L|NX|NX-350h|RC|RX|UX",
+    Lincoln: "MKC|MKZ|Nautilus|Navigator|Town-Car",
+    Mazda: "2|3|5|6|B-Series-Pickup|BT50|CX-3|CX-30|CX-5|CX-50|CX-60|CX-9|CX-90|Mazdaspeed-3|Mazdaspeed-MX-5|MX-30|MX-5|MX-5-Miata|Tribute",
+    "Mercedes-Benz": "|A-180|B-Class|C-Class|CL-Class|CLK-Class|E-Class|EQA|EQB|EQV|G-Class|GLA-Class|GLC-Class|GLK-Class|M-Class|ML-350|SL-Class|SLC-Class|SLK-Class|Viano",
+    MG: "EHS|HS|MG4|MG5|One|RX9|ZS|ZS-EV",
+    MINI: "Clubman|Cooper|Cooper-SE|Countryman|Hardtop",
+    Mitsubishi: "ASX|Eclipse-Cross|Outlander|Outlander-PHEV|Outlander-Sport|RVR|Triton",
+    Nissan: "350Z|370Z|Altima|ARIYA|Armada|Frontier|Kicks|Leaf|Maxima|Micra|Murano|NV-Passenger|Pathfinder|Patrol|Pulsar|Qashqai|Rogue|Rogue-Sport|Sentra|Titan|Titan-XD|Versa|X-Trail|Xterra|Z",
+    Peugeot: "107|2008|207|208|3008|308|408|5008|508|Partner|RCZ",
+    Polestar: "2|4",
+    Porsche: "718|911|Cayenne|Cayman|Macan|Macan-Electric|Panamera|Taycan",
+    Ram: "1500|1500-Classic|2500|3500|ProMaster-Window-Van",
+    Renault: "Captur|Clio|Duster|Kadjar|Laguna|Megane|Megane-E-Tech|Scenic|Symbioz|Trafic|Twingo|ZOE",
+    Scion: "FR-S|iQ|tC|xB",
+    Seat: "Alhambra|Arona|Ateca|Ibiza|Leon|Mii|Mii-Electric|Tarraco",
+    Skoda: "Citigo-e-iV",
+    smart: "fortwo",
+    Subaru: "Ascent|BRZ|Crosstrek|Forester|Impreza|Legacy|Outback|Solterra|Tribeca|WRX",
+    Suzuki: "Baleno|Jimny|Splash|Swift|Vitara|XL7",
+    Toyota: "4Runner|Allion|Aqua|Auris|Avalon|Avalon-Hybrid|Aygo|bZ4X|C-HR|Camry|Camry-Hybrid|Corolla|Corolla-Cross|Corolla-Hybrid|Crown|FJ-Cruiser|Fortuner|GR-Corolla|GR-Supra|GR86|Grand-Highlander|Grand-Highlander-Hybrid|GT86|Hiace|Highlander|Hilux|Land-Cruiser|Land-Cruiser-Hybrid|Matrix|Mirai|Prius|Prius-Prime|Prius-v|RAV4|RAV4-Hybrid|RAV4-Prime|Sequoia|Sienna|Sienna-Hybrid|Supra|Tacoma|Tundra|Veloz|Venza|Venza-Hybrid|Vios|Yaris|Yaris-Cross|Yaris-iA",
+    VauxhallOpel: "Corsa|Corsa-e|Mokka",
+    Volkswagen: "Amarok|Arteon|Atlas|Beetle|Beetle-Convertible|CC|Crafter|e-Golf|e-Up|Golf|ID-Buzz|ID3|ID5|ID7-Tourer|Jetta|Jetta-GLI|Multivan|Passat|Polo|Scirocco|T-Cross|T-Roc|T6-Transporter|Taigo|Taos|Tiguan|Touareg|Touran|Transporter|Up|Virtus",
+    Volvo: "S40|S60|S80|S90|V40|V60|XC40|XC40-Recharge|XC60|XC90",
+  };
+
+  // RDW-merk (genormaliseerd: kleine letters, alleen a-z0-9) → OBDb-merk(en).
+  const OBDB_MERK = { opel: ['VauxhallOpel'], vauxhall: ['VauxhallOpel'], mercedesbenz: ['Mercedes-Benz'],
+    landrover: ['Land-Rover'], alfaromeo: ['Alfa-Romeo'], rollsroyce: ['Rolls-Royce'], citroen: ['Citroen'] };
+  /* Zustermodellen: dezelfde auto uit dezelfde fabriek onder een ander
+     merk, met dezelfde motor en dezelfde stuurapparaten. Alleen waar OBDb
+     het model zelf niet heeft. Een code van de tweeling wordt net zo goed
+     eerst op de auto getoetst (de keuring); het resultaat zegt erbij dat
+     het via de tweeling kwam. */
+  const OBDB_TWEELING = {
+    'peugeot|108': 'Peugeot-107', 'citroen|c1': 'Peugeot-107',        // Toyota/PSA Kolín, 2005–2022
+    'skoda|citigo': 'Volkswagen-Up',                                       // VW Bratislava, 2011–2020
+    'opel|agila': 'Suzuki-Splash',                                         // Suzuki Esztergom, 2008–2014
+    'suzuki|swace': 'Toyota-Corolla', 'suzuki|across': 'Toyota-RAV4',      // Toyota met een Suzuki-logo
+    'mazda|2hybrid': 'Toyota-Yaris',                                       // Mazda2 Hybrid = Yaris IV
+    'lynkco|01': 'Volvo-XC40',                                             // CMA, Volvo-motoren
+    // VAG: zelfde platform, zelfde motor-ECU (MQB/PQ)
+    'skoda|octavia': 'Volkswagen-Golf', 'skoda|fabia': 'Volkswagen-Polo', 'skoda|kamiq': 'Volkswagen-T-Cross',
+    'skoda|kodiaq': 'Volkswagen-Tiguan', 'skoda|karoq': 'Seat-Ateca', 'skoda|superb': 'Volkswagen-Passat',
+    // PSA/Stellantis: dezelfde EB/EP/DV-motoren en ECU's als Peugeot
+    'citroen|c3': 'Peugeot-208', 'citroen|c3aircross': 'Peugeot-2008', 'citroen|c4cactus': 'Peugeot-208',
+    'citroen|c4': 'Peugeot-308', 'citroen|c5aircross': 'Peugeot-3008', 'citroen|berlingo': 'Peugeot-Partner',
+    'opel|crosslandx': 'Peugeot-2008', 'opel|crossland': 'Peugeot-2008', 'opel|grandlandx': 'Peugeot-3008', 'opel|grandland': 'Peugeot-3008',
+    // overige
+    'volvo|v50': 'Volvo-S40', 'volvo|v70': 'Volvo-S80', 'volvo|ex40': 'Volvo-XC40-Recharge',
+    'hyundai|ix35': 'Hyundai-Tucson', 'dacia|logan': 'Dacia-Sandero', 'renault|modus': 'Renault-Clio',
+    'mini|mini': 'MINI-Cooper', 'mini|one': 'MINI-Cooper', 'bmw|ix1': 'BMW-X1',
+    // MEB: ID.4 en Enyaq zijn de ID.5 zonder schuin dak (zelfde accu, zelfde ECU's)
+    'volkswagen|id4': 'Volkswagen-ID5', 'skoda|enyaq': 'Volkswagen-ID5'
+  };
+  const _sl = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  /* {namen, tweeling}: de OBDb-namen om te proberen, beste eerst. */
+  function obdbKoppel(merk, model, brandstof) {
+    const mk = String(merk || '').trim(), vol0 = String(model || '').trim();
+    if (!mk || !vol0) return { namen: [], tweeling: null };
+    const mks = _sl(mk);
+    // Het merk uit het model halen: "TOYOTA AYGO", "MAZDA2", "LYNK & CO 01".
+    let vol = vol0.toUpperCase();
+    const ml = vol.replace(/[^A-Z0-9]/g, '');
+    if (ml.indexOf(mks.toUpperCase()) === 0 && ml.length > mks.length) {
+      let n = 0, k = 0;
+      while (k < vol.length && n < mks.length) { if (/[A-Z0-9]/.test(vol[k])) n++; k++; }
+      vol = vol.slice(k).replace(/^[\s&-]+/, '');
+    }
+    vol = vol.replace(/[!.,/]+/g, ' ').replace(/\bCEE\s+D\b/, 'CEED').replace(/^([A-Z])\s+(\d+)\b/, '$1$2')
+      .replace(/^(\d)ER\s+REIHE\b/, '$1-SERIES').replace(/\s+/g, ' ').trim();
+    const w = vol.split(' ');
+    // Wat niet bij het model hoort: uitvoering, carrosserie, aandrijving.
+    const RUIS = /^(HYBRID|HEV|PHEV|PLUG-?IN|SPORTS?|TOURER|ESTATE|STATION|WAGON|SW|SPORTBACK|VARIANT|COMBI|AVANT|TOURING|CABRIO(LET)?|COUPE|AUTOMAAT|PRO|KW|\d+KW|E-TECH|XDRIVE|4MATIC|QUATTRO|4X4|AWD)$/;
+    const kern = [];
+    for (const x of w) { if (RUIS.test(x) || /^\d{2,3}$/.test(x) && kern.length) break; kern.push(x); }
+    const vormen = [w.join(' '), kern.join(' '), w.slice(0, 2).join(' '), w[0], w[0].replace(/-[A-F]$/, ''), mks + w[0]];
+    // "E-NIRO", "E-208": de elektrische uitvoering met een E ervoor.
+    if (/^E-./.test(w[0])) vormen.push(w[0].slice(2), 'E' + w[0].slice(2));
+    if (mks === 'bmw' && /^[1-8]\d{2}/.test(w[0])) vormen.push(w[0][0] + '-SERIES');
+    if (/^mercedes/.test(mks) && /^[A-Z]{1,3}\s*\d{2,3}/.test(vol)) vormen.push(vol.match(/^[A-Z]{1,3}/)[0] + '-CLASS');
+    if (/^mercedes/.test(mks) && /^A\s*\d{2,3}\b/.test(vol)) vormen.push('A-180');   // OBDb noemt de A-klasse zo
+    const merken = OBDB_MERK[mks] || [mk.replace(/\s+/g, '-')];
+    const uit = [];
+    let tweeling = null;
+    const hyb = /hybr/i.test(String(brandstof || ''));
+    // Elektrisch: dezelfde naam met de EV-uitgang van OBDb gaat voor
+    // (Kia-Niro-EV, Hyundai-Kona-Electric, Audi-Q4-e-tron, XC40-Recharge).
+    const ev = /elektr|electric/i.test(String(brandstof || '')) || /\b(ELECTRIC|EV|E-TRON)\b/.test(vol) || /^E-/.test(w[0]);
+    const evUit = (s) => [s + 'ev', s + 'electric', 'e' + s, s + 'e', s + 'etron', s + 'recharge', s + 'etech'];
+    merken.forEach(function (m) {
+      const idx = Object.keys(OBDB_MODELLEN).find((x) => _sl(x) === _sl(m));
+      const lijst = idx ? OBDB_MODELLEN[idx].split('|') : [];
+      vormen.forEach(function (v) {
+        const s = _sl(v);
+        if (!s) return;
+        const evS = ev ? evUit(s) : [];
+        const raak = lijst.filter((x) => _sl(x) === s || (hyb && _sl(x) === s + 'hybrid') || evS.indexOf(_sl(x)) >= 0);
+        const voorkeur = (x) => (hyb && /hybrid/i.test(x)) || (ev && evS.indexOf(_sl(x)) >= 0) ? 1 : 0;
+        raak.sort((a, b) => voorkeur(b) - voorkeur(a));
+        raak.forEach((x) => uit.push(idx + '-' + x));
+      });
+    });
+    const tw = OBDB_TWEELING[mks + '|' + _sl(kern.join(' '))] || OBDB_TWEELING[mks + '|' + _sl(w[0])];
+    if (!uit.length && tw) { uit.push(tw); tweeling = tw; }
+    // De oude vorm erachter: een model dat na 22-10-2026 in OBDb kwam.
+    const m0 = mk.replace(/\s+/g, '-');
+    [vol0.replace(/\s+/g, '-'), w.join('-'), w[0], w[0].replace(/^([A-Za-z]+)(\d)/, '$1-$2')].forEach((x) => x && uit.push(m0 + '-' + x));
+    const gezien = {};
+    return { namen: uit.filter((x) => { const k = x.toLowerCase(); if (gezien[k]) return false; gezien[k] = 1; return true; }).slice(0, 6), tweeling };
   }
+  function obdbNamen(merk, model, brandstof) { return obdbKoppel(merk, model, brandstof).namen; }
 
   function obdbGetal(n) { return String(Math.round(Number(n) * 1e6) / 1e6); }
 
@@ -669,11 +840,12 @@
     const bix = Number(f.bix || 0), len = Number(f.len);
     if (f.sign || f.map || bix % 8 || [8, 16, 24, 32].indexOf(len) < 0) return null;
     const i0 = bix / 8, n = len / 8;
-    if (i0 + n > 8) return null;
+    if (i0 + n > 256) return null;
     const delen = [];
     for (let k = 0; k < n; k++) {
       const w = f.blsb ? k : n - 1 - k;
-      delen.push('ABCDEFGH'[i0 + k] + (w ? '*' + Math.pow(256, w) : ''));
+      // Voorbij H: [n] (Honda, de accu van Kia/Hyundai).
+      delen.push((i0 + k < 8 ? 'ABCDEFGH'[i0 + k] : '[' + (i0 + k) + ']') + (w ? '*' + Math.pow(256, w) : ''));
     }
     let x = delen.join('+');
     const groep = () => (x.indexOf('+') >= 0 || x.indexOf('-') >= 0 ? '(' + x + ')' : x);
@@ -706,8 +878,16 @@
     if (r === 'gevraagd') return 120;
     if (r === 'soc') return 110;
     if (r) return 100;
-    if (bandRol(naam)) return 90;
     const n = String(naam || '').toLowerCase();
+    // De hoogspanningsaccu (22-10-2026): voor een EV-rijder het belangrijkste
+    // wat de auto kan zeggen. Een Niro EV had zijn laadtoestand op plek 42.
+    if (!/(aux|12 ?v|auxiliary)/.test(n)) {
+      if (/(state of charge|\bsoc\b)/.test(n)) return 115;
+      if (/(state of health|\bsoh\b)/.test(n)) return 114;
+      if (/(range remaining|reserve range|\brange\b)/.test(n)) return 95;
+      if (/(high voltage|\bhv\b|traction).*(battery).*(temp|volt|current)|(battery).*(cell).*(temp|volt)/.test(n)) return 92;
+    }
+    if (bandRol(naam)) return 90;
     if (/oil temp|olietemp/.test(n)) return 85;
     if (/(transmission|gearbox|\batf\b).*(temp)|temp.*(transmission|gearbox)/.test(n)) return 80;
     if (/wheel speed/.test(n)) return 50;
@@ -716,17 +896,22 @@
   /* Het adres van een OBDb-commando in de vorm die eigenControleer kent, of
      null. 11-bit: hdr 7E0, antwoord hdr+8. 29-bit staat in OBDb kort: hdr
      "DA10" met rax "10" is 18DA10F1, antwoord 18DAF110. Een ander
-     antwoordadres (VAG 70E → 778, PSA 6A2 → 682) of extended addressing
-     (BMW, eax) vraagt ATCRA en een eigen flow control; dat is op geen auto
-     nagemeten, dus die codes tellen we maar bieden we niet aan. */
+     antwoordadres wordt "tx>rx" (zie EIGEN_ECU). Extended addressing (BMW,
+     eax) en het 29-bit-schema van Volvo (D016) tellen we, maar bieden we
+     nog niet aan. */
   function obdbAdres(c) {
-    const hdr = String(c.hdr || '').toUpperCase();
-    if (c.eax) return null;
-    if (/^DA[0-9A-F]{2}$/.test(hdr)) return (!c.rax || String(c.rax).toUpperCase() === hdr.slice(2)) ? '18' + hdr + 'F1' : null;
-    if (/^18DA[0-9A-F]{2}F1$/.test(hdr)) return (!c.rax || String(c.rax).toUpperCase().slice(-2) === hdr.slice(4, 6)) ? hdr : null;
-    if (c.rax && parseInt(c.rax, 16) !== parseInt(hdr, 16) + 8) return null;
-    return hdr;
+    const hdr = String(c.hdr || '').toUpperCase(), rax = String(c.rax || '').toUpperCase();
+    if (c.eax) return null;                     // BMW/MINI: extended addressing, nog niet
+    if (/^DA[0-9A-F]{2}$/.test(hdr)) return (!rax || rax === hdr.slice(2)) ? '18' + hdr + 'F1' : null;
+    if (/^18DA[0-9A-F]{2}F1$/.test(hdr)) return (!rax || rax.slice(-2) === hdr.slice(4, 6)) ? hdr : null;
+    if (!/^[67][0-9A-F]{2}$/.test(hdr)) return null;
+    if (!rax || parseInt(rax, 16) === parseInt(hdr, 16) + 8) return /^7/.test(hdr) ? hdr : hdr + '>' + (parseInt(hdr, 16) + 8).toString(16).toUpperCase();
+    // Een ander antwoordadres (VAG 70E → 778, PSA 6A2 → 682): "tx>rx", met
+    // ATCRA en flow control in adresZet(). Tot 22-10-2026 viel dit weg, en
+    // daarmee het grootste deel van VAG, PSA en Opel.
+    return /^[0-9A-F]{3}$/.test(rax) ? hdr + '>' + rax : null;
   }
+
   function obdbKandidaten(data, repo, jaar, telling) {
     const cmds = (data && Array.isArray(data.commands)) ? data.commands.slice() : [];
     // Geverifieerde commando's eerst; dbg staat voor wat nog in onderzoek is.
@@ -740,7 +925,11 @@
       const hdr = obdbAdres(c);
       if (hdr === null) { if (telling) telling.adres = (telling.adres || 0) + 1; return; }
       const code = dienst + String(c.cmd[dienst]).toUpperCase();
-      for (const g of (Array.isArray(c.signals) ? c.signals : [])) {
+      // Eén code per commando, en dan de waardevolste: bij een Kona Electric
+      // zit de laadtoestand van de HV-accu als zevende waarde in 22E003.
+      const sigs = (Array.isArray(c.signals) ? c.signals.slice() : []).map((g, i) => ({ g, i, w: obdbWaarde(g && g.name) }));
+      sigs.sort((a, b) => (b.w - a.w) || (a.i - b.i));
+      for (const { g } of sigs) {
         const fmt = (g && g.fmt) || {};
         if (!OBDB_EENHEID[fmt.unit] && !OBDB_OM[fmt.unit]) continue;   // aan/uit, hex, ja/nee, zonder eenheid: geen meetwaarde
         const fo = obdbFormule(fmt);
@@ -769,14 +958,14 @@
     v = v || {};
     if (!v.merk || !v.model) return { ok: false, fout: 'Vul eerst merk en model in bij het profiel' };
     if (!haal) return { ok: false, fout: 'Geen weg naar OBDb' };
-    const namen = obdbNamen(v.merk, v.model);
+    const kop = obdbKoppel(v.merk, v.model, v.brandstof), namen = kop.namen;
     for (const repo of namen) {
       let d;
       try { d = await haal(repo); }
       catch (x) { console.warn('PLEigen: OBDb niet bereikbaar', x); return { ok: false, fout: 'OBDb niet bereikbaar (' + String(x && x.message || x) + ')' }; }
       if (!d || !d.gevonden) continue;
       const telling = {};
-      return { ok: true, repo, kandidaten: obdbKandidaten(d.data, repo, v.bouwjaar, telling), nietBruikbaar: telling.adres || 0, afgekapt: telling.weg || 0 };
+      return { ok: true, repo, tweeling: repo === kop.tweeling, kandidaten: obdbKandidaten(d.data, repo, v.bouwjaar, telling), nietBruikbaar: telling.adres || 0, afgekapt: telling.weg || 0 };
     }
     return { ok: true, repo: '', kandidaten: [], geprobeerd: namen };
   }
@@ -843,11 +1032,11 @@
     if (typeof sendCmd !== 'function' || typeof withBus !== 'function') return { ok: false, fout: 'Busfuncties ontbreken' };
     if (_scan && _scan.bezig) return { ok: false, fout: 'Er loopt al een scan' };
     const st = _scan = { bezig: true, stop: false, gedaan: 0, totaal: 256, gevonden: [] };
-    const codes = scanCodes(prefix), functioneel = 'ATSH' + (ecu.length === 8 ? '18DB33F1' : '7DF');
+    const codes = scanCodes(prefix);
     try {
       for (let i = 0; i < codes.length && !st.stop; i += SCAN_PORTIE) {
         await withBus('buurscan ' + prefix + (ecu ? '@' + ecu : ''), async () => {
-          if (ecu) await sendCmd('ATSH' + ecu, 1500);
+          const terug = ecu ? await adresZet(ecu) : [];
           try {
             for (let j = i; j < Math.min(i + SCAN_PORTIE, codes.length) && !st.stop; j++) {
               if (!connected) { st.stop = true; break; }
@@ -858,7 +1047,7 @@
               if (typeof opties.voortgang === 'function') { try { opties.voortgang(st); } catch (x) { console.warn('PLEigen: voortgang', x); } }
             }
           } finally {
-            if (ecu) { try { await sendCmd(functioneel, 1500); } catch (x) { _terug = functioneel; btDiagSafe('Buurscan: header terugzetten mislukt — volgende vraag probeert het opnieuw'); } }
+            if (ecu) await adresTerug(terug, 'buurscan ' + prefix);
           }
         }, 8000);
       }
@@ -897,7 +1086,7 @@
 
   window.PLEigen = { CODE: EIGEN_CODE, MAX: EIGEN_MAX, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
     ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, laadRol, obdbWaarde, obdbAdres, laadOordeel, accuOordeel, laadCodes, laadNu, laad: laadLive, drukOmrekening, standaardBereik,
-    scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, vraag: eigenVraag, obdbNamen, obdbFormule, obdbJaarPast, obdbKandidaten, zoekObdb };
+    scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, vraag: eigenVraag, obdbNamen, obdbKoppel, obdbFormule, obdbJaarPast, obdbKandidaten, zoekObdb };
   window.plEigenDefs = eigenDefs;
 
   btDiagSafe('pidlane-uitgebreid.js geladen — mode 21/22 pad actief');
