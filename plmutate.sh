@@ -100,7 +100,7 @@ MUTATIES=(
 "public/pidlane-diagbundel.js@@const ds=idx>=0?idx+hdr.length:4;@@const ds=idx>=0?idx+hdr.length-2:4;@@test-parser.js@@parsePID slaat de header-echo één byte te vroeg over"
 "public/pidlane-diagbundel.js@@if(/[0-9A-Fa-f]\s*:/.test(line)){@@if(false){@@test-parser.js@@de batch-splitser ziet de framemarkers niet meer"
 "public/pidlane-datalog.js@@if(lim&&(rawVal<lim.min||rawVal>lim.max)){@@if(false){@@test-parser.js@@laag 1 laat fysiek onmogelijke waarden door"
-"public/pidlane-data.js@@  '012E': 'spoelklep stationair dicht',@@  '012X': 'spoelklep stationair dicht',@@test-healthherziening.js@@een dichte spoelklep stationair heet weer "waarschijnlijk niet aanwezig" (#585)"
+"public/pidlane-data.js@@  '012E': 'spoelklep stationair dicht',@@  '012X': 'spoelklep stationair dicht',@@test-healthherziening.js@@een dichte spoelklep stationair heet weer waarschijnlijk niet aanwezig (#585)"
 "public/pidlane-data.js@@'0105':{min:-40,max:215},@@'0105':{min:-400,max:2150},@@test-parser.js@@de harde limiet van koelwater is opgerekt"
 
 # ── Laag 2+3 zijn op 10-09-2026 weggehaald (zie §11). Deze twee mutaties
@@ -112,7 +112,7 @@ MUTATIES=(
 "public/pidlane-datalog.js@@  return Math.round(rawVal*100)/100;\n}@@  if(FILTERED_PIDS.has(pid)&&pidVals[pid]!=null&&Math.abs(rawVal-pidVals[pid])/Math.max(1e-6,(def?.max??255)-(def?.min??0))*100>35) return null;\n  return Math.round(rawVal*100)/100;\n}@@test-parser.js@@het spike-filter van laag 2 is terug: een echte sprong wordt weer als NO DATA geboekt"
 "public/pidlane-waakronde.js@@if (/NO DATA|ERROR|UNABLE|STOPPED|SEARCHING|\?/i.test(s)) return false;@@if (false) return false;@@test-waakronde.js@@de waakronde leest een foutmelding als een antwoord"
 "public/pidlane-waakronde.js@@const marge = (d.max - d.min) * 0.02;@@const marge = 0;@@test-waakronde.js@@de 2%-marge op het verwachte bereik is weg"
-"public/pidlane-rijsituatie.js@@    'SB1':'Toyota','NMT':'Toyota','VNK':'Toyota',@@    'SB1':'Toyota',@@test-vinmerk.js@@een Corolla uit Turkije en een Yaris uit Frankrijk heten weer "Onbekend merk" (#588)"
+"public/pidlane-rijsituatie.js@@    'SB1':'Toyota','NMT':'Toyota','VNK':'Toyota',@@    'SB1':'Toyota',@@test-vinmerk.js@@een Corolla uit Turkije en een Yaris uit Frankrijk heten weer Onbekend merk (#588)"
 "public/pidlane-rijsituatie.js@@    if(!isNaN(v)) w=((w||0)|v)>>>0;@@    if(!isNaN(v) && w===null) w=v>>>0;@@test-steunbits.js@@de discovery leest weer alleen de eerste ECU: 015B van de hybride-ECU valt weg (#586)"
 "public/pidlane-rijsituatie.js@@    if(!isNaN(v)) w=((w||0)|v)>>>0;@@    if(!isNaN(v) && w===null) w=v>>>0;@@bproef-merken.js@@de discovery leest weer alleen de eerste ECU: de Toyota-hybride mist 015B (#586)"
 "public/pidlane-rijsituatie.js@@_pidHealth[pid] = (h==='ok'||h==='twijfel'||h==='onzin'||h==='nodata') ? h : 'ok';@@_pidHealth[pid] = h;@@test-healthgate.js@@een onbekende sensor wordt uitgegrijsd in plaats van kiesbaar"
