@@ -676,11 +676,11 @@ MUTATIES=(
 # zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop
 # kostte: twee velden die een reviewer allebei leest, met verschillende
 # beloftes. Het valt niemand op tot het in de Console staat.
-"PLAY-INZENDING.md@@Met expert op afstand, lampjesgids en conditiescore.@@Met expert op afstand, lampjesgids en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
+"PLAY-INZENDING.md@@Met aankooprapport en wintercheck.@@Met aankooprapport en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
 # En andersom: §3 hernoemt een functie, §14 blijft de oude naam beloven. Dat is
 # de stillere van de twee — je verbetert de beschrijving en raakt het veld
 # ernaast niet aan.
-"PLAY-INZENDING.md@@• Lampjesgids — wat een@@• Dashboardlampjes — wat een@@test-playteksten.js@@§3 hernoemt een functie en §14 belooft de oude naam nog"
+"PLAY-INZENDING.md@@• Wintercheck — banden@@• Seizoenscheck — banden@@test-playteksten.js@@§3 hernoemt een functie en §14 belooft de oude naam nog"
 # ── Inloggen kost geen credit meer (#179, 10-09-2026) ──
 # Vijf fouten die deze reparatie ongedaan maken, en ze zijn geen van vijven
 # verzonnen: de eerste is precies hoe het er tot vandaag in stond, en de
