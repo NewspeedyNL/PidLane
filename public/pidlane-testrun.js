@@ -2787,6 +2787,36 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Full survey V2 (schema 3): de acht stappen van #541 als tabelregel ──
+  {
+    issue: '541',
+    naam: 'Full survey V2: schema 3 meet mode 09, OBDonUDS, mode 06 en UDS erbij en zet de campagnetabel van #541 in de uitkomst',
+    waarom: 'De rittencampagne begint; per auto vraagt #541 acht stappen en een tabel met ✓/✗. Schema 2 dekte stap 1–3.',
+    proef: async function () {
+      if (!window.PLSurvey2 || typeof PLSurvey2.meet !== 'function' || PLSurvey2.SCHEMA !== 3)
+        return { staat: 'FOUT', detail: 'PLSurvey2 (schema 3) ontbreekt — pidlane-survey2.js niet geladen (herladen?)' };
+      var c = PLSurvey2.campagne({ pids: { total: 1, ok: 1 } });
+      if (c.length !== 8) return { staat: 'FOUT', detail: 'de campagne heeft ' + c.length + ' stappen in plaats van 8' };
+      if (!PLSurvey2.obdOnUds('62 F4 00 80 00 00 00').ja) return { staat: 'FOUT', detail: 'een OBDonUDS-antwoord wordt niet herkend' };
+      return { staat: 'OK', detail: 'Rij: verbonden, ⋯ → Full function test; onderaan staat "Campagne #541 — survey V2" met acht regels en een tabelregel om in #541 te plakken. Draai eerst Alle sensoren zoeken, dan vult stap 7 zich' };
+    }
+  },
+
+  // ── Alle sensoren zoeken: elke kandidaat één keer op de auto, alleen een plausibele waarde voorgesteld ──
+  {
+    issue: 'pidzoek',
+    naam: 'Alle sensoren zoeken: de keuring houdt een onmogelijke waarde, alleen FF en −40 °C buiten het voorstel',
+    waarom: 'Voor de Mazda kostte het weken om per code te testen of het getal klopte; nu doet één knop in Mijn voertuigen → Sensoren dat voor het hele model.',
+    proef: async function () {
+      if (!window.PLPidZoek || typeof PLPidZoek.plausibel !== 'function' || typeof PLPidZoek.zoek !== 'function')
+        return { staat: 'FOUT', detail: 'PLPidZoek ontbreekt — pidlane-pidzoek.js niet geladen (herladen?)' };
+      var P = function (b, w, u) { return PLPidZoek.plausibel({ ok: true, bytes: b, waarde: w, eenheid: u }, { naam: 'x' }).ok; };
+      if (!P([0x21, 0x50], 85, '°C')) return { staat: 'FOUT', detail: '85 °C wordt afgekeurd' };
+      if (P([0xFF, 0xFF], 65.5, 'V') || P([0x00], -40, '°C') || P([0x02], 600, '°C')) return { staat: 'FOUT', detail: 'FF, −40 °C of 600 °C komt door de keuring' };
+      return { staat: 'OK', detail: 'keuring werkt. Rij: verbonden, Mijn voertuigen → Sensoren → 🚀 Zoek alle sensoren; het overzicht staat in dezelfde groepen als je eigen sensoren en Neem N op bewaart ze' };
+    }
+  },
+
   // ── Tegoed: de afboekregel draagt het serversaldo, en de laadregel zegt dat zijn getal van dit toestel komt (#524) ──
   {
     issue: '524',

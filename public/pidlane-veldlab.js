@@ -461,7 +461,7 @@ async function vlFullSurvey(){
     // ── Ruwe supported-PID bitmaps: exacte dekkings-vingerafdruk ──
     _vlSvUI('Supported-PID bitmaps…');
     sv.bitmaps={};
-    for(const bp of ['0100','0120','0140','0160','0180']){
+    for(const bp of ['0100','0120','0140','0160','0180','01A0','01C0']){
       if(_vlSvAbort) throw new Error('afgebroken door gebruiker');
       try{ const r=await sendCmd(bp,2000); if(r&&!/NO DATA|ERROR|UNABLE/i.test(r)) sv.bitmaps[bp]=clean(r).slice(0,120); }
       catch(e){ /* stil: hier wordt getest OF de bitmap bestaat, een misser is het antwoord */ }
@@ -644,6 +644,26 @@ async function vlFullSurvey(){
       sv.functietest=PLFunctieTest.compact(_ft);
     }catch(e){ btDiag('Function test: oordeel niet te berekenen ('+(e.message||e)+') — de meting zelf is wel bewaard','warn'); }
 
+    // ── Survey V2 (schema 3, pidlane-survey2.js): mode 09, OBDonUDS, mode 06,
+    //    UDS, derde poort, eigen sensoren en de campagnetabel van #541. Mode 06
+    //    en UDS pakken zelf het busslot, dus het onze gaat eerst terug.
+    if(window.PLSurvey2){
+      try{ if(_svBusTok){ PLBus.release(_svBusTok); _svBusTok=0; } }
+      catch(e){ console.warn('Survey V2: busslot teruggeven mislukt', e); }
+      try{
+        await PLSurvey2.meet(sv, {
+          stuur:(c,ms)=>sendCmd(c,ms), ui:_vlSvUI, stop:()=>_vlSvAbort, isCan:!!isCAN,
+          bus:(fn)=>(typeof withBus==='function')?withBus('survey-v2',fn,8000):fn(),
+          m06:window.PLM06||null, uds:window.PLUds||null,
+          kenmerk:()=>(window.PLKenmerk?PLKenmerk.live():null),
+          eigen:()=>({ n:(window.PLEigen?PLEigen.defs().length:0), zoek:(window.PLPidZoek?PLPidZoek.laatste():null) }) });
+      }catch(e){
+        if(_vlSvAbort) throw e;
+        btDiag('Survey V2: aanvulling niet volledig ('+(e.message||e)+') — schema 2 is wel gemeten','warn');
+      }
+      sv.durS=Math.round((Date.now()-t0)/1000);
+    }
+
     // → veldlab-database (JSON-export pikt survey automatisch mee)
     const fuel=vlFuel(sv.veh.brandstof), band=vlAgeBand(sv.veh.jaar), pc=vlProtoClass(sv.adapter.proto);
     const st2=vlLoad();
@@ -672,7 +692,7 @@ async function vlFullSurvey(){
       'Gem. '+sv.timing.avgMs+' ms · batch max '+(sv.batch.maxPids||0)+' PIDs · '+(sv.ecus?sv.ecus.n:0)+' ECU(s)<br>'+
       'DTC: '+sv.dtc.actief.length+' actief · '+(sv.dtc.pending||[]).length+' pending · '+(sv.dtc.permanent||[]).length+' permanent · '+_rdy+'<br>'+
       'CALID '+(sv.calid&&sv.calid.ascii?'✓':'—')+' · CVN '+(sv.cvn&&sv.cvn.hex&&sv.cvn.hex.length?'✓':'—')+' · odometer '+(sv.odoKm?sv.odoKm+' km':'—')+'<br>'+
-      'Opgeslagen in Veldlab + JSON gedownload</span>'+(_ft?PLFunctieTest.html(_ft):''), true);
+      'Opgeslagen in Veldlab + JSON gedownload</span>'+(_ft?PLFunctieTest.html(_ft):'')+(window.PLSurvey2?PLSurvey2.html(sv):''), true);
   }catch(e){
     _vlSvUI('⏹ Function test gestopt: '+(e.message||e)+'<br><span style="font-weight:400;font-size:13px;opacity:.8">Deels gemeten data is niet opgeslagen.</span>', true);
   }finally{
