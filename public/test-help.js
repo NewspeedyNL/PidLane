@@ -18,6 +18,10 @@
 //   7. geen prijzen, en nooit "anoniem" (CLAUDE.md, privacy)
 //   8. het menu heeft de ingang, en beide bestanden hangen vóór de
 //      bedradingscontrole
+//   9. de beeldtaal: elk onderwerp heeft een icoon en een korte zin, elk
+//      schema een bekende soort, en de echte weergave (pidlane-help.js)
+//      tekent stappen, schema's en kaders en zet de lange tekst onder
+//      "Meer uitleg". 2, 3 en 5 lezen ook de HTML in stappen, schema's en kaders.
 // De controle op de appversie (gecontroleerd.app) is een LET OP, geen FOUT:
 // een versiesprong maakt de tekst niet fout, alleen ongecontroleerd.
 //
@@ -60,6 +64,14 @@ toets('elk onderwerp hoort bij een bestaande groep', !losseGroep.length, losseGr
 const leeg = H.onderwerpen.filter(o => !o.titel || !o.tekst).map(o => o.id);
 toets('elk onderwerp heeft een titel en tekst', !leeg.length, leeg.join(', '));
 const tipIds = H.tips.map(t => t.id);
+
+// Alle HTML van een onderwerp: de tekst plus wat er in stappen, schema en kaders staat.
+function htmlVan(o) {
+  const delen = [o.tekst, o.tip || '', o.let || ''];
+  (o.stappen || []).forEach(st => delen.push(st.t || '', st.u || ''));
+  ((o.schema && o.schema.delen) || []).forEach(d => delen.push(d.u || ''));
+  return delen.join('\n');
+}
 toets('tip-ids zijn uniek', tipIds.length === new Set(tipIds).size);
 
 // ── 2. verwijzingen ──
@@ -68,7 +80,7 @@ const bestaat = (id) => id === 'faq' || ids.indexOf(id) !== -1;
 const kapot = [];
 H.onderwerpen.forEach(o => {
   (o.zie || []).forEach(z => { if (!bestaat(z)) kapot.push(o.id + ' zie ' + z); });
-  [...o.tekst.matchAll(/data-hulp="([^"]+)"/g)].forEach(m => { if (!bestaat(m[1])) kapot.push(o.id + ' link ' + m[1]); });
+  [...htmlVan(o).matchAll(/data-hulp="([^"]+)"/g)].forEach(m => { if (!bestaat(m[1])) kapot.push(o.id + ' link ' + m[1]); });
 });
 H.faq.forEach((f, i) => { if (f.zie && !bestaat(f.zie)) kapot.push('faq ' + i + ' zie ' + f.zie); });
 H.tips.forEach(t => { if (!bestaat(t.onderwerp)) kapot.push('tip ' + t.id + ' → ' + t.onderwerp); });
@@ -81,7 +93,7 @@ const doeBlok = helpBron.match(/var DOE = \{([\s\S]*?)\n  \};/);
 toets('pidlane-help.js heeft een DOE-lijst', !!doeBlok);
 const doeKeys = doeBlok ? [...doeBlok[1].matchAll(/^\s*([a-z]+):\s*function/gm)].map(m => m[1]) : [];
 const onbekend = [];
-H.onderwerpen.forEach(o => [...o.tekst.matchAll(/data-hulp-doe="([^"]+)"/g)].forEach(m => {
+H.onderwerpen.forEach(o => [...htmlVan(o).matchAll(/data-hulp-doe="([^"]+)"/g)].forEach(m => {
   if (doeKeys.indexOf(m[1]) === -1) onbekend.push(o.id + ': ' + m[1]);
 }));
 toets('elke data-hulp-doe staat in DOE (' + doeKeys.join(', ') + ')', !onbekend.length, onbekend.join(', '));
@@ -116,7 +128,7 @@ const appBron = ['index.html'].concat(fs.readdirSync(DIR).filter(f => /^pidlane-
   .replace(/&amp;/g, '&').replace(/\\'/g, "'");
 const EMOJI = /^[\u2190-\u2BFF\u25A0-\u27BF\u{1F000}-\u{1FAFF}]/u;
 const labels = new Set();
-H.onderwerpen.forEach(o => [...o.tekst.matchAll(/<b>([^<]+)<\/b>/g)].forEach(m => {
+H.onderwerpen.forEach(o => [...htmlVan(o).matchAll(/<b>([^<]+)<\/b>/g)].forEach(m => {
   const l = m[1].split('→').pop().trim();
   if (EMOJI.test(l)) labels.add(l);
 }));
@@ -150,6 +162,65 @@ toets('Meer heeft de schakelaar voor de uitroeptekens', /id="kbHelpTips"[^>]*rol
 toets('het inlogscherm linkt naar de handleiding', /id="lgHandleiding"/.test(html));
 const pi = html.indexOf('src="pidlane-help-inhoud.js"'), ph = html.indexOf('src="pidlane-help.js"'), pb = html.indexOf('src="pidlane-bedrading.js"');
 toets('inhoud laadt vóór de weergave, beide vóór de bedradingscontrole', pi > 0 && ph > pi && pb > ph);
+
+// ── 9. de beeldtaal ──
+console.log('\n9. visuele handleiding');
+const zonderBeeld = H.onderwerpen.filter(o => !o.icoon || !o.kort).map(o => o.id);
+toets('elk onderwerp heeft een icoon en een korte zin (tegel in de inhoud)', !zonderBeeld.length, zonderBeeld.join(', '));
+const teLang = H.onderwerpen.filter(o => o.kort && o.kort.length > 110).map(o => o.id + ' (' + o.kort.length + ')');
+toets('de korte zin is kort (hoogstens 110 tekens)', !teLang.length, teLang.join(', '));
+const SOORTEN = ['stroom', 'tegels', 'balk', 'legenda'];
+const schemaFout = H.onderwerpen.filter(o => o.schema && (SOORTEN.indexOf(o.schema.soort) === -1 || !(o.schema.delen || []).length)).map(o => o.id);
+toets('elk schema heeft een bekende soort en delen', !schemaFout.length, schemaFout.join(', '));
+const stapFout = H.onderwerpen.filter(o => o.stappen && (!o.stappen.length || o.stappen.some(st => !st.i || !st.t))).map(o => o.id);
+toets('elke stap heeft een icoon en een tekst', !stapFout.length, stapFout.join(', '));
+const balkTabs = [...html.matchAll(/class="pl-nav-tab" data-tab="([a-z]+)"/g)].map(m => m[1]);
+const balkFout = [];
+H.onderwerpen.forEach(o => { if (o.schema && o.schema.soort === 'balk') o.schema.delen.forEach(d => { if (balkTabs.indexOf(d.tab) === -1) balkFout.push(o.id + ': ' + d.tab); }); });
+toets('elke tab in een balkschema bestaat in de onderbalk (' + balkTabs.join(', ') + ')', balkTabs.length && !balkFout.length, balkFout.join(', '));
+
+// De echte weergave, met net genoeg document om te laden. De onderbalk is er
+// één met een herkenbaar icoon: komt dat in de handleiding, dan is het geleend.
+const svgProef = '<svg data-proef="home"></svg>';
+const dctx = {
+  console, setTimeout, setInterval: () => 0,
+  localStorage: { getItem: () => null, setItem() {} },
+  document: {
+    readyState: 'complete', addEventListener() {}, getElementById: () => null,
+    querySelector: (sel) => sel === '#plNav [data-tab="auto"] svg' ? { outerHTML: svgProef } : null,
+    querySelectorAll: () => []
+  },
+  addEventListener() {}
+};
+dctx.window = dctx;
+dctx.PL_HULP = H;
+vm.createContext(dctx);
+vm.runInContext(lees('pidlane-help.js'), dctx, { filename: 'pidlane-help.js' });
+const R = dctx.PLHelp && dctx.PLHelp._html;
+toets('pidlane-help.js geeft zijn weergave vrij (PLHelp._html)', !!(R && R.onderwerp && R.inhoud));
+if (R) {
+  const tel = (s, re) => (s.match(re) || []).length;
+  const metStappen = H.onderwerpen.find(o => o.stappen);
+  const hs = R.onderwerp(metStappen);
+  toets(metStappen.id + ': elke stap een genummerde kaart (' + metStappen.stappen.length + ')',
+    tel(hs, /class="plh-stap"/g) === metStappen.stappen.length &&
+    hs.indexOf('plh-stap-n" aria-hidden="true">' + metStappen.stappen.length + '<') !== -1);
+  toets(metStappen.id + ': de lange tekst staat onder Meer uitleg', /<details class="plh-meer"><summary>Meer uitleg<\/summary>/.test(hs) && hs.indexOf(metStappen.tekst) > hs.indexOf('plh-meer'));
+  const kaal = { id: 'x', titel: 'X', tekst: '<p>los</p>' };
+  toets('zonder beeld blijft de tekst open (geen Meer uitleg)', R.onderwerp(kaal).indexOf('plh-meer') === -1);
+  const soorten = {};
+  H.onderwerpen.forEach(o => { if (o.schema) soorten[o.schema.soort] = o; });
+  SOORTEN.forEach(sr => {
+    if (!soorten[sr]) return;
+    const o = soorten[sr], h2 = R.onderwerp(o);
+    toets(o.id + ': schema ' + sr + ' wordt getekend', h2.indexOf('plh-' + sr) !== -1);
+  });
+  if (soorten.balk) toets('het balkschema leent het icoon uit de echte onderbalk', R.onderwerp(soorten.balk).indexOf(svgProef) !== -1);
+  const kaders = H.onderwerpen.filter(o => o.let);
+  if (kaders.length) toets(kaders[0].id + ': een waarschuwing wordt een Let op-kader', R.onderwerp(kaders[0]).indexOf('plh-kader-let') !== -1);
+  const toc = R.inhoud(H);
+  toets('de inhoud is een tegel per onderwerp (' + H.onderwerpen.length + ')', tel(toc, /class="plh-toc-tegel"/g) === H.onderwerpen.length);
+}
 
 // ── versie: LET OP, geen FOUT ──
 const cfg = lees('config.js').match(/APP_VERSION\s*=\s*'([^']+)'/);
