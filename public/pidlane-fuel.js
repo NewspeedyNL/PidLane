@@ -544,15 +544,25 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
     if(extra && extra.afbeelding && extra.afbeelding.data)
       msgs=[{role:'user', content:[{type:'image', source:{type:'base64', media_type: extra.afbeelding.type||'image/jpeg', data: extra.afbeelding.data}}, {type:'text', text: prompt}]}];
     let full='';
+    // Ruimer plafond dan de aanroeper vraagt (#526, punt 4). Gemeten in D1 op
+    // 22-10-2026: 6 vervolgdelen in 5 analyses, deel 1 telkens precies op het
+    // plafond (600/1600/4000), deel 2 daarna 9 tot 1009 tokens — en elk deel
+    // betaalde de volle invoer opnieuw, één keer 3348 tokens voor 9 tokens tekst.
+    // Uitvoer wordt alleen betaald voor wat er komt, en het model ziet het
+    // plafond niet; de schatting vooraf blijft op maxTokens. 8192 = Worker-grens.
+    const _plPlafond=Math.min(8192, Math.max(1, Number(maxTokens)||2048)*2);
     for(let part=0; part<3; part++){
       const body = {
         model: mdl,
-        max_tokens: maxTokens,
+        max_tokens: _plPlafond,
         system: sys,
         messages: msgs
       };
       // Alleen voor het kasboek (#524): de Worker haalt het eraf vóór Anthropic.
       if(_plRol) body.pl_rol=_plRol;
+      // Vervolgdelen sturen de hele invoer opnieuw (#526, punt 4): het kasboek
+      // moet kunnen laten zien hoe vaak dat gebeurt en wat het kost.
+      if(part>0) body.pl_deel=part+1;
       // Extended thinking bewust UIT: voor OBD2-rapporten met vaste structuur
       // geen meerwaarde, wel trager/duurder en vreet uit het token-budget.
       // thinking:{type:'disabled'} is geldig op Sonnet 5 (geverifieerd 15-07-2026
