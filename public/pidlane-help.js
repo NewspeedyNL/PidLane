@@ -76,29 +76,110 @@
     return '<figure class="plh-media"><img src="' + esc(m.src) + '" alt="' + esc(m.tekst || '') + '" loading="lazy">' + bij + '</figure>';
   }
 
+  /* ── De beeldtaal (22-10-2026) ──
+     Een onderwerp mag naast `tekst` ook beeld dragen. Wat er is, komt
+     bovenaan; de lange `tekst` schuift dan onder "Meer uitleg" (eerst het
+     nodige, de rest op verzoek). Zonder beeld blijft `tekst` gewoon open.
+       icoon   — één emoji, in de kop en op de tegel van de inhoud
+       kort    — één zin: wat dit onderwerp je oplevert
+       stappen — [{i, t, u?}] genummerde kaarten; t en u mogen HTML
+       schema  — {soort, delen}: 'stroom' (pijlen), 'tegels' (raster),
+                 'balk' (de onderbalk, met de echte iconen) of 'legenda'
+       tip / let — één kader: tip is een handigheid, let een waarschuwing */
+  var KLEUR = { groen: 'var(--gn)', oranje: 'var(--or)', rood: 'var(--rd)' };
+
+  function heeftBeeld(o) { return !!(o.stappen || o.schema || o.tip || o.let); }
+
+  function stappenHtml(st) {
+    return '<ol class="plh-stappen">' + st.map(function (s, i) {
+      return '<li class="plh-stap"><span class="plh-stap-n" aria-hidden="true">' + (i + 1) + '</span>' +
+        '<span class="plh-stap-i" aria-hidden="true">' + esc(s.i || '') + '</span>' +
+        '<span class="plh-stap-t">' + s.t + (s.u ? '<small>' + s.u + '</small>' : '') + '</span></li>';
+    }).join('') + '</ol>';
+  }
+
+  /* De onderbalk tekent met de iconen uit #plNav zelf: verandert een icoon
+     daar, dan verandert hij hier mee. Ontbreekt de balk, dan alleen tekst. */
+  function balkIcoon(tab) {
+    var svg = null;
+    try { svg = document.querySelector('#plNav [data-tab="' + tab + '"] svg'); }
+    catch (e) { console.warn('PLHelp: onderbalk niet te lezen', e); }
+    return svg ? svg.outerHTML : '';
+  }
+
+  function schemaHtml(sc) {
+    var d = sc.delen || [];
+    if (sc.soort === 'stroom') {
+      return '<div class="plh-stroom" role="img" aria-label="' + esc(d.map(function (x) { return x.t; }).join(' → ')) + '">' +
+        d.map(function (x) {
+          return '<div class="plh-stroom-d"><span class="plh-stroom-i">' + esc(x.i) + '</span><span>' + esc(x.t) + '</span></div>';
+        }).join('<span class="plh-stroom-p" aria-hidden="true">→</span>') + '</div>';
+    }
+    if (sc.soort === 'tegels') {
+      return '<div class="plh-tegels">' + d.map(function (x) {
+        return '<div class="plh-tegel"><span class="plh-tegel-i" aria-hidden="true">' + esc(x.i) + '</span>' +
+          '<b>' + esc(x.t) + '</b>' + (x.u ? '<small>' + x.u + '</small>' : '') + '</div>';
+      }).join('') + '</div>';
+    }
+    if (sc.soort === 'balk') {
+      return '<div class="plh-balk" aria-hidden="true">' + d.map(function (x, i) {
+        return '<div class="plh-balk-tab"><span class="plh-balk-n">' + (i + 1) + '</span>' + balkIcoon(x.tab) + '<span>' + esc(x.t) + '</span></div>';
+      }).join('') + '</div>' +
+        '<ol class="plh-balk-uitleg">' + d.map(function (x) { return '<li><b>' + esc(x.t) + '</b> — ' + x.u + '</li>'; }).join('') + '</ol>';
+    }
+    if (sc.soort === 'legenda') {
+      return '<ul class="plh-legenda">' + d.map(function (x) {
+        var stippen = [].concat(x.kleur).map(function (k) {
+          return '<span class="plh-stip" style="background:' + (KLEUR[k] || k) + '"></span>';
+        }).join('');
+        return '<li><span class="plh-stippen" aria-hidden="true">' + stippen + '</span><span><b>' + esc(x.t) + '</b>' + (x.u ? ' — ' + x.u : '') + '</span></li>';
+      }).join('') + '</ul>';
+    }
+    melding('Onbekend schema: ' + sc.soort);
+    return '';
+  }
+
+  function kaderHtml(soort, html) {
+    var kop = soort === 'let' ? '⚠️ Let op' : '💡 Tip';
+    return '<aside class="plh-kader plh-kader-' + soort + '"><b>' + kop + '</b><div>' + html + '</div></aside>';
+  }
+
   function onderwerpHtml(o) {
     var zie = (o.zie || []).map(function (id) {
       var z = onderwerp(id);
-      return z ? '<a data-hulp="' + esc(id) + '">' + esc(z.titel) + '</a>' : '';
+      return z ? '<a data-hulp="' + esc(id) + '">' + (z.icoon ? esc(z.icoon) + ' ' : '') + esc(z.titel) + '</a>' : '';
     }).filter(Boolean);
+    var beeld = heeftBeeld(o);
     return '<section class="plh-ond" id="plh-o-' + esc(o.id) + '" data-plh-ond="' + esc(o.id) + '">' +
-      '<h3>' + esc(o.titel) + '</h3>' +
-      o.tekst +
+      '<h3>' + (o.icoon ? '<span class="plh-ond-i" aria-hidden="true">' + esc(o.icoon) + '</span>' : '') + esc(o.titel) + '</h3>' +
+      (o.kort ? '<p class="plh-kort">' + esc(o.kort) + '</p>' : '') +
+      (o.schema ? schemaHtml(o.schema) : '') +
+      (o.stappen ? stappenHtml(o.stappen) : '') +
+      (o.tip ? kaderHtml('tip', o.tip) : '') +
+      (o.let ? kaderHtml('let', o.let) : '') +
+      (beeld ? '<details class="plh-meer"><summary>Meer uitleg</summary>' + o.tekst + '</details>' : o.tekst) +
       (o.media || []).map(mediaHtml).join('') +
       (zie.length ? '<p class="plh-zie">Zie ook: ' + zie.join(' · ') + '</p>' : '') +
       '</section>';
+  }
+
+  /* De inhoud als tegels per groep: icoon, titel en de korte zin. */
+  function inhoudHtml(h) {
+    return h.groepen.map(function (g) {
+      var items = h.onderwerpen.filter(function (o) { return o.groep === g.id; }).map(function (o) {
+        return '<li><a class="plh-toc-tegel" data-hulp="' + esc(o.id) + '">' +
+          '<span class="plh-toc-i" aria-hidden="true">' + esc(o.icoon || '📄') + '</span>' +
+          '<span class="plh-toc-t">' + esc(o.titel) + (o.kort ? '<small>' + esc(o.kort) + '</small>' : '') + '</span></a></li>';
+      }).join('');
+      return '<div class="plh-toc-g"><div class="plh-toc-k">' + esc(g.titel) + '</div><ul>' + items + '</ul></div>';
+    }).join('');
   }
 
   function bouw() {
     var h = inhoud();
     if (!h) { melding('De handleiding is niet geladen'); return null; }
 
-    var toc = h.groepen.map(function (g) {
-      var items = h.onderwerpen.filter(function (o) { return o.groep === g.id; }).map(function (o) {
-        return '<li><a data-hulp="' + esc(o.id) + '">' + esc(o.titel) + '</a></li>';
-      }).join('');
-      return '<div class="plh-toc-g"><div class="plh-toc-k">' + esc(g.titel) + '</div><ul>' + items + '</ul></div>';
-    }).join('');
+    var toc = inhoudHtml(h);
 
     var body = h.groepen.map(function (g) {
       var ond = h.onderwerpen.filter(function (o) { return o.groep === g.id; });
@@ -133,7 +214,7 @@
       '<div class="plh-zoekrij"><input type="search" id="plhZoek" class="plh-zoek" placeholder="Zoek, bijvoorbeeld: wissen, bluetooth, tokens" aria-label="Zoeken in de handleiding" autocomplete="off"></div>' +
       '<div class="plh-body" id="plhBody">' +
         '<nav class="plh-toc" aria-label="Inhoud">' + toc +
-          '<div class="plh-toc-g"><div class="plh-toc-k">Vragen</div><ul><li><a data-hulp="faq">Veelgestelde vragen</a></li></ul></div></nav>' +
+          '<div class="plh-toc-g"><div class="plh-toc-k">Vragen</div><ul><li><a class="plh-toc-tegel" data-hulp="faq"><span class="plh-toc-i" aria-hidden="true">❓</span><span class="plh-toc-t">Veelgestelde vragen</span></a></li></ul></div></nav>' +
         '<p class="plh-geen" id="plhGeen" hidden>Niets gevonden. Probeer een ander woord, of <a data-hulp="contact">neem contact op</a>.</p>' +
         body + faq + voet +
       '</div>';
@@ -182,6 +263,8 @@
       b.hidden = !ok;
       if (ok && v) raak++;
       if (b.tagName === 'DETAILS') b.open = !!(v && ok);
+      var meer = b.querySelector && b.querySelector(':scope > .plh-meer');
+      if (meer) meer.open = !!(v && ok && meer.textContent.toLowerCase().indexOf(v) !== -1);
     }
     var groepen = ov.querySelectorAll('.plh-groep');
     for (var g = 0; g < groepen.length; g++) {
@@ -349,7 +432,8 @@
     zetTips: zetTips,
     tipsAan: tipsAan,
     plaatsTips: plaats,
-    _doe: DOE
+    _doe: DOE,
+    _html: { onderwerp: onderwerpHtml, inhoud: inhoudHtml }
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);

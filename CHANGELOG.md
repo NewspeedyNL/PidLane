@@ -10,6 +10,66 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Handleiding: beeld in plaats van tekst
+ ═══════════════════════════════════════════════════════════
+
+ - Inhoud als tegels met icoon en één zin per onderwerp; elk onderwerp opent
+   met icoon, korte zin, genummerde stappenkaarten, een schema (stroom,
+   tegels, onderbalk met de echte iconen, stoplichtlegenda) en Tip/Let op-
+   kaders. De lange tekst staat onder "Meer uitleg" en blijft doorzoekbaar.
+ - Opzet volgens gangbare handleidingpraktijk: progressive disclosure,
+   genummerde callouts links→rechts, bekende iconen, kaders voor waarschuwingen.
+ - test-help.js deel 9 rendert de echte weergave; drie mutaties in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Intro: drie stukjes app komen over de rijbaan op je af
+ ═══════════════════════════════════════════════════════════
+
+ - Na het logo komen drie kaarten over de neonbaan: Live meten (naald slaat
+   uit), Check mijn auto (stoplicht springt op groen), Ritanalyse (lijn
+   tekent zich). "tik om over te slaan" onderaan. DUUR_MS 2900 → 4900;
+   eindregel 4,85 s; bproef-intro.js kijkt op 2,9 s of er een kaart staat.
+
+ ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Full survey V2 (schema 3) voor de rittencampagne #541
+ ═══════════════════════════════════════════════════════════
+
+ - pidlane-survey2.js (PLSurvey2) nieuw: mode 09 (ECU-namen, IUPR),
+   OBDonUDS/J1979-2 (22F400), plaatshouders, mode 06, UDS alle
+   stuurapparaten, derde poort, eigen sensoren; de acht stappen van #541
+   als ✓/~/✗ plus een tabelregel om te plakken. Bitmaps 01A0/01C0 erbij.
+ - PLPidZoek.laatste() voor stap 7. test-survey2.js, drie mutaties, blok 5.
+
+ ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Alle sensoren zoeken, met keuring op een plausibele waarde
+ ═══════════════════════════════════════════════════════════
+
+ - pidlane-pidzoek.js (PLPidZoek) nieuw; blok 🚀 in Mijn voertuigen →
+   Sensoren: test elke bibliotheek/OBDb-code één keer, stelt alleen een
+   plausibele waarde voor, in de groepen van de eigen sensoren, met vinkjes.
+ - test-pidzoek.js, drie mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Slim visueel: vegen staat stil zolang de themakeuze open is
+ ═══════════════════════════════════════════════════════════
+
+ - `veegMag()` in pidlane-visueel.js: met de 🎨-strook open (of een veeg die
+   op de knoppen begint) wisselt vegen geen weergave. Test in
+   test-visueel.js, mutatie in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Kasboek: vervolgdelen bij max_tokens te tellen (#526, punt 4)
+ ═══════════════════════════════════════════════════════════
+
+ - apiFetch stuurt bij deel 2 en 3 `pl_deel` mee; de Worker haalt het eraf
+   vóór Anthropic en zet "vervolgdeel N" achter Details (afboeking én
+   ai-verbruik). Zo is te meten hoe vaak de volle invoer opnieuw betaald wordt.
+ - apiFetch vraagt 2× het plafond van de aanroeper (max 8192). In D1 stopten
+   alle 6 vervolgdelen sinds 10-09 op een te krap plafond; nu één call.
+ - test-kasboek.js deel 14b, test-vervolgdeel.js (draait de echte apiFetch);
+   drie mutaties in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  22-10-2026 — Versie 3.4.0 voor de release
  ═══════════════════════════════════════════════════════════
 

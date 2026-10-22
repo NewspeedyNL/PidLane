@@ -536,6 +536,36 @@ const gezien = new Set();
           JSON.stringify(laatste(f.staat).Details));
   }
 
+  // ── 14b. vervolgdelen bij max_tokens zijn te tellen (#526, punt 4) ──
+  // Elk vervolgdeel stuurt de hele invoer opnieuw. Zonder deelnummer was
+  // dat in het kasboek niet van een nieuwe analyse te onderscheiden.
+  console.log('\n14b. pl_deel gaat het kasboek in en niet naar Anthropic');
+  {
+    const t = bouwTegoed({ extraVelden: { pl_rol: 'diagnose', pl_deel: 2 } });
+    await t.analyse(false);
+    const v = laatste(t.staat);
+    toets('Details noemt analyse én vervolgdeel', v && v.Details === 'analyse afgeboekt \u2014 diagnose \u2014 vervolgdeel 2',
+          v && JSON.stringify(v.Details));
+    const b = t.staat.aiBodies[0] || {};
+    toets('de payload naar Anthropic heeft geen pl_deel', !('pl_deel' in b), JSON.stringify(Object.keys(b)));
+
+    const z = bouwTegoed({ extraVelden: { pl_deel: 3 } });
+    await z.analyse(false);
+    toets('zonder pl_rol staat het vervolgdeel er alleen', laatste(z.staat).Details === 'analyse afgeboekt \u2014 vervolgdeel 3',
+          JSON.stringify(laatste(z.staat).Details));
+
+    const n = bouwTegoed({ extraVelden: { pl_rol: 'diagnose', pl_deel: '1; drop' } });
+    await n.analyse(false);
+    toets('een onzinnig deelnummer wordt genegeerd', laatste(n.staat).Details === 'analyse afgeboekt \u2014 diagnose',
+          JSON.stringify(laatste(n.staat).Details));
+
+    const p = bouwTegoed({ session: { u: 'beheer', r: 'admin' }, extraVelden: { pl_deel: 2 } });
+    await p.analyse(true);
+    await Promise.all(p.staat.jobs);
+    toets('ook de verbruiksregel van personeel telt het vervolgdeel', /vervolgdeel 2/.test(laatste(p.staat).Details),
+          JSON.stringify(laatste(p.staat).Details));
+  }
+
   // ── 15. wat er naar Anthropic mag (#526) ─────────────────────────
   // Tot 15-10-2026 ging de payload ongezien door: Opus of web_search kon er
   // zo bij, afgerekend tegen één tarief. Nu een vaste lijst.

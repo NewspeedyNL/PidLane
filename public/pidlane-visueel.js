@@ -833,19 +833,27 @@ function veegRichting(dx, dy){
   if(Math.abs(dx)<VEEG_MIN || Math.abs(dx)<1.5*Math.abs(dy)) return 0;
   return dx<0 ? 1 : -1;
 }
+/* Staat de themakeuze (🎨, .vt-strook van PLVisThema) open, dan veegt de duim
+   door de thema's en niet door de weergaven: zolang die strook er is wisselt
+   vegen niets. Ook een veeg die op de knoppen begint telt niet. */
+function veegMag(doel, vis){
+  if(vis && vis.querySelector && vis.querySelector('.vt-strook')) return false;
+  if(doel && doel.closest && doel.closest('.vt-strook, .vt-knoppen')) return false;
+  return true;
+}
 function veegAan(vis){
   if(!vis) return;
   let x0=null, y0=0;
   vis.addEventListener('touchstart', function(e){
     const t=e.touches && e.touches[0];
-    x0=(t && e.touches.length===1) ? t.clientX : null; y0=t ? t.clientY : 0;
+    x0=(t && e.touches.length===1 && veegMag(e.target, vis)) ? t.clientX : null; y0=t ? t.clientY : 0;
   }, { passive:true });
   vis.addEventListener('touchend', function(e){
     if(x0===null) return;
     const t=e.changedTouches && e.changedTouches[0]; const begin=x0; x0=null;
     if(!t) return;
     const r=veegRichting(t.clientX-begin, t.clientY-y0);
-    if(r) wissel(r);
+    if(r && veegMag(e.target, vis)) wissel(r);
   }, { passive:true });
 }
 function volgende(){ wissel(1); }
@@ -1898,7 +1906,7 @@ window.PLVisueel = {
   sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, herbouwKlant:herbouwKlant, maat:maat,
   rijVenster:rijVenster, VENSTER_MS:VIS_VENSTER_MS, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
   remt:remt, isOud:isOud, bouw:bouw, bij:bij, tik:tik, start:start, stop:stop,
-  volgende:volgende, wissel:wissel, veegRichting:veegRichting, profiel:profielNu, kiesPlek:kiesPlek, kandidaten:kandidaten, profielOpts:profielOpts,
+  volgende:volgende, wissel:wissel, veegRichting:veegRichting, veegMag:veegMag, profiel:profielNu, kiesPlek:kiesPlek, kandidaten:kandidaten, profielOpts:profielOpts,
   ververs:function(){ if(!_staat.aan) return; _staat.meldSleutel=''; meldBij(); },
   staat:function(){ return { aan:_staat.aan, start:_staat.start, traag:Array.from(_staat.traag),
                              turboVast:_staat.turboVast, gebruik:Array.from(_staat.gebruik), ind:_staat.ind, rijdtSinds:_staat.rijdtSinds }; }

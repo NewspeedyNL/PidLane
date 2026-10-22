@@ -349,6 +349,9 @@ MUTATIES=(
 "worker.js@@    if (!/^[A-Za-z0-9][A-Za-z0-9-]{1,60}$/.test(repo)) return@@    if (false) return@@test-klantplatform.js@@een OBDb-naam met / of .. gaat ongezien het net op, naar een ander pad op GitHub (#526)"
 "worker.js@@  if (payload.tools !== undefined) return@@  if (false) return@@test-kasboek.js@@web_search en andere tools gaan weer ongezien naar Anthropic (#526)"
 "worker.js@@  if (AI_MODELLEN.indexOf(payload.model) < 0) return@@  if (false) return@@test-kasboek.js@@elk model mag weer, ook Opus, tegen het Sonnet-tarief (#526)"
+"worker.js@@  if (!(Number.isInteger(d) && d >= 2 && d <= 9)) return rol;@@  return rol;@@test-kasboek.js@@een vervolgdeel bij max_tokens leest in het kasboek weer als een nieuwe analyse (#526)"
+"public/pidlane-fuel.js@@Number(maxTokens)||2048)*2);@@Number(maxTokens)||2048));@@test-vervolgdeel.js@@deel 1 stopt weer op het plafond van de aanroeper en de volle invoer gaat opnieuw (#526)"
+"public/pidlane-fuel.js@@      if(part>0) body.pl_deel=part+1;@@      if(false) body.pl_deel=part+1;@@test-vervolgdeel.js@@apiFetch meldt het vervolgdeel niet meer aan het kasboek (#526)"
 "worker.js@@  for (const k of Object.keys(payload)) if (AI_VELDEN.indexOf(k) < 0) delete payload[k];@@@@test-kasboek.js@@onbekende velden gaan weer mee naar Anthropic (#526)"
 "worker.js@@  if (r.ok && env && env.LOGDB)\n    await tegoedLog(@@  if (false && env && env.LOGDB)\n    await tegoedLog(@@test-kasboek.js@@calls van personeel en de beheerder laten weer geen spoor na (#526)"
 "worker.js@@            kasboek: r.ok ? aiVerbruikRegel(session.u, text, rol, \"tegoed uit\") : null@@            kasboek: null@@test-kasboek.js@@tegoed uit laat weer geen spoor na in het kasboek (#526)"
@@ -1065,6 +1068,7 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  if(b.v<VERMOGEN.LAAD_MIN_KMH) return 0;@@@@test-visueel.js@@de laadzone slaat uit bij het laatste stukje stilvallen, waar niets meer terugwint"
 "public/pidlane-visueel.js@@  if(heeftV && vraag>VERMOGEN.RUST){@@  if(heeftV && vraag>VERMOGEN.RUST && !(heeftL && laad>0)){@@test-visueel.js@@vertragen wint van gas geven: de naald slaat naar laden terwijl je optrekt na een bocht"
 "public/pidlane-visueel.js@@  if(heeftVraag) return 'vermogen';\n  return null;@@  return null;@@test-visueel.js@@zonder toerental weer geen naald, ook als het pedaal er is"
+"public/pidlane-visueel.js@@  if(vis && vis.querySelector && vis.querySelector('.vt-strook')) return false;@@@@test-visueel.js@@met de themakeuze open veegt de duim door de weergaven in plaats van door de thema's"
 "public/pidlane-visprofiel.js@@  if(elektrisch(motor) && p.hybride) return p.hybride.plekken;\n@@@@test-visprofiel.js@@een hybride krijgt weer de benzine-Neon: toerental 0 in het midden terwijl hij 50 rijdt (#435)"
 "public/pidlane-visprofiel.js@@function standaard(motor){ return elektrisch(motor) ? 'motor' : 'basis'; }@@function standaard(motor){ return 'basis'; }@@test-visprofiel.js@@een hybride opent weer op de toerennaald in plaats van de energieweergave"
 "public/pidlane-expertwerk.js@@    if (!(getal(omg.breed) >= LAPTOP_BREED)) redenen.push@@    if (false) redenen.push@@test-expertwerk.js@@een telefoon met een muis in een smal venster krijgt de laptopwerkplek"
@@ -1331,7 +1335,7 @@ MUTATIES=(
 "public/pidlane-intro.js@@    bezig = true;\n    onthoud();@@    bezig = true;@@test-intro.js@@de intro wordt niet onthouden en speelt bij elke herlaadbeurt opnieuw in plaats van één keer per sessie"
 "public/pidlane-intro.js@@    if (o.wachtMs > MAX_WACHT_MS) return@@    if (false) return@@test-intro.js@@na een trage opstart komt er nog eens bijna drie seconden intro bovenop"
 "public/pidlane-intro.js@@    if (ev && ev.type === 'pointerdown') { ev.preventDefault(); ev.stopPropagation(); }@@@@test-intro.js@@de tik die de intro overslaat drukt ook de knop eronder in, bijvoorbeeld de demo"
-"public/pidlane-intro.js@@  var DUUR_MS = 2900;@@  var DUUR_MS = 2000;@@test-intro.js@@de JS-timer ruimt de intro op midden in de doorzoom: het logo verdwijnt met een knip"
+"public/pidlane-intro.js@@  var DUUR_MS = 4900;@@  var DUUR_MS = 4000;@@test-intro.js@@de JS-timer ruimt de intro op midden in de doorzoom: het logo verdwijnt met een knip"
 "public/pidlane.css@@#plIntro:not(.pli-speel){ animation:pliNood .01s@@#plIntro:not(.pli-speel){ animation:pliKlaar .01s@@test-intro.js@@noodrem en eindregel delen één keyframe: Chromium telt de 2,85 s dan vanaf het laden en de intro valt midden in het beeld weg"
 "public/pidlane.css@@#plIntro.pli-speel .pli-logo{ animation:pliOverend @@#plIntro.pli-speel .pli-logo{ animation:pliOverEnd @@bproef-intro.js@@een verschreven keyframe-naam: geen fout in de console, maar het logo blijft de hele intro onzichtbaar"
 # ── #297: het log staat in D1, en het scherm zegt dat ──
@@ -1949,6 +1953,12 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  const vSt=plekOordeel('accu', extra.volt, null, extra.rpm);@@  const vSt=plekOordeel('accu', extra.volt, null);@@test-visueel.js@@het acculampje ziet niet meer dat een draaiende dynamo niet laadt"
 "public/pidlane-visueel.js@@  } else if(volt){@@  } else if(volt && m){@@test-visueel.js@@het acculampje brandt alleen als er ook een motoroordeel is: zonder PLAandrijving geen spanning"
 "public/pidlane-banden.js@@      uit[p] = (!st || st.ernst === 'geen' || !d || d.waarde === null || d.oud) ? 'geen' : w.ernst;@@      uit[p] = w ? w.ernst : 'geen';@@test-banden.js@@het autootje kleurt een band van een kwartier geleden groen"
+"public/pidlane-pidzoek.js@@    if (bytes.every(function (b) { return b === 0xFF; })) return@@    if (false) return@@test-pidzoek.js@@een antwoord van alleen FF (sensor niet beschikbaar) wordt als werkende sensor voorgesteld"
+"public/pidlane-pidzoek.js@@        if (p.ok && o.stem) await stem(o, c, 'werkt');@@        if (o.stem) await stem(o, c, 'werkt');@@test-pidzoek.js@@een code met een onmogelijke waarde krijgt in de bibliotheek een werkt-stem voor iedereen met dit model"
+"public/pidlane-pidzoek.js@@    if (u === '°C' && w <= -40) return@@    if (false) return@@test-pidzoek.js@@een ontbrekende temperatuursensor (−40 °C) wordt voorgesteld"
+"public/pidlane-survey2.js@@    if (b[0] * 2 === b.length - 1) b = b.slice(1);@@@@test-survey2.js@@de telbyte van IUPR wordt als teller gelezen: elke monitor schuift een plek op"
+"public/pidlane-survey2.js@@      if (!d || d.st !== 'ok' || typeof d.val !== 'number') return false;@@      if (!d || typeof d.val !== 'number') return false;@@test-survey2.js@@een PID die NO DATA gaf telt mee als plaatshouder"
+"public/pidlane-survey2.js@@      : rij('Mode 06', !m6.aantalTests ? '✗' : m6.aantalGezakt ? '~' : '✓'@@      : rij('Mode 06', m6.aantalGezakt ? '~' : '✓'@@test-survey2.js@@een auto zonder één monitortest krijgt een vinkje bij mode 06 in de campagnetabel"
 "public/pidlane.css@@body.pl-visueel #plLiveWaak, body.pl-visueel #plLiveRec { display:none !important; }@@@@bproef-visueel.js@@Bewaken en Opnemen staan weer onder Slim visueel, naast de waakronde en de recorder in het vak"
 # ── helling en G-kracht op één scherm (06-10-2026) ──
 "public/pidlane-visprofiel.js@@  return '<div class=\"vpf-tel-boven\"><div>'+htmlHorizon(p, ind, 'hz-', false)@@  return '<div class=\"vpf-tel-boven\"><div>'+htmlHorizon(p, ind, '', false)@@test-visprofiel.js@@de horizon en de autootjes delen hun element-id's: de horizon beweegt niet en een autootje draait verkeerd"
@@ -2033,6 +2043,11 @@ MUTATIES=(
 "public/index.html@@id=\"wc-liveshare\"@@id=\"wc-livedelen\"@@test-help.js@@een knop met een uitroepteken is hernoemd en de tip vindt hem niet meer"
 "public/index.html@@🩺 Check na verbinden<span@@🩺 Check na het verbinden<span@@test-help.js@@een menuregel is hernoemd en de handleiding noemt de oude tekst"
 "public/pidlane-help-inhoud.js@@Codes worden met de hand verstuurd.@@Codes kosten € 4,99.@@test-help.js@@er staat een prijs in de handleiding"
+# De beeldtaal (22-10-2026): een knoplabel in een stappenkaart veroudert net zo
+# stil als een in de tekst, en de weergave kan het beeld laten vallen.
+"public/pidlane-help-inhoud.js@@<b>● Start opname</b>' }@@<b>● Begin opname</b>' }@@test-help.js@@een knoplabel in een stappenkaart is verouderd en de test leest alleen de tekst"
+"public/pidlane-help.js@@(beeld ? '<details class=\"plh-meer\">@@(false ? '<details class=\"plh-meer\">@@test-help.js@@de lange tekst staat weer open onder de stappen in plaats van onder Meer uitleg"
+"public/pidlane-help.js@@    return svg ? svg.outerHTML : '';@@    return '';@@test-help.js@@het balkschema tekent zonder de echte iconen van de onderbalk"
 # ── berekende PIDs uit bronnen van één moment (#337, 01-10-2026) ──
 "public/pidlane-berekend.js@@      if (!samen(tijden)){@@      if (false){@@test-berekend.js@@bronnen van verschillende momenten rekenen weer samen: 96,7% rendement bij gas los"
 "public/pidlane-berekend.js@@  return Math.max.apply(null, t)-Math.min.apply(null, t)<=SAMEN_MS;@@  return Math.max.apply(null, t)-Math.min.apply(null, t)<=VERS_MS;@@test-berekend.js@@de bronnen van één berekening mogen weer 3 s uit elkaar liggen"

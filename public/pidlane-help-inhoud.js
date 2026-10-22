@@ -41,6 +41,9 @@ var PL_HULP = {
 
     /* ─────────────── BEGINNEN ─────────────── */
     { id: 'wat', groep: 'start', titel: 'Wat doet PidLane?',
+      icoon: '🚗', kort: 'Je auto uitlezen met een OBD2-adapter, of zonder adapter een kenteken, foutcode of lampje opzoeken.',
+      schema: { soort: 'stroom', delen: [{ i: '🚗', t: 'Auto' }, { i: '🔌', t: 'OBD2-adapter' }, { i: '📶', t: 'Bluetooth' }, { i: '📱', t: 'PidLane' }] },
+      tip: 'Nog geen adapter? Probeer alles met de demo. In de demo wordt niets bewaard.',
       tekst:
         '<p>PidLane leest je auto uit via een OBD2-adapter in de diagnosepoort: foutcodes, keuringsstatus en live metingen. ' +
         'Daarnaast kun je zonder adapter een kenteken opzoeken, een foutcode opzoeken of een dashboardlampje nakijken.</p>' +
@@ -49,6 +52,12 @@ var PL_HULP = {
       zie: ['verbinden', 'zonder'] },
 
     { id: 'navigatie', groep: 'start', titel: 'De onderbalk',
+      icoon: '🧭', kort: 'Vier tabs onderin brengen je overal.',
+      schema: { soort: 'balk', delen: [
+        { tab: 'auto', t: 'Home', u: 'het startscherm met Check mijn auto' },
+        { tab: 'live', t: 'Live', u: 'de metingen van nu' },
+        { tab: 'rapporten', t: 'Rapporten', u: 'wat PidLane heeft vastgelegd' },
+        { tab: 'meer', t: 'Meer', u: 'account, instellingen en hulp' }] },
       tekst:
         '<p>Na het inloggen (of in de demo) staat onderin een balk met vier tabs:</p>' +
         '<ul>' +
@@ -60,6 +69,13 @@ var PL_HULP = {
       zie: ['startscherm', 'meer'] },
 
     { id: 'startscherm', groep: 'start', titel: 'Het startscherm',
+      icoon: '🏠', kort: 'Bovenaan meekijken en Check mijn auto, daaronder vier tegels voor wat je wilt doen.',
+      schema: { soort: 'tegels', delen: [
+        { i: '🔧', t: 'Er is iets mis', u: 'Klacht, lampje of geluid' },
+        { i: '🚗', t: 'Kopen of verkopen', u: 'Staat, historie en waarde' },
+        { i: '🛣️', t: 'Rit starten', u: 'Ritmonitor, zuinig, caravan' },
+        { i: '📅', t: 'Voorbereiden', u: 'Winter, lange rit, onderhoud' }] },
+      tip: 'Elke tegel begint met <b>Wat we al weten</b>: wat de app al over je auto heeft.',
       tekst:
         '<p>Bovenaan staat <a data-hulp="delen">Expert op afstand</a>: <b>Laat iemand meekijken</b> deelt je live data met je monteur of een kenner, <b>Ik ben de expert</b> is voor wie meekijkt.</p>' +
         '<p>Van oktober tot en met maart staat daarboven de <a data-hulp="winter">winterkaart</a>.</p>' +
@@ -76,6 +92,13 @@ var PL_HULP = {
       zie: ['check', 'zonder'] },
 
     { id: 'zonder', groep: 'start', titel: 'Zonder adapter',
+      icoon: '🔎', kort: 'Kenteken, lampjes en foutcodes opzoeken werkt ook zonder adapter.',
+      schema: { soort: 'tegels', delen: [
+        { i: '🪪', t: 'Kenteken-check', u: 'APK, verzekering, NAP, terugroepacties' },
+        { i: '🤔', t: 'Er is iets mis', u: 'wat het waarschijnlijk is' },
+        { i: '💡', t: 'Lampje brandt?', u: 'mag je doorrijden?' },
+        { i: '🔢', t: 'Foutcode opzoeken', u: 'bijvoorbeeld P0301' },
+        { i: '🎮', t: 'Simuleer verbinding', u: 'proberen, niets bewaard' }] },
       tekst:
         '<p>Op het startscherm staat een kaart voor als je niet in de auto zit. Daarop:</p>' +
         '<ul>' +
@@ -91,6 +114,7 @@ var PL_HULP = {
       zie: ['wat', 'verbinden'] },
 
     { id: 'winter', groep: 'start', titel: 'De winterkaart',
+      icoon: '❄️', kort: 'Van oktober tot en met maart: het weer voor je plaats en hoogstens één advies.',
       tekst:
         '<p>Van oktober tot en met maart staat bovenaan het startscherm een kaart voor de winter. De eerste keer vraagt hij je <b>profiel aan te passen voor de winterperiode</b>. Met <b>Later</b> komt die vraag dit seizoen niet meer terug.</p>' +
         '<p>Daarna zie je het weer van vandaag, morgen en overmorgen voor je plaats, en hoogstens één advies. Onder het weer staat hoe laat de verwachting is opgehaald; met <b>↻ Verversen</b> haal je hem meteen opnieuw. Met ✕ tik je een advies weg; een advies over het weer komt na een week terug als het dan nog geldt.</p>' +
@@ -105,6 +129,14 @@ var PL_HULP = {
       zie: ['startscherm', 'privacy'] },
 
     { id: 'verbinden', groep: 'start', titel: 'Verbinden met de auto',
+      icoon: '🔌', kort: 'Adapter erin, contact aan, Bluetooth aan. PidLane doet de rest.',
+      stappen: [
+        { i: '🔌', t: 'Steek de adapter in de OBD-poort', u: 'meestal onder het dashboard, aan de bestuurderskant' },
+        { i: '🔑', t: 'Zet het contact aan' },
+        { i: '📶', t: 'Zet Bluetooth aan op je telefoon' },
+        { i: '⚡', t: 'Tik op <b>⚡ Plug in. Let\'s go.</b>' },
+        { i: '⏱️', t: 'PidLane zoekt de adapter en de auto', u: 'daarna zie je de sensoren van jouw auto' }],
+      tip: 'Al eens verbonden met deze adapter en auto? Dan stelt PidLane geen vragen meer.',
       tekst:
         '<ol>' +
         '<li>Steek de adapter in de OBD-poort. Die zit meestal onder het dashboard aan de bestuurderskant.</li>' +
@@ -121,6 +153,13 @@ var PL_HULP = {
       zie: ['verbinden-mislukt', 'status'] },
 
     { id: 'verbinden-mislukt', groep: 'start', titel: 'Verbinden lukt niet',
+      icoon: '🛟', kort: 'Loop deze vier punten na, in deze volgorde.',
+      stappen: [
+        { i: '📶', t: 'Bluetooth aan, contact aan?', u: 'brandt er een lampje op de adapter?' },
+        { i: '📱', t: 'Sluit andere apps die de adapter gebruiken' },
+        { i: '🔁', t: 'Adapter tien seconden los, dan terug' },
+        { i: '⚡', t: 'Opnieuw met <b>⚡ Plug in. Let\'s go.</b>' }],
+      let: 'Zegt het scherm <b>Adapter reageert niet</b>? Zet de adapter op pair en tik op <b>🔌 Opnieuw verbinden</b>. Een protocol kiezen helpt dan niet.',
       tekst:
         '<ul>' +
         '<li>Staat Bluetooth aan? Staat het contact aan? Brandt er een lampje op de adapter?</li>' +
@@ -136,6 +175,11 @@ var PL_HULP = {
 
     /* ─────────────── GEBRUIKEN ─────────────── */
     { id: 'check', groep: 'gebruik', titel: 'Check mijn auto',
+      icoon: '🚦', kort: 'Foutcodes en keuringsstatus in ongeveer 30 seconden, samengevat in één stoplicht.',
+      schema: { soort: 'legenda', delen: [
+        { kleur: ['rood', 'oranje'], t: 'Rood of oranje', u: '<b>🔧 Oorzaak laten zoeken</b> start het volledige onderzoek' },
+        { kleur: 'groen', t: 'Groen', u: '<b>🧭 Toch grondig onderzoeken</b> als brede controle' }] },
+      let: 'Bewaar de codes eerst met <b>💾 Bewaren</b>: na wissen zijn ze weg. Wissen kan alleen na een verse uitlezing, met contact aan, motor uit en de auto stil.',
       tekst:
         '<p>Leest de foutcodes en de keuringsstatus uit en zet de uitkomst in één stoplicht. Daaronder staan de codes en drie vervolgstappen:</p>' +
         '<ul>' +
@@ -154,6 +198,7 @@ var PL_HULP = {
       zie: ['startscherm', 'rapporten', 'onderzoek'] },
 
     { id: 'onderzoek', groep: 'gebruik', titel: 'Volledig onderzoek',
+      icoon: '🔬', kort: 'Vertel wat je merkt; de app kiest hoe hij meet en zoekt de oorzaak.',
       tekst:
         '<p>Bij <b>Er is iets mis</b> kies je eerst <b>wat je merkt</b>: tik de tegels aan die passen (meer mag), of beschrijf het zelf — de app herkent wat je typt en neemt het mee. Heb je al een <b>foutcode</b> van de garage of een andere app, vul die dan in: hij telt als aanwijzing, de uitlezing van de auto beslist. Daarna kies je <b>wanneer</b> het speelt; daaruit volgt hoe de app meet. Met <b>Ik merk niets bijzonders</b> krijg je een algemene check.</p>' +
         '<p>Bij <b>Er is iets mis</b> staat bovenaan het plan <b>🧭 Volledig onderzoek</b>. Het werkt zoals een monteur: het stelt verdenkingen op uit je klacht, ' +
@@ -180,6 +225,7 @@ var PL_HULP = {
       zie: ['check'] },
 
     { id: 'verzamelen', groep: 'gebruik', titel: 'Data verzamelen vóór een analyse',
+      icoon: '📡', kort: 'Eerst genoeg metingen, dan pas een oordeel van de AI.',
       tekst:
         '<p>Elke analyse die de AI om een oordeel vraagt, begint met hetzelfde scherm: <b>📡 Data verzamelen</b>. Dat geldt voor de AI-monteur, het AI-rapport, de totaalcheck, de verbruiksanalyse, onderhoud, de EV-check, de lange-rit-check en de diepe storingsanalyse. ' +
         'Je ziet per sensor de waarde binnenkomen; een ✓ betekent dat er genoeg metingen van zijn. Een waarde die nu al opvalt, krijgt meteen een kleur.</p>' +
@@ -201,6 +247,12 @@ var PL_HULP = {
       zie: ['onderzoek', 'account'] },
 
     { id: 'status', groep: 'gebruik', titel: 'De statusknop bovenin',
+      icoon: '🟢', kort: 'Eén stip rechtsboven: de ernstigste kleur van auto-dossier, adapter en AI samen.',
+      schema: { soort: 'tegels', delen: [
+        { i: '🗂️', t: 'Auto-dossier', u: 'wat PidLane over de auto weet' },
+        { i: '🔌', t: 'Adapter (OBD)', u: 'hoe de verbinding het doet' },
+        { i: '🤖', t: 'AI-uitleg', u: 'of de AI bereikbaar is' },
+        { i: '⚙️', t: 'Achtergrond', u: 'wat er op de achtergrond loopt' }] },
       tekst:
         '<p>Rechtsboven staat één knop met een gekleurde stip en de naam van de auto, of <b>Niet verbonden</b>. ' +
         'De kleur is de ernstigste van auto-dossier, adapter en AI samen.</p>' +
@@ -210,6 +262,13 @@ var PL_HULP = {
       zie: ['verbinden'] },
 
     { id: 'live', groep: 'gebruik', titel: 'Live',
+      icoon: '📈', kort: 'De metingen van nu. Kies bovenaan hoe je kijkt.',
+      schema: { soort: 'tegels', delen: [
+        { i: '📋', t: 'Overzicht', u: 'alle sensoren per categorie' },
+        { i: '✨', t: 'Slim', u: 'de standaard: een rondgang langs de categorieën' },
+        { i: '⏲️', t: 'Visueel', u: 'één vaste meter' },
+        { i: '📉', t: 'Grafiek', u: 'tot drie sensoren in de tijd' }] },
+      tip: 'Een dubbeltik op een tegel verbergt hem. Hij wordt wel gewoon gemeten.',
       tekst:
         '<p><b>Live</b> in de onderbalk toont de metingen van de auto op dit moment. Bovenaan kies je hoe je kijkt: Overzicht, Slim, Visueel of <b>Grafiek</b>. ' +
         'Welke sensoren er gemeten worden kies je met <b>🎛️ Sensoren</b> linksboven.</p>' +
@@ -240,12 +299,25 @@ var PL_HULP = {
       zie: ['opnemen', 'delen'] },
 
     { id: 'opnemen', groep: 'gebruik', titel: 'Opnemen',
+      icoon: '⏺️', kort: 'Leg vast wat de auto doet terwijl het probleem gebeurt.',
+      stappen: [
+        { i: '🎛️', t: 'Tik op <b>⏺ Opnemen</b> en kies de sensoren' },
+        { i: '●', t: 'Tik op <b>● Start opname</b>' },
+        { i: '🛣️', t: 'Rijd en laat het probleem gebeuren' },
+        { i: '⏹️', t: 'Stop de opname' }],
       tekst:
         '<p><b>⏺ Opnemen</b> opent de recorder. Kies de sensoren, tik op <b>● Start opname</b>, rijd en laat het probleem gebeuren. ' +
         'Stop daarna de opname.</p>',
       zie: ['live', 'rapporten'] },
 
     { id: 'delen', groep: 'gebruik', titel: 'Delen en meekijken',
+      icoon: '👥', kort: 'Je monteur of een kenner kijkt live mee, waar hij ook is. Alleen lezen.',
+      schema: { soort: 'stroom', delen: [{ i: '🚗', t: 'Jouw auto' }, { i: '📱', t: 'Jij' }, { i: '🔒', t: 'PidLane-server' }, { i: '💻', t: 'Expert' }] },
+      stappen: [
+        { i: '▶️', t: 'Tik op <b>Start delen</b>' },
+        { i: '🔗', t: 'Kies hoe de expert binnenkomt', u: 'Code, QR, Link of Plakcode' },
+        { i: '⏹️', t: 'Klaar? Tik op <b>Stop delen</b>' }],
+      let: 'Deel de code alleen met iemand die je vertrouwt.',
       tekst:
         '<p><b>Laat iemand meekijken</b> (bovenaan Home, bij Expert op afstand) laat je monteur of een kenner live meekijken, waar hij ook is. Handig als de klacht alleen onderweg optreedt of de garage ver weg is. De expert ziet je sensordata en kan zelf waarden en foutcodes opvragen — ' +
         'alleen lezen: op afstand kan er niets aan de auto veranderd worden.</p>' +
@@ -262,6 +334,7 @@ var PL_HULP = {
       zie: ['live'] },
 
     { id: 'rapporten', groep: 'gebruik', titel: 'Rapporten',
+      icoon: '📄', kort: 'Alles wat PidLane heeft vastgelegd, ook als PDF.',
       tekst:
         '<p>De tab <b>Rapporten</b> toont wat PidLane in deze sessie heeft vastgelegd, zoals bewaarde uitlezingen en analyses.</p>' +
         '<p>Bij een AI-analyse maakt <b>⬇ Download PDF</b> altijd hetzelfde rapport: een voorblad met het oordeel in het kort, dan de auto, de vraag, de staat van de auto (foutcodes, keuringsstatus, een stoplicht per systeem), het testplan, de meting met een grafiek per sensor, de mogelijke oorzaken met wat ervóór en ertegen pleit, de conclusie met advies, en de grenzen van de meting. Achterin staan de meetwaarden per sensor en de volledige tekst van de AI, voor een monteur. De tabellen en grafieken komen uit de meting van de app zelf; wat niet gemeten is, staat er als niet gemeten.</p>' +
@@ -278,12 +351,14 @@ var PL_HULP = {
       zie: ['check', 'account'] },
 
     { id: 'afsluiten', groep: 'gebruik', titel: 'Rit beëindigen en afsluiten',
+      icoon: '⏏️', kort: 'Onderaan Meer: kies verbonden blijven, verbinding verbreken of de app sluiten.',
       tekst:
         '<p>Onderaan het menu Meer staat <b>⏏ Afsluiten</b>. Loopt er een rit, dan heet de knop <b>🏁 Rit beëindigen</b>.</p>' +
         '<p>Je kiest daarna wat er gebeurt: <b>Verbonden blijven</b>, <b>Verbinding verbreken</b> of <b>App sluiten</b>. Uitloggen zit er ook bij.</p>',
       zie: ['meer'] },
 
     { id: 'meer', groep: 'gebruik', titel: 'Het menu Meer',
+      icoon: '☰', kort: 'Account, voertuigen, voorkeuren en hulp.',
       tekst:
         '<p><b>Account</b></p>' +
         '<ul><li><b>👤 Mijn account en tegoed</b></li><li><b>🚗 Mijn voertuigen</b></li></ul>' +
@@ -303,12 +378,14 @@ var PL_HULP = {
       zie: ['uitroeptekens', 'garagemodus'] },
 
     { id: 'garagemodus', groep: 'gebruik', titel: 'Garagemodus',
+      icoon: '🔧', kort: 'Zet de vakgereedschappen erbij, zoals Alle functies en Bewaken.',
       tekst:
         '<p>Zet de vakgereedschappen erbij, zoals <b>Alle functies</b> op het startscherm en <b>◉ Bewaken</b> bij Live. ' +
         'Hij staat standaard uit; aanzetten doe je in Meer → Mijn voorkeuren.</p>',
       zie: ['meer'] },
 
     { id: 'rijmodus', groep: 'gebruik', titel: 'Rijmodus naast de kaart',
+      icoon: '🗺️', kort: 'Een smalle strook met waarden naast je navigatie.',
       tekst:
         '<p>Voor gesplitst scherm naast je navigatie. Zet hem aan in Meer → Mijn voorkeuren → <b>🚗 Rijmodus</b>; hij staat standaard uit.</p>' +
         '<p>Bovenaan staan koelwater, toerental, accu en de motorstatus als korte balkjes. De rest van het scherm toont het advies van de monitor die loopt: ' +
@@ -319,6 +396,7 @@ var PL_HULP = {
       zie: ['meer'] },
 
     { id: 'uitroeptekens', groep: 'gebruik', titel: 'De i-rondjes',
+      icoon: 'ℹ️', kort: 'Kleine i-rondjes op knoppen met een korte uitleg. Standaard uit.',
       tekst:
         '<p>Bij sommige knoppen staat een klein glazen rondje met een <b>i</b>. Tik erop voor een korte uitleg; de knop zelf wordt dan niet ingedrukt. ' +
         'Onder de uitleg staat een link naar het onderwerp in deze handleiding.</p>' +
@@ -327,6 +405,7 @@ var PL_HULP = {
 
     /* ─────────────── ACCOUNT EN GEGEVENS ─────────────── */
     { id: 'account', groep: 'account', titel: 'Account en tegoed',
+      icoon: '🪙', kort: 'Tokens zijn tegoed voor AI-analyses; uitlezen en live meten kosten niets.',
       tekst:
         '<p><b>Meer → 👤 Mijn account en tegoed</b> toont je tokens. Tokens zijn tegoed voor AI-analyses; uitlezen en live meten gebruiken geen tokens.</p>' +
         '<p>Heb je een activatiecode gekregen? Tik op <b>Activatiecode invullen</b>. Staat er <b>Tokens aanvragen</b>, dan opent je mailprogramma ' +
@@ -335,6 +414,7 @@ var PL_HULP = {
       zie: ['privacy'] },
 
     { id: 'privacy', groep: 'account', titel: 'Privacy en je gegevens',
+      icoon: '🔒', kort: 'Wat PidLane opslaat en waar, staat in het privacyscherm.',
       tekst:
         '<p>Wat PidLane opslaat, waar, en wat er met je chassisnummer gebeurt, staat in het privacyscherm. ' +
         'Dat is de tekst die telt; deze handleiding herhaalt hem niet, zodat er geen twee versies uit elkaar kunnen lopen.</p>' +
@@ -344,6 +424,7 @@ var PL_HULP = {
 
     /* ─────────────── HULP EN CONTACT ─────────────── */
     { id: 'contact', groep: 'hulp', titel: 'Een bug melden of contact',
+      icoon: '🐞', kort: 'Meld een bug; wat automatisch meegaat zie je vóór je verstuurt.',
       tekst:
         '<p><button type="button" data-hulp-doe="bug">🐞 Meld een bug</button></p>' +
         '<p>Beschrijf wat er misging en, als het kan, hoe je het kunt nadoen. Wat automatisch meegaat staat bovenin het venster, zodat je het ziet vóór je verstuurt.</p>' +
@@ -351,6 +432,7 @@ var PL_HULP = {
       zie: ['logboek'] },
 
     { id: 'logboek', groep: 'hulp', titel: 'Logboek',
+      icoon: '📜', kort: 'Wat de app deed, op tijd gesorteerd. Handig bij een bugmelding.',
       tekst:
         '<p><b>Meer → 📜 Logboek</b> toont wat de app deed, op tijd gesorteerd. Handig bij een bugmelding.</p>' +
         '<p><button type="button" data-hulp-doe="logboek">📜 Open Logboek</button></p>',

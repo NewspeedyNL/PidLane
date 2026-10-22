@@ -147,9 +147,14 @@ html, body { overflow-x:clip; }
      0,45–1,40  het logo komt in 3D overeind uit het wegdek
      0,55–1,60  ballon, pulslijn en weglijnen tekenen zich; 1,40 de vonk
      1,35–2,00  "PidLane" komt in beeld
-     2,25–2,80  doorzoom: het logo schiet op je af, de achtergrond gaat open
-     2,85       onzichtbaar en onaanraakbaar — ook als de JS-timer nooit komt
-   PLIntro.DUUR_MS (2900) hoort net ná die laatste regel te liggen. */
+     2,05       "PidLane" maakt plaats; de rijbaan blijft lopen
+     2,15–4,30  drie kaarten komen over de rijbaan op je af, elk ~1 s, elk met
+                een stukje app dat beweegt (22-10-2026): de meter met een naald
+                die uitslaat, het stoplicht dat op groen springt, een ritlijn
+                die zich tekent. Een tik slaat alles over (.pli-tip zegt het).
+     4,25–4,80  doorzoom: het logo schiet op je af, de achtergrond gaat open
+     4,85       onzichtbaar en onaanraakbaar — ook als de JS-timer nooit komt
+   PLIntro.DUUR_MS (4900) hoort net ná die laatste regel te liggen. */
 #plIntro{ position:fixed; inset:0; z-index:9700; overflow:hidden; font-family:var(--f);
   --s:min(42vw, 30vh, 200px); transition:opacity .22s ease; }
 #plIntro[hidden]{ display:none !important; }
@@ -159,7 +164,7 @@ html, body { overflow-x:clip; }
    loopt Chromium door op de oude starttijd en is 2,85 s gerekend vanaf het
    laden van de pagina in plaats van vanaf het spelen. */
 #plIntro:not(.pli-speel){ animation:pliNood .01s linear 8s forwards; }
-#plIntro.pli-speel{ animation:pliKlaar .01s linear 2.85s forwards; }
+#plIntro.pli-speel{ animation:pliKlaar .01s linear 4.85s forwards; }
 #plIntro.pli-weg{ opacity:0; }
 #plIntro .pli-bg{ position:absolute; inset:0; background:#05070c; }
 #plIntro .pli-gloed{ position:absolute; inset:0; opacity:0;
@@ -188,19 +193,50 @@ html, body { overflow-x:clip; }
   text-shadow:0 0 14px rgba(0,212,255,.35); }
 #plIntro .pli-naam span{ color:#4d82ff; text-shadow:0 0 10px rgba(77,130,255,.9), 0 0 26px rgba(77,130,255,.55); }
 
-#plIntro.pli-speel .pli-gloed{ animation:pliGloed 2.4s ease .4s both; }
-#plIntro.pli-speel .pli-baan{ animation:pliBaan .7s cubic-bezier(.3,.7,.3,1) both, pliUit .5s ease 1.85s forwards; }
-#plIntro.pli-speel .pli-d{ animation:pliStreep .75s cubic-bezier(.6,0,1,.5) 3 both; }
-#plIntro.pli-speel .pli-h{ animation:pliDwars 1.1s cubic-bezier(.6,0,1,.5) 2 both; }
+#plIntro.pli-speel .pli-gloed{ animation:pliGloed 4.2s ease .4s both; }
+#plIntro.pli-speel .pli-baan{ animation:pliBaan .7s cubic-bezier(.3,.7,.3,1) both, pliUit .5s ease 4.1s forwards; }
+#plIntro.pli-speel .pli-d{ animation:pliStreep .75s cubic-bezier(.6,0,1,.5) 6 both; }
+#plIntro.pli-speel .pli-h{ animation:pliDwars 1.1s cubic-bezier(.6,0,1,.5) 4 both; }
 #plIntro.pli-speel .pli-logo{ animation:pliOverend .95s cubic-bezier(.2,.8,.2,1) .45s both; }
 #plIntro.pli-speel .pli-ballon{ animation:pliTeken .7s cubic-bezier(.4,0,.2,1) .55s both; }
 #plIntro.pli-speel .pli-puls{ animation:pliTeken .45s ease-out 1.05s both; }
 #plIntro.pli-speel .pli-wegdek path{ animation:pliTeken .5s ease-out 1.1s both; }
 #plIntro.pli-speel .pli-vonk{ animation:pliVonk .5s cubic-bezier(.3,1.4,.5,1) 1.4s both; }
 #plIntro.pli-speel .pli-tegel{ animation:pliIn .5s ease 1.5s both; }
-#plIntro.pli-speel .pli-naam{ animation:pliNaam .65s cubic-bezier(.2,.8,.2,1) 1.35s both, pliUit .25s ease 2.25s forwards; }
-#plIntro.pli-speel .pli-zoom{ animation:pliDoor .55s cubic-bezier(.7,0,.9,.45) 2.25s forwards; }
-#plIntro.pli-speel .pli-bg{ animation:pliUit .5s ease 2.3s forwards; }
+#plIntro.pli-speel .pli-naam{ animation:pliNaam .65s cubic-bezier(.2,.8,.2,1) 1.35s both, pliUit .25s ease 2.05s forwards; }
+#plIntro.pli-speel .pli-zoom{ animation:pliDoor .55s cubic-bezier(.7,0,.9,.45) 4.25s forwards; }
+#plIntro.pli-speel .pli-bg{ animation:pliUit .5s ease 4.3s forwards; }
+/* de kaarten: vanaf het verdwijnpunt over de rijbaan naar je toe, en eronderdoor
+   weg. Elke kaart heeft zijn begin in --d; de beweging erin start .3 s later. */
+#plIntro .pli-reel{ position:absolute; left:0; right:0; top:calc(40% + var(--s)*.5 - 2px); bottom:0; pointer-events:none; }
+#plIntro .pli-kaart{ position:absolute; left:50%; top:0; width:min(64vw, 260px); padding:12px 14px 12px; box-sizing:border-box;
+  margin-left:calc(min(64vw, 260px) * -.5); text-align:center; opacity:0; transform-origin:50% 0;
+  background:linear-gradient(160deg, rgba(17,22,31,.94), rgba(10,14,20,.94)); border:1px solid rgba(0,212,255,.35); border-radius:18px;
+  box-shadow:0 0 18px rgba(0,212,255,.25), inset 0 0 22px rgba(0,255,136,.06); color:#eef2fa; will-change:transform, opacity, top; }
+#plIntro .pli-kaart svg{ display:block; width:62%; margin:0 auto 6px; overflow:visible; filter:drop-shadow(0 0 6px rgba(0,212,255,.45)); }
+#plIntro .pli-kaart b{ display:block; font-weight:800; font-size:17px; letter-spacing:.01em; }
+#plIntro .pli-kaart small{ display:block; font-size:12px; color:#9fb0c8; margin-top:2px; }
+#plIntro .pli-boog, #plIntro .pli-lijn{ stroke-dasharray:1; stroke-dashoffset:1; }
+#plIntro .pli-naald{ transform-box:view-box; transform-origin:60px 62px; transform:rotate(-120deg); }
+#plIntro .pli-l1, #plIntro .pli-l2, #plIntro .pli-l3{ opacity:.18; }
+#plIntro .pli-tip{ position:absolute; left:0; right:0; bottom:calc(16px + env(safe-area-inset-bottom, 0px)); text-align:center;
+  font-size:12px; letter-spacing:.08em; color:rgba(238,242,250,.45); opacity:0; }
+#plIntro.pli-speel .pli-kaart{ animation:pliKaart 1.05s cubic-bezier(.35,.1,.6,1) var(--d) both; }
+#plIntro.pli-speel .pli-boog{ animation:pliTeken .35s ease-out calc(var(--d) + .2s) both; }
+#plIntro.pli-speel .pli-naald{ animation:pliNaald .55s cubic-bezier(.3,1.5,.5,1) calc(var(--d) + .3s) both; }
+#plIntro.pli-speel .pli-l1{ animation:pliLamp .25s ease calc(var(--d) + .2s) both, pliUit .15s ease calc(var(--d) + .4s) forwards; }
+#plIntro.pli-speel .pli-l2{ animation:pliLamp .25s ease calc(var(--d) + .35s) both, pliUit .15s ease calc(var(--d) + .55s) forwards; }
+#plIntro.pli-speel .pli-l3{ animation:pliLampAan .3s ease calc(var(--d) + .55s) both; }
+#plIntro.pli-speel .pli-lijn{ animation:pliTeken .6s ease-out calc(var(--d) + .2s) both; }
+#plIntro.pli-speel .pli-tip{ animation:pliIn .4s ease 1s both, pliUit .3s ease 4.2s forwards; }
+@keyframes pliKaart{ 0%{top:0; opacity:0; transform:perspective(600px) rotateX(55deg) scale(.14)}
+  22%{opacity:1}
+  50%{top:14%; transform:perspective(600px) rotateX(0deg) scale(1)}
+  72%{top:20%; opacity:1; transform:perspective(600px) rotateX(-4deg) scale(1.06)}
+  100%{top:78%; opacity:0; transform:perspective(600px) rotateX(-22deg) scale(1.9)} }
+@keyframes pliNaald{ from{transform:rotate(-120deg)} to{transform:rotate(52deg)} }
+@keyframes pliLamp{ from{opacity:.18} to{opacity:1} }
+@keyframes pliLampAan{ 0%{opacity:.18; filter:none} 60%{opacity:1; filter:drop-shadow(0 0 8px #00FF88)} 100%{opacity:1; filter:drop-shadow(0 0 5px #00FF88)} }
 
 @keyframes pliNood{ to{ visibility:hidden; } }
 @keyframes pliKlaar{ to{ visibility:hidden; } }
@@ -3427,6 +3463,47 @@ body:not(.pl-garage) .choice-out { display:none; }
 .plh-geen { color:var(--tx3); }
 .plh-voet { font-size:13px; color:var(--tx3); margin-top:24px; }
 .plh-body [hidden] { display:none !important; }
+/* De beeldtaal van de handleiding (22-10-2026): tegels als inhoud, genummerde
+   stappen, schema's en kaders. Eerst het nodige; de lange tekst onder "Meer uitleg". */
+.plh-toc { background:none; border:none; padding:0; }
+.plh-toc ul { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap:8px; }
+.plh-toc li { padding:0; }
+.plh-body a.plh-toc-tegel { display:flex; gap:10px; align-items:flex-start; min-height:44px; box-sizing:border-box; height:100%; padding:10px 12px; border:1px solid var(--bd); border-radius:12px; background:var(--sur); color:var(--tx); text-decoration:none; }
+.plh-body a.plh-toc-tegel:active { background:var(--sur2); }
+.plh-toc-i { flex:none; width:36px; height:36px; border-radius:10px; background:var(--sur2); display:flex; align-items:center; justify-content:center; font-size:20px; }
+.plh-toc-t { font-weight:700; font-size:14px; line-height:1.3; }
+.plh-toc-t small { display:block; font-weight:400; font-size:12.5px; color:var(--tx3); margin-top:2px; }
+.plh-ond h3 { display:flex; align-items:center; gap:10px; }
+.plh-ond-i { flex:none; width:38px; height:38px; border-radius:10px; background:var(--sur2); display:flex; align-items:center; justify-content:center; font-size:21px; }
+.plh-kort { font-size:15.5px; font-weight:600; color:var(--tx2); }
+.plh-ond ol.plh-stappen { list-style:none; margin:10px 0; padding:0; display:grid; gap:8px; }
+.plh-ond .plh-stap { display:flex; align-items:center; gap:10px; margin:0; padding:10px 12px; border:1px solid var(--bd); border-radius:10px; background:var(--sur2); }
+.plh-stap-n { flex:none; width:26px; height:26px; border-radius:50%; background:var(--bl); color:#fff; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; }
+.plh-stap-i { flex:none; font-size:22px; width:28px; text-align:center; }
+.plh-stap-t { line-height:1.35; }
+.plh-stap-t small { display:block; font-size:13px; color:var(--tx3); }
+.plh-stroom { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px; margin:10px 0; padding:12px 8px; border-radius:12px; background:var(--sur2); }
+.plh-stroom-d { display:flex; flex-direction:column; align-items:center; gap:4px; min-width:64px; font-size:12.5px; font-weight:700; text-align:center; }
+.plh-stroom-i { width:44px; height:44px; border-radius:50%; background:var(--sur); border:1px solid var(--bd); display:flex; align-items:center; justify-content:center; font-size:22px; }
+.plh-stroom-p { color:var(--tx3); font-size:20px; font-weight:800; padding-bottom:18px; }
+.plh-tegels { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 140px), 1fr)); gap:8px; margin:10px 0; }
+.plh-tegel { display:flex; flex-direction:column; gap:2px; padding:10px; border:1px solid var(--bd); border-radius:10px; background:var(--sur2); font-size:14px; line-height:1.3; }
+.plh-tegel-i { font-size:22px; }
+.plh-tegel small { font-size:12.5px; color:var(--tx3); }
+.plh-balk { display:grid; grid-template-columns:repeat(4, 1fr); margin:12px 0 6px; border:1px solid var(--bd2); border-radius:14px; background:var(--sur2); overflow:hidden; }
+.plh-balk-tab { position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; padding:10px 2px 8px; font-size:11.5px; font-weight:700; }
+.plh-balk-tab svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.plh-balk-n { position:absolute; top:4px; left:6px; width:18px; height:18px; border-radius:50%; background:var(--bl); color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; }
+.plh-ond ol.plh-balk-uitleg { margin:6px 0 6px 22px; }
+.plh-ond ul.plh-legenda { list-style:none; margin:10px 0; padding:0; display:grid; gap:6px; }
+.plh-legenda li { display:flex; align-items:center; gap:10px; margin:0; }
+.plh-stippen { flex:none; display:flex; gap:3px; min-width:34px; }
+.plh-stip { width:14px; height:14px; border-radius:50%; box-shadow:0 0 0 2px var(--sur); }
+.plh-kader { margin:10px 0; padding:10px 12px; border-radius:10px; border-left:4px solid var(--bl); background:var(--bls, var(--sur2)); font-size:14.5px; }
+.plh-kader > b { display:block; font-size:13px; margin-bottom:2px; }
+.plh-kader-let { border-left-color:var(--or); background:var(--ors, var(--sur2)); }
+.plh-meer { margin-top:8px; border-top:1px dashed var(--bd); }
+.plh-meer > summary { cursor:pointer; min-height:44px; display:flex; align-items:center; font-weight:700; color:var(--bl); }
 
 .plh-houder { position:relative; }
 /* Een glazen knikker met een i (30-09-2026, keuze B uit vijf voorbeelden). Het
