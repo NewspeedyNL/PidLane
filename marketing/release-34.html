@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>PidLane 3.4-animatie</title>
+<!-- Releasevideo 3.4 voor Facebook/TikTok/Reels (1080x1920, 16 s). Zelfde opzet als
+     tiktok.html: elk beeld komt uit render(t), dus elk frame is reproduceerbaar.
+     Maak de video met: PAGINA=marketing/release-34.html node marketing/render-video.mjs marketing/pidlane-3.4.mp4
+     Inhoud volgt de release notes 3.4 in PLAY-INZENDING.md §14 — niets meer beloven dan daar. -->
+<style>
+@font-face{font-family:"Bricolage";src:url(fonts/bricolage.woff2) format("woff2");font-weight:200 800}
+@font-face{font-family:"Serif";src:url(fonts/instrument-serif-italic.woff2) format("woff2");font-style:italic}
+@font-face{font-family:"DM Sans";src:url(fonts/dmsans.woff2) format("woff2");font-weight:100 1000}
+@font-face{font-family:"DM Mono";src:url(fonts/dmmono-500.woff2) format("woff2");font-weight:500}
+:root{--ink:#07090d;--sur:#10151e;--ink2:#0c1017;--line:rgba(255,255,255,.1);--tx:#eef2f8;--mu:#8d97a8;--gn:#1fd189;--cy:#4fd6f0;--am:#ffb020;--rd:#ff5a5a;--grad:linear-gradient(95deg,var(--gn),var(--cy))}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--ink);overflow:hidden}
+#v{position:relative;width:1080px;height:1920px;overflow:hidden;color:var(--tx);font-family:"DM Sans",sans-serif;background:
+  radial-gradient(60% 40% at 80% 10%,rgba(79,214,240,.14),transparent 70%),radial-gradient(60% 40% at 10% 95%,rgba(31,209,137,.14),transparent 70%),var(--ink)}
+#grid{position:absolute;inset:0;opacity:.5;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:72px 72px;-webkit-mask-image:radial-gradient(70% 60% at 50% 45%,#000 30%,transparent 85%)}
+.sc{position:absolute;inset:0;opacity:0}
+.kop{position:absolute;left:90px;right:90px;top:230px;text-align:center}
+.kop .nr{display:inline-block;font:500 30px "DM Mono";letter-spacing:4px;color:var(--cy);padding:10px 22px;border-radius:999px;background:rgba(79,214,240,.1);margin-bottom:28px}
+.kop h1{font:800 112px/.98 "Bricolage";letter-spacing:-4px}
+.kop p{font:italic 66px/1.05 "Serif";margin-top:18px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.kaart{position:absolute;left:120px;right:120px;border-radius:44px;background:linear-gradient(180deg,#151b27,var(--sur));box-shadow:inset 0 0 0 2px rgba(255,255,255,.12),0 40px 90px rgba(0,0,0,.6);padding:40px}
+.wie{font:500 24px "DM Mono";letter-spacing:2px;color:var(--mu);text-transform:uppercase}
+.item{display:flex;gap:20px;align-items:center;font-size:34px;line-height:1.3;padding:22px 4px;border-bottom:1px solid var(--line)}
+.item::before{content:"";flex:none;width:18px;height:18px;border-radius:50%;background:var(--c)}
+.item span{margin-left:auto;font:500 30px "DM Mono";color:var(--mu)}
+
+/* 1 · titel */
+#s1 .groot{position:absolute;left:0;right:0;top:640px;text-align:center}
+#s1 .groot b{display:block;font:800 400px/1 "Bricolage";letter-spacing:-18px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+#s1 .groot small{display:block;font:italic 74px "Serif";color:var(--mu);margin-top:10px}
+/* 2 · aankooprapport */
+.pdf{position:absolute;left:190px;right:190px;top:700px;height:900px;border-radius:26px;background:#f4f6fa;color:#141a24;padding:52px 50px;box-shadow:0 50px 120px rgba(0,0,0,.7)}
+.pdf .hd{display:flex;justify-content:space-between;font:500 22px "DM Mono";color:#6a7384}
+.pdf h3{font:800 54px/1.05 "Bricolage";letter-spacing:-1px;margin:26px 0 30px}
+.pdf .rg{display:flex;gap:18px;align-items:center;font-size:28px;padding:16px 0;border-bottom:1px solid #dde2ea}
+.pdf .rg::before{content:"";flex:none;width:16px;height:16px;border-radius:50%;background:var(--c)}
+.pdf .ln{height:14px;border-radius:7px;background:#dde2ea;margin:18px 0}
+.stempel{position:absolute;right:-40px;bottom:120px;padding:24px 40px;border-radius:24px;border:6px solid var(--gn);color:#0c9a62;font:800 52px/1 "Bricolage";transform:rotate(-8deg);background:rgba(244,246,250,.9)}
+.stempel small{display:block;font:500 20px "DM Mono";letter-spacing:2px;margin-top:8px}
+/* 3 · wintercheck */
+.weer{display:flex;align-items:center;gap:30px;padding:10px 0 26px;border-bottom:1px solid var(--line)}
+.weer b{font:800 120px/1 "Bricolage";letter-spacing:-4px}
+.weer div{font-size:30px;color:var(--mu);line-height:1.35}
+.vlok{position:absolute;color:#cfe9ff;font-size:40px;opacity:.7}
+/* 4 · beeld-in-beeld */
+.tel{position:absolute;left:50%;top:640px;width:620px;height:1140px;margin-left:-310px;border-radius:70px;padding:16px;background:#05070b;box-shadow:inset 0 0 0 2px rgba(255,255,255,.12),0 60px 120px rgba(0,0,0,.7)}
+.tel .in{position:relative;height:100%;border-radius:56px;overflow:hidden;background:linear-gradient(180deg,#22314a,#141c2b)}
+.kaartje{position:absolute;inset:0;background:repeating-linear-gradient(35deg,rgba(255,255,255,.04) 0 40px,transparent 40px 80px)}
+.route{position:absolute;left:50%;top:0;bottom:0;width:26px;margin-left:-13px;background:#3a86ff;opacity:.6;border-radius:13px}
+.pip{position:absolute;right:30px;width:300px;height:300px;border-radius:34px;background:var(--ink);box-shadow:inset 0 0 0 2px rgba(255,255,255,.15),0 20px 50px rgba(0,0,0,.7)}
+.pip svg{position:absolute;inset:18px 18px 70px}
+.pip .wd{position:absolute;left:0;right:0;bottom:76px;text-align:center;font:500 40px "DM Mono"}
+.pip .stop{position:absolute;left:50%;bottom:16px;width:150px;margin-left:-75px;padding:10px 0;text-align:center;border-radius:999px;background:var(--rd);color:#fff;font:700 24px "Bricolage"}
+/* 5 · snel verbinden */
+.auto{display:flex;align-items:center;gap:26px}
+.auto .ic{flex:none;width:110px;height:110px;border-radius:30px;background:var(--ink2);display:grid;place-items:center;font-size:60px;box-shadow:inset 0 0 0 2px var(--line)}
+.auto b{display:block;font:800 46px/1.1 "Bricolage"}
+.auto small{font:500 26px "DM Mono";color:var(--mu)}
+.knop{margin-top:34px;padding:30px;border-radius:999px;text-align:center;font:700 40px "Bricolage";color:#04110c;background:var(--grad)}
+.stap{display:flex;align-items:center;gap:20px;font-size:32px;padding:18px 0;color:var(--mu)}
+.stap i{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:26px;background:var(--ink2);box-shadow:inset 0 0 0 2px var(--line)}
+.stap.ok{color:var(--tx)}.stap.ok i{background:var(--gn);color:#04110c;box-shadow:none}
+/* 6 · afsluiter */
+#eind{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+#eind svg{width:240px;height:240px}
+#eind h2{font:800 150px/1 "Bricolage";letter-spacing:-6px;margin-top:20px}
+#eind .sl{font:italic 64px "Serif";color:var(--mu);margin-top:10px}
+#eind .cta{margin-top:70px;font:700 54px "Bricolage";color:#04110c;background:var(--grad);padding:30px 64px;border-radius:999px;box-shadow:0 20px 70px rgba(31,209,137,.5)}
+#eind .sm{margin-top:34px;font-size:34px;color:var(--mu)}
+</style>
+</head>
+<body>
+<div id="v">
+  <div id="grid"></div>
+
+  <!-- 1 · nieuw -->
+  <section class="sc" id="s1">
+    <div class="kop"><h1>Nieuw in PidLane</h1><p>Klaar voor de winter.</p></div>
+    <div class="groot"><b id="ver">3.4</b><small>nu in de app</small></div>
+  </section>
+
+  <!-- 2 · aankooprapport -->
+  <section class="sc" id="s2">
+    <div class="kop"><span class="nr">01 · AANKOOPRAPPORT</span><h1>De koopcheck als PDF.</h1><p>Met een oordeel uit vaste regels.</p></div>
+    <div class="pdf" id="pdf">
+      <div class="hd"><span>PIDLANE · AANKOOPRAPPORT</span><span>22-10-2026</span></div>
+      <h3>Volkswagen Golf<br>1.4 TSI · 2017</h3>
+      <div class="rg" style="--c:var(--gn)">Geen actuele foutcodes</div>
+      <div class="rg" style="--c:var(--gn)">Zelftests doorlopen</div>
+      <div class="rg" style="--c:var(--gn)">Storingslampje uit</div>
+      <div class="rg" style="--c:var(--gn)">Foutcodes niet recent gewist</div>
+      <div class="ln" style="width:90%"></div><div class="ln" style="width:70%"></div><div class="ln" style="width:80%"></div>
+      <div class="stempel" id="stempel">Geen rode vlaggen<small>VASTE REGELS · GEEN GOK</small></div>
+    </div>
+  </section>
+
+  <!-- 3 · wintercheck -->
+  <section class="sc" id="s3">
+    <div id="sneeuw"></div>
+    <div class="kop"><span class="nr">02 · WINTERCHECK</span><h1>Is je auto winterklaar?</h1><p>Banden, sproeier en het weer.</p></div>
+    <div class="kaart" id="wk" style="top:760px">
+      <div class="weer"><b id="temp">-2°</b><div>vannacht in je woonplaats<br>kans op gladheid</div></div>
+      <div class="item" style="--c:var(--gn)" data-w>Bandenprofiel<span>5,1 mm</span></div>
+      <div class="item" style="--c:var(--am)" data-w>Ruitensproeier<span>vorstvrij?</span></div>
+      <div class="item" style="--c:var(--gn);border:0" data-w>Winterbanden<span>DOT 2023</span></div>
+    </div>
+  </section>
+
+  <!-- 4 · beeld-in-beeld -->
+  <section class="sc" id="s4">
+    <div class="kop" style="top:200px"><span class="nr">03 · BEELD-IN-BEELD</span><h1>Meten tijdens het navigeren.</h1></div>
+    <div class="tel" id="tel"><div class="in">
+      <div class="kaartje" id="kaartje"></div><div class="route"></div>
+      <div class="pip" id="pip" style="top:60px">
+        <svg viewBox="0 0 200 120"><path d="M20 110a80 80 0 0 1 160 0" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="14" stroke-linecap="round"/><path id="boog" d="M20 110a80 80 0 0 1 160 0" fill="none" stroke="url(#lg2)" stroke-width="14" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/><line id="naald" x1="100" y1="110" x2="100" y2="40" stroke="#fff" stroke-width="6" stroke-linecap="round"/><defs><linearGradient id="lg2" x1="0" x2="1"><stop offset="0" stop-color="#1fd189"/><stop offset="1" stop-color="#4fd6f0"/></linearGradient></defs></svg>
+        <div class="wd" id="tpm">0</div><div class="stop">■ Stop</div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- 5 · snel verbinden -->
+  <section class="sc" id="s5">
+    <div class="kop"><span class="nr">04 · SNEL VERBINDEN</span><h1>Kent de app je auto al?</h1><p>Dan sla je het zoeken over.</p></div>
+    <div class="kaart" id="sv" style="top:820px">
+      <div class="wie">Mijn voertuigen</div>
+      <div class="auto" style="margin-top:24px"><div class="ic">🚗</div><div><b>Mijn Golf</b><small>bekende adapter · bekend protocol</small></div></div>
+      <div class="knop" id="knop">⚡ Snel verbinden</div>
+      <div style="margin-top:20px">
+        <div class="stap" data-s><i>1</i>Adapter gevonden</div>
+        <div class="stap" data-s><i>2</i>Protocol van vorige keer</div>
+        <div class="stap" data-s><i>3</i>Verbonden — meten maar</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · afsluiter -->
+  <section class="sc" id="s6">
+    <div id="eind" style="position:absolute;inset:0;padding-bottom:160px">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lg" x1="0" x2="1"><stop offset="0" stop-color="#1fd189"/><stop offset="1" stop-color="#4fd6f0"/></linearGradient></defs><rect x="6" y="12" width="52" height="34" rx="11" fill="none" stroke="url(#lg)" stroke-width="4.5"/><path id="hart" d="M14 29h10l5-10 7 18 5-8h9" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></svg>
+      <h2>PidLane 3.4</h2>
+      <div class="sl">Your car talks. We translate.</div>
+      <div class="cta">pidlane.nl</div>
+      <div class="sm">Geen adapter? Probeer de demomodus.</div>
+    </div>
+  </section>
+</div>
+
+<script>
+// Tijdlijn in seconden. Alles hangt aan render(t); niets beweegt uit zichzelf.
+window.DUUR=16;
+const $=id=>document.getElementById(id);
+const cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const uit=x=>1-Math.pow(1-cl(x),3);
+const inuit=x=>{x=cl(x);return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;};
+const zicht=(t,a,b,f=.35)=>cl((t-a)/f)*cl((b-t)/f);
+const SC=[['s1',0,2.6],['s2',2.4,5.6],['s3',5.4,8.6],['s4',8.4,11.4],['s5',11.2,13.8],['s6',13.6,16.1]];
+
+// Sneeuwvlokken: vaste posities, dus elk frame is gelijk bij dezelfde t
+const VL=[...Array(22)].map((_,i)=>{const x=Math.sin(i*91.7)*43758.5;return [x-Math.floor(x),(i*0.37)%1,0.6+((i*7)%5)/10];});
+$('sneeuw').innerHTML=VL.map((_,i)=>'<span class="vlok" id="vl'+i+'">❄</span>').join('');
+
+function scene(t,id,a,b){
+  const el=$(id), v=zicht(t,a,b);
+  el.style.opacity=v;
+  const k=el.querySelector('.kop');
+  if(k) k.style.transform='translateY('+((1-uit((t-a)/.6))*40)+'px)';
+}
+function inSchuif(el,x,d){ el.style.opacity=x; el.style.transform='translateY('+(1-x)*d+'px)'; }
+
+function render(t){
+  SC.forEach(s=>scene(t,s[0],s[1],s[2]));
+
+  // 1 · "3.4" zoomt in
+  const z=uit((t-.3)/.9);
+  $('ver').style.transform='scale('+(0.6+0.4*z)+')'; $('ver').style.opacity=z;
+
+  // 2 · PDF schuift omhoog, regels verschijnen, stempel klapt erop
+  inSchuif($('pdf'),uit((t-2.5)/.7),160);
+  document.querySelectorAll('#pdf .rg').forEach((r,i)=>inSchuif(r,uit((t-3.1-i*.3)/.3),20));
+  const s=cl((t-4.5)/.35);
+  $('stempel').style.opacity=s;
+  $('stempel').style.transform='rotate(-8deg) scale('+(s<1?2.2-1.2*uit(s):1)+')';
+
+  // 3 · sneeuw valt, temperatuur zakt, items lopen binnen
+  VL.forEach((f,i)=>{ const e=$('vl'+i); const y=((f[1]+(t-5.4)*0.12*f[2])%1)*1920; e.style.left=(f[0]*1040)+'px'; e.style.top=(y-40)+'px'; e.style.transform='scale('+f[2]+')'; });
+  inSchuif($('wk'),uit((t-5.5)/.6),120);
+  $('temp').textContent=Math.round(6-8*uit((t-5.8)/1.2))+'°';
+  document.querySelectorAll('[data-w]').forEach((r,i)=>inSchuif(r,uit((t-6.4-i*.3)/.3),20));
+
+  // 4 · kaart scrolt, PiP-klokje met naald loopt op en neer
+  inSchuif($('tel'),uit((t-8.4)/.6),120);
+  $('kaartje').style.backgroundPosition='0 '+((t-8.4)*90)+'px';
+  const tp=cl((t-9)/.8)*(2100+500*Math.sin((t-9)*2.4));
+  const fr=tp/4000;
+  $('boog').setAttribute('stroke-dashoffset',1-fr);
+  $('naald').setAttribute('transform','rotate('+(-90+180*fr)+' 100 110)');
+  $('tpm').textContent=Math.round(tp/10)*10+' tpm';
+  $('pip').style.transform='scale('+(0.7+0.3*uit((t-8.8)/.4))+')';
+
+  // 5 · knop wordt ingedrukt, drie stappen klikken op groen
+  inSchuif($('sv'),uit((t-11.3)/.6),120);
+  const druk=t>12 && t<12.2;
+  $('knop').style.transform='scale('+(druk?.95:1)+')';
+  document.querySelectorAll('[data-s]').forEach((r,i)=>{ const ok=t>12.3+i*.4; r.classList.toggle('ok',ok); r.querySelector('i').textContent=ok?'✓':String(i+1); });
+
+  // 6 · hartslag tekent zichzelf, dan de rest
+  $('hart').setAttribute('stroke-dashoffset',1-uit((t-13.8)/.8));
+  document.querySelectorAll('#eind h2,#eind .sl,#eind .cta,#eind .sm').forEach((el,i)=>inSchuif(el,uit((t-14.1-i*.15)/.5),30));
+}
+window.render=render;
+
+if(!/opname/.test(location.search)){
+  const t0=performance.now();
+  (function loop(){ render(((performance.now()-t0)/1000)%DUUR); requestAnimationFrame(loop); })();
+} else render(0);
+</script>
+</body>
+</html>
