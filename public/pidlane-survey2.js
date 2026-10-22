@@ -88,7 +88,12 @@
   function iupr(raw, marker) {
     let b = bytesNa(raw, marker);
     if (!b || b.length < 4) return null;
-    if (b[0] * 2 === b.length - 1) b = b.slice(1);
+    // b[0] is NODI, het aantal 2-bytewaarden. Een ELM327 laat de opvulling van
+    // het laatste ISO-TP-frame staan (tot 6 bytes), en antwoordt een tweede
+    // ECU dan staat die er nog achter: knippen op NODI, niet op de lengte
+    // (#587; de echte Auris gaf 5120 ritten waar 24 stond).
+    const over = b.length - 1 - b[0] * 2;
+    if (b[0] >= 2 && over >= 0 && (over <= 6 || b[1 + b[0] * 2] === 0x49)) b = b.slice(1, 1 + b[0] * 2);
     const w = function (i) { return b[i] * 256 + b[i + 1]; };
     const namen = IUPR_NAAM[marker] || [];
     const uit = { ritten: w(0), contact: w(2), monitors: [] };
