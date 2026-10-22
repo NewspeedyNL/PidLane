@@ -15,6 +15,26 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 22-10-2026 — #526 afgesloten: vervolgdelen, gemeten in D1
+
+- **Punt 4 bleek achteraf meetbaar.** Een vervolgdeel heeft als invoer precies
+  invoer + uitvoer van het deel ervoor (plus de "ga verder"-zin), dus een
+  self-join op `kasboek` vindt ze zonder deelnummer. Over 10-09 t/m 20-10:
+  39 AI-regels, **6 vervolgdelen in 5 analyses**, 54k van 813k invoertokens
+  (6,7%) en 39 van 591 credits.
+- **Deel 1 stopte telkens precies op het plafond van de aanroeper** (600, 1600,
+  4000), deel 2 schreef daarna 9 tot 1009 tokens. Het plafond was dus te
+  krap, niet het rapport te lang. Oplossing: `apiFetch` vraagt 2× het plafond
+  (max 8192, de Worker-grens). Uitvoer kost alleen wat er komt; het model ziet
+  het plafond niet. De vervolglus blijft als vangnet, en draagt nu `pl_deel`
+  zodat het kasboek "vervolgdeel N" toont.
+- **Prompt caching afgewezen**: de schrijfopslag (×1,25) valt op élke call om
+  6,7% van de invoer te besparen. Duurder dan het probleem.
+- **Punt 5 (goedkoper model)**: besluit beheerder 22-10-2026 — alles blijft op
+  Sonnet 5, één tarief. Haiku 4.5 staat wel in de toegestane lijst van de Worker.
+
+---
+
 ## 21-10-2026 — #524 afgesloten: wat er van de drie vragen over is
 
 - **De logregel** was op 15-10 al hersteld (`meld()` na `volgServer()`); nu

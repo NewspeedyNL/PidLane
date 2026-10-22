@@ -579,10 +579,18 @@ __name(klantTegoedUit, "klantTegoedUit");
 // voor het kasboek: Anthropic kent het veld niet en weigert de call ermee, dus
 // het gaat eraf vóórdat de payload doorgaat. Op 15-10-2026 kostte één call 85
 // tokens en zei het kasboek alleen "analyse afgeboekt" — niet wélke.
+//
+// Ook `pl_deel` (#526, punt 4): apiFetch haalt bij stop_reason max_tokens tot
+// twee vervolgdelen op, en elk deel stuurt de volledige invoer opnieuw. Elk deel
+// is een eigen call en dus een eigen kasboekregel, maar daaraan was niet te
+// zien dat het een vervolg was. Alleen deel 2 en 3 dragen het veld.
 function plRolUit(payload) {
   const v = payload ? payload.pl_rol : undefined;
-  if (payload) delete payload.pl_rol;
-  return typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, 80) : "";
+  const d = payload ? Number(payload.pl_deel) : NaN;
+  if (payload) { delete payload.pl_rol; delete payload.pl_deel; }
+  const rol = typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, 80) : "";
+  if (!(Number.isInteger(d) && d >= 2 && d <= 9)) return rol;
+  return (rol ? rol + " \u2014 " : "") + "vervolgdeel " + d;
 }
 __name(plRolUit, "plRolUit");
 // Wat de app naar Anthropic mag sturen (#526). Tot 15-10-2026 ging de payload
