@@ -36,7 +36,7 @@
 // antwoorden alleen waar de opname ze heeft. Dat blijft voor CAMPAGNE.
 //
 // Draaien vanuit public/:  node bproef-merken.js          (zes auto's)
-//                          node bproef-merken.js --alle   (alle zestien)
+//                          node bproef-merken.js --alle   (alle 21)
 //                          node bproef-merken.js golf16   (één auto)
 // TEGENPROEF: plmutate.sh telt in realScanDTC() de telbyte mee als code;
 // de Peugeot (P0420) en de Auris worden dan rood.
@@ -49,8 +49,8 @@ const PROFIELEN = require('./nepauto-profielen.js');
 const NEP = fs.readFileSync(path.join(__dirname, 'nepauto.js'), 'utf8');
 const PLNepAuto = require('./nepauto.js');
 
-// Zes die samen elk protocol, elke brandstof en de echte opname dekken.
-const KEUZE = ['cx5', 'p208', 'auris', 'fiat500', 'merc00', 'mercdiesel'];
+// Zeven die samen elk protocol, elke brandstof (ook elektrisch) en de echte opname dekken.
+const KEUZE = ['cx5', 'p208', 'auris', 'fiat500', 'merc00', 'mercdiesel', 'niroev'];
 const BEKEND = {
 };
 
@@ -134,9 +134,12 @@ async function rij(id) {
     const kreeg = (sv.dtc.actief || []).slice().sort().join(',');
     if (kreeg !== dtc.slice().sort().join(',')) bevinding('dtc:' + id, 'foutcodes van de auto: ' + (dtc.join(',') || 'geen'), 'de app las ' + (kreeg || 'geen'));
     else toets('foutcodes precies die van de auto: ' + (dtc.join(',') || 'geen'), true);
-    if (/^[6-9]$/.test(p.proto)) toets('ECU\'s op de bus: ' + p.ecus.length, sv.ecus.n === p.ecus.length, JSON.stringify(sv.ecus));
+    // Alleen ECU's met mode-01-PIDs antwoorden op 0100; de UDS-ECU's (VAG 77A, PSA 682) niet.
+    const obdEcus = p.ecus.filter((e) => String(e.pids || '').trim()).length;
+    if (/^[6-9]$/.test(p.proto)) toets('ECU\'s op de bus: ' + obdEcus, sv.ecus.n === obdEcus, JSON.stringify(sv.ecus));
 
-    toets('cijfer van de uitgebreide test ≥ 8', sv.ft && sv.ft.cijfer >= 8, sv.ft && (sv.ft.cijfer + ' ' + (sv.ft.plafond || []).join(', ')));
+    const minC = p.minCijfer || 8;
+    toets('cijfer van de uitgebreide test ≥ ' + minC + (p.minCijferWaarom ? ' (' + p.minCijferWaarom + ')' : ''), sv.ft && sv.ft.cijfer >= minC, sv.ft && (sv.ft.cijfer + ' ' + (sv.ft.plafond || []).join(', ')));
     const bs = p.brandstof === 'diesel' ? 'diesel' : p.brandstof === 'elektrisch' ? 'elektrisch' : 'benzine';
     toets('brandstof in het oordeel: ' + bs, sv.ft && sv.ft.brandstof === bs, sv.ft && sv.ft.brandstof);
     const km = (sv.v2 && sv.v2.kenmerk) || {};

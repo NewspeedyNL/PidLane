@@ -516,7 +516,9 @@ const PL_NEPAUTO_PROFIELEN = [
    }
   ],
   "bron": "OBDb Kia-Niro-EV 2022",
-  "readiness": "000000"
+  "readiness": "000000",
+  "minCijfer": 6,
+  "minCijferWaarom": "mode 01 heeft geen snelheid: de basismeter blijft leeg; de waarde komt uit de BMS-codes van OBDb"
  },
  {
   "id": "konaev",
@@ -541,7 +543,9 @@ const PL_NEPAUTO_PROFIELEN = [
    }
   ],
   "bron": "OBDb Hyundai-Kona-Electric 2021",
-  "readiness": "000000"
+  "readiness": "000000",
+  "minCijfer": 6,
+  "minCijferWaarom": "mode 01 heeft geen snelheid: de basismeter blijft leeg; de waarde komt uit de BMS-codes van OBDb"
  },
  {
   "id": "id3",
