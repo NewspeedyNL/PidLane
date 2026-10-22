@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Zes fouten uit de nagebouwde merken gerepareerd (#584–#589)
+ ═══════════════════════════════════════════════════════════
+
+ - Foutcodes op K-lijn: geen spookcode meer bij automatisch protocol (#584).
+ - EGR en spoelklep op 0 % stationair blijven staan (#585).
+ - Discovery leest de bitmaps van alle ECU's: 015B bij Toyota-hybrides (#586).
+ - IUPR (0908) klopt met ISO-TP-opvulling (#587).
+ - Merk uit de VIN voor Europese fabrieken: Toyota, Kia, Hyundai, Dacia… (#588).
+ - Hybride is alleen e-CVT bij Toyota/Lexus/Ford/Suzuki (#589).
+ - Nieuwe tests: test-dtcprotocol.js, test-steunbits.js, test-vinmerk.js.
+
+ ═══════════════════════════════════════════════════════════
  22-10-2026 — #541 zonder rit: de uitgebreide test op zestien auto's
  ═══════════════════════════════════════════════════════════
 

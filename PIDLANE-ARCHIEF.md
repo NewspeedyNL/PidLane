@@ -46,6 +46,13 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
   `Benzine/Elektriciteit` in `vehicleInfo.brandstof`; de app las de hybrides
   toen als "elektrisch". Dat was de opzet, niet de app: de RDW-route gaat via
   `normBrandstof()`. Een eigen tegenproef had dit eerder gezien.
+- **Dezelfde dag gerepareerd.** #584: zes plekken vroegen "CAN?" aan de eerste
+  letter; nu allemaal `plProtocolBits()`. #585: 012C/012E/0169 in
+  `PID_NUL_NORMAAL`. #586: `plSteunbitsUit()` verenigt de bitmaps — óók in
+  `profielTegenSteunbits()`, dat anders de PIDs van de tweede ECU juist weer
+  uit het profiel had gegooid. #587: IUPR knipt op NODI. #588: 40 WMI's erbij.
+  #589: e-CVT alleen bij Toyota/Lexus/Ford/Suzuki; RPM_CONST en RATIO_CONST
+  leunden stil op "hybride ⇒ cvt" en kregen een eigen hybride-voorwaarde.
 - **Grenzen.** Waarden bij OBDb-auto's zijn aangenomen (stationair, warm);
   29-bit ECU-adressen, opvulbytes en foutcodes ook. Een volle bus, UDS en
   mode 06 buiten de opname blijven voor `CAMPAGNE`.
