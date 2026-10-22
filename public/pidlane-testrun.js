@@ -2787,6 +2787,63 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Dekking van het NL-wagenpark (22-10-2026): RDW, OBDb, EV's ──
+  {
+    issue: 'dekking',
+    naam: 'OBDb vindt je model ook als RDW het merk in de naam zet (TOYOTA AYGO), Opel VauxhallOpel heet, of het een zustermodel is (Skoda Octavia → Golf)',
+    waarom: 'Gemeten over 9,3 miljoen NL-auto\'s (RDW): 51% vond een OBDb-model, nu 82%.',
+    proef: async function () {
+      if (!window.PLEigen || typeof PLEigen.obdbKoppel !== 'function') return { staat: 'FOUT', detail: 'PLEigen.obdbKoppel ontbreekt — oude pidlane-uitgebreid.js (herladen?)' };
+      var t = [['TOYOTA', 'TOYOTA AYGO', '', 'Toyota-Aygo'], ['OPEL', 'CORSA', '', 'VauxhallOpel-Corsa'], ['SKODA', 'OCTAVIA', '', 'Volkswagen-Golf'], ['KIA', 'NIRO', 'elektrisch', 'Kia-Niro-EV']];
+      var mis = t.filter(function (x) { return PLEigen.obdbKoppel(x[0], x[1], x[2]).namen[0] !== x[3]; });
+      if (mis.length) return { staat: 'FOUT', detail: 'verkeerd gekoppeld: ' + mis.map(function (x) { return x[1]; }).join(', ') };
+      return { staat: 'OK', detail: 'Rij: Mijn voertuigen → Sensoren → Zoek codes bij een auto die eerder "niet in OBDb" gaf; het model wordt nu gevonden' };
+    }
+  },
+  {
+    issue: 'antwoordadres',
+    naam: 'Eigen codes met een ander antwoordadres (VAG 70E>778, PSA 6A2>682): ATCRA en flow control, en daarna alles terug',
+    waarom: 'Een derde van de NL-auto\'s met een OBDb-model kreeg geen enkele code, omdat VAG, PSA en Opel niet op zendadres + 8 antwoorden.',
+    proef: async function () {
+      if (!window.PLEigen || typeof PLEigen.controleer !== 'function') return { staat: 'FOUT', detail: 'PLEigen ontbreekt' };
+      if (!PLEigen.controleer({ code: '222A0C', naam: 'x', ecu: '710>77A', formule: '[10]' }).ok) return { staat: 'FOUT', detail: 'tx>rx of [n] wordt geweigerd' };
+      if (PLEigen.obdbAdres({ hdr: '70E', rax: '778' }) !== '70E>778') return { staat: 'FOUT', detail: 'OBDb-adres 70E→778 niet als tx>rx' };
+      return { staat: 'LET OP', detail: 'nog nooit op een auto gedaan. Rij met een VW of Peugeot: Zoek codes, test een code met > in het adres (accu of km-stand); komt er een waarde, en werkt de live view daarna nog?' };
+    }
+  },
+  {
+    issue: 'ev',
+    naam: 'Uitgebreide test op een elektrische auto: geen plafond "geen toerental", motorweergaven tellen niet mee',
+    waarom: 'Een Kia Niro EV (mode 01: 01 21 30 31 5B) kreeg cijfer 5.',
+    proef: async function () {
+      if (!window.PLFunctieTest || !PLFunctieTest.KERN_EV) return { staat: 'FOUT', detail: 'PLFunctieTest.KERN_EV ontbreekt — oude pidlane-functietest.js (herladen?)' };
+      return { staat: 'OK', detail: 'kern EV: ' + PLFunctieTest.KERN_EV.join(', ') + '. Rij met een EV: Full function test; het cijfer is niet begrensd op 5' };
+    }
+  },
+  {
+    issue: 'rdwnaam',
+    naam: 'Koopcheck: 208, UP!, KA+, MG ZS en SMART #1 zijn geldige modelnamen',
+    waarom: '6% van het NL-wagenpark (elke Peugeot) gaf "onbetrouwbare modelnaam".',
+    proef: async function () {
+      if (typeof _rdwPlausibleName !== 'function') return { staat: 'FOUT', detail: '_rdwPlausibleName ontbreekt' };
+      var mis = ['208', 'UP!', 'KA+', 'MG ZS', '#1'].filter(function (x) { return !_rdwPlausibleName(x); });
+      if (mis.length || _rdwPlausibleName('========')) return { staat: 'FOUT', detail: 'geweigerd: ' + mis.join(', ') };
+      return { staat: 'OK', detail: 'Rij: niet nodig — kenteken-check van een Peugeot toont het model' };
+    }
+  },
+  {
+    issue: 'dtcmerk',
+    naam: 'Foutcodes: een fabrikantcode (P1xxx) krijgt geen tekst meer van een ander merk',
+    waarom: 'Een Peugeot met P1340 kreeg de BMW-uitleg "krukassensor".',
+    proef: async function () {
+      if (typeof dtcInfo !== 'function' || typeof vehicleInfo === 'undefined') return { staat: 'FOUT', detail: 'dtcInfo ontbreekt' };
+      var oud = vehicleInfo.merk; vehicleInfo.merk = 'Peugeot';
+      var d; try { d = dtcInfo('P1340').desc; } finally { vehicleInfo.merk = oud; }
+      if (!/fabrikantspecifiek/.test(d)) return { staat: 'FOUT', detail: 'Peugeot P1340: ' + d };
+      return { staat: 'OK', detail: 'Rij: niet nodig' };
+    }
+  },
+
   // ── #541 zonder rit: zes fouten uit bproef-merken.js (#584–#589) ──
   {
     issue: '584',
