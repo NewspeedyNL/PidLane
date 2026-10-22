@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Slim visueel: vegen staat stil zolang de themakeuze open is
+ ═══════════════════════════════════════════════════════════
+
+ - `veegMag()` in pidlane-visueel.js: met de 🎨-strook open (of een veeg die
+   op de knoppen begint) wisselt vegen geen weergave. Test in
+   test-visueel.js, mutatie in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  22-10-2026 — Versie 3.4.0 voor de release
  ═══════════════════════════════════════════════════════════
 

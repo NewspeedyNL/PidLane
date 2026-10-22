@@ -1065,6 +1065,7 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  if(b.v<VERMOGEN.LAAD_MIN_KMH) return 0;@@@@test-visueel.js@@de laadzone slaat uit bij het laatste stukje stilvallen, waar niets meer terugwint"
 "public/pidlane-visueel.js@@  if(heeftV && vraag>VERMOGEN.RUST){@@  if(heeftV && vraag>VERMOGEN.RUST && !(heeftL && laad>0)){@@test-visueel.js@@vertragen wint van gas geven: de naald slaat naar laden terwijl je optrekt na een bocht"
 "public/pidlane-visueel.js@@  if(heeftVraag) return 'vermogen';\n  return null;@@  return null;@@test-visueel.js@@zonder toerental weer geen naald, ook als het pedaal er is"
+"public/pidlane-visueel.js@@  if(vis && vis.querySelector && vis.querySelector('.vt-strook')) return false;@@@@test-visueel.js@@met de themakeuze open veegt de duim door de weergaven in plaats van door de thema's"
 "public/pidlane-visprofiel.js@@  if(elektrisch(motor) && p.hybride) return p.hybride.plekken;\n@@@@test-visprofiel.js@@een hybride krijgt weer de benzine-Neon: toerental 0 in het midden terwijl hij 50 rijdt (#435)"
 "public/pidlane-visprofiel.js@@function standaard(motor){ return elektrisch(motor) ? 'motor' : 'basis'; }@@function standaard(motor){ return 'basis'; }@@test-visprofiel.js@@een hybride opent weer op de toerennaald in plaats van de energieweergave"
 "public/pidlane-expertwerk.js@@    if (!(getal(omg.breed) >= LAPTOP_BREED)) redenen.push@@    if (false) redenen.push@@test-expertwerk.js@@een telefoon met een muis in een smal venster krijgt de laptopwerkplek"

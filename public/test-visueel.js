@@ -984,6 +984,14 @@ waar('te kort (40 px): niets', V.veegRichting(-40, 0) === 0);
 waar('schuin scrollen (80 opzij, 70 omlaag): niets', V.veegRichting(-80, 70) === 0);
 waar('verticaal scrollen: niets', V.veegRichting(5, 200) === 0);
 waar('geen getal: niets', V.veegRichting(NaN, 0) === 0);
+// Themakeuze open: vegen schuift door de thema's, niet door de weergaven.
+const visDicht = { querySelector: function(){ return null; } };
+const visOpen = { querySelector: function(q){ return q === '.vt-strook' ? {} : null; } };
+const inStrook = { closest: function(q){ return /vt-strook/.test(q) ? {} : null; } };
+const opMeter = { closest: function(){ return null; } };
+waar('veeg op de meter, strook dicht: mag', V.veegMag(opMeter, visDicht) === true);
+waar('themastrook open: vegen wisselt niet', V.veegMag(opMeter, visOpen) === false);
+waar('veeg begint in de strook: wisselt niet', V.veegMag(inStrook, visDicht) === false);
 
 console.log('\n' + (fout ? 'FOUT: ' : 'goed: ') + ok + ' ok, ' + fout + ' fout\n');
 process.exit(fout ? 1 : 0);
