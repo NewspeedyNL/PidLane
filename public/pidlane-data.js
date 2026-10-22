@@ -1091,7 +1091,14 @@ window.STANDAARD_PIDS =[
 window.PID_NUL_NORMAAL = {
   '0101': 'motorlampje uit',
   '0121': 'geen afstand gereden met het lampje aan',
-  '014D': 'geen tijd met het lampje aan'
+  '014D': 'geen tijd met het lampje aan',
+  // Stationair dicht (#585, 22-10-2026). Gevonden met bproef-merken.js op alle
+  // zestien nagebouwde auto's; de échte opname van een Toyota Auris hybride
+  // geeft 41 2C 00 en 41 2E 00. Een EGR-klep en een spoelklep die bij
+  // stationair dicht staan zijn gezond, niet afwezig.
+  '012C': 'EGR-klep stationair dicht',
+  '012E': 'spoelklep stationair dicht',
+  '0169': 'EGR-klep stationair dicht'
 };
 
 // ── PID_ALT_KANAAL — dezelfde grootheid, andere bron (27-07-2026) ──────

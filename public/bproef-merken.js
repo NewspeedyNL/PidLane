@@ -52,9 +52,6 @@ const PLNepAuto = require('./nepauto.js');
 // Zes die samen elk protocol, elke brandstof en de echte opname dekken.
 const KEUZE = ['cx5', 'p208', 'auris', 'fiat500', 'merc00', 'mercdiesel'];
 const BEKEND = {
-  'nul:012C': '#585 nul stationair = "niet aanwezig"',
-  'nul:012E': '#585 nul stationair = "niet aanwezig"',
-  'nul:0169': '#585 nul stationair = "niet aanwezig"',
   'tweede-ecu': '#586 alleen de eerste ECU telt bij de discovery',
   'iupr:auris': '#587 IUPR met ISO-TP-opvulling',
   'merk:auris': '#588 Europese fabriekscodes (WMI)',

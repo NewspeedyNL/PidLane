@@ -93,6 +93,12 @@ console.log('1. Nul is bij de MIL-familie het GEZONDE antwoord, geen ontbrekende
     toets(pid + ' (' + DEFS[pid].name + ') met waarde 0 is ok', q.status === 'ok',
           'oordeel: ' + q.status + ' — ' + q.reden);
   });
+  // #585: EGR en spoelklep staan stationair dicht. Echte Auris: 41 2C 00, 41 2E 00.
+  ['012C', '012E', '0169'].forEach(function (pid) {
+    const q = assess(pid, 0, true);
+    toets(pid + ' (' + DEFS[pid].name + ') stationair dicht (0 %) is ok', q.status === 'ok',
+          'oordeel: ' + q.status + ' — ' + q.reden);
+  });
   toets('en de lijst staat op één plek (PID_NUL_NORMAAL)', !!(win.PID_NUL_NORMAAL && win.PID_NUL_NORMAAL['0101']),
         'PID_NUL_NORMAAL ontbreekt in pidlane-data.js');
 }

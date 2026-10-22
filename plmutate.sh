@@ -100,6 +100,7 @@ MUTATIES=(
 "public/pidlane-diagbundel.js@@const ds=idx>=0?idx+hdr.length:4;@@const ds=idx>=0?idx+hdr.length-2:4;@@test-parser.js@@parsePID slaat de header-echo één byte te vroeg over"
 "public/pidlane-diagbundel.js@@if(/[0-9A-Fa-f]\s*:/.test(line)){@@if(false){@@test-parser.js@@de batch-splitser ziet de framemarkers niet meer"
 "public/pidlane-datalog.js@@if(lim&&(rawVal<lim.min||rawVal>lim.max)){@@if(false){@@test-parser.js@@laag 1 laat fysiek onmogelijke waarden door"
+"public/pidlane-data.js@@  '012E': 'spoelklep stationair dicht',@@  '012X': 'spoelklep stationair dicht',@@test-healthherziening.js@@een dichte spoelklep stationair heet weer "waarschijnlijk niet aanwezig" (#585)"
 "public/pidlane-data.js@@'0105':{min:-40,max:215},@@'0105':{min:-400,max:2150},@@test-parser.js@@de harde limiet van koelwater is opgerekt"
 
 # ── Laag 2+3 zijn op 10-09-2026 weggehaald (zie §11). Deze twee mutaties
