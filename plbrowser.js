@@ -51,17 +51,33 @@ const { spawn } = require('child_process');
 
 // Waar Chromium kan staan. De eerste die bestaat wint. Staat er geen,
 // dan meldt startApp() dat met zoveel woorden — hij doet niet alsof.
-const CHROOMPADEN = [
-  process.env.PL_CHROME,
-  '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-  '/usr/bin/chromium',
-  '/usr/bin/chromium-browser',
-  '/usr/bin/google-chrome'
-].filter(Boolean);
+// Het Playwright-pad draagt een versienummer (chromium-1194, -1243, …) dat
+// met elke image verschuift; een vast nummer vond op 23-10-2026 niets meer
+// terwijl chromium-1243 er gewoon stond. Daarom: zoeken, nieuwste eerst.
+function playwrightPaden(basis) {
+  let mappen = [];
+  try { mappen = fs.readdirSync(basis); }
+  catch (e) { if (e.code !== 'ENOENT') console.warn('plbrowser: kon ' + basis + ' niet lezen — ' + e.message); return []; }
+  const nr = (m) => Number((/^chromium-(\d+)$/.exec(m) || [])[1]);
+  return mappen.filter((m) => nr(m) > 0).sort((x, y) => nr(y) - nr(x))
+    .flatMap((m) => [path.join(basis, m, 'chrome-linux64', 'chrome'), path.join(basis, m, 'chrome-linux', 'chrome')]);
+}
+
+function chroomPaden() {
+  const basis = process.env.PLAYWRIGHT_BROWSERS_PATH || '/opt/pw-browsers';
+  return [
+    process.env.PL_CHROME,
+    path.join(basis, 'chromium'),
+    ...playwrightPaden(basis),
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome'
+  ].filter(Boolean);
+}
 
 function vindChromium() {
-  for (const p of CHROOMPADEN) {
-    try { if (fs.existsSync(p)) return p; }
+  for (const p of chroomPaden()) {
+    try { if (fs.existsSync(p) && fs.statSync(p).isFile()) return p; }
     catch (e) { console.warn('plbrowser: kon ' + p + ' niet nakijken — ' + e.message); }
   }
   return null;
@@ -125,7 +141,7 @@ async function startApp(opties) {
   const chrome = vindChromium();
   if (!chrome) {
     const e = new Error('GEEN_CHROMIUM');
-    e.uitleg = 'Geen Chromium gevonden. Gezocht in: ' + CHROOMPADEN.join(', ') +
+    e.uitleg = 'Geen Chromium gevonden. Gezocht in: ' + chroomPaden().join(', ') +
                '\nZet PL_CHROME naar het pad, of sla de browserproeven over.';
     throw e;
   }
@@ -344,4 +360,4 @@ async function startApp(opties) {
   };
 }
 
-module.exports = { startApp, vindChromium };
+module.exports = { startApp, vindChromium, playwrightPaden };
