@@ -746,6 +746,22 @@
         </div>
         <div id="opdBewaarMsg" class="msg"></div>
       </div>
+
+      <!-- De second opinion (#599): een verzonden uitkomst is voorlopig tot
+           hier iemand hem bevestigt of ongeldig verklaart. -->
+      <div class="card">
+        <div class="card-kop"><h2>🔍 Second opinion</h2>
+          <div class="bar"><button class="btn-sec btn-sm" onclick="soLaden()">↻ Herladen</button></div></div>
+        <details class="uitleg"><summary>Waarom een uitkomst voorlopig is</summary><div class="body">
+          Een uitkomst komt uit één doorloop van één rit. Ging er iets mis in de <b>bediening</b> (contact per
+          ongeluk minuten uit) of in de <b>opstelling</b> (de proef meet niet wat hij moet meten), dan zegt hij
+          niets over de auto. Hier zie je per uitkomst het bewijs dat de app meestuurde: voorwaarden, uitslagen
+          en wat de toeschouwer zag. <b>Ongeldig</b> is geen fout: de opdracht blijft open voor een volgende rit.
+          De <b>AI</b> doet alleen een voorstel, en alleen als er genoeg data is; het oordeel zet jij.
+        </div></details>
+        <div id="soMsg" class="msg"></div>
+        <div id="soLijst" style="margin-top:8px"><div class="leeg">Nog niet geladen.</div></div>
+      </div>
     </div>
 
     <!-- ══ TABELLEN ═══════════════════════════════════════════ -->
@@ -1455,6 +1471,7 @@ function oefenAntwoord(path, opts){
           fouten:a.reduce((t,x) => t + x.fouten, 0), oudste:a.reduce((m,x) => !m || x.begonnen < m ? x.begonnen : m, ''),
           nieuwste:a.reduce((m,x) => x.geeindigd > m ? x.geeindigd : m, ''), laatst:a.reduce((m,x) => x.gearchiveerd > m ? x.gearchiveerd : m, '') } };
       }
+      if(actie === 'uitkomsten') return { ok:true, oefen:true, uitkomsten:(D.uitkomst || []).slice().reverse() };
       if(actie !== 'overzicht') return { ok:false, error:'Onbekende actie.' };
       const dagen = Math.min(90, Math.max(1, Number(sp.get('dagen')) || 30));
       const grens = new Date(Date.now() - dagen*864e5).toISOString().slice(0,10);
@@ -1525,6 +1542,17 @@ function oefenAntwoord(path, opts){
       const kolommen = ['id','ontvangen','Type','SessionId','Message'];
       const rijen = log.slice(0, 20).map(r => { const u = {}; kolommen.forEach(k => { u[k] = r[k] === undefined ? null : r[k]; }); return u; });
       return { ok:true, oefen:true, kolommen, rijen, aantal:rijen.length, afgekapt:false, max:500, ms:0 };
+    }
+    if(String(b.actie).indexOf('uitkomst-') === 0){
+      const u = (D.uitkomst || []).find(x => String(x.id) === String(b.id));
+      if(!u) return { ok:false, error:'Die uitkomst bestaat niet (meer).' };
+      if(b.actie === 'uitkomst-ai'){
+        u.AiVoorstel = JSON.stringify({ voorstel:'twijfel', zekerheid:'laag', reden:'Oefenstand: hier staat het voorstel van de AI.' }); u.AiOp = nu;
+        return { ok:true, oefen:true, id:String(u.id), voorstel:JSON.parse(u.AiVoorstel), op:nu };
+      }
+      if(String(b.oordeel).indexOf('ongeldig') === 0 && !String(b.notitie || '').trim()) return { ok:false, error:'Zeg bij ongeldig wát er misging; dat is de les voor de volgende rit.' };
+      u.Oordeel = b.oordeel; u.OordeelNotitie = b.notitie || null; u.OordeelOp = nu;
+      return { ok:true, oefen:true, id:String(u.id), oordeel:u.Oordeel, op:nu };
     }
     const lijst = D.opdracht || (D.opdracht = []);
     if(b.actie === 'opdracht-nieuw'){
@@ -1708,6 +1736,7 @@ function toon(naam){
   // Pas ophalen als je er komt: de opdrachtenlijst is klein, maar wie alleen
   // een saldo komt bijboeken hoeft er niet op te wachten.
   if(naam === 'opdrachten' && !OPD.rijen.length && TOKEN) opdLaden();
+  if(naam === 'opdrachten' && !SO.rijen.length && TOKEN) soLaden();
   if(naam === 'database' && !RITTEN.length && TOKEN) rittenLaden();
   if(naam === 'bronnen' && !BRON.geladen && TOKEN) bronnenLaden();
 }
@@ -3138,6 +3167,72 @@ function sqlCsv(){
    public/pidlane-opdracht.js — dezelfde functie die de app draait.
    ════════════════════════════════════════════════════════════════ */
 let OPD = { rijen:[], huidig:null };
+
+/* ── SECOND OPINION (#599) ─────────────────────────────────────────
+   De voorlopige uitkomsten uit /admin/d1?actie=uitkomsten. Het oordeel zet de
+   beheerder; de AI-knop vraagt de worker om een voorstel, die dat weigert als
+   het bewijs te dun is. */
+let SO = { rijen:[] };
+const SO_OORDEEL = { 'voorlopig':['p-wacht','voorlopig'], 'bevestigd':['p-ok','✓ bevestigd'],
+  'ongeldig-bediening':['p-uit','✗ ongeldig — bediening'], 'ongeldig-opstelling':['p-uit','✗ ongeldig — opstelling'] };
+async function soLaden(){
+  const m = $('soMsg');
+  const r = await veilig(m, () => callWorker('d1','/admin/d1?actie=uitkomsten&limiet=50', { headers:H() }), 'Bezig…');
+  if(!r.ok) return;
+  SO.rijen = (r.uit.data && r.uit.data.uitkomsten) || [];
+  toon_msg(m, 'info', '');
+  soTekenen();
+}
+function soBewijs(u){
+  let b = null;
+  try{ b = JSON.parse(u.Bewijs || 'null'); }catch(e){ return '<div class="meta">bewijs onleesbaar: ' + esc(e.message) + '</div>'; }
+  if(!b) return '<div class="meta">geen bewijs meegestuurd</div>';
+  const regel = (x, ok) => `<div class="meta">${ok === true ? '✓' : ok === false ? '✗' : '·'} ${esc(x)}</div>`;
+  const ts = b.toeschouwer || {};
+  return (b.voorwaarden || []).map(v => regel(v.wat + ' — ' + v.detail + (v.buiten ? ' (BUITEN DE OPSTELLING)' : ''), v.vervuld)).join('') +
+    (b.uitslagen || []).map(x => regel(x.naam + ': ' + x.staat + ' — ' + x.detail, x.staat === 'ok' ? true : x.staat === 'FOUT' ? false : null)).join('') +
+    (ts.perioden && ts.perioden.length ? regel('perioden: ' + ts.perioden.map(p => p.toestand + ' ' + p.s + ' s @' + p.tS + ' s').join(' · ')) : '') +
+    (b.venster ? regel('gemeten over ' + Math.round(b.venster.s / 60) + ' min' + (b.rit ? ', ' + (b.rit.meetgaten || []).length + ' meetgat(en), ' + (b.rit.herverbindingen || 0) + ' herverbinding(en)' : '')) : '') +
+    (b.antwoorden ? regel('antwoorden: ' + b.antwoorden) : '');
+}
+function soTekenen(){
+  if(!SO.rijen.length){ $('soLijst').innerHTML = '<div class="leeg">Nog geen verzonden uitkomsten.</div>'; return; }
+  $('soLijst').innerHTML = SO.rijen.map(u => {
+    const o = SO_OORDEEL[u.Oordeel] || ['p-info', u.Oordeel];
+    let ai = null; try{ ai = JSON.parse(u.AiVoorstel || 'null'); }catch(e){ ai = { voorstel:'?', reden:'onleesbaar: ' + e.message }; }
+    return `<div class="klantrij"${u.Oordeel === 'voorlopig' ? ' style="border-color:var(--or)"' : ''}>
+      <div class="kop"><div><span class="adres">${esc(u.Naam)}</span>
+        <span class="pill ${u.Staat === 'bevinding' ? 'p-uit' : 'p-ok'}">${esc(u.Staat)}</span>
+        <span class="pill ${o[0]}">${esc(o[1])}</span> <span class="pill p-info">opstelling ${esc(u.Opstelling || '?')}</span></div>
+        <span class="hint" style="margin:0">#${esc(u.id)} · ${esc(dtu(u.Gezet))} · rit ${esc(u.SessionId || '—')}</span></div>
+      <div class="meta">${esc(u.Reden || '')}</div>
+      <details><summary class="hint">Bewijs</summary>${soBewijs(u)}</details>
+      ${ai ? `<div class="meta"><b>AI-voorstel:</b> ${esc(ai.voorstel)} (${esc(ai.zekerheid || '?')}) — ${esc(ai.reden)}</div>` : ''}
+      ${u.OordeelNotitie ? `<div class="meta"><b>Notitie:</b> ${esc(u.OordeelNotitie)}</div>` : ''}
+      <div class="bar" style="margin-top:8px">
+        <button class="btn-ok btn-sm" onclick="soOordeel('${esc(u.id)}','bevestigd')">✓ Bevestigen</button>
+        <button class="btn-waar btn-sm" onclick="soOordeel('${esc(u.id)}','ongeldig-bediening')">✗ Bediening</button>
+        <button class="btn-waar btn-sm" onclick="soOordeel('${esc(u.id)}','ongeldig-opstelling')">✗ Opstelling</button>
+        ${u.Oordeel !== 'voorlopig' ? `<button class="btn-sec btn-sm" onclick="soOordeel('${esc(u.id)}','voorlopig')">↺ Terug naar voorlopig</button>` : ''}
+        <button class="btn-sec btn-sm" onclick="soAi('${esc(u.id)}')">🤖 AI-voorstel</button>
+      </div></div>`;
+  }).join('');
+}
+async function soOordeel(id, oordeel){
+  let notitie = '';
+  if(oordeel.indexOf('ongeldig') === 0){
+    notitie = prompt('Wat ging er mis? Dat is de les voor de volgende rit.') || '';
+    if(!notitie.trim()) return;
+  }
+  const r = await veilig($('soMsg'), () => callWorker('d1','/admin/d1', { method:'POST', headers:HJ(),
+    body:JSON.stringify({ actie:'uitkomst-oordeel', id:Number(id), oordeel, notitie }) }), 'Bezig…');
+  if(r.ok){ toon_msg($('soMsg'), 'ok', 'Uitkomst #' + id + ': ' + oordeel); soLaden(); }
+}
+async function soAi(id){
+  const r = await veilig($('soMsg'), () => callWorker('d1','/admin/d1', { method:'POST', headers:HJ(),
+    body:JSON.stringify({ actie:'uitkomst-ai', id:Number(id) }) }), 'De AI kijkt mee…');
+  if(r.ok){ toon_msg($('soMsg'), 'ok', 'AI-voorstel voor #' + id + ' staat erbij — het oordeel zet jij.'); soLaden(); }
+}
 
 function keurder(){ return (window.PLOpdracht && typeof window.PLOpdracht.keur === 'function') ? window.PLOpdracht : null; }
 function opdKeur(tekst){

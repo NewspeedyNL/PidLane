@@ -541,6 +541,20 @@ ook een proef af die al waar is zodra zijn voorwaarde vervuld is. Nieuwe
 meetproeven staan als data in `meetproeven/` (`test-meetproeven.js`), niet als
 tekst in `CAMPAGNE`. Test: `test-opdrachtkeuring.js`.
 
+**De bovengrens en de second opinion (#599, 24-10-2026).** Een toestand-
+voorwaarde met `maxS` gaat over één periode aan één stuk sinds de opdracht
+gekozen is (`PLToeschouwer.periodenS`, `nieuwePoging()` bij elke
+`nieuweSessie`): duurt er een langer dan `maxS`, dan is het oordeel `nog niet`
+met *BUITEN DE OPSTELLING* in plaats van een bevinding. Elke verzonden uitkomst
+(gesloten of bevinding) gaat daarnaast met een samenvatting als bewijs
+(`PLOpdracht.bewijs`) naar `POST /airtable/opdracht/uitkomst` (rol admin) en
+staat in `opdracht_uitkomsten` als **voorlopig**. beheer.html → Meetopdrachten
+→ Second opinion zet hem op bevestigd, ongeldig-bediening of
+ongeldig-opstelling (`uitkomst-oordeel` in `/admin/d1`; ongeldig vraagt een
+reden). `uitkomst-ai` vraagt Haiku om een voorstel, alleen als het bewijs
+genoeg data heeft (`uitkomstGenoegData`); de AI zet nooit zelf het oordeel.
+Tests: `test-toeschouwer.js`, `test-secondopinion.js`, `test-opdrachtverslag.js`.
+
 **Secrets** (nooit in de repo): `AIRTABLE_TOKEN`, `ADMIN_TOKEN`,
 `SESSION_SECRET`, `USERS_JSON`, `ANTHROPIC_API_KEY`, en voor wachtwoordherstel
 per mail `MAIL_API_KEY` + `MAIL_FROM`. Zonder die laatste twee antwoordt

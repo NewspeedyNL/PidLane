@@ -260,6 +260,13 @@ WHERE Type IN ('error', 'opvallend', 'bug')
 --  soorten = {"testrun":120,…}; bevindingen = {"lijst":[[type,melding,n],…],"meer":n}.
 --  Geen User, UserId, VIN of VinHash: het archief overleeft een gewiste klant.
 -- ══════════════════════════════════════════════════════════════════
+-- De second opinion van een meetuitkomst (#599). Een verzonden uitkomst is
+-- voorlopig tot de beheerder hem bevestigt of ongeldig verklaart; Bewijs is
+-- de samenvatting die de app meestuurt (PLOpdracht.bewijs). De worker maakt
+-- de tabel ook zelf aan (uitkomstSchema), dus een bestaande database hoeft
+-- niets te doen.
+CREATE TABLE IF NOT EXISTS opdracht_uitkomsten (id INTEGER PRIMARY KEY AUTOINCREMENT, OpdrachtId INTEGER, Naam TEXT NOT NULL, SessionId TEXT, Gezet TEXT NOT NULL, Door TEXT, Staat TEXT NOT NULL, Opstelling TEXT, Reden TEXT, Bewijs TEXT, Oordeel TEXT NOT NULL DEFAULT 'voorlopig', OordeelNotitie TEXT, OordeelOp TEXT, OordeelDoor TEXT, AiVoorstel TEXT, AiOp TEXT);
+
 CREATE TABLE IF NOT EXISTS log_archief (sleutel TEXT PRIMARY KEY, SessionId TEXT, dag TEXT NOT NULL, begonnen TEXT NOT NULL, geeindigd TEXT NOT NULL, regels INTEGER NOT NULL DEFAULT 0, fouten INTEGER NOT NULL DEFAULT 0, opvallend INTEGER NOT NULL DEFAULT 0, bugs INTEGER NOT NULL DEFAULT 0, uitkomsten INTEGER NOT NULL DEFAULT 0, demo INTEGER, soorten TEXT, issues TEXT, merk TEXT, bouwjaar TEXT, versie TEXT, adapter TEXT, protocol TEXT, bevindingen TEXT, gearchiveerd TEXT NOT NULL);
 
 -- ══════════════════════════════════════════════════════════════════

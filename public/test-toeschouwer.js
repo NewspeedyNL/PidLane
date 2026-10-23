@@ -163,5 +163,72 @@ console.log('\n6. de meetproef stapt door: voorwaarde `toestand` in PLOpdracht')
   toets('reset() begint opnieuw', (s.PLToeschouwer.reset(), s.PLToeschouwer.gezien() === false));
 }
 
+console.log('\n7. de bovengrens: één periode te lang is buiten de opstelling (#599)');
+{
+  const s = laad();
+  const O = s.PLOpdracht, T = s.PLToeschouwer;
+  const opdr = { schema: 2, naam: 'Contact uit', sensoren: ['010D'], duurS: 600,
+    voorwaarden: [{ wat: 'Contact 20 s tot 1 min uit', toestand: 'contact-uit', minS: 20, maxS: 60 }],
+    proeven: [{ issue: '#487', naam: 'aantal keer uit', app: 'toestand-contact-uit-n', tussen: [0, 99] }] };
+  const k = O.keur(opdr);
+  toets('keur() neemt maxS mee', k.ok && k.opdracht.voorwaarden[0].maxS === 60, JSON.stringify(k.fouten || k.opdracht.voorwaarden));
+  toets('maxS onder minS wordt afgekeurd', !O.keur(Object.assign({}, opdr, { voorwaarden: [{ wat: 'x', toestand: 'stil', minS: 30, maxS: 10 }] })).ok);
+  toets('zonder maxS geen veld maxS (de oude voorwaarde blijft wat hij was)',
+    O.keur(Object.assign({}, opdr, { voorwaarden: [{ wat: 'x', toestand: 'stil', minS: 30 }] })).opdracht.voorwaarden[0].maxS === undefined);
+
+  // 10 s rijden, 95 s contact uit, weer aan: de bediening, niet de auto.
+  let t = rij(s, 1e6, [].concat(herhaal([40], 10), herhaal([0, true], 95), herhaal([0], 6)));
+  const v1 = O.voorwaarden(k.opdracht)[0];
+  // De periode loopt tot de toeschouwer de nieuwe toestand aanneemt: ± 3 s hysterese.
+  toets('95 s aan één stuk: niet vervuld en buiten de opstelling', v1.vervuld === false && v1.buiten === true && v1.waarde >= 95 && v1.waarde <= 99 && /aan één stuk — hoogstens 1:00/.test(v1.detail), JSON.stringify(v1));
+  const o1 = O.oordeel(k.opdracht);
+  toets('het oordeel is "nog niet" met BUITEN DE OPSTELLING, geen bevinding', o1.staat === 'nog niet' && o1.buiten === true && /^BUITEN DE OPSTELLING/.test(o1.reden), JSON.stringify(o1.reden));
+
+  // Een nieuwe poging: de te lange periode telt niet meer mee, de som wel.
+  T.nieuwePoging(t);
+  t = rij(s, t, [].concat(herhaal([0], 3), herhaal([0, true], 10), herhaal([0], 6)));
+  const v2 = O.voorwaarden(k.opdracht)[0];
+  toets('na een nieuwe poging: 10 s is te kort maar niet buiten', v2.vervuld === false && !v2.buiten && /nodig 0:20 tot 1:00/.test(v2.detail), JSON.stringify(v2));
+  t = rij(s, t, [].concat(herhaal([0, true], 30), herhaal([0], 6)));
+  const v3 = O.voorwaarden(k.opdracht)[0];
+  toets('30 s aan één stuk: vervuld', v3.vervuld === true && v3.waarde >= 30 && v3.waarde <= 34, JSON.stringify(v3));
+  toets('en het oordeel sluit', O.oordeel(k.opdracht).staat === 'gesloten', O.oordeel(k.opdracht).reden);
+  toets('de som is niet nulgezet: 95 + 10 + 30 s contact uit', T.duurS('contact-uit') >= 135 && T.duurS('contact-uit') <= 146, String(T.duurS('contact-uit')));
+
+  // Twee korte perioden zijn geen lange: 2× 40 s past onder maxS 60.
+  const s2 = laad();
+  rij(s2, 1e6, [].concat(herhaal([0, true], 40), herhaal([0], 6), herhaal([0, true], 40), herhaal([0], 6)));
+  toets('twee keer 40 s is geen periode van 80 s', (function (p) { return p.length === 2 && p.every(function (x) { return x >= 40 && x < 50; }); })(s2.PLToeschouwer.periodenS('contact-uit')), JSON.stringify(s2.PLToeschouwer.periodenS('contact-uit')));
+  const s3 = laad();
+  rij(s3, 1e6, [].concat(herhaal([0, false, 5], 20), herhaal([0, false, 0], 6), herhaal([0, false, 5], 8)));
+  toets('de helling heeft eigen perioden, de lopende erbij', (function (p) { return p.length === 2 && p[0] >= 17 && p[0] <= 23 && p[1] >= 3 && p[1] <= 8; })(s3.PLToeschouwer.periodenS('helling')), JSON.stringify(s3.PLToeschouwer.periodenS('helling')));
+}
+
+console.log('\n8. het bewijs voor de second opinion (#599)');
+{
+  const s = laad();
+  const O = s.PLOpdracht;
+  const k = O.keur({ schema: 2, naam: 'Contact uit', sensoren: ['010D'], duurS: 600,
+    voorwaarden: [{ wat: 'Contact 20 s tot 1,5 min uit', toestand: 'contact-uit', minS: 20, maxS: 90 }],
+    proeven: [{ issue: '#487', naam: 'aantal keer uit', app: 'toestand-contact-uit-n', tussen: [0, 99] }] });
+  rij(s, 1e6, [].concat(herhaal([40], 10), herhaal([0, true], 95), herhaal([0], 6)));
+  const v = O.oordeel(k.opdracht);
+  const b = O.bewijs(k.opdracht, v);
+  toets('het bewijs draagt de voorwaarde met waarde en BUITEN', b.voorwaarden.length === 1 && b.voorwaarden[0].buiten === true && b.voorwaarden[0].waarde >= 95, JSON.stringify(b.voorwaarden));
+  toets('de uitslag met de naam van de proef', b.uitslagen[0].naam === 'aantal keer uit' && !!b.uitslagen[0].detail, JSON.stringify(b.uitslagen));
+  const p = b.toeschouwer && b.toeschouwer.perioden.filter(function (x) { return x.toestand === 'contact-uit'; })[0];
+  toets('de perioden van de toeschouwer, in seconden', !!p && p.s >= 95 && p.s <= 99, JSON.stringify(b.toeschouwer));
+  toets('en de gebeurtenissen', b.toeschouwer.gebeurtenissen.some(function (e) { return e.soort === 'contact-uit'; }));
+  for (let i = 0; i < 400; i++) rij(s, 2e6 + i * 20000, [].concat(herhaal([40], 5), herhaal([0], 5)));
+  const groot = O.bewijs(k.opdracht, O.oordeel(k.opdracht));
+  toets('een lange rit blijft onder de grens van de worker', JSON.stringify(groot).length <= 15000 && groot.voorwaarden.length === 1, String(JSON.stringify(groot).length));
+  let gestuurd = 0;
+  s.PROXY_URL = 'https://x'; s.plFetch = function () { gestuurd++; return Promise.resolve({ status: 200, json: function () { return Promise.resolve({ ok: true, id: '1' }); } }); };
+  O.stuurUitkomst('41', 'rit', { staat: 'nog niet', reden: 'x' }, 'groen', b);
+  toets('"nog niet" gaat niet naar de second opinion', gestuurd === 0);
+  O.stuurUitkomst('41', 'rit', { staat: 'bevinding', reden: 'x' }, 'groen', b);
+  toets('een bevinding wel', gestuurd === 1);
+}
+
 console.log('\n' + (fout ? 'FOUT — ' + fout + ' van ' + n + ' toetsen' : 'Alles goed — ' + n + ' toetsen'));
 process.exit(fout ? 1 : 0);

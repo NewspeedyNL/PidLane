@@ -10,6 +10,33 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-10-2026 — bovengrens en second opinion voor meetuitkomsten (#599)
+ ═══════════════════════════════════════════════════════════
+
+ - Voorwaarde {toestand, minS, maxS}: één periode aan één stuk, sinds de
+   opdracht gekozen is. Langer dan maxS = BUITEN DE OPSTELLING, oordeel
+   "nog niet" in plaats van een bevinding. Kies de opdracht opnieuw voor een
+   nieuwe poging. De contactproef staat op 20 s tot 1,5 min
+   (meetproeven/599-bovengrens.sql — plakken in D1, daarna opnieuw keuren).
+ - Elke verzonden uitkomst gaat met zijn bewijs (voorwaarden, uitslagen,
+   perioden en gebeurtenissen van de toeschouwer) als voorlopig naar D1
+   (opdracht_uitkomsten, POST /airtable/opdracht/uitkomst).
+ - beheer.html → Meetopdrachten → Second opinion: bevestigen, ongeldig
+   (bediening/opstelling, met reden), terug naar voorlopig, en een
+   AI-voorstel (Haiku) dat alleen komt als er genoeg data is.
+ - Nieuw: test-secondopinion.js; test-toeschouwer.js §7–8; elf mutaties.
+
+ ═══════════════════════════════════════════════════════════
+ 23-10-2026 — het verslag toont de meetopdrachten (#599)
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw blok MEETOPDRACHTEN in het verslag: per opdracht het oordeel, de
+   ritduur, de opstelling en of het verzonden is ("AFGEROND, NIET
+   VERZONDEN" valt op). Daaronder VERZONDEN DEZE SESSIE, met tijd.
+ - Elke verzending krijgt een regel in het app-log ("↑ Verzonden: …").
+ - Blok 5: proef #599. Nieuw: test-opdrachtverslag.js; drie mutaties.
+
+ ═══════════════════════════════════════════════════════════
  23-10-2026 — plbrowser vindt Chromium op elk Playwright-versiepad
  ═══════════════════════════════════════════════════════════
 

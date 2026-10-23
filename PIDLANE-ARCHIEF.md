@@ -15,6 +15,40 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 24-10-2026 — bovengrens en second opinion: waarom geen aparte meetlog (#599)
+
+De vraag was of de second opinion de logs moet lezen, of een eigen meetlog
+nodig heeft. De logtabel bevat alles, maar voor deze vraag is het ruis: 60
+TX/RX-regels per seconde, de rondgang, de caravan-tracker. Een aparte stroom
+naast de logtabel zou een tweede lijst zijn van hetzelfde, en die lopen hier
+uit de pas. Daarom geen nieuwe log, wel een **samenvatting per verzending**
+(`PLOpdracht.bewijs`): de voorwaarden met hun waarden, de uitslagen, de
+perioden en gebeurtenissen van de toeschouwer, de meetgaten. Dat is wat een
+mens of een AI nodig heeft om "auto of bediening?" te beantwoorden, en het
+past onder 16 KB.
+
+De bovengrens gaat over één periode en niet over de som, en telt vanaf het
+moment dat de opdracht gekozen is. Met de som zou één ongeluk de proef de hele
+sessie blokkeren; nu begint opnieuw kiezen een nieuwe poging. Bekend gat: de
+app-maten van de proeven zelf (bijv. `contact-weigeringen`) tellen nog over de
+hele sessie, dus een weigering uit de te lange stilte telt in de volgende
+poging mee. Dat is precies waar de second opinion voor is.
+
+## 23-10-2026 — een verzonden meetopdracht stond nergens in het verslag (#599)
+
+Testrun 23-10 22:59: twintig minuten gereden met #594 gekozen, vier
+opstellingen gekeurd, vier keer van opdracht gewisseld. Het verslag zei "7 ok"
+en dat waren zeven regels "Nieuwe sessie". `_verzendOpdracht()` schreef alleen
+naar de live-log, en "WAT DEZE RONDE VOEDT" gaat over de stappen van de
+begeleide rit, niet over meetopdrachten. Het oordeel ging niet verloren
+(`oordeelAlle` rekent over de hele rit), maar uit het verslag was niet op te
+maken of er iets verzonden was. Nu staat dat in het blok MEETOPDRACHTEN.
+
+Het grotere punt staat in #599 als ontwerp: een uitkomst komt uit één live
+doorloop en is niet terug te draaien. Een fout in de bediening (contact per
+ongeluk veel te lang uit) wordt dan een FOUT over de auto. Richting: een
+uitkomst is voorlopig tot een tweede beoordeling op de logs.
+
 ## 23-10-2026 — Garage-sensoren liepen uit het venster: één class met twee rollen
 
 Op een CX-5 met veel eigen sensoren liep in Garage → Sensoren elke regel

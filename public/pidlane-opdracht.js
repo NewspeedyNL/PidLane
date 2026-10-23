@@ -410,6 +410,8 @@
               fouten.push('voorwaarde ' + i + ': toestand moet een van ' + TOESTANDEN.join(', ') + ' zijn');
             if (v.minS !== undefined && !_getal(v.minS, 1, GRENZEN.toestandSMax))
               fouten.push('voorwaarde ' + i + ': minS moet tussen 1 en ' + GRENZEN.toestandSMax + ' liggen');
+            if (v.maxS !== undefined && (!_getal(v.maxS, 1, GRENZEN.toestandSMax) || v.maxS < (v.minS === undefined ? 5 : v.minS)))
+              fouten.push('voorwaarde ' + i + ': maxS moet tussen minS en ' + GRENZEN.toestandSMax + ' liggen');
             return;
           }
           if (isApp) {
@@ -482,7 +484,11 @@
             return { wat: v.wat, gebeurtenis: String(v.gebeurtenis), minS: v.minS === undefined ? 5 : v.minS };
           if (v.adapter !== undefined) return { wat: v.wat, adapter: String(v.adapter), niet: v.niet === true };
           if (v.app !== undefined) return { wat: v.wat, app: String(v.app), tussen: [v.tussen[0], v.tussen[1]] };
-          if (v.toestand !== undefined) return { wat: v.wat, toestand: String(v.toestand), minS: v.minS === undefined ? 5 : v.minS };
+          if (v.toestand !== undefined) {
+            var tv = { wat: v.wat, toestand: String(v.toestand), minS: v.minS === undefined ? 5 : v.minS };
+            if (v.maxS !== undefined) tv.maxS = v.maxS;
+            return tv;
+          }
           return { wat: v.wat, pid: String(v.pid).toUpperCase(),
                    meet: String(v.meet), tussen: [v.tussen[0], v.tussen[1]] };
         })
@@ -841,6 +847,15 @@
     var venster = vs ? { start: vs.start, s: vs.s } : null;
     var uitkomst = function (staat, reden) { return { staat: staat, reden: reden, voorwaarden: vw, uitslagen: uit, venster: venster }; };
 
+    var buiten = vw.filter(function (v) { return v.buiten === true; });
+    if (buiten.length) {
+      var b = uitkomst('nog niet', 'BUITEN DE OPSTELLING — deze poging telt niet: ' +
+        buiten.map(function (v) { return v.wat + ' (' + v.detail + ')'; }).join(' | ') +
+        '. Kies de opdracht opnieuw in de meetkamer voor een nieuwe poging.');
+      b.buiten = true;
+      return b;
+    }
+
     var mist = vw.filter(function (v) { return v.vervuld !== true; });
     if (mist.length)
       return uitkomst('nog niet', mist.length + ' van de ' + vw.length + ' voorwaarden niet vervuld: ' +
@@ -914,8 +929,96 @@
     catch (e) { console.warn('Opdracht: de toeschouwer is onleesbaar', e); s = null; }
     if (typeof s !== 'number') return Object.assign(basis, { vervuld: null, detail: 'niet na te gaan — de toeschouwer heeft nog niets gezien' });
     var minS = v.minS || 5;
+    if (v.maxS !== undefined) return _toestandPeriode(v, basis, T, minS);
     return Object.assign(basis, { waarde: s, vervuld: s >= minS,
       detail: v.toestand + ' ' + _mmss(s) + (s >= minS ? '' : ' — nodig ' + _mmss(minS)) });
+  }
+
+  /* DE BOVENGRENS (#599). Met `maxS` gaat de voorwaarde over één periode
+     aan één stuk, sinds de opdracht gekozen is: minstens minS, en geen
+     enkele langer dan maxS. Een te lange periode is een fout in de
+     bediening (contact per ongeluk minuten uit), niet in de auto: dan telt
+     deze poging niet, in plaats van dat de proeven erna FOUT geven. */
+  function _toestandPeriode(v, basis, T, minS) {
+    var ps = null;
+    try { ps = (typeof T.periodenS === 'function') ? T.periodenS(v.toestand) : null; }
+    catch (e) { console.warn('Opdracht: de perioden van de toeschouwer zijn onleesbaar (#599)', e); ps = null; }
+    if (!Array.isArray(ps)) return Object.assign(basis, { vervuld: null, detail: 'niet na te gaan — deze toeschouwer kent geen perioden (herladen?)' });
+    var max = ps.length ? Math.max.apply(null, ps) : 0;
+    if (max > v.maxS) return Object.assign(basis, { waarde: max, vervuld: false, buiten: true,
+      detail: v.toestand + ' ' + _mmss(max) + ' aan één stuk — hoogstens ' + _mmss(v.maxS) });
+    var ok = ps.some(function (s) { return s >= minS; });
+    return Object.assign(basis, { waarde: max, vervuld: ok,
+      detail: v.toestand + ' langst ' + _mmss(max) + ' aan één stuk' + (ok ? '' : ' — nodig ' + _mmss(minS) + ' tot ' + _mmss(v.maxS)) });
+  }
+
+  /* ── HET BEWIJS VOOR DE SECOND OPINION (#599) ─────────────────────
+     Wat een tweede beoordelaar nodig heeft om te zien of een uitkomst over de
+     auto gaat of over de bediening: de voorwaarden met hun waarden, de
+     uitslagen, en wat de toeschouwer zag, met tijden ten opzichte van het
+     begin van de rit. Geen logregels: die zijn ruis voor deze vraag. Begrensd,
+     want de worker neemt hoogstens 16000 tekens aan. */
+  var BEWIJS_MAX = 15000;
+  function bewijs(o, v) {
+    v = v || {};
+    var t0 = (v.venster && typeof v.venster.start === 'number') ? v.venster.start : Date.now();
+    var rel = function (t) { return Math.round((t - t0) / 1000); };
+    var st = null;
+    try { st = (window.PLToeschouwer && typeof PLToeschouwer.stand === 'function') ? PLToeschouwer.stand() : null; }
+    catch (e) { console.warn('Opdracht: de toeschouwer is onleesbaar voor het bewijs (#599)', e); }
+    var rit = _rit();
+    var proeven = (o && o.proeven) || [];
+    var b = {
+      v: 1, opdracht: (o && o.naam) || '', staat: v.staat || '', reden: v.reden || '',
+      venster: v.venster ? { s: v.venster.s } : null,
+      voorwaarden: (v.voorwaarden || []).map(function (x) {
+        return { wat: x.wat, vervuld: x.vervuld, waarde: x.waarde === undefined ? null : x.waarde, detail: x.detail, buiten: x.buiten === true };
+      }),
+      uitslagen: (v.uitslagen || []).map(function (u, i) {
+        return { naam: (proeven[i] && proeven[i].naam) || '', staat: u.staat, detail: u.detail };
+      }),
+      toeschouwer: st ? {
+        nu: st.toestand,
+        duurS: Object.keys(st.duur || {}).reduce(function (a, k) { a[k] = Math.round(st.duur[k] / 1000); return a; }, {}),
+        gebeurtenissen: (st.gebeurtenissen || []).slice(-40).map(function (e) { return { soort: e.soort, tS: rel(e.t), naS: e.naS }; }),
+        perioden: (st.perioden || []).slice(-40).map(function (p) { return { toestand: p.toestand, tS: rel(p.van), s: Math.round(p.ms / 1000) }; })
+      } : null,
+      rit: rit ? { meetgaten: (rit.meetgaten || []).slice(-20), herverbindingen: rit.herverbindingen } : null,
+      antwoorden: o ? antwoordTekst(o) : ''
+    };
+    // Te groot: eerst de oudste gebeurtenissen en perioden eraf, dan de meetgaten.
+    var lijsten = b.toeschouwer ? [b.toeschouwer.gebeurtenissen, b.toeschouwer.perioden] : [];
+    if (b.rit) lijsten.push(b.rit.meetgaten);
+    var i = 0;
+    while (JSON.stringify(b).length > BEWIJS_MAX && lijsten.some(function (l) { return l.length; })) {
+      var l = lijsten[i++ % lijsten.length];
+      if (l.length) l.splice(0, Math.ceil(l.length / 2));
+    }
+    if (JSON.stringify(b).length > BEWIJS_MAX) { b.voorwaarden = []; b.uitslagen = []; b.afgekapt = true; }
+    return b;
+  }
+
+  /* De uitkomst gaat met zijn bewijs naar de worker, als voorlopig. Alleen
+     gesloten en bevinding: "nog niet" is geen antwoord en heeft niets om te
+     beoordelen. */
+  function stuurUitkomst(id, sessie, v, opstelling, bw) {
+    if (!v || (v.staat !== 'gesloten' && v.staat !== 'bevinding')) return Promise.resolve({ ok: false, reden: 'geen afgeronde uitkomst' });
+    if (typeof PROXY_URL === 'undefined' || !PROXY_URL || typeof plFetch !== 'function')
+      return Promise.resolve({ ok: false, reden: 'geen verbinding met de worker (PROXY_URL of plFetch ontbreekt)' });
+    var body = { id: Number(id) || null, naam: (bw && bw.opdracht) || '', sessie: sessie || '', staat: v.staat,
+                 opstelling: opstelling || 'ongekeurd', reden: v.reden || '', bewijs: bw || null };
+    return Promise.resolve(plFetch(PROXY_URL + '/airtable/opdracht/uitkomst', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }))
+      .then(function (r) { return r.json().then(function (d) { return { http: r.status, d: d || {} }; }); })
+      .then(function (x) {
+        if (!x.d.ok) { _log('Second opinion: uitkomst van "' + body.naam + '" niet aangekomen — ' + (x.d.error || ('HTTP ' + x.http)), 'warn'); return { ok: false, reden: x.d.error || ('HTTP ' + x.http) }; }
+        _log('Second opinion: "' + body.naam + '" staat als voorlopig klaar (#' + x.d.id + ')', 'ok');
+        return { ok: true, id: x.d.id };
+      })
+      .catch(function (e) {
+        _log('Second opinion: uitkomst van "' + body.naam + '" niet verstuurd — ' + ((e && e.message) || e), 'warn');
+        return { ok: false, reden: (e && e.message) || String(e) };
+      });
   }
 
   /* ── DE KEURING VAN DE OPSTELLING (23-10-2026) ──────────────────
@@ -987,6 +1090,8 @@
     gedaan: gedaan,
     keuring: keuring,
     keurZet: keurZet,
+    bewijs: bewijs,
+    stuurUitkomst: stuurUitkomst,
     _keuringen: function () { return KEURINGEN.slice(); },
     _toestanden: function () { return TOESTANDEN.slice(); },
     gelijst: function () { return _opdrachten ? JSON.parse(JSON.stringify(_opdrachten)) : null; },

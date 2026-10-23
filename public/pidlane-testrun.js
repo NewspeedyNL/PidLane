@@ -101,6 +101,8 @@ function nieuweSessie(reden) {
   try { _liveEinde(reden || 'sessie afgesloten voor een nieuwe opdracht'); }
   catch (e) { console.warn('Testrun: de vorige sessie is niet netjes afgesloten (#248)', e); }
   _liveRit = null;
+  try { if (window.PLToeschouwer && typeof PLToeschouwer.nieuwePoging === 'function') PLToeschouwer.nieuwePoging(); }
+  catch (e) { console.warn('Testrun: de toeschouwer begon geen nieuwe poging (#599)', e); }
   const nieuw = _liveRitId();
   _boek(0, 'Nieuwe sessie', 'ok', 'ritnummer ' + nieuw, null);
   return nieuw;
@@ -2656,6 +2658,8 @@ function _issuesVan(o) {
    tegelijk verzonden. Nu beoordeelt de rit ze allemaal tegelijk, en dan moet
    per opdracht onthouden worden wat er al in de tabel staat. */
 let _verzonden = {};
+// Wat er deze app-sessie verzonden is, op volgorde, voor het verslag (#599).
+let _verzendLog = [];
 
 function _opdrachtStempel(o, vonnis) {
   // De antwoorden horen erin (#283): een vraag die ná het verzenden beantwoord
@@ -2713,7 +2717,55 @@ function _verzendOpdracht(o, h) {
     { Outcome: 'antwoorden', Repro: _issuesVan(o) });
 
   _verzonden[o.naam] = _opdrachtStempel(o, vonnis);
+
+  /* OOK IN HET VERSLAG (#599). Tot 23-10 ging een verzending alleen naar de
+     live-log: in het app-log en het verslag stond niets, en achteraf was
+     niet te zien of een rit van twintig minuten een antwoord had opgeleverd. */
+  _verzendLog.push({ t: new Date().toLocaleTimeString('nl-NL'), naam: o.naam, staat: vonnis.staat, opst: opst });
+
+  /* Voorlopig tot de second opinion (#599): de uitkomst gaat met zijn
+     bewijs naar de worker, waar de beheerder hem bevestigt of ongeldig
+     verklaart. Gaat dat mis, dan staat het in het app-log; de live-log
+     hierboven is dan al geschreven. */
+  if (typeof PLOpdracht.stuurUitkomst === 'function' && typeof PLOpdracht.bewijs === 'function') {
+    try { PLOpdracht.stuurUitkomst((h || {}).id, _liveRitId(), vonnis, opst, PLOpdracht.bewijs(o, vonnis)); }
+    catch (e) { console.warn('Testrun: de uitkomst van "' + o.naam + '" niet naar de second opinion (#599)', e); }
+  }
+  try { if (typeof log === 'function') log('↑ Verzonden: ' + o.naam + ' — ' + vonnis.staat + ' · opstelling ' + opst, vonnis.staat === 'bevinding' ? 'warn' : 'ok'); }
+  catch (e) { console.warn('Testrun: de verzending van "' + o.naam + '" niet in het app-log gezet (#599)', e); }
   return { uitslagen: uitslagen, vonnis: vonnis };
+}
+
+/* HET BLOK MEETOPDRACHTEN (#599). Per opdracht wat de rit er nu van vindt,
+   met de opstelling en of dat al in de tabel staat, en daaronder wat er deze
+   app-sessie verzonden is. Zelfde bron als de knoppen in de meetkamer
+   (oordeelAlle), dus het verslag kan niet iets anders zeggen dan het scherm. */
+function _opdrachtVerslag() {
+  const r = [];
+  let alle = [];
+  if (window.PLTestrunLive && typeof PLTestrunLive.oordeelAlle === 'function') alle = PLTestrunLive.oordeelAlle();
+  if (!alle.length && !_verzendLog.length) return r;
+  let actief = null;
+  try { actief = (window.PLOpdracht && typeof PLOpdracht.actief === 'function') ? PLOpdracht.actief() : null; }
+  catch (e) { console.warn('Testrun: de actieve opdracht onleesbaar voor het verslag (#599)', e); }
+  r.push('MEETOPDRACHTEN (' + alle.length + ')');
+  r.push('────────────────────────────────────────────────');
+  alle.forEach(function (x) {
+    const v = x.vonnis;
+    let opst = 'ongekeurd';
+    try { if (typeof PLOpdracht.keuring === 'function') opst = PLOpdracht.keuring(x.id).staat; }
+    catch (e) { console.warn('Testrun: de keuring van "' + x.naam + '" onleesbaar (#599)', e); }
+    const vs = v && v.venster;
+    const duur = (vs && typeof vs.s === 'number') ? ' · rit ' + Math.floor(vs.s / 60) + ':' + ('0' + (vs.s % 60)).slice(-2) + ' min' : '';
+    r.push((actief && actief.naam === x.naam ? '▶ ' : '  ') + x.naam);
+    r.push('      ' + (v ? v.staat + ' — ' + v.reden : 'geen oordeel') + duur + ' · opstelling ' + opst +
+      ' · ' + (x.alVerzonden ? 'verzonden' : (x.afgerond ? 'AFGEROND, NIET VERZONDEN' : 'niet verzonden')));
+  });
+  r.push('');
+  r.push('VERZONDEN DEZE SESSIE: ' + (_verzendLog.length ? '' : '(niets)'));
+  _verzendLog.forEach(function (z) { r.push('[' + z.t + '] ' + z.naam + ' — ' + z.staat + ' · opstelling ' + z.opst); });
+  r.push('');
+  return r;
 }
 
 function _aanvragersNu() {
@@ -2791,6 +2843,34 @@ function _zonderSporen(naam, fn) {
 }
 
 const PROEVEN_B5 = [
+
+  // ── Meetopdrachten in het verslag (23-10-2026) ──
+  {
+    issue: '#599',
+    naam: 'Het verslag zegt per meetopdracht wat de rit ervan vindt; een uitkomst gaat als voorlopig naar de second opinion, en een te lange periode telt niet',
+    waarom: 'Op 23-10 stond na twintig minuten rijden nergens of #594 een antwoord had opgeleverd, en één fout in de bediening (contact te lang uit) werd een FOUT over de auto.',
+    proef: async function () {
+      if (!window.PLTestrunLive || typeof PLTestrunLive.oordeelAlle !== 'function') return { staat: 'FOUT', detail: 'PLTestrunLive.oordeelAlle ontbreekt (herladen?)' };
+      if (!window.PLOpdracht || typeof PLOpdracht.bewijs !== 'function' || typeof PLOpdracht.stuurUitkomst !== 'function')
+        return { staat: 'FOUT', detail: 'PLOpdracht.bewijs/stuurUitkomst ontbreken — oude pidlane-opdracht.js (herladen?)' };
+      if (!window.PLToeschouwer || typeof PLToeschouwer.periodenS !== 'function' || typeof PLToeschouwer.nieuwePoging !== 'function')
+        return { staat: 'FOUT', detail: 'PLToeschouwer kent geen perioden — oude pidlane-toeschouwer.js (herladen?)' };
+      // Gedrag op een eigen kern: 95 s contact uit is één periode, geen som.
+      var K = PLToeschouwer._kern, k = K.maak(), t = 1e6, i;
+      for (i = 0; i < 95; i++) K.stap(k, { verbonden: true, kmh: 0, contactStil: true }, t += 1000);
+      for (i = 0; i < 6; i++) K.stap(k, { verbonden: true, kmh: 0 }, t += 1000);
+      var ps = K.perioden(k, 'contact-uit', 0);
+      if (ps.length !== 1 || ps[0] < 90) return { staat: 'FOUT', detail: 'de toeschouwer ziet geen periode van 95 s maar ' + JSON.stringify(ps) };
+      var alle = PLTestrunLive.oordeelAlle();
+      if (!alle.length) return { staat: 'LET OP', detail: 'geen meetopdrachten opgehaald — het blok MEETOPDRACHTEN is niet na te gaan' };
+      var t = testrunTekst();
+      if (t.indexOf('MEETOPDRACHTEN (' + alle.length + ')') < 0) return { staat: 'FOUT', detail: alle.length + ' opdracht(en), maar het verslag heeft geen blok MEETOPDRACHTEN' };
+      var open = alle.filter(function (r) { return r.afgerond && !r.alVerzonden; }).map(function (r) { return r.naam; });
+      return open.length
+        ? { staat: 'LET OP', detail: open.length + ' afgerond maar niet verzonden: ' + open.join('; ') + ' — Meetkamer → Verzend alle afgeronde' }
+        : { staat: 'OK', detail: alle.length + ' opdracht(en) in het verslag, niets afgerond dat nog wacht' };
+    }
+  },
 
   // ── Meetproeven: de toeschouwer en de keuring van de opstelling (23-10-2026) ──
   {
@@ -10166,6 +10246,8 @@ function testrunTekst() {
   // lees je anders als een uitkomst.
   try { _bgVerslag().forEach(function (l) { r.push(l); }); }
   catch (e) { r.push('(stappenblok niet toegevoegd — ' + ((e && e.message) || e) + ')'); r.push(''); }
+  try { _opdrachtVerslag().forEach(function (l) { r.push(l); }); }
+  catch (e) { r.push('(blok meetopdrachten niet toegevoegd — ' + ((e && e.message) || e) + ')'); r.push(''); }
 
   const namen = { 0: 'RUN', 5: 'BLOK 5 — wat er in deze update veranderd is', 1: 'BLOK 1 — bedrading en omgeving', 2: 'BLOK 2 — schermen', 3: 'BLOK 3 — PID-sweep', 4: 'BLOK 4 — bus en regelkringen', 6: 'BLOK 6 — waarom zwijgen deze sensoren', 7: 'BLOK 7 — het pollbudget (PLAN.md punt 2)', 8: 'BLOK 8 — waar zit de olietemperatuur (PLAN.md punt 4)', 9: 'BLOK 9 — DID-scan mode 22', 10: 'BLOK 10 — snelheidsproef (PLAN.md punt 2b)' };
   let vorig = -99;
