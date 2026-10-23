@@ -15,6 +15,21 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 23-10-2026 — een verzonden meetopdracht stond nergens in het verslag (#599)
+
+Testrun 23-10 22:59: twintig minuten gereden met #594 gekozen, vier
+opstellingen gekeurd, vier keer van opdracht gewisseld. Het verslag zei "7 ok"
+en dat waren zeven regels "Nieuwe sessie". `_verzendOpdracht()` schreef alleen
+naar de live-log, en "WAT DEZE RONDE VOEDT" gaat over de stappen van de
+begeleide rit, niet over meetopdrachten. Het oordeel ging niet verloren
+(`oordeelAlle` rekent over de hele rit), maar uit het verslag was niet op te
+maken of er iets verzonden was. Nu staat dat in het blok MEETOPDRACHTEN.
+
+Het grotere punt staat in #599 als ontwerp: een uitkomst komt uit één live
+doorloop en is niet terug te draaien. Een fout in de bediening (contact per
+ongeluk veel te lang uit) wordt dan een FOUT over de auto. Richting: een
+uitkomst is voorlopig tot een tweede beoordeling op de logs.
+
 ## 23-10-2026 — Garage-sensoren liepen uit het venster: één class met twee rollen
 
 Op een CX-5 met veel eigen sensoren liep in Garage → Sensoren elke regel

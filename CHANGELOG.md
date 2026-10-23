@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 23-10-2026 — het verslag toont de meetopdrachten (#599)
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw blok MEETOPDRACHTEN in het verslag: per opdracht het oordeel, de
+   ritduur, de opstelling en of het verzonden is ("AFGEROND, NIET
+   VERZONDEN" valt op). Daaronder VERZONDEN DEZE SESSIE, met tijd.
+ - Elke verzending krijgt een regel in het app-log ("↑ Verzonden: …").
+ - Blok 5: proef #599. Nieuw: test-opdrachtverslag.js; drie mutaties.
+
+ ═══════════════════════════════════════════════════════════
  23-10-2026 — plbrowser vindt Chromium op elk Playwright-versiepad
  ═══════════════════════════════════════════════════════════
 
