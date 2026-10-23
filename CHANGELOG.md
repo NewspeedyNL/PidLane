@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 23-10-2026 — plbrowser vindt Chromium op elk Playwright-versiepad
+ ═══════════════════════════════════════════════════════════
+
+ - vindChromium() zocht vast in chromium-1194; het image heeft nu 1243
+   (chrome-linux64). Zoekt nu in PLAYWRIGHT_BROWSERS_PATH (standaard
+   /opt/pw-browsers): eerst de symlink chromium, dan elke chromium-NNNN,
+   nieuwste eerst, chrome-linux64 en chrome-linux. PL_CHROME wint nog steeds.
+ - Nieuw: test-plbrowser.js; twee mutaties in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  23-10-2026 — Sensoren: banden in één blok, niets uit het venster; Home en AI-uitleg
  ═══════════════════════════════════════════════════════════
 
