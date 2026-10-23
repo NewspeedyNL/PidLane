@@ -1481,7 +1481,7 @@
         }).join('') + '</div>' +
         (som.length >= 1 ? '<div class="gr-rij" style="margin-top:8px">' + som.map(function (x) {
           return '<div>' + esc(x.label) + '</div><div><b>' + (x.verbruik != null ? verbruikNl(x.verbruik) : '—') + (x.kosten != null ? ' · € ' + x.kosten.toLocaleString('nl', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '') + '</b></div>';
-        }).join('') + '</div><div class="gr-klein" style="margin-top:4px">Verbruik alleen als het over minstens 20 km gemeten is.' + (pr.standaard ? ' Kosten met een standaardprijs van € ' + String(pr.prijs).replace('.', ',') + ' per liter — vul je eigen prijs in bij Profiel.' : '') + '</div>' : '') +
+        }).join('') + '</div><div class="gr-klein" style="margin-top:4px">Verbruik alleen als het over minstens 20 km gemeten is.' + (pr.standaard ? ' Kosten met een standaardprijs van € ' + String(pr.prijs).replace('.', ',') + ' per liter' + (window.PLPompprijs && PLPompprijs.bronTekst() ? ' (' + PLPompprijs.bronTekst() + ')' : '') + ' — vul je eigen prijs in bij Profiel.' : '') + '</div>' : '') +
         '</div>';
       if (rs.length) h += '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._ritExport(\'csv\')">⤓ CSV' + (_st.labelFilter ? ' (' + esc(_st.labelFilter) + ')' : '') + '</button>' +
         '<button class="gr-k klein" onclick="PLGarage._ritExport(\'pdf\')">📕 PDF' + (_st.labelFilter ? ' (' + esc(_st.labelFilter) + ')' : '') + '</button></div>';
