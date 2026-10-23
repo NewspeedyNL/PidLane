@@ -1252,7 +1252,7 @@ MUTATIES=(
 "public/pidlane-opdracht.js@@    var stil = uit.filter(function (u) { return u.staat === 'LET OP'; });@@    var stil = [];@@test-opdrachtvoorwaarden.js@@een PID die niet gemeten is heet weer een bevinding: niet-gemeten en buiten-de-band zijn weer één ding"
 "public/pidlane-opdracht.js@@          catch (e) { console.warn('Opdracht: de stapcontrole gaf een fout (#257)', e); gezien = null; }@@          catch (e) { console.warn('Opdracht: de stapcontrole gaf een fout (#257)', e); gezien = false; }@@test-opdrachtvoorwaarden.js@@een stapcontrole die stukgaat leest als \"de stap is niet gezet\" — niet-na-te-gaan wordt weer stil niet-gedaan (#227)"
 "public/pidlane-opdracht.js@@    if (SCHEMAS.indexOf(o.schema) === -1)@@    if (o.schema !== SCHEMA)@@test-opdrachtvoorwaarden.js@@de hele voorraad van schema 1 wordt afgekeurd en elke rit kost eerst een nieuwe rij in de tabel"
-"public/pidlane-opdracht.js@@(isApp ? 1 : 0) !== 1) {@@(isApp ? 1 : 0) === 0) {@@test-opdrachtvoorwaarden.js@@een voorwaarde met pid én stap komt erdoor, en dan meet de rit iets anders dan er op papier staat"
+"public/pidlane-opdracht.js@@(isToestand ? 1 : 0) !== 1) {@@(isToestand ? 1 : 0) === 0) {@@test-opdrachtvoorwaarden.js@@een voorwaarde met pid én stap komt erdoor, en dan meet de rit iets anders dan er op papier staat"
 
 # ── De logtabel staat sinds #262 in D1 en niet meer in Airtable, en dat
 # verandert één ding wezenlijk: Airtable maakte een onbekend veld vanzelf aan,
@@ -1521,7 +1521,7 @@ MUTATIES=(
 "public/pidlane-garage.js@@      if (!rec || !magBewaren()) return;@@      if (!rec) return;@@test-garage.js@@een rapport gaat zonder akkoord de server op"
 "public/pidlane-garage.js@@    return km >= 20 ? {@@    return km >= 0 ? {@@test-garage.js@@een verbruiksoordeel op één korte rit"
 "worker.js@@    if (ak && ak.versie === \"verwijderd\")\n      return json(@@    if (false)\n      return json(@@test-klantplatform.js@@een verwijderd account houdt met zijn lopende token toegang tot Mijn voertuigen"
-"worker.js@@    catch (e) { if (!/duplicate column/i.test(String(e && e.message || e))) throw e; }@@    catch (e) { }@@test-klantplatform.js@@een migratie die om een andere reden faalt, wordt stil ingeslikt"
+"worker.js@@  for (const s of KP_MIGRATIES) {\n    try { await db.prepare(s).run(); }\n    catch (e) { if (!/duplicate column/i.test(String(e && e.message || e))) throw e; }@@  for (const s of KP_MIGRATIES) {\n    try { await db.prepare(s).run(); }\n    catch (e) { }@@test-klantplatform.js@@een migratie die om een andere reden faalt, wordt stil ingeslikt"
 "worker.js@@  for (const s of KP_MIGRATIES) {@@  for (const s of []) {@@test-klantplatform.js@@de nieuwe kolommen komen er op een bestaande tabel nooit bij"
 "public/pidlane-garage.js@@      if (!magBewaren() || !pid || _waakGemeld[pid]) return;@@      if (!magBewaren() || !pid) return;@@test-garage.js@@elke ronde met dezelfde waakbevinding stuurt hem opnieuw"
 "public/pidlane-garage.js@@    if (['benzine', 'diesel', 'hybride', 'plug-in hybride', 'elektrisch', 'lpg', 'cng'].indexOf(b) >= 0) w.brandstof = b;@@    w.brandstof = b;@@test-garage.js@@vrije tekst uit het Voertuigoverzicht gaat als brandstof de server op"
