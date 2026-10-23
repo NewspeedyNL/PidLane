@@ -118,6 +118,17 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('Expert op afstand staat boven Check mijn auto', ex.boven, JSON.stringify(ex));
     toets('Laat iemand meekijken opent het deelvenster', ex.deel, JSON.stringify(ex));
     toets('Ik ben de expert opent het codeveld, niet het deelvenster', ex.ontv && !ex.ontvDeel, JSON.stringify(ex));
+    // 23-10-2026: op 360 px stonden de knoppen onder elkaar en was het blok
+    // hoger dan de check eronder. Naast elkaar, en niet hoger dan 150 px.
+    await app.venster(360, 800);
+    const exm = await app.ev(`(function(){
+      const e=document.getElementById('plExpert').getBoundingClientRect(), a=document.getElementById('plExpertDeel').getBoundingClientRect(),
+        b=document.getElementById('plExpertOntvang').getBoundingClientRect();
+      return { hoog: Math.round(e.height), rij: Math.abs(a.top - b.top) < 2, glim: getComputedStyle(document.getElementById('plExpert')).boxShadow };
+    })()`);
+    await app.venster(412, 915);
+    toets('op 360 px: de twee knoppen naast elkaar', exm.rij, JSON.stringify(exm));
+    toets('op 360 px: het blok is hoogstens 150 px hoog, zonder gloed', exm.hoog > 0 && exm.hoog <= 150 && exm.glim === 'none', JSON.stringify(exm));
 
     console.log('\n5. Een tegel landt op zijn eigen wizardvraag');
     await app.ev(`PLNav.tab('auto'); document.querySelector('.pl-tegel.tg-storing').click(); 'ok'`);
