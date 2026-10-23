@@ -10,6 +10,25 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 23-10-2026 — Sensoren: banden in één blok, niets uit het venster; Home en AI-uitleg
+ ═══════════════════════════════════════════════════════════
+
+ - Garage → Sensoren: de groepen heetten gr-groep, dezelfde class als de
+   groepsknoppen van de grafiek (white-space:nowrap, pilvorm). Nu gr-sgroep;
+   lange namen en formules breken af en lopen niet meer uit het venster.
+ - Banden: spanning en temperatuur per wiel in één blok 🛞 Banden (tabel per
+   wiel, één vinkje, ▶ Test alle banden, Banden weghalen). Twee codes op
+   dezelfde plek worden gemeld. Ook in bibliotheek en Alle sensoren zoeken
+   een eigen groep, zodat de ATF er niet meer tussen staat.
+ - Home: Expert op afstand rustiger — donkere kaart met groenblauwe streep,
+   geen gloed, één regel uitleg, knoppen ook op 360 px naast elkaar.
+ - Statusmenu → AI-uitleg opent een venster: wat de AI doet, tokens beperkt,
+   aanvragen (⚡ Tokens aanvragen), niet verspillen bij onvolledige data,
+   disclaimer. Handleiding bijgewerkt.
+ - Proeven: test-garage.js (bandengroep), bproef-garage.js 4o, bproef-
+   navigatie.js 4b/4c; vijf mutaties in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  23-10-2026 — Meetproeven: opstelling keuren, toeschouwer (#594)
  ═══════════════════════════════════════════════════════════
 
