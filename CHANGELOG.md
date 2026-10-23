@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 23-10-2026 — CBS-pompprijs en APK-ritme
+ ═══════════════════════════════════════════════════════════
+
+ - De standaardprijs per liter komt bij het opstarten van het CBS
+   (pidlane-pompprijs.js, tabel 80416ned via de Worker-proxy); de getallen
+   in de code blijven de terugval. Een eigen prijs in het profiel wint.
+ - APK-geschiedenis meldt een keuring ná de vervaldatum; boven 30 dagen
+   als let op (geen geldige APK, of geschorst/buitenland).
+ - Nieuw: test-pompprijs.js.
+
+ ═══════════════════════════════════════════════════════════
  23-10-2026 — RDW per kenteken: APK, terugroepherstel, EV-accu; foutcodes
  ═══════════════════════════════════════════════════════════
 

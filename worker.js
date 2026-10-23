@@ -1268,7 +1268,7 @@ async function handleReferentie(request, env) {
   return json({ records: gemaakt }, 200);
 }
 __name(handleReferentie, "handleReferentie");
-var PROXY_ALLOWED_HOSTS = ["opendata.rdw.nl", "vpic.nhtsa.dot.gov"];
+var PROXY_ALLOWED_HOSTS = ["opendata.rdw.nl", "vpic.nhtsa.dot.gov", "opendata.cbs.nl"];
 async function handleProxy(request, env) {
   if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
   const url = new URL(request.url);

@@ -15,6 +15,23 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 23-10-2026 — Pompprijs van het CBS: de conclusie van #505 herzien
+
+Op 21-10 ging de standaardprijs van de CBS-pompprijs naar de landelijke
+adviesprijs (GLA), met als reden dat het CBS "weken achterloopt en onder wat
+klanten aan de pomp zien ligt". Nagemeten op 23-10-2026: tabel 80416ned
+loopt tot 19-10, **vier dagen** achter (wekelijkse update). De waarde van
+juli die er toen stond was een handmatig overgenomen getal, niet de tabel.
+En het CBS meet wat er aan de pomp betaald wordt (2,39 benzine), terwijl de
+GLA een adviesprijs is die de meeste stations onderschrijden (2,64). Voor een
+schatting van kosten is het gemeten gemiddelde de eerlijker standaard.
+Een eigen literprijs in het profiel wint nog altijd.
+
+**APK-ritme.** Over 120 kentekens met een keuring sinds september 2026: 33
+keer ooit ná de vervaldatum gekeurd, 10 keer meer dan 30 dagen (tot 297).
+Tachograafmeldingen (`manipulatie tacho`, `inbouw`) staan in dezelfde tabel
+met een eigen vervaldatum; die tellen niet mee, anders ontstaan valse gaten.
+
 ## 23-10-2026 — RDW per kenteken en foutcodekennis: welke bronnen, en welke niet
 
 **RDW-tabellen.** De APK-geschiedenis komt uit drie tabellen op kenteken en

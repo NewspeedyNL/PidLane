@@ -75,6 +75,24 @@ if (!A) { console.log('FOUT: PLApk niet geladen'); process.exit(1); }
   toets('dan worden twee keuringen er één', s.PLApk.bouw(MELD, GEBR, OMS).keuringen.length === 1);
   s.PLApk = los;
 
+  console.log('\n5. Te laat gekeurd — twee echte RDW-ritmes (sgfe-77wx, 23-10-2026, zonder kenteken)');
+  const pk = (d, v, s) => ({ meld_datum_door_keuringsinstantie: d, vervaldatum_keuring: v, soort_melding_ki_omschrijving: s || 'periodieke controle' });
+  const A1 = [pk('20240703', '20250703'), pk('20260901', '20270905'), pk('20250905', '20260905')];
+  const A2 = [pk('20241024', '20251108'), pk('20260901', '20270901')];
+  toets('64 dagen na 03-07-2025, op 05-09-2025', JSON.stringify(A.teLaat(A1)) === JSON.stringify([{ datum: '20250905', verlopen: '20250703', dagen: 64 }]), JSON.stringify(A.teLaat(A1)));
+  toets('297 dagen zonder geldige APK', A.teLaat(A2).length === 1 && A.teLaat(A2)[0].dagen === 297);
+  const b2 = A.bouw(A2, [], []);
+  toets('meer dan 30 dagen: let op, en de tekst noemt geschorst of buitenland', b2.samenvatting.niveau === 'letop' && /geschorst of in het buitenland/.test(A.html(b2)), b2.samenvatting.niveau);
+  toets('de AI-regel zegt het ook', /297 dagen na de vervaldatum/.test(A.naarPromptRegel(b2)), A.naarPromptRegel(b2));
+  toets('op tijd (TS001X): niets te laat', A.teLaat(MELD).length === 0);
+  toets('een herkeuring op dezelfde dag telt niet als vorige', A.teLaat([pk('20250101', '20260101'), pk('20250101', '20260101'), pk('20251220', '20261220')]).length === 0);
+  toets('een paar dagen te laat: info, geen let op', A.bouw([pk('20250101', '20260101'), pk('20260105', '20270105')], [], []).samenvatting.niveau === 'info');
+  toets('TEGENPROEF: een tachograafmelding met eigen vervaldatum telt niet mee', A.teLaat([pk('20241201', '20250201', 'manipulatie tacho'), pk('20250301', '20260301')]).length === 0);
+  const zonder = new vm.Script(BRON.replace("filter(x => !x.soort_melding_ki_omschrijving || /periodiek/i.test(x.soort_melding_ki_omschrijving))", 'filter(Boolean)'));
+  const los2 = s.PLApk; zonder.runInContext(s);
+  toets('…want zonder die regel wordt het een gat', s.PLApk.teLaat([pk('20241201', '20250201', 'manipulatie tacho'), pk('20250301', '20260301')]).length === 1);
+  s.PLApk = los2;
+
   console.log('\n' + (fout ? fout + ' van ' + n + ' fout' : 'Alles goed (' + n + ')'));
   process.exit(fout ? 1 : 0);
 })();

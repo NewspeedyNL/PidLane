@@ -2787,6 +2787,32 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── CBS-pompprijs en APK-ritme (23-10-2026) ──
+  {
+    issue: 'pompprijs',
+    naam: 'De standaardprijs per liter komt van het CBS (80416ned), niet meer met de hand',
+    waarom: 'De prijs in de code veroudert vanaf de dag dat hij erin gezet is.',
+    proef: async function () {
+      if (!window.PLPompprijs || typeof PLPompprijs.verwerk !== 'function') return { staat: 'FOUT', detail: 'PLPompprijs ontbreekt — pidlane-pompprijs.js niet geladen (herladen?)' };
+      if (PLPompprijs.verwerk([{ Perioden: '20261019', BenzineEuro95_1: 23.9, Diesel_2: 2.4, Lpg_3: 0.9 }])) return { staat: 'FOUT', detail: 'een komma-fout wordt als prijs geaccepteerd' };
+      if (!PLPompprijs.actueel) return { staat: 'LET OP', detail: 'nog geen CBS-prijs binnen (offline, of de Worker laat opendata.cbs.nl nog niet door) — de standaardprijs uit de code staat' };
+      var b = window.PLBerekend && PLBerekend.PRIJS_STANDAARD;
+      if (!b || b.benzine !== PLPompprijs.actueel.benzine) return { staat: 'FOUT', detail: 'CBS-prijs opgehaald maar niet in PRIJS_STANDAARD gezet' };
+      return { staat: 'OK', detail: PLPompprijs.bronTekst() + ': benzine € ' + b.benzine + ', diesel € ' + b.diesel };
+    }
+  },
+  {
+    issue: 'apk-ritme',
+    naam: 'APK-geschiedenis zegt wanneer een keuring ná de vervaldatum viel',
+    waarom: 'Een auto die maanden zonder geldige APK reed (of geschorst stond) is voor een koper iets om naar te vragen.',
+    proef: async function () {
+      if (!window.PLApk || typeof PLApk.teLaat !== 'function') return { staat: 'FOUT', detail: 'PLApk.teLaat ontbreekt — oude pidlane-apk.js (herladen?)' };
+      var r = PLApk.teLaat([{ meld_datum_door_keuringsinstantie: '20241024', vervaldatum_keuring: '20251108' }, { meld_datum_door_keuringsinstantie: '20260901', vervaldatum_keuring: '20270901' }]);
+      if (r.length !== 1 || r[0].dagen !== 297) return { staat: 'FOUT', detail: JSON.stringify(r) };
+      return { staat: 'OK', detail: 'Zoek een kenteken: bij een te late keuring staat het onder APK-geschiedenis' };
+    }
+  },
+
   // ── RDW per kenteken en foutcodekennis (23-10-2026) ──
   {
     issue: 'apk',

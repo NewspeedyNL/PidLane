@@ -24,6 +24,12 @@
    1,6–2,5 mm, beginnende slijtage): de auto is daarop níét afgekeurd, maar
    het komt eraan. De rest is een gebrek dat hersteld moest worden.
 
+   TE LAAT GEKEURD (23-10-2026). Elke melding draagt de nieuwe vervaldatum.
+   Valt een keuring ná de vervaldatum van de keuring ervoor, dan reed de
+   auto zo lang zonder geldige APK — of stond hij geschorst of in het
+   buitenland, dat ziet deze tabel niet. Daarom zegt de tekst allebei, en
+   telt pas een gat van meer dan GAT_DAGEN als "let op".
+
    NETWERK: dezelfde proxy als PLRecall (opendata.rdw.nl staat al in
    PROXY_ALLOWED_HOSTS). bouw() is puur en los getoetst (test-apk.js).
    ═══════════════════════════════════════════════════════════════════ */
@@ -33,6 +39,7 @@
   const DS = { meldingen: 'sgfe-77wx', gebreken: 'a34c-vvps', omschrijving: 'hx2c-gt7k' };
   const CACHE_TTL = 6 * 60 * 60 * 1000;
   const MAX_KEURINGEN = 12;
+  const GAT_DAGEN = 30;
   const _cache = new Map();
 
   const normKent = k => String(k || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -53,6 +60,24 @@
     const geldig = kand.filter(r => (!r.ingangsdatum_gebrek || r.ingangsdatum_gebrek <= datum) && (!r.einddatum_gebrek || r.einddatum_gebrek >= datum));
     const r = geldig[0] || kand[0];
     return r ? String(r.gebrek_omschrijving || '').trim() : '';
+  }
+
+  const dagenTussen = (a, b) => Math.round((Date.UTC(+b.slice(0, 4), +b.slice(4, 6) - 1, +b.slice(6, 8)) - Date.UTC(+a.slice(0, 4), +a.slice(4, 6) - 1, +a.slice(6, 8))) / 864e5);
+
+  /* Puur: meldingen → elke keuring die ná de vorige vervaldatum viel.
+     Een herkeuring op dezelfde dag telt niet als "vorige". */
+  function teLaat(meldingen) {
+    // Alleen de APK zelf: een tachograaf-inbouw draagt een eigen vervaldatum.
+    const m = (meldingen || []).filter(x => !x.soort_melding_ki_omschrijving || /periodiek/i.test(x.soort_melding_ki_omschrijving)).map(x => ({ datum: String(x.meld_datum_door_keuringsinstantie || ''), verval: String(x.vervaldatum_keuring || '') }))
+      .filter(x => /^\d{8}$/.test(x.datum)).sort((a, b) => (a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0));
+    const uit = [];
+    m.forEach((k, i) => {
+      const eerder = m.slice(0, i).filter(v => v.datum < k.datum && /^\d{8}$/.test(v.verval)).map(v => v.verval);
+      if (!eerder.length) return;
+      const verval = eerder.reduce((a, b) => (b > a ? b : a));
+      if (k.datum > verval) uit.push({ datum: k.datum, verlopen: verval, dagen: dagenTussen(verval, k.datum) });
+    });
+    return uit.sort((a, b) => (a.datum < b.datum ? 1 : -1));
   }
 
   /* Puur: drie RDW-antwoorden → keuringen met hun gebreken, nieuwste eerst,
@@ -80,11 +105,13 @@
     const laatste = keuringen[0] || null;
     const lg = laatste ? laatste.gebreken.filter(g => !g.advies).length : 0;
     const la = laatste ? laatste.gebreken.filter(g => g.advies).length : 0;
+    const laat = teLaat(meldingen);
+    const gaten = laat.filter(l => l.dagen > GAT_DAGEN);
     let tekst = 'Geen APK-keuringen bekend bij het RDW';
     if (laatste) tekst = 'Laatste keuring ' + datumNl(laatste.datum) + ': ' +
       (lg ? lg + ' gebrek' + (lg === 1 ? '' : 'en') : 'geen gebreken') + (la ? ', ' + la + ' adviespunt' + (la === 1 ? '' : 'en') : '');
     return { keuringen, samenvatting: { aantalKeuringen: keuringen.length, gebrekenLaatste: lg, adviesLaatste: la, terugkerend,
-      niveau: terugkerend.length ? 'letop' : lg ? 'info' : 'ok', tekst } };
+      teLaat: laat, gaten: gaten.length, niveau: terugkerend.length || gaten.length ? 'letop' : lg || laat.length ? 'info' : 'ok', tekst } };
   }
 
   async function check(kenteken, opties) {
@@ -109,6 +136,10 @@
     if (!res || !res.keuringen || !res.keuringen.length) return '';
     const s = res.samenvatting;
     let h = '<div class="plz-blok"><b>🔧 APK-geschiedenis</b><div class="plz-klein">' + esc(s.tekst) + '</div>';
+    (s.teLaat || []).slice(0, 3).forEach(l => {
+      h += '<div style="margin-top:6px">' + (l.dagen > GAT_DAGEN ? '⚠️ ' : '') + 'Gekeurd op ' + esc(datumNl(l.datum)) + ', ' + l.dagen + ' dag' + (l.dagen === 1 ? '' : 'en') +
+        ' na de vervaldatum (' + esc(datumNl(l.verlopen)) + '). In die tijd had de auto geen geldige APK, of stond hij geschorst of in het buitenland.</div>';
+    });
     if (s.terugkerend.length) h += '<div style="margin-top:6px">⚠️ Komt terug bij meerdere keuringen: ' + esc(s.terugkerend.join('; ')) + '</div>';
     res.keuringen.slice(0, 5).forEach(k => {
       h += '<div style="margin-top:6px"><b>' + esc(datumNl(k.datum)) + '</b>' + (k.soort ? ' <span class="plz-klein">' + esc(k.soort) + '</span>' : '');
@@ -125,11 +156,12 @@
     let r = 'APK-geschiedenis (RDW): ' + s.tekst + '.';
     const l = res.keuringen[0];
     if (l && l.gebreken.length) r += ' Gevonden: ' + l.gebreken.map(g => (g.advies ? 'advies ' : '') + g.omschrijving).join('; ') + '.';
+    (s.teLaat || []).forEach(l => { r += ' Gekeurd ' + l.dagen + ' dagen na de vervaldatum (' + datumNl(l.datum) + '; geen geldige APK, of geschorst/buitenland).'; });
     if (s.terugkerend.length) r += ' Terugkerend: ' + s.terugkerend.join('; ') + '.';
     return r;
   }
 
-  window.PLApk = { check, bouw, html, naarPromptRegel, isAdvies, wisCache: () => _cache.clear(), DS };
+  window.PLApk = { check, bouw, teLaat, html, naarPromptRegel, isAdvies, wisCache: () => _cache.clear(), DS };
 
   // De koopcheck meldt een kenteken; de APK-geschiedenis gaat dan mee de
   // AI-prompt in (window._plApk), net als de terugroepacties.

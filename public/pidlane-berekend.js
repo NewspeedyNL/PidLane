@@ -66,7 +66,8 @@ const KWH_PER_L = { benzine:8.9, diesel:9.9, lpg:6.9, hybride:8.9, 'plug-in hybr
 // Zonder eigen prijs in het profiel: een ronde landelijke adviesprijs. De
 // tegel zegt dan "standaardprijs", zodat niemand hem voor zijn bon aanziet.
 // Zelfde getallen als PRIJS in pidlane-wijzer.js (GLA 20-10-2026, #505);
-// test-wijzer.js legt de twee naast elkaar.
+// test-wijzer.js legt de twee naast elkaar. pidlane-pompprijs.js zet er bij
+// het opstarten de CBS-pompprijs overheen; dit blijft de terugval.
 const PRIJS_STANDAARD = { benzine:2.64, diesel:2.69, lpg:1.29, hybride:2.64, 'plug-in hybride':2.64 };
 // Het schakeladvies: alleen OPschakelen. Terugschakelen adviseert deze app
 // bewust niet — op de top van een klim is dat precies verkeerd, en dat kan

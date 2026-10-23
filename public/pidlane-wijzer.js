@@ -66,6 +66,8 @@
   // (2,30 / 2,15 / 0,95): het CBS-gemiddelde loopt weken achter en ligt onder
   // wat de meeste klanten aan de pomp zien. Let op: diesel is nu duurder dan
   // benzine. Stroom is een thuistarief en niet nagekeken.
+  // Sinds 23-10-2026 zet pidlane-pompprijs.js hier bij het opstarten de
+  // CBS-pompprijs overheen (vier dagen achter, niet weken); dit is de terugval.
   var PRIJS = { benzine: 2.64, diesel: 2.69, lpg: 1.29, stroom: 0.35 };   // € per l of kWh
   var PRAKTIJK = 1.15;   // het verbruik op de weg ligt hoger dan de typekeuring
   var KM_MAAND = 1250;   // 15.000 km per jaar
@@ -280,7 +282,7 @@
     if (k.brandstof.perMaand != null) h += regel('info', 'Brandstof of stroom', '± ' + euro(k.brandstof.perMaand) + ' per maand', k.brandstof.uitleg);
     else h += regel('', 'Brandstof of stroom', 'niet te schatten', k.brandstof.onbekend);
     if (k.totaal != null) h += regel('', 'Samen, zonder verzekering en onderhoud', '± ' + euro(k.totaal) + ' per maand');
-    h += '<div class="plz-klein" style="margin-top:6px">Een schatting, geen aanslag: de provincie en de exacte tarieftabel ontbreken. Exact: belastingdienst.nl/mrb-berekenen. Prijzen peil ' + PEIL + '.</div></div>';
+    h += '<div class="plz-klein" style="margin-top:6px">Een schatting, geen aanslag: de provincie en de exacte tarieftabel ontbreken. Exact: belastingdienst.nl/mrb-berekenen. ' + (window.PLPompprijs && PLPompprijs.bronTekst() ? PLPompprijs.bronTekst() + '; belasting peil ' : 'Prijzen peil ') + PEIL + '.</div></div>';
 
     // Het onderhoudsschema (#490): op een tik, via de AI (pidlane-schema.js).
     _schemaAuto = { merk: rij && rij.merk, model: rij && rij.handelsbenaming, jaar: String((rij && rij.datum_eerste_toelating) || '').slice(0, 4), brandstof: z.soort, cc: rij && rij.cilinderinhoud, kent: rij && rij.kenteken };
