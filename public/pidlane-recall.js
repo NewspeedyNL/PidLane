@@ -68,6 +68,10 @@
     // 17-10-2026); de rest is de oude gok, voor als een dataset hernoemt.
     omschrijving: ['omschrijving_defect', 'omschrijving', 'omschrijving_terugroepactie', 'onderwerp', 'beschrijving', 'defect_omschrijving'],
     risico:       ['mogelijk_gevaar', 'risico_omschrijving', 'omschrijving_risico', 'risico', 'gevaar_omschrijving', 'omschrijving'],
+    // Wat de garage doet, en wat er kan gebeuren (23-10-2026, nagemeten op
+    // MGP220252): stonden tot nu onder "Overige RDW-velden".
+    herstel:      ['beschrijving_van_het_herstel'],
+    gevolg:       ['materi_le_gevolgen'],
     datum:        ['publicatiedatum_rdw_dt', 'datum_melding_bij_rdw_dt', 'datum_registratie_terugroepactie_dt', 'datum_registratie_terugroepactie', 'startdatum', 'datum']
   };
 
@@ -154,8 +158,10 @@
         omschrijving: pak(a[0], VELD_VOORKEUR.omschrijving),
         risico: pak(r[0], VELD_VOORKEUR.risico),
         datum: pak(a[0], VELD_VOORKEUR.datum),
+        herstel: pak(a[0], VELD_VOORKEUR.herstel),
+        gevolg: pak(a[0], VELD_VOORKEUR.gevolg),
         extra: [
-          ...rest(a[0], [...VELD_VOORKEUR.omschrijving, ...VELD_VOORKEUR.datum]),
+          ...rest(a[0], [...VELD_VOORKEUR.omschrijving, ...VELD_VOORKEUR.datum, ...VELD_VOORKEUR.herstel, ...VELD_VOORKEUR.gevolg]),
           ...rest(r[0], VELD_VOORKEUR.risico)
         ]
       };
@@ -237,6 +243,8 @@
           if (a.datum) h += `<span class="pl-rc-datum">${esc(a.datum)}</span>`;
           if (a.omschrijving) h += `<div class="pl-rc-oms">${esc(a.omschrijving)}</div>`;
           if (a.risico) h += `<div class="pl-rc-risico"><b>Risico:</b> ${esc(a.risico)}</div>`;
+          if (a.gevolg) h += `<div class="pl-rc-risico"><b>Gevolg:</b> ${esc(a.gevolg)}</div>`;
+          if (a.herstel) h += `<div class="pl-rc-oms"><b>Herstel:</b> ${esc(a.herstel)}</div>`;
           if (a.extra && a.extra.length) {
             h += '<details class="pl-rc-extra"><summary>Overige RDW-velden</summary><ul>';
             for (const e of a.extra) h += `<li>${esc(e.veld)}: ${esc(e.waarde)}</li>`;
@@ -259,7 +267,7 @@
       let r = `Terugroepacties: ${s.tekst}.`;
       for (const a of (res.acties || []).filter(x => x.open)) {
         r += ` [${a.referentiecode}] ${a.omschrijving || 'geen omschrijving'}` +
-             (a.risico ? ` Risico: ${a.risico}` : '');
+             (a.risico ? ` Risico: ${a.risico}` : '') + (a.herstel ? ` Herstel: ${a.herstel}` : '');
       }
       return r;
     },

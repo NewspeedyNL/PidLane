@@ -494,18 +494,48 @@ const NEPSERVER = `(function(){
         const u = decodeURIComponent(String(pad));
         if (u.indexOf('opendata.rdw.nl') < 0) return vorig(pad, o);
         window._nepRdw++;
-        const rij = /m9d7-ebf2/.test(u) ? [{ kenteken:'R054XD', merk:'MAZDA', handelsbenaming:'CX-5', vervaldatum_apk:'20270301', wam_verzekerd:'Ja', datum_eerste_toelating:'20180101', cilinderinhoud:'2191' }] : [];
+        // De APK-tabellen: de echte regels van TS001X (23-10-2026) onder dit kenteken.
+        const M = [{ kenteken:'R054XD', meld_datum_door_keuringsinstantie:'20261021', meld_tijd_door_keuringsinstantie:'1050', soort_melding_ki_omschrijving:'periodieke controle', vervaldatum_keuring:'20271103' },
+                   { kenteken:'R054XD', meld_datum_door_keuringsinstantie:'20251006', meld_tijd_door_keuringsinstantie:'1137', soort_melding_ki_omschrijving:'periodieke controle', vervaldatum_keuring:'20261103' }];
+        const G = [{ kenteken:'R054XD', meld_datum_door_keuringsinstantie:'20261021', meld_tijd_door_keuringsinstantie:'1050', gebrek_identificatie:'497', aantal_gebreken_geconstateerd:'1' },
+                   { kenteken:'R054XD', meld_datum_door_keuringsinstantie:'20251006', meld_tijd_door_keuringsinstantie:'1137', gebrek_identificatie:'497', aantal_gebreken_geconstateerd:'1' }];
+        const O = [{ gebrek_identificatie:'497', ingangsdatum_gebrek:'20170401', gebrek_omschrijving:'Kentekenplaatverlichting werkt niet (goed) / ontbreekt' }];
+        const rij = /m9d7-ebf2/.test(u) ? [{ kenteken:'R054XD', merk:'MAZDA', handelsbenaming:'CX-5', vervaldatum_apk:'20270301', wam_verzekerd:'Ja', datum_eerste_toelating:'20180101', cilinderinhoud:'2191' }]
+          : /sgfe-77wx/.test(u) ? M : /a34c-vvps/.test(u) ? G : /hx2c-gt7k/.test(u) ? O : [];
         return { ok:true, status:200, json: async function () { return rij; } };
       };
       window._recallVoorRdw = window.PLRecall && PLRecall.check;
       if (window.PLRecall) PLRecall.check = async function () { return { acties:[{ open:true, omschrijving:'Nepactie remleiding', status:'open' }] }; };
+      if (window.PLApk) PLApk.wisCache();
       connected = true; PLGarage.open(id); return 'ok'; })()`);
     toets('verbonden: het tabblad Kenteken staat er', await app.ev(`/Kenteken/.test(document.querySelector('#plGarBody .gr-tabs').textContent)`));
     await app.ev(`PLGarage._tab('kenteken'); 'ok'`);
     toets('het tabblad toont de RDW-uitslag van dit kenteken', await wacht(`window._nepRdw > 0 && /APK/.test(document.getElementById('plGarBody').textContent) && !!document.querySelector('#plGarBody .plz-los .plz-regel')`, 5000),
       await app.ev(`document.getElementById('plGarBody').textContent.slice(0, 300)`));
+    toets('met de APK-geschiedenis: het gebrek, en dat het terugkomt (PLApk)', await wacht(`/APK-geschiedenis/.test(document.getElementById('plGarBody').textContent) && /Komt terug bij meerdere keuringen: Kentekenplaatverlichting/.test(document.getElementById('plGarBody').textContent)`, 5000),
+      await app.ev(`document.getElementById('plGarBody').textContent.slice(-600)`));
     toets('met de terugroepactie en de blokken van PLWijzer', await wacht(`/Nepactie remleiding/.test(document.getElementById('plGarBody').textContent) && !!document.querySelector('#plGarBody [data-plw="kosten"]')`, 5000));
     await app.ev(`window.plFetch = window._plFetchVoorRdw; if (window._recallVoorRdw) PLRecall.check = window._recallVoorRdw; connected = false; PLGarage._tab('overzicht'); PLGarage.sluit(); 'ok'`);
+
+    console.log('\n── 4n. tabblad Kenteken bij een EV: accu en bereik (PLEv, 23-10-2026) ──');
+    // De RDW-waarden van een echte ID.3 Pro (8ys7-d773: 156 Wh/km, 426 km WLTP); het kenteken is verzonnen.
+    await app.ev(`(function(){
+      const id = PLGarage.actief().id; PLGarage.actief().kenteken = 'EV001X';
+      window._nepPlatform.voertuigen.forEach(function (x) { if (x.id === id) x.kenteken = 'EV001X'; });
+      const vorig = window.plFetch; window._plFetchVoorRdw = vorig;
+      window.plFetch = async function (pad, o) {
+        const u = decodeURIComponent(String(pad));
+        if (u.indexOf('opendata.rdw.nl') < 0) return vorig(pad, o);
+        const rij = /m9d7-ebf2/.test(u) ? [{ kenteken:'EV001X', merk:'VOLKSWAGEN', handelsbenaming:'ID.3 PRO 150 KW', vervaldatum_apk:'20270301', wam_verzekerd:'Ja', datum_eerste_toelating:'20230501' }]
+          : /8ys7-d773/.test(u) ? [{ kenteken:'EV001X', brandstof_omschrijving:'Elektriciteit', elektrisch_verbruik_enkel_elektrisch_wltp:'156.00', actie_radius_enkel_elektrisch_wltp:'426' }] : [];
+        return { ok:true, status:200, json: async function () { return rij; } };
+      };
+      if (window.PLApk) PLApk.wisCache();
+      connected = true; PLGarage.open(id); PLGarage._tab('kenteken'); PLGarage._rdwOpnieuw(); return 'ok'; })()`);
+    toets('de accu van de ID.3: 58 kWh, gekozen op de WLTP-actieradius', await wacht(`/Accu en bereik/.test(document.getElementById('plGarBody').textContent) && /58 kWh/.test(document.getElementById('plGarBody').textContent) && /426 km/.test(document.getElementById('plGarBody').textContent)`, 5000),
+      await app.ev(`document.getElementById('plGarBody').textContent.slice(0, 500)`));
+    toets('met de bron en de licentie erbij', await app.ev(`/Tijs Teulings, MIT/.test(document.getElementById('plGarBody').textContent)`));
+    await app.ev(`window.plFetch = window._plFetchVoorRdw; connected = false; PLGarage._tab('overzicht'); PLGarage.sluit(); 'ok'`);
 
     console.log('\n── 5. de terugknop en het startscherm ──');
     await app.ev(`PLGarage.open(); 'ok'`);

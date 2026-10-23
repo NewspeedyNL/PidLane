@@ -63,6 +63,13 @@ eis(/^Onbekende code — fabrikantspecifiek/.test(metMerk('Renault', 'B1318').de
 eis(/Accu spanning laag/.test(metMerk('Mazda', 'B1318').desc) && /Accu spanning laag/.test(metMerk('Ford', 'B1318').desc), 'Mazda en Ford B1318: accuspanning laag');
 const p0016 = metMerk('Peugeot', 'P0016');
 eis(!/^Onbekende/.test(p0016.desc), 'TEGENPROEF: een algemene code (P0016) mag wél lenen', p0016.desc);
+// U2/B2/C2 zijn fabrikantcodes (SAE J2012); tot 23-10-2026 las _dtcBron ze als algemeen.
+const merkGroepen = Object.keys(s.DTC_MERK), eerste = merkGroepen[0];
+s.DTC_MERK[eerste].U2100 = { desc: 'netwerkcode van één merk', body: '', sev: 'med' };
+s.DTC_MERK[eerste].U0398 = { desc: 'algemene netwerkcode', body: '', sev: 'med' };
+eis(/^Onbekende code — fabrikantspecifiek/.test(metMerk('Onbekendmerk', 'U2100').desc), 'U2100 leent niet van een ander merk', metMerk('Onbekendmerk', 'U2100').desc);
+eis(!/^Onbekende/.test(metMerk('Onbekendmerk', 'U0398').desc), 'TEGENPROEF: U0398 (algemeen) leent wél', metMerk('Onbekendmerk', 'U0398').desc);
+delete s.DTC_MERK[eerste].U2100; delete s.DTC_MERK[eerste].U0398;
 
 console.log('\n3. Wat de opbouw zegt als hij nergens staat');
 let i = s.dtcInfo('P117A');

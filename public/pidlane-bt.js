@@ -3456,11 +3456,13 @@ function _dtcBron(code){
   if(groep&&M&&M[groep]&&M[groep][code]) return {rij:M[groep][code],noot:''};
   if(typeof DTCDB!=='undefined'&&DTCDB[code])   return {rij:DTCDB[code],noot:''};
   if(typeof DTC_OMSCHRIJVING!=='undefined'&&DTC_OMSCHRIJVING[code]) return {rij:DTC_OMSCHRIJVING[code],noot:''};
-  // Lenen van een ander merk alleen bij een ALGEMENE code (SAE J2012: tweede
-  // teken 0 of 2, of P34–P39). Een fabrikantcode (P1xxx, C1xxx, P30–P33)
-  // betekent per merk iets anders: een Peugeot met P1340 kreeg hier de
-  // BMW-uitleg "krukassensor" (22-10-2026). Dan liever de opbouwuitleg.
-  const algemeen=/^[PCBU][02]/.test(code) || /^P3[4-9]/.test(code);
+  // Lenen van een ander merk alleen bij een ALGEMENE code. Een fabrikantcode
+  // (P1xxx, P30–P33, en bij B/C/U een 1 of 2) betekent per merk iets anders:
+  // een Peugeot met P1340 kreeg hier de BMW-uitleg "krukassensor"
+  // (22-10-2026). Dan liever de opbouwuitleg. Dezelfde regel als hieronder
+  // in _dtcStructuur — tot 23-10-2026 stond hier een eigen kopie die B2/C2/U2
+  // als algemeen las.
+  const algemeen=/^[PCBU][0-3][0-9A-F]{3}$/.test(code) && !_dtcFabrikant(code);
   if(M && algemeen){
     for(const g of Object.keys(M)){
       if(M[g][code]){
@@ -3477,11 +3479,16 @@ function _dtcBron(code){
 // leunen PLZonder en de stoplichten op (15-10-2026).
 const _DTC_SYS={P:'aandrijving',C:'onderstel',B:'carrosserie',U:'netwerk'};
 const _DTC_DEEL={'0':'brandstof en lucht','1':'brandstof en lucht','2':'brandstof en lucht','3':'ontsteking','4':'emissie','5':'snelheid en stationair','6':'regeleenheid en uitgangen','7':'versnellingsbak','8':'versnellingsbak','9':'versnellingsbak','A':'hybride'};
+// SAE J2012: bij P is 1 (en P30–P33) van de fabrikant, bij B/C/U de 1 en de 2.
+function _dtcFabrikant(code){
+  const c=String(code||'').toUpperCase().trim(), l=c[0], d=c[1];
+  return l==='P' ? (d==='1'||(d==='3'&&c[2]<'4')) : (d==='1'||d==='2');
+}
 function _dtcStructuur(code){
   const c=String(code||'').toUpperCase().trim();
   if(!/^[PCBU][0-3][0-9A-F]{3}$/.test(c)) return '';
   const l=c[0], d=c[1];
-  const fabr = l==='P' ? (d==='1'||(d==='3'&&c[2]<'4')) : (d==='1'||d==='2');
+  const fabr = _dtcFabrikant(c);
   const deel = (l==='P'&&(d==='0'||d==='1')) ? _DTC_DEEL[c[2]] : '';
   return (fabr?'fabrikantspecifiek':'generiek')+', '+_DTC_SYS[l]+(deel?': '+deel:'');
 }
