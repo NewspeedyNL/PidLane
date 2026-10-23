@@ -2656,6 +2656,8 @@ function _issuesVan(o) {
    tegelijk verzonden. Nu beoordeelt de rit ze allemaal tegelijk, en dan moet
    per opdracht onthouden worden wat er al in de tabel staat. */
 let _verzonden = {};
+// Wat er deze app-sessie verzonden is, op volgorde, voor het verslag (#599).
+let _verzendLog = [];
 
 function _opdrachtStempel(o, vonnis) {
   // De antwoorden horen erin (#283): een vraag die ná het verzenden beantwoord
@@ -2713,7 +2715,46 @@ function _verzendOpdracht(o, h) {
     { Outcome: 'antwoorden', Repro: _issuesVan(o) });
 
   _verzonden[o.naam] = _opdrachtStempel(o, vonnis);
+
+  /* OOK IN HET VERSLAG (#599). Tot 23-10 ging een verzending alleen naar de
+     live-log: in het app-log en het verslag stond niets, en achteraf was
+     niet te zien of een rit van twintig minuten een antwoord had opgeleverd. */
+  _verzendLog.push({ t: new Date().toLocaleTimeString('nl-NL'), naam: o.naam, staat: vonnis.staat, opst: opst });
+  try { if (typeof log === 'function') log('↑ Verzonden: ' + o.naam + ' — ' + vonnis.staat + ' · opstelling ' + opst, vonnis.staat === 'bevinding' ? 'warn' : 'ok'); }
+  catch (e) { console.warn('Testrun: de verzending van "' + o.naam + '" niet in het app-log gezet (#599)', e); }
   return { uitslagen: uitslagen, vonnis: vonnis };
+}
+
+/* HET BLOK MEETOPDRACHTEN (#599). Per opdracht wat de rit er nu van vindt,
+   met de opstelling en of dat al in de tabel staat, en daaronder wat er deze
+   app-sessie verzonden is. Zelfde bron als de knoppen in de meetkamer
+   (oordeelAlle), dus het verslag kan niet iets anders zeggen dan het scherm. */
+function _opdrachtVerslag() {
+  const r = [];
+  let alle = [];
+  if (window.PLTestrunLive && typeof PLTestrunLive.oordeelAlle === 'function') alle = PLTestrunLive.oordeelAlle();
+  if (!alle.length && !_verzendLog.length) return r;
+  let actief = null;
+  try { actief = (window.PLOpdracht && typeof PLOpdracht.actief === 'function') ? PLOpdracht.actief() : null; }
+  catch (e) { console.warn('Testrun: de actieve opdracht onleesbaar voor het verslag (#599)', e); }
+  r.push('MEETOPDRACHTEN (' + alle.length + ')');
+  r.push('────────────────────────────────────────────────');
+  alle.forEach(function (x) {
+    const v = x.vonnis;
+    let opst = 'ongekeurd';
+    try { if (typeof PLOpdracht.keuring === 'function') opst = PLOpdracht.keuring(x.id).staat; }
+    catch (e) { console.warn('Testrun: de keuring van "' + x.naam + '" onleesbaar (#599)', e); }
+    const vs = v && v.venster;
+    const duur = (vs && typeof vs.s === 'number') ? ' · rit ' + Math.floor(vs.s / 60) + ':' + ('0' + (vs.s % 60)).slice(-2) + ' min' : '';
+    r.push((actief && actief.naam === x.naam ? '▶ ' : '  ') + x.naam);
+    r.push('      ' + (v ? v.staat + ' — ' + v.reden : 'geen oordeel') + duur + ' · opstelling ' + opst +
+      ' · ' + (x.alVerzonden ? 'verzonden' : (x.afgerond ? 'AFGEROND, NIET VERZONDEN' : 'niet verzonden')));
+  });
+  r.push('');
+  r.push('VERZONDEN DEZE SESSIE: ' + (_verzendLog.length ? '' : '(niets)'));
+  _verzendLog.forEach(function (z) { r.push('[' + z.t + '] ' + z.naam + ' — ' + z.staat + ' · opstelling ' + z.opst); });
+  r.push('');
+  return r;
 }
 
 function _aanvragersNu() {
@@ -2791,6 +2832,24 @@ function _zonderSporen(naam, fn) {
 }
 
 const PROEVEN_B5 = [
+
+  // ── Meetopdrachten in het verslag (23-10-2026) ──
+  {
+    issue: '#599',
+    naam: 'Het verslag zegt per meetopdracht wat de rit ervan vindt, en wat er verzonden is',
+    waarom: 'Op 23-10 stond na twintig minuten rijden nergens of #594 een antwoord had opgeleverd: een verzending ging alleen naar de live-log.',
+    proef: async function () {
+      if (!window.PLTestrunLive || typeof PLTestrunLive.oordeelAlle !== 'function') return { staat: 'FOUT', detail: 'PLTestrunLive.oordeelAlle ontbreekt (herladen?)' };
+      var alle = PLTestrunLive.oordeelAlle();
+      if (!alle.length) return { staat: 'LET OP', detail: 'geen meetopdrachten opgehaald — het blok MEETOPDRACHTEN is niet na te gaan' };
+      var t = testrunTekst();
+      if (t.indexOf('MEETOPDRACHTEN (' + alle.length + ')') < 0) return { staat: 'FOUT', detail: alle.length + ' opdracht(en), maar het verslag heeft geen blok MEETOPDRACHTEN' };
+      var open = alle.filter(function (r) { return r.afgerond && !r.alVerzonden; }).map(function (r) { return r.naam; });
+      return open.length
+        ? { staat: 'LET OP', detail: open.length + ' afgerond maar niet verzonden: ' + open.join('; ') + ' — Meetkamer → Verzend alle afgeronde' }
+        : { staat: 'OK', detail: alle.length + ' opdracht(en) in het verslag, niets afgerond dat nog wacht' };
+    }
+  },
 
   // ── Meetproeven: de toeschouwer en de keuring van de opstelling (23-10-2026) ──
   {
@@ -10166,6 +10225,8 @@ function testrunTekst() {
   // lees je anders als een uitkomst.
   try { _bgVerslag().forEach(function (l) { r.push(l); }); }
   catch (e) { r.push('(stappenblok niet toegevoegd — ' + ((e && e.message) || e) + ')'); r.push(''); }
+  try { _opdrachtVerslag().forEach(function (l) { r.push(l); }); }
+  catch (e) { r.push('(blok meetopdrachten niet toegevoegd — ' + ((e && e.message) || e) + ')'); r.push(''); }
 
   const namen = { 0: 'RUN', 5: 'BLOK 5 — wat er in deze update veranderd is', 1: 'BLOK 1 — bedrading en omgeving', 2: 'BLOK 2 — schermen', 3: 'BLOK 3 — PID-sweep', 4: 'BLOK 4 — bus en regelkringen', 6: 'BLOK 6 — waarom zwijgen deze sensoren', 7: 'BLOK 7 — het pollbudget (PLAN.md punt 2)', 8: 'BLOK 8 — waar zit de olietemperatuur (PLAN.md punt 4)', 9: 'BLOK 9 — DID-scan mode 22', 10: 'BLOK 10 — snelheidsproef (PLAN.md punt 2b)' };
   let vorig = -99;

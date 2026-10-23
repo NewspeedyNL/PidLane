@@ -1235,6 +1235,9 @@ MUTATIES=(
 # op hun "niet gedaan"-tak en zeiden dat als een feit over de rit.
 "public/pidlane-testrun.js@@  _BG.aan = true; _BG.i = 0; _BG.gepauzeerd = false; _BG.gestart = _nu(); _BG.gedaan = []; _BG.laatsteActie = '';@@  _BG.aan = true; _BG.i = 0; _BG.gepauzeerd = false; _BG.gestart = _nu(); _BG.gedaan = []; _BG.laatsteActie = '';\n  _markeringen = [];@@test-markeringen.js@@de toestelronde wist de markeringen van de meetrit: de tweede testrun meldt dat de achtergrondstap niet gedaan is terwijl hij dat wel was"
 "public/pidlane-testrun.js@@      try { return (_BG && _BG.aan && _BG.soort) ? _BG.soort : 'los'; }@@      try { return 'los'; }@@test-markeringen.js@@een markering zegt niet meer uit welke ronde hij komt, en dan is filteren per ronde weer giswerk"
+"public/pidlane-testrun.js@@  _verzendLog.push({ t: new Date().toLocaleTimeString('nl-NL'), naam: o.naam, staat: vonnis.staat, opst: opst });@@  // (#599 weg)@@test-opdrachtverslag.js@@een verzending staat niet meer in het verslag: achteraf is niet te zien of de rit een antwoord opleverde"
+"public/pidlane-testrun.js@@(x.alVerzonden ? 'verzonden' : (x.afgerond ? 'AFGEROND, NIET VERZONDEN' : 'niet verzonden'))@@(x.alVerzonden ? 'verzonden' : 'niet verzonden')@@test-opdrachtverslag.js@@een afgeronde opdracht die niet verzonden is valt niet meer op tussen de opdrachten die nog niets hebben"
+"public/pidlane-testrun.js@@  try { if (typeof log === 'function') log('↑ Verzonden: '@@  try { if (false) log('↑ Verzonden: '@@test-opdrachtverslag.js@@een verzending krijgt geen regel meer in het app-log"
 
 # ── Wat er in de logtabel terechtkomt (#256, 18-09-2026). Die tabel is sinds
 # #241 de bron waarop de volgende meetopdracht gebouwd wordt. Deze vijf bouwen
