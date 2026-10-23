@@ -83,16 +83,16 @@ function laad() {
 const TOERENTAL = { naam: 'het toerental is echt gevolgd', pid: '010C', meet: 'veranderingen', tussen: [10, 1000000] };
 const VOLGAS = { wat: 'er is vol gas gegeven', pid: '010C', meet: 'max', tussen: [3000, 8000] };
 const RIJEN = [
-  { id: 'maf', naam: 'MAF bij vollast', opdracht: JSON.stringify({ schema: 2, naam: 'MAF bij vollast',
+  { keuring: { staat: 'groen' }, id: 'maf', naam: 'MAF bij vollast', opdracht: JSON.stringify({ schema: 2, naam: 'MAF bij vollast',
       sensoren: ['010C'], duurS: 600, proeven: [TOERENTAL], voorwaarden: [VOLGAS] }) },
-  { id: 'x', naam: 'Opdracht X, ook vol gas', opdracht: JSON.stringify({ schema: 2, naam: 'Opdracht X, ook vol gas',
+  { keuring: { staat: 'groen' }, id: 'x', naam: 'Opdracht X, ook vol gas', opdracht: JSON.stringify({ schema: 2, naam: 'Opdracht X, ook vol gas',
       sensoren: ['010C'], duurS: 600, proeven: [TOERENTAL], voorwaarden: [VOLGAS] }) },
-  { id: 'd', naam: 'Toerental gevolgd', opdracht: JSON.stringify({ schema: 2, naam: 'Toerental gevolgd',
+  { keuring: { staat: 'groen' }, id: 'd', naam: 'Toerental gevolgd', opdracht: JSON.stringify({ schema: 2, naam: 'Toerental gevolgd',
       sensoren: ['010C'], duurS: 60, proeven: [TOERENTAL] }) },
-  { id: 'b', naam: 'De adapter er even uit', opdracht: JSON.stringify({ schema: 2, naam: 'De adapter er even uit',
+  { keuring: { staat: 'groen' }, id: 'b', naam: 'De adapter er even uit', opdracht: JSON.stringify({ schema: 2, naam: 'De adapter er even uit',
       sensoren: ['010C'], duurS: 300, proeven: [TOERENTAL],
       voorwaarden: [{ wat: 'de adapter is er even uit geweest', gebeurtenis: 'onderbreking', minS: 10 }] }) },
-  { id: 'c', naam: 'De goedkope adapter', opdracht: JSON.stringify({ schema: 2, naam: 'De goedkope adapter',
+  { keuring: { staat: 'groen' }, id: 'c', naam: 'De goedkope adapter', opdracht: JSON.stringify({ schema: 2, naam: 'De goedkope adapter',
       sensoren: ['010C'], duurS: 300, proeven: [TOERENTAL],
       voorwaarden: [{ wat: 'de kloon zit erin, niet de MX+', adapter: 'OBDLink', niet: true }] }) }
 ];
@@ -249,7 +249,7 @@ function rij(s, tikken, meten, gas) {
     s.rijen = [{ id: 'v', naam: 'Ontsteking warm', opdracht: JSON.stringify({ schema: 2, naam: 'Ontsteking warm',
       sensoren: ['010C'], duurS: 60, proeven: [TOERENTAL],
       vragen: [{ id: 'ketting', tekst: 'Noemt Welk onderdeel de ketting?', opties: ['nee', 'ja', 'niet gekeken'] },
-               { id: 'klacht', tekst: 'Merk je iets aan de motor?', opties: ['nee, rijdt prima', 'ja'] }] }) }];
+               { keuring: { staat: 'groen' }, id: 'klacht', tekst: 'Merk je iets aan de motor?', opties: ['nee, rijdt prima', 'ja'] }] }) }];
     await s.PLOpdracht.lijst();
     s.PLOpdracht.kies('v');
     vm.runInContext(fs.readFileSync('pidlane-meetkamer.js', 'utf8'), s, { filename: 'pidlane-meetkamer.js' });

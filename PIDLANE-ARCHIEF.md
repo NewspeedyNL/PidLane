@@ -15,6 +15,29 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 23-10-2026 — Meetproeven: de uitkomst was vaak fout door de proef, niet door de auto (#594)
+
+De lus (opdracht in D1 → rit → oordeel → logtabel) werkte, maar een GESLOTEN
+of BEVINDING zei te vaak niets: de proef zelf stond fout. Twee vormen kwamen
+steeds terug. Een stap-voorwaarde ("stilgestaan", "contact uit") wachtte op
+een markering die met de hand gezet moest worden; vergeten = NOG NIET, terwijl
+de auto het wél gedaan had. En een proef die dezelfde maat toetste als zijn
+voorwaarde, met een ruimere band, kon niet rood worden — `plopdracht.js`
+keek alleen naar banden tegen het PID-bereik.
+
+Wat er nu staat: `PLToeschouwer` ziet stilstand, rijden, contact en helling
+zelf en markeert ze; de voorwaarde `toestand` leest zijn duur. De beheerder
+keurt de opstelling tijdens een rit (groen/rood); de keuring slaat op de tekst
+(`KeurHash`), dus elke wijziging maakt hem ongekeurd zonder dat een schrijfpad
+eraan hoeft te denken. Een ongekeurde uitkomst gaat als `proefopstelling` mee.
+
+Bewust niet gedaan: de keuring in `beheer.html` als knop. De plek waar je ziet
+of een proef meet wat hij moet meten is de meetkamer in de auto; `/admin/d1`
+kent de actie `opdracht-keur` wel, voor als dat later toch nodig is. De
+bestaande opdrachten in D1 staan na deze wijziging allemaal op ongekeurd.
+
+---
+
 ## 23-10-2026 — Beschikbaarheid van data: vier stille gaten bij de eerste verbinding
 
 Nagelopen op de vraag "hoe komt bij een nieuwe klant de lijst met PIDs tot

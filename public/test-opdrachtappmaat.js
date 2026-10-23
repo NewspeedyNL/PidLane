@@ -59,7 +59,8 @@ function laad() {
   // #338 (PLVisueel), #376 (PLFoutcodes).
   // #443 (PLVerzamel), het verzamelscherm.
   // #534 (PLOnderzoek), de snelle scan van het onderzoek.
-  ['pidlane-adapter.js', 'pidlane-berekend.js', 'pidlane-visueel.js', 'pidlane-foutcodes.js', 'pidlane-verzamel.js', 'pidlane-contact.js', 'pidlane-onderzoek.js'].forEach(function (f) {
+  // 23-10-2026 (PLToeschouwer), stilstand, rijden, contact en helling.
+  ['pidlane-adapter.js', 'pidlane-berekend.js', 'pidlane-visueel.js', 'pidlane-foutcodes.js', 'pidlane-verzamel.js', 'pidlane-contact.js', 'pidlane-onderzoek.js', 'pidlane-toeschouwer.js'].forEach(function (f) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, f), 'utf8'), s, { filename: f });
   });
   return s;
@@ -128,7 +129,8 @@ console.log('── 2. de lijst en de module lopen gelijk ──');
    ['pidlane-foutcodes.js', 'PLFoutcodes', /case '(check-[a-z-]+)'/g],
    ['pidlane-verzamel.js', 'PLVerzamel', /case '(verzamel-[a-z-]+)'/g],
    ['pidlane-contact.js', 'PLContact', /case '(contact-[a-z-]+)'/g],
-   ['pidlane-onderzoek.js', 'PLOnderzoek', /case '(onderzoek-[a-z0-9-]+)'/g]].forEach(function (m) {
+   ['pidlane-onderzoek.js', 'PLOnderzoek', /case '(onderzoek-[a-z0-9-]+)'/g],
+   ['pidlane-toeschouwer.js', 'PLToeschouwer', /case '(toestand-[a-z-]+)'/g]].forEach(function (m) {
     const bron = fs.readFileSync(path.join(__dirname, m[0]), 'utf8');
     const inModule = (bron.match(m[2]) || []).map(function (x) { return x.slice(6, -1); });
     const vergeten = inModule.filter(function (n) { return namen.indexOf(n) < 0 || s.PLOpdracht.appMaatModule(n) !== m[1]; });

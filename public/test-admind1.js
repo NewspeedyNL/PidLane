@@ -50,7 +50,7 @@ const kolSrc = knip('var _d1Kolommen = ', '__name(d1Kolommen, "d1Kolommen");', '
 // De leesroute van de app. Niet nagebouwd: de vraag is wat de APP krijgt.
 // Het logarchief (01-10-2026): de routes archief/archiveer roepen het aan.
 const archSrc = knip('// ── Het logarchief (01-10-2026)', '// ── De dagelijkse logronde (#260)', 'logArchiveren()');
-const appSrc = knip('async function handleOpdracht(', '__name(handleOpdracht, "handleOpdracht");', 'handleOpdracht()');
+const appSrc = knip('// ── DE KEURING VAN EEN OPSTELLING (23-10-2026)', '__name(handleOpdracht, "handleOpdracht");', 'handleOpdracht()');
 
 /* Het D1-oppervlak dat deze routes raken: prepare/bind/all/first/run en
    batch(). batch() draait in één transactie, zoals D1 belooft. */

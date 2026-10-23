@@ -67,13 +67,30 @@
     vragenMax: 5, vraagTekstMax: 160, optiesMax: 5, optieMax: 40,
     drempelsMax: 8, meldingMax: 120,
     proevenMax: 6, proefNaamMax: 80, issueMax: 12,
-    voorwaardenMax: 6, watMax: 60, stapMax: 40, adapterMax: 40, gebeurtenisSMax: 600
+    voorwaardenMax: 6, watMax: 60, stapMax: 40, adapterMax: 40, gebeurtenisSMax: 600,
+    toestandSMax: 3600, keurNotitieMax: 300
   };
 
   /* Wat een `gebeurtenis`-voorwaarde mag noemen (23-09-2026, #277). Een
      onderbreking is een meetgat óf een herverbinding: een getrokken adapter
      levert het ene of het andere, afhankelijk van hoe de socket sterft. */
   var GEBEURTENISSEN = ['meetgat', 'herverbinding', 'onderbreking'];
+
+  /* Wat een `toestand`-voorwaarde mag noemen (23-10-2026). Komt van
+     PLToeschouwer, die stilstand, rijden, contact uit en helling zelf ziet.
+     Daarvóór was dat een `stap` die een mens met de hand moest zetten; werd
+     hij vergeten, dan bleef de proef op NOG NIET staan terwijl de auto het
+     wél gedaan had — een fout in de opstelling, niet in de auto. */
+  var TOESTANDEN = ['stil', 'rijden', 'contact-uit', 'helling'];
+
+  /* DE KEURING VAN DE OPSTELLING (23-10-2026). Een proef kan zelf fout
+     opgesteld zijn: een band die niets kan vangen, een app-maat die iets
+     anders telt dan de naam zegt. Dan zegt de uitkomst niets over de auto.
+     De beheerder kijkt het tijdens een rit na en zet hem op groen; pas dan
+     telt GESLOTEN of BEVINDING als antwoord. Rood = de opstelling is fout.
+     De worker legt vast op welke tekst de keuring sloeg: verandert de
+     opdracht daarna, dan is hij weer ongekeurd. */
+  var KEURINGEN = ['groen', 'rood', 'ongekeurd'];
 
   // Wat `meet` mag zijn. Precies de velden die PLRit.per() werkelijk bijhoudt —
   // geen 'gemiddelde', want dat houdt de ritwaarnemer niet bij en dan zou deze
@@ -168,7 +185,16 @@
     'onderzoek-bankverschil':       ['PLOnderzoek', 'verschil lange trim bank 1 en 2 in de laatste scan, in %-punt'],
     'onderzoek-kaart-stationair-n': ['PLOnderzoek', 'warme stationaire trimmonsters in de rijkste bron (rit, datalog of live)'],
     'onderzoek-kaart-deel-n':       ['PLOnderzoek', 'warme trimmonsters tussen 1800 en 3200 tpm in de rijkste bron'],
-    'onderzoek-kaart-afwijking':    ['PLOnderzoek', 'grootste verschil trimkaart tegen de gecontroleerde proef (stationair of 2500 tpm), in %-punt']
+    'onderzoek-kaart-afwijking':    ['PLOnderzoek', 'grootste verschil trimkaart tegen de gecontroleerde proef (stationair of 2500 tpm), in %-punt'],
+    // 23-10-2026 — de toeschouwer: wat de rit zelf deed, en waar hij niets zag
+    'toestand-stil-s':        ['PLToeschouwer', 'seconden stilgestaan (verbonden, snelheid hoogstens 1 km/h) deze sessie'],
+    'toestand-rijden-s':      ['PLToeschouwer', 'seconden gereden (snelheid minstens 5 km/h) deze sessie'],
+    'toestand-contact-uit-s': ['PLToeschouwer', 'seconden met het contact uit (PLContact stil) deze sessie'],
+    'toestand-helling-s':     ['PLToeschouwer', 'seconden op een helling van minstens 2,5° (telefoon vast) deze sessie'],
+    'toestand-contact-uit-n': ['PLToeschouwer', 'keren contact uit deze sessie'],
+    'toestand-stops':         ['PLToeschouwer', 'keren stilgestaan na rijden of contact, deze sessie'],
+    'toestand-wissels':       ['PLToeschouwer', 'gebeurtenissen (stilstand, rijden, contact, helling) deze sessie'],
+    'toestand-gat-s':         ['PLToeschouwer', 'langste periode verbonden zonder verse snelheid, in seconden']
   };
   function _appMaat(naam) {
     var bron = APPMATEN[naam];
@@ -374,8 +400,16 @@
           var isGebeurtenis = (v.gebeurtenis !== undefined);
           var isAdapter = (v.adapter !== undefined);
           var isApp = (v.app !== undefined);
-          if ((isStap ? 1 : 0) + (isMeting ? 1 : 0) + (isGebeurtenis ? 1 : 0) + (isAdapter ? 1 : 0) + (isApp ? 1 : 0) !== 1) {
-            fouten.push('voorwaarde ' + i + ': geef precies één van `stap`, `pid`, `gebeurtenis`, `adapter` of `app`');
+          var isToestand = (v.toestand !== undefined);
+          if ((isStap ? 1 : 0) + (isMeting ? 1 : 0) + (isGebeurtenis ? 1 : 0) + (isAdapter ? 1 : 0) + (isApp ? 1 : 0) + (isToestand ? 1 : 0) !== 1) {
+            fouten.push('voorwaarde ' + i + ': geef precies één van `stap`, `pid`, `gebeurtenis`, `adapter`, `app` of `toestand`');
+            return;
+          }
+          if (isToestand) {
+            if (TOESTANDEN.indexOf(String(v.toestand)) === -1)
+              fouten.push('voorwaarde ' + i + ': toestand moet een van ' + TOESTANDEN.join(', ') + ' zijn');
+            if (v.minS !== undefined && !_getal(v.minS, 1, GRENZEN.toestandSMax))
+              fouten.push('voorwaarde ' + i + ': minS moet tussen 1 en ' + GRENZEN.toestandSMax + ' liggen');
             return;
           }
           if (isApp) {
@@ -448,6 +482,7 @@
             return { wat: v.wat, gebeurtenis: String(v.gebeurtenis), minS: v.minS === undefined ? 5 : v.minS };
           if (v.adapter !== undefined) return { wat: v.wat, adapter: String(v.adapter), niet: v.niet === true };
           if (v.app !== undefined) return { wat: v.wat, app: String(v.app), tussen: [v.tussen[0], v.tussen[1]] };
+          if (v.toestand !== undefined) return { wat: v.wat, toestand: String(v.toestand), minS: v.minS === undefined ? 5 : v.minS };
           return { wat: v.wat, pid: String(v.pid).toUpperCase(),
                    meet: String(v.meet), tussen: [v.tussen[0], v.tussen[1]] };
         })
@@ -498,6 +533,7 @@
         }
         _actief = k.opdracht;
         _herkomst = { id: d.id || '', naam: d.naam || k.opdracht.naam, gewijzigd: d.gewijzigd || '' };
+        _neemKeuring(_herkomst.id, d.keuring);
         _log('Meetopdracht geladen: ' + _actief.naam + ' (' + _actief.sensoren.length + ' sensoren, ' +
              Math.round(_actief.duurS / 60) + ' min)', 'ok');
         return _actief;
@@ -540,6 +576,8 @@
         _opdrachten = rijen.map(function (rij) {
           var uit = { id: rij.id || '', naam: rij.naam || '', reden: rij.reden || '',
                       actief: !!rij.actief, gewijzigd: rij.gewijzigd || '', opdracht: null, fout: '' };
+          _neemKeuring(uit.id, rij.keuring);
+          uit.keuring = keuring(uit.id).staat;
           if (rij.weg) { uit.fout = String(rij.weg); return uit; }
           var k = keur(rij.opdracht);
           if (!k.ok) { uit.fout = 'afgekeurd: ' + k.fouten.join('; '); return uit; }
@@ -750,6 +788,7 @@
     return lijst.map(function (v) {
       if (v.gebeurtenis !== undefined) return _gebeurtenis(v);
       if (v.adapter !== undefined) return _adapterVoorwaarde(v);
+      if (v.toestand !== undefined) return _toestandVoorwaarde(v);
       if (v.app !== undefined) {
         // Niet gemeten is niet na te gaan (null), niet "niet vervuld".
         var w = _appMaat(v.app);
@@ -864,6 +903,59 @@
       detail: 'verbonden: ' + naam + (ok ? '' : ' — de opdracht vraagt ' + (v.niet ? 'een andere adapter dan' : 'een adapter met') + ' "' + v.adapter + '"') });
   }
 
+  /* Een toestand die de toeschouwer zag (23-10-2026). Zag hij nog niets —
+     niet verbonden, of de module ontbreekt — dan is het niet na te gaan
+     (null), en dat is iets anders dan "niet gedaan". */
+  function _toestandVoorwaarde(v) {
+    var basis = { wat: v.wat, soort: 'toestand', toestand: v.toestand, waarde: null };
+    var T = window.PLToeschouwer;
+    var s = null;
+    try { s = (T && typeof T.gezien === 'function' && T.gezien()) ? T.duurS(v.toestand) : null; }
+    catch (e) { console.warn('Opdracht: de toeschouwer is onleesbaar', e); s = null; }
+    if (typeof s !== 'number') return Object.assign(basis, { vervuld: null, detail: 'niet na te gaan — de toeschouwer heeft nog niets gezien' });
+    var minS = v.minS || 5;
+    return Object.assign(basis, { waarde: s, vervuld: s >= minS,
+      detail: v.toestand + ' ' + _mmss(s) + (s >= minS ? '' : ' — nodig ' + _mmss(minS)) });
+  }
+
+  /* ── DE KEURING VAN DE OPSTELLING (23-10-2026) ──────────────────
+     Uit de rij die de worker teruggeeft; niets in localStorage, want de
+     keuring hoort bij de opdracht in D1 en niet bij dit toestel. */
+  var _keuring = {};   // id -> { staat, notitie, op }
+  function _neemKeuring(id, k) {
+    if (!id) return;
+    var staat = (k && KEURINGEN.indexOf(k.staat) !== -1) ? k.staat : 'ongekeurd';
+    _keuring[id] = { staat: staat, notitie: (k && typeof k.notitie === 'string') ? k.notitie : '', op: (k && k.op) || '' };
+  }
+  function keuring(id) {
+    var k = id ? _keuring[id] : null;
+    return k ? Object.assign({}, k) : { staat: 'ongekeurd', notitie: '', op: '' };
+  }
+  /* De beheerder zet de opstelling op groen of rood. De worker controleert
+     de rol; dit is alleen de aanvraag. */
+  function keurZet(id, staat, notitie) {
+    if (!id) return Promise.resolve({ ok: false, reden: 'geen opdracht-id' });
+    if (KEURINGEN.indexOf(staat) === -1) return Promise.resolve({ ok: false, reden: 'onbekende keuring: ' + staat });
+    if (typeof PROXY_URL === 'undefined' || !PROXY_URL || typeof plFetch !== 'function')
+      return Promise.resolve({ ok: false, reden: 'geen verbinding met de worker (PROXY_URL of plFetch ontbreekt)' });
+    var body = { id: Number(id), keuring: staat, notitie: String(notitie || '').slice(0, GRENZEN.keurNotitieMax) };
+    return Promise.resolve(plFetch(PROXY_URL + '/airtable/opdracht/keur', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }))
+      .then(function (r) {
+        return r.json().then(function (d) { return { http: r.status, d: d || {} }; });
+      })
+      .then(function (x) {
+        if (!x.d.ok) return { ok: false, reden: x.d.error || ('HTTP ' + x.http) };
+        _neemKeuring(String(id), x.d.keuring);
+        _log('Opstelling van meetopdracht ' + id + ' gekeurd: ' + staat, staat === 'rood' ? 'warn' : 'ok');
+        return { ok: true, keuring: keuring(String(id)) };
+      })
+      .catch(function (e) {
+        console.warn('Opdracht: keuring niet opgeslagen', e);
+        return { ok: false, reden: 'niet opgeslagen: ' + ((e && e.message) || e) };
+      });
+  }
+
   /* ── ALLE OPDRACHTEN TEGELIJK (#277) ───────────────────────────────
      Eén rit, elke opdracht beoordeeld op dezelfde metingen. Wie tien minuten
      rijdt voor de ene, heeft ze ook gereden voor de andere; wie drie keer vol
@@ -874,7 +966,7 @@
       var v = null;
       try { v = oordeel(r.opdracht, stapGezien); }
       catch (e) { console.warn('Opdracht: het oordeel over "' + r.naam + '" kon niet geveld worden (#277)', e); }
-      return { id: r.id, naam: r.naam, opdracht: r.opdracht, vonnis: v };
+      return { id: r.id, naam: r.naam, opdracht: r.opdracht, vonnis: v, opstelling: keuring(r.id).staat };
     });
   }
 
@@ -893,6 +985,10 @@
     antwoorden: antwoorden,
     antwoordTekst: antwoordTekst,
     gedaan: gedaan,
+    keuring: keuring,
+    keurZet: keurZet,
+    _keuringen: function () { return KEURINGEN.slice(); },
+    _toestanden: function () { return TOESTANDEN.slice(); },
     gelijst: function () { return _opdrachten ? JSON.parse(JSON.stringify(_opdrachten)) : null; },
     zetSensoren: zetSensoren,
     meet: meet,

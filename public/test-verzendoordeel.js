@@ -69,7 +69,7 @@ const OPDRACHT_JSON = {
    plaats van verstuurt. pidlane-opdracht.js eerst: de testrun leest
    window.PLOpdracht pas bij het aanroepen, maar zo staat de volgorde gelijk
    aan die in index.html. */
-async function laad(min) {
+async function laad(min, keuring) {
   const s = {};
   s.window = s;
   s.connected = true;
@@ -109,7 +109,8 @@ async function laad(min) {
       json: function () {
         return Promise.resolve({ opdrachten: [
           { id: 'recPROEF', naam: OPDRACHT_JSON.naam, reden: OPDRACHT_JSON.reden,
-            actief: true, gewijzigd: '', opdracht: OPDRACHT_JSON }
+            actief: true, gewijzigd: '', opdracht: OPDRACHT_JSON,
+            keuring: { staat: keuring || 'groen' } }
         ] });
       }
     });
@@ -177,6 +178,21 @@ console.log('\n1. de knop schrijft één regel per proef plus de uitkomst');
     uitkomst[0].extra.Repro === '#217', JSON.stringify(uitkomst[0].extra));
   toets('de uitkomstregel draagt de staat als Outcome',
     uitkomst[0].extra.Outcome === 'gesloten', JSON.stringify(uitkomst[0].extra));
+  toets('en zegt dat de opstelling groen is', /opstelling groen/.test(uitkomst[0].bericht), uitkomst[0].bericht);
+}
+
+// ══════════════════════════════════════════════════════════════════
+console.log('\n1b. een ongekeurde of rode opstelling telt niet als antwoord (23-10-2026)');
+// ══════════════════════════════════════════════════════════════════
+for (const k of ['ongekeurd', 'rood']) {
+  const s = await laad(12.4, k);
+  const r = s.PLTestrunLive.verzend();
+  const uitkomst = s.verstuurd.filter(function (v) { return /uitkomst:/.test(v.bericht); });
+  toets(k + ': het oordeel zelf blijft gesloten', r.ok === true && r.staat === 'gesloten', JSON.stringify(r));
+  toets(k + ': de Outcome is proefopstelling, niet gesloten',
+    uitkomst.length === 1 && uitkomst[0].extra.Outcome === 'proefopstelling', JSON.stringify(uitkomst.map(function (v) { return v.extra; })));
+  toets(k + ': het oordeel staat wel in de tekst', uitkomst.length === 1 && /uitkomst: gesloten/.test(uitkomst[0].bericht) && new RegExp('opstelling ' + k).test(uitkomst[0].bericht),
+    (uitkomst[0] || {}).bericht);
 }
 
 // ══════════════════════════════════════════════════════════════════
