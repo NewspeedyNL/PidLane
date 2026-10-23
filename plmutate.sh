@@ -117,6 +117,15 @@ MUTATIES=(
 "public/pidlane-rijsituatie.js@@    if(!isNaN(v)) w=((w||0)|v)>>>0;@@    if(!isNaN(v) && w===null) w=v>>>0;@@bproef-merken.js@@de discovery leest weer alleen de eerste ECU: de Toyota-hybride mist 015B (#586)"
 "public/pidlane-rijsituatie.js@@_pidHealth[pid] = (h==='ok'||h==='twijfel'||h==='onzin'||h==='nodata') ? h : 'ok';@@_pidHealth[pid] = h;@@test-healthgate.js@@een onbekende sensor wordt uitgegrijsd in plaats van kiesbaar"
 "public/pidlane-rijsituatie.js@@if(ok===0 && geen<pids.length){@@if(false){@@test-healthgate.js@@de veiligheidsfallback van de gezondheidscheck staat uit"
+"public/pidlane-rijsituatie.js@@const PL_STEUN_POGINGEN = 3;@@const PL_STEUN_POGINGEN = 1;@@test-beschikbaarheid.js@@een 0100 die één keer stil blijft kost weer heel blok 01–20"
+"public/pidlane-rijsituatie.js@@    if(!verwacht && /NO DATA/i.test(laatste))@@    if(/NO DATA/i.test(laatste))@@test-beschikbaarheid.js@@een aangekondigd blok dat één keer NO DATA zegt wordt geloofd en valt weg"
+"public/pidlane-rijsituatie.js@@    if(plBlokVerwacht(q, uitslag)) uit.push(b);@@    void 0;@@test-beschikbaarheid.js@@een onleesbare bitmap wordt niet meer per PID dichtgemeten"
+"public/pidlane-rijsituatie.js@@'0180','01A0','01C0'];@@'0180','01A0'];@@test-beschikbaarheid.js@@01C0 (PIDs C1–E0) wordt weer nooit gevraagd"
+"public/pidlane-rijsituatie.js@@  _steunbits = {};                                        // geen woord van een vorige auto laten staan\n  const uitslag={};@@  const uitslag={};@@test-beschikbaarheid.js@@de steunbits van de vorige auto blijven staan na een nieuwe discovery"
+"public/pidlane-rijsituatie.js@@  erbij.forEach(p=>supportedPIDs.add(p));@@  void 0;@@test-beschikbaarheid.js@@het profiel kan tegen de steunbits weer alleen verwijderen: een gat blijft voorgoed"
+"public/pidlane-rijsituatie.js@@if(!_healthAbort && herkans.length){@@if(false){@@test-beschikbaarheid.js@@de gezondheidscheck geeft een trage sensor geen tweede kans: sessie lang grijs"
+"public/pidlane-rijsituatie.js@@sendCmd((typeof pidCmd==='function')?pidCmd(pid,false):pid, 3000)@@sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):pid, 1500)@@test-beschikbaarheid.js@@de herkansing stelt dezelfde snelle vraag die net al mislukte"
+"public/pidlane-rijsituatie.js@@.filter(p=>_pidHealth[p]==='nodata'||_pidHealth[p]==='onzin');@@.filter(p=>true);@@test-beschikbaarheid.js@@de herkansing bij een profiel-start vraagt ook wat al ok was"
 
 # ── De twee vensters bij de achtergrondgereedschappen. Zes fouten die je in
 # een scherm maakt zonder dat iemand het ziet: een balkje staat altijd ergens,
@@ -283,6 +292,7 @@ MUTATIES=(
 "public/pidlane-testrun.js@@    issue: '#29',@@    issue: '',@@test-blok5lijst.js@@een proef in blok 5 is zijn issue kwijt en valt daarmee uit de dekking"
 "public/pidlane-testrun.js@@'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ')@@'BLOK 5 DEKT DEZE RONDE: #19, #15'@@test-blok5lijst.js@@de dekkingsregel in CAMPAGNE is weer met de hand overgeschreven"
 "public/pidlane-uitgebreid.js@@schoon.indexOf(hdr) >= 0;@@true;@@test-mode21.js@@de uitgebreide probe accepteert elk antwoord"
+"public/pidlane-uitgebreid.js@@      if (!force && _herkansT < PROBE_HERKANS && connected) {@@      if (false) {@@test-mode21.js@@een probe die de bus bezet trof komt die sessie nooit meer terug"
 "public/pidlane-uitgebreid.js@@  const UITGEBREID_DEFS = {\n@@  const UITGEBREID_DEFS = {\n    '2101': { name: 'Motorolie temp', unit: '°C', cat: 'Temperatuur', min: -40, max: 150, merk: 'MAZDA', vervangt: '015C', parse: b => b[0] - 40 },\n@@test-mode21.js@@2101 staat weer als Mazda-vervanger van 015C, terwijl hij op de CX-5 NO DATA geeft (19-08-2026)"
 "public/pidlane-uihelpers.js@@'T' + _plTweeCijfers(d.getHours())@@'T' + _plTweeCijfers(d.getUTCHours())@@test-tijdklok.js@@de stempel valt terug op het UTC-uur (#17)"
 "public/pidlane-privacy.js@@    if (klant)@@    if (true)@@test-account-verwijderen.js@@personeel wordt weer naar een knop gestuurd die het niet heeft (#69)"

@@ -278,7 +278,7 @@ var KRITIEK = [
   // de app om op elke serveraanroep. Hij staat hier omdat dat dan meteen
   // zichtbaar is in plaats van pas bij de eerste inlogpoging.
   'plFetch','plFetchUrl',
-  'profielTegenSteunbits','saveVinProfile','actiefPollProfiel','setPollProfile',
+  'profielTegenSteunbits','plHerkansNodata','plLeesSteunbitmap','saveVinProfile','actiefPollProfiel','setPollProfile',
   // Het run-paneel (pidlane-run.js) schakelt deze vijf aan en uit. Ze stonden
   // er nog niet in omdat ze tot 21-08 alleen vanuit hun eigen scherm werden
   // aangeroepen, zónder guard.

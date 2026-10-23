@@ -2787,6 +2787,22 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Beschikbaarheid van data bij de eerste verbinding (23-10-2026) ──
+  {
+    issue: 'beschikbaarheid',
+    naam: 'Steunbitmaps worden herhaald en een onleesbaar blok per PID nagemeten; trage sensoren krijgen een herkansing',
+    waarom: 'Een 0100 die één keer stil bleef kostte toerental, snelheid en koelwater — en via het profiel voorgoed.',
+    proef: async function () {
+      if (typeof plLeesSteunbitmap !== 'function' || typeof plHerkansNodata !== 'function') return { staat: 'FOUT', detail: 'plLeesSteunbitmap/plHerkansNodata ontbreken — oude pidlane-rijsituatie.js (herladen?)' };
+      if (!connected || typeof supportedPIDs === 'undefined' || !supportedPIDs.size) return { staat: 'LET OP', detail: 'niet verbonden — niets te beoordelen' };
+      var sb = (typeof steunbitsRuw === 'function') ? steunbitsRuw() : {};
+      var kern = ['010C', '010D', '0105'].filter(function (p) { return !supportedPIDs.has(p); });
+      if (kern.length) return { staat: 'FOUT', detail: 'blok 01–20 onvolledig: ' + kern.join(', ') + ' ontbreekt' + (sb[0] === undefined ? ' en 0100 is niet gelezen' : '') };
+      var grijs = Object.keys(_pidHealth || {}).filter(function (p) { return _pidHealth[p] === 'nodata' || _pidHealth[p] === 'onzin'; });
+      return { staat: 'OK', detail: supportedPIDs.size + ' PIDs, bitmaps gelezen: ' + Object.keys(sb).map(function (b) { return (+b).toString(16).toUpperCase(); }).join('/') + '; na herkansing grijs: ' + (grijs.length ? grijs.join(', ') : 'geen') };
+    }
+  },
+
   // ── CBS-pompprijs en APK-ritme (23-10-2026) ──
   {
     issue: 'pompprijs',

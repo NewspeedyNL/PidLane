@@ -2871,11 +2871,15 @@ async function startDiscovery(){
     try{
       const weg=await profielTegenSteunbits();
       if(weg) addProg('🧹',`${weg} sensoren verwijderd die deze auto niet ondersteunt`);
+      if(profielTegenSteunbits.erbij) addProg('➕',`${profielTegenSteunbits.erbij} sensoren aangevuld die het profiel miste`);
     }catch(e){ btDiag('Steunbitcontrole overgeslagen: '+(e.message||e),'warn'); }
   } else {
     addProg('🔍','PIDs ophalen (0100, 0120, 0140...)');
-    // Stap 1: probeer discovery via bitmap methode
-    await discoverPIDsBitmap();
+    // Stap 1: probeer discovery via bitmap methode. Een onleesbare bitmap
+    // wordt herhaald en zo nodig per PID dichtgemeten (zie plLeesSteunbitmap).
+    const _ds = await discoverPIDsBitmap();
+    if(_ds && _ds.onleesbaar && _ds.onleesbaar.length)
+      addProg('🔁',`${_ds.onleesbaar.length} bitmap(s) onleesbaar — per sensor nagemeten, +${_ds.gemeten} PIDs`);
 
     // Stap 2: als geen PIDs gevonden → probeer directe PID polling (fallback)
     if(supportedPIDs.size===0){
@@ -2927,7 +2931,7 @@ async function startDiscovery(){
   // reparatie of een nieuwe sensor wil je juist wél verse meting. Dus vragen.
   // Geen profiel-health beschikbaar (oud profiel van vóór deze wijziging) →
   // gewoon scannen, geen vraag.
-  let _slaScanOver=false;
+  let _slaScanOver=false, _herkanst=0;
   const _ph=(typeof profielHealth==='function')?profielHealth():null;
   if(usedProfile && _ph && Object.keys(_ph).length && _hervatActief() && !demoMode){
     // Hervatten: het oordeel van een paar minuten geleden staat nog. Een halve
@@ -2948,6 +2952,11 @@ async function startDiscovery(){
 
   if(_slaScanOver && typeof healthUitProfiel==='function' && healthUitProfiel(_ph)){
     addProg('⚡','Gezondheidscheck overgeslagen — oordeel uit profiel');
+    // Wat het profiel afkeurde krijgt één herkansing: licht, alleen die PIDs.
+    try{
+      const _hk = (typeof plHerkansNodata==='function') ? await plHerkansNodata() : 0;
+      if(_hk){ _herkanst=_hk; addProg('🔁',`${_hk} sensoren antwoordden alsnog — weer kiesbaar`); }
+    }catch(e){ btDiag('Herkansing van afgekeurde sensoren overgeslagen: '+(e.message||e),'warn'); }
   } else {
     // ✕ in de pill breekt de scan af; de flow loopt daarna gewoon door.
     try{showBusyPill('⚡ Hoge busactiviteit — sensoren en voertuig in kaart brengen…',60000,
@@ -3007,7 +3016,7 @@ async function startDiscovery(){
     catch(e){ console.warn('Aandachtspunt opheffen mislukt: '+(e.message||e)); }
   }
 
-  if(knownVin && supportedPIDs.size>0 && _rdwOk && (!usedProfile || !_slaScanOver)) saveVinProfile(vinInfo.vin);
+  if(knownVin && supportedPIDs.size>0 && _rdwOk && (!usedProfile || !_slaScanOver || _herkanst)) saveVinProfile(vinInfo.vin);
   // Na saveVinProfile(): dat bouwt het profiel opnieuw op zonder dit veld.
   if(knownVin) PLVerbind.bewaar(vinInfo.vin);
   PLVerbind.oogst(knownVin?vinInfo.vin:'');   // niet afwachten: de kennisbank mag de flow niet ophouden
