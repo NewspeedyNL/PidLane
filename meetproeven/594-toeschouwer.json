@@ -25,7 +25,7 @@
     "tikS": 5,
     "voorwaarden": [
       {"wat": "Minstens 5 minuten gereden", "toestand": "rijden", "minS": 300},
-      {"wat": "Contact minstens 20 s uit", "toestand": "contact-uit", "minS": 20},
+      {"wat": "Contact 20 s tot 1,5 min uit, aan één stuk", "toestand": "contact-uit", "minS": 20, "maxS": 90},
       {"wat": "De stilte is afgerond (contact weer aan)", "app": "contact-terug-anders", "tussen": [0, 1000]}
     ],
     "vragen": [

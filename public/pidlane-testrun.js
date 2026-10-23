@@ -101,6 +101,8 @@ function nieuweSessie(reden) {
   try { _liveEinde(reden || 'sessie afgesloten voor een nieuwe opdracht'); }
   catch (e) { console.warn('Testrun: de vorige sessie is niet netjes afgesloten (#248)', e); }
   _liveRit = null;
+  try { if (window.PLToeschouwer && typeof PLToeschouwer.nieuwePoging === 'function') PLToeschouwer.nieuwePoging(); }
+  catch (e) { console.warn('Testrun: de toeschouwer begon geen nieuwe poging (#599)', e); }
   const nieuw = _liveRitId();
   _boek(0, 'Nieuwe sessie', 'ok', 'ritnummer ' + nieuw, null);
   return nieuw;

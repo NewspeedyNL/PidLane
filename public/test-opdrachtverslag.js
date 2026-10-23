@@ -96,5 +96,11 @@ eis(/Contact uit \(#487\)\n\s+bevinding — 3 weigeringen · rit 1:35 min · ops
   'de andere opdracht blijft AFGEROND, NIET VERZONDEN');
 eis(/VERZONDEN DEZE SESSIE: \n\[[^\]]+\] Gewone rit \(#594\) — gesloten · opstelling groen/.test(t), 'de verzending staat met tijd onder VERZONDEN DEZE SESSIE');
 
+console.log('3. een nieuwe sessie is een nieuwe poging voor de bovengrens');
+let pogingen = 0;
+s.PLToeschouwer = { nieuwePoging: function () { pogingen++; } };
+s.PLTestrunLive.nieuweSessie('proef');
+eis(pogingen === 1, 'nieuweSessie() zet bij de toeschouwer een nieuwe poging', String(pogingen));
+
 console.log(fouten ? '\n' + fouten + ' fout(en)' : '\nAlles goed.');
 process.exit(fouten ? 1 : 0);

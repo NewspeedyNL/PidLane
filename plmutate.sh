@@ -1238,6 +1238,10 @@ MUTATIES=(
 "public/pidlane-testrun.js@@  _verzendLog.push({ t: new Date().toLocaleTimeString('nl-NL'), naam: o.naam, staat: vonnis.staat, opst: opst });@@  // (#599 weg)@@test-opdrachtverslag.js@@een verzending staat niet meer in het verslag: achteraf is niet te zien of de rit een antwoord opleverde"
 "public/pidlane-testrun.js@@(x.alVerzonden ? 'verzonden' : (x.afgerond ? 'AFGEROND, NIET VERZONDEN' : 'niet verzonden'))@@(x.alVerzonden ? 'verzonden' : 'niet verzonden')@@test-opdrachtverslag.js@@een afgeronde opdracht die niet verzonden is valt niet meer op tussen de opdrachten die nog niets hebben"
 "public/pidlane-testrun.js@@  try { if (typeof log === 'function') log('↑ Verzonden: '@@  try { if (false) log('↑ Verzonden: '@@test-opdrachtverslag.js@@een verzending krijgt geen regel meer in het app-log"
+"public/pidlane-testrun.js@@  try { if (window.PLToeschouwer && typeof PLToeschouwer.nieuwePoging === 'function') PLToeschouwer.nieuwePoging(); }@@  try { }@@test-opdrachtverslag.js@@een opdracht opnieuw kiezen begint geen nieuwe poging: een te lange stilte blijft de proef de hele sessie blokkeren"
+"public/pidlane-opdracht.js@@    if (buiten.length) {@@    if (false) {@@test-toeschouwer.js@@een te lange stilte (de bediening) wordt een gewone voorwaarde die niet vervuld is, zonder BUITEN DE OPSTELLING"
+"public/pidlane-opdracht.js@@            if (v.maxS !== undefined) tv.maxS = v.maxS;@@@@test-toeschouwer.js@@de bovengrens valt bij het normaliseren weg en de opdracht meet weer de som"
+"public/pidlane-toeschouwer.js@@          if (van) _sluit(k, van, k.sinds, k.ep);\n          k.ep = 0;@@          if (van) _sluit(k, van, k.sinds, k.ep);@@test-toeschouwer.js@@de lopende periode wordt niet nulgezet: twee korte stiltes tellen als één lange"
 
 # ── Wat er in de logtabel terechtkomt (#256, 18-09-2026). Die tabel is sinds
 # #241 de bron waarop de volgende meetopdracht gebouwd wordt. Deze vijf bouwen

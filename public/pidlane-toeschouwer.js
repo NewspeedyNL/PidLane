@@ -56,7 +56,10 @@
     duur.onbekend = 0;
     return { toestand: null, sinds: 0, kand: null, kandSinds: 0, laatst: 0,
              helling: false, hKand: null, hKandSinds: 0,
-             gat: 0, gatMax: 0, duur: duur, aantal: {}, gebeurtenissen: [] };
+             gat: 0, gatMax: 0, duur: duur, aantal: {}, gebeurtenissen: [],
+             // Elke periode apart (#599): een bovengrens gaat over één stuk,
+             // niet over de som. ep/hEp is de lopende periode in ms.
+             ep: 0, hEp: 0, hSinds: 0, perioden: [] };
   }
 
   function _ev(k, soort, van, t) {
@@ -66,6 +69,11 @@
     k.gebeurtenissen.push(e);
     if (k.gebeurtenissen.length > CFG.maxGebeurtenissen) k.gebeurtenissen.shift();
     return e;
+  }
+
+  function _sluit(k, toestand, van, ms) {
+    k.perioden.push({ toestand: toestand, van: van, ms: ms });
+    if (k.perioden.length > CFG.maxGebeurtenissen) k.perioden.shift();
   }
 
   /* Puur: één waarneming verwerken. Geeft de nieuwe gebeurtenissen terug. */
@@ -83,7 +91,7 @@
       k.kand = null;
     } else {
       k.gat = 0;
-      if (k.toestand) k.duur[k.toestand] += dt;
+      if (k.toestand) { k.duur[k.toestand] += dt; k.ep += dt; }
       if (t === k.toestand) k.kand = null;
       else {
         // Contact uit heeft PLContact al nagewogen; dat wacht hier niet nog eens.
@@ -91,6 +99,8 @@
         if (k.kand !== t) { k.kand = t; k.kandSinds = nu; }
         if (nu - k.kandSinds >= wacht) {
           var van = k.toestand;
+          if (van) _sluit(k, van, k.sinds, k.ep);
+          k.ep = 0;
           if (van === 'contact-uit') nieuw.push(_ev(k, 'contact-aan', van, k.kandSinds));
           nieuw.push(_ev(k, t, van, k.kandSinds));
           k.toestand = t; k.sinds = k.kandSinds; k.kand = null;
@@ -102,12 +112,13 @@
     var h = (w && typeof w.helling === 'number' && isFinite(w.helling)) ? Math.abs(w.helling) >= CFG.hellingGraden : null;
     if (h === null) k.hKand = null;
     else {
-      if (k.helling) k.duur.helling += dt;
+      if (k.helling) { k.duur.helling += dt; k.hEp += dt; }
       if (h === k.helling) k.hKand = null;
       else {
         if (k.hKand !== h) { k.hKand = h; k.hKandSinds = nu; }
         if (nu - k.hKandSinds >= CFG.minS * 1000) {
-          k.helling = h; k.hKand = null;
+          if (k.helling) _sluit(k, 'helling', k.hSinds, k.hEp);
+          k.helling = h; k.hKand = null; k.hEp = 0; k.hSinds = k.hKandSinds;
           if (h) nieuw.push(_ev(k, 'helling', k.toestand, k.hKandSinds));
         }
       }
@@ -115,8 +126,23 @@
     return nieuw;
   }
 
+  /* Puur: de perioden van één toestand die op of na `vanaf` begonnen, in
+     seconden, de lopende erbij. */
+  function perioden(k, t, vanaf) {
+    var uit = k.perioden.filter(function (p) { return p.toestand === t && p.van >= vanaf; })
+      .map(function (p) { return Math.round(p.ms / 1000); });
+    if (t === 'helling' ? (k.helling && k.hSinds >= vanaf) : (k.toestand === t && k.sinds >= vanaf))
+      uit.push(Math.round((t === 'helling' ? k.hEp : k.ep) / 1000));
+    return uit;
+  }
+
   // ── de app eromheen ──────────────────────────────────────────────
   var _k = maak();
+  /* Een nieuwe poging (#599): wie een opdracht opnieuw kiest, begint de
+     bovengrens opnieuw. De sommen blijven staan; die horen bij de rit. */
+  var _poging = 0;
+  function nieuwePoging(nu) { _poging = nu || Date.now(); return _poging; }
+  function periodenS(t) { return perioden(_k, t, _poging); }
 
   function _vers(pid, nu) {
     try {
@@ -189,7 +215,7 @@
              gebeurtenissen: _k.gebeurtenissen.slice() };
   }
 
-  function reset() { _k = maak(); }
+  function reset() { _k = maak(); _poging = 0; }
 
   var _timer = null;
   function start() {
@@ -202,10 +228,10 @@
 
   window.PLToeschouwer = {
     tik: tik, stand: stand, duurS: duurS, gezien: gezien, maat: maat,
-    reset: reset, start: start, stop: stop,
+    reset: reset, start: start, stop: stop, nieuwePoging: nieuwePoging, periodenS: periodenS,
     gebeurtenissen: function () { return _k.gebeurtenissen.slice(); },
     CFG: CFG, TOESTANDEN: TOESTANDEN.slice(),
-    _kern: { maak: maak, stap: stap, toestandVan: toestandVan }
+    _kern: { maak: maak, stap: stap, toestandVan: toestandVan, perioden: perioden }
   };
   start();
 })();
