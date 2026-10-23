@@ -1242,6 +1242,12 @@ MUTATIES=(
 "public/pidlane-opdracht.js@@    if (buiten.length) {@@    if (false) {@@test-toeschouwer.js@@een te lange stilte (de bediening) wordt een gewone voorwaarde die niet vervuld is, zonder BUITEN DE OPSTELLING"
 "public/pidlane-opdracht.js@@            if (v.maxS !== undefined) tv.maxS = v.maxS;@@@@test-toeschouwer.js@@de bovengrens valt bij het normaliseren weg en de opdracht meet weer de som"
 "public/pidlane-toeschouwer.js@@          if (van) _sluit(k, van, k.sinds, k.ep);\n          k.ep = 0;@@          if (van) _sluit(k, van, k.sinds, k.ep);@@test-toeschouwer.js@@de lopende periode wordt niet nulgezet: twee korte stiltes tellen als één lange"
+"public/pidlane-testrun.js@@    try { PLOpdracht.stuurUitkomst((h || {}).id, _liveRitId(), vonnis, opst, PLOpdracht.bewijs(o, vonnis)); }@@    try { }@@test-opdrachtverslag.js@@een verzonden uitkomst komt nooit bij de second opinion aan en telt dus nergens als voorlopig"
+"public/pidlane-opdracht.js@@    if (!v || (v.staat !== 'gesloten' && v.staat !== 'bevinding')) return Promise.resolve({ ok: false, reden: 'geen afgeronde uitkomst' });@@    if (!v) return Promise.resolve({ ok: false, reden: 'geen afgeronde uitkomst' });@@test-toeschouwer.js@@elke \"nog niet\" gaat als uitkomst naar de second opinion en vult de lijst met niet-antwoorden"
+"worker.js@@  if (s < 120) mist.push(`maar ${s} s gemeten (minstens 120)`);@@@@test-secondopinion.js@@de AI krijgt een rit van veertig seconden voorgelegd en verzint de rest erbij"
+"worker.js@@  if (oordeel.indexOf(\"ongeldig\") === 0 && !notitie.trim())@@  if (false)@@test-secondopinion.js@@een uitkomst wordt ongeldig verklaard zonder te zeggen wat er misging, en de les voor de volgende rit is weg"
+"worker.js@@UPDATE opdracht_uitkomsten SET AiVoorstel = ?, AiOp = ? WHERE id = ?\").bind(JSON.stringify(voorstel), op, id)@@UPDATE opdracht_uitkomsten SET AiVoorstel = ?, AiOp = ?, Oordeel = ? WHERE id = ?\").bind(JSON.stringify(voorstel), op, voorstel.voorstel, id)@@test-secondopinion.js@@de AI zet zelf het oordeel in plaats van alleen een voorstel te doen"
+"worker.js@@  if (staat !== \"gesloten\" && staat !== \"bevinding\") return json(@@  if (!staat) return json(@@test-secondopinion.js@@een \"nog niet\" komt als uitkomst binnen bij de second opinion"
 
 # ── Wat er in de logtabel terechtkomt (#256, 18-09-2026). Die tabel is sinds
 # #241 de bron waarop de volgende meetopdracht gebouwd wordt. Deze vijf bouwen

@@ -2722,6 +2722,15 @@ function _verzendOpdracht(o, h) {
      live-log: in het app-log en het verslag stond niets, en achteraf was
      niet te zien of een rit van twintig minuten een antwoord had opgeleverd. */
   _verzendLog.push({ t: new Date().toLocaleTimeString('nl-NL'), naam: o.naam, staat: vonnis.staat, opst: opst });
+
+  /* Voorlopig tot de second opinion (#599): de uitkomst gaat met zijn
+     bewijs naar de worker, waar de beheerder hem bevestigt of ongeldig
+     verklaart. Gaat dat mis, dan staat het in het app-log; de live-log
+     hierboven is dan al geschreven. */
+  if (typeof PLOpdracht.stuurUitkomst === 'function' && typeof PLOpdracht.bewijs === 'function') {
+    try { PLOpdracht.stuurUitkomst((h || {}).id, _liveRitId(), vonnis, opst, PLOpdracht.bewijs(o, vonnis)); }
+    catch (e) { console.warn('Testrun: de uitkomst van "' + o.naam + '" niet naar de second opinion (#599)', e); }
+  }
   try { if (typeof log === 'function') log('↑ Verzonden: ' + o.naam + ' — ' + vonnis.staat + ' · opstelling ' + opst, vonnis.staat === 'bevinding' ? 'warn' : 'ok'); }
   catch (e) { console.warn('Testrun: de verzending van "' + o.naam + '" niet in het app-log gezet (#599)', e); }
   return { uitslagen: uitslagen, vonnis: vonnis };
@@ -2838,10 +2847,20 @@ const PROEVEN_B5 = [
   // ── Meetopdrachten in het verslag (23-10-2026) ──
   {
     issue: '#599',
-    naam: 'Het verslag zegt per meetopdracht wat de rit ervan vindt, en wat er verzonden is',
-    waarom: 'Op 23-10 stond na twintig minuten rijden nergens of #594 een antwoord had opgeleverd: een verzending ging alleen naar de live-log.',
+    naam: 'Het verslag zegt per meetopdracht wat de rit ervan vindt; een uitkomst gaat als voorlopig naar de second opinion, en een te lange periode telt niet',
+    waarom: 'Op 23-10 stond na twintig minuten rijden nergens of #594 een antwoord had opgeleverd, en één fout in de bediening (contact te lang uit) werd een FOUT over de auto.',
     proef: async function () {
       if (!window.PLTestrunLive || typeof PLTestrunLive.oordeelAlle !== 'function') return { staat: 'FOUT', detail: 'PLTestrunLive.oordeelAlle ontbreekt (herladen?)' };
+      if (!window.PLOpdracht || typeof PLOpdracht.bewijs !== 'function' || typeof PLOpdracht.stuurUitkomst !== 'function')
+        return { staat: 'FOUT', detail: 'PLOpdracht.bewijs/stuurUitkomst ontbreken — oude pidlane-opdracht.js (herladen?)' };
+      if (!window.PLToeschouwer || typeof PLToeschouwer.periodenS !== 'function' || typeof PLToeschouwer.nieuwePoging !== 'function')
+        return { staat: 'FOUT', detail: 'PLToeschouwer kent geen perioden — oude pidlane-toeschouwer.js (herladen?)' };
+      // Gedrag op een eigen kern: 95 s contact uit is één periode, geen som.
+      var K = PLToeschouwer._kern, k = K.maak(), t = 1e6, i;
+      for (i = 0; i < 95; i++) K.stap(k, { verbonden: true, kmh: 0, contactStil: true }, t += 1000);
+      for (i = 0; i < 6; i++) K.stap(k, { verbonden: true, kmh: 0 }, t += 1000);
+      var ps = K.perioden(k, 'contact-uit', 0);
+      if (ps.length !== 1 || ps[0] < 90) return { staat: 'FOUT', detail: 'de toeschouwer ziet geen periode van 95 s maar ' + JSON.stringify(ps) };
       var alle = PLTestrunLive.oordeelAlle();
       if (!alle.length) return { staat: 'LET OP', detail: 'geen meetopdrachten opgehaald — het blok MEETOPDRACHTEN is niet na te gaan' };
       var t = testrunTekst();

@@ -212,7 +212,7 @@
   function stand() {
     return { toestand: _k.toestand, sinds: _k.sinds, helling: _k.helling,
              duur: Object.assign({}, _k.duur), aantal: Object.assign({}, _k.aantal),
-             gebeurtenissen: _k.gebeurtenissen.slice() };
+             gebeurtenissen: _k.gebeurtenissen.slice(), perioden: _k.perioden.slice() };
   }
 
   function reset() { _k = maak(); _poging = 0; }

@@ -59,8 +59,11 @@ function laad() {
       return [A, B].map(function (o, i) { return { id: String(40 + i), naam: o.naam, opdracht: o, vonnis: VONNIS[o.naam] }; });
     },
     keuring: function (id) { return { staat: id === '40' ? 'groen' : 'ongekeurd' }; },
-    antwoordTekst: function () { return ''; }
+    antwoordTekst: function () { return ''; },
+    bewijs: function (o, v) { return { opdracht: o.naam, staat: v.staat }; },
+    stuurUitkomst: function (id, sessie, v, opst, bw) { s._gestuurd.push({ id: id, sessie: sessie, staat: v.staat, opst: opst, bw: bw }); }
   };
+  s._gestuurd = [];
   vm.createContext(s);
   vm.runInContext(fs.readFileSync('pidlane-testrun.js', 'utf8'), s, { filename: 'pidlane-testrun.js' });
   if (!s.PLTestrunLive || typeof s.PLTestrunLive.verzend !== 'function')
@@ -90,6 +93,9 @@ const r = s.PLTestrunLive.verzend();
 eis(r && r.ok, 'de verzending lukt', JSON.stringify(r));
 const regel = s._logs.filter(function (l) { return /^↑ Verzonden: Gewone rit \(#594\) — gesloten · opstelling groen$/.test(l.m); });
 eis(regel.length === 1, 'één regel in het app-log met opdracht, uitkomst en opstelling', JSON.stringify(s._logs));
+const g = s._gestuurd[0];
+eis(s._gestuurd.length === 1 && g.id === '40' && /^\d{4}-\d\d-\d\d-/.test(g.sessie) && g.staat === 'gesloten' && g.opst === 'groen' && g.bw.opdracht === 'Gewone rit (#594)',
+  'de uitkomst gaat met zijn bewijs, sessie en opstelling naar de second opinion (#599)', JSON.stringify(s._gestuurd));
 t = s.testrunTekst();
 eis(/▶ Gewone rit \(#594\)\n\s+gesloten[^\n]*· verzonden\n/.test(t), 'de actieve opdracht draagt ▶ en staat op verzonden', t.split('MEETOPDRACHTEN')[1]);
 eis(/Contact uit \(#487\)\n\s+bevinding — 3 weigeringen · rit 1:35 min · opstelling ongekeurd · AFGEROND, NIET VERZONDEN/.test(t),

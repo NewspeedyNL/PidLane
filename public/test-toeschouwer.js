@@ -204,5 +204,31 @@ console.log('\n7. de bovengrens: één periode te lang is buiten de opstelling (
   toets('de helling heeft eigen perioden, de lopende erbij', (function (p) { return p.length === 2 && p[0] >= 17 && p[0] <= 23 && p[1] >= 3 && p[1] <= 8; })(s3.PLToeschouwer.periodenS('helling')), JSON.stringify(s3.PLToeschouwer.periodenS('helling')));
 }
 
+console.log('\n8. het bewijs voor de second opinion (#599)');
+{
+  const s = laad();
+  const O = s.PLOpdracht;
+  const k = O.keur({ schema: 2, naam: 'Contact uit', sensoren: ['010D'], duurS: 600,
+    voorwaarden: [{ wat: 'Contact 20 s tot 1,5 min uit', toestand: 'contact-uit', minS: 20, maxS: 90 }],
+    proeven: [{ issue: '#487', naam: 'aantal keer uit', app: 'toestand-contact-uit-n', tussen: [0, 99] }] });
+  rij(s, 1e6, [].concat(herhaal([40], 10), herhaal([0, true], 95), herhaal([0], 6)));
+  const v = O.oordeel(k.opdracht);
+  const b = O.bewijs(k.opdracht, v);
+  toets('het bewijs draagt de voorwaarde met waarde en BUITEN', b.voorwaarden.length === 1 && b.voorwaarden[0].buiten === true && b.voorwaarden[0].waarde >= 95, JSON.stringify(b.voorwaarden));
+  toets('de uitslag met de naam van de proef', b.uitslagen[0].naam === 'aantal keer uit' && !!b.uitslagen[0].detail, JSON.stringify(b.uitslagen));
+  const p = b.toeschouwer && b.toeschouwer.perioden.filter(function (x) { return x.toestand === 'contact-uit'; })[0];
+  toets('de perioden van de toeschouwer, in seconden', !!p && p.s >= 95 && p.s <= 99, JSON.stringify(b.toeschouwer));
+  toets('en de gebeurtenissen', b.toeschouwer.gebeurtenissen.some(function (e) { return e.soort === 'contact-uit'; }));
+  for (let i = 0; i < 400; i++) rij(s, 2e6 + i * 20000, [].concat(herhaal([40], 5), herhaal([0], 5)));
+  const groot = O.bewijs(k.opdracht, O.oordeel(k.opdracht));
+  toets('een lange rit blijft onder de grens van de worker', JSON.stringify(groot).length <= 15000 && groot.voorwaarden.length === 1, String(JSON.stringify(groot).length));
+  let gestuurd = 0;
+  s.PROXY_URL = 'https://x'; s.plFetch = function () { gestuurd++; return Promise.resolve({ status: 200, json: function () { return Promise.resolve({ ok: true, id: '1' }); } }); };
+  O.stuurUitkomst('41', 'rit', { staat: 'nog niet', reden: 'x' }, 'groen', b);
+  toets('"nog niet" gaat niet naar de second opinion', gestuurd === 0);
+  O.stuurUitkomst('41', 'rit', { staat: 'bevinding', reden: 'x' }, 'groen', b);
+  toets('een bevinding wel', gestuurd === 1);
+}
+
 console.log('\n' + (fout ? 'FOUT — ' + fout + ' van ' + n + ' toetsen' : 'Alles goed — ' + n + ' toetsen'));
 process.exit(fout ? 1 : 0);

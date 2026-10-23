@@ -1309,6 +1309,138 @@ async function handleOpdracht(request, env) {
   });
 }
 __name(handleOpdracht, "handleOpdracht");
+
+// ── DE SECOND OPINION (#599) ─────────────────────────────────────────
+// Een uitkomst komt uit één live doorloop van één rit. Ging er iets mis in
+// de bediening -- het contact per ongeluk minuten uit -- dan zegt hij iets
+// over de bestuurder en niet over de auto, en een rit is hier schaars. Daarom
+// is een verzonden uitkomst VOORLOPIG: hij komt hier met zijn bewijs binnen,
+// en de beheerder zet hem op bevestigd of ongeldig. Een AI mag een voorstel
+// doen, maar alleen als het bewijs genoeg data heeft, en zet nooit zelf het
+// oordeel. Ongeldig is geen FOUT: de opdracht blijft open.
+//
+// Het bewijs is een samenvatting die de app maakt (PLOpdracht.bewijs): de
+// voorwaarden met hun waarden, de uitslagen, de perioden en gebeurtenissen
+// van de toeschouwer. Geen logregels -- die bevatten te veel ruis om er een
+// oordeel op te bouwen, en ze staan al in de logtabel.
+var UITKOMST_SCHEMA = "CREATE TABLE IF NOT EXISTS opdracht_uitkomsten (id INTEGER PRIMARY KEY AUTOINCREMENT, OpdrachtId INTEGER, Naam TEXT NOT NULL, SessionId TEXT, Gezet TEXT NOT NULL, Door TEXT, Staat TEXT NOT NULL, Opstelling TEXT, Reden TEXT, Bewijs TEXT, Oordeel TEXT NOT NULL DEFAULT 'voorlopig', OordeelNotitie TEXT, OordeelOp TEXT, OordeelDoor TEXT, AiVoorstel TEXT, AiOp TEXT)";
+var UITKOMST_OORDELEN = ["voorlopig", "bevestigd", "ongeldig-bediening", "ongeldig-opstelling"];
+var UITKOMST_BEWIJS_MAX = 16000;
+var UITKOMST_AI_MODEL = "claude-haiku-4-5";
+var _uitkomstSchemaKlaar = false;
+async function uitkomstSchema(db) {
+  if (_uitkomstSchemaKlaar) return;
+  await db.prepare(UITKOMST_SCHEMA).run();
+  _uitkomstSchemaKlaar = true;
+}
+__name(uitkomstSchema, "uitkomstSchema");
+// POST /airtable/opdracht/uitkomst -- vanuit de meetkamer, alleen de rol admin.
+async function handleOpdrachtUitkomst(request, env) {
+  const sessie = await auth(request, env);
+  if (!sessie) return json({ ok: false, error: "unauthorized" }, 401);
+  if (String(sessie.r || "").toLowerCase() !== "admin") return json({ ok: false, error: "Alleen de beheerder stuurt meetuitkomsten." }, 403);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
+  let b;
+  try { b = await request.json(); } catch (_) { return json({ ok: false, error: "Geen geldige JSON." }, 400); }
+  b = b || {};
+  const staat = String(b.staat || "");
+  if (staat !== "gesloten" && staat !== "bevinding") return json({ ok: false, error: "Alleen een afgeronde uitkomst (gesloten of bevinding) krijgt een second opinion." }, 400);
+  const naam = String(b.naam || "").slice(0, 200);
+  if (!naam) return json({ ok: false, error: "De opdracht heeft geen naam." }, 400);
+  const bewijs = JSON.stringify(b.bewijs === undefined ? null : b.bewijs);
+  if (bewijs.length > UITKOMST_BEWIJS_MAX) return json({ ok: false, error: `Het bewijs is ${bewijs.length} tekens; hoogstens ${UITKOMST_BEWIJS_MAX}.` }, 413);
+  const id = Number.isInteger(b.id) && b.id > 0 ? b.id : null;
+  try {
+    await uitkomstSchema(env.LOGDB);
+    const r = await env.LOGDB.prepare(
+      "INSERT INTO opdracht_uitkomsten (OpdrachtId, Naam, SessionId, Gezet, Door, Staat, Opstelling, Reden, Bewijs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    ).bind(id, naam, String(b.sessie || "").slice(0, 80) || null, (/* @__PURE__ */ new Date()).toISOString(), String(sessie.u || "").slice(0, 80),
+      staat, String(b.opstelling || "ongekeurd").slice(0, 20), String(b.reden || "").slice(0, 1000), bewijs).run();
+    return json({ ok: true, id: String(r && r.meta && r.meta.last_row_id || ""), oordeel: "voorlopig" });
+  } catch (e) {
+    return json({ ok: false, error: "uitkomst_opslaan_mislukt", detail: String(e && e.message || e) }, 502);
+  }
+}
+__name(handleOpdrachtUitkomst, "handleOpdrachtUitkomst");
+async function uitkomstLijst(db, limiet) {
+  await uitkomstSchema(db);
+  const n = Math.min(200, Math.max(1, Math.round(Number(limiet)) || 50));
+  const r = await db.prepare("SELECT * FROM opdracht_uitkomsten ORDER BY id DESC LIMIT ?").bind(n).all();
+  return json({ ok: true, uitkomsten: (r && r.results) || [] });
+}
+__name(uitkomstLijst, "uitkomstLijst");
+// Genoeg data voor een AI-voorstel? Te weinig is geen "twijfel" maar een
+// weigering: een model dat over twee getallen een oordeel moet vellen, verzint
+// de rest erbij. Dan beslist de beheerder alleen.
+function uitkomstGenoegData(bewijs) {
+  const mist = [];
+  const b = bewijs && typeof bewijs === "object" ? bewijs : {};
+  const s = b.venster && typeof b.venster.s === "number" ? b.venster.s : 0;
+  if (s < 120) mist.push(`maar ${s} s gemeten (minstens 120)`);
+  const uit = Array.isArray(b.uitslagen) ? b.uitslagen.filter((u) => u && u.detail) : [];
+  if (!uit.length) mist.push("geen uitslagen met een waarde");
+  const ts = b.toeschouwer || {};
+  const n = (Array.isArray(ts.gebeurtenissen) ? ts.gebeurtenissen.length : 0) + (Array.isArray(ts.perioden) ? ts.perioden.length : 0);
+  if (!n) mist.push("de toeschouwer zag niets");
+  return { ok: !mist.length, reden: mist.join("; ") };
+}
+__name(uitkomstGenoegData, "uitkomstGenoegData");
+var UITKOMST_AI_SYSTEEM = "Je bent de tweede beoordelaar van een meetproef in een OBD-app. Een proef meet tijdens een rit of een auto iets doet; de uitkomst is voorlopig. Beoordeel aan de hand van het bewijs of de uitkomst de AUTO beschrijft, of dat hij komt door de BEDIENING (de bestuurder deed iets anders dan de proef vraagt, bijvoorbeeld het contact veel te lang uit) of door de OPSTELLING (de proef zelf meet niet wat hij moet meten). Verzin niets wat niet in het bewijs staat; twijfel je, zeg dat. Antwoord ALLEEN met JSON: {\"voorstel\":\"bevestigd|ongeldig-bediening|ongeldig-opstelling|twijfel\",\"zekerheid\":\"laag|middel|hoog\",\"reden\":\"hoogstens drie zinnen, Nederlands, met de getallen uit het bewijs\"}";
+function uitkomstAiLees(tekst) {
+  const m = String(tekst || "").match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  let o;
+  try { o = JSON.parse(m[0]); } catch (_) { return null; }
+  const voorstellen = ["bevestigd", "ongeldig-bediening", "ongeldig-opstelling", "twijfel"];
+  if (!o || voorstellen.indexOf(o.voorstel) < 0) return null;
+  return { voorstel: o.voorstel, zekerheid: ["laag", "middel", "hoog"].indexOf(o.zekerheid) < 0 ? "laag" : o.zekerheid, reden: String(o.reden || "").slice(0, 600) };
+}
+__name(uitkomstAiLees, "uitkomstAiLees");
+async function uitkomstAiVraag(db, env, id) {
+  const rij = await db.prepare("SELECT * FROM opdracht_uitkomsten WHERE id = ?").bind(id).first();
+  if (!rij) return json({ ok: false, error: "Die uitkomst bestaat niet (meer)." }, 404);
+  let bewijs = null;
+  try { bewijs = JSON.parse(rij.Bewijs || "null"); } catch (_) { bewijs = null; }
+  const genoeg = uitkomstGenoegData(bewijs);
+  if (!genoeg.ok) return json({ ok: false, error: "Te weinig data voor een AI-voorstel: " + genoeg.reden + ". Beslis zelf." }, 422);
+  const sleutel = resolveAnthropicKey(env);
+  if (!sleutel) return json({ ok: false, error: "Geen API-sleutel in de Worker." }, 500);
+  const vraag = JSON.stringify({ opdracht: rij.Naam, uitkomst: rij.Staat, reden: rij.Reden, opstelling: rij.Opstelling, bewijs });
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-api-key": sleutel, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: UITKOMST_AI_MODEL, max_tokens: 500, system: UITKOMST_AI_SYSTEEM, messages: [{ role: "user", content: vraag }] })
+  });
+  const d = await r.json().catch(() => null);
+  if (!r.ok) return json({ ok: false, error: "AI gaf HTTP " + r.status, detail: d && d.error ? String(d.error.message || d.error).slice(0, 300) : "" }, 502);
+  const tekst = d && Array.isArray(d.content) ? d.content.map((c) => c && c.text || "").join("") : "";
+  const voorstel = uitkomstAiLees(tekst);
+  if (!voorstel) return json({ ok: false, error: "Het AI-antwoord was geen bruikbaar voorstel.", detail: tekst.slice(0, 300) }, 502);
+  const op = (/* @__PURE__ */ new Date()).toISOString();
+  await db.prepare("UPDATE opdracht_uitkomsten SET AiVoorstel = ?, AiOp = ? WHERE id = ?").bind(JSON.stringify(voorstel), op, id).run();
+  return json({ ok: true, id: String(id), voorstel, op });
+}
+__name(uitkomstAiVraag, "uitkomstAiVraag");
+// POST /admin/d1 met actie uitkomst-oordeel of uitkomst-ai.
+async function adminD1Uitkomst(env, actie, body) {
+  const db = env.LOGDB;
+  await uitkomstSchema(db);
+  const id = Number.isInteger(Number(body.id)) && Number(body.id) > 0 ? Number(body.id) : null;
+  if (id === null) return json({ ok: false, error: "Ongeldig uitkomst-id." }, 400);
+  if (actie === "uitkomst-ai") return await uitkomstAiVraag(db, env, id);
+  if (actie !== "uitkomst-oordeel") return json({ ok: false, error: "Onbekende actie." }, 400);
+  const oordeel = String(body.oordeel || "");
+  if (UITKOMST_OORDELEN.indexOf(oordeel) < 0) return json({ ok: false, error: "Onbekend oordeel: " + oordeel.slice(0, 40) }, 400);
+  const notitie = String(body.notitie || "").slice(0, 500);
+  if (oordeel.indexOf("ongeldig") === 0 && !notitie.trim()) return json({ ok: false, error: "Zeg bij ongeldig wát er misging; dat is de les voor de volgende rit." }, 400);
+  const op = (/* @__PURE__ */ new Date()).toISOString();
+  const r = await db.prepare("UPDATE opdracht_uitkomsten SET Oordeel = ?, OordeelNotitie = ?, OordeelOp = ?, OordeelDoor = ? WHERE id = ?")
+    .bind(oordeel, notitie || null, oordeel === "voorlopig" ? null : op, oordeel === "voorlopig" ? null : String(body.door || "beheer").slice(0, 80), id).run();
+  if (!(r && r.meta && r.meta.changes)) return json({ ok: false, error: "Die uitkomst bestaat niet (meer)." }, 404);
+  return json({ ok: true, id: String(id), oordeel, op });
+}
+__name(adminD1Uitkomst, "adminD1Uitkomst");
+// ── EINDE SECOND OPINION ──
 async function handleReferentie(request, env) {
   if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
   if (!env.LOGDB) return json({ error: "no_logdb" }, 500);
@@ -4913,6 +5045,7 @@ async function handleAdminD1Get(request, env) {
     }
     if (actie === "rit") return await adminD1Rit(env.LOGDB, sp.get("sessie"));
     if (actie === "archief") return await adminD1Archief(env.LOGDB, sp.get("limiet"));
+    if (actie === "uitkomsten") return await uitkomstLijst(env.LOGDB, sp.get("limiet"));
     return json({ ok: false, error: "Onbekende actie." }, 400);
   } catch (e) {
     return json({ ok: false, error: "d1_lezen_mislukt", detail: String(e && e.message || e) }, 502);
@@ -4942,6 +5075,7 @@ async function handleAdminD1Post(request, env) {
       return json({ ok: true, ...(await logArchiveren(env.LOGDB, { dagen, proef: b0.proef !== false })) });
     }
     if (actie.indexOf("opdracht-") === 0) return await adminD1Opdracht(env.LOGDB, actie, b0);
+    if (actie.indexOf("uitkomst-") === 0) return await adminD1Uitkomst(env, actie, b0);
     return json({ ok: false, error: "Onbekende actie." }, 400);
   } catch (e) {
     return json({ ok: false, error: "d1_mislukt", detail: String(e && e.message || e) }, 502);
@@ -6898,6 +7032,8 @@ var worker_default = {
         return lockOrigin(request, await handleOpdracht(request, env));
       if (url.pathname === "/airtable/opdracht/keur" && request.method === "POST")
         return lockOrigin(request, await handleOpdrachtKeur(request, env));
+      if (url.pathname === "/airtable/opdracht/uitkomst" && request.method === "POST")
+        return lockOrigin(request, await handleOpdrachtUitkomst(request, env));
       if (url.pathname === "/session/create" && request.method === "POST")
         return lockOrigin(request, await handleSessionCreate(request, env));
       if (url.pathname === "/session/telemetry" && request.method === "POST")
