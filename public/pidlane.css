@@ -519,6 +519,12 @@ body:has(#welcomeScreen:not(.hidden)) .cc { visibility:hidden; }
    navigatiebalk van 48px: de PID-recorder hield 26px ONDER de onderrand over —
    de startknop was niet te raken. Alleen als laatste kind, anders telt de marge
    dubbel bij de vellen die wél een voettekst hebben. */
+/* AI-uitleg uit het statusmenu (openAiUitleg, 23-10-2026). */
+.pl-aiu { font-size:13px; line-height:1.5; color:var(--tx2); }
+.pl-aiu h4 { margin:14px 0 4px; font-size:14px; color:var(--tx); }
+.pl-aiu p { margin:0 0 6px; } .pl-aiu ul { margin:0; padding-left:18px; } .pl-aiu li { margin:0 0 5px; }
+.pl-aiu-stand { display:flex; align-items:center; gap:8px; font-weight:600; color:var(--tx); }
+.pl-aiu-disc { font-size:12px; color:var(--tx3); border-left:3px solid var(--or); padding-left:9px; }
 .ai-sheet-b:last-child { padding-bottom:calc(14px + var(--pl-sab)); }
 /* De sheet schuift vanaf de ONDERRAND op (.ai-sheet-ov centreert op
    flex-end), dus deze knoppenrij is het enige wat de navigatiebalk raakt. */

@@ -332,10 +332,9 @@ function clearApiKey(){
   updateApiPill(); closeApiDialog();
 }
 function openApiDialog(){
-  if(typeof PROXY_URL!=='undefined' && PROXY_URL){
-    showToast('🤖 AI ✓ Actief via proxy\n\nDe sleutel staat veilig server-side in de Cloudflare Worker.');
-    return;
-  }
+  // Via de proxy is er geen sleutel om te beheren; wat de klant hier wil
+  // weten is wat de AI doet, wat het kost en hoe hij meer tokens krijgt.
+  if(typeof PROXY_URL!=='undefined' && PROXY_URL){ openAiUitleg(); return; }
   // Als ingelogd als admin met geldige key — toon info ipv edit dialog
   if(currentUser?.role==='admin' && window.anthropicKey?.startsWith('sk-ant-')){
     showToast(`🤖 AI ✓ Actief\n\nKey: ${window.anthropicKey.slice(0,20)}...\nGebruiker: ${currentUser.name}\n\nKey beheren via src/config.js`);
@@ -347,6 +346,67 @@ function openApiDialog(){
   document.getElementById('apiDialog').classList.add('open');
 }
 function closeApiDialog(){document.getElementById('apiDialog').classList.remove('open');}
+
+/* AI-uitleg (23-10-2026): onder "AI-uitleg" in het statusmenu stond alleen
+   een toast "Actief via proxy". Nu een venster: wat de AI doet, dat tokens
+   beperkt zijn en hoe je ze aanvraagt, hoe je ze niet verspilt aan een
+   analyse op onvolledige data, en de disclaimer. Geen prijzen: die staan bij
+   het aanvragen (PLKlant), en daar veranderen ze mee. */
+function aiUitlegHtml(st){
+  const saldo = st.saldo===null ? 'Je saldo is nog niet bekend; het komt mee met je eerste AI-vraag.'
+    : 'Je saldo nu: <b>'+String(st.saldo).replace(/[^0-9.,-]/g,'')+' tokens</b>.';
+  return '<div class="ai-sheet" style="max-width:520px">'+
+    '<div class="ai-sheet-h"><b>🤖 AI-uitleg</b><button class="ai-sheet-x" id="plAiUitlegX" aria-label="Sluiten">✕</button></div>'+
+    '<div class="ai-sheet-b pl-aiu">'+
+      '<p class="pl-aiu-stand"><span class="tdot '+(st.ok?'g':'r')+'"></span>'+(st.ok?'De AI is bereikbaar.':'De AI is nu niet bereikbaar. Probeer het later opnieuw.')+'</p>'+
+      '<h4>Wat de AI doet</h4>'+
+      '<p>De AI legt in gewone taal uit wat de app gemeten heeft: foutcodes, live waarden, een rit of een opname. Hij meet zelf niets en kijkt niet in je auto — hij ziet alleen wat de app hem meestuurt. Wat er niet in de meting zit, kan hij ook niet beoordelen.</p>'+
+      '<h4>Tokens zijn beperkt</h4>'+
+      '<p>Elke AI-analyse kost tokens; hoeveel hangt af van hoeveel data er meegaat. Vóór je verstuurt zie je een schatting, en je betaalt wat er werkelijk gebruikt is. Een fout aan de kant van de AI kost niets. Bij een nieuw account krijg je eenmalig een proeftegoed. Is je saldo op, dan werkt de AI-uitleg niet tot je bijvult; meten, foutcodes lezen en de rest van de app werken gewoon door.</p>'+
+      '<p>'+saldo+'</p>'+
+      '<h4>Tokens aanvragen</h4>'+
+      '<p>Tik op <b>Tokens aanvragen</b>. Je krijgt een mail die al is ingevuld met je account; je ontvangt een activatiecode terug, meestal binnen een dag. Die code vul je in bij <b>⚡ Tokens</b> en hij wordt op je account bijgeschreven. Log daarvoor eerst in, anders raakt de code niet aan je account.</p>'+
+      '<h4>Verspil geen tokens aan onvolledige data</h4>'+
+      '<ul>'+
+        '<li><b>Wacht tot de auto herkend is</b> en het auto-dossier gevuld is. Zonder merk, model en brandstof gokt de AI.</li>'+
+        '<li><b>Lees eerst de foutcodes</b> met Check mijn auto. Dat kost geen tokens, en vaak is het antwoord er dan al.</li>'+
+        '<li><b>Meet met draaiende motor.</b> Bij contact aan en motor uit staan veel waarden op nul — die kosten evenveel als echte data en zeggen niets.</li>'+
+        '<li><b>Meet waar de klacht zit.</b> Treedt hij alleen onderweg of warm op, maak dan eerst een korte rit of opname en vraag daarna.</li>'+
+        '<li><b>Niet bij een haperende verbinding.</b> Valt de adapter weg of is hij traag (oranje of rode stip bij Adapter), dan zijn de metingen onvolledig. Verbind eerst opnieuw.</li>'+
+        '<li><b>Lees de waarschuwingen in het kostenvenster.</b> Staat er "weinig meetdata" of "op nul", stop dan en meet eerst. Eén gerichte vraag over één klacht is goedkoper én scherper dan alles tegelijk.</li>'+
+      '</ul>'+
+      '<h4>Disclaimer</h4>'+
+      '<p class="pl-aiu-disc">De AI-uitleg is een hulpmiddel, geen diagnose. Hij kan zich vergissen, iets over het hoofd zien of een oorzaak noemen die bij jouw auto niet speelt. Laat reparaties en alles wat met veiligheid te maken heeft (remmen, sturen, banden, waarschuwingslampjes) beoordelen door een erkende garage. Brandt er een rood lampje, stop dan op een veilige plek — wacht niet op een uitleg. PidLane is niet aansprakelijk voor beslissingen op grond van deze uitleg.</p>'+
+    '</div>'+
+    '<div class="ai-sheet-f"><button class="ai-act" id="plAiUitlegSluit">Sluiten</button><button class="ai-act pri" id="plAiUitlegTokens">⚡ Tokens aanvragen</button></div>'+
+  '</div>';
+}
+function aiUitlegStand(){
+  let ok=false, saldo=null;
+  try{ ok=(typeof _aiReach==='undefined' || _aiReach!==false); }catch(e){ console.warn('AI-uitleg: bereikbaarheid onbekend', e); }
+  try{ if(window.PLCredits && PLCredits.saldoBekend()) saldo=PLCredits.saldo(); }catch(e){ console.warn('AI-uitleg: saldo onbekend', e); }
+  return { ok:ok, saldo:saldo };
+}
+function openAiUitleg(){
+  let ov=document.getElementById('plAiUitlegOv');
+  if(!ov){ ov=document.createElement('div'); ov.id='plAiUitlegOv'; ov.className='ai-sheet-ov'; ov.style.zIndex='9930'; document.body.appendChild(ov); }
+  ov.innerHTML=aiUitlegHtml(aiUitlegStand());
+  const sluit=function(){ ov.style.display='none'; };
+  ov.querySelector('#plAiUitlegX').onclick=sluit;
+  ov.querySelector('#plAiUitlegSluit').onclick=sluit;
+  ov.onclick=function(e){ if(e.target===ov) sluit(); };
+  // Een klant heeft het tokenscherm met de ingevulde aanvraagmail; zonder
+  // klantaccount het codevenster, met de aanvraaglink erin.
+  ov.querySelector('#plAiUitlegTokens').onclick=function(){
+    sluit();
+    try{
+      if(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant()) PLKlant.openMijnTokens();
+      else if(window.PLCredits) PLCredits.openVerzilver();
+      else showToast('Tokens aanvragen: mail naar support@pidlane.nl');
+    }catch(e){ console.warn('AI-uitleg: tokenscherm niet geopend', e); }
+  };
+  ov.style.display='flex';
+}
 
 // ════════════════════════════════════════
 // VEHICLE
