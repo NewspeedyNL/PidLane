@@ -10,6 +10,23 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 23-10-2026 — Beschikbaarheid van data bij de eerste verbinding
+ ═══════════════════════════════════════════════════════════
+
+ - Steunbitmaps: tot drie pogingen met oplopende time-out; NO DATA alleen
+   geloofd als geen vorige bitmap het blok aankondigt. Blijft een verwacht
+   blok onleesbaar, dan worden zijn 31 PIDs via het scanslot nagemeten.
+   01C0 erbij; _steunbits wordt per discovery gewist.
+ - Profiel tegen de steunbits: vult nu ook aan wat de auto meldt en het
+   profiel mist (kon alleen verwijderen).
+ - Gezondheidscheck: wat leeg, NO DATA of onleesbaar was krijgt één
+   herkansing (volledig commando, 3000 ms). Bij een profiel-start met
+   overgeslagen scan alleen voor de afgekeurde PIDs; daarna opslaan.
+ - Uitgebreide probe (mode 21/22) die de bus bezet treft: tot 12 keer
+   opnieuw, elke 10 s, in plaats van de hele sessie niet.
+ - Nieuw: test-beschikbaarheid.js; blok 5-proef 'beschikbaarheid'.
+
+ ═══════════════════════════════════════════════════════════
  23-10-2026 — CBS-pompprijs en APK-ritme
  ═══════════════════════════════════════════════════════════
 

@@ -1546,8 +1546,11 @@ ene functie, dus geen andere plek kón ze raadplegen.
 | `steunbitsRuw()` | idem, global | kopie voor diagnostiek |
 
 Gevuld door **zowel** `discoverPIDsBitmap()` als `profielTegenSteunbits()` —
-beide lezen dezelfde vier vragen (`0100`/`0120`/`0140`/`0160`), dus welke route
-de sessie ook neemt, de bits zijn bekend.
+beide lezen dezelfde zeven vragen (`0100` t/m `01C0`, via `plLeesSteunbitmap()`
+met herhaling), dus welke route de sessie ook neemt, de bits zijn bekend.
+Sinds 23-10-2026 vult `profielTegenSteunbits()` ook aan wat de bitmap noemt en
+het profiel mist, en meet `plMeetBlok()` een verwacht maar onleesbaar blok per
+PID na — op bewijs, dus zonder zeef (zie `PIDLANE-ARCHIEF.md`).
 
 **De scheidslijn is niet "welke module" maar "op bewijs of op aanname".**
 Alle vijf plekken die `supportedPIDs` uitbreiden, nagelopen op 20-08:
@@ -1557,6 +1560,8 @@ Alle vijf plekken die `supportedPIDs` uitbreiden, nagelopen op 20-08:
 | `discoverPIDsBitmap()` | omdat de bit aan staat | nee — dat ís de bron |
 | `discoverPIDsDirect()` | na een echt antwoord | nee |
 | `deepRefreshPIDs()` | na een echt antwoord | nee |
+| `plMeetBlok()` | na een echt antwoord (bitmap onleesbaar) | nee |
+| `profielTegenSteunbits()` | omdat de bit aan staat | nee — de bron |
 | `probeUitgebreid()` | mode 21/22, geen steunbits | n.v.t. |
 | `applyVehiclePIDPreset()` | **merk + brandstof, ongemeten** | **ja** |
 

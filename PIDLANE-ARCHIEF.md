@@ -15,6 +15,53 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 23-10-2026 — Beschikbaarheid van data: vier stille gaten bij de eerste verbinding
+
+Nagelopen op de vraag "hoe komt bij een nieuwe klant de lijst met PIDs tot
+stand, en blijft er data onbeschikbaar?". De route (`initConnection` →
+`discoverPIDsBitmap` → `buildDiscoveredPIDList` → `brandstofPoort` →
+`initialHealthScan` → profiel → `selectStandardSet` → `probeUitgebreid`) was
+goed van opzet, maar had vier plekken waar één tegenvaller blijvend werd:
+
+1. **Eén poging per bitmap.** Een lege of te late `0100` terwijl `0120` wél
+   antwoordde: blok 01–20 weg, en de terugval (`discoverPIDsDirect`) sprong
+   niet aan omdat `supportedPIDs` niet leeg was. NO DATA werd overal als "blok
+   bestaat niet" gelezen, maar de ELM zegt NO DATA ook bij een ECU die te laat
+   is. Daarom nu: NO DATA alleen geloven als geen vorige bitmap het blok
+   aankondigt (laatste bit), anders herhalen; blijft een verwacht blok
+   onleesbaar, dan de 31 PIDs per stuk via het scanslot. Dat is een zesde plek
+   die `supportedPIDs` uitbreidt — op bewijs (een antwoord met de juiste kop),
+   dus zonder steunbitzeef, net als `deepRefreshPIDs`.
+2. **Het profiel kon alleen verwijderen.** `profielTegenSteunbits()` las de
+   bits en gooide eruit wat ontkend werd, maar vulde niets aan. Het gat uit 1
+   ging daardoor het profiel in en bleef. Nu ook aanvullen; de bitmap is de
+   bron, dus daar hoort geen zeef bij.
+3. **Eén vraag per sensor in de gezondheidscheck.** Met `'1'` achter het
+   commando (wacht op één antwoord) en 1500 ms. Een meerframe-antwoord of een
+   ECU die even achterloopt wordt `nodata`; dat is niet `kiesbaar`, dus de
+   standaardset, de pollus én de waakronde slaan hem over en
+   `plHealthHerzien()` krijgt nooit een meting om het oordeel mee te herzien.
+   Nu één herkansing met het volle commando en 3000 ms, alleen voor wat leeg,
+   NO DATA of onleesbaar was — een waarde die de dummy-detectie afkeurt geeft
+   bij een tweede vraag hetzelfde. Bij een profiel-start met overgeslagen scan
+   krijgen de afgekeurde PIDs uit het profiel die herkansing ook (een profiel
+   van vóór vandaag is zonder gemaakt).
+4. **Klein:** `01C0` werd nooit gevraagd (stond wel in `GEEN_SENSOR_PIDS`), en
+   `_steunbits` werd nooit gewist, dus een blok dat bij auto B niet gelezen werd
+   hield het woord van auto A.
+
+Daarnaast: `probeUitgebreid()` wordt na het verbinden één keer aangeroepen.
+Trof hij de bus bezet (Check mijn auto start vlak ervoor), dan bleven de
+fabrikant-PIDs die sessie onontdekt. Nu tot 12 keer opnieuw, elke 10 s.
+
+**Wat blijft staan.** Een sensor die óók de herkansing mist blijft de sessie
+grijs: de waakronde vraagt alleen `kiesbaar`. Hem daar wél laten vragen zou
+"uitgevallen" melden voor een sensor die nooit iets leverde. "Toon alles" en
+de testrun blijven de weg. Wat een volle bus of een koude ECU echt doet is een
+vraag voor een rit.
+
+---
+
 ## 23-10-2026 — Pompprijs van het CBS: de conclusie van #505 herzien
 
 Op 21-10 ging de standaardprijs van de CBS-pompprijs naar de landelijke

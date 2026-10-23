@@ -72,7 +72,9 @@ function bouw(o) {
   s.sendCmd = function (cmd) {
     s.viaSendCmd.push(cmd);
     if (s.slotOpen) s.omheenNaSlot.push(cmd);
-    return Promise.resolve('NO DATA');
+    // 0100 leesbaar maar leeg: anders meet de discovery blok 0 per PID na
+    // (plMeetBlok, ook via een slot) en telt deze test twee sweeps door elkaar.
+    return Promise.resolve(cmd === '0100' ? '41 00 00 00 00 00' : 'NO DATA');
   };
   s.buildDiscoveredPIDList = function () { };
   s.discoverPIDsBitmap = function () { return Promise.resolve(); };

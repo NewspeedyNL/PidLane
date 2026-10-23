@@ -185,7 +185,10 @@ function bouw(opties) {
     s.lezen("supportedPIDs = new Set(['010C','010D','0105','010B']);");
     await s.initialHealthScan();
 
-    t('alles is bevraagd', s.lezen('_gescand.length'), 4);
+    t('alles is bevraagd', s.lezen('new Set(_gescand).size'), 4);
+    // Herkansing (23-10-2026): alleen 010D (NO DATA) wordt een tweede keer
+    // gevraagd; 0x0EE op 010B is een afgekeurde waarde en blijft één vraag.
+    t('alleen NO DATA krijgt een herkansing', s.lezen("_gescand.slice(4).join(',')"), '010D');
     t('een gewone waarde is ok', s.lezen("_pidHealth['010C']"), 'ok');
     t('NO DATA is niet aanwezig', s.lezen("_pidHealth['010D']"), 'nodata');
     t('onzin is onzin', s.lezen("_pidHealth['010B']"), 'onzin');

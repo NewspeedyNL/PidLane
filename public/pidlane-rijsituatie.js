@@ -348,7 +348,7 @@ function decodeVIN(vin){
 // geen andere plek ze raadplegen.
 //
 // Vandaar deze opslag. Wie een PID wil toevoegen vraagt het hier.
-let _steunbits = {};        // blokstart (0,32,64,96) → 32-bits woord
+let _steunbits = {};        // blokstart (0,32,…,192) → 32-bits woord
 
 function _steunbitsOnthoud(blokStart, woord){
   if(!isFinite(woord)) return;
@@ -383,6 +383,9 @@ function magToevoegen(pid){
 //                             dat is de bron zelf
 //   discoverPIDsDirect()      voegt toe NA een echt antwoord          → geen zeef
 //   deepRefreshPIDs()         voegt toe NA een echt antwoord          → geen zeef
+//   plMeetBlok()              voegt toe NA een echt antwoord          → geen zeef
+//                             (blok verwacht maar bitmap onleesbaar, 23-10-2026)
+//   profielTegenSteunbits()   vult aan OMDAT de bit aan staat         → geen zeef
 //   probeUitgebreid()         mode 21/22, heeft geen steunbits        → geen zeef
 //   applyVehiclePIDPreset()   voegt toe op AANNAME (merk + brandstof) → ZEEF
 //
@@ -419,17 +422,102 @@ function plSteunbitsUit(raw, q){
   return w;
 }
 
+// ── DE STEUNBITMAPS LEZEN — HERHALEN, EN EEN GAT DICHTMETEN (23-10-2026) ──
+// Tot deze datum werd elke bitmap precies één keer gevraagd. Kwam 0100 leeg of
+// te laat terug terwijl 0120 wél antwoordde, dan was supportedPIDs niet leeg,
+// sprong geen enkele terugval aan en ontbrak het hele blok 01–20: toerental,
+// snelheid, koelwater, belasting. Dat profiel werd opgeslagen, en de
+// profielcontrole kon alleen verwijderen — het gat bleef dus voor altijd.
+//
+// Drie regels sindsdien:
+//   1. Een bitmap die onleesbaar terugkomt (leeg, ERROR, STOPPED, geen kop)
+//      wordt tot PL_STEUN_POGINGEN keer gevraagd, met een ruimere time-out.
+//      NO DATA wordt alleen geloofd als niets het blok aankondigt. De ELM zegt
+//      NO DATA ook als een trage ECU te laat is, dus op 0100 (elke OBD-auto
+//      heeft hem) en op een blok dat de vorige bitmap aankondigt (laatste bit
+//      aan) wordt het herhaald zoals een leeg antwoord.
+//   2. Blijft een blok onleesbaar terwijl het er hoort te zijn (blok 0 altijd,
+//      een hoger blok als de vorige bitmap zijn laatste bit aan heeft), dan
+//      worden de 31 PIDs van dat blok één voor één gevraagd, via het scanslot
+//      (#191): wat antwoordt bestaat.
+//   3. 01C0 (C1–E0) hoort erbij; GEEN_SENSOR_PIDS kende hem al.
+const PL_STEUN_BLOKKEN = ['0100','0120','0140','0160','0180','01A0','01C0'];
+const PL_STEUN_POGINGEN = 3;
+const PL_STEUN_MS = [4000, 6000, 8000];
+
+// Wordt dit blok aangekondigd? 0100 altijd; een hoger blok als de vorige
+// bitmap gelezen is en zijn laatste bit aan heeft. Puur.
+function plBlokVerwacht(q, uitslag){
+  const b=parseInt(String(q).slice(2),16);
+  if(b===0) return true;
+  const v=uitslag && uitslag[b-32];
+  return !!(v && v.status==='ok' && (v.w & 1));
+}
+
+// {w, status}: status 'ok' (w = woord), 'nee' (blok bestaat niet), 'onleesbaar'.
+async function plLeesSteunbitmap(q, verwacht){
+  if(verwacht===undefined) verwacht = q==='0100';
+  let laatste = '';
+  for(let i=0;i<PL_STEUN_POGINGEN;i++){
+    let r='';
+    try{ r=await sendCmd(q, PL_STEUN_MS[i]||8000); }catch(e){ console.warn('sendCmd '+q+' mislukt:', e); }
+    laatste = String(r||'');
+    const w=plSteunbitsUit(laatste, q);                    // alle ECU's samen (#586)
+    if(w!==null) return { w, status:'ok', pogingen:i+1 };
+    if(!verwacht && /NO DATA/i.test(laatste)) return { w:null, status:'nee', pogingen:i+1 };
+    if(i<PL_STEUN_POGINGEN-1) await delay(250*(i+1));
+  }
+  btDiag(`${q}: na ${PL_STEUN_POGINGEN} pogingen geen leesbare bitmap (${laatste.trim().slice(0,30)||'leeg'})`,'warn');
+  return { w:null, status:'onleesbaar', pogingen:PL_STEUN_POGINGEN };
+}
+
+// Welke onleesbare blokken moeten er zijn? Puur, zodat het te toetsen is.
+// uitslag: blokstart → {status, w}
+function plBlokkenTeMeten(uitslag){
+  const uit=[];
+  PL_STEUN_BLOKKEN.forEach(function(q){
+    const b=parseInt(q.slice(2),16);
+    const u=uitslag[b];
+    if(!u || u.status!=='onleesbaar') return;
+    if(plBlokVerwacht(q, uitslag)) uit.push(b);
+  });
+  return uit;
+}
+
+// De 31 sensor-PIDs van een blok één voor één (de 32e is de volgende bitmap).
+// Via PLScanSlot, net als diep zoeken: lege antwoorden zijn hier de verwachting.
+async function plMeetBlok(blok){
+  const lijst=[];
+  for(let k=1;k<=31;k++) lijst.push('01'+(blok+k).toString(16).toUpperCase().padStart(2,'0'));
+  let erbij=0;
+  const sweep=async(stuur)=>{
+    for(const pid of lijst){
+      if(supportedPIDs.has(pid)) continue;
+      const r=await stuur(pid,1500);
+      const kop='41'+pid.slice(2);
+      const hex=String(r||'').replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+      if(r && !/NO DATA|ERROR|UNABLE|STOPPED/i.test(r) && hex.indexOf(kop)>=0){ supportedPIDs.add(pid); erbij++; }
+    }
+  };
+  if(window.PLScanSlot && typeof PLScanSlot.doe==='function') await PLScanSlot.doe('bitmapgat '+blok.toString(16), {}, sweep);
+  else{
+    btDiag('PLScanSlot ontbreekt: het bitmapgat wordt zonder busslot dichtgemeten (#191)','warn');
+    await sweep(async (pid,t)=>{ const r=await sendCmd(pid,t); await delay(30); return r; });
+  }
+  btDiag(`Blok ${blok.toString(16).toUpperCase().padStart(2,'0')}: bitmap onleesbaar, per PID gemeten → +${erbij}`, erbij?'ok':'warn');
+  return erbij;
+}
+
 async function profielTegenSteunbits(){
   if(typeof supportedPIDs==='undefined' || !supportedPIDs.size) return 0;
-  const bits={};
-  for(const q of ['0100','0120','0140','0160']){
-    let r='';
-    try{ r=await sendCmd(q,3000); }catch(e){ console.warn('sendCmd mislukt:', e); }
-    if(!r || /NO DATA|UNABLE|ERROR|STOPPED/i.test(r)) continue;
-    const w=plSteunbitsUit(r, q);                          // alle ECU's samen (#586)
-    if(w===null) continue;
-    bits[parseInt(q.slice(2),16)]=w;
-    _steunbitsOnthoud(parseInt(q.slice(2),16), w);   // ook bewaren voor andere modules
+  _steunbits = {};                                        // geen woord van een vorige auto laten staan
+  const bits={}, uitslag={};
+  for(const q of PL_STEUN_BLOKKEN){
+    const u=await plLeesSteunbitmap(q, plBlokVerwacht(q, uitslag));
+    uitslag[parseInt(q.slice(2),16)]=u;
+    if(u.status!=='ok') continue;
+    bits[parseInt(q.slice(2),16)]=u.w;
+    _steunbitsOnthoud(parseInt(q.slice(2),16), u.w);   // ook bewaren voor andere modules
   }
   if(!Object.keys(bits).length){
     btDiag('Steunbits niet leesbaar — profiel ongewijzigd gelaten','warn');
@@ -447,12 +535,33 @@ async function profielTegenSteunbits(){
     if(((w>>>(32-positie))&1)===0) weg.push(pid);
   });
 
-  if(!weg.length){ btDiag('Profiel klopt met de steunbits — niets verwijderd','ok'); return 0; }
+  // En de andere kant op (23-10-2026): wat de bitmap noemt maar het profiel
+  // mist, komt erbij. Tot deze datum kon deze controle alleen weghalen, dus een
+  // profiel met een gat (0100 één keer gemist) bleef dat gat houden.
+  const erbij=[];
+  Object.keys(bits).forEach(function(b){
+    const blok=+b, w=bits[b];
+    for(let i=0;i<32;i++){
+      if(!(w&(0x80000000>>>i))) continue;
+      const pid='01'+(blok+i+1).toString(16).toUpperCase().padStart(2,'0');
+      if(!supportedPIDs.has(pid)) erbij.push(pid);
+    }
+  });
+  erbij.forEach(p=>supportedPIDs.add(p));
+  profielTegenSteunbits.erbij=erbij.length;
+
+  if(!weg.length && !erbij.length){ btDiag('Profiel klopt met de steunbits — niets verwijderd of aangevuld','ok'); return 0; }
 
   weg.forEach(p=>{ supportedPIDs.delete(p); try{ activePIDs.delete(p); }catch(e){ console.warn('activePIDs.delete mislukt:', e); } });
-  const namen=weg.map(p=>{ try{ const d=getPidDef(p); return p+(d&&d.name?' ('+d.name+')':''); }catch(e){ return p; } });
-  log(`🧹 ${weg.length} sensoren uit het profiel verwijderd — deze auto ondersteunt ze niet: ${namen.join(', ')}`,'ok');
-  btDiag(`Profiel opgeschoond: ${weg.join(', ')}`,'ok');
+  if(weg.length){
+    const namen=weg.map(p=>{ try{ const d=getPidDef(p); return p+(d&&d.name?' ('+d.name+')':''); }catch(e){ return p; } });
+    log(`🧹 ${weg.length} sensoren uit het profiel verwijderd — deze auto ondersteunt ze niet: ${namen.join(', ')}`,'ok');
+    btDiag(`Profiel opgeschoond: ${weg.join(', ')}`,'ok');
+  }
+  if(erbij.length){
+    log(`➕ ${erbij.length} sensoren aan het profiel toegevoegd — de auto meldt ze, het profiel miste ze: ${erbij.join(', ')}`,'ok');
+    btDiag(`Profiel aangevuld: ${erbij.join(', ')}`,'ok');
+  }
 
   // Profiel opnieuw wegschrijven, anders staat dezelfde fout er de volgende
   // sessie gewoon weer.
@@ -460,24 +569,25 @@ async function profielTegenSteunbits(){
   try{ herijkPidGate('profiel tegen steunbits gehouden'); }catch(e){ console.warn('herijkPidGate mislukt:', e); }
   return weg.length;
 }
+profielTegenSteunbits.erbij=0;
 
+// Geeft {uitslag, gemeten, onleesbaar} terug; de aanroeper meldt wat er misging.
 async function discoverPIDsBitmap(){
-  const ranges=['0100','0120','0140','0160','0180','01A0'];
-  for(const rangeCmd of ranges){
-    const resp=await sendCmd(rangeCmd);
-    if(!resp||resp.includes('NO DATA')||resp.includes('UNABLE')||resp.includes('ERROR')) continue;
-
-    // Alle ECU's samen (#586): de bak en de hybride-ECU hebben eigen PIDs.
-    const bitmap=plSteunbitsUit(resp, rangeCmd);
-    if(bitmap===null) continue;
+  _steunbits = {};                                        // geen woord van een vorige auto laten staan
+  const uitslag={};
+  for(const rangeCmd of PL_STEUN_BLOKKEN){
+    const base=parseInt(rangeCmd.slice(2),16);
+    const u=await plLeesSteunbitmap(rangeCmd, plBlokVerwacht(rangeCmd, uitslag));
+    uitslag[base]=u;
+    if(u.status!=='ok') continue;
+    const bitmap=u.w;
     const bitmapHex=bitmap.toString(16).toUpperCase().padStart(8,'0');
-    // De discovery leest exact dezelfde vier bitmaps als profielTegenSteunbits().
+    // De discovery leest dezelfde bitmaps als profielTegenSteunbits().
     // Hier bewaren betekent dat de preset straks weet wat de ECU ontkent, ook
     // als die controle niet meer apart draait (verse discovery slaat hem over).
-    try{ _steunbitsOnthoud(parseInt(rangeCmd.slice(2),16), bitmap); }catch(e){ console.warn('_steunbitsOnthoud mislukt:', e); }
-    if(isNaN(bitmap)||bitmap===0) continue;
+    try{ _steunbitsOnthoud(base, bitmap); }catch(e){ console.warn('_steunbitsOnthoud mislukt:', e); }
+    if(bitmap===0) continue;
 
-    const base=parseInt(rangeCmd.slice(2),16);
     let found=0;
     for(let i=0;i<32;i++){
       if(bitmap&(0x80000000>>>i)){
@@ -486,7 +596,7 @@ async function discoverPIDsBitmap(){
         found++;
       }
     }
-    btDiag(`${rangeCmd}: ${bitmapHex} → +${found} PIDs (totaal ${supportedPIDs.size})`,'info');
+    btDiag(`${rangeCmd}: ${bitmapHex} → +${found} PIDs (totaal ${supportedPIDs.size})${u.pogingen>1?' — '+u.pogingen+'e poging':''}`,'info');
 
     // P6: NIET stoppen op een ontbrekende continuation-bit. Sommige ECU's
     // rapporteren ranges niet-aaneengesloten; door door te pollen vinden we
@@ -494,6 +604,10 @@ async function discoverPIDsBitmap(){
     // queries kosten weinig en voorkomen "auto kan het wel, maar app vraagt
     // het niet op". (Was: break bij !lastBitSet.)
   }
+  const teMeten=plBlokkenTeMeten(uitslag);
+  let gemeten=0;
+  for(const b of teMeten) gemeten+=await plMeetBlok(b);
+  return { uitslag, gemeten, onleesbaar:teMeten };
 }
 
 // Methode 2: Directe poll — probeer bekende PIDs één voor één
@@ -811,6 +925,7 @@ async function initialHealthScan(){
   const pids=[...supportedPIDs];
   btDiag(`🔬 Gezondheidscheck van ${pids.length} sensoren…`,'info');
   let ok=0, geen=0, onzin=0;
+  const herkans=[];   // geen of onleesbaar antwoord: één keer te traag is geen oordeel
   // Zware sweep: de bus is hier van ÓNS. De poll-loop slaat z'n rondes over
   // en de stale-watchdog krijgt de pauzetijd als krediet, dus de live view
   // kleurt niet onterecht rood.
@@ -822,10 +937,10 @@ async function initialHealthScan(){
       const raw=await sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):('01'+pid.slice(2)+'1'),1500);
       // NO DATA = sensor niet aanwezig op dit voertuig (grijs maar ander label)
       if(!raw || raw.includes('NO DATA') || raw.includes('UNABLE') || raw.includes('ERROR') || raw.includes('STOPPED')){
-        _pidHealth[pid]='nodata'; geen++; continue;
+        _pidHealth[pid]='nodata'; geen++; herkans.push(pid); continue;
       }
       const val=parsePID(pid, raw);
-      if(val==null){ _pidHealth[pid]='onzin'; onzin++; continue; }
+      if(val==null){ _pidHealth[pid]='onzin'; onzin++; herkans.push(pid); continue; }
       // scanMode=true: alleen harde fysieke onmogelijkheden markeren als onzin
       const q=assessPidQuality(pid,val,true);
       _pidHealth[pid]=q.status;
@@ -845,6 +960,18 @@ async function initialHealthScan(){
       // pidHist die de app zelf net had afgekeurd.
       if(q.status==='ok'){ ok++; updPID(pid,val); } else onzin++;
     }catch(e){ _pidHealth[pid]='onzin'; onzin++; }
+  }
+  // HERKANSING (23-10-2026). De eerste ronde vraagt met het achtervoegsel '1'
+  // (wacht op één antwoord) en 1500 ms: snel, maar een meerframe-antwoord
+  // (016D) of een ECU die even achterloopt valt daar buiten. Wat leeg, als
+  // NO DATA of onleesbaar terugkwam krijgt één tweede vraag: volledig commando,
+  // 3000 ms. Zonder dit bleef zo'n sensor de hele sessie grijs (niet kiesbaar,
+  // dus ook nooit meer gepollt) en ging dat oordeel het profiel in.
+  // Een waarde die de dummy-detectie afkeurt wordt NIET herhaald: dezelfde
+  // vraag geeft dezelfde waarde.
+  if(!_healthAbort && herkans.length){
+    const r2=await _healthHerkans(herkans);
+    ok+=r2.ok; geen-=r2.uitGeen; onzin-=r2.uitOnzin;
   }
   }, 8000);
   // Veiligheidsfallback: als 0 PIDs ok zijn maar wel data was, check gefaald
@@ -868,6 +995,47 @@ async function initialHealthScan(){
   // De tegels zijn op dat moment al opgebouwd, dus even bijwerken.
   try{ refreshLegeTegels(); }catch(e){ console.warn('refreshLegeTegels mislukt:', e); }
 }
+
+// Tweede vraag voor PIDs zonder bruikbaar antwoord. Claimt de bus NIET zelf:
+// de aanroeper heeft hem al (initialHealthScan) of claimt hem (plHerkansNodata).
+async function _healthHerkans(pids){
+  let ok=0, uitGeen=0, uitOnzin=0;
+  for(const pid of pids){
+    if(_healthAbort) break;
+    const voor=_pidHealth[pid];
+    let raw='';
+    try{ raw=await sendCmd((typeof pidCmd==='function')?pidCmd(pid,false):pid, 3000); }
+    catch(e){ console.warn('herkansing '+pid+' mislukt:', e); continue; }
+    if(!raw || /NO DATA|UNABLE|ERROR|STOPPED/.test(raw)) continue;
+    const val=parsePID(pid, raw);
+    if(val==null) continue;
+    const q=assessPidQuality(pid,val,true);
+    if(q.status!=='ok') continue;
+    _pidHealth[pid]='ok'; ok++; updPID(pid,val);
+    if(voor==='nodata') uitGeen++; else uitOnzin++;
+  }
+  btDiag(`🔁 Herkansing: ${ok} van ${pids.length} sensoren antwoordden alsnog`+(ok?' ('+pids.filter(p=>_pidHealth[p]==='ok').join(', ')+')':''), ok?'ok':'info');
+  return {ok, uitGeen, uitOnzin};
+}
+
+// Bekend voertuig, scan overgeslagen: het oordeel komt uit het profiel. Wat
+// daar als nodata/onzin in staat krijgt toch die ene herkansing — een profiel
+// van vóór 23-10-2026 is gemaakt zonder, en anders blijft een sensor die ooit
+// één keer te traag was voorgoed grijs. Licht: alleen de afgekeurde PIDs.
+async function plHerkansNodata(){
+  if(!connected || demoMode || typeof _pidHealth==='undefined') return 0;
+  const lijst=[...supportedPIDs].filter(p=>_pidHealth[p]==='nodata'||_pidHealth[p]==='onzin');
+  if(!lijst.length) return 0;
+  _healthAbort=false;
+  let r={ok:0};
+  await withBus('herkansing', async()=>{ r=await _healthHerkans(lijst); }, 8000);
+  if(r.ok){
+    try{ buildDiscoveredPIDList(); }catch(e){ console.warn('PID-lijst niet herbouwd na de herkansing', e); }
+    try{ refreshLegeTegels(); }catch(e){ console.warn('refreshLegeTegels mislukt na de herkansing', e); }
+  }
+  return r.ok;
+}
+window.plHerkansNodata=plHerkansNodata;
 
 // Selecteer automatisch de gezonde kern-PIDs (optie 3 + alleen gezonde)
 function autoSelectHealthyKern(){

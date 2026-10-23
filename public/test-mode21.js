@@ -196,6 +196,21 @@ function haalZeef(isMode01) {
     t('een vrije bus levert wél een meting op', r2.nieuw, 1);
   }
 
+  console.log('\n— een bezette bus na het verbinden: later opnieuw, maar begrensd (23-10-2026) —');
+  {
+    // De verbindflow roept de probe één keer aan, zonder force. Had Check mijn
+    // auto net de bus, dan bleven de fabrikant-PIDs de hele sessie onontdekt.
+    // setTimeout draait hier meteen, dus elke herkansing is direct te tellen.
+    const s = bouw({ busVrij: false, antwoorden: { '21021': '61 02 7B' } });
+    s.lezen("vehicleInfo={make:'MAZDA'};");
+    await s.probeUitgebreid();
+    await new Promise(function (r) { setImmediate(r); });
+    const bezet = s._btlog.filter(function (m) { return /uitgesteld — bus bezet/.test(m); }).length;
+    t('hij probeert het opnieuw (1 + 12 keer)', bezet, 13);
+    t('en meldt daarna dat het niet lukte', /deze sessie niet onderzocht/.test(s._btlog.join(' | ')), true);
+    t('er is niets verzonden', s._verzonden.length, 0);
+  }
+
   console.log('\n— eigen PIDs per voertuig: alleen lezen, eigen formule zonder eval (27-09-2026) —');
   {
     // Solo met het antwoordaantal erachter (pidCmd(code, true)), net als de pollus.

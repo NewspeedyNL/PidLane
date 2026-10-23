@@ -178,6 +178,9 @@
   // de probe heen praat — zelfde patroon als vlFullSurvey().
   let _gedraaid = false;
 
+  // Hoe vaak een probe die de bus bezet trof opnieuw wordt ingepland.
+  const PROBE_HERKANS = 12, PROBE_HERKANS_MS = 10000;
+  let _herkansT = 0;
   async function probeUitgebreid(force) {
     if (_gedraaid && !force) return { nieuw: 0, overgeslagen: true };
     if (!connected || demoMode) return { nieuw: 0, overgeslagen: true };
@@ -239,8 +242,22 @@
     const uit = (typeof withBusOfNiets === 'function')
       ? await withBusOfNiets('uitgebreid-probe', werk, bezet)
       : await werk();
-    // Bus was bezet: niets gemeten, dus ook niets te melden.
-    if (uit.busBezet) return uit;
+    // Bus was bezet: niets gemeten. Tot 23-10-2026 was dat het einde: de
+    // probe wordt maar op één plek aangeroepen (na het verbinden), en als Check
+    // mijn auto daar net de bus had, bleven de fabrikant-PIDs de hele sessie
+    // onontdekt. Nu: later opnieuw, hoogstens PROBE_HERKANS keer.
+    if (uit.busBezet) {
+      if (!force && _herkansT < PROBE_HERKANS && connected) {
+        _herkansT++;
+        try { setTimeout(function () { probeUitgebreid(); }, PROBE_HERKANS_MS); }
+        catch (e) { console.warn('uitgebreide probe niet opnieuw ingepland', e); }
+      } else if (!force) {
+        try { btDiag('Uitgebreide probe: bus bleef bezet — fabrikant-PIDs (mode 21/22) deze sessie niet onderzocht', 'warn'); }
+        catch (e) { console.warn('melding niet gelogd', e); }
+      }
+      return uit;
+    }
+    _herkansT = 0;
 
     // Buiten het slot: dit is schermwerk en hoort de bus niet bezet te houden.
     if (uit.nieuw) {

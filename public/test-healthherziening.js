@@ -284,6 +284,7 @@ console.log('\n6. De gezondheidscheck stempelt pas als het oordeel er is');
     assessPidQuality = function(pid,val,scan){ _spionOordeel(pid); return _echteAssess(pid,val,scan); };
   `, s, { filename: 'oordeel-spion' });
   vm.runInContext(knip2('pidlane-rijsituatie.js', 'async function initialHealthScan(){', '\n}', true), s, { filename: 'pidlane-rijsituatie.js (knip)' });
+  vm.runInContext(knip2('pidlane-rijsituatie.js', 'async function _healthHerkans(pids){', '\n}', true), s, { filename: 'pidlane-rijsituatie.js (knip herkansing)' });
 
   // Eerst de meetketen zelf: keurt de parser 0184 goed en het oordeel af?
   // Zonder deze twee zou "de scan doet niets" ook groen geven.
