@@ -1208,7 +1208,10 @@
     '#plGarOv .gr-sens input{width:20px;height:20px;flex:0 0 20px;margin-top:1px;accent-color:var(--bl,#3b82f6)}' +
     '#plGarOv .gr-sens small{color:var(--tx3);font-size:11px}' +
     '#plGarOv .gr-meer{border-top:1px solid var(--bd)}#plGarOv .gr-meer>summary{padding:9px 0;font-size:13px;font-weight:600;color:var(--bl,#3b82f6);cursor:pointer}' +
-    '#plGarOv .gr-groep{margin-top:8px}#plGarOv .gr-gk{font:700 13px var(--f);color:var(--tx);padding:6px 0 2px}#plGarOv .gr-soort{color:var(--tx3);font-style:italic}' +
+    // gr-sgroep, niet gr-groep: die naam is van de groepsknoppen van de grafiek
+    // (pidlane.css, white-space:nowrap), en liet hier elke regel uit het venster lopen.
+    '#plGarOv .gr-item,#plGarOv .gr-sens>span{min-width:0;overflow-wrap:anywhere}' +
+    '#plGarOv .gr-sgroep{margin-top:8px}#plGarOv .gr-gk{font:700 13px var(--f);color:var(--tx);padding:6px 0 2px}#plGarOv .gr-soort{color:var(--tx3);font-style:italic}' +
     '#plGarOv .gr-bib small{color:var(--tx3);font-size:11px}#plGarOv .gr-bib a{color:var(--bl,#3b82f6)}' +
     '#plGarOv .gr-tempo{display:flex;align-items:center;gap:8px;margin:6px 0 0;font-size:12px}#plGarOv .gr-tempo select{width:auto;padding:5px 8px;font-size:13px}' +
     '#plGarOv .gr-kies{width:20px;height:20px;flex:0 0 20px;accent-color:var(--bl,#3b82f6)}' +
@@ -1864,8 +1867,8 @@
     if (!rijen.length) return '';
     var G = SENS_GROEP[k], kop = esc(G.kop) + ' (' + rijen.length + ')';
     var binnen = '<div class="gr-klein">' + esc(G.uitleg) + '</div>' + rijen.map(html).join('');
-    if (k === 'dubbel' || k === 'weigert') return '<details class="gr-meer gr-groep"' + (open ? ' open' : '') + '><summary>' + kop + '</summary>' + binnen + '</details>';
-    return '<div class="gr-groep"><div class="gr-gk">' + kop + '</div>' + binnen + '</div>';
+    if (k === 'dubbel' || k === 'weigert') return '<details class="gr-meer gr-sgroep"' + (open ? ' open' : '') + '><summary>' + kop + '</summary>' + binnen + '</details>';
+    return '<div class="gr-sgroep"><div class="gr-gk">' + kop + '</div>' + binnen + '</div>';
   }
   function bibStand(b) {
     return (b.werkt ? '✓ werkt bij ' + b.werkt : '') + (b.werkt_niet ? (b.werkt ? ' · ' : '') + '✗ niet bij ' + b.werkt_niet : '') +
@@ -1943,7 +1946,7 @@
     };
     var lijst = ['weergave', 'analyse', 'dubbel'].map(function (k) { return sensGroepHtml(k, g[k], rij, false); }).join('');
     h += lijst || '<div class="gr-klein">Niets nieuws met een plausibele waarde.</div>';
-    if (r.vreemd.length) h += '<details class="gr-meer gr-groep"><summary>⚠️ Vreemde waarde (' + r.vreemd.length + ')</summary><div class="gr-klein">Antwoordt wel, maar het getal klopt niet — vaak een verkeerde formule. Niet voorgesteld.</div>' +
+    if (r.vreemd.length) h += '<details class="gr-meer gr-sgroep"><summary>⚠️ Vreemde waarde (' + r.vreemd.length + ')</summary><div class="gr-klein">Antwoordt wel, maar het getal klopt niet — vaak een verkeerde formule. Niet voorgesteld.</div>' +
       r.vreemd.map(function (v) { return '<div class="gr-item"><b>' + esc(v.c.naam) + '</b> <small>' + esc(v.c.code) + '</small><br><small>' + esc(v.reden) + '</small></div>'; }).join('') + '</details>';
     if (lijst) h += '<div class="gr-klein" style="margin-top:6px">' + aantal + ' gekozen · ' + vrij + ' plek' + (vrij === 1 ? '' : 'ken') + ' vrij</div>' +
       (aantal > vrij ? '<div class="gr-melding rood">Te veel gekozen: er zijn nog ' + vrij + ' plekken voor eigen sensoren.</div>' : '');
