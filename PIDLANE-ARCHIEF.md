@@ -15,6 +15,25 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 24-10-2026 — bovengrens en second opinion: waarom geen aparte meetlog (#599)
+
+De vraag was of de second opinion de logs moet lezen, of een eigen meetlog
+nodig heeft. De logtabel bevat alles, maar voor deze vraag is het ruis: 60
+TX/RX-regels per seconde, de rondgang, de caravan-tracker. Een aparte stroom
+naast de logtabel zou een tweede lijst zijn van hetzelfde, en die lopen hier
+uit de pas. Daarom geen nieuwe log, wel een **samenvatting per verzending**
+(`PLOpdracht.bewijs`): de voorwaarden met hun waarden, de uitslagen, de
+perioden en gebeurtenissen van de toeschouwer, de meetgaten. Dat is wat een
+mens of een AI nodig heeft om "auto of bediening?" te beantwoorden, en het
+past onder 16 KB.
+
+De bovengrens gaat over één periode en niet over de som, en telt vanaf het
+moment dat de opdracht gekozen is. Met de som zou één ongeluk de proef de hele
+sessie blokkeren; nu begint opnieuw kiezen een nieuwe poging. Bekend gat: de
+app-maten van de proeven zelf (bijv. `contact-weigeringen`) tellen nog over de
+hele sessie, dus een weigering uit de te lange stilte telt in de volgende
+poging mee. Dat is precies waar de second opinion voor is.
+
 ## 23-10-2026 — een verzonden meetopdracht stond nergens in het verslag (#599)
 
 Testrun 23-10 22:59: twintig minuten gereden met #594 gekozen, vier
