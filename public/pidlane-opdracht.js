@@ -984,7 +984,7 @@
         perioden: (st.perioden || []).slice(-40).map(function (p) { return { toestand: p.toestand, tS: rel(p.van), s: Math.round(p.ms / 1000) }; })
       } : null,
       rit: rit ? { meetgaten: (rit.meetgaten || []).slice(-20), herverbindingen: rit.herverbindingen } : null,
-      antwoorden: (o && typeof antwoordTekst === 'function') ? antwoordTekst(o) : ''
+      antwoorden: o ? antwoordTekst(o) : ''
     };
     // Te groot: eerst de oudste gebeurtenissen en perioden eraf, dan de meetgaten.
     var lijsten = b.toeschouwer ? [b.toeschouwer.gebeurtenissen, b.toeschouwer.perioden] : [];
