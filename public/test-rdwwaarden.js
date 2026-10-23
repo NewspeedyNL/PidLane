@@ -26,6 +26,13 @@ function t(naam, waar, uitleg) {
 
 // ── 1. PLRecall ─────────────────────────────────────────────────
 const rdw = { status: [], vlag: 'Nee' };
+// Echt RDW-record (j9yg-7rg9 en 9ihi-jgpf, opgehaald 23-10-2026), met de echte veldnamen.
+const ECHT_ACTIE = { referentiecode_rdw: 'MGP220252', publicatiedatum_rdw_dt: '2022-11-08T00:00:00.000',
+  omschrijving_defect: 'Bij bepaalde klimaatomstandigheden kan na verloop van tijd een chemische verandering ontstaan in het drijfgas van de gasgenerator van bepaalde Takata-airbags.',
+  beschrijving_van_het_herstel: 'De voertuigeigenaar wordt verzocht een afspraak te maken met een merkdealer. Deze zal de bestuurdersairbag vervangen.',
+  materi_le_gevolgen: 'Bij een ongeval waarbij de airbag wordt geactiveerd, kan deze verandering ertoe kunnen leiden dat de gasgenerator scheurt als gevolg van een verhoogde interne druk.',
+  meldende_producent_distributeur: 'Mercedes-Benz Nederland B.V. (Vans)' };
+const ECHT_RISICO = { referentiecode_rdw: 'MGP220252', code_mogelijk_gevaar: 'TEL', mogelijk_gevaar: 'Verhoogde kans op letsel bij een ongeval' };
 const s = {
   console: { log() {}, warn() {}, error() {} },
   document: { getElementById: () => null, addEventListener() {}, createElement: () => ({ style: {} }) },
@@ -36,6 +43,8 @@ const s = {
     let body = [];
     if (/m9d7-ebf2/.test(doel)) body = [{ kenteken: 'R054XD', merk: 'MAZDA', handelsbenaming: 'CX-5', openstaande_terugroepactie_indicator: rdw.vlag }];
     else if (/t49b-isb7/.test(doel)) body = rdw.status;
+    else if (/j9yg-7rg9/.test(doel) && /MGP220252/.test(doel)) body = [ECHT_ACTIE];
+    else if (/9ihi-jgpf/.test(doel) && /MGP220252/.test(doel)) body = [ECHT_RISICO];
     return { ok: true, status: 200, json: async () => body };
   }
 };
@@ -63,6 +72,17 @@ if (!s.PLRecall) { console.error('FOUT: PLRecall niet geladen'); process.exit(1)
   t('code O wint van een tekst met "hersteld" erin', r.aantalOpen === 1, JSON.stringify(r));
   r = await check([{ kenteken: 'R054XD', referentiecode_rdw: 'X3', status: 'iets nieuws' }], 'Ja');
   t('een onbekende tekst zonder code blijft open (de veilige kant)', r.aantalOpen === 1, JSON.stringify(r));
+
+  console.log('\n1b. Een echte actie: omschrijving, risico, gevolg en herstel (23-10-2026)');
+  rdw.status = [{ kenteken: 'R054XD', referentiecode_rdw: 'MGP220252', code_status: 'O', status: 'Openstaande terugroepactie' }]; rdw.vlag = 'Ja';
+  s.PLRecall.wisCache();
+  const echt = await s.PLRecall.check('R054XD'), ea = echt.acties[0];
+  t('omschrijving uit omschrijving_defect', /Takata/.test(ea.omschrijving || ''), ea.omschrijving);
+  t('risico uit mogelijk_gevaar', ea.risico === 'Verhoogde kans op letsel bij een ongeval', ea.risico);
+  t('herstel uit beschrijving_van_het_herstel', /bestuurdersairbag vervangen/.test(ea.herstel || ''), ea.herstel);
+  t('gevolg uit materi_le_gevolgen', /gasgenerator scheurt/.test(ea.gevolg || ''), ea.gevolg);
+  t('herstel en gevolg staan niet nog eens onder de overige velden', !ea.extra.some((e) => /herstel|gevolgen/.test(e.veld)), ea.extra.map((e) => e.veld).join());
+  t('de AI-regel noemt het herstel', /Herstel: De voertuigeigenaar/.test(s.PLRecall.naarPromptRegel(echt)), s.PLRecall.naarPromptRegel(echt));
 
   // ── 2. Tellerstandoordeel ─────────────────────────────────────
   console.log('\n2. Tellerstandoordeel: alle vier de RDW-waarden');
