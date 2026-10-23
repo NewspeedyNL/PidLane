@@ -480,7 +480,7 @@ MUTATIES=(
 # opleveren, en de derde is de ergste: een branch-build wordt de publieke
 # download, dus ongetoetste code als \"de app\".
 ".github/workflows/build-apk.yml@@zet \"apk/pidlane.apk\"@@zet \"apk/app.apk\"@@test-apkpad.js@@de build schrijft een andere R2-sleutel dan de Worker leest"
-".github/workflows/build-apk.yml@@          npx --yes wrangler@4 r2 object get \"\$BUCKET/apk/pidlane.apk\" \\\n            --file=/tmp/terug.apk --remote@@          true@@test-apkpad.js@@de upload wordt niet meer teruggelezen: \"ok\" van het gereedschap telt weer als bewijs"
+".github/workflows/build-apk.yml@@          poging npx --yes wrangler@4 r2 object get \"\$BUCKET/apk/pidlane.apk\" \\\n            --file=/tmp/terug.apk --remote@@          true@@test-apkpad.js@@de upload wordt niet meer teruggelezen: \"ok\" van het gereedschap telt weer als bewijs"
 ".github/workflows/build-apk.yml@@        if: github.ref == 'refs/heads/main'\n@@@@test-apkpad.js@@een branch-build mag de publieke APK-download overschrijven"
 
 # ── de locatiepermissie in de BUNDEL (10-09-2026) ──
