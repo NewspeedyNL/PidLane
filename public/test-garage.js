@@ -582,6 +582,30 @@ function laad(opties) {
     eis(K2.sensGroepen([{ code: '220519', naam: 'Distance since oil changed', mijn: 'werkt_niet' }], heeft, false).analyse.length === 1, 'eigen sensoren: geen "werkt niet"-groep');
   }
 
+  console.log('\nSensoren: de banden in één groep, op plek (23-10-2026)');
+  {
+    // De echte bandRol uit pidlane-uitgebreid.js, niet een kopie.
+    const bron = fs.readFileSync(__dirname + '/pidlane-uitgebreid.js', 'utf8');
+    const m = /\n  function bandRol\(naam\) \{[\s\S]*?\n  \}\n/.exec(bron);
+    if (!m) throw new Error('anker "function bandRol(naam)" niet gevonden in pidlane-uitgebreid.js');
+    const L = laad({ rol: 'klant' });
+    L.s.PLEigen = { bandRol: new Function(m[0] + '\nreturn bandRol;')() };
+    const lijst = [
+      { code: '222A07', naam: 'Bandenspanning achter-links', eenheid: 'psi', werkt: 2 },
+      { code: '221E1C', naam: 'Temperatuur automaatbak (ATF)', eenheid: '°C', werkt: 9 },
+      { code: '222A0B', naam: 'Bandtemperatuur voor-links', eenheid: '°C' },
+      { code: '222A05', naam: 'Bandenspanning voor-links', eenheid: 'psi', werkt: 2 },
+      { code: '222A06', naam: 'Bandenspanning voor-rechts', eenheid: 'psi', werkt: 2 },
+      { code: '222A0E', naam: 'Tire temperature RL', eenheid: '°C', werkt_niet: 3 }
+    ];
+    const g = L.K.sensGroepen(lijst, () => false, false);
+    eis(g.banden.map((r) => r.b.code).join() === '222A05,222A0B,222A06,222A07,222A0E',
+      'alle banden in één groep, op plek: VL spanning, VL temp, VR, AL spanning, AL temp', g.banden.map((r) => r.b.code).join());
+    eis(g.weergave.map((r) => r.b.code).join() === '221E1C', 'de ATF staat niet meer tussen de banden', g.weergave.map((r) => r.b.code).join());
+    const gb = L.K.sensGroepen(lijst, () => false, true);
+    eis(gb.weigert.map((r) => r.b.code).join() === '222A0E' && gb.banden.length === 4, 'in de bibliotheek wint "werkt niet" van "band"', gb.weigert.map((r) => r.b.code).join());
+  }
+
   console.log('\nOBDb vanzelf binnenhalen (17-10-2026)');
   {
     let gezocht = 0, gezet = 0;
