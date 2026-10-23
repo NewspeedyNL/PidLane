@@ -5586,19 +5586,20 @@ __name(kpOnderhoudBeurt, "kpOnderhoudBeurt");
 
 // Eén eigen PID, voor het voertuig én voor de bibliotheek: dezelfde regels
 // als PLEigen.controleer() in pidlane-uitgebreid.js. Alleen LEES-diensten
-// (21xx, 22xxxx); de formule alleen A–H, getallen, + - * / en haakjes; het
-// ECU-adres (optioneel) een fysiek adres, 7xx of 18DAxxF1.
+// (21xx, 22xxxx); de formule alleen A–H, [n], getallen, + - * / en haakjes;
+// het ECU-adres (optioneel) een fysiek adres, 7xx of 18DAxxF1, of "tx>rx"
+// voor een ander antwoordadres (VAG 70E>778, PSA 6A2>682), 22-10-2026.
 var KP_EIGEN_CODE = /^(21[0-9A-F]{2}|22[0-9A-F]{4})$/;
-var KP_EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1)$/;
+var KP_EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1|[67][0-9A-F]{2}>[0-9A-F]{3})$/;
 var KP_EIGEN_TEMPO = ["snel", "normaal", "traag", "minuut"];
 function kpEigenPid(e) {
   e = e || {};
   const code = String(e.code || "").toUpperCase().replace(/\s+/g, "");
   if (!KP_EIGEN_CODE.test(code)) return { fout: "alleen leescodes 21xx of 22xxxx, niet: " + code.slice(0, 10) };
   const ecu = String(e.ecu || "").toUpperCase().replace(/\s+/g, "");
-  if (ecu && !KP_EIGEN_ECU.test(ecu)) return { fout: "ECU-adres van " + code + " moet 7xx of 18DAxxF1 zijn" };
+  if (ecu && !KP_EIGEN_ECU.test(ecu)) return { fout: "ECU-adres van " + code + " moet 7xx, 18DAxxF1 of tx>rx (70E>778) zijn" };
   const f = String(e.formule || "A").replace(/\s+/g, "").toUpperCase();
-  if (f.length > 80 || !/^[A-H0-9.,+\-*/()]+$/.test(f)) return { fout: "formule van " + code + " mag alleen A–H, getallen, + - * / en haakjes bevatten" };
+  if (f.length > 80 || !/^[A-H0-9.,+\-*/()[\]]+$/.test(f)) return { fout: "formule van " + code + " mag alleen A–H, [n], getallen, + - * / en haakjes bevatten" };
   const naamE = String(e.naam || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 40);
   if (!naamE) return { fout: "eigen PID " + code + " heeft geen naam" };
   const o = { code, naam: naamE, formule: f, eenheid: String(e.eenheid || "").trim().slice(0, 12) };

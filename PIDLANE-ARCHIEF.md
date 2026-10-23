@@ -15,6 +15,92 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 22-10-2026 — Dekking van het NL-wagenpark: RDW × OBDb gemeten, en wat ervan wegviel
+
+- **Bronnen.** RDW open data (`opendata.rdw.nl`, m9d7-ebf2 en 8ys7-d773):
+  personenauto's sinds 2001, niet geëxporteerd — 9,57 miljoen; de 1500
+  grootste merk/handelsbenaming-combinaties zijn 97% daarvan. OBDb-index
+  (`obdb.community/data/matrix_data.json`: 591 modellen, 179.082 signalen) en
+  de signalsets zelf (`raw.githubusercontent.com/OBDb/<repo>/main/signalsets/v3/default.json`),
+  287 stuks voor wat in NL rijdt.
+- **Naam → model.** `obdbNamen()` vond voor 51% van de vloot een OBDb-model.
+  RDW zet het merk in het model ("TOYOTA AYGO", "MAZDA CX-5"), OBDb noemt Opel
+  `VauxhallOpel`, "UP!", "CEE D", "I 10", "3ER REIHE", "ID.3 PRO 150 KW" vonden
+  niets. Nu `obdbKoppel()` met de OBDb-index in de app, merkaliassen, een
+  brandstofvoorkeur (Niro elektrisch → Niro-EV) en platformtweelingen
+  (Octavia → Golf, C3 → 208, 108/C1 → 107, ID.4/Enyaq → ID.5): **82,1%**. De
+  rest staat niet in OBDb (Tesla heeft geen gewone OBD-poort; oude
+  Opel/Suzuki/Mitsubishi).
+- **Model → bruikbare code.** Van de gekoppelde vloot kreeg ruim een derde
+  geen code: VAG (70E>778), PSA/Opel (6A2>682) en Nissan antwoorden niet op
+  zendadres + 8, en Honda en Kia/Hyundai hebben hun waarden voorbij byte H.
+  Nu "tx>rx" (ATCRA + ATFCSH/FCSD/FCSM1, daarna alles terug) en `[n]` in de
+  formule: ≥1 code **74,2%**, ≥5 codes 72,8%, laadspanning of SoC 37,0%,
+  banden 22,8%. Nog niet: BMW/MINI (extended addressing, vraagt ATCER van ELM
+  2.2) en Volvo/Polestar (eigen 29-bit-schema) — samen ~8%.
+- **Eén code per commando** nam het eerste signaal; bij een Kona Electric zat
+  de HV-laadtoestand als zevende in 22E003. Nu het waardevolste, en de
+  HV-accu (SoC, SoH, bereik) staat vooraan.
+- **EV.** Een Kia Niro EV biedt in mode 01 `01 21 30 31 5B` (OBDb) en kreeg in
+  de uitgebreide test cijfer 5 ("geen toerental"). Nu een EV-kern (snelheid,
+  accu) en de motorweergaven tellen niet mee.
+- **Ook gevonden:** `_rdwPlausibleName()` keurde 6% van de vloot af (elke
+  Peugeot, UP!, KA+, MG ZS, SMART #1); `_dtcBron()` leende fabrikantcodes van
+  een ander merk (Peugeot P1340 → BMW-tekst); `B1318` stond in de algemene
+  tabel; MG/BYD/Polestar uit China waren "Onbekend merk".
+- **Wat de nep-adapter hier aanneemt** (`nepauto.js`): zonder ATCRA neemt een
+  ELM alleen 7E8–7EF aan, en zonder ATFCSM1 gaat de flow control naar rx − 8.
+  Dat is het datasheetgedrag zoals ik het lees, niet op een auto gemeten; de
+  blok-5-proef "antwoordadres" staat daarom op LET OP tot een rit.
+
+
+---
+
+## 22-10-2026 — #541 zonder rit: zestien auto's uit echte data, en wat de app ermee deed
+
+- **Waarom simuleren.** Andere merken dan de CX-5 zijn niet beschikbaar. Wat
+  wél openbaar is: OBDb (`github.com/OBDb/<Merk-Model>`, per bouwjaar
+  `command_support.yaml`) bewaart welke mode-01-PIDs een échte auto aanbood,
+  per ECU — en de ECU-sleutel verraadt het protocol (`7E0` CAN 11-bit,
+  `DB33`/`DA01` 29-bit, `C233` KWP2000, `686A` ISO 9141). Ircama/ELM327-emulator
+  heeft één volledige opname van een Toyota Auris hybride (139 antwoorden,
+  mode 06, IUPR, hybride-ECU 7EA). Gezocht en níét gevonden: ruwe ELM-logs van
+  VAG/PSA-diesels (forums, python-OBD-issues, KIT-dataset heeft alleen
+  waarden). OBDb komt uit de VS en heeft vrijwel geen diesels.
+- **Hoe.** `nepauto.js` is een virtuele ELM327 (echo, headers, SEARCHING...,
+  BUS INIT, ISO-TP met opvulbyte per merk, meerdere ECU's, niet-CAN-vormen);
+  `test-nepauto.js` toetst hem tegen de datasheet en tegen de Auris-opname —
+  de berekende 0100-bitmap is exact `BE 3F A8 13`. `bproef-merken.js` laat de
+  echte app de klantroute lopen: `initELM327` → `scanNetworks` →
+  `startDiscovery` → `vlFullSurvey`.
+- **Gevonden:** #584 spookcode op K-lijn (`A5` matcht `/^[6-9A-C]/`, zes
+  plekken); #585 0 % EGR/EVAP stationair heet "niet aanwezig" (de echte Auris
+  geeft `41 2C 00`, `41 2E 00`); #586 de discovery leest alleen de eerste ECU
+  (015B van de hybride-ECU, 7E9 bij Skoda); #587 IUPR een byte verschoven door
+  ISO-TP-opvulling (echte Auris: 24 ritten, app 5120); #588 Europese WMI's
+  (SB1/NMT/VNK Toyota, U5Y, TMA) onbekend; #589 hybride → e-CVT ook bij
+  Kia/Hyundai.
+- **Wat goed ging** op alle zestien: protocolherkenning (11-bit, 29-bit, KWP,
+  ISO 9141), VIN, groepsvragen, readiness, mode 06 en ECU-namen uit de echte
+  opname, diesel- en hybride-oordeel na `normBrandstof()`.
+- **Eigen vergissing onderweg.** In de eerste run zette ik de ruwe RDW-tekst
+  `Benzine/Elektriciteit` in `vehicleInfo.brandstof`; de app las de hybrides
+  toen als "elektrisch". Dat was de opzet, niet de app: de RDW-route gaat via
+  `normBrandstof()`. Een eigen tegenproef had dit eerder gezien.
+- **Dezelfde dag gerepareerd.** #584: zes plekken vroegen "CAN?" aan de eerste
+  letter; nu allemaal `plProtocolBits()`. #585: 012C/012E/0169 in
+  `PID_NUL_NORMAAL`. #586: `plSteunbitsUit()` verenigt de bitmaps — óók in
+  `profielTegenSteunbits()`, dat anders de PIDs van de tweede ECU juist weer
+  uit het profiel had gegooid. #587: IUPR knipt op NODI. #588: 40 WMI's erbij.
+  #589: e-CVT alleen bij Toyota/Lexus/Ford/Suzuki; RPM_CONST en RATIO_CONST
+  leunden stil op "hybride ⇒ cvt" en kregen een eigen hybride-voorwaarde.
+- **Grenzen.** Waarden bij OBDb-auto's zijn aangenomen (stationair, warm);
+  29-bit ECU-adressen, opvulbytes en foutcodes ook. Een volle bus, UDS en
+  mode 06 buiten de opname blijven voor `CAMPAGNE`.
+
+
+---
+
 ## 22-10-2026 — #526 afgesloten: vervolgdelen, gemeten in D1
 
 - **Punt 4 bleek achteraf meetbaar.** Een vervolgdeel heeft als invoer precies

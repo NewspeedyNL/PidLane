@@ -2787,6 +2787,131 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Dekking van het NL-wagenpark (22-10-2026): RDW, OBDb, EV's ──
+  {
+    issue: 'dekking',
+    naam: 'OBDb vindt je model ook als RDW het merk in de naam zet (TOYOTA AYGO), Opel VauxhallOpel heet, of het een zustermodel is (Skoda Octavia → Golf)',
+    waarom: 'Gemeten over 9,3 miljoen NL-auto\'s (RDW): 51% vond een OBDb-model, nu 82%.',
+    proef: async function () {
+      if (!window.PLEigen || typeof PLEigen.obdbKoppel !== 'function') return { staat: 'FOUT', detail: 'PLEigen.obdbKoppel ontbreekt — oude pidlane-uitgebreid.js (herladen?)' };
+      var t = [['TOYOTA', 'TOYOTA AYGO', '', 'Toyota-Aygo'], ['OPEL', 'CORSA', '', 'VauxhallOpel-Corsa'], ['SKODA', 'OCTAVIA', '', 'Volkswagen-Golf'], ['KIA', 'NIRO', 'elektrisch', 'Kia-Niro-EV']];
+      var mis = t.filter(function (x) { return PLEigen.obdbKoppel(x[0], x[1], x[2]).namen[0] !== x[3]; });
+      if (mis.length) return { staat: 'FOUT', detail: 'verkeerd gekoppeld: ' + mis.map(function (x) { return x[1]; }).join(', ') };
+      return { staat: 'OK', detail: 'Rij: Mijn voertuigen → Sensoren → Zoek codes bij een auto die eerder "niet in OBDb" gaf; het model wordt nu gevonden' };
+    }
+  },
+  {
+    issue: 'antwoordadres',
+    naam: 'Eigen codes met een ander antwoordadres (VAG 70E>778, PSA 6A2>682): ATCRA en flow control, en daarna alles terug',
+    waarom: 'Een derde van de NL-auto\'s met een OBDb-model kreeg geen enkele code, omdat VAG, PSA en Opel niet op zendadres + 8 antwoorden.',
+    proef: async function () {
+      if (!window.PLEigen || typeof PLEigen.controleer !== 'function') return { staat: 'FOUT', detail: 'PLEigen ontbreekt' };
+      if (!PLEigen.controleer({ code: '222A0C', naam: 'x', ecu: '710>77A', formule: '[10]' }).ok) return { staat: 'FOUT', detail: 'tx>rx of [n] wordt geweigerd' };
+      if (PLEigen.obdbAdres({ hdr: '70E', rax: '778' }) !== '70E>778') return { staat: 'FOUT', detail: 'OBDb-adres 70E→778 niet als tx>rx' };
+      return { staat: 'LET OP', detail: 'nog nooit op een auto gedaan. Rij met een VW of Peugeot: Zoek codes, test een code met > in het adres (accu of km-stand); komt er een waarde, en werkt de live view daarna nog?' };
+    }
+  },
+  {
+    issue: 'ev',
+    naam: 'Uitgebreide test op een elektrische auto: geen plafond "geen toerental", motorweergaven tellen niet mee',
+    waarom: 'Een Kia Niro EV (mode 01: 01 21 30 31 5B) kreeg cijfer 5.',
+    proef: async function () {
+      if (!window.PLFunctieTest || !PLFunctieTest.KERN_EV) return { staat: 'FOUT', detail: 'PLFunctieTest.KERN_EV ontbreekt — oude pidlane-functietest.js (herladen?)' };
+      return { staat: 'OK', detail: 'kern EV: ' + PLFunctieTest.KERN_EV.join(', ') + '. Rij met een EV: Full function test; het cijfer is niet begrensd op 5' };
+    }
+  },
+  {
+    issue: 'rdwnaam',
+    naam: 'Koopcheck: 208, UP!, KA+, MG ZS en SMART #1 zijn geldige modelnamen',
+    waarom: '6% van het NL-wagenpark (elke Peugeot) gaf "onbetrouwbare modelnaam".',
+    proef: async function () {
+      if (typeof _rdwPlausibleName !== 'function') return { staat: 'FOUT', detail: '_rdwPlausibleName ontbreekt' };
+      var mis = ['208', 'UP!', 'KA+', 'MG ZS', '#1'].filter(function (x) { return !_rdwPlausibleName(x); });
+      if (mis.length || _rdwPlausibleName('========')) return { staat: 'FOUT', detail: 'geweigerd: ' + mis.join(', ') };
+      return { staat: 'OK', detail: 'Rij: niet nodig — kenteken-check van een Peugeot toont het model' };
+    }
+  },
+  {
+    issue: 'dtcmerk',
+    naam: 'Foutcodes: een fabrikantcode (P1xxx) krijgt geen tekst meer van een ander merk',
+    waarom: 'Een Peugeot met P1340 kreeg de BMW-uitleg "krukassensor".',
+    proef: async function () {
+      if (typeof dtcInfo !== 'function' || typeof vehicleInfo === 'undefined') return { staat: 'FOUT', detail: 'dtcInfo ontbreekt' };
+      var oud = vehicleInfo.merk; vehicleInfo.merk = 'Peugeot';
+      var d; try { d = dtcInfo('P1340').desc; } finally { vehicleInfo.merk = oud; }
+      if (!/fabrikantspecifiek/.test(d)) return { staat: 'FOUT', detail: 'Peugeot P1340: ' + d };
+      return { staat: 'OK', detail: 'Rij: niet nodig' };
+    }
+  },
+
+  // ── #541 zonder rit: zes fouten uit bproef-merken.js (#584–#589) ──
+  {
+    issue: '584',
+    naam: 'Foutcodes op K-lijn: een automatisch gevonden KWP (A5) of ISO 9141 (A3) is geen CAN meer, dus geen spookcode',
+    waarom: 'Een Mercedes uit 2000 met P0170 en P1570 gaf C3015: de A van AUTO maakte van elke K-lijn-auto een CAN-auto.',
+    proef: async function () {
+      if (typeof plProtocolBits !== 'function') return { staat: 'FOUT', detail: 'plProtocolBits ontbreekt — pidlane-bt.js niet geladen (herladen?)' };
+      if (plProtocolBits('A5') !== 0 || plProtocolBits('A3') !== 0 || plProtocolBits('A6') !== 11) return { staat: 'FOUT', detail: 'A5/A3/A6 geven ' + [plProtocolBits('A5'), plProtocolBits('A3'), plProtocolBits('A6')].join('/') };
+      var id = (typeof selectedNetwork !== 'undefined' && selectedNetwork && selectedNetwork.id) || '';
+      return { staat: 'OK', detail: 'protocol nu ' + (id || '—') + ' (' + (plProtocolBits(id) ? 'CAN' : 'geen CAN') + '). Rij: een auto van vóór 2008 met een bekende foutcode; de code in Foutcodes moet die van de garage zijn' };
+    }
+  },
+  {
+    issue: '585',
+    naam: 'Gezondheidscheck: EGR (012C, 0169) en spoelklep (012E) op 0 % stationair blijven staan',
+    waarom: 'Op alle zestien nagebouwde auto\'s, ook de CX-5, heetten ze "waarschijnlijk niet aanwezig"; de echte Auris geeft 41 2C 00 en 41 2E 00.',
+    proef: async function () {
+      if (typeof assessPidQuality !== 'function') return { staat: 'FOUT', detail: 'assessPidQuality ontbreekt' };
+      var mis = ['012C', '012E', '0169'].filter(function (p) { return assessPidQuality(p, 0, true).status !== 'ok'; });
+      if (mis.length) return { staat: 'FOUT', detail: 'nul is nog "niet aanwezig" voor ' + mis.join(', ') };
+      return { staat: 'OK', detail: 'Rij: stationair warm; 012E en 012C staan niet onder "Afwijkende antwoorden" in de Full function test' };
+    }
+  },
+  {
+    issue: '586',
+    naam: 'Discovery: de steunbits van alle ECU\'s samen — 015B van de hybride-ECU en de PIDs van de bak komen erbij',
+    waarom: 'Alleen de eerste ECU-regel telde; bij een Toyota-hybride kwam 015B (hybride accu) nooit in de lijst.',
+    proef: async function () {
+      if (typeof plSteunbitsUit !== 'function') return { staat: 'FOUT', detail: 'plSteunbitsUit ontbreekt — oude pidlane-rijsituatie.js (herladen?)' };
+      var w = plSteunbitsUit('7E8 06 41 40 7A 1C 80 00\r7EA 06 41 40 00 00 00 20', '0140');
+      if (!(w & 0x20)) return { staat: 'FOUT', detail: '015B van de tweede ECU ontbreekt' };
+      return { staat: 'OK', detail: 'Rij: verbind opnieuw; in het BT-log staat bij 0100 de bitmap van alle ECU\'s samen. Bij de CX-5 komen er PIDs van de bak (7E9) bij, als die er eigen heeft' };
+    }
+  },
+  {
+    issue: '587',
+    naam: 'IUPR (0908): knippen op het aantal waarden, niet op de lengte',
+    waarom: 'Op de echte opname van een Toyota Auris las de app 5120 ritten waar er 24 waren; de ISO-TP-opvulling telde mee.',
+    proef: async function () {
+      if (!window.PLSurvey2 || typeof PLSurvey2.iupr !== 'function') return { staat: 'FOUT', detail: 'PLSurvey2.iupr ontbreekt' };
+      var r = PLSurvey2.iupr('02B\r0: 49 08 14 00 18 00\r1: 9A 00 11 00 18 00 00\r2: 00 00 00 14 00 18 00\r3: 00 00 00 00 1C 00 18\r4: 00 00 00 00 00 00 00\r5: 00 00 0C 00 18 00 00\r6: 00 00 00 00 00 00 00', '4908');
+      if (!r || r.ritten !== 24 || r.contact !== 154) return { staat: 'FOUT', detail: 'de Auris-opname geeft ' + (r ? r.ritten + ' / ' + r.contact : 'niets') + ' in plaats van 24 / 154' };
+      return { staat: 'OK', detail: 'Rij: Full function test; de IUPR-regel noemt een aannemelijk aantal ritten (tientallen tot honderden, geen duizenden)' };
+    }
+  },
+  {
+    issue: '588',
+    naam: 'VIN: Toyota uit Turkije, Frankrijk en Engeland, Kia, Hyundai, Dacia en anderen uit Europese fabrieken krijgen hun merk',
+    waarom: 'Zonder kenteken werd een Corolla (NMT) of Yaris (VNK) "Onbekend merk", en viel alles weg wat op het merk leunt.',
+    proef: async function () {
+      if (typeof decodeVIN !== 'function') return { staat: 'FOUT', detail: 'decodeVIN ontbreekt' };
+      var mis = ['NMTBZ3BE00R000001', 'VNKKD3D310A123456', 'U5YH2512AJL000001', 'TMAJ38LADJJ000001'].filter(function (v) { return /Onbekend/.test(decodeVIN(v).merk); });
+      if (mis.length) return { staat: 'FOUT', detail: 'onbekend: ' + mis.map(function (v) { return v.slice(0, 3); }).join(', ') };
+      return { staat: 'OK', detail: 'Rij: niet nodig — dit is een tabel; met een Europese Toyota zonder kenteken staat het merk op de voertuigkaart' };
+    }
+  },
+  {
+    issue: '589',
+    naam: 'Derde poort: hybride is alleen e-CVT bij Toyota, Lexus, Ford en Suzuki; een Kia-hybride heeft een DCT',
+    waarom: 'Elke hybride kreeg "cvt: ja"; RPM_CONST en RATIO_CONST hebben nu een eigen hybride-voorwaarde.',
+    proef: async function () {
+      if (!window.PLKenmerk || typeof PLKenmerk.profiel !== 'function') return { staat: 'FOUT', detail: 'PLKenmerk ontbreekt' };
+      var t = PLKenmerk.profiel({ brandstof: 'hybride', merk: 'Toyota' }).cvt, k = PLKenmerk.profiel({ brandstof: 'hybride', merk: 'Kia' }).cvt;
+      if (!t || t.waarde !== true || !k || k.waarde !== false) return { staat: 'FOUT', detail: 'Toyota ' + JSON.stringify(t) + ', Kia ' + JSON.stringify(k) };
+      return { staat: 'OK', detail: 'Rij: niet nodig — met een hybride zegt blok 5 bij de derde poort cvt ja (Toyota) of nee (Kia)' };
+    }
+  },
+
   // ── Full survey V2 (schema 3): de acht stappen van #541 als tabelregel ──
   {
     issue: '541',

@@ -3456,7 +3456,12 @@ function _dtcBron(code){
   if(groep&&M&&M[groep]&&M[groep][code]) return {rij:M[groep][code],noot:''};
   if(typeof DTCDB!=='undefined'&&DTCDB[code])   return {rij:DTCDB[code],noot:''};
   if(typeof DTC_OMSCHRIJVING!=='undefined'&&DTC_OMSCHRIJVING[code]) return {rij:DTC_OMSCHRIJVING[code],noot:''};
-  if(M){
+  // Lenen van een ander merk alleen bij een ALGEMENE code (SAE J2012: tweede
+  // teken 0 of 2, of P34–P39). Een fabrikantcode (P1xxx, C1xxx, P30–P33)
+  // betekent per merk iets anders: een Peugeot met P1340 kreeg hier de
+  // BMW-uitleg "krukassensor" (22-10-2026). Dan liever de opbouwuitleg.
+  const algemeen=/^[PCBU][02]/.test(code) || /^P3[4-9]/.test(code);
+  if(M && algemeen){
     for(const g of Object.keys(M)){
       if(M[g][code]){
         const lab=(typeof DTC_MERK_LABEL!=='undefined'&&DTC_MERK_LABEL[g])?DTC_MERK_LABEL[g]:g;

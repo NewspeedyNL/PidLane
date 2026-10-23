@@ -328,25 +328,30 @@ function haalZeef(isMode01) {
     const k = E.obdbKandidaten(obdb, 'Mazda-CX-5', 2018);
     const kort = k.map(x => x.code + '@' + x.ecu + '=' + x.formule + ' ' + x.eenheid).join(' | ');
     t('obdb: alleen wat de app kan lezen, geverifieerd vóór dbg', kort,
-      '222A05@720=A*1373/100000 bar | 221310@7E0=(B*256+C)/100-40 °C | 221E1C@7E1=((A)-32)*5/9 °C | 22DD01@7E0=A+B*256+C*65536 km | 2105@7E0=A-40 °C | 220303@7E0=B/10 V | 22C901@720=A/5 psi');
+      '222A05@720=A*1373/100000 bar | 221310@7E0=(B*256+C)/100-40 °C | 221E1C@7E1=((A)-32)*5/9 °C | 22DD01@7E0=A+B*256+C*65536 km | 2105@7E0=A-40 °C | 220101@7E0>7EA=A V | 220303@7E0=B/10 V | 22C901@720=A/5 psi');
+    // 22-10-2026: een ander antwoordadres (7E0 → 7EA) komt erbij als "tx>rx"; extended addressing (eax) niet.
     t('obdb: de bron is de repo, voor de naamsvermelding (CC BY-SA)', k[0].url, 'https://github.com/OBDb/Mazda-CX-5');
     t('obdb: het jaarfilter met twee open stukken laat 2015 wél door', E.obdbKandidaten(obdb, 'x', 2015).some(x => x.code === '220505'), true);
     t('obdb: jaarfilter', [E.obdbJaarPast({ from: 2021 }, 2018), E.obdbJaarPast({ to: 2016 }, 2016), E.obdbJaarPast({ from: 2012, to: 2020 }, 2021), E.obdbJaarPast({ from: 2012 }, '')].join(','), 'false,true,false,true');
-    t('obdb: geen formule voor teken, tabel, halve bytes of meer dan 8 bytes',
-      [{ len: 8, sign: true }, { len: 8, map: {} }, { bix: 4, len: 8 }, { bix: 48, len: 24 }, { len: 8, mul: -1 }].map(E.obdbFormule).join(','), ',,,,');
+    t('obdb: geen formule voor teken, tabel, halve bytes of een negatieve factor',
+      [{ len: 8, sign: true }, { len: 8, map: {} }, { bix: 4, len: 8 }, { len: 8, mul: -1 }].map(E.obdbFormule).join(','), ',,,');
+    t('obdb: voorbij H met [n] (Honda, Kia-accu)', [{ bix: 48, len: 24 }, { bix: 80, len: 16, div: 10 }].map(E.obdbFormule).join(' | '), 'G*65536+H*256+[8] | ([10]*256+[11])/10');
+    t('formule: [n] leest byte n', E.controleer({ code: '222240', naam: 'x', formule: '[10]*256+[11]' }).def.parse([0,0,0,0,0,0,0,0,0,0,1,2]), 258);
+    t('formule: [256] bestaat niet', E.controleer({ code: '222240', naam: 'x', formule: '[256]' }).ok, false);
+    t('ECU-adres tx>rx mag, rx>tx met letters niet', [E.controleer({ code: '222A0C', naam: 'x', ecu: '710>77A' }).ok, E.controleer({ code: '222A0C', naam: 'x', ecu: '6A2>682' }).ok, E.controleer({ code: '222A0C', naam: 'x', ecu: '710>GGG' }).ok].join(), 'true,true,false');
     t('obdb: repo-namen voor RDW-modellen', JSON.stringify([E.obdbNamen('MAZDA', 'CX5'), E.obdbNamen('BMW', '320D XDRIVE'), E.obdbNamen('Hyundai', 'i20')]),
-      JSON.stringify([['MAZDA-CX5', 'MAZDA-CX-5'], ['BMW-320D-XDRIVE', 'BMW-320D', 'BMW-3-Series'], ['Hyundai-i20', 'Hyundai-i-20']]));
+      JSON.stringify([['Mazda-CX-5', 'MAZDA-CX5'], ['BMW-3-Series', 'BMW-320D-XDRIVE', 'BMW-320D'], ['Hyundai-i20', 'Hyundai-I-20']]));
 
     // Zoeken: proberen tot een naam bestaat, geen AI en dus geen tegoed. De
     // app haalt via de Worker (haal = obdb_bestand); hier een nagemaakte.
     const gehaald = [];
     s.apiFetch = async () => { throw new Error('de AI mag hier niet gevraagd worden'); };
-    const haal = async (repo) => { gehaald.push(repo); return repo === 'MAZDA-CX-5' ? { gevonden: true, data: obdb } : { gevonden: false }; };
+    const haal = async (repo) => { gehaald.push(repo); return repo.toLowerCase() === 'mazda-cx-5' ? { gevonden: true, data: obdb } : { gevonden: false }; };
     const z = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal);
-    t('zoekObdb: tweede naam raak, kandidaten erbij', z.ok + ' ' + z.repo + ' ' + z.kandidaten.length, 'true MAZDA-CX-5 7');
-    t('zoekObdb: probeert de namen op volgorde', gehaald.join(','), 'MAZDA-CX5,MAZDA-CX-5');
+    t('zoekObdb: tweede naam raak, kandidaten erbij', z.ok + ' ' + z.repo + ' ' + z.kandidaten.length, 'true Mazda-CX-5 8');
+    t('zoekObdb: probeert de namen op volgorde', gehaald.join(','), 'Mazda-CX-5');
     const z2 = await E.zoekObdb({ merk: 'Dacia', model: 'Logan' }, async () => ({ gevonden: false }));
-    t('zoekObdb: niet in OBDb is geen fout, en zegt wat er geprobeerd is', z2.ok + ' ' + z2.repo + ' ' + z2.geprobeerd.join(','), 'true  Dacia-Logan');
+    t('zoekObdb: niet in OBDb is geen fout, en zegt wat er geprobeerd is', z2.ok + ' ' + z2.repo + ' ' + z2.geprobeerd.join(','), 'true  Dacia-Sandero,Dacia-Logan');   // Logan: de Sandero is de tweeling
     const z3 = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' }, async () => { throw new Error('Serverfout 502'); });
     t('zoekObdb: geen net is een melding', !z3.ok && /niet bereikbaar/.test(z3.fout), true);
     t('zoekObdb: zonder weg naar OBDb niet zoeken', (await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' })).ok, false);
@@ -381,7 +386,9 @@ function haalZeef(isMode01) {
     // Welke OBDb-codes de app aanbiedt: op waarde, en de adressen die hij aankan.
     t('obdbAdres: 11-bit 7E0 met antwoord 7E8', E.obdbAdres({ hdr: '7E0', rax: '7E8' }), '7E0');
     t('obdbAdres: 29-bit kort DA10 (Fiat, Honda) = 18DA10F1', E.obdbAdres({ hdr: 'DA10', rax: '10' }), '18DA10F1');
-    t('obdbAdres: VAG 70E → 778 (afwijkend antwoordadres) = niet bruikbaar', E.obdbAdres({ hdr: '70E', rax: '778' }), null);
+    t('obdbAdres: VAG 70E → 778 (afwijkend antwoordadres) = tx>rx', E.obdbAdres({ hdr: '70E', rax: '778' }), '70E>778');
+    t('obdbAdres: PSA 6A2 → 682 = tx>rx', E.obdbAdres({ hdr: '6A2', rax: '682' }), '6A2>682');
+    t('obdbAdres: Volvo D016 (eigen 29-bitschema) = niet bruikbaar', E.obdbAdres({ hdr: 'D016', rax: '1EC60E80' }), null);
     t('obdbAdres: BMW extended addressing = niet bruikbaar', E.obdbAdres({ hdr: '6F1', rax: '607', eax: '07' }), null);
     const veel = [];
     for (let i = 0; i < 70; i++) veel.push({ hdr: '7E0', rax: '7E8', cmd: { '22': (0x1000 + i).toString(16).toUpperCase() }, signals: [{ name: 'Iets ' + i, fmt: { len: 8, unit: 'celsius' } }] });
@@ -390,8 +397,19 @@ function haalZeef(isMode01) {
     const tel = {};
     const kand = E.obdbKandidaten({ commands: veel }, 'Proef-Model', 2020, tel);
     t('71 bruikbare codes: de laadtoestand staat vooraan, ook al staat hij in OBDb als 71e', kand[0] && kand[0].code, '22ED08');
-    t('… de lijst blijft 60 lang, en zegt hoeveel er afvielen', kand.length + ' ' + tel.weg, '60 11');
-    t('… en telt wat door het antwoordadres niet bruikbaar is', tel.adres, 1);
+    veel.push({ hdr: '6F1', rax: '612', eax: '12', cmd: { '22': '4205' }, signals: [{ name: 'BMW', fmt: { len: 8, unit: 'volts' } }] });
+    const tel2 = {};
+    const kand2 = E.obdbKandidaten({ commands: veel }, 'Proef-Model', 2020, tel2);
+    t('… de lijst blijft 60 lang, en zegt hoeveel er afvielen (PSA telt nu mee)', kand.length + ' ' + tel.weg, '60 12');
+    t('… en telt wat door het antwoordadres niet bruikbaar is (BMW)', tel2.adres, 1);
+    // 22-10-2026: per commando de waardevolste waarde, en de HV-accu vooraan.
+    // Kona Electric (OBDb): 22E003 @ 744>74C heeft de laadtoestand als zevende signaal.
+    const kona = E.obdbKandidaten({ commands: [
+      { hdr: '7A0', rax: '7A8', cmd: { '22': 'C00B' }, signals: [{ name: 'Front left tire pressure', fmt: { bix: 32, len: 8, div: 5, unit: 'psi' } }] },
+      { hdr: '744', rax: '74C', cmd: { '22': 'E003' }, signals: [
+        { name: 'A/C charger current', fmt: { bix: 304, len: 16, div: 100, unit: 'amps' } },
+        { name: 'High voltage battery, state of charge', fmt: { bix: 120, len: 8, div: 2, unit: 'percent' } }] }] }, 'Hyundai-Kona-Electric', 2021, {});
+    t('EV: de HV-laadtoestand staat vooraan, uit het zevende signaal van zijn commando', kona[0] && kona[0].code + '@' + kona[0].ecu + ' ' + kona[0].naam + ' = ' + kona[0].formule, '22E003@744 High voltage battery, state of charge = [15]/2');
     t('… zonder hulpvelden in de kandidaten', Object.keys(kand[0]).sort().join(','), 'code,ecu,eenheid,formule,naam,url');
 
     const O = (o) => { const r = E.laadOordeel(o); return r ? r.staat : null; };

@@ -790,7 +790,7 @@ async function _pollRonde(alsBezet){
 
       // Multi-PID batch alleen op CAN (ISO 15765). Andere protocollen
       // ondersteunen geen meervoudige PID-requests → sequentieel.
-      const isCAN=/^[6-9A-Ca-c]/.test(String(selectedNetwork?.id||''));
+      const isCAN=plProtocolBits(selectedNetwork?.id||'')>0;   // 'A5' = KWP, geen CAN (#584)
       const canBatch=isCAN&&window._batchSupported!==false;
 
       // ── BATCH-DIAGNOSTIEK (tijdelijk) — onthult waarom multi-PID faalt ──

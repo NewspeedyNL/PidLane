@@ -26,6 +26,14 @@
 'use strict';
 
 const fs = require('fs');
+// De echte plProtocolBits() uit pidlane-bt.js (#584): plload vraagt hem of
+// dit CAN is. Knippen op de functiekop; ontbreekt die, dan stopt de test.
+const PROTOCOLBITS = (function () {
+  const bt = require('fs').readFileSync(__dirname + '/pidlane-bt.js', 'utf8');
+  const m = bt.match(/function plProtocolBits\(id\)\{[\s\S]*?\n\}\n/);
+  if (!m) { console.log('FOUT: plProtocolBits niet gevonden in pidlane-bt.js'); process.exit(1); }
+  return m[0];
+})();
 const vm = require('vm');
 
 let fouten = 0;
@@ -83,6 +91,7 @@ function bouw() {
     var dataStable = false, stabilityCount = {}, outlierCount = {};
     var _pidNextPoll = {}, _focusPIDs = new Set(), _pollMult = 1;
     var selectedNetwork = { id: '6' };
+  ` + PROTOCOLBITS + `
     function actiefPollProfiel(){ return 'basis'; }
     function detectEngineType(){ return 'benzine'; }
     function isMode01(p){ return /^01/i.test(String(p)); }

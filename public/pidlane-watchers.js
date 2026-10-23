@@ -134,7 +134,9 @@ const PLWatch = {
   // duurMs: hoe lang de fase minimaal moet aanhouden vóór meten (in-schakel-rust)
   // check(c): null = geslaagd/geen bevinding; string = melding
   tests: [
-    { id:'RPM_CONST', naam:'toerentalstabiliteit bij constante snelheid', voorwaarden:{ cvt:{ is:false, gangbaar:true } },
+    // hybride: de motor ontkoppelt of staat stil, ook zonder e-CVT (#589) —
+    // tot 22-10-2026 hield "hybride ⇒ cvt" deze twee tegen, dat doet nu dit.
+    { id:'RPM_CONST', naam:'toerentalstabiliteit bij constante snelheid', voorwaarden:{ cvt:{ is:false, gangbaar:true }, hybride:{ is:false, gangbaar:true } },
       fase:['constant'], warm:null, pids:['010C','010D'], duurMs:5000, aandrijving:true,
       // Rauwe max-min op het toerental weet niet dat een hoger toerental bij
       // een hogere snelheid gewoon klopt: bij 22->29 km/h gaf dat 558 rpm
@@ -146,7 +148,7 @@ const PLWatch = {
         if(g.spreidPct>15) return `toerental onrustig bij constante snelheid (rpm/snelheid varieert ${Math.round(g.spreidPct)}%) — kan wijzen op overslaan of slippende koppeling/omvormer`;
         return null; } },
 
-    { id:'RATIO_CONST', naam:'overbrengingsverhouding bij constante snelheid', voorwaarden:{ cvt:{ is:false, gangbaar:true } },
+    { id:'RATIO_CONST', naam:'overbrengingsverhouding bij constante snelheid', voorwaarden:{ cvt:{ is:false, gangbaar:true }, hybride:{ is:false, gangbaar:true } },
       // Een CVT verandert zijn overbrenging bij constante snelheid (#532).
       fase:['constant'], warm:null, pids:['010C','010D'], duurMs:6000, aandrijving:true,
       // Slip = de verhouding DRIJFT geleidelijk weg. Schakelen = één stap naar

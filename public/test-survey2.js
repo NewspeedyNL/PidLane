@@ -42,6 +42,14 @@ waar('ritten en contactbeurten', r && r.ritten === 12 && r.contact === 30, JSON.
 waar('kat B1: 10 van 12', r.monitors[0].naam === 'kat B1' && r.monitors[0].teller === 10 && r.monitors[0].ratio === 0.83);
 waar('kat B2 draaide nooit', r.nooit.join() === 'kat B2', r.nooit.join());
 waar('geen antwoord: null', Z.iupr('NO DATA', '4908') === null);
+// #587: de échte 0908 van een Toyota Auris hybride (ELM327-emulator), zoals een
+// ELM327 hem zonder headers geeft: met de opvulling van het laatste frame.
+const AURIS = '02B\r0: 49 08 14 00 18 00\r1: 9A 00 11 00 18 00 00\r2: 00 00 00 14 00 18 00\r3: 00 00 00 00 1C 00 18\r4: 00 00 00 00 00 00 00\r5: 00 00 0C 00 18 00 00\r6: 00 00 00 00 00 00 00';
+const ra = Z.iupr(AURIS, '4908');
+waar('echte Auris met opvulling: 24 ritten, 154 keer contact', ra && ra.ritten === 24 && ra.contact === 154, JSON.stringify(ra && { r: ra.ritten, c: ra.contact }));
+waar('echte Auris: kat B1 17 van 24, en negen monitors (geen opvulling als monitor)', ra.monitors[0].teller === 17 && ra.monitors[0].noemer === 24 && ra.monitors.length === 9, JSON.stringify(ra.monitors.slice(0, 2)) + ' n=' + ra.monitors.length);
+const twee = Z.iupr('49 08 ' + pl.replace(/(..)/g, '$1 ') + '\r49 08 14 00 05 00 07', '4908');
+waar('een tweede ECU erachter telt niet mee bij de eerste', twee && twee.ritten === 12 && twee.monitors.length === 9, JSON.stringify(twee && { r: twee.ritten, n: twee.monitors.length }));
 
 console.log('\n── ECU-namen (090A) ──');
 const naam = 'ECM-EngineControl';

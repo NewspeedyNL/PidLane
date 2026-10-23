@@ -200,7 +200,7 @@ const PLMon = {
     if (!r) return null;
     if (/NO DATA/i.test(r)) return [];               // expliciet leeg
     const codes=[];
-    const isCAN=/^[6-9A-Ca-c]/.test(String((typeof selectedNetwork!=='undefined'&&selectedNetwork?.id)||'6'));
+    const isCAN=plProtocolBits((typeof selectedNetwork!=='undefined'&&selectedNetwork?.id)||'6')>0;   // 'A5' = KWP (#584)
     for (const line of String(r).split(/[\r\n]+/)){
       const hex=line.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
       const idx=hex.indexOf(respHeader);

@@ -10,6 +10,45 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Dekking van het NL-wagenpark (RDW × OBDb)
+ ═══════════════════════════════════════════════════════════
+
+ - OBDb-model gevonden voor 82% van de NL-auto's sinds 2001 (was 51%):
+   merk uit de RDW-naam, Opel = VauxhallOpel, zustermodellen, EV-voorkeur.
+ - Eigen codes met een ander antwoordadres (70E>778, 6A2>682) en bytes
+   voorbij H ([n]): VAG, PSA, Opel, Honda, Kia/Hyundai krijgen codes.
+ - Per OBDb-commando de waardevolste waarde; de HV-accu van een EV vooraan.
+ - Uitgebreide test: EV niet meer begrensd op "geen toerental".
+ - Koopcheck: Peugeot 208, UP!, KA+, MG ZS zijn geldige modelnamen.
+ - Foutcodes: fabrikantcodes lenen geen tekst van een ander merk.
+ - VIN: MG, BYD, Polestar, Volvo uit China.
+ - Nieuw: bproef-adres.js, test-obdbkoppel.js, test-rdwnaam.js; vijf EV's in
+   nepauto-profielen.js.
+
+ ═══════════════════════════════════════════════════════════
+ 22-10-2026 — Zes fouten uit de nagebouwde merken gerepareerd (#584–#589)
+ ═══════════════════════════════════════════════════════════
+
+ - Foutcodes op K-lijn: geen spookcode meer bij automatisch protocol (#584).
+ - EGR en spoelklep op 0 % stationair blijven staan (#585).
+ - Discovery leest de bitmaps van alle ECU's: 015B bij Toyota-hybrides (#586).
+ - IUPR (0908) klopt met ISO-TP-opvulling (#587).
+ - Merk uit de VIN voor Europese fabrieken: Toyota, Kia, Hyundai, Dacia… (#588).
+ - Hybride is alleen e-CVT bij Toyota/Lexus/Ford/Suzuki (#589).
+ - Nieuwe tests: test-dtcprotocol.js, test-steunbits.js, test-vinmerk.js.
+
+ ═══════════════════════════════════════════════════════════
+ 22-10-2026 — #541 zonder rit: de uitgebreide test op zestien auto's
+ ═══════════════════════════════════════════════════════════
+
+ - public/nepauto.js: virtuele ELM327 met een auto erachter (PLNepAuto).
+ - public/nepauto-profielen.js: zestien auto's uit OBDb plus de opname van
+   een Toyota Auris hybride; bron per auto, aannames in de kop.
+ - public/test-nepauto.js: de nepauto tegen de datasheet en de opname.
+ - public/bproef-merken.js: de echte app verbindt, ontdekt en draait de
+   survey; bekende bevindingen (#584–#589) zijn LET OP, de rest FOUT.
+
+ ═══════════════════════════════════════════════════════════
  22-10-2026 — README vernieuwd en video "nieuw in PidLane"
  ═══════════════════════════════════════════════════════════
 
