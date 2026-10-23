@@ -505,7 +505,7 @@ Serviceboekje: ${boekje}
 Actieve DTC foutcodes: ${dtcCount}
 Bandenstaat: ${bandenLabel||'niet gecontroleerd'}
 RDW tellerstandoordeel: ${tellerOordeel || 'onbekend'}${tellerUitleg(tellerOordeel)}
-Openstaande recall: ${recallActief ? 'JA' : 'nee'}${(()=>{try{return window._plRecall&&window.PLRecall?'\n'+PLRecall.naarPromptRegel(window._plRecall):'';}catch(e){return '';}})()}
+Openstaande recall: ${recallActief ? 'JA' : 'nee'}${(()=>{try{return window._plRecall&&window.PLRecall?'\n'+PLRecall.naarPromptRegel(window._plRecall):'';}catch(e){return '';}})()}${(()=>{try{return window._plApk&&window.PLApk&&_koopRdwData&&window._plApk.kenteken===_koopRdwData._kent?'\n'+PLApk.naarPromptRegel(window._plApk):'';}catch(e){return '';}})()}
 Import: ${ink.import}
 ${proefritBlok}
 

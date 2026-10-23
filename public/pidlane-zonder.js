@@ -411,11 +411,18 @@
     return h;
   }
   /* De openstaande terugroepacties uit PLRecall.check() als HTML; '' als er geen zijn. */
+  /* Accu en bereik bij een EV of plug-in (PLEv, open-ev-data + RDW-WLTP). '' als het niets weet. */
+  function evHtml(d) {
+    if (!d || !window.PLEv || typeof PLEv.uitRdw !== 'function') return '';
+    try { return PLEv.html(PLEv.uitRdw(d.rij, d.bs)); }
+    catch (e) { console.warn('PLZonder: accugegevens niet bepaald', e); return ''; }
+  }
+
   function recallHtml(r) {
     var open = ((r && r.acties) || []).filter(function (a) { return a.open; });
     if (!open.length) return '';
     return '<div class="plz-blok"><b>🔔 ' + esc(r.samenvatting ? r.samenvatting.tekst : open.length + ' openstaande terugroepactie(s)') + '</b>' +
-      open.map(function (a) { return '<div style="margin-top:6px">• ' + esc(a.omschrijving || a.referentiecode) + (a.risico ? '<div class="plz-klein">Risico: ' + esc(a.risico) + '</div>' : '') + '<div class="plz-klein">Status: ' + esc(a.status) + '</div></div>'; }).join('') +
+      open.map(function (a) { return '<div style="margin-top:6px">• ' + esc(a.omschrijving || a.referentiecode) + (a.risico ? '<div class="plz-klein">Risico: ' + esc(a.risico) + '</div>' : '') + (a.herstel ? '<div class="plz-klein">Herstel: ' + esc(a.herstel) + '</div>' : '') + '<div class="plz-klein">Status: ' + esc(a.status) + '</div></div>'; }).join('') +
       '<div class="plz-klein" style="margin-top:6px">Een terugroepactie laat je gratis uitvoeren bij een dealer van het merk.</div></div>';
   }
 
@@ -435,7 +442,7 @@
     var m = mijn(), isMijn = !!(m && normKent(m.kent) === kent);
     if (isMijn) bewaarMijn(kent, o);
     if (st) st.textContent = o.aandacht ? '⚠️ ' + o.aandacht + ' punt' + (o.aandacht === 1 ? '' : 'en') + ' die aandacht vragen' : '✅ Niets gevonden dat aandacht vraagt';
-    var h = checkHtml(d, 'plzRecall');
+    var h = checkHtml(d, 'plzRecall') + evHtml(d);
     h += '<div class="plz-knoppen">';
     if (!isMijn && !isDemo()) h += '<button type="button" class="plz-kn hoofd" onclick="PLZonder._mijn()">📌 Dit is mijn auto</button>';
     if (isMijn && !isDemo() && window.PLHerinner && !PLHerinner.aan()) h += '<button type="button" class="plz-kn hoofd" onclick="PLHerinner.zet(true)">🔔 Herinner me aan de APK</button>';
@@ -447,12 +454,18 @@
 
   async function recall(kent) {
     var doel = el('plzRecall');
-    if (!doel || !window.PLRecall || typeof PLRecall.check !== 'function') return;
-    try {
-      var r = await PLRecall.check(kent);
-      var h = recallHtml(r);
-      if (h) doel.innerHTML = h;
-    } catch (e) { console.warn('PLZonder: terugroepacties niet opgehaald — de RDW-vlag hierboven blijft staan', e); }
+    if (!doel) return;
+    var h = '';
+    if (window.PLRecall && typeof PLRecall.check === 'function') {
+      try { h += recallHtml(await PLRecall.check(kent)); }
+      catch (e) { console.warn('PLZonder: terugroepacties niet opgehaald — de RDW-vlag hierboven blijft staan', e); }
+    }
+    // De APK-geschiedenis: wat er bij de vorige keuringen gevonden is (PLApk, 23-10-2026).
+    if (window.PLApk && typeof PLApk.check === 'function') {
+      try { h += PLApk.html(await PLApk.check(kent)); }
+      catch (e) { console.warn('PLZonder: APK-geschiedenis niet opgehaald', e); }
+    }
+    if (h) doel.innerHTML = h;
   }
 
   function maakMijn() {
@@ -552,6 +565,7 @@
     teken: teken,
     // RDW plus validatie als data, zonder scherm — voor PLWeten (de infokaart in de wizard)
     haal: haal,
+    evHtml: evHtml,
     // de uitslag als HTML, ook voor het tabblad Kenteken in PLGarage
     checkHtml: checkHtml,
     recallHtml: recallHtml,

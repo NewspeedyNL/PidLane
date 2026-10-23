@@ -1401,6 +1401,9 @@
     if (!c.rdw || !window.PLRecall || typeof PLRecall.check !== 'function') return;
     try { c.rdwRecall = PLZonder.recallHtml(await PLRecall.check(v.kenteken)); teken(); }
     catch (e) { console.warn('PLGarage: terugroepacties niet opgehaald — de RDW-vlag blijft staan', e); }
+    if (!window.PLApk || typeof PLApk.check !== 'function') return;
+    try { c.rdwRecall = (c.rdwRecall || '') + PLApk.html(await PLApk.check(v.kenteken)); teken(); }
+    catch (e) { console.warn('PLGarage: APK-geschiedenis niet opgehaald', e); }
   }
   function tekenKenteken(c) {
     if (c.rdwFout) return '<div class="gr-melding">⚠️ ' + esc(c.rdwFout) + '</div><div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._rdwOpnieuw()">Opnieuw</button></div>';
@@ -1408,7 +1411,7 @@
     try { PLZonder.zorgCss(); } catch (e) { console.warn('PLGarage: opmaak van de kenteken-check', e); }
     var o = c.rdw.overzicht;
     return '<div class="gr-blok plz-los"><div class="gr-klein">' + (o.aandacht ? '⚠️ ' + o.aandacht + ' punt' + (o.aandacht === 1 ? '' : 'en') + ' die aandacht vragen' : '✅ Niets gevonden dat aandacht vraagt') + '</div>' +
-      PLZonder.checkHtml(c.rdw, 'grRecall').replace('<div id="grRecall"></div>', '<div id="grRecall">' + (c.rdwRecall || '') + '</div>') + PLZonder.BRON + '</div>';
+      PLZonder.checkHtml(c.rdw, 'grRecall').replace('<div id="grRecall"></div>', '<div id="grRecall">' + (c.rdwRecall || '') + '</div>') + (PLZonder.evHtml ? PLZonder.evHtml(c.rdw) : '') + PLZonder.BRON + '</div>';
   }
 
   function tekenVoertuig(v) {
