@@ -2026,7 +2026,7 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@    return /^[0-9A-F]{3}$/.test(rax) ? hdr + '>' + rax : null;@@    return null;@@test-mode21.js@@een ander antwoordadres valt weer weg: VAG en PSA krijgen geen codes"
 "public/pidlane-uitgebreid.js@@      sigs.sort((a, b) => (b.w - a.w) || (a.i - b.i));\n@@@@test-mode21.js@@per commando weer het eerste signaal: de HV-laadtoestand van de Kona valt weg"
 "public/pidlane-apk.js@@    const m = (meldingen || []).filter(x => !x.soort_melding_ki_omschrijving || /periodiek/i.test(x.soort_melding_ki_omschrijving)).map(@@    const m = (meldingen || []).map(@@test-apk.js@@een tachograafmelding met eigen vervaldatum geeft weer een vals APK-gat"
-"public/pidlane-apk.js@@      if (k.datum > verval) uit.push(@@      if (k.datum > verval + 1) uit.push(@@test-apk.js@@een keuring na de vervaldatum valt weer weg uit de APK-historie"
+"public/pidlane-apk.js@@/^\\d{8}$/.test(v.verval)).map(v => v.verval);@@/^\\d{8}$/.test(v.verval)).map(v => v.datum);@@test-apk.js@@de APK-historie rekent vanaf de vorige keuring in plaats van de vervaldatum: elke keuring heet te laat"
 "public/pidlane-pompprijs.js@@      return typeof v === 'number' && v >= PLAUSIBEL[k][0] && v <= PLAUSIBEL[k][1];@@      return typeof v === 'number';@@test-pompprijs.js@@een CBS-regel met een komma-fout wordt weer de standaardprijs per liter"
 "worker.js@@\"vpic.nhtsa.dot.gov\", \"opendata.cbs.nl\"]@@\"vpic.nhtsa.dot.gov\"]@@test-pompprijs.js@@de Worker laat de CBS-pompprijs weer niet door"
 "public/pidlane-apk.js@@const isAdvies = id => /^AC/i.test(String(id || ''));@@const isAdvies = id => false;@@test-apk.js@@een adviespunt bij de APK telt weer als afkeur"
