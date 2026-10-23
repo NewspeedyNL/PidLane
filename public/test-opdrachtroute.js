@@ -44,7 +44,7 @@ const wortel = path.join(__dirname, '..');
 const bron = fs.readFileSync(path.join(wortel, 'worker.js'), 'utf8');
 const schemaTekst = fs.readFileSync(path.join(wortel, 'schema.sql'), 'utf8');
 
-const van = bron.indexOf('async function handleOpdracht(request, env) {');
+const van = bron.indexOf('// ── DE KEURING VAN EEN OPSTELLING (23-10-2026)');
 const tot = bron.indexOf('__name(handleOpdracht, "handleOpdracht");');
 if (van < 0 || tot < 0 || tot < van) {
   console.error('FOUT: handleOpdracht() is niet gevonden in worker.js — de route is hernoemd of weg.');

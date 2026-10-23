@@ -1161,6 +1161,82 @@ __name(handleVerbindProfiel, "handleVerbindProfiel");
 //  lijst sensoren, een duur, vragen en drempels. Dat is precies de reden dat
 //  deze route bestaat en er geen /script-route naast staat.
 // ══════════════════════════════════════════════════════════════════
+// ── DE KEURING VAN EEN OPSTELLING (23-10-2026) ─────────────────────
+// Een meetproef kan zelf fout opgesteld zijn, en dan zegt zijn uitkomst niets
+// over de auto. De beheerder kijkt hem tijdens een rit na en zet hem op groen
+// (of rood). De keuring slaat op DEZE tekst: KeurHash is de vingerafdruk van
+// `Opdracht` op dat moment. Verandert de tekst daarna -- via beheer.html, de
+// SQL-console of wat dan ook -- dan is hij vanzelf weer ongekeurd. Zo hoeft
+// geen enkel schrijfpad eraan te denken.
+var OPDRACHT_MIGRATIES = [
+  "ALTER TABLE meetopdrachten ADD COLUMN Keuring TEXT",
+  "ALTER TABLE meetopdrachten ADD COLUMN KeurHash TEXT",
+  "ALTER TABLE meetopdrachten ADD COLUMN KeurNotitie TEXT",
+  "ALTER TABLE meetopdrachten ADD COLUMN KeurOp TEXT",
+  "ALTER TABLE meetopdrachten ADD COLUMN KeurDoor TEXT"
+];
+var OPDRACHT_KEURINGEN = ["groen", "rood", "ongekeurd"];
+var _opdrachtSchemaKlaar = false;
+async function opdrachtSchema(db) {
+  if (_opdrachtSchemaKlaar) return;
+  for (const s of OPDRACHT_MIGRATIES) {
+    try { await db.prepare(s).run(); }
+    catch (e) { if (!/duplicate column/i.test(String(e && e.message || e))) throw e; }
+  }
+  _opdrachtSchemaKlaar = true;
+}
+__name(opdrachtSchema, "opdrachtSchema");
+// FNV-1a, 32 bit: geen beveiliging, alleen "is dit nog dezelfde tekst".
+function opdrachtVingerafdruk(tekst) {
+  let h = 2166136261;
+  const t = String(tekst || "");
+  for (let i = 0; i < t.length; i++) {
+    h ^= t.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+__name(opdrachtVingerafdruk, "opdrachtVingerafdruk");
+function opdrachtKeuring(rij) {
+  const staat = rij && OPDRACHT_KEURINGEN.indexOf(rij.Keuring) >= 0 ? rij.Keuring : "ongekeurd";
+  if (staat === "ongekeurd") return { staat, notitie: "", op: "" };
+  if (rij.KeurHash !== opdrachtVingerafdruk(rij.Opdracht))
+    return { staat: "ongekeurd", notitie: "de opdracht is na de keuring veranderd", op: rij.KeurOp || "" };
+  return { staat, notitie: typeof rij.KeurNotitie === "string" ? rij.KeurNotitie.slice(0, 300) : "", op: rij.KeurOp || "" };
+}
+__name(opdrachtKeuring, "opdrachtKeuring");
+async function opdrachtKeurZet(db, id, keuring, notitie, door) {
+  if (OPDRACHT_KEURINGEN.indexOf(keuring) < 0) return json({ ok: false, error: "Keuring moet groen, rood of ongekeurd zijn." }, 400);
+  if (id === null) return json({ ok: false, error: "Ongeldig opdracht-id." }, 400);
+  await opdrachtSchema(db);
+  const rij = await db.prepare("SELECT id, Opdracht FROM meetopdrachten WHERE id = ?").bind(id).first();
+  if (!rij) return json({ ok: false, error: "Die opdracht bestaat niet (meer)." }, 404);
+  const nu = new Date().toISOString();
+  const leeg = keuring === "ongekeurd";
+  const not = leeg ? null : String(notitie || "").slice(0, 300) || null;
+  await db.prepare("UPDATE meetopdrachten SET Keuring = ?, KeurHash = ?, KeurNotitie = ?, KeurOp = ?, KeurDoor = ? WHERE id = ?")
+    .bind(leeg ? null : keuring, leeg ? null : opdrachtVingerafdruk(rij.Opdracht), not, leeg ? null : nu, leeg ? null : String(door || "").slice(0, 80), id).run();
+  return json({ ok: true, id: String(id), keuring: { staat: keuring, notitie: not || "", op: leeg ? "" : nu } });
+}
+__name(opdrachtKeurZet, "opdrachtKeurZet");
+// POST /airtable/opdracht/keur -- vanuit de meetkamer, alleen voor de rol admin.
+async function handleOpdrachtKeur(request, env) {
+  const sessie = await auth(request, env);
+  if (!sessie) return json({ ok: false, error: "unauthorized" }, 401);
+  if (String(sessie.r || "").toLowerCase() !== "admin") return json({ ok: false, error: "Alleen de beheerder keurt een opstelling." }, 403);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
+  let b;
+  try { b = await request.json(); } catch (_) { return json({ ok: false, error: "Geen geldige JSON." }, 400); }
+  b = b || {};
+  const id = Number.isInteger(b.id) && b.id > 0 ? b.id : null;
+  try {
+    return await opdrachtKeurZet(env.LOGDB, id, String(b.keuring || ""), b.notitie, sessie.u);
+  } catch (e) {
+    return json({ ok: false, error: "keuring_mislukt", detail: String(e && e.message || e) }, 502);
+  }
+}
+__name(handleOpdrachtKeur, "handleOpdrachtKeur");
+
 async function handleOpdracht(request, env) {
   if (!await appTokenOk(request, env)) return json({ error: "unauthorized" }, 401);
   // Sinds #262 staat deze tabel in D1 en niet meer in Airtable. De reden is
@@ -1207,6 +1283,7 @@ async function handleOpdracht(request, env) {
           reden: typeof rij2.Reden === "string" ? rij2.Reden.slice(0, 200) : "",
           actief: Number(rij2.Actief) === 1,
           gewijzigd: rij2.Gewijzigd || "",
+          keuring: opdrachtKeuring(rij2),
           opdracht: ruw2.length > 8192 ? "" : ruw2,
           weg: ruw2.length > 8192 ? `${ruw2.length} tekens; meer dan 8192 gaat niet mee` : (ruw2 ? "" : "geen opdrachttekst")
         };
@@ -1227,6 +1304,7 @@ async function handleOpdracht(request, env) {
     naam: typeof rij.Naam === "string" ? rij.Naam.slice(0, 200) : "",
     gewijzigd: rij.Gewijzigd || "",
     meer: rijen.length > 1 ? rijen.length : 0,
+    keuring: opdrachtKeuring(rij),
     opdracht: ruw
   });
 }
@@ -4817,6 +4895,7 @@ async function adminD1Opdracht(db, actie, body) {
     await db.prepare("UPDATE meetopdrachten SET Actief = 0, Gewijzigd = ? WHERE id = ?").bind(nu, id).run();
     return json({ ok: true, id: String(id), actief: false, gewijzigd: nu });
   }
+  if (actie === "opdracht-keur") return await opdrachtKeurZet(db, id, String(body.keuring || ""), body.notitie, "beheer");
   return json({ ok: false, error: "Onbekende actie." }, 400);
 }
 __name(adminD1Opdracht, "adminD1Opdracht");
@@ -6817,6 +6896,8 @@ var worker_default = {
         return lockOrigin(request, await handleReferentie(request, env));
       if (url.pathname === "/airtable/opdracht" && request.method === "GET")
         return lockOrigin(request, await handleOpdracht(request, env));
+      if (url.pathname === "/airtable/opdracht/keur" && request.method === "POST")
+        return lockOrigin(request, await handleOpdrachtKeur(request, env));
       if (url.pathname === "/session/create" && request.method === "POST")
         return lockOrigin(request, await handleSessionCreate(request, env));
       if (url.pathname === "/session/telemetry" && request.method === "POST")

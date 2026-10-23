@@ -2696,9 +2696,14 @@ function _verzendOpdracht(o, h) {
   const vs = vonnis.venster;
   const vensterTekst = (vs && typeof vs.s === 'number')
     ? ' · rit ' + Math.floor(vs.s / 60) + ':' + ('0' + (vs.s % 60)).slice(-2) + ' min' : ' · ritduur onbekend';
-  _liveSchrijf(vonnis.staat === 'bevinding' ? 'opvallend' : 'info',
-    'opdracht ' + o.naam + ' — uitkomst: ' + vonnis.staat + ' — ' + vonnis.reden + vensterTekst,
-    { Outcome: vonnis.staat, Repro: _issuesVan(o) });
+  /* De opstelling (23-10-2026). Alleen een groen gekeurde opstelling levert
+     een Outcome die als antwoord telt; anders heet hij `proefopstelling`, en
+     staat het oordeel wel in de tekst. Een uitkomst uit een proef die zelf
+     fout kan staan, hoort niet tussen de antwoorden te tellen. */
+  const opst = (typeof PLOpdracht.keuring === 'function') ? PLOpdracht.keuring((h || {}).id).staat : 'ongekeurd';
+  _liveSchrijf(vonnis.staat === 'bevinding' && opst === 'groen' ? 'opvallend' : 'info',
+    'opdracht ' + o.naam + ' — uitkomst: ' + vonnis.staat + ' — ' + vonnis.reden + vensterTekst + ' · opstelling ' + opst,
+    { Outcome: opst === 'groen' ? vonnis.staat : 'proefopstelling', Repro: _issuesVan(o) });
 
   /* De antwoorden van de bestuurder, als eigen regel naast de uitkomst
      (#283). Tot 24-09 kwamen ze nooit aan: de vraag "noemt het scherm de
@@ -2786,6 +2791,36 @@ function _zonderSporen(naam, fn) {
 }
 
 const PROEVEN_B5 = [
+
+  // ── Meetproeven: de toeschouwer en de keuring van de opstelling (23-10-2026) ──
+  {
+    issue: '#594',
+    naam: 'De toeschouwer ziet stilstand, rijden, contact uit en helling, en een ongekeurde opstelling telt niet als antwoord',
+    waarom: 'Een uitkomst was vaak fout door de proef zelf, en een vergeten handmatige stap hield een proef op NOG NIET.',
+    proef: async function () {
+      var T = window.PLToeschouwer;
+      if (!T || typeof T.stand !== 'function') return { staat: 'FOUT', detail: 'PLToeschouwer ontbreekt — pidlane-toeschouwer.js niet geladen (herladen?)' };
+      if (!window.PLOpdracht || typeof PLOpdracht.keuring !== 'function') return { staat: 'FOUT', detail: 'PLOpdracht.keuring ontbreekt — oude pidlane-opdracht.js (herladen?)' };
+      // Gedrag op een eigen kern, zodat de echte telling van deze rit blijft staan.
+      var K = T._kern, k = K.maak(), t = 1e6, i;
+      for (i = 0; i < 6; i++) K.stap(k, { verbonden: true, kmh: 40 }, t += 1000);
+      for (i = 0; i < 6; i++) K.stap(k, { verbonden: true, kmh: null }, t += 1000);
+      if (k.duur.stil > 0) return { staat: 'FOUT', detail: 'een meetgat telde als stilstand' };
+      for (i = 0; i < 6; i++) K.stap(k, { verbonden: true, kmh: 0 }, t += 1000);
+      K.stap(k, { verbonden: true, kmh: 0, contactStil: true }, t += 1000);
+      var ev = k.gebeurtenissen.map(function (e) { return e.soort; }).join(',');
+      if (ev !== 'rijden,stil,contact-uit') return { staat: 'FOUT', detail: 'gebeurtenissen: ' + ev };
+      if (!PLOpdracht.keur({ schema: 2, naam: 'x', sensoren: ['010D'], duurS: 60, voorwaarden: [{ wat: 'stil', toestand: 'stil' }] }).ok)
+        return { staat: 'FOUT', detail: 'keur() kent de toestand-voorwaarde niet' };
+      var h = PLOpdracht.herkomst && PLOpdracht.herkomst();
+      var st = T.stand();
+      var nu = 'nu ' + (st.toestand || 'onbekend') + ', ' + st.gebeurtenissen.length + ' gebeurtenis(sen) deze sessie';
+      if (!h || !h.id) return { staat: 'LET OP', detail: nu + '; geen meetopdracht gekozen — keuring niet na te gaan' };
+      var kr = PLOpdracht.keuring(h.id);
+      return { staat: kr.staat === 'groen' ? 'OK' : 'LET OP', detail: nu + '; opstelling van "' + h.naam + '": ' + kr.staat +
+        (kr.staat === 'groen' ? '' : ' — de uitkomst gaat als proefopstelling mee. Kijk hem na in de meetkamer en zet hem op groen.') };
+    }
+  },
 
   // ── Beschikbaarheid van data bij de eerste verbinding (23-10-2026) ──
   {
@@ -11498,9 +11533,12 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 09-10 (tweeëntwintigste) — de helling van de telefoon in caravanrit en ritanalyse',
+  titel: 'OPLEVERING 23-10 — meetproeven: jij keurt de opstelling, de toeschouwer ziet stilstand, rijden, contact en helling (#594)',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
+    'EEN MEETPROEF TELT PAS ALS JIJ DE OPSTELLING GOEDKEURT (#594). Een uitkomst was vaak fout door de proef zelf, niet door de auto. Open de meetkamer tijdens de rit, kijk of de proef meet wat hij moet meten, en tik ✓ Opstelling OK. Klopt het niet: ✗ Opstelling fout, met wat er mis is. Tot dan gaat de uitkomst als proefopstelling de logtabel in.',
+    'JE HOEFT NIETS MEER TE MARKEREN VOOR STILSTAND, RIJDEN, CONTACT OF HELLING. De toeschouwer ziet het zelf en zet de markering; de regel 🔭 in de meetkamer zegt wat hij zag. Een stuk zonder snelheid telt niet als stilstand.',
+    'DE MEETPROEVEN STAAN IN D1, NIET HIER. Nieuwe staan in meetproeven/ (gekeurd door plopdracht.js) en gaan via beheer.html → Meetopdrachten de tabel in; de helling (#463) en contact uit (#487) zijn er nu zo één.',
     'DE VERBINDING IS KLAAR. Verbinding, snelheid, herverbinden en protocol werken: op 08-10 vijf diagnoses tegelijk op de CX-5, 0 fouten in het log (#394 dicht). Alle meetopdrachten in D1 staan op afgerond; de meetkamer is leeg tot er een nieuw issue komt.',
     'VIER FOUT-REGELS GINGEN OVER DE TESTRUN ZELF, NIET OVER DE APP. De PID-sweep vroeg berekende waarden (CA..) en telefoonsensoren (TL..) aan de adapter en meldde dat daarna als fout; de proef van Slim visueel telde vijf weergaven terwijl telemetrie de zesde is; een vaste sensor die de PID-poort terecht opruimde (221E1C) heette FOUT; en de bulk-recorder las twee keer de klok, waardoor zijn etiket 1 ms voor zijn starttijd lag. Alle vier opgelost.',
     '── WAT JE DOET ────────',
@@ -11517,10 +11555,6 @@ const CAMPAGNE = {
     'VOLLEDIG ONDERZOEK MET EEN BEKEND MERK. Er is iets mis → Ik merk niets bijzonders (of een klacht). Bovenaan het plan hoort nu "Bij <merk> bekend: …" te staan, en de verdenkingen die daaruit komen dragen "bekend bij dit merk". Klopt die lijst met wat je van dit merk weet? Komen de vragen over een koude start (ketting) of het schakelen (DSG) als ze erbij horen — en blijven ze weg als ze er niet bij horen?',
     'HET RAPPORT. Onderaan staat een blok "BEKEND BIJ DIT MERK": per punt bevestigd, uitgesloten, open of niet getoetst, en wat je zelf moet nakijken. Plak dat blok als iets niet klopt.',
     'SENSOREN REGISTREREN IN DE WIZARD. Start een onderzoek uit de wizard: het scherm "Sensoren registreren" hoort niet meer te blijven hangen op sensoren met 0/10 (nog geen data).',
-    '── 9.2: DE HELLING TELT MEE (#463) ────────',
-    'TELEFOON VAST EN GENULD. Zet hem in de houder, sta stil op vlakke grond en tik Nulstellen (Telemetrie). Zonder dat telt de helling nergens mee en schat de app zoals vroeger uit de motor.',
-    'CARAVANRIT. De badge zegt nu ook de hoek ("⛰️ Klim · +3.2°") als hij gemeten is. Rij een oprit of dijk op: klopt de hoek ongeveer, en springt hij op Klim? Op vlakke snelweg met tegenwind hoort hij op Vlak te blijven. Onderaan het rapport staat of de terreinverdeling gemeten of geschat was.',
-    'RITANALYSE. Rij een fase door heuvels: de faseduiding hoort "bergop", "bergaf" of "heuvelachtig" te zeggen, en Helling (telefoon) staat bij de cijfers. Is 2,5° te gevoelig of te traag, zet het in #463.',
     '── DE TOTAALCHECK: STILSTAND EN RIJDEN ────────',
     'STILSTAND. Live → Totaalcheck → Start stilstand. Na ± een minuut haalt hij de foutcodes en zelftests op; daarna staat de uitslag per categorie. Wat klopt staat dicht; open staat alleen wat afwijkt, met een Focusmeting.',
     'RIJDEN. Start rijden en rij gewoon weg — geen fases, geen route. Na zo’n anderhalve minuut boven 15 km/h hoort het scherm vanzelf naar de uitslag te gaan. Wijkt een sensor rijdend af en stilstaand niet, dan hoort de focusmeting rijdend te meten. Valt er op een gezonde CX-5 iets op, plak dan die categorie.',
@@ -11557,6 +11591,7 @@ const CAMPAGNE = {
 function ritNulstellen() {
   if (!window.PLRit) { try { showToast('PLRit ontbreekt'); } catch (e) { /* stil */ } return; }
   PLRit.wis();
+  try { if (window.PLToeschouwer) PLToeschouwer.reset(); } catch (e) { console.warn('Toeschouwer niet nulgesteld', e); }
   try { showToast('Rit nulgesteld — rijden maar'); } catch (e) { /* stil: melding mag de stroom niet breken */ }
   try { log('Ritwaarnemer nulgesteld — blok 14 meet vanaf nu', 'ok'); } catch (e) { /* stil */ }
   try { btDiag('PLRit nulgesteld', 'ok'); } catch (e) { /* stil */ }

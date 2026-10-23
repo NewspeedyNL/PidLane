@@ -150,6 +150,32 @@ function proevenZonderIssue(o) {
     .filter(Boolean);
 }
 
+/* 4. Maakt een voorwaarde de proef al waar? (23-10-2026, #594) Dezelfde
+      maat als voorwaarde én als proef, met de band van de voorwaarde binnen
+      die van de proef: is de voorwaarde vervuld, dan is de proef groen. Hij
+      kan dan nooit een bevinding geven — een opstelfout, geen meting. Een
+      `toestand`-voorwaarde telt als de app-maat `toestand-<naam>-s` vanaf minS. */
+function proevenAlWaar(o) {
+  const sleutel = (x) => x.app !== undefined ? 'app:' + x.app
+    : x.toestand !== undefined ? 'app:toestand-' + x.toestand + '-s'
+    : x.pid !== undefined ? 'pid:' + String(x.pid).toUpperCase() + ':' + x.meet : null;
+  const band = (x) => x.toestand !== undefined ? [x.minS === undefined ? 5 : x.minS, Infinity] : x.tussen;
+  const uit = [];
+  (o.proeven || []).forEach((p, i) => {
+    const sp = p && sleutel(p);
+    if (!sp || !Array.isArray(p.tussen)) return;
+    (o.voorwaarden || []).forEach((v, j) => {
+      const b = v && sleutel(v) === sp ? band(v) : null;
+      // 100000 of meer is hier de schrijfwijze voor "geen bovengrens".
+      const open = (x) => x >= 1e5 ? Infinity : x;
+      if (b && Array.isArray(b) && b[0] >= p.tussen[0] && open(b[1]) <= open(p.tussen[1]))
+        uit.push('proef ' + i + ' (' + (p.naam || '') + ') is al waar zodra voorwaarde ' + j + ' (' + (v.wat || '') +
+          ') vervuld is — hij kan niet rood worden');
+    });
+  });
+  return uit;
+}
+
 // ── aflopen ───────────────────────────────────────────────────────
 let fouten = 0, waarschuwingen = 0;
 console.log('');
@@ -171,6 +197,7 @@ lijst.forEach(function (item) {
   pidsBuitenSelectie(o).forEach((m) => regels.push({ ernst: 'FOUT',
     tekst: m + ' — die PID staat niet in `sensoren`, dus hij wordt niet uitgevraagd' }));
   bandProblemen(o).forEach((b) => regels.push(b));
+  proevenAlWaar(o).forEach((t) => regels.push({ ernst: 'FOUT', tekst: t }));
   proevenZonderIssue(o).forEach((p) => regels.push({ ernst: 'LET OP',
     tekst: p + ' draagt geen `issue` — de uitkomst is dan niet aan een vraag te knopen' }));
   if (!(o.proeven || []).length) regels.push({ ernst: 'LET OP',

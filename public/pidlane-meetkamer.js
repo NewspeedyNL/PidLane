@@ -616,6 +616,8 @@
       '</div>' +
       (vr ? '<div class="mk-sub" id="mkVenster">⏱ ' + veilig(vr) + '</div>' : '') +
       _vragen(s) +
+      _toeschouwer() +
+      _opstelling(s) +
       _verzendKnop(s) +
       _ritLijst(s) +
       _lus(st) + '</div>';
@@ -637,6 +639,64 @@
      goed als een groen vinkje: een spanning ONDER 11,5 V beantwoordt #217
      precies zo. Alleen "nog niet" is geen antwoord — en dan zegt de knop dat
      erbij, in plaats van hem weg te halen. */
+  /* ── DE OPSTELLING KEUREN (23-10-2026) ───────────────────────────
+     Een uitkomst telt pas als de proef zelf goed staat. Jij kijkt tijdens de
+     rit of hij meet wat hij moet meten, en zet hem dan op groen. Tot dan gaat
+     een uitkomst als `proefopstelling` de logtabel in, niet als antwoord. De
+     keuring staat in D1 bij de opdracht; dit scherm vraagt hem alleen aan. */
+  function _opstelling(s) {
+    var id = s.herkomst && s.herkomst.id;
+    if (!id || !window.PLOpdracht || typeof PLOpdracht.keuring !== 'function') return '';
+    var k = PLOpdracht.keuring(id);
+    var kl = k.staat === 'groen' ? 'var(--gn)' : k.staat === 'rood' ? 'var(--rd)' : 'var(--or)';
+    var tekst = k.staat === 'groen' ? 'Opstelling gekeurd — de uitkomst telt'
+      : k.staat === 'rood' ? 'Opstelling fout — de uitkomst telt niet'
+      : 'Opstelling nog niet gekeurd — kijk of de proef meet wat hij moet meten';
+    var knop = function (staat, label) {
+      return '<button class="mk-verz" style="flex:1;padding:6px" onclick="PLMeetkamer.keur(\'' + staat + '\')">' + label + '</button>';
+    };
+    return '<div class="mk-sub" id="mkOpstelling" style="margin-top:8px;border-left:3px solid ' + kl + ';padding-left:8px">' +
+      '<b style="color:' + kl + '">' + veilig(tekst) + '</b>' + (k.notitie ? '<br>' + veilig(k.notitie) : '') +
+      '<div style="display:flex;gap:6px;margin-top:6px">' +
+        (k.staat !== 'groen' ? knop('groen', '✓ Opstelling OK') : '') +
+        (k.staat !== 'rood' ? knop('rood', '✗ Opstelling fout') : '') +
+        (k.staat !== 'ongekeurd' ? knop('ongekeurd', '↺ Opnieuw keuren') : '') +
+      '</div></div>';
+  }
+  function keur(staat) {
+    var id = (window.PLOpdracht && PLOpdracht.herkomst && (PLOpdracht.herkomst() || {}).id) || '';
+    var melding = function (t) {
+      try { if (typeof showToast === 'function') showToast(t); }
+      catch (e) { console.warn('Meetkamer: de melding kon niet getoond worden', e); }
+    };
+    if (!id || typeof PLOpdracht.keurZet !== 'function') { melding('Keuren kan niet: geen opdracht gekozen'); return Promise.resolve(null); }
+    var notitie = '';
+    if (staat === 'rood') {
+      try { notitie = window.prompt('Wat is er fout aan de opstelling?', '') || ''; }
+      catch (e) { console.warn('Meetkamer: geen notitievenster', e); }
+    }
+    return PLOpdracht.keurZet(id, staat, notitie).then(function (r) {
+      melding(r.ok ? 'Opstelling: ' + staat : 'Niet gekeurd: ' + r.reden);
+      teken();
+      return r;
+    });
+  }
+
+  /* Wat de toeschouwer deze sessie zag, in één regel. Hij meet niets; dit
+     leest PLToeschouwer.stand(). */
+  function _toeschouwer() {
+    var T = window.PLToeschouwer;
+    if (!T || typeof T.stand !== 'function' || !T.gezien()) return '';
+    var st = T.stand();
+    var mm = function (ms) { var x = Math.round((ms || 0) / 1000); return Math.floor(x / 60) + ':' + ('0' + (x % 60)).slice(-2); };
+    var laatste = st.gebeurtenissen.slice(-3).map(function (e) { return e.naam; }).join(' → ');
+    return '<div class="mk-sub" id="mkToeschouwer">🔭 nu ' + veilig(st.toestand || 'onbekend') +
+      ' · rijden ' + mm(st.duur.rijden) + ' · stil ' + mm(st.duur.stil) +
+      ' · contact uit ' + mm(st.duur['contact-uit']) + ' · helling ' + mm(st.duur.helling) +
+      (st.duur.onbekend ? ' · zonder snelheid ' + mm(st.duur.onbekend) : '') +
+      (laatste ? '<br>laatst: ' + veilig(laatste) : '') + '</div>';
+  }
+
   function _verzendKnop(s) {
     if (!s.verzend || !s.verzend.vonnis) return '';
     var v = s.verzend;
@@ -1027,6 +1087,9 @@
   }
 
   window.PLMeetkamer = {
+    keur: keur,
+    _opstelling: _opstelling,
+    _toeschouwer: _toeschouwer,
     stations: stations,
     oordeel: oordeel,
     eindoordeel: eindoordeel,

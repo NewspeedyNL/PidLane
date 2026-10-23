@@ -991,7 +991,7 @@ MUTATIES=(
 "public/pidlane-opdracht.js@@    var ok = v.niet ? !bevat : bevat;@@    var ok = bevat;@@test-meetvenster.js@@niet wordt genegeerd: de goedkope-adapteropdracht sluit op de MX+"
 "public/pidlane-meetkamer.js@@    oor = eindoordeel(oor, s.verzend, s.opdracht);\n@@@@test-meetvenster.js@@het grote cijfer kleurt weer op de proeven alleen: groen boven, NOG NIET op de knop"
 "public/pidlane-meetkamer.js@@      regel = mist.wat + (kort ? ': ' + kort : ' — ' + mist.detail);@@      regel = mist.wat + ' — ' + mist.detail;@@test-meetvenster.js@@onder NOG NIET staat weer de technische regel met de band erin"
-"public/pidlane-meetkamer.js@@      _vragen(s) +\n      _verzendKnop(s) +@@      _verzendKnop(s) +@@test-meetvenster.js@@de vragen van de opdracht komen weer niet in beeld: de bestuurder ziet ze nooit (#283)"
+"public/pidlane-meetkamer.js@@      _vragen(s) +\n      _toeschouwer() +@@      _toeschouwer() +@@test-meetvenster.js@@de vragen van de opdracht komen weer niet in beeld: de bestuurder ziet ze nooit (#283)"
 "public/pidlane-testrun.js@@  if (antw) _liveSchrijf(@@  if (false) _liveSchrijf(@@test-meetvenster.js@@de antwoorden gaan weer niet mee naar de tabel: beantwoord op het scherm, nergens terug te vinden (#283)"
 "public/pidlane-testrun.js@@  return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden + '|' + antw;@@  return ((o && o.naam) || '') + '|' + vonnis.staat + '|' + vonnis.reden;@@test-meetvenster.js@@een antwoord na het verzenden telt niet als nieuw: de knop blijft op al verzonden staan en het antwoord komt nooit aan (#283)"
 "public/pidlane-opdracht.js@@    if (opties.indexOf(optie) < 0) return false;\n@@@@test-meetvenster.js@@elk vrij antwoord telt: de tabel krijgt tekst die buiten de opties valt (#283)"
@@ -1010,6 +1010,15 @@ MUTATIES=(
 # waarden kloppen niet met wat er gevraagd was.
 "public/pidlane-opdracht.js@@      if (TOEGESTAAN.indexOf(k) === -1) fouten.push('onbekende sleutel \`' + k + '\`');@@      void k;@@test-opdracht.js@@de witte lijst laat alles door: een sleutel die deze app niet kent glipt mee naar de uitvoering"
 "public/pidlane-opdracht.js@@    if (SCHEMAS.indexOf(o.schema) === -1)\n      fouten.push(@@    if (false)\n      fouten.push(@@test-opdracht.js@@een opdracht uit een schema dat deze app niet kent wordt alsnog uitgevoerd"
+"public/pidlane-toeschouwer.js@@    if (typeof w.kmh !== 'number' || !isFinite(w.kmh)) return 'onbekend';@@    if (typeof w.kmh !== 'number' || !isFinite(w.kmh)) return 'stil';@@test-toeschouwer.js@@een meetgat telt als stilstand: de voorwaarde stilgestaan raakt vervuld midden op de snelweg (#594)"
+"public/pidlane-toeschouwer.js@@        var wacht = (t === 'contact-uit' || k.toestand === null) ? 0 : CFG.minS * 1000;@@        var wacht = 0;@@test-toeschouwer.js@@twee seconden 0 km/h telt als stop: elke dip in de file wordt een gebeurtenis (#594)"
+"public/pidlane-toeschouwer.js@@Math.min(nu - k.laatst, CFG.dtMaxMs)@@(nu - k.laatst)@@test-toeschouwer.js@@een bevroren timer in de achtergrond boekt een uur rijden (#594)"
+"public/pidlane-toeschouwer.js@@    if (_beheerder()) {@@    if (true) {@@test-toeschouwer.js@@een klant krijgt markeringen van een testmiddel in zijn log (#594)"
+"public/pidlane-opdracht.js@@    if (typeof s !== 'number') return Object.assign(basis, { vervuld: null,@@    if (typeof s !== 'number') return Object.assign(basis, { vervuld: false,@@test-toeschouwer.js@@niets gezien heet weer niet gedaan in plaats van niet na te gaan (#227, #594)"
+"public/pidlane-testrun.js@@{ Outcome: opst === 'groen' ? vonnis.staat : 'proefopstelling'@@{ Outcome: vonnis.staat@@test-verzendoordeel.js@@een ongekeurde opstelling telt weer als antwoord in de logtabel (#594)"
+"worker.js@@  if (rij.KeurHash !== opdrachtVingerafdruk(rij.Opdracht))@@  if (false)@@test-opdrachtkeuring.js@@een keuring blijft staan nadat de opdracht veranderd is: groen op een proef die niemand zag (#594)"
+"worker.js@@  if (String(sessie.r || \"\").toLowerCase() !== \"admin\")@@  if (false)@@test-opdrachtkeuring.js@@elke klant kan een opstelling op groen zetten (#594)"
+"plopdracht.js@@  proevenAlWaar(o).forEach((t) => regels.push({ ernst: 'FOUT', tekst: t }));@@@@test-meetproeven.js@@een proef die zijn voorwaarde herhaalt wordt weer goedgekeurd: hij kan niet rood worden (#594)"
 "public/pidlane-opdracht.js@@        if (!PID_VORM.test(String(p))) { fouten.push('\`' + p + '\` is geen PID-code'); return; }@@        if (false) { return; }@@test-opdracht.js@@een sensor die geen PID-code is komt door"
 "public/pidlane-opdracht.js@@    var binnen = (w >= lo && w <= hi);@@    var binnen = true;@@test-opdracht.js@@elke gemeten waarde valt binnen de band: de opdracht kan niet meer rood worden"
 "public/pidlane-opdracht.js@@          // NIET stil terugvallen op de vorige opdracht: dan meet de rit iets\n          // anders dan er in Airtable staat en is het verschil onzichtbaar.\n          _actief = null; _herkomst = null;@@          void 0;@@test-opdracht.js@@een afgekeurde opdracht laat de vorige staan: de rit meet iets anders dan er in de tabel staat"
@@ -1243,7 +1252,7 @@ MUTATIES=(
 "public/pidlane-opdracht.js@@    var stil = uit.filter(function (u) { return u.staat === 'LET OP'; });@@    var stil = [];@@test-opdrachtvoorwaarden.js@@een PID die niet gemeten is heet weer een bevinding: niet-gemeten en buiten-de-band zijn weer één ding"
 "public/pidlane-opdracht.js@@          catch (e) { console.warn('Opdracht: de stapcontrole gaf een fout (#257)', e); gezien = null; }@@          catch (e) { console.warn('Opdracht: de stapcontrole gaf een fout (#257)', e); gezien = false; }@@test-opdrachtvoorwaarden.js@@een stapcontrole die stukgaat leest als \"de stap is niet gezet\" — niet-na-te-gaan wordt weer stil niet-gedaan (#227)"
 "public/pidlane-opdracht.js@@    if (SCHEMAS.indexOf(o.schema) === -1)@@    if (o.schema !== SCHEMA)@@test-opdrachtvoorwaarden.js@@de hele voorraad van schema 1 wordt afgekeurd en elke rit kost eerst een nieuwe rij in de tabel"
-"public/pidlane-opdracht.js@@(isApp ? 1 : 0) !== 1) {@@(isApp ? 1 : 0) === 0) {@@test-opdrachtvoorwaarden.js@@een voorwaarde met pid én stap komt erdoor, en dan meet de rit iets anders dan er op papier staat"
+"public/pidlane-opdracht.js@@(isToestand ? 1 : 0) !== 1) {@@(isToestand ? 1 : 0) === 0) {@@test-opdrachtvoorwaarden.js@@een voorwaarde met pid én stap komt erdoor, en dan meet de rit iets anders dan er op papier staat"
 
 # ── De logtabel staat sinds #262 in D1 en niet meer in Airtable, en dat
 # verandert één ding wezenlijk: Airtable maakte een onbekend veld vanzelf aan,
@@ -1512,7 +1521,7 @@ MUTATIES=(
 "public/pidlane-garage.js@@      if (!rec || !magBewaren()) return;@@      if (!rec) return;@@test-garage.js@@een rapport gaat zonder akkoord de server op"
 "public/pidlane-garage.js@@    return km >= 20 ? {@@    return km >= 0 ? {@@test-garage.js@@een verbruiksoordeel op één korte rit"
 "worker.js@@    if (ak && ak.versie === \"verwijderd\")\n      return json(@@    if (false)\n      return json(@@test-klantplatform.js@@een verwijderd account houdt met zijn lopende token toegang tot Mijn voertuigen"
-"worker.js@@    catch (e) { if (!/duplicate column/i.test(String(e && e.message || e))) throw e; }@@    catch (e) { }@@test-klantplatform.js@@een migratie die om een andere reden faalt, wordt stil ingeslikt"
+"worker.js@@  for (const s of KP_MIGRATIES) {\n    try { await db.prepare(s).run(); }\n    catch (e) { if (!/duplicate column/i.test(String(e && e.message || e))) throw e; }@@  for (const s of KP_MIGRATIES) {\n    try { await db.prepare(s).run(); }\n    catch (e) { }@@test-klantplatform.js@@een migratie die om een andere reden faalt, wordt stil ingeslikt"
 "worker.js@@  for (const s of KP_MIGRATIES) {@@  for (const s of []) {@@test-klantplatform.js@@de nieuwe kolommen komen er op een bestaande tabel nooit bij"
 "public/pidlane-garage.js@@      if (!magBewaren() || !pid || _waakGemeld[pid]) return;@@      if (!magBewaren() || !pid) return;@@test-garage.js@@elke ronde met dezelfde waakbevinding stuurt hem opnieuw"
 "public/pidlane-garage.js@@    if (['benzine', 'diesel', 'hybride', 'plug-in hybride', 'elektrisch', 'lpg', 'cng'].indexOf(b) >= 0) w.brandstof = b;@@    w.brandstof = b;@@test-garage.js@@vrije tekst uit het Voertuigoverzicht gaat als brandstof de server op"

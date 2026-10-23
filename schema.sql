@@ -137,7 +137,18 @@ CREATE TABLE IF NOT EXISTS meetopdrachten (
   -- Hij staat hier omdat de Airtable-tabel hem had en de teksten tot 2.126
   -- tekens droegen. Zonder deze kolom was dat bij de verhuizing stilletjes
   -- weggevallen, en dat is precies wat een migratie niet hoort te doen.
-  Notitie   TEXT
+  Notitie   TEXT,
+  -- DE KEURING VAN DE OPSTELLING (23-10-2026). 'groen' = de beheerder heeft
+  -- tijdens een rit gezien dat de proef meet wat hij moet meten; 'rood' = de
+  -- opstelling is fout; NULL = ongekeurd. Alleen een groene opstelling levert
+  -- een uitkomst die telt. KeurHash is de vingerafdruk van `Opdracht` bij het
+  -- keuren (opdrachtVingerafdruk in worker.js): verandert de tekst, dan is de
+  -- keuring vanzelf vervallen.
+  Keuring     TEXT,
+  KeurHash    TEXT,
+  KeurNotitie TEXT,
+  KeurOp      TEXT,
+  KeurDoor    TEXT
 );
 
 -- BESTAAT DE TABEL AL? Dan doet CREATE TABLE IF NOT EXISTS hierboven niets
@@ -147,6 +158,8 @@ CREATE TABLE IF NOT EXISTS meetopdrachten (
 --
 -- Dat is op 22-09-2026 al gedaan op pidlane_log_db; deze regel staat er
 -- voor de volgende omgeving, niet voor die ene.
+-- De keuringskolommen (23-10-2026) hoeven niet met de hand: de worker zet ze
+-- er zelf bij (OPDRACHT_MIGRATIES), vóór de eerste keuring.
 CREATE INDEX IF NOT EXISTS idx_opdracht_actief ON meetopdrachten (Actief, Gewijzigd DESC);
 
 -- ══════════════════════════════════════════════════════════════════

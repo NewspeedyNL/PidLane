@@ -10,6 +10,23 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 23-10-2026 — Meetproeven: opstelling keuren, toeschouwer (#594)
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw: pidlane-toeschouwer.js (PLToeschouwer). Ziet stilstand, rijden,
+   contact uit/aan en helling, markeert elke overgang voor de beheerder en
+   telt de duur. Voorwaarde {wat, toestand, minS} en app-maten toestand-*.
+ - Keuring van de opstelling: meetkamer → ✓ Opstelling OK / ✗ fout. Route
+   POST /airtable/opdracht/keur (admin) en opdracht-keur in /admin/d1;
+   kolommen Keuring/KeurHash/… zet de worker zelf bij. Een veranderde
+   opdracht is weer ongekeurd. Zonder groen: Outcome 'proefopstelling'.
+ - plopdracht.js keurt een proef af die al waar is als zijn voorwaarde
+   vervuld is. Drie nieuwe meetproeven in meetproeven/; helling en contact
+   uit uit CAMPAGNE gehaald.
+ - Nieuw: test-toeschouwer.js, test-opdrachtkeuring.js, test-meetproeven.js;
+   blok 5-proef #594.
+
+ ═══════════════════════════════════════════════════════════
  23-10-2026 — Beschikbaarheid van data bij de eerste verbinding
  ═══════════════════════════════════════════════════════════
 
