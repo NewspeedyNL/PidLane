@@ -1204,8 +1204,20 @@ jobs:
           JSON
           echo "── version.json ──"; cat /tmp/version.json
 
+          # Drie pogingen (23-10-2026): build #563 viel om op één 500 van
+          # Cloudflare ("code 10001, please try again"), terwijl de APK goed was.
+          # Een fout die blijft, blijft rood; alleen een korte storing gaat zo voorbij.
+          poging() {
+            local n
+            for n in 1 2 3; do
+              "$@" && return 0
+              echo "::warning::poging $n mislukt: $*"
+              [ "$n" -lt 3 ] && sleep $((n * 15))
+            done
+            return 1
+          }
           zet() {
-            npx --yes wrangler@4 r2 object put "$BUCKET/$1" --file="$2" --content-type="$3" --remote
+            poging npx --yes wrangler@4 r2 object put "$BUCKET/$1" --file="$2" --content-type="$3" --remote
           }
           zet "apk/pidlane.apk"   "$APK"           "application/vnd.android.package-archive"
           zet "apk/version.json"  /tmp/version.json "application/json"
@@ -1216,7 +1228,7 @@ jobs:
           # Cloudflare-bot in CLAUDE.md). Hier halen we het object terug en
           # vergelijken de checksum. Landde er niets, of iets anders, dan valt
           # de build om — niet de volgende gebruiker.
-          npx --yes wrangler@4 r2 object get "$BUCKET/apk/pidlane.apk" \
+          poging npx --yes wrangler@4 r2 object get "$BUCKET/apk/pidlane.apk" \
             --file=/tmp/terug.apk --remote
           TERUG=$(sha256sum /tmp/terug.apk | cut -d' ' -f1)
           if [ "$TERUG" != "$SOM" ]; then
