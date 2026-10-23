@@ -15,6 +15,25 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 23-10-2026 — Garage-sensoren liepen uit het venster: één class met twee rollen
+
+Op een CX-5 met veel eigen sensoren liep in Garage → Sensoren elke regel
+rechts uit het venster, en het hele paneel schoof opzij. Oorzaak: de indeling
+in weergave/analyse/dubbel (`fa486b2`, 16-10) zette om elke groep
+`class="gr-groep"`. Die naam bestond al: de groepsknoppen van de grafiek
+(`pidlane.css`, `.gr-groep` met `white-space:nowrap`, pilvorm, rand). De
+garage erfde dus nowrap — niets brak meer af — plus een afgeronde rand om de
+lijst. Niemand zag het in een test, want de garagetests keken naar tekst en
+knoppen, niet naar breedte. Nu `gr-sgroep`, met `overflow-wrap:anywhere` als
+vangnet; `bproef-garage.js` 4o meet op 360 px dat niets buiten het venster
+valt. Dezelfde regel als altijd: één class, één betekenis.
+
+De banden stonden daarbij als acht losse kaarten (spanning en temperatuur per
+wiel) en, door de sortering op `SENS_WAARDE` (bandenspanning en ATF allebei
+80), met de ATF ertussen. Dat las als "dubbel". Ze zijn nu één blok.
+
+---
+
 ## 23-10-2026 — Meetproeven: de uitkomst was vaak fout door de proef, niet door de auto (#594)
 
 De lus (opdracht in D1 → rit → oordeel → logtabel) werkte, maar een GESLOTEN

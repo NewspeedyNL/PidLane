@@ -118,6 +118,35 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('Expert op afstand staat boven Check mijn auto', ex.boven, JSON.stringify(ex));
     toets('Laat iemand meekijken opent het deelvenster', ex.deel, JSON.stringify(ex));
     toets('Ik ben de expert opent het codeveld, niet het deelvenster', ex.ontv && !ex.ontvDeel, JSON.stringify(ex));
+    // 23-10-2026: op 360 px stonden de knoppen onder elkaar en was het blok
+    // hoger dan de check eronder. Naast elkaar, en niet hoger dan 150 px.
+    await app.venster(360, 800);
+    const exm = await app.ev(`(function(){
+      const e=document.getElementById('plExpert').getBoundingClientRect(), a=document.getElementById('plExpertDeel').getBoundingClientRect(),
+        b=document.getElementById('plExpertOntvang').getBoundingClientRect();
+      return { hoog: Math.round(e.height), rij: Math.abs(a.top - b.top) < 2, glim: getComputedStyle(document.getElementById('plExpert')).boxShadow };
+    })()`);
+    await app.venster(412, 915);
+    toets('op 360 px: de twee knoppen naast elkaar', exm.rij, JSON.stringify(exm));
+    toets('op 360 px: het blok is hoogstens 150 px hoog, zonder gloed', exm.hoog > 0 && exm.hoog <= 150 && exm.glim === 'none', JSON.stringify(exm));
+
+    console.log('\n4c. AI-uitleg in het statusmenu: wat het kost en hoe je tokens aanvraagt (23-10-2026)');
+    const aiu = await app.ev(`(function(){
+      const echt = window.PLKlant && PLKlant.openMijnTokens, echtK = window.PLKlant && PLKlant.isKlant; let geopend = 0;
+      if (window.PLKlant) { PLKlant.isKlant = () => true; PLKlant.openMijnTokens = () => { geopend++; }; }
+      document.getElementById('aiChip').click();
+      const ov = document.getElementById('plAiUitlegOv'), t = ov ? ov.textContent : '';
+      const r = { open: !!ov && ov.style.display === 'flex', koppen: ['Tokens zijn beperkt', 'Tokens aanvragen', 'onvolledige data', 'Disclaimer'].filter(k => t.indexOf(k) < 0),
+        geenPrijs: !/€|euro/i.test(t), geenAnoniem: !/anoniem/i.test(t) };
+      if (ov) ov.querySelector('#plAiUitlegTokens').click();
+      r.dicht = !!ov && ov.style.display === 'none'; r.tokens = geopend;
+      if (window.PLKlant) { PLKlant.openMijnTokens = echt; PLKlant.isKlant = echtK; }
+      return r;
+    })()`);
+    toets('tik op AI-uitleg opent het uitlegvenster', aiu.open, JSON.stringify(aiu));
+    toets('met tokens, aanvragen, onvolledige data en disclaimer', aiu.koppen.length === 0, JSON.stringify(aiu.koppen));
+    toets('zonder prijzen en zonder "anoniem"', aiu.geenPrijs && aiu.geenAnoniem, JSON.stringify(aiu));
+    toets('Tokens aanvragen opent voor een klant het tokenscherm', aiu.dicht && aiu.tokens === 1, JSON.stringify(aiu));
 
     console.log('\n5. Een tegel landt op zijn eigen wizardvraag');
     await app.ev(`PLNav.tab('auto'); document.querySelector('.pl-tegel.tg-storing').click(); 'ok'`);

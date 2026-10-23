@@ -330,6 +330,57 @@ const NEPSERVER = `(function(){
     toets('en zegt hoeveel er nieuw in de lijst kwamen', bib.zoekMelding, JSON.stringify(bib));
     await app.ev(`PLEigen.zet(null); PLGarage.sluit(); 'ok'`);
 
+    console.log('\n── 4o. de banden als één blok, en niets loopt uit het venster (23-10-2026) ──');
+    await app.venster(360, 800);
+    const band = await app.ev(`(async function(){
+      const S = window._nepPlatform, v = S.voertuigen[0];
+      const f = '((A*1373)/1000)*0.145037738';
+      const eigen = [['222A05', 'Bandenspanning voor-links'], ['222A06', 'Bandenspanning voor-rechts'], ['222A07', 'Bandenspanning achter-links'],
+        ['222A08', 'Bandenspanning achter-rechts'], ['222A0B', 'Bandtemperatuur voor-links'], ['222A15', 'Tire pressure FL']]
+        .map(x => ({ code: x[0], naam: x[1], formule: /temp/i.test(x[1]) ? 'A-40' : f, eenheid: /temp/i.test(x[1]) ? '°C' : 'psi', ecu: '720' }))
+        .concat([{ code: '221E1C', naam: 'Temperatuur automaatbak (ATF)', formule: '((A*256)+B)/80', eenheid: '°C', ecu: '7E1' }]);
+      const alle = [v].concat((PLGarage.staat().stand || {}).voertuigen || []).filter(x => x.id === v.id);
+      const voor = alle.map(x => [x.eigen_pids, x.pid_selectie]), bibVoor = S.bib;
+      alle.forEach(x => { x.eigen_pids = JSON.parse(JSON.stringify(eigen)); x.pid_selectie = eigen.map(e => e.code); });
+      S.bib = [{ id: 'b7', code: '222A0C', ecu: '720', naam: 'Bandtemperatuur voor-rechts', formule: 'A-40', eenheid: '°C', bron: 'obdb', werkt: 1, werkt_niet: 0, mijn: null }];
+      PLGarage.staat().sens = null;
+      PLGarage.open(v.id); PLGarage._tab('sensoren');
+      const wacht = async (g) => { for (let i = 0; i < 40 && !g(); i++) await new Promise(r => setTimeout(r, 50)); return g(); };
+      await wacht(() => !!document.querySelector('#plGarBody .gr-bib'));
+      const blok = document.querySelector('#plGarBody .gr-banden');
+      const uit = {};
+      uit.blok = !!blok && ['222A05', '222A06', '222A07', '222A08', '222A0B', '222A15'].every(c => blok.textContent.indexOf(c) >= 0) && blok.textContent.indexOf('221E1C') < 0;
+      // Geen losse kaart meer per band: geen eigen Test, Weghalen of tempo.
+      uit.losseBanden = Array.prototype.filter.call(document.querySelectorAll('#plGarBody .gr-item:not(.gr-bib)'), x => /222A0|222A15/.test(x.textContent)).length;
+      uit.dubbelGemeld = !!blok && /2× op deze plek/.test(blok.textContent);
+      uit.bibKop = Array.prototype.some.call(document.querySelectorAll('#plGarBody .gr-bib'), x => /222A0C/.test(x.textContent) && /Banden/.test((x.closest('.gr-sgroep') || {}).textContent || ''));
+      // De groepen erven niets van de groepsknoppen van de grafiek.
+      uit.nowrap = Array.prototype.filter.call(document.querySelectorAll('#plGarBody .gr-sgroep, #plGarBody .gr-groep'), x => getComputedStyle(x).whiteSpace === 'nowrap').length;
+      const rand = document.getElementById('plGarBody').getBoundingClientRect().right;
+      uit.buiten = Array.prototype.filter.call(document.querySelectorAll('#plGarBody *'), x => x.offsetParent && x.getBoundingClientRect().right > rand + 1)
+        .map(x => x.tagName + '.' + x.className + ':' + x.textContent.trim().slice(0, 30)).slice(0, 5);
+      PLGarage._sensBanden(false);
+      uit.uit = PLGarage.staat().sens.sel.join();
+      const echtConfirm = window.confirm; window.confirm = () => true;
+      PLGarage._sensWegBanden();
+      window.confirm = echtConfirm;
+      uit.over = PLGarage.staat().sens.eigen.map(e => e.code).join();
+      PLGarage.sluit();
+      // Terug zoals het was: 4i rekent op de stand van 4g.
+      alle.forEach((x, i) => { x.eigen_pids = voor[i][0]; x.pid_selectie = voor[i][1]; }); S.bib = bibVoor;
+      PLGarage.staat().sens = null;
+      return uit;
+    })()`);
+    await app.venster(412, 915);
+    toets('alle bandsensoren staan in één blok Banden, de ATF erbuiten', band.blok, JSON.stringify(band));
+    toets('geen losse kaart per band meer', band.losseBanden === 0, JSON.stringify(band));
+    toets('twee codes op dezelfde plek: het blok zegt het', band.dubbelGemeld, JSON.stringify(band));
+    toets('in de bibliotheek staat een bandcode onder de kop Banden', band.bibKop, JSON.stringify(band));
+    toets('de sensorgroepen breken gewoon af (geen white-space:nowrap van de grafiekknoppen)', band.nowrap === 0, JSON.stringify(band));
+    toets('op 360 px loopt niets in Sensoren uit het venster', band.buiten.length === 0, JSON.stringify(band.buiten));
+    toets('één vinkje haalt alle banden uit de meting, de ATF blijft', band.uit === '221E1C', JSON.stringify(band.uit));
+    toets('"Banden weghalen" haalt alleen de banden weg', band.over === '221E1C', JSON.stringify(band.over));
+
     console.log('\n── 4i. de buurscan (28-09); "dieper zoeken" met de AI is weg (#526) ──');
     const diep = await app.ev(`(async function(){
       const S = window._nepPlatform, v = S.voertuigen[0];
