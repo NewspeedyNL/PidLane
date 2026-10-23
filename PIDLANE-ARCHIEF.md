@@ -15,6 +15,40 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 23-10-2026 — RDW per kenteken en foutcodekennis: welke bronnen, en welke niet
+
+**RDW-tabellen.** De APK-geschiedenis komt uit drie tabellen op kenteken en
+gebrekcode: `sgfe-77wx` (meldingen), `a34c-vvps` (geconstateerde gebreken) en
+`hx2c-gt7k` (omschrijvingen, met een geldigheidsperiode). Koppelen gaat op
+datum **én** tijd: twee keuringen op één dag (afkeur en herkeur) zijn anders
+één. Codes die met `AC` beginnen zijn adviespunten, geen afkeur. De
+terugroeptabel had `beschrijving_van_het_herstel` en `materi_le_gevolgen`
+al; PLRecall las ze alleen niet. Mijn eerste antwoord dat die omschrijving
+niet bestond was fout — nagemeten op een echte Takata-actie.
+
+**open-ev-data** (MIT, © 2024 Tijs Teulings): 1289 uitvoeringen. Een model
+heeft vaak meerdere accu's; welke het is, volgt uit de RDW: WLTP-verbruik
+(Wh/km, aan de laadpaal) × actieradius / 1000 / 1,1 laadverlies → de
+dichtstbijzijnde accu binnen 15%. Op 301 echte NL-EV's: 89% gevonden, 87%
+met de juiste accu.
+
+**mytrile/obd-trouble-codes is verschoven.** De lijst (MIT) heeft voor bijna
+elke algemene code een tekst, maar bij 252 van de 377 vergeleken codes hoort
+die tekst bij een buurcode: P0205 heet er cilinder 4, P0309 cilinder 8. Eén
+op één overnemen had honderden foute omschrijvingen gegeven. Daarom is elke
+tekst gezocht bij de code waarvan python-OBD (GPLv2, alleen als toets, geen
+tekst overgenomen) hetzelfde zegt: onderdeel, letter, cilinder, bank/sensor
+(J2012), soort storing, en alle inhoudswoorden. 212 codes haalden dat; de
+rest blijft de opbouwuitleg. `test-dtcsae.js` rekent cilinder, bank en sensor
+na op het codenummer; één code verschuiven vangt hij tientallen keren.
+
+**Niet gebruikt:** opendbc (CAN-berichten, geen OBD-verzoeken), JejuSoul/OVMS
+(dekking per merk te smal, al in OBDb), NHTSA (Amerikaanse codes).
+
+**`_dtcBron` las B2/C2/U2 als algemeen.** Mijn regex van 22-10 (`[PCBU][02]`)
+klopte voor P maar niet voor de rest; nu gedeeld met `_dtcStructuur` via
+`_dtcFabrikant()`.
+
 ## 22-10-2026 — Dekking van het NL-wagenpark: RDW × OBDb gemeten, en wat ervan wegviel
 
 - **Bronnen.** RDW open data (`opendata.rdw.nl`, m9d7-ebf2 en 8ys7-d773):

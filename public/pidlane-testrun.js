@@ -2787,6 +2787,42 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── RDW per kenteken en foutcodekennis (23-10-2026) ──
+  {
+    issue: 'apk',
+    naam: 'APK-geschiedenis per kenteken: gebreken, adviespunten en wat terugkomt',
+    waarom: 'De koopcheck zag alleen de vervaldatum, niet waarop de auto eerder werd afgekeurd.',
+    proef: async function () {
+      if (!window.PLApk || typeof PLApk.bouw !== 'function') return { staat: 'FOUT', detail: 'PLApk ontbreekt — pidlane-apk.js niet geladen (herladen?)' };
+      var k = [{ meld_datum_door_keuringsinstantie: '20250101', meld_tijd_door_keuringsinstantie: '900', gebrek_identificatie: '497' }, { meld_datum_door_keuringsinstantie: '20260101', meld_tijd_door_keuringsinstantie: '900', gebrek_identificatie: '497' }, { meld_datum_door_keuringsinstantie: '20260101', meld_tijd_door_keuringsinstantie: '900', gebrek_identificatie: 'AC1' }];
+      var r = PLApk.bouw([], k, [{ gebrek_identificatie: '497', gebrek_omschrijving: 'Kentekenplaatverlichting' }]);
+      if (r.samenvatting.terugkerend.length !== 1 || r.samenvatting.adviesLaatste !== 1) return { staat: 'FOUT', detail: JSON.stringify(r.samenvatting) };
+      return { staat: 'OK', detail: 'Zoek een kenteken in Garage of Zonder auto: onder de terugroepacties staat de APK-geschiedenis' };
+    }
+  },
+  {
+    issue: 'ev-accu',
+    naam: 'Bij een EV de accu en het bereik uit open-ev-data, gekozen op de RDW-actieradius',
+    waarom: 'De app wist van een elektrische auto niet hoe groot de accu was.',
+    proef: async function () {
+      if (!window.PLEv || typeof PLEv.zoek !== 'function') return { staat: 'FOUT', detail: 'PLEv ontbreekt — pidlane-evdata.js niet geladen (herladen?)' };
+      var r = PLEv.zoek('VOLKSWAGEN', 'ID.3', 2021);
+      if (!r || !(r.kwh || (r.kwhOpties && r.kwhOpties.length))) return { staat: 'FOUT', detail: 'ID.3 niet gevonden' };
+      return { staat: 'OK', detail: 'ID.3: ' + (r.kwh || r.kwhOpties.join('/')) + ' kWh. Zoek het kenteken van een EV: er staat een blok Accu en bereik' };
+    }
+  },
+  {
+    issue: 'foutcodes',
+    naam: '212 algemene P0/P2-codes kregen een Nederlandse omschrijving; B2/C2/U2 lenen geen tekst van een ander merk',
+    waarom: 'Veel algemene codes stonden als "Onbekende code" in beeld.',
+    proef: async function () {
+      if (typeof dtcInfo !== 'function' || typeof DTC_OMSCHRIJVING === 'undefined') return { staat: 'FOUT', detail: 'dtcInfo of DTC_OMSCHRIJVING ontbreekt' };
+      var mis = ['P0600', 'P0311', 'P0154'].filter(function (c) { return /^Onbekende/.test(dtcInfo(c).desc); });
+      if (mis.length) return { staat: 'FOUT', detail: 'nog onbekend: ' + mis.join(', ') + ' — oude pidlane-data.js (herladen?)' };
+      return { staat: 'OK', detail: 'P0600: ' + dtcInfo('P0600').desc };
+    }
+  },
+
   // ── Dekking van het NL-wagenpark (22-10-2026): RDW, OBDb, EV's ──
   {
     issue: 'dekking',

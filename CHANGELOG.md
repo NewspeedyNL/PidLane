@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 23-10-2026 — RDW per kenteken: APK, terugroepherstel, EV-accu; foutcodes
+ ═══════════════════════════════════════════════════════════
+
+ - APK-geschiedenis per kenteken (pidlane-apk.js): gebreken en adviespunten
+   per keuring, en wat bij meerdere keuringen terugkomt; ook in de koopcheck.
+ - Terugroepacties tonen het gevolg en wat de dealer herstelt.
+ - EV: accu, verbruik, laadvermogen en bereik uit open-ev-data
+   (pidlane-evdata.js, MIT), de uitvoering gekozen op de RDW-actieradius.
+ - Foutcodes: 212 algemene P0/P2-codes met Nederlandse omschrijving;
+   B2/C2/U2 zijn fabrikantcodes en lenen geen tekst meer.
+ - Nieuw: test-apk.js, test-evdata.js, test-dtcsae.js.
+
+ ═══════════════════════════════════════════════════════════
  22-10-2026 — Dekking van het NL-wagenpark (RDW × OBDb)
  ═══════════════════════════════════════════════════════════
 
