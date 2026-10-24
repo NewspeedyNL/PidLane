@@ -15,6 +15,30 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 24-10-2026 — wielslip: 15× gemeten, één keer gebeurd (opdracht 44, #560)
+
+Eerste rit met de vier wielsnelheden (CX-5, 22:24–22:33). Twee proeven klopten
+meteen: 98 % van de rit was vergelijkbaar, en de vier wielen samen weken 4,7–4,9 %
+af van 010D (de schaal klopt; het restje is bandmaat en hele km/h). De derde
+niet: `wiel-slip-n` = 14 en 15 in twee verzendingen, bij één keer bewust
+wielspin aan het eind.
+
+De oorzaak zat niet in de drempel maar in de tijd. `pidsDueNow()` vraagt
+hoogstens twee eigen PIDs per ronde, dus komen de wielen per paar: 2B09/2B08
+(achter), een ronde later 2B06/2B07 (voor), ±1,5 s ertussen — gezien in het
+BT-log. Binnen de 2,5 s spreiding, dus "vers". Maar bij optrekken met
+2 km/h per seconde is de later gelezen as 3 km/h sneller, en dat is bij 20
+km/h 15 %: elke optrekking met gas werd slip. De rem die erin zat (gaspedaal
+≥ 15 %) maakte het erger, niet beter: die kiest juist de momenten waarop je
+versnelt.
+
+Wat er níét gedaan is: de wielen in één verzoek vragen (`22 2B06 2B07 2B08
+2B09` in één frame). Mazda's ABS-module antwoordt daar misschien op, maar dat
+is een vraag voor de auto; terugrekenen werkt met elke volgorde.
+
+De twee uitkomsten (#1 en #2 in Second opinion) zijn dus een meetfout van de
+app, geen bevinding over de auto.
+
 ## 24-10-2026 — #560 methode 1: wielsnelheden uit de ABS-module
 
 De CX-5 heeft ze in OBDb (`Mazda-CX-5/signalsets/v3/default.json`): adres 760,
