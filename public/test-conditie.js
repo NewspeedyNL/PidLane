@@ -187,6 +187,17 @@ console.log('\n5. Conditie uit de ritten');
   toets('een kenmerk zonder nulmeting telt niet', !c.kenmerken.some((k) => k.id === 'vl'), JSON.stringify(c.kenmerken.map((k) => k.id)));
   c = C.conditie(reeks(30, 5).concat(reeks(20, 5, { lv: 13.0 })), v, NU);
   toets('laadspanning 14,2 → 13,0 V: accu zakt hard', c.deel.accu <= 10, JSON.stringify(c.deel));
+  // Slim laden (#452/#475): de vloer geldt niet, en 0,9 V schommeling over vijf ritten is ruis.
+  ctx.PLKenmerk = ctx.window.PLKenmerk = { geldt: () => ({ uitkomst: 'geldt_niet' }), profiel: () => ({}), bronVoertuig: () => ({}) };
+  c = C.conditie(reeks(30, 5, { lv: 13.99 }).concat(reeks(20, 5, { lv: 13.1 })), v, NU);
+  const lvSlim = c.kenmerken.filter((k) => k.id === 'lv')[0];
+  toets('slim laden: 13,99 → 13,1 V (CX-5, gezond) kost geen punten', lvSlim && lvSlim.verlies === 0, JSON.stringify(lvSlim));
+  c = C.conditie(reeks(30, 5, { lv: 14.0 }).concat(reeks(20, 5, { lv: 12.0 })), v, NU);
+  toets('slim laden: 14,0 → 12,0 V kost wél punten (dynamo laadt niet meer)', c.deel.accu < 100, JSON.stringify(c.deel));
+  delete ctx.window.PLKenmerk; delete ctx.PLKenmerk;
+  c = C.conditie(reeks(30, 5, { rd: 13500 }).concat(reeks(20, 5, { rd: 11000 })), v, NU);
+  const rdK = c.kenmerken.filter((k) => k.id === 'rd')[0];
+  toets('raildruk 19 % lager over tien ritten: binnen de gemeten spreiding', !rdK || rdK.verlies === 0, JSON.stringify(rdK));
   c = C.conditie(reeks(30, 10), Object.assign({}, v, { gezondheid: { accuRust: 12.1 } }), NU);
   toets('accu in rust 12,1 V telt ook zonder nulmeting', c.deel.accu < 100, JSON.stringify(c.deel));
   // De nulmeting na een beurt: oud slecht, beurt, daarna tien goede ritten.
