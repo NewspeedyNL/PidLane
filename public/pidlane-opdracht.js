@@ -194,7 +194,13 @@
     'toestand-contact-uit-n': ['PLToeschouwer', 'keren contact uit deze sessie'],
     'toestand-stops':         ['PLToeschouwer', 'keren stilgestaan na rijden of contact, deze sessie'],
     'toestand-wissels':       ['PLToeschouwer', 'gebeurtenissen (stilstand, rijden, contact, helling) deze sessie'],
-    'toestand-gat-s':         ['PLToeschouwer', 'langste periode verbonden zonder verse snelheid, in seconden']
+    'toestand-gat-s':         ['PLToeschouwer', 'langste periode verbonden zonder verse snelheid, in seconden'],
+    // 24-10-2026 — #560 methode 1: de vier wielsnelheden uit de ABS-module, deze rit
+    'wiel-rijden-s':      ['PLGarage', 'seconden boven 8 km/h met vier wielsnelheden als eigen sensor, deze rit'],
+    'wiel-vers-s':        ['PLGarage', 'daarvan seconden met vier verse waarden binnen 2,5 s (vergelijkbaar)'],
+    'wiel-vers-pct':      ['PLGarage', 'deel van wiel-rijden-s dat vergelijkbaar was, in %'],
+    'wiel-slip-n':        ['PLGarage', 'keren gemeten wielslip (snelste as ≥ 10 % sneller bij gas), deze rit'],
+    'wiel-afwijking-pct': ['PLGarage', 'gemiddelde afwijking van de vier wielen samen tegen 010D, in %']
   };
   function _appMaat(naam) {
     var bron = APPMATEN[naam];

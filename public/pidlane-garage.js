@@ -775,6 +775,21 @@
     try { var x = (typeof pidVals !== 'undefined') ? pidVals[pid] : undefined; return typeof x === 'number' && isFinite(x) ? x : undefined; }
     catch (e) { return undefined; }
   }
+  /* App-maten voor de meetopdracht van #560 (methode 1): wat de vier
+     wielen in DEZE rit deden. null = niet gemeten, geen 0. */
+  function maat(naam) {
+    var a = _st.rit && _st.rit.cd;
+    if (!a) return null;
+    switch (naam) {
+      case 'wiel-rijden-s': return a.wsR ? Math.round(a.wsR) : null;
+      case 'wiel-vers-s': return a.wsR ? Math.round(a.wsD || 0) : null;
+      case 'wiel-vers-pct': return a.wsR ? Math.round((a.wsD || 0) / a.wsR * 100) : null;
+      case 'wiel-slip-n': return a.wsD ? (a.wsn || 0) : null;
+      case 'wiel-afwijking-pct': return a.wvN ? Math.round(a.wvS / a.wvN * 10) / 10 : null;
+    }
+    return null;
+  }
+
   // De vier wielsnelheden uit de ABS-module (#560, methode 1), met hun
   // updatetijd; null als deze auto ze niet als eigen sensor heeft.
   function wielMeting() {
@@ -2218,6 +2233,7 @@
 
   window.PLGarage = {
     open: open,
+    maat: maat,
     openSensoren: openSensoren,
     sluit: sluit,
     ververs: ververs,

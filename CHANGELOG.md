@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-10-2026 — Meetopdracht voor de wielsnelheden (#560)
+ ═══════════════════════════════════════════════════════════
+
+ - App-maten wiel-rijden-s, wiel-vers-s, wiel-vers-pct, wiel-slip-n en
+   wiel-afwijking-pct (PLGarage.maat, uit de lopende rit). De afwijking legt
+   het gemiddelde van de vier wielen naast 010D: zo blijkt of de schaal klopt.
+ - meetproeven/560-wielen.json/.sql: ≥ 80 % van de rit vergelijkbaar,
+   ≤ 5 % afwijking, hoogstens twee keer slip op een gewone rit.
+ - Tests: test-winterrit.js +2, test-opdrachtappmaat.js kent PLGarage; drie mutaties.
+
+ ═══════════════════════════════════════════════════════════
  24-10-2026 — Wielslip gemeten aan de vier wielen (#560, methode 1)
  ═══════════════════════════════════════════════════════════
 

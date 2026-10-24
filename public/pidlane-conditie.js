@@ -251,11 +251,16 @@
       if (g === null || t === null) { a.wsAan = false; return; }
       v[r[i]] = g; tMin = Math.min(tMin, t); tMax = Math.max(tMax, t);
     }
+    // Gereden met vier wielen in beeld, vers of niet: de noemer voor de
+    // meetopdracht (hoeveel van de rit was te vergelijken).
+    a.wsR = (a.wsR || 0) + dt;
     // Vers en bij elkaar: anders vergelijk je twee verschillende momenten.
     if (tMax - tMin > c.spreidMs || tMax === a.wsT) return;
     a.wsT = tMax;
     a.wsD = (a.wsD || 0) + dt;
     var voor = (v.VL + v.VR) / 2, achter = (v.AL + v.AR) / 2, lo = Math.min(voor, achter), hi = Math.max(voor, achter);
+    // Klopt de schaal? Het gemiddelde van de vier tegen 010D.
+    a.wvS = (a.wvS || 0) + Math.abs((voor + achter) / 2 - kmh) / kmh * 100; a.wvN = (a.wvN || 0) + 1;
     var slipt = lo > c.kmh && (hi - lo) / lo >= c.slip && ped !== null && ped >= c.pedaal;
     if (slipt && !a.wsAan) a.wsn = (a.wsn || 0) + 1;
     a.wsAan = slipt;

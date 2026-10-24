@@ -1,0 +1,65 @@
+[
+  {
+    "schema": 2,
+    "naam": "Wielslip gemeten aan de vier wielen (#560)",
+    "reden": "Zet eerst de vier wheel speed-sensoren aan (Sensoren → zoek in OBDb). Rij dan tien minuten gewoon, een paar keer optrekken vanaf stilstand. Niets markeren.",
+    "sensoren": [
+      "010D",
+      "010C",
+      "0149",
+      "0111"
+    ],
+    "duurS": 1800,
+    "tikS": 5,
+    "voorwaarden": [
+      {
+        "wat": "Minstens 5 minuten boven 8 km/h met vier wielsnelheden",
+        "app": "wiel-rijden-s",
+        "tussen": [
+          300,
+          100000
+        ]
+      }
+    ],
+    "vragen": [
+      {
+        "id": "weg",
+        "tekst": "Hoe was de weg?",
+        "opties": [
+          "droog",
+          "nat",
+          "glad (sneeuw of ijs)"
+        ]
+      }
+    ],
+    "proeven": [
+      {
+        "issue": "#560",
+        "naam": "de vier wielen zijn het grootste deel van de rit te vergelijken (≥ 80 %)",
+        "app": "wiel-vers-pct",
+        "tussen": [
+          80,
+          100
+        ]
+      },
+      {
+        "issue": "#560",
+        "naam": "de wielsnelheden kloppen met de snelheid (hoogstens 5 % afwijking)",
+        "app": "wiel-afwijking-pct",
+        "tussen": [
+          0,
+          5
+        ]
+      },
+      {
+        "issue": "#560",
+        "naam": "een gewone rit geeft hoogstens twee keer gemeten wielslip",
+        "app": "wiel-slip-n",
+        "tussen": [
+          0,
+          2
+        ]
+      }
+    ]
+  }
+]

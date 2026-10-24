@@ -149,6 +149,26 @@ console.log('\n#560 — tractie-ingrijpen, afgeleid');
   toets('tegenproef wielen: een klein verschil (bocht, bandenmaat, 5 %) is geen slip', wtiks((i) => (i === 20 ? { w: { AL: 45 } } : null)).ts === 0);
   toets('tegenproef wielen: een wiel van 4 s eerder vergelijkt twee momenten', wtiks((i) => (i === 20 ? { w: { VL: 58, VR: 57 }, wt: { AL: 36000 } } : null)).ts === 0);
   toets('zonder wielsnelheden: niet gemeten, geen 0', wtiks(() => ({ geen: true })).ts === undefined);
+  {
+    // De noemer en de schaal voor de meetopdracht (wiel-vers-pct, wiel-afwijking-pct).
+    let a = null, t = 0;
+    for (let i = 0; i < 10; i++) {
+      t += 2000; const oud = i % 2 ? t - 4000 : t;   // elke tweede tik één wiel te oud
+      a = C.tik(a, { kmh: 50, rpm: 2000, pedaal: 30, gasklep: 25, pedaalT: t, gasklepT: t,
+        wielen: { VL: { v: 51, t: t }, VR: { v: 51, t: t }, AL: { v: 51, t: t }, AR: { v: 51, t: oud } } }, 2);
+    }
+    toets('wielen: 20 s gereden met vier wielen, waarvan 10 s vergelijkbaar', a.wsR === 20 && a.wsD === 10, a.wsR + '/' + a.wsD);
+    toets('wielen: 51 tegen 50 km/h is 2 % afwijking', Math.abs(a.wvS / a.wvN - 2) < 1e-9, a.wvS / a.wvN);
+  }
+  {
+    // Om de tik 55 en 45 tegen 50: gemiddeld 10 % ernaast, niet 0 — anders valt een rammelende schaal weg.
+    let a = null, t = 0;
+    for (let i = 0; i < 10; i++) {
+      t += 2000; const v = i % 2 ? 45 : 55, w = { v: v, t: t };
+      a = C.tik(a, { kmh: 50, rpm: 2000, pedaal: 0, gasklep: 25, pedaalT: t, gasklepT: t, wielen: { VL: w, VR: w, AL: w, AR: w } }, 2);
+    }
+    toets('wielen: te snel en te traag heffen elkaar niet op (10 %)', Math.abs(a.wvS / a.wvN - 10) < 1e-9, a.wvS / a.wvN);
+  }
   const trw = (bt, ts, tc) => rit({ duur_s: 900, km: 10, max_koelwater: 88, cd: { bt, ts, tc } });
   const g = WR.tractie([trw(-1, 1, 3), trw(-1, 1, 3)], { nu: NU }) || {};
   toets('gemeten gaat voor afgeleid: 2× (niet 6×), zonder "mogelijk"', /^2× wielslip bij -1 °C/.test(g.titel || ''), g.titel);
