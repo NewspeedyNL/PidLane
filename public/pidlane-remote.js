@@ -360,10 +360,26 @@ window.PLRemote=(function(){
     logA('🔭 Expert las foutcodes uit ('+codes.length+' code'+(codes.length===1?'':'s')+')','info');
   }
   function sendWs(o){try{if(S.ws&&S.ws.readyState===1)S.ws.send(JSON.stringify(o));}catch(_){ console.warn('Bericht niet naar de expert verstuurd', _); }}
+  // Telemetrie draagt de VOLLEDIGE PID-sleutel (24-10-2026). Tot dan ging
+  // alleen het achtervoegsel mee en plakte de expert er '01' voor: op de CX-5
+  // werd mode-21 '210C'/'210D' (klep timing, rauw) zo 010C/010D en overschreef
+  // toerental en snelheid bij de expert. Zie remPid() voor de ontvangstkant.
+  function remSleutel(pid){
+    const k=String(pid==null?'':pid).toUpperCase();
+    return /^[0-9A-F]{4,8}$/.test(k)?k:null;
+  }
+  // Ontvangstkant: een kale 2-hex-sleutel is mode 01 (oude local, en de
+  // antwoorden op request-pids); een volle sleutel blijft wat hij is.
+  function remPid(k){
+    const s=String(k==null?'':k).toUpperCase();
+    if(/^[0-9A-F]{2}$/.test(s))return '01'+s;
+    return /^[0-9A-F]{4,8}$/.test(s)?s:null;
+  }
   function feed(pid,val){
     if(S.mode!=='local'||!S.ws||S.ws.readyState!==1)return;
     if(typeof val!=='number'||!isFinite(val))return;
-    S.dirty[String(pid).slice(2).toUpperCase()]=Math.round(val*100)/100;
+    const k=remSleutel(pid);if(!k)return;
+    S.dirty[k]=Math.round(val*100)/100;
   }
   function startFlush(){stopFlush();S.flushT=setInterval(()=>{
     if(S.mode!=='local'||!S.ws||S.ws.readyState!==1)return;
@@ -612,7 +628,8 @@ window.PLRemote=(function(){
       if(k==='t'||k==='reqId')continue;
       const v=d[k];
       if(typeof v!=='number'||!isFinite(v))continue;
-      const pid='01'+String(k).toUpperCase();
+      const pid=remPid(k);
+      if(!pid)continue;
       try{updPID(pid,v);}catch(_){ console.warn('Remote-waarde niet in de meters gezet: '+pid, _); }
       // Historie-frames (backfill bij verbinden): alleen meters/pidVals vullen,
       // NIET de opname/stabiliteit in — die frames hebben oude tijdstippen.
@@ -695,7 +712,7 @@ window.PLRemote=(function(){
     clearTimeout(_rpaT);
     _rpaT=setTimeout(()=>{
       try{
-        const sfx=[...new Set([...(activePIDs||[])].map(p=>String(p).slice(2).toUpperCase()))]
+        const sfx=[...new Set([...(activePIDs||[])].filter(p=>/^01/i.test(String(p))).map(p=>String(p).slice(2).toUpperCase()))]
           .filter(s=>/^[0-9A-F]{2}$/.test(s)).slice(0,24);
         if(sfx.length&&S.ews&&S.ews.readyState===1)
           S.ews.send(JSON.stringify({type:'request-poll',pids:sfx,reqId:Math.random().toString(36).slice(2,8)}));
@@ -721,7 +738,7 @@ window.PLRemote=(function(){
     if(S.vstate)applyVState(S.vstate);
     else if(S.ews&&S.ews.readyState===1)S.ews.send(JSON.stringify({type:'request-vstate',reqId:_rid()}));
     // Laatst ontvangen live-waarden meteen de meters/pijplijn in.
-    try{for(const k in S.vals){const vv=S.vals[k];if(typeof vv==='number')updPID('01'+k,vv);}}catch(_){ console.warn('Laatst bekende waarden niet meteen in de meters gezet', _); }
+    try{for(const k in S.vals){const vv=S.vals[k];if(typeof vv==='number')updPID(k,vv);}}catch(_){ console.warn('Laatst bekende waarden niet meteen in de meters gezet', _); }
     // Huidige actieve set meteen bij de local laten meepollen → meters vullen
     try{if(typeof activePIDs!=='undefined'&&activePIDs.size)ensurePIDListActive([...activePIDs]);}catch(_){ logA('Actieve sensoren niet aangezet op de local bij het starten van remote-modus — de meters kunnen leeg blijven: '+(_&&_.message||_),'warn'); }
     logA('🔭 Remote sessie is nu de databron — deuren en analyses bruikbaar (alleen-lezen)','ok');
@@ -737,9 +754,11 @@ window.PLRemote=(function(){
   }
   function mergeVals(d){if(!d||typeof d!=='object')return;
     for(const k in d){if(k==='t'||k==='reqId')continue;const v=d[k];
-      if(typeof v==='number'&&isFinite(v))S.vals[String(k).toUpperCase()]=v;}}
-  function pidName(sfx){
-    try{const d=(typeof getPidDef==='function')?getPidDef('01'+sfx):null;
+      const pid=remPid(k);
+      if(pid&&typeof v==='number'&&isFinite(v))S.vals[pid]=v;}}
+  function pidName(pid){
+    const sfx=pid;
+    try{const d=(typeof getPidDef==='function')?getPidDef(pid):null;
       if(d){const n=d.n||d.name||('PID '+sfx);const u=d.u||d.unit||'';return n+(u?' ('+u+')':'');}}catch(_){ /* stil: valt terug op de generieke naam hieronder */ }
     return 'PID '+sfx;
   }
@@ -949,7 +968,7 @@ window.PLRemote=(function(){
   }
 
   return {openShare,deelMethode,closeShare,shareStart,shareStop,copy,
-          openExpert,expertClose,expertConnect,expertDisconnect,_staat:()=>({vstate:S.vstate,expMeta:S.expMeta}),reqPids,reqDtc,reqRapport,enterDrive,
+          openExpert,expertClose,expertConnect,expertDisconnect,_staat:()=>({vstate:S.vstate,expMeta:S.expMeta}),_remSleutel:remSleutel,_remPid:remPid,reqPids,reqDtc,reqRapport,enterDrive,
           vernieuw:sendVStateSoon,_buildVState:buildVState,
           remRecStart,remRecStop,remRecCsv,remAnalyze,pairStart,
           stopQrScan,scanForJoin,scanForPair};
