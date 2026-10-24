@@ -956,7 +956,7 @@ function closeConnOv(){
     <!-- 📡 Diagnose delen loopt (02-10-2026): in de topbalk, naast de status.
          Tot die datum zweefde hij position:fixed onder de topbalk en dekte hij
          de tab Sensoren af. showPill() in pidlane-remote.js zet hem aan. -->
-    <button type="button" id="remPill" onclick="PLRemote.openShare()" title="Diagnose delen loopt — tik voor de code en het aantal meekijkers">📡<span class="rem-pill-tx">delen</span>👁 <span id="remPillN">0</span></button>
+    <button type="button" id="remPill" onclick="PLRemote.pillTik()" title="Diagnose delen loopt — tik voor wat de expert ziet en doet, of voor de code">📡<span class="rem-pill-tx">delen</span>👁 <span id="remPillN">0</span></button>
     <div class="tchip sys" id="sysChip" onclick="toggleSysStatus(event)" title="Verbinding — tik voor details">
       <div class="tdot" id="sysdot"></div><span id="sysTxt">Niet verbonden</span><span id="sysTel" style="font-weight:800;color:var(--gn)"></span>
     </div>
@@ -1979,6 +1979,13 @@ function closeConnOv(){
    klasse uit de #58-ronde. */
 .rem-card{background:var(--sur,#151b24);border:1px solid var(--bd,#26303b);border-radius:16px 16px 0 0;width:100%;max-width:560px;max-height:88vh;overflow:auto;padding:16px 16px calc(22px + var(--pl-sab));color:var(--tx,#e6e9ef)}
 .rem-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+/* Meekijkscherm van de klant (24-10-2026) */
+.rem-klant-st{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid;border-radius:10px;font-size:13px;line-height:1.4}
+.rem-klant-dot{flex:none;width:10px;height:10px;border-radius:50%}
+.rem-klant-w{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--bd,#26303b);font-size:13px}
+.rem-klant-w b{font-family:ui-monospace,monospace;white-space:nowrap}
+.rem-klant-l{font-size:13px;padding:4px 0;line-height:1.4}
+.rem-klant-l span{color:var(--tx3,#9aa4b2);font-family:ui-monospace,monospace;margin-right:4px}
 .rem-h h3{margin:0;font-size:16px;flex:1}
 .rem-x{background:none;border:none;color:inherit;font-size:20px;cursor:pointer;padding:2px 8px}
 .rem-row{margin:8px 0}
@@ -2014,6 +2021,7 @@ function closeConnOv(){
   <div id="remDrivePill" onclick="PLRemote.openExpert()" style="display:none;align-items:center;gap:6px;background:var(--sur,#151b24);border:1px solid #9d8cff;color:var(--tx,#e6e9ef);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.4);cursor:pointer">🔭 remote</div>
 </div>
 
+<div class="rem-ov" id="remKlantOv"><div class="rem-card" id="remKlantCard" role="dialog" aria-label="Meekijkscherm"></div></div>
 <div class="rem-ov" id="remShareOv">
  <div class="rem-card">
   <div class="rem-h"><h3>📡 Diagnose delen</h3><button class="rem-x" onclick="PLRemote.closeShare()">✕</button></div>

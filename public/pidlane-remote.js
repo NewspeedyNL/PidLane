@@ -165,7 +165,9 @@ window.PLRemote=(function(){
     ws.onerror=()=>{};
   }
   async function handleLocalMsg(m){
+    try{const a=klantActie(m);if(a)klantLog(a);}catch(_){ console.warn('Expert-actie niet in het meekijkscherm gezet', _); }
     if(m.type==='presence'){const n=m.experts|0;
+      try{klantPresence(n,S.lastExpN);}catch(_){ console.warn('Meekijkscherm niet bijgewerkt na een wijziging in meekijkers', _); }
       $('remExpN').textContent=n;$('remPillN').textContent=n;
       if(n>S.lastExpN){logA('👁 Expert verbonden — '+n+' kijkt nu mee','info');sendVStateSoon();}
       else if(n<S.lastExpN)logA('👁 Expert weg — nog '+n+' verbonden','info');
@@ -397,6 +399,7 @@ window.PLRemote=(function(){
     const k=Object.keys(S.dirty);if(!k.length)return;
     const d=S.dirty;S.dirty={};d.t=Date.now();
     sendWs({type:'telemetry',data:d});
+    for(const kk of k)K.waarden[kk]=d[kk];K.laatsteT=d.t;
   },250);}
   function stopFlush(){if(S.flushT){clearInterval(S.flushT);S.flushT=null;}}
   async function shareStop(){
@@ -408,10 +411,102 @@ window.PLRemote=(function(){
     endShareUi();logA('📡 Delen gestopt','info');
     try{logUsage('remote_share_stop',(S.sess&&S.sess.sessionId)||'');}catch(_){ console.warn('Gebruiksstatistiek remote_share_stop niet gelogd', _); }
   }
-  function endShareUi(){S.mode=null;S.ws=null;showPill(false);
+  function endShareUi(){S.mode=null;S.ws=null;showPill(false);klantDicht();K.verborgen=false;K.log=[];K.waarden={};K.laatsteT=0;
     $('remShareOn').style.display='none';$('remShareOff').style.display='';$('remShareErr').textContent='';
     try{$('remQr').innerHTML='';}catch(_){ /* stil: element kan al weg zijn */ }
     try{$('remShort').value='';$('remShort').placeholder='··· ··· ····';}catch(_){ /* stil: element kan al weg zijn */ }}
+
+  /* ── KLANT-MEEKIJKSCHERM (24-10-2026) ─────────────────────────────
+     Zodra er een expert meekijkt, ziet de klant wat er gebeurt: of zijn
+     telefoon live data levert, welke waarden er naar de expert gaan en wat de
+     expert opvraagt. Twee redenen. (1) De telefoon ís de meetbron: gaat de app
+     naar de achtergrond, dan knijpt Android de meetlus af en ziet de expert
+     niets meer — open laten staan is dus de beste hulp die de klant kan geven.
+     (2) Het is andermans auto: wie meekijkt en wat hij doet hoort zichtbaar
+     te zijn. Verbergen mag; de pill brengt het scherm terug. */
+  const K={log:[],waarden:{},laatsteT:0,verborgen:false,t:null,wegT:0};
+  // Puur: één expert-verzoek als zin voor de klant, of null.
+  function klantActie(m){
+    if(!m||typeof m!=='object')return null;
+    const lijst=a=>(Array.isArray(a)?a:[]).slice(0,8).map(x=>String(x).replace(/[^0-9A-Za-z]/g,'')).join(' ');
+    switch(m.type){
+      case 'request-pids': return 'vraagt waarden op: '+lijst(m.pids);
+      case 'request-poll': return 'laat meten: '+lijst(m.pids);
+      case 'request-dtc': return 'leest de foutcodes uit';
+      case 'request-record':
+        if(m.action==='start')return 'start een opname';
+        if(m.action==='stop')return 'stopt de opname';
+        if(m.action==='csv')return 'downloadt de opname';
+        return null;
+      case 'request-analyze': return 'vraagt een AI-analyse van de opname — dit gebruikt jouw tegoed';
+      case 'request-rapport': return 'leest een eerder rapport';
+      default: return null;
+    }
+  }
+  // Puur: hoe staat de levering ervoor? soort: ok | wacht | stil | geen-auto
+  function klantStatus(nu,laatsteT,verbonden){
+    if(!verbonden)return {soort:'geen-auto',tekst:'Je telefoon is niet verbonden met de auto — de expert krijgt geen nieuwe waarden.'};
+    if(!laatsteT)return {soort:'wacht',tekst:'Wacht op de eerste meting…'};
+    const sec=Math.max(0,Math.round((nu-laatsteT)/1000));
+    if(sec>5)return {soort:'stil',tekst:'Al '+sec+' s geen meting verstuurd — laat de app open en dichtbij de adapter.'};
+    return {soort:'ok',tekst:'Live: je telefoon stuurt meetwaarden naar de expert.'};
+  }
+  // Puur: de inhoud van het scherm. Alles wat van buiten komt gaat door esc().
+  function klantHtml(st){
+    const kleur={ok:'var(--gn,#3ecf8e)',wacht:'var(--tx3,#9aa4b2)',stil:'var(--or,#f5a524)','geen-auto':'var(--rd,#ef5350)'}[st.status.soort]||'inherit';
+    const rijen=st.waarden.slice(0,12).map(w=>'<div class="rem-klant-w"><span>'+esc(w.naam)+'</span><b>'+esc(w.waarde)+(w.eenheid?' <small>'+esc(w.eenheid)+'</small>':'')+'</b></div>').join('');
+    const acties=st.log.map(l=>'<div class="rem-klant-l"><span>'+esc(l.tijd)+'</span> '+esc(l.tekst)+'</div>').join('');
+    return '<div class="rem-h"><h3>👁 '+(st.n===1?'Een expert kijkt mee':esc(st.n)+' experts kijken mee')+'</h3><button class="rem-x" onclick="PLRemote.klantVerberg()" title="Verbergen — de pill bovenin brengt dit scherm terug">✕</button></div>'
+      +'<div class="rem-klant-st" style="border-color:'+kleur+'"><span class="rem-klant-dot" style="background:'+kleur+'"></span>'+esc(st.status.tekst)+'</div>'
+      +'<div class="rem-lbl" style="margin-top:12px">Wat de expert ziet</div>'
+      +(rijen||'<div class="rem-stat">Nog geen waarden verstuurd.</div>')
+      +'<div class="rem-lbl" style="margin-top:12px">Wat de expert doet</div>'
+      +(acties||'<div class="rem-stat">Nog niets opgevraagd. De expert kan alleen lezen; op afstand verandert er niets aan de auto.</div>')
+      +'<p class="rem-stat" style="margin-top:12px">Laat dit scherm open staan: gaat de app naar de achtergrond, dan stopt de live data voor de expert.</p>'
+      +'<div class="rem-flex" style="margin-top:8px"><button class="rem-btn" style="flex:1" onclick="PLRemote.klantVerberg()">Verberg</button><button class="rem-btn danger" style="flex:1" onclick="PLRemote.shareStop()">Stop delen</button></div>';
+  }
+  function klantLog(tekst){
+    K.log.unshift({tijd:new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}),tekst:String(tekst)});
+    if(K.log.length>8)K.log.length=8;
+    klantTeken();
+  }
+  function klantWaarden(){
+    return Object.keys(K.waarden).sort().map(k=>{
+      let naam=k,eenheid='';
+      try{const d=(typeof getPidDef==='function')?getPidDef(k):null;if(d){naam=d.n||d.name||k;eenheid=d.u||d.unit||'';}}catch(_){ /* stil: dan de sleutel als naam */ }
+      return {naam:naam,waarde:K.waarden[k],eenheid:eenheid};
+    });
+  }
+  function klantOpen(){return !!($('remKlantOv')&&$('remKlantOv').classList.contains('open'));}
+  function klantTeken(){
+    if(!klantOpen())return;
+    let verbonden=false;
+    try{verbonden=(typeof connected!=='undefined'&&connected)||(typeof demoMode!=='undefined'&&demoMode);}catch(_){ /* stil: dan "niet verbonden" */ }
+    const c=$('remKlantCard');if(!c)return;
+    c.innerHTML=klantHtml({n:S.lastExpN|0,status:klantStatus(Date.now(),K.laatsteT,verbonden),waarden:klantWaarden(),log:K.log});
+  }
+  function klantToon(){
+    const ov=$('remKlantOv');if(!ov)return;
+    K.verborgen=false;ov.classList.add('open');klantTeken();
+    clearInterval(K.t);K.t=setInterval(klantTeken,1000);
+  }
+  function klantDicht(){const ov=$('remKlantOv');if(ov)ov.classList.remove('open');clearInterval(K.t);K.t=null;}
+  function klantVerberg(){K.verborgen=true;klantDicht();}
+  function klantPresence(n,was){
+    if(n>was){klantLog(n>1?'nog een expert kijkt mee':'een expert kijkt nu mee');if(!K.verborgen)klantToon();}
+    else if(n<was){klantLog(n?'een expert is weg':'de expert is weg');if(!n){klantDicht();K.verborgen=false;}}
+  }
+  // De pill: kijkt er iemand mee, dan het meekijkscherm; anders het deelvenster.
+  function pillTik(){ if(S.mode==='local'&&(S.lastExpN|0)>0)klantToon(); else openShare(); }
+  try{ // achtergrond: de klant ziet achteraf hoe lang de expert niets kreeg
+    document.addEventListener('visibilitychange',()=>{
+      if(S.mode!=='local'||!(S.lastExpN>0))return;
+      if(document.hidden){K.wegT=Date.now();return;}
+      if(K.wegT){const sec=Math.round((Date.now()-K.wegT)/1000);K.wegT=0;
+        if(sec>=3){klantLog('de app stond '+sec+' s op de achtergrond — de expert kreeg toen geen live data');
+          logA('📡 App stond '+sec+' s op de achtergrond tijdens het delen — de expert kreeg toen geen live data','warn');}}
+    });
+  }catch(_){ console.warn('Achtergrondmelding voor het delen niet geïnstalleerd', _); }
 
   /* ── EXPERT: meekijken ────────────────────────────────────────── */
   function openExpert(){$('remExpertOv').classList.add('open');werkplek();}
@@ -1024,7 +1119,7 @@ window.PLRemote=(function(){
   }
 
   return {openShare,deelMethode,closeShare,shareStart,shareStop,copy,
-          openExpert,expertClose,expertConnect,expertDisconnect,_staat:()=>({vstate:S.vstate,expMeta:S.expMeta}),_stilOordeel:stilOordeel,_remSleutel:remSleutel,_remPid:remPid,reqPids,reqDtc,reqRapport,enterDrive,
+          openExpert,expertClose,expertConnect,expertDisconnect,_staat:()=>({vstate:S.vstate,expMeta:S.expMeta}),_klantActie:klantActie,_klantStatus:klantStatus,_klantHtml:klantHtml,klantVerberg,klantToon,pillTik,_stilOordeel:stilOordeel,_remSleutel:remSleutel,_remPid:remPid,reqPids,reqDtc,reqRapport,enterDrive,
           vernieuw:sendVStateSoon,_buildVState:buildVState,
           remRecStart,remRecStop,remRecCsv,remAnalyze,pairStart,
           stopQrScan,scanForJoin,scanForPair};
