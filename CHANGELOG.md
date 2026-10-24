@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-10-2026 — Wielslip gemeten aan de vier wielen (#560, methode 1)
+ ═══════════════════════════════════════════════════════════
+
+ - PLEigen.wielRol()/wielCodes(): een eigen sensor met "wheel speed" of
+   "wielsnelheid" en een plek in de naam is een wiel (OBDb: Mazda 760
+   22 2B06–2B09). Met alle vier geeft de ritmeting ze door (m.wielen).
+ - PLConditie: wielTik() telt een slipmoment als de snelste as bij gas ≥ 10 %
+   sneller draait dan de langzaamste; vier verse waarden binnen 2,5 s.
+   Per rit cd.ts, naast de afgeleide cd.tc.
+ - Wintercheck: een gemeten rit telt zijn ts, niet tc; het advies zegt dan
+   "wielslip" (zonder "mogelijk") en noemt de vier wielen als bron.
+ - Tests: test-winterrit.js +9, test-mode21.js +5; vijf mutaties; blok 5.
+
+ ═══════════════════════════════════════════════════════════
  24-10-2026 — Conditiescore: dode zones uit 23 echte ritten (#475, #452)
  ═══════════════════════════════════════════════════════════
 

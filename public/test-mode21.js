@@ -377,6 +377,11 @@ function haalZeef(isMode01) {
   {
     const s = bouw();
     const E = s.PLEigen;
+    t('wiel: Front left wheel speed (OBDb, Mazda 760) = VL', E.wielRol('Front left wheel speed'), 'VL');
+    t('wiel: Rear right wheel speed = AR', E.wielRol('Rear right wheel speed'), 'AR');
+    t('wiel: wielsnelheid linksachter = AL', E.wielRol('wielsnelheid linksachter'), 'AL');
+    t('wiel: Vehicle speed is geen wiel', E.wielRol('Vehicle speed'), null);
+    t('wiel: Front left tire pressure is geen wielsnelheid', E.wielRol('Front left tire pressure'), null);
     t('rol: Commanded generator voltage = gevraagd', E.laadRol('Commanded generator voltage'), 'gevraagd');
     t('rol: Generator output voltage is niet wat er gevraagd wordt', E.laadRol('Generator output voltage'), null);
     t('rol: 12V battery voltage is de gewone spanning, geen rol', E.laadRol('12V battery voltage'), null);

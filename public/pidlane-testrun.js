@@ -2844,6 +2844,30 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Tractie gemeten aan de wielen (24-10-2026) ──
+  {
+    issue: '#560',
+    naam: 'Met de vier wielsnelheden uit de ABS-module telt een rit gemeten wielslip, en dat gaat voor de afleiding uit mode 01',
+    waarom: 'Methode 1 van #560: de ABS-module heeft de wielsnelheden (Mazda 760 22 2B06–2B09 in OBDb); daarmee is slip gemeten in plaats van vermoed.',
+    proef: async function () {
+      if (!window.PLEigen || typeof PLEigen.wielRol !== 'function' || typeof PLEigen.wielCodes !== 'function') return { staat: 'FOUT', detail: 'PLEigen.wielRol/wielCodes ontbreken — oude pidlane-uitgebreid.js (herladen?)' };
+      if (!window.PLConditie) return { staat: 'FOUT', detail: 'PLConditie ontbreekt (herladen?)' };
+      if (PLEigen.wielRol('Front left wheel speed') !== 'VL') return { staat: 'FOUT', detail: 'de OBDb-naam "Front left wheel speed" wordt niet als wiel herkend' };
+      var a = null, t = 0, i;
+      for (i = 0; i < 40; i++) {
+        t += 2000;
+        var v = (i >= 20 && i < 23) ? 58 : 50;
+        a = PLConditie.tik(a, { kmh: 50, rpm: 2000, pedaal: 30, gasklep: 25, pedaalT: t, gasklepT: t,
+          wielen: { VL: { v: v, t: t }, VR: { v: v, t: t }, AL: { v: 50, t: t }, AR: { v: 50, t: t } } }, 2);
+      }
+      var s = PLConditie.samenvat(a) || {};
+      if (s.ts !== 1) return { staat: 'FOUT', detail: 'drie tikken voor 16 % sneller bij gas geven ts=' + s.ts + ' in plaats van 1' };
+      var c = PLEigen.wielCodes();
+      return c ? { staat: 'OK', detail: 'deze auto: vier wielsnelheden als eigen sensor (' + c.VL + ', ' + c.VR + ', ' + c.AL + ', ' + c.AR + ')' }
+               : { staat: 'OK', detail: 'telling klopt; deze auto heeft nog geen vier wielsnelheden — Mijn voertuigen → Sensoren → zoek in OBDb' };
+    }
+  },
+
   // ── Conditiescore: dode zones uit echte ritten (24-10-2026) ──
   {
     issue: '#475',

@@ -15,6 +15,23 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 24-10-2026 — #560 methode 1: wielsnelheden uit de ABS-module
+
+De CX-5 heeft ze in OBDb (`Mazda-CX-5/signalsets/v3/default.json`): adres 760,
+mode 22, DID 2B06 rechtsvoor, 2B07 linksvoor, 2B08 rechtsachter, 2B09
+linksachter, één byte in km/u. Er hoefde dus geen nieuwe bron te komen: de
+bestaande OBDb-zoekknop haalt ze binnen als eigen sensoren, en `wielRol()`
+herkent ze aan de naam. Wat níét gebouwd is: een ESP/ASR-statusbit — die staat
+voor de CX-5 niet in OBDb, en raden kost een foute uitspraak.
+
+Twee keuzes die een rit moet bevestigen (#541 of de CX-5):
+- **10 % tussen de assen bij gas** is de slipdrempel. Een bocht maakt binnen-
+  en buitenwiel ongelijk, maar het gemiddelde per as nauwelijks.
+- **Vier waarden binnen 2,5 s.** Eigen PIDs worden met hoogstens twee per
+  ronde gevraagd; een ronde duurt op de CX-5 rond een seconde. Halen ze dat
+  niet, dan telt de rit niet als gemeten (geen `ts`) en valt het advies terug
+  op methode 3.
+
 ## 24-10-2026 — conditiescore: de dode zones tegen 26 echte ritten (#475)
 
 #452 vroeg welke kenmerken over vijf ritten stabiel genoeg zijn voor hun dode

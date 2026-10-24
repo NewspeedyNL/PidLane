@@ -775,6 +775,17 @@
     try { var x = (typeof pidVals !== 'undefined') ? pidVals[pid] : undefined; return typeof x === 'number' && isFinite(x) ? x : undefined; }
     catch (e) { return undefined; }
   }
+  // De vier wielsnelheden uit de ABS-module (#560, methode 1), met hun
+  // updatetijd; null als deze auto ze niet als eigen sensor heeft.
+  function wielMeting() {
+    try {
+      var c = (window.PLEigen && typeof PLEigen.wielCodes === 'function') ? PLEigen.wielCodes() : null;
+      if (!c) return null;
+      var uit = {};
+      Object.keys(c).forEach(function (r) { uit[r] = { v: pv(c[r]), t: pvT(c[r]) }; });
+      return uit;
+    } catch (e) { console.warn('PLGarage: wielsnelheden niet leesbaar', e); return null; }
+  }
   // Wanneer een PID voor het laatst ververst werd (#560): de tractieherkenning
   // telt alleen verse monsters.
   function pvT(pid) {
@@ -1016,7 +1027,7 @@
       if (r) {
         ritTik(r, { kmh: kmh, rpm: pv('010C'), koelwater: pv('0105'), accu: pv('0142'), lph: pv('015E'), maf: pv('0110'), trim: pv('0107'),
           ltft: pv('0107'), stft: pv('0106'), vervroeg: pv('010E'), last: pv('0104'), raildruk: pv('0123'), buiten: pv('0146'), inlaat: pv('010F'),
-          pedaal: pv('0149'), gasklep: pv('0111'), pedaalT: pvT('0149'), gasklepT: pvT('0111') }, nu, v.brandstof);
+          pedaal: pv('0149'), gasklep: pv('0111'), pedaalT: pvT('0149'), gasklepT: pvT('0111'), wielen: wielMeting() }, nu, v.brandstof);
         try { (typeof dtcCodes !== 'undefined' && Array.isArray(dtcCodes) ? dtcCodes : []).forEach(function (c) { if (r.codes.indexOf(c) < 0) r.codes.push(c); }); }
         catch (e) { console.warn('PLGarage: codes van de rit', e); }
         r._weg = false;
