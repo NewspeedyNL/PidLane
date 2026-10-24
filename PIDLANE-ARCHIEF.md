@@ -15,6 +15,22 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 24-10-2026 — ATST na Google Maps (#509): de regelaar wacht, en meldt zich bij D1
+
+Op de rit van 14-10 stond ATST aan het eind twee treden hoger; het vermoeden
+was de terugkomst uit de achtergrond (Android bevriest de WebView-timers, de
+eerste antwoorden missen). Nagemeten is dat niet: de `btDiag`-regels gingen
+nooit naar D1, en het logboek van die dag was op de telefoon. In plaats van
+het vermoeden eerst te bewijzen is de regelaar nu dezelfde regel gegeven als
+bij contact uit: zolang de app weg is en 15 s erna telt een misser niet, en
+het venster van vóór de achtergrond gaat weg. Kost hoogstens één venster
+vertraging bij een echte timingfout na terugkomst. Elke bijsturing staat nu
+in `logregels` (type `verbind`, met `achtergrondSindsS`); opdracht 41 meet
+`verbind-st-stappen` en zegt dus bij de volgende rit of er nog iets omhoog gaat.
+
+De 27 weigeringen van de ELM-poort op dezelfde rit zijn niet nagelopen;
+opdracht 41 telt ze tijdens een contactstilte (`contact-weigeringen`).
+
 ## 24-10-2026 — #602: poll-unie, buslock, lege mode-03-respons, opname
 
 **Poll-unie.** `applyExpertPoll()` gaf `activePIDs ∪ wens` aan

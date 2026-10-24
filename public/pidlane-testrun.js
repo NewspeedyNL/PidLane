@@ -2844,6 +2844,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── ATST na de achtergrond (24-10-2026) ──
+  {
+    issue: '#509',
+    naam: 'Missers vlak na terugkomst uit de achtergrond sturen ATST niet omhoog, en een bijsturing gaat naar D1',
+    waarom: 'Op 14-10 stond ATST na een rit met Google Maps twee treden hoger; de enige bron was het BT-log op de telefoon.',
+    proef: async function () {
+      if (typeof plStNaAchtergrond !== 'function') return { staat: 'FOUT', detail: 'plStNaAchtergrond ontbreekt — oude pidlane-bt.js (herladen?)' };
+      var nu = Date.now();
+      if (!plStNaAchtergrond({ weg: function () { return false; }, laatste: function () { return { tot: nu - 3000 }; } }, nu))
+        return { staat: 'FOUT', detail: '3 s na de achtergrond telt een misser tóch voor de ATST' };
+      if (plStNaAchtergrond({ weg: function () { return false; }, laatste: function () { return { tot: nu - 60000 }; } }, nu))
+        return { staat: 'FOUT', detail: 'een minuut na de achtergrond telt een misser nog steeds niet' };
+      var n = (window.PLVerbind && PLVerbind.stappen) ? PLVerbind.stappen() : 0;
+      return { staat: 'OK', detail: 'deze verbinding ' + n + ' keer bijgestuurd' + (window.PLAchtergrond ? ', ' + PLAchtergrond.perioden().length + ' achtergrondperiode(n)' : '') };
+    }
+  },
+
   // ── Meeluisteren op CAN (24-10-2026) ──
   {
     issue: '#560',
