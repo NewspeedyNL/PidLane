@@ -138,6 +138,13 @@ async function hoofd() {
     await O.lijst();
     toets('de keuring uit de lijst staat bij de opdracht', O.keuring('1').staat === 'rood' && O.keuring('1').notitie === 'band te krap', JSON.stringify(O.keuring('1')));
     toets('zonder keuring: ongekeurd', O.keuring('2').staat === 'ongekeurd');
+    // Meetcoach (24-10-2026): ongekeurd telt als `auto`; rood blijft rood.
+    toets('opstelling: ongekeurd telt als auto', O.opstelling('2') === 'auto', O.opstelling('2'));
+    toets('opstelling: rood blijft rood (een mens zei nee)', O.opstelling('1') === 'rood', O.opstelling('1'));
+    s.activePIDs = new Set(['010C']);
+    toets('zetSensorenAlle: de sensoren van alle opdrachten, wat al aanstaat niet dubbel', JSON.stringify(O.zetSensorenAlle(12)) === '["010D"]' && s.activePIDs.has('010D'), JSON.stringify([...s.activePIDs]));
+    s.activePIDs = new Set();
+    toets('zetSensorenAlle: het plafond telt', O.zetSensorenAlle(0).length === 0 && s.activePIDs.size === 0);
     toets('oordeelAlle draagt de opstelling', O.oordeelAlle().every(function (r) { return r.opstelling === O.keuring(r.id).staat; }));
     const r = await O.keurZet('1', 'groen', 'gezien');
     toets('keurZet post naar /airtable/opdracht/keur', r.ok && s.gevraagd.some(function (g) { return /\/airtable\/opdracht\/keur$/.test(g.url) && g.o.method === 'POST' && JSON.parse(g.o.body).id === 1; }), JSON.stringify(s.gevraagd.map(function (g) { return g.url; })));

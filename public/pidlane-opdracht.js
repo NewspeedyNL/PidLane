@@ -710,6 +710,25 @@
     return erbij;
   }
 
+  /* De sensoren van ÁLLE bruikbare opdrachten (meetcoach): een proef op een
+     sensor die niemand uitleest, wordt nooit iets anders dan "nog niet".
+     Hoogstens `max` erbij, op volgorde van de lijst; wat al aanstaat telt
+     niet mee. Geeft terug wat er werkelijk bijkwam. */
+  function zetSensorenAlle(max) {
+    var erbij = [], n = (typeof max === 'number' && max >= 0) ? max : 12;
+    try {
+      if (typeof activePIDs === 'undefined' || !activePIDs || !_opdrachten) return [];
+      _opdrachten.forEach(function (r) {
+        ((r.opdracht && r.opdracht.sensoren) || []).forEach(function (p) {
+          if (erbij.length < n && !activePIDs.has(p)) { activePIDs.add(p); erbij.push(p); }
+        });
+      });
+    } catch (e) {
+      console.warn('Opdracht: sensoren van alle opdrachten niet aangezet (meetcoach)', e);
+    }
+    return erbij;
+  }
+
   /* Eén proef uit de opdracht uitvoeren tegen wat de ritwaarnemer heeft
      gezien. Geen eigen boekhouding: PLRit.per() is de bron die er al is.
 
@@ -1040,6 +1059,16 @@
     var k = id ? _keuring[id] : null;
     return k ? Object.assign({}, k) : { staat: 'ongekeurd', notitie: '', op: '' };
   }
+  /* WAT ER BIJ HET VERZENDEN TELT (24-10-2026, meetcoach). De handmatige
+     keuring was de rem op elke uitkomst, en die rem bleek de reden dat er
+     niets meer vanzelf groen werd. Nu: groen en rood blijven wat een mens
+     zei; ongekeurd heet `auto` en telt als antwoord — de voorwaarden in het
+     oordeel zijn de keuring, en de toeschouwer ziet stilstand, rijden,
+     contact en helling zelf. Afkeuren kan in Second opinion. */
+  function opstelling(id) {
+    var s = keuring(id).staat;
+    return s === 'ongekeurd' ? 'auto' : s;
+  }
   /* De beheerder zet de opstelling op groen of rood. De worker controleert
      de rol; dit is alleen de aanvraag. */
   function keurZet(id, staat, notitie) {
@@ -1084,6 +1113,8 @@
     rit: _rit,
     mmss: _mmss,
     oordeelAlle: oordeelAlle,
+    opstelling: opstelling,
+    zetSensorenAlle: zetSensorenAlle,
     voorwaarden: voorwaarden,
     oordeel: oordeel,
     haal: haal,

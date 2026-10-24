@@ -2704,10 +2704,14 @@ function _verzendOpdracht(o, h) {
      een Outcome die als antwoord telt; anders heet hij `proefopstelling`, en
      staat het oordeel wel in de tekst. Een uitkomst uit een proef die zelf
      fout kan staan, hoort niet tussen de antwoorden te tellen. */
-  const opst = (typeof PLOpdracht.keuring === 'function') ? PLOpdracht.keuring((h || {}).id).staat : 'ongekeurd';
-  _liveSchrijf(vonnis.staat === 'bevinding' && opst === 'groen' ? 'opvallend' : 'info',
+  /* Sinds de meetcoach (24-10-2026) telt een ongekeurde opstelling als
+     `auto`: alleen een mens die "rood" zei, maakt er een proefopstelling van. */
+  const opst = (typeof PLOpdracht.opstelling === 'function') ? PLOpdracht.opstelling((h || {}).id)
+    : (typeof PLOpdracht.keuring === 'function') ? PLOpdracht.keuring((h || {}).id).staat : 'ongekeurd';
+  const telt = opst === 'groen' || opst === 'auto';
+  _liveSchrijf(vonnis.staat === 'bevinding' && telt ? 'opvallend' : 'info',
     'opdracht ' + o.naam + ' — uitkomst: ' + vonnis.staat + ' — ' + vonnis.reden + vensterTekst + ' · opstelling ' + opst,
-    { Outcome: opst === 'groen' ? vonnis.staat : 'proefopstelling', Repro: _issuesVan(o) });
+    { Outcome: telt ? vonnis.staat : 'proefopstelling', Repro: _issuesVan(o) });
 
   /* De antwoorden van de bestuurder, als eigen regel naast de uitkomst
      (#283). Tot 24-09 kwamen ze nooit aan: de vraag "noemt het scherm de
@@ -2843,6 +2847,23 @@ function _zonderSporen(naam, fn) {
 }
 
 const PROEVEN_B5 = [
+
+  // ── Meetcoach (24-10-2026) ──
+  {
+    issue: 'meetcoach',
+    naam: 'De meetcoach laadt alle opdrachten, telt ongekeurd als auto en zet één actie in Live',
+    waarom: 'Op 24-10 werd niets meer vanzelf groen: de lijst, de sensoren, de keuring en het verzenden waren alle vier handwerk geworden.',
+    proef: async function () {
+      var M = window.PLMeetcoach;
+      if (!M || typeof M.plan !== 'function') return { staat: 'FOUT', detail: 'PLMeetcoach ontbreekt — pidlane-meetcoach.js niet geladen (herladen?)' };
+      if (!window.PLOpdracht || typeof PLOpdracht.opstelling !== 'function' || typeof PLOpdracht.zetSensorenAlle !== 'function')
+        return { staat: 'FOUT', detail: 'PLOpdracht.opstelling/zetSensorenAlle ontbreken — oude pidlane-opdracht.js (herladen?)' };
+      if (PLOpdracht.opstelling('bestaat-niet') !== 'auto') return { staat: 'FOUT', detail: 'een ongekeurde opstelling telt niet als auto' };
+      var p = M.plan(PLOpdracht.oordeelAlle(), M._staat().keuze);
+      var a = p.acties.filter(function (x) { return x.actief; })[0];
+      return { staat: 'OK', detail: p.klaar + ' klaar, ' + p.open + ' bezig, ' + p.uitgesloten + ' niet voor deze rit' + (a ? ' — nu: ' + a.tekst : '') + (M._staat().verzondenN ? ', ' + M._staat().verzondenN + ' verzonden' : '') };
+    }
+  },
 
   // ── Tractie gemeten aan de wielen (24-10-2026) ──
   {
@@ -11691,10 +11712,10 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 23-10 — meetproeven: jij keurt de opstelling, de toeschouwer ziet stilstand, rijden, contact en helling (#594)',
+  titel: 'OPLEVERING 24-10 — meetcoach: één vraag bij verbinden, één actie in Live, de rest meet en verzendt vanzelf',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
-    'EEN MEETPROEF TELT PAS ALS JIJ DE OPSTELLING GOEDKEURT (#594). Een uitkomst was vaak fout door de proef zelf, niet door de auto. Open de meetkamer tijdens de rit, kijk of de proef meet wat hij moet meten, en tik ✓ Opstelling OK. Klopt het niet: ✗ Opstelling fout, met wat er mis is. Tot dan gaat de uitkomst als proefopstelling de logtabel in.',
+    'GEEN MEETKAMER MEER NODIG. Bij verbinden vraagt Live één keer: hoe lang rij je, en wat kan deze rit (stoplicht, snelweg, helling, stilstaan). Daarna staat er bovenaan Live één actie tegelijk — doe hem als het kan, of tik Kan nu niet. Alle opdrachten laden vanzelf, hun sensoren lezen mee, en een uitkomst gaat bij verbreken of na een minuut contact uit vanzelf naar Second opinion. Een opstelling hoeft niet meer gekeurd: ongekeurd telt als auto, afkeuren kan achteraf. Sta je stil, dan vraagt de balk of hij de bus even mag hebben — alleen na Ja.',
     'JE HOEFT NIETS MEER TE MARKEREN VOOR STILSTAND, RIJDEN, CONTACT OF HELLING. De toeschouwer ziet het zelf en zet de markering; de regel 🔭 in de meetkamer zegt wat hij zag. Een stuk zonder snelheid telt niet als stilstand.',
     'DE MEETPROEVEN STAAN IN D1, NIET HIER. Nieuwe staan in meetproeven/ (gekeurd door plopdracht.js) en gaan via beheer.html → Meetopdrachten de tabel in; de helling (#463) en contact uit (#487) zijn er nu zo één.',
     'DE VERBINDING IS KLAAR. Verbinding, snelheid, herverbinden en protocol werken: op 08-10 vijf diagnoses tegelijk op de CX-5, 0 fouten in het log (#394 dicht). Alle meetopdrachten in D1 staan op afgerond; de meetkamer is leeg tot er een nieuw issue komt.',
