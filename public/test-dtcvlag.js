@@ -88,11 +88,16 @@ const wacht = () => new Promise(r => setImmediate(r));
     const scan = s.scanDTC();
     await wacht();
     s._faal(new Error('adapter weg'));
+    // Sinds #602 vangt scanDTC() de fout zelf (eerder bleef de spinner
+    // staan en de knop uit). De vlag moet nog steeds uit blijven.
     let gegooid = false;
     try { await scan; } catch (e) { gegooid = true; }
     toets('een scan die mislukt laat de vlag uit',
-      gegooid && s.window._didDTCScan !== true,
+      !gegooid && s.window._didDTCScan !== true,
       'na een fout zegt het paneel "geen foutcodes" — er is niet gekeken');
+    toets('en zegt "Niet gelezen", knop weer bruikbaar',
+      /Niet gelezen/.test(s.document.getElementById('dtcList').innerHTML) && s.document.getElementById('bscan').disabled === false,
+      s.document.getElementById('dtcList').innerHTML);
   }
 
   console.log(`\n${n - fout}/${n} goed`);
