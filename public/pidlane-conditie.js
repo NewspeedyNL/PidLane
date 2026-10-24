@@ -63,7 +63,8 @@
     // Tractie gemeten aan de wielen (#560, methode 1): de snelste as draait
     // `slip` sneller dan de langzaamste, bij gas. `spreidMs`: de vier wielen
     // komen niet in één antwoord; ouder uit elkaar is geen vergelijking.
-    ws: { kmh: 8, pedaal: 15, slip: 0.10, spreidMs: 2500, minS: 60 }
+    // minKmh: de wielen zijn hele km/h; bij 10 km/h is één tel al 10 %.
+    ws: { kmh: 8, pedaal: 15, slip: 0.10, minKmh: 3, spreidMs: 2500, minS: 60 }
   };
 
   // ── Het onderhoudslogboek ─────────────────────────────────────────
@@ -242,14 +243,32 @@
      niet te weten — de snelste as tegen de langzaamste. Remmen telt niet
      (geen gas), en een ABS-blokkering ook niet: die maakt een wiel trager,
      niet een as sneller bij gas. Eén reeks slip-tikken telt één keer. */
+  /* EEN AS OP EEN ANDER MOMENT (24-10-2026, rit met opdracht 44). De app
+     leest de wielen per paar: eerst achter, ±1,5 s later voor. Bij optrekken
+     is de as die later gelezen is dan al sneller — 2 km/h per seconde maakt
+     bij 20 km/h 15 % — en de eerste rit telde zo 15× slip waar er één was.
+     Daarom per as de laatste twee metingen, en de snelste schatten op het
+     moment van de oudste: rechte lijn tussen zijn twee punten. */
+  function asStap(a, k, t, v) {
+    var s = a[k] || (a[k] = {});
+    if (s.t1 === t) return;
+    s.t0 = s.t1; s.v0 = s.v1; s.t1 = t; s.v1 = v;
+  }
+  function asOp(s, t) {
+    if (!s || s.t1 === undefined) return null;
+    if (s.t1 === t) return s.v1;
+    if (s.t0 === undefined || s.t0 > t || s.t1 <= s.t0) return null;
+    return s.v0 + (s.v1 - s.v0) * (t - s.t0) / (s.t1 - s.t0);
+  }
+
   function wielTik(a, m, dt, kmh) {
     var c = CFG.ws, w = m.wielen, ped = getal(m.pedaal);
     if (!w || kmh === null || kmh <= c.kmh) { a.wsAan = false; return; }
-    var r = ['VL', 'VR', 'AL', 'AR'], v = {}, tMin = Infinity, tMax = -Infinity, i;
+    var r = ['VL', 'VR', 'AL', 'AR'], v = {}, tt = {}, tMin = Infinity, tMax = -Infinity, i;
     for (i = 0; i < r.length; i++) {
       var x = w[r[i]], g = x ? getal(x.v) : null, t = x ? getal(x.t) : null;
       if (g === null || t === null) { a.wsAan = false; return; }
-      v[r[i]] = g; tMin = Math.min(tMin, t); tMax = Math.max(tMax, t);
+      v[r[i]] = g; tt[r[i]] = t; tMin = Math.min(tMin, t); tMax = Math.max(tMax, t);
     }
     // Gereden met vier wielen in beeld, vers of niet: de noemer voor de
     // meetopdracht (hoeveel van de rit was te vergelijken).
@@ -258,10 +277,15 @@
     if (tMax - tMin > c.spreidMs || tMax === a.wsT) return;
     a.wsT = tMax;
     a.wsD = (a.wsD || 0) + dt;
-    var voor = (v.VL + v.VR) / 2, achter = (v.AL + v.AR) / 2, lo = Math.min(voor, achter), hi = Math.max(voor, achter);
+    var vr = (v.VL + v.VR) / 2, ac = (v.AL + v.AR) / 2;
     // Klopt de schaal? Het gemiddelde van de vier tegen 010D.
-    a.wvS = (a.wvS || 0) + Math.abs((voor + achter) / 2 - kmh) / kmh * 100; a.wvN = (a.wvN || 0) + 1;
-    var slipt = lo > c.kmh && (hi - lo) / lo >= c.slip && ped !== null && ped >= c.pedaal;
+    a.wvS = (a.wvS || 0) + Math.abs((vr + ac) / 2 - kmh) / kmh * 100; a.wvN = (a.wvN || 0) + 1;
+    var tV = Math.max(tt.VL, tt.VR), tA = Math.max(tt.AL, tt.AR);
+    asStap(a, 'wsV', tV, vr); asStap(a, 'wsA', tA, ac);
+    var tc = Math.min(tV, tA), voor = asOp(a.wsV, tc), achter = asOp(a.wsA, tc);
+    if (voor === null || achter === null) return;   // nog geen tweede punt om op terug te rekenen
+    var lo = Math.min(voor, achter), hi = Math.max(voor, achter);
+    var slipt = lo > c.kmh && hi - lo >= c.minKmh && (hi - lo) / lo >= c.slip && ped !== null && ped >= c.pedaal;
     if (slipt && !a.wsAan) a.wsn = (a.wsn || 0) + 1;
     a.wsAan = slipt;
   }

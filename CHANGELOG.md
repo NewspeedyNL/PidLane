@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-10-2026 — Wielslip: de assen op hetzelfde moment vergelijken (#560)
+ ═══════════════════════════════════════════════════════════
+
+ - De rit met opdracht 44 telde 15× slip bij één keer echte wielspin. De
+   wielen komen per paar binnen (achter, ±1,5 s later voor); bij optrekken
+   is de later gelezen as dan al sneller. Nu rekent wielTik() de snelste as
+   terug naar het moment van de oudste (rechte lijn tussen zijn twee laatste
+   metingen), en vraagt hij minstens 3 km/h verschil (hele km/h).
+ - test-winterrit.js +3 (de rit nagebouwd, echte spin tijdens optrekken,
+   afronding bij 10 km/h); twee mutaties, één anker bijgewerkt.
+
+ ═══════════════════════════════════════════════════════════
  24-10-2026 — Meetopdracht voor de wielsnelheden (#560)
  ═══════════════════════════════════════════════════════════
 

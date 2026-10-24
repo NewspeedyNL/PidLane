@@ -150,6 +150,30 @@ console.log('\n#560 — tractie-ingrijpen, afgeleid');
   toets('tegenproef wielen: een wiel van 4 s eerder vergelijkt twee momenten', wtiks((i) => (i === 20 ? { w: { VL: 58, VR: 57 }, wt: { AL: 36000 } } : null)).ts === 0);
   toets('zonder wielsnelheden: niet gemeten, geen 0', wtiks(() => ({ geen: true })).ts === undefined);
   {
+    // De rit van 24-10 (opdracht 44): achter gelezen op t, voor op t + 1,5 s, optrekken 2,5 km/h per s.
+    // Zonder terugrekenen is voor steeds 3,75 km/h sneller en telde elke optrekking als slip.
+    const optrek = (spin) => {
+      let a = null, t = 0;
+      for (let i = 0; i < 12; i++) {
+        t += 2000;
+        const sn = (ms) => 15 + 2.5 * ms / 1000, tA = t - 1500, tV = t;   // 15 → 75 km/h in 24 s
+        let vV = sn(tV); if (spin && i >= 3 && i < 5) vV += 8;              // spin rond 25 km/h
+        a = C.tik(a, { kmh: sn(t), rpm: 2000, pedaal: 40, gasklep: 30, pedaalT: t, gasklepT: t,
+          wielen: { VL: { v: vV, t: tV }, VR: { v: vV, t: tV }, AL: { v: sn(tA), t: tA }, AR: { v: sn(tA), t: tA } } }, 6);   // dt 6: de rit haalt minS
+      }
+      return C.samenvat(a) || {};
+    };
+    toets('wielen: optrekken met de voorwielen 1,5 s later gelezen is geen slip (rit 24-10)', optrek(false).ts === 0, JSON.stringify(optrek(false)));
+    toets('wielen: echte spin tijdens het optrekken (+8 km/h voor) telt nog wel één keer', optrek(true).ts === 1, JSON.stringify(optrek(true)));
+    // Hele km/h: bij 10 km/h is 11 tegen 10 al 10 %, maar één tel is geen slip.
+    let z = null, t = 0;
+    for (let i = 0; i < 12; i++) {
+      t += 2000; const v = i === 5 ? 11 : 10, w = { v: 10, t: t }, wv = { v: v, t: t };
+      z = C.tik(z, { kmh: 10, rpm: 1200, pedaal: 30, gasklep: 20, pedaalT: t, gasklepT: t, wielen: { VL: wv, VR: wv, AL: w, AR: w } }, 6);
+    }
+    toets('wielen: één km/h verschil bij 10 km/h (10 %) is afronding, geen slip', (C.samenvat(z) || {}).ts === 0, JSON.stringify(C.samenvat(z)));
+  }
+  {
     // De noemer en de schaal voor de meetopdracht (wiel-vers-pct, wiel-afwijking-pct).
     let a = null, t = 0;
     for (let i = 0; i < 10; i++) {
