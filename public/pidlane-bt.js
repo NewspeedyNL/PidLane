@@ -2023,6 +2023,21 @@ function plStMoetOmhoog(venster, nu, laatsteStap){
   return venster.slice(-ST_VENSTER).filter(Boolean).length>=ST_DREMPEL;
 }
 
+// Puur. Is de app net terug uit de achtergrond (#509)? Android bevriest de
+// timers van de WebView; bij terugkomst missen de eerste antwoorden, en dat is
+// de telefoon, geen timing van de bus. Zolang de app weg is, en tot
+// ST_NA_ACHTERGROND_MS erna, telt een misser niet voor de ATST-regelaar.
+// Zelfde redenering als PLContact.stil() hieronder in noteAntwoord().
+const ST_NA_ACHTERGROND_MS=15000;
+function plStNaAchtergrond(achtergrond, nu){
+  if(!achtergrond) return false;
+  try{
+    if(typeof achtergrond.weg==='function' && achtergrond.weg()) return true;
+    const p=typeof achtergrond.laatste==='function' ? achtergrond.laatste() : null;
+    return !!(p && p.tot>0 && nu-p.tot>=0 && nu-p.tot<ST_NA_ACHTERGROND_MS);
+  }catch(e){ console.warn('PLAchtergrond niet leesbaar — de ATST-regelaar telt door (#509)', e); return false; }
+}
+
 // De PIDs waarmee de groepsproef werkt: data-PIDs die vrijwel elke auto heeft.
 // Geen bitmaps — die weigeren op de CX-5 elke groep (zie _pollRonde).
 const PL_PROEF_PIDS=['010C','010D','0105','0104','0111','010B','010F'];
@@ -2127,6 +2142,9 @@ const PLVerbind={
     if(demoMode || !connected || !this.profiel || _plSt.bron==='handmatig') return;
     // Contact uit: elke PID "mist", maar dat is geen timing (pidlane-contact.js).
     if(window.PLContact && PLContact.stil()) return;
+    // Net terug uit de achtergrond: ook geen timing (#509). Wat er vóór de
+    // achtergrond in het venster stond, hoort niet bij wat erna komt.
+    if(plStNaAchtergrond(window.PLAchtergrond, Date.now())){ this._venster=[]; return; }
     this._venster.push(!!mist);
     if(this._venster.length>ST_VENSTER) this._venster.shift();
     if(!plStMoetOmhoog(this._venster, Date.now(), this._laatsteStap)) return;
@@ -2139,6 +2157,13 @@ const PLVerbind={
     _plSt={ hex:nieuw, ms:parseInt(nieuw,16)*4, bron:'bijgestuurd', traagstMs:_plSt.traagstMs, refMs:_plSt.refMs, n:_plSt.n };
     this.profiel.st=Object.assign({}, _plSt);
     btDiag(`🔧 ATST bijgestuurd 0x${oud} → 0x${nieuw} (${_plSt.ms} ms): ${n} van de laatste ${ST_VENSTER} verzoeken misten een PID die kort geleden nog antwoordde`,'warn');
+    // Naar D1 (#509): tot 24-10-2026 stond dit alleen in het BT-log op de
+    // telefoon, en was de vraag "kwam dit na Maps?" alleen met de hand te
+    // beantwoorden. Nu staat het naast de contact- en connect-regels.
+    try{
+      const lp=window.PLAchtergrond && PLAchtergrond.laatste ? PLAchtergrond.laatste() : null;
+      if(typeof logToSheets==='function') logToSheets('verbind', `ATST bijgestuurd 0x${oud} → 0x${nieuw}`, { missers:n, venster:ST_VENSTER, achtergrondSindsS: lp&&lp.tot ? Math.round((Date.now()-lp.tot)/1000) : null, achtergrondS: lp ? lp.s : null });
+    }catch(e){ console.warn('ATST-bijsturing niet naar D1 — #509 ziet hem niet', e); }
     Promise.resolve(sendCmd('ATST'+nieuw,1500)).catch(e=>btDiag('ATST bijsturen: adapter niet bijgewerkt ('+(e.message||e)+')','warn'));
     // Bewust niet bewaren (#414): bijsturen geldt voor deze verbinding. In het
     // geheugen werd het de bodem van de volgende, en zo klom de ATST blijvend.

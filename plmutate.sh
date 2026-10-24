@@ -2179,6 +2179,9 @@ MUTATIES=(
 "public/pidlane-bt.js@@return venster.slice(-ST_VENSTER).filter(Boolean).length>=ST_DREMPEL;@@return venster.slice(-ST_VENSTER).filter(Boolean).length>=1;@@test-verbindprofiel.js@@één ontbrekende PID zet ATST al omhoog — #394"
 "public/pidlane-bt.js@@if(laatsteStap>0 && nu-laatsteStap<ST_RUST_MS) return false;@@@@test-verbindprofiel.js@@de ATST-regelaar stapt zonder rust, elke paar verzoeken een trede — #394"
 "public/pidlane-bt.js@@for(const t of ST_TRAP) if(parseInt(t,16)>nu) return t;@@for(const t of ST_TRAP) if(parseInt(t,16)!==nu) return t;@@test-verbindprofiel.js@@de ATST-regelaar kan omlaag stappen — #394"
+"public/pidlane-bt.js@@    if(plStNaAchtergrond(window.PLAchtergrond, Date.now())){ this._venster=[]; return; }@@@@test-verbindprofiel.js@@missers vlak na Maps sturen ATST weer omhoog en de stand blijft de hele verbinding staan (#509)"
+"public/pidlane-bt.js@@    if(typeof achtergrond.weg==='function' && achtergrond.weg()) return true;@@@@test-verbindprofiel.js@@zolang de app op de achtergrond staat telt elke misser voor de ATST (#509)"
+"public/pidlane-bt.js@@      if(typeof logToSheets==='function') logToSheets('verbind',@@      if(false) logToSheets('verbind',@@test-verbindprofiel.js@@een ATST-bijsturing staat weer alleen in het BT-log op de telefoon (#509)"
 "public/pidlane-plload.js@@_plNoteVerbind(oordeel.mistBekend && oordeel.mistBekend.length>0);@@_plNoteVerbind(false);@@test-pollritme.js@@de pollronde meldt een verdwenen PID niet aan de ATST-regelaar — #394"
 # ── de vensterhaken (#399, 04-10-2026) ──
 "public/pidlane-bt.js@@window.plAtStand=plAtStand;@@window.plAtStand=function(){ return plAtStand(); };@@test-verbindprofiel.js@@de vensterhaak plAtStand roept zichzelf aan: stack overflow bij elke ELM-init, de app verbindt met geen enkele auto — #399"

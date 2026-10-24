@@ -44,7 +44,7 @@ const s = { window: {}, Date };
 vm.createContext(s);
 vm.runInContext(knip(BT, 'const ST_BODEM_MS=', '// De PIDs waarmee de groepsproef werkt', 'de verbindprofielfuncties') +
   '\nthis.plStUitMetingen=plStUitMetingen; this.plProtocolBits=plProtocolBits; this.plSoloAntwoord=plSoloAntwoord;' +
-  '\nthis.plGroepCompleet=plGroepCompleet; this.plStUitGeheugen=plStUitGeheugen; this.plAdressen=plAdressen; this.plHandSchoon=plHandSchoon; this.plStVolgende=plStVolgende; this.plStMoetOmhoog=plStMoetOmhoog; this.plVerbindVoorGeheugen=plVerbindVoorGeheugen;', s, { filename: 'pidlane-bt.js' });
+  '\nthis.plGroepCompleet=plGroepCompleet; this.plStUitGeheugen=plStUitGeheugen; this.plAdressen=plAdressen; this.plHandSchoon=plHandSchoon; this.plStVolgende=plStVolgende; this.plStMoetOmhoog=plStMoetOmhoog; this.plVerbindVoorGeheugen=plVerbindVoorGeheugen; this.plStNaAchtergrond=plStNaAchtergrond; this.ST_NA_ACHTERGROND_MS=ST_NA_ACHTERGROND_MS;', s, { filename: 'pidlane-bt.js' });
 
 console.log('\nATST uit de metingen\n');
 toets('te weinig metingen: niets zetten', s.plStUitMetingen([40, 41]) === null);
@@ -248,6 +248,37 @@ toets('zonder protocol is het geen profiel', w.schoon(Object.assign({}, goed, { 
 toets('zonder ATST is het geen profiel', w.schoon(Object.assign({}, goed, { st_hex: 'XYZ' })) === null);
 toets('een bijgestuurde ATST mag als bron mee naar de kennisbank', w.schoon(Object.assign({}, goed, { st_bron: 'bijgestuurd' })).st_bron === 'bijgestuurd');
 toets('onzin-getallen worden null', w.schoon(Object.assign({}, goed, { st_ms: 99999, groep: 2.5 })).st_ms === null);
+
+// ── #509: net terug uit de achtergrond is geen timing ──
+console.log('\nATST na de achtergrond (#509)\n');
+const T509 = 1e12, AW = s.ST_NA_ACHTERGROND_MS;
+const ag = (weg, tot) => ({ weg: () => weg, laatste: () => (tot ? { tot, s: 40 } : null) });
+toets('app is weg: telt niet', s.plStNaAchtergrond(ag(true, 0), T509) === true);
+toets('net terug (5 s): telt niet', s.plStNaAchtergrond(ag(false, T509 - 5000), T509) === true);
+toets('ruim terug (na de wachttijd): telt weer', s.plStNaAchtergrond(ag(false, T509 - AW - 1), T509) === false);
+toets('nooit weg geweest: telt', s.plStNaAchtergrond(ag(false, 0), T509) === false);
+toets('geen PLAchtergrond: telt (geen stille aanname)', s.plStNaAchtergrond(null, T509) === false);
+
+// noteAntwoord() zoals hij in de bron staat, op een eigen PLVerbind-schil.
+const NOTE = knip(BT, '  noteAntwoord(mist){', '  // Terug naar de ATST van vóór de stilte', 'PLVerbind.noteAntwoord');
+function regelaar(achtergrond) {
+  const c = { window: { PLAchtergrond: achtergrond, PLContact: { stil: () => false } }, Date, console: { warn() {} },
+    demoMode: false, connected: true, _plSt: { hex: '19', ms: 100, bron: 'gemeten' }, d1: [], sent: [] };
+  c.btDiag = () => {}; c.sendCmd = (x) => { c.sent.push(x); return Promise.resolve('OK'); };
+  c.logToSheets = (t, m, x) => c.d1.push([t, m, x]);
+  c.PLAchtergrond = achtergrond; c.PLContact = c.window.PLContact;
+  vm.createContext(c);
+  vm.runInContext(knip(BT, 'const ST_TRAP=', '// De PIDs waarmee de groepsproef werkt', 'ST-regelaar') +
+    '\nthis.V={ _venster:[], _laatsteStap:0, _stappen:0, profiel:{},\n' + NOTE + '};', c);
+  return c;
+}
+let rg = regelaar(ag(false, Date.now() - 3000));
+for (let i = 0; i < 20; i++) rg.V.noteAntwoord(true);
+toets('20 missers vlak na Maps: ATST blijft staan', rg.V._stappen === 0 && rg.sent.length === 0, JSON.stringify(rg.sent));
+rg = regelaar(ag(false, 0));
+for (let i = 0; i < 20; i++) rg.V.noteAntwoord(i % 5 === 0);
+toets('4 van 20 missers zonder achtergrond: één trede omhoog', rg.V._stappen === 1 && rg.sent[0] === 'ATST32', JSON.stringify(rg.sent));
+toets('de bijsturing gaat naar D1 (type verbind), met de achtergrond erbij', rg.d1.length === 1 && rg.d1[0][0] === 'verbind' && rg.d1[0][2].missers === 4 && 'achtergrondSindsS' in rg.d1[0][2], JSON.stringify(rg.d1));
 
 const sqlW = (W.match(/var VERBIND_SCHEMA = "([^"]+)";/) || [])[1];
 const sqlS = lees('../schema.sql').split('\n').filter(r => r.indexOf('CREATE TABLE IF NOT EXISTS verbindprofielen') === 0)[0];
