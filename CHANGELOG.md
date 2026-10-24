@@ -10,6 +10,23 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-10-2026 — Meetcoach: meetproeven zonder meetkamer
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw: pidlane-meetcoach.js (PLMeetcoach), alleen admin/ontwikkelaar.
+   Bij verbinden alle opdrachten laden en hun sensoren erbij (≤ 12); een
+   vraag bovenaan Live (hoe lang, welke situaties); daarna één actie
+   tegelijk, afgeleid uit wat de open opdrachten nog missen; "Kan nu niet"
+   schuift door. Verzenden vanzelf: bij verbreken, na een minuut contact
+   uit, en elke tien minuten.
+ - Stilstaan: de balk vraagt of hij de bus mag (meeluisteren, mode 06);
+   alleen na Ja, elke proef één keer per sessie.
+ - De keuring telt automatisch: PLOpdracht.opstelling() geeft `auto` voor
+   ongekeurd; alleen rood is een proefopstelling.
+ - Tests: test-meetcoach.js (28), bproef-meetcoach.js, test-opdrachtkeuring
+   +4, test-verzendoordeel herzien; negen mutaties; blok 5.
+
+ ═══════════════════════════════════════════════════════════
  24-10-2026 — Wielslip: de assen op hetzelfde moment vergelijken (#560)
  ═══════════════════════════════════════════════════════════
 

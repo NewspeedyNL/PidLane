@@ -182,16 +182,19 @@ console.log('\n1. de knop schrijft één regel per proef plus de uitkomst');
 }
 
 // ══════════════════════════════════════════════════════════════════
-console.log('\n1b. een ongekeurde of rode opstelling telt niet als antwoord (23-10-2026)');
+console.log('\n1b. een rode opstelling telt niet als antwoord; ongekeurd wel, als auto (23-10 → 24-10-2026)');
 // ══════════════════════════════════════════════════════════════════
-for (const k of ['ongekeurd', 'rood']) {
+// Herzien op 24-10-2026 (meetcoach). Op 23-10 telde alleen groen; dat bleek de
+// reden dat er niets meer vanzelf groen werd. Nu beslist alleen een mens die
+// "rood" zei; ongekeurd heet auto en telt. Afkeuren kan in Second opinion.
+for (const [k, verwacht, tekst] of [['ongekeurd', 'gesloten', 'auto'], ['rood', 'proefopstelling', 'rood']]) {
   const s = await laad(12.4, k);
   const r = s.PLTestrunLive.verzend();
   const uitkomst = s.verstuurd.filter(function (v) { return /uitkomst:/.test(v.bericht); });
   toets(k + ': het oordeel zelf blijft gesloten', r.ok === true && r.staat === 'gesloten', JSON.stringify(r));
-  toets(k + ': de Outcome is proefopstelling, niet gesloten',
-    uitkomst.length === 1 && uitkomst[0].extra.Outcome === 'proefopstelling', JSON.stringify(uitkomst.map(function (v) { return v.extra; })));
-  toets(k + ': het oordeel staat wel in de tekst', uitkomst.length === 1 && /uitkomst: gesloten/.test(uitkomst[0].bericht) && new RegExp('opstelling ' + k).test(uitkomst[0].bericht),
+  toets(k + ': de Outcome is ' + verwacht,
+    uitkomst.length === 1 && uitkomst[0].extra.Outcome === verwacht, JSON.stringify(uitkomst.map(function (v) { return v.extra; })));
+  toets(k + ': de tekst zegt opstelling ' + tekst, uitkomst.length === 1 && /uitkomst: gesloten/.test(uitkomst[0].bericht) && new RegExp('opstelling ' + tekst).test(uitkomst[0].bericht),
     (uitkomst[0] || {}).bericht);
 }
 

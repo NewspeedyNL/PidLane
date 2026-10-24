@@ -15,6 +15,28 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 24-10-2026 — waarom de meetproeven niet meer vanzelf groen werden
+
+Begin oktober werden na tien minuten rijden meerdere meetproeven vanzelf
+groen: #277 beoordeelt alle opdrachten op dezelfde rit. Op 24-10 lukte dat
+niet meer, en er was geen fout in een proef. Er zaten vier handstappen tussen
+die elk op zichzelf verdedigbaar waren:
+
+1. de lijst laadde pas als je in de meetkamer koos (#248: "niet automatisch");
+2. `zetSensoren()` zette alleen de sensoren van de gekozen opdracht aan, dus
+   een proef op een andere sensor bleef "niet gemeten";
+3. sinds #594 (23-10) telde een uitkomst pas na ✓ Opstelling OK;
+4. verzenden was de knop "Verzend alle afgeronde".
+
+Stap 3 is herzien, niet weggepoetst: de reden ervan (een proef kan zelf fout
+staan) is goed, maar een mens die op de weg een opstelling moet keuren, keurt
+niet — en dan telt er niets. Nu is de keuring de voorwaarden zelf, die de
+toeschouwer ziet; een mens kan nog "rood" zeggen, en afkeuren in Second
+opinion. Besluit van de beheerder in deze sessie.
+
+De meetkamer blijft bestaan voor wie wil kijken; de meetcoach (`PLMeetcoach`)
+is de weg voor de rit zelf.
+
 ## 24-10-2026 — wielslip: 15× gemeten, één keer gebeurd (opdracht 44, #560)
 
 Eerste rit met de vier wielsnelheden (CX-5, 22:24–22:33). Twee proeven klopten
