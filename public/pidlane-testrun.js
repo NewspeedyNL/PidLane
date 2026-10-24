@@ -2844,6 +2844,26 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Meeluisteren op CAN (24-10-2026) ──
+  {
+    issue: '#560',
+    naam: 'Meeluisteren op CAN: tester-verkeer telt niet als uitzending, en alleen een open bus wordt bij de auto vastgelegd',
+    waarom: 'Methode 2 van #560: of wielsnelheid en ESP via ATMA te lezen zijn hangt af van een gateway voor het OBD-contact, en dat verschilt per auto.',
+    proef: async function () {
+      var M = window.PLMeeluister;
+      if (!M || typeof M.ontleed !== 'function' || typeof M.proef !== 'function') return { staat: 'FOUT', detail: 'PLMeeluister ontbreekt — pidlane-meeluister.js niet geladen (herladen?)' };
+      if (!window.PLWaarneming || PLWaarneming.kent().indexOf('canopen') < 0) return { staat: 'FOUT', detail: 'PLWaarneming kent canopen niet — oude pidlane-waarneming.js (herladen?)' };
+      var diag = M.ontleed('7E8 06 41 0C 1A F8\r7E9 06 41 0C 1A F8', '6').oordeel;
+      if (diag !== 'stil') return { staat: 'FOUT', detail: 'alleen antwoorden op eigen vragen geeft "' + diag + '" in plaats van stil' };
+      var open = M.ontleed('1A0 8 00\r4B0 8 01\r201 8 02', 'A6').oordeel;
+      if (open !== 'open') return { staat: 'FOUT', detail: 'drie zenders op 11-bit geeft "' + open + '" in plaats van open' };
+      var w = PLWaarneming.lees('canopen');
+      return w.status === 'gezien'
+        ? { staat: 'OK', detail: 'deze auto: CAN-bus open (' + ((w.bewijs && w.bewijs.zenders) || '?') + ' zenders)' }
+        : { staat: 'OK', detail: 'ontleding klopt; deze auto nog niet open gezien — Admin → 📻 Meeluisteren op CAN' };
+    }
+  },
+
   // ── Meetopdrachten in het verslag (23-10-2026) ──
   {
     issue: '#599',

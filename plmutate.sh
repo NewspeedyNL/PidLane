@@ -285,6 +285,15 @@ MUTATIES=(
 "public/pidlane-scanslot.js@@      if (!String(r || '').trim()) leegReeks++; else leegReeks = 0;@@      leegReeks = 0;@@test-scanslot.js@@lege antwoorden tellen niet meer, dus de hartslag komt er nooit aan te pas"
 "public/pidlane-scanslot.js@@      try { if (raakTimer !== null) clearInterval(raakTimer); }@@      try { if (false) clearInterval(raakTimer); }@@test-scanslot.js@@de raak-timer blijft lopen en tikt een slot aan dat al vergeven is"
 "public/pidlane-scanslot.js@@      try { if (tok && window.PLBus && PLBus.release) PLBus.release(tok); }@@      try { if (false) PLBus.release(tok); }@@test-scanslot.js@@het busslot wordt nooit teruggegeven: elke houder valt buiten de noodrem"
+# ── #560 methode 2, meeluisteren op CAN (24-10-2026). De stilste fouten:
+#    tester-verkeer als uitzending tellen (elke gateway-auto heet dan open),
+#    stilte vastleggen, en de headers aan laten staan na de proef.
+"public/pidlane-meeluister.js@@      if (_isDiag(id, bits)) { uit.diag++; return; }@@      if (false) { uit.diag++; return; }@@test-meeluister.js@@antwoorden op eigen vragen (7E8) tellen als uitzending: een gateway-auto heet open"
+"public/pidlane-meeluister.js@@    var idLen = bits === 29 ? 8 : 3, gezien = {};@@    var idLen = 3, gezien = {};@@test-meeluister.js@@29-bit knipt een id van drie tekens: verschillende zenders vallen samen"
+"public/pidlane-meeluister.js@@      if (r.oordeel === 'open' && window.PLWaarneming) {@@      if (window.PLWaarneming) {@@test-meeluister.js@@een stille bus wordt vastgelegd als open"
+"public/pidlane-meeluister.js@@          var h0 = String(await stuur('ATH0', AT_MS) || '');@@          var h0 = 'OK';@@test-meeluister.js@@de headers blijven aan na de proef: elke parser in de app leest daarna verkeerd"
+"public/pidlane-meeluister.js@@          if (!levend.trim() || /STOPPED|\?/.test(levend)) mislukt@@          if (!levend.trim()) mislukt@@test-meeluister.js@@een adapter die nog STOPPED zegt geldt als hersteld"
+"public/pidlane-meeluister.js@@        if (!_bits(proto)) return ontleed('', proto);@@        if (false) return ontleed('', proto);@@test-meeluister.js@@op een K-lijn gaat er toch ATMA de bus op"
 "public/pidlane-rijsituatie.js@@      await PLScanSlot.doe('diep zoeken', {}, sweep);@@      await sweep(async (pid,t)=>await sendCmd(pid,t));@@test-diepzoeken.js@@diep zoeken gaat weer buiten het scanslot om (de fout zoals hij gemeld is)"
 "public/pidlane-testrun.js@@  var kent = !!perioden;@@  var kent = true;@@test-gatduiding.js@@zonder PLAchtergrond wordt \"niet te zeggen\" toch een uitspraak over #18"
 "public/pidlane-testrun.js@@  var SPELING = 12000;@@  var SPELING = 0;@@test-gatduiding.js@@de speling tussen de twee tijdassen is weg, dus bijna elk gat valt buiten"
