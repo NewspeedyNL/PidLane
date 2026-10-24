@@ -349,12 +349,21 @@ window.PLRemote=(function(){
     sendWs({type:'response',reqId:m.reqId,data:{pids:out}});
     logA('🔭 Expert vroeg PIDs op: '+(m.pids||[]).join(', '),'info');
   }
+  // "Niet gelezen" is iets anders dan "geen codes" (24-10-2026). Tot dan
+  // stuurde een niet-verbonden of mislukte uitlezing [] terug, en de expert
+  // zag "Geen foutcodes — alle systemen OK".
   async function answerDtc(m){
-    let codes=[];
+    let codes=null,err='';
     try{
       if(typeof demoMode!=='undefined'&&demoMode){codes=(typeof dtcCodes!=='undefined'&&dtcCodes&&dtcCodes.length)?[...dtcCodes]:[];}
       else if(typeof connected!=='undefined'&&connected&&typeof realScanDTC==='function'){codes=await withBtLock(()=>realScanDTC());}
-    }catch(_){codes=[];}
+      else err='telefoon niet verbonden met de auto';
+    }catch(e){codes=null;err='uitlezen mislukt: '+String((e&&e.message)||e);}
+    if(!Array.isArray(codes)){
+      sendWs({type:'response',reqId:m.reqId,data:{dtc:null,err:err||'geen antwoord van de auto'}});
+      logA('🔭 Expert vroeg foutcodes — niet gelezen ('+(err||'geen antwoord')+')','warn');
+      return;
+    }
     sendWs({type:'response',reqId:m.reqId,data:{dtc:codes}});
     sendVStateSoon();   // nieuwe codes → de voorkennis van de expert schuift mee
     logA('🔭 Expert las foutcodes uit ('+codes.length+' code'+(codes.length===1?'':'s')+')','info');
@@ -551,8 +560,36 @@ window.PLRemote=(function(){
     }
     if(!j){err.textContent='⚠ Onherkenbare code of link.';return;}
     S.expJoin=j;S.expStop=false;S.expClosed=false;S.backoffE=1000;S.vals={};S.expMeta=null;S.vstate=null;S.demoWarned=false;
+    S.lastFrameT=0;S.stilSt=null;clearInterval(S.stilT);S.stilT=setInterval(versheid,2000);
     err.textContent='Verbinden…';
     openExpertWs();
+  }
+  // Versheid (24-10-2026). De local stuurt alleen een frame als er gemeten
+  // wordt; stopt dat (app naar de achtergrond, BT weg, telefoon dicht), dan
+  // bleven de meters bij de expert stil op de laatste waarde staan alsof alles
+  // live was. Nu: na STIL_MS zonder frame zegt de pill en de status dat.
+  const STIL_MS=6000;
+  function stilOordeel(nu,laatste,open){
+    if(!open)return null;
+    if(!laatste)return 'wacht';
+    return (nu-laatste)>STIL_MS?'stil':'live';
+  }
+  function versheid(){
+    const st=stilOordeel(Date.now(),S.lastFrameT,!!(S.ews&&S.ews.readyState===1));
+    if(st===S.stilSt)return;
+    const was=S.stilSt;S.stilSt=st;
+    const p=$('remDrivePill');
+    const basis='🔭 remote · '+((S.expJoin&&S.expJoin.sid)||'');
+    if(st==='stil'){
+      const sec=Math.round((Date.now()-S.lastFrameT)/1000);
+      if(p)p.textContent=basis+' · ⏸ geen live data';
+      setExpStat('⏸ Geen live data van de telefoon sinds '+sec+' s — app op de achtergrond of adapter weg? Getoonde waarden zijn oud.');
+      expLog('⏸ live data gestopt');
+      logA('🔭 Geen live data meer van de telefoon — getoonde waarden zijn niet actueel','warn');
+    }else if(st==='live'){
+      if(p)p.textContent=basis;
+      if(was==='stil'){setExpStat('✅ Live data loopt weer');expLog('▶ live data hervat');logA('🔭 Live data van de telefoon loopt weer','ok');}
+    }
   }
   function openExpertWs(){
     const j=S.expJoin;if(!j)return;
@@ -561,6 +598,7 @@ window.PLRemote=(function(){
     catch(e){$('remExpErr').textContent='⚠ '+(e.message||e);return;}
     S.ews=ws;
     ws.onopen=()=>{S.backoffE=1000;$('remExpErr').textContent='';
+      if(!S.lastFrameT)S.lastFrameT=Date.now(); // ijkpunt: ook "nooit iets ontvangen" wordt na STIL_MS gemeld
       $('remExpConn').style.display='none';$('remExpLive').style.display='';
       setExpStat('✅ Live verbonden — sessie '+j.sid);};
     ws.onmessage=ev=>{let m;try{m=JSON.parse(ev.data);}catch(_){return;}handleExpMsg(m);};
@@ -580,7 +618,7 @@ window.PLRemote=(function(){
       setExpStat('✅ Live — '+(m.meta.vehicle||'voertuig onbekend')+' · gedeeld door '+(m.meta.ownerLabel||m.meta.owner));werkplek();return;}
     if(m.type==='backfill'){(m.frames||[]).forEach(f=>{mergeVals(f&&f.data);driveFeed(f&&f.data,true);});renderTiles();
       expLog('↺ '+((m.frames||[]).length)+' frame(s) historie ontvangen');return;}
-    if(m.type==='frame'){mergeVals(m.frame&&m.frame.data);driveFeed(m.frame&&m.frame.data);renderTiles();return;}
+    if(m.type==='frame'){S.lastFrameT=Date.now();mergeVals(m.frame&&m.frame.data);driveFeed(m.frame&&m.frame.data);renderTiles();versheid();return;}
     if(m.type==='vstate'){S.vstate=m.data||null;
       if(window._remoteVehicleMode)applyVState(S.vstate);
       try{const el=$('remVoorkennis');if(el&&window.PLVoorkennis)el.innerHTML=PLVoorkennis.html(S.vstate&&S.vstate.voorkennis,{knop:true});}catch(_){ console.warn('Voorkennis niet getoond aan de expert', _); }
@@ -612,7 +650,9 @@ window.PLRemote=(function(){
       if(d.rapport!==undefined){const o=$('remRecOut');const r=d.rapport;
         if(o)o.innerHTML=r?('<div style="background:#0c1018;border:1px solid #232c40;border-radius:8px;padding:10px;font-size:12px;line-height:1.55;white-space:pre-wrap;max-height:40vh;overflow-y:auto"><b>'+esc(r.title||'')+'</b>\n'+esc(r.text||'')+'</div>'):'<div class="rem-stat">✖ rapport niet gevonden op de local</div>';
         expLog(r?('📄 Rapport ontvangen: '+(r.title||'')):'✖ rapport niet gevonden');}
-      if(d.dtc&&m.reqId&&S.pending[m.reqId]){const f=S.pending[m.reqId];delete S.pending[m.reqId];f([...d.dtc]);}
+      if(('dtc' in d)&&m.reqId&&S.pending[m.reqId]){const f=S.pending[m.reqId];delete S.pending[m.reqId];
+        f(Array.isArray(d.dtc)?[...d.dtc]:null,d.err||'geen antwoord van de telefoon');}
+      if(('dtc' in d)&&!Array.isArray(d.dtc))expLog('✖ Foutcodes niet gelezen: '+(d.err||'onbekend'));
       if(d.pids){mergeVals(d.pids);driveFeed(d.pids);renderTiles();
         expLog('✔ Antwoord: '+Object.entries(d.pids).map(([k,v])=>k+'='+(v==null?'—':v)).join('  '));}
       if(d.dtc)expLog(d.dtc.length?('⚠ Foutcodes: '+d.dtc.join(', ')):'✅ Geen foutcodes aanwezig');
@@ -733,6 +773,7 @@ window.PLRemote=(function(){
     expertClose();
     const p=$('remDrivePill');if(p){p.style.display='flex';
       p.textContent='🔭 remote · '+((S.expJoin&&S.expJoin.sid)||'');}
+    S.stilSt=null; // pill opnieuw laten beoordelen bij de volgende tik
     // Remote sessie = analyse-klaar: geen BT-gate ('Check connectie') meer.
     window._connReady=true;
     try{updateConnGate();}catch(_){ console.warn('Verbindingspoort niet bijgewerkt bij het starten van remote-modus', _); }
@@ -821,7 +862,7 @@ window.PLRemote=(function(){
     }catch(e){ console.warn('CSV opslaan mislukt', e); expLog('✖ CSV opslaan mislukt'); }
     S.csvBuf='';
   }
-  function expertDisconnect(){S.expStop=true;clearTimeout(S.recTE);
+  function expertDisconnect(){S.expStop=true;clearTimeout(S.recTE);clearInterval(S.stilT);S.stilT=null;S.stilSt=null;
     exitDrive();
     try{if(S.ews)S.ews.close();}catch(_){ /* stil: opruimen: kan al gebeurd zijn */ }
     S.ews=null;S.vals={};S.expClosed=false;S.expMeta=null;S.pending={};S.vstate=null;
@@ -921,6 +962,19 @@ window.PLRemote=(function(){
       realScanDTC=async function(){ if(window._remoteVehicleMode)return remoteDtc(); return _rd(); };
       window.realScanDTC=realScanDTC;}
   }catch(_){ console.warn('realScanDTC-wrapper (kernfunctie) niet geïnstalleerd — de DTC-deur kan dan in remote-modus een echte (niet-bestaande) BT-verbinding proberen', _); }
+  try{ // DTC-deur remote: een mislukte uitlezing is een melding, geen "alles OK"
+    if(typeof scanDTC==='function'){const _sd=scanDTC;
+      scanDTC=async function(){
+        if(!window._remoteVehicleMode)return _sd.apply(this,arguments);
+        try{return await _sd.apply(this,arguments);}
+        catch(e){
+          const msg='Foutcodes niet opgehaald van de telefoon: '+String((e&&e.message)||e);
+          try{const el=$('dtcList');if(el)el.innerHTML='<div class="emp"><div class="ei">⚠️</div><h3>Niet gelezen</h3><p>'+esc(msg)+'</p></div>';}catch(_){ console.warn('Foutmelding DTC niet getoond', _); }
+          try{$('bscan').disabled=false;}catch(_){ /* stil: element kan al weg zijn */ }
+          logA('🔭 '+msg,'warn');
+        }
+      }; window.scanDTC=scanDTC;}
+  }catch(_){ console.warn('scanDTC-wrapper niet geïnstalleerd — een mislukte remote-uitlezing kan dan blijven hangen', _); }
   try{ // de éne schrijfactie in de app: op afstand hard geblokkeerd
     if(typeof clearDTC==='function'){const _cd=clearDTC;
       clearDTC=async function(){
@@ -948,11 +1002,11 @@ window.PLRemote=(function(){
       window.showVtag=showVtag;}
   }catch(_){ console.warn('showVtag-wrapper niet geïnstalleerd — de expert ziet dan geen bijgewerkte voertuiginfo', _); }
   function remoteDtc(){
-    return new Promise(res=>{
-      if(!S.ews||S.ews.readyState!==1)return res([]);
-      const id=Math.random().toString(36).slice(2,8);
-      S.pending[id]=res;
-      setTimeout(()=>{if(S.pending[id]){delete S.pending[id];res([]);}},15000);
+    return new Promise((res,rej)=>{
+      if(!S.ews||S.ews.readyState!==1)return rej(new Error('geen verbinding met de sessie'));
+      const id=_rid();
+      S.pending[id]=(codes,err)=>Array.isArray(codes)?res(codes):rej(new Error(err));
+      setTimeout(()=>{if(S.pending[id]){delete S.pending[id];rej(new Error('telefoon antwoordde niet binnen 15 s'));}},15000);
       S.ews.send(JSON.stringify({type:'request-dtc',reqId:id}));
     });
   }
@@ -970,7 +1024,7 @@ window.PLRemote=(function(){
   }
 
   return {openShare,deelMethode,closeShare,shareStart,shareStop,copy,
-          openExpert,expertClose,expertConnect,expertDisconnect,_staat:()=>({vstate:S.vstate,expMeta:S.expMeta}),_remSleutel:remSleutel,_remPid:remPid,reqPids,reqDtc,reqRapport,enterDrive,
+          openExpert,expertClose,expertConnect,expertDisconnect,_staat:()=>({vstate:S.vstate,expMeta:S.expMeta}),_stilOordeel:stilOordeel,_remSleutel:remSleutel,_remPid:remPid,reqPids,reqDtc,reqRapport,enterDrive,
           vernieuw:sendVStateSoon,_buildVState:buildVState,
           remRecStart,remRecStop,remRecCsv,remAnalyze,pairStart,
           stopQrScan,scanForJoin,scanForPair};

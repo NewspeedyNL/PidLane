@@ -15,6 +15,21 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 24-10-2026 — remote-lus nagelopen: twee stille leugens naar de expert
+
+**Foutcodes.** `answerDtc()` op de local gaf `[]` als de telefoon niet
+verbonden was of de uitlezing gooide, en `remoteDtc()` bij de expert gaf `[]`
+na 15 s zonder antwoord. `scanDTC()` toont `[]` als "Geen foutcodes — alle
+systemen OK". Nu: `dtc:null` + `err` van de local, `remoteDtc()` verwerpt, en
+een remote-wrapper om `scanDTC()` toont "Niet gelezen". Lokaal geeft
+`realScanDTC()` bij geen antwoord nog steeds `[]`; dat is buiten deze lus
+gelaten (issue).
+
+**Versheid.** De local stuurt alleen frames als `updPID()` loopt. Valt de
+poll-lus stil (app naar de achtergrond, adapter weg), dan kreeg de expert
+niets — en zag dus de laatste waarden alsof ze live waren. `stilOordeel()`
+markeert na 6 s zonder frame; backfill telt niet als vers.
+
 ## 24-10-2026 — remote-expert: mode 21 schreef over mode-01-meters
 
 Gezien op een CX-5 in remote-modus: waarden bij de expert weken af van de
