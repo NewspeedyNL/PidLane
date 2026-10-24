@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-10-2026 — Meekijkscherm voor de klant
+ ═══════════════════════════════════════════════════════════
+
+ · Kijkt er een expert mee, dan opent bij de klant een scherm met: levert de
+   telefoon live data (of niet, en waarom), welke waarden de expert ziet, en
+   wat de expert opvraagt — een AI-analyse met de melding dat die het tegoed
+   van de klant gebruikt. Verbergen kan; de 📡-pill brengt het terug.
+ · Ging de app op de achtergrond, dan meldt het scherm daarna hoe lang de
+   expert geen live data kreeg.
+ · test-klantscherm.js + drie mutaties; schermranden-proef dekt het vel.
+
+ ═══════════════════════════════════════════════════════════
  24-10-2026 — Remote-restpunten (#602)
  ═══════════════════════════════════════════════════════════
 

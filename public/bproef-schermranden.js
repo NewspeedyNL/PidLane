@@ -263,7 +263,8 @@ const VELLEN = [
    buiten. Eigen lijst, zodat de lus hierboven één vorm houdt. */
 const REMOTE_VELLEN = [
   { naam: 'Deel mijn data',   open: 'PLRemote.openShare',  id: 'remShareOv' },
-  { naam: 'Expert op afstand', open: 'PLRemote.openExpert', id: 'remExpertOv' }
+  { naam: 'Expert op afstand', open: 'PLRemote.openExpert', id: 'remExpertOv' },
+  { naam: 'Meekijkscherm klant', open: 'PLRemote.klantToon', id: 'remKlantOv' }
 ];
 
 // Hoe een vel weer dicht gaat. De deel-module luistert naar een klasse; er

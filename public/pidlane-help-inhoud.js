@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-23', app: '3.4.0' },
+  gecontroleerd: { datum: '2026-10-24', app: '3.4.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -325,7 +325,8 @@ var PL_HULP = {
         '<li>Tik op <b>Start delen</b>.</li>' +
         '<li>Kies hoe de expert binnenkomt: <b>Code</b> (voorlezen), <b>QR</b> (scannen), <b>Link</b> (WhatsApp of mail) of <b>Plakcode</b>. ' +
         'Alleen die manier staat dan in beeld; de app onthoudt je keuze.</li>' +
-        '<li>Je ziet hoeveel experts meekijken. Klaar? Tik op <b>Stop delen</b>.</li>' +
+        '<li>Kijkt er een expert mee, dan opent het <b>meekijkscherm</b>: of je telefoon live data levert, welke waarden de expert ziet en wat hij opvraagt. Laat het open staan — gaat de app naar de achtergrond, dan stopt de live data. <b>Verberg</b> mag; de knop 📡 bovenin brengt het terug.</li>' +
+        '<li>Klaar? Tik op <b>Stop delen</b>.</li>' +
         '</ol>' +
         '<p>Ben jij de expert? Tik op <b>Ik ben de expert</b> en typ de code, of plak de link die je kreeg.</p>' +
         '<p>Bij het verbinden ziet de expert meteen wat de app al over de auto weet: waar eerst naar te kijken (foutcodes en monitortests, met de bekende zwakke plekken van het merk erbij), de foutcodes met hoe vaak en wanneer ze opkwamen, wat er eerder op deze auto gezien is, en de titels van eerdere rapporten. De tekst van een rapport gaat pas mee als de expert op <b>Lees</b> tikt. Het chassisnummer gaat niet mee, alleen een pseudoniem.</p>' +
