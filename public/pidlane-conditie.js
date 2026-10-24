@@ -105,9 +105,13 @@
       uitleg: 'De motorregeling spuit meer of minder in dan hij verwacht: valse lucht, een vuile luchtmassameter of slijtende injectoren.' },
     { id: 'verbruik', deel: 'brandstof', naam: 'Verbruik (vergelijkbare ritten)', eenheid: '%', soort: 'verbruik', dood: 4, vol: 20, gewicht: 3,
       uitleg: 'Meer brandstof voor hetzelfde soort rit: filters, bougies, bandenspanning of een sensor die verloopt.' },
-    { id: 'rd', deel: 'brandstof', naam: 'Brandstofdruk bij belasting', eenheid: 'kPa', soort: 'daling_pct', dood: 5, vol: 25, gewicht: 1,
+    // rd: dood 20 (was 5); sr: dood 40 (was 30): gemeten op 24-10-2026 over 23 ritten van
+    // een gezonde CX-5, mediaan van vijf tegen vijf (#452/#475). Raildruk week 5–25 %
+    // af, onrust stationair 8–37 %. Met de oude zones gaf een auto die niet
+    // veranderde punten weg.
+    { id: 'rd', deel: 'brandstof', naam: 'Brandstofdruk bij belasting', eenheid: 'kPa', soort: 'daling_pct', dood: 20, vol: 45, gewicht: 1,
       uitleg: 'Lagere druk bij dezelfde belasting: brandstoffilter of pomp.' },
-    { id: 'sr', deel: 'motor', naam: 'Onrust stationair', eenheid: 'tpm', soort: 'stijging_pct', dood: 30, vol: 150, gewicht: 2,
+    { id: 'sr', deel: 'motor', naam: 'Onrust stationair', eenheid: 'tpm', soort: 'stijging_pct', dood: 40, vol: 150, gewicht: 2,
       uitleg: 'Het stationair toerental schommelt meer: bougies, bobines, een vuil gasklephuis of valse lucht.' },
     { id: 'vl', deel: 'motor', naam: 'Ontstekingsvervroeging bij belasting', eenheid: '°', soort: 'daling', dood: 2, vol: 8, gewicht: 2,
       uitleg: 'De klopregeling neemt vervroeging terug: koolaanslag, slechte brandstof of te warme motor.' },
@@ -121,6 +125,10 @@
       // De vloer van 13,2 V is die van een gewone dynamo; een slimme laadregeling
       // laadt bewust lager (#532). Alleen als dat voor dit voertuig geldt.
       vloerVoorwaarden: { slimladen: false },
+      // Geldt de vloer niet (slim laden of onbekend), dan schommelt de
+      // laadspanning met opzet: op de CX-5 0,9–1,1 V tussen twee keer vijf
+      // ritten (sd 0,6 V, #452/#475). Dan is 0,2 V ruis en geen slijtage.
+      zonderVloer: { dood: 1.2, vol: 2.5 },
       uitleg: 'De dynamo laadt minder: dynamo, spanningsregelaar of een accu die stroom blijft vragen.' }
   ];
   var KENMERK = {}; KENMERKEN.forEach(function (k) { KENMERK[k.id] = k; });
@@ -425,7 +433,7 @@
     if (!k.vloer || !k.vloerVoorwaarden || !window.PLKenmerk) return k;
     try {
       var g = PLKenmerk.geldt(k.vloerVoorwaarden, PLKenmerk.profiel(PLKenmerk.bronVoertuig(v)));
-      return (g.uitkomst === 'geldt' || g.uitkomst === 'waarschijnlijk') ? k : Object.assign({}, k, { vloer: null });
+      return (g.uitkomst === 'geldt' || g.uitkomst === 'waarschijnlijk') ? k : Object.assign({}, k, { vloer: null }, k.zonderVloer || {});
     } catch (e) { console.warn('PLConditie: kenmerkpoort onleesbaar — vloer blijft', e); return k; }
   }
 
@@ -611,8 +619,10 @@
       var b = voor.map(function (r) { return waarde(r, k.id); }).filter(function (w) { return w !== null; });
       var a = na.map(function (r) { return waarde(r, k.id); }).filter(function (w) { return w !== null; });
       if (b.length < CFG.minWaarden || a.length < CFG.minWaarden) return;
-      var l = verlies(Object.assign({}, k, { vloer: null }), mediaan(b), mediaan(a));
-      if (!l || Math.abs(l.d) <= k.dood) return;
+      // Zonder voertuig geen vloer, dus ook de ruimere zone die daarbij hoort (#475).
+      var kz = Object.assign({}, k, { vloer: null }, k.zonderVloer || {});
+      var l = verlies(kz, mediaan(b), mediaan(a));
+      if (!l || Math.abs(l.d) <= kz.dood) return;
       uit.veranderd.push({ id: k.id, naam: k.naam, beter: l.d < 0, tekst: tekstKenmerk({ id: k.id, naam: k.naam, eenheid: k.eenheid, basis: mediaan(b), nu: mediaan(a) }) });
     });
     return uit;

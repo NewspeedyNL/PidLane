@@ -15,6 +15,30 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 24-10-2026 — conditiescore: de dode zones tegen 26 echte ritten (#475)
+
+#452 vroeg welke kenmerken over vijf ritten stabiel genoeg zijn voor hun dode
+zone, en wachtte op ritten met `rit.extra.cd` in D1. Die waren er: 26, waarvan
+twee reeksen van één CX-5 2018 (11 en 12 ritten, 14–24 oktober, geen beurt,
+geen klacht). Mediaan van de eerste vijf tegen de laatste vijf:
+
+| kenmerk | zone | reeks A | reeks B |
+|---|---|---|---|
+| trim warm | 2 %-punt | −0,6 | −0,2 |
+| vervroeging | 2° | −0,8 | −1,8 |
+| raildruk | 5 % | +4,9 % | −25 % |
+| onrust stationair | 30 % | −8 % | +37 % |
+| laadspanning | 0,2 V | +1,07 V | −0,89 V |
+
+Laadspanning is de grootste: de CX-5 laadt gestuurd, mediaan per vijf ritten
+12,7–14,0 V. Met de vloer van 13,2 V (alleen bij een gewone dynamo, #532) is
+0,2 V nog steeds goed; zonder die vloer is het ruis. Vandaar `zonderVloer`
+in plaats van één grotere zone voor iedereen: een gewone dynamo die 0,5 V
+zakt, blijft een bevinding.
+
+Wat dit níét zegt: één auto, twee weken. De nieuwe zones zijn de kleinste
+die deze reeksen stil houden, geen bewezen optimum. #541 levert andere merken.
+
 ## 24-10-2026 — ATST na Google Maps (#509): de regelaar wacht, en meldt zich bij D1
 
 Op de rit van 14-10 stond ATST aan het eind twee treden hoger; het vermoeden

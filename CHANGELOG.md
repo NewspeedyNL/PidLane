@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-10-2026 — Conditiescore: dode zones uit 23 echte ritten (#475, #452)
+ ═══════════════════════════════════════════════════════════
+
+ - Laadspanning zonder vaste vloer (slim laden of onbekend): dode zone
+   1,2 V in plaats van 0,2 V. Met de vloer van 13,2 V blijft 0,2 V.
+ - Raildruk bij belasting: 20 % in plaats van 5 %; onrust stationair 40 %
+   in plaats van 30 %. Trim en vervroeging bleven binnen hun zone.
+ - Ook het verschil na een beurt gebruikt de ruimere zone.
+ - test-conditie.js +3, twee mutaties, blok 5-proef #475.
+
+ ═══════════════════════════════════════════════════════════
  24-10-2026 — ATST na de achtergrond; meetopdrachten in D1 (#509, #537, #599)
  ═══════════════════════════════════════════════════════════
 

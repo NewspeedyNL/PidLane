@@ -1520,6 +1520,8 @@ MUTATIES=(
 "public/pidlane-conditie.js@@    if (tijd(dat) > (nu || Date.now()) + 864e5) return@@    if (false) return@@test-conditie.js@@een beurt in de toekomst zet de score alvast op 100"
 "public/pidlane-conditie.js@@    return Math.max(0, 80 - (f - 1) / 0.5 * 80);@@    return 80;@@test-conditie.js@@olie ver over het interval kost niet meer dan olie net over het interval"
 "public/pidlane-conditie.js@@    var l = klem((d - k.dood) / (k.vol - k.dood), 0, 1);@@    var l = klem(d / k.vol, 0, 1);@@test-conditie.js@@ruis binnen de dode zone kost toch punten"
+"public/pidlane-conditie.js@@Object.assign({}, k, { vloer: null }, k.zonderVloer || {});@@Object.assign({}, k, { vloer: null });@@test-conditie.js@@slim laden krijgt weer 0,2 V dode zone: een gezonde CX-5 verliest accupunten (#475)"
+"public/pidlane-conditie.js@@soort: 'daling_pct', dood: 20, vol: 45,@@soort: 'daling_pct', dood: 5, vol: 25,@@test-conditie.js@@raildruk krijgt weer 5 % dode zone terwijl een gezonde auto 25 % schommelt (#475)"
 "public/pidlane-conditie.js@@return g === null ? null : g < 40 ? 'stad' : g < 70 ? 'gemengd' : 'snelweg';@@return g === null ? null : 'alle';@@test-conditie.js@@een week file telt als slijtage: verbruik van verschillende soorten ritten door elkaar"
 "public/pidlane-conditie.js@@    if (rs.length < N + R) return@@    if (rs.length < N) return@@test-conditie.js@@een score uit vijf ritten, waarvan nulmeting en stand nu dezelfde zijn"
 "public/pidlane-conditie.js@@    var tot = (ritten || []).filter(function (r) { var s = tijd(r.start); return s !== null && s <= nu; });@@    var tot = (ritten || []).filter(function (r) { var s = tijd(r.start); return s !== null; });@@test-conditie.js@@de scorelijn kijkt vooruit: elk punt kent alle ritten"

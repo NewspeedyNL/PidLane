@@ -2844,6 +2844,21 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Conditiescore: dode zones uit echte ritten (24-10-2026) ──
+  {
+    issue: '#475',
+    naam: 'Een gezonde auto met slim laden verliest geen accupunten op 1 V schommeling, en raildruk mag 20 % wiebelen',
+    waarom: 'Over 23 ritten van een gezonde CX-5 week de laadspanning 0,9–1,1 V en de raildruk tot 25 % af — de oude zones (0,2 V, 5 %) gaven punten weg aan ruis.',
+    proef: async function () {
+      var C = window.PLConditie;
+      if (!C || !C.KENMERKEN) return { staat: 'FOUT', detail: 'PLConditie.KENMERKEN ontbreekt (herladen?)' };
+      var k = {}; C.KENMERKEN.forEach(function (x) { k[x.id] = x; });
+      if (!k.lv || !k.lv.zonderVloer || !(k.lv.zonderVloer.dood >= 1)) return { staat: 'FOUT', detail: 'laadspanning heeft geen ruimere zone zonder vloer — oude pidlane-conditie.js (herladen?)' };
+      if (!k.rd || k.rd.dood < 20) return { staat: 'FOUT', detail: 'raildruk staat nog op ' + (k.rd && k.rd.dood) + ' % dode zone' };
+      return { staat: 'OK', detail: 'laadspanning ' + k.lv.dood + ' V (vaste vloer) / ' + k.lv.zonderVloer.dood + ' V (slim laden), raildruk ' + k.rd.dood + ' %, onrust ' + (k.sr && k.sr.dood) + ' %' };
+    }
+  },
+
   // ── ATST na de achtergrond (24-10-2026) ──
   {
     issue: '#509',
