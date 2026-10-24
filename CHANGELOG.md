@@ -10,6 +10,12 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-10-2026 — Remote: expert zag andere waarden dan de bron
+ · feed() stuurde alleen het PID-achtervoegsel, driveFeed() plakte er
+   altijd '01' voor → Mazda mode-21 210C/210D overschreven toerental en
+   snelheid bij de expert. Nu de volle sleutel; kale 2-hex blijft mode 01.
+ · test-remote-sleutel.js + twee mutaties.
+ ═══════════════════════════════════════════════════════════
  24-10-2026 — bovengrens en second opinion voor meetuitkomsten (#599)
  ═══════════════════════════════════════════════════════════
 

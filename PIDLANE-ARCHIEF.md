@@ -15,6 +15,18 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 24-10-2026 — remote-expert: mode 21 schreef over mode-01-meters
+
+Gezien op een CX-5 in remote-modus: waarden bij de expert weken af van de
+telefoon. Oorzaak: de telemetrie-tap `feed()` deed `pid.slice(2)` en
+`driveFeed()` maakte er weer `'01'+k` van. Alles wat niet mode 01 is viel zo
+op een mode-01-PID: `210C`/`210D` (klep timing, rauw) werden toerental en
+snelheid. De sleutel was alleen veilig zolang er geen andere modes bestonden;
+`pidlane-uitgebreid.js` bracht die. Nu gaat de volle sleutel mee
+(`remSleutel`/`remPid`), een kale 2-hex-sleutel blijft mode 01 voor
+`request-pids` en oudere locals. `remPollActive()` stuurt alleen nog mode-01
+op als achtervoegsel.
+
 ## 24-10-2026 — bovengrens en second opinion: waarom geen aparte meetlog (#599)
 
 De vraag was of de second opinion de logs moet lezen, of een eigen meetlog
