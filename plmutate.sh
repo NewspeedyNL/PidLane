@@ -542,7 +542,7 @@ MUTATIES=(
 "public/pidlane-remote.js@@    return (nu-laatste)>STIL_MS?'stil':'live';@@    return 'live';@@test-remote-lus.js@@de expert ziet stilgevallen live data weer als live"
 "public/pidlane-remote.js@@    if(sec>5)return {soort:'stil'@@    if(sec>500)return {soort:'stil'@@test-klantscherm.js@@het meekijkscherm zegt weer 'live' terwijl er niets meer verstuurd wordt"
 "public/pidlane-remote.js@@      case 'request-analyze': return 'vraagt een AI-analyse van de opname — dit gebruikt jouw tegoed';@@      case 'request-analyze': return 'vraagt een AI-analyse van de opname';@@test-klantscherm.js@@de klant ziet niet meer dat een AI-analyse van de expert zijn tegoed gebruikt"
-"public/pidlane-remote.js@@'<span>'+esc(l.tijd)+'</span> '+esc(l.tekst)@@'<span>'+l.tijd+'</span> '+l.tekst@@test-klantscherm.js@@expert-acties gaan weer ruw de HTML van het meekijkscherm in"
+"public/pidlane-remote.js@@<span>'+esc(l.tijd)+'</span> '+esc(l.tekst)+'</div>'@@<span>'+l.tijd+'</span> '+l.tekst+'</div>'@@test-klantscherm.js@@expert-acties gaan weer ruw de HTML van het meekijkscherm in"
 "public/pidlane-remote.js@@    S.dirty[k]=Math.round(val*100)/100;@@    S.dirty[String(pid).slice(2).toUpperCase()]=Math.round(val*100)/100;@@test-remote-sleutel.js@@telemetrie stuurt weer alleen het achtervoegsel: mode-21 210C overschrijft toerental bij de expert"
 "public/pidlane-remote.js@@    if(/^[0-9A-F]{2}$/.test(s))return '01'+s;\n    return /^[0-9A-Z]{4,8}$/.test(s)?s:null;@@    return '01'+s;@@test-remote-sleutel.js@@de expert plakt weer altijd 01 voor de sleutel"
 "worker.js@@    delete veh.vin;\n    if (!veh.wmi && ruw)@@    if (!veh.wmi && ruw)@@test-vstate-vin.js@@de Worker bewaart een ruwe VIN van een oude app weer in de opslag"
