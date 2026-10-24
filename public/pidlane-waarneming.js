@@ -82,7 +82,9 @@
     kenveldthermostaat: 'kenveldthermostaat',
     turbo: 'turbo',
     lpg: 'LPG-installatie',
-    cvt: 'traploze automaat (CVT)'
+    cvt: 'traploze automaat (CVT)',
+    // Meeluisteren op het OBD-contact hoort uitzendingen (PLMeeluister, #560).
+    canopen: 'open CAN-bus op het OBD-contact'
   };
 
   var _reg = {};          // wat, → { status, bron, wanneer, bewijs, weerlegdOp }

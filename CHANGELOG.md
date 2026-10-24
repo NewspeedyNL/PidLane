@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-10-2026 — Meeluisteren op CAN: ligt de bus open? (#560, methode 2)
+ ═══════════════════════════════════════════════════════════
+
+ - Admin → 📻 Meeluisteren op CAN: 2 s ATMA met de headers aan, zenders
+   tellen zonder het tester-verkeer. Open (≥ 3 zenders) wordt bij deze auto
+   vastgelegd als waarneming canopen; stil niet — dat kan ook een gateway
+   of contact uit zijn.
+ - De adapter gaat terug met ATI, ATI en ATH0, en het herstel wordt bewezen.
+ - Nieuw: pidlane-meeluister.js, test-meeluister.js; blok 5-proef #560; zes
+   mutaties.
+
+ ═══════════════════════════════════════════════════════════
  24-10-2026 — Meekijkscherm voor de klant
  ═══════════════════════════════════════════════════════════
 
