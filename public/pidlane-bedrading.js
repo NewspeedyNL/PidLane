@@ -49,6 +49,8 @@ var KRITIEK = [
   // Blok 5 van #584–#589 (22-10-2026): die proeven vragen deze drie achter
   // een typeof-guard, zodat een niet-geladen module een FOUT-regel geeft.
   'decodeVIN','plProtocolBits','plSteunbitsUit','_rdwPlausibleName',
+  // Blok 5 van #509 (24-10-2026): de ATST-regel na de achtergrond.
+  'plStNaAchtergrond',
   'getPidDef','getVehicle','goHome',
   // Erbij op 16-09-2026. Het adapterpaneel (pidlane-adapter.js) heeft de
   // verbreek-knop van de OBD-chip overgenomen en roept handleConnect() achter

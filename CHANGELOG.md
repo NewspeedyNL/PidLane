@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-10-2026 — ATST na de achtergrond; meetopdrachten in D1 (#509, #537, #599)
+ ═══════════════════════════════════════════════════════════
+
+ - Missers tot 15 s na terugkomst uit de achtergrond tellen niet voor de
+   ATST-regelaar (plStNaAchtergrond, #509). Een bijsturing gaat voortaan
+   naar D1 (type verbind), met hoe lang de app daarvoor weg was.
+ - meetproeven/537-onderzoek.json en .sql: de opdracht van #537/#538, nu als
+   rij 43 in D1. 599-bovengrens.sql is toegepast op rij 41.
+ - Blok 5-proef #509; drie mutaties.
+
+ ═══════════════════════════════════════════════════════════
  24-10-2026 — Meeluisteren op CAN: ligt de bus open? (#560, methode 2)
  ═══════════════════════════════════════════════════════════
 
