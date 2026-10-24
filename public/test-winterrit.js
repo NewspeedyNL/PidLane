@@ -129,6 +129,31 @@ console.log('\n#560 — tractie-ingrijpen, afgeleid');
   toets('twee keer zonder vorst: nog geen advies (hogere drempel)', WR.tractie([tr(12, 1), tr(12, 1)], { nu: NU }) === null);
   toets('ritten zonder meting tellen niet als nul ingrepen', WR.tractie([rit({ duur_s: 900, cd: { bt: -2 } })], { nu: NU }) === null);
   toets('de bron zegt dat remingrepen niet te zien zijn', /remingrepen zijn niet te zien/.test((WR.tractie([tr(-1, 3)], { nu: NU }) || {}).bron || ''));
+
+  // ── methode 1: gemeten aan de vier wielen (ABS-module) ──
+  const wtiks = (gebeurt) => {
+    let a = null, t = 0;
+    for (let i = 0; i < 60; i++) {
+      t += 2000;
+      let w = { VL: 50, VR: 50, AL: 50, AR: 50 }, x = gebeurt(i) || {};
+      Object.assign(w, x.w || {});
+      const wt = x.wt || {};
+      const wielen = {}; Object.keys(w).forEach((k) => { wielen[k] = { v: w[k], t: wt[k] !== undefined ? wt[k] : t - (k === 'AR' ? 900 : 0) }; });
+      a = C.tik(a, Object.assign({ kmh: 50, rpm: 2000, pedaal: x.pedaal !== undefined ? x.pedaal : 30, gasklep: 25, pedaalT: t, gasklepT: t, wielen: x.geen ? null : wielen }), 2);
+    }
+    return C.samenvat(a);
+  };
+  toets('wielen: rustig rijden is gemeten, nul slip', wtiks(() => null).ts === 0);
+  toets('wielen: voor 15 % sneller bij gas, drie tikken lang = één keer slip', wtiks((i) => (i >= 20 && i < 23 ? { w: { VL: 58, VR: 57 } } : null)).ts === 1);
+  toets('tegenproef wielen: hetzelfde verschil zonder gas (remmen) telt niet', wtiks((i) => (i >= 20 && i < 23 ? { w: { VL: 58, VR: 57 }, pedaal: 0 } : null)).ts === 0);
+  toets('tegenproef wielen: een klein verschil (bocht, bandenmaat, 5 %) is geen slip', wtiks((i) => (i === 20 ? { w: { AL: 45 } } : null)).ts === 0);
+  toets('tegenproef wielen: een wiel van 4 s eerder vergelijkt twee momenten', wtiks((i) => (i === 20 ? { w: { VL: 58, VR: 57 }, wt: { AL: 36000 } } : null)).ts === 0);
+  toets('zonder wielsnelheden: niet gemeten, geen 0', wtiks(() => ({ geen: true })).ts === undefined);
+  const trw = (bt, ts, tc) => rit({ duur_s: 900, km: 10, max_koelwater: 88, cd: { bt, ts, tc } });
+  const g = WR.tractie([trw(-1, 1, 3), trw(-1, 1, 3)], { nu: NU }) || {};
+  toets('gemeten gaat voor afgeleid: 2× (niet 6×), zonder "mogelijk"', /^2× wielslip bij -1 °C/.test(g.titel || ''), g.titel);
+  toets('de bron noemt de vier wielen', /vier wielen/.test(g.bron || ''), g.bron);
+  toets('gemengd: de bron zegt hoeveel ritten gemeten zijn', /in 1 van 2 ritten/.test((WR.tractie([trw(-1, 1), tr(-1, 2)], { nu: NU }) || {}).bron || ''));
 }
 
 console.log('\n#558 — één oordeel: de wintercheck leest PLWinterRit.opwarming');

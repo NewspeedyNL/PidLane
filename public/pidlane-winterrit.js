@@ -151,25 +151,34 @@
      zonder cd.tc is niet gemeten en telt niet mee. */
   function tractie(ritten, ctx) {
     ctx = ctx || {};
-    var rs = recent(ritten, ctx.nu).filter(function (r) { return getal(cd(r).tc) !== null; });
+    // Gemeten aan de wielen (cd.ts, methode 1) gaat voor afgeleid (cd.tc,
+    // methode 3): een rit met wielsnelheden telt alleen zijn gemeten slip.
+    var tel = function (r) { var c = cd(r), ts = getal(c.ts); return ts !== null ? ts : getal(c.tc); };
+    var rs = recent(ritten, ctx.nu).filter(function (r) { return tel(r) !== null; });
     if (!rs.length) return null;
+    var gemeten = rs.filter(function (r) { return getal(cd(r).ts) !== null; }).length;
     var kou = function (r) { var b = getal(cd(r).bt); return b !== null && b <= CFG.tcKou; };
-    var inKou = rs.filter(function (r) { return kou(r) && cd(r).tc > 0; });
-    var nKou = inKou.reduce(function (s, r) { return s + cd(r).tc; }, 0);
-    var nAl = rs.reduce(function (s, r) { return s + cd(r).tc; }, 0);
+    var inKou = rs.filter(function (r) { return kou(r) && tel(r) > 0; });
+    var nKou = inKou.reduce(function (s, r) { return s + tel(r); }, 0);
+    var nAl = rs.reduce(function (s, r) { return s + tel(r); }, 0);
     var koud = nKou >= CFG.tcMinKou;
     if (!koud && nAl < CFG.tcMinWarm) return null;
-    var met = (koud ? inKou : rs.filter(function (r) { return cd(r).tc > 0; }));
+    var met = (koud ? inKou : rs.filter(function (r) { return tel(r) > 0; }));
     var bt = mediaan(met.map(function (r) { return getal(cd(r).bt); }));
     var n = koud ? nKou : nAl;
     var zomer = ctx.banden === 'zomer';
+    var alles = gemeten === rs.length;
     return {
       soort: 'tractie',
-      titel: n + '× mogelijk wielslip' + (bt !== null ? ' bij ' + Math.round(bt) + ' °C' : ''),
-      tekst: 'In ' + met.length + ' rit' + (met.length === 1 ? '' : 'ten') + ' nam de motorregeling gas terug terwijl je het gaspedaal vasthield, of draaide de motor ineens sneller dan de snelheid toeliet. Dat is wat tractiecontrole doet bij slip. ' +
+      titel: n + '× ' + (alles ? 'wielslip' : 'mogelijk wielslip') + (bt !== null ? ' bij ' + Math.round(bt) + ' °C' : ''),
+      tekst: 'In ' + met.length + ' rit' + (met.length === 1 ? '' : 'ten') +
+        (alles ? ' draaide een as bij gas duidelijk sneller dan de andere: de wielen slipten. '
+               : ' nam de motorregeling gas terug terwijl je het gaspedaal vasthield, of draaide de motor ineens sneller dan de snelheid toeliet. Dat is wat tractiecontrole doet bij slip. ') +
         'Rustiger optrekken en zachter gas in de bocht helpen.' +
         (zomer && koud ? ' Je rijdt op zomerbanden: bij deze temperatuur grijpen die slecht — overweeg winter- of all-seasonbanden.' : ''),
-      bron: 'afgeleid uit gaspedaal, gasklep, toerental en snelheid in ' + rs.length + ' ritten — de ESP-module zelf leest de app niet, dus remingrepen zijn niet te zien'
+      bron: alles ? 'gemeten aan de vier wielen (ABS-module) in ' + rs.length + ' ritten'
+        : gemeten ? 'gemeten aan de wielen in ' + gemeten + ' van ' + rs.length + ' ritten, de rest afgeleid uit gaspedaal, gasklep, toerental en snelheid'
+        : 'afgeleid uit gaspedaal, gasklep, toerental en snelheid in ' + rs.length + ' ritten — de ESP-module zelf leest de app niet, dus remingrepen zijn niet te zien'
     };
   }
 

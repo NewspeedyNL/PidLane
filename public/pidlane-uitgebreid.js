@@ -353,6 +353,24 @@
   // De 12V-accu met naam en toenaam; alleen dan mag een laadtoestand meetellen.
   // "State of charge" zonder meer is op een hybride of EV de tractie-accu.
   const ACCU_12V = /(\b12 ?v\b|\baux(iliary)?\b|service battery|starter battery|battery sensor|vehicle battery|battery charge level|battery estimated state)/;
+  /* Wielsnelheid per wiel uit de ABS-module (#560, methode 1). Herkend aan de
+     naam, zoals bandRol(): OBDb noemt ze "Front left wheel speed" (Mazda
+     760 22 2B06–2B09), een mens mag "wielsnelheid linksvoor" typen. Geeft
+     'VL', 'VR', 'AL' of 'AR', anders null. */
+  function wielRol(naam) {
+    const n = String(naam || '').toLowerCase();
+    if (!/(wheel ?speed|wielsnelheid|wiel ?snelheid|\bvss\b)/.test(n)) return null;
+    const voor = /(voor|front|\bf[lr]\b|\bv[lr]\b)/.test(n), achter = /(achter|rear|\br[lr]\b|\ba[lr]\b)/.test(n);
+    const links = /(links|left|\b[fvra]l\b)/.test(n), rechts = /(rechts|right|\b[fvra]r\b)/.test(n);
+    if (voor === achter || links === rechts) return null;
+    return (voor ? 'V' : 'A') + (links ? 'L' : 'R');
+  }
+  // De codes van de vier wielen voor deze auto, of null als er één ontbreekt.
+  function wielCodes() {
+    const uit = {};
+    Object.keys(_eigen).forEach(c => { const r = wielRol(_eigen[c] && _eigen[c].name); if (r && !uit[r]) uit[r] = c; });
+    return (uit.VL && uit.VR && uit.AL && uit.AR) ? uit : null;
+  }
   function laadRol(naam) {
     const n = String(naam || '').toLowerCase();
     if (LAAD_NIET.test(n)) return null;
@@ -1102,7 +1120,7 @@
   }
 
   window.PLEigen = { CODE: EIGEN_CODE, MAX: EIGEN_MAX, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
-    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, laadRol, obdbWaarde, obdbAdres, laadOordeel, accuOordeel, laadCodes, laadNu, laad: laadLive, drukOmrekening, standaardBereik,
+    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, laadRol, wielRol, wielCodes, obdbWaarde, obdbAdres, laadOordeel, accuOordeel, laadCodes, laadNu, laad: laadLive, drukOmrekening, standaardBereik,
     scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, vraag: eigenVraag, obdbNamen, obdbKoppel, obdbFormule, obdbJaarPast, obdbKandidaten, zoekObdb };
   window.plEigenDefs = eigenDefs;
 

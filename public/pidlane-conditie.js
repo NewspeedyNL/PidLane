@@ -59,7 +59,11 @@
     logMax: 60,
     vervangenDagen: 90,    // zo lang telt een vervanging als "onlangs" (#426)
     // Tractie (#560, methode 3): afgeleid uit mode 01, zie tractieTik().
-    tc: { kmh: 8, pedaal: 15, gasDaal: 8, zelfdeGang: 0.06, spin: 0.15, minS: 60 }
+    tc: { kmh: 8, pedaal: 15, gasDaal: 8, zelfdeGang: 0.06, spin: 0.15, minS: 60 },
+    // Tractie gemeten aan de wielen (#560, methode 1): de snelste as draait
+    // `slip` sneller dan de langzaamste, bij gas. `spreidMs`: de vier wielen
+    // komen niet in één antwoord; ouder uit elkaar is geen vergelijking.
+    ws: { kmh: 8, pedaal: 15, slip: 0.10, spreidMs: 2500, minS: 60 }
   };
 
   // ── Het onderhoudslogboek ─────────────────────────────────────────
@@ -191,6 +195,7 @@
       a.kz = a.kz === undefined ? k : Math.min(a.kz, k);
     }
     tractieTik(a, m, dt, kmh, rpm);
+    wielTik(a, m, dt, kmh);
     return a;
   }
 
@@ -230,6 +235,32 @@
     a.tcR = r; a.tcP = ped; a.tcG = gk; a.tcV = kmh; a.tcPt = m.pedaalT; a.tcGt = m.gasklepT;
   }
 
+  /* ── Tractie gemeten aan de wielen (#560, methode 1, 24-10-2026) ──
+     Met de wielsnelheden uit de ABS-module (m.wielen: {VL,VR,AL,AR} met
+     {v, t}) is slip geen afleiding meer: de as die bij gas sneller draait
+     dan de andere slipt (US5369586). Welke as aangedreven is, hoeft de app
+     niet te weten — de snelste as tegen de langzaamste. Remmen telt niet
+     (geen gas), en een ABS-blokkering ook niet: die maakt een wiel trager,
+     niet een as sneller bij gas. Eén reeks slip-tikken telt één keer. */
+  function wielTik(a, m, dt, kmh) {
+    var c = CFG.ws, w = m.wielen, ped = getal(m.pedaal);
+    if (!w || kmh === null || kmh <= c.kmh) { a.wsAan = false; return; }
+    var r = ['VL', 'VR', 'AL', 'AR'], v = {}, tMin = Infinity, tMax = -Infinity, i;
+    for (i = 0; i < r.length; i++) {
+      var x = w[r[i]], g = x ? getal(x.v) : null, t = x ? getal(x.t) : null;
+      if (g === null || t === null) { a.wsAan = false; return; }
+      v[r[i]] = g; tMin = Math.min(tMin, t); tMax = Math.max(tMax, t);
+    }
+    // Vers en bij elkaar: anders vergelijk je twee verschillende momenten.
+    if (tMax - tMin > c.spreidMs || tMax === a.wsT) return;
+    a.wsT = tMax;
+    a.wsD = (a.wsD || 0) + dt;
+    var voor = (v.VL + v.VR) / 2, achter = (v.AL + v.AR) / 2, lo = Math.min(voor, achter), hi = Math.max(voor, achter);
+    var slipt = lo > c.kmh && (hi - lo) / lo >= c.slip && ped !== null && ped >= c.pedaal;
+    if (slipt && !a.wsAan) a.wsn = (a.wsn || 0) + 1;
+    a.wsAan = slipt;
+  }
+
   /* De kenmerken van één rit, klein genoeg voor rit.extra.cd. Alleen wat
      lang genoeg gemeten is; de rest ontbreekt (en telt dan niet mee). */
   function samenvat(a) {
@@ -250,6 +281,7 @@
     if ((a.kzN || 0) >= n.kz) o.kz = rond(a.kz, 0);
     // Tractie: alleen als het lang genoeg te zien was. Niet gemeten is geen 0.
     if ((a.tcD || 0) >= CFG.tc.minS) o.tc = a.tcn || 0;
+    if ((a.wsD || 0) >= CFG.ws.minS) o.ts = a.wsn || 0;
     return Object.keys(o).length ? o : null;
   }
 
