@@ -11,7 +11,8 @@
 // De toets onderscheidt: dezelfde frame-stroom bevat zowel 010C als 210C. Met
 // de oude sleutel winnen die van elkaar; met de volle sleutel blijven ze los.
 // Daarnaast blijft een kale 2-hex-sleutel (antwoord op request-pids, oude
-// local) gewoon mode 01.
+// local) gewoon mode 01. Berekende (CA..) en telefoon-sensoren (TL..) vielen
+// op dezelfde manier op mode 01: CA05 (trim totaal) werd 0105 koelwater.
 //
 // Draaien vanuit public/:  node test-remote-sleutel.js   (exit 0 = goed)
 // ══════════════════════════════════════════════════════════════════
@@ -62,6 +63,8 @@ console.log('\n1. Mode 21 overschrijft mode 01 niet meer');
   f.feed('010D', 0);     // snelheid
   f.feed('210D', 112);   // klep timing uitlaat, rauw
   f.feed('0105', 91);    // koelwater
+  f.feed('CA05', 1.57);  // trim totaal (berekend) — werd 0105 koelwater
+  f.feed('TL01', 2.5);   // helling (telefoon) — werd 0101
   const frame = Object.assign({}, ctx.S.dirty, { t: 1 });
   f.driveFeed(JSON.parse(JSON.stringify(frame)), false);
   toets('010C blijft toerental', meters['010C'] === 649, JSON.stringify(meters));
@@ -69,6 +72,9 @@ console.log('\n1. Mode 21 overschrijft mode 01 niet meer');
   toets('210C komt als 210C binnen', meters['210C'] === 37, JSON.stringify(meters));
   toets('210D komt als 210D binnen', meters['210D'] === 112, JSON.stringify(meters));
   toets('0105 ongemoeid', meters['0105'] === 91, JSON.stringify(meters));
+  toets('CA05 blijft CA05', meters['CA05'] === 1.57, JSON.stringify(meters));
+  toets('TL01 blijft TL01', meters['TL01'] === 2.5, JSON.stringify(meters));
+  toets('0101 niet aangeraakt', meters['0101'] === undefined, JSON.stringify(meters));
 }
 
 console.log('\n2. Kale 2-hex-sleutel blijft mode 01 (request-pids, oude local)');
@@ -87,9 +93,9 @@ console.log('\n3. Rommel-sleutels gaan niet de meters in');
 {
   const { f, meters, ctx } = bouw();
   f.feed('<x>', 1);
-  toets('feed weigert een niet-hex sleutel', Object.keys(ctx.S.dirty).length === 0, JSON.stringify(ctx.S.dirty));
-  f.driveFeed({ '__proto__x': 1, 'ZZ': 2, '0': 3 }, false);
-  toets('driveFeed weigert niet-hex sleutels', Object.keys(meters).length === 0, JSON.stringify(meters));
+  toets('feed weigert een rommel-sleutel', Object.keys(ctx.S.dirty).length === 0, JSON.stringify(ctx.S.dirty));
+  f.driveFeed({ '__proto__x': 1, 'ZZ': 2, '0': 3, 'ca05<': 4 }, false);
+  toets('driveFeed weigert rommel-sleutels', Object.keys(meters).length === 0, JSON.stringify(meters));
 }
 
 console.log(fouten ? '\n' + fouten + ' FOUT(EN)' : '\nAlles goed');

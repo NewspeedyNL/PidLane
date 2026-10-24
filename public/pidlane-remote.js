@@ -364,16 +364,18 @@ window.PLRemote=(function(){
   // alleen het achtervoegsel mee en plakte de expert er '01' voor: op de CX-5
   // werd mode-21 '210C'/'210D' (klep timing, rauw) zo 010C/010D en overschreef
   // toerental en snelheid bij de expert. Zie remPid() voor de ontvangstkant.
+  // Zelfde lot voor berekende (CA05 → 0105 koelwater) en telefoonsensoren
+  // (TL01 → 0101): ook die gaan nu met hun eigen sleutel.
   function remSleutel(pid){
     const k=String(pid==null?'':pid).toUpperCase();
-    return /^[0-9A-F]{4,8}$/.test(k)?k:null;
+    return /^[0-9A-Z]{4,8}$/.test(k)?k:null;
   }
   // Ontvangstkant: een kale 2-hex-sleutel is mode 01 (oude local, en de
   // antwoorden op request-pids); een volle sleutel blijft wat hij is.
   function remPid(k){
     const s=String(k==null?'':k).toUpperCase();
     if(/^[0-9A-F]{2}$/.test(s))return '01'+s;
-    return /^[0-9A-F]{4,8}$/.test(s)?s:null;
+    return /^[0-9A-Z]{4,8}$/.test(s)?s:null;
   }
   function feed(pid,val){
     if(S.mode!=='local'||!S.ws||S.ws.readyState!==1)return;
