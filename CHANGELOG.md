@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 24-10-2026 — Remote-lus: de expert ziet wat de telefoon níét levert
+ ═══════════════════════════════════════════════════════════
+
+ · Foutcodes: niet verbonden, mislukte uitlezing of 15 s time-out gaven []
+   → "Geen foutcodes". Nu een melding "Niet gelezen" met de reden.
+ · Versheid: 6 s zonder live frame → pill en status "geen live data",
+   en weer "live" zodra het loopt.
+ · test-remote-lus.js + drie mutaties.
+
+ ═══════════════════════════════════════════════════════════
  24-10-2026 — bovengrens en second opinion voor meetuitkomsten (#599)
  ═══════════════════════════════════════════════════════════
 
