@@ -15,6 +15,23 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 24-10-2026 — #602: poll-unie, buslock, lege mode-03-respons, opname
+
+**Poll-unie.** `applyExpertPoll()` gaf `activePIDs ∪ wens` aan
+`ensurePIDListActive()`, en dat wérd `activePIDs`. Elk verzoek telde dus op
+bij alle vorige. Nu onthoudt de local welk deel van de expert is
+(`S.expAlleen`) en vervangt hij dat deel per verzoek; bij nul experts of
+stoppen gaat het eraf.
+
+**Buslock.** `PLBus.wait()` gaat na de time-out bewust tóch door — goed voor
+de eigen app, niet voor een verzoek van buiten. `withBtLock()` gooit nu.
+
+**Mode 03 zonder antwoord.** `realScanDTC()` gaf `[]` op een lege respons, en
+`scanDTC()` toonde dat als "alle systemen OK". Nu gooit hij; `scanDTC()` vangt
+het en toont "Niet gelezen" zonder `_didDTCScan` te zetten. Daarvóór gooide
+`scanDTC()` zelf door en bleef de spinner staan (`test-dtcvlag.js` legde dat
+gedrag vast; aangepast). NO DATA blijft `[]`.
+
 ## 24-10-2026 — remote-lus nagelopen: twee stille leugens naar de expert
 
 **Foutcodes.** `answerDtc()` op de local gaf `[]` als de telefoon niet
