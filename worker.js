@@ -2746,7 +2746,10 @@ var RemoteSessionDO = class {
       if (!["start", "stop", "csv"].includes(action)) return null;
       let pids;
       if (action === "start" && Array.isArray(m.pids)) {
-        pids = m.pids.filter((p) => typeof p === "string" && /^[0-9A-Fa-f]{2}$/.test(p)).slice(0, 24);
+        // #602: ook volle sleutels (CA.., TL.., mode 21). Het blijft een naam
+        // uit de eigen PID-tabel van de local, geen commando: die zet hem alleen
+        // in de opnameselectie als hij een definitie heeft.
+        pids = m.pids.filter((p) => typeof p === "string" && /^([0-9A-Fa-f]{2}|[0-9A-Z]{4,8})$/.test(p)).slice(0, 24);
       }
       const out = { type: "request-record", action, reqId };
       if (pids && pids.length) out.pids = pids;

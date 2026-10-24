@@ -268,7 +268,17 @@ async function scanDTC(){
     if(_scenario.enabled && _scenario.dtcs.length) dtcCodes=[..._scenario.dtcs];
     else dtcCodes=Math.random()>.5?['P0171','P0420']:[];
   }
-  else dtcCodes=await realScanDTC();
+  else{
+    try{ dtcCodes=await realScanDTC(); }
+    catch(e){
+      // Niet gelezen: oude lijst laten staan, _didDTCScan niet zetten (#218).
+      const msg=String((e&&e.message)||e);
+      document.getElementById('dtcList').innerHTML='<div class="emp"><div class="ei">⚠️</div><h3>Niet gelezen</h3><p>Foutcodes konden niet worden uitgelezen: '+msg.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))+'</p></div>';
+      document.getElementById('bscan').disabled=false;
+      log('Scan mislukt: '+msg,'warn');
+      return;
+    }
+  }
   // "Er is gekeken" (#218): pas ná het antwoord. Stond eerst bovenaan, dan zei
   // het onderdeelpaneel tijdens de scan en na een fout "geen foutcodes".
   window._didDTCScan=true;
@@ -285,7 +295,11 @@ async function scanDTC(){
 }
 async function realScanDTC(){
   const r=await sendCmd('03');const codes=[];
-  if(!r||r.includes('NO DATA')) return codes;
+  // #602 punt 3: géén antwoord is iets anders dan NO DATA. Een lege respons
+  // (time-out, adapter weg) gaf [] en dus "Geen foutcodes — alle systemen OK".
+  // NO DATA blijft [] — dat is wat een ECU zonder codes op mode 03 zegt.
+  if(!r) throw new Error('geen antwoord van de auto op mode 03');
+  if(r.includes('NO DATA')) return codes;
   // Per regel parsen — meerdere ECU's kunnen elk een 43-respons sturen
   const lines=r.split(/[\r\n]+/).filter(l=>l.trim());
   for(const line of lines){

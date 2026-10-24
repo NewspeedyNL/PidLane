@@ -170,7 +170,7 @@ window.PLRemote=(function(){
       try{klantPresence(n,S.lastExpN);}catch(_){ console.warn('Meekijkscherm niet bijgewerkt na een wijziging in meekijkers', _); }
       $('remExpN').textContent=n;$('remPillN').textContent=n;
       if(n>S.lastExpN){logA('👁 Expert verbonden — '+n+' kijkt nu mee','info');sendVStateSoon();}
-      else if(n<S.lastExpN)logA('👁 Expert weg — nog '+n+' verbonden','info');
+      else if(n<S.lastExpN){logA('👁 Expert weg — nog '+n+' verbonden','info');if(n===0)expertPollAfmelden();}
       S.lastExpN=n;return;}
     if(m.type==='closed'){S.stopFlag=true;setShareStat('Sessie gesloten.');endShareUi();return;}
     if(m.type==='request-pids'){await answerPids(m);return;}
@@ -184,15 +184,38 @@ window.PLRemote=(function(){
   // Expert wil PIDs (blijvend) volgen → UNIE met de eigen actieve set. De
   // expert voegt toe, maar haalt nooit lokale keuzes weg — en het is altijd
   // zichtbaar in de log. Puur lezen: dit bepaalt enkel wát er gepolld wordt.
+  // #602 punt 1: elke request-poll is de VOLLEDIGE wens van de expert, geen
+  // aanvulling. Tot 24-10 werd hij bij de eigen set opgeteld en die som werd
+  // de nieuwe eigen set — dus groeide hij per verzoek en ging er nooit iets af.
+  // Nu: eigen set = wat de local zelf had (zonder wat de expert eerder
+  // toevoegde) ∪ de nieuwste wens. Vertrekt de laatste expert, dan gaat zijn
+  // deel er weer af.
+  function pollSet(eigen,expAlleen,wens){
+    const basis=[...eigen].filter(p=>!expAlleen.has(p));
+    const b=new Set(basis);
+    const nieuwExp=wens.filter(p=>!b.has(p));
+    return {set:[...basis,...nieuwExp],expAlleen:new Set(nieuwExp)};
+  }
   function applyExpertPoll(m){
     try{
-      const add=(m.pids||[]).map(s=>'01'+String(s).toUpperCase());
+      const wens=[...new Set((m.pids||[]).map(s=>'01'+String(s).toUpperCase()))].slice(0,24);
       if(typeof activePIDs!=='undefined'&&typeof ensurePIDListActive==='function'){
-        ensurePIDListActive([...activePIDs,...add]);
+        const r=pollSet(activePIDs,S.expAlleen||new Set(),wens);
+        S.expAlleen=r.expAlleen;
+        ensurePIDListActive(r.set);
         logA('🔭 Expert volgt nu ook: '+(m.pids||[]).join(', '),'info');
       }
     }catch(_){ console.warn('Expert-PID-verzoek niet verwerkt — de respons meldt toch \'ok\' terug', _); }
     sendWs({type:'response',reqId:m.reqId,data:{poll:'ok'}});
+  }
+  function expertPollAfmelden(){
+    try{
+      if(!S.expAlleen||!S.expAlleen.size||typeof activePIDs==='undefined'||typeof ensurePIDListActive!=='function')return;
+      const r=pollSet(activePIDs,S.expAlleen,[]);
+      const n=S.expAlleen.size;S.expAlleen=new Set();
+      ensurePIDListActive(r.set);
+      logA('🔭 '+n+' sensor(en) van de expert weer uit de meetronde','info');
+    }catch(_){ console.warn('Sensoren van de expert niet afgemeld — de meetronde blijft dan langer dan nodig', _); }
   }
   // Eén eerder rapport voor de expert, alleen op zijn verzoek (voorkennis
   // stuurt alleen de titels mee). De Worker laat alleen een archief-id door.
@@ -266,8 +289,10 @@ window.PLRemote=(function(){
     try{
       if(act==='start'){
         if(typeof _recActive!=='undefined'&&_recActive){sendWs({type:'response',reqId:m.reqId,data:{record:'al-bezig'}});return;}
-        const sfx=[...new Set((m.pids||[]).map(s=>String(s).toUpperCase()).filter(s=>/^[0-9A-F]{2}$/.test(s)))].slice(0,24);
-        const wens=sfx.length?sfx.map(s=>'01'+s):[...(activePIDs||[])];
+        // #602 punt 4: ook volle sleutels (CA.., TL.., mode 21) — remPid() maakt
+        // van een kale 2-hex mode 01 en laat de rest zoals hij is.
+        const sfx=[...new Set((m.pids||[]).map(remPid).filter(Boolean))].slice(0,24);
+        const wens=sfx.length?sfx:[...(activePIDs||[])];
         const bruikbaar=wens.filter(p=>{try{return !!getPidDef(p)||(typeof supportedPIDs!=='undefined'&&supportedPIDs.has&&supportedPIDs.has(p));}catch(_){return true;}});
         if(!bruikbaar.length){sendWs({type:'response',reqId:m.reqId,data:{record:'geen-pids'}});return;}
         _recSel.clear();bruikbaar.forEach(p=>_recSel.add(p));
@@ -320,10 +345,14 @@ window.PLRemote=(function(){
   }
   // BT-kanaal delen met de poll-loop: wacht tot de lopende ronde klaar is en
   // claim daarna kort het kanaal, zodat one-shots en polls elkaar niet storen.
+  // #602 punt 2: PLBus.wait() geeft 0 na de time-out en "gaat tóch door" —
+  // goed voor de eigen app, niet voor een verzoek van buiten. Dan liepen een
+  // expert-one-shot en de poll-ronde door elkaar op de bus. Remote mag falen:
+  // de expert ziet "niet gelezen", de klant houdt een schone meetronde.
   async function withBtLock(fn){
-    const t0=Date.now();
     const tok=await PLBus.wait('remote',5000);
-    try{return await fn();}finally{ if(tok) PLBus.release(tok); }
+    if(!tok)throw new Error('bus bezet — probeer het zo opnieuw');
+    try{return await fn();}finally{ PLBus.release(tok); }
   }
   async function readSuffix(sfx){
     const pid='01'+sfx;
@@ -405,6 +434,7 @@ window.PLRemote=(function(){
   async function shareStop(){
     S.stopFlag=true;clearTimeout(S.recT);stopFlush();
     clearInterval(_remRecStatT);_remRecStatT=null;
+    expertPollAfmelden();
     try{if(S.sess)await plFetch('/session/close',{method:'POST',
       json:{sessionId:S.sess.sessionId}});}catch(_){ logA('Sessie niet netjes gesloten op de server — kan daar nog even actief blijven voor de expert','warn'); }
     try{if(S.ws)S.ws.close();}catch(_){ /* stil: opruimen: kan al gebeurd zijn */ }
@@ -925,7 +955,7 @@ window.PLRemote=(function(){
   function remRecStart(){
     if(!S.ews||S.ews.readyState!==1)return;
     const pids=String($('remReqPids').value||'').split(/[\s,;]+/)
-      .map(s=>s.trim().toUpperCase()).filter(s=>/^[0-9A-F]{2}$/.test(s)).slice(0,24);
+      .map(s=>s.trim().toUpperCase()).filter(s=>/^([0-9A-F]{2}|[0-9A-Z]{4,8})$/.test(s)).slice(0,24);
     S.ews.send(JSON.stringify({type:'request-record',action:'start',pids:pids,reqId:_rid()}));
     expLog('● Opname-start gestuurd'+(pids.length?(' — '+pids.join(' ')):' — actieve set local'));
   }
@@ -1119,7 +1149,7 @@ window.PLRemote=(function(){
   }
 
   return {openShare,deelMethode,closeShare,shareStart,shareStop,copy,
-          openExpert,expertClose,expertConnect,expertDisconnect,_staat:()=>({vstate:S.vstate,expMeta:S.expMeta}),_klantActie:klantActie,_klantStatus:klantStatus,_klantHtml:klantHtml,klantVerberg,klantToon,pillTik,_stilOordeel:stilOordeel,_remSleutel:remSleutel,_remPid:remPid,reqPids,reqDtc,reqRapport,enterDrive,
+          openExpert,expertClose,expertConnect,expertDisconnect,_staat:()=>({vstate:S.vstate,expMeta:S.expMeta}),_klantActie:klantActie,_klantStatus:klantStatus,_klantHtml:klantHtml,klantVerberg,klantToon,pillTik,_stilOordeel:stilOordeel,_pollSet:pollSet,_remSleutel:remSleutel,_remPid:remPid,reqPids,reqDtc,reqRapport,enterDrive,
           vernieuw:sendVStateSoon,_buildVState:buildVState,
           remRecStart,remRecStop,remRecCsv,remAnalyze,pairStart,
           stopQrScan,scanForJoin,scanForPair};

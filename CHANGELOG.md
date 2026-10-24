@@ -22,6 +22,19 @@
  · test-klantscherm.js + drie mutaties; schermranden-proef dekt het vel.
 
  ═══════════════════════════════════════════════════════════
+ 24-10-2026 — Remote-restpunten (#602)
+ ═══════════════════════════════════════════════════════════
+
+ · Expert-pollwens vervangt de vorige i.p.v. op te stapelen; vertrekt de
+   laatste expert of stopt het delen, dan gaan zijn sensoren eruit.
+ · Expert-verzoek op een bezette bus (5 s) faalt i.p.v. tóch te lezen.
+ · Lokaal: geen antwoord op mode 03 → "Niet gelezen", niet "Geen
+   foutcodes". NO DATA blijft "geen codes".
+ · Opname op afstand ook met CA.., TL.. en mode-21-sleutels (Worker mee).
+ · test-remote-restpunten.js + vier mutaties; test-dtcvlag volgt het nieuwe
+   contract (scanDTC vangt de fout zelf).
+
+ ═══════════════════════════════════════════════════════════
  24-10-2026 — Remote-lus: de expert ziet wat de telefoon níét levert
  ═══════════════════════════════════════════════════════════
 
