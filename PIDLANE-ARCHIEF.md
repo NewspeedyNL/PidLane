@@ -15,6 +15,33 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 25-10-2026 (later) — de vier gaps van de storingsproef afgehandeld
+
+- **#614.** `scanNetworks()` stuurt `0100` nu tot drie keer (1 s ertussen)
+  als het antwoord een foutmelding is of geen `41 00` bevat. Een léég
+  antwoord herhaalt hij niet: dat is de adapter zelf (#476) en heeft al 12 s
+  gekost. De Fiat 500 haalt met één storing weer 39/39 PIDs op A7.
+- **#615.** `vlFullSurvey()` stopt zodra `connected` false is (bij elke
+  stapcontrole en vlak voor het oordeel) en bewaart dan niets — de melding
+  "deels gemeten data is niet opgeslagen" bestond al. Een leeg antwoord telt
+  in de PID-sweep als fout op de lijn, zodat `plSurveyUitkomst()` er
+  `transport` van maakt en geen `nodata`. Let op: de dode-socketdetectie
+  (`trackBtQuality`) telt alleen mode-01-verzoeken; lege antwoorden op 03,
+  07 en 0A tellen niet mee. Dat bleek hier geen gat, want de variantiestap
+  erna merkt het binnen vier verzoeken; de proef `dtc` bewaakt het.
+- **#616 niet veranderd.** De spook-PIDs kwamen uit het verkeerde protocol
+  van #614: dan is géén steunbitblok leesbaar en laat de preset alles toe.
+  Met alleen het eerste blok onleesbaar (scenario `bitmap`) ontstaat er
+  niets. "Onbekend telt als toegestaan" blijft dus staan: de preset is de
+  terugval voor auto's zonder leesbare bitmap, en daar zou meten vóór
+  toevoegen hem nutteloos maken.
+- **#617.** De positie-7-regel geldt alleen nog voor WMI 1–5; elders de
+  jongste cyclus die niet in de toekomst ligt. Een EU-auto uit 1990–1995 met
+  een jaarcode op positie 10 kan zo dertig jaar te jong worden — daar
+  overschrijft de RDW het.
+
+---
+
 ## 25-10-2026 — de klantroute tegen een storende adapter (bproef-storing.js)
 
 `bproef-merken.js` draaide 21 nagebootste auto's, alle groen — maar altijd

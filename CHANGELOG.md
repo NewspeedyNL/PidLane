@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 25-10-2026 — Storingsbestendig: protocol, survey en modeljaar
+ ═══════════════════════════════════════════════════════════
+
+ - #614: protocoldetectie herhaalt 0100 tot drie keer bij een verstoord
+   antwoord, in plaats van meteen naar de handmatige lijst (CAN 11-bit).
+ - #615: de uitgebreide test stopt en bewaart niets als de verbinding
+   wegvalt; een leeg antwoord telt als transportfout, niet als "PID
+   ontbreekt". Geen cijfer meer en geen "geen foutcodes" na een dode adapter.
+ - #617: modeljaar uit een Europese VIN zonder de Noord-Amerikaanse
+   positie-7-regel (Clio 2020 was 1990). Blok 5-proef erbij.
+ - bproef-storing.js: scenario's bitmap en dtc erbij, BEKEND is leeg.
+
+ ═══════════════════════════════════════════════════════════
  25-10-2026 — Storingsproef: de klantroute tegen een storende adapter
  ═══════════════════════════════════════════════════════════
 
