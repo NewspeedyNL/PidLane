@@ -35,8 +35,10 @@
 //                          node bproef-storing.js --alle     (vier)
 //                          node bproef-storing.js golf16     (één auto)
 //                          PL_STORING='{"ruis":{"nodata":0.25}}'  harder storen
-// TEGENPROEF: haal een sleutel uit BEKEND en de proef wordt rood met de
-// gemeten waarde erbij — zo zijn #614, #615 en #616 gevonden (25-10-2026).
+// TEGENPROEF (25-10-2026): met pidlane-bt.js en pidlane-veldlab.js van vóór
+// #614/#615 wordt hij rood — Fiat 500 op CAN 11-bit met 22 gemiste PIDs, en
+// een Mercedes-sessie met cijfer 8,9 en "geen foutcodes" na een dode adapter.
+// plmutate.sh zet de 0100-herhaling en de dode-socketdrempel terug.
 // ═══════════════════════════════════════════════════════════════════
 'use strict';
 const path = require('path');
@@ -61,17 +63,16 @@ const STORING = {
   los: { losNa: 70 },
   // Eén NO DATA op het allereerste OBD-verzoek: een ECU die nog wakker wordt.
   eerste: { eerste: 1 },
+  // Het eerste steunbitblok onleesbaar, het protocol wel herkend (#616).
+  bitmap: { bitmap: true },
   // De adapter valt weg midden in de survey, 30 verzoeken na de discovery.
-  survey: { losNaDiscovery: 30 }
+  survey: { losNaDiscovery: 30 },
+  // De adapter valt weg precies bij de foutcodes (mode 03), na de PID-sweep.
+  dtc: { losBij: '^03$' }
 };
 // PL_STORING='{"ruis":{"nodata":0.3}}' zet een soort harder, om de grens te zoeken.
 if (process.env.PL_STORING) Object.assign(STORING, JSON.parse(process.env.PL_STORING));
 const BEKEND = {
-  'proto:eerste': '#614 (geen herhaling van 0100, CAN 11-bit voorgeselecteerd)',
-  'mist:eerste:fiat500': '#614', 'mist:eerste:merc00': '#614',
-  'spookpid:eerste': '#616 (merkpreset vult een onleesbaar blok)',
-  'valsschoon': '#615 (survey loopt door na een dode adapter)',
-  'transportnul': '#615'
 };
 
 let fouten = 0, letop = 0;
@@ -99,11 +100,14 @@ const ADAPTER = (id, soort) => `(function(){
   window._nepAuto = a;
   window._sendBTOnce = async function(cmd){
     st.n++;
+    if (st.losBij && !st.losNa && new RegExp(st.losBij).test(cmd)) st.losNa = st.n - 1;
     if (st.stilN > 0) { st.stilN--; await slaap(60); st.gestoord++; return ''; }
     if (st.stil || (st.losNa && st.n > st.losNa)) { await slaap(60); st.gestoord++; return ''; }
     const r = a.stuur(cmd);
     await slaap(Math.min(r.ms, 40));
     if (/^AT/i.test(cmd)) return r.tekst;
+    // Steunbits na de protocoldetectie onleesbaar: elke 0100 behalve de eerste.
+    if (st.bitmap && /^0100/.test(cmd) && (st.n0100 = (st.n0100 || 0) + 1) > 1) { st.gestoord++; st.log.push(cmd + '→NO DATA (bitmap)'); return 'NO DATA'; }
     if (st.eerste > 0) { st.eerste--; st.gestoord++; st.log.push(cmd + '→NO DATA (eerste)'); return 'NO DATA'; }
     const x = rnd();
     if (st.nodata && x < st.nodata) { st.gestoord++; st.log.push(cmd + '→NO DATA'); return 'NO DATA'; }
@@ -211,7 +215,7 @@ async function auto(id) {
   toets('schoon: route zonder vastlopen', !r.u.fout.length, r.u.fout.join(' | '));
   await r.app.stop();
 
-  for (const soort of ['ruis', 'rommel', 'los', 'eerste', 'survey']) {
+  for (const soort of ['ruis', 'rommel', 'los', 'eerste', 'bitmap', 'survey', 'dtc']) {
     r = await draai(id, soort);
     const u = r.u;
     console.log('── ' + soort + ': ' + u.verzoeken + ' verzoeken, ' + u.gestoord + ' gestoord, ' + Math.round(u.t.totaal / 1000) + ' s; ' + u.supported.length + ' PIDs, connected=' + u.connected + ', sessies=' + u.sessies + ', net=' + u.net);
@@ -221,11 +225,11 @@ async function auto(id) {
     const spook = u.supported.filter((x) => /^01/.test(x) && !aanbod.has(x) && !/^01(00|20|40|60|80|A0|C0)$/.test(x));
     if (spook.length) bevinding('spookpid:' + soort, soort + ': geen PID ontdekt die de auto niet heeft', spook.join(','));
     else toets(soort + ': geen spook-PIDs', true);
-    if (soort !== 'los' && soort !== 'survey') {
+    if (!/^(los|survey|dtc)$/.test(soort)) {
       if (u.net === 'A' + p.proto) toets(soort + ': protocol A' + p.proto + ' herkend', true);
       else bevinding('proto:' + soort, soort + ': protocol A' + p.proto + ' herkend', 'de app werkt met ' + u.net);
     }
-    if (soort !== 'los' && soort !== 'survey') {
+    if (!/^(los|survey|dtc)$/.test(soort)) {
       const mist = [...aanbod].filter((x) => !u.supported.includes(x));
       if (mist.length) bevinding('mist:' + soort + ':' + id, soort + ': elke aangeboden PID ontdekt ondanks storing', mist.length + ' gemist: ' + mist.slice(0, 8).join(','));
       else toets(soort + ': elke aangeboden PID ontdekt', true);
@@ -233,7 +237,7 @@ async function auto(id) {
     if (u.vin && u.vin !== (p.vin || '')) bevinding('vin:' + soort, soort + ': geen verkeerde VIN', '"' + u.vin + '" ≠ ' + (p.vin || '(geen)'));
     else toets(soort + ': VIN goed of leeg', true);
     const sv = u.sv;
-    if (sv && (soort === 'los' || soort === 'survey')) {
+    if (sv && (/^(los|survey|dtc)$/.test(soort))) {
       // Een dode adapter is geen auto zonder codes en geen auto zonder sensoren.
       const okN = (sv.pids.detail || []).filter((x) => x.st === 'ok').length;
       console.log('  ' + soort + ': sessie bewaard met ' + okN + ' ok-waarden, transport ' + sv.pids.transport + ', cijfer ' + (sv.ft && sv.ft.cijfer) + ', dtc ' + JSON.stringify((sv.dtc && sv.dtc.actief) || null));
@@ -242,7 +246,10 @@ async function auto(id) {
       const stilN = (sv.pids.detail || []).filter((x) => x.st === 'nodata').length;
       if (sv.pids.transport === 0 && stilN > 5) bevinding('transportnul', soort + ': lege antwoorden van een dode adapter tellen als transportfout', stilN + ' PIDs als nodata geboekt, transport 0');
     }
-    if (!sv) { if (soort === 'los' || soort === 'survey') toets('los: survey leverde (deels) resultaat of zegt waarom', true); else toets(soort + ': de survey leverde een resultaat', false); continue; }
+    // Een dode adapter levert geen sessie en geen cijfer (#615): "deels
+    // gemeten data is niet opgeslagen", zegt de survey dan zelf.
+    if (/^(los|survey|dtc)$/.test(soort)) toets(soort + ': geen sessie bewaard na een dode adapter', !sv, sv && ('cijfer ' + (sv.ft && sv.ft.cijfer) + ', dtc ' + JSON.stringify(sv.dtc && sv.dtc.actief)));
+    if (!sv) { if (!/^(los|survey|dtc)$/.test(soort)) toets(soort + ': de survey leverde een resultaat', false); continue; }
     const kreeg = ((sv.dtc && sv.dtc.actief) || []).slice().sort();
     const spookDtc = kreeg.filter((c) => !dtc.includes(c));
     if (spookDtc.length) bevinding('spookdtc:' + soort, soort + ': geen spookfoutcodes', spookDtc.join(','));
