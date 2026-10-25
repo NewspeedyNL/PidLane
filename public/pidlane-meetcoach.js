@@ -16,7 +16,9 @@
 //      situaties deze rit kan (stoplicht, snelweg, helling, stilstaan)
 //   3. de balk in Live — één actie tegelijk, in gewone taal, afgeleid uit
 //      wat de open opdrachten nog missen. De toeschouwer ziet zelf of het
-//      gelukt is; afvinken hoeft niet
+//      gelukt is; afvinken hoeft niet. Sinds 25-10: voortgang (proeven,
+//      ritklok, hoe lang nog), "stap x van y", Volgende, kies uit de lijst,
+//      Niet deze rit, en de rit onderweg aanpassen
 //   4. de bus overnemen — staat de auto stil, dan vraagt de balk of hij de
 //      bus even mag hebben voor proeven die dat nodig hebben (meeluisteren,
 //      mode 06). Altijd eerst vragen: live-data valt dan weg
@@ -24,7 +26,7 @@
 // De keuring telt nu automatisch (PLOpdracht.opstelling): ongekeurd = auto.
 // Afkeuren blijft kunnen, in Second opinion.
 //
-// plan(), actieVoor(), vraagHtml() en balkHtml() zijn puur; test-meetcoach.js
+// plan(), actieVoor(), stappen(), vraagHtml() en balkHtml() zijn puur; test-meetcoach.js
 // laadt dit bestand met vm.
 // ══════════════════════════════════════════════════════════════════
 (function () {
@@ -72,32 +74,44 @@
   /* ── HET PLAN (puur) ────────────────────────────────────────────
      alle: [{ id, naam, opdracht, vonnis }] (PLOpdracht.oordeelAlle).
      keuze: { duurS, sit: {stoplicht:true,…} } of null (nog niet gevraagd).
-     Geeft { acties: [...], klaar, open, uitgesloten }: per soort één actie,
-     met hoeveel opdrachten hij verder helpt. Actief eerst, dan op aantal. */
+     Geeft { acties: [...], klaar, open, uitgesloten, uitNamen }: per soort
+     één actie, met hoeveel opdrachten hij verder helpt en — bij een toestand
+     die optelt — `frac` (0..1) en `nogS`. Actief eerst, dan op aantal. */
   function plan(alle, keuze) {
-    var per = {}, klaar = 0, open = 0, uit = 0;
+    var per = {}, klaar = 0, open = 0, uit = 0, uitNamen = [];
     (alle || []).forEach(function (r) {
       var o = r && r.opdracht, v = r && r.vonnis;
       if (!o) return;
       if (v && (v.staat === 'gesloten' || v.staat === 'bevinding')) { klaar++; return; }
       // Te lang voor deze rit: een voorwaarde "rijden" die meer vraagt dan de rit duurt.
       var lang = (o.voorwaarden || []).some(function (w) { return w.toestand === 'rijden' && keuze && keuze.duurS && w.minS > keuze.duurS; });
-      if (lang) { uit++; return; }
+      if (lang) { uit++; uitNamen.push(r.naam); return; }
       var mist = (o.voorwaarden || []).filter(function (w, i) {
         var g = v && v.voorwaarden && v.voorwaarden[i];
         return !(g && g.vervuld === true);
       });
-      var acties = mist.map(actieVoor);
-      if (keuze && keuze.sit && acties.some(function (a) { return a.sit && !keuze.sit[a.sit]; })) { uit++; return; }
+      var acties = mist.map(function (w) {
+        var a = actieVoor(w);
+        // Voortgang (25-10-2026): een toestand zonder bovengrens telt op naar minS.
+        var i = (o.voorwaarden || []).indexOf(w), g = v && v.voorwaarden && v.voorwaarden[i];
+        if (w.toestand && w.maxS === undefined && g && typeof g.waarde === 'number') {
+          var nodig = w.minS || 5;
+          a.frac = Math.min(1, g.waarde / nodig); a.nogS = Math.max(0, nodig - g.waarde);
+        }
+        return a;
+      });
+      if (keuze && keuze.sit && acties.some(function (a) { return a.sit && !keuze.sit[a.sit]; })) { uit++; uitNamen.push(r.naam); return; }
       open++;
       acties.forEach(function (a) {
         var x = per[a.soort] || (per[a.soort] = { soort: a.soort, tekst: a.tekst, actief: a.actief, sit: a.sit, opdrachten: [] });
         if (x.opdrachten.indexOf(r.naam) < 0) x.opdrachten.push(r.naam);
+        // Het verst gevorderde telt: dat is de eerste die klaar komt.
+        if (typeof a.frac === 'number' && !(x.frac >= a.frac)) { x.frac = a.frac; x.nogS = a.nogS; }
       });
     });
     var acties = Object.keys(per).map(function (k) { return per[k]; });
     acties.sort(function (a, b) { return (b.actief - a.actief) || (b.opdrachten.length - a.opdrachten.length) || (a.soort < b.soort ? -1 : 1); });
-    return { acties: acties, klaar: klaar, open: open, uitgesloten: uit };
+    return { acties: acties, klaar: klaar, open: open, uitgesloten: uit, uitNamen: uitNamen };
   }
 
   /* ── HTML (puur) ───────────────────────────────────────────────── */
@@ -113,23 +127,65 @@
       '<button type="button" class="mc-k" onclick="PLMeetcoach.nietNu()">Niet nu</button></div></div>';
   }
 
+  /* De stappen die de bestuurder nu kan doen: actief, en niet weggezet
+     met "Niet deze rit". `i` is de gekozen stap (Volgende of de lijst),
+     anders de eerste. */
+  function stappen(p, st) {
+    st = st || {};
+    var weg = st.overslaan || [];
+    var act = p && p.acties ? p.acties.filter(function (x) { return x.actief && weg.indexOf(x.soort) < 0; }) : [];
+    var i = 0;
+    act.forEach(function (x, j) { if (x.soort === st.huidig) i = j; });
+    return { act: act, i: i };
+  }
+
+  function _bar(f) { return '<span class="mc-bar"><i style="width:' + Math.round(Math.max(0, Math.min(1, f || 0)) * 100) + '%"></i></span>'; }
+  function _mmss(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function _knop(fn, soort, tekst, kl) {
+    return '<button type="button" class="' + (kl || 'mc-k') + '"' + (soort !== null ? ' data-soort="' + esc(soort) + '"' : '') +
+      ' onclick="PLMeetcoach.' + fn + '(' + (soort !== null ? 'this.dataset.soort' : '') + ')">' + tekst + '</button>';
+  }
+
+  /* De balk (25-10-2026): bovenaan hoeveel proeven klaar zijn en hoe ver
+     de rit is; dan de stap van nu met "stap x van y", Volgende, de lijst en
+     Niet deze rit; daaronder wat vanzelf meet, met hoe lang nog. */
   function balkHtml(p, st) {
     st = st || {};
     if (st.bus === 'bezig') return '<div class="mc-balk mc-bus">⏳ ' + esc(st.busTekst || 'De bus is even van de meetproef') + '</div>';
     if (st.bus === 'vraag') return '<div class="mc-balk mc-bus">⏱ Je staat stil — mag ik de bus ' + esc(st.busDuur || '1 min') + '? ' +
       '<button type="button" class="mc-go" onclick="PLMeetcoach.busJa()">Ja</button> <button type="button" class="mc-k" onclick="PLMeetcoach.busLater()">Later</button></div>';
-    var a = p && p.acties ? p.acties.filter(function (x) { return x.actief && (st.overslaan || []).indexOf(x.soort) < 0; })[0] : null;
-    var voort = p ? '✓ ' + p.klaar + ' klaar · ' + p.open + ' bezig' + (st.verzonden ? ' · ' + st.verzonden + ' verzonden' : '') : '';
-    if (!a) return '<div class="mc-balk"><span class="mc-actie">' + (p && p.open ? '🚗 Gewoon doorrijden — de rest meet vanzelf' : '✓ Alles wat deze rit kan, is gemeten') + '</span><span class="mc-voort">' + voort + '</span></div>';
-    return '<div class="mc-balk"><span class="mc-actie">' + esc(a.tekst) + '</span>' +
-      '<span class="mc-voort">helpt ' + a.opdrachten.length + ' proef' + (a.opdrachten.length === 1 ? '' : 'en') + ' · ' + voort + '</span>' +
-      '<button type="button" class="mc-k" onclick="PLMeetcoach.overslaan(\'' + esc(a.soort) + '\')">Kan nu niet</button></div>';
+    var sp = stappen(p, st), act = sp.act, a = act[sp.i] || null;
+    var klaar = p ? p.klaar : 0, tot = p ? p.klaar + p.open : 0;
+    var kop = '<div class="mc-kopregel"><span class="mc-voort">✓ ' + klaar + ' van ' + tot + ' klaar</span>' + _bar(tot ? klaar / tot : 0) +
+      (st.duurS ? '<span class="mc-voort">⏱ ' + Math.floor((st.ritS || 0) / 60) + ' van ' + Math.round(st.duurS / 60) + ' min</span>' + _bar((st.ritS || 0) / st.duurS) : '') +
+      (p && p.uitgesloten ? '<span class="mc-voort mc-los">' + p.uitgesloten + ' niet voor deze rit</span>' : '') +
+      (st.verzonden ? '<span class="mc-voort mc-los">' + st.verzonden + ' verzonden</span>' : '') + '</div>';
+    var lijstKnop = _knop('lijst', null, st.lijst ? '▴ Lijst' : '☰ Kies uit lijst');
+    var nu = a
+      ? '<div class="mc-nu"><span class="mc-stap">Stap ' + (sp.i + 1) + ' van ' + act.length + '</span><span class="mc-actie">' + esc(a.tekst) + '</span>' +
+        (typeof a.frac === 'number' ? _bar(a.frac) + '<span class="mc-voort">nog ' + _mmss(a.nogS) + '</span>' : '') +
+        '<span class="mc-voort">helpt ' + a.opdrachten.length + ' proef' + (a.opdrachten.length === 1 ? '' : 'en') + '</span></div>' +
+        '<div class="mc-rij">' + (act.length > 1 ? _knop('volgende', null, 'Volgende ›', 'mc-go') : '') + lijstKnop + _knop('overslaan', a.soort, '✕ Niet deze rit') + '</div>'
+      : '<div class="mc-nu"><span class="mc-actie">' + (p && p.open ? '🚗 Gewoon doorrijden — de rest meet vanzelf' : '✓ Alles wat deze rit kan, is gemeten') + '</span></div>' +
+        '<div class="mc-rij">' + lijstKnop + '</div>';
+    var vanzelf = (p && p.acties ? p.acties : []).filter(function (x) { return !x.actief; }).map(function (x) {
+      return '<div class="mc-vz"><span>' + esc(x.tekst) + '</span>' +
+        (typeof x.frac === 'number' ? _bar(x.frac) + '<span class="mc-voort">' + (x.nogS > 0 ? 'nog ' + _mmss(x.nogS) : '✓') + '</span>' : '<span class="mc-voort">meet vanzelf</span>') + '</div>';
+    }).join('');
+    var weg = st.overslaan || [];
+    var lijst = !st.lijst ? '' : '<div class="mc-lijst">' + act.map(function (x, j) {
+        return _knop('kies', x.soort, esc(x.tekst) + ' · ' + x.opdrachten.length, 'mc-k' + (j === sp.i ? ' aan' : ''));
+      }).join('') +
+      (weg.length ? _knop('terug', null, '↺ ' + weg.length + ' weggezet terugzetten') : '') +
+      (p && p.uitNamen && p.uitNamen.length ? '<div class="mc-voort">Niet voor deze rit: ' + esc(p.uitNamen.join(', ')) + '</div>' : '') +
+      _knop('aanpassen', null, '✎ Rit aanpassen') + '</div>';
+    return '<div class="mc-balk">' + kop + nu + vanzelf + lijst + '</div>';
   }
 
   // ── de staat van deze sessie ───────────────────────────────────────
   var S = { geladen: false, laden: false, keuze: null, uit: false, overslaan: [], verzondenN: 0,
             laatsteVerzend: 0, wasVerbonden: false, contactVerzonden: false,
-            bus: null, busLaterTot: 0, busGedaan: {}, timer: null };
+            bus: null, busLaterTot: 0, busGedaan: {}, timer: null, huidig: null, lijst: false, ritStart: 0 };
 
   function _diag(m, n) {
     try { if (typeof log === 'function') log(m, n || 'info'); }
@@ -223,7 +279,8 @@
     el.hidden = false;
     if (!S.keuze) { el.innerHTML = vraagHtml(S.vraag); return; }
     el.innerHTML = balkHtml(plan(_alle(), S.keuze), { overslaan: S.overslaan, verzonden: S.verzondenN, bus: S.bus, busTekst: S.busTekst,
-      busDuur: _busProeven().length > 1 ? '2 min' : '1 min' });
+      busDuur: _busProeven().length > 1 ? '2 min' : '1 min', huidig: S.huidig, lijst: S.lijst,
+      duurS: S.keuze.duurS, ritS: S.ritStart ? (Date.now() - S.ritStart) / 1000 : 0 });
   }
 
   // ── knoppen ─────────────────────────────────────────────────────────
@@ -233,11 +290,22 @@
   function start() {
     var v = _vraag(); if (!v.duurS) return;
     S.keuze = { duurS: v.duurS, sit: Object.assign({}, v.sit) };
+    if (!S.ritStart) S.ritStart = Date.now();   // aanpassen onderweg zet de ritklok niet terug
     _diag('🧪 Meetcoach: rit van ' + Math.round(v.duurS / 60) + ' min, situaties: ' + (Object.keys(v.sit).filter(function (k) { return v.sit[k]; }).join(', ') || 'geen'), 'info');
     teken();
   }
   function nietNu() { S.uit = true; teken(); }
   function overslaan(soort) { if (S.overslaan.indexOf(soort) < 0) S.overslaan.push(soort); teken(); }
+  function _stappen() { return stappen(plan(_alle(), S.keuze), { overslaan: S.overslaan, huidig: S.huidig }); }
+  function volgende() {
+    var sp = _stappen();
+    if (sp.act.length) S.huidig = sp.act[(sp.i + 1) % sp.act.length].soort;
+    teken();
+  }
+  function kies(soort) { S.huidig = soort; S.lijst = false; teken(); }
+  function lijst() { S.lijst = !S.lijst; teken(); }
+  function terug() { S.overslaan = []; teken(); }
+  function aanpassen() { S.keuze = null; S.lijst = false; teken(); }
   function busLater() { S.bus = null; S.busLaterTot = Date.now() + CFG.laterMs; teken(); }
   function busJa() {
     var lijst = _busProeven();
@@ -267,9 +335,10 @@
   aan();
 
   window.PLMeetcoach = {
-    plan: plan, actieVoor: actieVoor, vraagHtml: vraagHtml, balkHtml: balkHtml,
+    plan: plan, actieVoor: actieVoor, vraagHtml: vraagHtml, balkHtml: balkHtml, stappen: stappen,
     tik: tik, teken: teken, verzend: verzend,
     kiesDuur: kiesDuur, kiesSit: kiesSit, start: start, nietNu: nietNu, overslaan: overslaan,
+    volgende: volgende, kies: kies, lijst: lijst, terug: terug, aanpassen: aanpassen,
     busJa: busJa, busLater: busLater,
     CFG: CFG, DUUR: DUUR, SITUATIES: SITUATIES,
     _staat: function () { return S; }

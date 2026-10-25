@@ -3721,3 +3721,13 @@ body[data-rijvorm="compact"] #rijModus .rij-tip { grid-column:1 / 3; }
 .mc-k.aan{border-color:var(--bl);background:var(--bl);color:#fff}
 .mc-go{border-color:var(--gn);background:var(--gn);color:#06120b;font-weight:700}
 .mc-go[disabled]{opacity:.45}
+.mc-balk{flex-direction:column;align-items:stretch}
+.mc-kopregel{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:4px 8px}
+.mc-nu{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.mc-kopregel>.mc-los{grid-column:1/-1}
+.mc-stap{font-size:12px;font-weight:700;color:var(--bl);flex:0 0 100%}
+.mc-bar{display:block;height:6px;min-width:60px;flex:1 1 80px;border-radius:3px;background:var(--sur);overflow:hidden}
+.mc-bar>i{display:block;height:100%;background:var(--gn)}
+.mc-vz{display:grid;grid-template-columns:1fr 80px auto;align-items:center;gap:8px;font-size:13px;color:var(--tx2)}
+.mc-lijst{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--bd);padding-top:8px}
+.mc-lijst .mc-k{text-align:left}
