@@ -11,6 +11,8 @@
 //   - verbreken en een minuut contact uit verzenden; dat gebeurt één keer
 //   - de bus wordt alleen na een vraag overgenomen, en elke proef één keer
 //   - tekst uit een opdracht komt geëscaped in de balk
+//   - voortgang telt op naar minS; een periode met bovengrens krijgt geen balk
+//   - Volgende komt rond, een gekozen stap staat vooraan, aanpassen houdt de klok
 //
 // Draaien vanuit public/:  node test-meetcoach.js       (exit 0 = goed)
 // ══════════════════════════════════════════════════════════════════
@@ -90,8 +92,42 @@ const flush = () => new Promise((r) => setImmediate(r));
   toets('de bus-vraag heeft Ja en Later', /busJa/.test(M.balkHtml(p, { bus: 'vraag' })) && /busLater/.test(M.balkHtml(p, { bus: 'vraag' })));
   toets('de vraag: Start pas met een duur', /disabled/.test(M.vraagHtml({ duurS: 0, sit: {} })) && !/disabled/.test(M.vraagHtml({ duurS: 600, sit: {} })));
 
+  console.log('\n3b. Voortgang en keuze (25-10-2026)');
+  const st = (naam, vw, waarden) => ({ id: naam, naam, opdracht: { naam, voorwaarden: vw }, vonnis: { staat: 'nog niet', voorwaarden: waarden.map((w) => ({ vervuld: false, waarde: w })) } });
+  p = M.plan([st('R1', [{ toestand: 'rijden', minS: 600 }], [240]), st('R2', [{ toestand: 'rijden', minS: 600 }], [480])], null);
+  const r = p.acties.filter((x) => x.soort === 'rijden')[0];
+  toets('rijden: hoe lang nog, van de verst gevorderde', r && r.nogS === 120 && Math.abs(r.frac - 0.8) < 1e-9, JSON.stringify(r));
+  let h = M.balkHtml(p, {});
+  toets('de balk toont hoe lang nog voor wat vanzelf meet', /nog 2:00/.test(h) && /width:80%/.test(h), h);
+  p = M.plan([st('U', [{ toestand: 'contact-uit', minS: 20, maxS: 90 }], [200])], null);
+  toets('contact uit met bovengrens: geen optelbalk (de periode is te lang, niet halfvol)', p.acties[0].frac === undefined, JSON.stringify(p.acties));
+  p = M.plan([o('A', [contact]), o('C', [helling]), o('S', [{ toestand: 'stil', minS: 30 }])], null);
+  h = M.balkHtml(p, {});
+  toets('stap 1 van 3, met Volgende en de lijst', /Stap 1 van 3/.test(h) && /volgende/.test(h) && /lijst/.test(h), h);
+  toets('kop: hoeveel klaar en de ritklok', /0 van 3 klaar/.test(M.balkHtml(p, { duurS: 1800, ritS: 600 })) && /10 van 30 min/.test(M.balkHtml(p, { duurS: 1800, ritS: 600 })));
+  const kies = M.stappen(p, { huidig: 'helling' });
+  toets('een gekozen stap staat vooraan in de balk', kies.act[kies.i].soort === 'helling' && /Stap 2 van 3/.test(M.balkHtml(p, { huidig: 'helling' })));
+  toets('één stap: geen Volgende', !/volgende/.test(M.balkHtml(M.plan([o('A', [contact])], null), {})));
+  toets('de lijst toont elke stap om te kiezen', (M.balkHtml(p, { lijst: true }).match(/PLMeetcoach\.kies\(/g) || []).length === 3);
+  toets('een soort met aanhalingstekens breekt de knop niet', /data-soort="anders:a&#39;b"/.test(M.balkHtml(M.plan([o('Q', [{ wat: "a'b" }])], null), {})));
+  p = M.plan([o('A', [contact]), o('C', [helling])], { duurS: 3600, sit: { snelweg: true } });
+  toets('een uur snelweg: geen contact-uit en geen helling, met de namen in de lijst', p.uitgesloten === 2 && !p.acties.length &&
+    /Niet voor deze rit: A, C/.test(M.balkHtml(p, { lijst: true })), JSON.stringify(p));
+  let c = maak(); c.alle = [o('A', [contact]), o('C', [helling]), o('S', [{ toestand: 'stil', minS: 30 }])];
+  c.PLMeetcoach.kiesDuur('lang'); ['stoplicht', 'helling', 'stilstaan'].forEach(c.PLMeetcoach.kiesSit); c.PLMeetcoach.start();
+  const volg = () => { const s = c.PLMeetcoach.stappen(c.PLMeetcoach.plan(c.alle, c.PLMeetcoach._staat().keuze), { huidig: c.PLMeetcoach._staat().huidig }); return s.act[s.i].soort; };
+  const eerst = volg(); c.PLMeetcoach.volgende(); const tweede = volg(); c.PLMeetcoach.volgende(); c.PLMeetcoach.volgende();
+  toets('Volgende schuift door en komt rond', eerst !== tweede && volg() === eerst, eerst + ' ' + tweede + ' ' + volg());
+  const t0 = c.PLMeetcoach._staat().ritStart;
+  c.PLMeetcoach.aanpassen();
+  toets('rit aanpassen: de vraag terug, met wat er gekozen was', c.PLMeetcoach._staat().keuze === null && /mc-k aan/.test(c.PLMeetcoach.vraagHtml(c.PLMeetcoach._staat().vraag)));
+  c.PLMeetcoach.start();
+  toets('na aanpassen loopt de ritklok door', t0 > 0 && c.PLMeetcoach._staat().ritStart === t0);
+  c.PLMeetcoach.overslaan('contact'); c.PLMeetcoach.terug();
+  toets('weggezette stappen terugzetten', c.PLMeetcoach._staat().overslaan.length === 0);
+
   console.log('\n4. De automatiek');
-  let c = maak();
+  c = maak();
   c.PLMeetcoach.tik(); await flush(); c.PLMeetcoach.tik(); await flush();
   toets('verbonden: de lijst één keer geladen, sensoren erbij met het plafond', c.lijstN === 1 && c.sensoren === 12, c.lijstN + ' ' + c.sensoren);
   c.connected = false; c.PLMeetcoach.tik(); c.PLMeetcoach.tik();

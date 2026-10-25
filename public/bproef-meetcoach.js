@@ -3,7 +3,7 @@
 // ──────────────────────────────────────────────────────────────────
 // In de echte app, met de echte modulevolgorde:
 //   1. admin + verbonden: de vraag "Tijd voor meetproeven?" staat bovenaan Live
-//   2. duur kiezen en Start: de balk met één actie staat er
+//   2. duur kiezen en Start: de balk met één actie staat er, met voortgang en lijst
 //   3. TEGENPROEF: geen admin → geen balk, ook niet na een tik
 //
 // Draaien vanuit public/:  node bproef-meetcoach.js   (exit 0 = goed)
@@ -43,6 +43,11 @@ function toets(naam, waar, uitleg) {
     await app.ev(`(function(){ PLMeetcoach.kiesDuur('middel'); PLMeetcoach.kiesSit('stoplicht'); PLMeetcoach.start(); return true; })()`);
     const b = await app.ev(balk);
     toets('de vraag is weg, de balk staat er', !/Tijd voor meetproeven/.test(b.tekst) && /klaar/.test(b.tekst), b.tekst);
+
+    toets('met de voortgang: klaar en de ritklok', /van \d+ klaar/.test(b.tekst) && /van 30 min/.test(b.tekst), b.tekst);
+    await app.ev(`(function(){ PLMeetcoach.lijst(); return true; })()`);
+    const l = await app.ev(balk);
+    toets('de lijst klapt open met Rit aanpassen', /Rit aanpassen/.test(l.tekst), l.tekst);
 
     console.log('\n3. TEGENPROEF — geen admin');
     await app.ev(`(function(){ window.magOntwikkelen = function(){ return false; }; PLMeetcoach.tik(); return true; })()`);

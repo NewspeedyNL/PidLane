@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 25-10-2026 — Meetcoach: voortgang, stappen en keuze
+ ═══════════════════════════════════════════════════════════
+
+ - De balk toont bovenaan "✓ x van y klaar" en de ritklok ("12 van 30 min"),
+   elk met een voortgangsbalk; wat vanzelf meet staat eronder met "nog m:ss".
+ - "Stap x van y" met Volgende ›, ☰ Kies uit lijst en ✕ Niet deze rit (was
+   Kan nu niet). De lijst noemt welke proeven niet bij deze rit passen, zet
+   weggezette stappen terug en heeft ✎ Rit aanpassen; de klok loopt door.
+ - Knoppen dragen de soort in data-soort (geëscaped) in plaats van in de
+   onclick-tekst: een aanhalingsteken in een opdracht brak de knop.
+ - Tests: test-meetcoach.js +14, bproef-meetcoach.js +2, vijf mutaties; blok 5.
+
+ ═══════════════════════════════════════════════════════════
  24-10-2026 — Meetcoach: meetproeven zonder meetkamer
  ═══════════════════════════════════════════════════════════
 

@@ -2848,6 +2848,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Meetcoach: voortgang en keuze (25-10-2026) ──
+  {
+    issue: 'meetcoach',
+    naam: 'De meetcoach toont stap x van y, hoe lang nog, en laat je kiezen of doorschuiven',
+    waarom: 'Na de eerste rit op 25-10: "gewoon doorrijden" zei niet hoe lang nog, en bij meerdere stappen was er geen Volgende of lijst.',
+    proef: async function () {
+      var M = window.PLMeetcoach;
+      if (!M || typeof M.stappen !== 'function' || typeof M.volgende !== 'function') return { staat: 'FOUT', detail: 'PLMeetcoach.stappen/volgende ontbreken — oude pidlane-meetcoach.js (herladen?)' };
+      var o = function (n, vw, w) { return { naam: n, opdracht: { naam: n, voorwaarden: vw }, vonnis: { staat: 'nog niet', voorwaarden: w.map(function (x) { return { vervuld: false, waarde: x }; }) } }; };
+      var p = M.plan([o('A', [{ toestand: 'contact-uit', minS: 20, maxS: 90 }], [null]), o('B', [{ toestand: 'stil', minS: 30 }], [null]),
+        o('C', [{ toestand: 'rijden', minS: 600 }], [450])], null);
+      var h = M.balkHtml(p, { huidig: 'stil' });
+      if (!/Stap 2 van 2/.test(h)) return { staat: 'FOUT', detail: 'een gekozen stap staat niet als "Stap 2 van 2" in de balk' };
+      if (!/nog 2:30/.test(h)) return { staat: 'FOUT', detail: '7,5 van 10 min rijden toont niet "nog 2:30"' };
+      var s = M._staat();
+      return { staat: 'OK', detail: s.keuze ? 'deze rit: ' + Math.round(s.keuze.duurS / 60) + ' min' + (s.ritStart ? ', ' + Math.floor((Date.now() - s.ritStart) / 60000) + ' min onderweg' : '') : 'nog geen rit gekozen' };
+    }
+  },
+
   // ── Meetcoach (24-10-2026) ──
   {
     issue: 'meetcoach',
@@ -11715,6 +11734,7 @@ const CAMPAGNE = {
   titel: 'OPLEVERING 24-10 — meetcoach: één vraag bij verbinden, één actie in Live, de rest meet en verzendt vanzelf',
   vragen: [
     '── WAAROM DEZE RONDE ────────',
+    'DE MEETCOACH ZEGT HOE VER JE BENT. Bovenaan: hoeveel proeven klaar en hoe ver de rit is. Daaronder "Stap 1 van 3" met Volgende ›, ☰ Kies uit lijst en ✕ Niet deze rit, en wat vanzelf meet met "nog 2:30". In de lijst: welke proeven niet bij deze rit passen, weggezette stappen terug, en ✎ Rit aanpassen (de ritklok loopt door). Een uur snelweg zonder Stoplichten aangevinkt = geen contact-uit-stap. Klopt "nog …" niet met wat je reed, of mis je een stap: plak de regel van blok 5 over de meetcoach.',
     'GEEN MEETKAMER MEER NODIG. Bij verbinden vraagt Live één keer: hoe lang rij je, en wat kan deze rit (stoplicht, snelweg, helling, stilstaan). Daarna staat er bovenaan Live één actie tegelijk — doe hem als het kan, of tik Kan nu niet. Alle opdrachten laden vanzelf, hun sensoren lezen mee, en een uitkomst gaat bij verbreken of na een minuut contact uit vanzelf naar Second opinion. Een opstelling hoeft niet meer gekeurd: ongekeurd telt als auto, afkeuren kan achteraf. Sta je stil, dan vraagt de balk of hij de bus even mag hebben — alleen na Ja.',
     'JE HOEFT NIETS MEER TE MARKEREN VOOR STILSTAND, RIJDEN, CONTACT OF HELLING. De toeschouwer ziet het zelf en zet de markering; de regel 🔭 in de meetkamer zegt wat hij zag. Een stuk zonder snelheid telt niet als stilstand.',
     'DE MEETPROEVEN STAAN IN D1, NIET HIER. Nieuwe staan in meetproeven/ (gekeurd door plopdracht.js) en gaan via beheer.html → Meetopdrachten de tabel in; de helling (#463) en contact uit (#487) zijn er nu zo één.',
