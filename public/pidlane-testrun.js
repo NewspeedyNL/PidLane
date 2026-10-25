@@ -2867,6 +2867,21 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── Modeljaar uit een Europese VIN (25-10-2026) ──
+  {
+    issue: '#617',
+    naam: 'Het modeljaar uit een Europese VIN volgt niet meer de Noord-Amerikaanse positie-7-regel',
+    waarom: 'bproef-merken.js: een Clio 2020 (VF1RJA0AXL…) kreeg modeljaar 1990, ook in de #541-tabel.',
+    proef: async function () {
+      if (typeof decodeVIN !== 'function') return { staat: 'FOUT', detail: 'decodeVIN ontbreekt — pidlane-rijsituatie.js niet geladen (herladen?)' };
+      var eu = decodeVIN('VF1RJA0AXL4000001').year, na = decodeVIN('1FAPP3640LK000001').year;
+      if (eu !== '2020') return { staat: 'FOUT', detail: 'Clio VF1RJA0AXL… geeft ' + eu + ' in plaats van 2020' };
+      if (na !== '1990') return { staat: 'FOUT', detail: 'Ford 1FAPP3640L… geeft ' + na + ' in plaats van 1990: de regel voor Noord-Amerika is weg' };
+      var v = (window.vehicleInfo && vehicleInfo.vin) || '';
+      return { staat: 'OK', detail: 'Clio 2020, Ford 1990' + (v.length === 17 ? ' — deze auto: ' + (decodeVIN(v).year || 'geen jaarcode') : '') };
+    }
+  },
+
   // ── Meetcoach (24-10-2026) ──
   {
     issue: 'meetcoach',

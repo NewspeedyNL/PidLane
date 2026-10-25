@@ -292,11 +292,23 @@ function decodeVIN(vin){
   const ci=YR_CYCLE.indexOf(yc);
   let year='';
   if(ci>=0){
-    const p7=vin[6]?.toUpperCase()||'';
-    const modern=/[A-Z]/.test(p7); // letter op positie 7 → 2010+
-    let y=(modern?2010:1980)+ci;
     const nu=new Date().getFullYear();
-    if(y>nu+1) y-=30; // nooit in de toekomst → vorige cyclus
+    let y;
+    if(/^[1-5]/.test(vin)){
+      // Noord-Amerika (WMI 1–5): de positie-7-regel is daar voorschrift.
+      const p7=vin[6]?.toUpperCase()||'';
+      const modern=/[A-Z]/.test(p7); // letter op positie 7 → 2010+
+      y=(modern?2010:1980)+ci;
+      if(y>nu+1) y-=30; // nooit in de toekomst → vorige cyclus
+    } else {
+      // Elders geldt die regel niet (#617): een Clio 2020 (VF1RJA0AXL…) heeft
+      // een 0 op positie 7 en werd 1990. Neem de jongste cyclus die niet in de
+      // toekomst ligt. Voor 1990–1995 kan dat dertig jaar mis zijn; daar
+      // overschrijft de RDW het, en positie 10 is bij veel Europese merken
+      // toch geen jaarcode.
+      y=2010+ci;
+      if(y>nu) y-=30;
+    }
     year=y.toString();
   }
   return{merk:merk||'Onbekend merk',model:'',year,vin,wmi,brandstof:'',motor:''};
