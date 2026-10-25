@@ -2215,6 +2215,7 @@ MUTATIES=(
 "public/pidlane-bt.js@@      if(plAdapterStil(autoResp, ati)){ toonAdapterStil(); return; }\n@@@@bproef-adapterstil.js@@een adapter die niet op pair staat krijgt weer de protocolkeuze (#476)"
 "public/pidlane-data.js@@  return !schoon(autoResp) && !schoon(atiResp);@@  return !schoon(autoResp);@@test-protocolkeuze.js@@een adapter die op ATI antwoordt heet toch stil (#476)"
 "public/pidlane-bt.js@@  if(!heeftAuto){\n    const hint=document.createElement('div');@@  if(false){\n    const hint=document.createElement('div');@@test-protocolkeuze.js@@een mislukte detectie zegt niet meer groot dat het contact waarschijnlijk uit staat"
+"public/pidlane-bt.js@@  const PL_0100_POGINGEN=3;@@  const PL_0100_POGINGEN=1;@@bproef-storing.js@@één NO DATA op de eerste 0100 en de Fiat 500 (29-bit) draait weer op CAN 11-bit (#614)"
 "public/pidlane-bt.js@@  if(M && algemeen){@@  if(M){@@test-dtcomschrijving.js@@een Peugeot met P1340 krijgt weer de BMW-uitleg"
 "public/pidlane-bt.js@@(d==='1'||d==='2');@@d==='1';@@test-dtcomschrijving.js@@een U2-netwerkcode van één merk leent weer de tekst van een ander merk"
 "public/pidlane-bt.js@@  if(window._emptyStreak>=6 && connected && !demoMode){@@  if(window._emptyStreak>=600 && connected && !demoMode){@@bproef-storing.js@@een stille adapter wordt niet meer gemerkt: de pollus blijft verbonden en vraagt door in het niets"
