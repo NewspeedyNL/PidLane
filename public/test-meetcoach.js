@@ -94,7 +94,7 @@ const flush = () => new Promise((r) => setImmediate(r));
 
   console.log('\n3b. Voortgang en keuze (25-10-2026)');
   const st = (naam, vw, waarden) => ({ id: naam, naam, opdracht: { naam, voorwaarden: vw }, vonnis: { staat: 'nog niet', voorwaarden: waarden.map((w) => ({ vervuld: false, waarde: w })) } });
-  p = M.plan([st('R1', [{ toestand: 'rijden', minS: 600 }], [240]), st('R2', [{ toestand: 'rijden', minS: 600 }], [480])], null);
+  p = M.plan([st('R2', [{ toestand: 'rijden', minS: 600 }], [480]), st('R1', [{ toestand: 'rijden', minS: 600 }], [240])], null);
   const r = p.acties.filter((x) => x.soort === 'rijden')[0];
   toets('rijden: hoe lang nog, van de verst gevorderde', r && r.nogS === 120 && Math.abs(r.frac - 0.8) < 1e-9, JSON.stringify(r));
   let h = M.balkHtml(p, {});
