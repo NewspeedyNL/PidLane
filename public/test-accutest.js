@@ -95,6 +95,8 @@ toets('snel gemeten: ok, plateau rond 10,4 V', st.ok && Math.abs(st.plateau - 10
 toets('… de inschakelpiek van 7,9 V beslist niet: oordeel goed', K.startOordeel(st, 21).staat === 'goed', JSON.stringify(K.startOordeel(st, 21)));
 st = K.startUitMonsters(reeks(500, 7.9, 10.4), 12.6);
 toets('elke 500 ms gemeten: niet te beoordelen', !st.ok && K.startOordeel(st, 21).staat === 'onbekend', JSON.stringify(st));
+st = K.startUitMonsters(reeks(40, 7.9, 10.4).filter((x) => x.t < 600 || x.t > 900), 12.6);
+toets('genoeg monsters maar een gat van 320 ms in de dip: niet te beoordelen', !st.ok && /gat van/.test(st.reden), JSON.stringify(st));
 st = K.startUitMonsters(reeks(40, 9.0, 9.1), 12.6);
 toets('plateau 9,1 V bij 21 °C: zwak, met bewijs', K.startOordeel(st, 21).staat === 'zwak' && K.startOordeel(st, 21).bewijs === 'start');
 toets('… hetzelfde plateau bij −12 °C: niet zwak (BCI 8,7 V)', K.startOordeel(st, -12).staat !== 'zwak');
@@ -181,10 +183,11 @@ function rij(a, duurS, f) {
 const laadMelding = (ev) => ev.some((k) => /LAADSPANNING/.test(k));
 {
   const a = app();
-  rij(a, 10, () => ({ '0105': 90, '0142': 14.1, '010D': 30, '010C': 1500 }));
-  // i-stop: 20 s motor uit met licht en blower, dan weer aan op 13,0 V.
-  const ev = rij(a, 34, (t) => (t < 20 ? { '0105': 90, '0142': 12.0, '010D': 0, '010C': 0 } : { '0105': 90, '0142': 13.0, '010D': 0, '010C': 800 + (Math.round(t * 4) % 2) }));
-  toets('i-stop van 20 s in het venster: geen "dynamo laadt niet"', !laadMelding(ev), ev.join(', '));
+  rij(a, 10, (t) => ({ '0105': 90, '0142': 12.8, '010D': 30, '010C': 1500 + (Math.round(t * 4) % 2) }));
+  // i-stop: 25 s motor uit met licht en blower (11,8 V), dan weer aan op
+  // 12,8 V (slim laden). Het venster van 30 s middelt daarna onder 12,2 V.
+  const ev = rij(a, 40, (t) => (t < 25 ? { '0105': 90, '0142': 11.8, '010D': 0, '010C': 0 } : { '0105': 90, '0142': 12.8, '010D': 0, '010C': 800 + (Math.round(t * 4) % 2) }));
+  toets('i-stop van 25 s in het venster: geen "dynamo laadt niet"', !laadMelding(ev), ev.join(', '));
   toets('… en ook geen bewijs genoteerd', !a.PLAccu.stand().bewijs.length, JSON.stringify(a.PLAccu.stand().bewijs));
 }
 {
