@@ -2848,6 +2848,27 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Accutest en de poort van twee bewijzen (25-10-2026) ──
+  {
+    issue: 'accutest',
+    naam: 'De accutest beoordeelt het plateau van de startdip, en één lage laadspanning is nog geen melding',
+    waarom: 'Op een Mazda met slimme laadregeling gaf de app vaak een accu-/dynamomelding: een i-stop in het venster van 30 s, 15,4 V bij vorst, en één meting was één melding.',
+    proef: async function () {
+      var A = window.PLAccu;
+      if (!A || !A._kern || typeof A._kern.startUitMonsters !== 'function') return { staat: 'FOUT', detail: 'PLAccu ontbreekt — pidlane-accutest.js niet geladen (herladen?)' };
+      if (!window.PLKenmerk || typeof PLKenmerk.laadHoog !== 'function') return { staat: 'FOUT', detail: 'PLKenmerk.laadHoog ontbreekt — oude pidlane-kenmerk.js (herladen?)' };
+      var K = A._kern, m = [];
+      for (var t = 0; t <= 2000; t += 40) m.push({ t: t, v: t < 400 ? 12.6 : t < 420 ? 7.9 : t < 1200 ? 10.4 : 14.2 });
+      var s = K.startUitMonsters(m, 12.6);
+      if (!s.ok || K.startOordeel(s, 21).staat !== 'goed') return { staat: 'FOUT', detail: 'een gezonde start met een inschakelpiek van 7,9 V heet ' + (s.ok ? K.startOordeel(s, 21).staat : s.reden) };
+      var L = K.bewijsErbij([], { soort_van: 'dynamo', soort: 'laadspanning', tekst: 'x' }, Date.now());
+      if (K.bevestigd(L, 'dynamo').ja) return { staat: 'FOUT', detail: 'één bewijs heet al bevestigd' };
+      if (PLKenmerk.laadHoog(-10) <= 15.4) return { staat: 'FOUT', detail: 'de bovengrens bij −10 °C is ' + PLKenmerk.laadHoog(-10) + ' V: 15,4 V heet dan kapot' };
+      var st = A.stand(), u = A.uitslag();
+      return { staat: 'OK', detail: st.starts.length + ' start(s) gemeten op deze auto; accu: ' + u.accu.reden + '; dynamo: ' + u.dynamo.reden };
+    }
+  },
+
   // ── Meetcoach: voortgang en keuze (25-10-2026) ──
   {
     issue: 'meetcoach',

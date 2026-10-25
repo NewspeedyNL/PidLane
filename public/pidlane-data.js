@@ -727,6 +727,8 @@ window.CORRELATION_RULES =[
     naam:'Mogelijk dynamo-/laadprobleem',
     oordeel:()=>{ const v=pidVals['0142'], rpm=pidVals['010C'];
       if(v===undefined||rpm===undefined||rpm<=1000) return null;
+      // Eén momentopname is geen bewijs (25-10-2026): pas bij twee bewijzen.
+      if(window.PLAccu && !PLAccu.bevestigd('dynamo')) return null;
       if(!window.PLKenmerk) return v<13.0 ? {niveau:'fout'} : null;
       const r=PLKenmerk.laadLive(v, rpm);
       return (r && r.niveau!=='ok') ? {niveau:r.niveau, tekst:r.tekst, geldt:r.geldt} : null; },

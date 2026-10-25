@@ -1584,7 +1584,8 @@
         rijProf('Plaats voor het weer', v.plaats && window.PLWeer ? PLWeer.naam(v.plaats) : null) +
         '</div>' + (v.notities ? '<div class="gr-klein" style="margin-top:8px">' + esc(v.notities) + '</div>' : '') + '</div>' +
         '<div class="gr-knoppen"><button class="gr-k hoofd" onclick="PLGarage._bewerk(\'' + esc(v.id) + '\')">✏️ Profiel aanpassen</button>' +
-        (window.PLWinter && v.id === _st.actiefId ? '<button class="gr-k" onclick="PLGarage.sluit();PLWinter.open()">❄️ Winterprofiel</button>' : '') + '</div>' +
+        (window.PLWinter && v.id === _st.actiefId ? '<button class="gr-k" onclick="PLGarage.sluit();PLWinter.open()">❄️ Winterprofiel</button>' : '') +
+        (window.PLAccu && v.id === _st.actiefId ? '<button class="gr-k" onclick="PLGarage.sluit();PLAccu.open()">🔋 Accutest</button>' : '') + '</div>' +
         (v.status === 'actief' ? '<div class="gr-knoppen"><button class="gr-k" onclick="PLGarage._archiveer(\'' + esc(v.id) + '\')">Archiveren (verkocht of weg)</button></div>' : '');
     }
     return h;

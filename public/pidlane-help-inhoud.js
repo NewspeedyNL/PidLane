@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-24', app: '3.4.0' },
+  gecontroleerd: { datum: '2026-10-25', app: '3.4.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -245,6 +245,15 @@ var PL_HULP = {
         'Heb je net een analyse gedaan, dan toont de volgende meteen de uitslag, tenzij hij meer sensoren nodig heeft. ' +
         'Bij de datalog, de ritanalyse, de caravan en de klimaatcheck is de eigen meting de bron: je ziet de uitslag daarvan, en daarna de vraag aan de AI. Zeg je nee, dan krijg je bij caravan en klimaat het rapport zonder AI-deel.</p>',
       zie: ['onderzoek', 'account'] },
+
+    { id: 'accutest', groep: 'gebruik', titel: 'Accu- en dynamotest',
+      icoon: '🔋', kort: 'Een echte accutest via de adapter, ook op een auto die slim laadt. Een melding pas bij twee bewijzen.',
+      tekst:
+        '<p>Bij je actieve voertuig in Mijn voertuigen staat <b>🔋 Accutest</b>. De test loopt in vier stappen: hoe lang de auto stilstond (een rustmeting telt pas na 2 uur), de rustspanning met contact aan en de motor uit, de spanning tijdens het <b>starten</b>, en een <b>belastingproef</b> van 60 seconden met de motor aan en grootlicht, achterruitverwarming en blower vol aan.</p>' +
+        '<p>Ook zonder de test meet de app bij elke start de startdip mee, voor zover de meting snel genoeg is. Daarmee ziet hij of de accu achteruitgaat ten opzichte van zijn eigen eerste starts, en rekent hij met de weersverwachting van je winterprofiel uit of de accu de koudste nacht haalt.</p>' +
+        '<p>Een auto met slimme laadregeling laadt bij een volle accu bewust laag. Daarom wordt een bevinding over de accu of de dynamo pas een melding bij <b>twee bewijzen</b>, of hetzelfde bewijs op twee verschillende dagen. Na een nieuwe accu kies je <b>Nieuwe accu geplaatst</b>, zodat de oude metingen niet meer meetellen.</p>' +
+        '<p>Dit vervangt geen werkplaatstester: die belast de accu veel zwaarder of meet de inwendige weerstand.</p>',
+      zie: ['winter', 'check'] },
 
     { id: 'status', groep: 'gebruik', titel: 'De statusknop bovenin',
       icoon: '🟢', kort: 'Eén stip rechtsboven: de ernstigste kleur van auto-dossier, adapter en AI samen.',

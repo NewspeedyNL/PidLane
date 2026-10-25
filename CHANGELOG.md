@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 25-10-2026 — Accu- en dynamotest, en geen valse laadmelding meer
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw: PLAccu (pidlane-accutest.js). Begeleide test via 🔋 Accutest in
+   Mijn voertuigen: rustspanning (na ≥ 2 uur stil), startdip via snelle ATRV
+   (plateau tegen de BCI-grens per temperatuur), belastingproef 60 s.
+ - Stil bij elke start: startdip uit 0142, trend naar 20 °C tegen de eigen
+   eerste starts, en een wintervoorspelling uit de weersverwachting.
+ - De poort: een accu- of dynamobevinding wordt pas een melding bij twee
+   soorten bewijs, of dezelfde soort op twee dagen (30 dagen venster).
+ - LAADSPANNING: de motor moet het hele venster van 30 s draaien (een i-stop
+   gaf "de dynamo laadt niet"). Bovengrens 15,2 V schuift mee bij kou
+   (PLKenmerk.laadHoog, tot +0,6 V).
+ - Tests: test-accutest.js (57), acht mutaties; blok 5; handleiding.
+
+ ═══════════════════════════════════════════════════════════
  25-10-2026 — Meetcoach: voortgang, stappen en keuze
  ═══════════════════════════════════════════════════════════
 

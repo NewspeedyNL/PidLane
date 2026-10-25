@@ -162,6 +162,14 @@
   var LAAD_HARD_LAAG = 12.2;   // onder een halflege rustende accu: hij ontlaadt, op elke auto
   var LAAD_HARD_HOOG = 15.2;   // regelaar knijpt niet af, op elke auto
   var LAAD_KLASSIEK = 13.2;    // ondergrens van een ongestuurde dynamo
+  /* De bovengrens in de kou (25-10-2026, PLAccu). Een regelaar compenseert
+     de temperatuur, ≈ −18 mV/°C over zes cellen: bij −10 °C is 15,3–15,5 V
+     goed laden en geen kapotte regelaar. Onder 10 °C schuift de grens mee,
+     hoogstens 0,6 V. Zonder temperatuur blijft hij 15,2. */
+  function laadHoog(temp) {
+    var t = (temp === null || temp === undefined || temp === '') ? NaN : Number(temp);
+    return isFinite(t) && t < 10 ? Math.round((LAAD_HARD_HOOG + Math.min(0.6, 0.018 * (10 - t))) * 100) / 100 : LAAD_HARD_HOOG;
+  }
   var nl1 = function (x) { return (Math.round(x * 10) / 10).toFixed(1).replace('.', ','); };
   function laadspanning(u, rpm, ctx) {
     ctx = ctx || {};
@@ -169,7 +177,7 @@
     if (!isFinite(u) || u < 6 || u > 20 || !(rpm >= 500)) return null;
     var U = nl1(u) + ' V';
     if (u < LAAD_HARD_LAAG) return { niveau: 'fout', tekst: 'laadspanning ' + U + ' bij draaiende motor — lager dan een halflege accu: de dynamo laadt niet', hard: true };
-    if (u > LAAD_HARD_HOOG) return { niveau: 'fout', tekst: 'laadspanning ' + U + ' — te hoog, de regelaar knijpt niet af', hard: true };
+    if (u > laadHoog(ctx.temp)) return { niveau: 'fout', tekst: 'laadspanning ' + U + ' — te hoog, de regelaar knijpt niet af', hard: true };
     var lo = ctx.laad;
     if (lo && lo.staat === 'laadt_niet') return { niveau: 'fout', tekst: lo.tekst };
     if (lo) return { niveau: 'ok', tekst: lo.tekst };
@@ -323,7 +331,7 @@
   }
 
   window.PLKenmerk = {
-    NAAM: NAAM, VRAAG: VRAAG, KOEL_HARD: KOEL_HARD, KOEL_KLASSIEK: KOEL_KLASSIEK, LAAD_HARD_LAAG: LAAD_HARD_LAAG, LAAD_KLASSIEK: LAAD_KLASSIEK,
+    NAAM: NAAM, VRAAG: VRAAG, KOEL_HARD: KOEL_HARD, KOEL_KLASSIEK: KOEL_KLASSIEK, LAAD_HARD_LAAG: LAAD_HARD_LAAG, laadHoog: laadHoog, LAAD_KLASSIEK: LAAD_KLASSIEK,
     profiel: profiel, geldt: geldt, toepassen: toepassen, laadspanning: laadspanning, laadBand: laadBand, koelwater: koelwater,
     noteer: noteer, wisNotitie: wisNotitie, onbeslist: onbeslist, vragen: vragen, promptBlok: promptBlok,
     bronLive: bronLive, bronVoertuig: bronVoertuig, live: live, vergeet: vergeet, antwoord: antwoord, letOp: letOp,
