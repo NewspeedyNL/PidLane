@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 25-10-2026 — Storingsproef: de klantroute tegen een storende adapter
+ ═══════════════════════════════════════════════════════════
+
+ - Nieuw: public/bproef-storing.js. Ruis, rommel, uitval en één NO DATA
+   op de eerste 0100 om PLNepAuto heen; toetst vastlopen, spookdata,
+   waarden en de pollus (hapering, stille adapter). Standaard Fiat 500 en
+   Mercedes C 2000, --alle neemt CX-5 en Golf erbij.
+ - Gevonden en als issue vastgelegd: #614, #615, #616, #617 (zie archief).
+ - plmutate.sh: tegenproef op de dode-socketdrempel in trackBtQuality.
+
+ ═══════════════════════════════════════════════════════════
  24-10-2026 — Meetcoach: meetproeven zonder meetkamer
  ═══════════════════════════════════════════════════════════
 

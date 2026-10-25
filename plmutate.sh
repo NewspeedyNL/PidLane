@@ -2216,6 +2216,7 @@ MUTATIES=(
 "public/pidlane-bt.js@@  if(!heeftAuto){\n    const hint=document.createElement('div');@@  if(false){\n    const hint=document.createElement('div');@@test-protocolkeuze.js@@een mislukte detectie zegt niet meer groot dat het contact waarschijnlijk uit staat"
 "public/pidlane-bt.js@@  if(M && algemeen){@@  if(M){@@test-dtcomschrijving.js@@een Peugeot met P1340 krijgt weer de BMW-uitleg"
 "public/pidlane-bt.js@@(d==='1'||d==='2');@@d==='1';@@test-dtcomschrijving.js@@een U2-netwerkcode van één merk leent weer de tekst van een ander merk"
+"public/pidlane-bt.js@@  if(window._emptyStreak>=6 && connected && !demoMode){@@  if(window._emptyStreak>=600 && connected && !demoMode){@@bproef-storing.js@@een stille adapter wordt niet meer gemerkt: de pollus blijft verbonden en vraagt door in het niets"
 "public/pidlane-telemetrie.js@@  const u=zwaarte(ag, aL, aD, ax.voor, ax.rechts);@@  const u=zwaarte(ag, 0, aD, ax.voor, ax.rechts);@@test-telemetrie.js@@remmen leest weer als voorover hellen: de rijversnelling gaat er niet af — #404"
 "public/pidlane-telemetrie.js@@  const aD=(vers && typeof kmh==='number') ? -(kmh/3.6)*_gier : 0;@@  const aD=(vers && typeof kmh==='number') ? (kmh/3.6)*_gier : 0;@@test-telemetrie.js@@de bochtcorrectie heeft het verkeerde teken: een bocht leest als dubbele kanteling — #404"
 "public/pidlane-telemetrie.js@@  _voor=null; _leer={ som:[0,0,0], n:0 };@@  _leer={ som:[0,0,0], n:0 };@@test-telemetrie.js@@na nulstellen in een andere houder blijft de oude rijrichting staan — #404"

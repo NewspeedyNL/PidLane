@@ -15,6 +15,46 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 25-10-2026 — de klantroute tegen een storende adapter (bproef-storing.js)
+
+`bproef-merken.js` draaide 21 nagebootste auto's, alle groen — maar altijd
+met een adapter die elk antwoord netjes afleverde. `bproef-storing.js` zet
+een storing om PLNepAuto heen (vaste zaadwaarde, dus na te spelen): ruis
+(8 % NO DATA, 3 % leeg), rommel (15 % STOPPED/BUFFER FULL/CAN ERROR/half
+frame), een adapter die na 70 verzoeken stilvalt, één NO DATA op het eerste
+OBD-verzoek, en uitval midden in de survey. Plus de pollus: ruis, een
+hapering van drie lege antwoorden, dan een stille adapter.
+
+**Wat standhield.** Onder ruis en rommel: geen vastlopers, geen JS-fouten,
+geen spookfoutcodes, geen verkeerde VIN, en elke waarde die de survey of de
+pollus boekte was precies die van de auto. De pollus doorstaat een hapering
+en merkt een stille adapter binnen ~2 s (6× leeg, `trackBtQuality`).
+
+**Wat niet** (alle drie in BEKEND, zodat de proef op main groen staat):
+
+- **#614** — één NO DATA op de eerste `0100` en er is geen protocol; de lijst
+  selecteert CAN 11-bit voor. Bij een CX-5 toevallig goed, bij de Fiat 500
+  (29-bit) 18 van 39 PIDs, bij de Mercedes (KWP) 6 gemist.
+- **#615** — adapter weg tijdens de survey: de sessie wordt toch bewaard,
+  met cijfer 7–8,9, lege antwoorden als `nodata` (transport 0), en bij de
+  Mercedes "geen foutcodes" terwijl de auto P0170 en P1570 heeft.
+- **#616** — met een onleesbaar steunbitblok laat de merkpreset PIDs toe die
+  de auto niet heeft (Fiat: 0146, 010A, 015E).
+- **#617** (uit `bproef-merken.js --alle`) — Clio 2020 krijgt modeljaar 1990:
+  de positie-7-regel is Noord-Amerikaans.
+
+**Bijvangst die géén fout was.** De proef zag eerst PIDs geboekt die niet in
+`activePIDs` stonden. Dat was de pollus die de discovery zelf al gestart
+had: zijn lopende ronde boekt nog de oude keuze. De proef wacht nu die ronde
+af. Ook gezien, niet nagemeten: automatisch herverbinden na een dode socket
+gebeurt alleen voor SPP (`getSPP()`); of BLE en Web Bluetooth elders
+herverbinden is niet onderzocht.
+
+**Grens.** De kansen zijn gekozen, niet gemeten. Hoe vaak een echte kloon
+dit doet, en in welke vorm, blijft een vraag voor CAMPAGNE.
+
+---
+
 ## 24-10-2026 — waarom de meetproeven niet meer vanzelf groen werden
 
 Begin oktober werden na tien minuten rijden meerdere meetproeven vanzelf
