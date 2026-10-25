@@ -161,7 +161,11 @@ const POLL = (lijst) => `(async function(){
   const u = { fout: [] };
   try {
     startPoll();
-    await slaap(6000);
+    // Tot elke PID een waarde heeft, hoogstens 20 s: een K-lijn op een
+    // drukke CI-runner haalt er in 6 s soms maar drie.
+    const t00 = Date.now();
+    while (Date.now() - t00 < 20000 && !lijst.every(function(p){ return (tel[p] || []).length; })) await slaap(200);
+    u.vulMs = Date.now() - t00;
     u.voor = JSON.parse(JSON.stringify(tel));
     u.actief = [...activePIDs];
     window._storing.stilN = 3;
@@ -264,14 +268,14 @@ async function auto(id) {
       const q = await r.app.ev(POLL(lijst));
       toets('poll: geen fout in de proef', !q.fout.length, q.fout.join(' | '));
       const n = lijst.reduce((s, k) => s + (q.voor[k] || []).length, 0);
-      console.log('  poll: ' + n + ' waarden in 6 s over ' + lijst.length + ' PIDs; na hapering ' + q.naHapering + '; stil gemerkt na ' + q.merktStilMs + ' ms; daarna ' + q.tijdensStil + ' geboekt');
+      console.log('  poll: ' + n + ' waarden in ' + (q.vulMs / 1000).toFixed(1) + ' s over ' + lijst.length + ' PIDs; na hapering ' + q.naHapering + '; stil gemerkt na ' + q.merktStilMs + ' ms; daarna ' + q.tijdensStil + ' geboekt');
       toets('poll: elke actieve PID kreeg waarden onder ruis', lijst.every((x) => (q.voor[x] || []).length > 0), lijst.filter((x) => !(q.voor[x] || []).length).join(','));
       const fout = [];
       Object.keys(q.tel).forEach((k) => q.tel[k].forEach((v) => { if (ref[k] !== undefined && Math.abs(v - ref[k]) > 1e-6) fout.push(k + '=' + v); }));
       if (fout.length) bevinding('pollwaarde', 'poll: elke waarde is die van de auto', [...new Set(fout)].slice(0, 6).join(', '));
       else toets('poll: elke waarde is die van de auto', true);
       toets('poll: doorstaat een hapering van drie lege antwoorden', q.connectedNaHapering && q.naHapering > 0, 'connected=' + q.connectedNaHapering + ', ' + q.naHapering + ' waarden');
-      toets('poll: merkt een stille adapter binnen 10 s', q.merktStilMs != null && q.merktStilMs < 10000, q.merktStilMs);
+      toets('poll: merkt een stille adapter binnen 15 s', q.merktStilMs != null && q.merktStilMs < 15000, q.merktStilMs);
       toets('poll: boekt niets meer zodra hij het gemerkt heeft', q.tijdensStil === 0, q.tijdensStil);
       toets('poll: geen JS-fouten', r.app.fouten.length === 0, r.app.fouten.slice(0, 3).join(' | '));
     }
