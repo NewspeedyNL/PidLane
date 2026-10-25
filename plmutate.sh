@@ -113,6 +113,7 @@ MUTATIES=(
 "public/pidlane-waakronde.js@@if (/NO DATA|ERROR|UNABLE|STOPPED|SEARCHING|\?/i.test(s)) return false;@@if (false) return false;@@test-waakronde.js@@de waakronde leest een foutmelding als een antwoord"
 "public/pidlane-waakronde.js@@const marge = (d.max - d.min) * 0.02;@@const marge = 0;@@test-waakronde.js@@de 2%-marge op het verwachte bereik is weg"
 "public/pidlane-rijsituatie.js@@    'SB1':'Toyota','NMT':'Toyota','VNK':'Toyota',@@    'SB1':'Toyota',@@test-vinmerk.js@@een Corolla uit Turkije en een Yaris uit Frankrijk heten weer Onbekend merk (#588)"
+"public/pidlane-rijsituatie.js@@    if(/^[1-5]/.test(vin)){@@    if(true){@@test-vinmerk.js@@de Noord-Amerikaanse positie-7-regel geldt weer overal: een Clio 2020 wordt 1990 (#617)"
 "public/pidlane-rijsituatie.js@@    if(!isNaN(v)) w=((w||0)|v)>>>0;@@    if(!isNaN(v) && w===null) w=v>>>0;@@test-steunbits.js@@de discovery leest weer alleen de eerste ECU: 015B van de hybride-ECU valt weg (#586)"
 "public/pidlane-rijsituatie.js@@    if(!isNaN(v)) w=((w||0)|v)>>>0;@@    if(!isNaN(v) && w===null) w=v>>>0;@@bproef-merken.js@@de discovery leest weer alleen de eerste ECU: de Toyota-hybride mist 015B (#586)"
 "public/pidlane-rijsituatie.js@@_pidHealth[pid] = (h==='ok'||h==='twijfel'||h==='onzin'||h==='nodata') ? h : 'ok';@@_pidHealth[pid] = h;@@test-healthgate.js@@een onbekende sensor wordt uitgegrijsd in plaats van kiesbaar"
