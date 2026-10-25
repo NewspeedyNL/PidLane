@@ -41,7 +41,16 @@ toets('WVW = Volkswagen', decodeVIN('WVWZZZAUZGW000001').merk === 'Volkswagen');
 toets('JMZ = Mazda', decodeVIN('JMZKFGWLA00100001').merk === 'Mazda');
 toets('onbekende code: "Onbekend merk"', decodeVIN('ZZZ00000000000001').merk === 'Onbekend merk');
 
-console.log('\n3. De demo-auto\'s van de app zelf');
+console.log('\n3. Het modeljaar (#617)');
+// Europa: geen positie-7-regel. De Clio 2020 werd 1990.
+toets('Renault Clio VF1RJA0AXL… = 2020', decodeVIN('VF1RJA0AXL4000001').year === '2020', decodeVIN('VF1RJA0AXL4000001').year);
+toets('Golf WVWZZZAUZG… = 2016', decodeVIN('WVWZZZAUZGW000001').year === '2016', decodeVIN('WVWZZZAUZGW000001').year);
+toets('Europees, code W = 1998 (niet in de toekomst)', decodeVIN('WVWZZZ1JZWW000001').year === '1998', decodeVIN('WVWZZZ1JZWW000001').year);
+// Noord-Amerika: de regel blijft. Cijfer op 7 → 1980–2009, letter → 2010+.
+toets('Ford 1FA, cijfer op 7, code L = 1990', decodeVIN('1FAPP3640LK000001').year === '1990', decodeVIN('1FAPP3640LK000001').year);
+toets('Ford 1FA, letter op 7, code L = 2020', decodeVIN('1FA6P8TH0L5000001').year === '2020', decodeVIN('1FA6P8TH0L5000001').year);
+
+console.log('\n4. De demo-auto\'s van de app zelf');
 const d = { window: {} }; d.window = d; vm.createContext(d);
 vm.runInContext(fs.readFileSync('pidlane-data.js', 'utf8'), d);
 const demo = Object.keys(d).map((k) => d[k]).find((v) => Array.isArray(v) && v.length && v[0] && v[0].wmi && v[0].vin) || [];

@@ -2516,6 +2516,15 @@ function kentekenOverslaan(){
 }
 
 async function scanNetworks(){
+  // Herkent het antwoord op 0100 een protocol? Een '4100' met bitmap, geen
+  // foutmelding van de adapter. Hier binnen en niet los: de tests knippen
+  // scanNetworks() er als geheel uit.
+  const PL_0100_POGINGEN=3;
+  const plProtoAntwoordOk=function(r){
+    r=String(r||'');
+    if(!r || /UNABLE|NO DATA|ERROR|STOPPED|BUSY|BUFFER FULL|\?/.test(r)) return false;
+    return /41\s*00/.test(r);
+  };
   // De poort. Demo heeft geen echte auto en stelt zijn eigen kenteken in.
   if(!_kentPoortKlaar && !demoMode){ toonKentekenStap(); return; }
   const _sk=document.getElementById('stepKent'); if(_sk) _sk.style.display='none';
@@ -2538,14 +2547,23 @@ async function scanNetworks(){
 
   // Stuur 0100 met extra lange timeout (12 sec) via de normale sendCmd —
   // geen aparte readUntil meer, die gaf lege responses
+  // Eén verstoord antwoord is geen auto zonder protocol (#614). Een ECU die
+  // nog wakker wordt zegt één keer NO DATA, een kloon één keer BUS BUSY; tot
+  // 25-10 viel de app dan meteen terug op de handmatige lijst, met CAN 11-bit
+  // voorgeselecteerd — bij een 29-bit Fiat 18 van de 39 PIDs. Daarom tot twee
+  // keer opnieuw. Een léég antwoord niet: dat is de adapter zelf (#476), en
+  // die heeft al 12 s gekost.
   let autoResp='';
-  try{
-    autoResp=await sendCmd('0100', 12000);
-  }catch(e){ autoResp=''; }
+  for(let poging=1; poging<=PL_0100_POGINGEN; poging++){
+    try{
+      autoResp=await sendCmd('0100', 12000);
+    }catch(e){ autoResp=''; btDiag('0100 mislukt: '+(e.message||e),'warn'); }
+    btDiag(`0100 response${poging>1?' ('+poging+'e poging)':''}: "${autoResp||'(geen)'}"`, 'info');
+    if(plProtoAntwoordOk(autoResp) || !autoResp || !String(autoResp).trim()) break;
+    if(poging<PL_0100_POGINGEN) await delay(1000);
+  }
 
-  btDiag(`0100 response: "${autoResp||'(geen)'}"`, 'info');
-
-  if(autoResp && !autoResp.includes('UNABLE') && !autoResp.includes('NO DATA') && !autoResp.includes('ERROR') && !autoResp.includes('STOPPED') && autoResp.includes('41')){
+  if(plProtoAntwoordOk(autoResp)){
     // Succesvol — protocol gevonden
     const protoResp=(await sendCmd('ATDPN')).replace(/[^0-9A-Fa-f]/g,'').trim()||'6';
     const protoName=(await sendCmd('ATDP')).replace(/[>\r\n]/g,'').trim()||'Auto-detected';

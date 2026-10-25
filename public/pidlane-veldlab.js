@@ -462,7 +462,7 @@ async function vlFullSurvey(){
     _vlSvUI('Supported-PID bitmaps…');
     sv.bitmaps={};
     for(const bp of ['0100','0120','0140','0160','0180','01A0','01C0']){
-      if(_vlSvAbort) throw new Error('afgebroken door gebruiker');
+      if(_vlSvAbort) throw new Error('afgebroken door gebruiker'); if(!connected) throw new Error('verbinding weggevallen');
       try{ const r=await sendCmd(bp,2000); if(r&&!/NO DATA|ERROR|UNABLE/i.test(r)) sv.bitmaps[bp]=clean(r).slice(0,120); }
       catch(e){ /* stil: hier wordt getest OF de bitmap bestaat, een misser is het antwoord */ }
     }
@@ -470,7 +470,7 @@ async function vlFullSurvey(){
     const pids=[...supportedPIDs];
     sv.pids={total:pids.length, ok:0, nodata:0, invalid:0, transport:0, detail:[]};
     for(let i=0;i<pids.length;i++){
-      if(_vlSvAbort) throw new Error('afgebroken door gebruiker');
+      if(_vlSvAbort) throw new Error('afgebroken door gebruiker'); if(!connected) throw new Error('verbinding weggevallen');
       const pid=pids[i];
       _vlSvUI('PID-sweep '+(i+1)+'/'+pids.length+'<br><span style="font-weight:400;font-size:13px;opacity:.8">'+pid+'</span>');
       const s0=performance.now();
@@ -510,6 +510,12 @@ async function vlFullSurvey(){
           const v2=parsePID(pid,raw2);
           if(v2!=null){ val=v2; st='ok'; q='ok'; flaky=true; }
         }
+        // Een léég antwoord is geen NO DATA: de ECU zei niets, want de
+        // adapter gaf niets door (#615). Dat telt als fout op de lijn, net als
+        // een gegooide fout; zonder dit boekte een dode socket elke PID als
+        // "deze auto heeft hem niet".
+        if(!_svErr && !String(raw||'').trim()) _svErr='leeg antwoord';
+        if(!_svErr2 && !String(raw2||'').trim()) _svErr2='leeg antwoord';
       }
       // Twee keer een echte fout op de lijn = transport, geen oordeel over de
       // auto. Deze PID hoort NIET in de dekkingsmatrix terecht te komen.
@@ -532,7 +538,7 @@ async function vlFullSurvey(){
       const cand=['010C','010D','0105','0104','010B','010F','0111','010E'].filter(p=>pids.includes(p));
       sv.batch={ladder:[], maxPids:0, ok:false, req:''};
       for(const n of [2,4,6]){
-        if(_vlSvAbort) throw new Error('afgebroken door gebruiker');
+        if(_vlSvAbort) throw new Error('afgebroken door gebruiker'); if(!connected) throw new Error('verbinding weggevallen');
         if(cand.length<n) break;
         const req='01'+cand.slice(0,n).map(p=>p.slice(2)).join('');
         let braw='';
@@ -610,7 +616,7 @@ async function vlFullSurvey(){
     _vlSvUI('Variantie-sampling…');
     sv.variantie={};
     for(const vp of ['0104','010C','0114','010B'].filter(p=>pids.includes(p)).slice(0,4)){
-      if(_vlSvAbort) throw new Error('afgebroken door gebruiker');
+      if(_vlSvAbort) throw new Error('afgebroken door gebruiker'); if(!connected) throw new Error('verbinding weggevallen');
       const vals=[];
       for(let k=0;k<4;k++){
         try{ const r=await sendCmd('01'+vp.slice(2)+'1',1500); const v=parsePID(vp,r); if(v!=null&&!isNaN(v)) vals.push(v); }
@@ -632,6 +638,11 @@ async function vlFullSurvey(){
     }
     sv.timing={rpm5:times, avgMs:times.length?Math.round(times.reduce((a,b)=>a+b,0)/times.length):null};
     sv.durS=Math.round((Date.now()-t0)/1000);
+
+    // Viel de verbinding weg tijdens de DTC- of timingstap, dan is wat daar
+    // "leeg" terugkwam niet gemeten. Geen sessie en geen cijfer (#615): een
+    // dode adapter zei anders "geen foutcodes" over een auto met P0170.
+    if(!connected) throw new Error('verbinding weggevallen');
 
     // ── Full function test: het oordeel over wat er gemeten is (pidlane-functietest.js) ──
     let _ft=null;
