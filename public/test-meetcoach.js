@@ -118,6 +118,7 @@ const flush = () => new Promise((r) => setImmediate(r));
   const volg = () => { const s = c.PLMeetcoach.stappen(c.PLMeetcoach.plan(c.alle, c.PLMeetcoach._staat().keuze), { huidig: c.PLMeetcoach._staat().huidig }); return s.act[s.i].soort; };
   const eerst = volg(); c.PLMeetcoach.volgende(); const tweede = volg(); c.PLMeetcoach.volgende(); c.PLMeetcoach.volgende();
   toets('Volgende schuift door en komt rond', eerst !== tweede && volg() === eerst, eerst + ' ' + tweede + ' ' + volg());
+  c.PLMeetcoach._staat().ritStart -= 600000;   // tien minuten onderweg, anders valt een herstart in dezelfde ms
   const t0 = c.PLMeetcoach._staat().ritStart;
   c.PLMeetcoach.aanpassen();
   toets('rit aanpassen: de vraag terug, met wat er gekozen was', c.PLMeetcoach._staat().keuze === null && /mc-k aan/.test(c.PLMeetcoach.vraagHtml(c.PLMeetcoach._staat().vraag)));
