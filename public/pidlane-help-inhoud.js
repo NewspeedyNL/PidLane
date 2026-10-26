@@ -249,7 +249,7 @@ var PL_HULP = {
     { id: 'accutest', groep: 'gebruik', titel: 'Accu en laadsysteem',
       icoon: '🔋', kort: 'Live laaddata, accutest, trend per start en wintervoorspelling. Een melding pas bij twee bewijzen.',
       tekst:
-        '<p>Je opent de pagina met <b>🔋 Accutest</b> bij je actieve voertuig in Mijn voertuigen, of door in Slim visueel op het <b>accu-lampje</b> rechtsboven te tikken. Er zijn vijf tabs:</p>' +
+        '<p>Je opent de pagina met <b>🔋 Accutest</b> bij je actieve voertuig in Mijn voertuigen, door in Slim visueel op het <b>accu-lampje</b> rechtsboven te tikken, of met de kaart <b>Accu en laadsysteem</b> onder Voorbereiden. Er zijn vijf tabs:</p>' +
         '<ul>' +
         '<li><b>Live</b> — de accuspanning met de <b>gevraagde laadspanning</b> ernaast, de regelafwijking, en tegels voor de sensoren die het laden slim maken: gevraagde laadspanning, laadtoestand van de 12V-accu, accustroom, accutemperatuur en acculeeftijd. Ontbreekt er een, dan zoekt de pagina hem zelf in de bibliotheek van je voertuig, test hem één keer en zet hem <b>tijdelijk</b> aan zolang de pagina open is (zie <b>Meetvoorbereiding</b>). Bewaren doe je met <b>Sensoren instellen</b>.</li>' +
         '<li><b>Test</b> — vier stappen: hoe lang de auto stilstond (een rustmeting telt pas na 2 uur), de rustspanning, de spanning tijdens het <b>starten</b> met de curve erbij, en een <b>belastingproef</b> van 60 seconden met grootlicht, achterruitverwarming en blower vol aan.</li>' +
@@ -257,6 +257,7 @@ var PL_HULP = {
         '<li><b>Winter</b> — met de weersverwachting van je winterprofiel: haalt de accu de koudste nacht? Met tips om pech te voorkomen.</li>' +
         '<li><b>Methode</b> — hoe de app oordeelt.</li>' +
         '</ul>' +
+        '<p>Zolang de pagina open is, vraagt de app de accuspanning elke seconde op. Is een waarde even niet vers, dan zie je de laatste waarde grijs met hoe oud hij is. Onderaan elke tab maakt <b>Rapport genereren (PDF)</b> een rapport met het oordeel, de live waarden, de startcurve, de trend, de winter, de aanwijzingen en wat je nu kunt doen; het komt ook onder Rapporten.</p>' +
         '<p>Een auto met slimme laadregeling laadt bij een volle accu bewust laag. Daarom wordt een bevinding over de accu of de dynamo pas een melding bij <b>twee bewijzen</b>, of hetzelfde bewijs op twee verschillende dagen. Dit vervangt geen werkplaatstester.</p>',
       zie: ['winter', 'check'] },
 

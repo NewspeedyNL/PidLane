@@ -360,13 +360,39 @@
     try { return (window.PLEigen && PLEigen.defs ? PLEigen.defs() : []).filter((d) => d.pid === code)[0] || null; }
     catch (e) { console.warn('PLAccu: definitie van ' + code + ' niet gelezen', e); return null; }
   }
-  // Verse waarde: het laatste monster van pid, niet ouder dan maxMs.
-  function vers(pid, maxMs) {
+  /* Verse waarde, of null. Wat "vers" is, hangt af van het tempo van de PID
+     (26-10-2026): 0142 staat op 30 s, en een vaste grens van 15 s liet de
+     accuspanning op Live elke halve minuut wegvallen. Eerst de gedeelde regel
+     van de app (plOud, pidlane-plload.js: 3× het verwachte tempo, krediet
+     voor een bezette bus); zonder die regel 3× pidPollInterval, minstens
+     minMs. */
+  function vers(pid, minMs) {
     if (!pid || typeof pidVals === 'undefined') return null;
-    const h = (typeof pidHist !== 'undefined' && pidHist[pid]) || null, l = h && h.length ? h[h.length - 1] : null;
-    if (l && Date.now() - l.t > (maxMs || 15000)) return null;
-    return getal(pidVals[pid]);
+    const v = getal(pidVals[pid]);
+    if (v === null) return null;
+    if (typeof plOud === 'function') {
+      try { return plOud(pid) ? null : v; } catch (e) { console.warn('PLAccu: plOud mislukt voor ' + pid, e); }
+    }
+    const l = laatsteMonster(pid);
+    if (!l) return v;
+    let iv = 0;
+    try { if (typeof pidPollInterval === 'function') iv = Number(pidPollInterval(pid)) || 0; } catch (e) { console.warn('PLAccu: pidPollInterval mislukt voor ' + pid, e); }
+    const grens = Math.max(minMs || 15000, iv > 0 && iv < 999999 ? 3 * iv : 0);
+    return Date.now() - l.t > grens ? null : v;
   }
+  function laatsteMonster(pid) {
+    const h = (typeof pidHist !== 'undefined' && pidHist && pidHist[pid]) || null;
+    return h && h.length ? h[h.length - 1] : null;
+  }
+  // De laatste waarde met zijn leeftijd, ook als hij niet meer vers is.
+  function laatste(pid) {
+    const l = laatsteMonster(pid);
+    return l && getal(l.v) !== null ? { v: Number(l.v), ouderdom: Math.max(0, Date.now() - l.t) } : null;
+  }
+  /* Zolang de pagina open is: accuspanning en toerental elke seconde
+     (pidPollInterval vraagt dit). Dicht = null = het gewone tempo. */
+  const SNEL = { '0142': 1000, '010C': 1000 };
+  function tempo(pid) { return _open && SNEL[pid] ? SNEL[pid] : null; }
   function reeksVan(pid, ms) {
     if (!pid || typeof pidHist === 'undefined' || !pidHist[pid]) return [];
     const nu = Date.now();
@@ -562,6 +588,195 @@
       _act.regels.map((r) => '<li>' + esc(r) + '</li>').join('') + '</ul></div>';
   }
 
+  // ── het rapport (PDF) ─────────────────────────────────────────────
+  /* Eén grafiek in de vorm van PLRapport.pdf: punten genormaliseerd op 0…1,
+     grenzen erbij, een eigen as. null bij minder dan twee punten. Puur. */
+  function pdfGrafiek(naam, eenheid, pts, opt) {
+    opt = opt || {};
+    const p = (pts || []).filter((q) => q && isFinite(q[0]) && isFinite(q[1]));
+    if (p.length < 2) return null;
+    const xs = p.map((q) => q[0]), ys = p.map((q) => q[1]), gr = (opt.grenzen || []).filter((g) => isFinite(g.y));
+    let x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs); if (x1 === x0) x1 = x0 + 1;
+    const alle = ys.concat(gr.map((g) => g.y));
+    let lo = Math.min.apply(null, alle), hi = Math.max.apply(null, alle);
+    if (hi - lo < 0.2) { lo -= 0.1; hi += 0.1; }
+    const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+    const ny = (y) => (y - lo) / (hi - lo);
+    return { naam, eenheid: eenheid || '', min: Math.min.apply(null, ys), max: Math.max.apply(null, ys), duurS: x1 - x0, ylo: lo, yhi: hi,
+      punten: p.map((q) => [(q[0] - x0) / (x1 - x0), ny(q[1])]), banden: [],
+      grenzen: gr.map((g) => ({ soort: g.alarm ? 'alarm' : 'let op', waarde: g.y, y: ny(g.y), label: g.label })),
+      xLinks: opt.xLinks || null, xRechts: opt.xRechts || null };
+  }
+  const KL = { goed: 'groen', volgt: 'groen', laadt: 'groen', stabiel: 'groen', matig: 'oranje', krap: 'oranje', laag: 'rood', zwak: 'rood', ontlaadt: 'rood',
+    te_hoog: 'rood', achter: 'rood', achteruit: 'oranje', waarschuw: 'oranje', onbekend: 'grijs', geen: 'grijs', rust: 'grijs' };
+  /* Wat de gebruiker nu kan doen. Alleen uit wat er gemeten is. Puur. */
+  function advies(c) {
+    const u = c.u, w = c.w || {}, uit = [];
+    if (u.accu.ja) uit.push('Laat de accu testen met een werkplaatstester (belasting of conductantie) — twee onafhankelijke metingen wijzen op een zwakke accu.');
+    if (u.dynamo.ja) uit.push('Laat het laadsysteem nakijken: dynamo, laadregelaar, multiriem en de massakabels. De meting wijst er twee keer op dat de dynamo te weinig levert.');
+    if (!u.accu.ja && u.accu.bewijs.length) uit.push('Er is één aanwijzing over de accu. Doe de begeleide test na een nacht stilstaan om hem te bevestigen of weg te nemen.');
+    if (!u.dynamo.ja && u.dynamo.bewijs.length) uit.push('Er is één aanwijzing over het laden. Doe de belastingproef (60 s met verbruikers aan) om hem te bevestigen of weg te nemen.');
+    if (w.soc !== null && w.soc !== undefined && w.soc < 65) uit.push('Laadtoestand ' + Math.round(w.soc) + ' % — rij een langere rit (> 30 min) of laad een nacht bij met een acculader met AGM/EFB-stand.');
+    if (u.trend.staat === 'achteruit') uit.push('De startdip groeit ten opzichte van de eerste starts van deze accu: plan vervanging vóór de winter.');
+    if (u.winter.staat === 'waarschuw' || u.winter.staat === 'krap') uit.push('Winter: ' + u.winter.tekst.replace(/^bij /, 'bij ') + '.');
+    const c2 = c.codes || {};
+    if (!c2.gevraagd || !c2.soc) uit.push('Voeg de gevraagde laadspanning en de laadtoestand toe bij de sensoren van je voertuig: dan onderscheidt de app slim laden van een zwakke dynamo.');
+    if (!bruikbaar(u.starts).length) uit.push('Nog geen start gemeten: doe de begeleide test (tab Test) na minstens 2 uur stilstaan.');
+    if (u.accu.ja) uit.push('Bij vervanging: hetzelfde type (EFB of AGM) bij start-stop, en laat de nieuwe accu aanmelden; kies daarna in de app "Nieuwe accu geplaatst".');
+    if (!uit.length) uit.push('Geen actie nodig. Herhaal de test bij de eerste vorst of als start-stop vaker niet werkt.');
+    return uit;
+  }
+  /* Het rapportmodel voor PLRapport.pdf. c = { nu, voertuig, w, u, codes,
+     test, reeksU, reeksG, tMin, wc }. Puur: test-accutest.js toetst hem. */
+  function rapportModel(c) {
+    const u = c.u, w = c.w || {}, v = c.voertuig || {}, t = c.test || {}, codes = c.codes || {};
+    const koud = (u.starts || []).filter((x) => x && x.ok && !x.herstart);
+    const gemeten = koud.length || w.u !== null && w.u !== undefined || t.rust || t.start || t.belast;
+    let kleur = 'groen';
+    if (u.accu.ja || u.dynamo.ja) kleur = 'rood';
+    else if (u.accu.bewijs.length || u.dynamo.bewijs.length || u.trend.staat === 'achteruit' || u.winter.staat === 'waarschuw' || (w.soc != null && w.soc < 50)) kleur = 'oranje';
+    else if (!gemeten) kleur = 'grijs';
+    const kop = { rood: 'Aandacht nodig — ' + [u.accu.ja ? 'accu' : '', u.dynamo.ja ? 'laadsysteem' : ''].filter(Boolean).join(' en '),
+      oranje: 'Let op — nog niet bevestigd', groen: 'Accu en laadsysteem in orde', grijs: 'Te weinig metingen voor een oordeel' }[kleur];
+    const zin = [];
+    zin.push('Accu: ' + u.accu.reden + '. Laden: ' + u.dynamo.reden + '.');
+    if (u.trend.staat !== 'onbekend') zin.push(hoofd(u.trend.tekst) + '.');
+    if (u.winter.staat === 'waarschuw' || u.winter.staat === 'krap' || u.winter.staat === 'goed') zin.push('Winter: ' + u.winter.tekst + '.');
+    const ls = laadStaat(w);
+    const nl = (x, d, e) => fmt(x, d, e);
+    const datumTekst = new Date(c.nu || Date.now()).toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const naam = v.naam || [v.merk, v.model].filter(Boolean).join(' ') || 'Voertuig';
+    const sensoren = ROLLEN.map((r) => r.naam + ': ' + (codes[r.rol] ? codes[r.rol] : 'niet ingesteld')).join(' · ');
+    const secties = [];
+    // 1. Oordeel
+    const stop = [
+      { naam: 'Accu', kleur: u.accu.ja ? 'rood' : u.accu.bewijs.length ? 'oranje' : koud.length ? 'groen' : 'grijs', tekst: u.accu.reden },
+      { naam: 'Dynamo en laden', kleur: u.dynamo.ja ? 'rood' : u.dynamo.bewijs.length ? 'oranje' : (w.u != null || t.belast) ? 'groen' : 'grijs', tekst: u.dynamo.reden },
+      { naam: 'Laadsysteem nu', kleur: KL[ls.staat] || 'grijs', tekst: ls.kop + ' — ' + ls.tekst },
+      { naam: 'Trend', kleur: KL[u.trend.staat] || 'grijs', tekst: u.trend.tekst },
+      { naam: 'Winter', kleur: KL[u.winter.staat] || 'grijs', tekst: u.winter.tekst }
+    ];
+    if (t.rust) stop.push({ naam: 'Test: rust', kleur: KL[t.rust.staat] || 'grijs', tekst: t.rust.tekst });
+    if (t.start) stop.push({ naam: 'Test: start', kleur: KL[t.start.staat] || 'grijs', tekst: t.start.tekst });
+    if (t.belast) stop.push({ naam: 'Test: belasting', kleur: KL[t.belast.staat] || 'grijs', tekst: t.belast.tekst });
+    secties.push({ nr: 1, titel: 'Oordeel', blokken: [{ soort: 'stoplicht', items: stop },
+      { soort: 'kader', titel: 'Hoe de app oordeelt', kleur: 'blauw', tekst: 'Een melding over accu of dynamo komt pas bij twee soorten bewijs, of dezelfde soort op twee verschillende dagen (binnen ' + VENSTER_DAGEN + ' dagen). Eén meting kan een i-stop, een inschakelpiek of een wegvallende adapter zijn.' }] });
+    // 2. Laadsysteem nu
+    const b2 = [{ soort: 'kv', regels: [['Accuspanning', nl(w.u, 2, 'V')], ['Toerental', nl(w.rpm, 0, 'rpm')], ['Gevraagde laadspanning', codes.gevraagd ? nl(w.g, 2, 'V') : 'niet ingesteld'],
+      ['Regelafwijking', ls.afwijking !== null ? (ls.afwijking >= 0 ? '+' : '') + nl(ls.afwijking, 2, 'V') : '—'], ['Laadtoestand 12V', codes.soc ? nl(w.soc, 0, '%') : 'niet ingesteld'],
+      ['Accustroom', codes.stroom ? nl(w.i, 1, 'A') : 'niet ingesteld'], ['Accutemperatuur', codes.accutemp ? nl(w.accutemp, 0, '°C') : 'niet ingesteld'], ['Buitentemperatuur', nl(w.buiten, 0, '°C')]] },
+      { soort: 'tekst', tekst: ls.kop + ': ' + ls.tekst + '.' }];
+    const gU = pdfGrafiek('Accuspanning (0142)', 'V', c.reeksU, { grenzen: [{ y: 12.2, label: '12,2 V', alarm: true }], xLinks: (c.reeksU && c.reeksU.length ? fmt(c.reeksU[0][0], 1) + ' min' : ''), xRechts: 'nu' });
+    if (gU) b2.push({ soort: 'grafiek', g: gU, naam: (x) => x });
+    const gG = pdfGrafiek('Gevraagde laadspanning', 'V', c.reeksG, { xLinks: (c.reeksG && c.reeksG.length ? fmt(c.reeksG[0][0], 1) + ' min' : ''), xRechts: 'nu' });
+    if (gG) b2.push({ soort: 'grafiek', g: gG, naam: (x) => x });
+    if (!gU) b2.push({ soort: 'leeg', tekst: 'Geen live meting: niet verbonden toen het rapport gemaakt werd.' });
+    secties.push({ nr: 2, titel: 'Laadsysteem nu', blokken: b2 });
+    // 3. Starten
+    const b3 = [];
+    const laatst = (u.starts || []).filter((x) => x && x.ok && x.curve).slice(-1)[0];
+    if (laatst) {
+      const gS = pdfGrafiek('Laatste startcurve', 'V', laatst.curve, { grenzen: [{ y: laatst.plateau, label: 'plateau ' + fmt(laatst.plateau, 2) }, { y: startGrens(laatst.temp), label: 'BCI ' + fmt(startGrens(laatst.temp), 1), alarm: true }],
+        xLinks: fmt(laatst.curve[0][0], 0, 'ms'), xRechts: fmt(laatst.curve[laatst.curve.length - 1][0], 0, 'ms') });
+      if (gS) b3.push({ soort: 'grafiek', g: gS, naam: (x) => x });
+      b3.push({ soort: 'kv', regels: [['Wanneer', datum(laatst.t)], ['Rust vóór de start', fmt(laatst.rust, 2, 'V')], ['Plateau', fmt(laatst.plateau, 2, 'V') + ' (grens ' + fmt(startGrens(laatst.temp), 1, 'V') + ')'],
+        ['Dip', fmt(laatst.dU, 2, 'V') + ' · @20 °C ' + fmt(dU20(laatst), 2, 'V')], ['Monsters', laatst.n + ' in ' + fmt(laatst.duurMs, 0, 'ms') + ' · bron ' + (laatst.bron === 'atrv' ? 'ATRV (snel)' : '0142')]] });
+    }
+    if ((u.starts || []).some((x) => x && x.ok)) b3.push({ soort: 'tabel', titel: 'Gemeten starts', kop: ['Wanneer', 'Soort', 'Temp', 'Rust', 'Plateau', 'Dip', '@20 °C', 'SOC'], breedtes: [0.18, 0.1, 0.1, 0.12, 0.14, 0.12, 0.13, 0.11], statusKol: 4,
+      rijen: (u.starts || []).filter((x) => x && x.ok).slice(-15).reverse().map((x) => ({ kleur: x.plateau < startGrens(x.temp) ? 'rood' : x.plateau < startGrens(x.temp) + 0.3 ? 'oranje' : 'groen',
+        cellen: [datum(x.t), x.herstart ? 'i-stop' : x.bron === 'atrv' ? 'test' : 'koud', fmt(x.temp, 0, '°C'), fmt(x.rust, 2), fmt(x.plateau, 2), fmt(x.dU, 2), fmt(dU20(x), 2), fmt(x.soc, 0, '%')] })) });
+    else b3.push({ soort: 'leeg', tekst: 'Nog geen start gemeten. De begeleide test meet de startdip altijd snel genoeg.' });
+    secties.push({ nr: 3, titel: 'Starten', blokken: b3 });
+    // 4. Trend
+    const br = bruikbaar(u.starts);
+    const b4 = [{ soort: 'tekst', tekst: hoofd(u.trend.tekst) + '. Kou maakt de dip dieper; omgerekend naar 20 °C blijft over wat de accu zelf doet.' }];
+    const gT = pdfGrafiek('Startdip omgerekend naar 20 °C', 'V', br.map((x, i) => [i + 1, dU20(x)]),
+      { grenzen: u.trend.basis ? [{ y: u.trend.basis, label: 'eigen basis ' + fmt(u.trend.basis, 2) }, { y: Math.max(u.trend.basis * TREND_FACTOR, u.trend.basis + TREND_ABS), label: 'achteruit', alarm: true }] : [],
+        xLinks: 'start 1', xRechts: 'start ' + br.length });
+    if (gT) b4.push({ soort: 'grafiek', g: gT, naam: (x) => x });
+    const gR = pdfGrafiek('Rustspanning na minstens 2 uur stil', 'V', (u.rusten || []).map((r, i) => [i + 1, r.u]),
+      { grenzen: [{ y: RUST_MATIG, label: '75 %' }, { y: RUST_LAAG, label: '50 %', alarm: true }], xLinks: 'meting 1', xRechts: 'meting ' + (u.rusten || []).length });
+    if (gR) b4.push({ soort: 'grafiek', g: gR, naam: (x) => x });
+    if (!gT && !gR) b4.push({ soort: 'leeg', tekst: 'Te weinig metingen voor een trend (' + br.length + ' koude starts; vanaf 8 een oordeel).' });
+    secties.push({ nr: 4, titel: 'Trend van deze accu', blokken: b4 });
+    // 5. Winter
+    const b5 = [{ soort: 'tekst', tekst: hoofd(u.winter.tekst) + '.' }];
+    if (c.wc) {
+      const gW = pdfGrafiek('Verwachte startspanning per temperatuur', 'V', c.wc.map((x) => [x.t, x.verwacht]),
+        { grenzen: c.tMin != null ? [{ y: startGrens(c.tMin), label: 'BCI bij ' + Math.round(c.tMin) + ' °C', alarm: true }] : [{ y: startGrens(-18), label: 'BCI bij −18 °C', alarm: true }], xLinks: '−20 °C', xRechts: '20 °C' });
+      if (gW) b5.push({ soort: 'grafiek', g: gW, naam: (x) => x });
+    }
+    b5.push({ soort: 'lijst', items: ['Bij 0 °C levert een accu ~20 % minder startvermogen, bij −18 °C ~50 %.', 'Korte ritten laden een accu met start-stop niet terug; rij wekelijks een langere rit of laad bij.',
+      'Start-stop die vaker niet werkt, is meestal een lage laadtoestand en geen defect.'] });
+    secties.push({ nr: 5, titel: 'Winter', blokken: b5 });
+    // 6. Bewijzen
+    const alle = u.accu.bewijs.concat(u.dynamo.bewijs);
+    secties.push({ nr: 6, titel: 'Aanwijzingen en bewijs', blokken: alle.length
+      ? [{ soort: 'tabel', kop: ['Dag', 'Onderdeel', 'Soort', 'Wat'], breedtes: [0.16, 0.14, 0.14, 0.56], rijen: alle.map((x) => ({ cellen: [x.dag, x.soort_van, x.soort, x.tekst] })) }]
+      : [{ soort: 'leeg', tekst: 'Geen aanwijzingen in de laatste ' + VENSTER_DAGEN + ' dagen.' }] });
+    // 7. Advies
+    secties.push({ nr: 7, titel: 'Wat je nu kunt doen', blokken: [{ soort: 'lijst', items: advies(c) }] });
+    // 8. Methode
+    secties.push({ nr: 8, titel: 'Methode en grenzen', blokken: [
+      { soort: 'kv', regels: [['Rust', 'Rustspanning → laadtoestand (12,65 V ≈ 100 %, 12,4 ≈ 75 %, 12,2 ≈ 50 %), alleen na ≥ 2 uur stil.'],
+        ['Start', 'Plateau (mediaan van de dip) tegen de BCI-grens: 9,6 V bij 21 °C tot 8,5 V bij −18 °C. Minder dan ' + DIP_MIN_MONSTERS + ' monsters of een gat > ' + DIP_MAX_GAT + ' ms: geen oordeel.'],
+        ['Trend', 'Dip @20 °C tegen de mediaan van de eerste vijf starts; achteruit bij ' + Math.round((TREND_FACTOR - 1) * 100) + ' % én ' + fmt(TREND_ABS, 1, 'V') + ' groter.'],
+        ['Laden', 'Accustroom (onder −2 A met de motor aan = ontladen), gevraagde laadspanning (marge 0,5 V), en de rustspanning. Bovengrens 15,2 V, tot +0,6 V in de kou.'],
+        ['Sensoren', sensoren]] },
+      { soort: 'tekst', klein: true, tekst: 'Dit rapport is een uitgebreide schatting via de OBD-aansluiting en vervangt geen werkplaatstest. Een werkplaatstester belast de accu met ~100 A of meet de inwendige weerstand. Gemeten waarden komen uit de auto; PidLane is niet aansprakelijk voor beslissingen op basis van dit rapport.' }] });
+    return {
+      titel: 'Accu en laadsysteem', voertuigNaam: naam, kenteken: v.kenteken || '', datum: datumTekst, label: 'ACCU & LAADSYSTEEM',
+      voorblad: { regels: [['Voertuig', naam + (v.bouwjaar ? ' (' + v.bouwjaar + ')' : '')], ['Kenteken', v.kenteken || '—'], ['Datum', datumTekst],
+        ['Gemeten starts', koud.length + ' koud' + ((u.starts || []).length > koud.length ? ', ' + ((u.starts || []).length - koud.length) + ' i-stop' : '')],
+        ['Rustmetingen', String((u.rusten || []).length)], ['Laadsensoren', ROLLEN.filter((r) => codes[r.rol]).length + ' van ' + ROLLEN.length + ' ingesteld']],
+        kort: { kleur, kop, tekst: zin.join(' ') } },
+      secties, bijlagen: [],
+      promo: (window.PLRapport && PLRapport.PROMO) || 'PidLane leest je auto uit via de OBD-aansluiting. Meer op pidlane.nl.'
+    };
+  }
+  function hoofd(x) { x = String(x || ''); return x.charAt(0).toUpperCase() + x.slice(1); }
+  function rapportCtx() {
+    let v = null;
+    try { v = window.PLGarage && PLGarage.actief && PLGarage.actief(); } catch (e) { console.warn('PLAccu: voertuig voor het rapport', e); }
+    // Zonder Mijn voertuigen: wat de verbinding over de auto weet.
+    if (!v && typeof vehicleInfo !== 'undefined' && vehicleInfo && (vehicleInfo.merk || vehicleInfo.model))
+      v = { merk: vehicleInfo.merk, model: vehicleInfo.model, bouwjaar: vehicleInfo.year || vehicleInfo.bouwjaar };
+    const w = nuWaarden(), st = stand(), tMin = verwachtMin();
+    return { nu: Date.now(), voertuig: v || {}, w, codes: w.codes, u: uitslag(), test: _t || {}, tMin, wc: winterCurve(st.starts),
+      reeksU: reeksVan('0142', 300000), reeksG: w.codes.gevraagd ? reeksVan(w.codes.gevraagd, 300000) : [] };
+  }
+  let _rapport = { bezig: false, tekst: '' };
+  async function rapport() {
+    if (_rapport.bezig) return null;
+    _rapport = { bezig: true, tekst: 'PDF maken…' }; _tekenTab();
+    try {
+      if (typeof loadJsPDF !== 'function' || !window.PLRapport || !PLRapport.pdf) throw new Error('de PDF-functies van de app zijn niet geladen');
+      const JsPDF = await loadJsPDF();
+      const mod = rapportModel(rapportCtx());
+      let logo = null;
+      try { logo = PLRapport.laadLogo ? await PLRapport.laadLogo() : null; } catch (e) { console.warn('PLAccu: logo niet geladen', e); }
+      const doc = PLRapport.pdf(mod, JsPDF, { logo, label: mod.label, kop: 'PidLane — Accu en laadsysteem' });
+      const fname = 'PidLane_Accurapport_' + (mod.kenteken || 'voertuig').replace(/[^A-Za-z0-9-]/g, '') + '_' + new Date().toISOString().slice(0, 10) + '.pdf';
+      const blob = doc.output('blob');
+      window._lastPdf = { blob, fname };
+      try { if (typeof registerSessionReport === 'function') registerSessionReport({ type: 'pdf', title: fname, text: mod.voorblad.kort.kop + ' — ' + mod.voorblad.kort.tekst, blob, fname }); }
+      catch (e) { console.warn('PLAccu: rapport niet in het archief gezet', e); }
+      if (typeof plBewaarBestand === 'function') await plBewaarBestand(blob, fname);
+      _rapport = { bezig: false, klaar: true, tekst: '✓ ' + fname + ' — ook te vinden onder Rapporten' };
+      return { doc, model: mod, fname };
+    } catch (e) {
+      console.warn('PLAccu: rapport mislukt', e);
+      _rapport = { bezig: false, tekst: 'Rapport mislukt: ' + ((e && e.message) || e) };
+      return null;
+    } finally { _tekenTab(); }
+  }
+  function hRapport() {
+    return '<div class="pa-kaart"><div class="pa-h"><span>Rapportage</span></div><div class="pa-sub" style="margin-bottom:8px">Een PDF met het oordeel, de live waarden, de startcurve, de trend, de wintervoorspelling, de aanwijzingen en wat je nu kunt doen.</div>' +
+      '<div class="pa-rij"><button type="button" class="pa-knop hoofd" data-actie="rapport"' + (_rapport.bezig ? ' disabled' : '') + '>📄 Rapport genereren (PDF)</button>' +
+      (_rapport.klaar && typeof sharePdf === 'function' ? '<button type="button" class="pa-knop" data-actie="deel">↗ Delen</button>' : '') + '</div>' +
+      (_rapport.tekst ? '<div class="pa-sub" style="margin-top:6px">' + esc(_rapport.tekst) + '</div>' : '') + '</div>';
+  }
+
   // ── de pagina ─────────────────────────────────────────────────────
   const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const KLEUR = { goed: 'gn', volgt: 'gn', laadt: 'gn', stabiel: 'gn', geen: '', matig: 'or', krap: 'or', onbekend: '', rust: 'bl', laag: 'rd', zwak: 'rd', ontlaadt: 'rd', te_hoog: 'rd', achter: 'rd', achteruit: 'rd', waarschuw: 'rd' };
@@ -632,9 +847,15 @@
   function hLive() {
     const w = nuWaarden(), ls = laadStaat(w), c = w.codes;
     const kleurU = w.u === null ? '' : (w.rpm !== null && w.rpm >= 400 ? (w.u < 12.2 || w.u > 15.5 ? 'rd' : 'gn') : (w.u < 12.2 ? 'rd' : w.u < 12.4 ? 'or' : 'gn'));
-    let h = '<div class="pa-kaart"><div class="pa-h"><span>Laadsysteem nu</span>' + chip(ls.staat, ls.kop) + '</div>' +
-      '<div class="pa-rij"><div class="pa-groot" style="color:var(--' + (kleurU || 'tx') + ')">' + fmt(w.u, 2) + '<small> V</small></div>' +
-      '<div class="pa-sub" style="flex:1;min-width:160px">' + esc(ls.tekst) +
+    // Te oud voor "nu", maar wel gemeten: de laatste waarde grijs, met zijn
+    // leeftijd. Nooit een leeg veld met "geen spanning" terwijl er wel data is.
+    const oud = w.u === null ? laatste('0142') : null;
+    const kopChip = oud ? chip('rust', 'wacht op meting') : chip(ls.staat, ls.kop);
+    const groot = oud ? '<span style="color:var(--tx3,var(--tx2))">' + fmt(oud.v, 2) + '</span>' : fmt(w.u, 2);
+    const uitleg = oud ? 'Laatste meting ' + Math.round(oud.ouderdom / 1000) + ' s oud — de volgende komt eraan' : ls.tekst;
+    let h = '<div class="pa-kaart"><div class="pa-h"><span>Laadsysteem nu</span>' + kopChip + '</div>' +
+      '<div class="pa-rij"><div class="pa-groot" style="color:var(--' + (kleurU || 'tx') + ')">' + groot + '<small> V</small></div>' +
+      '<div class="pa-sub" style="flex:1;min-width:160px">' + esc(uitleg) +
       (ls.afwijking !== null ? '<br>Regelafwijking: <b>' + (ls.afwijking >= 0 ? '+' : '') + fmt(ls.afwijking, 2, 'V') + '</b>' : '') +
       (ls.stroom ? '<br>Accu: <b>' + ({ laden: 'wordt geladen', ontladen: 'wordt ontladen', balans: 'in balans' })[ls.stroom] + '</b>' : '') + '</div></div>';
     const series = [{ p: reeksVan('0142', 300000), k: 'var(--bl)', naam: 'gemeten (0142)' }];
@@ -771,11 +992,13 @@
       '<div class="pa-body"><div class="pa-in" id="plAccuTab"></div></div>';
   }
   function _tabHtml() {
-    if (_tab === 'test') return hActiveer() + hTest();
-    if (_tab === 'trend') return hTrend();
-    if (_tab === 'winter') return hWinter();
-    if (_tab === 'uitleg') return hUitleg();
-    return hOordeel() + hActiveer() + hLive();
+    let h;
+    if (_tab === 'test') h = hActiveer() + hTest();
+    else if (_tab === 'trend') h = hTrend();
+    else if (_tab === 'winter') h = hWinter();
+    else if (_tab === 'uitleg') h = hUitleg();
+    else h = hOordeel() + hActiveer() + hLive();
+    return h + hRapport();   // onderaan elke tab
   }
   function _tekenTab() {
     if (!_open) return;
@@ -814,6 +1037,8 @@
     if (a === 'rust') return _doe(meetRust);
     if (a === 'start') return _doe(meetStart);
     if (a === 'belast') return _doe(meetBelast);
+    if (a === 'rapport') return rapport();
+    if (a === 'deel') { try { sharePdf(); } catch (x) { console.warn('PLAccu: delen mislukt', x); } return; }
     if (a === 'opnieuw') { _t = _nieuweTest(); return _tekenTab(); }
     if (a === 'nieuw') { if (confirm('Trend, rustmetingen en aanwijzingen van de oude accu wissen?')) { nieuweAccu(); _tekenTab(); } return; }
     if (a === 'sensoren') {
@@ -839,9 +1064,9 @@
 
   window.PLAccu = {
     versie: VERSIE,
-    bewijs, bevestigd: isBevestigd, tegenbewijs, nieuweAccu, stand, uitslag, nu: nuWaarden,
+    bewijs, bevestigd: isBevestigd, tegenbewijs, nieuweAccu, stand, uitslag, nu: nuWaarden, tempo, rapport, rapportModel: () => rapportModel(rapportCtx()),
     meetRust, meetStart, meetBelast, activeer, herstel, open, sluit, boot,
-    _kern: { kiesKandidaten, startGrens, ocvSoc, kouFactor, rustOordeel, startUitMonsters, startOordeel, trend, winter, winterCurve, belastOordeel, laadStaat, grafiek, bewijsErbij, bevestigd, volt, toeren,
+    _kern: { kiesKandidaten, vers, laatste, pdfGrafiek, advies, rapportModel, startGrens, ocvSoc, kouFactor, rustOordeel, startUitMonsters, startOordeel, trend, winter, winterCurve, belastOordeel, laadStaat, grafiek, bewijsErbij, bevestigd, volt, toeren,
       CFG: { VENSTER_DAGEN, RUST_MIN, RUST_LAAG, DIP_MIN_MONSTERS, DIP_MAX_GAT, KOU_K } }
   };
   if (typeof document !== 'undefined') boot();
