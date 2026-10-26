@@ -403,6 +403,9 @@ window.PLLoad=PLLoad;
 function pidPollInterval(pid){
   // Focus-PIDs (klacht-gestuurd, idee 5) altijd op het snelste tempo
   if(_focusPIDs.has(pid)) return 120;
+  // De accupagina (PLAccu, 26-10-2026): zolang hij open staat, accuspanning en
+  // toerental elke seconde. 0142 staat anders op 30 s, en dan valt Live weg.
+  try{ const t=window.PLAccu && PLAccu.tempo && PLAccu.tempo(pid); if(t) return t; }catch(e){ console.warn('PLAccu.tempo mislukt:', e); }
   // Fabrikant-PIDs (mode 21) hebben dezelfde SUFFIX als een mode-01-PID:
   // '2101' eindigt op '01', net als '0101' (monitorstatus). Alle tabellen
   // hieronder zijn op suffix gebouwd, dus zonder deze afslag zou een

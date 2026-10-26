@@ -248,7 +248,7 @@ var KRITIEK = [
   'plBestandsnaam',
   // Eén opslagweg (#326): _bewaar() gaat via plBewaarBestand. Valt hij weg,
   // dan slaat de exportdialoog niets meer op. En het blok-5-oordeel erover.
-  'plBewaarBestand', 'plOpslagOordeel',
+  'plBewaarBestand', 'plOpslagOordeel', 'sharePdf',
   // Mijn voertuigen → rapport of ritten → 📕 PDF, rechtstreeks zonder de keuze
   // tekst/PDF (pidlane-export.js). Ontbreekt hij, dan doet de knop niets.
   'plOpslaanPdf',

@@ -534,6 +534,7 @@
   function schoon(t) {
     return String(t == null ? '' : t)
       .replace(/▲/g, '+').replace(/▼/g, '-').replace(/→/g, '->').replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/λ/g, 'lambda')
+      .replace(/≈/g, '~').replace(/\u2212/g, '-')
       .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2100}-\u{214F}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{25A0}-\u{25FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '')
       .replace(/\*\*/g, '');
   }
@@ -551,7 +552,7 @@
 
     const kopKlein = () => {
       vul(RGB.blauw); doc.rect(0, 0, W, 12, 'F');
-      inkt(RGB.wit); font('bold', 9); doc.text('PidLane — Analyserapport', M, 8);
+      inkt(RGB.wit); font('bold', 9); doc.text(schoon(o.kop || 'PidLane — Analyserapport'), M, 8);
       font('normal', 9); doc.text(schoon(mod.voertuigNaam + (mod.kenteken ? ' · ' + mod.kenteken : '')), W - M, 8, { align: 'right' });
       y = 20;
     };
@@ -729,7 +730,7 @@
       font('bold', 9.5); inkt(RGB.donker);
       doc.text(schoon(g.naam + (g.eenheid ? ' (' + g.eenheid + ')' : '')), M, y);
       font('normal', 8.5); inkt(RGB.grijs);
-      doc.text(schoon('min ' + fmt(g.min) + ' · max ' + fmt(g.max) + ' · ' + duur(g.duurS)), M + CW, y, { align: 'right' });
+      doc.text(schoon('min ' + fmt(g.min) + ' · max ' + fmt(g.max) + (g.xRechts ? '' : ' · ' + duur(g.duurS))), M + CW, y, { align: 'right' });
       y += 2.5;
       const top = y, X = f => gx + f * GW, Y = f => top + GH - f * GH;
       g.banden.forEach(bd => { const c = BAND[bd.toestand] || ZACHT.grijs; vul(c); doc.rect(X(bd.van), top, Math.max(0.3, X(bd.tot) - X(bd.van)), GH, 'F'); });
@@ -740,11 +741,12 @@
       doc.text(fmt(g.yhi), gx - 1.5, Y(1) + 1, { align: 'right' });
       doc.text(fmt((g.ylo + g.yhi) / 2), gx - 1.5, Y(0.5) + 1, { align: 'right' });
       doc.text(fmt(g.ylo), gx - 1.5, Y(0) + 1, { align: 'right' });
-      doc.text('0 s', gx, top + GH + 3.5); doc.text(duur(g.duurS), gx + GW, top + GH + 3.5, { align: 'right' });
+      // Een eigen as (PLAccu: per start, per °C) mag; anders tijd vanaf 0 s.
+      doc.text(schoon(g.xLinks || '0 s'), gx, top + GH + 3.5); doc.text(schoon(g.xRechts || duur(g.duurS)), gx + GW, top + GH + 3.5, { align: 'right' });
       g.grenzen.forEach(gr => {
         const c = gr.soort === 'alarm' ? RGB.rood : RGB.oranje;
         lijn(c); streep(true); doc.line(gx, Y(gr.y), gx + GW, Y(gr.y)); streep(false);
-        inkt(c); doc.text(schoon(gr.soort + ' ' + fmt(gr.waarde)), gx + GW - 1, Y(gr.y) - 0.8, { align: 'right' });
+        inkt(c); doc.text(schoon(gr.label || (gr.soort + ' ' + fmt(gr.waarde))), gx + GW - 1, Y(gr.y) - 0.8, { align: 'right' });
       });
       lijn(RGB.blauw); doc.setLineWidth(0.45);
       for (let i = 1; i < g.punten.length; i++) doc.line(X(g.punten[i - 1][0]), Y(g.punten[i - 1][1]), X(g.punten[i][0]), Y(g.punten[i][1]));
@@ -817,6 +819,6 @@
     return { doc: pdf(mod, JsPDF, { logo }), model: mod };
   }
 
-  window.PLRapport = { VERS_MS, TOESTAND_PIDS, MAX_GRAFIEK, instructie, zonderBlok, leesAI, grafiekData, toestandenUit, model,
+  window.PLRapport = { PROMO, VERS_MS, TOESTAND_PIDS, MAX_GRAFIEK, instructie, zonderBlok, leesAI, grafiekData, toestandenUit, model,
                        versMeting, uitApp, laadLogo, pdf, maak, schoon };
 })();
