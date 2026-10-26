@@ -24,7 +24,10 @@
    de pollus mee en oordeelt ook op accustroom en gevraagde spanning.
  - Trend: plateau per start tegen de BCI-grens, dip @20 °C tegen de eigen
    basis, rustspanningen, laatste startcurve, tabel. Winter: curve per °C.
- - Tests: test-accutest.js +18, bproef-accutest.js (nieuw), vijf mutaties;
+ - De pagina zet zelf aan wat hij nodig heeft (toestemming 26-10): 0142,
+   010C, 0146, en per ontbrekende laadrol de beste kandidaat uit de
+   PID-bibliotheek, na één geldige testlezing. Tijdelijk: bij sluiten terug.
+ - Tests: test-accutest.js +26, bproef-accutest.js (nieuw), acht mutaties;
    blok 5; handleiding.
 
  ═══════════════════════════════════════════════════════════

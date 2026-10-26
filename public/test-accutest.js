@@ -238,5 +238,49 @@ toets('grafiek: NaN-punten vallen weg', !/NaN/.test(K.grafiek({ series: [{ p: [[
 st = K.startUitMonsters(reeks(40, 7.9, 10.4), 12.6);
 toets('startcurve: bewaard rond de dip, relatief aan het begin, hoogstens 120 punten', Array.isArray(st.curve) && st.curve.length > 10 && st.curve.length <= 120 && st.curve.some((q) => q[0] === 0) && st.curve[0][0] < 0, JSON.stringify(st.curve && st.curve.slice(0, 3)));
 
-console.log('\n' + n + ' controles, ' + fouten + ' fout');
-process.exit(fouten ? 1 : 0);
+console.log('\n13. Benodigde PIDs zelf aanzetten — tijdelijk');
+{
+  const rolVan = (naam) => (/commanded generator voltage/i.test(naam) ? 'gevraagd' : /12v battery state of charge/i.test(naam) ? 'soc' : /battery current/i.test(naam) ? 'stroom' : null);
+  const bib = [
+    { code: '220304', naam: 'Commanded generator voltage', formule: 'A/10', werkt: 2 },
+    { code: '220399', naam: 'Commanded generator voltage', formule: 'A', werkt: 0, werkt_niet: 3 },
+    { code: '224028', naam: '12V battery state of charge', formule: 'A*100/255', mijn: 'werkt_niet', werkt: 9 },
+    { code: '224029', naam: '12V battery state of charge', formule: 'A*100/255', werkt: 1 },
+    { code: '221E1C', naam: 'Oil temperature', formule: 'A-40', werkt: 5 }
+  ];
+  let k = K.kiesKandidaten(bib, {}, rolVan);
+  toets('per rol de kandidaat met de beste stemmen; "werkt niet" van jezelf valt af; geen niet-laadsensoren', JSON.stringify(k.map((x) => x.rol + ':' + x.b.code)) === '["gevraagd:220304","soc:224029"]', JSON.stringify(k.map((x) => x.rol + ':' + x.b.code)));
+  k = K.kiesKandidaten(bib, { gevraagd: '220304' }, rolVan);
+  toets('een rol die het voertuig al heeft, wordt niet opnieuw gezocht', k.length === 1 && k[0].rol === 'soc');
+
+  const a = sandbox({ demoMode: false, connected: true });
+  laad(a, 'pidlane-waarneming.js'); laad(a, 'pidlane-kenmerk.js');
+  const zet = [], aan = [];
+  a.activePIDs = new Set();
+  a.pidToevoegen = (lijst) => { lijst.forEach((x) => { a.activePIDs.add(x); aan.push(x); }); return { ok: lijst.slice(), weg: [] }; };
+  let eigen = [{ code: '221111', naam: 'Iets anders', formule: 'A' }];
+  const waarden = { '220304': 14.2, '224029': 250 };   // 250 % past niet bij een laadtoestand
+  a.PLEigen = {
+    laadRol: rolVan, defs: () => [], laadCodes: () => ({}),
+    test: async (e) => ({ ok: e.code in waarden, waarde: waarden[e.code], fout: 'geen antwoord' }),
+    zet: (lijst) => { zet.push(lijst.map((x) => x.code)); }
+  };
+  a.PLGarage = { actief: () => ({ id: 'v1', naam: 'CX-5', eigen_pids: eigen }), bibLijst: async () => bib };
+  laad(a, 'pidlane-accutest.js');
+  (async () => {
+    const r = await a.PLAccu.activeer();
+    toets('0142, 010C en 0146 gaan de pollus in', ['0142', '010C', '0146'].every((x) => aan.includes(x)), JSON.stringify(aan));
+    toets('de gevraagde laadspanning wordt na een geldige test tijdelijk aangezet', JSON.stringify(zet[0]) === '["221111","220304"]' && a.activePIDs.has('220304'), JSON.stringify(zet));
+    toets('een kandidaat met een waarde buiten zijn rol (250 %) gaat niet aan', !a.activePIDs.has('224029') && r.regels.some((x) => /224029.*past niet/.test(x)), JSON.stringify(r.regels));
+    toets('de pagina zegt wat er tijdelijk aan staat', r.regels.some((x) => /Tijdelijk tot je deze pagina sluit/.test(x)));
+    a.PLAccu.herstel();
+    toets('bij sluiten: de eigen sensoren van het voertuig terug, de tijdelijke uit de pollus', JSON.stringify(zet[1]) === '["221111"]' && !a.activePIDs.has('220304'), JSON.stringify(zet));
+    const b2 = sandbox({ demoMode: true, connected: true });
+    b2.PLEigen = a.PLEigen; b2.PLGarage = a.PLGarage; b2.pidToevoegen = () => { throw new Error('mag niet'); };
+    laad(b2, 'pidlane-accutest.js');
+    const r2 = await b2.PLAccu.activeer();
+    toets('in de demo wordt niets aangezet', !r2.regels.length, JSON.stringify(r2));
+    console.log('\n' + n + ' controles, ' + fouten + ' fout');
+    process.exit(fouten ? 1 : 0);
+  })().catch((e) => { console.error(e); process.exit(1); });
+}

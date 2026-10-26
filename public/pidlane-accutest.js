@@ -486,6 +486,82 @@
     return { accu: bevestigd(st.bewijs, 'accu'), dynamo: bevestigd(st.bewijs, 'dynamo'), trend: trend(st.starts), winter: winter(st.starts, verwachtMin()), starts: st.starts, rusten: st.rusten };
   }
 
+  // ── de benodigde PIDs zelf aanzetten (toestemming 26-10-2026) ─────────
+  /* Tijdens de accutest zet de app wat hij nodig heeft zelf aan: 0142,
+     010C en 0146 in de pollus, en voor elke laadrol die ontbreekt de beste
+     kandidaat uit de PID-bibliotheek van dit voertuig (OBDb en stemmen). Elke
+     kandidaat wordt eerst één keer op de auto gelezen; alleen een antwoord
+     binnen het bereik van zijn rol telt. Alles is TIJDELIJK: bij het sluiten
+     van de pagina gaan de eigen sensoren terug naar wat het voertuig had.
+     Bewaren blijft een keuze van de gebruiker (Mijn voertuigen → Sensoren). */
+  const ROL_BEREIK = { gevraagd: [11, 16], soc: [0, 100], stroom: [-400, 400], accutemp: [-40, 90] };
+  const BASIS_PIDS = ['0142', '010C', '0146'];
+  // Puur: per ontbrekende rol de kandidaat met de beste stemmen. heeft = { rol: code }.
+  function kiesKandidaten(lijst, heeft, laadRol) {
+    heeft = heeft || {};
+    const score = (b) => (b.werkt || 0) - (b.werkt_niet || 0) + (b.mijn === 'werkt' ? 5 : 0);
+    const per = {};
+    (lijst || []).forEach((b) => {
+      if (!b || !b.code || b.mijn === 'werkt_niet') return;
+      const rol = laadRol ? laadRol(b.naam) : null;
+      if (!rol || !ROL_BEREIK[rol] || heeft[rol]) return;
+      if (!per[rol] || score(b) > score(per[rol])) per[rol] = b;
+    });
+    return Object.keys(ROL_BEREIK).filter((r) => per[r]).map((r) => ({ rol: r, b: per[r] }));
+  }
+  const inBereik = (rol, v) => { const g = ROL_BEREIK[rol]; return g && typeof v === 'number' && isFinite(v) && v >= g[0] && v <= g[1]; };
+
+  let _act = { bezig: false, klaar: false, regels: [] }, _herstel = null;
+  async function activeer() {
+    if (_act.bezig || _act.klaar || !echt()) return _act;
+    _act = { bezig: true, klaar: false, regels: [] };
+    const regel = (t) => { _act.regels.push(t); if (_open) _tekenTab(); };
+    try {
+      const c = rolCodes(), basis = BASIS_PIDS.concat(Object.keys(c).map((r) => c[r]));
+      if (typeof pidToevoegen === 'function') {
+        const r = pidToevoegen(basis, { handmatig: false });
+        regel('Aangezet in de pollus: ' + (r.ok.length ? r.ok.join(', ') : 'niets') + (r.weg.length ? ' (niet ondersteund: ' + r.weg.join(', ') + ')' : ''));
+      }
+      const mist = Object.keys(ROL_BEREIK).filter((r) => !c[r]);
+      if (!mist.length) { regel('Alle laadsensoren staan al bij dit voertuig.'); return _act; }
+      if (!window.PLGarage || !PLGarage.bibLijst || !window.PLEigen || !PLEigen.test) { regel('Ontbrekend: ' + mist.join(', ') + ' — zonder Mijn voertuigen geen bibliotheek om in te zoeken.'); return _act; }
+      regel('Zoeken in de PID-bibliotheek van dit voertuig: ' + mist.join(', ') + '…');
+      const kand = kiesKandidaten(await PLGarage.bibLijst(), c, PLEigen.laadRol);
+      if (!kand.length) { regel('Geen kandidaat in de bibliotheek voor: ' + mist.join(', ') + '.'); return _act; }
+      const nieuw = [];
+      for (const k of kand) {
+        const e = { code: k.b.code, naam: k.b.naam, formule: k.b.formule || 'A', eenheid: k.b.eenheid || '', ecu: k.b.ecu || '' };
+        let t = null;
+        try { t = await PLEigen.test(e); } catch (x) { console.warn('PLAccu: kandidaat ' + e.code + ' niet te lezen', x); t = { ok: false, fout: (x && x.message) || String(x) }; }
+        if (t && t.ok && inBereik(k.rol, t.waarde)) { nieuw.push(e); regel('✓ ' + e.naam + ' (' + e.code + ') = ' + String(Math.round(t.waarde * 100) / 100).replace('.', ',') + ' ' + e.eenheid + ' — tijdelijk aan'); }
+        else regel('✗ ' + e.naam + ' (' + e.code + '): ' + (t && t.ok ? 'waarde ' + t.waarde + ' past niet bij ' + k.rol : (t && t.fout) || 'geen antwoord'));
+      }
+      if (nieuw.length) {
+        const v = PLGarage.actief && PLGarage.actief(), oud = (v && Array.isArray(v.eigen_pids)) ? v.eigen_pids : [];
+        if (!_herstel) _herstel = { lijst: oud, naam: v && v.naam, codes: [] };
+        PLEigen.zet(oud.concat(nieuw), v && v.naam);
+        _herstel.codes = _herstel.codes.concat(nieuw.map((e) => e.code));
+        if (typeof pidToevoegen === 'function') pidToevoegen(nieuw.map((e) => e.code), { handmatig: false, force: true });
+        regel('Tijdelijk tot je deze pagina sluit. Bewaren: Mijn voertuigen → Sensoren.');
+      }
+    } catch (e) { console.warn('PLAccu: PIDs niet geactiveerd', e); regel('Activeren mislukt: ' + ((e && e.message) || e)); }
+    finally { _act.bezig = false; _act.klaar = true; if (_open) _tekenTab(); }
+    return _act;
+  }
+  function herstel() {
+    if (!_herstel) return;
+    const h = _herstel; _herstel = null;
+    try {
+      if (window.PLEigen) PLEigen.zet(h.lijst, h.naam);
+      if (typeof activePIDs !== 'undefined') h.codes.forEach((c) => activePIDs.delete(c));
+    } catch (e) { console.warn('PLAccu: eigen sensoren niet teruggezet', e); }
+  }
+  function hActiveer() {
+    if (!_act.regels.length) return '';
+    return '<div class="pa-kaart"><div class="pa-h"><span>Meetvoorbereiding</span>' + chip(_act.bezig ? 'rust' : 'goed', _act.bezig ? 'bezig' : 'klaar') + '</div><ul class="pa-bewijs">' +
+      _act.regels.map((r) => '<li>' + esc(r) + '</li>').join('') + '</ul></div>';
+  }
+
   // ── de pagina ─────────────────────────────────────────────────────
   const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const KLEUR = { goed: 'gn', volgt: 'gn', laadt: 'gn', stabiel: 'gn', geen: '', matig: 'or', krap: 'or', onbekend: '', rust: 'bl', laag: 'rd', zwak: 'rd', ontlaadt: 'rd', te_hoog: 'rd', achter: 'rd', achteruit: 'rd', waarschuw: 'rd' };
@@ -695,11 +771,11 @@
       '<div class="pa-body"><div class="pa-in" id="plAccuTab"></div></div>';
   }
   function _tabHtml() {
-    if (_tab === 'test') return hTest();
+    if (_tab === 'test') return hActiveer() + hTest();
     if (_tab === 'trend') return hTrend();
     if (_tab === 'winter') return hWinter();
     if (_tab === 'uitleg') return hUitleg();
-    return hOordeel() + hLive();
+    return hOordeel() + hActiveer() + hLive();
   }
   function _tekenTab() {
     if (!_open) return;
@@ -751,10 +827,12 @@
     if (tab && TABS.some((x) => x[0] === tab)) _tab = tab;
     if (!_t || !_t.bezig) _t = _nieuweTest();
     _teken();
+    if (echt()) activeer();
     if (!_ververs) _ververs = setInterval(() => { try { if (_open && (_tab === 'live' || (_tab === 'test' && _t && _t.bezig))) _tekenTab(); } catch (e) { console.warn('PLAccu: verversen', e); } }, 1000);
   }
   function sluit() {
     _open = false;
+    herstel(); _act = { bezig: false, klaar: false, regels: [] };
     if (_ververs) { clearInterval(_ververs); _ververs = null; }
     try { const v = document.getElementById('plAccuTest'); if (v) v.remove(); } catch (e) { console.warn('PLAccu: pagina niet gesloten', e); }
   }
@@ -762,8 +840,8 @@
   window.PLAccu = {
     versie: VERSIE,
     bewijs, bevestigd: isBevestigd, tegenbewijs, nieuweAccu, stand, uitslag, nu: nuWaarden,
-    meetRust, meetStart, meetBelast, open, sluit, boot,
-    _kern: { startGrens, ocvSoc, kouFactor, rustOordeel, startUitMonsters, startOordeel, trend, winter, winterCurve, belastOordeel, laadStaat, grafiek, bewijsErbij, bevestigd, volt, toeren,
+    meetRust, meetStart, meetBelast, activeer, herstel, open, sluit, boot,
+    _kern: { kiesKandidaten, startGrens, ocvSoc, kouFactor, rustOordeel, startUitMonsters, startOordeel, trend, winter, winterCurve, belastOordeel, laadStaat, grafiek, bewijsErbij, bevestigd, volt, toeren,
       CFG: { VENSTER_DAGEN, RUST_MIN, RUST_LAAG, DIP_MIN_MONSTERS, DIP_MAX_GAT, KOU_K } }
   };
   if (typeof document !== 'undefined') boot();
