@@ -1253,7 +1253,8 @@
     '#plGarageKaart{margin:0 0 12px}' +
     '#plGarageKaart .gk{display:flex;align-items:center;gap:12px;background:#11151f;border:1px solid #232c40;border-radius:14px;padding:13px 14px;cursor:pointer;color:#fff}' +
     '#plGarageKaart .gk-t{font:800 14px var(--f)} #plGarageKaart .gk-d{font-size:12px;opacity:.8;margin-top:2px}' +
-    '#plGarageKaart .gk-pijl{margin-left:auto;opacity:.6}';
+    '#plGarageKaart .gk-pijl{margin-left:auto;opacity:.6}' +
+    '#plGarageKaart .gk-foto{width:56px;height:34px;object-fit:contain;flex:0 0 56px}';
 
   function zorgCss() {
     if (document.getElementById('plGarCss')) return;
@@ -1349,7 +1350,7 @@
       var s = status(v);
       var rit = v.laatsteRit;
       h += '<div class="gr-blok"><div class="gr-auto" onclick="PLGarage._open(\'' + esc(v.id) + '\')">' +
-        '<span class="gr-dot ' + s.kleur + '"></span>' + fotoHtml(v.kenteken, 'gr-foto') + '<div style="flex:1">' + tekenKentekenEnNaam(v) +
+        '<span class="gr-dot ' + s.kleur + '"></span>' + fotoHtml(v, 'gr-foto') + '<div style="flex:1">' + tekenKentekenEnNaam(v) +
         '<div class="gr-klein" style="margin-top:3px">' + esc(s.punten.length ? s.punten[0].tekst : 'Niets bekend dat aandacht vraagt') + '</div>' +
         '<div class="gr-klein">' + (v.aantal ? v.aantal.rapporten + ' rapporten · ' + v.aantal.ritten + ' ritten' : '') + (rit ? ' · laatste rit ' + datumNl(rit.start) : '') + '</div></div>' +
         (v.id === _st.actiefId ? '<span class="gr-klein" style="color:#22c55e;font-weight:800">ACTIEF</span>' : '') + '</div>' +
@@ -1455,7 +1456,7 @@
     if (_st.tab === 'conditie' && !scoreAan(v)) _st.tab = 'overzicht';
     var h = '<div class="gr-knoppen" style="margin:0 0 10px"><button class="gr-k klein" onclick="PLGarage._terug()">← Alle voertuigen</button>' +
       (v.status === 'actief' && v.id !== _st.actiefId ? '<button class="gr-k klein" onclick="PLGarage._actief(\'' + esc(v.id) + '\')">Maak actief</button>' : '') + '</div>';
-    h += '<div class="gr-blok gr-auto">' + fotoHtml(v.kenteken, 'gr-foto groot') + '<div>' + tekenKentekenEnNaam(v) + '</div></div>';
+    h += '<div class="gr-blok gr-auto">' + fotoHtml(v, 'gr-foto groot') + '<div>' + tekenKentekenEnNaam(v) + '</div></div>';
     h += '<div class="gr-tabs">' + tabs.map(function (t) {
       return '<button class="gr-tab' + (_st.tab === t[0] ? ' aan' : '') + '" onclick="PLGarage._tab(\'' + t[0] + '\')">' + t[1] + '</button>';
     }).join('') + '</div>';
@@ -1566,6 +1567,7 @@
     } else if (_st.tab === 'sensoren') {
       h += tekenSensoren(v);
     } else if (_st.tab === 'profiel') {
+      h += fotoBlok(v);
       var rijProf = function (l, w) { return '<div>' + l + '</div><div><b>' + (w == null || w === '' ? '—' : esc(w)) + '</b></div>'; };
       h += '<div class="gr-blok"><div class="gr-rij">' +
         rijProf('Kenteken', v.kenteken ? kentekenNl(v.kenteken) : (v.kentekenLeesbaar === false ? 'onleesbaar' : null)) +
@@ -2148,7 +2150,7 @@
     else { var s = status(v); kleur = s.kleur; t = v.naam || [v.merk, v.model].filter(Boolean).join(' ') || 'Mijn voertuig'; d = s.punten.length ? s.punten[0].tekst : 'Niets bekend dat aandacht vraagt'; }
     el.innerHTML = '<div class="gk" onclick="PLGarage.open(' + (v ? '\'' + esc(v.id) + '\'' : '') + ')">' +
       (kleur ? '<span class="gr-dot ' + kleur + '" style="width:12px;height:12px;border-radius:50%;flex:0 0 12px"></span>' : '') +
-      '<div><div class="gk-t">' + esc(t) + '</div><div class="gk-d">' + esc(d) + '</div></div><span class="gk-pijl">→</span></div>';
+      fotoHtml(v, 'gk-foto') + '<div><div class="gk-t">' + esc(t) + '</div><div class="gk-d">' + esc(d) + '</div></div><span class="gk-pijl">→</span></div>';
     welkomFoto();
   }
 
@@ -2180,18 +2182,24 @@
   function fotoStandaard(v) {
     return FOTO_STANDAARD.filter(function (f) { return f.merk.test(v.merk || '') && f.model.test(v.model || ''); })[0] || null;
   }
-  function fotoHtml(kenteken, klas) {
-    var s = foto(kenteken);
+  // Eigen foto bij het kenteken, anders de standaardfoto van merk en model.
+  function fotoVoor(v) {
+    if (!v) return null;
+    var std = fotoStandaard(v);
+    return foto(v.kenteken) || (std ? std.src : null);
+  }
+  function fotoHtml(v, klas) {
+    var s = fotoVoor(v);
     return s ? '<img class="' + klas + '" src="' + esc(s) + '" alt="">' : '';
   }
   function fotoBlok(v) {
     if (!v || !v.id || !v.kenteken) return '';
     var std = fotoStandaard(v), id = esc(v.id), heeft = !!foto(v.kenteken);
     return '<div class="gr-blok"><div class="gr-bh">Foto</div>' +
-      (heeft ? fotoHtml(v.kenteken, 'gr-foto groot') : '<div class="gr-klein">Nog geen foto bij dit kenteken.</div>') +
-      '<div class="gr-klein">Hoort bij het kenteken en blijft op dit toestel.</div>' +
+      (fotoVoor(v) ? fotoHtml(v, 'gr-foto groot') : '<div class="gr-klein">Nog geen foto bij dit kenteken.</div>') +
+      '<div class="gr-klein">' + (heeft ? 'Eigen foto bij dit kenteken, alleen op dit toestel.' : std ? 'Standaardfoto van de ' + esc(std.naam) + '. Kies een eigen foto voor dit kenteken.' : 'Hoort bij het kenteken en blijft op dit toestel.') + '</div>' +
       '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._fotoKies(\'' + id + '\')">📷 Kies foto</button>' +
-      (std ? '<button class="gr-k klein" onclick="PLGarage._fotoStandaard(\'' + id + '\')">Gebruik ' + esc(std.naam) + '</button>' : '') +
+      (std && foto(v.kenteken) !== std.src ? '<button class="gr-k klein" onclick="PLGarage._fotoStandaard(\'' + id + '\')">Gebruik ' + esc(std.naam) + '</button>' : '') +
       (heeft ? '<button class="gr-k klein" onclick="PLGarage._fotoWeg(\'' + id + '\')">Verwijder foto</button>' : '') + '</div></div>';
   }
   // Verkleind tot hoogstens 560 px, zodat localStorage het houdt.
@@ -2228,12 +2236,18 @@
   }
   // De foto op het startscherm: van het actieve voertuig, anders van het
   // kenteken uit de verbindingsstap (pl_kenteken).
-  function welkomFoto() {
+  // Zonder voertuig in het platform: de auto die showWelcome() herkende.
+  var _welkomAuto = null;
+  function welkomFoto(herkend) {
+    if (herkend && herkend.merk) _welkomAuto = { merk: herkend.merk, model: herkend.model };
     var img = document.getElementById('welcomeAuto');
     if (!img) return;
-    var v = magPlatform() ? actief() : null, k = v && v.kenteken;
-    if (!k) { try { k = localStorage.getItem('pl_kenteken') || ''; } catch (e) { console.warn('PLGarage: kenteken van de verbinding onleesbaar', e); } }
-    var s = foto(k);
+    var v = magPlatform() ? actief() : null, s = fotoVoor(v);
+    if (!s) {
+      var k = '';
+      try { k = localStorage.getItem('pl_kenteken') || ''; } catch (e) { console.warn('PLGarage: kenteken van de verbinding onleesbaar', e); }
+      s = foto(k) || (_welkomAuto && fotoStandaard(_welkomAuto) ? fotoStandaard(_welkomAuto).src : null);
+    }
     if (s) { img.src = s; img.hidden = false; } else { img.hidden = true; img.removeAttribute('src'); }
   }
 

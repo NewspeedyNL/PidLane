@@ -570,7 +570,7 @@ function showWelcome(vinInfo){
     document.getElementById('welcomeTitle').textContent=`${vinInfo.merk} ${vinInfo.model||''} ${vinInfo.year||''} herkend`;
   } else if(demoMode){
     document.getElementById('welcomeTitle').textContent='Demo modus — kies een optie';
-  }  try{ if(window.PLGarage) PLGarage.welkomFoto(); }catch(e){ console.warn('welkomFoto mislukt:', e); }
+  }  try{ if(window.PLGarage) PLGarage.welkomFoto(vinInfo); }catch(e){ console.warn('welkomFoto mislukt:', e); }
 }
 // ── Startscherm als navigatiehub ──────────────────────────────────
 // 🏠 opent het welkomstscherm weer. De analyses blijven in het midden;
