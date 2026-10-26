@@ -15,6 +15,59 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 25-10-2026 — accu en dynamo op een auto die slim laadt (PLAccu)
+
+**Aanleiding.** Op een Mazda met slimme laadregeling kwam vaak een melding
+over de accu of de dynamo, terwijl de auto gezond was. Drie oorzaken in de
+code, alle drie nagebouwd in `test-accutest.js`:
+
+1. `LAADSPANNING` middelde 0142 over 30 s zodra het toerental *op dat moment*
+   boven 500 lag. Na een i-stop zitten er 20 s motor-uit (12,0 V met licht en
+   blower) plus de startdip in dat venster: gemiddeld onder 12,2 V, en dan
+   meldt de harde grens "de dynamo laadt niet".
+2. De harde bovengrens van 15,2 V gold ook bij vorst. Een regelaar compenseert
+   de temperatuur (≈ −3 mV/°C per cel, −18 mV/°C voor zes cellen): bij −10 °C
+   is 15,3–15,5 V goed laden.
+3. Eén meting werd één melding, ook de momentopname in `CORRELATION_RULES`.
+
+**Besluit.** Een melding over accu of dynamo vraagt twee bewijzen: twee
+soorten, of dezelfde soort op twee dagen. Ook de harde grenzen gaan door
+deze poort. Dat lijkt in te gaan tegen #532 ("harde grenzen gaan nooit door
+de poort"), maar dat is een andere poort. #532 gaat over de vraag of een regel
+voor *deze auto* geldt. Deze poort gaat over de vraag of het een *echte
+waarneming* is en geen overgang (i-stop, inschakelpiek, adapter die
+wegvalt).
+
+**Wat er online te vinden is, en wat niet.** Een "script dat 99 % juist
+analyseert" bestaat niet voor OBD. Werkplaatstesters belasten de accu met
+~100 A of meten de inwendige weerstand met wisselstroom (conductantie). Ook
+dat is een schatting: Battery University noemt een correlatie van 51 %
+tussen inwendige weerstand en capaciteit, en conductantie vraagt ≥ 70 %
+lading. Wel bruikbaar:
+
+- de BCI-tabel voor de minimale spanning onder last per temperatuur
+  (9,6 V bij 21 °C tot 8,5 V bij −18 °C);
+- de rustspanning, mits de accu ≥ 2 uur stilstaat (oppervlaktelading);
+- de dip per start tegen de eigen geschiedenis. Een octrooi beschrijft
+  een schatting van de inwendige weerstand uit stroom/spanningsparen tijdens
+  het starten; zonder stroomsensor blijft hier de dip over.
+
+Het oordeel gaat over het *plateau* (de mediaan van de dip) en niet over de
+inschakelpiek. De BCI-grens is een grens onder aanhoudende last, en de piek
+duurt milliseconden. Over 0142 in de pollus is de dip meestal te traag
+gemeten: dan zegt de app "niet te beoordelen". De begeleide test leest
+alleen ATRV en haalt zo 20–50 ms per monster.
+
+**Winter.** De dip wordt naar 20 °C omgerekend met +1,2 %/°C inwendige
+weerstand. Een eerste keuze van +2,6 %/°C voorspelde ook voor een gezonde
+accu bij −18 °C startproblemen. Dat zou de valse melding zijn geweest die
+juist voorkomen moest worden.
+
+**Open.** De belastingproef gebruikt nog niet de gevraagde laadspanning
+(Mazda `220304`): tijdens de proef pauzeert de pollus. Een rit moet laten zien
+of ATRV tijdens het starten echt binnen 50 ms antwoordt, en of de adapter de
+dip overleeft.
+
 ## 25-10-2026 (later) — de vier gaps van de storingsproef afgehandeld
 
 - **#614.** `scanNetworks()` stuurt `0100` nu tot drie keer (1 s ertussen)

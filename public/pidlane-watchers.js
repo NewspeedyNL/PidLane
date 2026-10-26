@@ -257,16 +257,26 @@ const PLWatch = {
       // nu uit één functie, PLKenmerk.laadspanning(): de gevraagde laadspanning
       // als de auto die geeft, anders 13,2 V alleen bij een gewone dynamo en
       // altijd fout onder 12,2 of boven 15,2 V. Gemiddeld over 30 s.
+      // 25-10-2026 (PLAccu): de motor moet het HELE venster draaien. Na een
+      // i-stop zaten er 20 s motor-uit (12,0 V met licht en blower) en de
+      // startdip in, en dat gemiddelde heette "de dynamo laadt niet". Een
+      // fout wordt pas een melding bij een tweede bewijs (PLAccu.bewijs).
       check(c){ if(c.val('010C')<500) return null;   // motor moet draaien
+        const rw=c.win('010C',30000); if(rw.length<2 || Math.min(...rw)<500) return null;
         const v=c.win('0142',30000); if(v.length<4) return null;
         const gem=v.reduce((a,b)=>a+b,0)/v.length;
         if(!window.PLKenmerk){
           if(gem<12.7) return `laadspanning laag: gemiddeld ${gem.toFixed(1)} V over 30 s bij draaiende motor`;
           return gem>15.2 ? `laadspanning hoog: gemiddeld ${gem.toFixed(1)} V — spanningsregelaar verdacht` : null;
         }
-        const r=PLKenmerk.laadspanning(gem, c.val('010C'), { laad:laadOordeelVenster(c, gem), prof:PLKenmerk.live() });
+        const laad=laadOordeelVenster(c, gem);
+        const r=PLKenmerk.laadspanning(gem, c.val('010C'), { laad, prof:PLKenmerk.live(), temp:c.val('0146') });
         if(!r || r.niveau==='ok') { PLKenmerk.wisNotitie('watch_LAADSPANNING'); return null; }
         if(r.niveau==='onbeslist'){ PLKenmerk.noteer('watch_LAADSPANNING', 'laadspanning bij draaiende motor', r.geldt); return null; }
+        if(window.PLAccu && r.niveau==='fout'){
+          const b=PLAccu.bewijs(laad && laad.staat==='laadt_niet' ? 'gevraagd' : (r.hard ? 'hard' : 'laadspanning'), r.tekst);
+          if(!b || !b.ja){ PLKenmerk.noteer('watch_LAADSPANNING', 'laadspanning bij draaiende motor — eerste aanwijzing, wacht op een tweede bewijs', r.geldt); return null; }
+        }
         return `${r.tekst} (gemiddeld over 30 s)`; } },
 
     { id:'O2_ACTIVITEIT', naam:'lambdasonde-activiteit (warm stationair)', voorwaarden:{ breedband_b1s1:{ is:false, gangbaar:true } },

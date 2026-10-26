@@ -2161,6 +2161,7 @@ function closeConnOv(){
 <script src="pidlane-snelproef.js"></script><!-- PLSnelProef (#352/#302): stap-voor-stapproef in het Admin-menu — welke ingreep brengt de responstijd van de adapter terug onder 80 ms; vereist PLBus, connectSerial en (optioneel) PLSppProef -->
 <script src="pidlane-waarneming.js"></script><!-- wat er op DEZE auto is waargenomen (PLWaarneming) — de autolaag, blijft over ritten heen — vereist vóór pidlane-aandrijving.js -->
 <script src="pidlane-kenmerk.js"></script><!-- PLKenmerk (#532) — de derde poort: geldt deze regel voor DEZE auto? Kenmerken uit meting, RDW/profiel en PLWaarneming; één grens voor laadspanning en koelwater — vereist ná pidlane-waarneming.js -->
+<script src="pidlane-accutest.js"></script><!-- PLAccu: accu- en dynamotest (rust, startdip, trend, belasting, winter) en de poort van twee bewijzen voor elke accu-/dynamomelding — ná pidlane-kenmerk.js (laadHoog); stil meten leest alleen pidVals/pidHist, de begeleide test gaat via PLScanSlot -->
 <script src="pidlane-meeluister.js"></script><!-- PLMeeluister (#560) — ligt de CAN-bus open? 2 s ATMA, zenders tellen, open → PLWaarneming canopen — vereist PLScanSlot en ná pidlane-waarneming.js -->
 <script src="pidlane-aandrijving.js"></script><!-- aandrijfstatus: de toestandsmachine (PLAandrijving) — zuiver, kent het scherm niet -->
 <script src="pidlane-aandrijfbalk.js"></script><!-- het scherm bij de aandrijfstatus (PLAandrijfbalk) — vereist ná pidlane-aandrijving.js -->
