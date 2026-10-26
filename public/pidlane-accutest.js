@@ -145,7 +145,10 @@
   function bruikbaar(starts, bron) { return (starts || []).filter((s) => s && s.ok && !s.herstart && getal(s.dU) !== null && s.dU > 0 && (!bron || s.bron === bron)); }
   const dU20 = (s) => s.dU / kouFactor(s.temp);
   function trend(starts) {
-    const bron = (starts || []).filter((s) => s && s.ok).map((s) => s.bron).pop();
+    // De bron met de meeste koude starts: 0142 uit de pollus en ATRV uit de
+    // test meten niet even snel, en mogen dus geen trend met elkaar vormen.
+    const tel = {}; bruikbaar(starts).forEach((s) => { tel[s.bron] = (tel[s.bron] || 0) + 1; });
+    const bron = Object.keys(tel).sort((a, b) => tel[b] - tel[a])[0];
     const b = bruikbaar(starts, bron);
     if (b.length < 8) return { staat: 'onbekend', n: b.length, tekst: 'trend: ' + b.length + ' van de 8 koude starts gemeten' };
     const basis = mediaan(b.slice(0, 5).map(dU20)), nu = mediaan(b.slice(-3).map(dU20));
@@ -361,7 +364,7 @@
   function vers(pid, maxMs) {
     if (!pid || typeof pidVals === 'undefined') return null;
     const h = (typeof pidHist !== 'undefined' && pidHist[pid]) || null, l = h && h.length ? h[h.length - 1] : null;
-    if (l && Date.now() - l.t > (maxMs || 5000)) return null;
+    if (l && Date.now() - l.t > (maxMs || 15000)) return null;
     return getal(pidVals[pid]);
   }
   function reeksVan(pid, ms) {
@@ -371,7 +374,7 @@
   }
   function nuWaarden() {
     const c = rolCodes();
-    return { u: vers('0142', 5000), rpm: vers('010C', 5000), g: vers(c.gevraagd, 20000), soc: vers(c.soc, 60000), i: vers(c.stroom, 20000),
+    return { u: vers('0142', 15000), rpm: vers('010C', 15000), g: vers(c.gevraagd, 20000), soc: vers(c.soc, 60000), i: vers(c.stroom, 20000),
       accutemp: vers(c.accutemp, 120000), leeftijd: vers(c.leeftijd, 600000), buiten: vers('0146', 120000), codes: c };
   }
   function buitenTemp() { const w = nuWaarden(); return w.accutemp !== null ? w.accutemp : w.buiten; }
@@ -486,7 +489,10 @@
   // ── de pagina ─────────────────────────────────────────────────────
   const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const KLEUR = { goed: 'gn', volgt: 'gn', laadt: 'gn', stabiel: 'gn', geen: '', matig: 'or', krap: 'or', onbekend: '', rust: 'bl', laag: 'rd', zwak: 'rd', ontlaadt: 'rd', te_hoog: 'rd', achter: 'rd', achteruit: 'rd', waarschuw: 'rd' };
-  const chip = (staat, tekst) => '<span class="pa-chip ' + (KLEUR[staat] || '') + '">' + esc(tekst) + '</span>';
+  const LABEL = { goed: 'goed', matig: 'matig', krap: 'krap', onbekend: 'te weinig data', geen: 'geen kou op komst', laag: 'laag', zwak: 'zwak', ontlaadt: 'ontlaadt', te_hoog: 'te hoog',
+    achter: 'haalt de vraag niet', stabiel: 'stabiel', achteruit: 'gaat achteruit', waarschuw: 'startrisico' };
+  const chip = (staat, tekst) => '<span class="pa-chip ' + (KLEUR[staat] || '') + '">' + esc(tekst == null ? (LABEL[staat] || staat) : tekst) + '</span>';
+  const tijdAs = (x) => (x > -0.05 ? 'nu' : x > -1 ? Math.round(x * 60) + ' s' : x.toFixed(1).replace('.', ',') + ' min');
   const fmt = (v, d, een) => (v === null || v === undefined || !isFinite(v) ? '—' : Number(v).toFixed(d).replace('.', ',') + (een ? ' ' + een : ''));
   const datum = (t) => { const d = new Date(t); return d.getDate() + '-' + (d.getMonth() + 1) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
   const ROLLEN = [
@@ -526,7 +532,7 @@
       '.pa-tegel{background:var(--sur2);border-radius:10px;padding:8px 10px;min-width:0}' +
       '.pa-tegel small{display:block;color:var(--tx2);font-size:11px}.pa-tegel b{display:block;font:800 20px var(--m,ui-monospace,monospace)}' +
       '.pa-tegel code{font-size:10px;color:var(--tx3,var(--tx2))}.pa-tegel p{margin:4px 0 0;font-size:11px;color:var(--tx2)}' +
-      '.pa-tegel.leeg b{color:var(--tx3,var(--tx2))}' +
+      '.pa-tegel.leeg b{color:var(--tx3,var(--tx2));font:700 13px var(--f,system-ui);padding:4px 0}' +
       '.pa-chip{display:inline-block;padding:3px 9px;border-radius:999px;font-weight:800;font-size:12px;background:var(--sur2);color:var(--tx)}' +
       '.pa-chip.gn{background:var(--gns,rgba(34,197,94,.15));color:var(--gn)}.pa-chip.or{background:var(--ors,rgba(245,158,11,.15));color:var(--or)}' +
       '.pa-chip.rd{background:var(--rds,rgba(239,68,68,.15));color:var(--rd)}.pa-chip.bl{background:var(--bls,rgba(59,130,246,.15));color:var(--bl)}' +
@@ -557,7 +563,7 @@
       (ls.stroom ? '<br>Accu: <b>' + ({ laden: 'wordt geladen', ontladen: 'wordt ontladen', balans: 'in balans' })[ls.stroom] + '</b>' : '') + '</div></div>';
     const series = [{ p: reeksVan('0142', 300000), k: 'var(--bl)', naam: 'gemeten (0142)' }];
     if (c.gevraagd) series.push({ p: reeksVan(c.gevraagd, 300000), k: 'var(--or)', naam: 'gevraagd', streep: true });
-    h += grafiek({ series, label: 'Accuspanning, laatste 5 minuten', xFmt: (x) => (Math.round(x * 10) / 10 === 0 ? 'nu' : Math.round(x) + ' min'), ref: [{ y: 12.2, k: 'var(--rd)', naam: '12,2' }] }) + '</div>';
+    h += grafiek({ series, label: 'Accuspanning, laatste 5 minuten', xFmt: tijdAs, ref: [{ y: 12.2, k: 'var(--rd)', naam: '12,2' }] }) + '</div>';
     h += '<div class="pa-kaart"><div class="pa-h"><span>De sensoren die het slim maken</span></div><div class="pa-tegels">';
     ROLLEN.forEach((r) => {
       const code = c[r.rol], d = code ? rolDef(code) : null, v = code ? w[r.rol === 'gevraagd' ? 'g' : r.rol === 'stroom' ? 'i' : r.rol] : null;
@@ -573,7 +579,7 @@
       if (c.stroom) s2.push({ p: reeksVan(c.stroom, 300000), k: 'var(--gn)', naam: 'stroom (A)' });
       if (c.soc && !c.stroom) s2.push({ p: reeksVan(c.soc, 300000), k: 'var(--gn)', naam: 'laadtoestand (%)' });
       h += '<div class="pa-kaart"><div class="pa-h"><span>' + (c.stroom ? 'Accustroom' : 'Laadtoestand') + ', laatste 5 minuten</span></div>' +
-        grafiek({ series: s2, ref: c.stroom ? [{ y: 0, k: 'var(--tx2)', naam: '0 A' }] : [], xFmt: (x) => (Math.round(x * 10) / 10 === 0 ? 'nu' : Math.round(x) + ' min') }) + '</div>';
+        grafiek({ series: s2, ref: c.stroom ? [{ y: 0, k: 'var(--tx2)', naam: '0 A' }] : [], xFmt: tijdAs }) + '</div>';
     }
     return h;
   }
@@ -608,14 +614,14 @@
         uit: t.rust ? chip(t.rust.staat, fmt(t.rust.u, 2, 'V') + (t.rust.soc != null ? ' · ' + t.rust.soc + ' %' : '')) + '<div class="pa-sub">' + esc(t.rust.tekst) + '</div>' : '',
         knop: '<button type="button" class="pa-knop hoofd" data-actie="rust">Meten</button>' },
       { kop: 'Startdip — start de motor', doe: 'Druk op Meten en start binnen 15 seconden, zonder gas. De app leest alleen ATRV, zo snel als de adapter kan (20–50 ms).',
-        uit: (t.live.length || (t.start && t.start.s) ? hStartcurve(t.start && t.start.s, t.start ? null : t.live) : '') + (t.start ? chip(t.start.staat, t.start.staat) + '<div class="pa-sub">' + esc(t.start.tekst) + '</div>' : ''),
+        uit: (t.live.length || (t.start && t.start.s) ? hStartcurve(t.start && t.start.s, t.start ? null : t.live) : '') + (t.start ? chip(t.start.staat) + '<div class="pa-sub">' + esc(t.start.tekst) + '</div>' : ''),
         knop: '<button type="button" class="pa-knop hoofd" data-actie="start">Meten — nu starten</button>' },
       { kop: 'Belastingproef — 60 s', doe: 'Motor stationair. Zet aan: grootlicht, achterruitverwarming, blower vol, stoelverwarming. De app leest spanning, toerental en — als ze ingesteld zijn — de gevraagde laadspanning en de accustroom mee.',
         uit: (t.reeks.length ? grafiek({ series: [{ p: t.reeks.map((x) => [(x.t - t.reeks[0].t) / 1000, x.u]), k: 'var(--bl)', naam: 'gemeten' },
           { p: t.reeks.filter((x) => x.g !== null).map((x) => [(x.t - t.reeks[0].t) / 1000, x.g]), k: 'var(--or)', naam: 'gevraagd', streep: true }],
           ref: t.rust && t.rust.u ? [{ y: t.rust.u, k: 'var(--tx2)', naam: 'rust ' + fmt(t.rust.u, 2) }] : [], xFmt: (x) => Math.round(x) + ' s' }) +
           (t.reeks.some((x) => x.i !== null) ? grafiek({ series: [{ p: t.reeks.filter((x) => x.i !== null).map((x) => [(x.t - t.reeks[0].t) / 1000, x.i]), k: 'var(--gn)', naam: 'accustroom (A)' }], ref: [{ y: 0, k: 'var(--tx2)', naam: '0 A' }], xFmt: (x) => Math.round(x) + ' s', h: 100 }) : '') : '') +
-          (t.belast ? chip(t.belast.staat, t.belast.staat) + '<div class="pa-sub">' + esc(t.belast.tekst) + '</div>' : ''),
+          (t.belast ? chip(t.belast.staat) + '<div class="pa-sub">' + esc(t.belast.tekst) + '</div>' : ''),
         knop: '<button type="button" class="pa-knop hoofd" data-actie="belast">Meten (60 s)</button>' }
     ];
     let h = '<div class="pa-kaart"><div class="pa-h"><span>Begeleide accu- en dynamotest</span><button type="button" class="pa-knop" data-actie="opnieuw">Opnieuw</button></div>';
@@ -631,7 +637,7 @@
   function hTrend() {
     const u = uitslag(), b = u.starts.filter((s) => s && s.ok);
     const koud = b.filter((s) => !s.herstart);
-    let h = '<div class="pa-kaart"><div class="pa-h"><span>Spanning tijdens het starten</span>' + chip(u.trend.staat, u.trend.staat) + '</div>';
+    let h = '<div class="pa-kaart"><div class="pa-h"><span>Spanning tijdens het starten</span>' + chip(u.trend.staat) + '</div>';
     h += grafiek({ series: [
       { p: koud.map((s, i) => [i + 1, s.plateau, s.plateau < startGrens(s.temp) ? 'var(--rd)' : s.plateau < startGrens(s.temp) + 0.3 ? 'var(--or)' : 'var(--gn)']), k: 'var(--bl)', naam: 'plateau', stip: true, lijn: true },
       { p: koud.map((s, i) => [i + 1, startGrens(s.temp)]), k: 'var(--rd)', naam: 'BCI-grens bij die temp', streep: true }],
@@ -657,7 +663,7 @@
 
   function hWinter() {
     const u = uitslag(), c = winterCurve(u.starts), tMin = verwachtMin();
-    let h = '<div class="pa-kaart"><div class="pa-h"><span>Haalt de accu de koudste nacht?</span>' + chip(u.winter.staat, u.winter.staat) + '</div><div class="pa-sub">' + esc(u.winter.tekst) + '</div>';
+    let h = '<div class="pa-kaart"><div class="pa-h"><span>Haalt de accu de koudste nacht?</span>' + chip(u.winter.staat) + '</div><div class="pa-sub">' + esc(u.winter.tekst) + '</div>';
     if (c) {
       const ser = [{ p: c.map((x) => [x.t, x.verwacht]), k: 'var(--bl)', naam: 'verwachte startspanning' }, { p: c.map((x) => [x.t, x.grens]), k: 'var(--rd)', naam: 'BCI-grens', streep: true }];
       if (tMin !== null && tMin >= -20 && tMin <= 20) { const v = c.reduce((a, x) => (Math.abs(x.t - tMin) < Math.abs(a.t - tMin) ? x : a)); ser.push({ p: [[v.t, v.verwacht, 'var(--or)']], k: 'var(--or)', naam: 'verwachting ' + Math.round(tMin) + ' °C', stip: true }); }

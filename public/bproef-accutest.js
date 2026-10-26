@@ -98,13 +98,14 @@ const wacht = (ms) => new Promise((r) => setTimeout(r, ms));
     const t = JSON.parse(await app.ev(`(function(){
       PLAccu.open('live');
       var inn = document.getElementById('plAccuTab');
-      return JSON.stringify({ tegels: inn.querySelectorAll('.pa-tegel').length, svg: inn.querySelectorAll('svg.pa-svg').length, tekst: inn.textContent,
+      return JSON.stringify({ groot: (inn.querySelector('.pa-groot') || {}).textContent || '', tegels: inn.querySelectorAll('.pa-tegel').length, svg: inn.querySelectorAll('svg.pa-svg').length, tekst: inn.textContent,
         tabs: document.querySelectorAll('#plAccuTest .pa-tabs button').length });
     })()`));
     toets('Live: de sensortegels (gevraagde laadspanning, laadtoestand, stroom, temperatuur, leeftijd + 2)', t.tegels >= 7, JSON.stringify({ tegels: t.tegels }));
     toets('Live: een grafiek van de spanning', t.svg >= 1, String(t.svg));
     toets('Live: noemt de Mazda-code van de gevraagde laadspanning als die niet ingesteld is', /220304/.test(t.tekst) || /22 0304/.test(t.tekst), t.tekst.slice(0, 300));
     toets('vijf tabs', t.tabs === 5, String(t.tabs));
+    toets('Live: de demo-accuspanning staat groot in beeld (niet "—")', /\d+,\d\d/.test(t.groot), t.groot);
     await app.ev(`document.querySelector('#plAccuTest [data-actie="sluit"]').click(); 1`);
     const weg = await app.ev(`!document.getElementById('plAccuTest')`);
     toets('✕ sluit de pagina', weg === true, String(weg));

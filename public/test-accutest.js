@@ -111,6 +111,9 @@ starts = []; for (let i = 0; i < 10; i++) starts.push(start(i < 5 ? 2.0 : 3.0, 1
 toets('dip van 2,0 naar 3,0 V bij gelijke temperatuur: achteruit, met bewijs', K.trend(starts).staat === 'achteruit' && K.trend(starts).bewijs === 'trend');
 starts = []; for (let i = 0; i < 10; i++) starts.push(i < 5 ? start(2.0, 20, i) : start(2.0 * K.kouFactor(-10), -10, i));
 toets('dezelfde groei door vorst (−10 °C): géén achteruitgang', K.trend(starts).staat === 'stabiel', JSON.stringify(K.trend(starts)));
+starts = []; for (let i = 0; i < 10; i++) starts.push(start(2.0, 15, i));
+starts.push(Object.assign(start(2.0, 15, 10), { bron: 'atrv' }));
+toets('tien starts uit de pollus en daarna één begeleide test: de trend blijft op de tien (meeste bron)', K.trend(starts).staat === 'stabiel', JSON.stringify(K.trend(starts)));
 starts = []; for (let i = 0; i < 10; i++) starts.push(Object.assign(start(i < 5 ? 2.0 : 3.0, 15, i), { herstart: i >= 5 }));
 toets('i-stop-herstarts tellen niet mee in de trend', K.trend(starts).staat === 'onbekend');
 
