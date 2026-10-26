@@ -19,6 +19,8 @@
    live responstijd; zonder meting ±15 PIDs/s). De kern blijft altijd.
  - De waarschuwing "veel sensoren" rekent met wat déze adapter haalt.
  - Tests: test-pidmax.js (nieuw), drie mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
  26-10-2026 (later) — Accupagina: waarde valt niet weg, PDF-rapport, deur
  ═══════════════════════════════════════════════════════════
 
