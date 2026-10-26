@@ -1322,9 +1322,114 @@ function applyPidPreset(id){
   try{ showToast?.('🎚️ '+pr.naam+' — '+bruikbaar.length+' sensoren actief'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
 }
 
+// ── EIGEN SELECTIES OP NAAM (26-10-2026) ─────────────────────────────
+// Uit het gebruik: "huidige PID-selectie opslaan als een naam, en kunnen
+// wisselen". De hele actieve selectie gaat onder een zelfgekozen naam naar
+// dit toestel (localStorage, net als de rest van de keuze); een tik op de
+// naam zet hem terug. Zelfde route als applyPidPreset(): wat deze auto niet
+// levert valt eruit, en dat wordt gemeld. Zelfde naam = overschrijven.
+const PID_BUNDEL_SLEUTEL='pl_pid_bundels', PID_BUNDEL_MAX=30;
+let _pidBundelNu='';                // naam van de laatst toegepaste
+let _pidBundelSet='';               // en welke PIDs dat toen waren
+/* Puur: lijst schoonmaken (onleesbaar, leeg, dubbel). */
+function _pidBundelsSchoon(l){
+  if(!Array.isArray(l)) return [];
+  const gezien=new Set(), uit=[];
+  l.forEach(b=>{
+    const naam=String((b&&b.naam)||'').trim().slice(0,40), k=naam.toLowerCase();
+    const pids=Array.isArray(b&&b.pids) ? [...new Set(b.pids.map(String))] : [];
+    if(!naam || !pids.length || gezien.has(k)) return;
+    gezien.add(k); uit.push({naam, pids});
+  });
+  return uit.slice(0,PID_BUNDEL_MAX);
+}
+/* Puur: bewaren onder naam; dezelfde naam (hoofdletters los) wordt vervangen. */
+function _pidBundelZet(l, naam, pids){
+  naam=String(naam||'').trim().slice(0,40);
+  pids=[...new Set((pids||[]).map(String))];
+  if(!naam || !pids.length) return _pidBundelsSchoon(l);
+  const rest=_pidBundelsSchoon(l).filter(b=>b.naam.toLowerCase()!==naam.toLowerCase());
+  return _pidBundelsSchoon([{naam, pids}].concat(rest));
+}
+/* Puur: weghalen op naam. */
+function _pidBundelWeg(l, naam){
+  const k=String(naam||'').trim().toLowerCase();
+  return _pidBundelsSchoon(l).filter(b=>b.naam.toLowerCase()!==k);
+}
+function _pidBundels(){
+  try{ return _pidBundelsSchoon(JSON.parse(localStorage.getItem(PID_BUNDEL_SLEUTEL)||'[]')); }
+  catch(e){ console.warn('Eigen selecties onleesbaar — lijst leeg', e); return []; }
+}
+function _pidBundelsSchrijf(l){
+  try{ localStorage.setItem(PID_BUNDEL_SLEUTEL, JSON.stringify(_pidBundelsSchoon(l))); return true; }
+  catch(e){ console.warn('Eigen selecties niet bewaard', e); try{ showToast?.('⚠️ Selectie niet bewaard: opslag vol of geblokkeerd'); }catch(e2){ console.warn('showToast mislukt', e2); } return false; }
+}
+const _pidEsc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function _pidBundelsBij(){
+  const vak=document.getElementById('pidBundels');
+  if(!vak) return;
+  const l=_pidBundels();
+  const nu=(_pidBundelNu && _pidBundelSet===_pidSetSleutel()) ? _pidBundelNu.toLowerCase() : '';
+  const h=l.map((b,i)=>
+    '<span class="pid-doel pid-bundel'+(b.naam.toLowerCase()===nu?' aan':'')+'">'+
+      '<button type="button" class="pid-bundel-k" onclick="pidBundelToepassen('+i+')" title="'+b.pids.length+' sensoren">📁 '+_pidEsc(b.naam)+'</button>'+
+      '<button type="button" class="pid-bundel-x" onclick="pidBundelWeg('+i+')" aria-label="'+_pidEsc(b.naam)+' weghalen">✕</button></span>').join('')+
+    '<span class="pid-bundel-nieuw"><input type="text" id="pidBundelNaam" maxlength="40" placeholder="Naam voor deze selectie" '+
+      'onkeydown="if(event.key===\'Enter\')pidBundelBewaar()"><button type="button" class="pid-doel" onclick="pidBundelBewaar()">💾 Opslaan als</button></span>';
+  if(vak._h!==h){
+    const inv=document.getElementById('pidBundelNaam'), w=inv?inv.value:'', f=inv&&document.activeElement===inv;
+    vak.innerHTML=h; vak._h=h;
+    const nw=document.getElementById('pidBundelNaam');
+    if(nw){ nw.value=w; if(f) nw.focus(); }
+  }
+}
+function pidBundelBewaar(){
+  const inv=document.getElementById('pidBundelNaam');
+  const naam=String((inv&&inv.value)||'').trim();
+  if(!naam){ try{ showToast?.('Geef de selectie eerst een naam'); }catch(e){ console.warn('showToast mislukt', e); } if(inv) inv.focus(); return; }
+  if(!activePIDs.size){ try{ showToast?.('Er staan geen sensoren aan om te bewaren'); }catch(e){ console.warn('showToast mislukt', e); } return; }
+  const oud=_pidBundels(), bestond=oud.some(b=>b.naam.toLowerCase()===naam.toLowerCase());
+  if(!_pidBundelsSchrijf(_pidBundelZet(oud, naam, [...activePIDs]))) return;
+  _pidBundelNu=naam; _pidBundelSet=_pidSetSleutel();
+  if(inv) inv.value='';
+  _pidBundelsBij();
+  try{ showToast?.('💾 '+naam+(bestond?' bijgewerkt':' bewaard')+' — '+activePIDs.size+' sensoren'); }catch(e){ console.warn('showToast mislukt', e); }
+}
+function pidBundelWeg(i){
+  const b=_pidBundels()[i];
+  if(!b) return;
+  if(typeof confirm==='function' && !confirm('Selectie "'+b.naam+'" weghalen?')) return;
+  if(_pidBundelsSchrijf(_pidBundelWeg(_pidBundels(), b.naam))) _pidBundelsBij();
+}
+function pidBundelToepassen(i){
+  const b=_pidBundels()[i];
+  if(!b) return;
+  const tip=document.getElementById('pidPresetTip');
+  const beschikbaar=new Set((discoveredPIDDefs||[]).map(d=>d.pid));
+  const bruikbaar=b.pids.filter(p=>beschikbaar.has(p) && pidGate(p,'plausibel'));
+  if(!bruikbaar.length){ if(tip) tip.textContent='Geen sensor uit "'+b.naam+'" is op dit voertuig beschikbaar.'; return; }
+  const _voor=plSelectieVoor();
+  activePIDs.clear(); manualPIDs.clear();
+  bruikbaar.forEach(p=>{ activePIDs.add(p); manualPIDs.add(p); });
+  try{ buildPIDList(document.getElementById('psrch')?.value||''); }catch(e){ console.warn('buildPIDList mislukt:', e); }
+  try{ const c=document.getElementById('pidCnt'); if(c) c.textContent=activePIDs.size; }catch(e){ console.warn('pidCnt bijwerken mislukt', e); }
+  try{ renderGauges(); rebuildGSel(); }catch(e){ console.warn('rebuildGSel mislukt:', e); }
+  plSelectieMeld(_voor,'eigen selectie '+b.naam);
+  _pidPresetNu=null;
+  _pidBundelNu=b.naam; _pidBundelSet=_pidSetSleutel();
+  try{ _pidDoelenBij(); _pidBundelsBij(); }catch(e){ console.warn('_pidBundelsBij mislukt:', e); }
+  const mist=b.pids.length-bruikbaar.length;
+  if(tip){
+    tip.textContent='📁 '+b.naam+' — '+bruikbaar.length+' sensoren actief'+(mist?', '+mist+' niet beschikbaar op deze auto':'');
+    tip._vast=true; setTimeout(function(){ tip._vast=false; }, 6000);
+  }
+  try{ showToast?.('📁 '+b.naam+' — '+bruikbaar.length+' sensoren actief'); }catch(e){ console.warn('showToast mislukt', e); }
+}
+
 // ── PID PANEL — nu dynamisch vanuit discovery ──
 function buildPIDList(filter=''){
   try{ _pidDoelenBij(); }catch(e){ console.warn('_pidDoelenBij mislukt:', e); }
+  try{ _pidBundelsBij(); }catch(e){ console.warn('_pidBundelsBij mislukt:', e); }
   // Onzin-sensoren horen niet eens in de keuzelijst: een benzineauto met een
   // AdBlue-regel erin ziet er kapot uit, ook als je hem nooit aanvinkt.
   const el=document.getElementById('pidList');
