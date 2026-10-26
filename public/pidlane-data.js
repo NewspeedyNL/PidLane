@@ -1561,7 +1561,11 @@ window.PLPidVorm = (function(){
 window.PID_PRESETS = [
   {id:'basis', naam:'Basis', kort:'Basis', ico:'🧭', tip:'De tien kernwaarden die je bij elke rit wilt zien.',
    extra:[]},
-  {id:'plus', naam:'Basis plus', kort:'Aanbevolen', ico:'⭐', tip:'Kern plus de meest gebruikte extra sensoren — goed startpunt.',
+  // `max` (26-10-2026): geen vaste lijst maar zoveel als deze adapter
+  // haalt — kern, dan eigen PIDs, dan `extra` hieronder, dan de rest. Was
+  // 'Aanbevolen' met alleen deze zeven extra's. Zie _pidMax() in
+  // pidlane-rijsituatie.js.
+  {id:'plus', naam:'Max haalbaar', kort:'Max haalbaar', ico:'🚀', max:true, tip:'Zoveel sensoren als deze adapter zonder haperen bijhoudt, op volgorde van belang — eigen PIDs tellen mee.',
    extra:['0110','010E','0143','015C','0146','0133','014C']},
   {id:'verbruik', naam:'Basis + focus verbruik', kort:'Verbruik', ico:'⛽', tip:'Alles wat meeweegt in brandstofverbruik en rijstijl.',
    extra:['0110','0166','015E','0123','016D','0162','0163','0145','0149','014C','012F','0131']},

@@ -2848,6 +2848,41 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Max haalbaar: de PID-keuze naar wat de adapter haalt (26-10-2026) ──
+  {
+    issue: 'max-haalbaar',
+    naam: 'Max haalbaar kiest zoveel sensoren als deze adapter bijhoudt, op volgorde van belang en met de eigen PIDs erbij',
+    waarom: 'Aanbevolen was een vaste lijst; een MX+ en een kloon van zes PIDs/s kregen hetzelfde. Gevraagd: hoe beter de adapter, hoe meer sensoren.',
+    proef: async function () {
+      if (!window._pidMax) return { staat: 'FOUT', detail: '_pidMax ontbreekt — oude pidlane-rijsituatie.js (herladen?)' };
+      var pr = (window.PID_PRESETS || []).filter(function (x) { return x.max; })[0];
+      if (!pr) return { staat: 'FOUT', detail: 'geen doel met max:true in PID_PRESETS' };
+      if (!(window.discoveredPIDDefs || []).length) return { staat: 'LET OP', detail: 'geen PIDs ontdekt — verbind eerst' };
+      var m = _pidMax(pr), kern = (window.KERN_PIDS || []).filter(function (p) { return m.ids.indexOf(p) < 0 && discoveredPIDDefs.some(function (d) { return d.pid === p; }); });
+      if (kern.length) return { staat: 'FOUT', detail: 'kern-PIDs vallen weg: ' + kern.join(', ') };
+      return { staat: m.cap.bron === 'schatting' ? 'LET OP' : 'OK', detail: m.ids.length + ' van ' + m.van + ' sensoren; adapter ±' + Math.round(m.cap.pidsPerSec) + ' PIDs/s (' + m.cap.bron + '), kost ' + m.kost + ' van budget ' + m.budget };
+    }
+  },
+
+  // ── Accupagina: waarde valt niet weg, rapport, deur (26-10-2026) ──
+  {
+    issue: 'accurapport',
+    naam: 'De accuspanning op de accupagina valt niet meer weg, en de pagina maakt een PDF-rapport',
+    waarom: 'Op 26-10 viel de spanning op Live elke halve minuut even weg: 0142 staat op 30 s en de pagina noemde alles boven 15 s oud. Gevraagd: een rapportknop en een ingang in een deur.',
+    proef: async function () {
+      var A = window.PLAccu;
+      if (!A || typeof A.tempo !== 'function' || typeof A.rapportModel !== 'function') return { staat: 'FOUT', detail: 'PLAccu.tempo/rapportModel ontbreken — oude pidlane-accutest.js (herladen?)' };
+      if (typeof pidPollInterval !== 'function') return { staat: 'FOUT', detail: 'pidPollInterval ontbreekt' };
+      var dicht = pidPollInterval('0142'), was = !!document.getElementById('plAccuTest');
+      A.open('live'); var open = pidPollInterval('0142'); if (!was) A.sluit();
+      if (open !== 1000) return { staat: 'FOUT', detail: 'met de pagina open vraagt de pollus 0142 elke ' + open + ' ms in plaats van 1000' };
+      var m = A.rapportModel();
+      if (!m || !m.secties || m.secties.length !== 8) return { staat: 'FOUT', detail: 'het rapportmodel heeft ' + (m && m.secties ? m.secties.length : 0) + ' hoofdstukken in plaats van 8' };
+      if (!document.getElementById('wc-accu')) return { staat: 'FOUT', detail: 'de kaart Accu en laadsysteem staat niet in de deur Voorbereiden (index.html herladen?)' };
+      return { staat: 'OK', detail: '0142: ' + dicht + ' ms dicht, 1000 ms open; rapport: "' + m.voorblad.kort.kop + '"' };
+    }
+  },
+
   // ── De accupagina: voorgrond, lampje, slimme PIDs (26-10-2026) ──
   {
     issue: 'accupagina',

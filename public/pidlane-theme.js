@@ -240,6 +240,7 @@ document.addEventListener('DOMContentLoaded', function(){
   wcBind('wc-langerit',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openLangeRit(); });
   wcBind('wc-caravan',()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); if(typeof openCaravan==='function') openCaravan(); });
   wcBind('wc-seizoen',()=>openSeizoensCheck());
+  wcBind('wc-accu',()=>{ if(window.PLAccu) PLAccu.open('test'); });
   try{ injectFavStars(); }catch(e){ console.warn('injectFavStars mislukt:', e); }   // ⭐ sterretjes op alle functiekaarten
   try{ favBarInit(); }catch(e){ console.warn('favBarInit mislukt:', e); }       // ⭐ favorieten-knop in de welkom-header
   // soon-kaarten: tik geeft korte feedback, geen actie (momenteel geen)

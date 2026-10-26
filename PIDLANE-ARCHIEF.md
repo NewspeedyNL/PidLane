@@ -15,6 +15,19 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 26-10-2026 (later) — de accuspanning viel elke halve minuut weg
+
+Gemeld met een schermafdruk: groot getal "—" en "Geen spanning", terwijl de
+grafiek doorliep. 0142 staat in `PID_POLL_CLASS` op 30 s. `vers()` in
+`pidlane-accutest.js` noemde alles boven 15 s oud, dus na elke meting stond de
+waarde er ruim 15 s en daarna niet. De grafiek leest `pidHist` en had er geen
+last van. Fout in eigen werk van dezelfde dag: een vaste grens, terwijl
+`plOud()` in `pidlane-plload.js` sinds 07-10 precies deze vraag beantwoordt
+("3× het verwachte tempo, krediet voor een bezette bus"). Nu leest `vers()`
+die regel. Zolang de pagina open is, vraagt `pidPollInterval()` 0142 en 010C
+elke seconde (`PLAccu.tempo`), en een waarde die toch te oud is, staat er
+grijs met zijn leeftijd.
+
 ## 26-10-2026 — de accupagina: waarom 9990, en waarom de belastingproef de pollus leest
 
 **Voorgrond.** De eerste versie hing op laag 9000. Mijn voertuigen ligt op

@@ -1193,10 +1193,92 @@ function _pidDoelenBij(){
   const tip=document.getElementById('pidPresetTip');
   if(tip && !tip._vast){
     const n=activePIDs.size;
+    // Met een meting weet de app wat déze adapter haalt; anders PID_VEEL.
+    let veel=PID_VEEL;
+    try{
+      if((discoveredPIDDefs||[]).length){
+        const m=_pidMax((window.PID_PRESETS||[]).find(x=>x.max));
+        if(m.cap.bron!=='schatting') veel=m.ids.length;
+      }
+    }
+    catch(e){ console.warn('Max haalbaar niet te berekenen — drempel blijft '+PID_VEEL, e); }
     tip.textContent = !n ? 'Kies een doel, of vink hieronder zelf sensoren aan.'
-      : n+' sensor'+(n===1?'':'en')+' gekozen'+(nu?'':' (eigen keuze)')+(n>PID_VEEL?' · veel: de meters verversen dan trager':'');
-    tip.classList.toggle('let', n>PID_VEEL);
+      : n+' sensor'+(n===1?'':'en')+' gekozen'+(nu?'':' (eigen keuze)')+(n>veel?' · meer dan deze adapter vlot bijhoudt ('+veel+'): de meters verversen dan trager':'');
+    tip.classList.toggle('let', n>veel);
   }
+}
+// ── MAX HAALBAAR (26-10-2026) ─────────────────────────────────────────
+// "Hoe beter de adapter, hoe beter de app werkt." Een vaste lijst klopt dus
+// nooit: een MX+ haalt zo'n honderd PIDs per seconde, een goedkope kloon er
+// zes. Dit doel rekent uit hoeveel er past en vult op volgorde van belang:
+// kern, eigen PIDs (bewust door de klant gekozen), de `extra` van dit doel,
+// de focusblokken van de andere doelen, dan de rest van de keuzelijst.
+//
+// Capaciteit in PIDs/s, de beste bron die er is:
+//   1. de groepsproef — meet PIDs/s rechtstreeks;
+//   2. de snelheidstest — schone verzoeken/s × de groep;
+//   3. de live responstijd — 1000 / ms per verzoek × de groep;
+//   4. anders PID_MAX_STANDAARD: wat de bus grofweg haalt (zie PID_VEEL).
+// Kosten per PID = 1000 / zijn grondtempo (PID_POLL_CLASS, eigen PID: het
+// tempo dat erbij gekozen is), zónder de rem van PLLoad — die volgt juist uit
+// de selectie. Budget = capaciteit × MARGE × REK: wat over is na een kwart
+// reserve, en de snelle meters mogen hoogstens half zo vaak verversen.
+// De kern blijft altijd staan (zie de kop hierboven), ook als hij alleen al
+// het budget overschrijdt: dan is het antwoord "alleen de kern".
+const PID_MAX_MARGE = 0.75, PID_MAX_REK = 2, PID_MAX_STANDAARD = 15;
+/* Capaciteit uit wat de app al gemeten heeft. Puur: `b` = {gp, snel, stats}. */
+function _pidMaxCapaciteit(b){
+  b=b||{};
+  const gp=b.gp && b.gp.advies, groepen=(gp && gp.groepen)||[];
+  const gpBest=groepen.filter(x=>x.groep===gp.groep)[0];
+  if(gpBest && gpBest.pidsPerSec>0) return {pidsPerSec:gpBest.pidsPerSec, bron:'groepsproef'};
+  const st=b.stats||{}, groep=Math.max(1, st.batchGroep||1);
+  const sn=b.snel && b.snel.advies;
+  if(sn && sn.veiligPerSec>0) return {pidsPerSec:+(sn.veiligPerSec*Math.max(1,b.snel.groep||groep)).toFixed(1), bron:'snelheidstest'};
+  // Live: pas na genoeg verkeer om een gemiddelde te vertrouwen (2/s over 10 s).
+  if(st.venGemMs>0 && st.perSec>=2) return {pidsPerSec:+(1000/st.venGemMs*groep*(1-(st.onvolPct||0)/100)).toFixed(1), bron:'live'};
+  return {pidsPerSec:PID_MAX_STANDAARD, bron:'schatting'};
+}
+/* Wat één PID per seconde van de bus vraagt; 0 = niet van de bus (berekend,
+   telefoon). Leest dezelfde tabellen als pidPollInterval(). */
+function _pidMaxKost(pid){
+  pid=String(pid);
+  try{ if(window.PLEigen && PLEigen.is(pid)) return 1000/Math.max(80, PLEigen.interval(pid)||1000); }
+  catch(e){ console.warn('PLEigen.interval mislukt — eigen PID telt als 1/s', e); return 1; }
+  if(/^01[0-9A-F]{2}$/i.test(pid)) return 1000/((window.PID_POLL_CLASS||{})[pid.slice(2).toUpperCase()]||1000);
+  if(/^2[12]/i.test(pid)) return 0.1;
+  return 0;
+}
+/* De keuze zelf. Puur: volgorde (uniek, op belang), kern, kostfunctie, budget.
+   Kern altijd; daarna elke PID die nog past — een dure die niet past slaat
+   over, zodat een trage temperatuur erna nog mee kan. */
+function _pidMaxKies(volgorde, kern, kost, budget){
+  const k=new Set(kern||[]), uit=[]; let som=0;
+  (volgorde||[]).forEach(p=>{
+    const c=kost(p);
+    if(k.has(p) || c===0 || som+c<=budget){ uit.push(p); som+=c; }
+  });
+  return {ids:uit, kost:+som.toFixed(1)};
+}
+/* Alles samen, tegen de echte app. */
+function _pidMax(pr){
+  const beschikbaar=(discoveredPIDDefs||[]).map(d=>d.pid).filter(p=>pidGate(p,'plausibel'));
+  const heeft=new Set(beschikbaar);
+  let eigen=[];
+  try{ if(window.PLEigen) eigen=beschikbaar.filter(p=>PLEigen.is(p)); }
+  catch(e){ console.warn('PLEigen.is mislukt — eigen PIDs zonder voorrang', e); }
+  const focus=[];
+  _pidDoelen(window.PID_PRESETS, _pidMotor()).forEach(x=>{ if(x!==pr) focus.push(...(x.extra||[])); });
+  const volgorde=[...new Set([...(window.KERN_PIDS||[]), ...eigen, ...((pr&&pr.extra)||[]), ...focus, ...beschikbaar])].filter(p=>heeft.has(p));
+  const kern=(window.KERN_PIDS||[]).filter(p=>heeft.has(p));
+  const b={};
+  try{ if(window.PLAdapter){ b.gp=PLAdapter.laatsteGroepsproef(); b.snel=PLAdapter.laatsteMeting(); } }
+  catch(e){ console.warn('PLAdapter onleesbaar — max zonder proefmeting', e); }
+  try{ if(window.PLBus) b.stats=PLBus.stats(); }
+  catch(e){ console.warn('PLBus.stats onleesbaar — max zonder live meting', e); }
+  const cap=_pidMaxCapaciteit(b);
+  const budget=cap.pidsPerSec*PID_MAX_MARGE*PID_MAX_REK;
+  return Object.assign(_pidMaxKies(volgorde, kern, _pidMaxKost, budget), {cap:cap, budget:+budget.toFixed(1), van:volgorde.length});
 }
 function applyPidPreset(id){
   const tip=document.getElementById('pidPresetTip');
@@ -1204,13 +1286,15 @@ function applyPidPreset(id){
   const pr=(window.PID_PRESETS||[]).find(x=>x.id===id);
   if(!pr) return;
   const kern=(window.KERN_PIDS||[]);
-  const gewenst=[...new Set([...kern, ...(pr.extra||[])])];
+  const mx=pr.max ? _pidMax(pr) : null;
+  const gewenst=mx ? mx.ids : [...new Set([...kern, ...(pr.extra||[])])];
   // Alleen wat dit voertuig daadwerkelijk kan leveren.
   const beschikbaar=new Set((discoveredPIDDefs||[]).map(d=>d.pid));
   // Nog geen health-controle: dat is ronde 3. Trede 'plausibel' houdt het
   // gedrag exact zoals het was.
   const bruikbaar=gewenst.filter(p=>beschikbaar.has(p) && pidGate(p,'plausibel'));
-  const ontbreekt=gewenst.length-bruikbaar.length;
+  // Bij max is "ontbreekt" wat de adapter niet bijhoudt, niet wat de auto mist.
+  const ontbreekt=mx ? mx.van-bruikbaar.length : gewenst.length-bruikbaar.length;
   if(!bruikbaar.length){
     if(tip) tip.textContent='Geen van deze sensoren is op dit voertuig beschikbaar.';
     return;
@@ -1227,8 +1311,11 @@ function applyPidPreset(id){
   _pidPresetNu=id; _pidPresetSet=_pidSetSleutel();
   try{ _pidDoelenBij(); }catch(e){ console.warn('_pidDoelenBij mislukt:', e); }
   if(tip){
-    tip.textContent=pr.tip+' — '+bruikbaar.length+' sensoren actief'
-      + (ontbreekt?(', '+ontbreekt+' niet beschikbaar op deze auto'):'');
+    tip.textContent = mx
+      ? bruikbaar.length+' van '+mx.van+' sensoren — de adapter haalt ±'+Math.round(mx.cap.pidsPerSec)+' PIDs/s ('+mx.cap.bron+')'
+        + (ontbreekt?'; '+ontbreekt+' laten we weg zodat de meters vlot blijven':'')
+      : pr.tip+' — '+bruikbaar.length+' sensoren actief'
+        + (ontbreekt?(', '+ontbreekt+' niet beschikbaar op deze auto'):'');
     // Deze uitleg blijft staan tot de keuze verandert; daarna weer de teller.
     tip._vast=true; setTimeout(function(){ tip._vast=false; }, 6000);
   }

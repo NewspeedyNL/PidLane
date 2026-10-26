@@ -10,6 +10,33 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-10-2026 — Max haalbaar: de PID-keuze naar wat de adapter haalt
+ ═══════════════════════════════════════════════════════════
+
+ - Het doel 'Aanbevolen' heet nu 🚀 Max haalbaar en is geen vaste lijst
+   meer: kern, eigen PIDs, de oude extra's, de andere focusblokken, dan de
+   rest — zoveel als de adapter bijhoudt (groepsproef, snelheidstest of
+   live responstijd; zonder meting ±15 PIDs/s). De kern blijft altijd.
+ - De waarschuwing "veel sensoren" rekent met wat déze adapter haalt.
+ - Tests: test-pidmax.js (nieuw), drie mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
+ 26-10-2026 (later) — Accupagina: waarde valt niet weg, PDF-rapport, deur
+ ═══════════════════════════════════════════════════════════
+
+ - De accuspanning viel op Live elke halve minuut even weg: 0142 staat op
+   30 s, de pagina noemde alles boven 15 s oud. Nu de gedeelde regel plOud()
+   (zonder die: 3× pidPollInterval), en zolang de pagina open is vraagt
+   pidPollInterval() 0142 en 010C elke seconde (PLAccu.tempo). Toch te oud:
+   de laatste waarde grijs met zijn leeftijd, "wacht op meting".
+ - Onderaan elke tab: Rapport genereren (PDF) — acht hoofdstukken via
+   PLRapport.pdf (oordeel, laadsysteem nu, starten, trend, winter, bewijs,
+   advies, methode), in Rapporten en te delen. PLRapport.pdf kent nu een
+   eigen x-as en grenslabel; schoon() vervangt ≈ en −.
+ - Kaart Accu en laadsysteem in de deur Voorbereiden (opent op Test).
+ - Tests: test-accutest.js +20, bproef-accutest.js +6, zes mutaties; blok 5.
+
+ ═══════════════════════════════════════════════════════════
  26-10-2026 — Accupagina: live laaddata, slimme PIDs, trend en winter
  ═══════════════════════════════════════════════════════════
 

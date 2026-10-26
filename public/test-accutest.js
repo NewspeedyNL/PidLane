@@ -238,6 +238,68 @@ toets('grafiek: NaN-punten vallen weg', !/NaN/.test(K.grafiek({ series: [{ p: [[
 st = K.startUitMonsters(reeks(40, 7.9, 10.4), 12.6);
 toets('startcurve: bewaard rond de dip, relatief aan het begin, hoogstens 120 punten', Array.isArray(st.curve) && st.curve.length > 10 && st.curve.length <= 120 && st.curve.some((q) => q[0] === 0) && st.curve[0][0] < 0, JSON.stringify(st.curve && st.curve.slice(0, 3)));
 
+console.log('\n14. Versheid volgt het tempo van de PID (de waarde viel weg)');
+{
+  const v = sandbox();
+  v.pidVals = { '0142': 13.9 }; v.pidHist = { '0142': [{ t: v.__T - 20000, v: 13.9 }] };
+  v.pidPollInterval = (pid) => (pid === '0142' ? 30000 : 1000);
+  laad(v, 'pidlane-accutest.js');
+  const KV = v.PLAccu._kern;
+  toets('0142 op 30 s, laatste meting 20 s oud: nog vers (was: weg na 15 s)', KV.vers('0142') === 13.9, String(KV.vers('0142')));
+  v.pidPollInterval = () => 1000;
+  toets('tegenproef: op 1 s tempo is 20 s oud wél te oud', KV.vers('0142') === null);
+  v.pidPollInterval = () => 30000; v.__T += 80000;
+  toets('100 s oud bij een tempo van 30 s: te oud', KV.vers('0142') === null);
+  toets('… maar de laatste waarde blijft bekend, met zijn leeftijd', KV.laatste('0142').v === 13.9 && KV.laatste('0142').ouderdom === 100000, JSON.stringify(KV.laatste('0142')));
+  v.plOud = () => false;
+  toets('de gedeelde regel van de app (plOud) gaat vóór', KV.vers('0142') === 13.9);
+  v.plOud = () => true;
+  toets('… ook als die zegt: oud', KV.vers('0142') === null);
+  toets('tempo: met de pagina dicht geen eigen tempo', v.PLAccu.tempo('0142') === null);
+}
+
+console.log('\n15. Het rapport');
+{
+  const r = sandbox();
+  laad(r, 'pidlane-waarneming.js'); laad(r, 'pidlane-kenmerk.js'); laad(r, 'pidlane-rapport.js'); laad(r, 'pidlane-accutest.js');
+  const KR = r.PLAccu._kern;
+  const g = KR.pdfGrafiek('x', 'V', [[0, 12], [1, 13], [2, 14]], { grenzen: [{ y: 12.2, label: '12,2', alarm: true }], xLinks: 'a', xRechts: 'b' });
+  toets('pdfGrafiek: punten en grenzen binnen 0…1, eigen as', g.punten.every((q) => q[0] >= 0 && q[0] <= 1 && q[1] >= 0 && q[1] <= 1) && g.grenzen[0].soort === 'alarm' && g.grenzen[0].y > 0 && g.xRechts === 'b', JSON.stringify(g));
+  toets('pdfGrafiek: één punt is geen grafiek', KR.pdfGrafiek('x', 'V', [[0, 1]]) === null);
+  const leegU = { accu: KR.bevestigd([], 'accu'), dynamo: KR.bevestigd([], 'dynamo'), trend: KR.trend([]), winter: KR.winter([], null), starts: [], rusten: [] };
+  let m = KR.rapportModel({ nu: r.__T, voertuig: { naam: 'CX-5', kenteken: 'AB-123-C' }, w: {}, codes: {}, u: leegU, test: {} });
+  toets('zonder metingen: grijs, "te weinig metingen" — nooit groen', m.voorblad.kort.kleur === 'grijs' && /Te weinig/.test(m.voorblad.kort.kop), JSON.stringify(m.voorblad.kort));
+  toets('acht hoofdstukken, van oordeel tot methode', m.secties.length === 8 && m.secties[0].titel === 'Oordeel' && m.secties[7].titel === 'Methode en grenzen', m.secties.map((x) => x.titel).join());
+  toets('advies zonder sensoren: voeg de gevraagde laadspanning toe, en doe de begeleide test', KR.advies({ u: leegU, w: {}, codes: {} }).some((x) => /gevraagde laadspanning/.test(x)) && KR.advies({ u: leegU, w: {}, codes: {} }).some((x) => /begeleide test/.test(x)));
+  const T0 = r.__T, B = [{ soort_van: 'dynamo', soort: 'belasting', dag: '2026-10-25', t: T0 - 864e5, tekst: 'x' }, { soort_van: 'dynamo', soort: 'gevraagd', dag: '2026-10-26', t: T0, tekst: 'y' }];
+  const starts = [0, 1, 2].map((i) => ({ ok: true, t: T0 - i * 864e5, dU: 2.1, rust: 12.6, plateau: 10.5, min: 8, temp: 10, bron: 'atrv', n: 20, duurMs: 800, curve: [[-80, 12.6], [0, 10.4], [400, 10.5], [900, 14.1]] }));
+  const vol = { accu: KR.bevestigd([], 'accu'), dynamo: KR.bevestigd(B, 'dynamo', T0), trend: KR.trend(starts), winter: KR.winter(starts, -8), starts, rusten: [{ t: T0, u: 12.55 }, { t: T0, u: 12.5 }] };
+  m = KR.rapportModel({ nu: T0, voertuig: { naam: 'CX-5', kenteken: 'AB-123-C', bouwjaar: 2018 }, w: { u: 12.9, rpm: 800, g: 14.4, soc: 80 }, codes: { gevraagd: '220304', soc: '224028' }, u: vol, test: {},
+    reeksU: [[-4, 13], [-2, 12.9], [0, 12.9]], reeksG: [[-4, 14.4], [0, 14.4]], tMin: -8, wc: KR.winterCurve(starts) });
+  toets('dynamo bevestigd: rood, "Aandacht nodig — laadsysteem"', m.voorblad.kort.kleur === 'rood' && /laadsysteem/.test(m.voorblad.kort.kop), m.voorblad.kort.kop);
+  toets('advies noemt dynamo, regelaar en multiriem', KR.advies({ u: vol, w: { soc: 80 }, codes: { gevraagd: 1, soc: 1 } }).some((x) => /multiriem/.test(x)));
+  const grafieken = m.secties.reduce((a, x) => a.concat(x.blokken.filter((b) => b.soort === 'grafiek')), []).map((b) => b.g.naam);
+  toets('grafieken: spanning, gevraagd, startcurve, rust, winter', ['Accuspanning (0142)', 'Gevraagde laadspanning', 'Laatste startcurve', 'Rustspanning na minstens 2 uur stil', 'Verwachte startspanning per temperatuur'].every((n) => grafieken.includes(n)), grafieken.join(' | '));
+  // De echte PDF-opmaak van de app, met een nagemaakte jsPDF die alleen opschrijft.
+  const log = []; let pag = 1, pags = 1;
+  function Doc() {}
+  const breed = (t) => String(t).length * 1.8;
+  Object.assign(Doc.prototype, { setFillColor() {}, setDrawColor() {}, setTextColor() {}, setLineWidth() {}, setFont() {}, setFontSize() {}, setLineDashPattern() {}, rect() {}, roundedRect() {}, circle() {}, line() {}, addImage() {},
+    addPage() { pags++; pag = pags; }, setPage(i) { pag = i; }, getNumberOfPages() { return pags; }, getTextWidth: breed,
+    splitTextToSize(t, w) { const uit = []; let z = ''; String(t).split(' ').forEach((wd) => { if (breed(z + ' ' + wd) > w && z) { uit.push(z); z = wd; } else z = z ? z + ' ' + wd : wd; }); if (z) uit.push(z); return uit.length ? uit : ['']; },
+    text(t, x, y) { [].concat(t).forEach((z, i) => log.push({ t: String(z), y: y + i * 4, pag })); }, output() { return 'blob'; } });
+  r.PLRapport.pdf(m, Doc, { label: m.label });
+  const alles = log.map((x) => x.t).join('\n');
+  toets('PDF: voorblad met ACCU & LAADSYSTEEM en het voertuig', log.some((x) => x.pag === 1 && /ACCU & LAADSYSTEEM/.test(x.t)) && log.some((x) => x.pag === 1 && /CX-5/.test(x.t)));
+  toets('PDF: alle acht hoofdstukken staan erin', m.secties.every((x) => alles.indexOf(x.nr + '. ' + x.titel) >= 0));
+  toets('PDF: geen tekens die de PDF-letter niet kent (≈ − → ≥ emoji)', !/[≈−→≥≤\u{1F000}-\u{1FAFF}]/u.test(alles), (alles.match(/[≈−→≥≤]/g) || []).join(''));
+  toets('PDF: niets loopt in de voettekst', log.every((x) => x.y === 290 || x.y < 282), JSON.stringify(log.filter((x) => x.y !== 290 && x.y >= 282).slice(0, 2)));
+  // De knop zelf: rapport() met de nagemaakte jsPDF, zonder logo.
+  log.length = 0; pags = 1; pag = 1;
+  r.loadJsPDF = async () => Doc; r.PLRapport.laadLogo = async () => null;
+  globalThis.__rapportProef = r.PLAccu.rapport().then((x) => ({ x, log: log.slice() }));
+}
+
 console.log('\n13. Benodigde PIDs zelf aanzetten — tijdelijk');
 {
   const rolVan = (naam) => (/commanded generator voltage/i.test(naam) ? 'gevraagd' : /12v battery state of charge/i.test(naam) ? 'soc' : /battery current/i.test(naam) ? 'stroom' : null);
@@ -280,6 +342,8 @@ console.log('\n13. Benodigde PIDs zelf aanzetten — tijdelijk');
     laad(b2, 'pidlane-accutest.js');
     const r2 = await b2.PLAccu.activeer();
     toets('in de demo wordt niets aangezet', !r2.regels.length, JSON.stringify(r2));
+    const rp = await globalThis.__rapportProef;
+    toets('Rapport genereren: een PDF met bestandsnaam, kop "Accu en laadsysteem" op de vervolgpagina\'s', rp.x && /^PidLane_Accurapport_/.test(rp.x.fname) && rp.log.some((z) => z.pag > 1 && z.t === 'PidLane — Accu en laadsysteem'), JSON.stringify(rp.x && rp.x.fname));
     console.log('\n' + n + ' controles, ' + fouten + ' fout');
     process.exit(fouten ? 1 : 0);
   })().catch((e) => { console.error(e); process.exit(1); });

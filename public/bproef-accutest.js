@@ -106,9 +106,26 @@ const wacht = (ms) => new Promise((r) => setTimeout(r, ms));
     toets('Live: noemt de Mazda-code van de gevraagde laadspanning als die niet ingesteld is', /220304/.test(t.tekst) || /22 0304/.test(t.tekst), t.tekst.slice(0, 300));
     toets('vijf tabs', t.tabs === 5, String(t.tabs));
     toets('Live: de demo-accuspanning staat groot in beeld (niet "—")', /\d+,\d\d/.test(t.groot), t.groot);
+    console.log('\n5. Live valt niet weg, en de pagina vraagt de accuspanning elke seconde');
+    const tp = JSON.parse(await app.ev(`JSON.stringify({ open: pidPollInterval('0142'), rpm: pidPollInterval('010C') })`));
+    toets('met de pagina open: 0142 en 010C elke seconde', tp.open === 1000 && tp.rpm === 1000, JSON.stringify(tp));
+    const leeg = [];
+    for (let i = 0; i < 8; i++) { await wacht(2000); const g = await app.ev(`(document.querySelector('#plAccuTab .pa-groot') || {}).textContent || ''`); if (!/\d+,\d\d/.test(g)) leeg.push(i + ':' + g); }
+    toets('16 s lang staat er steeds een spanning (nooit "—")', !leeg.length, leeg.join(' | '));
+    const kn = await app.ev(`!!document.querySelector('#plAccuTab [data-actie="rapport"]')`);
+    toets('onderaan: de knop "Rapport genereren (PDF)"', kn === true, String(kn));
     await app.ev(`document.querySelector('#plAccuTest [data-actie="sluit"]').click(); 1`);
     const weg = await app.ev(`!document.getElementById('plAccuTest')`);
     toets('✕ sluit de pagina', weg === true, String(weg));
+    const tz = await app.ev(`pidPollInterval('0142')`);
+    toets('dicht: 0142 terug op zijn eigen tempo', tz !== 1000, String(tz));
+
+    console.log('\n6. De kaart in de deur Voorbereiden opent de accupagina op Test');
+    const d = JSON.parse(await app.ev(`(function(){ var k = document.getElementById('wc-accu'); if (!k) return JSON.stringify({ er: false });
+      k.click(); var p = document.getElementById('plAccuTest'), aan = p && p.querySelector('.pa-tabs button.aan');
+      var uit = { er: true, open: !!p, tab: aan ? aan.textContent : '' }; if (p) PLAccu.sluit(); return JSON.stringify(uit); })()`));
+    toets('de kaart staat in de deur', d.er, JSON.stringify(d));
+    toets('en opent de accupagina op de tab Test', d.open && d.tab === 'Test', JSON.stringify(d));
     const f = JSON.parse(await app.ev(`JSON.stringify(window.__fouten)`));
     toets('zonder fouten in de console', f.length === 0, JSON.stringify(f));
 
