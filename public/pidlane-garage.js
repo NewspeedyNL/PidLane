@@ -2303,6 +2303,15 @@
     _nuNiet: function () { nuNiet(); },
     _lus: function () { lus(); },
     _akkoord: function () { doe(function () { return api('akkoord', { versie: _st.stand && _st.stand.akkoordVersie }); }, 'Mijn voertuigen staat aan'); },
+    /* De PID-bibliotheek van een voertuig (standaard het actieve), met OBDb
+       erbij als hij nog leeg is. Voor PLAccu, dat tijdens de accutest de
+       laadsensoren tijdelijk aanzet (26-10-2026). Alleen lezen. */
+    bibLijst: async function (vid) {
+      var v = voertuig(vid) || actief(); if (!v || !v.id) return [];
+      var d = await api('pidbib_lijst', { voertuig_id: v.id }), l = (d && d.lijst) || [];
+      if (!l.length && v.merk && v.model) { await obdbBinnenhalen(v.id, v); d = await api('pidbib_lijst', { voertuig_id: v.id }); l = (d && d.lijst) || []; }
+      return l;
+    },
     _open: function (id) { _st.view = 'voertuig'; _st.vid = id; _st.tab = 'overzicht'; teken(); },
     _rdwOpnieuw: function () { var c = cacheVan(_st.vid); c.rdwFout = null; c.rdw = null; teken(); },
     _tab: function (t) { _st.tab = t; _st.labelRit = null; _st.tankForm = null; _st.condForm = false; _st.condFout = null; _st.kiesModus = false; _st.kies = {}; // Sensoren opnieuw openen = verse stand uit het voertuig en de bibliotheek,

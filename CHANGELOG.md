@@ -10,6 +10,27 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-10-2026 — Accupagina: live laaddata, slimme PIDs, trend en winter
+ ═══════════════════════════════════════════════════════════
+
+ - Het paneel is een volle pagina (laag 9990) met vijf tabs: Live, Test,
+   Trend, Winter, Methode. Hij lag eerst achter de kop van de app en de
+   onderkant viel weg; bproef-accutest.js meet beide.
+ - Het accu-lampje in Slim visueel opent de pagina.
+ - Live: 0142 met de gevraagde laadspanning in één grafiek, regelafwijking,
+   tegels voor gevraagde spanning, SOC, accustroom, accutemperatuur en
+   leeftijd (met de Mazda-code als hij ontbreekt), stroom-/SOC-grafiek.
+ - Test: startcurve live met plateau en BCI-grens; de belastingproef leest
+   de pollus mee en oordeelt ook op accustroom en gevraagde spanning.
+ - Trend: plateau per start tegen de BCI-grens, dip @20 °C tegen de eigen
+   basis, rustspanningen, laatste startcurve, tabel. Winter: curve per °C.
+ - De pagina zet zelf aan wat hij nodig heeft (toestemming 26-10): 0142,
+   010C, 0146, en per ontbrekende laadrol de beste kandidaat uit de
+   PID-bibliotheek, na één geldige testlezing. Tijdelijk: bij sluiten terug.
+ - Tests: test-accutest.js +26, bproef-accutest.js (nieuw), acht mutaties;
+   blok 5; handleiding.
+
+ ═══════════════════════════════════════════════════════════
  25-10-2026 — Accu- en dynamotest, en geen valse laadmelding meer
  ═══════════════════════════════════════════════════════════
 

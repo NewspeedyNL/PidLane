@@ -1408,7 +1408,7 @@ function bouw(g, reden){
     g.innerHTML='<div class="vis">'+
       '<div class="vis-bak">'+
         '<div class="vis-lampen"><span class="vis-lamp leeg" id="vis-lamp-motor"></span>'+
-          '<span class="vis-lamp leeg" id="vis-lamp-accu"></span></div>'+
+          '<span class="vis-lamp leeg" id="vis-lamp-accu" role="button" tabindex="0" onclick="window.PLAccu&&PLAccu.open()" aria-label="Accu en laadsysteem openen"></span></div>'+
         PF().html(ind.profiel.id, ind.profiel)+
       '</div>'+
       (ind.trek ? '<div class="vis-trek" id="visTrek" aria-label="Trekmodus: caravan of beladen"></div>' : '')+
@@ -1435,7 +1435,7 @@ function bouw(g, reden){
   g.innerHTML='<div class="vis">'+
     '<div class="vis-bak">'+
       '<div class="vis-lampen"><span class="vis-lamp leeg" id="vis-lamp-motor"></span>'+
-        '<span class="vis-lamp leeg" id="vis-lamp-accu"></span></div>'+
+        '<span class="vis-lamp leeg" id="vis-lamp-accu" role="button" tabindex="0" onclick="window.PLAccu&&PLAccu.open()" aria-label="Accu en laadsysteem openen"></span></div>'+
       '<svg class="vis-meter" viewBox="0 0 320 '+G.VB+'" role="img" aria-label="'+(ind.naaldSoort==='vermogen' ? 'Vermogen' : 'Toerental')+' en snelheid, met vier plekken die je zelf kiest">'+
         wijzerplaat(ind.schaal.rood, ind.schaal.max, ind.naaldSoort)+'</svg>'+
       // Het vak linksonder, de spiegel van het bandenautootje (08-10-2026).

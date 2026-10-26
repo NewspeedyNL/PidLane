@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-25', app: '3.4.0' },
+  gecontroleerd: { datum: '2026-10-26', app: '3.4.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -246,13 +246,18 @@ var PL_HULP = {
         'Bij de datalog, de ritanalyse, de caravan en de klimaatcheck is de eigen meting de bron: je ziet de uitslag daarvan, en daarna de vraag aan de AI. Zeg je nee, dan krijg je bij caravan en klimaat het rapport zonder AI-deel.</p>',
       zie: ['onderzoek', 'account'] },
 
-    { id: 'accutest', groep: 'gebruik', titel: 'Accu- en dynamotest',
-      icoon: '🔋', kort: 'Een echte accutest via de adapter, ook op een auto die slim laadt. Een melding pas bij twee bewijzen.',
+    { id: 'accutest', groep: 'gebruik', titel: 'Accu en laadsysteem',
+      icoon: '🔋', kort: 'Live laaddata, accutest, trend per start en wintervoorspelling. Een melding pas bij twee bewijzen.',
       tekst:
-        '<p>Bij je actieve voertuig in Mijn voertuigen staat <b>🔋 Accutest</b>. De test loopt in vier stappen: hoe lang de auto stilstond (een rustmeting telt pas na 2 uur), de rustspanning met contact aan en de motor uit, de spanning tijdens het <b>starten</b>, en een <b>belastingproef</b> van 60 seconden met de motor aan en grootlicht, achterruitverwarming en blower vol aan.</p>' +
-        '<p>Ook zonder de test meet de app bij elke start de startdip mee, voor zover de meting snel genoeg is. Daarmee ziet hij of de accu achteruitgaat ten opzichte van zijn eigen eerste starts, en rekent hij met de weersverwachting van je winterprofiel uit of de accu de koudste nacht haalt.</p>' +
-        '<p>Een auto met slimme laadregeling laadt bij een volle accu bewust laag. Daarom wordt een bevinding over de accu of de dynamo pas een melding bij <b>twee bewijzen</b>, of hetzelfde bewijs op twee verschillende dagen. Na een nieuwe accu kies je <b>Nieuwe accu geplaatst</b>, zodat de oude metingen niet meer meetellen.</p>' +
-        '<p>Dit vervangt geen werkplaatstester: die belast de accu veel zwaarder of meet de inwendige weerstand.</p>',
+        '<p>Je opent de pagina met <b>🔋 Accutest</b> bij je actieve voertuig in Mijn voertuigen, of door in Slim visueel op het <b>accu-lampje</b> rechtsboven te tikken. Er zijn vijf tabs:</p>' +
+        '<ul>' +
+        '<li><b>Live</b> — de accuspanning met de <b>gevraagde laadspanning</b> ernaast, de regelafwijking, en tegels voor de sensoren die het laden slim maken: gevraagde laadspanning, laadtoestand van de 12V-accu, accustroom, accutemperatuur en acculeeftijd. Ontbreekt er een, dan zoekt de pagina hem zelf in de bibliotheek van je voertuig, test hem één keer en zet hem <b>tijdelijk</b> aan zolang de pagina open is (zie <b>Meetvoorbereiding</b>). Bewaren doe je met <b>Sensoren instellen</b>.</li>' +
+        '<li><b>Test</b> — vier stappen: hoe lang de auto stilstond (een rustmeting telt pas na 2 uur), de rustspanning, de spanning tijdens het <b>starten</b> met de curve erbij, en een <b>belastingproef</b> van 60 seconden met grootlicht, achterruitverwarming en blower vol aan.</li>' +
+        '<li><b>Trend</b> — de spanning tijdens elke start tegen de grens voor die temperatuur, de startdip omgerekend naar 20 °C tegen de eerste starts van déze accu, de rustspanningen en een tabel van de starts. Na een nieuwe accu kies je <b>Nieuwe accu geplaatst</b>.</li>' +
+        '<li><b>Winter</b> — met de weersverwachting van je winterprofiel: haalt de accu de koudste nacht? Met tips om pech te voorkomen.</li>' +
+        '<li><b>Methode</b> — hoe de app oordeelt.</li>' +
+        '</ul>' +
+        '<p>Een auto met slimme laadregeling laadt bij een volle accu bewust laag. Daarom wordt een bevinding over de accu of de dynamo pas een melding bij <b>twee bewijzen</b>, of hetzelfde bewijs op twee verschillende dagen. Dit vervangt geen werkplaatstester.</p>',
       zie: ['winter', 'check'] },
 
     { id: 'status', groep: 'gebruik', titel: 'De statusknop bovenin',

@@ -15,6 +15,44 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 26-10-2026 — de accupagina: waarom 9990, en waarom de belastingproef de pollus leest
+
+**Voorgrond.** De eerste versie hing op laag 9000. Mijn voertuigen ligt op
+9600 (`--z-modal`), dus wie de test vanuit het voertuig opende, zag hem niet
+of half. Met `--z-modal-hoog` (9800), wat de andere panelen gebruiken, stak
+bovenaan nog iets van de app erdoorheen: bproef-accutest.js vond het met
+`elementFromPoint(midden, 4)`. Daarom 9990: boven alles van de app, onder de
+privacy- en startschermen (10010+). Ook wordt de pagina bij elke opening
+opnieuw als laatste aan `body` gehangen.
+
+**Onderkant.** Het oude paneel stond op `bottom:12px` met `max-height:80vh`,
+over de onderbalk heen en zonder veilige zone. Nu: een eigen scrollvlak
+(`flex:1; min-height:0`) met `env(safe-area-inset-bottom)` eronder.
+
+**Belastingproef zonder busslot.** De eerste versie las ATRV en 010C in een
+eigen slot, en dan pauzeert de pollus. Daardoor ontbraken precies de PIDs
+die een slimme laadregeling sturen: de gevraagde laadspanning, de
+laadtoestand en de accustroom. Nu kijkt de proef 60 s mee met de pollus. Hij
+oordeelt eerst op de accustroom, want die meet de sensor zelf: met de motor
+aan steeds onder −2 A is ontladen. Daarna komt de spanning tegen de rust,
+en dan de gevraagde spanning (80 % van de monsters meer dan 0,5 V eronder).
+De startmeting blijft in een slot, want daar telt elke milliseconde.
+
+**Zelf aanzetten (toestemming van de gebruiker, 26-10-2026).** Zonder de
+gevraagde laadspanning en de laadtoestand bleef Live half leeg. Daarom zet
+de pagina zelf aan wat hij nodig heeft, maar alleen tijdelijk en alleen na
+een echte lezing. Per rol kiest hij de kandidaat met de beste stemmen uit de
+bibliotheek; een code waarvan je zelf zei dat hij niet werkt, valt af. Hij
+leest hem één keer en houdt hem alleen als de waarde bij de rol past (11–16
+V, 0–100 %, ±400 A, −40…90 °C). Bij het sluiten zet `herstel()` de eigen
+sensoren terug. Bewaren bij het voertuig blijft een eigen keuze: dat schrijft
+naar D1 en hoort niet stil te gebeuren.
+
+**Pointer-events.** `.vis-lampen` staat op `pointer-events:none`, zodat een
+tik door de rij heen naar de meter gaat. `.vis-lamp` zet hem zelf al terug op
+`auto`; een extra regel was niet nodig. De tegenproef liet dat zien: zonder
+de regel bleef de proef groen.
+
 ## 25-10-2026 — accu en dynamo op een auto die slim laadt (PLAccu)
 
 **Aanleiding.** Op een Mazda met slimme laadregeling kwam vaak een melding
