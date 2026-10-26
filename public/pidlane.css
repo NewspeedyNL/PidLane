@@ -2841,6 +2841,12 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .pid-doel.aan{ border-color:var(--bl); background:var(--bls); color:var(--tx); }
 .pid-doel:active{ transform:scale(.96); }
 .pid-preset-tip.let{ color:var(--or); font-weight:700; }
+/* Eigen selecties op naam (26-10-2026): chip = toepassen, ✕ = weghalen. */
+.pid-bundel{ display:inline-flex; align-items:center; gap:2px; padding:0 4px 0 0; }
+.pid-bundel-k,.pid-bundel-x{ background:none; border:0; color:inherit; font:inherit; cursor:pointer; padding:3px 4px 3px 9px; }
+.pid-bundel-x{ padding:3px 5px; color:var(--tx3); }
+.pid-bundel-nieuw{ display:flex; gap:4px; flex:1 1 100%; min-width:0; }
+.pid-bundel-nieuw input{ flex:1; min-width:0; min-height:28px; padding:3px 9px; border-radius:999px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx); font:600 12px var(--f); }
 .sl-sam{ flex:1; min-width:0; margin:0 8px; font-size:12px; font-weight:600; color:var(--tx2); text-transform:none; letter-spacing:0;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right; }
 
