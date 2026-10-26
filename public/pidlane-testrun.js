@@ -2848,6 +2848,22 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Max haalbaar: de PID-keuze naar wat de adapter haalt (26-10-2026) ──
+  {
+    issue: 'max-haalbaar',
+    naam: 'Max haalbaar kiest zoveel sensoren als deze adapter bijhoudt, op volgorde van belang en met de eigen PIDs erbij',
+    waarom: 'Aanbevolen was een vaste lijst; een MX+ en een kloon van zes PIDs/s kregen hetzelfde. Gevraagd: hoe beter de adapter, hoe meer sensoren.',
+    proef: async function () {
+      if (!window._pidMax) return { staat: 'FOUT', detail: '_pidMax ontbreekt — oude pidlane-rijsituatie.js (herladen?)' };
+      var pr = (window.PID_PRESETS || []).filter(function (x) { return x.max; })[0];
+      if (!pr) return { staat: 'FOUT', detail: 'geen doel met max:true in PID_PRESETS' };
+      if (!(window.discoveredPIDDefs || []).length) return { staat: 'LET OP', detail: 'geen PIDs ontdekt — verbind eerst' };
+      var m = _pidMax(pr), kern = (window.KERN_PIDS || []).filter(function (p) { return m.ids.indexOf(p) < 0 && discoveredPIDDefs.some(function (d) { return d.pid === p; }); });
+      if (kern.length) return { staat: 'FOUT', detail: 'kern-PIDs vallen weg: ' + kern.join(', ') };
+      return { staat: m.cap.bron === 'schatting' ? 'LET OP' : 'OK', detail: m.ids.length + ' van ' + m.van + ' sensoren; adapter ±' + Math.round(m.cap.pidsPerSec) + ' PIDs/s (' + m.cap.bron + '), kost ' + m.kost + ' van budget ' + m.budget };
+    }
+  },
+
   // ── De accupagina: voorgrond, lampje, slimme PIDs (26-10-2026) ──
   {
     issue: 'accupagina',

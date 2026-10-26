@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 26-10-2026 — Max haalbaar: de PID-keuze naar wat de adapter haalt
+ ═══════════════════════════════════════════════════════════
+
+ - Het doel 'Aanbevolen' heet nu 🚀 Max haalbaar en is geen vaste lijst
+   meer: kern, eigen PIDs, de oude extra's, de andere focusblokken, dan de
+   rest — zoveel als de adapter bijhoudt (groepsproef, snelheidstest of
+   live responstijd; zonder meting ±15 PIDs/s). De kern blijft altijd.
+ - De waarschuwing "veel sensoren" rekent met wat déze adapter haalt.
+ - Tests: test-pidmax.js (nieuw), drie mutaties, blok 5-proef.
+
+ ═══════════════════════════════════════════════════════════
  26-10-2026 — Accupagina: live laaddata, slimme PIDs, trend en winter
  ═══════════════════════════════════════════════════════════
 
