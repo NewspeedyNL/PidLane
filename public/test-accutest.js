@@ -201,5 +201,39 @@ const laadMelding = (ev) => ev.some((k) => /LAADSPANNING/.test(k));
   toets('tegenproef: dezelfde fout op dag 2: melding', laadMelding(ev), ev.join(', '));
 }
 
+console.log('\n10. Wat het laadsysteem nu doet (laadStaat)');
+let ls = K.laadStaat({ u: 12.6, rpm: 800, g: 12.6 });
+toets('gevraagd 12,6, gemeten 12,6: de dynamo volgt, bewust laag laden', ls.staat === 'volgt' && ls.modus === 'laag' && ls.afwijking === 0, JSON.stringify(ls));
+ls = K.laadStaat({ u: 13.0, rpm: 1800, g: 14.6 });
+toets('gevraagd 14,6, gemeten 13,0: de dynamo haalt de vraag niet', ls.staat === 'achter' && ls.modus === 'snel' && ls.afwijking === -1.6, JSON.stringify(ls));
+ls = K.laadStaat({ u: 12.5, rpm: 800 });
+toets('12,5 V zonder gevraagde spanning: niet te beoordelen (geen "dynamo")', ls.staat === 'onbekend', JSON.stringify(ls));
+toets('motor uit: rust, met de stroom eruit', K.laadStaat({ u: 12.4, rpm: 0, i: -6 }).staat === 'rust' && /6,0 A eruit/.test(K.laadStaat({ u: 12.4, rpm: 0, i: -6 }).tekst));
+toets('stroom +8 A: laden; −3 A: ontladen; 0,4 A: balans', K.laadStaat({ u: 14, rpm: 900, i: 8 }).stroom === 'laden' && K.laadStaat({ u: 14, rpm: 900, i: -3 }).stroom === 'ontladen' && K.laadStaat({ u: 14, rpm: 900, i: 0.4 }).stroom === 'balans');
+toets('geen spanning: geen', K.laadStaat({}).staat === 'geen');
+
+console.log('\n11. Belastingproef met de slimme PIDs');
+const slim = (f) => { const m = []; for (let t = 0; t <= 60000; t += 2000) m.push(Object.assign({ t, rpm: 800 }, f(t))); return m; };
+b = K.belastOordeel(slim(() => ({ u: 12.9, i: -4 })), 12.6, 15);
+toets('12,9 V maar de accusensor meet −4 A: ontlaadt (de stroom wint van de spanning)', b.staat === 'ontlaadt' && b.bewijs === 'belasting' && Math.round(b.stroom) === -4, JSON.stringify(b));
+b = K.belastOordeel(slim(() => ({ u: 12.9, i: 3 })), 12.6, 15);
+toets('12,9 V en +3 A: goed, laden in beeld', b.staat === 'goed' && /\+3,0 A/.test(b.tekst), JSON.stringify(b));
+b = K.belastOordeel(slim(() => ({ u: 13.1, g: 14.4 })), 12.6, 15);
+toets('gevraagd 14,4, gemeten 13,1: achter, met bewijs "gevraagd"', b.staat === 'achter' && b.bewijs === 'gevraagd', JSON.stringify(b));
+b = K.belastOordeel(slim(() => ({ u: 12.7, g: 12.8 })), 12.6, 15);
+toets('gevraagd 12,8, gemeten 12,7: goed (slim laag laden is geen fout)', b.staat === 'goed' && /volgt de gevraagde spanning/.test(b.tekst), JSON.stringify(b));
+
+console.log('\n12. Wintercurve, grafiek en startcurve');
+const wc = K.winterCurve([0, 1, 2].map((i) => start(2.0, 15, i)));
+toets('wintercurve: −20 … 20 °C in stappen van 2', wc && wc.length === 21 && wc[0].t === -20 && wc[20].t === 20);
+toets('wintercurve: kouder = lagere verwachte startspanning, grens = BCI', wc[0].verwacht < wc[20].verwacht && wc[1].grens === K.startGrens(-18));
+toets('wintercurve: zonder 3 starts null', K.winterCurve([start(2, 15, 0)]) === null);
+let svg = K.grafiek({ series: [{ p: [[0, 12.4], [1, 14.1]], naam: 'a<b' }], ref: [{ y: 12.2, naam: '12,2' }] });
+toets('grafiek: een svg met lijn, referentielijn en ge-escapete naam', /^<svg/.test(svg) && /<polyline/.test(svg) && /stroke-dasharray="4 3"/.test(svg) && /a&lt;b/.test(svg) && !/a<b/.test(svg));
+toets('grafiek: geen punten = "Nog geen meetpunten"', /Nog geen meetpunten/.test(K.grafiek({ series: [{ p: [] }] })));
+toets('grafiek: NaN-punten vallen weg', !/NaN/.test(K.grafiek({ series: [{ p: [[0, 12], [1, NaN], [2, 13]] }] })));
+st = K.startUitMonsters(reeks(40, 7.9, 10.4), 12.6);
+toets('startcurve: bewaard rond de dip, relatief aan het begin, hoogstens 120 punten', Array.isArray(st.curve) && st.curve.length > 10 && st.curve.length <= 120 && st.curve.some((q) => q[0] === 0) && st.curve[0][0] < 0, JSON.stringify(st.curve && st.curve.slice(0, 3)));
+
 console.log('\n' + n + ' controles, ' + fouten + ' fout');
 process.exit(fouten ? 1 : 0);

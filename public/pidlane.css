@@ -1592,6 +1592,8 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 .vis-lamp.ev    { color:var(--gn); border-color:var(--gn); background:var(--gns); }
 .vis-lamp.hyb   { color:var(--bl); border-color:var(--bl); background:rgba(26,111,255,.12); }
 .vis-lamp.twijfel { opacity:.6; border-style:dashed; }
+/* Het accu-lampje opent de accupagina (PLAccu, 26-10-2026). */
+#vis-lamp-accu { cursor:pointer; }
 /* Accu met een oude spanning: blijft staan, maar dof (06-10-2026). */
 .vis-lamp.oud { opacity:.55; }
 /* Het acculampje rechtsboven (#371): groen als de spanning goed is, oranje

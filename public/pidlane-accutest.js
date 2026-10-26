@@ -58,7 +58,7 @@
 (function () {
   'use strict';
 
-  const VERSIE = '1.0 (25-10-2026)';
+  const VERSIE = '2.0 (26-10-2026)';
   const SLEUTEL = 'pl_accu';
   const VENSTER_DAGEN = 30;
   const RUST_MIN = 120;          // minuten stilstand vóór een rustmeting telt
@@ -128,7 +128,9 @@
       if (m[i].t - m[i - 1].t > DIP_MAX_GAT) return { ok: false, reden: 'gat van ' + (m[i].t - m[i - 1].t) + ' ms in de meting tijdens het starten — het diepste punt kan gemist zijn' };
     const dip = iDip.map((i) => m[i].v);
     const plateau = mediaan(dip);
-    return { ok: true, plateau: Math.round(plateau * 100) / 100, min: Math.min.apply(null, dip), rust: Math.round(r * 100) / 100, dU: Math.round((r - plateau) * 100) / 100, n: dip.length, duurMs: m[b].t - m[a].t };
+    // De curve rond de dip, relatief aan het begin ervan, voor de grafiek.
+    const curve = m.slice(Math.max(0, a - 8), Math.min(m.length, b + 20)).slice(0, 120).map((x) => [x.t - m[a].t, Math.round(x.v * 100) / 100]);
+    return { ok: true, plateau: Math.round(plateau * 100) / 100, min: Math.min.apply(null, dip), rust: Math.round(r * 100) / 100, dU: Math.round((r - plateau) * 100) / 100, n: dip.length, duurMs: m[b].t - m[a].t, curve };
   }
   function startOordeel(s, temp) {
     if (!s || !s.ok) return { staat: 'onbekend', tekst: 'startdip niet te beoordelen: ' + ((s && s.reden) || 'geen meting') };
@@ -166,18 +168,109 @@
     return { staat: 'goed', verwacht, grens: g, tekst: kop + ' — ruim voldoende' };
   }
 
-  /* Belastingproef: monsters {t, u, rpm}. rust = rustspanning vooraf of null. */
+  /* Belastingproef: monsters {t, u, rpm, g?, i?} — g = gevraagde laadspanning,
+     i = accustroom (+ laden, − ontladen), als de auto die geeft. rust =
+     rustspanning vooraf of null. De stroom is het sterkste bewijs: die meet
+     de accusensor zelf, zonder grens die per merk verschilt. */
   function belastOordeel(monsters, rust, temp) {
     const m = (monsters || []).filter((x) => x && getal(x.u) !== null && getal(x.rpm) !== null && x.rpm >= 600).sort((a, b) => a.t - b.t);
     if (m.length < BELAST_MIN_MONSTERS || (m[m.length - 1].t - m[0].t) / 1000 < BELAST_MIN_S)
       return { staat: 'onbekend', tekst: 'belastingproef te kort of de motor draaide niet (' + m.length + ' metingen)' };
     const u = m.map((x) => x.u), hoog = window.PLKenmerk && PLKenmerk.laadHoog ? PLKenmerk.laadHoog(temp) : 15.2;
     const r = getal(rust), plafond = Math.min(12.5, r === null ? 12.5 : r - 0.1);
+    const mi = m.filter((x) => getal(x.i) !== null), mg = m.filter((x) => getal(x.g) !== null && x.g >= 11 && x.g <= 16);
+    const iGem = mi.length ? mi.reduce((a, x) => a + x.i, 0) / mi.length : null;
+    const afw = mg.length ? mg.reduce((a, x) => a + (x.u - x.g), 0) / mg.length : null;
+    const extra = { stroom: iGem, afwijking: afw };
+    if (mi.length >= BELAST_MIN_MONSTERS && mi.every((x) => x.i < -2))
+      return Object.assign({ staat: 'ontlaadt', bewijs: 'belasting', tekst: 'de accusensor meet gemiddeld ' + nl1(iGem) + ' A uit de accu terwijl de motor draait — de dynamo levert minder dan de auto verbruikt' }, extra);
     if (u.every((x) => x < plafond))
-      return { staat: 'ontlaadt', bewijs: 'belasting', tekst: 'met de motor aan en verbruikers aan bleef de spanning ' + nl1(Math.max.apply(null, u)) + ' V of lager — de accu ontlaadt terwijl de motor draait: de dynamo levert te weinig' };
+      return Object.assign({ staat: 'ontlaadt', bewijs: 'belasting', tekst: 'met de motor aan en verbruikers aan bleef de spanning ' + nl1(Math.max.apply(null, u)) + ' V of lager — de accu ontlaadt terwijl de motor draait: de dynamo levert te weinig' }, extra);
+    if (mg.length >= BELAST_MIN_MONSTERS && mg.filter((x) => x.u < x.g - 0.5).length >= 0.8 * mg.length)
+      return Object.assign({ staat: 'achter', bewijs: 'gevraagd', tekst: 'de motorregeling vraagt gemiddeld ' + nl1(mediaan(mg.map((x) => x.g))) + ' V, de accu krijgt ' + nl1(mediaan(mg.map((x) => x.u))) + ' V — de dynamo haalt de vraag niet' }, extra);
     if (u.filter((x) => x > hoog).length >= 0.8 * u.length)
-      return { staat: 'te_hoog', bewijs: 'overspanning', tekst: 'laadspanning ' + nl1(mediaan(u)) + ' V onder belasting — boven ' + nl1(hoog) + ' V: de regelaar knijpt niet af' };
-    return { staat: 'goed', tegenbewijs: 'dynamo', tekst: 'onder belasting ' + nl1(Math.min.apply(null, u)) + '–' + nl1(Math.max.apply(null, u)) + ' V — de dynamo houdt het bij' };
+      return Object.assign({ staat: 'te_hoog', bewijs: 'overspanning', tekst: 'laadspanning ' + nl1(mediaan(u)) + ' V onder belasting — boven ' + nl1(hoog) + ' V: de regelaar knijpt niet af' }, extra);
+    const bij = [];
+    if (afw !== null) bij.push('volgt de gevraagde spanning (gemiddeld ' + (afw >= 0 ? '+' : '') + afw.toFixed(2).replace('.', ',') + ' V)');
+    if (iGem !== null) bij.push('accustroom ' + (iGem >= 0 ? '+' : '') + nl1(iGem) + ' A');
+    return Object.assign({ staat: 'goed', tegenbewijs: 'dynamo', tekst: 'onder belasting ' + nl1(Math.min.apply(null, u)) + '–' + nl1(Math.max.apply(null, u)) + ' V — de dynamo houdt het bij' + (bij.length ? '; ' + bij.join(', ') : '') }, extra);
+  }
+
+  /* Wat het laadsysteem NU doet, uit de PIDs die het slim maken. Puur.
+     o = { u, rpm, g (gevraagd), soc, i (stroom) }; elk mag null zijn. */
+  function laadStaat(o) {
+    o = o || {};
+    const u = getal(o.u), rpm = getal(o.rpm), g = getal(o.g), soc = getal(o.soc), i = getal(o.i);
+    const uit = { modus: null, volgt: null, stroom: null, afwijking: null };
+    if (u === null) return Object.assign(uit, { staat: 'geen', kop: 'Geen spanning', tekst: 'Geen accuspanning (0142) — niet verbonden of de PID staat uit' });
+    if (rpm === null || rpm < 400) {
+      Object.assign(uit, { staat: 'rust', kop: 'Motor uit', tekst: 'De accu levert alles' + (i !== null ? ' (' + nl1(-i) + ' A eruit)' : '') + (soc !== null ? '; laadtoestand ' + Math.round(soc) + ' %' : '') });
+    } else if (g !== null && g >= 11 && g <= 16) {
+      const afw = u - g; uit.afwijking = Math.round(afw * 100) / 100;
+      uit.modus = g < 13.2 ? 'laag' : g <= 14.2 ? 'normaal' : 'snel';
+      uit.volgt = afw >= -0.5;
+      const MOD = { laag: 'bewust laag laden — accu vol genoeg, de dynamo ontziet de motor', normaal: 'normaal laden', snel: 'snel laden — remenergie terugwinnen of de accu bijladen' };
+      Object.assign(uit, { staat: uit.volgt ? 'volgt' : 'achter', kop: uit.volgt ? 'Dynamo volgt de vraag' : 'Dynamo haalt de vraag niet', tekst: 'Gevraagd ' + nl1(g) + ' V, gemeten ' + nl1(u) + ' V: ' + MOD[uit.modus] });
+    } else if (u >= 13.2) {
+      Object.assign(uit, { staat: 'laadt', kop: 'Dynamo laadt', tekst: nl1(u) + ' V met draaiende motor' });
+    } else {
+      Object.assign(uit, { staat: 'onbekend', kop: 'Laag laden — niet te beoordelen', tekst: nl1(u) + ' V. Een slimme laadregeling doet dit bij een volle accu bewust. Met de gevraagde laadspanning weet de app het zeker' });
+    }
+    if (i !== null) uit.stroom = i > 1 ? 'laden' : i < -1 ? 'ontladen' : 'balans';
+    return uit;
+  }
+  /* De wintercurve: de verwachte startspanning per temperatuur, met de
+     BCI-grens ernaast. null zonder 3 gemeten koude starts. */
+  function winterCurve(starts) {
+    const b = bruikbaar(starts);
+    if (b.length < 3) return null;
+    const r = b.slice(-3), d = mediaan(r.map(dU20)), rust = mediaan(r.map((s) => s.rust)), uit = [];
+    for (let t = -20; t <= 20; t += 2) uit.push({ t, verwacht: Math.round((rust - d * kouFactor(t)) * 100) / 100, grens: startGrens(t) });
+    return uit;
+  }
+
+  /* Een lijngrafiek als SVG-tekst. Puur, zodat test-accutest.js hem toetst.
+     o = { series: [{ p: [[x,y]…], k: kleur, naam, stip, streep }], ref: [{ y, k, naam }],
+           yMin, yMax, xFmt, yFmt, h }. */
+  function grafiek(o) {
+    o = o || {};
+    const W = 320, H = o.h || 140, L = 34, R = 8, T = 14, B = 18;
+    const reeks = (o.series || []).map((s) => Object.assign({}, s, { p: (s.p || []).filter((q) => q && isFinite(q[0]) && isFinite(q[1])) })).filter((s) => s.p.length);
+    const xs = [], ys = [];
+    reeks.forEach((s) => s.p.forEach((q) => { xs.push(q[0]); ys.push(q[1]); }));
+    (o.ref || []).forEach((r) => { if (isFinite(r.y)) ys.push(r.y); });
+    if (!xs.length) return '<div class="pa-leeg">Nog geen meetpunten</div>';
+    let x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+    if (x1 === x0) { x0 -= 1; x1 += 1; }
+    let y0 = o.yMin != null ? o.yMin : Math.min.apply(null, ys), y1 = o.yMax != null ? o.yMax : Math.max.apply(null, ys);
+    if (y1 - y0 < 0.2) { y0 -= 0.1; y1 += 0.1; }
+    const pad = (y1 - y0) * 0.08; if (o.yMin == null) y0 -= pad; if (o.yMax == null) y1 += pad;
+    const X = (x) => L + (x - x0) / (x1 - x0) * (W - L - R), Y = (y) => T + (1 - (y - y0) / (y1 - y0)) * (H - T - B);
+    const f = (n) => Math.round(n * 10) / 10;
+    const yF = o.yFmt || ((y) => (Math.round(y * 10) / 10).toString().replace('.', ','));
+    const xF = o.xFmt || ((x) => String(Math.round(x)));
+    const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    let svg = '<svg class="pa-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.label || 'grafiek') + '">';
+    for (let k = 0; k <= 3; k++) {
+      const y = y0 + (y1 - y0) * k / 3;
+      svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + f(Y(y)) + '" y2="' + f(Y(y)) + '" stroke="var(--bd)" stroke-width="0.6"/>' +
+        '<text x="' + (L - 4) + '" y="' + f(Y(y) + 3) + '" text-anchor="end" font-size="8.5" fill="var(--tx2)">' + esc(yF(y)) + '</text>';
+    }
+    svg += '<text x="' + L + '" y="' + (H - 4) + '" font-size="8.5" fill="var(--tx2)">' + esc(xF(x0)) + '</text>' +
+      '<text x="' + (W - R) + '" y="' + (H - 4) + '" text-anchor="end" font-size="8.5" fill="var(--tx2)">' + esc(xF(x1)) + '</text>';
+    (o.ref || []).forEach((r) => {
+      if (!isFinite(r.y)) return;
+      svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + f(Y(r.y)) + '" y2="' + f(Y(r.y)) + '" stroke="' + (r.k || 'var(--rd)') + '" stroke-width="1" stroke-dasharray="4 3"/>' +
+        (r.naam ? '<text x="' + (W - R - 2) + '" y="' + f(Y(r.y) - 3) + '" text-anchor="end" font-size="8.5" fill="' + (r.k || 'var(--rd)') + '">' + esc(r.naam) + '</text>' : '');
+    });
+    let lx = L;
+    reeks.forEach((s) => {
+      const k = s.k || 'var(--bl)';
+      if (!s.stip || s.lijn) svg += '<polyline fill="none" stroke="' + k + '" stroke-width="' + (s.dik || 1.6) + '"' + (s.streep ? ' stroke-dasharray="3 3"' : '') + ' stroke-linejoin="round" points="' + s.p.map((q) => f(X(q[0])) + ',' + f(Y(q[1]))).join(' ') + '"/>';
+      if (s.stip) s.p.forEach((q) => { svg += '<circle cx="' + f(X(q[0])) + '" cy="' + f(Y(q[1])) + '" r="2.6" fill="' + (q[2] || k) + '"/>'; });
+      if (s.naam) { svg += '<rect x="' + lx + '" y="3" width="8" height="3" fill="' + k + '"/><text x="' + (lx + 11) + '" y="8" font-size="8.5" fill="var(--tx2)">' + esc(s.naam) + '</text>'; lx += 16 + String(s.naam).length * 4.6; }
+    });
+    return svg + '</svg>';
   }
 
   // ── de poort: twee bewijzen ───────────────────────────────────────
@@ -210,7 +303,7 @@
   }
   function stand(id) {
     const a = leesAlles()[id || autoId()] || {};
-    return { starts: a.starts || [], bewijs: a.bewijs || [], motorUit: a.motorUit || null, laatste: a.laatste || null };
+    return { starts: a.starts || [], rusten: a.rusten || [], bewijs: a.bewijs || [], motorUit: a.motorUit || null, laatste: a.laatste || null };
   }
   function bewaar(st, id) {
     try { const a = leesAlles(); a[id || autoId()] = st; localStorage.setItem(SLEUTEL, JSON.stringify(a)); }
@@ -227,20 +320,24 @@
   }
   function isBevestigd(soortVan, nu) { return bevestigd(stand().bewijs, soortVan, nu).ja; }
   function tegenbewijs(soortVan) { const st = stand(); st.bewijs = st.bewijs.filter((x) => x.soort_van !== soortVan); bewaar(st); }
-  function nieuweAccu() { const st = stand(); st.starts = []; st.bewijs = st.bewijs.filter((x) => x.soort_van !== 'accu'); bewaar(st); }
+  function nieuweAccu() { const st = stand(); st.starts = []; st.rusten = []; st.bewijs = st.bewijs.filter((x) => x.soort_van !== 'accu'); bewaar(st); }
   function startErbij(s) {
     const st = stand();
     st.starts.push(s); if (st.starts.length > MAX_STARTS) st.starts.splice(0, st.starts.length - MAX_STARTS);
+    // De startcurve alleen bij de laatste vijf: localStorage is klein.
+    st.starts.slice(0, -5).forEach((x) => { delete x.curve; });
+    bewaar(st);
+    return st;
+  }
+  function rustErbij(r) {
+    const st = stand();
+    st.rusten.push(r); if (st.rusten.length > MAX_STARTS) st.rusten.splice(0, st.rusten.length - MAX_STARTS);
     bewaar(st);
     return st;
   }
   // Een oordeel met een bewijs erin: noteren. Geeft het oordeel terug.
   function verwerk(o) { if (o && o.bewijs) bewijs(o.bewijs, o.tekst); if (o && o.tegenbewijs) tegenbewijs(o.tegenbewijs); return o; }
 
-  function buitenTemp() {
-    const v = typeof pidVals !== 'undefined' ? pidVals : {};
-    return getal(v['0146']);
-  }
   function verwachtMin() {
     try {
       if (!window.PLWinter || !window.PLWeer) return null;
@@ -250,6 +347,34 @@
       return s ? s.min : null;
     } catch (e) { console.warn('PLAccu: weersverwachting niet gelezen', e); return null; }
   }
+
+  // ── live waarden uit de pollus (geen busverkeer) ─────────────────────
+  function rolCodes() {
+    try { return (window.PLEigen && PLEigen.laadCodes) ? PLEigen.laadCodes() : {}; }
+    catch (e) { console.warn('PLAccu: rollen van de eigen sensoren niet gelezen', e); return {}; }
+  }
+  function rolDef(code) {
+    try { return (window.PLEigen && PLEigen.defs ? PLEigen.defs() : []).filter((d) => d.pid === code)[0] || null; }
+    catch (e) { console.warn('PLAccu: definitie van ' + code + ' niet gelezen', e); return null; }
+  }
+  // Verse waarde: het laatste monster van pid, niet ouder dan maxMs.
+  function vers(pid, maxMs) {
+    if (!pid || typeof pidVals === 'undefined') return null;
+    const h = (typeof pidHist !== 'undefined' && pidHist[pid]) || null, l = h && h.length ? h[h.length - 1] : null;
+    if (l && Date.now() - l.t > (maxMs || 5000)) return null;
+    return getal(pidVals[pid]);
+  }
+  function reeksVan(pid, ms) {
+    if (!pid || typeof pidHist === 'undefined' || !pidHist[pid]) return [];
+    const nu = Date.now();
+    return pidHist[pid].filter((x) => nu - x.t <= ms && getal(x.v) !== null).map((x) => [(x.t - nu) / 60000, Number(x.v)]);
+  }
+  function nuWaarden() {
+    const c = rolCodes();
+    return { u: vers('0142', 5000), rpm: vers('010C', 5000), g: vers(c.gevraagd, 20000), soc: vers(c.soc, 60000), i: vers(c.stroom, 20000),
+      accutemp: vers(c.accutemp, 120000), leeftijd: vers(c.leeftijd, 600000), buiten: vers('0146', 120000), codes: c };
+  }
+  function buitenTemp() { const w = nuWaarden(); return w.accutemp !== null ? w.accutemp : w.buiten; }
 
   // ── stil meten bij elke start (alleen pidVals/pidHist, geen bus) ─────
   let _vorigRpm = null, _wacht = null, _timer = null;
@@ -268,35 +393,51 @@
     const h = (pidHist['0142'] || []).filter((x) => x.t >= w.t - 12000 && x.t <= w.t + 4000);
     const voor = h.filter((x) => x.t < w.t - 1500 && x.t >= w.t - 12000).map((x) => x.v);
     const s = startUitMonsters(h.map((x) => ({ t: x.t, v: x.v })), voor.length ? mediaan(voor) : null);
-    const temp = buitenTemp();
-    s.t = w.t; s.temp = temp; s.bron = '0142'; s.herstart = w.stil !== null && w.stil < 30;
+    const temp = buitenTemp(), soc = nuWaarden().soc;
+    s.t = w.t; s.temp = temp; s.soc = soc; s.bron = '0142'; s.herstart = w.stil !== null && w.stil < 30; s.stil = w.stil;
     if (!s.ok) { console.info('PLAccu: start niet te beoordelen — ' + s.reden); return; }
     const st = startErbij(s);
     if (!s.herstart) verwerk(startOordeel(s, temp));
-    if (!s.herstart && w.stil !== null && voor.length) verwerk(rustOordeel({ u: s.rust, rustMin: w.stil, temp }));
+    if (!s.herstart && w.stil !== null && voor.length) {
+      const r = verwerk(rustOordeel({ u: s.rust, rustMin: w.stil, temp }));
+      if (r.staat !== 'onbekend') rustErbij({ t: w.t, u: s.rust, min: w.stil, temp, soc, staat: r.staat });
+    }
     verwerk(trend(st.starts));
+    if (_open) _teken();
   }
   function boot() { if (_timer) return; _timer = setInterval(() => { try { _tik(); } catch (e) { console.warn('PLAccu: tik mislukt', e); } }, 500); }
 
-  // ── de begeleide test (bus via PLScanSlot) ───────────────────────────
+  // ── de begeleide test ─────────────────────────────────────────────
   const volt = (r) => { const m = /(\d{1,2}(?:[.,]\d+)?)\s*V/i.exec(String(r || '')); return m ? Number(m[1].replace(',', '.')) : null; };
   const toeren = (r) => { const m = /41\s*0C\s*([0-9A-F]{2})\s*([0-9A-F]{2})/i.exec(String(r || '')); return m ? (parseInt(m[1], 16) * 256 + parseInt(m[2], 16)) / 4 : null; };
   const _nu = () => (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now());
+  const _slaap = (ms) => new Promise((r) => setTimeout(r, ms));
+  const echt = () => !(typeof demoMode !== 'undefined' && demoMode) && typeof connected !== 'undefined' && !!connected;
 
-  let _t = { stap: 0, stilMin: null, rust: null, start: null, belast: null, bezig: false, melding: '' };
+  let _t = null;
+  function _nieuweTest() {
+    const st = stand();
+    const stil = st.motorUit ? (Date.now() - st.motorUit) / 60000 : null;
+    return { stap: stil !== null ? 1 : 0, stilMin: stil, rust: null, start: null, belast: null, bezig: false, melding: '', live: [], reeks: [] };
+  }
   async function _bus(naam, werk) {
-    if (typeof demoMode !== 'undefined' && demoMode) throw new Error('in de demo is er geen accu om te meten');
+    if (!echt()) throw new Error('niet verbonden met een echte auto (in de demo is er geen accu om te meten)');
     if (!window.PLScanSlot) throw new Error('geen bus');
     return PLScanSlot.doe('accutest: ' + naam, { hartslagElke: 1000, pauzeMs: 0 }, werk);
   }
   async function meetRust() {
+    if (!_t) _t = _nieuweTest();
     const u = await _bus('rust', async (stuur) => { const a = []; for (let i = 0; i < 8; i++) { const v = volt(await stuur('ATRV', 1500)); if (v !== null) a.push(v); } return mediaan(a); });
-    _t.rust = rustOordeel({ u, rustMin: _t.stilMin, temp: buitenTemp() }); _t.rust.u = u;
-    verwerk(_t.rust); return _t.rust;
+    const temp = buitenTemp();
+    _t.rust = verwerk(rustOordeel({ u, rustMin: _t.stilMin, temp })); _t.rust.u = u;
+    if (_t.rust.staat !== 'onbekend') rustErbij({ t: Date.now(), u, min: _t.stilMin, temp, soc: nuWaarden().soc, staat: _t.rust.staat, bron: 'atrv' });
+    return _t.rust;
   }
   async function meetStart() {
+    if (!_t) _t = _nieuweTest();
+    _t.live = [];
     const m = await _bus('start', async (stuur) => {
-      const uit = [], t0 = _nu(); let dipT = null, mis = 0;
+      const uit = _t.live, t0 = _nu(); let dipT = null, mis = 0, getekend = 0;
       while (_nu() - t0 < 20000) {
         let v = null;
         try { v = volt(await stuur('ATRV', 800)); } catch (e) { console.warn('PLAccu: verbinding weg tijdens het starten', e); mis = 99; break; }
@@ -305,104 +446,318 @@
         const r = uit.length > 3 ? mediaan(uit.slice(0, 3).map((x) => x.v)) : null;
         if (r !== null && v < r - DIP_DIEPTE && dipT === null) dipT = t;
         if (dipT !== null && v > r + 0.4 && t - dipT > 1500) break;   // motor loopt en laadt
+        if (t - getekend > 250) { getekend = t; _tekenTab(); }
       }
       return { uit, mis };
     });
     const r = _t.rust && _t.rust.u != null ? _t.rust.u : null;
     const s = startUitMonsters(m.uit, r);
     if (!s.ok && m.mis > 5) s.reden += ' — de adapter viel tijdens het starten weg (de spanning zakte dieper dan hij aankan)';
-    s.t = Date.now(); s.temp = buitenTemp(); s.bron = 'atrv'; s.herstart = false;
+    s.t = Date.now(); s.temp = buitenTemp(); s.soc = nuWaarden().soc; s.bron = 'atrv'; s.herstart = false; s.stil = _t.stilMin;
     if (s.ok) startErbij(s);
     _t.start = verwerk(startOordeel(s, s.temp)); _t.start.s = s;
     return _t.start;
   }
+  /* De belastingproef leest de pollus mee, zodat de gevraagde laadspanning,
+     de laadtoestand en de accustroom erbij zijn — precies wat een slimme
+     laadregeling stuurt. Geen busslot nodig: alleen kijken. */
   async function meetBelast() {
-    const m = await _bus('belasting', async (stuur) => {
-      const uit = [], t0 = _nu();
-      while (_nu() - t0 < 60000) { const u = volt(await stuur('ATRV', 1500)), rpm = toeren(await stuur('010C', 1500)); uit.push({ t: Date.now(), u, rpm }); }
-      return uit;
-    });
-    _t.belast = verwerk(belastOordeel(m, _t.rust && _t.rust.u, buitenTemp()));
+    if (!_t) _t = _nieuweTest();
+    if (!echt()) throw new Error('niet verbonden met een echte auto');
+    const c = rolCodes();
+    try { if (typeof pidToevoegen === 'function') pidToevoegen(['0142', '010C'].concat([c.gevraagd, c.soc, c.stroom].filter(Boolean)), { handmatig: false }); }
+    catch (e) { console.warn('PLAccu: PIDs voor de belastingproef niet aangezet', e); }
+    _t.reeks = [];
+    const t0 = Date.now();
+    while (Date.now() - t0 < 60000) {
+      const w = nuWaarden();
+      _t.reeks.push({ t: Date.now(), u: w.u, rpm: w.rpm, g: w.g, i: w.i, soc: w.soc });
+      _tekenTab();
+      await _slaap(500);
+    }
+    _t.belast = verwerk(belastOordeel(_t.reeks, _t.rust && _t.rust.u, buitenTemp()));
     return _t.belast;
   }
   function uitslag(id) {
-    const st = stand(id), a = bevestigd(st.bewijs, 'accu'), d = bevestigd(st.bewijs, 'dynamo');
-    return { accu: a, dynamo: d, trend: trend(st.starts), winter: winter(st.starts, verwachtMin()) };
+    const st = stand(id);
+    return { accu: bevestigd(st.bewijs, 'accu'), dynamo: bevestigd(st.bewijs, 'dynamo'), trend: trend(st.starts), winter: winter(st.starts, verwachtMin()), starts: st.starts, rusten: st.rusten };
   }
 
-  // ── het paneel ────────────────────────────────────────────────────
-  const STAPPEN = [
-    { kop: 'Hoe lang stond de auto stil?', doe: 'Een rustmeting telt pas na 2 uur: daarvoor zit er nog lading van de rit op.' },
-    { kop: 'Contact aan, motor uit', doe: 'Alles uit: licht, blower, radio. Dan meten.' },
-    { kop: 'Start de motor', doe: 'Druk op Meten en start binnen 15 seconden. Niet gas geven.' },
-    { kop: 'Belastingproef (60 s)', doe: 'Motor stationair. Zet aan: grootlicht, achterruitverwarming, blower vol, stoelverwarming. Dan meten.' }
+  // ── de pagina ─────────────────────────────────────────────────────
+  const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const KLEUR = { goed: 'gn', volgt: 'gn', laadt: 'gn', stabiel: 'gn', geen: '', matig: 'or', krap: 'or', onbekend: '', rust: 'bl', laag: 'rd', zwak: 'rd', ontlaadt: 'rd', te_hoog: 'rd', achter: 'rd', achteruit: 'rd', waarschuw: 'rd' };
+  const chip = (staat, tekst) => '<span class="pa-chip ' + (KLEUR[staat] || '') + '">' + esc(tekst) + '</span>';
+  const fmt = (v, d, een) => (v === null || v === undefined || !isFinite(v) ? '—' : Number(v).toFixed(d).replace('.', ',') + (een ? ' ' + een : ''));
+  const datum = (t) => { const d = new Date(t); return d.getDate() + '-' + (d.getMonth() + 1) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  const ROLLEN = [
+    { rol: 'gevraagd', naam: 'Gevraagde laadspanning', een: 'V', d: 2, mazda: '220304', uitleg: 'Wat de motorregeling van de dynamo vraagt. Dít maakt het systeem slim: laag bij een volle accu, hoog bij remmen en in de kou.' },
+    { rol: 'soc', naam: 'Laadtoestand 12V-accu', een: '%', d: 0, mazda: '224028', uitleg: 'Uitgerekend door de accusensor op de minpool (stroom × tijd en rustspanning). Een slim systeem houdt hem rond 75–90 %.' },
+    { rol: 'stroom', naam: 'Accustroom', een: 'A', d: 1, uitleg: '+ is laden, − is ontladen. Met de motor aan hoort hij niet lang negatief te zijn.' },
+    { rol: 'accutemp', naam: 'Accutemperatuur', een: '°C', d: 0, uitleg: 'Bepaalt hoe hoog er geladen mag worden: kou = hoger laden (temperatuurcompensatie).' },
+    { rol: 'leeftijd', naam: 'Acculeeftijd', een: 'u', d: 0, uitleg: 'Bedrijfsuren sinds de accu is aangemeld. Wordt na een nieuwe accu gereset (registreren).' }
   ];
-  function _el(tag, css, tekst) { const e = document.createElement(tag); if (css) e.style.cssText = css; if (tekst != null) e.textContent = tekst; return e; }
-  const KNOP = 'padding:9px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font:700 13px var(--f)';
-  async function _doe(fn) {
-    if (_t.bezig) return;
-    _t.bezig = true; _t.melding = 'bezig…'; _teken();
-    try { await fn(); _t.stap++; _t.melding = ''; }
-    catch (e) { console.warn('PLAccu: stap mislukt', e); _t.melding = 'Mislukt: ' + ((e && e.message) || e); }
-    finally { _t.bezig = false; _teken(); }
+  const TABS = [['live', 'Live'], ['test', 'Test'], ['trend', 'Trend'], ['winter', 'Winter'], ['uitleg', 'Methode']];
+  let _open = false, _tab = 'live', _ververs = null;
+
+  /* Laag 9990 (26-10-2026): "het venster opent niet op de voorgrond". Mijn
+     voertuigen ligt op 9600, en op --z-modal-hoog (9800) bleef de kop van de
+     app er bovenaan doorheen steken — bproef-accutest.js meet beide. Onder de
+     privacy- en startschermen (10010+), die horen altijd bovenop. */
+  function zorgCss() {
+    if (document.getElementById('plAccuCss')) return;
+    const st = document.createElement('style'); st.id = 'plAccuCss';
+    st.textContent =
+      '#plAccuTest{position:fixed;inset:0;z-index:9990;display:flex;flex-direction:column;background:var(--bg,#0b0f17);color:var(--tx);font:500 13px/1.45 var(--f,system-ui)}' +
+      '#plAccuTest *{box-sizing:border-box}' +
+      '.pa-kop{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 16px 8px;background:var(--sur);border-bottom:1px solid var(--bd)}' +
+      '.pa-kop h2{margin:0;font:800 16px var(--f,system-ui);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+      '.pa-x{width:40px;height:40px;border-radius:10px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font:700 18px var(--f,system-ui)}' +
+      '.pa-tabs{display:flex;gap:4px;padding:8px 16px;background:var(--sur);border-bottom:1px solid var(--bd);overflow-x:auto}' +
+      '.pa-tabs button{flex:1 0 auto;padding:8px 12px;border-radius:999px;border:1px solid var(--bd);background:transparent;color:var(--tx2);font:700 12px var(--f,system-ui)}' +
+      '.pa-tabs button.aan{background:var(--bl);border-color:var(--bl);color:#fff}' +
+      '.pa-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px calc(32px + env(safe-area-inset-bottom))}' +
+      '.pa-in{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:12px}' +
+      '.pa-kaart{background:var(--sur);border:1px solid var(--bd);border-radius:12px;padding:12px;min-width:0}' +
+      '.pa-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;font:800 11px var(--f,system-ui);letter-spacing:.06em;text-transform:uppercase;color:var(--tx2)}' +
+      '.pa-groot{font:800 44px/1 var(--m,ui-monospace,monospace)}.pa-groot small{font-size:18px;color:var(--tx2)}' +
+      '.pa-rij{display:flex;flex-wrap:wrap;align-items:center;gap:8px}' +
+      '.pa-sub{color:var(--tx2);font-size:12px}' +
+      '.pa-tegels{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}' +
+      '.pa-tegel{background:var(--sur2);border-radius:10px;padding:8px 10px;min-width:0}' +
+      '.pa-tegel small{display:block;color:var(--tx2);font-size:11px}.pa-tegel b{display:block;font:800 20px var(--m,ui-monospace,monospace)}' +
+      '.pa-tegel code{font-size:10px;color:var(--tx3,var(--tx2))}.pa-tegel p{margin:4px 0 0;font-size:11px;color:var(--tx2)}' +
+      '.pa-tegel.leeg b{color:var(--tx3,var(--tx2))}' +
+      '.pa-chip{display:inline-block;padding:3px 9px;border-radius:999px;font-weight:800;font-size:12px;background:var(--sur2);color:var(--tx)}' +
+      '.pa-chip.gn{background:var(--gns,rgba(34,197,94,.15));color:var(--gn)}.pa-chip.or{background:var(--ors,rgba(245,158,11,.15));color:var(--or)}' +
+      '.pa-chip.rd{background:var(--rds,rgba(239,68,68,.15));color:var(--rd)}.pa-chip.bl{background:var(--bls,rgba(59,130,246,.15));color:var(--bl)}' +
+      '.pa-svg{width:100%;height:auto;display:block}.pa-leeg{padding:18px;text-align:center;color:var(--tx2);background:var(--sur2);border-radius:10px}' +
+      '.pa-scroll{overflow-x:auto}.pa-tabel{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}' +
+      '.pa-tabel th{text-align:left;color:var(--tx2);font-weight:700;padding:4px 6px;border-bottom:1px solid var(--bd)}.pa-tabel td{padding:4px 6px;border-bottom:1px solid var(--bd)}' +
+      '.pa-tabel td.n{font-family:var(--m,ui-monospace,monospace);text-align:right}' +
+      '.pa-knop{padding:10px 14px;border-radius:10px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font:700 13px var(--f,system-ui)}' +
+      '.pa-knop.hoofd{background:var(--bl);border-color:var(--bl);color:#fff}.pa-knop:disabled{opacity:.5}' +
+      '.pa-stap{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--bd)}.pa-stap:first-child{border-top:0}' +
+      '.pa-nr{flex:0 0 26px;height:26px;border-radius:50%;background:var(--sur2);display:flex;align-items:center;justify-content:center;font-weight:800}' +
+      '.pa-stap.aan .pa-nr{background:var(--bl);color:#fff}.pa-stap.klaar .pa-nr{background:var(--gn);color:#fff}' +
+      '.pa-stap > div:last-child{flex:1;min-width:0}' +
+      '.pa-bewijs{margin:6px 0 0;padding:0;list-style:none;font-size:12px}.pa-bewijs li{padding:4px 0;border-top:1px dashed var(--bd)}' +
+      '.pa-metriek{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:6px;margin-top:8px}' +
+      '.pa-metriek div{background:var(--sur2);border-radius:8px;padding:6px 8px}.pa-metriek small{display:block;font-size:10px;color:var(--tx2)}.pa-metriek b{font:800 14px var(--m,ui-monospace,monospace)}' +
+      '#plAccuTest details summary{cursor:pointer;font-weight:800}#plAccuTest details p,#plAccuTest details li{color:var(--tx2)}';
+    document.head.appendChild(st);
   }
-  let _open = false;
-  function _regel(v, o) { if (o) v.appendChild(_el('div', 'margin:2px 0 6px;color:' + ({ laag: 'var(--rd)', zwak: 'var(--rd)', ontlaadt: 'var(--rd)', te_hoog: 'var(--rd)', matig: 'var(--or)', krap: 'var(--or)', goed: 'var(--gn)' }[o.staat] || 'var(--tx2)'), o.tekst)); }
+
+  function hLive() {
+    const w = nuWaarden(), ls = laadStaat(w), c = w.codes;
+    const kleurU = w.u === null ? '' : (w.rpm !== null && w.rpm >= 400 ? (w.u < 12.2 || w.u > 15.5 ? 'rd' : 'gn') : (w.u < 12.2 ? 'rd' : w.u < 12.4 ? 'or' : 'gn'));
+    let h = '<div class="pa-kaart"><div class="pa-h"><span>Laadsysteem nu</span>' + chip(ls.staat, ls.kop) + '</div>' +
+      '<div class="pa-rij"><div class="pa-groot" style="color:var(--' + (kleurU || 'tx') + ')">' + fmt(w.u, 2) + '<small> V</small></div>' +
+      '<div class="pa-sub" style="flex:1;min-width:160px">' + esc(ls.tekst) +
+      (ls.afwijking !== null ? '<br>Regelafwijking: <b>' + (ls.afwijking >= 0 ? '+' : '') + fmt(ls.afwijking, 2, 'V') + '</b>' : '') +
+      (ls.stroom ? '<br>Accu: <b>' + ({ laden: 'wordt geladen', ontladen: 'wordt ontladen', balans: 'in balans' })[ls.stroom] + '</b>' : '') + '</div></div>';
+    const series = [{ p: reeksVan('0142', 300000), k: 'var(--bl)', naam: 'gemeten (0142)' }];
+    if (c.gevraagd) series.push({ p: reeksVan(c.gevraagd, 300000), k: 'var(--or)', naam: 'gevraagd', streep: true });
+    h += grafiek({ series, label: 'Accuspanning, laatste 5 minuten', xFmt: (x) => (Math.round(x * 10) / 10 === 0 ? 'nu' : Math.round(x) + ' min'), ref: [{ y: 12.2, k: 'var(--rd)', naam: '12,2' }] }) + '</div>';
+    h += '<div class="pa-kaart"><div class="pa-h"><span>De sensoren die het slim maken</span></div><div class="pa-tegels">';
+    ROLLEN.forEach((r) => {
+      const code = c[r.rol], d = code ? rolDef(code) : null, v = code ? w[r.rol === 'gevraagd' ? 'g' : r.rol === 'stroom' ? 'i' : r.rol] : null;
+      h += '<div class="pa-tegel' + (code ? '' : ' leeg') + '"><small>' + esc(r.naam) + '</small><b>' + (code ? fmt(v, r.d, r.een) : 'niet ingesteld') + '</b>' +
+        '<code>' + (code ? esc(code.slice(0, 2) + ' ' + code.slice(2)) + (d && d.ecu ? ' @' + esc(d.ecu) : '') : (r.mazda ? 'Mazda: ' + r.mazda : 'merkspecifiek')) + '</code><p>' + esc(r.uitleg) + '</p></div>';
+    });
+    h += '<div class="pa-tegel"><small>Toerental</small><b>' + fmt(w.rpm, 0, 'rpm') + '</b><code>01 0C</code></div>' +
+      '<div class="pa-tegel"><small>Buitentemperatuur</small><b>' + fmt(w.buiten, 0, '°C') + '</b><code>01 46</code></div></div>';
+    if (!c.gevraagd || !c.soc) h += '<div class="pa-rij" style="margin-top:10px"><span class="pa-sub" style="flex:1;min-width:180px">Zonder de gevraagde laadspanning en de laadtoestand kan de app slim laden niet van een zwakke dynamo onderscheiden. Voeg ze toe bij de sensoren van je voertuig (OBDb zoekt ze voor je model).</span><button type="button" class="pa-knop" data-actie="sensoren">Sensoren instellen →</button></div>';
+    h += '</div>';
+    if (c.stroom || c.soc) {
+      const s2 = [];
+      if (c.stroom) s2.push({ p: reeksVan(c.stroom, 300000), k: 'var(--gn)', naam: 'stroom (A)' });
+      if (c.soc && !c.stroom) s2.push({ p: reeksVan(c.soc, 300000), k: 'var(--gn)', naam: 'laadtoestand (%)' });
+      h += '<div class="pa-kaart"><div class="pa-h"><span>' + (c.stroom ? 'Accustroom' : 'Laadtoestand') + ', laatste 5 minuten</span></div>' +
+        grafiek({ series: s2, ref: c.stroom ? [{ y: 0, k: 'var(--tx2)', naam: '0 A' }] : [], xFmt: (x) => (Math.round(x * 10) / 10 === 0 ? 'nu' : Math.round(x) + ' min') }) + '</div>';
+    }
+    return h;
+  }
+
+  function hOordeel() {
+    const u = uitslag();
+    const blok = (naam, b) => '<div class="pa-kaart" style="flex:1;min-width:220px"><div class="pa-h"><span>' + naam + '</span>' +
+      chip(b.ja ? 'zwak' : b.bewijs.length ? 'krap' : 'goed', b.ja ? 'probleem bevestigd' : b.bewijs.length ? b.bewijs.length + ' aanwijzing' + (b.bewijs.length > 1 ? 'en' : '') : 'geen aanwijzingen') + '</div>' +
+      '<div class="pa-sub">' + esc(b.reden) + '</div>' +
+      (b.bewijs.length ? '<ul class="pa-bewijs">' + b.bewijs.map((x) => '<li><b>' + esc(x.dag) + ' · ' + esc(x.soort) + '</b><br>' + esc(x.tekst) + '</li>').join('') + '</ul>' : '') + '</div>';
+    return '<div class="pa-rij" style="align-items:stretch">' + blok('Accu', u.accu) + blok('Dynamo / laden', u.dynamo) + '</div>';
+  }
+
+  function hStartcurve(s, live) {
+    const pts = live ? live.map((x, i) => [x.t - live[0].t, x.v]) : (s && s.curve ? s.curve : []);
+    const ref = [];
+    if (s && s.ok) { ref.push({ y: s.plateau, k: 'var(--or)', naam: 'plateau ' + fmt(s.plateau, 2) }); ref.push({ y: startGrens(s.temp), k: 'var(--rd)', naam: 'BCI ' + fmt(startGrens(s.temp), 1) }); }
+    let h = grafiek({ series: [{ p: pts, k: 'var(--bl)', naam: 'spanning tijdens starten', stip: true, lijn: true }], ref, xFmt: (x) => Math.round(x) + ' ms', label: 'Startcurve' });
+    if (s && s.ok) h += '<div class="pa-metriek">' +
+      [['rust', fmt(s.rust, 2, 'V')], ['plateau', fmt(s.plateau, 2, 'V')], ['laagste', fmt(s.min, 2, 'V')], ['dip', fmt(s.dU, 2, 'V')], ['dip @20 °C', fmt(dU20(s), 2, 'V')],
+        ['duur', fmt(s.duurMs, 0, 'ms')], ['monsters', s.n], ['temp', fmt(s.temp, 0, '°C')], ['bron', s.bron === 'atrv' ? 'ATRV (snel)' : '0142']].map((x) => '<div><small>' + x[0] + '</small><b>' + esc(x[1]) + '</b></div>').join('') + '</div>';
+    return h;
+  }
+
+  function hTest() {
+    const t = _t || (_t = _nieuweTest());
+    const STAP = [
+      { kop: 'Hoe lang stond de auto stil?', doe: 'Een rustmeting telt pas na 2 uur: daarvoor zit er nog lading van de rit op (oppervlaktelading).',
+        uit: t.stilMin !== null ? chip(t.stilMin >= RUST_MIN ? 'goed' : 'krap', t.stilMin >= RUST_MIN ? Math.round(t.stilMin / 60) + ' uur stil' : 'korter dan 2 uur — rust telt niet') : '',
+        knop: '<button type="button" class="pa-knop" data-actie="stil:kort">Korter dan 2 uur</button> <button type="button" class="pa-knop hoofd" data-actie="stil:lang">Langer dan 2 uur</button>' },
+      { kop: 'Rustspanning — contact aan, motor uit', doe: 'Alles uit: licht, blower, radio. De adapter meet 8× zijn eigen spanning (ATRV).',
+        uit: t.rust ? chip(t.rust.staat, fmt(t.rust.u, 2, 'V') + (t.rust.soc != null ? ' · ' + t.rust.soc + ' %' : '')) + '<div class="pa-sub">' + esc(t.rust.tekst) + '</div>' : '',
+        knop: '<button type="button" class="pa-knop hoofd" data-actie="rust">Meten</button>' },
+      { kop: 'Startdip — start de motor', doe: 'Druk op Meten en start binnen 15 seconden, zonder gas. De app leest alleen ATRV, zo snel als de adapter kan (20–50 ms).',
+        uit: (t.live.length || (t.start && t.start.s) ? hStartcurve(t.start && t.start.s, t.start ? null : t.live) : '') + (t.start ? chip(t.start.staat, t.start.staat) + '<div class="pa-sub">' + esc(t.start.tekst) + '</div>' : ''),
+        knop: '<button type="button" class="pa-knop hoofd" data-actie="start">Meten — nu starten</button>' },
+      { kop: 'Belastingproef — 60 s', doe: 'Motor stationair. Zet aan: grootlicht, achterruitverwarming, blower vol, stoelverwarming. De app leest spanning, toerental en — als ze ingesteld zijn — de gevraagde laadspanning en de accustroom mee.',
+        uit: (t.reeks.length ? grafiek({ series: [{ p: t.reeks.map((x) => [(x.t - t.reeks[0].t) / 1000, x.u]), k: 'var(--bl)', naam: 'gemeten' },
+          { p: t.reeks.filter((x) => x.g !== null).map((x) => [(x.t - t.reeks[0].t) / 1000, x.g]), k: 'var(--or)', naam: 'gevraagd', streep: true }],
+          ref: t.rust && t.rust.u ? [{ y: t.rust.u, k: 'var(--tx2)', naam: 'rust ' + fmt(t.rust.u, 2) }] : [], xFmt: (x) => Math.round(x) + ' s' }) +
+          (t.reeks.some((x) => x.i !== null) ? grafiek({ series: [{ p: t.reeks.filter((x) => x.i !== null).map((x) => [(x.t - t.reeks[0].t) / 1000, x.i]), k: 'var(--gn)', naam: 'accustroom (A)' }], ref: [{ y: 0, k: 'var(--tx2)', naam: '0 A' }], xFmt: (x) => Math.round(x) + ' s', h: 100 }) : '') : '') +
+          (t.belast ? chip(t.belast.staat, t.belast.staat) + '<div class="pa-sub">' + esc(t.belast.tekst) + '</div>' : ''),
+        knop: '<button type="button" class="pa-knop hoofd" data-actie="belast">Meten (60 s)</button>' }
+    ];
+    let h = '<div class="pa-kaart"><div class="pa-h"><span>Begeleide accu- en dynamotest</span><button type="button" class="pa-knop" data-actie="opnieuw">Opnieuw</button></div>';
+    STAP.forEach((x, i) => {
+      h += '<div class="pa-stap ' + (i < t.stap ? 'klaar' : i === t.stap ? 'aan' : '') + '"><div class="pa-nr">' + (i < t.stap ? '✓' : i + 1) + '</div><div><b>' + esc(x.kop) + '</b>' +
+        (i === t.stap ? '<div class="pa-sub">' + esc(x.doe) + '</div>' : '') + (x.uit ? '<div style="margin-top:6px">' + x.uit + '</div>' : '') +
+        (i === t.stap && !t.bezig ? '<div class="pa-rij" style="margin-top:8px">' + x.knop + '</div>' : '') + '</div></div>';
+    });
+    if (t.melding) h += '<div class="pa-chip or" style="margin-top:8px">' + esc(t.melding) + '</div>';
+    return h + '</div>' + hOordeel();
+  }
+
+  function hTrend() {
+    const u = uitslag(), b = u.starts.filter((s) => s && s.ok);
+    const koud = b.filter((s) => !s.herstart);
+    let h = '<div class="pa-kaart"><div class="pa-h"><span>Spanning tijdens het starten</span>' + chip(u.trend.staat, u.trend.staat) + '</div>';
+    h += grafiek({ series: [
+      { p: koud.map((s, i) => [i + 1, s.plateau, s.plateau < startGrens(s.temp) ? 'var(--rd)' : s.plateau < startGrens(s.temp) + 0.3 ? 'var(--or)' : 'var(--gn)']), k: 'var(--bl)', naam: 'plateau', stip: true, lijn: true },
+      { p: koud.map((s, i) => [i + 1, startGrens(s.temp)]), k: 'var(--rd)', naam: 'BCI-grens bij die temp', streep: true }],
+      xFmt: (x) => 'start ' + Math.round(x), label: 'Startplateau per koude start' });
+    h += '<div class="pa-sub" style="margin-top:6px">' + esc(u.trend.tekst) + '</div></div>';
+    const basis = u.trend.basis;
+    h += '<div class="pa-kaart"><div class="pa-h"><span>Startdip omgerekend naar 20 °C</span></div>' +
+      grafiek({ series: [{ p: bruikbaar(u.starts).map((s, i) => [i + 1, dU20(s)]), k: 'var(--pu,var(--bl))', naam: 'dip @20 °C (V)', stip: true, lijn: true }],
+        ref: basis ? [{ y: basis, k: 'var(--gn)', naam: 'eigen basis ' + fmt(basis, 2) }, { y: Math.max(basis * TREND_FACTOR, basis + TREND_ABS), k: 'var(--rd)', naam: 'achteruit' }] : [],
+        xFmt: (x) => 'start ' + Math.round(x) }) +
+      '<div class="pa-sub" style="margin-top:6px">Kou maakt de dip dieper (inwendige weerstand +' + Math.round(KOU_K * 1000) / 10 + ' %/°C). Omgerekend naar 20 °C blijft alleen over wat de accu zelf doet. Een stijgende lijn is slijtage.</div></div>';
+    if (u.rusten.length) h += '<div class="pa-kaart"><div class="pa-h"><span>Rustspanning na ≥ 2 uur stil</span></div>' +
+      grafiek({ series: [{ p: u.rusten.map((r, i) => [i + 1, r.u]), k: 'var(--bl)', naam: 'rust (V)', stip: true, lijn: true }], ref: [{ y: RUST_MATIG, k: 'var(--or)', naam: '75 %' }, { y: RUST_LAAG, k: 'var(--rd)', naam: '50 %' }], xFmt: (x) => 'meting ' + Math.round(x) }) + '</div>';
+    const laatst = b.slice().reverse().find((s) => s.curve);
+    if (laatst) h += '<div class="pa-kaart"><div class="pa-h"><span>Laatste startcurve · ' + esc(datum(laatst.t)) + '</span></div>' + hStartcurve(laatst) + '</div>';
+    if (b.length) h += '<div class="pa-kaart"><div class="pa-h"><span>Starts (' + b.length + ')</span></div><div class="pa-scroll"><table class="pa-tabel"><tr><th>wanneer</th><th>soort</th><th>temp</th><th>rust</th><th>plateau</th><th>dip</th><th>@20°C</th><th>SOC</th><th>n</th></tr>' +
+      b.slice(-15).reverse().map((s) => '<tr><td>' + esc(datum(s.t)) + '</td><td>' + (s.herstart ? 'i-stop' : s.bron === 'atrv' ? 'test' : 'koud') + '</td><td class="n">' + fmt(s.temp, 0, '°') + '</td><td class="n">' + fmt(s.rust, 2) +
+        '</td><td class="n" style="color:var(--' + (s.plateau < startGrens(s.temp) ? 'rd' : 'tx') + ')">' + fmt(s.plateau, 2) + '</td><td class="n">' + fmt(s.dU, 2) + '</td><td class="n">' + fmt(dU20(s), 2) + '</td><td class="n">' + fmt(s.soc, 0, '%') + '</td><td class="n">' + esc(s.n) + '</td></tr>').join('') +
+      '</table></div></div>';
+    else h += '<div class="pa-kaart"><div class="pa-leeg">Nog geen start gemeten. De app meet elke start mee als 0142 snel genoeg binnenkomt; de begeleide test (tab Test) meet altijd snel genoeg.</div></div>';
+    return h + '<div class="pa-rij"><button type="button" class="pa-knop" data-actie="nieuw">Nieuwe accu geplaatst</button></div>';
+  }
+
+  function hWinter() {
+    const u = uitslag(), c = winterCurve(u.starts), tMin = verwachtMin();
+    let h = '<div class="pa-kaart"><div class="pa-h"><span>Haalt de accu de koudste nacht?</span>' + chip(u.winter.staat, u.winter.staat) + '</div><div class="pa-sub">' + esc(u.winter.tekst) + '</div>';
+    if (c) {
+      const ser = [{ p: c.map((x) => [x.t, x.verwacht]), k: 'var(--bl)', naam: 'verwachte startspanning' }, { p: c.map((x) => [x.t, x.grens]), k: 'var(--rd)', naam: 'BCI-grens', streep: true }];
+      if (tMin !== null && tMin >= -20 && tMin <= 20) { const v = c.reduce((a, x) => (Math.abs(x.t - tMin) < Math.abs(a.t - tMin) ? x : a)); ser.push({ p: [[v.t, v.verwacht, 'var(--or)']], k: 'var(--or)', naam: 'verwachting ' + Math.round(tMin) + ' °C', stip: true }); }
+      h += grafiek({ series: ser, xFmt: (x) => Math.round(x) + ' °C', label: 'Startspanning per temperatuur', h: 160 });
+    }
+    h += '</div><div class="pa-kaart"><div class="pa-h"><span>Pech voorkomen in de winter</span></div><ul style="margin:0;padding-left:18px">' +
+      '<li>Bij 0 °C levert een accu ~20 % minder startvermogen, bij −18 °C ~50 %; de motorolie is stroperiger, dus de startmotor vraagt méér.</li>' +
+      '<li>Korte ritten (&lt; 20 min) laden een accu met start-stop niet terug; een slim systeem laadt bewust niet vol. Rij wekelijks één langere rit, of laad een nacht bij met een acculader met AGM/EFB-stand.</li>' +
+      '<li>Start-stop (i-stop) die steeds vaker niet werkt, is vaak het eerste teken van een lage laadtoestand — niet van een defect.</li>' +
+      '<li>Een nieuwe accu bij start-stop: hetzelfde type (EFB of AGM) en laten aanmelden, anders laadt het systeem met de oude gegevens.</li></ul></div>';
+    return h;
+  }
+
+  function hUitleg() {
+    return '<div class="pa-kaart"><details open><summary>Hoe deze test oordeelt</summary>' +
+      '<p><b>Twee bewijzen.</b> Een melding over accu of dynamo komt pas bij twee soorten bewijs, of dezelfde soort op twee dagen (binnen ' + VENSTER_DAGEN + ' dagen). Eén meting kan een i-stop, een inschakelpiek of een wegvallende adapter zijn.</p>' +
+      '<p><b>Rust.</b> Rustspanning → laadtoestand (12,65 V ≈ 100 %, 12,4 ≈ 75 %, 12,2 ≈ 50 %), met temperatuurcorrectie, en alleen na ≥ 2 uur stil.</p>' +
+      '<p><b>Start.</b> Het plateau (mediaan van de dip) tegen de BCI-grens per temperatuur: 9,6 V bij 21 °C tot 8,5 V bij −18 °C. De inschakelpiek van de eerste milliseconden telt niet mee. Minder dan ' + DIP_MIN_MONSTERS + ' monsters of een gat &gt; ' + DIP_MAX_GAT + ' ms = niet te beoordelen.</p>' +
+      '<p><b>Trend.</b> De dip per koude start naar 20 °C omgerekend, tegen de mediaan van de eerste vijf starts van déze accu. Achteruit = ' + Math.round((TREND_FACTOR - 1) * 100) + ' % én ' + fmt(TREND_ABS, 1, 'V') + ' groter.</p>' +
+      '<p><b>Laden.</b> Met de gevraagde laadspanning: haalt de dynamo de vraag (marge 0,5 V)? Met de accustroom: ontlaadt de accu terwijl de motor draait? Zonder die twee alleen natuurkunde: onder de rustspanning met de motor aan = ontladen. De bovengrens 15,2 V schuift in de kou tot +0,6 V mee.</p>' +
+      '<p><b>Grenzen van OBD.</b> Een werkplaatstester belast de accu met ~100 A of meet de inwendige weerstand (conductantie). Dit is een uitgebreide schatting, geen vervanging.</p></details></div>';
+  }
+
+  function _html() {
+    const v = (() => { try { return window.PLGarage && PLGarage.actief && PLGarage.actief(); } catch (e) { console.warn('PLAccu: voertuig', e); return null; } })();
+    const naam = v ? (v.naam || [v.merk, v.model].filter(Boolean).join(' ')) : '';
+    return '<div class="pa-kop"><h2>🔋 Accu & laadsysteem' + (naam ? ' · ' + esc(naam) : '') + '</h2><button type="button" class="pa-x" data-actie="sluit" aria-label="Sluiten">✕</button></div>' +
+      '<div class="pa-tabs" role="tablist">' + TABS.map((x) => '<button type="button" role="tab" class="' + (x[0] === _tab ? 'aan' : '') + '" data-actie="tab:' + x[0] + '">' + x[1] + '</button>').join('') + '</div>' +
+      '<div class="pa-body"><div class="pa-in" id="plAccuTab"></div></div>';
+  }
+  function _tabHtml() {
+    if (_tab === 'test') return hTest();
+    if (_tab === 'trend') return hTrend();
+    if (_tab === 'winter') return hWinter();
+    if (_tab === 'uitleg') return hUitleg();
+    return hOordeel() + hLive();
+  }
+  function _tekenTab() {
+    if (!_open) return;
+    try { const e = document.getElementById('plAccuTab'); if (e) e.innerHTML = _tabHtml(); }
+    catch (e) { console.warn('PLAccu: tab niet getekend', e); }
+  }
   function _teken() {
     if (!_open) return;
     try {
+      zorgCss();
       let v = document.getElementById('plAccuTest');
       if (!v) {
-        v = _el('div', 'position:fixed;left:12px;right:12px;bottom:12px;z-index:9000;max-height:80vh;overflow:auto;background:var(--sur);color:var(--tx);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;box-shadow:0 8px 30px rgba(0,0,0,.35);font:500 13px/1.45 var(--f)');
-        v.id = 'plAccuTest'; document.body.appendChild(v);
+        v = document.createElement('div'); v.id = 'plAccuTest'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true');
+        v.addEventListener('click', _klik);
       }
-      v.textContent = '';
-      v.appendChild(_el('div', 'font-weight:800;font-size:15px', '🔋 Accu- en dynamotest'));
-      STAPPEN.forEach((x, i) => {
-        v.appendChild(_el('div', 'font-weight:700;margin-top:8px;opacity:' + (i <= _t.stap ? 1 : 0.45), (i + 1) + '. ' + x.kop));
-        if (i === _t.stap) v.appendChild(_el('div', 'color:var(--tx2)', x.doe));
-        if (i === 0 && _t.stilMin !== null) v.appendChild(_el('div', 'color:var(--tx2)', _t.stilMin >= RUST_MIN ? 'langer dan 2 uur' : 'korter dan 2 uur — de rustmeting telt niet mee'));
-        if (i === 1) _regel(v, _t.rust);
-        if (i === 2) _regel(v, _t.start);
-        if (i === 3) _regel(v, _t.belast);
-      });
-      const k = _el('div', 'display:flex;flex-wrap:wrap;gap:8px;margin-top:10px');
-      const knop = (t, f) => { const b = _el('button', KNOP, t); b.type = 'button'; b.disabled = _t.bezig; b.addEventListener('click', f); k.appendChild(b); };
-      if (_t.stap === 0) { knop('Korter dan 2 uur', () => { _t.stilMin = 30; _t.stap = 1; _teken(); }); knop('Langer dan 2 uur', () => { _t.stilMin = 240; _t.stap = 1; _teken(); }); }
-      else if (_t.stap === 1) knop('Meten', () => _doe(meetRust));
-      else if (_t.stap === 2) knop('Meten — nu starten', () => _doe(meetStart));
-      else if (_t.stap === 3) knop('Meten (60 s)', () => _doe(meetBelast));
-      v.appendChild(k);
-      if (_t.melding) v.appendChild(_el('div', 'margin-top:6px;font-weight:700;color:var(--or)', _t.melding));
-      const u = uitslag();
-      const vak = _el('div', 'margin-top:10px;padding:10px;border-radius:10px;background:var(--sur2)');
-      vak.appendChild(_el('div', 'font-weight:800', 'Oordeel'));
-      vak.appendChild(_el('div', '', 'Accu: ' + (u.accu.ja ? '⚠ bevestigd probleem — ' : '') + u.accu.reden));
-      vak.appendChild(_el('div', '', 'Dynamo: ' + (u.dynamo.ja ? '⚠ bevestigd probleem — ' : '') + u.dynamo.reden));
-      _regel(vak, u.trend); _regel(vak, Object.assign({}, u.winter, { tekst: '❄ ' + u.winter.tekst }));
-      vak.appendChild(_el('div', 'color:var(--tx2);font-size:12px', 'Een melding komt pas bij twee bewijzen, of hetzelfde bewijs op twee dagen. Dit vervangt geen werkplaatstester (belasting- of weerstandsmeting).'));
-      v.appendChild(vak);
-      const k2 = _el('div', 'display:flex;gap:8px;margin-top:10px');
-      const nieuw = _el('button', KNOP + ';flex:1', 'Nieuwe accu geplaatst'); nieuw.type = 'button';
-      nieuw.addEventListener('click', () => { if (confirm('Trend en aanwijzingen van de oude accu wissen?')) { nieuweAccu(); _teken(); } });
-      const dicht = _el('button', KNOP + ';flex:1', 'Sluiten'); dicht.type = 'button'; dicht.addEventListener('click', sluit);
-      k2.appendChild(nieuw); k2.appendChild(dicht); v.appendChild(k2);
-    } catch (e) { console.warn('PLAccu: paneel niet getekend', e); }
+      document.body.appendChild(v);   // altijd als laatste: bovenop alles wat er al hing
+      v.innerHTML = _html();
+      _tekenTab();
+    } catch (e) { console.warn('PLAccu: pagina niet getekend', e); }
   }
-  function open() {
+  async function _doe(fn) {
+    if (!_t) _t = _nieuweTest();
+    if (_t.bezig) return;
+    _t.bezig = true; _t.melding = ''; _tekenTab();
+    try { await fn(); _t.stap++; }
+    catch (e) { console.warn('PLAccu: stap mislukt', e); _t.melding = 'Mislukt: ' + ((e && e.message) || e); }
+    finally { _t.bezig = false; _tekenTab(); }
+  }
+  function _klik(e) {
+    const b = e.target && e.target.closest ? e.target.closest('[data-actie]') : null;
+    if (!b) return;
+    const a = b.getAttribute('data-actie');
+    if (a === 'sluit') return sluit();
+    if (a.indexOf('tab:') === 0) { _tab = a.slice(4); return _teken(); }
+    if (a === 'stil:kort' || a === 'stil:lang') { _t.stilMin = a === 'stil:lang' ? 240 : 30; _t.stap = 1; return _tekenTab(); }
+    if (a === 'rust') return _doe(meetRust);
+    if (a === 'start') return _doe(meetStart);
+    if (a === 'belast') return _doe(meetBelast);
+    if (a === 'opnieuw') { _t = _nieuweTest(); return _tekenTab(); }
+    if (a === 'nieuw') { if (confirm('Trend, rustmetingen en aanwijzingen van de oude accu wissen?')) { nieuweAccu(); _tekenTab(); } return; }
+    if (a === 'sensoren') {
+      sluit();
+      try { if (window.PLGarage) { PLGarage.open(); const v = PLGarage.actief && PLGarage.actief(); if (v) { PLGarage._open(v.id); PLGarage._tab('sensoren'); } } }
+      catch (x) { console.warn('PLAccu: sensoren niet geopend', x); }
+    }
+  }
+  function open(tab) {
     _open = true;
-    const st = stand();
-    _t = { stap: 0, stilMin: st.motorUit ? (Date.now() - st.motorUit) / 60000 : null, rust: null, start: null, belast: null, bezig: false, melding: '' };
-    if (_t.stilMin !== null) _t.stap = 1;
+    if (tab && TABS.some((x) => x[0] === tab)) _tab = tab;
+    if (!_t || !_t.bezig) _t = _nieuweTest();
     _teken();
+    if (!_ververs) _ververs = setInterval(() => { try { if (_open && (_tab === 'live' || (_tab === 'test' && _t && _t.bezig))) _tekenTab(); } catch (e) { console.warn('PLAccu: verversen', e); } }, 1000);
   }
-  function sluit() { _open = false; try { const v = document.getElementById('plAccuTest'); if (v) v.remove(); } catch (e) { console.warn('PLAccu: paneel niet gesloten', e); } }
+  function sluit() {
+    _open = false;
+    if (_ververs) { clearInterval(_ververs); _ververs = null; }
+    try { const v = document.getElementById('plAccuTest'); if (v) v.remove(); } catch (e) { console.warn('PLAccu: pagina niet gesloten', e); }
+  }
 
   window.PLAccu = {
     versie: VERSIE,
-    bewijs, bevestigd: isBevestigd, tegenbewijs, nieuweAccu, stand, uitslag,
+    bewijs, bevestigd: isBevestigd, tegenbewijs, nieuweAccu, stand, uitslag, nu: nuWaarden,
     meetRust, meetStart, meetBelast, open, sluit, boot,
-    _kern: { startGrens, ocvSoc, kouFactor, rustOordeel, startUitMonsters, startOordeel, trend, winter, belastOordeel, bewijsErbij, bevestigd, volt, toeren,
+    _kern: { startGrens, ocvSoc, kouFactor, rustOordeel, startUitMonsters, startOordeel, trend, winter, winterCurve, belastOordeel, laadStaat, grafiek, bewijsErbij, bevestigd, volt, toeren,
       CFG: { VENSTER_DAGEN, RUST_MIN, RUST_LAAG, DIP_MIN_MONSTERS, DIP_MAX_GAT, KOU_K } }
   };
   if (typeof document !== 'undefined') boot();

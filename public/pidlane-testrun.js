@@ -2848,6 +2848,29 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── De accupagina: voorgrond, lampje, slimme PIDs (26-10-2026) ──
+  {
+    issue: 'accupagina',
+    naam: 'De accupagina ligt bovenop, opent vanaf het accu-lampje en toont de PIDs die het laden slim maken',
+    waarom: 'Na de eerste versie: het venster opende niet op de voorgrond, de onderkant viel weg, het accu-lampje deed niets en de slimme PIDs waren niet te zien.',
+    proef: async function () {
+      var A = window.PLAccu;
+      if (!A || !A._kern || typeof A._kern.laadStaat !== 'function' || typeof A._kern.grafiek !== 'function') return { staat: 'FOUT', detail: 'PLAccu 2.0 ontbreekt — oude pidlane-accutest.js (herladen?)' };
+      var ls = A._kern.laadStaat({ u: 13.0, rpm: 1800, g: 14.6 });
+      if (ls.staat !== 'achter') return { staat: 'FOUT', detail: 'gevraagd 14,6 V, gemeten 13,0 V heet "' + ls.staat + '" in plaats van achter' };
+      var was = !!document.getElementById('plAccuTest');
+      A.open('live');
+      var p = document.getElementById('plAccuTest'), raak = document.elementFromPoint(innerWidth / 2, 4);
+      var boven = !!(raak && raak.closest && raak.closest('#plAccuTest')), tegels = p ? p.querySelectorAll('.pa-tegel').length : 0;
+      if (!was) A.sluit();
+      if (!boven) return { staat: 'FOUT', detail: 'bovenaan het scherm ligt ' + (raak ? raak.tagName + '#' + raak.id : 'niets') + ' over de accupagina' };
+      var lamp = document.getElementById('vis-lamp-accu');
+      var w = A.nu(), c = w.codes || {};
+      return { staat: 'OK', detail: tegels + ' sensortegels; gevraagde laadspanning ' + (c.gevraagd ? c.gevraagd + ' = ' + w.g : 'niet ingesteld') + ', laadtoestand ' + (c.soc ? c.soc + ' = ' + w.soc : 'niet ingesteld') +
+        (lamp ? '; accu-lampje ' + (lamp.getAttribute('onclick') ? 'opent de pagina' : 'zonder klik') : '; Slim visueel niet open') };
+    }
+  },
+
   // ── Accutest en de poort van twee bewijzen (25-10-2026) ──
   {
     issue: 'accutest',
