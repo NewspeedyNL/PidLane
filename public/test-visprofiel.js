@@ -43,15 +43,15 @@ function laad(bron) {
 console.log('\n1. Volgende loopt rond');
 function keurRond(bron) {
   const P = laad(bron).PLVisProfiel, uit = [];
-  if (P.PROFIELEN.length !== 6) uit.push('er zijn ' + P.PROFIELEN.length + ' weergaven, verwacht 6');
+  if (P.PROFIELEN.length !== 7) uit.push('er zijn ' + P.PROFIELEN.length + ' weergaven, verwacht 7');
   let id = 'basis'; const gezien = [id];
-  for (let i = 0; i < 6; i++) { id = P.volgende(id); gezien.push(id); }
-  if (gezien.join(',') !== 'basis,temp,emissie,verbruik,motor,telemetrie,basis') uit.push('de rondgang is ' + gezien.join(' → '));
+  for (let i = 0; i < 7; i++) { id = P.volgende(id); gezien.push(id); }
+  if (gezien.join(',') !== 'basis,temp,emissie,verbruik,motor,telemetrie,hyperlane,basis') uit.push('de rondgang is ' + gezien.join(' → '));
   if (P.volgende('onzin') !== 'temp') uit.push('na een onbekende keuze komt ' + P.volgende('onzin'));
   return uit;
 }
 const r1 = keurRond(BRON);
-waar('basis → temperatuur → emissie → verbruik → motor → telemetrie (één scherm sinds 06-10-2026) → basis', r1.length === 0, r1.join('; '));
+waar('basis → temperatuur → emissie → verbruik → motor → telemetrie (één scherm sinds 06-10-2026) → hyperlane (27-10-2026) → basis', r1.length === 0, r1.join('; '));
 waar('tegenproef: zonder de rond-modulo stopt hij na motor',
   keurRond(BRON.replace('% PROFIELEN.length].id', '] ? PROFIELEN[i+1].id : PROFIELEN[PROFIELEN.length-1].id')).length > 0);
 
