@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-10-2026 — Hyperlane, tweede ronde: scènes en showreel
+ ═══════════════════════════════════════════════════════════
+
+ - Eén scène tegelijk, met een eigen beeld: alarm (koelwater te heet, alles
+   pulseert rood), begrenzer, remmen (onderkant remlicht-rood), launch (warp,
+   live 0–100-timer), koud (ijsblauw, rijp, randen vullen met de opwarming),
+   stil (de tunnel ademt, klok in het midden), cruise · zen (koeler, rustiger).
+ - Lichtgolf door de tunnel bij opschakelen; het verdwijnpunt leunt mee met
+   de zij-G (TL04); rit-topsnelheid boven 100 als melding; 21–6 u gedimd.
+ - 0–100 start voortaan vanaf het laatste moment van stilstand: met 10
+   metingen per seconde viel er geen meting in "stil én vol gas", dus hij
+   startte nooit. Meer dan 1 s van het gas breekt hem af.
+
+ ═══════════════════════════════════════════════════════════
  27-10-2026 — Hyperlane: de blikvanger van Slim visueel
  ═══════════════════════════════════════════════════════════
 

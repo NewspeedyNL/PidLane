@@ -15,6 +15,23 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+
+## 27-10-2026 — Hyperlane: de 0–100-meting startte nooit
+
+De eerste versie startte de klok bij een meting met snelheid onder 1 km/h
+én gas boven 50%. Gevonden bij het opnemen van de showreel, die de PIDs net
+als de bus 10 keer per seconde aanlevert: bij een echte launch gaan gas en
+snelheid binnen een tiende van een seconde tegelijk omhoog, dus die meting
+bestaat zelden. `test-hyperlane.js` stond groen omdat zijn rit een meting
+"stil, 90% gas" bevatte — een geval dat de toets zelf had verzonnen.
+
+Nu: de klok loopt vanaf de laatste meting in stilstand, als het gas binnen
+2 s boven de helft is en je nog geen 40 rijdt. Tweede vondst uit dezelfde
+opname: gewoon stevig wegrijden telde dan als launch en bleef dat tot de
+volgende stop. Meer dan 1 s onder 30% gas breekt hem nu af; een
+schakelmoment is korter. Beide staan als toets met een geval op 10 Hz, en
+als mutatie in `plmutate.sh`.
+
 ## 27-10-2026 — instappen, starten, de rest gaat vanzelf (opstart en wekker)
 
 Gevraagd: de klant stapt in, start, tikt op PidLane, en de rest gaat vanzelf.
