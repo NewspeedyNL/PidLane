@@ -2851,13 +2851,14 @@ const PROEVEN_B5 = [
   // ── Hyperlane: de blikvanger van Slim visueel (27-10-2026) ──
   {
     issue: 'hyperlane',
-    naam: 'Het profiel Hyperlane: neon-tunnel (WebGL), toeren en snelheid als ringen, kleur volgt het rijgedrag, 0–100 vanuit stilstand',
+    naam: 'Het profiel Hyperlane: neon-tunnel (WebGL), toeren en snelheid als ringen, kleur volgt het rijgedrag, 0–100 vanuit stilstand, scènes (koud, stil, remmen, launch, cruise, alarm)',
     waarom: 'Gevraagd op 27-10: één weergave voor liggend die blijft imponeren en die je aan een passagier laat zien. Of WebGL op dit toestel draait en de lus vloeiend loopt, is per telefoon verschillend.',
     proef: async function () {
       var H = window.PLHyperlane, P = window.PLVisProfiel;
       if (!H || typeof H.stemming !== 'function') return { staat: 'FOUT', detail: 'PLHyperlane ontbreekt — oude pidlane-hyperlane.js (herladen?)' };
       if (!P || !P.zoek('hyperlane')) return { staat: 'FOUT', detail: 'profiel hyperlane ontbreekt — oude pidlane-visprofiel.js (herladen?)' };
       if (H.stemming(800, 6800, 0) >= 0.1 || H.stemming(6800, 6800, 100) !== 1) return { staat: 'FOUT', detail: 'stemming() kleurt verkeerd' };
+      if (typeof H.scene !== 'function' || H.scene({ koel: 40 }) !== 'koud' || H.scene({ koel: 90, koelSt: 'danger' }) !== 'alarm') return { staat: 'FOUT', detail: 'scene() ontbreekt of kiest verkeerd — oude pidlane-hyperlane.js (herladen?)' };
       var gl = false;
       try { var c = document.createElement('canvas'); gl = !!c.getContext('webgl'); } catch (e) { console.warn('blok 5 hyperlane: WebGL', e); }
       var regel = 'WebGL ' + (gl ? 'beschikbaar' : 'NIET beschikbaar (tunnel valt terug op een verloop)') + '; lus ' + (H.actief() ? 'loopt nu' : 'staat stil (Hyperlane niet in beeld)');

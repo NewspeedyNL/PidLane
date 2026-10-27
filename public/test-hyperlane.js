@@ -8,6 +8,7 @@
 //     toeren telt zwaarder dan gas;
 //   • de schakellampjes beginnen op 70% van de rode streep, de begrenzer knippert;
 //   • 0–100 meet alleen vanuit stilstand met gas, en stilstaan zet hem terug;
+//   • de scène (alarm, begrenzer, remmen, launch, koud, stil, cruise) en hun voorrang;
 //   • het profiel kiest de juiste PIDs en een diesel krijgt 6000 rpm;
 //   • elke klasse die de tekening gebruikt heeft regels in pidlane.css.
 // Wat in de echte app gebeurt (WebGL, de lus, het volle scherm): bproef-hyperlane.js.
@@ -58,10 +59,37 @@ waar('geen toerental: niets, geen knipper', H.leds(null, 6800).aan === 0 && !H.l
 
 console.log('\n4. 0–100 vanuit stilstand');
 function rit(stappen) { let st = { start: null }, tijd = null; stappen.forEach(s => { const r = H.nul100(st, s[0], s[1], s[2]); st = r.st; if (r.tijd !== null) tijd = r.tijd; }); return tijd; }
-waar('stilstand, vol gas, 100 na 7,2 s', Math.abs(rit([[0, 0, 0], [0, 90, 1], [40, 100, 3], [100, 100, 8.2]]) - 7.2) < 1e-9);
+waar('stilstand, vol gas, 100 na 7,2 s', Math.abs(rit([[0, 0, 0], [0, 90, 1], [12, 100, 1.6], [100, 100, 8.2]]) - 7.2) < 1e-9);
+waar('10 metingen per seconde: stil zonder gas, dan al rijdend vol gas — de klok loopt vanaf de stilstand', Math.abs(rit([[0, 5, 0], [3, 70, 0.1], [100, 100, 6.1]]) - 6.1) < 1e-9);
+waar('pas na 2 s gas geven is geen launch', rit([[0, 0, 0], [20, 20, 1], [35, 90, 3], [100, 100, 9]]) === null);
+waar('wegrijden en na 1,5 s het gas los: geen launch meer', rit([[0, 0, 0], [8, 80, 0.3], [40, 20, 1], [60, 20, 2.6], [100, 90, 9]]) === null);
+waar('een schakelmoment (0,4 s van het gas) breekt hem niet af', Math.abs(rit([[0, 0, 0], [8, 90, 0.3], [50, 10, 3], [55, 95, 3.4], [100, 100, 7]]) - 7) < 1e-9);
+waar('30 s zonder 100 te halen zet hem terug', rit([[0, 0, 0], [10, 90, 0.5], [99, 60, 31], [100, 60, 40]]) === null);
 waar('al rijdend gas geven telt niet', rit([[30, 90, 0], [100, 100, 6]]) === null);
 waar('stilstaan zonder gas zet hem terug', rit([[0, 90, 0], [0, 0, 5], [60, 30, 10], [100, 30, 20]]) === null);
-waar('een ontbrekende snelheid start niets', rit([[null, 90, 0], [100, 90, 4]]) === null);
+waar('een ontbrekende snelheid start niets', rit([[null, 90, 0], [10, 90, 0.5], [100, 90, 4]]) === null);
+
+console.log('\n4b. Scènes: één tegelijk, met een vaste voorrang');
+const basis = { koel: 90, koelSt: 'ok', toeren: 2500, rood: 6800, snel: 80, versn: 0, stilS: 0, launch: false, cruiseS: 0 };
+const sc = x => H.scene(Object.assign({}, basis, x));
+waar('gewoon rijden', sc({}) === 'rijden');
+waar('koelwater "danger" of ≥ 118 °C: alarm, boven alles', sc({ koelSt: 'danger', toeren: 6800, launch: true }) === 'alarm' && sc({ koel: 118 }) === 'alarm');
+waar('op de rode streep: begrenzer, boven remmen en launch', sc({ toeren: 6700, versn: -12, launch: true }) === 'begrenzer');
+waar('hard remmen (≥ 8 km/h/s) is remmen; zacht afremmen niet', sc({ versn: -9 }) === 'remmen' && sc({ versn: -5 }) === 'rijden');
+waar('remmen in stilstand bestaat niet', sc({ versn: -20, snel: 2 }) !== 'remmen');
+waar('0–100 loopt: launch, ook met koude motor', sc({ launch: true, koel: 40 }) === 'launch');
+waar('koelwater onder 60 °C: koud, boven stil en cruise', sc({ koel: 45, stilS: 10, cruiseS: 20 }) === 'koud');
+waar('een ontbrekende koelwatersensor is geen koude motor', sc({ koel: null }) === 'rijden');
+waar('3 s stilstand: stil; 8 s gelijkmatig: cruise', sc({ stilS: 3.1 }) === 'stil' && sc({ cruiseS: 8.5 }) === 'cruise' && sc({ stilS: 2 }) === 'rijden');
+waar('elke scène behalve rijden en remmen heeft een eigen tekst', ['alarm', 'begrenzer', 'launch', 'koud', 'stil', 'cruise'].every(k => typeof H.SCENE_TEKST[k] === 'string'));
+
+console.log('\n4c. Versnelling, opwarming, nacht');
+let vs = H.versnelling(null, 100, 0); vs = H.versnelling(vs, 90, 1); vs = H.versnelling(vs, 80, 2);
+waar('twee keer 10 km/h per seconde minder: duidelijk remmen (≤ −7)', vs.a <= -7, vs.a);
+waar('een gat van meer dan 3 s begint opnieuw', H.versnelling({ v: 0, t: 0, a: 0 }, 100, 10).a === 0);
+waar('geen snelheid: geen versnelling', H.versnelling(vs, null, 3) === null);
+waar('opwarming: 20 °C leeg, 70 °C vol, onbekend vol', H.warmte(20) === 0 && H.warmte(70) === 1 && H.warmte(null) === 1);
+waar('nacht van 21 tot 6 uur', H.nacht(21) && H.nacht(3) && !H.nacht(6) && !H.nacht(20));
 
 console.log('\n5. Het profiel');
 const ind = P.indeling('hyperlane', q => ['010C', '010D', '0105', '0149'].indexOf(q) >= 0);
@@ -74,11 +102,13 @@ waar('het vak is de Hyperlane-tekening', h.indexOf('vpf-hyper') >= 0 && h.indexO
 
 console.log('\n6. bij() geeft de waarde door aan de lus');
 let gezet = [];
-C.PLHyperlane = Object.assign({}, H, { zet: (r, v) => gezet.push(r + '=' + v) });
+C.PLHyperlane = Object.assign({}, H, { zet: (r, v, st) => gezet.push(r + '=' + v + (st === 'danger' ? '!' : '')) });
 C.document = { getElementById: () => null };
 P.bij('hyperlane', ind, '010C', 3200, 'ok');
 P.bij('hyperlane', ind, '010D', 88, 'ok');
 waar('toeren en snelheid komen bij PLHyperlane.zet aan', gezet.join(',') === 'toeren=3200,snel=88', gezet.join(','));
+P.bij('hyperlane', ind, '0105', 121, 'danger');
+waar('het oordeel van het koelwater gaat mee (alarm)', gezet[2] === 'koel=121!', gezet.join(','));
 
 console.log('\n7. Elke klasse heeft CSS');
 const klassen = [...new Set([...h.matchAll(/class="([^"]+)"/g)].flatMap(m => m[1].split(/\s+/)).filter(k => /^vhl-/.test(k)))];

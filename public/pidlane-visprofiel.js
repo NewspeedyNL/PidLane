@@ -528,7 +528,7 @@ function bij(id, ind, pid, val, st){
     // Telemetrie: de tekening draait of schuift met de waarde zelf, begrensd.
     if(x.soort==='schuif' || x.soort==='draai' || x.soort==='kantel' || x.soort==='gx' || x.soort==='gy'){ telBij(x, val); return; }
     // Hyperlane tekent zelf, vloeiend: hier alleen de waarde doorgeven.
-    if(x.soort==='hyper'){ if(window.PLHyperlane) PLHyperlane.zet(x.rol, val); return; }
+    if(x.soort==='hyper'){ if(window.PLHyperlane) PLHyperlane.zet(x.rol, val, st); return; }
     if(!f) return;
     const v=d===null ? 0 : d;
     if(x.soort==='thermo') f.style.height=v.toFixed(1)+'%';
