@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-10-2026 — Hyperlane: de blikvanger van Slim visueel
+ ═══════════════════════════════════════════════════════════
+
+ - Zevende profiel in Slim visueel (`pidlane-hyperlane.js`): een neon-tunnel
+   in WebGL die meestroomt met de snelheid, toeren en snelheid als ringen in
+   perspectief die meekantelen met de telefoon, de versnelling in het midden
+   met schakellampjes en een flits op de begrenzer.
+ - De kleur volgt het rijgedrag: ijsblauw → cyaan → violet → amber → rood,
+   uit toerental (2/3) en gaspedaal (1/3). Modus ECO/CRUISE/SPORT/MAX.
+ - Opstartzwaai bij openen; 0–100 vanuit stilstand meet hij vanzelf.
+ - Op volledig scherm vult de tunnel het hele scherm, liggend en staand.
+   Zonder WebGL een CSS-verloop. De lus stopt zodra het vak uit beeld is.
+
+ ═══════════════════════════════════════════════════════════
  27-10-2026 — Instappen, starten, de rest gaat vanzelf
  ═══════════════════════════════════════════════════════════
 
