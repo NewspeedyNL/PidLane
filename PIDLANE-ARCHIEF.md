@@ -16,6 +16,19 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+
+## 27-10-2026 (later) — Hyperlane: het scorebord kwam nooit
+
+`ritBij()` had één klok voor alles. De bus geeft toeren en snelheid in losse
+metingen; elke toerenmeting zette `r.t` op nu, waarna de snelheidsmeting een
+gat van 0 s zag en geen kilometer optelde. De rit bleef op 0 km, en het
+scorebord verschijnt pas na 0,3 km. Live gegaan met #630.
+
+`test-hyperlane.js` stond groen omdat zijn rit toeren én snelheid in één
+aanroep meegaf — een vorm die de app nooit gebruikt. Gezien bij het opnemen
+van de showreel, die de PIDs net als de bus één voor één aanlevert. Nu heeft
+de snelheid haar eigen tijdstempel (`tv`); de toets geeft ze los, en de
+mutatie zet de ene klok terug.
 ## 27-10-2026 — Hyperlane: de 0–100-meting startte nooit
 
 De eerste versie startte de klok bij een meting met snelheid onder 1 km/h

@@ -178,15 +178,19 @@ function scene(i){
   if(i.cruiseS>=CRUISE_S) return 'cruise';
   return 'rijden';
 }
-/* ── De rit ── `rit` = null of {t, km, top, maxT, rijS, beste}; t in s.
+/* ── De rit ── `rit` = null of {t, tv, km, top, maxT, rijS, beste}; t in s.
    Afstand en rijtijd tellen alleen over een gat van hoogstens 3 s: een
-   gemiste meting verzint geen kilometers. Puur: geeft een nieuwe rit. */
+   gemiste meting verzint geen kilometers. `tv` is de laatste snelheids-
+   meting en `t` de laatste meting van wat dan ook: de bus geeft toeren en
+   snelheid los, en met één klok zette elke toerenmeting het gat terug op 0
+   — de rit bleef op 0 km en het scorebord kwam nooit (27-10-2026, gezien in
+   de showreel). Puur: geeft een nieuwe rit. */
 const SCORE_KM = 0.3, RIT_PAUZE_S = 15*60;
 function ritBij(rit, v, toeren, t, verbruik){
   const n=function(x){ return x!==null && x!==undefined && x!=='' && isFinite(Number(x)); };
   let r=rit ? Object.assign({}, rit) : null;
   if(!r || !(t>=r.t) || t-r.t>RIT_PAUZE_S) r={ t:t, km:0, top:0, maxT:0, rijS:0, beste:null, kmV:0, liter:0 };
-  const dt=t-r.t;
+  const dt=r.tv==null ? 0 : t-r.tv;
   if(n(v)){
     v=Number(v);
     if(dt>0 && dt<=3){
@@ -196,6 +200,7 @@ function ritBij(rit, v, toeren, t, verbruik){
       if(n(verbruik) && Number(verbruik)>=0 && dk>0){ r.kmV=(r.kmV||0)+dk; r.liter=(r.liter||0)+Number(verbruik)*dk/100; }
     }
     r.top=Math.max(r.top, v);
+    r.tv=t;
   }
   if(n(toeren)) r.maxT=Math.max(r.maxT, Number(toeren));
   r.t=t;

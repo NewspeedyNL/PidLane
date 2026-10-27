@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-10-2026 — Hyperlane: het scorebord verschijnt weer
+ ═══════════════════════════════════════════════════════════
+
+ - De rit telde geen kilometers: elke toerenmeting zette de rit-klok terug.
+   Snelheid heeft nu haar eigen tijdstempel; het scorebord komt na 0,3 km.
+
+ ═══════════════════════════════════════════════════════════
  27-10-2026 — Hyperlane, vierde ronde: scorebord, tank, power-up, G-spoor, merk
  ═══════════════════════════════════════════════════════════
 

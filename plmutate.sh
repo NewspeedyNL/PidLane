@@ -1149,6 +1149,7 @@ MUTATIES=(
 "public/pidlane-hyperlane.js@@    uit.push(-g*.55*(1-a*.88), -.46+a*.24);@@    uit.push(g*.55*(1-a*.88), -.46+a*.24);@@test-hyperlane.js@@het G-spoor gaat de verkeerde kant op: tegen het gevoel in, anders dan de G-cirkel"
 "public/pidlane-hyperlane.js@@    if(dt>0 && dt<=3){\n      const dk=v*dt/3600;@@    if(dt>0 && dt<=30){\n      const dk=v*dt/3600;@@test-hyperlane.js@@een gemiste meting verzint kilometers in de rit-samenvatting"
 "public/pidlane-hyperlane.js@@  if(!rit || !(rit.km>=SCORE_KM)) return null;@@  if(!rit) return null;@@test-hyperlane.js@@elke parkeermanoeuvre geeft een scorebord"
+"public/pidlane-hyperlane.js@@  const dt=r.tv==null ? 0 : t-r.tv;@@  const dt=t-r.t;@@test-hyperlane.js@@elke toerenmeting zet de rit-klok terug: de rit blijft op 0 km en het scorebord komt nooit"
 "public/pidlane-hyperlane.js@@  if(!s.wortel.isConnected || !s.wortel.getClientRects().length){ stop(); return; }@@@@bproef-hyperlane.js@@de tekenlus draait door in een weggegooid of verborgen vak en kost accu"
 "public/pidlane-visthema.js@@  if(!vis) return;\n  const o=vis.querySelector('.vt-strook');@@  if(!vis || !vol()) return;\n  const o=vis.querySelector('.vt-strook');@@bproef-visthema.js@@in de gewone weergave opent 🎨 weer niets"
 "public/pidlane-visueel.js@@    themaBij(g);\n    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@bproef-visthema.js@@een herbouw van een profiel gooit de knop volledig scherm weg"
