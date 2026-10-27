@@ -491,8 +491,10 @@ function htmlHyper(p, ind){
   };
   return '<canvas class="vhl-bg" aria-hidden="true"></canvas>'+
     '<div class="vhl-podium">'+pod('toeren', 'l')+
-      '<div class="vhl-mid"><div class="vhl-leds">'+new Array(11).join('<i></i>')+'</div>'+
-        '<div class="vhl-modus">ECO</div><div class="vhl-gear"></div>'+
+      '<div class="vhl-mid"><div class="vhl-merk"></div><div class="vhl-leds">'+new Array(11).join('<i></i>')+'</div>'+
+        '<div class="vhl-kop"><span class="vhl-modus">ECO</span><span class="vhl-gear"></span></div>'+
+        // Het hoofdgetal: per scène wat er toe doet (PLHyperlane.held)
+        '<div class="vhl-held"><div><b class="vhl-held-w">—</b><span class="vhl-held-e"></span></div><small class="vhl-held-l"></small></div>'+
         '<div class="vhl-strook">'+strook('koel', 'KOELW °C')+strook('gas', 'GAS %')+strook('accu', 'ACCU V')+'</div></div>'+
       pod('snel', 'r')+'</div>'+
     '<div class="vhl-rand l"></div><div class="vhl-rand r"></div><div class="vhl-flits"></div><div class="vhl-badge"></div>'+
