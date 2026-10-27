@@ -12,6 +12,9 @@
 //                         de brandstoftrims als balk vanuit het midden
 //   verbruik     DIGITAAL een LCD-paneel met grote cijfers en segmentbalken
 //   motor        NEON     ringen om elkaar heen: toeren, belasting, gasklep
+//   hyperlane    HYPER    de blikvanger: neon-tunnel, toeren en snelheid in
+//                         perspectief, kleur volgt het rijgedrag (27-10-2026;
+//                         de tekening zelf staat in pidlane-hyperlane.js)
 //
 // HET KADER BLIJFT. Lampjes bovenaan, meldingen en snelkoppelingen onderaan,
 // de trekstrook: dat tekent pidlane-visueel.js zoals altijd. Alleen het vak
@@ -140,6 +143,17 @@ const PROFIELEN = [
       // De eenheid g staat er al onder.
       { rol:'lengte', naam:'Lengte', keten:['TL03'], eenheid:'g', soort:'gy', lo:-1.2, hi:1.2, dec:2 },
       { rol:'dwars',  naam:'Zij',    keten:['TL04'], eenheid:'g', soort:'gx', lo:-1.2, hi:1.2, dec:2 }
+    ] },
+  // Hyperlane (27-10-2026): de blikvanger voor liggend en volledig scherm.
+  // Soort 'hyper' tekent niet hier: bij() geeft de waarde aan PLHyperlane,
+  // die afvlakt en op 60 fps tekent. Een diesel krijgt de toerenschaal van
+  // de basismeter (#393).
+  { id:'hyperlane', naam:'Hyperlane', stijl:'hyper', ondertitel:'Neon-tunnel',
+    plekken:[
+      { rol:'toeren', naam:'Toerental', keten:['010C'], eenheid:'rpm', soort:'hyper', lo:0, hi:8000, dec:0, diesel:{ hi:6000 } },
+      { rol:'snel',   naam:'Snelheid',  keten:['010D'], eenheid:'km/h', soort:'hyper', lo:0, hi:240, dec:0 },
+      { rol:'koel',   naam:'Koelwater', keten:['0105','0167'], eenheid:'°C', soort:'hyper', lo:40, hi:130, dec:0 },
+      { rol:'gas',    naam:'Gaspedaal', keten:['0149','015A','014A','0111'], eenheid:'%', soort:'hyper', lo:0, hi:100, dec:0 }
     ] }
 ];
 // De ringen van buiten naar binnen; de straal staat hier en niet in de CSS,
@@ -460,7 +474,8 @@ function html(id, ind){
   const p=voorInd(id, ind);
   if(!p || !p.plekken || !ind) return '';
   const binnen = p.stijl==='glas' ? htmlGlas(p, ind) : p.stijl==='licht' ? htmlLicht(p, ind)
-               : p.stijl==='digitaal' ? htmlDigitaal(p, ind) : p.stijl==='telemetrie' ? htmlTelemetrie(p, ind) : htmlNeon(p, ind);
+               : p.stijl==='digitaal' ? htmlDigitaal(p, ind) : p.stijl==='telemetrie' ? htmlTelemetrie(p, ind)
+               : p.stijl==='hyper' ? (window.PLHyperlane ? PLHyperlane.html() : '') : htmlNeon(p, ind);
   const geen=p.plekken.every(function(x){ return !ind.plekken[x.rol]; });
   return '<div class="vpf vpf-'+p.stijl+'" data-profiel="'+p.id+'">'+binnen+
     (geen ? '<p class="vpf-geen">Deze auto geeft geen van de sensoren voor '+esc(p.naam.toLowerCase())+'. Veeg opzij voor een andere weergave.</p>' : '')+'</div>';
@@ -491,6 +506,8 @@ function bij(id, ind, pid, val, st){
     if(plek){ plek.classList.remove('warn','danger','oud'); if(st==='warn' || st==='danger') plek.classList.add(st); }
     // Telemetrie: de tekening draait of schuift met de waarde zelf, begrensd.
     if(x.soort==='schuif' || x.soort==='draai' || x.soort==='kantel' || x.soort==='gx' || x.soort==='gy'){ telBij(x, val); return; }
+    // Hyperlane tekent zelf, vloeiend: hier alleen de waarde doorgeven.
+    if(x.soort==='hyper'){ if(window.PLHyperlane) PLHyperlane.zet(x.rol, val); return; }
     if(!f) return;
     const v=d===null ? 0 : d;
     if(x.soort==='thermo') f.style.height=v.toFixed(1)+'%';

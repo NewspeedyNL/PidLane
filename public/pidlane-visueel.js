@@ -1433,6 +1433,7 @@ function bouw(g, reden){
       if(t) kiesPlek(t.id.slice(6));
     });
     themaBij(g);
+    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }catch(e){ console.warn('PLVisueel: Hyperlane starten mislukt', e); }
     return;
   }
   // Zonder naald gaat de meter tóch open (07-10-2026, #432). Tot dan stond
