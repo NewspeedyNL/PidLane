@@ -2033,6 +2033,10 @@ body.pl-vis-vol .vt-thema, body.pl-vis-vol .vt-uit { display:inline-flex; }
 .vhl-leds i.max { background:#4aa8ff; box-shadow:0 0 14px #4aa8ff; }
 .vhl-modus { font-size:3.4cqh; font-weight:600; letter-spacing:.5em; padding-left:.5em; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:clip; color:var(--vhl-c); text-shadow:0 0 12px var(--vhl-c); }
 .vhl-kop { display:flex; align-items:center; gap:1.4cqw; max-width:100%; }
+/* Naast het versnellingslabel moet ook "KOELWATER HEET" passen: het midden is
+   liggend maar zo'n 20cqw breed, dus de maat volgt ook de breedte (27-10-2026). */
+.vhl-kop .vhl-modus { font-size:min(3.4cqh, 1.05cqw); letter-spacing:.22em; padding-left:.22em; }
+.vhl-kop .vhl-gear { flex:none; font-size:min(3.6cqh, 1.1cqw); }
 /* De versnelling: een klein label naast de modus, niet meer het midden. */
 .vhl-gear { min-width:1.6em; padding:.15em .55em; border-radius:999px; border:1px solid var(--vhl-c); font-size:3.6cqh; font-weight:600;
   line-height:1.1; text-align:center; color:#fff; font-variant-numeric:tabular-nums; box-shadow:0 0 12px color-mix(in srgb, var(--vhl-c) 45%, transparent); }
