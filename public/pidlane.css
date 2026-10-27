@@ -2094,6 +2094,17 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
 .vpf-hyper[data-scene="alarm"] .vhl-modus { color:#ff5a6a; text-shadow:0 0 16px #ff2a40; animation:vhl-puls .45s ease-in-out infinite alternate; }
 .vpf-hyper[data-scene="remmen"] .vhl-flits { box-shadow:inset 0 -10cqh 12cqh -4cqh rgba(255,30,50,.55); }
 @keyframes vhl-puls { from { opacity:.45; } to { opacity:1; } }
+/* Het knopje voor de achtergrond: klein, linksboven, bewust onopvallend. */
+.vhl-vorm { position:absolute; top:10px; left:10px; z-index:3; padding:4px 10px; border-radius:999px; font:600 11px/1.2 system-ui, sans-serif;
+  letter-spacing:.08em; color:rgba(255,255,255,.75); background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18); cursor:pointer;
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+.vhl-vorm::before { content:'◐ '; color:var(--vhl-c); }
+.vhl-vorm:active { transform:scale(.94); }
+body.pl-vis-vol .vhl-vorm { position:fixed; top:calc(var(--pl-sat, 0px) + 18px); left:14px; }
+/* Stil: geen achtergrond, en de tekenlus slaat de shader over. */
+.vpf-hyper.vhl-zonder .vhl-bg { visibility:hidden; }
+/* Op volledig scherm geen palet bij Hyperlane: de kleuren komen van het rijgedrag en het merk. */
+body.pl-vis-vol .vis:has(.vpf-hyper) .vt-thema, body.pl-vis-vol .vis:has(.vpf-hyper) .vt-strook { display:none; }
 /* Het scorebord bij stilstand: glas over het midden, de tegels schuiven één
    voor één in (--i), het midden en de ringen wijken. */
 .vhl-score { position:absolute; left:50%; top:50%; width:min(64cqw, 150cqh); transform:translate(-50%, -46%) scale(.96); opacity:0;

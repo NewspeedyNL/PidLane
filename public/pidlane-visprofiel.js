@@ -152,10 +152,10 @@ const PROFIELEN = [
     plekken:[
       { rol:'toeren', naam:'Toerental', keten:['010C'], eenheid:'rpm', soort:'hyper', lo:0, hi:8000, dec:0, diesel:{ hi:6000 } },
       { rol:'snel',   naam:'Snelheid',  keten:['010D'], eenheid:'km/h', soort:'hyper', lo:0, hi:240, dec:0 },
-      { rol:'koel',   naam:'Koelwater', keten:['0105','0167'], eenheid:'°C', soort:'hyper', lo:40, hi:130, dec:0 },
-      { rol:'gas',    naam:'Gaspedaal', keten:['0149','015A','014A','0111'], eenheid:'%', soort:'hyper', lo:0, hi:100, dec:0 },
+      { rol:'koel',   naam:'Koelwater', kort:'Koelw', keten:['0105','0167'], eenheid:'°C', soort:'hyper', lo:40, hi:130, dec:0 },
+      { rol:'gas',    naam:'Gaspedaal', kort:'Gas', keten:['0149','015A','014A','0111'], eenheid:'%', soort:'hyper', lo:0, hi:100, dec:0 },
       // Vierde ronde: power-up bij het starten, en de tanklichtbalk onderin.
-      { rol:'accu',     naam:'Accu',     keten:['0142'], eenheid:'V', soort:'hyper', lo:9, hi:16, dec:1 },
+      { rol:'accu',     naam:'Accu', kort:'Accu', keten:['0142'], eenheid:'V', soort:'hyper', lo:9, hi:16, dec:1 },
       { rol:'tank',     naam:'Tank',     keten:['012F'], eenheid:'%', soort:'hyper', lo:0, hi:100, dec:0 },
       { rol:'bereik',   naam:'Bereik',   keten:['CA09'], eenheid:'km', soort:'hyper', lo:0, hi:2000, dec:0 },
       { rol:'verbruik', naam:'Verbruik', keten:['CA03'], eenheid:'L/100', soort:'hyper', lo:0, hi:30, dec:1 }
@@ -485,8 +485,12 @@ function htmlHyper(p, ind){
     return '<div class="vhl-pod '+kant+(pid?'':' leeg')+'" id="vpf-p-'+rol+'" title="'+titel(x, pid)+'">'+
       '<canvas class="vhl-ring" data-ring="'+rol+'" aria-hidden="true"></canvas><b class="vpf-w vhl-sr" id="vpf-w-'+rol+'">—</b></div>';
   };
-  const strook=function(rol, label){
+  // Het label komt van de plek: een met de hand gekozen sensor brengt zijn
+  // eigen naam en eenheid mee (ind.vervang via voorInd). Tot 27-10-2026 stond
+  // hier een vaste tekst, en bleef "GAS %" staan boven een ontstekingshoek.
+  const strook=function(rol){
     const x=plekVan(p, rol), pid=ind.plekken[rol];
+    const label=esc(String(x.kort || kortVan(x.naam)).toUpperCase()+(x.eenheid ? ' '+x.eenheid : ''));
     return '<div class="'+(pid?'':'leeg')+'" id="vpf-p-'+rol+'" title="'+titel(x, pid)+'"><b class="vpf-w" id="vpf-w-'+rol+'">—</b><span>'+label+'</span></div>';
   };
   return '<canvas class="vhl-bg" aria-hidden="true"></canvas>'+
@@ -495,19 +499,23 @@ function htmlHyper(p, ind){
         '<div class="vhl-kop"><span class="vhl-modus">ECO</span><span class="vhl-gear"></span></div>'+
         // Het hoofdgetal: per scène wat er toe doet (PLHyperlane.held)
         '<div class="vhl-held"><div><b class="vhl-held-w">—</b><span class="vhl-held-e"></span></div><small class="vhl-held-l"></small></div>'+
-        '<div class="vhl-strook">'+strook('koel', 'KOELW °C')+strook('gas', 'GAS %')+strook('accu', 'ACCU V')+'</div></div>'+
+        '<div class="vhl-strook">'+strook('koel')+strook('gas')+strook('accu')+'</div></div>'+
       pod('snel', 'r')+'</div>'+
     '<div class="vhl-rand l"></div><div class="vhl-rand r"></div><div class="vhl-flits"></div><div class="vhl-badge"></div>'+
     '<div class="vhl-score" aria-live="polite"></div><div class="vhl-power" aria-live="polite"></div>'+
+    // De achtergrond kiezen (PLHyperlane.VORMEN); de lus zet de tekst.
+    '<button type="button" class="vhl-vorm" aria-label="Achtergrond wisselen"></button>'+
     tank();
 }
 /* De tanklichtbalk onderin: peil, bereik en verbruik op één regel. */
 function tankHtml(p, ind){
-  const vak=function(rol, voor, na){
-    const x=plekVan(p, rol), pid=ind.plekken[rol];
-    return '<span class="'+(pid?'':'leeg')+'" id="vpf-p-'+rol+'" title="'+titel(x, pid)+'">'+voor+'<b class="vpf-w" id="vpf-w-'+rol+'">—</b>'+na+'</span>';
+  const vak=function(rol, voor){
+    const x=plekVan(p, rol), pid=ind.plekken[rol], v=ind.vervang && ind.vervang[rol];
+    // Een vervangen plek zegt wat hij is: het ⛽ hoort alleen bij de tank.
+    return '<span class="'+(pid?'':'leeg')+'" id="vpf-p-'+rol+'" title="'+titel(x, pid)+'">'+(v ? esc(x.kort || kortVan(x.naam))+' ' : voor)+
+      '<b class="vpf-w" id="vpf-w-'+rol+'">—</b>'+(x.eenheid ? ' '+esc(x.eenheid) : '')+'</span>';
   };
-  return '<div class="vhl-tank geen"><div class="vhl-tank-label">'+vak('tank', '⛽ ', ' %')+vak('bereik', '', ' km')+vak('verbruik', '', ' L/100')+'</div>'+
+  return '<div class="vhl-tank geen"><div class="vhl-tank-label">'+vak('tank', '⛽ ')+vak('bereik', '')+vak('verbruik', '')+'</div>'+
     '<div class="vhl-tank-balk"><i></i></div></div>';
 }
 function html(id, ind){
@@ -547,7 +555,9 @@ function bij(id, ind, pid, val, st){
     // Telemetrie: de tekening draait of schuift met de waarde zelf, begrensd.
     if(x.soort==='schuif' || x.soort==='draai' || x.soort==='kantel' || x.soort==='gx' || x.soort==='gy'){ telBij(x, val); return; }
     // Hyperlane tekent zelf, vloeiend: hier alleen de waarde doorgeven.
-    if(x.soort==='hyper'){ if(window.PLHyperlane) PLHyperlane.zet(x.rol, val, st); return; }
+    // Hyperlane tekent zelf; een vervangen plek telt alleen als getal, niet als
+    // gas, koelwater of snelheid in de scènes (27-10-2026).
+    if(x.soort==='hyper'){ if(window.PLHyperlane) PLHyperlane.zet(x.rol, val, st, !!(ind.vervang && ind.vervang[x.rol])); return; }
     if(!f) return;
     const v=d===null ? 0 : d;
     if(x.soort==='thermo') f.style.height=v.toFixed(1)+'%';

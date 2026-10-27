@@ -17,6 +17,21 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+
+## 27-10-2026 (avond) — Hyperlane: een zelfgekozen sensor hield het oude label
+
+Gemeld vanuit de auto: gas vervangen door de ontsteking, het getal
+veranderde, "GAS %" bleef staan. `htmlHyper()` had vaste labeltekst
+('KOELW °C', 'GAS %', 'ACCU V'), de tankregel vaste eenheden en de ringen
+vaste schaal en eenheid; `ind.vervang` (naam, eenheid, schaal van de
+gekozen sensor) werd wel gezet maar nergens gelezen. De andere profielen
+lezen `x.naam`/`x.eenheid` wel. Erger dan het label: de lus rekende op de
+rol, dus de ontstekingshoek telde als gaspedaal in de kleur en de 0–100.
+
+`test-visprofiel.js` toetste de vervanging alleen in de indeling, niet in
+de tekening; `test-hyperlane.js` alleen de standaardindeling. Nu: label en
+eenheid van de plek, ringschaal van de sensor, en `zet(…, vervangen)` houdt
+de waarde uit de logica. Toets met ontsteking op de gasplek; twee mutaties.
 ## 27-10-2026 (later) — Hyperlane: het scorebord kwam nooit
 
 `ritBij()` had één klok voor alles. De bus geeft toeren en snelheid in losse

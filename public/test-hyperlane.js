@@ -154,6 +154,26 @@ waar('alarm gaat voor alles: koelwater', H.held('alarm', hx({ koel: 121, versn: 
 waar('stilstand: de klok', H.held('stil', hx({}), tk).w === '20:47');
 waar('geen verbruik: het gaspedaal; niets: een streepje', H.held('rijden', hx({ verbruik: null }), tk).l === 'GAS' && H.held('rijden', hx({ verbruik: null, gas: null }), tk).w === '—');
 
+console.log('\n4h. Achtergrond: Auto, rustige vormen, het knopje');
+waar('Auto: in stilstand en tot 10 km/h de tunnel, rijdend de gekozen vorm', H.actieveVorm('aurora', 0) === 'tunnel' && H.actieveVorm('aurora', 9) === 'tunnel' && H.actieveVorm('aurora', 50) === 'aurora' && H.actieveVorm('hartslag', 80) === 'hartslag');
+waar('onbekende snelheid telt als rijden: geen stromende tunnel op de snelweg', H.actieveVorm('sterren', null) === 'sterren');
+waar('Tunnel is altijd tunnel, Stil nooit iets', H.actieveVorm('tunnel', 120) === 'tunnel' && H.actieveVorm('stil', 0) === 'stil');
+waar('onbekende keuze: Aurora', H.actieveVorm('kapot', 80) === 'aurora');
+let vv = 'aurora', rond = [vv]; for (let i = 0; i < H.VORMEN.length; i++) { vv = H.volgendeVorm(vv); rond.push(vv); }
+waar('het knopje gaat rond: aurora → hartslag → pulsen → sterren → stil → tunnel → aurora', rond.join(',') === 'aurora,hartslag,pulsen,sterren,stil,tunnel,aurora', rond.join(','));
+waar('elke vorm heeft een tekst voor het knopje', H.VORMEN.every(v => typeof H.VORM_TEKST[v] === 'string'));
+const rs = H.ringSchaal(-20, 60);
+waar('ringschaal van een eigen sensor: vijf vakken van lo tot hi', rs.n === 5 && rs.lab(0) === -20 && rs.lab(5) === 60 && rs.dec === 0 && H.ringSchaal(0, 1.2).dec === 1);
+
+console.log('\n4i. Een zelfgekozen sensor: eigen label, en geen gas of koelwater in de logica');
+const keuzeInd = P.indeling('hyperlane', q => ['010C', '010D', '0105', '0149', '010E', '0142'].indexOf(q) >= 0, null,
+  { keuze: { 'hyperlane/gas': '010E' }, defs: [{ pid: '010E', name: 'Ontstekingstijdstip', unit: '°', min: -64, max: 63.5 }] });
+const kh = P.html('hyperlane', keuzeInd);
+waar('ontsteking op de gasplek: het label zegt ONTSTEKIN… °, niet GAS %', /ONTSTEKIN… °/.test(kh) && !/GAS %/.test(kh), (kh.match(/<span>[^<]*<\/span>/g) || []).join(' '));
+waar('de andere labels komen ook van de plek', /KOELW °C/.test(kh) && /ACCU V/.test(kh));
+const e1 = H.echt({ doel: { gas: 12, koel: 90, snel: 50 }, verv: { gas: true } });
+waar('echt(): een vervangen plek is null voor de logica, de rest blijft', e1.gas === null && e1.koel === 90 && e1.snel === 50);
+
 console.log('\n5. Het profiel');
 const ind = P.indeling('hyperlane', q => ['010C', '010D', '0105', '0149'].indexOf(q) >= 0);
 waar('toeren, snelheid, koelwater en gaspedaal uit de eigen keten', ind && ind.plekken.toeren === '010C' && ind.plekken.snel === '010D' && ind.plekken.koel === '0105' && ind.plekken.gas === '0149', JSON.stringify(ind && ind.plekken));
@@ -165,13 +185,16 @@ waar('het vak is de Hyperlane-tekening', h.indexOf('vpf-hyper') >= 0 && h.indexO
 
 console.log('\n6. bij() geeft de waarde door aan de lus');
 let gezet = [];
-C.PLHyperlane = Object.assign({}, H, { zet: (r, v, st) => gezet.push(r + '=' + v + (st === 'danger' ? '!' : '')) });
+C.PLHyperlane = Object.assign({}, H, { zet: (r, v, st, vv) => gezet.push(r + '=' + v + (st === 'danger' ? '!' : '') + (vv ? '*' : '')) });
 C.document = { getElementById: () => null };
 P.bij('hyperlane', ind, '010C', 3200, 'ok');
 P.bij('hyperlane', ind, '010D', 88, 'ok');
 waar('toeren en snelheid komen bij PLHyperlane.zet aan', gezet.join(',') === 'toeren=3200,snel=88', gezet.join(','));
 P.bij('hyperlane', ind, '0105', 121, 'danger');
 waar('het oordeel van het koelwater gaat mee (alarm)', gezet[2] === 'koel=121!', gezet.join(','));
+gezet = [];
+P.bij('hyperlane', keuzeInd, '010E', 12.5, 'ok');
+waar('een zelfgekozen sensor gaat als vervangen naar de lus (alleen tonen)', gezet.join(',') === 'gas=12.5*', gezet.join(','));
 
 console.log('\n7. Elke klasse heeft CSS');
 const klassen = [...new Set([...h.matchAll(/class="([^"]+)"/g)].flatMap(m => m[1].split(/\s+/)).filter(k => /^vhl-/.test(k)))];

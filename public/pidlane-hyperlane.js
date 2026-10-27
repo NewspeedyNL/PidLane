@@ -288,6 +288,38 @@ function held(sc, x, tekst){
   if(n(x.gas)) return { w:tekst(x.gas, 0), e:'%', l:'GAS' };
   return { w:'—', e:'', l:'' };
 }
+/* ── De achtergrond ── (27-10-2026, uit het gebruik: "het rijdende effect
+   van de tunnel vind ik top, maar het kan afleiden in het verkeer".) Het
+   knopje wisselt rond door VORMEN. Elke vorm behalve 'tunnel' en 'stil' is
+   een rustige vorm met Auto erin: in stilstand en tot AUTO_KMH de volle
+   tunnel om te laten zien, rijdend de gekozen rustige vorm. 'tunnel' is
+   altijd tunnel, 'stil' nooit iets (en spaart de accu). */
+const VORMEN = ['aurora','hartslag','pulsen','sterren','stil','tunnel'];
+const VORM_TEKST = { aurora:'Aurora', hartslag:'Hartslag', pulsen:'Pulsen', sterren:'Sterren', stil:'Stil', tunnel:'Tunnel' };
+const VORM_SLEUTEL = 'pl_hl_vorm', AUTO_KMH = 10;
+function volgendeVorm(v){ const i=VORMEN.indexOf(v); return VORMEN[(i+1)%VORMEN.length]; }
+/* Wat er nu getekend wordt. Onbekende snelheid telt als rijden: liever te
+   rustig dan een tunnel die op de snelweg gaat stromen. Puur. */
+function actieveVorm(vorm, snel){
+  if(VORMEN.indexOf(vorm)<0) vorm='aurora';
+  if(vorm==='tunnel' || vorm==='stil') return vorm;
+  const n=snel!==null && snel!==undefined && isFinite(Number(snel));
+  return (n && Number(snel)<AUTO_KMH) ? 'tunnel' : vorm;
+}
+function leesVorm(){
+  try{ const v=localStorage.getItem(VORM_SLEUTEL); return VORMEN.indexOf(v)>=0 ? v : 'aurora'; }
+  catch(e){ console.warn('PLHyperlane: vormkeuze niet te lezen, Aurora', e); return 'aurora'; }
+}
+function bewaarVorm(v){
+  try{ localStorage.setItem(VORM_SLEUTEL, v); }
+  catch(e){ console.warn('PLHyperlane: vormkeuze niet bewaard — geldt tot de app sluit', e); }
+}
+/* De schaal van een ring met een zelfgekozen sensor: vijf vakken van lo tot
+   hi, cijfers met één decimaal als het bereik klein is. Puur. */
+function ringSchaal(lo, hi){
+  const n=5, st=(hi-lo)/n, dec=Math.abs(hi-lo)<10 ? 1 : 0;
+  return { n:n, lab:function(i){ return lo+st*i; }, dec:dec };
+}
 /* De tekst in de modusregel per scène; null = de gewone modus(). */
 const SCENE_TEKST = { alarm:'KOELWATER HEET', begrenzer:'SCHAKELEN', launch:'LAUNCH', koud:'MOTOR KOUD', stil:'STIL', cruise:'CRUISE · ZEN' };
 
@@ -295,35 +327,69 @@ const SCENE_TEKST = { alarm:'KOELWATER HEET', begrenzer:'SCHAKELEN', launch:'LAU
 // Het vak zelf (canvas, ringen, strook, met de id's vpf-p-*/vpf-w-*) tekent
 // PLVisProfiel.html(), net als bij elk profiel; hier alleen wat beweegt.
 const FS='precision highp float;'+
-'uniform vec2 R;uniform float T,Z,E,W,B,K,A,F,D,GA;uniform vec3 C1,C2;uniform vec2 P;uniform vec2 GP[24];'+
+'uniform vec2 R;uniform float T,Z,E,W,B,K,A,F,D,GA,VT,VA,VH,VP,VS,HR;uniform vec3 C1,C2;uniform vec2 P;uniform vec2 GP[24];'+
 'float sd(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h);}'+
 'float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}'+
 'void main(){'+
-' vec2 p=(gl_FragCoord.xy-.5*R)/R.y; p-=P;'+
-' float r=mix(length(p),max(abs(p.x)*.55,abs(p.y)),.7)+1e-3;'+
-' float a=atan(p.y,p.x)/6.2831853;'+
-' float z=.32/r*(1.+F*1.6)+Z;'+
-' float fog=smoothstep(.02,.45,r);'+
-' float lz=abs(fract(z)-.5), la=abs(fract(a*28.)-.5);'+
-' float ring=exp(-pow(lz*(3.+55.*r),2.))*fog;'+
-' float rad=exp(-pow(la*r*70.,2.))*fog*.55;'+
-' vec2 cel=vec2(floor(a*56.),floor(z*3.+Z*2.));'+
-' float s=step(.985-E*.05-F*.08,h(cel));'+
-' float sz=fract(z*3.+Z*2.);'+
-' float streep=s*smoothstep(0.,.7,sz)*smoothstep(1.,.85,sz)*exp(-pow(abs(fract(a*56.)-.5)*r*90.,2.))*fog;'+
-' float kern=.06/(r*r*30.+.25);'+
-' vec3 c=C1*ring*(.35+E*.9)+C2*rad*(.25+E*.5)+mix(C2,vec3(1),.4)*streep*(1.2+E*2.)+C2*kern*(.5+E);'+
-' float rw=.04+W*1.1;'+                                   // golf bij opschakelen
-' c+=mix(C2,vec3(1),.5)*exp(-pow((r-rw)*22.,2.))*exp(-W*2.2)*1.6;'+
-' float sp=0.;'+                                         // G-spoor over de vloer
-' for(int i=0;i<23;i++){float a=float(i)/23.;sp+=exp(-pow(sd(p+P,GP[i],GP[i+1])*(170.-a*120.),2.))*(1.-a*.85);}'+
-' c+=mix(C2,vec3(1),.55)*sp*GA*1.3;'+
+' vec2 q=(gl_FragCoord.xy-.5*R)/R.y; vec2 p=q-P;'+
+' vec3 c=vec3(0.);'+
+' if(VT>.001){'+                                            // TUNNEL
+'  float r=mix(length(p),max(abs(p.x)*.55,abs(p.y)),.7)+1e-3;'+
+'  float a=atan(p.y,p.x)/6.2831853;'+
+'  float z=.32/r*(1.+F*1.6)+Z;'+
+'  float fog=smoothstep(.02,.45,r);'+
+'  float lz=abs(fract(z)-.5), la=abs(fract(a*28.)-.5);'+
+'  float ring=exp(-pow(lz*(3.+55.*r),2.))*fog;'+
+'  float rad=exp(-pow(la*r*70.,2.))*fog*.55;'+
+'  vec2 cel=vec2(floor(a*56.),floor(z*3.+Z*2.));'+
+'  float s=step(.985-E*.05-F*.08,h(cel));'+
+'  float sz=fract(z*3.+Z*2.);'+
+'  float streep=s*smoothstep(0.,.7,sz)*smoothstep(1.,.85,sz)*exp(-pow(abs(fract(a*56.)-.5)*r*90.,2.))*fog;'+
+'  float kern=.06/(r*r*30.+.25);'+
+'  vec3 t=C1*ring*(.35+E*.9)+C2*rad*(.25+E*.5)+mix(C2,vec3(1),.4)*streep*(1.2+E*2.)+C2*kern*(.5+E);'+
+'  t+=mix(C2,vec3(1),.5)*exp(-pow((r-(.04+W*1.1))*22.,2.))*exp(-W*2.2)*1.6;'+      // golf bij opschakelen
+'  float sp=0.;'+                                           // G-spoor over de vloer
+'  for(int i=0;i<23;i++){float b=float(i)/23.;sp+=exp(-pow(sd(q,GP[i],GP[i+1])*(170.-b*120.),2.))*(1.-b*.85);}'+
+'  t+=mix(C2,vec3(1),.55)*sp*GA*1.3;'+
+'  c+=t*VT;'+
+' }'+
+' if(VA>.001){'+                                            // AURORA: drie sluiers, ca. 10 s per golf
+'  vec3 au=vec3(0.);'+
+'  for(int k=0;k<3;k++){float fk=float(k);'+
+'   float y=.18-fk*.16+.10*sin(q.x*(1.1+fk*.4)+T*(.10+fk*.03)+fk*2.)+.05*sin(q.x*3.1-T*.07+fk);'+
+'   float band=exp(-pow((q.y-y)*(5.+fk*2.),2.))*(.55+.45*sin(q.x*2.3+T*.15+fk*1.7));'+
+'   au+=mix(C1,C2,fk*.5)*band*(.30+E*.25);}'+
+'  c+=au*VA;'+
+' }'+
+' if(VH>.001){'+                                            // HARTSLAG: één lijn die golft met toeren en gas
+'  float amp=.025+.09*E, fr=5.+9.*HR, v=1.5+5.*HR;'+
+'  float y=-.30+amp*(sin(q.x*fr+T*v)*.7+sin(q.x*fr*2.3-T*v*1.3)*.3)*smoothstep(1.,.2,abs(q.x));'+
+'  float d=abs(q.y-y);'+
+'  c+=(mix(C2,vec3(1),.5)*exp(-pow(d*110.,2.))+C1*exp(-pow(d*14.,2.))*.35+C2*exp(-pow(d*4.,2.))*.08)*VH;'+
+' }'+
+' if(VP>.001){'+                                            // PULSEN: stil, alleen een ring bij schakelen, remmen of de begrenzer
+'  float l=length(q*vec2(.8,1.));'+
+'  vec3 pu=C2*exp(-pow((l-(.05+W*.9))*26.,2.))*exp(-W*1.6)*1.4;'+
+'  pu+=C1*.05/(l*l*14.+.6);'+
+'  c+=pu*VP;'+
+' }'+
+' if(VS>.001){'+                                            // STERREN: schuiven alleen mee met G en kantelen
+'  vec3 st=vec3(0.);'+
+'  for(int k=0;k<3;k++){float fk=float(k);'+
+'   vec2 g=(q-P*(1.+fk*1.5))*(9.+fk*7.);'+
+'   vec2 id=floor(g), f=fract(g)-.5;'+
+'   float hv=h(id+fk*17.);'+
+'   if(hv>.86){vec2 o=vec2(h(id+3.1),h(id+7.7))-.5;'+
+'    float tw=.6+.4*sin(T*(.4+hv)+hv*40.);'+
+'    st+=mix(C2,vec3(1),.6)*exp(-dot(f-o*.6,f-o*.6)*(900.-fk*250.))*tw*(1.-fk*.25);}}'+
+'  c+=st*VS;'+
+' }'+
 ' float l=dot(c,vec3(.3,.5,.2));'+
 ' c=mix(c,vec3(l)*vec3(.75,.95,1.3),K*.65);'+             // koud: ijs
-' c=mix(c,vec3(1.,.12,.16)*(l*1.6+.04),B*smoothstep(.15,-.45,p.y));'+  // remmen: onderkant rood
-' c+=vec3(1.,.05,.1)*B*.35*smoothstep(-.25,-.65,p.y);'+
+' c=mix(c,vec3(1.,.12,.16)*(l*1.6+.04),B*smoothstep(.15,-.45,q.y));'+  // remmen: onderkant rood
+' c+=vec3(1.,.05,.1)*B*.35*smoothstep(-.25,-.65,q.y);'+
 ' c=mix(c,vec3(1.,.08,.12)*(.25+l*1.5),A*(.55+.45*sin(T*7.)));'+  // alarm
-' c*=1.-.35*smoothstep(.6,1.2,length(p));'+
+' c*=1.-.35*smoothstep(.6,1.2,length(q));'+
 ' gl_FragColor=vec4(c*D*min(1.,T*.6),1.);'+
 '}';
 const VS='attribute vec2 v;void main(){gl_Position=vec4(v,0,1);}';
@@ -342,7 +408,7 @@ function glOp(cv){
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,3,-1,-1,3]), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-    const U={}; ['R','T','Z','E','W','B','K','A','F','D','GA','GP','C1','C2','P'].forEach(function(n){ U[n]=gl.getUniformLocation(pr, n); });
+    const U={}; ['R','T','Z','E','W','B','K','A','F','D','GA','GP','VT','VA','VH','VP','VS','HR','C1','C2','P'].forEach(function(n){ U[n]=gl.getUniformLocation(pr, n); });
     return { gl:gl, U:U };
   }catch(e){ console.warn('PLHyperlane: shader niet te bouwen, achtergrond blijft CSS', e); return null; }
 }
@@ -393,11 +459,18 @@ let _rit = null;            // de rit: overleeft een herbouw van het vak
 
 function opties(){
   // De schaal van de plekken uit het profiel (diesel: 6000 rpm, #393).
-  const o={ toerenHi:8000, snelHi:240 };
+  // Een ring met een zelfgekozen sensor (ind.vervang) krijgt diens naam,
+  // eenheid en schaal; de toeren- en snelheidslogica laten hem dan met rust.
+  const o={ toerenHi:8000, snelHi:240, ring:{} };
   try{
     const P=window.PLVisProfiel, V=window.PLVisueel, ind=V && V.staat && V.staat().ind;
-    const p=P && ind && ind.profiel ? P.voorInd('hyperlane', ind.profiel) : null;
-    (p && p.plekken || []).forEach(function(x){ if(x.rol==='toeren') o.toerenHi=x.hi; if(x.rol==='snel') o.snelHi=x.hi; });
+    const pi=ind && ind.profiel, p=P && pi ? P.voorInd('hyperlane', pi) : null;
+    (p && p.plekken || []).forEach(function(x){
+      const v=!!(pi.vervang && pi.vervang[x.rol]);
+      if(x.rol==='toeren' && !v) o.toerenHi=x.hi;
+      if(x.rol==='snel' && !v) o.snelHi=x.hi;
+      if(v && (x.rol==='toeren' || x.rol==='snel')) o.ring[x.rol]={ lo:x.lo, hi:x.hi, dec:x.dec||0, eenh:String((x.kort||x.naam||'')+(x.eenheid ? ' '+x.eenheid : '')).toUpperCase() };
+    });
   }catch(e){ console.warn('PLHyperlane: schaal niet te lezen, standaard', e); }
   return o;
 }
@@ -415,9 +488,16 @@ function start(wortel){
        // scènes: de gewichten lopen vloeiend naar hun doel, zodat geen scène aanspringt
        sc:'', g:{ B:0, K:0, A:0, F:0, Z:0, D:1 }, golf:99, vs:null, stilS:0, cruiseS:0, lat:0,
        ritPiek:0, topGemeld:0, klokT:0,
-       accu:null, power:null, gHist:[], gT:0, ga:0, thema:merkNu(), tankT:'' };
+       accu:null, power:null, gHist:[], gT:0, ga:0, thema:merkNu(), tankT:'',
+       verv:{}, vorm:leesVorm(), vw:{ tunnel:1, aurora:0, hartslag:0, pulsen:0, sterren:0 }, vormT:'', scWas:'' };
   wortel.classList.toggle('vhl-gl', !!_s.gl);
   wortel.querySelectorAll('.vhl-ring').forEach(function(c){ _s.ringen[c.getAttribute('data-ring')]=c; });
+  const kn=wortel.querySelector('.vhl-vorm');
+  if(kn) kn.addEventListener('click', function(e){
+    e.stopPropagation();   // niet ook een plek kiezen
+    if(!_s) return;
+    _s.vorm=volgendeVorm(_s.vorm); bewaarVorm(_s.vorm);
+  });
   window.addEventListener('deviceorientation', kantel);
   _s.raf=requestAnimationFrame(frame);
 }
@@ -433,17 +513,23 @@ function wek(g){
   if(w && (!_s || _s.wortel!==w)) start(w);
 }
 /* Eén meetwaarde, al begrensd en via PLToon. */
-function zet(rol, v, st){
+/* `vervangen` = de bestuurder koos zelf een andere sensor voor deze plek.
+   Dan is de waarde alleen een getal om te tonen: geen gas in de kleur, geen
+   koelwater in de scènes, geen snelheid in de rit (27-10-2026). */
+function zet(rol, v, st, vervangen){
   const n=Number(v);
   if(!_s || !_s.wortel.isConnected) wek();
   if(!_s) return;
   _s.doel[rol]=(v===null || v===undefined || v==='' || !isFinite(n)) ? null : n;
-  if(rol==='koel') _s.koelSt=st||null;
-  if(rol==='snel') _s.vs=versnelling(_s.vs, _s.doel.snel, performance.now()/1000);
+  _s.verv[rol]=!!vervangen;
+  if(rol==='koel') _s.koelSt=vervangen ? null : (st||null);
+  if(vervangen) return;
+  const e=echt(_s);
+  if(rol==='snel') _s.vs=versnelling(_s.vs, e.snel, performance.now()/1000);
   const nu=performance.now()/1000;
-  if(rol==='snel' || rol==='toeren') _rit=ritBij(_rit, rol==='snel' ? _s.doel.snel : null, rol==='toeren' ? _s.doel.toeren : null, nu, _s.doel.verbruik);
+  if(rol==='snel' || rol==='toeren') _rit=ritBij(_rit, rol==='snel' ? e.snel : null, rol==='toeren' ? e.toeren : null, nu, e.verbruik);
   if(rol==='accu' || rol==='toeren'){
-    const a=accuStart(_s.accu, rol==='accu' ? _s.doel.accu : null, rol==='toeren' ? _s.doel.toeren : null, nu);
+    const a=accuStart(_s.accu, rol==='accu' ? e.accu : null, rol==='toeren' ? e.toeren : null, nu);
     _s.accu=a.st;
     if(a.start) _s.power={ t:0, rust:a.start.rust, dip:a.start.dip };
   }
@@ -455,6 +541,9 @@ function merkNu(){
   catch(e){ console.warn('PLHyperlane: merk onleesbaar, standaardkleuren', e); }
   return merkThema(m);
 }
+/* De waarden die als hun eigen grootheid tellen: een vervangen plek is null. */
+const ROLLEN = ['toeren','snel','koel','gas','accu','tank','bereik','verbruik'];
+function echt(s){ const e={}; ROLLEN.forEach(function(r){ e[r]=s.verv[r] ? null : (s.doel[r]==null ? null : s.doel[r]); }); return e; }
 /* De klok voor stilstand en nacht; los, zodat een proef hem kan zetten. */
 function klok(){ return new Date(); }
 function zijG(){
@@ -535,44 +624,56 @@ function frame(nu){
   s.raf=requestAnimationFrame(frame);
   const dt=Math.min(.05, (nu-s.last)/1000), T=(nu-s.t0)/1000; s.last=nu;
   maatBij();
-  const o=s.opt, rood=o.toerenHi*.85, d=s.doel, w=s.wortel;
+  const o=s.opt, rood=o.toerenHi*.85, d=s.doel, w=s.wortel, e=echt(s);
   ['toeren','snel'].forEach(function(r){ if(d[r]!=null) s.toon[r]=volg(s.toon[r], d[r], dt, 10); });
   const zwaai=T<OPSTART_S ? Math.sin(T/OPSTART_S*Math.PI) : 0, live=T>=OPSTART_S;
-  const rf=live ? klem(s.toon.toeren/o.toerenHi, 0, 1) : zwaai, sf=live ? klem(s.toon.snel/o.snelHi, 0, 1) : zwaai;
-  s.stem=volg(s.stem, live ? stemming(d.toeren, rood, d.gas) : zwaai*.9, dt, 2.2);
+  const deel=function(r, hi){ const x=o.ring[r]; return x ? klem((s.toon[r]-x.lo)/(x.hi-x.lo), 0, 1) : klem(s.toon[r]/hi, 0, 1); };
+  const rf=live ? deel('toeren', o.toerenHi) : zwaai, sf=live ? deel('snel', o.snelHi) : zwaai;
+  s.stem=volg(s.stem, live ? stemming(e.toeren, rood, e.gas) : zwaai*.9, dt, 2.2);
   // De scène en zijn gewichten
   const vs=s.vs ? s.vs.a : 0;
-  s.stilS=(d.snel!=null && d.snel<1) ? s.stilS+dt : 0;
-  s.cruiseS=(d.snel!=null && d.snel>=CRUISE_KMH && Math.abs(vs)<1.5) ? s.cruiseS+dt : 0;
-  const sc=live ? scene({ koel:d.koel, koelSt:s.koelSt, toeren:d.toeren, rood:rood, snel:d.snel, versn:vs,
+  s.stilS=(e.snel!=null && e.snel<1) ? s.stilS+dt : 0;
+  s.cruiseS=(e.snel!=null && e.snel>=CRUISE_KMH && Math.abs(vs)<1.5) ? s.cruiseS+dt : 0;
+  const sc=live ? scene({ koel:e.koel, koelSt:s.koelSt, toeren:e.toeren, rood:rood, snel:e.snel, versn:vs,
                           stilS:s.stilS, launch:s.nul.start!==null, cruiseS:s.cruiseS }) : 'rijden';
-  if(sc!==s.sc){ s.sc=sc; w.setAttribute('data-scene', sc); }
+  if(sc!==s.sc){
+    // Pulsen (en de tunnel) krijgen een ring bij het begin van remmen of de begrenzer
+    if(sc==='remmen' || sc==='begrenzer') s.golf=0;
+    s.sc=sc; w.setAttribute('data-scene', sc);
+  }
+  // De achtergrond: wat er nu getekend wordt, vloeiend overgevloeid
+  const av=actieveVorm(s.vorm, e.snel), VW=s.vw;
+  ['tunnel','aurora','hartslag','pulsen','sterren'].forEach(function(k){ VW[k]=volg(VW[k], av===k ? 1 : 0, dt, 1.6); });
+  const kn=w.querySelector('.vhl-vorm'), kt=VORM_TEKST[s.vorm]+(av==='tunnel' && s.vorm!=='tunnel' ? ' · auto' : '');
+  if(kn && s.vormT!==kt){ s.vormT=kt; kn.textContent=kt; }
+  w.classList.toggle('vhl-zonder', av==='stil');
   const G=s.g, nu8=PLHyperlane._klok();
   G.B=volg(G.B, sc==='remmen'?1:0, dt, 5); G.K=volg(G.K, sc==='koud'?1:0, dt, 1.5); G.A=volg(G.A, sc==='alarm'?1:0, dt, 3);
   G.F=volg(G.F, sc==='launch'?1:0, dt, 2); G.Z=volg(G.Z, sc==='cruise'?1:0, dt, .8);
-  G.D=volg(G.D, (nacht(nu8.getHours()) ? .62 : 1)*(sc==='stil' ? .78+.22*Math.sin(T*1.4) : 1), dt, 3);
+  // Ademen in stilstand alleen in de tunnel: de rustige vormen bewegen al zacht
+  G.D=volg(G.D, (nacht(nu8.getHours()) ? .62 : 1)*(sc==='stil' ? 1-VW.tunnel*.22*(1-Math.sin(T*1.4)) : 1), dt, 3);
   s.golf+=dt;
   s.lat=volg(s.lat, zijG(), dt, 3);
   // G-spoor: tien punten per seconde, zichtbaar zolang er echt gestuurd wordt
   if((s.gT-=dt)<=0){ s.gT=.1; s.gHist.unshift(s.lat); if(s.gHist.length>GS_N) s.gHist.length=GS_N; }
   s.ga=volg(s.ga, s.gHist.some(function(g){ return Math.abs(g)>.12; }) ? 1 : 0, dt, 2);
-  w.style.setProperty('--vhl-warm', warmte(d.koel).toFixed(3));
+  w.style.setProperty('--vhl-warm', warmte(e.koel).toFixed(3));
   const pal=s.thema ? s.thema.stops : STOPS;
   let c=kleur(s.stem*(1-.45*G.Z), pal), c2=kleur(Math.min(1, s.stem*(1-.45*G.Z)+.18), pal);
   const meng=function(a, b, t){ return a.map(function(v,k){ return v+(b[k]-v)*t; }); };
   c=meng(meng(meng(c, [150,215,255], G.K*.8), [255,40,60], Math.max(G.A, G.B*.6)), [40,255,190], G.Z*.35);
   c2=meng(meng(c2, [190,235,255], G.K*.8), [255,70,90], Math.max(G.A, G.B*.6));
   w.style.setProperty('--vhl-c', css(c)); w.style.setProperty('--vhl-c2', css(c2)); w.style.setProperty('--vhl-e', s.stem.toFixed(3));
-  s.Z+=dt*(.15+(d.snel!=null ? s.toon.snel : 0)/55)*(1-.6*G.A)*(1-.35*G.Z);
+  s.Z+=dt*(.15+(e.snel!=null ? e.snel : 0)/55)*(1-.6*G.A)*(1-.35*G.Z);
   s.piek.toeren=Math.max(rf, s.piek.toeren-dt*.04); s.piek.snel=Math.max(sf, s.piek.snel-dt*.04);
   // 0–100
-  const n=nul100(s.nul, d.snel, d.gas, T); s.nul=n.st;
+  const n=nul100(s.nul, e.snel, e.gas, T); s.nul=n.st;
   const badge=w.querySelector('.vhl-badge');
   if(n.tijd!==null) _rit=ritNul100(_rit, n.tijd);
   if(n.tijd!==null && badge){ badge.textContent='0–100  '+tekstVan(n.tijd, 1)+' s'; badge.classList.add('aan'); s.badgeT=6; }
   else if(s.nul.start!==null && badge && T-s.nul.start>.3){ badge.textContent='0–100  '+tekstVan(T-s.nul.start, 1)+' s'; badge.classList.add('aan'); s.badgeT=.4; }
   // Rit-topsnelheid: gemeld zodra je na een nieuwe piek boven 100 weer inhoudt
-  if(d.snel!=null) s.ritPiek=Math.max(s.ritPiek, d.snel);
+  if(e.snel!=null) s.ritPiek=Math.max(s.ritPiek, e.snel);
   if(badge && s.badgeT<=0 && vs<-2 && s.ritPiek>=100 && s.ritPiek>=s.topGemeld+5){
     s.topGemeld=s.ritPiek; badge.textContent='TOP  '+tekstVan(s.ritPiek, 0)+' km/h'; badge.classList.add('aan'); s.badgeT=5;
   }
@@ -580,8 +681,10 @@ function frame(nu){
   // Kantelen met de telefoon
   s.tilt[0]=volg(s.tilt[0], s.tiltDoel[0], dt, 4); s.tilt[1]=volg(s.tilt[1], s.tiltDoel[1], dt, 4);
   w.style.setProperty('--vhl-tx', (s.tilt[0]*5).toFixed(2)+'deg'); w.style.setProperty('--vhl-ty', (s.tilt[1]*7+s.lat*9).toFixed(2)+'deg');
-  if(s.gl){
+  if(s.gl && av!=='stil'){
     const gl=s.gl.gl, U=s.gl.U;
+    gl.uniform1f(U.VT, VW.tunnel); gl.uniform1f(U.VA, VW.aurora); gl.uniform1f(U.VH, VW.hartslag); gl.uniform1f(U.VP, VW.pulsen); gl.uniform1f(U.VS, VW.sterren);
+    gl.uniform1f(U.HR, e.toeren==null ? 0 : klem(e.toeren/o.toerenHi, 0, 1));
     gl.uniform2f(U.R, s.bg.width, s.bg.height); gl.uniform1f(U.T, T); gl.uniform1f(U.Z, s.Z); gl.uniform1f(U.E, s.stem);
     gl.uniform3f(U.C1, c[0]/255, c[1]/255, c[2]/255); gl.uniform3f(U.C2, c2[0]/255, c2[1]/255, c2[2]/255);
     gl.uniform2f(U.P, s.tilt[1]*.04-s.lat*.14, -s.tilt[0]*.03);
@@ -590,18 +693,25 @@ function frame(nu){
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
   const nT=Math.round(o.toerenHi/1000), nS=Math.round(o.snelHi/20);
-  if(s.ringen.toeren) ring(s.ringen.toeren, { v:rf, n:nT, rood:rood/(nT*1000), piek:s.piek.toeren, col:c, lab:function(i){ return i; },
+  // Een ring met een zelfgekozen sensor: diens schaal, cijfers en eenheid
+  const eigen=function(r, v, piek){
+    const x=o.ring[r], sch=ringSchaal(x.lo, x.hi);
+    return { v:v, n:sch.n, piek:piek, col:c, lab:function(i){ return tekstVan(sch.lab(i), sch.dec); },
+      txt:live ? (d[r]==null ? '—' : tekstVan(s.toon[r], x.dec)) : '', eenh:x.eenh };
+  };
+  if(s.ringen.toeren) ring(s.ringen.toeren, o.ring.toeren ? eigen('toeren', rf, s.piek.toeren) : { v:rf, n:nT, rood:rood/(nT*1000), piek:s.piek.toeren, col:c, lab:function(i){ return i; },
     txt:live ? (d.toeren==null ? '—' : tekstVan(s.toon.toeren/1000, 1)) : '', eenh:'× 1000 TPM' });
-  if(s.ringen.snel) ring(s.ringen.snel, { v:sf, n:nS, piek:s.piek.snel, col:c, lab:function(i){ return i*20; },
+  if(s.ringen.snel) ring(s.ringen.snel, o.ring.snel ? eigen('snel', sf, s.piek.snel) : { v:sf, n:nS, piek:s.piek.snel, col:c, lab:function(i){ return i*20; },
     txt:live ? (d.snel==null ? '—' : tekstVan(s.toon.snel, 0)) : '', eenh:'KM/H' });
   // Schakellampjes, met een flits over de rand op de begrenzer
-  const l=leds(d.toeren, rood, 10), knip=l.max && (T*12|0)%2===0;
+  // De flits over de rand alleen in de tunnel: in een rustige vorm knipperen alleen de lampjes
+  const l=leds(e.toeren, rood, 10), knip=l.max && (T*12|0)%2===0, flits=knip && av==='tunnel';
   w.querySelectorAll('.vhl-leds i').forEach(function(e, i){ e.className=l.max ? (knip ? 'max' : '') : (i<l.aan ? (i<4 ? 'g' : i<7 ? 'a' : 'r') : ''); });
-  w.classList.toggle('vhl-knip', knip);
+  w.classList.toggle('vhl-knip', flits);
   scoreBij(w, sc, dt, nu8);
-  tankBij(w, d);
-  powerBij(w, dt, d);
-  const m=sc==='alarm' && d.koel!=null ? 'KOELWATER '+tekstVan(d.koel, 0)+'°' : (SCENE_TEKST[sc] || modus(s.stem)), me=w.querySelector('.vhl-modus');
+  tankBij(w, e);
+  powerBij(w, dt, e);
+  const m=sc==='alarm' && e.koel!=null ? 'KOELWATER '+tekstVan(e.koel, 0)+'°' : (SCENE_TEKST[sc] || modus(s.stem)), me=w.querySelector('.vhl-modus');
   if(me && me.textContent!==m) me.textContent=m;
   if((s.gearT-=dt)<=0){
     s.gearT=.15;
@@ -613,7 +723,7 @@ function frame(nu){
     const mk=w.querySelector('.vhl-merk'), mt=s.thema ? s.thema.naam : '';
     if(mk && mk.textContent!==mt) mk.textContent=mt;
     // Het hoofdgetal (zes keer per seconde: rustig genoeg om te lezen)
-    const h=held(sc, { koel:d.koel, verbruik:d.verbruik, gas:d.gas, versn:s.vs ? s.vs.a : null,
+    const h=held(sc, { koel:e.koel, verbruik:e.verbruik, gas:e.gas, versn:s.vs ? s.vs.a : null,
                        launchS:s.nul.start!==null ? T-s.nul.start : null,
                        klok:('0'+nu8.getHours()).slice(-2)+':'+('0'+nu8.getMinutes()).slice(-2) }, tekstVan);
     const hw=w.querySelector('.vhl-held-w'), he=w.querySelector('.vhl-held-e'), hl=w.querySelector('.vhl-held-l');
@@ -627,6 +737,7 @@ window.PLHyperlane = {
   STOPS:STOPS, OPSTART_S:OPSTART_S,
   kleur:kleur, stemming:stemming, modus:modus, leds:leds, nul100:nul100, volg:volg,
   held:held, ACC_KMHS:ACC_KMHS,
+  VORMEN:VORMEN, VORM_TEKST:VORM_TEKST, VORM_SLEUTEL:VORM_SLEUTEL, AUTO_KMH:AUTO_KMH, volgendeVorm:volgendeVorm, actieveVorm:actieveVorm, leesVorm:leesVorm, ringSchaal:ringSchaal, echt:echt,
   versnelling:versnelling, warmte:warmte, nacht:nacht, scene:scene, SCENE_TEKST:SCENE_TEKST,
   MERKEN:MERKEN, merkThema:merkThema, accuStart:accuStart, START_RPM:START_RPM, POWER_S:POWER_S, gSpoor:gSpoor, GS_N:GS_N, tankStand:tankStand,
   ritBij:ritBij, ritNul100:ritNul100, scorebord:scorebord, duur:duur, telOp:telOp, SCORE_KM:SCORE_KM, RIT_PAUZE_S:RIT_PAUZE_S,
