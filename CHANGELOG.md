@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-10-2026 — Hyperlane: modustekst past naast het versnellingslabel
+ ═══════════════════════════════════════════════════════════
+
+ - "MOTOR KOUD" en "KOELWATER HEET" werden liggend afgekapt sinds het
+   versnellingslabel ernaast staat; de maat volgt nu ook de breedte.
+
+ ═══════════════════════════════════════════════════════════
  27-10-2026 — Hyperlane: eigen sensor met eigen naam, rustige achtergronden
  ═══════════════════════════════════════════════════════════
 

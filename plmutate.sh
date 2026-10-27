@@ -1157,6 +1157,7 @@ MUTATIES=(
 "public/pidlane-hyperlane.js@@e[r]=s.verv[r] ? null : @@e[r]=@@test-hyperlane.js@@een vervangen plek telt toch mee in kleur, scènes en rit"
 "public/pidlane-hyperlane.js@@  return (n && Number(snel)<AUTO_KMH) ? 'tunnel' : vorm;@@  return (!n || Number(snel)<AUTO_KMH) ? 'tunnel' : vorm;@@test-hyperlane.js@@zonder snelheidsmeting stroomt de volle tunnel tijdens het rijden"
 "public/pidlane-hyperlane.js@@  return (n && Number(snel)<AUTO_KMH) ? 'tunnel' : vorm;@@  return 'tunnel';@@test-hyperlane.js@@Auto houdt de tunnel ook op de snelweg: de rustige vorm komt nooit"
+"public/pidlane.css@@.vhl-kop .vhl-modus { font-size:min(3.4cqh, 1.05cqw);@@.vhl-kop .vhl-modus { font-size:3.4cqh;@@bproef-hyperlane.js@@MOTOR KOUD en KOELWATER HEET worden afgekapt naast het versnellingslabel"
 "public/pidlane-hyperlane.js@@  if(!s.wortel.isConnected || !s.wortel.getClientRects().length){ stop(); return; }@@@@bproef-hyperlane.js@@de tekenlus draait door in een weggegooid of verborgen vak en kost accu"
 "public/pidlane-visthema.js@@  if(!vis) return;\n  const o=vis.querySelector('.vt-strook');@@  if(!vis || !vol()) return;\n  const o=vis.querySelector('.vt-strook');@@bproef-visthema.js@@in de gewone weergave opent 🎨 weer niets"
 "public/pidlane-visueel.js@@    themaBij(g);\n    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@bproef-visthema.js@@een herbouw van een profiel gooit de knop volledig scherm weg"
