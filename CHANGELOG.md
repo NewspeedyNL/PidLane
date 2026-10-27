@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-10-2026 — Hyperlane, vierde ronde: scorebord, tank, power-up, G-spoor, merk
+ ═══════════════════════════════════════════════════════════
+
+ - Scorebord bij stilstand (na 0,3 km): top, beste 0–100, max toeren,
+   gemiddeld, verbruik, afstand en rijtijd, met tellende cijfers.
+ - Tank als lichtbalk onderin die leegloopt, met bereik (CA09) en verbruik
+   (CA03); amber onder 25%, rood en pulserend onder 10%.
+ - Power-up bij het starten: rustspanning → dip → laden (0142), met een
+   laadbalk en een lichtgolf. Niet bij openen met een draaiende motor.
+ - G-spoor: de zij-G van de laatste 2,4 s als lichtspoor over de tunnelvloer.
+ - Merkthema's: veertien merken met een eigen palet en het woordmerk in het
+   midden als de versnelling onbekend is. Geen logo's.
+
+ ═══════════════════════════════════════════════════════════
  27-10-2026 — Hyperlane, tweede ronde: scènes en showreel
  ═══════════════════════════════════════════════════════════
 
