@@ -14,7 +14,7 @@
 //     Play-reviewer tabs die nergens heen gaan.
 //   • Deel 5: "Alle functies" is weg zodra de garagemodus uitgaat.
 //   • Deel 6: een tegel die in beheer aan staat, staat er ook echt.
-//   • Deel 8: de automatische check draait één keer, niet bij elke verbinding.
+//   • Deel 9: de automatische check draait één keer per auto per dag.
 //
 // Draaien vanuit public/:  node bproef-navigatie.js
 // ══════════════════════════════════════════════════════════════════
@@ -183,13 +183,16 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     console.log('\n9. De automatische check na verbinden');
     toets('in de demo niet  <- daar kiest de reviewer zelf', (await app.ev(`PLNav.naVerbinding()`)) === false);
     await app.ev(`demoMode = false; 'ok'`);
-    // Sinds 02-10-2026 standaard uit, en na één keer vanzelf weer uit.
+    // Sinds 02-10-2026 standaard uit; sinds 27-10-2026 één keer per auto per dag.
+    await app.ev(`localStorage.removeItem('pl_check_dag'); vehicleInfo.vin = 'JMZKF6W1A00123456'; 'ok'`);
     toets('standaard uit: een gewone verbinding niet', (await app.ev(`PLNav.naVerbinding()`)) === false);
     await app.ev(`PLNav.wisselAutoCheck(); 'ok'`);
     toets('aangezet: bij hervatten niet', (await app.ev(`PLNav.naVerbinding({hervat:true})`)) === false);
     toets('aangezet: een gewone verbinding wel', (await app.ev(`PLNav.naVerbinding()`)) === true);
-    toets('daarna staat de schakelaar weer uit', (await app.ev(`PLNav.autoCheck()`)) === false);
-    toets('en daarna in dezelfde sessie niet nog eens  <- tegenproef', (await app.ev(`PLNav.naVerbinding()`)) === false);
+    toets('daarna blijft de schakelaar aan', (await app.ev(`PLNav.autoCheck()`)) === true);
+    toets('dezelfde auto, dezelfde dag: niet nog eens  <- tegenproef', (await app.ev(`PLNav.naVerbinding({opstart:true})`)) === false);
+    toets('een andere auto dezelfde dag: wel', (await app.ev(`vehicleInfo.vin = 'WVWZZZ1KZ6W000001'; PLNav.naVerbinding()`)) === true);
+    toets('morgen dezelfde auto weer', (await app.ev(`(function(){ var k=JSON.parse(localStorage.getItem('pl_check_dag')); k['WVWZZZ1KZ6W000001']='2000-01-01'; localStorage.setItem('pl_check_dag', JSON.stringify(k)); return PLNav.naVerbinding(); })()`)) === true);
     toets('het Check-venster opent vanzelf', await wacht(toon('plFcOv'), 3000));
     await app.ev(`PLFoutcodes.sluit(); demoMode = true; 'ok'`);
 

@@ -124,9 +124,10 @@
   }
 
   function garage() { return garageAan(lees(OPSLAG.garage), garageStandaard(ingelogd(), isKlant())); }
-  /* Check na verbinden staat standaard UIT en gaat na één keer vanzelf weer
-     uit (02-10-2026): wie hem aanzet vraagt om de volgende verbinding, niet om
-     elke verbinding voortaan. */
+  /* Check na verbinden staat standaard UIT (02-10-2026). Aan betekent sinds
+     27-10-2026: één keer per auto per dag (PLOpstart.checkVandaag). Tot dan
+     ging hij na één keer vanzelf weer uit; voor "instappen, starten, de rest
+     gaat vanzelf" moet hij morgen weer komen. */
   function autoCheck() { return lees(OPSLAG.autocheck) === '1'; }
 
   function logGebruik(wat, detail) {
@@ -217,18 +218,24 @@
      samenvatting direct, met samenvatting pas als de klant hem wegtikt — twee
      vensters over elkaar is precies de drukte die hier weg moet. Niet bij
      hervatten (de klant zat midden in iets anders), niet op afstand, niet in
-     de demo (daar kiest de reviewer zelf) en niet als het is uitgezet. */
-  var _gecheckt = false;
+     de demo (daar kiest de reviewer zelf) en niet als het is uitgezet.
+     Eén keer per auto per dag (27-10-2026); opties.opstart = de app opende
+     vanzelf of na lang geen motor, en gaat dan ook in de garagemodus door
+     naar Live. */
+  function checkVandaag() {
+    try { return !!(window.PLOpstart && PLOpstart.checkVandaag()); }
+    catch (e) { console.warn('PLNav: dagcheck niet te lezen — als niet gedaan', e); return false; }
+  }
   function naVerbinding(opties) {
     opties = opties || {};
     if (!opties.hervat) kopToon();   // nieuwe verbinding: de kop komt terug
-    if (opties.hervat || _gecheckt || !autoCheck() || isDemo()) return false;
+    if (opties.hervat || !autoCheck() || isDemo() || checkVandaag()) return false;
     if (window._remoteVehicleMode) return false;   // meekijken: deze telefoon hangt niet aan de auto
-    _gecheckt = true;       // één keer per sessie; opnieuw verbinden is geen nieuwe vraag
-    schrijf(OPSLAG.autocheck, '0');   // eenmalig: na deze keer staat hij weer uit
+    try { if (window.PLOpstart) PLOpstart.checkGedaan(); }
+    catch (e) { console.warn('PLNav: dagcheck niet bewaard — morgen kan hij dubbel komen', e); }
     ververs();
-    logGebruik('check', 'na_verbinden');
-    setTimeout(function () { try { PLFoutcodes.open({ auto: true }); } catch (e) { console.warn('PLNav: automatische check opent niet', e); } }, 350);
+    logGebruik('check', opties.opstart ? 'opstart' : 'na_verbinden');
+    setTimeout(function () { try { PLFoutcodes.open({ auto: true, opstart: !!opties.opstart }); } catch (e) { console.warn('PLNav: automatische check opent niet', e); } }, 350);
     return true;
   }
 
@@ -243,9 +250,10 @@
   }
   function zetAutoCheck(aan) {
     schrijf(OPSLAG.autocheck, aan ? '1' : '0');
-    if (aan) _gecheckt = false;       // opnieuw aangezet = opnieuw één keer
+    // Opnieuw aangezet = vandaag opnieuw; anders zou hij pas morgen komen.
+    if (aan) { try { if (window.PLOpstart) PLOpstart.checkVergeten(); } catch (e) { console.warn('PLNav: dagcheck niet gewist', e); } }
     ververs();
-    if (typeof showToast === 'function') showToast(aan ? 'Check na verbinden aan — één keer, bij de volgende verbinding' : 'Check na verbinden uit');
+    if (typeof showToast === 'function') showToast(aan ? 'Check na verbinden aan — één keer per auto per dag' : 'Check na verbinden uit');
   }
   function verversSchakelaars() {
     var g = el('kbGarageModus'); if (g) g.setAttribute('aria-checked', garage() ? 'true' : 'false');

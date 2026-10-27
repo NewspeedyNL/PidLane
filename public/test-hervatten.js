@@ -102,6 +102,17 @@ const wacht = () => new Promise((r) => setImmediate(r));
     toets('zonder eerder kenteken valt er niets te hervatten: hij wacht', s.scans === 0 && s.rdw.length === 0);
   }
 
+  console.log('\n1b. Een opstart (PLOpstart, 27-10-2026): geen vraag én geen vorig kenteken');
+  {
+    const { s, els } = laad({ hervat: 'opstart', kenteken: 'R054XD' });
+    s.toonKentekenStap();
+    await wacht(); await wacht();
+    toets('het vorige kenteken wordt niet opgezocht — dit kan een andere auto zijn', s.rdw.length === 0, JSON.stringify(s.rdw));
+    toets('en ook niet in het veld gezet', els.kentWizInput.value === '', els.kentWizInput.value);
+    toets('de flow gaat zonder vraag door naar het protocol', s.scans === 1, 'scans: ' + s.scans);
+    toets('dat staat in de BT-log', s.diag.some((m) => /Opstart: kentekenstap overgeslagen/.test(m)), s.diag.join(' | '));
+  }
+
   console.log('\n2. Het herkende protocol, zonder te vragen');
   const NET = [{ auto: true, name: 'AUTO, ISO 15765-4 (CAN 11/500)', desc: '', icon: '' },
                { handmatig: true, name: 'ISO 9141-2', desc: '', icon: '' }];

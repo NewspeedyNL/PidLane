@@ -2848,6 +2848,28 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Opstart: instappen, starten, de rest gaat vanzelf (27-10-2026) ──
+  {
+    issue: 'opstart',
+    naam: 'Na een kwartier zonder motor is een automatische verbinding een opstart: check één keer per auto per dag, kenteken uit de VIN, wekker',
+    waarom: 'Gevraagd op 27-10: de klant stapt in, start, en de rest gaat vanzelf. Een automatische verbinding gold tot dan altijd als hervatting — geen check — en nam het kenteken van de vorige auto.',
+    proef: async function () {
+      var O = window.PLOpstart;
+      if (!O || !O._kern || typeof O.reden !== 'function') return { staat: 'FOUT', detail: 'PLOpstart ontbreekt — oude pidlane-opstart.js (herladen?)' };
+      if (typeof _isOpstart !== 'function') return { staat: 'FOUT', detail: '_isOpstart ontbreekt — oude pidlane-bt.js (herladen?)' };
+      var K = O._kern, nu = Date.now();
+      if (K.reden('herlaad', nu, nu - 20 * 60000) !== 'opstart' || K.reden('herlaad', nu, nu - 60000) !== 'herlaad') return { staat: 'FOUT', detail: 'reden() onderscheidt opstart en herlaad niet' };
+      var laatst = null; try { laatst = localStorage.getItem('pl_laatst_actief'); } catch (e) { console.warn(e); }
+      var nuReden = O.reden('herlaad');
+      var wek = { beschikbaar: false };
+      try { var p = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.PLWekker; if (p) wek = await p.status(); } catch (e) { wek = { beschikbaar: false, fout: String(e && e.message || e) }; }
+      var wt = K.wekkerTekst(wek);
+      var regel = 'een herverbinding nu = ' + nuReden + ' (motor liep ' + (laatst ? Math.round((nu - Number(laatst)) / 60000) + ' min geleden' : 'nog nooit') + '); check vandaag ' + (O.checkVandaag() ? 'al gedaan' : 'nog niet') + '; wekker: ' + wt.regel;
+      if (!wek.beschikbaar) return { staat: 'LET OP', detail: regel + ' (geen native wekker in deze schil)' };
+      return { staat: 'OK', detail: regel };
+    }
+  },
+
   // ── Garagemodus bij bulk/waak, leeg midden, kop startscherm 10 s (27-10-2026) ──
   {
     issue: 'garage-bulk-kop',

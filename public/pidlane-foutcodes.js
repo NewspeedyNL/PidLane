@@ -622,7 +622,10 @@
     }
     stopDoor(true);
     _st.doorDoel = opties.auto ? 'live' : 'thuis';
-    _st.doorGewild = !isGarage();
+    // Een opstart (PLOpstart, 27-10-2026) gaat ook in de garagemodus door:
+    // bulk en waak zetten die aan, en dan kwam een klant nooit meer vanzelf
+    // op Live.
+    _st.doorGewild = !isGarage() || !!opties.opstart;
     ov.style.display = 'flex';
     _st.fase = 'lijst';
     teken();

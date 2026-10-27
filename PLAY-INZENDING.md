@@ -653,6 +653,19 @@ kiest. Twee gevolgen voor de permissielijst:
   `tools:node="remove"` weer uit. Play staat hem alleen toe voor wekker- en
   agenda-apps; de bundelcontrole faalt als hij er toch in zit.
 
+**Sinds 27-10-2026 ook: de app opent als de auto start.** Via
+`CompanionDeviceManager` (native `PLWekkerPlugin` + `PLWekkerDienst`), alleen
+als de gebruiker zelf een apparaat kiest in Androids eigen keuzelijst.
+
+- `REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE` (normal permission, geen
+  verklaring): Android meldt de dienst wanneer het gekoppelde apparaat
+  verschijnt. De dienst zelf vraagt `BIND_COMPANION_DEVICE_SERVICE`, zodat
+  alleen het systeem hem bindt.
+- `uses-feature android.software.companion_device_setup` met
+  `required=false`: zonder die functie installeert de app gewoon.
+- Data safety verandert niet: het Bluetooth-adres bewaart Android zelf, er
+  gaat niets naar een server. Zie privacy.html, "De app opent als je auto start".
+
 Data safety verandert niet: de herinneringen worden alleen op het toestel
 ingepland, er gaat niets naar een server.
 

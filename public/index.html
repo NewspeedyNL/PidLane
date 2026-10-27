@@ -916,6 +916,7 @@ function closeConnOv(){
           <div class="vk-bh">Op dit toestel — werkt meteen</div>
           <button class="kebab-item kebab-schakel" id="kbGarageModus" role="switch" aria-checked="false" onclick="PLNav.wisselGarage()">🔧 Garagemodus<span class="kb-sw" aria-hidden="true"></span></button>
           <button class="kebab-item kebab-schakel" id="kbAutoCheck" role="switch" aria-checked="false" onclick="PLNav.wisselAutoCheck()">🩺 Check na verbinden<span class="kb-sw" aria-hidden="true"></span></button>
+          <button class="kebab-item" id="kbWekker" onclick="PLOpstart.wekker()">🚗 Open als de auto start</button>
           <button class="kebab-item kebab-schakel" id="kbHelpTips" role="switch" aria-checked="false" onclick="PLHelp.wisselTips()">ⓘ Uitleg bij knoppen<span class="kb-sw" aria-hidden="true"></span></button>
           <button class="kebab-item" id="kbRondgang" onclick="PLRond.instellingen()">🔁 Rondgang in Slim</button>
           <button class="kebab-item kebab-schakel" id="kbRijmodus" role="switch" aria-checked="false" onclick="PLRijmodus.wissel()">🚗 Rijmodus<span class="kb-sw" aria-hidden="true"></span></button>
@@ -2160,6 +2161,7 @@ function closeConnOv(){
 <script src="pidlane-meekijk.js"></script><!-- Meekijken bij een klant met zijn meekijkcode (PLMeekijk) — alleen beheer; vereist plFetch -->
 <script src="pidlane-afsluiten.js"></script><!-- Rit beëindigen (PLAfsluiten) — rit afronden, verbreken, uitloggen, app sluiten; vereist PLGarage, handleConnect, logout, plSluitApp -->
 <script src="pidlane-nav.js"></script><!-- PLNav: onderbalk, startscherm (Check mijn auto + tegels) en garagemodus; vereist ná datalog, archief, uihelpers, wizard, foutcodes en afsluiten -->
+<script src="pidlane-opstart.js"></script><!-- PLOpstart: opstart of herlaad (pl_laatst_actief), de check één keer per auto per dag, het kenteken uit de VIN, de wekker (native PLWekker) — ná pidlane-nav.js; pidlane-bt.js en PLNav lezen hem alleen tijdens het draaien -->
 <script src="pidlane-zonder.js"></script><!-- PLZonder: zonder adapter — kenteken-check (RDW), foutcode opzoeken, simulatie; vereist plFetch, PLRecall, dtcInfo, PLGarage -->
 <script src="pidlane-weer.js"></script><!-- PLWeer (#556): de verwachting voor een plaats uit een lijst, via /weer — locatievrij; vereist plFetch -->
 <script src="pidlane-winter.js"></script><!-- PLWinter (#556/#559): winterprofiel, winterkaart op het startscherm en bandentabel; vereist ná pidlane-zonder.js (PLZonder._blad) en pidlane-weer.js; leest PLGarage -->

@@ -75,6 +75,7 @@ function _hervatActief(){
   const h = window._plHervat;
   return !!(h && (Date.now() - h.t) < HERVAT_MS);
 }
+function _isOpstart(){ return _hervatActief() && window._plHervat.reden==='opstart'; }
 
 /* SNEL VERBINDEN (19-10-2026). Ingelogd, een adapter die al eens verbond,
    een bevestigd kenteken, een onthouden protocol en een voertuigprofiel:
@@ -138,8 +139,17 @@ async function connectSerial(opt){
   // Alleen een expliciete hervatting zet de stand; elke andere aanroep (de
   // knop, een klik-event) wist hem.
   // Een bekende adapter + auto (plSnelBekend) loopt sinds 19-10-2026 ook zo.
-  window._plHervat = (opt && typeof opt.hervat === 'string') ? { t: Date.now(), reden: opt.hervat }
+  // Een automatische herverbinding na lang geen motor is een nieuwe start
+  // (PLOpstart, 27-10-2026): dan wél de check, maar nog steeds geen vragen.
+  let _reden = (opt && typeof opt.hervat === 'string') ? opt.hervat : null;
+  if(_reden && window.PLOpstart){
+    try{ _reden = PLOpstart.reden(_reden); }
+    catch(e){ btDiag('Opstart of herlaad niet te bepalen — als hervatting: '+(e.message||e),'warn'); }
+  }
+  window._plHervat = _reden ? { t: Date.now(), reden: _reden }
     : (_snelMag() ? { t: Date.now(), reden: 'bekende auto', snel: true } : null);
+  window._plKentBevestigd = null;   // rdwLookup() zet hem; saveVinProfile() bewaart hem bij de VIN
+  if(_reden==='opstart') btDiag('Opstart: de motor liep al een tijd niet — nieuwe start, zonder vragen','info');
   _snelScherm(!!(window._plHervat && window._plHervat.snel));
   if(window._plHervat && window._plHervat.snel) btDiag('Snel verbinden: bekende adapter en auto — geen vragen','info');
   // Prominente disclosure vóór álles. Google Play eist dat de gebruiker weet
@@ -2460,6 +2470,15 @@ function toonKentekenStap(){
     inp.value=vorig;
     if(vorig && stat) stat.textContent='Laatst gebruikt — controleer of dit de auto is waar je nu in zit';
     try{ inp.focus(); inp.select(); }catch(e){ /* stil: focus mag falen op een verborgen veld */ }
+    // Opstart (27-10-2026): geen vraag, en ook niet het vorige kenteken — dit
+    // kan een andere auto zijn. Het kenteken volgt uit de VIN (PLOpstart.naVin).
+    if(_isOpstart()){
+      if(inp) inp.value='';
+      btDiag('Opstart: kentekenstap overgeslagen — het kenteken volgt uit de VIN','info');
+      _kentPoortKlaar=true;
+      scanNetworks();
+      return;
+    }
     // Hervatten: dezelfde auto als een paar minuten geleden, dus niet vragen.
     if(vorig && _hervatActief()){
       btDiag('Hervatten ('+window._plHervat.reden+'): kenteken '+vorig+' van de vorige verbinding, zonder te vragen','info');
@@ -2580,6 +2599,12 @@ async function scanNetworks(){
     // dus de ReferenceError verdween en het opschonen gebeurde nooit meer.
     try{ herijkPidGate('protocol gevonden'); }
     catch(e){ btDiag('Herijking na protocolvondst mislukt — de PID-zeef draait op oude kennis: '+(e.message||e),'warn'); }
+  } else if(_isOpstart() && window.PLOpstart && PLOpstart.herhaalMag(window._plHervat.t)){
+    // Opstart (27-10-2026): de app is er vaak eerder dan de motor. Tot een
+    // minuut stil opnieuw zoeken voordat er om een protocol gevraagd wordt.
+    btDiag('Opstart: nog geen protocol — over '+(PLOpstart.HERHAAL_STAP_MS/1000)+' s opnieuw zoeken','warn');
+    await delay(PLOpstart.HERHAAL_STAP_MS);
+    return scanNetworks();
   } else if(_hervatActief() && !window._plHervat.herscan){
     // Een automatische herverbinding (08-10-2026): eerst zelf nog één keer
     // zoeken voordat er om een protocol gevraagd wordt. Wie net de stekker
@@ -2886,6 +2911,14 @@ async function startDiscovery(){
     try{ await PLVerbind.naVin(vinInfo.vin); }
     catch(e){ btDiag('Verbindprofiel-geheugen overgeslagen: '+(e.message||e),'warn'); }
   }
+  if(vinInfo?.vin && _isOpstart() && window.PLOpstart){
+    // Opstart: het kenteken uit het profiel van deze VIN, vóór de
+    // brandstofpoort, zodat die het niet hoeft te vragen. Hoogstens 8 s.
+    try{ await Promise.race([PLOpstart.naVin(vinInfo.vin), delay(8000)]); }
+    catch(e){ btDiag('Opstart: kenteken uit het profiel niet opgehaald: '+(e.message||e),'warn'); }
+  } else if(!vinInfo?.vin && _isOpstart()){
+    window._plKentNaCheck = true;
+  }
   if(vinInfo?.vin){
     addProg('✅',`VIN: ${vinInfo.vin}`);
     if(vinInfo.merk) addProg('🚗',`${vinInfo.merk}${vinInfo.year?' '+vinInfo.year:''}`);
@@ -3080,6 +3113,16 @@ async function startDiscovery(){
   window._plHervat = null;
   if(_hervat){
     _hervatAfronden(_hervat);
+    // Een opstart en een snelle verbinding met de knop zijn nieuwe sessies:
+    // de check (één keer per auto per dag). Een echte hervatting niet.
+    if(_hervat.reden==='opstart' || _hervat.snel){
+      try{ if(window.PLNav) PLNav.naVerbinding({ opstart: _hervat.reden==='opstart' }); }
+      catch(e){ btDiag('Automatische check niet gestart — tik zelf op Check mijn auto: '+(e.message||e),'warn'); }
+    }
+    if(_hervat.reden==='opstart'){
+      try{ if(window.PLOpstart) PLOpstart.kentekenLater(); }
+      catch(e){ btDiag('Opstart: kentekenvraag niet ingepland: '+(e.message||e),'warn'); }
+    }
   } else if(window.PLVoorkeur && !PLVoorkeur.samenvatting()){
     // Mijn voorkeuren: geen samenvatting. De standaardset staat al aan
     // (wizGo(6) hierboven); wizFinish() doet de rest zonder scherm.
@@ -3235,7 +3278,7 @@ async function rdwLookup(showOverview, opties){
     // wél goed stond. Op de rit van 16-08 leek dat op een niet-gevulde
     // brandstof; het was alleen de logregel. Nu uit de echte bron lezen.
     const brandstof=vehicleInfo.brandstof||f.brandstof||'';
-    if(!demoMode) localStorage.setItem('pl_kenteken',kent);   // een demo-kenteken is niet jouw auto
+    if(!demoMode){ localStorage.setItem('pl_kenteken',kent); window._plKentBevestigd=kent; }   // een demo-kenteken is niet jouw auto
     // PLRecall haakt hierop in en haalt de terugroepdetails op (welke actie,
     // welk risico, welke status) bovenop de ja/nee-vlag die we al hadden.
     try{ window.dispatchEvent(new CustomEvent('pl:kenteken-geladen',{detail:{kenteken:kent}})); }catch(e){ /* stil: element kan weg zijn */ }

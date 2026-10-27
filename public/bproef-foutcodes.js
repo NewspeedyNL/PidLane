@@ -155,6 +155,17 @@ const ECU = {
     toets('codes gevonden → geen balk, het venster blijft', await app.ev(`!document.querySelector('#plFcOv .fc-door') && getComputedStyle(document.getElementById('plFcOv')).display === 'flex'`));
     await app.ev(`PLFoutcodes.sluit(); 'ok'`);
 
+    // 27-10-2026: een opstart gaat ook in de garagemodus door naar Live —
+    // bulk en waak zetten die aan, en een klant kwam anders nooit meer vanzelf op Live.
+    console.log('\n── 8b. garagemodus: alleen een opstart gaat door naar Live ──');
+    await app.nepAdapter(SCHOON);
+    await app.ev(`if (!PLNav.garage()) PLNav.zetGarage(true); setPidView('overzicht'); PLFoutcodes.staat().scan = null; PLFoutcodes.open({ auto: true }); 'ok'`);
+    await wacht(`!!(PLFoutcodes.staat().scan && !PLFoutcodes.staat().bezig)`, 15000);
+    toets('garagemodus, gewone verbinding: geen balk  <- tegenproef', await app.ev(`!document.querySelector('#plFcOv .fc-door')`));
+    await app.ev(`PLFoutcodes.sluit(); setPidView('overzicht'); PLFoutcodes.staat().scan = null; PLFoutcodes.open({ auto: true, opstart: true }); 'ok'`);
+    toets('garagemodus, opstart: de balk naar Live staat er', await wacht(`/Live/.test((document.querySelector('#plFcOv .fc-door')||{}).textContent||'')`, 15000));
+    await app.ev(`PLFoutcodes.sluit(); PLNav.zetGarage(false); 'ok'`);
+
     // 15-10-2026: het oude foutcode-tabblad las alleen 03. Zijn knop doet nu
     // dezelfde check: 07, 0A en de keuringsstatus gaan mee de bus op.
     await app.ev(`window._plNepLog.length = 0; PLFoutcodes.staat().scan = null; document.getElementById('bscan').click(); 'ok'`);
