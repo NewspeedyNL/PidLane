@@ -2031,7 +2031,7 @@ body.pl-vis-vol .vt-thema, body.pl-vis-vol .vt-uit { display:inline-flex; }
 .vhl-leds i.a { background:#ffb020; box-shadow:0 0 12px #ffb020; }
 .vhl-leds i.r { background:#ff3050; box-shadow:0 0 12px #ff3050; }
 .vhl-leds i.max { background:#4aa8ff; box-shadow:0 0 14px #4aa8ff; }
-.vhl-modus { font-size:3.4cqh; font-weight:600; letter-spacing:.5em; padding-left:.5em; color:var(--vhl-c); text-shadow:0 0 12px var(--vhl-c); }
+.vhl-modus { font-size:3.4cqh; font-weight:600; letter-spacing:.5em; padding-left:.5em; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:clip; color:var(--vhl-c); text-shadow:0 0 12px var(--vhl-c); }
 .vhl-gear { font-size:30cqh; line-height:.9; min-height:.9em; font-weight:200; color:#fff; font-variant-numeric:tabular-nums;
   text-shadow:0 0 18px var(--vhl-c), 0 0 60px var(--vhl-c), 0 0 120px var(--vhl-c2); }
 .vhl-gear:empty { display:none; }   /* versnelling onbekend: geen gat in het midden */
@@ -2099,7 +2099,7 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
 .vhl-tegel span { display:block; font-size:2.3cqh; letter-spacing:.15em; color:var(--vhl-c); min-height:1.2em; }
 .vpf-hyper.vhl-score-aan .vhl-mid { opacity:.08; transition:opacity .4s; }
 /* Merk: het woordmerk in het midden als de versnelling onbekend is. */
-.vhl-gear.merk { font-size:9cqh; font-weight:300; letter-spacing:.35em; padding-left:.35em; }
+.vhl-gear.merk { font-size:min(6.5cqh, 2.1cqw); font-weight:300; letter-spacing:.22em; padding-left:.22em; white-space:nowrap; }
 /* De tanklichtbalk onderin. De vulling loopt leeg naar links; een glans
    stroomt erdoor. Laag = amber, leeg = rood en pulserend. */
 .vhl-tank { position:absolute; left:16cqw; right:16cqw; bottom:3.2cqh; z-index:1; pointer-events:none; --vhl-tank:0%; --vhl-tk:var(--vhl-c); }

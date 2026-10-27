@@ -1146,7 +1146,7 @@ MUTATIES=(
 "public/pidlane-hyperlane.js@@  if(aan && s.motor===false && s.hist.length){@@  if(aan && !s.motor && s.hist.length){@@test-hyperlane.js@@elke keer Hyperlane openen met draaiende motor geeft een power-up"
 "public/pidlane-hyperlane.js@@  if(rit.kmV>=SCORE_KM) t.push(@@  t.push(@@test-hyperlane.js@@een auto zonder verbruiksmeting krijgt een tegel met NaN L/100"
 "public/pidlane-hyperlane.js@@return n<10 ? 'leeg'@@return n<5 ? 'leeg'@@test-hyperlane.js@@de tankbalk wordt pas rood bij 5%: te laat om nog rustig te tanken"
-"public/pidlane-hyperlane.js@@    uit.push(-g*.55*(1-a*.88), -.44+a*.40);@@    uit.push(g*.55*(1-a*.88), -.44+a*.40);@@test-hyperlane.js@@het G-spoor gaat de verkeerde kant op: tegen het gevoel in, anders dan de G-cirkel"
+"public/pidlane-hyperlane.js@@    uit.push(-g*.55*(1-a*.88), -.46+a*.24);@@    uit.push(g*.55*(1-a*.88), -.46+a*.24);@@test-hyperlane.js@@het G-spoor gaat de verkeerde kant op: tegen het gevoel in, anders dan de G-cirkel"
 "public/pidlane-hyperlane.js@@    if(dt>0 && dt<=3){\n      const dk=v*dt/3600;@@    if(dt>0 && dt<=30){\n      const dk=v*dt/3600;@@test-hyperlane.js@@een gemiste meting verzint kilometers in de rit-samenvatting"
 "public/pidlane-hyperlane.js@@  if(!rit || !(rit.km>=SCORE_KM)) return null;@@  if(!rit) return null;@@test-hyperlane.js@@elke parkeermanoeuvre geeft een scorebord"
 "public/pidlane-hyperlane.js@@  if(!s.wortel.isConnected || !s.wortel.getClientRects().length){ stop(); return; }@@@@bproef-hyperlane.js@@de tekenlus draait door in een weggegooid of verborgen vak en kost accu"

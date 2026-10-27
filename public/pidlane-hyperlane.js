@@ -253,7 +253,7 @@ function gSpoor(hist){
   for(let i=0;i<GS_N;i++){
     const a=i/(GS_N-1), g=(hist && isFinite(Number(hist[i]))) ? klem(hist[i], -1.2, 1.2) : 0;
     // Rechts sturen duwt je naar links: het spoor volgt het gevoel, net als de G-cirkel (#407).
-    uit.push(-g*.55*(1-a*.88), -.44+a*.40);
+    uit.push(-g*.55*(1-a*.88), -.46+a*.24);
   }
   return uit;
 }
