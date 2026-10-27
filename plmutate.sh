@@ -1139,7 +1139,7 @@ MUTATIES=(
 "public/pidlane-visprofiel.js@@    if(x.soort==='hyper'){ if(window.PLHyperlane) PLHyperlane.zet(x.rol, val); return; }@@    if(x.soort==='hyper'){ return; }@@test-hyperlane.js@@Hyperlane krijgt geen meetwaarden: de ringen staan stil"
 "public/pidlane-hyperlane.js@@  if(!s.wortel.isConnected || !s.wortel.getClientRects().length){ stop(); return; }@@@@bproef-hyperlane.js@@de tekenlus draait door in een weggegooid of verborgen vak en kost accu"
 "public/pidlane-visthema.js@@  if(!vis) return;\n  const o=vis.querySelector('.vt-strook');@@  if(!vis || !vol()) return;\n  const o=vis.querySelector('.vt-strook');@@bproef-visthema.js@@in de gewone weergave opent 🎨 weer niets"
-"public/pidlane-visueel.js@@    themaBij(g);\n    return;@@    return;@@bproef-visthema.js@@een herbouw van een profiel gooit de knop volledig scherm weg"
+"public/pidlane-visueel.js@@    themaBij(g);\n    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@bproef-visthema.js@@een herbouw van een profiel gooit de knop volledig scherm weg"
 "public/pidlane-visueel.js@@  lichaam(false);\n  try{ if(window.PLVisThema) PLVisThema.uit(); }@@  lichaam(false);\n  try{ }@@bproef-visthema.js@@een andere weergave kiezen laat het volle scherm over de app liggen"
 "public/pidlane.css@@body.pl-vis-vol .vis { position:fixed; inset:0; z-index:var(--z-modal);@@body.pl-vis-vol .vis { position:fixed; inset:0; z-index:9000;@@bproef-visthema.js@@het volle scherm ligt onder de navigatiebalk"
 "public/pidlane-visprofiel.js@@  if(stand && stand.laden) return 'Laden';\n@@@@test-visprofiel.js@@terugwinnen met draaiende motor heet 'Motor': het moment waar een hybride om draait is onzichtbaar"
