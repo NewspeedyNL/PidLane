@@ -221,6 +221,7 @@
   var _gecheckt = false;
   function naVerbinding(opties) {
     opties = opties || {};
+    if (!opties.hervat) kopToon();   // nieuwe verbinding: de kop komt terug
     if (opties.hervat || _gecheckt || !autoCheck() || isDemo()) return false;
     if (window._remoteVehicleMode) return false;   // meekijken: deze telefoon hangt niet aan de auto
     _gecheckt = true;       // één keer per sessie; opnieuw verbinden is geen nieuwe vraag
@@ -261,9 +262,43 @@
   }
 
   // ════════════════════════════════════════════════════════════════
+  //  DE KOP VAN HET STARTSCHERM (27-10-2026)
+  // ════════════════════════════════════════════════════════════════
+  /* Auto en "… herkend" bovenaan zijn een bevestiging, geen vaste kop: na
+     KOP_MS gaan ze weg (klasse pl-kop-weg op .welcome-header) en komen pas
+     terug bij de volgende herkenning of verbinding. Een herkenning is elke
+     nieuwe tekst in #welcomeTitle — die wordt uit vier modules gezet, en één
+     waarnemer mist er geen. `plan` en `wis` zijn er voor de test. */
+  var KOP_MS = 10000;
+  function maakKop(kop, plan, wis) {
+    var t = null;
+    function toon() {
+      if (!kop) return;
+      kop.classList.remove('pl-kop-weg');
+      if (t !== null) wis(t);
+      t = plan(function () { t = null; kop.classList.add('pl-kop-weg'); }, KOP_MS);
+    }
+    return { toon: toon };
+  }
+  var _kop = null;
+  function kopToon() { if (_kop) _kop.toon(); }
+  function startKop() {
+    var kop = document.querySelector && document.querySelector('.welcome-header');
+    if (!kop) return;
+    _kop = maakKop(kop, setTimeout, clearTimeout);
+    _kop.toon();
+    var titel = el('welcomeTitle');
+    if (titel && window.MutationObserver) {
+      try { new MutationObserver(kopToon).observe(titel, { childList: true, characterData: true, subtree: true }); }
+      catch (e) { console.warn('PLNav: kop van het startscherm niet gevolgd', e); }
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════
   //  OPSTART
   // ════════════════════════════════════════════════════════════════
   function start() {
+    startKop();
     ververs();
     // Er is geen event voor "het startscherm ging dicht" of "een rapport werd
     // geopend" — die komen uit twintig modules. Een lichte rondgang is
@@ -290,7 +325,8 @@
     autoCheck: autoCheck,
     wisselAutoCheck: function () { zetAutoCheck(!autoCheck()); },
     ververs: ververs,
+    kopToon: kopToon,
     // pure kern — voor test-nav.js
-    _kern: { garageStandaard: garageStandaard, garageAan: garageAan, welkeTab: welkeTab, balkZichtbaar: balkZichtbaar, ONDER_DE_BALK: ONDER_DE_BALK }
+    _kern: { garageStandaard: garageStandaard, garageAan: garageAan, welkeTab: welkeTab, balkZichtbaar: balkZichtbaar, ONDER_DE_BALK: ONDER_DE_BALK, maakKop: maakKop, KOP_MS: KOP_MS }
   };
 })();

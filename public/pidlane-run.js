@@ -330,6 +330,18 @@
     verversDot();
   }
 
+  /* Bulk-recorder en waakronde zetten de garagemodus aan (27-10-2026). Hun
+     uitkomst (opnames, bevindingen) staat bij het vakgereedschap; zonder
+     garagemodus draait er iets waarvan je het resultaat niet terugvindt.
+     Alleen bij aanzetten, en nooit terug uit: dat blijft een keuze in Meer.
+     `voor` is de staat vóór de tik; het aanzetten zelf kan asynchroon zijn,
+     dus "stond uit en de schakelaar gaf geen fout" is het teken. */
+  const MET_GARAGE = ['bulk', 'waak'];
+  function garageNodig(id, voor, garageAan) {
+    if (MET_GARAGE.indexOf(id) < 0 || garageAan) return false;
+    return !!voor && !voor.aan;
+  }
+
   function schakel(id) {
     const it = ITEMS.filter(function (x) { return x.id === id; })[0];
     if (!it) return;
@@ -346,6 +358,13 @@
     let fout = null;
     try { fout = it.schakel(); } catch (e) { fout = it.naam + ': ' + (e.message || e); }
     if (fout) { try { showToast(fout); } catch(e){ /* stil: melding mag nooit de stroom breken */ } }
+    else if (typeof PLNav !== 'undefined' && PLNav && typeof PLNav.zetGarage === 'function') {
+      let gAan = true;
+      try { gAan = !!PLNav.garage(); } catch (e) { console.warn('PLRun: garagemodus niet te lezen', e); }
+      if (garageNodig(id, s, gAan)) {
+        try { PLNav.zetGarage(true); } catch (e) { console.warn('PLRun: garagemodus niet aan te zetten', e); }
+      }
+    }
 
     // De onderliggende modules doen hun werk soms asynchroon (caravan doet
     // een preAnalysisCheck met een dialoog). Twee keer tekenen vangt dat op
@@ -388,7 +407,8 @@
       });
       return uit;
     },
-    versie: RUN_VERSIE
+    versie: RUN_VERSIE,
+    _kern: { garageNodig: garageNodig }
   };
 
   try { if (typeof btDiag === 'function') btDiag('pidlane-run.js geladen — ' + RUN_VERSIE, 'info'); } catch(e){ /* stil: melding mag nooit de stroom breken */ }

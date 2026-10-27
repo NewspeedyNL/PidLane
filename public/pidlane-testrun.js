@@ -2848,6 +2848,26 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Garagemodus bij bulk/waak, leeg midden, kop startscherm 10 s (27-10-2026) ──
+  {
+    issue: 'garage-bulk-kop',
+    naam: 'Bulk-recorder of waakronde aan zet de garagemodus aan; het meter-midden blijft leeg zolang de versnelling onbekend is; de startkop gaat na 10 s weg',
+    waarom: 'Gevraagd op 27-10: de uitkomst van bulk en waak staat bij het vakgereedschap, het logo midden in de meter las als een melding, en "… herkend" bleef permanent staan.',
+    proef: async function () {
+      var R = window.PLRun, N = window.PLNav, V = window.PLVisueel;
+      if (!R || !R._kern || typeof R._kern.garageNodig !== 'function') return { staat: 'FOUT', detail: 'PLRun._kern.garageNodig ontbreekt — oude pidlane-run.js (herladen?)' };
+      if (!R._kern.garageNodig('waak', { aan: false }, false) || R._kern.garageNodig('waak', { aan: true }, false)) return { staat: 'FOUT', detail: 'garageNodig beslist verkeerd' };
+      if (!V || typeof V.logoZien !== 'function') return { staat: 'FOUT', detail: 'PLVisueel.logoZien ontbreekt — oude pidlane-visueel.js (herladen?)' };
+      if (V.logoZien('', { uit: false }) || !V.logoZien('', { uit: true })) return { staat: 'FOUT', detail: 'logoZien: embleem staat er terwijl de indicator aan is, of niet terwijl hij uit is' };
+      if (!N || typeof N.kopToon !== 'function' || !N._kern || N._kern.KOP_MS !== 10000) return { staat: 'FOUT', detail: 'PLNav.kopToon/KOP_MS ontbreken — oude pidlane-nav.js (herladen?)' };
+      var kop = document.querySelector('.welcome-header');
+      if (!kop) return { staat: 'LET OP', detail: 'geen .welcome-header in beeld' };
+      N.kopToon();
+      if (kop.classList.contains('pl-kop-weg')) return { staat: 'FOUT', detail: 'kopToon() brengt de kop niet terug' };
+      return { staat: 'OK', detail: 'garagemodus volgt bulk/waak, midden leeg met indicator aan, kop terug voor 10 s' };
+    }
+  },
+
   // ── Max haalbaar: de PID-keuze naar wat de adapter haalt (26-10-2026) ──
   {
     issue: 'max-haalbaar',

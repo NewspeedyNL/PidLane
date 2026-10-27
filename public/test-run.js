@@ -82,5 +82,41 @@ toets('module hangt in index.html', /src="pidlane-run\.js"/.test(index));
 toets('bedradingscontrole blijft de laatste',
   (index.match(/src="pidlane-[a-z0-9-]*\.js"/g) || []).pop() === 'src="pidlane-bedrading.js"');
 
+// ── Bulk-recorder en waakronde zetten de garagemodus aan (27-10-2026) ──
+// Gedrag, niet tekst: de echte module in een zandbak, met PLBulk/PLWaak/PLNav
+// als stub. Zo blijkt of schakel() de garagemodus werkelijk aanzet.
+console.log('\nGaragemodus bij bulk-recorder en waakronde\n');
+{
+  const vm = require('vm');
+  function zandbak(garageAan) {
+    const st = { bulk: false, waak: false, garage: garageAan, gezet: [] };
+    const doc = { readyState: 'complete', getElementById: () => null, addEventListener() {} };
+    const ctx = {
+      console: { log() {}, warn() {} }, document: doc, window: {}, setTimeout() {}, setInterval() { return 1; },
+      showToast() {},
+      PLBulk: { status: () => ({ actief: st.bulk }), start() { st.bulk = true; }, stop() { st.bulk = false; } },
+      PLWaak: { actief: () => st.waak, bevindingen: () => [], schakel() { st.waak = !st.waak; } },
+      PLNav: { garage: () => st.garage, zetGarage(a) { st.gezet.push(a); st.garage = a; } },
+      toggleRitMonitor() {}
+    };
+    ctx.window = ctx;
+    vm.createContext(ctx);
+    vm.runInContext(ruw, ctx);
+    return { st, R: ctx.PLRun };
+  }
+  const K = zandbak(false).R._kern;
+  toets('garageNodig: bulk en waak van uit naar aan, garagemodus uit → aan',
+    K.garageNodig('bulk', { aan: false }, false) && K.garageNodig('waak', { aan: false }, false));
+  toets('garageNodig: niet bij uitzetten, niet als hij al aan staat, niet voor de rit-monitor',
+    !K.garageNodig('bulk', { aan: true }, false) && !K.garageNodig('waak', { aan: false }, true) &&
+    !K.garageNodig('monitor', { aan: false }, false) && !K.garageNodig('bulk', null, false));
+  const w = zandbak(false); w.R.schakel('waak');
+  toets('waakronde aanzetten zet de garagemodus aan', w.st.waak && w.st.gezet.join() === 'true', JSON.stringify(w.st));
+  w.R.schakel('waak');
+  toets('waakronde weer uit laat de garagemodus staan', !w.st.waak && w.st.gezet.join() === 'true', JSON.stringify(w.st));
+  const g = zandbak(true); g.R.schakel('waak');
+  toets('stond de garagemodus al aan, dan wordt hij niet nog eens gezet', g.st.gezet.length === 0, JSON.stringify(g.st));
+}
+
 console.log('\n' + (fout ? fout + ' test(s) gefaald' : 'alle tests geslaagd'));
 process.exit(fout ? 1 : 0);

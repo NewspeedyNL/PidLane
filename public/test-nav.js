@@ -56,6 +56,25 @@ eis('beheer zet hem uit → uit', K.garageAan('0', true) === false);
 eis('niets gekozen → de standaard', K.garageAan(null, true) === true && K.garageAan(null, false) === false);
 eis('rommel in de opslag → de standaard, niet "aan"', K.garageAan('ja', false) === false);
 
+console.log('\n3b. De kop van het startscherm verdwijnt na 10 s (27-10-2026)');
+{
+  const klassen = new Set();
+  const kop = { classList: { add: k => klassen.add(k), remove: k => klassen.delete(k) } };
+  let wacht = [];
+  const plan = (f, ms) => { const t = { f, ms }; wacht.push(t); return t; };
+  const wis = t => { wacht = wacht.filter(x => x !== t); };
+  const k = K.maakKop(kop, plan, wis);
+  k.toon();
+  eis('direct na een herkenning staat de kop er', !klassen.has('pl-kop-weg'));
+  eis('de timer staat op 10 s', wacht.length === 1 && wacht[0].ms === 10000 && K.KOP_MS === 10000);
+  wacht.shift().f();
+  eis('na 10 s is hij weg', klassen.has('pl-kop-weg'));
+  k.toon();
+  eis('een volgende herkenning brengt hem terug', !klassen.has('pl-kop-weg') && wacht.length === 1);
+  k.toon();
+  eis('twee herkenningen kort na elkaar: één timer, opnieuw 10 s', wacht.length === 1);
+}
+
 console.log('\n4. Wanneer staat de balk er');
 eis('niet ingelogd, geen demo → geen balk', K.balkZichtbaar({}) === false);
 eis('ingelogd → balk', K.balkZichtbaar({ ingelogd: true }) === true);

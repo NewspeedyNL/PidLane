@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-26', app: '3.4.0' },
+  gecontroleerd: { datum: '2026-10-27', app: '3.4.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -397,7 +397,8 @@ var PL_HULP = {
       icoon: '🔧', kort: 'Zet de vakgereedschappen erbij, zoals Alle functies en Bewaken.',
       tekst:
         '<p>Zet de vakgereedschappen erbij, zoals <b>Alle functies</b> op het startscherm en <b>◉ Bewaken</b> bij Live. ' +
-        'Hij staat standaard uit; aanzetten doe je in Meer → Mijn voorkeuren.</p>',
+        'Hij staat standaard uit; aanzetten doe je in Meer → Mijn voorkeuren. ' +
+        'Zet je de <b>Bulk-recorder</b> of de <b>Waakronde</b> aan, dan gaat hij vanzelf mee aan, zodat je de uitkomst terugvindt. Uitzetten blijft je eigen keuze.</p>',
       zie: ['meer'] },
 
     { id: 'rijmodus', groep: 'gebruik', titel: 'Rijmodus naast de kaart',

@@ -28,8 +28,9 @@
 //              altijd zonder toerental, de VERMOGENSNAALD: rechts van nul
 //              de vermogensvraag uit het gaspedaal, links de laadzone bij
 //              gas los en afremmen. Zie naaldSoort() en vermogenStand()
-//   midden     010D snelheid; erboven de versnelling (PLGear), en zolang die
-//              niet bekend is het PidLane-embleem
+//   midden     010D snelheid; erboven de versnelling (PLGear). Zolang die
+//              niet bekend is blijft het vak leeg; het embleem staat er
+//              alleen als de versnellingsindicator uit staat (27-10-2026)
 //   plekken    vier plekken die je zelf kiest (08-10-2026, zie PLEKKEN):
 //              links en rechts een boog in de onderrand (koelwater en
 //              brandstof), één getal onder de km/h (verbruik nu) en het vak
@@ -632,6 +633,13 @@ function gearTekst(g){
   if(g===null || g===undefined || !isFinite(Number(g))) return '';
   return g===0 ? 'N' : g===-1 ? 'R' : String(g);
 }
+/* Het embleem alleen als er geen versnellingsindicator is of hij uit staat
+   (27-10-2026). Staat hij aan en weet hij het nog niet, dan blijft het vak
+   leeg: een logo dat verschijnt en verdwijnt leest als een melding. */
+function logoZien(t, gear){
+  if(t) return false;
+  return !gear || !!gear.uit;
+}
 function gearBij(){
   let g=null;
   // toonbaar() en niet waarde() (30-09-2026): op de meter liever het embleem
@@ -640,7 +648,7 @@ function gearBij(){
   catch(x){ console.warn('PLVisueel: PLGear.toonbaar() mislukt', x); }
   const t=gearTekst(g), lg=el('visg-logo');
   zetTekst('vis-gear', t);
-  if(lg) lg.style.display = t ? 'none' : '';
+  if(lg) lg.style.display = logoZien(t, window.PLGear) ? '' : 'none';
 }
 /* De plaat van de vermogensnaald: dezelfde boog en dezelfde straal als de
    toerenplaat, alleen met een nulpunt. Links de laadzone in groen, rechts
@@ -1902,7 +1910,7 @@ window.PLVisueel = {
   indeling:indeling, gebruiktePids:gebruiktePids, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,
   meldingen:meldingen, schakel:schakel,
   TREK:TREK, TREK_SITUATIES:TREK_SITUATIES, trekIndeling:trekIndeling, koelTrend:koelTrend, trekAan:trekAan,
-  nodigePids:nodigePids, zorgPids:zorgPids, bandenBij:bandenBij, gearTekst:gearTekst,
+  nodigePids:nodigePids, zorgPids:zorgPids, bandenBij:bandenBij, gearTekst:gearTekst, logoZien:logoZien,
   sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, herbouwKlant:herbouwKlant, maat:maat,
   rijVenster:rijVenster, VENSTER_MS:VIS_VENSTER_MS, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
   remt:remt, isOud:isOud, bouw:bouw, bij:bij, tik:tik, start:start, stop:stop,

@@ -821,6 +821,9 @@ console.log('\n— 27-09-2026: trekmodus vanzelf, versnelling, staafjes, sensore
 
   waar('versnelling: 3 → "3", 0 → "N", −1 → "R", onbekend → ""',
     V.gearTekst(3) === '3' && V.gearTekst(0) === 'N' && V.gearTekst(-1) === 'R' && V.gearTekst(null) === '' && V.gearTekst(undefined) === '');
+  waar('embleem: alleen zonder indicator of met de indicator uit; aan en onbekend = leeg (27-10)',
+    V.logoZien('', null) === true && V.logoZien('', { uit: true }) === true &&
+    V.logoZien('', { uit: false }) === false && V.logoZien('3', { uit: true }) === false);
   const GG = V.G;
   waar('het icoon van een boog staat boven zijn waarde', GG.DY_ICOON_PLEK + GG.ICOON_PLEK / 2 < -0.6 * GG.FS_PLEK);
 
