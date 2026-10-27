@@ -268,6 +268,26 @@ function tankStand(pct){ const n=Number(pct); if(pct===null || pct===undefined |
 /* Optellen bij het verschijnen: 0 → 1 in 1,2 s, zacht uitlopend. */
 function telOp(f){ f=klem(f, 0, 1); return 1-Math.pow(1-f, 3); }
 
+/* ── Het hoofdgetal ── (27-10-2026, uit het gebruik: "de versnelling is zo
+   groot dat het afleidt, terwijl andere data veel interessanter is.") De
+   versnelling is nu een klein label naast de modus; het midden toont wat er
+   in deze scène toe doet. `x` = {koel, verbruik, gas, versn (km/h/s),
+   launchS, klok}. Geeft {w, e, l}: waarde-tekst, eenheid, label. Puur;
+   `tekst` maakt het getal (komma, '—'). */
+const ACC_KMHS = 4;
+function held(sc, x, tekst){
+  const n=function(v){ return v!==null && v!==undefined && v!=='' && isFinite(Number(v)); };
+  const g=function(kmhs){ return Math.abs(kmhs)/3.6/9.81; };
+  if(sc==='alarm' && n(x.koel)) return { w:tekst(x.koel, 0), e:'°C', l:'KOELWATER' };
+  if(sc==='launch' && n(x.launchS)) return { w:tekst(x.launchS, 1), e:'s', l:'0–100' };
+  if(sc==='remmen' && n(x.versn)) return { w:tekst(g(x.versn), 2), e:'g', l:'REMMEN' };
+  if(n(x.versn) && x.versn>=ACC_KMHS) return { w:tekst(g(x.versn), 2), e:'g', l:'ACCELERATIE' };
+  if(sc==='koud' && n(x.koel)) return { w:tekst(x.koel, 0), e:'°C', l:'OPWARMEN' };
+  if(sc==='stil' && x.klok) return { w:x.klok, e:'', l:'' };
+  if(n(x.verbruik)) return { w:tekst(x.verbruik, 1), e:'L/100', l:'VERBRUIK NU' };
+  if(n(x.gas)) return { w:tekst(x.gas, 0), e:'%', l:'GAS' };
+  return { w:'—', e:'', l:'' };
+}
 /* De tekst in de modusregel per scène; null = de gewone modus(). */
 const SCENE_TEKST = { alarm:'KOELWATER HEET', begrenzer:'SCHAKELEN', launch:'LAUNCH', koud:'MOTOR KOUD', stil:'STIL', cruise:'CRUISE · ZEN' };
 
@@ -585,24 +605,28 @@ function frame(nu){
   if(me && me.textContent!==m) me.textContent=m;
   if((s.gearT-=dt)<=0){
     s.gearT=.15;
-    let g=gearLees();
-    const ge=w.querySelector('.vhl-gear');
+    const g=gearLees(), ge=w.querySelector('.vhl-gear');
     // Opschakelen: een lichtgolf door de tunnel
     if(/^\d$/.test(g) && /^\d$/.test(s.gear) && Number(g)>Number(s.gear)) s.golf=0;
-    // Stilstand zonder bekende versnelling: de klok in het midden
-    const k=sc==='stil' && (g==='' || g==='N');
-    if(k){ const t=nu8; g=('0'+t.getHours()).slice(-2)+':'+('0'+t.getMinutes()).slice(-2); }
-    // Versnelling onbekend en een bekend merk: het woordmerk in het midden
-    const mk=!k && g==='' && !!s.thema;
-    if(mk) g=s.thema.naam;
-    if(ge){ ge.classList.toggle('klok', k); ge.classList.toggle('merk', mk); }
-    if(ge && g!==s.gear){ const was=s.gear; s.gear=g; ge.textContent=g; if(!k && !/:/.test(was)){ ge.classList.remove('wissel'); void ge.offsetWidth; ge.classList.add('wissel'); } }
+    if(ge && g!==s.gear){ s.gear=g; ge.textContent=g; ge.classList.remove('wissel'); void ge.offsetWidth; ge.classList.add('wissel'); }
+    // Het merk: klein boven de lampjes, altijd als het bekend is
+    const mk=w.querySelector('.vhl-merk'), mt=s.thema ? s.thema.naam : '';
+    if(mk && mk.textContent!==mt) mk.textContent=mt;
+    // Het hoofdgetal (zes keer per seconde: rustig genoeg om te lezen)
+    const h=held(sc, { koel:d.koel, verbruik:d.verbruik, gas:d.gas, versn:s.vs ? s.vs.a : null,
+                       launchS:s.nul.start!==null ? T-s.nul.start : null,
+                       klok:('0'+nu8.getHours()).slice(-2)+':'+('0'+nu8.getMinutes()).slice(-2) }, tekstVan);
+    const hw=w.querySelector('.vhl-held-w'), he=w.querySelector('.vhl-held-e'), hl=w.querySelector('.vhl-held-l');
+    if(hw && hw.textContent!==h.w) hw.textContent=h.w;
+    if(he && he.textContent!==h.e) he.textContent=h.e;
+    if(hl && hl.textContent!==h.l) hl.textContent=h.l;
   }
 }
 
 window.PLHyperlane = {
   STOPS:STOPS, OPSTART_S:OPSTART_S,
   kleur:kleur, stemming:stemming, modus:modus, leds:leds, nul100:nul100, volg:volg,
+  held:held, ACC_KMHS:ACC_KMHS,
   versnelling:versnelling, warmte:warmte, nacht:nacht, scene:scene, SCENE_TEKST:SCENE_TEKST,
   MERKEN:MERKEN, merkThema:merkThema, accuStart:accuStart, START_RPM:START_RPM, POWER_S:POWER_S, gSpoor:gSpoor, GS_N:GS_N, tankStand:tankStand,
   ritBij:ritBij, ritNul100:ritNul100, scorebord:scorebord, duur:duur, telOp:telOp, SCORE_KM:SCORE_KM, RIT_PAUZE_S:RIT_PAUZE_S,

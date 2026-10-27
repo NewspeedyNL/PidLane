@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-10-2026 — Hyperlane: hoofdgetal in plaats van de versnelling, staand onderin goed
+ ═══════════════════════════════════════════════════════════
+
+ - Het midden toont per scène wat er toe doet: verbruik nu, acceleratie of
+   vertraging in g, de 0–100-timer, koelwater (koud of te heet) of de klok.
+   De versnelling is een klein label naast de modus; het merk klein bovenin.
+ - Staand op volledig scherm overlapte de tanklichtbalk de snelheidsring en
+   de navigatiebalk: label in breedtematen, balk boven de veilige rand.
+
+ ═══════════════════════════════════════════════════════════
  27-10-2026 — Hyperlane: het scorebord verschijnt weer
  ═══════════════════════════════════════════════════════════
 

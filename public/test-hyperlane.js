@@ -139,6 +139,21 @@ const th = H.merkThema('Ferrari');
 waar('een merkpalet heeft dezelfde posities als STOPS en kleurt anders', th.stops.length === H.STOPS.length && th.stops.every((x, i) => x[0] === H.STOPS[i][0]) && !gelijk(H.kleur(0, th.stops), H.kleur(0)));
 waar('elk merk heeft vijf kleuren', H.MERKEN.every(m => m.kl.length === 5 && m.kl.every(c => c.length === 3)));
 
+console.log('\n4g. Het hoofdgetal: per scène wat er toe doet');
+const tk = (v, dec) => P.tekst(v, dec);
+const hx = x => Object.assign({ koel: 90, verbruik: 6.4, gas: 20, versn: 0, launchS: null, klok: '20:47' }, x);
+waar('gewoon rijden: verbruik nu', JSON.stringify(H.held('rijden', hx({}), tk)) === JSON.stringify({ w: '6,4', e: 'L/100', l: 'VERBRUIK NU' }));
+waar('cruise ook verbruik', H.held('cruise', hx({}), tk).l === 'VERBRUIK NU');
+waar('hard optrekken (≥ 4 km/h/s): acceleratie in g', H.held('rijden', hx({ versn: 10 }), tk).l === 'ACCELERATIE' && H.held('rijden', hx({ versn: 10 }), tk).w === '0,28');
+waar('rustig optrekken (2 km/h/s): gewoon verbruik', H.held('rijden', hx({ versn: 2 }), tk).l === 'VERBRUIK NU');
+waar('zacht afremmen (−6 km/h/s, nog geen remscène) is geen acceleratie', H.held('rijden', hx({ versn: -6 }), tk).l === 'VERBRUIK NU');
+waar('remmen: vertraging in g, positief', H.held('remmen', hx({ versn: -12 }), tk).w === '0,34' && H.held('remmen', hx({ versn: -12 }), tk).l === 'REMMEN');
+waar('launch: de 0–100-timer', H.held('launch', hx({ launchS: 3.27, versn: 20 }), tk).w === '3,3');
+waar('koude motor: koelwater met OPWARMEN', H.held('koud', hx({ koel: 41 }), tk).l === 'OPWARMEN' && H.held('koud', hx({ koel: 41 }), tk).w === '41');
+waar('alarm gaat voor alles: koelwater', H.held('alarm', hx({ koel: 121, versn: 20 }), tk).l === 'KOELWATER');
+waar('stilstand: de klok', H.held('stil', hx({}), tk).w === '20:47');
+waar('geen verbruik: het gaspedaal; niets: een streepje', H.held('rijden', hx({ verbruik: null }), tk).l === 'GAS' && H.held('rijden', hx({ verbruik: null, gas: null }), tk).w === '—');
+
 console.log('\n5. Het profiel');
 const ind = P.indeling('hyperlane', q => ['010C', '010D', '0105', '0149'].indexOf(q) >= 0);
 waar('toeren, snelheid, koelwater en gaspedaal uit de eigen keten', ind && ind.plekken.toeren === '010C' && ind.plekken.snel === '010D' && ind.plekken.koel === '0105' && ind.plekken.gas === '0149', JSON.stringify(ind && ind.plekken));

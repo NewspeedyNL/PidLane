@@ -2032,8 +2032,18 @@ body.pl-vis-vol .vt-thema, body.pl-vis-vol .vt-uit { display:inline-flex; }
 .vhl-leds i.r { background:#ff3050; box-shadow:0 0 12px #ff3050; }
 .vhl-leds i.max { background:#4aa8ff; box-shadow:0 0 14px #4aa8ff; }
 .vhl-modus { font-size:3.4cqh; font-weight:600; letter-spacing:.5em; padding-left:.5em; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:clip; color:var(--vhl-c); text-shadow:0 0 12px var(--vhl-c); }
-.vhl-gear { font-size:30cqh; line-height:.9; min-height:.9em; font-weight:200; color:#fff; font-variant-numeric:tabular-nums;
-  text-shadow:0 0 18px var(--vhl-c), 0 0 60px var(--vhl-c), 0 0 120px var(--vhl-c2); }
+.vhl-kop { display:flex; align-items:center; gap:1.4cqw; max-width:100%; }
+/* De versnelling: een klein label naast de modus, niet meer het midden. */
+.vhl-gear { min-width:1.6em; padding:.15em .55em; border-radius:999px; border:1px solid var(--vhl-c); font-size:3.6cqh; font-weight:600;
+  line-height:1.1; text-align:center; color:#fff; font-variant-numeric:tabular-nums; box-shadow:0 0 12px color-mix(in srgb, var(--vhl-c) 45%, transparent); }
+/* Het hoofdgetal: per scène wat er toe doet. */
+.vhl-held { text-align:center; line-height:1; }
+.vhl-held-w { font-size:17cqh; font-weight:200; color:#fff; font-variant-numeric:tabular-nums; letter-spacing:-.01em;
+  text-shadow:0 0 18px var(--vhl-c), 0 0 60px var(--vhl-c); }
+.vhl-held-e { font-size:3.4cqh; font-weight:500; color:var(--vhl-c); margin-left:.4em; }
+.vhl-held-l { display:block; min-height:1.2em; margin-top:.8cqh; font-size:2.6cqh; letter-spacing:.3em; padding-left:.3em; color:rgba(255,255,255,.6); }
+.vhl-merk { font-size:2.4cqh; letter-spacing:.4em; padding-left:.4em; color:var(--vhl-c); opacity:.75; white-space:nowrap; }
+.vhl-merk:empty { display:none; }
 .vhl-gear:empty { display:none; }   /* versnelling onbekend: geen gat in het midden */
 .vhl-gear.wissel { animation:vhl-wissel .25s ease-out; }
 @keyframes vhl-wissel { from { transform:scale(1.15); } to { transform:none; } }
@@ -2058,11 +2068,16 @@ body.pl-vis-vol .vpf-hyper { position:fixed; inset:0; margin:0; border:0; border
 body.pl-vis-vol .vis:has(.vpf-hyper) { overflow:hidden; }
 body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.vpf-hyper) .vis-trek { position:relative; z-index:2; }
 @media (orientation:portrait) {
-  body.pl-vis-vol .vhl-podium { flex-direction:column; justify-content:space-evenly; padding:calc(var(--pl-sat, 0px) + 56px) 0 calc(var(--pl-sab, 0px) + 12px); }
-  body.pl-vis-vol .vhl-pod { width:min(78cqw, 32cqh); }
+  body.pl-vis-vol .vhl-podium { flex-direction:column; justify-content:space-evenly; padding:calc(var(--pl-sat, 0px) + 56px) 0 calc(var(--pl-sab, 0px) + 9cqh); }
+  body.pl-vis-vol .vhl-pod { width:min(74cqw, 29cqh); }
+  /* Staand: de tanklichtbalk boven de navigatiebalk, het label in breedtematen. */
+  body.pl-vis-vol .vhl-tank { left:8cqw; right:8cqw; bottom:calc(var(--pl-sab, 0px) + 2.4cqh); }
+  body.pl-vis-vol .vhl-tank-label { font-size:3.4cqw; gap:4cqw; }
+  body.pl-vis-vol .vhl-tank-balk { height:.6cqh; }
   body.pl-vis-vol .vhl-pod.l, body.pl-vis-vol .vhl-pod.r { transform:rotateX(calc(-1 * var(--vhl-tx))) rotateY(var(--vhl-ty)); }
   body.pl-vis-vol .vhl-mid { flex:none; gap:1.5cqh; padding:2cqh 8cqw; }
-  body.pl-vis-vol .vhl-gear { font-size:12cqh; } body.pl-vis-vol .vhl-modus, body.pl-vis-vol .vhl-strook { font-size:1.8cqh; }
+  body.pl-vis-vol .vhl-held-w { font-size:8cqh; } body.pl-vis-vol .vhl-held-e, body.pl-vis-vol .vhl-gear { font-size:1.8cqh; } body.pl-vis-vol .vhl-held-l, body.pl-vis-vol .vhl-merk { font-size:1.3cqh; }
+  body.pl-vis-vol .vhl-modus, body.pl-vis-vol .vhl-strook { font-size:1.8cqh; }
   body.pl-vis-vol .vhl-leds i { width:3.6cqw; height:3.6cqw; }
   body.pl-vis-vol .vhl-score { width:88cqw; padding:2.4cqh 4cqw; }
   body.pl-vis-vol .vhl-score-tegels { grid-template-columns:repeat(2, 1fr); }
@@ -2070,7 +2085,6 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
   body.pl-vis-vol .vhl-score-kop { font-size:1.8cqh; }
 }
 /* Scènes (data-scene, gezet door de lus): de randstroken en de modusregel. */
-.vhl-gear.klok { font-size:16cqh; letter-spacing:.04em; }
 .vpf-hyper[data-scene="koud"] .vhl-rand { background:linear-gradient(transparent, #9adcff, #e6f6ff); box-shadow:0 0 22px #8fd0ff;
   transform:scaleY(var(--vhl-warm, 1)); transform-origin:bottom; opacity:.9; }
 .vpf-hyper[data-scene="koud"] .vhl-flits { background:radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(170,220,255,.16) 85%, rgba(220,240,255,.28)); }
@@ -2099,14 +2113,13 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
 .vhl-tegel span { display:block; font-size:2.3cqh; letter-spacing:.15em; color:var(--vhl-c); min-height:1.2em; }
 .vpf-hyper.vhl-score-aan .vhl-mid { opacity:.08; transition:opacity .4s; }
 /* Merk: het woordmerk in het midden als de versnelling onbekend is. */
-.vhl-gear.merk { font-size:min(6.5cqh, 2.1cqw); font-weight:300; letter-spacing:.22em; padding-left:.22em; white-space:nowrap; }
 /* De tanklichtbalk onderin. De vulling loopt leeg naar links; een glans
    stroomt erdoor. Laag = amber, leeg = rood en pulserend. */
 .vhl-tank { position:absolute; left:16cqw; right:16cqw; bottom:3.2cqh; z-index:1; pointer-events:none; --vhl-tank:0%; --vhl-tk:var(--vhl-c); }
 .vhl-tank.geen { display:none; }
 .vhl-tank[data-stand="laag"] { --vhl-tk:#ffb020; }
 .vhl-tank[data-stand="leeg"] { --vhl-tk:#ff2a40; }
-.vhl-tank-label { display:flex; justify-content:center; gap:2.4cqw; font-size:2.8cqh; letter-spacing:.12em; color:rgba(255,255,255,.7); margin-bottom:1cqh; }
+.vhl-tank-label { display:flex; justify-content:center; gap:2.4cqw; font-size:min(2.8cqh, 1.4cqw); white-space:nowrap; letter-spacing:.12em; color:rgba(255,255,255,.7); margin-bottom:1cqh; }
 .vhl-tank-label b { font-weight:500; color:#fff; font-variant-numeric:tabular-nums; }
 .vhl-tank-label .leeg { display:none; }
 .vhl-tank-balk { height:.9cqh; border-radius:1cqh; background:rgba(255,255,255,.07); overflow:hidden; }
