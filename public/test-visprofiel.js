@@ -36,8 +36,6 @@ function laad(bron) {
   vm.createContext(c);
   // bij() toont via PLToon (pedaal vanaf de rust, tank gedempt).
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-toon.js', 'utf8'), c, { filename: 'pidlane-toon.js' });
-  // Hyperlane (27-10-2026) levert zijn eigen tekening; laden doet nog niets met de DOM.
-  vm.runInContext(fs.readFileSync(__dirname + '/pidlane-hyperlane.js', 'utf8'), c, { filename: 'pidlane-hyperlane.js' });
   vm.runInContext(bron, c, { filename: 'pidlane-visprofiel.js' });
   return c;
 }

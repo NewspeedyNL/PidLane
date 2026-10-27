@@ -30,6 +30,7 @@
 //
 // Geen bus-I/O. Puur en getoetst in test-hyperlane.js: kleur(), stemming(),
 // modus(), leds(), nul100(), volg(). Laadt vóór pidlane-visprofiel.js.
+// Het vak (de HTML met de element-id's) staat in pidlane-visprofiel.js.
 // ══════════════════════════════════════════════════════════════════
 (function(){
 'use strict';
@@ -82,27 +83,8 @@ function nul100(st, v, gas, t){
 function volg(nu, doel, dt, k){ return nu+(doel-nu)*Math.min(1, dt*k); }
 
 // ── TEKENING ──────────────────────────────────────────────────────
-function html(){
-  const strook=function(rol, naam){
-    return '<div id="vpf-p-'+rol+'"><b class="vpf-w" id="vpf-w-'+rol+'">—</b><span>'+naam+'</span></div>';
-  };
-  return '<canvas class="vhl-bg"></canvas>'+
-    '<div class="vhl-podium">'+
-      // Het getal staat ook als tekst in het vak (vpf-w-*): de schermlezer en
-      // de proeven lezen dat; zichtbaar is alleen de tekening in de canvas.
-      '<div class="vhl-pod l" id="vpf-p-toeren"><canvas class="vhl-ring" data-ring="toeren" aria-hidden="true"></canvas><b class="vpf-w vhl-sr" id="vpf-w-toeren">—</b></div>'+
-      '<div class="vhl-mid">'+
-        '<div class="vhl-leds">'+new Array(11).join('<i></i>')+'</div>'+
-        '<div class="vhl-modus">ECO</div>'+
-        '<div class="vhl-gear"></div>'+
-        '<div class="vhl-strook">'+strook('koel', 'KOELW °C')+strook('gas', 'GAS %')+'</div>'+
-      '</div>'+
-      '<div class="vhl-pod r" id="vpf-p-snel"><canvas class="vhl-ring" data-ring="snel" aria-hidden="true"></canvas><b class="vpf-w vhl-sr" id="vpf-w-snel">—</b></div>'+
-    '</div>'+
-    '<div class="vhl-rand l"></div><div class="vhl-rand r"></div>'+
-    '<div class="vhl-flits"></div><div class="vhl-badge"></div>';
-}
-
+// Het vak zelf (canvas, ringen, strook, met de id's vpf-p-*/vpf-w-*) tekent
+// PLVisProfiel.html(), net als bij elk profiel; hier alleen wat beweegt.
 const FS='precision highp float;'+
 'uniform vec2 R;uniform float T,Z,E;uniform vec3 C1,C2;uniform vec2 P;'+
 'float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}'+
@@ -298,7 +280,7 @@ function frame(nu){
 window.PLHyperlane = {
   STOPS:STOPS, OPSTART_S:OPSTART_S,
   kleur:kleur, stemming:stemming, modus:modus, leds:leds, nul100:nul100, volg:volg,
-  html:html, start:start, stop:stop, wek:wek, zet:zet,
+  start:start, stop:stop, wek:wek, zet:zet,
   actief:function(){ return !!_s; }
 };
 })();

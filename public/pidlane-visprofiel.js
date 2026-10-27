@@ -470,12 +470,33 @@ function nulstellen(){
   return ok;
 }
 /* De HTML van het vak voor een profiel (niet de basis). */
+/* ── Hyperlane ── Het vak; wat beweegt (tunnel, ringen, lampjes) tekent
+   pidlane-hyperlane.js. Het getal van een ring staat ook als tekst
+   (.vhl-sr): de schermlezer en de proeven lezen dat. */
+function htmlHyper(p, ind){
+  const pod=function(rol, kant){
+    const x=plekVan(p, rol), pid=ind.plekken[rol];
+    return '<div class="vhl-pod '+kant+(pid?'':' leeg')+'" id="vpf-p-'+rol+'" title="'+titel(x, pid)+'">'+
+      '<canvas class="vhl-ring" data-ring="'+rol+'" aria-hidden="true"></canvas><b class="vpf-w vhl-sr" id="vpf-w-'+rol+'">—</b></div>';
+  };
+  const strook=function(rol, label){
+    const x=plekVan(p, rol), pid=ind.plekken[rol];
+    return '<div class="'+(pid?'':'leeg')+'" id="vpf-p-'+rol+'" title="'+titel(x, pid)+'"><b class="vpf-w" id="vpf-w-'+rol+'">—</b><span>'+label+'</span></div>';
+  };
+  return '<canvas class="vhl-bg" aria-hidden="true"></canvas>'+
+    '<div class="vhl-podium">'+pod('toeren', 'l')+
+      '<div class="vhl-mid"><div class="vhl-leds">'+new Array(11).join('<i></i>')+'</div>'+
+        '<div class="vhl-modus">ECO</div><div class="vhl-gear"></div>'+
+        '<div class="vhl-strook">'+strook('koel', 'KOELW °C')+strook('gas', 'GAS %')+'</div></div>'+
+      pod('snel', 'r')+'</div>'+
+    '<div class="vhl-rand l"></div><div class="vhl-rand r"></div><div class="vhl-flits"></div><div class="vhl-badge"></div>';
+}
 function html(id, ind){
   const p=voorInd(id, ind);
   if(!p || !p.plekken || !ind) return '';
   const binnen = p.stijl==='glas' ? htmlGlas(p, ind) : p.stijl==='licht' ? htmlLicht(p, ind)
                : p.stijl==='digitaal' ? htmlDigitaal(p, ind) : p.stijl==='telemetrie' ? htmlTelemetrie(p, ind)
-               : p.stijl==='hyper' ? (window.PLHyperlane ? PLHyperlane.html() : '') : htmlNeon(p, ind);
+               : p.stijl==='hyper' ? htmlHyper(p, ind) : htmlNeon(p, ind);
   const geen=p.plekken.every(function(x){ return !ind.plekken[x.rol]; });
   return '<div class="vpf vpf-'+p.stijl+'" data-profiel="'+p.id+'">'+binnen+
     (geen ? '<p class="vpf-geen">Deze auto geeft geen van de sensoren voor '+esc(p.naam.toLowerCase())+'. Veeg opzij voor een andere weergave.</p>' : '')+'</div>';

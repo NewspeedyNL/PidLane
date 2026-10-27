@@ -81,7 +81,7 @@ P.bij('hyperlane', ind, '010D', 88, 'ok');
 waar('toeren en snelheid komen bij PLHyperlane.zet aan', gezet.join(',') === 'toeren=3200,snel=88', gezet.join(','));
 
 console.log('\n7. Elke klasse heeft CSS');
-const klassen = [...new Set([...H.html().matchAll(/class="([^"]+)"/g)].flatMap(m => m[1].split(/\s+/)).filter(k => /^vhl-/.test(k)))];
+const klassen = [...new Set([...h.matchAll(/class="([^"]+)"/g)].flatMap(m => m[1].split(/\s+/)).filter(k => /^vhl-/.test(k)))];
 const mist = klassen.filter(k => CSS.indexOf('.' + k) < 0);
 waar('alle vhl-klassen uit html() staan in pidlane.css', mist.length === 0, mist.join(', '));
 waar('het volle scherm vult het scherm met de tunnel', /body\.pl-vis-vol \.vpf-hyper \{[^}]*position:fixed/.test(CSS));
