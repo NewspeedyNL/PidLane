@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-10-2026 — Garagemodus bij bulk/waak, leeg meter-midden, startkop 10 s
+ ═══════════════════════════════════════════════════════════
+
+ - Bulk-recorder of waakronde aanzetten (chip, paneel of voorkeur bij
+   verbinden) zet de garagemodus aan; uitzetten doet hem niet uit
+   (`PLRun` → `garageNodig()`).
+ - Slim visueel: zolang de versnelling onbekend is blijft het midden leeg;
+   het embleem staat er alleen als de versnellingsindicator uit staat
+   (`logoZien()`).
+ - Startscherm: auto en "… herkend" bovenaan gaan na 10 s weg en komen terug
+   bij de volgende herkenning of verbinding (`PLNav.kopToon()`).
+
+ ═══════════════════════════════════════════════════════════
  26-10-2026 — Max haalbaar: de PID-keuze naar wat de adapter haalt
  ═══════════════════════════════════════════════════════════
 

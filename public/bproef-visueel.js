@@ -169,14 +169,16 @@ function beoordeel(m) {
       const gear = function(){ return document.getElementById('vis-gear').textContent; };
       // De meter vraagt toonbaar(), niet waarde() (30-09-2026): een cijfer dat
       // nog niet zeker is, geeft het embleem.
-      const echt = PLGear.toonbaar, echtW = PLGear.waarde; const uit = {};
+      const echt = PLGear.toonbaar, echtW = PLGear.waarde, uitW = PLGear.uit; const uit = {};
+      PLGear.uit = false;
       PLGear.toonbaar = function(){ return null; }; PLVisueel.tik(); uit.onbekend = { logo: logo(), gear: gear() };
+      PLGear.uit = true; PLVisueel.tik(); uit.indUit = { logo: logo(), gear: gear() }; PLGear.uit = false;
       PLGear.toonbaar = function(){ return 3; };    PLVisueel.tik(); uit.drie = { logo: logo(), gear: gear() };
       PLGear.toonbaar = function(){ return -1; };   PLVisueel.tik(); uit.achteruit = gear();
       PLGear.toonbaar = function(){ return 0; };    PLVisueel.tik(); uit.neutraal = gear();
       PLGear.waarde = function(){ return 4; }; PLGear.toonbaar = function(){ return null; }; PLVisueel.tik();
       uit.onzeker = { logo: logo(), gear: gear() };
-      PLGear.toonbaar = echt; PLGear.waarde = echtW;
+      PLGear.toonbaar = echt; PLGear.waarde = echtW; PLGear.uit = uitW;
       // De topbalk: in Slim visueel geen tweede versnelling (28-09-2026).
       const toonWas = PLGear.toon, uitWas = PLGear.uit;
       PLGear.uit = false; PLGear.toon = 3; PLGear._render();
@@ -200,9 +202,10 @@ function beoordeel(m) {
       uit.koelWeer = activePIDs.has('0105'); uit.handmatig = manualPIDs.has('0105');
       return uit;
     })()`);
-    toets('zonder bekende versnelling staat het embleem er', mid.onbekend.logo && mid.onbekend.gear === '', JSON.stringify(mid.onbekend));
+    toets('zonder bekende versnelling blijft het midden leeg (indicator aan)', !mid.onbekend.logo && mid.onbekend.gear === '', JSON.stringify(mid.onbekend));
+    toets('met de indicator uit staat het embleem er', mid.indUit.logo && mid.indUit.gear === '', JSON.stringify(mid.indUit));
     toets('met een versnelling staat die in het midden, het embleem is weg', !mid.drie.logo && mid.drie.gear === '3', JSON.stringify(mid.drie));
-    toets('een versnelling die nog niet zeker is: het embleem, geen cijfer', mid.onzeker.logo && mid.onzeker.gear === '', JSON.stringify(mid.onzeker));
+    toets('een versnelling die nog niet zeker is: leeg, geen cijfer', !mid.onzeker.logo && mid.onzeker.gear === '', JSON.stringify(mid.onzeker));
     toets('in Slim visueel staat de versnelling niet ook nog in de topbalk (daarbuiten wel)',
       mid.topbalk.visueel === 'none' && mid.topbalk.slim !== 'none', JSON.stringify(mid.topbalk));
     toets('achteruit is R en neutraal N (niet "-1" en "0")', mid.achteruit === 'R' && mid.neutraal === 'N', JSON.stringify(mid));
