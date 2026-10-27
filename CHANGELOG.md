@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-10-2026 — Hyperlane: eigen sensor met eigen naam, rustige achtergronden
+ ═══════════════════════════════════════════════════════════
+
+ - Een zelfgekozen sensor (ook op een ring) toont zijn eigen naam, eenheid
+   en schaal; voorheen bleef "GAS %" staan boven bijvoorbeeld de ontsteking.
+   Die waarde telt niet meer mee als gas, koelwater of snelheid.
+ - Knopje linksboven voor de achtergrond: Aurora, Hartslag, Pulsen, Sterren
+   (in stilstand de tunnel, rijdend de rustige vorm), Stil, Tunnel.
+ - Geen palet meer bij Hyperlane op volledig scherm.
+
+ ═══════════════════════════════════════════════════════════
  27-10-2026 — Hyperlane: hoofdgetal in plaats van de versnelling, staand onderin goed
  ═══════════════════════════════════════════════════════════
 
