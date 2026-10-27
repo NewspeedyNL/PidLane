@@ -50,6 +50,7 @@ function toets(naam, waar, uitleg) {
       r.koel = document.getElementById('vpf-w-koel').textContent;
       r.kleur = vak().style.getPropertyValue('--vhl-c');
       r.gl = vak().classList.contains('vhl-gl');
+      r.scene = vak().getAttribute('data-scene');
       // Volledig scherm: de tunnel vult het scherm.
       document.querySelector('.gg.view-visueel .vt-vol').click();
       await wacht(400);
@@ -67,6 +68,7 @@ function toets(naam, waar, uitleg) {
     toets('de toerenring is getekend (meer dan 5% van de pixels)', r.getekend > 0.05, JSON.stringify(r));
     toets('de demo-auto vult toeren en koelwater', r.toeren && r.toeren !== '—' && r.koel && r.koel !== '—', JSON.stringify(r));
     toets('de kleur staat op het vak', /^rgb\(/.test(r.kleur || ''), JSON.stringify(r));
+    toets('de lus kiest een scène', ['rijden', 'stil', 'cruise', 'koud', 'remmen', 'launch', 'begrenzer', 'alarm'].indexOf(r.scene) >= 0, JSON.stringify(r));
     if (!r.gl) console.log('  LET OP  geen WebGL in deze browser: de tunnel is hier het CSS-verloop');
     console.log('\n2. Volledig scherm');
     toets('de tunnel vult het hele scherm', r.dekt && r.bgVol, JSON.stringify(r));
