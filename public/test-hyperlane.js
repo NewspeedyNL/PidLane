@@ -99,6 +99,8 @@ let r1 = rijd(minuut, null);
 waar('een minuut 60 km/h is 1 km, en 60 s rijtijd', Math.abs(r1.km - 1) < 0.01 && Math.abs(r1.rijS - 60) < 0.2, JSON.stringify(r1));
 const gat = H.ritBij(H.ritBij(null, 100, null, 0), 100, null, 10);
 waar('een gat van 10 s zonder meting verzint geen kilometers', gat.km === 0, JSON.stringify(gat));
+let rlos = null; for (let t = 0; t <= 60; t += 0.1) { const tt = Math.round(t * 10) / 10; rlos = H.ritBij(rlos, null, 2400, tt); rlos = H.ritBij(rlos, 60, null, tt + 0.05); }
+waar('toeren en snelheid in losse metingen (zoals de bus ze geeft): toch 1 km', Math.abs(rlos.km - 1) < 0.02, JSON.stringify(rlos));
 waar('top en max toeren', rijd([[40, 3000, 0], [130, 6100, 1], [90, 2500, 2]], null).top === 130 && rijd([[40, 3000, 0], [130, 6100, 1]], null).maxT === 6100);
 waar('een ontbrekende snelheid of toeren telt niet als 0', rijd([[50, 2000, 0], [null, null, 0.1]], null).top === 50 && rijd([[50, 2000, 0], [null, null, 0.1]], null).maxT === 2000);
 waar('na 15 min zonder meting begint een nieuwe rit', H.ritBij(r1, 0, 800, 60 + H.RIT_PAUZE_S + 1).km === 0);
