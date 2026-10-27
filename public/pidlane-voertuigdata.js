@@ -457,6 +457,13 @@ async function brandstofPoort(){
   // ── 3. Het kenteken vragen ──
   // Alleen hier, en alleen als er nog niets anders werkte. Een vraag die je
   // stelt terwijl je het antwoord al hebt, leert mensen om weg te klikken.
+  // Opstart (PLOpstart, 27-10-2026): niets vragen tijdens het verbinden. Het
+  // kenteken komt ná de check, en de RDW vult de brandstof dan alsnog.
+  if(typeof _isOpstart === 'function' && _isOpstart()){
+    try{ btDiag('Opstart: brandstof onbekend — het kenteken wordt na de check gevraagd', 'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
+    window._plKentNaCheck = true;
+    return { bron:'opstart', type:'onbekend' };
+  }
   const kent = await _vraagKenteken();
   if(!kent) return { bron:'overgeslagen', type:'onbekend' };
 

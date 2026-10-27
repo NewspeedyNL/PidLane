@@ -280,6 +280,9 @@ var KRITIEK = [
   // de app om op elke serveraanroep. Hij staat hier omdat dat dan meteen
   // zichtbaar is in plaats van pas bij de eerste inlogpoging.
   'plFetch','plFetchUrl',
+  // De opstart (27-10-2026): PLOpstart vraagt het kenteken via rdwLookup, en
+  // de brandstofpoort kijkt met _isOpstart of hij mag vragen.
+  'rdwLookup','_isOpstart',
   'profielTegenSteunbits','plHerkansNodata','plLeesSteunbitmap','saveVinProfile','actiefPollProfiel','setPollProfile',
   // Het run-paneel (pidlane-run.js) schakelt deze vijf aan en uit. Ze stonden
   // er nog niet in omdat ze tot 21-08 alleen vanuit hun eigen scherm werden

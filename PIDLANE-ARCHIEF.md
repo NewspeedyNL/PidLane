@@ -15,6 +15,35 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 27-10-2026 — instappen, starten, de rest gaat vanzelf (opstart en wekker)
+
+Gevraagd: de klant stapt in, start, tikt op PidLane, en de rest gaat vanzelf.
+Uitgezocht wat dat tegenhield:
+
+- **Een automatische verbinding was altijd een hervatting.** `pidlane-theme.js`
+  verbindt na het herstellen van de sessie met `hervat: 'herlaad'` — óók als de
+  app 's ochtends opnieuw opent. Een hervatting slaat de check over
+  (`PLNav.naVerbinding` werd alleen in de niet-hervat-tak aangeroepen) en
+  neemt het vorige kenteken zonder te vragen: in een andere auto de verkeerde
+  plaat. Opgelost met `PLOpstart.reden()`: na 15 min zonder motor is het een
+  opstart. Waarom de motor en niet de verbinding: een adapter die permanent
+  stroom heeft blijft verbonden terwijl de auto een nacht stilstaat.
+- **De check was eenmalig** (02-10-2026: na één keer weer uit). Nu één keer per
+  auto per dag; standaard blijft hij uit (besluit 27-10, de eigenaar).
+- **Garagemodus hield "door naar Live" tegen**, en sinds dezelfde dag zetten
+  bulk en waak de garagemodus aan. Een klant met die voorkeuren kwam dus nooit
+  meer vanzelf op Live. Een opstart gaat er nu altijd door.
+- **De wekker.** Een klassieke SPP-adapter (iCar Pro BT 3.0) meldt zich niet
+  bij de telefoon; hij is pas "aanwezig" als de app al verbindt. Een
+  CompanionDeviceManager-waarneming op zo'n adapter vuurt dus nooit. De
+  handsfree van de auto verbindt wél vanzelf bij het starten, en een
+  BLE-adapter adverteert. Daarom kiest de klant zelf in Androids keuzelijst.
+  **Niet getoetst op een toestel**: of `onDeviceAppeared` voor een klassiek
+  Bluetooth-apparaat (de handsfree) vuurt op Android 12 en 13 is in de
+  documentatie niet eenduidig; op 14+ wel. Dat is een vraag voor een rit.
+
+---
+
 ## 26-10-2026 (later) — de accuspanning viel elke halve minuut weg
 
 Gemeld met een schermafdruk: groot getal "—" en "Geen spanning", terwijl de

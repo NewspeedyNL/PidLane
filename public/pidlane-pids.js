@@ -1470,6 +1470,10 @@ function _vinSleutelVoorLog(vin){ return 'pl_vinprof_…'+String(vin||'').toUppe
 // gebeurt vóór de eerste await, dus de twee aanroepers — die het resultaat
 // negeren — merken er niets van: een async functie loopt synchroon door tot
 // het eerste await.
+function _vorigProfielKenteken(vin){
+  try{ const p=JSON.parse(localStorage.getItem(vinProfileKey(vin))||'null'); return (p&&p.kenteken)||''; }
+  catch(e){ console.warn('Vorig profiel onleesbaar — kenteken niet overgenomen', e); return ''; }
+}
 async function saveVinProfile(vin){
   if(!/^[A-HJ-NPR-Z0-9]{17}$/.test(String(vin||''))) return;
   try{
@@ -1478,6 +1482,10 @@ async function saveVinProfile(vin){
       merk:vehicleInfo.merk||'', model:vehicleInfo.model||'',
       year:vehicleInfo.year||'', brandstof:vehicleInfo.brandstof||'',
       motor:vehicleInfo.motor||'',
+      // Het kenteken van déze sessie (rdwLookup), zodat een opstart het uit
+      // de VIN haalt in plaats van het vorige te gokken (PLOpstart). Geen
+      // kenteken deze sessie: het oude uit het profiel blijft staan.
+      kenteken:(typeof window!=='undefined' && window._plKentBevestigd) || _vorigProfielKenteken(vin),
       // Gezondheidsoordeel meebewaren. Zonder dit moest initialHealthScan()
       // bij ELKE verbinding opnieuw elke PID aftasten om te weten welke
       // sensoren de auto echt levert — 30-60s bus, terwijl het antwoord al

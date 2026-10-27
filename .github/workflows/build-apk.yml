@@ -451,6 +451,8 @@ jobs:
                   "        registerPlugin(PLRenderPlugin.class);",
                   # De draadmeting (#352): welke draad gebruikt de processor.
                   "        registerPlugin(PLDradenPlugin.class);",
+                  # De wekker (27-10-2026): de auto opent de app.
+                  "        registerPlugin(PLWekkerPlugin.class);",
                   "        super.onCreate(savedInstanceState);",
                   # Ná super.onCreate(): pas dan bestaat de bridge (#229).
                   "        PLRender.koppel(this, getBridge());",
@@ -490,6 +492,7 @@ jobs:
                   "        registerPlugin(PLPipPlugin::class.java)",
                   "        registerPlugin(PLRenderPlugin::class.java)",
                   "        registerPlugin(PLDradenPlugin::class.java)",
+                  "        registerPlugin(PLWekkerPlugin::class.java)",
                   "        super.onCreate(savedInstanceState)",
                   "        PLRender.koppel(this, bridge)",
                   "    }",
@@ -531,6 +534,9 @@ jobs:
               # Zonder registratie bestaat Capacitor.Plugins.PLDraden niet en
               # zegt de SPP-proef "deze schil meet geen draden" (#352).
               ("registerPlugin(PLDradenPlugin", "de draadmeting registreren (#352)"),
+              # Zonder registratie bestaat Capacitor.Plugins.PLWekker niet en
+              # zegt Mijn voorkeuren "deze app kan nog niet gewekt worden".
+              ("registerPlugin(PLWekkerPlugin", "de wekker registreren (27-10-2026)"),
           ]:
               if stuk not in src:
                   print("FOUT: %s ontbreekt in MainActivity (%s)" % (stuk, waarvoor)); sys.exit(1)
@@ -545,6 +551,10 @@ jobs:
           xml = re.sub(r'\s*<uses-permission[^>]*android\.permission\.'
                        r'(FOREGROUND_SERVICE[A-Z_]*|POST_NOTIFICATIONS|WAKE_LOCK|RECEIVE_BOOT_COMPLETED|SCHEDULE_EXACT_ALARM)[^>]*/>', '', xml)
           xml = re.sub(r'\s*<service[^>]*PLMeetdienst[^>]*/>', '', xml)
+          xml = re.sub(r'\s*<!-- PidLane wekker.*?-->', '', xml)
+          xml = re.sub(r'\s*<uses-permission[^>]*REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE[^>]*/>', '', xml)
+          xml = re.sub(r'\s*<uses-feature[^>]*companion_device_setup[^>]*/>', '', xml)
+          xml = re.sub(r'\s*<service[^>]*PLWekkerDienst.*?</service>', '', xml, flags=re.S)
 
           perms = (
               '\n    <!-- PidLane meetdienst (#18) — geinjecteerd door CI -->'
@@ -573,6 +583,14 @@ jobs:
               # zonder plant Android de melding een paar minuten ruimer in, en
               # voor een APK-datum is dat geen verlies.
               '\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />'
+              # De wekker (27-10-2026): Android meldt PLWekkerDienst wanneer het
+              # gekoppelde apparaat (de auto of een BLE-adapter) verschijnt.
+              # Een normale permissie; de klant geeft akkoord in Androids eigen
+              # keuzelijst. required=false: zonder deze functie installeert de
+              # app gewoon, alleen de wekker ontbreekt.
+              '\n    <!-- PidLane wekker (27-10-2026) — geinjecteerd door CI -->'
+              '\n    <uses-permission android:name="android.permission.REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE" />'
+              '\n    <uses-feature android:name="android.software.companion_device_setup" android:required="false" />'
           )
           m = re.search(r'<manifest\b[^>]*>', xml)
           if not m:
@@ -589,7 +607,17 @@ jobs:
               '\n        <service'
               '\n            android:name="%s.PLMeetdienst"'
               '\n            android:exported="false"'
-              '\n            android:foregroundServiceType="connectedDevice" />\n    ' % pakket
+              '\n            android:foregroundServiceType="connectedDevice" />'
+              # BIND_COMPANION_DEVICE_SERVICE: alleen het systeem mag hem binden.
+              '\n        <!-- PidLane wekker (27-10-2026) — geinjecteerd door CI -->'
+              '\n        <service'
+              '\n            android:name="%s.PLWekkerDienst"'
+              '\n            android:exported="true"'
+              '\n            android:permission="android.permission.BIND_COMPANION_DEVICE_SERVICE">'
+              '\n            <intent-filter>'
+              '\n                <action android:name="android.companion.CompanionDeviceService" />'
+              '\n            </intent-filter>'
+              '\n        </service>\n    ' % (pakket, pakket)
           )
           if "</application>" not in xml:
               print("FOUT: </application> niet gevonden"); sys.exit(1)
@@ -654,6 +682,9 @@ jobs:
               ('WAKE_LOCK', 'de partial wake lock die de CPU wakker houdt'),
               ('foregroundServiceType="connectedDevice"', 'het type op de service zelf'),
               ('%s.PLMeetdienst' % pakket, 'de service-klasse'),
+              ('%s.PLWekkerDienst' % pakket, 'de wekdienst (27-10-2026)'),
+              ('BIND_COMPANION_DEVICE_SERVICE', 'alleen het systeem bindt de wekdienst'),
+              ('REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE', 'de wekker mag het apparaat volgen'),
           ]:
               if naam not in xml:
                   print("FOUT: %s ontbreekt na injectie (%s)" % (naam, waarvoor)); sys.exit(1)
@@ -1101,6 +1132,7 @@ jobs:
               ('android.permission.POST_NOTIFICATIONS', 'de melding die bij een foreground service hoort (#18)'),
               ('android.permission.WAKE_LOCK', 'de partial wake lock van de meetdienst (#18)'),
               ('android.permission.RECEIVE_BOOT_COMPLETED', 'de APK-herinneringen overleven een herstart (PLHerinner)'),
+              ('android.permission.REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE', 'de wekker volgt het gekoppelde apparaat (27-10-2026)'),
           ]:
               if not any(naam in k for k in knopen):
                   print("FOUT: %s ontbreekt in de bundel (%s)" % (naam, waarvoor)); fout += 1

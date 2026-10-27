@@ -146,8 +146,9 @@ var PL_HULP = {
         '<li>PidLane zoekt de adapter en daarna de auto. Bij <b>Verbinding inmeten…</b> meet hij hoe snel jouw auto antwoordt; dat duurt meestal minder dan een seconde. Na afloop zie je de sensoren van jouw auto.</li>' +
         '</ol>' +
         '<p>Ben je ingelogd en heb je met deze adapter en auto al eens verbonden, dan stelt PidLane geen vragen meer: je ziet alleen <b>Verbinden met voertuig…</b> en daarna je sensoren. Antwoordt de adapter niet, druk dan op de pair-knop van de adapter en tik op <b>Opnieuw proberen</b>.</p>' +
-        '<p>Zet je <b>Check na verbinden</b> aan (Meer → Mijn voorkeuren), dan opent <a data-hulp="check">Check mijn auto</a> bij de volgende verbinding één keer vanzelf; daarna staat de schakelaar weer uit. ' +
+        '<p>Zet je <b>Check na verbinden</b> aan (Meer → Mijn voorkeuren), dan opent <a data-hulp="check">Check mijn auto</a> na het verbinden vanzelf, <b>één keer per auto per dag</b>. ' +
         'Vindt hij niets, dan gaat de app na 5 seconden door naar Live; tik in het venster of op <b>Blijf hier</b> om te blijven. Tik je zelf op <b>Check mijn auto</b> en is alles in orde, dan ga je na 5 seconden vanzelf terug naar het hoofdscherm.</p>' +
+        '<p><b>Instappen, starten, klaar.</b> Opent de app nadat de motor een kwartier of langer uit stond, dan verbindt hij vanzelf met je adapter, zonder vragen: niet het kenteken van de vorige keer (dit kan een andere auto zijn), maar het kenteken dat bij het chassisnummer hoort. Kent hij de auto nog niet, dan vraagt hij het kenteken pas na de check, als je stilstaat. Is de auto er nog niet klaar voor, dan zoekt hij een minuut lang zelf opnieuw. Met <b>🚗 Open als de auto start</b> (Meer → Mijn voorkeuren) opent de app ook vanzelf: koppel daar één keer de handsfree van je auto, of een BLE-adapter.</p>' +
         '<p>In hetzelfde scherm: <b>Simuleer verbinding</b> (demo), <b>Zonder adapter</b> en, als regel eronder, ' +
         '<b>Meekijken met een sessie</b> voor de expert die op afstand meekijkt. Zie <a data-hulp="delen">Delen en meekijken</a>.</p>',
       zie: ['verbinden-mislukt', 'status'] },
@@ -382,7 +383,8 @@ var PL_HULP = {
         '<ul>' +
         '<li><b>⚙️ Mijn voorkeuren</b> — bovenaan het blok <b>Op dit toestel</b>, dat meteen werkt:</li>' +
         '<li><b>🔧 Garagemodus</b> — zie <a data-hulp="garagemodus">Garagemodus</a>.</li>' +
-        '<li><b>🩺 Check na verbinden</b> — opent Check mijn auto bij de volgende verbinding één keer vanzelf en gaat dan weer uit. Standaard uit.</li>' +
+        '<li><b>🩺 Check na verbinden</b> — opent Check mijn auto na het verbinden vanzelf, één keer per auto per dag. Standaard uit.</li>' +
+        '<li><b>🚗 Open als de auto start</b> — koppel één keer de handsfree van je auto (of een BLE-adapter); dan opent PidLane vanzelf als je de auto start. Android 12 of nieuwer.</li>' +
         '<li><b>ⓘ Uitleg bij knoppen</b> — zet de kleine <b>i</b>-rondjes aan of uit. Standaard uit.</li>' +
         '<li><b>📖 Tekstgrootte</b> — S, M of L.</li>' +
         '<li><b>🔒 Privacy</b></li>' +
@@ -482,7 +484,9 @@ var PL_HULP = {
     { id: 'garagemodus', anker: '#kbGarageModus', bron: 'index.html', onderwerp: 'garagemodus',
       tekst: 'Zet de vakgereedschappen erbij, zoals Alle functies en Bewaken. Voor een account dat geen klant is staat hij vanzelf aan.' },
     { id: 'autocheck', anker: '#kbAutoCheck', bron: 'index.html', onderwerp: 'check',
-      tekst: 'Opent Check mijn auto vanzelf na het verbinden, één keer per sessie. Niet bij hervatten, meekijken of in de demo.' },
+      tekst: 'Opent Check mijn auto vanzelf na het verbinden, één keer per auto per dag. Niet bij hervatten, meekijken of in de demo.' },
+    { id: 'wekker', anker: '#kbWekker', bron: 'index.html', onderwerp: 'verbinden',
+      tekst: 'Koppel één keer de handsfree van je auto of een BLE-adapter. Daarna opent PidLane vanzelf als je de auto start.' },
     { id: 'rijmodus', anker: '#kbRijmodus', bron: 'index.html', onderwerp: 'rijmodus',
       tekst: 'Voor gesplitst scherm naast de kaart: een smalle strook met waarden en daaronder het advies van de Rit- of Caravan-monitor in beeld. Standaard uit.' },
     { id: 'afsluiten', anker: '#kbAfsluiten', bron: 'index.html', onderwerp: 'afsluiten',

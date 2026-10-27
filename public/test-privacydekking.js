@@ -57,7 +57,9 @@ const DEKKING = {
   FOREGROUND_SERVICE_CONNECTED_DEVICE:['achtergrond'],
   POST_NOTIFICATIONS:                 ['melding'],
   WAKE_LOCK:                          ['wakker', 'slaapstand', 'scherm uit'],
-  RECEIVE_BOOT_COMPLETED:             ['herstart']
+  RECEIVE_BOOT_COMPLETED:             ['herstart'],
+  REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE: ['bijbehorend apparaat'],
+  BIND_COMPANION_DEVICE_SERVICE:      ['bijbehorend apparaat']
 };
 
 // Wat zet de workflow er werkelijk in? Uit de bron lezen, niet overschrijven:

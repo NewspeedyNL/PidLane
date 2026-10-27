@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 27-10-2026 — Instappen, starten, de rest gaat vanzelf
+ ═══════════════════════════════════════════════════════════
+
+ - Een automatische verbinding nadat de motor 15 min of langer uit stond
+   is een opstart (`PLOpstart`): geen vragen, niet het vorige kenteken maar
+   dat uit het profiel van deze VIN; een onbekende auto krijgt de
+   kentekenvraag ná de check, in stilstand. Geen protocol: een minuut lang
+   zelf opnieuw zoeken.
+ - Check na verbinden: één keer per auto per dag in plaats van eenmalig;
+   ook na snel verbinden met de knop. Standaard blijft hij uit.
+ - Een opstart met een schone auto gaat ook in de garagemodus door naar Live.
+ - 🚗 Open als de auto start (Mijn voorkeuren): native wekker via
+   CompanionDeviceManager (Android 12+); koppel de handsfree van de auto
+   of een BLE-adapter. Nieuwe permissie REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE.
+
+ ═══════════════════════════════════════════════════════════
  27-10-2026 — Garagemodus bij bulk/waak, leeg meter-midden, startkop 10 s
  ═══════════════════════════════════════════════════════════
 
