@@ -153,7 +153,12 @@ const PROFIELEN = [
       { rol:'toeren', naam:'Toerental', keten:['010C'], eenheid:'rpm', soort:'hyper', lo:0, hi:8000, dec:0, diesel:{ hi:6000 } },
       { rol:'snel',   naam:'Snelheid',  keten:['010D'], eenheid:'km/h', soort:'hyper', lo:0, hi:240, dec:0 },
       { rol:'koel',   naam:'Koelwater', keten:['0105','0167'], eenheid:'°C', soort:'hyper', lo:40, hi:130, dec:0 },
-      { rol:'gas',    naam:'Gaspedaal', keten:['0149','015A','014A','0111'], eenheid:'%', soort:'hyper', lo:0, hi:100, dec:0 }
+      { rol:'gas',    naam:'Gaspedaal', keten:['0149','015A','014A','0111'], eenheid:'%', soort:'hyper', lo:0, hi:100, dec:0 },
+      // Vierde ronde: power-up bij het starten, en de tanklichtbalk onderin.
+      { rol:'accu',     naam:'Accu',     keten:['0142'], eenheid:'V', soort:'hyper', lo:9, hi:16, dec:1 },
+      { rol:'tank',     naam:'Tank',     keten:['012F'], eenheid:'%', soort:'hyper', lo:0, hi:100, dec:0 },
+      { rol:'bereik',   naam:'Bereik',   keten:['CA09'], eenheid:'km', soort:'hyper', lo:0, hi:2000, dec:0 },
+      { rol:'verbruik', naam:'Verbruik', keten:['CA03'], eenheid:'L/100', soort:'hyper', lo:0, hi:30, dec:1 }
     ] }
 ];
 // De ringen van buiten naar binnen; de straal staat hier en niet in de CSS,
@@ -474,6 +479,7 @@ function nulstellen(){
    pidlane-hyperlane.js. Het getal van een ring staat ook als tekst
    (.vhl-sr): de schermlezer en de proeven lezen dat. */
 function htmlHyper(p, ind){
+  const tank=function(){ return tankHtml(p, ind); };
   const pod=function(rol, kant){
     const x=plekVan(p, rol), pid=ind.plekken[rol];
     return '<div class="vhl-pod '+kant+(pid?'':' leeg')+'" id="vpf-p-'+rol+'" title="'+titel(x, pid)+'">'+
@@ -487,9 +493,20 @@ function htmlHyper(p, ind){
     '<div class="vhl-podium">'+pod('toeren', 'l')+
       '<div class="vhl-mid"><div class="vhl-leds">'+new Array(11).join('<i></i>')+'</div>'+
         '<div class="vhl-modus">ECO</div><div class="vhl-gear"></div>'+
-        '<div class="vhl-strook">'+strook('koel', 'KOELW °C')+strook('gas', 'GAS %')+'</div></div>'+
+        '<div class="vhl-strook">'+strook('koel', 'KOELW °C')+strook('gas', 'GAS %')+strook('accu', 'ACCU V')+'</div></div>'+
       pod('snel', 'r')+'</div>'+
-    '<div class="vhl-rand l"></div><div class="vhl-rand r"></div><div class="vhl-flits"></div><div class="vhl-badge"></div>';
+    '<div class="vhl-rand l"></div><div class="vhl-rand r"></div><div class="vhl-flits"></div><div class="vhl-badge"></div>'+
+    '<div class="vhl-score" aria-live="polite"></div><div class="vhl-power" aria-live="polite"></div>'+
+    tank();
+}
+/* De tanklichtbalk onderin: peil, bereik en verbruik op één regel. */
+function tankHtml(p, ind){
+  const vak=function(rol, voor, na){
+    const x=plekVan(p, rol), pid=ind.plekken[rol];
+    return '<span class="'+(pid?'':'leeg')+'" id="vpf-p-'+rol+'" title="'+titel(x, pid)+'">'+voor+'<b class="vpf-w" id="vpf-w-'+rol+'">—</b>'+na+'</span>';
+  };
+  return '<div class="vhl-tank geen"><div class="vhl-tank-label">'+vak('tank', '⛽ ', ' %')+vak('bereik', '', ' km')+vak('verbruik', '', ' L/100')+'</div>'+
+    '<div class="vhl-tank-balk"><i></i></div></div>';
 }
 function html(id, ind){
   const p=voorInd(id, ind);

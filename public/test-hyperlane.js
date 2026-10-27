@@ -9,6 +9,7 @@
 //   • de schakellampjes beginnen op 70% van de rode streep, de begrenzer knippert;
 //   • 0–100 meet alleen vanuit stilstand met gas, en stilstaan zet hem terug;
 //   • de scène (alarm, begrenzer, remmen, launch, koud, stil, cruise) en hun voorrang;
+//   • de rit (afstand, top, rijtijd, beste 0–100) en de tegels van het scorebord;
 //   • het profiel kiest de juiste PIDs en een diesel krijgt 6000 rpm;
 //   • elke klasse die de tekening gebruikt heeft regels in pidlane.css.
 // Wat in de echte app gebeurt (WebGL, de lus, het volle scherm): bproef-hyperlane.js.
@@ -90,6 +91,51 @@ waar('een gat van meer dan 3 s begint opnieuw', H.versnelling({ v: 0, t: 0, a: 0
 waar('geen snelheid: geen versnelling', H.versnelling(vs, null, 3) === null);
 waar('opwarming: 20 °C leeg, 70 °C vol, onbekend vol', H.warmte(20) === 0 && H.warmte(70) === 1 && H.warmte(null) === 1);
 waar('nacht van 21 tot 6 uur', H.nacht(21) && H.nacht(3) && !H.nacht(6) && !H.nacht(20));
+
+console.log('\n4d. De rit en het scorebord bij stilstand');
+function rijd(stappen, rit) { stappen.forEach(x => { rit = H.ritBij(rit, x[0], x[1], x[2]); }); return rit; }
+const minuut = []; for (let t = 0; t <= 60; t += 0.1) minuut.push([60, 2400, Math.round(t * 10) / 10]);
+let r1 = rijd(minuut, null);
+waar('een minuut 60 km/h is 1 km, en 60 s rijtijd', Math.abs(r1.km - 1) < 0.01 && Math.abs(r1.rijS - 60) < 0.2, JSON.stringify(r1));
+const gat = H.ritBij(H.ritBij(null, 100, null, 0), 100, null, 10);
+waar('een gat van 10 s zonder meting verzint geen kilometers', gat.km === 0, JSON.stringify(gat));
+waar('top en max toeren', rijd([[40, 3000, 0], [130, 6100, 1], [90, 2500, 2]], null).top === 130 && rijd([[40, 3000, 0], [130, 6100, 1]], null).maxT === 6100);
+waar('een ontbrekende snelheid of toeren telt niet als 0', rijd([[50, 2000, 0], [null, null, 0.1]], null).top === 50 && rijd([[50, 2000, 0], [null, null, 0.1]], null).maxT === 2000);
+waar('na 15 min zonder meting begint een nieuwe rit', H.ritBij(r1, 0, 800, 60 + H.RIT_PAUZE_S + 1).km === 0);
+waar('binnen 15 min (een stoplicht, een herbouw) telt hij door', H.ritBij(r1, 0, 800, 60.1).km > 0.99);
+waar('stilstaan telt niet als rijtijd', H.ritBij(H.ritBij(r1, 0, 800, 60.1), 0, 800, 61).rijS - r1.rijS < 0.15);
+waar('beste 0–100 is de snelste', H.ritNul100(H.ritNul100(r1, 7.4), 6.8).beste === 6.8 && H.ritNul100(H.ritNul100(r1, 6.8), 7.4).beste === 6.8);
+waar('onder 0,3 km: geen scorebord (elke parkeermanoeuvre zou er een geven)', H.scorebord(rijd([[20, 1500, 0], [20, 1500, 1]], null)) === null && H.scorebord(null) === null);
+const sb = H.scorebord(H.ritNul100(r1, 6.8)), sl = sb.map(x => x.sleutel).join(',');
+waar('zes tegels: top, 0–100, max toeren, gemiddeld, afstand, rijtijd', sl === 'top,nul100,maxt,gem,km,tijd', sl);
+waar('gemiddeld = afstand / rijtijd (60 km/h)', Math.abs(sb[3].waarde - 60) < 1, sb[3].waarde);
+waar('zonder 0–100 geen lege tegel', H.scorebord(r1).every(x => x.sleutel !== 'nul100'));
+waar('rijtijd als m:ss en u:mm:ss', H.duur(65) === '1:05' && H.duur(3725) === '1:02:05' && sb[5].tekst === '1:00');
+waar('optellen begint op 0, eindigt op 1, en schiet niet door', H.telOp(0) === 0 && H.telOp(1) === 1 && H.telOp(2) === 1 && H.telOp(0.5) > 0.5);
+
+console.log('\n4e. Verbruik in de rit');
+const rv = []; for (let t = 0; t <= 60; t += 0.1) rv.push(Math.round(t * 10) / 10);
+let rr = null; rv.forEach((t, i) => { rr = H.ritBij(rr, 60, 2400, t, i < 300 ? 5 : 9); });
+waar('half om half 5 en 9 L/100: gemiddeld 7', Math.abs(H.scorebord(rr).filter(x => x.sleutel === 'verbruik')[0].waarde - 7) < 0.1);
+let rz = null; rv.forEach(t => { rz = H.ritBij(rz, 60, 2400, t, null); });
+waar('zonder verbruiksmeting geen verbruikstegel (en geen 0 L/100)', H.scorebord(rz).every(x => x.sleutel !== 'verbruik'));
+
+console.log('\n4f. Tank, power-up, G-spoor, merk');
+waar('tank: vol, laag onder 25%, leeg onder 10%, onbekend null', H.tankStand(60) === 'vol' && H.tankStand(20) === 'laag' && H.tankStand(8) === 'leeg' && H.tankStand(null) === null);
+function start(stappen) { let st = null, ev = null; stappen.forEach(x => { const r = H.accuStart(st, x[0], x[1], x[2]); st = r.st; if (r.start) ev = r.start; }); return ev; }
+const ev = start([[12.6, 0, 0], [12.5, 0, 0.5], [10.2, 150, 1], [11.0, 250, 1.2], [13.9, 900, 1.5]]);
+waar('starten: rust 12,6, dip 10,2, nu 13,9', ev && ev.rust === 12.6 && ev.dip === 10.2 && ev.nu === 13.9, JSON.stringify(ev));
+waar('motor liep al: geen power-up', start([[14.1, 850, 0], [14.2, 870, 1]]) === null);
+waar('zonder accuspanning geen power-up', start([[null, 0, 0], [null, 900, 1]]) === null);
+waar('spanning van meer dan 4 s terug telt niet als dip', start([[9.5, 0, 0], [12.4, 0, 5], [12.0, 900, 6]]).dip === 12.0);
+const gs = H.gSpoor([1, 0.5]);
+waar('G-spoor: 24 punten, rechts sturen trekt het spoor naar links, verder weg naar het midden', gs.length === 48 && gs[0] < 0 && Math.abs(gs[2]) < Math.abs(gs[0]) && gs[47] > gs[1] && gs[46] === 0);
+waar('G-spoor begrensd en zonder NaN', H.gSpoor([99, 'x', null]).every(isFinite) && H.gSpoor([99])[0] === H.gSpoor([1.2])[0]);
+waar('BMW, Mercedes-Benz en VW worden herkend', H.merkThema('BMW').id === 'bmw' && H.merkThema('Mercedes-Benz').id === 'mercedes' && H.merkThema('VW').id === 'vw');
+waar('onbekend of leeg merk: standaardkleuren', H.merkThema('Onbekend') === null && H.merkThema('') === null);
+const th = H.merkThema('Ferrari');
+waar('een merkpalet heeft dezelfde posities als STOPS en kleurt anders', th.stops.length === H.STOPS.length && th.stops.every((x, i) => x[0] === H.STOPS[i][0]) && !gelijk(H.kleur(0, th.stops), H.kleur(0)));
+waar('elk merk heeft vijf kleuren', H.MERKEN.every(m => m.kl.length === 5 && m.kl.every(c => c.length === 3)));
 
 console.log('\n5. Het profiel');
 const ind = P.indeling('hyperlane', q => ['010C', '010D', '0105', '0149'].indexOf(q) >= 0);
