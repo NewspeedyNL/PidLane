@@ -2004,7 +2004,6 @@ body.pl-vis-vol .vpf-neon .vpf-ringen { max-width:min(56vh, 70vw, 440px); }
 .vis.vhl-basis > .vhl-bg { position:absolute; inset:0; width:100%; height:100%; display:block; z-index:0; pointer-events:none; }
 .vis.vhl-basis.vhl-zonder > .vhl-bg { visibility:hidden; }
 .vis.vhl-basis > .vis-bak, .vis.vhl-basis > .vis-meldingen, .vis.vhl-basis > .vis-trek { position:relative; z-index:1; }
-.vis.vhl-basis .vt-thema, .vis.vhl-basis .vt-strook { display:none; }
 body.pl-vis-vol .vis.vhl-basis { border-radius:0; background:#02030a; }
 .vhl-basis .vis-plaat { fill:rgba(2,4,12,.55); stroke:color-mix(in srgb, var(--vhl-c) 45%, transparent); }
 .vhl-basis .vis-spoor { stroke:rgba(255,255,255,.07); }

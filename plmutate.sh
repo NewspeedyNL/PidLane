@@ -1183,7 +1183,7 @@ MUTATIES=(
 "public/pidlane-visueel.js@@    try{ PLHyperlane.voed(pid, PLToon.waarde(pid, val), oordeel(pid, val)); }@@    try{ }@@bproef-hyperlane.js@@de basismeter krijgt geen toeren of gas: de kleur staat stil op rustig"
 "public/pidlane-hyperlane.js@@querySelector('.vpf-hyper, .vhl-schil, .vhl-basis');@@querySelector('.vpf-hyper, .vhl-schil');@@bproef-hyperlane.js@@de basismeter blijft zonder achtergrond en kleur"
 "public/pidlane-visthema.js@@vis.classList.contains('vhl-basis') ? STANDAARD : themaVoor(lees())@@themaVoor(lees())@@bproef-visthema.js@@de basismeter krijgt weer een thema tot de volgende herbouw (de race van 28-10-2026)"
-"public/pidlane.css@@.vis.vhl-basis .vt-thema, .vis.vhl-basis .vt-strook { display:none; }@@@@bproef-hyperlane.js@@het palet staat weer op de basismeter"
+"public/pidlane.css@@.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vt-thema, .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vt-strook { display:none !important; }@@@@bproef-hyperlane.js@@het palet staat weer op de basismeter"
 "public/pidlane-hyperlane.js@@  if(!s.wortel.isConnected || !s.wortel.getClientRects().length){ stop(); return; }@@@@bproef-hyperlane.js@@de tekenlus draait door in een weggegooid of verborgen vak en kost accu"
 "public/pidlane-visueel.js@@    themaBij(g);\n    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@bproef-visthema.js@@een herbouw van een profiel gooit de knop volledig scherm weg"
 "public/pidlane-visueel.js@@  lichaam(false);\n  try{ if(window.PLVisThema) PLVisThema.uit(); }@@  lichaam(false);\n  try{ }@@bproef-visthema.js@@een andere weergave kiezen laat het volle scherm over de app liggen"
