@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Telemetrie: het G-vizier
+ ═══════════════════════════════════════════════════════════
+
+ - De G-cirkel is het hoofdinstrument: ringen per kwart g, een lichtspoor
+   van 1,5 s (gSpoorBij), de totale G, en per richting de hoogste waarde
+   van de rit (gMax; een kwartier zonder meting begint opnieuw).
+ - Horizon en autootjes ernaast (liggend) of eronder (staand), in neon.
+
+ ═══════════════════════════════════════════════════════════
  28-10-2026 — Temperatuur: geen lege balken meer
  ═══════════════════════════════════════════════════════════
 

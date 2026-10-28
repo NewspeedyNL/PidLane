@@ -2132,7 +2132,7 @@ MUTATIES=(
 "public/pidlane-survey2.js@@      : rij('Mode 06', !m6.aantalTests ? '✗' : m6.aantalGezakt ? '~' : '✓'@@      : rij('Mode 06', m6.aantalGezakt ? '~' : '✓'@@test-survey2.js@@een auto zonder één monitortest krijgt een vinkje bij mode 06 in de campagnetabel"
 "public/pidlane.css@@body.pl-visueel #plLiveWaak, body.pl-visueel #plLiveRec { display:none !important; }@@@@bproef-visueel.js@@Bewaken en Opnemen staan weer onder Slim visueel, naast de waakronde en de recorder in het vak"
 # ── helling en G-kracht op één scherm (06-10-2026) ──
-"public/pidlane-visprofiel.js@@  return '<div class=\"vpf-tel-boven\"><div>'+htmlHorizon(p, ind, 'hz-', false)@@  return '<div class=\"vpf-tel-boven\"><div>'+htmlHorizon(p, ind, '', false)@@test-visprofiel.js@@de horizon en de autootjes delen hun element-id's: de horizon beweegt niet en een autootje draait verkeerd"
+"public/pidlane-visprofiel.js@@    '<div class=\"vpf-tel-zij\"><div class=\"vpf-tel-hz\">'+htmlHorizon(p, ind, 'hz-', false)@@    '<div class=\"vpf-tel-zij\"><div class=\"vpf-tel-hz\">'+htmlHorizon(p, ind, '', false)@@test-visprofiel.js@@de horizon en de autootjes delen hun element-id's: de horizon beweegt niet en een autootje draait verkeerd"
 "public/pidlane-visprofiel.js@@  try{ let v=localStorage.getItem(SLEUTEL); if(OUD_PROFIEL[v]) v=OUD_PROFIEL[v];@@  try{ let v=localStorage.getItem(SLEUTEL);@@test-visprofiel.js@@wie een van de oude telemetrieschermen gekozen had, valt terug op Basis"
 # ── het emissiescherm is donker (06-10-2026) ──
 "public/pidlane.css@@.vpf-licht { background:#02030a;@@.vpf-licht { background:#f7f8fb;@@test-visprofiel.js@@het emissiescherm is weer wit en verblindt 's avonds in de auto"
@@ -2146,7 +2146,9 @@ MUTATIES=(
 "public/pidlane-visprofiel.js@@function gPunt(x, y){ return { cx:(100-x*80)@@function gPunt(x, y){ return { cx:(100+x*80)@@test-visprofiel.js@@rechts sturen zet de stip weer rechts, tegen het gevoel in"
 "public/pidlane-visprofiel.js@@  if(!piek || t-piek.t > G_PIEK_MS || Math.hypot(x, y) >= Math.hypot(piek.x, piek.y)) return@@  if(true) return@@test-visprofiel.js@@het piekballetje volgt gewoon de stip: een hard remmoment is na het loslaten al weg"
 "public/pidlane-visprofiel.js@@  if(!piek || t-piek.t > G_PIEK_MS ||@@  if(!piek ||@@test-visprofiel.js@@het piekballetje blijft eeuwig op de hardste rem van de rit staan"
-"public/pidlane-visprofiel.js@@function gWis(){ _gNu={ x:0, y:0 }; _gPiek=null; gTeken(); }@@function gWis(){ _gNu={ x:0, y:0 }; gTeken(); }@@test-visprofiel.js@@Nulstellen laat het piekballetje van de oude stand staan"
+"public/pidlane-visprofiel.js@@  if(x>0) o.rechts=Math.max(o.rechts, x); else o.links=Math.max(o.links, -x);@@  if(x>0) o.links=Math.max(o.links, x); else o.rechts=Math.max(o.rechts, -x);@@test-visprofiel.js@@het G-vizier zet de hoogste bocht aan de verkeerde kant: rechtsaf telt als linksaf"
+"public/pidlane-visprofiel.js@@  const h=(hist||[]).filter(function(q){ return t-q.t<=G_SPOOR_MS; });@@  const h=(hist||[]).slice();@@test-visprofiel.js@@het lichtspoor groeit de hele rit door en wordt een kluwen over het vizier"
+"public/pidlane-visprofiel.js@@function gWis(){ _gNu={ x:0, y:0 }; _gPiek=null; _gHist=[]; _gMax=null; gTeken(); }@@function gWis(){ _gNu={ x:0, y:0 }; _gHist=[]; _gMax=null; gTeken(); }@@test-visprofiel.js@@Nulstellen laat het piekballetje van de oude stand staan"
 # ── een gekozen berekende PID houdt zijn bronnen (#392) ──
 "public/pidlane-berekend.js@@  if (_bronPoging[pid] && nu-_bronPoging[pid] < BRON_OPNIEUW_MS) return;@@  if (_bronPoging[pid]) return;@@test-berekendbronnen.js@@een bron die wegvalt komt niet terug: de tegel van de berekende PID blijft leeg tot een herstart"
 "public/pidlane-berekend.js@@  if (_bronPoging[pid] && nu-_bronPoging[pid] < BRON_OPNIEUW_MS) return;\n  _bronPoging[pid]=nu;@@  _bronPoging[pid]=nu;@@test-berekendbronnen.js@@de bronnen worden bij elke tik opnieuw aangeboden: een logregel per 400 ms"

@@ -470,21 +470,40 @@ function htmlOffroad(p, ind){
   }
   return '<div class="vpf-or">'+vak('helling', zij, 'De auto van opzij')+vak('kanteling', achter, 'De auto van achteren')+'</div>';
 }
+/* Het G-vizier (28-10-2026, was de G-cirkel): ringen per kwart g, een
+   lichtspoor van de laatste anderhalve seconde, en aan elke kant de hoogste
+   uitslag van deze rit (gMax). Rechtsaf staat links: de stip volgt het
+   gevoel (zie gPunt). */
 function htmlGcirkel(p, ind, rollen){
-  return '<svg class="vpf-g-svg" viewBox="0 0 200 200" role="img" aria-label="G-cirkel: lengte- en zij-versnelling">'+
-    '<circle class="vpf-g-ring" cx="100" cy="100" r="80"/><circle class="vpf-g-ring half" cx="100" cy="100" r="40"/>'+
+  let streep='';
+  for(let a=0;a<360;a+=10){
+    const r=a*Math.PI/180, l=a%30 ? 84 : 88, x1=100+Math.sin(r)*80, y1=100-Math.cos(r)*80, x2=100+Math.sin(r)*l, y2=100-Math.cos(r)*l;
+    streep+='<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'"/>';
+  }
+  const kant=function(k, x, y, label){
+    return '<text class="vpf-g-label" x="'+x+'" y="'+y+'" text-anchor="middle">'+label+'</text>'+
+      '<text class="vpf-g-max" id="vpf-g-max-'+k+'" x="'+x+'" y="'+(y+12)+'" text-anchor="middle">—</text>';
+  };
+  return '<svg class="vpf-g-svg" viewBox="-30 -26 260 252" role="img" aria-label="G-vizier: lengte- en zij-versnelling">'+
+    '<defs><radialGradient id="vpf-g-gloed"><stop offset="0" stop-color="currentColor" stop-opacity=".16"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></radialGradient></defs>'+
+    '<circle class="vpf-g-gloed" cx="100" cy="100" r="96" fill="url(#vpf-g-gloed)"/>'+
+    '<circle class="vpf-g-ring half" cx="100" cy="100" r="20"/><circle class="vpf-g-ring half" cx="100" cy="100" r="40"/>'+
+    '<circle class="vpf-g-ring half" cx="100" cy="100" r="60"/><circle class="vpf-g-ring" cx="100" cy="100" r="80"/>'+
+    '<g class="vpf-g-streep">'+streep+'</g>'+
     '<line class="vpf-g-as" x1="100" y1="14" x2="100" y2="186"/><line class="vpf-g-as" x1="14" y1="100" x2="186" y2="100"/>'+
-    '<text class="vpf-g-label" x="100" y="11" text-anchor="middle">optrekken</text>'+
-    '<text class="vpf-g-label" x="100" y="198" text-anchor="middle">remmen</text>'+
-    '<text class="vpf-g-label" x="104" y="58">0,5 g</text><text class="vpf-g-label" x="104" y="18">1 g</text>'+
+    '<text class="vpf-g-schaal" x="103" y="58">0,5</text><text class="vpf-g-schaal" x="103" y="18">1 g</text>'+
+    kant('voor', 100, -14, 'OPTREKKEN')+kant('rem', 100, 202, 'REMMEN')+kant('rechts', -8, 96, 'RECHTSAF')+kant('links', 208, 96, 'LINKSAF')+
+    '<polyline class="vpf-g-spoor" id="vpf-f-gspoor" points=""/>'+
     '<circle class="vpf-g-piek weg" id="vpf-f-gpiek" cx="100" cy="100" r="9"/>'+
-    '<circle class="vpf-g-stip vpf-f" id="vpf-f-gstip" cx="100" cy="100" r="7"/></svg>'+telGetallen(p, ind, rollen);
+    '<circle class="vpf-g-stip vpf-f" id="vpf-f-gstip" cx="100" cy="100" r="7"/>'+
+    '<text class="vpf-g-tot" id="vpf-g-tot" x="100" y="160" text-anchor="middle">—</text></svg>'+telGetallen(p, ind, rollen);
 }
-/* Het samengevoegde scherm (06-10-2026): boven de horizon en de G-cirkel naast
-   elkaar, eronder de auto van opzij en van achteren met hun graden. */
+/* Het samengevoegde scherm (28-10-2026): het G-vizier is het instrument; de
+   horizon en de auto van opzij en van achteren staan ernaast (liggend) of
+   eronder (staand). */
 function htmlTelemetrie(p, ind){
-  return '<div class="vpf-tel-boven"><div>'+htmlHorizon(p, ind, 'hz-', false)+'</div>'+
-    '<div>'+htmlGcirkel(p, ind, ['lengte','dwars'])+'</div></div>'+htmlOffroad(p, ind)+
+  return '<div class="vpf-tel-g">'+htmlGcirkel(p, ind, ['lengte','dwars'])+'</div>'+
+    '<div class="vpf-tel-zij"><div class="vpf-tel-hz">'+htmlHorizon(p, ind, 'hz-', false)+'</div>'+htmlOffroad(p, ind)+'</div>'+
     // Nulstellen hier en niet alleen in de sensorlijst (06-10-2026): je kijkt
     // naar dit scherm als je ziet dat de auto scheef staat.
     '<button type="button" class="vpf-tel-nul" onclick="PLVisProfiel.nulstellen()">📐 Nulstellen <small>auto stil op vlakke grond</small></button>';
@@ -623,6 +642,23 @@ function gPiek(piek, x, y, t){
   if(!piek || t-piek.t > G_PIEK_MS || Math.hypot(x, y) >= Math.hypot(piek.x, piek.y)) return { x:x, y:y, t:t };
   return piek;
 }
+/* Het lichtspoor: de punten van de laatste G_SPOOR_MS. Puur. */
+const G_SPOOR_MS = 1500, G_MAX_PAUZE_MS = 15*60*1000;
+let _gHist = [], _gMax = null;
+function gSpoorBij(hist, x, y, t){
+  const h=(hist||[]).filter(function(q){ return t-q.t<=G_SPOOR_MS; });
+  h.push({ x:x, y:y, t:t });
+  return h;
+}
+function gSpoorPunten(hist){ return (hist||[]).map(function(q){ const g=gPunt(q.x, q.y); return g.cx+','+g.cy; }).join(' '); }
+/* De hoogste uitslag per richting van deze rit, in g. Een kwartier zonder
+   meting is een nieuwe rit (dezelfde pauze als het scorebord). Puur. */
+function gMax(m, x, y, t){
+  const o=(!m || t-m.t>G_MAX_PAUZE_MS) ? { voor:0, rem:0, rechts:0, links:0, t:t } : Object.assign({}, m, { t:t });
+  if(y>0) o.voor=Math.max(o.voor, y); else o.rem=Math.max(o.rem, -y);
+  if(x>0) o.rechts=Math.max(o.rechts, x); else o.links=Math.max(o.links, -x);
+  return o;
+}
 /* In px: 1 g = 80 px (de buitenste ring). Zij-G gespiegeld, zie boven. */
 function gPunt(x, y){ return { cx:(100-x*80).toFixed(1), cy:(100-y*80).toFixed(1) }; }
 function gTeken(){
@@ -633,14 +669,23 @@ function gTeken(){
   const weg=!_gPiek || Math.hypot(_gPiek.x-_gNu.x, _gPiek.y-_gNu.y) < 0.05;
   if(!weg){ const p=gPunt(_gPiek.x, _gPiek.y); pk.setAttribute('cx', p.cx); pk.setAttribute('cy', p.cy); }
   pk.classList.toggle('weg', weg);
+  const sp=el('vpf-f-gspoor'); if(sp) sp.setAttribute('points', gSpoorPunten(_gHist));
+  zetTekst('vpf-g-tot', tekst(Math.hypot(_gNu.x, _gNu.y), 2)+' g');
+  ['voor','rem','rechts','links'].forEach(function(k){
+    const v=_gMax ? _gMax[k] : 0;
+    zetTekst('vpf-g-max-'+k, v>=0.05 ? tekst(v, 2) : '—');
+  });
 }
-function gWis(){ _gNu={ x:0, y:0 }; _gPiek=null; gTeken(); }
+function gWis(){ _gNu={ x:0, y:0 }; _gPiek=null; _gHist=[]; _gMax=null; gTeken(); }
 try{ if(typeof window.addEventListener==='function') window.addEventListener('pl:telemetrie-genuld', gWis); }
 catch(e){ console.warn('PLVisProfiel: Nulstellen wist het piekballetje niet', e); }
 function telBij(x, val){
   if(x.soort==='gx' || x.soort==='gy'){
     if(x.soort==='gx') _gNu.x=klem(val, x.lo, x.hi); else _gNu.y=klem(val, x.lo, x.hi);
-    _gPiek=gPiek(_gPiek, _gNu.x, _gNu.y, Date.now());
+    const nu=Date.now();
+    _gPiek=gPiek(_gPiek, _gNu.x, _gNu.y, nu);
+    _gHist=gSpoorBij(_gHist, _gNu.x, _gNu.y, nu);
+    _gMax=gMax(_gMax, _gNu.x, _gNu.y, nu);
     gTeken();
     return;
   }
@@ -726,6 +771,6 @@ window.PLVisProfiel = {
   standaard:standaard, energie:energie, toestandTekst:toestandTekst, tegelTekst:tegelTekst,
   indeling:indeling, ketens:ketens, deel:deel, tekst:tekst, html:html, bij:bij, dof:dof, pids:pids,
   KEUZE_SLEUTEL:KEUZE_SLEUTEL, keuzes:keuzes, zetKeuze:zetKeuze, ketenVan:ketenVan, voorInd:voorInd, nulstellen:nulstellen,
-  G_PIEK_MS:G_PIEK_MS, gPiek:gPiek, gPunt:gPunt, gWis:gWis
+  G_PIEK_MS:G_PIEK_MS, gPiek:gPiek, gPunt:gPunt, gWis:gWis, G_SPOOR_MS:G_SPOOR_MS, G_MAX_PAUZE_MS:G_MAX_PAUZE_MS, gSpoorBij:gSpoorBij, gSpoorPunten:gSpoorPunten, gMax:gMax
 };
 })();
