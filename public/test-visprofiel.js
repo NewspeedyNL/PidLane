@@ -333,17 +333,21 @@ console.log('\n— een plek zelf invullen: op naam, met de hand, nooit dubbel �
   // Geen lege balk (28-10-2026): BUITEN krijgt uit de reserve iets verwants
   const cx5r = cx5.concat(['0168', '0104']);
   let r = P.indeling('temp', mag(cx5r), 'benzine', { keuze: {}, defs });
-  waar('reserve: BUITEN krijgt de tweede inlaatsensor, met zijn eigen naam en schaal', r.plekken.buiten === '0168' && r.vervang.buiten && r.vervang.buiten.kort === 'Inlaat 2' && r.vervang.buiten.reserve === true, JSON.stringify([r.plekken, r.vervang]));
+  waar('reserve: BUITEN krijgt geen tweede inlaatsensor (dubbel), maar iets anders, met zijn eigen naam en schaal', r.plekken.buiten === '0104' && r.vervang.buiten && r.vervang.buiten.kort === 'Last' && r.vervang.buiten.reserve === true, JSON.stringify([r.plekken, r.vervang]));
   waar('reserve: een plek met een eigen sensor houdt die (geen vervanging)', r.plekken.koel === '0105' && !r.vervang.koel && r.plekken.olie === '221310' && !r.vervang.olie, JSON.stringify(r.plekken));
   r = P.indeling('temp', mag(['0105', '0104', '0110']), 'benzine', { keuze: {}, defs: [] });
   const leeg = Object.keys(r.plekken).filter(k => !r.plekken[k]);
   waar('reserve: zonder temperatuursensoren eerst de warmte erbij (belasting, luchtmassa), elk één keer',
     r.plekken.olie === '0104' && r.plekken.inlaat === '0110' && r.vervang.olie.eenheid === '%' && r.vervang.inlaat.eenheid === 'g/s', JSON.stringify(r.plekken));
   waar('reserve: wat er echt niet is blijft leeg, nooit dubbel', leeg.join() === 'buiten,kat' && new Set(Object.values(r.plekken).filter(Boolean)).size === 3, JSON.stringify(r.plekken));
-  r = P.indeling('temp', mag(['0105', '0167', '0104']), 'benzine');
-  waar('reserve: 0167 als tweede koelwater alleen als hij niet zelf op KOEL hoort', r.plekken.koel === '0105' && r.plekken.olie === '0167' && r.vervang.olie.kort === 'Koel 2', JSON.stringify(r.plekken));
+  r = P.indeling('temp', mag(['0105', '0167', '0168', '0104']), 'benzine');
+  waar('geen dubbele temperatuur: 0167 (koelwater) en 0168 (inlaat) nooit als reserve naast 0105 (de CX-5, 28-10-2026)', r.plekken.koel === '0105' && r.plekken.olie === '0104' && Object.values(r.plekken).indexOf('0167') < 0 && r.plekken.inlaat === '0168', JSON.stringify(r.plekken));
   r = P.indeling('temp', mag(['0167', '0104']), 'benzine');
   waar('…en heeft de auto geen 0105, dan is 0167 het koelwater zelf', r.plekken.koel === '0167' && !r.vervang.koel && r.plekken.olie === '0104', JSON.stringify(r.plekken));
+  r = P.indeling('emissie', mag(['0124', '0106', '0107', '0115', '012C', '0178', '0104']), 'benzine');
+  waar('emissie: geen katalysatortemperatuur, dan het uitlaatgas met zijn eigen naam (geen lege balk)', r.plekken.kat === '0178' && r.vervang.kat && r.vervang.kat.kort === 'Uitlaat', JSON.stringify([r.plekken, r.vervang]));
+  r = P.indeling('emissie', mag(['0106', '0107', '0115', '012C', '0104']), 'benzine');
+  waar('emissie: de lambdaschaal en de trims krijgen nooit een reserve (ze zouden iets anders zeggen dan ze tonen)', r.plekken.lambda === null && r.plekken.kat === '0104', JSON.stringify(r.plekken));
   waar('de ketens noemen de reserve niet (die zet Slim visueel één per plek aan)', P.ketens('temp', 'benzine')[3].join() === '0146');
   const rh = P.html('temp', P.indeling('temp', mag(['0105', '0104']), 'benzine'));
   waar('de tekening toont het label van de reserve', /Last/.test(rh), rh.slice(0, 300));

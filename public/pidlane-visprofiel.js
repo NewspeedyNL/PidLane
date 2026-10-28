@@ -63,7 +63,7 @@ const PROFIELEN = [
     plekken:[
       { rol:'koel',   naam:'Koelwater',   kort:'Koel',    keten:['0105','0167'], eenheid:'°', soort:'thermo', lo:40, hi:130, dec:0 },
       { rol:'olie',   naam:'Motorolie',   kort:'Olie',    keten:['015C'],        eenheid:'°', soort:'thermo', lo:40, hi:150, dec:0, zoek:/olie|oil/i },
-      { rol:'inlaat', naam:'Inlaatlucht', kort:'Inlaat',  keten:['010F'],        eenheid:'°', soort:'thermo', lo:-20, hi:80, dec:0 },
+      { rol:'inlaat', naam:'Inlaatlucht', kort:'Inlaat',  keten:['010F','0168'],        eenheid:'°', soort:'thermo', lo:-20, hi:80, dec:0 },
       { rol:'buiten', naam:'Buiten',      kort:'Buiten',  keten:['0146'],        eenheid:'°', soort:'thermo', lo:-20, hi:45, dec:0, zoek:/buiten|omgeving|ambient|outside/i },
       { rol:'kat',    naam:'Katalysator', kort:'Kat',     keten:['013C','013E','017C'], eenheid:'°', soort:'thermo', lo:100, hi:950, dec:0,
         diesel:{ rol:'uitlaat', naam:'Uitlaatgas', kort:'Uitlaat', keten:['0178','017C','013C'], hi:700 } }
@@ -71,8 +71,8 @@ const PROFIELEN = [
     // Geen lege balk (28-10-2026): heeft de auto een sensor niet, dan eerst
     // een andere temperatuur, en pas dan iets waar de warmte uit volgt.
     reserve:[
-      { pid:'0167', naam:'Koelwater 2',    kort:'Koel 2',    eenheid:'°',   lo:40,  hi:130, dec:0 },
-      { pid:'0168', naam:'Inlaatlucht 2',  kort:'Inlaat 2',  eenheid:'°',   lo:-20, hi:80,  dec:0 },
+      // Geen 0167 of 0168: dat is hetzelfde koelwater en dezelfde inlaatlucht
+      // nog een keer ("dubbele temp meters", 28-10-2026, uit de CX-5).
       { pid:'0184', naam:'Spruitstuk',     kort:'Spruitst.', eenheid:'°',   lo:-20, hi:120, dec:0 },
       { pid:'0177', naam:'Tussenkoeler',   kort:'Tussenk.',  eenheid:'°',   lo:-20, hi:120, dec:0 },
       { pid:'0175', naam:'Turbo inlaat',   kort:'Turbo',     eenheid:'°',   lo:-20, hi:80,  dec:0 },
@@ -95,6 +95,14 @@ const PROFIELEN = [
       { rol:'o2',     naam:'O₂ na de kat',       keten:['0115'], eenheid:'V', soort:'balk', lo:0, hi:1, dec:2,
         diesel:{ rol:'adblue', naam:'AdBlue', keten:['0185'], eenheid:'%', lo:0, hi:100, dec:0 } },
       { rol:'egr',    naam:'EGR',                keten:['012C'], eenheid:'%', soort:'balk', lo:0, hi:100, dec:0 }
+    ],
+    // Geen lege balk, net als Temperatuur (28-10-2026): eerst wat bij de uitlaat hoort.
+    reserve:[
+      { pid:'013E', naam:'Katalysator na', kort:'Kat na',   eenheid:'°C', lo:100, hi:950, dec:0 },
+      { pid:'0178', naam:'Uitlaatgas',     kort:'Uitlaat',  eenheid:'°C', lo:100, hi:700, dec:0 },
+      { pid:'0114', naam:'O₂ voor de kat', kort:'O₂ voor',  eenheid:'V',  lo:0,   hi:1,   dec:2 },
+      { pid:'012E', naam:'Verdamping',     kort:'Verdamp.', eenheid:'%',  lo:0,   hi:100, dec:0 },
+      { pid:'0104', naam:'Motorbelasting', kort:'Last',     eenheid:'%',  lo:0,   hi:100, dec:0 }
     ] },
   { id:'verbruik', naam:'Verbruik', stijl:'digitaal', ondertitel:'Digitaal',
     plekken:[
@@ -255,6 +263,7 @@ function zetKeuze(id, rol, pid){
 }
 /* Puur. De keten van één plek met de keuze ervoor en de naamtreffers erachter,
    en helemaal achteraan de reserve van het profiel (28-10-2026). */
+const RESERVE_SOORT = ['thermo', 'balk'];
 function ketenVan(id, x, opts, reserve){
   const k=[], kz=opts && opts.keuze && opts.keuze[id+'/'+x.rol];
   if(kz) k.push(kz);
@@ -262,7 +271,9 @@ function ketenVan(id, x, opts, reserve){
   if(x.zoek && opts && Array.isArray(opts.defs)) opts.defs.forEach(function(d){
     if(d && d.pid && k.indexOf(d.pid)<0 && x.zoek.test(String(d.name||''))) k.push(d.pid);
   });
-  (reserve||[]).forEach(function(r){ if(k.indexOf(r.pid)<0) k.push(r.pid); });
+  // Alleen een balk of buis: een lambdaschaal of een trim vanuit het midden met
+  // een temperatuur erin zegt iets anders dan hij toont.
+  if(RESERVE_SOORT.indexOf(x.soort)>=0) (reserve||[]).forEach(function(r){ if(k.indexOf(r.pid)<0) k.push(r.pid); });
   return k;
 }
 function kortVan(naam){ const n=String(naam||''); return n.length>10 ? n.slice(0,9)+'…' : n; }
@@ -506,7 +517,9 @@ function htmlTelemetrie(p, ind){
     '<div class="vpf-tel-zij"><div class="vpf-tel-hz">'+htmlHorizon(p, ind, 'hz-', false)+'</div>'+htmlOffroad(p, ind)+'</div>'+
     // Nulstellen hier en niet alleen in de sensorlijst (06-10-2026): je kijkt
     // naar dit scherm als je ziet dat de auto scheef staat.
-    '<button type="button" class="vpf-tel-nul" onclick="PLVisProfiel.nulstellen()">📐 Nulstellen <small>auto stil op vlakke grond</small></button>';
+    '<button type="button" class="vpf-tel-nul" onclick="PLVisProfiel.nulstellen()">📐 Nulstellen <small>auto stil op vlakke grond</small></button>'+
+    // Waarom alles dof staat (28-10-2026: "doet niet wat het zegt" — de metingen stonden er, grijs, zonder uitleg)
+    '<p class="vpf-tel-los" id="vpf-tel-los">Telefoon niet vast in de houder: deze metingen tellen niet mee. Zet hem vast en tik op Nulstellen.</p>';
 }
 function nulstellen(){
   let ok=false;
@@ -749,6 +762,7 @@ function energie(id, ind, stand, res, extra){
 function dof(id, ind, oud){
   const p=voorInd(id, ind);
   if(!p || !p.plekken || !ind) return;
+  let losTeller=0;
   p.plekken.forEach(function(x){
     const pid=ind.plekken[x.rol], e=el('vpf-p-'+x.rol);
     if(!e || !pid) return;
@@ -757,7 +771,9 @@ function dof(id, ind, oud){
     let l=false;
     try{ l=!!(window.PLTelemetrie && window.PLTelemetrie.los(pid)); }catch(err){ console.warn('PLVisProfiel: PLTelemetrie.los', err); }
     e.classList.toggle('los', l);
+    if(l) losTeller++;
   });
+  const h=el('vpf-tel-los'); if(h) h.classList.toggle('aan', losTeller>0);
 }
 function pids(ind){
   const s=new Set();

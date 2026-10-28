@@ -1595,8 +1595,17 @@ body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen { 
   z-index:3; gap:10px; margin:0; justify-content:center; }
 /* Staand is het smal: de chips onder het knopje en het kruisje. */
 @media (orientation:portrait) {
-  body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen { top:calc(var(--pl-sat, 0px) + 68px); }
+  /* Onder het achtergrondknopje én het knopje Slim (dat staat op +50px): op +68px
+     viel de statusbalk eroverheen en over de toerenring (28-10-2026, uit de auto). */
+  body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen { top:calc(var(--pl-sat, 0px) + 84px); }
+  body.pl-vis-vol .vhl-schil { padding-top:calc(var(--pl-sat, 0px) + 132px); }
 }
+/* De gewone weergave in de Hyperlane-look (28-10-2026): ⛶ rechtsboven in de hoek,
+   niet midden over de lampjes; het palet bestaat in de schil niet meer. */
+.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vt-thema, .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vt-strook { display:none !important; }
+body:not(.pl-vis-vol) .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vt-knoppen { left:auto; right:0; transform:none; }
+/* Op de basismeter staat het achtergrondknopje onder de lampjes, niet ernaast. */
+body:not(.pl-vis-vol) .vis.vhl-basis > .vhl-vorm { top:46px; }
 body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp { min-height:0; padding:3px 9px; border-radius:999px; background:rgba(0,0,0,.35);
   border-color:rgba(255,255,255,.18); max-width:none; }
 body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp-tx { flex-direction:row; gap:6px; align-items:baseline; }
@@ -1824,6 +1833,9 @@ body.pl-vis-vol .vt-thema, body.pl-vis-vol .vt-uit { display:inline-flex; }
 @media (orientation:landscape) {
   body.pl-vis-vol .vis { padding-top:calc(var(--pl-sat, 0px) + 8px); }
   body.pl-vis-vol .vis-bak { max-width:min(100%, calc(var(--pl-vh) - 60px), 760px); }
+  /* De basismeter onder de statusbalk (die staat liggend op +14px, 44px hoog). */
+  body.pl-vis-vol .vis.vhl-basis { padding-top:calc(var(--pl-sat, 0px) + 62px); }
+  body.pl-vis-vol .vis.vhl-basis .vis-bak { max-width:min(100%, calc(var(--pl-vh) - 76px), 760px); }
   /* Liggend staan meldingen en trekstrook rechts naast de meter, niet eronder. */
   body.pl-vis-vol .vis-meldingen, body.pl-vis-vol .vis-trek { position:fixed; right:12px; width:min(28%, 300px); }
   body.pl-vis-vol .vis-meldingen { bottom:calc(var(--pl-sab, 0px) + 12px); }
@@ -1910,6 +1922,8 @@ body.pl-vis-vol .vt-thema, body.pl-vis-vol .vt-uit { display:inline-flex; }
 .vpf .oud { opacity:.5; transition:opacity 1.2s ease-in; }
 /* Telefoon niet vast in de houder: telt niet mee, dus doffer dan oud (06-10-2026). */
 .vpf .los, .gg .gc.los { opacity:.22; filter:grayscale(1); }
+.vpf-tel-los { display:none; margin:8px 0 0; text-align:center; font-size:12px; color:#ffcf7a; }
+.vpf-tel-los.aan { display:block; }
 .vpf-geen { margin:12px 4px 0; font-size:12px; text-align:center; opacity:.8; }
 .vpf-w { font-variant-numeric:tabular-nums; }
 
@@ -2047,7 +2061,7 @@ body.pl-vis-vol .vpf-telemetrie .vpf-g-svg { max-width:min(52vh, 440px); }
   body.pl-vis-vol .vpf-telemetrie > .vpf-tel-zij { grid-column:2; margin:0; grid-template-columns:repeat(2, minmax(0, 1fr)); }
   body.pl-vis-vol .vpf-telemetrie > .vpf-tel-zij > .vpf-tel-hz { grid-column:1 / -1; }
   body.pl-vis-vol .vpf-telemetrie > .vpf-tel-nul, body.pl-vis-vol .vpf-telemetrie > .vpf-geen { grid-column:2; max-width:460px; }
-  body.pl-vis-vol .vpf-telemetrie .vpf-g-svg { max-width:min(78vh, 520px); }
+  body.pl-vis-vol .vpf-telemetrie .vpf-g-svg { max-width:min(64vh, 520px); }
   body.pl-vis-vol .vpf-telemetrie .vpf-horizon-svg { max-width:min(26vh, 200px); }
   body.pl-vis-vol .vpf-telemetrie .vpf-or-vak svg { max-height:20vh; }
   body.pl-vis-vol .vpf-digitaal { flex-direction:row; align-items:center; gap:5vw; }
@@ -2220,10 +2234,10 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
   /* Staand: de ringen delen wat er over is (flex) in plaats van een vaste
      maat. Met 29cqh per ring paste het niet op elke telefoon: de snelheids-
      ring liep onder de tanklichtbalk door en van het scherm af (28-10-2026). */
-  body.pl-vis-vol .vhl-podium { flex-direction:column; justify-content:center; gap:1.5cqh; padding:calc(var(--pl-sat, 0px) + 56px) 0 calc(var(--pl-sab, 0px) + 11cqh); }
+  body.pl-vis-vol .vhl-podium { flex-direction:column; justify-content:center; gap:1.5cqh; padding:calc(var(--pl-sat, 0px) + 132px) 0 calc(var(--pl-sab, 0px) + 11cqh); }
   body.pl-vis-vol .vhl-pod { flex:1 1 0; min-height:0; width:auto; max-width:74cqw; aspect-ratio:1; }
   /* Staand: de tanklichtbalk boven de navigatiebalk, het label in breedtematen. */
-  body.pl-vis-vol .vhl-tank { left:8cqw; right:8cqw; bottom:calc(var(--pl-sab, 0px) + 2.4cqh); }
+  body.pl-vis-vol .vhl-tank { left:16cqw; right:16cqw; bottom:calc(var(--pl-sab, 0px) + 2.4cqh); }   /* niet onder 🏁 door */
   body.pl-vis-vol .vhl-tank-label { font-size:3.4cqw; gap:4cqw; }
   body.pl-vis-vol .vhl-tank-balk { height:.6cqh; }
   body.pl-vis-vol .vhl-pod.l, body.pl-vis-vol .vhl-pod.r { transform:rotateX(calc(-1 * var(--vhl-tx))) rotateY(var(--vhl-ty)); }
@@ -2260,6 +2274,8 @@ body.pl-vis-vol .vhl-vorm { position:fixed; top:calc(var(--pl-sat, 0px) + 18px);
 .vhl-midden::before { content:'⇄ '; color:var(--vhl-c); }
 .vhl-midden:active { transform:scale(.94); }
 body.pl-vis-vol .vhl-midden { position:fixed; top:calc(var(--pl-sat, 0px) + 50px); left:14px; }
+/* In het kleine vak lag het knopje over de toerenring: daar wissel je met een tik op het getal. */
+body:not(.pl-vis-vol) .vhl-midden { display:none; }
 .vhl-held { cursor:pointer; }
 /* Het ritoverzicht oproepen: rechtsonder in het vak, op volledig scherm onder het ✕. */
 .vhl-ritknop { position:absolute; top:10px; right:10px; z-index:3; width:32px; height:32px; border-radius:999px; font-size:15px; line-height:1;
