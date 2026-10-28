@@ -360,10 +360,11 @@ function held(sc, x, tekst, vorig){
 }
 /* ── De achtergrond ── (27-10-2026, uit het gebruik: "het rijdende effect
    van de tunnel vind ik top, maar het kan afleiden in het verkeer".) Het
-   knopje wisselt rond door VORMEN. Elke vorm behalve 'tunnel' en 'stil' is
-   een rustige vorm met Auto erin: in stilstand en tot AUTO_KMH de volle
-   tunnel om te laten zien, rijdend de gekozen rustige vorm. 'tunnel' is
-   altijd tunnel, 'stil' nooit iets (en spaart de accu). */
+   knopje wisselt rond door VORMEN. Tot 28-10-2026 zat er Auto in: in
+   stilstand de tunnel, rijdend de gekozen vorm. Uit het gebruik: "tunnel
+   blijft actief bij selectie andere visual" — wie Hartslag kiest, verwacht
+   Hartslag. Nu is de keuze de vorm, altijd. 'stil' is nooit iets (en spaart
+   de accu). */
 /* ── Het midden ── (28-10-2026, na een paar uur testen: "misschien toch
    handiger om de versnelling daar in het midden te zetten — kan ik schakelen?")
    'slim' = het hoofdgetal van held(), 'versnelling' = de versnelling groot.
@@ -406,16 +407,12 @@ function polsBij(st, hr, dt, rand){
 function polsUniform(st){ const u=new Float32Array(POLS_N).fill(-99); (st ? st.x : []).forEach(function(x, i){ u[i]=x; }); return u; }
 const VORMEN = ['aurora','hartslag','pulsen','sterren','stil','tunnel'];
 const VORM_TEKST = { aurora:'Aurora', hartslag:'Hartslag', pulsen:'Pulsen', sterren:'Sterren', stil:'Stil', tunnel:'Tunnel' };
-const VORM_SLEUTEL = 'pl_hl_vorm', AUTO_KMH = 10;
+const VORM_SLEUTEL = 'pl_hl_vorm';
 function volgendeVorm(v){ const i=VORMEN.indexOf(v); return VORMEN[(i+1)%VORMEN.length]; }
 /* Wat er nu getekend wordt. Onbekende snelheid telt als rijden: liever te
    rustig dan een tunnel die op de snelweg gaat stromen. Puur. */
-function actieveVorm(vorm, snel){
-  if(VORMEN.indexOf(vorm)<0) vorm='aurora';
-  if(vorm==='tunnel' || vorm==='stil') return vorm;
-  const n=snel!==null && snel!==undefined && isFinite(Number(snel));
-  return (n && Number(snel)<AUTO_KMH) ? 'tunnel' : vorm;
-}
+/* De vorm die getekend wordt: de keuze, een onbekende wordt Aurora. Puur. */
+function actieveVorm(vorm){ return VORMEN.indexOf(vorm)<0 ? 'aurora' : vorm; }
 function leesVorm(){
   try{ const v=localStorage.getItem(VORM_SLEUTEL); return VORMEN.indexOf(v)>=0 ? v : 'aurora'; }
   catch(e){ console.warn('PLHyperlane: vormkeuze niet te lezen, Aurora', e); return 'aurora'; }
@@ -823,10 +820,10 @@ function frame(nu){
     s.sc=sc; w.setAttribute('data-scene', sc);
   }
   // De achtergrond: wat er nu getekend wordt, vloeiend overgevloeid
-  const av=actieveVorm(s.vorm, e.snel), VW=s.vw;
+  const av=actieveVorm(s.vorm), VW=s.vw;
   ['tunnel','aurora','hartslag','pulsen','sterren'].forEach(function(k){ VW[k]=volg(VW[k], av===k ? 1 : 0, dt, 1.6); });
   if(VW.hartslag>.001) s.pols=polsBij(s.pols, e.toeren==null ? null : e.toeren/o.toerenHi, dt, s.bg && s.bg.height ? s.bg.width/s.bg.height/2 : 1);
-  const kn=w.querySelector('.vhl-vorm'), kt=VORM_TEKST[s.vorm]+(av==='tunnel' && s.vorm!=='tunnel' ? ' · auto' : '');
+  const kn=w.querySelector('.vhl-vorm'), kt=VORM_TEKST[av];
   if(kn && s.vormT!==kt){ s.vormT=kt; kn.textContent=kt; }
   w.classList.toggle('vhl-zonder', av==='stil');
   const G=s.g, nu8=PLHyperlane._klok();
@@ -925,7 +922,7 @@ window.PLHyperlane = {
   kleur:kleur, stemming:stemming, modus:modus, leds:leds, nul100:nul100, volg:volg,
   held:held, ACC_KMHS:ACC_KMHS,
   MIDDEN:MIDDEN, MIDDEN_TEKST:MIDDEN_TEKST, MIDDEN_SLEUTEL:MIDDEN_SLEUTEL, middenHeld:middenHeld, leesMidden:leesMidden,
-  VORMEN:VORMEN, VORM_TEKST:VORM_TEKST, VORM_SLEUTEL:VORM_SLEUTEL, AUTO_KMH:AUTO_KMH, volgendeVorm:volgendeVorm, actieveVorm:actieveVorm, leesVorm:leesVorm, ringSchaal:ringSchaal, echt:echt,
+  VORMEN:VORMEN, VORM_TEKST:VORM_TEKST, VORM_SLEUTEL:VORM_SLEUTEL, volgendeVorm:volgendeVorm, actieveVorm:actieveVorm, leesVorm:leesVorm, ringSchaal:ringSchaal, echt:echt,
   versnelling:versnelling, warmte:warmte, nacht:nacht, scene:scene, SCENE_TEKST:SCENE_TEKST,
   MERKEN:MERKEN, merkThema:merkThema, accuStart:accuStart, START_RPM:START_RPM, POWER_S:POWER_S, gSpoor:gSpoor, GS_N:GS_N, tankStand:tankStand,
   ritBij:ritBij, ritNul100:ritNul100, scorebord:scorebord, duur:duur, telOp:telOp, SCORE_KM:SCORE_KM, RIT_PAUZE_S:RIT_PAUZE_S,

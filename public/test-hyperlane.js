@@ -208,10 +208,9 @@ waar('N in stilstand wordt groot getoond', H.middenHeld('versnelling', 'stil', '
 waar('standaard Slim, onbekende opslag Slim', H.leesMidden() === 'slim');
 
 console.log('\n4h. Achtergrond: Auto, rustige vormen, het knopje');
-waar('Auto: in stilstand en tot 10 km/h de tunnel, rijdend de gekozen vorm', H.actieveVorm('aurora', 0) === 'tunnel' && H.actieveVorm('aurora', 9) === 'tunnel' && H.actieveVorm('aurora', 50) === 'aurora' && H.actieveVorm('hartslag', 80) === 'hartslag');
-waar('onbekende snelheid telt als rijden: geen stromende tunnel op de snelweg', H.actieveVorm('sterren', null) === 'sterren');
-waar('Tunnel is altijd tunnel, Stil nooit iets', H.actieveVorm('tunnel', 120) === 'tunnel' && H.actieveVorm('stil', 0) === 'stil');
-waar('onbekende keuze: Aurora', H.actieveVorm('kapot', 80) === 'aurora');
+// Sinds 28-10-2026 geen Auto meer: "tunnel blijft actief bij selectie andere visual"
+waar('de gekozen vorm is de vorm, ook in stilstand (geen tunnel uit zichzelf)', ['aurora', 'hartslag', 'pulsen', 'sterren', 'stil', 'tunnel'].every(v => H.actieveVorm(v) === v));
+waar('onbekende keuze: Aurora', H.actieveVorm('kapot') === 'aurora' && H.actieveVorm(null) === 'aurora');
 let vv = 'aurora', rond = [vv]; for (let i = 0; i < H.VORMEN.length; i++) { vv = H.volgendeVorm(vv); rond.push(vv); }
 waar('het knopje gaat rond: aurora → hartslag → pulsen → sterren → stil → tunnel → aurora', rond.join(',') === 'aurora,hartslag,pulsen,sterren,stil,tunnel,aurora', rond.join(','));
 waar('elke vorm heeft een tekst voor het knopje', H.VORMEN.every(v => typeof H.VORM_TEKST[v] === 'string'));
