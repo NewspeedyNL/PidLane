@@ -30,8 +30,8 @@ af (staand, liggend, gewoon, volledig scherm) en meet ronde instrumenten als
 cirkel. Het start/stop-lampje zit niet in de demo-auto, dus dat ene geval
 vangt de proef niet; het knopje staat nu onder de lampjes in plaats van ernaast.
 
-"Tunnel blijft actief bij selectie andere visual" was Auto doing what it was
-built to do (stilstaand de tunnel), maar niet wat de knop zei. Auto is weg.
+"Tunnel blijft actief bij selectie andere visual" was Auto die deed waarvoor
+hij gebouwd was (stilstaand de tunnel), maar niet wat de knop zei. Auto is weg.
 
 "Dubbele temp meters": de reserve van Temperatuur had 0167 en 0168 bovenaan.
 Op de CX-5 is 0167 hetzelfde koelwater als 0105 — dezelfde meting twee keer,
