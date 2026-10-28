@@ -1604,8 +1604,11 @@ body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen { 
    niet midden over de lampjes; het palet bestaat in de schil niet meer. */
 .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vt-thema, .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vt-strook { display:none !important; }
 body:not(.pl-vis-vol) .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vt-knoppen { left:auto; right:0; transform:none; }
-/* Op de basismeter staat het achtergrondknopje onder de lampjes, niet ernaast. */
-body:not(.pl-vis-vol) .vis.vhl-basis > .vhl-vorm { top:46px; }
+/* Op de basismeter is het achtergrondknopje in het kleine vak alleen het rondje,
+   linksboven in de hoek: met tekst raakte het een breed lampje (start/stop) of,
+   eronder, de meterring. De naam van de vorm staat op volledig scherm. */
+body:not(.pl-vis-vol) .vis.vhl-basis > .vhl-vorm { top:4px; left:6px; width:30px; height:30px; padding:0; font-size:0; }
+body:not(.pl-vis-vol) .vis.vhl-basis > .vhl-vorm::before { content:'◐'; font-size:15px; line-height:28px; }
 body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp { min-height:0; padding:3px 9px; border-radius:999px; background:rgba(0,0,0,.35);
   border-color:rgba(255,255,255,.18); max-width:none; }
 body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp-tx { flex-direction:row; gap:6px; align-items:baseline; }
