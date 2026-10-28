@@ -2123,7 +2123,7 @@ MUTATIES=(
 "public/pidlane-visprofiel.js@@  return '<div class=\"vpf-tel-boven\"><div>'+htmlHorizon(p, ind, 'hz-', false)@@  return '<div class=\"vpf-tel-boven\"><div>'+htmlHorizon(p, ind, '', false)@@test-visprofiel.js@@de horizon en de autootjes delen hun element-id's: de horizon beweegt niet en een autootje draait verkeerd"
 "public/pidlane-visprofiel.js@@  try{ let v=localStorage.getItem(SLEUTEL); if(OUD_PROFIEL[v]) v=OUD_PROFIEL[v];@@  try{ let v=localStorage.getItem(SLEUTEL);@@test-visprofiel.js@@wie een van de oude telemetrieschermen gekozen had, valt terug op Basis"
 # ── het emissiescherm is donker (06-10-2026) ──
-"public/pidlane.css@@.vpf-licht { background:#0f141d;@@.vpf-licht { background:#f7f8fb;@@test-visprofiel.js@@het emissiescherm is weer wit en verblindt 's avonds in de auto"
+"public/pidlane.css@@.vpf-licht { background:#02030a;@@.vpf-licht { background:#f7f8fb;@@test-visprofiel.js@@het emissiescherm is weer wit en verblindt 's avonds in de auto"
 "public/pidlane.css@@.wz-body:has(+ .wz-foot:empty){ padding-bottom:calc(24px + var(--pl-sab, 0px)); }@@@@bproef-onderzoek.js@@de laatste keuze van de wizard verdwijnt weer achter de Android-knoppen"
 # ── nooit een VIN als voertuignaam rechtsboven (06-10-2026) ──
 "public/pidlane-uihelpers.js@@  el.dataset.naam = t ? (sysNaam(t, merk, vi.model) || 'Voertuig') : '';@@  el.dataset.naam = t||'';@@test-nav.js@@showVtag bewaart een VIN als naam: rechtsboven staan 17 tekens in plaats van de auto"
