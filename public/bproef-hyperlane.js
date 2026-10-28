@@ -59,8 +59,10 @@ function toets(naam, waar, uitleg) {
       localStorage.removeItem('pl_hl_midden');
       const km = vak().querySelector('.vhl-midden'), kh = vak().querySelector('.vhl-held');
       await wacht(300); r.midden0 = km.textContent;
-      km.click(); await wacht(300); r.midden1 = km.textContent; r.middenOpslag = localStorage.getItem('pl_hl_midden');
-      kh.click(); await wacht(300); r.midden2 = km.textContent;
+      // Wachten op de tekst, niet op de klok: de lus zet hem in zijn eerstvolgende ronde (hoogstens 2 s)
+      const tot = async t => { for (let i = 0; i < 20 && km.textContent !== t; i++) await wacht(100); return km.textContent; };
+      km.click(); r.midden1 = await tot('Versnelling'); r.middenOpslag = localStorage.getItem('pl_hl_midden');
+      kh.click(); r.midden2 = await tot('Slim');
       // Volledig scherm: de tunnel vult het scherm.
       document.querySelector('.gg.view-visueel .vt-vol').click();
       // De canvas wordt in de eerstvolgende frame vergroot; op een trage CI-machine
@@ -112,21 +114,26 @@ function toets(naam, waar, uitleg) {
       await app.venster(bw, bh);
       const q = await app.ev(`(async function(){
         const wacht = ms => new Promise(r => setTimeout(r, ms));
+        // Tel de voeding van de schil: zonder toeren en gas staat de kleur stil op rustig
+        if (!PLHyperlane._echtVoed) { PLHyperlane._echtVoed = PLHyperlane.voed; }
+        let gevoed = 0; PLHyperlane.voed = function () { gevoed++; return PLHyperlane._echtVoed.apply(this, arguments); };
         PLVisProfiel.bewaar('${pr}'); setPidView('overzicht'); await wacht(200); setPidView('visueel'); await wacht(500);
-        document.querySelector('.gg.view-visueel .vt-vol').click(); await wacht(1200);
+        document.querySelector('.gg.view-visueel .vt-vol').click(); await wacht(3500);   // voorbij de opstartzwaai (2,2 s), die geeft zelf stemming
         const v = document.querySelector('.gg.view-visueel .vhl-schil, .gg.view-visueel .vhl-basis');
         const rect = e => e ? e.getBoundingClientRect() : null, raak = (a, b) => a && b && !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
         const lamp = rect(document.querySelector('.gg.view-visueel .vis-lampen')), vorm = rect(v && v.querySelector('.vhl-vorm')), knop = rect(document.querySelector('.gg.view-visueel .vt-knoppen'));
         const b = v ? v.getBoundingClientRect() : null;
-        const r = { schil: !!v, actief: PLHyperlane.actief(), kleur: v ? v.style.getPropertyValue('--vhl-c') : '',
+        const r = { schil: !!v, actief: PLHyperlane.actief(), kleur: v ? v.style.getPropertyValue('--vhl-c') : '', gevoed: gevoed,
                     vult: !!b && b.width >= innerWidth - 1 && b.height >= innerHeight - 1,
                     palet: getComputedStyle(document.querySelector('.gg.view-visueel .vt-thema')).display, vrij: !raak(lamp, vorm) && !raak(lamp, knop) };
         appBack(); await wacht(200);
         return r;
       })()`);
       toets('schil ' + pr + ' ' + bw + '×' + bh + ': achtergrond loopt, kleur volgt het rijgedrag, vult het scherm, geen palet, chips raken de knoppen niet',
-        // rgb(90,200,255) is de kleur van stemming 0: dan krijgt de schil geen toeren of gas binnen
-        q.schil && q.actief && /^rgb/.test(q.kleur) && q.kleur.replace(/\s/g, '') !== 'rgb(90,200,255)' && q.vult && q.palet === 'none' && q.vrij, JSON.stringify(q));
+        // Gevoed = PLHyperlane.voed() werd aangeroepen met de waarden van de demo-auto. Niet de
+        // kleur of de stemming meten: een merkpalet kleurt ook zonder voeding anders, en de
+        // opstartzwaai zakt in een trage browser zo langzaam uit dat hij op stemming lijkt.
+        q.schil && q.actief && /^rgb/.test(q.kleur) && q.gevoed > 0 && q.vult && q.palet === 'none' && q.vrij, JSON.stringify(q));
     }
     console.log('\n3. Weg uit de weergave');
     toets('een andere weergave stopt de lus (geen accuverbruik in een leeg vak)', r.stoptNaWissel, JSON.stringify(r));
