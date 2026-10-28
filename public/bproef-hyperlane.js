@@ -63,7 +63,9 @@ function toets(naam, waar, uitleg) {
       kh.click(); await wacht(300); r.midden2 = km.textContent;
       // Volledig scherm: de tunnel vult het scherm.
       document.querySelector('.gg.view-visueel .vt-vol').click();
-      await wacht(400);
+      // De canvas wordt in de eerstvolgende frame vergroot; op een trage CI-machine
+      // valt die na 400 ms (28-10-2026). Wachten op de maat, niet op de klok — hoogstens 3 s.
+      for (let i = 0; i < 30 && vak().querySelector('.vhl-bg').width < innerWidth; i++) await wacht(100);
       const b = vak().getBoundingClientRect();
       r.dekt = b.left <= 0 && b.top <= 0 && b.width >= innerWidth - 1 && b.height >= innerHeight - 1;
       r.bgVol = vak().querySelector('.vhl-bg').width >= innerWidth;
