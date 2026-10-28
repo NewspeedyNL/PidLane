@@ -17,6 +17,8 @@
    van 1,5 s (gSpoorBij), de totale G, en per richting de hoogste waarde
    van de rit (gMax; een kwartier zonder meting begint opnieuw).
  - Horizon en autootjes ernaast (liggend) of eronder (staand), in neon.
+ - De basismeter krijgt nooit een thema (PLVisThema.pas); tot nu toe kon
+   zet() hem er tot de volgende herbouw toch een geven — een race in CI.
 
  ═══════════════════════════════════════════════════════════
  28-10-2026 — Temperatuur: geen lege balken meer

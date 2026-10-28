@@ -1502,9 +1502,7 @@ function bouw(g, reden){
   _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
   ritBij();
   meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
-  themaBij(g);
-  // Geen thema meer op de basismeter: de schil kleurt hem
-  const vb=g.querySelector('.vis'); if(vb) vb.setAttribute('data-vthema', 'standaard');
+  themaBij(g);   // de basismeter krijgt daar geen thema: de schil kleurt hem (PLVisThema.pas)
   try{ if(window.PLHyperlane) PLHyperlane.wek(g); }catch(e){ console.warn('PLVisueel: Hyperlane-schil starten mislukt', e); }
   // De banden gaan niet de pollus in (#396): één keer per verbinding vragen.
   try{ if(window.PLBanden && PLBanden.eenmaal) PLBanden.eenmaal(); }catch(e){ console.warn('PLVisueel: banden niet gevraagd', e); }
