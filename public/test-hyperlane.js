@@ -131,6 +131,37 @@ waar('half om half 5 en 9 L/100: gemiddeld 7', Math.abs(H.scorebord(rr).filter(x
 let rz = null; rv.forEach(t => { rz = H.ritBij(rz, 60, 2400, t, null); });
 waar('zonder verbruiksmeting geen verbruikstegel (en geen 0 L/100)', H.scorebord(rz).every(x => x.sleutel !== 'verbruik'));
 
+console.log('\n4m. De mooie run: geen scorebord bij elk stoplicht');
+{
+  const stad = []; for (let t = 0; t <= 90; t += 0.1) stad.push([40, 2000, Math.round(t * 10) / 10]);   // 1 km in anderhalve minuut
+  const rs = rijd(stad, null);
+  waar('van stoplicht tot stoplicht (1 km, 90 s) is geen mooie run', !H.mooieRun(rs) && H.scorebord(rs) !== null, rs.km.toFixed(2) + ' km');
+  const weg = []; for (let t = 0; t <= 200; t += 0.1) weg.push([90, 2600, Math.round(t * 10) / 10]);       // 5 km in ruim drie minuten
+  waar('5 km in drie minuten wel', H.mooieRun(rijd(weg, null)));
+  const kort = []; for (let t = 0; t <= 60; t += 0.1) kort.push([200, 5000, Math.round(t * 10) / 10]);     // 3,3 km maar één minuut
+  waar('genoeg km maar te kort gereden: niet (beide drempels tellen)', !H.mooieRun(rijd(kort, null)));
+  waar('een gemeten 0–100 maakt een korte run wel mooi', H.mooieRun(H.ritNul100(rs, 7.1)));
+  waar('geen run: niet', !H.mooieRun(null));
+  // Het verloop
+  let p = null; for (let t = 0; t <= 10; t += 0.1) p = H.profielBij(p, 50, Math.round(t * 10) / 10);
+  waar('elke 2 s één punt', p.pts.length === 6, p.pts.length);
+  let lang = null; for (let t = 0; t <= 3600; t += 1) lang = H.profielBij(lang, t % 600 < 300 ? 50 : 100, t);
+  waar('een uur past erin: nooit meer dan PROF_N punten, de stap groeit', lang.pts.length <= H.PROF_N && lang.dt > H.PROF_DT, lang.pts.length + ' punten, ' + lang.dt + ' s');
+  waar('een ontbrekende snelheid is geen punt', H.profielBij(p, null, 99).pts.length === p.pts.length);
+  const pad = H.profielPad([0, 50, 100], 200, 40).split(' ');
+  waar('het pad loopt van links naar rechts, de top op 90% van de hoogte', pad[0] === '0.0,40.0' && pad[2] === '200.0,4.0', pad.join(' '));
+  // De trend
+  const teg = [{ sleutel: 'gem', waarde: 70, dec: 0 }, { sleutel: 'verbruik', waarde: 5, dec: 1 }, { sleutel: 'km', waarde: 9, dec: 1 }];
+  const hist = [{ gem: 60, verbruik: 6 }, { gem: 60, verbruik: 6 }];
+  const tr = H.trend(teg, hist);
+  waar('sneller gemiddeld = beter, zuiniger = beter', tr.gem.stand === 'beter' && Math.abs(tr.gem.delta - 10) < 1e-9 && tr.verbruik.stand === 'beter' && tr.verbruik.delta < 0, JSON.stringify(tr));
+  waar('meer verbruik = slechter', H.trend([{ sleutel: 'verbruik', waarde: 7 }], hist).verbruik.stand === 'slechter');
+  waar('afstand krijgt geen trend (geen prestatie)', !tr.km);
+  waar('één vorige run is geen gemiddelde: geen trend', Object.keys(H.trend(teg, hist.slice(0, 1))).length === 0);
+  waar('binnen 2% heet gelijk', H.trend([{ sleutel: 'gem', waarde: 60.5 }], hist).gem.stand === 'gelijk');
+  waar('runSamen bewaart alleen de vergelijkbare tegels', JSON.stringify(H.runSamen(teg)) === '{"gem":70,"verbruik":5}');
+}
+
 console.log('\n4f. Tank, power-up, G-spoor, merk');
 waar('tank: vol, laag onder 25%, leeg onder 10%, onbekend null', H.tankStand(60) === 'vol' && H.tankStand(20) === 'laag' && H.tankStand(8) === 'leeg' && H.tankStand(null) === null);
 function start(stappen) { let st = null, ev = null; stappen.forEach(x => { const r = H.accuStart(st, x[0], x[1], x[2]); st = r.st; if (r.start) ev = r.start; }); return ev; }
@@ -233,6 +264,41 @@ waar('het oordeel van het koelwater gaat mee (alarm)', gezet[2] === 'koel=121!',
 gezet = [];
 P.bij('hyperlane', keuzeInd, '010E', 12.5, 'ok');
 waar('een zelfgekozen sensor gaat als vervangen naar de lus (alleen tonen)', gezet.join(',') === 'gas=12.5*', gezet.join(','));
+
+console.log('\n4l. Hartslag: een ECG die niet stottert');
+{
+  // Na tien minuten rijden met een toerental dat elke 0,1 s een beetje
+  // verspringt: elke slag die in beeld blijft schuift precies het papier mee.
+  // Tot 28-10-2026 sprong de hele lijn bij elke meting (fase = T·v).
+  let st = null, sprong = 0, maxDx = 0, t = 0;
+  for (let i = 0; i < 36000; i++) {
+    const hr = .3 + (Math.floor(i / 6) % 2 ? .05 : -.05);   // 10 Hz ruis van ±5%
+    const voor = st ? st.x.slice() : [];
+    st = H.polsBij(st, hr, 1 / 60, 1.1); t += 1 / 60;
+    if (t > 600 && voor.length && st.x.length >= voor.length - 1) {
+      const n = Math.min(voor.length, st.x.length);
+      // vergelijk dezelfde slag: als er links een verdween, schuift de index één op
+      const off = voor.length - n > 0 || voor[0] - st.x[0] > .5 ? 1 : 0;
+      for (let k = 0; k + off < voor.length && k < st.x.length; k++) {
+        const dx = voor[k + off] - st.x[k];
+        if (Math.abs(dx - H.POLS_PAPIER / 60) > 1e-9) sprong++;
+        maxDx = Math.max(maxDx, Math.abs(dx));
+      }
+    }
+  }
+  waar('na tien minuten met toerenruis schuift elke slag alleen met het papier mee', sprong === 0, sprong + ' sprongen, grootste stap ' + maxDx.toFixed(4));
+  let p = H.polsBij(null, 0, 1 / 60, 1.1);
+  waar('in rust een rustpols', Math.abs(p.bpm - H.POLS_RUST) < .01, p.bpm);
+  for (let i = 0; i < 6; i++) p = H.polsBij(p, 1, 1 / 60, 1.1);
+  waar('vol gas springt de pols niet: na 0,1 s nog geen 5 slagen erbij', p.bpm < H.POLS_RUST + 5, p.bpm.toFixed(1));
+  for (let i = 0; i < 1200; i++) p = H.polsBij(p, 1, 1 / 60, 1.1);
+  waar('na 20 s vol gas bijna de hoogste pols', p.bpm > H.POLS_MAX - 3, p.bpm.toFixed(1));
+  const tel = hr => { let q = null; for (let i = 0; i < 3000; i++) q = H.polsBij(q, hr, 1 / 60, 1.1); return q.x.length; };
+  waar('hogere toeren: de slagen liggen dichter op elkaar (meer in beeld)', tel(1) > tel(0), tel(0) + ' → ' + tel(1));
+  waar('onbekend toerental telt als rust, geen NaN', H.polsBij(null, null, 1 / 60, 1).bpm === H.POLS_RUST && H.polsBij(null, NaN, 1 / 60, 1).bpm === H.POLS_RUST);
+  const u = H.polsUniform(p);
+  waar('de uniform heeft altijd POLS_N plekken, lege op -99', u.length === H.POLS_N && Array.from(u).slice(p.x.length).every(v => v === -99));
+}
 
 console.log('\n7. Elke klasse heeft CSS');
 const klassen = [...new Set([...h.matchAll(/class="([^"]+)"/g)].flatMap(m => m[1].split(/\s+/)).filter(k => /^vhl-/.test(k)))];

@@ -237,6 +237,63 @@ function scorebord(rit){
   t.push({ sleutel:'tijd', label:'RIJTIJD', waarde:rit.rijS, eenheid:'', dec:0, tekst:duur(rit.rijS) });
   return t;
 }
+/* ── De mooie run (28-10-2026) ── Het scorebord kwam na 0,3 km bij elke
+   stilstand, dus in de stad bij elk stoplicht — en van stoplicht tot
+   stoplicht is geen samenvatting waard. Een run is het stuk tussen twee
+   stilstanden; vanzelf verschijnt het bord pas na RUN_KM én RUN_S rijden, of
+   als er een 0–100 in zat. De hele rit kan altijd met het knopje. Puur. */
+const RUN_KM = 3, RUN_S = 180;
+function mooieRun(run){
+  return !!run && ((run.km>=RUN_KM && run.rijS>=RUN_S) || (run.beste!==null && run.beste!==undefined && run.km>=SCORE_KM));
+}
+/* Het snelheidsverloop voor het grafiekje: één punt per `dt` s; vol (PROF_N)
+   dan worden twee punten er één en halveert de resolutie. Zo past een run van
+   een uur net zo goed als een van vijf minuten. Puur. */
+const PROF_N = 96, PROF_DT = 2;
+function profielBij(p, v, t){
+  const q=p ? { dt:p.dt, t:p.t, pts:p.pts.slice() } : { dt:PROF_DT, t:null, pts:[] };
+  if(v===null || v===undefined || !isFinite(Number(v))) return q;
+  if(q.t!==null && t-q.t<q.dt) return q;
+  q.t=t; q.pts.push(Math.max(0, Number(v)));
+  if(q.pts.length>PROF_N){
+    const h=[]; for(let i=0;i+1<q.pts.length;i+=2) h.push((q.pts[i]+q.pts[i+1])/2);
+    if(q.pts.length%2) h.push(q.pts[q.pts.length-1]);
+    q.pts=h; q.dt*=2;
+  }
+  return q;
+}
+/* De punten van het grafiekje in een vak van b×h, de top op 90%. Puur. */
+function profielPad(pts, b, h){
+  if(!pts || pts.length<2) return '';
+  const mx=Math.max.apply(null, pts) || 1;
+  return pts.map(function(v, i){ return (i/(pts.length-1)*b).toFixed(1)+','+(h-v/mx*h*.9).toFixed(1); }).join(' ');
+}
+/* Trend: elke tegel tegen het gemiddelde van de vorige runs. Lager is beter
+   bij verbruik en 0–100. Onder TREND_MIN runs geen trend: één vorige run is
+   geen gemiddelde. Een verschil onder 2% heet gelijk. Puur. */
+const RUNS_SLEUTEL = 'pl_hl_runs', RUNS_N = 20, TREND_MIN = 2;
+const TREND_SLEUTELS = ['top','nul100','maxt','gem','verbruik'], TREND_LAGER = { verbruik:1, nul100:1 };
+function runSamen(tegels){ const o={}; (tegels||[]).forEach(function(x){ if(TREND_SLEUTELS.indexOf(x.sleutel)>=0 && isFinite(x.waarde)) o[x.sleutel]=x.waarde; }); return o; }
+function trend(tegels, hist){
+  const uit={};
+  (tegels||[]).forEach(function(x){
+    if(TREND_SLEUTELS.indexOf(x.sleutel)<0) return;
+    const vs=(hist||[]).map(function(h){ return h && h[x.sleutel]; }).filter(function(v){ return typeof v==='number' && isFinite(v); });
+    if(vs.length<TREND_MIN) return;
+    const gem=vs.reduce(function(a, b){ return a+b; }, 0)/vs.length, d=x.waarde-gem;
+    const stand=Math.abs(d)<Math.abs(gem)*.02 ? 'gelijk' : ((d<0)===!!TREND_LAGER[x.sleutel] ? 'beter' : 'slechter');
+    uit[x.sleutel]={ delta:d, stand:stand, n:vs.length };
+  });
+  return uit;
+}
+function leesRuns(){
+  try{ const r=JSON.parse(localStorage.getItem(RUNS_SLEUTEL)||'[]'); return Array.isArray(r) ? r : []; }
+  catch(e){ console.warn('PLHyperlane: vorige runs onleesbaar, zonder trend', e); return []; }
+}
+function bewaarRun(sam){
+  try{ const r=leesRuns(); r.push(sam); localStorage.setItem(RUNS_SLEUTEL, JSON.stringify(r.slice(-RUNS_N))); }
+  catch(e){ console.warn('PLHyperlane: run niet bewaard', e); }
+}
 /* ── Power-up ── Het starten van de motor uit toeren en accuspanning. `st` =
    {hist:[{t,v}] van de laatste 4 s, motor}; motor draait vanaf 400 rpm.
    Bij de overgang uit → aan: {rust, dip, nu} — de hoogste spanning vóór de
@@ -326,6 +383,27 @@ function bewaarMidden(v){
   try{ localStorage.setItem(MIDDEN_SLEUTEL, v); }
   catch(e){ console.warn('PLHyperlane: middenkeuze niet bewaard — geldt tot de app sluit', e); }
 }
+/* ── Hartslag ── Een ECG-lijn: het papier loopt met vaste snelheid en de
+   slagen liggen dichter bij elkaar naarmate de motor harder draait. Tot
+   28-10-2026 stond het ritme als sin(x·f + T·v) in de shader, met v uit het
+   toerental: na een paar minuten is T groot, en dan versprong de hele lijn bij
+   elke toerenmeting — dat was het stotteren. Nu telt de fase hier op, en elke
+   slag krijgt een plek die alleen nog met het papier meeschuift. `st` =
+   {bpm, fase, x:[...]}; hr = toeren als deel van het bereik (null = rust);
+   `rand` = de rechterrand in schermeenheden. Puur: geeft een nieuwe stand. */
+const POLS_RUST = 62, POLS_MAX = 138, POLS_PAPIER = .55, POLS_N = 12;
+function polsBij(st, hr, dt, rand){
+  const s=st ? { bpm:st.bpm, fase:st.fase, x:st.x.slice() } : { bpm:POLS_RUST, fase:0, x:[] };
+  const doel=POLS_RUST+(POLS_MAX-POLS_RUST)*(hr==null || !isFinite(hr) ? 0 : klem(hr, 0, 1));
+  s.bpm=volg(s.bpm, doel, dt, .5);   // traag: een pols versnelt, hij springt niet
+  for(let i=0;i<s.x.length;i++) s.x[i]-=dt*POLS_PAPIER;
+  s.fase+=dt*s.bpm/60;
+  if(s.fase>=1){ s.fase-=Math.floor(s.fase); s.x.push(rand+.12); }
+  s.x=s.x.filter(function(x){ return x>-rand-.4; });
+  if(s.x.length>POLS_N) s.x=s.x.slice(-POLS_N);
+  return s;
+}
+function polsUniform(st){ const u=new Float32Array(POLS_N).fill(-99); (st ? st.x : []).forEach(function(x, i){ u[i]=x; }); return u; }
 const VORMEN = ['aurora','hartslag','pulsen','sterren','stil','tunnel'];
 const VORM_TEKST = { aurora:'Aurora', hartslag:'Hartslag', pulsen:'Pulsen', sterren:'Sterren', stil:'Stil', tunnel:'Tunnel' };
 const VORM_SLEUTEL = 'pl_hl_vorm', AUTO_KMH = 10;
@@ -359,7 +437,9 @@ const SCENE_TEKST = { alarm:'KOELWATER HEET', begrenzer:'SCHAKELEN', launch:'LAU
 // Het vak zelf (canvas, ringen, strook, met de id's vpf-p-*/vpf-w-*) tekent
 // PLVisProfiel.html(), net als bij elk profiel; hier alleen wat beweegt.
 const FS='precision highp float;'+
-'uniform vec2 R;uniform float T,Z,E,W,B,K,A,F,D,GA,VT,VA,VH,VP,VS,HR;uniform vec3 C1,C2;uniform vec2 P;uniform vec2 GP[24];'+
+'uniform vec2 R;uniform float T,Z,E,W,B,K,A,F,D,GA,VT,VA,VH,VP,VS;uniform vec3 C1,C2;uniform vec2 P;uniform vec2 GP[24];uniform float HB[12];'+
+'float ecg(float u){return .06*exp(-pow((u+.30)/.05,2.))-.08*exp(-pow((u+.035)/.016,2.))+.62*exp(-pow(u/.018,2.))-.16*exp(-pow((u-.04)/.018,2.))+.14*exp(-pow((u-.30)/.07,2.));}'+
+'float pols(float x){float y=0.;for(int i=0;i<12;i++)y+=ecg((x-HB[i])*1.5);return y;}'+
 'float sd(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h);}'+
 'float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}'+
 'void main(){'+
@@ -393,11 +473,13 @@ const FS='precision highp float;'+
 '   au+=mix(C1,C2,fk*.5)*band*(.30+E*.25);}'+
 '  c+=au*VA;'+
 ' }'+
-' if(VH>.001){'+                                            // HARTSLAG: één lijn die golft met toeren en gas
-'  float amp=.025+.09*E, fr=5.+9.*HR, v=1.5+5.*HR;'+
-'  float y=-.30+amp*(sin(q.x*fr+T*v)*.7+sin(q.x*fr*2.3-T*v*1.3)*.3)*smoothstep(1.,.2,abs(q.x));'+
-'  float d=abs(q.y-y);'+
-'  c+=(mix(C2,vec3(1),.5)*exp(-pow(d*110.,2.))+C1*exp(-pow(d*14.,2.))*.35+C2*exp(-pow(d*4.,2.))*.08)*VH;'+
+' if(VH>.001){'+                                            // HARTSLAG: een ECG-lijn, slagen uit HB (polsBij)
+'  float amp=.13+.05*E, e=.012;'+
+'  vec2 l0=vec2(q.x-e,-.30+amp*pols(q.x-e)), l1=vec2(q.x,-.30+amp*pols(q.x)), l2=vec2(q.x+e,-.30+amp*pols(q.x+e));'+
+'  float d=min(sd(q,l0,l1),sd(q,l1,l2));'+                 // afstand tot de lijn zelf: een steile piek blijft even dik, zonder lichtzuil
+'  float rand=smoothstep(1.2,.75,abs(q.x));'+
+'  float dv=abs(q.y+.30);'+                                // de brede gloed hangt aan de basislijn, niet aan de piek
+'  c+=(mix(C2,vec3(1),.5)*exp(-pow(d*120.,2.))+C1*exp(-pow(d*22.,2.))*.35+C2*exp(-pow(dv*5.,2.))*.07)*VH*rand;'+
 ' }'+
 ' if(VP>.001){'+                                            // PULSEN: stil, alleen een ring bij schakelen, remmen of de begrenzer
 '  float l=length(q*vec2(.8,1.));'+
@@ -440,7 +522,7 @@ function glOp(cv){
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,3,-1,-1,3]), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-    const U={}; ['R','T','Z','E','W','B','K','A','F','D','GA','GP','VT','VA','VH','VP','VS','HR','C1','C2','P'].forEach(function(n){ U[n]=gl.getUniformLocation(pr, n); });
+    const U={}; ['R','T','Z','E','W','B','K','A','F','D','GA','GP','VT','VA','VH','VP','VS','HB','C1','C2','P'].forEach(function(n){ U[n]=gl.getUniformLocation(pr, n); });
     return { gl:gl, U:U };
   }catch(e){ console.warn('PLHyperlane: shader niet te bouwen, achtergrond blijft CSS', e); return null; }
 }
@@ -488,6 +570,7 @@ function ring(cv, o){
 const OPSTART_S = 2.2;      // de zwaai bij het openen
 let _s = null;
 let _rit = null;            // de rit: overleeft een herbouw van het vak
+let _run = null;            // de run: het stuk sinds de laatste stilstand
 
 function opties(){
   // De schaal van de plekken uit het profiel (diesel: 6000 rpm, #393).
@@ -521,7 +604,7 @@ function start(wortel){
        sc:'', g:{ B:0, K:0, A:0, F:0, Z:0, D:1 }, golf:99, vs:null, stilS:0, cruiseS:0, lat:0,
        ritPiek:0, topGemeld:0, klokT:0,
        accu:null, power:null, gHist:[], gT:0, ga:0, thema:merkNu(), tankT:'',
-       verv:{}, vorm:leesVorm(), vw:{ tunnel:1, aurora:0, hartslag:0, pulsen:0, sterren:0 }, vormT:'', scWas:'', midden:leesMidden(), middenT:'' };
+       verv:{}, hand:0, scoreDicht:false, runKlaar:false, vorm:leesVorm(), vw:{ tunnel:1, aurora:0, hartslag:0, pulsen:0, sterren:0 }, vormT:'', scWas:'', midden:leesMidden(), middenT:'' };
   wortel.classList.toggle('vhl-gl', !!_s.gl);
   wortel.querySelectorAll('.vhl-ring').forEach(function(c){ _s.ringen[c.getAttribute('data-ring')]=c; });
   const kn=wortel.querySelector('.vhl-vorm');
@@ -540,6 +623,8 @@ function start(wortel){
   const km=wortel.querySelector('.vhl-midden'), kh=wortel.querySelector('.vhl-held');
   if(km) km.addEventListener('click', wissel);
   if(kh) kh.addEventListener('click', wissel);
+  const kr=wortel.querySelector('.vhl-ritknop'), ks=wortel.querySelector('.vhl-score');
+  [kr, ks].forEach(function(x){ if(x) x.addEventListener('click', function(e){ e.stopPropagation(); scoreKnop(); }); });
   window.addEventListener('deviceorientation', kantel);
   _s.raf=requestAnimationFrame(frame);
 }
@@ -592,7 +677,11 @@ function zet(rol, v, st, vervangen){
   const e=echt(_s);
   if(rol==='snel') _s.vs=versnelling(_s.vs, e.snel, performance.now()/1000);
   const nu=performance.now()/1000;
-  if(rol==='snel' || rol==='toeren') _rit=ritBij(_rit, rol==='snel' ? e.snel : null, rol==='toeren' ? e.toeren : null, nu, e.verbruik);
+  if(rol==='snel' || rol==='toeren'){
+    _rit=ritBij(_rit, rol==='snel' ? e.snel : null, rol==='toeren' ? e.toeren : null, nu, e.verbruik);
+    _run=ritBij(_run, rol==='snel' ? e.snel : null, rol==='toeren' ? e.toeren : null, nu, e.verbruik);
+    if(rol==='snel'){ _rit.prof=profielBij(_rit.prof, e.snel, nu); _run.prof=profielBij(_run.prof, e.snel, nu); }
+  }
   if(rol==='accu' || rol==='toeren'){
     const a=accuStart(_s.accu, rol==='accu' ? e.accu : null, rol==='toeren' ? e.toeren : null, nu);
     _s.accu=a.st;
@@ -661,19 +750,40 @@ function powerBij(w, dt, d){
   if(f) f.style.width=(nu==null ? 0 : klem((nu-10)/5, 0, 1)*100*telOp(P.t/1.5)).toFixed(1)+'%';
   if(P.t>=POWER_S) _s.power=null;
 }
-/* Het scorebord: opbouwen bij binnenkomst in stil, dan optellen. */
+/* Het scorebord. Vanzelf alleen na een mooie run in stilstand (`run`);
+   met het knopje de hele rit (`rit`, HAND_S lang). Een tik op het bord
+   sluit het; de volgende run brengt het pas weer vanzelf. */
+const HAND_S = 20;
 function scoreBij(w, sc, dt, nu){
   const el=w.querySelector('.vhl-score'); if(!el) return;
-  // De power-up gaat voor: starten doe je ook in stilstand.
-  const tegels=sc==='stil' && !_s.power ? scorebord(_rit) : null;
-  if(!tegels){ if(_s.score){ _s.score=null; el.classList.remove('aan'); w.classList.remove('vhl-score-aan'); } return; }
-  if(!_s.score){
-    _s.score={ f:0, tegels:tegels };
-    el.innerHTML='<div class="vhl-score-kop">RIT · <span class="vhl-score-klok"></span></div><div class="vhl-score-tegels">'+
-      tegels.map(function(x, i){ return '<div class="vhl-tegel" data-tegel="'+x.sleutel+'" style="--i:'+i+'"><small>'+x.label+'</small><b>0</b><span>'+x.eenheid+'</span></div>'; }).join('')+'</div>';
+  const s=_s, stil=s.stilS>=STIL_S && sc!=='alarm';
+  // Wegrijden na een stilstand: de run is voorbij, een nieuwe begint
+  if(s.stilS>=STIL_S) s.runKlaar=true;
+  else if(s.runKlaar && s.stilS===0){ _run=null; s.runKlaar=false; s.scoreDicht=false; }
+  if(s.hand>0) s.hand=Math.max(0, s.hand-dt);
+  let bron=null, tegels=null;
+  if(s.hand>0){ bron='rit'; tegels=scorebord(_rit) || []; }
+  else if(stil && !s.power && !s.scoreDicht && mooieRun(_run)){ bron='run'; tegels=scorebord(_run); }
+  if(!tegels){ if(s.score){ s.score=null; el.classList.remove('aan'); w.classList.remove('vhl-score-aan'); } return; }
+  if(!s.score || s.score.bron!==bron){
+    const r=bron==='run' ? _run : _rit;
+    // De trend één keer per run, vóór hij zelf in de lijst komt
+    if(bron==='run' && !r.trend){ r.trend=trend(tegels, leesRuns()); bewaarRun(runSamen(tegels)); }
+    const tr=bron==='run' ? r.trend : {}, n=Object.keys(tr).reduce(function(m, k){ return Math.max(m, tr[k].n); }, 0);
+    const pad=profielPad(r && r.prof ? r.prof.pts : null, 200, 40);
+    s.score={ f:0, tegels:tegels, bron:bron };
+    el.innerHTML='<div class="vhl-score-kop">'+(bron==='run' ? 'RUN' : 'RIT')+' · <span class="vhl-score-klok"></span></div>'+
+      (n ? '<div class="vhl-score-sub">vergeleken met je vorige '+n+' runs</div>' : '')+
+      (tegels.length ? '<div class="vhl-score-tegels">'+tegels.map(function(x, i){
+        const t=tr[x.sleutel], pijl=t ? (t.stand==='gelijk' ? '＝' : (t.delta>0 ? '▲ ' : '▼ ')+tekstVan(Math.abs(t.delta), x.dec)) : '';
+        return '<div class="vhl-tegel" data-tegel="'+x.sleutel+'" style="--i:'+i+'"><small>'+x.label+'</small><b>0</b><span>'+x.eenheid+'</span>'+
+          (t ? '<em class="vhl-trend '+t.stand+'">'+pijl+'</em>' : '')+'</div>';
+      }).join('')+'</div>' : '<div class="vhl-score-leeg">Nog geen rit om te tonen</div>')+
+      (pad ? '<svg class="vhl-score-graf" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true">'+
+        '<polygon points="0,40 '+pad+' 200,40"></polygon><polyline points="'+pad+'"></polyline></svg>' : '');
     el.classList.add('aan'); w.classList.add('vhl-score-aan');
   }
-  const S=_s.score; S.f+=dt/1.2;
+  const S=s.score; S.f+=dt/1.2;
   const k=el.querySelector('.vhl-score-klok'), kt=('0'+nu.getHours()).slice(-2)+':'+('0'+nu.getMinutes()).slice(-2);
   if(k && k.textContent!==kt) k.textContent=kt;
   S.tegels.forEach(function(x, i){
@@ -681,6 +791,12 @@ function scoreBij(w, sc, dt, nu){
     const f=telOp(S.f-i*.08), t=x.tekst ? duur(x.waarde*f) : tekstVan(x.waarde*f, x.dec);
     if(b.textContent!==t) b.textContent=t;
   });
+}
+/* Het knopje 🏁 en een tik op het bord. */
+function scoreKnop(){
+  if(!_s) return;
+  if(_s.score){ _s.hand=0; _s.scoreDicht=true; }
+  else _s.hand=HAND_S;
 }
 function frame(nu){
   const s=_s; if(!s) return;
@@ -709,6 +825,7 @@ function frame(nu){
   // De achtergrond: wat er nu getekend wordt, vloeiend overgevloeid
   const av=actieveVorm(s.vorm, e.snel), VW=s.vw;
   ['tunnel','aurora','hartslag','pulsen','sterren'].forEach(function(k){ VW[k]=volg(VW[k], av===k ? 1 : 0, dt, 1.6); });
+  if(VW.hartslag>.001) s.pols=polsBij(s.pols, e.toeren==null ? null : e.toeren/o.toerenHi, dt, s.bg && s.bg.height ? s.bg.width/s.bg.height/2 : 1);
   const kn=w.querySelector('.vhl-vorm'), kt=VORM_TEKST[s.vorm]+(av==='tunnel' && s.vorm!=='tunnel' ? ' · auto' : '');
   if(kn && s.vormT!==kt){ s.vormT=kt; kn.textContent=kt; }
   w.classList.toggle('vhl-zonder', av==='stil');
@@ -734,7 +851,7 @@ function frame(nu){
   // 0–100
   const n=nul100(s.nul, e.snel, e.gas, T); s.nul=n.st;
   const badge=w.querySelector('.vhl-badge');
-  if(n.tijd!==null) _rit=ritNul100(_rit, n.tijd);
+  if(n.tijd!==null){ _rit=ritNul100(_rit, n.tijd); _run=ritNul100(_run, n.tijd); }
   if(n.tijd!==null && badge){ badge.textContent='0–100  '+tekstVan(n.tijd, 1)+' s'; badge.classList.add('aan'); s.badgeT=6; }
   else if(s.nul.start!==null && badge && T-s.nul.start>.3){ badge.textContent='0–100  '+tekstVan(T-s.nul.start, 1)+' s'; badge.classList.add('aan'); s.badgeT=.4; }
   // Rit-topsnelheid: gemeld zodra je na een nieuwe piek boven 100 weer inhoudt
@@ -749,7 +866,7 @@ function frame(nu){
   if(s.gl && av!=='stil'){
     const gl=s.gl.gl, U=s.gl.U;
     gl.uniform1f(U.VT, VW.tunnel); gl.uniform1f(U.VA, VW.aurora); gl.uniform1f(U.VH, VW.hartslag); gl.uniform1f(U.VP, VW.pulsen); gl.uniform1f(U.VS, VW.sterren);
-    gl.uniform1f(U.HR, e.toeren==null ? 0 : klem(e.toeren/o.toerenHi, 0, 1));
+    gl.uniform1fv(U.HB, polsUniform(s.pols));
     gl.uniform2f(U.R, s.bg.width, s.bg.height); gl.uniform1f(U.T, T); gl.uniform1f(U.Z, s.Z); gl.uniform1f(U.E, s.stem);
     gl.uniform3f(U.C1, c[0]/255, c[1]/255, c[2]/255); gl.uniform3f(U.C2, c2[0]/255, c2[1]/255, c2[2]/255);
     gl.uniform2f(U.P, s.tilt[1]*.04-s.lat*.14, -s.tilt[0]*.03);
@@ -812,7 +929,10 @@ window.PLHyperlane = {
   versnelling:versnelling, warmte:warmte, nacht:nacht, scene:scene, SCENE_TEKST:SCENE_TEKST,
   MERKEN:MERKEN, merkThema:merkThema, accuStart:accuStart, START_RPM:START_RPM, POWER_S:POWER_S, gSpoor:gSpoor, GS_N:GS_N, tankStand:tankStand,
   ritBij:ritBij, ritNul100:ritNul100, scorebord:scorebord, duur:duur, telOp:telOp, SCORE_KM:SCORE_KM, RIT_PAUZE_S:RIT_PAUZE_S,
-  rit:function(){ return _rit; }, _zetRit:function(r){ _rit=r; },
+  rit:function(){ return _rit; }, _zetRit:function(r){ _rit=r; }, run:function(){ return _run; }, _zetRun:function(r){ _run=r; },
+  RUN_KM:RUN_KM, RUN_S:RUN_S, mooieRun:mooieRun, profielBij:profielBij, profielPad:profielPad, PROF_N:PROF_N, PROF_DT:PROF_DT,
+  trend:trend, runSamen:runSamen, leesRuns:leesRuns, RUNS_SLEUTEL:RUNS_SLEUTEL, RUNS_N:RUNS_N, TREND_MIN:TREND_MIN, HAND_S:HAND_S, scoreKnop:scoreKnop,
+  polsBij:polsBij, polsUniform:polsUniform, POLS_RUST:POLS_RUST, POLS_MAX:POLS_MAX, POLS_PAPIER:POLS_PAPIER, POLS_N:POLS_N,
   KOUD_C:KOUD_C, HEET_C:HEET_C, REM_KMHS:REM_KMHS, STIL_S:STIL_S, CRUISE_S:CRUISE_S, CRUISE_KMH:CRUISE_KMH,
   _klok:klok,
   start:start, stop:stop, wek:wek, zet:zet, voed:voed, voedRol:voedRol, VOED:VOED, VOED_GAS:VOED_GAS,

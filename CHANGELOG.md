@@ -10,6 +10,56 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Telemetrie: het G-vizier
+ ═══════════════════════════════════════════════════════════
+
+ - De G-cirkel is het hoofdinstrument: ringen per kwart g, een lichtspoor
+   van 1,5 s (gSpoorBij), de totale G, en per richting de hoogste waarde
+   van de rit (gMax; een kwartier zonder meting begint opnieuw).
+ - Horizon en autootjes ernaast (liggend) of eronder (staand), in neon.
+ - De basismeter krijgt nooit een thema (PLVisThema.pas); tot nu toe kon
+   zet() hem er tot de volgende herbouw toch een geven — een race in CI.
+
+ ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Temperatuur: geen lege balken meer
+ ═══════════════════════════════════════════════════════════
+
+ - Een profiel kan een `reserve` hebben: ontbreekt een sensor, dan eerst een
+   verwante temperatuur (0167, 0168, 0184, 0177, 0175, 013E, 0178, 0179), en
+   dan de warmte (0104 belasting, 0110 luchtmassa), met eigen naam en schaal.
+ - PLVisueel.reserveKetens() zet er één per lege plek aan; een gedeelde
+   reserve achter elke keten zou er maar één aanzetten.
+
+ ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Levende statusbalk, schakellampjes als lichtstreep
+ ═══════════════════════════════════════════════════════════
+
+ - Motor- en acculampje in één glazen capsule: het icoon ademt in zijn
+   toestandskleur, de meter is een gloeiende lijn, een nieuwe waarde geeft
+   een korte puls en een andere toestand (ok → laag) een sterkere
+   (PLVisueel.lampTik). Een te lage accu knippert zacht.
+ - De tien schakelrondjes zijn één naadloze lichtstreep; uit een haarlijn.
+
+ ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Scorebord alleen na een mooie run, met trend en verloop
+ ═══════════════════════════════════════════════════════════
+
+ - Het scorebord kwam na 0,3 km bij elke stilstand, dus bij elk stoplicht.
+   Nu vanzelf alleen na een run van ≥ 3 km én ≥ 3 min sinds de vorige
+   stilstand, of met een gemeten 0–100. Een tik sluit het; 🏁 toont de rit.
+ - Trend per tegel tegen het gemiddelde van de vorige runs (pl_hl_runs, 20
+   stuks), en een grafiekje van het snelheidsverloop.
+
+ ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Hartslag als ECG, zonder stotteren
+ ═══════════════════════════════════════════════════════════
+
+ - De achtergrond Hartslag is een hartslaglijn: papier met vaste snelheid,
+   slagen dichter op elkaar bij hogere toeren (62–138 per minuut, traag
+   meelopend). Het stotteren kwam van fase = T·v met v uit het toerental:
+   na een paar minuten sprong de lijn bij elke meting. De fase telt nu op.
+
+ ═══════════════════════════════════════════════════════════
  28-10-2026 — Hyperlane-look voor Verbruik, Motor, Telemetrie en Basis
  ═══════════════════════════════════════════════════════════
 

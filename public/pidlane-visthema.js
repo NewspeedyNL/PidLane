@@ -90,7 +90,10 @@ function strookHtml(nu){
 function pas(vis){
   vis = vis || visEl();
   if(!vis) return;
-  vis.setAttribute('data-vthema', themaVoor(lees()));
+  // De basismeter staat in de Hyperlane-schil (28-10-2026): de schil kleurt hem,
+  // dus nooit een thema. Hier en niet bij de opbouw: zet() riep pas() aan en
+  // gaf hem tot de volgende herbouw tóch een thema — een race in de proef.
+  vis.setAttribute('data-vthema', vis.classList.contains('vhl-basis') ? STANDAARD : themaVoor(lees()));
   if(!vis.querySelector('.vt-knoppen')){
     const bak=vis.querySelector('.vis-bak') || vis;
     bak.insertAdjacentHTML('afterbegin', knoppenHtml());

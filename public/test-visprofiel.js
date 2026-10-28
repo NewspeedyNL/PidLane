@@ -173,7 +173,7 @@ console.log('\n7. Telemetrie: de tekening draait mee (05-10-2026)');
   const ind = P.indeling('telemetrie', () => true);
   waar('helling en kanteling staan op de horizon én op de autootjes', ind.plekken['hz-helling'] === 'TL01' && ind.plekken.helling === 'TL01' && ind.plekken['hz-kanteling'] === 'TL02' && ind.plekken.kanteling === 'TL02', JSON.stringify(ind.plekken));
   const html = P.html('telemetrie', ind);
-  ['vpf-f-hz-helling', 'vpf-f-hz-kanteling', 'vpf-f-helling', 'vpf-f-kanteling', 'vpf-f-gstip', 'vpf-f-gpiek'].forEach(id => {
+  ['vpf-f-hz-helling', 'vpf-f-hz-kanteling', 'vpf-f-helling', 'vpf-f-kanteling', 'vpf-f-gstip', 'vpf-f-gpiek', 'vpf-f-gspoor', 'vpf-g-tot', 'vpf-g-max-voor', 'vpf-g-max-rem', 'vpf-g-max-rechts', 'vpf-g-max-links'].forEach(id => {
     waar('het samengevoegde scherm heeft ' + id + ', één keer', (html.match(new RegExp('id="' + id + '"', 'g')) || []).length === 1);
   });
   waar('geen element-id twee keer', (() => { const ids = [...html.matchAll(/id="([^"]+)"/g)].map(m => m[1]); return ids.length === new Set(ids).size; })());
@@ -205,6 +205,23 @@ console.log('\n7. Telemetrie: de tekening draait mee (05-10-2026)');
   p1 = G(p1, 0, -0.2, 3500);
   waar('gPiek: na 3 s valt hij terug naar de huidige stand', p1.y === -0.2 && p1.t === 3500, JSON.stringify(p1));
   waar('gPiek: lengte en zij tellen samen (0,6 bij 0,6 is groter dan 0,8)', G({ x: 0, y: -0.8, t: 0 }, 0.6, 0.6, 100).x === 0.6);
+  // Het G-vizier (28-10-2026): maximum per richting en het lichtspoor
+  const M = T.PLVisProfiel.gMax;
+  let m = M(null, 0.3, 0.2, 0); m = M(m, -0.4, -0.7, 100); m = M(m, 0.1, 0.1, 200);
+  waar('gMax: per richting de hoogste (optrekken 0,2, remmen 0,7, rechtsaf 0,3, linksaf 0,4)', m.voor === 0.2 && m.rem === 0.7 && m.rechts === 0.3 && m.links === 0.4, JSON.stringify(m));
+  waar('gMax: een kwartier zonder meting is een nieuwe rit', M(m, 0.05, 0, 200 + T.PLVisProfiel.G_MAX_PAUZE_MS + 1).rem === 0);
+  waar('gMax: tussendoor gemeten houdt hij vast', M(m, 0.05, 0, 200 + T.PLVisProfiel.G_MAX_PAUZE_MS - 1).rem === 0.7);
+  const S = T.PLVisProfiel.gSpoorBij;
+  let h = S([], 0, 0, 0); h = S(h, 0.2, 0, 500); h = S(h, 0.4, 0, 1600);
+  waar('spoor: alleen de laatste anderhalve seconde', h.length === 2 && h[0].t === 500, JSON.stringify(h));
+  waar('spoor: in de punten van de tekening, zij-G gespiegeld zoals de stip', T.PLVisProfiel.gSpoorPunten(h) === '84.0,100.0 68.0,100.0', T.PLVisProfiel.gSpoorPunten(h));
+  P.bij('telemetrie', indG, 'TL03', -0.6, 'ok'); P.bij('telemetrie', indG, 'TL04', -0.3, 'ok');
+  waar('het vizier toont de hoogste rem en linksaf van deze rit', els['vpf-g-max-rem'] && els['vpf-g-max-rem'].textContent === '0,60' && els['vpf-g-max-links'].textContent === '0,30',
+    JSON.stringify(['rem', 'links', 'voor'].map(k => els['vpf-g-max-' + k] && els['vpf-g-max-' + k].textContent)));
+  waar('…en nog geen optrekken (onder 0,05 g een streepje)', els['vpf-g-max-voor'].textContent === '—');
+  waar('de totale G staat in het vizier', els['vpf-g-tot'] && els['vpf-g-tot'].textContent === '0,67 g', els['vpf-g-tot'] && els['vpf-g-tot'].textContent);
+  T.PLVisProfiel.gWis();
+  waar('Nulstellen wist ook de maxima en het spoor', els['vpf-g-max-rem'].textContent === '—' && els['vpf-f-gspoor'].attr.points === '', JSON.stringify(els['vpf-f-gspoor'].attr));
 }
 
 console.log('\n9. Diesel: andere sensoren op dezelfde weergaven (#393)');
@@ -313,6 +330,23 @@ console.log('\n— een plek zelf invullen: op naam, met de hand, nooit dubbel �
   waar('de ketens zetten 221310 erbij, zodat Slim visueel hem aanzet',
     JSON.stringify(P.ketens('temp', 'benzine', { keuze: {}, defs })[1]) === JSON.stringify(['015C', '221310']), JSON.stringify(P.ketens('temp', 'benzine', { keuze: {}, defs })));
   waar('zonder opts: de indeling van vóór 06-10 (OLIE leeg op de CX-5)', P.indeling('temp', mag(cx5)).plekken.olie === null);
+  // Geen lege balk (28-10-2026): BUITEN krijgt uit de reserve iets verwants
+  const cx5r = cx5.concat(['0168', '0104']);
+  let r = P.indeling('temp', mag(cx5r), 'benzine', { keuze: {}, defs });
+  waar('reserve: BUITEN krijgt de tweede inlaatsensor, met zijn eigen naam en schaal', r.plekken.buiten === '0168' && r.vervang.buiten && r.vervang.buiten.kort === 'Inlaat 2' && r.vervang.buiten.reserve === true, JSON.stringify([r.plekken, r.vervang]));
+  waar('reserve: een plek met een eigen sensor houdt die (geen vervanging)', r.plekken.koel === '0105' && !r.vervang.koel && r.plekken.olie === '221310' && !r.vervang.olie, JSON.stringify(r.plekken));
+  r = P.indeling('temp', mag(['0105', '0104', '0110']), 'benzine', { keuze: {}, defs: [] });
+  const leeg = Object.keys(r.plekken).filter(k => !r.plekken[k]);
+  waar('reserve: zonder temperatuursensoren eerst de warmte erbij (belasting, luchtmassa), elk één keer',
+    r.plekken.olie === '0104' && r.plekken.inlaat === '0110' && r.vervang.olie.eenheid === '%' && r.vervang.inlaat.eenheid === 'g/s', JSON.stringify(r.plekken));
+  waar('reserve: wat er echt niet is blijft leeg, nooit dubbel', leeg.join() === 'buiten,kat' && new Set(Object.values(r.plekken).filter(Boolean)).size === 3, JSON.stringify(r.plekken));
+  r = P.indeling('temp', mag(['0105', '0167', '0104']), 'benzine');
+  waar('reserve: 0167 als tweede koelwater alleen als hij niet zelf op KOEL hoort', r.plekken.koel === '0105' && r.plekken.olie === '0167' && r.vervang.olie.kort === 'Koel 2', JSON.stringify(r.plekken));
+  r = P.indeling('temp', mag(['0167', '0104']), 'benzine');
+  waar('…en heeft de auto geen 0105, dan is 0167 het koelwater zelf', r.plekken.koel === '0167' && !r.vervang.koel && r.plekken.olie === '0104', JSON.stringify(r.plekken));
+  waar('de ketens noemen de reserve niet (die zet Slim visueel één per plek aan)', P.ketens('temp', 'benzine')[3].join() === '0146');
+  const rh = P.html('temp', P.indeling('temp', mag(['0105', '0104']), 'benzine'));
+  waar('de tekening toont het label van de reserve', /Last/.test(rh), rh.slice(0, 300));
 
   i = P.indeling('temp', mag(cx5), 'benzine', { keuze: { 'temp/buiten': '0142' }, defs });
   waar('met de hand: de accuspanning op BUITEN', i.plekken.buiten === '0142', JSON.stringify(i.plekken));

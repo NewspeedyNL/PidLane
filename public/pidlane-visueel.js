@@ -268,7 +268,7 @@ function zorgPids(){
   catch(e){ console.warn('PLVisueel: keuzelijst onleesbaar', e); }
   try{ if(typeof hiddenPIDs!=='undefined' && hiddenPIDs) verborgen=hiddenPIDs; }
   catch(e){ console.warn('PLVisueel: verborgen sensoren onleesbaar', e); }
-  const kies=nodigePids(heeft, activePIDs, verborgen, trekAan(), profielKetens());
+  const kies=nodigePids(heeft, activePIDs, verborgen, trekAan(), profielKetens().concat(reserveKetens(heeft, verborgen)));
   if(!kies.length) return [];
   const voor=(typeof plSelectieVoor==='function') ? plSelectieVoor() : null;
   const r=(typeof pidToevoegen==='function') ? pidToevoegen(kies, { handmatig:false }) : { ok:[] };
@@ -725,6 +725,19 @@ function profielKetens(){
   const p=profielNu();
   if(p==='basis'){ const k=basisKeuzes(); return PLEKKEN.map(function(x){ return plekKeten(x, k); }); }
   return PF() ? PF().ketens(p, leesMotor(), profielOpts()) : [];
+}
+/* De reserve van een profiel (28-10-2026): welke sensor elke lege plek zou
+   krijgen als alles wat de auto heeft ook aanstond, elk als eigen keten. Een
+   gedeelde reserve achter elke plek is daar niet genoeg voor: de eerste plek
+   zet 0167 aan, en dan telt de keten van de tweede ook als vervuld. */
+function reserveKetens(heeft, verborgen){
+  const p=profielNu();
+  if(p==='basis' || !PF()) return [];
+  let ind=null;
+  try{ ind=PF().indeling(p, function(q){ return heeft.has(q) && !verborgen.has(q); }, leesMotor(), profielOpts()); }
+  catch(e){ console.warn('PLVisueel: reserve van het profiel niet te bepalen', e); return []; }
+  if(!ind || !ind.vervang) return [];
+  return Object.keys(ind.vervang).filter(function(r){ return ind.vervang[r].reserve && ind.plekken[r]; }).map(function(r){ return [ind.plekken[r]]; });
 }
 /* Wat het profiel nodig heeft om een plek zelf in te vullen (06-10-2026): de
    keuzes van dit toestel en de keuzelijst (naam, eenheid, schaal). */
@@ -1309,6 +1322,14 @@ function lampHtml(l){
   return '<svg class="vis-lamp-ic" viewBox="0 0 24 24" aria-hidden="true">'+icoonHtml(l.icoon)+'</svg>'+tx+
          (l.balk!==null ? '<i class="vis-lamp-balk" style="width:'+l.balk+'%"></i>' : '');
 }
+/* Puls bij een lampje: null bij de eerste keer of geen verschil, 'grens'
+   als de toestand (soort) wisselt, anders 'tik'. Een lampje dat verdwijnt
+   pulst niet. Puur: vorige = {soort, waarde} of null/undefined. */
+function lampTik(vorige, l){
+  if(!vorige || !l) return null;
+  if(vorige.soort!==l.soort) return 'grens';
+  return vorige.waarde!==String(l.waarde)+'|'+String(l.hv)+'|'+String(l.volt) ? 'tik' : null;
+}
 /* Het getal bij een lampje: alleen een vers antwoord. Een oude belasting
    naast "Motor aan" leest als een meting van nu, en dat is hij niet. */
 function lampGetal(pid){
@@ -1361,6 +1382,10 @@ function lampjesBij(){
     const l=x[1];
     e.className='vis-lamp'+(l ? ' '+l.soort+(l.twijfel?' twijfel':'') : ' leeg');
     e.innerHTML=l ? lampHtml(l) : '';
+    // Een nieuwe waarde geeft een korte puls, een andere toestand een sterkere (28-10-2026)
+    const tik=lampTik(e._lamp, l);
+    if(tik){ void e.offsetWidth; e.classList.add('tik'); if(tik==='grens') e.classList.add('grens'); }
+    e._lamp=l ? { soort:l.soort, waarde:String(l.waarde)+'|'+String(l.hv)+'|'+String(l.volt) } : null;
     e.title=!l ? '' : l.dubbel ? (l.kop+' — aandrijfaccu '+l.hv+', 12V-accu '+l.volt)
       : (l.kop+' '+l.waarde+(x[0]==='vis-lamp-motor' && res && res.waarom ? ' — '+res.waarom : ''));
   });
@@ -1477,9 +1502,7 @@ function bouw(g, reden){
   _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
   ritBij();
   meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
-  themaBij(g);
-  // Geen thema meer op de basismeter: de schil kleurt hem
-  const vb=g.querySelector('.vis'); if(vb) vb.setAttribute('data-vthema', 'standaard');
+  themaBij(g);   // de basismeter krijgt daar geen thema: de schil kleurt hem (PLVisThema.pas)
   try{ if(window.PLHyperlane) PLHyperlane.wek(g); }catch(e){ console.warn('PLVisueel: Hyperlane-schil starten mislukt', e); }
   // De banden gaan niet de pollus in (#396): één keer per verbinding vragen.
   try{ if(window.PLBanden && PLBanden.eenmaal) PLBanden.eenmaal(); }catch(e){ console.warn('PLVisueel: banden niet gevraagd', e); }
@@ -1912,7 +1935,7 @@ function stop(){
 window.PLVisueel = {
   G:G, REM_MS:VIS_REM_MS, TRAAG_MS:VIS_TRAAG_MS, MIN_N:VIS_MIN_N, AANLOOP_MS:VIS_AANLOOP_MS,
   PLEKKEN:PLEKKEN, BOOG_SCHAAL:BOOG_SCHAAL, HOOFD:HOOFD, SCHAAL:SCHAAL,
-  schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
+  schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, lampTik:lampTik, reserveKetens:reserveKetens, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
   stand:stand, tekst:tekst, plekOordeel:plekOordeel, plekGetal:plekGetal, plekEenheid:plekEenheid, boogSchaal:boogSchaal, getalKan:getalKan,
   plekKeten:plekKeten, plekStaat:plekStaat, kandidatenPlek:kandidatenPlek, zonderSchaal:zonderSchaal,
   VERMOGEN:VERMOGEN, VRAAG_KETEN:VRAAG_KETEN, naaldSoort:naaldSoort, vraagUit:vraagUit, laadUit:laadUit, vermogenStand:vermogenStand,

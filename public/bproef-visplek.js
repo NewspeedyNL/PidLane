@@ -48,7 +48,8 @@ function toets(naam, waar, uitleg) {
     toets('de eigen motorolietemperatuur staat op OLIE', auto.olie === '221310', JSON.stringify(auto));
     toets('…onder het label Olie', /olie/i.test(auto.olieLbl || ''), JSON.stringify(auto));
     toets('…en Slim visueel heeft hem aangezet', auto.actief, JSON.stringify(auto));
-    toets('BUITEN blijft leeg: deze auto heeft geen buitentemperatuur', auto.buiten === null, JSON.stringify(auto));
+    // Sinds 28-10-2026 geen lege balk: zonder buitentemperatuur komt er iets verwants uit de reserve
+    toets('BUITEN: geen buitentemperatuur, dus uit de reserve (geen verkeerde naamtreffer)', auto.buiten !== null && auto.buiten !== '221310' && auto.buiten !== '0142', JSON.stringify(auto));
 
     console.log('\n2. Tik op BUITEN en kies de accuspanning');
     const kies = await app.ev(`(async function(){
@@ -90,7 +91,7 @@ function toets(naam, waar, uitleg) {
                keuze: JSON.parse(localStorage.getItem('pl_vis_keuze') || '{}') };
     })()`);
     toets('de Android-terugknop sluit de lijst', terug.open && terug.dichtNaTerug, JSON.stringify(terug));
-    toets('Automatisch: weer leeg, met het label Buiten', terug.buiten === null && /buiten/i.test(terug.lbl) && !('temp/buiten' in terug.keuze), JSON.stringify(terug));
+    toets('Automatisch: terug naar de reserve, met zijn eigen label en niet meer de accuspanning', terug.buiten !== '0142' && terug.buiten === auto.buiten && !/accu/i.test(terug.lbl) && !('temp/buiten' in terug.keuze), JSON.stringify(terug));
 
     console.log('\n4. Het telemetriescherm: Nulstellen op het scherm zelf');
     const tel = await app.ev(`(async function(){

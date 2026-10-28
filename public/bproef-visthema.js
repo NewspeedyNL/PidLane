@@ -102,20 +102,20 @@ function toets(naam, waar, uitleg) {
     // Sinds 28-10-2026 staat de basismeter in de Hyperlane-schil: geen palet meer,
     // de kleur komt van het rijgedrag (keuze van de gebruiker: "oude looks vervangen").
     toets('geen palet meer in de gewone weergave (de basismeter staat in de Hyperlane-schil)', !r.themaKnopGewoon, JSON.stringify(r));
-    toets('Neon kiezen in de gewone weergave verandert de plaat', r.themaGewoon === 'neon' && r.plaatGewoon !== r.plaat0, JSON.stringify(r));
-    toets('…en Standaard geeft de gewone meter terug (tegenproef)', r.plaatTerug === r.plaat0, JSON.stringify(r));
+    toets('een thema kiezen verandert de basismeter niet: de schil kleurt hem', r.themaGewoon === 'standaard' && r.plaatGewoon === r.plaat0, JSON.stringify(r));
+    toets('…en Standaard ook niet (tegenproef)', r.plaatTerug === r.plaat0, JSON.stringify(r));
     console.log('\n2. Volledig scherm en een thema kiezen');
     toets('tikken zet het volle scherm aan', r.vol, JSON.stringify(r));
     toets('…en de meter bedekt het hele scherm, boven de navigatie', r.dekt && r.bovenop, JSON.stringify(r));
     toets('op het volle scherm geldt het thema (eerst Standaard)', r.thema1 === 'standaard', JSON.stringify(r));
     toets('de themaknop opent de strook met alle thema\'s', r.strook.length === r.n && r.strook[0] === 'standaard', JSON.stringify(r.strook));
-    toets('Chroom kiezen verandert de plaat en wordt onthouden', r.thema2 === 'chroom' && r.plaat2 !== r.plaat0 && r.bewaard === 'chroom', JSON.stringify(r));
+    toets('Chroom kiezen wordt onthouden, de basismeter blijft zonder thema', r.thema2 === 'standaard' && r.plaat2 === r.plaat0 && r.bewaard === 'chroom', JSON.stringify(r));
     toets('een herbouw van de meter houdt de knoppen; de basismeter zelf blijft zonder thema', r.naHerbouw === 'standaard' && r.knopNaHerbouw, JSON.stringify(r));
     toets('ook een profiel houdt op het volle scherm het thema en de knoppen', r.profiel !== 'basis' && r.profielThema === 'chroom' && r.profielKnop, JSON.stringify(r));
     console.log('\n3. Terug uit het volle scherm');
     toets('de terugknop sluit het volle scherm', r.dichtNaTerug, JSON.stringify(r));
-    toets('…en het gekozen thema blijft in de gewone weergave, zonder open strook', r.thema3 === 'chroom' && r.plaat3 === r.plaat2 && r.strookWeg, JSON.stringify(r));
-    toets('weer openen geeft het onthouden thema', r.themaWeer === 'chroom', JSON.stringify(r));
+    toets('…en de basismeter blijft zonder thema, zonder open strook', r.thema3 === 'standaard' && r.plaat3 === r.plaat2 && r.strookWeg, JSON.stringify(r));
+    toets('weer openen: nog steeds zonder thema (de schil kleurt)', r.themaWeer === 'standaard', JSON.stringify(r));
     toets('een andere weergave kiezen sluit het volle scherm', r.dichtNaWissel, JSON.stringify(r));
 
     toets('geen fouten in de console', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
