@@ -1117,6 +1117,7 @@ MUTATIES=(
 "public/pidlane-data.js@@  if(motor!=='hybride') return basis;@@  return basis;@@test-hybridebasis.js@@een hybride krijgt weer alleen 'laat hem stationair draaien' (#430)"
 "public/pidlane-visueel.js@@  if(elektrisch && heeftVraag) return 'vermogen';@@  if(false) return 'vermogen';@@test-visueel.js@@een hybride houdt de toerennaald die op 0 staat terwijl hij 50 rijdt (#432)"
 "public/pidlane-visueel.js@@const VRAAG_KETEN = ['015A','0149','014A'];@@const VRAAG_KETEN = ['015A','0149','014A','0111'];@@test-visueel.js@@de gasklep telt als vermogensvraag: op de accu optrekken staat dan op nul"
+"public/pidlane-visueel.js@@  if(vorige.soort!==l.soort) return 'grens';\n@@@@test-visueel.js@@een accu die van goed naar laag gaat pulst even zacht als een nieuwe spanning"
 "public/pidlane-toon.js@@    if (leer.min === null || leer.min === undefined || n < leer.min) leer.min = n;@@    if (leer.min === null || leer.min === undefined) leer.min = 0;@@test-visueel.js@@de rustwaarde van het pedaal wordt niet geleerd: 0149 staat stil op 25% vraag"
 "public/pidlane-visueel.js@@  if(b.v<VERMOGEN.LAAD_MIN_KMH) return 0;@@@@test-visueel.js@@de laadzone slaat uit bij het laatste stukje stilvallen, waar niets meer terugwint"
 "public/pidlane-visueel.js@@  return !gear || !!gear.uit;@@  return true;@@test-visueel.js@@het embleem staat weer midden in de meter terwijl de indicator nog over de versnelling nadenkt"
