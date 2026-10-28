@@ -1591,15 +1591,15 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 /* De lampjes als kleine glazen chips (28-10-2026, Hyperlane-look). Op het volle
    scherm met Hyperlane of de schil bovenin het midden, boven de achtergrond. */
 .vis-lamp { border-radius:999px; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
-body.pl-vis-vol .vis:has(.vpf-hyper, .vhl-schil) .vis-lampen { position:fixed; top:calc(var(--pl-sat, 0px) + 14px); left:50%; transform:translateX(-50%);
+body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen { position:fixed; top:calc(var(--pl-sat, 0px) + 14px); left:50%; transform:translateX(-50%);
   z-index:3; gap:10px; margin:0; justify-content:center; }
 /* Staand is het smal: de chips onder het knopje en het kruisje. */
 @media (orientation:portrait) {
-  body.pl-vis-vol .vis:has(.vpf-hyper, .vhl-schil) .vis-lampen { top:calc(var(--pl-sat, 0px) + 68px); }
+  body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen { top:calc(var(--pl-sat, 0px) + 68px); }
 }
-body.pl-vis-vol .vis:has(.vpf-hyper, .vhl-schil) .vis-lamp { min-height:0; padding:3px 9px; border-radius:999px; background:rgba(0,0,0,.35);
+body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp { min-height:0; padding:3px 9px; border-radius:999px; background:rgba(0,0,0,.35);
   border-color:rgba(255,255,255,.18); max-width:none; }
-body.pl-vis-vol .vis:has(.vpf-hyper, .vhl-schil) .vis-lamp-tx { flex-direction:row; gap:6px; align-items:baseline; }
+body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp-tx { flex-direction:row; gap:6px; align-items:baseline; }
 .vis-lamp-ic { flex:none; width:18px; height:18px; overflow:visible; }
 .vis-lamp-tx { display:flex; flex-direction:column; min-width:0; line-height:1.1; }
 .vis-lamp-tx small { font-size:9.5px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -1955,6 +1955,58 @@ body.pl-vis-vol .vpf-buis small { font-size:min(2vh, 2.4vw, 14px); letter-spacin
 .vpf-rij.warn .vpf-w { color:#ffd27a; } .vpf-rij.danger .vpf-w { color:#ff8a96; }
 body.pl-vis-vol .vpf-licht > .vpf-lambda, body.pl-vis-vol .vpf-licht > .vpf-rijen { width:100%; max-width:680px; margin-left:auto; margin-right:auto; }
 body.pl-vis-vol .vpf-lambda .vpf-w { font-size:min(14vh, 110px); }
+body.pl-vis-vol .vpf-neon .vpf-ringen { max-width:min(56vh, 70vw, 440px); }
+/* ── De basismeter in de Hyperlane-schil (28-10-2026) ──
+   De schil zit om de hele .vis (de meter, het vak, de banden, de meldingen
+   houden hun eigen plaats); de canvas ligt eronder. Een glazen plaat, witte
+   streepjes, een naald met gloed in de kleur van het rijgedrag; de oranje en
+   rode zones blijven, want die betekenen iets. Geen thema meer. */
+.vis.vhl-basis { --vhl-c:rgb(90,200,255); --vhl-c2:rgb(0,255,215); --vhl-e:0; position:relative; overflow:hidden; border-radius:18px;
+  background:radial-gradient(ellipse at 50% 40%, #0b1430, #02030a 70%); color:#e8f4ff; }
+.vis.vhl-basis.vhl-gl { background:#02030a; }
+.vis.vhl-basis > .vhl-bg { position:absolute; inset:0; width:100%; height:100%; display:block; z-index:0; pointer-events:none; }
+.vis.vhl-basis.vhl-zonder > .vhl-bg { visibility:hidden; }
+.vis.vhl-basis > .vis-bak, .vis.vhl-basis > .vis-meldingen, .vis.vhl-basis > .vis-trek { position:relative; z-index:1; }
+.vis.vhl-basis .vt-thema, .vis.vhl-basis .vt-strook { display:none; }
+body.pl-vis-vol .vis.vhl-basis { border-radius:0; background:#02030a; }
+.vhl-basis .vis-plaat { fill:rgba(2,4,12,.55); stroke:color-mix(in srgb, var(--vhl-c) 45%, transparent); }
+.vhl-basis .vis-spoor { stroke:rgba(255,255,255,.07); }
+.vhl-basis .vis-vul { stroke:var(--vhl-c); filter:drop-shadow(0 0 4px var(--vhl-c)); }
+.vhl-basis .vis-vul.warn { stroke:#ffb020; filter:drop-shadow(0 0 4px #ffb020); }
+.vhl-basis .vis-vul.danger { stroke:#ff2a40; filter:drop-shadow(0 0 4px #ff2a40); }
+.vhl-basis .vis-streep { stroke:rgba(255,255,255,.45); }
+.vhl-basis .vis-streep.groot { stroke:#fff; }
+.vhl-basis .vis-cijfer { fill:#fff; font-weight:300; }
+.vhl-basis .vis-naald line { stroke:#fff; filter:drop-shadow(0 0 3px var(--vhl-c)) drop-shadow(0 0 8px var(--vhl-c)); }
+.vhl-basis .vis-naaf { fill:#02030a; stroke:var(--vhl-c); }
+.vhl-basis .vis-mid, .vhl-basis .vis-klein { fill:#fff; font-weight:300; }
+.vhl-basis .vis-eenheid, .vhl-basis .vis-plek-naam { fill:var(--vhl-c); }
+.vhl-basis .vis-vak { background:rgba(0,0,0,.35); border-color:rgba(255,255,255,.14); color:#fff; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+.vhl-basis .vis-vak small { color:var(--vhl-c); }
+body.pl-vis-vol .vpf-neon > .vpf-legenda, body.pl-vis-vol .vpf-neon > .vpf-neon-getallen { width:100%; max-width:640px; margin-left:auto; margin-right:auto; }
+body.pl-vis-vol .vpf-telemetrie > :not(.vhl-bg):not(.vhl-vorm) { width:100%; max-width:820px; margin-left:auto; margin-right:auto; }
+/* Telemetrie in de schil: de autootjes en de vakken in neon en glas. */
+.vhl-schil .vpf-or-auto path, .vhl-schil .vpf-or-auto rect { fill:var(--vhl-c); filter:drop-shadow(0 0 6px var(--vhl-c)); }
+.vhl-schil .vpf-or-auto circle { fill:#02030a; stroke:var(--vhl-c); }
+.vhl-schil .vpf-or-auto .vpf-or-ruit { fill:#02030a; filter:none; }
+.vhl-schil .vpf-or-grond { stroke:rgba(255,255,255,.35); }
+.vhl-schil .vpf-or-vak { border-color:rgba(255,255,255,.12); background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+body.pl-vis-vol .vpf-telemetrie .vpf-horizon-svg, body.pl-vis-vol .vpf-telemetrie .vpf-g-svg { max-width:min(34vh, 320px); }
+@media (orientation:landscape) {
+  body.pl-vis-vol .vpf-neon { flex-direction:row; align-items:center; justify-content:center; gap:4vw; flex-wrap:wrap; }
+  body.pl-vis-vol .vpf-neon .vpf-ringen { max-width:min(70vh, 420px); margin:0; }
+  body.pl-vis-vol .vpf-neon > .vpf-legenda { width:auto; max-width:none; flex-direction:column; align-items:flex-start; margin:0; order:2; }
+  body.pl-vis-vol .vpf-neon > .vpf-neon-getallen { width:auto; flex:0 1 260px; grid-template-columns:1fr; margin:0; order:3; }
+  body.pl-vis-vol .vpf-telemetrie { display:grid; grid-template-columns:1fr 1fr; align-content:center; align-items:center; gap:1.5vh 3vw; }
+  body.pl-vis-vol .vpf-telemetrie > .vpf-tel-boven { grid-column:1; margin:0; }
+  body.pl-vis-vol .vpf-telemetrie > .vpf-or { grid-column:2; margin:0; }
+  body.pl-vis-vol .vpf-telemetrie > .vpf-tel-nul, body.pl-vis-vol .vpf-telemetrie > .vpf-geen { grid-column:1 / -1; max-width:460px; }
+  body.pl-vis-vol .vpf-telemetrie .vpf-horizon-svg, body.pl-vis-vol .vpf-telemetrie .vpf-g-svg { max-width:min(36vh, 260px); }
+  body.pl-vis-vol .vpf-telemetrie .vpf-or-vak svg { max-height:32vh; }
+  body.pl-vis-vol .vpf-digitaal { flex-direction:row; align-items:center; gap:5vw; }
+  body.pl-vis-vol .vpf-digitaal > .vpf-lcd-groot { flex:1; max-width:440px; border-bottom:0; margin:0; }
+  body.pl-vis-vol .vpf-digitaal > .vpf-lcd-rijen { flex:1.2; max-width:520px; margin:0; padding-top:0; }
+}
 /* Liggend: lambda links, de trims rechts — onder elkaar past het niet. */
 @media (orientation:landscape) {
   body.pl-vis-vol .vpf-licht { flex-direction:row; align-items:center; gap:5vw; }
@@ -1963,27 +2015,27 @@ body.pl-vis-vol .vpf-lambda .vpf-w { font-size:min(14vh, 110px); }
   body.pl-vis-vol .vpf-lambda .vpf-w { font-size:min(22vh, 120px); }
 }
 
-/* DIGITAAL — verbruik: een LCD-paneel met segmentbalken. */
-.vpf-digitaal { background:#050a07; color:#5dffa0; border:2px solid #1b2a20; font-family:var(--m);
-                box-shadow:inset 0 0 40px rgba(93,255,160,.08); }
-.vpf-digitaal::after { content:''; position:absolute; inset:0; pointer-events:none;
-                       background:repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px); }
-.vpf-digitaal small { font-family:var(--f); font-size:10.5px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:#3fae6f; }
-.vpf-digitaal .vpf-e { font-style:normal; font-size:12px; color:#3fae6f; }
-.vpf-lcd-groot { display:grid; grid-template-columns:1fr auto; align-items:end; gap:2px 8px; padding:4px 4px 14px; border-bottom:1px dashed #1f3a29; }
+/* DIGITAAL — verbruik, in de Hyperlane-schil (28-10-2026): het grote getal
+   dun en gloeiend, de segmenten lichten op in de kleur van het rijgedrag.
+   Tot deze datum een groen LCD-paneel met scanlijnen. */
+.vpf-digitaal { font-family:system-ui, sans-serif; }
+.vpf-digitaal small { font-size:10px; font-weight:600; letter-spacing:.25em; text-transform:uppercase; color:var(--vhl-c); }
+.vpf-digitaal .vpf-e { font-style:normal; font-size:12px; letter-spacing:.08em; color:rgba(255,255,255,.6); }
+.vpf-lcd-groot { display:grid; grid-template-columns:1fr auto; align-items:end; gap:4px 10px; padding:6px 6px 16px; border-bottom:1px solid rgba(255,255,255,.08); }
 .vpf-lcd-groot small { grid-column:1 / -1; }
-.vpf-lcd-groot .vpf-w { font-size:58px; font-weight:500; line-height:1; text-shadow:0 0 12px rgba(93,255,160,.55); }
+.vpf-lcd-groot .vpf-w { font-size:64px; font-weight:200; line-height:1; color:#fff; text-shadow:0 0 18px var(--vhl-c), 0 0 60px var(--vhl-c); }
 .vpf-lcd-groot .vpf-seg { grid-column:1 / -1; }
-.vpf-lcd-rijen { display:grid; grid-template-columns:1fr 1fr; gap:12px 14px; padding-top:12px; }
+.vpf-lcd-rijen { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; padding-top:14px; }
 .vpf-lcd-rij { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 6px; min-width:0; }
 .vpf-lcd-rij small { flex-basis:100%; }
-.vpf-lcd-rij .vpf-w { font-size:24px; text-shadow:0 0 8px rgba(93,255,160,.45); }
-.vpf-seg { display:flex; gap:2px; width:100%; margin-top:5px; }
-.vpf-seg i { flex:1; height:9px; border-radius:1px; background:#12301f; }
-.vpf-digitaal .warn .vpf-w, .vpf-digitaal .warn small { color:#ffb84d; }
-.vpf-digitaal .danger .vpf-w, .vpf-digitaal .danger small { color:#ff6464; }
-
-/* Segmenten: data-n="k" zet de eerste k blokjes aan, de laatste vijf oranje. */
+.vpf-lcd-rij .vpf-w { font-size:28px; font-weight:200; color:#fff; text-shadow:0 0 10px var(--vhl-c); }
+.vpf-seg { display:flex; gap:3px; width:100%; margin-top:8px; }
+.vpf-seg i { flex:1; height:6px; border-radius:3px; background:rgba(255,255,255,.06); }
+.vpf-digitaal .warn .vpf-w, .vpf-digitaal .warn small { color:#ffd27a; }
+.vpf-digitaal .danger .vpf-w, .vpf-digitaal .danger small { color:#ff8a96; }
+body.pl-vis-vol .vpf-digitaal > .vpf-lcd-groot, body.pl-vis-vol .vpf-digitaal > .vpf-lcd-rijen { width:100%; max-width:760px; margin-left:auto; margin-right:auto; }
+body.pl-vis-vol .vpf-lcd-groot .vpf-w { font-size:min(18vh, 13vw, 140px); }
+body.pl-vis-vol .vpf-lcd-rij .vpf-w { font-size:min(6vh, 7vw, 44px); }
 .vpf-seg[data-n="1"] i:nth-child(-n+1),
 .vpf-seg[data-n="2"] i:nth-child(-n+2),
 .vpf-seg[data-n="3"] i:nth-child(-n+3),
@@ -2003,50 +2055,48 @@ body.pl-vis-vol .vpf-lambda .vpf-w { font-size:min(14vh, 110px); }
 .vpf-seg[data-n="17"] i:nth-child(-n+15),
 .vpf-seg[data-n="18"] i:nth-child(-n+15),
 .vpf-seg[data-n="19"] i:nth-child(-n+15),
-.vpf-seg[data-n="20"] i:nth-child(-n+15) { background:#5dffa0; box-shadow:0 0 6px rgba(93,255,160,.6); }
+.vpf-seg[data-n="20"] i:nth-child(-n+15) { background:var(--vhl-c); box-shadow:0 0 8px var(--vhl-c); }
 .vpf-seg[data-n="16"] i:nth-child(n+16):nth-child(-n+16),
 .vpf-seg[data-n="17"] i:nth-child(n+16):nth-child(-n+17),
 .vpf-seg[data-n="18"] i:nth-child(n+16):nth-child(-n+18),
 .vpf-seg[data-n="19"] i:nth-child(n+16):nth-child(-n+19),
-.vpf-seg[data-n="20"] i:nth-child(n+16):nth-child(-n+20) { background:#ffb84d; box-shadow:0 0 6px rgba(255,184,77,.6); }
+.vpf-seg[data-n="20"] i:nth-child(n+16):nth-child(-n+20) { background:#ffb020; box-shadow:0 0 8px #ffb020; }
 
-/* NEON — motor: ringen om elkaar heen op een donker raster. */
-.vpf-neon { background:radial-gradient(circle at 50% 40%, #1a0f33, #07040f 70%); color:#f2eaff; border:1px solid #2a1c4d;
-            background-image:radial-gradient(circle at 50% 40%, rgba(26,15,51,.95), rgba(7,4,15,1) 70%),
-                             linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
-            background-size:auto, 22px 22px, 22px 22px; }
+/* NEON — motor, in de Hyperlane-schil (28-10-2026): de buitenste ring in
+   de kleur van het rijgedrag, de tweede in de tweede kleur, de binnenste wit.
+   Tot deze datum roze, cyaan en limoen op een paars raster. */
 .vpf-ringen { display:block; width:100%; max-width:300px; margin:0 auto; height:auto; }
 .vpf-ring-bak { fill:none; stroke:rgba(255,255,255,.08); stroke-width:11; stroke-linecap:round; }
 .vpf-ring-vul { fill:none; stroke-width:11; stroke-linecap:round; transition:stroke-dasharray .35s ease-out; }
-.vpf-ring.r-toeren .vpf-ring-vul { stroke:#ff3ea5; filter:drop-shadow(0 0 4px #ff3ea5); }
-.vpf-ring.r-last .vpf-ring-vul { stroke:#28e0ff; filter:drop-shadow(0 0 4px #28e0ff); }
-.vpf-ring.r-gasklep .vpf-ring-vul { stroke:#b7ff3c; filter:drop-shadow(0 0 4px #b7ff3c); }
+.vpf-ring.r-toeren .vpf-ring-vul { stroke:var(--vhl-c); filter:drop-shadow(0 0 5px var(--vhl-c)); }
+.vpf-ring.r-last .vpf-ring-vul { stroke:var(--vhl-c2); filter:drop-shadow(0 0 5px var(--vhl-c2)); }
+.vpf-ring.r-gasklep .vpf-ring-vul { stroke:#e8f4ff; filter:drop-shadow(0 0 4px #fff); }
 .vpf-ring.warn .vpf-ring-vul { stroke:#ffb84d; } .vpf-ring.danger .vpf-ring-vul { stroke:#ff4d4d; }
-.vpf-neon-groot { fill:#fff; font-family:var(--m); font-size:30px; font-weight:500; }
-.vpf-neon-eenheid { fill:#b9a8e6; font-family:var(--f); font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
-.vpf-legenda { display:flex; justify-content:center; flex-wrap:wrap; gap:6px 14px; margin-top:4px; font-size:12px; color:#cfc2f2; }
+.vpf-neon-groot { fill:#fff; font-family:system-ui, sans-serif; font-size:32px; font-weight:200; filter:drop-shadow(0 0 4px var(--vhl-c)); }
+.vpf-neon-eenheid { fill:var(--vhl-c); font-family:system-ui, sans-serif; font-size:8px; font-weight:600; letter-spacing:2px; text-transform:uppercase; }
+.vpf-legenda { display:flex; justify-content:center; flex-wrap:wrap; gap:6px 16px; margin-top:6px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.65); }
 .vpf-legenda span { display:inline-flex; align-items:center; gap:5px; }
 .vpf-legenda i { width:10px; height:10px; border-radius:50%; }
-.vpf-legenda .r-last i { background:#28e0ff; box-shadow:0 0 6px #28e0ff; }
-.vpf-legenda .r-gasklep i { background:#b7ff3c; box-shadow:0 0 6px #b7ff3c; }
+.vpf-legenda .r-last i { background:var(--vhl-c2); box-shadow:0 0 6px var(--vhl-c2); }
+.vpf-legenda .r-gasklep i { background:#e8f4ff; box-shadow:0 0 6px #fff; }
 .vpf-legenda b { color:#fff; }
 /* De energieweergave van een hybride (#435): vraag in elektrisch blauw, laden
    in groen, de accu in cyaan, de motor in het roze van de toerenring. */
-.vpf-ring.r-energie .vpf-ring-vul { stroke:#4d8dff; filter:drop-shadow(0 0 5px #4d8dff); }
+.vpf-ring.r-energie .vpf-ring-vul { stroke:var(--vhl-c); filter:drop-shadow(0 0 5px var(--vhl-c)); }
 .vpf-ring.r-energie.laden .vpf-ring-vul { stroke:#3dff9a; filter:drop-shadow(0 0 6px #3dff9a); }
-.vpf-ring.r-hvaccu .vpf-ring-vul { stroke:#28e0ff; filter:drop-shadow(0 0 4px #28e0ff); }
-.vpf-ring.r-motor .vpf-ring-vul { stroke:#ff3ea5; filter:drop-shadow(0 0 4px #ff3ea5); }
-.vpf-legenda .r-energie i { background:#4d8dff; box-shadow:0 0 6px #4d8dff; }
-.vpf-legenda .r-hvaccu i { background:#28e0ff; box-shadow:0 0 6px #28e0ff; }
-.vpf-legenda .r-motor i { background:#ff3ea5; box-shadow:0 0 6px #ff3ea5; }
+.vpf-ring.r-hvaccu .vpf-ring-vul { stroke:var(--vhl-c2); filter:drop-shadow(0 0 4px var(--vhl-c2)); }
+.vpf-ring.r-motor .vpf-ring-vul { stroke:#e8f4ff; filter:drop-shadow(0 0 4px #fff); }
+.vpf-legenda .r-energie i { background:var(--vhl-c); box-shadow:0 0 6px var(--vhl-c); }
+.vpf-legenda .r-hvaccu i { background:var(--vhl-c2); box-shadow:0 0 6px var(--vhl-c2); }
+.vpf-legenda .r-motor i { background:#e8f4ff; box-shadow:0 0 6px #fff; }
 .vpf-neon-toestand { fill:#f2eaff; font-family:var(--f); font-size:22px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
 .vpf-neon-toestand[data-t="EV"] { fill:#4d8dff; } .vpf-neon-toestand[data-t="Laden"] { fill:#3dff9a; } .vpf-neon-toestand[data-t="Motor"] { fill:#ff7cc4; }
 .vpf-neon-groot.klein { font-size:24px; }
 .vpf-neon-getallen { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:14px; }
-.vpf-neon-getallen > div { display:flex; flex-direction:column; align-items:center; padding:8px 4px; border-radius:12px; border:1px solid rgba(183,140,255,.28); background:rgba(255,255,255,.03); min-width:0; }
-.vpf-neon-getallen small { font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#b9a8e6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
-.vpf-neon-getallen .vpf-w { font-family:var(--m); font-size:20px; color:#fff; text-shadow:0 0 8px rgba(183,140,255,.7); }
-.vpf-neon-getallen .vpf-e { font-style:normal; font-size:10px; color:#b9a8e6; }
+.vpf-neon-getallen > div { display:flex; flex-direction:column; align-items:center; padding:8px 4px; border-radius:14px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); min-width:0; }
+.vpf-neon-getallen small { font-size:10px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:var(--vhl-c); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.vpf-neon-getallen .vpf-w { font-family:system-ui, sans-serif; font-size:24px; font-weight:200; color:#fff; text-shadow:0 0 10px var(--vhl-c); }
+.vpf-neon-getallen .vpf-e { font-style:normal; font-size:10px; color:rgba(255,255,255,.6); }
 .vpf-neon-getallen .warn .vpf-w { color:#ffb84d; } .vpf-neon-getallen .danger .vpf-w { color:#ff4d4d; }
 /* ── Hyperlane (27-10-2026, pidlane-hyperlane.js) ──
    De tunnel is een WebGL-canvas achter alles; zonder WebGL blijft het
@@ -2220,7 +2270,7 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vt-thema, body.pl-vis-vol .vis:has(.vpf-hy
 /* ── Telemetrie (05-10-2026): horizon, offroad, G-cirkel ──
    Net als neon een vaste donkere cockpit, in beide thema's: een horizon met
    een witte lucht leest niet. De tekening draait via transform (bij()). */
-.vpf-horizon, .vpf-offroad, .vpf-gcirkel, .vpf-telemetrie { background:radial-gradient(circle at 50% 35%, #142233, #070b12 75%); color:#e8f1ff; border:1px solid #22364d; }
+.vpf-horizon, .vpf-offroad, .vpf-gcirkel { background:radial-gradient(circle at 50% 35%, #142233, #070b12 75%); color:#e8f1ff; border:1px solid #22364d; }
 .vpf-horizon-svg, .vpf-g-svg { display:block; width:100%; max-width:280px; margin:0 auto; height:auto; }
 .vpf-hz-lucht { fill:#2f7fd1; } .vpf-hz-grond { fill:#7a4e25; }
 .vpf-hz-lijn { stroke:#fff; stroke-width:2; }
@@ -2231,9 +2281,9 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vt-thema, body.pl-vis-vol .vis:has(.vpf-hy
 .vpf-hz-auto-stip { fill:#ffd23f; }
 #vpf-f-helling, #vpf-f-kanteling { transition:transform .4s ease-out; }
 .vpf-tel-getallen { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:12px; }
-.vpf-tel-getallen > div { display:flex; flex-direction:column; align-items:center; padding:8px 4px; border-radius:12px; border:1px solid #22364d; background:rgba(255,255,255,.03); min-width:0; }
-.vpf-tel-getallen small, .vpf-or-vak small { font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#8fb0d6; }
-.vpf-tel-getallen .vpf-w, .vpf-or-vak .vpf-w { font-family:var(--m); font-size:22px; color:#fff; }
+.vpf-tel-getallen > div { display:flex; flex-direction:column; align-items:center; padding:8px 4px; border-radius:14px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.3); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); min-width:0; }
+.vpf-tel-getallen small, .vpf-or-vak small { font-size:10px; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:var(--vhl-c, #8fb0d6); }
+.vpf-tel-getallen .vpf-w, .vpf-or-vak .vpf-w { font-family:system-ui, sans-serif; font-size:24px; font-weight:200; color:#fff; text-shadow:0 0 10px var(--vhl-c, transparent); }
 .vpf-tel-getallen .vpf-e, .vpf-or-vak .vpf-e { font-style:normal; font-size:11px; color:#8fb0d6; }
 .vpf-tel-getallen .leeg, .vpf-or-vak.leeg { opacity:.45; }
 .vpf-or { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; }

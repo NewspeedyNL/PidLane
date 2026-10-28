@@ -201,15 +201,15 @@ waar('toeren, snelheid, koelwater, accu, tank en verbruik krijgen hun rol', H.vo
 waar('een PID zonder rol in de schil doet niets', H.voedRol('0124') === null);
 waar('gaspedaal gaat vóór gasklep: de klep vervangt het pedaal niet, andersom wel', H.voedRol('0111', '0149') === null && H.voedRol('0149', '0111') === 'gas' && H.voedRol('0111', undefined) === 'gas');
 const schilInd = id => P.indeling(id, () => true);
-waar('Temperatuur en Emissie dragen de schil (achtergrond en knopje), de andere profielen nog niet',
-  ['temp', 'emissie'].every(id => /vhl-schil/.test(P.html(id, schilInd(id))) && /class="vhl-bg"/.test(P.html(id, schilInd(id))) && /class="vhl-vorm"/.test(P.html(id, schilInd(id)))) &&
-  ['verbruik', 'motor'].every(id => !/vhl-schil/.test(P.html(id, schilInd(id)))));
+waar('elk profiel behalve Hyperlane zelf draagt de schil (achtergrond en knopje)',
+  ['temp', 'emissie', 'verbruik', 'motor', 'telemetrie'].every(id => /vhl-schil/.test(P.html(id, schilInd(id))) && /class="vhl-bg"/.test(P.html(id, schilInd(id))) && /class="vhl-vorm"/.test(P.html(id, schilInd(id)))) &&
+  !/vhl-schil/.test(P.html('hyperlane', schilInd('hyperlane'))));
 let gevoed = [];
 C.PLHyperlane = Object.assign({}, H, { voed: (pid, v) => gevoed.push(pid + '=' + v), zet: () => {} });
 P.bij('temp', schilInd('temp'), '010C', 2400, 'ok');
 waar('bij() voedt de schil ook met een PID die niet op het scherm staat (toeren op Temperatuur)', gevoed.join(',') === '010C=2400', gevoed.join(','));
-gevoed = []; P.bij('verbruik', schilInd('verbruik'), '010C', 2400, 'ok');
-waar('…en een profiel zonder schil voedt niets', gevoed.length === 0, gevoed.join(','));
+gevoed = []; P.bij('hyperlane', schilInd('hyperlane'), '0124', 1, 'ok');
+waar('…en Hyperlane zelf voedt niet via de schil (die zet zijn plekken zelf)', gevoed.length === 0, gevoed.join(','));
 C.PLHyperlane = H;
 
 console.log('\n5. Het profiel');

@@ -524,7 +524,7 @@ function tankHtml(p, ind){
    achtergrond, de kleur van het rijgedrag en het knopje van Hyperlane; zijn
    eigen instrument blijft, in neonstijl (pidlane.css .vhl-schil). De lus is
    die van pidlane-hyperlane.js; bij() voedt hem met toeren, snelheid en gas. */
-const SCHIL = ['glas','licht'];
+const SCHIL = ['glas','licht','digitaal','neon','telemetrie'];
 function html(id, ind){
   const p=voorInd(id, ind);
   if(!p || !p.plekken || !ind) return '';
