@@ -55,6 +55,12 @@ function toets(naam, waar, uitleg) {
       const md = vak().querySelector('.vhl-modus'), gr = vak().querySelector('.vhl-gear');
       md.textContent = 'KOELWATER HEET'; gr.textContent = '5';
       r.modusPast = md.scrollWidth <= md.clientWidth + 1; r.modusMaat = md.scrollWidth + '/' + md.clientWidth;
+      // Het midden wisselen: knopje en tik op het getal, onthouden in pl_hl_midden
+      localStorage.removeItem('pl_hl_midden');
+      const km = vak().querySelector('.vhl-midden'), kh = vak().querySelector('.vhl-held');
+      await wacht(300); r.midden0 = km.textContent;
+      km.click(); await wacht(300); r.midden1 = km.textContent; r.middenOpslag = localStorage.getItem('pl_hl_midden');
+      kh.click(); await wacht(300); r.midden2 = km.textContent;
       // Volledig scherm: de tunnel vult het scherm.
       document.querySelector('.gg.view-visueel .vt-vol').click();
       await wacht(400);
@@ -73,6 +79,8 @@ function toets(naam, waar, uitleg) {
     toets('de demo-auto vult toeren en koelwater', r.toeren && r.toeren !== '—' && r.koel && r.koel !== '—', JSON.stringify(r));
     toets('de kleur staat op het vak', /^rgb\(/.test(r.kleur || ''), JSON.stringify(r));
     toets('de langste modustekst past naast het versnellingslabel', r.modusPast, r.modusMaat);
+    toets('het knopje wisselt het midden naar Versnelling en onthoudt dat; een tik op het getal wisselt terug',
+      r.midden0 === 'Slim' && r.midden1 === 'Versnelling' && r.middenOpslag === 'versnelling' && r.midden2 === 'Slim', [r.midden0, r.midden1, r.middenOpslag, r.midden2].join(' → '));
     toets('de lus kiest een scène', ['rijden', 'stil', 'cruise', 'koud', 'remmen', 'launch', 'begrenzer', 'alarm'].indexOf(r.scene) >= 0, JSON.stringify(r));
     if (!r.gl) console.log('  LET OP  geen WebGL in deze browser: de tunnel is hier het CSS-verloop');
     console.log('\n2. Volledig scherm');

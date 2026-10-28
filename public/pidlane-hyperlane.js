@@ -307,6 +307,25 @@ function held(sc, x, tekst, vorig){
    een rustige vorm met Auto erin: in stilstand en tot AUTO_KMH de volle
    tunnel om te laten zien, rijdend de gekozen rustige vorm. 'tunnel' is
    altijd tunnel, 'stil' nooit iets (en spaart de accu). */
+/* ── Het midden ── (28-10-2026, na een paar uur testen: "misschien toch
+   handiger om de versnelling daar in het midden te zetten — kan ik schakelen?")
+   'slim' = het hoofdgetal van held(), 'versnelling' = de versnelling groot.
+   Een te heet koelwater gaat altijd voor; een onbekende versnelling laat het
+   slimme getal staan in plaats van een leeg midden. Puur. */
+const MIDDEN = ['slim','versnelling'];
+const MIDDEN_TEKST = { slim:'Slim', versnelling:'Versnelling' }, MIDDEN_SLEUTEL = 'pl_hl_midden';
+function middenHeld(midden, sc, gear, h){
+  if(midden!=='versnelling' || sc==='alarm' || !gear) return h;
+  return { w:gear, e:'', l:'VERSNELLING' };
+}
+function leesMidden(){
+  try{ const v=localStorage.getItem(MIDDEN_SLEUTEL); return MIDDEN.indexOf(v)>=0 ? v : 'slim'; }
+  catch(e){ console.warn('PLHyperlane: middenkeuze niet te lezen, Slim', e); return 'slim'; }
+}
+function bewaarMidden(v){
+  try{ localStorage.setItem(MIDDEN_SLEUTEL, v); }
+  catch(e){ console.warn('PLHyperlane: middenkeuze niet bewaard — geldt tot de app sluit', e); }
+}
 const VORMEN = ['aurora','hartslag','pulsen','sterren','stil','tunnel'];
 const VORM_TEKST = { aurora:'Aurora', hartslag:'Hartslag', pulsen:'Pulsen', sterren:'Sterren', stil:'Stil', tunnel:'Tunnel' };
 const VORM_SLEUTEL = 'pl_hl_vorm', AUTO_KMH = 10;
@@ -502,7 +521,7 @@ function start(wortel){
        sc:'', g:{ B:0, K:0, A:0, F:0, Z:0, D:1 }, golf:99, vs:null, stilS:0, cruiseS:0, lat:0,
        ritPiek:0, topGemeld:0, klokT:0,
        accu:null, power:null, gHist:[], gT:0, ga:0, thema:merkNu(), tankT:'',
-       verv:{}, vorm:leesVorm(), vw:{ tunnel:1, aurora:0, hartslag:0, pulsen:0, sterren:0 }, vormT:'', scWas:'' };
+       verv:{}, vorm:leesVorm(), vw:{ tunnel:1, aurora:0, hartslag:0, pulsen:0, sterren:0 }, vormT:'', scWas:'', midden:leesMidden(), middenT:'' };
   wortel.classList.toggle('vhl-gl', !!_s.gl);
   wortel.querySelectorAll('.vhl-ring').forEach(function(c){ _s.ringen[c.getAttribute('data-ring')]=c; });
   const kn=wortel.querySelector('.vhl-vorm');
@@ -511,6 +530,16 @@ function start(wortel){
     if(!_s) return;
     _s.vorm=volgendeVorm(_s.vorm); bewaarVorm(_s.vorm);
   });
+  // Het midden: het knopje of een tik op het grote getal wisselt
+  const wissel=function(e){
+    e.stopPropagation();
+    if(!_s) return;
+    _s.midden=_s.midden==='slim' ? 'versnelling' : 'slim'; bewaarMidden(_s.midden);
+    _s.gearT=0;   // meteen tonen, niet pas bij de volgende ronde
+  };
+  const km=wortel.querySelector('.vhl-midden'), kh=wortel.querySelector('.vhl-held');
+  if(km) km.addEventListener('click', wissel);
+  if(kh) kh.addEventListener('click', wissel);
   window.addEventListener('deviceorientation', kantel);
   _s.raf=requestAnimationFrame(frame);
 }
@@ -739,11 +768,15 @@ function frame(nu){
     const h=held(sc, { koel:e.koel, verbruik:e.verbruik, gas:e.gas, versn:s.vs ? s.vs.a : null,
                        launchS:s.nul.start!==null ? T-s.nul.start : null,
                        klok:('0'+nu8.getHours()).slice(-2)+':'+('0'+nu8.getMinutes()).slice(-2) }, tekstVan, s.heldL);
-    s.heldL=h.l;
+    s.heldL=h.l;   // de hysterese hoort bij het slimme getal, ook als het nu niet in beeld is
+    const toon=middenHeld(s.midden, sc, g, h), groot=toon!==h;
+    w.classList.toggle('vhl-m-versn', groot);   // het label naast de modus is dan dubbel
+    const mt2=MIDDEN_TEKST[s.midden], km=w.querySelector('.vhl-midden');
+    if(km && s.middenT!==mt2){ s.middenT=mt2; km.textContent=mt2; }
     const hw=w.querySelector('.vhl-held-w'), he=w.querySelector('.vhl-held-e'), hl=w.querySelector('.vhl-held-l');
-    if(hw && hw.textContent!==h.w) hw.textContent=h.w;
-    if(he && he.textContent!==h.e) he.textContent=h.e;
-    if(hl && hl.textContent!==h.l) hl.textContent=h.l;
+    if(hw && hw.textContent!==toon.w) hw.textContent=toon.w;
+    if(he && he.textContent!==toon.e) he.textContent=toon.e;
+    if(hl && hl.textContent!==toon.l) hl.textContent=toon.l;
   }
 }
 
@@ -751,6 +784,7 @@ window.PLHyperlane = {
   STOPS:STOPS, OPSTART_S:OPSTART_S,
   kleur:kleur, stemming:stemming, modus:modus, leds:leds, nul100:nul100, volg:volg,
   held:held, ACC_KMHS:ACC_KMHS,
+  MIDDEN:MIDDEN, MIDDEN_TEKST:MIDDEN_TEKST, MIDDEN_SLEUTEL:MIDDEN_SLEUTEL, middenHeld:middenHeld, leesMidden:leesMidden,
   VORMEN:VORMEN, VORM_TEKST:VORM_TEKST, VORM_SLEUTEL:VORM_SLEUTEL, AUTO_KMH:AUTO_KMH, volgendeVorm:volgendeVorm, actieveVorm:actieveVorm, leesVorm:leesVorm, ringSchaal:ringSchaal, echt:echt,
   versnelling:versnelling, warmte:warmte, nacht:nacht, scene:scene, SCENE_TEKST:SCENE_TEKST,
   MERKEN:MERKEN, merkThema:merkThema, accuStart:accuStart, START_RPM:START_RPM, POWER_S:POWER_S, gSpoor:gSpoor, GS_N:GS_N, tankStand:tankStand,

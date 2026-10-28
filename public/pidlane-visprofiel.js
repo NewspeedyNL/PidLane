@@ -505,6 +505,7 @@ function htmlHyper(p, ind){
     '<div class="vhl-score" aria-live="polite"></div><div class="vhl-power" aria-live="polite"></div>'+
     // De achtergrond kiezen (PLHyperlane.VORMEN); de lus zet de tekst.
     '<button type="button" class="vhl-vorm" aria-label="Achtergrond wisselen"></button>'+
+    '<button type="button" class="vhl-midden" aria-label="Midden: slim getal of versnelling"></button>'+
     tank();
 }
 /* De tanklichtbalk onderin: peil, bereik en verbruik op één regel. */

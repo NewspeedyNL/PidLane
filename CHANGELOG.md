@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Hyperlane: het midden schakelbaar, slim getal of versnelling
+ ═══════════════════════════════════════════════════════════
+
+ - Knopje ⇄ linksboven of een tik op het grote getal: de versnelling groot in
+   het midden, of het slimme getal. Onthouden per toestel. Te heet koelwater
+   gaat altijd voor; een onbekende versnelling laat het slimme getal staan.
+
+ ═══════════════════════════════════════════════════════════
  28-10-2026 — Hyperlane: geen schijnversnelling bij constante snelheid
  ═══════════════════════════════════════════════════════════
 
