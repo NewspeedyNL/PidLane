@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Hyperlane: geen schijnversnelling bij constante snelheid
+ ═══════════════════════════════════════════════════════════
+
+ - De versnelling komt uit 1,5 s aan snelheidsmetingen in plaats van twee:
+   constant rijden gaf ACCELERATIE en REMMEN van 0,4 g en een rode onderkant.
+ - Het hoofdgetal houdt ACCELERATIE vast tot onder 2,5 km/h/s.
+ - Staand op volledig scherm delen de ringen de vrije ruimte: de snelheidsring
+   liep op sommige telefoons onder de tanklichtbalk door en van het scherm af.
+
+ ═══════════════════════════════════════════════════════════
  27-10-2026 — Hyperlane: modustekst past naast het versnellingslabel
  ═══════════════════════════════════════════════════════════
 

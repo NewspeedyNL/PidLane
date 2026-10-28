@@ -78,6 +78,25 @@ function toets(naam, waar, uitleg) {
     console.log('\n2. Volledig scherm');
     toets('de tunnel vult het hele scherm', r.dekt && r.bgVol, JSON.stringify(r));
     toets('de knoppen liggen erboven', r.knopBoven, JSON.stringify(r));
+    // Staand op volledig scherm (28-10-2026, uit de auto: de snelheidsring liep
+    // onder de tanklichtbalk door en van het scherm af). Drie verhoudingen.
+    for (const [bw, bh] of [[400, 780], [412, 915], [360, 640]]) {
+      await app.venster(bw, bh);
+      const p = await app.ev(`(async function(){
+        const wacht = ms => new Promise(r => setTimeout(r, ms));
+        setPidView('visueel'); await wacht(500);
+        document.querySelector('.gg.view-visueel .vt-vol').click(); await wacht(700);
+        const v = document.querySelector('.gg.view-visueel .vpf-hyper');
+        const t = v.querySelector('[data-ring="toeren"]').getBoundingClientRect(), s = v.querySelector('[data-ring="snel"]').getBoundingClientRect();
+        const tank = v.querySelector('.vhl-tank'), tk = tank.getBoundingClientRect(), tz = getComputedStyle(tank).display !== 'none';
+        const m = v.querySelector('.vhl-mid').getBoundingClientRect();
+        const r = { binnen: t.top >= 0 && s.bottom <= innerHeight + 1, vrij: !tz || s.bottom <= tk.top + 1,
+                    geenOverlap: t.bottom <= m.top + 1 && m.bottom <= s.top + 1, maat: [Math.round(t.top), Math.round(t.bottom), Math.round(m.top), Math.round(m.bottom), Math.round(s.top), Math.round(s.bottom), Math.round(tk.top), innerHeight].join('/') };
+        appBack(); await wacht(200);
+        return r;
+      })()`);
+      toets('staand ' + bw + '×' + bh + ': ringen binnen het scherm, niet onder de tanklichtbalk, niet over het midden', p.binnen && p.vrij && p.geenOverlap, p.maat);
+    }
     console.log('\n3. Weg uit de weergave');
     toets('een andere weergave stopt de lus (geen accuverbruik in een leeg vak)', r.stoptNaWissel, JSON.stringify(r));
 

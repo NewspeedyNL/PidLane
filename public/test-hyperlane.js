@@ -87,6 +87,15 @@ waar('elke scène behalve rijden en remmen heeft een eigen tekst', ['alarm', 'be
 console.log('\n4c. Versnelling, opwarming, nacht');
 let vs = H.versnelling(null, 100, 0); vs = H.versnelling(vs, 90, 1); vs = H.versnelling(vs, 80, 2);
 waar('twee keer 10 km/h per seconde minder: duidelijk remmen (≤ −7)', vs.a <= -7, vs.a);
+// Uit de auto (28-10-2026): constant 80 km/h gaf ACCELERATIE en REMMEN van 0,4 g, om de halve
+// seconde wisselend. Hele km/h en een onregelmatige tussentijd: 1 km/h in 50 ms is al 20 km/h/s.
+function ruisRit() { let st = null, max = 0, tt = 0, k = 0;
+  for (let i = 0; i < 100; i++) { tt += (i % 3 === 0) ? 0.05 : 0.125; const v = 80 + ((k++ % 4 === 1) ? 1 : 0) - ((k % 7 === 3) ? 1 : 0);
+    st = H.versnelling(st, v, tt); if (tt > 1) max = Math.max(max, Math.abs(st.a)); }
+  return max; }
+waar('constant 80 km/h met afronding en onregelmatige metingen: onder 1,5 km/h/s (geen ACCELERATIE of REMMEN)', ruisRit() < 1.5, ruisRit());
+let opt = null; for (let i = 0; i <= 20; i++) opt = H.versnelling(opt, 40 + i * 1, i * 0.1);
+waar('echt optrekken (10 km/h per seconde, 10 Hz): na 2 s rond 10', Math.abs(opt.a - 10) < 1, opt.a);
 waar('een gat van meer dan 3 s begint opnieuw', H.versnelling({ v: 0, t: 0, a: 0 }, 100, 10).a === 0);
 waar('geen snelheid: geen versnelling', H.versnelling(vs, null, 3) === null);
 waar('opwarming: 20 °C leeg, 70 °C vol, onbekend vol', H.warmte(20) === 0 && H.warmte(70) === 1 && H.warmte(null) === 1);
@@ -153,6 +162,10 @@ waar('koude motor: koelwater met OPWARMEN', H.held('koud', hx({ koel: 41 }), tk)
 waar('alarm gaat voor alles: koelwater', H.held('alarm', hx({ koel: 121, versn: 20 }), tk).l === 'KOELWATER');
 waar('stilstand: de klok', H.held('stil', hx({}), tk).w === '20:47');
 waar('geen verbruik: het gaspedaal; niets: een streepje', H.held('rijden', hx({ verbruik: null }), tk).l === 'GAS' && H.held('rijden', hx({ verbruik: null, gas: null }), tk).w === '—');
+
+const hy = (x, vorig) => H.held('rijden', hx(x), tk, vorig).l;
+waar('hysterese: boven 4 wordt het ACCELERATIE, op 3 blijft het staan, onder 2,5 terug naar verbruik',
+  hy({ versn: 4.5 }) === 'ACCELERATIE' && hy({ versn: 3 }, 'ACCELERATIE') === 'ACCELERATIE' && hy({ versn: 3 }) === 'VERBRUIK NU' && hy({ versn: 2 }, 'ACCELERATIE') === 'VERBRUIK NU');
 
 console.log('\n4h. Achtergrond: Auto, rustige vormen, het knopje');
 waar('Auto: in stilstand en tot 10 km/h de tunnel, rijdend de gekozen vorm', H.actieveVorm('aurora', 0) === 'tunnel' && H.actieveVorm('aurora', 9) === 'tunnel' && H.actieveVorm('aurora', 50) === 'aurora' && H.actieveVorm('hartslag', 80) === 'hartslag');

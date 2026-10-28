@@ -151,15 +151,26 @@ function nul100(st, v, gas, t){
 }
 /* Afvlakken naar `doel` met snelheid k per seconde. */
 function volg(nu, doel, dt, k){ return nu+(doel-nu)*Math.min(1, dt*k); }
-/* Versnelling in km/h per seconde uit twee snelheden, afgevlakt. `oud` =
-   {v,t,a} of null, t in seconden. Een gat van meer dan 3 s of een
-   ontbrekende waarde begint opnieuw: geen sprong uit een oude meting. */
+/* Versnelling in km/h per seconde: de helling van een rechte lijn door de
+   snelheden van de laatste VS_VENSTER s, pas vanaf VS_MIN s aan metingen.
+   Tot 28-10-2026 kwam hij uit twee opeenvolgende metingen, en in de auto
+   gaf constant 80 km/h zo ACCELERATIE en REMMEN van 0,4 g: snelheid komt in
+   hele km/h en met een onregelmatige tussentijd, en 1 km/h in 50 ms is al
+   20 km/h/s. `oud` = {v,t,a,hist} of null, t in seconden. Een gat van meer
+   dan 3 s of een ontbrekende waarde begint opnieuw. Puur. */
+const VS_VENSTER = 1.5, VS_MIN = 0.6;
 function versnelling(oud, v, t){
   if(v===null || v===undefined || !isFinite(Number(v))) return null;
   v=Number(v);
-  if(!oud || !(t>oud.t) || t-oud.t>3) return { v:v, t:t, a:0 };
-  const nu=(v-oud.v)/(t-oud.t);
-  return { v:v, t:t, a:oud.a*.5+nu*.5 };
+  const h=(oud && oud.hist && t>=oud.t && t-oud.t<=3) ? oud.hist.filter(function(x){ return t-x.t<=VS_VENSTER; }) : [];
+  h.push({ t:t, v:v });
+  let a=0;
+  if(h.length>=2 && t-h[0].t>=VS_MIN){
+    let mt=0, mv=0; h.forEach(function(x){ mt+=x.t; mv+=x.v; }); mt/=h.length; mv/=h.length;
+    let teller=0, noemer=0; h.forEach(function(x){ teller+=(x.t-mt)*(x.v-mv); noemer+=(x.t-mt)*(x.t-mt); });
+    a=noemer>0 ? teller/noemer : 0;
+  }
+  return { v:v, t:t, a:a, hist:h };
 }
 /* Hoe warm de motor is voor de randstroken, 0–1 (20 → 70 °C). */
 function warmte(koel){ return (koel===null || koel===undefined || !isFinite(Number(koel))) ? 1 : klem((koel-20)/50, 0, 1); }
@@ -274,14 +285,16 @@ function telOp(f){ f=klem(f, 0, 1); return 1-Math.pow(1-f, 3); }
    in deze scène toe doet. `x` = {koel, verbruik, gas, versn (km/h/s),
    launchS, klok}. Geeft {w, e, l}: waarde-tekst, eenheid, label. Puur;
    `tekst` maakt het getal (komma, '—'). */
-const ACC_KMHS = 4;
-function held(sc, x, tekst){
+const ACC_KMHS = 4, ACC_UIT_KMHS = 2.5;
+/* `vorig` = het label van nu: eenmaal ACCELERATIE blijft het tot onder
+   ACC_UIT_KMHS, zodat het hoofdgetal rond de grens niet knippert. */
+function held(sc, x, tekst, vorig){
   const n=function(v){ return v!==null && v!==undefined && v!=='' && isFinite(Number(v)); };
   const g=function(kmhs){ return Math.abs(kmhs)/3.6/9.81; };
   if(sc==='alarm' && n(x.koel)) return { w:tekst(x.koel, 0), e:'°C', l:'KOELWATER' };
   if(sc==='launch' && n(x.launchS)) return { w:tekst(x.launchS, 1), e:'s', l:'0–100' };
   if(sc==='remmen' && n(x.versn)) return { w:tekst(g(x.versn), 2), e:'g', l:'REMMEN' };
-  if(n(x.versn) && x.versn>=ACC_KMHS) return { w:tekst(g(x.versn), 2), e:'g', l:'ACCELERATIE' };
+  if(n(x.versn) && x.versn>=(vorig==='ACCELERATIE' ? ACC_UIT_KMHS : ACC_KMHS)) return { w:tekst(g(x.versn), 2), e:'g', l:'ACCELERATIE' };
   if(sc==='koud' && n(x.koel)) return { w:tekst(x.koel, 0), e:'°C', l:'OPWARMEN' };
   if(sc==='stil' && x.klok) return { w:x.klok, e:'', l:'' };
   if(n(x.verbruik)) return { w:tekst(x.verbruik, 1), e:'L/100', l:'VERBRUIK NU' };
@@ -725,7 +738,8 @@ function frame(nu){
     // Het hoofdgetal (zes keer per seconde: rustig genoeg om te lezen)
     const h=held(sc, { koel:e.koel, verbruik:e.verbruik, gas:e.gas, versn:s.vs ? s.vs.a : null,
                        launchS:s.nul.start!==null ? T-s.nul.start : null,
-                       klok:('0'+nu8.getHours()).slice(-2)+':'+('0'+nu8.getMinutes()).slice(-2) }, tekstVan);
+                       klok:('0'+nu8.getHours()).slice(-2)+':'+('0'+nu8.getMinutes()).slice(-2) }, tekstVan, s.heldL);
+    s.heldL=h.l;
     const hw=w.querySelector('.vhl-held-w'), he=w.querySelector('.vhl-held-e'), hl=w.querySelector('.vhl-held-l');
     if(hw && hw.textContent!==h.w) hw.textContent=h.w;
     if(he && he.textContent!==h.e) he.textContent=h.e;
