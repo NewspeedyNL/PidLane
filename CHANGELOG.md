@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Temperatuur: geen lege balken meer
+ ═══════════════════════════════════════════════════════════
+
+ - Een profiel kan een `reserve` hebben: ontbreekt een sensor, dan eerst een
+   verwante temperatuur (0167, 0168, 0184, 0177, 0175, 013E, 0178, 0179), en
+   dan de warmte (0104 belasting, 0110 luchtmassa), met eigen naam en schaal.
+ - PLVisueel.reserveKetens() zet er één per lege plek aan; een gedeelde
+   reserve achter elke keten zou er maar één aanzetten.
+
+ ═══════════════════════════════════════════════════════════
  28-10-2026 — Levende statusbalk, schakellampjes als lichtstreep
  ═══════════════════════════════════════════════════════════
 

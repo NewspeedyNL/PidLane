@@ -268,7 +268,7 @@ function zorgPids(){
   catch(e){ console.warn('PLVisueel: keuzelijst onleesbaar', e); }
   try{ if(typeof hiddenPIDs!=='undefined' && hiddenPIDs) verborgen=hiddenPIDs; }
   catch(e){ console.warn('PLVisueel: verborgen sensoren onleesbaar', e); }
-  const kies=nodigePids(heeft, activePIDs, verborgen, trekAan(), profielKetens());
+  const kies=nodigePids(heeft, activePIDs, verborgen, trekAan(), profielKetens().concat(reserveKetens(heeft, verborgen)));
   if(!kies.length) return [];
   const voor=(typeof plSelectieVoor==='function') ? plSelectieVoor() : null;
   const r=(typeof pidToevoegen==='function') ? pidToevoegen(kies, { handmatig:false }) : { ok:[] };
@@ -725,6 +725,19 @@ function profielKetens(){
   const p=profielNu();
   if(p==='basis'){ const k=basisKeuzes(); return PLEKKEN.map(function(x){ return plekKeten(x, k); }); }
   return PF() ? PF().ketens(p, leesMotor(), profielOpts()) : [];
+}
+/* De reserve van een profiel (28-10-2026): welke sensor elke lege plek zou
+   krijgen als alles wat de auto heeft ook aanstond, elk als eigen keten. Een
+   gedeelde reserve achter elke plek is daar niet genoeg voor: de eerste plek
+   zet 0167 aan, en dan telt de keten van de tweede ook als vervuld. */
+function reserveKetens(heeft, verborgen){
+  const p=profielNu();
+  if(p==='basis' || !PF()) return [];
+  let ind=null;
+  try{ ind=PF().indeling(p, function(q){ return heeft.has(q) && !verborgen.has(q); }, leesMotor(), profielOpts()); }
+  catch(e){ console.warn('PLVisueel: reserve van het profiel niet te bepalen', e); return []; }
+  if(!ind || !ind.vervang) return [];
+  return Object.keys(ind.vervang).filter(function(r){ return ind.vervang[r].reserve && ind.plekken[r]; }).map(function(r){ return [ind.plekken[r]]; });
 }
 /* Wat het profiel nodig heeft om een plek zelf in te vullen (06-10-2026): de
    keuzes van dit toestel en de keuzelijst (naam, eenheid, schaal). */
@@ -1924,7 +1937,7 @@ function stop(){
 window.PLVisueel = {
   G:G, REM_MS:VIS_REM_MS, TRAAG_MS:VIS_TRAAG_MS, MIN_N:VIS_MIN_N, AANLOOP_MS:VIS_AANLOOP_MS,
   PLEKKEN:PLEKKEN, BOOG_SCHAAL:BOOG_SCHAAL, HOOFD:HOOFD, SCHAAL:SCHAAL,
-  schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, lampTik:lampTik, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
+  schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, lampTik:lampTik, reserveKetens:reserveKetens, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
   stand:stand, tekst:tekst, plekOordeel:plekOordeel, plekGetal:plekGetal, plekEenheid:plekEenheid, boogSchaal:boogSchaal, getalKan:getalKan,
   plekKeten:plekKeten, plekStaat:plekStaat, kandidatenPlek:kandidatenPlek, zonderSchaal:zonderSchaal,
   VERMOGEN:VERMOGEN, VRAAG_KETEN:VRAAG_KETEN, naaldSoort:naaldSoort, vraagUit:vraagUit, laadUit:laadUit, vermogenStand:vermogenStand,

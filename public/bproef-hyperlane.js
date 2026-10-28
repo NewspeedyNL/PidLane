@@ -161,9 +161,11 @@ function toets(naam, waar, uitleg) {
         const rect = e => e ? e.getBoundingClientRect() : null, raak = (a, b) => a && b && !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
         const lamp = rect(document.querySelector('.gg.view-visueel .vis-lampen')), vorm = rect(v && v.querySelector('.vhl-vorm')), knop = rect(document.querySelector('.gg.view-visueel .vt-knoppen'));
         const b = v ? v.getBoundingClientRect() : null;
+        // Geen lege balk (28-10-2026): de demo-auto heeft geen katalysator, die plek krijgt de reserve
+        const leeg = '${pr}' === 'temp' ? [...document.querySelectorAll('.gg.view-visueel [id^="vpf-w-"]')].filter(e => e.textContent.trim() === '—').map(e => e.id) : [];
         const r = { schil: !!v, actief: PLHyperlane.actief(), kleur: v ? v.style.getPropertyValue('--vhl-c') : '', gevoed: gevoed,
                     vult: !!b && b.width >= innerWidth - 1 && b.height >= innerHeight - 1,
-                    palet: getComputedStyle(document.querySelector('.gg.view-visueel .vt-thema')).display, vrij: !raak(lamp, vorm) && !raak(lamp, knop) };
+                    palet: getComputedStyle(document.querySelector('.gg.view-visueel .vt-thema')).display, vrij: !raak(lamp, vorm) && !raak(lamp, knop), leeg: leeg };
         appBack(); await wacht(200);
         return r;
       })()`);
@@ -172,6 +174,7 @@ function toets(naam, waar, uitleg) {
         // kleur of de stemming meten: een merkpalet kleurt ook zonder voeding anders, en de
         // opstartzwaai zakt in een trage browser zo langzaam uit dat hij op stemming lijkt.
         q.schil && q.actief && /^rgb/.test(q.kleur) && q.gevoed > 0 && q.vult && q.palet === 'none' && q.vrij, JSON.stringify(q));
+      if (pr === 'temp') toets('temperatuur: geen lege balk, een ontbrekende sensor krijgt iets verwants', q.leeg.length === 0, JSON.stringify(q.leeg));
     }
     console.log('\n3. Weg uit de weergave');
     toets('een andere weergave stopt de lus (geen accuverbruik in een leeg vak)', r.stoptNaWissel, JSON.stringify(r));

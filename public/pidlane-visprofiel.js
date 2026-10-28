@@ -67,6 +67,20 @@ const PROFIELEN = [
       { rol:'buiten', naam:'Buiten',      kort:'Buiten',  keten:['0146'],        eenheid:'°', soort:'thermo', lo:-20, hi:45, dec:0, zoek:/buiten|omgeving|ambient|outside/i },
       { rol:'kat',    naam:'Katalysator', kort:'Kat',     keten:['013C','013E','017C'], eenheid:'°', soort:'thermo', lo:100, hi:950, dec:0,
         diesel:{ rol:'uitlaat', naam:'Uitlaatgas', kort:'Uitlaat', keten:['0178','017C','013C'], hi:700 } }
+    ],
+    // Geen lege balk (28-10-2026): heeft de auto een sensor niet, dan eerst
+    // een andere temperatuur, en pas dan iets waar de warmte uit volgt.
+    reserve:[
+      { pid:'0167', naam:'Koelwater 2',    kort:'Koel 2',    eenheid:'°',   lo:40,  hi:130, dec:0 },
+      { pid:'0168', naam:'Inlaatlucht 2',  kort:'Inlaat 2',  eenheid:'°',   lo:-20, hi:80,  dec:0 },
+      { pid:'0184', naam:'Spruitstuk',     kort:'Spruitst.', eenheid:'°',   lo:-20, hi:120, dec:0 },
+      { pid:'0177', naam:'Tussenkoeler',   kort:'Tussenk.',  eenheid:'°',   lo:-20, hi:120, dec:0 },
+      { pid:'0175', naam:'Turbo inlaat',   kort:'Turbo',     eenheid:'°',   lo:-20, hi:80,  dec:0 },
+      { pid:'013E', naam:'Katalysator na', kort:'Kat na',    eenheid:'°',   lo:100, hi:950, dec:0 },
+      { pid:'0178', naam:'Uitlaatgas',     kort:'Uitlaat',   eenheid:'°',   lo:100, hi:700, dec:0 },
+      { pid:'0179', naam:'Uitlaatgas 2',   kort:'Uitlaat 2', eenheid:'°',   lo:100, hi:700, dec:0 },
+      { pid:'0104', naam:'Motorbelasting', kort:'Last',      eenheid:'%',   lo:0,   hi:100, dec:0 },
+      { pid:'0110', naam:'Luchtmassa',     kort:'Lucht',     eenheid:'g/s', lo:0,   hi:150, dec:0 }
     ] },
   { id:'emissie', naam:'Emissie', stijl:'licht', ondertitel:'Licht',
     plekken:[
@@ -239,14 +253,16 @@ function zetKeuze(id, rol, pid){
   catch(e){ console.warn('PLVisProfiel: keuze niet bewaard — geldt tot de app sluit', e); }
   return k;
 }
-/* Puur. De keten van één plek met de keuze ervoor en de naamtreffers erachter. */
-function ketenVan(id, x, opts){
+/* Puur. De keten van één plek met de keuze ervoor en de naamtreffers erachter,
+   en helemaal achteraan de reserve van het profiel (28-10-2026). */
+function ketenVan(id, x, opts, reserve){
   const k=[], kz=opts && opts.keuze && opts.keuze[id+'/'+x.rol];
   if(kz) k.push(kz);
   x.keten.forEach(function(q){ if(k.indexOf(q)<0) k.push(q); });
   if(x.zoek && opts && Array.isArray(opts.defs)) opts.defs.forEach(function(d){
     if(d && d.pid && k.indexOf(d.pid)<0 && x.zoek.test(String(d.name||''))) k.push(d.pid);
   });
+  (reserve||[]).forEach(function(r){ if(k.indexOf(r.pid)<0) k.push(r.pid); });
   return k;
 }
 function kortVan(naam){ const n=String(naam||''); return n.length>10 ? n.slice(0,9)+'…' : n; }
@@ -266,7 +282,7 @@ function indeling(id, mag, motor, opts){
   // PID die al ergens staat of die een andere plek uit zijn keten haalt.
   const eigen=p.plekken.map(function(x){ for(let i=0;i<x.keten.length;i++){ if(mag(x.keten[i])) return x.keten[i]; } return null; });
   p.plekken.forEach(function(x){
-    const k=ketenVan(p.id, x, opts);
+    const k=ketenVan(p.id, x, opts, p.reserve);
     let pid=null;
     for(let i=0;i<k.length;i++){
       const q=k[i];
@@ -286,12 +302,19 @@ function indeling(id, mag, motor, opts){
       if(typeof d.min==='number' && typeof d.max==='number' && isFinite(d.min) && isFinite(d.max) && d.max>d.min && d.max-d.min<1e6){ v.lo=d.min; v.hi=d.max; }
       uit.vervang[x.rol]=v;
     }
+    // Uit de reserve: een verwante sensor met zijn eigen naam en schaal, zodat
+    // een balk nooit leeg staat en nooit iets anders zegt dan hij toont.
+    else if(pid && x.keten.indexOf(pid)<0 && !zoekTreffer){
+      const r=(p.reserve||[]).filter(function(y){ return y.pid===pid; })[0];
+      if(r) uit.vervang[x.rol]={ naam:r.naam, kort:r.kort, eenheid:r.eenheid, lo:r.lo, hi:r.hi, dec:r.dec, reserve:true };
+    }
   });
   return uit;
 }
 /* De ketens van een profiel: wat pidlane-visueel.js erbij moet zetten. */
 function ketens(id, motor, opts){
   const p=voor(id, motor);
+  // Zonder de reserve: die zet PLVisueel.reserveKetens() aan, één per lege plek.
   return (p && p.plekken) ? p.plekken.map(function(x){ return ketenVan(p.id, x, opts); }) : [];
 }
 /* Het profiel zoals deze indeling het tekent: een vervangen plek met zijn
