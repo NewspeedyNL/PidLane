@@ -124,8 +124,9 @@ function toets(naam, waar, uitleg) {
         appBack(); await wacht(200);
         return r;
       })()`);
-      toets('schil ' + pr + ' ' + bw + '×' + bh + ': achtergrond loopt, kleur volgt, vult het scherm, geen palet, chips raken de knoppen niet',
-        q.schil && q.actief && /^rgb/.test(q.kleur) && q.vult && q.palet === 'none' && q.vrij, JSON.stringify(q));
+      toets('schil ' + pr + ' ' + bw + '×' + bh + ': achtergrond loopt, kleur volgt het rijgedrag, vult het scherm, geen palet, chips raken de knoppen niet',
+        // rgb(90,200,255) is de kleur van stemming 0: dan krijgt de schil geen toeren of gas binnen
+        q.schil && q.actief && /^rgb/.test(q.kleur) && q.kleur.replace(/\s/g, '') !== 'rgb(90,200,255)' && q.vult && q.palet === 'none' && q.vrij, JSON.stringify(q));
     }
     console.log('\n3. Weg uit de weergave');
     toets('een andere weergave stopt de lus (geen accuverbruik in een leeg vak)', r.stoptNaWissel, JSON.stringify(r));

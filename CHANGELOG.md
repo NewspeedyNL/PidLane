@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Hyperlane-look voor Verbruik, Motor, Telemetrie en Basis
+ ═══════════════════════════════════════════════════════════
+
+ - Verbruik: het grote getal dun en gloeiend, segmenten in de kleur van het
+   rijgedrag. Motor: ringen in die kleur, tegels van glas. Telemetrie: autootjes
+   in neon, liggend in twee kolommen.
+ - Basis: glazen plaat, gloeiende naald en bogen, de zones blijven oranje/rood.
+ - Alle weergaven: dezelfde achtergronden met het knopje; het palet is weg.
+
+ ═══════════════════════════════════════════════════════════
  28-10-2026 — Hyperlane-look voor Temperatuur en Emissie
  ═══════════════════════════════════════════════════════════
 
