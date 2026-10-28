@@ -234,6 +234,41 @@ gezet = [];
 P.bij('hyperlane', keuzeInd, '010E', 12.5, 'ok');
 waar('een zelfgekozen sensor gaat als vervangen naar de lus (alleen tonen)', gezet.join(',') === 'gas=12.5*', gezet.join(','));
 
+console.log('\n4l. Hartslag: een ECG die niet stottert');
+{
+  // Na tien minuten rijden met een toerental dat elke 0,1 s een beetje
+  // verspringt: elke slag die in beeld blijft schuift precies het papier mee.
+  // Tot 28-10-2026 sprong de hele lijn bij elke meting (fase = T·v).
+  let st = null, sprong = 0, maxDx = 0, t = 0;
+  for (let i = 0; i < 36000; i++) {
+    const hr = .3 + (Math.floor(i / 6) % 2 ? .05 : -.05);   // 10 Hz ruis van ±5%
+    const voor = st ? st.x.slice() : [];
+    st = H.polsBij(st, hr, 1 / 60, 1.1); t += 1 / 60;
+    if (t > 600 && voor.length && st.x.length >= voor.length - 1) {
+      const n = Math.min(voor.length, st.x.length);
+      // vergelijk dezelfde slag: als er links een verdween, schuift de index één op
+      const off = voor.length - n > 0 || voor[0] - st.x[0] > .5 ? 1 : 0;
+      for (let k = 0; k + off < voor.length && k < st.x.length; k++) {
+        const dx = voor[k + off] - st.x[k];
+        if (Math.abs(dx - H.POLS_PAPIER / 60) > 1e-9) sprong++;
+        maxDx = Math.max(maxDx, Math.abs(dx));
+      }
+    }
+  }
+  waar('na tien minuten met toerenruis schuift elke slag alleen met het papier mee', sprong === 0, sprong + ' sprongen, grootste stap ' + maxDx.toFixed(4));
+  let p = H.polsBij(null, 0, 1 / 60, 1.1);
+  waar('in rust een rustpols', Math.abs(p.bpm - H.POLS_RUST) < .01, p.bpm);
+  for (let i = 0; i < 6; i++) p = H.polsBij(p, 1, 1 / 60, 1.1);
+  waar('vol gas springt de pols niet: na 0,1 s nog geen 5 slagen erbij', p.bpm < H.POLS_RUST + 5, p.bpm.toFixed(1));
+  for (let i = 0; i < 1200; i++) p = H.polsBij(p, 1, 1 / 60, 1.1);
+  waar('na 20 s vol gas bijna de hoogste pols', p.bpm > H.POLS_MAX - 3, p.bpm.toFixed(1));
+  const tel = hr => { let q = null; for (let i = 0; i < 3000; i++) q = H.polsBij(q, hr, 1 / 60, 1.1); return q.x.length; };
+  waar('hogere toeren: de slagen liggen dichter op elkaar (meer in beeld)', tel(1) > tel(0), tel(0) + ' → ' + tel(1));
+  waar('onbekend toerental telt als rust, geen NaN', H.polsBij(null, null, 1 / 60, 1).bpm === H.POLS_RUST && H.polsBij(null, NaN, 1 / 60, 1).bpm === H.POLS_RUST);
+  const u = H.polsUniform(p);
+  waar('de uniform heeft altijd POLS_N plekken, lege op -99', u.length === H.POLS_N && Array.from(u).slice(p.x.length).every(v => v === -99));
+}
+
 console.log('\n7. Elke klasse heeft CSS');
 const klassen = [...new Set([...h.matchAll(/class="([^"]+)"/g)].flatMap(m => m[1].split(/\s+/)).filter(k => /^vhl-/.test(k)))];
 const mist = klassen.filter(k => CSS.indexOf('.' + k) < 0);

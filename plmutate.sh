@@ -1134,6 +1134,8 @@ MUTATIES=(
 "public/pidlane-visthema.js@@  try{ const v=localStorage.getItem(SLEUTEL); return geldig(v) ? v : STANDAARD; }@@  try{ return localStorage.getItem(SLEUTEL) || STANDAARD; }@@test-visthema.js@@een onbekende themakeuze komt ongekeurd op de meter"
 "public/pidlane-visthema.js@@function themaVoor(gekozen){ return geldig(gekozen) ? gekozen : STANDAARD; }@@function themaVoor(gekozen){ return STANDAARD; }@@test-visthema.js@@het gekozen thema geldt nergens meer"
 "public/pidlane-hyperlane.js@@  if(v===null || v===undefined || v==='' || !isFinite(Number(v))) return { st:s, tijd:null };\n@@@@test-hyperlane.js@@een ontbrekende snelheid telt als stilstand en start de 0–100-meting"
+"public/pidlane-hyperlane.js@@  s.bpm=volg(s.bpm, doel, dt, .5);@@  s.bpm=doel;@@test-hyperlane.js@@de pols springt bij elke toerenmeting meteen naar zijn doel"
+"public/pidlane-hyperlane.js@@  for(let i=0;i<s.x.length;i++) s.x[i]-=dt*POLS_PAPIER;@@  for(let i=0;i<s.x.length;i++) s.x[i]-=dt*POLS_PAPIER*s.bpm/POLS_RUST;@@test-hyperlane.js@@het papier loopt sneller met de pols: de slagen verspringen bij elke toerenmeting (het oude stotteren)"
 "public/pidlane-hyperlane.js@@  const van=rood*.7;@@  const van=rood*.4;@@test-hyperlane.js@@de schakellampjes branden al bij half toerental"
 "public/pidlane-hyperlane.js@@  return klem(.65*t+.35*g, 0, 1);@@  return klem(.35*t+.65*g, 0, 1);@@test-hyperlane.js@@het gaspedaal kleurt het scherm sterker dan het toerental: intrappen bij 1500 rpm is al SPORT"
 "public/pidlane-visprofiel.js@@    if(x.soort==='hyper'){ if(window.PLHyperlane) PLHyperlane.zet(x.rol, val, st, !!(ind.vervang && ind.vervang[x.rol])); return; }@@    if(x.soort==='hyper'){ return; }@@test-hyperlane.js@@Hyperlane krijgt geen meetwaarden: de ringen staan stil"

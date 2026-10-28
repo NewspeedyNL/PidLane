@@ -326,6 +326,27 @@ function bewaarMidden(v){
   try{ localStorage.setItem(MIDDEN_SLEUTEL, v); }
   catch(e){ console.warn('PLHyperlane: middenkeuze niet bewaard — geldt tot de app sluit', e); }
 }
+/* ── Hartslag ── Een ECG-lijn: het papier loopt met vaste snelheid en de
+   slagen liggen dichter bij elkaar naarmate de motor harder draait. Tot
+   28-10-2026 stond het ritme als sin(x·f + T·v) in de shader, met v uit het
+   toerental: na een paar minuten is T groot, en dan versprong de hele lijn bij
+   elke toerenmeting — dat was het stotteren. Nu telt de fase hier op, en elke
+   slag krijgt een plek die alleen nog met het papier meeschuift. `st` =
+   {bpm, fase, x:[...]}; hr = toeren als deel van het bereik (null = rust);
+   `rand` = de rechterrand in schermeenheden. Puur: geeft een nieuwe stand. */
+const POLS_RUST = 62, POLS_MAX = 138, POLS_PAPIER = .55, POLS_N = 12;
+function polsBij(st, hr, dt, rand){
+  const s=st ? { bpm:st.bpm, fase:st.fase, x:st.x.slice() } : { bpm:POLS_RUST, fase:0, x:[] };
+  const doel=POLS_RUST+(POLS_MAX-POLS_RUST)*(hr==null || !isFinite(hr) ? 0 : klem(hr, 0, 1));
+  s.bpm=volg(s.bpm, doel, dt, .5);   // traag: een pols versnelt, hij springt niet
+  for(let i=0;i<s.x.length;i++) s.x[i]-=dt*POLS_PAPIER;
+  s.fase+=dt*s.bpm/60;
+  if(s.fase>=1){ s.fase-=Math.floor(s.fase); s.x.push(rand+.12); }
+  s.x=s.x.filter(function(x){ return x>-rand-.4; });
+  if(s.x.length>POLS_N) s.x=s.x.slice(-POLS_N);
+  return s;
+}
+function polsUniform(st){ const u=new Float32Array(POLS_N).fill(-99); (st ? st.x : []).forEach(function(x, i){ u[i]=x; }); return u; }
 const VORMEN = ['aurora','hartslag','pulsen','sterren','stil','tunnel'];
 const VORM_TEKST = { aurora:'Aurora', hartslag:'Hartslag', pulsen:'Pulsen', sterren:'Sterren', stil:'Stil', tunnel:'Tunnel' };
 const VORM_SLEUTEL = 'pl_hl_vorm', AUTO_KMH = 10;
@@ -359,7 +380,9 @@ const SCENE_TEKST = { alarm:'KOELWATER HEET', begrenzer:'SCHAKELEN', launch:'LAU
 // Het vak zelf (canvas, ringen, strook, met de id's vpf-p-*/vpf-w-*) tekent
 // PLVisProfiel.html(), net als bij elk profiel; hier alleen wat beweegt.
 const FS='precision highp float;'+
-'uniform vec2 R;uniform float T,Z,E,W,B,K,A,F,D,GA,VT,VA,VH,VP,VS,HR;uniform vec3 C1,C2;uniform vec2 P;uniform vec2 GP[24];'+
+'uniform vec2 R;uniform float T,Z,E,W,B,K,A,F,D,GA,VT,VA,VH,VP,VS;uniform vec3 C1,C2;uniform vec2 P;uniform vec2 GP[24];uniform float HB[12];'+
+'float ecg(float u){return .06*exp(-pow((u+.30)/.05,2.))-.08*exp(-pow((u+.035)/.016,2.))+.62*exp(-pow(u/.018,2.))-.16*exp(-pow((u-.04)/.018,2.))+.14*exp(-pow((u-.30)/.07,2.));}'+
+'float pols(float x){float y=0.;for(int i=0;i<12;i++)y+=ecg((x-HB[i])*1.5);return y;}'+
 'float sd(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h);}'+
 'float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}'+
 'void main(){'+
@@ -393,11 +416,13 @@ const FS='precision highp float;'+
 '   au+=mix(C1,C2,fk*.5)*band*(.30+E*.25);}'+
 '  c+=au*VA;'+
 ' }'+
-' if(VH>.001){'+                                            // HARTSLAG: één lijn die golft met toeren en gas
-'  float amp=.025+.09*E, fr=5.+9.*HR, v=1.5+5.*HR;'+
-'  float y=-.30+amp*(sin(q.x*fr+T*v)*.7+sin(q.x*fr*2.3-T*v*1.3)*.3)*smoothstep(1.,.2,abs(q.x));'+
-'  float d=abs(q.y-y);'+
-'  c+=(mix(C2,vec3(1),.5)*exp(-pow(d*110.,2.))+C1*exp(-pow(d*14.,2.))*.35+C2*exp(-pow(d*4.,2.))*.08)*VH;'+
+' if(VH>.001){'+                                            // HARTSLAG: een ECG-lijn, slagen uit HB (polsBij)
+'  float amp=.13+.05*E, e=.012;'+
+'  vec2 l0=vec2(q.x-e,-.30+amp*pols(q.x-e)), l1=vec2(q.x,-.30+amp*pols(q.x)), l2=vec2(q.x+e,-.30+amp*pols(q.x+e));'+
+'  float d=min(sd(q,l0,l1),sd(q,l1,l2));'+                 // afstand tot de lijn zelf: een steile piek blijft even dik, zonder lichtzuil
+'  float rand=smoothstep(1.2,.75,abs(q.x));'+
+'  float dv=abs(q.y+.30);'+                                // de brede gloed hangt aan de basislijn, niet aan de piek
+'  c+=(mix(C2,vec3(1),.5)*exp(-pow(d*120.,2.))+C1*exp(-pow(d*22.,2.))*.35+C2*exp(-pow(dv*5.,2.))*.07)*VH*rand;'+
 ' }'+
 ' if(VP>.001){'+                                            // PULSEN: stil, alleen een ring bij schakelen, remmen of de begrenzer
 '  float l=length(q*vec2(.8,1.));'+
@@ -440,7 +465,7 @@ function glOp(cv){
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,3,-1,-1,3]), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-    const U={}; ['R','T','Z','E','W','B','K','A','F','D','GA','GP','VT','VA','VH','VP','VS','HR','C1','C2','P'].forEach(function(n){ U[n]=gl.getUniformLocation(pr, n); });
+    const U={}; ['R','T','Z','E','W','B','K','A','F','D','GA','GP','VT','VA','VH','VP','VS','HB','C1','C2','P'].forEach(function(n){ U[n]=gl.getUniformLocation(pr, n); });
     return { gl:gl, U:U };
   }catch(e){ console.warn('PLHyperlane: shader niet te bouwen, achtergrond blijft CSS', e); return null; }
 }
@@ -709,6 +734,7 @@ function frame(nu){
   // De achtergrond: wat er nu getekend wordt, vloeiend overgevloeid
   const av=actieveVorm(s.vorm, e.snel), VW=s.vw;
   ['tunnel','aurora','hartslag','pulsen','sterren'].forEach(function(k){ VW[k]=volg(VW[k], av===k ? 1 : 0, dt, 1.6); });
+  if(VW.hartslag>.001) s.pols=polsBij(s.pols, e.toeren==null ? null : e.toeren/o.toerenHi, dt, s.bg && s.bg.height ? s.bg.width/s.bg.height/2 : 1);
   const kn=w.querySelector('.vhl-vorm'), kt=VORM_TEKST[s.vorm]+(av==='tunnel' && s.vorm!=='tunnel' ? ' · auto' : '');
   if(kn && s.vormT!==kt){ s.vormT=kt; kn.textContent=kt; }
   w.classList.toggle('vhl-zonder', av==='stil');
@@ -749,7 +775,7 @@ function frame(nu){
   if(s.gl && av!=='stil'){
     const gl=s.gl.gl, U=s.gl.U;
     gl.uniform1f(U.VT, VW.tunnel); gl.uniform1f(U.VA, VW.aurora); gl.uniform1f(U.VH, VW.hartslag); gl.uniform1f(U.VP, VW.pulsen); gl.uniform1f(U.VS, VW.sterren);
-    gl.uniform1f(U.HR, e.toeren==null ? 0 : klem(e.toeren/o.toerenHi, 0, 1));
+    gl.uniform1fv(U.HB, polsUniform(s.pols));
     gl.uniform2f(U.R, s.bg.width, s.bg.height); gl.uniform1f(U.T, T); gl.uniform1f(U.Z, s.Z); gl.uniform1f(U.E, s.stem);
     gl.uniform3f(U.C1, c[0]/255, c[1]/255, c[2]/255); gl.uniform3f(U.C2, c2[0]/255, c2[1]/255, c2[2]/255);
     gl.uniform2f(U.P, s.tilt[1]*.04-s.lat*.14, -s.tilt[0]*.03);
@@ -813,6 +839,7 @@ window.PLHyperlane = {
   MERKEN:MERKEN, merkThema:merkThema, accuStart:accuStart, START_RPM:START_RPM, POWER_S:POWER_S, gSpoor:gSpoor, GS_N:GS_N, tankStand:tankStand,
   ritBij:ritBij, ritNul100:ritNul100, scorebord:scorebord, duur:duur, telOp:telOp, SCORE_KM:SCORE_KM, RIT_PAUZE_S:RIT_PAUZE_S,
   rit:function(){ return _rit; }, _zetRit:function(r){ _rit=r; },
+  polsBij:polsBij, polsUniform:polsUniform, POLS_RUST:POLS_RUST, POLS_MAX:POLS_MAX, POLS_PAPIER:POLS_PAPIER, POLS_N:POLS_N,
   KOUD_C:KOUD_C, HEET_C:HEET_C, REM_KMHS:REM_KMHS, STIL_S:STIL_S, CRUISE_S:CRUISE_S, CRUISE_KMH:CRUISE_KMH,
   _klok:klok,
   start:start, stop:stop, wek:wek, zet:zet, voed:voed, voedRol:voedRol, VOED:VOED, VOED_GAS:VOED_GAS,

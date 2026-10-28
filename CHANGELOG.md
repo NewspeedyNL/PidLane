@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Hartslag als ECG, zonder stotteren
+ ═══════════════════════════════════════════════════════════
+
+ - De achtergrond Hartslag is een hartslaglijn: papier met vaste snelheid,
+   slagen dichter op elkaar bij hogere toeren (62–138 per minuut, traag
+   meelopend). Het stotteren kwam van fase = T·v met v uit het toerental:
+   na een paar minuten sprong de lijn bij elke meting. De fase telt nu op.
+
+ ═══════════════════════════════════════════════════════════
  28-10-2026 — Hyperlane-look voor Verbruik, Motor, Telemetrie en Basis
  ═══════════════════════════════════════════════════════════
 
