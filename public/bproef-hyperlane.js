@@ -105,6 +105,26 @@ function toets(naam, waar, uitleg) {
       })()`);
       toets('staand ' + bw + '×' + bh + ': ringen binnen het scherm, niet onder de tanklichtbalk, niet over het midden', p.binnen && p.vrij && p.geenOverlap, p.maat);
     }
+    // De Hyperlane-schil om Temperatuur en Emissie (28-10-2026)
+    for (const [pr, bw, bh] of [['temp', 915, 412], ['emissie', 412, 915]]) {
+      await app.venster(bw, bh);
+      const q = await app.ev(`(async function(){
+        const wacht = ms => new Promise(r => setTimeout(r, ms));
+        PLVisProfiel.bewaar('${pr}'); setPidView('overzicht'); await wacht(200); setPidView('visueel'); await wacht(500);
+        document.querySelector('.gg.view-visueel .vt-vol').click(); await wacht(1200);
+        const v = document.querySelector('.gg.view-visueel .vhl-schil');
+        const rect = e => e ? e.getBoundingClientRect() : null, raak = (a, b) => a && b && !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
+        const lamp = rect(document.querySelector('.gg.view-visueel .vis-lampen')), vorm = rect(v && v.querySelector('.vhl-vorm')), knop = rect(document.querySelector('.gg.view-visueel .vt-knoppen'));
+        const b = v ? v.getBoundingClientRect() : null;
+        const r = { schil: !!v, actief: PLHyperlane.actief(), kleur: v ? v.style.getPropertyValue('--vhl-c') : '',
+                    vult: !!b && b.width >= innerWidth - 1 && b.height >= innerHeight - 1,
+                    palet: getComputedStyle(document.querySelector('.gg.view-visueel .vt-thema')).display, vrij: !raak(lamp, vorm) && !raak(lamp, knop) };
+        appBack(); await wacht(200);
+        return r;
+      })()`);
+      toets('schil ' + pr + ' ' + bw + '×' + bh + ': achtergrond loopt, kleur volgt, vult het scherm, geen palet, chips raken de knoppen niet',
+        q.schil && q.actief && /^rgb/.test(q.kleur) && q.vult && q.palet === 'none' && q.vrij, JSON.stringify(q));
+    }
     console.log('\n3. Weg uit de weergave');
     toets('een andere weergave stopt de lus (geen accuverbruik in een leeg vak)', r.stoptNaWissel, JSON.stringify(r));
 
