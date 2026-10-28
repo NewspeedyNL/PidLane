@@ -18,6 +18,20 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+
+## 28-10-2026 — Hyperlane: ACCELERATIE en REMMEN bij constant 80 km/h
+
+Schermopname uit de auto: 80 km/h op 1700 toeren, en het hoofdgetal sprong
+om de halve seconde tussen VERBRUIK NU, ACCELERATIE 0,4 g en REMMEN 0,4 g,
+met het remlicht-rood erbij. `versnelling()` nam het verschil van twee
+opeenvolgende snelheidsmetingen. 010D is een hele km/h en de bus levert met
+een onregelmatige tussentijd: 1 km/h in 50 ms is 20 km/h/s, en de
+afvlakking (de helft van de vorige) hield dat niet tegen.
+
+`test-hyperlane.js` gaf alleen schone metingen op hele seconden. Nu: de
+helling van een rechte lijn door de laatste 1,5 s (vanaf 0,6 s aan
+metingen), met een toets op 10 Hz met afronding en wisselende tussentijd;
+en ACCELERATIE met hysterese (aan vanaf 4, uit onder 2,5 km/h/s).
 ## 27-10-2026 (avond) — Hyperlane: een zelfgekozen sensor hield het oude label
 
 Gemeld vanuit de auto: gas vervangen door de ontsteking, het getal
