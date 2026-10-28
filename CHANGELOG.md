@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Hyperlane-look voor Temperatuur en Emissie
+ ═══════════════════════════════════════════════════════════
+
+ - Temperatuur: vijf neonbuizen; Emissie: lambda gloeiend op een lichtende
+   schaal met de trims als neonbalken (liggend in twee kolommen). Beide met de
+   achtergronden en het knopje van Hyperlane en de kleur van het rijgedrag.
+ - De lampjes MOTOR en ACCU zijn glazen chips; op volledig scherm bovenin.
+ - Geen palet meer bij deze twee op volledig scherm. De oude kaarten zijn weg.
+
+ ═══════════════════════════════════════════════════════════
  28-10-2026 — Hyperlane: het midden schakelbaar, slim getal of versnelling
  ═══════════════════════════════════════════════════════════
 

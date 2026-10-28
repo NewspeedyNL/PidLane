@@ -1164,6 +1164,10 @@ MUTATIES=(
 "public/pidlane-hyperlane.js@@  if(midden!=='versnelling' || sc==='alarm' || !gear) return h;@@  if(midden!=='versnelling' || !gear) return h;@@test-hyperlane.js@@in de stand Versnelling verdwijnt een te heet koelwater uit het midden"
 "public/pidlane-hyperlane.js@@  if(midden!=='versnelling' || sc==='alarm' || !gear) return h;@@  if(midden!=='versnelling' || sc==='alarm') return h;@@test-hyperlane.js@@een onbekende versnelling geeft een leeg midden"
 "public/pidlane-hyperlane.js@@  if(kh) kh.addEventListener('click', wissel);@@@@bproef-hyperlane.js@@een tik op het grote getal wisselt het midden niet meer"
+"public/pidlane-visprofiel.js@@const SCHIL = ['glas','licht'];@@const SCHIL = [];@@test-hyperlane.js@@Temperatuur en Emissie vallen terug op de oude kaart zonder achtergrond"
+"public/pidlane-hyperlane.js@@  return (j<0 || i<=j) ? 'gas' : null;@@  return 'gas';@@test-hyperlane.js@@in de schil vecht de gasklep met het gaspedaal: de kleur springt heen en weer"
+"public/pidlane-hyperlane.js@@  const w=(g || document).querySelector('.vpf-hyper, .vhl-schil');@@  const w=(g || document).querySelector('.vpf-hyper');@@bproef-hyperlane.js@@de schil start niet: Temperatuur en Emissie zonder achtergrond en zonder kleur"
+"public/pidlane.css@@  body.pl-vis-vol .vis:has(.vpf-hyper, .vhl-schil) .vis-lampen { top:calc(var(--pl-sat, 0px) + 68px); }@@@@bproef-hyperlane.js@@staand vallen de lampjes over het achtergrondknopje en het kruisje"
 "public/pidlane-hyperlane.js@@  if(!s.wortel.isConnected || !s.wortel.getClientRects().length){ stop(); return; }@@@@bproef-hyperlane.js@@de tekenlus draait door in een weggegooid of verborgen vak en kost accu"
 "public/pidlane-visthema.js@@  if(!vis) return;\n  const o=vis.querySelector('.vt-strook');@@  if(!vis || !vol()) return;\n  const o=vis.querySelector('.vt-strook');@@bproef-visthema.js@@in de gewone weergave opent 🎨 weer niets"
 "public/pidlane-visueel.js@@    themaBij(g);\n    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@bproef-visthema.js@@een herbouw van een profiel gooit de knop volledig scherm weg"
@@ -2119,7 +2123,7 @@ MUTATIES=(
 "public/pidlane-visprofiel.js@@  return '<div class=\"vpf-tel-boven\"><div>'+htmlHorizon(p, ind, 'hz-', false)@@  return '<div class=\"vpf-tel-boven\"><div>'+htmlHorizon(p, ind, '', false)@@test-visprofiel.js@@de horizon en de autootjes delen hun element-id's: de horizon beweegt niet en een autootje draait verkeerd"
 "public/pidlane-visprofiel.js@@  try{ let v=localStorage.getItem(SLEUTEL); if(OUD_PROFIEL[v]) v=OUD_PROFIEL[v];@@  try{ let v=localStorage.getItem(SLEUTEL);@@test-visprofiel.js@@wie een van de oude telemetrieschermen gekozen had, valt terug op Basis"
 # ── het emissiescherm is donker (06-10-2026) ──
-"public/pidlane.css@@.vpf-licht { background:#0f141d;@@.vpf-licht { background:#f7f8fb;@@test-visprofiel.js@@het emissiescherm is weer wit en verblindt 's avonds in de auto"
+"public/pidlane.css@@.vpf-licht { background:#02030a;@@.vpf-licht { background:#f7f8fb;@@test-visprofiel.js@@het emissiescherm is weer wit en verblindt 's avonds in de auto"
 "public/pidlane.css@@.wz-body:has(+ .wz-foot:empty){ padding-bottom:calc(24px + var(--pl-sab, 0px)); }@@@@bproef-onderzoek.js@@de laatste keuze van de wizard verdwijnt weer achter de Android-knoppen"
 # ── nooit een VIN als voertuignaam rechtsboven (06-10-2026) ──
 "public/pidlane-uihelpers.js@@  el.dataset.naam = t ? (sysNaam(t, merk, vi.model) || 'Voertuig') : '';@@  el.dataset.naam = t||'';@@test-nav.js@@showVtag bewaart een VIN als naam: rechtsboven staan 17 tekens in plaats van de auto"

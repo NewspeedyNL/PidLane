@@ -519,14 +519,22 @@ function tankHtml(p, ind){
   return '<div class="vhl-tank geen"><div class="vhl-tank-label">'+vak('tank', '⛽ ')+vak('bereik', '')+vak('verbruik', '')+'</div>'+
     '<div class="vhl-tank-balk"><i></i></div></div>';
 }
+/* De Hyperlane-schil (28-10-2026, uit het gebruik: "bouw de andere schermen
+   om naar dezelfde look"). Een profiel met een stijl uit SCHIL krijgt de
+   achtergrond, de kleur van het rijgedrag en het knopje van Hyperlane; zijn
+   eigen instrument blijft, in neonstijl (pidlane.css .vhl-schil). De lus is
+   die van pidlane-hyperlane.js; bij() voedt hem met toeren, snelheid en gas. */
+const SCHIL = ['glas','licht'];
 function html(id, ind){
   const p=voorInd(id, ind);
   if(!p || !p.plekken || !ind) return '';
+  const schil=SCHIL.indexOf(p.stijl)>=0;
   const binnen = p.stijl==='glas' ? htmlGlas(p, ind) : p.stijl==='licht' ? htmlLicht(p, ind)
                : p.stijl==='digitaal' ? htmlDigitaal(p, ind) : p.stijl==='telemetrie' ? htmlTelemetrie(p, ind)
                : p.stijl==='hyper' ? htmlHyper(p, ind) : htmlNeon(p, ind);
   const geen=p.plekken.every(function(x){ return !ind.plekken[x.rol]; });
-  return '<div class="vpf vpf-'+p.stijl+'" data-profiel="'+p.id+'">'+binnen+
+  return '<div class="vpf vpf-'+p.stijl+(schil ? ' vhl-schil' : '')+'" data-profiel="'+p.id+'">'+
+    (schil ? '<canvas class="vhl-bg" aria-hidden="true"></canvas><button type="button" class="vhl-vorm" aria-label="Achtergrond wisselen"></button>' : '')+binnen+
     (geen ? '<p class="vpf-geen">Deze auto geeft geen van de sensoren voor '+esc(p.naam.toLowerCase())+'. Veeg opzij voor een andere weergave.</p>' : '')+'</div>';
 }
 
@@ -541,6 +549,8 @@ function bij(id, ind, pid, val, st){
   // regel als Overzicht, Slim en de basismeter (PLToon). De energiering
   // rekent zelf met de ruwe waarde (energie()).
   val=PLToon.waarde(pid, val);
+  // De schil krijgt toeren, snelheid en gas mee voor de kleur en de scènes
+  if(SCHIL.indexOf(p.stijl)>=0 && window.PLHyperlane && typeof PLHyperlane.voed==='function') PLHyperlane.voed(pid, val, st);
   p.plekken.forEach(function(x){
     if(ind.plekken[x.rol]!==pid) return;
     // De energiering is geen ruwe pedaalwaarde: die zet energie().
@@ -687,7 +697,7 @@ function pids(ind){
 }
 
 window.PLVisProfiel = {
-  PROFIELEN:PROFIELEN, SEG:SEG, SLEUTEL:SLEUTEL,
+  PROFIELEN:PROFIELEN, SEG:SEG, SLEUTEL:SLEUTEL, SCHIL:SCHIL,
   zoek:zoek, voor:voor, geldig:geldig, plekkenVan:plekkenVan, volgende:volgende, vorige:vorige, lees:lees, bewaar:bewaar,
   standaard:standaard, energie:energie, toestandTekst:toestandTekst, tegelTekst:tegelTekst,
   indeling:indeling, ketens:ketens, deel:deel, tekst:tekst, html:html, bij:bij, dof:dof, pids:pids,

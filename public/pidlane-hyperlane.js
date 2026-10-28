@@ -551,8 +551,30 @@ function stop(){
 }
 /* Na een opbouw van het vak: de lus aan als er een Hyperlane-vak staat. */
 function wek(g){
-  const w=(g || document).querySelector('.vpf-hyper');
+  // Hyperlane zelf, of een profiel in de Hyperlane-schil (.vhl-schil)
+  const w=(g || document).querySelector('.vpf-hyper, .vhl-schil');
   if(w && (!_s || _s.wortel!==w)) start(w);
+}
+/* De schil van een ander profiel: welke rol een binnenkomende PID speelt
+   voor de kleur en de scènes. Het gaspedaal gaat vóór de gasklep (dezelfde
+   volgorde als de gasplek van Hyperlane): `huidig` is de PID die de rol nu
+   heeft, een minder goede vervangt hem niet. Puur. */
+const VOED = { '010C':'toeren', '010D':'snel', '0105':'koel', '0167':'koel', '0142':'accu', '012F':'tank', 'CA03':'verbruik' };
+const VOED_GAS = ['0149','015A','014A','0111'];
+function voedRol(pid, huidigGas){
+  if(VOED[pid]) return VOED[pid];
+  const i=VOED_GAS.indexOf(pid);
+  if(i<0) return null;
+  const j=VOED_GAS.indexOf(huidigGas);
+  return (j<0 || i<=j) ? 'gas' : null;
+}
+function voed(pid, val, st){
+  if(!_s || !_s.wortel.isConnected || !_s.wortel.classList.contains('vhl-schil')) wek();
+  if(!_s || !_s.wortel.classList.contains('vhl-schil')) return;
+  const rol=voedRol(pid, _s.gasPid);
+  if(!rol) return;
+  if(rol==='gas') _s.gasPid=pid;
+  zet(rol, val, st, false);
 }
 /* Eén meetwaarde, al begrensd en via PLToon. */
 /* `vervangen` = de bestuurder koos zelf een andere sensor voor deze plek.
@@ -792,7 +814,7 @@ window.PLHyperlane = {
   rit:function(){ return _rit; }, _zetRit:function(r){ _rit=r; },
   KOUD_C:KOUD_C, HEET_C:HEET_C, REM_KMHS:REM_KMHS, STIL_S:STIL_S, CRUISE_S:CRUISE_S, CRUISE_KMH:CRUISE_KMH,
   _klok:klok,
-  start:start, stop:stop, wek:wek, zet:zet,
+  start:start, stop:stop, wek:wek, zet:zet, voed:voed, voedRol:voedRol, VOED:VOED, VOED_GAS:VOED_GAS,
   actief:function(){ return !!_s; }
 };
 })();

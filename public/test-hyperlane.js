@@ -196,6 +196,22 @@ waar('de andere labels komen ook van de plek', /KOELW °C/.test(kh) && /ACCU V/.
 const e1 = H.echt({ doel: { gas: 12, koel: 90, snel: 50 }, verv: { gas: true } });
 waar('echt(): een vervangen plek is null voor de logica, de rest blijft', e1.gas === null && e1.koel === 90 && e1.snel === 50);
 
+console.log('\n4k. De Hyperlane-schil om Temperatuur en Emissie');
+waar('toeren, snelheid, koelwater, accu, tank en verbruik krijgen hun rol', H.voedRol('010C') === 'toeren' && H.voedRol('010D') === 'snel' && H.voedRol('0105') === 'koel' && H.voedRol('0142') === 'accu' && H.voedRol('012F') === 'tank' && H.voedRol('CA03') === 'verbruik');
+waar('een PID zonder rol in de schil doet niets', H.voedRol('0124') === null);
+waar('gaspedaal gaat vóór gasklep: de klep vervangt het pedaal niet, andersom wel', H.voedRol('0111', '0149') === null && H.voedRol('0149', '0111') === 'gas' && H.voedRol('0111', undefined) === 'gas');
+const schilInd = id => P.indeling(id, () => true);
+waar('Temperatuur en Emissie dragen de schil (achtergrond en knopje), de andere profielen nog niet',
+  ['temp', 'emissie'].every(id => /vhl-schil/.test(P.html(id, schilInd(id))) && /class="vhl-bg"/.test(P.html(id, schilInd(id))) && /class="vhl-vorm"/.test(P.html(id, schilInd(id)))) &&
+  ['verbruik', 'motor'].every(id => !/vhl-schil/.test(P.html(id, schilInd(id)))));
+let gevoed = [];
+C.PLHyperlane = Object.assign({}, H, { voed: (pid, v) => gevoed.push(pid + '=' + v), zet: () => {} });
+P.bij('temp', schilInd('temp'), '010C', 2400, 'ok');
+waar('bij() voedt de schil ook met een PID die niet op het scherm staat (toeren op Temperatuur)', gevoed.join(',') === '010C=2400', gevoed.join(','));
+gevoed = []; P.bij('verbruik', schilInd('verbruik'), '010C', 2400, 'ok');
+waar('…en een profiel zonder schil voedt niets', gevoed.length === 0, gevoed.join(','));
+C.PLHyperlane = H;
+
 console.log('\n5. Het profiel');
 const ind = P.indeling('hyperlane', q => ['010C', '010D', '0105', '0149'].indexOf(q) >= 0);
 waar('toeren, snelheid, koelwater en gaspedaal uit de eigen keten', ind && ind.plekken.toeren === '010C' && ind.plekken.snel === '010D' && ind.plekken.koel === '0105' && ind.plekken.gas === '0149', JSON.stringify(ind && ind.plekken));
