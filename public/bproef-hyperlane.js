@@ -108,13 +108,13 @@ function toets(naam, waar, uitleg) {
       toets('staand ' + bw + '×' + bh + ': ringen binnen het scherm, niet onder de tanklichtbalk, niet over het midden', p.binnen && p.vrij && p.geenOverlap, p.maat);
     }
     // De Hyperlane-schil om Temperatuur en Emissie (28-10-2026)
-    for (const [pr, bw, bh] of [['temp', 915, 412], ['emissie', 412, 915]]) {
+    for (const [pr, bw, bh] of [['temp', 915, 412], ['emissie', 412, 915], ['telemetrie', 915, 412], ['basis', 412, 915]]) {
       await app.venster(bw, bh);
       const q = await app.ev(`(async function(){
         const wacht = ms => new Promise(r => setTimeout(r, ms));
         PLVisProfiel.bewaar('${pr}'); setPidView('overzicht'); await wacht(200); setPidView('visueel'); await wacht(500);
         document.querySelector('.gg.view-visueel .vt-vol').click(); await wacht(1200);
-        const v = document.querySelector('.gg.view-visueel .vhl-schil');
+        const v = document.querySelector('.gg.view-visueel .vhl-schil, .gg.view-visueel .vhl-basis');
         const rect = e => e ? e.getBoundingClientRect() : null, raak = (a, b) => a && b && !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
         const lamp = rect(document.querySelector('.gg.view-visueel .vis-lampen')), vorm = rect(v && v.querySelector('.vhl-vorm')), knop = rect(document.querySelector('.gg.view-visueel .vt-knoppen'));
         const b = v ? v.getBoundingClientRect() : null;

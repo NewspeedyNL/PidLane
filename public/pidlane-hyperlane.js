@@ -552,7 +552,7 @@ function stop(){
 /* Na een opbouw van het vak: de lus aan als er een Hyperlane-vak staat. */
 function wek(g){
   // Hyperlane zelf, of een profiel in de Hyperlane-schil (.vhl-schil)
-  const w=(g || document).querySelector('.vpf-hyper, .vhl-schil');
+  const w=(g || document).querySelector('.vpf-hyper, .vhl-schil, .vhl-basis');
   if(w && (!_s || _s.wortel!==w)) start(w);
 }
 /* De schil van een ander profiel: welke rol een binnenkomende PID speelt
@@ -569,8 +569,9 @@ function voedRol(pid, huidigGas){
   return (j<0 || i<=j) ? 'gas' : null;
 }
 function voed(pid, val, st){
-  if(!_s || !_s.wortel.isConnected || !_s.wortel.classList.contains('vhl-schil')) wek();
-  if(!_s || !_s.wortel.classList.contains('vhl-schil')) return;
+  const schil=function(){ return !!_s && (_s.wortel.classList.contains('vhl-schil') || _s.wortel.classList.contains('vhl-basis')); };
+  if(!_s || !_s.wortel.isConnected || !schil()) wek();
+  if(!schil()) return;
   const rol=voedRol(pid, _s.gasPid);
   if(!rol) return;
   if(rol==='gas') _s.gasPid=pid;

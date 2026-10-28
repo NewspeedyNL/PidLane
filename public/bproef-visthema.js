@@ -99,7 +99,9 @@ function toets(naam, waar, uitleg) {
     toets('de knop ⛶ staat boven de meter', r.knop && r.zichtbaar, JSON.stringify(r));
     toets('de verlopen staan in de meter', r.defs, JSON.stringify(r));
     toets('zonder keuze: Standaard, de gewone meter', r.thema0 === 'standaard', JSON.stringify(r));
-    toets('de themaknop staat ook in de gewone weergave, met alle thema\'s', r.themaKnopGewoon && r.strookGewoon === r.n, JSON.stringify(r));
+    // Sinds 28-10-2026 staat de basismeter in de Hyperlane-schil: geen palet meer,
+    // de kleur komt van het rijgedrag (keuze van de gebruiker: "oude looks vervangen").
+    toets('geen palet meer in de gewone weergave (de basismeter staat in de Hyperlane-schil)', !r.themaKnopGewoon, JSON.stringify(r));
     toets('Neon kiezen in de gewone weergave verandert de plaat', r.themaGewoon === 'neon' && r.plaatGewoon !== r.plaat0, JSON.stringify(r));
     toets('…en Standaard geeft de gewone meter terug (tegenproef)', r.plaatTerug === r.plaat0, JSON.stringify(r));
     console.log('\n2. Volledig scherm en een thema kiezen');
@@ -108,7 +110,7 @@ function toets(naam, waar, uitleg) {
     toets('op het volle scherm geldt het thema (eerst Standaard)', r.thema1 === 'standaard', JSON.stringify(r));
     toets('de themaknop opent de strook met alle thema\'s', r.strook.length === r.n && r.strook[0] === 'standaard', JSON.stringify(r.strook));
     toets('Chroom kiezen verandert de plaat en wordt onthouden', r.thema2 === 'chroom' && r.plaat2 !== r.plaat0 && r.bewaard === 'chroom', JSON.stringify(r));
-    toets('een herbouw van de meter houdt het thema en de knoppen', r.naHerbouw === 'chroom' && r.knopNaHerbouw, JSON.stringify(r));
+    toets('een herbouw van de meter houdt de knoppen; de basismeter zelf blijft zonder thema', r.naHerbouw === 'standaard' && r.knopNaHerbouw, JSON.stringify(r));
     toets('ook een profiel houdt op het volle scherm het thema en de knoppen', r.profiel !== 'basis' && r.profielThema === 'chroom' && r.profielKnop, JSON.stringify(r));
     console.log('\n3. Terug uit het volle scherm');
     toets('de terugknop sluit het volle scherm', r.dichtNaTerug, JSON.stringify(r));

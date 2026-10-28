@@ -1591,15 +1591,15 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
 /* De lampjes als kleine glazen chips (28-10-2026, Hyperlane-look). Op het volle
    scherm met Hyperlane of de schil bovenin het midden, boven de achtergrond. */
 .vis-lamp { border-radius:999px; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
-body.pl-vis-vol .vis:has(.vpf-hyper, .vhl-schil) .vis-lampen { position:fixed; top:calc(var(--pl-sat, 0px) + 14px); left:50%; transform:translateX(-50%);
+body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen { position:fixed; top:calc(var(--pl-sat, 0px) + 14px); left:50%; transform:translateX(-50%);
   z-index:3; gap:10px; margin:0; justify-content:center; }
 /* Staand is het smal: de chips onder het knopje en het kruisje. */
 @media (orientation:portrait) {
-  body.pl-vis-vol .vis:has(.vpf-hyper, .vhl-schil) .vis-lampen { top:calc(var(--pl-sat, 0px) + 68px); }
+  body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen { top:calc(var(--pl-sat, 0px) + 68px); }
 }
-body.pl-vis-vol .vis:has(.vpf-hyper, .vhl-schil) .vis-lamp { min-height:0; padding:3px 9px; border-radius:999px; background:rgba(0,0,0,.35);
+body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp { min-height:0; padding:3px 9px; border-radius:999px; background:rgba(0,0,0,.35);
   border-color:rgba(255,255,255,.18); max-width:none; }
-body.pl-vis-vol .vis:has(.vpf-hyper, .vhl-schil) .vis-lamp-tx { flex-direction:row; gap:6px; align-items:baseline; }
+body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp-tx { flex-direction:row; gap:6px; align-items:baseline; }
 .vis-lamp-ic { flex:none; width:18px; height:18px; overflow:visible; }
 .vis-lamp-tx { display:flex; flex-direction:column; min-width:0; line-height:1.1; }
 .vis-lamp-tx small { font-size:9.5px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -1956,6 +1956,33 @@ body.pl-vis-vol .vpf-buis small { font-size:min(2vh, 2.4vw, 14px); letter-spacin
 body.pl-vis-vol .vpf-licht > .vpf-lambda, body.pl-vis-vol .vpf-licht > .vpf-rijen { width:100%; max-width:680px; margin-left:auto; margin-right:auto; }
 body.pl-vis-vol .vpf-lambda .vpf-w { font-size:min(14vh, 110px); }
 body.pl-vis-vol .vpf-neon .vpf-ringen { max-width:min(56vh, 70vw, 440px); }
+/* ── De basismeter in de Hyperlane-schil (28-10-2026) ──
+   De schil zit om de hele .vis (de meter, het vak, de banden, de meldingen
+   houden hun eigen plaats); de canvas ligt eronder. Een glazen plaat, witte
+   streepjes, een naald met gloed in de kleur van het rijgedrag; de oranje en
+   rode zones blijven, want die betekenen iets. Geen thema meer. */
+.vis.vhl-basis { --vhl-c:rgb(90,200,255); --vhl-c2:rgb(0,255,215); --vhl-e:0; position:relative; overflow:hidden; border-radius:18px;
+  background:radial-gradient(ellipse at 50% 40%, #0b1430, #02030a 70%); color:#e8f4ff; }
+.vis.vhl-basis.vhl-gl { background:#02030a; }
+.vis.vhl-basis > .vhl-bg { position:absolute; inset:0; width:100%; height:100%; display:block; z-index:0; pointer-events:none; }
+.vis.vhl-basis.vhl-zonder > .vhl-bg { visibility:hidden; }
+.vis.vhl-basis > .vis-bak, .vis.vhl-basis > .vis-meldingen, .vis.vhl-basis > .vis-trek { position:relative; z-index:1; }
+.vis.vhl-basis .vt-thema, .vis.vhl-basis .vt-strook { display:none; }
+body.pl-vis-vol .vis.vhl-basis { border-radius:0; background:#02030a; }
+.vhl-basis .vis-plaat { fill:rgba(2,4,12,.55); stroke:color-mix(in srgb, var(--vhl-c) 45%, transparent); }
+.vhl-basis .vis-spoor { stroke:rgba(255,255,255,.07); }
+.vhl-basis .vis-vul { stroke:var(--vhl-c); filter:drop-shadow(0 0 4px var(--vhl-c)); }
+.vhl-basis .vis-vul.warn { stroke:#ffb020; filter:drop-shadow(0 0 4px #ffb020); }
+.vhl-basis .vis-vul.danger { stroke:#ff2a40; filter:drop-shadow(0 0 4px #ff2a40); }
+.vhl-basis .vis-streep { stroke:rgba(255,255,255,.45); }
+.vhl-basis .vis-streep.groot { stroke:#fff; }
+.vhl-basis .vis-cijfer { fill:#fff; font-weight:300; }
+.vhl-basis .vis-naald line { stroke:#fff; filter:drop-shadow(0 0 3px var(--vhl-c)) drop-shadow(0 0 8px var(--vhl-c)); }
+.vhl-basis .vis-naaf { fill:#02030a; stroke:var(--vhl-c); }
+.vhl-basis .vis-mid, .vhl-basis .vis-klein { fill:#fff; font-weight:300; }
+.vhl-basis .vis-eenheid, .vhl-basis .vis-plek-naam { fill:var(--vhl-c); }
+.vhl-basis .vis-vak { background:rgba(0,0,0,.35); border-color:rgba(255,255,255,.14); color:#fff; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+.vhl-basis .vis-vak small { color:var(--vhl-c); }
 body.pl-vis-vol .vpf-neon > .vpf-legenda, body.pl-vis-vol .vpf-neon > .vpf-neon-getallen { width:100%; max-width:640px; margin-left:auto; margin-right:auto; }
 body.pl-vis-vol .vpf-telemetrie > :not(.vhl-bg):not(.vhl-vorm) { width:100%; max-width:820px; margin-left:auto; margin-right:auto; }
 /* Telemetrie in de schil: de autootjes en de vakken in neon en glas. */

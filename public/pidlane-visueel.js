@@ -1441,7 +1441,10 @@ function bouw(g, reden){
   // terwijl de regel bovenaan dit bestand zegt dat een ontbrekende PID een
   // lege plek is en niets anders. Een auto zonder 010C en zonder pedaal
   // krijgt een naald in rust; snelheid, rijen en lampjes werken gewoon.
-  g.innerHTML='<div class="vis">'+
+  // De Hyperlane-schil om de basismeter (28-10-2026): de achtergrond en het
+  // knopje van Hyperlane, de kleur van het rijgedrag; het thema vervalt.
+  g.innerHTML='<div class="vis vhl-basis">'+
+    '<canvas class="vhl-bg" aria-hidden="true"></canvas><button type="button" class="vhl-vorm" aria-label="Achtergrond wisselen"></button>'+
     '<div class="vis-bak">'+
       '<div class="vis-lampen"><span class="vis-lamp leeg" id="vis-lamp-motor"></span>'+
         '<span class="vis-lamp leeg" id="vis-lamp-accu" role="button" tabindex="0" onclick="window.PLAccu&&PLAccu.open()" aria-label="Accu en laadsysteem openen"></span></div>'+
@@ -1475,6 +1478,9 @@ function bouw(g, reden){
   ritBij();
   meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
   themaBij(g);
+  // Geen thema meer op de basismeter: de schil kleurt hem
+  const vb=g.querySelector('.vis'); if(vb) vb.setAttribute('data-vthema', 'standaard');
+  try{ if(window.PLHyperlane) PLHyperlane.wek(g); }catch(e){ console.warn('PLVisueel: Hyperlane-schil starten mislukt', e); }
   // De banden gaan niet de pollus in (#396): één keer per verbinding vragen.
   try{ if(window.PLBanden && PLBanden.eenmaal) PLBanden.eenmaal(); }catch(e){ console.warn('PLVisueel: banden niet gevraagd', e); }
 }
@@ -1733,6 +1739,10 @@ function ritBij(){
    weergave open staat; zoekt zelf uit welke plek(ken) ervan afhangen. */
 function bij(pid, val){
   const ind=_staat.ind; if(!ind) return;
+  // De basismeter in de Hyperlane-schil: toeren, snelheid en gas voor de kleur
+  if(!ind.profiel && window.PLHyperlane && typeof PLHyperlane.voed==='function'){
+    try{ PLHyperlane.voed(pid, PLToon.waarde(pid, val), oordeel(pid, val)); }catch(e){ console.warn('PLVisueel: Hyperlane-schil voeden mislukt', e); }
+  }
   if(ind.profiel && PF()){
     try{ PF().bij(ind.profiel.id, ind.profiel, pid, val, oordeel(pid, val)); }
     catch(e){ console.warn('PLVisueel: profiel '+ind.profiel.id+' bijwerken mislukt', e); }
