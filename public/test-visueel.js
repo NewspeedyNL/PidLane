@@ -996,5 +996,16 @@ waar('veeg op de meter, strook dicht: mag', V.veegMag(opMeter, visDicht) === tru
 waar('themastrook open: vegen wisselt niet', V.veegMag(opMeter, visOpen) === false);
 waar('veeg begint in de strook: wisselt niet', V.veegMag(inStrook, visDicht) === false);
 
+console.log('\n── De levende statusbalk: puls bij een nieuwe waarde (28-10-2026) ──');
+{
+  const T = V.lampTik, acc = (soort, v) => ({ soort: soort, waarde: v, hv: undefined, volt: undefined });
+  const sl = l => ({ soort: l.soort, waarde: String(l.waarde) + '|' + String(l.hv) + '|' + String(l.volt) });
+  waar('de eerste keer geen puls (anders pulst alles bij het openen)', T(null, acc('accu ok', '12,4 V')) === null && T(undefined, acc('accu ok', '12,4 V')) === null);
+  waar('dezelfde waarde: geen puls', T(sl(acc('accu ok', '12,4 V')), acc('accu ok', '12,4 V')) === null);
+  waar('een nieuwe spanning: een tik', T(sl(acc('accu ok', '12,4 V')), acc('accu ok', '12,5 V')) === 'tik');
+  waar('een andere toestand (ok → warn): een grens', T(sl(acc('accu ok', '12,4 V')), acc('accu warn', '12,4 V')) === 'grens');
+  waar('een lampje dat verdwijnt pulst niet', T(sl(acc('accu ok', '12,4 V')), null) === null);
+}
+
 console.log('\n' + (fout ? 'FOUT: ' : 'goed: ') + ok + ' ok, ' + fout + ' fout\n');
 process.exit(fout ? 1 : 0);

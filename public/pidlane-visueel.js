@@ -1309,6 +1309,14 @@ function lampHtml(l){
   return '<svg class="vis-lamp-ic" viewBox="0 0 24 24" aria-hidden="true">'+icoonHtml(l.icoon)+'</svg>'+tx+
          (l.balk!==null ? '<i class="vis-lamp-balk" style="width:'+l.balk+'%"></i>' : '');
 }
+/* Puls bij een lampje: null bij de eerste keer of geen verschil, 'grens'
+   als de toestand (soort) wisselt, anders 'tik'. Een lampje dat verdwijnt
+   pulst niet. Puur: vorige = {soort, waarde} of null/undefined. */
+function lampTik(vorige, l){
+  if(!vorige || !l) return null;
+  if(vorige.soort!==l.soort) return 'grens';
+  return vorige.waarde!==String(l.waarde)+'|'+String(l.hv)+'|'+String(l.volt) ? 'tik' : null;
+}
 /* Het getal bij een lampje: alleen een vers antwoord. Een oude belasting
    naast "Motor aan" leest als een meting van nu, en dat is hij niet. */
 function lampGetal(pid){
@@ -1361,6 +1369,10 @@ function lampjesBij(){
     const l=x[1];
     e.className='vis-lamp'+(l ? ' '+l.soort+(l.twijfel?' twijfel':'') : ' leeg');
     e.innerHTML=l ? lampHtml(l) : '';
+    // Een nieuwe waarde geeft een korte puls, een andere toestand een sterkere (28-10-2026)
+    const tik=lampTik(e._lamp, l);
+    if(tik){ void e.offsetWidth; e.classList.add('tik'); if(tik==='grens') e.classList.add('grens'); }
+    e._lamp=l ? { soort:l.soort, waarde:String(l.waarde)+'|'+String(l.hv)+'|'+String(l.volt) } : null;
     e.title=!l ? '' : l.dubbel ? (l.kop+' — aandrijfaccu '+l.hv+', 12V-accu '+l.volt)
       : (l.kop+' '+l.waarde+(x[0]==='vis-lamp-motor' && res && res.waarom ? ' — '+res.waarom : ''));
   });
@@ -1912,7 +1924,7 @@ function stop(){
 window.PLVisueel = {
   G:G, REM_MS:VIS_REM_MS, TRAAG_MS:VIS_TRAAG_MS, MIN_N:VIS_MIN_N, AANLOOP_MS:VIS_AANLOOP_MS,
   PLEKKEN:PLEKKEN, BOOG_SCHAAL:BOOG_SCHAAL, HOOFD:HOOFD, SCHAAL:SCHAAL,
-  schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
+  schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, lampTik:lampTik, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
   stand:stand, tekst:tekst, plekOordeel:plekOordeel, plekGetal:plekGetal, plekEenheid:plekEenheid, boogSchaal:boogSchaal, getalKan:getalKan,
   plekKeten:plekKeten, plekStaat:plekStaat, kandidatenPlek:kandidatenPlek, zonderSchaal:zonderSchaal,
   VERMOGEN:VERMOGEN, VRAAG_KETEN:VRAAG_KETEN, naaldSoort:naaldSoort, vraagUit:vraagUit, laadUit:laadUit, vermogenStand:vermogenStand,

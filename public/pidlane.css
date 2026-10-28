@@ -1601,6 +1601,29 @@ body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp { mi
   border-color:rgba(255,255,255,.18); max-width:none; }
 body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp-tx { flex-direction:row; gap:6px; align-items:baseline; }
 .vis-lamp-ic { flex:none; width:18px; height:18px; overflow:visible; }
+/* De levende statusbalk (28-10-2026). In de Hyperlane-look één glazen capsule
+   met de lampjes erin: het icoon ademt zacht in zijn toestandskleur, de
+   meter is een gloeiende lijn onderin, en een nieuwe waarde geeft een korte
+   puls (.tik) — een grens die gepasseerd wordt een sterkere (.grens). */
+.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen:has(.vis-lamp:not(.leeg)) { justify-content:center; gap:4px; }
+body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen:has(.vis-lamp:not(.leeg)) { padding:4px; border-radius:999px; gap:2px;
+  background:linear-gradient(180deg, rgba(14,20,40,.62), rgba(4,6,14,.72)); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+  border:1px solid color-mix(in srgb, var(--vhl-c, #4aa8ff) 32%, rgba(255,255,255,.08));
+  box-shadow:0 0 24px color-mix(in srgb, var(--vhl-c, #4aa8ff) 22%, transparent), inset 0 1px 0 rgba(255,255,255,.07); }
+.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp { background:rgba(255,255,255,.035); border-color:transparent; overflow:visible; }
+.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp .vis-lamp-ic { filter:drop-shadow(0 0 5px currentColor); animation:vl-adem 3.6s ease-in-out infinite; }
+.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp-tx b { font-variant-numeric:tabular-nums; text-shadow:0 0 10px currentColor; }
+.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp-balk { left:14px; right:14px; bottom:1px; height:2px; border-radius:2px;
+  background:currentColor; box-shadow:0 0 8px currentColor; opacity:.9; transition:width .6s ease-out; }
+.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp.tik::after { content:''; position:absolute; inset:-1px; border-radius:inherit; pointer-events:none;
+  animation:vl-tik .9s ease-out; }
+.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp.grens::after { animation:vl-grens 1.6s ease-out; }
+.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp.accu.danger .vis-lamp-ic { animation:vl-alarm 1s ease-in-out infinite; }
+@keyframes vl-adem { 0%,100% { opacity:.78; } 50% { opacity:1; } }
+@keyframes vl-tik { from { box-shadow:0 0 0 0 currentColor, inset 0 0 10px currentColor; opacity:.7; } to { box-shadow:0 0 0 7px transparent, inset 0 0 0 transparent; opacity:0; } }
+@keyframes vl-grens { 0% { box-shadow:0 0 0 0 currentColor, inset 0 0 18px currentColor; opacity:1; } 40% { opacity:.8; } 100% { box-shadow:0 0 0 16px transparent, inset 0 0 0 transparent; opacity:0; } }
+@keyframes vl-alarm { 0%,100% { opacity:1; filter:drop-shadow(0 0 4px currentColor); } 50% { opacity:.55; filter:drop-shadow(0 0 12px currentColor); } }
+@media (prefers-reduced-motion:reduce) { .vis-lamp .vis-lamp-ic, .vis-lamp.tik::after { animation:none !important; } }
 .vis-lamp-tx { display:flex; flex-direction:column; min-width:0; line-height:1.1; }
 .vis-lamp-tx small { font-size:9.5px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .vis-lamp-tx b { font-size:12.5px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -2118,12 +2141,17 @@ body.pl-vis-vol .vpf-lcd-rij .vpf-w { font-size:min(6vh, 7vw, 44px); }
 .vhl-mid { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3cqh;
   padding:5cqh 0; transform:translateZ(60px); border-radius:40%;
   background:radial-gradient(closest-side, rgba(2,3,10,.82), rgba(2,3,10,.55) 70%, transparent); }
-.vhl-leds { display:flex; gap:1.1cqw; }
-.vhl-leds i { width:1.6cqw; height:1.6cqw; border-radius:50%; background:rgba(255,255,255,.07); }
-.vhl-leds i.g { background:#2dff9a; box-shadow:0 0 12px #2dff9a; }
-.vhl-leds i.a { background:#ffb020; box-shadow:0 0 12px #ffb020; }
-.vhl-leds i.r { background:#ff3050; box-shadow:0 0 12px #ff3050; }
-.vhl-leds i.max { background:#4aa8ff; box-shadow:0 0 14px #4aa8ff; }
+/* De schakellampjes als één lichtstreep (28-10-2026): tien naadloze delen.
+   Uit is hij een haarlijn die je nauwelijks ziet — tien lege rondjes vielen
+   juist op door hun saaiheid. Pas vanaf 70% van de rode streep loopt hij vol. */
+.vhl-leds { display:flex; gap:0; width:30cqw; height:.7cqh; min-height:3px; border-radius:999px; overflow:visible;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.07) 15%, rgba(255,255,255,.07) 85%, transparent); }
+.vhl-leds i { flex:1; height:100%; background:transparent; transition:background .12s, box-shadow .12s; }
+.vhl-leds i:first-child { border-radius:999px 0 0 999px; } .vhl-leds i:last-child { border-radius:0 999px 999px 0; }
+.vhl-leds i.g { background:#2dff9a; box-shadow:0 0 10px #2dff9a, 0 0 22px rgba(45,255,154,.45); }
+.vhl-leds i.a { background:#ffb020; box-shadow:0 0 10px #ffb020, 0 0 22px rgba(255,176,32,.45); }
+.vhl-leds i.r { background:#ff3050; box-shadow:0 0 12px #ff3050, 0 0 26px rgba(255,48,80,.55); }
+.vhl-leds i.max { background:#4aa8ff; box-shadow:0 0 14px #4aa8ff, 0 0 30px rgba(74,168,255,.6); }
 .vhl-modus { font-size:3.4cqh; font-weight:600; letter-spacing:.5em; padding-left:.5em; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:clip; color:var(--vhl-c); text-shadow:0 0 12px var(--vhl-c); }
 .vhl-kop { display:flex; align-items:center; gap:1.4cqw; max-width:100%; }
 /* Naast het versnellingslabel moet ook "KOELWATER HEET" passen: het midden is
@@ -2178,7 +2206,7 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
   body.pl-vis-vol .vhl-mid { flex:none; gap:1.5cqh; padding:2cqh 8cqw; }
   body.pl-vis-vol .vhl-held-w { font-size:8cqh; } body.pl-vis-vol .vhl-held-e, body.pl-vis-vol .vhl-gear { font-size:1.8cqh; } body.pl-vis-vol .vhl-held-l, body.pl-vis-vol .vhl-merk { font-size:1.3cqh; }
   body.pl-vis-vol .vhl-modus, body.pl-vis-vol .vhl-strook { font-size:1.8cqh; }
-  body.pl-vis-vol .vhl-leds i { width:3.6cqw; height:3.6cqw; }
+  body.pl-vis-vol .vhl-leds { width:60cqw; height:.5cqh; }
   body.pl-vis-vol .vhl-score { width:88cqw; padding:2.4cqh 4cqw; }
   body.pl-vis-vol .vhl-score-tegels > .vhl-tegel { flex-basis:50%; }
   body.pl-vis-vol .vhl-tegel b { font-size:5.4cqh; } body.pl-vis-vol .vhl-tegel small, body.pl-vis-vol .vhl-tegel span { font-size:1.4cqh; }

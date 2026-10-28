@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Levende statusbalk, schakellampjes als lichtstreep
+ ═══════════════════════════════════════════════════════════
+
+ - Motor- en acculampje in één glazen capsule: het icoon ademt in zijn
+   toestandskleur, de meter is een gloeiende lijn, een nieuwe waarde geeft
+   een korte puls en een andere toestand (ok → laag) een sterkere
+   (PLVisueel.lampTik). Een te lage accu knippert zacht.
+ - De tien schakelrondjes zijn één naadloze lichtstreep; uit een haarlijn.
+
+ ═══════════════════════════════════════════════════════════
  28-10-2026 — Scorebord alleen na een mooie run, met trend en verloop
  ═══════════════════════════════════════════════════════════
 
