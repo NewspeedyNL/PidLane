@@ -2072,8 +2072,11 @@ body.pl-vis-vol .vpf-hyper { position:fixed; inset:0; margin:0; border:0; border
 body.pl-vis-vol .vis:has(.vpf-hyper) { overflow:hidden; }
 body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.vpf-hyper) .vis-trek { position:relative; z-index:2; }
 @media (orientation:portrait) {
-  body.pl-vis-vol .vhl-podium { flex-direction:column; justify-content:space-evenly; padding:calc(var(--pl-sat, 0px) + 56px) 0 calc(var(--pl-sab, 0px) + 9cqh); }
-  body.pl-vis-vol .vhl-pod { width:min(74cqw, 29cqh); }
+  /* Staand: de ringen delen wat er over is (flex) in plaats van een vaste
+     maat. Met 29cqh per ring paste het niet op elke telefoon: de snelheids-
+     ring liep onder de tanklichtbalk door en van het scherm af (28-10-2026). */
+  body.pl-vis-vol .vhl-podium { flex-direction:column; justify-content:center; gap:1.5cqh; padding:calc(var(--pl-sat, 0px) + 56px) 0 calc(var(--pl-sab, 0px) + 11cqh); }
+  body.pl-vis-vol .vhl-pod { flex:1 1 0; min-height:0; width:auto; max-width:74cqw; aspect-ratio:1; }
   /* Staand: de tanklichtbalk boven de navigatiebalk, het label in breedtematen. */
   body.pl-vis-vol .vhl-tank { left:8cqw; right:8cqw; bottom:calc(var(--pl-sab, 0px) + 2.4cqh); }
   body.pl-vis-vol .vhl-tank-label { font-size:3.4cqw; gap:4cqw; }
