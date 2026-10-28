@@ -167,6 +167,15 @@ const hy = (x, vorig) => H.held('rijden', hx(x), tk, vorig).l;
 waar('hysterese: boven 4 wordt het ACCELERATIE, op 3 blijft het staan, onder 2,5 terug naar verbruik',
   hy({ versn: 4.5 }) === 'ACCELERATIE' && hy({ versn: 3 }, 'ACCELERATIE') === 'ACCELERATIE' && hy({ versn: 3 }) === 'VERBRUIK NU' && hy({ versn: 2 }, 'ACCELERATIE') === 'VERBRUIK NU');
 
+console.log('\n4j. Het midden: slim getal of de versnelling groot');
+const slim = { w: '6,4', e: 'L/100', l: 'VERBRUIK NU' };
+waar('stand Slim: het slimme getal', H.middenHeld('slim', 'rijden', '4', slim) === slim);
+waar('stand Versnelling: de versnelling groot', JSON.stringify(H.middenHeld('versnelling', 'rijden', '4', slim)) === JSON.stringify({ w: '4', e: '', l: 'VERSNELLING' }));
+waar('te heet koelwater gaat altijd voor', H.middenHeld('versnelling', 'alarm', '4', slim) === slim);
+waar('versnelling onbekend: het slimme getal in plaats van een leeg midden', H.middenHeld('versnelling', 'rijden', '', slim) === slim);
+waar('N in stilstand wordt groot getoond', H.middenHeld('versnelling', 'stil', 'N', slim).w === 'N');
+waar('standaard Slim, onbekende opslag Slim', H.leesMidden() === 'slim');
+
 console.log('\n4h. Achtergrond: Auto, rustige vormen, het knopje');
 waar('Auto: in stilstand en tot 10 km/h de tunnel, rijdend de gekozen vorm', H.actieveVorm('aurora', 0) === 'tunnel' && H.actieveVorm('aurora', 9) === 'tunnel' && H.actieveVorm('aurora', 50) === 'aurora' && H.actieveVorm('hartslag', 80) === 'hartslag');
 waar('onbekende snelheid telt als rijden: geen stromende tunnel op de snelweg', H.actieveVorm('sterren', null) === 'sterren');

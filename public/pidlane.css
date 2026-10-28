@@ -2108,6 +2108,16 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
 .vhl-vorm::before { content:'◐ '; color:var(--vhl-c); }
 .vhl-vorm:active { transform:scale(.94); }
 body.pl-vis-vol .vhl-vorm { position:fixed; top:calc(var(--pl-sat, 0px) + 18px); left:14px; }
+/* Het midden kiezen: onder het achtergrondknopje, net zo klein. */
+.vhl-midden { position:absolute; top:40px; left:10px; z-index:3; padding:4px 10px; border-radius:999px; font:600 11px/1.2 system-ui, sans-serif;
+  letter-spacing:.08em; color:rgba(255,255,255,.75); background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18); cursor:pointer;
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+.vhl-midden::before { content:'⇄ '; color:var(--vhl-c); }
+.vhl-midden:active { transform:scale(.94); }
+body.pl-vis-vol .vhl-midden { position:fixed; top:calc(var(--pl-sat, 0px) + 50px); left:14px; }
+.vhl-held { cursor:pointer; }
+/* Versnelling groot in het midden: het kleine label ernaast zou dubbel zijn. */
+.vpf-hyper.vhl-m-versn .vhl-gear { display:none; }
 /* Stil: geen achtergrond, en de tekenlus slaat de shader over. */
 .vpf-hyper.vhl-zonder .vhl-bg { visibility:hidden; }
 /* Op volledig scherm geen palet bij Hyperlane: de kleuren komen van het rijgedrag en het merk. */
