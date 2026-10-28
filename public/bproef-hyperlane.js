@@ -161,11 +161,18 @@ function toets(naam, waar, uitleg) {
         const rect = e => e ? e.getBoundingClientRect() : null, raak = (a, b) => a && b && !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
         const lamp = rect(document.querySelector('.gg.view-visueel .vis-lampen')), vorm = rect(v && v.querySelector('.vhl-vorm')), knop = rect(document.querySelector('.gg.view-visueel .vt-knoppen'));
         const b = v ? v.getBoundingClientRect() : null;
-        // Geen lege balk (28-10-2026): de demo-auto heeft geen katalysator, die plek krijgt de reserve
-        const leeg = '${pr}' === 'temp' ? [...document.querySelectorAll('.gg.view-visueel [id^="vpf-w-"]')].filter(e => e.textContent.trim() === '—').map(e => e.id) : [];
         const r = { schil: !!v, actief: PLHyperlane.actief(), kleur: v ? v.style.getPropertyValue('--vhl-c') : '', gevoed: gevoed,
                     vult: !!b && b.width >= innerWidth - 1 && b.height >= innerHeight - 1,
-                    palet: getComputedStyle(document.querySelector('.gg.view-visueel .vt-thema')).display, vrij: !raak(lamp, vorm) && !raak(lamp, knop), leeg: leeg };
+                    palet: getComputedStyle(document.querySelector('.gg.view-visueel .vt-thema')).display, vrij: !raak(lamp, vorm) && !raak(lamp, knop) };
+        // Geen lege balk (28-10-2026): de demo-auto heeft geen katalysator, die plek krijgt de reserve.
+        // Tegenproef op het aanzetten: de reserve (hier de motorbelasting, die de demo-auto al aan had)
+        // even uit, dan opnieuw bouwen: Slim visueel moet hem zelf weer aanzetten (reserveKetens).
+        r.leeg = [];
+        if ('${pr}' === 'temp') {
+          activePIDs.delete('0104'); PLVisueel.bouw(document.querySelector('.gg.view-visueel'), 'test'); await wacht(2500);
+          r.leeg = [...document.querySelectorAll('.gg.view-visueel [id^="vpf-w-"]')].filter(e => e.textContent.trim() === '—').map(e => e.id)
+            .concat(activePIDs.has('0104') ? [] : ['0104 niet aangezet']);
+        }
         appBack(); await wacht(200);
         return r;
       })()`);
