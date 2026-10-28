@@ -19,6 +19,24 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 28-10-2026 (avond) — Slim visueel: knoppen over lampjes, Auto-tunnel, dubbele meters
+
+Uit de auto, met vier schermafdrukken: de statusbalk lag staand over de
+toerenring en het knopje Slim, ⛶ en 🎨 lagen in de gewone weergave midden
+over de lampjes, het achtergrondknopje over een breed start/stop-lampje.
+Elke weergave had een proef, maar die keken per weergave naar één ding; niets
+keek of iets over iets anders lag. `bproef-lagen.js` loopt nu alle weergaven
+af (staand, liggend, gewoon, volledig scherm) en meet ronde instrumenten als
+cirkel. Het start/stop-lampje zit niet in de demo-auto, dus dat ene geval
+vangt de proef niet; het knopje staat nu onder de lampjes in plaats van ernaast.
+
+"Tunnel blijft actief bij selectie andere visual" was Auto die deed waarvoor
+hij gebouwd was (stilstaand de tunnel), maar niet wat de knop zei. Auto is weg.
+
+"Dubbele temp meters": de reserve van Temperatuur had 0167 en 0168 bovenaan.
+Op de CX-5 is 0167 hetzelfde koelwater als 0105 — dezelfde meting twee keer,
+onder een ander label. Een reserve moet een andere grootheid zijn.
+
 ## 28-10-2026 — Hyperlane: ACCELERATIE en REMMEN bij constant 80 km/h
 
 Schermopname uit de auto: 80 km/h op 1700 toeren, en het hoofdgetal sprong

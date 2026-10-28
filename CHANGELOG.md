@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Laatste loodjes: vorm, lagen, geen dubbele meters
+ ═══════════════════════════════════════════════════════════
+
+ - De gekozen achtergrond blijft staan, ook in stilstand (geen Auto-tunnel).
+ - Geen knop of lampje meer over iets anders: ⛶ rechtsboven, het palet weg,
+   staand de statusbalk onder Slim en de ringen eronder, 🏁 naast de tank.
+   Nieuwe proef bproef-lagen.js loopt alle weergaven af.
+ - Temperatuur: geen 0167/0168 als reserve (hetzelfde koelwater en dezelfde
+   inlaat nog een keer). Emissie krijgt ook een reserve, alleen op balken.
+ - Telemetrie zegt waarom alles grijs staat (telefoon niet vast).
+
+ ═══════════════════════════════════════════════════════════
  28-10-2026 — Telemetrie: het G-vizier
  ═══════════════════════════════════════════════════════════
 
