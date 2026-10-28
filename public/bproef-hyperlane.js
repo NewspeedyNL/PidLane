@@ -109,6 +109,44 @@ function toets(naam, waar, uitleg) {
       })()`);
       toets('staand ' + bw + '×' + bh + ': ringen binnen het scherm, niet onder de tanklichtbalk, niet over het midden', p.binnen && p.vrij && p.geenOverlap, p.maat);
     }
+    // Het ritoverzicht (28-10-2026): niet bij elk stoplicht, wel na een mooie run; 🏁 en een tik
+    await app.venster(915, 412);
+    const sb = await app.ev(`(async function(){
+      const wacht = ms => new Promise(r => setTimeout(r, ms));
+      setPidView('overzicht'); await wacht(200); setPidView('visueel'); await wacht(800);
+      // Het vak kan tussendoor herbouwd worden: elke keer opnieuw opzoeken
+      const v = () => document.querySelector('.gg.view-visueel .vpf-hyper'), el = () => v().querySelector('.vhl-score'), aan = () => el().classList.contains('aan');
+      const echt = PLHyperlane.zet; PLHyperlane.zet = function () {};   // de demo-auto even buiten de deur
+      // Stilstand zoals een auto hem geeft: elke 0,2 s snelheid 0 (een herbouw van het vak begint met lege waarden)
+      const stil = setInterval(function () { echt('snel', 0, 'ok', false); }, 200);
+      try {
+        localStorage.removeItem(PLHyperlane.RUNS_SLEUTEL);
+        const nu = performance.now() / 1000;
+        PLHyperlane._zetRun({ t: nu, tv: nu, km: 1, top: 50, maxT: 3000, rijS: 90, beste: null, kmV: 0, liter: 0 });
+        // De lus telt stilstand in zijn eigen frames (hoogstens 0,05 s per frame): in een trage browser
+        // duren 3 s stilstand langer. Wachten op de scène, niet op de klok — hoogstens 25 s.
+        for (let i = 0; i < 125 && v().getAttribute('data-scene') !== 'stil'; i++) await wacht(200);
+        await wacht(600);
+        const r = { stil: v().getAttribute('data-scene'), stad: aan() };
+        PLHyperlane._zetRun({ t: nu, tv: nu, km: 6, top: 112, maxT: 4200, rijS: 300, beste: null, kmV: 0, liter: 0,
+                              prof: { dt: 2, t: nu, pts: [0, 30, 60, 90, 112, 100, 80, 40, 0] } });
+        for (let i = 0; i < 25 && !aan(); i++) await wacht(200);
+        r.run = aan(); r.kop = (el().querySelector('.vhl-score-kop') || {}).textContent || '';
+        r.graf = !!el().querySelector('.vhl-score-graf polyline'); r.bewaard = PLHyperlane.leesRuns().length;
+        el().click(); await wacht(1500); r.dichtNaTik = !aan();
+        v().querySelector('.vhl-ritknop').click();
+        for (let i = 0; i < 25 && !aan(); i++) await wacht(200);
+        r.hand = aan(); r.kopHand = (el().querySelector('.vhl-score-kop') || {}).textContent || '';
+        v().querySelector('.vhl-ritknop').click(); await wacht(1500); r.dichtNaKnop = !aan();
+        return r;
+      } finally { clearInterval(stil); PLHyperlane.zet = echt; localStorage.removeItem(PLHyperlane.RUNS_SLEUTEL); }
+    })()`);
+    console.log('\n2b. Het ritoverzicht');
+    toets('van stoplicht tot stoplicht (1 km, 90 s): geen bord', sb.stil === 'stil' && !sb.stad, JSON.stringify(sb));
+    toets('na een mooie run (6 km, 5 min) wel, als RUN, met het verloop, en hij is bewaard voor de trend',
+      sb.run && /^RUN/.test(sb.kop) && sb.graf && sb.bewaard === 1, JSON.stringify(sb));
+    toets('een tik sluit het bord, en het komt niet vanzelf terug', sb.dichtNaTik, JSON.stringify(sb));
+    toets('🏁 toont de hele rit, nog een keer 🏁 sluit hem', sb.hand && /^RIT/.test(sb.kopHand) && sb.dichtNaKnop, JSON.stringify(sb));
     // De Hyperlane-schil om Temperatuur en Emissie (28-10-2026)
     for (const [pr, bw, bh] of [['temp', 915, 412], ['emissie', 412, 915], ['telemetrie', 915, 412], ['basis', 412, 915]]) {
       await app.venster(bw, bh);

@@ -2180,7 +2180,7 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
   body.pl-vis-vol .vhl-modus, body.pl-vis-vol .vhl-strook { font-size:1.8cqh; }
   body.pl-vis-vol .vhl-leds i { width:3.6cqw; height:3.6cqw; }
   body.pl-vis-vol .vhl-score { width:88cqw; padding:2.4cqh 4cqw; }
-  body.pl-vis-vol .vhl-score-tegels { grid-template-columns:repeat(2, 1fr); }
+  body.pl-vis-vol .vhl-score-tegels > .vhl-tegel { flex-basis:50%; }
   body.pl-vis-vol .vhl-tegel b { font-size:5.4cqh; } body.pl-vis-vol .vhl-tegel small, body.pl-vis-vol .vhl-tegel span { font-size:1.4cqh; }
   body.pl-vis-vol .vhl-score-kop { font-size:1.8cqh; }
 }
@@ -2209,6 +2209,12 @@ body.pl-vis-vol .vhl-vorm { position:fixed; top:calc(var(--pl-sat, 0px) + 18px);
 .vhl-midden:active { transform:scale(.94); }
 body.pl-vis-vol .vhl-midden { position:fixed; top:calc(var(--pl-sat, 0px) + 50px); left:14px; }
 .vhl-held { cursor:pointer; }
+/* Het ritoverzicht oproepen: rechtsonder in het vak, op volledig scherm onder het ✕. */
+.vhl-ritknop { position:absolute; top:10px; right:10px; z-index:3; width:32px; height:32px; border-radius:999px; font-size:15px; line-height:1;
+  background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18); cursor:pointer; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+.vhl-ritknop:active { transform:scale(.92); }
+.vpf-hyper.vhl-score-aan .vhl-ritknop { border-color:var(--vhl-c); box-shadow:0 0 12px var(--vhl-c); }
+body.pl-vis-vol .vhl-ritknop { position:fixed; top:auto; right:18px; bottom:calc(var(--pl-sab, 0px) + 16px); width:40px; height:40px; font-size:18px; }
 /* Versnelling groot in het midden: het kleine label ernaast zou dubbel zijn. */
 .vpf-hyper.vhl-m-versn .vhl-gear { display:none; }
 /* Stil: geen achtergrond, en de tekenlus slaat de shader over. */
@@ -2217,19 +2223,33 @@ body.pl-vis-vol .vhl-midden { position:fixed; top:calc(var(--pl-sat, 0px) + 50px
 body.pl-vis-vol .vis:has(.vpf-hyper) .vt-thema, body.pl-vis-vol .vis:has(.vpf-hyper) .vt-strook { display:none; }
 /* Het scorebord bij stilstand: glas over het midden, de tegels schuiven één
    voor één in (--i), het midden en de ringen wijken. */
-.vhl-score { position:absolute; left:50%; top:50%; width:min(64cqw, 150cqh); transform:translate(-50%, -46%) scale(.96); opacity:0;
+.vhl-score { position:absolute; left:50%; top:50%; width:min(72cqw, 170cqh); transform:translate(-50%, -46%) scale(.96); opacity:0;
   pointer-events:none; padding:3cqh 2.4cqw 3.4cqh; border-radius:3cqh; border:1px solid color-mix(in srgb, var(--vhl-c) 55%, transparent);
   background:linear-gradient(160deg, rgba(14,22,44,.78), rgba(4,6,16,.86)); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
   box-shadow:0 0 40px color-mix(in srgb, var(--vhl-c) 35%, transparent), inset 0 1px 0 rgba(255,255,255,.08);
   transition:opacity .5s ease-out, transform .5s ease-out; z-index:1; }
-.vhl-score.aan { opacity:1; transform:translate(-50%, -50%) scale(1); }
+.vhl-score.aan { opacity:1; transform:translate(-50%, -50%) scale(1); pointer-events:auto; cursor:pointer; }
+.vhl-score-sub { text-align:center; font-size:1.9cqh; letter-spacing:.12em; color:rgba(255,255,255,.45); margin:-1.6cqh 0 1.8cqh; }
+.vhl-score-leeg { text-align:center; font-size:3cqh; color:rgba(255,255,255,.6); padding:2cqh 0; }
+/* Trend per tegel: groen beter, rood slechter dan je vorige runs. */
+.vhl-trend { display:block; font-style:normal; font-size:2.1cqh; letter-spacing:.06em; margin-top:.4cqh; font-variant-numeric:tabular-nums; }
+.vhl-trend.beter { color:#5dffb0; text-shadow:0 0 8px rgba(93,255,176,.55); }
+.vhl-trend.slechter { color:#ff8f7d; }
+.vhl-trend.gelijk { color:rgba(255,255,255,.4); }
+/* Het snelheidsverloop van de run: een gloeiende lijn met een zachte vulling. */
+.vhl-score-graf { display:block; width:100%; height:7cqh; margin-top:2.2cqh; overflow:visible; }
+.vhl-score-graf polyline { fill:none; stroke:var(--vhl-c); stroke-width:2; vector-effect:non-scaling-stroke; stroke-linejoin:round;
+  filter:drop-shadow(0 0 4px var(--vhl-c)); }
+.vhl-score-graf polygon { fill:color-mix(in srgb, var(--vhl-c) 16%, transparent); stroke:none; }
 .vhl-score-kop { text-align:center; font-size:3.2cqh; font-weight:600; letter-spacing:.5em; padding-left:.5em; color:var(--vhl-c);
   text-shadow:0 0 12px var(--vhl-c); margin-bottom:2.4cqh; }
-.vhl-score-tegels { display:grid; grid-template-columns:repeat(3, 1fr); gap:2.2cqh 1.6cqw; }
+/* Vier per rij en de rest gecentreerd: zeven tegels worden 4 + 3, geen eenzame tegel links. */
+.vhl-score-tegels { display:flex; flex-wrap:wrap; justify-content:center; row-gap:2.2cqh; }
+.vhl-score-tegels > .vhl-tegel { flex:0 0 25%; }
 .vhl-tegel { text-align:center; opacity:0; transform:translateY(1.5cqh); }
 .vhl-score.aan .vhl-tegel { opacity:1; transform:none; transition:opacity .4s ease-out calc(.15s + var(--i) * .08s), transform .4s ease-out calc(.15s + var(--i) * .08s); }
 .vhl-tegel small { display:block; font-size:2.3cqh; letter-spacing:.25em; color:rgba(255,255,255,.55); }
-.vhl-tegel b { display:block; font-size:9cqh; line-height:1.1; font-weight:200; color:#fff; font-variant-numeric:tabular-nums;
+.vhl-tegel b { display:block; font-size:7.4cqh; line-height:1.1; font-weight:200; color:#fff; font-variant-numeric:tabular-nums;
   text-shadow:0 0 18px var(--vhl-c); }
 .vhl-tegel span { display:block; font-size:2.3cqh; letter-spacing:.15em; color:var(--vhl-c); min-height:1.2em; }
 .vpf-hyper.vhl-score-aan .vhl-mid { opacity:.08; transition:opacity .4s; }

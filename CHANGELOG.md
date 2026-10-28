@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 28-10-2026 — Scorebord alleen na een mooie run, met trend en verloop
+ ═══════════════════════════════════════════════════════════
+
+ - Het scorebord kwam na 0,3 km bij elke stilstand, dus bij elk stoplicht.
+   Nu vanzelf alleen na een run van ≥ 3 km én ≥ 3 min sinds de vorige
+   stilstand, of met een gemeten 0–100. Een tik sluit het; 🏁 toont de rit.
+ - Trend per tegel tegen het gemiddelde van de vorige runs (pl_hl_runs, 20
+   stuks), en een grafiekje van het snelheidsverloop.
+
+ ═══════════════════════════════════════════════════════════
  28-10-2026 — Hartslag als ECG, zonder stotteren
  ═══════════════════════════════════════════════════════════
 
