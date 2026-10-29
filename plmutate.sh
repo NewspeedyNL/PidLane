@@ -151,6 +151,13 @@ MUTATIES=(
 "public/pidlane-export.js@@  t = t.slice(0, 80).replace(/[. ]+$/, '').trim();@@  t = t.trim();@@test-export.js@@een geplakte alinea wordt een bestandsnaam van vierhonderd tekens"
 "public/pidlane-export.js@@  t = t.replace(/\.(txt|pdf)$/i, '');@@  t = t;@@test-export.js@@een zelf getypte extensie blijft staan en het bestand heet rapport.txt.txt"
 "public/pidlane-export.js@@  t = t.replace(/^\.+/, '');@@  t = t;@@test-export.js@@een naam die met een punt begint blijft een verborgen bestand"
+"public/pidlane-export.js@@  if (!k.ok) throw new Error(_keuringTekst(k));@@  if (false) throw new Error(_keuringTekst(k));@@test-export.js@@een rapport met NaN of grens 0–0 wordt toch een PDF voor de klant (29-10-2026)"
+"public/pidlane-export.js@@  { re: /\\b(NaN|undefined|Infinity)\\b/,@@  { re: /\\b(NaN)\\b/,@@test-export.js@@\"undefined\" gaat als woord in een klantrapport"
+"public/pidlane-export.js@@  { re: /grens (-?\\d+(?:[.,]\\d+)?)\\s?[–-]\\s?\\1(?![\\d.,])/,@@  { re: /grens nooit/,@@test-export.js@@een grens van 0 tot 0 gaat weer als oordeel het rapport in (Mazda 5)"
+"public/pidlane-export.js@@  if (!keuring.ok) { _weiger(keuring); return false; }\n  const blob@@  const blob@@test-export.js@@Mijn voertuigen → PDF slaat de keuring over en de klant krijgt kapotte data"
+"public/pidlane-export.js@@    if (_PDF_VERTAAL[c] !== undefined) { uit += _PDF_VERTAAL[c]; continue; }@@@@test-export.js@@het minteken valt weg of wordt een \" in de PDF"
+"public/pidlane-export.js@@  const proza = o.proza != null ? !!o.proza : /^=== .+ ===\\s*$/m.test(String(tekst || ''));@@  const proza = false;@@test-export.js@@het klantrapport is weer een courier-dump met === erin"
+"public/pidlane-rapport.js@@      if (k.redenen.length) throw@@      if (false) throw@@test-export.js@@het AI-, aankoop- of accurapport tekent NaN in een tabelcel"
 
 # ── De km-check (PLKm). Zes fouten die je écht kunt maken in een module die
 # uit vier bytes een oordeel over fraude trekt: de schaal verkeerd vastzetten,
@@ -2438,6 +2445,13 @@ MUTATIES=(
 "public/pidlane-onderzoek.js@@      else if (f.sluitUit && (f.h !== 'misfire' || cil.length < 2)) r.push(@@      else if ((f.h !== 'misfire' || cil.length < 2)) r.push(@@test-onderzoek.js@@een geslaagde VVT-test strept een gerekte ketting weg"
 "public/pidlane-mode06.js@@      return p(a) - p(b) || (a.marge ?? 1) - (b.marge ?? 1);@@      return 0;@@test-onderzoek.js@@de zelftests in het rapport staan in scanvolgorde, gezakt niet bovenaan"
 "public/pidlane-mode06.js@@    const geenMax = signed ? max === 0x7FFF : max === 0xFFFF;@@    const geenMax = false;@@test-mode06.js@@een bovengrens van 65535 telt weer als grens: 0 ontstekingsmissers heet krap"
+"public/pidlane-mode06.js@@    if (leeg) zeker = false;@@@@test-onderzoek.js@@een test met waarde 0 en grens 0–0 geeft weer een zeker oordeel (Mazda 5, 29-10-2026)"
+"public/pidlane-mode06.js@@    if (leeg || min === max) marge = null;@@    if (false) marge = null;@@test-onderzoek.js@@waarde 0 met grens 0–0 heet weer krap: zestien keer \"bijna kapot\" in het klantrapport"
+"public/pidlane-mode06.js@@        if (t.leeg) continue;@@@@test-onderzoek.js@@de lege mode 06-tests staan weer elk als \"0 ruw, grens 0–0\" in het rapport"
+"public/pidlane-onderzoek.js@@        if (v >= RUST_MAX_V) return@@        if (false) return@@test-onderzoek.js@@14,1 V met draaiende motor heet weer \"rustspanning — de accu is vol\""
+"public/pidlane-onderzoek.js@@ + (tegenbewijs(x) || '')@@ + ((x.bewijs[0] || {}).t || '')@@test-onderzoek.js@@uitgesloten noemt weer het eerste bewijs, ook als dat vóór de fout pleit"
+"public/pidlane-onderzoek.js@@    if (bep.length) { r.push('', '=== WAT DIT OORDEEL BEPERKT ===');@@    if (false) { r.push('', '=== WAT DIT OORDEEL BEPERKT ===');@@test-onderzoek.js@@\"geen oorzaak gevonden\" na vers gewiste codes zegt niet dat het voorlopig is"
+"public/pidlane-onderzoek.js@@      r.push(' ' + (++nr) + '. ' + l.titel@@      r.push(' ' + (st.log.indexOf(l)) + '. ' + l.titel@@test-onderzoek.js@@het verloop slaat een nummer over bij elke verbreding"
 "public/pidlane-mode06.js@@    else if (!geenMin) marge = klem((lees(waarde) - lees(min)) / Math.max(1, Math.abs(lees(min))));@@    else if (!geenMin) marge = null;@@test-mode06.js@@een echte ondergrens zonder bovengrens wordt nooit krap, ook niet vlak erboven"
 "public/pidlane-mode06.js@@    const geenMin = signed ? min === 0x8000 : min === 0;@@    const geenMin = false;@@test-onderzoek.js@@mode 06: nul missers heet krap binnen de grens en telt als bewijs vóór een ontstekingsprobleem"
 "public/pidlane-onderzoek.js@@    [0x0B, 0x0C].forEach(function (tid) {@@    [0x0C, 0x0B].forEach(function (tid) {@@test-onderzoek.js@@mode 06: één rit met missers wint van het gemiddelde over tien ritten"

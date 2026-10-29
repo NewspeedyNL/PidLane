@@ -203,13 +203,20 @@
     //   twee echte grenzen → afstand tot de dichtste / breedte van het venster
     //   één echte grens    → afstand tot die grens / |grens| (minstens 1)
     //   geen echte grens   → geen marge: de test oordeelt niet, dus nooit krap
+    // 29-10-2026: de Mazda 5 (2005) gaf zestien tests met waarde 0 en grens
+    // 0–0. Dat is geen meting maar een lege plek: de test heeft niet
+    // gedraaid of de ECU vult hem niet. Hij kreeg "krap" en ging zo als
+    // "bijna kapot" het klantrapport in. Zonder venster geen oordeel.
+    const leeg = waarde === 0 && min === 0 && max === 0;
+    if (leeg) zeker = false;
     const lees = v => signed ? teken(v) : v;
     const geenMin = signed ? min === 0x8000 : min === 0;
     const geenMax = signed ? max === 0x7FFF : max === 0xFFFF;
     const span = lees(max) - lees(min);
     const klem = x => Math.max(0, Math.min(1, x));
     let marge = null;
-    if (!geenMin && !geenMax) marge = span > 0 ? Math.max(0, Math.min(lees(waarde) - lees(min), lees(max) - lees(waarde)) / span) : null;
+    if (leeg || min === max) marge = null;
+    else if (!geenMin && !geenMax) marge = span > 0 ? Math.max(0, Math.min(lees(waarde) - lees(min), lees(max) - lees(waarde)) / span) : null;
     else if (!geenMin) marge = klem((lees(waarde) - lees(min)) / Math.max(1, Math.abs(lees(min))));
     else if (!geenMax) marge = klem((lees(max) - lees(waarde)) / Math.max(1, Math.abs(lees(max))));
 
@@ -226,7 +233,7 @@
         max: (def.signed ? teken(max) : max) * def.f,
         eenheid: def.e
       } : null,
-      geslaagd, oordeelZeker: zeker, marge,
+      geslaagd, oordeelZeker: zeker, marge, leeg,
       krap: marge !== null && marge < 0.15 && geslaagd
     };
   }
@@ -376,9 +383,12 @@
       let niveau = 'ok';
       let tekst = `${tests.length} monitortest${tests.length === 1 ? '' : 'en'} gelezen, alles binnen de grenzen`;
 
+      const bruikbaar = tests.filter(t => !t.leeg);
       if (!tests.length) { niveau = 'onbekend'; tekst = 'Geen mode 06 gegevens op dit voertuig'; }
+      else if (!bruikbaar.length) { niveau = 'onbekend'; tekst = `${tests.length} monitortest${tests.length === 1 ? '' : 'en'} gelezen, geen met bruikbare gegevens`; }
       else if (gezakt.length) { niveau = 'kritiek'; tekst = `${gezakt.length} test${gezakt.length === 1 ? '' : 'en'} buiten de fabrieksgrenzen`; }
       else if (krap.length) { niveau = 'let-op'; tekst = `${krap.length} test${krap.length === 1 ? ' zit' : 'en zitten'} krap binnen de grens`; }
+      else if (bruikbaar.length < tests.length) tekst = `${bruikbaar.length} van ${tests.length} monitortests met gegevens, die binnen de grenzen`;
 
       return {
         niveau, tekst,
@@ -439,7 +449,12 @@
       if (!tests.length) return ['Geen mode 06-gegevens op dit voertuig.'];
       const rond = v => Math.round(v * 1000) / 1000;
       const r = [PLM06.samenvat(res).tekst + '.'];
+      // Lege tests (waarde en grens 0) als één regel: zestien keer "0, grens
+      // 0–0" leest voor een klant als zestien metingen, en het zijn er nul.
+      const leeg = tests.filter(t => t.leeg);
+      if (leeg.length) r.push(`${leeg.length} test${leeg.length === 1 ? '' : 's'} zonder gegevens (waarde en grens 0): niet gedraaid of niet ingevuld door de motorcomputer — geen oordeel.`);
       for (const t of tests) {
+        if (t.leeg) continue;
         const g = t.geschaald;
         const w = g ? `${rond(g.waarde)}${g.eenheid ? ' ' + g.eenheid : ''}` : `${t.getoond.waarde} ruw`;
         const gr = g ? `${rond(g.min)}–${rond(g.max)}` : `${t.getoond.min}–${t.getoond.max}`;

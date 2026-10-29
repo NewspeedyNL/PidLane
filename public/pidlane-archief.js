@@ -649,7 +649,7 @@ async function srShare(id){
   try{
     if(typeof plOpslaan==='function'){
       const basis=(r.fname||((typeof _niceReportName==='function')?_niceReportName('txt'):'PidLane-rapport')).replace(/\.(txt|pdf)$/i,'');
-      plOpslaan(basis, r.text, {titel:r.title||'Sessierapport'});
+      plOpslaan(basis, r.text, {titel:r.title||'Sessierapport', ruw:r.type==='txt'});
       return;
     }
   }catch(e){ console.warn('plOpslaan mislukt:', e); }

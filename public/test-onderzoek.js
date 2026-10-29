@@ -535,6 +535,40 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
     eis(!!brand.v.brandstofdruk, 'een opgegeven code zet ook zijn andere verdenkingen in spel (brandstofdruk bij P0171)');
   }
 
+  console.log('\nDe Mazda 5 van 29-10-2026: het rapport waar de klant op afknapte');
+  {
+    // Klacht over de dynamo, motor draaide al 5–15 minuten, codes net gewist,
+    // drie zelftests niet klaar, en zestien mode 06-tests met waarde 0 en
+    // grens 0–0. Het rapport zei "accu vol" op 14,1 V, "16 testen krap" en
+    // "katalysator uitgesloten — krap binnen de grens".
+    const R0 = (mid, tid) => ({ mid, tid, uasId: 0x01, waarde: 0, min: 0, max: 0 });
+    const B = s.PLM06._intern.bouwRecord;
+    const tests = [[0x01, 0x01], [0x01, 0x02], [0x21, 0x80], [0xA2, 0x0B], [0xA2, 0x0C], [0xA3, 0x0B], [0xA3, 0x0C]].map(([m, t]) => B(m, t, 0x01, 0, 0, 0));
+    const scan = { codes: { bevestigd: [], pending: [], permanent: [] }, gelezen: { bevestigd: true, pending: true, permanent: true },
+      readiness: { nietKlaar: ['Katalysator', 'Lambdasonde', 'Lambdasondeverwarming'] }, sinds: { km: 0, warm: 0 } };
+    const st = O.nieuw({ klachten: ['elektrisch'], klachtTekst: 'Twijfels over dynamo' });
+    await O.draai(st, nepAuto({ waarde: gezond(), scan, m06: { tests }, antwoorden: { looptijd: 'midden', koud: 'nee' } }));
+    const t = O.alsTekst(st);
+    eis(!tests.some((x) => x.krap), 'waarde 0 met grens 0–0 is nooit krap', JSON.stringify(tests[0]));
+    eis(tests.every((x) => x.oordeelZeker === false && x.leeg), '… en geeft geen zeker oordeel: het is een lege plek', JSON.stringify(tests[0]));
+    eis(!/krap/.test(t), 'het rapport noemt niets "krap"', (t.match(/.*krap.*/g) || []).join(' | '));
+    eis(/7 tests zonder gegevens/.test(t) && !/grens 0–0/.test(t), 'de lege tests staan als één regel, niet als zeven "metingen"', t.slice(t.indexOf('MONITORTESTS')));
+    eis(!/accu is vol/.test(t), '14,1 V met draaiende motor heet geen "accu vol"', (t.match(/.*rustspanning.*/g) || []).join(' | '));
+    eis(/=== WAT DIT OORDEEL BEPERKT ===[\s\S]*geen rustmeting/.test(t), 'de mislukte rustmeting staat bij wat het oordeel beperkt');
+    eis(/BEPERKT ===[\s\S]*0 km geleden gewist[\s\S]*3 zelftest\(s\) nog niet klaar/.test(t), 'gewiste codes en niet-klare zelftests staan erbij');
+    const nrs = (t.split('=== VERLOOP ===')[1] || '').match(/^ (\d+)\./gm).map((x) => +x.trim().slice(0, -1));
+    eis(nrs.every((n, i) => n === i + 1), 'het verloop telt door zonder gat', nrs.join(','));
+    // Tegenproef: met de motor echt uit blijft het oordeel over de accu staan.
+    const uit = O.nieuw({ klachten: ['elektrisch'] });
+    await O.draai(uit, nepAuto({ waarde: gezond((p, stap) => (p === '0142' && stap === 'rust' ? 12.65 : undefined)), m06: { tests: [s.PLM06._intern.bouwRecord(0x21, 0x01, 0x01, 300, 0, 750)] }, antwoorden: { looptijd: 'midden', koud: 'nee', startgedrag: 'normaal' } }));
+    eis(/rustspanning 12,[67] V — de accu is vol/.test(O.alsTekst(uit)) && !/BEPERKT/.test(O.alsTekst(uit)), 'TEGENPROEF: 12,65 V in rust is gewoon "accu vol", zonder beperking', O.alsTekst(uit).slice(0, 600));
+    // Uitgesloten met het sterkste tegenbewijs, niet het eerste.
+    const kat = O.nieuw({ klachten: ['onrustig'] });
+    kat.v.kat = kat.v.kat || { score: 0, bewijs: [] };
+    kat.v.kat.score = -4; kat.v.kat.bewijs = [{ d: 1, t: 'krap binnen de grens' }, { d: -5, t: 'achterste sonde rustig' }];
+    eis(/Katalysator[^\n]*— achterste sonde rustig/.test(O.alsTekst(kat)), 'uitgesloten toont het sterkste tegenbewijs', (O.alsTekst(kat).match(/.*Katalysator.*/g) || []).join(' | '));
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('  FOUT test brak af: ' + (e.stack || e)); process.exit(1); });

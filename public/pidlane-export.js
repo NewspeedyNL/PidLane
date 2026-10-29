@@ -42,13 +42,60 @@ async function _laadJsPDF() {
   return window.jspdf.jsPDF;
 }
 
-// Emoji en opmaaktekens eruit: jsPDF's standaardlettertypes kennen ze niet en
-// maken er blokjes van.
+// jsPDF's standaardletters (helvetica, courier) kennen alleen WinAnsi
+// (cp1252). Alles daarbuiten wordt geen blokje maar een ánder teken: het
+// minteken U+2212 kwam in het onderzoeksrapport van 29-10-2026 als " uit
+// de PDF, op elke regel tegenbewijs. Eerst vertalen wat betekenis draagt,
+// dan weg wat overblijft — één plek voor élke PDF (ook PLRapport.pdf).
+const _PDF_VERTAAL = { '\u2212': '-', '\u2010': '-', '\u2011': '-', '\u2012': '-', '\u2015': '-', '\u2264': '<=', '\u2265': '>=',
+  '\u2192': '->', '\u2190': '<-', '\u21AA': '->', '\u21D2': '=>', '\u2194': '<->', '\u2248': '~', '\u2260': '!=',
+  '\u25B2': '+', '\u25BC': '-', '\u2713': 'v', '\u2714': 'v', '\u2717': 'x', '\u2718': 'x', '\u2715': 'x', '\u2716': 'x',
+  '\u03BB': 'lambda', '\u0394': 'delta', '\u2103': '°C', '\u2009': ' ', '\u202F': ' ', '\u200B': '' };
+const _WINANSI_EXTRA = '€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ';
+function plPdfTekst(t) {
+  let uit = '';
+  for (const c of String(t == null ? '' : t)) {
+    if (_PDF_VERTAAL[c] !== undefined) { uit += _PDF_VERTAAL[c]; continue; }
+    const n = c.codePointAt(0);
+    if (n === 9 || n === 10 || (n >= 0x20 && n <= 0x7E) || (n >= 0xA0 && n <= 0xFF) || _WINANSI_EXTRA.indexOf(c) >= 0) uit += c;
+    // de rest (emoji, kaderlijnen buiten de tabel hieronder) valt weg
+  }
+  return uit;
+}
+
 function _schoon(t) {
-  return String(t == null ? '' : t)
-    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2100}-\u{214F}\u{2300}-\u{23FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '')
+  return plPdfTekst(String(t == null ? '' : t)
     .replace(/[═─━│┌┐└┘·•]/g, function (c) { return (c === '·' || c === '•') ? '-' : (c === '│' ? '|' : '-'); })
-    .replace(/\*\*/g, '');
+    .replace(/\*\*/g, ''));
+}
+
+// ── de keuring: is dit deelbaar? ───────────────────────────────────
+// Een rapport gaat naar een klant, een garage, een koper. Wat daar niet in
+// hoort is geen opmaakvraag maar een datafout: "NaN V", "undefined", een
+// grens van 0 tot 0 die als oordeel wordt gepresenteerd. Zo'n rapport wordt
+// niet gemaakt — beter geen PDF dan een PDF die de klant laat twijfelen aan
+// alles wat er wél klopt (Mazda 5, 29-10-2026). Ruwe logs (testrun,
+// logboek) zijn diagnose voor ons en worden alleen op leegte gekeurd.
+const _KEURING = [
+  { re: /\b(NaN|undefined|Infinity)\b/, waarom: 'een waarde die niet berekend kon worden' },
+  { re: /\[object [A-Za-z]+\]/, waarom: 'een programmaobject in plaats van tekst' },
+  { re: /(?:^|[\s:=(])null(?:\s?(?:V|%|°C|km|tpm|kPa|g\/s)\b|\s*$)/, waarom: 'een lege meetwaarde' },
+  { re: /grens (-?\d+(?:[.,]\d+)?)\s?[–-]\s?\1(?![\d.,])/, waarom: 'een grens zonder venster (van X tot X) als oordeel' }
+];
+function plKeurExport(tekst, opties) {
+  const o = opties || {};
+  const regels = String(tekst == null ? '' : tekst).split('\n');
+  const redenen = [];
+  if (regels.filter(function (r) { return /[A-Za-z0-9]/.test(r); }).length < 2) redenen.push({ waarom: 'het rapport is leeg', regel: '' });
+  if (!o.ruw) regels.forEach(function (r, i) {
+    _KEURING.forEach(function (k) { if (k.re.test(r)) redenen.push({ waarom: k.waarom, regel: r.trim(), nr: i + 1 }); });
+  });
+  return { ok: !redenen.length, redenen: redenen };
+}
+function _keuringTekst(k) {
+  return 'Dit rapport is niet deelbaar: ' + k.redenen.slice(0, 3).map(function (r) {
+    return r.waarom + (r.regel ? ' ("' + r.regel.slice(0, 60) + '")' : '');
+  }).join('; ') + (k.redenen.length > 3 ? ' en nog ' + (k.redenen.length - 3) : '') + '.';
 }
 
 function _voertuigRegels() {
@@ -66,6 +113,8 @@ function _voertuigRegels() {
 // ── de PDF ─────────────────────────────────────────────────────────
 async function plMaakPdf(bestandsnaam, tekst, opties) {
   const o = opties || {};
+  const k = plKeurExport(tekst, o);
+  if (!k.ok) throw new Error(_keuringTekst(k));
   const jsPDF = await _laadJsPDF();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
@@ -130,49 +179,159 @@ async function plMaakPdf(bestandsnaam, tekst, opties) {
     doc.text(_schoon(o.ondertitel), M, y); y += 7;
   }
 
-  // Inhoud, regel voor regel. Monospace omdat deze logs op uitlijning leunen.
-  doc.setFont('courier', 'normal'); doc.setFontSize(8);
+  // Twee soorten inhoud. Een log (testrun, logboek) leunt op uitlijning en
+  // blijft monospace. Een rapport met === KOPPEN === (onderzoek, foutcodes,
+  // garage) is voor een klant: proportionele letter, echte kopjes, labels
+  // in kleur en tegenbewijs als opsomming. Het onderzoeksrapport van
+  // 29-10-2026 stond als courier-dump met "=== CONCLUSIE ===" erin.
+  const proza = o.proza != null ? !!o.proza : /^=== .+ ===\s*$/m.test(String(tekst || ''));
   const regels = String(tekst || '').split('\n');
-  const regelH = 3.9;
+  const nieuweBlz = function () { doc.addPage(); kopband(); y = 38; };
+  if (proza) _proza(); else _log();
 
-  for (let i = 0; i < regels.length; i++) {
-    const ruw = _schoon(regels[i]).replace(/\t/g, '  ');
+  function _log() {
+    doc.setFont('courier', 'normal'); doc.setFontSize(8);
+    const regelH = 3.9;
+    for (let i = 0; i < regels.length; i++) {
+      const ruw = _schoon(regels[i]).replace(/\t/g, '  ');
 
-    if (y > H - 20) { doc.addPage(); kopband(); y = 38; doc.setFont('courier', 'normal'); doc.setFontSize(8); }
+      if (y > H - 20) { nieuweBlz(); doc.setFont('courier', 'normal'); doc.setFontSize(8); }
 
-    // Scheidingslijnen tekenen in plaats van uitschrijven: veel netter dan een
-    // rij streepjes in courier.
-    if (/^-{10,}$/.test(ruw.trim())) {
-      doc.setDrawColor(LICHT[0], LICHT[1], LICHT[2]);
-      doc.line(M, y - 1.2, W - M, y - 1.2);
-      y += 2.2;
-      continue;
+      // Scheidingslijnen tekenen in plaats van uitschrijven: veel netter dan een
+      // rij streepjes in courier.
+      if (/^-{10,}$/.test(ruw.trim())) {
+        doc.setDrawColor(LICHT[0], LICHT[1], LICHT[2]);
+        doc.line(M, y - 1.2, W - M, y - 1.2);
+        y += 2.2;
+        continue;
+      }
+
+      // Kopjes: HOOFDLETTERREGELS zonder tijdstempel.
+      if (/^[A-Z0-9 —·\-]{6,}$/.test(ruw.trim()) && !/^\[/.test(ruw.trim())) {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
+        doc.setTextColor(BLAUW[0], BLAUW[1], BLAUW[2]);
+        doc.text(ruw.trim(), M, y);
+        doc.setFont('courier', 'normal'); doc.setFontSize(8);
+        y += 5.2;
+        continue;
+      }
+
+      // Statuskleur: de lezer moet in één oogopslag de rode regels zien.
+      if (/\bFOUT\b|\bGEWEIGERD\b|SYNTAXFOUT/.test(ruw)) doc.setTextColor(ROOD[0], ROOD[1], ROOD[2]);
+      else if (/LET OP|LETOP|\bwarn\b/.test(ruw)) doc.setTextColor(ORANJE[0], ORANJE[1], ORANJE[2]);
+      else if (/\bok\b/.test(ruw)) doc.setTextColor(GROEN[0], GROEN[1], GROEN[2]);
+      else doc.setTextColor(DONKER[0], DONKER[1], DONKER[2]);
+
+      // Lange regels (ruwe JSON uit de busstatistiek) afbreken in plaats van
+      // over de rand laten lopen.
+      const stukken = doc.splitTextToSize(ruw, CW);
+      for (let j = 0; j < stukken.length; j++) {
+        if (y > H - 20) { nieuweBlz(); doc.setFont('courier', 'normal'); doc.setFontSize(8); }
+        doc.text(stukken[j], M, y);
+        y += regelH;
+      }
     }
+  }
 
-    // Kopjes: HOOFDLETTERREGELS zonder tijdstempel.
-    if (/^[A-Z0-9 —·\-]{6,}$/.test(ruw.trim()) && !/^\[/.test(ruw.trim())) {
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
-      doc.setTextColor(BLAUW[0], BLAUW[1], BLAUW[2]);
-      doc.text(ruw.trim(), M, y);
-      doc.setFont('courier', 'normal'); doc.setFontSize(8);
-      y += 5.2;
-      continue;
+  function _proza() {
+    const LABELS = { 'let op': ORANJE, 'bevestigd': ROOD, 'waarschijnlijk': ORANJE, 'gezakt': ROOD, 'krap': ORANJE, 'ok': GROEN, 'onzeker': GRIJS };
+    const regelH = 4.5;
+    const breed = function (t) { return typeof doc.getTextWidth === 'function' ? doc.getTextWidth(t) : t.length * 1.7; };
+    // Eén alinea met inspringing, afgebroken op de breedte die overblijft.
+    function alinea(t, x, kleur, stijl) {
+      doc.setFont('helvetica', stijl || 'normal'); doc.setFontSize(9.5);
+      doc.setTextColor(kleur[0], kleur[1], kleur[2]);
+      const stukken = doc.splitTextToSize(t, W - M - x);
+      for (let j = 0; j < stukken.length; j++) {
+        if (y > H - 20) nieuweBlz();
+        doc.setFont('helvetica', stijl || 'normal'); doc.setFontSize(9.5);
+        doc.setTextColor(kleur[0], kleur[1], kleur[2]);
+        doc.text(stukken[j], x, y);
+        y += regelH;
+      }
     }
+    let eersteKop = false;
+    for (let i = 0; i < regels.length; i++) {
+      const ruw = _schoon(regels[i]).replace(/\t/g, '  ');
+      const kaal = ruw.trim();
+      const inspring = M + Math.min(12, (ruw.length - ruw.replace(/^ +/, '').length) * 1.3);
+      if (!kaal) { y += 2; continue; }
+      if (y > H - 20) nieuweBlz();
 
-    // Statuskleur: de lezer moet in één oogopslag de rode regels zien.
-    if (/\bFOUT\b|\bGEWEIGERD\b|SYNTAXFOUT/.test(ruw)) doc.setTextColor(ROOD[0], ROOD[1], ROOD[2]);
-    else if (/LET OP|LETOP|\bwarn\b/.test(ruw)) doc.setTextColor(ORANJE[0], ORANJE[1], ORANJE[2]);
-    else if (/\bok\b/.test(ruw)) doc.setTextColor(GROEN[0], GROEN[1], GROEN[2]);
-    else doc.setTextColor(DONKER[0], DONKER[1], DONKER[2]);
+      // Vóór de eerste kop: de titel en de gegevens van de meting. Wat de
+      // kopband en het voertuigblok al zeggen niet nog eens.
+      if (!eersteKop) {
+        if (/^=== /.test(kaal)) eersteKop = true;
+        else {
+          if (i === 0 && /^PidLane\b/.test(kaal)) continue;
+          const kv = /^([A-Z][^:]{1,30}):\s+(.+)$/.exec(kaal);
+          if (kv && /^voertuig$/i.test(kv[1]) && meta.length) continue;
+          if (kv) {
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+            doc.setTextColor(GRIJS[0], GRIJS[1], GRIJS[2]);
+            doc.text(kv[1].toUpperCase(), M + 5, y);   // lijnt uit met het voertuigblok
+            alinea(kv[2], M + 45, DONKER);
+            continue;
+          }
+          alinea(kaal, M, DONKER, i === 0 ? 'bold' : 'normal');
+          continue;
+        }
+      }
 
-    // Lange regels (ruwe JSON uit de busstatistiek) afbreken in plaats van
-    // over de rand laten lopen.
-    const stukken = doc.splitTextToSize(ruw, CW);
-    for (let j = 0; j < stukken.length; j++) {
-      if (y > H - 20) { doc.addPage(); kopband(); y = 38; doc.setFont('courier', 'normal'); doc.setFontSize(8); }
-      doc.text(stukken[j], M, y);
-      y += regelH;
+      const kop = /^=== (.+) ===$/.exec(kaal);
+      if (kop) {
+        if (y > H - 34) nieuweBlz();          // geen kop als laatste regel van een bladzijde
+        y += 3;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5);
+        doc.setTextColor(BLAUW[0], BLAUW[1], BLAUW[2]);
+        doc.text(kop[1].trim(), M, y);
+        doc.setDrawColor(BLAUW[0], BLAUW[1], BLAUW[2]);
+        doc.line(M, y + 1.6, W - M, y + 1.6);
+        y += 7;
+        continue;
+      }
+
+      // [label] tekst: het label in zijn kleur, vet, dan de tekst.
+      const lab = /^\[([A-Za-z ]+)\]\s*(.*)$/.exec(kaal);
+      if (lab && LABELS[lab[1].toLowerCase()]) {
+        const kl = LABELS[lab[1].toLowerCase()], woord = lab[1].toUpperCase();
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5);
+        doc.setTextColor(kl[0], kl[1], kl[2]);
+        doc.text(woord, inspring, y);
+        const x = inspring + Math.max(breed(woord) + 2.5, 16);
+        alinea(lab[2], x, DONKER, lab[1].toLowerCase() === 'bevestigd' || lab[1].toLowerCase() === 'waarschijnlijk' ? 'bold' : 'normal');
+        continue;
+      }
+
+      // Verloop zonder oordeel (· in de bron): grijs, schuin.
+      if (/^[·•]\s/.test(String(regels[i]).trim())) { alinea(kaal.replace(/^-\s+/, ''), inspring, GRIJS, 'italic'); continue; }
+
+      // Bewijs: + wijst naar een fout, - spreekt hem tegen.
+      const bw = /^([+-])\s+(.*)$/.exec(kaal);
+      if (bw) {
+        const kl = bw[1] === '+' ? ORANJE : GROEN;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
+        doc.setTextColor(kl[0], kl[1], kl[2]);
+        doc.text(bw[1] === '+' ? '+' : '-', inspring, y);
+        alinea(bw[2], inspring + 4, DONKER);
+        continue;
+      }
+
+      // Genummerde stap: het nummer vet.
+      const nr = /^(\d+\.)\s+(.*)$/.exec(kaal);
+      if (nr) {
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
+        doc.setTextColor(BLAUW[0], BLAUW[1], BLAUW[2]);
+        doc.text(nr[1], inspring, y);
+        alinea(nr[2], inspring + 7, DONKER, 'bold');
+        continue;
+      }
+
+      alinea(kaal, inspring, /^(-|vervolg:)/.test(kaal) ? GRIJS : DONKER);
     }
+    // De grens van het instrument, onderaan elk klantrapport.
+    y += 4;
+    alinea('Dit rapport is gemaakt via de diagnosepoort (OBD) en is zo goed als wat de auto daar laat zien. Het vervangt geen onderzoek in de werkplaats.', M, GRIJS, 'italic');
   }
 
   // Voettekst met paginanummers, achteraf zodat het totaal bekend is.
@@ -245,10 +404,21 @@ function _veiligeNaam(ruw, terugval) {
   return t;
 }
 
+// Niet deelbaar: zeggen waarom, en geen bestand. Ook geen tekstbestand als
+// uitwijk — dezelfde fout staat daar net zo in.
+function _weiger(k) {
+  const t = _keuringTekst(k);
+  console.warn('Export geweigerd:', k.redenen);
+  try { if (typeof showToast === 'function') showToast(t); } catch (e) { console.warn('melding mislukt:', e); }
+  return t;
+}
+
 function plOpslaan(basisnaam, tekst, opties) {
   const o = opties || {};
   const bestaand = document.getElementById('plExportOv');
   if (bestaand) bestaand.remove();
+  const keuring = plKeurExport(tekst, o);
+  if (!keuring.ok) { _weiger(keuring); return false; }
 
   const ov = document.createElement('div');
   ov.id = 'plExportOv';
@@ -349,6 +519,8 @@ function plOpslaan(basisnaam, tekst, opties) {
 // rapport → 📕 PDF). Zelfde opmaak en dezelfde uitgang als de PDF-knop hierboven.
 async function plOpslaanPdf(basisnaam, tekst, opties) {
   const naam = _veiligeNaam(basisnaam, 'PidLane-rapport');
+  const keuring = plKeurExport(tekst, opties);
+  if (!keuring.ok) { _weiger(keuring); return false; }
   const blob = await plMaakPdf(naam + '.pdf', tekst, opties || {});
   await _bewaar(blob, naam + '.pdf', null);
 }
@@ -356,6 +528,8 @@ async function plOpslaanPdf(basisnaam, tekst, opties) {
 window.plOpslaan = plOpslaan;
 window.plOpslaanPdf = plOpslaanPdf;
 window.plMaakPdf = plMaakPdf;
+window.plKeurExport = plKeurExport;
+window.plPdfTekst = plPdfTekst;
 // Los ontsloten zodat test-export.js de schoonmaak op de echte functie kan
 // toetsen in plaats van op een kopie ervan.
 window._plVeiligeNaam = _veiligeNaam;

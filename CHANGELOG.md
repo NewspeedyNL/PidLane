@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 29-10-2026 — Rapporten: gekeurd vóór ze de deur uitgaan
+ ═══════════════════════════════════════════════════════════
+
+ - Elke export gaat door plKeurExport(): NaN, undefined, [object …], een
+   lege meetwaarde of een grens van X tot X geeft geen bestand maar een
+   melding met de reden. Ook PLRapport.pdf (AI-, aankoop-, accurapport).
+   Testrun en logboek (ruwe logs) alleen op leegte.
+ - PDF: een rapport met === KOPPEN === wordt opgemaakt (kopjes, gekleurde
+   labels, bewijs als opsomming, de grens van OBD onderaan) in plaats van
+   een courier-dump. Alle tekst door plPdfTekst(): het minteken werd een ".
+ - Onderzoek: rustspanning boven 13,2 V is geen rustmeting; nieuw blok
+   "Wat dit oordeel beperkt"; de conclusie zegt wat bij de klacht in orde
+   is; uitgesloten met het sterkste tegenbewijs; verloop zonder gaten.
+ - Mode 06: waarde en grens 0 is een lege test, geen "krap".
+
+ ═══════════════════════════════════════════════════════════
  29-10-2026 — De deur in de Hyperlane-look
  ═══════════════════════════════════════════════════════════
 
