@@ -308,6 +308,10 @@
         finishLogin(k.email || email, { role: 'klant', label: k.naam || k.email || email, apiKey: '' });
       }
     } catch (e) { _log('finishLogin faalde: ' + e.message, 'warn'); }
+    // Testaccount met Schone start (beheer → Klanten): de Worker wiste het
+    // platform al, PLSchoon wist het toestel en herstart de app.
+    try { if (k.schoneStart === true && window.PLSchoon) PLSchoon.naLogin(k); }
+    catch (e) { _log('Schone start na inloggen mislukt: ' + e.message, 'warn'); }
     _log('Klantlogin ok \u2014 ' + (k.email || email) + ', ' + (k.saldo || 0) + ' tokens', 'ok');
 
     // Proeftegoed nog niet opgehaald, of het akkoord staat nog op de
@@ -814,7 +818,7 @@
       try { admin = (typeof magOntwikkelen === 'function') ? magOntwikkelen() : ((typeof isAdmin === 'function') && isAdmin()); } catch(e){ console.warn('magOntwikkelen mislukt:', e); }
       // De kaart "Bulk-recorder" in de deur Live data hoort hier sinds #478
       // niet meer bij: de recorder is voor iedereen.
-      ['admGroupBtn', 'admGroup'].forEach(function (id) {
+      ['admGroupBtn', 'admGroup', 'kbSchoon'].forEach(function (id) {
         const el = document.getElementById(id);
         if (el) el.style.display = admin ? '' : 'none';
       });

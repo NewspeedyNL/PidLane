@@ -1744,8 +1744,11 @@ var D1_TABELLEN = {
       Email: "t", PassHash: "t", Saldo: "n", TotaalGekocht: "n", Naam: "t", Status: "t",
       ResetToken: "t", ResetVerloopt: "t", Aangemaakt: "t", LaatsteLogin: "t", Opmerking: "t",
       Akkoorden: "j", Audit: "t", AkkoordOp: "t", StartTegoedGegeven: "b", VerwijderdOp: "t",
-      Ontwikkelaar: "b", TegoedUit: "b"
+      Ontwikkelaar: "b", TegoedUit: "b", SchoneStart: "b"
     },
+    // Kolommen die er na de overzet bij kwamen. CREATE TABLE IF NOT EXISTS
+    // voegt op een bestaande tabel niets toe; d1Tabel() zet ze er met ALTER bij.
+    later: ["SchoneStart"],
     indexen: [
       'CREATE INDEX IF NOT EXISTS idx_klanten_email ON klanten (LOWER("Email"))',
       'CREATE INDEX IF NOT EXISTS idx_klanten_status ON klanten ("Status")'
@@ -1892,6 +1895,10 @@ async function d1Tabel(env, sleutel) {
   if (!db) throw new Error("d1_geen_logdb");
   if (!_d1TabelKlaar.has(sleutel)) {
     for (const st of [...CONFIG_SCHEMA, ...d1TabelSchema(def)]) await db.prepare(st).run();
+    for (const v of def.later || []) {
+      try { await db.prepare(`ALTER TABLE ${def.d1} ADD COLUMN "${v}" ${D1_SOORT[def.velden[v]]}`).run(); }
+      catch (e) { if (!/duplicate column/i.test(String(e && e.message || e))) throw e; }
+    }
     const al = await db.prepare("SELECT 1 AS j FROM d1_overzet WHERE naam = ?").bind(sleutel).first();
     if (!al && env.AIRTABLE_TOKEN) await d1Overzet(env, db, sleutel, def);
     _d1TabelKlaar.add(sleutel);
@@ -3274,7 +3281,9 @@ function klantPubliek(rec) {
     // ontwikkeltools krijgt (testrun, bulk-recorder, survey). Blijft klant:
     // eigen voertuigen, eigen tegoed, geen beheer en geen andere klanten.
     ontwikkelaar: f.Ontwikkelaar === true,
-    tegoedUit: klantTegoedUit(f)
+    tegoedUit: klantTegoedUit(f),
+    // Zegt de app dat ook het toestel leeg moet (PLSchoon.naLogin).
+    schoneStart: f.SchoneStart === true
   };
 }
 __name(klantPubliek, "klantPubliek");
@@ -3460,6 +3469,11 @@ async function handleKlantLogin(request, env, ctx) {
     werk.push(klantPatch(env, rec.id, { LaatsteLogin: new Date().toISOString() }));
     const job = Promise.all(werk).catch(() => {});
     if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job;
+
+    // Schone start (29-10-2026): een testaccount begint bij elke login leeg.
+    // Wissen vóór het antwoord, niet in waitUntil: de app laadt Mijn
+    // voertuigen meteen na de login, en mag dan niets van de vorige keer zien.
+    if (f.SchoneStart === true) await klantSchoneStart(env, email);
 
     const t = await makeToken(env, email, "klant", f.Naam || email);
     return json({ ok: true, ...t, klant: klantPubliek(rec) });
@@ -3790,6 +3804,7 @@ async function handleAdminKlantenGet(request, env) {
         heeftReset: !!f.ResetToken,
         ontwikkelaar: f.Ontwikkelaar === true,
         tegoedUit: f.TegoedUit === true,
+        schoneStart: f.SchoneStart === true,
         // De verwijderwachtrij. definitiefOp is afgeleid en niet opgeslagen:
         // één bron (VerwijderdOp) plus één termijn (KLANT_BEWAARDAGEN), zodat
         // de pagina niet zelf kan gaan rekenen en er twee antwoorden ontstaan.
@@ -4034,6 +4049,13 @@ async function handleAdminKlantenPost(request, env, ctx) {
       if (b.ontwikkelaar !== undefined) {
         if (b.ontwikkelaar !== true && b.ontwikkelaar !== false) return json({ ok: false, error: "ontwikkelaar is true of false." }, 400);
         f.Ontwikkelaar = b.ontwikkelaar;
+      }
+      // Schone start: dit account wist bij elke login zijn voertuigen, ritten
+      // en rapporten. Zelfde eis van een echte true/false — een "ja" uit een
+      // kapotte pagina mag niemands gegevens laten wissen.
+      if (b.schoneStart !== undefined) {
+        if (b.schoneStart !== true && b.schoneStart !== false) return json({ ok: false, error: "schoneStart is true of false." }, 400);
+        f.SchoneStart = b.schoneStart;
       }
       // Tegoed uit: zelfde eis van een echte true/false. Aan kan alleen bij een
       // klant die ontwikkelaar is of het in dit verzoek wordt; Ontwikkelaar
@@ -5990,15 +6012,30 @@ async function kpBibStem(db, id, klantId, uitkomst) {
 }
 __name(kpBibStem, "kpBibStem");
 
-async function kpAlleWissen(db, klantId) {
+var KP_KLANT_TABELLEN = ["kp_rapport", "kp_rit", "kp_tank", "kp_issue", "kp_voertuig", "kp_voorkeur", "kp_pid_stem", "kp_meekijk", "kp_akkoord"];
+async function kpAlleWissen(db, klantId, o = {}) {
   const uit = {};
-  for (const t of ["kp_rapport", "kp_rit", "kp_tank", "kp_issue", "kp_voertuig", "kp_voorkeur", "kp_pid_stem", "kp_meekijk", "kp_akkoord"]) {
+  for (const t of KP_KLANT_TABELLEN) {
+    if (o.behoudAkkoord && t === "kp_akkoord") continue;
     const r = await db.prepare("DELETE FROM " + t + " WHERE klant_id = ?").bind(klantId).run();
     uit[t] = (r && r.meta && r.meta.changes) || 0;
   }
   return uit;
 }
 __name(kpAlleWissen, "kpAlleWissen");
+
+// Schone start bij het inloggen (29-10-2026). Wist wat dit account op het
+// platform heeft, met dezelfde lijst als "Alles wissen". Het akkoord blijft:
+// dat is een toestemming van de persoon, geen gegeven van een auto, en anders
+// vraagt elke testlogin het opnieuw. Tegoed en account staan in `klanten` en
+// worden hier niet geraakt. De gedeelde PID-bibliotheek (kp_pid_bib) ook niet:
+// die hoort bij merk en model, niet bij deze klant.
+async function klantSchoneStart(env, email) {
+  const db = env.LOGDB;
+  await kpSchema(db);
+  return kpAlleWissen(db, await kpKlantId(email), { behoudAkkoord: true });
+}
+__name(klantSchoneStart, "klantSchoneStart");
 
 // ── Voorkeuren: wat een klant standaard wil bij het inloggen ────────
 // Eén object per klant. Alleen wat hier staat komt de tabel in; een sleutel
