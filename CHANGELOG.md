@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 29-10-2026 — De deur in de Hyperlane-look
+ ═══════════════════════════════════════════════════════════
+
+ - Intro, inloggen en verbinden (adapterkeuze, kenteken, protocol, PIDs)
+   in de look van Hyperlane: neon-tunnel in CSS achter glazen kaarten met
+   een lopende neonrand, woordmerk in ijsblauw-violet, lichtbalk-knoppen.
+ - Het golflint is verborgen. De tunnel valt na ruim een minuut stil en
+   staat meteen stil bij minder beweging (test-hyperlanedeur.js).
+
+ ═══════════════════════════════════════════════════════════
  28-10-2026 — Laatste loodjes: vorm, lagen, geen dubbele meters
  ═══════════════════════════════════════════════════════════
 
