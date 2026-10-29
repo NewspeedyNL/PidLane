@@ -4062,6 +4062,7 @@ body[data-rijvorm="compact"] #rijModus .rij-tip { grid-column:1 / 3; }
 .rem-klant-vraag h3 { margin:0 0 6px; font-size:15px; }
 .rem-klant-vraag ul { margin:4px 0 6px 18px; padding:0; }
 .rem-klant-niveau { margin-top:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.rem-koppelcode { font:800 22px ui-monospace,monospace; letter-spacing:.15em; }
 #remExpertOv.pl-expertwerk #remExpConn, #remExpertOv.pl-expertwerk #remExpLive { max-width:1400px; }
 #remExpertOv.pl-expertwerk .rem-grid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
 .ew { display:grid; grid-template-columns:minmax(260px, 1fr) minmax(300px, 1.2fr) minmax(340px, 1.4fr); gap:14px; align-items:start; margin:4px 0 16px; max-width:1400px; }

@@ -14,6 +14,30 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 29-10-2026 — De vaste expert: waarom een koppelcode en een eigen akkoord (#646)
+
+**Waarom geen inlognaam.** De klant had de inlognaam van de expert kunnen
+typen, maar dat is de helft van diens inloggegevens. De expert maakt nu een
+code van één keer, en de klant ziet alleen de naam van de expert.
+
+**Waarom de expert zijn eigen sessie laat zien.** De meekijkcode is van
+iedereen die hem hoort. Volledige toegang hangt daarom niet aan de code, maar
+aan de ondertekende sessie van de expert (`identiteit {token}`), die de Durable
+Object zelf controleert met `SESSION_SECRET`. Zo krijgt een ander die de code
+krijgt nooit de vaste toegang. Het token gaat over de open WebSocket en niet
+in de URL, zodat het niet in de toegangslogs terechtkomt.
+
+**Waarom een eigen akkoord en geen nieuwe versie van Mijn voertuigen.** De
+verwerking verandert alleen voor wie koppelt. Een nieuwe `KP_AKKOORD_VERSIE`
+had elke klant opnieuw laten akkoorden voor iets wat hij niet gebruikt. De
+koppeling bewaart de versie van de tekst (`tekst_versie`); verandert die
+tekst, dan krijgt hij een nieuwe `KP_EXPERT_VERSIE`.
+
+**Inleren alleen lokaal.** De inleerlijst (`pl_ingeleerd`) staat op het
+toestel, met als sleutel per auto de WMI plus merk, model en jaar, en nooit de
+VIN (§7). Is hij gewist, dan wordt de auto één keer te veel ingeleerd; dat is
+alleen tijd.
+
 ## 29-10-2026 — Expert op afstand: de eerste opening gaf een lege auto (#645)
 
 **Wat er misging.** Een klant die de app voor het eerst opent en meteen de

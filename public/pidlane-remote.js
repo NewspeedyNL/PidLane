@@ -6,7 +6,7 @@ window.PLRemote=(function(){
   'use strict';
   const S={mode:null,ws:null,sess:null,stopFlag:false,dirty:{},flushT:null,recT:null,backoff:1000,exp:0,
            ews:null,expJoin:null,expStop:false,expClosed:false,backoffE:1000,recTE:null,expMeta:null,vals:{},lastExpN:0,pending:{},vstate:null,
-           niveau:'basis',blijvend:false,expNiveau:null,expBlijvend:false};
+           niveau:'basis',blijvend:false,expNiveau:null,expBlijvend:false,expVast:null};
   const $=id=>document.getElementById(id);
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   // De tegenhanger van esc() voor de cijferkolommen. esc() stond wél op de
@@ -179,7 +179,12 @@ window.PLRemote=(function(){
       S.lastExpN=n;return;}
     if(m.type==='closed'){S.stopFlag=true;setShareStat('Sessie gesloten.');endShareUi();return;}
     if(m.type==='vstate-rejected'){logA('⚠ Voertuigprofiel niet bij de expert aangekomen ('+(m.reason||'?')+', '+(m.bytes|0)+' van '+(m.max|0)+' tekens)','warn');return;}
-    if(/^request-/.test(m.type)&&!verzoekToegestaan(m,S.niveau)){
+    if(m.type==='vast'){K.vast={id:String(m.id||''),naam:String(m.naam||'je vaste expert').slice(0,80)};
+      klantLog(K.vast.naam+' kijkt mee met je vaste toegang');logA('🔓 Vaste expert verbonden: '+K.vast.naam,'info');klantTeken();return;}
+    // Een verzoek van een vaste expert (#646) draagt vast:true. Dat zet de
+    // Worker erop na de controle van de ondertekende sessie; de klant zag de
+    // koppeling bij het maken en ziet hem in het meekijkscherm.
+    if(/^request-/.test(m.type)&&!verzoekToegestaan(m,m.vast===true?'volledig':S.niveau)){
       sendWs({type:'response',reqId:m.reqId,data:{geweigerd:'geen_toestemming',nodig:verzoekNiveau(m)}});
       logA('🔒 Verzoek van de expert vraagt volledige toegang: '+m.type,'info');return;}
     if(m.type==='request-toestemming'){vraagToestemming(m);return;}
@@ -293,6 +298,21 @@ window.PLRemote=(function(){
     klantTeken();
   }
   function terugNaarBasis(){zetNiveau('basis',false,'je zette de toegang terug op basis');}
+  // #646: de vaste toegang intrekken — in deze sessie én de koppeling zelf.
+  async function vastIntrekken(){
+    const v=K.vast;if(!v)return;
+    try{if(typeof confirm==='function'&&!confirm('De koppeling met '+v.naam+' intrekken? Daarna heeft deze expert alleen nog de toegang die je per keer geeft.'))return;}catch(_){ /* stil: geen dialoog, dan gewoon doorgaan */ }
+    sendWs({type:'toestemming',niveau:S.niveau,blijvend:S.blijvend,vastIntrekken:true});
+    K.vast=null;klantLog('je trok de vaste toegang van '+v.naam+' in');
+    try{
+      const r=await plFetch('/klant/platform',{method:'POST',json:{actie:'expert_ontkoppel',id:v.id}});
+      const d=await r.json();
+      if(!r.ok||!d.ok)throw new Error(d.error||('HTTP '+r.status));
+      _vast.experts=d.experts||[];
+      logA('🔒 Koppeling met '+v.naam+' ingetrokken','ok');
+    }catch(e){logA('⚠ Koppeling niet ingetrokken op de server — doe het in Mijn voertuigen → Vaste expert: '+((e&&e.message)||e),'warn');}
+    klantTeken();
+  }
 
   /* De snelle scan (basis): wat de auto zelf al weet — foutcodes in alle
      drie de soorten, de zelftests, het freeze frame, de km sinds het wissen
@@ -349,11 +369,21 @@ window.PLRemote=(function(){
   }
   async function answerKaart(m){
     const rid=m.reqId;
-    if(S.kaartBezig){sendWs({type:'response',reqId:rid,data:{kaart:'bezig'}});return;}
-    if(!verbondenMetAuto()){sendWs({type:'response',reqId:rid,data:{kaart:'niet-verbonden'}});return;}
+    klantLog('de app brengt je auto volledig in kaart voor de expert (enkele minuten) — laat de auto stil staan');
+    const u=await volledigeKaart(d=>sendWs({type:'response',reqId:rid,data:d}));
+    if(u.kaart==='rijdt')klantLog('volledige kaart niet gestart: '+u.err);
+    else if(u.kaart==='klaar')klantLog('volledige kaart klaar: '+u.pids+' sensoren');
+    sendVState();
+    sendWs({type:'response',reqId:rid,data:u});
+  }
+  // De kaart zelf, los van wie erom vroeg: de expert in een sessie, of het
+  // inleren bij de eerste koppeling voor een vaste expert (#646).
+  async function volledigeKaart(stap){
+    if(S.kaartBezig)return {kaart:'bezig'};
+    if(!verbondenMetAuto())return {kaart:'niet-verbonden'};
     let kmh=null;try{kmh=(typeof pidVals!=='undefined')?pidVals['010D']:null;}catch(_){ /* stil: onbekend telt als stilstand */ }
     const mk=magKaart(kmh);
-    if(!mk.mag){sendWs({type:'response',reqId:rid,data:{kaart:'rijdt',err:mk.waarom}});klantLog('volledige kaart niet gestart: '+mk.waarom);return;}
+    if(!mk.mag)return {kaart:'rijdt',err:mk.waarom};
     S.kaartBezig=true;
     const t0=Date.now(),fouten=[];
     let voor=0;try{voor=supportedPIDs.size;}catch(_){ /* stil: dan 0 */ }
@@ -363,19 +393,71 @@ window.PLRemote=(function(){
       ['monitortests (mode 06)',async()=>{if(!window.PLM06)throw new Error('niet geladen');const r=await PLM06.scan();PLM06.bewaarInSessie(r);}],
       ['foutcodes en zelftests',async()=>{if(heeftScan())return;if(!window.PLFoutcodes)throw new Error('niet geladen');if(!await PLFoutcodes.scan())throw new Error('niet uitgelezen');}]
     ];
-    klantLog('de app brengt je auto volledig in kaart voor de expert (enkele minuten) — laat de auto stil staan');
-    logA('🗺 Volledige kaart voor de expert gestart','warn');
+    logA('🗺 Volledige kaart gestart','warn');
     try{
       for(let i=0;i<stappen.length;i++){
-        sendWs({type:'response',reqId:rid,data:{kaart:'stap',stap:stappen[i][0],nr:i+1,van:stappen.length}});
+        try{stap({kaart:'stap',stap:stappen[i][0],nr:i+1,van:stappen.length});}catch(e){console.warn('Voortgang van de kaart niet gemeld',e);}
         try{await stappen[i][1]();}catch(e){fouten.push(stappen[i][0]+': '+String((e&&e.message)||e));}
       }
     }finally{S.kaartBezig=false;}
     let na=0;try{na=supportedPIDs.size;}catch(_){ /* stil: dan 0 */ }
-    sendVState();
-    sendWs({type:'response',reqId:rid,data:{kaart:'klaar',pids:na,erbij:Math.max(0,na-voor),ms:Date.now()-t0,fouten:fouten}});
-    klantLog('volledige kaart klaar: '+na+' sensoren');
     logA('🗺 Volledige kaart klaar — '+na+' sensoren'+(fouten.length?' · '+fouten.join('; '):''),fouten.length?'warn':'ok');
+    return {kaart:'klaar',pids:na,erbij:Math.max(0,na-voor),ms:Date.now()-t0,fouten:fouten};
+  }
+
+  /* Inleren voor een vaste expert (#646). Heeft de klant een verkoper of
+     garage gekoppeld, dan brengt de app de auto bij de eerste verbinding één
+     keer volledig in kaart — dan staat alles er al als de klant belt. Per
+     auto één keer (pl_ingeleerd); de koppeling zelf staat op de server.
+     Niet in demo, niet als expert op afstand, niet rijdend. De sleutel per
+     auto is de WMI plus het merk en model: nooit de VIN (§7). */
+  const INLEER_SLEUTEL='pl_ingeleerd',INLEER_WACHT_MS=20000;
+  const _vast={experts:null,laadt:false,t:null};
+  function inleerSleutel(v){
+    v=v||{};
+    const wmi=String(v.vin||'').toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'').slice(0,3);
+    const k=[v.merk,v.model,v.year].map(x=>String(x||'').trim().toLowerCase()).filter(Boolean).join('|');
+    return k?((wmi.length===3?wmi+'|':'')+k):null;
+  }
+  // Puur: moet deze auto nog ingeleerd worden?
+  function moetInleren(o){
+    if(!o||!o.verbonden||o.demo||o.remote||!o.sleutel)return false;
+    if(!Array.isArray(o.experts)||!o.experts.length)return false;
+    return !(o.gedaan&&o.gedaan[o.sleutel]);
+  }
+  function inleerGedaan(){try{return JSON.parse(localStorage.getItem(INLEER_SLEUTEL)||'{}')||{};}catch(e){console.warn('Inleerlijst niet te lezen',e);return {};}}
+  function inleerMerk(sl){const g=inleerGedaan();g[sl]=new Date().toISOString();try{localStorage.setItem(INLEER_SLEUTEL,JSON.stringify(g));}catch(e){console.warn('Inleren niet bewaard — de volgende verbinding probeert het opnieuw',e);}}
+  async function vasteExperts(){
+    if(_vast.experts||_vast.laadt)return _vast.experts||[];
+    let klant=false;try{klant=!!(window.PLKlant&&PLKlant.isKlant());}catch(_){ /* stil: dan geen klant */ }
+    if(!klant||typeof plFetch!=='function')return [];
+    _vast.laadt=true;
+    try{
+      const r=await plFetch('/klant/platform',{method:'POST',json:{actie:'experts'}});
+      const d=await r.json();
+      // Zonder akkoord op Mijn voertuigen kan er geen koppeling zijn: dan leeg.
+      _vast.experts=(r.ok&&d.ok&&Array.isArray(d.experts))?d.experts:[];
+    }catch(e){console.warn('Vaste experts niet opgehaald — dan geen inleren deze keer',e);_vast.experts=null;}
+    finally{_vast.laadt=false;}
+    return _vast.experts||[];
+  }
+  function inlerenNaVerbinden(){
+    clearTimeout(_vast.t);
+    _vast.t=setTimeout(async()=>{
+      try{
+        let demo=false;try{demo=(typeof demoMode!=='undefined')&&!!demoMode;}catch(_){ /* stil: dan geen demo */ }
+        let conn=false;try{conn=(typeof connected!=='undefined')&&!!connected;}catch(_){ /* stil: dan niet verbonden */ }
+        const sl=inleerSleutel((typeof vehicleInfo!=='undefined'&&vehicleInfo)||{});
+        if(!conn||demo||window._remoteVehicleMode||!sl)return;
+        const ex=await vasteExperts();
+        if(!moetInleren({verbonden:conn,demo:demo,remote:!!window._remoteVehicleMode,sleutel:sl,experts:ex,gedaan:inleerGedaan()}))return;
+        const naam=ex.map(e=>e.naam).join(', ');
+        try{showToast?.('🗺 PidLane leert je auto kennen voor '+naam+' — enkele minuten, laat de auto stil staan');}catch(_){ /* stil: melding mag nooit de stroom breken */ }
+        const u=await volledigeKaart(()=>{});
+        if(u.kaart==='klaar'){inleerMerk(sl);sendVStateSoon();try{showToast?.('✓ Je auto is ingeleerd voor '+naam);}catch(_){ /* stil: melding mag nooit de stroom breken */ }}
+        else logA('🗺 Inleren voor '+naam+' niet gedaan: '+u.kaart+(u.err?' — '+u.err:'')+' (de volgende verbinding probeert het opnieuw)','info');
+      }catch(e){logA('⚠ Inleren voor de vaste expert mislukt: '+((e&&e.message)||e),'warn');}
+    },INLEER_WACHT_MS);
   }
 
   /* ── VOERTUIGPROFIEL (vstate) ─────────────────────────────────────
@@ -638,7 +720,7 @@ window.PLRemote=(function(){
     try{logUsage('remote_share_stop',(S.sess&&S.sess.sessionId)||'');}catch(_){ console.warn('Gebruiksstatistiek remote_share_stop niet gelogd', _); }
   }
   function endShareUi(){S.mode=null;S.ws=null;showPill(false);klantDicht();K.verborgen=false;K.log=[];K.waarden={};K.laatsteT=0;
-    K.vraag=null;S.niveau='basis';S.blijvend=false;
+    K.vraag=null;K.vast=null;S.niveau='basis';S.blijvend=false;
     $('remShareOn').style.display='none';$('remShareOff').style.display='';$('remShareErr').textContent='';
     try{$('remQr').innerHTML='';}catch(_){ /* stil: element kan al weg zijn */ }
     try{$('remShort').value='';$('remShort').placeholder='··· ··· ····';}catch(_){ /* stil: element kan al weg zijn */ }}
@@ -651,7 +733,7 @@ window.PLRemote=(function(){
      niets meer — open laten staan is dus de beste hulp die de klant kan geven.
      (2) Het is andermans auto: wie meekijkt en wat hij doet hoort zichtbaar
      te zijn. Verbergen mag; de pill brengt het scherm terug. */
-  const K={log:[],waarden:{},laatsteT:0,verborgen:false,t:null,wegT:0,vraag:null};
+  const K={log:[],waarden:{},laatsteT:0,verborgen:false,t:null,wegT:0,vraag:null,vast:null};
   // Puur: één expert-verzoek als zin voor de klant, of null.
   function klantActie(m){
     if(!m||typeof m!=='object')return null;
@@ -688,7 +770,7 @@ window.PLRemote=(function(){
     const acties=st.log.map(l=>'<div class="rem-klant-l"><span>'+esc(l.tijd)+'</span> '+esc(l.tekst)+'</div>').join('');
     return klantVraagHtml(st.vraag)+'<div class="rem-h"><h3>👁 '+(st.n===1?'Een expert kijkt mee':esc(st.n)+' experts kijken mee')+'</h3><button class="rem-x" onclick="PLRemote.klantVerberg()" title="Verbergen — de pill bovenin brengt dit scherm terug">✕</button></div>'
       +'<div class="rem-klant-st" style="border-color:'+kleur+'"><span class="rem-klant-dot" style="background:'+kleur+'"></span>'+esc(st.status.tekst)+'</div>'
-      +klantNiveauHtml(st.niveau,st.blijvend)
+      +klantNiveauHtml(st.niveau,st.blijvend,st.vast)
       +'<div class="rem-lbl" style="margin-top:12px">Wat de expert ziet</div>'
       +(rijen||'<div class="rem-stat">Nog geen waarden verstuurd.</div>')
       +'<div class="rem-lbl" style="margin-top:12px">Wat de expert doet</div>'
@@ -712,7 +794,9 @@ window.PLRemote=(function(){
       +'</div>';
   }
   // Puur (#645): welk niveau de expert nu heeft.
-  function klantNiveauHtml(niveau,blijvend){
+  function klantNiveauHtml(niveau,blijvend,vast){
+    if(vast)return '<div class="rem-stat rem-klant-niveau">🔓 Vaste toegang voor '+esc(vast.naam)+' — tot je de koppeling intrekt'
+      +' <button class="rem-btn danger" onclick="PLRemote.vastIntrekken()">Koppeling intrekken</button></div>';
     if(niveau==='volledig')return '<div class="rem-stat rem-klant-niveau">🔓 Volledige toegang'+(blijvend?' — tot je stopt met delen':' — vervalt bij een verbindingsprobleem')
       +' <button class="rem-btn" onclick="PLRemote.terugNaarBasis()">Terug naar basis</button></div>';
     return '<div class="rem-stat rem-klant-niveau">🔒 Basistoegang: meekijken, waarden en foutcodes lezen, snelle scan</div>';
@@ -738,7 +822,7 @@ window.PLRemote=(function(){
     // De open vraag niet elke seconde hertekenen: dan springt het vinkje terug.
     const vink=$('remKlantBlijvend'),aan=!!(vink&&vink.checked);
     c.innerHTML=klantHtml({n:S.lastExpN|0,status:klantStatus(Date.now(),K.laatsteT,verbonden),waarden:klantWaarden(),log:K.log,
-      niveau:S.niveau,blijvend:S.blijvend,vraag:K.vraag});
+      niveau:S.niveau,blijvend:S.blijvend,vraag:K.vraag,vast:K.vast});
     if(aan){const v2=$('remKlantBlijvend');if(v2)v2.checked=true;}
   }
   function klantToon(){
@@ -951,7 +1035,10 @@ window.PLRemote=(function(){
     ws.onopen=()=>{S.backoffE=1000;$('remExpErr').textContent='';
       if(!S.lastFrameT)S.lastFrameT=Date.now(); // ijkpunt: ook "nooit iets ontvangen" wordt na STIL_MS gemeld
       $('remExpConn').style.display='none';$('remExpLive').style.display='';
-      setExpStat('✅ Live verbonden — sessie '+j.sid);};
+      setExpStat('✅ Live verbonden — sessie '+j.sid);
+      // #646: laat de eigen sessie zien; is dit de vaste expert van de klant,
+      // dan geeft de Worker volledige toegang. Anders verandert er niets.
+      if(tok())try{ws.send(JSON.stringify({type:'identiteit',token:tok()}));}catch(e){console.warn('Identiteit niet naar de sessie gestuurd',e);}};
     ws.onmessage=ev=>{let m;try{m=JSON.parse(ev.data);}catch(_){return;}handleExpMsg(m);};
     ws.onclose=(ev)=>{
       if(S.expStop||S.expClosed)return;
@@ -965,8 +1052,9 @@ window.PLRemote=(function(){
     ws.onerror=()=>{};
   }
   function handleExpMsg(m){
-    if(m.type==='toestemming'){S.expNiveau=m.niveau==='volledig'?'volledig':'basis';S.expBlijvend=!!m.blijvend;
-      expLog(S.expNiveau==='volledig'?('🔓 Volledige toegang van de klant'+(S.expBlijvend?' (tot hij stopt met delen)':'')):'🔒 Toegang staat op basis');
+    if(m.type==='identiteit')return;
+    if(m.type==='toestemming'){S.expNiveau=m.niveau==='volledig'?'volledig':'basis';S.expBlijvend=!!m.blijvend;S.expVast=m.vast===true?String(m.naam||''):(m.vast===false?null:S.expVast);
+      expLog(S.expVast!=null?'🔓 Vaste toegang: je bent de gekoppelde expert van deze klant':S.expNiveau==='volledig'?('🔓 Volledige toegang van de klant'+(S.expBlijvend?' (tot hij stopt met delen)':'')):'🔒 Toegang staat op basis');
       toegangTeken();return;}
     if(m.type==='meta'){S.expMeta=m.meta;
       S.expNiveau=(m.meta&&m.meta.niveau)||null;S.expBlijvend=!!(m.meta&&m.meta.blijvend);toegangTeken();
@@ -1209,15 +1297,17 @@ window.PLRemote=(function(){
   function toegangTeken(){
     const el=$('remToegang');if(!el)return;
     const n=S.expNiveau;
-    const tekst=n==null?'Toegang: zonder niveaus (de app van de klant is ouder dan 29-10-2026)'
+    const vast=S.expVast!=null;
+    const tekst=vast?'🔓 Vaste toegang — je bent de gekoppelde expert van deze klant'
+      :n==null?'Toegang: zonder niveaus (de app van de klant is ouder dan 29-10-2026)'
       :n==='volledig'?('🔓 Volledige toegang'+(S.expBlijvend?' — tot de klant stopt met delen':' — vervalt bij een verbindingsprobleem'))
       :'🔒 Basistoegang: meekijken, waarden en foutcodes lezen, snelle scan';
     let dek='';
     try{if(window.PLExpertWerk&&PLExpertWerk.dekkingHtml)dek=PLExpertWerk.dekkingHtml(S.vstate);}catch(_){ console.warn('Dekking niet getekend', _); }
     el.innerHTML='<div class="rem-stat">'+esc(tekst)+'</div>'
       +'<div class="rem-flex"><button class="rem-btn" onclick="PLRemote.reqSnelscan()">🔍 Snelle scan</button>'
-      +'<button class="rem-btn"'+(n==='basis'?' disabled title="Vraagt volledige toegang"':'')+' onclick="PLRemote.reqKaart()">🗺 Volledig in kaart</button></div>'
-      +(n==='basis'?'<div class="rem-flex" style="margin-top:6px"><input class="rem-in" id="remToegangReden" maxlength="200" placeholder="Waarom (de klant ziet dit), bv. opname tijdens een proefrit"><button class="rem-btn pri" onclick="PLRemote.reqToestemming()">🔓 Vraag volledige toegang</button></div>':'')
+      +'<button class="rem-btn"'+(n==='basis'&&!vast?' disabled title="Vraagt volledige toegang"':'')+' onclick="PLRemote.reqKaart()">🗺 Volledig in kaart</button></div>'
+      +(n==='basis'&&!vast?'<div class="rem-flex" style="margin-top:6px"><input class="rem-in" id="remToegangReden" maxlength="200" placeholder="Waarom (de klant ziet dit), bv. opname tijdens een proefrit"><button class="rem-btn pri" onclick="PLRemote.reqToestemming()">🔓 Vraag volledige toegang</button></div>':'')
       +dek;
   }
   /* ── Opname & analyse op afstand: expert stuurt, LOCAL doet het werk ── */
@@ -1257,7 +1347,20 @@ window.PLRemote=(function(){
     }catch(e){ console.warn('CSV opslaan mislukt', e); expLog('✖ CSV opslaan mislukt'); }
     S.csvBuf='';
   }
-  function expertDisconnect(){S.expStop=true;S.expNiveau=null;S.expBlijvend=false;clearTimeout(S.recTE);clearInterval(S.stilT);S.stilT=null;S.stilSt=null;
+  /* #646: een koppelcode voor een klant. De klant voert hem in bij Mijn
+     voertuigen → Vaste expert; daarna heeft dit account in elke sessie van
+     die klant volledige toegang, tot de klant intrekt. */
+  async function maakKoppelcode(){
+    const el=$('remKoppelcode');if(el)el.textContent='Code maken…';
+    try{
+      const r=await plFetch('/expert/koppelcode',{method:'POST',json:{}});
+      const d=await r.json();
+      if(!r.ok||!d.ok)throw new Error(d.error||('HTTP '+r.status));
+      if(el)el.innerHTML='<b class="rem-koppelcode">'+esc(String(d.code).replace(/^(.{4})/,'$1 '))+'</b><br>De klant typt deze code bij Mijn voertuigen → Vaste expert. Eén keer te gebruiken, geldig tot '+esc(new Date(d.verloopt).toLocaleDateString('nl-NL'))+'.';
+      logA('🔗 Koppelcode gemaakt voor een vaste klant','ok');
+    }catch(e){if(el)el.textContent='⚠ Geen koppelcode: '+((e&&e.message)||e);}
+  }
+  function expertDisconnect(){S.expStop=true;S.expNiveau=null;S.expBlijvend=false;S.expVast=null;clearTimeout(S.recTE);clearInterval(S.stilT);S.stilT=null;S.stilSt=null;
     exitDrive();
     try{if(S.ews)S.ews.close();}catch(_){ /* stil: opruimen: kan al gebeurd zijn */ }
     S.ews=null;S.vals={};S.expClosed=false;S.expMeta=null;S.pending={};S.vstate=null;
@@ -1387,7 +1490,8 @@ window.PLRemote=(function(){
   }catch(_){ console.warn('vlFullSurvey-wrapper niet geïnstalleerd — de survey-knop kan dan in remote-modus proberen een echte scan te starten', _); }
   try{ // local: discovery/verversing van de PID-lijst → snapshot naar de expert
     if(typeof buildDiscoveredPIDList==='function'){const _bd=buildDiscoveredPIDList;
-      buildDiscoveredPIDList=function(){ const r=_bd.apply(this,arguments); try{sendVStateSoon();}catch(_){ console.warn('Vernieuwd voertuigprofiel niet naar de expert gestuurd', _); } return r; };
+      buildDiscoveredPIDList=function(){ const r=_bd.apply(this,arguments); try{sendVStateSoon();}catch(_){ console.warn('Vernieuwd voertuigprofiel niet naar de expert gestuurd', _); }
+        try{if(!S.kaartBezig)inlerenNaVerbinden();}catch(_){ console.warn('Inleren voor de vaste expert niet ingepland', _); } return r; };
       window.buildDiscoveredPIDList=buildDiscoveredPIDList;}
   }catch(_){ console.warn('buildDiscoveredPIDList-wrapper niet geïnstalleerd — de expert krijgt dan geen vers snapshot na een nieuwe discovery', _); }
   try{ // local: voertuiginfo (VIN/RDW) bijgewerkt → snapshot verversen
@@ -1420,7 +1524,8 @@ window.PLRemote=(function(){
   return {openShare,deelMethode,closeShare,shareStart,shareStop,copy,
           openExpert,expertClose,expertConnect,expertDisconnect,_staat:()=>({vstate:S.vstate,expMeta:S.expMeta}),_klantActie:klantActie,_klantStatus:klantStatus,_klantHtml:klantHtml,klantVerberg,klantToon,pillTik,_stilOordeel:stilOordeel,_pollSet:pollSet,_remSleutel:remSleutel,_remPid:remPid,reqPids,reqDtc,reqRapport,enterDrive,
           vernieuw:sendVStateSoon,_buildVState:buildVState,
-          toestemmingAntwoord,terugNaarBasis,reqSnelscan,reqKaart,reqToestemming,
+          toestemmingAntwoord,terugNaarBasis,reqSnelscan,reqKaart,reqToestemming,vastIntrekken,maakKoppelcode,
+          _inleerSleutel:inleerSleutel,_moetInleren:moetInleren,_klantNiveauHtml:klantNiveauHtml,_vergeetExperts:()=>{_vast.experts=null;},
           _verzoekNiveau:verzoekNiveau,_verzoekToegestaan:verzoekToegestaan,_scanVoorExpert:scanVoorExpert,
           _vstateBinnenGrens:vstateBinnenGrens,_pollSleutels:pollSleutels,_magKaart:magKaart,_klantVraagHtml:klantVraagHtml,
           remRecStart,remRecStop,remRecCsv,remAnalyze,pairStart,

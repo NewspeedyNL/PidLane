@@ -2848,6 +2848,22 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── De verkoper of garage als vaste expert (29-10-2026) ──
+  {
+    issue: '#646',
+    naam: 'Vaste expert: koppelcode van de expert, akkoord van de klant, volledige toegang bij delen en één keer inleren bij de eerste verbinding',
+    waarom: 'De verkoper die adapter en account levert moet bij het eerste telefoontje alles al hebben. Of het inleren op een echte bus binnen enkele minuten klaar is, is een vraag voor een rit.',
+    proef: async function () {
+      if (!window.PLRemote || typeof PLRemote._moetInleren !== 'function' || typeof PLRemote.maakKoppelcode !== 'function') return { staat: 'FOUT', detail: 'PLRemote zonder vaste expert — oude pidlane-remote.js (herladen?)' };
+      var sl = PLRemote._inleerSleutel({ vin: 'JM3KFBCM1J0123456', merk: 'Mazda', model: 'CX-5', year: 2018 });
+      if (!sl || /0123456/.test(sl)) return { staat: 'FOUT', detail: 'de inleersleutel bevat de VIN of ontbreekt (' + sl + ')' };
+      if (PLRemote._moetInleren({ verbonden: true, demo: true, sleutel: sl, experts: [{ naam: 'x' }] })) return { staat: 'FOUT', detail: 'inleren zou in demo starten' };
+      var gedaan = {}; try { gedaan = JSON.parse(localStorage.getItem('pl_ingeleerd') || '{}') || {}; } catch (e) { return { staat: 'LET OP', detail: 'inleerlijst niet te lezen: ' + e.message }; }
+      var n = Object.keys(gedaan).length;
+      return { staat: 'OK', detail: n ? n + ' auto(s) op dit toestel ingeleerd voor een vaste expert' : 'nog geen auto ingeleerd op dit toestel (alleen met een gekoppelde vaste expert)' };
+    }
+  },
+
   // ── Expert op afstand: toestemming in twee niveaus, snelle scan, volledige kaart (29-10-2026) ──
   {
     issue: '#645',

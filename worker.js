@@ -134,7 +134,7 @@ __name(originToegestaan, "originToegestaan");
 // Een nieuwe route hoort hier standaard in;
 // laat hem er alleen uit als hij echt publiek moet zijn.
 function isRestrictedPath(pathname) {
-  return pathname.startsWith("/auth/") || pathname.startsWith("/admin/") || pathname.startsWith("/session/") || pathname.startsWith("/pair/") || pathname.startsWith("/code/") || pathname.startsWith("/klant/") || pathname.startsWith("/credits/") || pathname.startsWith("/v1/") || pathname.startsWith("/airtable/") || pathname.startsWith("/verbind/") || pathname === "/proxy" || pathname === "/weer" || pathname === "/api/config";
+  return pathname.startsWith("/auth/") || pathname.startsWith("/admin/") || pathname.startsWith("/session/") || pathname.startsWith("/pair/") || pathname.startsWith("/code/") || pathname.startsWith("/expert/") || pathname.startsWith("/klant/") || pathname.startsWith("/credits/") || pathname.startsWith("/v1/") || pathname.startsWith("/airtable/") || pathname.startsWith("/verbind/") || pathname === "/proxy" || pathname === "/weer" || pathname === "/api/config";
 }
 __name(isRestrictedPath, "isRestrictedPath");
 function lockOrigin(request, resp) {
@@ -2124,6 +2124,16 @@ async function handleSessionCreate(request, env) {
     else if (r.status !== 409) return json({ error: "session_create_failed", status: r.status }, 502);
   }
   if (!created) return json({ error: "session_create_failed", hint: "sid-botsingen" }, 502);
+  // #646: de vaste experts van deze klant. Na het aanmaken, zodat een
+  // haperende D1 het delen zelf niet tegenhoudt.
+  const vast = await vasteExpertsVoorSessie(env, session);
+  if (vast.length) {
+    try {
+      await sessionStub(env, sid).fetch("https://do/vast", { method: "POST", body: JSON.stringify({ vast }) });
+    } catch (e) {
+      console.error("[sessie] vaste experts niet aan de sessie gegeven :: " + String(e && e.message || e));
+    }
+  }
   const joinToken = await makeJoinToken(env, sid, "expert", exp);
   const localToken = await makeJoinToken(env, sid, "local", exp);
   return json({ ok: true, sessionId: sid, sessionRole: "local", joinToken, localToken, exp }, 200);
@@ -2456,6 +2466,25 @@ function toestemmingNaVerbreken(t) {
   return { niveau: "basis", blijvend: false };
 }
 __name(toestemmingNaVerbreken, "toestemmingNaVerbreken");
+// #646: het niveau voor één expert-socket. Een herkende vaste expert heeft
+// volledig, los van wat de klant in deze sessie gaf; verder geldt de sessie.
+// De meta zoals een socket hem ziet: de vaste experts zonder hun inlognaam.
+function metaVoorSocket(meta) {
+  if (!meta || !Array.isArray(meta.vast)) return meta;
+  return { ...meta, vast: meta.vast.map((v) => ({ id: v.id, naam: v.naam })) };
+}
+__name(metaVoorSocket, "metaVoorSocket");
+function socketNiveau(att, meta) {
+  if (att && att.vast) return "volledig";
+  return meta ? meta.niveau : null;
+}
+__name(socketNiveau, "socketNiveau");
+// Is deze ondertekende sessie een vaste expert van de klant die deelt?
+function vasteExpertVan(p, meta) {
+  if (!isPersoneel(p) || !meta || !Array.isArray(meta.vast)) return null;
+  return meta.vast.find((v) => v && v.u === p.u) || null;
+}
+__name(vasteExpertVan, "vasteExpertVan");
 var VSTATE_MAX = 32768;
 var RemoteSessionDO = class {
   static {
@@ -2652,6 +2681,15 @@ var RemoteSessionDO = class {
       await this.ctx.storage.delete("vstate");
       return Response.json({ ok: true, meta });
     }
+    if (op === "vast") {
+      const b = await request.json();
+      if (!this._meta) return Response.json({ error: "no_session" }, { status: 404 });
+      this._meta.vast = (Array.isArray(b.vast) ? b.vast : []).slice(0, 5)
+        .filter((v) => v && typeof v.u === "string" && typeof v.id === "string")
+        .map((v) => ({ id: v.id, u: v.u, naam: String(v.naam || v.u).slice(0, 80) }));
+      await this.ctx.storage.put("meta", this._meta);
+      return Response.json({ ok: true, n: this._meta.vast.length });
+    }
     if (op === "telemetry") {
       const b = await request.json();
       if (b.by && this._meta && this._meta.owner && b.by !== this._meta.owner)
@@ -2672,7 +2710,7 @@ var RemoteSessionDO = class {
       }
       const since = Number(url.searchParams.get("since") || 0);
       const frames = since ? this.frames.filter((f) => f.t > since) : this.frames.slice(-50);
-      return Response.json({ ok: true, meta, frames, audit: this.audit.slice(-20), serverTime: Date.now() });
+      return Response.json({ ok: true, meta: metaVoorSocket(meta), frames, audit: this.audit.slice(-20).map((a) => ({ ...a, u: void 0 })), serverTime: Date.now() });
     }
     if (op === "close") {
       let b = {};
@@ -2839,7 +2877,7 @@ var RemoteSessionDO = class {
     this.ctx.acceptWebSocket(server, [role]);
     server.serializeAttachment({ role, joinedAt: Date.now() });
     try {
-      server.send(JSON.stringify({ type: "meta", meta, role }));
+      server.send(JSON.stringify({ type: "meta", meta: metaVoorSocket(meta), role }));
       if (role === "expert") {
         server.send(JSON.stringify({ type: "backfill", frames: this.frames, serverTime: Date.now() }));
         if (this.vstate) server.send(JSON.stringify({ type: "vstate", data: this.vstate, t: Date.now() }));
@@ -2891,6 +2929,24 @@ var RemoteSessionDO = class {
       this.broadcastTo("expert", { type: "record-status", data: m.data, t: Date.now() });
       return;
     }
+    if (role === "local" && m.type === "toestemming" && m.vastIntrekken === true) {
+      // #646: de klant trekt de vaste toegang in, midden in de sessie.
+      if (this._meta) {
+        this._meta.vast = [];
+        await this.ctx.storage.put("meta", this._meta);
+      }
+      for (const e of this.ctx.getWebSockets("expert")) {
+        try {
+          const a = e.deserializeAttachment() || {};
+          if (a.vast) {
+            e.serializeAttachment({ ...a, vast: false });
+            e.send(JSON.stringify({ type: "toestemming", niveau: (this._meta && this._meta.niveau) || "basis", blijvend: !!(this._meta && this._meta.blijvend), vast: false, t: Date.now() }));
+          }
+        } catch (err) {
+          console.warn("Vaste toegang van een expert-socket niet ingetrokken", err);
+        }
+      }
+    }
     if (role === "local" && m.type === "toestemming") {
       const niveau = m.niveau === "volledig" ? "volledig" : "basis";
       await this.zetToestemming({ niveau, blijvend: niveau === "volledig" && m.blijvend === true });
@@ -2921,6 +2977,24 @@ var RemoteSessionDO = class {
       }
       return;
     }
+    if (role === "expert" && m.type === "identiteit") {
+      // #646: de expert laat zijn eigen sessie zien. Alleen een geldige,
+      // ondertekende sessie van personeel die als vaste expert van deze klant
+      // in de meta staat, krijgt volledig; al het andere blijft wat het was.
+      const p = await verifyToken(this.env, typeof m.token === "string" ? m.token : "");
+      const v = vasteExpertVan(p, this._meta);
+      const a = ws.deserializeAttachment() || {};
+      ws.serializeAttachment({ ...a, u: p && p.u || null, vast: !!v });
+      try {
+        ws.send(JSON.stringify(v
+          ? { type: "toestemming", niveau: "volledig", blijvend: true, vast: true, naam: v.naam, t: Date.now() }
+          : { type: "identiteit", vast: false }));
+      } catch (_) {
+        /* stil: socket kan tussen ontvangst en antwoord dicht zijn gegaan */
+      }
+      if (v) this.broadcastTo("local", { type: "vast", id: v.id, naam: v.naam, aan: true });
+      return;
+    }
     if (role === "expert" && (m.type === "request-pids" || m.type === "request-dtc" || m.type === "request-poll" || m.type === "request-record" || m.type === "request-analyze" || m.type === "request-vstate" || m.type === "request-rapport" || m.type === "request-snelscan" || m.type === "request-kaart" || m.type === "request-toestemming")) {
       const now = Date.now();
       this._reqTimes = (this._reqTimes || []).filter((t) => now - t < 1e4);
@@ -2943,7 +3017,8 @@ var RemoteSessionDO = class {
         return;
       }
       // #645: de Worker dwingt het niveau af, niet alleen de app van de klant.
-      if (!verzoekToegestaan(req, this._meta && this._meta.niveau)) {
+      const att = ws.deserializeAttachment() || {};
+      if (!verzoekToegestaan(req, socketNiveau(att, this._meta))) {
         try {
           ws.send(JSON.stringify({ type: "request-rejected", reason: "geen_toestemming", nodig: verzoekNiveau(req), reqId: req.reqId }));
         } catch (_) {
@@ -2960,7 +3035,8 @@ var RemoteSessionDO = class {
         }
         return;
       }
-      this.audit.push({ t: now, action: req.type + (req.action ? ":" + req.action : ""), pids: req.pids || null, reqId: req.reqId });
+      if (att.vast) req.vast = true;
+      this.audit.push({ t: now, action: req.type + (req.action ? ":" + req.action : ""), pids: req.pids || null, reqId: req.reqId, u: att.u || null });
       if (this.audit.length > 100) this.audit.splice(0, this.audit.length - 100);
       await this.ctx.storage.put("audit", this.audit);
       const out = JSON.stringify(req);
@@ -5721,7 +5797,14 @@ var KP_SCHEMA = [
   "CREATE TABLE IF NOT EXISTS kp_meekijk (code TEXT PRIMARY KEY, klant_id TEXT NOT NULL, aangemaakt TEXT NOT NULL, verloopt TEXT NOT NULL, bekeken_op TEXT, aantal INTEGER NOT NULL DEFAULT 0, erbij INTEGER NOT NULL DEFAULT 0)",
   "CREATE INDEX IF NOT EXISTS idx_kp_meekijk_klant ON kp_meekijk (klant_id)",
   "CREATE TABLE IF NOT EXISTS kp_tank (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, op TEXT NOT NULL, soort TEXT NOT NULL DEFAULT 'brandstof', liters REAL, literprijs REAL, bedrag REAL, kwh REAL, kmstand INTEGER, vol INTEGER, bereik_dashboard INTEGER, bereik_voor INTEGER, bereik_app INTEGER, tank_voor REAL, tank_na REAL, bron TEXT NOT NULL DEFAULT 'hand', notitie TEXT, aangemaakt TEXT NOT NULL, bijgewerkt TEXT NOT NULL)",
-  "CREATE INDEX IF NOT EXISTS idx_kp_tank_vt ON kp_tank (voertuig_id, op DESC)"
+  "CREATE INDEX IF NOT EXISTS idx_kp_tank_vt ON kp_tank (voertuig_id, op DESC)",
+  // De vaste expert (#646): een verkoper of garage die bij de overdracht een
+  // doorlopende toestemming kreeg. kp_expertcode is de code die de expert
+  // maakt en de klant invoert; kp_expert de koppeling zelf, met de versie van
+  // de tekst waar de klant ja op zei.
+  "CREATE TABLE IF NOT EXISTS kp_expertcode (code TEXT PRIMARY KEY, expert_u TEXT NOT NULL, expert_label TEXT, aangemaakt TEXT NOT NULL, verloopt TEXT NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS kp_expert (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, expert_u TEXT NOT NULL, expert_label TEXT, sinds TEXT NOT NULL, tekst_versie TEXT NOT NULL)",
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_expert_kl ON kp_expert (klant_id, expert_u)"
 ];
 // Kolommen die er later bij kwamen. CREATE TABLE IF NOT EXISTS voegt op een
 // bestaande tabel niets toe, dus die gaan er met ALTER bij. "duplicate column"
@@ -6106,7 +6189,7 @@ async function kpBibStem(db, id, klantId, uitkomst) {
 }
 __name(kpBibStem, "kpBibStem");
 
-var KP_KLANT_TABELLEN = ["kp_rapport", "kp_rit", "kp_tank", "kp_issue", "kp_voertuig", "kp_voorkeur", "kp_pid_stem", "kp_meekijk", "kp_akkoord"];
+var KP_KLANT_TABELLEN = ["kp_rapport", "kp_rit", "kp_tank", "kp_issue", "kp_voertuig", "kp_voorkeur", "kp_pid_stem", "kp_meekijk", "kp_expert", "kp_akkoord"];
 async function kpAlleWissen(db, klantId, o = {}) {
   const uit = {};
   for (const t of KP_KLANT_TABELLEN) {
@@ -6662,8 +6745,113 @@ var KP_ACTIES = {
   async meekijk_uit(c) {
     const r = await c.db.prepare("DELETE FROM kp_meekijk WHERE klant_id = ?").bind(c.klantId).run();
     return { ok: true, ingetrokken: (r && r.meta && r.meta.changes) || 0 };
+  },
+
+  // ── De vaste expert (#646) ─────────────────────────────────────────
+  // Een eigen akkoord, los van dat van Mijn voertuigen: wie geen expert
+  // koppelt, geeft ook niemand doorlopend toegang. De klant ziet en trekt in.
+  async experts(c) {
+    return { ok: true, experts: await kpExpertsVan(c.db, c.klantId), tekst: KP_EXPERT_TEKST, versie: KP_EXPERT_VERSIE };
+  },
+  async expert_koppel(c, b) {
+    if (b.akkoord !== KP_EXPERT_VERSIE) return { ok: false, error: "Eerst akkoord op de vaste toegang voor deze expert.", akkoordNodig: true, tekst: KP_EXPERT_TEKST, versie: KP_EXPERT_VERSIE, code: 400 };
+    const code = kpExpertCodeNorm(b.koppelcode);
+    if (!code) return { ok: false, error: "Dat is geen koppelcode (acht tekens).", code: 400 };
+    const r = await c.db.prepare("SELECT expert_u, expert_label, verloopt FROM kp_expertcode WHERE code = ?").bind(code).first();
+    if (!r || r.verloopt <= kpNu()) return { ok: false, error: "Deze koppelcode bestaat niet of is verlopen.", code: 404 };
+    const al = await c.db.prepare("SELECT COUNT(*) AS n FROM kp_expert WHERE klant_id = ?").bind(c.klantId).first();
+    if (al && al.n >= KP_EXPERT_MAX) return { ok: false, error: "Je hebt al " + KP_EXPERT_MAX + " vaste experts. Ontkoppel er eerst een.", code: 409 };
+    await c.db.batch([
+      c.db.prepare("INSERT INTO kp_expert (id, klant_id, expert_u, expert_label, sinds, tekst_versie) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(klant_id, expert_u) DO UPDATE SET expert_label = excluded.expert_label, tekst_versie = excluded.tekst_versie")
+        .bind(kpId(), c.klantId, r.expert_u, r.expert_label || r.expert_u, kpNu(), KP_EXPERT_VERSIE),
+      // Eén code, één klant: daarna is hij op.
+      c.db.prepare("DELETE FROM kp_expertcode WHERE code = ?").bind(code)
+    ]);
+    return { ok: true, experts: await kpExpertsVan(c.db, c.klantId) };
+  },
+  async expert_ontkoppel(c, b) {
+    const id = String(b.id || "");
+    if (!/^[0-9a-f-]{36}$/.test(id)) return { ok: false, error: "Onbekende koppeling.", code: 400 };
+    const r = await c.db.prepare("DELETE FROM kp_expert WHERE id = ? AND klant_id = ?").bind(id, c.klantId).run();
+    return { ok: true, ingetrokken: (r && r.meta && r.meta.changes) || 0, experts: await kpExpertsVan(c.db, c.klantId) };
   }
 };
+
+/* De vaste expert (#646). De tekst staat hier, één keer: de app toont wat de
+   server terugstuurt, en de koppeling bewaart de versie. Verandert de tekst,
+   dan verandert de versie, en geldt een eerdere ja alleen voor de oude tekst. */
+var KP_EXPERT_VERSIE = "2026-10-29";
+var KP_EXPERT_TEKST = "Deze expert mag, tot je de koppeling intrekt, meekijken als je je diagnose deelt, en heeft dan meteen volledige toegang: een opname maken, een AI-analyse laten doen (die gebruikt jouw tegoed) en je auto volledig in kaart brengen. Je voertuigen in Mijn voertuigen ziet de expert hiermee niet. Delen start je nog steeds zelf, en Stop delen beëindigt het. Foutcodes wissen of iets aan de auto veranderen kan op afstand nooit. Je VIN gaat alleen als pseudoniem mee, niet ruw.";
+var KP_EXPERT_MAX = 3;
+var KP_EXPERT_CODE_DAGEN = 7;
+function kpExpertCodeNorm(c) {
+  const s = String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$/.test(s) ? s : null;
+}
+__name(kpExpertCodeNorm, "kpExpertCodeNorm");
+function kpExpertCode() {
+  const b = crypto.getRandomValues(new Uint8Array(8));
+  let s = "";
+  for (let i = 0; i < 8; i++) s += KP_MEEKIJK_TEKENS[b[i] % KP_MEEKIJK_TEKENS.length];
+  return s;
+}
+__name(kpExpertCode, "kpExpertCode");
+// Wat de klant van zijn vaste experts ziet: naam en sinds — niet de inlognaam.
+async function kpExpertsVan(db, klantId) {
+  const r = await db.prepare("SELECT id, expert_label, sinds, tekst_versie FROM kp_expert WHERE klant_id = ? ORDER BY sinds").bind(klantId).all();
+  return (r.results || []).map((x) => ({ id: x.id, naam: x.expert_label, sinds: x.sinds, versie: x.tekst_versie }));
+}
+__name(kpExpertsVan, "kpExpertsVan");
+// Personeel (tabel Users): beheer, monteur, gewone gebruiker. Geen klant, geen
+// demo, niet de oude gedeelde app-sleutel — die heeft geen eigen naam.
+function isPersoneel(p) {
+  return !!(p && p.u && p.u !== "legacy" && p.r && p.r !== "klant" && p.r !== "demo");
+}
+__name(isPersoneel, "isPersoneel");
+
+// ── POST /expert/koppelcode  (ingelogd als personeel) ──
+// De expert maakt een code van acht tekens, zeven dagen geldig, één keer te
+// gebruiken. De klant voert hem in bij Mijn voertuigen → Vaste expert.
+async function handleExpertKoppelcode(request, env) {
+  const p = await verifyToken(env, request.headers.get("X-App-Token") || "");
+  if (!isPersoneel(p)) return json({ ok: false, error: "Alleen voor een expertaccount." }, 403);
+  if (!env.LOGDB) return json({ ok: false, error: "Opslag niet beschikbaar." }, 503);
+  const rl = await rateLimit(env, "expert-koppelcode", p.u, { limit: 30, windowMs: 36e5 }, true);
+  if (rl.limited) return rateLimitResponse(rl);
+  try {
+    const db = env.LOGDB;
+    await kpSchema(db);
+    await db.prepare("DELETE FROM kp_expertcode WHERE verloopt <= ?").bind(kpNu()).run();
+    const verloopt = new Date(Date.now() + KP_EXPERT_CODE_DAGEN * 864e5).toISOString();
+    for (let i = 0; i < 5; i++) {
+      const code = kpExpertCode();
+      const al = await db.prepare("SELECT code FROM kp_expertcode WHERE code = ?").bind(code).first();
+      if (al) continue;
+      await db.prepare("INSERT INTO kp_expertcode (code, expert_u, expert_label, aangemaakt, verloopt) VALUES (?, ?, ?, ?, ?)").bind(code, p.u, String(p.l || p.u).slice(0, 80), kpNu(), verloopt).run();
+      return json({ ok: true, code, verloopt }, 200);
+    }
+    return json({ ok: false, error: "Geen vrije code gevonden — probeer het nog eens." }, 503);
+  } catch (e) {
+    return klantFout(e, "Koppelcode maken mislukt.");
+  }
+}
+__name(handleExpertKoppelcode, "handleExpertKoppelcode");
+
+// De vaste experts van een klant voor een nieuwe deelsessie. Mislukt het
+// lezen, dan een lege lijst: delen gaat dan gewoon, alleen zonder vaste toegang.
+async function vasteExpertsVoorSessie(env, session) {
+  if (!session || session.r !== "klant" || !env.LOGDB) return [];
+  try {
+    await kpSchema(env.LOGDB);
+    const klantId = await kpKlantId(session.u);
+    const r = await env.LOGDB.prepare("SELECT id, expert_u, expert_label FROM kp_expert WHERE klant_id = ? LIMIT ?").bind(klantId, KP_EXPERT_MAX).all();
+    return (r.results || []).map((x) => ({ id: x.id, u: x.expert_u, naam: x.expert_label || x.expert_u }));
+  } catch (e) {
+    console.error("[sessie] vaste experts niet gelezen :: " + String(e && e.message || e));
+    return [];
+  }
+}
+__name(vasteExpertsVoorSessie, "vasteExpertsVoorSessie");
 
 /* Meekijkcode: zes tekens zonder 0/O en 1/I/L, zodat hij over de telefoon
    voor te lezen is. crypto.getRandomValues, niet Math.random: de code is een
@@ -7184,6 +7372,8 @@ var worker_default = {
         return lockOrigin(request, await handlePairClaim(request, env));
       if (url.pathname === "/pair/poll" && request.method === "GET")
         return lockOrigin(request, await handlePairPoll(request, env));
+      if (url.pathname === "/expert/koppelcode" && request.method === "POST")
+        return lockOrigin(request, await handleExpertKoppelcode(request, env));
       if (url.pathname === "/code/create" && request.method === "POST")
         return lockOrigin(request, await handleCodeCreate(request, env));
       if (url.pathname === "/code/resolve" && request.method === "POST")
