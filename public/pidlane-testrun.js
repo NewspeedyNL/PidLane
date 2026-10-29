@@ -2848,6 +2848,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Nieuwe auto, schone start (29-10-2026) ──
+  {
+    issue: 'schone-start',
+    naam: 'Menuknop "Nieuwe auto — schone start" en de klantvlag Schone start: het toestel vergeet eerdere auto\'s, login en adapter blijven',
+    waarom: 'Gevraagd op 29-10: sensoren en rapporten van eerder aangesloten auto\'s botsten met de nieuwe. Of de herstart op dit toestel netjes ingelogd terugkomt, verschilt tussen browser en APK.',
+    proef: async function () {
+      var S = window.PLSchoon;
+      if (!S || typeof S.bewaar !== 'function') return { staat: 'FOUT', detail: 'PLSchoon ontbreekt — oude pidlane-schoon.js (herladen?)' };
+      var knop = document.getElementById('kbSchoon');
+      if (!knop) return { staat: 'FOUT', detail: 'menuknop #kbSchoon ontbreekt — oude index.html (herladen?)' };
+      if (!S.bewaar('pl_tok') || !S.bewaar('pl_session')) return { staat: 'FOUT', detail: 'de bewaarlijst houdt de login niet vast — na de herstart ben je uitgelogd' };
+      if (S.bewaar('pl_kenteken') || S.bewaar('pl_selectie')) return { staat: 'FOUT', detail: 'kenteken of sensorselectie van de vorige auto blijft staan' };
+      var weg = 0;
+      try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && !S.bewaar(k)) weg++; } }
+      catch (e) { return { staat: 'LET OP', detail: 'localStorage onleesbaar: ' + e.message }; }
+      return { staat: 'OK', detail: 'knop ' + (knop.style.display === 'none' ? 'verborgen (geen ontwikkelmenu)' : 'in beeld') + '; een schone start zou nu ' + weg + ' sleutels wissen' };
+    }
+  },
+
   // ── Hyperlane-deur: intro, inloggen en verbinden in de look van Hyperlane (29-10-2026) ──
   {
     issue: 'hyperlane-deur',
