@@ -158,12 +158,53 @@
       if (!uit.some(function (u) { return u.tekst.indexOf(String(c)) === 0; })) uit.push({ ernst: 'rood', tekst: String(c), detail: '' });
     });
     if (vk.mode06) arr(vk.mode06.gezakt).forEach(function (g) { uit.push({ ernst: 'oranje', tekst: 'Mode 06 gezakt: ' + g, detail: '' }); });
+    // #645: in afwachting uit de foutcodecheck — één keer gezien, nog niet bevestigd
+    var sc = vs.scan && vs.scan.codes ? vs.scan.codes : {};
+    arr(sc.pending).forEach(function (c) {
+      if (!uit.some(function (u) { return u.tekst.indexOf(String(c)) === 0; })) uit.push({ ernst: 'oranje', tekst: String(c), detail: 'in afwachting — één keer gezien' });
+    });
     var h = vs.health && typeof vs.health === 'object' ? vs.health : {};
     Object.keys(h).slice(0, 12).forEach(function (p) {
       uit.push({ ernst: 'oranje', tekst: 'Sensor ' + p + ': ' + (GEZOND[h[p]] || String(h[p])), detail: '' });
     });
     return uit;
   }
+
+  /* Wat er van deze auto gemeten is, en wat niet (#645). Zonder dit leest
+     een lege kaart "Wijkt nu af" als een gezonde auto, terwijl er alleen
+     nog niets is uitgelezen — bij een klant die de app voor het eerst opent
+     is dat de gewone stand. soort: ok | let | mist. */
+  var DEKKING_WIS_KM = 200;   // minder km sinds het wissen: het beeld is onvolledig
+  function dekking(vs) {
+    vs = vs || {}; var vk = vs.voorkennis || {}, s = vs.scan || null, uit = [];
+    if (!arr(vs.pids).length) uit.push({ soort: 'mist', tekst: 'Nog geen ondersteunde sensoren — de adapter is niet verbonden of de zoekronde liep niet' });
+    if (!s) uit.push({ soort: 'mist', tekst: 'Foutcodes en zelftests nog niet uitgelezen — start de snelle scan' });
+    else {
+      var g = s.gelezen || {}, niet = ['bevestigd', 'pending', 'permanent'].filter(function (k) { return g[k] !== true; });
+      var NAAM = { bevestigd: 'bevestigd', pending: 'in afwachting', permanent: 'permanent' };
+      if (niet.length) uit.push({ soort: 'let', tekst: 'Niet gelezen: ' + niet.map(function (k) { return NAAM[k]; }).join(', ') + ' — "geen codes" geldt daar niet' });
+      else uit.push({ soort: 'ok', tekst: 'Foutcodes uitgelezen: bevestigd, in afwachting en permanent' });
+      var rd = s.readiness;
+      if (!rd) uit.push({ soort: 'let', tekst: 'Zelftests (gereedheid) niet gelezen' });
+      else if (arr(rd.nietKlaar).length) uit.push({ soort: 'let', tekst: arr(rd.nietKlaar).length + ' zelftest(s) niet klaar: ' + arr(rd.nietKlaar).join(', ') + ' — die heeft de auto zelf nog niet beoordeeld' });
+      else uit.push({ soort: 'ok', tekst: 'Alle zelftests klaar' });
+      var km = s.sinds ? getal(s.sinds.km) : null;
+      if (km !== null && km < DEKKING_WIS_KM) uit.push({ soort: 'let', tekst: 'Codes ' + Math.round(km) + ' km geleden gewist — het beeld is onvolledig' });
+    }
+    if (vk.mode06) uit.push({ soort: 'ok', tekst: 'Mode 06 gelezen (' + (vk.mode06.tests | 0) + ' tests)' });
+    else uit.push({ soort: 'mist', tekst: 'Mode 06 (monitortests) nog niet gelezen' });
+    if (arr(vs.ingekort).length) uit.push({ soort: 'let', tekst: 'Profiel ingekort voor de server: ' + arr(vs.ingekort).join(', ') });
+    return uit;
+  }
+  function dekkingHtml(vs) {
+    if (!vs) return '';
+    var IK = { ok: '✓', let: '⚠', mist: '○' };
+    return '<div class="ew-dekking"><div class="ew-sub">Wat er gemeten is</div><ul class="ew-lijst">' + dekking(vs).map(function (d) {
+      return '<li class="ew-dek-' + d.soort + '">' + IK[d.soort] + ' ' + esc(d.tekst) + '</li>';
+    }).join('') + '</ul></div>';
+  }
+  // Nog niets uitgelezen is iets anders dan niets gevonden.
+  function nietsGemeten(vs) { return !vs.scan && !arr(vs.dtc).length && !(vs.voorkennis && vs.voorkennis.mode06); }
 
   // ── tekenen ────────────────────────────────────────────────────────
   function datum(s) {
@@ -188,12 +229,13 @@
       rij('Leessnelheid', getal(vs.rps) === null ? '' : '~' + getal(vs.rps) + ' per seconde') +
       rij('Gedeeld door', meta ? (meta.ownerLabel || meta.owner || '') : '') +
       (vs.demo ? '<div class="ew-let">⚠ De klant draait demo-data — geen echte auto.</div>' : '') +
-      (vk.let_op ? '<div class="ew-let">⚠ ' + esc(vk.let_op) + '</div>' : '');
+      (vk.let_op ? '<div class="ew-let">⚠ ' + esc(vk.let_op) + '</div>' : '') +
+      dekkingHtml(vs);
     // 2. wat nu afwijkt
     var af = afwijkingen(vs), kansen = arr(vk.kansen);
     var afHtml = (af.length ? '<ul class="ew-lijst">' + af.map(function (a) {
       return '<li class="ew-' + a.ernst + '">' + esc(a.tekst) + (a.detail ? '<small>' + esc(a.detail) + '</small>' : '') + '</li>';
-    }).join('') + '</ul>' : leeg('Geen foutcodes, gezakte zelftests of zieke sensoren gemeld.')) +
+    }).join('') + '</ul>' : leeg(nietsGemeten(vs) ? 'Nog niets uitgelezen — dit is geen gezonde auto, maar een lege. Start de snelle scan.' : 'Geen foutcodes, gezakte zelftests of zieke sensoren gemeld.')) +
       (kansen.length ? '<div class="ew-sub">Eerst kijken naar</div><ol class="ew-lijst">' + kansen.map(function (k) {
         return '<li><b>' + esc(k.naam) + '</b>' + (k.bekend ? ' <span class="ew-tag">bekend bij ' + esc(vk.merk || 'dit merk') + '</span>' : '') +
           '<small>' + arr(k.redenen).map(esc).join(' · ') + '</small></li>';
@@ -278,7 +320,7 @@
   window.PLExpertWerk = {
     SLEUTEL: SLEUTEL, STANDEN: STANDEN, LAPTOP_BREED: LAPTOP_BREED,
     isLaptop: isLaptop, actiefVoor: actiefVoor, standTekst: standTekst, volgendeStand: volgendeStand,
-    procedures: procedures, afwijkingen: afwijkingen, html: html,
+    procedures: procedures, afwijkingen: afwijkingen, html: html, dekking: dekking, dekkingHtml: dekkingHtml, DEKKING_WIS_KM: DEKKING_WIS_KM,
     omgeving: omgeving, stand: stand, zetStand: zetStand, actief: actief,
     toon: toon, wissel: wissel, naLogin: naLogin
   };

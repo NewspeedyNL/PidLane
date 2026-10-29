@@ -4051,6 +4051,17 @@ body[data-rijvorm="compact"] #rijModus .rij-tip { grid-column:1 / 3; }
 #remExpertOv.pl-expertwerk .rem-card { max-width:none; width:100%; max-height:none; height:100%; border-radius:0; border:0; padding:16px 24px 28px; box-sizing:border-box; }
 #remExpertOv.pl-expertwerk .rem-h h3 { font-size:18px; }
 #remExpertOv.pl-expertwerk #remVoorkennis { display:none; }
+/* #645: toegang en dekking. In de werkplek staat de dekking al in de autokaart. */
+#remToegang { margin:8px 0; }
+#remExpertOv.pl-expertwerk #remToegang .ew-dekking { display:none; }
+.ew-dekking .ew-lijst li { font-size:12px; }
+.ew-dek-ok { color:var(--gn,#3ecf8e); }
+.ew-dek-let { color:var(--or,#f5a524); }
+.ew-dek-mist { color:var(--tx3,#9aa4b2); }
+.rem-klant-vraag { border:2px solid var(--or,#f5a524); border-radius:10px; padding:10px 12px; margin-bottom:12px; }
+.rem-klant-vraag h3 { margin:0 0 6px; font-size:15px; }
+.rem-klant-vraag ul { margin:4px 0 6px 18px; padding:0; }
+.rem-klant-niveau { margin-top:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 #remExpertOv.pl-expertwerk #remExpConn, #remExpertOv.pl-expertwerk #remExpLive { max-width:1400px; }
 #remExpertOv.pl-expertwerk .rem-grid { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
 .ew { display:grid; grid-template-columns:minmax(260px, 1fr) minmax(300px, 1.2fr) minmax(340px, 1.4fr); gap:14px; align-items:start; margin:4px 0 16px; max-width:1400px; }

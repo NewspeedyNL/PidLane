@@ -2848,6 +2848,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Expert op afstand: toestemming in twee niveaus, snelle scan, volledige kaart (29-10-2026) ──
+  {
+    issue: '#645',
+    naam: 'Expert op afstand: basis met de meekijkcode, volledig alleen met een tik van de klant; de foutcodecheck gaat mee en de werkplek zegt wat er niet gemeten is',
+    waarom: 'Een klant die de app voor het eerst opent gaf de expert een lege auto, en die las als gezond. Hoe lang de snelle scan en de volledige kaart op een echte bus duren, is een vraag voor een rit.',
+    proef: async function () {
+      if (!window.PLRemote || typeof PLRemote._verzoekToegestaan !== 'function' || typeof PLRemote._vstateBinnenGrens !== 'function') return { staat: 'FOUT', detail: 'PLRemote zonder toestemmingsniveaus — oude pidlane-remote.js (herladen?)' };
+      if (!window.PLExpertWerk || typeof PLExpertWerk.dekking !== 'function') return { staat: 'FOUT', detail: 'PLExpertWerk.dekking ontbreekt — oude pidlane-expertwerk.js (herladen?)' };
+      if (PLRemote._verzoekToegestaan({ type: 'request-analyze' }, 'basis')) return { staat: 'FOUT', detail: 'een AI-analyse mag op basistoegang' };
+      if (!PLRemote._verzoekToegestaan({ type: 'request-snelscan' }, 'basis')) return { staat: 'FOUT', detail: 'de snelle scan mag niet op basistoegang' };
+      var vs = PLRemote._buildVState(), n = JSON.stringify(vs).length;
+      if (n > 30000) return { staat: 'FOUT', detail: 'het voertuigprofiel van dit toestel is ' + n + ' tekens — boven de grens' };
+      var d = PLExpertWerk.dekking(vs), mist = d.filter(function (x) { return x.soort !== 'ok'; }).map(function (x) { return x.tekst; });
+      return { staat: 'OK', detail: 'profiel ' + n + ' tekens' + (vs.scan ? ', met foutcodecheck' : ', nog zonder foutcodecheck') + (mist.length ? '; de expert ziet: ' + mist.join(' · ') : '; alles gemeten') };
+    }
+  },
+
   // ── Eigen weergave per sensor: eenheid, factor, schaal en decimalen (29-10-2026) ──
   {
     issue: 'weergave-sensor',

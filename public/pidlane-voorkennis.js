@@ -160,6 +160,12 @@
     var v = {}, codes = [], kennis = null, mon = [], wn = [];
     try { v = (typeof vehicleInfo !== 'undefined' && vehicleInfo) || {}; } catch (e) { console.warn('PLVoorkennis: geen voertuig', e); }
     try { codes = (typeof dtcCodes !== 'undefined' && Array.isArray(dtcCodes)) ? dtcCodes.slice() : []; } catch (e) { console.warn('PLVoorkennis: geen foutcodes', e); }
+    // #645: ook de foutcodecheck — die zet dtcCodes niet. Bevestigd en
+    // permanent zijn bewijs; in afwachting toont de werkplek apart.
+    try {
+      var sc = window.PLFoutcodes && PLFoutcodes.staat ? (PLFoutcodes.staat() || {}).scan : null;
+      if (sc && sc.codes) [].concat(sc.codes.bevestigd || [], sc.codes.permanent || []).forEach(function (c) { if (codes.indexOf(c) < 0) codes.push(c); });
+    } catch (e) { console.warn('PLVoorkennis: foutcodecheck niet gelezen', e); }
     try {
       if (typeof autoKennisVoorMerk === 'function' && v.merk) {
         kennis = autoKennisVoorMerk(v.merk, v.brandstof, { jaar: Number(v.year) || null, cc: Number(v.cc) || null });

@@ -2418,6 +2418,45 @@ function vstateZonderVin(d) {
   return d;
 }
 __name(vstateZonderVin, "vstateZonderVin");
+// Toestemming per sessie (#645). De meekijkcode geeft "basis": meekijken,
+// lezen en de snelle scan. Opname, AI-analyse (tegoed van de klant) en de
+// volledige kaart vragen "volledig", en die geeft alleen de klant, met een tik.
+// niveau null = een local van vóór #645 die nooit een toestemming meldde: die
+// kende geen niveaus, dus daar blijft alles open zoals het was.
+var VERZOEK_NIVEAU = {
+  "request-pids": "basis",
+  "request-dtc": "basis",
+  "request-poll": "basis",
+  "request-vstate": "basis",
+  "request-rapport": "basis",
+  "request-snelscan": "basis",
+  "request-toestemming": "basis",
+  "request-analyze": "volledig",
+  "request-kaart": "volledig"
+};
+function verzoekNiveau(req) {
+  if (!req || typeof req.type !== "string") return null;
+  // Een opname stoppen mag altijd: dat is minder doen, en vervalt de
+  // toestemming halverwege, dan moet de expert hem nog kunnen beëindigen.
+  if (req.type === "request-record") return req.action === "stop" ? "basis" : "volledig";
+  return VERZOEK_NIVEAU[req.type] || null;
+}
+__name(verzoekNiveau, "verzoekNiveau");
+function verzoekToegestaan(req, niveau) {
+  const nodig = verzoekNiveau(req);
+  if (!nodig) return false;
+  if (niveau == null) return true;
+  return nodig === "basis" || niveau === "volledig";
+}
+__name(verzoekToegestaan, "verzoekToegestaan");
+// Wat er van een toestemming overblijft als een verbinding wegvalt: zonder
+// "tot ik stop met delen" terug naar basis; de klant vraagt het opnieuw.
+function toestemmingNaVerbreken(t) {
+  if (!t || t.niveau !== "volledig" || t.blijvend) return t;
+  return { niveau: "basis", blijvend: false };
+}
+__name(toestemmingNaVerbreken, "toestemmingNaVerbreken");
+var VSTATE_MAX = 32768;
 var RemoteSessionDO = class {
   static {
     __name(this, "RemoteSessionDO");
@@ -2598,7 +2637,10 @@ var RemoteSessionDO = class {
         created: Date.now(),
         exp: b.exp,
         // seconden
-        status: "open"
+        status: "open",
+        // #645: null tot de local zijn toestemming meldt
+        niveau: null,
+        blijvend: false
       };
       this._meta = meta;
       this.frames = [];
@@ -2744,7 +2786,9 @@ var RemoteSessionDO = class {
     }
     if (m.type === "request-poll") {
       if (!Array.isArray(m.pids)) return null;
-      const pids = m.pids.filter((p) => typeof p === "string" && /^[0-9A-Fa-f]{2}$/.test(p)).slice(0, 24);
+      // #645: ook volle sleutels (mode 21/22, merkspecifiek), net als
+      // request-record sinds #602 — een naam uit de PID-tabel, geen commando.
+      const pids = m.pids.filter((p) => typeof p === "string" && /^([0-9A-Fa-f]{2}|[0-9A-Z]{4,8})$/.test(p)).slice(0, 24);
       if (!pids.length) return null;
       return { type: "request-poll", pids, reqId };
     }
@@ -2766,7 +2810,24 @@ var RemoteSessionDO = class {
       const problem = (typeof m.problem === "string" ? m.problem : "").slice(0, 500);
       return { type: "request-analyze", problem, reqId };
     }
+    // #645: de snelle scan en de volledige kaart draaien de eigen leesroutines
+    // van de local; er zit geen veld in waarin een commando past.
+    if (m.type === "request-snelscan") return { type: "request-snelscan", reqId };
+    if (m.type === "request-kaart") return { type: "request-kaart", reqId };
+    if (m.type === "request-toestemming") {
+      if (m.niveau !== "volledig") return null;
+      const reden = (typeof m.reden === "string" ? m.reden : "").slice(0, 200);
+      return { type: "request-toestemming", niveau: "volledig", reden, reqId };
+    }
     return null;
+  }
+  // De toestemming van de klant zetten en aan de experts melden (#645).
+  async zetToestemming(t) {
+    if (!this._meta) return;
+    this._meta.niveau = t.niveau;
+    this._meta.blijvend = !!t.blijvend;
+    await this.ctx.storage.put("meta", this._meta);
+    this.broadcastTo("expert", { type: "toestemming", niveau: t.niveau, blijvend: !!t.blijvend, t: Date.now() });
   }
   // WebSocket-handshake: accepteer hibernatable, stuur backfill, houd open.
   handleConnect(request) {
@@ -2830,12 +2891,27 @@ var RemoteSessionDO = class {
       this.broadcastTo("expert", { type: "record-status", data: m.data, t: Date.now() });
       return;
     }
+    if (role === "local" && m.type === "toestemming") {
+      const niveau = m.niveau === "volledig" ? "volledig" : "basis";
+      await this.zetToestemming({ niveau, blijvend: niveau === "volledig" && m.blijvend === true });
+      return;
+    }
     if (role === "local" && m.type === "vstate") {
-      let d = m.data;
+      let d = m.data, lengte = 0;
       try {
-        if (!d || typeof d !== "object" || JSON.stringify(d).length > 32768) d = null;
+        lengte = d && typeof d === "object" ? JSON.stringify(d).length : 0;
+        if (!d || typeof d !== "object" || lengte > VSTATE_MAX) d = null;
       } catch (_) {
         d = null;
+      }
+      // Tot #645 verdween een te groot snapshot hier zonder bericht: de local
+      // dacht dat de expert hem had, de expert zag het oude.
+      if (!d) {
+        try {
+          ws.send(JSON.stringify({ type: "vstate-rejected", reason: lengte > VSTATE_MAX ? "te_groot" : "ongeldig", bytes: lengte, max: VSTATE_MAX }));
+        } catch (_) {
+          /* stil: socket kan tussen ontvangst en antwoord dicht zijn gegaan */
+        }
       }
       if (d) {
         d = vstateZonderVin(d);
@@ -2845,7 +2921,7 @@ var RemoteSessionDO = class {
       }
       return;
     }
-    if (role === "expert" && (m.type === "request-pids" || m.type === "request-dtc" || m.type === "request-poll" || m.type === "request-record" || m.type === "request-analyze" || m.type === "request-vstate" || m.type === "request-rapport")) {
+    if (role === "expert" && (m.type === "request-pids" || m.type === "request-dtc" || m.type === "request-poll" || m.type === "request-record" || m.type === "request-analyze" || m.type === "request-vstate" || m.type === "request-rapport" || m.type === "request-snelscan" || m.type === "request-kaart" || m.type === "request-toestemming")) {
       const now = Date.now();
       this._reqTimes = (this._reqTimes || []).filter((t) => now - t < 1e4);
       if (this._reqTimes.length >= 20) {
@@ -2861,6 +2937,15 @@ var RemoteSessionDO = class {
       if (!req) {
         try {
           ws.send(JSON.stringify({ type: "request-rejected", reason: "invalid" }));
+        } catch (_) {
+          /* stil: socket kan tussen ontvangst en antwoord dicht zijn gegaan */
+        }
+        return;
+      }
+      // #645: de Worker dwingt het niveau af, niet alleen de app van de klant.
+      if (!verzoekToegestaan(req, this._meta && this._meta.niveau)) {
+        try {
+          ws.send(JSON.stringify({ type: "request-rejected", reason: "geen_toestemming", nodig: verzoekNiveau(req), reqId: req.reqId }));
         } catch (_) {
           /* stil: socket kan tussen ontvangst en antwoord dicht zijn gegaan */
         }
@@ -2902,12 +2987,21 @@ var RemoteSessionDO = class {
     }
     try {
       const att = ws.deserializeAttachment() || {};
+      let verbroken = att.role === "local";
       if (att.role === "expert") {
         const experts = this.ctx.getWebSockets("expert").filter((s) => s !== ws).length;
         this.broadcastTo("local", { type: "presence", experts });
+        verbroken = experts === 0;
+      }
+      // #645: een verbindingsprobleem beëindigt "volledig", tenzij de klant
+      // "tot ik stop met delen" aanvinkte. De local doet hetzelfde aan zijn kant.
+      const m = this._meta;
+      if (verbroken && m && m.niveau) {
+        const na = toestemmingNaVerbreken({ niveau: m.niveau, blijvend: m.blijvend });
+        if (na.niveau !== m.niveau) await this.zetToestemming(na);
       }
     } catch (_) {
-      /* stil: socket is hier al aan het sluiten; presence-melding is best-effort */
+      console.warn("Presence of toestemming niet bijgewerkt bij het sluiten van een socket", _);
     }
   }
   async webSocketError(ws, error) {

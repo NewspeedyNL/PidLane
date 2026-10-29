@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 29-10-2026 — Expert op afstand: twee niveaus van toegang (#645)
+ ═══════════════════════════════════════════════════════════
+
+ - De meekijkcode geeft basistoegang: meekijken, lezen en een snelle scan
+   (foutcodes, zelftests, mode 06). Die start vanzelf als de eerste expert
+   binnenkomt en de app nog niets van de auto weet.
+ - Opname, AI-analyse en "Volledig in kaart" (diep zoeken, merkspecifieke
+   PIDs, mode 06; alleen bij stilstand) vragen volledige toegang. De klant
+   tikt op Toestaan, en de Worker dwingt het af. Het vervalt bij een
+   verbindingsprobleem, tenzij "Tot ik stop met delen" aanstaat.
+ - De werkplek zegt wat er niet gemeten is; een lege auto heet niet meer
+   gezond. De foutcodecheck, merkspecifieke PIDs en een te grote vstate komen
+   nu wél (of gemeld) bij de expert aan (test-toestemming.js).
+
+ ═══════════════════════════════════════════════════════════
  29-10-2026 — Eigen weergave per sensor: eenheid, factor, schaal
  ═══════════════════════════════════════════════════════════
 

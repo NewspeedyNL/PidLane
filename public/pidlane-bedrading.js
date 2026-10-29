@@ -51,6 +51,9 @@ var KRITIEK = [
   'decodeVIN','plProtocolBits','plSteunbitsUit','_rdwPlausibleName',
   // Blok 5 van #509 (24-10-2026): de ATST-regel na de achtergrond.
   'plStNaAchtergrond',
+  // #645 (29-10-2026): de volledige kaart voor de expert op afstand roept
+  // diep zoeken achter een guard aan; ontbreekt hij, dan meldt de kaart die stap als fout.
+  'deepRefreshPIDs',
   'getPidDef','getVehicle','goHome',
   // Erbij op 16-09-2026. Het adapterpaneel (pidlane-adapter.js) heeft de
   // verbreek-knop van de OBD-chip overgenomen en roept handleConnect() achter
