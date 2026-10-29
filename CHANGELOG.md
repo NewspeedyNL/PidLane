@@ -36,6 +36,19 @@
  - Mode 06: waarde en grens 0 is een lege test, geen "krap".
 
  ═══════════════════════════════════════════════════════════
+ 29-10-2026 — Nieuwe auto, schone start
+ ═══════════════════════════════════════════════════════════
+
+ - Menu → "🧽 Nieuwe auto — schone start" (beheer en ontwikkelaar): het
+   toestel vergeet alles van eerdere auto's (sensoren, VIN-profielen, actief
+   voertuig, geschiedenis, bulk-opnames) en herstart. Login, tegoed, adapter
+   en weergave blijven. Alleen een bewaarlijst blijft; de rest gaat weg.
+ - Beheer → Klanten → "Schone start aan": een testaccount dat bij elke login
+   leeg begint. De Worker wist dan Mijn voertuigen, ritten en rapporten van
+   dat account (niet het akkoord, niet het tegoed), de app wist het toestel.
+   Nieuwe kolom klanten.SchoneStart, gaat er met ALTER bij (test-schoon.js).
+
+ ═══════════════════════════════════════════════════════════
  29-10-2026 — De deur in de Hyperlane-look
  ═══════════════════════════════════════════════════════════
 

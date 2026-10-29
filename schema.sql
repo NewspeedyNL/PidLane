@@ -362,7 +362,7 @@ CREATE TABLE IF NOT EXISTS d1_overzet (naam TEXT PRIMARY KEY, op TEXT NOT NULL, 
 -- ══════════════════════════════════════════════════════════════════
 CREATE TABLE IF NOT EXISTS gebruikers (id TEXT PRIMARY KEY, rij_gemaakt TEXT NOT NULL, "User" TEXT, "PassHash" TEXT, "Role" TEXT, "Label" TEXT, "Active" INTEGER);
 CREATE INDEX IF NOT EXISTS idx_gebruikers_user ON gebruikers (LOWER("User"));
-CREATE TABLE IF NOT EXISTS klanten (id TEXT PRIMARY KEY, rij_gemaakt TEXT NOT NULL, "Email" TEXT, "PassHash" TEXT, "Saldo" REAL, "TotaalGekocht" REAL, "Naam" TEXT, "Status" TEXT, "ResetToken" TEXT, "ResetVerloopt" TEXT, "Aangemaakt" TEXT, "LaatsteLogin" TEXT, "Opmerking" TEXT, "Akkoorden" TEXT, "Audit" TEXT, "AkkoordOp" TEXT, "StartTegoedGegeven" INTEGER, "VerwijderdOp" TEXT, "Ontwikkelaar" INTEGER, "TegoedUit" INTEGER);
+CREATE TABLE IF NOT EXISTS klanten (id TEXT PRIMARY KEY, rij_gemaakt TEXT NOT NULL, "Email" TEXT, "PassHash" TEXT, "Saldo" REAL, "TotaalGekocht" REAL, "Naam" TEXT, "Status" TEXT, "ResetToken" TEXT, "ResetVerloopt" TEXT, "Aangemaakt" TEXT, "LaatsteLogin" TEXT, "Opmerking" TEXT, "Akkoorden" TEXT, "Audit" TEXT, "AkkoordOp" TEXT, "StartTegoedGegeven" INTEGER, "VerwijderdOp" TEXT, "Ontwikkelaar" INTEGER, "TegoedUit" INTEGER, "SchoneStart" INTEGER);
 CREATE INDEX IF NOT EXISTS idx_klanten_email ON klanten (LOWER("Email"));
 CREATE INDEX IF NOT EXISTS idx_klanten_status ON klanten ("Status");
 CREATE TABLE IF NOT EXISTS tegoedcodes (id TEXT PRIMARY KEY, rij_gemaakt TEXT NOT NULL, "Code" TEXT, "Credits" REAL, "Gebruikt" INTEGER, "GebruiktOp" TEXT, "GebruiktDoor" TEXT, "Batch" TEXT, "Waarde" REAL, "Aangemaakt" TEXT, "Vervalt" TEXT, "Opmerking" TEXT);

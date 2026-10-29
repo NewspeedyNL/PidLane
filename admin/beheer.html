@@ -1983,6 +1983,7 @@ function tekenKlanten(){
     if(k.verwijderdOp) merk.push('<span class="pill p-uit">wordt gewist ' + esc(dt(k.definitiefOp)) + '</span>');
     if(k.ontwikkelaar) merk.push('<span class="pill p-wacht">ontwikkelaar</span>');
     if(k.ontwikkelaar && k.tegoedUit) merk.push('<span class="pill p-wacht">tegoed uit</span>');
+    if(k.schoneStart) merk.push('<span class="pill p-wacht">schone start</span>');
     return `<div class="klantrij">
       <div class="kop">
         <div>
@@ -1998,6 +1999,7 @@ function tekenKlanten(){
         <button class="btn-sec btn-sm" onclick="kWachtwoord('${k.id}','${esc(k.email)}')">Wachtwoord</button>
         <button class="btn-sec btn-sm" onclick="kOntwikkelaar('${k.id}','${esc(k.email)}',${k.ontwikkelaar ? 'true' : 'false'})">${k.ontwikkelaar ? 'Ontwikkelaar uit' : 'Ontwikkelaar aan'}</button>
         ${k.ontwikkelaar ? `<button class="btn-sec btn-sm" onclick="kTegoedUit('${k.id}','${esc(k.email)}',${k.tegoedUit ? 'true' : 'false'})">${k.tegoedUit ? 'Tegoed aan' : 'Tegoed uit'}</button>` : ''}
+        <button class="btn-sec btn-sm" onclick="kSchoneStart('${k.id}','${esc(k.email)}',${k.schoneStart ? 'true' : 'false'})">${k.schoneStart ? 'Schone start uit' : 'Schone start aan'}</button>
         <button class="btn-sec btn-sm" onclick="kDetail('${k.id}')">Details</button>
         <button class="btn-del btn-sm" onclick="kVerwijder('${k.id}','${esc(k.email)}')">Wissen</button>
       </div>
@@ -2114,6 +2116,17 @@ function kOntwikkelaar(id, email, nu){
     (naar ? 'Testrun, bulk-recorder, full survey en test-scenario worden zichtbaar. Beheer en de gegevens van andere klanten blijven dicht.'
           : 'De ontwikkeltools verdwijnen bij de volgende keer openen van de app.'))) return;
   kPost({ actie:'update', id, ontwikkelaar:naar }, () => 'Ontwikkelaar ' + (naar ? 'aan' : 'uit') + ' voor ' + email + '.');
+}
+/* Schone start (29-10-2026): een testaccount dat bij elke login leeg begint.
+   De Worker wist dan de voertuigen, ritten, rapporten en open punten van dit
+   account, en de app wist op het toestel wat er van eerdere auto's staat.
+   Account, tegoed en akkoord blijven. */
+function kSchoneStart(id, email, nu){
+  const naar = !nu;
+  if(!confirm((naar ? 'Schone start AANZETTEN voor ' : 'Schone start UITZETTEN voor ') + email + '?\n\n' +
+    (naar ? 'Bij ELKE login worden de voertuigen, ritten, rapporten en open punten van dit account gewist, en op het toestel alles van eerdere auto\'s. Alleen voor een testaccount.'
+          : 'Dit account bewaart zijn gegevens weer tussen logins.'))) return;
+  kPost({ actie:'update', id, schoneStart:naar }, () => 'Schone start ' + (naar ? 'aan' : 'uit') + ' voor ' + email + '.');
 }
 /* Tegoed uit (28-09-2026): alleen bij een klant met Ontwikkelaar aan. De
    Worker boekt dan geen tokens af; de AI-kosten komen bij jou, zonder teller.
