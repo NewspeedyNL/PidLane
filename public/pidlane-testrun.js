@@ -2848,6 +2848,21 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Rapport aanvragen vanuit Rapporten (29-10-2026) ──
+  {
+    issue: 'rapport-aanvragen',
+    naam: 'Rapporten → ➕ Rapport aanvragen: alle rapporten in één overzicht, elk met een knop die de test start die het vult',
+    waarom: 'Gevraagd op 29-10: welke rapporten er zijn en welke test erbij hoort, stond verspreid over deuren, tegels en menu\'s. Of elk rapport op dit toestel ook echt geladen is, verschilt per build.',
+    proef: async function () {
+      if (typeof plAanvraagLijst !== 'function' || typeof srAanvraag !== 'function') return { staat: 'FOUT', detail: 'plAanvraagLijst/srAanvraag ontbreken — oude pidlane-archief.js (herladen?)' };
+      var l = plAanvraagLijst(), ids = l.map(function (a) { return a.id; });
+      var mist = ['foutcodes', 'onderzoek', 'controle', 'accu', 'mode06', 'rit', 'ai', 'monitor', 'aankoop', 'brandstof'].filter(function (id) { return ids.indexOf(id) < 0; });
+      if (mist.length) return { staat: 'FOUT', detail: 'niet aan te vragen omdat de module niet geladen is: ' + mist.join(', ') };
+      var nu = l.filter(function (a) { return a.nu; }).length;
+      return { staat: 'OK', detail: l.length + ' rapporten aan te vragen, ' + nu + ' nu te starten' + (nu < l.length ? ' (de rest wacht op de adapter)' : '') };
+    }
+  },
+
   // ── Exportkeuring en het klantrapport als PDF (29-10-2026) ──
   {
     issue: 'exportkeuring',

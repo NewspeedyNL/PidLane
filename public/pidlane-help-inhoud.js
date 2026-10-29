@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-10-28', app: '3.4.0' },
+  gecontroleerd: { datum: '2026-10-29', app: '3.4.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -354,6 +354,7 @@ var PL_HULP = {
       icoon: '📄', kort: 'Alles wat PidLane heeft vastgelegd, ook als PDF.',
       tekst:
         '<p>De tab <b>Rapporten</b> toont wat PidLane in deze sessie heeft vastgelegd, zoals bewaarde uitlezingen en analyses.</p>' +
+        '<p>Bovenaan staat <b>➕ Rapport aanvragen</b>: een overzicht van alle rapporten die PidLane kan maken, met per rapport wat het meet en hoe lang het duurt. <b>▶ Start</b> begint de test die het rapport vult; de uitslag komt daarna hier te staan. Een rapport dat aan de auto meet, start pas als de adapter verbonden is. Een rapport met onbruikbare gegevens (een waarde die niet berekend kon worden, of een grens van 0 tot 0) wordt niet gemaakt: je krijgt een melding met de reden.</p>' +
         '<p>Bij een AI-analyse maakt <b>⬇ Download PDF</b> altijd hetzelfde rapport: een voorblad met het oordeel in het kort, dan de auto, de vraag, de staat van de auto (foutcodes, keuringsstatus, een stoplicht per systeem), het testplan, de meting met een grafiek per sensor, de mogelijke oorzaken met wat ervóór en ertegen pleit, de conclusie met advies, en de grenzen van de meting. Achterin staan de meetwaarden per sensor en de volledige tekst van de AI, voor een monteur. De tabellen en grafieken komen uit de meting van de app zelf; wat niet gemeten is, staat er als niet gemeten.</p>' +
         '<p>Met een klant- of beheeraccount staan je rapporten en ritten ook bij je auto: <b>Meer → Mijn voertuigen</b>. Een beheerder heeft daar een eigen ruimte voor zijn eigen auto’s, los van die van klanten.</p>' +
         '<p>Heeft je voertuig een kenteken, dan toont het tabblad <b>Kenteken</b> de kenteken-check: APK, verzekering, terugroepacties, milieuklasse, kosten per maand en het onderhoudsschema — ook als de adapter verbonden is.</p>' +

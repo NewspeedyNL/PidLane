@@ -523,6 +523,75 @@ function _sessionReportsPromptBlock(currentPrompt){
   }catch(e){ return ''; }
 }
 // ── Overzicht-UI ──
+// ── Rapport aanvragen (29-10-2026) ────────────────────────────────────
+// Rapporten toonde alleen wat er al was. Welke rapporten er bestaan en welke
+// test erbij hoort, stond verspreid over deuren, tegels en menu's. Hier
+// staan ze allemaal; de knop start de test die het rapport vult, en de
+// uitslag komt vanzelf weer in deze lijst.
+//   bus: de test praat met de auto (verbinding of demo nodig)
+//   kan: de module is geladen
+//   start: wat de knop doet — dezelfde aanroep als de ingang elders in de app
+const PL_AANVRAAG=[
+  { id:'foutcodes', ic:'🩺', titel:'Foutcodes en keuringsstatus', wat:'Leest alle foutcodes, freeze frame en de zelftests (readiness) van de motorcomputer.', duur:'± 1 min', bus:true,
+    kan:()=>!!window.PLFoutcodes, start:()=>{ PLFoutcodes.open(); PLFoutcodes.scan(); } },
+  { id:'onderzoek', ic:'🔎', titel:'Volledig onderzoek bij een klacht', wat:'Je kiest de klacht; PidLane meet stap voor stap tot de oorzaak gevonden of uitgesloten is.', duur:'5–15 min', bus:true,
+    kan:()=>!!(window.PLOnderzoek&&PLOnderzoek.open), start:()=>PLOnderzoek.open({}) },
+  { id:'controle', ic:'✅', titel:'Brede controle zonder klacht', wat:'Hetzelfde onderzoek, maar over alle bekende zwakke punten: voor een check-up of na een reparatie.', duur:'5–15 min', bus:true,
+    kan:()=>!!(window.PLOnderzoek&&PLOnderzoek.open), start:()=>PLOnderzoek.open({ controle:true }) },
+  { id:'accu', ic:'🔋', titel:'Accu en laadsysteem', wat:'Rustspanning, start en laden onder belasting; het rapport komt als PDF.', duur:'± 3 min', bus:true,
+    kan:()=>!!(window.PLAccu&&PLAccu.open), start:()=>PLAccu.open('test') },
+  { id:'mode06', ic:'🔬', titel:'Zelftests van de motorcomputer (mode 06)', wat:'De eigen metingen van de ECU per cilinder, katalysator en sonde, met zijn grenzen.', duur:'± 1 min', bus:true,
+    kan:()=>!!(window.PLM06&&PLM06.open), start:()=>PLM06.open() },
+  { id:'rit', ic:'🚗', titel:'Rit-analyse', wat:'Tien minuten rijden met meting; daarna een analyse van de rit.', duur:'10 min rijden', bus:true,
+    kan:()=>typeof openRitAnalyse==='function', start:()=>openRitAnalyse('10min') },
+  { id:'ai', ic:'🤖', titel:'AI-analyse van de meting', wat:'Een analyse van wat er nu gemeten wordt, met oorzaken en advies. Gebruikt tegoed.', duur:'± 1 min', bus:true,
+    kan:()=>typeof runQuickAI==='function', start:()=>runQuickAI() },
+  { id:'monitor', ic:'📈', titel:'Monitorrapport', wat:'De waarschuwingen en hun onderbouwing uit de lopende meting, direct vastgelegd.', duur:'direct', bus:true,
+    kan:()=>!!(window.PLMon&&PLMon.report), start:()=>{ PLMon.report(); try{ showToast?.('Monitorrapport opgeslagen in 📄 Rapporten'); }catch(e){ console.warn('melding monitorrapport', e); } } },
+  { id:'aankoop', ic:'🏷️', titel:'Aankooprapport (occasion)', wat:'Opent de koopcheck: kenteken, RDW en de elektronica van de auto, met een stoplicht en vragen voor de verkoper.', duur:'± 5 min', bus:false,
+    kan:()=>typeof openAnalysis==='function'&&typeof setKoopMode==='function', start:()=>{ setKoopMode('koop'); openAnalysis('koop'); } },
+  { id:'brandstof', ic:'⛽', titel:'Brandstofbesparing', wat:'Opent de brandstofanalyse: waar je rijstijl en de auto brandstof laten liggen.', duur:'± 1 min', bus:false,
+    kan:()=>typeof openAnalysis==='function', start:()=>openAnalysis('fuel') }
+];
+function _srBusKlaar(){
+  try{ if(typeof demoMode!=='undefined'&&demoMode) return true; }catch(e){ console.warn('demoMode onleesbaar', e); }
+  try{ return typeof connected!=='undefined'&&!!connected; }catch(e){ console.warn('verbinding onleesbaar', e); return false; }
+}
+// Wat er nu aan te vragen is: alleen wat geladen is, met de reden als het
+// nu niet kan. Geen stille catch: een kapotte kan() is een bug, geen "nee".
+function plAanvraagLijst(){
+  const bus=_srBusKlaar();
+  return PL_AANVRAAG.filter(a=>{ try{ return !!a.kan(); }catch(e){ console.warn('Rapport aanvragen: '+a.id+' onleesbaar', e); return false; } })
+    .map(a=>({ id:a.id, ic:a.ic, titel:a.titel, wat:a.wat, duur:a.duur, nu:!a.bus||bus, reden:(a.bus&&!bus)?'Verbind eerst de adapter':'' }));
+}
+function srAanvraag(id){
+  const a=PL_AANVRAAG.find(x=>x.id===id); if(!a) return false;
+  if(a.bus&&!_srBusKlaar()){ try{ showToast?.('Verbind eerst de adapter — dit rapport meet aan de auto'); }catch(e){ console.warn('melding aanvraag', e); } return false; }
+  closeReportsOverview();
+  try{ a.start(); return true; }
+  catch(e){ console.warn('Rapport aanvragen: '+id+' startte niet', e); try{ showToast?.('Starten lukte niet: '+(e.message||e)); }catch(e2){ console.warn('melding aanvraag', e2); } return false; }
+}
+function srAanvraagWissel(){ window._srAanvraagOpen=!window._srAanvraagOpen; openReportsOverview(); }
+function _srAanvraagBlok(){
+  const esc=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const open=!!window._srAanvraagOpen;
+  let h='<button id="srAanvraagKnop" onclick="srAanvraagWissel()" aria-expanded="'+open+'" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;'+
+    'padding:12px;margin-bottom:10px;border-radius:10px;border:1px solid var(--bl);background:rgba(26,111,255,.10);color:var(--tx);font:800 14px var(--f);cursor:pointer;text-align:left">'+
+    '➕ Rapport aanvragen<span>'+(open?'▲':'▼')+'</span></button>';
+  if(!open) return h;
+  h+='<div id="srAanvraagLijst" style="border:1px solid var(--bd);border-radius:10px;padding:2px 10px;margin-bottom:12px;background:var(--sur2)">'+
+    '<div style="font-size:11px;color:var(--tx3);padding:8px 0 4px">Kies een rapport: de knop start de test die het vult. De uitslag komt hier in Rapporten.</div>';
+  plAanvraagLijst().forEach(a=>{
+    h+='<div class="srAanvraag" data-id="'+a.id+'" style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:10px 0;border-top:1px solid var(--bd)">'+
+      '<div style="font-size:20px;flex:none;line-height:1">'+a.ic+'</div>'+
+      '<div style="flex:1 1 0;min-width:0"><div style="font-size:12.5px;font-weight:800;color:var(--tx)">'+esc(a.titel)+'</div>'+
+        '<div style="font-size:11px;color:var(--tx3)">'+esc(a.wat)+' · '+esc(a.duur)+'</div>'+
+        (a.reden?'<div style="font-size:11px;color:var(--or,#f59e0b);font-weight:700">'+esc(a.reden)+'</div>':'')+'</div>'+
+      '<button class="ai-act'+(a.nu?' pri':'')+'" style="flex:none;padding:6px 12px;font-size:11px" onclick="srAanvraag(\''+a.id+'\')"'+(a.nu?'':' aria-disabled="true"')+'>▶ Start</button>'+
+    '</div>';
+  });
+  return h+'</div>';
+}
 function openReportsOverview(){
   let ov=document.getElementById('reportsOverviewSheet');
   if(!ov){ ov=document.createElement('div'); ov.id='reportsOverviewSheet'; ov.className='ai-sheet-ov'; ov.style.zIndex='9890'; document.body.appendChild(ov);
@@ -532,7 +601,7 @@ function openReportsOverview(){
   const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   let rows='';
   if(!list.length){
-    rows='<div class="emp" style="padding:26px 0"><div class="ei">📄</div><h3>Nog geen rapporten deze sessie</h3><p>Begin met Check mijn auto — de uitslag komt hier te staan.</p></div>';
+    rows='<div class="emp" style="padding:26px 0"><div class="ei">📄</div><h3>Nog geen rapporten deze sessie</h3><p>Vraag hierboven een rapport aan, of begin met Check mijn auto — de uitslag komt hier te staan.</p></div>';
   }else{
     rows=list.map(r=>{
       const m=_srTypeMeta(r.type);
@@ -563,6 +632,7 @@ function openReportsOverview(){
       // Sinds 29-09-2026 is dit de tab Rapporten, niet meer een menu-item. Een
       // tab die na elke herstart leeg is terwijl de rapporten in Mijn
       // voertuigen gewoon bewaard staan, zou zeggen dat ze weg zijn.
+      _srAanvraagBlok()+
       _srBewaardRegel()+
       '<div style="font-size:12.5px;color:var(--tx2);margin-bottom:6px">Hieronder: deze sessie. Bewaard tot de app wordt gesloten.</div>'+
       rows+

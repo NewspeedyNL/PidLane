@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 29-10-2026 — Rapporten: een rapport aanvragen
+ ═══════════════════════════════════════════════════════════
+
+ - Bovenaan Rapporten: ➕ Rapport aanvragen. Alle tien rapporten (foutcodes,
+   onderzoek, brede controle, accu, mode 06, rit, AI, monitor, aankoop,
+   brandstof) met wat ze meten en hoe lang; ▶ Start begint de test die het
+   rapport vult. Meetrapporten wachten op de adapter (demo telt mee).
+   Tests: test-rapportaanvraag.js, bproef-aanvraag.js, blok 5.
+
+ ═══════════════════════════════════════════════════════════
  29-10-2026 — Rapporten: gekeurd vóór ze de deur uitgaan
  ═══════════════════════════════════════════════════════════
 
