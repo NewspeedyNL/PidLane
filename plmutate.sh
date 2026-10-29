@@ -1455,6 +1455,8 @@ MUTATIES=(
 "public/pidlane-intro.js@@    if (o.verminderd) return 'minder beweging';\n@@@@test-intro.js@@de intro speelt ook bij minder beweging in het besturingssysteem"
 "public/pidlane-intro.js@@    bezig = true;\n    onthoud();@@    bezig = true;@@test-intro.js@@de intro wordt niet onthouden en speelt bij elke herlaadbeurt opnieuw in plaats van één keer per sessie"
 "public/pidlane-intro.js@@    if (o.wachtMs > MAX_WACHT_MS) return@@    if (false) return@@test-intro.js@@na een trage opstart komt er nog eens bijna drie seconden intro bovenop"
+"public/pidlane.css@@animation:hlgVloer 1.1s linear 60;@@animation:hlgVloer 1.1s linear infinite;@@test-hyperlanedeur.js@@de tunnel achter het inlogscherm blijft eindeloos bewegen, ook als het scherm uren aan staat"
+"public/index.html@@<div class=\"hlg-horizon\"></div>@@<div></div>@@test-hyperlanedeur.js@@de horizon verdwijnt uit de tunnel en niemand ziet het"
 "public/pidlane-intro.js@@    if (ev && ev.type === 'pointerdown') { ev.preventDefault(); ev.stopPropagation(); }@@@@test-intro.js@@de tik die de intro overslaat drukt ook de knop eronder in, bijvoorbeeld de demo"
 "public/pidlane-intro.js@@  var DUUR_MS = 4900;@@  var DUUR_MS = 4000;@@test-intro.js@@de JS-timer ruimt de intro op midden in de doorzoom: het logo verdwijnt met een knip"
 "public/pidlane.css@@#plIntro:not(.pli-speel){ animation:pliNood .01s@@#plIntro:not(.pli-speel){ animation:pliKlaar .01s@@test-intro.js@@noodrem en eindregel delen één keyframe: Chromium telt de 2,85 s dan vanaf het laden en de intro valt midden in het beeld weg"

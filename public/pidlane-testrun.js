@@ -2848,6 +2848,26 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Hyperlane-deur: intro, inloggen en verbinden in de look van Hyperlane (29-10-2026) ──
+  {
+    issue: 'hyperlane-deur',
+    naam: 'Intro, inlog- en verbindscherm in de Hyperlane-look: neon-tunnel (CSS) achter het glas, die na ruim een minuut stilvalt',
+    waarom: 'Gevraagd op 29-10: de deur van de app in dezelfde look als Hyperlane. Of de tunnel op dit toestel vloeiend loopt en of het glas (backdrop-filter) werkt, verschilt per telefoon.',
+    proef: async function () {
+      var laag = document.getElementById('lgWaveBg');
+      var hlg = laag && laag.querySelector('.hlg');
+      if (!hlg) return { staat: 'FOUT', detail: 'de tunnel (.hlg) ontbreekt in #lgWaveBg — oude index.html (herladen?)' };
+      var vloer = hlg.querySelector('.hlg-vloer i');
+      var an = vloer ? getComputedStyle(vloer).animationIterationCount : '';
+      if (an === 'infinite') return { staat: 'FOUT', detail: 'de vloer beweegt eindeloos — hoort na ruim een minuut stil te staan' };
+      if (an !== '60') return { staat: 'FOUT', detail: 'de vloer heeft niet de Hyperlane-stijl (animatie ' + (an || 'geen') + ') — oude pidlane.css (herladen?)' };
+      var glas = CSS.supports('backdrop-filter', 'blur(1px)') || CSS.supports('-webkit-backdrop-filter', 'blur(1px)');
+      var stil = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var regel = 'tunnel aanwezig; glas ' + (glas ? 'werkt' : 'NIET ondersteund (kaarten zonder vervaging)') + (stil ? '; minder beweging staat aan: tunnel staat stil' : '');
+      return { staat: glas ? 'OK' : 'LET OP', detail: regel };
+    }
+  },
+
   // ── Hyperlane: de blikvanger van Slim visueel (27-10-2026) ──
   {
     issue: 'hyperlane',

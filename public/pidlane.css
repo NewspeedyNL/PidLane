@@ -4118,3 +4118,172 @@ body[data-rijvorm="compact"] #rijModus .rij-tip { grid-column:1 / 3; }
 .pl-opk-ok,.pl-opk-n{display:block;width:100%;margin-top:8px;border-radius:9px;padding:12px;font:700 14px var(--f);cursor:pointer}
 .pl-opk-ok{background:var(--bl);color:#fff;border:0}
 .pl-opk-n{background:var(--sur,#131926);color:var(--tx2,#9aa6bd);border:1px solid var(--bd,#28324a);font-weight:600}
+
+/* ══ HYPERLANE-DEUR (29-10-2026) — intro, inloggen en verbinden in de look van Hyperlane ══
+   Uit het gebruik: de deur van de app moest dezelfde indruk maken als de
+   blikvanger erachter. Dezelfde taal als .vpf-hyper: diepblauw naar zwart,
+   ijsblauw (#5ac8ff), cyaan (#00ffd7) en violet (#8a5cff), glas met een
+   neonrand, getallen en kopjes met wijde letters.
+
+   DE TUNNEL (.hlg in #lgWaveBg) is alleen CSS: een vloer en een plafond van
+   rasterlijnen in perspectief, een horizon en lichtstrepen uit het
+   verdwijnpunt. Alles beweegt met transform/opacity, dus op de compositor.
+   Het lint erboven gaf als reden "dit scherm kan uren aan blijven staan":
+   die reden blijft, daarom lopen de bewegingen een vast aantal keer (ruim
+   een minuut) en staat het beeld daarna stil — op een naadloze stand, want
+   het raster schuift precies één vak per ronde. Met prefers-reduced-motion
+   staat hij meteen stil. Geen WebGL: dat is voor Hyperlane zelf, waar hij
+   met de rit meebeweegt; hier is er niets om op te reageren. */
+:root{ --hlg-ijs:#5ac8ff; --hlg-cyaan:#00ffd7; --hlg-violet:#8a5cff; --hlg-diep:#02030a; }
+@property --hlg-hoek{ syntax:'<angle>'; inherits:false; initial-value:0deg; }
+
+#lgWaveBg{ background:var(--hlg-diep); }
+#lgWaveBg .lg-wave{ display:none; }
+.hlg{ position:absolute; inset:0; overflow:hidden; }
+.hlg-lucht{ position:absolute; inset:0;
+  background:
+    radial-gradient(70% 38% at 50% 50%, rgba(90,200,255,.20), transparent 70%),
+    radial-gradient(60% 50% at 12% 88%, rgba(0,255,215,.10), transparent 70%),
+    radial-gradient(60% 50% at 88% 10%, rgba(138,92,255,.16), transparent 70%),
+    radial-gradient(ellipse at 50% 50%, #0b1430, var(--hlg-diep) 72%); }
+/* Vloer en plafond: een vlak in perspectief met een raster dat naar je toe schuift. */
+.hlg-vlak{ position:absolute; left:-50%; right:-50%; height:50%; perspective:260px; overflow:hidden; }
+.hlg-vloer{ bottom:0; perspective-origin:50% 0; }
+.hlg-plafond{ top:0; perspective-origin:50% 100%; opacity:.45; }
+.hlg-vlak i{ position:absolute; left:0; right:0; height:300%; --hlg-vak:20px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 calc(var(--hlg-vak) - 1px), rgba(90,200,255,.6) calc(var(--hlg-vak) - 1px) var(--hlg-vak)),
+    repeating-linear-gradient(0deg, transparent 0 calc(var(--hlg-vak) - 1px), rgba(138,92,255,.6) calc(var(--hlg-vak) - 1px) var(--hlg-vak));
+  -webkit-mask:linear-gradient(transparent, #000 30%, #000); mask:linear-gradient(transparent, #000 30%, #000);
+  will-change:transform; }
+.hlg-vloer i{ top:0; transform-origin:50% 0; transform:rotateX(76deg); animation:hlgVloer 1.1s linear 60; }
+.hlg-plafond i{ bottom:0; transform-origin:50% 100%; transform:rotateX(-76deg);
+  -webkit-mask:linear-gradient(#000, #000 70%, transparent); mask:linear-gradient(#000, #000 70%, transparent);
+  animation:hlgPlafond 1.1s linear 60; }
+@keyframes hlgVloer{ from{ transform:rotateX(76deg) translateY(calc(-1 * var(--hlg-vak))); } to{ transform:rotateX(76deg) translateY(0); } }
+@keyframes hlgPlafond{ from{ transform:rotateX(-76deg) translateY(var(--hlg-vak)); } to{ transform:rotateX(-76deg) translateY(0); } }
+.hlg-horizon{ position:absolute; left:0; right:0; top:50%; height:2px; margin-top:-1px;
+  background:linear-gradient(90deg, transparent, var(--hlg-violet) 18%, var(--hlg-ijs) 42%, #fff 50%, var(--hlg-ijs) 58%, var(--hlg-violet) 82%, transparent);
+  box-shadow:0 0 18px 2px rgba(90,200,255,.65), 0 0 60px 10px rgba(138,92,255,.25);
+  animation:hlgAdem 4.4s ease-in-out 15; }
+@keyframes hlgAdem{ 0%,100%{ opacity:.75; } 50%{ opacity:1; } }
+/* Lichtstrepen: elk een eigen hoek (--a) en vertrekmoment (--v). */
+.hlg-strepen{ position:absolute; left:50%; top:50%; width:0; height:0; }
+.hlg-strepen b{ position:absolute; left:0; top:-1px; width:34vmax; height:2px; border-radius:2px; opacity:0;
+  transform-origin:0 50%; transform:rotate(var(--a)) translateX(2vmax) scaleX(.05);
+  background:linear-gradient(90deg, transparent, rgba(90,200,255,.0) 10%, var(--hlg-ijs) 70%, #fff);
+  animation:hlgStreep 3s cubic-bezier(.55,0,1,.45) var(--v) 22; }
+.hlg-strepen b:nth-child(3n){ background:linear-gradient(90deg, transparent, var(--hlg-violet) 70%, #fff); }
+.hlg-strepen b:nth-child(4n){ background:linear-gradient(90deg, transparent, var(--hlg-cyaan) 70%, #fff); }
+@keyframes hlgStreep{
+  0%{ opacity:0; transform:rotate(var(--a)) translateX(2vmax) scaleX(.05); }
+  20%{ opacity:.9; }
+  100%{ opacity:0; transform:rotate(var(--a)) translateX(70vmax) scaleX(1); } }
+
+/* ── Glas met een neonrand, gedeeld door inloggen en verbinden ── */
+.ov#loginOv .modal, .ov#connOv .modal{
+  background:linear-gradient(160deg, rgba(14,24,52,.62), rgba(4,6,16,.72));
+  backdrop-filter:blur(18px) saturate(150%); -webkit-backdrop-filter:blur(18px) saturate(150%);
+  border:1px solid rgba(90,200,255,.22);
+  box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 50px rgba(90,200,255,.10), inset 0 1px 0 rgba(255,255,255,.08); }
+.ov#loginOv .modal::before, .ov#connOv .modal::before{ content:""; position:absolute; inset:-1px; border-radius:inherit; padding:1.5px;
+  pointer-events:none; z-index:0;
+  background:conic-gradient(from var(--hlg-hoek), transparent 0deg, var(--hlg-ijs) 40deg, var(--hlg-violet) 90deg, transparent 150deg, transparent 200deg, var(--hlg-cyaan) 250deg, transparent 310deg);
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite:exclude;
+  animation:hlgRand 7s linear 10; opacity:.9; }
+@keyframes hlgRand{ to{ --hlg-hoek:360deg; } }
+.ov#loginOv .modal > *, .ov#connOv .modal > *{ position:relative; z-index:1; }
+.ov#connOv .modal > button[onclick="closeConnOv()"]{ position:absolute; z-index:10; }
+
+/* ── Woordmerk en kop ── */
+.ov#loginOv .mttl, .ov#connOv .mttl{ color:#e8f4ff; letter-spacing:.06em; text-shadow:0 0 18px rgba(90,200,255,.35); }
+.ov#loginOv .mttl span, .ov#connOv .mttl span{ color:var(--hlg-ijs) !important;
+  background:linear-gradient(90deg, var(--hlg-ijs), var(--hlg-violet)); -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent; filter:drop-shadow(0 0 10px rgba(90,200,255,.55)); }
+.ov#loginOv .msub, .ov#connOv .msub{ text-transform:uppercase; letter-spacing:.28em; font-size:10.5px !important; font-weight:600; color:#8fb4d8 !important; }
+.ov#loginOv .lg-logo, .ov#connOv .lg-logo{ box-shadow:0 0 0 1px rgba(90,200,255,.35), 0 0 30px rgba(90,200,255,.35), 0 0 60px rgba(138,92,255,.22) !important; }
+/* De stap-iconen (kenteken, netwerk, PIDs) als neonchip. */
+.ov#connOv .mh .mlogo:not(.lg-logo){ width:56px; height:56px; border-radius:16px; margin:0 auto 10px; display:flex; align-items:center; justify-content:center;
+  font-size:26px; background:radial-gradient(circle at 50% 35%, rgba(90,200,255,.22), rgba(4,6,16,.8));
+  box-shadow:0 0 0 1px rgba(90,200,255,.40), 0 0 24px rgba(90,200,255,.30), inset 0 0 14px rgba(138,92,255,.25); }
+
+/* ── Velden ── */
+.ov#loginOv .api-inp, .ov#connOv .api-inp, .ov#connOv #kentWizInput{
+  background:rgba(2,6,20,.55) !important; border:1px solid rgba(90,200,255,.22) !important; color:#e8f4ff !important;
+  transition:border-color .15s, box-shadow .15s; }
+.ov#loginOv .api-inp:focus, .ov#connOv .api-inp:focus, .ov#connOv #kentWizInput:focus{ outline:none;
+  border-color:var(--hlg-ijs) !important; box-shadow:0 0 0 3px rgba(90,200,255,.16), 0 0 22px rgba(90,200,255,.25); }
+.ov#connOv #kentWizInput{ font-family:var(--m); letter-spacing:.32em !important; text-shadow:0 0 10px rgba(90,200,255,.5); }
+.ov#loginOv .lg-field .api-inp:focus + .lg-ico{ color:var(--hlg-ijs); filter:drop-shadow(0 0 6px rgba(90,200,255,.8)); }
+
+/* ── Knoppen: de hoofdknop is een lichtbalk met een glans die eroverheen trekt ── */
+.ov#loginOv .mbtn.p, .ov#connOv .mbtn.p{ position:relative; overflow:hidden; color:#fff;
+  border:1px solid rgba(255,255,255,.18);
+  background:linear-gradient(100deg, #1f6bff, var(--hlg-ijs) 45%, var(--hlg-violet));
+  text-shadow:0 1px 8px rgba(2,3,10,.45);
+  box-shadow:0 0 0 1px rgba(90,200,255,.30), 0 10px 30px rgba(90,200,255,.28), 0 0 40px rgba(138,92,255,.25); }
+.ov#loginOv .mbtn.p:hover, .ov#connOv .mbtn.p:hover{ background:linear-gradient(100deg, #2b78ff, #7fd6ff 45%, #9b72ff); }
+.ov#loginOv .mbtn.p::after, .ov#connOv .mbtn.p::after{ content:""; position:absolute; top:0; bottom:0; left:-40%; width:30%;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,.45), transparent); transform:skewX(-18deg) translateX(0);
+  animation:hlgGlans 3.6s ease-in-out 1.2s 12; pointer-events:none; }
+@keyframes hlgGlans{ 0%,55%{ transform:skewX(-18deg) translateX(0); } 100%{ transform:skewX(-18deg) translateX(560%); } }
+.ov#loginOv .mbtn.s, .ov#connOv .mbtn.s{ background:rgba(10,20,46,.55); border:1px solid rgba(90,200,255,.20); color:#cfe3f7; }
+.ov#loginOv .mbtn.s:hover, .ov#connOv .mbtn.s:hover{ border-color:rgba(90,200,255,.55); box-shadow:0 0 18px rgba(90,200,255,.18); }
+.ov#connOv .mact > #btnExpertJoin{ background:none; border:0; box-shadow:none; }
+.ov#loginOv .lg-nieuw{ border-color:rgba(138,92,255,.45); background:rgba(138,92,255,.08); }
+.ov#loginOv .lg-nieuw b{ color:#b79bff; }
+.ov#loginOv .lg-of::before, .ov#loginOv .lg-of::after{ background:linear-gradient(90deg, transparent, rgba(90,200,255,.35), transparent); }
+.ov#loginOv .lg-site, .ov#connOv .lg-site{ color:var(--hlg-ijs); }
+
+/* ── Verbindscherm: stappen, adapterkaart, netwerken, voortgang ──
+   Het startvak (pidlane-start.js) en de netwerkkaarten (pidlane-bt.js)
+   tekenen met inline stijlen op var(--sur2)/var(--bd)/var(--bl); door die
+   variabelen hier te zetten krijgen ze de look zonder dat die code meedoet. */
+.ov#connOv{ --bl:var(--hlg-ijs); --bls:rgba(90,200,255,.14); --sur2:rgba(10,20,46,.55); --bd:rgba(90,200,255,.18);
+  --gn:#2dff9a; --gns:rgba(45,255,154,.10);
+  background:radial-gradient(ellipse at 50% 45%, rgba(11,20,48,.94), rgba(2,3,10,.97) 75%); }
+/* Staat de tunnel eronder aan (meteen na het inloggen), dan schemert hij door. */
+body:has(#lgWaveBg:not(.off)) .ov#connOv{ background:rgba(2,3,10,.30); backdrop-filter:none; -webkit-backdrop-filter:none; }
+.ov#connOv .mstep{ background:rgba(10,20,46,.50); border-color:rgba(90,200,255,.16); }
+.ov#connOv .mstep .sn, .ov#connOv #startVak li > span:first-child{ color:#02030a !important;
+  background:linear-gradient(135deg, var(--hlg-ijs), var(--hlg-violet)) !important; border-radius:50% !important;
+  box-shadow:0 0 12px rgba(90,200,255,.55); }
+.ov#connOv .network-card{ background:rgba(10,20,46,.55); border:1px solid rgba(90,200,255,.18); border-radius:14px; }
+.ov#connOv .network-card:hover{ border-color:var(--hlg-ijs); box-shadow:0 0 22px rgba(90,200,255,.22); background:rgba(90,200,255,.08); }
+.ov#connOv .network-card.sel{ border-color:var(--hlg-cyaan); background:rgba(0,255,215,.08);
+  box-shadow:0 0 0 1px rgba(0,255,215,.35), 0 0 26px rgba(0,255,215,.25); }
+.ov#connOv .spin{ border-color:rgba(90,200,255,.18); border-top-color:var(--hlg-ijs); box-shadow:0 0 14px rgba(90,200,255,.35); }
+.ov#connOv #snelStatus{ color:#e8f4ff; letter-spacing:.04em; }
+.ov#connOv #btLog{ background:rgba(2,3,10,.7) !important; border-color:rgba(90,200,255,.16) !important; }
+
+/* ── Opstart-intro: dezelfde tunnel en kleuren ──
+   Alleen kleur en een raster onder de rijbaan; de tijdlijn hierboven
+   (#plIntro, test-intro.js) blijft precies zoals hij is. */
+#plIntro .pli-bg{ background:radial-gradient(ellipse at 50% 40%, #0b1430, var(--hlg-diep) 72%); overflow:hidden; }
+#plIntro .pli-bg::after{ content:""; position:absolute; left:-50%; right:-50%; top:calc(40% + var(--s)*.5); height:200%;
+  transform-origin:50% 0; transform:perspective(260px) rotateX(76deg);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 19px, rgba(90,200,255,.5) 19px 20px),
+    repeating-linear-gradient(0deg, transparent 0 19px, rgba(138,92,255,.5) 19px 20px);
+  -webkit-mask:linear-gradient(transparent, #000 25%); mask:linear-gradient(transparent, #000 25%); }
+#plIntro .pli-gloed{ background:radial-gradient(60% 34% at 50% 40%, rgba(90,200,255,.24), rgba(138,92,255,.10) 50%, transparent 75%); }
+#pliBaanGr stop:first-child{ stop-color:var(--hlg-violet); }
+#pliBaanGr stop:last-child{ stop-color:var(--hlg-ijs); }
+#plIntro .pli-baan svg{ filter:drop-shadow(0 0 4px rgba(90,200,255,.9)) drop-shadow(0 0 14px rgba(138,92,255,.55)); }
+#plIntro .pli-d{ background:linear-gradient(#fff, var(--hlg-ijs)); box-shadow:0 0 10px var(--hlg-ijs), 0 0 22px rgba(138,92,255,.5); }
+#plIntro .pli-h{ background:linear-gradient(90deg, transparent, rgba(90,200,255,.7), transparent); }
+#plIntro .pli-zoom svg{ filter:drop-shadow(0 0 8px rgba(90,200,255,.55)) drop-shadow(0 0 22px rgba(138,92,255,.35)); }
+#plIntro .pli-naam{ letter-spacing:.06em; text-shadow:0 0 18px rgba(90,200,255,.45); }
+#plIntro .pli-naam span{ color:var(--hlg-ijs); background:linear-gradient(90deg, var(--hlg-ijs), var(--hlg-violet));
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; text-shadow:none;
+  filter:drop-shadow(0 0 10px rgba(90,200,255,.7)); }
+#plIntro .pli-kaart{ background:linear-gradient(160deg, rgba(14,24,52,.70), rgba(4,6,16,.80));
+  border:1px solid rgba(90,200,255,.30); box-shadow:0 0 30px rgba(90,200,255,.18), inset 0 1px 0 rgba(255,255,255,.08); }
+#plIntro .pli-tip{ letter-spacing:.28em; text-transform:uppercase; color:#8fb4d8; }
+
+@media (prefers-reduced-motion:reduce){
+  .hlg-vlak i, .hlg-horizon, .hlg-strepen b, .ov#loginOv .modal::before, .ov#connOv .modal::before,
+  .ov#loginOv .mbtn.p::after, .ov#connOv .mbtn.p::after{ animation:none !important; }
+  .hlg-strepen{ display:none; }
+}
