@@ -114,6 +114,70 @@
     return String(Math.round(val));
   }
 
+  /* ── EIGEN WEERGAVE PER SENSOR (29-10-2026) ────────────────────
+     Uit het gebruik: "raildruk van kPa naar bar, en zelf een min en max
+     invullen als een sensor niet op een plek past." 0123 heeft 0–655350 kPa
+     als bereik: op een boog past hij niet (bereik > 1e5) en op een ring
+     vult hij nooit. Per sensor, niet per plek: dezelfde sensor in twee
+     eenheden op twee plekken leest als twee metingen.
+
+     { factor, eenheid, min, max, dec } in pl_weergave, per toestel. Alleen
+     de WEERGAVE van Visueel en zijn profielen rekent ermee: de ruwe waarde,
+     het oordeel (pidOordeel, op de grenzen in de eenheid van de app), de
+     opname en de AI blijven zoals ze zijn. min en max staan in de eigen
+     eenheid, dus na de factor. */
+  const W_SLEUTEL = 'pl_weergave';
+  /* Puur. Een getal uit een invulveld: komma of punt, leeg = null. */
+  function invoer(s) {
+    if (s === null || s === undefined) return null;
+    const t = String(s).trim().replace(',', '.');
+    if (t === '') return null;
+    const n = Number(t);
+    return isFinite(n) ? n : null;
+  }
+  /* Puur. Wat er van een ingevulde weergave bruikbaar is, of null als er
+     niets overblijft. Een factor van 0 wist elk getal en telt dus niet; min
+     en max alleen samen en als max > min. */
+  function schoon(r) {
+    if (!r || typeof r !== 'object') return null;
+    const u = {}, f = invoer(r.factor), lo = invoer(r.min), hi = invoer(r.max), d = invoer(r.dec);
+    if (f !== null && f !== 0 && f !== 1) u.factor = f;
+    const e = String(r.eenheid === undefined || r.eenheid === null ? '' : r.eenheid).trim().slice(0, 8);
+    if (e) u.eenheid = e;
+    if (lo !== null && hi !== null && hi > lo) { u.min = lo; u.max = hi; }
+    if (d !== null && d >= 0 && d <= 3) u.dec = Math.round(d);
+    return Object.keys(u).length ? u : null;
+  }
+  // Elke meetwaarde vraagt ernaar: één keer lezen, en opnieuw na zetEigen().
+  let _w = null;
+  function weergaven() {
+    if (_w) return Object.assign({}, _w);
+    let r = {};
+    try { r = JSON.parse(localStorage.getItem(W_SLEUTEL) || '{}'); }
+    catch (e) { console.warn('PLToon: eigen weergaven onleesbaar — standaard', e); return {}; }
+    const uit = {};
+    if (r && typeof r === 'object' && !Array.isArray(r)) Object.keys(r).forEach(function (k) { const w = schoon(r[k]); if (w) uit[k.toUpperCase()] = w; });
+    _w = uit;
+    return Object.assign({}, uit);
+  }
+  function eigen(pid) { return weergaven()[String(pid || '').toUpperCase()] || null; }
+  /* `r` = null of een lege weergave wist hem: dan geldt weer de standaard. */
+  function zetEigen(pid, r) {
+    const k = String(pid || '').toUpperCase(), alle = weergaven(), w = schoon(r);
+    if (!k) return null;
+    if (w) alle[k] = w; else delete alle[k];
+    _w = alle;
+    try { localStorage.setItem(W_SLEUTEL, JSON.stringify(alle)); }
+    catch (e) { console.warn('PLToon: eigen weergave niet bewaard — geldt tot de app sluit', e); }
+    return w;
+  }
+  /* Puur. De waarde in de eigen eenheid; `w` = schoon() of null. */
+  function omgerekend(v, w) {
+    if (!getal(v) || !w || !getal(w.factor)) return v;
+    return v * w.factor;
+  }
+
   window.PLToon = { ingedrukt, waarde, tekst, PEDAAL, ABSOLUUT, ABS_ONDER, PEDAAL_BEREIK, TANK, TANK_N,
-    _wis: function () { _leer = {}; _sleutel = null; } };
+    invoer, schoon, weergaven, eigen, zetEigen, omgerekend, W_SLEUTEL,
+    _wis: function () { _leer = {}; _sleutel = null; _w = null; } };
 })();

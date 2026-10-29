@@ -388,6 +388,15 @@ function stand(rol, v, max){
    op de definitie die meegegeven wordt; BOOG_SCHAAL gaat voor. */
 function boogSchaal(pid, def){
   const p=String(pid||'').toUpperCase();
+  // Een zelf ingevulde schaal (PLToon, pl_weergave) gaat voor alles (29-10-2026).
+  const w=eigenW(p);
+  if(w && typeof w.min==='number' && getalKan(p, def)) return [w.min, w.max];
+  const sc=standaardSchaal(p, def);
+  // Alleen een factor: de schaal rekent mee, net als het getal (plekBij).
+  if(sc && w && typeof w.factor==='number'){ const a=sc[0]*w.factor, b=sc[1]*w.factor; return [Math.min(a, b), Math.max(a, b)]; }
+  return sc;
+}
+function standaardSchaal(p, def){
   if(BOOG_SCHAAL[p]) return BOOG_SCHAAL[p].slice();
   if(!def || ANKERS.has(p) || !getalKan(p, def)) return null;
   const lo=Number(def.min), hi=Number(typeof def.balkVol==='number' ? def.balkVol : def.max);
@@ -397,6 +406,11 @@ function boogSchaal(pid, def){
 /* Kan deze PID als getal op een plek? Niet de toerental en snelheid (die
    staan al op de meter), geen tekst-PID (status, brandstofsysteem) en geen
    telefoonsensor. */
+/* De eigen weergave van een sensor (PLToon.eigen), of null. */
+function eigenW(pid){
+  try{ return (window.PLToon && typeof PLToon.eigen==='function' && pid) ? PLToon.eigen(pid) : null; }
+  catch(e){ console.warn('PLVisueel: eigen weergave van '+pid+' onleesbaar — standaard', e); return null; }
+}
 function getalKan(pid, def){
   const p=String(pid||'').toUpperCase();
   if(!def || ANKERS.has(p)) return false;
@@ -745,7 +759,10 @@ function profielOpts(){
   let defs=[];
   try{ defs=(typeof discoveredPIDDefs!=='undefined' && discoveredPIDDefs) ? discoveredPIDDefs.map(function(d){ return { pid:d.pid, name:d.name, unit:d.unit, min:d.min, max:d.max }; }) : []; }
   catch(e){ console.warn('PLVisueel: keuzelijst onleesbaar voor het profiel', e); }
-  return { keuze:PF() ? PF().keuzes() : {}, defs:defs };
+  let w={};
+  try{ w=(window.PLToon && typeof PLToon.weergaven==='function') ? PLToon.weergaven() : {}; }
+  catch(e){ console.warn('PLVisueel: eigen weergaven onleesbaar voor het profiel', e); }
+  return { keuze:PF() ? PF().keuzes() : {}, defs:defs, weergave:w };
 }
 
 /* ── EEN PLEK ZELF KIEZEN (06-10-2026) ───────────────────────────
@@ -770,10 +787,10 @@ function kandidatenPlek(soort){
 /* Eigen sensoren die op een boog zouden kunnen maar geen schaal hebben (#472):
    een getal zonder min en max. Ze vallen terecht af — een boog weet dan niet
    waar hij vol is — maar de klant moet zien waaróm, anders lijkt de sensor kwijt. */
-function zonderSchaal(lijst){
+function zonderSchaal(lijst, alle){
   return (lijst||[]).filter(function(d){
     const def=defVan(d.pid) || d;
-    return !!(def && def.eigen) && getalKan(d.pid, def) && !boogSchaal(d.pid, def);
+    return (alle || !!(def && def.eigen)) && getalKan(d.pid, def) && !boogSchaal(d.pid, def);
   });
 }
 // Wat er in de keuzelijst van een plek mag: niet verborgen, geen telefoon.
@@ -801,7 +818,7 @@ function kiesPlek(rol){
     const x=PLEKKEN.filter(function(q){ return q.rol===rol; })[0]; if(!x) return;
     toonKeuze(pr, rol, x.naam, 'Kies wat hier staat. '+(x.soort==='boog'
         ? 'Op een boog passen alleen sensoren met een vaste schaal.' : 'Hier passen sensoren met een getal.')+
-      ' Automatisch is '+PLEK_AUTO[rol]+'.', nu, kandidatenPlek(x.soort), x.soort==='boog' ? zonderSchaal(kiesbaar()) : []);
+      ' Automatisch is '+PLEK_AUTO[rol]+'.', nu, kandidatenPlek(x.soort), x.soort==='boog' ? zonderSchaal(kiesbaar(), true) : []);
     return;
   }
   const z=P.voorInd(pr, _staat.ind && _staat.ind.profiel);
@@ -822,26 +839,76 @@ function toonKeuze(pr, rol, titel, uitleg, nu, lijst, afval){
     document.body.appendChild(ov);
   }
   const rij=function(pid, naam, sub){
-    return '<button type="button" class="vk-rij'+(nu===pid?' aan':'')+'" data-pid="'+esc(pid)+'">'+
+    const b='<button type="button" class="vk-rij'+(nu===pid?' aan':'')+'" data-pid="'+esc(pid)+'">'+
       '<span>'+esc(naam)+'</span><small>'+esc(sub||'')+'</small></button>';
+    // Naast elke sensor: zijn weergave (eenheid, factor, schaal), 29-10-2026.
+    return !pid ? b : '<div class="vk-rijw">'+b+'<button type="button" class="vk-w'+(eigenW(pid)?' aan':'')+'" data-w="'+esc(pid)+'" aria-label="Weergave van '+esc(naam)+'">⚙</button></div>';
   };
+  const eenh=function(d){ const w=eigenW(d.pid); return (w && w.eenheid) || d.unit || ''; };
   ov.innerHTML='<div class="vk-vel"><div class="vk-kop"><h2 id="plVisKiesTtl">'+esc(titel)+'</h2>'+
     '<button type="button" class="vk-sluit" aria-label="Sluiten" onclick="document.getElementById(\'plVisKies\').style.display=\'none\'">✕</button></div>'+
     '<p class="vk-uitleg">'+esc(uitleg)+'</p>'+
     rij('', 'Automatisch', nu ? '' : 'nu gekozen')+
-    lijst.map(function(d){ return rij(d.pid, d.name, (d.unit||'')+' · '+d.pid); }).join('')+
-    ((afval||[]).length ? '<p class="vk-afval" id="plVisAfval">Niet op een boog, want zonder schaal: '+
-      afval.map(function(d){ return '<b>'+esc(d.name||d.pid)+'</b>'; }).join(', ')+
-      '. Vul een minimum en maximum in bij Mijn voertuigen → Sensoren.</p>' : '')+'</div>';
-  ov.querySelectorAll('.vk-rij').forEach(function(b){
+    lijst.map(function(d){ return rij(d.pid, d.name, eenh(d)+' · '+d.pid); }).join('')+
+    ((afval||[]).length ? '<p class="vk-afval" id="plVisAfval">Niet op een boog, want zonder schaal. Tik op een sensor om zelf een minimum en maximum in te vullen:</p>'+
+      afval.map(function(d){ return '<button type="button" class="vk-rij vk-zonder" data-w="'+esc(d.pid)+'"><span>'+esc(d.name||d.pid)+'</span><small>'+esc(eenh(d))+' · ⚙</small></button>'; }).join('') : '')+'</div>';
+  ov.querySelectorAll('[data-w]').forEach(function(b){
+    b.onclick=function(){ toonWeergave(pr, rol, b.getAttribute('data-w'), function(){ toonKeuze(pr, rol, titel, uitleg, nu, lijst, afval); }); };
+  });
+  ov.querySelectorAll('.vk-rij[data-pid]').forEach(function(b){
     b.onclick=function(){
       P.zetKeuze(pr, rol, b.getAttribute('data-pid'));
       ov.style.display='none';
-      const g=el('gGrid');
-      if(g && typeof pidViewMode!=='undefined' && pidViewMode==='visueel') bouw(g, 'keuze');
+      herbouwKeuze();
     };
   });
   ov.style.display='flex';
+}
+function herbouwKeuze(){
+  const g=el('gGrid');
+  if(g && typeof pidViewMode!=='undefined' && pidViewMode==='visueel') bouw(g, 'keuze');
+}
+/* De weergave van één sensor (29-10-2026): eenheid, factor, schaal en
+   decimalen, in PLToon (pl_weergave). Bewaren zet hem ook meteen op deze
+   plek. Alleen wat het scherm toont rekent ermee; de meting, de
+   waarschuwingen en de opname blijven in de eenheid van de app. */
+function toonWeergave(pr, rol, pid, terug){
+  const P=PF(), ov=el('plVisKies'); if(!P || !ov || !window.PLToon) return;
+  const d=defVan(pid) || {}, w=eigenW(pid) || {}, naam=d.name || pid, u=d.unit || '';
+  const g=function(v){ return (typeof v==='number') ? String(v).replace('.', ',') : ''; };
+  const veld=function(id, label, waarde, plek, hint){
+    return '<label class="vk-veld" for="'+id+'"><span>'+esc(label)+'</span>'+
+      '<input id="'+id+'" type="text" inputmode="'+(id==='vkwE' ? 'text' : 'decimal')+'" value="'+esc(waarde)+'" placeholder="'+esc(plek)+'" autocomplete="off">'+
+      (hint ? '<small>'+esc(hint)+'</small>' : '')+'</label>';
+  };
+  ov.innerHTML='<div class="vk-vel"><div class="vk-kop"><h2 id="plVisKiesTtl">'+esc(naam)+'</h2>'+
+    '<button type="button" class="vk-sluit" aria-label="Terug" id="vkwTerug">←</button></div>'+
+    '<p class="vk-uitleg">Hoe deze sensor ('+esc(pid)+') op elke plek van Visueel staat. De meting zelf, de waarschuwingen en de opname blijven in '+esc(u || 'de eenheid van de app')+'.</p>'+
+    veld('vkwE', 'Eenheid', w.eenheid || '', u || 'eenheid')+
+    veld('vkwF', 'Vermenigvuldig met', g(w.factor), '1', u==='kPa' ? 'kPa naar bar: 0,01 · naar psi: 0,145' : 'bijvoorbeeld 0,01 om door 100 te delen')+
+    '<div class="vk-twee">'+veld('vkwMin', 'Minimum', g(w.min), g(typeof d.min==='number' && Math.abs(d.min)<1e6 ? d.min : null))+
+      veld('vkwMax', 'Maximum', g(w.max), g(typeof d.max==='number' && Math.abs(d.max)<1e6 ? d.max : null), 'in de eenheid hierboven')+'</div>'+
+    veld('vkwD', 'Decimalen', g(w.dec), '0–3')+
+    '<p class="vk-afval" id="vkwFout" role="alert"></p>'+
+    '<button type="button" class="vk-rij aan" id="vkwBewaar"><span>Bewaar en zet op deze plek</span></button>'+
+    '<button type="button" class="vk-rij" id="vkwStandaard"><span>Standaardweergave</span><small>wist wat hier staat</small></button></div>';
+  const v=function(id){ const e=el(id); return e ? e.value : ''; };
+  el('vkwTerug').onclick=function(){ if(typeof terug==='function') terug(); else ov.style.display='none'; };
+  el('vkwBewaar').onclick=function(){
+    const r={ eenheid:v('vkwE'), factor:v('vkwF'), min:v('vkwMin'), max:v('vkwMax'), dec:v('vkwD') };
+    const lo=PLToon.invoer(r.min), hi=PLToon.invoer(r.max);
+    // Een half ingevulde schaal stil weggooien leest als "het werkt niet".
+    if((lo===null)!==(hi===null) || (lo!==null && !(hi>lo))){ el('vkwFout').textContent='Vul een minimum én een maximum in, en het maximum groter dan het minimum.'; return; }
+    PLToon.zetEigen(pid, r);
+    P.zetKeuze(pr, rol, pid);
+    ov.style.display='none';
+    herbouwKeuze();
+  };
+  el('vkwStandaard').onclick=function(){
+    PLToon.zetEigen(pid, null);
+    ov.style.display='none';
+    herbouwKeuze();
+  };
 }
 /* Vegen wisselt de weergave (15-10-2026): de keuzestrook met stipjes en
    "Volgende" is weg, op verzoek uit het gebruik. veegRichting() is los zodat
@@ -1706,7 +1773,7 @@ function plekOpbouw(r, pid){
   const i=el('visi-'+r.rol), n=el('visn-'+r.rol), e=el('vise-'+r.rol), p=el('visp-'+r.rol);
   if(i) i.innerHTML=ic ? icoonHtml(ic) : '';
   if(n) n.textContent=(r.rol==='vak') ? vakKop(pid, def) : (ic ? '' : kortNaam(def, 6));
-  if(e) e.textContent=pid ? plekEenheid(def && def.unit).slice(0, 10) : '';
+  if(e) e.textContent=pid ? plekEenheid((eigenW(pid) || {}).eenheid || (def && def.unit)).slice(0, 10) : '';
   if(!p) return;
   let gekozen=false;
   try{ gekozen=!!basisKeuzes()['basis/'+r.rol]; }catch(x){ console.warn('PLVisueel: keuze van '+r.rol+' onleesbaar', x); }
@@ -1841,7 +1908,9 @@ function plekBij(rol, val){
   // Het getal op de plek: pedaal vanaf de rust, tank gedempt — dezelfde regel
   // als Overzicht en Slim (PLToon). De naald rekent zelf met de ruwe waarde.
   val=PLToon.waarde(pid, val);
-  const st=plekStaat(pid, val, def), u=def && def.unit;
+  // Het oordeel op de ruwe waarde; het getal en de boog in de eigen eenheid.
+  const st=plekStaat(pid, val, def), w=eigenW(pid), u=(w && w.eenheid) || (def && def.unit);
+  if(w) val=PLToon.omgerekend(val, w);
   const achter=boog ? boogAchter(u) : '';
   zetTekst('visv-'+rol, st==='geen' ? '—' : plekGetal(val, u, boog ? 4-achter.length : 5)+achter);
   const p=el('visp-'+rol); klasse(p, st); if(p) p.classList.remove('oud');
@@ -1937,7 +2006,7 @@ window.PLVisueel = {
   PLEKKEN:PLEKKEN, BOOG_SCHAAL:BOOG_SCHAAL, HOOFD:HOOFD, SCHAAL:SCHAAL,
   schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, lampTik:lampTik, reserveKetens:reserveKetens, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
   stand:stand, tekst:tekst, plekOordeel:plekOordeel, plekGetal:plekGetal, plekEenheid:plekEenheid, boogSchaal:boogSchaal, getalKan:getalKan,
-  plekKeten:plekKeten, plekStaat:plekStaat, kandidatenPlek:kandidatenPlek, zonderSchaal:zonderSchaal,
+  plekKeten:plekKeten, plekStaat:plekStaat, kandidatenPlek:kandidatenPlek, zonderSchaal:zonderSchaal, toonWeergave:toonWeergave, eigenW:eigenW,
   VERMOGEN:VERMOGEN, VRAAG_KETEN:VRAAG_KETEN, naaldSoort:naaldSoort, vraagUit:vraagUit, laadUit:laadUit, vermogenStand:vermogenStand,
   versnellingUit:versnellingUit, aandeelBij:aandeelBij, aandeelUit:aandeelUit, accuLeerBij:accuLeerBij, elektrischBereik:elektrischBereik, bereikUit:bereikUit,
   wijzerplaat:wijzerplaat, boogPad:boogPad, hoekPlek:hoekPlek, boogHoeken:boogHoeken,

@@ -3927,6 +3927,17 @@ html.dark .plh-i, #loginOv .plh-i, .mbtn.p > .plh-i, .pl-check > .plh-i {
 #plVisKies .vk-rij span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 #plVisKies .vk-rij small { flex:none; font-size:12px; color:var(--tx2); }
 #plVisKies .vk-rij.aan { border-color:var(--bl); }
+/* De weergave van een sensor (29-10-2026): ⚙ naast elke rij, en het invulvel. */
+#plVisKies .vk-rijw { display:flex; gap:6px; margin:0 0 4px; }
+#plVisKies .vk-rijw .vk-rij { flex:1; min-width:0; margin:0; }
+#plVisKies .vk-w { flex:none; width:44px; min-height:44px; background:var(--sur2); color:var(--tx2); border:1px solid transparent; border-radius:10px; font-size:18px; cursor:pointer; }
+#plVisKies .vk-w.aan { border-color:var(--bl); color:var(--bl); }
+#plVisKies .vk-veld { display:block; margin:0 0 10px; font-size:13px; color:var(--tx2); }
+#plVisKies .vk-veld span { display:block; margin-bottom:4px; }
+#plVisKies .vk-veld input { width:100%; box-sizing:border-box; min-height:44px; padding:8px 10px; background:var(--sur2); color:var(--tx); border:1px solid var(--bd2); border-radius:10px; font-size:16px; }
+#plVisKies .vk-veld small { display:block; margin-top:3px; font-size:12px; color:var(--tx3); }
+#plVisKies .vk-twee { display:flex; gap:10px; }
+#plVisKies .vk-twee .vk-veld { flex:1; min-width:0; }
 .vpf-tel-nul { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:44px; margin-top:10px; padding:8px 12px;
   background:var(--sur2); color:var(--tx); border:1px solid var(--bd2); border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; }
 .vpf-tel-nul small { font-weight:400; font-size:12px; color:var(--tx2); }
