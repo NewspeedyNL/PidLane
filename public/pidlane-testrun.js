@@ -2848,6 +2848,20 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Inleren wacht op de zoekronde; de kaart meldt zijn stappen (30-10-2026) ──
+  {
+    issue: '#648',
+    naam: 'Inleren voor een vaste expert wacht tot de zoekronde en de gezondheidscheck klaar zijn; de expert ziet "kaart bezig" in plaats van een alarm',
+    waarom: 'Zonder die wachtrij liep het inleren op een trage auto dwars door de gezondheidscheck heen. Wat een echte bus onder die belasting doet, blijft #648.',
+    proef: async function () {
+      if (!window.PLRemote || typeof PLRemote._inleerBusVrij !== 'function' || typeof PLRemote._bezig !== 'function') return { staat: 'FOUT', detail: 'PLRemote zonder wachtrij voor het inleren — oude pidlane-remote.js (herladen?)' };
+      if (PLRemote._inleerBusVrij({ discovery: 0, health: 1, kaart: false })) return { staat: 'FOUT', detail: 'het inleren zou starten tijdens een gezondheidscheck' };
+      if (!/Volledige kaart bezig/.test(PLRemote._stilTekst(5, true))) return { staat: 'FOUT', detail: 'de expert krijgt tijdens de kaart het alarm in plaats van "kaart bezig"' };
+      var b = PLRemote._bezig();
+      return { staat: 'OK', detail: 'nu: zoekronde ' + b.discovery + ', gezondheidscheck ' + b.health + ', kaart ' + (b.kaart ? 'bezig' : 'niet bezig') };
+    }
+  },
+
   // ── De verkoper of garage als vaste expert (29-10-2026) ──
   {
     issue: '#646',

@@ -234,6 +234,13 @@ function laadRemote() {
   const h = R._klantNiveauHtml('basis', false, { naam: '<b>Garage</b>' });
   toets('de klant ziet de vaste toegang met een intrekknop', /Vaste toegang voor/.test(h) && /vastIntrekken/.test(h));
   toets('de naam gaat door esc()', h.indexOf('<b>Garage') < 0);
+  // #648: het inleren wacht op de zoekronde en de gezondheidscheck
+  toets('bus vrij: inleren mag', R._inleerBusVrij({ discovery: 0, health: 0, kaart: false }));
+  toets('zoekronde loopt: wachten', !R._inleerBusVrij({ discovery: 1, health: 0, kaart: false }));
+  toets('gezondheidscheck loopt: wachten', !R._inleerBusVrij({ discovery: 0, health: 1, kaart: false }));
+  toets('een kaart loopt al: wachten', !R._inleerBusVrij({ discovery: 0, health: 0, kaart: true }));
+  toets('tijdens de kaart is stilte geen alarm voor de expert', /Volledige kaart bezig/.test(R._stilTekst(12, true)) && !/achtergrond/.test(R._stilTekst(12, true)));
+  toets('zonder kaart wél: app op de achtergrond of adapter weg', /achtergrond of adapter weg/.test(R._stilTekst(12, false)));
 
   console.log(fout ? '\n' + fout + ' FOUT(EN)\n' : '\nAlles goed\n');
   process.exit(fout ? 1 : 0);
