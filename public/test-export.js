@@ -109,7 +109,78 @@ const tekst=[
 ].concat(Array.from({length:120},(_,i)=>'[10:2'+(i%9)+':00]  ok  Regel '+i+'  (8'+(i%9)+' ms)')).join('\n');
 
 let fout=0;
-function toets(naam,waar){ if(waar){console.log('  ok    '+naam);} else {fout++;console.log('  FOUT  '+naam);} }
+
+// ══════════════════════════════════════════════════════════════════
+// KLANTRAPPORT EN KEURING (29-10-2026)
+// ──────────────────────────────────────────────────────────────────
+// Het onderzoeksrapport van een Mazda 5 ging als courier-dump de deur uit,
+// met " op elke plek waar een minteken stond en zestien keer "0 ruw,
+// grens 0–0" als oordeel. Twee vragen: ziet een rapport met === KOPPEN ===
+// eruit als een rapport, en komt een rapport met kapotte data er niet uit.
+const MAZDA=[
+ 'PidLane — Volledig onderzoek','Datum: 29-10-2026, 13:58:18','Klacht: Twijfels over dynamo','',
+ '=== CONCLUSIE ===',' Geen oorzaak gevonden die via de diagnosepoort te zien is.','',
+ '=== WAT DIT OORDEEL BEPERKT ===',' [let op] Foutcodes zijn 0 km geleden gewist: wat er daarvóór stond, is niet meer te zien.','',
+ '=== NOG OPEN, MET AANWIJZINGEN ===',' Lambdasonde traag of defect','   + 7 zelftest(s) lambdasonde krap','   \u2212 voorste sonde wisselt 0,8 V \u2014 reageert goed ✓','',
+ '=== VERLOOP ===',' 1. Accu in rust','    · spanning in rust 14,1 V — geen rustmeting',' · Ik verbreed naar 10 andere verdenkingen.'
+].join('\n');
+async function proza(){
+  console.log('\n— klantrapport en keuring —');
+  const K=window.plKeurExport, P=window.plPdfTekst;
+  toets('plKeurExport en plPdfTekst zijn ontsloten', typeof K==='function' && typeof P==='function');
+  toets('minteken U+2212 wordt een streepje, geen "', P('\u2212 1,9 %')==='- 1,9 %');
+  toets('vinkje, pijl en ≥ worden leesbaar', P('✓ → ≥')==='v -> >=');
+  toets('é, ë, €, °, – en — blijven staan (WinAnsi)', P('café ë € 90 °C – —')==='café ë € 90 °C – —');
+  toets('alles buiten WinAnsi valt weg', !/[^\x09\x0A\x20-\x7E\xA0-\xFF€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]/.test(P('🔋 λ ☐ 𝔸 ∑ ┼ '+MAZDA)));
+
+  toets('het Mazda-rapport na de reparatie is deelbaar', K(MAZDA).ok, JSON.stringify(K(MAZDA).redenen));
+  const slecht={
+    'grens 0–0 als oordeel':' [krap] Lambdasonde (test 0x01): 0 ruw, grens 0–0',
+    'NaN als meetwaarde':' rustspanning NaN V',
+    'undefined in een zin':' Laadspanning undefined',
+    'null als meetwaarde':' laadspanning null V',
+    'een object als tekst':' bewijs: [object Object]',
+    'een leeg rapport':''
+  };
+  Object.keys(slecht).forEach(function(n){
+    const t = n==='een leeg rapport' ? '' : MAZDA+'\n'+slecht[n];
+    toets('niet deelbaar: '+n, !K(t).ok);
+  });
+  toets('TEGENPROEF: een echte grens 0–750 is gewoon deelbaar', K(MAZDA+'\n [ok] Katalysator: 300, grens 0–750').ok);
+  toets('TEGENPROEF: "nullast" en "0 km" zijn geen lege waarde', K(MAZDA+'\n nullast 0 km, 0 °C').ok);
+  toets('een ruwe log wordt alleen op leegte gekeurd', K('regel 1 NaN\nregel 2 undefined',{ruw:true}).ok && !K('',{ruw:true}).ok);
+
+  // Geen PDF van slechte data — ook niet via een aanroeper die de keuring overslaat.
+  let gegooid=null;
+  try { await window.plMaakPdf('x.pdf', MAZDA+'\n rustspanning NaN V', {}); } catch(e){ gegooid=e; }
+  toets('plMaakPdf weigert een rapport met NaN, met de reden erbij', gegooid && /niet deelbaar/.test(gegooid.message) && /NaN/.test(gegooid.message));
+  global.showToast=function(t){ global._laatsteToast=t; };
+  let bewaard=false; global.plBewaarBestand=async function(){ bewaard=true; return true; };
+  const r=await window.plOpslaanPdf('x', MAZDA+'\n grens 0–0', {});
+  toets('plOpslaanPdf maakt geen bestand van slechte data en zegt waarom', r===false && !bewaard && /grens zonder venster/.test(global._laatsteToast||''));
+
+  // De opmaak van het klantrapport.
+  opdrachten.length=0;
+  await window.plMaakPdf('m.pdf', MAZDA, {titel:'Volledig onderzoek'});
+  const t=opdrachten.filter(o=>o[0]==='tekst').map(o=>o[1]);
+  const fonts=opdrachten.filter(o=>o[0]==='font').map(o=>o[1]);
+  toets('een rapport met === KOPPEN === is geen courier-dump', !fonts.some(f=>/^courier/.test(f)));
+  toets('de koppen staan zonder ===', t.indexOf('CONCLUSIE')>-1 && !t.some(x=>/===/.test(x)));
+  toets('[let op] wordt een label LET OP', t.indexOf('LET OP')>-1 && !t.some(x=>/\[let op\]/.test(x)));
+  toets('elke getekende tekst valt binnen WinAnsi (anders tekent jsPDF een ander teken)', !t.some(x=>/[^\x09\x0A\x20-\x7E\xA0-\xFF€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]/.test(x)), t.filter(x=>/[^\x20-\x7E\xA0-\xFF]/.test(x)).join(' | '));
+  toets('de grens van het instrument staat onderaan', t.some(x=>/diagnosepoort \(OBD\)/.test(x)));
+  // Het grote rapport (PLRapport.pdf: AI-, aankoop- en accurapport) gaat
+  // door dezelfde keuring: een "NaN V" in een tabelcel is geen PDF.
+  eval(fs.readFileSync(path.join(__dirname,'pidlane-rapport.js'),'utf8'));
+  let rg=null;
+  try { window.PLRapport.pdf({ voertuigNaam:'Mazda 5', tabel:[['Laadspanning','NaN V']] }, function(){ return new NepDoc(); }, {}); } catch(e){ rg=e; }
+  toets('PLRapport.pdf weigert een model met NaN in een cel', rg && /niet deelbaar/.test(rg.message), rg && rg.message);
+
+  opdrachten.length=0;
+  await window.plMaakPdf('l.pdf', tekst, {});
+  toets('TEGENPROEF: een log zonder === blijft monospace', opdrachten.some(o=>o[0]==='font' && /^courier/.test(o[1])));
+}
+function toets(naam,waar,extra){ if(waar){console.log('  ok    '+naam);} else {fout++;console.log('  FOUT  '+naam+(extra?'\n        '+extra:''));} }
 
 console.log('PDF-opbouw — pidlane-export.js\n');
 window.plMaakPdf('proef.pdf',tekst,{titel:'Testrun 1.1',ondertitel:'Koude start'}).then(function(){
@@ -130,6 +201,8 @@ window.plMaakPdf('proef.pdf',tekst,{titel:'Testrun 1.1',ondertitel:'Koude start'
   toets('emoji zijn eruit gefilterd', !teksten.some(t=>/[\u{1F000}-\u{1FAFF}]/u.test(t)));
   toets('scheidingslijnen als lijn, niet als streepjes', !teksten.some(t=>/^-{10,}$/.test(t.trim())));
 
+  return proza();
+}).then(function(){
   const totaal = fout + naamFout;
   console.log('\n'+(totaal?totaal+' test(s) gefaald':'alle tests geslaagd'));
   process.exit(totaal?1:0);

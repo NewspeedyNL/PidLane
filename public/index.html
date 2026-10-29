@@ -945,6 +945,9 @@ function closeConnOv(){
           <button class="kebab-item" id="kbMeeluister" onclick="closeKebab();PLMeeluister.knop()">📻 Meeluisteren op CAN</button>
           <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">🧪 Full function test</button>
         </div>
+        <!-- Nieuwe auto, schone start (29-10-2026): buiten de inklapgroep, zodat hij
+             direct in beeld staat. Zichtbaar als het ontwikkelmenu dat is (pasMenuAan). -->
+        <button class="kebab-item" id="kbSchoon" style="display:none" onclick="closeKebab();PLSchoon.start()">🧽 Nieuwe auto — schone start</button>
         <div class="kebab-sep"></div>
         <!-- Rit beëindigen (29-09-2026) vervangt "Uitloggen" en "Sluit de app": één
              venster dat de rit afrondt en vraagt wat er daarna gebeurt, met
@@ -2163,6 +2166,7 @@ function closeConnOv(){
 <script src="pidlane-run.js"></script><!-- run-chip: één plek waar staat wat er op de achtergrond draait -->
 <script src="pidlane-voorkeur.js"></script><!-- Mijn voorkeuren (PLVoorkeur) — standaardinstellingen per klantaccount; vereist PLRun, PLGarage, plFetch -->
 <script src="pidlane-meekijk.js"></script><!-- Meekijken bij een klant met zijn meekijkcode (PLMeekijk) — alleen beheer; vereist plFetch -->
+<script src="pidlane-schoon.js"></script><!-- PLSchoon: nieuwe auto, schone start — wist wat het toestel over eerdere auto's weet; vereist niets bij het laden -->
 <script src="pidlane-afsluiten.js"></script><!-- Rit beëindigen (PLAfsluiten) — rit afronden, verbreken, uitloggen, app sluiten; vereist PLGarage, handleConnect, logout, plSluitApp -->
 <script src="pidlane-nav.js"></script><!-- PLNav: onderbalk, startscherm (Check mijn auto + tegels) en garagemodus; vereist ná datalog, archief, uihelpers, wizard, foutcodes en afsluiten -->
 <script src="pidlane-opstart.js"></script><!-- PLOpstart: opstart of herlaad (pl_laatst_actief), de check één keer per auto per dag, het kenteken uit de VIN, de wekker (native PLWekker) — ná pidlane-nav.js; pidlane-bt.js en PLNav lezen hem alleen tijdens het draaien -->

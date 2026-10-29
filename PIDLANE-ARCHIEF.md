@@ -12,6 +12,40 @@ architectuur `PIDLANE.md`.
 
 Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
+---
+
+## 29-10-2026 — Het onderzoeksrapport van een Mazda 5: vier datafouten en een dump
+
+Een klant met twijfels over de dynamo kreeg een PDF die op vier plekken iets
+anders zei dan de meting, en die eruitzag als een log.
+
+- **"Accu vol" op 14,1 V.** De stap *Accu in rust* eist `motor_uit`, en
+  `voorwaardeGehaald()` noemt een onleesbaar toerental "uit". De motor draaide
+  al 5–15 minuten; de dynamo stond erop. Nu: boven `RUST_MAX_V` (13,2 V) geen
+  oordeel over de accu maar een regel onder *Wat dit oordeel beperkt*. De
+  voorwaarde zelf is niet veranderd: met contact aan en motor uit antwoorden
+  sommige ECU's niet op 010C, en dan zou de stap nooit draaien.
+- **Zestien zelftests "krap" met 0 ruw, grens 0–0.** De fix van 16-10 (een
+  grens op het uiterste van het getal is geen grens) ving 0–65535, niet 0–0:
+  min 0 telde als "geen ondergrens", max 0 als echte bovengrens, marge 0. Een
+  test met waarde, min en max allemaal 0 heeft niet gedraaid; `leeg` zet hem
+  op onzeker en `alsTekst` vat ze samen in één regel.
+- **"Katalysator versleten — uitgesloten — krap binnen de grens".** Uitgesloten
+  toonde `bewijs[0]`, en dat was toevallig bewijs vóór de fout. Nu het sterkste
+  tegenbewijs.
+- **`"` waar een minteken stond.** jsPDF's standaardletters kennen alleen
+  WinAnsi; U+2212 wordt dan een ander teken, geen blokje. `_schoon()` haalde
+  emoji weg maar liet de rest door. `plPdfTekst()` vertaalt wat betekenis
+  draagt en laat de rest vallen, voor beide PDF-wegen.
+
+Daarbovenop de vorm: `=== CONCLUSIE ===` stond letterlijk in courier in de PDF,
+en "geen oorzaak gevonden" stond er zonder dat erbij stond dat de codes 0 km
+eerder gewist waren. De keuring (`plKeurExport`) is de tweede lijn: de fouten
+hierboven zijn bij de bron gerepareerd, maar de volgende datafout in een
+rapport wordt nu een weigering met reden en geen PDF. Wat hij níét ziet: een
+plausibel getal dat fout is (14,1 V als rustspanning). Dat blijft werk voor
+de bron.
+
 
 ---
 

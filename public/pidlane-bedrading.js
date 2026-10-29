@@ -135,6 +135,9 @@ var KRITIEK = [
   'plMarkeer',
   'magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
   'openCaravan','openLogboek','openBugReport','openPrivacy','openRitAnalyse',
+  // Rapporten → ➕ Rapport aanvragen (29-10-2026): de lijst vraagt per
+  // rapport of zijn ingang er is; blok 5 vraagt de lijst zelf.
+  'openAnalysis','setKoopMode','runQuickAI','plAanvraagLijst','srAanvraag',
   'parsePID','pidCmd','pidGate','pidIsTekst','pidPollInterval','pidRecCSV',
   'brandstofPoort','plBevestig','plDemoZonderLogin','plHerijkTick','plLokaalLog','preAnalysisCheck','probeUitgebreid','profielHealth',
   // Blok 5 vraagt het begin van een analyse achter een guard (#290).
