@@ -2874,7 +2874,7 @@ const PROEVEN_B5 = [
       if (!window.plKeurExport('Rapport\n[ok] Katalysator: 300, grens 0–750').ok) return { staat: 'FOUT', detail: 'een gezond rapport wordt geweigerd' };
       if (window.plPdfTekst('\u2212') !== '-') return { staat: 'FOUT', detail: 'het minteken wordt niet vertaald — de PDF toont dan "' };
       var B = window.PLM06 && PLM06._intern && PLM06._intern.bouwRecord;
-      if (typeof B !== 'function') return { staat: 'FOUT', detail: 'PLM06 ontbreekt — oude pidlane-mode06.js (herladen?)' };
+      if (!B) return { staat: 'FOUT', detail: 'PLM06 ontbreekt — oude pidlane-mode06.js (herladen?)' };
       var r = B(0x01, 0x01, 0x01, 0, 0, 0);
       if (r.krap || r.oordeelZeker || !r.leeg) return { staat: 'FOUT', detail: 'een mode 06-test met waarde en grens 0 krijgt weer een oordeel — oude pidlane-mode06.js (herladen?)' };
       return { staat: 'OK', detail: 'keuring weigert NaN en keurt een gezond rapport; minteken vertaald; lege mode 06-test zonder oordeel' };
