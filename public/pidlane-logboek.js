@@ -270,7 +270,7 @@
       String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
     const tekst = logboekTekst();
     if (typeof plOpslaan === 'function') {
-      plOpslaan(basis, tekst, { titel: 'Logboek', ondertitel: gefilterd().length + ' regels' });
+      plOpslaan(basis, tekst, { titel: 'Logboek', ondertitel: gefilterd().length + ' regels', ruw: true });
       return;
     }
     try {

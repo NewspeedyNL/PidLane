@@ -2848,6 +2848,39 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Rapport aanvragen vanuit Rapporten (29-10-2026) ──
+  {
+    issue: 'rapport-aanvragen',
+    naam: 'Rapporten → ➕ Rapport aanvragen: alle rapporten in één overzicht, elk met een knop die de test start die het vult',
+    waarom: 'Gevraagd op 29-10: welke rapporten er zijn en welke test erbij hoort, stond verspreid over deuren, tegels en menu\'s. Of elk rapport op dit toestel ook echt geladen is, verschilt per build.',
+    proef: async function () {
+      if (typeof plAanvraagLijst !== 'function' || typeof srAanvraag !== 'function') return { staat: 'FOUT', detail: 'plAanvraagLijst/srAanvraag ontbreken — oude pidlane-archief.js (herladen?)' };
+      var l = plAanvraagLijst(), ids = l.map(function (a) { return a.id; });
+      var mist = ['foutcodes', 'onderzoek', 'controle', 'accu', 'mode06', 'rit', 'ai', 'monitor', 'aankoop', 'brandstof'].filter(function (id) { return ids.indexOf(id) < 0; });
+      if (mist.length) return { staat: 'FOUT', detail: 'niet aan te vragen omdat de module niet geladen is: ' + mist.join(', ') };
+      var nu = l.filter(function (a) { return a.nu; }).length;
+      return { staat: 'OK', detail: l.length + ' rapporten aan te vragen, ' + nu + ' nu te starten' + (nu < l.length ? ' (de rest wacht op de adapter)' : '') };
+    }
+  },
+
+  // ── Exportkeuring en het klantrapport als PDF (29-10-2026) ──
+  {
+    issue: 'exportkeuring',
+    naam: 'Elk rapport wordt gekeurd vóór het de telefoon uitgaat: NaN, undefined of een grens 0–0 geeft geen bestand; een rapport met koppen wordt een opgemaakte PDF, met tekens die jsPDF echt kent',
+    waarom: 'Het onderzoeksrapport van een Mazda 5 (29-10) ging als courier-dump naar de klant, met " op elke plek van een minteken, zestien zelftests "0 ruw, grens 0–0" als krap en "accu vol" op 14,1 V met draaiende motor.',
+    proef: async function () {
+      if (typeof window.plKeurExport !== 'function' || typeof window.plPdfTekst !== 'function') return { staat: 'FOUT', detail: 'plKeurExport/plPdfTekst ontbreken — oude pidlane-export.js (herladen?)' };
+      if (window.plKeurExport('Rapport\n laadspanning NaN V').ok) return { staat: 'FOUT', detail: 'een rapport met NaN gaat door de keuring' };
+      if (!window.plKeurExport('Rapport\n[ok] Katalysator: 300, grens 0–750').ok) return { staat: 'FOUT', detail: 'een gezond rapport wordt geweigerd' };
+      if (window.plPdfTekst('\u2212') !== '-') return { staat: 'FOUT', detail: 'het minteken wordt niet vertaald — de PDF toont dan "' };
+      var B = window.PLM06 && PLM06._intern && PLM06._intern.bouwRecord;
+      if (!B) return { staat: 'FOUT', detail: 'PLM06 ontbreekt — oude pidlane-mode06.js (herladen?)' };
+      var r = B(0x01, 0x01, 0x01, 0, 0, 0);
+      if (r.krap || r.oordeelZeker || !r.leeg) return { staat: 'FOUT', detail: 'een mode 06-test met waarde en grens 0 krijgt weer een oordeel — oude pidlane-mode06.js (herladen?)' };
+      return { staat: 'OK', detail: 'keuring weigert NaN en keurt een gezond rapport; minteken vertaald; lege mode 06-test zonder oordeel' };
+    }
+  },
+
   // ── Nieuwe auto, schone start (29-10-2026) ──
   {
     issue: 'schone-start',
@@ -10624,7 +10657,7 @@ function testrunOpslaan() {
   // Formaatkeuze via pidlane-export.js: tekst voor jezelf, PDF als er iemand
   // meekijkt. Beide bevatten hetzelfde; alleen de opmaak verschilt.
   if (typeof plOpslaan === 'function') {
-    plOpslaan(basis, tekst, { titel: 'Testrun ' + TESTRUN_VERSIE, ondertitel: CAMPAGNE.titel });
+    plOpslaan(basis, tekst, { titel: 'Testrun ' + TESTRUN_VERSIE, ondertitel: CAMPAGNE.titel, ruw: true });
     return;
   }
   // Terugval als de exportmodule ontbreekt.

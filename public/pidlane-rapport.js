@@ -532,15 +532,34 @@
 
   // jsPDF's standaardletters kennen geen emoji of pijlen: vervangen of weg.
   function schoon(t) {
-    return String(t == null ? '' : t)
+    const uit = String(t == null ? '' : t)
       .replace(/▲/g, '+').replace(/▼/g, '-').replace(/→/g, '->').replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/λ/g, 'lambda')
       .replace(/≈/g, '~').replace(/\u2212/g, '-')
       .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2100}-\u{214F}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{25A0}-\u{25FF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '')
       .replace(/\*\*/g, '');
+    // Wat dan nog buiten WinAnsi valt wordt anders een verkeerd teken: de
+    // ene vertaling in pidlane-export.js, als die geladen is.
+    return (typeof window !== 'undefined' && typeof window.plPdfTekst === 'function') ? window.plPdfTekst(uit) : uit;
+  }
+
+  // Elke tekst in het model, voor de keuring: een "NaN V" of "undefined" in
+  // een tabelcel komt anders ongezien in de PDF van een klant.
+  function teksten(x, uit, diep) {
+    if (diep > 8 || x == null) return uit;
+    if (typeof x === 'string') uit.push(x);
+    else if (typeof x === 'number') { if (!isFinite(x)) uit.push(String(x)); }
+    else if (Array.isArray(x)) x.forEach(function (y) { teksten(y, uit, diep + 1); });
+    else if (typeof x === 'object') Object.keys(x).forEach(function (k) { if (k !== 'ai' && k !== 'aiTekst') teksten(x[k], uit, diep + 1); });
+    return uit;
   }
 
   function pdf(mod, JsPDF, opts) {
     const o = opts || {};
+    if (typeof window !== 'undefined' && typeof window.plKeurExport === 'function') {
+      const k = window.plKeurExport(teksten(mod, [], 0).join('\n'), {});
+      k.redenen = k.redenen.filter(function (r) { return r.regel; });   // leegte zegt hier niets: het model heeft zijn eigen vorm
+      if (k.redenen.length) throw new Error('Dit rapport is niet deelbaar: ' + k.redenen.slice(0, 3).map(function (r) { return r.waarom + ' ("' + r.regel.slice(0, 60) + '")'; }).join('; '));
+    }
     const doc = new JsPDF({ unit: 'mm', format: 'a4' });
     const kl = (k) => RGB[k] || RGB.donker;
     const vul = c => doc.setFillColor(c[0], c[1], c[2]);

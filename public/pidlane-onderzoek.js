@@ -278,6 +278,7 @@
     catch (e) { console.warn('PLOnderzoek: koelwateroordeel', e); return null; }
   }
   // Laadspanning: één grens (PLKenmerk.laadspanning), stationair = 800 tpm.
+  var RUST_MAX_V = 13.2;
   function laadBewijs(v, dFout, dOk, voor) {
     var t0 = (voor ? voor + ' ' : 'laadspanning ') + r1(v) + ' V';
     var r = null;
@@ -331,6 +332,10 @@
       test: { accu: 2.5, laad: 0.5 },
       beoordeel: function (u) {
         var v = gem(u.reeks['0142']); if (!genoeg(u.reeks['0142'], 3)) return [];
+        // Boven 13,2 V laadt de dynamo: dan draaide de motor en is dit geen
+        // rustmeting. De Mazda 5 van 29-10-2026 kreeg zo "accu vol" op 14,1 V
+        // terwijl de klacht juist over het laden ging.
+        if (v >= RUST_MAX_V) return [{ h: null, d: 0, ongeldig: true, t: 'spanning in rust ' + r1(v) + ' V — de dynamo laadt nog, dus de motor draaide: geen rustmeting. Meet opnieuw met de motor minstens tien minuten uit.' }];
         if (v < 12.2) return [{ h: 'accu', d: 2.5, t: 'rustspanning ' + r1(v) + ' V — een volle accu staat op 12,6 V' }];
         if (v < 12.45) return [{ h: 'accu', d: 1, t: 'rustspanning ' + r1(v) + ' V — aan de lage kant' }];
         return [{ h: 'accu', d: -2, t: 'rustspanning ' + r1(v) + ' V — de accu is vol' }];
@@ -790,12 +795,15 @@
   /* Wat de klant niet weet — maar de auto wel. Puur uit st.metingen. Elk
      inzicht: { niveau: 'let'|'info', kop, t }. Geen bewijs voor een
      verdenking: dit is wat er op tafel ligt vóór er iets gemeten wordt. */
+  // Eén grens voor "net gewist": wat de auto al wist en wat het oordeel
+  // beperkt moeten hetzelfde zeggen.
+  function versGewist(sd) { return sd.km != null && sd.km < 200 && (sd.warm == null || sd.warm < 20); }
   function inzichten(st) {
     var m = st.metingen || {}, s = m.scan || {}, r = [];
     var c = s.codes || {}, sd = s.sinds || {}, rd = s.readiness;
     var vast = [].concat(c.bevestigd || [], c.permanent || []);
     var nietKlaar = (rd && rd.nietKlaar) || [];
-    if (sd.km != null && sd.km < 200 && (sd.warm == null || sd.warm < 20))
+    if (versGewist(sd))
       r.push({ niveau: 'let', kop: 'Foutcodes zijn kort geleden gewist',
         t: sd.km + ' km' + (sd.warm != null ? ' en ' + sd.warm + '× warmgedraaid' : '') + ' geleden. Wat er vóór die tijd stond is weg' +
           (nietKlaar.length ? ', en ' + nietKlaar.length + ' zelftest(s) hebben sindsdien nog niet gedraaid: ' + nietKlaar.join(', ') : '') +
@@ -1074,7 +1082,7 @@
       lijst = stap.beoordeel(uitslag, st) || [];
     }
     lijst.forEach(function (b) {
-      if (!b.h || !b.d) { stuk.bewijs.push({ h: null, d: 0, t: b.t }); return; }
+      if (!b.h || !b.d) { stuk.bewijs.push({ h: null, d: 0, t: b.t, ongeldig: !!b.ongeldig }); return; }
       // Bewijs vóór een verdenking die nog niet in spel was: een nieuwe richting.
       if (!st.v[b.h]) {
         if (b.d <= 0) return;
@@ -1165,24 +1173,59 @@
   // Open verdenkingen waar wél iets over gemeten is: tegenstrijdig bewijs
   // (P0420 terwijl de achterste sonde rustig is) hoort in de conclusie, niet
   // weggestopt onder "open".
+  function tegenbewijs(x) {
+    var b = null;
+    x.bewijs.forEach(function (y) { if (y.d < 0 && (!b || y.d < b.d)) b = y; });
+    return (b || x.bewijs[0] || {}).t;
+  }
   function nogOpen(c) { return c.open.filter(function (x) { return x.bewijs.some(function (b) { return b.d > 0; }); }); }
+
+  // Wat het oordeel beperkt, in woorden voor de klant. "Geen oorzaak
+  // gevonden" na vers gewiste codes, half gedraaide zelftests of een meting
+  // die niet ging zoals bedoeld is een ander oordeel dan na een volle meting;
+  // het rapport van 29-10-2026 zei dat nergens bij de conclusie.
+  function beperkingen(st) {
+    var m = st.metingen || {}, s = m.scan || {}, sd = s.sinds || {}, rd = s.readiness, r = [];
+    var nietKlaar = (rd && rd.nietKlaar) || [];
+    if (versGewist(sd))
+      r.push('Foutcodes zijn ' + sd.km + ' km geleden gewist: wat er daarvóór stond, is niet meer te zien.');
+    if (nietKlaar.length) r.push(nietKlaar.length + ' zelftest(s) nog niet klaar (' + nietKlaar.join(', ') + '): daar kan nog geen foutcode uit komen.');
+    st.log.forEach(function (l) {
+      if (l.soort !== 'stap') return;
+      if (/^Overgeslagen/.test(l.t || '') && STAP[l.stap] && STAP[l.stap].soort !== 'vraag') r.push(l.titel + ': ' + l.t.toLowerCase());
+      (l.bewijs || []).forEach(function (b) { if (b.ongeldig) r.push(l.titel + ': ' + b.t); });
+    });
+    return r;
+  }
 
   function alsTekst(st) {
     var c = st.uitkomst || conclusie(st), r = ['PidLane — Volledig onderzoek', 'Datum: ' + new Date().toLocaleString('nl')];
-    if (st.ctx.merk) r.push('Voertuig: ' + st.ctx.merk);
+    if (st.ctx.merk) r.push('Voertuig: ' + st.ctx.merk.charAt(0).toUpperCase() + st.ctx.merk.slice(1));
     if (st.ctx.klachtTekst) r.push('Klacht: ' + st.ctx.klachtTekst);
     if ((st.ctx.codesHand || []).length) r.push('Opgegeven foutcodes (niet uitgelezen): ' + st.ctx.codesHand.join(', '));
     if ((st.ctx.wanneer || []).length) r.push('Wanneer: ' + st.ctx.wanneer.map(function (w) { return WANNEER[w] ? WANNEER[w].naam : w; }).join(', '));
-    var inz = inzichten(st);
+    // Wat onder "beperkt" staat, staat niet nog eens onder "al wist".
+    var inz = inzichten(st).filter(function (x) { return !/kort geleden gewist|zelftest\(s\) nog niet klaar/.test(x.kop); });
     if (inz.length) { r.push('', '=== WAT DE AUTO AL WIST ==='); inz.forEach(function (x) { r.push(' ' + (x.niveau === 'let' ? '[let op] ' : '') + x.kop + ' — ' + x.t); }); }
+    var bep = beperkingen(st);
     r.push('', '=== CONCLUSIE ===');
-    if (c.oordeel === 'niets') r.push(' Geen oorzaak gevonden die via de diagnosepoort te zien is.');
+    if (c.oordeel === 'niets') r.push(' Geen oorzaak gevonden die via de diagnosepoort te zien is.' + (bep.length ? ' Dit oordeel is voorlopig: zie hieronder wat het beperkt.' : ''));
+    // Het antwoord op de vraag waarmee de klant kwam, vóór de rest.
+    var bijKlacht = [];
+    (st.ctx.klachten || []).forEach(function (k) { (KLACHTEN[k] ? KLACHTEN[k].h : []).forEach(function (h) { if (st.v[h] && bijKlacht.indexOf(h) < 0) bijKlacht.push(h); }); });
+    var inOrde = bijKlacht.filter(function (h) { var x = status(st.v[h].score); return x === 'uitgesloten' || x === 'onwaarschijnlijk'; });
+    var nietGemeten = bijKlacht.filter(function (h) { return status(st.v[h].score) === 'open' && !st.v[h].bewijs.length; });
+    if (inOrde.length) r.push(' Bij de klacht nagekeken en in orde: ' + inOrde.map(function (h) { return VERDENKINGEN[h].naam; }).join(', ') + '.');
+    if (nietGemeten.length) r.push(' Bij de klacht niet te beoordelen in deze meting: ' + nietGemeten.map(function (h) { return VERDENKINGEN[h].naam; }).join(', ') + '.');
     c.top.forEach(function (x) {
       r.push(' ' + (x.status === 'bevestigd' ? '[bevestigd]     ' : '[waarschijnlijk] ') + x.naam);
       x.bewijs.forEach(function (b) { r.push('   ' + (b.d > 0 ? '+' : '−') + ' ' + b.t); });
       r.push('   vervolg: ' + x.vervolg);
     });
-    if (c.uitgesloten.length) { r.push('', '=== UITGESLOTEN ==='); c.uitgesloten.forEach(function (x) { r.push(' ' + x.naam + ' — ' + ((x.bewijs[0] || {}).t || '')); }); }
+    if (bep.length) { r.push('', '=== WAT DIT OORDEEL BEPERKT ==='); bep.forEach(function (t) { r.push(' [let op] ' + t); }); }
+    // Het sterkste tegenbewijs, niet het eerste: bij de Mazda 5 stond
+    // "Katalysator versleten" als uitgesloten met "krap binnen de grens".
+    if (c.uitgesloten.length) { r.push('', '=== UITGESLOTEN ==='); c.uitgesloten.forEach(function (x) { r.push(' [ok] ' + x.naam + ' — ' + (tegenbewijs(x) || '')); }); }
     var tegen = nogOpen(c);
     if (tegen.length) { r.push('', '=== NOG OPEN, MET AANWIJZINGEN ==='); tegen.forEach(function (x) { r.push(' ' + x.naam); x.bewijs.forEach(function (b) { r.push('   ' + (b.d > 0 ? '+' : '−') + ' ' + b.t); }); }); }
     var kn = st.kennis;
@@ -1200,9 +1243,10 @@
       PLM06.alsTekst(st.m06).forEach(function (l) { r.push(' ' + l); });
     }
     r.push('', '=== VERLOOP ===');
-    st.log.forEach(function (l, i) {
-      if (l.soort !== 'stap') { r.push(' · ' + l.t); return; }
-      r.push(' ' + (i) + '. ' + l.titel + (l.antwoord ? ' — ' + l.antwoord : ''));
+    var nr = 0;
+    st.log.forEach(function (l) {
+      if (l.soort !== 'stap') { if (l.t) r.push(' · ' + l.t); return; }
+      r.push(' ' + (++nr) + '. ' + l.titel + (l.antwoord ? ' — ' + l.antwoord : ''));
       if (l.t) r.push('    ' + l.t);
       l.bewijs.forEach(function (b) { r.push('    ' + (b.d > 0 ? '+' : b.d < 0 ? '−' : '·') + ' ' + b.t); });
     });
