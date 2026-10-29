@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 29-10-2026 — Eigen weergave per sensor: eenheid, factor, schaal
+ ═══════════════════════════════════════════════════════════
+
+ - In het keuzevel van een plek (Visueel en elk profiel, ook Hyperlane)
+   staat ⚙ naast elke sensor: eenheid, vermenigvuldig met (kPa → bar:
+   0,01), minimum en maximum, decimalen. Per sensor in pl_weergave.
+ - Een sensor zonder bruikbare schaal (0123: 0–655350 kPa) kan zo toch op
+   een boog; de lijst "zonder schaal" toont nu ook vaste sensoren.
+ - Alleen de weergave rekent om: ruwe waarde, oordeel en opname blijven
+   in de eenheid van de app (test-weergave.js).
+
+ ═══════════════════════════════════════════════════════════
  29-10-2026 — Rapporten: een rapport aanvragen
  ═══════════════════════════════════════════════════════════
 

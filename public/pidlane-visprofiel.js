@@ -285,7 +285,7 @@ function kortVan(naam){ const n=String(naam||''); return n.length>10 ? n.slice(0
 function indeling(id, mag, motor, opts){
   const p=voor(id, motor);
   if(!p || !p.plekken) return null;
-  const uit={ id:p.id, motor:motor||null, plekken:{}, vervang:{} }, bezet=[];
+  const uit={ id:p.id, motor:motor||null, plekken:{}, vervang:{}, weergave:{} }, bezet=[];
   const def=function(q){ return (opts && Array.isArray(opts.defs)) ? opts.defs.filter(function(d){ return d && d.pid===q; })[0] : null; };
   // Wat elke plek uit zijn EIGEN keten zou halen. Dezelfde PID op twee
   // plekken mag als beide ketens hem noemen (de telemetrie zet TL01 op de
@@ -319,6 +319,10 @@ function indeling(id, mag, motor, opts){
       const r=(p.reserve||[]).filter(function(y){ return y.pid===pid; })[0];
       if(r) uit.vervang[x.rol]={ naam:r.naam, kort:r.kort, eenheid:r.eenheid, lo:r.lo, hi:r.hi, dec:r.dec, reserve:true };
     }
+    // De eigen weergave van die sensor (PLToon, pl_weergave): eenheid, factor,
+    // schaal en decimalen gaan vóór alles wat hierboven gekozen is.
+    const w=pid && opts && opts.weergave && opts.weergave[pid];
+    if(w) uit.weergave[x.rol]=w;
   });
   return uit;
 }
@@ -332,8 +336,25 @@ function ketens(id, motor, opts){
    eigen naam en schaal. */
 function voorInd(id, ind){
   const p=voor(id, ind && ind.motor);
-  if(!p || !p.plekken || !ind || !ind.vervang) return p;
-  return Object.assign({}, p, { plekken:p.plekken.map(function(x){ return ind.vervang[x.rol] ? Object.assign({}, x, ind.vervang[x.rol]) : x; }) });
+  if(!p || !p.plekken || !ind || (!ind.vervang && !ind.weergave)) return p;
+  return Object.assign({}, p, { plekken:p.plekken.map(function(x){
+    const v=ind.vervang && ind.vervang[x.rol], w=ind.weergave && ind.weergave[x.rol];
+    const y=v ? Object.assign({}, x, v) : x;
+    return w ? Object.assign({}, y, weergaveVelden(w, y)) : y;
+  }) });
+}
+/* Puur. Een eigen weergave (PLToon.schoon) als velden van plek `x`. Een
+   factor zonder eigen schaal rekent de schaal van de plek mee om, anders
+   staat een omgerekende waarde op een schaal in de oude eenheid. */
+function weergaveVelden(w, x){
+  const u={};
+  if(w.eenheid) u.eenheid=w.eenheid;
+  if(typeof w.min==='number' && typeof w.max==='number'){ u.lo=w.min; u.hi=w.max; }
+  else if(typeof w.factor==='number' && x && typeof x.lo==='number' && typeof x.hi==='number'){
+    const a=x.lo*w.factor, b=x.hi*w.factor; u.lo=Math.min(a, b); u.hi=Math.max(a, b);
+  }
+  if(typeof w.dec==='number') u.dec=w.dec;
+  return u;
 }
 /* Hoe ver gevuld, 0–100. Niet te lezen = null. */
 function deel(v, lo, hi){
@@ -611,20 +632,22 @@ function bij(id, ind, pid, val, st){
     if(ind.plekken[x.rol]!==pid) return;
     // De energiering is geen ruwe pedaalwaarde: die zet energie().
     if(x.soort==='energie' || x.soort==='afgeleid') return;
-    const d=deel(val, x.lo, x.hi);
+    // In de eigen eenheid (PLToon.omgerekend); het oordeel `st` bleef op de ruwe waarde.
+    const w=ind.weergave && ind.weergave[x.rol], vx=w ? PLToon.omgerekend(val, w) : val;
+    const d=deel(vx, x.lo, x.hi);
     // De ring van het toerental: 0–8000, op een diesel 0–6000 (#393), net
     // als de schaal van de basismeter.
-    const t=tekst(val, x.dec);
+    const t=tekst(vx, x.dec);
     // In een buis staat de eenheid achter het getal (90°); elders heeft hij een eigen vakje.
     zetTekst('vpf-w-'+x.rol, x.soort==='thermo' && t!=='—' ? t+x.eenheid : t);
     const f=el('vpf-f-'+x.rol), plek=el('vpf-p-'+x.rol);
     if(plek){ plek.classList.remove('warn','danger','oud'); if(st==='warn' || st==='danger') plek.classList.add(st); }
     // Telemetrie: de tekening draait of schuift met de waarde zelf, begrensd.
-    if(x.soort==='schuif' || x.soort==='draai' || x.soort==='kantel' || x.soort==='gx' || x.soort==='gy'){ telBij(x, val); return; }
+    if(x.soort==='schuif' || x.soort==='draai' || x.soort==='kantel' || x.soort==='gx' || x.soort==='gy'){ telBij(x, vx); return; }
     // Hyperlane tekent zelf, vloeiend: hier alleen de waarde doorgeven.
     // Hyperlane tekent zelf; een vervangen plek telt alleen als getal, niet als
     // gas, koelwater of snelheid in de scènes (27-10-2026).
-    if(x.soort==='hyper'){ if(window.PLHyperlane) PLHyperlane.zet(x.rol, val, st, !!(ind.vervang && ind.vervang[x.rol])); return; }
+    if(x.soort==='hyper'){ if(window.PLHyperlane) PLHyperlane.zet(x.rol, vx, st, !!(ind.vervang && ind.vervang[x.rol]) || !!(w && w.factor)); return; }
     if(!f) return;
     const v=d===null ? 0 : d;
     if(x.soort==='thermo') f.style.height=v.toFixed(1)+'%';
@@ -786,7 +809,7 @@ window.PLVisProfiel = {
   zoek:zoek, voor:voor, geldig:geldig, plekkenVan:plekkenVan, volgende:volgende, vorige:vorige, lees:lees, bewaar:bewaar,
   standaard:standaard, energie:energie, toestandTekst:toestandTekst, tegelTekst:tegelTekst,
   indeling:indeling, ketens:ketens, deel:deel, tekst:tekst, html:html, bij:bij, dof:dof, pids:pids,
-  KEUZE_SLEUTEL:KEUZE_SLEUTEL, keuzes:keuzes, zetKeuze:zetKeuze, ketenVan:ketenVan, voorInd:voorInd, nulstellen:nulstellen,
+  KEUZE_SLEUTEL:KEUZE_SLEUTEL, keuzes:keuzes, zetKeuze:zetKeuze, ketenVan:ketenVan, voorInd:voorInd, weergaveVelden:weergaveVelden, nulstellen:nulstellen,
   G_PIEK_MS:G_PIEK_MS, gPiek:gPiek, gPunt:gPunt, gWis:gWis, G_SPOOR_MS:G_SPOOR_MS, G_MAX_PAUZE_MS:G_MAX_PAUZE_MS, gSpoorBij:gSpoorBij, gSpoorPunten:gSpoorPunten, gMax:gMax
 };
 })();

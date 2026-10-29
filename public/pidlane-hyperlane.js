@@ -578,7 +578,8 @@ function opties(){
     const P=window.PLVisProfiel, V=window.PLVisueel, ind=V && V.staat && V.staat().ind;
     const pi=ind && ind.profiel, p=P && pi ? P.voorInd('hyperlane', pi) : null;
     (p && p.plekken || []).forEach(function(x){
-      const v=!!(pi.vervang && pi.vervang[x.rol]);
+      // Een eigen factor (PLToon) maakt er ook een ander getal van dan toeren of km/h.
+      const v=!!(pi.vervang && pi.vervang[x.rol]) || !!(pi.weergave && pi.weergave[x.rol] && pi.weergave[x.rol].factor);
       if(x.rol==='toeren' && !v) o.toerenHi=x.hi;
       if(x.rol==='snel' && !v) o.snelHi=x.hi;
       if(v && (x.rol==='toeren' || x.rol==='snel')) o.ring[x.rol]={ lo:x.lo, hi:x.hi, dec:x.dec||0, eenh:String((x.kort||x.naam||'')+(x.eenheid ? ' '+x.eenheid : '')).toUpperCase() };

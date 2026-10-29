@@ -2848,6 +2848,27 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Eigen weergave per sensor: eenheid, factor, schaal en decimalen (29-10-2026) ──
+  {
+    issue: 'weergave-sensor',
+    naam: 'Eigen weergave van een sensor (⚙ in het keuzevel van een plek): raildruk 0123 in bar met een eigen schaal past op een boog en een Hyperlane-plek',
+    waarom: 'Gevraagd op 29-10: een PID op elke plek kunnen zetten, ook zonder bruikbaar minimum en maximum, en kPa als bar tonen. Of het invulvel op dit toestel prettig werkt (toetsenbord, komma) verschilt per telefoon.',
+    proef: async function () {
+      if (!window.PLToon || typeof PLToon.zetEigen !== 'function') return { staat: 'FOUT', detail: 'PLToon.zetEigen ontbreekt — oude pidlane-toon.js (herladen?)' };
+      if (!window.PLVisueel || typeof PLVisueel.toonWeergave !== 'function') return { staat: 'FOUT', detail: 'PLVisueel.toonWeergave ontbreekt — oude pidlane-visueel.js (herladen?)' };
+      var oud = PLToon.eigen('0123'), d = (typeof getPidDef === 'function') ? getPidDef('0123') : null, sc = null, w = null;
+      try {
+        PLToon.zetEigen('0123', { eenheid: 'bar', factor: '0,01', min: '0', max: '2000' });
+        w = PLToon.eigen('0123');
+        sc = PLVisueel.boogSchaal('0123', d);
+      } finally { PLToon.zetEigen('0123', oud); }
+      if (!w || w.factor !== 0.01 || PLToon.omgerekend(85000, w) !== 850) return { staat: 'FOUT', detail: '85000 kPa × 0,01 is geen 850 bar (' + JSON.stringify(w) + ')' };
+      if (!sc || sc[0] !== 0 || sc[1] !== 2000) return { staat: 'FOUT', detail: 'met een eigen schaal past 0123 niet op een boog (' + JSON.stringify(sc) + ')' };
+      var n = Object.keys(PLToon.weergaven()).length;
+      return { staat: 'OK', detail: 'omrekenen en eigen schaal werken; ' + (n ? n + ' sensor(en) met een eigen weergave op dit toestel' : 'nog geen eigen weergave ingesteld') };
+    }
+  },
+
   // ── Rapport aanvragen vanuit Rapporten (29-10-2026) ──
   {
     issue: 'rapport-aanvragen',
