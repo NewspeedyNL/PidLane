@@ -795,12 +795,15 @@
   /* Wat de klant niet weet — maar de auto wel. Puur uit st.metingen. Elk
      inzicht: { niveau: 'let'|'info', kop, t }. Geen bewijs voor een
      verdenking: dit is wat er op tafel ligt vóór er iets gemeten wordt. */
+  // Eén grens voor "net gewist": wat de auto al wist en wat het oordeel
+  // beperkt moeten hetzelfde zeggen.
+  function versGewist(sd) { return sd.km != null && sd.km < 200 && (sd.warm == null || sd.warm < 20); }
   function inzichten(st) {
     var m = st.metingen || {}, s = m.scan || {}, r = [];
     var c = s.codes || {}, sd = s.sinds || {}, rd = s.readiness;
     var vast = [].concat(c.bevestigd || [], c.permanent || []);
     var nietKlaar = (rd && rd.nietKlaar) || [];
-    if (sd.km != null && sd.km < 200 && (sd.warm == null || sd.warm < 20))
+    if (versGewist(sd))
       r.push({ niveau: 'let', kop: 'Foutcodes zijn kort geleden gewist',
         t: sd.km + ' km' + (sd.warm != null ? ' en ' + sd.warm + '× warmgedraaid' : '') + ' geleden. Wat er vóór die tijd stond is weg' +
           (nietKlaar.length ? ', en ' + nietKlaar.length + ' zelftest(s) hebben sindsdien nog niet gedraaid: ' + nietKlaar.join(', ') : '') +
@@ -1184,7 +1187,7 @@
   function beperkingen(st) {
     var m = st.metingen || {}, s = m.scan || {}, sd = s.sinds || {}, rd = s.readiness, r = [];
     var nietKlaar = (rd && rd.nietKlaar) || [];
-    if (sd.km != null && sd.km < 200 && (sd.warm == null || sd.warm < 20))
+    if (versGewist(sd))
       r.push('Foutcodes zijn ' + sd.km + ' km geleden gewist: wat er daarvóór stond, is niet meer te zien.');
     if (nietKlaar.length) r.push(nietKlaar.length + ' zelftest(s) nog niet klaar (' + nietKlaar.join(', ') + '): daar kan nog geen foutcode uit komen.');
     st.log.forEach(function (l) {
