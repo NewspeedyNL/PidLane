@@ -36,6 +36,7 @@ run_worker_first = [
   "/session/*",
   "/pair/*",
   "/code/*",
+  "/expert/*",     # de koppelcode van een vaste expert (#646)
   "/klant/*",      # klantaccounts: registreren, inloggen, saldo, wachtwoordherstel
   "/credits/*",    # activatiecodes inwisselen
   "/proxy",

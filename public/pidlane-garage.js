@@ -1277,6 +1277,7 @@
     ov.style.display = 'flex';
     _st.view = vid ? 'voertuig' : 'lijst'; _st.vid = vid || null; _st.tab = 'overzicht';
     _st.meekijk = undefined;   // elke keer vers: "bekeken" kan intussen veranderd zijn
+    _st.experts = undefined;
     teken();
     ververs();
   }
@@ -1370,6 +1371,7 @@
     }
     if (st.kentekenBewaarbaar === false) h += '<div class="gr-melding">Kentekens kunnen op dit moment niet versleuteld bewaard worden en worden daarom niet opgeslagen.</div>';
     h += tekenMeekijk();
+    h += tekenExpert();
     h += '<div class="gr-knoppen" style="margin-top:14px"><button class="gr-k klein gevaar" onclick="PLGarage._allesWissen()">Alles wissen</button></div>';
     return h;
   }
@@ -1390,6 +1392,39 @@
       (m.aantal ? 'Bekeken: ' + m.aantal + '×, laatst ' + datumNl(m.bekeken_op, true) + '.' : 'Nog niet bekeken.') +
       (m.erbij ? ' Sensoren toegevoegd: ' + m.erbij + '.' : '') + '</div>' +
       '<div class="gr-knoppen"><button class="gr-k klein gevaar" onclick="PLGarage._meekijkUit()">Intrekken</button></div></div>';
+  }
+  /* De vaste expert (#646). Een verkoper of garage die adapter en account
+     levert, krijgt met een koppelcode doorlopend volledige toegang als de
+     klant deelt — met een eigen akkoord op de tekst die de server meestuurt.
+     De klant ziet wie en sinds wanneer, en trekt in wanneer hij wil. */
+  function tekenExpert() {
+    var x = _st.experts;
+    if (x === undefined) { laadExperts(); return ''; }
+    if (!x) return '';
+    var h = '<div class="gr-blok" id="grExpert" style="margin-top:12px"><div class="gr-bh">🔗 Vaste expert</div>';
+    h += (x.lijst || []).map(function (e) {
+      return '<div class="gr-rij"><span>' + esc(e.naam) + ' <span class="gr-klein">sinds ' + datumNl(e.sinds, true) + '</span></span>' +
+        '<button class="gr-k klein gevaar" onclick="PLGarage._expertUit(\'' + esc(e.id) + '\')">Intrekken</button></div>';
+    }).join('');
+    h += '<div class="gr-klein">Levert je verkoper of garage de adapter, dan krijg je een koppelcode van acht tekens.</div>' +
+      '<div class="gr-veld"><input id="grExpertCode" maxlength="9" autocomplete="off" placeholder="Koppelcode, bv. AB3D EF7H"></div>' +
+      '<label class="gr-klein" style="display:block;margin-top:6px"><input type="checkbox" id="grExpertAkkoord"> ' + esc(x.tekst || '') + '</label>' +
+      '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._expertKoppel()">Koppel</button></div></div>';
+    return h;
+  }
+  var _expertLaadt = false;
+  async function laadExperts() {
+    if (_expertLaadt) return;
+    _expertLaadt = true;
+    try { var d = await api('experts'); _st.experts = { lijst: d.experts || [], tekst: d.tekst, versie: d.versie }; }
+    catch (e) { console.warn('PLGarage: vaste experts niet op te halen', e); _st.experts = null; }
+    finally { _expertLaadt = false; }
+    teken();
+  }
+  function expertsGewijzigd(d) {
+    _st.experts = Object.assign({}, _st.experts || {}, { lijst: d.experts || [] });
+    try { if (window.PLRemote && PLRemote._vergeetExperts) PLRemote._vergeetExperts(); }
+    catch (e) { console.warn('PLGarage: inleren niet ververst na een gewijzigde koppeling', e); }
   }
   var _meekijkLaadt = false;
   async function laadMeekijk() {
@@ -2453,10 +2488,20 @@
     },
     _allesWissen: function () {
       if (!confirm('Alle voertuigen, rapporten, ritten en open punten uit je account wissen? Je account en tokens blijven bestaan.')) return;
-      doe(async function () { await api('alles_wissen'); schrijf(OPSLAG.actief, null); _st.actiefId = null; _st.cache = {}; _st.meekijk = undefined; fotoAllesWeg(); }, 'Alles gewist');
+      doe(async function () { await api('alles_wissen'); schrijf(OPSLAG.actief, null); _st.actiefId = null; _st.cache = {}; _st.meekijk = undefined; _st.experts = undefined; fotoAllesWeg(); }, 'Alles gewist');
     },
     _meekijkAan: function () {
       doe(async function () { _st.meekijk = (await api('meekijk_aan')).meekijk || null; }, 'Meekijkcode gemaakt — geef hem aan PidLane');
+    },
+    _expertKoppel: function () {
+      var c = document.getElementById('grExpertCode'), a = document.getElementById('grExpertAkkoord');
+      if (!a || !a.checked) { alert('Vink eerst aan dat je akkoord bent met de vaste toegang voor deze expert.'); return; }
+      var x = _st.experts || {};
+      doe(async function () { expertsGewijzigd(await api('expert_koppel', { koppelcode: c ? c.value : '', akkoord: x.versie })); }, 'Gekoppeld — deze expert heeft volledige toegang als je deelt');
+    },
+    _expertUit: function (id) {
+      if (!confirm('De koppeling intrekken? Deze expert heeft daarna alleen nog de toegang die je per keer geeft.')) return;
+      doe(async function () { expertsGewijzigd(await api('expert_ontkoppel', { id: id })); }, 'Koppeling ingetrokken');
     },
     _meekijkUit: function () {
       if (!confirm('Meekijkcode intrekken? PidLane kan daarna niet meer bij je voertuigen.')) return;

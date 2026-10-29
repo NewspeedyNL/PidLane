@@ -2115,11 +2115,15 @@ function closeConnOv(){
       <div class="rem-stat" id="remPairStat">—</div>
     </div>
     <div class="rem-stat" id="remExpErr"></div>
+    <div class="rem-lbl" style="margin-top:12px">Lever je zelf de adapter en het account? Koppel de klant één keer</div>
+    <button class="rem-btn" style="width:100%" onclick="PLRemote.maakKoppelcode()">🔗 Koppelcode voor een klant</button>
+    <div class="rem-stat" id="remKoppelcode"></div>
   </div>
   <div id="remExpLive" style="display:none">
     <div class="rem-stat" id="remExpStat">—</div>
     <button class="rem-btn pri" style="width:100%;margin:4px 0 8px" onclick="PLRemote.enterDrive()">🚗 Open in app — deuren, analyses &amp; AI-rapport</button>
     <div class="rem-grid" id="remTiles"></div>
+    <div id="remToegang"></div>
     <div id="remVoorkennis"></div>
     <div class="rem-lbl">PID's opvragen (bv. 0C 05 0D)</div>
     <div class="rem-flex"><input class="rem-in" id="remReqPids" value="0C 05 0D"><button class="rem-btn pri" onclick="PLRemote.reqPids()">Vraag op</button><button class="rem-btn" onclick="PLRemote.reqDtc()">DTC’s</button></div>

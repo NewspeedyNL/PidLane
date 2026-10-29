@@ -10,6 +10,35 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 29-10-2026 — De verkoper of garage als vaste expert (#646)
+ ═══════════════════════════════════════════════════════════
+
+ - Ik ben de expert → Koppelcode voor een klant: acht tekens, zeven dagen,
+   één keer te gebruiken. De klant vult hem in bij Mijn voertuigen → Vaste
+   expert, met een eigen akkoord.
+ - Deelt die klant, dan heeft de gekoppelde expert meteen volledige toegang;
+   de server herkent hem aan zijn eigen sessie. Andere experts houden basis.
+ - Bij de eerste verbinding leert de app de auto één keer volledig kennen
+   (alleen met een vaste expert, niet in demo, niet rijdend).
+ - Intrekken kan in Mijn voertuigen en in het meekijkscherm, ook midden in
+   een sessie (test-vasteexpert.js, bproef-toestemming.js).
+
+ ═══════════════════════════════════════════════════════════
+ 29-10-2026 — Expert op afstand: twee niveaus van toegang (#645)
+ ═══════════════════════════════════════════════════════════
+
+ - De meekijkcode geeft basistoegang: meekijken, lezen en een snelle scan
+   (foutcodes, zelftests, mode 06). Die start vanzelf als de eerste expert
+   binnenkomt en de app nog niets van de auto weet.
+ - Opname, AI-analyse en "Volledig in kaart" (diep zoeken, merkspecifieke
+   PIDs, mode 06; alleen bij stilstand) vragen volledige toegang. De klant
+   tikt op Toestaan, en de Worker dwingt het af. Het vervalt bij een
+   verbindingsprobleem, tenzij "Tot ik stop met delen" aanstaat.
+ - De werkplek zegt wat er niet gemeten is; een lege auto heet niet meer
+   gezond. De foutcodecheck, merkspecifieke PIDs en een te grote vstate komen
+   nu wél (of gemeld) bij de expert aan (test-toestemming.js).
+
+ ═══════════════════════════════════════════════════════════
  29-10-2026 — Eigen weergave per sensor: eenheid, factor, schaal
  ═══════════════════════════════════════════════════════════
 

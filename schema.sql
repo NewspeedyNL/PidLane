@@ -308,6 +308,10 @@ CREATE INDEX IF NOT EXISTS idx_kp_meekijk_klant ON kp_meekijk (klant_id);
 -- Tankbeurten (#469, 10-10-2026): wat de klant bij het tanken invult, per voertuig.
 CREATE TABLE IF NOT EXISTS kp_tank (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, voertuig_id TEXT NOT NULL, op TEXT NOT NULL, soort TEXT NOT NULL DEFAULT 'brandstof', liters REAL, literprijs REAL, bedrag REAL, kwh REAL, kmstand INTEGER, vol INTEGER, bereik_dashboard INTEGER, bereik_voor INTEGER, bereik_app INTEGER, tank_voor REAL, tank_na REAL, bron TEXT NOT NULL DEFAULT 'hand', notitie TEXT, aangemaakt TEXT NOT NULL, bijgewerkt TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_kp_tank_vt ON kp_tank (voertuig_id, op DESC);
+-- De vaste expert (#646, 29-10-2026): de koppelcode van de expert en de koppeling met de klant.
+CREATE TABLE IF NOT EXISTS kp_expertcode (code TEXT PRIMARY KEY, expert_u TEXT NOT NULL, expert_label TEXT, aangemaakt TEXT NOT NULL, verloopt TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS kp_expert (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, expert_u TEXT NOT NULL, expert_label TEXT, sinds TEXT NOT NULL, tekst_versie TEXT NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_expert_kl ON kp_expert (klant_id, expert_u);
 -- Later bijgekomen kolommen (KP_MIGRATIES in worker.js). De Worker voert ze
 -- zelf uit; "duplicate column" betekent dat ze er al staan.
 ALTER TABLE kp_voertuig ADD COLUMN onderhoud_laatst TEXT;

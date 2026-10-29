@@ -2848,6 +2848,39 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── De verkoper of garage als vaste expert (29-10-2026) ──
+  {
+    issue: '#646',
+    naam: 'Vaste expert: koppelcode van de expert, akkoord van de klant, volledige toegang bij delen en één keer inleren bij de eerste verbinding',
+    waarom: 'De verkoper die adapter en account levert moet bij het eerste telefoontje alles al hebben. Of het inleren op een echte bus binnen enkele minuten klaar is, is een vraag voor een rit.',
+    proef: async function () {
+      if (!window.PLRemote || typeof PLRemote._moetInleren !== 'function' || typeof PLRemote.maakKoppelcode !== 'function') return { staat: 'FOUT', detail: 'PLRemote zonder vaste expert — oude pidlane-remote.js (herladen?)' };
+      var sl = PLRemote._inleerSleutel({ vin: 'JM3KFBCM1J0123456', merk: 'Mazda', model: 'CX-5', year: 2018 });
+      if (!sl || /0123456/.test(sl)) return { staat: 'FOUT', detail: 'de inleersleutel bevat de VIN of ontbreekt (' + sl + ')' };
+      if (PLRemote._moetInleren({ verbonden: true, demo: true, sleutel: sl, experts: [{ naam: 'x' }] })) return { staat: 'FOUT', detail: 'inleren zou in demo starten' };
+      var gedaan = {}; try { gedaan = JSON.parse(localStorage.getItem('pl_ingeleerd') || '{}') || {}; } catch (e) { return { staat: 'LET OP', detail: 'inleerlijst niet te lezen: ' + e.message }; }
+      var n = Object.keys(gedaan).length;
+      return { staat: 'OK', detail: n ? n + ' auto(s) op dit toestel ingeleerd voor een vaste expert' : 'nog geen auto ingeleerd op dit toestel (alleen met een gekoppelde vaste expert)' };
+    }
+  },
+
+  // ── Expert op afstand: toestemming in twee niveaus, snelle scan, volledige kaart (29-10-2026) ──
+  {
+    issue: '#645',
+    naam: 'Expert op afstand: basis met de meekijkcode, volledig alleen met een tik van de klant; de foutcodecheck gaat mee en de werkplek zegt wat er niet gemeten is',
+    waarom: 'Een klant die de app voor het eerst opent gaf de expert een lege auto, en die las als gezond. Hoe lang de snelle scan en de volledige kaart op een echte bus duren, is een vraag voor een rit.',
+    proef: async function () {
+      if (!window.PLRemote || typeof PLRemote._verzoekToegestaan !== 'function' || typeof PLRemote._vstateBinnenGrens !== 'function') return { staat: 'FOUT', detail: 'PLRemote zonder toestemmingsniveaus — oude pidlane-remote.js (herladen?)' };
+      if (!window.PLExpertWerk || typeof PLExpertWerk.dekking !== 'function') return { staat: 'FOUT', detail: 'PLExpertWerk.dekking ontbreekt — oude pidlane-expertwerk.js (herladen?)' };
+      if (PLRemote._verzoekToegestaan({ type: 'request-analyze' }, 'basis')) return { staat: 'FOUT', detail: 'een AI-analyse mag op basistoegang' };
+      if (!PLRemote._verzoekToegestaan({ type: 'request-snelscan' }, 'basis')) return { staat: 'FOUT', detail: 'de snelle scan mag niet op basistoegang' };
+      var vs = PLRemote._buildVState(), n = JSON.stringify(vs).length;
+      if (n > 30000) return { staat: 'FOUT', detail: 'het voertuigprofiel van dit toestel is ' + n + ' tekens — boven de grens' };
+      var d = PLExpertWerk.dekking(vs), mist = d.filter(function (x) { return x.soort !== 'ok'; }).map(function (x) { return x.tekst; });
+      return { staat: 'OK', detail: 'profiel ' + n + ' tekens' + (vs.scan ? ', met foutcodecheck' : ', nog zonder foutcodecheck') + (mist.length ? '; de expert ziet: ' + mist.join(' · ') : '; alles gemeten') };
+    }
+  },
+
   // ── Eigen weergave per sensor: eenheid, factor, schaal en decimalen (29-10-2026) ──
   {
     issue: 'weergave-sensor',
