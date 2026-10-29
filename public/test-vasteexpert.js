@@ -214,7 +214,11 @@ function laadRemote() {
   toets('de klant trekt de koppeling in', weg.ok && weg.ingetrokken === 1 && weg.experts.length === 0);
   const ses2 = await roep('/session/create', tokAnna, { ttlMin: 60 });
   toets('een nieuwe sessie heeft geen vaste expert meer', !(env.REMOTE_SESSION.objecten.get(ses2.sessionId)._meta.vast || []).length);
+  const kc2 = await roep('/expert/koppelcode', tokGarage);
+  await kp(tokAnna, { actie: 'expert_koppel', koppelcode: kc2.code, akkoord: ex0.versie });
   await kp(tokAnna, { actie: 'alles_wissen' });
+  const annaId = await W.kpKlantId('anna@voorbeeld.nl');
+  toets('alles wissen haalt ook de vaste expert weg', db.prepare('SELECT COUNT(*) AS n FROM kp_expert WHERE klant_id = ?').get(annaId).n === 0);
 
   console.log('\n5. De app: inleren en het meekijkscherm');
   const R = laadRemote();
