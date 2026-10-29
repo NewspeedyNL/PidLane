@@ -893,7 +893,7 @@ function toonWeergave(pr, rol, pid, terug){
     '<button type="button" class="vk-rij aan" id="vkwBewaar"><span>Bewaar en zet op deze plek</span></button>'+
     '<button type="button" class="vk-rij" id="vkwStandaard"><span>Standaardweergave</span><small>wist wat hier staat</small></button></div>';
   const v=function(id){ const e=el(id); return e ? e.value : ''; };
-  el('vkwTerug').onclick=function(){ if(typeof terug==='function') terug(); else ov.style.display='none'; };
+  el('vkwTerug').onclick=function(){ if(terug) terug(); else ov.style.display='none'; };
   el('vkwBewaar').onclick=function(){
     const r={ eenheid:v('vkwE'), factor:v('vkwF'), min:v('vkwMin'), max:v('vkwMax'), dec:v('vkwD') };
     const lo=PLToon.invoer(r.min), hi=PLToon.invoer(r.max);
