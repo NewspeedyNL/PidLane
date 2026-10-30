@@ -342,21 +342,70 @@ function telOp(f){ f=klem(f, 0, 1); return 1-Math.pow(1-f, 3); }
    in deze scène toe doet. `x` = {koel, verbruik, gas, versn (km/h/s),
    launchS, klok}. Geeft {w, e, l}: waarde-tekst, eenheid, label. Puur;
    `tekst` maakt het getal (komma, '—'). */
-const ACC_KMHS = 4, ACC_UIT_KMHS = 2.5;
+const ACC_KMHS = 4, ACC_UIT_KMHS = 2.5, VOLGAS = 80;
 /* `vorig` = het label van nu: eenmaal ACCELERATIE blijft het tot onder
    ACC_UIT_KMHS, zodat het hoofdgetal rond de grens niet knippert. */
+function heldN(v){ return v!==null && v!==undefined && v!=='' && isFinite(Number(v)); }
+function heldG(kmhs){ return Math.abs(kmhs)/3.6/9.81; }
 function held(sc, x, tekst, vorig){
-  const n=function(v){ return v!==null && v!==undefined && v!=='' && isFinite(Number(v)); };
-  const g=function(kmhs){ return Math.abs(kmhs)/3.6/9.81; };
+  const n=heldN, g=heldG;
   if(sc==='alarm' && n(x.koel)) return { w:tekst(x.koel, 0), e:'°C', l:'KOELWATER' };
   if(sc==='launch' && n(x.launchS)) return { w:tekst(x.launchS, 1), e:'s', l:'0–100' };
   if(sc==='remmen' && n(x.versn)) return { w:tekst(g(x.versn), 2), e:'g', l:'REMMEN' };
+  // Vol gas: verbruik zegt dan niets (30-10-2026). Optrekken in g, anders het gas.
+  if(n(x.gas) && x.gas>=VOLGAS) return (n(x.versn) && x.versn>0) ? { w:tekst(g(x.versn), 2), e:'g', l:'ACCELERATIE' } : { w:tekst(x.gas, 0), e:'%', l:'GAS' };
   if(n(x.versn) && x.versn>=(vorig==='ACCELERATIE' ? ACC_UIT_KMHS : ACC_KMHS)) return { w:tekst(g(x.versn), 2), e:'g', l:'ACCELERATIE' };
   if(sc==='koud' && n(x.koel)) return { w:tekst(x.koel, 0), e:'°C', l:'OPWARMEN' };
   if(sc==='stil' && x.klok) return { w:x.klok, e:'', l:'' };
   if(n(x.verbruik)) return { w:tekst(x.verbruik, 1), e:'L/100', l:'VERBRUIK NU' };
   if(n(x.gas)) return { w:tekst(x.gas, 0), e:'%', l:'GAS' };
   return { w:'—', e:'', l:'' };
+}
+/* ── Rustig in het midden ── (30-10-2026, uit het gebruik: "bij optie
+   versnelling verspringt het getal toch te snel naar andere pid … Slim ook
+   niet te snel. Gewoon langzaam, informatief.") held() zegt wat er nú het
+   meest toe doet, zes keer per seconde; heldRustig() beslist wat er op het
+   scherm staat. Een getal blijft minstens HELD_MIN_S staan, behalve een te
+   heet koelwater en de 0–100-timer: die wachten niet. Kan het getal dat er
+   staat niet meer gemeten worden (heldWaarde() geeft null), dan wisselt hij
+   meteen, want een oud getal laten staan is erger dan wisselen. Verbruik,
+   gas en koelwater krijgen hoogstens elke HELD_WAARDE_S een nieuw getal;
+   g en de timer lopen mee. Puur: `oud` = heldWaarde() van het label dat er
+   staat. */
+const HELD_MIN_S = 6, HELD_WAARDE_S = 1, HELD_DIRECT = { 'KOELWATER':1, '0–100':1 }, HELD_LOPEND = { 'ACCELERATIE':1, 'REMMEN':1, '0–100':1 };
+function heldWaarde(l, sc, x, tekst){
+  const n=heldN;
+  if(l==='KOELWATER' || l==='OPWARMEN') return n(x.koel) ? { w:tekst(x.koel, 0), e:'°C' } : null;
+  if(l==='0–100') return n(x.launchS) ? { w:tekst(x.launchS, 1), e:'s' } : null;
+  if(l==='ACCELERATIE' || l==='REMMEN') return n(x.versn) ? { w:tekst(heldG(x.versn), 2), e:'g' } : null;
+  // Vol gas: ook een verbruik dat er al stond gaat meteen weg
+  if(l==='VERBRUIK NU') return n(x.verbruik) && !(n(x.gas) && x.gas>=VOLGAS) ? { w:tekst(x.verbruik, 1), e:'L/100' } : null;
+  if(l==='GAS') return n(x.gas) ? { w:tekst(x.gas, 0), e:'%' } : null;
+  if(l==='') return sc==='stil' && x.klok ? { w:x.klok, e:'' } : null;
+  return null;
+}
+function heldRustig(st, h, oud, dt){
+  const nieuw={ l:h.l, w:h.w, e:h.e, t:0, wt:0 };
+  if(!st || !oud) return nieuw;
+  const s={ l:st.l, w:st.w, e:st.e, t:st.t+dt, wt:st.wt+dt };
+  if(h.l!==s.l && (HELD_DIRECT[h.l] || s.t>=HELD_MIN_S)) return nieuw;
+  if(HELD_LOPEND[s.l] || s.wt>=HELD_WAARDE_S){ s.w=oud.w; s.e=oud.e; s.wt=0; }
+  return s;
+}
+/* De versnelling groot, maar niet bij elke twijfel van PLGear weg: een
+   nieuwe versnelling moet GEAR_STABIEL_S kloppen, een onbekende houdt de
+   laatste vast, en pas na GEAR_LEEG_S zonder versnelling wijkt hij voor het
+   slimme getal. Terug komt hij pas als hij GEAR_TERUG_S weer bekend is.
+   `toon` is wat middenHeld() krijgt ('' = slim getal). Puur. */
+const GEAR_STABIEL_S = .6, GEAR_LEEG_S = 12, GEAR_TERUG_S = 3;
+function gearRustig(st, g, dt){
+  const s=st ? { toon:st.toon, kand:st.kand, kt:st.kt, leeg:st.leeg, ooit:st.ooit } : { toon:'', kand:'', kt:0, leeg:0, ooit:false };
+  if(!g){ s.leeg+=dt; s.kand=''; s.kt=0; if(s.leeg>=GEAR_LEEG_S) s.toon=''; return s; }
+  s.leeg=0;
+  if(g!==s.kand){ s.kand=g; s.kt=0; } else s.kt+=dt;
+  const nodig=s.toon ? GEAR_STABIEL_S : s.ooit ? GEAR_TERUG_S : 0;
+  if(g!==s.toon && s.kt>=nodig){ s.toon=g; s.ooit=true; }
+  return s;
 }
 /* ── De achtergrond ── (27-10-2026, uit het gebruik: "het rijdende effect
    van de tunnel vind ik top, maar het kan afleiden in het verkeer".) Het
@@ -903,11 +952,16 @@ function frame(nu){
     const mk=w.querySelector('.vhl-merk'), mt=s.thema ? s.thema.naam : '';
     if(mk && mk.textContent!==mt) mk.textContent=mt;
     // Het hoofdgetal (zes keer per seconde: rustig genoeg om te lezen)
-    const h=held(sc, { koel:e.koel, verbruik:e.verbruik, gas:e.gas, versn:s.vs ? s.vs.a : null,
+    const hx={ koel:e.koel, verbruik:e.verbruik, gas:e.gas, versn:s.vs ? s.vs.a : null,
                        launchS:s.nul.start!==null ? T-s.nul.start : null,
-                       klok:('0'+nu8.getHours()).slice(-2)+':'+('0'+nu8.getMinutes()).slice(-2) }, tekstVan, s.heldL);
+                       klok:('0'+nu8.getHours()).slice(-2)+':'+('0'+nu8.getMinutes()).slice(-2) };
+    const h=held(sc, hx, tekstVan, s.heldL);
     s.heldL=h.l;   // de hysterese hoort bij het slimme getal, ook als het nu niet in beeld is
-    const toon=middenHeld(s.midden, sc, g, h), groot=toon!==h;
+    // Wat er staat blijft even staan (heldRustig, gearRustig): .15 s is de tik hierboven
+    s.heldR=heldRustig(s.heldR, h, s.heldR ? heldWaarde(s.heldR.l, sc, hx, tekstVan) : null, .15);
+    s.gearR=gearRustig(s.gearR, g, .15);
+    const rh={ w:s.heldR.w, e:s.heldR.e, l:s.heldR.l };
+    const toon=middenHeld(s.midden, sc, s.gearR.toon, rh), groot=toon!==rh;
     w.classList.toggle('vhl-m-versn', groot);   // het label naast de modus is dan dubbel
     const mt2=MIDDEN_TEKST[s.midden], km=w.querySelector('.vhl-midden');
     if(km && s.middenT!==mt2){ s.middenT=mt2; km.textContent=mt2; }
@@ -921,7 +975,8 @@ function frame(nu){
 window.PLHyperlane = {
   STOPS:STOPS, OPSTART_S:OPSTART_S,
   kleur:kleur, stemming:stemming, modus:modus, leds:leds, nul100:nul100, volg:volg,
-  held:held, ACC_KMHS:ACC_KMHS,
+  held:held, ACC_KMHS:ACC_KMHS, VOLGAS:VOLGAS,
+  heldWaarde:heldWaarde, heldRustig:heldRustig, HELD_MIN_S:HELD_MIN_S, HELD_WAARDE_S:HELD_WAARDE_S, gearRustig:gearRustig, GEAR_STABIEL_S:GEAR_STABIEL_S, GEAR_LEEG_S:GEAR_LEEG_S, GEAR_TERUG_S:GEAR_TERUG_S,
   MIDDEN:MIDDEN, MIDDEN_TEKST:MIDDEN_TEKST, MIDDEN_SLEUTEL:MIDDEN_SLEUTEL, middenHeld:middenHeld, leesMidden:leesMidden,
   VORMEN:VORMEN, VORM_TEKST:VORM_TEKST, VORM_SLEUTEL:VORM_SLEUTEL, volgendeVorm:volgendeVorm, actieveVorm:actieveVorm, leesVorm:leesVorm, ringSchaal:ringSchaal, echt:echt,
   versnelling:versnelling, warmte:warmte, nacht:nacht, scene:scene, SCENE_TEKST:SCENE_TEKST,
