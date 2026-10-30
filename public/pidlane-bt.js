@@ -2048,6 +2048,26 @@ function plStNaAchtergrond(achtergrond, nu){
   }catch(e){ console.warn('PLAchtergrond niet leesbaar — de ATST-regelaar telt door (#509)', e); return false; }
 }
 
+// De randen van een contactstilte (#509, rit 30-10-2026). Een uitlopende motor
+// antwoordt nog af en toe: elk antwoord met data zet de reeks van PLContact op
+// nul, en de momentopname van vóór de stilte komt pas bij de laatste reeks —
+// na de ATST-stap. Gemeten: drie stappen 0x16 → 0x64, 3 s en 1 s vóór
+// "Contact uit" en 2 s na "antwoordt weer". Daarom draait de regelaar zelf
+// terug wat in ST_RAND_VOOR_MS vóór de stilte gezet werd, en telt hij tot
+// ST_NA_CONTACT_MS na de stilte niet: dan wordt de ECU nog wakker.
+const ST_RAND_VOOR_MS=10000, ST_NA_CONTACT_MS=15000;
+// Puur. Welke stappen uit het stappenlog vielen in de rand? null = geen.
+// Geeft de stand van vóór de vroegste daarvan en hoeveel het er zijn.
+function plStRandTerug(log, nu, randMs){
+  const weg=(Array.isArray(log)?log:[]).filter(x=>x && nu-x.t>=0 && nu-x.t<randMs);
+  if(!weg.length) return null;
+  return { hex:weg[0].oud, bron:weg[0].bron, n:weg.length };
+}
+// Puur. Is de stilte net voorbij?
+function plStNaContact(eind, nu){
+  return eind>0 && nu-eind>=0 && nu-eind<ST_NA_CONTACT_MS;
+}
+
 // De PIDs waarmee de groepsproef werkt: data-PIDs die vrijwel elke auto heeft.
 // Geen bitmaps — die weigeren op de CX-5 elke groep (zie _pollRonde).
 const PL_PROEF_PIDS=['010C','010D','0105','0104','0111','010B','010F'];
@@ -2060,6 +2080,7 @@ const PLVerbind={
     _plAt='1';
     this._gemeten=null;
     this._venster=[]; this._laatsteStap=0; this._stappen=0;
+    this._stapLog=[]; this._inStil=false; this._stilEind=0;
     this.profiel=null;
     try{ if(window.PLBus && PLBus.batchPlafondWis) PLBus.batchPlafondWis(); }
     catch(e){ console.warn('PLBus.batchPlafondWis mislukt — het plafond van de vorige verbinding blijft staan', e); }
@@ -2144,14 +2165,20 @@ const PLVerbind={
     }
   },
   // ── bijsturen tijdens de rit ──
-  _venster:[], _laatsteStap:0, _stappen:0,
+  _venster:[], _laatsteStap:0, _stappen:0, _stapLog:[], _inStil:false, _stilEind:0,
   stappen(){ return this._stappen; },
   // Eén verzoek uit de pollronde: ontbrak er een PID die kort geleden nog
   // antwoordde? Synchroon en goedkoop; de ATST-wissel gaat erachteraan.
   noteAntwoord(mist){
     if(demoMode || !connected || !this.profiel || _plSt.bron==='handmatig') return;
     // Contact uit: elke PID "mist", maar dat is geen timing (pidlane-contact.js).
-    if(window.PLContact && PLContact.stil()) return;
+    // Bij het begin de rand ervóór terugdraaien, erna even niet tellen (#509).
+    if(window.PLContact && PLContact.stil()){
+      if(!this._inStil){ this._inStil=true; this._randTerug(Date.now()); }
+      return;
+    }
+    if(this._inStil){ this._inStil=false; this._stilEind=Date.now(); }
+    if(plStNaContact(this._stilEind, Date.now())){ this._venster=[]; return; }
     // Net terug uit de achtergrond: ook geen timing (#509). Wat er vóór de
     // achtergrond in het venster stond, hoort niet bij wat erna komt.
     if(plStNaAchtergrond(window.PLAchtergrond, Date.now())){ this._venster=[]; return; }
@@ -2164,6 +2191,7 @@ const PLVerbind={
     if(!nieuw){ btDiag('🔧 ATST staat al op de top (0x'+_plSt.hex+') en toch ontbreken antwoorden ('+n+' van '+ST_VENSTER+') — dit is geen timing meer','warn'); return; }
     const oud=_plSt.hex;
     this._stappen++;
+    (this._stapLog||(this._stapLog=[])).push({ t:this._laatsteStap, oud, nieuw, bron:_plSt.bron });
     _plSt={ hex:nieuw, ms:parseInt(nieuw,16)*4, bron:'bijgestuurd', traagstMs:_plSt.traagstMs, refMs:_plSt.refMs, n:_plSt.n };
     this.profiel.st=Object.assign({}, _plSt);
     btDiag(`🔧 ATST bijgestuurd 0x${oud} → 0x${nieuw} (${_plSt.ms} ms): ${n} van de laatste ${ST_VENSTER} verzoeken misten een PID die kort geleden nog antwoordde`,'warn');
@@ -2177,6 +2205,24 @@ const PLVerbind={
     Promise.resolve(sendCmd('ATST'+nieuw,1500)).catch(e=>btDiag('ATST bijsturen: adapter niet bijgewerkt ('+(e.message||e)+')','warn'));
     // Bewust niet bewaren (#414): bijsturen geldt voor deze verbinding. In het
     // geheugen werd het de bodem van de volgende, en zo klom de ATST blijvend.
+  },
+  // De stappen in de rand vóór een stilte waren een uitlopende motor, geen
+  // timing (#509): terug naar de stand ervóór, en ze tellen niet meer mee.
+  _randTerug(nu){
+    const r=plStRandTerug(this._stapLog, nu, ST_RAND_VOOR_MS);
+    if(!r || _plSt.bron==='handmatig') return;
+    this._stapLog=this._stapLog.slice(0, this._stapLog.length-r.n);
+    this._stappen=Math.max(0, this._stappen-r.n);
+    this._laatsteStap=this._stapLog.length ? this._stapLog[this._stapLog.length-1].t : 0;
+    this._venster=[];
+    const oud=_plSt.hex;
+    _plSt=Object.assign({}, _plSt, { hex:r.hex, ms:parseInt(r.hex,16)*4, bron:r.bron||_plSt.bron });
+    if(this.profiel) this.profiel.st=Object.assign({}, _plSt);
+    btDiag(`🔧 ATST terug 0x${oud} → 0x${r.hex}: ${r.n} stap(pen) vlak vóór contact uit`,'info');
+    try{ if(typeof logToSheets==='function') logToSheets('verbind', `ATST terug 0x${oud} → 0x${r.hex} (rand van contact uit)`, { stappen:r.n }); }
+    catch(e){ console.warn('ATST-terugdraai niet naar D1 — #509 ziet hem niet', e); }
+    // De contactkern kan hem al teruggezet hebben (stTerug); dan niet nog eens sturen.
+    if(oud!==r.hex) Promise.resolve(sendCmd('ATST'+r.hex,1500)).catch(e=>btDiag('ATST terugdraaien: adapter niet bijgewerkt ('+(e.message||e)+')','warn'));
   },
   // Terug naar de ATST van vóór de stilte (pidlane-contact.js). Wat in de
   // eerste seconde van een contact-uit werd bijgestuurd, was geen timing.

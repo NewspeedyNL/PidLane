@@ -44,7 +44,7 @@ const s = { window: {}, Date };
 vm.createContext(s);
 vm.runInContext(knip(BT, 'const ST_BODEM_MS=', '// De PIDs waarmee de groepsproef werkt', 'de verbindprofielfuncties') +
   '\nthis.plStUitMetingen=plStUitMetingen; this.plProtocolBits=plProtocolBits; this.plSoloAntwoord=plSoloAntwoord;' +
-  '\nthis.plGroepCompleet=plGroepCompleet; this.plStUitGeheugen=plStUitGeheugen; this.plAdressen=plAdressen; this.plHandSchoon=plHandSchoon; this.plStVolgende=plStVolgende; this.plStMoetOmhoog=plStMoetOmhoog; this.plVerbindVoorGeheugen=plVerbindVoorGeheugen; this.plStNaAchtergrond=plStNaAchtergrond; this.ST_NA_ACHTERGROND_MS=ST_NA_ACHTERGROND_MS;', s, { filename: 'pidlane-bt.js' });
+  '\nthis.plGroepCompleet=plGroepCompleet; this.plStUitGeheugen=plStUitGeheugen; this.plAdressen=plAdressen; this.plHandSchoon=plHandSchoon; this.plStVolgende=plStVolgende; this.plStMoetOmhoog=plStMoetOmhoog; this.plVerbindVoorGeheugen=plVerbindVoorGeheugen; this.plStNaAchtergrond=plStNaAchtergrond; this.ST_NA_ACHTERGROND_MS=ST_NA_ACHTERGROND_MS; this.plStRandTerug=plStRandTerug;', s, { filename: 'pidlane-bt.js' });
 
 console.log('\nATST uit de metingen\n');
 toets('te weinig metingen: niets zetten', s.plStUitMetingen([40, 41]) === null);
@@ -279,6 +279,36 @@ rg = regelaar(ag(false, 0));
 for (let i = 0; i < 20; i++) rg.V.noteAntwoord(i % 5 === 0);
 toets('4 van 20 missers zonder achtergrond: één trede omhoog', rg.V._stappen === 1 && rg.sent[0] === 'ATST32', JSON.stringify(rg.sent));
 toets('de bijsturing gaat naar D1 (type verbind), met de achtergrond erbij', rg.d1.length === 1 && rg.d1[0][0] === 'verbind' && rg.d1[0][2].missers === 4 && 'achtergrondSindsS' in rg.d1[0][2], JSON.stringify(rg.d1));
+
+// ── #509, rit 30-10-2026: de randen van een contactstilte ──
+// D1: 0x16 → 0x19 3 s vóór "Contact uit", 0x19 → 0x32 2 s na "antwoordt
+// weer", 0x32 → 0x64 1 s vóór de volgende. Hier op de echte noteAntwoord met
+// een eigen klok; PLContact.stil() schakelt zoals de contactkern dat doet.
+console.log('\nATST aan de randen van contact uit (#509, 30-10)\n');
+toets('plStRandTerug: een stap 3 s vóór de stilte valt in de rand',
+  JSON.stringify(s.plStRandTerug ? s.plStRandTerug([{ t: 1000, oud: '16', bron: 'gemeten' }], 4000, 10000) : null) === '{"hex":"16","bron":"gemeten","n":1}');
+toets('plStRandTerug: een stap 30 s ervóór niet', s.plStRandTerug && s.plStRandTerug([{ t: 1000, oud: '16' }], 31000, 10000) === null);
+{
+  let klok = 1e12, stil = false;
+  const r = regelaar(ag(false, 0));
+  r.Date = { now: () => klok };
+  r.PLContact.stil = () => stil;
+  const ronde = (missers) => { for (let i = 0; i < 20; i++) { klok += 100; r.V.noteAntwoord(i < missers); } };
+  ronde(4);                                            // de motor loopt uit
+  const naStap = r._plSt.hex;
+  klok += 3000; stil = true; r.V.noteAntwoord(true);   // "Contact uit"
+  toets('een stap vlak vóór contact uit gaat terug naar de stand ervóór',
+    naStap === '32' && r._plSt.hex === '19' && r.sent[r.sent.length - 1] === 'ATST19', naStap + ' → ' + r._plSt.hex + ' · ' + JSON.stringify(r.sent));
+  toets('en telt niet meer als bijsturing (verbind-st-stappen)', r.V._stappen === 0, 'stappen=' + r.V._stappen);
+  toets('het terugdraaien staat in D1', r.d1.some(x => x[0] === 'verbind' && /ATST terug 0x32 → 0x19/.test(x[1])), JSON.stringify(r.d1.map(x => x[1])));
+  klok += 40000; stil = false;                         // "antwoordt weer"
+  ronde(7);
+  toets('missers vlak na de stilte sturen ATST niet omhoog', r._plSt.hex === '19' && r.V._stappen === 0, r._plSt.hex + ' stappen=' + r.V._stappen);
+  klok += 20000; ronde(4);
+  toets('ruim na de stilte telt de regelaar weer', r._plSt.hex === '32' && r.V._stappen === 1, r._plSt.hex + ' stappen=' + r.V._stappen);
+  klok += 30000; stil = true; r.V.noteAntwoord(true);
+  toets('een stap 30 s vóór de stilte blijft staan', r._plSt.hex === '32' && r.V._stappen === 1, r._plSt.hex + ' stappen=' + r.V._stappen);
+}
 
 const sqlW = (W.match(/var VERBIND_SCHEMA = "([^"]+)";/) || [])[1];
 const sqlS = lees('../schema.sql').split('\n').filter(r => r.indexOf('CREATE TABLE IF NOT EXISTS verbindprofielen') === 0)[0];
