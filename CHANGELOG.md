@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-10-2026 — ATST klimt niet meer aan de randen van contact uit (#509)
+ ═══════════════════════════════════════════════════════════
+
+ - Een ATST-stap in de 10 s vóór een contactstilte wordt bij het begin van
+   die stilte teruggedraaid en telt niet meer in verbind-st-stappen.
+ - Na "antwoordt weer" telt de regelaar 15 s niet: de ECU wordt dan nog wakker.
+ - Het terugdraaien gaat als verbind-regel naar D1, naast de bijsturing.
+
+ ═══════════════════════════════════════════════════════════
  30-10-2026 — Volledige kaart en inleren: wachten, voortgang, duur (#648)
  ═══════════════════════════════════════════════════════════
 

@@ -2848,6 +2848,21 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── ATST aan de randen van contact uit (30-10-2026) ──
+  {
+    issue: '#509',
+    naam: 'Een ATST-stap vlak vóór contact uit wordt teruggedraaid, en na contact aan telt de regelaar 15 s niet',
+    waarom: 'Rit 30-10: drie stappen 0x16 → 0x64 aan de randen van contact uit, daarna de hele verbinding 400 ms per misser. Of het op de weg schoon blijft, zegt de meetproef van opdracht 41.',
+    proef: async function () {
+      var V = window.PLVerbind;
+      if (!V || typeof V._randTerug !== 'function' || typeof plStRandTerug !== 'function') return { staat: 'FOUT', detail: 'PLVerbind zonder terugdraai voor de contactrand — oude pidlane-bt.js (herladen?)' };
+      var r = plStRandTerug([{ t: 1000, oud: '16', bron: 'gemeten' }, { t: 5000, oud: '19', bron: 'bijgestuurd' }], 6000, ST_RAND_VOOR_MS);
+      if (!r || r.hex !== '16' || r.n !== 2) return { staat: 'FOUT', detail: 'twee stappen in de rand geven ' + JSON.stringify(r) + ' in plaats van terug naar 0x16' };
+      if (plStRandTerug([{ t: 1000, oud: '16' }], 1000 + ST_RAND_VOOR_MS + 1, ST_RAND_VOOR_MS) !== null) return { staat: 'FOUT', detail: 'een stap ruim vóór de stilte zou ook teruggedraaid worden' };
+      return { staat: 'OK', detail: 'deze verbinding: ATST 0x' + V.nu().st + ', ' + V.stappen() + ' bijsturing(en)' };
+    }
+  },
+
   // ── Inleren wacht op de zoekronde; de kaart meldt zijn stappen (30-10-2026) ──
   {
     issue: '#648',
