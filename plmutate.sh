@@ -2429,6 +2429,11 @@ MUTATIES=(
 "public/pidlane-garage.js@@      case 'wiel-vers-pct': return@@      case 'wiel-vers-pc': return@@test-opdrachtappmaat.js@@een maat op de witte lijst die de module niet kent: de proef blijft voorgoed nog niet (#560 meetopdracht)"
 "public/pidlane-conditie.js@@    if (s.t1 === t) return s.v1;\n    if (s.t0 === undefined@@    return s.v1;\n    if (s.t0 === undefined@@test-winterrit.js@@de assen worden weer op verschillende momenten vergeleken: elke optrekking telt als slip (rit 24-10, #560)"
 "public/pidlane-conditie.js@@hi - lo >= c.minKmh && @@@@test-winterrit.js@@bij lage snelheid telt één km/h verschil als 10 % slip (#560)"
+# De conditiekaart (30-10-2026): de ring, een lege meting, de oorzaak en het teken van het verloop.
+"public/pidlane-conditie.js@@rond(klem(s, 0, 100) / 100 * RING_C, 1)@@rond(klem(s, 0, 100) * RING_C, 1)@@test-conditie.js@@de ring van de kaart vult zich met de score in plaats van het percentage"
+"public/pidlane-conditie.js@@(leeg ? (d[0] !== 'onderhoud' && !c.klaar ? 'nog ' + c.nodig : '—') : s)@@(leeg ? 0 : s)@@test-conditie.js@@een deel zonder meting staat op de kaart als 0"
+"public/pidlane-conditie.js@@<div class=\"cdk-oorzaak\">' + esc(oz.tekst)@@<div class=\"cdk-oorzaak\">' + oz.tekst@@test-conditie.js@@de grootste oorzaak komt als HTML op de kaart"
+"public/pidlane-conditie.js@@(vs > 0 ? '+' : '−')@@(vs > 0 ? '−' : '+')@@test-conditie.js@@een zakkende score krijgt op de kaart een plus"
 "public/pidlane-koopcheck.js@@    else if(minNaWarm==null||s.coolant<minNaWarm) minNaWarm=s.coolant;@@    else {}@@test-winterrit.js@@de wintercheck geeft het terugzakken na het opwarmen niet door: één oordeel op papier, twee in de praktijk (#558)"
 "public/pidlane-weer.js@@d.datum >= vandaag && (getal@@true && (getal@@test-weer.js@@de verwachting van gisteren telt mee in de komende dagen"
 "public/pidlane-weer.js@@return m !== null && m <= CFG.gladMin && (@@return m !== null && (@@test-weer.js@@regen bij 4 °C heet kans op gladheid"

@@ -1258,7 +1258,9 @@
 
   function zorgCss() {
     if (document.getElementById('plGarCss')) return;
-    var s = document.createElement('style'); s.id = 'plGarCss'; s.textContent = CSS;
+    var s = document.createElement('style'); s.id = 'plGarCss';
+    // De conditiekaart brengt zijn eigen vorm mee (PLConditie.CSS).
+    s.textContent = CSS + ((window.PLConditie && PLConditie.CSS) || '');
     document.head.appendChild(s);
   }
 

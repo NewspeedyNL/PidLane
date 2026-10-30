@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-10-2026 — De conditiekaart (#475)
+ ═══════════════════════════════════════════════════════════
+ - Het tabblad Conditie opent met een kaart: ring met de score, vier delen
+   als balk, het verloop met de grens van 70 en de grootste oorzaak.
+ - Een deel zonder ritmeting zegt "nog N", nooit 0. Vorm in PLConditie.CSS,
+   de garage neemt hem mee in zijn stijlblok (test-conditie.js, blok 5).
+
+ ═══════════════════════════════════════════════════════════
  30-10-2026 — ATST klimt niet meer aan de randen van contact uit (#509)
  ═══════════════════════════════════════════════════════════
 

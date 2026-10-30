@@ -17,6 +17,8 @@
 //     dat als slijtage telt;
 //   • een melding bij elke rit in plaats van één per daling;
 //   • het logboek van de Worker en dat van de app die uit de pas lopen.
+//   • een kaart waarvan de ring niet de score toont, een deel zonder
+//     meting als 0, een oorzaak als HTML, of een daling met een plus.
 //
 // Draaien vanuit public/:  node test-conditie.js     (exit 0 = goed)
 // ══════════════════════════════════════════════════════════════════
@@ -288,6 +290,36 @@ console.log('\n10. App en Worker: hetzelfde logboek');
   toets('de Worker kent precies de onderdelen van de app', wat && wat.join() === app.join(), (wat || []).join() + ' ≠ ' + app.join());
   const mx = /onderhoud_log: \{ soort: "onderhoudlog", max: (\d+) \}/.exec(w);
   toets('even lang logboek in app en Worker', mx && Number(mx[1]) === C.CFG.logMax, mx && mx[1]);
+}
+
+console.log('\n11. De conditiekaart (30-10-2026)');
+{
+  // Een m zoals beoordeel() hem geeft, met de velden die kaart() leest.
+  const T0 = NU - 30 * 864e5;
+  const mk = (o) => Object.assign({ score: 82, deel: { onderhoud: 74, motor: 88, brandstof: 91, accu: null },
+    conditie: { klaar: true, nodig: 0, bron: 'de eerste 5 na de beurt van 2026-09-01' },
+    lijn: [{ t: T0, score: 86 }, { t: T0 + 10 * 864e5, score: 85 }, { t: NU, score: 82 }],
+    oorzaken: [{ tekst: 'Remvloeistof is bijna aan de beurt.', punten: 3.24 }] }, o);
+  let h = C.kaart(mk());
+  const ring = /stroke-dasharray="([\d.]+) ([\d.]+)"/.exec(h);
+  toets('de ring is precies zo vol als de score', ring && Math.abs(Number(ring[1]) / Number(ring[2]) - 0.82) < 0.002, ring && ring[0]);
+  toets('het cijfer staat in de ring', /class="cdk-getal">82</.test(h));
+  toets('oordeel bij 82: redelijk, in oranje', /redelijk/.test(h) && /data-kleur="oranje"/.test(h));
+  toets('alle vier de delen, met hun getal', ['Onderhoud', 'Motor', 'Brandstof', 'Accu'].every((d) => h.indexOf('<span>' + d + '</span>') >= 0) && /<b>74<\/b>/.test(h) && /<b>91<\/b>/.test(h));
+  toets('een deel zonder meting krijgt een streep en een lege balk, geen 0', /width:0%[^>]*><\/i><\/u><b>—<\/b>/.test(h) && !/<b>0<\/b>/.test(h), h.slice(h.indexOf('Accu'), h.indexOf('Accu') + 160));
+  toets('het verloop zegt hoeveel hij zakte: −4', /Verloop · 3 metingen<\/span><b class="neer">−4<\/b>/.test(h));
+  toets('omhoog is groen en met een plus', /<b class="op">\+5<\/b>/.test(C.kaart(mk({ lijn: [{ t: T0, score: 77 }, { t: NU, score: 82 }] }))));
+  toets('de grootste oorzaak met zijn punten', /Grootste oorzaak<\/span><b class="neer">−3,2<\/b>/.test(h) && /Remvloeistof is bijna/.test(h));
+  toets('een oorzaak komt niet als HTML op het scherm', C.kaart(mk({ oorzaken: [{ tekst: '<img src=x>', punten: 1 }] })).indexOf('<img') < 0);
+  h = C.kaart(mk({ conditie: { klaar: false, nodig: 7 }, deel: { onderhoud: 90, motor: null, brandstof: null, accu: null }, score: 90, lijn: [], oorzaken: [] }));
+  toets('nog geen ritmeting: per deel hoeveel ritten nog, en geen verloop', (h.match(/<b>nog 7<\/b>/g) || []).length === 3 && !/Verloop/.test(h) && /start na 7 ritten/.test(h));
+  toets('90: goed, in groen', /data-kleur="groen"/.test(h) && />goed</.test(h));
+  h = C.kaart(mk({ score: null, deel: { onderhoud: null, motor: null, brandstof: null, accu: null }, lijn: [], oorzaken: [] }));
+  toets('zonder score: geen NaN, een streep en "nog geen score"', !/NaN|undefined/.test(h) && /class="cdk-getal">—</.test(h) && /nog geen score/.test(h) && /stroke-dasharray="0 /.test(h));
+  const v2 = { naam: 'Blauwe', onderhoud_log: [{ datum: '2026-09-01', km: 1000, wat: ['olie'] }] };
+  h = C.html(v2, { ritten: reeks(30, 3), nu: NU });
+  toets('het tabblad opent met de kaart', h.indexOf('<div class="cdk"') === 0, h.slice(0, 80));
+  toets('de kaart brengt zijn eigen vorm mee', typeof C.CSS === 'string' && /\.cdk-ring\{/.test(C.CSS) && /\.cdk-deel\{/.test(C.CSS));
 }
 
 console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' toetsen goed'));
