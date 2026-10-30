@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-10-2026 — Hyperlane: een rustig midden
+ ═══════════════════════════════════════════════════════════
+ - Slim: een getal blijft minstens 6 s staan (koelwater-alarm en 0–100 gaan
+   meteen); verbruik, gas en koelwater krijgen één nieuw getal per seconde.
+ - Versnelling: een nieuwe moet 0,6 s kloppen, een onbekende blijft 12 s staan.
+   Vol gas (≥ 80%) toont geen verbruik maar g, anders het gas (test-hyperlane.js).
+
+ ═══════════════════════════════════════════════════════════
  30-10-2026 — De conditiekaart (#475)
  ═══════════════════════════════════════════════════════════
  - Het tabblad Conditie opent met een kaart: ring met de score, vier delen

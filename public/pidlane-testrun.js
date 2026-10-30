@@ -2848,6 +2848,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Rustig in het midden van Hyperlane (30-10-2026) ──
+  {
+    issue: '—',
+    naam: 'Het midden van Hyperlane wisselt hoogstens om de 6 s, een onbekende versnelling blijft staan, en bij vol gas geen verbruik',
+    waarom: 'Uit het gebruik: in de stand Versnelling sprong het midden bij elke twijfel van PLGear naar een andere PID, en Slim wisselde zes keer per seconde. Hoe het op de weg leest, zegt een rit.',
+    proef: async function () {
+      var H = window.PLHyperlane;
+      if (!H || typeof H.heldRustig !== 'function' || typeof H.gearRustig !== 'function') return { staat: 'FOUT', detail: 'PLHyperlane zonder rustig midden — oude pidlane-hyperlane.js (herladen?)' };
+      var st = H.heldRustig(null, { l: 'VERBRUIK NU', w: '6,4', e: 'L/100' }, null, .15);
+      st = H.heldRustig(st, { l: 'ACCELERATIE', w: '0,20', e: 'g' }, { w: '6,4', e: 'L/100' }, .15);
+      if (st.l !== 'VERBRUIK NU') return { staat: 'FOUT', detail: 'het midden wisselt na 0,15 s al naar ' + st.l };
+      var g = H.gearRustig(H.gearRustig(null, '3', .15), '', 5);
+      if (g.toon !== '3') return { staat: 'FOUT', detail: 'een versnelling die 5 s onbekend is verdwijnt al uit het midden' };
+      var tk = function (v, d) { return Number(v).toFixed(d || 0); };
+      if (H.held('rijden', { koel: 90, verbruik: 30, gas: 100, versn: 8, launchS: null, klok: '' }, tk).l === 'VERBRUIK NU') return { staat: 'FOUT', detail: 'vol gas toont nog het verbruik' };
+      return { staat: 'OK', detail: 'midden ' + (H.leesMidden ? H.leesMidden() : '?') + '; wacht ' + H.HELD_MIN_S + ' s, versnelling blijft ' + H.GEAR_LEEG_S + ' s staan' };
+    }
+  },
+
   // ── De conditiekaart (30-10-2026) ──
   {
     issue: '#475',

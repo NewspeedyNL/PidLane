@@ -11,7 +11,9 @@
 //   • de scène (alarm, begrenzer, remmen, launch, koud, stil, cruise) en hun voorrang;
 //   • de rit (afstand, top, rijtijd, beste 0–100) en de tegels van het scorebord;
 //   • het profiel kiest de juiste PIDs en een diesel krijgt 6000 rpm;
-//   • elke klasse die de tekening gebruikt heeft regels in pidlane.css.
+//   • elke klasse die de tekening gebruikt heeft regels in pidlane.css;
+//   • het midden: een getal blijft minstens 6 s staan, een versnelling niet
+//     bij elke twijfel weg, en bij vol gas geen verbruik.
 // Wat in de echte app gebeurt (WebGL, de lus, het volle scherm): bproef-hyperlane.js.
 //
 // Draaien vanuit public/:  node test-hyperlane.js
@@ -304,6 +306,51 @@ const klassen = [...new Set([...h.matchAll(/class="([^"]+)"/g)].flatMap(m => m[1
 const mist = klassen.filter(k => CSS.indexOf('.' + k) < 0);
 waar('alle vhl-klassen uit html() staan in pidlane.css', mist.length === 0, mist.join(', '));
 waar('het volle scherm vult het scherm met de tunnel', /body\.pl-vis-vol \.vpf-hyper \{[^}]*position:fixed/.test(CSS));
+
+console.log('\n4n. Rustig in het midden (30-10-2026): niet zes keer per seconde wisselen');
+{
+  waar('vol gas: geen verbruik maar de acceleratie in g', H.held('rijden', hx({ gas: 95, versn: 3 }), tk).l === 'ACCELERATIE');
+  waar('vol gas zonder versnellingsmeting: het gaspedaal, geen verbruik', H.held('rijden', hx({ gas: 95, versn: null }), tk).l === 'GAS');
+  waar('net onder vol gas: gewoon verbruik', H.held('rijden', hx({ gas: H.VOLGAS - 1 }), tk).l === 'VERBRUIK NU');
+  waar('een verbruik dat er al stond gaat bij vol gas meteen weg', H.heldWaarde('VERBRUIK NU', 'rijden', hx({ gas: 95 }), tk) === null && H.heldWaarde('VERBRUIK NU', 'rijden', hx({}), tk).w === '6,4');
+  // Een rit in tikken van 0,15 s: de echte held() kiest, heldRustig() beslist.
+  const DT = 0.15;
+  const rij = (st, x, sc, sec) => { for (let t = 0; t < sec - 1e-9; t += DT) st = H.heldRustig(st, H.held(sc || 'rijden', hx(x), tk, st && st.l), st ? H.heldWaarde(st.l, sc || 'rijden', hx(x), tk) : null, DT); return st; };
+  let st = rij(null, {}, 'rijden', 1);
+  waar('begint met verbruik', st.l === 'VERBRUIK NU');
+  st = rij(st, { versn: 6 }, 'rijden', 2);
+  waar('twee seconden optrekken na een seconde verbruik: verbruik blijft staan', st.l === 'VERBRUIK NU', st.l);
+  st = rij(st, { versn: 6 }, 'rijden', 3.2);
+  waar('na zes seconden mag hij wisselen naar acceleratie', st.l === 'ACCELERATIE', st.l + ' na ' + st.t);
+  st = rij(st, { versn: 1 }, 'rijden', 2);
+  waar('en blijft daarna ook weer even op acceleratie', st.l === 'ACCELERATIE');
+  waar('te heet koelwater wacht niet', rij(st, { koel: 121 }, 'alarm', DT).l === 'KOELWATER');
+  waar('de 0–100-timer wacht niet', rij(rij(null, {}, 'rijden', 1), { launchS: 0.4, versn: 15 }, 'launch', DT).l === '0–100');
+  let v = rij(null, {}, 'rijden', 0.3), w0 = v.w;
+  v = H.heldRustig(v, H.held('rijden', hx({ verbruik: 9.9 }), tk), H.heldWaarde(v.l, 'rijden', hx({ verbruik: 9.9 }), tk), DT);
+  waar('het verbruik krijgt niet elke tik een nieuw getal', v.w === w0, v.w + ' na ' + v.wt);
+  v = rij(v, { verbruik: 9.9 }, 'rijden', 1);
+  waar('wel binnen een seconde', v.w === '9,9', v.w);
+  let a = rij(rij(null, {}, 'rijden', 7), { versn: 8 }, 'rijden', DT);
+  a = rij(a, { versn: 12 }, 'rijden', DT);
+  waar('de acceleratie loopt wel elke tik mee', a.l === 'ACCELERATIE' && a.w === tk(12 / 3.6 / 9.81, 2), a.l + ' ' + a.w);
+
+  const gr = (st, g, sec) => { for (let t = 0; t < sec - 1e-9; t += DT) st = H.gearRustig(st, g, DT); return st; };
+  let g = gr(null, '3', DT);
+  waar('de eerste versnelling staat er meteen', g.toon === '3');
+  g = gr(g, '4', 0.3);
+  waar('een versnelling die 0,3 s anders is, verspringt niet', g.toon === '3');
+  g = gr(g, '4', 0.6);
+  waar('na 0,6 s wel', g.toon === '4');
+  g = gr(g, '', 8);
+  waar('acht seconden onbekend: de laatste versnelling blijft staan', g.toon === '4');
+  g = gr(g, '', H.GEAR_LEEG_S - 8 + DT);
+  waar('na ' + H.GEAR_LEEG_S + ' s onbekend: het slimme getal', g.toon === '');
+  g = gr(g, '5', 1);
+  waar('één seconde weer bekend: nog niet terug', g.toon === '');
+  g = gr(g, '5', H.GEAR_TERUG_S);
+  waar('na ' + H.GEAR_TERUG_S + ' s stabiel komt de versnelling terug', g.toon === '5');
+}
 
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + (ok + fout) : 'ok: ' + ok + ' van ' + ok));
 process.exit(fout ? 1 : 0);

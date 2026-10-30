@@ -1219,6 +1219,13 @@ MUTATIES=(
 "public/pidlane-visthema.js@@vis.classList.contains('vhl-basis') ? STANDAARD : themaVoor(lees())@@themaVoor(lees())@@bproef-visthema.js@@de basismeter krijgt weer een thema tot de volgende herbouw (de race van 28-10-2026)"
 "public/pidlane.css@@.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vt-thema, .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vt-strook { display:none !important; }@@@@bproef-hyperlane.js@@het palet staat weer op de basismeter"
 "public/pidlane-hyperlane.js@@  if(!s.wortel.isConnected || !s.wortel.getClientRects().length){ stop(); return; }@@@@bproef-hyperlane.js@@de tekenlus draait door in een weggegooid of verborgen vak en kost accu"
+# Rustig in het midden (30-10-2026): de wachttijd, de directe uitzondering, vol gas en de versnelling die blijft staan.
+"public/pidlane-hyperlane.js@@if(h.l!==s.l && (HELD_DIRECT[h.l] || s.t>=HELD_MIN_S)) return nieuw;@@if(h.l!==s.l) return nieuw;@@test-hyperlane.js@@het slimme getal wisselt weer bij elke tik naar wat held() nu kiest"
+"public/pidlane-hyperlane.js@@if(h.l!==s.l && (HELD_DIRECT[h.l] || s.t>=HELD_MIN_S)) return nieuw;@@if(h.l!==s.l && s.t>=HELD_MIN_S) return nieuw;@@test-hyperlane.js@@een te heet koelwater wacht zes seconden op zijn beurt"
+"public/pidlane-hyperlane.js@@  if(n(x.gas) && x.gas>=VOLGAS) return (n(x.versn)@@  if(false) return (n(x.versn)@@test-hyperlane.js@@bij vol gas staat het verbruik weer in het midden"
+"public/pidlane-hyperlane.js@@if(!g){ s.leeg+=dt; s.kand=''; s.kt=0; if(s.leeg>=GEAR_LEEG_S) s.toon=''; return s; }@@if(!g){ s.toon=''; return s; }@@test-hyperlane.js@@een versnelling die even onbekend is, maakt meteen plaats voor het slimme getal"
+"public/pidlane-hyperlane.js@@  const nodig=s.toon ? GEAR_STABIEL_S : s.ooit ? GEAR_TERUG_S : 0;@@  const nodig=0;@@test-hyperlane.js@@een versnelling die 0,3 s anders is, staat er meteen"
+"public/pidlane-hyperlane.js@@  if(HELD_LOPEND[s.l] || s.wt>=HELD_WAARDE_S){ s.w=oud.w;@@  if(true){ s.w=oud.w;@@test-hyperlane.js@@het verbruik krijgt weer elke tik een nieuw getal"
 "public/pidlane-visueel.js@@    themaBij(g);\n    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@bproef-visthema.js@@een herbouw van een profiel gooit de knop volledig scherm weg"
 "public/pidlane-visueel.js@@  lichaam(false);\n  try{ if(window.PLVisThema) PLVisThema.uit(); }@@  lichaam(false);\n  try{ }@@bproef-visthema.js@@een andere weergave kiezen laat het volle scherm over de app liggen"
 "public/pidlane.css@@body.pl-vis-vol .vis { position:fixed; inset:0; z-index:var(--z-modal);@@body.pl-vis-vol .vis { position:fixed; inset:0; z-index:9000;@@bproef-visthema.js@@het volle scherm ligt onder de navigatiebalk"
