@@ -2848,6 +2848,24 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── De conditiekaart (30-10-2026) ──
+  {
+    issue: '#475',
+    naam: 'Het tabblad Conditie opent met de nieuwe kaart: ring met de score, vier delen, verloop en de grootste oorzaak',
+    waarom: 'De kaart is puur en in test-conditie.js getoetst; hier gaat het erom dat de app de nieuwe pidlane-conditie.js laadt en dat de garage zijn vorm meeneemt.',
+    proef: async function () {
+      var C = window.PLConditie;
+      if (!C || typeof C.kaart !== 'function' || typeof C.CSS !== 'string') return { staat: 'FOUT', detail: 'PLConditie zonder kaart — oude pidlane-conditie.js (herladen?)' };
+      var h = C.kaart({ score: 50, deel: { onderhoud: 50, motor: null, brandstof: null, accu: null }, conditie: { klaar: false, nodig: 4 }, lijn: [], oorzaken: [] });
+      var r = /stroke-dasharray="([\d.]+) ([\d.]+)"/.exec(h);
+      if (!r || Math.abs(Number(r[1]) / Number(r[2]) - 0.5) > 0.01) return { staat: 'FOUT', detail: 'een score van 50 vult de ring niet half (' + (r && r[0]) + ')' };
+      if (!/<b>nog 4<\/b>/.test(h)) return { staat: 'FOUT', detail: 'een deel zonder ritmeting zegt niet hoeveel ritten er nog nodig zijn' };
+      var css = document.getElementById('plGarCss');
+      if (css && css.textContent.indexOf('.cdk-ring{') < 0) return { staat: 'FOUT', detail: 'het stijlblok van de garage mist de vorm van de kaart' };
+      return { staat: 'OK', detail: css ? 'kaart en vorm geladen' : 'kaart geladen; de garage was nog niet open, de vorm komt bij het openen' };
+    }
+  },
+
   // ── ATST aan de randen van contact uit (30-10-2026) ──
   {
     issue: '#509',

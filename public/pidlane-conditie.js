@@ -825,14 +825,81 @@
       '<div class="gr-knoppen"><button class="gr-k hoofd" onclick="PLGarage._condBeurt()">Bewaren</button><button class="gr-k" onclick="PLGarage._condForm(false)">Annuleren</button></div></div>';
   }
 
-  function lijnSvg(l) {
-    if (!l || l.length < 2) return '';
-    var w = 300, h = 60, t0 = l[0].t, t1 = l[l.length - 1].t, dt = (t1 - t0) || 1;
-    var x = function (t) { return rond((t - t0) / dt * (w - 8) + 4, 1); }, y = function (s) { return rond(h - 4 - s / 100 * (h - 8), 1); };
-    return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%" height="' + h + '" role="img" aria-label="Verloop van de score">' +
-      '<line x1="4" x2="' + (w - 4) + '" y1="' + y(70) + '" y2="' + y(70) + '" stroke="currentColor" stroke-opacity=".2" stroke-dasharray="3 3"/>' +
-      '<polyline fill="none" stroke="currentColor" stroke-width="2" points="' + l.map(function (p) { return x(p.t) + ',' + y(p.score); }).join(' ') + '"/></svg>';
+  /* ── De conditiekaart (30-10-2026) ──
+     Het hoofdblok van het tabblad, in de vorm van de website en Hyperlane:
+     dunne lijnen, labels in mono, één kleur die het oordeel draagt. Vroeger
+     een regel "Conditiescore 82 / 100" met vier getallen eronder; nu ziet de
+     klant in één blik het cijfer, welk deel het trekt, hoe het verloopt en
+     de grootste oorzaak. Puur: alleen m uit beoordeel(), dus te toetsen
+     zonder DOM. De kleuren zijn die van kleur(): groen ≥ 85, oranje ≥ 70. */
+  var KLEURVAR = { groen: 'var(--gn,#1fd189)', oranje: 'var(--or,#ff9f2e)', rood: 'var(--rd,#ff5a5a)' };
+  var RING_R = 44, RING_C = rond(2 * Math.PI * RING_R, 1);
+  function kaartKleur(s) { return getal(s) === null ? 'var(--tx3,#8f9197)' : KLEURVAR[kleur(s)]; }
+  function ring(s) {
+    var d = getal(s) === null ? 0 : rond(klem(s, 0, 100) / 100 * RING_C, 1);
+    return '<svg class="cdk-ring" viewBox="0 0 100 100" role="img" aria-label="Conditiescore ' + (getal(s) === null ? 'nog niet bekend' : s + ' van 100') + '">' +
+      '<circle cx="50" cy="50" r="' + RING_R + '" fill="none" stroke="currentColor" stroke-opacity=".12" stroke-width="6"/>' +
+      '<circle cx="50" cy="50" r="' + RING_R + '" fill="none" stroke="' + kaartKleur(s) + '" stroke-width="6" stroke-dasharray="' + d + ' ' + RING_C + '" transform="rotate(-90 50 50)"/>' +
+      '<text x="50" y="55" text-anchor="middle" class="cdk-getal">' + (getal(s) === null ? '—' : s) + '</text>' +
+      '<text x="50" y="72" text-anchor="middle" class="cdk-van">VAN 100</text></svg>';
   }
+  /* Verloop: de lijn van de score met de grens van 70 gestippeld, en het
+     verschil tussen het eerste en het laatste punt. */
+  function verloop(l) {
+    if (!l || l.length < 2) return null;
+    var w = 300, h = 54, t0 = l[0].t, dt = (l[l.length - 1].t - t0) || 1;
+    // De schaal volgt de punten, met de grens van 70 er altijd in: op 0–100
+    // is een daling van 86 naar 82 een platte streep.
+    var sc = l.map(function (p) { return p.score; });
+    var lo = Math.max(0, Math.min.apply(null, sc.concat(70)) - 4), hi = Math.min(100, Math.max.apply(null, sc.concat(70)) + 4);
+    var x = function (t) { return rond((t - t0) / dt * (w - 8) + 4, 1); }, y = function (s) { return rond(h - 5 - (s - lo) / ((hi - lo) || 1) * (h - 10), 1); };
+    var laatst = l[l.length - 1], vs = laatst.score - l[0].score;
+    return { verschil: vs, tekst: vs === 0 ? 'gelijk' : (vs > 0 ? '+' : '−') + Math.abs(vs),
+      svg: '<svg class="cdk-lijn" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" role="img" aria-label="Verloop van de score">' +
+        '<line x1="4" x2="' + (w - 4) + '" y1="' + y(70) + '" y2="' + y(70) + '" stroke="currentColor" stroke-opacity=".25" stroke-dasharray="2 4"/>' +
+        '<polyline fill="none" stroke="' + kaartKleur(laatst.score) + '" stroke-width="2" stroke-linejoin="round" points="' + l.map(function (p) { return x(p.t) + ',' + y(p.score); }).join(' ') + '"/>' +
+        '<circle cx="' + x(laatst.t) + '" cy="' + y(laatst.score) + '" r="3.5" fill="' + kaartKleur(laatst.score) + '"/></svg>' };
+  }
+  function kaart(m) {
+    var c = m.conditie || {}, vl = verloop(m.lijn), oz = (m.oorzaken || [])[0];
+    var h = '<div class="cdk" data-kleur="' + (kleur(m.score) || 'geen') + '">' +
+      '<div class="cdk-kop"><span>Conditiescore</span><span class="cdk-oordeel"><i style="background:' + kaartKleur(m.score) + '"></i>' + (m.score === null ? 'nog geen score' : oordeel(m.score)) + '</span></div>' +
+      '<div class="cdk-hoofd">' + ring(m.score) + '<div class="cdk-delen">' +
+      DELEN.map(function (d) {
+        var s = m.deel[d[0]], leeg = getal(s) === null;
+        return '<div class="cdk-deel"><span>' + d[1] + '</span><u><i style="width:' + (leeg ? 0 : klem(s, 0, 100)) + '%;background:' + kaartKleur(s) + '"></i></u><b>' +
+          (leeg ? (d[0] !== 'onderhoud' && !c.klaar ? 'nog ' + c.nodig : '—') : s) + '</b></div>';
+      }).join('') + '</div></div>';
+    if (vl) h += '<div class="cdk-blok"><div class="cdk-label"><span>Verloop · ' + m.lijn.length + ' metingen</span><b class="' + (vl.verschil < 0 ? 'neer' : vl.verschil > 0 ? 'op' : '') + '">' + vl.tekst + '</b></div>' + vl.svg + '</div>';
+    if (oz) h += '<div class="cdk-blok"><div class="cdk-label"><span>Grootste oorzaak</span><b class="neer">−' + nl(oz.punten, 1) + '</b></div><div class="cdk-oorzaak">' + esc(oz.tekst) + '</div></div>';
+    h += '<div class="cdk-voet">' + (!c.klaar ? 'De meting uit je ritten start na ' + c.nodig + ' rit' + (c.nodig === 1 ? '' : 'ten') + ' van minstens ' + CFG.ritMinKm + ' km. Tot die tijd telt alleen het onderhoud.'
+      : 'Je laatste ' + CFG.nRecent + ' ritten tegen ' + esc(c.bron) + '.') + '</div></div>';
+    return h;
+  }
+  /* De vorm van de kaart. PLGarage zet hem in zijn eigen stijlblok
+     (zorgCss); de kleuren komen uit de thema-variabelen van de app. */
+  var CSS =
+    '.cdk{background:var(--sur);border:1px solid var(--bd);border-radius:12px;margin-bottom:10px;color:var(--tx);overflow:hidden}' +
+    '.cdk-kop{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid var(--bd);font:500 11px var(--m);letter-spacing:.12em;text-transform:uppercase;color:var(--tx3)}' +
+    '.cdk-oordeel{display:flex;align-items:center;gap:7px;color:var(--tx)}' +
+    '.cdk-oordeel i{width:8px;height:8px;border-radius:50%}' +
+    '.cdk-hoofd{display:grid;grid-template-columns:108px 1fr;gap:16px;align-items:center;padding:14px}' +
+    '.cdk-ring{width:108px;height:108px;color:var(--tx)}' +
+    '.cdk-getal{font:800 30px var(--f);fill:currentColor;letter-spacing:-1px}' +
+    '.cdk-van{font:500 7.5px var(--m);fill:var(--tx3);letter-spacing:1.2px}' +
+    '.cdk-deel{display:grid;grid-template-columns:76px 1fr 44px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--bd);font-size:12.5px;color:var(--tx2)}' +
+    '.cdk-deel:last-child{border-bottom:0}' +
+    '.cdk-deel u{display:block;height:4px;border-radius:2px;background:var(--bd);text-decoration:none;overflow:hidden}' +
+    '.cdk-deel u i{display:block;height:100%}' +
+    '.cdk-deel b{font:500 12.5px var(--m);text-align:right;color:var(--tx)}' +
+    '.cdk-blok{padding:11px 14px;border-top:1px solid var(--bd)}' +
+    '.cdk-label{display:flex;justify-content:space-between;align-items:baseline;font:500 10.5px var(--m);letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);margin-bottom:6px}' +
+    '.cdk-label b{font:500 13px var(--m);letter-spacing:0;color:var(--tx)}' +
+    '.cdk-label b.neer{color:var(--rd,#ff5a5a)} .cdk-label b.op{color:var(--gn,#1fd189)}' +
+    '.cdk-lijn{display:block;width:100%;height:54px;color:var(--tx)}' +
+    '.cdk-oorzaak{font-size:13.5px;line-height:1.45;color:var(--tx)}' +
+    '.cdk-voet{padding:10px 14px;border-top:1px solid var(--bd);font:400 11px/1.5 var(--m);color:var(--tx3)}' +
+    '@media (max-width:380px){.cdk-hoofd{grid-template-columns:88px 1fr;gap:12px}.cdk-ring{width:88px;height:88px}}';
 
   /* st: { ritten (null = laden), form, fout, prijs, nu } */
   function html(v, st) {
@@ -841,10 +908,7 @@
     if (!heeftBasis(v)) return basisHtml(v, st.fout);
     if (!st.ritten) return '<div class="gr-klein">⏳</div>';
     var m = beoordeel(v, st.ritten, { nu: st.nu, prijs: st.prijs });
-    var h = '<div class="gr-blok"><div class="gr-bh"><span class="gr-dot ' + kleur(m.score) + '"></span> Conditiescore<span class="gr-r">' + (m.score === null ? '—' : '<b style="font-size:1.4em">' + m.score + '</b> / 100') + '</span></div>' +
-      '<div class="gr-rij">' + DELEN.map(function (d) { var s = m.deel[d[0]]; return '<div>' + d[1] + '</div><div><b>' + (getal(s) === null ? '—' : s) + '</b></div>'; }).join('') + '</div>' +
-      (!m.conditie.klaar ? '<div class="gr-klein" style="margin-top:6px">De meting uit je ritten start na ' + m.conditie.nodig + ' rit' + (m.conditie.nodig === 1 ? '' : 'ten') + ' van minstens ' + CFG.ritMinKm + ' km. Tot die tijd telt alleen het onderhoud.</div>'
-        : '<div class="gr-klein" style="margin-top:6px">Je laatste ' + CFG.nRecent + ' ritten tegen ' + esc(m.conditie.bron) + '.</div>') + lijnSvg(m.lijn) + '</div>';
+    var h = kaart(m);
     if (m.oorzaken.length) h += '<details class="gr-blok"><summary class="gr-bh">Waarom deze score (' + m.oorzaken.length + ')</summary>' + m.oorzaken.map(function (x) {
       return '<div class="gr-item"><b>' + esc(x.tekst) + '</b> <span class="gr-klein">−' + nl(x.punten, 1) + '</span><div class="gr-klein">' + esc(x.uitleg) + '</div></div>';
     }).join('') + '</details>';
@@ -881,7 +945,7 @@
     beurt: beurt, logMet: logMet, heeftBasis: heeftBasis, kmNu: kmNu, gedaan: gedaan, recentVervangen: recentVervangen,
     onderhoudsstand: onderhoudsstand, conditie: conditie, olieBelasting: olieBelasting,
     beoordeel: beoordeel, effect: effect, kosten: kosten, lijn: lijn, daling: daling, meldBesluit: meldBesluit,
-    paspoort: paspoort, oordeel: oordeel, html: html, mediaan: mediaan, verlies: verlies,
+    paspoort: paspoort, oordeel: oordeel, html: html, kaart: kaart, CSS: CSS, mediaan: mediaan, verlies: verlies,
     logboek: function (log) { return logOplopend(log).reverse(); }
   };
 })();
