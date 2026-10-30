@@ -14,6 +14,26 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-10-2026 — ATST klom aan de randen van contact uit, niet door Maps (#509)
+
+**Gemeten** (D1, rit 30-10, CX-5): `ATST bijgestuurd` 0x16 → 0x19 om 11:09:33,
+3 s vóór `Contact uit`; 0x19 → 0x32 om 11:10:53, 2 s na `antwoordt weer`;
+0x32 → 0x64 om 11:26:26, 1 s vóór de volgende `Contact uit`. Op de achtergrond
+stond de app pas om 11:35. Opdracht 41 gaf `verbind-st-stappen` 2 en 3.
+
+**Waarom de bestaande terugzet niet ving.** `PLContact` neemt de busstand op
+bij het eerste stille antwoord van een reeks, en elk antwoord mét data zet die
+reeks op nul. Een uitlopende motor (194 tpm) antwoordt nog af en toe, dus de
+laatste reeks — en daarmee de momentopname — begon pas ná de ATST-stap.
+`stTerug` zette dus terug naar een stand die al bijgestuurd was.
+
+**Wat het nu doet.** `PLVerbind` houdt zelf een stappenlog bij en draait bij
+het begin van een stilte terug wat in de 10 s ervoor gezet werd. Na de
+stilte telt hij 15 s niet. Het vermoeden over Google Maps uit #509 is
+hiermee niet weerlegd, maar het speelde op deze rit niet mee.
+
+---
+
 ## 30-10-2026 — Kaart en inleren gemeten tegen de nepauto (#648)
 
 **Wat er misging.** Het inleren startte een vaste 20 s na de eerste
