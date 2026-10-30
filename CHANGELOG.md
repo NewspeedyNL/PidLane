@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 30-10-2026 — Volledige kaart en inleren: wachten, voortgang, duur (#648)
+ ═══════════════════════════════════════════════════════════
+
+ - Het inleren voor een vaste expert wacht tot de zoekronde en de
+   gezondheidscheck klaar zijn (telt ze in hun wrappers), in plaats van een
+   vaste 20 s. De bezig-pill noemt elke stap; met ✕ breek je af.
+ - De kaart geeft per stap de duur mee; de klant ziet elke stap in het
+   meekijkscherm, en de expert krijgt "kaart bezig" in plaats van het alarm
+   "geen live data".
+ - bproef-kaart.js: de echte app tegen de nepauto (Golf), zonder rit.
+
+ ═══════════════════════════════════════════════════════════
  29-10-2026 — De verkoper of garage als vaste expert (#646)
  ═══════════════════════════════════════════════════════════
 

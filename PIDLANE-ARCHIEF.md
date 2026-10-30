@@ -14,6 +14,34 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 30-10-2026 — Kaart en inleren gemeten tegen de nepauto (#648)
+
+**Wat er misging.** Het inleren startte een vaste 20 s na de eerste
+`buildDiscoveredPIDList()`. Op een trage auto is de gezondheidscheck dan nog
+bezig, en liepen twee zware rondes tegelijk de bus op. `bproef-kaart.js` bouwt
+dat na (60 ms per commando): het inleren begon 3,9 s vóór het einde van de
+check. Nu telt `PLRemote` de zoekronde en de gezondheidscheck in hun wrappers,
+en wacht het inleren tot beide klaar zijn (`inleerBusVrij()`, elke 5 s
+opnieuw, hoogstens 5 min).
+
+**Gemeten op de nepauto `golf16`** (VW Golf, CAN 11-bit). De busduur is
+opgeteld uit de antwoordtijden van de nepauto; het is geen meting op een
+echte bus.
+
+| stap | commando's | NO DATA | ≈ bus |
+|---|---|---|---|
+| foutcodes en zelftests | 22 | 4 | 0,7 s |
+| mode 06 | 3 | 3 | 0,2 s |
+| diep zoeken | 275 | 171 | 15,5 s |
+| gezondheidscheck (ter vergelijking) | 91 | 0 | 1,7 s |
+
+Diep zoeken is het zware deel: twee derde van zijn vragen krijgt NO DATA.
+Antwoordt een echte ECU traag of helemaal niet (time-out 800 ms per PID in de
+sweep), dan kan dat naar ruim een minuut gaan. Tijdens de kaart was het
+grootste gat in de live data naar de expert 2,8 s, en na de kaart liep de
+meetronde weer. De expert ziet tijdens de kaart "kaart bezig" in plaats van
+het alarm. Wat een echte bus onder die belasting doet, blijft #648.
+
 ## 29-10-2026 — De vaste expert: waarom een koppelcode en een eigen akkoord (#646)
 
 **Waarom geen inlognaam.** De klant had de inlognaam van de expert kunnen

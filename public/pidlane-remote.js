@@ -370,12 +370,14 @@ window.PLRemote=(function(){
   async function answerKaart(m){
     const rid=m.reqId;
     klantLog('de app brengt je auto volledig in kaart voor de expert (enkele minuten) — laat de auto stil staan');
-    const u=await volledigeKaart(d=>sendWs({type:'response',reqId:rid,data:d}));
+    const u=await volledigeKaart(d=>{sendWs({type:'response',reqId:rid,data:d});klantLog('kaart '+d.nr+'/'+d.van+': '+d.stap);});
     if(u.kaart==='rijdt')klantLog('volledige kaart niet gestart: '+u.err);
-    else if(u.kaart==='klaar')klantLog('volledige kaart klaar: '+u.pids+' sensoren');
+    else if(u.kaart==='klaar')klantLog('volledige kaart klaar: '+u.pids+' sensoren in '+Math.round(u.ms/1000)+' s');
+    else if(u.kaart==='afgebroken')klantLog('volledige kaart afgebroken');
     sendVState();
     sendWs({type:'response',reqId:rid,data:u});
   }
+  function kaartAfbreken(){if(S.kaartBezig){S.kaartAfbreken=true;logA('🗺 Volledige kaart: afbreken na de lopende stap','info');}}
   // De kaart zelf, los van wie erom vroeg: de expert in een sessie, of het
   // inleren bij de eerste koppeling voor een vaste expert (#646).
   async function volledigeKaart(stap){
@@ -384,8 +386,8 @@ window.PLRemote=(function(){
     let kmh=null;try{kmh=(typeof pidVals!=='undefined')?pidVals['010D']:null;}catch(_){ /* stil: onbekend telt als stilstand */ }
     const mk=magKaart(kmh);
     if(!mk.mag)return {kaart:'rijdt',err:mk.waarom};
-    S.kaartBezig=true;
-    const t0=Date.now(),fouten=[];
+    S.kaartBezig=true;S.kaartAfbreken=false;
+    const t0=Date.now(),fouten=[],perStap=[];
     let voor=0;try{voor=supportedPIDs.size;}catch(_){ /* stil: dan 0 */ }
     const stappen=[
       ['alle sensoren diep zoeken',()=>typeof deepRefreshPIDs==='function'?deepRefreshPIDs():Promise.reject(new Error('niet geladen'))],
@@ -396,13 +398,19 @@ window.PLRemote=(function(){
     logA('🗺 Volledige kaart gestart','warn');
     try{
       for(let i=0;i<stappen.length;i++){
+        // Afbreken kan tussen twee stappen: een lopende stap houdt zelf de bus vast.
+        if(S.kaartAfbreken)break;
         try{stap({kaart:'stap',stap:stappen[i][0],nr:i+1,van:stappen.length});}catch(e){console.warn('Voortgang van de kaart niet gemeld',e);}
-        try{await stappen[i][1]();}catch(e){fouten.push(stappen[i][0]+': '+String((e&&e.message)||e));}
+        const ts=Date.now();let fout=null;
+        try{await stappen[i][1]();}catch(e){fout=String((e&&e.message)||e);fouten.push(stappen[i][0]+': '+fout);}
+        // De duur per stap gaat mee in het antwoord: dat is wat #648 op een echte bus wil weten.
+        perStap.push({stap:stappen[i][0],ms:Date.now()-ts,fout:fout});
       }
     }finally{S.kaartBezig=false;}
     let na=0;try{na=supportedPIDs.size;}catch(_){ /* stil: dan 0 */ }
-    logA('🗺 Volledige kaart klaar — '+na+' sensoren'+(fouten.length?' · '+fouten.join('; '):''),fouten.length?'warn':'ok');
-    return {kaart:'klaar',pids:na,erbij:Math.max(0,na-voor),ms:Date.now()-t0,fouten:fouten};
+    const af=S.kaartAfbreken;S.kaartAfbreken=false;
+    logA('🗺 Volledige kaart '+(af?'afgebroken':'klaar')+' — '+na+' sensoren, '+Math.round((Date.now()-t0)/1000)+' s ('+perStap.map(x=>x.stap+' '+Math.round(x.ms/100)/10+' s').join(', ')+')'+(fouten.length?' · '+fouten.join('; '):''),fouten.length||af?'warn':'ok');
+    return {kaart:af?'afgebroken':'klaar',pids:na,erbij:Math.max(0,na-voor),ms:Date.now()-t0,fouten:fouten,stappen:perStap};
   }
 
   /* Inleren voor een vaste expert (#646). Heeft de klant een verkoper of
@@ -413,6 +421,8 @@ window.PLRemote=(function(){
      auto is de WMI plus het merk en model: nooit de VIN (§7). */
   const INLEER_SLEUTEL='pl_ingeleerd',INLEER_WACHT_MS=20000;
   const _vast={experts:null,laadt:false,t:null};
+  // Lopen de zoekronde of de gezondheidscheck nog? Geteld in hun wrappers onderaan.
+  const _bezig={discovery:0,health:0};
   function inleerSleutel(v){
     v=v||{};
     const wmi=String(v.vin||'').toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'').slice(0,3);
@@ -441,9 +451,23 @@ window.PLRemote=(function(){
     finally{_vast.laadt=false;}
     return _vast.experts||[];
   }
-  function inlerenNaVerbinden(){
+  /* Wanneer mag het inleren beginnen? Pas als de zoekronde en de
+     gezondheidscheck klaar zijn: die lopen anders tegelijk de bus op, en een
+     trage auto heeft er langer dan INLEER_WACHT_MS voor nodig. Puur. */
+  const INLEER_HERHAAL_MS=5000,INLEER_MAX_POGINGEN=60;
+  function inleerBusVrij(b){
+    if(!b)return true;
+    return !(b.discovery>0||b.health>0||b.kaart);
+  }
+  function inlerenNaVerbinden(ms,poging){
     clearTimeout(_vast.t);
+    poging=poging|0;
     _vast.t=setTimeout(async()=>{
+      if(!inleerBusVrij({discovery:_bezig.discovery,health:_bezig.health,kaart:S.kaartBezig})){
+        if(poging<INLEER_MAX_POGINGEN)inlerenNaVerbinden(INLEER_HERHAAL_MS,poging+1);
+        else logA('🗺 Inleren voor de vaste expert niet gestart: de bus bleef bezet (de volgende verbinding probeert het opnieuw)','info');
+        return;
+      }
       try{
         let demo=false;try{demo=(typeof demoMode!=='undefined')&&!!demoMode;}catch(_){ /* stil: dan geen demo */ }
         let conn=false;try{conn=(typeof connected!=='undefined')&&!!connected;}catch(_){ /* stil: dan niet verbonden */ }
@@ -453,11 +477,14 @@ window.PLRemote=(function(){
         if(!moetInleren({verbonden:conn,demo:demo,remote:!!window._remoteVehicleMode,sleutel:sl,experts:ex,gedaan:inleerGedaan()}))return;
         const naam=ex.map(e=>e.naam).join(', ');
         try{showToast?.('🗺 PidLane leert je auto kennen voor '+naam+' — enkele minuten, laat de auto stil staan');}catch(_){ /* stil: melding mag nooit de stroom breken */ }
-        const u=await volledigeKaart(()=>{});
-        if(u.kaart==='klaar'){inleerMerk(sl);sendVStateSoon();try{showToast?.('✓ Je auto is ingeleerd voor '+naam);}catch(_){ /* stil: melding mag nooit de stroom breken */ }}
+        const pill=d=>{try{if(typeof showBusyPill==='function')showBusyPill('🗺 Je auto leren kennen voor '+naam+' — '+d.nr+'/'+d.van+': '+d.stap,600000,kaartAfbreken);}catch(e){console.warn('Voortgang van het inleren niet getoond',e);}};
+        let u;
+        try{u=await volledigeKaart(pill);}
+        finally{try{if(typeof hideBusyPill==='function')hideBusyPill();}catch(e){console.warn('Voortgang van het inleren niet weggehaald',e);}}
+        if(u.kaart==='klaar'){inleerMerk(sl);sendVStateSoon();try{showToast?.('✓ Je auto is ingeleerd voor '+naam+' ('+Math.round(u.ms/1000)+' s)');}catch(_){ /* stil: melding mag nooit de stroom breken */ }}
         else logA('🗺 Inleren voor '+naam+' niet gedaan: '+u.kaart+(u.err?' — '+u.err:'')+' (de volgende verbinding probeert het opnieuw)','info');
       }catch(e){logA('⚠ Inleren voor de vaste expert mislukt: '+((e&&e.message)||e),'warn');}
-    },INLEER_WACHT_MS);
+    },ms==null?INLEER_WACHT_MS:ms);
   }
 
   /* ── VOERTUIGPROFIEL (vstate) ─────────────────────────────────────
@@ -1009,6 +1036,12 @@ window.PLRemote=(function(){
     if(!laatste)return 'wacht';
     return (nu-laatste)>STIL_MS?'stil':'live';
   }
+  // Puur (#648): wat de expert ziet als er geen live data komt. Tijdens de
+  // volledige kaart is dat verwacht — de kaart houdt de bus vast — en geen alarm.
+  function stilTekst(sec,kaartLoopt){
+    if(kaartLoopt)return '⏸ Volledige kaart bezig — live data gepauzeerd ('+sec+' s), hij komt terug als de kaart klaar is.';
+    return '⏸ Geen live data van de telefoon sinds '+sec+' s — app op de achtergrond of adapter weg? Getoonde waarden zijn oud.';
+  }
   function versheid(){
     const st=stilOordeel(Date.now(),S.lastFrameT,!!(S.ews&&S.ews.readyState===1));
     if(st===S.stilSt)return;
@@ -1018,9 +1051,9 @@ window.PLRemote=(function(){
     if(st==='stil'){
       const sec=Math.round((Date.now()-S.lastFrameT)/1000);
       if(p)p.textContent=basis+' · ⏸ geen live data';
-      setExpStat('⏸ Geen live data van de telefoon sinds '+sec+' s — app op de achtergrond of adapter weg? Getoonde waarden zijn oud.');
-      expLog('⏸ live data gestopt');
-      logA('🔭 Geen live data meer van de telefoon — getoonde waarden zijn niet actueel','warn');
+      setExpStat(stilTekst(sec,!!S.expKaart));
+      expLog(S.expKaart?'⏸ live data gepauzeerd tijdens de kaart':'⏸ live data gestopt');
+      if(!S.expKaart)logA('🔭 Geen live data meer van de telefoon — getoonde waarden zijn niet actueel','warn');
     }else if(st==='live'){
       if(p)p.textContent=basis;
       if(was==='stil'){setExpStat('✅ Live data loopt weer');expLog('▶ live data hervat');logA('🔭 Live data van de telefoon loopt weer','ok');}
@@ -1090,8 +1123,9 @@ window.PLRemote=(function(){
       if(d.snelscan!==undefined)expLog('🔍 Snelle scan: '+({klaar:'klaar',bezig:'loopt al','niet-verbonden':'telefoon niet verbonden met de auto',mislukt:'mislukt'}[d.snelscan]||d.snelscan)
         +(Array.isArray(d.fouten)&&d.fouten.length?' — '+d.fouten.join('; '):''));
       if(d.kaart!==undefined){
+        S.expKaart=d.kaart==='stap';
         if(d.kaart==='stap')expLog('🗺 '+(d.nr|0)+'/'+(d.van|0)+' '+(d.stap||''));
-        else if(d.kaart==='klaar')expLog('🗺 Volledige kaart klaar: '+(d.pids|0)+' sensoren (+'+(d.erbij|0)+')'+(Array.isArray(d.fouten)&&d.fouten.length?' — '+d.fouten.join('; '):''));
+        else if(d.kaart==='klaar')expLog('🗺 Volledige kaart klaar in '+Math.round((d.ms|0)/1000)+' s: '+(d.pids|0)+' sensoren (+'+(d.erbij|0)+')'+(Array.isArray(d.fouten)&&d.fouten.length?' — '+d.fouten.join('; '):''));
         else expLog('🗺 Volledige kaart: '+d.kaart+(d.err?' — '+d.err:''));
       }
       if(d.csvChunk!==undefined){S.csvBuf=(S.csvBuf||'')+d.csvChunk;if((d.chunk|0)===(d.chunks|0))_csvDone();}
@@ -1436,7 +1470,8 @@ window.PLRemote=(function(){
   }catch(_){ console.warn('measureConnSpeed-wrapper niet geïnstalleerd — in remote-modus kan dit een echte busmeting proberen zonder adapter', _); }
   try{ // gezondheidsscan leest de bus — remote komt de gezondheid uit het vstate-snapshot
     if(typeof initialHealthScan==='function'){const _ih=initialHealthScan;
-      initialHealthScan=async function(){ if(window._remoteVehicleMode)return; return _ih.apply(this,arguments); };
+      initialHealthScan=async function(){ if(window._remoteVehicleMode)return;
+        _bezig.health++;try{return await _ih.apply(this,arguments);}finally{_bezig.health--;} };
       window.initialHealthScan=initialHealthScan;}
   }catch(_){ console.warn('initialHealthScan-wrapper niet geïnstalleerd — in remote-modus kan dit een echte scan proberen zonder adapter', _); }
   try{ // handmatige PID-keuze op de expert → local pollt de set mee (uniewerking)
@@ -1488,6 +1523,14 @@ window.PLRemote=(function(){
         return _vs.apply(this,arguments);
       }; window.vlFullSurvey=vlFullSurvey;}
   }catch(_){ console.warn('vlFullSurvey-wrapper niet geïnstalleerd — de survey-knop kan dan in remote-modus proberen een echte scan te starten', _); }
+  try{ // #648: het inleren wacht tot de zoekronde klaar is, en begint er pas daarna aan
+    if(typeof startDiscovery==='function'){const _sd2=startDiscovery;
+      startDiscovery=async function(){
+        _bezig.discovery++;
+        try{return await _sd2.apply(this,arguments);}
+        finally{_bezig.discovery--;try{if(!S.kaartBezig)inlerenNaVerbinden(INLEER_HERHAAL_MS);}catch(_){ console.warn('Inleren na de zoekronde niet ingepland', _); }}
+      }; window.startDiscovery=startDiscovery;}
+  }catch(_){ console.warn('startDiscovery-wrapper niet geïnstalleerd — het inleren voor een vaste expert kan dan tegelijk met de zoekronde starten', _); }
   try{ // local: discovery/verversing van de PID-lijst → snapshot naar de expert
     if(typeof buildDiscoveredPIDList==='function'){const _bd=buildDiscoveredPIDList;
       buildDiscoveredPIDList=function(){ const r=_bd.apply(this,arguments); try{sendVStateSoon();}catch(_){ console.warn('Vernieuwd voertuigprofiel niet naar de expert gestuurd', _); }
@@ -1525,7 +1568,8 @@ window.PLRemote=(function(){
           openExpert,expertClose,expertConnect,expertDisconnect,_staat:()=>({vstate:S.vstate,expMeta:S.expMeta}),_klantActie:klantActie,_klantStatus:klantStatus,_klantHtml:klantHtml,klantVerberg,klantToon,pillTik,_stilOordeel:stilOordeel,_pollSet:pollSet,_remSleutel:remSleutel,_remPid:remPid,reqPids,reqDtc,reqRapport,enterDrive,
           vernieuw:sendVStateSoon,_buildVState:buildVState,
           toestemmingAntwoord,terugNaarBasis,reqSnelscan,reqKaart,reqToestemming,vastIntrekken,maakKoppelcode,
-          _inleerSleutel:inleerSleutel,_moetInleren:moetInleren,_klantNiveauHtml:klantNiveauHtml,_vergeetExperts:()=>{_vast.experts=null;},
+          _inleerSleutel:inleerSleutel,_moetInleren:moetInleren,_inleerBusVrij:inleerBusVrij,_stilTekst:stilTekst,_bezig:()=>({discovery:_bezig.discovery,health:_bezig.health,kaart:!!S.kaartBezig}),
+          kaartAfbreken,_inlerenNaVerbinden:inlerenNaVerbinden,_klantNiveauHtml:klantNiveauHtml,_vergeetExperts:()=>{_vast.experts=null;},
           _verzoekNiveau:verzoekNiveau,_verzoekToegestaan:verzoekToegestaan,_scanVoorExpert:scanVoorExpert,
           _vstateBinnenGrens:vstateBinnenGrens,_pollSleutels:pollSleutels,_magKaart:magKaart,_klantVraagHtml:klantVraagHtml,
           remRecStart,remRecStop,remRecCsv,remAnalyze,pairStart,
