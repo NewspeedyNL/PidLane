@@ -299,7 +299,11 @@
   // herkent. Ze komen NIET in supportedPIDs, dus de sweeps en de waakronde
   // vragen ze niet op.
   const EIGEN_CODE = /^(21[0-9A-F]{2}|22[0-9A-F]{4})$/;
-  const EIGEN_MAX = 20;
+  // Geen bovengrens meer (31-10-2026, op verzoek): de klant kiest zelf
+  // hoeveel. Boven EIGEN_VEEL waarschuwt het garagescherm dat elke eigen
+  // sensor trager ververst — de pollus vraagt er hoogstens twee per ronde
+  // (EIGEN_PER_RONDE in pidlane-plload.js). Waarschuwen, niet weigeren.
+  const EIGEN_VEEL = 20;
   // ECU-adres (optioneel): een FYSIEK adres. 7xx op 11-bit CAN (7E0 motor,
   // 7E1 automaat, …), 18DAxxF1 op 29-bit. Het functionele 7DF/18DB33F1 is
   // de standaard en hoeft niet ingevuld; het na afloop terugzetten zit in vraag().
@@ -583,7 +587,7 @@
     _laatst = { lijst: lijst, voertuig: voertuig };
     const oud = Object.keys(_eigen);
     _eigen = {};
-    (Array.isArray(lijst) ? lijst : []).slice(0, EIGEN_MAX).forEach(e => {
+    (Array.isArray(lijst) ? lijst : []).forEach(e => {
       const r = eigenControleer(e);
       if (!r.ok) { btDiagSafe('Eigen PID overgeslagen: ' + r.fout); return; }
       if (window.ALL_PID_DEFS && ALL_PID_DEFS[r.code] && !ALL_PID_DEFS[r.code].eigen) return;   // de app kent hem al
@@ -1119,7 +1123,7 @@
     return { staat: 'ok', detail: ok.length + ' eigen sensor(en) geven antwoord: ' + ok.join(', ') };
   }
 
-  window.PLEigen = { CODE: EIGEN_CODE, MAX: EIGEN_MAX, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
+  window.PLEigen = { CODE: EIGEN_CODE, VEEL: EIGEN_VEEL, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
     ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, laadRol, wielRol, wielCodes, obdbWaarde, obdbAdres, laadOordeel, accuOordeel, laadCodes, laadNu, laad: laadLive, drukOmrekening, standaardBereik,
     scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, vraag: eigenVraag, obdbNamen, obdbKoppel, obdbFormule, obdbJaarPast, obdbKandidaten, zoekObdb };
   window.plEigenDefs = eigenDefs;

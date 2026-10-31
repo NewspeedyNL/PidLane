@@ -259,7 +259,9 @@ function haalZeef(isMode01) {
     t('plEigenDefs levert hem voor de keuzelijst', s.plEigenDefs().map(d => d.pid).join(','), '221E1C');
     t('parse via de def: 5A − 40 = 50', s.ALL_PID_DEFS['221E1C'].parse([0x5A]), 50);
     const veel = Array.from({ length: 25 }, (_, i) => ({ code: '2210' + (i < 16 ? '0' : '') + i.toString(16).toUpperCase(), naam: 'x' + i, formule: 'A' }));
-    t('hoogstens ' + E.MAX + ' per voertuig', E.zet(veel, 'x'), E.MAX);
+    // 31-10-2026: geen bovengrens meer — boven E.VEEL waarschuwt de garage, de module weigert niets.
+    t('geen bovengrens: alle ' + veel.length + ' komen erin (waarschuwing pas boven ' + E.VEEL + ')', E.zet(veel, 'x'), veel.length);
+    t('VEEL is een waarschuwingsgrens onder dit aantal', E.VEEL < veel.length && E.MAX === undefined, true);
     E.zet(null, 'ander voertuig');
     t('ander voertuig zonder eigen PIDs: de oude zijn weg', !!s.ALL_PID_DEFS['221E1C'] + ',' + s.plEigenDefs().length, 'false,0');
 
