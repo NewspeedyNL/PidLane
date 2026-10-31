@@ -2848,6 +2848,46 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── RR: eigen meetopdrachten (31-10-2026) ──
+  {
+    issue: '—',
+    naam: 'RR: een eigen meetopdracht meet alleen binnen zijn venster, op zijn tempo, in de gekozen eenheid',
+    waarom: 'Uit een klantvraag: niet de bulkrecorder met alles, maar een paar punten naar eigen wens. De rekenregels staan in test-rr.js; hier gaat het om de geladen module en de sensoren van deze auto. Of een volle bus het tempo haalt, zegt een rit.',
+    proef: async function () {
+      var R = window.PLRR;
+      if (!R || !R._kern || typeof R._kern.tik !== 'function') return { staat: 'FOUT', detail: 'PLRR ontbreekt — pidlane-rr.js niet geladen (herladen?)' };
+      var n = R.normaliseer({ naam: 'proef', sensoren: [{ pid: '0105', eenheid: '°F' }], tempo: 2, venster: { voorwaarden: [{ pid: '0105', op: '>', waarde: 80 }] } });
+      if (!n.ok) return { staat: 'FOUT', detail: 'een gewone RR wordt afgekeurd: ' + n.fout };
+      var rr = R._kern.basisVan(n.rr); rr.sensoren[0].basis = '°C';
+      var st = R._kern.nieuw(0);
+      [[70, 0], [90, 1000], [91, 2000], [100, 3000]].forEach(function (x) { st = R._kern.tik(st, rr, { '0105': x[0] }, x[1]); });
+      if (st.rijen.length !== 2) return { staat: 'FOUT', detail: 'verwacht 2 rijen (venster > 80, elke 2 s), kreeg ' + st.rijen.length };
+      if (st.rijen[0][1] !== 194) return { staat: 'FOUT', detail: '90 °C werd ' + st.rijen[0][1] + ' in plaats van 194 °F' };
+      var v = (window.PLGarage && PLGarage.actief) ? PLGarage.actief() : null;
+      if (!v) return { staat: 'LET OP', detail: 'regels goed, maar geen actief voertuig in Mijn voertuigen' };
+      var rrs = Array.isArray(v.rr) ? v.rr : [];
+      return { staat: 'OK', detail: 'regels goed · ' + rrs.length + ' RR bij ' + (v.naam || 'dit voertuig') + (R.loopt().length ? ' · ' + R.loopt().length + ' loopt nu' : '') };
+    }
+  },
+
+  // ── Weer en RDW elke dag (31-10-2026) ──
+  {
+    issue: '#556',
+    naam: 'Het weer is vers bij de opstart en nooit van gisteren',
+    waarom: 'Uit het gebruik: bij het opstarten was het profiel er nog niet, en dan wachtte de verwachting een kwartier; een verwachting van 23:50 gold om 00:10 nog als vers.',
+    proef: async function () {
+      var W = window.PLWeer;
+      if (!W || typeof W.verlopen !== 'function') return { staat: 'FOUT', detail: 'PLWeer.verlopen ontbreekt — oude pidlane-weer.js (herladen?)' };
+      var a = new Date(2026, 10, 20, 23, 50).getTime();
+      if (!W.verlopen({ t: a }, a + 20 * 60e3)) return { staat: 'FOUT', detail: 'een verwachting van gisteren (20 min oud, over middernacht) geldt nog als vers' };
+      var p = (window.PLWinter && PLWinter.profiel) ? PLWinter.profiel() : {};
+      if (!p || !p.plaats) return { staat: 'LET OP', detail: 'regel goed, maar geen plaats in het winterprofiel: dan is er geen weer' };
+      var c = W.laatst(p.plaats);
+      if (!c) return { staat: 'LET OP', detail: 'regel goed, nog geen verwachting voor ' + W.naam(p.plaats) + ' (offline of net gestart)' };
+      return { staat: W.verlopen(c, Date.now()) ? 'LET OP' : 'OK', detail: 'verwachting voor ' + c.naam + ' van ' + new Date(c.t).toLocaleString('nl') };
+    }
+  },
+
   // ── Tankvraag met buffer (31-10-2026) ──
   {
     issue: '#469',

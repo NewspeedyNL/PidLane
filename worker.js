@@ -5958,6 +5958,9 @@ var KP_VELDEN = {
   // 22xxxx, een formule met alleen A–H, getallen, + - * / en haakjes. Zelfde
   // regels als PLEigen.controleer() in pidlane-uitgebreid.js.
   eigen_pids: { soort: "eigenpids", max: 20 },
+  // RR, eigen meetopdrachten (31-10-2026): zelfde regels als
+  // PLRR.normaliseer() in public/pidlane-rr.js; test-rr.js vergelijkt ze.
+  rr: { soort: "rr", max: 10 },
   vin_pseudo: { soort: "tekst", max: 32, patroon: /^[0-9a-f]{8,32}$/ },
   // Het winterprofiel (#556, 20-10-2026). Zelfde keuzes als WINTER_KEUZES in
   // public/pidlane-winter.js; test-winter.js vergelijkt de twee. De plaats is
@@ -5974,6 +5977,50 @@ var KP_VELDEN = {
   // Welke seizoensbanner deze klant al zag: "winter-2026", "zomer-2027".
   winter_gezien: { soort: "tekst", max: 12, patroon: /^(winter|zomer)-\d{4}$/ }
 };
+
+// Eén RR (31-10-2026). Alleen de vorm: tekst kort, PIDs als sleutel, keuzes
+// uit hun lijst. Wat er gemeten wordt, bepaalt de app; hier komt geen code
+// binnen die ergens uitgevoerd wordt.
+var KP_RR = { tempo: [1, 2, 5, 10, 30, 60], opbouw: ["tijdreeks", "samenvatting", "beide"], export: ["csv", "csv-int", "json"], start: ["knop", "verbinden"], ops: [">", ">=", "<", "<="] };
+function kpRrOpdracht(o) {
+  o = o || {};
+  const t = (x, m) => String(x == null ? "" : x).replace(/[\u0000-\u001f<>]/g, " ").trim().slice(0, m);
+  const pidOk = (p) => /^[A-Za-z0-9_.:@-]{2,24}$/.test(String(p || ""));
+  const klok = (k) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(k || "")) ? String(k) : "";
+  const naam = t(o.naam, 40);
+  if (!naam) return { fout: "zonder naam" };
+  if (!Array.isArray(o.sensoren) || !o.sensoren.length || o.sensoren.length > 12) return { fout: "1 tot 12 sensoren" };
+  const sensoren = [];
+  for (const x of o.sensoren) {
+    if (!x || !pidOk(x.pid)) return { fout: "een sensor zonder geldige code" };
+    const e = t(x.eenheid, 12);
+    sensoren.push(e ? { pid: String(x.pid), eenheid: e } : { pid: String(x.pid) });
+  }
+  const tempo = Number(o.tempo);
+  if (KP_RR.tempo.indexOf(tempo) < 0) return { fout: "een tempo dat niet in de lijst staat" };
+  const v = o.venster || {};
+  const voorw = Array.isArray(v.voorwaarden) ? v.voorwaarden : [];
+  if (voorw.length > 3) return { fout: "hoogstens 3 voorwaarden" };
+  const voorwaarden = [];
+  for (const w of voorw) {
+    const g = Number(w && w.waarde);
+    if (!w || !pidOk(w.pid) || KP_RR.ops.indexOf(w.op) < 0 || !isFinite(g)) return { fout: "een voorwaarde die niet compleet is" };
+    voorwaarden.push({ pid: String(w.pid), op: w.op, waarde: g });
+  }
+  const maxMin = v.maxMin === null || v.maxMin === undefined || v.maxMin === "" ? null : Math.round(Number(v.maxMin));
+  if (maxMin !== null && !(maxMin >= 1 && maxMin <= 1440)) return { fout: "hoogstens 1 tot 1440 minuten" };
+  const van = klok(v.van), tot = klok(v.tot);
+  if (!!van !== !!tot) return { fout: "een tijdvak zonder begin of eind" };
+  return { rr: {
+    id: /^[a-z0-9]{6,20}$/.test(String(o.id || "")) ? String(o.id) : "rr" + Date.now().toString(36),
+    naam, doel: t(o.doel, 200), sensoren, tempo,
+    venster: { start: KP_RR.start.indexOf(v.start) >= 0 ? v.start : "knop", van, tot, maxMin, voorwaarden },
+    opbouw: KP_RR.opbouw.indexOf(o.opbouw) >= 0 ? o.opbouw : "tijdreeks",
+    export: KP_RR.export.indexOf(o.export) >= 0 ? o.export : "csv",
+    rapport: !!o.rapport
+  } };
+}
+__name(kpRrOpdracht, "kpRrOpdracht");
 
 // Eén beurt uit het onderhoudslogboek (#475). Een datum die niet in de
 // toekomst ligt, een km-stand of niets, alleen bekende onderdelen, een
@@ -6114,6 +6161,17 @@ function kpVeld(naam, waarde) {
     }
     return { waarde: JSON.stringify(l) };
   }
+  if (d.soort === "rr") {
+    if (!Array.isArray(waarde)) return { fout: naam + " moet een lijst zijn" };
+    if (waarde.length > d.max) return { fout: "hoogstens " + d.max + " RR's per voertuig" };
+    const l = [];
+    for (const o of waarde) {
+      const r = kpRrOpdracht(o);
+      if (r.fout) return { fout: "RR: " + r.fout };
+      l.push(r.rr);
+    }
+    return { waarde: JSON.stringify(l) };
+  }
   if (d.soort === "onderhoudlog") {
     if (!Array.isArray(waarde)) return { fout: naam + " moet een lijst zijn" };
     if (waarde.length > d.max) return { fout: "hoogstens " + d.max + " beurten in het logboek" };
@@ -6164,6 +6222,7 @@ async function kpVoertuigPubliek(v, sleutel, klantId) {
   uit.gear_model = kpLees(v.gear_model);
   uit.eigen_pids = kpLees(v.eigen_pids);
   uit.onderhoud_log = kpLees(v.onderhoud_log) || [];
+  uit.rr = kpLees(v.rr) || [];
   return uit;
 }
 __name(kpVoertuigPubliek, "kpVoertuigPubliek");

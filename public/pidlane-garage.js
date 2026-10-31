@@ -1589,6 +1589,8 @@
       if (!c.rdw && !c._rdw && !c.rdwFout) laadRdw(v);
       h += tekenKenteken(c);
     } else if (_st.tab === 'rapporten') {
+      h += tekenRR(v);
+      if (_st.rrForm) return h;
       if (!c.rapporten) laad(v.id, 'rapporten');
       var rp = c.rapporten || [];
       var kies = _st.kies || {}, nKies = Object.keys(kies).length;
@@ -1599,7 +1601,7 @@
         : '<button class="gr-k klein" onclick="PLGarage._kiesModus(true)">☑ Selecteren — vergelijken of meerdere wissen</button>') + '</div>';
       h += '<div class="gr-blok">' + (c.rapporten ? (rp.length ? rp.map(function (r) {
         return '<div class="gr-item gr-rapport">' + (_st.kiesModus ? '<input type="checkbox" class="gr-kies" aria-label="Kies dit rapport" ' + (kies[r.id] ? 'checked ' : '') + 'onchange="PLGarage._kies(\'' + esc(r.id) + '\',this.checked)">' : '') +
-          '<div class="klik" style="flex:1;min-width:0" onclick="' + (_st.kiesModus ? 'PLGarage._kies(\'' + esc(r.id) + '\')' : 'PLGarage._rapport(\'' + esc(r.id) + '\')') + '"><b>' + (r.soort === 'ai' ? '🔬 ' : r.soort === 'dtc' ? '🔴 ' : r.soort === 'waak' ? '👁 ' : '📄 ') + esc(r.titel || r.soort) + '</b><div class="gr-klein">' + datumNl(r.aangemaakt, true) + '</div></div>' +
+          '<div class="klik" style="flex:1;min-width:0" onclick="' + (_st.kiesModus ? 'PLGarage._kies(\'' + esc(r.id) + '\')' : 'PLGarage._rapport(\'' + esc(r.id) + '\')') + '"><b>' + (r.soort === 'ai' ? '🔬 ' : r.soort === 'dtc' ? '🔴 ' : r.soort === 'waak' ? '👁 ' : r.soort === 'rr' ? '🎯 ' : '📄 ') + esc(r.titel || r.soort) + '</b><div class="gr-klein">' + datumNl(r.aangemaakt, true) + '</div></div>' +
           '<button class="gr-k klein gevaar" aria-label="Rapport wissen" title="Rapport wissen" onclick="PLGarage._rapportWegId(\'' + esc(r.id) + '\')">🗑</button></div>';
       }).join('') : '<div class="gr-klein">Nog geen rapporten. Elk AI-rapport, elke foutcode-uitlezing en elke waakronde met dit voertuig actief komt hier vanzelf terecht.</div>') : '<div class="gr-klein">⏳</div>') + '</div>';
     } else if (_st.tab === 'sensoren') {
@@ -2472,7 +2474,7 @@
     },
     _open: function (id) { _st.view = 'voertuig'; _st.vid = id; _st.tab = 'overzicht'; teken(); },
     _rdwOpnieuw: function () { var c = cacheVan(_st.vid); c.rdwFout = null; c.rdw = null; teken(); },
-    _tab: function (t) { _st.tab = t; _st.labelRit = null; _st.tankForm = null; _st.condForm = false; _st.condFout = null; _st.kiesModus = false; _st.kies = {}; // Sensoren opnieuw openen = verse stand uit het voertuig en de bibliotheek,
+    _tab: function (t) { _st.tab = t; _st.rrForm = null; _st.labelRit = null; _st.tankForm = null; _st.condForm = false; _st.condFout = null; _st.kiesModus = false; _st.kies = {}; // Sensoren opnieuw openen = verse stand uit het voertuig en de bibliotheek,
       // behalve als er nog iets onbewaards staat.
       if (t !== 'sensoren' || !(_st.sens && _st.sens.gewijzigd)) _st.sens = null; teken(); },
     _terug: function () { _st.view = _st.view === 'formulier' && _st.vid ? 'voertuig' : 'lijst'; if (_st.view === 'lijst') _st.vid = null; teken(); },
@@ -2857,6 +2859,42 @@
       try { if (typeof download === 'function') download(naam + '.csv', ritExport(cy.ritten, null, literprijs(v).prijs).csv); }
       catch (e) { melding('⚠️ Exporteren mislukt: ' + e.message); console.warn('PLGarage: cyclusexport', e); }
     },
+    _rrNieuw: function () { var v = voertuig(_st.vid); if (!v) return; _st.rrForm = {}; _st.rrKeuzes = rrKeuzes(v, null); teken(); },
+    _rrBewerk: function (id) {
+      var v = voertuig(_st.vid), rr = rrLijst(v).filter(function (x) { return x.id === id; })[0]; if (!rr) return;
+      _st.rrForm = rr; _st.rrKeuzes = rrKeuzes(v, rr); teken();
+    },
+    _rrAnnuleer: function () { _st.rrForm = null; teken(); },
+    _rrBewaar: async function () {
+      var v = voertuig(_st.vid); if (!v || !window.PLRR) return;
+      var n = PLRR.normaliseer(PLRR.uitFormulier(document, (_st.rrKeuzes || []).length));
+      var fout = document.getElementById('rrFout');
+      if (n.fout) { if (fout) fout.innerHTML = '<div class="gr-melding rood">' + esc(n.fout) + '</div>'; return; }
+      var l = rrLijst(v).filter(function (x) { return x.id !== n.rr.id; });
+      var oud = rrLijst(v).map(function (x) { return x.id; }).indexOf(n.rr.id);
+      if (oud >= 0) l.splice(oud, 0, n.rr); else l.push(n.rr);
+      try { await api('voertuig_opslaan', { voertuig: { id: v.id, rr: l } }); _st.rrForm = null; await ververs(); melding('🎯 RR ' + n.rr.naam + ' bewaard'); teken(); }
+      catch (e) { if (fout) fout.innerHTML = '<div class="gr-melding rood">' + esc(e.message) + '</div>'; }
+    },
+    _rrWeg: async function (id) {
+      var v = voertuig(_st.vid); if (!v) return;
+      var rr = rrLijst(v).filter(function (x) { return x.id === id; })[0]; if (!rr) return;
+      var ja = (typeof plBevestig === 'function') ? await plBevestig('RR ' + rr.naam + ' wissen? Gemaakte rapporten blijven staan.', 'Wissen', 'Annuleren', '🎯 RR') : true;
+      if (!ja) return;
+      doe(function () { return api('voertuig_opslaan', { voertuig: { id: v.id, rr: rrLijst(v).filter(function (x) { return x.id !== id; }) } }); }, 'RR gewist');
+    },
+    _rrStart: function (id) {
+      var v = voertuig(_st.vid), rr = rrLijst(v).filter(function (x) { return x.id === id; })[0]; if (!rr || !window.PLRR) return;
+      if (!isVerbonden()) melding('🎯 RR loopt, maar er is geen verbinding: hij meet zodra er waarden binnenkomen');
+      PLRR.start(rr, v.naam, function (x) { rrKlaar(v, x); teken(); });
+      teken();
+    },
+    _rrStop: function (id) { rrKlaar(voertuig(_st.vid), id); teken(); },
+    _rrExport: function (id) {
+      var u = _rrUitslag[id]; if (!u) return;
+      try { var e = rrExportTekst(u); if (typeof download === 'function') download(rrBestand(u.rr) + '.' + e.ext, e.tekst); }
+      catch (x) { melding('⚠️ Exporteren mislukt: ' + x.message); console.warn('PLGarage: RR-export', x); }
+    },
     _tankExport: function () {
       var v = voertuig(_st.vid), c = cacheVan(_st.vid);
       var naam = 'tankbeurten-' + String((v && (v.naam || v.merk)) || 'voertuig').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
@@ -2917,6 +2955,80 @@
       rdwNaarProfiel: rdwNaarProfiel, rdwBijwerken: rdwBijwerken, profielUitVerbinding: profielUitVerbinding, voorinvulNieuw: voorinvulNieuw, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
       waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, akkoordVragen: akkoordVragen, bibSplits: bibSplits, cfg: CFG }
   };
+
+  /* ── RR: eigen meetopdrachten per voertuig (31-10-2026) ─────────────
+     PLRR (pidlane-rr.js) meet en exporteert; hier de lijst in Rapporten,
+     het formulier, en starten/stoppen. Een RR met start "verbinden" begint
+     vanzelf bij elke verbinding met dit voertuig en stopt bij verbreken. */
+  var _rrUitslag = {}, _rrAuto = {};
+  function rrLijst(v) { return Array.isArray(v && v.rr) ? v.rr : []; }
+  // Wat er te kiezen valt: de keuzelijst van de verbinding, anders de vaste
+  // selectie en de eigen sensoren van dit voertuig, plus wat de RR al heeft.
+  function rrKeuzes(v, rr) {
+    var uit = [], gezien = {};
+    var erbij = function (pid, d) { if (!pid || gezien[pid]) return; gezien[pid] = 1; d = d || {}; uit.push({ pid: pid, name: d.name || pid, unit: d.unit || '' }); };
+    var defs = (window.ALL_PID_DEFS) || {};
+    try { if (typeof discoveredPIDDefs !== 'undefined' && Array.isArray(discoveredPIDDefs)) discoveredPIDDefs.forEach(function (d) { erbij(d.pid, d); }); }
+    catch (e) { console.warn('PLGarage: keuzelijst voor RR', e); }
+    (Array.isArray(v.pid_selectie) ? v.pid_selectie : []).forEach(function (p) { erbij(p, defs[p]); });
+    (Array.isArray(v.eigen_pids) ? v.eigen_pids : []).forEach(function (e) { erbij(e.code, { name: e.naam, unit: e.eenheid }); });
+    ((rr && rr.sensoren) || []).forEach(function (x) { erbij(x.pid, defs[x.pid]); });
+    return uit;
+  }
+  function rrBestand(rr) { return 'rr-' + String(rr.naam || 'meting').replace(/[^a-z0-9]+/gi, '-').toLowerCase().replace(/^-|-$/g, ''); }
+  function rrExportTekst(u) {
+    var defs = window.ALL_PID_DEFS || {};
+    if (u.rr.export === 'json') return { ext: 'json', tekst: PLRR.json(u.rr, u.st, defs) };
+    return { ext: 'csv', tekst: PLRR.csv(u.rr, u.st, defs, u.rr.export === 'csv-int') };
+  }
+  function rrKlaar(v, id) {
+    var u = window.PLRR ? PLRR.stop(id) : null;
+    delete _rrAuto[id];
+    if (!u) return null;
+    _rrUitslag[id] = u;
+    if (u.rr.rapport && u.st.n && v) {
+      schrijfOfWacht('rapport_opslaan', { voertuig_id: v.id, soort: 'rr', titel: 'RR — ' + u.rr.naam, tekst: PLRR.rapportTekst(u.rr, u.st, window.ALL_PID_DEFS || {}, Date.now()) })
+        .then(function () { delete cacheVan(v.id).rapporten; teken(); })
+        .catch(function (e) { console.warn('PLGarage: RR-rapport niet bewaard', e); });
+    }
+    melding('🎯 RR ' + u.rr.naam + ' gestopt: ' + u.st.n + ' meting' + (u.st.n === 1 ? '' : 'en'));
+    return u;
+  }
+  // In de lus: RR's met start "verbinden" van het gekoppelde voertuig.
+  function rrLus(verbonden) {
+    if (!window.PLRR) return;
+    var v = voertuig(_st.gekoppeld) || null;
+    if (verbonden && v && !_st.onbekend) {
+      rrLijst(v).forEach(function (rr) {
+        if (rr.venster && rr.venster.start === 'verbinden' && !_rrAuto[rr.id] && PLRR.loopt().indexOf(rr.id) < 0) {
+          if (PLRR.start(rr, v.naam, function (id) { rrKlaar(v, id); teken(); })) _rrAuto[rr.id] = v.id;
+        }
+      });
+    } else if (!verbonden) {
+      Object.keys(_rrAuto).forEach(function (id) { rrKlaar(voertuig(_rrAuto[id]), id); });
+    }
+  }
+  function tekenRR(v) {
+    if (!window.PLRR) return '<div class="gr-melding">RR niet geladen (pidlane-rr.js).</div>';
+    if (_st.rrForm) return PLRR.formHtml(_st.rrForm.id ? _st.rrForm : null, _st.rrKeuzes || []);
+    var l = rrLijst(v), loopt = PLRR.loopt();
+    var h = '<div class="gr-blok"><div class="gr-bh">🎯 RR — eigen meetopdrachten<span class="gr-r">' + l.length + '/' + PLRR.CFG.max + '</span></div>' +
+      '<div class="gr-klein">Geen bulkopname maar alleen wat jij wilt: welke sensoren, in welke eenheid, hoe vaak, wanneer, en als spreadsheet of JSON.</div>';
+    h += l.map(function (rr) {
+      var st = PLRR.stand(rr.id), u = _rrUitslag[rr.id], aan = loopt.indexOf(rr.id) >= 0;
+      var regel = aan ? (st && st.open ? '● meet — ' : '◌ wacht — ') + (st ? st.n : 0) + ' metingen' + (st && !st.open && st.reden ? ' · ' + st.reden : '')
+        : u ? 'laatste meting: ' + u.st.n + ' metingen' : PLRR.vensterTekst(rr);
+      return '<div class="gr-item"><div style="flex:1;min-width:0"><b>' + esc(rr.naam) + '</b><div class="gr-klein">' + esc(rr.sensoren.length + ' sensor' + (rr.sensoren.length === 1 ? '' : 'en') + ' · elke ' + rr.tempo + ' s · ' + regel) + '</div>' +
+        (rr.doel ? '<div class="gr-klein">' + esc(rr.doel) + '</div>' : '') + '</div><div class="gr-knoppen">' +
+        (aan ? '<button class="gr-k klein hoofd" onclick="PLGarage._rrStop(\'' + esc(rr.id) + '\')">■ Stop</button>'
+          : '<button class="gr-k klein hoofd" onclick="PLGarage._rrStart(\'' + esc(rr.id) + '\')">▶ Start</button>') +
+        (u && u.st.n ? '<button class="gr-k klein" onclick="PLGarage._rrExport(\'' + esc(rr.id) + '\')">⤓ Export</button>' : '') +
+        (aan ? '' : '<button class="gr-k klein" aria-label="RR bewerken" onclick="PLGarage._rrBewerk(\'' + esc(rr.id) + '\')">✎</button><button class="gr-k klein gevaar" aria-label="RR wissen" onclick="PLGarage._rrWeg(\'' + esc(rr.id) + '\')">🗑</button>') +
+        '</div></div>';
+    }).join('');
+    if (l.length < PLRR.CFG.max) h += '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._rrNieuw()">➕ Nieuwe RR</button></div>';
+    return h + '</div>';
+  }
 
   /* RDW elke dag verversen (31-10-2026). Wat het RDW vandaag zegt, tegenover
      wat er bij het voertuig staat. De APK-datum volgt het RDW altijd (die
@@ -2995,6 +3107,7 @@
       ritTikNu();
       if (isVerbonden()) { if (!_st.verbondenSinds) _st.verbondenSinds = Date.now(); herkenAuto(); }
       else { _vinGezien = null; _st.verbondenSinds = 0; _selPogingen = 0; }
+      try { rrLus(isVerbonden()); } catch (e) { console.warn('PLGarage: RR in de lus', e); }
       gearKoppel();
       eerderHalen();
       rdwDagelijks().catch(function (e) { console.warn('PLGarage: RDW dagelijks', e); });

@@ -204,6 +204,18 @@ async function laadWorker() {
   const mz = st.voertuigen.find((v) => v.id === v1.voertuig.id);
   toets('stand telt rapporten, ritten en open issues', mz.aantal.rapporten === 1 && mz.aantal.ritten === 3 && mz.aantal.openIssues === 0, JSON.stringify(mz.aantal));
 
+  // RR en onderhoud aan/uit (31-10-2026): bewaren en terugkrijgen.
+  {
+    const rrIn = [{ id: 'rrtest01', naam: 'Trekhaak', doel: 'koelwater', sensoren: [{ pid: '0105' }, { pid: '010D', eenheid: 'mph' }], tempo: 2,
+      venster: { start: 'verbinden', van: '', tot: '', maxMin: 30, voorwaarden: [{ pid: '0105', op: '>', waarde: 80 }] }, opbouw: 'beide', export: 'csv', rapport: true }];
+    const z = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, rr: rrIn, onderhoud: 'uit' } });
+    const terug = (await roep(tokA, { actie: 'stand' })).voertuigen.find((v) => v.id === v1.voertuig.id);
+    toets('RR: bewaard en ongewijzigd terug, en onderhoud uit blijft uit', z.ok && JSON.stringify(terug.rr) === JSON.stringify(rrIn) && terug.onderhoud === 'uit', JSON.stringify(z).slice(0, 200) + ' / ' + JSON.stringify(terug.rr));
+    toets('RR: een tempo dat niet bestaat is 400', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, rr: [Object.assign({}, rrIn[0], { tempo: 3 })] } }))._status === 400);
+    toets('RR: elf stuks is 400', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, rr: Array.from({ length: 11 }, () => rrIn[0]) } }))._status === 400);
+    await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, rr: [], onderhoud: null } });
+  }
+
   console.log('\n4a. Tankbeurten (#469)');
   {
     const vid = v1.voertuig.id;
