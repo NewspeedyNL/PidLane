@@ -99,7 +99,7 @@ console.log('\n4. De meting');
   toets('een sensor zonder waarde is leeg, geen nul', st.rijen[1][2] === null, JSON.stringify(st.rijen[1]));
   const sam = R.samenvatting(rr, st, { '0105': { name: 'Koelwater', unit: '°C' } });
   toets('samenvatting: min, gemiddeld en max van koelwater', sam[0].n === 3 && sam[0].min === 85 && sam[0].max === 91 && Math.abs(sam[0].gem - 88) < 1e-9, JSON.stringify(sam[0]));
-  toets('samenvatting telt de lege cel niet mee', sam[1].n === 2, JSON.stringify(sam[1]));
+  toets('samenvatting telt de lege cel niet mee, ook niet in het gemiddelde', sam[1].n === 2 && Math.abs(sam[1].gem - 62.137) < 0.01, JSON.stringify(sam[1]));
 
   const csv = R.csv(rr, st, { '0105': { name: 'Koelwater', unit: '°C' }, '010D': { name: 'Snelheid', unit: 'km/h' } }, false);
   const r = csv.split('\n');
