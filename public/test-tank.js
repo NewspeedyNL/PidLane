@@ -152,32 +152,46 @@ console.log('\n7. Stap 2: tanken herkennen aan het brandstofpeil (13-10-2026)');
   toets('omlaag is nooit tanken', T.tankSprong({ pct: 80, t: 1 }, { pct: 20, t: 2 }) === null);
   toets('zonder anker (eerste keer): geen vraag', T.tankSprong(null, { pct: 96, t: 2 }) === null);
 
-  // Een tikreeks: geeft per tik de uitkomst van peilTik terug, met het anker zoals PLGarage het bewaart.
-  const reeks = (anker, tikken) => {
-    let st = {}, a = anker; const vragen = [];
-    tikken.forEach(([kmh, pct], i) => { const r = T.peilTik(st, kmh, pct, 1000 + i, a); st = r.st; if (r.anker) a = r.anker; if (r.sprong) vragen.push(r.sprong); });
-    return { vragen, anker: a };
+  // Een tikreeks: geeft per tik de uitkomst van peilTik terug, met het anker
+  // zoals PLGarage het bewaart. Eén tik = tien seconden.
+  const reeks = (anker, tikken, st0) => {
+    let st = st0 || {}, a = anker; const vragen = [];
+    tikken.forEach(([kmh, pct], i) => { const r = T.peilTik(st, kmh, pct, 1e6 + i * 1e4, a); st = r.st; if (r.anker) a = r.anker; if (r.sprong) vragen.push(r.sprong); });
+    return { vragen, anker: a, st };
   };
   const stil = (pct, n) => Array.from({ length: n || 5 }, () => [0, pct]);
+  const rij = (pct, n) => Array.from({ length: n || 12 }, () => [50, pct]);
 
-  // Geval 1: app dicht bij de pomp. Anker 12 %, nieuwe sessie start op 96 %.
-  let r = reeks({ pct: 12, t: 0 }, stil(96));
-  toets('na een sessie zonder app bij de pomp: één vraag, van 12 naar 96', r.vragen.length === 1 && r.vragen[0].voor === 12 && r.vragen[0].na === 96, JSON.stringify(r.vragen));
-  toets('en het nieuwe anker is 96', r.anker.pct === 96);
+  // Geval 1: app dicht bij de pomp. Anker 12 %, nieuwe sessie op 96 %, en wegrijden.
+  let r = reeks({ pct: 12, t: 0 }, [].concat(stil(96), rij(95)));
+  toets('na een sessie zonder app bij de pomp: één vraag, van 12 naar ~96', r.vragen.length === 1 && r.vragen[0].voor === 12 && r.vragen[0].na >= 95, JSON.stringify(r.vragen));
+  toets('en het nieuwe anker is het peil na het tanken', r.anker.pct >= 95, JSON.stringify(r.anker));
+  toets('bij de pomp zelf (nog niet gereden): nog geen vraag', reeks({ pct: 12, t: 0 }, stil(96, 20)).vragen.length === 0);
   // Geval 2: contact aan bij de pomp: het peil loopt op binnen één stilstand.
-  const oplopend = [].concat(stil(12), [14, 20, 30, 45, 60, 75, 90, 96, 96, 96, 96, 96].map(p => [0, p]));
+  const oplopend = [].concat(rij(30, 6), stil(30), [32, 40, 50, 60, 75, 90, 96, 96].map(p => [0, p]), rij(96));
   r = reeks({ pct: 30, t: 0 }, oplopend);
-  toets('contact aan bij de pomp: ook gevangen, en maar één keer', r.vragen.length === 1 && r.vragen[0].voor === 12, JSON.stringify(r.vragen));
+  toets('contact aan bij de pomp: ook gevangen, maar één keer, en met het eindpeil', r.vragen.length === 1 && r.vragen[0].voor === 30 && r.vragen[0].na === 96, JSON.stringify(r.vragen));
+  // De helling (31-10-2026): stilstaan op een helling geeft een scheef peil.
+  r = reeks({ pct: 40, t: 0 }, [].concat(rij(40, 6), stil(62, 8), rij(40)));
+  toets('helling of drempel: 22 punt hoger in stilstand, terug bij het rijden — geen vraag', r.vragen.length === 0, JSON.stringify(r.vragen));
+  toets('en het anker blijft het echte peil', Math.abs(r.anker.pct - 40) < 1, JSON.stringify(r.anker));
+  r = reeks({ pct: 40, t: 0 }, [].concat(rij(40, 6), stil(25, 8), rij(40, 6), stil(40), rij(40)));
+  toets('een helling naar beneden verschuift het anker niet (daarna vlak stoppen is geen tanken)', r.vragen.length === 0, JSON.stringify(r));
+  // Na een vraag een pauze.
+  r = reeks({ pct: 12, t: 0 }, [].concat(stil(96), rij(95)));
+  const r2 = reeks({ pct: 30, t: 0 }, [].concat(rij(30, 6), stil(80), rij(80)), r.st);
+  toets('binnen drie kwartier na een vraag: geen tweede', r2.vragen.length === 0, JSON.stringify(r2.vragen));
   // Klotsen tijdens het rijden telt niet.
   r = reeks({ pct: 40, t: 0 }, [[50, 70], [60, 75], [55, 80], [50, 72], [48, 71], [52, 74]]);
   toets('klotsen tijdens het rijden: geen vraag en geen nieuw anker', r.vragen.length === 0 && r.anker.pct === 40);
   // Eén uitschieter in stilstand dempt de mediaan.
-  r = reeks({ pct: 40, t: 0 }, [[0, 40], [0, 41], [0, 90], [0, 40], [0, 40]]);
+  r = reeks({ pct: 40, t: 0 }, [[0, 40], [0, 41], [0, 90], [0, 40], [0, 40]].concat(rij(40)));
   toets('één uitschieter van 90 bij stilstand: geen vraag', r.vragen.length === 0, JSON.stringify(r.vragen));
   // Rijden, stoppen, rijden: een lager peil is gewoon verbruik.
-  r = reeks({ pct: 60, t: 0 }, [].concat(stil(60), [[50, 55]], stil(52)));
+  r = reeks({ pct: 60, t: 0 }, [].concat(rij(60, 6), stil(60), rij(52, 6), stil(52)));
   toets('stoppen na een stuk rijden: nieuw anker op het lagere peil, geen vraag', r.vragen.length === 0 && r.anker.pct === 52, JSON.stringify(r));
-  toets('te weinig metingen in stilstand: nog geen oordeel', reeks({ pct: 10, t: 0 }, stil(96, 4)).vragen.length === 0);
+  toets('te weinig metingen in stilstand: nog geen oordeel', reeks({ pct: 10, t: 0 }, [].concat(stil(96, 4), rij(10))).vragen.length === 0);
+  toets('zonder anker: de eerste stilstand wordt het anker, geen vraag', (() => { const x = reeks(null, stil(50)); return x.vragen.length === 0 && x.anker.pct === 50; })());
 
   const u = T.uitSprong({ voor: 12, na: 96, op: Date.UTC(2026, 9, 13, 8) }, 612.4);
   toets('het formulier krijgt peil, vol, bereik van de app en bron app', u.tank_voor === 12 && u.tank_na === 96 && u.vol === true && u.bereik_app === 612 && u.bron === 'app' && /^2026-10-13T08/.test(u.op), JSON.stringify(u));
