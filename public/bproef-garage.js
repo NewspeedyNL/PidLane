@@ -510,8 +510,15 @@ const NEPSERVER = `(function(){
     toets('en dat is nog geen vraag', await app.ev(`!document.querySelector('.plBevestigOv')`));
     await app.ev(`connected = false; 'ok'`);
     await new Promise(r => setTimeout(r, 2500));
-    await app.ev(`pidVals['012F'] = 96; connected = true; 'ok'`);
-    toets('terug op 96 %: de app vraagt of er getankt is', await wacht(`/van 12 % naar 96 %/.test((document.querySelector('.plBevestigOv') || {}).textContent || '')`, 20000));
+    // Sinds 31-10-2026 een buffer (helling, drempel): de sprong moet blijven
+    // staan na het wegrijden. De echte regel, met een korter venster zodat de
+    // proef geen anderhalve minuut wacht; test-tank.js toetst de echte maten.
+    await app.ev(`window._tankCfg = Object.assign({}, PLTank.CFG); PLTank.CFG.bevestigN = 4; PLTank.CFG.bevestigRij = 2; PLTank.CFG.bevestigMs = 0; pidVals['012F'] = 96; connected = true; 'ok'`);
+    await new Promise(r => setTimeout(r, 14000));
+    toets('terug op 96 % maar nog stil (helling?): nog geen vraag', await app.ev(`!document.querySelector('.plBevestigOv')`));
+    await app.ev(`pidVals['010D'] = 30; 'ok'`);
+    toets('wegrijden en het peil blijft 96 %: de app vraagt of er getankt is', await wacht(`/van 12 % naar 96 %/.test((document.querySelector('.plBevestigOv') || {}).textContent || '')`, 20000));
+    await app.ev(`Object.assign(PLTank.CFG, window._tankCfg); pidVals['010D'] = 0; 'ok'`);
     await app.ev(`document.querySelector('.plBevestigOv .plBevestigBtn.ja').click(); 'ok'`);
     toets('"Invullen" opent Tankbeurten met wat de app zag', await wacht(`/De app zag het brandstofpeil van 12 % naar 96 %/.test((document.getElementById('plGarBody') || {}).textContent || '') && document.getElementById('tk_bereik_app').value === '612'`, 5000));
     toets('aan: het tabblad Tankbeurten staat er', await app.ev(`/Tankbeurten/.test(document.querySelector('#plGarBody').textContent)`));
