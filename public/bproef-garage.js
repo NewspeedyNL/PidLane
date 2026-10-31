@@ -595,6 +595,31 @@ const NEPSERVER = `(function(){
     toets('met de bron en de licentie erbij', await app.ev(`/Tijs Teulings, MIT/.test(document.getElementById('plGarBody').textContent)`));
     await app.ev(`window.plFetch = window._plFetchVoorRdw; connected = false; PLGarage._tab('overzicht'); PLGarage.sluit(); 'ok'`);
 
+    console.log('\n── 4p. RR: een eigen meetopdracht in Rapporten (31-10-2026) ──');
+    await app.ev(`PLGarage.open(PLGarage.actief().id); PLGarage._tab('rapporten'); 'ok'`);
+    toets('Rapporten heeft het RR-blok met ➕ Nieuwe RR', await wacht(`/RR — eigen meetopdrachten/.test(document.getElementById('plGarBody').textContent) && !!document.querySelector('[onclick*="_rrNieuw"]')`, 5000));
+    await app.ev(`if (!discoveredPIDDefs.some(function (d) { return d.pid === '0105'; })) discoveredPIDDefs.push({ pid: '0105', name: 'Koelwater', unit: '°C' }); PLGarage._rrNieuw(); 'ok'`);
+    toets('het formulier opent met de sensoren van deze auto', await wacht(`!!document.getElementById('rr_naam') && !!document.querySelector('#plGarBody input[data-pid="0105"]')`, 3000));
+    await app.ev(`PLGarage._rrBewaar(); 'ok'`);
+    toets('zonder naam en sensor: een melding, niets bewaard', await wacht(`/naam/.test((document.getElementById('rrFout') || {}).textContent || '')`, 3000));
+    await app.ev(`(function () {
+      document.getElementById('rr_naam').value = 'Proef koelwater';
+      document.querySelector('#plGarBody input[data-pid="0105"]').checked = true;
+      document.getElementById('rr_tempo').value = '1';
+      document.getElementById('rr_rapport').checked = true;
+      PLGarage._rrBewaar(); return 'ok'; })()`);
+    toets('bewaard bij het voertuig op de server', await wacht(`((window._nepPlatform.voertuigen.find(function (x) { return x.id === PLGarage.actief().id; }) || {}).rr || []).some(function (r) { return r.naam === 'Proef koelwater' && r.sensoren[0].pid === '0105' && r.tempo === 1; })`, 5000));
+    toets('en staat in de lijst met ▶ Start', await wacht(`/Proef koelwater/.test(document.getElementById('plGarBody').textContent) && !!document.querySelector('[onclick*="_rrStart"]')`, 5000));
+    const rrId = await app.ev(`(window._nepPlatform.voertuigen.find(function (x) { return x.id === PLGarage.actief().id; }).rr[0] || {}).id`);
+    await app.ev(`pidVals['0105'] = 91; PLGarage._rrStart('${rrId}'); 'ok'`);
+    toets('gestart: hij meet uit pidVals', await wacht(`(PLRR.stand('${rrId}') || {}).n >= 2`, 8000), await app.ev(`JSON.stringify(PLRR.stand('${rrId}'))`));
+    toets('de lijst telt mee zonder dat je iets aanraakt', await wacht(`(function () { const m = /meet — (\\d+) metingen/.exec(document.getElementById('plGarBody').textContent); return !!m && Number(m[1]) >= 2; })()`, 8000),
+      await app.ev(`document.getElementById('plGarBody').textContent.slice(0, 300)`));
+    await app.ev(`PLGarage._rrStop('${rrId}'); 'ok'`);
+    toets('gestopt: ⤓ Export staat er', await wacht(`!!document.querySelector('[onclick*="_rrExport"]')`, 3000));
+    toets('en het rapport staat bij het voertuig (soort rr)', await wacht(`window._nepPlatform.rapporten.some(function (r) { return r.soort === 'rr' && /Proef koelwater/.test(r.titel) && /Koelwater|0105/.test(r.tekst); })`, 5000));
+    await app.ev(`(function () { const id = PLGarage.actief().id; window._nepPlatform.voertuigen.forEach(function (x) { if (x.id === id) x.rr = []; }); PLGarage.actief().rr = []; PLGarage.sluit(); return 'ok'; })()`);
+
     console.log('\n── 5. de terugknop en het startscherm ──');
     await app.ev(`PLGarage.open(); 'ok'`);
     await app.ev(`appBack(); 'ok'`);

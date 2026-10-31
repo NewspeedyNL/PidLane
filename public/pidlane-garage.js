@@ -3008,6 +3008,15 @@
       Object.keys(_rrAuto).forEach(function (id) { rrKlaar(voertuig(_rrAuto[id]), id); });
     }
   }
+  // Een lopende RR telt op in beeld: het tabblad Rapporten opnieuw tekenen,
+  // hoogstens om de 5 s, en niet terwijl het formulier open staat (dan zou
+  // wat je typt verdwijnen).
+  var _rrGetekend = 0;
+  function rrVerversBeeld(nu) {
+    if (!window.PLRR || !PLRR.loopt().length || _st.rrForm || _st.view !== 'voertuig' || _st.tab !== 'rapporten') return;
+    if (nu - _rrGetekend < 5000 || !document.getElementById('plGarBody')) return;
+    _rrGetekend = nu; teken();
+  }
   function tekenRR(v) {
     if (!window.PLRR) return '<div class="gr-melding">RR niet geladen (pidlane-rr.js).</div>';
     if (_st.rrForm) return PLRR.formHtml(_st.rrForm.id ? _st.rrForm : null, _st.rrKeuzes || []);
@@ -3107,7 +3116,7 @@
       ritTikNu();
       if (isVerbonden()) { if (!_st.verbondenSinds) _st.verbondenSinds = Date.now(); herkenAuto(); }
       else { _vinGezien = null; _st.verbondenSinds = 0; _selPogingen = 0; }
-      try { rrLus(isVerbonden()); } catch (e) { console.warn('PLGarage: RR in de lus', e); }
+      try { rrLus(isVerbonden()); rrVerversBeeld(Date.now()); } catch (e) { console.warn('PLGarage: RR in de lus', e); }
       gearKoppel();
       eerderHalen();
       rdwDagelijks().catch(function (e) { console.warn('PLGarage: RDW dagelijks', e); });
