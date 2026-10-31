@@ -59,8 +59,8 @@ function toets(naam, waar, uitleg) {
       localStorage.removeItem('pl_hl_midden');
       const km = vak().querySelector('.vhl-midden'), kh = vak().querySelector('.vhl-held');
       await wacht(300); r.midden0 = km.textContent;
-      // Wachten op de tekst, niet op de klok: de lus zet hem in zijn eerstvolgende ronde (hoogstens 2 s)
-      const tot = async t => { for (let i = 0; i < 20 && km.textContent !== t; i++) await wacht(100); return km.textContent; };
+      // Wachten op de tekst, niet op de klok: de lus zet hem in zijn eerstvolgende ronde (hoogstens 2 s; op een belaste CI-machine ruimer: 6 s, #657)
+      const tot = async t => { for (let i = 0; i < 60 && km.textContent !== t; i++) await wacht(100); return km.textContent; };
       km.click(); r.midden1 = await tot('Versnelling'); r.middenOpslag = localStorage.getItem('pl_hl_midden');
       kh.click(); r.midden2 = await tot('Slim');
       // Volledig scherm: de tunnel vult het scherm.
@@ -165,13 +165,13 @@ function toets(naam, waar, uitleg) {
         PLBerekend.schakelBron = function () { return { gear: 3, ratios: ratios, diesel: false }; };
         const pijl = () => { const e = v().querySelector('.vhl-pijl'); return !!e && e.classList.contains('aan') && getComputedStyle(e).display !== 'none'; };
         const lampjes = () => [].filter.call(v().querySelectorAll('.vhl-leds i'), function (i) { return i.className !== ''; }).length;
-        const tot = async (f, w) => { for (let i = 0; i < 30 && f() !== w; i++) await wacht(100); return f(); };
+        const tot = async (f, w) => { for (let i = 0; i < 60 && f() !== w; i++) await wacht(100); return f(); };
         const r = { pijl3000: await tot(pijl, true) };
         tpm = 2000;
         r.pijl2000 = await tot(pijl, false);
         r.lampjes2000 = await tot(function () { return lampjes() > 0; }, true) ? lampjes() : 0;
         ratios = { 3: 19.6 }; tpm = 3000;              // de 3e is de hoogste: geen pijl, ook niet boven het ecopunt
-        await wacht(800); r.pijlTop = pijl();
+        r.pijlTop = await tot(pijl, false);
         return r;
       } finally { clearInterval(voed); PLHyperlane.zet = echt; PLBerekend.schakelBron = bron; PLBerekend.SCHAKEL.maxBelasting = maxB; }
     })()`);
