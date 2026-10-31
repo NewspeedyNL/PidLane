@@ -2438,6 +2438,7 @@ MUTATIES=(
 "public/pidlane-conditie.js@@    a.wsR = (a.wsR || 0) + dt;@@    a.wsR = (a.wsR || 0);@@test-winterrit.js@@de noemer van wiel-vers-pct blijft 0: de proef kan nooit iets zeggen (#560 meetopdracht)"
 "public/pidlane-garage.js@@      case 'wiel-vers-pct': return@@      case 'wiel-vers-pc': return@@test-opdrachtappmaat.js@@een maat op de witte lijst die de module niet kent: de proef blijft voorgoed nog niet (#560 meetopdracht)"
 "public/pidlane-garage.js@@  function onderhoudAan(v) { return !!v && v.onderhoud !== 'uit'; }@@  function onderhoudAan(v) { return !!v; }@@test-garage.js@@onderhoud bijhouden uit geeft toch een punt onderhoud aan de beurt"
+"public/pidlane-garage.js@@    if (p.apk_tot && p.apk_tot !== v.apk_tot) uit.apk_tot = p.apk_tot;@@    if (p.apk_tot && !v.apk_tot) uit.apk_tot = p.apk_tot;@@test-garage.js@@RDW dagelijks: een nieuwe APK-datum na de keuring komt niet in het profiel"
 "public/pidlane-conditie.js@@    if (s.t1 === t) return s.v1;\n    if (s.t0 === undefined@@    return s.v1;\n    if (s.t0 === undefined@@test-winterrit.js@@de assen worden weer op verschillende momenten vergeleken: elke optrekking telt als slip (rit 24-10, #560)"
 "public/pidlane-conditie.js@@hi - lo >= c.minKmh && @@@@test-winterrit.js@@bij lage snelheid telt één km/h verschil als 10 % slip (#560)"
 # De conditiekaart (30-10-2026): de ring, een lege meting, de oorzaak en het teken van het verloop.
@@ -2446,6 +2447,7 @@ MUTATIES=(
 "public/pidlane-conditie.js@@<div class=\"cdk-oorzaak\">' + esc(oz.tekst)@@<div class=\"cdk-oorzaak\">' + oz.tekst@@test-conditie.js@@de grootste oorzaak komt als HTML op de kaart"
 "public/pidlane-conditie.js@@(vs > 0 ? '+' : '−')@@(vs > 0 ? '−' : '+')@@test-conditie.js@@een zakkende score krijgt op de kaart een plus"
 "public/pidlane-koopcheck.js@@    else if(minNaWarm==null||s.coolant<minNaWarm) minNaWarm=s.coolant;@@    else {}@@test-winterrit.js@@de wintercheck geeft het terugzakken na het opwarmen niet door: één oordeel op papier, twee in de praktijk (#558)"
+"public/pidlane-weer.js@@    return nu - c.t >= CACHE_MS || lokaleDatum(c.t) !== lokaleDatum(nu);@@    return nu - c.t >= CACHE_MS;@@test-weer.js@@een verwachting van gisteren blijft staan zolang hij geen uur oud is"
 "public/pidlane-weer.js@@d.datum >= vandaag && (getal@@true && (getal@@test-weer.js@@de verwachting van gisteren telt mee in de komende dagen"
 "public/pidlane-weer.js@@return m !== null && m <= CFG.gladMin && (@@return m !== null && (@@test-weer.js@@regen bij 4 °C heet kans op gladheid"
 "worker.js@@const p = Object.prototype.hasOwnProperty.call(WEER_PLAATSEN, id) ? WEER_PLAATSEN[id] : null;@@const p = WEER_PLAATSEN[id] || null;@@test-weer.js@@__proto__ als plaats gaat door naar Open-Meteo"

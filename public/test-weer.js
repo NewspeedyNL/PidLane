@@ -148,6 +148,14 @@ const OM = {
   toets('geen verwachting: null', K.samenvat([], NU) === null && K.samenvat([{ datum: '2026-11-19', min: 1 }], NU) === null);
   toets('dagnaam: vandaag, morgen, dan de weekdag', K.dagNaam('2026-11-20', NU) === 'vandaag' && K.dagNaam('2026-11-21', NU) === 'morgen' && K.dagNaam('2026-11-22', NU) === 'zo');
 
+  // Een verwachting van gisteren is verlopen, ook binnen het uur (31-10-2026).
+  {
+    const avond = new Date(2026, 10, 20, 23, 50).getTime(), nacht = new Date(2026, 10, 21, 0, 10).getTime();
+    toets('verlopen: twintig minuten oud op dezelfde dag is nog goed', !W.verlopen({ t: avond - 30 * 60e3 }, avond - 10 * 60e3));
+    toets('verlopen: over middernacht heen is opnieuw halen, ook al is het twintig minuten', W.verlopen({ t: avond }, nacht));
+    toets('verlopen: ouder dan een uur', W.verlopen({ t: avond - 61 * 60e3 }, avond));
+    toets('verlopen: niets bewaard = halen', W.verlopen(null, avond));
+  }
   console.log('\n4. Ophalen in de app');
   let vragen = 0;
   const { W: W2, opslag } = laadWeer({ plFetch: async (u) => { vragen++; toets('de app vraagt alleen het id: ' + u, u === '/weer?plaats=gent'); return { ok: true, json: async () => ({ dagen: d.dagen }) }; } });

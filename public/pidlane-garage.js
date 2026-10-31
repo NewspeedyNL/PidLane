@@ -2914,9 +2914,51 @@
     },
     // pure kern — voor test-garage.js
     _kern: { obdbVanzelf: obdbVanzelf, sensSoort: sensSoort, sensGroepen: sensGroepen, tekenPidZoek: tekenPidZoek, status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar, ritStand: ritStand,
-      rdwNaarProfiel: rdwNaarProfiel, profielUitVerbinding: profielUitVerbinding, voorinvulNieuw: voorinvulNieuw, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
+      rdwNaarProfiel: rdwNaarProfiel, rdwBijwerken: rdwBijwerken, profielUitVerbinding: profielUitVerbinding, voorinvulNieuw: voorinvulNieuw, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
       waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, akkoordVragen: akkoordVragen, bibSplits: bibSplits, cfg: CFG }
   };
+
+  /* RDW elke dag verversen (31-10-2026). Wat het RDW vandaag zegt, tegenover
+     wat er bij het voertuig staat. De APK-datum volgt het RDW altijd (die
+     schuift na elke keuring); de rest alleen als hij nog leeg is — wat de
+     klant zelf invulde, overschrijft het RDW niet. Puur: geeft de velden die
+     opgeslagen moeten worden, of {} als er niets verandert. */
+  var RDW_LEEG_ALLEEN = ['merk', 'model', 'bouwjaar', 'brandstof', 'motor', 'cilinderinhoud', 'vermogen_kw'];
+  function rdwBijwerken(v, p) {
+    v = v || {}; p = p || {};
+    var uit = {};
+    if (p.apk_tot && p.apk_tot !== v.apk_tot) uit.apk_tot = p.apk_tot;
+    RDW_LEEG_ALLEEN.forEach(function (k) { if (p[k] != null && p[k] !== '' && (v[k] == null || v[k] === '')) uit[k] = p[k]; });
+    return uit;
+  }
+  function dagVan(nu) { var d = new Date(nu); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  var _rdwBezig = false, _rdwPoging = 0;
+  async function rdwDagelijks() {
+    if (_rdwBezig || isDemo() || !_st.stand || !_st.stand.akkoord || !window.PLZonder || typeof PLZonder.haal !== 'function') return;
+    var nu = Date.now();
+    if (nu - _rdwPoging < 3600e3) return;   // mislukt of net gedaan: hoogstens één ronde per uur
+    var vandaag = dagVan(nu);
+    var lijst = voertuigen(true).filter(function (v) { return v.kenteken && lees('pl_rdw_dag_' + v.id, '') !== vandaag; });
+    if (!lijst.length) return;
+    _rdwBezig = true; _rdwPoging = nu;
+    try {
+      for (var i = 0; i < lijst.length; i++) {
+        var v = lijst[i];
+        try {
+          var d = await PLZonder.haal(v.kenteken);
+          if (d && d.rij) {
+            var zet = rdwBijwerken(v, rdwNaarProfiel(d.rij, d.bs));
+            if (Object.keys(zet).length) { zet.id = v.id; await api('voertuig_opslaan', { voertuig: zet }); }
+            var c = cacheVan(v.id); c.rdw = d; c.rdwFout = null; c.rdwRecall = null;
+          }
+          schrijf('pl_rdw_dag_' + v.id, vandaag);
+        } catch (e) { console.warn('PLGarage: RDW van ' + (v.naam || v.id) + ' niet ververst — morgen of over een uur opnieuw', e); }
+      }
+      await ververs();
+      teken();
+    } catch (e) { console.warn('PLGarage: RDW dagelijks verversen', e); }
+    finally { _rdwBezig = false; }
+  }
 
   // Eén keer per sessie: APK of onderhoud dat eraan komt of verlopen is.
   var _apkGemeld = false;
@@ -2955,6 +2997,7 @@
       else { _vinGezien = null; _st.verbondenSinds = 0; _selPogingen = 0; }
       gearKoppel();
       eerderHalen();
+      rdwDagelijks().catch(function (e) { console.warn('PLGarage: RDW dagelijks', e); });
       apkMelding();
     } catch (e) { console.warn('PLGarage: lus', e); }
   }

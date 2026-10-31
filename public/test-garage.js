@@ -291,6 +291,10 @@ function laad(opties) {
     [{ brandstof_omschrijving: 'Benzine', nettomaximumvermogen: '121.00' }]);
   eis(p.merk === 'MAZDA' && p.model === 'CX-5' && p.bouwjaar === 2018 && p.apk_tot === '2027-03-14', 'merk, model, bouwjaar en APK', JSON.stringify(p));
   eis(p.brandstof === 'benzine' && p.vermogen_kw === 121 && /2,0 liter, 121 kW \(165 pk\)/.test(p.motor), 'brandstof en motoromschrijving', p.motor);
+  // RDW elke dag (31-10-2026): de APK volgt het RDW, de rest alleen als hij leeg is.
+  const rb = K.rdwBijwerken({ merk: 'Mazda', model: 'CX-5 eigen naam', apk_tot: '2026-03-14', bouwjaar: null }, { merk: 'MAZDA', model: 'CX-5', apk_tot: '2027-03-14', bouwjaar: 2018 });
+  eis(rb.apk_tot === '2027-03-14' && rb.bouwjaar === 2018 && !('merk' in rb) && !('model' in rb), 'RDW dagelijks: nieuwe APK-datum en een leeg bouwjaar, eigen merk en model blijven', JSON.stringify(rb));
+  eis(Object.keys(K.rdwBijwerken({ apk_tot: '2027-03-14', bouwjaar: 2018 }, { apk_tot: '2027-03-14', bouwjaar: 2018 })).length === 0, 'RDW dagelijks: niets veranderd = niets opslaan');
   p = K.rdwNaarProfiel({}, [{ brandstof_omschrijving: 'Benzine' }, { brandstof_omschrijving: 'Elektriciteit' }]);
   eis(p.brandstof === 'hybride', 'benzine + elektriciteit = hybride');
   p = K.profielUitVerbinding({ merk: 'Mazda', model: 'CX-5', year: '2018', brandstof: 'Benzine' }, false);

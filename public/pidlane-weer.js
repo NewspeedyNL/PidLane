@@ -20,7 +20,7 @@
    PUUR EN NIET PUUR. vooruit(), samenvat() en dagNaam() zijn puur;
    test-weer.js toetst ze met vm. haal() raakt plFetch en localStorage.
    Een verwachting is een uur geldig (CACHE_MS), net als de randcache van
-   de Worker. Geen weer (offline, niet ingelogd, demo) is geen fout: dan
+   de Worker, en nooit langer dan de dag waarop hij gehaald is. Geen weer (offline, niet ingelogd, demo) is geen fout: dan
    valt de winterkaart terug op de datum.
    ════════════════════════════════════════════════════════════════════ */
 (function () {
@@ -125,12 +125,20 @@
     return c && c.plaats === plaats && Array.isArray(c.dagen) ? c : null;
   }
 
+  /* Moet de verwachting opnieuw? Ouder dan een uur, of van een andere dag
+     (31-10-2026): de strook begint bij vandaag, en een verwachting van
+     gisteren is een dag korter dan hij lijkt. Puur. */
+  function verlopen(c, nu) {
+    if (!c || !c.t) return true;
+    return nu - c.t >= CACHE_MS || lokaleDatum(c.t) !== lokaleDatum(nu);
+  }
+
   var _bezig = null;
   async function haal(plaats, opties) {
     opties = opties || {};
     if (!NAAM[plaats]) return null;
     var c = laatst(plaats);
-    if (c && !opties.forceer && Date.now() - (c.t || 0) < CACHE_MS) return c;
+    if (c && !opties.forceer && !verlopen(c, Date.now())) return c;
     if (isDemo() || typeof plFetch !== 'function') return c;
     if (_bezig) return _bezig;
     _bezig = (async function () {
@@ -156,6 +164,7 @@
     haal: haal,
     laatst: laatst,
     CFG: CFG,
-    _kern: { vooruit: vooruit, samenvat: samenvat, dagNaam: dagNaam, lokaleDatum: lokaleDatum }
+    verlopen: verlopen,
+    _kern: { vooruit: vooruit, samenvat: samenvat, dagNaam: dagNaam, lokaleDatum: lokaleDatum, verlopen: verlopen }
   };
 })();
