@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 31-10-2026 — Eigen sensoren: geen maximum van 20 meer
+ ═══════════════════════════════════════════════════════════
+ - Op verzoek: de klant kiest zelf hoeveel eigen sensoren. PLEigen.MAX (20,
+   hard afgekapt) is PLEigen.VEEL geworden: boven de 20 een oranje
+   waarschuwing in Mijn voertuigen → Sensoren en bij "Alle sensoren zoeken",
+   geen weigering. De zoekronde vinkt vooraf nog tot 20 aan.
+ - worker.js: geen 400/409 meer bij 21+; alleen een opslagvangnet van 500.
+ - Tests: test-mode21 (25 gaan erin), test-klantplatform (21 bewaard, 501
+   is 400); twee mutaties in plmutate.sh.
+
+ ═══════════════════════════════════════════════════════════
  31-10-2026 — Versnelling volgt de schakeling, schakellampjes met ▲
  ═══════════════════════════════════════════════════════════
  - PLGear: twee verse paren binnen ±4% van een versnelling (en boven
