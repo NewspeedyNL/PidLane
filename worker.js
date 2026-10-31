@@ -5957,7 +5957,9 @@ var KP_VELDEN = {
   // Eigen PIDs van de klant (dealercodes): alleen LEES-diensten 21xx en
   // 22xxxx, een formule met alleen A–H, getallen, + - * / en haakjes. Zelfde
   // regels als PLEigen.controleer() in pidlane-uitgebreid.js.
-  eigen_pids: { soort: "eigenpids", max: 20 },
+  // Geen klantgrens meer op eigen PIDs (31-10-2026): de app waarschuwt boven
+  // de 20, maar weigert niet. 500 is alleen een opslagvangnet tegen misbruik.
+  eigen_pids: { soort: "eigenpids", max: 500 },
   // RR, eigen meetopdrachten (31-10-2026): zelfde regels als
   // PLRR.normaliseer() in public/pidlane-rr.js; test-rr.js vergelijkt ze.
   rr: { soort: "rr", max: 10 },
@@ -6149,7 +6151,7 @@ function kpVeld(naam, waarde) {
   }
   if (d.soort === "eigenpids") {
     if (!Array.isArray(waarde)) return { fout: naam + " moet een lijst zijn" };
-    if (waarde.length > d.max) return { fout: "hoogstens " + d.max + " eigen PIDs" };
+    if (waarde.length > d.max) return { fout: "meer dan " + d.max + " eigen PIDs past niet in de opslag" };
     const l = [], gezien = {};
     for (const e of waarde) {
       const r = kpEigenPid(e);
@@ -7089,7 +7091,7 @@ async function handleAdminMeekijk(request, env) {
       const lijst = kpLees(v.eigen_pids) || [];
       if (lijst.some((x) => x.code === e.code && (x.ecu || "") === (e.ecu || "")))
         return json({ ok: false, error: e.code + (e.ecu ? " @ " + e.ecu : "") + " staat er al. Wijzigen doet de klant zelf." }, 409);
-      if (lijst.length >= KP_VELDEN.eigen_pids.max) return json({ ok: false, error: "Dit voertuig heeft al " + lijst.length + " eigen sensoren, het maximum." }, 409);
+      if (lijst.length >= KP_VELDEN.eigen_pids.max) return json({ ok: false, error: "Dit voertuig heeft al " + lijst.length + " eigen sensoren; meer past niet in de opslag." }, 409);
       lijst.push(e);
       const tekst = JSON.stringify(lijst);
       await db.prepare("UPDATE kp_voertuig SET eigen_pids = ?, bijgewerkt = ? WHERE id = ? AND klant_id = ?").bind(tekst, kpNu(), v.id, klantId).run();

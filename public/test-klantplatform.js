@@ -347,8 +347,13 @@ async function laadWorker() {
   toets('eigen PIDs: mode 01 hoort er niet in (400)', await epFout({ code: '0105' }) === 400);
   toets('eigen PIDs: code in een formule is 400', await epFout({ code: '221E1C', formule: 'fetch(1)' }) === 400);
   toets('eigen PIDs: zonder naam is 400', await epFout({ code: '221E1C', naam: '' }) === 400);
-  toets('eigen PIDs: 21 stuks is er één te veel (400)', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id,
-    eigen_pids: Array.from({ length: 21 }, (_, i) => ({ code: '2210' + String(i).padStart(2, '0'), naam: 'x' })) } }))._status === 400);
+  // 31-10-2026: 21 eigen PIDs mag (de app waarschuwt alleen); pas boven het opslagvangnet van 500 een 400.
+  const ep21 = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id,
+    eigen_pids: Array.from({ length: 21 }, (_, i) => ({ code: '2210' + String(i).padStart(2, '0'), naam: 'x' })) } });
+  toets('eigen PIDs: 21 stuks wordt bewaard, niet geweigerd', ep21.ok && ep21.voertuig.eigen_pids.length === 21, JSON.stringify(ep21).slice(0, 200));
+  toets('eigen PIDs: 501 stuks is boven het opslagvangnet (400)', (await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id,
+    eigen_pids: Array.from({ length: 501 }, (_, i) => ({ code: '22' + i.toString(16).toUpperCase().padStart(4, '0'), naam: 'x' })) } }))._status === 400);
+  await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, eigen_pids: ep.voertuig.eigen_pids } });
   toets('eigen PIDs: na de weigeringen staat de goede lijst er nog', (await roep(tokA, { actie: 'stand' })).voertuigen.find((v) => v.id === v1.voertuig.id).eigen_pids.length === 2);
   const ra = await roep(tokA, { actie: 'rapport_opslaan', voertuig_id: v1.voertuig.id, soort: 'waak', tekst: 'een' });
   const rb = await roep(tokA, { actie: 'rapport_opslaan', voertuig_id: v1.voertuig.id, soort: 'waak', tekst: 'twee' });

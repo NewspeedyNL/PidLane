@@ -1795,7 +1795,7 @@
       '<div class="gr-klein" style="margin-top:6px">De app rekent ze uit. Een berekende sensor verschijnt alleen als de auto de bronnen ervoor geeft.</div></div>';
     var bibDeel = bibSplits(S.bib && S.bib.lijst, S.eigen);
     h += tekenPidZoek(S, nu);
-    h += '<div class="gr-blok"><div class="gr-bh">🔧 Eigen sensoren<span class="gr-r">' + S.eigen.length + ' / ' + ((window.PLEigen && PLEigen.MAX) || 20) + '</span></div>' +
+    h += '<div class="gr-blok"><div class="gr-bh">🔧 Eigen sensoren<span class="gr-r">' + S.eigen.length + '</span></div>' + eigenVeelMelding(S.eigen.length) +
       (S.eigen.length ? (function () {
         var ge = sensGroepen(S.eigen, sensHeeft(S, nu), false), rij = function (r) { return eigenRij(S, r.b, r.i, r.s, bibDeel, nu); };
         return bandenBlok(S, ge.banden, bibDeel, nu) +
@@ -2033,7 +2033,15 @@
   /* Alle sensoren zoeken (22-10-2026): elke kandidaat uit de bibliotheek één
      keer op de auto, alleen een plausibele waarde wordt voorgesteld, in de
      indeling van hieronder. De ronde zelf staat in pidlane-pidzoek.js. */
-  function pzVrij(S) { return Math.max(0, ((window.PLEigen && PLEigen.MAX) || 20) - S.eigen.length); }
+  /* Boven PLEigen.VEEL eigen sensoren: een waarschuwing, geen weigering
+     (31-10-2026). De klant kiest zelf hoeveel; de prijs is verversingstempo. */
+  function eigenVeel() { return (window.PLEigen && PLEigen.VEEL) || 20; }
+  function eigenVeelMelding(n) {
+    return n > eigenVeel() ? '<div class="gr-melding">⚠️ ' + n + ' eigen sensoren — meer dan ' + eigenVeel() + '. Dat mag, maar de pollus vraagt er hoogstens twee per ronde: elke eigen sensor ververst dan trager.</div>' : '';
+  }
+  /* Hoeveel de zoekronde vooraf aanvinkt: tot aan de waarschuwingsgrens. Meer
+     aanvinken kan de klant zelf. */
+  function pzVrij(S) { return Math.max(0, eigenVeel() - S.eigen.length); }
   function pzGroepen(S, nu) {
     var pz = S.pz, past = PLPidZoek.kandidaten(pz.res.past.map(function (p) { return p.c; }), S.eigen);
     return sensGroepen(past, sensHeeft(S, nu), false);
@@ -2053,7 +2061,7 @@
           : '<span class="gr-klein">Verbind eerst met deze auto.</span>') + '</div>';
       return h + '</div>';
     }
-    var r = pz.res, g = pzGroepen(S, nu), kies = pz.kies || {}, vrij = pzVrij(S);
+    var r = pz.res, g = pzGroepen(S, nu), kies = pz.kies || {};
     var aantal = ['banden', 'weergave', 'analyse', 'dubbel'].reduce(function (n, k) { return n + g[k].filter(function (x) { return kies[PLPidZoek.sleutel(x.b)]; }).length; }, 0);
     var waardeVan = {}; r.past.forEach(function (p) { waardeVan[PLPidZoek.sleutel(p.c)] = p; });
     h += '<div class="gr-klein">' + r.gedaan + ' van ' + r.totaal + ' codes getest' + (r.gestopt ? ' (gestopt)' : '') + (r.afgebroken ? ' — afgebroken: ' + esc(r.afgebroken) : '') + ': <b>' +
@@ -2069,9 +2077,8 @@
     h += lijst || '<div class="gr-klein">Niets nieuws met een plausibele waarde.</div>';
     if (r.vreemd.length) h += '<details class="gr-meer gr-sgroep"><summary>⚠️ Vreemde waarde (' + r.vreemd.length + ')</summary><div class="gr-klein">Antwoordt wel, maar het getal klopt niet — vaak een verkeerde formule. Niet voorgesteld.</div>' +
       r.vreemd.map(function (v) { return '<div class="gr-item"><b>' + esc(v.c.naam) + '</b> <small>' + esc(v.c.code) + '</small><br><small>' + esc(v.reden) + '</small></div>'; }).join('') + '</details>';
-    if (lijst) h += '<div class="gr-klein" style="margin-top:6px">' + aantal + ' gekozen · ' + vrij + ' plek' + (vrij === 1 ? '' : 'ken') + ' vrij</div>' +
-      (aantal > vrij ? '<div class="gr-melding rood">Te veel gekozen: er zijn nog ' + vrij + ' plekken voor eigen sensoren.</div>' : '');
-    h += '<div class="gr-knoppen">' + (lijst ? '<button class="gr-k hoofd" ' + (aantal && aantal <= vrij ? '' : 'disabled ') + 'onclick="PLGarage._pzOpnemen()">➕ Neem ' + aantal + ' op in mijn sensoren</button>' : '') +
+    if (lijst) h += '<div class="gr-klein" style="margin-top:6px">' + aantal + ' gekozen</div>' + eigenVeelMelding(S.eigen.length + aantal);
+    h += '<div class="gr-knoppen">' + (lijst ? '<button class="gr-k hoofd" ' + (aantal ? '' : 'disabled ') + 'onclick="PLGarage._pzOpnemen()">➕ Neem ' + aantal + ' op in mijn sensoren</button>' : '') +
       (nu ? '<button class="gr-k klein" onclick="PLGarage._pzStart()">↻ Opnieuw zoeken</button>' : '') + '</div>';
     if (pz.tekst) h += '<div class="gr-klein">' + esc(pz.tekst) + '</div>';
     return h + '</div>';
@@ -2559,7 +2566,6 @@
       var r = window.PLEigen ? PLEigen.controleer(e) : { ok: false, fout: 'module ontbreekt' };
       if (!r.ok) { S.test.nieuw = '⚠️ ' + r.fout; teken(); return; }
       if (S.eigen.some(function (x) { return x.code === r.code; })) { S.test.nieuw = '⚠️ ' + r.code + ' staat er al'; teken(); return; }
-      if (S.eigen.length >= PLEigen.MAX) { S.test.nieuw = '⚠️ Hoogstens ' + PLEigen.MAX + ' eigen sensoren'; teken(); return; }
       e.code = r.code;
       S.eigen.push(e); if (S.sel.indexOf(r.code) < 0) S.sel.push(r.code);
       S.test.nieuw = ''; S.form = null; S.gewijzigd = true; teken();
@@ -2631,7 +2637,6 @@
       var S = _st.sens, b = bibItem(id); if (!S || !b) return;
       sensNieuw();
       if (S.eigen.some(function (e) { return e.code === b.code; })) return;
-      if (S.eigen.length >= PLEigen.MAX) { S.test['bib:' + id] = '⚠️ Hoogstens ' + PLEigen.MAX + ' eigen sensoren'; teken(); return; }
       var e = { code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid || '', ecu: b.ecu || '' };
       S.eigen.push(e); if (S.sel.indexOf(b.code) < 0) S.sel.push(b.code);
       S.gewijzigd = true; teken();
@@ -2711,7 +2716,7 @@
       var kies = S.pz.kies || {}, n = 0;
       var past = PLPidZoek.kandidaten(S.pz.res.past.map(function (p) { return p.c; }), S.eigen);
       past.forEach(function (b) {
-        if (!kies[PLPidZoek.sleutel(b)] || S.eigen.length >= PLEigen.MAX) return;
+        if (!kies[PLPidZoek.sleutel(b)]) return;
         S.eigen.push({ code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid || '', ecu: b.ecu || '' });
         if (S.sel.indexOf(b.code) < 0) S.sel.push(b.code);
         S.ok[b.code] = true; n++;
