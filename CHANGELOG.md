@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 31-10-2026 — Versnelling volgt de schakeling, schakellampjes met ▲
+ ═══════════════════════════════════════════════════════════
+ - PLGear: twee verse paren binnen ±4% van een versnelling (en boven
+   1200 tpm) tonen meteen; het stabiele venster blijft voor het leren.
+   Gemeten in test-gear.js: 1400 → 600 ms na het opkomen van de koppeling.
+ - Hyperlane: het midden wacht niet meer 0,6 s extra op een andere versnelling.
+ - Schakellampjes lopen naar het schakelpunt van CA11 (rustig) of 90% van
+   de rode streep (vol gas, belasting > 75%), knipperen daar en zetten een
+   rode ▲ naast de versnelling; niet in de hoogste. PLBerekend.schakelPunt().
+
+ ═══════════════════════════════════════════════════════════
  31-10-2026 — RR, tankvraag met buffer, onderhoud aan/uit, RDW en weer dagelijks
  ═══════════════════════════════════════════════════════════
  - RR (random rapport): eigen meetopdrachten per voertuig in Rapporten —

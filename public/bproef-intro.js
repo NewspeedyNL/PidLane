@@ -37,6 +37,20 @@ const WAT_LIGT_ER = `(function(){
   return e.id || e.tagName;
 })()`;
 
+// Zet elke animatie van de intro op `ms` na de start en houdt hem daar stil.
+// Tot 31-10-2026 wachtte de proef op de wandklok (1,7 s, 2,9 s). Op een
+// belaste CI-machine loopt de CSS-tijdlijn dan achter en las hij opaciteit 0
+// (#657). Een verschreven keyframe-naam levert geen animatie op, dus die
+// blijft hier rood: er valt niets te zetten en het logo staat op 0.
+const OP = ms => `(function(){
+  var n = 0;
+  document.getAnimations().forEach(function (a) {
+    var t = a.effect && a.effect.target;
+    if (t && t.closest && t.closest('#plIntro')) { a.pause(); a.currentTime = ${ms}; n++; }
+  });
+  return n;
+})()`;
+
 (async () => {
   let app;
   try {
@@ -61,7 +75,8 @@ const WAT_LIGT_ER = `(function(){
     toets('start({forceer:true}) speelt', (await app.ev(`PLIntro.start({forceer:true})`)) === '');
     const tijdens = await app.ev(WAT_LIGT_ER);
     toets('tijdens het spelen ligt de intro erover', tijdens === 'intro', 'op die plek ligt: ' + tijdens);
-    await wacht(1700);
+    const n = await app.ev(OP(1700));
+    toets('de intro speelt CSS-animaties af', n > 0, n + ' animaties');
     // Op 1,7 s moet het logo in beeld staan. Een verschreven keyframe-naam
     // geeft géén fout: het logo blijft dan op zijn begin-opaciteit 0 staan.
     const logo = await app.ev(`parseFloat(getComputedStyle(document.querySelector('#plIntro .pli-logo')).opacity)`);
@@ -70,10 +85,11 @@ const WAT_LIGT_ER = `(function(){
     toets('op 1,7 s staat "PidLane" in beeld', naam > 0.5, 'opaciteit ' + naam);
     toets('onthouden voor deze sessie', await app.ev(`sessionStorage.getItem(PLIntro.SLEUTEL) === '1'`));
 
-    await wacht(1200);  // 2,9 s: de eerste kaart (begint op 2,15 s) staat op de rijbaan
+    await app.ev(OP(2900));  // 2,9 s: de eerste kaart (begint op 2,15 s) staat op de rijbaan
     const kaart = await app.ev(`Math.max.apply(null, [...document.querySelectorAll('#plIntro .pli-kaart')].map(k => parseFloat(getComputedStyle(k).opacity)))`);
     toets('op 2,9 s komt er een kaart met een stukje app over de baan', kaart > 0.5, 'hoogste opaciteit ' + kaart);
-    await wacht(2200);  // samen 5,1 s — ruim na DUUR_MS (4,9 s)
+    // Verbergen gaat op een timer van DUUR_MS (4,9 s), niet op de animatie: daar wel de klok
+    for (let i = 0; i < 50 && !(await app.ev(`document.getElementById('plIntro').hidden === true`)); i++) await wacht(200);
     toets('na afloop verborgen', await app.ev(`document.getElementById('plIntro').hidden === true`));
     const na = await app.ev(WAT_LIGT_ER);
     toets('na afloop is het veld weer aan te tikken', na === 'loginUser', 'op die plek ligt: ' + na);

@@ -43,21 +43,29 @@ function toets(naam, waar, uitleg) {
       await wacht(300);
       await wacht(800);
       const vis = () => document.querySelector('.gg.view-visueel .vis');
+      // Wacht op het element in plaats van op de klok: op een belaste CI-machine
+      // is het vak na een themakeuze soms nog niet herbouwd (#657). Hoogstens 3 s.
+      const klik = async sel => {
+        for (let i = 0; i < 30 && !(vis() && vis().querySelector(sel)); i++) await wacht(100);
+        const e = vis() && vis().querySelector(sel);
+        if (!e) throw new Error('niet gevonden na 3 s: ' + sel);
+        e.click();
+      };
       const plaat = () => getComputedStyle(document.querySelector('.vis-plaat')).fill;
       const r = { knop: !!vis().querySelector('.vt-vol'), zichtbaar: getComputedStyle(vis().querySelector('.vt-vol')).display !== 'none',
                   defs: !!vis().querySelector('svg.vis-meter .vt-defs'), plaat0: plaat(), thema0: vis().getAttribute('data-vthema') };
       // Sinds 20-10-2026: kiezen kan ook in de gewone weergave.
       r.themaKnopGewoon = getComputedStyle(vis().querySelector('.vt-thema')).display !== 'none';
-      vis().querySelector('.vt-thema').click();
+      await klik('.vt-thema');
       r.strookGewoon = vis().querySelectorAll('.vt-keus').length;
-      vis().querySelector('.vt-keus[data-thema="neon"]').click();
+      await klik('.vt-keus[data-thema="neon"]');
       await wacht(100);
       r.themaGewoon = vis().getAttribute('data-vthema'); r.plaatGewoon = plaat();
-      vis().querySelector('.vt-keus[data-thema="standaard"]').click();
+      await klik('.vt-keus[data-thema="standaard"]');
       await wacht(100);
       r.plaatTerug = plaat();
-      vis().querySelector('.vt-thema').click();   // strook dicht
-      vis().querySelector('.vt-vol').click();
+      await klik('.vt-thema');   // strook dicht
+      await klik('.vt-vol');
       await wacht(300);
       const b = vis().getBoundingClientRect();
       r.vol = document.body.classList.contains('pl-vis-vol');
@@ -66,9 +74,9 @@ function toets(naam, waar, uitleg) {
       r.bovenop = !!midden && !!midden.closest('.vis');
       r.thema1 = vis().getAttribute('data-vthema');
       r.n = PLVisThema.THEMAS.length;
-      vis().querySelector('.vt-thema').click();
+      await klik('.vt-thema');
       r.strook = [...vis().querySelectorAll('.vt-keus')].map(k => k.getAttribute('data-thema'));
-      vis().querySelector('.vt-keus[data-thema="chroom"]').click();
+      await klik('.vt-keus[data-thema="chroom"]');
       await wacht(100);
       r.thema2 = vis().getAttribute('data-vthema');
       r.plaat2 = plaat();

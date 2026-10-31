@@ -6,7 +6,8 @@
 //   • de kleur loopt van ijsblauw naar rood en springt nergens buiten de stops;
 //   • de stemming: rustig = 0, een lege plek maakt het scherm niet rood,
 //     toeren telt zwaarder dan gas;
-//   • de schakellampjes beginnen op 70% van de rode streep, de begrenzer knippert;
+//   • de schakellampjes lopen naar het schakelpunt (rustig het ecopunt, hard
+//     90% van de rode streep), knipperen daar, en de pijl omhoog verschijnt;
 //   • 0–100 meet alleen vanuit stilstand met gas, en stilstaan zet hem terug;
 //   • de scène (alarm, begrenzer, remmen, launch, koud, stil, cruise) en hun voorrang;
 //   • de rit (afstand, top, rijtijd, beste 0–100) en de tegels van het scorebord;
@@ -55,10 +56,23 @@ waar('toeren telt zwaarder dan gas', H.stemming(6800, 6800, 0) > H.stemming(0, 6
 waar('modus loopt ECO → CRUISE → SPORT → MAX', [0, 0.4, 0.7, 0.9].map(H.modus).join(',') === 'ECO,CRUISE,SPORT,MAX');
 
 console.log('\n3. Schakellampjes');
-waar('onder 70% van de rode streep: niets', H.leds(4000, 6800).aan === 0, JSON.stringify(H.leds(4000, 6800)));
-waar('halverwege 70%–100%: de helft', H.leds(6800 * 0.85, 6800).aan === 5, JSON.stringify(H.leds(6800 * 0.85, 6800)));
-waar('op de begrenzer: alle tien en knipperen', H.leds(6800, 6800).aan === 10 && H.leds(6800, 6800).max === true);
-waar('geen toerental: niets, geen knipper', H.leds(null, 6800).aan === 0 && !H.leds(null, 6800).max);
+waar('onder 80% van het schakelpunt: niets', H.leds(1900, 2400).aan === 0, JSON.stringify(H.leds(1900, 2400)));
+waar('halverwege 80%–100%: de helft', H.leds(2400 * 0.9, 2400).aan === 5, JSON.stringify(H.leds(2400 * 0.9, 2400)));
+waar('op het schakelpunt: alle tien en knipperen', H.leds(2400, 2400).aan === 10 && H.leds(2400, 2400).max === true);
+waar('net eronder: nog geen knipper', H.leds(2399, 2400).max === false);
+waar('geen toerental: niets, geen knipper', H.leds(null, 2400).aan === 0 && !H.leds(null, 2400).max);
+waar('geen schakelpunt: niets', H.leds(5000, null).aan === 0 && !H.leds(5000, null).max);
+// Het doel: rustig het ecopunt, hard of in de hoogste versnelling de rode streep
+waar('rustig: het ecopunt', H.schakelDoel(6800, 2400, false) === 2400);
+waar('vol gas of hoge belasting: 90% van de rode streep', H.schakelDoel(6800, 2400, true) === 6800 * H.RACE_FRAC);
+waar('geen hogere versnelling bekend: de rode streep', H.schakelDoel(6800, null, false) === 6800 * H.RACE_FRAC);
+waar('een ecopunt voorbij de rode streep wordt de rode streep', H.schakelDoel(3000, 4000, false) === 3000 * H.RACE_FRAC);
+// Bij gewoon rijden moet je ze zien: tot 31-10 gingen ze pas op 70% van de rode streep aan
+waar('rustig optrekken naar 2300 tpm: de lampjes branden al', H.leds(2300, H.schakelDoel(6800, 2400, false)).aan >= 7);
+waar('pijl omhoog op het schakelpunt', H.pijlOp(2400, 2400, false) === true);
+waar('geen pijl eronder', H.pijlOp(2300, 2400, false) === false);
+waar('geen pijl in de hoogste versnelling', H.pijlOp(6500, 6120, true) === false);
+waar('geen pijl zonder toerental of punt', H.pijlOp(null, 2400, false) === false && H.pijlOp(3000, null, false) === false);
 
 console.log('\n4. 0–100 vanuit stilstand');
 function rit(stappen) { let st = { start: null }, tijd = null; stappen.forEach(s => { const r = H.nul100(st, s[0], s[1], s[2]); st = r.st; if (r.tijd !== null) tijd = r.tijd; }); return tijd; }
@@ -338,10 +352,8 @@ console.log('\n4n. Rustig in het midden (30-10-2026): niet zes keer per seconde 
   const gr = (st, g, sec) => { for (let t = 0; t < sec - 1e-9; t += DT) st = H.gearRustig(st, g, DT); return st; };
   let g = gr(null, '3', DT);
   waar('de eerste versnelling staat er meteen', g.toon === '3');
-  g = gr(g, '4', 0.3);
-  waar('een versnelling die 0,3 s anders is, verspringt niet', g.toon === '3');
-  g = gr(g, '4', 0.6);
-  waar('na 0,6 s wel', g.toon === '4');
+  g = gr(g, '4', DT);
+  waar('een andere versnelling staat er meteen (PLGear wacht al; 31-10-2026)', g.toon === '4');
   g = gr(g, '', 8);
   waar('acht seconden onbekend: de laatste versnelling blijft staan', g.toon === '4');
   g = gr(g, '', H.GEAR_LEEG_S - 8 + DT);

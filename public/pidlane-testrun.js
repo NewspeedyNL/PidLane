@@ -2848,6 +2848,29 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Versnelling snel, schakellampjes en de pijl (31-10-2026) ──
+  {
+    issue: '—',
+    naam: 'Versnelling: het cijfer volgt de schakeling, en de lampjes lopen naar het schakelpunt van CA11',
+    waarom: 'Uit de auto: "hij staat al 2 s in de vier en zegt nog drie". PLGear wachtte op een stabiel venster plus wisselMs, Hyperlane nog eens 0,6 s. De vertraging zelf staat in test-gear.js; hier: de geladen modules en het schakelpunt bij de verhoudingen van déze auto.',
+    proef: async function () {
+      var G = window.PLGear, B = window.PLBerekend, H = window.PLHyperlane;
+      if (!G || typeof G._snel !== 'function') return { staat: 'FOUT', detail: 'PLGear zonder snelle weergave — pidlane-gear.js niet bijgewerkt (herladen?)' };
+      if (!B || typeof B.schakelPunt !== 'function' || typeof B.schakelBron !== 'function') return { staat: 'FOUT', detail: 'PLBerekend.schakelPunt ontbreekt — pidlane-berekend.js niet bijgewerkt (herladen?)' };
+      if (!H || typeof H.schakelDoel !== 'function' || typeof H.pijlOp !== 'function') return { staat: 'FOUT', detail: 'PLHyperlane zonder schakelpunt — pidlane-hyperlane.js niet bijgewerkt (herladen?)' };
+      var b = B.schakelBron(), r = b.ratios || {}, ks = Object.keys(r).map(Number).sort(function (x, y) { return x - y; });
+      if (ks.length < 2) return { staat: 'LET OP', detail: 'modules geladen, maar nog geen geleerde versnellingen op deze auto' };
+      var mis = [];
+      ks.forEach(function (k) {
+        var p = B.schakelPunt(k, r, b.diesel);
+        if (p === null) return;
+        if (!(B.schakelAdvies(50, p, k, r, b.diesel, 30) > k) || B.schakelAdvies(50, p - 1, k, r, b.diesel, 30) !== k) mis.push(k + 'e: ' + p);
+      });
+      if (mis.length) return { staat: 'FOUT', detail: 'schakelpunt en schakeladvies zeggen iets anders bij ' + mis.join(', ') };
+      return { staat: 'OK', detail: 'schakelpunten ' + ks.map(function (k) { var p = B.schakelPunt(k, r, b.diesel); return k + 'e ' + (p === null ? '—' : p); }).join(' · ') + (b.diesel ? ' (diesel)' : '') };
+    }
+  },
+
   // ── RR: eigen meetopdrachten (31-10-2026) ──
   {
     issue: '—',
@@ -12181,6 +12204,9 @@ const CAMPAGNE = {
     'ZET HEM AAN. Mijn voertuigen → je auto → Profiel → Conditiescore bijhouden: aan. Open het tabblad Conditie en vul één keer de laatste beurt in. Was dat te veel gedoe? Zet het in #475.',
     'RIJ ZOALS ALTIJD. Na elke rit van minstens 3 km verzamelt de app trim, stationair, opwarmtijd en laadspanning. Na tien ritten telt de rijmeting mee. Springt de score tussen twee gewone ritten meer dan vijf punten? Plak "Waarom deze score" in #475: dan is een dode zone te krap.',
     'MODE 06 TIJDENS EEN RIT. Lees één keer de monitortests terwijl de rit loopt: de missers horen in die rit mee te gaan. Staat er na de rit niets onder Ontstekingsmissers, dan kent je auto geen misfire-monitor in mode 06 (zeg dat in #475).',
+    '── DE VERSNELLING IN HYPERLANE ────────',
+    'SCHAKEL EN KIJK NAAR HET MIDDEN. Hyperlane, midden op Versnelling. Schakel rustig 2 → 3 → 4: het cijfer hoort binnen een seconde na het opkomen van de koppeling te kloppen. Staat er 2 s na het schakelen nog de oude, of flitst er tijdens het schakelen een verkeerde versnelling, plak dan blok 5 en zeg welke versnelling het was.',
+    'DE LAMPJES EN DE PIJL. Rustig optrekken: de lampjes lopen op en bij het zuinige schakelpunt (rond 2400 tpm, diesel 2000) knipperen ze en staat er een rode ▲ naast de versnelling. Vol gas schuift het punt naar vlak onder de rode streep. In de hoogste versnelling geen pijl. Leidt het af bij gewoon rijden, zeg dat.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
     'HYBRIDE (#430, #452) heeft een hybride nodig; het analyserapport (#448) een analyse met AI, geparkeerd.',
     'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
