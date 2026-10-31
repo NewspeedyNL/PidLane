@@ -2848,6 +2848,68 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── RR: eigen meetopdrachten (31-10-2026) ──
+  {
+    issue: '—',
+    naam: 'RR: een eigen meetopdracht meet alleen binnen zijn venster, op zijn tempo, in de gekozen eenheid',
+    waarom: 'Uit een klantvraag: niet de bulkrecorder met alles, maar een paar punten naar eigen wens. De rekenregels staan in test-rr.js; hier gaat het om de geladen module en de sensoren van deze auto. Of een volle bus het tempo haalt, zegt een rit.',
+    proef: async function () {
+      var R = window.PLRR;
+      if (!R || !R._kern || typeof R._kern.tik !== 'function') return { staat: 'FOUT', detail: 'PLRR ontbreekt — pidlane-rr.js niet geladen (herladen?)' };
+      var n = R.normaliseer({ naam: 'proef', sensoren: [{ pid: '0105', eenheid: '°F' }], tempo: 2, venster: { voorwaarden: [{ pid: '0105', op: '>', waarde: 80 }] } });
+      if (!n.ok) return { staat: 'FOUT', detail: 'een gewone RR wordt afgekeurd: ' + n.fout };
+      var rr = R._kern.basisVan(n.rr); rr.sensoren[0].basis = '°C';
+      var st = R._kern.nieuw(0);
+      [[70, 0], [90, 1000], [91, 2000], [100, 3000]].forEach(function (x) { st = R._kern.tik(st, rr, { '0105': x[0] }, x[1]); });
+      if (st.rijen.length !== 2) return { staat: 'FOUT', detail: 'verwacht 2 rijen (venster > 80, elke 2 s), kreeg ' + st.rijen.length };
+      if (st.rijen[0][1] !== 194) return { staat: 'FOUT', detail: '90 °C werd ' + st.rijen[0][1] + ' in plaats van 194 °F' };
+      var v = (window.PLGarage && PLGarage.actief) ? PLGarage.actief() : null;
+      if (!v) return { staat: 'LET OP', detail: 'regels goed, maar geen actief voertuig in Mijn voertuigen' };
+      var rrs = Array.isArray(v.rr) ? v.rr : [];
+      return { staat: 'OK', detail: 'regels goed · ' + rrs.length + ' RR bij ' + (v.naam || 'dit voertuig') + (R.loopt().length ? ' · ' + R.loopt().length + ' loopt nu' : '') };
+    }
+  },
+
+  // ── Weer en RDW elke dag (31-10-2026) ──
+  {
+    issue: '#556',
+    naam: 'Het weer is vers bij de opstart en nooit van gisteren',
+    waarom: 'Uit het gebruik: bij het opstarten was het profiel er nog niet, en dan wachtte de verwachting een kwartier; een verwachting van 23:50 gold om 00:10 nog als vers.',
+    proef: async function () {
+      var W = window.PLWeer;
+      if (!W || typeof W.verlopen !== 'function') return { staat: 'FOUT', detail: 'PLWeer.verlopen ontbreekt — oude pidlane-weer.js (herladen?)' };
+      var a = new Date(2026, 10, 20, 23, 50).getTime();
+      if (!W.verlopen({ t: a }, a + 20 * 60e3)) return { staat: 'FOUT', detail: 'een verwachting van gisteren (20 min oud, over middernacht) geldt nog als vers' };
+      var p = (window.PLWinter && PLWinter.profiel) ? PLWinter.profiel() : {};
+      if (!p || !p.plaats) return { staat: 'LET OP', detail: 'regel goed, maar geen plaats in het winterprofiel: dan is er geen weer' };
+      var c = W.laatst(p.plaats);
+      if (!c) return { staat: 'LET OP', detail: 'regel goed, nog geen verwachting voor ' + W.naam(p.plaats) + ' (offline of net gestart)' };
+      return { staat: W.verlopen(c, Date.now()) ? 'LET OP' : 'OK', detail: 'verwachting voor ' + c.naam + ' van ' + new Date(c.t).toLocaleString('nl') };
+    }
+  },
+
+  // ── Tankvraag met buffer (31-10-2026) ──
+  {
+    issue: '#469',
+    naam: 'Tanken: een helling of drempel is geen tankvraag meer, en na een vraag drie kwartier rust',
+    waarom: 'Uit het gebruik: stilstaan op een helling gaf een scheef peil, en dat was al "Getankt?". Nu moet de sprong blijven staan als je wegrijdt. Of 90 s genoeg is op een echte helling, zegt een rit.',
+    proef: async function () {
+      var T = window.PLTank;
+      if (!T || typeof T.peilTik !== 'function' || !T.CFG || !T.CFG.bevestigMs) return { staat: 'FOUT', detail: 'PLTank zonder buffer — oude pidlane-tank.js (herladen?)' };
+      var loop = function (tikken, st) {
+        var a = { pct: 40, t: 0 }, n = 0, t0 = Date.now();
+        tikken.forEach(function (k, i) { var r = T.peilTik(st, k[0], k[1], t0 + i * 1e4, a); st = r.st; if (r.anker) a = r.anker; if (r.sprong) n++; });
+        return { n: n, st: st };
+      };
+      var reeks = function (stil, rij) { var x = [], i; for (i = 0; i < 6; i++) x.push([50, 40]); for (i = 0; i < 8; i++) x.push([0, stil]); for (i = 0; i < 12; i++) x.push([50, rij]); return x; };
+      if (loop(reeks(62, 40), {}).n) return { staat: 'FOUT', detail: 'een helling (62 % stil, 40 % rijdend) geeft nog een tankvraag' };
+      var echt = loop(reeks(96, 95), {});
+      if (echt.n !== 1) return { staat: 'FOUT', detail: 'echt tanken (40 → 96 %) gaf ' + echt.n + ' vragen in plaats van één' };
+      if (loop(reeks(96, 95), echt.st).n) return { staat: 'FOUT', detail: 'binnen de pauze komt er alweer een tankvraag' };
+      return { staat: 'OK', detail: 'bevestigen over ' + T.CFG.bevestigN + ' metingen (' + T.CFG.bevestigRij + ' rijdend, ≥ ' + T.CFG.bevestigMs / 1000 + ' s), pauze ' + T.CFG.pauzeMs / 60000 + ' min' };
+    }
+  },
+
   // ── Rustig in het midden van Hyperlane (30-10-2026) ──
   {
     issue: '—',
@@ -4445,8 +4507,10 @@ const PROEVEN_B5 = [
       if (!window.PLTank || typeof PLTank.peilTik !== 'function') return { staat: 'FOUT', detail: 'PLTank.peilTik ontbreekt — oude pidlane-tank.js (herladen?)' };
       var r = PLTank.peilTik({ buf: [12, 12, 12, 12], stil: false }, 0, 96, Date.now(), { pct: 12, t: 0 });
       if (r.sprong) return { staat: 'FOUT', detail: 'vier metingen van 12 en één van 96 heet al tanken (de mediaan dempt niet)' };
-      r = PLTank.peilTik({ buf: [96, 96, 96, 96], stil: false }, 0, 96, Date.now(), { pct: 12, t: 0 });
-      if (!r.sprong) return { staat: 'FOUT', detail: 'van 12 naar 96 % in stilstand wordt niet herkend' };
+      // Sinds 31-10-2026 pas na het wegrijden (helling-buffer): stilstaan op 96, dan rijden op 95.
+      var st = {}, t0 = Date.now(), gevraagd = false, i;
+      for (i = 0; i < 20; i++) { r = PLTank.peilTik(st, i < 5 ? 0 : 50, i < 5 ? 96 : 95, t0 + i * 1e4, { pct: 12, t: 0 }); st = r.st; if (r.sprong) gevraagd = true; }
+      if (!gevraagd) return { staat: 'FOUT', detail: 'van 12 naar 96 % bij de pomp en dan wegrijden wordt niet herkend' };
       var v = (window.PLGarage && PLGarage.actief) ? PLGarage.actief() : null;
       if (!v) return { staat: 'LET OP', detail: 'regel goed, maar geen actief voertuig in Mijn voertuigen' };
       if (v.tanken !== 'aan') return { staat: 'LET OP', detail: 'regel goed · tankbeurten bijhouden staat uit voor ' + (v.naam || 'dit voertuig') + ' (Profiel → Tankbeurten bijhouden)' };

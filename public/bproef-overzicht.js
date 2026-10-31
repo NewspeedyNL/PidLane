@@ -91,13 +91,22 @@ const KAARTEN = `(function(){ return [].filter.call(document.querySelectorAll('#
       setPidView('slim'); setPidView('overzicht');
       await new Promise(function(r){ setTimeout(r, 400); });
       const inOvz=tl.filter(function(p){ return !!document.getElementById('gc-'+p); });
-      setPidView('slim'); PLDash.kies();
-      const blad=[].slice.call(document.querySelectorAll('.dash-regel')).map(function(b){ return b.textContent; }).join('|');
+      setPidView('slim');
+      // #655: de app kan de keuzelijst in die 400 ms opnieuw opbouwen, en dan
+      // staan de telefoonsensoren er niet meer in. Dan bewees "niet te kiezen"
+      // niets: ze werden niet geweerd, ze waren er gewoon niet. Vlak vóór het
+      // keuzeblad dus opnieuw erin, en meten dat ze er zijn.
+      tl.forEach(function(p){ if(!discoveredPIDDefs.some(function(d){ return d.pid===p; })) discoveredPIDDefs.push(Object.assign({ pid:p, telemetrie:true }, D[p])); });
+      const inLijst=tl.filter(function(p){ return discoveredPIDDefs.some(function(d){ return d.pid===p; }); });
+      PLDash.kies();
+      const regels=[].slice.call(document.querySelectorAll('.dash-regel')).map(function(b){ return b.textContent; });
+      const blad=regels.join('|');
       PLDash.sluit(); setPidView('overzicht');
-      return { tl:tl, inOvz:inOvz, inKies:tl.filter(function(p){ const d=getPidDef(p); return d && blad.indexOf(ovzNaam(p, d))>=0; }) };
+      return { tl:tl, inOvz:inOvz, inLijst:inLijst, regels:regels.length, inKies:tl.filter(function(p){ const d=getPidDef(p); return d && blad.indexOf(ovzNaam(p, d))>=0; }) };
     })()`);
     toets('er zijn telefoonsensoren om te weren', eenC.tl.length >= 2, JSON.stringify(eenC));
     toets('geen telemetrie in Overzicht', eenC.inOvz.length === 0, eenC.inOvz.join());
+    toets('bij het keuzeblad staan ze in de keuzelijst, en het blad heeft regels (anders zegt de volgende toets niets)', eenC.inLijst.length === eenC.tl.length && eenC.regels > 0, JSON.stringify({ inLijst: eenC.inLijst, regels: eenC.regels }));
     toets('en niet te kiezen voor Slim', eenC.inKies.length === 0, eenC.inKies.join());
 
     console.log('\n2. Een afwijkende waarde');

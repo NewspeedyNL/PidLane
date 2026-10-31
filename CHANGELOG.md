@@ -10,6 +10,25 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 31-10-2026 — RR, tankvraag met buffer, onderhoud aan/uit, RDW en weer dagelijks
+ ═══════════════════════════════════════════════════════════
+ - RR (random rapport): eigen meetopdrachten per voertuig in Rapporten —
+   doel, sensoren met eenheid, tempo, venster (knop/verbinden, klok,
+   voorwaarden, max duur), opbouw en export (CSV NL/int, JSON), optioneel
+   als rapport. Nieuw: pidlane-rr.js, test-rr.js, kolom kp_voertuig.rr.
+ - Tanken: een sprong in stilstand moet blijven staan na het wegrijden
+   (10 metingen, 5 rijdend, 90 s); het anker is het peil vóór het stoppen;
+   na een vraag 45 min rust. Een helling of drempel vraagt niets meer.
+ - Onderhoud bijhouden per voertuig aan/uit (kolom onderhoud, leeg = aan).
+ - RDW: elke dag per voertuig met kenteken; de APK-datum volgt het RDW, de
+   rest alleen als hij leeg is.
+ - Weer: vers bij de eerste opstart (zodra er een plaats is), daarna op elke
+   nieuwe dag, en bij terugkomen uit de achtergrond.
+ - Bibliotheek: de modelsleutel laat het merk vooraf weg ("MAZDA CX-5" →
+   cx5), voor elk merk. De rempedaal- en remdruksensoren van 07-10 zijn weer
+   te zien bij voertuigen met de RDW-naam.
+
+ ═══════════════════════════════════════════════════════════
  30-10-2026 — Hyperlane: een rustig midden
  ═══════════════════════════════════════════════════════════
  - Slim: een getal blijft minstens 6 s staan (koelwater-alarm en 0–100 gaan

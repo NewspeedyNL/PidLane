@@ -44,8 +44,15 @@
     peilN: 5,           // zoveel metingen in stilstand voor één peil (klotsen dempen)
     volVanaf: 95,       // peil na tanken vanaf hier: waarschijnlijk vol
     rijdtVanaf: 2,      // km/h; daarboven is het geen stilstand
+    // De buffer (31-10-2026): op een helling of na een drempel stond het
+    // peil in stilstand scheef, en dat was al een vraag. Nu moet de sprong
+    // blijven staan terwijl je wegrijdt, en volgt er een pauze.
+    bevestigN: 10,      // zoveel metingen na de sprong, waarvan
+    bevestigRij: 5,     // zoveel rijdend: van de helling af, op vlakke weg
+    bevestigMs: 90e3,   // en over minstens anderhalve minuut
+    pauzeMs: 45 * 60e3  // na een vraag (ja of nee) zo lang geen nieuwe
     // Stap 3 (13-10-2026): samenvatting per cyclus uit de ritten.
-    ritL100MinKm: 20    // minder km met liters = geen verbruik uit de ritten
+    ,ritL100MinKm: 20   // minder km met liters = geen verbruik uit de ritten
   };
 
   function getal(x) { return typeof x === 'number' && isFinite(x) ? x : null; }
@@ -234,31 +241,61 @@
     if (d < CFG.sprongMin) return null;
     return { voor: Math.round(oud.pct * 10) / 10, na: Math.round(nu.pct * 10) / 10, sprong: Math.round(d * 10) / 10, sinds: oud.t || null, op: nu.t };
   }
-  /* Eén tik. `st` = { buf, stil, gevraagd } (begin met {}), `anker` = het
-     bewaarde anker van dit voertuig. Geeft { st, anker, sprong }:
-     `anker` alleen als het opnieuw bewaard moet worden, `sprong` alleen
-     als er nu gevraagd moet worden. */
+  /* Eén tik. `st` = de toestand (begin met {}), `anker` = het bewaarde
+     anker van dit voertuig. Geeft { st, anker, sprong }: `anker` alleen als
+     het opnieuw bewaard moet worden, `sprong` alleen als er nu gevraagd moet
+     worden.
+
+     Drie buffers tegen een helling of een drempel (31-10-2026):
+       1. het anker is het peil vlak vóór het stoppen (mediaan van het
+          rijden), niet een stilstand — een scheve stilstand verschuift het
+          anker dus niet;
+       2. een sprong in stilstand is pas een kandidaat: hij moet over
+          `bevestigN` metingen en `bevestigMs` blijven staan, waarvan
+          `bevestigRij` rijdend. Zakt het peil terug, dan was het de helling,
+          en wordt die mediaan het anker;
+       3. na een vraag `pauzeMs` lang geen nieuwe. */
   function peilTik(st, kmh, pct, nu, anker) {
-    st = { buf: (st && st.buf || []).slice(), stil: !!(st && st.stil), gevraagd: !!(st && st.gevraagd) };
+    st = st || {};
+    st = { buf: (st.buf || []).slice(), rij: (st.rij || []).slice(), stil: !!st.stil, gevraagd: !!st.gevraagd,
+      kand: st.kand ? { m: st.kand.m.slice(), rij: st.kand.rij, sinds: st.kand.sinds, op: st.kand.op } : null, pauzeTot: st.pauzeTot || 0 };
     var uit = { st: st, anker: null, sprong: null };
     if (typeof kmh !== 'number' || typeof pct !== 'number') return uit;
-    if (kmh >= CFG.rijdtVanaf) { uit.st = { buf: [], stil: false, gevraagd: false }; return uit; }
+    var rijdt = kmh >= CFG.rijdtVanaf;
+    if (st.kand) {
+      // Een rollend venster: wat er tijdens het tanken nog oploopt, valt eruit.
+      st.kand.m.push({ p: pct, r: rijdt }); if (st.kand.m.length > CFG.bevestigN) st.kand.m.shift();
+      st.kand.rij = st.kand.m.filter(function (x) { return x.r; }).length;
+      if (rijdt) { st.buf = []; st.stil = false; }
+      if (st.kand.m.length >= CFG.bevestigN && st.kand.rij >= CFG.bevestigRij && nu - st.kand.sinds >= CFG.bevestigMs) {
+        var peil = { pct: Math.round(mediaan(st.kand.m.map(function (x) { return x.p; })) * 10) / 10, t: nu };
+        var s = tankSprong(anker, peil);
+        if (s) { s.op = st.kand.op; uit.sprong = s; st.pauzeTot = nu + CFG.pauzeMs; }
+        uit.anker = peil; st.kand = null; st.gevraagd = true; st.rij = [];
+      }
+      return uit;
+    }
+    if (rijdt) {
+      st.rij.push(pct); if (st.rij.length > CFG.peilN * 2) st.rij.shift();
+      st.buf = []; st.stil = false; st.gevraagd = false;
+      return uit;
+    }
+    // Stilstand. Eerst het peil van vlak voor het stoppen vastleggen.
+    if (!st.buf.length && st.rij.length >= CFG.peilN) {
+      uit.anker = { pct: Math.round(mediaan(st.rij) * 10) / 10, t: nu };
+      anker = uit.anker;
+    }
+    if (!st.buf.length) st.rij = [];
     st.buf.push(pct); if (st.buf.length > CFG.peilN) st.buf.shift();
     if (st.buf.length < CFG.peilN) return uit;
     var nuPeil = { pct: Math.round(mediaan(st.buf) * 10) / 10, t: nu };
     if (!st.stil) {
-      // De eerste stabiele stilstand: vergelijken met het vorige anker en
-      // dit wordt het nieuwe.
       st.stil = true;
-      uit.anker = nuPeil;
-      uit.sprong = tankSprong(anker, nuPeil);
-      if (uit.sprong) st.gevraagd = true;
-      return uit;
+      // Nog nooit een anker: dit wordt het eerste.
+      if (!anker) { uit.anker = nuPeil; return uit; }
     }
-    if (!st.gevraagd) {
-      var s = tankSprong(anker, nuPeil);
-      if (s) { st.gevraagd = true; uit.sprong = s; uit.anker = nuPeil; }
-    }
+    if (st.gevraagd || nu < st.pauzeTot) return uit;
+    if (tankSprong(anker, nuPeil)) st.kand = { m: [], rij: 0, sinds: nu, op: nu };
     return uit;
   }
   /* Wat het formulier al weet na een herkende tankbeurt. */
@@ -373,5 +410,5 @@
 
   window.PLTank = { CFG: CFG, bedragVan: bedragVan, ritKm: ritKm, kmTussen: kmTussen, cycli: cycli, volleTank: volleTank,
     samenvatting: samenvatting, csv: csv, ritSom: ritSom, html: html, uitFormulier: uitFormulier,
-    mediaan: mediaan, tankSprong: tankSprong, peilTik: peilTik, uitSprong: uitSprong, cyclusRitten: cyclusRitten };
+    mediaan: mediaan, tankSprong: tankSprong, peilTik: peilTik, CFG: CFG, uitSprong: uitSprong, cyclusRitten: cyclusRitten };
 })();

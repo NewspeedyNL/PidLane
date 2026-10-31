@@ -5843,7 +5843,10 @@ var KP_MIGRATIES = [
   "ALTER TABLE kp_voertuig ADD COLUMN sproeier TEXT",
   "ALTER TABLE kp_voertuig ADD COLUMN sproeier_tot INTEGER",
   "ALTER TABLE kp_voertuig ADD COLUMN sproeier_datum TEXT",
-  "ALTER TABLE kp_voertuig ADD COLUMN winter_gezien TEXT"
+  "ALTER TABLE kp_voertuig ADD COLUMN winter_gezien TEXT",
+  // Onderhoud aan of uit en de RR-opdrachten (31-10-2026).
+  "ALTER TABLE kp_voertuig ADD COLUMN onderhoud TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN rr TEXT"
 ];
 var _kpSchemaKlaar = false;
 
@@ -5931,6 +5934,8 @@ var KP_VELDEN = {
   versnellingen: { soort: "geheel", min: 1, max: 10 },
   tankinhoud: { soort: "geheel", min: 10, max: 200 },
   tanken: { soort: "keuze", uit: ["aan", "uit"] },
+  // Onderhoud bijhouden (31-10-2026): leeg = aan, zoals het altijd was.
+  onderhoud: { soort: "keuze", uit: ["aan", "uit"] },
   // Een literprijs heeft drie decimalen (1,959): "getal" rondt op één af.
   brandstofprijs: { soort: "prijs", min: 0.1, max: 5 },
   rijprofiel: { soort: "keuze", uit: ["stad", "gemengd", "snelweg", "korte ritten", "aanhanger of caravan"] },
@@ -5953,6 +5958,9 @@ var KP_VELDEN = {
   // 22xxxx, een formule met alleen A–H, getallen, + - * / en haakjes. Zelfde
   // regels als PLEigen.controleer() in pidlane-uitgebreid.js.
   eigen_pids: { soort: "eigenpids", max: 20 },
+  // RR, eigen meetopdrachten (31-10-2026): zelfde regels als
+  // PLRR.normaliseer() in public/pidlane-rr.js; test-rr.js vergelijkt ze.
+  rr: { soort: "rr", max: 10 },
   vin_pseudo: { soort: "tekst", max: 32, patroon: /^[0-9a-f]{8,32}$/ },
   // Het winterprofiel (#556, 20-10-2026). Zelfde keuzes als WINTER_KEUZES in
   // public/pidlane-winter.js; test-winter.js vergelijkt de twee. De plaats is
@@ -5969,6 +5977,50 @@ var KP_VELDEN = {
   // Welke seizoensbanner deze klant al zag: "winter-2026", "zomer-2027".
   winter_gezien: { soort: "tekst", max: 12, patroon: /^(winter|zomer)-\d{4}$/ }
 };
+
+// Eén RR (31-10-2026). Alleen de vorm: tekst kort, PIDs als sleutel, keuzes
+// uit hun lijst. Wat er gemeten wordt, bepaalt de app; hier komt geen code
+// binnen die ergens uitgevoerd wordt.
+var KP_RR = { tempo: [1, 2, 5, 10, 30, 60], opbouw: ["tijdreeks", "samenvatting", "beide"], export: ["csv", "csv-int", "json"], start: ["knop", "verbinden"], ops: [">", ">=", "<", "<="] };
+function kpRrOpdracht(o) {
+  o = o || {};
+  const t = (x, m) => String(x == null ? "" : x).replace(/[\u0000-\u001f<>]/g, " ").trim().slice(0, m);
+  const pidOk = (p) => /^[A-Za-z0-9_.:@-]{2,24}$/.test(String(p || ""));
+  const klok = (k) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(k || "")) ? String(k) : "";
+  const naam = t(o.naam, 40);
+  if (!naam) return { fout: "zonder naam" };
+  if (!Array.isArray(o.sensoren) || !o.sensoren.length || o.sensoren.length > 12) return { fout: "1 tot 12 sensoren" };
+  const sensoren = [];
+  for (const x of o.sensoren) {
+    if (!x || !pidOk(x.pid)) return { fout: "een sensor zonder geldige code" };
+    const e = t(x.eenheid, 12);
+    sensoren.push(e ? { pid: String(x.pid), eenheid: e } : { pid: String(x.pid) });
+  }
+  const tempo = Number(o.tempo);
+  if (KP_RR.tempo.indexOf(tempo) < 0) return { fout: "een tempo dat niet in de lijst staat" };
+  const v = o.venster || {};
+  const voorw = Array.isArray(v.voorwaarden) ? v.voorwaarden : [];
+  if (voorw.length > 3) return { fout: "hoogstens 3 voorwaarden" };
+  const voorwaarden = [];
+  for (const w of voorw) {
+    const g = Number(w && w.waarde);
+    if (!w || !pidOk(w.pid) || KP_RR.ops.indexOf(w.op) < 0 || !isFinite(g)) return { fout: "een voorwaarde die niet compleet is" };
+    voorwaarden.push({ pid: String(w.pid), op: w.op, waarde: g });
+  }
+  const maxMin = v.maxMin === null || v.maxMin === undefined || v.maxMin === "" ? null : Math.round(Number(v.maxMin));
+  if (maxMin !== null && !(maxMin >= 1 && maxMin <= 1440)) return { fout: "hoogstens 1 tot 1440 minuten" };
+  const van = klok(v.van), tot = klok(v.tot);
+  if (!!van !== !!tot) return { fout: "een tijdvak zonder begin of eind" };
+  return { rr: {
+    id: /^[a-z0-9]{6,20}$/.test(String(o.id || "")) ? String(o.id) : "rr" + Date.now().toString(36),
+    naam, doel: t(o.doel, 200), sensoren, tempo,
+    venster: { start: KP_RR.start.indexOf(v.start) >= 0 ? v.start : "knop", van, tot, maxMin, voorwaarden },
+    opbouw: KP_RR.opbouw.indexOf(o.opbouw) >= 0 ? o.opbouw : "tijdreeks",
+    export: KP_RR.export.indexOf(o.export) >= 0 ? o.export : "csv",
+    rapport: !!o.rapport
+  } };
+}
+__name(kpRrOpdracht, "kpRrOpdracht");
 
 // Eén beurt uit het onderhoudslogboek (#475). Een datum die niet in de
 // toekomst ligt, een km-stand of niets, alleen bekende onderdelen, een
@@ -6033,8 +6085,34 @@ __name(kpEigenPid, "kpEigenPid");
 // Skyactiv-D" en "cx5" zijn dan hetzelfde model; "Golf VII" wordt "golf".
 function kpMerkSleutel(m) { return String(m || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 30); }
 __name(kpMerkSleutel, "kpMerkSleutel");
-function kpModelSleutel(m) { return String(m || "").toLowerCase().trim().split(/\s+/)[0].replace(/[^a-z0-9]/g, "").slice(0, 30); }
+// Het RDW geeft de handelsbenaming mét het merk ("MAZDA CX-5"). Het eerste
+// woord was dan "mazda", en zo kwamen codes van dezelfde auto onder twee
+// sleutels terecht ("cx5" en "mazda") — de rempedaal- en remdruksensoren van
+// 07-10 waren voor de RDW-profielen onzichtbaar (31-10-2026). Het merk gaat
+// er nu vooraf af, op letters en cijfers en niet op woorden, zodat het voor
+// elk merk werkt: "LAND ROVER DISCOVERY" → discovery, "MERCEDES-BENZ C 200"
+// → c, "LYNK & CO 01" → 01, "MAZDA3" en "MAZDA 3" → 3. Wat er vóór die datum
+// onder een andere sleutel kwam, leest kpModelAliassen() mee; er wordt niets
+// verhuisd.
+function kpModelSleutel(m, merk) {
+  let t = String(m || "").toLowerCase().trim();
+  const mk = kpMerkSleutel(merk);
+  if (mk) {
+    let n = 0, k = 0;
+    while (k < t.length && n < mk.length) { if (/[a-z0-9]/.test(t[k])) { if (t[k] !== mk[n]) break; n++; } k++; }
+    if (n === mk.length && /[a-z0-9]/.test(t.slice(k))) t = t.slice(k).replace(/^[^a-z0-9]+/, "");
+  }
+  return String(t.split(/\s+/)[0] || "").replace(/[^a-z0-9]/g, "").slice(0, 30);
+}
 __name(kpModelSleutel, "kpModelSleutel");
+// De sleutels waaronder dit model vóór 31-10-2026 kan staan: het eerste woord
+// zoals het toen telde, en het merk zelf (dat was altijd de RDW-fout: een
+// model dat zo heet als zijn merk bestaat niet).
+function kpModelAliassen(m, merk) {
+  const oud = String(m || "").toLowerCase().trim().split(/\s+/)[0].replace(/[^a-z0-9]/g, "").slice(0, 30);
+  return [oud || "-", kpMerkSleutel(merk) || "-"];
+}
+__name(kpModelAliassen, "kpModelAliassen");
 
 function kpVeld(naam, waarde) {
   const d = KP_VELDEN[naam];
@@ -6080,6 +6158,17 @@ function kpVeld(naam, waarde) {
       if (gezien[sleutel]) continue;
       gezien[sleutel] = 1;
       l.push(r);
+    }
+    return { waarde: JSON.stringify(l) };
+  }
+  if (d.soort === "rr") {
+    if (!Array.isArray(waarde)) return { fout: naam + " moet een lijst zijn" };
+    if (waarde.length > d.max) return { fout: "hoogstens " + d.max + " RR's per voertuig" };
+    const l = [];
+    for (const o of waarde) {
+      const r = kpRrOpdracht(o);
+      if (r.fout) return { fout: "RR: " + r.fout };
+      l.push(r.rr);
     }
     return { waarde: JSON.stringify(l) };
   }
@@ -6133,6 +6222,7 @@ async function kpVoertuigPubliek(v, sleutel, klantId) {
   uit.gear_model = kpLees(v.gear_model);
   uit.eigen_pids = kpLees(v.eigen_pids);
   uit.onderhoud_log = kpLees(v.onderhoud_log) || [];
+  uit.rr = kpLees(v.rr) || [];
   return uit;
 }
 __name(kpVoertuigPubliek, "kpVoertuigPubliek");
@@ -6518,7 +6608,7 @@ var KP_ACTIES = {
   async pidbib_lijst(c, b) {
     const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
     if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
-    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model);
+    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model, v.merk);
     if (!merk) return { ok: true, merk: "", model: "", lijst: [] };
     const r = await c.db.prepare(
       "SELECT b.id, b.model, b.code, b.ecu, b.naam, b.formule, b.eenheid, b.bron, b.url, " +
@@ -6526,14 +6616,14 @@ var KP_ACTIES = {
       "SUM(CASE WHEN s.uitkomst = 'werkt_niet' THEN 1 ELSE 0 END) AS werkt_niet, " +
       "MAX(CASE WHEN s.klant_id = ? THEN s.uitkomst ELSE NULL END) AS mijn " +
       "FROM kp_pid_bib b LEFT JOIN kp_pid_stem s ON s.bib_id = b.id " +
-      "WHERE b.merk = ? AND (b.model = ? OR b.model = '') GROUP BY b.id " +
-      "ORDER BY werkt DESC, werkt_niet ASC, b.aangemaakt ASC LIMIT 100").bind(c.klantId, merk, model).all();
+      "WHERE b.merk = ? AND (b.model IN (?, ?, ?) OR b.model = '') GROUP BY b.id " +
+      "ORDER BY werkt DESC, werkt_niet ASC, b.aangemaakt ASC LIMIT 100").bind(c.klantId, merk, model, ...kpModelAliassen(v.model, v.merk)).all();
     return { ok: true, merk, model, lijst: (r && r.results) || [] };
   },
   async pidbib_deel(c, b) {
     const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
     if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
-    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model);
+    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model, v.merk);
     if (!merk || !model) return { ok: false, error: "Vul eerst merk en model in bij het profiel.", code: 400 };
     // Alleen wat bij dit voertuig staat: de server neemt de definitie uit het
     // voertuig, niet uit het verzoek.
@@ -6557,7 +6647,7 @@ var KP_ACTIES = {
   async pidbib_kandidaten(c, b) {
     const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
     if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
-    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model);
+    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model, v.merk);
     if (!merk || !model) return { ok: false, error: "Vul eerst merk en model in bij het profiel.", code: 400 };
     if (!Array.isArray(b.lijst) || b.lijst.length > 60) return { ok: false, error: "Een lijst van hoogstens 60 kandidaten.", code: 400 };
     // Waar de lijst vandaan komt (#526): OBDb, of de oude AI-zoektocht.
@@ -6567,7 +6657,7 @@ var KP_ACTIES = {
       const e = kpEigenPid(k);
       const url = String((k && k.url) || "").trim().slice(0, 300);
       if (e.fout || !/^https?:\/\/[^\s"<>]+$/.test(url)) { geweigerd++; continue; }
-      const al = await c.db.prepare("SELECT id FROM kp_pid_bib WHERE merk = ? AND model = ? AND code = ? AND ecu = ?").bind(merk, model, e.code, e.ecu || "").first();
+      const al = await c.db.prepare("SELECT id FROM kp_pid_bib WHERE merk = ? AND model IN (?, ?, ?) AND code = ? AND ecu = ?").bind(merk, model, ...kpModelAliassen(v.model, v.merk), e.code, e.ecu || "").first();
       if (al) continue;
       await kpBibErbij(c.db, merk, model, e, bron, url);
       erbij++;

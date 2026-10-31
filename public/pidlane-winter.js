@@ -575,10 +575,17 @@
   // ════════════════════════════════════════════════════════════════
   //  START
   // ════════════════════════════════════════════════════════════════
+  /* Bij de eerste opstart altijd vers (31-10-2026), daarna zodra de
+     verwachting een uur oud is of van gisteren. Op het moment van start()
+     is het profiel er vaak nog niet (inloggen, Mijn voertuigen laden): dan
+     telt de eerste keer dat er wél een plaats is als de opstart. */
+  var _opstartGehaald = false;
   function ververs() {
     var p = profiel();
     if (!p.plaats || !window.PLWeer || isDemo()) return;
-    PLWeer.haal(p.plaats).then(function () { teken(); })
+    var eerste = !_opstartGehaald;
+    _opstartGehaald = true;
+    PLWeer.haal(p.plaats, eerste ? { forceer: true } : undefined).then(function () { teken(); })
       .catch(function (e) { console.warn('PLWinter: weer niet ververst', e); });
   }
   // De knop: altijd opnieuw halen, ook binnen het uur.
@@ -594,8 +601,13 @@
     teken(true);
     ververs();
     setInterval(function () { try { teken(); } catch (e) { console.warn('PLWinter: kaart niet getekend', e); } }, 2000);
-    // Elk kwartier kijken; PLWeer haalt pas opnieuw als het een uur oud is.
+    // Tot er een plaats is elke 10 s (de opstart), daarna elk kwartier;
+    // PLWeer haalt pas opnieuw als het een uur oud is of van gisteren. Een
+    // app die uit de achtergrond terugkomt, kijkt meteen.
+    var wacht = setInterval(function () { if (_opstartGehaald) clearInterval(wacht); else ververs(); }, 10 * 1000);
     setInterval(ververs, 15 * 60 * 1000);
+    try { document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') ververs(); }); }
+    catch (e) { console.warn('PLWinter: geen zichtbaarheidsluisteraar — het weer ververst elk kwartier', e); }
   }
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
