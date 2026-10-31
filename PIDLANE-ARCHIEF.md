@@ -14,6 +14,38 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 31-10-2026 — De remsensoren stonden onder een andere modelsleutel
+
+**Gemeten** (D1, alleen gelezen): `kp_pid_bib` heeft `222B0D` @760
+"Rempedaal positie" (%) en `22280A` @7E0 "Remvloeistofdruk" (bar), bron
+`online`, 07-10-2026, allebei met een stem `werkt`, onder `mazda`/`cx5`. Van
+de vijf Mazda-voertuigen heet er één `CX-5` en vier `MAZDA CX-5`; twee
+hebben de codes nog in `eigen_pids`, drie niet.
+
+**Waarom ze weg leken.** `kpModelSleutel()` nam het eerste woord van het
+model. De handelsbenaming van het RDW draagt het merk ("MAZDA CX-5"), dus
+de sleutel werd `mazda` en de bibliotheek van `cx5` bleef onzichtbaar. Zo
+kwamen ook OBDb-kandidaten van hetzelfde model onder twee sleutels.
+`obdbKoppel()` in de app haalde het merk er al af; de Worker niet.
+
+**Wat het nu doet.** Het merk gaat er vooraf af, op letters en cijfers (niet
+op woorden), zodat het voor elk merk werkt: LAND ROVER DISCOVERY → discovery,
+LYNK & CO 01 → 01, MAZDA3 → 3. `kpModelAliassen()` leest de oude sleutel en
+het merk zelf mee; er is niets verhuisd. Rijen onder `mazda`/`mazda` blijven
+dus staan — opruimen kan later, als het nodig is.
+
+## 31-10-2026 — De tankvraag op een helling
+
+**Uit het gebruik.** Een stilstand op een helling of na een drempel gaf een
+scheef peil, en met 5 metingen en 15 procentpunt was dat al "Getankt?". Erger:
+de eerste stabiele stilstand werd het nieuwe anker, dus een helling naar
+beneden maakte de volgende vlakke stop tot een sprong.
+
+**Wat het nu doet.** Het anker is de mediaan van het rijden vlak vóór het
+stoppen. Een sprong is eerst een kandidaat, en wordt pas een vraag als hij
+over 10 metingen (waarvan 5 rijdend) en 90 s blijft staan. Daarna 45 min
+rust. Of 90 s genoeg is op een lange helling, zegt pas een rit.
+
 ## 30-10-2026 — ATST klom aan de randen van contact uit, niet door Maps (#509)
 
 **Gemeten** (D1, rit 30-10, CX-5): `ATST bijgestuurd` 0x16 → 0x19 om 11:09:33,
