@@ -6033,8 +6033,34 @@ __name(kpEigenPid, "kpEigenPid");
 // Skyactiv-D" en "cx5" zijn dan hetzelfde model; "Golf VII" wordt "golf".
 function kpMerkSleutel(m) { return String(m || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 30); }
 __name(kpMerkSleutel, "kpMerkSleutel");
-function kpModelSleutel(m) { return String(m || "").toLowerCase().trim().split(/\s+/)[0].replace(/[^a-z0-9]/g, "").slice(0, 30); }
+// Het RDW geeft de handelsbenaming mét het merk ("MAZDA CX-5"). Het eerste
+// woord was dan "mazda", en zo kwamen codes van dezelfde auto onder twee
+// sleutels terecht ("cx5" en "mazda") — de rempedaal- en remdruksensoren van
+// 07-10 waren voor de RDW-profielen onzichtbaar (31-10-2026). Het merk gaat
+// er nu vooraf af, op letters en cijfers en niet op woorden, zodat het voor
+// elk merk werkt: "LAND ROVER DISCOVERY" → discovery, "MERCEDES-BENZ C 200"
+// → c, "LYNK & CO 01" → 01, "MAZDA3" en "MAZDA 3" → 3. Wat er vóór die datum
+// onder een andere sleutel kwam, leest kpModelAliassen() mee; er wordt niets
+// verhuisd.
+function kpModelSleutel(m, merk) {
+  let t = String(m || "").toLowerCase().trim();
+  const mk = kpMerkSleutel(merk);
+  if (mk) {
+    let n = 0, k = 0;
+    while (k < t.length && n < mk.length) { if (/[a-z0-9]/.test(t[k])) { if (t[k] !== mk[n]) break; n++; } k++; }
+    if (n === mk.length && /[a-z0-9]/.test(t.slice(k))) t = t.slice(k).replace(/^[^a-z0-9]+/, "");
+  }
+  return String(t.split(/\s+/)[0] || "").replace(/[^a-z0-9]/g, "").slice(0, 30);
+}
 __name(kpModelSleutel, "kpModelSleutel");
+// De sleutels waaronder dit model vóór 31-10-2026 kan staan: het eerste woord
+// zoals het toen telde, en het merk zelf (dat was altijd de RDW-fout: een
+// model dat zo heet als zijn merk bestaat niet).
+function kpModelAliassen(m, merk) {
+  const oud = String(m || "").toLowerCase().trim().split(/\s+/)[0].replace(/[^a-z0-9]/g, "").slice(0, 30);
+  return [oud || "-", kpMerkSleutel(merk) || "-"];
+}
+__name(kpModelAliassen, "kpModelAliassen");
 
 function kpVeld(naam, waarde) {
   const d = KP_VELDEN[naam];
@@ -6518,7 +6544,7 @@ var KP_ACTIES = {
   async pidbib_lijst(c, b) {
     const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
     if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
-    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model);
+    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model, v.merk);
     if (!merk) return { ok: true, merk: "", model: "", lijst: [] };
     const r = await c.db.prepare(
       "SELECT b.id, b.model, b.code, b.ecu, b.naam, b.formule, b.eenheid, b.bron, b.url, " +
@@ -6526,14 +6552,14 @@ var KP_ACTIES = {
       "SUM(CASE WHEN s.uitkomst = 'werkt_niet' THEN 1 ELSE 0 END) AS werkt_niet, " +
       "MAX(CASE WHEN s.klant_id = ? THEN s.uitkomst ELSE NULL END) AS mijn " +
       "FROM kp_pid_bib b LEFT JOIN kp_pid_stem s ON s.bib_id = b.id " +
-      "WHERE b.merk = ? AND (b.model = ? OR b.model = '') GROUP BY b.id " +
-      "ORDER BY werkt DESC, werkt_niet ASC, b.aangemaakt ASC LIMIT 100").bind(c.klantId, merk, model).all();
+      "WHERE b.merk = ? AND (b.model IN (?, ?, ?) OR b.model = '') GROUP BY b.id " +
+      "ORDER BY werkt DESC, werkt_niet ASC, b.aangemaakt ASC LIMIT 100").bind(c.klantId, merk, model, ...kpModelAliassen(v.model, v.merk)).all();
     return { ok: true, merk, model, lijst: (r && r.results) || [] };
   },
   async pidbib_deel(c, b) {
     const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
     if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
-    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model);
+    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model, v.merk);
     if (!merk || !model) return { ok: false, error: "Vul eerst merk en model in bij het profiel.", code: 400 };
     // Alleen wat bij dit voertuig staat: de server neemt de definitie uit het
     // voertuig, niet uit het verzoek.
@@ -6557,7 +6583,7 @@ var KP_ACTIES = {
   async pidbib_kandidaten(c, b) {
     const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
     if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };
-    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model);
+    const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model, v.merk);
     if (!merk || !model) return { ok: false, error: "Vul eerst merk en model in bij het profiel.", code: 400 };
     if (!Array.isArray(b.lijst) || b.lijst.length > 60) return { ok: false, error: "Een lijst van hoogstens 60 kandidaten.", code: 400 };
     // Waar de lijst vandaan komt (#526): OBDb, of de oude AI-zoektocht.
@@ -6567,7 +6593,7 @@ var KP_ACTIES = {
       const e = kpEigenPid(k);
       const url = String((k && k.url) || "").trim().slice(0, 300);
       if (e.fout || !/^https?:\/\/[^\s"<>]+$/.test(url)) { geweigerd++; continue; }
-      const al = await c.db.prepare("SELECT id FROM kp_pid_bib WHERE merk = ? AND model = ? AND code = ? AND ecu = ?").bind(merk, model, e.code, e.ecu || "").first();
+      const al = await c.db.prepare("SELECT id FROM kp_pid_bib WHERE merk = ? AND model IN (?, ?, ?) AND code = ? AND ecu = ?").bind(merk, model, ...kpModelAliassen(v.model, v.merk), e.code, e.ecu || "").first();
       if (al) continue;
       await kpBibErbij(c.db, merk, model, e, bron, url);
       erbij++;

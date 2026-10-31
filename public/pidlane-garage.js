@@ -1981,7 +1981,10 @@
   }
   function tekenBib(v, S, nu, deel) {
     if (S.bib === null) { S.bib = 'laden'; sensBibLaad(v.id); }
-    var titel = [v.merk, (v.model || '').split(/\s+/)[0]].filter(Boolean).join(' ') || 'dit model';
+    // Het RDW zet het merk in het model ("MAZDA CX-5"): niet twee keer tonen.
+    var mdl = String(v.model || '').trim(), mk = String(v.merk || '').trim();
+    if (mk && mdl.toLowerCase().indexOf(mk.toLowerCase() + ' ') === 0) mdl = mdl.slice(mk.length).trim();
+    var titel = [v.merk, mdl.split(/\s+/)[0]].filter(Boolean).join(' ') || 'dit model';
     var h = '<div class="gr-blok"><div class="gr-bh">📚 Codes voor ' + esc(titel) + '<span class="gr-r">nog niet bij je sensoren</span></div>';
     if (!v.merk || !v.model) return h + '<div class="gr-klein">Vul merk en model in bij het profiel; dan zie je hier wat anderen met dezelfde auto gevonden hebben.</div></div>';
     if (S.bib === 'laden') h += '<div class="gr-klein">⏳ Laden…</div>';

@@ -386,6 +386,28 @@ async function laadWorker() {
   bl = await roep(tokA, { actie: 'pidbib_lijst', voertuig_id: v1.voertuig.id });
   const online = bl.lijst.find((x) => x.code === '220202');
   toets('kandidaten: Anna ziet de online kandidaat, met de bron en nog niet getest', !!online && online.bron === 'online' && /forum/.test(online.url) && online.werkt === 0, JSON.stringify(bl.lijst));
+  // Het RDW zet het merk in de handelsbenaming (31-10-2026): "MAZDA CX-5" is
+  // dezelfde auto als "CX-5", en wat er vóór die datum onder "mazda" kwam
+  // blijft zichtbaar.
+  {
+    const vRdw = await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { id: rBert.voertuig.id, merk: 'MAZDA', model: 'MAZDA CX-5' } });
+    db.prepare("INSERT INTO kp_pid_bib (id, merk, model, code, ecu, naam, formule, eenheid, bron, url, aangemaakt) VALUES ('oud1', 'mazda', 'mazda', '222B0D', '760', 'Rempedaal positie', 'A', '%', 'online', 'https://x.nl', '2026-10-07')").run();
+    const lr = await roep(tokB, { actie: 'pidbib_lijst', voertuig_id: vRdw.voertuig.id });
+    toets('bibliotheek: "MAZDA CX-5" van het RDW valt onder cx5', lr.ok && lr.model === 'cx5' && lr.lijst.some((x) => x.code === '220202'), JSON.stringify(lr).slice(0, 300));
+    toets('bibliotheek: wat onder de oude sleutel "mazda" staat, blijft zichtbaar', lr.lijst.some((x) => x.code === '222B0D'), JSON.stringify(lr.lijst.map((x) => x.code)));
+    await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { id: rBert.voertuig.id, merk: 'MAZDA', model: 'cx5' } });
+    const lc = await roep(tokB, { actie: 'pidbib_lijst', voertuig_id: rBert.voertuig.id });
+    toets('bibliotheek: een model met maar één woord dat het merk is, blijft dat woord', lc.model === 'cx5');
+    db.prepare("DELETE FROM kp_pid_bib WHERE id = 'oud1'").run();
+    // Voor elk merk, niet alleen Mazda: de echte functie, met RDW-namen.
+    const ms = new Function(bron.match(/function kpMerkSleutel[^\n]*\n/)[0] + bron.match(/function kpModelSleutel\(m, merk\) \{[\s\S]*?\n\}\n/)[0] + 'return kpModelSleutel;')();
+    const paren = [['MAZDA', 'MAZDA CX-5', 'cx5'], ['MAZDA', 'CX-5 2.2 Skyactiv-D', 'cx5'], ['MAZDA', 'MAZDA3', '3'], ['MAZDA', 'MAZDA 3', '3'],
+      ['LAND ROVER', 'LAND ROVER DISCOVERY SPORT', 'discovery'], ['LAND ROVER', 'RANGE ROVER', 'range'], ['MERCEDES-BENZ', 'MERCEDES-BENZ C 200', 'c'],
+      ['LYNK & CO', 'LYNK & CO 01', '01'], ['ALFA ROMEO', 'ALFA ROMEO GIULIETTA', 'giulietta'], ['VOLKSWAGEN', 'VOLKSWAGEN GOLF', 'golf'],
+      ['KIA', 'Ceed', 'ceed'], ['KIA', 'KIA', 'kia'], ['MINI', 'MINI COOPER', 'cooper'], ['', 'MAZDA CX-5', 'mazda']];
+    const mis = paren.filter((p) => ms(p[1], p[0]) !== p[2]).map((p) => p[1] + ' → ' + ms(p[1], p[0]) + ' (verwacht ' + p[2] + ')');
+    toets('modelsleutel: het merk gaat er voor elk merk af', mis.length === 0, mis.join('; '));
+  }
   toets('kandidaten: meer dan 60 in één keer is 400 (OBDb levert er tot 60, #526)', (await roep(tokB, { actie: 'pidbib_kandidaten', voertuig_id: rBert.voertuig.id,
     lijst: Array.from({ length: 61 }, () => ({ code: '220505', naam: 'x', url: 'https://x.nl' })) }))._status === 400);
   // OBDb (#526): de Worker haalt het bestand op; de app doet geen eigen fetch.
