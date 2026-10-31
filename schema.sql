@@ -341,6 +341,9 @@ ALTER TABLE kp_voertuig ADD COLUMN sproeier TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN sproeier_tot INTEGER;
 ALTER TABLE kp_voertuig ADD COLUMN sproeier_datum TEXT;
 ALTER TABLE kp_voertuig ADD COLUMN winter_gezien TEXT;
+-- Onderhoud aan of uit en de RR-opdrachten (31-10-2026).
+ALTER TABLE kp_voertuig ADD COLUMN onderhoud TEXT;
+ALTER TABLE kp_voertuig ADD COLUMN rr TEXT;
 
 -- ══════════════════════════════════════════════════════════════════
 --  APPCONFIG (#327, 01-10-2026)

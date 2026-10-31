@@ -2437,6 +2437,7 @@ MUTATIES=(
 "public/pidlane-conditie.js@@a.wvS = (a.wvS || 0) + Math.abs((vr + ac) / 2 - kmh) / kmh * 100;@@a.wvS = (a.wvS || 0) + ((vr + ac) / 2 - kmh) / kmh * 100;@@test-winterrit.js@@te snelle en te trage wielen middelen elkaar weg: een verkeerde schaal valt niet op (#560 meetopdracht)"
 "public/pidlane-conditie.js@@    a.wsR = (a.wsR || 0) + dt;@@    a.wsR = (a.wsR || 0);@@test-winterrit.js@@de noemer van wiel-vers-pct blijft 0: de proef kan nooit iets zeggen (#560 meetopdracht)"
 "public/pidlane-garage.js@@      case 'wiel-vers-pct': return@@      case 'wiel-vers-pc': return@@test-opdrachtappmaat.js@@een maat op de witte lijst die de module niet kent: de proef blijft voorgoed nog niet (#560 meetopdracht)"
+"public/pidlane-garage.js@@  function onderhoudAan(v) { return !!v && v.onderhoud !== 'uit'; }@@  function onderhoudAan(v) { return !!v; }@@test-garage.js@@onderhoud bijhouden uit geeft toch een punt onderhoud aan de beurt"
 "public/pidlane-conditie.js@@    if (s.t1 === t) return s.v1;\n    if (s.t0 === undefined@@    return s.v1;\n    if (s.t0 === undefined@@test-winterrit.js@@de assen worden weer op verschillende momenten vergeleken: elke optrekking telt als slip (rit 24-10, #560)"
 "public/pidlane-conditie.js@@hi - lo >= c.minKmh && @@@@test-winterrit.js@@bij lage snelheid telt één km/h verschil als 10 % slip (#560)"
 # De conditiekaart (30-10-2026): de ring, een lege meting, de oorzaak en het teken van het verloop.

@@ -5843,7 +5843,10 @@ var KP_MIGRATIES = [
   "ALTER TABLE kp_voertuig ADD COLUMN sproeier TEXT",
   "ALTER TABLE kp_voertuig ADD COLUMN sproeier_tot INTEGER",
   "ALTER TABLE kp_voertuig ADD COLUMN sproeier_datum TEXT",
-  "ALTER TABLE kp_voertuig ADD COLUMN winter_gezien TEXT"
+  "ALTER TABLE kp_voertuig ADD COLUMN winter_gezien TEXT",
+  // Onderhoud aan of uit en de RR-opdrachten (31-10-2026).
+  "ALTER TABLE kp_voertuig ADD COLUMN onderhoud TEXT",
+  "ALTER TABLE kp_voertuig ADD COLUMN rr TEXT"
 ];
 var _kpSchemaKlaar = false;
 
@@ -5931,6 +5934,8 @@ var KP_VELDEN = {
   versnellingen: { soort: "geheel", min: 1, max: 10 },
   tankinhoud: { soort: "geheel", min: 10, max: 200 },
   tanken: { soort: "keuze", uit: ["aan", "uit"] },
+  // Onderhoud bijhouden (31-10-2026): leeg = aan, zoals het altijd was.
+  onderhoud: { soort: "keuze", uit: ["aan", "uit"] },
   // Een literprijs heeft drie decimalen (1,959): "getal" rondt op één af.
   brandstofprijs: { soort: "prijs", min: 0.1, max: 5 },
   rijprofiel: { soort: "keuze", uit: ["stad", "gemengd", "snelweg", "korte ritten", "aanhanger of caravan"] },

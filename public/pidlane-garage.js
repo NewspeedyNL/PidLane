@@ -85,9 +85,10 @@
     else if (apk != null && apk <= 30) p.push({ ernst: 'oranje', tekst: 'APK verloopt over ' + apk + ' dag' + (apk === 1 ? '' : 'en') });
     if (n.openIssues) p.push({ ernst: g.hoogOpen ? 'rood' : 'oranje', tekst: n.openIssues + ' open punt' + (n.openIssues === 1 ? '' : 'en') });
     if (g.milAan) p.push({ ernst: 'rood', tekst: 'Motorlampje brandt' });
-    var od = dagenTot(v.onderhoud_datum, nu);
+    var od = onderhoudAan(v) ? dagenTot(v.onderhoud_datum, nu) : null;
     if (od != null && od < 0) p.push({ ernst: 'oranje', tekst: 'Onderhoud was gepland ' + (-od) + ' dagen geleden' });
-    if (v.onderhoud_km && v.kmstand && v.kmstand >= v.onderhoud_km) p.push({ ernst: 'oranje', tekst: 'Onderhoud: ' + (v.kmstand - v.onderhoud_km).toLocaleString('nl') + ' km over de geplande stand' });
+    if (!onderhoudAan(v)) { /* onderhoud bijhouden staat uit: geen punten */ }
+    else if (v.onderhoud_km && v.kmstand && v.kmstand >= v.onderhoud_km) p.push({ ernst: 'oranje', tekst: 'Onderhoud: ' + (v.kmstand - v.onderhoud_km).toLocaleString('nl') + ' km over de geplande stand' });
     else if (v.onderhoud_km && v.kmstand && v.onderhoud_km - v.kmstand <= 1000) p.push({ ernst: 'info', tekst: 'Onderhoud over ' + (v.onderhoud_km - v.kmstand).toLocaleString('nl') + ' km' });
     if (typeof g.accuRust === 'number' && g.accuRust < 12.2) p.push({ ernst: 'oranje', tekst: 'Accu zwak in rust (' + nl1(g.accuRust) + ' V)' });
     // Laadspanning en koelwater uit één grens per grootheid (PLKenmerk, #532),
@@ -1613,10 +1614,11 @@
         rijProf('Rijprofiel', v.rijprofiel) + rijProf('Verbruik (opgegeven)', v.verbruik_opgegeven ? v.verbruik_opgegeven.toLocaleString('nl') + ' l/100 km' : null) +
         rijProf('Tankinhoud', v.tankinhoud ? v.tankinhoud + ' liter' : null) + rijProf('Literprijs', v.brandstofprijs ? '€ ' + String(v.brandstofprijs).replace('.', ',') : null) +
         rijProf('Kilometerstand', v.kmstand != null ? v.kmstand.toLocaleString('nl') + ' km' : null) + rijProf('APK tot', v.apk_tot ? datumNl(v.apk_tot) : null) +
-        rijProf('Laatste onderhoudsbeurt', v.onderhoud_laatst) + rijProf('Distributieriem/-ketting', v.distributie) +
-        rijProf('Volgend onderhoud', [v.onderhoud_km ? v.onderhoud_km.toLocaleString('nl') + ' km' : null, v.onderhoud_datum ? datumNl(v.onderhoud_datum) : null].filter(Boolean).join(' of ')) +
+        rijProf('Onderhoud bijhouden', onderhoudAan(v) ? 'aan' : 'uit') +
+        (onderhoudAan(v) ? rijProf('Laatste onderhoudsbeurt', v.onderhoud_laatst) + rijProf('Distributieriem/-ketting', v.distributie) : '') +
+        (!onderhoudAan(v) ? '' : rijProf('Volgend onderhoud', [v.onderhoud_km ? v.onderhoud_km.toLocaleString('nl') + ' km' : null, v.onderhoud_datum ? datumNl(v.onderhoud_datum) : null].filter(Boolean).join(' of '))) +
         rijProf('Conditiescore', scoreAan(v) ? 'aan' : 'uit') +
-        rijProf('Onderhoudsinterval', [v.onderhoud_interval_km ? v.onderhoud_interval_km.toLocaleString('nl') + ' km' : null, v.onderhoud_interval_mnd ? v.onderhoud_interval_mnd + ' maanden' : null].filter(Boolean).join(' of ')) +
+        (!onderhoudAan(v) ? '' : rijProf('Onderhoudsinterval', [v.onderhoud_interval_km ? v.onderhoud_interval_km.toLocaleString('nl') + ' km' : null, v.onderhoud_interval_mnd ? v.onderhoud_interval_mnd + ' maanden' : null].filter(Boolean).join(' of '))) +
         rijProf('Gekoppeld aan de auto', v.vin_pseudo ? 'ja (via het chassisnummer)' : 'nog niet') +
         // Het winterprofiel (#556) bewerk je in zijn eigen venster (PLWinter).
         rijProf('Banden', v.banden ? v.banden + (v.banden_alpine && v.banden_alpine !== 'weet niet' ? ' · ' + (v.banden_alpine === 'ja' ? 'bergsymbool' : 'alleen M+S') : '') : null) +
@@ -1637,6 +1639,7 @@
     versnellingen: ['4', '5', '6', '7', '8', '9', '10'],
     rijprofiel: ['gemengd', 'stad', 'snelweg', 'korte ritten', 'aanhanger of caravan'],
     tanken: ['uit', 'aan'],
+    onderhoud: ['aan', 'uit'],
     score: ['uit', 'aan']
   };
   /* Tankbeurten bijhouden is per voertuig en staat standaard uit (#469,
@@ -1647,6 +1650,11 @@
      13-10-2026). Uit = geen tabblad en geen melding. De ritten verzamelen
      hun kenmerken wel altijd, zodat er een nulmeting is als hij aangaat. */
   function scoreAan(v) { return !!v && v.score === 'aan'; }
+  /* Onderhoud bijhouden is per voertuig en staat standaard aan (31-10-2026),
+     zoals het altijd was. Uit = geen onderhoudsvelden in het profiel, geen
+     punt "onderhoud aan de beurt" en geen melding. Wat er al staat blijft
+     bewaard; aanzetten brengt het terug. */
+  function onderhoudAan(v) { return !!v && v.onderhoud !== 'uit'; }
   function tekenFormulier(v) {
     v = v || {};
     var inv = function (id, label, w, type, extra) {
@@ -1675,12 +1683,16 @@
       '<div class="gr-klein">Aan: een tabblad Tankbeurten met beloofd tegenover gereden bereik en export, en na het tanken vraagt de app of je de beurt wilt invullen.</div>' +
       kies('score', 'Conditiescore bijhouden', v.score || 'uit') +
       '<div class="gr-klein">Aan: een tabblad Conditie met een score uit je onderhoud en je ritten, die je zelf opent. Eén keer de laatste beurt invullen; de rest meet de app.</div>' +
+      inv('apk_tot', 'APK geldig tot', v.apk_tot, 'date') +
+      kies('onderhoud', 'Onderhoud bijhouden', onderhoudAan(v) ? 'aan' : 'uit').replace('<select ', '<select onchange="var d=document.getElementById(\'grfOnderhoud\');if(d)d.style.display=this.value===\'uit\'?\'none\':\'\'" ') +
+      '<div class="gr-klein">Uit: geen onderhoudsvelden en geen melding dat onderhoud aan de beurt is. Wat je al invulde blijft bewaard.</div>' +
+      '<div id="grfOnderhoud"' + (onderhoudAan(v) ? '' : ' style="display:none"') + '>' +
       '<div class="gr-2">' + inv('onderhoud_interval_km', 'Onderhoudsinterval (km)', v.onderhoud_interval_km, 'number', 'min="1000" max="100000" placeholder="15000"') +
       inv('onderhoud_interval_mnd', 'of (maanden)', v.onderhoud_interval_mnd, 'number', 'min="1" max="60" placeholder="12"') + '</div>' +
-      '<div class="gr-2">' + inv('apk_tot', 'APK geldig tot', v.apk_tot, 'date') + inv('onderhoud_datum', 'Volgend onderhoud (datum)', v.onderhoud_datum, 'date') + '</div>' +
+      inv('onderhoud_datum', 'Volgend onderhoud (datum)', v.onderhoud_datum, 'date') +
       inv('onderhoud_km', 'Volgend onderhoud (km-stand)', v.onderhoud_km, 'number', 'min="0"') +
       '<div class="gr-2">' + inv('onderhoud_laatst', 'Laatste onderhoudsbeurt', v.onderhoud_laatst, 'text', 'maxlength="80" placeholder="bv. 03-2026 / 135.000 km"') +
-      inv('distributie', 'Distributieriem/-ketting', v.distributie, 'text', 'maxlength="80" placeholder="bv. vervangen bij 120.000 km"') + '</div>' +
+      inv('distributie', 'Distributieriem/-ketting', v.distributie, 'text', 'maxlength="80" placeholder="bv. vervangen bij 120.000 km"') + '</div></div>' +
       '<label class="gr-veld">Notities<textarea id="grf_notities" rows="3" maxlength="1000">' + esc(v.notities || '') + '</textarea></label>' +
       (v.cilinderinhoud ? '<input type="hidden" id="grf_cilinderinhoud" value="' + esc(v.cilinderinhoud) + '">' : '') +
       (v.vermogen_kw ? '<input type="hidden" id="grf_vermogen_kw" value="' + esc(v.vermogen_kw) + '">' : '') +
@@ -2299,7 +2311,7 @@
   }
 
   function formWaarden() {
-    var velden = ['naam', 'kenteken', 'merk', 'model', 'bouwjaar', 'motor', 'brandstof', 'turbo', 'transmissie', 'versnellingen', 'rijprofiel', 'verbruik_opgegeven', 'kmstand', 'tankinhoud', 'brandstofprijs', 'apk_tot', 'onderhoud_datum', 'onderhoud_km', 'onderhoud_laatst', 'distributie', 'notities', 'cilinderinhoud', 'vermogen_kw', 'vin_pseudo', 'tanken', 'score', 'onderhoud_interval_km', 'onderhoud_interval_mnd'];
+    var velden = ['naam', 'kenteken', 'merk', 'model', 'bouwjaar', 'motor', 'brandstof', 'turbo', 'transmissie', 'versnellingen', 'rijprofiel', 'verbruik_opgegeven', 'kmstand', 'tankinhoud', 'brandstofprijs', 'apk_tot', 'onderhoud_datum', 'onderhoud_km', 'onderhoud_laatst', 'distributie', 'notities', 'cilinderinhoud', 'vermogen_kw', 'vin_pseudo', 'tanken', 'onderhoud', 'score', 'onderhoud_interval_km', 'onderhoud_interval_mnd'];
     var uit = {};
     velden.forEach(function (k) { var el = document.getElementById('grf_' + k); if (el) uit[k] = el.value === '' ? null : el.value; });
     return uit;
@@ -2914,7 +2926,7 @@
     voertuigen(true).forEach(function (v) {
       var d = dagenTot(v.apk_tot);
       if (d != null && d <= 30) melding('📅 ' + (v.naam || v.merk || 'Je voertuig') + ': APK ' + (d < 0 ? 'verlopen' : 'over ' + d + ' dag' + (d === 1 ? '' : 'en')));
-      else if (v.onderhoud_km && v.kmstand && v.kmstand >= v.onderhoud_km) melding('🔧 ' + (v.naam || v.merk || 'Je voertuig') + ': onderhoud is aan de beurt');
+      else if (onderhoudAan(v) && v.onderhoud_km && v.kmstand && v.kmstand >= v.onderhoud_km) melding('🔧 ' + (v.naam || v.merk || 'Je voertuig') + ': onderhoud is aan de beurt');
     });
   }
 
