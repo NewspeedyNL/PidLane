@@ -14,6 +14,31 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 31-10-2026 — De versnelling liep 2–3 s achter de schakeling aan
+
+**Uit de auto:** "hij staat al 2 seconden in de vier en zegt nog drie".
+Drie filters na elkaar: (1) `_stabiel()` in PLGear eist dat álle paren in
+het venster van ~1,2 s binnen 3% liggen, dus de paren van de oude
+versnelling moesten er eerst uit; (2) `wisselMs` 450 ms; (3) `gearRustig()`
+in Hyperlane nog eens 0,6 s. Nagebouwd in `test-gear.js` (3 → 4, koppeling
+0,5 s in en 0,3 s slip): 1400 ms in PLGear, plus de 0,6 s van Hyperlane.
+
+**Wat het werd:** het venster blijft voor het leren; voor het cijfer tellen
+de laatste twee verse paren als ze binnen 3% van elkaar en ±4% van een
+versnelling liggen (600 ms in dezelfde proef). Onder `neutraalRpm` niet:
+met de koppeling in zakt het toerental naar stationair, en dan kan de
+verhouding een tijd op een hogere versnelling vallen — dat is de tegenproef.
+Het tweede filter in Hyperlane is weg; één ding, één betekenis.
+
+**De lampjes zag je niet.** `leds()` begon op 70% van de rode streep; bij
+gewoon rijden kom je daar nooit. Ze lopen nu naar het punt waarop CA11
+opschakelen aanraadt (`PLBerekend.schakelPunt()`, getoetst tegen
+`schakelAdvies()` zelf), of bij hard werk naar 90% van de rode streep.
+De flits over de rand blijft voor de begrenzer. Toerental en snelheid hadden
+al voorrang (`ANKERS` in `pidlane-visueel.js`, 120 ms): daar zat het niet.
+
+---
+
 ## 31-10-2026 — De remsensoren stonden onder een andere modelsleutel
 
 **Gemeten** (D1, alleen gelezen): `kp_pid_bib` heeft `222B0D` @760

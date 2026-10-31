@@ -118,14 +118,33 @@ function stemming(toeren, rood, gas){
   return klem(.65*t+.35*g, 0, 1);
 }
 function modus(m){ return m<.3 ? 'ECO' : m<.55 ? 'CRUISE' : m<.8 ? 'SPORT' : 'MAX'; }
-/* Schakellampjes: hoeveel van `n` er branden, en of hij op de begrenzer zit.
-   Ze beginnen op 70% van de rode streep. */
-function leds(toeren, rood, n){
+/* Schakellampjes: hoeveel van `n` er branden, en of het schakelpunt bereikt
+   is (dan knipperen ze). Ze beginnen op LED_VAN van dat punt.
+   Tot 31-10-2026 liepen ze naar de rode streep, vanaf 70%: bij gewoon rijden
+   kwam je daar nooit, dus je zag ze niet. Nu lopen ze naar schakelDoel(). */
+const LED_VAN = .8, RACE_FRAC = .9;
+function leds(toeren, punt, n){
   n=n||10;
   const t=Number(toeren);
-  if(!(rood>0) || toeren===null || !isFinite(t)) return { aan:0, max:false };
-  const van=rood*.7;
-  return { aan:Math.round(klem((t-van)/(rood-van), 0, 1)*n), max:t>=rood*.98 };
+  if(!(punt>0) || toeren===null || !isFinite(t)) return { aan:0, max:false };
+  const van=punt*LED_VAN;
+  return { aan:Math.round(klem((t-van)/(punt-van), 0, 1)*n), max:t>=punt };
+}
+/* Waar de lampjes naartoe lopen. `eco` = PLBerekend.schakelPunt() (het
+   toerental waarop CA11 opschakelen aanraadt), `hard` = vol gas of een
+   belasting boven SCHAKEL.maxBelasting. Rustig rijden: het ecopunt; hard,
+   of geen hogere versnelling bekend: RACE_FRAC van de rode streep. Nooit
+   voorbij die streep. Puur. */
+function schakelDoel(rood, eco, hard){
+  const race=rood>0 ? rood*RACE_FRAC : null;
+  if(hard || !(eco>0)) return race;
+  return race ? Math.min(eco, race) : eco;
+}
+/* De pijl omhoog: het schakelpunt is bereikt en er is een hogere
+   versnelling. `top` = de versnelling is bekend en er is er geen boven. */
+function pijlOp(toeren, punt, top){
+  const t=Number(toeren);
+  return !top && punt>0 && toeren!==null && isFinite(t) && t>=punt;
 }
 /* 0–100 vanuit stilstand. `st` = {start, stil}, `t` in seconden. De klok
    loopt vanaf het laatste moment van stilstand (< 1 km/h), als het gas
@@ -393,17 +412,19 @@ function heldRustig(st, h, oud, dt){
   return s;
 }
 /* De versnelling groot, maar niet bij elke twijfel van PLGear weg: een
-   nieuwe versnelling moet GEAR_STABIEL_S kloppen, een onbekende houdt de
-   laatste vast, en pas na GEAR_LEEG_S zonder versnelling wijkt hij voor het
-   slimme getal. Terug komt hij pas als hij GEAR_TERUG_S weer bekend is.
+   onbekende houdt de laatste vast, en pas na GEAR_LEEG_S zonder versnelling
+   wijkt hij voor het slimme getal. Terug komt hij pas als hij GEAR_TERUG_S
+   weer bekend is. Een andere versnelling staat er meteen: tot 31-10-2026
+   moest die hier nog 0,6 s kloppen, bovenop het wachten in PLGear zelf, en
+   dan stond er 2 s na het schakelen nog de oude.
    `toon` is wat middenHeld() krijgt ('' = slim getal). Puur. */
-const GEAR_STABIEL_S = .6, GEAR_LEEG_S = 12, GEAR_TERUG_S = 3;
+const GEAR_LEEG_S = 12, GEAR_TERUG_S = 3;
 function gearRustig(st, g, dt){
   const s=st ? { toon:st.toon, kand:st.kand, kt:st.kt, leeg:st.leeg, ooit:st.ooit } : { toon:'', kand:'', kt:0, leeg:0, ooit:false };
   if(!g){ s.leeg+=dt; s.kand=''; s.kt=0; if(s.leeg>=GEAR_LEEG_S) s.toon=''; return s; }
   s.leeg=0;
   if(g!==s.kand){ s.kand=g; s.kt=0; } else s.kt+=dt;
-  const nodig=s.toon ? GEAR_STABIEL_S : s.ooit ? GEAR_TERUG_S : 0;
+  const nodig=s.toon ? 0 : s.ooit ? GEAR_TERUG_S : 0;
   if(g!==s.toon && s.kt>=nodig){ s.toon=g; s.ooit=true; }
   return s;
 }
@@ -646,7 +667,7 @@ function start(wortel){
   const bg=wortel.querySelector('.vhl-bg');
   _s={ wortel:wortel, bg:bg, gl:bg ? glOp(bg) : null, ringen:{}, doel:{}, toon:{ toeren:0, snel:0 },
        stem:0, Z:0, t0:performance.now(), last:performance.now(), piek:{ toeren:0, snel:0 },
-       nul:{ start:null, stil:null, los:null }, badgeT:0, tilt:[0,0], tiltDoel:[0,0], gearT:0, gear:'', maat:'' , raf:0, opt:opties(),
+       nul:{ start:null, stil:null, los:null }, badgeT:0, tilt:[0,0], tiltDoel:[0,0], gearT:0, gear:'', schakel:{ eco:null, top:false }, maat:'' , raf:0, opt:opties(),
        // scènes: de gewichten lopen vloeiend naar hun doel, zodat geen scène aanspringt
        sc:'', g:{ B:0, K:0, A:0, F:0, Z:0, D:1 }, golf:99, vs:null, stilS:0, cruiseS:0, lat:0,
        ritPiek:0, topGemeld:0, klokT:0,
@@ -757,6 +778,20 @@ function maatBij(){
   _s.maat=sleutel;
   if(_s.bg){ _s.bg.width=Math.max(1, w.clientWidth*d|0); _s.bg.height=Math.max(1, w.clientHeight*d|0); if(_s.gl) _s.gl.gl.viewport(0,0,_s.bg.width,_s.bg.height); }
   Object.keys(_s.ringen).forEach(function(k){ const c=_s.ringen[k], px=Math.max(1, c.clientWidth*d|0); c.width=c.height=px; });
+}
+/* Ecopunt en of dit de hoogste versnelling is, uit PLBerekend (CA11). */
+function schakelLees(){
+  try{
+    const B=window.PLBerekend;
+    if(!B || typeof B.schakelBron!=='function') return { eco:null, top:false };
+    const b=B.schakelBron(), r=b.ratios||{};
+    return { eco:B.schakelPunt(b.gear, r, b.diesel), top:typeof b.gear==='number' && b.gear>=1 && !!r[b.gear] && !r[b.gear+1] };
+  }catch(e){ console.warn('PLHyperlane: schakelpunt niet te lezen', e); return { eco:null, top:false }; }
+}
+function belastingHoog(){
+  const v=(typeof window.pidVals==='object' && window.pidVals) ? window.pidVals['0104'] : null;
+  const max=(window.PLBerekend && window.PLBerekend.SCHAKEL) ? window.PLBerekend.SCHAKEL.maxBelasting : 75;
+  return v!==null && v!==undefined && isFinite(Number(v)) && Number(v)>max;
 }
 function gearLees(){
   let g=null;
@@ -934,7 +969,12 @@ function frame(nu){
     txt:live ? (d.snel==null ? '—' : tekstVan(s.toon.snel, 0)) : '', eenh:'KM/H' });
   // Schakellampjes, met een flits over de rand op de begrenzer
   // De flits over de rand alleen in de tunnel: in een rustige vorm knipperen alleen de lampjes
-  const l=leds(e.toeren, rood, 10), knip=l.max && (T*12|0)%2===0, flits=knip && av==='tunnel';
+  // Het schakelpunt (31-10-2026): rustig het ecopunt van CA11, hard de rode
+  // streep. De flits over de rand blijft voor de begrenzer zelf.
+  const hard=(e.gas!=null && e.gas>=VOLGAS) || belastingHoog(), punt=live ? schakelDoel(rood, s.schakel.eco, hard) : null;
+  const l=leds(e.toeren, punt, 10), knip=l.max && (T*12|0)%2===0, flits=knip && av==='tunnel' && e.toeren>=rood*.98;
+  const op=live && pijlOp(e.toeren, punt, s.schakel.top), pe=w.querySelector('.vhl-pijl');
+  if(pe && pe.classList.contains('aan')!==op) pe.classList.toggle('aan', op);
   w.querySelectorAll('.vhl-leds i').forEach(function(e, i){ e.className=l.max ? (knip ? 'max' : '') : (i<l.aan ? (i<4 ? 'g' : i<7 ? 'a' : 'r') : ''); });
   w.classList.toggle('vhl-knip', flits);
   scoreBij(w, sc, dt, nu8);
@@ -945,6 +985,7 @@ function frame(nu){
   if((s.gearT-=dt)<=0){
     s.gearT=.15;
     const g=gearLees(), ge=w.querySelector('.vhl-gear');
+    s.schakel=schakelLees();
     // Opschakelen: een lichtgolf door de tunnel
     if(/^\d$/.test(g) && /^\d$/.test(s.gear) && Number(g)>Number(s.gear)) s.golf=0;
     if(ge && g!==s.gear){ s.gear=g; ge.textContent=g; ge.classList.remove('wissel'); void ge.offsetWidth; ge.classList.add('wissel'); }
@@ -974,9 +1015,9 @@ function frame(nu){
 
 window.PLHyperlane = {
   STOPS:STOPS, OPSTART_S:OPSTART_S,
-  kleur:kleur, stemming:stemming, modus:modus, leds:leds, nul100:nul100, volg:volg,
+  kleur:kleur, stemming:stemming, modus:modus, leds:leds, schakelDoel:schakelDoel, pijlOp:pijlOp, LED_VAN:LED_VAN, RACE_FRAC:RACE_FRAC, nul100:nul100, volg:volg,
   held:held, ACC_KMHS:ACC_KMHS, VOLGAS:VOLGAS,
-  heldWaarde:heldWaarde, heldRustig:heldRustig, HELD_MIN_S:HELD_MIN_S, HELD_WAARDE_S:HELD_WAARDE_S, gearRustig:gearRustig, GEAR_STABIEL_S:GEAR_STABIEL_S, GEAR_LEEG_S:GEAR_LEEG_S, GEAR_TERUG_S:GEAR_TERUG_S,
+  heldWaarde:heldWaarde, heldRustig:heldRustig, HELD_MIN_S:HELD_MIN_S, HELD_WAARDE_S:HELD_WAARDE_S, gearRustig:gearRustig, GEAR_LEEG_S:GEAR_LEEG_S, GEAR_TERUG_S:GEAR_TERUG_S,
   MIDDEN:MIDDEN, MIDDEN_TEKST:MIDDEN_TEKST, MIDDEN_SLEUTEL:MIDDEN_SLEUTEL, middenHeld:middenHeld, leesMidden:leesMidden,
   VORMEN:VORMEN, VORM_TEKST:VORM_TEKST, VORM_SLEUTEL:VORM_SLEUTEL, volgendeVorm:volgendeVorm, actieveVorm:actieveVorm, leesVorm:leesVorm, ringSchaal:ringSchaal, echt:echt,
   versnelling:versnelling, warmte:warmte, nacht:nacht, scene:scene, SCENE_TEKST:SCENE_TEKST,

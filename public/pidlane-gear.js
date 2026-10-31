@@ -93,6 +93,8 @@ const CFG = {
   matchTol: 0.07,         // meting past bij versnelling binnen ±7%
   wisselMs: 450,          // nieuwe versnelling moet zo lang kloppen
   houdMs: 1500,           // tijdens schakelen laatste cijfer zo lang vasthouden
+  snelTol: 0.04,          // snelle weergave: twee verse paren binnen ±4% van een versnelling
+  snelGatMs: 800,         // … die hoogstens zo ver uit elkaar liggen
   neutraalRpm: 1200,      // rijden + toerental hieronder + geen match = N
   herberekenMs: 8000,     // pieken opnieuw bepalen
   histMax: 20000,         // daarboven halveren (traag meebewegen)
@@ -195,7 +197,7 @@ const PLGear = {
   afwijking: false,
   toon: null,             // wat nu getoond wordt: null | 1..n | 'N'
   _kand: null, _kandSinds: 0,
-  _laatstStabiel: 0, _laatstRijden: 0,
+  _laatstStabiel: 0, _laatstSnel: 0, _laatstRijden: 0,
   _herberekend: 0, _opgeslagen: 0, _vuil: false,
   _timer: null,
   _vinGezien: null,       // de VIN waarvoor het pseudoniem is aangevraagd
@@ -424,14 +426,14 @@ const PLGear = {
     if (n && g.length<n) return false;
     return r > Math.max.apply(null, g)*(1+CFG.matchTol);
   },
-  _match(r){
+  _match(r, tol){
     const g=(this.model&&this.model.gears)||[];
     let best=-1, fout=Infinity;
     for (let i=0;i<g.length;i++){
       const f=Math.abs(r-g[i])/g[i];
       if (f<fout){ fout=f; best=i; }
     }
-    if (best<0 || fout>CFG.matchTol) return null;
+    if (best<0 || fout>(tol||CFG.matchTol)) return null;
     const gear=this.nummer(best);
     return gear>=1 ? {gear, idx:best, fout} : null;
   },
@@ -660,6 +662,25 @@ const PLGear = {
     return {t:Math.max(ts,tr), kmh:s.v, rpm:r.v, nieuw};
   },
 
+  // Snelle weergave (31-10-2026): de laatste twee verse paren liggen binnen 3%
+  // van elkaar en binnen ±4% van één versnelling. Het stabiele venster
+  // hierboven blijft voor het leren; voor het cijfer wachtte het tot de
+  // paren van de vorige versnelling eruit waren — ruim een seconde na het
+  // opkomen van de koppeling, en met wisselMs en de rust van Hyperlane erbij
+  // stond er 2–3 s de oude versnelling. Onder neutraalRpm telt het niet:
+  // koppeling in staat de motor rond stationair, en die verhouding kan net
+  // op een hogere versnelling vallen.
+  _snel(){
+    const b=this._buf, x=b[b.length-1], v=b[b.length-2];
+    if (!x || !v || x.t-v.t>CFG.snelGatMs) return undefined;
+    if (x.rpm<CFG.neutraalRpm || v.rpm<CFG.neutraalRpm) return undefined;
+    if (Math.abs(x.r-v.r)/x.r>CFG.stabielTol) return undefined;
+    const r=(x.r+v.r)/2;
+    if (this._isAchteruit(r, x.kmh)) return undefined;
+    const m=this._match(r, CFG.snelTol);
+    return m ? m.gear : undefined;
+  },
+
   _stabiel(){
     const t=nu(), b=this._buf.filter(x=>x.t>=t-CFG.stabielMs-300);
     if (b.length<CFG.minStabielN) return null;
@@ -729,9 +750,17 @@ const PLGear = {
         const r=p.kmh/(Math.max(p.rpm,1)/1000);
         doel = this._neutraal(r, p.rpm) ? 'N' : undefined;
       }
+      // Twee verse paren die bij één versnelling passen: meteen tonen, zonder
+      // wisselMs. Een geleerde achteruit gaat voor.
+      const snel = (geldig && !achteruit) ? this._snel() : undefined;
+      if (snel!==undefined){
+        this._laatstSnel=t; this._kand=null;
+        if (snel!==this.toon) this._zet(snel);
+        return;
+      }
       if (doel===undefined){
         // schakelmoment / onzeker: laatste cijfer even vasthouden
-        if (t-this._laatstStabiel>CFG.houdMs && this.toon!=='N'){ this._zet(null); this._kand=null; }
+        if (t-Math.max(this._laatstStabiel, this._laatstSnel||0)>CFG.houdMs && this.toon!=='N'){ this._zet(null); this._kand=null; }
         return;
       }
       if (doel===this.toon){ this._kand=null; return; }

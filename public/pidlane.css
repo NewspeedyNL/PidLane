@@ -2211,6 +2211,9 @@ body.pl-vis-vol .vpf-lcd-rij .vpf-w { font-size:min(6vh, 7vw, 44px); }
 .vhl-merk:empty { display:none; }
 .vhl-gear:empty { display:none; }   /* versnelling onbekend: geen gat in het midden */
 .vhl-gear.wissel { animation:vhl-wissel .25s ease-out; }
+.vhl-pijl { display:none; flex:none; color:#ff3050; font-size:min(3.6cqh, 1.1cqw); line-height:1; text-shadow:0 0 10px #ff3050, 0 0 22px rgba(255,48,80,.55); }
+.vhl-pijl.aan { display:inline-block; animation:vhl-pijl .5s ease-in-out infinite alternate; }   /* schakelpunt bereikt: opschakelen */
+@keyframes vhl-pijl { from { transform:translateY(.12em); opacity:.65; } to { transform:translateY(-.12em); opacity:1; } }
 @keyframes vhl-wissel { from { transform:scale(1.15); } to { transform:none; } }
 .vhl-strook { display:flex; gap:4cqw; font-size:3.4cqh; }
 .vhl-strook div { text-align:center; }
@@ -2356,7 +2359,7 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vt-thema, body.pl-vis-vol .vis:has(.vpf-hy
 .vhl-power-balk i { display:block; height:100%; width:0; background:linear-gradient(90deg, #ff9d00, #ffe27a, #fff); box-shadow:0 0 16px #ffd23a; }
 .vpf-hyper.vhl-score-aan .vhl-pod { opacity:.35; transition:opacity .4s; }
 .vhl-mid, .vhl-pod { transition:opacity .4s; }
-@media (prefers-reduced-motion:reduce) { .vhl-tank-balk i { animation:none; } .vhl-gear.wissel { animation:none; } .vhl-score, .vhl-score.aan .vhl-tegel { transition:none; } .vpf-hyper[data-scene="alarm"] .vhl-rand, .vpf-hyper[data-scene="alarm"] .vhl-modus { animation:none; } }
+@media (prefers-reduced-motion:reduce) { .vhl-tank-balk i { animation:none; } .vhl-gear.wissel, .vhl-pijl.aan { animation:none; } .vhl-score, .vhl-score.aan .vhl-tegel { transition:none; } .vpf-hyper[data-scene="alarm"] .vhl-rand, .vpf-hyper[data-scene="alarm"] .vhl-modus { animation:none; } }
 /* ── Telemetrie (05-10-2026): horizon, offroad, G-cirkel ──
    Net als neon een vaste donkere cockpit, in beide thema's: een horizon met
    een witte lucht leest niet. De tekening draait via transform (bij()). */

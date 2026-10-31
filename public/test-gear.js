@@ -213,6 +213,50 @@ console.log('\n— andere banden (+10%): afwijking, en Leer opnieuw herstelt —
   ok(!a.G.afwijking && score >= 0.9, `na opnieuw leren weer juist (${(score * 100).toFixed(1)}%)`);
 }
 
+console.log('\n— schakelen: het cijfer volgt binnen een seconde (31-10-2026) —');
+{
+  // In de auto: "hij staat al 2 s in de vier en zegt nog drie". Een echte
+  // schakeling van 3 naar 4: koppeling in (toeren zakken naar stationair),
+  // koppeling slipt op, en dan dicht in de 4e. Gemeten vanaf het moment dat
+  // de koppeling dicht is.
+  const a = nieuweApp();
+  a.rij(180000, profielMaker(RATIO));
+  const kmh = 60, r3 = kmh / RATIO[2] * 1000, r4 = kmh / RATIO[3] * 1000;
+  const ruis = t => 1 + 0.003 * Math.sin(t / 13);
+  a.rij(6000, t => ({ kmh, rpm: r3 * ruis(t) }));
+  ok(a.G.toon === 3, `vóór het schakelen de 3e (toon ${a.G.toon})`);
+  const T0 = a.T, IN = 500, SLIP = 300;
+  let vals = null, dicht = null;
+  const prof = t => {
+    const d = t - T0;
+    if (d < IN) return { kmh, rpm: r3 - (r3 - 1000) * d / IN };
+    if (d < IN + SLIP) return { kmh, rpm: 1000 + (r4 - 1000) * (d - IN) / SLIP };
+    return { kmh, rpm: r4 * ruis(t) };
+  };
+  a.rij(IN + SLIP + 3000, prof, { score: t => {
+    const g = a.G.toon;
+    if (g !== 3 && g !== 4 && g !== null && vals === null) vals = g;
+    if (g === 4 && dicht === null) dicht = t - T0 - IN - SLIP;
+    return null;
+  } });
+  ok(vals === null, `tijdens het schakelen geen andere versnelling (zag ${vals})`);
+  ok(dicht !== null && dicht <= 1000, `de 4e staat er ${dicht} ms nadat de koppeling dicht is (≤ 1000 ms)`);
+
+  // Snel mag niet slordig: koppeling in, toeren zakken langzaam naar
+  // stationair, en onderweg valt de verhouding een tijdje op de 4e. Te
+  // schuivend voor het stabiele venster (> 3% per 0,9 s), maar twee paren
+  // na elkaar liggen dicht genoeg bij elkaar — alleen de toerenpoort houdt
+  // het snelle pad hier tegen.
+  const b = nieuweApp();
+  b.rij(180000, profielMaker(RATIO));
+  b.rij(6000, t => ({ kmh, rpm: r3 * ruis(t) }));
+  const T1 = b.T;
+  let fout4 = false;
+  b.rij(3000, t => ({ kmh: 27, rpm: 1150 - 150 * (t - T1) / 3000 }),
+    { score: () => { if (b.G.toon === 4) fout4 = true; return null; } });
+  ok(!fout4, 'koppeling in rond stationair: de verhouding van de 4e levert geen 4e op');
+}
+
 console.log('\n— privacy: de ruwe VIN gaat nergens in (§7, #102) —');
 (async () => {
   const a = nieuweApp({ vin: VIN, pseudoniem: true });

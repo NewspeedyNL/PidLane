@@ -147,6 +147,38 @@ function toets(naam, waar, uitleg) {
       sb.run && /^RUN/.test(sb.kop) && sb.graf && sb.bewaard === 1, JSON.stringify(sb));
     toets('een tik sluit het bord, en het komt niet vanzelf terug', sb.dichtNaTik, JSON.stringify(sb));
     toets('🏁 toont de hele rit, nog een keer 🏁 sluit hem', sb.hand && /^RIT/.test(sb.kopHand) && sb.dichtNaKnop, JSON.stringify(sb));
+    // Schakellampjes en de pijl omhoog (31-10-2026): het ecopunt komt uit
+    // PLBerekend (CA11), de lus zet de pijl. Toeren, gas en de versnelling
+    // komen van de proef; de belastingpoort staat even open, want de
+    // demo-auto schrijft 0104 en dat is hier niet de vraag.
+    const sp = await app.ev(`(async function(){
+      const wacht = ms => new Promise(r => setTimeout(r, ms));
+      setPidView('overzicht'); await wacht(200); setPidView('visueel'); await wacht(800);
+      const v = () => document.querySelector('.gg.view-visueel .vpf-hyper');
+      const echt = PLHyperlane.zet, bron = PLBerekend.schakelBron, maxB = PLBerekend.SCHAKEL.maxBelasting;
+      let tpm = 3000;
+      PLHyperlane.zet = function () {};
+      const voed = setInterval(function () { echt('toeren', tpm, 'ok', false); echt('snel', 60, 'ok', false); echt('gas', 20, 'ok', false); }, 100);
+      PLBerekend.SCHAKEL.maxBelasting = 101;
+      try {
+        let ratios = { 3: 19.6, 4: 25.8 };
+        PLBerekend.schakelBron = function () { return { gear: 3, ratios: ratios, diesel: false }; };
+        const pijl = () => { const e = v().querySelector('.vhl-pijl'); return !!e && e.classList.contains('aan') && getComputedStyle(e).display !== 'none'; };
+        const lampjes = () => [].filter.call(v().querySelectorAll('.vhl-leds i'), function (i) { return i.className !== ''; }).length;
+        const tot = async (f, w) => { for (let i = 0; i < 30 && f() !== w; i++) await wacht(100); return f(); };
+        const r = { pijl3000: await tot(pijl, true) };
+        tpm = 2000;
+        r.pijl2000 = await tot(pijl, false);
+        r.lampjes2000 = await tot(function () { return lampjes() > 0; }, true) ? lampjes() : 0;
+        ratios = { 3: 19.6 }; tpm = 3000;              // de 3e is de hoogste: geen pijl, ook niet boven het ecopunt
+        await wacht(800); r.pijlTop = pijl();
+        return r;
+      } finally { clearInterval(voed); PLHyperlane.zet = echt; PLBerekend.schakelBron = bron; PLBerekend.SCHAKEL.maxBelasting = maxB; }
+    })()`);
+    console.log('\n2c. Schakellampjes en de pijl omhoog');
+    toets('3000 tpm in de 3e, rustig: de pijl omhoog staat er', sp.pijl3000, JSON.stringify(sp));
+    toets('2000 tpm: geen pijl, maar de lampjes lopen al op naar het schakelpunt', !sp.pijl2000 && sp.lampjes2000 > 0, JSON.stringify(sp));
+    toets('in de hoogste versnelling geen pijl', !sp.pijlTop, JSON.stringify(sp));
     // De Hyperlane-schil om Temperatuur en Emissie (28-10-2026)
     for (const [pr, bw, bh] of [['temp', 915, 412], ['emissie', 412, 915], ['telemetrie', 915, 412], ['basis', 412, 915]]) {
       await app.venster(bw, bh);

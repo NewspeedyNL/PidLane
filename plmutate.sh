@@ -1224,7 +1224,14 @@ MUTATIES=(
 "public/pidlane-hyperlane.js@@if(h.l!==s.l && (HELD_DIRECT[h.l] || s.t>=HELD_MIN_S)) return nieuw;@@if(h.l!==s.l && s.t>=HELD_MIN_S) return nieuw;@@test-hyperlane.js@@een te heet koelwater wacht zes seconden op zijn beurt"
 "public/pidlane-hyperlane.js@@  if(n(x.gas) && x.gas>=VOLGAS) return (n(x.versn)@@  if(false) return (n(x.versn)@@test-hyperlane.js@@bij vol gas staat het verbruik weer in het midden"
 "public/pidlane-hyperlane.js@@if(!g){ s.leeg+=dt; s.kand=''; s.kt=0; if(s.leeg>=GEAR_LEEG_S) s.toon=''; return s; }@@if(!g){ s.toon=''; return s; }@@test-hyperlane.js@@een versnelling die even onbekend is, maakt meteen plaats voor het slimme getal"
-"public/pidlane-hyperlane.js@@  const nodig=s.toon ? GEAR_STABIEL_S : s.ooit ? GEAR_TERUG_S : 0;@@  const nodig=0;@@test-hyperlane.js@@een versnelling die 0,3 s anders is, staat er meteen"
+"public/pidlane-hyperlane.js@@  const nodig=s.toon ? 0 : s.ooit ? GEAR_TERUG_S : 0;@@  const nodig=0;@@test-hyperlane.js@@na twaalf seconden onbekend springt de versnelling bij de eerste meting terug"
+"public/pidlane-hyperlane.js@@  const nodig=s.toon ? 0 : s.ooit ? GEAR_TERUG_S : 0;@@  const nodig=s.toon ? .6 : s.ooit ? GEAR_TERUG_S : 0;@@test-hyperlane.js@@na het schakelen wacht het midden weer 0,6 s bovenop PLGear"
+# Schakellampjes en de pijl (31-10-2026): naar het schakelpunt van CA11, de rode streep bij hard werk, geen pijl in de hoogste.
+"public/pidlane-hyperlane.js@@  return { aan:Math.round(klem((t-van)/(punt-van), 0, 1)*n), max:t>=punt };@@  return { aan:Math.round(klem((t-van)/(punt-van), 0, 1)*n), max:t>=punt*1.1 };@@test-hyperlane.js@@de lampjes knipperen pas ruim voorbij het schakelpunt"
+"public/pidlane-hyperlane.js@@  if(hard || !(eco>0)) return race;@@  if(!(eco>0)) return race;@@test-hyperlane.js@@vol gas knipperen de lampjes al op het ecopunt van 2400 tpm"
+"public/pidlane-hyperlane.js@@  return !top && punt>0 && toeren!==null@@  return punt>0 && toeren!==null@@test-hyperlane.js@@de pijl omhoog staat er ook in de hoogste versnelling"
+"public/pidlane-hyperlane.js@@  if(pe && pe.classList.contains('aan')!==op) pe.classList.toggle('aan', op);@@@@bproef-hyperlane.js@@de pijl omhoog verschijnt nooit op het scherm"
+"public/pidlane-berekend.js@@  return Math.max(g.vanaf, Math.ceil(g.na*ratios[gear+1]/ratios[gear]));@@  return Math.max(g.vanaf, Math.ceil(g.na*ratios[gear]/ratios[gear+1]));@@test-berekend.js@@de lampjes zeggen schakelen bij een toerental waarop het advies nog blijven zegt"
 "public/pidlane-hyperlane.js@@  if(HELD_LOPEND[s.l] || s.wt>=HELD_WAARDE_S){ s.w=oud.w;@@  if(true){ s.w=oud.w;@@test-hyperlane.js@@het verbruik krijgt weer elke tik een nieuw getal"
 "public/pidlane-visueel.js@@    themaBij(g);\n    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@bproef-visthema.js@@een herbouw van een profiel gooit de knop volledig scherm weg"
 "public/pidlane-visueel.js@@  lichaam(false);\n  try{ if(window.PLVisThema) PLVisThema.uit(); }@@  lichaam(false);\n  try{ }@@bproef-visthema.js@@een andere weergave kiezen laat het volle scherm over de app liggen"
@@ -1703,6 +1710,9 @@ MUTATIES=(
 "public/pidlane-gear.js@@    if (Math.abs(ts-tr)>CFG.alignMaxMs) return {los:true, kmh:s.v, rpm:r.v};@@@@test-gear.js@@snelheid en toerental van verschillende momenten tellen als één paar"
 "public/pidlane-gear.js@@    if (t-ts>CFG.versMaxMs || t-tr>CFG.versMaxMs) return {oud:true};@@@@test-gear.js@@een oude cachewaarde levert nog een versnelling op"
 "public/pidlane-gear.js@@      this._wissel(ps ? 'v_'+ps : 'onbekend');@@      this._wissel(ps ? 'v_'+vin : 'onbekend');@@test-gear.js@@het model wordt onder de ruwe VIN opgeslagen"
+# Snelle weergave (31-10-2026): het cijfer volgt de schakeling, maar stationair met de koppeling in is geen versnelling.
+"public/pidlane-gear.js@@      const snel = (geldig && !achteruit) ? this._snel() : undefined;@@      const snel = undefined;@@test-gear.js@@na het schakelen staat de oude versnelling er nog anderhalve seconde"
+"public/pidlane-gear.js@@    if (x.rpm<CFG.neutraalRpm || v.rpm<CFG.neutraalRpm) return undefined;@@@@test-gear.js@@koppeling in rond stationair: een verhouding die op een hogere versnelling valt, staat er meteen"
 
 # ── 27-09-2026: versnelling aan het voertuig, de knop Fout, berekende PIDs,
 # de trekmodus, ritlabels, nette rapporten en de terugknop op een gescrold

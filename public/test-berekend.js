@@ -90,6 +90,14 @@ console.log('\n— schakeladvies: alleen omhoog —');
 const R = { 1: 7.4, 2: 13.1, 3: 19.6, 4: 25.8, 5: 31.9, 6: 38.2 };
 ok(B.schakelAdvies(50, 3800, 2, R, false, 30) === 4, '2e bij 3800 tpm, rustig: naar de 4e (2600 → 1930 tpm blijft boven 1700)');
 ok(B.schakelAdvies(50, 2000, 2, R, false, 30) === 2, 'onder 2400 tpm: blijven');
+// Het schakelpunt van de lampjes valt precies samen met het advies (31-10-2026)
+for (const [g, d] of [[1, false], [2, false], [3, false], [5, false], [1, true], [3, true]]){
+  const p = B.schakelPunt(g, R, d), kmh = 50;
+  ok(p > 0 && B.schakelAdvies(kmh, p, g, R, d, 30) > g && B.schakelAdvies(kmh, p - 1, g, R, d, 30) === g,
+    `schakelpunt ${g}e${d ? ' (diesel)' : ''}: ${p} tpm geeft advies, ${p - 1} niet`);
+}
+ok(B.schakelPunt(6, R, false) === null, 'in de hoogste versnelling geen schakelpunt');
+ok(B.schakelPunt(null, R, false) === null && B.schakelPunt(2, null, false) === null, 'zonder versnelling of verhoudingen geen schakelpunt');
 ok(B.schakelAdvies(50, 3800, 2, R, false, 90) === 2, 'zwaar belast (klim, caravan): blijven');
 ok(B.schakelAdvies(100, 1200, 6, R, false, 30) === 6, 'laag toerental in de 6e: NOOIT terugschakelen');
 ok(B.schakelAdvies(80, 1300, 5, R, true, 95) === 5, 'diesel op een klim met lage toeren: geen terugschakeladvies');

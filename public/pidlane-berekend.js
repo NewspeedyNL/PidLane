@@ -165,6 +165,22 @@ function schakelAdvies(kmh, rpm, gear, ratios, isDiesel, belasting){
   }
   return beste;
 }
+/* Het toerental waarop schakelAdvies() de volgende versnelling aanraadt
+   (31-10-2026, voor de schakellampjes van Hyperlane). Dezelfde drempels:
+   minstens `vanaf`, en na het opschakelen nog minstens `na`. null = geen
+   hogere versnelling bekend. De belasting zit er niet in: wie hard werkt
+   krijgt geen advies, en de lampjes nemen dan de rode streep. */
+function schakelPunt(gear, ratios, isDiesel){
+  if (typeof gear!=='number' || gear<1 || !ratios || !ratios[gear] || !ratios[gear+1]) return null;
+  const g=isDiesel ? SCHAKEL.diesel : SCHAKEL.benzine;
+  return Math.max(g.vanaf, Math.ceil(g.na*ratios[gear+1]/ratios[gear]));
+}
+/* Voor wie het schakelpunt buiten deze module nodig heeft: versnelling,
+   verhoudingen en of het een diesel is. */
+function schakelBron(){
+  const gi=gearInfo();
+  return { gear:gi.gear, ratios:gi.ratios, diesel:motor()==='diesel' };
+}
 function bereken(pid, v, o){
   v = v || {}; o = o || {};
   const r2 = x => Math.round(x*100)/100, r1 = x => Math.round(x*10)/10;
@@ -564,7 +580,7 @@ try{
   });
 }catch(e){ console.warn('PLBerekend: ALL_PID_DEFS aanvullen mislukt', e); }
 
-window.PLBerekend = { DEFS, SCHAKEL, DPF, PRIJS_STANDAARD, KWH_PER_L, bereken, bronset, schakelAdvies, dpfTik, defs, isBerekend,
+window.PLBerekend = { DEFS, SCHAKEL, DPF, PRIJS_STANDAARD, KWH_PER_L, bereken, bronset, schakelAdvies, schakelPunt, schakelBron, dpfTik, defs, isBerekend,
   tik, stats, oordeel, weiger, voertuig, prijs, VERS_MS, SAMEN_MS, samen, maat, _nieuweSessie:function(){ _s=leegSessie(); } };
 window.plIsBerekend = isBerekend;
 window.plBerekendDefs = defs;
