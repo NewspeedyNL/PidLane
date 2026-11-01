@@ -462,13 +462,16 @@ const NEPSERVER = `(function(){
       uit.lijst = /2 codes antwoorden, 1 daarvan nieuw/.test(body()) && /222A21/.test(body()) && /01 02/.test(body());
       PLGarage._scanErbij('222A21');
       uit.form = document.getElementById('grsCode').value + '@' + document.getElementById('grsEcu').value;
+      // Het formulier staat in Mijn sensoren: dat blad is nu open, het formulier uitgeklapt en in beeld.
+      const f = document.getElementById('grsCode');
+      uit.formZichtbaar = !!f.offsetParent && !!f.closest('details[open]') && !f.closest('[hidden]');
       PLGarage.sluit();
       return uit;
     })()`);
     toets('met een werkende code: knop "Scan 222Axx @ 720" (zichtbaar in Erbij zoeken), en geen AI-knop "Dieper zoeken" meer', diep.blok && diep.geenDieper && diep.scanZichtbaar, JSON.stringify(diep));
     toets('op tekstgrootte L blijft elke kleine knop binnen het venster', Array.isArray(diep.buiten) && diep.buiten.length === 0, JSON.stringify(diep.buiten));
     toets('buurscan: alleen de nieuwe code staat erbij, met zijn bytes', diep.lijst, JSON.stringify(diep));
-    toets('"In het formulier" zet code en ECU-adres klaar', diep.form === '222A21@720', JSON.stringify(diep));
+    toets('"In het formulier" zet code en ECU-adres klaar, en toont het formulier in Mijn sensoren', diep.form === '222A21@720' && diep.formZichtbaar, JSON.stringify(diep));
 
     console.log('\n── 4h. de vaste sensoren komen terug na een herstart (28-09) ──');
     // Precies de volgorde van 28-09: de app start met de VIN van de vorige

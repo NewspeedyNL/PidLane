@@ -520,8 +520,15 @@ function zetStand(v){
   catch(e){ console.warn('PLHyperlane: standkeuze niet bewaard — geldt tot de app sluit', e); }
   return true;
 }
-/* Het label boven het midden. `gewoon` = wat Auto zou tonen. Puur. */
-function standLabel(sc, st, gewoon){ return (!STAND_TEKST[st] || STAND_VOORRANG[sc]) ? gewoon : STAND_TEKST[st]; }
+/* Het label boven het midden. `gewoon` = wat Auto zou tonen. Puur.
+   In Auto krijgt de rijstijl van modus() "AUTO ·" ervoor: ECO, CRUISE en
+   SPORT zijn ook de namen van de standen, en zonder dat leek Auto op een
+   gekozen stand (01-11-2026, nagelopen in de echte app). */
+const MODUS_WOORD = { ECO:1, CRUISE:1, SPORT:1, MAX:1 };
+function standLabel(sc, st, gewoon){
+  if(STAND_TEKST[st] && !STAND_VOORRANG[sc]) return STAND_TEKST[st];
+  return MODUS_WOORD[gewoon] && !STAND_TEKST[st] ? 'AUTO · '+gewoon : gewoon;
+}
 /* Kiezen: bewaren en de weergave opnieuw opbouwen, want de strook en de
    sensoren die aan moeten horen bij de stand (pidlane-visprofiel.js). */
 function kiesStand(v){

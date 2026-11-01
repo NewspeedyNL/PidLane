@@ -10,6 +10,20 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-11-2026 — Nagelopen: Auto zegt AUTO, "In het formulier" springt mee
+ ═══════════════════════════════════════════════════════════
+ - Hyperlane: in Auto stond de rijstijl van modus() er kaal (ECO, CRUISE,
+   SPORT) — dezelfde namen als de standen, dus Auto leek een gekozen stand.
+   Nu "AUTO · CRUISE"; scènes (STIL, CRUISE · ZEN) blijven zoals ze waren.
+ - Sensoren: "In het formulier" bij de buurscan vulde het formulier in een
+   verborgen subblad. Nu springt hij naar Mijn sensoren, formulier open.
+ - Nagelopen in de echte app, zonder verdere bevindingen: sensorkeuze op
+   een strookplek per stand, wisselen tussen weergaves, volledig scherm met
+   het standmenu, diesel (laaddruk), de knop "Eigen" uit de keuzelijst en
+   Sensoren vanuit de accutest. Opslagformaat (eigen_pids, pid_selectie)
+   ongewijzigd, dus de expert en de Worker merken niets.
+
+ ═══════════════════════════════════════════════════════════
  01-11-2026 — Sensoren per voertuig: drie subbladen, één regel per sensor
  ═══════════════════════════════════════════════════════════
  - Uit het gebruik: "na vier pogingen nog steeds een wirwar". Het tabblad

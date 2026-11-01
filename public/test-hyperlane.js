@@ -396,6 +396,8 @@ console.log('\n13. De stand: Auto, Eco, Sport, Cruise (01-11-2026)');
   // Het label
   waar('Auto: het label van de scène, zoals altijd', Hk.standLabel('stil', 'auto', 'STIL') === 'STIL');
   waar('gekozen stand: het label blijft staan bij stil, remmen, koud en cruise', ['stil', 'remmen', 'koud', 'cruise', 'rijden'].every(sc => Hk.standLabel(sc, 'eco', 'X') === 'ECO'));
+  waar('Auto: de rijstijl krijgt AUTO ervoor, zodat hij niet op een gekozen stand lijkt', ['ECO', 'CRUISE', 'SPORT', 'MAX'].every(m => Hk.standLabel('rijden', 'auto', m) === 'AUTO · ' + m)
+    && Hk.standLabel('cruise', 'auto', 'CRUISE · ZEN') === 'CRUISE · ZEN');
   waar('alarm, begrenzer en 0–100 gaan altijd voor', ['alarm', 'begrenzer', 'launch'].every(sc => Hk.standLabel(sc, 'sport', 'X') === 'X'));
   // Het midden in Sport: geen verbruik
   const tk = (v, d) => Number(v).toFixed(d).replace('.', ',');
@@ -408,7 +410,7 @@ console.log('\n13. De stand: Auto, Eco, Sport, Cruise (01-11-2026)');
     ['pidlane-toon.js', 'pidlane-hyperlane.js', 'pidlane-visprofiel.js'].forEach(n => vm.runInContext(n === f ? bron : lees(n), c, { filename: n })); return c; };
   const T1 = laadMet('pidlane-visprofiel.js', BR.replace("const st=stand || 'auto', hier=p.plekken.filter(function(x){ return inStand(x, st); });", "const hier=p.plekken;")).PLVisProfiel;
   waar('tegenproef: zonder standfilter vraagt Auto ook olie en belasting', ['0104', '015C'].every(q => T1.ketens('hyperlane', null, {}).map(k => k[0]).indexOf(q) >= 0));
-  const T2 = laadMet('pidlane-hyperlane.js', BH.replace("function standLabel(sc, st, gewoon){ return (!STAND_TEKST[st] || STAND_VOORRANG[sc]) ? gewoon : STAND_TEKST[st]; }", "function standLabel(sc, st, gewoon){ return STAND_TEKST[st] || gewoon; }")).PLHyperlane;
+  const T2 = laadMet('pidlane-hyperlane.js', BH.replace("  if(STAND_TEKST[st] && !STAND_VOORRANG[sc]) return STAND_TEKST[st];", "  if(STAND_TEKST[st]) return STAND_TEKST[st];")).PLHyperlane;
   waar('tegenproef: zonder voorrang verdwijnt het koelwateralarm achter SPORT', T2.standLabel('alarm', 'sport', 'KOELWATER 120°') === 'SPORT');
 }
 
