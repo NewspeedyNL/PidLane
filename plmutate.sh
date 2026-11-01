@@ -1818,8 +1818,8 @@ MUTATIES=(
 "public/pidlane-garage.js@@      else nieuw.push(b);@@      nieuw.push(b);@@test-garage.js@@een toegevoegde code staat weer twee keer in Sensoren: eigen én bibliotheek"
 "public/pidlane-garage.js@@berAan = ber.filter(function (p) { return S.sel.indexOf(p) >= 0; });@@berAan = ber;@@bproef-garage.js@@alle berekende sensoren staan weer uitgeklapt, ook wat uit staat"
 "public/pidlane-garage.js@@    return '<div class=\"gr-sgroep\"><div class=\"gr-gk\">'@@    return '<div class=\"gr-groep\"><div class=\"gr-gk\">'@@bproef-garage.js@@de sensorgroepen heten weer gr-groep en erven white-space:nowrap van de grafiekknoppen"
-"public/pidlane-garage.js@@rol = bandVan(b);@@rol = null;@@test-garage.js@@de banden staan weer los tussen de andere sensoren, met de ATF ertussen"
-"public/pidlane-garage.js@@        if (!isBand(e)) return;\n        var i = S.sel.indexOf(e.code);@@        var i = S.sel.indexOf(e.code);@@bproef-garage.js@@het bandenvinkje haalt ook de andere eigen sensoren uit de meting"
+"public/pidlane-garage.js@@rol = bandVan(b), wiel = rol ? null : wielVan(b);@@rol = null, wiel = rol ? null : wielVan(b);@@test-garage.js@@de banden staan weer los tussen de andere sensoren, met de ATF ertussen"
+"public/pidlane-garage.js@@        if (!inSet(k, e)) return;\n        var i = S.sel.indexOf(e.code);@@        var i = S.sel.indexOf(e.code);@@bproef-garage.js@@het bandenvinkje haalt ook de andere eigen sensoren uit de meting"
 "public/pidlane-uitgebreid.js@@    const tempo = band ? 'opverzoek' : (EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal');@@    const tempo = EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal';@@test-mode21.js@@acht bandensensoren worden elke 2 s via een ander ECU-adres gevraagd"
 # ── banden op verzoek, buiten de pollus (#396, 06-10-2026) ──
 "public/pidlane-uitgebreid.js@@    const tempo = band ? 'opverzoek' : (EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal');@@    const tempo = band ? 'minuut' : (EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal');@@test-banden.js@@de banden gaan weer elke minuut als acht losse PIDs de pollus in — #396"
@@ -2457,6 +2457,9 @@ MUTATIES=(
 "public/pidlane-garage.js@@    _rrGetekend = nu; teken();@@    _rrGetekend = nu;@@bproef-garage.js@@een lopende RR telt niet op in beeld: de lijst blijft op nul staan tot je iets aanraakt"
 "public/pidlane-garage.js@@  function onderhoudAan(v) { return !!v && v.onderhoud !== 'uit'; }@@  function onderhoudAan(v) { return !!v; }@@test-garage.js@@onderhoud bijhouden uit geeft toch een punt onderhoud aan de beurt"
 "public/pidlane-garage.js@@    if (p.apk_tot && p.apk_tot !== v.apk_tot) uit.apk_tot = p.apk_tot;@@    if (p.apk_tot && !v.apk_tot) uit.apk_tot = p.apk_tot;@@test-garage.js@@RDW dagelijks: een nieuwe APK-datum na de keuring komt niet in het profiel"
+"public/pidlane-garage.js@@rol = bandVan(b), wiel = rol ? null : wielVan(b);@@rol = bandVan(b), wiel = null;@@test-garage.js@@de vier wielsnelheden staan weer als vier losse regels in Voor analyse"
+"public/pidlane-garage.js@@  function inSet(k, e) { return k === 'banden' ? isBand(e) : !isBand(e) && !!wielVan(e); }@@  function inSet(k, e) { return k === 'banden' ? isBand(e) : false; }@@bproef-garage.js@@het ene vinkje van Wielsnelheid doet niets: de vier wielen blijven gemeten"
+"public/pidlane-garage.js@@    var blad = function (k, inhoud) { return '<div class=\"gr-subblad\" data-sub=\"' + k + '\"' + (sub === k ? '' : ' hidden') + '>' + inhoud + '</div>'; };@@    var blad = function (k, inhoud) { return '<div class=\"gr-subblad\" data-sub=\"' + k + '\">' + inhoud + '</div>'; };@@bproef-garage.js@@de subbladen staan alle drie open onder elkaar: weer één lange lijst"
 "public/pidlane-conditie.js@@    if (s.t1 === t) return s.v1;\n    if (s.t0 === undefined@@    return s.v1;\n    if (s.t0 === undefined@@test-winterrit.js@@de assen worden weer op verschillende momenten vergeleken: elke optrekking telt als slip (rit 24-10, #560)"
 "public/pidlane-conditie.js@@hi - lo >= c.minKmh && @@@@test-winterrit.js@@bij lage snelheid telt één km/h verschil als 10 % slip (#560)"
 # De conditiekaart (30-10-2026): de ring, een lege meting, de oorzaak en het teken van het verloop.

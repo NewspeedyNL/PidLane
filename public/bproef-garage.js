@@ -266,7 +266,7 @@ const NEPSERVER = `(function(){
       // 15-10-2026: niet nog eens in de bibliotheek; de stand gaat mee naar de eigen sensor.
       uit.eenKeer = !document.querySelector('#plGarBody button[onclick="PLGarage._bibErbij(\\'b2\\')"]') &&
         !!document.querySelector('#plGarBody button[onclick="PLGarage._bibErbij(\\'b1\\')"]') &&
-        Array.prototype.some.call(document.querySelectorAll('#plGarBody .gr-item:not(.gr-bib)'), x => /221E1C/.test(x.textContent) && /werkt bij 3/.test(x.textContent));
+        Array.prototype.some.call(document.querySelectorAll('#plGarBody .gr-srij'), x => /221E1C/.test(x.textContent) && /werkt bij 3/.test(x.textContent));
       // Berekend: wat aan staat bovenaan, de rest ingeklapt.
       PLGarage._sensKies('CA03', true);
       const ber = Array.prototype.map.call(document.querySelectorAll('#plGarBody input[onchange^="PLGarage._sensKies(\\'CA"]'), x => !!x.closest('details') === !x.checked);
@@ -381,6 +381,60 @@ const NEPSERVER = `(function(){
     toets('één vinkje haalt alle banden uit de meting, de ATF blijft', band.uit === '221E1C', JSON.stringify(band.uit));
     toets('"Banden weghalen" haalt alleen de banden weg', band.over === '221E1C', JSON.stringify(band.over));
 
+    console.log('\n── 4p. Sensoren in subbladen, één regel per sensor, wielen met één vinkje (01-11-2026) ──');
+    await app.venster(360, 800);
+    const sub = await app.ev(`(async function(){
+      const S = window._nepPlatform, v = S.voertuigen[0];
+      const eigen = [['222A05', 'Bandenspanning voor-links'], ['222A0B', 'Bandtemperatuur voor-links'],
+        ['222B06', 'Front left wheel speed'], ['222B07', 'Front right wheel speed'], ['222B08', 'Rear left wheel speed'], ['222B09', 'Rear right wheel speed']]
+        .map(x => ({ code: x[0], naam: x[1], formule: 'A', eenheid: /speed/.test(x[1]) ? 'km/h' : /temp/i.test(x[1]) ? '°C' : 'psi', ecu: /speed/.test(x[1]) ? '760' : '720' }))
+        .concat([{ code: '221E1C', naam: 'Temperatuur automaatbak (ATF)', formule: 'A-40', eenheid: '°C', ecu: '7E1' }]);
+      const alle = [v].concat((PLGarage.staat().stand || {}).voertuigen || []).filter(x => x.id === v.id);
+      const voor = alle.map(x => [x.eigen_pids, x.pid_selectie]);
+      alle.forEach(x => { x.eigen_pids = JSON.parse(JSON.stringify(eigen)); x.pid_selectie = eigen.map(e => e.code); });
+      PLGarage.staat().sens = null;
+      PLGarage.open(v.id); PLGarage._tab('sensoren');
+      await new Promise(r => setTimeout(r, 200));
+      const zicht = sel => Array.prototype.filter.call(document.querySelectorAll('#plGarBody ' + sel), x => x.offsetParent);
+      const uit = {};
+      uit.tabs = zicht('.gr-subtab').map(x => x.firstChild.textContent.trim()).join('|');
+      // Mijn sensoren: per sensor één regel, de details dicht
+      uit.wielRegels = zicht('.gr-srij > summary').filter(x => /wheel speed/i.test(x.textContent)).length;
+      uit.wielBlok = zicht('.gr-wielen > summary input[type=checkbox]').length;
+      // Chromium tekent een dichte <details> met content-visibility:hidden: offsetParent zegt dan niets.
+      uit.codesDicht = zicht('.gr-sdet').filter(x => x.closest('details').open).length;
+      uit.zoekVerborgen = zicht('.gr-pz').length === 0 && zicht('.gr-bib, .gr-meer.gr-sgroep .gr-bib').length === 0;
+      uit.bewaarZichtbaar = zicht('.gr-bewaarbalk .gr-k').length === 1;
+      // Eén vinkje haalt alle vier de wielen eruit; banden en ATF blijven
+      PLGarage._sensSet('wielen', false);
+      uit.naUit = PLGarage.staat().sens.sel.slice().sort().join();
+      PLGarage._sensSet('wielen', true);
+      // Tik op de naam: de details gaan open en blijven open na een herteken
+      document.querySelector('#plGarBody .gr-srij:not(.gr-set) > summary .gr-snaam').click();
+      await new Promise(r => setTimeout(r, 50));
+      PLGarage._sensKies('CA03', true);
+      uit.blijftOpen = zicht('.gr-srij:not(.gr-set)[open] .gr-sdet').length === 1;
+      PLGarage._sensSub('berekend');
+      uit.berekend = zicht('input[onchange^="PLGarage._sensKies(\\'CA"]').length > 0 && zicht('.gr-srij').length === 0;
+      PLGarage._sensSub('zoeken');
+      uit.zoeken = zicht('.gr-pz').length === 1 && zicht('.gr-srij').length === 0;
+      const rand = document.getElementById('plGarBody').getBoundingClientRect().right;
+      uit.buiten = Array.prototype.filter.call(document.querySelectorAll('#plGarBody *'), x => x.offsetParent && x.getBoundingClientRect().right > rand + 1).length;
+      PLGarage.sluit();
+      alle.forEach((x, i) => { x.eigen_pids = voor[i][0]; x.pid_selectie = voor[i][1]; });
+      PLGarage.staat().sens = null;
+      return uit;
+    })()`);
+    await app.venster(412, 915);
+    toets('drie subbladen: Mijn sensoren, Erbij zoeken, Berekend', sub.tabs === 'Mijn sensoren|Erbij zoeken|Berekend', JSON.stringify(sub));
+    toets('wielsnelheid is één regel met één vinkje, niet vier', sub.wielRegels === 0 && sub.wielBlok === 1, JSON.stringify(sub));
+    toets('code, tempo en knoppen staan achter een tik; zoeken staat in zijn eigen blad', sub.codesDicht === 0 && sub.zoekVerborgen, JSON.stringify(sub));
+    toets('Bewaren staat in beeld', sub.bewaarZichtbaar, JSON.stringify(sub));
+    toets('één vinkje haalt alle vier de wielen uit de meting, banden en ATF blijven', sub.naUit === '221E1C,222A05,222A0B', JSON.stringify(sub.naUit));
+    toets('een open regel blijft open na een herteken', sub.blijftOpen, JSON.stringify(sub));
+    toets('Berekend en Erbij zoeken tonen alleen hun eigen blad', sub.berekend && sub.zoeken, JSON.stringify(sub));
+    toets('op 360 px loopt niets uit het venster', sub.buiten === 0, JSON.stringify(sub));
+
     console.log('\n── 4i. de buurscan (28-09); "dieper zoeken" met de AI is weg (#526) ──');
     const diep = await app.ev(`(async function(){
       const S = window._nepPlatform, v = S.voertuigen[0];
@@ -389,6 +443,9 @@ const NEPSERVER = `(function(){
       PLGarage.open(v.id); PLGarage._tab('sensoren');
       const body = () => document.getElementById('plGarBody').textContent;
       const uit = { blok: await wacht(() => /Scan 222Axx @ 720/.test(body())), geenDieper: body().indexOf('Dieper zoeken') < 0 };
+      // De scanknoppen staan in het subblad Erbij zoeken (01-11-2026): daar meten.
+      PLGarage._sensSub('zoeken'); await new Promise(r => setTimeout(r, 50));
+      uit.scanZichtbaar = !!Array.prototype.find.call(document.querySelectorAll('#plGarBody .gr-k.klein'), k => /Scan 222Axx/.test(k.textContent) && k.offsetParent);
       // 30-09-2026: de knoptekst liep de kaart uit op tekstgrootte L. Elke
       // kleine knop in deze tab hoort binnen de rechterrand van het venster.
       setUiScale('l'); await new Promise(r => setTimeout(r, 100));
@@ -408,7 +465,7 @@ const NEPSERVER = `(function(){
       PLGarage.sluit();
       return uit;
     })()`);
-    toets('met een werkende code: knop "Scan 222Axx @ 720", en geen AI-knop "Dieper zoeken" meer', diep.blok && diep.geenDieper, JSON.stringify(diep));
+    toets('met een werkende code: knop "Scan 222Axx @ 720" (zichtbaar in Erbij zoeken), en geen AI-knop "Dieper zoeken" meer', diep.blok && diep.geenDieper && diep.scanZichtbaar, JSON.stringify(diep));
     toets('op tekstgrootte L blijft elke kleine knop binnen het venster', Array.isArray(diep.buiten) && diep.buiten.length === 0, JSON.stringify(diep.buiten));
     toets('buurscan: alleen de nieuwe code staat erbij, met zijn bytes', diep.lijst, JSON.stringify(diep));
     toets('"In het formulier" zet code en ECU-adres klaar', diep.form === '222A21@720', JSON.stringify(diep));
