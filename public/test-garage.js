@@ -614,6 +614,32 @@ function laad(opties) {
     eis(gb.weigert.map((r) => r.b.code).join() === '222A0E' && gb.banden.length === 4, 'in de bibliotheek wint "werkt niet" van "band"', gb.weigert.map((r) => r.b.code).join());
   }
 
+  console.log('\nSensoren: de wielsnelheden in één groep, op plek (01-11-2026)');
+  {
+    // De echte bandRol en wielRol uit pidlane-uitgebreid.js, niet een kopie.
+    const bron = fs.readFileSync(__dirname + '/pidlane-uitgebreid.js', 'utf8');
+    const knip = (naam) => { const m = new RegExp('\\n  function ' + naam + '\\(naam\\) \\{[\\s\\S]*?\\n  \\}\\n').exec(bron);
+      if (!m) throw new Error('anker "function ' + naam + '(naam)" niet gevonden in pidlane-uitgebreid.js'); return new Function(m[0] + '\nreturn ' + naam + ';')(); };
+    const L = laad({ rol: 'klant' });
+    L.s.PLEigen = { bandRol: knip('bandRol'), wielRol: knip('wielRol') };
+    const lijst = [
+      { code: '222B09', naam: 'Rear right wheel speed', eenheid: 'km/h' },
+      { code: '221E1C', naam: 'Temperatuur automaatbak (ATF)', eenheid: '°C' },
+      { code: '222B06', naam: 'Front left wheel speed', eenheid: 'km/h' },
+      { code: '222A05', naam: 'Bandenspanning voor-links', eenheid: 'psi' },
+      { code: '223000', naam: 'Wielsnelheid rechtsvoor', eenheid: 'km/h' },
+      { code: '222B08', naam: 'Rear left wheel speed', eenheid: 'km/h' }
+    ];
+    const g = L.K.sensGroepen(lijst, () => false, false);
+    eis(g.wielen.map((r) => r.b.code).join() === '222B06,223000,222B08,222B09', 'alle vier de wielen in één groep, op plek: VL, VR, AL, AR', g.wielen.map((r) => r.b.code).join());
+    eis(g.banden.map((r) => r.b.code).join() === '222A05' && g.analyse.length === 0 && g.weergave.map((r) => r.b.code).join() === '221E1C',
+      'de band blijft bij banden, de ATF bij weergave; geen wiel meer los in analyse', JSON.stringify({ b: g.banden.length, a: g.analyse.length, w: g.weergave.length }));
+    // Tegenproef: zonder wielRol staan ze weer los in analyse (zoals vóór 01-11)
+    L.s.PLEigen = { bandRol: knip('bandRol') };
+    const z = L.K.sensGroepen(lijst, () => false, false);
+    eis(z.wielen.length === 0 && z.analyse.length === 4, 'tegenproef: zonder wielRol vier losse regels in analyse', JSON.stringify({ w: z.wielen.length, a: z.analyse.length }));
+  }
+
   console.log('\nOBDb vanzelf binnenhalen (17-10-2026)');
   {
     let gezocht = 0, gezet = 0;
