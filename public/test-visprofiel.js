@@ -116,7 +116,8 @@ function vakkenMis(PP) {
     const i = PP.indeling(p.id, () => true), h = PP.html(p.id, i);
     // Een getalvak, of — voor de horizon in het samengevoegde telemetriescherm,
     // die zijn getallen deelt met de autootjes — ten minste zijn tekening.
-    p.plekken.forEach(x => { if (h.indexOf('id="vpf-w-' + x.rol + '"') < 0 && !(/^hz-/.test(x.rol) && h.indexOf('id="vpf-f-' + x.rol + '"') >= 0)) uit.push(p.id + '/' + x.rol); });
+    // De plekken van de stand van nu (Auto): Hyperlane heeft er per stand meer (test-hyperlane.js).
+    PP.voor(p.id).plekken.forEach(x => { if (h.indexOf('id="vpf-w-' + x.rol + '"') < 0 && !(/^hz-/.test(x.rol) && h.indexOf('id="vpf-f-' + x.rol + '"') >= 0)) uit.push(p.id + '/' + x.rol); });
     if (h.indexOf('vpf-' + p.stijl) < 0) uit.push(p.id + ': stijl ' + p.stijl + ' ontbreekt');
   });
   return uit;
@@ -246,9 +247,9 @@ console.log('\n9. Diesel: andere sensoren op dezelfde weergaven (#393)');
   waar('diesel: 3000 tpm is de helft van de ring (schaal 6000)', els['vpf-f-toeren'].attr['stroke-dasharray'] === '37.5 100', els['vpf-f-toeren'].attr['stroke-dasharray']);
   waar('diesel: de neonring zegt "Gaspedaal"', /Gaspedaal/.test(P.html('motor', mD)));
   waar('zonder motorsoort (onbekend) is het de benzinekaart', P.indeling('emissie', alles).plekken.lambda === '0124');
-  const Tm = laad(BRON.replace("  if(motor!=='diesel') return p.plekken;", "  return p.plekken;")).PLVisProfiel;
+  const Tm = laad(BRON.replace("  if(motor!=='diesel') return hier;", "  return hier;")).PLVisProfiel;
   waar('tegenproef: zonder dieselplekken staat er weer lambda op een diesel', 'lambda' in Tm.indeling('emissie', alles, 'diesel').plekken);
-  const Tk = laad(BRON.replace("function ketens(id, motor, opts){\n  const p=voor(id, motor);", "function ketens(id, motor, opts){\n  const p=zoek(id);")).PLVisProfiel;
+  const Tk = laad(BRON.replace("  const p=voor(id, motor, opts && opts.ruim ? '*' : standNu());", "  const p=zoek(id);")).PLVisProfiel;
   waar('tegenproef: ketens zonder motor zetten de roetfilter-PIDs niet aan', !Tk.ketens('emissie', 'diesel').some(k => k.indexOf('017A') >= 0)
     && P.ketens('emissie', 'diesel').some(k => k.indexOf('017A') >= 0));
 }

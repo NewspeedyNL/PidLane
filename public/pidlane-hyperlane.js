@@ -366,7 +366,7 @@ const ACC_KMHS = 4, ACC_UIT_KMHS = 2.5, VOLGAS = 80;
    ACC_UIT_KMHS, zodat het hoofdgetal rond de grens niet knippert. */
 function heldN(v){ return v!==null && v!==undefined && v!=='' && isFinite(Number(v)); }
 function heldG(kmhs){ return Math.abs(kmhs)/3.6/9.81; }
-function held(sc, x, tekst, vorig){
+function held(sc, x, tekst, vorig, st){
   const n=heldN, g=heldG;
   if(sc==='alarm' && n(x.koel)) return { w:tekst(x.koel, 0), e:'°C', l:'KOELWATER' };
   if(sc==='launch' && n(x.launchS)) return { w:tekst(x.launchS, 1), e:'s', l:'0–100' };
@@ -376,7 +376,7 @@ function held(sc, x, tekst, vorig){
   if(n(x.versn) && x.versn>=(vorig==='ACCELERATIE' ? ACC_UIT_KMHS : ACC_KMHS)) return { w:tekst(g(x.versn), 2), e:'g', l:'ACCELERATIE' };
   if(sc==='koud' && n(x.koel)) return { w:tekst(x.koel, 0), e:'°C', l:'OPWARMEN' };
   if(sc==='stil' && x.klok) return { w:x.klok, e:'', l:'' };
-  if(n(x.verbruik)) return { w:tekst(x.verbruik, 1), e:'L/100', l:'VERBRUIK NU' };
+  if(n(x.verbruik) && st!=='sport') return { w:tekst(x.verbruik, 1), e:'L/100', l:'VERBRUIK NU' };
   if(n(x.gas)) return { w:tekst(x.gas, 0), e:'%', l:'GAS' };
   return { w:'—', e:'', l:'' };
 }
@@ -392,13 +392,13 @@ function held(sc, x, tekst, vorig){
    g en de timer lopen mee. Puur: `oud` = heldWaarde() van het label dat er
    staat. */
 const HELD_MIN_S = 6, HELD_WAARDE_S = 1, HELD_DIRECT = { 'KOELWATER':1, '0–100':1 }, HELD_LOPEND = { 'ACCELERATIE':1, 'REMMEN':1, '0–100':1 };
-function heldWaarde(l, sc, x, tekst){
+function heldWaarde(l, sc, x, tekst, st){
   const n=heldN;
   if(l==='KOELWATER' || l==='OPWARMEN') return n(x.koel) ? { w:tekst(x.koel, 0), e:'°C' } : null;
   if(l==='0–100') return n(x.launchS) ? { w:tekst(x.launchS, 1), e:'s' } : null;
   if(l==='ACCELERATIE' || l==='REMMEN') return n(x.versn) ? { w:tekst(heldG(x.versn), 2), e:'g' } : null;
   // Vol gas: ook een verbruik dat er al stond gaat meteen weg
-  if(l==='VERBRUIK NU') return n(x.verbruik) && !(n(x.gas) && x.gas>=VOLGAS) ? { w:tekst(x.verbruik, 1), e:'L/100' } : null;
+  if(l==='VERBRUIK NU') return n(x.verbruik) && st!=='sport' && !(n(x.gas) && x.gas>=VOLGAS) ? { w:tekst(x.verbruik, 1), e:'L/100' } : null;
   if(l==='GAS') return n(x.gas) ? { w:tekst(x.gas, 0), e:'%' } : null;
   if(l==='') return sc==='stil' && x.klok ? { w:x.klok, e:'' } : null;
   return null;
@@ -496,6 +496,38 @@ function bewaarVorm(v){
 function ringSchaal(lo, hi){
   const n=5, st=(hi-lo)/n, dec=Math.abs(hi-lo)<10 ? 1 : 0;
   return { n:n, lab:function(i){ return lo+st*i; }, dec:dec };
+}
+/* ── De stand ── (01-11-2026, uit het gebruik: "hij schakelt vanzelf van stil
+   naar remmen naar eco … laat de klant kiezen in welke stand hij staat".)
+   Tik op het standlabel: Auto (de scènes, zoals altijd), Eco, Sport of
+   Cruise. Een gekozen stand houdt het label vast en kiest de strook onder het
+   midden (PLVisProfiel.STROOK); alarm, begrenzer en de 0–100 gaan altijd
+   voor, want die zijn veiligheid en show, geen stand. De effecten van de
+   scènes (koud, remmen, stil) blijven: alleen het label wisselt niet meer.
+   Sport schakelt op de rode streep en laat verbruik uit het midden. */
+const STANDEN = ['auto','eco','sport','cruise'], STAND_SLEUTEL = 'pl_hl_stand';
+const STAND_TEKST = { eco:'ECO', sport:'SPORT', cruise:'CRUISE' }, STAND_VOORRANG = { alarm:1, begrenzer:1, launch:1 };
+let _stand = null;
+function leesStand(){
+  try{ const v=localStorage.getItem(STAND_SLEUTEL); return STANDEN.indexOf(v)>=0 ? v : 'auto'; }
+  catch(e){ console.warn('PLHyperlane: standkeuze niet te lezen, Auto', e); return 'auto'; }
+}
+function stand(){ if(_stand===null) _stand=leesStand(); return _stand; }
+function zetStand(v){
+  if(STANDEN.indexOf(v)<0) return false;
+  _stand=v;
+  try{ localStorage.setItem(STAND_SLEUTEL, v); }
+  catch(e){ console.warn('PLHyperlane: standkeuze niet bewaard — geldt tot de app sluit', e); }
+  return true;
+}
+/* Het label boven het midden. `gewoon` = wat Auto zou tonen. Puur. */
+function standLabel(sc, st, gewoon){ return (!STAND_TEKST[st] || STAND_VOORRANG[sc]) ? gewoon : STAND_TEKST[st]; }
+/* Kiezen: bewaren en de weergave opnieuw opbouwen, want de strook en de
+   sensoren die aan moeten horen bij de stand (pidlane-visprofiel.js). */
+function kiesStand(v){
+  if(!zetStand(v)) return;
+  try{ if(window.PLVisueel && typeof PLVisueel.herbouwKeuze==='function') PLVisueel.herbouwKeuze(); }
+  catch(e){ console.warn('PLHyperlane: herbouw na standkeuze mislukt — volgt bij de volgende tik', e); }
 }
 /* De tekst in de modusregel per scène; null = de gewone modus(). */
 const SCENE_TEKST = { alarm:'KOELWATER HEET', begrenzer:'SCHAKELEN', launch:'LAUNCH', koud:'MOTOR KOUD', stil:'STIL', cruise:'CRUISE · ZEN' };
@@ -691,6 +723,19 @@ function start(wortel){
   const km=wortel.querySelector('.vhl-midden'), kh=wortel.querySelector('.vhl-held');
   if(km) km.addEventListener('click', wissel);
   if(kh) kh.addEventListener('click', wissel);
+  // De stand: tik op het label opent het menu (alleen in Hyperlane zelf)
+  const mo=wortel.querySelector('.vhl-modus'), mm=wortel.querySelector('.vhl-standmenu');
+  if(mo && mm){
+    const open=function(e){ e.stopPropagation(); mm.hidden=!mm.hidden; mo.setAttribute('aria-expanded', String(!mm.hidden)); };
+    mo.addEventListener('click', open);
+    mo.addEventListener('keydown', function(e){ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); open(e); } });
+    mm.addEventListener('click', function(e){
+      e.stopPropagation();   // niet ook een plek kiezen
+      const b=e.target && e.target.closest ? e.target.closest('[data-stand]') : null;
+      mm.hidden=true; mo.setAttribute('aria-expanded', 'false');
+      if(b && b.getAttribute('data-stand')!==stand()) kiesStand(b.getAttribute('data-stand'));
+    });
+  }
   const kr=wortel.querySelector('.vhl-ritknop'), ks=wortel.querySelector('.vhl-score');
   [kr, ks].forEach(function(x){ if(x) x.addEventListener('click', function(e){ e.stopPropagation(); scoreKnop(); }); });
   window.addEventListener('deviceorientation', kantel);
@@ -971,7 +1016,7 @@ function frame(nu){
   // De flits over de rand alleen in de tunnel: in een rustige vorm knipperen alleen de lampjes
   // Het schakelpunt (31-10-2026): rustig het ecopunt van CA11, hard de rode
   // streep. De flits over de rand blijft voor de begrenzer zelf.
-  const hard=(e.gas!=null && e.gas>=VOLGAS) || belastingHoog(), punt=live ? schakelDoel(rood, s.schakel.eco, hard) : null;
+  const hard=stand()==='sport' || (e.gas!=null && e.gas>=VOLGAS) || belastingHoog(), punt=live ? schakelDoel(rood, s.schakel.eco, hard) : null;
   const l=leds(e.toeren, punt, 10), knip=l.max && (T*12|0)%2===0, flits=knip && av==='tunnel' && e.toeren>=rood*.98;
   const op=live && pijlOp(e.toeren, punt, s.schakel.top), pe=w.querySelector('.vhl-pijl');
   if(pe && pe.classList.contains('aan')!==op) pe.classList.toggle('aan', op);
@@ -980,7 +1025,7 @@ function frame(nu){
   scoreBij(w, sc, dt, nu8);
   tankBij(w, e);
   powerBij(w, dt, e);
-  const m=sc==='alarm' && e.koel!=null ? 'KOELWATER '+tekstVan(e.koel, 0)+'°' : (SCENE_TEKST[sc] || modus(s.stem)), me=w.querySelector('.vhl-modus');
+  const m=standLabel(sc, stand(), sc==='alarm' && e.koel!=null ? 'KOELWATER '+tekstVan(e.koel, 0)+'°' : (SCENE_TEKST[sc] || modus(s.stem))), me=w.querySelector('.vhl-modus');
   if(me && me.textContent!==m) me.textContent=m;
   if((s.gearT-=dt)<=0){
     s.gearT=.15;
@@ -996,10 +1041,10 @@ function frame(nu){
     const hx={ koel:e.koel, verbruik:e.verbruik, gas:e.gas, versn:s.vs ? s.vs.a : null,
                        launchS:s.nul.start!==null ? T-s.nul.start : null,
                        klok:('0'+nu8.getHours()).slice(-2)+':'+('0'+nu8.getMinutes()).slice(-2) };
-    const h=held(sc, hx, tekstVan, s.heldL);
+    const st=stand(), h=held(sc, hx, tekstVan, s.heldL, st);
     s.heldL=h.l;   // de hysterese hoort bij het slimme getal, ook als het nu niet in beeld is
     // Wat er staat blijft even staan (heldRustig, gearRustig): .15 s is de tik hierboven
-    s.heldR=heldRustig(s.heldR, h, s.heldR ? heldWaarde(s.heldR.l, sc, hx, tekstVan) : null, .15);
+    s.heldR=heldRustig(s.heldR, h, s.heldR ? heldWaarde(s.heldR.l, sc, hx, tekstVan, st) : null, .15);
     s.gearR=gearRustig(s.gearR, g, .15);
     const rh={ w:s.heldR.w, e:s.heldR.e, l:s.heldR.l };
     const toon=middenHeld(s.midden, sc, s.gearR.toon, rh), groot=toon!==rh;
@@ -1021,6 +1066,7 @@ window.PLHyperlane = {
   MIDDEN:MIDDEN, MIDDEN_TEKST:MIDDEN_TEKST, MIDDEN_SLEUTEL:MIDDEN_SLEUTEL, middenHeld:middenHeld, leesMidden:leesMidden,
   VORMEN:VORMEN, VORM_TEKST:VORM_TEKST, VORM_SLEUTEL:VORM_SLEUTEL, volgendeVorm:volgendeVorm, actieveVorm:actieveVorm, leesVorm:leesVorm, ringSchaal:ringSchaal, echt:echt,
   versnelling:versnelling, warmte:warmte, nacht:nacht, scene:scene, SCENE_TEKST:SCENE_TEKST,
+  STANDEN:STANDEN, STAND_TEKST:STAND_TEKST, STAND_SLEUTEL:STAND_SLEUTEL, stand:stand, zetStand:zetStand, standLabel:standLabel, kiesStand:kiesStand,
   MERKEN:MERKEN, merkThema:merkThema, accuStart:accuStart, START_RPM:START_RPM, POWER_S:POWER_S, gSpoor:gSpoor, GS_N:GS_N, tankStand:tankStand,
   ritBij:ritBij, ritNul100:ritNul100, scorebord:scorebord, duur:duur, telOp:telOp, SCORE_KM:SCORE_KM, RIT_PAUZE_S:RIT_PAUZE_S,
   rit:function(){ return _rit; }, _zetRit:function(r){ _rit=r; }, run:function(){ return _run; }, _zetRun:function(r){ _run=r; },

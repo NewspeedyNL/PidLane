@@ -2282,6 +2282,16 @@ body.pl-vis-vol .vhl-midden { position:fixed; top:calc(var(--pl-sat, 0px) + 50px
 /* In het kleine vak lag het knopje over de toerenring: daar wissel je met een tik op het getal. */
 body:not(.pl-vis-vol) .vhl-midden { display:none; }
 .vhl-held { cursor:pointer; }
+/* De stand kiezen (01-11-2026): tik op het label boven het midden. */
+.vhl-kop .vhl-modus { cursor:pointer; }
+.vhl-kop .vhl-modus::after { content:'▾'; letter-spacing:0; margin-left:.3em; opacity:.6; }
+.vhl-standmenu { position:absolute; left:50%; top:18%; transform:translateX(-50%); z-index:5; display:flex; gap:4px; padding:4px; border-radius:999px;
+  background:rgba(0,0,0,.65); border:1px solid color-mix(in srgb, var(--vhl-c) 55%, transparent); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
+.vhl-standmenu[hidden] { display:none; }
+.vhl-standmenu button { min-height:40px; padding:0 14px; border:0; border-radius:999px; background:transparent; color:rgba(255,255,255,.8);
+  font:600 13px/1 system-ui, sans-serif; letter-spacing:.06em; cursor:pointer; }
+.vhl-standmenu button.aan { background:var(--vhl-c); color:#05070d; }
+.vhl-standmenu button:active { transform:scale(.94); }
 /* Het ritoverzicht oproepen: rechtsonder in het vak, op volledig scherm onder het ✕. */
 .vhl-ritknop { position:absolute; top:10px; right:10px; z-index:3; width:32px; height:32px; border-radius:999px; font-size:15px; line-height:1;
   background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.18); cursor:pointer; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }

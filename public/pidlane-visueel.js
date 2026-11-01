@@ -762,7 +762,14 @@ function profielOpts(){
   let w={};
   try{ w=(window.PLToon && typeof PLToon.weergaven==='function') ? PLToon.weergaven() : {}; }
   catch(e){ console.warn('PLVisueel: eigen weergaven onleesbaar voor het profiel', e); }
-  return { keuze:PF() ? PF().keuzes() : {}, defs:defs, weergave:w };
+  return { keuze:PF() ? PF().keuzes() : {}, defs:defs, weergave:w, ruim:busRuim() };
+}
+/* Kan de bus het makkelijk aan? (01-11-2026) PLLoad 'snel' = vol tempo en
+   minder dan de helft bezet. Dan zet Hyperlane de plekken van álle standen
+   aan; op een trage adapter alleen die van de gekozen stand. */
+function busRuim(){
+  try{ return !!(window.PLLoad && typeof PLLoad.staat==='function' && PLLoad.staat().code==='snel'); }
+  catch(e){ console.warn('PLVisueel: busbelasting onleesbaar — alleen de stand van nu', e); return false; }
 }
 
 /* ── EEN PLEK ZELF KIEZEN (06-10-2026) ───────────────────────────
@@ -1099,7 +1106,7 @@ function handtekening(ind){
           ind.lamp?(ind.lamp.belasting||'')+(ind.lamp.accu||'')+(ind.lamp.volt||''):'',
           PLEKKEN.map(function(r){ return ind.plekken[r.rol]||''; }).join(','),
           ind.trek ? 'trek:'+ind.trek.map(function(t){ return t.pid||'-'; }).join(',') : '',
-          ind.profiel ? 'profiel:'+ind.profiel.id+':'+(ind.profiel.motor||'')+':'+Object.keys(ind.profiel.plekken).map(function(k){ return ind.profiel.plekken[k]||'-'; }).join(',') : ''].join('|');
+          ind.profiel ? 'profiel:'+ind.profiel.id+':'+(ind.profiel.motor||'')+':'+(ind.profiel.stand||'')+':'+Object.keys(ind.profiel.plekken).map(function(k){ return ind.profiel.plekken[k]||'-'; }).join(',') : ''].join('|');
 }
 function naamVan(pid){
   try{ const d=(typeof getPidDef==='function')?getPidDef(pid):null; return (d && d.name) || pid; }
@@ -2010,7 +2017,7 @@ window.PLVisueel = {
   VERMOGEN:VERMOGEN, VRAAG_KETEN:VRAAG_KETEN, naaldSoort:naaldSoort, vraagUit:vraagUit, laadUit:laadUit, vermogenStand:vermogenStand,
   versnellingUit:versnellingUit, aandeelBij:aandeelBij, aandeelUit:aandeelUit, accuLeerBij:accuLeerBij, elektrischBereik:elektrischBereik, bereikUit:bereikUit,
   wijzerplaat:wijzerplaat, boogPad:boogPad, hoekPlek:hoekPlek, boogHoeken:boogHoeken,
-  indeling:indeling, gebruiktePids:gebruiktePids, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,
+  indeling:indeling, gebruiktePids:gebruiktePids, herbouwKeuze:herbouwKeuze, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,
   meldingen:meldingen, schakel:schakel,
   TREK:TREK, TREK_SITUATIES:TREK_SITUATIES, trekIndeling:trekIndeling, koelTrend:koelTrend, trekAan:trekAan,
   nodigePids:nodigePids, zorgPids:zorgPids, bandenBij:bandenBij, gearTekst:gearTekst, logoZien:logoZien,

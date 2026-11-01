@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-11-2026 — Hyperlane: de stand zelf kiezen (Auto, Eco, Sport, Cruise)
+ ═══════════════════════════════════════════════════════════
+ - Tik op het standlabel boven het midden: een menu met Auto (de scènes,
+   zoals altijd), Eco, Sport en Cruise. Bewaard in pl_hl_stand.
+ - Per stand een eigen strook (PLVisProfiel.STROOK): Eco gas · belasting ·
+   koelwater, Sport olie · inlaat (diesel: laaddruk) · belasting, Cruise
+   koelwater · olie · accu. Koelwater, gas en accu blijven altijd gemeten:
+   alarm, 0–100 en power-up lezen ze.
+ - Een gekozen stand houdt het label vast; alarm, begrenzer en 0–100 gaan
+   voor. Sport: schakellampjes op de rode streep, geen verbruik in het midden.
+ - Bus: trage adapter = alleen de sensoren van de gekozen stand; PLLoad
+   'snel' = die van alle standen (busRuim() in pidlane-visueel.js).
+ - Tests: test-hyperlane blok 13 met twee tegenproeven; vier mutaties.
+
+ ═══════════════════════════════════════════════════════════
  31-10-2026 — Eigen sensoren: geen maximum van 20 meer
  ═══════════════════════════════════════════════════════════
  - Op verzoek: de klant kiest zelf hoeveel eigen sensoren. PLEigen.MAX (20,
