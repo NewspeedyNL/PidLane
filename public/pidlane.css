@@ -2181,17 +2181,17 @@ body.pl-vis-vol .vpf-lcd-rij .vpf-w { font-size:min(6vh, 7vw, 44px); }
 .vhl-mid { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3cqh;
   padding:5cqh 0; transform:translateZ(60px); border-radius:40%;
   background:radial-gradient(closest-side, rgba(2,3,10,.82), rgba(2,3,10,.55) 70%, transparent); }
-/* De schakellampjes als één lichtstreep (28-10-2026): tien naadloze delen.
-   Uit is hij een haarlijn die je nauwelijks ziet — tien lege rondjes vielen
-   juist op door hun saaiheid. Pas vanaf 70% van de rode streep loopt hij vol. */
-.vhl-leds { display:flex; gap:0; width:30cqw; height:.7cqh; min-height:3px; border-radius:999px; overflow:visible;
-  background:linear-gradient(90deg, transparent, rgba(255,255,255,.07) 15%, rgba(255,255,255,.07) 85%, transparent); }
-.vhl-leds i { flex:1; height:100%; background:transparent; transition:background .12s, box-shadow .12s; }
-.vhl-leds i:first-child { border-radius:999px 0 0 999px; } .vhl-leds i:last-child { border-radius:0 999px 999px 0; }
-.vhl-leds i.g { background:#2dff9a; box-shadow:0 0 10px #2dff9a, 0 0 22px rgba(45,255,154,.45); }
-.vhl-leds i.a { background:#ffb020; box-shadow:0 0 10px #ffb020, 0 0 22px rgba(255,176,32,.45); }
-.vhl-leds i.r { background:#ff3050; box-shadow:0 0 12px #ff3050, 0 0 26px rgba(255,48,80,.55); }
-.vhl-leds i.max { background:#4aa8ff; box-shadow:0 0 14px #4aa8ff, 0 0 30px rgba(74,168,255,.6); }
+/* De schakellampjes als losse ronde lampjes (01-11-2026): op verzoek terug
+   zoals ze vóór 2bb846a (28-10-2026) waren, toen ze een lichtstreep werden.
+   Het midden is sindsdien smaller (de ringen en de strook kwamen erbij):
+   met de oude vaste maten liepen ze over de ringen. Nu vullen ze hoogstens
+   het midden, en worden ze nooit groter dan toen (1,6 en 1,1 cqw). */
+.vhl-leds { display:flex; justify-content:center; gap:min(1.1cqw, 3%); width:100%; max-width:26cqw; }
+.vhl-leds i { flex:0 1 1.6cqw; min-width:0; aspect-ratio:1; border-radius:50%; background:rgba(255,255,255,.07); }
+.vhl-leds i.g { background:#2dff9a; box-shadow:0 0 12px #2dff9a; }
+.vhl-leds i.a { background:#ffb020; box-shadow:0 0 12px #ffb020; }
+.vhl-leds i.r { background:#ff3050; box-shadow:0 0 12px #ff3050; }
+.vhl-leds i.max { background:#4aa8ff; box-shadow:0 0 14px #4aa8ff; }
 .vhl-modus { font-size:3.4cqh; font-weight:600; letter-spacing:.5em; padding-left:.5em; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:clip; color:var(--vhl-c); text-shadow:0 0 12px var(--vhl-c); }
 .vhl-kop { display:flex; align-items:center; gap:1.4cqw; max-width:100%; }
 /* Naast het versnellingslabel moet ook "KOELWATER HEET" passen: het midden is
@@ -2249,7 +2249,8 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
   body.pl-vis-vol .vhl-mid { flex:none; gap:1.5cqh; padding:2cqh 8cqw; }
   body.pl-vis-vol .vhl-held-w { font-size:8cqh; } body.pl-vis-vol .vhl-held-e, body.pl-vis-vol .vhl-gear { font-size:1.8cqh; } body.pl-vis-vol .vhl-held-l, body.pl-vis-vol .vhl-merk { font-size:1.3cqh; }
   body.pl-vis-vol .vhl-modus, body.pl-vis-vol .vhl-strook { font-size:1.8cqh; }
-  body.pl-vis-vol .vhl-leds { width:60cqw; height:.5cqh; }
+  body.pl-vis-vol .vhl-leds { gap:min(2.5cqw, 3%); max-width:58cqw; }
+  body.pl-vis-vol .vhl-leds i { flex-basis:3.6cqw; }
   body.pl-vis-vol .vhl-score { width:88cqw; padding:2.4cqh 4cqw; }
   body.pl-vis-vol .vhl-score-tegels > .vhl-tegel { flex-basis:50%; }
   body.pl-vis-vol .vhl-tegel b { font-size:5.4cqh; } body.pl-vis-vol .vhl-tegel small, body.pl-vis-vol .vhl-tegel span { font-size:1.4cqh; }

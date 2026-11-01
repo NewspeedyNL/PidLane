@@ -55,6 +55,14 @@ function toets(naam, waar, uitleg) {
       const md = vak().querySelector('.vhl-modus'), gr = vak().querySelector('.vhl-gear');
       md.textContent = 'KOELWATER HEET'; gr.textContent = '5';
       r.modusPast = md.scrollWidth <= md.clientWidth + 1; r.modusMaat = md.scrollWidth + '/' + md.clientWidth;
+      // De ronde schakellampjes (01-11-2026) blijven binnen het midden: met de
+      // oude vaste maten (vóór 28-10) liepen ze 104 px breed over de ringen.
+      vak().querySelectorAll('.vhl-leds i').forEach(i => { i.className = 'r'; });
+      const lb = vak().querySelector('.vhl-leds').getBoundingClientRect(), mb = vak().querySelector('.vhl-mid').getBoundingClientRect();
+      const raak = s => { const b = vak().querySelector(s).getBoundingClientRect(); return !(lb.right <= b.left || b.right <= lb.left || lb.bottom <= b.top || b.bottom <= lb.top); };
+      r.ledsPassen = lb.width > 0 && lb.height >= 4 && lb.left >= mb.left - 1 && lb.right <= mb.right + 1 && !raak('.vhl-pod.l') && !raak('.vhl-pod.r');
+      r.ledsMaat = Math.round(lb.width) + '×' + Math.round(lb.height) + ' in ' + Math.round(mb.width);
+      r.ledsRond = getComputedStyle(vak().querySelector('.vhl-leds i')).borderRadius === '50%';
       // Het midden wisselen: knopje en tik op het getal, onthouden in pl_hl_midden
       localStorage.removeItem('pl_hl_midden');
       const km = vak().querySelector('.vhl-midden'), kh = vak().querySelector('.vhl-held');
@@ -99,6 +107,7 @@ function toets(naam, waar, uitleg) {
     toets('de langste modustekst past naast het versnellingslabel', r.modusPast, r.modusMaat);
     toets('het knopje wisselt het midden naar Versnelling en onthoudt dat; een tik op het getal wisselt terug',
       r.midden0 === 'Slim' && r.midden1 === 'Versnelling' && r.middenOpslag === 'versnelling' && r.midden2 === 'Slim', [r.midden0, r.midden1, r.middenOpslag, r.midden2].join(' → '));
+    toets('schakellampjes: tien ronde lampjes, binnen het midden, zonder de ringen te raken', r.ledsPassen && r.ledsRond, r.ledsMaat);
     toets('de stand: tik op het label opent het menu, Sport geeft olie · inlaat · belasting, het label houdt SPORT vast, Auto zet het terug',
       r.stand0 === 'koel,gas,accu' && r.menuOpen && r.standSport === 'olie,inlaat,last' && r.standOpslag === 'sport' && /^SPORT/.test(r.labelSport) && r.lusNaStand && r.standAuto === 'koel,gas,accu',
       [r.stand0, r.menuOpen, r.standSport, r.standOpslag, r.labelSport, r.lusNaStand, r.standAuto].join(' → '));
