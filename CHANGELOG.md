@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-11-2026 — Hyperlane: de schakellampjes weer als losse ronde lampjes
+ ═══════════════════════════════════════════════════════════
+ - Op verzoek terug naar de weergave van vóór 2bb846a (28-10-2026): tien
+   ronde lampjes groen → amber → rood, blauw op het schakelpunt, in plaats
+   van de lichtstreep. Alleen CSS; de logica (leds()) is ongewijzigd.
+ - Niet letterlijk de oude maten: het midden is sinds 28-10 smaller, en met
+   1,6 cqw liepen ze 104 px breed over de ringen (midden 80 px). Nu vullen
+   ze hoogstens het midden, nooit groter dan toen. bproef-hyperlane meet het;
+   één mutatie.
+
+ ═══════════════════════════════════════════════════════════
  01-11-2026 — Hyperlane: de stand zelf kiezen (Auto, Eco, Sport, Cruise)
  ═══════════════════════════════════════════════════════════
  - Tik op het standlabel boven het midden: een menu met Auto (de scènes,
