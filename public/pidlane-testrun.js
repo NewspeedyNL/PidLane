@@ -2848,6 +2848,28 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Hyperlane: de stand zelf kiezen (01-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Hyperlane: de stand (Auto, Eco, Sport, Cruise) kiest de strook en houdt het label vast',
+    waarom: 'Uit het gebruik: "hij schakelt vanzelf van stil naar remmen naar eco … laat de klant kiezen". Deze proef toetst de geladen modules: elke stand heeft zijn strook, koelwater en gas blijven in elke stand in de indeling, en het koelwateralarm gaat voor op de gekozen stand.',
+    proef: async function () {
+      var H = window.PLHyperlane, P = window.PLVisProfiel;
+      if (!H || typeof H.standLabel !== 'function' || typeof H.stand !== 'function') return { staat: 'FOUT', detail: 'PLHyperlane zonder standen — pidlane-hyperlane.js niet bijgewerkt (herladen?)' };
+      if (!P || !P.STROOK || typeof P.strookRollen !== 'function') return { staat: 'FOUT', detail: 'PLVisProfiel zonder STROOK — pidlane-visprofiel.js niet bijgewerkt (herladen?)' };
+      if (H.standLabel('alarm', 'sport', 'KOELWATER') !== 'KOELWATER') return { staat: 'FOUT', detail: 'het koelwateralarm verdwijnt achter de gekozen stand' };
+      if (H.standLabel('stil', 'eco', 'STIL') !== 'ECO') return { staat: 'FOUT', detail: 'een gekozen stand wisselt toch mee met de scène' };
+      var mis = [];
+      H.STANDEN.forEach(function (st) {
+        var p = P.voor('hyperlane', null, st), r = p.plekken.map(function (x) { return x.rol; });
+        if (r.indexOf('koel') < 0 || r.indexOf('gas') < 0) mis.push(st + ': geen koelwater of gas');
+        if (P.strookRollen(p, st).length !== 3) mis.push(st + ': strook ' + P.strookRollen(p, st).join(','));
+      });
+      if (mis.length) return { staat: 'FOUT', detail: mis.join(' · ') };
+      return { staat: 'OK', detail: 'stand nu: ' + H.stand() + ' · strook ' + P.strookRollen(P.voor('hyperlane'), H.stand()).join(', ') };
+    }
+  },
+
   // ── Versnelling snel, schakellampjes en de pijl (31-10-2026) ──
   {
     issue: '—',

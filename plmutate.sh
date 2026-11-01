@@ -1233,6 +1233,10 @@ MUTATIES=(
 "public/pidlane-hyperlane.js@@  if(pe && pe.classList.contains('aan')!==op) pe.classList.toggle('aan', op);@@@@bproef-hyperlane.js@@de pijl omhoog verschijnt nooit op het scherm"
 "public/pidlane-berekend.js@@  return Math.max(g.vanaf, Math.ceil(g.na*ratios[gear+1]/ratios[gear]));@@  return Math.max(g.vanaf, Math.ceil(g.na*ratios[gear]/ratios[gear+1]));@@test-berekend.js@@de lampjes zeggen schakelen bij een toerental waarop het advies nog blijven zegt"
 "public/pidlane-hyperlane.js@@  if(HELD_LOPEND[s.l] || s.wt>=HELD_WAARDE_S){ s.w=oud.w;@@  if(true){ s.w=oud.w;@@test-hyperlane.js@@het verbruik krijgt weer elke tik een nieuw getal"
+"public/pidlane-hyperlane.js@@function standLabel(sc, st, gewoon){ return (!STAND_TEKST[st] || STAND_VOORRANG[sc]) ? gewoon : STAND_TEKST[st]; }@@function standLabel(sc, st, gewoon){ return STAND_TEKST[st] || gewoon; }@@test-hyperlane.js@@in een gekozen stand verdwijnt het koelwateralarm achter ECO of SPORT"
+"public/pidlane-hyperlane.js@@  if(n(x.verbruik) && st!=='sport') return@@  if(n(x.verbruik)) return@@test-hyperlane.js@@Sport toont toch het verbruik in het midden"
+"public/pidlane-visprofiel.js@@  const st=stand || 'auto', hier=p.plekken.filter(function(x){ return inStand(x, st); });@@  const hier=p.plekken;@@test-hyperlane.js@@elke stand vraagt de sensoren van alle standen: een trage adapter krijgt olie en belasting erbij die niemand ziet"
+"public/pidlane-visprofiel.js@@  const p=voor(id, motor, opts && opts.ruim ? '*' : standNu());@@  const p=voor(id, motor, standNu());@@test-hyperlane.js@@een snelle bus vraagt alleen de stand van nu: wisselen geeft eerst een leeg vak"
 "public/pidlane-visueel.js@@    themaBij(g);\n    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@    try{ if(window.PLHyperlane) PLHyperlane.wek(g); }@@bproef-visthema.js@@een herbouw van een profiel gooit de knop volledig scherm weg"
 "public/pidlane-visueel.js@@  lichaam(false);\n  try{ if(window.PLVisThema) PLVisThema.uit(); }@@  lichaam(false);\n  try{ }@@bproef-visthema.js@@een andere weergave kiezen laat het volle scherm over de app liggen"
 "public/pidlane.css@@body.pl-vis-vol .vis { position:fixed; inset:0; z-index:var(--z-modal);@@body.pl-vis-vol .vis { position:fixed; inset:0; z-index:9000;@@bproef-visthema.js@@het volle scherm ligt onder de navigatiebalk"
@@ -2410,8 +2414,8 @@ MUTATIES=(
 "public/pidlane-fuel.js@@ && !PLDemo.volledig()) return PLDemo.aiVoorbeeld(prompt, extra);@@) return PLDemo.aiVoorbeeld(prompt, extra);@@test-demozandbak.js@@de beheerdersdemo krijgt het voorbeeldrapport in plaats van de AI — #409"
 "public/pidlane-motortype.js@@  if(window.PLDemo && PLDemo.actief() && !PLDemo.volledig()){@@  if(window.PLDemo && PLDemo.actief()){@@test-demozandbak.js@@de beheerdersdemo slaat geen bestanden op — #409"
 # ── diesel: eigen sensoren op dezelfde weergaven (#393) ──
-"public/pidlane-visprofiel.js@@  if(motor!=='diesel') return p.plekken;@@  return p.plekken;@@test-visprofiel.js@@een diesel krijgt weer lambda rond 1,00, de brandstoftrims en de ontsteking — #393"
-"public/pidlane-visprofiel.js@@function ketens(id, motor, opts){\n  const p=voor(id, motor);@@function ketens(id, motor, opts){\n  const p=zoek(id);@@test-visprofiel.js@@Slim visueel zet op een diesel de roetfilter-PIDs niet aan: het scherm blijft leeg — #393"
+"public/pidlane-visprofiel.js@@  if(motor!=='diesel') return hier;@@  return hier;@@test-visprofiel.js@@een diesel krijgt weer lambda rond 1,00, de brandstoftrims en de ontsteking — #393"
+"public/pidlane-visprofiel.js@@  const p=voor(id, motor, opts && opts.ruim ? '*' : standNu());@@  const p=zoek(id);@@test-visprofiel.js@@Slim visueel zet op een diesel de roetfilter-PIDs niet aan: het scherm blijft leeg — #393"
 "public/pidlane-visueel.js@@PF().indeling(pr, bruikbaar, motor, profielOpts())@@PF().indeling(pr, bruikbaar, undefined, profielOpts())@@test-visprofiel.js@@Slim visueel geeft de motorsoort niet door: een diesel ziet de benzinekaart — #393"
 # ── Slim visueel: een plek zelf invullen (06-10-2026) ──
 "public/pidlane-visprofiel.js@@eenheid:'°', soort:'thermo', lo:40, hi:150, dec:0, zoek:/olie|oil/i },@@eenheid:'°', soort:'thermo', lo:40, hi:150, dec:0 },@@test-visprofiel.js@@OLIE blijft leeg op de CX-5 terwijl de eigen motorolietemperatuur er is"

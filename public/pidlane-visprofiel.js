@@ -180,30 +180,60 @@ const PROFIELEN = [
       { rol:'accu',     naam:'Accu', kort:'Accu', keten:['0142'], eenheid:'V', soort:'hyper', lo:9, hi:16, dec:1 },
       { rol:'tank',     naam:'Tank',     keten:['012F'], eenheid:'%', soort:'hyper', lo:0, hi:100, dec:0 },
       { rol:'bereik',   naam:'Bereik',   keten:['CA09'], eenheid:'km', soort:'hyper', lo:0, hi:2000, dec:0 },
-      { rol:'verbruik', naam:'Verbruik', keten:['CA03'], eenheid:'L/100', soort:'hyper', lo:0, hi:30, dec:1 }
+      { rol:'verbruik', naam:'Verbruik', keten:['CA03'], eenheid:'L/100', soort:'hyper', lo:0, hi:30, dec:1 },
+      // De standen (01-11-2026, zie STROOK): deze drie staan alleen in de
+      // standen die ze noemen. Koelwater, gas en accu staan er altijd, ook
+      // als de strook ze niet toont: alarm, 0–100 en power-up lezen ze.
+      { rol:'last',   naam:'Belasting',   kort:'Last',   keten:['0104','0143'], eenheid:'%', soort:'hyper', lo:0, hi:100, dec:0, stand:['eco','sport'] },
+      { rol:'olie',   naam:'Motorolie',   kort:'Olie',   keten:['015C'], eenheid:'°C', soort:'hyper', lo:40, hi:150, dec:0, zoek:/olie|oil/i, stand:['sport','cruise'] },
+      { rol:'inlaat', naam:'Inlaatlucht', kort:'Inlaat', keten:['010F','0168'], eenheid:'°C', soort:'hyper', lo:-20, hi:80, dec:0, stand:['sport'],
+        diesel:{ rol:'laad', naam:'Laaddruk', kort:'Laad', keten:['0170','0187','010B'], eenheid:'kPa', lo:0, hi:300 } }
     ] }
 ];
 // De ringen van buiten naar binnen; de straal staat hier en niet in de CSS,
 // want de tekening is een SVG met een vaste viewBox.
 const RING_R = { toeren:86, last:68, gasklep:50, energie:86, hvaccu:68, motor:50 };
 function elektrisch(motor){ return motor==='hybride' || motor==='ev'; }
+/* ── De stand van Hyperlane ── (01-11-2026, uit het gebruik: "hij schakelt
+   vanzelf van stil naar remmen naar eco … laat de klant kiezen in welke
+   stand hij staat, zodat de PID's die in die stand belangrijk zijn in beeld
+   staan".) De keuze zelf staat in PLHyperlane.stand(); hier staat wat er per
+   stand in de strook onder het midden komt. Een plek met `stand:[…]` hoort
+   alleen bij die standen: in een andere stand valt hij uit de indeling en
+   wordt hij dus niet aangezet. '*' = alle standen (zie ketens()). */
+const STANDEN = ['auto','eco','sport','cruise'];
+const STAND_NAAM = { auto:'Auto', eco:'Eco', sport:'Sport', cruise:'Cruise' };
+const STROOK = { auto:['koel','gas','accu'], eco:['gas','last','koel'], sport:['olie','inlaat','laad','last'], cruise:['koel','olie','accu'] };
+function standNu(){
+  try{ return (window.PLHyperlane && typeof PLHyperlane.stand==='function') ? PLHyperlane.stand() : 'auto'; }
+  catch(e){ console.warn('PLVisProfiel: stand van Hyperlane onleesbaar — Auto', e); return 'auto'; }
+}
+function inStand(x, stand){ return !x.stand || stand==='*' || x.stand.indexOf(stand)>=0; }
+/* De rollen in de strook voor deze stand, in volgorde; alleen wat het profiel
+   voor deze motor heeft (een diesel heeft 'laad' en geen 'inlaat'). Puur. */
+function strookRollen(p, stand){
+  const r=STROOK[stand] || STROOK.auto;
+  return r.filter(function(rol){ return !!plekVan(p, rol); });
+}
 
 function zoek(id){ for(let i=0;i<PROFIELEN.length;i++){ if(PROFIELEN[i].id===id) return PROFIELEN[i]; } return null; }
 /* De plekken van een profiel voor deze motor. Puur. Een diesel krijgt de
    diesel-velden van een plek in de plaats, of de plek valt weg (false). */
-function plekkenVan(p, motor){
+function plekkenVan(p, motor, stand){
   if(!p || !p.plekken) return null;
   if(elektrisch(motor) && p.hybride) return p.hybride.plekken;
-  if(motor!=='diesel') return p.plekken;
-  return p.plekken.filter(function(x){ return x.diesel!==false; })
+  const st=stand || 'auto', hier=p.plekken.filter(function(x){ return inStand(x, st); });
+  if(motor!=='diesel') return hier;
+  return hier.filter(function(x){ return x.diesel!==false; })
     .map(function(x){ return x.diesel ? Object.assign({}, x, x.diesel) : x; });
 }
 /* Het profiel zoals deze motor het ziet: dezelfde velden, andere plekken. */
-function voor(id, motor){
+/* `stand` mag weg: dan de stand die nu gekozen is (standNu()). */
+function voor(id, motor, stand){
   const p=zoek(id);
   if(!p || !p.plekken) return p;
   const h=(elektrisch(motor) && p.hybride) ? { naam:p.hybride.naam, ondertitel:p.hybride.ondertitel } : {};
-  return Object.assign({}, p, h, { plekken:plekkenVan(p, motor) });
+  return Object.assign({}, p, h, { plekken:plekkenVan(p, motor, stand || standNu()) });
 }
 function geldig(id){ return !!zoek(id); }
 /* Het profiel na `id`, rond. Onbekend = het eerste na de basis. */
@@ -283,9 +313,9 @@ function kortVan(naam){ const n=String(naam||''); return n.length>10 ? n.slice(0
    detectEngineType(). `opts` = { keuze, defs } en mag weg: dan is het de
    indeling van vóór 06-10-2026. */
 function indeling(id, mag, motor, opts){
-  const p=voor(id, motor);
+  const st=standNu(), p=voor(id, motor, st);
   if(!p || !p.plekken) return null;
-  const uit={ id:p.id, motor:motor||null, plekken:{}, vervang:{}, weergave:{} }, bezet=[];
+  const uit={ id:p.id, motor:motor||null, stand:st, plekken:{}, vervang:{}, weergave:{} }, bezet=[];
   const def=function(q){ return (opts && Array.isArray(opts.defs)) ? opts.defs.filter(function(d){ return d && d.pid===q; })[0] : null; };
   // Wat elke plek uit zijn EIGEN keten zou halen. Dezelfde PID op twee
   // plekken mag als beide ketens hem noemen (de telemetrie zet TL01 op de
@@ -327,15 +357,18 @@ function indeling(id, mag, motor, opts){
   return uit;
 }
 /* De ketens van een profiel: wat pidlane-visueel.js erbij moet zetten. */
+/* `opts.ruim` = de bus kan het makkelijk aan (PLLoad 'snel'): dan de plekken
+   van álle standen, zodat wisselen meteen een getal geeft. Anders alleen de
+   stand van nu: op een trage adapter vraagt een verborgen plek geen bustijd. */
 function ketens(id, motor, opts){
-  const p=voor(id, motor);
+  const p=voor(id, motor, opts && opts.ruim ? '*' : standNu());
   // Zonder de reserve: die zet PLVisueel.reserveKetens() aan, één per lege plek.
   return (p && p.plekken) ? p.plekken.map(function(x){ return ketenVan(p.id, x, opts); }) : [];
 }
 /* Het profiel zoals deze indeling het tekent: een vervangen plek met zijn
    eigen naam en schaal. */
 function voorInd(id, ind){
-  const p=voor(id, ind && ind.motor);
+  const p=voor(id, ind && ind.motor, ind && ind.stand);
   if(!p || !p.plekken || !ind || (!ind.vervang && !ind.weergave)) return p;
   return Object.assign({}, p, { plekken:p.plekken.map(function(x){
     const v=ind.vervang && ind.vervang[x.rol], w=ind.weergave && ind.weergave[x.rol];
@@ -572,10 +605,10 @@ function htmlHyper(p, ind){
   return '<canvas class="vhl-bg" aria-hidden="true"></canvas>'+
     '<div class="vhl-podium">'+pod('toeren', 'l')+
       '<div class="vhl-mid"><div class="vhl-merk"></div><div class="vhl-leds">'+new Array(11).join('<i></i>')+'</div>'+
-        '<div class="vhl-kop"><span class="vhl-modus">ECO</span><span class="vhl-gear"></span><span class="vhl-pijl" aria-hidden="true">▲</span></div>'+
+        '<div class="vhl-kop"><span class="vhl-modus" role="button" tabindex="0" aria-haspopup="menu" aria-label="Stand kiezen">ECO</span><span class="vhl-gear"></span><span class="vhl-pijl" aria-hidden="true">▲</span></div>'+
         // Het hoofdgetal: per scène wat er toe doet (PLHyperlane.held)
         '<div class="vhl-held"><div><b class="vhl-held-w">—</b><span class="vhl-held-e"></span></div><small class="vhl-held-l"></small></div>'+
-        '<div class="vhl-strook">'+strook('koel')+strook('gas')+strook('accu')+'</div></div>'+
+        '<div class="vhl-strook">'+strookRollen(p, ind.stand).map(strook).join('')+'</div></div>'+
       pod('snel', 'r')+'</div>'+
     '<div class="vhl-rand l"></div><div class="vhl-rand r"></div><div class="vhl-flits"></div><div class="vhl-badge"></div>'+
     '<div class="vhl-score" aria-live="polite"></div><div class="vhl-power" aria-live="polite"></div>'+
@@ -583,6 +616,10 @@ function htmlHyper(p, ind){
     '<button type="button" class="vhl-vorm" aria-label="Achtergrond wisselen"></button>'+
     '<button type="button" class="vhl-midden" aria-label="Midden: slim getal of versnelling"></button>'+
     '<button type="button" class="vhl-ritknop" aria-label="Ritoverzicht tonen of sluiten">🏁</button>'+
+    // Het standmenu (PLHyperlane.STANDEN): tik op het standlabel.
+    '<div class="vhl-standmenu" role="menu" hidden>'+STANDEN.map(function(k){
+      return '<button type="button" role="menuitemradio" data-stand="'+k+'"'+(k===(ind.stand||'auto') ? ' aria-checked="true" class="aan"' : ' aria-checked="false"')+'>'+STAND_NAAM[k]+'</button>';
+    }).join('')+'</div>'+
     tank();
 }
 /* De tanklichtbalk onderin: peil, bereik en verbruik op één regel. */
@@ -809,6 +846,7 @@ window.PLVisProfiel = {
   zoek:zoek, voor:voor, geldig:geldig, plekkenVan:plekkenVan, volgende:volgende, vorige:vorige, lees:lees, bewaar:bewaar,
   standaard:standaard, energie:energie, toestandTekst:toestandTekst, tegelTekst:tegelTekst,
   indeling:indeling, ketens:ketens, deel:deel, tekst:tekst, html:html, bij:bij, dof:dof, pids:pids,
+  STANDEN:STANDEN, STAND_NAAM:STAND_NAAM, STROOK:STROOK, strookRollen:strookRollen, inStand:inStand,
   KEUZE_SLEUTEL:KEUZE_SLEUTEL, keuzes:keuzes, zetKeuze:zetKeuze, ketenVan:ketenVan, voorInd:voorInd, weergaveVelden:weergaveVelden, nulstellen:nulstellen,
   G_PIEK_MS:G_PIEK_MS, gPiek:gPiek, gPunt:gPunt, gWis:gWis, G_SPOOR_MS:G_SPOOR_MS, G_MAX_PAUZE_MS:G_MAX_PAUZE_MS, gSpoorBij:gSpoorBij, gSpoorPunten:gSpoorPunten, gMax:gMax
 };

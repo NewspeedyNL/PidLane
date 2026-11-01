@@ -364,5 +364,53 @@ console.log('\n4n. Rustig in het midden (30-10-2026): niet zes keer per seconde 
   waar('na ' + H.GEAR_TERUG_S + ' s stabiel komt de versnelling terug', g.toon === '5');
 }
 
+console.log('\n13. De stand: Auto, Eco, Sport, Cruise (01-11-2026)');
+{
+  // Een eigen vm: de stand staat in localStorage en in de module.
+  const K = laad(), Hk = K.PLHyperlane, Pk = K.PLVisProfiel;
+  const heeft = q => ['010C', '010D', '0105', '0149', '0142', '0104', '015C', '010F', '0170'].indexOf(q) >= 0;
+  const strook = h => (h.match(/<div class="vhl-strook">([\s\S]*?)<\/div><\/div>/) || [, ''])[1].match(/id="vpf-p-[a-z]+"/g).map(x => x.slice(10, -1)).join(',');
+  waar('zonder keuze: Auto, met de strook van altijd (koel, gas, accu)', Hk.stand() === 'auto' && strook(Pk.html('hyperlane', Pk.indeling('hyperlane', heeft))) === 'koel,gas,accu');
+  waar('onzin wordt niet bewaard', Hk.zetStand('turbo') === false && Hk.stand() === 'auto');
+  const per = {};
+  Hk.STANDEN.forEach(st => {
+    Hk.zetStand(st);
+    const i = Pk.indeling('hyperlane', heeft), d = Pk.indeling('hyperlane', heeft, 'diesel');
+    per[st] = { i: i, strook: strook(Pk.html('hyperlane', i)), diesel: strook(Pk.html('hyperlane', d)), ketens: Pk.ketens('hyperlane', null, {}).map(k => k[0]) };
+  });
+  waar('de keuze wordt bewaard', K.localStorage.getItem(Hk.STAND_SLEUTEL) === 'cruise');
+  waar('Eco: gas, belasting, koelwater', per.eco.strook === 'gas,last,koel', per.eco.strook);
+  waar('Sport: olie, inlaat, belasting', per.sport.strook === 'olie,inlaat,last', per.sport.strook);
+  waar('Sport op een diesel: laaddruk in plaats van inlaat', per.sport.diesel === 'olie,laad,last', per.sport.diesel);
+  waar('Cruise: koelwater, olie, accu', per.cruise.strook === 'koel,olie,accu', per.cruise.strook);
+  waar('de stand zit in de indeling (de handtekening van Slim visueel ziet hem)', Hk.STANDEN.every(st => per[st].i.stand === st));
+  // Veiligheid: alarm, 0–100 en power-up lezen koelwater, gas en accu — in élke stand.
+  waar('koelwater, gas en accu staan in elke stand in de indeling', Hk.STANDEN.every(st => per[st].i.plekken.koel === '0105' && per[st].i.plekken.gas === '0149' && per[st].i.plekken.accu === '0142'));
+  waar('trage bus: Eco zet de olie niet aan, Sport wel', per.eco.ketens.indexOf('015C') < 0 && per.sport.ketens.indexOf('015C') >= 0, JSON.stringify(per.eco.ketens));
+  waar('Auto vraagt niets extra: geen belasting, olie of inlaat', ['0104', '015C', '010F'].every(q => per.auto.ketens.indexOf(q) < 0));
+  Hk.zetStand('eco');
+  const ruim = Pk.ketens('hyperlane', null, { ruim: true }).map(k => k[0]);
+  waar('snelle bus (ruim): de sensoren van álle standen, ook in Eco', ['0104', '015C', '010F'].every(q => ruim.indexOf(q) >= 0), JSON.stringify(ruim));
+  waar('het menu kent vier standen en vinkt de gekozen aan', (Pk.html('hyperlane', Pk.indeling('hyperlane', heeft)).match(/data-stand="/g) || []).length === 4
+    && /data-stand="eco" aria-checked="true"/.test(Pk.html('hyperlane', Pk.indeling('hyperlane', heeft))));
+  // Het label
+  waar('Auto: het label van de scène, zoals altijd', Hk.standLabel('stil', 'auto', 'STIL') === 'STIL');
+  waar('gekozen stand: het label blijft staan bij stil, remmen, koud en cruise', ['stil', 'remmen', 'koud', 'cruise', 'rijden'].every(sc => Hk.standLabel(sc, 'eco', 'X') === 'ECO'));
+  waar('alarm, begrenzer en 0–100 gaan altijd voor', ['alarm', 'begrenzer', 'launch'].every(sc => Hk.standLabel(sc, 'sport', 'X') === 'X'));
+  // Het midden in Sport: geen verbruik
+  const tk = (v, d) => Number(v).toFixed(d).replace('.', ',');
+  const x = { koel: 90, verbruik: 6.4, gas: 30, versn: 0, launchS: null, klok: '12:00' };
+  waar('Sport: gas in het midden in plaats van verbruik', Hk.held('rijden', x, tk, '', 'sport').l === 'GAS' && Hk.held('rijden', x, tk, '', 'eco').l === 'VERBRUIK NU');
+  waar('Sport: een verbruik dat er stond gaat weg', Hk.heldWaarde('VERBRUIK NU', 'rijden', x, tk, 'sport') === null && Hk.heldWaarde('VERBRUIK NU', 'rijden', x, tk, 'eco') !== null);
+  // Tegenproeven: de fout die hier gevangen hoort te worden
+  const BR = lees('pidlane-visprofiel.js'), BH = lees('pidlane-hyperlane.js');
+  const laadMet = (f, bron) => { const c = { console: { log() {}, warn() {}, error() {} }, localStorage: { getItem: () => null, setItem() {} } }; c.window = c; vm.createContext(c);
+    ['pidlane-toon.js', 'pidlane-hyperlane.js', 'pidlane-visprofiel.js'].forEach(n => vm.runInContext(n === f ? bron : lees(n), c, { filename: n })); return c; };
+  const T1 = laadMet('pidlane-visprofiel.js', BR.replace("const st=stand || 'auto', hier=p.plekken.filter(function(x){ return inStand(x, st); });", "const hier=p.plekken;")).PLVisProfiel;
+  waar('tegenproef: zonder standfilter vraagt Auto ook olie en belasting', ['0104', '015C'].every(q => T1.ketens('hyperlane', null, {}).map(k => k[0]).indexOf(q) >= 0));
+  const T2 = laadMet('pidlane-hyperlane.js', BH.replace("function standLabel(sc, st, gewoon){ return (!STAND_TEKST[st] || STAND_VOORRANG[sc]) ? gewoon : STAND_TEKST[st]; }", "function standLabel(sc, st, gewoon){ return STAND_TEKST[st] || gewoon; }")).PLHyperlane;
+  waar('tegenproef: zonder voorrang verdwijnt het koelwateralarm achter SPORT', T2.standLabel('alarm', 'sport', 'KOELWATER 120°') === 'SPORT');
+}
+
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + (ok + fout) : 'ok: ' + ok + ' van ' + ok));
 process.exit(fout ? 1 : 0);

@@ -63,6 +63,20 @@ function toets(naam, waar, uitleg) {
       const tot = async t => { for (let i = 0; i < 60 && km.textContent !== t; i++) await wacht(100); return km.textContent; };
       km.click(); r.midden1 = await tot('Versnelling'); r.middenOpslag = localStorage.getItem('pl_hl_midden');
       kh.click(); r.midden2 = await tot('Slim');
+      // De stand (01-11-2026): tik op het label, kies Sport. De weergave bouwt
+      // opnieuw met de strook van Sport; daarna terug naar Auto.
+      const strook = () => vak() ? Array.from(vak().querySelectorAll('.vhl-strook > div')).map(d => d.id.slice(6)).join(',') : '';
+      const totS = async t => { for (let i = 0; i < 60 && strook() !== t; i++) await wacht(100); return strook(); };
+      r.stand0 = strook();
+      vak().querySelector('.vhl-modus').click();
+      r.menuOpen = !vak().querySelector('.vhl-standmenu').hidden;
+      vak().querySelector('.vhl-standmenu [data-stand="sport"]').click();
+      r.standSport = await totS('olie,inlaat,last'); r.standOpslag = localStorage.getItem('pl_hl_stand');
+      for (let i = 0; i < 60 && vak().querySelector('.vhl-modus').textContent !== 'SPORT'; i++) await wacht(100);
+      r.labelSport = vak().querySelector('.vhl-modus').textContent + ' (' + vak().getAttribute('data-scene') + ')';
+      r.lusNaStand = PLHyperlane.actief();
+      vak().querySelector('.vhl-modus').click(); vak().querySelector('.vhl-standmenu [data-stand="auto"]').click();
+      r.standAuto = await totS('koel,gas,accu');
       // Volledig scherm: de tunnel vult het scherm.
       document.querySelector('.gg.view-visueel .vt-vol').click();
       // De canvas wordt in de eerstvolgende frame vergroot; op een trage CI-machine
@@ -85,6 +99,9 @@ function toets(naam, waar, uitleg) {
     toets('de langste modustekst past naast het versnellingslabel', r.modusPast, r.modusMaat);
     toets('het knopje wisselt het midden naar Versnelling en onthoudt dat; een tik op het getal wisselt terug',
       r.midden0 === 'Slim' && r.midden1 === 'Versnelling' && r.middenOpslag === 'versnelling' && r.midden2 === 'Slim', [r.midden0, r.midden1, r.middenOpslag, r.midden2].join(' → '));
+    toets('de stand: tik op het label opent het menu, Sport geeft olie · inlaat · belasting, het label houdt SPORT vast, Auto zet het terug',
+      r.stand0 === 'koel,gas,accu' && r.menuOpen && r.standSport === 'olie,inlaat,last' && r.standOpslag === 'sport' && /^SPORT/.test(r.labelSport) && r.lusNaStand && r.standAuto === 'koel,gas,accu',
+      [r.stand0, r.menuOpen, r.standSport, r.standOpslag, r.labelSport, r.lusNaStand, r.standAuto].join(' → '));
     toets('de lus kiest een scène', ['rijden', 'stil', 'cruise', 'koud', 'remmen', 'launch', 'begrenzer', 'alarm'].indexOf(r.scene) >= 0, JSON.stringify(r));
     if (!r.gl) console.log('  LET OP  geen WebGL in deze browser: de tunnel is hier het CSS-verloop');
     console.log('\n2. Volledig scherm');
