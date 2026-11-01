@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 01-11-2026 — Sensoren per voertuig: drie subbladen, één regel per sensor
+ ═══════════════════════════════════════════════════════════
+ - Uit het gebruik: "na vier pogingen nog steeds een wirwar". Het tabblad
+   Sensoren heeft nu drie subbladen: Mijn sensoren · Erbij zoeken (alle
+   sensoren zoeken, bibliotheek, buurscan) · Berekend.
+ - Per sensor één regel: vinkje, naam, eenheid. Code, formule, tempo,
+   testen, delen en weghalen staan achter een tik (details, blijft open na
+   een herteken). "Zelf een code toevoegen" is ingeklapt.
+ - Banden: één regel, één vinkje voor spanning en temperatuur van alle
+   wielen. Wielsnelheid (PLEigen.wielRol) idem: één regel, één vinkje en één
+   tempo voor alle vier, in plaats van vier losse kaarten in Voor analyse.
+ - Bewaren blijft onderin in beeld; uitlegteksten bij zoeken ingeklapt.
+ - Tests: test-garage (wielgroep + tegenproef), bproef-garage 4p; drie
+   mutaties.
+
+ ═══════════════════════════════════════════════════════════
  01-11-2026 — Hyperlane: de schakellampjes weer als losse ronde lampjes
  ═══════════════════════════════════════════════════════════
  - Op verzoek terug naar de weergave van vóór 2bb846a (28-10-2026): tien

@@ -1818,8 +1818,8 @@ MUTATIES=(
 "public/pidlane-garage.js@@      else nieuw.push(b);@@      nieuw.push(b);@@test-garage.js@@een toegevoegde code staat weer twee keer in Sensoren: eigen én bibliotheek"
 "public/pidlane-garage.js@@berAan = ber.filter(function (p) { return S.sel.indexOf(p) >= 0; });@@berAan = ber;@@bproef-garage.js@@alle berekende sensoren staan weer uitgeklapt, ook wat uit staat"
 "public/pidlane-garage.js@@    return '<div class=\"gr-sgroep\"><div class=\"gr-gk\">'@@    return '<div class=\"gr-groep\"><div class=\"gr-gk\">'@@bproef-garage.js@@de sensorgroepen heten weer gr-groep en erven white-space:nowrap van de grafiekknoppen"
-"public/pidlane-garage.js@@rol = bandVan(b);@@rol = null;@@test-garage.js@@de banden staan weer los tussen de andere sensoren, met de ATF ertussen"
-"public/pidlane-garage.js@@        if (!isBand(e)) return;\n        var i = S.sel.indexOf(e.code);@@        var i = S.sel.indexOf(e.code);@@bproef-garage.js@@het bandenvinkje haalt ook de andere eigen sensoren uit de meting"
+"public/pidlane-garage.js@@rol = bandVan(b), wiel = rol ? null : wielVan(b);@@rol = null, wiel = rol ? null : wielVan(b);@@test-garage.js@@de banden staan weer los tussen de andere sensoren, met de ATF ertussen"
+"public/pidlane-garage.js@@        if (!inSet(k, e)) return;\n        var i = S.sel.indexOf(e.code);@@        var i = S.sel.indexOf(e.code);@@bproef-garage.js@@het bandenvinkje haalt ook de andere eigen sensoren uit de meting"
 "public/pidlane-uitgebreid.js@@    const tempo = band ? 'opverzoek' : (EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal');@@    const tempo = EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal';@@test-mode21.js@@acht bandensensoren worden elke 2 s via een ander ECU-adres gevraagd"
 # ── banden op verzoek, buiten de pollus (#396, 06-10-2026) ──
 "public/pidlane-uitgebreid.js@@    const tempo = band ? 'opverzoek' : (EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal');@@    const tempo = band ? 'minuut' : (EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal');@@test-banden.js@@de banden gaan weer elke minuut als acht losse PIDs de pollus in — #396"
