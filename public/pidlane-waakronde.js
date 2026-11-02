@@ -208,6 +208,21 @@
     } catch (e) { return false; }
   }
 
+  // De waarde zoals de definitie hem leest, zónder laag 1 (geen grenzen, geen
+  // afvlakking): dezelfde bytes als parsePID(), met plIsoTpHex() voor een
+  // meerframe-antwoord. null = de parser vond geen waarde.
+  function ruweWaarde(pid, raw) {
+    try {
+      const hex = (typeof plIsoTpHex === 'function') ? plIsoTpHex(raw) : String(raw || '').replace(/[^0-9A-Fa-f]/g, '');
+      const hdr = ((parseInt(pid.slice(0, 2), 16) + 0x40).toString(16).toUpperCase().padStart(2, '0')) + pid.slice(2).toUpperCase();
+      const i = hex.toUpperCase().indexOf(hdr), b = [];
+      for (let k = (i >= 0 ? i + hdr.length : 4); k < hex.length - 1; k += 2) b.push(parseInt(hex.slice(k, k + 2), 16));
+      if (!b.length) return null;
+      const d = def(pid);
+      return (d && d.parse) ? d.parse(b) : b[0];
+    } catch (e) { console.warn('PLWaak: ruwe waarde van ' + pid + ' niet te lezen', e); return null; }
+  }
+
   // Oordeel over één meting. Bewust smal: stilte, fysiek onmogelijk, of
   // buiten het bereik van de definitie. Alles wat historie nodig heeft
   // (bevroren, wegvallend, driftend) is het werk van PLWatch en PLMon, die
@@ -218,10 +233,18 @@
     let v = null;
     try { v = (typeof parsePID === 'function') ? parsePID(pid, raw) : null; } catch (e) { v = null; }
 
-    // Antwoord kwam binnen maar overleefde de validatie niet: dat kan alleen
-    // doordat laag 1 hem als fysiek onmogelijk afkeurde. Dat is een van de
-    // sterkste bevindingen die er zijn.
+    // Antwoord kwam binnen maar gaf geen waarde. Tot 02-11-2026 stond hier
+    // "dat kan alleen doordat laag 1 hem als fysiek onmogelijk afkeurde" — en
+    // dat bleek niet waar. Een regelblok als 016D (raildruk) zegt in zijn
+    // eerste byte wat erin zit; staat dat bit uit, of komt het meerframe-
+    // antwoord onvolledig binnen, dan geeft de parser bewust null. Op een
+    // Mazda CX-5 werd dat drie keer een oranje "Brandstofraildruk — MPa,
+    // buiten fysiek bereik". Dus: eerst de waarde zónder laag 1. Is er wél
+    // een getal en keurt laag 1 het af, dan is het een bevinding; is er geen
+    // getal, dan is er niets gemeten.
     if (v === null || v === undefined || !isFinite(v)) {
+      const r = ruweWaarde(pid, raw);
+      if (r === null || r === undefined || !isFinite(r)) return { staat: 'stil', v: undefined, reden: 'antwoord zonder waarde' };
       return { staat: 'let', v: undefined, reden: 'buiten fysiek bereik' };
     }
 

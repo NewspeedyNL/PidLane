@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 02-11-2026 — Waakronde: geen waarde is geen "buiten fysiek bereik"
+ ═══════════════════════════════════════════════════════════
+ - Uit de auto: Brandstofraildruk (016D, een regelblok) stond oranje als
+   "— MPa, buiten fysiek bereik". De parser gaf bewust geen waarde (bit in
+   byte A uit, of een onvolledig meerframe-antwoord); de waakronde las elke
+   null als "laag 1 keurde af". Nu eerst de waarde zonder laag 1
+   (ruweWaarde()): geen getal = stil, wél een afgekeurd getal = bevinding.
+ - test-waakronde: drie gevallen erbij, en "0 V" is nu echt 0000 (de oude
+   toets gebruikte een half antwoord). Eén mutatie. Uitleg in het archief.
+
+ ═══════════════════════════════════════════════════════════
  01-11-2026 — Nagelopen: Auto zegt AUTO, "In het formulier" springt mee
  ═══════════════════════════════════════════════════════════
  - Hyperlane: in Auto stond de rijstijl van modus() er kaal (ECO, CRUISE,

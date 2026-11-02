@@ -157,12 +157,30 @@ console.log('\n— fysiek onmogelijk is een BEVINDING, geen stilte —');
   t('inlaatdruk 0 kPa is een bevinding', B('010B', '410B00').staat, 'let');
   t('en de reden is benoemd', B('010B', '410B00').reden, 'buiten fysiek bereik');
   t('inlaatdruk 1 kPa ook', B('010B', '410B01').staat, 'let');
-  t('boordspanning 0 V is een bevinding', B('0142', '414200').staat, 'let');
+  // 0142 heeft twee databytes. Tot 02-11-2026 stond hier '414200' — één
+  // byte, dus een onvolledig antwoord dat toevallig ook "let" gaf. Een echte
+  // 0 V is 0000; het halve antwoord is geen meting (zie hieronder, 016D).
+  t('boordspanning 0 V is een bevinding', B('0142', '41420000').staat, 'let');
+  t('een half antwoord van 0142 (één byte) is geen bevinding', B('0142', '414200').staat, 'stil');
   t('ontsteking -64° is een bevinding', B('010E', '410E00').staat, 'let');
 
   t('een bevinding is iets anders dan stilte',
     B('010B', '410B00').staat !== B('010B', 'NO DATA').staat, true);
   t('een bevinding houdt geen waarde vast', B('010B', '410B00').v, undefined);
+}
+
+console.log('\n— geen waarde is geen bevinding (02-11-2026, 016D op een CX-5) —');
+{
+  // 016D is een regelblok: byte A zegt wat erin zit. Bit uit = de parser
+  // geeft bewust null. Dat is niets gemeten, geen fysiek onmogelijke waarde.
+  const s = bouw(), B = s.PLWaak._beoordeel;
+  t('raildrukblok met het bit uit: geen bevinding', B('016D', '416D000000000000000000000').staat, 'stil');
+  t('en de reden zegt dat er geen waarde was', B('016D', '416D000000000000000000000').reden, 'antwoord zonder waarde');
+  t('raildrukblok met het bit aan: een gewone meting (0x0320 × 10 kPa = 8 MPa)', B('016D', '416D0100000320000000000000').staat, 'ok');
+  t('onvolledig meerframe-antwoord (alleen byte A): geen bevinding', B('016D', '416D01').staat, 'stil');
+  // Tegenproef: het onderscheid zit niet in de PID. Een MAP van 0 kPa geeft
+  // wél een getal, en laag 1 keurt het af — dat blijft een bevinding.
+  t('tegenproef: MAP 0 kPa blijft een bevinding', B('010B', '410B00').staat, 'let');
 }
 
 console.log('\n— de grens van de tabel is de grens van het oordeel —');
