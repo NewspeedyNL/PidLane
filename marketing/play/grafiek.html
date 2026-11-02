@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>PidLane feature graphic</title>
+<!-- De feature graphic voor de Play Store: 1024×500 (02-11-2026). Render: node marketing/play/render.js
+     Belangrijk staat binnen het midden: Play legt soms een afspeelknop of verloop over de randen. -->
+<style>
+@font-face { font-family:"DM Sans"; src:url(../fonts/dmsans.woff2) format("woff2"); font-weight:100 1000; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { width:1024px; height:500px; overflow:hidden; font-family:'DM Sans',sans-serif; color:#eef2fa; background:#0a0e17; }
+.vlak { position:relative; width:1024px; height:500px; overflow:hidden;
+  background: radial-gradient(circle at 78% 55%, rgba(31,209,137,.35), transparent 45%),
+              radial-gradient(circle at 8% 0%, rgba(154,120,255,.30), transparent 45%),
+              linear-gradient(160deg,#101830,#0a0e17 60%); }
+.vlak::before { content:""; position:absolute; inset:0; opacity:.5;
+  background-image:linear-gradient(rgba(77,130,255,.08) 1px,transparent 1px), linear-gradient(90deg,rgba(77,130,255,.08) 1px,transparent 1px);
+  background-size:40px 40px; mask-image:linear-gradient(90deg,#000,transparent 70%); }
+.beeld { position:absolute; right:-250px; top:70px; width:740px; border-radius:26px; overflow:hidden; transform:perspective(1200px) rotateY(-14deg);
+  box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 90px rgba(31,209,137,.35); border:1.5px solid rgba(255,255,255,.14); }
+.beeld img { display:block; width:100%; }
+.beeld::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg, rgba(10,14,23,.0) 60%, rgba(10,14,23,.85)); }
+.tekst { position:absolute; left:64px; top:0; bottom:0; width:470px; display:flex; flex-direction:column; justify-content:center; }
+.merk { display:flex; align-items:center; gap:16px; font-weight:850; font-size:46px; letter-spacing:-.5px; }
+.merk img { width:74px; height:74px; border-radius:24%; box-shadow:0 0 40px rgba(31,209,137,.45); }
+.kop { margin-top:26px; font-size:42px; font-weight:850; line-height:1.05; letter-spacing:-1.2px; }
+.kop em { font-style:normal; background:linear-gradient(90deg,#1fd189,#4fd6f0); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.sub { margin-top:16px; font-size:21px; color:#a7b2c8; font-weight:500; }
+</style>
+</head>
+<body>
+<div class="vlak">
+  <div class="beeld"><img src="rauw/hyperlane-liggend.png" alt=""></div>
+  <div class="tekst">
+    <div class="merk"><img src="../icon.png" alt="">PidLane</div>
+    <div class="kop">Je auto <em>live</em>,<br>je monteur <em>kijkt mee</em></div>
+    <div class="sub">OBD2 · foutcodes · diagnose in gewone taal</div>
+  </div>
+</div>
+<script>document.body.dataset.klaar = 1;</script>
+</body>
+</html>
