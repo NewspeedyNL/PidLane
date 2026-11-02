@@ -1313,7 +1313,9 @@ if(typeof window.addEventListener==='function'){
     ckT=setTimeout(function(){
       const n=cockpitNu(); if(n===ckWas) return;
       ckWas=n;
-      try{ if(window.PLVisueel && typeof PLVisueel.herbouwKeuze==='function') PLVisueel.herbouwKeuze(); }
+      // Alleen Hyperlane heeft cockpit-plekken: een andere weergave niet
+      // opnieuw opbouwen (dat sloot midden in een themakeuze de strook, CI 02-11-2026).
+      try{ if(window.PLVisueel && typeof PLVisueel.herbouwKeuze==='function' && (typeof PLVisueel.profiel!=='function' || PLVisueel.profiel()==='hyperlane')) PLVisueel.herbouwKeuze(); }
       catch(e){ console.warn('PLHyperlane: herbouw na draaien mislukt — volgt bij de volgende tik', e); }
     }, 400);
   });
