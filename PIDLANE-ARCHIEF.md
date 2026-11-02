@@ -14,6 +14,32 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 02-11-2026 — De waakronde las "geen waarde" als "fysiek onmogelijk"
+
+**Uit de auto (Mazda CX-5):** Brandstofraildruk (016D) stond oranje in de
+waakronde — "— MPa, buiten fysiek bereik, 3 van 3 metingen" — terwijl de
+PID uit de selectie stond. Dat laatste is zo bedoeld (de waakronde loopt
+juist langs wat níet aangevinkt is); het oordeel was fout.
+
+**De conclusie die niet klopte.** `beoordeel()` zei: kwam er een antwoord
+binnen en gaf `parsePID()` null, "dan kan dat alleen doordat laag 1 hem als
+fysiek onmogelijk afkeurde". Er zijn nog twee wegen naar null: een regelblok
+als 016D zegt in byte A wat erin zit, en met dat bit uit geeft de parser
+bewust null; en een meerframe-antwoord dat onvolledig binnenkomt geeft te
+weinig bytes (NaN). `test-waakronde.js` bevestigde de fout zelfs: "0 V
+boordspanning" was `'414200'` — één databyte voor een PID van twee, dus een
+half antwoord dat toevallig "let" gaf.
+
+**Wat het werd:** `ruweWaarde()` leest de waarde zonder laag 1. Geen getal =
+`stil` ("antwoord zonder waarde"), wél een getal dat laag 1 afkeurt = `let`.
+De toets gebruikt nu `'41420000'` voor 0 V en houdt het halve antwoord als
+eigen geval.
+
+**Open:** de parser van 016D kijkt naar bit 0 van byte A en leest dan D–E.
+Of bit 0 bij de *gemeten* raildruk hoort of bij de *gevraagde*, is niet
+nagemeten tegen J1979; op deze CX-5 kwam er eerder 7,99 MPa uit, dus soms
+staat het bit aan. Een testrunverslag met de ruwe bytes van 016D beslist het.
+
 ## 31-10-2026 — De versnelling liep 2–3 s achter de schakeling aan
 
 **Uit de auto:** "hij staat al 2 seconden in de vier en zegt nog drie".
