@@ -66,8 +66,12 @@ Afvinklijst vóór de knop: §16.
 Maximaal 30 tekens.
 
 ```
-PidLane — OBD2 autodiagnose
+PidLane: OBD2 & AI Diagnose
 ```
+
+Zo staat hij sinds de release in de Store (27 tekens), en dat blijft: "OBD2" en
+"diagnose" zijn de twee termen waarop gezocht wordt. Tot 02-11-2026 stond hier
+nog het concept "PidLane — OBD2 autodiagnose".
 
 De koppelverklaring is bewust: "PidLane" alleen zegt een zoeker niets, en
 "OBD2" is de term waarop deze app gezocht wordt. Zet er géén woorden als
@@ -81,10 +85,12 @@ Maximaal 80 tekens. Dit is de regel onder de titel in de zoekresultaten en
 het is de enige tekst die iedereen leest.
 
 ```
-Laat je monteur op afstand live meekijken in je auto, via een OBD2-adapter.
+Je auto live op je scherm: foutcodes, diagnose en je monteur kijkt mee.
 ```
 
-**Sinds 17-10-2026 staat Expert op afstand voorop** (besluit van die dag): de
+**Sinds 02-11-2026:** de app laat zich zien (Hyperlane, Check mijn auto) en het
+meekijken staat ernaast — de schermen en de feature graphic doen hetzelfde.
+71 tekens. Daarvoor, sinds 17-10-2026, stond Expert op afstand alleen voorop: de
 bestuurder deelt zijn live data, een monteur of kenner kijkt mee. "OBD2-adapter"
 blijft in de regel staan — dat is de hardware die de minimum
 functionality-toets wil zien, en het zoekwoord.
@@ -99,46 +105,48 @@ hardware aan te pas komt die een browser niet kan aansturen.
 
 ```
 PidLane maakt via Bluetooth verbinding met een OBD2-adapter in de
-diagnosepoort van je auto, leest rechtstreeks de boordcomputer uit — en laat
-iemand die er verstand van heeft live meekijken, waar hij ook is.
+diagnosepoort van je auto en leest rechtstreeks de boordcomputer uit. Je ziet
+live wat je auto doet, weet binnen een halve minuut wat een lampje betekent,
+en laat je monteur meekijken, waar hij ook is.
 
-Je monteur of een kenner ziet op zijn eigen telefoon wat jouw auto nu meet.
-Voor de storing die alleen onderweg optreedt.
+JE AUTO, ZOALS JE HEM NOG NOOIT ZAG
 
-HOE MEEKIJKEN WERKT
+Hyperlane maakt van je dashboard een lichttunnel die meestroomt met je
+snelheid: links het toerental, rechts de snelheid, in het midden wat er nu
+toe doet, met schakellampjes en een 0–100-meting. Kies je stand —
+Eco, Sport of Cruise — en je ziet per stand de sensoren die ertoe doen, of
+laat Auto vanzelf meeschakelen.
+
+JE MONTEUR KIJKT LIVE MEE
 
 1. Adapter in de OBD2-poort, tik op Laat iemand meekijken.
 2. Deel de code, QR of link — voorlezen, scannen of via WhatsApp.
-3. De expert tikt op Ik ben de expert en ziet je live data. Hij kan zelf
-   waarden en foutcodes opvragen, maar niets veranderen: alleen lezen.
-
-De expert heeft geen adapter nodig, alleen PidLane en een account. Stop
-delen wanneer je wilt; de link verloopt met de sessie.
+3. De expert ziet je live data op zijn eigen telefoon. Hij kan waarden en
+   foutcodes opvragen, maar niets veranderen: alleen lezen.
 
 WAT PIDLANE NOG MEER DOET
 
-• Expert op afstand — live meekijken via code, QR of link.
-• Foutcodes uitlezen — actuele, permanente en pending codes, plus de
-  freeze frame: de momentopname van wat de auto deed toen de fout ontstond.
-• Live sensorwaarden — toerental, temperaturen, druk, trims en meer,
-  als meters of als grafiek.
-• Diagnoserapport — de meting wordt uitgelegd in gewone taal: wat is er aan
-  de hand, hoe zeker is dat, en welk onderdeel is de eerste verdachte.
-• Ritmonitor — let tijdens het rijden op sensoruitval en uitschieters.
-• Koopcheck — een vaste doorloop voor een tweedehands auto: verraden de
-  readiness-monitors dat er kort geleden fouten zijn gewist?
+• Check mijn auto — foutcodes en keuringsstatus in ongeveer een halve minuut,
+  met uitleg in gewone taal en wat je nu doet.
+• Diagnoserapport — de meting uitgelegd: wat is er aan de hand, hoe zeker
+  is dat, en welk onderdeel is de eerste verdachte.
+• Slim — de sensoren bij wat je auto op dit moment doet, met het normale
+  bereik erbij.
+• Grafieken — het verloop, met het normale bereik als band.
+• Accu & laadsysteem — laadspanning, startdip en trend.
+• Waakronde — loopt rustig langs de sensoren die je niet bekijkt en meldt
+  alleen wat je zou moeten weten.
+• Ritmonitor — let tijdens het rijden op uitval en uitschieters.
+• Koopcheck — verraden de readiness-monitors dat er kort geleden fouten
+  zijn gewist?
 • Aankooprapport — de koopcheck als PDF, met een oordeel uit vaste regels.
-• Onderdeelaanwijzer — van foutcode naar het onderdeel.
-• Alle stuurapparaten — ook foutcodes van ABS, airbag en versnellingsbak.
+• Alle stuurapparaten — ook ABS, airbag en automaat.
 • Lampjesgids — wat een dashboardlampje betekent, ook vanaf een foto.
-• Kenteken-check (Nederland) — merk, model, APK, verzekering en open
-  terugroepacties uit de open data van de RDW.
-• Mijn voertuigen — tot drie auto's in je account, met rapporten en ritten,
-  op elk toestel.
-• Conditiescore — hoe je auto ervoor staat, uit onderhoud en ritten.
+• Kenteken-check — APK, verzekering en terugroepacties (RDW).
+• Mijn voertuigen — tot drie auto's, met rapporten, ritten en je eigen
+  sensoren per auto.
 • Wintercheck — banden, ruitensproeier en het weerbericht.
-• Slim visueel — de belangrijkste waarden als dashboard.
-• Rapporten opslaan en delen als PDF.
+• Conditiescore — hoe je auto ervoor staat, uit onderhoud en ritten.
 
 WAT JE NODIG HEBT
 
@@ -155,16 +163,15 @@ OVER DE AI-ANALYSE
 Het diagnoserapport wordt geschreven door een taalmodel. Daarvoor heb je een
 account en tegoed nodig; vóór elke analyse zie je precies wat hij kost. De
 rest van de app — uitlezen, meten, grafieken, foutcodes opzoeken — werkt
-zonder tegoed.
-
-Een rapport is een hulpmiddel, geen uitspraak van een monteur, en vervangt
-geen inspectie of APK.
+zonder tegoed. Een rapport is een hulpmiddel, geen uitspraak van een
+monteur, en vervangt geen inspectie of APK.
 
 PRIVACY
 
-PidLane vraagt toegang tot Bluetooth om de adapter te vinden, meer niet. De scanpermissie is aangevraagd met de markering
-neverForLocation: de app bepaalt je locatie niet en slaat hem niet op.
-Telemetrie gebruikt de bewegingssensoren van je telefoon, niet je locatie.
+PidLane vraagt toegang tot Bluetooth om de adapter te vinden, meer niet. De
+scanpermissie is aangevraagd met de markering neverForLocation: de app
+bepaalt je locatie niet en slaat hem niet op. Telemetrie gebruikt de
+bewegingssensoren van je telefoon, niet je locatie.
 
 Metingen staan op je toestel. Vraag je een analyse, dan gaan de meetwaarden
 en voertuiggegevens naar onze server en naar de aanbieder van het taalmodel.
@@ -188,51 +195,52 @@ Vragen: support@pidlane.nl
 
 ## 4. Grafisch materiaal
 
-| wat | eis | stand |
+**Sinds 02-11-2026 staat alles in de repo**, in `marketing/play/uit/`. Bron:
+`marketing/play/opname.js` neemt de echte app op in demomodus (de
+meekijkschermen komen uit `marketing/meekijken/opname.js`), `schermen.html` en
+`grafiek.html` zetten er een kop en lijst omheen, `render.js` maakt de PNG's.
+Verandert een scherm in de app, draai dan die drie opnieuw.
+
+| wat | eis | bestand |
 |---|---|---|
-| App icon | 512×512 PNG, 32-bit, geen transparantie | `icon-512.png` staat in de repo |
-| Feature graphic | 1024×500 PNG/JPG, **verplicht** | zie §16c — staat niet in de repo |
-| Telefoonschermen | 2 t/m 8, 16:9 of 9:16, korte zijde 320–3840 px | zie §16c — staan niet in de repo |
-| Tabletschermen | optioneel | overslaan |
+| App icon | 512×512 PNG, 32-bit, geen transparantie | `icon-512.png` (ongewijzigd) |
+| Feature graphic | 1024×500 PNG/JPG, **verplicht** | `marketing/play/uit/feature-graphic.png` |
+| Telefoonschermen | 2 t/m 8, 16:9 of 9:16 | `marketing/play/uit/1-…8-….png` (één liggend, zeven staand) |
+| Promovideo | YouTube-link, optioneel | `marketing/pidlane-nieuw.mp4` kan erheen |
 
-> **Deze drie zijn vanuit de repo niet te controleren.** Ze worden rechtstreeks
-> in de Console geüpload en staan hier niet als bestand. Tot 10-09-2026 zei
-> deze tabel "moet nog gemaakt" terwijl de afvinklijst ze al afgevinkt had —
-> twee plekken die hetzelfde beweerden en uit de pas liepen. De stand staat nu
-> op één plek: §16c.
+**Uploaden is handwerk** in de Console (Store-vermelding → Afbeeldingen); of
+dat gebeurd is, ziet de repo niet. Zet de schermen in deze volgorde — de
+eerste drie zijn wat de meeste mensen zien:
 
-### Feature graphic
-
-Geen tekst die in de kleine weergave wegvalt. Werkende opzet: het logo links,
-rechts een uitsnede van een gauge-scherm, donkere achtergrond (`#0D1117`,
-dezelfde als de app). Eén regel tekst, hooguit: **"Je monteur kijkt live
-mee"** (sinds 17-10-2026; daarvoor "Diagnose uit je eigen auto").
-
-### Screenshots — schiet deze acht, in deze volgorde
-
-De eerste twee zijn de enige die in de zoekresultaten worden getoond, dus daar
-moet de kern in staan. Schiet ze in **demomodus** op een echt toestel: dan
-is het de echte app en geen mockup, en dat is precies wat de
-"minimum functionality"-toets wil zien.
-
-| # | scherm | bijschrift (max ~40 tekens) |
+| # | bestand | kop |
 |---|---|---|
-| 1 | Home met Expert op afstand bovenaan | Je monteur kijkt live mee |
-| 2 | Deelvenster met code en QR | Delen met een code, QR of link |
-| 3 | Live gauges met draaiende waarden (bij de expert) | Hij ziet wat jouw auto meet |
-| 4 | Foutcodelijst met een uitgeklapte DTC | Foutcodes met uitleg, geen code |
-| 5 | Diagnoserapport | Wat er aan de hand is, in gewone taal |
-| 6 | Grafiek over de tijd | Zie het verloop, niet één moment |
-| 7 | Verbindscherm met adapterlijst | Verbindt met je OBD2-adapter |
-| 8 | Koopcheck | Weet wat je koopt |
+| 1 | `1-hyperlane.png` (liggend) | Je auto, zoals je hem nog nooit zag |
+| 2 | `2-meekijken.png` | Je monteur kijkt live mee |
+| 3 | `3-foutcodes.png` | Lampje aan? Weet het in 30 seconden |
+| 4 | `4-standen.png` | Kies je stand: Eco, Sport of Cruise |
+| 5 | `5-slim.png` | Alleen wat er nu toe doet |
+| 6 | `6-grafiek.png` | Zie het verloop, niet één moment |
+| 7 | `7-accu.png` | Weet hoe je accu ervoor staat |
+| 8 | `8-ik-wil.png` | Kopen, verkopen of op reis: één tik |
 
-Sinds 17-10-2026 tonen de eerste twee het meekijken: dat zijn de enige die in
-de zoekresultaten staan, en de kernbelofte moet daar zichtbaar zijn. Schiet
-nummer 3 op een tweede toestel dat meekijkt met de demo van het eerste.
+Elk scherm is de echte app (demomodus, gesimuleerde Mazda CX-5) zonder
+statusbalk of navigatieknoppen, met alleen een kop erboven. Geen verzonnen
+waarden en geen telefoonranden: een screenshot die niet overeenkomt met de
+app is een afwijzingsgrond.
 
-Zet **geen** verzonnen waarden in een screenshot en plak er geen randen of
-telefoons omheen die suggereren dat het een ander toestel is. Een screenshot
-die niet overeenkomt met de app is een afwijzingsgrond.
+### Wat is er nieuw (bij de volgende build, max. 500 tekens)
+
+"Wat is er nieuw" en de datum "Laatst geüpdatet" veranderen alleen met een
+nieuwe build in de Console; wat via de server live gaat, ziet de Store niet.
+
+```
+Nieuw in PidLane:
+• Hyperlane: je dashboard als lichttunnel die meestroomt met je snelheid, met schakellampjes.
+• Kies je stand: Eco, Sport of Cruise — per stand de sensoren die ertoe doen.
+• Sensoren per auto overzichtelijk in drie tabbladen; banden en wielen met één vinkje.
+• Waakronde slimmer: geen vals alarm meer bij sensoren zonder waarde.
+• Accu & laadsysteem: laadspanning, startdip en trend.
+```
 
 ---
 

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>PidLane Play-schermen</title>
+<!-- Bron voor de Play Store-schermen (02-11-2026). Render: node marketing/play/render.js
+     ?n=<nummer uit SCHERMEN hieronder>. De beelden in rauw/ zijn de echte app in
+     demomodus (opname.js); hier komt alleen de kop en de lijst eromheen. -->
+<style>
+@font-face { font-family:"DM Sans"; src:url(../fonts/dmsans.woff2) format("woff2"); font-weight:100 1000; }
+:root { --bg:#0a0e17; --tx:#eef2fa; --mu:#a7b2c8; --gn:#1fd189; --cy:#4fd6f0; --bl:#4d82ff; --pu:#9a78ff; --or:#ff9f2e; --ac:var(--cy); }
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { background:var(--bg); }
+body { font-family:'DM Sans',sans-serif; color:var(--tx); overflow:hidden; }
+.vlak { position:relative; overflow:hidden; width:var(--w); height:var(--h);
+  background:
+    radial-gradient(ellipse at 50% 108%, color-mix(in srgb, var(--ac) 42%, transparent), transparent 58%),
+    radial-gradient(circle at 92% 4%, rgba(154,120,255,.30), transparent 42%),
+    linear-gradient(170deg,#101830 0%,#0a0e17 55%,#070a12 100%); }
+.vlak::before { content:""; position:absolute; inset:0; opacity:.55;
+  background-image:linear-gradient(rgba(77,130,255,.07) 1px,transparent 1px), linear-gradient(90deg,rgba(77,130,255,.07) 1px,transparent 1px);
+  background-size:54px 54px; mask-image:linear-gradient(#000 0%,transparent 70%); }
+.merk { display:inline-flex; align-items:center; gap:14px; font-weight:800; font-size:30px; letter-spacing:.3px; color:#dfe6f5; }
+.merk img { width:54px; height:54px; border-radius:24%; box-shadow:0 0 30px rgba(31,209,137,.35); }
+.kop { font-weight:850; letter-spacing:-2px; line-height:1.0; }
+.kop em { font-style:normal; background:linear-gradient(90deg,var(--gn),var(--cy)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.sub { color:var(--mu); font-weight:500; line-height:1.3; }
+.scherm { position:relative; overflow:hidden; border-radius:46px; border:2px solid rgba(255,255,255,.12);
+  box-shadow:0 40px 90px rgba(0,0,0,.6), 0 0 120px color-mix(in srgb, var(--ac) 30%, transparent); background:#0a0e17; }
+.scherm img { position:absolute; left:0; width:100%; display:block; }
+/* Staand 1080×1920: kop boven, scherm eronder, onderrand valt weg in het vlak */
+.staand { --w:1080px; --h:1920px; padding:86px 80px 0; }
+.staand .kop { font-size:94px; margin-top:54px; }
+.staand .sub { font-size:40px; margin-top:26px; max-width:900px; }
+.staand .schermen { position:absolute; left:80px; right:80px; top:var(--top,640px); bottom:-60px; display:flex; gap:28px; align-items:flex-start; }
+/* Past het scherm erin, dan staat alles samen in het midden van het vlak */
+.staand.kort { display:flex; flex-direction:column; justify-content:center; padding-top:0; }
+.staand.kort .merk { align-self:flex-start; }
+.staand.kort .schermen { position:static; margin-top:80px; }
+.staand .scherm { flex:1; height:100%; }
+/* Liggend 1920×1080: tekst links, scherm rechts */
+.liggend { --w:1920px; --h:1080px; display:flex; align-items:center; gap:70px; padding:0 90px; }
+.liggend .tekst { width:560px; flex:none; }
+.liggend .kop { font-size:92px; margin-top:44px; }
+.liggend .sub { font-size:36px; margin-top:26px; }
+.liggend .scherm { flex:1; aspect-ratio:1830/824; border-radius:40px; }
+.chip { display:inline-block; margin-top:34px; font-size:26px; font-weight:800; padding:10px 22px; border-radius:999px;
+  color:var(--ac); background:color-mix(in srgb, var(--ac) 16%, transparent); border:1px solid color-mix(in srgb, var(--ac) 45%, transparent); }
+</style>
+</head>
+<body>
+<div id="v"></div>
+<script>
+/* Eén scherm per regel. `beeld`: [bestand, boven-uitsnede in px van het 824/1830-beeld].
+   Twee beelden = twee schermen naast elkaar. `ac` = de gloedkleur. */
+const SCHERMEN = [
+  { vorm:'liggend', kop:'Je auto, zoals je hem <em>nog nooit</em> zag', sub:'Hyperlane: een lichttunnel die meestroomt met je snelheid. Toeren, snelheid en verbruik live.', chip:'Live uit je eigen auto', ac:'#1fd189', beeld:[['hyperlane-liggend.png',0]] },
+  { vorm:'staand', kop:'Je monteur kijkt <em>live mee</em>', sub:'Deel een code. Hij ziet wat jouw auto nu meet, waar hij ook is. Alleen lezen.', ac:'#4fd6f0', beeld:[['delen.png',1100,730],['meekijken.png',230,1190]], top:640 },
+  { vorm:'staand', kop:'Lampje aan? <em>Weet het</em> in 30 seconden', sub:'Foutcodes en keuringsstatus, met uitleg in gewone taal en wat je nu doet.', ac:'#ff5a6a', beeld:[['check.png',40,1130]] },
+  { vorm:'staand', kop:'Kies je stand: <em>Eco, Sport</em> of Cruise', sub:'Per stand de sensoren die ertoe doen. Of laat Auto vanzelf meeschakelen.', ac:'#4fd6f0', beeld:[['visueel-stand.png',220,580]] },
+  { vorm:'staand', kop:'Alleen wat er <em>nu toe doet</em>', sub:'Slim kiest de sensoren bij wat je auto op dit moment doet, met het normale bereik erbij.', ac:'#4d82ff', beeld:[['slim.png',90]] },
+  { vorm:'staand', kop:'Zie het <em>verloop</em>, niet één moment', sub:'Grafieken met het normale bereik als groene band. Afwijkingen springen eruit.', ac:'#4d82ff', beeld:[['grafiek.png',220,1200]] },
+  { vorm:'staand', kop:'Weet hoe je <em>accu</em> ervoor staat', sub:'Laadspanning, startdip en trend. Vóór je in de kou met een lege accu staat.', ac:'#1fd189', beeld:[['accu.png',0,1080]] },
+  { vorm:'staand', kop:'Kopen, verkopen of op reis: <em>één tik</em>', sub:'Koopcheck, ritmonitor en wintercheck. Werkt met elke Bluetooth OBD2-adapter.', ac:'#9a78ff', beeld:[['thuis.png',100,1100]] }
+];
+const n = +(new URLSearchParams(location.search).get('n') || 1), s = SCHERMEN[n - 1];
+document.documentElement.style.setProperty('--ac', s.ac);
+const merk = '<div class="merk"><img src="../icon.png" alt="">PidLane</div>';
+const sch = s.beeld.map(b => '<div class="scherm" data-top="' + b[1] + '" data-hoog="' + (b[2] || '') + '"><img src="rauw/' + b[0] + '"></div>').join('');
+document.getElementById('v').outerHTML = s.vorm === 'liggend'
+  ? '<div class="vlak liggend"><div class="tekst">' + merk + '<div class="kop">' + s.kop + '</div><div class="sub">' + s.sub + '</div>' + (s.chip ? '<div class="chip">' + s.chip + '</div>' : '') + '</div>' + sch + '</div>'
+  : '<div class="vlak staand" style="--top:' + (s.top || 640) + 'px">' + merk + '<div class="kop">' + s.kop + '</div><div class="sub">' + s.sub + '</div><div class="schermen">' + sch + '</div></div>';
+/* Het beeld vult de breedte van zijn lijst; de uitsnede (boven, hoogte in px
+   van het ruwe beeld) schaalt mee. Past alles erin, dan staat de lijst in het
+   midden van de ruimte; anders loopt hij van de onderrand af. */
+let klaar = 0;
+const lijsten = document.querySelectorAll('.scherm');
+lijsten.forEach(function (sc) {
+  const img = sc.querySelector('img');
+  img.onload = function () {
+    const f = sc.getBoundingClientRect().width / img.naturalWidth, top = +sc.dataset.top, hoog = +sc.dataset.hoog || (img.naturalHeight - top);
+    img.style.top = (-top * f) + 'px';
+    sc.dataset.px = hoog * f;
+    if (++klaar === lijsten.length) {
+      const doos = document.querySelector('.schermen'); if (!doos) { document.body.dataset.klaar = 1; return; }
+      const ruimte = doos.getBoundingClientRect().height - 150, max = Math.max.apply(null, [].map.call(lijsten, x => +x.dataset.px));
+      if (max <= ruimte) { document.querySelector('.vlak').classList.add('kort'); lijsten.forEach(x => { x.style.height = x.dataset.px + 'px'; x.style.flex = '1'; }); }
+      document.body.dataset.klaar = 1;
+    }
+  };
+});
+</script>
+</body>
+</html>
