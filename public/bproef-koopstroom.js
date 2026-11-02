@@ -95,7 +95,7 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('de uitgebreide proefrit is aanbevolen', /Uitgebreide proefrit/.test(raad) && !/Korte/.test(raad), raad);
     toets('met de reden erbij', await app.ev(`/onder belasting/.test(document.getElementById('wzBody').textContent)`));
     await app.ev(`PLWizard.kies(1); 'ok'`);
-    toets('dan het plan', (await app.ev(vraag)) === 'Dit ga ik doen', await app.ev(vraag));
+    toets('dan het plan', (await app.ev(vraag)) === 'Jouw plan', await app.ev(vraag));
 
     console.log('\n3. De koopcheck krijgt wat je invulde');
     await app.ev(`PLWizard._modules.markt.run(PLWizard._job()); 'ok'`);

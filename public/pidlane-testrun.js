@@ -2848,6 +2848,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Wizardplan: namen die zeggen wat er gebeurt (02-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Wizardplan: elke meting en analyse heet naar wat hij doet, met de duur erbij',
+    waarom: 'Uit het gebruik: de namen in het plan (Systeemtest, Totaalcheck, AI-monteur …) zeiden niet wat er ging gebeuren; Rapport aanvragen was duidelijker. Deze proef toetst het geladen plan, niet de broncode.',
+    proef: async function () {
+      var W = window.PLWizard;
+      if (!W || typeof W.open !== 'function') return { staat: 'LET OP', detail: 'PLWizard niet geladen' };
+      var oud = /Systeemtest|Totaalcheck|AI-monteur|Dit ga ik doen|Passief meelopen|Stilstaand meten/;
+      var M = W._modules;
+      if (!M) return { staat: 'FOUT', detail: 'PLWizard._modules ontbreekt — pidlane-wizard.js niet bijgewerkt (herladen?)' };
+      var src = JSON.stringify(Object.keys(M).map(function (k) { return M[k].n; }));
+      var zonder = Object.keys(M).filter(function (k) { return !M[k].d; });
+      if (zonder.length) return { staat: 'FOUT', detail: 'zonder uitleg: ' + zonder.join(', ') };
+      if (oud.test(src)) return { staat: 'FOUT', detail: 'nog een oude naam in het plan: ' + src.match(oud)[0] };
+      return { staat: 'OK', detail: 'open Er is iets mis → plan: kopjes "Stap 1 · Eerst meten" en "Stap 2 · Kies wat je wilt weten", elke regel met wat hij doet' };
+    }
+  },
+
   // ── Hyperlane: de stand zelf kiezen (01-11-2026) ──
   {
     issue: '—',
@@ -3924,7 +3943,7 @@ const PROEVEN_B5 = [
       if (!c || !c.focus || !PLTotaal.focusPlan(c).rijden) return { staat: 'FOUT', detail: 'een afwijking alleen rijdend geeft geen rijdende focusmeting' };
       if (PLTotaal.categorieen({ stil: sam('ok') }, null, function () { return 'Temp'; }, CHK_CAT_ORDER)[0].open)
         return { staat: 'FOUT', detail: 'een categorie die klopt gaat toch open' };
-      return { staat: 'OK', detail: 'Rij: Totaalcheck → Start stilstand (± 1 min, daarna foutcodes), dan Start rijden en gewoon wegrijden; het scherm hoort na zo’n anderhalve minuut rijden vanzelf naar de uitslag te gaan, zonder "Rijtest starten".' };
+      return { staat: 'OK', detail: 'Rij: Brede controle → Start stilstand (± 1 min, daarna foutcodes), dan Start rijden en gewoon wegrijden; het scherm hoort na zo’n anderhalve minuut rijden vanzelf naar de uitslag te gaan, zonder "Rijtest starten".' };
     }
   },
 
@@ -12214,7 +12233,7 @@ const CAMPAGNE = {
     'HET RAPPORT. Onderaan staat een blok "BEKEND BIJ DIT MERK": per punt bevestigd, uitgesloten, open of niet getoetst, en wat je zelf moet nakijken. Plak dat blok als iets niet klopt.',
     'SENSOREN REGISTREREN IN DE WIZARD. Start een onderzoek uit de wizard: het scherm "Sensoren registreren" hoort niet meer te blijven hangen op sensoren met 0/10 (nog geen data).',
     '── DE TOTAALCHECK: STILSTAND EN RIJDEN ────────',
-    'STILSTAND. Live → Totaalcheck → Start stilstand. Na ± een minuut haalt hij de foutcodes en zelftests op; daarna staat de uitslag per categorie. Wat klopt staat dicht; open staat alleen wat afwijkt, met een Focusmeting.',
+    'STILSTAND. Live → Brede controle → Start stilstand. Na ± een minuut haalt hij de foutcodes en zelftests op; daarna staat de uitslag per categorie. Wat klopt staat dicht; open staat alleen wat afwijkt, met een Focusmeting.',
     'RIJDEN. Start rijden en rij gewoon weg — geen fases, geen route. Na zo’n anderhalve minuut boven 15 km/h hoort het scherm vanzelf naar de uitslag te gaan. Wijkt een sensor rijdend af en stilstaand niet, dan hoort de focusmeting rijdend te meten. Valt er op een gezonde CX-5 iets op, plak dan die categorie.',
     '── #555–#559: DE WINTER ────────',
     'DE BANNER. Op het startscherm hoort één keer "Het wordt kouder" te staan. Tik Profiel aanpassen: kies je plaats, je banden en je sproeiervloeistof, en bewaar. Daarna hoort de kaart drie dagen weer en hoogstens één advies te tonen. Komt de banner na een herstart terug, of klopt het weer niet met je weerapp: zet het in #556.',

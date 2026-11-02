@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-11-01', app: '3.4.0' },
+  gecontroleerd: { datum: '2026-11-02', app: '3.4.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -206,7 +206,7 @@ var PL_HULP = {
         'en kiest steeds de stap die er de meeste tegelijk kan bevestigen of uitsluiten. Tik bij het begin ook aan <b>wanneer het speelt</b> — koud, stationair, bij optrekken, bij regen: dat scheidt oorzaken die bij dezelfde klacht horen.</p>' +
         '<p>De eerste stap is de <b>snelle scan</b>: foutcodes, het <b>freeze frame</b> (de motor op het moment van de fout), het <b>bijstuurgeheugen</b> per cilinderbank, de tellers sinds de codes gewist zijn, en de trims uit je laatste rit of datalog. ' +
         'Wat daaruit blijkt staat onder <b>Wat de auto al wist</b> — bijvoorbeeld dat de codes kort geleden gewist zijn, of dat er een code aankomt die nog geen lampje geeft.</p>' +
-        '<p>Merk je niets maar wil je het zeker weten? Kies bij <b>Er is iets mis</b> voor <b>Ik merk niets bijzonders</b>: bovenaan het plan staat dan <b>🚦 Algemene check</b> (de totaalcheck, stilstaand en rijdend), met het onderzoek eronder. Of tik bij een groene <a data-hulp="check">Check mijn auto</a> op <b>🧭 Toch grondig onderzoeken</b>. ' +
+        '<p>Merk je niets maar wil je het zeker weten? Kies bij <b>Er is iets mis</b> voor <b>Ik merk niets bijzonders</b>: bovenaan het plan staat dan <b>🚦 Brede controle van de hele auto</b> (stilstaand en rijdend), met het onderzoek eronder. Of tik bij een groene <a data-hulp="check">Check mijn auto</a> op <b>🧭 Toch grondig onderzoeken</b>. ' +
         'Het onderzoek begint dan met een brede ronde: valse lucht, luchtmassameter, lambda en katalysator, thermostaat, accu en laden, en ontsteking. Bij een diesel komen het roetfilter, de EGR-klep en software erbij.</p>' +
         '<p>Kent de app het merk van je auto, dan toetst het onderzoek ook wat bij dat merk bekend is — een kettingspanner, een DSG, een roetfilter. ' +
         'Die verdenkingen staan erbij met <b>bekend bij dit merk</b> en komen eerder aan de beurt, maar zijn geen bewijs: alleen een meting, foutcode of antwoord telt. ' +
@@ -228,7 +228,7 @@ var PL_HULP = {
     { id: 'verzamelen', groep: 'gebruik', titel: 'Data verzamelen vóór een analyse',
       icoon: '📡', kort: 'Eerst genoeg metingen, dan pas een oordeel van de AI.',
       tekst:
-        '<p>Elke analyse die de AI om een oordeel vraagt, begint met hetzelfde scherm: <b>📡 Data verzamelen</b>. Dat geldt voor de AI-monteur, het AI-rapport, de totaalcheck, de verbruiksanalyse, onderhoud, de EV-check, de lange-rit-check en de diepe storingsanalyse. ' +
+        '<p>Elke analyse die de AI om een oordeel vraagt, begint met hetzelfde scherm: <b>📡 Data verzamelen</b>. Dat geldt voor de AI-monteur, het AI-rapport, de brede controle, de verbruiksanalyse, onderhoud, de EV-check, de lange-rit-check en de diepe storingsanalyse. ' +
         'Je ziet per sensor de waarde binnenkomen; een ✓ betekent dat er genoeg metingen van zijn. Een waarde die nu al opvalt, krijgt meteen een kleur.</p>' +
         '<p>Is er genoeg gemeten, dan staat er <b>✓ Data verzameld</b> met bovenaan wat er opviel: rood is over de alarmgrens, oranje over de waarschuwingsgrens of buiten het gebruikelijke bereik. ' +
         'Daarbij staat het laagste en hoogste wat er gemeten is, en hoe vaak het buiten de grens kwam. Opvallend is nog geen defect: of het in deze toestand van de motor normaal is, weegt de AI.</p>' +

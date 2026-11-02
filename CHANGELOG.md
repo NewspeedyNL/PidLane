@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 02-11-2026 — Wizardplan: namen die zeggen wat er gebeurt
+ ═══════════════════════════════════════════════════════════
+ - Het plan na "Er is iets mis" / de koopcheck heet "Jouw plan", met
+   "Stap 1 · Eerst meten" en "Stap 2 · Kies wat je wilt weten"; knop Starten.
+ - Elke meting en analyse heet naar wat hij doet (stijl van Rapport
+   aanvragen), met duur en "gebruikt tegoed" waar dat vaststaat.
+ - Systeemtest heet overal "Sensoren controleren", Totaalcheck/Conditiecheck
+   overal "Brede controle" (wizard, Live, keuzescherm, handleiding).
+
+ ═══════════════════════════════════════════════════════════
  02-11-2026 — Waakronde: geen waarde is geen "buiten fysiek bereik"
  ═══════════════════════════════════════════════════════════
  - Uit de auto: Brandstofraildruk (016D, een regelblok) stond oranje als

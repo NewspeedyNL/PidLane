@@ -719,14 +719,14 @@ function closeConnOv(){
 
         <div class="choice-card" id="wc-check">
           <div class="choice-head"><span class="choice-icon">🚦</span><span class="choice-time">⏱ ±1 min</span></div>
-          <div class="choice-title">Conditiecheck</div>
+          <div class="choice-title">Brede controle</div>
           <div class="choice-desc">Foutcodes + sensoren in één conditiefoto — groen/oranje/rood per systeem.</div>
           <div class="choice-out"><b>Je krijgt:</b> per systeem een oordeel, met de meetwaarde waarop dat oordeel rust.</div>
         </div>
 
         <div class="choice-card" id="wc-basiccheck">
           <div class="choice-head"><span class="choice-icon">📈</span><span class="choice-time">⏱ zo lang je wilt</span></div>
-          <div class="choice-title">Systeemtest</div>
+          <div class="choice-title">Sensoren controleren</div>
           <div class="choice-desc">Een checklist van live tests die zichzelf afvinkt: elke test meet zodra de situatie zich voordoet — stilstaand, rijdend of met de motor uit.</div>
           <div class="choice-out"><b>Je krijgt:</b> per systeem een grafiek + geslaagd/twijfel-oordeel. Sensoren worden automatisch gekozen.</div>
         </div>
@@ -1196,7 +1196,7 @@ function closeConnOv(){
 
       <!-- CHECK -->
       <div class="pane" id="pane-check">
-        <div class="chk-intro"><h3>🚦 Voertuig Totaalcheck</h3><p>Twee metingen, elk in zijn eigen toestand: eerst stilstaand (met foutcodes en zelftests), dan gewoon rijden. Waar iets afwijkt gaat de check dieper; wat klopt blijft dicht.</p></div>
+        <div class="chk-intro"><h3>🚦 Brede controle van de hele auto</h3><p>Twee metingen, elk in zijn eigen toestand: eerst stilstaand (met foutcodes en zelftests), dan gewoon rijden. Waar iets afwijkt gaat de check dieper; wat klopt blijft dicht.</p></div>
         <div id="tcStappen" class="tc-stappen"></div>
         <div class="toolbar">
           <div id="rdyTotaal" class="rdy-card off">📡 Verbind adapter om sensorstatus te laden</div>
@@ -1213,12 +1213,12 @@ function closeConnOv(){
 
       <!-- BASIC SYSTEM CHECK -->
       <div class="pane" id="pane-basiccheck">
-        <div class="chk-intro"><h3>📈 Systeemtest</h3><p>Alle tests staan tegelijk klaar. Elke test meet zodra zijn situatie zich voordoet — stilstaand, rijdend, motor uit — en vinkt zich af als de waarde binnen de verwachte band blijft. Stop wanneer je wilt: wat niet voorkwam telt als niet getest, niet als fout.</p></div>
+        <div class="chk-intro"><h3>📈 Sensoren controleren</h3><p>Alle tests staan tegelijk klaar. Elke test meet zodra zijn situatie zich voordoet — stilstaand, rijdend, motor uit — en vinkt zich af als de waarde binnen de verwachte band blijft. Stop wanneer je wilt: wat niet voorkwam telt als niet getest, niet als fout.</p></div>
         <div class="toolbar">
           <div id="rdyBasic" class="rdy-card off">📡 Verbind adapter om te starten</div>
-          <button class="btn pri" onclick="startBasicCheck()" id="btnBasic">▶ Systeemtest starten</button>
+          <button class="btn pri" onclick="startBasicCheck()" id="btnBasic">▶ Sensoren controleren</button>
         </div>
-        <div id="bscBody" class="bsc-body"><div class="bsc-empty">Klik “Systeemtest starten”. De tests worden gekozen op basis van je motortype en wat de auto ondersteunt; daarna vinken ze zichzelf af zodra hun situatie zich voordoet.</div></div>
+        <div id="bscBody" class="bsc-body"><div class="bsc-empty">Klik “Sensoren controleren”. De tests worden gekozen op basis van je motortype en wat de auto ondersteunt; daarna vinken ze zichzelf af zodra hun situatie zich voordoet.</div></div>
       </div>
 
       <!-- ════ 🛡️ RIT-MONITOR — live dashboard + waarschuwingsfeed ════ -->
@@ -1682,7 +1682,7 @@ function closeConnOv(){
         <div class="ai-sub">Kies een analyse — het invulscherm opent in het midden.</div>
       </div>
       <button class="ai-launch-btn active" data-target="diag" onclick="openAnalysis('diag')" style="margin:8px 12px 0;width:calc(100% - 24px);padding:9px;border-radius:7px;border:1px solid rgba(99,102,241,.4);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">🔧 AI-Monteur</button>
-      <button class="ai-launch-btn" data-target="check" onclick="openAnalysis('check')" style="margin:6px 12px 0;width:calc(100% - 24px);padding:9px;border-radius:7px;border:1px solid var(--bd);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;background:var(--sur2);color:var(--tx2);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">🚦 Totaalcheck</button>
+      <button class="ai-launch-btn" data-target="check" onclick="openAnalysis('check')" style="margin:6px 12px 0;width:calc(100% - 24px);padding:9px;border-radius:7px;border:1px solid var(--bd);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;background:var(--sur2);color:var(--tx2);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">🚦 Brede controle</button>
       <button class="ai-launch-btn" data-target="koop" onclick="openAnalysis('koop')" style="margin:6px 12px 0;width:calc(100% - 24px);padding:9px;border-radius:7px;border:1px solid rgba(167,139,250,.4);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;background:rgba(167,139,250,.08);color:#a78bfa;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">🔍 Koopcheck</button>
       <button class="ai-launch-btn" data-target="fuel" onclick="openAnalysis('fuel')" style="margin:6px 12px 0;width:calc(100% - 24px);padding:9px;border-radius:7px;border:1px solid rgba(255,150,0,.4);font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer;background:rgba(255,150,0,.08);color:var(--or);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">⛽ Besparing</button>
       <div style="margin:10px 12px 4px;border-top:1px solid var(--bd)"></div>
