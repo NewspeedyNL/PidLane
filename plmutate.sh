@@ -2418,6 +2418,9 @@ MUTATIES=(
 "public/pidlane-telemetrie.js@@  if (!(o.okMs>=HOUDER.rustMs)) return { vast:false, reden:'wacht' };\n@@@@test-telemetrie.js@@een telefoon die net is teruggezet telt meteen weer mee, zonder 2 s rust"
 "public/pidlane-telemetrie.js@@  if (!houderNu().vast) return;\n  if (_nul && aL!==null)@@  if (_nul && aL!==null)@@test-telemetrie.js@@hard remmen telt als rijsituatie terwijl de telefoon los wiebelt"
 "public/pidlane-telemetrie.js@@  if (typeof o.wiebel!=='number' || o.wiebelMs>=HOUDER.wiebelMs) return@@  if (typeof o.wiebel!=='number' || o.wiebel>HOUDER.maxWiebel) return@@test-telemetrie.js@@één drempel of kuil maakt de telefoon in de houder 5 s grijs: de auto knikt, niet de houder"
+"public/pidlane-telemetrie.js@@  const vMs=typeof o.verschovenMs==='number' ? o.verschovenMs : Infinity;@@  const vMs=Infinity;@@test-telemetrie.js@@een remstoot of drempel maakt de kanteling meteen grijs: verschoven telt zonder dat hij aanhoudt"
+"public/pidlane-telemetrie.js@@  const aD=(versD && typeof kmh==='number')@@  const aD=(vers && typeof kmh==='number')@@test-telemetrie.js@@een bocht op een volle bus (010D ouder dan 2 s) geeft weer een schijnkanteling en grijs"
+"public/pidlane-telemetrie.js@@        _houderS.redenMs[hz.reden]=(_houderS.redenMs[hz.reden]||0)+dt;\n@@@@test-telemetrie.js@@het verslag zegt niet meer waaróm de telefoon niet vast was: de volgende rit bewijst niets"
 # ── de beheerdersdemo (#409) ──
 "public/pidlane-demo.js@@    try { return typeof window.isAdmin === 'function' && !!window.isAdmin(); }@@    try { return true; }@@test-demozandbak.js@@elke demo is een beheerdersdemo: een reviewer zonder login laat de echte AI rekenen — #409"
 "public/pidlane-demo.js@@    if (!isDemo()) return false;\n    try { return typeof window.isAdmin@@    try { return typeof window.isAdmin@@test-demozandbak.js@@een beheerder buiten de demo telt als beheerdersdemo — #409"

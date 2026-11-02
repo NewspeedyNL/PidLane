@@ -2848,6 +2848,26 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Kanteling grijs bij een drempel (02-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Helling en kanteling: remmen of een bocht met een oude snelheid maakt ze niet meer grijs; het verslag zegt waarom ze grijs waren',
+    waarom: 'Uit het gebruik: "de kanteling gaat heel snel op grijs bij een drempel". Nagebouwd: niet de drempel, maar remmen of een bocht terwijl 010D ouder was dan 2 s. Verschoven telt nu pas na 2 s, en de bocht rekent met een snelheid tot 10 s oud. Deze proef toetst de geladen regel en leest per reden hoe lang hij niet vast was.',
+    proef: async function () {
+      var T = window.PLTelemetrie;
+      if (!T || !T.HOUDER || typeof T.HOUDER.verschovenMs !== 'number' || !T.SNEL_DWARS_MS) return { staat: 'FOUT', detail: 'PLTelemetrie zonder verschovenMs — pidlane-telemetrie.js niet bijgewerkt (herladen?)' };
+      var goed = { vers: true, genuld: true, afwijking: 20, wiebel: 2, wiebelMs: 0, okMs: 6000 };
+      if (!T.houder(Object.assign({}, goed, { verschovenMs: 500 })).vast) return { staat: 'FOUT', detail: 'een afwijking van 0,5 s telt al als verschoven' };
+      if (T.houder(Object.assign({}, goed, { verschovenMs: 3000 })).vast) return { staat: 'FOUT', detail: 'een afwijking van 3 s telt als vast — een telefoon op schoot glipt erdoor' };
+      if (!T.beschikbaar() || !T.genuld()) return { staat: 'LET OP', detail: 'regel klopt; nodig voor de rit: tablet of telefoon vast in de houder, Nulstellen, een paar drempels en bochten' };
+      var s = T.stats().houder, r = s.redenS || {};
+      var waarom = Object.keys(r).length ? Object.keys(r).map(function (k) { return k + ' ' + r[k] + ' s'; }).join(', ') : 'nooit';
+      var bewijs = 'vast ' + s.vastS + ' s, niet vast ' + s.losS + ' s (' + waarom + '); grootste afwijking ' + s.maxAfwijking + '°, oudste snelheid ' + s.snelOudS + ' s';
+      if (s.vastS + s.losS >= 60 && s.losS > 0.1 * (s.vastS + s.losS)) return { staat: 'LET OP', detail: bewijs + ' — nog vaak grijs: de reden hierboven zegt waar het zit' };
+      return { staat: 'OK', detail: bewijs };
+    }
+  },
+
   // ── Hyperlane als cockpit op een tablet (02-11-2026) ──
   {
     issue: '—',

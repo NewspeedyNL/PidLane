@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 02-11-2026 — Kanteling niet meer grijs na remmen voor een drempel
+ ═══════════════════════════════════════════════════════════
+ - "Verschoven" (telefoon anders dan bij Nulstellen) telt pas na 2 s.
+ - De bochtcorrectie gebruikt een snelheid tot 10 s oud (was 2 s).
+ - Het verslag zegt per reden hoe lang de telefoon niet vast was, met de
+   grootste afwijking en de oudste snelheid.
+
+ ═══════════════════════════════════════════════════════════
  02-11-2026 — Hyperlane als cockpit op een tablet
  ═══════════════════════════════════════════════════════════
  - Tablet liggend (≥ 800×540) op volledig scherm: G-cirkel met spoor en
