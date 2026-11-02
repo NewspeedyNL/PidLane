@@ -223,25 +223,25 @@ var BOOM = {
    Wat we uit de meetdata halen. Elke module wijst naar een bestaande
    functie; de wizard zet vooraf de juiste parameters.                     */
 var MODULES = {
-  dtc:       {n:'Foutcodes & readiness', d:'Opgeslagen, sluimerende en permanente codes, met freeze frame', run:function(){ startChoice('dtc'); }},
-  systeem:   {n:'Systeemtest',           d:'Sensoren tegen hun verwachte gedrag, stilstaand en rijdend',                run:function(){ startChoice('basiccheck'); }},
-  conditie:  {n:'Totaalcheck',           d:'Stilstand en rijden apart, per systeem; dieper waar iets afwijkt', run:function(){ startChoice('check'); }},
-  verbruik:  {n:'Verbruik & rijgedrag',  d:'Werkelijk verbruik en wat je rijstijl kost',                    run:function(){ startChoice('fuel'); }},
-  aimonteur: {n:'AI-monteur',            d:'Analyse van je klacht tegen de gemeten waarden',
+  dtc:       {n:'Foutcodes en keuringsstatus', d:'Leest alle foutcodes, ook sluimerende, en of de zelftests klaar zijn voor de APK', t:'± 1 min', run:function(){ startChoice('dtc'); }},
+  systeem:   {n:'Sensoren controleren',  d:'Kijkt per sensor of hij doet wat hij hoort te doen, stilstaand en rijdend', t:'zo lang je wilt', v:'de sensorcontrole',                run:function(){ startChoice('basiccheck'); }},
+  conditie:  {n:'Brede controle van de hele auto', d:'Eerst stilstaand, dan rijdend; per systeem een oordeel, dieper waar iets afwijkt', t:'± 3 min', run:function(){ startChoice('check'); }},
+  verbruik:  {n:'Brandstofbesparing',    d:'Wat je echt verbruikt en wat je rijstijl kost', t:'± 1 min',                    run:function(){ startChoice('fuel'); }},
+  aimonteur: {n:'AI-analyse van je klacht', d:'Legt je klacht naast de meetwaarden, met oorzaken en advies', t:'± 1 min · gebruikt tegoed',
               run:function(j){ veilig(function(){ el('welcomeScreen').classList.add('hidden'); }); runQuickAI({klacht:j.klacht}); }},
-  onderdeel: {n:'Welk onderdeel is kapot?', d:'Foutcodes en meetwaarden samen, teruggebracht tot verdachte onderdelen', run:function(){ openOnderdeelCheck(); }},
-  diep:      {n:'Diepe storingsanalyse', d:'Uitgebreide intake plus datalog om het probleem te vangen',     run:function(){ openDeepDiag(); }},
-  markt:     {n:'Koop- en verkoopcheck', d:'Staat, historie en onderbouwing van de waarde',
+  onderdeel: {n:'Verdachte onderdelen aanwijzen', d:'Foutcodes en meetwaarden samen, teruggebracht tot onderdelen', v:'het aanwijzen van verdachte onderdelen', run:function(){ openOnderdeelCheck(); }},
+  diep:      {n:'Storing vangen met een opname', d:'Uitgebreide vragenlijst, daarna neemt de app op tot het probleem zich voordoet', t:'tot de storing optreedt',     run:function(){ openDeepDiag(); }},
+  markt:     {n:'Koop- of verkooprapport', d:'Kenteken, RDW en de elektronica, met een stoplicht en vragen voor de verkoper', t:'± 5 min',
               run:function(j){ koopVoorbereiden(j); openAnalysis('koop'); }},
-  klimaat:   {n:'Klimaat & koeling',     d:'Airco of winterklaar, afhankelijk van het seizoen',
+  klimaat:   {n:'Airco- of winterklaar-check', d:'Welke van de twee hangt af van het seizoen',
               run:function(j){ openClimateCheck(j.voorb==='winter'?'winter':'airco'); }},
-  accu:      {n:'Start- & laadsysteem',  d:'Accuspanning, laadgedrag en startgedrag',                       run:function(){ openEVCheck(); }},
-  evaccu:    {n:'EV-/hybride-accu',      d:'Accupakket, cellen en laadstatus',                              run:function(){ openEVCheck(); }},
-  trekken:   {n:'Trekken',               d:'Belasting en verbruik met caravan of aanhanger',                run:function(){ openCaravan(); }},
-  onderhoud: {n:'Onderhoudsplanning',    d:'Wat er nu nodig is en wat kan wachten',                         run:function(){ openOnderhoud(); }},
-  langerit:  {n:'Lange rit',             d:'Controle op wat onderweg kan opbreken',                         run:function(){ openLangeRit(); }},
-  monitor:   {n:'Passief meelopen',      d:'Waakt de hele rit mee zonder dat je iets hoeft te doen',        run:function(){ openMonitorView(); }},
-  recorder:  {n:'Handmatige opname',     d:'Zelf sensoren kiezen en opnemen',                               run:function(){ openPidRecorder(); }}
+  accu:      {n:'Accu en laadsysteem',   d:'Rustspanning, starten en laden', t:'± 3 min',                       run:function(){ openEVCheck(); }},
+  evaccu:    {n:'Accupakket (EV/hybride)', d:'Cellen, laadstatus en spreiding', t:'± 3 min',                              run:function(){ openEVCheck(); }},
+  trekken:   {n:'Caravan of aanhanger',  d:'Belasting en verbruik tijdens het trekken', t:'tijdens de rit',                run:function(){ openCaravan(); }},
+  onderhoud: {n:'Welk onderhoud is nodig?', d:'Wat er nu moet gebeuren en wat kan wachten',                         run:function(){ openOnderhoud(); }},
+  langerit:  {n:'Klaar voor een lange rit?', d:'Controle op wat onderweg kan opbreken',                         run:function(){ openLangeRit(); }},
+  monitor:   {n:'Meekijken tijdens je rit', d:'Waakt de hele rit, je hoeft niets te doen', t:'hele rit',        run:function(){ openMonitorView(); }},
+  recorder:  {n:'Zelf sensoren opnemen', d:'Jij kiest welke sensoren de app vastlegt', t:'zo lang je wilt',                               run:function(){ openPidRecorder(); }}
 };
 
 /* Modules die bewust GEEN meeteis hebben — de uitzonderingen, expliciet en op
@@ -300,10 +300,10 @@ function moduleAan(k){
 }
 
 var METING = {
-  stil:    {n:'Stilstaand meten',  d:'Contact aan, motor stationair',  tijd:'±2 min'},
-  rit2:    {n:'Korte rit',         d:'±2 minuten rijden',              tijd:'±2 min',  start:function(){ openRitAnalyse('2min'); }},
-  rit10:   {n:'Rit onder belasting',d:'±10 minuten, ook stevig optrekken', tijd:'±10 min', start:function(){ openRitAnalyse('10min'); }},
-  monitor: {n:'Passief meelopen',  d:'De app kijkt mee tijdens je normale rit', tijd:'hele rit', start:function(){ openMonitorView(); }}
+  stil:    {n:'Meten met draaiende motor', d:'Contact aan, motor stationair, niet rijden', tijd:'± 2 min'},
+  rit2:    {n:'Korte meetrit',     d:'Gewoon rijden',                  tijd:'± 2 min',  start:function(){ openRitAnalyse('2min'); }},
+  rit10:   {n:'Meetrit met optrekken', d:'Rijden en een paar keer stevig optrekken', tijd:'± 10 min', start:function(){ openRitAnalyse('10min'); }},
+  monitor: {n:'Meekijken tijdens je rit', d:'Je rijdt zoals altijd, de app let op', tijd:'hele rit', start:function(){ openMonitorView(); }}
 };
 
 /* ── Plan samenstellen ──────────────────────────────────────────────────
@@ -679,7 +679,7 @@ function toonPlan(){
   var af = mods.filter(function(k){ return gedaan[k]; }).length;
   var vink = '<span style="color:var(--gr,#3fbf6f);font-weight:800;margin-right:5px">✓</span>';
 
-  var h = '<div class="wz-vraag">Dit ga ik doen</div>'+
+  var h = '<div class="wz-vraag">Jouw plan</div>'+
           '<div class="wz-sub">'+
             (af ? af+' van de '+mods.length+' klaar. Ga verder waar je gebleven was — je antwoorden staan er nog.'
                 : 'Op basis van je antwoorden. Je kunt hier nog terug.')+
@@ -687,7 +687,7 @@ function toonPlan(){
           samenvatting()+
           // Geen klacht: de algemene check (de totaalcheck) staat bovenaan.
           (job.doel==='storing' && job.controle && MODULES.conditie && moduleAan('conditie') ?
-            '<div class="wz-plan-item" id="wzAlgemeen" style="border-color:#22d3ee"><b>🚦 Algemene check</b>'+
+            '<div class="wz-plan-item" id="wzAlgemeen" style="border-color:#22d3ee"><b>🚦 Brede controle van de hele auto</b>'+
               '<span>Stilstaand met foutcodes en zelftests, daarna gewoon rijden. Per systeem een oordeel; dieper alleen waar iets afwijkt.</span>'+
               '<button class="wz-mod-run" onclick="PLWizard.draai(\'conditie\')">Starten</button></div>' : '')+
           // #428: bij een klacht staat het volledige onderzoek bovenaan. Het
@@ -698,7 +698,7 @@ function toonPlan(){
               '<span>Ik meet, stel vragen en geef opdrachten, sluit uit wat niet klopt en zoek verder tot ik iets vind.</span>'+
               '<button class="wz-mod-run" onclick="PLWizard.onderzoek()">Starten</button></div>'+
             '<div class="wz-plan-kop">Of zelf kiezen</div>' : '')+
-          '<div class="wz-plan-kop">1 · Meten</div>'+
+          '<div class="wz-plan-kop">Stap 1 · Eerst meten</div>'+
           // Stap 1 had als enige regel in dit scherm géén knop, terwijl elke
           // analyse eronder er wél een had. Daarmee wees de hele lijst naar de
           // ongepoorte deur: mensen tikten "Openen" bij een analyse en kregen
@@ -707,15 +707,15 @@ function toonPlan(){
             '<span>'+meting.d+' · '+meting.tijd+'</span>'+
             '<button class="wz-mod-run" onclick="PLWizard.start()">'+
               (metingGestart?'Nogmaals':'Starten')+'</button></div>'+
-          '<div class="wz-plan-kop">2 · Analyseren <span class="wz-tel">'+
+          '<div class="wz-plan-kop">Stap 2 · Kies wat je wilt weten <span class="wz-tel">'+
             (af ? af+'/'+mods.length : mods.length)+'</span></div>';
   mods.forEach(function(k){
     var M=MODULES[k], klaar=!!gedaan[k];
     h += '<div class="wz-plan-item" id="wzMod_'+k+'"'+
            (klaar?' style="opacity:.72"':'')+'>'+
-         '<b>'+(klaar?vink:'')+M.n+'</b><span>'+M.d+'</span>'+
+         '<b>'+(klaar?vink:'')+M.n+'</b><span>'+M.d+(M.t?' · '+M.t:'')+'</span>'+
          '<button class="wz-mod-run" onclick="PLWizard.draai(\''+k+'\')">'+
-           (klaar?'Nogmaals':'Openen')+'</button></div>';
+           (klaar?'Nogmaals':'Starten')+'</button></div>';
   });
   if(job.klacht){
     h += '<div class="wz-plan-kop">Jouw omschrijving</div><div class="wz-plan-cite">'+
@@ -887,7 +887,7 @@ window.PLWizard = {
     // het oude meetscherm (plVraagMeting) had alleen deze wizard nog. Na een
     // rijtest begint dezelfde module opnieuw, nu met de rit als meting.
     if(GEEN_MEETEIS[k] || EIGEN_METING[k] || typeof PLVerzamel!=='object'){ open(); return; }
-    PLVerzamel.meet({ niveau:'normaal', profiel:MODULE_PROFIEL[k] || false, watVoor:M.n, ai:false,
+    PLVerzamel.meet({ niveau:'normaal', profiel:MODULE_PROFIEL[k] || false, watVoor:M.v||M.n, ai:false,
                       naRit:function(){ window.PLWizard.draai(k); } }).then(function(uit){
       if(uit && uit.door){ metingGestart=true; open(); }
       // Annuleren of een rijtest: het plan blijft staan, de chip brengt hem

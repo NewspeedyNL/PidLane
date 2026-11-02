@@ -138,9 +138,9 @@ function toets(naam, waar, uitleg) {
     await app.ev(`PLWizard.klachtVerder(); 'ok'`);
     toets('daarna: wanneer, met altijd en onvoorspelbaar erbij', await app.ev(`/Wanneer merk je het/.test(document.querySelector('#wizardNieuwOv .wz-vraag').textContent) && !!document.querySelector('.wz-chip[data-w="soms"]') && !!document.querySelector('.wz-chip[data-w="belast"]')`));
     await app.ev(`document.querySelector('.wz-chip[data-w="belast"]').click(); 'ok'`);
-    toets('optrekken: de app zegt meteen dat hij een rit meet', /Rit onder belasting/.test(await app.ev(`document.getElementById('wzMeet').textContent`)));
+    toets('optrekken: de app zegt meteen dat hij een rit meet', /Meetrit met optrekken/.test(await app.ev(`document.getElementById('wzMeet').textContent`)));
     await app.ev(`document.querySelector('.wz-chip[data-w="koud"]').click(); 'ok'`);
-    toets('… en met een koude motor erbij: meelopen', /Passief meelopen/.test(await app.ev(`document.getElementById('wzMeet').textContent`)));
+    toets('… en met een koude motor erbij: meelopen', /Meekijken tijdens je rit/.test(await app.ev(`document.getElementById('wzMeet').textContent`)));
     await app.ev(`PLWizard.wanneerVerder(false); 'ok'`);
     const sam = await app.ev(`(document.getElementById('wzBody')||{}).innerText||''`);
     toets('het plan zegt wat je merkt, wanneer, en wat de code betekent', /Start slecht/.test(sam) && /Onrustig/.test(sam) && /Koude motor/.test(sam) && /P0171/.test(sam), sam.slice(0, 300));
