@@ -849,7 +849,8 @@ function maatBij(){
   const zu=!!(_s.ck.zuinig && _s.ck.zuinig.aan), d=Math.min(window.devicePixelRatio||1, zu ? 1 : 2), w=_s.wortel;
   w.querySelectorAll('.vhl-ck canvas').forEach(function(c){
     const bw=Math.max(1, c.clientWidth*d|0), bh=Math.max(1, c.clientHeight*d|0);
-    if(c.width!==bw || c.height!==bh){ c.width=bw; c.height=bh; }
+    // Een nieuwe maat wist de canvas: meteen opnieuw tekenen, niet pas over 0,2 s
+    if(c.width!==bw || c.height!==bh){ c.width=bw; c.height=bh; _s.ck.traagT=0; }
   });
   const sleutel=w.clientWidth+'x'+w.clientHeight+'@'+d;
   if(sleutel===_s.maat) return;

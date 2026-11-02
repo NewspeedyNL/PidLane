@@ -52,14 +52,25 @@ const MEET = `(async function(){
   const B = vak.getBoundingClientRect(), bx = s => vak.querySelector(s).getBoundingClientRect();
   const raak = (a, b) => !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
   const mods = ['.vhl-ck-links', '.vhl-ck-temps', '.vhl-ck-3d', '.vhl-ck-graf'];
-  r.binnen = mods.every(s => { const b = bx(s); return b.width > 0 && b.left >= B.left - 1 && b.right <= B.right + 1 && b.top >= B.top - 1 && b.bottom <= B.bottom + 1; });
+  r.buiten = mods.filter(s => { const b = bx(s); return !(b.width > 0 && b.left >= B.left - 1 && b.right <= B.right + 1 && b.top >= B.top - 1 && b.bottom <= B.bottom + 1); })
+    .map(s => { const b = bx(s); return s + ' ' + [b.left, b.top, b.right, b.bottom].map(Math.round).join(',') + ' in ' + [B.left, B.top, B.right, B.bottom].map(Math.round).join(','); });
+  r.binnen = r.buiten.length === 0;
   r.vrij = mods.filter(s => raak(bx(s), bx('.vhl-pod.l')) || raak(bx(s), bx('.vhl-pod.r')));
-  // Tik = groot (de demo-auto staat stil of rijdt: zet de snelheid op 0)
-  PLHyperlane.zet('snel', 0);
-  const m = vak.querySelector('.vhl-ck-temps'); m.click(); await wacht(400);
-  r.groot = m.classList.contains('groot') && vak.classList.contains('vhl-ck-groot');
-  m.click(); await wacht(400);
-  r.dicht = !m.classList.contains('groot');
+  // Tik = groot: de demo-auto rijdt, en boven 10 km/h gaat groot terecht
+  // dicht. Dus even stilstand: de snelheid die het profiel doorgeeft op 0.
+  const zet = PLHyperlane.zet;
+  PLHyperlane.zet = function (rol, v, st, vv) { return zet(rol, rol === 'snel' ? 0 : v, st, vv); };
+  try {
+    zet('snel', 0); await wacht(300);
+    const m = vak.querySelector('.vhl-ck-temps'); m.click(); await wacht(400);
+    r.groot = m.classList.contains('groot') && vak.classList.contains('vhl-ck-groot');
+    m.click(); await wacht(400);
+    r.dicht = !m.classList.contains('groot');
+    // En rijdend: een tik vergroot niet (tegenproef van grootMag)
+    PLHyperlane.zet = zet; zet('snel', 50); await wacht(300);
+    m.click(); await wacht(200);
+    r.rijdendDicht = !m.classList.contains('groot');
+  } finally { PLHyperlane.zet = zet; }
   return r;
 })()`;
 
@@ -84,9 +95,10 @@ const MEET = `(async function(){
     toets('de G-cirkel tekent', r.gPx > .01, 'gevuld ' + r.gPx);
     toets('de grafiek tekent', r.grafPx > .002, 'gevuld ' + r.grafPx);
     toets('koelwater staat in de temperatuurbalken', /koel=\d/.test(r.temps || ''), r.temps);
-    toets('de modules blijven binnen het scherm', r.binnen, JSON.stringify(r));
+    toets('de modules blijven binnen het scherm', r.binnen, (r.buiten || []).join(' | '));
     toets('geen module over de ringen', r.vrij && r.vrij.length === 0, (r.vrij || []).join(','));
     toets('tik = groot, nog een tik = dicht', r.groot && r.dicht, JSON.stringify({ groot: r.groot, dicht: r.dicht }));
+    toets('rijdend vergroot een tik niet', r.rijdendDicht, JSON.stringify({ rijdendDicht: r.rijdendDicht }));
 
     console.log('\n2. Telefoon liggend: geen cockpit, geen extra bustijd (tegenproef)');
     await app.venster(915, 412);
