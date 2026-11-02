@@ -2810,6 +2810,8 @@
       var g = S.scan.gevonden.find(function (x) { return x.code === code; }); if (!g) return;
       S.form = { naam: '', code: g.code, formule: 'A', eenheid: '', min: '', max: '', ecu: g.ecu || '', tempo: '' };
       S.test.nieuw = 'Code ' + g.code + ' staat in het formulier. Geef hem een naam en een formule, test hem, en voeg hem toe.';
+      // Het formulier staat in Mijn sensoren (01-11-2026): daarheen, anders gebeurt er zichtbaar niets.
+      S.sub = 'aan';
       teken();
       setTimeout(function () { var el = document.getElementById('grsNaam'); if (el) { el.scrollIntoView({ block: 'center' }); el.focus(); } }, 50);
     },
