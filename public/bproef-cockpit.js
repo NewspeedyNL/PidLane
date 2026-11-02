@@ -33,8 +33,11 @@ const OPEN = `(async function(){
 })()`;
 const MEET = `(async function(){
   const wacht = ms => new Promise(r => setTimeout(r, ms));
-  const vak = document.querySelector('.gg.view-visueel .vpf-hyper');
-  const r = { vak: !!vak, cockpitNu: PLHyperlane.cockpitNu() };
+  // Steeds opnieuw opzoeken: een herbouw (draaien, keuze) vervangt het vak,
+  // en een oud element heeft maat 0 (zo rood geworden in CI, 02-11-2026).
+  const V = () => document.querySelector('.gg.view-visueel .vpf-hyper');
+  let vak = V();
+  const r = { vak: !!vak, cockpitNu: PLHyperlane.cockpitNu(), herbouw0: PLVisueel.sessie ? (PLVisueel.sessie().herbouw || 0) : null };
   if (!vak) return r;
   const ck = vak.querySelector('.vhl-ck');
   r.tablet = vak.classList.contains('vhl-tablet');
@@ -45,6 +48,7 @@ const MEET = `(async function(){
   const px = c => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++; return n / (d.length / 4); };
   r.gPx = px(vak.querySelector('.vhl-ck-g canvas'));
   await wacht(1500);
+  vak = V();
   r.grafPx = px(vak.querySelector('.vhl-ck-graf canvas'));
   r.temps = Array.from(vak.querySelectorAll('.vhl-tb:not(.leeg)')).map(t => t.getAttribute('data-rol') + '=' + t.querySelector('b').textContent).join(' ');
   r.gas = vak.style.getPropertyValue('--vhl-gas');
@@ -62,15 +66,18 @@ const MEET = `(async function(){
   PLHyperlane.zet = function (rol, v, st, vv) { return zet(rol, rol === 'snel' ? 0 : v, st, vv); };
   try {
     zet('snel', 0); await wacht(300);
-    const m = vak.querySelector('.vhl-ck-temps'); m.click(); await wacht(400);
-    r.groot = m.classList.contains('groot') && vak.classList.contains('vhl-ck-groot');
-    m.click(); await wacht(400);
-    r.dicht = !m.classList.contains('groot');
+    const m = () => V().querySelector('.vhl-ck-temps');
+    m().click(); await wacht(120);
+    r.groot = m().classList.contains('groot') && V().classList.contains('vhl-ck-groot');
+    m().click(); await wacht(120);
+    r.dicht = !m().classList.contains('groot');
     // En rijdend: een tik vergroot niet (tegenproef van grootMag)
     PLHyperlane.zet = zet; zet('snel', 50); await wacht(300);
-    m.click(); await wacht(200);
-    r.rijdendDicht = !m.classList.contains('groot');
+    m().click(); await wacht(200);
+    r.rijdendDicht = !m().classList.contains('groot');
   } finally { PLHyperlane.zet = zet; }
+  const S = PLVisueel.sessie ? PLVisueel.sessie() : {};
+  r.herbouw = (S.herbouw || 0) - (r.herbouw0 || 0); r.herbouwReden = JSON.stringify(S.herbouwReden || {});
   return r;
 })()`;
 
@@ -97,7 +104,7 @@ const MEET = `(async function(){
     toets('koelwater staat in de temperatuurbalken', /koel=\d/.test(r.temps || ''), r.temps);
     toets('de modules blijven binnen het scherm', r.binnen, (r.buiten || []).join(' | '));
     toets('geen module over de ringen', r.vrij && r.vrij.length === 0, (r.vrij || []).join(','));
-    toets('tik = groot, nog een tik = dicht', r.groot && r.dicht, JSON.stringify({ groot: r.groot, dicht: r.dicht }));
+    toets('tik = groot, nog een tik = dicht', r.groot && r.dicht, JSON.stringify({ groot: r.groot, dicht: r.dicht, herbouw: r.herbouw, reden: r.herbouwReden }));
     toets('rijdend vergroot een tik niet', r.rijdendDicht, JSON.stringify({ rijdendDicht: r.rijdendDicht }));
 
     console.log('\n2. Telefoon liggend: geen cockpit, geen extra bustijd (tegenproef)');
