@@ -2848,6 +2848,24 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Hyperlane als cockpit op een tablet (02-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Hyperlane-cockpit: op een tablet liggend G, pedalen, temperaturen, autootje en grafiek; op een telefoon niets extra',
+    waarom: 'Uit het gebruik: "Hyperlane op een tablet in full screen, alle schermen bij elkaar". Deze proef toetst de geladen modules op dit scherm: de cockpit staat aan als het scherm een tablet liggend is, het profiel vraagt dan rempedaal en helling erbij, en op een telefoon niet (geen extra bustijd).',
+    proef: async function () {
+      var H = window.PLHyperlane, P = window.PLVisProfiel;
+      if (!H || typeof H.cockpitMaat !== 'function') return { staat: 'FOUT', detail: 'PLHyperlane zonder cockpit — pidlane-hyperlane.js niet bijgewerkt (herladen?)' };
+      if (!P || typeof P.cockpitHtml !== 'function') return { staat: 'FOUT', detail: 'PLVisProfiel zonder cockpit — pidlane-visprofiel.js niet bijgewerkt (herladen?)' };
+      if (H.cockpitMaat(915, 412) || !H.cockpitMaat(1280, 800)) return { staat: 'FOUT', detail: 'cockpitMaat haalt telefoon en tablet door elkaar' };
+      var rollen = P.voor('hyperlane', null).plekken.map(function (x) { return x.rol; });
+      var ck = H.cockpitNu(), heeft = rollen.indexOf('rem') >= 0 && rollen.indexOf('helling') >= 0;
+      if (ck !== heeft) return { staat: 'FOUT', detail: 'cockpit ' + (ck ? 'aan' : 'uit') + ' maar rempedaal/helling ' + (heeft ? 'wel' : 'niet') + ' in het profiel' };
+      if (!ck) return { staat: 'LET OP', detail: 'dit scherm is geen tablet liggend (' + window.innerWidth + '×' + window.innerHeight + '): de cockpit staat terecht uit; draai de proef op een tablet voor het beeld' };
+      return { staat: 'OK', detail: 'open Hyperlane op volledig scherm: G-cirkel en pedalen links, temperaturen midden, autootje rechts, grafiek boven' };
+    }
+  },
+
   // ── Wizardplan: namen die zeggen wat er gebeurt (02-11-2026) ──
   {
     issue: '—',

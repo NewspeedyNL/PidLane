@@ -670,6 +670,14 @@ function ring(cv, o){
   }
   c.fillStyle='#fff'; c.shadowColor=cs; c.shadowBlur=24; c.font='200 96px system-ui,sans-serif'; c.fillText(o.txt, cx, cy-4); c.shadowBlur=0;
   c.fillStyle=cs; c.font='600 15px system-ui,sans-serif'; c.fillText(o.eenh, cx, cy+56);
+  // De cockpit: een binnenboog (turbodruk in de toeren, belasting in de snelheid)
+  const bi=o.binnen;
+  if(bi){
+    const rb=R-70, bc=bi.col || cs;
+    c.lineWidth=6; c.strokeStyle='rgba(255,255,255,.07)'; c.beginPath(); c.arc(cx,cy,rb,A(0),A(1)); c.stroke();
+    if(bi.v>.002){ c.strokeStyle=bc; c.shadowColor=bc; c.shadowBlur=14; c.beginPath(); c.arc(cx,cy,rb,A(0),A(klem(bi.v, 0, 1))); c.stroke(); c.shadowBlur=0; }
+    c.fillStyle=bc; c.font='600 14px system-ui,sans-serif'; c.fillText(bi.txt, cx, cy+84);
+  }
 }
 
 // ── DE LUS ────────────────────────────────────────────────────────
@@ -682,11 +690,13 @@ function opties(){
   // De schaal van de plekken uit het profiel (diesel: 6000 rpm, #393).
   // Een ring met een zelfgekozen sensor (ind.vervang) krijgt diens naam,
   // eenheid en schaal; de toeren- en snelheidslogica laten hem dan met rust.
-  const o={ toerenHi:8000, snelHi:240, ring:{} };
+  const o={ toerenHi:8000, snelHi:240, ring:{}, schaal:{}, remPid:false };
   try{
     const P=window.PLVisProfiel, V=window.PLVisueel, ind=V && V.staat && V.staat().ind;
     const pi=ind && ind.profiel, p=P && pi ? P.voorInd('hyperlane', pi) : null;
+    o.remPid=!!(ind.profiel.plekken && ind.profiel.plekken.rem);
     (p && p.plekken || []).forEach(function(x){
+      o.schaal[x.rol]={ lo:x.lo, hi:x.hi, dec:x.dec||0 };
       // Een eigen factor (PLToon) maakt er ook een ander getal van dan toeren of km/h.
       const v=!!(pi.vervang && pi.vervang[x.rol]) || !!(pi.weergave && pi.weergave[x.rol] && pi.weergave[x.rol].factor);
       if(x.rol==='toeren' && !v) o.toerenHi=x.hi;
@@ -711,7 +721,7 @@ function start(wortel){
        sc:'', g:{ B:0, K:0, A:0, F:0, Z:0, D:1 }, golf:99, vs:null, stilS:0, cruiseS:0, lat:0,
        ritPiek:0, topGemeld:0, klokT:0,
        accu:null, power:null, gHist:[], gT:0, ga:0, thema:merkNu(), tankT:'',
-       verv:{}, hand:0, scoreDicht:false, runKlaar:false, vorm:leesVorm(), vw:{ tunnel:1, aurora:0, hartslag:0, pulsen:0, sterren:0 }, vormT:'', scWas:'', midden:leesMidden(), middenT:'' };
+       verv:{}, hand:0, scoreDicht:false, ck:{ g:[], piek:null, graf:[], grafT:0, traagT:0, groot:'', remBit:true, zuinig:null, fr:0 }, runKlaar:false, vorm:leesVorm(), vw:{ tunnel:1, aurora:0, hartslag:0, pulsen:0, sterren:0 }, vormT:'', scWas:'', midden:leesMidden(), middenT:'' };
   wortel.classList.toggle('vhl-gl', !!_s.gl);
   wortel.querySelectorAll('.vhl-ring').forEach(function(c){ _s.ringen[c.getAttribute('data-ring')]=c; });
   const kn=wortel.querySelector('.vhl-vorm');
@@ -745,6 +755,17 @@ function start(wortel){
   }
   const kr=wortel.querySelector('.vhl-ritknop'), ks=wortel.querySelector('.vhl-score');
   [kr, ks].forEach(function(x){ if(x) x.addEventListener('click', function(e){ e.stopPropagation(); scoreKnop(); }); });
+  // De cockpit: tik op een module = even groot (alleen bij stilstand of stapvoets)
+  wortel.querySelectorAll('.vhl-ck-mod').forEach(function(m){
+    m.addEventListener('click', function(e){
+      e.stopPropagation();   // niet ook een plek kiezen
+      if(!_s) return;
+      const k=m.getAttribute('data-mod'), snel=echt(_s).snel, na=grootNa(_s.ck.groot, k, snel);
+      if(na!==k && _s.ck.groot!==k) meld('Vergroten kan tot '+GROOT_KMH+' km/h');
+      _s.ck.groot=na;
+    });
+  });
+  accuLees();
   window.addEventListener('deviceorientation', kantel);
   _s.raf=requestAnimationFrame(frame);
 }
@@ -825,7 +846,12 @@ function zijG(){
   return (v===null || v===undefined || !isFinite(Number(v))) ? 0 : klem(v, -1.2, 1.2);
 }
 function maatBij(){
-  const d=Math.min(window.devicePixelRatio||1, 2), w=_s.wortel, sleutel=w.clientWidth+'x'+w.clientHeight+'@'+d;
+  const zu=!!(_s.ck.zuinig && _s.ck.zuinig.aan), d=Math.min(window.devicePixelRatio||1, zu ? 1 : 2), w=_s.wortel;
+  w.querySelectorAll('.vhl-ck canvas').forEach(function(c){
+    const bw=Math.max(1, c.clientWidth*d|0), bh=Math.max(1, c.clientHeight*d|0);
+    if(c.width!==bw || c.height!==bh){ c.width=bw; c.height=bh; }
+  });
+  const sleutel=w.clientWidth+'x'+w.clientHeight+'@'+d;
   if(sleutel===_s.maat) return;
   _s.maat=sleutel;
   if(_s.bg){ _s.bg.width=Math.max(1, w.clientWidth*d|0); _s.bg.height=Math.max(1, w.clientHeight*d|0); if(_s.gl) _s.gl.gl.viewport(0,0,_s.bg.width,_s.bg.height); }
@@ -937,7 +963,11 @@ function frame(nu){
   // Weggegooid of verborgen: stoppen. De volgende zet() of wek() start opnieuw.
   if(!s.wortel.isConnected || !s.wortel.getClientRects().length){ stop(); return; }
   s.raf=requestAnimationFrame(frame);
-  const dt=Math.min(.05, (nu-s.last)/1000), T=(nu-s.t0)/1000; s.last=nu;
+  const dtRuw=Math.min(.1, (nu-s.last)/1000), dt=Math.min(.05, dtRuw), T=(nu-s.t0)/1000; s.last=nu;
+  // De cockpit (tablet liggend, volledig scherm): zichtbaar = er wordt getekend
+  const ckEl=s.wortel.querySelector('.vhl-ck'), ck=!!ckEl && ckEl.getClientRects().length>0;
+  if(ck) s.ck.zuinig=zuinig(s.ck.zuinig, _accu, dtRuw);
+  s.wortel.classList.toggle('vhl-zuinig', ck && s.ck.zuinig.aan);
   maatBij();
   const o=s.opt, rood=o.toerenHi*.85, d=s.doel, w=s.wortel, e=echt(s);
   ['toeren','snel'].forEach(function(r){ if(d[r]!=null) s.toon[r]=volg(s.toon[r], d[r], dt, 10); });
@@ -997,7 +1027,9 @@ function frame(nu){
   // Kantelen met de telefoon
   s.tilt[0]=volg(s.tilt[0], s.tiltDoel[0], dt, 4); s.tilt[1]=volg(s.tilt[1], s.tiltDoel[1], dt, 4);
   w.style.setProperty('--vhl-tx', (s.tilt[0]*5).toFixed(2)+'deg'); w.style.setProperty('--vhl-ty', (s.tilt[1]*7+s.lat*9).toFixed(2)+'deg');
-  if(s.gl && av!=='stil'){
+  // Zuinig: de tunnel om het andere beeld (de canvas houdt het vorige)
+  const sla=ck && s.ck.zuinig.aan && ((s.ck.fr++)&1)===1;
+  if(s.gl && av!=='stil' && !sla){
     const gl=s.gl.gl, U=s.gl.U;
     gl.uniform1f(U.VT, VW.tunnel); gl.uniform1f(U.VA, VW.aurora); gl.uniform1f(U.VH, VW.hartslag); gl.uniform1f(U.VP, VW.pulsen); gl.uniform1f(U.VS, VW.sterren);
     gl.uniform1fv(U.HB, polsUniform(s.pols));
@@ -1015,10 +1047,12 @@ function frame(nu){
     return { v:v, n:sch.n, piek:piek, col:c, lab:function(i){ return tekstVan(sch.lab(i), sch.dec); },
       txt:live ? (d[r]==null ? '—' : tekstVan(s.toon[r], x.dec)) : '', eenh:x.eenh };
   };
-  if(s.ringen.toeren) ring(s.ringen.toeren, o.ring.toeren ? eigen('toeren', rf, s.piek.toeren) : { v:rf, n:nT, rood:rood/(nT*1000), piek:s.piek.toeren, col:c, lab:function(i){ return i; },
-    txt:live ? (d.toeren==null ? '—' : tekstVan(s.toon.toeren/1000, 1)) : '', eenh:'× 1000 TPM' });
-  if(s.ringen.snel) ring(s.ringen.snel, o.ring.snel ? eigen('snel', sf, s.piek.snel) : { v:sf, n:nS, piek:s.piek.snel, col:c, lab:function(i){ return i*20; },
-    txt:live ? (d.snel==null ? '—' : tekstVan(s.toon.snel, 0)) : '', eenh:'KM/H' });
+  const bi=ck && live ? binnenbogen(d, baro()) : { toeren:null, snel:null };
+  if(s.ringen.toeren) ring(s.ringen.toeren, Object.assign(o.ring.toeren ? eigen('toeren', rf, s.piek.toeren) : { v:rf, n:nT, rood:rood/(nT*1000), piek:s.piek.toeren, col:c, lab:function(i){ return i; },
+    txt:live ? (d.toeren==null ? '—' : tekstVan(s.toon.toeren/1000, 1)) : '', eenh:'× 1000 TPM' }, { binnen:bi.toeren }));
+  if(s.ringen.snel) ring(s.ringen.snel, Object.assign(o.ring.snel ? eigen('snel', sf, s.piek.snel) : { v:sf, n:nS, piek:s.piek.snel, col:c, lab:function(i){ return i*20; },
+    txt:live ? (d.snel==null ? '—' : tekstVan(s.toon.snel, 0)) : '', eenh:'KM/H' }, { binnen:bi.snel }));
+  if(ck) cockpitBij(w, dt, d, e, sc, c, vs);
   // Schakellampjes, met een flits over de rand op de begrenzer
   // De flits over de rand alleen in de tunnel: in een rustige vorm knipperen alleen de lampjes
   // Het schakelpunt (31-10-2026): rustig het ecopunt van CA11, hard de rode
@@ -1065,6 +1099,225 @@ function frame(nu){
   }
 }
 
+// ── DE COCKPIT ────────────────────────────────────────────────────
+// (02-11-2026, uit het gebruik: "Hyperlane op een tablet in full screen,
+// alle schermen bij elkaar".) Op een tablet liggend in volledig scherm komen
+// er rond de ringen bij: de G-krachtcirkel, gas en rem als F1-balken, de
+// temperaturen, een neon-autootje voor helling en kanteling, een grafiek
+// van de laatste minuut, binnenbogen in de ringen (turbodruk, belasting) en
+// een waarschuwingsrand. Adaptief via data-scene in pidlane.css: rijden
+// zet G en pedalen voorop, stilstand en een koude motor de temperaturen.
+// Het vak staat in pidlane-visprofiel.js (cockpitHtml); de plekken die
+// alleen hier bustijd vragen dragen daar cockpit:true.
+
+/* Een tablet liggend: breed, liggend en hoog genoeg. Een telefoon liggend
+   is zo'n 430 px hoog en valt erbuiten. Puur. Dezelfde maten staan in de
+   @media van pidlane.css. */
+const COCKPIT_B = 800, COCKPIT_H = 540;
+function cockpitMaat(b, h){ return Number(b)>=COCKPIT_B && Number(h)>=COCKPIT_H && Number(b)>Number(h); }
+function cockpitNu(){ return typeof window.innerWidth==='number' && cockpitMaat(window.innerWidth, window.innerHeight); }
+
+/* Koud, goed of heet per temperatuur: [koud onder, heet boven]. Puur. */
+const TEMP_GRENS = { koel:[60,105], olie:[70,130], inlaat:[null,60], kat:[300,900], atf:[40,110] };
+function tempStand(rol, v){
+  const g=TEMP_GRENS[rol];
+  if(!g || !heldN(v)) return '';
+  const n=Number(v);
+  if(g[1]!==null && n>g[1]) return 'heet';
+  if(g[0]!==null && n<g[0]) return 'koud';
+  return 'goed';
+}
+/* Het rempedaal, 0–1. `bit` = tot nu toe alleen 0 en 1 gezien: dan is het
+   een remschakelaar (aan = vol), geen pedaalstand. Puur. */
+function remDeel(v, lo, hi, bit){
+  if(!heldN(v)) return null;
+  const n=Number(v);
+  if(bit && (n===0 || n===1)) return n;
+  if(!(hi>lo)) return n>0 ? 1 : 0;
+  return klem((n-lo)/(hi-lo), 0, 1);
+}
+/* Zonder rempedaal-sensor: geschat uit de vertraging (km/h per s). Vol bij
+   REM_VOL_KMHS (≈ 0,85 g); stilstaand nooit. Puur. */
+const REM_VOL_KMHS = 30;
+function remGeschat(a, snel){
+  if(!heldN(a) || !heldN(snel) || Number(snel)<3) return 0;
+  return klem(-Number(a)/REM_VOL_KMHS, 0, 1);
+}
+/* Turbodruk in bar uit de inlaatdruk (010B) min de buitenluchtdruk (0133,
+   anders 101,3 kPa). Zonder turbo blijft hij onder nul: de boog leeg. Puur. */
+const BOOST_VOL = 1.5;
+function boostBar(map, baro){
+  if(!heldN(map)) return null;
+  return (Number(map)-(heldN(baro) ? Number(baro) : 101.3))/100;
+}
+/* De binnenbogen: turbodruk in de toerenring, belasting in de snelheid. Puur. */
+function binnenbogen(d, baroV){
+  const b=boostBar(d.boost, baroV), tk=function(v, dec){ return Number(v).toFixed(dec).replace('.', ','); };
+  return {
+    toeren:b===null ? null : { v:klem(b/BOOST_VOL, 0, 1), col:'#ffb020', txt:b>0.05 ? 'TURBO '+tk(b, 1)+' bar' : 'MAP '+tk(d.boost, 0)+' kPa' },
+    snel:heldN(d.last) ? { v:klem(d.last/100, 0, 1), col:'#2dff9a', txt:'LAST '+tk(d.last, 0)+'%' } : null
+  };
+}
+/* De waarschuwingsrand: rood bij alarm of een hete temperatuur, oranje bij
+   flink gas of hoge toeren met een koude motor. Puur. */
+const KOUD_GAS = 60, KOUD_RPM = 3500;
+function waarschuwing(sc, x){
+  const st=(x && x.temps) || {};
+  if(sc==='alarm' || Object.keys(st).some(function(k){ return st[k]==='heet'; })) return 'rood';
+  if(sc==='koud' && ((heldN(x.gas) && x.gas>=KOUD_GAS) || (heldN(x.toeren) && x.toeren>=KOUD_RPM))) return 'oranje';
+  return '';
+}
+/* Tik = groot: alleen bij stilstand of stapvoets; dichtdoen mag altijd. Puur. */
+const GROOT_KMH = 10;
+function grootMag(snel){ return !heldN(snel) || Number(snel)<=GROOT_KMH; }
+function grootNa(nu, k, snel){ return nu===k ? '' : (grootMag(snel) ? k : nu); }
+/* Zuinig (hitte of lege accu): de tunnel om het andere beeld en de
+   pixeldichtheid op 1. Een tablet die warm wordt gaat trager tekenen: is het
+   gemiddelde beeld trager dan ZUINIG_DT, dan zuinig voor minstens
+   ZUINIG_HOUD_S; daarna pas terug als het weer onder ZUINIG_UIT_DT zit.
+   Een accu onder ZUINIG_ACCU die niet laadt: zuinig zolang dat zo is. Puur. */
+const ZUINIG_DT = 1/35, ZUINIG_UIT_DT = 1/50, ZUINIG_HOUD_S = 60, ZUINIG_ACCU = .2;
+function zuinig(st, accu, dt){
+  const s=Object.assign({ gem:1/60, aan:false, rest:0, warm:false }, st||{});
+  s.gem+=(klem(dt, 0, .1)-s.gem)*.02;
+  if(s.gem>ZUINIG_DT){ s.warm=true; s.rest=ZUINIG_HOUD_S; }
+  else if(s.rest>0) s.rest=Math.max(0, s.rest-dt);
+  else if(s.gem<ZUINIG_UIT_DT) s.warm=false;
+  const leeg=!!accu && !accu.laden && heldN(accu.niveau) && accu.niveau<ZUINIG_ACCU;
+  s.aan=s.warm || leeg;
+  return s;
+}
+/* De grafiek: de laatste minuut, vijf punten per seconde. Puur. */
+const GRAF_DT = .2, GRAF_N = 300;
+function grafBij(lijst, punt, n){
+  const l=(lijst||[]).concat([punt]);
+  return l.length>(n||GRAF_N) ? l.slice(l.length-(n||GRAF_N)) : l;
+}
+/* Een G-punt in de cirkel (straal 1 = 1,2 g), begrensd op de rand. Zij-G
+   naar links zoals het G-vizier (pidlane-visprofiel.js), optrekken omhoog. Puur. */
+function gCirkelPunt(x, y){
+  let px=-Number(x||0)/1.2, py=-Number(y||0)/1.2;
+  const r=Math.hypot(px, py);
+  if(r>1){ px/=r; py/=r; }
+  return { x:px, y:py };
+}
+/* Helling of kanteling voor het autootje, in graden, begrensd. Puur. */
+function autoHoek(v){ return heldN(v) ? klem(v, -30, 30) : 0; }
+
+let _accu = null, _accuGevraagd = false;
+function accuLees(){
+  if(_accuGevraagd || typeof navigator==='undefined' || typeof navigator.getBattery!=='function') return;
+  _accuGevraagd=true;
+  navigator.getBattery().then(function(b){
+    const zet=function(){ _accu={ niveau:b.level, laden:b.charging }; };
+    zet(); b.addEventListener('levelchange', zet); b.addEventListener('chargingchange', zet);
+  }).catch(function(e){ console.warn('PLHyperlane: accustand onleesbaar — zuinig alleen op hitte', e); });
+}
+function baro(){
+  const v=(typeof window.pidVals==='object' && window.pidVals) ? window.pidVals['0133'] : null;
+  return heldN(v) ? Number(v) : null;
+}
+function meld(t){
+  try{ if(typeof showToast==='function') showToast(t); }
+  catch(e){ console.warn('PLHyperlane: melding mislukt', e); }
+}
+/* De G-cirkel: ringen op 0,5 en 1 g, het spoor van de laatste 3 s, de stip. */
+function gCirkel(cv, pts, col){
+  const c=cv.getContext('2d'); if(!c) return;
+  const W=cv.width, H=cv.height, r=Math.min(W, H)/2-4, cx=W/2, cy=H/2, cs=css(col);
+  c.clearRect(0,0,W,H);
+  c.lineWidth=Math.max(1, r/90);
+  c.strokeStyle='rgba(255,255,255,.18)';
+  [1/1.2*.5, 1/1.2, 1].forEach(function(f){ c.beginPath(); c.arc(cx,cy,r*f,0,7); c.stroke(); });
+  c.beginPath(); c.moveTo(cx-r,cy); c.lineTo(cx+r,cy); c.moveTo(cx,cy-r); c.lineTo(cx,cy+r); c.stroke();
+  if(pts.length>1){
+    c.lineWidth=Math.max(2, r/40); c.lineCap='round'; c.lineJoin='round';
+    for(let i=1;i<pts.length;i++){
+      const a=gCirkelPunt(pts[i-1].x, pts[i-1].y), b=gCirkelPunt(pts[i].x, pts[i].y);
+      c.strokeStyle=rgba(col, (i/pts.length)*.8);
+      c.beginPath(); c.moveTo(cx+a.x*r, cy+a.y*r); c.lineTo(cx+b.x*r, cy+b.y*r); c.stroke();
+    }
+  }
+  const p=pts.length ? gCirkelPunt(pts[pts.length-1].x, pts[pts.length-1].y) : { x:0, y:0 };
+  c.fillStyle='#fff'; c.shadowColor=cs; c.shadowBlur=r/5;
+  c.beginPath(); c.arc(cx+p.x*r, cy+p.y*r, Math.max(4, r/14), 0, 7); c.fill(); c.shadowBlur=0;
+}
+/* De grafiek: toeren in de themakleur, snelheid wit, gas groen, rem rood. */
+function grafTeken(cv, pts, col){
+  const c=cv.getContext('2d'); if(!c) return;
+  const W=cv.width, H=cv.height;
+  c.clearRect(0,0,W,H);
+  c.strokeStyle='rgba(255,255,255,.08)'; c.lineWidth=1;
+  [.25,.5,.75].forEach(function(f){ c.beginPath(); c.moveTo(0, H*f); c.lineTo(W, H*f); c.stroke(); });
+  const lijn=function(k, kl, dik){
+    c.strokeStyle=kl; c.lineWidth=dik; c.beginPath();
+    let op=false;
+    pts.forEach(function(p, i){
+      const v=p[k]; if(v===null || v===undefined){ op=false; return; }
+      const x=W-(pts.length-1-i)/(GRAF_N-1)*W, y=H-klem(v, 0, 1)*(H-4)-2;
+      if(op) c.lineTo(x, y); else c.moveTo(x, y); op=true;
+    });
+    c.stroke();
+  };
+  const d=Math.max(1.5, H/60);
+  lijn('g', 'rgba(45,255,154,.75)', d); lijn('r', 'rgba(255,48,80,.85)', d); lijn('v', 'rgba(255,255,255,.85)', d); lijn('t', css(col), d*1.4);
+}
+const nr=function(v, dec){ return heldN(v) ? tekstVan(v, dec) : '—'; };
+function cockpitBij(w, dt, d, e, sc, col, vs){
+  const K=_s.ck, o=_s.opt, t=performance.now()/1000;
+  // Tik = groot: rijden sluit hem
+  if(K.groot && !grootMag(e.snel)) K.groot='';
+  w.classList.toggle('vhl-ck-groot', !!K.groot);
+  w.querySelectorAll('.vhl-ck-mod').forEach(function(m){ const g=m.getAttribute('data-mod')===K.groot; if(m.classList.contains('groot')!==g) m.classList.toggle('groot', g); });
+  // G: de telefoon (TL04/TL03), anders lengte-G uit de snelheid
+  const gx=heldN(d.gx) ? Number(d.gx) : 0, gy=heldN(d.gy) ? Number(d.gy) : (heldN(vs) ? vs/3.6/9.81 : 0);
+  K.g.push({ x:gx, y:gy, t:t }); while(K.g.length && t-K.g[0].t>3) K.g.shift();
+  const gt=Math.hypot(gx, gy); K.piek=Math.max(K.piek||0, gt);
+  const gc=w.querySelector('.vhl-ck-g canvas'); if(gc) gCirkel(gc, K.g, col);
+  // Gas en rem
+  const sr=o.schaal.rem || { lo:0, hi:100 };
+  if(heldN(d.rem) && !(Number(d.rem)===0 || Number(d.rem)===1)) K.remBit=false;
+  const gas=heldN(e.gas) ? klem(e.gas/100, 0, 1) : 0, rem=o.remPid ? (remDeel(d.rem, sr.lo, sr.hi, K.remBit) || 0) : remGeschat(vs, e.snel);
+  K.gasT=volg(K.gasT||0, gas, dt, 14); K.remT=volg(K.remT||0, rem, dt, 14);
+  w.style.setProperty('--vhl-gas', (K.gasT*100).toFixed(1)+'%'); w.style.setProperty('--vhl-rem', (K.remT*100).toFixed(1)+'%');
+  // Het autootje: vloeiend, elke frame
+  K.hel=volg(K.hel||0, autoHoek(d.helling), dt, 5); K.kan=volg(K.kan||0, autoHoek(d.kanteling), dt, 5);
+  w.style.setProperty('--vhl-hel', K.hel.toFixed(2)+'deg'); w.style.setProperty('--vhl-kan', K.kan.toFixed(2)+'deg');
+  // De rest vijf keer per seconde
+  if((K.traagT-=dt)>0) return;
+  K.traagT=GRAF_DT;
+  const zet=function(q, v){ const x=w.querySelector(q); if(x && x.textContent!==v) x.textContent=v; };
+  zet('.vhl-ck-gw b', tekstVan(gt, 2)); zet('.vhl-ck-gw small span', tekstVan(K.piek, 2));
+  zet('.vhl-3d-w .h', heldN(d.helling) ? tekstVan(d.helling, 0)+'°' : '—'); zet('.vhl-3d-w .k', heldN(d.kanteling) ? tekstVan(d.kanteling, 0)+'°' : '—');
+  const temps={};
+  w.querySelectorAll('.vhl-tb').forEach(function(tb){
+    const rol=tb.getAttribute('data-rol'), v=d[rol], sch=o.schaal[rol] || { lo:0, hi:150, dec:0 }, st=tempStand(rol, v);
+    if(st) temps[rol]=st;
+    if(tb.getAttribute('data-stand')!==st) tb.setAttribute('data-stand', st);
+    const u=tb.querySelector('u'); if(u) u.style.width=(heldN(v) && sch.hi>sch.lo ? klem((v-sch.lo)/(sch.hi-sch.lo), 0, 1)*100 : 0).toFixed(1)+'%';
+    const b=tb.querySelector('b'), tx=heldN(v) ? nr(v, sch.dec)+'°' : '—'; if(b && b.textContent!==tx) b.textContent=tx;
+  });
+  const wa=waarschuwing(sc, { gas:e.gas, toeren:e.toeren, temps:temps });
+  if(w.getAttribute('data-waarsch')!==wa) w.setAttribute('data-waarsch', wa);
+  const deel=function(v, hi){ return heldN(v) ? klem(v/hi, 0, 1) : null; };
+  K.graf=grafBij(K.graf, { t:deel(e.toeren, o.toerenHi), v:deel(e.snel, o.snelHi), g:heldN(e.gas) ? gas : null, r:rem });
+  const gr=w.querySelector('.vhl-ck-graf canvas'); if(gr) grafTeken(gr, K.graf, col);
+}
+// Draait het scherm of past het venster (splitscreen), dan kan de cockpit
+// aan of uit: de plekken en de bus horen erbij, dus opnieuw opbouwen.
+if(typeof window.addEventListener==='function'){
+  let ckWas=cockpitNu(), ckT=0;
+  window.addEventListener('resize', function(){
+    clearTimeout(ckT);
+    ckT=setTimeout(function(){
+      const n=cockpitNu(); if(n===ckWas) return;
+      ckWas=n;
+      try{ if(window.PLVisueel && typeof PLVisueel.herbouwKeuze==='function') PLVisueel.herbouwKeuze(); }
+      catch(e){ console.warn('PLHyperlane: herbouw na draaien mislukt — volgt bij de volgende tik', e); }
+    }, 400);
+  });
+}
+
 window.PLHyperlane = {
   STOPS:STOPS, OPSTART_S:OPSTART_S,
   kleur:kleur, stemming:stemming, modus:modus, leds:leds, schakelDoel:schakelDoel, pijlOp:pijlOp, LED_VAN:LED_VAN, RACE_FRAC:RACE_FRAC, nul100:nul100, volg:volg,
@@ -1082,6 +1335,11 @@ window.PLHyperlane = {
   polsBij:polsBij, polsUniform:polsUniform, POLS_RUST:POLS_RUST, POLS_MAX:POLS_MAX, POLS_PAPIER:POLS_PAPIER, POLS_N:POLS_N,
   KOUD_C:KOUD_C, HEET_C:HEET_C, REM_KMHS:REM_KMHS, STIL_S:STIL_S, CRUISE_S:CRUISE_S, CRUISE_KMH:CRUISE_KMH,
   _klok:klok,
+  COCKPIT_B:COCKPIT_B, COCKPIT_H:COCKPIT_H, cockpitMaat:cockpitMaat, cockpitNu:cockpitNu, TEMP_GRENS:TEMP_GRENS, tempStand:tempStand,
+  remDeel:remDeel, remGeschat:remGeschat, REM_VOL_KMHS:REM_VOL_KMHS, boostBar:boostBar, binnenbogen:binnenbogen, BOOST_VOL:BOOST_VOL,
+  waarschuwing:waarschuwing, KOUD_GAS:KOUD_GAS, KOUD_RPM:KOUD_RPM, grootMag:grootMag, grootNa:grootNa, GROOT_KMH:GROOT_KMH,
+  zuinig:zuinig, ZUINIG_DT:ZUINIG_DT, ZUINIG_UIT_DT:ZUINIG_UIT_DT, ZUINIG_HOUD_S:ZUINIG_HOUD_S, ZUINIG_ACCU:ZUINIG_ACCU,
+  grafBij:grafBij, GRAF_N:GRAF_N, GRAF_DT:GRAF_DT, gCirkelPunt:gCirkelPunt, autoHoek:autoHoek,
   start:start, stop:stop, wek:wek, zet:zet, voed:voed, voedRol:voedRol, VOED:VOED, VOED_GAS:VOED_GAS,
   actief:function(){ return !!_s; }
 };
