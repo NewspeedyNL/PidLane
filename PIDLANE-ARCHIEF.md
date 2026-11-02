@@ -14,6 +14,50 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 02-11-2026 — De kanteling werd grijs bij een drempel: het was de oude snelheid
+
+**Wat er gemeld werd.** "De kanteling gaat heel snel op grijs; hij vindt het
+te veel, terwijl het gewoon een drempel of een hobbel is." Dat leek op #418
+(08-10), maar die regel staat er nog en doet wat hij moet.
+
+**Nagebouwd tegen de echte module**, met dezelfde vm-opzet als
+`test-telemetrie.js`:
+- Drempels en plateaus van 7–10 cm bij 15–40 km/h, ook schuin genomen, met
+  naveren op 1,5 Hz, een houder die trilt (12 Hz, tot 60°/s) en een tablet
+  zonder gyroscoop met tot ±8° ruis: **nooit grijs**. Een drempel draait de
+  carrosserie heen en terug, en het vectorfilter van 500 ms middelt dat uit.
+- Een telefoon op schoot: 97% grijs, zoals het hoort.
+- Hard remmen (5 m/s², 3 s) of een lange bocht terwijl 010D ouder is dan 2 s:
+  **3,5 tot 6 s grijs**, met als reden `verschoven`. Zonder verse snelheid
+  trekt `zwaarte()` de versnelling niet af, en dan lijkt 0,5 g remmen een
+  telefoon die 19° voorover staat. Vlak voor een drempel rem je, en op een
+  volle bus (zeker met de cockpit van Hyperlane erbij) is 010D ouder dan 2 s
+  geen uitzondering.
+
+**Wat er veranderd is.** `verschoven` telt pas als hij 2 s aanhoudt
+(`HOUDER.verschovenMs`). De dwarsversnelling (snelheid × gieren) gebruikt
+een snelheid tot 10 s oud (`SNEL_DWARS_MS`); de lengteversnelling blijft
+2 s, want een afgeleide van een oude snelheid zegt niets. Een telefoon op
+schoot of in een vakje blijft verschoven en wordt dus nog weggezet, alleen
+2 s later.
+
+**Wat nog niet bewezen is.** De simulatie wijst naar de oude snelheid, maar
+uit een echte rit is dat niet gemeten. Daarom telt `stats().houder` nu per
+reden hoe lang hij niet vast was, met de grootste afwijking en de oudste
+snelheid. Blok 5 zet dat in het verslag. Is het na de volgende rit nog
+steeds vaak grijs, dan zegt die regel waar het zit.
+
+## 02-11-2026 — "ENGINE OI… °C" in de strook van Hyperlane
+
+Gezien op een screenshot van een tablet: de middelste tegel heette "ENGINE
+OI… °C", over twee regels. Het was een met de hand gekozen eigen sensor op
+de plek Belasting (stand Eco). `kortVan()` nam de eerste negen tekens van de
+eigen naam. Dat werkte voor Nederlandse namen, maar bij een Engelse naam
+bleven precies de woorden over die de plek en de eenheid al zeiden ("Engine",
+°C). Nu haalt `kortVan()` eerst motor/engine en temperatuur weg en vertaalt
+hij de gangbare Engelse woorden. Past het label dan nog niet, dan blijft
+alleen het eerste woord staan. Meegenomen in de cockpit-PR, op verzoek.
+
 ## 02-11-2026 — De waakronde las "geen waarde" als "fysiek onmogelijk"
 
 **Uit de auto (Mazda CX-5):** Brandstofraildruk (016D) stond oranje in de

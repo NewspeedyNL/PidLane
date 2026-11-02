@@ -408,7 +408,7 @@ console.log('\n13. De stand: Auto, Eco, Sport, Cruise (01-11-2026)');
   const BR = lees('pidlane-visprofiel.js'), BH = lees('pidlane-hyperlane.js');
   const laadMet = (f, bron) => { const c = { console: { log() {}, warn() {}, error() {} }, localStorage: { getItem: () => null, setItem() {} } }; c.window = c; vm.createContext(c);
     ['pidlane-toon.js', 'pidlane-hyperlane.js', 'pidlane-visprofiel.js'].forEach(n => vm.runInContext(n === f ? bron : lees(n), c, { filename: n })); return c; };
-  const T1 = laadMet('pidlane-visprofiel.js', BR.replace("const st=stand || 'auto', hier=p.plekken.filter(function(x){ return inStand(x, st); });", "const hier=p.plekken;")).PLVisProfiel;
+  const T1 = laadMet('pidlane-visprofiel.js', BR.replace("return x.cockpit ? ck : (ck || inStand(x, st));", "return x.cockpit ? ck : true;")).PLVisProfiel;
   waar('tegenproef: zonder standfilter vraagt Auto ook olie en belasting', ['0104', '015C'].every(q => T1.ketens('hyperlane', null, {}).map(k => k[0]).indexOf(q) >= 0));
   const T2 = laadMet('pidlane-hyperlane.js', BH.replace("  if(STAND_TEKST[st] && !STAND_VOORRANG[sc]) return STAND_TEKST[st];", "  if(STAND_TEKST[st]) return STAND_TEKST[st];")).PLHyperlane;
   waar('tegenproef: zonder voorrang verdwijnt het koelwateralarm achter SPORT', T2.standLabel('alarm', 'sport', 'KOELWATER 120°') === 'SPORT');

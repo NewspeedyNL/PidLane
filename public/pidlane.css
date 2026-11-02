@@ -2371,6 +2371,111 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vt-thema, body.pl-vis-vol .vis:has(.vpf-hy
 .vpf-hyper.vhl-score-aan .vhl-pod { opacity:.35; transition:opacity .4s; }
 .vhl-mid, .vhl-pod { transition:opacity .4s; }
 @media (prefers-reduced-motion:reduce) { .vhl-tank-balk i { animation:none; } .vhl-gear.wissel, .vhl-pijl.aan { animation:none; } .vhl-score, .vhl-score.aan .vhl-tegel { transition:none; } .vpf-hyper[data-scene="alarm"] .vhl-rand, .vpf-hyper[data-scene="alarm"] .vhl-modus { animation:none; } }
+/* ── De cockpit (02-11-2026) ── Hyperlane op een tablet liggend in volledig
+   scherm: G-cirkel en pedalen links, temperaturen in het midden, het
+   neon-autootje rechts, de grafiek boven. Dezelfde maten als cockpitMaat()
+   in pidlane-hyperlane.js. Op een telefoon blijft .vhl-ck weg, en tekent de
+   lus er dus ook niets van. */
+.vhl-ck { display:none; }
+@media (orientation:landscape) and (min-width:800px) and (min-height:540px) {
+  body.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-ck { display:block; position:absolute; inset:0; z-index:3; pointer-events:none; }
+  body.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-podium { inset:calc(var(--pl-sat, 0px) + 19cqh) 0 26cqh 0; }
+  body.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-pod { width:min(30cqw, 55cqh); }
+  body.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-tank { left:31cqw; right:31cqw; bottom:2.4cqh; }
+  body.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-held-w { font-size:13cqh; }
+  body.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-strook { font-size:2.8cqh; }
+  body.pl-vis-vol .vpf-hyper.vhl-ck-groot .vhl-podium { opacity:.15; transition:opacity .4s; }
+}
+.vhl-ck-mod, .vhl-ped, .vhl-ck-links { pointer-events:auto; }
+.vhl-ck-mod { cursor:pointer; transition:opacity .6s, transform .6s; -webkit-tap-highlight-color:transparent; }
+.vhl-ck-mod canvas { width:100%; height:100%; display:block; }
+.vhl-ck-graf { position:absolute; top:calc(var(--pl-sat, 0px) + 10cqh); left:30cqw; right:30cqw; height:8cqh; opacity:.75;
+  border-bottom:1px solid rgba(255,255,255,.08); }
+.vhl-ck-leg { position:absolute; top:-2.4cqh; right:0; display:flex; gap:1.2cqw; font-size:1.5cqh; letter-spacing:.15em; }
+.vhl-ck-leg .t { color:var(--vhl-c); } .vhl-ck-leg .v { color:#fff; } .vhl-ck-leg .g { color:#2dff9a; } .vhl-ck-leg .r { color:#ff3050; }
+.vhl-ck-links { position:absolute; left:2cqw; bottom:3cqh; height:22cqh; display:flex; gap:1.4cqw; align-items:stretch; }
+.vhl-ck-g { position:relative; height:100%; aspect-ratio:1; }
+.vhl-ck-gw { position:absolute; left:0; top:0; font-size:2cqh; color:var(--vhl-c); line-height:1.1; pointer-events:none; }
+.vhl-ck-gw b { font-size:1.5em; font-weight:300; color:#fff; font-variant-numeric:tabular-nums; }
+.vhl-ck-gw small { display:block; font-size:.75em; letter-spacing:.12em; opacity:.7; }
+.vhl-ped { display:flex; gap:.8cqw; height:100%; transition:opacity .6s; }
+.vhl-pd { width:2.8cqw; height:100%; display:flex; flex-direction:column; align-items:center; gap:.6cqh; }
+.vhl-pd i { position:relative; flex:1; width:100%; overflow:hidden; border-radius:.8cqh; background:rgba(255,255,255,.07); box-shadow:inset 0 0 0 1px rgba(255,255,255,.14); }
+.vhl-pd u { position:absolute; left:0; right:0; bottom:0; height:var(--vhl-gas, 0%); }
+.vhl-pd.gas u { background:linear-gradient(0deg, #0c8f55, #2dff9a); box-shadow:0 0 2cqh #2dff9a; }
+.vhl-pd.rem u { height:var(--vhl-rem, 0%); background:linear-gradient(0deg, #8f0c22, #ff3050); box-shadow:0 0 2cqh #ff3050; }
+.vhl-pd.rem { cursor:pointer; }
+.vhl-pd.rem.geschat u { opacity:.65; }
+.vhl-pd span { font-size:1.7cqh; letter-spacing:.12em; white-space:nowrap; color:rgba(255,255,255,.75); }
+.vhl-ck-temps { position:absolute; left:31cqw; right:31cqw; bottom:8cqh; height:15cqh; display:flex; flex-direction:column; justify-content:flex-end; gap:.7cqh; opacity:.6; }
+.vhl-tb { display:grid; grid-template-columns:6.5em 1fr 4em; align-items:center; gap:1cqw; font-size:2.1cqh; }
+.vhl-tb.leeg { display:none; }
+.vhl-tb span { letter-spacing:.14em; color:var(--vhl-c); white-space:nowrap; overflow:hidden; }
+.vhl-tb i { height:1.3cqh; overflow:hidden; border-radius:99px; background:rgba(255,255,255,.08); box-shadow:inset 0 0 0 1px rgba(255,255,255,.12); }
+.vhl-tb u { display:block; height:100%; width:0; background:linear-gradient(90deg, #4aa8ff, #2dff9a); transition:width .3s; }
+.vhl-tb[data-stand="koud"] u { background:linear-gradient(90deg, #3a6cff, #8fd4ff); }
+.vhl-tb[data-stand="heet"] u { background:linear-gradient(90deg, #ffb020, #ff3050); box-shadow:0 0 1.5cqh #ff3050; }
+.vhl-tb[data-stand="heet"] b { color:#ff4d4d; }
+.vhl-tb b { text-align:right; font-weight:300; color:#fff; font-variant-numeric:tabular-nums; }
+/* Het neon-autootje: twee dozen en vier wielen in CSS-3D. Neus naar +X;
+   helling draait om Z (+ = neus omhoog), kanteling om X (+ = rechts omlaag). */
+.vhl-ck-3d { position:absolute; right:7cqw; bottom:3cqh; width:24cqw; height:22cqh; --L:15cqh; --H:3.2cqh; --W:7.5cqh; opacity:.85; }
+.vhl-3d-sc { position:absolute; inset:0 0 3.5cqh 0; perspective:70cqh; }
+.vhl-3d-auto, .vhl-3d-vloer { position:absolute; left:50%; top:55%; transform-style:preserve-3d; }
+.vhl-3d-auto { width:0; height:0; transform:rotateX(-22deg) rotateY(-32deg) rotateZ(calc(-1 * var(--vhl-hel, 0deg))) rotateX(var(--vhl-kan, 0deg)); }
+.vhl-3d-vloer { width:calc(var(--L) * 1.9); height:calc(var(--L) * 1.9); margin:calc(var(--L) * -.95) 0 0 calc(var(--L) * -.95);
+  transform:rotateX(-22deg) rotateY(-32deg) translateY(calc(var(--H) * 1.05)) rotateX(90deg);
+  background:repeating-linear-gradient(0deg, color-mix(in srgb, var(--vhl-c) 35%, transparent) 0 1px, transparent 1px 12%),
+             repeating-linear-gradient(90deg, color-mix(in srgb, var(--vhl-c) 35%, transparent) 0 1px, transparent 1px 12%);
+  -webkit-mask:radial-gradient(closest-side, #000, transparent); mask:radial-gradient(closest-side, #000, transparent); }
+.vhl-3d-doos { position:absolute; left:0; top:0; transform-style:preserve-3d; --l:var(--L); --h:var(--H); --w:var(--W); }
+.vhl-3d-doos.kap { --l:calc(var(--L) * .55); --h:calc(var(--H) * .8); --w:calc(var(--W) * .86); transform:translate3d(calc(var(--L) * -.06), calc(var(--H) * -.9), 0); }
+.vhl-3d-doos i { position:absolute; left:0; top:0; box-sizing:border-box; border:max(1px, .22cqh) solid var(--vhl-c);
+  background:color-mix(in srgb, var(--vhl-c) 9%, transparent); box-shadow:0 0 1.2cqh color-mix(in srgb, var(--vhl-c) 55%, transparent); }
+.vhl-3d-doos i:nth-child(1), .vhl-3d-doos i:nth-child(2) { width:var(--l); height:var(--h); }
+.vhl-3d-doos i:nth-child(3), .vhl-3d-doos i:nth-child(4) { width:var(--l); height:var(--w); }
+.vhl-3d-doos i:nth-child(5), .vhl-3d-doos i:nth-child(6) { width:var(--w); height:var(--h); }
+.vhl-3d-doos i:nth-child(1) { transform:translate(-50%, -50%) translateZ(calc(var(--w) / 2)); }
+.vhl-3d-doos i:nth-child(2) { transform:translate(-50%, -50%) rotateY(180deg) translateZ(calc(var(--w) / 2)); }
+.vhl-3d-doos i:nth-child(3) { transform:translate(-50%, -50%) rotateX(90deg) translateZ(calc(var(--h) / 2)); }
+.vhl-3d-doos i:nth-child(4) { transform:translate(-50%, -50%) rotateX(-90deg) translateZ(calc(var(--h) / 2)); }
+.vhl-3d-doos i:nth-child(5) { transform:translate(-50%, -50%) rotateY(90deg) translateZ(calc(var(--l) / 2)); }
+.vhl-3d-doos i:nth-child(6) { transform:translate(-50%, -50%) rotateY(-90deg) translateZ(calc(var(--l) / 2)); }
+.vhl-3d-auto .w { position:absolute; left:0; top:0; width:calc(var(--H) * 1.1); height:calc(var(--H) * 1.1); box-sizing:border-box; border-radius:50%;
+  border:max(1.5px, .35cqh) solid #fff; box-shadow:0 0 1.2cqh var(--vhl-c); }
+.vhl-3d-auto .w.lv { transform:translate(-50%, -50%) translate3d(calc(var(--L) * .32), calc(var(--H) * .5), calc(var(--W) * .5)); }
+.vhl-3d-auto .w.rv { transform:translate(-50%, -50%) translate3d(calc(var(--L) * .32), calc(var(--H) * .5), calc(var(--W) * -.5)); }
+.vhl-3d-auto .w.la { transform:translate(-50%, -50%) translate3d(calc(var(--L) * -.32), calc(var(--H) * .5), calc(var(--W) * .5)); }
+.vhl-3d-auto .w.ra { transform:translate(-50%, -50%) translate3d(calc(var(--L) * -.32), calc(var(--H) * .5), calc(var(--W) * -.5)); }
+.vhl-3d-w { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:center; gap:2cqw; font-size:1.8cqh; letter-spacing:.14em; color:var(--vhl-c); }
+.vhl-3d-w b { color:#fff; font-weight:400; font-variant-numeric:tabular-nums; }
+/* Adaptief: de scène bepaalt wat voorop staat. */
+.vpf-hyper:is([data-scene="stil"], [data-scene="koud"]) .vhl-ck-temps { opacity:1; transform:scale(1.06); }
+.vpf-hyper[data-scene="stil"] :is(.vhl-ck-g, .vhl-ped) { opacity:.35; }
+.vpf-hyper[data-scene="stil"] .vhl-ck-graf { opacity:.45; }
+.vpf-hyper[data-scene="cruise"] .vhl-ck-graf { opacity:1; }
+.vpf-hyper[data-scene="cruise"] :is(.vhl-ck-g, .vhl-ped) { opacity:.6; }
+.vpf-hyper:is([data-scene="remmen"], [data-scene="launch"], [data-scene="begrenzer"]) :is(.vhl-ck-g, .vhl-ped) { opacity:1; transform:scale(1.04); transform-origin:left bottom; }
+/* Tik = groot: één module vult het scherm, de rest wijkt. */
+.vhl-ck-groot .vhl-ck-mod:not(.groot), .vhl-ck-groot .vhl-ped { opacity:0 !important; pointer-events:none; }
+.vhl-ck-mod.groot { position:fixed; inset:calc(var(--pl-sat, 0px) + 10cqh) 12cqw calc(var(--pl-sab, 0px) + 8cqh); z-index:6; width:auto; height:auto; aspect-ratio:auto;
+  opacity:1 !important; transform:none !important; padding:3cqh 3cqw; border-radius:2cqh; border:1px solid var(--vhl-c);
+  background:rgba(2,4,12,.9); box-shadow:0 0 6cqh color-mix(in srgb, var(--vhl-c) 35%, transparent); }
+.vhl-ck-g.groot .vhl-ck-gw { left:3cqw; top:3cqh; font-size:4cqh; }
+.vhl-ck-temps.groot { justify-content:center; gap:2.5cqh; }
+.vhl-ck-temps.groot .vhl-tb { font-size:4.4cqh; }
+.vhl-ck-temps.groot .vhl-tb i { height:2.8cqh; }
+.vhl-ck-3d.groot { --L:40cqh; --H:8.5cqh; --W:20cqh; }
+.vhl-ck-3d.groot .vhl-3d-w { bottom:3cqh; font-size:3.6cqh; }
+.vhl-ck-graf.groot .vhl-ck-leg { top:1cqh; right:3cqw; font-size:2.4cqh; }
+/* De waarschuwingsrand: rood bij alarm of heet, oranje bij gas op een koude motor. */
+.vhl-ck-rand { position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity .3s; }
+.vpf-hyper[data-waarsch="rood"] .vhl-ck-rand { opacity:1; box-shadow:inset 0 0 0 .7cqh rgba(255,48,80,.9), inset 0 0 9cqh rgba(255,48,80,.55); animation:vhl-ck-pols .7s ease-in-out infinite alternate; }
+.vpf-hyper[data-waarsch="oranje"] .vhl-ck-rand { opacity:1; box-shadow:inset 0 0 0 .5cqh rgba(255,176,32,.85), inset 0 0 7cqh rgba(255,176,32,.45); animation:vhl-ck-pols 1.2s ease-in-out infinite alternate; }
+@keyframes vhl-ck-pols { from { filter:brightness(.6); } to { filter:brightness(1.2); } }
+/* Zuinig (warm of bijna lege accu): zeggen dat het zo is. */
+.vhl-zuinig .vhl-ck-graf::after { content:'ZUINIG'; position:absolute; top:-2.4cqh; left:0; font-size:1.5cqh; letter-spacing:.2em; color:#ffb020; }
+@media (prefers-reduced-motion:reduce) { .vhl-ck-rand { animation:none !important; } .vhl-ck-mod, .vhl-tb u { transition:none; } }
 /* ── Telemetrie (05-10-2026): horizon, offroad, G-cirkel ──
    Net als neon een vaste donkere cockpit, in beide thema's: een horizon met
    een witte lucht leest niet. De tekening draait via transform (bij()). */

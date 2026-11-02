@@ -222,6 +222,33 @@ rij(300, [0, G * Math.cos(hel), -G * Math.sin(hel)], 50, 0);   // 6° klim, cons
 h = T.nu();
 ok(Math.abs(h.helling - 6) < 1, 'een echte klim van 6° blijft 6°', h);
 
+console.log('\n— kanteling grijs bij een drempel (02-11-2026) —');
+// De pure regel: een afwijking telt pas als hij 2 s aanhoudt.
+ok(H({ afwijking: 20, verschovenMs: 500 }).vast, '20° afwijking die net begint: nog vast (een remstoot is geen schoot)');
+ok(H({ afwijking: 20, verschovenMs: 2500 }).reden === 'verschoven', '20° die 2,5 s aanhoudt: verschoven');
+ok(H({ afwijking: 20 }).reden === 'verschoven', 'zonder duur (oude aanroep): meteen verschoven');
+rij(300, [0, G, 0], 0, 0);   // vlak en stil; de nulstand en vooruit van hierboven blijven
+// Hard remmen voor een drempel, 3 s 5 m/s², terwijl 010D al 3 s niet ververst is
+ctx.pidHist['010D'] = [{ t: klok - 3000, v: 50 }];
+let remGrijs = 0;
+for (let i = 0; i < 150; i++){ klok += 20; M({ accelerationIncludingGravity: { x: 0, y: G, z: 5 }, rotationRate: { alpha: 0, beta: 0, gamma: 0 } }); if (!T.houderNu().vast) remGrijs++; }
+for (let i = 0; i < 100; i++){ klok += 20; M({ accelerationIncludingGravity: { x: 0, y: G, z: 0 }, rotationRate: { alpha: 0, beta: 0, gamma: 0 } }); if (!T.houderNu().vast) remGrijs++; }
+ok(remGrijs === 0, 'hard remmen (5 m/s², 3 s) met een snelheid van 3 s oud: niet grijs (was 3,2 s grijs)', { remGrijs, h: T.houderNu() });
+// Een lange bocht op een volle bus: 010D komt maar om de 4 s, dus meestal ouder dan 2 s
+ctx.pidHist['010D'] = [{ t: klok - 3000, v: 72 }];
+let bochtGrijs = 0;
+for (let i = 0; i < 300; i++){ klok += 20; if (i % 200 === 199) ctx.pidHist['010D'].push({ t: klok, v: 72 }); M({ accelerationIncludingGravity: { x: -4, y: G, z: 0 }, rotationRate: { alpha: 0, beta: 0, gamma: 0.2 * 180 / Math.PI } }); if (!T.houderNu().vast) bochtGrijs++; }
+h = T.nu();
+ok(bochtGrijs === 0 && Math.abs(h.kanteling) < 3, 'een bocht van 6 s met 010D om de 4 s: niet grijs en geen schijnkanteling', { bochtGrijs, h });
+ctx.pidHist['010D'] = [{ t: klok - 15000, v: 72 }];
+for (let i = 0; i < 300; i++){ klok += 20; M({ accelerationIncludingGravity: { x: -4, y: G, z: 0 }, rotationRate: { alpha: 0, beta: 0, gamma: 0.2 * 180 / Math.PI } }); }
+ok(Math.abs(T.nu().kanteling) > 10, 'met een snelheid van 15 s oud weet hij het niet meer: dan wél de schijnkanteling (de grens is echt)', T.nu());
+rij(300, [0, G, 0], 0, 0);
+// Het bewijs voor de volgende rit: per reden hoe lang, en de grootste afwijking
+const hs = T.stats().houder;
+ok(hs.redenS && typeof hs.redenS === 'object' && typeof hs.maxAfwijking === 'number' && typeof hs.snelOudS === 'number', 'stats().houder telt per reden, met de grootste afwijking en de oudste snelheid', hs);
+ok(((hs.redenS || {}).verschoven || 0) > 0 || ((hs.redenS || {}).wiebelt || 0) > 0, 'en de redenen van hierboven staan erin', hs.redenS);
+
 console.log('\n— vooruit leren: een houder die 30° gedraaid staat —');
 const voor = [-Math.sin(Math.PI / 6), 0, -Math.cos(Math.PI / 6)];
 ok(T.stats().voorGeleerd, 'het rechtuit remmen hierboven heeft vooruit al geleerd');

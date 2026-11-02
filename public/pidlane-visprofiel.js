@@ -187,7 +187,21 @@ const PROFIELEN = [
       { rol:'last',   naam:'Belasting',   kort:'Last',   keten:['0104','0143'], eenheid:'%', soort:'hyper', lo:0, hi:100, dec:0, stand:['eco','sport'] },
       { rol:'olie',   naam:'Motorolie',   kort:'Olie',   keten:['015C'], eenheid:'°C', soort:'hyper', lo:40, hi:150, dec:0, zoek:/olie|oil/i, stand:['sport','cruise'] },
       { rol:'inlaat', naam:'Inlaatlucht', kort:'Inlaat', keten:['010F','0168'], eenheid:'°C', soort:'hyper', lo:-20, hi:80, dec:0, stand:['sport'],
-        diesel:{ rol:'laad', naam:'Laaddruk', kort:'Laad', keten:['0170','0187','010B'], eenheid:'kPa', lo:0, hi:300 } }
+        diesel:{ rol:'laad', naam:'Laaddruk', kort:'Laad', keten:['0170','0187','010B'], eenheid:'kPa', lo:0, hi:300 } },
+      // De cockpit (02-11-2026): alleen op een tablet liggend (cockpit:true,
+      // zie plekkenVan). Daar staan ook de plekken van alle standen aan: de
+      // temperatuurbalken tonen olie en inlaat, de ring de belasting.
+      { rol:'kat',    naam:'Katalysator', kort:'Kat', keten:['013C','013E','013D','013F'], eenheid:'°C', soort:'hyper', lo:0, hi:1000, dec:0, cockpit:true },
+      { rol:'atf',    naam:'Bakolie (ATF)', kort:'ATF', keten:[], eenheid:'°C', soort:'hyper', lo:0, hi:150, dec:0, cockpit:true,
+        zoek:/\batf\b|transmissie|versnellingsbak|gearbox|transmission|\bcvt\b/i },
+      // Het rempedaal staat niet in standaard-OBD: een eigen PID met die naam,
+      // of met de hand gekozen (tik op de rembalk). Zonder: geschat uit de vertraging.
+      { rol:'rem',    naam:'Rempedaal', kort:'Rem', keten:[], eenheid:'%', soort:'hyper', lo:0, hi:100, dec:0, cockpit:true, zoek:/\brem(?!ain)|brake/i },
+      { rol:'boost',  naam:'Inlaatdruk (MAP)', kort:'MAP', keten:['010B'], eenheid:'kPa', soort:'hyper', lo:0, hi:255, dec:0, cockpit:true },
+      { rol:'gx',        naam:'Zij-G',     keten:['TL04'], eenheid:'g', soort:'hyper', lo:-1.5, hi:1.5, dec:2, cockpit:true },
+      { rol:'gy',        naam:'Lengte-G',  keten:['TL03'], eenheid:'g', soort:'hyper', lo:-1.5, hi:1.5, dec:2, cockpit:true },
+      { rol:'helling',   naam:'Helling',   keten:['TL01'], eenheid:'°', soort:'hyper', lo:-45, hi:45, dec:0, cockpit:true },
+      { rol:'kanteling', naam:'Kanteling', keten:['TL02'], eenheid:'°', soort:'hyper', lo:-45, hi:45, dec:0, cockpit:true }
     ] }
 ];
 // De ringen van buiten naar binnen; de straal staat hier en niet in de CSS,
@@ -219,10 +233,18 @@ function strookRollen(p, stand){
 function zoek(id){ for(let i=0;i<PROFIELEN.length;i++){ if(PROFIELEN[i].id===id) return PROFIELEN[i]; } return null; }
 /* De plekken van een profiel voor deze motor. Puur. Een diesel krijgt de
    diesel-velden van een plek in de plaats, of de plek valt weg (false). */
+/* De cockpit (02-11-2026): Hyperlane op een tablet liggend. Dan staan de
+   plekken van álle standen aan en de cockpit-plekken erbij; op een telefoon
+   vraagt geen van die plekken bustijd. */
+function cockpitNu(){
+  try{ return !!(window.PLHyperlane && typeof PLHyperlane.cockpitNu==='function' && PLHyperlane.cockpitNu()); }
+  catch(e){ console.warn('PLVisProfiel: cockpit onbekend — telefoonindeling', e); return false; }
+}
 function plekkenVan(p, motor, stand){
   if(!p || !p.plekken) return null;
   if(elektrisch(motor) && p.hybride) return p.hybride.plekken;
-  const st=stand || 'auto', hier=p.plekken.filter(function(x){ return inStand(x, st); });
+  const st=stand || 'auto', ck=p.id==='hyperlane' && cockpitNu();
+  const hier=p.plekken.filter(function(x){ return x.cockpit ? ck : (ck || inStand(x, st)); });
   if(motor!=='diesel') return hier;
   return hier.filter(function(x){ return x.diesel!==false; })
     .map(function(x){ return x.diesel ? Object.assign({}, x, x.diesel) : x; });
@@ -306,7 +328,26 @@ function ketenVan(id, x, opts, reserve){
   if(RESERVE_SOORT.indexOf(x.soort)>=0) (reserve||[]).forEach(function(r){ if(k.indexOf(r.pid)<0) k.push(r.pid); });
   return k;
 }
-function kortVan(naam){ const n=String(naam||''); return n.length>10 ? n.slice(0,9)+'…' : n; }
+/* Een kort label voor een sensor met zijn eigen naam. Tot 02-11-2026 de
+   eerste negen tekens: "Engine Oil Temperature" werd "ENGINE OI…" in de
+   strook van Hyperlane. Nu eerst wat de eenheid of de plek al zegt eraf
+   (motor, temperatuur) en het Engels naar het Nederlands; past het dan nog
+   niet, dan het eerste woord. Puur. */
+const KORT_WOORD = [
+  [/^(engine|motor)\s*/i, ''], [/\b(engine|motor)\s+/ig, ''], [/(temperature|temperatuur|temp)\b\.?/ig, ''],
+  [/\boil\b/ig, 'olie'], [/\bcoolant\b/ig, 'koelw'], [/\bintake( air)?\b/ig, 'inlaat'], [/\bfuel\b/ig, 'brandst'],
+  [/\bpressure\b/ig, 'druk'], [/\btransmission\b/ig, 'bak'], [/\bbrake\b/ig, 'rem'], [/\bpedal\b/ig, 'pedaal'],
+  [/\bposition\b/ig, 'pos'], [/\bexhaust\b/ig, 'uitlaat'], [/\bbattery\b/ig, 'accu'], [/[()]/g, '']
+];
+function kortVan(naam){
+  const n=String(naam||'').trim();
+  let k=n;
+  KORT_WOORD.forEach(function(r){ k=k.replace(r[0], r[1]); });
+  k=k.replace(/\s+/g, ' ').trim();
+  if(!k) k=n;
+  if(k.length>10){ const w=k.split(' ')[0]; k=w.length>10 ? w.slice(0,9)+'…' : w; }
+  return k.charAt(0).toUpperCase()+k.slice(1);
+}
 /* Welke PID staat op welke plek? Per plek de eerste uit zijn keten (met de
    keuze ervoor en de naamtreffers erachter) waarvoor `mag(pid)` waar is en
    die nog niet op een andere plek staat, anders null. Puur. `motor` =
@@ -620,7 +661,41 @@ function htmlHyper(p, ind){
     '<div class="vhl-standmenu" role="menu" hidden>'+STANDEN.map(function(k){
       return '<button type="button" role="menuitemradio" data-stand="'+k+'"'+(k===(ind.stand||'auto') ? ' aria-checked="true" class="aan"' : ' aria-checked="false"')+'>'+STAND_NAAM[k]+'</button>';
     }).join('')+'</div>'+
-    tank();
+    tank()+cockpitHtml(p, ind);
+}
+/* ── De cockpit ── (02-11-2026, uit het gebruik: "op een tablet in full
+   screen alle schermen bij elkaar".) Altijd in het vak als het profiel de
+   cockpit-plekken heeft; pidlane.css toont hem alleen op een tablet liggend
+   in volledig scherm. Wat beweegt tekent pidlane-hyperlane.js (cockpitBij).
+   Geen vpf-w-id's: koelwater en olie staan ook in de strook, en een id is
+   uniek. Alleen de rembalk draagt vpf-p-rem: tikken kiest de sensor. */
+const TEMP_ROLLEN = ['koel','olie','inlaat','kat','atf'];
+function cockpitHtml(p, ind){
+  if(!plekVan(p, 'rem')) return '';
+  const lab=function(rol){ const x=plekVan(p, rol); return esc(String(x.kort || kortVan(x.naam)).toUpperCase()); };
+  const temps=TEMP_ROLLEN.filter(function(rol){ return !!plekVan(p, rol); }).map(function(rol){
+    return '<div class="vhl-tb'+(ind.plekken[rol] ? '' : ' leeg')+'" data-rol="'+rol+'"><span>'+lab(rol)+'</span><i><u></u></i><b>—</b></div>';
+  }).join('');
+  const remPid=ind.plekken.rem, rx=plekVan(p, 'rem');
+  const doos=function(k){ return '<div class="vhl-3d-doos '+k+'">'+new Array(7).join('<i></i>')+'</div>'; };
+  return '<div class="vhl-ck">'+
+    '<div class="vhl-ck-rand" aria-hidden="true"></div>'+
+    '<div class="vhl-ck-mod vhl-ck-graf" data-mod="graf" role="button" aria-label="Grafiek van de laatste minuut, tik om te vergroten">'+
+      '<canvas aria-hidden="true"></canvas><div class="vhl-ck-leg"><span class="t">TOEREN</span><span class="v">KM/H</span><span class="g">GAS</span><span class="r">REM</span></div></div>'+
+    '<div class="vhl-ck-links">'+
+      '<div class="vhl-ck-mod vhl-ck-g" data-mod="g" role="button" aria-label="G-krachten, tik om te vergroten"><canvas aria-hidden="true"></canvas>'+
+        '<div class="vhl-ck-gw"><b>0,00</b> g<small>piek <span>0,00</span></small></div></div>'+
+      '<div class="vhl-ped">'+
+        '<div class="vhl-pd gas"><i><u></u></i><span>GAS</span></div>'+
+        '<div class="vhl-pd rem'+(remPid ? '' : ' geschat')+'" id="vpf-p-rem" title="'+titel(rx, remPid)+(remPid ? '' : ' — geschat uit de vertraging; tik om een sensor te kiezen')+'"><i><u></u></i>'+
+          '<span>REM'+(remPid ? '' : ' ~')+'</span></div>'+
+      '</div></div>'+
+    '<div class="vhl-ck-mod vhl-ck-temps" data-mod="temps" role="button" aria-label="Temperaturen, tik om te vergroten">'+temps+'</div>'+
+    '<div class="vhl-ck-mod vhl-ck-3d" data-mod="3d" role="button" aria-label="Helling en kanteling, tik om te vergroten">'+
+      '<div class="vhl-3d-sc"><div class="vhl-3d-vloer"></div><div class="vhl-3d-auto">'+doos('romp')+doos('kap')+
+        '<b class="w lv"></b><b class="w rv"></b><b class="w la"></b><b class="w ra"></b></div></div>'+
+      '<div class="vhl-3d-w"><span>HELLING <b class="h">—</b></span><span>KANTEL <b class="k">—</b></span></div></div>'+
+  '</div>';
 }
 /* De tanklichtbalk onderin: peil, bereik en verbruik op één regel. */
 function tankHtml(p, ind){
@@ -647,7 +722,8 @@ function html(id, ind){
                : p.stijl==='digitaal' ? htmlDigitaal(p, ind) : p.stijl==='telemetrie' ? htmlTelemetrie(p, ind)
                : p.stijl==='hyper' ? htmlHyper(p, ind) : htmlNeon(p, ind);
   const geen=p.plekken.every(function(x){ return !ind.plekken[x.rol]; });
-  return '<div class="vpf vpf-'+p.stijl+(schil ? ' vhl-schil' : '')+'" data-profiel="'+p.id+'">'+
+  const ck=p.stijl==='hyper' && !!plekVan(p, 'rem');
+  return '<div class="vpf vpf-'+p.stijl+(schil ? ' vhl-schil' : '')+(ck ? ' vhl-tablet' : '')+'" data-profiel="'+p.id+'">'+
     (schil ? '<canvas class="vhl-bg" aria-hidden="true"></canvas><button type="button" class="vhl-vorm" aria-label="Achtergrond wisselen"></button>' : '')+binnen+
     (geen ? '<p class="vpf-geen">Deze auto geeft geen van de sensoren voor '+esc(p.naam.toLowerCase())+'. Veeg opzij voor een andere weergave.</p>' : '')+'</div>';
 }
@@ -847,7 +923,7 @@ window.PLVisProfiel = {
   standaard:standaard, energie:energie, toestandTekst:toestandTekst, tegelTekst:tegelTekst,
   indeling:indeling, ketens:ketens, deel:deel, tekst:tekst, html:html, bij:bij, dof:dof, pids:pids,
   STANDEN:STANDEN, STAND_NAAM:STAND_NAAM, STROOK:STROOK, strookRollen:strookRollen, inStand:inStand,
-  KEUZE_SLEUTEL:KEUZE_SLEUTEL, keuzes:keuzes, zetKeuze:zetKeuze, ketenVan:ketenVan, voorInd:voorInd, weergaveVelden:weergaveVelden, nulstellen:nulstellen,
+  KEUZE_SLEUTEL:KEUZE_SLEUTEL, keuzes:keuzes, zetKeuze:zetKeuze, ketenVan:ketenVan, voorInd:voorInd, weergaveVelden:weergaveVelden, nulstellen:nulstellen, kortVan:kortVan, cockpitHtml:cockpitHtml, TEMP_ROLLEN:TEMP_ROLLEN,
   G_PIEK_MS:G_PIEK_MS, gPiek:gPiek, gPunt:gPunt, gWis:gWis, G_SPOOR_MS:G_SPOOR_MS, G_MAX_PAUZE_MS:G_MAX_PAUZE_MS, gSpoorBij:gSpoorBij, gSpoorPunten:gSpoorPunten, gMax:gMax
 };
 })();
