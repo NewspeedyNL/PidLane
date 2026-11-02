@@ -113,8 +113,7 @@ JE AUTO, ZOALS JE HEM NOG NOOIT ZAG
 
 Hyperlane maakt van je dashboard een lichttunnel die meestroomt met je
 snelheid: links het toerental, rechts de snelheid, in het midden wat er nu
-toe doet. De kleur volgt hoe je rijdt, schakellampjes lopen op naar het
-juiste schakelpunt en vanuit stilstand meet hij je 0–100. Kies je stand —
+toe doet, met schakellampjes en een 0–100-meting. Kies je stand —
 Eco, Sport of Cruise — en je ziet per stand de sensoren die ertoe doen, of
 laat Auto vanzelf meeschakelen.
 
@@ -133,20 +132,21 @@ WAT PIDLANE NOG MEER DOET
   is dat, en welk onderdeel is de eerste verdachte.
 • Slim — de sensoren bij wat je auto op dit moment doet, met het normale
   bereik erbij.
-• Grafieken — het verloop over de tijd, met het normale bereik als band.
+• Grafieken — het verloop, met het normale bereik als band.
 • Accu & laadsysteem — laadspanning, startdip en trend.
 • Waakronde — loopt rustig langs de sensoren die je niet bekijkt en meldt
   alleen wat je zou moeten weten.
 • Ritmonitor — let tijdens het rijden op uitval en uitschieters.
-• Koopcheck en aankooprapport — verraden de readiness-monitors dat er kort
-  geleden fouten zijn gewist?
-• Alle stuurapparaten — ook ABS, airbag en versnellingsbak.
+• Koopcheck — verraden de readiness-monitors dat er kort geleden fouten
+  zijn gewist?
+• Aankooprapport — de koopcheck als PDF, met een oordeel uit vaste regels.
+• Alle stuurapparaten — ook ABS, airbag en automaat.
 • Lampjesgids — wat een dashboardlampje betekent, ook vanaf een foto.
-• Kenteken-check (Nederland) — APK, verzekering en terugroepacties uit de
-  open data van de RDW.
+• Kenteken-check — APK, verzekering en terugroepacties (RDW).
 • Mijn voertuigen — tot drie auto's, met rapporten, ritten en je eigen
   sensoren per auto.
-• Wintercheck, conditiescore en rapporten als PDF.
+• Wintercheck — banden, ruitensproeier en het weerbericht.
+• Conditiescore — hoe je auto ervoor staat, uit onderhoud en ritten.
 
 WAT JE NODIG HEBT
 
