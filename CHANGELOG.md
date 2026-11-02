@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 02-11-2026 — Hyperlane als cockpit op een tablet
+ ═══════════════════════════════════════════════════════════
+ - Tablet liggend (≥ 800×540) op volledig scherm: G-cirkel met spoor en
+   piek, gas en rem als F1-balken, temperatuurbalken (koelwater, olie,
+   inlaat, kat, ATF), neon-autootje in CSS-3D voor helling en kanteling,
+   grafiek van de laatste minuut, binnenbogen turbodruk/belasting.
+ - Rempedaal: eigen PID op naam (rem/brake) of met de hand (tik op de
+   rembalk); zonder sensor "REM ~", geschat uit de vertraging.
+ - Adaptief per scène, tik = groot tot 10 km/h, waarschuwingsrand
+   (rood heet/alarm, oranje gas op koude motor), zuinig bij hitte of lege accu.
+ - Op een telefoon verandert niets en vraagt de cockpit geen bustijd.
+ - Strooklabel van een eigen sensor: "Engine Oil Temperature" wordt
+   "OLIE" in plaats van "ENGINE OI…".
+
+ ═══════════════════════════════════════════════════════════
  02-11-2026 — Wizardplan: namen die zeggen wat er gebeurt
  ═══════════════════════════════════════════════════════════
  - Het plan na "Er is iets mis" / de koopcheck heet "Jouw plan", met

@@ -14,6 +14,17 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 02-11-2026 — "ENGINE OI… °C" in de strook van Hyperlane
+
+Gezien op een screenshot van een tablet: de middelste tegel heette "ENGINE
+OI… °C", over twee regels. Het was een met de hand gekozen eigen sensor op
+de plek Belasting (stand Eco). `kortVan()` nam de eerste negen tekens van de
+eigen naam. Dat werkte voor Nederlandse namen, maar bij een Engelse naam
+bleven precies de woorden over die de plek en de eenheid al zeiden ("Engine",
+°C). Nu haalt `kortVan()` eerst motor/engine en temperatuur weg en vertaalt
+hij de gangbare Engelse woorden. Past het label dan nog niet, dan blijft
+alleen het eerste woord staan. Meegenomen in de cockpit-PR, op verzoek.
+
 ## 02-11-2026 — De waakronde las "geen waarde" als "fysiek onmogelijk"
 
 **Uit de auto (Mazda CX-5):** Brandstofraildruk (016D) stond oranje in de
