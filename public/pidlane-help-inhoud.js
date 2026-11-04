@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-11-02', app: '3.4.0' },
+  gecontroleerd: { datum: '2026-11-04', app: '3.4.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -152,6 +152,24 @@ var PL_HULP = {
         '<p>In hetzelfde scherm: <b>Simuleer verbinding</b> (demo), <b>Zonder adapter</b> en, als regel eronder, ' +
         '<b>Meekijken met een sessie</b> voor de expert die op afstand meekijkt. Zie <a data-hulp="delen">Delen en meekijken</a>.</p>',
       zie: ['verbinden-mislukt', 'status'] },
+
+    { id: 'inrichten', groep: 'start', titel: 'De setup-wizard',
+      icoon: '🧭', kort: 'Eén keer per auto: de app leert je auto kennen en zet alles klaar.',
+      tekst:
+        '<p>Verbind je voor het eerst met een auto, dan vraagt PidLane na het verbinden hoe je wilt beginnen: <b>🧭 Inrichten</b> of <b>⚡ Meteen rijden</b>. Met Meteen rijden staat de standaardset sensoren aan en kun je later inrichten.</p>' +
+        '<p>Inrichten loopt deze stappen af, eerst wat de adapter nodig heeft en daarna de vragen:</p>' +
+        '<ul>' +
+        '<li>🔒 <b>Toestemming</b> — het akkoord voor <b>Mijn voertuigen</b>, als je dat nog niet gaf.</li>' +
+        '<li>🚗 <b>Leer de auto</b> — kenteken (sterk aangeraden: daarmee haalt de app merk, brandstof, APK en het onderhoudsschema op), brandstof, turbo en de kilometerstand. Geeft de auto zijn km-stand niet, dan vul je hem in.</li>' +
+        '<li>⚡ <b>Adaptersnelheid</b> — hoeveel metingen per seconde je adapter haalt; de app kiest daarop het tempo.</li>' +
+        '<li>📡 <b>Sensoren zoeken</b> — <b>Snel</b> gebruikt wat bij het verbinden gevonden is; <b>Grondig</b> probeert ook de fabriekssensoren van je model (1 à 2 minuten, contact aan).</li>' +
+        '<li>📊 <b>Dashboard en weergave</b> — Mijn dashboard met een voorstel voor je auto, de rondgang, Slim visueel, Hyperlane of Overzicht.</li>' +
+        '<li>🧾 <b>Bijhouden</b> — onderhoud, tankbeurten en conditie, met je laatste beurt en of de tank nu vol is. Daarna kun je het onderhoudsschema van je model opvragen; dat kost tegoed.</li>' +
+        '<li>📷 <b>Foto</b> — een foto van je auto. Die blijft op je telefoon.</li>' +
+        '</ul>' +
+        '<p>Elke stap kun je overslaan. Sluit je de wizard halverwege, dan gaat hij later verder waar je bleef: via <b>Meer → 🧭 Setup-wizard</b>, in <b>Mijn voorkeuren</b>, of bij je auto in <b>Mijn voertuigen</b> met <b>🧭 Opnieuw inrichten</b>.</p>' +
+        '<p><b>De leerrit.</b> Bij je volgende rit leert de app je auto rijdend kennen: de versnellingen, de normale temperaturen en de laadspanning. Na een paar minuten rijden zie je een melding.</p>',
+      zie: ['verbinden', 'meer'] },
 
     { id: 'verbinden-mislukt', groep: 'start', titel: 'Verbinden lukt niet',
       icoon: '🛟', kort: 'Loop deze vier punten na, in deze volgorde.',
@@ -393,6 +411,7 @@ var PL_HULP = {
         '<ul><li><b>👤 Mijn account en tegoed</b></li><li><b>🚗 Mijn voertuigen</b></li></ul>' +
         '<p><b>Instellingen</b></p>' +
         '<ul>' +
+        '<li><b>🧭 Setup-wizard</b> — zie <a data-hulp="inrichten">De setup-wizard</a>.</li>' +
         '<li><b>⚙️ Mijn voorkeuren</b> — bovenaan het blok <b>Op dit toestel</b>, dat meteen werkt:</li>' +
         '<li><b>🔧 Garagemodus</b> — zie <a data-hulp="garagemodus">Garagemodus</a>.</li>' +
         '<li><b>🩺 Check na verbinden</b> — opent Check mijn auto na het verbinden vanzelf, één keer per auto per dag. Standaard uit.</li>' +

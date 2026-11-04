@@ -2102,6 +2102,10 @@ MUTATIES=(
 "public/pidlane-schema.js@@      if (!r || !naam[r.id] || gehad[r.id]) return;@@      if (!r || gehad[r.id]) return;@@test-schema.js@@een onderdeel dat de app niet kent, komt toch in het schema (#490)"
 "public/pidlane-schema.js@@items.push({ id: r.id, naam: naam[r.id], km: geheel(r.km, 1000, 400000), mnd: geheel(r.mnd, 1, 240),@@items.push({ id: r.id, naam: naam[r.id], km: r.km, mnd: r.mnd,@@test-schema.js@@een onzinnig interval van de AI (3 km, 999 maanden) wordt overgenomen (#490)"
 "public/pidlane-schema.js@@    var km = o.km && o.km <= 100000 ? o.km : null, mnd = o.mnd && o.mnd <= 60 ? o.mnd : null;@@    var km = o.km, mnd = o.mnd;@@test-schema.js@@overnemen stuurt een interval dat de Worker weigert (#490)"
+"public/pidlane-inrichten.js@@    if (ctx.demo || ctx.hervat) return false;@@    if (ctx.demo) return false;@@test-inrichten.js@@de setup-wizard springt open bij een hervatting na een herlaad (04-11-2026)"
+"public/pidlane-inrichten.js@@    if (id === 'adapter' || id === 'sensoren') return !!ctx.verbonden;@@    if (id === 'adapter' || id === 'sensoren') return true;@@test-inrichten.js@@de wizard vraagt een busmeting terwijl er geen adapter verbonden is (04-11-2026)"
+"public/pidlane-inrichten.js@@    var v = schoonVin(o.vin); if (v) return OPSLAG + 'v' + v;@@    var v = '';@@test-inrichten.js@@de wizardstand hangt aan het kenteken, een tweede auto zonder kenteken erft hem (04-11-2026)"
+"public/pidlane-inrichten.js@@      if (dt > 0 && dt <= LEER_DT_MAX) st.rijMs += dt;@@      if (dt > 0) st.rijMs += dt;@@test-inrichten.js@@de leerrit telt de tijd met de app op de achtergrond mee (04-11-2026)"
 # ── Bekende kwalen per motor en bouwjaar (#491, 14-10-2026) ──
 "public/pidlane-motortype.js@@  const binnen=(r,w)=>!r||w==null||(w>=r[0]&&(r[1]==null||w<=r[1]));@@  const binnen=(r,w)=>!r||w==null||(w>=r[0]);@@test-autokennis.js@@een zwak punt van tot 2013 geldt ook voor een auto van 2016 (#491)"
 "public/pidlane-motortype.js@@  const binnen=(r,w)=>!r||w==null||(@@  const binnen=(r,w)=>!r||(@@test-autokennis.js@@een onbekende cilinderinhoud verbergt een bekend probleem in plaats van het voorbehoud te tonen (#491)"

@@ -3169,6 +3169,12 @@ async function startDiscovery(){
       try{ if(window.PLOpstart) PLOpstart.kentekenLater(); }
       catch(e){ btDiag('Opstart: kentekenvraag niet ingepland: '+(e.message||e),'warn'); }
     }
+  } else if(window.PLInrichten && PLInrichten.vraagNaVerbinding()){
+    // Eerste verbinding met dit voertuig (04-11-2026): het keuzevenster van de
+    // setup-wizard (pidlane-inrichten.js) in plaats van de samenvatting. De
+    // standaardset gaat er meteen aan, zodat "Meteen rijden" ook iets toont.
+    try{ if(!demoMode) selectStandardSet(); wizFinish(); }
+    catch(e){ btDiag('Setup-wizard: standaardset niet gezet — kies sensoren met de hand: '+(e.message||e),'warn'); }
   } else if(window.PLVoorkeur && !PLVoorkeur.samenvatting()){
     // Mijn voorkeuren: geen samenvatting. De standaardset staat al aan
     // (wizGo(6) hierboven); wizFinish() doet de rest zonder scherm.

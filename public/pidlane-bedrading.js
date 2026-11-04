@@ -391,6 +391,9 @@ var KRITIEK = [
   // maar de guard eromheen hoort hier geregistreerd te staan.
   'bevindingenZet','bevindingenMenuBij',          // pidlane-correlatie.js — #123
   'setPidView',                                   // pidlane-pids.js       — #61
+  // De setup-wizard (pidlane-inrichten.js, 04-11-2026) zet de brandstof, meet
+  // de adapter opnieuw en past het tempo toe met guards om deze vier.
+  'mergeVehicleData','wizFinish','suggestStrategy','applyStrategy',
   // Beslist of een tegel een trendlijn krijgt (pidlane-pids.js). Blok 5 meet
   // sinds 08-09-2026 de drempel eronder na, met een guard eromheen. Ontbreekt
   // de functie, dan slaat die proef stil over — en dan is juist de meting weg

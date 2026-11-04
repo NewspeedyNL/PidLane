@@ -2848,6 +2848,28 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── De setup-wizard (04-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Setup-wizard: na de eerste verbinding per voertuig het keuzevenster (inrichten of meteen rijden), en later verder waar de klant bleef',
+    waarom: 'Vraag van de eigenaar: na account, inloggen, adapter en protocol moet één wizard de app compleet maken. Deze proef toetst de geladen modules: PLInrichten en de haken in Mijn voertuigen bestaan, de menuregel staat er, en voor de verbonden auto zegt hij wat er gekozen is en hoe ver de wizard kwam.',
+    proef: async function () {
+      var I = window.PLInrichten, G = window.PLGarage;
+      if (!I || !I._kern || typeof I.vraagNaVerbinding !== 'function') return { staat: 'FOUT', detail: 'PLInrichten ontbreekt — pidlane-inrichten.js niet geladen (herladen?)' };
+      if (!G || typeof G.inrichtVoertuig !== 'function' || typeof G.inrichtBewaar !== 'function') return { staat: 'FOUT', detail: 'PLGarage zonder inrichtVoertuig/inrichtBewaar — pidlane-garage.js niet bijgewerkt (herladen?)' };
+      if (!document.getElementById('kbInrichten')) return { staat: 'FOUT', detail: 'Meer → Setup-wizard (#kbInrichten) staat niet in het menu' };
+      var K = I._kern;
+      if (K.moetVragen({ keuze: 'rijden' }, {}) || !K.moetVragen(null, {}) || K.moetVragen(null, { hervat: true })) return { staat: 'FOUT', detail: 'moetVragen() vraagt op het verkeerde moment' };
+      var v = (typeof vehicleInfo !== 'undefined' && vehicleInfo) || {}, ken = '';
+      try { ken = localStorage.getItem('pl_kenteken') || ''; } catch (e) { console.warn('blok 5: kenteken onleesbaar', e); }
+      var sl = K.sleutelVan({ vin: v.vin, kenteken: ken }), st = null;
+      try { st = K.normaliseer(JSON.parse(localStorage.getItem(sl) || 'null')); } catch (e) { return { staat: 'FOUT', detail: 'wizardstand onleesbaar: ' + e.message }; }
+      if (typeof connected === 'undefined' || !connected) return { staat: 'LET OP', detail: 'regels kloppen; nodig voor de rit: verbinden met een auto die nog niet ingericht is, kies Inrichten en loop alle stappen af' };
+      var vg = K.voortgang(st, { platform: true, akkoord: !!(G.akkoordNu && G.akkoordNu()), verbonden: true });
+      return { staat: 'OK', detail: 'deze auto: keuze ' + (st.keuze || 'nog niets') + ', ' + vg.gedaan + ' van ' + vg.totaal + ' stappen' + (vg.over.length ? ', overgeslagen: ' + vg.over.join(', ') : '') };
+    }
+  },
+
   // ── Kanteling grijs bij een drempel (02-11-2026) ──
   {
     issue: '—',
