@@ -951,7 +951,42 @@
     return /^[0-9A-F]{3}$/.test(rax) ? hdr + '>' + rax : null;
   }
 
-  function obdbKandidaten(data, repo, jaar, telling) {
+  /* De steunlijst van één bouwjaar (#670, 05-11-2026): OBDb bewaart per
+     model en jaar in command_support.yaml wat een échte auto per ECU wél
+     beantwoordde. Zonder die lijst kiest obdbKandidaten() 60 codes op
+     waarde, en weigerde de auto in de nagebouwde vloot 1515 van de 2400
+     geprobeerde (bproef-dekking.js) — terwijl 2254 andere nooit aan de
+     beurt kwamen. Met de lijst: alleen wat dit jaar heeft, en geen kap.
+     Puur. Sleutel = code@zendadres in de vorm van obdbAdres() vóór '>'. */
+  function obdbSteunTx(tx) {
+    tx = String(tx || '').toUpperCase();
+    if (tx === '7DF') return '7E0';
+    if (tx === 'DB33') return '18DA10F1';
+    if (/^DA[0-9A-F]{2}$/.test(tx)) return '18' + tx + 'F1';
+    return tx;
+  }
+  function obdbSteun(tekst) {
+    const uit = { jaar: null, codes: {}, mode01: [], n: 0 };
+    let sectie = '', ecu = '';
+    String(tekst || '').split(/\r?\n/).forEach(r => {
+      let m;
+      if ((m = r.match(/^model_year:\s*(\d+)/))) uit.jaar = +m[1];
+      else if (/^supported_commands_by_ecu:/.test(r)) sectie = 'ja';
+      else if (/^\S/.test(r)) sectie = '';
+      else if (sectie && (m = r.match(/^\s{2}"?([0-9A-Fa-f]+)"?:\s*$/))) ecu = m[1].toUpperCase();
+      else if (sectie && ecu && (m = r.match(/^\s{2}-\s+'?([^':|]+)/))) {
+        const d = m[1].trim().toUpperCase().split('.');
+        const cmd = d[d.length - 1], tx = d.length === 1 ? ecu : d[0];
+        if (/^01[0-9A-F]{2}$/.test(cmd)) { if (uit.mode01.indexOf(cmd) < 0) uit.mode01.push(cmd); return; }
+        if (!/^2[12][0-9A-F]+$/.test(cmd)) return;
+        const k = cmd + '@' + obdbSteunTx(tx);
+        if (!uit.codes[k]) { uit.codes[k] = 1; uit.n++; }
+      }
+    });
+    return uit;
+  }
+
+  function obdbKandidaten(data, repo, jaar, telling, steun) {
     const cmds = (data && Array.isArray(data.commands)) ? data.commands.slice() : [];
     // Geverifieerde commando's eerst; dbg staat voor wat nog in onderzoek is.
     cmds.sort((a, b) => (a && a.dbg ? 1 : 0) - (b && b.dbg ? 1 : 0));
@@ -964,6 +999,7 @@
       const hdr = obdbAdres(c);
       if (hdr === null) { if (telling) telling.adres = (telling.adres || 0) + 1; return; }
       const code = dienst + String(c.cmd[dienst]).toUpperCase();
+      if (steun && !steun.codes[code + '@' + hdr.split('>')[0]]) { if (telling) telling.nietDitJaar = (telling.nietDitJaar || 0) + 1; return; }
       // Eén code per commando, en dan de waardevolste: bij een Kona Electric
       // zit de laadtoestand van de HV-accu als zevende waarde in 22E003.
       const sigs = (Array.isArray(c.signals) ? c.signals.slice() : []).map((g, i) => ({ g, i, w: obdbWaarde(g && g.name) }));
@@ -985,15 +1021,17 @@
     });
     // Op waarde, en binnen gelijke waarde de volgorde van OBDb (dbg achteraan).
     uit.sort((a, b) => (b.waarde - a.waarde) || (a.i - b.i));
-    if (telling) telling.weg = Math.max(0, uit.length - 60);
-    return uit.slice(0, 60).map(k => { delete k.waarde; delete k.i; return k; });
+    // De kap van 60 geldt alleen zonder steunlijst: dan is het een gok.
+    const kap = steun ? uit.length : 60;
+    if (telling) telling.weg = Math.max(0, uit.length - kap);
+    return uit.slice(0, kap).map(k => { delete k.waarde; delete k.i; return k; });
   }
 
   /* Zoeken voor een voertuig {merk, model, bouwjaar}. Geen AI, geen tegoed.
      `haal(repo)` → { gevonden, data } komt van de aanroeper: in de app de
      Worker-actie obdb_bestand (PLGarage): een module haalt niets zelf van
      het net (test-plfetch.js). Gooit hij, dan is OBDb niet bereikbaar. */
-  async function zoekObdb(v, haal) {
+  async function zoekObdb(v, haal, haalSteun) {
     v = v || {};
     if (!v.merk || !v.model) return { ok: false, fout: 'Vul eerst merk en model in bij het profiel' };
     if (!haal) return { ok: false, fout: 'Geen weg naar OBDb' };
@@ -1004,7 +1042,16 @@
       catch (x) { console.warn('PLEigen: OBDb niet bereikbaar', x); return { ok: false, fout: 'OBDb niet bereikbaar (' + String(x && x.message || x) + ')' }; }
       if (!d || !d.gevonden) continue;
       const telling = {};
-      return { ok: true, repo, tweeling: repo === kop.tweeling, kandidaten: obdbKandidaten(d.data, repo, v.bouwjaar, telling), nietBruikbaar: telling.adres || 0, afgekapt: telling.weg || 0 };
+      // De steunlijst is een verbetering, geen voorwaarde: zonder (geen net,
+      // geen bouwjaar, model zonder testgevallen) blijft het de oude gok. Een
+      // geldige lijst zonder fabriekscodes betekent: dit jaar heeft er geen.
+      let steun = null;
+      if (haalSteun && v.bouwjaar) {
+        try { const st = await haalSteun(repo, v.bouwjaar); if (st && st.gevonden && st.tekst) { steun = obdbSteun(st.tekst); if (!steun.jaar) steun = null; } }
+        catch (x) { console.warn('PLEigen: OBDb-steunlijst niet te halen, verder zonder', x); }
+      }
+      return { ok: true, repo, tweeling: repo === kop.tweeling, kandidaten: obdbKandidaten(d.data, repo, v.bouwjaar, telling, steun), nietBruikbaar: telling.adres || 0, afgekapt: telling.weg || 0,
+        steunJaar: steun ? steun.jaar : null, nietDitJaar: telling.nietDitJaar || 0, mode01: steun ? steun.mode01 : null };
     }
     return { ok: true, repo: '', kandidaten: [], geprobeerd: namen };
   }
@@ -1125,7 +1172,7 @@
 
   window.PLEigen = { CODE: EIGEN_CODE, VEEL: EIGEN_VEEL, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
     ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, laadRol, wielRol, wielCodes, obdbWaarde, obdbAdres, laadOordeel, accuOordeel, laadCodes, laadNu, laad: laadLive, drukOmrekening, standaardBereik,
-    scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, vraag: eigenVraag, obdbNamen, obdbKoppel, obdbFormule, obdbJaarPast, obdbKandidaten, zoekObdb };
+    scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, vraag: eigenVraag, obdbNamen, obdbKoppel, obdbFormule, obdbJaarPast, obdbKandidaten, obdbSteun, zoekObdb };
   window.plEigenDefs = eigenDefs;
 
   btDiagSafe('pidlane-uitgebreid.js geladen — mode 21/22 pad actief');

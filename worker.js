@@ -6607,6 +6607,31 @@ var KP_ACTIES = {
     try { data = await r.json(); } catch (e) { return { ok: false, error: "Het OBDb-bestand van " + repo + " is onleesbaar.", code: 502 }; }
     return { ok: true, gevonden: true, data: { commands: Array.isArray(data && data.commands) ? data.commands : [] } };
   },
+  // De steunlijst van één bouwjaar (#670): tests/test_cases/<jaar>/
+  // command_support.yaml — wat een échte auto per ECU beantwoordde. Een jaar
+  // zonder testgeval: het dichtstbijzijnde (±1, ±2). De app leest de tekst
+  // zelf (PLEigen.obdbSteun); hier alleen ophalen en begrenzen.
+  async obdb_steun(c, b) {
+    const repo = String(b.repo || "");
+    if (!/^[A-Za-z0-9][A-Za-z0-9-]{1,60}$/.test(repo)) return { ok: false, error: "Ongeldige OBDb-naam.", code: 400 };
+    if (!/^\d{4}$/.test(String(b.jaar))) return { ok: false, error: "Ongeldig bouwjaar.", code: 400 };
+    const jaar = Number(b.jaar);
+    if (!(jaar >= 1990 && jaar <= 2040)) return { ok: false, error: "Ongeldig bouwjaar.", code: 400 };
+    for (const j of [jaar, jaar - 1, jaar + 1, jaar - 2, jaar + 2]) {
+      let r;
+      try {
+        r = await fetch("https://raw.githubusercontent.com/OBDb/" + repo + "/main/tests/test_cases/" + j + "/command_support.yaml", { cf: { cacheTtl: 86400, cacheEverything: true } });
+      } catch (e) {
+        return { ok: false, error: "OBDb niet bereikbaar: " + String(e && e.message || e), code: 502 };
+      }
+      if (r.status === 404) continue;
+      if (!r.ok) return { ok: false, error: "OBDb gaf HTTP " + r.status + ".", code: 502 };
+      const tekst = await r.text();
+      if (tekst.length > 500000) return { ok: false, error: "De steunlijst van " + repo + " " + j + " is te groot.", code: 502 };
+      return { ok: true, gevonden: true, jaar: j, tekst };
+    }
+    return { ok: true, gevonden: false };
+  },
   async pidbib_lijst(c, b) {
     const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
     if (!v) return { ok: false, error: "Voertuig niet gevonden.", code: 404 };

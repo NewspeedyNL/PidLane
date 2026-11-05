@@ -369,6 +369,25 @@ function haalZeef(isMode01) {
     t('zoekObdb: probeert de namen op volgorde', gehaald.join(','), 'Mazda-CX-5');
     const z2 = await E.zoekObdb({ merk: 'Dacia', model: 'Logan' }, async () => ({ gevonden: false }));
     t('zoekObdb: niet in OBDb is geen fout, en zegt wat er geprobeerd is', z2.ok + ' ' + z2.repo + ' ' + z2.geprobeerd.join(','), 'true  Dacia-Sandero,Dacia-Logan');   // Logan: de Sandero is de tweeling
+    // De steunlijst van het bouwjaar (#670): alleen wat dit jaar beantwoordde, geen kap van 60.
+    const STEUN = ['model_year: 2018', 'supported_commands_by_ecu:', '  "720":', '  - 720.728.222A05:CX5_TP_RL', '  "7DF":', '  - 7DF.0104',
+      '  "7E0":', '  - 0105:ECT', "  - '7E0.221310'", '  - 7E0.7EA.220101|fc=1:X', '  "DA15":', '  - DA15.15.222006:Y',
+      'unsupported_commands_by_ecu:', '  "720":', '  - 720.728.22C901:CX5_TP_FL_720'].join('\n');
+    const st = E.obdbSteun(STEUN);
+    t('steun: jaar, mode 01 en de fabriekscodes per zendadres', st.jaar + ' ' + st.mode01.join(',') + ' ' + Object.keys(st.codes).sort().join(','),
+      '2018 0104,0105 220101@7E0,221310@7E0,222006@18DA15F1,222A05@720');
+    t('steun: wat níét antwoordde telt niet', '22C901@720' in st.codes, false);
+    const ks = E.obdbKandidaten(obdb, 'Mazda-CX-5', 2018, null, st).map(x => x.code + '@' + x.ecu).join(',');
+    t('steun: alleen de kandidaten die dit jaar antwoordden', ks, '222A05@720,221310@7E0,220101@7E0>7EA');
+    const veel = { commands: Array.from({ length: 80 }, (_, i) => ({ hdr: '7E0', rax: '7E8', cmd: { '22': (0x1000 + i).toString(16).toUpperCase() }, signals: [{ name: 'Temp ' + i, fmt: { len: 8, add: -40, unit: 'celsius' } }] })) };
+    const veelSteun = { jaar: 2018, n: 80, mode01: [], codes: Object.fromEntries(veel.commands.map(c => ['22' + c.cmd['22'] + '@7E0', 1])) };
+    t('steun: geen kap van 60 met een steunlijst, wel zonder', E.obdbKandidaten(veel, 'x', 2018, null, veelSteun).length + ' ' + E.obdbKandidaten(veel, 'x', 2018).length, '80 60');
+    const zs = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal, async (repo, jaar) => ({ gevonden: true, jaar, tekst: STEUN }));
+    t('zoekObdb met steun: het jaar en minder kandidaten', zs.steunJaar + ' ' + zs.kandidaten.length + ' ' + zs.mode01.join(','), '2018 3 0104,0105');
+    const zg = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal, async () => ({ gevonden: true, jaar: 2018, tekst: 'model_year: 2018\nsupported_commands_by_ecu:\n  "7E0":\n  - 0105:ECT\n' }));
+    t('zoekObdb: een geldige lijst zonder fabriekscodes = niets proberen', zg.kandidaten.length + ' ' + zg.steunJaar, '0 2018');
+    const zf = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal, async () => { throw new Error('Serverfout 502'); });
+    t('zoekObdb: steunlijst kapot = de oude gok, geen fout', zf.ok + ' ' + zf.kandidaten.length + ' ' + zf.steunJaar, 'true 8 null');
     const z3 = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' }, async () => { throw new Error('Serverfout 502'); });
     t('zoekObdb: geen net is een melding', !z3.ok && /niet bereikbaar/.test(z3.fout), true);
     t('zoekObdb: zonder weg naar OBDb niet zoeken', (await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' })).ok, false);

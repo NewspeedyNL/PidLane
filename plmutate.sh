@@ -1812,6 +1812,13 @@ MUTATIES=(
 "plnepvloot.js@@    if ((pci >> 4) === 2) { data.push(...b.slice(1)); continue; }@@    if ((pci >> 4) === 2) continue;@@test-nepvloot.js@@de generator vergeet de vervolgframes van ISO-TP: een lang antwoord wordt stil afgekapt"
 "public/bproef-dekking.js@@  const spook = [...sup].filter((x) => m01.indexOf(x) < 0);@@  const spook = [];@@test-nepvloot.js@@de dekkingsproef ziet geen spook-PIDs meer (#616)"
 "public/pidlane-uitgebreid.js@@    return /^[0-9A-F]{3}$/.test(rax) ? hdr + '>' + rax : null;@@    return null;@@bproef-dekking.js@@een ander antwoordadres (VAG 710 → 77A) valt weer weg uit de OBDb-kandidaten: de Golf zakt onder zijn vloer"
+# De steunlijst van het bouwjaar (#670): zonder filter of mét de kap van 60
+# is het weer de gok die op de vloot 1515 weigeringen gaf; de Worker die
+# alleen het gevraagde jaar probeert vindt bij een gat in OBDb niets.
+"public/pidlane-uitgebreid.js@@      if (steun && !steun.codes[code + '@' + hdr.split('>')[0]]) {@@      if (false) {@@test-mode21.js@@de steunlijst filtert niet meer: weer codes die dit bouwjaar niet heeft"
+"public/pidlane-uitgebreid.js@@    const kap = steun ? uit.length : 60;@@    const kap = 60;@@test-mode21.js@@ook met een steunlijst weer de kap van 60: een Tiguan houdt een vijfde van zijn codes over"
+"worker.js@@    for (const j of [jaar, jaar - 1, jaar + 1, jaar - 2, jaar + 2]) {@@    for (const j of [jaar]) {@@test-klantplatform.js@@obdb_steun probeert alleen het gevraagde jaar: een model met een gat in OBDb krijgt geen steunlijst"
+"public/nepauto.js@@        (st.sh && /^[0-9A-F]{3}$/.test(st.sh) && m.adres === (parseInt(st.sh, 16) + 8).toString(16).toUpperCase()));@@        false);@@test-nepvloot.js@@de nepauto laat het antwoord op kop + 8 weer vallen: de bandenspanning van de CX-5 lijkt onbereikbaar"
 "public/pidlane-uitgebreid.js@@      if (window.ALL_PID_DEFS && ALL_PID_DEFS[r.code] && !ALL_PID_DEFS[r.code].eigen) return;@@      void 0;@@test-mode21.js@@een eigen PID overschrijft een definitie die de app al kent"
 "public/pidlane-uitgebreid.js@@    (Array.isArray(lijst) ? lijst : []).forEach(e => {@@    (Array.isArray(lijst) ? lijst : []).slice(0, EIGEN_VEEL).forEach(e => {@@test-mode21.js@@de app kapt eigen sensoren stil af bij 20 terwijl de klant er meer koos (31-10-2026)"
 "worker.js@@  eigen_pids: { soort: \"eigenpids\", max: 500 },@@  eigen_pids: { soort: \"eigenpids\", max: 20 },@@test-klantplatform.js@@de server weigert weer meer dan 20 eigen sensoren (31-10-2026)"
