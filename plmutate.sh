@@ -1839,6 +1839,17 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@(b.w - a.w) || (b.e - a.e) || (a.i - b.i)@@(b.w - a.w) || (a.i - b.i)@@test-mode21.js@@een kaal getal wint van een signaal mét eenheid in hetzelfde commando"
 "public/pidlane-pidzoek.js@@    if (!u && c && Number.isFinite(c.min) && Number.isFinite(c.max) && (w < c.min || w > c.max)) return@@    if (false) return@@test-pidzoek.js@@een getal zonder eenheid wordt niet meer op het OBDb-bereik gekeurd: elke verkeerde formule gaat door"
 "plnepvloot.js@@  return sigs.some((g) => !RUW.test(g.name) && (g.map || (g.unit && g.unit !== 'unknown')));@@  return true;@@test-nepvloot.js@@een onbekende eenheid of ruwe waarde telt weer in de noemer van de dekking"
+# Besluit d deel 2: standen (aan/uit, ja/nee, keuzelijst) via een bitveld [b:n].
+"public/pidlane-uitgebreid.js@@            v = v * 2 + ((x >> (7 - (k & 7))) & 1);@@            v = v * 2 + ((x >> (k & 7)) & 1);@@test-mode21.js@@het bitveld telt de bits van onderen in plaats van zoals OBDb bix: elke stand leest een buurbit"
+"public/pidlane-uitgebreid.js@@        const standen = obdbStanden(fmt);@@        const standen = null;@@test-mode21.js@@standen (aan/uit, keuzelijst) vallen weer weg uit de OBDb-kandidaten"
+"public/pidlane-uitgebreid.js@@      if (f.blsb || f.sign || bix + len > 2048) return null;@@      if (bix + len > 2048) return null;@@test-mode21.js@@een bitveld met omgekeerde bytevolgorde of teken krijgt een formule die beide negeert"
+"public/pidlane-pidzoek.js@@    if (!u && c && c.standen && typeof c.standen === 'object' && !Object@@    if (false && !Object@@test-pidzoek.js@@een stand wordt niet op zijn lijst gekeurd: een verkeerd bitveld met een waarde tussen twee standen telt als werkend"
+"worker.js@@ || !kpBitveldenGoed(f)) return@@) return@@test-klantplatform.js@@de Worker keurt elk bitveld goed, ook [0:33] of een losse dubbele punt die de app niet kan lezen"
+"worker.js@@    o.standen = st;\n@@@@test-klantplatform.js@@de Worker gooit de standen van een eigen PID weg: na opslaan toont de meter weer een kaal getal"
+"public/pidlane-pids.js@@  if(st!==null) return st;\n@@@@bproef-garage.js@@de meter toont een stand weer als kaal getal: 2 in plaats van Second gear"
+"public/pidlane-garage.js@@    if (b.standen && typeof b.standen === 'object') x.standen = b.standen;\n@@@@bproef-garage.js@@een stand uit de bibliotheek of Grondig verliest zijn lijst bij het opnemen"
+"worker.js@@e.standen ? JSON.stringify(e.standen) : null).run();@@null).run();@@test-klantplatform.js@@de bibliotheek bewaart de standen van een OBDb-code niet: elke volgende klant krijgt een kaal getal"
+"worker.js@@        if (st) rest.standen = st;\n@@@@test-klantplatform.js@@de bibliotheek geeft de bewaarde standen niet terug"
 # De steunlijst van het bouwjaar (#670): zonder filter of mét de kap van 60
 # is het weer de gok die op de vloot 1515 weigeringen gaf; de Worker die
 # alleen het gevraagde jaar probeert vindt bij een gat in OBDb niets.
@@ -1858,7 +1869,7 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@return w >= n / 2 ? w - n : w; };@@return w; };@@test-mode21.js@@S16( ) laat het teken weg: FF38 wordt 65336 in plaats van −200"
 "public/pidlane-uitgebreid.js@@    if (f.sign) x = 'S' + len + '(' + x + ')';@@    if (false) x = 'S' + len + '(' + x + ')';@@test-mode21.js@@een OBDb-code met teken krijgt weer een formule zonder teken: negatief leest als heel groot"
 "public/pidlane-uitgebreid.js@@    millivolts: ['V', '(', ')/1000'], milliamps@@    millivolts: ['V', '(', ')'], milliamps@@test-mode21.js@@millivolt niet omgerekend: 12 V leest als 12000 V"
-"worker.js@@ || /S(?!(8|16|24|32)\\()/.test(f)) return@@) return@@test-klantplatform.js@@de Worker keurt elke S in een formule goed, ook S12( ) die de app niet kan lezen"
+"worker.js@@ || /S(?!(8|16|24|32)\\()/.test(f) || !kpBitveldenGoed(f)) return@@ || !kpBitveldenGoed(f)) return@@test-klantplatform.js@@de Worker keurt elke S in een formule goed, ook S12( ) die de app niet kan lezen"
 "worker.js@@    for (const j of [jaar, jaar - 1, jaar + 1, jaar - 2, jaar + 2]) {@@    for (const j of [jaar]) {@@test-klantplatform.js@@obdb_steun probeert alleen het gevraagde jaar: een model met een gat in OBDb krijgt geen steunlijst"
 "public/nepauto.js@@        (st.sh && /^[0-9A-F]{3}$/.test(st.sh) && m.adres === (parseInt(st.sh, 16) + 8).toString(16).toUpperCase()));@@        false);@@test-nepvloot.js@@de nepauto laat het antwoord op kop + 8 weer vallen: de bandenspanning van de CX-5 lijkt onbereikbaar"
 "public/pidlane-uitgebreid.js@@      if (window.ALL_PID_DEFS && ALL_PID_DEFS[r.code] && !ALL_PID_DEFS[r.code].eigen) return;@@      void 0;@@test-mode21.js@@een eigen PID overschrijft een definitie die de app al kent"

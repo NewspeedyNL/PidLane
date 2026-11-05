@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Standen uit OBDb als sensor (besluit d deel 2, #670)
+ ═══════════════════════════════════════════════════════════
+ - Aan/uit, ja/nee en keuzelijsten (versnelling, modus) komen in Grondig
+   mee. De formuletaal kreeg [b:n]: n bits vanaf bit b, geteld zoals OBDb.
+ - Een stand wordt gekeurd op zijn lijst; de lijst gaat mee in de opslag.
+ - De meter toont een stand als woord ("aan", "Second gear").
+ - De PID-bibliotheek bewaart bereik en standen; nieuwe kolommen in kp_pid_bib.
+ - Vloot: gemiddeld 96,6 → 98,8 %, 39 van 40 op of boven 90 %.
+
+ ═══════════════════════════════════════════════════════════
  05-11-2026 — Getallen zonder eenheid uit OBDb als sensor (besluit d, #670)
  ═══════════════════════════════════════════════════════════
  - Misfire- en kloptellers, lambda en overbrenging komen in Grondig mee,

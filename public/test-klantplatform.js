@@ -350,6 +350,11 @@ async function laadWorker() {
   toets('eigen PIDs: S16( ) voor een getal met teken mag', await epFout({ code: '221139', formule: 'S16(A*256+B)*0.01' }) !== 400);
   toets('eigen PIDs: S12( ) of een losse S is 400', await epFout({ code: '221139', formule: 'S12(A)' }) === 400 && await epFout({ code: '221139', formule: 'SA' }) === 400);
   toets('eigen PIDs: zonder naam is 400', await epFout({ code: '221E1C', naam: '' }) === 400);
+  // Besluit d deel 2: een bitveld [b:n] en de standen gaan mee; een losse ":" of een te breed veld niet.
+  const epSt = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, eigen_pids: [{ code: '221003', naam: 'Gear', formule: '[5:1]', standen: { 0: 'uit', 1: 'aan' } }] } });
+  toets('eigen PIDs: bitveld [5:1] met standen wordt bewaard', epSt.ok && epSt.voertuig.eigen_pids[0].formule === '[5:1]' && JSON.stringify(epSt.voertuig.eigen_pids[0].standen) === '{"0":"uit","1":"aan"}', JSON.stringify(epSt).slice(0, 300));
+  toets('eigen PIDs: [0:33], [2048:1] of A:1 is 400', await epFout({ code: '221139', formule: '[0:33]' }) === 400 && await epFout({ code: '221139', formule: '[2048:1]' }) === 400 && await epFout({ code: '221139', formule: 'A:1' }) === 400);
+  toets('eigen PIDs: standen met een sleutel die geen getal is, is 400', await epFout({ code: '221139', standen: { aan: 'x' } }) === 400);
   // 31-10-2026: 21 eigen PIDs mag (de app waarschuwt alleen); pas boven het opslagvangnet van 500 een 400.
   const ep21 = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id,
     eigen_pids: Array.from({ length: 21 }, (_, i) => ({ code: '2210' + String(i).padStart(2, '0'), naam: 'x' })) } });
@@ -406,6 +411,11 @@ async function laadWorker() {
   bl = await roep(tokA, { actie: 'pidbib_lijst', voertuig_id: v1.voertuig.id });
   const online = bl.lijst.find((x) => x.code === '220202');
   toets('kandidaten: Anna ziet de online kandidaat, met de bron en nog niet getest', !!online && online.bron === 'online' && /forum/.test(online.url) && online.werkt === 0, JSON.stringify(bl.lijst));
+  // Besluit d deel 2: een stand uit OBDb houdt in de bibliotheek zijn bereik en lijst.
+  const kSt = await roep(tokB, { actie: 'pidbib_kandidaten', voertuig_id: rBert.voertuig.id, bron: 'obdb', lijst: [
+    { code: '221003', ecu: '7E1', naam: 'Current gear', formule: 'A', eenheid: '', min: 1, max: 4, standen: { 1: 'First gear', 2: 'Second gear', 4: 'Fourth gear' }, url: 'https://github.com/OBDb/Mazda-CX-5' }] });
+  const bSt = (await roep(tokA, { actie: 'pidbib_lijst', voertuig_id: v1.voertuig.id })).lijst.find((x) => x.code === '221003');
+  toets('bibliotheek: een stand komt terug met bereik en lijst, zonder de kolomnamen', kSt.erbij === 1 && !!bSt && bSt.min === 1 && bSt.max === 4 && bSt.standen && bSt.standen[2] === 'Second gear' && !('bereik_min' in bSt) && !('standen' in online), JSON.stringify(bSt));
   // Het RDW zet het merk in de handelsbenaming (31-10-2026): "MAZDA CX-5" is
   // dezelfde auto als "CX-5", en wat er vóór die datum onder "mazda" kwam
   // blijft zichtbaar.
@@ -568,8 +578,9 @@ async function laadWorker() {
   toets('Bert is ongemoeid gebleven', db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig WHERE klant_id != ?').get(annaId).n > 0);
   toets('alles_wissen door de klant zelf', (await roep(tokB, { actie: 'alles_wissen' })).ok &&
     db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig').get().n === 0);
+  // Drie gedeelde codes: de klantcode, de online kandidaat en de OBDb-stand (besluit d deel 2).
   toets('alles_wissen neemt de stemmen in de PID-bibliotheek mee; de gedeelde codes blijven',
-    db.prepare('SELECT COUNT(*) AS n FROM kp_pid_stem').get().n === 0 && db.prepare('SELECT COUNT(*) AS n FROM kp_pid_bib').get().n === 2);
+    db.prepare('SELECT COUNT(*) AS n FROM kp_pid_stem').get().n === 0 && db.prepare('SELECT COUNT(*) AS n FROM kp_pid_bib').get().n === 3);
 
   console.log('\n7. Migratie op een tabel van vóór de nieuwe kolommen');
   {

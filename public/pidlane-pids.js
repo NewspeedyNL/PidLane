@@ -620,8 +620,23 @@ function fvDec(unit,v){
   if(unit && _FV_DEC[unit]!=null) return _FV_DEC[unit];
   return Math.abs(v)<10 ? 2 : 0;
 }
+/* Een stand (besluit d deel 2, #670): een eigen PID uit OBDb met `standen`
+   ({ waarde: tekst }) toont "aan" of "Second gear" in plaats van 1 of 2.
+   Geen stand, of een waarde die niet in de lijst staat: null, en dan het getal. */
+function standTekst(v, pidOfDef){
+  if(v===undefined||v===null||!isFinite(v)) return null;
+  let d=null;
+  try{ d=(typeof pidOfDef==='string') ? getPidDef(pidOfDef) : pidOfDef; }
+  catch(e){ console.warn('getPidDef mislukt:', e); return null; }
+  const st=d && d.standen;
+  if(!st || typeof st!=='object') return null;
+  const k=String(Math.round(Number(v)));
+  return Object.prototype.hasOwnProperty.call(st, k) ? String(st[k]) : null;
+}
 function fv(v, pidOfDef){
   if(v===undefined||v===null) return '—';
+  const st=standTekst(v, pidOfDef);
+  if(st!==null) return st;
   let unit='';
   try{
     if(typeof pidOfDef==='string'){ const d=getPidDef(pidOfDef); unit=(d&&d.unit)||''; }

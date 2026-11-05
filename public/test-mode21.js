@@ -362,7 +362,7 @@ function haalZeef(isMode01) {
     const k = E.obdbKandidaten(obdb, 'Mazda-CX-5', 2018);
     const kort = k.map(x => x.code + '@' + x.ecu + '=' + x.formule + ' ' + x.eenheid).join(' | ');
     t('obdb: alleen wat de app kan lezen, geverifieerd vóór dbg', kort,
-      '222A05@720=A*1373/100000 bar | 221310@7E0=(B*256+C)/100-40 °C | 221E1C@7E1=((A)-32)*5/9 °C | 22DD01@7E0=A+B*256+C*65536 km | 2105@7E0=A-40 °C | 220101@7E0>7EA=A V | 220202@7E0=S8(A) °C | 220303@7E0=B/10 V | 220707@7E0=A*256+B  | 22C901@720=A/5 psi');
+      '222A05@720=A*1373/100000 bar | 221310@7E0=(B*256+C)/100-40 °C | 221E1C@7E1=((A)-32)*5/9 °C | 22DD01@7E0=A+B*256+C*65536 km | 2105@7E0=A-40 °C | 220101@7E0>7EA=A V | 220202@7E0=S8(A) °C | 220303@7E0=B/10 V | 220404@7E0=[4:4] % | 220707@7E0=A*256+B  | 22C901@720=A/5 psi');
     const mf = k.find(x => x.code === '220707');
     t('besluit d: een getal zonder eenheid krijgt het bereik uit OBDb mee', mf && (mf.min + '…' + mf.max), '0…65535');
     t('besluit d: een signaal mét eenheid wint van een kaal getal in hetzelfde commando (220303 = Battery V)', k.some(x => x.code === '220303' && x.eenheid === 'V'), true);
@@ -370,8 +370,32 @@ function haalZeef(isMode01) {
     t('obdb: de bron is de repo, voor de naamsvermelding (CC BY-SA)', k[0].url, 'https://github.com/OBDb/Mazda-CX-5');
     t('obdb: het jaarfilter met twee open stukken laat 2015 wél door', E.obdbKandidaten(obdb, 'x', 2015).some(x => x.code === '220505'), true);
     t('obdb: jaarfilter', [E.obdbJaarPast({ from: 2021 }, 2018), E.obdbJaarPast({ to: 2016 }, 2016), E.obdbJaarPast({ from: 2012, to: 2020 }, 2021), E.obdbJaarPast({ from: 2012 }, '')].join(','), 'false,true,false,true');
-    t('obdb: geen formule voor een tabel, halve bytes of een negatieve factor',
-      [{ len: 8, map: {} }, { bix: 4, len: 8 }, { len: 8, mul: -1 }].map(E.obdbFormule).join(','), ',,');
+    t('obdb: geen formule voor een tabel met omrekening, een negatieve factor, een bitveld met blsb of teken',
+      [{ len: 8, map: { 0: {} }, mul: 2 }, { len: 8, mul: -1 }, { bix: 4, len: 4, blsb: true }, { bix: 4, len: 4, sign: true }].map(E.obdbFormule).join(','), ',,,');
+    // Besluit d deel 2: standen. Een bitveld [b:n] telt zoals OBDb "bix": bit 0 is de hoogste bit van A.
+    t('obdb: bitveld voor één bit, een halve byte, over een bytegrens', [{ bix: 5, len: 1 }, { len: 1 }, { bix: 4, len: 4 }, { bix: 12, len: 8, div: 2 }, { bix: 4, len: 8 }].map(E.obdbFormule).join(' | '),
+      '[5:1] | [0:1] | [4:4] | [12:8]/2 | [4:8]');
+    const bv = (f, b) => E.controleer({ code: '221139', naam: 'x', formule: f }).def.parse(b);
+    t('formule: [5:1] van 0x04 is 1, van 0xFB 0 (bit 5 = 0x04)', [bv('[5:1]', [0x04]), bv('[5:1]', [0xFB])].join(','), '1,0');
+    t('formule: [0:1] is de hoogste bit, [7:1] de laagste', [bv('[0:1]', [0x80]), bv('[0:1]', [0x7F]), bv('[7:1]', [0x01]), bv('[7:1]', [0xFE])].join(','), '1,0,1,0');
+    t('formule: [4:4] is de lage halve byte, [12:8] loopt over B en C', [bv('[4:4]', [0xA7]), bv('[12:8]', [0, 0x0A, 0xB0])].join(','), '7,171');
+    t('formule: [11:1] is bit 3 van B (Trunk ajar)', [bv('[11:1]', [0, 0x10]), bv('[11:1]', [0xFF, 0xEF])].join(','), '1,0');
+    t('formule: bitveld met een ontbrekende byte is null', bv('[12:8]', [0, 0x0A]), null);
+    t('formule: een bitveld zonder geldige breedte of positie mag niet', ['[0:0]', '[0:33]', '[2048:1]', '[1:]', 'A:1', '[1:2:3]'].map(f => E.controleer({ code: '221139', naam: 'x', formule: f }).ok).join(), 'false,false,false,false,false,false');
+    t('obdb: standen voor aan/uit, ja/nee en een keuzelijst', JSON.stringify([{ unit: 'offon' }, { unit: 'yesno' }, { map: { 1: { description: 'First gear', value: '1' }, 2: { description: 'Second gear' } } }, { unit: 'scalar' }, { map: { x: {} } }].map(E.obdbStanden)),
+      JSON.stringify([{ 0: 'uit', 1: 'aan' }, { 0: 'ja', 1: 'nee' }, { 1: 'First gear', 2: 'Second gear' }, null, null]));
+    const obdbStand = { commands: [
+      { hdr: '7E0', rax: '7E8', cmd: { '22': '1001' }, signals: [{ name: 'Cooling fan relay control', fmt: { bix: 5, len: 1, max: 1, unit: 'offon' } }] },
+      { hdr: '7E0', rax: '7E8', cmd: { '22': '1002' }, signals: [{ name: 'Trunk ajar', fmt: { bix: 11, len: 1, max: 1, unit: 'noyes' } }, { name: 'Battery', fmt: { bix: 16, len: 8, div: 10, unit: 'volts' } }] },
+      { hdr: '7E1', rax: '7E9', cmd: { '22': '1003' }, signals: [{ name: 'Current gear', fmt: { len: 8, map: { 1: { description: 'First gear', value: '1' }, 2: { description: 'Second gear', value: '2' }, 4: { description: 'Fourth gear', value: '4' } } } }] },
+      { hdr: '7E0', rax: '7E8', cmd: { '22': '1004' }, signals: [{ name: 'EBD warning', fmt: { bix: 1, len: 1, max: 1, unit: 'scalar' } }] },
+      { hdr: '7E0', rax: '7E8', cmd: { '22': '1005' }, signals: [{ name: 'Tire sensor ID', fmt: { len: 32, unit: 'hex' } }] }
+    ] };
+    const kst = E.obdbKandidaten(obdbStand, 'x', 2018);
+    t('besluit d deel 2: standen worden kandidaten, met bitveld; hex niet', kst.map(x => x.code + '=' + x.formule + (x.standen ? ' ' + Object.values(x.standen).join('/') : '')).join(' | '),
+      '221001=[5:1] uit/aan | 221002=C/10 | 221003=A First gear/Second gear/Fourth gear | 221004=[1:1]');
+    t('besluit d deel 2: een stand krijgt het bereik van zijn lijst, een kaal bit dat van OBDb', kst.map(x => x.min + '…' + x.max).join(' '), '0…1 undefined…undefined 1…4 0…1');
+    t('controleer: standen gaan mee in de def, een kapotte lijst niet', [JSON.stringify(E.controleer({ code: '221003', naam: 'x', standen: { 0: 'uit', 1: 'aan' } }).def.standen), String(E.controleer({ code: '221003', naam: 'x', standen: { a: 'uit' } }).def.standen)].join(' '), '{"0":"uit","1":"aan"} undefined');
     // Met teken (#670): eerst two's complement van het ruwe getal, dan schalen.
     t('obdb: teken → S16( ) om de bytes, dan de factor', [{ len: 16, sign: true, mul: 0.01 }, { len: 8, sign: true, add: -40 }, { len: 16, sign: true, blsb: true }].map(E.obdbFormule).join(' | '),
       'S16(A*256+B)*0.01 | S8(A)-40 | S16(A+B*256)');
@@ -394,7 +418,7 @@ function haalZeef(isMode01) {
     s.apiFetch = async () => { throw new Error('de AI mag hier niet gevraagd worden'); };
     const haal = async (repo) => { gehaald.push(repo); return repo.toLowerCase() === 'mazda-cx-5' ? { gevonden: true, data: obdb } : { gevonden: false }; };
     const z = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal);
-    t('zoekObdb: tweede naam raak, kandidaten erbij', z.ok + ' ' + z.repo + ' ' + z.kandidaten.length, 'true Mazda-CX-5 10');
+    t('zoekObdb: tweede naam raak, kandidaten erbij', z.ok + ' ' + z.repo + ' ' + z.kandidaten.length, 'true Mazda-CX-5 11');
     t('zoekObdb: probeert de namen op volgorde', gehaald.join(','), 'Mazda-CX-5');
     const z2 = await E.zoekObdb({ merk: 'Dacia', model: 'Logan' }, async () => ({ gevonden: false }));
     t('zoekObdb: niet in OBDb is geen fout, en zegt wat er geprobeerd is', z2.ok + ' ' + z2.repo + ' ' + z2.geprobeerd.join(','), 'true  Dacia-Sandero,Dacia-Logan');   // Logan: de Sandero is de tweeling
@@ -418,7 +442,7 @@ function haalZeef(isMode01) {
     const zg = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal, async () => ({ gevonden: true, jaar: 2018, tekst: 'model_year: 2018\nsupported_commands_by_ecu:\n  "7E0":\n  - 0105:ECT\n' }));
     t('zoekObdb: een geldige lijst zonder fabriekscodes = niets proberen', zg.kandidaten.length + ' ' + zg.steunJaar, '0 2018');
     const zf = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal, async () => { throw new Error('Serverfout 502'); });
-    t('zoekObdb: steunlijst kapot = de oude gok, geen fout', zf.ok + ' ' + zf.kandidaten.length + ' ' + zf.steunJaar, 'true 10 null');
+    t('zoekObdb: steunlijst kapot = de oude gok, geen fout', zf.ok + ' ' + zf.kandidaten.length + ' ' + zf.steunJaar, 'true 11 null');
     const z3 = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' }, async () => { throw new Error('Serverfout 502'); });
     t('zoekObdb: geen net is een melding', !z3.ok && /niet bereikbaar/.test(z3.fout), true);
     t('zoekObdb: zonder weg naar OBDb niet zoeken', (await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' })).ok, false);
