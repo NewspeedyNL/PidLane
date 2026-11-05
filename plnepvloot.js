@@ -34,8 +34,9 @@
 //     OBDb heeft ze wel, maar een echte momentopname van 0105 = 0 °C maakt
 //     de survey rood om een reden die hier niet het onderwerp is.
 //   • een mode-01 PID zonder lengte in nepauto.js valt weg (in `overgeslagen`).
-//   • adressering die PLNepAuto niet kent (BMW eax `e=`, Tesla/VW FC00,
-//     Volvo D016): niet nagebouwd, wel in de noemer — de app kan ze ook niet.
+//   • adressering die PLNepAuto niet kent (Toyota `e=` met `ta=`, Tesla FC00, VW
+//     FC00 zonder ta=/c=, Volvo D016): niet nagebouwd, wel in de noemer —
+//     de app kan ze ook niet.
 //   • VIN: WMI van het merk + jaarteken op plek 10, de rest vulling.
 // ═══════════════════════════════════════════════════════════════════
 'use strict';
@@ -139,12 +140,13 @@ function leesAntwoorden(tekst) {
 
 // ISO-TP terug naar de nuttige bytes. `rx` is het antwoordadres zoals het
 // in de frames staat (3 hex, of 8 bij 29-bit).
-function isotp(frames, rx) {
+// `ext`: extended addressing (BMW 612 F1 …): na het adres één byte weg.
+function isotp(frames, rx, ext) {
   const data = [];
   let lengte = null;
   for (const f of frames) {
     let h = f;
-    if (rx && h.startsWith(rx)) h = h.slice(rx.length);
+    if (rx && h.startsWith(rx)) h = h.slice(rx.length + (ext ? 2 : 0));
     else if (/^18DA/.test(h)) h = h.slice(8);
     else h = h.slice(3);
     const b = h.match(/../g) || [];
@@ -170,6 +172,21 @@ function adres(sleutel, id) {
   if (d.length === 2) return { tx: d[0], cmd: d[1], mod: mod || '' };
   return { tx: d[0], rx: d[1], cmd: d[2], mod: mod || '' };
 }
+// BMW/MINI extended addressing: "6F1.612.22400B|e=12,fc=1" → tx 6F1, ea 12,
+// rx 612; het antwoord begint met F1. Een ander antwoordbyte (Toyota ta=2A)
+// kent PLEigen niet (ATCER, ELM 2.2): null.
+function ext(a) {
+  const e = (a.mod.match(/(?:^|,)e=([0-9A-F]{2})(?=,|$)/i) || [])[1], ta = (a.mod.match(/(?:^|,)ta=([0-9A-F]{2})(?=,|$)/i) || [])[1];
+  if (!e || !/^[67][0-9A-F]{2}$/.test(a.tx) || !/^[67][0-9A-F]{2}$/.test(a.rx || '') || (ta && ta.toUpperCase() !== 'F1')) return null;
+  return { tx: a.tx, rx: a.rx, ea: e.toUpperCase() };
+}
+// VAG 29-bit: "FC00.FE0076.220335|ta=76,c=17" → tx 17FC0076, rx 17FE0076.
+// Zonder ta of c is het adres niet bekend: null (telt als adressering).
+function vag29(a) {
+  if (a.tx !== 'FC00' || !/^FE00[0-9A-F]{2}$/.test(a.rx || '')) return null;
+  const ta = (a.mod.match(/(?:^|,)ta=([0-9A-F]{2})(?=,|:|$)/i) || [])[1], c = (a.mod.match(/(?:^|,)c=([0-9A-F]{2})(?=,|:|$)/i) || [])[1];
+  return ta && c ? { tx: (c + 'FC00' + ta).toUpperCase(), rx: (c + a.rx).toUpperCase() } : null;
+}
 function rxVan(tx, rx) {
   if (/^7[0-9A-F]{2}$/.test(tx) || /^6[0-9A-F]{2}$/.test(tx)) return rx || (parseInt(tx, 16) + 8).toString(16).toUpperCase();
   if (/^DA[0-9A-F]{2}$/.test(tx)) { const r = rx ? rx.slice(-2) : tx.slice(2); return '18DAF1' + r; }
@@ -191,7 +208,7 @@ function kloon(cache, repo) {
 function indikken(json) {
   return (json.commands || []).filter((c) => c && c.cmd && (c.cmd['22'] !== undefined || c.cmd['21'] !== undefined)).map((c) => {
     const k = { hdr: c.hdr, cmd: c.cmd };
-    ['rax', 'eax', 'filter', 'dbg', 'fcm1'].forEach((x) => { if (c[x] !== undefined) k[x] = c[x]; });
+    ['rax', 'eax', 'pri', 'tst', 'filter', 'dbg', 'fcm1'].forEach((x) => { if (c[x] !== undefined) k[x] = c[x]; });
     k.signals = (c.signals || []).map((g) => ({ name: g.name, fmt: g.fmt }));
     return k;
   });
@@ -210,9 +227,12 @@ function bouw(rij, cache, LEN) {
 
   const ecus = {};              // rx → ecu
   const volgorde = [];
-  function ecu(rx, tx) {
-    if (!ecus[rx]) { ecus[rx] = { adres: rx, tx: tx, pids: [], did: {} }; volgorde.push(rx); }
-    return ecus[rx];
+  // `apart`: VAG 29-bit antwoordt soms op één adres voor twee zendadressen
+  // (17FC007B en 17FC007C → 17FE007B); dat zijn twee ECU's voor PLNepAuto.
+  function ecu(rx, tx, apart) {
+    const k = apart ? rx + '|' + tx : rx;
+    if (!ecus[k]) { ecus[k] = { adres: rx, tx: tx, pids: [], did: {} }; volgorde.push(k); }
+    return ecus[k];
   }
   const aangeboden = { mode01: [], did: [] };
   const overgeslagen = [];
@@ -242,9 +262,10 @@ function bouw(rij, cache, LEN) {
       if (!sig) { overgeslagen.push({ cmd: cid, reden: 'geen signaal in OBDb' }); return; }
       // Een fabriekscode op het functionele adres (7DF, DB33) beantwoordt de motor-ECU.
       if (functioneel(a.tx) && !a.rx) a.tx = a.tx === '7DF' ? '7E0' : 'DA10';
-      const rx = rxVan(a.tx, a.rx);
-      const ecuAdr = rx && /^18DAF1/.test(rx) ? '18' + a.tx + 'F1' : a.tx;
-      const nood = (a.mod && /(^|,)(e|ta|c)=/.test(a.mod)) ? 'adressering ' + a.mod : !rx ? 'adres ' + a.tx : '';
+      const v29 = vag29(a), ea = ext(a);
+      const rx = v29 ? v29.rx : rxVan(a.tx, a.rx);
+      const ecuAdr = v29 ? v29.tx : ea ? a.tx + ':' + ea.ea : rx && /^18DAF1/.test(rx) ? '18' + a.tx + 'F1' : a.tx;
+      const nood = (a.mod && ((!ea && /(^|,)e=/.test(a.mod)) || (!v29 && !ea && /(^|,)(ta|c)=/.test(a.mod)))) ? 'adressering ' + a.mod : !rx ? 'adres ' + a.tx : '';
       // waarom: 'adressering' = de app kan hem (nog) niet vragen, telt mee in de
       // noemer; 'simulatie' = de auto heeft hem, maar OBDb geeft geen bruikbaar
       // antwoord om na te bouwen — een gat in de proef, niet in de app.
@@ -256,13 +277,15 @@ function bouw(rij, cache, LEN) {
       if (!fs.existsSync(f)) { overgeslagen.push({ cmd: cid, reden: 'geen antwoord in OBDb' }); d.nagebouwd = false; d.waarom = 'simulatie'; return; }
       const gevallen = leesAntwoorden(fs.readFileSync(f, 'utf8'));
       const goed = gevallen.find((g) => Object.values(g.waarden).some((w) => w !== 'null')) || gevallen[0];
-      const bytes = goed && isotp(goed.frames, rx);
+      const bytes = goed && isotp(goed.frames, rx, !!ea);
       const dienst = parseInt(a.cmd.slice(0, 2), 16) + 0x40;
       const kop = a.cmd.slice(2).match(/../g);
       if (!bytes || bytes[0] !== dienst.toString(16).toUpperCase() || bytes.slice(1, 1 + kop.length).join('') !== kop.join('')) {
         overgeslagen.push({ cmd: cid, reden: 'antwoord onleesbaar' }); d.nagebouwd = false; d.waarom = 'simulatie'; return;
       }
-      ecu(rx, txNep(a.tx)).did[a.cmd] = bytes.slice(1 + kop.length).join(' ');
+      const doelEcu = ecu(rx, v29 ? v29.tx : txNep(a.tx), !!(v29 || ea));
+      if (ea) doelEcu.ea = ea.ea;
+      doelEcu.did[a.cmd] = bytes.slice(1 + kop.length).join(' ');
     });
   });
   if (!volgorde.length) return { fout: id + ': geen ECU in ' + repo + ' ' + jaar };
@@ -275,6 +298,7 @@ function bouw(rij, cache, LEN) {
     ecus: volgorde.map((rx) => {
       const e = ecus[rx], uit = { adres: e.adres };
       if (e.tx) uit.tx = e.tx;
+      if (e.ea) uit.ea = e.ea;
       uit.pids = e.pids.sort().join(' ');
       if (Object.keys(e.did).length) uit.did = e.did;
       return uit;
@@ -325,4 +349,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { leesSupport, leesAntwoorden, isotp, adres, rxVan, jaarTeken, indikken };
+module.exports = { leesSupport, leesAntwoorden, isotp, adres, rxVan, vag29, ext, jaarTeken, indikken };

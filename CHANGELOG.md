@@ -10,6 +10,23 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Fabriekscodes op BMW/MINI extended addressing (#670)
+ ═══════════════════════════════════════════════════════════
+ - OBDb 6F1 met eax wordt het adres 6F1:12>612; de app vraagt het met
+   ATCEA12 en een flow control met het adresbyte voorop, en zet ATCEA uit.
+ - Worker en app keuren dat adres; generator en nepauto kennen ATCEA.
+ - Vloot: Mini 44 → 87 %, BMW 73 → 93 %, gemiddeld 89,2 → 90,7 %.
+
+ ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Fabriekscodes op VAG 29-bit (17FC00xx, ID.3) (#670)
+ ═══════════════════════════════════════════════════════════
+ - OBDb hdr FC00 met pri/tst wordt het adres 17FC0076>17FE0076; de app
+   vraagt het met ATCP17 + ATSH van zes en zet daarna ATCP18 terug.
+ - Worker en app keuren dat adres allebei als ECU van een eigen PID.
+ - Generator en nepauto kennen het (ATCP, alleen op een 29-bit bus).
+ - Vloot: ID.3 21 → 91,8 %, gemiddeld 87,4 → 89,2 %, 26 van 40 ≥ 90 %.
+
+ ═══════════════════════════════════════════════════════════
  05-11-2026 — De preset op merk verliest wat OBDb niet kent (#616)
  ═══════════════════════════════════════════════════════════
  - Wat applyVehiclePIDPreset() zonder steunbit toevoegt is een aanname.

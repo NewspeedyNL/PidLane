@@ -144,5 +144,39 @@ waar('ATFCSM1 zonder FCSH/FCSD: ?', lijn(fcHalf, 'ATFCSM1') === '?');
 const psa = klaar('p208', ['0100', 'ATSH6A2', 'ATCRA682']);
 waar('PSA 6A2>682: km-stand 01 E2 40', lijn(psa, '22D49C1') === '62 D4 9C 01 E2 40', lijn(psa, '22D49C1'));
 
+console.log('\n9. VAG 29-bit (17FC0076>17FE0076, #670): prioriteit met ATCP, alleen op een 29-bit bus');
+const vag29 = (proto) => {
+  const a = N.maak({ id: 'vag29', proto, vin: 'WVWZZZZZZMX000007', ecus: [{ adres: proto === '7' ? '18DAF101' : '7E8', tx: proto === '7' ? 'DA01F1' : null, pids: '0D' },
+    { adres: '17FE0076', tx: '17FC0076', pids: '', did: { '220335': '00 2A' } }] });
+  ['ATE0', 'ATH0', 'ATSP0', '0100', 'ATSHFC0076', 'ATCRA17FE0076'].forEach((c) => a.stuur(c));
+  return a;
+};
+const v7 = vag29('7');
+waar('zonder ATCP (prioriteit 18): de ECU hoort niets', lijn(v7, '2203351') === 'NO DATA', lijn(v7, '2203351'));
+lijn(v7, 'ATCP17');
+waar('met ATCP17: 62 03 35 00 2A', lijn(v7, '2203351') === '62 03 35 00 2A', lijn(v7, '2203351'));
+lijn(v7, 'ATCP18');
+waar('ATCP18 terug: weer niets', lijn(v7, '2203351') === 'NO DATA');
+const v6 = vag29('6');
+lijn(v6, 'ATCP17');
+waar('op een 11-bit bus komt een 29-bit vraag nergens aan', lijn(v6, '2203351') === 'NO DATA', lijn(v6, '2203351'));
+
+console.log('\n10. BMW extended addressing (6F1:12>612, #670): ATCEA kiest de ECU, de flow control draagt het adresbyte');
+const bmwx = N.maak({ id: 'bmw', proto: '6', vin: 'WBAZZZZZZKX000001', ecus: [{ adres: '7E8', pids: '0D' },
+  { adres: '612', tx: '6F1', ea: '12', pids: '', did: { '22400B': '00 E4' , '22402B': '01 02 03 04 05 06 07' } },
+  { adres: '660', tx: '6F1', ea: '60', pids: '', did: { '22D111': '11' } }] });
+['ATE0', 'ATH0', 'ATSP0', '0100', 'ATSH6F1', 'ATCRA612'].forEach((c) => bmwx.stuur(c));
+waar('zonder ATCEA hoort geen BMW-ECU de kop 6F1', lijn(bmwx, '22400B1') === 'NO DATA', lijn(bmwx, '22400B1'));
+lijn(bmwx, 'ATCEA12');
+waar('met ATCEA12: de DME antwoordt', lijn(bmwx, '22400B1') === '62 40 0B 00 E4', lijn(bmwx, '22400B1'));
+waar('met ATCEA12 hoort 660 niets (ander adresbyte)', (lijn(bmwx, 'ATCRA660'), lijn(bmwx, '22D1111')) === 'NO DATA');
+lijn(bmwx, 'ATCRA612');
+['ATFCSH6F1', 'ATFCSD300000', 'ATFCSM1'].forEach((c) => lijn(bmwx, c));
+waar('lang antwoord, flow control zonder adresbyte: afgebroken', !/\r1:/.test(lijn(bmwx, '22402B1')), JSON.stringify(lijn(bmwx, '22402B1')));
+lijn(bmwx, 'ATFCSD12300000');
+waar('flow control met 12 voorop: het hele antwoord', /\r1:/.test(lijn(bmwx, '22402B1')), JSON.stringify(lijn(bmwx, '22402B1')));
+['ATCEA', 'ATFCSM0', 'ATCRA', 'ATSH7DF'].forEach((c) => lijn(bmwx, c));
+waar('terugzetten zoals de app (ATCEA, ATFCSM0, ATCRA, 7DF): mode 01 werkt weer', /^41 0D/.test(lijn(bmwx, '010D1')), lijn(bmwx, '010D1'));
+
 console.log('\n' + (fout ? 'test-nepauto: ' + fout + ' fout(en), ' + ok + ' goed' : 'test-nepauto: alles goed (' + ok + ')'));
 process.exit(fout ? 1 : 0);
