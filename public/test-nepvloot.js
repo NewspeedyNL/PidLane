@@ -68,6 +68,7 @@ waar('VAG FC00 zonder ta of c: niet na te bouwen', G.vag29(G.adres('FC00', 'FC00
 const x = G.ext(G.adres('6F1', '6F1.612.22400B|e=12,fc=1'));
 waar('BMW e=12: tx 6F1, rx 612, adresbyte 12 (#670)', x && x.tx === '6F1' && x.rx === '612' && x.ea === '12', JSON.stringify(x));
 waar('Toyota e=2A met ta=2A: niet na te bouwen (ATCER)', G.ext(G.adres('750', '750.758.2130|t=96,e=2A,ta=2A,fc=1')) === null);
+waar('Toyota e=2A zonder ta: ook niet (het antwoord draagt 2A, geen F1)', G.ext(G.adres('750', '750.758.2115|e=2A,fc=1')) === null);
 waar('isotp met adresbyte: F1 na 612 valt weg', (G.isotp(['612F1100F62400B00E4', '612F12100E600200081', '612F122FFFF0008FFFF'], '612', true) || []).slice(0, 4).join(' ') === '62 40 0B 00');
 waar('FC00 en D016 zijn niet na te bouwen', G.rxVan('FC00', 'FE0076') === null && G.rxVan('D016', '1EC60E80') === null);
 waar('modifier apart', G.adres('710', '710.77A.222A61|fc=1').mod === 'fc=1');

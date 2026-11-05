@@ -15,6 +15,15 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 05-11-2026 — Correctie op #672: F1 is alleen het antwoordbyte van 6F1
+
+In #672 nam `obdbExt()` zonder `tst` het antwoordbyte F1 aan, de tester bij
+BMW. Een Toyota op 750 met `eax 2A` en zonder `tst` (Corolla 2115) antwoordt
+echter met 2A: `7582A10…`. De app bood hem aan als `750:2A>758`, en het
+antwoord kwam nooit door. Zonder `tst` geldt F1 nu alleen op 6F1. Gevonden
+toen de generator voor alle 40 auto's opnieuw draaide en de Corolla-code van
+"adressering" naar "simulatie" schoof.
+
 ## 05-11-2026 — Voorselectie op rol: banden, laadregeling, wielen (#675)
 
 **Eén fout, drie plekken.** `PLPidZoek.voorkeus()` vinkte alleen de groep

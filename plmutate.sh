@@ -1829,6 +1829,7 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@    if (ea) await sendCmd('ATCEA' + ea, 1500);\n@@@@test-mode21.js@@BMW zonder ATCEA: de kop 6F1 zonder adresbyte, geen enkele ECU antwoordt"
 "public/pidlane-uitgebreid.js@@'ATFCSD' + ea + '300000'@@'ATFCSD300000'@@test-mode21.js@@BMW-flow control zonder het adresbyte: elk antwoord langer dan zes bytes breekt af"
 "public/pidlane-uitgebreid.js@@    return (ea ? ['ATCEA'] : []).concat(@@    return [].concat(@@test-mode21.js@@ATCEA blijft na een BMW-code aan: elke volgende vraag draagt een verkeerd eerste byte"
+"public/pidlane-uitgebreid.js@@tst = String(tst || (hdr === '6F1' ? 'F1' : '')).toUpperCase();@@tst = String(tst || 'F1').toUpperCase();@@test-mode21.js@@een Toyota zonder tst gaat als BMW door: F1 als antwoordbyte, terwijl hij 2A draagt"
 "public/pidlane-uitgebreid.js@@ && tst === 'F1' ? hdr + ':' + eax + '>' + rax : null;@@ ? hdr + ':' + eax + '>' + rax : null;@@test-mode21.js@@een Toyota met eigen antwoordbyte (ATCER) gaat als BMW door en hoort zijn antwoord nooit"
 "public/nepauto.js@@ && (e.ea || null) === st.cea) : ecus;@@) : ecus;@@test-nepauto.js@@de nepauto laat elke BMW-ECU op 6F1 antwoorden, met of zonder ATCEA"
 "plnepvloot.js@@    if (rx && h.startsWith(rx)) h = h.slice(rx.length + (ext ? 2 : 0));@@    if (rx && h.startsWith(rx)) h = h.slice(rx.length);@@test-nepvloot.js@@de generator houdt het F1-byte van BMW in de data: elke nagebouwde waarde schuift een byte"

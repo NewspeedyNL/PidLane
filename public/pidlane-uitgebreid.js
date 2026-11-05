@@ -975,7 +975,9 @@
      ander antwoordbyte (Toyota 750/2A: tst 2A) vraagt ATCER, en dat kent
      pas ELM 2.2: niet aangeboden. */
   function obdbExt(hdr, eax, rax, tst) {
-    eax = String(eax || '').toUpperCase(); tst = String(tst || 'F1').toUpperCase();
+    // F1 (de tester) is het antwoordbyte van BMW/MINI op 6F1. Een Toyota op 750 zonder tst antwoordt
+    // met 2A, niet met F1: zonder tst geldt F1 dus alleen op 6F1 (05-11-2026).
+    eax = String(eax || '').toUpperCase(); tst = String(tst || (hdr === '6F1' ? 'F1' : '')).toUpperCase();
     return /^[67][0-9A-F]{2}$/.test(hdr) && /^[0-9A-F]{2}$/.test(eax) && /^[67][0-9A-F]{2}$/.test(rax) && tst === 'F1' ? hdr + ':' + eax + '>' + rax : null;
   }
   function obdbAdres(c) {

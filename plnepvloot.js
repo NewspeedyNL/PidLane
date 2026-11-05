@@ -177,7 +177,8 @@ function adres(sleutel, id) {
 // kent PLEigen niet (ATCER, ELM 2.2): null.
 function ext(a) {
   const e = (a.mod.match(/(?:^|,)e=([0-9A-F]{2})(?=,|$)/i) || [])[1], ta = (a.mod.match(/(?:^|,)ta=([0-9A-F]{2})(?=,|$)/i) || [])[1];
-  if (!e || !/^[67][0-9A-F]{2}$/.test(a.tx) || !/^[67][0-9A-F]{2}$/.test(a.rx || '') || (ta && ta.toUpperCase() !== 'F1')) return null;
+  // Zonder ta= is F1 alleen het antwoordbyte op 6F1 (BMW); een Toyota op 750 antwoordt met 2A.
+  if (!e || !/^[67][0-9A-F]{2}$/.test(a.tx) || !/^[67][0-9A-F]{2}$/.test(a.rx || '') || (ta ? ta.toUpperCase() !== 'F1' : a.tx !== '6F1')) return null;
   return { tx: a.tx, rx: a.rx, ea: e.toUpperCase() };
 }
 // VAG 29-bit: "FC00.FE0076.220335|ta=76,c=17" → tx 17FC0076, rx 17FE0076.
