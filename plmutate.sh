@@ -1819,7 +1819,7 @@ MUTATIES=(
 # 11-bit bus geven, en moet ATCP echt toepassen.
 "public/pidlane-uitgebreid.js@@    if (cp) await sendCmd('ATCP' + p[0].slice(0, 2), 1500);\n@@@@test-mode21.js@@VAG 29-bit zonder ATCP: de vraag gaat op prioriteit 18 en de ID.3 hoort niets"
 "public/pidlane-uitgebreid.js@@    if (hdr === 'FC00') return obdbVag29(c.pri, c.tst, rax);\n@@@@test-mode21.js@@VAG FC00 valt weer weg uit de OBDb-kandidaten: de ID.3 terug naar 21 %"
-"public/pidlane-uitgebreid.js@@          tx = a.split('>')[0];@@          tx = a;@@test-mode21.js@@de steunlijst sleutelt FC00 op tx>rx in plaats van het zendadres: geen enkele ID.3-code past dit jaar"
+"public/pidlane-uitgebreid.js@@          tx = a.split('>')[0];\n        }\n        // BMW/MINI@@          tx = a;\n        }\n        // BMW/MINI@@test-mode21.js@@de steunlijst sleutelt FC00 op tx>rx in plaats van het zendadres: geen enkele ID.3-code past dit jaar"
 "public/nepauto.js@@ || (bit29 && fysiekVan(e) === st.cp + st.sh)) && (e.ea@@ || fysiekVan(e) === st.cp + st.sh) && (e.ea@@test-nepauto.js@@de nepauto beantwoordt een 29-bit vraag op een 11-bit bus"
 "public/nepauto.js@@{ st.cp = a.slice(2); return 'OK'; }@@{ return 'OK'; }@@test-nepauto.js@@de nepauto negeert ATCP: zonder prioriteit 17 antwoordt de ID.3 toch niet, of altijd"
 "plnepvloot.js@@  return ta && c ? { tx: (c + 'FC00' + ta).toUpperCase(), rx: (c + a.rx).toUpperCase() } : null;@@  return ta && c ? { tx: ('18FC00' + ta).toUpperCase(), rx: (c + a.rx).toUpperCase() } : null;@@test-nepvloot.js@@de generator negeert c=: de ID.3 krijgt prioriteit 18 en de proef meet een auto die niet bestaat"
