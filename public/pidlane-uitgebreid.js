@@ -494,13 +494,16 @@
   /* Formule → functie(bytes). Toegestaan: getallen, A t/m H, [n], + - * /,
      haakjes, en S8( ) … S32( ): het getal erin als two's complement van 8,
      16, 24 of 32 bits (#670 — OBDb "sign": 276 codes op de vloot, zoals een
-     stroom die ook negatief kan). Ontbreekt een byte, dan is de uitkomst null. */
+     stroom die ook negatief kan). En [b:n]: een bitveld van n bits (1…32)
+     vanaf bit b, geteld zoals OBDb "bix" telt — bit 0 is de hoogste bit van
+     A, bit 8 die van B (besluit d deel 2: standen als aan/uit en keuzelijsten).
+     Ontbreekt een byte, dan is de uitkomst null. */
   function formule(tekst) {
     const t = String(tekst || '').replace(/\s+/g, '').toUpperCase().replace(/,/g, '.');
     if (!t || t.length > 80) throw new Error('formule leeg of te lang');
     // [n] is byte n (A = [0]): een lang antwoord, zoals de accu van een Kia
     // of de 22-codes van Honda, heeft zijn waarde voorbij H (#541-dekking).
-    if (!/^[A-HS0-9.+\-*/()[\]]+$/.test(t)) throw new Error('alleen A–H, [n], getallen, + - * /, haakjes en S16(…)');
+    if (!/^[A-HS0-9.:+\-*/()[\]]+$/.test(t)) throw new Error('alleen A–H, [n], [b:n], getallen, + - * /, haakjes en S16(…)');
     let i = 0;
     const kijk = () => t[i];
     function getal() {
@@ -523,6 +526,20 @@
         return (b) => { const v = e(b); if (v === null) return null; const w = ((Math.round(v) % n) + n) % n; return w >= n / 2 ? w - n : w; };
       }
       if (c && /[A-H]/.test(c)) { i++; const k = c.charCodeAt(0) - 65; return (b) => (b && typeof b[k] === 'number') ? b[k] : null; }
+      if (c === '[' && /^\[\d+:/.test(t.slice(i))) {
+        const m = /^\[(\d{1,4}):(\d{1,2})\]/.exec(t.slice(i));
+        if (!m || Number(m[1]) > 2047 || Number(m[2]) < 1 || Number(m[2]) > 32) throw new Error('bitveld [b:n] met b van 0 tot 2047 en n van 1 tot 32');
+        i += m[0].length; const b0 = Number(m[1]), n = Number(m[2]);
+        return (b) => {
+          let v = 0;
+          for (let k = b0; k < b0 + n; k++) {
+            const x = b && b[k >> 3];
+            if (typeof x !== 'number') return null;
+            v = v * 2 + ((x >> (7 - (k & 7))) & 1);
+          }
+          return v;
+        };
+      }
       if (c === '[') {
         const m = /^\[(\d{1,3})\]/.exec(t.slice(i));
         if (!m || Number(m[1]) > 255) throw new Error('byte [n] met n van 0 tot 255');
@@ -550,6 +567,17 @@
     const f = expr();
     if (i !== t.length) throw new Error('onverwacht teken "' + t[i] + '"');
     return (b) => { const v = f(b); return (typeof v === 'number' && isFinite(v)) ? Math.round(v * 1000) / 1000 : null; };
+  }
+
+  /* Standen als { geheel getal: tekst }, hoogstens 32, tekst tot 24 tekens;
+     anders null. Dezelfde regel als kpStanden() in worker.js. */
+  function standenSchoon(x) {
+    if (!x || typeof x !== 'object' || Array.isArray(x)) return null;
+    const ks = Object.keys(x);
+    if (!ks.length || ks.length > 32 || ks.some((k) => !/^\d{1,10}$/.test(k))) return null;
+    const uit = {};
+    for (const k of ks) { const t = String(x[k] == null ? '' : x[k]).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 24); if (!t) return null; uit[Number(k)] = t; }
+    return uit;
   }
 
   /* Eén eigen PID controleren. Geeft { ok, fout, def }. */
@@ -589,6 +617,9 @@
     if (std) ['wH', 'dH', 'dL'].forEach((k) => { if (typeof std[k] === 'number') def[k] = std[k]; });
     // balkVol hoort bij de standaardschaal; een eigen bereik heeft die niet.
     if (std && !heeftBereik && typeof std.balkVol === 'number') def.balkVol = std.balkVol;
+    // De standen van een aan/uit of keuzelijst (besluit d deel 2): { waarde: tekst }.
+    const st = standenSchoon(e.standen);
+    if (st) def.standen = st;
     return { ok: true, code, ecu, def };
   }
 
@@ -741,6 +772,24 @@
   // de eenheid onbekend was; omgerekend naar wat de app al kent.
   // Een ruwe waarde zegt pas iets met een omrekening die OBDb niet heeft.
   const OBDB_RUW = /\braw\b|ruwe? waarde|first byte|\bbyte\b/i;
+  // Standen (besluit d deel 2): OBDb noemt de waarde van 0 eerst, "offon" is 0 = uit.
+  const OBDB_STAND = { offon: ['uit', 'aan'], onoff: ['aan', 'uit'], noyes: ['nee', 'ja'], yesno: ['ja', 'nee'] };
+  /* De standen van een signaal als { waarde: tekst }, of null als het geen
+     stand is. Een keuzelijst (map) neemt de beschrijving van OBDb over; meer
+     dan 32 standen of een sleutel die geen geheel getal is, is geen lijst
+     die op een meter past. Puur. */
+  function obdbStanden(fmt) {
+    const f = fmt || {};
+    if (f.map && typeof f.map === 'object') {
+      const ks = Object.keys(f.map);
+      if (!ks.length || ks.length > 32 || ks.some((k) => !/^\d{1,10}$/.test(k))) return null;
+      const uit = {};
+      ks.forEach((k) => { const m = f.map[k] || {}; uit[Number(k)] = String(m.description || m.value || k).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 24) || k; });
+      return uit;
+    }
+    const w = OBDB_STAND[f.unit];
+    return w ? { 0: w[0], 1: w[1] } : null;
+  }
   const OBDB_OM = { fahrenheit: ['°C', '((', ')-32)*5/9'], miles: ['km', '(', ')*1.609344'],
     millivolts: ['V', '(', ')/1000'], milliamps: ['A', '(', ')/1000'], centimeters: ['mm', '(', ')*10'] };
 
@@ -904,18 +953,28 @@
   function obdbFormule(fmt) {
     const f = fmt || {};
     const bix = Number(f.bix || 0), len = Number(f.len);
-    if (f.map || bix % 8 || [8, 16, 24, 32].indexOf(len) < 0) return null;
-    const i0 = bix / 8, n = len / 8;
-    if (i0 + n > 256) return null;
-    const delen = [];
-    for (let k = 0; k < n; k++) {
-      const w = f.blsb ? k : n - 1 - k;
-      // Voorbij H: [n] (Honda, de accu van Kia/Hyundai).
-      delen.push((i0 + k < 8 ? 'ABCDEFGH'[i0 + k] : '[' + (i0 + k) + ']') + (w ? '*' + Math.pow(256, w) : ''));
+    if (!(bix >= 0) || !(len >= 1) || len > 32 || bix % 1 || len % 1) return null;
+    // Een keuzelijst (map) leest de ruwe waarde; een omrekening erbij kent OBDb daar niet.
+    if (f.map && (f.mul !== undefined || f.div !== undefined || Number(f.add || 0) || f.sign)) return null;
+    let x;
+    if (bix % 8 || len % 8) {
+      // Een bitveld (besluit d deel 2): een stand van één bit, een halve byte.
+      // Bytevolgorde omdraaien (blsb) of een teken bij een vreemde breedte kent [b:n] niet.
+      if (f.blsb || f.sign || bix + len > 2048) return null;
+      x = '[' + bix + ':' + len + ']';
+    } else {
+      const i0 = bix / 8, n = len / 8;
+      if (i0 + n > 256) return null;
+      const delen = [];
+      for (let k = 0; k < n; k++) {
+        const w = f.blsb ? k : n - 1 - k;
+        // Voorbij H: [n] (Honda, de accu van Kia/Hyundai).
+        delen.push((i0 + k < 8 ? 'ABCDEFGH'[i0 + k] : '[' + (i0 + k) + ']') + (w ? '*' + Math.pow(256, w) : ''));
+      }
+      x = delen.join('+');
+      // Met teken: eerst het ruwe getal als two's complement, dan pas schalen.
+      if (f.sign) x = 'S' + len + '(' + x + ')';
     }
-    let x = delen.join('+');
-    // Met teken: eerst het ruwe getal als two's complement, dan pas schalen.
-    if (f.sign) x = 'S' + len + '(' + x + ')';
     const groep = () => (/[+\-]/.test(x) && !/^S\d+\(.*\)$/.test(x) ? '(' + x + ')' : x);
     if (f.mul !== undefined) { if (!(Number(f.mul) > 0)) return null; x = groep() + '*' + obdbGetal(f.mul); }
     if (f.div !== undefined) { if (!(Number(f.div) > 0)) return null; x = groep() + '/' + obdbGetal(f.div); }
@@ -1063,8 +1122,10 @@
       if (steun && !steun.codes[code + '@' + hdr.split('>')[0]]) { if (telling) telling.nietDitJaar = (telling.nietDitJaar || 0) + 1; return; }
       // Eén code per commando, en dan de waardevolste: bij een Kona Electric
       // zit de laadtoestand van de HV-accu als zevende waarde in 22E003.
-      const sigs = (Array.isArray(c.signals) ? c.signals.slice() : []).map((g, i) => ({ g, i, w: obdbWaarde(g && g.name), e: g && g.fmt && g.fmt.unit !== 'scalar' ? 1 : 0 }));
-      // Bij gelijke waarde wint een signaal mét eenheid van een kaal getal (besluit d).
+      const eSoort = (f) => !f ? 0 : (f.map || OBDB_STAND[f.unit]) ? 0 : f.unit === 'scalar' ? 1 : 2;
+      const sigs = (Array.isArray(c.signals) ? c.signals.slice() : []).map((g, i) => ({ g, i, w: obdbWaarde(g && g.name), e: eSoort(g && g.fmt) }));
+      // Bij gelijke waarde wint een signaal mét eenheid van een kaal getal, en
+      // dat van een stand (besluit d).
       sigs.sort((a, b) => (b.w - a.w) || (b.e - a.e) || (a.i - b.i));
       for (const { g } of sigs) {
         const fmt = (g && g.fmt) || {};
@@ -1072,10 +1133,12 @@
         // lambda, overbrenging) is data sinds besluit d (#670, 05-11-2026);
         // een ruwe waarde ("raw count") en een onbekende eenheid niet.
         const getal = fmt.unit === 'scalar' && !OBDB_RUW.test(String(g.name || ''));
-        if (!getal && !OBDB_EENHEID[fmt.unit] && !OBDB_OM[fmt.unit]) continue;   // aan/uit, hex, ja/nee, onbekend: (nog) geen meetwaarde
+        // Een stand (aan/uit, ja/nee, een keuzelijst) is data sinds besluit d deel 2.
+        const standen = obdbStanden(fmt);
+        if (!getal && !standen && !OBDB_EENHEID[fmt.unit] && !OBDB_OM[fmt.unit]) continue;   // hex, onbekend, ruw: geen meetwaarde
         const fo = obdbFormule(fmt);
         if (!fo) continue;
-        const eenheid = getal ? '' : OBDB_OM[fmt.unit] ? OBDB_OM[fmt.unit][0] : OBDB_EENHEID[fmt.unit];
+        const eenheid = (getal || standen) ? '' : OBDB_OM[fmt.unit] ? OBDB_OM[fmt.unit][0] : OBDB_EENHEID[fmt.unit];
         const r = eigenControleer({ code, naam: g.name, formule: fo, eenheid, ecu: hdr });
         if (!r.ok) continue;
         const sl = r.code + '@' + r.ecu;
@@ -1084,6 +1147,8 @@
         const k = { code: r.code, ecu: r.ecu, naam: r.def.name, formule: fo.replace(/\s+/g, '').toUpperCase(), eenheid, url, waarde: obdbWaarde(g.name), i: uit.length };
         // Zonder eenheid is het bereik uit OBDb de enige keuring (PLPidZoek.plausibel) en de schaal van de meter.
         if (getal && isFinite(Number(fmt.min === undefined ? 0 : fmt.min)) && isFinite(Number(fmt.max)) && Number(fmt.max) > Number(fmt.min || 0)) { k.min = Number(fmt.min || 0); k.max = Number(fmt.max); }
+        // Een stand keurt op zijn lijst (PLPidZoek.plausibel); het bereik is de schaal.
+        if (standen) { const ws = Object.keys(standen).map(Number); k.standen = standen; k.min = Math.min.apply(null, ws); k.max = Math.max.apply(null, ws); if (k.max === k.min) k.max = k.min + 1; }
         uit.push(k);
         break;
       }
@@ -1241,7 +1306,7 @@
 
   window.PLEigen = { CODE: EIGEN_CODE, VEEL: EIGEN_VEEL, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
     ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, laadRol, wielRol, wielCodes, obdbWaarde, obdbAdres, laadOordeel, accuOordeel, laadCodes, laadNu, laad: laadLive, drukOmrekening, standaardBereik,
-    scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, vraag: eigenVraag, obdbNamen, obdbKoppel, obdbFormule, obdbJaarPast, obdbKandidaten, obdbSteun, zoekObdb };
+    scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, vraag: eigenVraag, obdbNamen, obdbKoppel, obdbFormule, obdbStanden, obdbJaarPast, obdbKandidaten, obdbSteun, zoekObdb };
   window.plEigenDefs = eigenDefs;
 
   btDiagSafe('pidlane-uitgebreid.js geladen — mode 21/22 pad actief');

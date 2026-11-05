@@ -2848,6 +2848,28 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Besluit d deel 2: standen (05-11-2026) ──
+  {
+    issue: '#670',
+    naam: 'Een stand uit OBDb (aan/uit, ja/nee, keuzelijst) is een kandidaat met een bitveld [b:n] en zijn lijst; een waarde buiten die lijst is vreemd',
+    waarom: 'Besluit d deel 2: standen zijn meestal één bit (bix/len 1) of een map. Daarvoor kreeg de formuletaal [b:n], geteld zoals OBDb bix (bit 0 = de hoogste bit van A). Deze proef toetst de geladen formule(), obdbKandidaten() en plausibel().',
+    proef: async function () {
+      var E = window.PLEigen, Z = window.PLPidZoek;
+      if (!E || typeof E.obdbKandidaten !== 'function' || typeof E.controleer !== 'function' || !Z || typeof Z.plausibel !== 'function') return { staat: 'FOUT', detail: 'PLEigen/PLPidZoek ontbreekt — herladen?' };
+      var c = E.controleer({ code: '221001', naam: 'x', formule: '[5:1]' });
+      if (!c.ok) return { staat: 'FOUT', detail: 'de formule [5:1] wordt geweigerd: ' + c.fout };
+      if (c.def.parse([0x04]) !== 1 || c.def.parse([0xFB]) !== 0) return { staat: 'FOUT', detail: '[5:1] leest de verkeerde bit: 0x04 → ' + c.def.parse([0x04]) + ', 0xFB → ' + c.def.parse([0xFB]) };
+      var d = { commands: [
+        { hdr: '7E0', rax: '7E8', cmd: { '22': '1001' }, signals: [{ name: 'Cooling fan relay', fmt: { bix: 5, len: 1, max: 1, unit: 'offon' } }] },
+        { hdr: '7E1', rax: '7E9', cmd: { '22': '1003' }, signals: [{ name: 'Current gear', fmt: { len: 8, map: { 1: { description: 'First gear' }, 2: { description: 'Second gear' }, 4: { description: 'Fourth gear' } } } }] }] };
+      var k = E.obdbKandidaten(d, 'x', 2019);
+      var kort = k.map(function (x) { return x.code + '=' + x.formule + (x.standen ? ' ' + Object.keys(x.standen).join('/') : ''); }).join(' | ');
+      if (kort !== '221001=[5:1] 0/1 | 221003=A 1/2/4') return { staat: 'FOUT', detail: 'standen als kandidaat kloppen niet: ' + (kort || 'geen') };
+      if (Z.plausibel({ ok: true, bytes: [3], waarde: 3, eenheid: '' }, k[1]).ok) return { staat: 'FOUT', detail: 'een waarde tussen twee standen (3) wordt goedgekeurd' };
+      return { staat: 'OK', detail: 'stand: bitveld [b:n] zoals OBDb bix, kandidaat met zijn lijst, gekeurd op die lijst' };
+    }
+  },
+
   // ── Besluit d: getallen zonder eenheid (05-11-2026) ──
   {
     issue: '#670',

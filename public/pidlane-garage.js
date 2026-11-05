@@ -2891,7 +2891,9 @@
         var tp = PLPidZoek.tempo ? PLPidZoek.tempo(laadVan(b)) : '';
         S.eigen.push(Object.assign({ code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid || '', ecu: b.ecu || '' }, tp ? { tempo: tp } : {},
           // Zonder eenheid geeft het OBDb-bereik de meter zijn schaal (besluit d).
-          !b.eenheid && Number.isFinite(b.min) && Number.isFinite(b.max) && b.max > b.min ? { min: b.min, max: b.max } : {}));
+          !b.eenheid && Number.isFinite(b.min) && Number.isFinite(b.max) && b.max > b.min ? { min: b.min, max: b.max } : {},
+          // Een stand neemt zijn lijst mee (besluit d deel 2).
+          !b.eenheid && b.standen ? { standen: b.standen } : {}));
         if (S.sel.indexOf(b.code) < 0) S.sel.push(b.code);
         S.ok[b.code] = true; n++;
       });

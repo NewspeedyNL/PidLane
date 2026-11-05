@@ -33,6 +33,11 @@ const PZ = (w, c) => Z.plausibel({ ok: true, bytes: [1, 2], waarde: w, eenheid: 
 waar('zonder eenheid, binnen het OBDb-bereik: klopt', PZ(1.02, { min: -4, max: 3.9 }).ok);
 waar('zonder eenheid, buiten het OBDb-bereik: verkeerde formule', !PZ(9, { min: -4, max: 3.9 }).ok);
 waar('zonder eenheid en zonder bereik (min null): geen schijnkeuring tegen 0', PZ(-3, { min: null, max: null }).ok);
+// Besluit d deel 2: een stand keurt op zijn lijst, niet alleen op het bereik (1…4 laat 3 door).
+const gear = { min: 1, max: 4, standen: { 1: 'First gear', 2: 'Second gear', 4: 'Fourth gear' } };
+waar('stand uit de lijst (2 = Second gear): klopt', PZ(2, gear).ok);
+waar('stand binnen het bereik maar niet in de lijst (3): verkeerd bitveld', !PZ(3, gear).ok);
+waar('aan/uit: 1 klopt, 2 niet', PZ(1, { min: 0, max: 1, standen: { 0: 'uit', 1: 'aan' } }).ok && !PZ(2, { min: 0, max: 1, standen: { 0: 'uit', 1: 'aan' } }).ok);
 waar('HV-pack 380 V: klopt (geen 12V-grens)', P([0x01, 0x7C], 380, 'V', 'HV battery pack voltage').ok);
 waar('MAP-spanning 1,2 V: klopt', P([0x04, 0xCC], 1.2, 'V', 'MAP voltage').ok);
 waar('bandenspanning 2,4 bar: klopt', P([0xAF], 2.4, 'bar', 'Bandenspanning voor-links').ok);

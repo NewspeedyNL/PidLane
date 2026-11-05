@@ -15,6 +15,36 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 05-11-2026 — Besluit d deel 2: standen zijn data, 96,6 → 98,8 % (#670)
+
+**Wat erbij kwam.** Standen zijn in OBDb meestal één bit (`bix`/`len 1`,
+eenheid `offon`, `noyes`, `scalar`) of een `map`. De formuletaal kreeg
+daarvoor `[b:n]`: n bits (1…32) vanaf bit b, geteld zoals OBDb `bix` telt —
+bit 0 is de hoogste bit van A, bit 8 die van B. Dat is afgeleid uit, niet getoetst tegen,
+mode 01 0101 (`bix 1, len 7` = het aantal DTC's in de lage zeven bits van A).
+`obdbFormule()` geeft een bitveld voor alles wat niet op hele bytes valt; een
+halve byte met eenheid (`[4:4] %`) komt daardoor ook mee. Met `blsb` of
+`sign` bij een vreemde breedte: geen formule.
+
+**De keuring.** Een stand draagt `standen` ({ waarde: tekst }): de woorden
+voor aan/uit en ja/nee, de beschrijving van OBDb bij een `map`.
+`plausibel()` keurt op die lijst — bij de versnellingen 1/2/4 is 3 vreemd,
+ook al ligt hij binnen het bereik. Bij gelijke waarde wint binnen een
+commando eerst een eenheid, dan een kaal getal, dan een stand. De Worker
+(`kpEigenPid`) bewaart `standen` bij het voertuig en keurt `[b:n]` met
+dezelfde grenzen als de app.
+
+**Wat níét gebouwd is.** De meter toont een stand nog als getal (0/1, 2);
+de tekst uit `standen` staat in de def maar niemand leest hem. De
+bibliotheek (`kp_pid_bib`) heeft geen kolom voor `standen`, net zo min als
+voor `min`/`max`. Wat OBDb "yesno"/"onoff" noemt is gelezen als: het eerste
+woord is 0. Dat is een aanname, een vraag voor een rit.
+
+**Gemeten.** `bproef-dekking.js --alle`: 98,8 %, 39/40 ≥ 90 %. Aygo 77 → 98,
+Leaf 77 → 97. Tiguan 87 → 88: daar zit het gat niet in standen maar in 31
+weigeringen en 27 codes die niet na te bouwen zijn. Geen enkele stand kwam
+als "vreemd" uit de meting.
+
 ## 05-11-2026 — Besluit d: getallen zonder eenheid zijn data, 90,7 → 96,6 % (#670)
 
 **Het besluit (eigenaar, 05-11-2026).** Van 1871 fabriekscodes in de

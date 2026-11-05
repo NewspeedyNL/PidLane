@@ -6056,7 +6056,8 @@ __name(kpOnderhoudBeurt, "kpOnderhoudBeurt");
 // Eén eigen PID, voor het voertuig én voor de bibliotheek: dezelfde regels
 // als PLEigen.controleer() in pidlane-uitgebreid.js. Alleen LEES-diensten
 // (21xx, 22xxxx); de formule alleen A–H, [n], getallen, + - * /, haakjes en
-// S8( )…S32( ) voor een getal met teken (#670);
+// S8( )…S32( ) voor een getal met teken (#670), en [b:n] voor een bitveld
+// (besluit d deel 2: standen, n van 1 tot 32 bits vanaf bit b);
 // het ECU-adres (optioneel) een fysiek adres, 7xx of 18DAxxF1, of "tx>rx"
 // voor een ander antwoordadres (VAG 70E>778, PSA 6A2>682), 22-10-2026.
 var KP_EIGEN_CODE = /^(21[0-9A-F]{2}|22[0-9A-F]{4})$/;
@@ -6069,7 +6070,7 @@ function kpEigenPid(e) {
   const ecu = String(e.ecu || "").toUpperCase().replace(/\s+/g, "");
   if (ecu && !KP_EIGEN_ECU.test(ecu)) return { fout: "ECU-adres van " + code + " moet 7xx, 18DAxxF1 of tx>rx (70E>778, 17FC0076>17FE0076, 6F1:12>612) zijn" };
   const f = String(e.formule || "A").replace(/\s+/g, "").toUpperCase();
-  if (f.length > 80 || !/^[A-HS0-9.,+\-*/()[\]]+$/.test(f) || /S(?!(8|16|24|32)\()/.test(f)) return { fout: "formule van " + code + " mag alleen A–H, [n], getallen, + - * /, haakjes en S8( )…S32( ) bevatten" };
+  if (f.length > 80 || !/^[A-HS0-9.,:+\-*/()[\]]+$/.test(f) || /S(?!(8|16|24|32)\()/.test(f) || !kpBitveldenGoed(f)) return { fout: "formule van " + code + " mag alleen A–H, [n], [b:n], getallen, + - * /, haakjes en S8( )…S32( ) bevatten" };
   const naamE = String(e.naam || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 40);
   if (!naamE) return { fout: "eigen PID " + code + " heeft geen naam" };
   const o = { code, naam: naamE, formule: f, eenheid: String(e.eenheid || "").trim().slice(0, 12) };
@@ -6079,9 +6080,36 @@ function kpEigenPid(e) {
   if (e.tempo && KP_EIGEN_TEMPO.indexOf(e.tempo) >= 0) o.tempo = e.tempo;
   const mn = Number(e.min), mx = Number(e.max);
   if (e.min !== "" && e.min != null && e.max !== "" && e.max != null && isFinite(mn) && isFinite(mx) && mx > mn) { o.min = mn; o.max = mx; }
+  if (e.standen != null) {
+    const st = kpStanden(e.standen);
+    if (!st) return { fout: "standen van " + code + " moeten { geheel getal: tekst } zijn, hoogstens 32" };
+    o.standen = st;
+  }
   return o;
 }
 __name(kpEigenPid, "kpEigenPid");
+// Elke ":" hoort in een bitveld [b:n], b 0…2047 en n 1…32. Zelfde regel als formule() in de app.
+function kpBitveldenGoed(f) {
+  const velden = f.match(/\[\d+:\d+\]/g) || [];
+  if (/:/.test(f.replace(/\[\d+:\d+\]/g, ""))) return false;
+  return velden.every((v) => { const m = /^\[(\d{1,4}):(\d{1,2})\]$/.exec(v); return !!m && Number(m[1]) <= 2047 && Number(m[2]) >= 1 && Number(m[2]) <= 32; });
+}
+__name(kpBitveldenGoed, "kpBitveldenGoed");
+// Standen van een aan/uit of keuzelijst: { geheel getal: tekst }, hoogstens 32,
+// tekst tot 24 tekens; anders null. Zelfde regel als standenSchoon() in de app.
+function kpStanden(x) {
+  if (!x || typeof x !== "object" || Array.isArray(x)) return null;
+  const ks = Object.keys(x);
+  if (!ks.length || ks.length > 32 || ks.some((k) => !/^\d{1,10}$/.test(k))) return null;
+  const uit = {};
+  for (const k of ks) {
+    const t = String(x[k] == null ? "" : x[k]).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 24);
+    if (!t) return null;
+    uit[Number(k)] = t;
+  }
+  return uit;
+}
+__name(kpStanden, "kpStanden");
 
 // Merk en model als sleutel voor de bibliotheek: kleine letters, alleen
 // letters en cijfers, van het model alleen het eerste woord. "CX-5 2.2

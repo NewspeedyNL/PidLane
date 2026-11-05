@@ -350,6 +350,11 @@ async function laadWorker() {
   toets('eigen PIDs: S16( ) voor een getal met teken mag', await epFout({ code: '221139', formule: 'S16(A*256+B)*0.01' }) !== 400);
   toets('eigen PIDs: S12( ) of een losse S is 400', await epFout({ code: '221139', formule: 'S12(A)' }) === 400 && await epFout({ code: '221139', formule: 'SA' }) === 400);
   toets('eigen PIDs: zonder naam is 400', await epFout({ code: '221E1C', naam: '' }) === 400);
+  // Besluit d deel 2: een bitveld [b:n] en de standen gaan mee; een losse ":" of een te breed veld niet.
+  const epSt = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id, eigen_pids: [{ code: '221003', naam: 'Gear', formule: '[5:1]', standen: { 0: 'uit', 1: 'aan' } }] } });
+  toets('eigen PIDs: bitveld [5:1] met standen wordt bewaard', epSt.ok && epSt.voertuig.eigen_pids[0].formule === '[5:1]' && JSON.stringify(epSt.voertuig.eigen_pids[0].standen) === '{"0":"uit","1":"aan"}', JSON.stringify(epSt).slice(0, 300));
+  toets('eigen PIDs: [0:33], [2048:1] of A:1 is 400', await epFout({ code: '221139', formule: '[0:33]' }) === 400 && await epFout({ code: '221139', formule: '[2048:1]' }) === 400 && await epFout({ code: '221139', formule: 'A:1' }) === 400);
+  toets('eigen PIDs: standen met een sleutel die geen getal is, is 400', await epFout({ code: '221139', standen: { aan: 'x' } }) === 400);
   // 31-10-2026: 21 eigen PIDs mag (de app waarschuwt alleen); pas boven het opslagvangnet van 500 een 400.
   const ep21 = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id,
     eigen_pids: Array.from({ length: 21 }, (_, i) => ({ code: '2210' + String(i).padStart(2, '0'), naam: 'x' })) } });
