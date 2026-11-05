@@ -1948,6 +1948,11 @@
     catch (x) { console.warn('PLGarage: bandRol', x); return null; }
   }
   function isBand(e) { return !!bandVan(e); }
+  // De rol voor de laadregeling en de accutest (#675): die lezen alleen opgenomen eigen PIDs.
+  function laadVan(e) {
+    try { return (window.PLEigen && typeof PLEigen.laadRol === 'function' && PLEigen.laadRol(e.naam)) || null; }
+    catch (x) { console.warn('PLGarage: laadRol', x); return null; }
+  }
   function wielVan(e) {
     try { return (window.PLEigen && typeof PLEigen.wielRol === 'function' && PLEigen.wielRol(e.naam)) || null; }
     catch (x) { console.warn('PLGarage: wielRol', x); return null; }
@@ -2044,7 +2049,7 @@
     (lijst || []).forEach(function (b, i) {
       var s = sensSoort(b, heeft);
       var weg = metWeigert && b.mijn !== 'werkt' && (!!b.mijn || (!b.werkt && b.werkt_niet > 0)), rol = bandVan(b), wiel = rol ? null : wielVan(b);
-      g[weg ? 'weigert' : rol ? 'banden' : wiel ? 'wielen' : s.groep].push({ b: b, i: i, s: s, rol: rol, wiel: wiel });
+      g[weg ? 'weigert' : rol ? 'banden' : wiel ? 'wielen' : s.groep].push({ b: b, i: i, s: s, rol: rol, wiel: wiel, laad: rol || wiel ? null : laadVan(b) });
     });
     // Banden op plek: voor-links eerst, spanning vóór temperatuur.
     var plek = function (x) { return BAND_POS.map(function (p) { return p[0]; }).indexOf(x.rol.pos) * 2 + (x.rol.soort === 'temp' ? 1 : 0); };
@@ -2882,7 +2887,9 @@
       var past = PLPidZoek.kandidaten(S.pz.res.past.map(function (p) { return p.c; }), S.eigen);
       past.forEach(function (b) {
         if (!kies[PLPidZoek.sleutel(b)]) return;
-        S.eigen.push({ code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid || '', ecu: b.ecu || '' });
+        // Een acculeeftijd hoeft niet elke 2 s (#675); een band staat sowieso op verzoek.
+        var tp = PLPidZoek.tempo ? PLPidZoek.tempo(laadVan(b)) : '';
+        S.eigen.push(Object.assign({ code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid || '', ecu: b.ecu || '' }, tp ? { tempo: tp } : {}));
         if (S.sel.indexOf(b.code) < 0) S.sel.push(b.code);
         S.ok[b.code] = true; n++;
       });

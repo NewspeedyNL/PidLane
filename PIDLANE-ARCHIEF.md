@@ -15,7 +15,27 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
-## 05-11-2026 — De wizard als keten: bproef-wizard.js
+## 05-11-2026 — Voorselectie op rol: banden, laadregeling, wielen (#675)
+
+**Eén fout, drie plekken.** `PLPidZoek.voorkeus()` vinkte alleen de groep
+weergave aan. Drie onderdelen lezen eigen PIDs echter op hun rol en zien
+alleen wat opgenomen is: `laadCodes()` (laadregeling, accutest, watchers),
+`wielCodes()` (slip, bandomtrek) en het bandenvenster (`bandRol`). Op de
+nagebouwde CX-5 bleven na de wizard acht banden, vier wielen, de gevraagde
+laadspanning en de acculeeftijd liggen. Ze gaven allemaal een geldige
+waarde. #675 noemde alleen de laadregeling; `bproef-wizard.js` liet de
+andere twee zien zodra hij op rol ging toetsen.
+
+**Waarom de banden buiten de plekken vallen.** `eigenControleer()` zet een
+band altijd op verzoek (#396): niet in de pollus, alleen bij het
+bandenvenster en Slim visueel. Hij kost dus geen plek van de twintig. Wielen
+tellen wel mee en komen alleen als set van vier, want `wielCodes()` geeft
+anders `null`. Per laadrol één code, omdat `laadCodes()` de eerste neemt.
+
+**Het tempo bij het opnemen.** Een acculeeftijd ging op 2 s de bus op. Hij
+krijgt nu `minuut`, een accutemperatuur `traag`. De rest houdt de standaard.
+
+
 
 **Waarom een eigen proef.** `bproef-dekking.js` meet de dekking, maar roept
 `zoekObdb()` en `PLPidZoek.zoek()` zelf aan. Of de knop Grondig in de wizard

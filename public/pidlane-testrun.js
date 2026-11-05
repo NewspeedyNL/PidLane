@@ -2848,6 +2848,27 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Voorselectie op rol (05-11-2026) ──
+  {
+    issue: '#675',
+    naam: 'Grondig vinkt vooraf aan wat het bandenvenster, de laadregeling en de slipanalyse op hun rol lezen: banden (op verzoek), per laadrol één code, en vier wielen of geen',
+    waarom: 'Op de nagebouwde CX-5 bleven na de wizard alle acht banden, de vier wielsnelheden en de gevraagde laadspanning liggen: voorkeus() koos alleen uit de groep weergave, terwijl laadCodes(), wielCodes() en het bandenvenster alleen opgenomen eigen PIDs lezen. Deze proef toetst de geladen voorkeus() en, met een voertuig, wat er nu opgenomen staat.',
+    proef: async function () {
+      var Z = window.PLPidZoek, E = window.PLEigen;
+      if (!Z || typeof Z.voorkeus !== 'function' || typeof Z.tempo !== 'function') return { staat: 'FOUT', detail: 'PLPidZoek.voorkeus/tempo ontbreekt — pidlane-pidzoek.js niet bijgewerkt (herladen?)' };
+      var b = function (code, naam) { return { b: { code: code, ecu: '', naam: naam } }; };
+      var g = { banden: [b('222A05', 'Rear left tire pressure')], wielen: ['VL', 'VR', 'AL', 'AR'].map(function (p, i) { var x = b('222B0' + i, 'w' + p); x.wiel = p; return x; }),
+        analyse: [Object.assign(b('220304', 'Commanded generator voltage'), { laad: 'gevraagd' })], weergave: [b('221310', 'Olie')] };
+      var k = Z.voorkeus(g, 6);
+      if (k.indexOf('222A05@') < 0) return { staat: 'FOUT', detail: 'een band wordt niet vooraf aangevinkt: het bandenvenster blijft na de wizard leeg' };
+      if (k.indexOf('220304@') < 0) return { staat: 'FOUT', detail: 'de gevraagde laadspanning wordt niet aangevinkt: de laadregeling valt terug op de vaste grens' };
+      if (k.filter(function (x) { return /^222B0/.test(x); }).length !== 4) return { staat: 'FOUT', detail: 'de wielen komen niet als set van vier: ' + k.join(',') };
+      if (Z.tempo('leeftijd') !== 'minuut') return { staat: 'FOUT', detail: 'een acculeeftijd krijgt geen tempo "minuut"' };
+      var lc = (E && E.laadCodes) ? E.laadCodes() : {}, wc = (E && E.wielCodes) ? E.wielCodes() : null;
+      return { staat: 'OK', detail: 'voorselectie klopt; opgenomen op deze auto: laadrollen ' + (Object.keys(lc).join(', ') || 'geen') + ', wielen ' + (wc ? 'alle vier' : 'geen set') };
+    }
+  },
+
   // ── Spook-PIDs na Snel (05-11-2026) ──
   {
     issue: '#616',
