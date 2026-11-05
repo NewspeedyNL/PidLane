@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Geen spook-PIDs meer na Snel (#616)
+ ═══════════════════════════════════════════════════════════
+ - Een steunblok dat NO DATA zegt, of een PID die los gemeten NO DATA
+   gaf, houdt de merkpreset tegen. Nissan Leaf (geen mode 01): na Snel
+   11 → 0 aangenomen PIDs. Het opgeslagen profiel verliest er niets door.
+
+ ═══════════════════════════════════════════════════════════
  05-11-2026 — Fabriekscodes op BMW/MINI extended addressing (#670)
  ═══════════════════════════════════════════════════════════
  - OBDb 6F1 met eax wordt het adres 6F1:12>612; de app vraagt het met

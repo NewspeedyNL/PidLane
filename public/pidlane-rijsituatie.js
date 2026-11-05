@@ -367,6 +367,18 @@ function _steunbitsOnthoud(blokStart, woord){
   _steunbits[blokStart] = woord >>> 0;
 }
 
+// Wat déze sessie gemeten NO DATA gaf (#616, 05-11-2026): een steunblok dat
+// niemand aankondigt en NO DATA zegt (status 'nee'), of een PID die
+// plMeetBlok() los vroeg en NO DATA kreeg. Op de Nissan Leaf (geen mode 01)
+// is dat elk blok — en zette de preset na Snel toch elf PIDs neer.
+// Bewust GEEN steunbitwoord: profielTegenSteunbits() verwijdert op een woord,
+// en één NO DATA van een trage ECU mag geen opgeslagen sensor kosten. Dit
+// houdt alleen de preset tegen; een echt antwoord voegt hem gewoon toe.
+let _steunNee = new Set();
+function _steunNeeBlok(blokStart){
+  for(let k=1;k<=31;k++) _steunNee.add('01'+(blokStart+k).toString(16).toUpperCase().padStart(2,'0'));
+}
+
 // true  = de ECU ondersteunt deze PID
 // false = de ECU ontkent hem expliciet
 // null  = onbekend (blok niet gelezen, of geen mode 01)
@@ -381,11 +393,14 @@ function ecuSteunt(pid){
   return ((w >>> (32 - positie)) & 1) === 1;
 }
 
-// Toevoegen mag, tenzij de ECU de PID expliciet ontkent. Onbekend telt als ja:
+// Toevoegen mag, tenzij de ECU de PID expliciet ontkent of hij deze sessie
+// gemeten NO DATA gaf (_steunNee). Verder telt onbekend als ja:
 // afwezigheid van bewijs is hier geen bewijs van afwezigheid, en een te gretige
 // zeef is erger dan de kwaal — deze fix verwijdert sensoren.
 function magToevoegen(pid){
-  return ecuSteunt(pid) !== false;
+  const s = ecuSteunt(pid);
+  if(s === true) return true;
+  return s !== false && !_steunNee.has(String(pid||'').toUpperCase());
 }
 
 // WAAR DEZE ZEEF WEL EN NIET HOORT — nagelopen 20-08, alle vijf de plekken
@@ -413,6 +428,7 @@ function magToevoegen(pid){
 window.ecuSteunt = ecuSteunt;
 window.magToevoegen = magToevoegen;
 window.steunbitsRuw = function(){ return Object.assign({}, _steunbits); };
+window.steunNeeRuw = function(){ return Array.from(_steunNee).sort(); };
 
 // Puur. De steunbits van ÉÉN bitmapvraag (0100, 0120, …) over alle ECU's
 // samen (#586). Op een functionele vraag antwoordt elke emissie-ECU met zijn
@@ -509,6 +525,8 @@ async function plMeetBlok(blok){
       const kop='41'+pid.slice(2);
       const hex=String(r||'').replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
       if(r && !/NO DATA|ERROR|UNABLE|STOPPED/i.test(r) && hex.indexOf(kop)>=0){ supportedPIDs.add(pid); erbij++; }
+      // Alleen een kale NO DATA is een meting; leeg, ERROR of STOPPED zegt niets.
+      else if(r && /NO DATA/i.test(r) && hex.indexOf(kop)<0 && !/ERROR|STOPPED|UNABLE/i.test(r)) _steunNee.add(pid);
     }
   };
   if(window.PLScanSlot && typeof PLScanSlot.doe==='function') await PLScanSlot.doe('bitmapgat '+blok.toString(16), {}, sweep);
@@ -523,10 +541,12 @@ async function plMeetBlok(blok){
 async function profielTegenSteunbits(){
   if(typeof supportedPIDs==='undefined' || !supportedPIDs.size) return 0;
   _steunbits = {};                                        // geen woord van een vorige auto laten staan
+  _steunNee = new Set();
   const bits={}, uitslag={};
   for(const q of PL_STEUN_BLOKKEN){
     const u=await plLeesSteunbitmap(q, plBlokVerwacht(q, uitslag));
     uitslag[parseInt(q.slice(2),16)]=u;
+    if(u.status==='nee') _steunNeeBlok(parseInt(q.slice(2),16));
     if(u.status!=='ok') continue;
     bits[parseInt(q.slice(2),16)]=u.w;
     _steunbitsOnthoud(parseInt(q.slice(2),16), u.w);   // ook bewaren voor andere modules
@@ -586,11 +606,13 @@ profielTegenSteunbits.erbij=0;
 // Geeft {uitslag, gemeten, onleesbaar} terug; de aanroeper meldt wat er misging.
 async function discoverPIDsBitmap(){
   _steunbits = {};                                        // geen woord van een vorige auto laten staan
+  _steunNee = new Set();
   const uitslag={};
   for(const rangeCmd of PL_STEUN_BLOKKEN){
     const base=parseInt(rangeCmd.slice(2),16);
     const u=await plLeesSteunbitmap(rangeCmd, plBlokVerwacht(rangeCmd, uitslag));
     uitslag[base]=u;
+    if(u.status==='nee') _steunNeeBlok(base);
     if(u.status!=='ok') continue;
     const bitmap=u.w;
     const bitmapHex=bitmap.toString(16).toUpperCase().padStart(8,'0');

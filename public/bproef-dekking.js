@@ -22,8 +22,8 @@
 //
 // OORDEEL. De 90 % is een wens, geen regel: eronder is LET OP. FOUT is:
 //   • de route loopt vast, of er komt een JS-fout;
-//   • na Grondig een PID in supportedPIDs die de auto niet aanbiedt (spook,
-//     #616). Na Snel is dat LET OP: dan is de steunlijst er nog niet;
+//   • na Snel of na Grondig een PID in supportedPIDs die de auto niet
+//     aanbiedt (spook, #616). Na Snel houdt _steunNee de preset tegen;
 //   • de dekking zakt onder de VLOER van die auto. De vloer is wat er al
 //     gehaald werd: hij mag alleen omhoog. Ligt de meting er ≥ 1 punt
 //     boven, dan zegt de proef dat (LET OP: verhoog de vloer).
@@ -45,8 +45,9 @@ const NEP = fs.readFileSync(path.join(__dirname, 'nepauto.js'), 'utf8');
 
 const WENS = 90;
 // Snel genoeg voor elke PR en voor de tegenproef: 11-bit (Mazda), VAG met
-// een ander antwoordadres (tx>rx), 29-bit, en een EV op 29-bit.
-const KEUZE = ['cx5_18', 'golf19', 'fiat500_14', 'zoe21'];
+// een ander antwoordadres (tx>rx), 29-bit, een EV op 29-bit, en een auto
+// zonder mode 01 (Leaf: de spook-PIDs na Snel, #616).
+const KEUZE = ['cx5_18', 'golf19', 'fiat500_14', 'zoe21', 'leaf19'];
 // Wat deze proef vindt en als issue openstaat: LET OP in plaats van FOUT.
 // Verdwijnt het, dan zegt de proef dat (haal het dan weg).
 const BEKEND = {
@@ -164,7 +165,8 @@ async function rij(id) {
     const u = await app.ev(ROUTE(id));
     toets('de route liep zonder vastlopen', !u.fout.length, u.fout.join(' | '));
     const t = tel(p, u);
-    if (t.spookSnel.length && !t.spook.length) let_op('na Snel ' + t.spookSnel.length + ' aangenomen PIDs die de auto niet heeft (' + t.spookSnel.join(',') + '); Grondig haalde ze weg (#616)');
+    // Sinds 05-11-2026 ook na Snel: wat deze sessie NO DATA gaf, houdt de preset tegen (_steunNee).
+    toets('geen spook-PIDs in supportedPIDs na Snel (#616)', !t.spookSnel.length, t.spookSnel.join(','));
     if (t.spook.length && BEKEND['spook:' + id]) let_op('spook-PIDs ' + t.spook.join(',') + ' — bekend: ' + BEKEND['spook:' + id]);
     else toets('geen spook-PIDs in supportedPIDs na Grondig (#616)', !t.spook.length, t.spook.join(','));
     if (!t.spook.length && BEKEND['spook:' + id]) let_op('geen spook meer bij ' + id + ' — ' + BEKEND['spook:' + id] + ' opgelost? Haal hem uit BEKEND.');

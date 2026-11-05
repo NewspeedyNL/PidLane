@@ -126,7 +126,7 @@ MUTATIES=(
 "public/pidlane-rijsituatie.js@@    if(!verwacht && /NO DATA/i.test(laatste))@@    if(/NO DATA/i.test(laatste))@@test-beschikbaarheid.js@@een aangekondigd blok dat één keer NO DATA zegt wordt geloofd en valt weg"
 "public/pidlane-rijsituatie.js@@    if(plBlokVerwacht(q, uitslag)) uit.push(b);@@    void 0;@@test-beschikbaarheid.js@@een onleesbare bitmap wordt niet meer per PID dichtgemeten"
 "public/pidlane-rijsituatie.js@@'0180','01A0','01C0'];@@'0180','01A0'];@@test-beschikbaarheid.js@@01C0 (PIDs C1–E0) wordt weer nooit gevraagd"
-"public/pidlane-rijsituatie.js@@  _steunbits = {};                                        // geen woord van een vorige auto laten staan\n  const uitslag={};@@  const uitslag={};@@test-beschikbaarheid.js@@de steunbits van de vorige auto blijven staan na een nieuwe discovery"
+"public/pidlane-rijsituatie.js@@  _steunbits = {};                                        // geen woord van een vorige auto laten staan\n  _steunNee = new Set();\n  const uitslag={};@@  _steunNee = new Set();\n  const uitslag={};@@test-beschikbaarheid.js@@de steunbits van de vorige auto blijven staan na een nieuwe discovery"
 "public/pidlane-rijsituatie.js@@  erbij.forEach(p=>supportedPIDs.add(p));@@  void 0;@@test-beschikbaarheid.js@@het profiel kan tegen de steunbits weer alleen verwijderen: een gat blijft voorgoed"
 "public/pidlane-rijsituatie.js@@if(!_healthAbort && herkans.length){@@if(false){@@test-beschikbaarheid.js@@de gezondheidscheck geeft een trage sensor geen tweede kans: sessie lang grijs"
 "public/pidlane-rijsituatie.js@@sendCmd((typeof pidCmd==='function')?pidCmd(pid,false):pid, 3000)@@sendCmd((typeof pidCmd==='function')?pidCmd(pid,true):pid, 1500)@@test-beschikbaarheid.js@@de herkansing stelt dezelfde snelle vraag die net al mislukte"
@@ -1840,6 +1840,11 @@ MUTATIES=(
 # De preset als aanname (#616): een geldige waarde moet blijven, en zonder
 # geheugen van wat aangenomen was haalt de steunlijst niets weg.
 "public/pidlane-rijsituatie.js@@_pidHealth[p] === 'ok') return;@@_pidHealth[p] === 'ok') {}@@test-presetsteun.js@@een sensor die een geldige waarde gaf gaat weg omdat OBDb hem niet kent"
+"public/pidlane-rijsituatie.js@@    if(u.status==='nee') _steunNeeBlok(base);\n@@@@bproef-dekking.js@@een steunblok dat NO DATA zegt houdt de preset niet meer tegen: de Leaf heeft na Snel weer elf spook-PIDs (#616)"
+"public/pidlane-rijsituatie.js@@      else if(r && /NO DATA/i.test(r) && hex.indexOf(kop)<0 && !/ERROR|STOPPED|UNABLE/i.test(r)) _steunNee.add(pid);\n@@@@test-presetsteun.js@@een PID die bij het meten NO DATA gaf telt niet meer als gemeten: de preset zet hem toch neer (#616)"
+"public/pidlane-rijsituatie.js@@else if(r && /NO DATA/i.test(r) && hex.indexOf(kop)<0 && !/ERROR|STOPPED|UNABLE/i.test(r)) _steunNee.add(pid);@@else if(hex.indexOf(kop)<0) _steunNee.add(pid);@@test-presetsteun.js@@een leeg antwoord of STOPPED telt als NO DATA: één storing kost de preset een echte sensor"
+"public/pidlane-rijsituatie.js@@  return s !== false && !_steunNee.has(String(pid||'').toUpperCase());@@  return s !== false;@@test-presetsteun.js@@magToevoegen() kijkt niet naar wat deze sessie NO DATA gaf (#616)"
+"public/pidlane-rijsituatie.js@@  if(s === true) return true;\n  return s !== false@@  return s !== false@@test-presetsteun.js@@een NO DATA wint van een steunbit: de ECU zegt zelf dat hij de PID heeft"
 "public/pidlane-rijsituatie.js@@ecuSteunt(p) === true)) _presetAanname.add(p);@@ecuSteunt(p) === true)) {}@@test-presetsteun.js@@de preset onthoudt zijn aannames niet: de spook-PIDs van de Leaf blijven staan"
 # Getallen met teken (#670): S8( )…S32( ) in de formuletaal. Fout gelezen is
 # een stroom van −2 A als 65,5 A — geloofwaardig genoeg om niet op te vallen.
