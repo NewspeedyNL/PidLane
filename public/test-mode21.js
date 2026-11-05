@@ -314,6 +314,13 @@ function haalZeef(isMode01) {
     s._verzonden.length = 0;
     await E.vraag('221E1C');
     t('29-bit: terug naar 18DB33F1, niet naar 7DF', s._verzonden.join(' '), 'ATSH18DA18F1 221E1C1 ATSH18DB33F1');
+    // VAG 29-bit (#670): prioriteit 17 met ATCP, kop van zes, en daarna terug op 18.
+    E.zet([{ code: '220335', naam: 'A', formule: 'A', ecu: '17FC0076>17FE0076' }], 'x');
+    s._verzonden.length = 0;
+    await E.vraag('220335');
+    t('VAG 29-bit: ATCP17 + ATSHFC0076, filter en flow control op 29-bit, dan ATCP18 en 18DB33F1', s._verzonden.join(' '),
+      'ATCP17 ATSHFC0076 ATCRA17FE0076 ATFCSH17FC0076 ATFCSD300000 ATFCSM1 2203351 ATFCSM0 ATCRA ATCP18 ATSH18DB33F1');
+    E.zet([{ code: '221E1C', naam: 'A', formule: 'A', ecu: '18DA18F1' }], 'x');
     // Mislukt het terugzetten, dan probeert de volgende vraag het eerst.
     const echt = s.sendCmd; let weiger = true;
     s.sendCmd = async function (cmd) { s._verzonden.push(cmd); if (weiger && cmd === 'ATSH18DB33F1') { weiger = false; throw new Error('timeout'); } return 'OK'; };
@@ -381,10 +388,11 @@ function haalZeef(isMode01) {
     // De steunlijst van het bouwjaar (#670): alleen wat dit jaar beantwoordde, geen kap van 60.
     const STEUN = ['model_year: 2018', 'supported_commands_by_ecu:', '  "720":', '  - 720.728.222A05:CX5_TP_RL', '  "7DF":', '  - 7DF.0104',
       '  "7E0":', '  - 0105:ECT', "  - '7E0.221310'", '  - 7E0.7EA.220101|fc=1:X', '  "DA15":', '  - DA15.15.222006:Y',
+      '  "FC00":', '  - FC00.FE0076.220335|ta=76,c=17:Z', '  - FC00.FE007B.22F190|fc=1:W',
       'unsupported_commands_by_ecu:', '  "720":', '  - 720.728.22C901:CX5_TP_FL_720'].join('\n');
     const st = E.obdbSteun(STEUN);
     t('steun: jaar, mode 01 en de fabriekscodes per zendadres', st.jaar + ' ' + st.mode01.join(',') + ' ' + Object.keys(st.codes).sort().join(','),
-      '2018 0104,0105 220101@7E0,221310@7E0,222006@18DA15F1,222A05@720');
+      '2018 0104,0105 220101@7E0,220335@17FC0076,221310@7E0,222006@18DA15F1,222A05@720');
     t('steun: wat níét antwoordde telt niet', '22C901@720' in st.codes, false);
     const ks = E.obdbKandidaten(obdb, 'Mazda-CX-5', 2018, null, st).map(x => x.code + '@' + x.ecu).join(',');
     t('steun: alleen de kandidaten die dit jaar antwoordden', ks, '222A05@720,221310@7E0,220101@7E0>7EA');
@@ -438,6 +446,11 @@ function haalZeef(isMode01) {
     t('obdbAdres: 29-bit kort DA10 (Fiat, Honda) = 18DA10F1', E.obdbAdres({ hdr: 'DA10', rax: '10' }), '18DA10F1');
     t('obdbAdres: VAG 70E → 778 (afwijkend antwoordadres) = tx>rx', E.obdbAdres({ hdr: '70E', rax: '778' }), '70E>778');
     t('obdbAdres: PSA 6A2 → 682 = tx>rx', E.obdbAdres({ hdr: '6A2', rax: '682' }), '6A2>682');
+    t('obdbAdres: VAG 29-bit FC00 met pri 17 en tst 76 = 17FC0076>17FE0076 (#670)', E.obdbAdres({ hdr: 'FC00', rax: 'FE0076', pri: '17', tst: '76' }), '17FC0076>17FE0076');
+    t('obdbAdres: VAG FC00 met tst 7C en antwoord FE007B = tx>rx zoals OBDb het zegt', E.obdbAdres({ hdr: 'FC00', rax: 'FE007B', pri: '17', tst: '7C' }), '17FC007C>17FE007B');
+    t('obdbAdres: FC00 zonder pri of tst = adres onbekend', [E.obdbAdres({ hdr: 'FC00', rax: 'FE007B' }), E.obdbAdres({ hdr: 'FC00', rax: 'FE007B', pri: '17' })].join(','), ',');
+    t('obdbAdres: FC00 met een antwoord buiten FE00xx (Tesla) = niet bruikbaar', E.obdbAdres({ hdr: 'FC00', rax: '7E8', pri: '17', tst: '76' }), null);
+    t('EIGEN_ECU: VAG 29-bit tx>rx wel, een kale 8-tekenkop of een rommelpaar niet', [E.ECU.test('17FC0076>17FE0076'), E.ECU.test('17FC0076'), E.ECU.test('17FC0076>7E8')].join(','), 'true,false,false');
     t('obdbAdres: Volvo D016 (eigen 29-bitschema) = niet bruikbaar', E.obdbAdres({ hdr: 'D016', rax: '1EC60E80' }), null);
     t('obdbAdres: BMW extended addressing = niet bruikbaar', E.obdbAdres({ hdr: '6F1', rax: '607', eax: '07' }), null);
     const veel = [];

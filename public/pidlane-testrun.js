@@ -2848,6 +2848,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── VAG 29-bit 17FC00xx>17FE00xx (05-11-2026) ──
+  {
+    issue: '#670',
+    naam: 'Fabriekscodes op VAG 29-bit (OBDb hdr FC00, ID.3): het adres wordt 17FC0076>17FE0076 en de app vraagt ze met ATCP17',
+    waarom: 'De ID.3 haalde op de nagebouwde vloot 21 %: 173 van zijn fabriekscodes staan op 17FC00xx en obdbAdres() liet ze vallen. Deze proef toetst de geladen regels: het adres uit OBDb, de keuring van zo’n eigen PID, en dat FC00 zonder prioriteit of doeladres wegblijft.',
+    proef: async function () {
+      var E = window.PLEigen;
+      if (!E || typeof E.obdbAdres !== 'function' || typeof E.controleer !== 'function') return { staat: 'FOUT', detail: 'PLEigen.obdbAdres/controleer ontbreekt — pidlane-uitgebreid.js niet geladen (herladen?)' };
+      var a = E.obdbAdres({ hdr: 'FC00', rax: 'FE0076', pri: '17', tst: '76' });
+      if (a !== '17FC0076>17FE0076') return { staat: 'FOUT', detail: 'OBDb FC00/FE0076/pri 17/tst 76 gaf ' + a + ' in plaats van 17FC0076>17FE0076 — pidlane-uitgebreid.js niet bijgewerkt (herladen?)' };
+      if (E.obdbAdres({ hdr: 'FC00', rax: 'FE007B' }) !== null) return { staat: 'FOUT', detail: 'FC00 zonder pri/tst krijgt toch een adres: dat is een gok op de bus' };
+      var k = E.controleer({ code: '220335', naam: 'Motorkoppel voor', formule: 'S16(A*256+B)', eenheid: 'Nm', ecu: a });
+      if (!k || !k.ok) return { staat: 'FOUT', detail: 'een eigen PID op 17FC0076>17FE0076 wordt geweigerd: ' + (k && k.fout) };
+      return { staat: 'OK', detail: 'adres en keuring kloppen; op een echte ID.3 zegt het sensorscherm (Test) of ATCP17 door de adapter komt' };
+    }
+  },
+
   // ── OBDb-steunlijst per bouwjaar (05-11-2026) ──
   {
     issue: '#670',

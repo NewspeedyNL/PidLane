@@ -6424,6 +6424,191 @@
      "did": {
       "221945": "00"
      }
+    },
+    {
+     "adres": "17FE0076",
+     "tx": "17FC0076",
+     "pids": "",
+     "did": {
+      "220335": "00 00",
+      "220343": "00 00",
+      "220344": "00 00",
+      "220346": "00 0A",
+      "220360": "00 80",
+      "220364": "00 01",
+      "222005": "00 00",
+      "222055": "03 D1",
+      "224539": "00 0C",
+      "224675": "0F 19",
+      "22033B": "00 0E",
+      "22035E": "FD E7",
+      "22276D": "0C C8",
+      "22295A": "00 CF CE",
+      "2229D4": "00 37",
+      "223DEF": "0B B8",
+      "223DF8": "00 00",
+      "2243B8": "00 A1"
+     }
+    },
+    {
+     "adres": "17FE007B",
+     "tx": "17FC007B",
+     "pids": "",
+     "did": {
+      "221620": "00",
+      "221621": "89",
+      "221622": "43",
+      "221623": "43",
+      "221624": "43",
+      "225170": "01 0E",
+      "225171": "01 CB",
+      "227425": "01 F0",
+      "227448": "01",
+      "22028C": "4F",
+      "22189B": "0A D5",
+      "22189D": "04 80 04 80",
+      "221E0E": "05 98 00 0B",
+      "221E0F": "05 10 00 02",
+      "221E1B": "04 C8",
+      "221E1C": "0B 4E",
+      "221E2C": "0C EE 00 52",
+      "221E2D": "0C 5D 00 65",
+      "221E33": "39 16 00 51",
+      "221E34": "39 23 00 01",
+      "221E36": "30 43",
+      "221E38": "30 86",
+      "221E39": "FF FD",
+      "221E3B": "06 07",
+      "221E3E": "00 02 2C 00",
+      "221E40": "0A 0F",
+      "221E41": "0A 0B",
+      "221E42": "0A 10",
+      "221E43": "0A 0B",
+      "221E44": "0A 0A",
+      "221E45": "0A 21",
+      "221E46": "0A 11",
+      "221E47": "0A 14",
+      "221E48": "0A 1A",
+      "221E49": "0A 0C",
+      "221E4A": "0A 0F",
+      "221E4B": "0A 0C",
+      "221E4C": "0A 08",
+      "221E4D": "0A 10",
+      "221E4E": "0A 11",
+      "221E4F": "0A 14",
+      "221E50": "09 F2",
+      "221E51": "0A 13",
+      "221E52": "0A 0C",
+      "221E53": "0A 11",
+      "221E54": "0A 12",
+      "221E55": "0A 0D",
+      "221E56": "0A 1F",
+      "221E57": "0A 15",
+      "221E58": "0A 05",
+      "221E59": "0A 14",
+      "221E5A": "0A 0D",
+      "221E5B": "0A 12",
+      "221E5C": "0A 14",
+      "221E5D": "0A 16",
+      "221E5E": "0A 1B",
+      "221E5F": "0A 16",
+      "221E60": "0A 10",
+      "221E61": "0A 09",
+      "221E62": "0A 12",
+      "221E63": "0A 0F",
+      "221E64": "0A 0A",
+      "221E65": "0A 0C",
+      "221E66": "0A 11",
+      "221E67": "0A 0D",
+      "221E68": "0A 1A",
+      "221E69": "0A 0C",
+      "221E6A": "0A 11",
+      "221E6B": "0A 0B",
+      "221E6C": "0A 0C",
+      "221E6D": "0A 13",
+      "221E6E": "0A 14",
+      "221E6F": "0A 13",
+      "221E70": "0A 19",
+      "221E71": "0A 0C",
+      "221E72": "0A 07",
+      "221E73": "0A 0C",
+      "221E74": "0A 10",
+      "221E75": "0A 10",
+      "221E76": "0A 0E",
+      "221E77": "0A 10",
+      "221E78": "0A 19",
+      "221E79": "0A 0D",
+      "221E7A": "0A 0C",
+      "221E7B": "0A 0F",
+      "221E7C": "0A 11",
+      "221E7D": "0A 12",
+      "221E7E": "0A 07",
+      "221E7F": "0A 08",
+      "221E80": "0A 0D",
+      "221E81": "0A 20",
+      "221E82": "0A 11",
+      "221E83": "0A 0B",
+      "221E84": "0A 1A",
+      "221E85": "0A 12",
+      "221E86": "0A 11",
+      "221E87": "0A 15",
+      "221E88": "0A 16",
+      "221E89": "0A 12",
+      "221E8A": "0A 09",
+      "221E8B": "0A 11",
+      "221E8C": "0A 0C",
+      "221E8D": "0A 0E",
+      "221E8E": "0A 11",
+      "221E8F": "0A 0E",
+      "221E90": "0A 10",
+      "221E91": "0A 16",
+      "221E92": "0A 13",
+      "221E93": "0A 1A",
+      "221E94": "0A 08",
+      "221E95": "0A 12",
+      "221E96": "0A 0F",
+      "221E97": "0A 19",
+      "221E98": "0A 11",
+      "221E99": "0A 24",
+      "221E9A": "0A 25",
+      "221E9B": "0A 12",
+      "221E9C": "0A 14",
+      "221E9D": "0A 0D",
+      "221E9E": "0A 0C",
+      "221E9F": "0A 0C",
+      "221EA0": "0A 15",
+      "221EA1": "0A 0E",
+      "221EA2": "0A 0C",
+      "221EA3": "0A 10",
+      "221EA4": "0A 12",
+      "221EA5": "0A 1E",
+      "221EA6": "0A 13",
+      "221EA7": "0A 11",
+      "221EA8": "0A 0A",
+      "221EA9": "0A 0D",
+      "221EAA": "0A 13",
+      "221EAB": "0A 0F",
+      "221EAE": "01 E5",
+      "221EAF": "01 E2",
+      "221EB0": "01 F0",
+      "221EB1": "01 E8",
+      "221EB2": "01 EE",
+      "221EB3": "01 E7",
+      "221EB4": "01 EE",
+      "221EB5": "01 E7",
+      "221EB6": "01 F0",
+      "221EB7": "01 EB",
+      "221EB8": "01 F1",
+      "221EB9": "01 E9",
+      "221EBA": "01 EF",
+      "221EBB": "01 E6",
+      "221EBC": "01 F1",
+      "221EBD": "01 E9",
+      "222A0B": "7B",
+      "22743B": "00",
+      "22F40C": "3E CC",
+      "22F40D": "29"
+     }
     }
    ],
    "aangeboden": {
@@ -6780,155 +6965,136 @@
      },
      {
       "code": "220335",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_MOTOR_TRQ_FRONT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22033B",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_MOTOR_TRQ_REAR",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "220343",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_MOTOR_TRQ_DIFF",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "220344",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_MOTOR_TRQ_RATED_FRONT,ID3_MOTOR_TRQ_RATED_REAR",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "220346",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_STEER_ANGLE",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22035E",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_HVBAT_I_ENG",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "220360",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_HVAUX_I",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "220364",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_HVAUX_PWR",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "222005",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_BRAKE_BOOSTER_P",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "222055",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_RADIATOR_FAN_DUTY",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22276D",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_COOLANT_CIRC_PUMP_DUTY",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22295A",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_ENG_ODO",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "2229D4",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_MOTOR_TRQ_REQ",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "223DEF",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_SOC",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "223DF8",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_MOTOR_RPM",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "2243B8",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_DCDC_T_COOL",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224539",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_ACCEL",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224675",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC0076",
+      "rx": "17FE0076",
       "sig": "ID3_HVBAT_V_TRAC",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22028C",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_SOC_DISP",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "2202BD",
@@ -6940,1179 +7106,1032 @@
      },
      {
       "code": "221620",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_PTC_I",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221621",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_PTC_V",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221622",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_ECU_T",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221623",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_PTC_T_1",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221624",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_PTC_T_2",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22189B",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_AFTER_CONTACTS_V",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22189D",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_T_IN,ID3_HVBAT_T_OUT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E0E",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_T_MAX,ID3_HVBAT_T_MAX_ID",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E0F",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_T_MIN,ID3_HVBAT_T_MIN_ID",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E1B",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_I_LIM_CHG",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E1C",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_I_LIM_DSCH",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E2C",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_SOC_MAX,ID3_HVBAT_CELL_SOC_MAX_ID",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E2D",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_SOC_MIN,ID3_HVBAT_CELL_SOC_MIN_ID",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E33",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_MAX_ID",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E34",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_MIN_ID",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E36",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_V_BEFORE",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E38",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_V_AFTER",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E39",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_V_CHG",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E3B",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_DC_BATTERY_V",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E3E",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_I_DC_2",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E40",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_001",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E41",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_002",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E42",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_003",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E43",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_004",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E44",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_005",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E45",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_006",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E46",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_007",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E47",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_008",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E48",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_009",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E49",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_010",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E4A",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_011",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E4B",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_012",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E4C",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_013",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E4D",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_014",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E4E",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_015",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E4F",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_016",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E50",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_017",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E51",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_018",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E52",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_019",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E53",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_020",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E54",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_021",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E55",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_022",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E56",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_023",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E57",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_024",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E58",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_025",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E59",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_026",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E5A",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_027",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E5B",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_028",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E5C",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_029",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E5D",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_030",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E5E",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_031",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E5F",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_032",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E60",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_033",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E61",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_034",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E62",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_035",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E63",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_036",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E64",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_037",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E65",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_038",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E66",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_039",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E67",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_040",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E68",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_041",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E69",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_042",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E6A",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_043",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E6B",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_044",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E6C",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_045",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E6D",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_046",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E6E",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_047",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E6F",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_048",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E70",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_049",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E71",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_050",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E72",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_051",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E73",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_052",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E74",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_053",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E75",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_054",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E76",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_055",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E77",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_056",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E78",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_057",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E79",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_058",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E7A",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_059",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E7B",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_060",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E7C",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_061",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E7D",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_062",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E7E",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_063",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E7F",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_064",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E80",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_065",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E81",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_066",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E82",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_067",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E83",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_068",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E84",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_069",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E85",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_070",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E86",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_071",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E87",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_072",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E88",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_073",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E89",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_074",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E8A",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_075",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E8B",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_076",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E8C",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_077",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E8D",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_078",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E8E",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_079",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E8F",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_080",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E90",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_081",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E91",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_082",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E92",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_083",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E93",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_084",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E94",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_085",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E95",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_086",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E96",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_087",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E97",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_088",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E98",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_089",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E99",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_090",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E9A",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_091",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E9B",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_092",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E9C",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_093",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E9D",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_094",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E9E",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_095",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221E9F",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_096",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EA0",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_097",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EA1",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_098",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EA2",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_099",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EA3",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_100",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EA4",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_101",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EA5",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_102",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EA6",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_103",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EA7",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_104",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EA8",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_105",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EA9",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_106",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EAA",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_107",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EAB",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_CELL_V_108",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EAE",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_1",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EAF",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_2",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EB0",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_3",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EB1",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_4",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EB2",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_5",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EB3",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_6",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EB4",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_7",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EB5",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_8",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EB6",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_9",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EB7",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_10",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EB8",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_11",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EB9",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_12",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EBA",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_13",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EBB",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_14",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EBC",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_15",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221EBD",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_16",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "222A0B",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_BATTERY_T",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "225170",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_MINIMUM_DISCHARGE_V",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "225171",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_MAXIMUM_CHARGE_V",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "225867",
@@ -8124,43 +8143,38 @@
      },
      {
       "code": "227425",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_HVBAT_MOD_T_17",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22743B",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_CIRC_PUMP_FLOW",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "227448",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_AC_CHARGING,ID3_DRIVE_MODE,ID3_RAPID_CHARGE_PORT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22F40C",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_ELDRIVE_MOTOR_RPM",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22F40D",
-      "ecu": "FC00",
-      "rx": null,
+      "ecu": "17FC007B",
+      "rx": "17FE007B",
       "sig": "ID3_VSS",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      }
     ]
    },
@@ -8186,696 +8200,12 @@
      "reden": "geen signaal in OBDb"
     },
     {
-     "cmd": "FC00.FE0076.220335|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.22033B|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.220343|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.220344|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.220346|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.22035E|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.220360|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.220364|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.222005|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.222055|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.22276D|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.22295A|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.2229D4|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.223DEF|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.223DF8|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.2243B8|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.224539|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE0076.224675|ta=76,c=17",
-     "reden": "adressering ta=76,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.22028C|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
      "cmd": "FC00.FE007B.2202BD|fc=1",
      "reden": "adres FC00"
     },
     {
-     "cmd": "FC00.FE007B.221620|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221621|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221622|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221623|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221624|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.22189B|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.22189D|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E0E|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E0F|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E1B|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E1C|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E2C|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E2D|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E33|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E34|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E36|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E38|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E39|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E3B|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E3E|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E40|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E41|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E42|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E43|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E44|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E45|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E46|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E47|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E48|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E49|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E4A|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E4B|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E4C|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E4D|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E4E|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E4F|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E50|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E51|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E52|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E53|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E54|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E55|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E56|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E57|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E58|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E59|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E5A|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E5B|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E5C|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E5D|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E5E|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E5F|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E60|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E61|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E62|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E63|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E64|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E65|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E66|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E67|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E68|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E69|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E6A|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E6B|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E6C|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E6D|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E6E|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E6F|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E70|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E71|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E72|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E73|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E74|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E75|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E76|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E77|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E78|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E79|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E7A|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E7B|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E7C|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E7D|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E7E|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E7F|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E80|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E81|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E82|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E83|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E84|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E85|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E86|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E87|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E88|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E89|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E8A|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E8B|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E8C|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E8D|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E8E|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E8F|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E90|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E91|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E92|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E93|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E94|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E95|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E96|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E97|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E98|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E99|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E9A|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E9B|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E9C|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E9D|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E9E|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221E9F|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EA0|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EA1|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EA2|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EA3|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EA4|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EA5|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EA6|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EA7|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EA8|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EA9|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EAA|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EAB|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EAE|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EAF|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EB0|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EB1|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EB2|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EB3|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EB4|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EB5|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EB6|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EB7|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EB8|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EB9|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EBA|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EBB|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EBC|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.221EBD|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.222A0B|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.225170|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.225171|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
      "cmd": "FC00.FE007B.225867|fc=1",
      "reden": "adres FC00"
-    },
-    {
-     "cmd": "FC00.FE007B.227425|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.22743B|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.227448|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.22F40C|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
-    },
-    {
-     "cmd": "FC00.FE007B.22F40D|ta=7B,c=17",
-     "reden": "adressering ta=7B,c=17"
     }
    ],
    "readiness": "000000"

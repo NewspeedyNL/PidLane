@@ -144,5 +144,22 @@ waar('ATFCSM1 zonder FCSH/FCSD: ?', lijn(fcHalf, 'ATFCSM1') === '?');
 const psa = klaar('p208', ['0100', 'ATSH6A2', 'ATCRA682']);
 waar('PSA 6A2>682: km-stand 01 E2 40', lijn(psa, '22D49C1') === '62 D4 9C 01 E2 40', lijn(psa, '22D49C1'));
 
+console.log('\n9. VAG 29-bit (17FC0076>17FE0076, #670): prioriteit met ATCP, alleen op een 29-bit bus');
+const vag29 = (proto) => {
+  const a = N.maak({ id: 'vag29', proto, vin: 'WVWZZZZZZMX000007', ecus: [{ adres: proto === '7' ? '18DAF101' : '7E8', tx: proto === '7' ? 'DA01F1' : null, pids: '0D' },
+    { adres: '17FE0076', tx: '17FC0076', pids: '', did: { '220335': '00 2A' } }] });
+  ['ATE0', 'ATH0', 'ATSP0', '0100', 'ATSHFC0076', 'ATCRA17FE0076'].forEach((c) => a.stuur(c));
+  return a;
+};
+const v7 = vag29('7');
+waar('zonder ATCP (prioriteit 18): de ECU hoort niets', lijn(v7, '2203351') === 'NO DATA', lijn(v7, '2203351'));
+lijn(v7, 'ATCP17');
+waar('met ATCP17: 62 03 35 00 2A', lijn(v7, '2203351') === '62 03 35 00 2A', lijn(v7, '2203351'));
+lijn(v7, 'ATCP18');
+waar('ATCP18 terug: weer niets', lijn(v7, '2203351') === 'NO DATA');
+const v6 = vag29('6');
+lijn(v6, 'ATCP17');
+waar('op een 11-bit bus komt een 29-bit vraag nergens aan', lijn(v6, '2203351') === 'NO DATA', lijn(v6, '2203351'));
+
 console.log('\n' + (fout ? 'test-nepauto: ' + fout + ' fout(en), ' + ok + ' goed' : 'test-nepauto: alles goed (' + ok + ')'));
 process.exit(fout ? 1 : 0);

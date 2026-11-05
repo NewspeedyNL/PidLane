@@ -1813,6 +1813,16 @@ MUTATIES=(
 "plnepvloot.js@@    if ((pci >> 4) === 2) { data.push(...b.slice(1)); continue; }@@    if ((pci >> 4) === 2) continue;@@test-nepvloot.js@@de generator vergeet de vervolgframes van ISO-TP: een lang antwoord wordt stil afgekapt"
 "public/bproef-dekking.js@@  const spook = [...na].filter((x) => m01.indexOf(x) < 0);@@  const spook = [];@@test-nepvloot.js@@de dekkingsproef ziet geen spook-PIDs meer (#616)"
 "public/pidlane-uitgebreid.js@@    return /^[0-9A-F]{3}$/.test(rax) ? hdr + '>' + rax : null;@@    return null;@@bproef-dekking.js@@een ander antwoordadres (VAG 710 → 77A) valt weer weg uit de OBDb-kandidaten: de Golf zakt onder zijn vloer"
+# VAG 29-bit 17FC00xx>17FE00xx (#670): zonder ATCP gaat de vraag op
+# prioriteit 18 en hoort de ID.3 niets; zonder het adres of de steunsleutel
+# vallen 173 codes weer weg; de nepauto mag geen 29-bit antwoord op een
+# 11-bit bus geven, en moet ATCP echt toepassen.
+"public/pidlane-uitgebreid.js@@    if (cp) await sendCmd('ATCP' + p[0].slice(0, 2), 1500);\n@@@@test-mode21.js@@VAG 29-bit zonder ATCP: de vraag gaat op prioriteit 18 en de ID.3 hoort niets"
+"public/pidlane-uitgebreid.js@@    if (hdr === 'FC00') return obdbVag29(c.pri, c.tst, rax);\n@@@@test-mode21.js@@VAG FC00 valt weer weg uit de OBDb-kandidaten: de ID.3 terug naar 21 %"
+"public/pidlane-uitgebreid.js@@          tx = a.split('>')[0];@@          tx = a;@@test-mode21.js@@de steunlijst sleutelt FC00 op tx>rx in plaats van het zendadres: geen enkele ID.3-code past dit jaar"
+"public/nepauto.js@@ || (bit29 && fysiekVan(e) === st.cp + st.sh)) : ecus;@@ || fysiekVan(e) === st.cp + st.sh) : ecus;@@test-nepauto.js@@de nepauto beantwoordt een 29-bit vraag op een 11-bit bus"
+"public/nepauto.js@@{ st.cp = a.slice(2); return 'OK'; }@@{ return 'OK'; }@@test-nepauto.js@@de nepauto negeert ATCP: zonder prioriteit 17 antwoordt de ID.3 toch niet, of altijd"
+"plnepvloot.js@@  return ta && c ? { tx: (c + 'FC00' + ta).toUpperCase(), rx: (c + a.rx).toUpperCase() } : null;@@  return ta && c ? { tx: ('18FC00' + ta).toUpperCase(), rx: (c + a.rx).toUpperCase() } : null;@@test-nepvloot.js@@de generator negeert c=: de ID.3 krijgt prioriteit 18 en de proef meet een auto die niet bestaat"
 # De steunlijst van het bouwjaar (#670): zonder filter of mét de kap van 60
 # is het weer de gok die op de vloot 1515 weigeringen gaf; de Worker die
 # alleen het gevraagde jaar probeert vindt bij een gat in OBDb niets.

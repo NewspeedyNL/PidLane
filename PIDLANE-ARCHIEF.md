@@ -15,6 +15,36 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 05-11-2026 — VAG 29-bit (FC00): ID.3 21 → 91,8 %, vloot 87,4 → 89,2 % (#670)
+
+**Wat FC00 is.** OBDb schrijft de UDS-adressering van VAG (MEB, deels MQB)
+als `hdr: "FC00"`, `pri: "17"`, `tst: "76"`, `rax: "FE0076"`, en in
+`command_support` als `FC00.FE0076.220335|ta=76,c=17`. Samen: vraag op
+29-bit `17FC0076`, antwoord van `17FE0076` (de testgevallen bevestigen dat:
+`17FE0076056203350000`). De app kent het nu als `17FC0076>17FE0076`; de
+generator nam `pri`/`tst` niet over en telde ze als adressering.
+
+**Waarom ATCP en geen ATSH van acht.** De prioriteit is 17, niet de
+standaard 18. Een ELM 1.x neemt ATSH alleen met drie of zes tekens; ATCP
+bestaat er wel. Dus `ATCP17`, `ATSHFC0076`, `ATCRA17FE0076`, flow control op
+`17FC0076`, en terug met `ATCP18`. AANNAME: dat een kloon ATCP echt toepast
+en niet alleen OK zegt; de nepauto doet het wel (test-nepauto 9). Dat is een
+vraag voor een rit met een ID.3, niet voor de proef.
+
+**Wat FC00 zonder `ta=`/`c=` is.** Twee ID.3-codes (`FE007B|fc=1`) hebben
+geen prioriteit of doeladres in OBDb. Die tellen als adressering en worden
+niet gegokt: een verkeerde prioriteit is een vraag die niemand hoort.
+
+**Wat nog openstaat.**
+- **Een 11-bit VAG (A3, Tiguan, proto 6).** De A3 2019 heeft 268
+  FC00-regels in `command_support`, maar zonder signaalnaam, dus niet in de
+  noemer. Op een 11-bit bus komt een 29-bit vraag niet aan: de app zou
+  moeten omschakelen naar protocol 7 (of B). Dat raakt de protocol-
+  vergrendeling in `pidlane-bt.js` en is een eigen stap. Tot dan geeft zo'n
+  vraag NO DATA, net als de bestaande 18DAxxF1-route op een 11-bit bus.
+- **"vreemd" op de ID.3**: 221E36/38/39 zijn HV-spanningen (386 V) die
+  `plausibel()` op de naam als 12V-spanning leest. Niet onderzocht.
+
 ## 05-11-2026 — #616: de preset als aanname, OBDb als bewijs
 
 **Herevaluatie van "onbekend telt als toegestaan".** Het besluit van 25-10

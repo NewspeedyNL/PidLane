@@ -310,7 +310,7 @@
   // Een ANDER antwoordadres (22-10-2026): "70E>778" — zenden op 70E, het
   // antwoord komt van 778. Zo praten VAG (70E>778), PSA en Opel (6A2>682) en
   // Nissan (740>760); de oude regel "antwoord = adres + 8" sloot ze uit.
-  const EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1|[67][0-9A-F]{2}>[0-9A-F]{3})$/;
+  const EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1|[67][0-9A-F]{2}>[0-9A-F]{3}|[0-9A-F]{2}FC00[0-9A-F]{2}>[0-9A-F]{2}FE00[0-9A-F]{2})$/;
   const EIGEN_TEMPO = { snel: 1000, normaal: 2000, traag: 10000, minuut: 60000 };
   // Op verzoek is geen tempo: 999999 is hier "niet in de pollus", net als in
   // de EV-modus van pidPollInterval, en zo leest PLMon het ook (#396).
@@ -560,7 +560,7 @@
     const naam = String(e.naam || '').trim().slice(0, 40);
     if (!naam) return { ok: false, fout: 'Geef de sensor een naam' };
     const ecu = String(e.ecu || '').toUpperCase().replace(/\s+/g, '');
-    if (ecu && !EIGEN_ECU.test(ecu)) return { ok: false, fout: 'ECU-adres: 7xx (bijv. 7E1), 18DAxxF1, tx>rx (bijv. 70E>778) of leeg laten' };
+    if (ecu && !EIGEN_ECU.test(ecu)) return { ok: false, fout: 'ECU-adres: 7xx (bijv. 7E1), 18DAxxF1, tx>rx (bijv. 70E>778 of 17FC0076>17FE0076) of leeg laten' };
     // Een band is altijd op verzoek (#396) — PLBanden.ververs() vraagt de
     // vier banden bij het openen van Slim visueel en van het bandenvenster,
     // en met het vinkje elke vijf minuten. Acht PIDs via een ander ECU-adres
@@ -659,17 +659,22 @@
      rx − 8, en dat is bij 778 niet 70E. ATFCSD/ATFCSM bestaan vanaf ELM
      1.3; een kloon die '?' zegt krijgt nog wel de korte antwoorden. */
   async function adresZet(ecu) {
-    const functioneel = 'ATSH' + (ecu.length === 8 ? '18DB33F1' : '7DF');
     const p = ecu.split('>');
+    const functioneel = 'ATSH' + (p[0].length === 8 ? '18DB33F1' : '7DF');
     if (p.length === 1) { await sendCmd('ATSH' + ecu, 1500); return [functioneel]; }
-    await sendCmd('ATSH' + p[0], 1500);
+    // VAG 29-bit (17FC00xx > 17FE00xx, #670): de prioriteit (17, niet de
+    // standaard 18) gaat met ATCP, de rest met een ATSH van zes tekens —
+    // dat kent elke ELM vanaf 1.x; een ATSH van acht niet.
+    const cp = p[0].length === 8 && p[0].slice(0, 2) !== '18';
+    if (cp) await sendCmd('ATCP' + p[0].slice(0, 2), 1500);
+    await sendCmd('ATSH' + (p[0].length === 8 ? p[0].slice(2) : p[0]), 1500);
     await sendCmd('ATCRA' + p[1], 1500);
     for (const c of ['ATFCSH' + p[0], 'ATFCSD300000', 'ATFCSM1']) {
       let r = '';
       try { r = String(await sendCmd(c, 1500) || ''); } catch (x) { r = '?'; }
       if (/\?/.test(r)) { btDiagSafe('Adapter kent ' + c + ' niet — lange antwoorden van ' + ecu + ' kunnen afbreken'); break; }
     }
-    return ['ATFCSM0', 'ATCRA', functioneel];
+    return ['ATFCSM0', 'ATCRA'].concat(cp ? ['ATCP18'] : [], [functioneel]);
   }
   async function adresTerug(lijst, code) {
     for (const c of lijst) {
@@ -713,7 +718,8 @@
 
      Wat we overnemen: alleen leesdiensten 21/22, op 7xx met het antwoord op
      +8, op 29-bit, of met een ander antwoordadres als "tx>rx" (sinds
-     22-10-2026: VAG, PSA, Opel, Nissan); geen extended addressing (BMW).
+     22-10-2026: VAG, PSA, Opel, Nissan), VAG 29-bit 17FC00xx (#670); geen
+     extended addressing (BMW).
      Hele bytes, ook voorbij H als [n], zonder teken of opzoektabel. Eén
      code per commando: de bibliotheek kent per code één formule. */
   const OBDB_EENHEID = {
@@ -953,12 +959,18 @@
      "DA10" met rax "10" is 18DA10F1, antwoord 18DAF110. Een ander
      antwoordadres wordt "tx>rx" (zie EIGEN_ECU). Extended addressing (BMW,
      eax) en het 29-bit-schema van Volvo (D016) tellen we, maar bieden we
-     nog niet aan. */
+     nog niet aan. VAG 29-bit (#670): hdr FC00 met pri 17 en tst 76, rax
+     FE0076, is 17FC0076>17FE0076; zonder pri of tst weten we het adres niet. */
+  function obdbVag29(pri, ta, rax) {
+    pri = String(pri || '').toUpperCase(); ta = String(ta || '').toUpperCase(); rax = String(rax || '').toUpperCase();
+    return /^[0-9A-F]{2}$/.test(pri) && /^[0-9A-F]{2}$/.test(ta) && /^FE00[0-9A-F]{2}$/.test(rax) ? pri + 'FC00' + ta + '>' + pri + rax : null;
+  }
   function obdbAdres(c) {
     const hdr = String(c.hdr || '').toUpperCase(), rax = String(c.rax || '').toUpperCase();
     if (c.eax) return null;                     // BMW/MINI: extended addressing, nog niet
     if (/^DA[0-9A-F]{2}$/.test(hdr)) return (!rax || rax === hdr.slice(2)) ? '18' + hdr + 'F1' : null;
     if (/^18DA[0-9A-F]{2}F1$/.test(hdr)) return (!rax || rax.slice(-2) === hdr.slice(4, 6)) ? hdr : null;
+    if (hdr === 'FC00') return obdbVag29(c.pri, c.tst, rax);
     if (!/^[67][0-9A-F]{2}$/.test(hdr)) return null;
     if (!rax || parseInt(rax, 16) === parseInt(hdr, 16) + 8) return /^7/.test(hdr) ? hdr : hdr + '>' + (parseInt(hdr, 16) + 8).toString(16).toUpperCase();
     // Een ander antwoordadres (VAG 70E → 778, PSA 6A2 → 682): "tx>rx", met
@@ -990,9 +1002,17 @@
       else if (/^supported_commands_by_ecu:/.test(r)) sectie = 'ja';
       else if (/^\S/.test(r)) sectie = '';
       else if (sectie && (m = r.match(/^\s{2}"?([0-9A-Fa-f]+)"?:\s*$/))) ecu = m[1].toUpperCase();
-      else if (sectie && ecu && (m = r.match(/^\s{2}-\s+'?([^':|]+)/))) {
+      else if (sectie && ecu && (m = r.match(/^\s{2}-\s+'?([^':|]+)(?:\|([^':]*))?/))) {
         const d = m[1].trim().toUpperCase().split('.');
-        const cmd = d[d.length - 1], tx = d.length === 1 ? ecu : d[0];
+        const cmd = d[d.length - 1];
+        let tx = d.length === 1 ? ecu : d[0];
+        // VAG 29-bit: "FC00.FE0076.220335|ta=76,c=17" → 17FC0076 (#670).
+        if (tx === 'FC00') {
+          const mod = String(m[2] || '').toUpperCase(), ta = mod.match(/(?:^|,)TA=([0-9A-F]{2})/), pri = mod.match(/(?:^|,)C=([0-9A-F]{2})/);
+          const a = obdbVag29(pri && pri[1], ta && ta[1], d.length === 3 ? d[1] : '');
+          if (!a) return;
+          tx = a.split('>')[0];
+        }
         if (/^01[0-9A-F]{2}$/.test(cmd)) { if (uit.mode01.indexOf(cmd) < 0) uit.mode01.push(cmd); return; }
         if (!/^2[12][0-9A-F]+$/.test(cmd)) return;
         const k = cmd + '@' + obdbSteunTx(tx);

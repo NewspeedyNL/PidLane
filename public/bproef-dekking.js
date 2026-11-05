@@ -51,11 +51,11 @@ const KEUZE = ['cx5_18', 'golf19', 'fiat500_14', 'zoe21'];
 // Verdwijnt het, dan zegt de proef dat (haal het dan weg).
 const BEKEND = {
 };
-// Gemeten dekking (%) per auto op 05-11-2026, met de steunlijst en S16( ); mag alleen omhoog. Geen vloer =
+// Gemeten dekking (%) per auto op 05-11-2026, met de steunlijst, S16( ) en VAG 29-bit; mag alleen omhoog. Geen vloer =
 // LET OP met het getal erbij.
 const VLOER = {
   cx5_18: 86, mazda3_19: 100, mazda2_18: 100, golf19: 85, polo18: 72,
-  tiguan19: 61, id3_21: 20, a3_19: 80, ibiza19: 100, octavia19: 100,
+  tiguan19: 61, id3_21: 91, a3_19: 80, ibiza19: 100, octavia19: 100,
   p208_19: 100, p2008_20: 100, p308_18: 100, clio20: 100, zoe21: 95,
   sandero21: 100, yaris20: 100, corolla20: 82, chr20: 100, aygo19: 71,
   rav4_19: 90, niro19: 92, picanto17: 100, sportage20: 100, ceed19: 100,

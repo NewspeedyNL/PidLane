@@ -123,7 +123,7 @@
     // antwoordadressen aan (7E8–7EF, 18DAF1xx) — AANNAME: zo gedraagt een
     // ELM327 zich met de standaardfilters; een antwoord van 778 komt pas
     // door met ATCRA778. Zonder ATFCSM1 gaat de flow control naar rx − 8.
-    const st = { E: true, H: false, S: true, L: true, sp: '0', gezocht: false, init: false, sh: null, cra: null, fcsh: null, fcsd: null, fcsm: 0, log: [] };
+    const st = { E: true, H: false, S: true, L: true, sp: '0', gezocht: false, init: false, sh: null, cp: '18', cra: null, fcsh: null, fcsd: null, fcsm: 0, log: [] };
 
     function readiness() {
       const actief = (profiel.dtc && profiel.dtc['03']) || [];
@@ -178,7 +178,9 @@
 
     function antwoordBytes(cmd) {
       // Wat elke ECU terugzegt, als lijst van berichten (elk een lijst bytes).
-      const doel = st.sh ? ecus.filter((e) => fysiekVan(e) === st.sh) : ecus;
+      // Een ECU met een kop van acht tekens (VAG 17FC0076) hoort alleen zijn
+      // eigen prioriteit (ATCP), en alleen op een 29-bit bus.
+      const doel = st.sh ? ecus.filter((e) => fysiekVan(e) === st.sh || (bit29 && fysiekVan(e) === st.cp + st.sh)) : ecus;
       const uit = [];
       const vast = (profiel.opname || {})[cmd];
       if (vast) return vast.map((f) => ({ adres: f[0], bytes: bytes(f[1]), ruw: !!f[2] }));
@@ -188,7 +190,7 @@
         if (e.opname[cmd]) { uit.push({ adres: e.adres, bytes: bytes(e.opname[cmd]) }); return; }
         // UDS-lezen (21xx, 22xxxx): alleen fysiek gevraagd, alleen wat de ECU kent.
         if (/^2[12]/.test(cmd)) {
-          if (st.sh && e.did[cmd]) uit.push({ adres: e.adres, bytes: [hx(parseInt(m, 16) + 0x40)].concat(bytes(rest), e.did[cmd]) });
+          if (st.sh && e.did[cmd]) uit.push({ adres: e.adres, ecu: e, bytes: [hx(parseInt(m, 16) + 0x40)].concat(bytes(rest), e.did[cmd]) });
           else if (st.sh && Object.keys(e.did).length) uit.push({ adres: e.adres, bytes: ['7F', m, '31'] });
           return;
         }
@@ -265,7 +267,7 @@
 
     function at(c) {
       const a = c.slice(2);
-      if (a === 'Z' || a === 'WS') { st.E = true; st.H = false; st.S = true; st.sh = null; st.cra = null; st.fcsh = null; st.fcsd = null; st.fcsm = 0; st.init = false; return 'ELM327 v1.5'; }
+      if (a === 'Z' || a === 'WS') { st.E = true; st.H = false; st.S = true; st.sh = null; st.cp = '18'; st.cra = null; st.fcsh = null; st.fcsd = null; st.fcsm = 0; st.init = false; return 'ELM327 v1.5'; }
       if (a === 'I') return 'ELM327 v1.5';
       if (a === '@1') return 'OBDII to RS232 Interpreter';
       if (a === 'RV') return profiel.accu || '14.1V';
@@ -277,7 +279,9 @@
       if (/^TP A?[0-9A-C]$/.test(a)) return 'OK';
       if (a === 'DPN') return (st.sp === '0' ? 'A' : '') + (st.gezocht || st.sp !== '0' ? (st.sp === '0' ? proto : st.sp) : '0');
       if (a === 'DP') return (st.sp === '0' ? 'AUTO, ' : '') + (PROTO_NAAM[st.sp === '0' ? proto : st.sp] || 'AUTOMATIC');
-      if (/^SH/.test(a)) { const h = a.slice(2); st.sh = (h === '7DF' || /^DB33F1$/.test(h) || /^18DB33F1$/.test(h)) ? null : (h.length === 8 ? h.slice(2) : h); return 'OK'; }
+      if (/^SH/.test(a)) { const h = a.slice(2); st.sh = (h === '7DF' || /^DB33F1$/.test(h) || /^18DB33F1$/.test(h)) ? null : (h.length === 8 ? h.slice(2) : h); if (h.length === 8) st.cp = h.slice(0, 2); return 'OK'; }
+      // ATCP: de prioriteit, het eerste byte van een 29-bit kop (standaard 18).
+      if (/^CP[0-9A-F]{2}$/.test(a)) { st.cp = a.slice(2); return 'OK'; }
       if (/^CRA/.test(a)) { st.cra = a.slice(3) || null; return 'OK'; }
       if (profiel.kloonZonderFc && /^FC/.test(a)) return '?';
       if (/^FCSH[0-9A-F]{3,8}$/.test(a)) { st.fcsh = a.slice(4); return 'OK'; }
@@ -328,7 +332,7 @@
       // het bij het eerste frame.
       ber = ber.map(function (m) {
         if (!can || m.bytes.length <= 7) return m;
-        const e = ecus.find((x) => x.adres === m.adres);
+        const e = m.ecu || ecus.find((x) => x.adres === m.adres);   // twee ECU's kunnen één antwoordadres delen (VAG 17FE007B)
         const doel = st.fcsm === 1 ? st.fcsh : (/^[0-9A-F]{3}$/.test(m.adres) ? (parseInt(m.adres, 16) - 8).toString(16).toUpperCase() : 'DA' + m.adres.slice(6) + 'F1');
         return (e && doel !== fysiekVan(e) && !(st.fcsm === 1 && doel && doel.endsWith(fysiekVan(e)))) ? Object.assign({}, m, { afgebroken: true }) : m;
       });

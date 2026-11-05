@@ -62,6 +62,9 @@ waar('tx.rx.cmd', a2.tx === '720' && a2.rx === '728' && a2.cmd === '222A05', JSO
 waar('tx.cmd: antwoord op tx+8', G.rxVan(a3.tx, a3.rx) === '7E8', G.rxVan(a3.tx, a3.rx));
 waar('29-bit: DA15 met rax 15 → 18DAF115', G.rxVan(a4.tx, a4.rx) === '18DAF115', G.rxVan(a4.tx, a4.rx));
 waar('een ander antwoordadres blijft staan (VAG 710 → 77A)', G.rxVan('710', '77A') === '77A');
+const v = G.vag29(G.adres('FC00', 'FC00.FE0076.220335|ta=76,c=17'));
+waar('VAG 29-bit: ta=76,c=17 → tx 17FC0076, rx 17FE0076 (#670)', v && v.tx === '17FC0076' && v.rx === '17FE0076', JSON.stringify(v));
+waar('VAG FC00 zonder ta of c: niet na te bouwen', G.vag29(G.adres('FC00', 'FC00.FE007B.22F190|fc=1')) === null && G.vag29(G.adres('7E0', '7E0.221234')) === null);
 waar('FC00 en D016 zijn niet na te bouwen', G.rxVan('FC00', 'FE0076') === null && G.rxVan('D016', '1EC60E80') === null);
 waar('modifier apart', G.adres('710', '710.77A.222A61|fc=1').mod === 'fc=1');
 
