@@ -58,6 +58,8 @@ var KRITIEK = [
   'deepRefreshPIDs',
   // #648: het inleren telt de zoekronde en toont zijn stappen in de bezig-pill.
   'startDiscovery','showBusyPill','hideBusyPill',
+  // Besluit d deel 2 (#670): Visueel vraagt de standtekst uit pidlane-pids.js.
+  'standTekst',
   'getPidDef','getVehicle','goHome',
   // Erbij op 16-09-2026. Het adapterpaneel (pidlane-adapter.js) heeft de
   // verbreek-knop van de OBD-chip overgenomen en roept handleConnect() achter
