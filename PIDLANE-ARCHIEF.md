@@ -15,7 +15,32 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
-## 05-11-2026 — Correctie op #672: F1 is alleen het antwoordbyte van 6F1
+## 05-11-2026 — Besluit d: getallen zonder eenheid zijn data, 90,7 → 96,6 % (#670)
+
+**Het besluit (eigenaar, 05-11-2026).** Van 1871 fabriekscodes in de
+noemer hadden er 502 geen eenheid: 65 standen (aan/uit, ja/nee), 24
+keuzelijsten, 345 getallen (misfire- en kloptellers per cilinder, lambda,
+overbrenging) en 92 met een onbekende eenheid of een ruwe waarde. Gekozen:
+standen en getallen worden data, onbekend en ruw gaan uit de noemer.
+
+**Deze stap: de getallen.** `obdbKandidaten()` neemt `scalar` aan als
+kaal getal, met `min`/`max` uit OBDb. `plausibel()` keurt erop, en de meter
+krijgt er zijn schaal van. Bij gelijke waarde wint binnen een commando het
+signaal mét eenheid. `OBDB_RUW` (raw, first byte, byte) gaat eruit, en de
+generator houdt dezelfde regel aan voor de noemer (`betekent()`,
+test-nepvloot bewaakt dat ze gelijk blijven). Noemer 1892 → 1703.
+
+**Wat de keuring níét zegt.** Bij `scalar len8` is het bereik van OBDb
+vaak het theoretische 0…255. Dan keurt het alleen op een verkeerde breedte,
+niet op betekenis: een misfireteller van 37 en een van 0 zijn allebei
+"plausibel". Dat is een vraag voor een rit.
+
+**Wat er nog openstaat.** De standen (aan/uit, ja/nee, keuzelijst) zijn
+meestal losse bits of een tabel (`map`). Daarvoor heeft de formuletaal nog
+niets; dat raakt de keuring in de Worker net als S16( ), en wordt een eigen
+stap. Onder de wens blijven Tiguan (87), Aygo (77) en Leaf (77).
+
+: F1 is alleen het antwoordbyte van 6F1
 
 In #672 nam `obdbExt()` zonder `tst` het antwoordbyte F1 aan, de tester bij
 BMW. Een Toyota op 750 met `eax 2A` en zonder `tst` (Corolla 2115) antwoordt

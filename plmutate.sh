@@ -1833,6 +1833,12 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@ && tst === 'F1' ? hdr + ':' + eax + '>' + rax : null;@@ ? hdr + ':' + eax + '>' + rax : null;@@test-mode21.js@@een Toyota met eigen antwoordbyte (ATCER) gaat als BMW door en hoort zijn antwoord nooit"
 "public/nepauto.js@@ && (e.ea || null) === st.cea) : ecus;@@) : ecus;@@test-nepauto.js@@de nepauto laat elke BMW-ECU op 6F1 antwoorden, met of zonder ATCEA"
 "plnepvloot.js@@    if (rx && h.startsWith(rx)) h = h.slice(rx.length + (ext ? 2 : 0));@@    if (rx && h.startsWith(rx)) h = h.slice(rx.length);@@test-nepvloot.js@@de generator houdt het F1-byte van BMW in de data: elke nagebouwde waarde schuift een byte"
+# Besluit d (#670): getallen zonder eenheid zijn data, ruw en onbekend niet.
+"public/pidlane-uitgebreid.js@@        const getal = fmt.unit === 'scalar' && !OBDB_RUW.test(String(g.name || ''));@@        const getal = false;@@test-mode21.js@@getallen zonder eenheid (misfire- en kloptellers) vallen weer weg uit de OBDb-kandidaten"
+"public/pidlane-uitgebreid.js@@        const getal = fmt.unit === 'scalar' && !OBDB_RUW.test(String(g.name || ''));@@        const getal = fmt.unit === 'scalar';@@test-mode21.js@@een ruwe waarde (raw count) komt als sensor in de lijst, zonder omrekening"
+"public/pidlane-uitgebreid.js@@(b.w - a.w) || (b.e - a.e) || (a.i - b.i)@@(b.w - a.w) || (a.i - b.i)@@test-mode21.js@@een kaal getal wint van een signaal mét eenheid in hetzelfde commando"
+"public/pidlane-pidzoek.js@@    if (!u && c && Number.isFinite(c.min) && Number.isFinite(c.max) && (w < c.min || w > c.max)) return@@    if (false) return@@test-pidzoek.js@@een getal zonder eenheid wordt niet meer op het OBDb-bereik gekeurd: elke verkeerde formule gaat door"
+"plnepvloot.js@@  return sigs.some((g) => !RUW.test(g.name) && (g.map || (g.unit && g.unit !== 'unknown')));@@  return true;@@test-nepvloot.js@@een onbekende eenheid of ruwe waarde telt weer in de noemer van de dekking"
 # De steunlijst van het bouwjaar (#670): zonder filter of mét de kap van 60
 # is het weer de gok die op de vloot 1515 weigeringen gaf; de Worker die
 # alleen het gevraagde jaar probeert vindt bij een gat in OBDb niets.
@@ -2341,7 +2347,7 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@    for (const c of ['ATFCSH' + tx, 'ATFCSD' + ea + '300000', 'ATFCSM1']) {@@    for (const c of []) {@@bproef-adres.js@@zonder flow control breekt een antwoord van twee frames af"
 "public/pidlane-uitgebreid.js@@        i += m[0].length; const k = Number(m[1]);@@        i += m[0].length; const k = Number(m[1]) - 1;@@test-mode21.js@@[n] telt vanaf 1 in plaats van 0: elke waarde voorbij H schuift een byte"
 "public/pidlane-uitgebreid.js@@    return /^[0-9A-F]{3}$/.test(rax) ? hdr + '>' + rax : null;@@    return null;@@test-mode21.js@@een ander antwoordadres valt weer weg: VAG en PSA krijgen geen codes"
-"public/pidlane-uitgebreid.js@@      sigs.sort((a, b) => (b.w - a.w) || (a.i - b.i));\n@@@@test-mode21.js@@per commando weer het eerste signaal: de HV-laadtoestand van de Kona valt weg"
+"public/pidlane-uitgebreid.js@@      sigs.sort((a, b) => (b.w - a.w) || (b.e - a.e) || (a.i - b.i));\n@@@@test-mode21.js@@per commando weer het eerste signaal: de HV-laadtoestand van de Kona valt weg"
 "public/pidlane-apk.js@@    const m = (meldingen || []).filter(x => !x.soort_melding_ki_omschrijving || /periodiek/i.test(x.soort_melding_ki_omschrijving)).map(@@    const m = (meldingen || []).map(@@test-apk.js@@een tachograafmelding met eigen vervaldatum geeft weer een vals APK-gat"
 "public/pidlane-apk.js@@/^\\d{8}$/.test(v.verval)).map(v => v.verval);@@/^\\d{8}$/.test(v.verval)).map(v => v.datum);@@test-apk.js@@de APK-historie rekent vanaf de vorige keuring in plaats van de vervaldatum: elke keuring heet te laat"
 "public/pidlane-pompprijs.js@@      return typeof v === 'number' && v >= PLAUSIBEL[k][0] && v <= PLAUSIBEL[k][1];@@      return typeof v === 'number';@@test-pompprijs.js@@een CBS-regel met een komma-fout wordt weer de standaardprijs per liter"

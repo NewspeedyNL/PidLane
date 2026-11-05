@@ -193,6 +193,15 @@ function rxVan(tx, rx) {
   if (/^DA[0-9A-F]{2}$/.test(tx)) { const r = rx ? rx.slice(-2) : tx.slice(2); return '18DAF1' + r; }
   return null;   // FC00, D016, …: niet na te bouwen
 }
+// Heeft minstens één signaal een betekenis? Een eenheid, een getal zonder
+// eenheid (scalar), een stand (offon/noyes) of een keuzelijst wel; een
+// onbekende eenheid of een ruwe waarde niet. RUW is dezelfde regel als
+// OBDB_RUW in pidlane-uitgebreid.js (test-nepvloot.js houdt ze gelijk).
+const RUW = /\braw\b|ruwe? waarde|first byte|\bbyte\b/i;
+function betekent(sigs) {
+  if (!sigs.length) return true;   // onbekend signaal-id: niet weggooien op een vermoeden
+  return sigs.some((g) => !RUW.test(g.name) && (g.map || (g.unit && g.unit !== 'unknown')));
+}
 function txNep(tx) { return /^DA[0-9A-F]{2}$/.test(tx) ? tx + 'F1' : tx; }
 function functioneel(tx) { return tx === '7DF' || tx === 'DB33'; }
 
@@ -225,6 +234,10 @@ function bouw(rij, cache, LEN) {
   const jaar = jaren.slice().sort((a, b) => Math.abs(a - wensJaar) - Math.abs(b - wensJaar) || b - a)[0];
   const sup = leesSupport(fs.readFileSync(path.join(tc, String(jaar), 'command_support.yaml'), 'utf8'));
   const cmdMap = path.join(tc, String(jaar), 'commands');
+  const sig = JSON.parse(fs.readFileSync(path.join(map, 'signalsets', 'v3', 'default.json'), 'utf8'));
+  // signaal-id → { unit, name }: om te weten of een code een betekenis heeft (besluit d).
+  const sigInfo = {};
+  (sig.commands || []).forEach((c) => (c.signals || []).forEach((g) => { if (g && g.id) sigInfo[g.id] = { unit: (g.fmt || {}).unit, map: !!(g.fmt || {}).map, name: g.name || '' }; }));
 
   const ecus = {};              // rx → ecu
   const volgorde = [];
@@ -261,6 +274,8 @@ function bouw(rij, cache, LEN) {
       if (!/^2[12][0-9A-F]+$/.test(a.cmd)) return;                  // mode 09, 06, …: hier niet het onderwerp
       // Zonder signaal weet niemand wat de bytes betekenen: geen data, dus niet in de noemer.
       if (!sig) { overgeslagen.push({ cmd: cid, reden: 'geen signaal in OBDb' }); return; }
+      // Besluit d (#670): een onbekende eenheid of een ruwe waarde is geen data — evenmin in de noemer.
+      if (!betekent(sig.split(',').map((s) => sigInfo[s.trim()]).filter(Boolean))) { overgeslagen.push({ cmd: cid, reden: 'onbekende eenheid of ruwe waarde' }); return; }
       // Een fabriekscode op het functionele adres (7DF, DB33) beantwoordt de motor-ECU.
       if (functioneel(a.tx) && !a.rx) a.tx = a.tx === '7DF' ? '7E0' : 'DA10';
       const v29 = vag29(a), ea = ext(a);
@@ -308,7 +323,6 @@ function bouw(rij, cache, LEN) {
   };
   if (brandstof === 'elektrisch') p.readiness = '000000';
   if (jaar !== wensJaar) p.jaarNoot = 'gevraagd ' + wensJaar + ', OBDb heeft ' + jaar;
-  const sig = JSON.parse(fs.readFileSync(path.join(map, 'signalsets', 'v3', 'default.json'), 'utf8'));
   return { p, obdb: indikken(sig), steun: fs.readFileSync(path.join(tc, String(jaar), 'command_support.yaml'), 'utf8') };
 }
 
@@ -350,4 +364,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { leesSupport, leesAntwoorden, isotp, adres, rxVan, vag29, ext, jaarTeken, indikken };
+module.exports = { leesSupport, leesAntwoorden, isotp, adres, rxVan, vag29, ext, betekent, RUW, jaarTeken, indikken };

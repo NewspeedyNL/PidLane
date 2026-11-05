@@ -44,6 +44,8 @@
     // Precies −40 °C is de ondergrens van A−40: een losse of ontbrekende sensor.
     if (u === '°C' && w <= -40) return { ok: false, reden: '−40 °C — de ondergrens, meestal een ontbrekende sensor' };
     if (u === 'V' && LAAG_VOLT.test(naam) && !HOOG_VOLT.test(naam) && (w < 6 || w > 17)) return { ok: false, reden: waarde(w, u) + ' voor een 12V-spanning' };
+    // Een getal zonder eenheid (besluit d): het bereik uit OBDb is de keuring.
+    if (!u && c && Number.isFinite(c.min) && Number.isFinite(c.max) && (w < c.min || w > c.max)) return { ok: false, reden: waarde(w, u) + ' ligt buiten ' + c.min + '…' + c.max + ' (OBDb)' };
     const g = GRENS[u];
     if (g && (w < g[0] || w > g[1])) return { ok: false, reden: waarde(w, u) + ' ligt buiten ' + g[0] + '…' + g[1] + ' ' + u };
     if (!g && Math.abs(w) > 1e7) return { ok: false, reden: 'onwaarschijnlijk groot getal' };

@@ -739,6 +739,8 @@
   // Omrekenen naar metrisch: [eenheid, vóór, na] om de ruwe formule heen.
   // Milli- en centi-eenheden (#670): 26 codes op de vloot vielen weg omdat
   // de eenheid onbekend was; omgerekend naar wat de app al kent.
+  // Een ruwe waarde zegt pas iets met een omrekening die OBDb niet heeft.
+  const OBDB_RUW = /\braw\b|ruwe? waarde|first byte|\bbyte\b/i;
   const OBDB_OM = { fahrenheit: ['°C', '((', ')-32)*5/9'], miles: ['km', '(', ')*1.609344'],
     millivolts: ['V', '(', ')/1000'], milliamps: ['A', '(', ')/1000'], centimeters: ['mm', '(', ')*10'] };
 
@@ -1061,20 +1063,28 @@
       if (steun && !steun.codes[code + '@' + hdr.split('>')[0]]) { if (telling) telling.nietDitJaar = (telling.nietDitJaar || 0) + 1; return; }
       // Eén code per commando, en dan de waardevolste: bij een Kona Electric
       // zit de laadtoestand van de HV-accu als zevende waarde in 22E003.
-      const sigs = (Array.isArray(c.signals) ? c.signals.slice() : []).map((g, i) => ({ g, i, w: obdbWaarde(g && g.name) }));
-      sigs.sort((a, b) => (b.w - a.w) || (a.i - b.i));
+      const sigs = (Array.isArray(c.signals) ? c.signals.slice() : []).map((g, i) => ({ g, i, w: obdbWaarde(g && g.name), e: g && g.fmt && g.fmt.unit !== 'scalar' ? 1 : 0 }));
+      // Bij gelijke waarde wint een signaal mét eenheid van een kaal getal (besluit d).
+      sigs.sort((a, b) => (b.w - a.w) || (b.e - a.e) || (a.i - b.i));
       for (const { g } of sigs) {
         const fmt = (g && g.fmt) || {};
-        if (!OBDB_EENHEID[fmt.unit] && !OBDB_OM[fmt.unit]) continue;   // aan/uit, hex, ja/nee, zonder eenheid: geen meetwaarde
+        // Een getal zonder eenheid (OBDb "scalar": misfire- en kloptellers,
+        // lambda, overbrenging) is data sinds besluit d (#670, 05-11-2026);
+        // een ruwe waarde ("raw count") en een onbekende eenheid niet.
+        const getal = fmt.unit === 'scalar' && !OBDB_RUW.test(String(g.name || ''));
+        if (!getal && !OBDB_EENHEID[fmt.unit] && !OBDB_OM[fmt.unit]) continue;   // aan/uit, hex, ja/nee, onbekend: (nog) geen meetwaarde
         const fo = obdbFormule(fmt);
         if (!fo) continue;
-        const eenheid = OBDB_OM[fmt.unit] ? OBDB_OM[fmt.unit][0] : OBDB_EENHEID[fmt.unit];
+        const eenheid = getal ? '' : OBDB_OM[fmt.unit] ? OBDB_OM[fmt.unit][0] : OBDB_EENHEID[fmt.unit];
         const r = eigenControleer({ code, naam: g.name, formule: fo, eenheid, ecu: hdr });
         if (!r.ok) continue;
         const sl = r.code + '@' + r.ecu;
         if (gezien[sl]) break;
         gezien[sl] = 1;
-        uit.push({ code: r.code, ecu: r.ecu, naam: r.def.name, formule: fo.replace(/\s+/g, '').toUpperCase(), eenheid, url, waarde: obdbWaarde(g.name), i: uit.length });
+        const k = { code: r.code, ecu: r.ecu, naam: r.def.name, formule: fo.replace(/\s+/g, '').toUpperCase(), eenheid, url, waarde: obdbWaarde(g.name), i: uit.length };
+        // Zonder eenheid is het bereik uit OBDb de enige keuring (PLPidZoek.plausibel) en de schaal van de meter.
+        if (getal && isFinite(Number(fmt.min === undefined ? 0 : fmt.min)) && isFinite(Number(fmt.max)) && Number(fmt.max) > Number(fmt.min || 0)) { k.min = Number(fmt.min || 0); k.max = Number(fmt.max); }
+        uit.push(k);
         break;
       }
     });

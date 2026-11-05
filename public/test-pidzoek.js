@@ -28,6 +28,11 @@ waar('100 % grillklep: klopt', P([0xFF, 0x00], 100, '%').ok);
 waar('140 % : buiten de grens', !P([0x8C], 140, '%').ok);
 waar('12V-accu 14,1 V: klopt', P([0x0E, 0x10], 14.1, 'V', '12V battery voltage').ok);
 waar('12V-accu 42 V: verkeerde schaal', !P([0x2A], 42, 'V', '12V battery voltage').ok);
+// Besluit d: een getal zonder eenheid wordt gekeurd op het bereik uit OBDb.
+const PZ = (w, c) => Z.plausibel({ ok: true, bytes: [1, 2], waarde: w, eenheid: '' }, Object.assign({ naam: 'Lambda correction' }, c));
+waar('zonder eenheid, binnen het OBDb-bereik: klopt', PZ(1.02, { min: -4, max: 3.9 }).ok);
+waar('zonder eenheid, buiten het OBDb-bereik: verkeerde formule', !PZ(9, { min: -4, max: 3.9 }).ok);
+waar('zonder eenheid en zonder bereik (min null): geen schijnkeuring tegen 0', PZ(-3, { min: null, max: null }).ok);
 waar('HV-pack 380 V: klopt (geen 12V-grens)', P([0x01, 0x7C], 380, 'V', 'HV battery pack voltage').ok);
 waar('MAP-spanning 1,2 V: klopt', P([0x04, 0xCC], 1.2, 'V', 'MAP voltage').ok);
 waar('bandenspanning 2,4 bar: klopt', P([0xAF], 2.4, 'bar', 'Bandenspanning voor-links').ok);

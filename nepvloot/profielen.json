@@ -131,10 +131,7 @@
       "222B06": "00",
       "222B07": "00",
       "222B08": "00",
-      "222B09": "00",
-      "222B0C": "00 01",
-      "222B0D": "00 00",
-      "222B11": "00 0A"
+      "222B09": "00"
      }
     },
     {
@@ -351,27 +348,6 @@
       "ecu": "760",
       "rx": "768",
       "sig": "CX5_RL_VSS",
-      "nagebouwd": true
-     },
-     {
-      "code": "222B0C",
-      "ecu": "760",
-      "rx": "768",
-      "sig": "CX5_LAT_ANG",
-      "nagebouwd": true
-     },
-     {
-      "code": "222B0D",
-      "ecu": "760",
-      "rx": "768",
-      "sig": "CX5_BRK_FL_P",
-      "nagebouwd": true
-     },
-     {
-      "code": "222B11",
-      "ecu": "760",
-      "rx": "768",
-      "sig": "CX5_LAT_G_760",
       "nagebouwd": true
      },
      {
@@ -847,6 +823,18 @@
    },
    "overgeslagen": [
     {
+     "cmd": "760.768.222B0C",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "760.768.222B0D",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "760.768.222B11",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
      "cmd": "01A4",
      "reden": "geen lengte in nepauto.js"
     }
@@ -1229,22 +1217,13 @@
      "pids": "01 03 04 05 06 07 0B 0C 0D 0E 0F 10 11 12 13 14 15 1C 1F 21 23 2E 2F 30 31 33 34 3C 41 42 43 44 45 46 47 49 4A 4C 4F 51 56 62 63 65 67 69 6D 70 8E 9D 9E A6",
      "did": {
       "221044": "7F FF",
-      "221139": "18 8F",
       "221187": "FF FA",
-      "221473": "00 00",
-      "221474": "00 00",
-      "221479": "00 00",
       "22112C": "00 00",
       "22113F": "01 77",
       "2211BA": "11 94",
       "2211C4": "1C DA",
       "2211C5": "FF D7",
       "2211CC": "00 00",
-      "22121E": "02 92",
-      "22121F": "08 EC",
-      "22146D": "00 08",
-      "22146E": "00 00",
-      "22147A": "00 00",
       "22295A": "00 FF 7C"
      }
     },
@@ -1261,7 +1240,6 @@
       "222A09": "00 00 07 4B",
       "222A0B": "2E",
       "222A0C": "20",
-      "222A0E": "19",
       "222A0F": "09",
       "222A10": "1C"
      }
@@ -1406,13 +1384,6 @@
       "ecu": "710",
       "rx": "77A",
       "sig": "GOLF_BAT_SOC",
-      "nagebouwd": true
-     },
-     {
-      "code": "222A0E",
-      "ecu": "710",
-      "rx": "77A",
-      "sig": "GOLF_BAT_INT_R",
       "nagebouwd": true
      },
      {
@@ -1647,13 +1618,6 @@
       "nagebouwd": true
      },
      {
-      "code": "221139",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "GOLF_MEAN_INJ_QUANTITY",
-      "nagebouwd": true
-     },
-     {
       "code": "22113F",
       "ecu": "7E0",
       "rx": "7E8",
@@ -1696,62 +1660,6 @@
       "nagebouwd": true
      },
      {
-      "code": "22121E",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "GOLF_SPEC_VALUE_RAIL_P",
-      "nagebouwd": true
-     },
-     {
-      "code": "22121F",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "GOLF_HIGH_FUEL_P_CONTROL_DEVIATION",
-      "nagebouwd": true
-     },
-     {
-      "code": "22146D",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "GOLF_INJ_7_RAIL_P_CAL_PT_1",
-      "nagebouwd": true
-     },
-     {
-      "code": "22146E",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "GOLF_INJ_2_RAIL_P_CAL_PT_1_146E",
-      "nagebouwd": true
-     },
-     {
-      "code": "221473",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "GOLF_INJ_7_RAIL_P_CAL_PT_2",
-      "nagebouwd": true
-     },
-     {
-      "code": "221474",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "GOLF_INJ_2_RAIL_P_CAL_PT_2_1474",
-      "nagebouwd": true
-     },
-     {
-      "code": "221479",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "GOLF_INJ_7_RAIL_P_CAL_PT_3",
-      "nagebouwd": true
-     },
-     {
-      "code": "22147A",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "GOLF_INJ_2_RAIL_P_CAL_PT_3_147A",
-      "nagebouwd": true
-     },
-     {
       "code": "22295A",
       "ecu": "7E0",
       "rx": "7E8",
@@ -1761,6 +1669,10 @@
     ]
    },
    "overgeslagen": [
+    {
+     "cmd": "710.77A.222A0E|fc=1",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
     {
      "cmd": "70B.2218A0",
      "reden": "geen signaal in OBDb"
@@ -1834,6 +1746,18 @@
      "reden": "geen signaal in OBDb"
     },
     {
+     "cmd": "7E0.7E8.221139",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.22121E",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.22121F",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
      "cmd": "7E0.7E8.221434",
      "reden": "geen signaal in OBDb"
     },
@@ -1844,6 +1768,30 @@
     {
      "cmd": "7E0.7E8.221464",
      "reden": "geen signaal in OBDb"
+    },
+    {
+     "cmd": "7E0.7E8.22146D",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.22146E",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221473",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221474",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221479",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.22147A",
+     "reden": "onbekende eenheid of ruwe waarde"
     },
     {
      "cmd": "7E0.7E8.2214CC",
@@ -1895,8 +1843,6 @@
       "221002": "00 00",
       "221004": "00 1F",
       "221010": "00 00",
-      "221017": "00 00",
-      "221026": "00 00",
       "221028": "50 92",
       "221059": "00 00",
       "221097": "00 2F",
@@ -1906,7 +1852,6 @@
       "221130": "03 F7",
       "221135": "0E 11",
       "221136": "3E F1",
-      "221139": "39 22",
       "221146": "00 00",
       "221147": "00 00",
       "221148": "00 00",
@@ -1916,9 +1861,6 @@
       "221158": "FF D6",
       "221159": "08 54",
       "221160": "06 CE 45 6A",
-      "221200": "F4",
-      "221201": "00",
-      "221202": "00",
       "221210": "01 19",
       "221216": "02 27",
       "221219": "0E 7F",
@@ -1935,7 +1877,6 @@
       "221371": "02 9F",
       "221373": "00 64",
       "221480": "00 00 00",
-      "221490": "31 33",
       "221511": "63",
       "221512": "4C",
       "221513": "68 4C",
@@ -1972,25 +1913,14 @@
       "22115C": "27 10",
       "2211A3": "00",
       "2211A4": "7B 32",
-      "2211AC": "00 40",
-      "2211AD": "00 72",
-      "2211B8": "00 02",
       "2211B9": "00",
       "2211BB": "25 44",
       "2211BD": "0A F4",
       "2211BE": "00 02",
       "2211CE": "0D 48",
-      "2211CF": "18 56",
-      "2211D1": "18 53",
-      "2211D2": "00 0F",
-      "2211D5": "00 2F",
-      "2211D7": "69 E9",
-      "2211DC": "0D 25",
-      "2211DD": "0C A9",
       "2211E0": "00 34",
       "2211F0": "31 E3",
       "2211F1": "0B D7",
-      "2211FF": "E2",
       "22120E": "00 CD",
       "22120F": "01 A6",
       "22121C": "01 F9",
@@ -2006,15 +1936,10 @@
       "2214B4": "06 40",
       "2214CB": "00",
       "2214D1": "00 00",
-      "22159F": "6F A3",
       "2215A4": "29 ED",
       "2215B7": "0A F4",
       "2215B9": "12 EF",
-      "2215C0": "4B",
-      "2215C1": "51",
       "2215CD": "0A F8",
-      "2215CF": "00 3E",
-      "2215D1": "00 01",
       "2215D4": "6F FB",
       "22162D": "00 00 00 00",
       "2216EC": "3F A6",
@@ -2056,12 +1981,10 @@
       "222A07": "21 FB",
       "222A0B": "2F",
       "222A0C": "44",
-      "222A0E": "29",
       "222A0F": "16",
       "222A10": "22",
       "222A15": "04 B0",
-      "222A1C": "01 34",
-      "222A25": "25"
+      "222A1C": "01 34"
      }
     },
     {
@@ -2161,13 +2084,6 @@
       "nagebouwd": true
      },
      {
-      "code": "222A0E",
-      "ecu": "710",
-      "rx": "77A",
-      "sig": "POLO_BAT_INT_R",
-      "nagebouwd": true
-     },
-     {
       "code": "222A0F",
       "ecu": "710",
       "rx": "77A",
@@ -2193,13 +2109,6 @@
       "ecu": "710",
       "rx": "77A",
       "sig": "POLO_GEN_CURRENT",
-      "nagebouwd": true
-     },
-     {
-      "code": "222A25",
-      "ecu": "710",
-      "rx": "77A",
-      "sig": "POLO_BAT_INTERNAL_RES_RAW",
       "nagebouwd": true
      },
      {
@@ -2302,13 +2211,6 @@
       "nagebouwd": true
      },
      {
-      "code": "221017",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_AC_COMP_P",
-      "nagebouwd": true
-     },
-     {
       "code": "22101A",
       "ecu": "7E0",
       "rx": "7E8",
@@ -2320,13 +2222,6 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "POLO_ALTERNATOR_LOAD",
-      "nagebouwd": true
-     },
-     {
-      "code": "221026",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_MQB_MAF_1_B1_RAW",
       "nagebouwd": true
      },
      {
@@ -2470,13 +2365,6 @@
       "nagebouwd": true
      },
      {
-      "code": "221139",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_MEAN_INJ_QUANTITY",
-      "nagebouwd": true
-     },
-     {
       "code": "22113A",
       "ecu": "7E0",
       "rx": "7E8",
@@ -2597,27 +2485,6 @@
       "nagebouwd": true
      },
      {
-      "code": "2211AC",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_MAF_THROUGH_THROTTLE",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211AD",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_MAF_CMD",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211B8",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_AIR_LEAKAGE",
-      "nagebouwd": true
-     },
-     {
       "code": "2211B9",
       "ecu": "7E0",
       "rx": "7E8",
@@ -2653,55 +2520,6 @@
       "nagebouwd": true
      },
      {
-      "code": "2211CF",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_BRAKE_BOOSTER_P",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211D1",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_BRAKE_BOOSTER_RAW_P",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211D2",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_HIGH_P_CTRL_ADPT",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211D5",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_HIGH_FUEL_P",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211D7",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_HIGH_FUEL_P_CMD",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211DC",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_INT_MANIFOLD_P_RAW",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211DD",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_INT_MANIFOLD_P_CMD",
-      "nagebouwd": true
-     },
-     {
       "code": "2211E0",
       "ecu": "7E0",
       "rx": "7E8",
@@ -2720,34 +2538,6 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "POLO_PQ35_TRANS_IN_SPD",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211FF",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_EA888B_BOOST_P_CTRL_0",
-      "nagebouwd": true
-     },
-     {
-      "code": "221200",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_EA888B_BOOST_P_CTRL_1",
-      "nagebouwd": true
-     },
-     {
-      "code": "221201",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_EA888B_BOOST_P_CTRL_2",
-      "nagebouwd": true
-     },
-     {
-      "code": "221202",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_EA888B_BOOST_P_CTRL_3",
       "nagebouwd": true
      },
      {
@@ -2955,13 +2745,6 @@
       "nagebouwd": true
      },
      {
-      "code": "221490",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_BRAKE_BOOSTER_ACT",
-      "nagebouwd": true
-     },
-     {
       "code": "2214B4",
       "ecu": "7E0",
       "rx": "7E8",
@@ -2983,14 +2766,6 @@
       "nagebouwd": true
      },
      {
-      "code": "221507",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_CAT_CONVERTER_OXYGEN_STORAGE_CAPACITY_MEASURED_7E0",
-      "nagebouwd": false,
-      "waarom": "adressering"
-     },
-     {
       "code": "221511",
       "ecu": "7E0",
       "rx": "7E8",
@@ -3009,13 +2784,6 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "POLO_ECT_LINEAR",
-      "nagebouwd": true
-     },
-     {
-      "code": "22159F",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_HIGH_FUEL_P_ACT",
       "nagebouwd": true
      },
      {
@@ -3040,38 +2808,10 @@
       "nagebouwd": true
      },
      {
-      "code": "2215C0",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_IAT_INT_MANIFOLD_RAW",
-      "nagebouwd": true
-     },
-     {
-      "code": "2215C1",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_IAT_BEFORE_THROTTLE",
-      "nagebouwd": true
-     },
-     {
       "code": "2215CD",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "POLO_ECT_RADIATOR_OUTLET_V_1",
-      "nagebouwd": true
-     },
-     {
-      "code": "2215CF",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_LONGITUDINAL_ACCEL",
-      "nagebouwd": true
-     },
-     {
-      "code": "2215D1",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "POLO_LATERAL_ACCEL_RAW",
       "nagebouwd": true
      },
      {
@@ -3337,6 +3077,14 @@
    },
    "overgeslagen": [
     {
+     "cmd": "710.77A.222A0E|fc=1",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "710.77A.222A25|fc=1",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
      "cmd": "713.77D.221816|fc=1",
      "reden": "geen antwoord in OBDb"
     },
@@ -3357,16 +3105,108 @@
      "reden": "geen signaal in OBDb"
     },
     {
+     "cmd": "7E0.7E8.221017",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221026",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221139",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
      "cmd": "7E0.7E8.221161|fc=1,c=17",
      "reden": "adressering fc=1,c=17"
+    },
+    {
+     "cmd": "7E0.7E8.2211AC",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211AD",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211B8",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211CF",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211D1",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211D2",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211D5",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211D7",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211DC",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211DD",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211FF",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221200",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221201",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221202",
+     "reden": "onbekende eenheid of ruwe waarde"
     },
     {
      "cmd": "7E0.7E8.2212B0|fc=1,c=17",
      "reden": "adressering fc=1,c=17"
     },
     {
+     "cmd": "7E0.7E8.221490",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
      "cmd": "7E0.7E8.221507|fc=1,c=17",
-     "reden": "adressering fc=1,c=17"
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.22159F",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2215C0",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2215C1",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2215CF",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2215D1",
+     "reden": "onbekende eenheid of ruwe waarde"
     }
    ]
   },
@@ -3389,7 +3229,6 @@
      "did": {
       "221002": "00 00",
       "221018": "00 00",
-      "221026": "00 00",
       "221059": "00 00",
       "221063": "0C EF",
       "221065": "0C 6A",
@@ -3398,20 +3237,14 @@
       "221135": "0E 26",
       "221136": "3E 52",
       "221137": "00",
-      "221139": "3C A3",
       "221146": "00 00",
       "221147": "00 00",
       "221148": "00 00",
-      "221149": "00 00",
       "221150": "22 89",
       "221151": "1B 61",
       "221152": "28 0B",
       "221160": "03 3A 25 1A",
-      "221175": "01 16",
       "221189": "00 00",
-      "221200": "FF",
-      "221201": "00",
-      "221202": "00",
       "221216": "02 3A",
       "221221": "00 05",
       "221222": "00 00",
@@ -3427,8 +3260,6 @@
       "221385": "00 00",
       "221421": "1A 3C",
       "221488": "00 00",
-      "221490": "56 78",
-      "221509": "62 A4",
       "221515": "4E",
       "221519": "00 01",
       "221610": "00 00 00 00",
@@ -3437,7 +3268,6 @@
       "221710": "80 00",
       "221711": "00",
       "221712": "00",
-      "221713": "00 00",
       "221715": "00 01",
       "221716": "00 02",
       "221717": "00 02",
@@ -3447,7 +3277,6 @@
       "221724": "00 02",
       "221725": "00 01",
       "221740": "00 00",
-      "221743": "01 45",
       "221755": "FF E8",
       "221779": "7B 29",
       "221780": "00 00",
@@ -3463,15 +3292,11 @@
       "224189": "05",
       "224417": "05 BE",
       "224418": "05 A5",
-      "224419": "0F DA",
       "224649": "0D C2",
       "225149": "00 00 D0 EC",
       "22105C": "00 00",
-      "22114F": "1C 91",
       "2211BD": "0B A4",
       "2211BE": "00 00",
-      "2215B8": "16 09",
-      "22178C": "00 00",
       "22028D": "0B B9",
       "22102A": "0E B0",
       "22102B": "07 51",
@@ -3496,10 +3321,6 @@
       "2211A0": "00 00",
       "2211A3": "00",
       "2211A4": "8D AC",
-      "2211AB": "00 6B",
-      "2211AC": "00 71",
-      "2211AD": "00 6F",
-      "2211B8": "00 08",
       "2211B9": "00",
       "2211BA": "00 00",
       "2211BB": "3A EC",
@@ -3508,23 +3329,11 @@
       "2211C8": "00 00",
       "2211C9": "00 00",
       "2211CE": "13 88",
-      "2211D1": "00 17",
-      "2211D2": "FF B2",
-      "2211D4": "0C 2E",
-      "2211D5": "00 04",
-      "2211D7": "24 F4",
-      "2211DA": "0C 39",
-      "2211DC": "0B A5",
-      "2211DD": "0C A4",
       "2211DF": "00 64",
       "2211E0": "00 2D",
       "2211E6": "00 00",
-      "2211EE": "31 78",
-      "2211EF": "63 1A",
-      "2211F0": "31 6E",
       "2211F1": "0E 0A",
       "2211F3": "00 00",
-      "2211FF": "00",
       "22121C": "02 0F",
       "22127B": "20 F7",
       "22127D": "2C 1C",
@@ -3542,17 +3351,14 @@
       "2214CF": "62 4A",
       "2214D1": "00 00",
       "2214F8": "0B B9",
-      "22159F": "25 18",
       "2215A4": "00 00",
       "2215AA": "01 EF",
       "2215B7": "0B B5",
       "2215B9": "14 73",
       "2215BD": "00",
-      "2215C0": "0B CB",
       "2215CB": "00 00",
       "2215CC": "00 00",
       "2215CD": "0B B3",
-      "2215D0": "00 00",
       "2215E7": "00 00 17 9C",
       "22162D": "80 00 00 00",
       "22167E": "03 E8",
@@ -3580,7 +3386,6 @@
       "2239FD": "00 02",
       "2239FE": "00 01",
       "2239FF": "02 30",
-      "223D01": "40 DE",
       "223D77": "01 66",
       "22417B": "FF E7",
       "22417D": "00 19",
@@ -3646,11 +3451,9 @@
       "222A0A": "42",
       "222A0B": "41",
       "222A0C": "36",
-      "222A0E": "1C",
       "222A0F": "13",
       "222A10": "20",
       "222A1C": "00 00",
-      "222A25": "1D",
       "222A61": "00 00 65 24 00 00 66 EA"
      }
     },
@@ -3844,13 +3647,6 @@
       "nagebouwd": true
      },
      {
-      "code": "222A0E",
-      "ecu": "710",
-      "rx": "77A",
-      "sig": "TIGUAN_BAT_INT_R",
-      "nagebouwd": true
-     },
-     {
       "code": "222A0F",
       "ecu": "710",
       "rx": "77A",
@@ -3869,13 +3665,6 @@
       "ecu": "710",
       "rx": "77A",
       "sig": "TIGUAN_GEN_CURRENT",
-      "nagebouwd": true
-     },
-     {
-      "code": "222A25",
-      "ecu": "710",
-      "rx": "77A",
-      "sig": "TIGUAN_BAT_INTERNAL_RES_RAW",
       "nagebouwd": true
      },
      {
@@ -4236,13 +4025,6 @@
       "nagebouwd": true
      },
      {
-      "code": "22114F",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_PQ35_SOOT_MASS_CALC",
-      "nagebouwd": true
-     },
-     {
       "code": "221151",
       "ecu": "7E0",
       "rx": "7E8",
@@ -4271,20 +4053,6 @@
       "nagebouwd": true
      },
      {
-      "code": "2215B8",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_MQB_DPF_DIFF_P_DYNAMIC_OFFSET",
-      "nagebouwd": true
-     },
-     {
-      "code": "22178C",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_PQ35_OIL_ASH_RESIDUE",
-      "nagebouwd": true
-     },
-     {
       "code": "22028D",
       "ecu": "7E0",
       "rx": "7E8",
@@ -4303,14 +4071,6 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_ENGINE_TORQUE",
-      "nagebouwd": false,
-      "waarom": "adressering"
-     },
-     {
-      "code": "221017",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_A_C_REFRIGERANT_PRES",
       "nagebouwd": false,
       "waarom": "adressering"
      },
@@ -4344,13 +4104,6 @@
       "sig": "TIGUAN_GENERATOR_LOAD_SIG",
       "nagebouwd": false,
       "waarom": "adressering"
-     },
-     {
-      "code": "221026",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_MQB_MAF_1_B1_RAW",
-      "nagebouwd": true
      },
      {
       "code": "22102A",
@@ -4532,13 +4285,6 @@
       "nagebouwd": true
      },
      {
-      "code": "221139",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_MEAN_INJ_QUANTITY",
-      "nagebouwd": true
-     },
-     {
       "code": "22113A",
       "ecu": "7E0",
       "rx": "7E8",
@@ -4571,13 +4317,6 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_PQ35_FUEL_METER",
-      "nagebouwd": true
-     },
-     {
-      "code": "221149",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_PQ35_BOOST_P_CMD",
       "nagebouwd": true
      },
      {
@@ -4624,13 +4363,6 @@
       "waarom": "adressering"
      },
      {
-      "code": "221175",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_INTEGRATED_MASS_AIR",
-      "nagebouwd": true
-     },
-     {
       "code": "221189",
       "ecu": "7E0",
       "rx": "7E8",
@@ -4670,34 +4402,6 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_FUEL_PMP_CMD_DUTY",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211AB",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_INT_MODEL_AIR_MASS",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211AC",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_MAF_THROUGH_THROTTLE",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211AD",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_MAF_CMD",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211B8",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_AIR_LEAKAGE",
       "nagebouwd": true
      },
      {
@@ -4757,62 +4461,6 @@
       "nagebouwd": true
      },
      {
-      "code": "2211D1",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_BRAKE_BOOSTER_RAW_P",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211D2",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_HIGH_P_CTRL_ADPT",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211D4",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_TURBOCHARGER_INLET_P",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211D5",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_HIGH_FUEL_P",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211D7",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_HIGH_FUEL_P_CMD",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211DA",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_INT_MANIFOLD_P",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211DC",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_MAP_RAW",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211DD",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_INT_MANIFOLD_P_CMD",
-      "nagebouwd": true
-     },
-     {
       "code": "2211DF",
       "ecu": "7E0",
       "rx": "7E8",
@@ -4834,27 +4482,6 @@
       "nagebouwd": true
      },
      {
-      "code": "2211EE",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_P_BEFORE_THROTTLE_ACT",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211EF",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_P_BEFORE_THROTTLE",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211F0",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_BOOST_P_ACT",
-      "nagebouwd": true
-     },
-     {
       "code": "2211F1",
       "ecu": "7E0",
       "rx": "7E8",
@@ -4866,34 +4493,6 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_PQ35_POST_INJ_2_START",
-      "nagebouwd": true
-     },
-     {
-      "code": "2211FF",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_EA888B_BOOST_P_CTRL_0",
-      "nagebouwd": true
-     },
-     {
-      "code": "221200",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_EA888B_BOOST_P_CTRL_1",
-      "nagebouwd": true
-     },
-     {
-      "code": "221201",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_EA888B_BOOST_P_CTRL_2",
-      "nagebouwd": true
-     },
-     {
-      "code": "221202",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_EA888B_BOOST_P_CTRL_3",
       "nagebouwd": true
      },
      {
@@ -5123,14 +4722,6 @@
       "waarom": "adressering"
      },
      {
-      "code": "2213A0",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_COOLANT_T_MODELED_VALUE",
-      "nagebouwd": false,
-      "waarom": "adressering"
-     },
-     {
       "code": "2213F4",
       "ecu": "7E0",
       "rx": "7E8",
@@ -5149,13 +4740,6 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_ELEC_ADDITIONAL_CLT",
-      "nagebouwd": true
-     },
-     {
-      "code": "221490",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_BRAKE_BOOSTER_LOW_P_ACT",
       "nagebouwd": true
      },
      {
@@ -5224,21 +4808,6 @@
       "waarom": "adressering"
      },
      {
-      "code": "221507",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_CAT_CONVERTER_OXYGEN_STORAGE_CAPACITY_MEASURED",
-      "nagebouwd": false,
-      "waarom": "adressering"
-     },
-     {
-      "code": "221509",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_AMBIENT_AIR_P",
-      "nagebouwd": true
-     },
-     {
       "code": "221515",
       "ecu": "7E0",
       "rx": "7E8",
@@ -5250,13 +4819,6 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_FUEL_CONS_ACT_DRIVE",
-      "nagebouwd": true
-     },
-     {
-      "code": "22159F",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_HIGH_FUEL_P_ACT",
       "nagebouwd": true
      },
      {
@@ -5295,13 +4857,6 @@
       "nagebouwd": true
      },
      {
-      "code": "2215C0",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_IAT_RAW",
-      "nagebouwd": true
-     },
-     {
       "code": "2215CA",
       "ecu": "7E0",
       "rx": "7E8",
@@ -5329,29 +4884,6 @@
       "rx": "7E8",
       "sig": "TIGUAN_ECT_RADIATOR_OUTLET_V_1",
       "nagebouwd": true
-     },
-     {
-      "code": "2215CF",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_LONGTITUDINAL_ACCELERATION_RAW_VALUE",
-      "nagebouwd": false,
-      "waarom": "adressering"
-     },
-     {
-      "code": "2215D0",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_YAW_ACCEL_RAW",
-      "nagebouwd": true
-     },
-     {
-      "code": "2215D1",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_VEHICLE_LATERAL_ACCELERATION_RAW_VALUE",
-      "nagebouwd": false,
-      "waarom": "adressering"
      },
      {
       "code": "2215E7",
@@ -5467,13 +4999,6 @@
       "nagebouwd": true
      },
      {
-      "code": "221713",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_TOT_MASS_GASOLINE",
-      "nagebouwd": true
-     },
-     {
       "code": "221715",
       "ecu": "7E0",
       "rx": "7E8",
@@ -5534,13 +5059,6 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_INT_CAM_ADPT_SENS",
-      "nagebouwd": true
-     },
-     {
-      "code": "221743",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_INTEGRATED_MASS_AIR_SINCE",
       "nagebouwd": true
      },
      {
@@ -5726,13 +5244,6 @@
       "nagebouwd": true
      },
      {
-      "code": "223D01",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_BYPASS_VLV_HIGH_P_V",
-      "nagebouwd": true
-     },
-     {
       "code": "223D77",
       "ecu": "7E0",
       "rx": "7E8",
@@ -5814,13 +5325,6 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_THERMOSTAT_ACT",
-      "nagebouwd": true
-     },
-     {
-      "code": "224419",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "TIGUAN_ENG_T_MANAGEMENT",
       "nagebouwd": true
      },
      {
@@ -6168,12 +5672,32 @@
    },
    "overgeslagen": [
     {
+     "cmd": "710.77A.222A0E|fc=1",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "710.77A.222A25|fc=1",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
      "cmd": "7E0.2210E0",
      "reden": "geen signaal in OBDb"
     },
     {
+     "cmd": "7E0.22114F|din=03",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
      "cmd": "7E0.221160",
      "reden": "geen signaal in OBDb"
+    },
+    {
+     "cmd": "7E0.2215B8|din=03",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.22178C|din=03",
+     "reden": "onbekende eenheid of ruwe waarde"
     },
     {
      "cmd": "7E0.7E8.221010|fc=1,c=17",
@@ -6181,7 +5705,7 @@
     },
     {
      "cmd": "7E0.7E8.221017|fc=1,c=17",
-     "reden": "adressering fc=1,c=17"
+     "reden": "onbekende eenheid of ruwe waarde"
     },
     {
      "cmd": "7E0.7E8.22101A|fc=1,c=17",
@@ -6194,6 +5718,10 @@
     {
      "cmd": "7E0.7E8.22101C|fc=1,c=17",
      "reden": "adressering fc=1,c=17"
+    },
+    {
+     "cmd": "7E0.7E8.221026",
+     "reden": "onbekende eenheid of ruwe waarde"
     },
     {
      "cmd": "7E0.7E8.22105A|fc=1,c=17",
@@ -6212,8 +5740,96 @@
      "reden": "adressering fc=1,c=17"
     },
     {
+     "cmd": "7E0.7E8.221139",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221149",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
      "cmd": "7E0.7E8.221161|fc=1,c=17",
      "reden": "adressering fc=1,c=17"
+    },
+    {
+     "cmd": "7E0.7E8.221175",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211AB",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211AC",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211AD",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211B8",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211D1",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211D2",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211D4",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211D5",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211D7",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211DA",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211DC",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211DD",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211EE",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211EF",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211F0",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2211FF",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221200",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221201",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221202",
+     "reden": "onbekende eenheid of ruwe waarde"
     },
     {
      "cmd": "7E0.7E8.221205",
@@ -6261,7 +5877,11 @@
     },
     {
      "cmd": "7E0.7E8.2213A0|fc=1,c=17",
-     "reden": "adressering fc=1,c=17"
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221490",
+     "reden": "onbekende eenheid of ruwe waarde"
     },
     {
      "cmd": "7E0.7E8.22149E|fc=1,c=17",
@@ -6273,7 +5893,19 @@
     },
     {
      "cmd": "7E0.7E8.221507|fc=1,c=17",
-     "reden": "adressering fc=1,c=17"
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221509",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.22159F",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2215C0",
+     "reden": "onbekende eenheid of ruwe waarde"
     },
     {
      "cmd": "7E0.7E8.2215CA|fc=1,c=17",
@@ -6281,15 +5913,35 @@
     },
     {
      "cmd": "7E0.7E8.2215CF|fc=1,c=17",
-     "reden": "adressering fc=1,c=17"
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.2215D0",
+     "reden": "onbekende eenheid of ruwe waarde"
     },
     {
      "cmd": "7E0.7E8.2215D1|fc=1,c=17",
-     "reden": "adressering fc=1,c=17"
+     "reden": "onbekende eenheid of ruwe waarde"
     },
     {
      "cmd": "7E0.7E8.2216F3|fc=1,c=17",
      "reden": "adressering fc=1,c=17"
+    },
+    {
+     "cmd": "7E0.7E8.221713",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221743",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.223D01",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.224419",
+     "reden": "onbekende eenheid of ruwe waarde"
     },
     {
      "cmd": "7E1.7E9.22203F|fc=1,c=17",
@@ -6345,7 +5997,6 @@
       "2215D1": "01 00 00 1E 33 02 92 00 00 00 00 00 00 00 00 00 00 00 00 00",
       "222A0E": "00",
       "222A15": "00 00 00 03",
-      "222A25": "00",
       "222A53": "93 02 13 02 E8",
       "222AB4": "00 00 00 BE 00 00 00 00 00 17",
       "222AB5": "00 BE 00 00 00 BE 00 00 00 00",
@@ -6652,13 +6303,6 @@
       "ecu": "710",
       "rx": "77A",
       "sig": "ID3_ENERGY_BALANCE_LAST",
-      "nagebouwd": true
-     },
-     {
-      "code": "222A25",
-      "ecu": "710",
-      "rx": "77A",
-      "sig": "ID3_BAT_INTERNAL_RES_RAW",
       "nagebouwd": true
      },
      {
@@ -8180,6 +7824,10 @@
    },
    "overgeslagen": [
     {
+     "cmd": "710.77A.222A25|fc=1",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
      "cmd": "710.77A.222AB2",
      "reden": "geen signaal in OBDb"
     },
@@ -8229,11 +7877,9 @@
      "did": {
       "221002": "00 00",
       "221004": "00 00",
-      "221026": "00 00",
       "221135": "0E 5C",
       "221147": "00 00",
       "221148": "00 00",
-      "221149": "00 00",
       "221150": "31 FA",
       "221158": "00 00",
       "221159": "00 00",
@@ -8298,7 +7944,6 @@
       "221093": "00 FF",
       "221094": "9B FC",
       "221191": "14 15",
-      "221196": "08 27 E4 25",
       "222110": "CC 51",
       "222114": "00",
       "223800": "00",
@@ -8406,7 +8051,6 @@
       "222A09": "00 00 07 EF",
       "222A0B": "3B",
       "222A0C": "40",
-      "222A0E": "1B",
       "222A0F": "24",
       "222A10": "21",
       "222A15": "04 B0",
@@ -8571,13 +8215,6 @@
       "ecu": "710",
       "rx": "77A",
       "sig": "A3_BAT_SOC",
-      "nagebouwd": true
-     },
-     {
-      "code": "222A0E",
-      "ecu": "710",
-      "rx": "77A",
-      "sig": "A3_BAT_INT_R",
       "nagebouwd": true
      },
      {
@@ -8854,13 +8491,6 @@
       "nagebouwd": true
      },
      {
-      "code": "221026",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "A3_MQB_MAF_1_B1_RAW",
-      "nagebouwd": true
-     },
-     {
       "code": "2210D3",
       "ecu": "7E0",
       "rx": "7E8",
@@ -8907,13 +8537,6 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "A3_PQ35_FUEL_METER",
-      "nagebouwd": true
-     },
-     {
-      "code": "221149",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "A3_PQ35_BOOST_P_CMD",
       "nagebouwd": true
      },
      {
@@ -9526,13 +9149,6 @@
       "nagebouwd": true
      },
      {
-      "code": "221196",
-      "ecu": "7E1",
-      "rx": "7E9",
-      "sig": "A3_MQB_TCM_HYBRID_T",
-      "nagebouwd": true
-     },
-     {
       "code": "222110",
       "ecu": "7E1",
       "rx": "7E9",
@@ -9970,6 +9586,10 @@
    },
    "overgeslagen": [
     {
+     "cmd": "710.77A.222A0E",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
      "cmd": "714.77E.22224B",
      "reden": "geen signaal in OBDb"
     },
@@ -9980,6 +9600,14 @@
     {
      "cmd": "7E0.22105C",
      "reden": "geen signaal in OBDb"
+    },
+    {
+     "cmd": "7E0.7E8.221026",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "7E0.7E8.221149",
+     "reden": "onbekende eenheid of ruwe waarde"
     },
     {
      "cmd": "7E0.7E8.22118D",
@@ -10000,6 +9628,10 @@
     {
      "cmd": "7E1.221003",
      "reden": "geen signaal in OBDb"
+    },
+    {
+     "cmd": "7E1.7E9.221196",
+     "reden": "onbekende eenheid of ruwe waarde"
     }
    ]
   },
@@ -10655,7 +10287,6 @@
       "227008": "3E 85",
       "227009": "3E 93",
       "227010": "00 6C 3B",
-      "227038": "17 FE",
       "227049": "3E 80",
       "227050": "0B 54",
       "227088": "1A 1C",
@@ -11881,13 +11512,6 @@
       "nagebouwd": true
      },
      {
-      "code": "227038",
-      "ecu": "18DADFF1",
-      "rx": "18DAF1DF",
-      "sig": "ZOE_ROTOR_T_RAW",
-      "nagebouwd": true
-     },
-     {
       "code": "227049",
       "ecu": "18DADFF1",
       "rx": "18DAF1DF",
@@ -11910,7 +11534,12 @@
      }
     ]
    },
-   "overgeslagen": [],
+   "overgeslagen": [
+    {
+     "cmd": "DADF.DF.227038",
+     "reden": "onbekende eenheid of ruwe waarde"
+    }
+   ],
    "readiness": "000000"
   },
   {
@@ -12198,7 +11827,6 @@
       "221627": "49 20",
       "221634": "0B 3F 28 00 01",
       "22161A": "02 FA",
-      "22162A": "81 05",
       "22162B": "07 B4"
      }
     },
@@ -12702,13 +12330,6 @@
       "nagebouwd": true
      },
      {
-      "code": "22162A",
-      "ecu": "701",
-      "rx": "709",
-      "sig": "COROLLA_CVT_CLAMP_P",
-      "nagebouwd": true
-     },
-     {
       "code": "22162B",
       "ecu": "701",
       "rx": "709",
@@ -12885,6 +12506,10 @@
     {
      "cmd": "700.708.221F2F|f=2018-",
      "reden": "antwoord onleesbaar"
+    },
+    {
+     "cmd": "701.709.22162A",
+     "reden": "onbekende eenheid of ruwe waarde"
     },
     {
      "cmd": "750.758.2116|t=96,e=2A,ta=2A,fc=1",
@@ -15839,7 +15464,6 @@
       "22035A": "03 33",
       "22035F": "00 82",
       "22038A": "00",
-      "22038E": "00 00",
       "22038F": "0A F1",
       "2203AF": "00",
       "2203BA": "01 F6",
@@ -16272,13 +15896,6 @@
       "nagebouwd": true
      },
      {
-      "code": "22038E",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "FIESTA_EVAP_RAW",
-      "nagebouwd": true
-     },
-     {
       "code": "22038F",
       "ecu": "7E0",
       "rx": "7E8",
@@ -16672,6 +16289,10 @@
     {
      "cmd": "019F",
      "reden": "geen lengte in nepauto.js"
+    },
+    {
+     "cmd": "7E0.7E8.22038E",
+     "reden": "onbekende eenheid of ruwe waarde"
     }
    ]
   },
@@ -16813,8 +16434,7 @@
      "tx": "740",
      "pids": "",
      "did": {
-      "221115": "00",
-      "221209": "00 00"
+      "221115": "00"
      }
     },
     {
@@ -16882,13 +16502,6 @@
       "ecu": "740",
       "rx": "760",
       "sig": "LEAF_APP",
-      "nagebouwd": true
-     },
-     {
-      "code": "221209",
-      "ecu": "740",
-      "rx": "760",
-      "sig": "LEAF_BRAKE_MC_P",
       "nagebouwd": true
      },
      {
@@ -17148,6 +16761,10 @@
    },
    "overgeslagen": [
     {
+     "cmd": "740.760.221209",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
      "cmd": "797.79A.22110F|fc=1,f=2013-",
      "reden": "geen antwoord in OBDb"
     }
@@ -17341,7 +16958,6 @@
      "did": {
       "2121": "FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF",
       "2125": "FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF",
-      "2128": "FF CB FF 00 FF D2 FF 00 FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF 73 56 7F FE A0 00 60 00 FF FF 00 00 FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF",
       "2145": "FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF"
      }
     },
@@ -17405,13 +17021,6 @@
       "nagebouwd": true
      },
      {
-      "code": "2128",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "SWIFT_2128_RAW",
-      "nagebouwd": true
-     },
-     {
       "code": "2145",
       "ecu": "7E0",
       "rx": "7E8",
@@ -17420,7 +17029,12 @@
      }
     ]
    },
-   "overgeslagen": []
+   "overgeslagen": [
+    {
+     "cmd": "7E0.7E8.2128",
+     "reden": "onbekende eenheid of ruwe waarde"
+    }
+   ]
   },
   {
    "id": "civic19",
@@ -17440,65 +17054,17 @@
      "tx": "DA10F1",
      "pids": "01 03 04 05 06 07 0B 0C 0D 0E 0F 10 11 13 15 1C 1F 21 23 24 2E 2F 30 31 32 33 3C 41 42 43 44 45 47 49 4A 4C 4F 51 55 56 62 63 67 68 70 72 8E 9D 9E A6",
      "did": {
-      "222600": "10 19 01 27 01 EE 0E 00 00 00",
-      "222601": "01 00 00",
       "222610": "FF 9F B0 7D F8 FC 00 00 30 19 21 7F 73 4E 57 00 00 63 00 00 7D 80 7C 00 00 00 00 00 00 00 00 0F 04 00 00 00 00 32 6F 00 00 7C 4A 00 00 00 13 80 0B C2 00 2F 00 00",
       "222611": "FF F0 00 00 0C 00 7E BC 51 BC 62 72 7F 71 02 2E 00 5B 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 03 00 00 00 00 00 00 00 00 00 00",
       "222612": "FF F0 30 00 02 43 34 19 00 00 23 DC 01 CF 01 D0 1E E1 00 00 00 00 00 00 28 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 5A 8A",
       "222615": "F8 30 00 00 00 00 56 1C AC 1D 37 00 00 00 00 00 03 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222620": "FF 9D B0 1C 60 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222621": "FF C0 00 00 00 00 00 00 00 00 80 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222622": "FF F0 20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222623": "84 00 00 00 00 C0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222625": "E0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222630": "00 00 00",
       "222660": "80 1F FF F3 F7 F0 00 00 00 00 00 00 00 00 00 00 00 00 00 02 74 1B 01 01 00 04 00 40 00 83 00 01 01 F7 00 00 05 A2 02 42 02 2C 00 02 DE D1 00 EA 00 78 00 00 00 00",
       "222661": "FF CC 01 81 01 FF 13 02 00 00 00 00 00 00 11 11 00 00 00 00 00 00 00 00 00 00 00 00 00 09 D8 00 00 00 00 00 00 0D 00 00 00 00 00 00 00 E0 60 08 00 10 00 20 00 7F",
       "222662": "2B 00 33 F1 7F FF 00 00 00 00 4E 00 06 5B 00 00 00 00 00 00 00 00 00 00 01 01 00 00 00 28 61 61 00 00 00 00 00 AA 00 4F 72 02 E5 02 E5 1F 00 00 00 7F FF 46 00 00",
       "222663": "F3 3F FC 3F F0 E0 00 00 0F 00 00 00 01 01 00 00 02 00 91 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 10 00 00 00 00 00",
-      "222664": "FF FF FE 01 80 00 A0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 05 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
       "222665": "FF 00 00 F0 C0 00 8F 00 00 31 13 08 00 33 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222673": "CC CC C0 00 C0 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 07 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222676": "F0 00 00 00 00 C0 12 12 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222678": "C3 1F E7 FF FC 00 00 24 00 00 00 00 30 00 00 00 00 03 A6 00 00 00 01 00 00 00 00 05 EC 13 CE 00 BD 00 BF 01 30 01 C0 00 00 FD 40 03 00 00 00 00 00 00 00 00 00 00",
-      "222679": "FF FF FF FF FF FF 00 00 00 00 00 00 05 7D 00 00 00 00 0A E5 00 00 00 00 00 00 00 42 00 3D 00 00 00 0C 00 0F 7F FF 0E EB 0F 82 7F FF FD 57 FA 85 00 00 00 1A 00 1A",
-      "222680": "F8 C0 00 00 00 00 00 00 E0 00 00 00 00 00 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
       "222681": "FF FF CD 80 00 00 37 A2 00 A9 3C 44 00 00 00 C0 00 0D 6F C0 80 13 58 00 00 00 0D 61 00 E0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222683": "FF FF FF FF 00 00 01 74 E2 48 01 68 5B A4 00 04 76 9B 00 1F 5F CC 00 15 CA C7 00 95 7D 07 01 75 77 C7 00 71 FC 7F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222684": "FF FF FF 00 00 00 01 24 0E 36 01 27 A5 8C 00 11 8D D3 00 0F 7D 14 00 EE 9E 5F 00 5D 67 8A 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222685": "F2 00 00 00 00 00 05 18 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222686": "10 00 00 00 00 00 00 00 00 22 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222688": "F0 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 60 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222693": "C0 00 FF FF C0 00 8E 43 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 9F 04 5A 00 3D 00 3C 01 5B 00 3F FF 02 FF 0C F0 40 00 00 00 00 00 00 00 00 64 00 00 0E 12 00",
-      "222699": "FF E0 C8 00 FF 00 C0 80 66 07 3A 07 42 91 FC 4F FC 00 00 00 00 00 80 00 00 00 38 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "223000": "16 13 F4 00 01 00 00 00 00 00",
-      "223001": "01 00 00",
-      "22266A": "FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "22266E": "18 00 00 00 00 00 00 00 00 71 38 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "22266F": "00 00 03 FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 01 00 00",
-      "22267A": "FF DC 00 30 00 00 00 00 00 00 00 00 00 00 00 00 00 28 3C 54 00 00 00 00 00 00 00 00 00 00 00 00 02 27 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "22267B": "CC 0D FF FF FF FF 00 0C 00 00 00 00 00 00 00 00 00 00 0C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 2A 00 5C FC E5 00 11 00 65 02 21 02 0C 00 0F 00 7D 00 0D 00 64",
-      "22267C": "CF C0 30 00 00 00 00 04 00 00 01 00 00 00 FF 38 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "22267E": "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "22267F": "00 00 00 00 00 00 00 00 00 00",
-      "22268E": "FE 00 00 00 00 E0 01 60 01 DC 40 00 42 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 8D 92 00 00 00 00 00",
-      "22269A": "FF E0 00 00 00 00 00 7F 00 0A 00 02 00 00 00 1F 65 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "22269B": "C0 00 00 00 00 00 32 3C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "22269C": "F0 00 00 00 00 00 80 80 80 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "22300C": "00 00 04",
-      "22E411": "21 3E 0E 2F 00 01 9C 6D 0E 2F 1F FE FF FF FF FF 0E 2F 20 08 FF FF FF FF 0E 2F 05 1A 0E 2F 16 83 FF FF FF FF FF FF FF FF 0E 2F 0F 3F 0E 2F 11 A7 FF FF FF FF FF FF FF FF 0E 2F 02 9A FF FF FF FF",
-      "22E412": "07 A9 08 D4 07 A9 08 D4 FF FF FF FF FF FF FF FF 07 A9 08 D4 FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF 07 A9 0C 74 02 C5 04 6F 04 8C 07 DB 02 C5 04 6F 02 C5 04 6F 03 9F 06 8B 07 A9 0F 8B",
-      "22E413": "FF FF FF FF FF FF FF FF 0E 2F 18 D0 FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF 04 8C 14 F1 FF FF FF FF 04 8C 02 A7 07 A9 0F D1 07 A9 0F 38 0E 2F 18 74 07 A9 0F 53 07 A9 0D 75",
-      "22E414": "FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF 04 8C 03 00 04 8C 15 1F 0E 19 11 01 0E 19 10 EA 0E 19 0C 3F 07 A9 10 55 07 A9 08 D4 07 A9 08 D4 FF FF FF FF FF FF FF FF",
-      "22E415": "FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF 0E 2F 21 2A 0E 2F 15 1C FF FF FF FF 00 00 00 00 0E 2F 1B 6C 0E 2F 21 2D 0E 2F 0B 2A FF FF FF FF",
-      "22E416": "FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF",
-      "22E41F": "FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF 0E 2F 1F 51 FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF",
-      "22E5FF": "00",
-      "22E600": "37 37",
-      "22E602": "0A C0 00",
-      "22E800": "0B 4B 54 47 47 4C 4A 35 30 30 20 20",
-      "22E801": "33",
-      "22E80E": "00 00 00 00 00 00 00 00"
+      "22268E": "FE 00 00 00 00 E0 01 60 01 DC 40 00 42 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 8D 92 00 00 00 00 00"
      }
     },
     {
@@ -17506,18 +17072,8 @@
      "tx": "DA1EF1",
      "pids": "",
      "did": {
-      "222300": "F8 00 00 00 00 19 01 3B 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
       "222301": "9E 48 AF 20 00 00 00 02 D0 00 00 00 00 08 00 00 00 00 00 00 7C 00 23 00 64 43 64 8F 00 00 42 00 00 00 00 00",
-      "222311": "9E 48 AF 20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222320": "FF 3C 00 00 60 00 80 00 9C 9C 8D 8D 00 00 30 31 28 28 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222321": "CC C0 0C 00 FC 10 00 00 C0 80 00 00 FE 10 00 00 00 00 00 00 00 00 00 00 C0 00 00 00 00 00 00 00 00 00 00 00",
-      "222322": "BE 7F 7F F8 00 00 00 00 00 00 00 00 00 00 00 00 00 50 02 13 00 00 00 20 10 00 00 00 A9 0B 00 3B 00 00 00 00",
-      "222323": "00 00 00 00 00 00 00 30 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222330": "FF 3C 00 00 60 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222331": "CC C0 0C 00 FC 00 00 00 C0 00 00 00 FE 00 00 00 00 00 00 00 00 00 00 00 C0 00 00 00 00 00 00 00 00 00 00 00",
-      "222332": "BE 7F 7F F8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 3B 00 00 00 00",
-      "222333": "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "222340": "17 C0 30 00 00 00 00 00 00 00 00 00 FF FF 00 00 00 00 00 00 00 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00"
+      "222322": "BE 7F 7F F8 00 00 00 00 00 00 00 00 00 00 00 00 00 50 02 13 00 00 00 20 10 00 00 00 A9 0B 00 3B 00 00 00 00"
      }
     },
     {
@@ -17525,42 +17081,8 @@
      "tx": "DA28F1",
      "pids": "",
      "did": {
-      "224000": "00 00 F8 00 00 00 00 00 19 00 02 03 B6 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224001": "00 00 FF EC FF F0 3F F8 FE 3E FF 00 02 00 19 7D 7F 7C 8D 00 04 57 00 00 BF BC 5F 00 3F 3C 5F 00 3F 3F 5F 5F 00 00 00 00 00 00 FF 00 F8 F0 82 82 82 00 7A 7C 7D 00 00 00",
-      "224002": "32 03 64 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224003": "05 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0A 28 24 2C 05 05 1E 06 05 00 00 00 02 32 00 00 00 00 0A 32 00 00 00 00 0A 32 00 00 00 00 08 10 0E 14 00 00 08 F8 32 00 00 00 00 00 00 00 00 00 14 05 05 00 00 00 00 00 00 00 00 00",
       "224004": "00 00 FF FB FF FF FE 60 00 00 00 00 0F 00 FF 00 FF 00 FF 00 8E 00 00 8E 07 00 00 00 0F 01 30 2A 0F 00 0F 00 FF 01 00 5E 0E 07 00 00 02 FF 00 C7 00 00 80 00 00 00 00 00",
-      "224005": "00 00 ED 3E 80 07 80 00 19 19 7C 00 7D 7F 00 7F 00 00 04 19 04 65 7D 00 7C 00 00 00 00 00 00 00 00 00 00 00 00 00 AE 75 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224006": "00 00 FF 3C 0C 00 00 00 07 03 07 03 07 03 07 03 00 00 07 03 07 03 00 00 00 00 00 00 07 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224007": "00 00 F0 FF 80 00 00 00 0C 00 01 01 00 00 00 00 F9 21 EC 00 F7 00 83 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224008": "00 00 F9 F8 00 00 00 00 01 8D B3 00 81 00 00 07 02 40 FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224030": "00 00 FF FB FF E0 00 00 C4 01 68 2F 00 00 00 00 E7 00 FF 00 75 00 FF 07 00 0F 0A FF A0 00 5E 00 00 80 00 C8 C8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224031": "00 00 FF C3 C0 00 00 00 19 19 7D 7D 7F 7D 7E 7D 7C 7D 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224032": "00 00 FF 3C 03 00 00 00 07 07 07 03 07 03 07 03 00 00 07 03 07 03 00 00 00 00 00 00 00 00 07 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224033": "00 00 FF FB FF E0 00 00 F0 06 16 2F 00 00 00 00 E7 00 FF 00 5B 00 FF 05 00 0F 00 FF A0 00 5E 00 00 80 00 C7 C8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224034": "00 00 FF C3 C0 00 00 00 19 19 FE 7D FE 7F 7D 7D FE 7C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224035": "00 00 FF 3C 03 00 00 00 07 07 07 03 07 03 07 03 00 00 07 03 07 03 00 00 00 00 00 00 00 00 07 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224036": "00 00 FF FF FF FC 00 00 1F 01 01 4E 47 01 1C 9B FF FF FF 06 07 00 81 57 57 57 57 19 19 7D 7D 7D 7F 7D 7D 7B 7C 41 64 64 00 00 51 3A 00 5F 64 00 00 00 00 00 00 00 00 00",
-      "224037": "00 00 FF FF FF FC 00 00 1F 04 01 8E 3B 01 8D B3 FF FF FF 05 06 00 81 4B 4B 4B 4B 19 19 7D 7D 7E 7F 7D 7D 7B 7C 40 0A 00 00 00 C8 64 00 00 64 00 00 00 00 00 00 00 00 00",
-      "224038": "00 00 FF FF FF FF 00 00 40 78 4A 2F 01 84 21 01 1C 9B FF FF FF 06 07 00 81 2D 2D 31 2D 19 19 7D 7D 7F 7F 7D 7D 7C 7C 4C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224039": "00 00 FF FF FF FF 00 00 40 77 78 2F 01 8E 3B 01 8D B3 FF FF FF 05 06 00 81 4B 4B 4B 4B 19 19 7D 7D 7E 7F 7D 7D 7B 7C 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224070": "00 00 FF BF 9F 70 00 00 00 00 00 00 E7 01 FF 00 79 00 01 07 10 0F 00 07 00 00 00 06 5E 0F 00 80 00 03 C7 C8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224071": "00 00 FF C3 C0 00 00 00 1D 19 7D 7D 7E 7F 7E 7D 7E 7C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224072": "00 00 FF BF 9F 70 00 00 00 00 00 00 E7 01 FF 00 8D 00 00 06 10 0F 00 07 00 00 00 07 5E 0F 00 80 00 03 C7 C8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "224073": "00 00 FF C3 C0 00 00 00 19 19 7D 7D 7F 7F 7D 7D 77 7C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "22E600": "36 6D",
-      "22E602": "00 00 00"
-     }
-    },
-    {
-     "adres": "18DAF153",
-     "tx": "DA53F1",
-     "pids": "",
-     "did": {
-      "228000": "21 4D 13 14 01 33 00 11 00 55 00 00 11 33 00 00 20 0F 00 E9 02 06 22 00 00 00 00 00 00 00 00 00 11 11 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 29",
-      "228001": "AA 00 C4 18 00 00 00 00 27 16 00 00 00 16 00 00 00 00 00 07 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "228005": "AA 00 FE F0 F0 F0 DE 01 DE 01 E0 00 00 00 00 00 10 01 41 FF 02 00 00 00 01 BD FF 85 00 00 00 00 01 D7 FF 92 00 00 00 00 07 23 06 9F 00 00 00 00 FF 12 00 FC A0 02 72 00 00 00 00 00 00 00 00 DF 04 4E 00 01 E5 02 69 00 00 00 00 00 00 00 00 5D 02 02 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "228010": "AA 00 F8 F8 F8 F8 E0 E0 E0 E3 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+      "224005": "00 00 ED 3E 80 07 80 00 19 19 7C 00 7D 7F 00 7F 00 00 04 19 04 65 7D 00 7C 00 00 00 00 00 00 00 00 00 00 00 00 00 AE 75 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
      }
     },
     {
@@ -17568,22 +17090,9 @@
      "tx": "DA60F1",
      "pids": "",
      "did": {
-      "227010": "FF FF FF FF FF FF A0 00 F0 F0 E0 80 E0 60 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "227012": "FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "227020": "FF FF FF FF FF FF 60 00 90 00 F8 00 00 00 20 00 00 00 A5 04 00 00 00 00 00 00 00 00 00 00 40 40 C4 00 00 00 80 00 00 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "227021": "FF FF FF FF FF FF C0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
       "227022": "EC 00 00 00 00 00 00 EF 8F 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
       "227028": "F8 F0 00 00 00 00 04 01 01 00 02 00 00 00 00 06 00 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "227029": "8F FC 00 00 00 00 01 00 00 00 00 00 FF FF 07 11 00 00 00 32 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "227068": "7F FF FF FF FF C0 00 FA 00 00 00 1E 2C C4 76 86 7F FF 7F FF 7F FF 7F FF 7F FF 7F FF 7F FF 27 0F 27 0F 27 0F 27 0F 27 0F 27 0F 03 86 27 0F 27 0F 00 00 00 00 00 00",
-      "22702A": "3F C0 00 00 00 00 00 00 00 87 00 7D 01 A1 01 5E 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "22702B": "CC 00 00 00 00 00 02 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "2270A8": "FF FF FF FF FF FF 03 FA 03 FA 03 FA 00 00 00 00 00 00 03 FA 00 00 00 00 80 00 01 00 FF FF FF 00 00 00 00 95 F9 95 F9 95 F9 70 64 70 64 70 64 95 F9 70 64 70 64 00",
-      "2270A9": "FF FF FF FF FF FF 00 01 01 98 F8 81 84 95 F9 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "2270C0": "FF FF FF FF FF FF 07 00 00 00 00 00 00 00 00 00 00 00 07 06 07 06 07 06 07 06 07 00 07 06 07 06 00 00 00 00 00 00 07 06 07 06 00 00 00 00 07 06 07 00 00 00 00 00",
-      "2270C1": "FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 07 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 07 00 00 00 00 00 00 00",
-      "2270C2": "FF FF FF FF FF FF 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
-      "2270C3": "FF FF FF FF FF FF 07 00 07 00 07 06 07 00 07 00 07 06 07 06 07 06 07 06 07 06 07 00 07 00 07 00 07 00 07 00 07 00 07 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+      "227029": "8F FC 00 00 00 00 01 00 00 00 00 00 FF FF 07 11 00 00 00 32 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
      }
     }
    ],
@@ -17642,20 +17151,6 @@
     ],
     "did": [
      {
-      "code": "222600",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2600",
-      "nagebouwd": true
-     },
-     {
-      "code": "222601",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2601",
-      "nagebouwd": true
-     },
-     {
       "code": "222610",
       "ecu": "18DA10F1",
       "rx": "18DAF110",
@@ -17681,48 +17176,6 @@
       "ecu": "18DA10F1",
       "rx": "18DAF110",
       "sig": "CIVIC_ACTIVE_CYL",
-      "nagebouwd": true
-     },
-     {
-      "code": "222620",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2620",
-      "nagebouwd": true
-     },
-     {
-      "code": "222621",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2621",
-      "nagebouwd": true
-     },
-     {
-      "code": "222622",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2622",
-      "nagebouwd": true
-     },
-     {
-      "code": "222623",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2623",
-      "nagebouwd": true
-     },
-     {
-      "code": "222625",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2625",
-      "nagebouwd": true
-     },
-     {
-      "code": "222630",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2630",
       "nagebouwd": true
      },
      {
@@ -17754,108 +17207,10 @@
       "nagebouwd": true
      },
      {
-      "code": "222664",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2664",
-      "nagebouwd": true
-     },
-     {
       "code": "222665",
       "ecu": "18DA10F1",
       "rx": "18DAF110",
       "sig": "CIVIC_DRIVE_TM,CIVIC_RAW_10_2665",
-      "nagebouwd": true
-     },
-     {
-      "code": "22266A",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_266A",
-      "nagebouwd": true
-     },
-     {
-      "code": "22266E",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_266E",
-      "nagebouwd": true
-     },
-     {
-      "code": "22266F",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_266F",
-      "nagebouwd": true
-     },
-     {
-      "code": "222673",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2673",
-      "nagebouwd": true
-     },
-     {
-      "code": "222676",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2676",
-      "nagebouwd": true
-     },
-     {
-      "code": "222678",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2678",
-      "nagebouwd": true
-     },
-     {
-      "code": "222679",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2679",
-      "nagebouwd": true
-     },
-     {
-      "code": "22267A",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_267A",
-      "nagebouwd": true
-     },
-     {
-      "code": "22267B",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_267B",
-      "nagebouwd": true
-     },
-     {
-      "code": "22267C",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_267C",
-      "nagebouwd": true
-     },
-     {
-      "code": "22267E",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_267E",
-      "nagebouwd": true
-     },
-     {
-      "code": "22267F",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_267F",
-      "nagebouwd": true
-     },
-     {
-      "code": "222680",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2680",
       "nagebouwd": true
      },
      {
@@ -17866,199 +17221,10 @@
       "nagebouwd": true
      },
      {
-      "code": "222683",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2683",
-      "nagebouwd": true
-     },
-     {
-      "code": "222684",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2684",
-      "nagebouwd": true
-     },
-     {
-      "code": "222685",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2685",
-      "nagebouwd": true
-     },
-     {
-      "code": "222686",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2686",
-      "nagebouwd": true
-     },
-     {
-      "code": "222688",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2688",
-      "nagebouwd": true
-     },
-     {
       "code": "22268E",
       "ecu": "18DA10F1",
       "rx": "18DAF110",
       "sig": "CIVIC_DI_FUEL_P,CIVIC_FUEL_P,CIVIC_RAW_10_268E",
-      "nagebouwd": true
-     },
-     {
-      "code": "222693",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2693",
-      "nagebouwd": true
-     },
-     {
-      "code": "222699",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_2699",
-      "nagebouwd": true
-     },
-     {
-      "code": "22269A",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_269A",
-      "nagebouwd": true
-     },
-     {
-      "code": "22269B",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_269B",
-      "nagebouwd": true
-     },
-     {
-      "code": "22269C",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_269C",
-      "nagebouwd": true
-     },
-     {
-      "code": "223000",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_3000",
-      "nagebouwd": true
-     },
-     {
-      "code": "223001",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_3001",
-      "nagebouwd": true
-     },
-     {
-      "code": "22300C",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_300C",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E411",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_E411",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E412",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_E412",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E413",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_E413",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E414",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_E414",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E415",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_E415",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E416",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_E416",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E41F",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_E41F",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E5FF",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_E5FF",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E600",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_E600",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E602",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_E602",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E800",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_E800",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E801",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_E801",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E80E",
-      "ecu": "18DA10F1",
-      "rx": "18DAF110",
-      "sig": "CIVIC_RAW_10_E80E",
-      "nagebouwd": true
-     },
-     {
-      "code": "222300",
-      "ecu": "18DA1EF1",
-      "rx": "18DAF11E",
-      "sig": "CIVIC_RAW_1E_2300",
       "nagebouwd": true
      },
      {
@@ -18069,101 +17235,10 @@
       "nagebouwd": true
      },
      {
-      "code": "222311",
-      "ecu": "18DA1EF1",
-      "rx": "18DAF11E",
-      "sig": "CIVIC_RAW_1E_2311",
-      "nagebouwd": true
-     },
-     {
-      "code": "222320",
-      "ecu": "18DA1EF1",
-      "rx": "18DAF11E",
-      "sig": "CIVIC_RAW_1E_2320",
-      "nagebouwd": true
-     },
-     {
-      "code": "222321",
-      "ecu": "18DA1EF1",
-      "rx": "18DAF11E",
-      "sig": "CIVIC_RAW_1E_2321",
-      "nagebouwd": true
-     },
-     {
       "code": "222322",
       "ecu": "18DA1EF1",
       "rx": "18DAF11E",
       "sig": "CIVIC_RAW_1E_2322,CIVIC_SEC_SHAFT_1_RPM,CIVIC_SEC_SHAFT_2_RPM,CIVIC_TCM_VSS_2,CIVIC_TURBINE_RPM",
-      "nagebouwd": true
-     },
-     {
-      "code": "222323",
-      "ecu": "18DA1EF1",
-      "rx": "18DAF11E",
-      "sig": "CIVIC_RAW_1E_2323",
-      "nagebouwd": true
-     },
-     {
-      "code": "222330",
-      "ecu": "18DA1EF1",
-      "rx": "18DAF11E",
-      "sig": "CIVIC_RAW_1E_2330",
-      "nagebouwd": true
-     },
-     {
-      "code": "222331",
-      "ecu": "18DA1EF1",
-      "rx": "18DAF11E",
-      "sig": "CIVIC_RAW_1E_2331",
-      "nagebouwd": true
-     },
-     {
-      "code": "222332",
-      "ecu": "18DA1EF1",
-      "rx": "18DAF11E",
-      "sig": "CIVIC_RAW_1E_2332",
-      "nagebouwd": true
-     },
-     {
-      "code": "222333",
-      "ecu": "18DA1EF1",
-      "rx": "18DAF11E",
-      "sig": "CIVIC_RAW_1E_2333",
-      "nagebouwd": true
-     },
-     {
-      "code": "222340",
-      "ecu": "18DA1EF1",
-      "rx": "18DAF11E",
-      "sig": "CIVIC_RAW_1E_2340",
-      "nagebouwd": true
-     },
-     {
-      "code": "224000",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4000",
-      "nagebouwd": true
-     },
-     {
-      "code": "224001",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4001",
-      "nagebouwd": true
-     },
-     {
-      "code": "224002",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4002",
-      "nagebouwd": true
-     },
-     {
-      "code": "224003",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4003",
       "nagebouwd": true
      },
      {
@@ -18178,195 +17253,6 @@
       "ecu": "18DA28F1",
       "rx": "18DAF128",
       "sig": "CIVIC_BRK_P",
-      "nagebouwd": true
-     },
-     {
-      "code": "224006",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4006",
-      "nagebouwd": true
-     },
-     {
-      "code": "224007",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4007",
-      "nagebouwd": true
-     },
-     {
-      "code": "224008",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4008",
-      "nagebouwd": true
-     },
-     {
-      "code": "224030",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4030",
-      "nagebouwd": true
-     },
-     {
-      "code": "224031",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4031",
-      "nagebouwd": true
-     },
-     {
-      "code": "224032",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4032",
-      "nagebouwd": true
-     },
-     {
-      "code": "224033",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4033",
-      "nagebouwd": true
-     },
-     {
-      "code": "224034",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4034",
-      "nagebouwd": true
-     },
-     {
-      "code": "224035",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4035",
-      "nagebouwd": true
-     },
-     {
-      "code": "224036",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4036",
-      "nagebouwd": true
-     },
-     {
-      "code": "224037",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4037",
-      "nagebouwd": true
-     },
-     {
-      "code": "224038",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4038",
-      "nagebouwd": true
-     },
-     {
-      "code": "224039",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4039",
-      "nagebouwd": true
-     },
-     {
-      "code": "224070",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4070",
-      "nagebouwd": true
-     },
-     {
-      "code": "224071",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4071",
-      "nagebouwd": true
-     },
-     {
-      "code": "224072",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4072",
-      "nagebouwd": true
-     },
-     {
-      "code": "224073",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_4073",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E600",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_E600",
-      "nagebouwd": true
-     },
-     {
-      "code": "22E602",
-      "ecu": "18DA28F1",
-      "rx": "18DAF128",
-      "sig": "CIVIC_RAW_28_E602",
-      "nagebouwd": true
-     },
-     {
-      "code": "228000",
-      "ecu": "18DA53F1",
-      "rx": "18DAF153",
-      "sig": "CIVIC_RAW_53_8000",
-      "nagebouwd": true
-     },
-     {
-      "code": "228001",
-      "ecu": "18DA53F1",
-      "rx": "18DAF153",
-      "sig": "CIVIC_RAW_53_8001",
-      "nagebouwd": true
-     },
-     {
-      "code": "228005",
-      "ecu": "18DA53F1",
-      "rx": "18DAF153",
-      "sig": "CIVIC_RAW_53_8005",
-      "nagebouwd": true
-     },
-     {
-      "code": "228010",
-      "ecu": "18DA53F1",
-      "rx": "18DAF153",
-      "sig": "CIVIC_RAW_53_8010",
-      "nagebouwd": true
-     },
-     {
-      "code": "227010",
-      "ecu": "18DA60F1",
-      "rx": "18DAF160",
-      "sig": "CIVIC_RAW_60_7010",
-      "nagebouwd": true
-     },
-     {
-      "code": "227012",
-      "ecu": "18DA60F1",
-      "rx": "18DAF160",
-      "sig": "CIVIC_RAW_60_7012",
-      "nagebouwd": true
-     },
-     {
-      "code": "227020",
-      "ecu": "18DA60F1",
-      "rx": "18DAF160",
-      "sig": "CIVIC_RAW_60_7020",
-      "nagebouwd": true
-     },
-     {
-      "code": "227021",
-      "ecu": "18DA60F1",
-      "rx": "18DAF160",
-      "sig": "CIVIC_RAW_60_7021",
       "nagebouwd": true
      },
      {
@@ -18389,73 +17275,402 @@
       "rx": "18DAF160",
       "sig": "CIVIC_FLV",
       "nagebouwd": true
-     },
-     {
-      "code": "22702A",
-      "ecu": "18DA60F1",
-      "rx": "18DAF160",
-      "sig": "CIVIC_RAW_60_702A",
-      "nagebouwd": true
-     },
-     {
-      "code": "22702B",
-      "ecu": "18DA60F1",
-      "rx": "18DAF160",
-      "sig": "CIVIC_RAW_60_702B",
-      "nagebouwd": true
-     },
-     {
-      "code": "227068",
-      "ecu": "18DA60F1",
-      "rx": "18DAF160",
-      "sig": "CIVIC_RAW_60_7068",
-      "nagebouwd": true
-     },
-     {
-      "code": "2270A8",
-      "ecu": "18DA60F1",
-      "rx": "18DAF160",
-      "sig": "CIVIC_RAW_60_70A8",
-      "nagebouwd": true
-     },
-     {
-      "code": "2270A9",
-      "ecu": "18DA60F1",
-      "rx": "18DAF160",
-      "sig": "CIVIC_RAW_60_70A9",
-      "nagebouwd": true
-     },
-     {
-      "code": "2270C0",
-      "ecu": "18DA60F1",
-      "rx": "18DAF160",
-      "sig": "CIVIC_RAW_60_70C0",
-      "nagebouwd": true
-     },
-     {
-      "code": "2270C1",
-      "ecu": "18DA60F1",
-      "rx": "18DAF160",
-      "sig": "CIVIC_RAW_60_70C1",
-      "nagebouwd": true
-     },
-     {
-      "code": "2270C2",
-      "ecu": "18DA60F1",
-      "rx": "18DAF160",
-      "sig": "CIVIC_RAW_60_70C2",
-      "nagebouwd": true
-     },
-     {
-      "code": "2270C3",
-      "ecu": "18DA60F1",
-      "rx": "18DAF160",
-      "sig": "CIVIC_RAW_60_70C3",
-      "nagebouwd": true
      }
     ]
    },
    "overgeslagen": [
+    {
+     "cmd": "DA10.10.222600",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222601",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222620",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222621",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222622",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222623",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222625",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222630",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222664",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22266A",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22266E",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22266F",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222673",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222676",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222678",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222679",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22267A",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22267B",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22267C",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22267E",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22267F",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222680",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222683",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222684",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222685",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222686",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222688",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222693",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.222699",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22269A",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22269B",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22269C",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.223000",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.223001",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22300C",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22E411",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22E412",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22E413",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22E414",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22E415",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22E416",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22E41F",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22E5FF",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22E600",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22E602",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22E800",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22E801",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA10.10.22E80E",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA1E.1E.222300",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA1E.1E.222311",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA1E.1E.222320",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA1E.1E.222321",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA1E.1E.222323",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA1E.1E.222330",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA1E.1E.222331",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA1E.1E.222332",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA1E.1E.222333",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA1E.1E.222340",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224000",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224001",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224002",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224003",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224006",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224007",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224008",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224030",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224031",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224032",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224033",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224034",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224035",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224036",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224037",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224038",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224039",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224070",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224071",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224072",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.224073",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.22E600",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA28.28.22E602",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA53.53.228000",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA53.53.228001",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA53.53.228005",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA53.53.228010",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA60.60.227010",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA60.60.227012",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA60.60.227020",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA60.60.227021",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA60.60.22702A",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA60.60.22702B",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA60.60.227068",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA60.60.2270A8",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA60.60.2270A9",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA60.60.2270C0",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA60.60.2270C1",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA60.60.2270C2",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
+    {
+     "cmd": "DA60.60.2270C3",
+     "reden": "onbekende eenheid of ruwe waarde"
+    },
     {
      "cmd": "0166",
      "reden": "geen lengte in nepauto.js"

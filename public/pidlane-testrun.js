@@ -2848,6 +2848,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Besluit d: getallen zonder eenheid (05-11-2026) ──
+  {
+    issue: '#670',
+    naam: 'Een getal zonder eenheid uit OBDb (misfire- en kloptellers, lambda, overbrenging) is een kandidaat met zijn OBDb-bereik; een ruwe waarde of onbekende eenheid niet',
+    waarom: 'Besluit d: 502 van de 1871 fabriekscodes op de nagebouwde vloot hadden geen eenheid. Getallen tellen nu als data en worden gekeurd op het bereik uit OBDb; standen (aan/uit, keuzelijst) volgen apart. Deze proef toetst de geladen obdbKandidaten() en plausibel().',
+    proef: async function () {
+      var E = window.PLEigen, Z = window.PLPidZoek;
+      if (!E || typeof E.obdbKandidaten !== 'function' || !Z || typeof Z.plausibel !== 'function') return { staat: 'FOUT', detail: 'PLEigen/PLPidZoek ontbreekt — herladen?' };
+      var d = { commands: [
+        { hdr: '7E0', rax: '7E8', cmd: { '22': '0707' }, signals: [{ name: 'Misfire counter, cylinder 1', fmt: { len: 16, max: 65535, unit: 'scalar' } }] },
+        { hdr: '7E0', rax: '7E8', cmd: { '22': '0808' }, signals: [{ name: 'Sensor, raw count', fmt: { len: 8, max: 255, unit: 'scalar' } }] },
+        { hdr: '7E0', rax: '7E8', cmd: { '22': '0909' }, signals: [{ name: 'Rail pressure', fmt: { len: 16, unit: 'unknown' } }] }] };
+      var k = E.obdbKandidaten(d, 'x', 2019).map(function (x) { return x.code + (x.eenheid ? ' ' + x.eenheid : '') + (x.max !== undefined ? ' ≤' + x.max : ''); });
+      if (k.join() !== '220707 ≤65535') return { staat: 'FOUT', detail: 'kandidaten zonder eenheid kloppen niet: ' + (k.join(' | ') || 'geen') + ' (verwacht alleen 220707 met bereik)' };
+      if (Z.plausibel({ ok: true, bytes: [1, 2], waarde: 70000, eenheid: '' }, { naam: 'x', min: 0, max: 65535 }).ok) return { staat: 'FOUT', detail: 'een getal buiten het OBDb-bereik wordt goedgekeurd' };
+      return { staat: 'OK', detail: 'getal zonder eenheid: kandidaat met bereik; ruw en onbekend vallen af' };
+    }
+  },
+
   // ── Voorselectie op rol (05-11-2026) ──
   {
     issue: '#675',
