@@ -45,7 +45,6 @@ const KEUZE = ['cx5_18', 'golf19'];
 
 // Wat deze proef vindt en als issue openstaat: LET OP in plaats van FOUT.
 const BEKEND = {
-  laad: '#675 — de wizard vinkt gevraagde laadspanning en acculeeftijd niet aan',
 };
 
 let fouten = 0;
@@ -136,7 +135,7 @@ const ROUTE = (p) => `(async function(){
       const klaar = await wacht(`(function(){ const s = PLGarage.staat().sens; return !!(s && s.pz && (s.pz.res || s.pz.fout || (s.pz.tekst && !s.pz.bezig))); })()`, 300000);
       toets('Grondig liep tot een uitslag', klaar);
       const pz = await app.ev(`(function(){ const s = PLGarage.staat().sens; const pz = s && s.pz || {};
-        return { fout: pz.fout || '', tekst: pz.tekst || '', past: (pz.res && pz.res.past || []).map(function(x){ return { code: x.c.code, ecu: x.c.ecu || '', naam: x.c.naam, laad: PLEigen.laadRol(x.c.naam) || '' }; }),
+        return { fout: pz.fout || '', tekst: pz.tekst || '', past: (pz.res && pz.res.past || []).map(function(x){ return { code: x.c.code, ecu: x.c.ecu || '', naam: x.c.naam, laad: PLEigen.laadRol(x.c.naam) || '', band: (PLEigen.bandRol(x.c.naam) || {}).pos || '', wiel: PLEigen.wielRol(x.c.naam) || '' }; }),
           getest: ['past', 'nee', 'vreemd', 'fout'].reduce(function(l, k){ return l.concat((pz.res && pz.res[k] || []).map(function(x){ return x.c.code + '@' + (x.c.ecu || ''); })); }, []),
           kies: Object.keys(pz.kies || {}), veel: PLEigen.VEEL }; })()`);
       const log = await app.ev(`window._nepPlatform.log`);
@@ -152,15 +151,21 @@ const ROUTE = (p) => `(async function(){
       // Met de steunlijst test Grondig alleen wat dit bouwjaar beantwoordde; zonder is het de gok van 60.
       const buiten = pz.getest.filter((k) => !aanbod.has(sleutelVan(k)));
       toets('Grondig testte alleen codes van dit bouwjaar (' + pz.getest.length + ' getest)', pz.getest.length > 0 && !buiten.length, buiten.length + ' erbuiten: ' + buiten.slice(0, 6).join(','));
-      toets('keuze: hoogstens ' + pz.veel + ' vooraf aangevinkt', pz.kies.length > 0 && pz.kies.length <= pz.veel, pz.kies.length + ' aangevinkt');
+      // Een band staat op verzoek en telt niet mee in de plekken van de pollus (#675).
+      const isBand = new Set(pz.past.filter((x) => x.band).map((x) => sl(x.code, x.ecu)));
+      const kiesPollus = pz.kies.filter((k) => !isBand.has(sleutelVan(k)));
+      toets('keuze: hoogstens ' + pz.veel + ' vooraf aangevinkt voor de pollus (+ ' + (pz.kies.length - kiesPollus.length) + ' banden op verzoek)', pz.kies.length > 0 && kiesPollus.length <= pz.veel, kiesPollus.length + ' aangevinkt');
       toets('keuze: alleen codes die de auto aanbiedt', pz.kies.every((k) => aanbod.has(sleutelVan(k))), pz.kies.filter((k) => !aanbod.has(sleutelVan(k))).join(','));
       // De laadregeling (laadCodes) leest alleen opgenomen eigen PIDs: wat zij nodig heeft, hoort erbij.
       const gekozen = new Set(pz.kies.map(sleutelVan));
-      const laad = pz.past.filter((x) => x.laad);
-      const laadMist = laad.filter((x) => !gekozen.has(sl(x.code, x.ecu)));
-      const tekstLaad = laadMist.map((x) => x.code + ' ' + x.naam + ' (' + x.laad + ')').join(', ');
-      if (laadMist.length && BEKEND['laad']) { console.log('  LET OP keuze: de laadregeling krijgt niet wat ze nodig heeft — bekend: ' + BEKEND['laad'] + ' (' + tekstLaad + ')'); }
-      else toets('keuze: wat de laadregeling nodig heeft is aangevinkt', !laadMist.length, tekstLaad);
+      // Drie onderdelen lezen eigen PIDs op hun ROL en zien alleen wat opgenomen is:
+      // de laadregeling/accutest (laadCodes), het bandenvenster (bandRol) en de slipanalyse (wielCodes).
+      [['laad', 'de laadregeling'], ['band', 'het bandenvenster'], ['wiel', 'de wielsnelheden (slip)']].forEach(([rol, wie]) => {
+        const mist = pz.past.filter((x) => x[rol] && !gekozen.has(sl(x.code, x.ecu)));
+        const t = mist.map((x) => x.code + ' ' + x.naam + ' (' + x[rol] + ')').join(', ');
+        if (mist.length && BEKEND[rol]) console.log('  LET OP keuze: ' + wie + ' krijgt niet wat het nodig heeft — bekend: ' + BEKEND[rol] + ' (' + t + ')');
+        else toets('keuze: wat ' + wie + ' nodig heeft is aangevinkt (' + pz.past.filter((x) => x[rol]).length + ' gevonden)', !mist.length, t);
+      });
 
       // 4. opnemen en borgen
       await app.ev(`PLGarage._pzOpnemen(); 'ok'`);
@@ -168,12 +173,17 @@ const ROUTE = (p) => `(async function(){
       const borg = await app.ev(`(function(){ const v = window._nepPlatform.voertuig, e = v.eigen_pids || [];
         return { n: e.length, sel: (v.pid_selectie || []).slice(), codes: e.map(function(x){ return x.code; }),
           defs: PLEigen.defs().map(function(d){ return d.pid; }), actief: [...activePIDs],
-          interval: e.map(function(x){ return [x.code, pidPollInterval(x.code), PLEigen.interval(x.code)]; }) }; })()`);
+          interval: e.map(function(x){ return [x.code, pidPollInterval(x.code), PLEigen.interval(x.code), PLEigen.opVerzoek(x.code), PLEigen.laadRol(x.naam) || '', !!PLEigen.bandRol(x.naam)]; }) }; })()`);
       toets('evenveel bewaard als aangevinkt', borg.n === pz.kies.length, borg.n + ' bewaard, ' + pz.kies.length + ' aangevinkt');
       toets('pid_selectie bevat elke opgenomen code', borg.codes.every((c) => borg.sel.indexOf(c) >= 0), borg.codes.filter((c) => borg.sel.indexOf(c) < 0).join(','));
       toets('PLEigen kent ze (pasSelectieToe na bewaren)', borg.codes.every((c) => borg.defs.indexOf(c) >= 0), borg.codes.filter((c) => borg.defs.indexOf(c) < 0).join(','));
-      toets('ze staan aan (activePIDs)', borg.codes.every((c) => borg.actief.indexOf(c) >= 0), borg.codes.filter((c) => borg.actief.indexOf(c) < 0).join(','));
-      toets('pollinterval = het eigen tempo (normaal 2 s)', borg.interval.every((r) => r[1] === r[2] && r[1] === 2000), JSON.stringify(borg.interval.filter((r) => r[1] !== r[2] || r[1] !== 2000)));
+      // Een band staat op verzoek (#396): niet in de pollus en niet in de keuzelijst, wel bij PLEigen.
+      const inPollus = borg.interval.filter((r) => !r[3]).map((r) => r[0]);
+      toets('wat in de pollus hoort staat aan (activePIDs)', inPollus.every((c) => borg.actief.indexOf(c) >= 0), inPollus.filter((c) => borg.actief.indexOf(c) < 0).join(','));
+      toets('een band staat op verzoek, en alleen een band', borg.interval.every((r) => r[3] === r[5]), JSON.stringify(borg.interval.filter((r) => r[3] !== r[5])));
+      // Het tempo: acculeeftijd eens per minuut, accutemperatuur elke 10 s, de rest 2 s (#675).
+      const verwacht = (r) => r[3] ? 999999 : r[4] === 'leeftijd' ? 60000 : r[4] === 'accutemp' ? 10000 : 2000;
+      toets('pollinterval = het eigen tempo, en dat past bij de rol', borg.interval.every((r) => r[1] === r[2] && r[1] === verwacht(r)), JSON.stringify(borg.interval.filter((r) => r[1] !== r[2] || r[1] !== verwacht(r))));
 
       // 5. de pollus
       const pol = await app.ev(`(async function(){

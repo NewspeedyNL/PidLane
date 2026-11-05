@@ -67,14 +67,41 @@
     return uit;
   }
 
-  /* De vinkjes vooraf: de groep weergave op volgorde, zolang er plekken vrij
-     zijn. Analyse en dubbel staan uit — daar kiest de klant zelf. groepen is
-     de uitvoer van sensGroepen ({ weergave:[{b}], ... }). Geeft sleutels. */
+  /* De vinkjes vooraf. groepen is de uitvoer van sensGroepen ({ weergave:
+     [{b, laad}], banden:[{b, rol}], wielen:[{b, wiel}], ... }). Geeft sleutels.
+
+     Drie onderdelen lezen eigen PIDs op hun ROL en zien alleen wat
+     opgenomen is (#675, 05-11-2026): het bandenvenster (bandRol), de
+     laadregeling en de accutest (laadCodes), en de slipanalyse (wielCodes).
+     Tot die datum vinkte dit alleen de groep weergave aan; op de CX-5 bleven
+     na de wizard alle acht banden, de vier wielen en de gevraagde
+     laadspanning liggen, hoewel ze een geldige waarde gaven.
+       1. banden: altijd, en buiten de `vrij` plekken — een band staat op
+          verzoek (eigenControleer), hij kost de pollus niets;
+       2. de laadregeling: per rol één code, in de volgorde van LAAD_ROL;
+       3. de wielen: alle vier of geen (wielCodes() wil ze compleet);
+       4. dan de groep weergave op volgorde.
+     Analyse en dubbel staan verder uit — daar kiest de klant zelf. */
+  const LAAD_ROL = ['gevraagd', 'soc', 'stroom', 'accutemp', 'leeftijd'];
   function voorkeus(groepen, vrij) {
+    groepen = groepen || {};
     const uit = [];
-    ((groepen && groepen.weergave) || []).forEach(function (r) { if (uit.length < vrij) uit.push(sleutel(r.b)); });
+    let plek = Math.max(0, vrij || 0);
+    const erbij = function (b) { const k = sleutel(b); if (uit.indexOf(k) >= 0) return false; uit.push(k); return true; };
+    (groepen.banden || []).forEach(function (r) { erbij(r.b); });
+    const laad = {};
+    ['weergave', 'analyse'].forEach(function (g) { (groepen[g] || []).forEach(function (r) { if (r.laad && !laad[r.laad]) laad[r.laad] = r.b; }); });
+    LAAD_ROL.forEach(function (rol) { if (laad[rol] && plek > 0 && erbij(laad[rol])) plek--; });
+    const wiel = {};
+    (groepen.wielen || []).forEach(function (r) { if (r.wiel && !wiel[r.wiel]) wiel[r.wiel] = r.b; });
+    const vier = ['VL', 'VR', 'AL', 'AR'].map(function (p) { return wiel[p]; });
+    if (vier.every(Boolean) && plek >= 4) vier.forEach(function (b) { if (erbij(b)) plek--; });
+    (groepen.weergave || []).forEach(function (r) { if (plek > 0 && erbij(r.b)) plek--; });
     return uit;
   }
+  /* Het tempo bij het opnemen, op de laadrol: een acculeeftijd verandert per
+     maand, een accutemperatuur per kwartier. Leeg = de standaard (2 s). */
+  function tempo(laadrol) { return laadrol === 'leeftijd' ? 'minuut' : laadrol === 'accutemp' ? 'traag' : ''; }
 
   /* De ronde. o.test(c) → Promise van PLEigen.test-uitvoer; o.stem(c, uitkomst)
      optioneel; o.stop() → true om te stoppen; o.voortgang(staat). Een test die
@@ -115,5 +142,5 @@
     catch (x) { console.warn('PLPidZoek: stem voor ' + c.code + ' niet bewaard', x); }
   }
 
-  window.PLPidZoek = { GRENS: GRENS, plausibel: plausibel, kandidaten: kandidaten, voorkeus: voorkeus, zoek: zoek, sleutel: sleutel, laatste: function () { return _laatste; } };
+  window.PLPidZoek = { GRENS: GRENS, plausibel: plausibel, kandidaten: kandidaten, voorkeus: voorkeus, tempo: tempo, LAAD_ROL: LAAD_ROL, zoek: zoek, sleutel: sleutel, laatste: function () { return _laatste; } };
 })();

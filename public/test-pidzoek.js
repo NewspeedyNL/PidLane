@@ -104,6 +104,37 @@ console.log('\n── de ronde ──');
   waar('analyse (sensorspanning) staat niet vooraf aan', !Z.voorkeus(gr, 20).includes('220301@'));
   waar('geen plek vrij: niets aangevinkt', Z.voorkeus(gr, 0).length === 0);
 
+  // ── Met de echte PLEigen (#675): wat op zijn ROL gelezen wordt, komt mee ──
+  const ge = { console: s.console, localStorage: g.localStorage, document: g.document, addEventListener() {}, setInterval: () => 0, setTimeout: () => 0,
+    Date, JSON, Math, Promise, plFetch: g.plFetch };
+  ge.window = ge; vm.createContext(ge);
+  vm.runInContext(lees('pidlane-uitgebreid.js'), ge, { filename: 'pidlane-uitgebreid.js' });
+  vm.runInContext(lees('pidlane-pidzoek.js'), ge);
+  vm.runInContext(lees('pidlane-garage.js'), ge, { filename: 'pidlane-garage.js' });
+  const KE = ge.PLGarage._kern, ZE = ge.PLPidZoek;
+  const cx5 = [
+    { code: '221310', naam: 'Motorolietemperatuur', eenheid: '°C' },
+    { code: '220304', naam: 'Commanded generator voltage', eenheid: 'V' },
+    { code: '224027', ecu: '726', naam: '12V battery age', eenheid: 'd' },
+    { code: '222A05', ecu: '720', naam: 'Rear left tire pressure', eenheid: 'bar' },
+    { code: '222A06', ecu: '720', naam: 'Front left tire pressure', eenheid: 'bar' },
+    { code: '222B06', ecu: '760', naam: 'Front right wheel speed', eenheid: 'km/h' },
+    { code: '222B07', ecu: '760', naam: 'Front left wheel speed', eenheid: 'km/h' },
+    { code: '222B08', ecu: '760', naam: 'Rear right wheel speed', eenheid: 'km/h' },
+    { code: '222B09', ecu: '760', naam: 'Rear left wheel speed', eenheid: 'km/h' }
+  ];
+  const gre = KE.sensGroepen(cx5, () => false, false);
+  const v20 = ZE.voorkeus(gre, 20);
+  waar('de gevraagde laadspanning (groep analyse) komt mee: de laadregeling leest alleen opgenomen codes', v20.includes('220304@'), JSON.stringify(v20));
+  waar('de acculeeftijd ook (accutest)', v20.includes('224027@726'), JSON.stringify(v20));
+  waar('alle banden, ook zonder plek (op verzoek, geen pollus)', ZE.voorkeus(gre, 0).filter((k) => /^222A0[56]@720$/.test(k)).length === 2, JSON.stringify(ZE.voorkeus(gre, 0)));
+  waar('vier wielen: alle vier', ['222B06@760', '222B07@760', '222B08@760', '222B09@760'].every((k) => v20.includes(k)), JSON.stringify(v20));
+  const v5 = ZE.voorkeus(gre, 5);
+  waar('vijf plekken: de laadrollen eerst, dan geen halve set wielen', v5.includes('220304@') && v5.includes('224027@726') && !v5.some((k) => /^222B0/.test(k)), JSON.stringify(v5));
+  waar('wielen alleen compleet: drie wielen worden er geen', !ZE.voorkeus(KE.sensGroepen(cx5.filter((c) => c.code !== '222B09'), () => false, false), 20).some((k) => /^222B0/.test(k)));
+  waar('per laadrol één code: twee keer "gevraagd" geeft één vinkje', ZE.voorkeus(KE.sensGroepen(cx5.concat([{ code: '220399', naam: 'Desired alternator voltage', eenheid: 'V' }]), () => false, false), 20).filter((k) => /^2203(04|99)@$/.test(k)).length === 1);
+  waar('tempo: acculeeftijd eens per minuut, accutemp 10 s, de rest de standaard', (ZE.tempo('leeftijd') + ',' + ZE.tempo('accutemp') + ',' + ZE.tempo('gevraagd') + ',' + ZE.tempo(null)) === 'minuut,traag,,');
+
   g.PLEigen = { MAX: 20 };
   const S = { sel: [], eigen: [], pz: { res: { gedaan: 4, totaal: 4, past: gevonden.map((c) => ({ c, waarde: 1, eenheid: c.eenheid })), vreemd: [{ c: { naam: 'Band', code: '222A06' }, reden: 'alleen FF' }], nee: [], fout: [] }, kies: { '221310@': true } } };
   const html = K.tekenPidZoek(S, true);

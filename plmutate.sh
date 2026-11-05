@@ -2271,6 +2271,13 @@ MUTATIES=(
 "public/pidlane-pidzoek.js@@    if (bytes.every(function (b) { return b === 0xFF; })) return@@    if (false) return@@test-pidzoek.js@@een antwoord van alleen FF (sensor niet beschikbaar) wordt als werkende sensor voorgesteld"
 "public/pidlane-pidzoek.js@@        if (p.ok && o.stem) await stem(o, c, 'werkt');@@        if (o.stem) await stem(o, c, 'werkt');@@test-pidzoek.js@@een code met een onmogelijke waarde krijgt in de bibliotheek een werkt-stem voor iedereen met dit model"
 "public/pidlane-pidzoek.js@@    if (u === '°C' && w <= -40) return@@    if (false) return@@test-pidzoek.js@@een ontbrekende temperatuursensor (−40 °C) wordt voorgesteld"
+# De voorselectie op ROL (#675): wat het bandenvenster, de laadregeling en de
+# slipanalyse lezen, moet opgenomen zijn — anders blijven ze na de wizard leeg.
+"public/pidlane-pidzoek.js@@    (groepen.banden || []).forEach(function (r) { erbij(r.b); });\n@@@@test-pidzoek.js@@de wizard vinkt de banden weer niet aan: het bandenvenster blijft leeg (#675)"
+"public/pidlane-pidzoek.js@@    LAAD_ROL.forEach(function (rol) { if (laad[rol] && plek > 0 && erbij(laad[rol])) plek--; });\n@@@@test-pidzoek.js@@de gevraagde laadspanning wordt niet meer aangevinkt: de laadregeling valt terug op de vaste grens (#675)"
+"public/pidlane-pidzoek.js@@    if (vier.every(Boolean) && plek >= 4)@@    if (plek >= 4)@@test-pidzoek.js@@een halve set wielen wordt aangevinkt: wielCodes() geeft null en de plekken zijn weg (#675)"
+"public/pidlane-pidzoek.js@@  function tempo(laadrol) { return laadrol === 'leeftijd' ? 'minuut' :@@  function tempo(laadrol) { return laadrol === 'leeftijd' ? '' :@@test-pidzoek.js@@de acculeeftijd gaat weer elke 2 s de bus op (#675)"
+"public/pidlane-garage.js@@laad: rol || wiel ? null : laadVan(b) });@@laad: null });@@bproef-wizard.js@@de garage geeft de laadrol niet meer door aan de voorselectie: in de echte app vinkt de wizard de laadregeling weer niet aan (#675)"
 "public/pidlane-survey2.js@@    if (b[0] >= 2 && over >= 0 && (over <= 6 || b[1 + b[0] * 2] === 0x49)) b = b.slice(1, 1 + b[0] * 2);@@    if (over === 0) b = b.slice(1);@@test-survey2.js@@IUPR knipt weer op de lengte: met ISO-TP-opvulling geeft de echte Auris 5120 ritten (#587)"
 "public/pidlane-survey2.js@@    if (b[0] >= 2 && over >= 0 && (over <= 6 || b[1 + b[0] * 2] === 0x49)) b = b.slice(1, 1 + b[0] * 2);@@@@test-survey2.js@@de telbyte van IUPR wordt als teller gelezen: elke monitor schuift een plek op"
 "public/pidlane-survey2.js@@      if (!d || d.st !== 'ok' || typeof d.val !== 'number') return false;@@      if (!d || typeof d.val !== 'number') return false;@@test-survey2.js@@een PID die NO DATA gaf telt mee als plaatshouder"

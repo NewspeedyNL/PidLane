@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-11-2026 — De wizard vinkt banden, laadregeling en wielen aan (#675)
+ ═══════════════════════════════════════════════════════════
+ - Grondig → vooraf aangevinkt: alle banden (op verzoek, geen plek in de
+   pollus), per laadrol één code (gevraagde spanning, SoC, stroom,
+   accutemp, leeftijd), en de vier wielsnelheden als set.
+ - Bij opnemen: acculeeftijd eens per minuut, accutemperatuur elke 10 s.
+
+ ═══════════════════════════════════════════════════════════
  05-11-2026 — Geen spook-PIDs meer na Snel (#616)
  ═══════════════════════════════════════════════════════════
  - Een steunblok dat NO DATA zegt, of een PID die los gemeten NO DATA
