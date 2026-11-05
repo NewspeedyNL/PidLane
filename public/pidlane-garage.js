@@ -889,6 +889,8 @@
   async function obdbBinnenhalen(vid, v) {
     var r = await PLEigen.zoekObdb(v, obdbHaal, obdbHaalSteun);
     if (!r.ok) return { tekst: '✗ ' + r.fout };
+    try { if (r.mode01 && typeof presetNaSteun === 'function') presetNaSteun(r.mode01); }
+    catch (x) { console.warn('PLGarage: preset na OBDb niet bijgesteld', x); }
     if (!r.repo) return { tekst: 'Dit model staat (nog) niet in OBDb. Gezocht als: ' + (r.geprobeerd || []).join(', ') + '.' };
     var niet = r.nietBruikbaar ? ' ' + r.nietBruikbaar + ' code' + (r.nietBruikbaar === 1 ? '' : 's') + ' uit OBDb gebruik' + (r.nietBruikbaar === 1 ? 't' : 'en') + ' een adressering die de app nog niet kent (BMW, Volvo).' : '';
     var zus = r.tweeling ? ' Je model staat niet in OBDb; deze codes komen van ' + r.repo + ', dezelfde auto onder een ander merk.' : '';
@@ -2850,6 +2852,8 @@
         pz.stap = 'Codes van dit bouwjaar zoeken…'; teken();
         var direct = await PLEigen.zoekObdb(v, obdbHaal, obdbHaalSteun);
         if (direct && direct.ok && direct.kandidaten && direct.kandidaten.length) lijst = lijst.concat(direct.kandidaten);
+        // De mode-01-lijst van dit bouwjaar haalt de aannames van de preset eruit (#616).
+        if (direct && direct.mode01 && typeof presetNaSteun === 'function') presetNaSteun(direct.mode01);
       } catch (x) { console.warn('PLGarage: OBDb rechtstreeks niet te halen, alleen de bibliotheek', x); }
       if (_st.sens !== S) return;
       var kand = PLPidZoek.kandidaten(lijst, S.eigen);

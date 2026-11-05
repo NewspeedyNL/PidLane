@@ -131,6 +131,8 @@ waar('dekking = 3/6 = 50 %, snel = 2/6', t1.dekking === 50 && t1.snel === 33.3, 
 const P3 = { aangeboden: { mode01: ['0105'], did: [{ code: '222A05', ecu: '720' }, { code: '222A06', ecu: '720', waarom: 'simulatie' }, { code: '22F190', ecu: '6F1', waarom: 'adressering' }] } };
 const t3 = tel(P3, { supported: ['0105'], zoek: { kand: ['222A05@720'], past: ['222A05@720'], nee: [], vreemd: [], fout: [] } });
 waar('niet na te bouwen telt niet mee, een adressering die de app niet kan wél', t3.did === 2 && t3.dekking === 66.7, JSON.stringify(t3));
+const t4 = tel(P, { supported: ['0105', '010C', '0146'], supportedNa: ['0105', '010C'] });
+waar('spook na Snel apart van na Grondig', t4.spookSnel.join(',') === '0146' && !t4.spook.length, JSON.stringify(t4));
 const t2 = tel(P, { supported: ['0105', '010C', '010D'] });
 waar('zonder zoekronde: alleen mode 01, geen spook', t2.dekking === 50 && !t2.spook.length, JSON.stringify(t2));
 

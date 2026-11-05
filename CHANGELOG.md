@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-11-2026 — De preset op merk verliest wat OBDb niet kent (#616)
+ ═══════════════════════════════════════════════════════════
+ - Wat applyVehiclePIDPreset() zonder steunbit toevoegt is een aanname.
+   Komt de mode-01-lijst van model en bouwjaar binnen (Grondig, of de
+   automatische OBDb-zoekronde), dan gaat eruit wat daar niet in staat en
+   nooit een geldige waarde gaf. Nissan Leaf: elf spook-PIDs weg.
+
+ ═══════════════════════════════════════════════════════════
  05-11-2026 — Fabriekscodes met teken en met mV, mA en cm (#670)
  ═══════════════════════════════════════════════════════════
  - Formuletaal: S8( ), S16( ), S24( ), S32( ) = getal met teken (two's

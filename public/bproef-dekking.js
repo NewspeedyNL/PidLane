@@ -22,7 +22,8 @@
 //
 // OORDEEL. De 90 % is een wens, geen regel: eronder is LET OP. FOUT is:
 //   • de route loopt vast, of er komt een JS-fout;
-//   • een PID in supportedPIDs die de auto niet aanbiedt (spook, #616);
+//   • na Grondig een PID in supportedPIDs die de auto niet aanbiedt (spook,
+//     #616). Na Snel is dat LET OP: dan is de steunlijst er nog niet;
 //   • de dekking zakt onder de VLOER van die auto. De vloer is wat er al
 //     gehaald werd: hij mag alleen omhoog. Ligt de meting er ≥ 1 punt
 //     boven, dan zegt de proef dat (LET OP: verhoog de vloer).
@@ -49,7 +50,6 @@ const KEUZE = ['cx5_18', 'golf19', 'fiat500_14', 'zoe21'];
 // Wat deze proef vindt en als issue openstaat: LET OP in plaats van FOUT.
 // Verdwijnt het, dan zegt de proef dat (haal het dan weg).
 const BEKEND = {
-  'spook:leaf19': '#616 — een EV zonder mode 01: de merkpreset zet er PIDs in die de auto niet heeft'
 };
 // Gemeten dekking (%) per auto op 05-11-2026, met de steunlijst en S16( ); mag alleen omhoog. Geen vloer =
 // LET OP met het getal erbij.
@@ -99,6 +99,9 @@ const ROUTE = (id) => `(async function(){
   };
   let z = null;
   try { z = await tijd(PLEigen.zoekObdb({ merk: u.merk || p.merk, model: p.model, bouwjaar: p.jaar, brandstof: vehicleInfo.brandstof }, haal, window._PL_ZONDER_STEUN ? null : haalSteun), 10000, 'zoekObdb'); } catch (e) { u.fout.push(e.message); }
+  // Wat _pzStart met de mode-01-lijst van het bouwjaar doet: de aannames van de preset eruit (#616).
+  if (z && z.mode01) { try { u.presetWeg = presetNaSteun(z.mode01); } catch (e) { u.fout.push('presetNaSteun: ' + e.message); } }
+  u.supportedNa = [...supportedPIDs];
   u.obdb = z ? { ok: z.ok, repo: z.repo || '', fout: z.fout || '', n: (z.kandidaten || []).length, afgekapt: z.afgekapt || 0, nietBruikbaar: z.nietBruikbaar || 0, steunJaar: z.steunJaar || null, nietDitJaar: z.nietDitJaar || 0, gevraagd: gevraagd } : null;
   if (z && z.ok && z.kandidaten && z.kandidaten.length) {
     const kand = PLPidZoek.kandidaten(z.kandidaten, []);
@@ -119,10 +122,12 @@ const BITMAP = /^01(00|20|40|60|80|A0|C0|E0)$/;
 
 // Puur: de telling uit wat de pagina teruggaf. Los te toetsen.
 function tel(p, u) {
-  const sup = new Set((u.supported || []).filter((x) => /^01[0-9A-F]{2}$/.test(x) && !BITMAP.test(x)));
+  const alsSet = (l) => new Set((l || []).filter((x) => /^01[0-9A-F]{2}$/.test(x) && !BITMAP.test(x)));
+  const sup = alsSet(u.supported), na = u.supportedNa ? alsSet(u.supportedNa) : sup;
   const m01 = p.aangeboden.mode01.filter((x) => !BITMAP.test(x));
   const m01ok = m01.filter((x) => sup.has(x));
-  const spook = [...sup].filter((x) => m01.indexOf(x) < 0);
+  const spookSnel = [...sup].filter((x) => m01.indexOf(x) < 0);
+  const spook = [...na].filter((x) => m01.indexOf(x) < 0);
   // Wat OBDb niet na te bouwen gaf, is een gat in de proef en telt niet.
   const did = [...new Set(p.aangeboden.did.filter((d) => d.waarom !== 'simulatie').map((d) => sleutel(d.code, d.ecu)))];
   const z = u.zoek || { kand: [], past: [], nee: [], vreemd: [], fout: [] };
@@ -132,7 +137,7 @@ function tel(p, u) {
   const geenKand = did.filter((k) => !kand.has(k));
   const noemer = m01.length + did.length;
   return {
-    m01: m01.length, m01ok: m01ok.length, m01mist: m01.filter((x) => !sup.has(x)), spook,
+    m01: m01.length, m01ok: m01ok.length, m01mist: m01.filter((x) => !sup.has(x)), spook, spookSnel,
     did: did.length, didOk: didOk.length, geenKand: geenKand.length,
     nagebouwd: p.aangeboden.did.filter((d) => d.nagebouwd).length,
     simulatie: p.aangeboden.did.filter((d) => d.waarom === 'simulatie').length,
@@ -159,8 +164,9 @@ async function rij(id) {
     const u = await app.ev(ROUTE(id));
     toets('de route liep zonder vastlopen', !u.fout.length, u.fout.join(' | '));
     const t = tel(p, u);
+    if (t.spookSnel.length && !t.spook.length) let_op('na Snel ' + t.spookSnel.length + ' aangenomen PIDs die de auto niet heeft (' + t.spookSnel.join(',') + '); Grondig haalde ze weg (#616)');
     if (t.spook.length && BEKEND['spook:' + id]) let_op('spook-PIDs ' + t.spook.join(',') + ' — bekend: ' + BEKEND['spook:' + id]);
-    else toets('geen spook-PIDs in supportedPIDs (#616)', !t.spook.length, t.spook.join(','));
+    else toets('geen spook-PIDs in supportedPIDs na Grondig (#616)', !t.spook.length, t.spook.join(','));
     if (!t.spook.length && BEKEND['spook:' + id]) let_op('geen spook meer bij ' + id + ' — ' + BEKEND['spook:' + id] + ' opgelost? Haal hem uit BEKEND.');
     if (t.m01mist.length) console.log('  mode 01 niet ontdekt: ' + t.m01mist.join(','));
     const o = u.obdb || {};

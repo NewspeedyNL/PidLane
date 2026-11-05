@@ -736,6 +736,40 @@ function loadDefaultPIDs(){
 // ── VOERTUIG-SPECIFIEKE PID PRESET ──────────────────────────────────────────
 // Laadt de juiste PID-set op basis van brandstoftype + bouwjaar + merk.
 // Roep aan na RDW-lookup (als verbonden) of als fallback bij lege discovery.
+// ── De preset als aanname, en wat OBDb erover zegt (#616, #670) ────────
+// applyVehiclePIDPreset() voegt op merk en brandstof toe, en "onbekend telt
+// als ja" zolang een steunbitblok onleesbaar is. Op de nagebouwde vloot gaf
+// dat bij de Nissan Leaf (geen mode 01) elf spook-PIDs. Wat de preset zonder
+// bewijs toevoegde, staat hier. Zodra de steunlijst van model en bouwjaar
+// binnen is (PLEigen.zoekObdb → mode01), gaat eruit wat daar niet in staat,
+// geen steunbit heeft en nooit een geldige waarde gaf. Een PID die wél
+// antwoordde blijft, wat OBDb ook zegt: een geldig antwoord liegt niet.
+const _presetAanname = new Set();
+function presetNaSteun(mode01){
+  if(!Array.isArray(mode01)) return [];
+  const heeft = new Set(mode01.map(x => String(x).toUpperCase()));
+  const weg = [];
+  _presetAanname.forEach(p => {
+    if(heeft.has(p)) return;
+    if(typeof ecuSteunt === 'function' && ecuSteunt(p) === true) return;
+    if(typeof _pidHealth !== 'undefined' && _pidHealth && _pidHealth[p] === 'ok') return;
+    weg.push(p);
+  });
+  weg.forEach(p => {
+    _presetAanname.delete(p);
+    supportedPIDs.delete(p);
+    pidOpruimen(p, 'de preset nam hem aan, maar OBDb kent hem niet voor dit model en bouwjaar en de auto bevestigde hem nooit');
+  });
+  if(weg.length){
+    btDiag(`Preset na OBDb: ${weg.length} aangenomen sensoren weg die dit model niet heeft: ${weg.join(', ')}`, 'ok');
+    buildDiscoveredPIDList();
+  }
+  return weg;
+}
+function presetAanname(){ return Array.from(_presetAanname); }
+window.presetNaSteun = presetNaSteun;
+window.presetAanname = presetAanname;
+
 function applyVehiclePIDPreset(merk, brandstof, jaar){
   const b = (brandstof||'').toLowerCase();
   const y = parseInt(jaar) || 0;
@@ -809,6 +843,8 @@ function applyVehiclePIDPreset(merk, brandstof, jaar){
   const geweigerd = [];
   uniq.forEach(p => {
     if(typeof magToevoegen === 'function' && !magToevoegen(p)){ geweigerd.push(p); return; }
+    // Alleen een aanname als niets hem bevestigt: niet al ontdekt, geen steunbit.
+    if(!supportedPIDs.has(p) && !(typeof ecuSteunt === 'function' && ecuSteunt(p) === true)) _presetAanname.add(p);
     supportedPIDs.add(p);
   });
   const toegevoegd = uniq.length - geweigerd.length;

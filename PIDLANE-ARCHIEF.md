@@ -15,6 +15,24 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 05-11-2026 — #616: de preset als aanname, OBDb als bewijs
+
+**Herevaluatie van "onbekend telt als toegestaan".** Het besluit van 25-10
+(zie hieronder bij #614–#617) stond op twee pijlers: de spook-PIDs kwamen uit
+het verkeerde protocol, en vooraf meten zou de terugval nutteloos maken. De
+eerste klopte voor de storingsproef, maar de nagebouwde vloot vond een auto
+waar het zonder storing gebeurt: de Nissan Leaf heeft geen mode 01, dus geen
+enkel steunbitblok, en kreeg elf PIDs. De tweede klopt nog steeds — daarom
+blijft de preset, maar zijn toevoegingen zijn nu een aanname (`_presetAanname`)
+die vervalt zodra de mode-01-lijst van OBDb voor model en bouwjaar er is.
+
+**Wat blijft, wat OBDb ook zegt:** een steunbit (`ecuSteunt() === true`) en een
+geldige waarde (`_pidHealth === 'ok'`). Een antwoord liegt niet; OBDb is één
+auto per bouwjaar en kan een uitvoering missen.
+
+**Wat nog openstaat.** Tussen het verbinden en de steunlijst staan de spooks
+er nog (na Snel). Zonder account of zonder OBDb-model blijft het de oude gok.
+
 ## 05-11-2026 — Teken en eenheden: 83,8 → 87,4 % (#670)
 
 **Waarom S16( ) en geen nieuw rekenteken.** Two's complement zit niet in
