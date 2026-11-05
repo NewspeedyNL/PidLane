@@ -98,7 +98,7 @@
     });
     const did = {};
     Object.keys(e.did || {}).forEach((k) => { did[k.toUpperCase()] = bytes(e.did[k]); });
-    return { adres: e.adres, tx: e.tx || null, naam: e.naam || '', pids: pids, did: did, opname: e.opname || {}, m09: e.m09 !== false && lijst.length > 0, m06: !!e.m06 };
+    return { adres: e.adres, tx: e.tx || null, ea: e.ea || null, naam: e.naam || '', pids: pids, did: did, opname: e.opname || {}, m09: e.m09 !== false && lijst.length > 0, m06: !!e.m06 };
   }
 
   // Bitmap 00/20/40/...: elk bit een PID, het laatste bit "er is nog een blok".
@@ -123,7 +123,7 @@
     // antwoordadressen aan (7E8–7EF, 18DAF1xx) — AANNAME: zo gedraagt een
     // ELM327 zich met de standaardfilters; een antwoord van 778 komt pas
     // door met ATCRA778. Zonder ATFCSM1 gaat de flow control naar rx − 8.
-    const st = { E: true, H: false, S: true, L: true, sp: '0', gezocht: false, init: false, sh: null, cp: '18', cra: null, fcsh: null, fcsd: null, fcsm: 0, log: [] };
+    const st = { E: true, H: false, S: true, L: true, sp: '0', gezocht: false, init: false, sh: null, cp: '18', cea: null, cra: null, fcsh: null, fcsd: null, fcsm: 0, log: [] };
 
     function readiness() {
       const actief = (profiel.dtc && profiel.dtc['03']) || [];
@@ -180,7 +180,9 @@
       // Wat elke ECU terugzegt, als lijst van berichten (elk een lijst bytes).
       // Een ECU met een kop van acht tekens (VAG 17FC0076) hoort alleen zijn
       // eigen prioriteit (ATCP), en alleen op een 29-bit bus.
-      const doel = st.sh ? ecus.filter((e) => fysiekVan(e) === st.sh || (bit29 && fysiekVan(e) === st.cp + st.sh)) : ecus;
+      // Extended addressing (BMW 6F1): alle ECU's delen de kop, het eerste
+      // databyte (ATCEA) kiest er één — en zonder dat byte hoort geen van hen.
+      const doel = st.sh ? ecus.filter((e) => (fysiekVan(e) === st.sh || (bit29 && fysiekVan(e) === st.cp + st.sh)) && (e.ea || null) === st.cea) : ecus;
       const uit = [];
       const vast = (profiel.opname || {})[cmd];
       if (vast) return vast.map((f) => ({ adres: f[0], bytes: bytes(f[1]), ruw: !!f[2] }));
@@ -267,7 +269,7 @@
 
     function at(c) {
       const a = c.slice(2);
-      if (a === 'Z' || a === 'WS') { st.E = true; st.H = false; st.S = true; st.sh = null; st.cp = '18'; st.cra = null; st.fcsh = null; st.fcsd = null; st.fcsm = 0; st.init = false; return 'ELM327 v1.5'; }
+      if (a === 'Z' || a === 'WS') { st.E = true; st.H = false; st.S = true; st.sh = null; st.cp = '18'; st.cea = null; st.cra = null; st.fcsh = null; st.fcsd = null; st.fcsm = 0; st.init = false; return 'ELM327 v1.5'; }
       if (a === 'I') return 'ELM327 v1.5';
       if (a === '@1') return 'OBDII to RS232 Interpreter';
       if (a === 'RV') return profiel.accu || '14.1V';
@@ -282,6 +284,8 @@
       if (/^SH/.test(a)) { const h = a.slice(2); st.sh = (h === '7DF' || /^DB33F1$/.test(h) || /^18DB33F1$/.test(h)) ? null : (h.length === 8 ? h.slice(2) : h); if (h.length === 8) st.cp = h.slice(0, 2); return 'OK'; }
       // ATCP: de prioriteit, het eerste byte van een 29-bit kop (standaard 18).
       if (/^CP[0-9A-F]{2}$/.test(a)) { st.cp = a.slice(2); return 'OK'; }
+      // ATCEA hh: extended addressing, hh als eerste byte van elk frame; ATCEA zonder byte zet het uit.
+      if (/^CEA([0-9A-F]{2})?$/.test(a)) { st.cea = a.slice(3) || null; return 'OK'; }
       if (/^CRA/.test(a)) { st.cra = a.slice(3) || null; return 'OK'; }
       if (profiel.kloonZonderFc && /^FC/.test(a)) return '?';
       if (/^FCSH[0-9A-F]{3,8}$/.test(a)) { st.fcsh = a.slice(4); return 'OK'; }
@@ -331,8 +335,11 @@
       // het zendadres van de ECU. Gaat die ergens anders heen, dan blijft
       // het bij het eerste frame.
       ber = ber.map(function (m) {
-        if (!can || m.bytes.length <= 7) return m;
         const e = m.ecu || ecus.find((x) => x.adres === m.adres);   // twee ECU's kunnen één antwoordadres delen (VAG 17FE007B)
+        if (!can || m.bytes.length <= (e && e.ea ? 6 : 7)) return m;   // met een adresbyte past er één minder in een frame
+        // Extended addressing: de flow control draagt het adresbyte van de ECU als eerste databyte.
+        if (e && e.ea && !(st.fcsm === 1 && st.fcsh === e.tx && String(st.fcsd || '').indexOf(e.ea) === 0)) return Object.assign({}, m, { afgebroken: true });
+        if (e && e.ea) return m;
         const doel = st.fcsm === 1 ? st.fcsh : (/^[0-9A-F]{3}$/.test(m.adres) ? (parseInt(m.adres, 16) - 8).toString(16).toUpperCase() : 'DA' + m.adres.slice(6) + 'F1');
         return (e && doel !== fysiekVan(e) && !(st.fcsm === 1 && doel && doel.endsWith(fysiekVan(e)))) ? Object.assign({}, m, { afgebroken: true }) : m;
       });

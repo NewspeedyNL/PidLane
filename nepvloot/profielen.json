@@ -18506,6 +18506,89 @@
     {
      "adres": "7EF",
      "pids": "01 04 05 0C 0D 11 21 41 42"
+    },
+    {
+     "adres": "60D",
+     "tx": "6F1",
+     "ea": "0D",
+     "pids": "",
+     "did": {
+      "22D240": "00 00"
+     }
+    },
+    {
+     "adres": "612",
+     "tx": "6F1",
+     "ea": "12",
+     "pids": "",
+     "did": {
+      "224AB1": "00 00",
+      "22586F": "03 FC"
+     }
+    },
+    {
+     "adres": "618",
+     "tx": "6F1",
+     "ea": "18",
+     "pids": "",
+     "did": {
+      "22DA1F": "00 00",
+      "22DA22": "00 00",
+      "22DA23": "00 00 2F 9E",
+      "22DA25": "00 30",
+      "22DA28": "00 00",
+      "22DA2A": "00 00 00 00",
+      "22DA2E": "00 00"
+     }
+    },
+    {
+     "adres": "619",
+     "tx": "6F1",
+     "ea": "19",
+     "pids": "",
+     "did": {
+      "22DB32": "00 01 00 02 00 00 00 20",
+      "22DFE7": "03 FA 03 4E 00 00 02 F2 00 31 03 FA 03 A4 00 82 00 00 04 1A 00 00 31 C6 00 15 00 00 00 87 00 00 00 19 00 00 00 01 00 01 7D 0A 00 00 00 00 00 00 00 00 00 00 1A 2F 72 7C 00 00 00 00 0B 95 A2 EB 00 01 7C FF 00 01 7D 0A 00 00 00 00 00 00 00 00 00 00 00 00 00 02 28 BA 00 00 97 12 00 00 06 85 00 00 04 19 00 00 31 C5 00 00 00 86 00 00 00 18 00 00 00 00 00 01 BE F6 05 89 EA 52 00 00 17 52 00 00 02 29 00 00 01 01 00 00 00 00 00 00 00 00 00 00 00 2E 00 00 00 08"
+     }
+    },
+    {
+     "adres": "629",
+     "tx": "6F1",
+     "ea": "29",
+     "pids": "",
+     "did": {
+      "22DBE4": "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 64 64 64 64"
+     }
+    },
+    {
+     "adres": "640",
+     "tx": "6F1",
+     "ea": "40",
+     "pids": "",
+     "did": {
+      "221700": "00 01 7D 08"
+     }
+    },
+    {
+     "adres": "656",
+     "tx": "6F1",
+     "ea": "56",
+     "pids": "",
+     "did": {
+      "22DCDD": "00 00 00 00 00 00 02 01 FF FF FF FF"
+     }
+    },
+    {
+     "adres": "660",
+     "tx": "6F1",
+     "ea": "60",
+     "pids": "",
+     "did": {
+      "22D107": "00 00",
+      "22D10D": "00 02 59 B5 00 02 59 B5",
+      "22D111": "00 00 00 00 06 FE FF FF 30 D4 00 00",
+      "22D112": "64 68"
+     }
     }
    ],
    "aangeboden": {
@@ -18565,236 +18648,140 @@
     "did": [
      {
       "code": "22D240",
-      "ecu": "6F1",
+      "ecu": "6F1:0D",
       "rx": "60D",
       "sig": "3SERIES_VSS_INSTR",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224AB1",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "3SERIES_VSS2",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22586F",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "3SERIES_EOP",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DA1F",
-      "ecu": "6F1",
+      "ecu": "6F1:18",
       "rx": "618",
       "sig": "3SERIES_KICKDOWN",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DA22",
-      "ecu": "6F1",
+      "ecu": "6F1:18",
       "rx": "618",
       "sig": "3SERIES_TQ_CNVRT_LOCKUP",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DA23",
-      "ecu": "6F1",
+      "ecu": "6F1:18",
       "rx": "618",
       "sig": "3SERIES_ODO_LOWRES",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DA25",
-      "ecu": "6F1",
+      "ecu": "6F1:18",
       "rx": "618",
       "sig": "3SERIES_EOT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DA28",
-      "ecu": "6F1",
+      "ecu": "6F1:18",
       "rx": "618",
       "sig": "3SERIES_BRAKE_SWITCH",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DA2A",
-      "ecu": "6F1",
+      "ecu": "6F1:18",
       "rx": "618",
       "sig": "3SERIES_TQ_CNVRT_RPM,3SERIES_TRANS_SHAFT_RPM",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DA2E",
-      "ecu": "6F1",
+      "ecu": "6F1:18",
       "rx": "618",
       "sig": "3SERIES_GEAR,3SERIES_GEAR_SHIFT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DB32",
-      "ecu": "6F1",
+      "ecu": "6F1:19",
       "rx": "619",
       "sig": "3SERIES_AXLE_FRONT_ACTUAL_TORQUE,3SERIES_AXLE_FRONT_SETPOINT_TORQUE",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DFE7",
-      "ecu": "6F1",
+      "ecu": "6F1:19",
       "rx": "619",
       "sig": "3SERIES_OIL_CHANGE_DIST,3SERIES_VGT_CAL_ANGLE",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DBE4",
-      "ecu": "6F1",
+      "ecu": "6F1:29",
       "rx": "629",
       "sig": "3SERIES_FL_SPD,3SERIES_FR_SPD,3SERIES_RL_SPD,3SERIES_RR_SPD",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221700",
-      "ecu": "6F1",
+      "ecu": "6F1:40",
       "rx": "640",
       "sig": "3SERIES_ODO_2",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DCDD",
-      "ecu": "6F1",
+      "ecu": "6F1:56",
       "rx": "656",
       "sig": "3SERIES_CENTRAL_LOCK,3SERIES_DOOR_DRIVER,3SERIES_DOOR_DRIVER_REAR,3SERIES_DOOR_PASSENGER,3SERIES_DOOR_PASSENGER_REAR,3SERIES_HOOD,3SERIES_REAR_WINDOW,3SERIES_TRUNK",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D107",
-      "ecu": "6F1",
+      "ecu": "6F1:60",
       "rx": "660",
       "sig": "3SERIES_VSS",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D10D",
-      "ecu": "6F1",
+      "ecu": "6F1:60",
       "rx": "660",
       "sig": "3SERIES_ODO,3SERIES_ODO_ALT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D111",
-      "ecu": "6F1",
+      "ecu": "6F1:60",
       "rx": "660",
       "sig": "3SERIES_AUX_PWR,3SERIES_RANGE_E_CUR,3SERIES_RANGE_E_MAX,3SERIES_RANGE_E_USE,3SERIES_RANGE_F_CUR,3SERIES_RANGE_F_MAX",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D112",
-      "ecu": "6F1",
+      "ecu": "6F1:60",
       "rx": "660",
       "sig": "3SERIES_AAT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      }
     ]
    },
-   "overgeslagen": [
-    {
-     "cmd": "6F1.60D.22D240|e=0D,fc=1,f=2012-",
-     "reden": "adressering e=0D,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.612.224AB1|e=12,fc=1,f=2012-",
-     "reden": "adressering e=12,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.612.22586F|e=12,fc=1,f=2012-",
-     "reden": "adressering e=12,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.618.22DA1F|e=18,fc=1,f=2012-",
-     "reden": "adressering e=18,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.618.22DA22|e=18,fc=1,f=2012-",
-     "reden": "adressering e=18,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.618.22DA23|e=18,fc=1,f=2012-",
-     "reden": "adressering e=18,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.618.22DA25|e=18,fc=1,f=2012-",
-     "reden": "adressering e=18,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.618.22DA28|e=18,fc=1,f=2011-",
-     "reden": "adressering e=18,fc=1,f=2011-"
-    },
-    {
-     "cmd": "6F1.618.22DA2A|e=18,fc=1,f=2012-",
-     "reden": "adressering e=18,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.618.22DA2E|e=18,fc=1,f=2012-",
-     "reden": "adressering e=18,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.619.22DB32|e=19,fc=1,f=2012-",
-     "reden": "adressering e=19,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.619.22DFE7|e=19,fc=1,f=2011-",
-     "reden": "adressering e=19,fc=1,f=2011-"
-    },
-    {
-     "cmd": "6F1.629.22DBE4|e=29,fc=1,f=2012-",
-     "reden": "adressering e=29,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.640.221700|e=40,fc=1,f=2011-",
-     "reden": "adressering e=40,fc=1,f=2011-"
-    },
-    {
-     "cmd": "6F1.656.22DCDD|e=56,fc=1,f=2012-",
-     "reden": "adressering e=56,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.660.22D107|e=60,fc=1,f=2012-",
-     "reden": "adressering e=60,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.660.22D10D|e=60,fc=1,f=2012-",
-     "reden": "adressering e=60,fc=1,f=2012-"
-    },
-    {
-     "cmd": "6F1.660.22D111|e=60,fc=1,f=2011-",
-     "reden": "adressering e=60,fc=1,f=2011-"
-    },
-    {
-     "cmd": "6F1.660.22D112|e=60,fc=1,f=2012-",
-     "reden": "adressering e=60,fc=1,f=2012-"
-    }
-   ]
+   "overgeslagen": []
   },
   {
    "id": "mini19",
@@ -18806,7 +18793,7 @@
    "proto": "6",
    "vin": "WMWZZZZZZKX000039",
    "pad": "00",
-   "bron": "OBDb Mini-Cooper 2019 @a375413",
+   "bron": "OBDb Mini-Cooper 2019 @25e5438",
    "repo": "Mini-Cooper",
    "ecus": [
     {
@@ -18820,6 +18807,120 @@
     {
      "adres": "7EF",
      "pids": "01 04 05 0C 0D 11 21 41 42"
+    },
+    {
+     "adres": "612",
+     "tx": "6F1",
+     "ea": "12",
+     "pids": "",
+     "did": {
+      "224015": "00 B9 9A B1 2B D7 D4 28 00 00 00 00 00 00 37 C5 C8 37 00 02 00 00 00 00 58 5E A7 8E 00 12 00 00 00 00 01 20 43 93 83 93 37 B8 00 00 00 00 09 C0 02 59 00 30 00 00 00 00 00 00 05 00 00 0B 00 00 00 00 00 00 02 01 00 15 00 00 00 00 00 00 00 12 00 02 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 00 12 19 3F 64 AF B8 BF C5 CC E0 0A 00 C8 BB 07 2A 81 00 0D 00 C7 B9 28 74 8C 00 0F 00 C7 B7 1D 32 7D 00 07 00 C6 B9 28 74 8D 00 03 00 C6 B9 28 74 8C 00 01 85 08 5B 4C 1C 56 03 53 00 00",
+      "224201": "63 F5",
+      "224205": "31 E2",
+      "224300": "0E C5",
+      "224402": "00 40",
+      "224408": "0B 4A",
+      "224506": "01 A7",
+      "225813": "04",
+      "225889": "0C F2",
+      "22400B": "00 E4 00 E6 00 20 00 81 FF FF 00 08",
+      "22402B": "00 B4 7F 5C 09 FF 00 01 09 00 00 00 00 02 00 00 00 00 00 00 00 00 00 02 00 00 00 00",
+      "22411E": "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "22442C": "20",
+      "22480C": "00 00",
+      "224A2D": "0D 86",
+      "224A2E": "17 70",
+      "224A49": "00 03",
+      "224A4A": "00 01",
+      "224A4B": "00",
+      "224A4C": "00 00",
+      "224A4D": "00 00",
+      "224AB0": "63 F3",
+      "224AB1": "00 00",
+      "22558E": "00 01 BA D5",
+      "22558F": "00 00 28 40",
+      "2256D7": "19 E3",
+      "2257C3": "02 26",
+      "22580F": "50",
+      "22582C": "0D 90",
+      "22582F": "17 05",
+      "22586F": "03 EF",
+      "2258BA": "00 00",
+      "2258F3": "17 70",
+      "2259FA": "00"
+     }
+    },
+    {
+     "adres": "618",
+     "tx": "6F1",
+     "ea": "18",
+     "pids": "",
+     "did": {
+      "22DA2E": "01",
+      "22DA37": "06 E6 14 FD 00 00 5E FF 00 00 01 B6"
+     }
+    },
+    {
+     "adres": "629",
+     "tx": "6F1",
+     "ea": "29",
+     "pids": "",
+     "did": {
+      "22DBE4": "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 64 64 64 64",
+      "22DBE5": "00 00 00 00 00 00 00 00 00 00 00 00",
+      "22DC98": "30 4F 4E 37 00 4D 08 13 E9 07 A4 50 63 00 00 1C 00 00 00 00 FF FF 1B 03 00 FF FF 00 00",
+      "22DC99": "13 34 85 3E 01 4D 08 0F 1B 08 51 51 63 00 00 71 00 00 00 00 FF FF 22 03 00 FF FF 00 00",
+      "22DC9A": "53 99 E9 39 02 15 09 08 79 09 B5 D2 63 00 00 73 00 00 00 00 FF FF 19 03 00 FF FF 00 00",
+      "22DC9B": "0E 52 FD 3F 03 15 09 18 E9 07 5C 50 64 00 00 00 00 03 00 00 FF FF 19 03 08 FF FF 00 00"
+     }
+    },
+    {
+     "adres": "630",
+     "tx": "6F1",
+     "ea": "30",
+     "pids": "",
+     "did": {
+      "22DB99": "00 00 00"
+     }
+    },
+    {
+     "adres": "640",
+     "tx": "6F1",
+     "ea": "40",
+     "pids": "",
+     "did": {
+      "221700": "00 01 A6 3A",
+      "22D130": "00",
+      "22D906": "00 00 00"
+     }
+    },
+    {
+     "adres": "660",
+     "tx": "6F1",
+     "ea": "60",
+     "pids": "",
+     "did": {
+      "22D107": "00 00",
+      "22D10D": "00 00 D6 EE 00 00 D6 EE",
+      "22D112": "50 51",
+      "22D129": "FF FF 07 EE FF FF FF FF",
+      "22D12A": "FF FD 07 EE 10 02 4C 26 05 C8"
+     }
+    },
+    {
+     "adres": "678",
+     "tx": "6F1",
+     "ea": "78",
+     "pids": "",
+     "did": {
+      "22D85C": "0E",
+      "22D8C5": "00 00",
+      "22D91A": "00 00",
+      "22D92C": "00",
+      "22D930": "00",
+      "22D931": "00",
+      "22D96B": "00 63"
+     }
     }
    ],
    "aangeboden": {
@@ -18875,714 +18976,424 @@
     "did": [
      {
       "code": "22400B",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_LAMBDA_6F1",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224015",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_IAT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22402B",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_12V_A,COOPER_12V_T,COOPER_12V_V",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22411E",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_COOLANT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224201",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_BARO",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224205",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_BOOST_P",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224300",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_ET",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224402",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_EOT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224408",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_EOT_DME",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22442C",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_OIL_LEVEL",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224506",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_OIL_TEMP",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22480C",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_LOAD_TGT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224A2D",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_MAP",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224A2E",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_REV_LIMIT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224A49",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_IGN_TIMING_1",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224A4A",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_IGN_TIMING_2",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224A4B",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_LOAD_2",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224A4C",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_IGN_TIMING_3",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224A4D",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_IGN_TIMING_4",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224AB0",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_BOOST_P_SET",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "224AB1",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_VSS2",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22558E",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_ODO_DME",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22558F",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_ENG_HOURS",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "2256D7",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_FRP",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "2257C3",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_OIL_TEMP_ALT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22580F",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_IAT_DME",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "225813",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_LOAD",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22582C",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_LAMBDA_2",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22582F",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_CAT_T",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22586F",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_EOP",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "225889",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_LAMBDA",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "2258BA",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_CRANK_TQ",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "2258F3",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_LOW_SIDE_FUEL_P",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "2259FA",
-      "ecu": "6F1",
+      "ecu": "6F1:12",
       "rx": "612",
       "sig": "COOPER_IGN_ANGLE",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DA2E",
-      "ecu": "6F1",
+      "ecu": "6F1:18",
       "rx": "618",
       "sig": "COOPER_GEAR,COOPER_GEAR_SHIFT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DA37",
-      "ecu": "6F1",
+      "ecu": "6F1:18",
       "rx": "618",
       "sig": "COOPER_TIME_D,COOPER_TIME_M,COOPER_TIME_S",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DBE4",
-      "ecu": "6F1",
+      "ecu": "6F1:29",
       "rx": "629",
       "sig": "COOPER_FL_VSS,COOPER_FR_VSS,COOPER_RL_VSS,COOPER_RR_VSS",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DBE5",
-      "ecu": "6F1",
+      "ecu": "6F1:29",
       "rx": "629",
       "sig": "COOPER_BRAKE_P",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DC98",
-      "ecu": "6F1",
+      "ecu": "6F1:29",
       "rx": "629",
       "sig": "COOPER_TPMS_BAT_FL,COOPER_TPMS_POS_FL,COOPER_TP_FL,COOPER_TP_SET_FL,COOPER_TT_FL",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DC99",
-      "ecu": "6F1",
+      "ecu": "6F1:29",
       "rx": "629",
       "sig": "COOPER_TPMS_BAT_FR,COOPER_TPMS_POS_FR,COOPER_TP_FR,COOPER_TP_SET_FR,COOPER_TT_FR",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DC9A",
-      "ecu": "6F1",
+      "ecu": "6F1:29",
       "rx": "629",
       "sig": "COOPER_TPMS_BAT_RL,COOPER_TPMS_POS_RL,COOPER_TP_RL,COOPER_TP_SET_RL,COOPER_TT_RL",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DC9B",
-      "ecu": "6F1",
+      "ecu": "6F1:29",
       "rx": "629",
       "sig": "COOPER_TPMS_BAT_RR,COOPER_TPMS_POS_RR,COOPER_TP_RR,COOPER_TP_SET_RR,COOPER_TT_RR",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22DB99",
-      "ecu": "6F1",
+      "ecu": "6F1:30",
       "rx": "630",
       "sig": "COOPER_STEER_TQ",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "221700",
-      "ecu": "6F1",
+      "ecu": "6F1:40",
       "rx": "640",
       "sig": "COOPER_ODO_2",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D130",
-      "ecu": "6F1",
+      "ecu": "6F1:40",
       "rx": "640",
       "sig": "COOPER_PARK_BRAKE",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D906",
-      "ecu": "6F1",
+      "ecu": "6F1:40",
       "rx": "640",
       "sig": "COOPER_AC_COMP_PWM,COOPER_AC_COMP_STAT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D107",
-      "ecu": "6F1",
+      "ecu": "6F1:60",
       "rx": "660",
       "sig": "COOPER_VSS",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D10D",
-      "ecu": "6F1",
+      "ecu": "6F1:60",
       "rx": "660",
       "sig": "COOPER_ODO,COOPER_ODO_ALT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D111",
-      "ecu": "6F1",
+      "ecu": "6F1:60",
       "rx": "660",
       "sig": "COOPER_AUX_PWR,COOPER_RANGE_E_CUR,COOPER_RANGE_E_MAX,COOPER_RANGE_E_USE,COOPER_RANGE_F_CUR,COOPER_RANGE_F_MAX",
       "nagebouwd": false,
-      "waarom": "adressering"
+      "waarom": "simulatie"
      },
      {
       "code": "22D112",
-      "ecu": "6F1",
+      "ecu": "6F1:60",
       "rx": "660",
       "sig": "COOPER_AAT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D129",
-      "ecu": "6F1",
+      "ecu": "6F1:60",
       "rx": "660",
       "sig": "COOPER_BC_AVG_CONS,COOPER_BC_AVG_SPD,COOPER_BC_RANGE",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D12A",
-      "ecu": "6F1",
+      "ecu": "6F1:60",
       "rx": "660",
       "sig": "COOPER_CONS_KWH_100KM",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D85C",
-      "ecu": "6F1",
+      "ecu": "6F1:78",
       "rx": "678",
       "sig": "COOPER_CABIN_T",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D8C5",
-      "ecu": "6F1",
+      "ecu": "6F1:78",
       "rx": "678",
       "sig": "COOPER_COMP_STATE",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D91A",
-      "ecu": "6F1",
+      "ecu": "6F1:78",
       "rx": "678",
       "sig": "COOPER_AIR_DIST_L,COOPER_AIR_DIST_R",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D92C",
-      "ecu": "6F1",
+      "ecu": "6F1:78",
       "rx": "678",
       "sig": "COOPER_HVAC_OFF",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D930",
-      "ecu": "6F1",
+      "ecu": "6F1:78",
       "rx": "678",
       "sig": "COOPER_HVAC_AUC",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D931",
-      "ecu": "6F1",
+      "ecu": "6F1:78",
       "rx": "678",
       "sig": "COOPER_HVAC_RECIRC",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      },
      {
       "code": "22D96B",
-      "ecu": "6F1",
+      "ecu": "6F1:78",
       "rx": "678",
       "sig": "COOPER_IHX_AAT",
-      "nagebouwd": false,
-      "waarom": "adressering"
+      "nagebouwd": true
      }
     ]
    },
    "overgeslagen": [
     {
-     "cmd": "6F1.612.22400B|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224015|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.22402B|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.22411E|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224201|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224205|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224300|e=12,fc=1,f=2019-",
-     "reden": "adressering e=12,fc=1,f=2019-"
-    },
-    {
-     "cmd": "6F1.612.224402|e=12,fc=1,f=2014-",
-     "reden": "adressering e=12,fc=1,f=2014-"
-    },
-    {
-     "cmd": "6F1.612.224408|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.22442C|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224506|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.22480C|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224A2D|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224A2E|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224A49|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224A4A|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224A4B|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224A4C|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224A4D|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224AB0|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.224AB1|e=12,fc=1,f=2013-;-2006",
-     "reden": "adressering e=12,fc=1,f=2013-;-2006"
-    },
-    {
-     "cmd": "6F1.612.22558E|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.22558F|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.2256D7|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.2257C3|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.22580F|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.225813|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.22582C|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.22582F|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.22586F|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.225889|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.2258BA|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.2258F3|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.612.2259FA|e=12,fc=1",
-     "reden": "adressering e=12,fc=1"
-    },
-    {
-     "cmd": "6F1.618.22DA2E|e=18,fc=1,f=2014-",
-     "reden": "adressering e=18,fc=1,f=2014-"
-    },
-    {
-     "cmd": "6F1.618.22DA37|e=18,fc=1,f=2013-;-2006",
-     "reden": "adressering e=18,fc=1,f=2013-;-2006"
-    },
-    {
-     "cmd": "6F1.629.22DBE4|e=29,fc=1,f=2014-",
-     "reden": "adressering e=29,fc=1,f=2014-"
-    },
-    {
-     "cmd": "6F1.629.22DBE5|e=29,fc=1",
-     "reden": "adressering e=29,fc=1"
-    },
-    {
-     "cmd": "6F1.629.22DC98|e=29,fc=1",
-     "reden": "adressering e=29,fc=1"
-    },
-    {
-     "cmd": "6F1.629.22DC99|e=29,fc=1",
-     "reden": "adressering e=29,fc=1"
-    },
-    {
-     "cmd": "6F1.629.22DC9A|e=29,fc=1",
-     "reden": "adressering e=29,fc=1"
-    },
-    {
-     "cmd": "6F1.629.22DC9B|e=29,fc=1",
-     "reden": "adressering e=29,fc=1"
-    },
-    {
-     "cmd": "6F1.630.22DB99|e=30,fc=1",
-     "reden": "adressering e=30,fc=1"
-    },
-    {
-     "cmd": "6F1.640.221700|e=40,fc=1",
-     "reden": "adressering e=40,fc=1"
-    },
-    {
-     "cmd": "6F1.640.22D130|e=40,fc=1",
-     "reden": "adressering e=40,fc=1"
-    },
-    {
-     "cmd": "6F1.640.22D906|e=40,fc=1",
-     "reden": "adressering e=40,fc=1"
-    },
-    {
-     "cmd": "6F1.660.22D107|e=60,fc=1,f=2014-",
-     "reden": "adressering e=60,fc=1,f=2014-"
-    },
-    {
-     "cmd": "6F1.660.22D10D|e=60,fc=1,f=2014-",
-     "reden": "adressering e=60,fc=1,f=2014-"
-    },
-    {
      "cmd": "6F1.660.22D111|e=60,fc=1,f=2013-;-2006",
-     "reden": "adressering e=60,fc=1,f=2013-;-2006"
-    },
-    {
-     "cmd": "6F1.660.22D112|e=60,fc=1,f=2014-",
-     "reden": "adressering e=60,fc=1,f=2014-"
-    },
-    {
-     "cmd": "6F1.660.22D129|e=60,fc=1",
-     "reden": "adressering e=60,fc=1"
-    },
-    {
-     "cmd": "6F1.660.22D12A|e=60,fc=1",
-     "reden": "adressering e=60,fc=1"
-    },
-    {
-     "cmd": "6F1.678.22D85C|e=78,fc=1",
-     "reden": "adressering e=78,fc=1"
-    },
-    {
-     "cmd": "6F1.678.22D8C5|e=78,fc=1",
-     "reden": "adressering e=78,fc=1"
-    },
-    {
-     "cmd": "6F1.678.22D91A|e=78,fc=1",
-     "reden": "adressering e=78,fc=1"
-    },
-    {
-     "cmd": "6F1.678.22D92C|e=78,fc=1",
-     "reden": "adressering e=78,fc=1"
-    },
-    {
-     "cmd": "6F1.678.22D930|e=78,fc=1",
-     "reden": "adressering e=78,fc=1"
-    },
-    {
-     "cmd": "6F1.678.22D931|e=78,fc=1",
-     "reden": "adressering e=78,fc=1"
-    },
-    {
-     "cmd": "6F1.678.22D96B|e=78,fc=1",
-     "reden": "adressering e=78,fc=1"
+     "reden": "antwoord onleesbaar"
     }
    ]
   },

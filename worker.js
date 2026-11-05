@@ -6060,14 +6060,14 @@ __name(kpOnderhoudBeurt, "kpOnderhoudBeurt");
 // het ECU-adres (optioneel) een fysiek adres, 7xx of 18DAxxF1, of "tx>rx"
 // voor een ander antwoordadres (VAG 70E>778, PSA 6A2>682), 22-10-2026.
 var KP_EIGEN_CODE = /^(21[0-9A-F]{2}|22[0-9A-F]{4})$/;
-var KP_EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1|[67][0-9A-F]{2}>[0-9A-F]{3}|[0-9A-F]{2}FC00[0-9A-F]{2}>[0-9A-F]{2}FE00[0-9A-F]{2})$/;
+var KP_EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1|[67][0-9A-F]{2}>[0-9A-F]{3}|[0-9A-F]{2}FC00[0-9A-F]{2}>[0-9A-F]{2}FE00[0-9A-F]{2}|[67][0-9A-F]{2}:[0-9A-F]{2}>[67][0-9A-F]{2})$/;
 var KP_EIGEN_TEMPO = ["snel", "normaal", "traag", "minuut"];
 function kpEigenPid(e) {
   e = e || {};
   const code = String(e.code || "").toUpperCase().replace(/\s+/g, "");
   if (!KP_EIGEN_CODE.test(code)) return { fout: "alleen leescodes 21xx of 22xxxx, niet: " + code.slice(0, 10) };
   const ecu = String(e.ecu || "").toUpperCase().replace(/\s+/g, "");
-  if (ecu && !KP_EIGEN_ECU.test(ecu)) return { fout: "ECU-adres van " + code + " moet 7xx, 18DAxxF1 of tx>rx (70E>778, 17FC0076>17FE0076) zijn" };
+  if (ecu && !KP_EIGEN_ECU.test(ecu)) return { fout: "ECU-adres van " + code + " moet 7xx, 18DAxxF1 of tx>rx (70E>778, 17FC0076>17FE0076, 6F1:12>612) zijn" };
   const f = String(e.formule || "A").replace(/\s+/g, "").toUpperCase();
   if (f.length > 80 || !/^[A-HS0-9.,+\-*/()[\]]+$/.test(f) || /S(?!(8|16|24|32)\()/.test(f)) return { fout: "formule van " + code + " mag alleen A–H, [n], getallen, + - * /, haakjes en S8( )…S32( ) bevatten" };
   const naamE = String(e.naam || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 40);

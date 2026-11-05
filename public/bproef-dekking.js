@@ -61,7 +61,7 @@ const VLOER = {
   rav4_19: 90, niro19: 92, picanto17: 100, sportage20: 100, ceed19: 100,
   tucson19: 100, kona20: 90, i30_19: 89, focus18: 80, fiesta18: 84,
   fiat500_14: 100, qashqai19: 100, leaf19: 67, xc40_20: 100, mgzs21: 94,
-  swift19: 94, civic19: 36, bmw3_19: 72, mini19: 44, cklasse18: 100
+  swift19: 94, civic19: 36, bmw3_19: 92, mini19: 86, cklasse18: 100
 };
 
 let fouten = 0, letop = 0;

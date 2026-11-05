@@ -15,6 +15,31 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 05-11-2026 — BMW/MINI extended addressing: Mini 44 → 87, BMW 73 → 93 %, vloot 89,2 → 90,7 % (#670)
+
+**Wat `e=` is.** BMW vraagt elke ECU op dezelfde kop `6F1`; het eerste
+databyte zegt welke (12 = DME, 60 = kombi). Het antwoord komt van `6xx` met
+`F1` (de tester) als eerste byte: `612 F1 10 0F 62 40 0B …` in de OBDb-
+testgevallen. In de app heet dat `6F1:12>612`. ELM: `ATSH6F1`, `ATCEA12`,
+`ATCRA612`, flow control `ATFCSH6F1` + `ATFCSD12300000`, terug met `ATCEA`.
+
+**AANNAMES, een vraag voor een rit met een BMW of Mini.**
+- Dat ATCEA bij een ELM vóór 2.2 ook antwoorden met `F1` voorop aanneemt
+  (pas 2.2 heeft ATCER om dat byte te kiezen) en het eraf haalt.
+- Dat de ELM het adresbyte in FCSM1 níét zelf voor de flow control zet; de
+  app zet het in ATFCSD. Is het andersom, dan breekt elk antwoord langer
+  dan zes bytes af — korte antwoorden komen dan wel.
+De nepauto gedraagt zich zo (test-nepauto 10); de proef bewijst dus de
+keten, niet de adapter.
+
+**Niet aangeboden: Toyota `e=2A,ta=2A`.** Daar draagt het antwoord `2A` en
+niet `F1`; dat vraagt ATCER. Vijf bandencodes op de Corolla, één op de RAV4.
+
+**Wat er bij de Mini nog mist** is geen adressering: 13 codes zonder
+eenheid (lambda als verhouding, versnelling, standen) — de vraag van optie d.
+De Mini-bron in OBDb schoof op van a375413 naar 25e5438 bij het opnieuw
+genereren; wat de auto aanbiedt bleef gelijk (47 mode 01, 59 fabriekscodes).
+
 ## 05-11-2026 — VAG 29-bit (FC00): ID.3 21 → 91,8 %, vloot 87,4 → 89,2 % (#670)
 
 **Wat FC00 is.** OBDb schrijft de UDS-adressering van VAG (MEB, deels MQB)

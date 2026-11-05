@@ -1823,6 +1823,15 @@ MUTATIES=(
 "public/nepauto.js@@ || (bit29 && fysiekVan(e) === st.cp + st.sh)) : ecus;@@ || fysiekVan(e) === st.cp + st.sh) : ecus;@@test-nepauto.js@@de nepauto beantwoordt een 29-bit vraag op een 11-bit bus"
 "public/nepauto.js@@{ st.cp = a.slice(2); return 'OK'; }@@{ return 'OK'; }@@test-nepauto.js@@de nepauto negeert ATCP: zonder prioriteit 17 antwoordt de ID.3 toch niet, of altijd"
 "plnepvloot.js@@  return ta && c ? { tx: (c + 'FC00' + ta).toUpperCase(), rx: (c + a.rx).toUpperCase() } : null;@@  return ta && c ? { tx: ('18FC00' + ta).toUpperCase(), rx: (c + a.rx).toUpperCase() } : null;@@test-nepvloot.js@@de generator negeert c=: de ID.3 krijgt prioriteit 18 en de proef meet een auto die niet bestaat"
+# BMW/MINI extended addressing 6F1:xx>6yy (#670): zonder ATCEA hoort geen
+# ECU de vraag; zonder het adresbyte in de flow control breekt een lang
+# antwoord af; een Toyota met eigen antwoordbyte mag niet als BMW door.
+"public/pidlane-uitgebreid.js@@    if (ea) await sendCmd('ATCEA' + ea, 1500);\n@@@@test-mode21.js@@BMW zonder ATCEA: de kop 6F1 zonder adresbyte, geen enkele ECU antwoordt"
+"public/pidlane-uitgebreid.js@@'ATFCSD' + ea + '300000'@@'ATFCSD300000'@@test-mode21.js@@BMW-flow control zonder het adresbyte: elk antwoord langer dan zes bytes breekt af"
+"public/pidlane-uitgebreid.js@@    return (ea ? ['ATCEA'] : []).concat(@@    return [].concat(@@test-mode21.js@@ATCEA blijft na een BMW-code aan: elke volgende vraag draagt een verkeerd eerste byte"
+"public/pidlane-uitgebreid.js@@ && tst === 'F1' ? hdr + ':' + eax + '>' + rax : null;@@ ? hdr + ':' + eax + '>' + rax : null;@@test-mode21.js@@een Toyota met eigen antwoordbyte (ATCER) gaat als BMW door en hoort zijn antwoord nooit"
+"public/nepauto.js@@ && (e.ea || null) === st.cea) : ecus;@@) : ecus;@@test-nepauto.js@@de nepauto laat elke BMW-ECU op 6F1 antwoorden, met of zonder ATCEA"
+"plnepvloot.js@@    if (rx && h.startsWith(rx)) h = h.slice(rx.length + (ext ? 2 : 0));@@    if (rx && h.startsWith(rx)) h = h.slice(rx.length);@@test-nepvloot.js@@de generator houdt het F1-byte van BMW in de data: elke nagebouwde waarde schuift een byte"
 # De steunlijst van het bouwjaar (#670): zonder filter of mét de kap van 60
 # is het weer de gok die op de vloot 1515 weigeringen gaf; de Worker die
 # alleen het gevraagde jaar probeert vindt bij een gat in OBDb niets.
@@ -1857,7 +1866,7 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@    const functioneel = 'ATSH' + (p[0].length === 8 ? '18DB33F1' : '7DF');@@    const functioneel = 'ATSH7DF';@@test-mode21.js@@een 29-bit auto krijgt na een eigen PID het 11-bit functionele adres terug"
 "public/pidlane-uitgebreid.js@@    if (_terug) { await sendCmd(_terug, 1500); _terug = null; }@@    _terug = null;@@test-mode21.js@@mislukt het terugzetten één keer, dan blijft de adapter op het fysieke adres staan"
 "public/pidlane-plload.js@@  if(window.PLEigen && PLEigen.is(pid)) return PLEigen.vraag(pid);@@  if(false) return PLEigen.vraag(pid);@@bproef-garage.js@@de pollus negeert het ECU-adres van een eigen PID"
-"worker.js@@var KP_EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1|[67][0-9A-F]{2}>[0-9A-F]{3}|[0-9A-F]{2}FC00[0-9A-F]{2}>[0-9A-F]{2}FE00[0-9A-F]{2})$/;@@var KP_EIGEN_ECU = /^[0-9A-Z;>]{3,20}$/;@@test-klantplatform.js@@de server bewaart een AT-commando als ECU-adres en stuurt het naar elk toestel"
+"worker.js@@var KP_EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1|[67][0-9A-F]{2}>[0-9A-F]{3}|[0-9A-F]{2}FC00[0-9A-F]{2}>[0-9A-F]{2}FE00[0-9A-F]{2}|[67][0-9A-F]{2}:[0-9A-F]{2}>[67][0-9A-F]{2})$/;@@var KP_EIGEN_ECU = /^[0-9A-Z;>]{3,20}$/;@@test-klantplatform.js@@de server bewaart een AT-commando als ECU-adres en stuurt het naar elk toestel"
 "worker.js@@\"kp_voorkeur\", \"kp_pid_stem\", \"kp_meekijk\", \"kp_expert\", \"kp_akkoord\"];@@\"kp_voorkeur\", \"kp_meekijk\", \"kp_expert\", \"kp_akkoord\"];@@test-klantplatform.js@@alles wissen laat de stemmen in de PID-bibliotheek staan"
 "worker.js@@    const e = (kpLees(v.eigen_pids) || []).find((x) => x.code === code && (x.ecu || \"\") === ecu);@@    const e = (kpLees(v.eigen_pids) || []).find((x) => true);@@test-klantplatform.js@@delen zet een code in de bibliotheek die niet bij het voertuig staat"
 "public/pidlane-garage.js@@(/weigert|Geen antwoord/.test(r.fout || '') ? 'werkt_niet' : null)@@'werkt_niet'@@bproef-garage.js@@\"niet verbonden\" telt in de bibliotheek als \"werkt niet\""

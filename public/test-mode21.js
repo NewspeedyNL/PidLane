@@ -320,6 +320,12 @@ function haalZeef(isMode01) {
     await E.vraag('220335');
     t('VAG 29-bit: ATCP17 + ATSHFC0076, filter en flow control op 29-bit, dan ATCP18 en 18DB33F1', s._verzonden.join(' '),
       'ATCP17 ATSHFC0076 ATCRA17FE0076 ATFCSH17FC0076 ATFCSD300000 ATFCSM1 2203351 ATFCSM0 ATCRA ATCP18 ATSH18DB33F1');
+    // BMW/MINI extended addressing: ATCEA, flow control met het adresbyte, en ATCEA weer uit.
+    E.zet([{ code: '22400B', naam: 'A', formule: 'A', ecu: '6F1:12>612' }], 'x');
+    s._verzonden.length = 0;
+    await E.vraag('22400B');
+    t('BMW 6F1:12>612: ATSH6F1 ATCEA12, filter 612, flow control 6F1 met 12 voorop, dan ATCEA uit en 7DF', s._verzonden.join(' '),
+      'ATSH6F1 ATCEA12 ATCRA612 ATFCSH6F1 ATFCSD12300000 ATFCSM1 22400B1 ATCEA ATFCSM0 ATCRA ATSH7DF');
     E.zet([{ code: '221E1C', naam: 'A', formule: 'A', ecu: '18DA18F1' }], 'x');
     // Mislukt het terugzetten, dan probeert de volgende vraag het eerst.
     const echt = s.sendCmd; let weiger = true;
@@ -341,7 +347,7 @@ function haalZeef(isMode01) {
       { hdr: '7E1', rax: '7E9', cmd: { '22': '1E1C' }, signals: [{ name: 'ATF temperature', fmt: { len: 8, unit: 'fahrenheit' } }] },
       { hdr: '7E0', rax: '7E8', cmd: { '22': 'DD01' }, signals: [{ name: 'Odometer', fmt: { len: 24, blsb: true, unit: 'kilometers' } }] },
       { hdr: '7E0', rax: '7E8', cmd: { '21': '05' }, signals: [{ name: 'Coolant', fmt: { len: 8, add: -40, unit: 'celsius' } }] },
-      { hdr: '7E0', rax: '7E8', eax: '12', cmd: { '22': '4205' }, signals: [{ name: 'Extended addressing', fmt: { len: 8, unit: 'volts' } }] },
+      { hdr: '750', rax: '758', eax: '2A', tst: '2A', cmd: { '22': '4205' }, signals: [{ name: 'Extended addressing', fmt: { len: 8, unit: 'volts' } }] },
       { hdr: '7E0', rax: '7EA', cmd: { '22': '0101' }, signals: [{ name: 'Andere antwoordheader', fmt: { len: 8, unit: 'volts' } }] },
       { hdr: '7E0', rax: '7E8', cmd: { '22': '0202' }, signals: [{ name: 'Signed', fmt: { len: 8, sign: true, unit: 'celsius' } }] },
       { hdr: '7E0', rax: '7E8', cmd: { '22': '0303' }, signals: [{ name: 'Hazard switch', fmt: { len: 8, unit: 'scalar' } }, { name: 'Battery', fmt: { bix: 8, len: 8, div: 10, unit: 'volts' } }] },
@@ -353,7 +359,7 @@ function haalZeef(isMode01) {
     const kort = k.map(x => x.code + '@' + x.ecu + '=' + x.formule + ' ' + x.eenheid).join(' | ');
     t('obdb: alleen wat de app kan lezen, geverifieerd vóór dbg', kort,
       '222A05@720=A*1373/100000 bar | 221310@7E0=(B*256+C)/100-40 °C | 221E1C@7E1=((A)-32)*5/9 °C | 22DD01@7E0=A+B*256+C*65536 km | 2105@7E0=A-40 °C | 220101@7E0>7EA=A V | 220202@7E0=S8(A) °C | 220303@7E0=B/10 V | 22C901@720=A/5 psi');
-    // 22-10-2026: een ander antwoordadres (7E0 → 7EA) komt erbij als "tx>rx"; extended addressing (eax) niet.
+    // 22-10-2026: een ander antwoordadres (7E0 → 7EA) komt erbij als "tx>rx"; extended addressing met een eigen antwoordbyte (Toyota, ATCER) niet.
     t('obdb: de bron is de repo, voor de naamsvermelding (CC BY-SA)', k[0].url, 'https://github.com/OBDb/Mazda-CX-5');
     t('obdb: het jaarfilter met twee open stukken laat 2015 wél door', E.obdbKandidaten(obdb, 'x', 2015).some(x => x.code === '220505'), true);
     t('obdb: jaarfilter', [E.obdbJaarPast({ from: 2021 }, 2018), E.obdbJaarPast({ to: 2016 }, 2016), E.obdbJaarPast({ from: 2012, to: 2020 }, 2021), E.obdbJaarPast({ from: 2012 }, '')].join(','), 'false,true,false,true');
@@ -389,10 +395,11 @@ function haalZeef(isMode01) {
     const STEUN = ['model_year: 2018', 'supported_commands_by_ecu:', '  "720":', '  - 720.728.222A05:CX5_TP_RL', '  "7DF":', '  - 7DF.0104',
       '  "7E0":', '  - 0105:ECT', "  - '7E0.221310'", '  - 7E0.7EA.220101|fc=1:X', '  "DA15":', '  - DA15.15.222006:Y',
       '  "FC00":', '  - FC00.FE0076.220335|ta=76,c=17:Z', '  - FC00.FE007B.22F190|fc=1:W',
+      '  "6F1":', '  - 6F1.612.22400B|e=12,fc=1:L', '  - 6F1.660.22D111|e=60,fc=1,f=2014-:K', '  "750":', '  - 750.758.2130|t=96,e=2A,ta=2A,fc=1:T',
       'unsupported_commands_by_ecu:', '  "720":', '  - 720.728.22C901:CX5_TP_FL_720'].join('\n');
     const st = E.obdbSteun(STEUN);
     t('steun: jaar, mode 01 en de fabriekscodes per zendadres', st.jaar + ' ' + st.mode01.join(',') + ' ' + Object.keys(st.codes).sort().join(','),
-      '2018 0104,0105 220101@7E0,220335@17FC0076,221310@7E0,222006@18DA15F1,222A05@720');
+      '2018 0104,0105 220101@7E0,220335@17FC0076,221310@7E0,222006@18DA15F1,222A05@720,22400B@6F1:12,22D111@6F1:60');
     t('steun: wat níét antwoordde telt niet', '22C901@720' in st.codes, false);
     const ks = E.obdbKandidaten(obdb, 'Mazda-CX-5', 2018, null, st).map(x => x.code + '@' + x.ecu).join(',');
     t('steun: alleen de kandidaten die dit jaar antwoordden', ks, '222A05@720,221310@7E0,220101@7E0>7EA');
@@ -452,7 +459,9 @@ function haalZeef(isMode01) {
     t('obdbAdres: FC00 met een antwoord buiten FE00xx (Tesla) = niet bruikbaar', E.obdbAdres({ hdr: 'FC00', rax: '7E8', pri: '17', tst: '76' }), null);
     t('EIGEN_ECU: VAG 29-bit tx>rx wel, een kale 8-tekenkop of een rommelpaar niet', [E.ECU.test('17FC0076>17FE0076'), E.ECU.test('17FC0076'), E.ECU.test('17FC0076>7E8')].join(','), 'true,false,false');
     t('obdbAdres: Volvo D016 (eigen 29-bitschema) = niet bruikbaar', E.obdbAdres({ hdr: 'D016', rax: '1EC60E80' }), null);
-    t('obdbAdres: BMW extended addressing = niet bruikbaar', E.obdbAdres({ hdr: '6F1', rax: '607', eax: '07' }), null);
+    t('obdbAdres: BMW/MINI extended addressing 6F1 eax 12 → 612 = 6F1:12>612 (#670)', E.obdbAdres({ hdr: '6F1', rax: '612', eax: '12' }), '6F1:12>612');
+    t('obdbAdres: Toyota 750 eax 2A met antwoordbyte tst 2A (ATCER) = niet bruikbaar', E.obdbAdres({ hdr: '750', rax: '758', eax: '2A', tst: '2A' }), null);
+    t('EIGEN_ECU: 6F1:12>612 wel, 6F1:12 zonder antwoordadres of 6F1:1>612 niet', [E.ECU.test('6F1:12>612'), E.ECU.test('6F1:12'), E.ECU.test('6F1:1>612')].join(','), 'true,false,false');
     const veel = [];
     for (let i = 0; i < 70; i++) veel.push({ hdr: '7E0', rax: '7E8', cmd: { '22': (0x1000 + i).toString(16).toUpperCase() }, signals: [{ name: 'Iets ' + i, fmt: { len: 8, unit: 'celsius' } }] });
     veel.push({ hdr: '7E0', rax: '7E8', cmd: { '22': 'ED08' }, signals: [{ name: '12V battery state of charge', fmt: { len: 8, unit: 'percent' } }] });
@@ -460,11 +469,11 @@ function haalZeef(isMode01) {
     const tel = {};
     const kand = E.obdbKandidaten({ commands: veel }, 'Proef-Model', 2020, tel);
     t('71 bruikbare codes: de laadtoestand staat vooraan, ook al staat hij in OBDb als 71e', kand[0] && kand[0].code, '22ED08');
-    veel.push({ hdr: '6F1', rax: '612', eax: '12', cmd: { '22': '4205' }, signals: [{ name: 'BMW', fmt: { len: 8, unit: 'volts' } }] });
+    veel.push({ hdr: '750', rax: '758', eax: '2A', tst: '2A', cmd: { '22': '4205' }, signals: [{ name: 'Toyota', fmt: { len: 8, unit: 'volts' } }] });
     const tel2 = {};
     const kand2 = E.obdbKandidaten({ commands: veel }, 'Proef-Model', 2020, tel2);
     t('… de lijst blijft 60 lang, en zegt hoeveel er afvielen (PSA telt nu mee)', kand.length + ' ' + tel.weg, '60 12');
-    t('… en telt wat door het antwoordadres niet bruikbaar is (BMW)', tel2.adres, 1);
+    t('… en telt wat door het antwoordadres niet bruikbaar is (Toyota 750/2A)', tel2.adres, 1);
     // 22-10-2026: per commando de waardevolste waarde, en de HV-accu vooraan.
     // Kona Electric (OBDb): 22E003 @ 744>74C heeft de laadtoestand als zevende signaal.
     const kona = E.obdbKandidaten({ commands: [

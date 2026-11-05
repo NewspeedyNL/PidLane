@@ -65,6 +65,10 @@ waar('een ander antwoordadres blijft staan (VAG 710 → 77A)', G.rxVan('710', '7
 const v = G.vag29(G.adres('FC00', 'FC00.FE0076.220335|ta=76,c=17'));
 waar('VAG 29-bit: ta=76,c=17 → tx 17FC0076, rx 17FE0076 (#670)', v && v.tx === '17FC0076' && v.rx === '17FE0076', JSON.stringify(v));
 waar('VAG FC00 zonder ta of c: niet na te bouwen', G.vag29(G.adres('FC00', 'FC00.FE007B.22F190|fc=1')) === null && G.vag29(G.adres('7E0', '7E0.221234')) === null);
+const x = G.ext(G.adres('6F1', '6F1.612.22400B|e=12,fc=1'));
+waar('BMW e=12: tx 6F1, rx 612, adresbyte 12 (#670)', x && x.tx === '6F1' && x.rx === '612' && x.ea === '12', JSON.stringify(x));
+waar('Toyota e=2A met ta=2A: niet na te bouwen (ATCER)', G.ext(G.adres('750', '750.758.2130|t=96,e=2A,ta=2A,fc=1')) === null);
+waar('isotp met adresbyte: F1 na 612 valt weg', (G.isotp(['612F1100F62400B00E4', '612F12100E600200081', '612F122FFFF0008FFFF'], '612', true) || []).slice(0, 4).join(' ') === '62 40 0B 00');
 waar('FC00 en D016 zijn niet na te bouwen', G.rxVan('FC00', 'FE0076') === null && G.rxVan('D016', '1EC60E80') === null);
 waar('modifier apart', G.adres('710', '710.77A.222A61|fc=1').mod === 'fc=1');
 
@@ -100,7 +104,7 @@ VLOOT.forEach((p) => {
   // Elke nagebouwde fabriekscode: fysiek vragen en de bytes uit het profiel terugkrijgen.
   p.ecus.forEach((e) => Object.keys(e.did || {}).slice(0, 3).forEach((code) => {
     const b = N.maak(p), tx = e.tx || (parseInt(e.adres, 16) - 8).toString(16).toUpperCase();
-    ['ATE0', 'ATS0', 'ATH0', 'ATSP' + p.proto, 'ATSH' + tx, 'ATCRA' + e.adres, 'ATFCSH' + tx, 'ATFCSD300000', 'ATFCSM1'].forEach((c) => b.stuur(c));
+    ['ATE0', 'ATS0', 'ATH0', 'ATSP' + p.proto, 'ATSH' + tx].concat(e.ea ? ['ATCEA' + e.ea] : [], ['ATCRA' + e.adres, 'ATFCSH' + tx, 'ATFCSD' + (e.ea || '') + '300000', 'ATFCSM1']).forEach((c) => b.stuur(c));
     const t = b.stuur(code).tekst.replace(/[\s\r>]/g, '').replace(/[0-9A-F]:/g, '');
     const verwacht = ((parseInt(code.slice(0, 2), 16) + 0x40).toString(16) + code.slice(2) + e.did[code].replace(/\s/g, '')).toUpperCase();
     if (t.indexOf(verwacht) >= 0 || t.replace(/^[0-9A-F]{3}/, '').indexOf(verwacht) >= 0) didOk++;

@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Fabriekscodes op BMW/MINI extended addressing (#670)
+ ═══════════════════════════════════════════════════════════
+ - OBDb 6F1 met eax wordt het adres 6F1:12>612; de app vraagt het met
+   ATCEA12 en een flow control met het adresbyte voorop, en zet ATCEA uit.
+ - Worker en app keuren dat adres; generator en nepauto kennen ATCEA.
+ - Vloot: Mini 44 → 87 %, BMW 73 → 93 %, gemiddeld 89,2 → 90,7 %.
+
+ ═══════════════════════════════════════════════════════════
  05-11-2026 — Fabriekscodes op VAG 29-bit (17FC00xx, ID.3) (#670)
  ═══════════════════════════════════════════════════════════
  - OBDb hdr FC00 met pri/tst wordt het adres 17FC0076>17FE0076; de app

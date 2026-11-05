@@ -2851,8 +2851,8 @@ const PROEVEN_B5 = [
   // ── VAG 29-bit 17FC00xx>17FE00xx (05-11-2026) ──
   {
     issue: '#670',
-    naam: 'Fabriekscodes op VAG 29-bit (OBDb hdr FC00, ID.3): het adres wordt 17FC0076>17FE0076 en de app vraagt ze met ATCP17',
-    waarom: 'De ID.3 haalde op de nagebouwde vloot 21 %: 173 van zijn fabriekscodes staan op 17FC00xx en obdbAdres() liet ze vallen. Deze proef toetst de geladen regels: het adres uit OBDb, de keuring van zo’n eigen PID, en dat FC00 zonder prioriteit of doeladres wegblijft.',
+    naam: 'Fabriekscodes op VAG 29-bit (OBDb hdr FC00, ID.3) en BMW/MINI extended addressing: 17FC0076>17FE0076 met ATCP17, 6F1:12>612 met ATCEA12',
+    waarom: 'De ID.3 haalde op de nagebouwde vloot 21 %, de Mini 44 % en de BMW 73 %: hun fabriekscodes staan op 17FC00xx of op 6F1 met een adresbyte, en obdbAdres() liet ze vallen. Deze proef toetst de geladen regels: het adres uit OBDb, de keuring van zo’n eigen PID, en dat FC00 zonder prioriteit of doeladres wegblijft.',
     proef: async function () {
       var E = window.PLEigen;
       if (!E || typeof E.obdbAdres !== 'function' || typeof E.controleer !== 'function') return { staat: 'FOUT', detail: 'PLEigen.obdbAdres/controleer ontbreekt — pidlane-uitgebreid.js niet geladen (herladen?)' };
@@ -2861,7 +2861,11 @@ const PROEVEN_B5 = [
       if (E.obdbAdres({ hdr: 'FC00', rax: 'FE007B' }) !== null) return { staat: 'FOUT', detail: 'FC00 zonder pri/tst krijgt toch een adres: dat is een gok op de bus' };
       var k = E.controleer({ code: '220335', naam: 'Motorkoppel voor', formule: 'S16(A*256+B)', eenheid: 'Nm', ecu: a });
       if (!k || !k.ok) return { staat: 'FOUT', detail: 'een eigen PID op 17FC0076>17FE0076 wordt geweigerd: ' + (k && k.fout) };
-      return { staat: 'OK', detail: 'adres en keuring kloppen; op een echte ID.3 zegt het sensorscherm (Test) of ATCP17 door de adapter komt' };
+      var b = E.obdbAdres({ hdr: '6F1', rax: '612', eax: '12' });
+      if (b !== '6F1:12>612') return { staat: 'FOUT', detail: 'OBDb 6F1/612/eax 12 gaf ' + b + ' in plaats van 6F1:12>612 — pidlane-uitgebreid.js niet bijgewerkt (herladen?)' };
+      var kb = E.controleer({ code: '22400B', naam: 'Lambda', formule: 'A', eenheid: 'V', ecu: b });
+      if (!kb || !kb.ok) return { staat: 'FOUT', detail: 'een eigen PID op 6F1:12>612 wordt geweigerd: ' + (kb && kb.fout) };
+      return { staat: 'OK', detail: 'adressen en keuring kloppen; op een echte ID.3 of BMW zegt het sensorscherm (Test) of ATCP17/ATCEA door de adapter komt' };
     }
   },
 
