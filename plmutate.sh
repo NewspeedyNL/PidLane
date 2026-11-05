@@ -2530,6 +2530,10 @@ MUTATIES=(
 "public/pidlane-garage.js@@  function inSet(k, e) { return k === 'banden' ? isBand(e) : !isBand(e) && !!wielVan(e); }@@  function inSet(k, e) { return k === 'banden' ? isBand(e) : false; }@@bproef-garage.js@@het ene vinkje van Wielsnelheid doet niets: de vier wielen blijven gemeten"
 "public/pidlane-garage.js@@    var blad = function (k, inhoud) { return '<div class=\"gr-subblad\" data-sub=\"' + k + '\"' + (sub === k ? '' : ' hidden') + '>' + inhoud + '</div>'; };@@    var blad = function (k, inhoud) { return '<div class=\"gr-subblad\" data-sub=\"' + k + '\">' + inhoud + '</div>'; };@@bproef-garage.js@@de subbladen staan alle drie open onder elkaar: weer één lange lijst"
 "public/pidlane-garage.js@@      S.sub = 'aan';\n      teken();@@      teken();@@bproef-garage.js@@'In het formulier' bij de buurscan zet de code in een verborgen blad: er gebeurt zichtbaar niets"
+# De wizard als keten (bproef-wizard.js, 05-11-2026): zonder steunlijst vraagt
+# Grondig niet naar het bouwjaar; zonder toepassen na bewaren staat er niets aan.
+"public/pidlane-garage.js@@        var direct = await PLEigen.zoekObdb(v, obdbHaal, obdbHaalSteun);@@        var direct = await PLEigen.zoekObdb(v, obdbHaal);@@bproef-wizard.js@@Grondig in de wizard vraagt de steunlijst van het bouwjaar niet meer: weer de gok met de kap van 60"
+"public/pidlane-garage.js@@          try { pasSelectieToe(v); } catch (x) { console.warn('PLGarage: selectie', x); }@@          try { } catch (x) { console.warn('PLGarage: selectie', x); }@@bproef-wizard.js@@opnemen bewaart de sensoren wel, maar zet ze niet aan: de pollus vraagt ze pas na een nieuwe verbinding"
 "public/pidlane-conditie.js@@    if (s.t1 === t) return s.v1;\n    if (s.t0 === undefined@@    return s.v1;\n    if (s.t0 === undefined@@test-winterrit.js@@de assen worden weer op verschillende momenten vergeleken: elke optrekking telt als slip (rit 24-10, #560)"
 "public/pidlane-conditie.js@@hi - lo >= c.minKmh && @@@@test-winterrit.js@@bij lage snelheid telt één km/h verschil als 10 % slip (#560)"
 # De conditiekaart (30-10-2026): de ring, een lege meting, de oorzaak en het teken van het verloop.

@@ -15,6 +15,33 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 05-11-2026 — De wizard als keten: bproef-wizard.js
+
+**Waarom een eigen proef.** `bproef-dekking.js` meet de dekking, maar roept
+`zoekObdb()` en `PLPidZoek.zoek()` zelf aan. Of de knop Grondig in de wizard
+hetzelfde doet (de bron, de keuze, het bewaren en dat de pollus het daarna
+vraagt) toetste niemand. Op de CX-5 en de Golf klopt de keten: obdb_bestand en
+obdb_steun met model en bouwjaar, geen AI, ≤ 20 aangevinkt, alles bewaard,
+aan, op 2 s, en binnen 12 s gevraagd met een waarde.
+
+**Vals alarm onderweg.** Zonder `vin_pseudo` bij het voertuig geldt de auto
+als onbekend. `_sensBewaar()` past de selectie dan niet toe (er is geen
+`versnellingsVoertuig()`), dus niets staat aan tot een nieuwe verbinding.
+Dat is zo bedoeld: de stap "Leer de auto" legt die koppeling. De proef
+koppelt nu zoals die stap.
+
+**Gevonden: #675.** De laadregeling leest alleen opgenomen eigen PIDs, maar
+de wizard vinkt "Commanded generator voltage" niet aan: `SENS_ANALYSE`
+noemt `commanded` een regelsignaal, en `voorkeus()` kiest alleen uit
+weergave. Twee rangordes (`obdbWaarde` en `sensSoort`) spreken elkaar daar
+tegen.
+
+**Gemeten, geen bevinding.** Met 20 eigen VAG-codes (tx>rx: per code ATSH,
+ATCRA en flow control heen en terug) haalt het toerental op de Golf de
+helft van zijn interval: 13× in 12 s bij 439 ms. Op de CX-5, met 9 codes,
+is dat 29× bij 316 ms. De proef eist een derde. Op een echte BT-adapter is
+een AT-commando trager dan in de nepauto; dat is een vraag voor een rit.
+
 ## 05-11-2026 — #616 rest: wat deze sessie NO DATA gaf houdt de preset tegen
 
 **Waarom de spooks na Snel er stonden.** Op de Leaf geeft 0100 drie keer NO
