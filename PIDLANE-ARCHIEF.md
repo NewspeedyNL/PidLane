@@ -62,6 +62,32 @@ volgorde van "yesno" en "onoff" een aanname was. Nu:
 Leaf 77 → 97. Tiguan 87 → 88: daar zit het gat niet in standen maar in 31
 weigeringen en 27 codes die niet na te bouwen zijn. Geen enkele stand kwam
 als "vreemd" uit de meting.
+## 05-11-2026 — Meetproeven nagelezen: drie opstelfouten (#650)
+
+De uitkomsten van 28-10 t/m 04-11 in `opdracht_uitkomsten` (id 27–56)
+nagelezen, per opdracht. Drie gaven telkens een bevinding die niets over
+de auto zei:
+
+- **#594, `010D aantal` ≥ 300.** Zes keer 211–237. `PLRit` telt hoogstens
+  één monster per tik van 5 s (`TIK = 5000`), dus een opdracht van 20
+  minuten haalt er hoogstens 240. In #650 stond al "dat is de venstergrootte
+  en geen fout", en toch bleef de proef rood. Nu ≥ 180, driekwart van de
+  tikken.
+- **#463, helling ≥ 10 s.** Vier keer 0 op een rit zonder helling. Dat zegt
+  iets over de route en niets over de meting, dus het is nu een voorwaarde.
+  Zonder helling wordt het "nog niet" in plaats van een bevinding.
+- **#537, genoeg monsters in de trimkaart.** `onderzoek-kaart-deel-n` = 0
+  als je niet tussen 1800 en 3200 tpm reed. Hetzelfde verhaal: het zijn nu
+  voorwaarden, en de proeven zijn de afwijking en de scanduur.
+
+**Wat bleef staan, en waarom.** `toestand-gat-s` 19–40 (#594) is de opstart
+(#650 punt 1) en blijft rood tot de toeschouwer daar gerepareerd is. Dat is
+een fout in de app, niet in de proef. `verbind-st-stappen` 2–4 is #509, en
+dat is echt. Wielslip 5,4–5,9 % is #669. `berekend-buiten` 26/70 is #650
+punt 2.
+
+Het UPDATE-bestand is `meetproeven/650-opstelling.sql`. De keuring vervalt
+daarbij vanzelf, dus keur de drie daarna opnieuw in de meetkamer.
 
 ## 05-11-2026 — Besluit d: getallen zonder eenheid zijn data, 90,7 → 96,6 % (#670)
 

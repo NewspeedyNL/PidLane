@@ -12,7 +12,7 @@
     ],
     "proeven": [
       {"issue": "#594", "naam": "nooit langer dan 10 s verbonden zonder verse snelheid", "app": "toestand-gat-s", "tussen": [0, 10]},
-      {"issue": "#594", "naam": "snelheid minstens 300 keer gelezen", "pid": "010D", "meet": "aantal", "tussen": [300, 1000000]},
+      {"issue": "#594", "naam": "snelheid minstens 180 keer gelezen (¾ van 240 tikken)", "pid": "010D", "meet": "aantal", "tussen": [180, 1000000]},
       {"issue": "#594", "naam": "minstens één stop herkend na rijden", "app": "toestand-stops", "tussen": [1, 1000]}
     ]
   },
@@ -45,14 +45,14 @@
     "duurS": 1800,
     "tikS": 5,
     "voorwaarden": [
-      {"wat": "Minstens 15 minuten gereden", "toestand": "rijden", "minS": 900}
+      {"wat": "Minstens 15 minuten gereden", "toestand": "rijden", "minS": 900},
+      {"wat": "Een helling gereden (minstens 10 s gezien)", "app": "toestand-helling-s", "tussen": [10, 100000]}
     ],
     "vragen": [
       {"id": "klim", "tekst": "Reed je een bekende helling (oprit, dijk)?", "opties": ["ja", "nee"]},
       {"id": "badge", "tekst": "Sprong de badge daar op Klim?", "opties": ["ja", "nee", "niet gekeken"]}
     ],
     "proeven": [
-      {"issue": "#463", "naam": "de helling is minstens 10 s gezien", "app": "toestand-helling-s", "tussen": [10, 100000]},
       {"issue": "#463", "naam": "niet meer dan 10 minuten op een helling (anders klopt de nulstand niet)", "app": "toestand-helling-s", "tussen": [0, 600]}
     ]
   }

@@ -39,12 +39,9 @@
           1,
           99
         ]
-      }
-    ],
-    "proeven": [
+      },
       {
-        "issue": "#537",
-        "naam": "trimkaart: genoeg warme stationaire monsters",
+        "wat": "Trimkaart: 8+ warme stationaire monsters",
         "app": "onderzoek-kaart-stationair-n",
         "tussen": [
           8,
@@ -52,14 +49,15 @@
         ]
       },
       {
-        "issue": "#537",
-        "naam": "trimkaart: genoeg monsters tussen 1800 en 3200 tpm",
+        "wat": "Trimkaart: 8+ monsters tussen 1800 en 3200 tpm",
         "app": "onderzoek-kaart-deel-n",
         "tussen": [
           8,
           100000
         ]
-      },
+      }
+    ],
+    "proeven": [
       {
         "issue": "#537",
         "naam": "kaart en gecontroleerde proef verschillen hoogstens 5 %-punt",
