@@ -1840,6 +1840,11 @@ MUTATIES=(
 # De preset als aanname (#616): een geldige waarde moet blijven, en zonder
 # geheugen van wat aangenomen was haalt de steunlijst niets weg.
 "public/pidlane-rijsituatie.js@@_pidHealth[p] === 'ok') return;@@_pidHealth[p] === 'ok') {}@@test-presetsteun.js@@een sensor die een geldige waarde gaf gaat weg omdat OBDb hem niet kent"
+"public/pidlane-rijsituatie.js@@    if(u.status==='nee') _steunNeeBlok(base);\n@@@@bproef-dekking.js@@een steunblok dat NO DATA zegt houdt de preset niet meer tegen: de Leaf heeft na Snel weer elf spook-PIDs (#616)"
+"public/pidlane-rijsituatie.js@@      else if(r && /NO DATA/i.test(r) && hex.indexOf(kop)<0 && !/ERROR|STOPPED|UNABLE/i.test(r)) _steunNee.add(pid);\n@@@@test-presetsteun.js@@een PID die bij het meten NO DATA gaf telt niet meer als gemeten: de preset zet hem toch neer (#616)"
+"public/pidlane-rijsituatie.js@@else if(r && /NO DATA/i.test(r) && hex.indexOf(kop)<0 && !/ERROR|STOPPED|UNABLE/i.test(r)) _steunNee.add(pid);@@else if(hex.indexOf(kop)<0) _steunNee.add(pid);@@test-presetsteun.js@@een leeg antwoord of STOPPED telt als NO DATA: één storing kost de preset een echte sensor"
+"public/pidlane-rijsituatie.js@@  return s !== false && !_steunNee.has(String(pid||'').toUpperCase());@@  return s !== false;@@test-presetsteun.js@@magToevoegen() kijkt niet naar wat deze sessie NO DATA gaf (#616)"
+"public/pidlane-rijsituatie.js@@  if(s === true) return true;\n  return s !== false@@  return s !== false@@test-presetsteun.js@@een NO DATA wint van een steunbit: de ECU zegt zelf dat hij de PID heeft"
 "public/pidlane-rijsituatie.js@@ecuSteunt(p) === true)) _presetAanname.add(p);@@ecuSteunt(p) === true)) {}@@test-presetsteun.js@@de preset onthoudt zijn aannames niet: de spook-PIDs van de Leaf blijven staan"
 # Getallen met teken (#670): S8( )…S32( ) in de formuletaal. Fout gelezen is
 # een stroom van −2 A als 65,5 A — geloofwaardig genoeg om niet op te vallen.

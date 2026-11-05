@@ -15,7 +15,27 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
-## 05-11-2026 — BMW/MINI extended addressing: Mini 44 → 87, BMW 73 → 93 %, vloot 89,2 → 90,7 % (#670)
+## 05-11-2026 — #616 rest: wat deze sessie NO DATA gaf houdt de preset tegen
+
+**Waarom de spooks na Snel er stonden.** Op de Leaf geeft 0100 drie keer NO
+DATA. `plLeesSteunbitmap()` gelooft dat op 0100 niet (een trage ECU zegt ook
+NO DATA) en noemt het blok onleesbaar; `plMeetBlok()` vraagt dan de 31 PIDs
+los — allemaal NO DATA. 0140 is door niemand aangekondigd en krijgt 'nee'.
+Beide uitkomsten werden weggegooid: er kwam geen steunbitwoord, dus
+`ecuSteunt()` bleef `null` en de preset nam alles aan.
+
+**Wat er nu is: `_steunNee`, en bewust geen steunbitwoord.** Een woord 0 voor
+zo'n blok zou `profielTegenSteunbits()` laten verwijderen: één NO DATA van
+een trage ECU kost dan een opgeslagen sensor. `_steunNee` raakt alleen
+`magToevoegen()`, en dus alleen de preset. Een steunbit wint ervan (de ECU
+zegt het zelf), een echt antwoord voegt een PID via de andere paden toe
+zoals altijd. Alleen een kale NO DATA telt: leeg, ERROR of STOPPED is geen
+meting.
+
+**Gemeten.** Leaf: na Snel 11 → 0 spook-PIDs; `bproef-dekking.js` maakt een
+spook na Snel nu FOUT (was LET OP), en de Leaf staat in de standaardkeuze.
+
+: Mini 44 → 87, BMW 73 → 93 %, vloot 89,2 → 90,7 % (#670)
 
 **Wat `e=` is.** BMW vraagt elke ECU op dezelfde kop `6F1`; het eerste
 databyte zegt welke (12 = DME, 60 = kombi). Het antwoord komt van `6xx` met

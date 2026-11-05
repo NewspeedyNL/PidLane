@@ -2848,6 +2848,23 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Spook-PIDs na Snel (05-11-2026) ──
+  {
+    issue: '#616',
+    naam: 'Wat deze sessie NO DATA gaf (een onaangekondigd steunblok, of een PID die los gemeten werd) houdt de merkpreset tegen — al vóór Grondig',
+    waarom: 'De Nissan Leaf heeft geen mode 01; na Snel zette de preset er toch elf PIDs in (bproef-dekking.js). Deze proef toetst op de verbonden auto dat elke PID die deze sessie NO DATA gaf ook door magToevoegen() geweigerd wordt, tenzij een steunbit hem bevestigt.',
+    proef: async function () {
+      if (typeof window.steunNeeRuw !== 'function' || typeof magToevoegen !== 'function' || typeof ecuSteunt !== 'function') return { staat: 'FOUT', detail: 'steunNeeRuw/magToevoegen ontbreekt — pidlane-rijsituatie.js niet bijgewerkt (herladen?)' };
+      var nee = window.steunNeeRuw();
+      if (!nee.length) return { staat: connected ? 'OK' : 'LET OP', detail: connected ? 'deze sessie gaf geen NO DATA op een steunblok of een losse meting — niets tegen te houden' : 'niet verbonden: na een verbinding staat hier wat de auto NO DATA gaf' };
+      var lek = nee.filter(function (p) { return ecuSteunt(p) !== true && magToevoegen(p); });
+      if (lek.length) return { staat: 'FOUT', detail: 'gemeten NO DATA en toch toegestaan voor de preset: ' + lek.slice(0, 8).join(', ') };
+      var spook = nee.filter(function (p) { return supportedPIDs.has(p) && ecuSteunt(p) !== true && (typeof presetAanname !== 'function' || presetAanname().indexOf(p) >= 0); });
+      if (spook.length) return { staat: 'FOUT', detail: 'de preset zette er toch neer: ' + spook.join(', ') };
+      return { staat: 'OK', detail: nee.length + ' PIDs gaven deze sessie NO DATA; de preset slaat ze over' };
+    }
+  },
+
   // ── VAG 29-bit 17FC00xx>17FE00xx (05-11-2026) ──
   {
     issue: '#670',
