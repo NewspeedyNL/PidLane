@@ -15,6 +15,22 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 05-11-2026 — Teken en eenheden: 83,8 → 87,4 % (#670)
+
+**Waarom S16( ) en geen nieuw rekenteken.** Two's complement zit niet in
++ − × ÷ zonder een vergelijking, en een vergelijking in de formuletaal is een
+deur naar meer. Een vaste functie met vier breedtes is te keuren in de Worker
+(`kpEigenPid`, een regex) en in de app (`formule()`), en zegt wat hij doet.
+Hij werkt op het ruwe getal; `obdbFormule()` zet hem dus vóór de factor. Een
+oudere app kent `S` niet en laat zo'n code uit de bibliotheek vallen in
+`eigenControleer()` — geen verkeerde waarde, alleen geen waarde.
+
+**Wat er nog mist.** VAG verbeterde het meest (A3 44 → 81, Polo 50 → 73,
+Tiguan 39 → 61). Onder de wens blijven vooral: ID.3 (21 %, `FC00`/`ta=`),
+Civic (37 %), Mini (44 %) en BMW (73 %, `e=`), Leaf (68 %, #616). Eén
+"vreemd" is OBDb zelf: de Zoe 223042 verwacht −14592,75 A in zijn eigen
+testgeval; de app rekent hetzelfde en `plausibel()` keurt hem terecht af.
+
 ## 05-11-2026 — De steunlijst van het bouwjaar: 75,6 → 83,8 % (#670)
 
 **Wat er veranderde in de app.** `obdb_steun` (Worker) haalt

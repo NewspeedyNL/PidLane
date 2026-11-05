@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Fabriekscodes met teken en met mV, mA en cm (#670)
+ ═══════════════════════════════════════════════════════════
+ - Formuletaal: S8( ), S16( ), S24( ), S32( ) = getal met teken (two's
+   complement). App en Worker keuren hem allebei; OBDb "sign" gebruikt hem.
+ - millivolts, milliamps en centimeters worden V, A en mm.
+ - Vloot: gemiddeld 83,8 → 87,4 %, 25 van 40 op of boven 90 %.
+
+ ═══════════════════════════════════════════════════════════
  05-11-2026 — Grondig zoeken met de steunlijst van het bouwjaar (#670)
  ═══════════════════════════════════════════════════════════
  - Worker: obdb_steun haalt command_support.yaml van model en bouwjaar

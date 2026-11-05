@@ -51,16 +51,16 @@ const KEUZE = ['cx5_18', 'golf19', 'fiat500_14', 'zoe21'];
 const BEKEND = {
   'spook:leaf19': '#616 — een EV zonder mode 01: de merkpreset zet er PIDs in die de auto niet heeft'
 };
-// Gemeten dekking (%) per auto op 05-11-2026, met de steunlijst; mag alleen omhoog. Geen vloer =
+// Gemeten dekking (%) per auto op 05-11-2026, met de steunlijst en S16( ); mag alleen omhoog. Geen vloer =
 // LET OP met het getal erbij.
 const VLOER = {
-  cx5_18: 81, mazda3_19: 100, mazda2_18: 100, golf19: 74, polo18: 50,
-  tiguan19: 38, id3_21: 18, a3_19: 43, ibiza19: 100, octavia19: 100,
-  p208_19: 100, p2008_20: 100, p308_18: 100, clio20: 100, zoe21: 94,
-  sandero21: 100, yaris20: 100, corolla20: 82, chr20: 100, aygo19: 69,
-  rav4_19: 90, niro19: 89, picanto17: 100, sportage20: 97, ceed19: 100,
-  tucson19: 100, kona20: 90, i30_19: 86, focus18: 71, fiesta18: 74,
-  fiat500_14: 100, qashqai19: 100, leaf19: 56, xc40_20: 100, mgzs21: 94,
+  cx5_18: 86, mazda3_19: 100, mazda2_18: 100, golf19: 85, polo18: 72,
+  tiguan19: 61, id3_21: 20, a3_19: 80, ibiza19: 100, octavia19: 100,
+  p208_19: 100, p2008_20: 100, p308_18: 100, clio20: 100, zoe21: 95,
+  sandero21: 100, yaris20: 100, corolla20: 82, chr20: 100, aygo19: 71,
+  rav4_19: 90, niro19: 92, picanto17: 100, sportage20: 100, ceed19: 100,
+  tucson19: 100, kona20: 90, i30_19: 89, focus18: 80, fiesta18: 84,
+  fiat500_14: 100, qashqai19: 100, leaf19: 67, xc40_20: 100, mgzs21: 94,
   swift19: 94, civic19: 36, bmw3_19: 72, mini19: 44, cklasse18: 100
 };
 
