@@ -346,6 +346,9 @@ async function laadWorker() {
   toets('eigen PIDs: een routine (31) is 400', await epFout({ code: '31010203' }) === 400);
   toets('eigen PIDs: mode 01 hoort er niet in (400)', await epFout({ code: '0105' }) === 400);
   toets('eigen PIDs: code in een formule is 400', await epFout({ code: '221E1C', formule: 'fetch(1)' }) === 400);
+  // Met teken (#670): S8( )…S32( ) mag, een andere S niet.
+  toets('eigen PIDs: S16( ) voor een getal met teken mag', await epFout({ code: '221139', formule: 'S16(A*256+B)*0.01' }) !== 400);
+  toets('eigen PIDs: S12( ) of een losse S is 400', await epFout({ code: '221139', formule: 'S12(A)' }) === 400 && await epFout({ code: '221139', formule: 'SA' }) === 400);
   toets('eigen PIDs: zonder naam is 400', await epFout({ code: '221E1C', naam: '' }) === 400);
   // 31-10-2026: 21 eigen PIDs mag (de app waarschuwt alleen); pas boven het opslagvangnet van 500 een 400.
   const ep21 = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id,

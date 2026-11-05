@@ -345,13 +345,22 @@ function haalZeef(isMode01) {
     const k = E.obdbKandidaten(obdb, 'Mazda-CX-5', 2018);
     const kort = k.map(x => x.code + '@' + x.ecu + '=' + x.formule + ' ' + x.eenheid).join(' | ');
     t('obdb: alleen wat de app kan lezen, geverifieerd vóór dbg', kort,
-      '222A05@720=A*1373/100000 bar | 221310@7E0=(B*256+C)/100-40 °C | 221E1C@7E1=((A)-32)*5/9 °C | 22DD01@7E0=A+B*256+C*65536 km | 2105@7E0=A-40 °C | 220101@7E0>7EA=A V | 220303@7E0=B/10 V | 22C901@720=A/5 psi');
+      '222A05@720=A*1373/100000 bar | 221310@7E0=(B*256+C)/100-40 °C | 221E1C@7E1=((A)-32)*5/9 °C | 22DD01@7E0=A+B*256+C*65536 km | 2105@7E0=A-40 °C | 220101@7E0>7EA=A V | 220202@7E0=S8(A) °C | 220303@7E0=B/10 V | 22C901@720=A/5 psi');
     // 22-10-2026: een ander antwoordadres (7E0 → 7EA) komt erbij als "tx>rx"; extended addressing (eax) niet.
     t('obdb: de bron is de repo, voor de naamsvermelding (CC BY-SA)', k[0].url, 'https://github.com/OBDb/Mazda-CX-5');
     t('obdb: het jaarfilter met twee open stukken laat 2015 wél door', E.obdbKandidaten(obdb, 'x', 2015).some(x => x.code === '220505'), true);
     t('obdb: jaarfilter', [E.obdbJaarPast({ from: 2021 }, 2018), E.obdbJaarPast({ to: 2016 }, 2016), E.obdbJaarPast({ from: 2012, to: 2020 }, 2021), E.obdbJaarPast({ from: 2012 }, '')].join(','), 'false,true,false,true');
-    t('obdb: geen formule voor teken, tabel, halve bytes of een negatieve factor',
-      [{ len: 8, sign: true }, { len: 8, map: {} }, { bix: 4, len: 8 }, { len: 8, mul: -1 }].map(E.obdbFormule).join(','), ',,,');
+    t('obdb: geen formule voor een tabel, halve bytes of een negatieve factor',
+      [{ len: 8, map: {} }, { bix: 4, len: 8 }, { len: 8, mul: -1 }].map(E.obdbFormule).join(','), ',,');
+    // Met teken (#670): eerst two's complement van het ruwe getal, dan schalen.
+    t('obdb: teken → S16( ) om de bytes, dan de factor', [{ len: 16, sign: true, mul: 0.01 }, { len: 8, sign: true, add: -40 }, { len: 16, sign: true, blsb: true }].map(E.obdbFormule).join(' | '),
+      'S16(A*256+B)*0.01 | S8(A)-40 | S16(A+B*256)');
+    const sg = E.controleer({ code: '221139', naam: 'x', formule: 'S16(A*256+B)*0.01' }).def.parse;
+    t('formule: S16 maakt FF38 −2, 00C8 +2, 8000 −327,68', [sg([0xFF, 0x38]), sg([0x00, 0xC8]), sg([0x80, 0x00]), sg([0x7F, 0xFF])].join(','), '-2,2,-327.68,327.67');
+    t('formule: S8(A) van 0x80 is −128, van 0x7F 127', [E.controleer({ code: '221139', naam: 'x', formule: 'S8(A)' }).def.parse([0x80]), E.controleer({ code: '221139', naam: 'x', formule: 'S8(A)' }).def.parse([0x7F])].join(','), '-128,127');
+    t('formule: S zonder geldige breedte of zonder haakje mag niet', [E.controleer({ code: '221139', naam: 'x', formule: 'S12(A)' }).ok, E.controleer({ code: '221139', naam: 'x', formule: 'S16(A' }).ok, E.controleer({ code: '221139', naam: 'x', formule: 'SA' }).ok].join(), 'false,false,false');
+    t('formule: S16 met een ontbrekende byte is null', sg([0xFF]), null);
+    t('obdb: mV, mA en cm omgerekend', [{ len: 16, unit: 'millivolts' }, { len: 8, unit: 'milliamps' }, { len: 8, unit: 'centimeters' }].map(E.obdbFormule).join(' | '), '(A*256+B)/1000 | (A)/1000 | (A)*10');
     t('obdb: voorbij H met [n] (Honda, Kia-accu)', [{ bix: 48, len: 24 }, { bix: 80, len: 16, div: 10 }].map(E.obdbFormule).join(' | '), 'G*65536+H*256+[8] | ([10]*256+[11])/10');
     t('formule: [n] leest byte n', E.controleer({ code: '222240', naam: 'x', formule: '[10]*256+[11]' }).def.parse([0,0,0,0,0,0,0,0,0,0,1,2]), 258);
     t('formule: [256] bestaat niet', E.controleer({ code: '222240', naam: 'x', formule: '[256]' }).ok, false);
@@ -365,7 +374,7 @@ function haalZeef(isMode01) {
     s.apiFetch = async () => { throw new Error('de AI mag hier niet gevraagd worden'); };
     const haal = async (repo) => { gehaald.push(repo); return repo.toLowerCase() === 'mazda-cx-5' ? { gevonden: true, data: obdb } : { gevonden: false }; };
     const z = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal);
-    t('zoekObdb: tweede naam raak, kandidaten erbij', z.ok + ' ' + z.repo + ' ' + z.kandidaten.length, 'true Mazda-CX-5 8');
+    t('zoekObdb: tweede naam raak, kandidaten erbij', z.ok + ' ' + z.repo + ' ' + z.kandidaten.length, 'true Mazda-CX-5 9');
     t('zoekObdb: probeert de namen op volgorde', gehaald.join(','), 'Mazda-CX-5');
     const z2 = await E.zoekObdb({ merk: 'Dacia', model: 'Logan' }, async () => ({ gevonden: false }));
     t('zoekObdb: niet in OBDb is geen fout, en zegt wat er geprobeerd is', z2.ok + ' ' + z2.repo + ' ' + z2.geprobeerd.join(','), 'true  Dacia-Sandero,Dacia-Logan');   // Logan: de Sandero is de tweeling
@@ -387,7 +396,7 @@ function haalZeef(isMode01) {
     const zg = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal, async () => ({ gevonden: true, jaar: 2018, tekst: 'model_year: 2018\nsupported_commands_by_ecu:\n  "7E0":\n  - 0105:ECT\n' }));
     t('zoekObdb: een geldige lijst zonder fabriekscodes = niets proberen', zg.kandidaten.length + ' ' + zg.steunJaar, '0 2018');
     const zf = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal, async () => { throw new Error('Serverfout 502'); });
-    t('zoekObdb: steunlijst kapot = de oude gok, geen fout', zf.ok + ' ' + zf.kandidaten.length + ' ' + zf.steunJaar, 'true 8 null');
+    t('zoekObdb: steunlijst kapot = de oude gok, geen fout', zf.ok + ' ' + zf.kandidaten.length + ' ' + zf.steunJaar, 'true 9 null');
     const z3 = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' }, async () => { throw new Error('Serverfout 502'); });
     t('zoekObdb: geen net is een melding', !z3.ok && /niet bereikbaar/.test(z3.fout), true);
     t('zoekObdb: zonder weg naar OBDb niet zoeken', (await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' })).ok, false);

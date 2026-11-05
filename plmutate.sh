@@ -1818,6 +1818,12 @@ MUTATIES=(
 # alleen het gevraagde jaar probeert vindt bij een gat in OBDb niets.
 "public/pidlane-uitgebreid.js@@      if (steun && !steun.codes[code + '@' + hdr.split('>')[0]]) {@@      if (false) {@@test-mode21.js@@de steunlijst filtert niet meer: weer codes die dit bouwjaar niet heeft"
 "public/pidlane-uitgebreid.js@@    const kap = steun ? uit.length : 60;@@    const kap = 60;@@test-mode21.js@@ook met een steunlijst weer de kap van 60: een Tiguan houdt een vijfde van zijn codes over"
+# Getallen met teken (#670): S8( )…S32( ) in de formuletaal. Fout gelezen is
+# een stroom van −2 A als 65,5 A — geloofwaardig genoeg om niet op te vallen.
+"public/pidlane-uitgebreid.js@@return w >= n / 2 ? w - n : w; };@@return w; };@@test-mode21.js@@S16( ) laat het teken weg: FF38 wordt 65336 in plaats van −200"
+"public/pidlane-uitgebreid.js@@    if (f.sign) x = 'S' + len + '(' + x + ')';@@    if (false) x = 'S' + len + '(' + x + ')';@@test-mode21.js@@een OBDb-code met teken krijgt weer een formule zonder teken: negatief leest als heel groot"
+"public/pidlane-uitgebreid.js@@    millivolts: ['V', '(', ')/1000'], milliamps@@    millivolts: ['V', '(', ')'], milliamps@@test-mode21.js@@millivolt niet omgerekend: 12 V leest als 12000 V"
+"worker.js@@ || /S(?!(8|16|24|32)\\()/.test(f)) return@@) return@@test-klantplatform.js@@de Worker keurt elke S in een formule goed, ook S12( ) die de app niet kan lezen"
 "worker.js@@    for (const j of [jaar, jaar - 1, jaar + 1, jaar - 2, jaar + 2]) {@@    for (const j of [jaar]) {@@test-klantplatform.js@@obdb_steun probeert alleen het gevraagde jaar: een model met een gat in OBDb krijgt geen steunlijst"
 "public/nepauto.js@@        (st.sh && /^[0-9A-F]{3}$/.test(st.sh) && m.adres === (parseInt(st.sh, 16) + 8).toString(16).toUpperCase()));@@        false);@@test-nepvloot.js@@de nepauto laat het antwoord op kop + 8 weer vallen: de bandenspanning van de CX-5 lijkt onbereikbaar"
 "public/pidlane-uitgebreid.js@@      if (window.ALL_PID_DEFS && ALL_PID_DEFS[r.code] && !ALL_PID_DEFS[r.code].eigen) return;@@      void 0;@@test-mode21.js@@een eigen PID overschrijft een definitie die de app al kent"

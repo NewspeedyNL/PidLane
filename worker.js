@@ -5955,7 +5955,7 @@ var KP_VELDEN = {
   notities: { soort: "tekst", max: 1000 },
   pid_selectie: { soort: "pidlijst", max: 200 },
   // Eigen PIDs van de klant (dealercodes): alleen LEES-diensten 21xx en
-  // 22xxxx, een formule met alleen A–H, getallen, + - * / en haakjes. Zelfde
+  // 22xxxx, een formule met alleen A–H, [n], getallen, + - * /, haakjes en S16( ). Zelfde
   // regels als PLEigen.controleer() in pidlane-uitgebreid.js.
   // Geen klantgrens meer op eigen PIDs (31-10-2026): de app waarschuwt boven
   // de 20, maar weigert niet. 500 is alleen een opslagvangnet tegen misbruik.
@@ -6055,7 +6055,8 @@ __name(kpOnderhoudBeurt, "kpOnderhoudBeurt");
 
 // Eén eigen PID, voor het voertuig én voor de bibliotheek: dezelfde regels
 // als PLEigen.controleer() in pidlane-uitgebreid.js. Alleen LEES-diensten
-// (21xx, 22xxxx); de formule alleen A–H, [n], getallen, + - * / en haakjes;
+// (21xx, 22xxxx); de formule alleen A–H, [n], getallen, + - * /, haakjes en
+// S8( )…S32( ) voor een getal met teken (#670);
 // het ECU-adres (optioneel) een fysiek adres, 7xx of 18DAxxF1, of "tx>rx"
 // voor een ander antwoordadres (VAG 70E>778, PSA 6A2>682), 22-10-2026.
 var KP_EIGEN_CODE = /^(21[0-9A-F]{2}|22[0-9A-F]{4})$/;
@@ -6068,7 +6069,7 @@ function kpEigenPid(e) {
   const ecu = String(e.ecu || "").toUpperCase().replace(/\s+/g, "");
   if (ecu && !KP_EIGEN_ECU.test(ecu)) return { fout: "ECU-adres van " + code + " moet 7xx, 18DAxxF1 of tx>rx (70E>778) zijn" };
   const f = String(e.formule || "A").replace(/\s+/g, "").toUpperCase();
-  if (f.length > 80 || !/^[A-H0-9.,+\-*/()[\]]+$/.test(f)) return { fout: "formule van " + code + " mag alleen A–H, [n], getallen, + - * / en haakjes bevatten" };
+  if (f.length > 80 || !/^[A-HS0-9.,+\-*/()[\]]+$/.test(f) || /S(?!(8|16|24|32)\()/.test(f)) return { fout: "formule van " + code + " mag alleen A–H, [n], getallen, + - * /, haakjes en S8( )…S32( ) bevatten" };
   const naamE = String(e.naam || "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 40);
   if (!naamE) return { fout: "eigen PID " + code + " heeft geen naam" };
   const o = { code, naam: naamE, formule: f, eenheid: String(e.eenheid || "").trim().slice(0, 12) };

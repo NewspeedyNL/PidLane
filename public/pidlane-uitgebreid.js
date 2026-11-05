@@ -491,14 +491,16 @@
     return null;
   }
 
-  /* Formule → functie(bytes). Toegestaan: getallen, A t/m H, + - * / en
-     haakjes. Ontbreekt een byte in het antwoord, dan is de uitkomst null. */
+  /* Formule → functie(bytes). Toegestaan: getallen, A t/m H, [n], + - * /,
+     haakjes, en S8( ) … S32( ): het getal erin als two's complement van 8,
+     16, 24 of 32 bits (#670 — OBDb "sign": 276 codes op de vloot, zoals een
+     stroom die ook negatief kan). Ontbreekt een byte, dan is de uitkomst null. */
   function formule(tekst) {
     const t = String(tekst || '').replace(/\s+/g, '').toUpperCase().replace(/,/g, '.');
     if (!t || t.length > 80) throw new Error('formule leeg of te lang');
     // [n] is byte n (A = [0]): een lang antwoord, zoals de accu van een Kia
     // of de 22-codes van Honda, heeft zijn waarde voorbij H (#541-dekking).
-    if (!/^[A-H0-9.+\-*/()[\]]+$/.test(t)) throw new Error('alleen A–H, [n], getallen, + - * / en haakjes');
+    if (!/^[A-HS0-9.+\-*/()[\]]+$/.test(t)) throw new Error('alleen A–H, [n], getallen, + - * /, haakjes en S16(…)');
     let i = 0;
     const kijk = () => t[i];
     function getal() {
@@ -511,6 +513,15 @@
       const c = kijk();
       if (c === '-') { i++; const f = factor(); return (b) => { const v = f(b); return v === null ? null : -v; }; }
       if (c === '(') { i++; const e = expr(); if (kijk() !== ')') throw new Error('haakje sluiten ontbreekt'); i++; return e; }
+      if (c === 'S') {
+        const m = /^S(8|16|24|32)\(/.exec(t.slice(i));
+        if (!m) throw new Error('teken: S8( ), S16( ), S24( ) of S32( )');
+        i += m[0].length; const e = expr();
+        if (kijk() !== ')') throw new Error('haakje sluiten ontbreekt na S' + m[1]);
+        i++;
+        const n = Math.pow(2, Number(m[1]));
+        return (b) => { const v = e(b); if (v === null) return null; const w = ((Math.round(v) % n) + n) % n; return w >= n / 2 ? w - n : w; };
+      }
       if (c && /[A-H]/.test(c)) { i++; const k = c.charCodeAt(0) - 65; return (b) => (b && typeof b[k] === 'number') ? b[k] : null; }
       if (c === '[') {
         const m = /^\[(\d{1,3})\]/.exec(t.slice(i));
@@ -715,7 +726,10 @@
   // Zonder eenheid ("scalar", leeg) is het in OBDb bijna altijd een stand of
   // schakelaar (alarmlichten, remlicht), geen meetwaarde: die blijven weg.
   // Omrekenen naar metrisch: [eenheid, vóór, na] om de ruwe formule heen.
-  const OBDB_OM = { fahrenheit: ['°C', '((', ')-32)*5/9'], miles: ['km', '(', ')*1.609344'] };
+  // Milli- en centi-eenheden (#670): 26 codes op de vloot vielen weg omdat
+  // de eenheid onbekend was; omgerekend naar wat de app al kent.
+  const OBDB_OM = { fahrenheit: ['°C', '((', ')-32)*5/9'], miles: ['km', '(', ')*1.609344'],
+    millivolts: ['V', '(', ')/1000'], milliamps: ['A', '(', ')/1000'], centimeters: ['mm', '(', ')*10'] };
 
   /* ── Van RDW-naam naar OBDb-model (#541-dekking, 22-10-2026) ────────
      Gemeten tegen het échte NL-wagenpark (RDW open data, 9,3 miljoen auto's
@@ -877,7 +891,7 @@
   function obdbFormule(fmt) {
     const f = fmt || {};
     const bix = Number(f.bix || 0), len = Number(f.len);
-    if (f.sign || f.map || bix % 8 || [8, 16, 24, 32].indexOf(len) < 0) return null;
+    if (f.map || bix % 8 || [8, 16, 24, 32].indexOf(len) < 0) return null;
     const i0 = bix / 8, n = len / 8;
     if (i0 + n > 256) return null;
     const delen = [];
@@ -887,7 +901,9 @@
       delen.push((i0 + k < 8 ? 'ABCDEFGH'[i0 + k] : '[' + (i0 + k) + ']') + (w ? '*' + Math.pow(256, w) : ''));
     }
     let x = delen.join('+');
-    const groep = () => (x.indexOf('+') >= 0 || x.indexOf('-') >= 0 ? '(' + x + ')' : x);
+    // Met teken: eerst het ruwe getal als two's complement, dan pas schalen.
+    if (f.sign) x = 'S' + len + '(' + x + ')';
+    const groep = () => (/[+\-]/.test(x) && !/^S\d+\(.*\)$/.test(x) ? '(' + x + ')' : x);
     if (f.mul !== undefined) { if (!(Number(f.mul) > 0)) return null; x = groep() + '*' + obdbGetal(f.mul); }
     if (f.div !== undefined) { if (!(Number(f.div) > 0)) return null; x = groep() + '/' + obdbGetal(f.div); }
     if (f.add !== undefined && Number(f.add)) x += (Number(f.add) < 0 ? '-' : '+') + obdbGetal(Math.abs(Number(f.add)));
