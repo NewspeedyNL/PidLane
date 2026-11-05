@@ -142,7 +142,7 @@ var KRITIEK = [
   'plMarkeer',
   // De preset na de OBDb-steunlijst (#616, #670): PLGarage roept hem achter
   // een guard aan. Ontbreekt hij, dan blijven de spook-PIDs zonder melding.
-  'presetNaSteun',
+  'presetNaSteun','presetAanname',
   'magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
   'openCaravan','openLogboek','openBugReport','openPrivacy','openRitAnalyse',
   // Rapporten → ➕ Rapport aanvragen (29-10-2026): de lijst vraagt per
