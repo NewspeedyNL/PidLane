@@ -10,6 +10,11 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Hyperlane: het midden-knopje wisselt meteen (#657)
+ ═══════════════════════════════════════════════════════════
+ - Slim/Versnelling staat direct op het knopje, niet pas bij de volgende frame.
+
+ ═══════════════════════════════════════════════════════════
  05-11-2026 — Standen uit OBDb als sensor (besluit d deel 2, #670)
  ═══════════════════════════════════════════════════════════
  - Aan/uit, ja/nee en keuzelijsten (versnelling, modus) komen in Grondig

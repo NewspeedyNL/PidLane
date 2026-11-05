@@ -67,10 +67,11 @@ function toets(naam, waar, uitleg) {
       localStorage.removeItem('pl_hl_midden');
       const km = vak().querySelector('.vhl-midden'), kh = vak().querySelector('.vhl-held');
       await wacht(300); r.midden0 = km.textContent;
-      // Wachten op de tekst, niet op de klok: de lus zet hem in zijn eerstvolgende ronde (hoogstens 2 s; op een belaste CI-machine ruimer: 6 s, #657)
-      const tot = async t => { for (let i = 0; i < 60 && km.textContent !== t; i++) await wacht(100); return km.textContent; };
-      km.click(); r.midden1 = await tot('Versnelling'); r.middenOpslag = localStorage.getItem('pl_hl_midden');
-      kh.click(); r.midden2 = await tot('Slim');
+      // Meteen na de tik, zonder te wachten: het label hoort bij de klik en niet
+      // bij de eerstvolgende frame. Op een belaste CI-machine kwam die frame
+      // meer dan 6 s niet (#657); daarna wachtte deze proef op de klok.
+      km.click(); r.midden1 = km.textContent; r.middenOpslag = localStorage.getItem('pl_hl_midden');
+      kh.click(); r.midden2 = km.textContent;
       // De stand (01-11-2026): tik op het label, kies Sport. De weergave bouwt
       // opnieuw met de strook van Sport; daarna terug naar Auto.
       const strook = () => vak() ? Array.from(vak().querySelectorAll('.vhl-strook > div')).map(d => d.id.slice(6)).join(',') : '';

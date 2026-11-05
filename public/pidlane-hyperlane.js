@@ -736,6 +736,11 @@ function start(wortel){
     if(!_s) return;
     _s.midden=_s.midden==='slim' ? 'versnelling' : 'slim'; bewaarMidden(_s.midden);
     _s.gearT=0;   // meteen tonen, niet pas bij de volgende ronde
+    // Het label hoort bij de tik, niet bij de eerstvolgende frame: in een
+    // belaste of verborgen tab kan die seconden uitblijven, en dan stond de
+    // keuze al opgeslagen terwijl het knopje nog het oude zei (#657).
+    const t=MIDDEN_TEKST[_s.midden], k=wortel.querySelector('.vhl-midden');
+    if(k && t){ k.textContent=t; _s.middenT=t; }
   };
   const km=wortel.querySelector('.vhl-midden'), kh=wortel.querySelector('.vhl-held');
   if(km) km.addEventListener('click', wissel);
