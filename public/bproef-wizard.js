@@ -137,6 +137,7 @@ const ROUTE = (p) => `(async function(){
       toets('Grondig liep tot een uitslag', klaar);
       const pz = await app.ev(`(function(){ const s = PLGarage.staat().sens; const pz = s && s.pz || {};
         return { fout: pz.fout || '', tekst: pz.tekst || '', past: (pz.res && pz.res.past || []).map(function(x){ return { code: x.c.code, ecu: x.c.ecu || '', naam: x.c.naam, laad: PLEigen.laadRol(x.c.naam) || '' }; }),
+          getest: ['past', 'nee', 'vreemd', 'fout'].reduce(function(l, k){ return l.concat((pz.res && pz.res[k] || []).map(function(x){ return x.c.code + '@' + (x.c.ecu || ''); })); }, []),
           kies: Object.keys(pz.kies || {}), veel: PLEigen.VEEL }; })()`);
       const log = await app.ev(`window._nepPlatform.log`);
       toets('bron: obdb_bestand met de repo van dit model', log.some((l) => l.toLowerCase() === ('obdb_bestand:' + p.repo).toLowerCase()), log.filter((l) => /^obdb/.test(l)).join(' '));
@@ -148,6 +149,9 @@ const ROUTE = (p) => `(async function(){
       const sl = (c, e) => String(c).toUpperCase() + '@' + String(e || '').toUpperCase().split('>')[0];
       const aanbod = new Set(p.aangeboden.did.map((d) => sl(d.code, d.ecu)));
       const sleutelVan = (k) => { const [c, e] = String(k).split('@'); return sl(c, e); };
+      // Met de steunlijst test Grondig alleen wat dit bouwjaar beantwoordde; zonder is het de gok van 60.
+      const buiten = pz.getest.filter((k) => !aanbod.has(sleutelVan(k)));
+      toets('Grondig testte alleen codes van dit bouwjaar (' + pz.getest.length + ' getest)', pz.getest.length > 0 && !buiten.length, buiten.length + ' erbuiten: ' + buiten.slice(0, 6).join(','));
       toets('keuze: hoogstens ' + pz.veel + ' vooraf aangevinkt', pz.kies.length > 0 && pz.kies.length <= pz.veel, pz.kies.length + ' aangevinkt');
       toets('keuze: alleen codes die de auto aanbiedt', pz.kies.every((k) => aanbod.has(sleutelVan(k))), pz.kies.filter((k) => !aanbod.has(sleutelVan(k))).join(','));
       // De laadregeling (laadCodes) leest alleen opgenomen eigen PIDs: wat zij nodig heeft, hoort erbij.
