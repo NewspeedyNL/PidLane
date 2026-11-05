@@ -1820,7 +1820,7 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@    if (cp) await sendCmd('ATCP' + p[0].slice(0, 2), 1500);\n@@@@test-mode21.js@@VAG 29-bit zonder ATCP: de vraag gaat op prioriteit 18 en de ID.3 hoort niets"
 "public/pidlane-uitgebreid.js@@    if (hdr === 'FC00') return obdbVag29(c.pri, c.tst, rax);\n@@@@test-mode21.js@@VAG FC00 valt weer weg uit de OBDb-kandidaten: de ID.3 terug naar 21 %"
 "public/pidlane-uitgebreid.js@@          tx = a.split('>')[0];@@          tx = a;@@test-mode21.js@@de steunlijst sleutelt FC00 op tx>rx in plaats van het zendadres: geen enkele ID.3-code past dit jaar"
-"public/nepauto.js@@ || (bit29 && fysiekVan(e) === st.cp + st.sh)) : ecus;@@ || fysiekVan(e) === st.cp + st.sh) : ecus;@@test-nepauto.js@@de nepauto beantwoordt een 29-bit vraag op een 11-bit bus"
+"public/nepauto.js@@ || (bit29 && fysiekVan(e) === st.cp + st.sh)) && (e.ea@@ || fysiekVan(e) === st.cp + st.sh) && (e.ea@@test-nepauto.js@@de nepauto beantwoordt een 29-bit vraag op een 11-bit bus"
 "public/nepauto.js@@{ st.cp = a.slice(2); return 'OK'; }@@{ return 'OK'; }@@test-nepauto.js@@de nepauto negeert ATCP: zonder prioriteit 17 antwoordt de ID.3 toch niet, of altijd"
 "plnepvloot.js@@  return ta && c ? { tx: (c + 'FC00' + ta).toUpperCase(), rx: (c + a.rx).toUpperCase() } : null;@@  return ta && c ? { tx: ('18FC00' + ta).toUpperCase(), rx: (c + a.rx).toUpperCase() } : null;@@test-nepvloot.js@@de generator negeert c=: de ID.3 krijgt prioriteit 18 en de proef meet een auto die niet bestaat"
 # BMW/MINI extended addressing 6F1:xx>6yy (#670): zonder ATCEA hoort geen
@@ -1925,7 +1925,7 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@    if (!/^(21|22[0-9A-F]{2})$/.test(prefix)) return@@    if (false) return@@test-mode21.js@@de buurscan scant ook een blok met schrijfcodes (2E)"
 "public/pidlane-uitgebreid.js@@            if (ecu) await adresTerug(terug, 'buurscan ' + prefix);@@            if (false) await adresTerug(terug, 'buurscan ' + prefix);@@test-mode21.js@@na de buurscan blijft de adapter op ECU-adres 720 staan"
 "public/pidlane-uitgebreid.js@@    if (!rax || parseInt(rax, 16) === parseInt(hdr, 16) + 8) return@@    if (true) return@@test-mode21.js@@een OBDb-code met een ander antwoordadres (70E>778) wordt weer als 70E gevraagd, en de app luistert op het verkeerde (#526)"
-"public/pidlane-uitgebreid.js@@    if (c.eax) return null;@@@@test-mode21.js@@OBDb-codes met extended addressing (BMW) komen erbij terwijl de app ze niet kan vragen (#526)"
+"public/pidlane-uitgebreid.js@@    if (c.eax) return obdbExt(hdr, c.eax, rax, c.tst);@@    if (c.eax) return null;@@test-mode21.js@@BMW/MINI met extended addressing vallen weer weg uit de OBDb-kandidaten: de Mini terug naar 44 % (#670)"
 # (05-11-2026) Hier stond "een signed OBDb-waarde krijgt een formule zonder teken": sinds #670
 # krijgt zo'n waarde S16( ). Dezelfde fout bouwt nu de mutatie met `if (false) x = 'S'` na.
 "public/pidlane-uitgebreid.js@@      const w = f.blsb ? k : n - 1 - k;@@      const w = n - 1 - k;@@test-mode21.js@@little-endian uit OBDb wordt big-endian gelezen: de kilometerstand klopt niet (#526)"
@@ -2325,7 +2325,7 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@  const OBDB_MERK = { opel: ['VauxhallOpel'], vauxhall: ['VauxhallOpel'],@@  const OBDB_MERK = { vauxhall: ['VauxhallOpel'],@@test-obdbkoppel.js@@Opel zoekt weer onder zijn eigen naam en OBDb heeft hem als VauxhallOpel"
 "public/pidlane-uitgebreid.js@@(hyb && /hybrid/i.test(x)) || (ev && evS.indexOf(_sl(x)) >= 0) ? 1 : 0@@(hyb && /hybrid/i.test(x)) || false ? 1 : 0@@test-obdbkoppel.js@@een elektrische Niro krijgt weer de codes van de benzine-Niro"
 "public/pidlane-uitgebreid.js@@    await sendCmd('ATCRA' + p[1], 1500);\n@@@@bproef-adres.js@@zonder ontvangstfilter komt het antwoord van 77A nooit door"
-"public/pidlane-uitgebreid.js@@    for (const c of ['ATFCSH' + p[0], 'ATFCSD300000', 'ATFCSM1']) {@@    for (const c of []) {@@bproef-adres.js@@zonder flow control breekt een antwoord van twee frames af"
+"public/pidlane-uitgebreid.js@@    for (const c of ['ATFCSH' + tx, 'ATFCSD' + ea + '300000', 'ATFCSM1']) {@@    for (const c of []) {@@bproef-adres.js@@zonder flow control breekt een antwoord van twee frames af"
 "public/pidlane-uitgebreid.js@@        i += m[0].length; const k = Number(m[1]);@@        i += m[0].length; const k = Number(m[1]) - 1;@@test-mode21.js@@[n] telt vanaf 1 in plaats van 0: elke waarde voorbij H schuift een byte"
 "public/pidlane-uitgebreid.js@@    return /^[0-9A-F]{3}$/.test(rax) ? hdr + '>' + rax : null;@@    return null;@@test-mode21.js@@een ander antwoordadres valt weer weg: VAG en PSA krijgen geen codes"
 "public/pidlane-uitgebreid.js@@      sigs.sort((a, b) => (b.w - a.w) || (a.i - b.i));\n@@@@test-mode21.js@@per commando weer het eerste signaal: de HV-laadtoestand van de Kona valt weg"
