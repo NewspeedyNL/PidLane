@@ -15,6 +15,33 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 05-11-2026 — De steunlijst van het bouwjaar: 75,6 → 83,8 % (#670)
+
+**Wat er veranderde in de app.** `obdb_steun` (Worker) haalt
+`tests/test_cases/<jaar>/command_support.yaml`; `PLEigen.obdbSteun()` leest
+hem, `obdbKandidaten()` houdt alleen wat dat jaar beantwoordde en laat dan de
+kap van 60 los. `_pzStart` test naast de bibliotheek (hoogstens 100 rijen
+uit `pidbib_lijst`) ook OBDb rechtstreeks. Zonder steunlijst (geen net, model
+zonder testgevallen) blijft het de oude gok; een geldige lijst zonder
+fabriekscodes betekent "niets proberen" (Fiat 500: 39 weigeringen weg).
+
+**Wat er veranderde in de meting, en dus niet aan de app toe te schrijven.**
+(1) PLNepAuto liet zonder ATCRA alleen 7E8–7EF door. Een ELM neemt na ATSH 720
+ook 728 aan — AANNAME, met als steun dat de bandenspanning van de CX-5
+(720 → 728) op de echte auto werkt terwijl `adresZet()` daar alleen ATSH
+stuurt. Daardoor "weigerde" de CX-5 eerst al zijn banden. (2) Codes zonder
+signaalnaam in OBDb (geen betekenis bekend) en codes zonder na te bouwen
+antwoord tellen niet meer in de noemer; een adressering die de app niet kan
+vragen telt wél. Golf: van 82 naar 54 in de noemer. Hoeveel van de 8,2
+punten van de app komt en hoeveel van de meting, is niet apart gemeten.
+
+**Wat er nog mist (noemer zonder simulatiegaten, 40 auto's).** Geen eenheid
+(stand of schakelaar: `scalar`, `unknown`, `offon`, `noyes`) 461 — bewust geen
+meetwaarde, en een vraag of dat "data" is. Adressering 281 (BMW/Mini `e=`,
+VW `FC00`/`ta=`). Een teken (`sign`) 276: de formuletaal kent alleen
++ − × ÷, dus geen two's complement — dat raakt ook de keuring in de Worker.
+Eenheden die `OBDB_EENHEID` niet kent (cm, mV, mA) 26.
+
 ## 05-11-2026 — De nagebouwde vloot en de eerste dekkingsmeting (#670)
 
 **Waarom geen ritten maar OBDb.** De communicatie van veel ECU's staat online.

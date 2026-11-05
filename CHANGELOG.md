@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Grondig zoeken met de steunlijst van het bouwjaar (#670)
+ ═══════════════════════════════════════════════════════════
+ - Worker: obdb_steun haalt command_support.yaml van model en bouwjaar
+   (anders ±1, ±2 jaar). De app vraagt alleen nog wat dat jaar in OBDb
+   beantwoordde, en zonder de kap van 60.
+ - Mijn voertuigen → Sensoren → 🚀 (en Grondig in de wizard) test naast de
+   bibliotheek ook OBDb rechtstreeks; de bibliotheek blijft 60 per keer.
+ - Vloot: gemiddeld 75,6 → 83,8 %, 24 van 40 op of boven 90 %. Een deel
+   komt uit een eerlijkere meting (nepauto, noemer), zie het archief.
+
+ ═══════════════════════════════════════════════════════════
  05-11-2026 — Nagebouwde vloot uit OBDb en de dekkingsproef (#670)
  ═══════════════════════════════════════════════════════════
  - plnepvloot.js: 40 auto's uit OBDb (command_support + ruwe antwoorden +
