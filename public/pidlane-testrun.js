@@ -2848,6 +2848,34 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── OBDb-steunlijst per bouwjaar (05-11-2026) ──
+  {
+    issue: '#670',
+    naam: 'Grondig zoeken vraagt alleen de fabriekscodes die dit bouwjaar in OBDb beantwoordde, zonder kap van 60; de preset verliest wat OBDb niet kent (#616)',
+    waarom: 'Op de nagebouwde vloot (bproef-dekking.js) kwam 2254 keer een code nooit aan de beurt door de kap van 60, en weigerde de auto 1515 geprobeerde codes. De Worker haalt nu command_support.yaml van het bouwjaar (obdb_steun); deze proef toetst de geladen regel en, met een voertuig, of de steunlijst echt binnenkomt.',
+    proef: async function () {
+      var E = window.PLEigen;
+      if (!E || typeof E.obdbSteun !== 'function') return { staat: 'FOUT', detail: 'PLEigen.obdbSteun ontbreekt — pidlane-uitgebreid.js niet bijgewerkt (herladen?)' };
+      var st = E.obdbSteun('model_year: 2018\nsupported_commands_by_ecu:\n  "720":\n  - 720.728.222A05:X\n  "7E0":\n  - 0105:ECT\nunsupported_commands_by_ecu:\n  "720":\n  - 720.728.22C901:Y\n');
+      if (st.jaar !== 2018 || !st.codes['222A05@720'] || st.codes['22C901@720'] || st.mode01.join() !== '0105') return { staat: 'FOUT', detail: 'obdbSteun() leest de lijst verkeerd: ' + JSON.stringify(st) };
+      var veel = { commands: [] }, codes = {};
+      for (var i = 0; i < 70; i++) { var c = (0x1000 + i).toString(16).toUpperCase(); veel.commands.push({ hdr: '7E0', rax: '7E8', cmd: { '22': c }, signals: [{ name: 'T' + i, fmt: { len: 8, add: -40, unit: 'celsius' } }] }); codes['22' + c + '@7E0'] = 1; }
+      if (E.obdbKandidaten(veel, 'x', 2018, null, { jaar: 2018, n: 70, codes: codes, mode01: [] }).length !== 70) return { staat: 'FOUT', detail: 'met een steunlijst blijft de kap van 60 staan' };
+      if (typeof presetNaSteun !== 'function' || typeof presetAanname !== 'function') return { staat: 'FOUT', detail: 'presetNaSteun ontbreekt — pidlane-rijsituatie.js niet bijgewerkt (herladen?): de aannames van de preset blijven staan (#616)' };
+      var aan = presetAanname();
+      if (aan.length) btDiag('Blok 5: de preset heeft nu ' + aan.length + ' aangenomen sensoren zonder steunbit: ' + aan.join(', '), 'ok');
+      var u = window.currentUser, rol = u && String(u.role || '').toLowerCase();
+      if (typeof plFetch !== 'function' || (rol !== 'klant' && rol !== 'admin')) return { staat: 'LET OP', detail: 'regels kloppen; nodig: ingelogd als klant, dan vraagt deze proef de Worker om de steunlijst van de Mazda-CX-5 2018' };
+      try {
+        var r = await plFetch('/klant/platform', { method: 'POST', json: { actie: 'obdb_steun', repo: 'Mazda-CX-5', jaar: 2018 } });
+        var d = await r.json();
+        if (!d || !d.ok || !d.gevonden || !/supported_commands_by_ecu/.test(d.tekst || '')) return { staat: 'FOUT', detail: 'obdb_steun gaf geen steunlijst voor Mazda-CX-5 2018: ' + JSON.stringify(d).slice(0, 120) };
+        var s2 = E.obdbSteun(d.tekst);
+        return { staat: 'OK', detail: 'Worker geeft de steunlijst: Mazda-CX-5 ' + d.jaar + ', ' + s2.n + ' fabriekscodes, ' + s2.mode01.length + ' mode-01-PIDs' };
+      } catch (e) { return { staat: 'LET OP', detail: 'regels kloppen; obdb_steun niet te bereiken: ' + (e && e.message || e) }; }
+    }
+  },
+
   // ── De setup-wizard (04-11-2026) ──
   {
     issue: '—',

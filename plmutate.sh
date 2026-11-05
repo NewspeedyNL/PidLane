@@ -385,7 +385,8 @@ MUTATIES=(
 "worker.js@@credits: -afgeboekt, saldoNa, details: \"analyse afgeboekt\" + voor + tekort@@credits: -kosten, saldoNa, details: \"analyse afgeboekt\" + voor + tekort@@test-kasboek.js@@het kasboek boekt de volle prijs terwijl er minder van het saldo af ging (#83)"
 "worker.js@@credits: 0, saldoNa: saldoVoor,@@credits: -kosten, saldoNa: saldoVoor,@@test-kasboek.js@@een mislukte afboeking wordt geboekt alsof hij gelukt is (#83)"
 "worker.js@@if (na !== null) velden.SaldoNa = na;@@velden.SaldoNa = na || 0;@@test-kasboek.js@@een onbekend saldo komt als 0 in het kasboek en leest later als een leeg account (#83)"
-"worker.js@@    if (!/^[A-Za-z0-9][A-Za-z0-9-]{1,60}$/.test(repo)) return@@    if (false) return@@test-klantplatform.js@@een OBDb-naam met / of .. gaat ongezien het net op, naar een ander pad op GitHub (#526)"
+"worker.js@@  async obdb_bestand(c, b) {\n    const repo = String(b.repo || \"\");\n    if (!/^[A-Za-z0-9][A-Za-z0-9-]{1,60}$/.test(repo)) return@@  async obdb_bestand(c, b) {\n    const repo = String(b.repo || \"\");\n    if (false) return@@test-klantplatform.js@@een OBDb-naam met / of .. gaat ongezien het net op, naar een ander pad op GitHub (#526)"
+"worker.js@@  async obdb_steun(c, b) {\n    const repo = String(b.repo || \"\");\n    if (!/^[A-Za-z0-9][A-Za-z0-9-]{1,60}$/.test(repo)) return@@  async obdb_steun(c, b) {\n    const repo = String(b.repo || \"\");\n    if (false) return@@test-klantplatform.js@@obdb_steun met een naam met / of .. gaat ongezien het net op (#670)"
 "worker.js@@  if (payload.tools !== undefined) return@@  if (false) return@@test-kasboek.js@@web_search en andere tools gaan weer ongezien naar Anthropic (#526)"
 "worker.js@@  if (AI_MODELLEN.indexOf(payload.model) < 0) return@@  if (false) return@@test-kasboek.js@@elk model mag weer, ook Opus, tegen het Sonnet-tarief (#526)"
 "worker.js@@  if (!(Number.isInteger(d) && d >= 2 && d <= 9)) return rol;@@  return rol;@@test-kasboek.js@@een vervolgdeel bij max_tokens leest in het kasboek weer als een nieuwe analyse (#526)"
@@ -1805,6 +1806,30 @@ MUTATIES=(
 # het Voertuigoverzicht zonder tweede formulier, direct opslaan.
 "public/pidlane-uitgebreid.js@@  const EIGEN_CODE = /^(21[0-9A-F]{2}|22[0-9A-F]{4})$/;@@  const EIGEN_CODE = /^[0-9A-F]{4,8}$/;@@test-mode21.js@@een eigen PID mag een schrijfcode (2E) of een routine (31) zijn"
 "public/pidlane-uitgebreid.js@@return (b) => (b && typeof b[k] === 'number') ? b[k] : null; }@@return (b) => (b && b[k]) || 0; }@@test-mode21.js@@een kort antwoord rekent met 0 voor de ontbrekende byte: een geloofwaardig maar verzonnen getal"
+# De nagebouwde vloot en de dekking (#670). De generator leest OBDb; een fout
+# in de ISO-TP-lezing geeft stil te korte antwoorden, en de telling moet een
+# spook-PID echt zien. De derde: VAG/PSA met een ander antwoordadres valt
+# weer weg uit de fabriekscodes — de Golf zakt onder zijn vloer.
+"plnepvloot.js@@    if ((pci >> 4) === 2) { data.push(...b.slice(1)); continue; }@@    if ((pci >> 4) === 2) continue;@@test-nepvloot.js@@de generator vergeet de vervolgframes van ISO-TP: een lang antwoord wordt stil afgekapt"
+"public/bproef-dekking.js@@  const spook = [...na].filter((x) => m01.indexOf(x) < 0);@@  const spook = [];@@test-nepvloot.js@@de dekkingsproef ziet geen spook-PIDs meer (#616)"
+"public/pidlane-uitgebreid.js@@    return /^[0-9A-F]{3}$/.test(rax) ? hdr + '>' + rax : null;@@    return null;@@bproef-dekking.js@@een ander antwoordadres (VAG 710 → 77A) valt weer weg uit de OBDb-kandidaten: de Golf zakt onder zijn vloer"
+# De steunlijst van het bouwjaar (#670): zonder filter of mét de kap van 60
+# is het weer de gok die op de vloot 1515 weigeringen gaf; de Worker die
+# alleen het gevraagde jaar probeert vindt bij een gat in OBDb niets.
+"public/pidlane-uitgebreid.js@@      if (steun && !steun.codes[code + '@' + hdr.split('>')[0]]) {@@      if (false) {@@test-mode21.js@@de steunlijst filtert niet meer: weer codes die dit bouwjaar niet heeft"
+"public/pidlane-uitgebreid.js@@    const kap = steun ? uit.length : 60;@@    const kap = 60;@@test-mode21.js@@ook met een steunlijst weer de kap van 60: een Tiguan houdt een vijfde van zijn codes over"
+# De preset als aanname (#616): een geldige waarde moet blijven, en zonder
+# geheugen van wat aangenomen was haalt de steunlijst niets weg.
+"public/pidlane-rijsituatie.js@@_pidHealth[p] === 'ok') return;@@_pidHealth[p] === 'ok') {}@@test-presetsteun.js@@een sensor die een geldige waarde gaf gaat weg omdat OBDb hem niet kent"
+"public/pidlane-rijsituatie.js@@ecuSteunt(p) === true)) _presetAanname.add(p);@@ecuSteunt(p) === true)) {}@@test-presetsteun.js@@de preset onthoudt zijn aannames niet: de spook-PIDs van de Leaf blijven staan"
+# Getallen met teken (#670): S8( )…S32( ) in de formuletaal. Fout gelezen is
+# een stroom van −2 A als 65,5 A — geloofwaardig genoeg om niet op te vallen.
+"public/pidlane-uitgebreid.js@@return w >= n / 2 ? w - n : w; };@@return w; };@@test-mode21.js@@S16( ) laat het teken weg: FF38 wordt 65336 in plaats van −200"
+"public/pidlane-uitgebreid.js@@    if (f.sign) x = 'S' + len + '(' + x + ')';@@    if (false) x = 'S' + len + '(' + x + ')';@@test-mode21.js@@een OBDb-code met teken krijgt weer een formule zonder teken: negatief leest als heel groot"
+"public/pidlane-uitgebreid.js@@    millivolts: ['V', '(', ')/1000'], milliamps@@    millivolts: ['V', '(', ')'], milliamps@@test-mode21.js@@millivolt niet omgerekend: 12 V leest als 12000 V"
+"worker.js@@ || /S(?!(8|16|24|32)\\()/.test(f)) return@@) return@@test-klantplatform.js@@de Worker keurt elke S in een formule goed, ook S12( ) die de app niet kan lezen"
+"worker.js@@    for (const j of [jaar, jaar - 1, jaar + 1, jaar - 2, jaar + 2]) {@@    for (const j of [jaar]) {@@test-klantplatform.js@@obdb_steun probeert alleen het gevraagde jaar: een model met een gat in OBDb krijgt geen steunlijst"
+"public/nepauto.js@@        (st.sh && /^[0-9A-F]{3}$/.test(st.sh) && m.adres === (parseInt(st.sh, 16) + 8).toString(16).toUpperCase()));@@        false);@@test-nepvloot.js@@de nepauto laat het antwoord op kop + 8 weer vallen: de bandenspanning van de CX-5 lijkt onbereikbaar"
 "public/pidlane-uitgebreid.js@@      if (window.ALL_PID_DEFS && ALL_PID_DEFS[r.code] && !ALL_PID_DEFS[r.code].eigen) return;@@      void 0;@@test-mode21.js@@een eigen PID overschrijft een definitie die de app al kent"
 "public/pidlane-uitgebreid.js@@    (Array.isArray(lijst) ? lijst : []).forEach(e => {@@    (Array.isArray(lijst) ? lijst : []).slice(0, EIGEN_VEEL).forEach(e => {@@test-mode21.js@@de app kapt eigen sensoren stil af bij 20 terwijl de klant er meer koos (31-10-2026)"
 "worker.js@@  eigen_pids: { soort: \"eigenpids\", max: 500 },@@  eigen_pids: { soort: \"eigenpids\", max: 20 },@@test-klantplatform.js@@de server weigert weer meer dan 20 eigen sensoren (31-10-2026)"
@@ -1882,10 +1907,11 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@            if (ecu) await adresTerug(terug, 'buurscan ' + prefix);@@            if (false) await adresTerug(terug, 'buurscan ' + prefix);@@test-mode21.js@@na de buurscan blijft de adapter op ECU-adres 720 staan"
 "public/pidlane-uitgebreid.js@@    if (!rax || parseInt(rax, 16) === parseInt(hdr, 16) + 8) return@@    if (true) return@@test-mode21.js@@een OBDb-code met een ander antwoordadres (70E>778) wordt weer als 70E gevraagd, en de app luistert op het verkeerde (#526)"
 "public/pidlane-uitgebreid.js@@    if (c.eax) return null;@@@@test-mode21.js@@OBDb-codes met extended addressing (BMW) komen erbij terwijl de app ze niet kan vragen (#526)"
-"public/pidlane-uitgebreid.js@@    if (f.sign || f.map || bix % 8@@    if (f.map || bix % 8@@test-mode21.js@@een signed OBDb-waarde krijgt een formule zonder teken: −1 °C leest als 255 (#526)"
+# (05-11-2026) Hier stond "een signed OBDb-waarde krijgt een formule zonder teken": sinds #670
+# krijgt zo'n waarde S16( ). Dezelfde fout bouwt nu de mutatie met `if (false) x = 'S'` na.
 "public/pidlane-uitgebreid.js@@      const w = f.blsb ? k : n - 1 - k;@@      const w = n - 1 - k;@@test-mode21.js@@little-endian uit OBDb wordt big-endian gelezen: de kilometerstand klopt niet (#526)"
 "public/pidlane-uitgebreid.js@@    if (van !== undefined && tot !== undefined) return tot >= van ? (j >= van && j <= tot) : (j <= tot || j >= van);@@    if (van !== undefined && tot !== undefined) return j >= van && j <= tot;@@test-mode21.js@@het OBDb-jaarfilter \"t/m 2016 of vanaf 2022\" laat geen enkel jaar meer door (#526)"
-"public/pidlane-garage.js@@lijst: r.kandidaten, bron: 'obdb' });@@lijst: r.kandidaten });@@bproef-garage.js@@codes uit OBDb staan in de bibliotheek als \"online gevonden\" (#526)"
+"public/pidlane-garage.js@@lijst: r.kandidaten.slice(0, 60), bron: 'obdb' });@@lijst: r.kandidaten.slice(0, 60) });@@bproef-garage.js@@codes uit OBDb staan in de bibliotheek als \"online gevonden\" (#526)"
 "worker.js@@        if (b.ontwikkelaar !== true && b.ontwikkelaar !== false) return json(@@        if (false) return json(@@test-bijboeken.js@@een \"ja\" uit een kapotte pagina maakt iemand stil ontwikkelaar"
 "public/pidlane-auth.js@@==='klant' && u.ontwikkelaar===true);@@==='klant' && !!u.ontwikkelaar);@@test-rolmenu.js@@een vlag \"ja\" geeft de ontwikkeltools"
 "public/pidlane-klant.js@@      try { admin = (typeof magOntwikkelen === 'function') ? magOntwikkelen() :@@      try { admin = false ? magOntwikkelen() :@@test-rolmenu.js@@een klant met de ontwikkelaarsvlag ziet het ontwikkelmenu niet"

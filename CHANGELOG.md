@@ -10,6 +10,45 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-11-2026 — De preset op merk verliest wat OBDb niet kent (#616)
+ ═══════════════════════════════════════════════════════════
+ - Wat applyVehiclePIDPreset() zonder steunbit toevoegt is een aanname.
+   Komt de mode-01-lijst van model en bouwjaar binnen (Grondig, of de
+   automatische OBDb-zoekronde), dan gaat eruit wat daar niet in staat en
+   nooit een geldige waarde gaf. Nissan Leaf: elf spook-PIDs weg.
+
+ ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Fabriekscodes met teken en met mV, mA en cm (#670)
+ ═══════════════════════════════════════════════════════════
+ - Formuletaal: S8( ), S16( ), S24( ), S32( ) = getal met teken (two's
+   complement). App en Worker keuren hem allebei; OBDb "sign" gebruikt hem.
+ - millivolts, milliamps en centimeters worden V, A en mm.
+ - Vloot: gemiddeld 83,8 → 87,4 %, 25 van 40 op of boven 90 %.
+
+ ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Grondig zoeken met de steunlijst van het bouwjaar (#670)
+ ═══════════════════════════════════════════════════════════
+ - Worker: obdb_steun haalt command_support.yaml van model en bouwjaar
+   (anders ±1, ±2 jaar). De app vraagt alleen nog wat dat jaar in OBDb
+   beantwoordde, en zonder de kap van 60.
+ - Mijn voertuigen → Sensoren → 🚀 (en Grondig in de wizard) test naast de
+   bibliotheek ook OBDb rechtstreeks; de bibliotheek blijft 60 per keer.
+ - Vloot: gemiddeld 75,6 → 83,8 %, 24 van 40 op of boven 90 %. Een deel
+   komt uit een eerlijkere meting (nepauto, noemer), zie het archief.
+
+ ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Nagebouwde vloot uit OBDb en de dekkingsproef (#670)
+ ═══════════════════════════════════════════════════════════
+ - plnepvloot.js: 40 auto's uit OBDb (command_support + ruwe antwoorden +
+   signalset) naar nepvloot/, mode 01 én fabriekscodes per ECU. Geen
+   handwerk meer; CI haalt niets van het net.
+ - bproef-dekking.js: per auto hoeveel van wat hij aanbiedt oproepbaar is
+   na Snel (discovery) en Grondig (OBDb-zoekronde). Vloer per auto, mag
+   alleen omhoog; de wens van 90 % is LET OP, geen FOUT.
+ - Eerste meting: gemiddeld 75,6 %, 18 van 40 halen de wens. Mode 01
+   1701/1701; fabriekscodes 319/1965. Geen app-wijziging.
+
+ ═══════════════════════════════════════════════════════════
  04-11-2026 — Setup-wizard na de eerste verbinding per voertuig
  ═══════════════════════════════════════════════════════════
  - Keuzevenster na protocol en scan: 🧭 Inrichten of ⚡ Meteen rijden.

@@ -883,15 +883,22 @@
      MINI) en het 29-bit-schema van Volvo kan de app nog niet vragen; een
      ander antwoordadres (VAG, PSA, Opel) wel, sinds 22-10-2026. Kwam de code
      van een zustermodel (Skoda Octavia → Golf), dan zegt de tekst dat. */
+  function obdbHaal(repo) { return api('obdb_bestand', { repo: repo }); }
+  // De steunlijst van het bouwjaar (#670): alleen wat dit jaar heeft, zonder kap van 60.
+  function obdbHaalSteun(repo, jaar) { return api('obdb_steun', { repo: repo, jaar: jaar }); }
   async function obdbBinnenhalen(vid, v) {
-    var r = await PLEigen.zoekObdb(v, function (repo) { return api('obdb_bestand', { repo: repo }); });
+    var r = await PLEigen.zoekObdb(v, obdbHaal, obdbHaalSteun);
     if (!r.ok) return { tekst: '✗ ' + r.fout };
+    try { if (r.mode01 && typeof presetNaSteun === 'function') presetNaSteun(r.mode01); }
+    catch (x) { console.warn('PLGarage: preset na OBDb niet bijgesteld', x); }
     if (!r.repo) return { tekst: 'Dit model staat (nog) niet in OBDb. Gezocht als: ' + (r.geprobeerd || []).join(', ') + '.' };
     var niet = r.nietBruikbaar ? ' ' + r.nietBruikbaar + ' code' + (r.nietBruikbaar === 1 ? '' : 's') + ' uit OBDb gebruik' + (r.nietBruikbaar === 1 ? 't' : 'en') + ' een adressering die de app nog niet kent (BMW, Volvo).' : '';
     var zus = r.tweeling ? ' Je model staat niet in OBDb; deze codes komen van ' + r.repo + ', dezelfde auto onder een ander merk.' : '';
     if (!r.kandidaten.length) return { tekst: 'OBDb kent ' + r.repo + ', maar geen leescode die deze app kan gebruiken.' + niet };
     try {
-      var d = await api('pidbib_kandidaten', { voertuig_id: vid, lijst: r.kandidaten, bron: 'obdb' });
+      // De bibliotheek neemt er 60 per keer (de Worker weigert meer); de
+      // zoekronde zelf test er met de steunlijst meer (zie _pzStart).
+      var d = await api('pidbib_kandidaten', { voertuig_id: vid, lijst: r.kandidaten.slice(0, 60), bron: 'obdb' });
       return { erbij: d.erbij, tekst: '✓ ' + d.erbij + ' nieuwe kandida' + (d.erbij === 1 ? 'at' : 'ten') + ' in de lijst' +
         (r.kandidaten.length > d.erbij ? ' (' + (r.kandidaten.length - d.erbij) + ' stonden er al of vielen af)' : '') + '. De nuttigste (laadspanning, accu, banden) staan bovenaan; test ze op je auto.' + zus + niet };
     } catch (x) { return { tekst: '✗ ' + x.message }; }
@@ -2837,13 +2844,26 @@
       } catch (x) { if (_st.sens === S) { S.pz = { fout: 'Bibliotheek niet te laden: ' + x.message }; teken(); } return; }
       if (_st.sens !== S) return;
       S.bib = { lijst: lijst };
+      // Daarnaast OBDb rechtstreeks, met de steunlijst van dit bouwjaar (#670):
+      // de bibliotheek houdt er hoogstens 100, een Tiguan heeft er 300. Wat
+      // al in de bibliotheek staat, gaat voor (met zijn stemmen); kandidaten()
+      // haalt de dubbelen eruit.
+      try {
+        pz.stap = 'Codes van dit bouwjaar zoeken…'; teken();
+        var direct = await PLEigen.zoekObdb(v, obdbHaal, obdbHaalSteun);
+        if (direct && direct.ok && direct.kandidaten && direct.kandidaten.length) lijst = lijst.concat(direct.kandidaten);
+        // De mode-01-lijst van dit bouwjaar haalt de aannames van de preset eruit (#616).
+        if (direct && direct.mode01 && typeof presetNaSteun === 'function') presetNaSteun(direct.mode01);
+      } catch (x) { console.warn('PLGarage: OBDb rechtstreeks niet te halen, alleen de bibliotheek', x); }
+      if (_st.sens !== S) return;
       var kand = PLPidZoek.kandidaten(lijst, S.eigen);
       if (!kand.length) { S.pz = { tekst: (pz.tekst ? pz.tekst + ' ' : '') + 'Geen nieuwe codes om te testen voor dit model.' }; teken(); return; }
       pz.stap = 'Testen:'; pz.totaal = kand.length; teken();
       var laatst = 0;
       var res = await PLPidZoek.zoek(kand, {
         test: function (b) { return PLEigen.test({ code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid, ecu: b.ecu }); },
-        stem: function (b, uitkomst) { return api('pidbib_stem', { voertuig_id: S.vid, id: b.id, uitkomst: uitkomst }).then(function () { b.mijn = uitkomst; }); },
+        // Alleen wat in de bibliotheek staat, heeft een id om op te stemmen.
+        stem: function (b, uitkomst) { if (!b.id) return Promise.resolve(); return api('pidbib_stem', { voertuig_id: S.vid, id: b.id, uitkomst: uitkomst }).then(function () { b.mijn = uitkomst; }); },
         stop: function () { return !!pz.stop || _st.sens !== S; },
         voortgang: function (st) { pz.gedaan = st.gedaan; pz.n = st.past.length; if (Date.now() - laatst > 700) { laatst = Date.now(); teken(); } }
       });

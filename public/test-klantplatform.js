@@ -346,6 +346,9 @@ async function laadWorker() {
   toets('eigen PIDs: een routine (31) is 400', await epFout({ code: '31010203' }) === 400);
   toets('eigen PIDs: mode 01 hoort er niet in (400)', await epFout({ code: '0105' }) === 400);
   toets('eigen PIDs: code in een formule is 400', await epFout({ code: '221E1C', formule: 'fetch(1)' }) === 400);
+  // Met teken (#670): S8( )…S32( ) mag, een andere S niet.
+  toets('eigen PIDs: S16( ) voor een getal met teken mag', await epFout({ code: '221139', formule: 'S16(A*256+B)*0.01' }) !== 400);
+  toets('eigen PIDs: S12( ) of een losse S is 400', await epFout({ code: '221139', formule: 'S12(A)' }) === 400 && await epFout({ code: '221139', formule: 'SA' }) === 400);
   toets('eigen PIDs: zonder naam is 400', await epFout({ code: '221E1C', naam: '' }) === 400);
   // 31-10-2026: 21 eigen PIDs mag (de app waarschuwt alleen); pas boven het opslagvangnet van 500 een 400.
   const ep21 = await roep(tokA, { actie: 'voertuig_opslaan', voertuig: { id: v1.voertuig.id,
@@ -446,6 +449,25 @@ async function laadWorker() {
     toets('obdb: niet bestaand is geen fout maar "niet gevonden"', o2.ok && o2.gevonden === false, JSON.stringify(o2));
     toets('obdb: een naam met / of .. is 400 en gaat het net niet op', o3._status === 400 && gehaald.length === 2, o3._status + ' / ' + gehaald.length);
     toets('obdb: geen net is 502 met een melding', o4._status === 502 && /niet bereikbaar/.test(o4.error), JSON.stringify(o4));
+  }
+  // De steunlijst van het bouwjaar (#670): command_support.yaml, ander jaar als het gevraagde er niet is.
+  {
+    const echtFetch = globalThis.fetch, gehaald = [];
+    globalThis.fetch = async (u) => {
+      gehaald.push(String(u));
+      if (/Mazda-CX-5\/main\/tests\/test_cases\/2017\/command_support\.yaml$/.test(String(u))) return new Response('model_year: 2017\n', { status: 200 });
+      return new Response('404: Not Found', { status: 404 });
+    };
+    const s1 = await roep(tokB, { actie: 'obdb_steun', repo: 'Mazda-CX-5', jaar: 2018 });
+    const n1 = gehaald.length;
+    const s2 = await roep(tokB, { actie: 'obdb_steun', repo: 'Dacia-Logan', jaar: 2018 });
+    const s3 = await roep(tokB, { actie: 'obdb_steun', repo: '../x', jaar: 2018 });
+    const s4 = await roep(tokB, { actie: 'obdb_steun', repo: 'Mazda-CX-5', jaar: '2018/../..' });
+    globalThis.fetch = echtFetch;
+    toets('steun: 2018 ontbreekt, 2017 komt terug met het jaar erbij', s1.ok && s1.gevonden && s1.jaar === 2017 && /model_year: 2017/.test(s1.tekst), JSON.stringify(s1));
+    toets('steun: eerst het jaar zelf, dan het jaar ervóór', gehaald[0].endsWith('/test_cases/2018/command_support.yaml') && gehaald[1].endsWith('/test_cases/2017/command_support.yaml') && n1 === 2, gehaald.slice(0, 2).join(' '));
+    toets('steun: geen enkel jaar is "niet gevonden" na vijf pogingen', s2.ok && s2.gevonden === false && gehaald.length === n1 + 5, JSON.stringify(s2) + ' ' + (gehaald.length - n1));
+    toets('steun: een rare naam of een raar jaar is 400 en gaat het net niet op', s3._status === 400 && s4._status === 400 && gehaald.length === n1 + 5, s3._status + '/' + s4._status);
   }
   const vKia = await roep(tokB, { actie: 'voertuig_opslaan', voertuig: { naam: 'Kia', merk: 'Kia', model: 'Ceed' } });
   toets('een ander merk ziet de Mazda-codes niet', vKia.ok && (await roep(tokB, { actie: 'pidbib_lijst', voertuig_id: vKia.voertuig.id })).lijst.length === 0);

@@ -15,6 +15,109 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 05-11-2026 — #616: de preset als aanname, OBDb als bewijs
+
+**Herevaluatie van "onbekend telt als toegestaan".** Het besluit van 25-10
+(zie hieronder bij #614–#617) stond op twee pijlers: de spook-PIDs kwamen uit
+het verkeerde protocol, en vooraf meten zou de terugval nutteloos maken. De
+eerste klopte voor de storingsproef, maar de nagebouwde vloot vond een auto
+waar het zonder storing gebeurt: de Nissan Leaf heeft geen mode 01, dus geen
+enkel steunbitblok, en kreeg elf PIDs. De tweede klopt nog steeds — daarom
+blijft de preset, maar zijn toevoegingen zijn nu een aanname (`_presetAanname`)
+die vervalt zodra de mode-01-lijst van OBDb voor model en bouwjaar er is.
+
+**Wat blijft, wat OBDb ook zegt:** een steunbit (`ecuSteunt() === true`) en een
+geldige waarde (`_pidHealth === 'ok'`). Een antwoord liegt niet; OBDb is één
+auto per bouwjaar en kan een uitvoering missen.
+
+**Wat nog openstaat.** Tussen het verbinden en de steunlijst staan de spooks
+er nog (na Snel). Zonder account of zonder OBDb-model blijft het de oude gok.
+
+## 05-11-2026 — Teken en eenheden: 83,8 → 87,4 % (#670)
+
+**Waarom S16( ) en geen nieuw rekenteken.** Two's complement zit niet in
++ − × ÷ zonder een vergelijking, en een vergelijking in de formuletaal is een
+deur naar meer. Een vaste functie met vier breedtes is te keuren in de Worker
+(`kpEigenPid`, een regex) en in de app (`formule()`), en zegt wat hij doet.
+Hij werkt op het ruwe getal; `obdbFormule()` zet hem dus vóór de factor. Een
+oudere app kent `S` niet en laat zo'n code uit de bibliotheek vallen in
+`eigenControleer()` — geen verkeerde waarde, alleen geen waarde.
+
+**Wat er nog mist.** VAG verbeterde het meest (A3 44 → 81, Polo 50 → 73,
+Tiguan 39 → 61). Onder de wens blijven vooral: ID.3 (21 %, `FC00`/`ta=`),
+Civic (37 %), Mini (44 %) en BMW (73 %, `e=`), Leaf (68 %, #616). Eén
+"vreemd" is OBDb zelf: de Zoe 223042 verwacht −14592,75 A in zijn eigen
+testgeval; de app rekent hetzelfde en `plausibel()` keurt hem terecht af.
+
+## 05-11-2026 — De steunlijst van het bouwjaar: 75,6 → 83,8 % (#670)
+
+**Wat er veranderde in de app.** `obdb_steun` (Worker) haalt
+`tests/test_cases/<jaar>/command_support.yaml`; `PLEigen.obdbSteun()` leest
+hem, `obdbKandidaten()` houdt alleen wat dat jaar beantwoordde en laat dan de
+kap van 60 los. `_pzStart` test naast de bibliotheek (hoogstens 100 rijen
+uit `pidbib_lijst`) ook OBDb rechtstreeks. Zonder steunlijst (geen net, model
+zonder testgevallen) blijft het de oude gok; een geldige lijst zonder
+fabriekscodes betekent "niets proberen" (Fiat 500: 39 weigeringen weg).
+
+**Wat er veranderde in de meting, en dus niet aan de app toe te schrijven.**
+(1) PLNepAuto liet zonder ATCRA alleen 7E8–7EF door. Een ELM neemt na ATSH 720
+ook 728 aan — AANNAME, met als steun dat de bandenspanning van de CX-5
+(720 → 728) op de echte auto werkt terwijl `adresZet()` daar alleen ATSH
+stuurt. Daardoor "weigerde" de CX-5 eerst al zijn banden. (2) Codes zonder
+signaalnaam in OBDb (geen betekenis bekend) en codes zonder na te bouwen
+antwoord tellen niet meer in de noemer; een adressering die de app niet kan
+vragen telt wél. Golf: van 82 naar 54 in de noemer. Hoeveel van de 8,2
+punten van de app komt en hoeveel van de meting, is niet apart gemeten.
+
+**Wat er nog mist (noemer zonder simulatiegaten, 40 auto's).** Geen eenheid
+(stand of schakelaar: `scalar`, `unknown`, `offon`, `noyes`) 461 — bewust geen
+meetwaarde, en een vraag of dat "data" is. Adressering 281 (BMW/Mini `e=`,
+VW `FC00`/`ta=`). Een teken (`sign`) 276: de formuletaal kent alleen
++ − × ÷, dus geen two's complement — dat raakt ook de keuring in de Worker.
+Eenheden die `OBDB_EENHEID` niet kent (cm, mV, mA) 26.
+
+## 05-11-2026 — De nagebouwde vloot en de eerste dekkingsmeting (#670)
+
+**Waarom geen ritten maar OBDb.** De communicatie van veel ECU's staat online.
+OBDb bewaart per model en bouwjaar niet alleen de signalset die de app al
+haalt, maar ook `command_support.yaml` (wat een échte auto per ECU wel én niet
+beantwoordde) en de ruwe antwoorden (`commands/*.yaml`, ISO-TP met kop). Dat
+is genoeg om een auto na te bouwen tot op de fabriekscodes. De 21 profielen
+in `nepauto-profielen.js` (22-10) kwamen uit dezelfde bron, maar met de hand
+en zonder generator; die blijven staan voor `bproef-merken.js` en
+`bproef-storing.js`, omdat er handwerk in zit (de Auris-opname, foutcodes,
+de diesel). De nieuwe vloot staat apart in `nepvloot/`, buiten `public/`:
+2,9 MB data hoort niet in wat de Worker uitserveert.
+
+**De noemer.** "Wat de auto aanbiedt" = mode 01 uit `command_support` (zonder
+de steunbit-PIDs) plus elke 21/22-code die daar onder een ECU staat, óók die
+met een adressering die de app (nog) niet kan vragen (BMW `e=`, VW/Tesla
+`FC00`, Volvo `D016`). Die tellen mee: de klant ziet ze ook niet.
+
+**Eerste meting, 40 auto's.** Gemiddeld 75,6 % (Snel 69,3 %), 18 van 40 op of
+boven 90 %. Mode 01 is 1701/1701: de discovery mist niets. Het verlies zit
+volledig in de fabriekscodes: 319 van 1965.
+- **1515 kwamen nooit als kandidaat.** `obdbKandidaten()` houdt er 60 over
+  (2254 commando's vielen zo weg, over alle signalsets); 854 hebben een
+  adressering die `obdbAdres()` niet aanbiedt; de rest heeft geen eenheid
+  (stand of schakelaar) en is bewust geen meetwaarde.
+- **1515 kandidaten weigerde de auto.** De 60 worden op waarde gekozen, niet
+  op wat dít bouwjaar heeft: tijd op de bus zonder opbrengst.
+- **11 "vreemd"**, o.a. 221044 bij de Golf (3003 °C) en km/h boven 350: de
+  formule uit OBDb past niet op het echte antwoord. Niet onderzocht.
+
+**#616 bevestigd, nu met een auto.** De Nissan Leaf heeft geen mode 01. De
+merkpreset zet er toch elf PIDs in (010C, 010D, 0105, …): een spooklijst op
+een EV. Staat in `BEKEND` van de proef.
+
+**Twee vergissingen onderweg, in de proef en niet in de app.** (1) Bij
+Renault antwoordt de motor-ECU alleen functioneel (DB33); de generator
+hing die PIDs eerst aan de eerste ECU die een fabriekscode had (743). De
+Clio leek daardoor op 26 % en kreeg 0114/010A als spook — dat was de
+generator. (2) De nep-Worker vergeleek repo-namen hoofdlettergevoelig; de app
+vraagt `FIAT-500`, `Renault-ZOE`, `MINI-Cooper`, en GitHub geeft daar
+gewoon het bestand op (nagemeten: HTTP 200).
+
 ## 04-11-2026 — De setup-wizard: waarom zo en niet anders
 
 **Waarom een eigen module en geen uitbreiding van `PLWizard`.** `pidlane-wizard.js`
