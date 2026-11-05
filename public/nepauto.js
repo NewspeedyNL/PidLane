@@ -318,7 +318,11 @@
       if (/^2[12]/.test(c) && c.length % 2 === 1) body = c.slice(0, -1);
       let ber = antwoordBytes(body);
       if (st.cra) ber = ber.filter((m) => m.adres === st.cra || m.adres.endsWith(st.cra));
-      else ber = ber.filter((m) => !can || /^7E[89A-F]$|^18DAF1/.test(m.adres) || !isCan(proto));
+      // Zonder ATCRA neemt de ELM ook het antwoord op kop + 8 aan (ATSH 720 →
+      // 728): zo leest de app de bandenspanning van de CX-5 (720 → 728) op de
+      // echte auto, met alleen ATSH (adresZet in pidlane-uitgebreid.js).
+      else ber = ber.filter((m) => !can || /^7E[89A-F]$|^18DAF1/.test(m.adres) || !isCan(proto) ||
+        (st.sh && /^[0-9A-F]{3}$/.test(st.sh) && m.adres === (parseInt(st.sh, 16) + 8).toString(16).toUpperCase()));
       // Meer dan 7 bytes: het tweede frame komt pas na een flow control op
       // het zendadres van de ECU. Gaat die ergens anders heen, dan blijft
       // het bij het eerste frame.

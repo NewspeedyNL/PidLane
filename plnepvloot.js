@@ -21,6 +21,8 @@
 //   nepvloot/profielen.json     de profielen + wat elk aanbiedt
 //   nepvloot/obdb.json          per repo de signalset, ingedikt tot de
 //                               velden die PLEigen.obdbKandidaten() leest
+//   nepvloot/steun.json         per repo de command_support.yaml van het
+//                               jaar, zoals de Worker (obdb_steun) hem geeft
 //
 // Draaien (vanuit de repo-root, met internet):
 //   node plnepvloot.js [--cache <map>]          alles in VLOOT
@@ -236,22 +238,29 @@ function bouw(rij, cache, LEN) {
         return;
       }
       if (!/^2[12][0-9A-F]+$/.test(a.cmd)) return;                  // mode 09, 06, …: hier niet het onderwerp
+      // Zonder signaal weet niemand wat de bytes betekenen: geen data, dus niet in de noemer.
+      if (!sig) { overgeslagen.push({ cmd: cid, reden: 'geen signaal in OBDb' }); return; }
       // Een fabriekscode op het functionele adres (7DF, DB33) beantwoordt de motor-ECU.
       if (functioneel(a.tx) && !a.rx) a.tx = a.tx === '7DF' ? '7E0' : 'DA10';
       const rx = rxVan(a.tx, a.rx);
       const ecuAdr = rx && /^18DAF1/.test(rx) ? '18' + a.tx + 'F1' : a.tx;
       const nood = (a.mod && /(^|,)(e|ta|c)=/.test(a.mod)) ? 'adressering ' + a.mod : !rx ? 'adres ' + a.tx : '';
-      aangeboden.did.push({ code: a.cmd, ecu: ecuAdr, rx: rx, sig: sig, nagebouwd: !nood });
+      // waarom: 'adressering' = de app kan hem (nog) niet vragen, telt mee in de
+      // noemer; 'simulatie' = de auto heeft hem, maar OBDb geeft geen bruikbaar
+      // antwoord om na te bouwen — een gat in de proef, niet in de app.
+      const d = { code: a.cmd, ecu: ecuAdr, rx: rx, sig: sig, nagebouwd: !nood };
+      if (nood) d.waarom = 'adressering';
+      aangeboden.did.push(d);
       if (nood) { overgeslagen.push({ cmd: cid, reden: nood }); return; }
       const f = path.join(cmdMap, cid + '.yaml');
-      if (!fs.existsSync(f)) { overgeslagen.push({ cmd: cid, reden: 'geen antwoord in OBDb' }); aangeboden.did[aangeboden.did.length - 1].nagebouwd = false; return; }
+      if (!fs.existsSync(f)) { overgeslagen.push({ cmd: cid, reden: 'geen antwoord in OBDb' }); d.nagebouwd = false; d.waarom = 'simulatie'; return; }
       const gevallen = leesAntwoorden(fs.readFileSync(f, 'utf8'));
       const goed = gevallen.find((g) => Object.values(g.waarden).some((w) => w !== 'null')) || gevallen[0];
       const bytes = goed && isotp(goed.frames, rx);
       const dienst = parseInt(a.cmd.slice(0, 2), 16) + 0x40;
       const kop = a.cmd.slice(2).match(/../g);
       if (!bytes || bytes[0] !== dienst.toString(16).toUpperCase() || bytes.slice(1, 1 + kop.length).join('') !== kop.join('')) {
-        overgeslagen.push({ cmd: cid, reden: 'antwoord onleesbaar' }); aangeboden.did[aangeboden.did.length - 1].nagebouwd = false; return;
+        overgeslagen.push({ cmd: cid, reden: 'antwoord onleesbaar' }); d.nagebouwd = false; d.waarom = 'simulatie'; return;
       }
       ecu(rx, txNep(a.tx)).did[a.cmd] = bytes.slice(1 + kop.length).join(' ');
     });
@@ -275,7 +284,7 @@ function bouw(rij, cache, LEN) {
   if (brandstof === 'elektrisch') p.readiness = '000000';
   if (jaar !== wensJaar) p.jaarNoot = 'gevraagd ' + wensJaar + ', OBDb heeft ' + jaar;
   const sig = JSON.parse(fs.readFileSync(path.join(map, 'signalsets', 'v3', 'default.json'), 'utf8'));
-  return { p, obdb: indikken(sig) };
+  return { p, obdb: indikken(sig), steun: fs.readFileSync(path.join(tc, String(jaar), 'command_support.yaml'), 'utf8') };
 }
 
 function main() {
@@ -285,19 +294,21 @@ function main() {
   const { LEN } = require('./public/nepauto.js');
   const uitP = path.join(__dirname, 'nepvloot', 'profielen.json');
   const uitO = path.join(__dirname, 'nepvloot', 'obdb.json');
+  const uitS = path.join(__dirname, 'nepvloot', 'steun.json');
   const oud = alleen && fs.existsSync(uitP) ? JSON.parse(fs.readFileSync(uitP, 'utf8')) : { auto: [] };
   const oudO = alleen && fs.existsSync(uitO) ? JSON.parse(fs.readFileSync(uitO, 'utf8')) : {};
-  const auto = [], obdb = {};
+  const oudS = alleen && fs.existsSync(uitS) ? JSON.parse(fs.readFileSync(uitS, 'utf8')) : {};
+  const auto = [], obdb = {}, steun = {};
   let fouten = 0;
   VLOOT.forEach((rij) => {
     if (alleen && alleen.indexOf(rij[0]) < 0) {
       const o = oud.auto.find((x) => x.id === rij[0]);
-      if (o) { auto.push(o); obdb[o.repo] = oudO[o.repo]; }
+      if (o) { auto.push(o); obdb[o.repo] = oudO[o.repo]; steun[o.repo] = oudS[o.repo]; }
       return;
     }
     const r = bouw(rij, cache, LEN);
     if (r.fout) { console.log('  FOUT ' + r.fout); fouten++; return; }
-    auto.push(r.p); obdb[r.p.repo] = r.obdb;
+    auto.push(r.p); obdb[r.p.repo] = r.obdb; steun[r.p.repo] = { [r.p.jaar]: r.steun };
     const n22 = r.p.aangeboden.did.length, nb = r.p.aangeboden.did.filter((d) => d.nagebouwd).length;
     console.log('  ok  ' + r.p.id.padEnd(11) + ' ' + r.p.bron.padEnd(46) + ' mode01 ' + String(r.p.aangeboden.mode01.length).padStart(3) +
       '  fabriek ' + String(n22).padStart(4) + ' (' + nb + ' nagebouwd)' + (r.p.jaarNoot ? '  — ' + r.p.jaarNoot : ''));
@@ -307,6 +318,7 @@ function main() {
   auto.forEach((p) => { try { PLNepAuto.maak(p); } catch (e) { console.log('  FOUT ' + p.id + ': ' + e.message); fouten++; } });
   fs.writeFileSync(uitP, JSON.stringify({ uitleg: 'Gegenereerd door plnepvloot.js uit OBDb — niet met de hand bewerken (#670).', auto }, null, 1) + '\n');
   fs.writeFileSync(uitO, JSON.stringify(obdb) + '\n');
+  fs.writeFileSync(uitS, JSON.stringify(steun) + '\n');
   console.log('\n' + auto.length + ' profielen → nepvloot/profielen.json (' + Math.round(fs.statSync(uitP).size / 1024) + ' KB), signalsets → nepvloot/obdb.json (' +
     Math.round(fs.statSync(uitO).size / 1024) + ' KB)' + (fouten ? ', ' + fouten + ' fout(en)' : ''));
   process.exit(fouten ? 1 : 0);

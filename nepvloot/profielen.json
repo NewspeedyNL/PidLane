@@ -950,35 +950,40 @@
       "ecu": "720",
       "rx": "728",
       "sig": "MAZDA3_FUEL_LEVEL",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "22D922",
       "ecu": "726",
       "rx": "72E",
       "sig": "MAZDA3_TP_FL",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "22D923",
       "ecu": "726",
       "rx": "72E",
       "sig": "MAZDA3_TP_FR",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "22D924",
       "ecu": "726",
       "rx": "72E",
       "sig": "MAZDA3_TP_RL",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "22D925",
       "ecu": "726",
       "rx": "72E",
       "sig": "MAZDA3_TP_RR",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "22D926",
@@ -1013,35 +1018,40 @@
       "ecu": "793",
       "rx": "79B",
       "sig": "MAZDA3_CC_TGT_DIST",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "220301",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "MAZDA3_MAP",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "220307",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "MAZDA3_FP_LD",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "220415",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "MAZDA3_EOP",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "221310",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "MAZDA3_EOT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      }
     ]
    },
@@ -1616,34 +1626,6 @@
       "nagebouwd": true
      },
      {
-      "code": "2218A0",
-      "ecu": "70B",
-      "rx": "713",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "2218A1",
-      "ecu": "70B",
-      "rx": "713",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "2218A2",
-      "ecu": "70B",
-      "rx": "713",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "2218A3",
-      "ecu": "70B",
-      "rx": "713",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "221945",
       "ecu": "70E",
       "rx": "778",
@@ -1651,109 +1633,11 @@
       "nagebouwd": true
      },
      {
-      "code": "220C0A",
-      "ecu": "70F",
-      "rx": "779",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222B1B",
-      "ecu": "70F",
-      "rx": "779",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222B1C",
-      "ecu": "70F",
-      "rx": "779",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222B1D",
-      "ecu": "70F",
-      "rx": "779",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222B1E",
-      "ecu": "70F",
-      "rx": "779",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222BE4",
-      "ecu": "70F",
-      "rx": "779",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222BE6",
-      "ecu": "70F",
-      "rx": "779",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222BE7",
-      "ecu": "70F",
-      "rx": "779",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222BE9",
-      "ecu": "70F",
-      "rx": "779",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222BF0",
-      "ecu": "70F",
-      "rx": "779",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222BF1",
-      "ecu": "70F",
-      "rx": "779",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222BF3",
-      "ecu": "70F",
-      "rx": "779",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "221044",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "GOLF_DPF_SFC_T",
       "nagebouwd": true
-     },
-     {
-      "code": "2211B2",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "2210F1",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
      },
      {
       "code": "22112C",
@@ -1826,27 +1710,6 @@
       "nagebouwd": true
      },
      {
-      "code": "221434",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "221460",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "221464",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "22146D",
       "ecu": "7E0",
       "rx": "7E8",
@@ -1889,175 +1752,126 @@
       "nagebouwd": true
      },
      {
-      "code": "2214CC",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "22295A",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "GOLF_ODO",
       "nagebouwd": true
-     },
-     {
-      "code": "220302",
-      "ecu": "7E1",
-      "rx": "7E9",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "220303",
-      "ecu": "7E1",
-      "rx": "7E9",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "2210AF",
-      "ecu": "7E1",
-      "rx": "7E9",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "2210B0",
-      "ecu": "7E1",
-      "rx": "7E9",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222104",
-      "ecu": "7E1",
-      "rx": "7E9",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "223841",
-      "ecu": "7E1",
-      "rx": "7E9",
-      "sig": "",
-      "nagebouwd": false
      }
     ]
    },
    "overgeslagen": [
     {
      "cmd": "70B.2218A0",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70B.2218A1",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70B.2218A2",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70B.2218A3",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70F.779.220C0A",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70F.779.222B1B",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70F.779.222B1C",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70F.779.222B1D",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70F.779.222B1E",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70F.779.222BE4",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70F.779.222BE6",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70F.779.222BE7",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70F.779.222BE9",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70F.779.222BF0",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70F.779.222BF1",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "70F.779.222BF3",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.2211B2",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.7E8.2210F1",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.7E8.221434",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.7E8.221460",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.7E8.221464",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.7E8.2214CC",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E1.220302",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E1.220303",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E1.7E9.2210AF",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E1.7E9.2210B0",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E1.7E9.222104",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E1.7E9.223841",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     }
    ]
   },
@@ -2267,11 +2081,7 @@
      "tx": "714",
      "pids": "",
      "did": {
-      "221014": "99",
-      "222206": "18",
-      "222299": "00 42",
       "22220C": "72",
-      "22224B": "00 1E",
       "2222B8": "06 D6 91 FE"
      }
     }
@@ -2432,41 +2242,14 @@
       "ecu": "713",
       "rx": "77D",
       "sig": "POLO_AIR_GAB_VACUUM_SNS,POLO_BRAKE_P_SNS",
-      "nagebouwd": false
-     },
-     {
-      "code": "221014",
-      "ecu": "714",
-      "rx": "77E",
-      "sig": "",
-      "nagebouwd": true
-     },
-     {
-      "code": "222206",
-      "ecu": "714",
-      "rx": "77E",
-      "sig": "",
-      "nagebouwd": true
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "22220C",
       "ecu": "714",
       "rx": "77E",
       "sig": "POLO_OUTSIDE_T",
-      "nagebouwd": true
-     },
-     {
-      "code": "22224B",
-      "ecu": "714",
-      "rx": "77E",
-      "sig": "",
-      "nagebouwd": true
-     },
-     {
-      "code": "222299",
-      "ecu": "714",
-      "rx": "77E",
-      "sig": "",
       "nagebouwd": true
      },
      {
@@ -2796,7 +2579,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "POLO_ENGINE_RPM_AT_IDLE_REQUIRED_7E0",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2211A3",
@@ -3097,7 +2881,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "POLO_ACCELERATION_29BIT_7E0",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22133F",
@@ -3202,7 +2987,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "POLO_CAT_CONVERTER_OXYGEN_STORAGE_CAPACITY_MEASURED_7E0",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221511",
@@ -3553,6 +3339,22 @@
     {
      "cmd": "713.77D.221816|fc=1",
      "reden": "geen antwoord in OBDb"
+    },
+    {
+     "cmd": "714.77E.221014",
+     "reden": "geen signaal in OBDb"
+    },
+    {
+     "cmd": "714.77E.222206",
+     "reden": "geen signaal in OBDb"
+    },
+    {
+     "cmd": "714.77E.22224B",
+     "reden": "geen signaal in OBDb"
+    },
+    {
+     "cmd": "714.77E.222299",
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.7E8.221161|fc=1,c=17",
@@ -4434,13 +4236,6 @@
       "nagebouwd": true
      },
      {
-      "code": "2210E0",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "22114F",
       "ecu": "7E0",
       "rx": "7E8",
@@ -4460,13 +4255,6 @@
       "rx": "7E8",
       "sig": "TIGUAN_MISFIRES__CYL__2",
       "nagebouwd": true
-     },
-     {
-      "code": "221160",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
      },
      {
       "code": "2211BD",
@@ -4515,14 +4303,16 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_ENGINE_TORQUE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221017",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_A_C_REFRIGERANT_PRES",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221018",
@@ -4536,21 +4326,24 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_A_C_COMPRESSOR_TORQUE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22101B",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_GENERATOR_TORQUE_REQUEST",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22101C",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_GENERATOR_LOAD_SIG",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221026",
@@ -4585,7 +4378,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_BATTERY_V",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22105D",
@@ -4620,7 +4414,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_GENERATOR_PERFORMANCE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2210BE",
@@ -4690,7 +4485,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_CAMSHAFT_VSS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221125",
@@ -4711,7 +4507,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_COOLANT_FAN_1_ACTIVATION",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221135",
@@ -4823,7 +4620,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_ENGINE_RPM_AT_IDLE_REQUIRED",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221175",
@@ -5099,46 +4897,36 @@
       "nagebouwd": true
      },
      {
-      "code": "221205",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "221206",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "22120E",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_KNOCK_SNS_C1_V_MS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22120F",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_KNOCK_SNS_C3_V_MS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221210",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_KNOCK_SNS_C4_V_MS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221211",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_KNOCK_SNS_C2_V_MS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221216",
@@ -5208,7 +4996,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_REAR_CAT_CONV_T_MAIN_CAT_CONV_MODEL_VALUE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22127B",
@@ -5243,21 +5032,24 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_OXYGEN_SNS_1_BANK_1_CERAMIC_T",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221291",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_COOLANT_T_AT_ENGINE_START",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2212B0",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_ACCELERATION_29BIT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22133F",
@@ -5327,14 +5119,16 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_EXHAUST_GAS_T_AT_PROBE_BEFOR_PRECAT_MODEL_VALUE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2213A0",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_COOLANT_T_MODELED_VALUE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2213F4",
@@ -5369,7 +5163,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_INTAKE_AIR_T_IN_INTAKE_MANIFOLD",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2214A1",
@@ -5425,14 +5220,16 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_MAIN_CAT_OSC_AGE_CORRECTION_FACTOR",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221507",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_CAT_CONVERTER_OXYGEN_STORAGE_CAPACITY_MEASURED",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221509",
@@ -5509,7 +5306,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_GENERATOR_LOAD_NORMALIZED_VALUE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2215CB",
@@ -5537,7 +5335,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_LONGTITUDINAL_ACCELERATION_RAW_VALUE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2215D0",
@@ -5551,7 +5350,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_VEHICLE_LATERAL_ACCELERATION_RAW_VALUE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2215E7",
@@ -5635,7 +5435,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "TIGUAN_CRANKSHAFT_VSS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2216F4",
@@ -6209,7 +6010,8 @@
       "ecu": "7E1",
       "rx": "7E9",
       "sig": "TIGUAN_TORQUE_LIMITATION",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "222102",
@@ -6314,7 +6116,8 @@
       "ecu": "7E1",
       "rx": "7E9",
       "sig": "TIGUAN_ATF_T_CALCULATED",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22704F",
@@ -6328,21 +6131,24 @@
       "ecu": "7E1",
       "rx": "7E9",
       "sig": "TIGUAN_SELECTED_GEAR",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "227051",
       "ecu": "7E1",
       "rx": "7E9",
       "sig": "TIGUAN_ATF_T_MODELED_MAX_REACHED",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "227053",
       "ecu": "7E1",
       "rx": "7E9",
       "sig": "TIGUAN_TORQUE_CONVERTER_TORQUE_LOSS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "227064",
@@ -6363,11 +6169,11 @@
    "overgeslagen": [
     {
      "cmd": "7E0.2210E0",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.221160",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.7E8.221010|fc=1,c=17",
@@ -6411,11 +6217,11 @@
     },
     {
      "cmd": "7E0.7E8.221205",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.7E8.221206",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.7E8.22120E|fc=1,c=17",
@@ -6678,13 +6484,6 @@
       "nagebouwd": true
      },
      {
-      "code": "222AB2",
-      "ecu": "710",
-      "rx": "77A",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "222AB4",
       "ecu": "710",
       "rx": "77A",
@@ -6804,13 +6603,6 @@
       "nagebouwd": true
      },
      {
-      "code": "220800",
-      "ecu": "746",
-      "rx": "7B0",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "222603",
       "ecu": "746",
       "rx": "7B0",
@@ -6829,7 +6621,8 @@
       "ecu": "746",
       "rx": "7B0",
       "sig": "ID3_HVAC_FAN1_ACT,ID3_HVAC_FAN2_ACT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "222607",
@@ -6930,13 +6723,6 @@
       "nagebouwd": true
      },
      {
-      "code": "22263D",
-      "ecu": "746",
-      "rx": "7B0",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "2226ED",
       "ecu": "746",
       "rx": "7B0",
@@ -6963,13 +6749,6 @@
       "rx": "7B0",
       "sig": "ID3_CLIMATE_A_C_CLCH",
       "nagebouwd": true
-     },
-     {
-      "code": "224EEF",
-      "ecu": "746",
-      "rx": "7B0",
-      "sig": "",
-      "nagebouwd": false
      },
      {
       "code": "22F449",
@@ -7004,1222 +6783,1395 @@
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_MOTOR_TRQ_FRONT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22033B",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_MOTOR_TRQ_REAR",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "220343",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_MOTOR_TRQ_DIFF",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "220344",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_MOTOR_TRQ_RATED_FRONT,ID3_MOTOR_TRQ_RATED_REAR",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "220346",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_STEER_ANGLE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22035E",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_I_ENG",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "220360",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVAUX_I",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "220364",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVAUX_PWR",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "222005",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_BRAKE_BOOSTER_P",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "222055",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_RADIATOR_FAN_DUTY",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22276D",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_COOLANT_CIRC_PUMP_DUTY",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22295A",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_ENG_ODO",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2229D4",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_MOTOR_TRQ_REQ",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "223DEF",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_SOC",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "223DF8",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_MOTOR_RPM",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2243B8",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_DCDC_T_COOL",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224539",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_ACCEL",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224675",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_V_TRAC",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22028C",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_SOC_DISP",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2202BD",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_BMS_ODO",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221620",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_PTC_I",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221621",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_PTC_V",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221622",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_ECU_T",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221623",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_PTC_T_1",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221624",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_PTC_T_2",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22189B",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_AFTER_CONTACTS_V",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22189D",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_T_IN,ID3_HVBAT_T_OUT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E0E",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_T_MAX,ID3_HVBAT_T_MAX_ID",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E0F",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_T_MIN,ID3_HVBAT_T_MIN_ID",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E1B",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_I_LIM_CHG",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E1C",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_I_LIM_DSCH",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E2C",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_SOC_MAX,ID3_HVBAT_CELL_SOC_MAX_ID",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E2D",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_SOC_MIN,ID3_HVBAT_CELL_SOC_MIN_ID",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E33",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_MAX_ID",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E34",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_MIN_ID",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E36",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_V_BEFORE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E38",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_V_AFTER",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E39",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_V_CHG",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E3B",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_DC_BATTERY_V",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E3E",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_I_DC_2",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E40",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_001",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E41",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_002",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E42",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_003",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E43",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_004",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E44",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_005",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E45",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_006",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E46",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_007",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E47",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_008",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E48",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_009",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E49",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_010",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E4A",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_011",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E4B",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_012",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E4C",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_013",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E4D",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_014",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E4E",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_015",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E4F",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_016",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E50",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_017",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E51",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_018",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E52",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_019",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E53",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_020",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E54",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_021",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E55",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_022",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E56",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_023",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E57",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_024",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E58",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_025",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E59",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_026",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E5A",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_027",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E5B",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_028",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E5C",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_029",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E5D",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_030",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E5E",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_031",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E5F",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_032",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E60",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_033",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E61",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_034",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E62",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_035",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E63",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_036",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E64",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_037",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E65",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_038",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E66",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_039",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E67",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_040",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E68",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_041",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E69",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_042",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E6A",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_043",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E6B",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_044",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E6C",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_045",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E6D",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_046",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E6E",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_047",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E6F",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_048",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E70",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_049",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E71",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_050",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E72",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_051",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E73",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_052",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E74",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_053",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E75",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_054",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E76",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_055",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E77",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_056",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E78",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_057",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E79",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_058",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E7A",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_059",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E7B",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_060",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E7C",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_061",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E7D",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_062",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E7E",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_063",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E7F",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_064",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E80",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_065",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E81",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_066",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E82",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_067",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E83",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_068",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E84",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_069",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E85",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_070",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E86",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_071",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E87",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_072",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E88",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_073",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E89",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_074",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E8A",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_075",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E8B",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_076",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E8C",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_077",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E8D",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_078",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E8E",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_079",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E8F",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_080",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E90",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_081",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E91",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_082",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E92",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_083",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E93",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_084",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E94",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_085",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E95",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_086",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E96",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_087",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E97",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_088",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E98",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_089",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E99",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_090",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E9A",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_091",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E9B",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_092",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E9C",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_093",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E9D",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_094",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E9E",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_095",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221E9F",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_096",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EA0",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_097",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EA1",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_098",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EA2",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_099",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EA3",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_100",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EA4",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_101",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EA5",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_102",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EA6",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_103",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EA7",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_104",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EA8",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_105",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EA9",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_106",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EAA",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_107",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EAB",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_CELL_V_108",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EAE",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_1",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EAF",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_2",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EB0",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_3",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EB1",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_4",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EB2",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_5",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EB3",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_6",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EB4",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_7",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EB5",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_8",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EB6",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_9",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EB7",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_10",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EB8",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_11",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EB9",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_12",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EBA",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_13",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EBB",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_14",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EBC",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_15",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221EBD",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_16",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "222A0B",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_BATTERY_T",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "225170",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_MINIMUM_DISCHARGE_V",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "225171",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_MAXIMUM_CHARGE_V",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "225867",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_ODO_BMS2",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "227425",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_HVBAT_MOD_T_17",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22743B",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_CIRC_PUMP_FLOW",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "227448",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_AC_CHARGING,ID3_DRIVE_MODE,ID3_RAPID_CHARGE_PORT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22F40C",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_ELDRIVE_MOTOR_RPM",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22F40D",
       "ecu": "FC00",
       "rx": null,
       "sig": "ID3_VSS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      }
     ]
    },
    "overgeslagen": [
     {
      "cmd": "710.77A.222AB2",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "746.7B0.220800",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "746.7B0.222606|fc=1",
@@ -8227,11 +8179,11 @@
     },
     {
      "cmd": "746.7B0.22263D",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "746.7B0.224EEF",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "FC00.FE0076.220335|ta=76,c=17",
@@ -9414,13 +9366,6 @@
       "code": "22224B",
       "ecu": "714",
       "rx": "77E",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "22224B",
-      "ecu": "714",
-      "rx": "77E",
       "sig": "A3_DASH_OIL_THERMAL_WEAR",
       "nagebouwd": true
      },
@@ -9558,25 +9503,11 @@
       "nagebouwd": true
      },
      {
-      "code": "2227C3",
-      "ecu": "746",
-      "rx": "7B0",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "221945",
       "ecu": "70E",
       "rx": "778",
       "sig": "A3_MQB_HTR_NOZZLE",
       "nagebouwd": true
-     },
-     {
-      "code": "22105C",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
      },
      {
       "code": "221002",
@@ -9703,27 +9634,6 @@
       "rx": "7E8",
       "sig": "A3_ODO_HD",
       "nagebouwd": true
-     },
-     {
-      "code": "22118D",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "22118E",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "22118F",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
      },
      {
       "code": "2211BA",
@@ -9857,20 +9767,6 @@
       "rx": "7E8",
       "sig": "A3_VPWR",
       "nagebouwd": true
-     },
-     {
-      "code": "221002",
-      "ecu": "7E1",
-      "rx": "7E9",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "221003",
-      "ecu": "7E1",
-      "rx": "7E9",
-      "sig": "",
-      "nagebouwd": false
      },
      {
       "code": "22028D",
@@ -10745,35 +10641,35 @@
    "overgeslagen": [
     {
      "cmd": "714.77E.22224B",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "746.7B0.2227C3",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.22105C",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.7E8.22118D",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.7E8.22118E",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E0.7E8.22118F",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E1.221002",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E1.221003",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     }
    ]
   },
@@ -13113,7 +13009,8 @@
       "ecu": "700",
       "rx": "708",
       "sig": "COROLLA_INJECTION",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "22102A",
@@ -13302,7 +13199,8 @@
       "ecu": "700",
       "rx": "708",
       "sig": "COROLLA_LFPS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "2215FA",
@@ -13337,7 +13235,8 @@
       "ecu": "700",
       "rx": "708",
       "sig": "COROLLA_FLI",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "221F3C",
@@ -13498,14 +13397,16 @@
       "ecu": "750",
       "rx": "758",
       "sig": "COROLLA_TIRE_T_FL,COROLLA_TIRE_T_FR,COROLLA_TIRE_T_RL,COROLLA_TIRE_T_RR,COROLLA_TIRE_T_SPARE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2130",
       "ecu": "750",
       "rx": "758",
       "sig": "COROLLA_TIRE_P_FL,COROLLA_TIRE_P_FR,COROLLA_TIRE_P_RL,COROLLA_TIRE_P_RR,COROLLA_TIRE_P_SPARE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2104",
@@ -14109,28 +14010,32 @@
       "ecu": "750",
       "rx": "758",
       "sig": "RAV4_TT_1,RAV4_TT_2,RAV4_TT_3,RAV4_TT_4,RAV4_TT_5",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2130",
       "ecu": "750",
       "rx": "758",
       "sig": "RAV4_TP_FL,RAV4_TP_FR,RAV4_TP_RL,RAV4_TP_RR,RAV4_TP_SPARE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2103",
       "ecu": "7B0",
       "rx": "7B8",
       "sig": "RAV4_FL_VSS,RAV4_FR_VSS,RAV4_RL_VSS,RAV4_RR_VSS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "2142",
       "ecu": "7B0",
       "rx": "7B8",
       "sig": "RAV4_FL_ACC,RAV4_FR_ACC,RAV4_RL_ACC,RAV4_RR_ACC",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "2121",
@@ -14489,7 +14394,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "NIRO_GDI_IT_A1,NIRO_GDI_IT_A2,NIRO_GDI_IT_A3,NIRO_GDI_IT_A4,NIRO_GDI_IT_B1,NIRO_GDI_IT_B2,NIRO_GDI_IT_B3,NIRO_GDI_IT_B4",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "22E00A",
@@ -14724,13 +14630,6 @@
       "nagebouwd": true
      },
      {
-      "code": "2101",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "21A0",
       "ecu": "7E1",
       "rx": "7E9",
@@ -14742,7 +14641,7 @@
    "overgeslagen": [
     {
      "cmd": "7E0.7E8.2101",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     }
    ]
   },
@@ -15108,13 +15007,6 @@
       "nagebouwd": true
      },
      {
-      "code": "220104",
-      "ecu": "7D1",
-      "rx": "7D9",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "224000",
       "ecu": "7D1",
       "rx": "7D9",
@@ -15140,7 +15032,7 @@
    "overgeslagen": [
     {
      "cmd": "7D1.7D9.220104",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     }
    ],
    "readiness": "000000"
@@ -15499,7 +15391,6 @@
       "221E1A": "00 AF",
       "221E1F": "01",
       "221E23": "3C",
-      "22DD01": "01 CF 56",
       "22F404": "00",
       "22F406": "79",
       "22F407": "76",
@@ -15661,20 +15552,6 @@
       "nagebouwd": true
      },
      {
-      "code": "222817",
-      "ecu": "726",
-      "rx": "72E",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222818",
-      "ecu": "726",
-      "rx": "72E",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "22401E",
       "ecu": "726",
       "rx": "72E",
@@ -15780,13 +15657,6 @@
       "nagebouwd": true
      },
      {
-      "code": "22D100",
-      "ecu": "726",
-      "rx": "72E",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "22DD01",
       "ecu": "726",
       "rx": "72E",
@@ -15836,20 +15706,6 @@
       "nagebouwd": true
      },
      {
-      "code": "222B0C",
-      "ecu": "760",
-      "rx": "768",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222B0D",
-      "ecu": "760",
-      "rx": "768",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "222B11",
       "ecu": "760",
       "rx": "768",
@@ -15857,39 +15713,11 @@
       "nagebouwd": true
      },
      {
-      "code": "22DD01",
-      "ecu": "760",
-      "rx": "768",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "221E12",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
       "code": "221E1C",
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "FOCUS_TOT",
       "nagebouwd": true
-     },
-     {
-      "code": "22F42F",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "22F45C",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
      },
      {
       "code": "220301",
@@ -16344,7 +16172,8 @@
       "ecu": "7E0",
       "rx": "7E8",
       "sig": "FOCUS_GEAR",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "221E16",
@@ -16403,13 +16232,6 @@
       "nagebouwd": true
      },
      {
-      "code": "22DD01",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": true
-     },
-     {
       "code": "22F404",
       "ecu": "7E0",
       "rx": "7E8",
@@ -16457,13 +16279,6 @@
       "rx": "7E8",
       "sig": "FOCUS_IAT_ALT2",
       "nagebouwd": true
-     },
-     {
-      "code": "22F41F",
-      "ecu": "7E0",
-      "rx": "7E8",
-      "sig": "",
-      "nagebouwd": false
      },
      {
       "code": "22F421",
@@ -16527,108 +16342,45 @@
       "rx": "7E9",
       "sig": "FOCUS_TRANS_ODO",
       "nagebouwd": true
-     },
-     {
-      "code": "224800",
-      "ecu": "7E4",
-      "rx": "7EC",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "224801",
-      "ecu": "7E4",
-      "rx": "7EC",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "224802",
-      "ecu": "7E4",
-      "rx": "7EC",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "224807",
-      "ecu": "7E4",
-      "rx": "7EC",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "224808",
-      "ecu": "7E4",
-      "rx": "7EC",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "22480B",
-      "ecu": "7E4",
-      "rx": "7EC",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "22480D",
-      "ecu": "7E4",
-      "rx": "7EC",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "22480E",
-      "ecu": "7E4",
-      "rx": "7EC",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "224840",
-      "ecu": "7E4",
-      "rx": "7EC",
-      "sig": "",
-      "nagebouwd": false
      }
     ]
    },
    "overgeslagen": [
     {
      "cmd": "726.72E.222817",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "726.72E.222818",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "726.72E.22D100",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "760.768.222B0C",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "760.768.222B0D",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "760.768.22DD01",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7DF.221E12",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7DF.22F42F",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7DF.22F45C",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "0164",
@@ -16659,44 +16411,48 @@
      "reden": "geen antwoord in OBDb"
     },
     {
+     "cmd": "7E0.7E8.22DD01",
+     "reden": "geen signaal in OBDb"
+    },
+    {
      "cmd": "7E0.7E8.22F41F",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E4.7EC.224800",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E4.7EC.224801",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E4.7EC.224802",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E4.7EC.224807",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E4.7EC.224808",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E4.7EC.22480B",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E4.7EC.22480D",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E4.7EC.22480E",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E4.7EC.224840",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     }
    ]
   },
@@ -16932,20 +16688,6 @@
       "rx": "72E",
       "sig": "FIESTA_TP_RL",
       "nagebouwd": true
-     },
-     {
-      "code": "222817",
-      "ecu": "726",
-      "rx": "72E",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "222818",
-      "ecu": "726",
-      "rx": "72E",
-      "sig": "",
-      "nagebouwd": false
      },
      {
       "code": "22401E",
@@ -17575,11 +17317,11 @@
    "overgeslagen": [
     {
      "cmd": "726.72E.222817",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "726.72E.222818",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "015F",
@@ -17894,7 +17636,8 @@
       "ecu": "797",
       "rx": "79A",
       "sig": "LEAF_HTR_REAR",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "simulatie"
      },
      {
       "code": "221128",
@@ -19495,133 +19238,152 @@
       "ecu": "6F1",
       "rx": "60D",
       "sig": "3SERIES_VSS_INSTR",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224AB1",
       "ecu": "6F1",
       "rx": "612",
       "sig": "3SERIES_VSS2",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22586F",
       "ecu": "6F1",
       "rx": "612",
       "sig": "3SERIES_EOP",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DA1F",
       "ecu": "6F1",
       "rx": "618",
       "sig": "3SERIES_KICKDOWN",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DA22",
       "ecu": "6F1",
       "rx": "618",
       "sig": "3SERIES_TQ_CNVRT_LOCKUP",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DA23",
       "ecu": "6F1",
       "rx": "618",
       "sig": "3SERIES_ODO_LOWRES",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DA25",
       "ecu": "6F1",
       "rx": "618",
       "sig": "3SERIES_EOT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DA28",
       "ecu": "6F1",
       "rx": "618",
       "sig": "3SERIES_BRAKE_SWITCH",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DA2A",
       "ecu": "6F1",
       "rx": "618",
       "sig": "3SERIES_TQ_CNVRT_RPM,3SERIES_TRANS_SHAFT_RPM",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DA2E",
       "ecu": "6F1",
       "rx": "618",
       "sig": "3SERIES_GEAR,3SERIES_GEAR_SHIFT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DB32",
       "ecu": "6F1",
       "rx": "619",
       "sig": "3SERIES_AXLE_FRONT_ACTUAL_TORQUE,3SERIES_AXLE_FRONT_SETPOINT_TORQUE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DFE7",
       "ecu": "6F1",
       "rx": "619",
       "sig": "3SERIES_OIL_CHANGE_DIST,3SERIES_VGT_CAL_ANGLE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DBE4",
       "ecu": "6F1",
       "rx": "629",
       "sig": "3SERIES_FL_SPD,3SERIES_FR_SPD,3SERIES_RL_SPD,3SERIES_RR_SPD",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221700",
       "ecu": "6F1",
       "rx": "640",
       "sig": "3SERIES_ODO_2",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DCDD",
       "ecu": "6F1",
       "rx": "656",
       "sig": "3SERIES_CENTRAL_LOCK,3SERIES_DOOR_DRIVER,3SERIES_DOOR_DRIVER_REAR,3SERIES_DOOR_PASSENGER,3SERIES_DOOR_PASSENGER_REAR,3SERIES_HOOD,3SERIES_REAR_WINDOW,3SERIES_TRUNK",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D107",
       "ecu": "6F1",
       "rx": "660",
       "sig": "3SERIES_VSS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D10D",
       "ecu": "6F1",
       "rx": "660",
       "sig": "3SERIES_ODO,3SERIES_ODO_ALT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D111",
       "ecu": "6F1",
       "rx": "660",
       "sig": "3SERIES_AUX_PWR,3SERIES_RANGE_E_CUR,3SERIES_RANGE_E_MAX,3SERIES_RANGE_E_USE,3SERIES_RANGE_F_CUR,3SERIES_RANGE_F_MAX",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D112",
       "ecu": "6F1",
       "rx": "660",
       "sig": "3SERIES_AAT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      }
     ]
    },
@@ -19786,413 +19548,472 @@
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_LAMBDA_6F1",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224015",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_IAT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22402B",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_12V_A,COOPER_12V_T,COOPER_12V_V",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22411E",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_COOLANT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224201",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_BARO",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224205",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_BOOST_P",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224300",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_ET",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224402",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_EOT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224408",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_EOT_DME",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22442C",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_OIL_LEVEL",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224506",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_OIL_TEMP",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22480C",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_LOAD_TGT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224A2D",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_MAP",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224A2E",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_REV_LIMIT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224A49",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_IGN_TIMING_1",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224A4A",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_IGN_TIMING_2",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224A4B",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_LOAD_2",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224A4C",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_IGN_TIMING_3",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224A4D",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_IGN_TIMING_4",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224AB0",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_BOOST_P_SET",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "224AB1",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_VSS2",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22558E",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_ODO_DME",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22558F",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_ENG_HOURS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2256D7",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_FRP",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2257C3",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_OIL_TEMP_ALT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22580F",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_IAT_DME",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "225813",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_LOAD",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22582C",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_LAMBDA_2",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22582F",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_CAT_T",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22586F",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_EOP",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "225889",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_LAMBDA",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2258BA",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_CRANK_TQ",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2258F3",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_LOW_SIDE_FUEL_P",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "2259FA",
       "ecu": "6F1",
       "rx": "612",
       "sig": "COOPER_IGN_ANGLE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DA2E",
       "ecu": "6F1",
       "rx": "618",
       "sig": "COOPER_GEAR,COOPER_GEAR_SHIFT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DA37",
       "ecu": "6F1",
       "rx": "618",
       "sig": "COOPER_TIME_D,COOPER_TIME_M,COOPER_TIME_S",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DBE4",
       "ecu": "6F1",
       "rx": "629",
       "sig": "COOPER_FL_VSS,COOPER_FR_VSS,COOPER_RL_VSS,COOPER_RR_VSS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DBE5",
       "ecu": "6F1",
       "rx": "629",
       "sig": "COOPER_BRAKE_P",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DC98",
       "ecu": "6F1",
       "rx": "629",
       "sig": "COOPER_TPMS_BAT_FL,COOPER_TPMS_POS_FL,COOPER_TP_FL,COOPER_TP_SET_FL,COOPER_TT_FL",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DC99",
       "ecu": "6F1",
       "rx": "629",
       "sig": "COOPER_TPMS_BAT_FR,COOPER_TPMS_POS_FR,COOPER_TP_FR,COOPER_TP_SET_FR,COOPER_TT_FR",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DC9A",
       "ecu": "6F1",
       "rx": "629",
       "sig": "COOPER_TPMS_BAT_RL,COOPER_TPMS_POS_RL,COOPER_TP_RL,COOPER_TP_SET_RL,COOPER_TT_RL",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DC9B",
       "ecu": "6F1",
       "rx": "629",
       "sig": "COOPER_TPMS_BAT_RR,COOPER_TPMS_POS_RR,COOPER_TP_RR,COOPER_TP_SET_RR,COOPER_TT_RR",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22DB99",
       "ecu": "6F1",
       "rx": "630",
       "sig": "COOPER_STEER_TQ",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "221700",
       "ecu": "6F1",
       "rx": "640",
       "sig": "COOPER_ODO_2",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D130",
       "ecu": "6F1",
       "rx": "640",
       "sig": "COOPER_PARK_BRAKE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D906",
       "ecu": "6F1",
       "rx": "640",
       "sig": "COOPER_AC_COMP_PWM,COOPER_AC_COMP_STAT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D107",
       "ecu": "6F1",
       "rx": "660",
       "sig": "COOPER_VSS",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D10D",
       "ecu": "6F1",
       "rx": "660",
       "sig": "COOPER_ODO,COOPER_ODO_ALT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D111",
       "ecu": "6F1",
       "rx": "660",
       "sig": "COOPER_AUX_PWR,COOPER_RANGE_E_CUR,COOPER_RANGE_E_MAX,COOPER_RANGE_E_USE,COOPER_RANGE_F_CUR,COOPER_RANGE_F_MAX",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D112",
       "ecu": "6F1",
       "rx": "660",
       "sig": "COOPER_AAT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D129",
       "ecu": "6F1",
       "rx": "660",
       "sig": "COOPER_BC_AVG_CONS,COOPER_BC_AVG_SPD,COOPER_BC_RANGE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D12A",
       "ecu": "6F1",
       "rx": "660",
       "sig": "COOPER_CONS_KWH_100KM",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D85C",
       "ecu": "6F1",
       "rx": "678",
       "sig": "COOPER_CABIN_T",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D8C5",
       "ecu": "6F1",
       "rx": "678",
       "sig": "COOPER_COMP_STATE",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D91A",
       "ecu": "6F1",
       "rx": "678",
       "sig": "COOPER_AIR_DIST_L,COOPER_AIR_DIST_R",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D92C",
       "ecu": "6F1",
       "rx": "678",
       "sig": "COOPER_HVAC_OFF",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D930",
       "ecu": "6F1",
       "rx": "678",
       "sig": "COOPER_HVAC_AUC",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D931",
       "ecu": "6F1",
       "rx": "678",
       "sig": "COOPER_HVAC_RECIRC",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      },
      {
       "code": "22D96B",
       "ecu": "6F1",
       "rx": "678",
       "sig": "COOPER_IHX_AAT",
-      "nagebouwd": false
+      "nagebouwd": false,
+      "waarom": "adressering"
      }
     ]
    },
@@ -20522,75 +20343,33 @@
       "rx": "7EA",
       "sig": "CCLASS_BRAKE_VACUUM_P,CCLASS_LAT_ACC,CCLASS_LON_ACC,CCLASS_MCYL_BRAKE_P,CCLASS_STEER_ANGLE,CCLASS_YAW_RATE",
       "nagebouwd": true
-     },
-     {
-      "code": "222005",
-      "ecu": "7E5",
-      "rx": "7ED",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "226050",
-      "ecu": "7E5",
-      "rx": "7ED",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "226053",
-      "ecu": "7E5",
-      "rx": "7ED",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "226071",
-      "ecu": "7E5",
-      "rx": "7ED",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "226502",
-      "ecu": "7E5",
-      "rx": "7ED",
-      "sig": "",
-      "nagebouwd": false
-     },
-     {
-      "code": "226504",
-      "ecu": "7E5",
-      "rx": "7ED",
-      "sig": "",
-      "nagebouwd": false
      }
     ]
    },
    "overgeslagen": [
     {
      "cmd": "7E5.222005",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E5.226050",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E5.226053",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E5.226071",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E5.226502",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     },
     {
      "cmd": "7E5.226504",
-     "reden": "geen antwoord in OBDb"
+     "reden": "geen signaal in OBDb"
     }
    ]
   }

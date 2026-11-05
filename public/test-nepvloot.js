@@ -104,6 +104,15 @@ VLOOT.forEach((p) => {
     else didMis.push(p.id + ' ' + code + '@' + e.adres + ': ' + t.slice(0, 50) + ' (verwacht ' + verwacht + ')');
   }));
 });
+// Zonder ATCRA: het antwoord op kop + 8 komt door (CX-5 720 → 728), een ander antwoordadres niet (Golf 710 → 77A).
+{
+  const cx = N.maak(VLOOT.find((p) => p.id === 'cx5_18')), go = N.maak(VLOOT.find((p) => p.id === 'golf19'));
+  ['ATE0', 'ATS0', 'ATH0', 'ATSP6', 'ATSH720'].forEach((c) => cx.stuur(c));
+  ['ATE0', 'ATS0', 'ATH0', 'ATSP6', 'ATSH710'].forEach((c) => go.stuur(c));
+  const a = cx.stuur('222A05').tekst, b = go.stuur('222A0C').tekst;
+  waar('ATSH720 zonder ATCRA: de bandenspanning van 728 komt door', /622A05/.test(a), a);
+  waar('ATSH710 zonder ATCRA: 77A blijft weg (daar is ATCRA voor)', /NO DATA/.test(b), b);
+}
 waar('elk profiel is te bouwen (' + gebouwd + ')', gebouwd === VLOOT.length, didMis.slice(0, 3).join(' | '));
 waar('PLNepAuto geeft de OBDb-bytes terug op elke nagebouwde code (' + didOk + ')', didOk > 100 && !didMis.length, didMis.slice(0, 3).join(' | '));
 waar('met mode 01 staat de motor-ECU vooraan (Renault: DB33 niet bij een fabrieks-ECU)', VLOOT.every((p) => !p.aangeboden.mode01.length || String(p.ecus[0].pids).trim()),
@@ -119,6 +128,9 @@ waar('bitmap telt niet mee in de noemer', t1.m01 === 3, t1.m01);
 waar('mode 01: 2 van 3', t1.m01ok === 2 && t1.m01mist.join(',') === '010D', JSON.stringify(t1));
 waar('fabriek: 1 van 3 (tx>rx vergeleken op tx), 1 zonder kandidaat', t1.didOk === 1 && t1.geenKand === 1, JSON.stringify(t1));
 waar('dekking = 3/6 = 50 %, snel = 2/6', t1.dekking === 50 && t1.snel === 33.3, t1.dekking + ' / ' + t1.snel);
+const P3 = { aangeboden: { mode01: ['0105'], did: [{ code: '222A05', ecu: '720' }, { code: '222A06', ecu: '720', waarom: 'simulatie' }, { code: '22F190', ecu: '6F1', waarom: 'adressering' }] } };
+const t3 = tel(P3, { supported: ['0105'], zoek: { kand: ['222A05@720'], past: ['222A05@720'], nee: [], vreemd: [], fout: [] } });
+waar('niet na te bouwen telt niet mee, een adressering die de app niet kan wél', t3.did === 2 && t3.dekking === 66.7, JSON.stringify(t3));
 const t2 = tel(P, { supported: ['0105', '010C', '010D'] });
 waar('zonder zoekronde: alleen mode 01, geen spook', t2.dekking === 50 && !t2.spook.length, JSON.stringify(t2));
 

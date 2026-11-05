@@ -39,6 +39,7 @@ const fs = require('fs');
 const { startApp } = require(path.join(__dirname, '..', 'plbrowser.js'));
 const VLOOT = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'nepvloot', 'profielen.json'), 'utf8')).auto;
 const OBDB = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'nepvloot', 'obdb.json'), 'utf8'));
+const STEUN = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'nepvloot', 'steun.json'), 'utf8'));
 const NEP = fs.readFileSync(path.join(__dirname, 'nepauto.js'), 'utf8');
 
 const WENS = 90;
@@ -89,9 +90,16 @@ const ROUTE = (id) => `(async function(){
   // kent repo-namen zonder hoofdletters (FIAT-500 = Fiat-500), de Worker dus ook.
   const gevraagd = [];
   const haal = async function(repo){ gevraagd.push(repo); return String(repo).toLowerCase() === p.repo.toLowerCase() ? { gevonden: true, data: { commands: window._PL_OBDB[p.repo] || [] } } : { gevonden: false }; };
+  // obdb_steun: dezelfde jaarvolgorde als de Worker (jaar, ±1, ±2); nepvloot/
+  // heeft per model één jaar. test-klantplatform.js toetst de echte actie.
+  const haalSteun = async function(repo, jaar){
+    if (String(repo).toLowerCase() !== p.repo.toLowerCase()) return { gevonden: false };
+    for (const j of [jaar, jaar - 1, jaar + 1, jaar - 2, jaar + 2]) if (window._PL_STEUN[j]) return { gevonden: true, jaar: j, tekst: window._PL_STEUN[j] };
+    return { gevonden: false };
+  };
   let z = null;
-  try { z = await tijd(PLEigen.zoekObdb({ merk: u.merk || p.merk, model: p.model, bouwjaar: p.jaar, brandstof: vehicleInfo.brandstof }, haal), 10000, 'zoekObdb'); } catch (e) { u.fout.push(e.message); }
-  u.obdb = z ? { ok: z.ok, repo: z.repo || '', fout: z.fout || '', n: (z.kandidaten || []).length, afgekapt: z.afgekapt || 0, nietBruikbaar: z.nietBruikbaar || 0, gevraagd: gevraagd } : null;
+  try { z = await tijd(PLEigen.zoekObdb({ merk: u.merk || p.merk, model: p.model, bouwjaar: p.jaar, brandstof: vehicleInfo.brandstof }, haal, window._PL_ZONDER_STEUN ? null : haalSteun), 10000, 'zoekObdb'); } catch (e) { u.fout.push(e.message); }
+  u.obdb = z ? { ok: z.ok, repo: z.repo || '', fout: z.fout || '', n: (z.kandidaten || []).length, afgekapt: z.afgekapt || 0, nietBruikbaar: z.nietBruikbaar || 0, steunJaar: z.steunJaar || null, nietDitJaar: z.nietDitJaar || 0, gevraagd: gevraagd } : null;
   if (z && z.ok && z.kandidaten && z.kandidaten.length) {
     const kand = PLPidZoek.kandidaten(z.kandidaten, []);
     let r = null;
@@ -115,7 +123,8 @@ function tel(p, u) {
   const m01 = p.aangeboden.mode01.filter((x) => !BITMAP.test(x));
   const m01ok = m01.filter((x) => sup.has(x));
   const spook = [...sup].filter((x) => m01.indexOf(x) < 0);
-  const did = [...new Set(p.aangeboden.did.map((d) => sleutel(d.code, d.ecu)))];
+  // Wat OBDb niet na te bouwen gaf, is een gat in de proef en telt niet.
+  const did = [...new Set(p.aangeboden.did.filter((d) => d.waarom !== 'simulatie').map((d) => sleutel(d.code, d.ecu)))];
   const z = u.zoek || { kand: [], past: [], nee: [], vreemd: [], fout: [] };
   const past = new Set(z.past.map((k) => sleutel(...k.split('@'))));
   const kand = new Set(z.kand.map((k) => sleutel(...k.split('@'))));
@@ -126,6 +135,7 @@ function tel(p, u) {
     m01: m01.length, m01ok: m01ok.length, m01mist: m01.filter((x) => !sup.has(x)), spook,
     did: did.length, didOk: didOk.length, geenKand: geenKand.length,
     nagebouwd: p.aangeboden.did.filter((d) => d.nagebouwd).length,
+    simulatie: p.aangeboden.did.filter((d) => d.waarom === 'simulatie').length,
     nee: z.nee.length, vreemd: z.vreemd, kandFout: z.fout,
     snel: noemer ? Math.round(1000 * m01ok.length / noemer) / 10 : 0,
     dekking: noemer ? Math.round(1000 * (m01ok.length + didOk.length) / noemer) / 10 : 0
@@ -145,7 +155,7 @@ async function rij(id) {
   }
   try {
     await app.venster(412, 915);
-    await app.ev(NEP + ';window._PL_VLOOT=' + JSON.stringify([p]) + ';window._PL_OBDB=' + JSON.stringify({ [p.repo]: OBDB[p.repo] || [] }) + ';true');
+    await app.ev(NEP + ';window._PL_VLOOT=' + JSON.stringify([p]) + ';window._PL_OBDB=' + JSON.stringify({ [p.repo]: OBDB[p.repo] || [] }) + ';window._PL_STEUN=' + JSON.stringify(STEUN[p.repo] || {}) + ';true');
     const u = await app.ev(ROUTE(id));
     toets('de route liep zonder vastlopen', !u.fout.length, u.fout.join(' | '));
     const t = tel(p, u);
@@ -156,8 +166,13 @@ async function rij(id) {
     const o = u.obdb || {};
     if (!o.repo) let_op('OBDb-model niet gevonden door de app: gezocht als ' + (o.gevraagd || []).join(', ') + (o.fout ? ' (' + o.fout + ')' : '') + ' — het bestand heet ' + p.repo);
     if (o.repo && !o.n && t.did) let_op('OBDb (' + o.repo + ') gaf de app 0 kandidaten, terwijl de auto ' + t.did + ' fabriekscodes heeft');
-    console.log('  mode 01  ' + t.m01ok + '/' + t.m01 + '   fabriek ' + t.didOk + '/' + t.did + ' (nagebouwd ' + t.nagebouwd + ', geen kandidaat ' + t.geenKand +
-      (o.afgekapt ? ', ' + o.afgekapt + ' weg door de kap van 60' : '') + (o.nietBruikbaar ? ', ' + o.nietBruikbaar + ' adressering' : '') + ', weigert ' + t.nee + ', vreemd ' + t.vreemd.length + ')');
+    console.log('  mode 01  ' + t.m01ok + '/' + t.m01 + '   fabriek ' + t.didOk + '/' + t.did + ' (nagebouwd ' + t.nagebouwd + (t.simulatie ? ', ' + t.simulatie + ' niet na te bouwen' : '') + ', geen kandidaat ' + t.geenKand +
+      (o.steunJaar ? ', steunlijst ' + o.steunJaar + (o.nietDitJaar ? ' (' + o.nietDitJaar + ' niet dit jaar)' : '') : ', geen steunlijst') + (o.afgekapt ? ', ' + o.afgekapt + ' weg door de kap van 60' : '') + (o.nietBruikbaar ? ', ' + o.nietBruikbaar + ' adressering' : '') + ', weigert ' + t.nee + ', vreemd ' + t.vreemd.length + ')');
+    if (process.env.DEKKING_DETAIL) {
+      const z = u.zoek || { kand: [], nee: [] }, kand = new Set(z.kand.map((k) => sleutel(...k.split('@'))));
+      console.log('    geen kandidaat: ' + p.aangeboden.did.filter((d) => !kand.has(sleutel(d.code, d.ecu))).map((d) => d.code + '@' + d.ecu + (d.nagebouwd ? '' : '(n)') + ':' + d.sig).join(' '));
+      console.log('    weigert: ' + z.nee.join(' '));
+    }
     t.vreemd.slice(0, 3).forEach((v) => console.log('    vreemd: ' + v));
     t.kandFout.slice(0, 3).forEach((v) => console.log('    fout: ' + v));
     console.log('  dekking  snel ' + t.snel + ' %   grondig ' + t.dekking + ' %   (' + Math.round((Date.now() - t0) / 1000) + ' s)');
