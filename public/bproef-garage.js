@@ -253,7 +253,9 @@ const NEPSERVER = `(function(){
       // Ook de kopie die de app al heeft (uit de stand van 4f).
       [v].concat((PLGarage.staat().stand || {}).voertuigen || []).forEach(x => { if (x.id === v.id) { x.merk = 'Mazda'; x.model = 'CX-5 2.2'; x.eigen_pids = []; x.pid_selectie = []; } });
       S.bib = [{ id: 'b1', code: '220202', ecu: '', naam: 'Olietemperatuur', formule: 'A-40', eenheid: '°C', bron: 'online', url: 'https://forum.voorbeeld.nl/cx5', werkt: 0, werkt_niet: 0, mijn: null },
-               { id: 'b2', code: '221E1C', ecu: '7E1', naam: 'Temperatuur automaat', formule: 'A-40', eenheid: '°C', bron: 'klant', url: null, werkt: 3, werkt_niet: 1, mijn: null }];
+               { id: 'b2', code: '221E1C', ecu: '7E1', naam: 'Temperatuur automaat', formule: 'A-40', eenheid: '°C', bron: 'klant', url: null, werkt: 3, werkt_niet: 1, mijn: null },
+               // Besluit d deel 2: een stand uit de bibliotheek, met bereik en lijst.
+               { id: 'b3', code: '221003', ecu: '7E1', naam: 'Current gear', formule: 'A', eenheid: '', min: 1, max: 4, standen: { 1: 'First gear', 2: 'Second gear', 4: 'Fourth gear' }, bron: 'obdb', url: 'https://github.com/OBDb/Mazda-CX-5', werkt: 0, werkt_niet: 0, mijn: null }];
       const wacht = async (f) => { for (let i = 0; i < 40 && !f(); i++) await new Promise(r => setTimeout(r, 50)); return f(); };
       PLGarage.open(v.id); PLGarage._tab('sensoren');
       const body = () => document.getElementById('plGarBody').textContent;
@@ -263,6 +265,13 @@ const NEPSERVER = `(function(){
       // Uit de bibliotheek toevoegen
       PLGarage._bibErbij('b2');
       uit.erbij = /staat bij je sensoren/.test(body()) && _st_eigen().some(e => e.code === '221E1C' && e.ecu === '7E1');
+      PLGarage._bibErbij('b3');
+      const st = _st_eigen().find(e => e.code === '221003');
+      uit.stand = !!st && st.min === 1 && st.max === 4 && !!st.standen && st.standen[2] === 'Second gear';
+      // En de meter zegt het woord, niet het getal (fv → standTekst).
+      PLEigen.zet([st], 'x');
+      uit.standTekst = fv(2, '221003') + '|' + fv(3, '221003');
+      PLEigen.zet(null);
       // 15-10-2026: niet nog eens in de bibliotheek; de stand gaat mee naar de eigen sensor.
       uit.eenKeer = !document.querySelector('#plGarBody button[onclick="PLGarage._bibErbij(\\'b2\\')"]') &&
         !!document.querySelector('#plGarBody button[onclick="PLGarage._bibErbij(\\'b1\\')"]') &&
@@ -318,6 +327,8 @@ const NEPSERVER = `(function(){
     })()`);
     toets('de bibliotheek van dit model staat in Sensoren, met stand en bron', bib.lijst && bib.bron, JSON.stringify(bib));
     toets('uit de bibliotheek toevoegen neemt het ECU-adres mee', bib.erbij, JSON.stringify(bib));
+    toets('een stand uit de bibliotheek neemt zijn bereik en lijst mee (besluit d deel 2)', bib.stand, JSON.stringify(bib));
+    toets('de meter toont een stand als woord, een waarde buiten de lijst als getal', bib.standTekst === 'Second gear|3.00', JSON.stringify(bib.standTekst));
     toets('een toegevoegde code staat één keer: bij de eigen sensoren, met de stand uit de bibliotheek', bib.eenKeer, JSON.stringify(bib));
     toets('berekende sensoren: aangevinkt bovenaan, de rest ingeklapt', bib.ingeklapt, JSON.stringify(bib));
     toets('een eigen code met ECU-adres (7e0 → 7E0) en tempo traag', bib.eigen && bib.eigen.ecu === '7E0' && bib.eigen.tempo === 'traag', JSON.stringify(bib.eigen));

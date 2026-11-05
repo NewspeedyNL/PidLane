@@ -750,7 +750,8 @@ function bij(id, ind, pid, val, st){
     const d=deel(vx, x.lo, x.hi);
     // De ring van het toerental: 0–8000, op een diesel 0–6000 (#393), net
     // als de schaal van de basismeter.
-    const t=tekst(vx, x.dec);
+    // Een stand (aan/uit, versnelling) als woord, zolang er geen eigen weergave op zit.
+    const t=(!w && typeof standTekst==='function' && standTekst(val, pid)) || tekst(vx, x.dec);
     // In een buis staat de eenheid achter het getal (90°); elders heeft hij een eigen vakje.
     zetTekst('vpf-w-'+x.rol, x.soort==='thermo' && t!=='—' ? t+x.eenheid : t);
     const f=el('vpf-f-'+x.rol), plek=el('vpf-p-'+x.rol);

@@ -411,6 +411,11 @@ async function laadWorker() {
   bl = await roep(tokA, { actie: 'pidbib_lijst', voertuig_id: v1.voertuig.id });
   const online = bl.lijst.find((x) => x.code === '220202');
   toets('kandidaten: Anna ziet de online kandidaat, met de bron en nog niet getest', !!online && online.bron === 'online' && /forum/.test(online.url) && online.werkt === 0, JSON.stringify(bl.lijst));
+  // Besluit d deel 2: een stand uit OBDb houdt in de bibliotheek zijn bereik en lijst.
+  const kSt = await roep(tokB, { actie: 'pidbib_kandidaten', voertuig_id: rBert.voertuig.id, bron: 'obdb', lijst: [
+    { code: '221003', ecu: '7E1', naam: 'Current gear', formule: 'A', eenheid: '', min: 1, max: 4, standen: { 1: 'First gear', 2: 'Second gear', 4: 'Fourth gear' }, url: 'https://github.com/OBDb/Mazda-CX-5' }] });
+  const bSt = (await roep(tokA, { actie: 'pidbib_lijst', voertuig_id: v1.voertuig.id })).lijst.find((x) => x.code === '221003');
+  toets('bibliotheek: een stand komt terug met bereik en lijst, zonder de kolomnamen', kSt.erbij === 1 && !!bSt && bSt.min === 1 && bSt.max === 4 && bSt.standen && bSt.standen[2] === 'Second gear' && !('bereik_min' in bSt) && !('standen' in online), JSON.stringify(bSt));
   // Het RDW zet het merk in de handelsbenaming (31-10-2026): "MAZDA CX-5" is
   // dezelfde auto als "CX-5", en wat er vóór die datum onder "mazda" kwam
   // blijft zichtbaar.
@@ -573,8 +578,9 @@ async function laadWorker() {
   toets('Bert is ongemoeid gebleven', db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig WHERE klant_id != ?').get(annaId).n > 0);
   toets('alles_wissen door de klant zelf', (await roep(tokB, { actie: 'alles_wissen' })).ok &&
     db.prepare('SELECT COUNT(*) AS n FROM kp_voertuig').get().n === 0);
+  // Drie gedeelde codes: de klantcode, de online kandidaat en de OBDb-stand (besluit d deel 2).
   toets('alles_wissen neemt de stemmen in de PID-bibliotheek mee; de gedeelde codes blijven',
-    db.prepare('SELECT COUNT(*) AS n FROM kp_pid_stem').get().n === 0 && db.prepare('SELECT COUNT(*) AS n FROM kp_pid_bib').get().n === 2);
+    db.prepare('SELECT COUNT(*) AS n FROM kp_pid_stem').get().n === 0 && db.prepare('SELECT COUNT(*) AS n FROM kp_pid_bib').get().n === 3);
 
   console.log('\n7. Migratie op een tabel van vóór de nieuwe kolommen');
   {

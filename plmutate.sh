@@ -1846,6 +1846,10 @@ MUTATIES=(
 "public/pidlane-pidzoek.js@@    if (!u && c && c.standen && typeof c.standen === 'object' && !Object@@    if (false && !Object@@test-pidzoek.js@@een stand wordt niet op zijn lijst gekeurd: een verkeerd bitveld met een waarde tussen twee standen telt als werkend"
 "worker.js@@ || !kpBitveldenGoed(f)) return@@) return@@test-klantplatform.js@@de Worker keurt elk bitveld goed, ook [0:33] of een losse dubbele punt die de app niet kan lezen"
 "worker.js@@    o.standen = st;\n@@@@test-klantplatform.js@@de Worker gooit de standen van een eigen PID weg: na opslaan toont de meter weer een kaal getal"
+"public/pidlane-pids.js@@  if(st!==null) return st;\n@@@@bproef-garage.js@@de meter toont een stand weer als kaal getal: 2 in plaats van Second gear"
+"public/pidlane-garage.js@@    if (b.standen && typeof b.standen === 'object') x.standen = b.standen;\n@@@@bproef-garage.js@@een stand uit de bibliotheek of Grondig verliest zijn lijst bij het opnemen"
+"worker.js@@e.standen ? JSON.stringify(e.standen) : null).run();@@null).run();@@test-klantplatform.js@@de bibliotheek bewaart de standen van een OBDb-code niet: elke volgende klant krijgt een kaal getal"
+"worker.js@@        if (st) rest.standen = st;\n@@@@test-klantplatform.js@@de bibliotheek geeft de bewaarde standen niet terug"
 # De steunlijst van het bouwjaar (#670): zonder filter of mét de kap van 60
 # is het weer de gok die op de vloot 1515 weigeringen gaf; de Worker die
 # alleen het gevraagde jaar probeert vindt bij een gat in OBDb niets.

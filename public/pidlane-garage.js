@@ -2211,6 +2211,16 @@
     catch (x) { if (_st.sens === S) S.bib = { fout: 'Bibliotheek niet te laden: ' + x.message }; }
     if (_st.sens === S) teken();
   }
+  /* Wat een code zonder eenheid meeneemt (besluit d, #670): het OBDb-bereik
+     als schaal van de meter, en bij een stand zijn lijst. Voor Grondig én de
+     bibliotheek, zodat een stand niet langs één weg als kaal getal binnenkomt. */
+  function bibExtra(b) {
+    var x = {};
+    if (!b || b.eenheid) return x;
+    if (Number.isFinite(b.min) && Number.isFinite(b.max) && b.max > b.min) { x.min = b.min; x.max = b.max; }
+    if (b.standen && typeof b.standen === 'object') x.standen = b.standen;
+    return x;
+  }
   function bibItem(id) { var S = _st.sens; return S && S.bib && S.bib.lijst ? S.bib.lijst.find(function (b) { return b.id === id; }) : null; }
 
   // De literprijs uit het profiel, anders de standaardprijs van PLBerekend.
@@ -2794,7 +2804,7 @@
       var S = _st.sens, b = bibItem(id); if (!S || !b) return;
       sensNieuw();
       if (S.eigen.some(function (e) { return e.code === b.code; })) return;
-      var e = { code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid || '', ecu: b.ecu || '' };
+      var e = Object.assign({ code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid || '', ecu: b.ecu || '' }, bibExtra(b));
       S.eigen.push(e); if (S.sel.indexOf(b.code) < 0) S.sel.push(b.code);
       S.gewijzigd = true; teken();
     },
@@ -2890,10 +2900,7 @@
         // Een acculeeftijd hoeft niet elke 2 s (#675); een band staat sowieso op verzoek.
         var tp = PLPidZoek.tempo ? PLPidZoek.tempo(laadVan(b)) : '';
         S.eigen.push(Object.assign({ code: b.code, naam: b.naam, formule: b.formule, eenheid: b.eenheid || '', ecu: b.ecu || '' }, tp ? { tempo: tp } : {},
-          // Zonder eenheid geeft het OBDb-bereik de meter zijn schaal (besluit d).
-          !b.eenheid && Number.isFinite(b.min) && Number.isFinite(b.max) && b.max > b.min ? { min: b.min, max: b.max } : {},
-          // Een stand neemt zijn lijst mee (besluit d deel 2).
-          !b.eenheid && b.standen ? { standen: b.standen } : {}));
+          bibExtra(b)));
         if (S.sel.indexOf(b.code) < 0) S.sel.push(b.code);
         S.ok[b.code] = true; n++;
       });

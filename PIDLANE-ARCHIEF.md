@@ -20,8 +20,9 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 **Wat erbij kwam.** Standen zijn in OBDb meestal één bit (`bix`/`len 1`,
 eenheid `offon`, `noyes`, `scalar`) of een `map`. De formuletaal kreeg
 daarvoor `[b:n]`: n bits (1…32) vanaf bit b, geteld zoals OBDb `bix` telt —
-bit 0 is de hoogste bit van A, bit 8 die van B. Dat is afgeleid uit, niet getoetst tegen,
-mode 01 0101 (`bix 1, len 7` = het aantal DTC's in de lage zeven bits van A).
+bit 0 is de hoogste bit van A, bit 8 die van B. Nagemeten tegen een
+testgeval van OBDb zelf (MG-ZS-EV `781.789.22B048`): de bytes 01, 03, 06 en 10
+geven met `[6:1]` en `[7:1]` precies de verwachte IS_CHARGING en IS_DCFC.
 `obdbFormule()` geeft een bitveld voor alles wat niet op hele bytes valt; een
 halve byte met eenheid (`[4:4] %`) komt daardoor ook mee. Met `blsb` of
 `sign` bij een vreemde breedte: geen formule.
@@ -34,11 +35,28 @@ commando eerst een eenheid, dan een kaal getal, dan een stand. De Worker
 (`kpEigenPid`) bewaart `standen` bij het voertuig en keurt `[b:n]` met
 dezelfde grenzen als de app.
 
-**Wat níét gebouwd is.** De meter toont een stand nog als getal (0/1, 2);
-de tekst uit `standen` staat in de def maar niemand leest hem. De
-bibliotheek (`kp_pid_bib`) heeft geen kolom voor `standen`, net zo min als
-voor `min`/`max`. Wat OBDb "yesno"/"onoff" noemt is gelezen als: het eerste
-woord is 0. Dat is een aanname, een vraag voor een rit.
+**Wat er eerst níét gebouwd was, en dezelfde dag erbij kwam.** Eerst
+stond hier dat de meter een stand als getal toonde, dat `kp_pid_bib` geen
+kolom had voor `standen` (en ook niet voor `min`/`max`), en dat de
+volgorde van "yesno" en "onoff" een aanname was. Nu:
+- `fv()` vraagt eerst `standTekst()`: een waarde uit de lijst wordt het
+  woord, een waarde erbuiten blijft een getal. Visueel doet hetzelfde,
+  maar alleen zonder eigen weergave (die rekent om, en dan klopt de lijst
+  niet meer).
+- `kp_pid_bib` kreeg `bereik_min`, `bereik_max` en `standen` (JSON).
+  `pidbib_lijst` geeft ze terug als `min`/`max`/`standen`, en de garage
+  neemt ze via `bibExtra()` over, langs Grondig en langs de bibliotheek.
+  Daarvóór kwam ook een getal zonder eenheid uit de bibliotheek zonder
+  bereik terug.
+- **De volgorde: het eerste woord is 0, en dat klopt.** In de eigen
+  J1979-testdata van OBDb (`OBDb/.schemas`, `saej1979.json`) staan de
+  "incomplete"-bits van 0101 byte B (bix 9–11, CCM/FUEL/MIS_RDY) als
+  `yesno`, en de "available"-bits ernaast (bix 13–15) als `noyes`. Volgens
+  J1979 is daar 1 "niet klaar", en hier 1 "ondersteund". **Wat dat níét
+  oplost:** repo's gebruiken het los. Bij MG-ZS-EV staat "Is charging" als
+  `yesno`, en de testgevallen geven alleen de ruwe 0/1. Daar zegt de meter
+  dan "nee" bij 1. Dat is een fout in OBDb, en het is een vraag voor een
+  rit met een MG.
 
 **Gemeten.** `bproef-dekking.js --alle`: 98,8 %, 39/40 ≥ 90 %. Aygo 77 → 98,
 Leaf 77 → 97. Tiguan 87 → 88: daar zit het gat niet in standen maar in 31

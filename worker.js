@@ -5846,7 +5846,13 @@ var KP_MIGRATIES = [
   "ALTER TABLE kp_voertuig ADD COLUMN winter_gezien TEXT",
   // Onderhoud aan of uit en de RR-opdrachten (31-10-2026).
   "ALTER TABLE kp_voertuig ADD COLUMN onderhoud TEXT",
-  "ALTER TABLE kp_voertuig ADD COLUMN rr TEXT"
+  "ALTER TABLE kp_voertuig ADD COLUMN rr TEXT",
+  // Besluit d deel 2 (#670, 05-11-2026): een code zonder eenheid draagt zijn
+  // bereik uit OBDb, een stand zijn lijst ({ waarde: tekst } als JSON). Zonder
+  // die kolommen kwam een stand uit de bibliotheek terug als kaal getal.
+  "ALTER TABLE kp_pid_bib ADD COLUMN bereik_min REAL",
+  "ALTER TABLE kp_pid_bib ADD COLUMN bereik_max REAL",
+  "ALTER TABLE kp_pid_bib ADD COLUMN standen TEXT"
 ];
 var _kpSchemaKlaar = false;
 
@@ -6298,8 +6304,11 @@ async function kpBibErbij(db, merk, model, e, bron, url) {
     return al.id;
   }
   const id = kpId();
-  await db.prepare("INSERT INTO kp_pid_bib (id, merk, model, code, ecu, naam, formule, eenheid, bron, url, aangemaakt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(id, merk, model, e.code, e.ecu || "", e.naam, e.formule, e.eenheid || null, bron, url, kpNu()).run();
+  // e komt altijd door kpEigenPid(): min/max alleen als paar, standen al gekeurd.
+  const bereik = typeof e.min === "number" && typeof e.max === "number";
+  await db.prepare("INSERT INTO kp_pid_bib (id, merk, model, code, ecu, naam, formule, eenheid, bron, url, aangemaakt, bereik_min, bereik_max, standen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(id, merk, model, e.code, e.ecu || "", e.naam, e.formule, e.eenheid || null, bron, url, kpNu(),
+      bereik ? e.min : null, bereik ? e.max : null, e.standen ? JSON.stringify(e.standen) : null).run();
   return id;
 }
 __name(kpBibErbij, "kpBibErbij");
@@ -6667,14 +6676,26 @@ var KP_ACTIES = {
     const merk = kpMerkSleutel(v.merk), model = kpModelSleutel(v.model, v.merk);
     if (!merk) return { ok: true, merk: "", model: "", lijst: [] };
     const r = await c.db.prepare(
-      "SELECT b.id, b.model, b.code, b.ecu, b.naam, b.formule, b.eenheid, b.bron, b.url, " +
+      "SELECT b.id, b.model, b.code, b.ecu, b.naam, b.formule, b.eenheid, b.bron, b.url, b.bereik_min, b.bereik_max, b.standen, " +
       "SUM(CASE WHEN s.uitkomst = 'werkt' THEN 1 ELSE 0 END) AS werkt, " +
       "SUM(CASE WHEN s.uitkomst = 'werkt_niet' THEN 1 ELSE 0 END) AS werkt_niet, " +
       "MAX(CASE WHEN s.klant_id = ? THEN s.uitkomst ELSE NULL END) AS mijn " +
       "FROM kp_pid_bib b LEFT JOIN kp_pid_stem s ON s.bib_id = b.id " +
       "WHERE b.merk = ? AND (b.model IN (?, ?, ?) OR b.model = '') GROUP BY b.id " +
       "ORDER BY werkt DESC, werkt_niet ASC, b.aangemaakt ASC LIMIT 100").bind(c.klantId, merk, model, ...kpModelAliassen(v.model, v.merk)).all();
-    return { ok: true, merk, model, lijst: (r && r.results) || [] };
+    // Het bereik en de standen in de vorm van een eigen PID (min, max, standen).
+    const lijst = ((r && r.results) || []).map((x) => {
+      const { bereik_min, bereik_max, standen, ...rest } = x;
+      if (typeof bereik_min === "number" && typeof bereik_max === "number" && bereik_max > bereik_min) { rest.min = bereik_min; rest.max = bereik_max; }
+      if (standen) {
+        let st = null;
+        try { st = kpStanden(JSON.parse(standen)); }
+        catch (e) { console.warn("[pidbib] standen van " + rest.code + " onleesbaar :: " + String(e && e.message || e)); }
+        if (st) rest.standen = st;
+      }
+      return rest;
+    });
+    return { ok: true, merk, model, lijst };
   },
   async pidbib_deel(c, b) {
     const v = await kpVoertuigVan(c.db, c.klantId, b.voertuig_id);
