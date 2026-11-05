@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Nagebouwde vloot uit OBDb en de dekkingsproef (#670)
+ ═══════════════════════════════════════════════════════════
+ - plnepvloot.js: 40 auto's uit OBDb (command_support + ruwe antwoorden +
+   signalset) naar nepvloot/, mode 01 én fabriekscodes per ECU. Geen
+   handwerk meer; CI haalt niets van het net.
+ - bproef-dekking.js: per auto hoeveel van wat hij aanbiedt oproepbaar is
+   na Snel (discovery) en Grondig (OBDb-zoekronde). Vloer per auto, mag
+   alleen omhoog; de wens van 90 % is LET OP, geen FOUT.
+ - Eerste meting: gemiddeld 75,6 %, 18 van 40 halen de wens. Mode 01
+   1701/1701; fabriekscodes 319/1965. Geen app-wijziging.
+
+ ═══════════════════════════════════════════════════════════
  04-11-2026 — Setup-wizard na de eerste verbinding per voertuig
  ═══════════════════════════════════════════════════════════
  - Keuzevenster na protocol en scan: 🧭 Inrichten of ⚡ Meteen rijden.

@@ -15,6 +15,48 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 05-11-2026 — De nagebouwde vloot en de eerste dekkingsmeting (#670)
+
+**Waarom geen ritten maar OBDb.** De communicatie van veel ECU's staat online.
+OBDb bewaart per model en bouwjaar niet alleen de signalset die de app al
+haalt, maar ook `command_support.yaml` (wat een échte auto per ECU wel én niet
+beantwoordde) en de ruwe antwoorden (`commands/*.yaml`, ISO-TP met kop). Dat
+is genoeg om een auto na te bouwen tot op de fabriekscodes. De 21 profielen
+in `nepauto-profielen.js` (22-10) kwamen uit dezelfde bron, maar met de hand
+en zonder generator; die blijven staan voor `bproef-merken.js` en
+`bproef-storing.js`, omdat er handwerk in zit (de Auris-opname, foutcodes,
+de diesel). De nieuwe vloot staat apart in `nepvloot/`, buiten `public/`:
+2,9 MB data hoort niet in wat de Worker uitserveert.
+
+**De noemer.** "Wat de auto aanbiedt" = mode 01 uit `command_support` (zonder
+de steunbit-PIDs) plus elke 21/22-code die daar onder een ECU staat, óók die
+met een adressering die de app (nog) niet kan vragen (BMW `e=`, VW/Tesla
+`FC00`, Volvo `D016`). Die tellen mee: de klant ziet ze ook niet.
+
+**Eerste meting, 40 auto's.** Gemiddeld 75,6 % (Snel 69,3 %), 18 van 40 op of
+boven 90 %. Mode 01 is 1701/1701: de discovery mist niets. Het verlies zit
+volledig in de fabriekscodes: 319 van 1965.
+- **1515 kwamen nooit als kandidaat.** `obdbKandidaten()` houdt er 60 over
+  (2254 commando's vielen zo weg, over alle signalsets); 854 hebben een
+  adressering die `obdbAdres()` niet aanbiedt; de rest heeft geen eenheid
+  (stand of schakelaar) en is bewust geen meetwaarde.
+- **1515 kandidaten weigerde de auto.** De 60 worden op waarde gekozen, niet
+  op wat dít bouwjaar heeft: tijd op de bus zonder opbrengst.
+- **11 "vreemd"**, o.a. 221044 bij de Golf (3003 °C) en km/h boven 350: de
+  formule uit OBDb past niet op het echte antwoord. Niet onderzocht.
+
+**#616 bevestigd, nu met een auto.** De Nissan Leaf heeft geen mode 01. De
+merkpreset zet er toch elf PIDs in (010C, 010D, 0105, …): een spooklijst op
+een EV. Staat in `BEKEND` van de proef.
+
+**Twee vergissingen onderweg, in de proef en niet in de app.** (1) Bij
+Renault antwoordt de motor-ECU alleen functioneel (DB33); de generator
+hing die PIDs eerst aan de eerste ECU die een fabriekscode had (743). De
+Clio leek daardoor op 26 % en kreeg 0114/010A als spook — dat was de
+generator. (2) De nep-Worker vergeleek repo-namen hoofdlettergevoelig; de app
+vraagt `FIAT-500`, `Renault-ZOE`, `MINI-Cooper`, en GitHub geeft daar
+gewoon het bestand op (nagemeten: HTTP 200).
+
 ## 04-11-2026 — De setup-wizard: waarom zo en niet anders
 
 **Waarom een eigen module en geen uitbreiding van `PLWizard`.** `pidlane-wizard.js`
