@@ -1811,7 +1811,7 @@ MUTATIES=(
 # spook-PID echt zien. De derde: VAG/PSA met een ander antwoordadres valt
 # weer weg uit de fabriekscodes — de Golf zakt onder zijn vloer.
 "plnepvloot.js@@    if ((pci >> 4) === 2) { data.push(...b.slice(1)); continue; }@@    if ((pci >> 4) === 2) continue;@@test-nepvloot.js@@de generator vergeet de vervolgframes van ISO-TP: een lang antwoord wordt stil afgekapt"
-"public/bproef-dekking.js@@  const spook = [...sup].filter((x) => m01.indexOf(x) < 0);@@  const spook = [];@@test-nepvloot.js@@de dekkingsproef ziet geen spook-PIDs meer (#616)"
+"public/bproef-dekking.js@@  const spook = [...na].filter((x) => m01.indexOf(x) < 0);@@  const spook = [];@@test-nepvloot.js@@de dekkingsproef ziet geen spook-PIDs meer (#616)"
 "public/pidlane-uitgebreid.js@@    return /^[0-9A-F]{3}$/.test(rax) ? hdr + '>' + rax : null;@@    return null;@@bproef-dekking.js@@een ander antwoordadres (VAG 710 → 77A) valt weer weg uit de OBDb-kandidaten: de Golf zakt onder zijn vloer"
 # De steunlijst van het bouwjaar (#670): zonder filter of mét de kap van 60
 # is het weer de gok die op de vloot 1515 weigeringen gaf; de Worker die
