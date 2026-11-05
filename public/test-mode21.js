@@ -461,6 +461,7 @@ function haalZeef(isMode01) {
     t('obdbAdres: Volvo D016 (eigen 29-bitschema) = niet bruikbaar', E.obdbAdres({ hdr: 'D016', rax: '1EC60E80' }), null);
     t('obdbAdres: BMW/MINI extended addressing 6F1 eax 12 → 612 = 6F1:12>612 (#670)', E.obdbAdres({ hdr: '6F1', rax: '612', eax: '12' }), '6F1:12>612');
     t('obdbAdres: Toyota 750 eax 2A met antwoordbyte tst 2A (ATCER) = niet bruikbaar', E.obdbAdres({ hdr: '750', rax: '758', eax: '2A', tst: '2A' }), null);
+    t('obdbAdres: Toyota 750 eax 2A zónder tst: het antwoord draagt 2A, geen F1 = niet bruikbaar', E.obdbAdres({ hdr: '750', rax: '758', eax: '2A' }), null);
     t('EIGEN_ECU: 6F1:12>612 wel, 6F1:12 zonder antwoordadres of 6F1:1>612 niet', [E.ECU.test('6F1:12>612'), E.ECU.test('6F1:12'), E.ECU.test('6F1:1>612')].join(','), 'true,false,false');
     const veel = [];
     for (let i = 0; i < 70; i++) veel.push({ hdr: '7E0', rax: '7E8', cmd: { '22': (0x1000 + i).toString(16).toUpperCase() }, signals: [{ name: 'Iets ' + i, fmt: { len: 8, unit: 'celsius' } }] });
