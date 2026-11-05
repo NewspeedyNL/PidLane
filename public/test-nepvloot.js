@@ -106,6 +106,8 @@ VLOOT.forEach((p) => {
 });
 waar('elk profiel is te bouwen (' + gebouwd + ')', gebouwd === VLOOT.length, didMis.slice(0, 3).join(' | '));
 waar('PLNepAuto geeft de OBDb-bytes terug op elke nagebouwde code (' + didOk + ')', didOk > 100 && !didMis.length, didMis.slice(0, 3).join(' | '));
+waar('met mode 01 staat de motor-ECU vooraan (Renault: DB33 niet bij een fabrieks-ECU)', VLOOT.every((p) => !p.aangeboden.mode01.length || String(p.ecus[0].pids).trim()),
+  VLOOT.filter((p) => p.aangeboden.mode01.length && !String(p.ecus[0].pids).trim()).map((p) => p.id + ' ' + p.ecus[0].adres).join(', '));
 waar('elk profiel zegt wat het aanbiedt', VLOOT.every((p) => p.aangeboden && Array.isArray(p.aangeboden.mode01) && Array.isArray(p.aangeboden.did)));
 waar('elk profiel noemt zijn bron met commit', VLOOT.every((p) => /^OBDb .+ \d{4} @[0-9a-f]{7}$/.test(p.bron)), VLOOT.map((p) => p.bron).find((b) => !/@[0-9a-f]{7}$/.test(b)));
 

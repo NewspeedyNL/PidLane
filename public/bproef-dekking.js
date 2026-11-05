@@ -45,6 +45,11 @@ const WENS = 90;
 // Snel genoeg voor elke PR en voor de tegenproef: 11-bit (Mazda), VAG met
 // een ander antwoordadres (tx>rx), 29-bit, en een EV op 29-bit.
 const KEUZE = ['cx5_18', 'golf19', 'fiat500_14', 'zoe21'];
+// Wat deze proef vindt en als issue openstaat: LET OP in plaats van FOUT.
+// Verdwijnt het, dan zegt de proef dat (haal het dan weg).
+const BEKEND = {
+  'spook:leaf19': '#616 — een EV zonder mode 01: de merkpreset zet er PIDs in die de auto niet heeft'
+};
 // Gemeten dekking (%) per auto; mag alleen omhoog. Leeg = nog geen vloer.
 const VLOER = {
 };
@@ -71,9 +76,10 @@ const ROUTE = (id) => `(async function(){
   try { await tijd(startDiscovery(), 120000, 'startDiscovery'); } catch (e) { u.fout.push(e.message); }
   u.supported = [...supportedPIDs];
   u.merk = vehicleInfo.merk || '';
-  // Grondig: dezelfde keten als PLGarage._pzStart, zonder de server.
+  // Grondig: dezelfde keten als PLGarage._pzStart, zonder de server. GitHub
+  // kent repo-namen zonder hoofdletters (FIAT-500 = Fiat-500), de Worker dus ook.
   const gevraagd = [];
-  const haal = async function(repo){ gevraagd.push(repo); return repo === p.repo ? { gevonden: true, data: { commands: window._PL_OBDB[repo] || [] } } : { gevonden: false }; };
+  const haal = async function(repo){ gevraagd.push(repo); return String(repo).toLowerCase() === p.repo.toLowerCase() ? { gevonden: true, data: { commands: window._PL_OBDB[p.repo] || [] } } : { gevonden: false }; };
   let z = null;
   try { z = await tijd(PLEigen.zoekObdb({ merk: u.merk || p.merk, model: p.model, bouwjaar: p.jaar, brandstof: vehicleInfo.brandstof }, haal), 10000, 'zoekObdb'); } catch (e) { u.fout.push(e.message); }
   u.obdb = z ? { ok: z.ok, repo: z.repo || '', fout: z.fout || '', n: (z.kandidaten || []).length, afgekapt: z.afgekapt || 0, nietBruikbaar: z.nietBruikbaar || 0, gevraagd: gevraagd } : null;
@@ -134,10 +140,13 @@ async function rij(id) {
     const u = await app.ev(ROUTE(id));
     toets('de route liep zonder vastlopen', !u.fout.length, u.fout.join(' | '));
     const t = tel(p, u);
-    toets('geen spook-PIDs in supportedPIDs (#616)', !t.spook.length, t.spook.join(','));
+    if (t.spook.length && BEKEND['spook:' + id]) let_op('spook-PIDs ' + t.spook.join(',') + ' — bekend: ' + BEKEND['spook:' + id]);
+    else toets('geen spook-PIDs in supportedPIDs (#616)', !t.spook.length, t.spook.join(','));
+    if (!t.spook.length && BEKEND['spook:' + id]) let_op('geen spook meer bij ' + id + ' — ' + BEKEND['spook:' + id] + ' opgelost? Haal hem uit BEKEND.');
     if (t.m01mist.length) console.log('  mode 01 niet ontdekt: ' + t.m01mist.join(','));
     const o = u.obdb || {};
     if (!o.repo) let_op('OBDb-model niet gevonden door de app: gezocht als ' + (o.gevraagd || []).join(', ') + (o.fout ? ' (' + o.fout + ')' : '') + ' — het bestand heet ' + p.repo);
+    if (o.repo && !o.n && t.did) let_op('OBDb (' + o.repo + ') gaf de app 0 kandidaten, terwijl de auto ' + t.did + ' fabriekscodes heeft');
     console.log('  mode 01  ' + t.m01ok + '/' + t.m01 + '   fabriek ' + t.didOk + '/' + t.did + ' (nagebouwd ' + t.nagebouwd + ', geen kandidaat ' + t.geenKand +
       (o.afgekapt ? ', ' + o.afgekapt + ' weg door de kap van 60' : '') + (o.nietBruikbaar ? ', ' + o.nietBruikbaar + ' adressering' : '') + ', weigert ' + t.nee + ', vreemd ' + t.vreemd.length + ')');
     t.vreemd.slice(0, 3).forEach((v) => console.log('    vreemd: ' + v));

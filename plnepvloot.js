@@ -219,6 +219,10 @@ function bouw(rij, cache, LEN) {
   const motorSleutels = Object.keys(sup.ja).filter((k) => sup.ja[k].some((x) => /^01[0-9A-F]{2}$/.test(adres(k, x.id).cmd)) && !functioneel(k))
     .sort((a, b) => (a === '7E0' || a === 'DA10' ? -1 : 0) - (b === '7E0' || b === 'DA10' ? -1 : 0) || a.localeCompare(b));
   motorSleutels.forEach((k) => ecu(rxVan(k), /^7E[0-7]$/.test(k) ? null : txNep(k)));
+  // Alleen functioneel gezien (7DF/DB33): dan antwoordde de motor-ECU, en die
+  // hoort vooraan — niet een ECU die toevallig eerst een fabriekscode had.
+  const alleenFunctioneel = !volgorde.length && Object.keys(sup.ja).some((k) => functioneel(k) && sup.ja[k].some((x) => /^01[0-9A-F]{2}$/.test(adres(k, x.id).cmd)));
+  if (alleenFunctioneel) ecu(bit29 ? '18DAF110' : '7E8', bit29 ? 'DA10F1' : null);
   Object.keys(sup.ja).forEach((sleutel) => {
     sup.ja[sleutel].forEach(({ id: cid, sig }) => {
       const a = adres(sleutel, cid);
@@ -226,7 +230,7 @@ function bouw(rij, cache, LEN) {
         const p = a.cmd.slice(2);
         if (/^(00|20|40|60|80|A0|C0|E0)$/.test(p)) return;          // steunbits: PLNepAuto rekent ze zelf
         if (!LEN[p] && p !== '01' && p !== '41') { overgeslagen.push({ cmd: a.cmd, reden: 'geen lengte in nepauto.js' }); return; }
-        const doel = functioneel(a.tx) ? (volgorde.length ? ecus[volgorde[0]] : ecu(bit29 ? '18DAF110' : '7E8', bit29 ? 'DA10F1' : null)) : ecu(rxVan(a.tx), /^7E[0-7]$/.test(a.tx) ? null : txNep(a.tx));
+        const doel = functioneel(a.tx) ? ecus[volgorde[0]] : ecu(rxVan(a.tx), /^7E[0-7]$/.test(a.tx) ? null : txNep(a.tx));
         if (doel.pids.indexOf(p) < 0) doel.pids.push(p);
         if (aangeboden.mode01.indexOf(a.cmd) < 0) aangeboden.mode01.push(a.cmd);
         return;
