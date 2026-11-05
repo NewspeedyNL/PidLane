@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 04-11-2026 — Setup-wizard na de eerste verbinding per voertuig
+ ═══════════════════════════════════════════════════════════
+ - Keuzevenster na protocol en scan: 🧭 Inrichten of ⚡ Meteen rijden.
+ - Stappen (meten eerst): toestemming, Leer de auto (kenteken, brandstof,
+   turbo, km-stand), adaptersnelheid, sensoren snel/grondig, dashboard en
+   weergave, onderhoud/tanken/conditie met laatste beurt en nulpunt, foto.
+ - Halverwege sluiten = later verder: Meer → Setup-wizard, Mijn voorkeuren,
+   Mijn voertuigen → Opnieuw inrichten.
+ - Leerrit bij de eerste rit: na vijf minuten rijden een melding.
+
+ ═══════════════════════════════════════════════════════════
  02-11-2026 — Kanteling niet meer grijs na remmen voor een drempel
  ═══════════════════════════════════════════════════════════
  - "Verschoven" (telefoon anders dan bij Nulstellen) telt pas na 2 s.

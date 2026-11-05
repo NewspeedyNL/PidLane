@@ -1296,7 +1296,11 @@
     teken();
     ververs();
   }
-  function sluit() { var ov = document.getElementById('plGarOv'); if (ov) ov.style.display = 'none'; }
+  // Een gepauzeerde setup-wizard gaat verder zodra Mijn voertuigen dicht is.
+  function sluit() {
+    var ov = document.getElementById('plGarOv'); if (ov) ov.style.display = 'none';
+    try { if (window.PLInrichten) PLInrichten.naGarage(); } catch (e) { console.warn('PLGarage: setup-wizard niet hervat', e); }
+  }
   /* Vanuit de sensorkeuzelijst (#474): meteen het tabblad Sensoren van het
      voertuig aan de adapter. Is er geen voertuig, dan de lijst. */
   function openSensoren() {
@@ -1505,7 +1509,8 @@
     if (_st.tab === 'tanken' && !tankenAan(v)) _st.tab = 'overzicht';
     if (_st.tab === 'conditie' && !scoreAan(v)) _st.tab = 'overzicht';
     var h = '<div class="gr-knoppen" style="margin:0 0 10px"><button class="gr-k klein" onclick="PLGarage._terug()">← Alle voertuigen</button>' +
-      (v.status === 'actief' && v.id !== _st.actiefId ? '<button class="gr-k klein" onclick="PLGarage._actief(\'' + esc(v.id) + '\')">Maak actief</button>' : '') + '</div>';
+      (v.status === 'actief' && v.id !== _st.actiefId ? '<button class="gr-k klein" onclick="PLGarage._actief(\'' + esc(v.id) + '\')">Maak actief</button>' : '') +
+      (v.status === 'actief' && window.PLInrichten ? '<button class="gr-k klein" id="grInrichten" onclick="PLGarage.sluit();PLInrichten.open({ opnieuw: true })">🧭 Opnieuw inrichten</button>' : '') + '</div>';
     h += '<div class="gr-blok gr-auto">' + fotoHtml(v, 'gr-foto groot') + '<div>' + tekenKentekenEnNaam(v) + '</div></div>';
     h += '<div class="gr-tabs">' + tabs.map(function (t) {
       return '<button class="gr-tab' + (_st.tab === t[0] ? ' aan' : '') + '" onclick="PLGarage._tab(\'' + t[0] + '\')">' + t[1] + '</button>';
@@ -2442,6 +2447,63 @@
     await ververs();
   }
 
+  /* ── Voor de setup-wizard (PLInrichten, 04-11-2026) ─────────────
+     Wat de wizard uit Mijn voertuigen nodig heeft, zonder de formulieren
+     na te bouwen: welke auto aan de adapter hangt, velden bewaren (nieuw
+     voertuig of bestaand), een tankbeurt als nulpunt en een foto. Zonder
+     chassisnummer geldt het actieve voertuig alleen als het kenteken van de
+     verbinding erbij hoort: anders zou de wizard een andere auto inrichten. */
+  async function inrichtVoertuig() {
+    if (isDemo() || !magPlatform()) return { soort: 'geen' };
+    if (!_st.stand) await ververs();
+    if (!(_st.stand && _st.stand.akkoord)) return { soort: 'akkoord' };
+    try { await herkenAuto(); } catch (e) { console.warn('PLGarage: auto herkennen voor de wizard', e); }
+    if (_st.onbekend) return { soort: 'nieuw', profiel: _st.onbekend.profiel || {} };
+    var gek = voertuig(_st.gekoppeld);
+    if (gek) return { soort: 'voertuig', v: gek };
+    var ken = ''; try { ken = fotoKenteken(localStorage.getItem('pl_kenteken') || ''); } catch (e) { console.warn('PLGarage: kenteken van de verbinding onleesbaar', e); }
+    var a = actief();
+    if (a && ken && fotoKenteken(a.kenteken) === ken) return { soort: 'voertuig', v: a };
+    return { soort: 'nieuw', profiel: {} };
+  }
+  async function inrichtBewaar(velden) {
+    var r = await inrichtVoertuig();
+    if (r.soort === 'geen' || r.soort === 'akkoord') throw new Error('Mijn voertuigen staat niet aan');
+    var w = Object.assign({}, velden || {});
+    if (r.soort === 'voertuig') w.id = r.v.id;
+    else {
+      var max = (_st.stand && _st.stand.maxActief) || 3;
+      if (voertuigen(true).length >= max) throw new Error('Je hebt al ' + max + ' actieve voertuigen — archiveer er eerst een in Mijn voertuigen');
+      w = Object.assign({}, r.profiel, w);
+      if (_st.onbekend && _st.onbekend.pseudo) w.vin_pseudo = _st.onbekend.pseudo;
+    }
+    var d = await api('voertuig_opslaan', { voertuig: w });
+    if (d.kentekenOpgeslagen === false && w.kenteken) melding('Het kenteken kon niet versleuteld bewaard worden en is niet opgeslagen');
+    if (!w.id) { _st.onbekend = null; zetActief(d.voertuig.id); _st.gekoppeld = d.voertuig.id; }
+    delete _st.cache[d.voertuig.id];
+    await ververs();
+    return voertuig(d.voertuig.id) || d.voertuig;
+  }
+  async function inrichtTank(vid, tank) {
+    if (!voertuig(vid)) throw new Error('dit voertuig staat niet in Mijn voertuigen');
+    var d = await api('tank_opslaan', { voertuig_id: vid, tank: tank });
+    delete cacheVan(vid).tanken;
+    return d;
+  }
+  function fotoKiesVoor(kenteken) {
+    return new Promise(function (klaar) {
+      if (fotoKenteken(kenteken).length < 4) { klaar(false); return; }
+      var inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*';
+      inp.onchange = function () {
+        if (!inp.files || !inp.files[0]) { klaar(false); return; }
+        fotoVerklein(inp.files[0]).then(function (u) { klaar(fotoZet(kenteken, u)); })
+          .catch(function (e) { console.warn('PLGarage: foto kiezen', e); melding('⚠️ ' + e.message); klaar(false); });
+      };
+      inp.click();
+    });
+  }
+
   async function bewaarFormulier() {
     var w = formWaarden();
     var fout = document.getElementById('grfFout');
@@ -2480,6 +2542,11 @@
     _fotoStandaard: function (id) { var v = voertuig(id), f = v && fotoStandaard(v); if (f && fotoZet(v.kenteken, f.src)) teken(); },
     _fotoWeg: function (id) { var v = voertuig(id); if (v && fotoZet(v.kenteken, null)) teken(); },
     zetInterval: zetInterval,
+    inrichtVoertuig: inrichtVoertuig,
+    inrichtBewaar: inrichtBewaar,
+    inrichtTank: inrichtTank,
+    fotoKiesVoor: fotoKiesVoor,
+    akkoordNu: function () { return !!(_st.stand && _st.stand.akkoord); },
     gekoppeld: function () { return versnellingsVoertuig(); },
     selectieOordeel: selectieOordeel,
     staat: function () { return _st; },

@@ -47,7 +47,10 @@ const MEET = `(async function(){
   if (!r.zichtbaar) return r;
   const px = c => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++; return n / (d.length / 4); };
   r.gPx = px(vak.querySelector('.vhl-ck-g canvas'));
-  await wacht(1500);
+  // Wachten tot de demo-auto koelwater én een grafiek heeft geleverd, tot
+  // 12 s: een vaste 1,5 s was te kort met vier browsers tegelijk (05-11-2026).
+  const koelNu = () => Array.from(V().querySelectorAll('.vhl-tb:not(.leeg)')).some(t => t.getAttribute('data-rol') === 'koel' && /\d/.test(t.querySelector('b').textContent));
+  for (let t = 0; t < 12000; t += 300) { await wacht(300); if (V() && koelNu() && px(V().querySelector('.vhl-ck-graf canvas')) > .002 && t >= 1200) break; }
   vak = V();
   r.grafPx = px(vak.querySelector('.vhl-ck-graf canvas'));
   r.temps = Array.from(vak.querySelectorAll('.vhl-tb:not(.leeg)')).map(t => t.getAttribute('data-rol') + '=' + t.querySelector('b').textContent).join(' ');
@@ -62,8 +65,12 @@ const MEET = `(async function(){
   r.vrij = mods.filter(s => raak(bx(s), bx('.vhl-pod.l')) || raak(bx(s), bx('.vhl-pod.r')));
   // Tik = groot: de demo-auto rijdt, en boven 10 km/h gaat groot terecht
   // dicht. Dus even stilstand: de snelheid die het profiel doorgeeft op 0.
-  const zet = PLHyperlane.zet;
+  // De demo-auto voedt de snelheid via voed() en een interne zet(): alleen
+  // PLHyperlane.zet onderscheppen liet onder CI-belasting tussen tik en
+  // controle een snelheid boven 10 km/h door (05-11-2026). Dus beide.
+  const zet = PLHyperlane.zet, voed = PLHyperlane.voed;
   PLHyperlane.zet = function (rol, v, st, vv) { return zet(rol, rol === 'snel' ? 0 : v, st, vv); };
+  PLHyperlane.voed = function (pid, v, st) { return voed(pid, pid === '010D' ? 0 : v, st); };
   try {
     zet('snel', 0); await wacht(300);
     const m = () => V().querySelector('.vhl-ck-temps');
@@ -72,10 +79,10 @@ const MEET = `(async function(){
     m().click(); await wacht(120);
     r.dicht = !m().classList.contains('groot');
     // En rijdend: een tik vergroot niet (tegenproef van grootMag)
-    PLHyperlane.zet = zet; zet('snel', 50); await wacht(300);
+    PLHyperlane.zet = zet; PLHyperlane.voed = voed; zet('snel', 50); await wacht(300);
     m().click(); await wacht(200);
     r.rijdendDicht = !m().classList.contains('groot');
-  } finally { PLHyperlane.zet = zet; }
+  } finally { PLHyperlane.zet = zet; PLHyperlane.voed = voed; }
   const S = PLVisueel.sessie ? PLVisueel.sessie() : {};
   r.herbouw = (S.herbouw || 0) - (r.herbouw0 || 0); r.herbouwReden = JSON.stringify(S.herbouwReden || {});
   return r;

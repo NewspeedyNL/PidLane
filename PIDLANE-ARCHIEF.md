@@ -14,6 +14,31 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+
+## 04-11-2026 — De setup-wizard: waarom zo en niet anders
+
+**Waarom een eigen module en geen uitbreiding van `PLWizard`.** `pidlane-wizard.js`
+is een vragenboom voor een diagnose (klacht → meetplan). De setup-wizard is
+een volgorde van bestaande instellingen. Eén ding, één betekenis: twee rollen
+in één module is hier al drie keer een bug geweest.
+
+**Waarom de sleutel op de VIN staat en niet op het voertuig in Mijn voertuigen.**
+Bij de eerste verbinding is er nog geen voertuig: dat ontstaat pas in de stap
+Leer de auto. Een sleutel op het voertuig-id zou de wizard bij de volgende
+verbinding opnieuw laten openen. De VIN blijft lokaal (`localStorage`, zoals
+`pl_vinprof_`). Zonder VIN valt hij terug op het kenteken; verandert het
+kenteken in de wizard, dan verhuist de stand mee.
+
+**Zonder chassisnummer richt hij het actieve voertuig niet blind in.**
+`PLGarage.inrichtVoertuig()` neemt het actieve voertuig alleen als zijn
+kenteken dat van de verbinding is. Anders zou een tweede auto zonder VIN de
+gegevens van de eerste overschrijven.
+
+**Wat níét getoetst is.** De stroom met een echte ECU: of 01A6 bij de meeste
+auto's iets geeft, of grondig zoeken in de wizard dezelfde uitkomst geeft als
+vanuit het tabblad Sensoren, en of de leerritmelding na vijf minuten rijden
+komt. Dat zijn vragen voor een rit (blok 5: "Setup-wizard").
+
 ## 02-11-2026 — De kanteling werd grijs bij een drempel: het was de oude snelheid
 
 **Wat er gemeld werd.** "De kanteling gaat heel snel op grijs; hij vindt het
