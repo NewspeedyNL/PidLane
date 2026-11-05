@@ -10,6 +10,11 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Slim visueel: de themakeuze blijft open bij een herbouw (#657)
+ ═══════════════════════════════════════════════════════════
+ - Een nieuwe sensor of de demo die opstart sluit de themastrook niet meer.
+
+ ═══════════════════════════════════════════════════════════
  05-11-2026 — Hyperlane: het midden-knopje wisselt meteen (#657)
  ═══════════════════════════════════════════════════════════
  - Slim/Versnelling staat direct op het knopje, niet pas bij de volgende frame.
