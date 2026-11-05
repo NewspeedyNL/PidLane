@@ -1818,6 +1818,10 @@ MUTATIES=(
 # alleen het gevraagde jaar probeert vindt bij een gat in OBDb niets.
 "public/pidlane-uitgebreid.js@@      if (steun && !steun.codes[code + '@' + hdr.split('>')[0]]) {@@      if (false) {@@test-mode21.js@@de steunlijst filtert niet meer: weer codes die dit bouwjaar niet heeft"
 "public/pidlane-uitgebreid.js@@    const kap = steun ? uit.length : 60;@@    const kap = 60;@@test-mode21.js@@ook met een steunlijst weer de kap van 60: een Tiguan houdt een vijfde van zijn codes over"
+# De preset als aanname (#616): een geldige waarde moet blijven, en zonder
+# geheugen van wat aangenomen was haalt de steunlijst niets weg.
+"public/pidlane-rijsituatie.js@@_pidHealth[p] === 'ok') return;@@_pidHealth[p] === 'ok') {}@@test-presetsteun.js@@een sensor die een geldige waarde gaf gaat weg omdat OBDb hem niet kent"
+"public/pidlane-rijsituatie.js@@ecuSteunt(p) === true)) _presetAanname.add(p);@@ecuSteunt(p) === true)) {}@@test-presetsteun.js@@de preset onthoudt zijn aannames niet: de spook-PIDs van de Leaf blijven staan"
 # Getallen met teken (#670): S8( )…S32( ) in de formuletaal. Fout gelezen is
 # een stroom van −2 A als 65,5 A — geloofwaardig genoeg om niet op te vallen.
 "public/pidlane-uitgebreid.js@@return w >= n / 2 ? w - n : w; };@@return w; };@@test-mode21.js@@S16( ) laat het teken weg: FF38 wordt 65336 in plaats van −200"
@@ -1903,7 +1907,8 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@            if (ecu) await adresTerug(terug, 'buurscan ' + prefix);@@            if (false) await adresTerug(terug, 'buurscan ' + prefix);@@test-mode21.js@@na de buurscan blijft de adapter op ECU-adres 720 staan"
 "public/pidlane-uitgebreid.js@@    if (!rax || parseInt(rax, 16) === parseInt(hdr, 16) + 8) return@@    if (true) return@@test-mode21.js@@een OBDb-code met een ander antwoordadres (70E>778) wordt weer als 70E gevraagd, en de app luistert op het verkeerde (#526)"
 "public/pidlane-uitgebreid.js@@    if (c.eax) return null;@@@@test-mode21.js@@OBDb-codes met extended addressing (BMW) komen erbij terwijl de app ze niet kan vragen (#526)"
-"public/pidlane-uitgebreid.js@@    if (f.sign || f.map || bix % 8@@    if (f.map || bix % 8@@test-mode21.js@@een signed OBDb-waarde krijgt een formule zonder teken: −1 °C leest als 255 (#526)"
+# (05-11-2026) Hier stond "een signed OBDb-waarde krijgt een formule zonder teken": sinds #670
+# krijgt zo'n waarde S16( ). Dezelfde fout bouwt nu de mutatie met `if (false) x = 'S'` na.
 "public/pidlane-uitgebreid.js@@      const w = f.blsb ? k : n - 1 - k;@@      const w = n - 1 - k;@@test-mode21.js@@little-endian uit OBDb wordt big-endian gelezen: de kilometerstand klopt niet (#526)"
 "public/pidlane-uitgebreid.js@@    if (van !== undefined && tot !== undefined) return tot >= van ? (j >= van && j <= tot) : (j <= tot || j >= van);@@    if (van !== undefined && tot !== undefined) return j >= van && j <= tot;@@test-mode21.js@@het OBDb-jaarfilter \"t/m 2016 of vanaf 2022\" laat geen enkel jaar meer door (#526)"
 "public/pidlane-garage.js@@lijst: r.kandidaten.slice(0, 60), bron: 'obdb' });@@lijst: r.kandidaten.slice(0, 60) });@@bproef-garage.js@@codes uit OBDb staan in de bibliotheek als \"online gevonden\" (#526)"
