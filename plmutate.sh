@@ -1210,6 +1210,7 @@ MUTATIES=(
 "public/pidlane-hyperlane.js@@  if(midden!=='versnelling' || sc==='alarm' || !gear) return h;@@  if(midden!=='versnelling' || !gear) return h;@@test-hyperlane.js@@in de stand Versnelling verdwijnt een te heet koelwater uit het midden"
 "public/pidlane-hyperlane.js@@  if(midden!=='versnelling' || sc==='alarm' || !gear) return h;@@  if(midden!=='versnelling' || sc==='alarm') return h;@@test-hyperlane.js@@een onbekende versnelling geeft een leeg midden"
 "public/pidlane-hyperlane.js@@  if(kh) kh.addEventListener('click', wissel);@@@@bproef-hyperlane.js@@een tik op het grote getal wisselt het midden niet meer"
+"public/pidlane-hyperlane.js@@    if(k && t){ k.textContent=t; _s.middenT=t; }\n@@@@bproef-hyperlane.js@@het knopje van het midden zegt pas bij de volgende frame wat je koos: in een belaste tab seconden later (#657)"
 "public/pidlane-visprofiel.js@@const SCHIL = ['glas','licht','digitaal','neon','telemetrie'];@@const SCHIL = [];@@test-hyperlane.js@@de profielen vallen terug op hun oude kaart zonder achtergrond"
 "public/pidlane-hyperlane.js@@  return (j<0 || i<=j) ? 'gas' : null;@@  return 'gas';@@test-hyperlane.js@@in de schil vecht de gasklep met het gaspedaal: de kleur springt heen en weer"
 "public/pidlane-hyperlane.js@@querySelector('.vpf-hyper, .vhl-schil, .vhl-basis');@@querySelector('.vpf-hyper, .vhl-basis');@@bproef-hyperlane.js@@de schil start niet: de profielen zonder achtergrond en zonder kleur"

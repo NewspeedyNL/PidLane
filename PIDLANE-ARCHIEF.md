@@ -62,6 +62,20 @@ volgorde van "yesno" en "onoff" een aanname was. Nu:
 Leaf 77 → 97. Tiguan 87 → 88: daar zit het gat niet in standen maar in 31
 weigeringen en 27 codes die niet na te bouwen zijn. Geen enkele stand kwam
 als "vreemd" uit de meting.
+## 05-11-2026 — Hyperlane: het midden-knopje wachtte op de volgende frame (#657)
+
+`bproef-hyperlane` viel drie keer om in CI (op PR #656, #680 en #684),
+altijd met "Slim → Slim → versnelling → Slim": de keuze stond al in
+`pl_hl_midden`, maar het knopje zei het nog niet. `wissel()` zette alleen
+de toestand. De tekst kwam pas in de eerstvolgende `requestAnimationFrame`,
+en in een belaste of verborgen tab kan die seconden uitblijven. #657 had de
+wachttijd van de proef naar 6 s gezet: dat verplaatste de grens, maar de
+oorzaak bleef. Nu zet de tik het label zelf, en de proef leest het meteen na
+de klik. Zonder die regel is hij ook lokaal rood (`plmutate.sh`).
+
+`bproef-visthema` (`.vt-keus[data-thema="chroom"]` niet gevonden na 3 s)
+viel één keer om, op #680, en niet op #684. Dat is niet onderzocht.
+
 ## 05-11-2026 — Meetproeven nagelezen: drie opstelfouten (#650)
 
 De uitkomsten van 28-10 t/m 04-11 in `opdracht_uitkomsten` (id 27–56)
