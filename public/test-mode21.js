@@ -353,12 +353,19 @@ function haalZeef(isMode01) {
       { hdr: '7E0', rax: '7E8', cmd: { '22': '0303' }, signals: [{ name: 'Hazard switch', fmt: { len: 8, unit: 'scalar' } }, { name: 'Battery', fmt: { bix: 8, len: 8, div: 10, unit: 'volts' } }] },
       { hdr: '7E0', rax: '7E8', cmd: { '22': '0404' }, signals: [{ name: 'Half byte', fmt: { bix: 4, len: 4, unit: 'percent' } }] },
       { hdr: '7E0', rax: '7E8', cmd: { '22': '0505' }, filter: { to: 2016, from: 2022 }, signals: [{ name: 'Alleen oud of nieuw', fmt: { len: 8, unit: 'percent' } }] },
-      { hdr: '7E0', rax: '7E8', cmd: { '2E': '0606' }, signals: [{ name: 'Schrijven', fmt: { len: 8, unit: 'percent' } }] }
+      { hdr: '7E0', rax: '7E8', cmd: { '2E': '0606' }, signals: [{ name: 'Schrijven', fmt: { len: 8, unit: 'percent' } }] },
+      // Besluit d (05-11-2026): een getal zonder eenheid wel, met het OBDb-bereik; ruw en onbekend niet.
+      { hdr: '7E0', rax: '7E8', cmd: { '22': '0707' }, signals: [{ name: 'Misfire counter, cylinder 1', fmt: { len: 16, max: 65535, unit: 'scalar' } }] },
+      { hdr: '7E0', rax: '7E8', cmd: { '22': '0808' }, signals: [{ name: 'Evaporative pressure sensor, raw count', fmt: { len: 8, max: 255, unit: 'scalar' } }] },
+      { hdr: '7E0', rax: '7E8', cmd: { '22': '0909' }, signals: [{ name: 'High fuel pressure, actual', fmt: { len: 16, mul: 0.01, unit: 'unknown' } }] }
     ] };
     const k = E.obdbKandidaten(obdb, 'Mazda-CX-5', 2018);
     const kort = k.map(x => x.code + '@' + x.ecu + '=' + x.formule + ' ' + x.eenheid).join(' | ');
     t('obdb: alleen wat de app kan lezen, geverifieerd vóór dbg', kort,
-      '222A05@720=A*1373/100000 bar | 221310@7E0=(B*256+C)/100-40 °C | 221E1C@7E1=((A)-32)*5/9 °C | 22DD01@7E0=A+B*256+C*65536 km | 2105@7E0=A-40 °C | 220101@7E0>7EA=A V | 220202@7E0=S8(A) °C | 220303@7E0=B/10 V | 22C901@720=A/5 psi');
+      '222A05@720=A*1373/100000 bar | 221310@7E0=(B*256+C)/100-40 °C | 221E1C@7E1=((A)-32)*5/9 °C | 22DD01@7E0=A+B*256+C*65536 km | 2105@7E0=A-40 °C | 220101@7E0>7EA=A V | 220202@7E0=S8(A) °C | 220303@7E0=B/10 V | 220707@7E0=A*256+B  | 22C901@720=A/5 psi');
+    const mf = k.find(x => x.code === '220707');
+    t('besluit d: een getal zonder eenheid krijgt het bereik uit OBDb mee', mf && (mf.min + '…' + mf.max), '0…65535');
+    t('besluit d: een signaal mét eenheid wint van een kaal getal in hetzelfde commando (220303 = Battery V)', k.some(x => x.code === '220303' && x.eenheid === 'V'), true);
     // 22-10-2026: een ander antwoordadres (7E0 → 7EA) komt erbij als "tx>rx"; extended addressing met een eigen antwoordbyte (Toyota, ATCER) niet.
     t('obdb: de bron is de repo, voor de naamsvermelding (CC BY-SA)', k[0].url, 'https://github.com/OBDb/Mazda-CX-5');
     t('obdb: het jaarfilter met twee open stukken laat 2015 wél door', E.obdbKandidaten(obdb, 'x', 2015).some(x => x.code === '220505'), true);
@@ -387,7 +394,7 @@ function haalZeef(isMode01) {
     s.apiFetch = async () => { throw new Error('de AI mag hier niet gevraagd worden'); };
     const haal = async (repo) => { gehaald.push(repo); return repo.toLowerCase() === 'mazda-cx-5' ? { gevonden: true, data: obdb } : { gevonden: false }; };
     const z = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal);
-    t('zoekObdb: tweede naam raak, kandidaten erbij', z.ok + ' ' + z.repo + ' ' + z.kandidaten.length, 'true Mazda-CX-5 9');
+    t('zoekObdb: tweede naam raak, kandidaten erbij', z.ok + ' ' + z.repo + ' ' + z.kandidaten.length, 'true Mazda-CX-5 10');
     t('zoekObdb: probeert de namen op volgorde', gehaald.join(','), 'Mazda-CX-5');
     const z2 = await E.zoekObdb({ merk: 'Dacia', model: 'Logan' }, async () => ({ gevonden: false }));
     t('zoekObdb: niet in OBDb is geen fout, en zegt wat er geprobeerd is', z2.ok + ' ' + z2.repo + ' ' + z2.geprobeerd.join(','), 'true  Dacia-Sandero,Dacia-Logan');   // Logan: de Sandero is de tweeling
@@ -411,7 +418,7 @@ function haalZeef(isMode01) {
     const zg = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal, async () => ({ gevonden: true, jaar: 2018, tekst: 'model_year: 2018\nsupported_commands_by_ecu:\n  "7E0":\n  - 0105:ECT\n' }));
     t('zoekObdb: een geldige lijst zonder fabriekscodes = niets proberen', zg.kandidaten.length + ' ' + zg.steunJaar, '0 2018');
     const zf = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5', bouwjaar: 2018 }, haal, async () => { throw new Error('Serverfout 502'); });
-    t('zoekObdb: steunlijst kapot = de oude gok, geen fout', zf.ok + ' ' + zf.kandidaten.length + ' ' + zf.steunJaar, 'true 9 null');
+    t('zoekObdb: steunlijst kapot = de oude gok, geen fout', zf.ok + ' ' + zf.kandidaten.length + ' ' + zf.steunJaar, 'true 10 null');
     const z3 = await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' }, async () => { throw new Error('Serverfout 502'); });
     t('zoekObdb: geen net is een melding', !z3.ok && /niet bereikbaar/.test(z3.fout), true);
     t('zoekObdb: zonder weg naar OBDb niet zoeken', (await E.zoekObdb({ merk: 'MAZDA', model: 'CX5' })).ok, false);

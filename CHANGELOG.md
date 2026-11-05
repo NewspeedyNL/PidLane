@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 05-11-2026 — Getallen zonder eenheid uit OBDb als sensor (besluit d, #670)
+ ═══════════════════════════════════════════════════════════
+ - Misfire- en kloptellers, lambda en overbrenging komen in Grondig mee,
+   gekeurd op het bereik uit OBDb, dat ook de schaal van de meter wordt.
+ - Een ruwe waarde of een onbekende eenheid niet.
+ - Vloot: gemiddeld 90,7 → 96,6 %, 37 van 40 op of boven 90 %.
+
+ ═══════════════════════════════════════════════════════════
  05-11-2026 — De wizard vinkt banden, laadregeling en wielen aan (#675)
  ═══════════════════════════════════════════════════════════
  - Grondig → vooraf aangevinkt: alle banden (op verzoek, geen plek in de

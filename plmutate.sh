@@ -1833,6 +1833,12 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@ && tst === 'F1' ? hdr + ':' + eax + '>' + rax : null;@@ ? hdr + ':' + eax + '>' + rax : null;@@test-mode21.js@@een Toyota met eigen antwoordbyte (ATCER) gaat als BMW door en hoort zijn antwoord nooit"
 "public/nepauto.js@@ && (e.ea || null) === st.cea) : ecus;@@) : ecus;@@test-nepauto.js@@de nepauto laat elke BMW-ECU op 6F1 antwoorden, met of zonder ATCEA"
 "plnepvloot.js@@    if (rx && h.startsWith(rx)) h = h.slice(rx.length + (ext ? 2 : 0));@@    if (rx && h.startsWith(rx)) h = h.slice(rx.length);@@test-nepvloot.js@@de generator houdt het F1-byte van BMW in de data: elke nagebouwde waarde schuift een byte"
+# Besluit d (#670): getallen zonder eenheid zijn data, ruw en onbekend niet.
+"public/pidlane-uitgebreid.js@@        const getal = fmt.unit === 'scalar' && !OBDB_RUW.test(String(g.name || ''));@@        const getal = false;@@test-mode21.js@@getallen zonder eenheid (misfire- en kloptellers) vallen weer weg uit de OBDb-kandidaten"
+"public/pidlane-uitgebreid.js@@        const getal = fmt.unit === 'scalar' && !OBDB_RUW.test(String(g.name || ''));@@        const getal = fmt.unit === 'scalar';@@test-mode21.js@@een ruwe waarde (raw count) komt als sensor in de lijst, zonder omrekening"
+"public/pidlane-uitgebreid.js@@(b.w - a.w) || (b.e - a.e) || (a.i - b.i)@@(b.w - a.w) || (a.i - b.i)@@test-mode21.js@@een kaal getal wint van een signaal mét eenheid in hetzelfde commando"
+"public/pidlane-pidzoek.js@@    if (!u && c && Number.isFinite(c.min) && Number.isFinite(c.max) && (w < c.min || w > c.max)) return@@    if (false) return@@test-pidzoek.js@@een getal zonder eenheid wordt niet meer op het OBDb-bereik gekeurd: elke verkeerde formule gaat door"
+"plnepvloot.js@@  return sigs.some((g) => !RUW.test(g.name) && (g.map || (g.unit && g.unit !== 'unknown')));@@  return true;@@test-nepvloot.js@@een onbekende eenheid of ruwe waarde telt weer in de noemer van de dekking"
 # De steunlijst van het bouwjaar (#670): zonder filter of mét de kap van 60
 # is het weer de gok die op de vloot 1515 weigeringen gaf; de Worker die
 # alleen het gevraagde jaar probeert vindt bij een gat in OBDb niets.
