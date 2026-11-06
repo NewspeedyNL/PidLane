@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-11-2026 — Contact uit op het lampje, schakellampjes vrij van de balk
+ ═══════════════════════════════════════════════════════════
+
+ - Contact uit (PLContact) wint van het laatste aandrijfoordeel: het
+   motorlampje zei minutenlang "Motor aan 28%" bij een auto die uit stond.
+ - Hyperlane liggend op volledig scherm: het midden telt de statusbalk van
+   de telefoon mee. Met grote tekst schoven de schakellampjes onder de
+   lampjesbalk.
+ - Het midden-knopje heeft zijn tekst bij de opbouw, niet pas bij de eerste
+   frame (#657; de browserproef werd daar op CI rood van).
+
+ ═══════════════════════════════════════════════════════════
  06-11-2026 — Versie 3.5.0 voor de release
  ═══════════════════════════════════════════════════════════
 
