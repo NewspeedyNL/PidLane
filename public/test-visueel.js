@@ -676,6 +676,13 @@ l = L({ toestand: 'STARTSTOP', zekerheid: 'hoog' }, 'benzine', { belasting: 34 }
 waar('in een start/stop-stop geen belasting (de motor staat stil)', l.motor.waarde === 'actief' && l.motor.balk === null, JSON.stringify(l));
 l = L({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'benzine', { belasting: 'NO DATA' });
 waar('onleesbare belasting: gewoon "aan", geen balkje', l.motor.waarde === 'aan' && l.motor.balk === null, JSON.stringify(l));
+l = L({ toestand: 'DRAAIT_STIL', zekerheid: 'hoog' }, 'benzine', { belasting: 28, contactUit: true });
+waar('contact uit wint van het laatste oordeel: "Contact uit", geen belasting',
+  l.motor && l.motor.kop === 'Contact' && l.motor.waarde === 'uit' && l.motor.soort === 'uit' && l.motor.balk === null, JSON.stringify(l));
+l = L({ toestand: 'DRAAIT_STIL', zekerheid: 'hoog' }, 'benzine', { belasting: 28, contactUit: false });
+waar('…en zonder contact uit blijft het "Motor aan 28%" (tegenproef)', l.motor.kop === 'Motor aan' && l.motor.waarde === '28%', JSON.stringify(l));
+l = L({ toestand: 'DRAAIT_STIL', zekerheid: 'hoog' }, 'ev', { contactUit: true });
+waar('een EV krijgt ook bij contact uit geen motorlampje', !l.motor, JSON.stringify(l));
 l = L({ toestand: 'UIT_VOOR_START', zekerheid: 'laag' }, 'benzine');
 waar('lage zekerheid staat op het lampje (twijfel), niet als feit', l.motor && l.motor.twijfel, JSON.stringify(l));
 

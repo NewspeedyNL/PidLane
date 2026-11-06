@@ -136,6 +136,24 @@ function toets(naam, waar, uitleg) {
       })()`);
       toets('staand ' + bw + '×' + bh + ': ringen binnen het scherm, niet onder de tanklichtbalk, niet over het midden', p.binnen && p.vrij && p.geenOverlap, p.maat);
     }
+    // Liggend met de statusbalk van de telefoon erboven (06-11-2026, uit de auto:
+    // de schakellampjes schoven half onder de lampjesbalk). 762×352 is de
+    // telefoon van die screenshot; de inzet staat zoals Android hem geeft.
+    for (const [bw, bh, sat, ui] of [[762, 352, 28, 'uiL'], [762, 352, 28, ''], [915, 412, 28, 'uiL'], [762, 352, 0, '']]) {
+      await app.venster(bw, bh);
+      const p = await app.ev(`(async function(){
+        const wacht = ms => new Promise(r => setTimeout(r, ms));
+        document.body.style.setProperty('--pl-sat-fysiek', '${sat}px'); if ('${ui}') document.body.classList.add('${ui}');
+        setPidView('visueel'); await wacht(500);
+        document.querySelector('.gg.view-visueel .vt-vol').click(); await wacht(700);
+        const v = document.querySelector('.gg.view-visueel .vpf-hyper');
+        const lp = document.querySelector('.vis-lampen').getBoundingClientRect(), ld = v.querySelector('.vhl-leds').getBoundingClientRect();
+        const r = { vrij: lp.height > 0 && ld.height > 0 && ld.top >= lp.bottom + 6, maat: Math.round(lp.bottom) + ' / ' + Math.round(ld.top) };
+        appBack(); await wacht(200); document.body.style.removeProperty('--pl-sat-fysiek'); if ('${ui}') document.body.classList.remove('${ui}');
+        return r;
+      })()`);
+      toets('liggend ' + bw + '×' + bh + ', statusbalk ' + sat + ' px' + (ui ? ', ' + ui : '') + ': de schakellampjes staan vrij onder de lampjesbalk', p.vrij, 'balk eindigt / lampjes beginnen: ' + p.maat);
+    }
     // Het ritoverzicht (28-10-2026): niet bij elk stoplicht, wel na een mooie run; 🏁 en een tik
     await app.venster(915, 412);
     const sb = await app.ev(`(async function(){

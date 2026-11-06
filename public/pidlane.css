@@ -2181,6 +2181,10 @@ body.pl-vis-vol .vpf-lcd-rij .vpf-w { font-size:min(6vh, 7vw, 44px); }
 .vhl-mid { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3cqh;
   padding:5cqh 0; transform:translateZ(60px); border-radius:40%;
   background:radial-gradient(closest-side, rgba(2,3,10,.82), rgba(2,3,10,.55) 70%, transparent); }
+/* Volledig scherm, liggend (06-11-2026): de lampjesbalk staat onder de
+   statusbalk van de telefoon (--pl-sat). Het midden telde die rand niet mee,
+   en dan schoven de schakellampjes er half onder. Staand heeft eigen maten. */
+body.pl-vis-vol .vhl-mid { padding-top:calc(5cqh + var(--pl-sat, 0px)); }
 /* De schakellampjes als losse ronde lampjes (01-11-2026): op verzoek terug
    zoals ze vóór 2bb846a (28-10-2026) waren, toen ze een lichtstreep werden.
    Het midden is sindsdien smaller (de ringen en de strook kwamen erbij):

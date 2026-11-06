@@ -446,7 +446,7 @@ MUTATIES=(
 # dode link in een verplicht veld, een afvinklijst die een oude versie
 # bevestigt, en het woord dat de hele Data safety-form onjuist maakt.
 "PLAY-INZENDING.md@@\`\`\`\nhttps://app.pidlane.nl/privacy.html\n\`\`\`@@\`\`\`\nhttps://pidlane.nl/privacy.html\n\`\`\`@@test-playteksten.js@@de privacy-URL wijst naar een andere host dan de app zelf gebruikt"
-"package.json@@  \"version\": \"3.4.0\",@@  \"version\": \"3.5.0\",@@test-playteksten.js@@de afvinklijst bevestigt een versienummer dat niet meer gebouwd wordt"
+"package.json@@  \"version\": \"3.5.0\",@@  \"version\": \"3.6.0\",@@test-playteksten.js@@de afvinklijst bevestigt een versienummer dat niet meer gebouwd wordt"
 "PLAY-INZENDING.md@@| URL | \`https://app.pidlane.nl/verwijderen.html\` |@@| URL | \`https://pidlane.nl/verwijderen.html\` |@@test-playteksten.js@@de verwijder-URL wijst naar een andere host dan de app zelf gebruikt"
 "PLAY-INZENDING.md@@## 8. Ads@@De gedeelde meetdata is geanonimiseerd.\n\n## 8. Ads@@test-playteksten.js@@het inzenddocument noemt de meetdata weer anoniem in plaats van gepseudonimiseerd"
 # ── de poort voor automerge (03-09-2026) ──
@@ -703,6 +703,11 @@ MUTATIES=(
 # de klasse fout die hier maanden blijft staan.
 ".gitattributes@@PIDLANE.md            merge=union@@PIDLANE.md            -merge@@test-gitattributes.js@@PIDLANE.md valt niet meer onder union, dus de conflicten komen terug"
 ".gitattributes@@CHANGELOG.md          merge=union@@CHANGELOG.md          merge=union\n*.js                  merge=union@@test-gitattributes.js@@union uitgebreid naar JS, waar een verdubbelde regel stil breekt"
+# ── de vier weken van CHANGELOG.md (06-11-2026) ──
+# Twee echte fouten: een snede die van boven zoekt en zo een nieuwer blok
+# meesleept, en een oud blok dat bovenaan geplakt wordt in plaats van gesneden.
+"plsnede.js@@  for (let i = k.length - 1; i >= 0 && k[i].dag < grens; i--) van = k[i].regel;@@  for (let i = 0; i < k.length; i++) if (k[i].dag < grens) { van = k[i].regel; break; }@@test-changelogsnede.js@@de snede zoekt van boven en verhuist ook een blok van binnen vier weken"
+"CHANGELOG.md@@> oplevering (zie CLAUDE.md), alleen voortaan hier.@@> oplevering (zie CLAUDE.md), alleen voortaan hier.\n\n ═════════════════════════════\n 01-01-2026 — vergeten te snijden\n ═════════════════════════════@@test-changelogsnede.js@@CHANGELOG.md overspant maanden en de test merkt het niet"
 # ── plinhaal.js: alleen toevoegingen vanzelf oplossen (08-10-2026) ──
 # Elke rem eruit, en de toets moet het zien. Zonder de eerste lost hij een
 # echte botsing op door beide versies te houden; zonder de telling plakt hij
@@ -756,11 +761,11 @@ MUTATIES=(
 # zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop
 # kostte: twee velden die een reviewer allebei leest, met verschillende
 # beloftes. Het valt niemand op tot het in de Console staat.
-"PLAY-INZENDING.md@@Met aankooprapport en wintercheck.@@Met aankooprapport en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
+"PLAY-INZENDING.md@@Met Accu & laadsysteem en Conditiescore.@@Met Accu & laadsysteem en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
 # En andersom: §3 hernoemt een functie, §14 blijft de oude naam beloven. Dat is
 # de stillere van de twee — je verbetert de beschrijving en raakt het veld
 # ernaast niet aan.
-"PLAY-INZENDING.md@@• Wintercheck — banden@@• Seizoenscheck — banden@@test-playteksten.js@@§3 hernoemt een functie en §14 belooft de oude naam nog"
+"PLAY-INZENDING.md@@• Conditiescore — hoe je auto@@• Gezondheidsscore — hoe je auto@@test-playteksten.js@@§3 hernoemt een functie en §14 belooft de oude naam nog"
 # ── Inloggen kost geen credit meer (#179, 10-09-2026) ──
 # Vijf fouten die deze reparatie ongedaan maken, en ze zijn geen van vijven
 # verzonnen: de eerste is precies hoe het er tot vandaag in stond, en de
@@ -1153,6 +1158,7 @@ MUTATIES=(
 "public/pidlane-data.js@@  if(motor!=='hybride') return basis;@@  return basis;@@test-hybridebasis.js@@een hybride krijgt weer alleen 'laat hem stationair draaien' (#430)"
 "public/pidlane-visueel.js@@  if(elektrisch && heeftVraag) return 'vermogen';@@  if(false) return 'vermogen';@@test-visueel.js@@een hybride houdt de toerennaald die op 0 staat terwijl hij 50 rijdt (#432)"
 "public/pidlane-visueel.js@@const VRAAG_KETEN = ['015A','0149','014A'];@@const VRAAG_KETEN = ['015A','0149','014A','0111'];@@test-visueel.js@@de gasklep telt als vermogensvraag: op de accu optrekken staat dan op nul"
+"public/pidlane-visueel.js@@  if(extra.contactUit && motor!=='ev'){@@  if(false){@@test-visueel.js@@contact uit en het motorlampje zegt nog Motor aan met de laatste belasting"
 "public/pidlane-visprofiel.js@@if(RESERVE_SOORT.indexOf(x.soort)>=0) (reserve||[]).forEach(function(r){ if(k.indexOf(r.pid)<0) k.push(r.pid); });@@@@test-visprofiel.js@@de reserve van Temperatuur doet niets: een ontbrekende sensor laat weer een lege balk"
 "public/pidlane-visprofiel.js@@const RESERVE_SOORT = ['thermo', 'balk'];@@const RESERVE_SOORT = ['thermo', 'balk', 'lambda', 'midden'];@@test-visprofiel.js@@de lambdaschaal en de trims krijgen een temperatuur als reserve: ze tonen iets anders dan ze zeggen"
 "public/pidlane-visprofiel.js@@      if(r) uit.vervang[x.rol]={ naam:r.naam,@@      if(false) uit.vervang[x.rol]={ naam:r.naam,@@test-visprofiel.js@@een reservesensor staat er met het label van de plek: motorbelasting als KAT in graden"
@@ -1204,6 +1210,7 @@ MUTATIES=(
 "public/pidlane-hyperlane.js@@e[r]=s.verv[r] ? null : @@e[r]=@@test-hyperlane.js@@een vervangen plek telt toch mee in kleur, scènes en rit"
 "public/pidlane-hyperlane.js@@function actieveVorm(vorm){ return VORMEN.indexOf(vorm)<0 ? 'aurora' : vorm; }@@function actieveVorm(vorm){ return VORMEN.indexOf(vorm)<0 ? 'aurora' : vorm==='hartslag' ? 'tunnel' : vorm; }@@test-hyperlane.js@@Hartslag gekozen en toch de tunnel (de klacht van 28-10-2026)"
 "public/pidlane.css@@.vhl-kop .vhl-modus { font-size:min(3.4cqh, 1.05cqw);@@.vhl-kop .vhl-modus { font-size:3.4cqh;@@bproef-hyperlane.js@@MOTOR KOUD en KOELWATER HEET worden afgekapt naast het versnellingslabel"
+"public/pidlane.css@@body.pl-vis-vol .vhl-mid { padding-top:calc(5cqh + var(--pl-sat, 0px)); }@@body.pl-vis-vol .vhl-mid { }@@bproef-hyperlane.js@@liggend met statusbalk en grote tekst schuiven de schakellampjes onder de lampjesbalk"
 "public/pidlane-hyperlane.js@@const VS_VENSTER = 1.5, VS_MIN = 0.6;@@const VS_VENSTER = 0.15, VS_MIN = 0;@@test-hyperlane.js@@de versnelling komt weer uit twee metingen: constant 80 km/h geeft ACCELERATIE en REMMEN van 0,4 g"
 "public/pidlane-hyperlane.js@@(vorig==='ACCELERATIE' ? ACC_UIT_KMHS : ACC_KMHS)@@ACC_KMHS@@test-hyperlane.js@@het hoofdgetal knippert rond 4 km/h/s tussen ACCELERATIE en verbruik"
 "public/pidlane.css@@justify-content:center; gap:1.5cqh; padding:calc(var(--pl-sat, 0px) + 132px) 0 calc(var(--pl-sab, 0px) + 11cqh); }\n  body.pl-vis-vol .vhl-pod { flex:1 1 0; min-height:0; width:auto; max-width:74cqw; aspect-ratio:1; }@@justify-content:space-evenly; padding:calc(var(--pl-sat, 0px) + 132px) 0 calc(var(--pl-sab, 0px) + 9cqh); }\n  body.pl-vis-vol .vhl-pod { width:min(74cqw, 29cqh); }@@bproef-hyperlane.js@@staand loopt de snelheidsring weer onder de tanklichtbalk door en van het scherm af"
