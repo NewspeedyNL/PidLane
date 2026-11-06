@@ -2230,7 +2230,7 @@ MUTATIES=(
 "public/pidlane-garage.js@@    h += tekenMeekijk();\n@@@@bproef-meekijk.js@@de klant kan nergens een meekijkcode maken of intrekken"
 "public/pidlane-garage.js@@      if (k && (!_wasKlant || wie() !== _wasWie)) {@@      if (k && !_wasKlant) {@@bproef-garage.js@@wie van beheer naar klant wisselt zonder uit te loggen, ziet de auto's van beheer"
 "public/pidlane-garage.js@@return r === 'klant' || r === 'admin'; }@@return r === 'klant'; }@@bproef-garage.js@@een beheerder ziet Mijn voertuigen weer niet"
-"public/pidlane-garage.js@@    if (v) { _st.tab = 'sensoren'; _st.sens = null; teken(); }@@@@bproef-garage.js@@de knop Eigen in de sensorkeuzelijst opent het overzicht in plaats van Sensoren (#474)"
+"public/pidlane-garage.js@@    if (v) { _st.tab = 'sensoren'; _st.sens = null; _st.sensSubNa = sub || null; teken(); }@@@@bproef-garage.js@@de knop Eigen in de sensorkeuzelijst opent het overzicht in plaats van Sensoren (#474)"
 "public/pidlane-garage.js@@    if (k.length >= 4 && !al) v.kenteken = k;@@@@test-garage.js@@Voertuig toevoegen vraagt het kenteken van de verbinding opnieuw (#476)"
 "public/pidlane-garage.js@@      _st.voorinvul = voorinvulNieuw(vanVerbinding ? _st.onbekend : null, ken, voertuigen(true));@@      _st.voorinvul = voorinvulNieuw(vanVerbinding ? _st.onbekend : null, '', voertuigen(true));@@bproef-garage.js@@het formulier leest het kenteken van de verbinding niet (#476)"
 "public/pidlane-garage.js@@    if (tw && heeft(tw)) return { groep: 'dubbel'@@    if (tw) return { groep: 'dubbel'@@test-garage.js@@een code heet dubbel ook als de auto de standaard-PID niet geeft (22057D zonder 0146)"
