@@ -15,6 +15,43 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 06-11-2026 — 321 V uit een sensor van 5 V: het OBDb-bereik keurt nu ook met eenheid
+
+**Gevonden** bij een simulatorrun van de CX-5. Grondig bood `22038E`
+(*Evaporative vapor pressure sensor voltage*) aan met 321,7 V, en de wizard
+vinkte hem vooraf aan. OBDb geeft `len 16, sign, div 5.0048876, max 5,
+volts`. Uit `06 4A` (1610) komt zo 321,7 V. OBDb's eigen testgevallen
+verwachten bij elk antwoord (ruw 1569–2845) precies 5: hun decoder kapt af
+op `max`, dus de schaal is fout en hun test merkt het niet. Op de echte auto
+is de code nooit gemeten: hij stond in geen registratie en in geen logregel.
+
+**Online.** Dezelfde code bij Ford is gecorrigeerd naar ÷1000 (OBDb
+Ford-Mustang #428, 02-10-2026). Voor de CX-5 is ×5/4096 voorgesteld
+(Mazda-CX-5 #1036), *"best fit, not documented"*, en die PR is ongemerged
+gesloten. Een Mazda-servicebulletin noemt 2,5–3,6 V als normale spanning
+voor de tankdrukopnemer. Welke schaal klopt, weten we dus niet. De app
+kiest er ook geen.
+
+**Waarom de keuring hem doorliet.** `plausibel()` staat voor V 0…1000 toe,
+voor hoogvoltaccu's. Het OBDb-bereik gebruikte hij alleen zonder eenheid
+(besluit d).
+
+**Nu.** `obdbKandidaten()` geeft het bereik van OBDb mee als `obdbMax`/
+`obdbMin`, alleen voor de keuring, niet als schaal en niet opgeslagen.
+`plausibel()` vindt een waarde daarbuiten vreemd. Twee uitzonderingen,
+allebei uit de vloot:
+- **Na een omrekening** (°F, mijl, mV, en kPa naar bar volgens de voorkeur
+  van de klant) hoort het bereik bij een andere eenheid: dan niet.
+- **`max 1` telt niet.** Dat is in OBDb het bereik van een aan/uit-signaal,
+  en bij een eenheid een plaatshouder: de Golf `2218B6` (de km-stand bij de
+  laatste activering) gaf zo 114 633 km tegen "max 1", en die waarde klopt.
+
+**Gemeten** (`--alle`): de vloot blijft op 98,8 %. Vijf codes vallen er nu
+uit die nooit klopten: CX-5 22038E (321 V), Mini 224015 (185 °C inlaatlucht
+tegen max 150: een ontbrekende offset), Mini 22D129 en Audi 227029 (`FFFF`,
+geen waarde), plus 2211F0, 221001 en 221004, die al vreemd waren. De vloer
+van de CX-5 gaat van 97 naar 96 %, die van de Mini van 98 naar 96 %.
+
 ## 05-11-2026 — Besluit d deel 2: standen zijn data, 96,6 → 98,8 % (#670)
 
 **Wat erbij kwam.** Standen zijn in OBDb meestal één bit (`bix`/`len 1`,

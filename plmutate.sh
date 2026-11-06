@@ -1841,6 +1841,11 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@(b.w - a.w) || (b.e - a.e) || (a.i - b.i)@@(b.w - a.w) || (a.i - b.i)@@test-mode21.js@@een kaal getal wint van een signaal mét eenheid in hetzelfde commando"
 "public/pidlane-pidzoek.js@@    if (!u && c && Number.isFinite(c.min) && Number.isFinite(c.max) && (w < c.min || w > c.max)) return@@    if (false) return@@test-pidzoek.js@@een getal zonder eenheid wordt niet meer op het OBDb-bereik gekeurd: elke verkeerde formule gaat door"
 "plnepvloot.js@@  return sigs.some((g) => !RUW.test(g.name) && (g.map || (g.unit && g.unit !== 'unknown')));@@  return true;@@test-nepvloot.js@@een onbekende eenheid of ruwe waarde telt weer in de noemer van de dekking"
+# Het OBDb-bereik ook met eenheid (06-11-2026): daarboven kapt OBDb af, dus de schaal klopt niet.
+"public/pidlane-pidzoek.js@@      if (Number.isFinite(c.obdbMax) && w > c.obdbMax + marge(c.obdbMax)) return@@      if (false) return@@test-pidzoek.js@@een sensorspanning van 321 V (Mazda 22038E) komt weer door de keuring en de wizard vinkt hem aan"
+"public/pidlane-pidzoek.js@@    if (c && u && u === String(c.eenheid || '').trim()) {@@    if (c && u) {@@test-pidzoek.js@@na een drukomrekening (kPa naar bar) keurt de app op het kPa-bereik: een gezonde druk wordt vreemd"
+"public/pidlane-uitgebreid.js@@ && Number(fmt.max) > 1) k.obdbMax = Number(fmt.max);@@) k.obdbMax = Number(fmt.max);@@test-mode21.js@@max 1, de plaatshouder van OBDb, keurt een kilometerstand van 114 633 km af (Golf 2218B6)"
+"public/pidlane-uitgebreid.js@@        if (!getal && !standen && !OBDB_OM[fmt.unit]) {@@        if (!getal && !standen) {@@test-mode21.js@@na een omrekening (°F, mijl, mV) keurt de app op het bereik in de oude eenheid"
 # Besluit d deel 2: standen (aan/uit, ja/nee, keuzelijst) via een bitveld [b:n].
 "public/pidlane-uitgebreid.js@@            v = v * 2 + ((x >> (7 - (k & 7))) & 1);@@            v = v * 2 + ((x >> (k & 7)) & 1);@@test-mode21.js@@het bitveld telt de bits van onderen in plaats van zoals OBDb bix: elke stand leest een buurbit"
 "public/pidlane-uitgebreid.js@@        const standen = obdbStanden(fmt);@@        const standen = null;@@test-mode21.js@@standen (aan/uit, keuzelijst) vallen weer weg uit de OBDb-kandidaten"

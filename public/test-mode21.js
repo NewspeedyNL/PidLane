@@ -384,6 +384,12 @@ function haalZeef(isMode01) {
     t('formule: een bitveld zonder geldige breedte of positie mag niet', ['[0:0]', '[0:33]', '[2048:1]', '[1:]', 'A:1', '[1:2:3]'].map(f => E.controleer({ code: '221139', naam: 'x', formule: f }).ok).join(), 'false,false,false,false,false,false');
     t('obdb: standen voor aan/uit, ja/nee en een keuzelijst', JSON.stringify([{ unit: 'offon' }, { unit: 'yesno' }, { map: { 1: { description: 'First gear', value: '1' }, 2: { description: 'Second gear' } } }, { unit: 'scalar' }, { map: { x: {} } }].map(E.obdbStanden)),
       JSON.stringify([{ 0: 'uit', 1: 'aan' }, { 0: 'ja', 1: 'nee' }, { 1: 'First gear', 2: 'Second gear' }, null, null]));
+    // Het OBDb-bereik gaat mee als keuring met eenheid, niet bij een omrekening (06-11-2026, 22038E).
+    const kv = E.obdbKandidaten({ commands: [
+      { hdr: '7E0', rax: '7E8', cmd: { '22': '038E' }, signals: [{ name: 'Evaporative vapor pressure sensor voltage', fmt: { len: 16, max: 5, div: 5.0048876, sign: true, unit: 'volts' } }] },
+      { hdr: '7E1', rax: '7E9', cmd: { '22': '1E1D' }, signals: [{ name: 'ATF temperature', fmt: { len: 8, max: 300, unit: 'fahrenheit' } }] },
+      { hdr: '713', rax: '77D', cmd: { '22': '18B6' }, signals: [{ name: 'Counter steer support, odometer, last activated', fmt: { bix: 8, len: 24, max: 1, unit: 'kilometers' } }] }] }, 'x', 2018);
+    t('obdb: met eenheid gaat het bereik mee als obdbMax, niet als schaal; na een omrekening niet; max 1 is een plaatshouder', kv.map(x => x.code + ':' + x.obdbMax + ':' + x.max).join(' '), '221E1D:undefined:undefined 22038E:5:undefined 2218B6:undefined:undefined');
     const obdbStand = { commands: [
       { hdr: '7E0', rax: '7E8', cmd: { '22': '1001' }, signals: [{ name: 'Cooling fan relay control', fmt: { bix: 5, len: 1, max: 1, unit: 'offon' } }] },
       { hdr: '7E0', rax: '7E8', cmd: { '22': '1002' }, signals: [{ name: 'Trunk ajar', fmt: { bix: 11, len: 1, max: 1, unit: 'noyes' } }, { name: 'Battery', fmt: { bix: 16, len: 8, div: 10, unit: 'volts' } }] },
