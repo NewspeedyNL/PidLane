@@ -523,6 +523,32 @@ const NEPSERVER = `(function(){
     toets('de band uit de bewaarde selectie is bekend, maar op verzoek en dus niet geselecteerd (#396)',
       herstart.eigenDef && herstart.na.indexOf('222A05') < 0, JSON.stringify(herstart));
 
+    console.log('\n── 4h2. zonder chassisnummer: het actieve voertuig (06-11-2026) ──');
+    // Uit het gebruik: aangevinkt in Mijn voertuigen → Sensoren, en daarna niet
+    // in de keuzelijst aan. herkenAuto() stopte zonder VIN meteen.
+    const zonderVin = await app.ev(`(async function(){
+      const wacht = ms => new Promise(r => setTimeout(r, ms));
+      vehicleInfo.vin = ''; activePIDs.clear();
+      supportedPIDs = new Set(['010C','010D','0105','0104','010B','0111','012F','0142','015E','0110']);
+      buildDiscoveredPIDList();
+      window._plVerbindingKlaar = Date.now(); connected = true; demoMode = false;
+      await wacht(4500);
+      const na = [...activePIDs];
+      return { na, lijst: discoveredPIDDefs.some(d => d.pid === '221310') };
+    })()`);
+    toets('zonder VIN gaan de aangevinkte sensoren van het actieve voertuig toch aan',
+      zonderVin.lijst && ['221310', 'CA01'].every(p => zonderVin.na.indexOf(p) >= 0), JSON.stringify(zonderVin));
+    // De wizard, stap Sensoren → Grondig: de zoekronde moet zichtbaar zijn.
+    await app.ev(`PLInrichten._grondig(); 'ok'`);
+    toets('wizard Grondig: Mijn voertuigen open op het subtabblad Zoeken, met de zoekronde in beeld',
+      await wacht(`(function(){ const ov = document.getElementById('plGarOv'), b = document.querySelector('#plGarBody .gr-subblad[data-sub="zoeken"]');
+        return !!ov && ov.style.display === 'flex' && !!b && !b.hidden && b.offsetHeight > 0 && /Bibliotheek|Testen|codes|Geen nieuwe/.test(b.textContent); })()`, 6000),
+      await app.ev(`JSON.stringify({ sub: (PLGarage.staat().sens || {}).sub, pz: (PLGarage.staat().sens || {}).pz })`));
+    // Sluiten hervat de wizard (naGarage); die hoort niet in de proeven hierna.
+    await app.ev(`PLGarage.sluit(); connected = false; 'ok'`);
+    await new Promise(r => setTimeout(r, 2500));
+    await app.ev(`(function(){ const w = document.getElementById('plInOv'); if (w) w.style.display = 'none'; return 'ok'; })()`);
+
     console.log('\n── 4e. leren uit opnames (27-09) ──');
     const opn = await app.ev(`(async function(){
       const R = [7.4, 13.1, 19.6, 25.8, 31.9, 38.2], regels = [];

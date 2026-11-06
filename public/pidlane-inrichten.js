@@ -584,9 +584,18 @@
     _meet: meet,
     _grondig: function () {
       if (!window.PLGarage || !PLGarage.openSensoren) return;
-      _pauze = true; verberg(); PLGarage.openSensoren();
-      // Meteen de zoekronde starten: dezelfde knop als 🚀 in het tabblad Sensoren.
-      setTimeout(function () { try { if (PLGarage._pzStart) PLGarage._pzStart(); } catch (e) { console.warn('PLInrichten: grondig zoeken niet gestart', e); } }, 400);
+      _pauze = true; verberg();
+      // Meteen op het subtabblad Zoeken, waar de voortgang staat: tot 06-11-2026
+      // liep de zoekronde onzichtbaar in Mijn sensoren. En pas starten als het
+      // tabblad er echt staat (de stand kan nog onderweg zijn), niet na een vaste 400 ms.
+      try { PLGarage.openSensoren('zoeken'); } catch (e) { console.warn('PLInrichten: sensoren niet geopend', e); return; }
+      var pogingen = 0;
+      (function probeer() {
+        var klaar = !!(PLGarage.staat && PLGarage.staat().sens);
+        if (!klaar && ++pogingen < 40) { setTimeout(probeer, 250); return; }
+        if (!klaar) { melding('⚠️ Het tabblad Sensoren kwam niet op — probeer 🚀 daar zelf'); return; }
+        try { if (PLGarage._pzStart) PLGarage._pzStart(); } catch (e) { console.warn('PLInrichten: grondig zoeken niet gestart', e); }
+      })();
     },
     _weergave: weergave,
     _bijhouden: bijhouden,
