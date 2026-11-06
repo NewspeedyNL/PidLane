@@ -2848,6 +2848,26 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Het OBDb-bereik ook met eenheid (06-11-2026) ──
+  {
+    issue: '#670',
+    naam: 'Een OBDb-code met eenheid wordt gekeurd op het bereik van OBDb: boven max is een verkeerde schaal (22038E Mazda: 321 V voor een 0–5 V-sensor), max 1 telt niet',
+    waarom: 'OBDb kapt in zijn eigen decoder af op max. De spanning van de verdampingsdrukopnemer van de CX-5 (22038E) gaf zo 321,7 V, en de app bood hem aan, omdat V tot 1000 mag (hoogvoltaccu). Bij Ford is dezelfde code gecorrigeerd (OBDb Ford-Mustang #428), bij Mazda nog niet (#1036 gesloten). Deze proef toetst de geladen obdbKandidaten() en plausibel().',
+    proef: async function () {
+      var E = window.PLEigen, Z = window.PLPidZoek;
+      if (!E || typeof E.obdbKandidaten !== 'function' || !Z || typeof Z.plausibel !== 'function') return { staat: 'FOUT', detail: 'PLEigen/PLPidZoek ontbreekt — herladen?' };
+      var k = E.obdbKandidaten({ commands: [
+        { hdr: '7E0', rax: '7E8', cmd: { '22': '038E' }, signals: [{ name: 'Evaporative vapor pressure sensor voltage', fmt: { len: 16, max: 5, div: 5.0048876, sign: true, unit: 'volts' } }] },
+        { hdr: '713', rax: '77D', cmd: { '22': '18B6' }, signals: [{ name: 'Odometer, last activated', fmt: { bix: 8, len: 24, max: 1, unit: 'kilometers' } }] }] }, 'x', 2019);
+      var ev = k.filter(function (x) { return x.code === '22038E'; })[0], km = k.filter(function (x) { return x.code === '2218B6'; })[0];
+      if (!ev || ev.obdbMax !== 5) return { staat: 'FOUT', detail: '22038E draagt het OBDb-maximum niet mee: ' + JSON.stringify(ev) };
+      if (!km || km.obdbMax !== undefined) return { staat: 'FOUT', detail: 'max 1 (plaatshouder) gaat toch mee als keuring: ' + JSON.stringify(km) };
+      if (Z.plausibel({ ok: true, bytes: [6, 0x4A], waarde: 321.686, eenheid: 'V' }, ev).ok) return { staat: 'FOUT', detail: '321,7 V boven het OBDb-maximum van 5 V wordt goedgekeurd' };
+      if (!Z.plausibel({ ok: true, bytes: [9, 0xC4], waarde: 2.5, eenheid: 'V' }, ev).ok) return { staat: 'FOUT', detail: '2,5 V binnen het OBDb-bereik wordt afgekeurd' };
+      return { staat: 'OK', detail: 'boven OBDb-max = vreemd; max 1 en omrekeningen tellen niet' };
+    }
+  },
+
   // ── Besluit d deel 2: standen (05-11-2026) ──
   {
     issue: '#670',

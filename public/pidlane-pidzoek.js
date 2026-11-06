@@ -44,6 +44,14 @@
     // Precies −40 °C is de ondergrens van A−40: een losse of ontbrekende sensor.
     if (u === '°C' && w <= -40) return { ok: false, reden: '−40 °C — de ondergrens, meestal een ontbrekende sensor' };
     if (u === 'V' && LAAG_VOLT.test(naam) && !HOOG_VOLT.test(naam) && (w < 6 || w > 17)) return { ok: false, reden: waarde(w, u) + ' voor een 12V-spanning' };
+    // Het bereik van OBDb, ook mét eenheid: daarboven kapt OBDb zelf af, dus de schaal klopt niet
+    // (22038E Mazda gaf 321,7 V; OBDb PR's Ford-Mustang #428 en Mazda-CX-5 #1036). Alleen in
+    // de eenheid van OBDb: na een drukomrekening (kPa → bar) hoort het bereik er niet meer bij.
+    if (c && u && u === String(c.eenheid || '').trim()) {
+      const marge = function (g) { return Math.abs(g) * 1e-6 + 1e-9; };
+      if (Number.isFinite(c.obdbMax) && w > c.obdbMax + marge(c.obdbMax)) return { ok: false, reden: waarde(w, u) + ' ligt boven het OBDb-maximum ' + c.obdbMax + ' ' + u + ' — OBDb kapt daar af, de schaal klopt niet' };
+      if (Number.isFinite(c.obdbMin) && w < c.obdbMin - marge(c.obdbMin)) return { ok: false, reden: waarde(w, u) + ' ligt onder het OBDb-minimum ' + c.obdbMin + ' ' + u + ' — OBDb kapt daar af, de schaal klopt niet' };
+    }
     // Een stand (besluit d deel 2): alleen een waarde uit de lijst is een stand.
     if (!u && c && c.standen && typeof c.standen === 'object' && !Object.prototype.hasOwnProperty.call(c.standen, String(w))) return { ok: false, reden: waarde(w, u) + ' is geen stand uit de lijst van OBDb (' + Object.keys(c.standen).slice(0, 6).join(', ') + ')' };
     // Een getal zonder eenheid (besluit d): het bereik uit OBDb is de keuring.

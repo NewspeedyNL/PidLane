@@ -54,14 +54,16 @@ const BEKEND = {
 };
 // Gemeten dekking (%) per auto op 05-11-2026, met de steunlijst, S16( ), VAG 29-bit, getallen zonder eenheid en standen; mag alleen omhoog. Geen vloer =
 // LET OP met het getal erbij.
+// 06-11-2026: CX-5 97 → 96 en Mini 98 → 96, met reden. Het OBDb-bereik keurt nu ook
+// met eenheid; 22038E (321 V), 224015 (185 °C inlaat) en 22D129 (FFFF) waren nooit goed.
 const VLOER = {
-  cx5_18: 97, mazda3_19: 100, mazda2_18: 100, golf19: 99, polo18: 93, tiguan19: 88,
+  cx5_18: 96, mazda3_19: 100, mazda2_18: 100, golf19: 99, polo18: 93, tiguan19: 88,
   id3_21: 97, a3_19: 96, ibiza19: 100, octavia19: 100, p208_19: 100, p2008_20: 100,
   p308_18: 100, clio20: 100, zoe21: 99, sandero21: 100, yaris20: 100, corolla20: 97,
   chr20: 100, aygo19: 98, rav4_19: 96, niro19: 100, picanto17: 100, sportage20: 100,
   ceed19: 100, tucson19: 100, kona20: 100, i30_19: 100, focus18: 98, fiesta18: 99,
   fiat500_14: 100, qashqai19: 100, leaf19: 97, xc40_20: 100, mgzs21: 100, swift19: 100,
-  civic19: 97, bmw3_19: 100, mini19: 98, cklasse18: 100
+  civic19: 97, bmw3_19: 100, mini19: 96, cklasse18: 100
 };
 
 let fouten = 0, letop = 0;

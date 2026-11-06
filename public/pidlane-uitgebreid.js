@@ -1149,6 +1149,16 @@
         if (getal && isFinite(Number(fmt.min === undefined ? 0 : fmt.min)) && isFinite(Number(fmt.max)) && Number(fmt.max) > Number(fmt.min || 0)) { k.min = Number(fmt.min || 0); k.max = Number(fmt.max); }
         // Een stand keurt op zijn lijst (PLPidZoek.plausibel); het bereik is de schaal.
         if (standen) { const ws = Object.keys(standen).map(Number); k.standen = standen; k.min = Math.min.apply(null, ws); k.max = Math.max.apply(null, ws); if (k.max === k.min) k.max = k.min + 1; }
+        // Met eenheid: het bereik van OBDb alleen als keuring (PLPidZoek.plausibel), niet als schaal.
+        // De decoder van OBDb kapt af op max: een waarde erboven is een verkeerde schaal
+        // (22038E Mazda: 321 V voor een sensor van 0–5 V; OBDb verwacht daar altijd 5).
+        // Na een omrekening (OBDB_OM) hoort het bereik bij de oude eenheid: dan niet.
+        if (!getal && !standen && !OBDB_OM[fmt.unit]) {
+          // max 1 is in OBDb het bereik van een aan/uit; bij een eenheid een plaatshouder
+          // (Golf 2218B6: kilometerstand met max 1, de echte waarde 114 633 km).
+          if (fmt.max !== undefined && isFinite(Number(fmt.max)) && Number(fmt.max) > 1) k.obdbMax = Number(fmt.max);
+          if (fmt.min !== undefined && isFinite(Number(fmt.min))) k.obdbMin = Number(fmt.min);
+        }
         uit.push(k);
         break;
       }

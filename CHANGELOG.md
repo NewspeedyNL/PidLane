@@ -10,6 +10,12 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-11-2026 — Grondig keurt op het bereik van OBDb, ook met eenheid
+ ═══════════════════════════════════════════════════════════
+ - Een sensorspanning van 321 V (Mazda 22038E) wordt niet meer aangeboden.
+ - Na een omrekening en bij de plaatshouder max 1 telt het bereik niet.
+
+ ═══════════════════════════════════════════════════════════
  05-11-2026 — Slim visueel: de themakeuze blijft open bij een herbouw (#657)
  ═══════════════════════════════════════════════════════════
  - Een nieuwe sensor of de demo die opstart sluit de themastrook niet meer.
