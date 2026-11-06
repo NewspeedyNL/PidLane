@@ -15,6 +15,28 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 06-11-2026 — Aangevinkt en toch niet aan; Grondig zonder venster
+
+**Gemeld uit het gebruik**: sensoren aanvinken in Mijn voertuigen → Sensoren
+maakte ze niet beschikbaar in de keuzelijst, en de wizardknop Grondig opende
+"geen venster dat je kunt zien".
+
+**Aanvinken.** `pasSelectieToe()` liep alleen vanuit `herkenAuto()`, en die
+stopte meteen zonder `vehicleInfo.vin`. Een auto die zijn VIN niet geeft kreeg
+de selectie dus nooit, terwijl `gearKoppel()` de eigen PIDs wél op het actieve
+voertuig zette: ze stonden in de lijst, maar uit. Nu doet `selectieZonderVin()`
+dat na "Verbinding compleet". Een VIN die níét herkend wordt (`_st.onbekend`)
+blijft een andere auto en krijgt niets — die rem van 28-09 staat nog.
+`bproef-garage.js` 4f toetste de koppeling via `PLEigen.zet()` rechtstreeks,
+dus het pad van bewaren naar aanzetten was nooit samen getoetst.
+
+**Grondig.** `_grondig()` opende het tabblad Sensoren en startte na 400 ms
+`_pzStart()`. Sinds de drie subtabbladen (01-11) staat de zoekronde onder
+Zoeken, en het tabblad opende op Mijn sensoren: de ronde liep, onzichtbaar.
+Was de stand er na 400 ms nog niet, dan was er geen `_st.sens` en startte er
+niets. `openSensoren(sub)` geeft het subtabblad nu mee aan `sensState()`, en
+de wizard wacht tot het tabblad er is.
+
 ## 06-11-2026 — 321 V uit een sensor van 5 V: het OBDb-bereik keurt nu ook met eenheid
 
 **Gevonden** bij een simulatorrun van de CX-5. Grondig bood `22038E`

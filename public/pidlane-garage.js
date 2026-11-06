@@ -923,7 +923,12 @@
 
   async function herkenAuto() {
     var vi = (typeof vehicleInfo !== 'undefined' && vehicleInfo) || {};
-    if (!vi.vin || vi.vin === _vinGezien || !(_st.stand && _st.stand.akkoord)) return;
+    if (!(_st.stand && _st.stand.akkoord)) return;
+    // Geen chassisnummer na het verbinden (oudere auto, adapter die 0902 niet
+    // doorgeeft): dan het actieve voertuig, net als gearKoppel() voor de eigen
+    // PIDs. Tot 06-11-2026 ging de aangevinkte selectie dan nooit aan.
+    if (!vi.vin) { if (verbindingKlaar()) selectieZonderVin(); return; }
+    if (vi.vin === _vinGezien) return;
     if (!verbindingKlaar()) return;
     _vinGezien = vi.vin;
     var ps = null;
@@ -952,6 +957,22 @@
     _st.onbekend = { pseudo: ps, profiel: profielUitVerbinding(vi) };
     melding('🚗 Deze auto staat nog niet in Mijn voertuigen — ☰ → Mijn voertuigen');
     teken();
+  }
+
+  /* Zonder chassisnummer is het actieve voertuig de enige aanwijzing. Een auto
+     die op zijn VIN níét herkend is (_st.onbekend) is een andere auto en
+     krijgt niets. Wat niet bij deze auto past, haalt selectieToepassen() er
+     zelf uit (supportedPIDs en de PID-poort). */
+  var GEEN_VIN = '-';
+  function selectieZonderVin() {
+    if (_vinGezien === GEEN_VIN || _st.onbekend) return 0;
+    var v = actief(); if (!v) return 0;
+    _vinGezien = GEEN_VIN;
+    var n = 0;
+    try { n = pasSelectieToe(v); } catch (e) { console.warn('PLGarage: vaste sensorselectie zonder VIN niet toegepast', e); }
+    if (!n && Array.isArray(v.pid_selectie) && v.pid_selectie.length && ++_selPogingen < 5) _vinGezien = null;
+    else _selPogingen = 0;
+    return n;
   }
 
   /* De versnellingsindicator hoort bij het voertuig (27-09-2026): wat hij
@@ -1310,11 +1331,13 @@
   }
   /* Vanuit de sensorkeuzelijst (#474): meteen het tabblad Sensoren van het
      voertuig aan de adapter. Is er geen voertuig, dan de lijst. */
-  function openSensoren() {
+  // `sub` kiest het subtabblad (de wizard wil 'zoeken': daar staat 🚀).
+  function openSensoren(sub) {
     if (!magPlatform()) { open(); return; }
     var v = voertuig(_st.gekoppeld) || actief();
     open(v ? v.id : null);
-    if (v) { _st.tab = 'sensoren'; _st.sens = null; teken(); }
+    // De stand kan nog onderweg zijn: sensState() neemt het subtabblad mee zodra hij tekent.
+    if (v) { _st.tab = 'sensoren'; _st.sens = null; _st.sensSubNa = sub || null; teken(); }
   }
 
   function teken() {
@@ -1793,6 +1816,7 @@
   function sensState(v) {
     if (!_st.sens || _st.sens.vid !== v.id) {
       _st.sens = { vid: v.id, sel: (v.pid_selectie || []).slice(), eigen: JSON.parse(JSON.stringify(v.eigen_pids || [])), test: {}, ok: {}, fout: '', gewijzigd: false, bib: null, zoek: '' };
+      if (_st.sensSubNa) { _st.sens.sub = _st.sensSubNa; _st.sensSubNa = null; }
     }
     return _st.sens;
   }

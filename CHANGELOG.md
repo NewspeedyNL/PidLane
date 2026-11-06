@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-11-2026 — Aangevinkte sensoren gaan aan, wizard Grondig is zichtbaar
+ ═══════════════════════════════════════════════════════════
+ - Zonder chassisnummer (oudere auto, adapter zonder 0902) gaat de selectie
+   uit Mijn voertuigen → Sensoren nu aan op het actieve voertuig.
+ - Wizard → Sensoren → Grondig opent Mijn voertuigen op het subtabblad Zoeken,
+   pas als het tabblad er staat; de zoekronde liep onzichtbaar in Mijn sensoren.
+
+ ═══════════════════════════════════════════════════════════
  06-11-2026 — Grondig keurt op het bereik van OBDb, ook met eenheid
  ═══════════════════════════════════════════════════════════
  - Een sensorspanning van 321 V (Mazda 22038E) wordt niet meer aangeboden.
