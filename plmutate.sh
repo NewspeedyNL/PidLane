@@ -703,6 +703,11 @@ MUTATIES=(
 # de klasse fout die hier maanden blijft staan.
 ".gitattributes@@PIDLANE.md            merge=union@@PIDLANE.md            -merge@@test-gitattributes.js@@PIDLANE.md valt niet meer onder union, dus de conflicten komen terug"
 ".gitattributes@@CHANGELOG.md          merge=union@@CHANGELOG.md          merge=union\n*.js                  merge=union@@test-gitattributes.js@@union uitgebreid naar JS, waar een verdubbelde regel stil breekt"
+# ── de vier weken van CHANGELOG.md (06-11-2026) ──
+# Twee echte fouten: een snede die van boven zoekt en zo een nieuwer blok
+# meesleept, en een oud blok dat bovenaan geplakt wordt in plaats van gesneden.
+"plsnede.js@@  for (let i = k.length - 1; i >= 0 && k[i].dag < grens; i--) van = k[i].regel;@@  for (let i = 0; i < k.length; i++) if (k[i].dag < grens) { van = k[i].regel; break; }@@test-changelogsnede.js@@de snede zoekt van boven en verhuist ook een blok van binnen vier weken"
+"CHANGELOG.md@@> oplevering (zie CLAUDE.md), alleen voortaan hier.@@> oplevering (zie CLAUDE.md), alleen voortaan hier.\n\n ═════════════════════════════\n 01-01-2026 — vergeten te snijden\n ═════════════════════════════@@test-changelogsnede.js@@CHANGELOG.md overspant maanden en de test merkt het niet"
 # ── plinhaal.js: alleen toevoegingen vanzelf oplossen (08-10-2026) ──
 # Elke rem eruit, en de toets moet het zien. Zonder de eerste lost hij een
 # echte botsing op door beide versies te houden; zonder de telling plakt hij
@@ -756,7 +761,7 @@ MUTATIES=(
 # zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop
 # kostte: twee velden die een reviewer allebei leest, met verschillende
 # beloftes. Het valt niemand op tot het in de Console staat.
-"PLAY-INZENDING.md@@Met aankooprapport en wintercheck.@@Met aankooprapport en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
+"PLAY-INZENDING.md@@Met Accu & laadsysteem en Conditiescore.@@Met Accu & laadsysteem en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
 # En andersom: §3 hernoemt een functie, §14 blijft de oude naam beloven. Dat is
 # de stillere van de twee — je verbetert de beschrijving en raakt het veld
 # ernaast niet aan.
