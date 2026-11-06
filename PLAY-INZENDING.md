@@ -7,7 +7,8 @@ en §14; beeld-in-beeld in §13 en §16b) en 08-10-2026 (3.2.0: één contactadr
 (3.3.0: lampjesgids met foto in §3 en §11, kenteken-check en conditiescore in
 §3, nieuwe release notes in §14, §16b voor 3.3) en 22-10-2026 (3.4.0:
 aankooprapport en wintercheck in §3, nieuwe release notes in §14, §16b voor
-3.4). Dit bestand is
+3.4) en 06-11-2026 (3.5.0: nieuwe release notes in §14, §16b voor 3.5). Dit
+bestand is
 **kopieerwerk**: elk kopje hieronder is
 een veld in de Play Console, en wat eronder staat gaat er letterlijk in.
 
@@ -693,6 +694,12 @@ hand hetzelfde beschrijven, lopen hier uit de pas. Dat is de fout die §16 op
 controleert daarom dat elke functie die dit veld noemt óók in §3 staat**; noem
 je hier iets nieuws, dan hoort het daar eerst.
 
+**Nagelezen tegen de code op 06-11-2026, voor 3.5.0.** Hyperlane is
+`pidlane-hyperlane.js` in `pidlane-visueel.js`, de accu- en dynamotest is
+`pidlane-accutest.js`, het startscherm in lagen is
+`pidlane-thuis.js` (Meer → Startscherm aanpassen), de vaste expert is #646 en
+de conditiescore #475.
+
 **Nagelezen tegen de code op 22-10-2026, voor 3.4.0.** Het aankooprapport is
 `pidlane-aankooprapport.js` (`PLAankoop`, knop in de koopcheck), de wintercheck
 is `pidlane-winter.js` met `pidlane-weer.js` (`/weer` in `worker.js`, plaats
@@ -726,15 +733,15 @@ toetst hij niet.
 10-09-2026 ook een en-US-blok, net als §2, terwijl §3 er geen had (#177).
 
 ```
-Versie 3.4
-Met aankooprapport en wintercheck.
+Versie 3.5
+Met Accu & laadsysteem en Conditiescore.
 
-- Aankooprapport: de koopcheck als PDF, met een oordeel uit vaste regels.
-- Wintercheck: banden, ruitensproeier en het weer voor je woonplaats.
-- Beeld-in-beeld is een klokje met naald, met een stopknop.
-- Snel verbinden met een auto die de app al kent.
-- Het oordeel houdt rekening met stilstaan of rijden.
-- Kosten per maand met de wegenbelasting en pompprijzen van nu.
+- Hyperlane: een lichttunnel die meestroomt met je snelheid.
+- Accu- en dynamotest met live laaddata en trend.
+- Het startscherm zelf indelen, met één hoofdknop.
+- Je verkoper of garage als vaste expert die mag meekijken.
+- Een foto van je auto bij het kenteken.
+- Kanteling en sensoren zonder spookwaarden.
 
 Geen adapter? Probeer de demomodus op het startscherm.
 ```
@@ -798,7 +805,7 @@ zijn.
 
 | punt | bewaakt door |
 |---|---|
-| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.4.0) | `test-playteksten.js` |
+| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.5.0) | `test-playteksten.js` |
 | Geen locatie: manifest, code en de drie verklaringen zeggen hetzelfde | `test-geen-gps.js` |
 | Foutpagina in de schil als de app niet laadt (`server.errorPath`) | `test-foutpagina.js` |
 | `feat_demo` dekt beide demoknoppen — geen dode knop op het loginscherm | `test-demo-toegang.js` |
@@ -828,7 +835,7 @@ want hij gaat over één bepaalde bundel. Vul hem dus bij, tik hem niet af.
 > buildnummer bij waarop je het gezien hebt. Staat er een ouder nummer dan de
 > build hierboven, dan is dat punt niet nagekeken.
 >
-> **Upload-build: `#559`  (datum: 22-10-2026, versie 3.4.0)**
+> **Upload-build: nog te bouwen  (datum: —, versie 3.5.0)** — de vorige was `#559` (22-10-2026, 3.4.0)
 
 | punt | laatst bewezen op |
 |---|---|
@@ -853,6 +860,12 @@ want hij gaat over één bepaalde bundel. Vul hem dus bij, tik hem niet af.
 | Beeld-in-beeld-klokje (sinds 3.4.0): vierkant venster met naald; de stopknop van Android verbreekt de verbinding en sluit het venster | nog niet bewezen |
 | Wintercheck (sinds 3.4.0): winterkaart op het startscherm, plaats uit de lijst, weerbericht komt binnen zonder locatiepermissie | nog niet bewezen |
 | Herverbinden (08-10-2026, #453): adapter even uit de OBD-poort trekken met de motor aan, terugsteken, niets aanraken — de app hervat zonder protocolvraag. Daarna blok 5 draaien | nog niet bewezen |
+
+**Let op bij 3.5.0.** Tussen 22-10 en 06-11 kwamen Hyperlane, de accu- en
+dynamotest, de meetcoach, rapporten aanvragen, de vaste expert, de autofoto en
+het startscherm in drie lagen erbij. Geen regel in de tabel is op een build van
+ná 22-10 bewezen; loop ze op de upload-build na, het startscherm en de demo
+voorop.
 
 **Let op bij 3.4.0.** Tussen 17-10 en 22-10 kwamen het aankooprapport, de
 wintercheck met weer via de Worker, het beeld-in-beeld-klokje, snel verbinden

@@ -10,6 +10,15 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-11-2026 — Versie 3.5.0 voor de release
+ ═══════════════════════════════════════════════════════════
+
+ - APP_VERSION en package.json naar 3.5.0; mutatie in plmutate.sh mee.
+ - PLAY-INZENDING.md: release notes 3.5 in §14, "Let op bij 3.5.0" in §16b;
+   de upload-build staat op nog te bouwen.
+ - Handleiding gecontroleerd tegen 3.5.0.
+
+ ═══════════════════════════════════════════════════════════
  06-11-2026 — Het startscherm in drie lagen, zelf in te delen
  ═══════════════════════════════════════════════════════════
  - Home is de auto met één hoofdknop: Verbind adapter, Check mijn auto of
