@@ -44,6 +44,8 @@ function toets(naam, waar, uitleg) {
     toets('de held staat er, met "Verbind adapter" als enige hoofdknop',
       await wacht(`${zicht('plVerbindBtn')} && !${zicht('plCheckBtn')} && !${zicht('plLiveBtn')}`),
       await app.ev(`document.getElementById('plThuisHeld') ? document.getElementById('plThuisHeld').textContent.slice(0,160) : 'geen held'`));
+    // Niet het attribuut maar wat je ziet: zonder de CSS-regel voor [hidden] stonden alle drie er.
+    toets('precies één hoofdknop is echt zichtbaar', await app.ev(`[...document.querySelectorAll('#plThuisHeld .th-cta')].filter(b => b.getClientRects().length > 0 && b.offsetHeight > 0).length === 1`));
     toets('de pil zegt dat er geen adapter is', await app.ev(`document.getElementById('plThuisPil').dataset.t === 'geen'`));
     toets('Expert op afstand staat niet meer op Home', await app.ev(`!document.getElementById('plExpert') && !/Ik ben de expert/.test(document.getElementById('wmDoors').textContent)`));
     toets('…maar wel in Meer en in het verbindscherm',
