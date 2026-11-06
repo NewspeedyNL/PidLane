@@ -2131,12 +2131,3 @@
    van de band met 1000000 erin; de volle regel staat in de titel.
  - CAMPAGNE: geen meetopdrachten meer; de verbinding is klaar (#394).
    Wat blijft staan: #457 (CA10 tot 99 %, de meter die opnieuw opbouwt).
-
- ═══════════════════════════════════════════════════════════
- 08-10-2026 — Eén contactadres, en de Play-checklist voor 3.2 bijgewerkt
- ═══════════════════════════════════════════════════════════
-
- - support@pidlane.nl is overal het contactadres: privacyverklaring,
-   Console-teksten, verwijderpagina, app. test-playteksten.js bewaakt het.
- - PLAY-INZENDING.md: §11 zonder chassisnummer naar de AI, §16b met de
-   Basismeter en het herverbinden, en welke build je uploadt.

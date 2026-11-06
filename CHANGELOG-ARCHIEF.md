@@ -11,6 +11,14 @@ Tweede snede op 16-10-2026: alles met een `Build:` vóór 18-09-2026 — de
 regel stond er, maar was sinds 22-09 niet meer gehaald (363 KB).
 Derde snede op 06-11-2026: alles van vóór 09-10-2026 — 313 KB, en weer niet gehaald.
 
+ ═══════════════════════════════════════════════════════════
+ 08-10-2026 — Eén contactadres, en de Play-checklist voor 3.2 bijgewerkt
+ ═══════════════════════════════════════════════════════════
+
+ - support@pidlane.nl is overal het contactadres: privacyverklaring,
+   Console-teksten, verwijderpagina, app. test-playteksten.js bewaakt het.
+ - PLAY-INZENDING.md: §11 zonder chassisnummer naar de AI, §16b met de
+   Basismeter en het herverbinden, en welke build je uploadt.
 
  ═══════════════════════════════════════════════════════════
  08-10-2026 — Privacy: geen VIN naar de AI, privacyverklaring gelijk aan de app
