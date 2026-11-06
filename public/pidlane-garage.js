@@ -2582,6 +2582,8 @@
     dossier: dossier,
     dossierBewaar: dossierBewaar,
     actief: actief,
+    // De status van één voertuig (APK, open punten, accu …) voor het startscherm (PLThuis).
+    status: function (v) { return status(v); },
     foto: foto,
     welkomFoto: welkomFoto,
     _fotoKies: fotoKies,

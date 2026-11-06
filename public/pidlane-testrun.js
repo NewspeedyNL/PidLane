@@ -2848,6 +2848,31 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Het startscherm in drie lagen (06-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Home volgt de verbinding: zonder adapter alleen "Verbind adapter", verbonden "Check mijn auto" of "Naar Live"; de chips lezen de meting van nu en Expert op afstand staat in Meer, niet op Home',
+    waarom: 'Het startscherm (PLThuis) vervangt zes losse kaarten door één held met één hoofdknop. Kiest hij de verkeerde knop, dan zegt Home "Check" zonder adapter of "Verbind" terwijl de auto praat — en dat merk je alleen in de auto. Deze proef leest de geladen kern en het getekende scherm.',
+    proef: async function () {
+      var T = window.PLThuis;
+      if (!T || !T._kern) return { staat: 'FOUT', detail: 'PLThuis ontbreekt — herladen?' };
+      T.teken();
+      var verb = (typeof connected !== 'undefined' && !!connected) || (typeof demoMode !== 'undefined' && !!demoMode);
+      var zicht = function (id) { var e = document.getElementById(id); return !!e && !e.hidden; };
+      if (!document.getElementById('plThuisHeld')) return { staat: 'FOUT', detail: 'de held (#plThuisHeld) is niet getekend' };
+      if (verb && zicht('plVerbindBtn')) return { staat: 'FOUT', detail: 'verbonden, en Home vraagt toch om te verbinden' };
+      if (!verb && !zicht('plVerbindBtn')) return { staat: 'FOUT', detail: 'geen verbinding, en Home toont geen Verbind adapter' };
+      if ([zicht('plVerbindBtn'), zicht('plCheckBtn'), zicht('plLiveBtn')].filter(Boolean).length !== 1) return { staat: 'FOUT', detail: 'niet precies één hoofdknop in beeld' };
+      if (document.querySelector('#wmDoors #plExpertDeel, #wmDoors .pl-expert')) return { staat: 'FOUT', detail: 'Expert op afstand staat weer op Home' };
+      if (!document.querySelector('#kebabMenu #plExpertDeel') || !document.getElementById('kbThuis')) return { staat: 'FOUT', detail: 'Meer mist Expert op afstand of Startscherm aanpassen' };
+      var kw = typeof pidVals !== 'undefined' && pidVals ? pidVals['0105'] : null;
+      var chip = document.querySelector('#plThuisChips [data-k="koel"] b');
+      if (verb && kw != null && chip && chip.textContent !== Math.round(Number(kw)) + '°') return { staat: 'FOUT', detail: 'koelwater-chip ' + chip.textContent + ' terwijl pidVals ' + kw + ' zegt' };
+      if (!verb) return { staat: 'LET OP', detail: 'niet verbonden: alleen de knop zonder adapter getoetst' };
+      return { staat: 'OK', detail: 'hoofdknop ' + (zicht('plCheckBtn') ? 'Check' : 'Live') + ', koelwater-chip ' + (chip ? chip.textContent : '—') };
+    }
+  },
+
   // ── Het OBDb-bereik ook met eenheid (06-11-2026) ──
   {
     issue: '#670',

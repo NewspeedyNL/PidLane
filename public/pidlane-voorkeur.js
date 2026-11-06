@@ -57,7 +57,9 @@
     adapterAdres: { soort: 'tekst' },
     scanBekend: { soort: 'keuze', uit: ['vragen', 'overslaan', 'altijd'] },
     samenvatting: { soort: 'janee' },
-    oudeData: { soort: 'keuze', uit: ['vragen', 'ja', 'nee'] }
+    oudeData: { soort: 'keuze', uit: ['vragen', 'ja', 'nee'] },
+    // De indeling van het startscherm (PLThuis, 06-11-2026): b:/-b: blok aan/uit, s: doel, p: basis.
+    thuis: { soort: 'lijst', patroon: /^-?[bsp]:[a-z]{2,14}$/, max: 24 }
   };
 
   // ════════════════════════════════════════════════════════════════
@@ -76,7 +78,7 @@
       else if (d.soort === 'janee' && (w === true || w === false)) uit[k] = w;
       else if (d.soort === 'geheel' && Number.isInteger(w) && w >= d.min && w <= d.max) uit[k] = w;
       else if (d.soort === 'tekst' && typeof w === 'string') uit[k] = w;
-      else if (d.soort === 'lijst' && Array.isArray(w)) uit[k] = w.filter(function (x) { return /^wc-[a-z0-9-]{1,40}$/.test(String(x)); });
+      else if (d.soort === 'lijst' && Array.isArray(w)) uit[k] = w.filter(function (x) { return (d.patroon || /^wc-[a-z0-9-]{1,40}$/).test(String(x)); });
     });
     return uit;
   }
@@ -441,6 +443,19 @@
     catch (e) { console.warn('PLVoorkeur: eigen sensoren niet omgerekend naar de nieuwe drukeenheid', e); }
   }
 
+  /* Eén sleutel bewaren zonder de rest te raken (het startscherm, PLThuis).
+     De server vervangt het hele object, dus eerst de stand van het account;
+     zonder die stand zou een bewaring de andere voorkeuren wissen. */
+  async function zetEen(k, w) {
+    if (!VOORKEUR_SPEC[k]) throw new Error('onbekende voorkeur ' + k);
+    if (_bron !== 'account') { var d0 = await api('voorkeuren'); _pref = schoon(d0.voorkeur || {}); _bron = 'account'; }
+    var nieuw = Object.assign({}, _pref || {}); nieuw[k] = w;
+    var d = await api('voorkeuren_opslaan', { voorkeur: schoon(nieuw) });
+    _pref = schoon(d.voorkeur); _bron = 'account';
+    schrijf(OPSLAG, JSON.stringify({ u: wie(), p: _pref }));
+    return _pref;
+  }
+
   async function selectieVast(weg) {
     var v = (window.PLGarage && PLGarage.actief) ? PLGarage.actief() : null;
     if (!v) return;
@@ -457,6 +472,7 @@
     open: open,
     sluit: sluit,
     huidig: function () { return _pref; },
+    zetEen: zetEen,
     selectieToepassen: selectieToepassen,
     // Haken voor de rest van de app. Zonder voorkeur (geen klant, niets
     // vastgelegd) geven ze het oude gedrag terug.

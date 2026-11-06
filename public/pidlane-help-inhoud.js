@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-11-04', app: '3.4.0' },
+  gecontroleerd: { datum: '2026-11-06', app: '3.4.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -61,7 +61,7 @@ var PL_HULP = {
       tekst:
         '<p>Na het inloggen (of in de demo) staat onderin een balk met vier tabs:</p>' +
         '<ul>' +
-        '<li><b>Home</b> — het startscherm, met Expert op afstand, <a data-hulp="check">Check mijn auto</a> en vier tegels.</li>' +
+        '<li><b>Home</b> — het startscherm: je auto met één hoofdknop (Verbind adapter of <a data-hulp="check">Check mijn auto</a>), wat er nu speelt, en Snel naar.</li>' +
         '<li><b>Live</b> — de metingen van de auto op dit moment. Zie <a data-hulp="live">Live</a>.</li>' +
         '<li><b>Rapporten</b> — wat PidLane heeft vastgelegd. Een getal op de tab zegt hoeveel.</li>' +
         '<li><b>Meer</b> — account, instellingen en hulp. Nog eens tikken sluit het menu. Zie <a data-hulp="meer">Meer</a>.</li>' +
@@ -69,18 +69,18 @@ var PL_HULP = {
       zie: ['startscherm', 'meer'] },
 
     { id: 'startscherm', groep: 'start', titel: 'Het startscherm',
-      icoon: '🏠', kort: 'Bovenaan meekijken en Check mijn auto, daaronder vier tegels voor wat je wilt doen.',
+      icoon: '🏠', kort: 'Je auto met één hoofdknop, daaronder wat er nu speelt en Snel naar. Zelf in te delen.',
       schema: { soort: 'tegels', delen: [
         { i: '🔧', t: 'Er is iets mis', u: 'Klacht, lampje of geluid' },
         { i: '🚗', t: 'Kopen of verkopen', u: 'Staat, historie en waarde' },
         { i: '🛣️', t: 'Rit starten', u: 'Ritmonitor, zuinig, caravan' },
         { i: '📅', t: 'Voorbereiden', u: 'Winter, lange rit, onderhoud' }] },
-      tip: 'Elke tegel begint met <b>Wat we al weten</b>: wat de app al over je auto heeft.',
+      tip: 'Via <b>Meer → Startscherm aanpassen</b> zet je blokken aan of uit, kies je je eigen Snel naar en de volgorde.',
       tekst:
-        '<p>Bovenaan staat <a data-hulp="delen">Expert op afstand</a>: <b>Laat iemand meekijken</b> deelt je live data met je monteur of een kenner, <b>Ik ben de expert</b> is voor wie meekijkt.</p>' +
-        '<p>Van oktober tot en met maart staat daarboven de <a data-hulp="winter">winterkaart</a>.</p>' +
-        '<p>Daaronder <a data-hulp="check">Check mijn auto</a>: foutcodes en keuringsstatus in ongeveer 30 seconden.</p>' +
-        '<p>Daaronder, onder <b>Ik wil…</b>, vier tegels. Elke tegel opent een korte wizard voor die vraag:</p>' +
+        '<p>Bovenaan staat <b>je auto</b>: de naam, of de adapter verbonden is, en drie waarden. Zonder verbinding zijn dat open punten, de APK en wanneer de auto voor het laatst is uitgelezen; verbonden de foutcodes, de spanning en het koelwater van nu. Een streep betekent dat die waarde er (nog) niet is.</p>' +
+        '<p>Daaronder één hoofdknop. Zonder adapter is dat <b>Verbind adapter</b>, met daaronder Kenteken-check, Foutcode opzoeken en Probeer demo. Verbonden is het <a data-hulp="check">Check mijn auto</a>: foutcodes en keuringsstatus in ongeveer 30 seconden. Heb je vandaag al gecheckt, dan wordt het <b>Naar Live</b>.</p>' +
+        '<p>Onder <b>Voor jou nu</b> staat hoogstens één melding: de urgentste van een open punt, de APK, een koude motor of de <a data-hulp="winter">winterkaart</a>. Zijn het er meer, dan tik je op <b>›</b> voor de volgende.</p>' +
+        '<p>Onder <b>Snel naar</b> staan je vaste doelen. Standaard zijn dat vier tegels; elke tegel opent een korte wizard voor die vraag:</p>' +
         '<ul>' +
         '<li><b>Er is iets mis</b> — een klacht, lampje of geluid.</li>' +
         '<li><b>Kopen of verkopen</b> — staat, historie en waarde. Je geeft eerst het kenteken; dan zie je wat het RDW weet, waar je bij dit merk op let en wat je tijdens de proefrit voelt of hoort. Daarna vul je km-stand en prijs in, en pas dan kies je hoe lang je meet. Wat je invult staat straks al in de koopcheck. Met <b>📄 Aankooprapport maken</b> krijg je een PDF met foutcodes, zelftests, vers gewiste codes, kilometerstand en RDW-gegevens, plus de vragen voor de verkoper. Dat rapport is een momentopname en geen keuring.</li>' +
@@ -88,7 +88,9 @@ var PL_HULP = {
         '<li><b>Voorbereiden</b> — winter, lange rit, onderhoud.</li>' +
         '</ul>' +
         '<p>Elke wizard begint met <b>Wat we al weten</b>: wat de app al over je auto heeft, zoals de laatste foutcodes of een openstaande terugroepactie. Weet hij nog niets, dan blijft dat blok weg.</p>' +
-        '<p>In de <a data-hulp="garagemodus">garagemodus</a> staat er ook <b>Alle functies</b>, voor wie precies weet wat hij zoekt.</p>',
+        '<p>In de <a data-hulp="garagemodus">garagemodus</a> begint het startscherm bij <b>Garage</b>, met <b>Alle functies</b> erbij, voor wie precies weet wat hij zoekt.</p>' +
+        '<p><b>Zelf indelen.</b> Met <b>Meer → Startscherm aanpassen</b> (of de link onderaan Home) kies je een begin — Bestuurder, Kenner of Garage — en zet je daarna blokken aan of uit en in volgorde, en kies je hoogstens zes doelen voor Snel naar. Wat je verbergt blijft bereikbaar via Meer en de wizard. Met een account staat je indeling in je account; anders op dit toestel.</p>' +
+        '<p><a data-hulp="delen">Expert op afstand</a> staat niet meer op Home maar in <b>Meer</b> en in het verbindscherm. Verbonden staat <b>Laat meekijken</b> ook onder de hoofdknop.</p>',
       zie: ['check', 'zonder'] },
 
     { id: 'zonder', groep: 'start', titel: 'Zonder adapter',
@@ -100,7 +102,7 @@ var PL_HULP = {
         { i: '🔢', t: 'Foutcode opzoeken', u: 'bijvoorbeeld P0301' },
         { i: '🎮', t: 'Simuleer verbinding', u: 'proberen, niets bewaard' }] },
       tekst:
-        '<p>Op het startscherm staat een kaart voor als je niet in de auto zit. Daarop:</p>' +
+        '<p>Zonder adapter staan onder <b>Verbind adapter</b> op het startscherm Kenteken-check, Foutcode opzoeken en Probeer demo; Er is iets mis en Lampje brandt? kies je onder Snel naar. In het venster Zonder adapter staat alles bij elkaar:</p>' +
         '<ul>' +
         '<li><b>Kenteken-check</b> — APK, verzekering, NAP en terugroepacties uit het RDW.</li>' +
         '<li><b>Er is iets mis</b> — kies wat je merkt, beantwoord een paar vragen en zie wat het waarschijnlijk is, en wat een adapter zou meten.</li>' +
@@ -116,7 +118,7 @@ var PL_HULP = {
     { id: 'winter', groep: 'start', titel: 'De winterkaart',
       icoon: '❄️', kort: 'Van oktober tot en met maart: het weer voor je plaats en hoogstens één advies.',
       tekst:
-        '<p>Van oktober tot en met maart staat bovenaan het startscherm een kaart voor de winter. De eerste keer vraagt hij je <b>profiel aan te passen voor de winterperiode</b>. Met <b>Later</b> komt die vraag dit seizoen niet meer terug.</p>' +
+        '<p>Van oktober tot en met maart staat op het startscherm onder <b>Voor jou nu</b> een kaart voor de winter. De eerste keer vraagt hij je <b>profiel aan te passen voor de winterperiode</b>. Met <b>Later</b> komt die vraag dit seizoen niet meer terug.</p>' +
         '<p>Daarna zie je het weer van vandaag, morgen en overmorgen voor je plaats, en hoogstens één advies. Onder het weer staat hoe laat de verwachting is opgehaald; met <b>↻ Verversen</b> haal je hem meteen opnieuw. Met ✕ tik je een advies weg; een advies over het weer komt na een week terug als het dan nog geldt.</p>' +
         '<p>In het <b>winterprofiel</b> zet je:</p>' +
         '<ul>' +
@@ -327,7 +329,7 @@ var PL_HULP = {
         '<p>Een dubbeltik op een tegel verbergt hem. Hij wordt wel gewoon gemeten en staat daarna in een strook om terug te halen.</p>' +
         '<p>Een automatische bevinding verberg je met het <b>✕</b> of een dubbeltik. De AI krijgt hem nog mee; terughalen doe je via <b>bekijk alles</b>.</p>' +
         '<p>Niet elke regel geldt voor elke auto: een motor met slimme laadregeling laadt bij een volle accu bewust onder 13 V, en sommige motoren draaien bewust 105–110 °C warm. Weet de app dat van jouw auto niet, dan zegt hij <b>niet te beoordelen</b> in plaats van een fout, en de AI trekt er dan ook geen conclusie over. Bij <b>bekijk alles</b> staat onder <b>Niet te beoordelen op deze auto</b> wat dat is, soms met een vraag. Je antwoord (<b>Ja</b> of <b>Nee</b>) onthoudt de app voor deze auto. Klinkt een bevinding met "niet zeker voor deze auto", dan is het een aandachtspunt en geen vastgesteld defect.</p>' +
-        '<p>Onder de meters staat <b>⏺ Opnemen</b>, in de garagemodus ook <b>◉ Bewaken</b>. Delen en meekijken start je bovenaan Home bij <b>Expert op afstand</b>. ' +
+        '<p>Onder de meters staat <b>⏺ Opnemen</b>, in de garagemodus ook <b>◉ Bewaken</b>. Delen en meekijken start je via <b>Meer → Expert op afstand</b>, in het verbindscherm, of verbonden met <b>Laat meekijken</b> op Home. ' +
         'Bij Visueel staan Opnemen en Bewaken er niet: daar start je de bulk-recorder en de waakronde vanuit het vak onder de meter. ' +
         'Alle weergaven hebben de look van Hyperlane: een achtergrond die je met het knopje linksboven kiest (Aurora, Hartslag, Pulsen, Sterren, Stil of Tunnel) en een kleur die meegaat met hoe je rijdt. Met de knop <b>volledig scherm</b> vult hij het hele scherm. Het ✕ of de terugknop brengt je terug naar de gewone weergave.</p>',
       zie: ['opnemen', 'delen'] },
@@ -353,7 +355,7 @@ var PL_HULP = {
         { i: '⏹️', t: 'Klaar? Tik op <b>Stop delen</b>' }],
       let: 'Deel de code alleen met iemand die je vertrouwt.',
       tekst:
-        '<p><b>Laat iemand meekijken</b> (bovenaan Home, bij Expert op afstand) laat je monteur of een kenner live meekijken, waar hij ook is. Handig als de klacht alleen onderweg optreedt of de garage ver weg is. De expert ziet je sensordata en kan zelf waarden en foutcodes opvragen — ' +
+        '<p><b>Laat iemand meekijken</b> (in Meer onder Expert op afstand, in het verbindscherm, of verbonden op Home onder de hoofdknop) laat je monteur of een kenner live meekijken, waar hij ook is. Handig als de klacht alleen onderweg optreedt of de garage ver weg is. De expert ziet je sensordata en kan zelf waarden en foutcodes opvragen — ' +
         'alleen lezen: op afstand kan er niets aan de auto veranderd worden.</p>' +
         '<ol>' +
         '<li>Tik op <b>Start delen</b>.</li>' +
@@ -492,7 +494,7 @@ var PL_HULP = {
   /* De uitroeptekens. `anker` is een CSS-selector, `bron` het bestand
      waar dat element staat (relatief aan public/). */
   tips: [
-    { id: 'check', anker: '#plCheckBtn', bron: 'index.html', onderwerp: 'check',
+    { id: 'check', anker: '#plCheckBtn', bron: 'pidlane-thuis.js', onderwerp: 'check',
       tekst: 'Leest foutcodes en keuringsstatus. Wissen kan pas na een verse uitlezing, met contact aan, motor uit en de auto stil. Bewaar de codes eerst.' },
     { id: 'verbinden', anker: '#btnConnect', bron: 'index.html', onderwerp: 'verbinden',
       tekst: 'Adapter in de OBD-poort, contact aan, Bluetooth aan. Daarna zoekt PidLane zelf de adapter en de auto.' },

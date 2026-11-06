@@ -571,6 +571,8 @@
     recallHtml: recallHtml,
     BRON: BRON,
     _zoek: zoek,
+    // "Dit is mijn auto" zonder Mijn voertuigen: kenteken, keuring, merk — voor PLThuis.
+    mijnAuto: function () { return mijn(); },
     _mijn: maakMijn,
     _simuleerKent: simuleerKent,
     _code: code,
