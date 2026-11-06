@@ -1365,6 +1365,12 @@ function aandrijfLampjes(res, motor, extra){
     const b=draait ? pct(extra.belasting) : null;
     if(b!==null){ uit.motor.kop='Motor aan'; uit.motor.waarde=b+'%'; uit.motor.balk=b; }
   }
+  // Contact uit (PLContact, 06-11-2026): de ECU zwijgt, dus PLAandrijving houdt
+  // zijn laatste oordeel vast. Het lampje zei dan minutenlang "Motor aan" bij
+  // een auto die al uit stond. PLContact weet het beter, en dat wint.
+  if(extra.contactUit && motor!=='ev'){
+    uit.motor={ soort:'uit', kop:'Contact', waarde:'uit', icoon:'motor', twijfel:false, balk:null };
+  }
   const vSt=plekOordeel('accu', extra.volt, null, extra.rpm);
   const volt=vSt==='geen' ? null : tekst('accu', extra.volt)+' V';
   if(motor==='hybride' || motor==='ev' || (res && res.bewijstHybride)){
@@ -1442,12 +1448,21 @@ function bandenBij(){
     catch(x){ console.warn('PLVisueel: autootje van de banden niet te tekenen', x); }
   }
 }
+/* Staat het contact uit volgens PLContact? Alleen het oordeel contact_uit:
+   bij "storing" reed de auto nog, en dan is "uit" juist niet waar. */
+function contactUit(){
+  try{
+    if(!window.PLContact || typeof PLContact.stand!=='function') return false;
+    const st=PLContact.stand();
+    return !!(st && st.stil && st.oordeel==='contact_uit');
+  }catch(e){ console.warn('PLVisueel: PLContact.stand() mislukt', e); return false; }
+}
 function lampjesBij(){
   const I=_staat.ind;
   const rpm=(I && I.toeren && typeof pidVals!=='undefined') ? lampGetal(I.toeren) : null;
   const vg=accuGetal(I && I.lamp.volt);
   const res=leesAandrijving(), L=aandrijfLampjes(res, I ? I.motor : leesMotor(),
-    { belasting: lampGetal(I && I.lamp.belasting), accu: lampGetal(I && I.lamp.accu), volt: vg ? vg.v : null, voltOud: !!(vg && vg.oud), rpm: rpm });
+    { belasting: lampGetal(I && I.lamp.belasting), accu: lampGetal(I && I.lamp.accu), volt: vg ? vg.v : null, voltOud: !!(vg && vg.oud), rpm: rpm, contactUit: contactUit() });
   const sleutel=JSON.stringify(L);
   if(sleutel===_staat.lampSleutel) return;
   _staat.lampSleutel=sleutel;
