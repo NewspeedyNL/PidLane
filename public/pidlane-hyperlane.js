@@ -745,6 +745,9 @@ function start(wortel){
   const km=wortel.querySelector('.vhl-midden'), kh=wortel.querySelector('.vhl-held');
   if(km) km.addEventListener('click', wissel);
   if(kh) kh.addEventListener('click', wissel);
+  // Ook het eerste label hoort bij de opbouw en niet bij de eerste frame: op een
+  // belaste machine bleef het knopje anders seconden leeg (#657, 06-11-2026).
+  if(km && _s && MIDDEN_TEKST[_s.midden]){ km.textContent=MIDDEN_TEKST[_s.midden]; _s.middenT=km.textContent; }
   // De stand: tik op het label opent het menu (alleen in Hyperlane zelf)
   const mo=wortel.querySelector('.vhl-modus'), mm=wortel.querySelector('.vhl-standmenu');
   if(mo && mm){
