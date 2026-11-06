@@ -35,19 +35,25 @@ de uitleg bij nieuwe bevindingen schrijf je daar meteen in, met een datumkop.
 Een hoofdstuk dat je moet blijven opschonen wordt niet opgeschoond (#265).
 
 Zoek gericht (`grep`, `sed -n`) in plaats van hele bestanden te laden.
-Gemeten op 16-10-2026, na de tweede changelogsnede. Op 22-09 stonden hier
-getallen die binnen drie weken ver te laag waren; meet opnieuw
+Gemeten op 06-11-2026, na de derde changelogsnede. Op 16-10 stonden hier
+getallen die binnen drie weken 20–55% te laag waren; meet opnieuw
 (`wc -c`) voordat je erop vertrouwt:
 
 | bestand | KB |
 |---|---|
-| `public/pidlane-testrun.js` | 698 |
-| `PIDLANE-ARCHIEF.md` | 588 |
-| `worker.js` | 330 |
-| `public/pidlane.css` | 286 |
-| `CHANGELOG.md` | 201 |
-| `public/index.html` | 200 |
-| `PIDLANE.md` | 175 |
+| `public/pidlane-testrun.js` | 832 |
+| `PIDLANE-ARCHIEF.md` | 698 |
+| `worker.js` | 398 |
+| `public/pidlane.css` | 377 |
+| `PIDLANE.md` | 209 |
+| `public/index.html` | 207 |
+| `CHANGELOG.md` | 160 |
+
+**De vier weken van `CHANGELOG.md` zijn sinds 06-11-2026 een poort.** De
+regel werd twee keer niet gehaald (363 KB op 16-10, 313 KB op 06-11).
+`test-changelogsnede.js` wordt rood zodra het bestand meer dan zes weken
+overspant; `node plsnede.js --schrijf` doet dan de snede. Dat is een eigen,
+mechanische commit.
 
 Weet je niet welke module?
 Kijk eerst in §4 van `PIDLANE.md`. Een ruw testrun-verslag hoort ook niet heel
