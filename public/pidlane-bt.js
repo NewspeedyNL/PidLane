@@ -2879,7 +2879,9 @@ function resetToStep1(){
   document.getElementById('connActions').innerHTML=`
     <button class="mbtn p" id="btnConnect">📡 Verbinden via Bluetooth</button>
     <button class="mbtn s" id="btnDemo">▷ Simuleer verbinding</button>
-    <button class="mbtn s" data-pl="zonder" onclick="PLZonder.verder()">🚗 Zonder adapter</button>`;
+    <button class="mbtn s" data-pl="zonder" onclick="PLZonder.verder()">🚗 Zonder adapter</button>
+    <button class="mbtn s" data-pl="expertdeel" onclick="PLNav.expert('deel')">📡 Laat iemand meekijken</button>
+    <button class="mbtn s" data-pl="expertjoin" onclick="PLRemote.openExpert()">🔭 Meekijken met een sessie (voor de expert)</button>`;
   // Scoped bedraden: er bestaat óók een #btnConnect/#btnDemo op de hub
   // (dubbele id) — getElementById pakt de eerste en liet deze knoppen dood.
   const _ca=document.getElementById('connActions');

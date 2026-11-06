@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 06-11-2026 — Het startscherm in drie lagen, zelf in te delen
+ ═══════════════════════════════════════════════════════════
+ - Home is de auto met één hoofdknop: Verbind adapter, Check mijn auto of
+   Naar Live, met drie live of bekende waarden. Daaronder Voor jou nu (één
+   melding: open punt, APK, koude motor, winter) en Snel naar.
+ - Meer → Startscherm aanpassen: blokken aan/uit en in volgorde, eigen Snel
+   naar, begin vanaf Bestuurder, Kenner of Garage; een klant bewaart het in
+   zijn account.
+ - Expert op afstand staat in Meer en in het verbindscherm, niet meer op Home.
+
+ ═══════════════════════════════════════════════════════════
  06-11-2026 — Aangevinkte sensoren gaan aan, wizard Grondig is zichtbaar
  ═══════════════════════════════════════════════════════════
  - Zonder chassisnummer (oudere auto, adapter zonder 0902) gaat de selectie

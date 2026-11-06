@@ -445,6 +445,8 @@ function closeConnOv(){
            zonder id kan hij daar geen dubbel id worden (test-dubbele-ids.js). -->
       <button class="mbtn s" id="btnDemo" onclick="startDemo()">▷ Simuleer verbinding</button>
       <button class="mbtn s" data-pl="zonder" onclick="PLZonder.verder()">🚗 Zonder adapter</button>
+      <!-- Expert op afstand (06-11-2026, van Home hierheen): meekijken hoort bij verbinden. -->
+      <button class="mbtn s" id="btnExpertDeel" onclick="PLNav.expert('deel')">📡 Laat iemand meekijken</button>
       <button class="mbtn s" id="btnExpertJoin" onclick="PLRemote.openExpert()">🔭 Meekijken met een sessie (voor de expert)</button>
     </div>
   </div>
@@ -588,48 +590,14 @@ function closeConnOv(){
     <!-- Winter (#556): de seizoensbanner, daarna drie dagen weer en hoogstens één advies. Alleen in het winterseizoen (PLWinter.teken). -->
     <div id="plWinterKaart"></div>
     <div id="wmDoors" class="pl-home">
-      <!-- Expert op afstand (17-10-2026): de kern van PidLane is dat iemand die
-           er verstand van heeft live meekijkt in jouw auto. Daarom staat het
-           bovenaan, met twee ingangen: de bestuurder deelt, de expert ontvangt.
-           Dezelfde vensters als de kaarten in Live data (#wc-liveshare,
-           #wc-liveexpert); die blijven daar ook staan. -->
-      <section class="pl-expert" id="plExpert" aria-labelledby="plExpertT">
-        <div class="pl-expert-kop">
-          <span class="pl-expert-ic" aria-hidden="true">🧑‍🔧</span>
-          <span class="pl-expert-tx">
-            <span class="pl-expert-t" id="plExpertT">Expert op afstand</span>
-            <span class="pl-expert-d">Je monteur of een kenner kijkt live mee. Alleen lezen.</span>
-          </span>
-        </div>
-        <div class="pl-expert-knoppen">
-          <button type="button" class="pl-expert-k hoofd" id="plExpertDeel" onclick="PLNav.expert('deel')">📡 Laat iemand meekijken</button>
-          <button type="button" class="pl-expert-k" id="plExpertOntvang" onclick="PLNav.expert('ontvang')">🔭 Ik ben de expert</button>
-        </div>
-      </section>
-      <button type="button" class="pl-check" id="plCheckBtn" onclick="PLNav.check()">
-        <span class="pl-check-ic" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 1 16 0"/><path d="M12 12l4-4"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M6 18h12"/></svg>
-        </span>
-        <span class="pl-check-tx">
-          <span class="pl-check-t">Check mijn auto</span>
-          <span class="pl-check-d">Foutcodes en keuringsstatus · ±30 seconden</span>
-        </span>
-        <span class="pl-check-pijl" aria-hidden="true">→</span>
-      </button>
-      <div class="pl-kop">Ik wil…</div>
-      <div class="pl-tegels">
-        <button type="button" class="pl-tegel tg-storing" onclick="PLNav.tegel('storing')">
-          <span class="pl-tegel-ic" aria-hidden="true">🔧</span><span class="pl-tegel-t">Er is iets mis</span><span class="pl-tegel-d">Klacht, lampje of geluid</span></button>
-        <button type="button" class="pl-tegel tg-handel" onclick="PLNav.tegel('handel')">
-          <span class="pl-tegel-ic" aria-hidden="true">🚗</span><span class="pl-tegel-t">Kopen of verkopen</span><span class="pl-tegel-d">Staat, historie en waarde</span></button>
-        <button type="button" class="pl-tegel tg-rit" onclick="PLNav.tegel('onderweg')">
-          <span class="pl-tegel-ic" aria-hidden="true">🛣️</span><span class="pl-tegel-t">Rit starten</span><span class="pl-tegel-d">Ritmonitor, zuinig, caravan</span></button>
-        <button type="button" class="pl-tegel tg-voorb" onclick="PLNav.tegel('voorbereiding')">
-          <span class="pl-tegel-ic" aria-hidden="true">📅</span><span class="pl-tegel-t">Voorbereiden</span><span class="pl-tegel-d">Winter, lange rit, onderhoud</span></button>
-      </div>
-      <!-- Alle losse functies op een rij, voor wie precies weet wat hij zoekt.
-           Alleen in de garagemodus: dat is de plek voor vakgereedschap. -->
-      <button type="button" class="pl-alles alleen-garage" id="plAllesBtn" onclick="openDoor('alle')">Alle functies<span aria-hidden="true">→</span></button>
+      <!-- 06-11-2026: het startscherm in drie lagen (pidlane-thuis.js tekent
+           het): de auto met één hoofdknop, "Voor jou nu" met één kaart, en
+           Snel naar. Zelf in te delen via Meer → Startscherm aanpassen.
+           Expert op afstand staat sindsdien in het verbindscherm en in Meer;
+           #plCheckBtn en #plAllesBtn maakt PLThuis. Het id #wmDoors is
+           gebleven: openDoor()/backToDoors() en de banner uit de externe
+           config (pidlane-fuel.js) hangen eraan. -->
+      <div id="plThuis"></div>
     </div>
 
     <!-- ═══ DEUR: LIVE PID-DATA (bekijken · delen · ontvangen) ═══ -->
@@ -908,8 +876,12 @@ function closeConnOv(){
         <div class="kebab-kop">Account</div>
         <button class="kebab-item" id="kbAccount" style="display:none" onclick="closeKebab();PLKlant.openMijnTokens()">👤 Mijn account en tegoed</button>
         <button class="kebab-item" id="kbGarage" style="display:none" onclick="closeKebab();PLGarage.open()">🚗 Mijn voertuigen</button>
+        <div class="kebab-kop">Expert op afstand</div>
+        <button class="kebab-item" id="plExpertDeel" onclick="closeKebab();PLNav.expert('deel')">📡 Laat iemand meekijken</button>
+        <button class="kebab-item" id="plExpertOntvang" onclick="closeKebab();PLNav.expert('ontvang')">🔭 Ik ben de expert</button>
         <div class="kebab-kop">Instellingen</div>
         <button class="kebab-item" id="kbVoorkeur" onclick="closeKebab();PLVoorkeur.open()">⚙️ Mijn voorkeuren</button>
+        <button class="kebab-item" id="kbThuis" onclick="PLThuis.aanpassen()">🏠 Startscherm aanpassen</button>
         <button class="kebab-item" id="kbInrichten" onclick="closeKebab();PLInrichten.open()">🧭 Setup-wizard</button>
         <!-- 10-10-2026: Garagemodus, Check na verbinden, Uitleg bij knoppen,
              Tekstgrootte en Privacy staan in Mijn voorkeuren, blok "Op dit
@@ -2181,6 +2153,7 @@ function closeConnOv(){
 <script src="pidlane-weer.js"></script><!-- PLWeer (#556): de verwachting voor een plaats uit een lijst, via /weer — locatievrij; vereist plFetch -->
 <script src="pidlane-winter.js"></script><!-- PLWinter (#556/#559): winterprofiel, winterkaart op het startscherm en bandentabel; vereist ná pidlane-zonder.js (PLZonder._blad) en pidlane-weer.js; leest PLGarage -->
 <script src="pidlane-herinner.js"></script><!-- PLHerinner: APK en onderhoud als Android-melding (LocalNotifications), met terugval in de app; vereist PLZonder, PLGarage -->
+<script src="pidlane-thuis.js"></script><!-- PLThuis: het startscherm in drie lagen (de auto, Voor jou nu, Snel naar) en Startscherm aanpassen; ná winter en herinner, leest PLGarage, PLFoutcodes, PLOpstart, PLZonder -->
 <script src="pidlane-lampjes.js"></script><!-- PLLampjes: welk lampje brandt er en mag ik doorrijden — zonder net en zonder adapter -->
 <script src="pidlane-wijzer.js"></script><!-- PLWijzer: milieuzones, kosten per maand, klachtenwijzer, past een adapter — vereist PLZonder._blad, PLOnderzoek -->
 <script src="pidlane-pompprijs.js"></script><!-- PLPompprijs: de standaardprijs per liter uit de CBS-pompprijs (80416ned) — vereist ná berekend + wijzer -->

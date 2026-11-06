@@ -39,6 +39,8 @@ var KRITIEK = [
   'appBack','btDiag','btLogAfkappen','btLogDomAfkappen','sppOudeSluiten','isObdNaam','plSnelBekend','_pollWacht','buildDiscoveredPIDList',
   'clearDTC','clearSLAutoHide','closeCaravanDash','closeKebab','closeLades','closeRitAnalyse',
   'demo','detectEngineType','disconnectWebSerial','doLogin','download','dtcInfo','dtcPlan',
+  // obdChipTap erbij op 06-11-2026: "Verbind adapter" op het startscherm (PLThuis) opent er het verbindscherm mee.
+  'obdChipTap',
   'ensurePIDListActive','ensurePIDsActive',
   // applyFeatureToggles erbij op 03-09-2026. Blok 5 draait de schakelaar
   // feat_demo echt om om te zien of beide demoknoppen verdwijnen; dat gaat

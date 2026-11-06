@@ -41,7 +41,8 @@ function toets(naam, waar, uitleg) {
   try {
     console.log('\n1. De kaart en de banner');
     toets('PLWinter en PLWeer zijn geladen', await app.ev(`typeof PLWinter === 'object' && typeof PLWeer === 'object' && typeof PLWinter.open === 'function'`));
-    toets('de kaart staat vlak boven het startscherm', await app.ev(`(function(){ var k = document.getElementById('plWinterKaart'); return !!k && k.nextElementSibling && k.nextElementSibling.id === 'wmDoors'; })()`));
+    // Sinds 06-11-2026 staat de kaart in laag 2 van het startscherm (PLThuis, Voor jou nu).
+    toets('de kaart staat op het startscherm, in Voor jou nu', await app.ev(`(function(){ var k = document.getElementById('plWinterKaart'); return !!k && !!k.closest('#wmDoors #plThuisNu'); })()`));
     await app.ev(`(function(){
       var vast = new Date(2026, 10, 20, 12, 0, 0).getTime();
       Date.now = function () { return vast; };

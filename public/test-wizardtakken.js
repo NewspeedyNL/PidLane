@@ -56,9 +56,11 @@ Object.keys(BOOM).forEach(function (k) {
 eis('geen keuze wijst naar niets', doodlopend.length === 0, doodlopend.join('; '));
 
 console.log('\n3. De tegels op het startscherm en de takken zijn dezelfde set');
+// Sinds 06-11-2026 staan de tegels in Snel naar van pidlane-thuis.js (PLThuis.SNEL), niet meer in index.html.
 const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
+const thuisBron = fs.readFileSync(__dirname + '/pidlane-thuis.js', 'utf8');
 const tegels = [];
-html.replace(/PLNav\.tegel\('([a-z]+)'\)/g, function (_, t) { tegels.push(t); });
+thuisBron.replace(/PLNav\.tegel\('([a-z]+)'\)/g, function (_, t) { tegels.push(t); });
 eis('er staan vier tegels', tegels.length === 4, tegels.join(','));
 tegels.forEach(function (t) { eis('tegel ' + t + ' heeft een tak', !!TAK[t]); });
 

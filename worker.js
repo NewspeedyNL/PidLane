@@ -6372,7 +6372,9 @@ var KP_VOORKEUR = {
   adapterAdres: { soort: "tekst", max: 17, patroon: /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/ },
   scanBekend: { soort: "keuze", uit: ["vragen", "overslaan", "altijd"] },
   samenvatting: { soort: "janee" },
-  oudeData: { soort: "keuze", uit: ["vragen", "ja", "nee"] }
+  oudeData: { soort: "keuze", uit: ["vragen", "ja", "nee"] },
+  // De indeling van het startscherm (PLThuis): b:/-b: blok aan/uit, s: doel, p: basis.
+  thuis: { soort: "lijst", patroon: /^-?[bsp]:[a-z]{2,14}$/, max: 24 }
 };
 
 function kpVoorkeurSchoon(inv) {

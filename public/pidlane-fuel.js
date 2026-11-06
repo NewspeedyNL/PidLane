@@ -289,7 +289,9 @@ const FEATURE_TOGGLES = {
   feat_demo:         ['[id="btnDemo"]','[id="btnDemoLogin"]'],
   feat_tokens:       ['#tokPill']
 };
-// Config-sleutel → tegel op het startscherm (29-09-2026). "Er is iets mis" en
+// Config-sleutel → tegel op het startscherm (29-09-2026). Sinds 06-11-2026 tekent
+// PLThuis de tegels zelf en leest hij featOn() per tegel (SNEL[...].cfg); setTegel()
+// hieronder vindt dan geen .pl-tegel meer en doet niets. "Er is iets mis" en
 // Check mijn auto hebben geen sleutel: dat zijn de basis, net als deur 1 was.
 const TEGEL_SLEUTELS = {
   door_saving_active: 'tg-rit',

@@ -101,11 +101,12 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('een andere tab sluit Meer', !(await app.ev(`document.getElementById('kebabMenu').classList.contains('open')`)));
     toets('en gaat naar Live', (await app.ev(tab)) === 'live', await app.ev(tab));
 
-    console.log('\n4b. Expert op afstand staat bovenaan Home en opent het goede venster');
+    // 06-11-2026: Expert op afstand staat niet meer op Home (1 % van de tikken),
+    // maar in Meer en in het verbindscherm; de ids gingen mee naar Meer.
+    console.log('\n4b. Expert op afstand staat in Meer en opent het goede venster');
     const ex = await app.ev(`(function(){
       PLNav.tab('auto');
-      const e=document.getElementById('plExpert'), c=document.getElementById('plCheckBtn');
-      const boven=!!e && !!c && e.getBoundingClientRect().top < c.getBoundingClientRect().top && e.getBoundingClientRect().height>0;
+      const weg=!document.querySelector('#wmDoors #plExpertDeel, #wmDoors .pl-expert') && !!document.querySelector('#kebabMenu #plExpertDeel') && !!document.querySelector('#kebabMenu #plExpertOntvang');
       document.getElementById('plExpertDeel').click();
       const deel=document.getElementById('remShareOv').classList.contains('open');
       PLRemote.closeShare();
@@ -113,22 +114,11 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
       const ontv=document.getElementById('remExpertOv').classList.contains('open');
       const ontvDeel=document.getElementById('remShareOv').classList.contains('open');
       document.getElementById('remExpertOv').classList.remove('open');
-      return { boven:boven, deel:deel, ontv:ontv, ontvDeel:ontvDeel };
+      return { weg:weg, deel:deel, ontv:ontv, ontvDeel:ontvDeel };
     })()`);
-    toets('Expert op afstand staat boven Check mijn auto', ex.boven, JSON.stringify(ex));
+    toets('Expert op afstand staat in Meer en niet meer op Home', ex.weg, JSON.stringify(ex));
     toets('Laat iemand meekijken opent het deelvenster', ex.deel, JSON.stringify(ex));
     toets('Ik ben de expert opent het codeveld, niet het deelvenster', ex.ontv && !ex.ontvDeel, JSON.stringify(ex));
-    // 23-10-2026: op 360 px stonden de knoppen onder elkaar en was het blok
-    // hoger dan de check eronder. Naast elkaar, en niet hoger dan 150 px.
-    await app.venster(360, 800);
-    const exm = await app.ev(`(function(){
-      const e=document.getElementById('plExpert').getBoundingClientRect(), a=document.getElementById('plExpertDeel').getBoundingClientRect(),
-        b=document.getElementById('plExpertOntvang').getBoundingClientRect();
-      return { hoog: Math.round(e.height), rij: Math.abs(a.top - b.top) < 2, glim: getComputedStyle(document.getElementById('plExpert')).boxShadow };
-    })()`);
-    await app.venster(412, 915);
-    toets('op 360 px: de twee knoppen naast elkaar', exm.rij, JSON.stringify(exm));
-    toets('op 360 px: het blok is hoogstens 150 px hoog, zonder gloed', exm.hoog > 0 && exm.hoog <= 150 && exm.glim === 'none', JSON.stringify(exm));
 
     console.log('\n4c. AI-uitleg in het statusmenu: wat het kost en hoe je tokens aanvraagt (23-10-2026)');
     const aiu = await app.ev(`(function(){
@@ -149,19 +139,21 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('Tokens aanvragen opent voor een klant het tokenscherm', aiu.dicht && aiu.tokens === 1, JSON.stringify(aiu));
 
     console.log('\n5. Een tegel landt op zijn eigen wizardvraag');
-    await app.ev(`PLNav.tab('auto'); document.querySelector('.pl-tegel.tg-storing').click(); 'ok'`);
+    await app.ev(`PLNav.tab('auto'); document.querySelector('#plThuisTegels [data-snel="storing"]').click(); 'ok'`);
     const vraag = await app.ev(`(document.querySelector('#wizardNieuwOv .wz-vraag')||{}).textContent||''`);
     toets('"Er is iets mis" vraagt meteen wat je merkt', /Wat merk je/.test(vraag), vraag);
-    await app.ev(`PLWizard.sluit(); document.querySelector('.pl-tegel.tg-rit').click(); 'ok'`);
+    await app.ev(`PLWizard.sluit(); document.querySelector('#plThuisTegels [data-snel="onderweg"]').click(); 'ok'`);
     const rit = await app.ev(`(document.querySelector('#wizardNieuwOv .wz-vraag')||{}).textContent||''`);
     toets('"Rit starten" vraagt wat je onderweg wilt', /onderweg/.test(rit), rit);
     await app.ev(`PLWizard.sluit(); 'ok'`);
 
     console.log('\n6. Garagemodus: Alle functies');
     await app.ev(`PLNav.zetGarage(false); 'ok'`);
-    toets('garagemodus uit → geen "Alle functies"  <- tegenproef', !(await app.ev(toon('plAllesBtn'))));
+    // Sinds 06-11-2026 een blok van PLThuis: de garagemodus begint bij de basis Garage.
+    const alles = `(function(){ PLThuis.teken(); const b=document.getElementById('plAllesBtn'); return !!b && !b.closest('[hidden]') && b.getClientRects().length>0; })()`;
+    toets('garagemodus uit → geen "Alle functies"  <- tegenproef', !(await app.ev(alles)));
     await app.ev(`PLNav.zetGarage(true); 'ok'`);
-    toets('garagemodus aan → "Alle functies" staat er', await app.ev(toon('plAllesBtn')));
+    toets('garagemodus aan → "Alle functies" staat er', await app.ev(alles));
     await app.ev(`document.getElementById('plAllesBtn').click(); 'ok'`);
     const panelen = await app.ev(`[...document.querySelectorAll('.wm-door-panel')].filter(p=>getComputedStyle(p).display!=='none').length`);
     toets('alle vijf panelen onder elkaar', panelen === 5, 'zichtbaar: ' + panelen);
@@ -171,8 +163,9 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
 
     console.log('\n7. De tegels volgen de schakelaars uit beheer.html');
     await app.ev(`window.PID_CONFIG = Object.assign({}, window.PID_CONFIG||{}, { door_saving_active:false }); applyConfigToUI(); 'ok'`);
-    toets('door_saving_active uit → de tegel Rit starten is weg', !(await app.ev(`getComputedStyle(document.querySelector('.pl-tegel.tg-rit')).display!=='none'`)));
-    toets('en Kopen of verkopen staat er nog  <- tegenproef', await app.ev(`getComputedStyle(document.querySelector('.pl-tegel.tg-handel')).display!=='none'`));
+    await app.ev(`PLThuis.teken(); 'ok'`);
+    toets('door_saving_active uit → de tegel Rit starten is weg', !(await app.ev(`!!document.querySelector('#plThuisTegels [data-snel="onderweg"]')`)));
+    toets('en Kopen of verkopen staat er nog  <- tegenproef', await app.ev(`!!document.querySelector('#plThuisTegels [data-snel="handel"]')`));
     await app.ev(`window.PID_CONFIG.door_saving_active = true; applyConfigToUI(); 'ok'`);
 
     console.log('\n8. Wat onderaan zweeft, ligt boven de balk');
