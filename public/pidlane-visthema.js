@@ -65,7 +65,9 @@ const DEFS = '<defs class="vt-defs">'+
     '<rect width="8" height="8" fill="#0d0f12"/><rect width="4" height="4" fill="#1b1f24"/><rect x="4" y="4" width="4" height="4" fill="#1b1f24"/></pattern>'+
   '</defs>';
 
-const _st = { lock:null, natief:false };
+// strook: staat de keuzestrook open? Een herbouw (PLVisueel.bouw) vervangt
+// innerHTML en gooide hem weg; pas() zet hem dan terug (#657, 05-11-2026).
+const _st = { lock:null, natief:false, strook:false };
 
 function vol(){ return typeof document!=='undefined' && !!document.body && document.body.classList.contains('pl-vis-vol'); }
 function visEl(){ return document.querySelector('.gg.view-visueel .vis') || document.querySelector('.vis'); }
@@ -99,6 +101,7 @@ function pas(vis){
     bak.insertAdjacentHTML('afterbegin', knoppenHtml());
   }
   vis.querySelectorAll('svg.vis-meter').forEach(function(s){ if(!s.querySelector('.vt-defs')) s.insertAdjacentHTML('afterbegin', DEFS); });
+  if(_st.strook && !vis.querySelector('.vt-strook')) vis.insertAdjacentHTML('beforeend', strookHtml(lees()));
 }
 
 // De naald zwaait één keer helemaal uit, zoals een echt dashboard bij het
@@ -146,6 +149,7 @@ function uit(){
   }
   // De keuzestrook hoort bij het scherm waarop hij openging.
   const vis=visEl(), o=vis && vis.querySelector('.vt-strook');
+  _st.strook=false;
   if(o) o.remove();
   if(was) pas();
 }
@@ -153,8 +157,9 @@ function kies(){
   const vis=visEl();
   if(!vis) return;
   const o=vis.querySelector('.vt-strook');
-  if(o){ o.remove(); return; }
+  if(o){ o.remove(); _st.strook=false; return; }
   vis.insertAdjacentHTML('beforeend', strookHtml(lees()));
+  _st.strook=true;
 }
 function zet(id){
   if(!bewaar(id)) return false;

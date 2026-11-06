@@ -62,6 +62,24 @@ volgorde van "yesno" en "onoff" een aanname was. Nu:
 Leaf 77 → 97. Tiguan 87 → 88: daar zit het gat niet in standen maar in 31
 weigeringen en 27 codes die niet na te bouwen zijn. Geen enkele stand kwam
 als "vreemd" uit de meting.
+## 05-11-2026 — Visthema: een herbouw gooide de open themastrook weg (#657)
+
+`bproef-visthema` brak in CI af met "niet gevonden na 3 s:
+.vt-keus[data-thema=…]": op #680 met chroom, op `main` na #684 met
+standaard. De strook staat in `.vis`, en `PLVisueel.bouw()` vervangt
+`innerHTML`. Een herbouw terwijl de strook open stond (nieuwe sensor, de
+demo die opstart) gooide hem dus weg. Op een belaste runner valt zo'n
+herbouw midden in de proef. Voor de gebruiker sloot de strook vanzelf.
+
+Nu onthoudt `PLVisThema` dat de strook open staat (`_st.strook`), en `pas()`
+(die na elke opbouw draait) zet hem terug. `uit()` wist de vlag, en
+`PLVisueel.stop()` roept `uit()` aan, dus de strook komt niet terug in een
+weergave die je verlaten hebt. De proef bouwt nu zelf om terwijl de strook
+open is. Zonder de terugzet-regel breekt hij af met de fout uit CI.
+
+Wat er onder het oude blok hieronder stond ("niet onderzocht") is daarmee
+achterhaald.
+
 ## 05-11-2026 — Hyperlane: het midden-knopje wachtte op de volgende frame (#657)
 
 `bproef-hyperlane` viel drie keer om in CI (op PR #656, #680 en #684),

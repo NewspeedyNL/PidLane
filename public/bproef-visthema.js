@@ -76,6 +76,11 @@ function toets(naam, waar, uitleg) {
       r.n = PLVisThema.THEMAS.length;
       await klik('.vt-thema');
       r.strook = [...vis().querySelectorAll('.vt-keus')].map(k => k.getAttribute('data-thema'));
+      // Een herbouw terwijl de strook open staat (nieuwe sensor, de demo die
+      // opstart) houdt hem open. Tot 05-11 gooide innerHTML hem weg; dat was
+      // de wisselvallige "niet gevonden na 3 s" in CI (#657).
+      PLVisueel.bouw(document.querySelector('.gg.view-visueel'), 'test');
+      r.strookNaBouw = !!vis().querySelector('.vt-strook .vt-keus[data-thema="chroom"]');
       await klik('.vt-keus[data-thema="chroom"]');
       await wacht(100);
       r.thema2 = vis().getAttribute('data-vthema');
@@ -117,6 +122,7 @@ function toets(naam, waar, uitleg) {
     toets('…en de meter bedekt het hele scherm, boven de navigatie', r.dekt && r.bovenop, JSON.stringify(r));
     toets('op het volle scherm geldt het thema (eerst Standaard)', r.thema1 === 'standaard', JSON.stringify(r));
     toets('de themaknop opent de strook met alle thema\'s', r.strook.length === r.n && r.strook[0] === 'standaard', JSON.stringify(r.strook));
+    toets('een herbouw van Slim visueel laat een open strook open (#657)', r.strookNaBouw, JSON.stringify(r));
     toets('Chroom kiezen wordt onthouden, de basismeter blijft zonder thema', r.thema2 === 'standaard' && r.plaat2 === r.plaat0 && r.bewaard === 'chroom', JSON.stringify(r));
     toets('een herbouw van de meter houdt de knoppen; de basismeter zelf blijft zonder thema', r.naHerbouw === 'standaard' && r.knopNaHerbouw, JSON.stringify(r));
     toets('ook een profiel houdt op het volle scherm het thema en de knoppen', r.profiel !== 'basis' && r.profielThema === 'chroom' && r.profielKnop, JSON.stringify(r));

@@ -1220,6 +1220,7 @@ MUTATIES=(
 "public/pidlane-visueel.js@@    try{ PLHyperlane.voed(pid, PLToon.waarde(pid, val), oordeel(pid, val)); }@@    try{ }@@bproef-hyperlane.js@@de basismeter krijgt geen toeren of gas: de kleur staat stil op rustig"
 "public/pidlane-hyperlane.js@@querySelector('.vpf-hyper, .vhl-schil, .vhl-basis');@@querySelector('.vpf-hyper, .vhl-schil');@@bproef-hyperlane.js@@de basismeter blijft zonder achtergrond en kleur"
 "public/pidlane-visthema.js@@vis.classList.contains('vhl-basis') ? STANDAARD : themaVoor(lees())@@themaVoor(lees())@@bproef-visthema.js@@de basismeter krijgt weer een thema tot de volgende herbouw (de race van 28-10-2026)"
+"public/pidlane-visthema.js@@  if(_st.strook && !vis.querySelector('.vt-strook')) vis.insertAdjacentHTML('beforeend', strookHtml(lees()));\n@@@@bproef-visthema.js@@een herbouw van Slim visueel gooit de open themastrook weg: wat je wilde kiezen is ineens verdwenen (#657)"
 "public/pidlane.css@@.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vt-thema, .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vt-strook { display:none !important; }@@@@bproef-hyperlane.js@@het palet staat weer op de basismeter"
 "public/pidlane-hyperlane.js@@  if(!s.wortel.isConnected || !s.wortel.getClientRects().length){ stop(); return; }@@@@bproef-hyperlane.js@@de tekenlus draait door in een weggegooid of verborgen vak en kost accu"
 # Rustig in het midden (30-10-2026): de wachttijd, de directe uitzondering, vol gas en de versnelling die blijft staan.
