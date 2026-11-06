@@ -39,15 +39,16 @@
   };
   var SNEL = {
     storing: { t: 'Er is iets mis', d: 'Klacht, lampje of geluid', on: "PLNav.tegel('storing')" },
-    onderweg: { t: 'Rit starten', d: 'Ritmonitor, zuinig, caravan', on: "PLNav.tegel('onderweg')" },
-    handel: { t: 'Kopen of verkopen', d: 'Staat, historie en waarde', on: "PLNav.tegel('handel')" },
-    voorbereiding: { t: 'Voorbereiden', d: 'Winter, lange rit, onderhoud', on: "PLNav.tegel('voorbereiding')" },
+    onderweg: { t: 'Rit starten', d: 'Ritmonitor, zuinig, caravan', on: "PLNav.tegel('onderweg')", cfg: 'door_saving_active' },
+    handel: { t: 'Kopen of verkopen', d: 'Staat, historie en waarde', on: "PLNav.tegel('handel')", cfg: 'door_deal_active' },
+    voorbereiding: { t: 'Voorbereiden', d: 'Winter, lange rit, onderhoud', on: "PLNav.tegel('voorbereiding')", cfg: 'door_prep_active' },
     live: { t: 'Live data', d: 'Alle sensoren nu', on: "PLNav.tab('live')" },
     rapporten: { t: 'Rapporten', d: 'Wat eerder gemaakt is', on: "PLNav.tab('rapporten')" },
     voertuigen: { t: 'Mijn voertuigen', d: 'Profiel, ritten, sensoren', on: 'PLGarage.open()', klant: true },
     kenteken: { t: 'Kenteken-check', d: 'APK, NAP, terugroep', on: 'PLZonder.kenteken()' },
     lampje: { t: 'Lampje brandt?', d: 'Mag ik doorrijden?', on: 'PLLampjes.open()' }
   };
+  // `cfg`: de schakelaar in de externe config (TEGEL_SLEUTELS in pidlane-fuel.js) die deze tegel uitzet.
   var SNEL_MAX = 6;
   var BASIS = {
     bestuurder: { naam: 'Bestuurder', blokken: ['nu', 'snel', '-fav', '-alle'], snel: ['storing', 'onderweg', 'handel', 'voorbereiding'] },
@@ -172,6 +173,7 @@
   function isKlant() { try { var u = window.currentUser; return !!(u && String(u.role || '').toLowerCase() === 'klant'); } catch (e) { return false; } }
   function isDemo() { try { return typeof demoMode !== 'undefined' && !!demoMode; } catch (e) { return false; } }
   function isVerbonden() { try { return typeof connected !== 'undefined' && !!connected && !isDemo(); } catch (e) { return false; } }
+  function cfgAan(d) { try { return !d.cfg || typeof featOn !== 'function' || featOn(d.cfg); } catch (e) { console.warn('PLThuis: config onleesbaar', e); return true; } }
   function garageModus() { try { return document.body.classList.contains('pl-garage'); } catch (e) { return false; } }
 
   var LOKAAL = 'pl_thuis';
@@ -338,7 +340,8 @@
     if (!bouw()) return;
     var c = context(), t = toestand(c), hk = hoofdknop(t), ch = chips(c), ind = huidig();
     var nu = kandidaten(c);
-    var sleutel = JSON.stringify([t, hk, ch, c.naam, c.sub, c.foto, nu.map(function (x) { return x.id + x.titel; }), ind, isKlant(), _nuI]);
+    var snel = ind.snel.filter(function (id) { return (!SNEL[id].klant || isKlant()) && cfgAan(SNEL[id]); });
+    var sleutel = JSON.stringify([t, hk, ch, c.naam, c.sub, c.foto, nu.map(function (x) { return x.id + x.titel; }), ind, snel, isKlant(), _nuI]);
     if (sleutel === _sleutel) return;
     _sleutel = sleutel;
     var pil = el('plThuisPil'); pil.textContent = PIL[t]; pil.dataset.t = t;
@@ -366,9 +369,9 @@
     ind.blokken.forEach(function (b, i) {
       var s = bl.querySelector('[data-blok="' + b.id + '"]'); if (!s) return;
       s.style.order = i;
-      s.hidden = !b.aan || (b.id === 'nu' && !nu.length) || (b.id === 'snel' && !ind.snel.length);
+      s.hidden = !b.aan || (b.id === 'nu' && !nu.length) || (b.id === 'snel' && !snel.length);
     });
-    el('plThuisTegels').innerHTML = ind.snel.filter(function (id) { return !SNEL[id].klant || isKlant(); }).map(function (id) {
+    el('plThuisTegels').innerHTML = snel.map(function (id) {
       var d = SNEL[id];
       return '<button type="button" class="th-tegel" data-snel="' + id + '" onclick="' + d.on + '"><b>' + esc(d.t) + '</b><small>' + esc(d.d) + '</small></button>';
     }).join('');

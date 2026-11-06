@@ -52,10 +52,10 @@ const ECU = {
     toets('geen JS-fouten tijdens de boot', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
     toets('PLFoutcodes staat er', await app.ev(`typeof PLFoutcodes === 'object'`));
     // Sinds 29-09-2026 is de deur de hoofdknop "Check mijn auto" geworden.
-    // Sinds 17-10-2026 staat Expert op afstand erboven; de check is de eerste
-    // knop daarbuiten, vóór de tegels.
-    toets('"Check mijn auto" is de eerste knop na Expert op afstand',
-      await app.ev(`(function(){ const d=[].filter.call(document.querySelectorAll('#wmDoors button'), function(b){ return !b.closest('#plExpert'); })[0]; return !!d && d.id === 'plCheckBtn'; })()`));
+    // Sinds 06-11-2026 is hij een van de drie hoofdknoppen van de held (PLThuis),
+    // vóór Snel naar; welke in beeld staat volgt de verbinding (bproef-thuis.js).
+    toets('"Check mijn auto" is een hoofdknop van de held, vóór de tegels',
+      await app.ev(`(function(){ const c=document.getElementById('plCheckBtn'), t=document.getElementById('plThuisTegels'); return !!c && !!c.closest('#plThuisHeld') && c.classList.contains('th-cta') && !!t && !!(c.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING); })()`));
 
     console.log('\n── 2. de knop opent het venster en leest uit via de echte keten ──');
     toets('nep-adapter staat aan', await app.nepAdapter(ECU) > 0);

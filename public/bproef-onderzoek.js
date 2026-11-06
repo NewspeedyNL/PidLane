@@ -44,7 +44,7 @@ function toets(naam, waar, uitleg) {
     toets('geen JS-fouten tijdens de boot', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
     toets('PLOnderzoek staat er', await app.ev(`typeof PLOnderzoek === 'object' && typeof PLOnderzoek.open === 'function'`));
     // Garagemodus: dan staan verdenkingenbord en tijdlijn in beeld (deel 4 doet de klant).
-    await app.ev(`demoMode = true; PLNav.zetGarage(true); PLNav.tab('auto'); document.querySelector('.pl-tegel.tg-storing').click(); 'ok'`);
+    await app.ev(`demoMode = true; PLNav.zetGarage(true); PLNav.tab('auto'); document.querySelector('#plThuisTegels [data-snel="storing"]').click(); 'ok'`);
     await app.ev(`document.getElementById('wzTekst').value = 'Hij loopt onrustig stationair en hapert soms'; PLWizard.klachtTyp(); PLWizard.klachtVerder(); PLWizard.wanneerVerder(true); 'ok'`);
     toets('het plan zet het volledige onderzoek bovenaan', await app.ev(`!!document.getElementById('wzOnderzoek')`));
     await foto('wizard-plan');
@@ -113,7 +113,7 @@ function toets(naam, waar, uitleg) {
     await app.ev(`PLOnderzoek.sluit(); 'ok'`);
 
     console.log('\n5. Er is iets mis, maar ik merk niets: de brede ronde (#434)');
-    await app.ev(`PLNav.tab('auto'); document.querySelector('.pl-tegel.tg-storing').click(); 'ok'`);
+    await app.ev(`PLNav.tab('auto'); document.querySelector('#plThuisTegels [data-snel="storing"]').click(); 'ok'`);
     const keuze = await app.ev(`(function(){ var k=[].slice.call(document.querySelectorAll('#wizardNieuwOv .wz-opt, #wizardNieuwOv button')).map(function(b){ return b.textContent; }); return k.join(' | '); })()`);
     toets('"Ik merk niets bijzonders" staat bij de eerste vraag', /Ik merk niets bijzonders/.test(keuze), keuze.slice(0, 300));
     await app.ev(`document.querySelector('#wizardNieuwOv .wz-algemeen').click(); 'ok'`);
@@ -127,7 +127,7 @@ function toets(naam, waar, uitleg) {
     await app.ev(`PLOnderzoek.sluit(); 'ok'`);
 
     console.log('\n6. De nieuwe intake (20-10-2026): tegels, zelf beschrijven, een foutcode, het moment');
-    await app.ev(`PLNav.tab('auto'); document.querySelector('.pl-tegel.tg-storing').click(); 'ok'`);
+    await app.ev(`PLNav.tab('auto'); document.querySelector('#plThuisTegels [data-snel="storing"]').click(); 'ok'`);
     toets('"Wat merk je?" met een tegel per klacht van het onderzoek, plus geluid',
       await app.ev(`document.querySelectorAll('#wzChips .wz-chip').length === Object.keys(PLOnderzoek.KLACHTEN).length - 1 && !!document.querySelector('#wzChips [data-k="geluid"]')`));
     toets('zonder keuze kan "Volgende" niet', await app.ev(`document.getElementById('wzKlachtVerder').disabled === true`));
