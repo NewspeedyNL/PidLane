@@ -223,6 +223,27 @@ const beeld = (r) => r.conclusie.alle.map((x) => x.id + ':' + Math.round(x.score
     toets('… maar een koelwatermonster van een halve minuut terug telt wél, van verder weg niet', laat === 'rijden_warm' && S.toestandOp(S.tijdlijn({ '010C': [{ t: 0, v: 2000 }, { t: 90000, v: 2000 }], '010D': [{ t: 0, v: 50 }, { t: 90000, v: 50 }], '0105': [{ t: 0, v: 90 }] }), 1, O.cfg.grens) === 'rijden_koud', laat);
   }
 
+  // ── Serieel (07-11-2026): stilstaand laden is geen stationair ──
+  {
+    const H = { '010C': [], '010D': [], '0105': [] };
+    for (let i = 0; i < 40; i++) { H['010C'].push({ t: i * 1000, v: 2400 }); H['010D'].push({ t: i * 1000, v: 0 }); H['0105'].push({ t: i * 1000, v: 85 }); }
+    const tl = S.tijdlijn(H);
+    const met = S.toestandOp(tl, 20, Object.assign({}, O.cfg.grens, { vorm: 'serieel' }));
+    const zonder = S.toestandOp(tl, 20, O.cfg.grens);
+    toets('serieel, stilstand op 2400 tpm: laden, niet rond 2500 tpm', met === 'laden', met);
+    toets('TEGENPROEF zonder vorm: dezelfde meting is een 2500-tpm-stuk', zonder === 'toeren2500', zonder);
+    const rijdend = S.toestandOp(S.tijdlijn({ '010C': [{ t: 0, v: 2400 }, { t: 1000, v: 2400 }], '010D': [{ t: 0, v: 80 }, { t: 1000, v: 80 }], '0105': [{ t: 0, v: 85 }, { t: 1000, v: 85 }] }), 1, Object.assign({}, O.cfg.grens, { vorm: 'serieel' }));
+    toets('serieel rijdend blijft rijden_warm', rijdend === 'rijden_warm', rijdend);
+    const r = S.lees(H, O, { brandstof: 'hybride', vorm: 'serieel' });
+    toets('lees() met vorm serieel noemt de toestand "motor laadt stilstaand"', /motor laadt stilstaand/.test(S.promptBlok(r)), S.promptBlok(r).slice(0, 200));
+    toets('vormLive leest PLKenmerk', (s.PLKenmerk = { live: () => ({ vorm: { waarde: 'serieel' } }) }, S.vormLive()) === 'serieel');
+    s.PLKenmerk = { live: () => ({ vorm: { waarde: 'serieel' } }) };
+    toets('leesApp geeft de vorm uit PLKenmerk door', /motor laadt stilstaand/.test(S.promptBlok(S.leesApp(H))));
+    s.PLKenmerk = { live: () => { throw new Error('stuk'); } };
+    toets('vormLive met een kapotte PLKenmerk: null, geen val', S.vormLive() === null);
+    delete s.PLKenmerk;
+  }
+
   console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + n : 'Alles goed — ' + n + ' controles'));
   process.exit(fout ? 1 : 0);
 })();

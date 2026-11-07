@@ -61,7 +61,8 @@
 
   const NAAM = {
     uit: 'motor uit', start: 'starten', stationair_koud: 'stationair koud', stationair_warm: 'stationair warm',
-    toeren2500: 'rond 2500 tpm stilstaand', stil_gas: 'stilstaand gas geven', rijden_koud: 'rijden koud', rijden_warm: 'rijden warm', vollast: 'vollast'
+    toeren2500: 'rond 2500 tpm stilstaand', stil_gas: 'stilstaand gas geven', rijden_koud: 'rijden koud', rijden_warm: 'rijden warm', vollast: 'vollast',
+    laden: 'motor laadt stilstaand (serieel)'
   };
 
   /* Welke stap van het onderzoek op welk stuk van de meting gelezen mag
@@ -125,7 +126,13 @@
     return { t, kol, pids };
   }
 
-  /* De toestand op moment i. g = PLOnderzoek.cfg.grens. Puur. */
+  /* De toestand op moment i. g = PLOnderzoek.cfg.grens, met g.vorm de
+     aandrijfvorm uit PLKenmerk (of niets). Puur.
+     SERIEEL (07-11-2026): een e-Power of Jazz e:HEV laat de motor stilstaand
+     draaien om de accu te laden, op het toerental dat de laadvraag kiest.
+     Dat is geen stationair en geen gas geven: als 'laden' valt het buiten
+     elke stap van het onderzoek, in plaats van een stationair- of
+     2500-tpm-oordeel te krijgen over een motor die iets anders doet. */
   function toestandOp(tl, i, g) {
     const v = p => (tl.kol[p] ? tl.kol[p][i] : null);
     const rpm = v('010C'), snel = v('010D'), last = v('0104');
@@ -135,6 +142,7 @@
     const ect = traag(tl, '0105', i);
     if (!getal(rpm) || rpm < g.uitRpm) return 'uit';
     if (rpm <= g.aanRpm) return 'start';
+    if (g.vorm === 'serieel' && !(getal(snel) && snel > g.rijKmh)) return 'laden';
     const warm = getal(ect) && ect >= g.warmC;
     if (getal(snel) && snel > g.rijKmh) {
       if (getal(last) && last >= 80 && rpm > 1500) return 'vollast';
@@ -237,10 +245,10 @@
     if (!O || !O.STAPPEN || !O.nieuw) return { geen: 'het volledig onderzoek is niet geladen' };
     const tl = tijdlijn(hist);
     if (!tl) return { geen: 'zonder toerental is niet vast te stellen of de motor draaide' };
-    const g = (O.cfg && O.cfg.grens) || { uitRpm: 100, aanRpm: 400, rijKmh: 5, warmC: 70 };
+    const c = ctx || {};
+    const g = Object.assign({}, (O.cfg && O.cfg.grens) || { uitRpm: 100, aanRpm: 400, rijKmh: 5, warmC: 70 }, { vorm: c.vorm || null });
     const toestanden = tl.t.map((_, i) => toestandOp(tl, i, g));
     const duur = duurPer(tl, toestanden);
-    const c = ctx || {};
     const st = O.nieuw({ klachten: ['controle'], brandstof: c.brandstof, liters: c.liters, garage: true });
     // Elke verdenking die een van deze stappen kan raken, doet mee: ook
     // tegenbewijs telt ("laadspanning 14,1 V — de dynamo laadt").
@@ -315,12 +323,17 @@
   }
 
   /* Uit de app: de onderzoeksmodule en het voertuig. */
+  // De aandrijfvorm uit PLKenmerk ('serieel', 'mild', …) of null.
+  function vormLive() {
+    try { const k = window.PLKenmerk && PLKenmerk.live ? PLKenmerk.live() : null; return (k && k.vorm && k.vorm.waarde) || null; }
+    catch (e) { console.warn('PLSamenhang: aandrijfvorm onleesbaar — een seriële hybride die laadt telt als stationair', e); return null; }
+  }
   function leesApp(hist) {
     let v = {};
     try { v = (typeof getVehicle === 'function' && getVehicle()) || {}; } catch (e) { console.warn('PLSamenhang: voertuig onbekend', e); }
     const O = window.PLOnderzoek;
-    return lees(hist, O, { brandstof: v.brandstof, liters: O && O.liters ? O.liters(v) : null });
+    return lees(hist, O, { brandstof: v.brandstof, liters: O && O.liters ? O.liters(v) : null, vorm: vormLive() });
   }
 
-  window.PLSamenhang = { TOL_MS, STATIONAIR_MAX, MOET_BEWEGEN, LEZEN, NAAM, tijdlijn, toestandOp, knip, koudGeweekt, lees, leesApp, promptBlok, toestandRegel };
+  window.PLSamenhang = { vormLive, TOL_MS, STATIONAIR_MAX, MOET_BEWEGEN, LEZEN, NAAM, tijdlijn, toestandOp, knip, koudGeweekt, lees, leesApp, promptBlok, toestandRegel };
 })();

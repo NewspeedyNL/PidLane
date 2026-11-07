@@ -173,6 +173,34 @@ console.log('\n— optrekken rond 1000 tpm is geen N (30-09-2026) —');
   ok(a.G.toon === 'N', `uitrollen in z'n vrij is nog steeds N (toon ${a.G.toon})`);
 }
 
+console.log('\n— hybride: motor uit is geen N, (e-)CVT en serieel hebben geen versnellingen (07-11-2026) —');
+{
+  const a = nieuweApp();
+  const prof = profielMaker(RATIO);
+  a.rij(180000, prof);
+  // Rijden op de accu: 50 km/u, toerental 0. Vroeger N (r = 50/0,001 past bij niets).
+  let n = false;
+  a.rij(4000, () => ({ kmh: 50, rpm: 0 }), { score: () => { if (a.G.toon === 'N') n = true; return null; } });
+  ok(!n, 'rijden op de accu (0 tpm bij 50 km/u) toont geen N');
+  // TEGENPROEF in dezelfde app: 800 tpm bij 50 blijft N (uitrollen in z'n vrij).
+  a.rij(4000, t => ({ kmh: 50, rpm: 800 + 20 * Math.sin(t / 50) }));
+  ok(a.G.toon === 'N', `TEGENPROEF 800 tpm bij 50 km/u blijft N (toon ${a.G.toon})`);
+
+  const kenmerk = (k) => { const b = nieuweApp(); b.ctx.PLKenmerk = { live: () => k }; return b; };
+  const cvt = kenmerk({ cvt: { waarde: true } });
+  cvt.rij(180000, prof);
+  ok(cvt.G.toon === null && !(cvt.G.model && cvt.G.model.totaal), `e-CVT: geen cijfer en niets geleerd (toon ${cvt.G.toon}, totaal ${cvt.G.model && cvt.G.model.totaal})`);
+  const ser = kenmerk({ serieel: { waarde: true } });
+  ser.rij(180000, prof);
+  ok(ser.G.toon === null, `serieel: geen cijfer (toon ${ser.G.toon})`);
+  const gewoon = kenmerk({ cvt: { waarde: false }, serieel: { waarde: false } });
+  gewoon.rij(180000, prof);
+  ok(gewoon.G.model && gewoon.G.model.gears.length >= 5, `TEGENPROEF geen CVT: leert gewoon (${gewoon.G.model && gewoon.G.model.gears.length} versnellingen)`);
+  const kapot = kenmerk(null); kapot.ctx.PLKenmerk = { live: () => { throw new Error('stuk'); } };
+  kapot.rij(180000, prof);
+  ok(kapot.G.model && kapot.G.model.gears.length >= 5 && kapot.logs.some(l => /aandrijfkenmerken onleesbaar/.test(l)), 'een kapotte PLKenmerk: versnellingen blijven aan, met een waarschuwing');
+}
+
 console.log('\n— toonbaar(): alleen een cijfer dat klopt —');
 {
   const a = nieuweApp();

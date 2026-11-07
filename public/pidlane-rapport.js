@@ -488,6 +488,8 @@
     } catch (e) { console.warn('PLRapport: foutcodes niet leesbaar', e); }
     let grens = null;
     try { grens = window.PLOnderzoek && PLOnderzoek.cfg ? PLOnderzoek.cfg.grens : null; } catch (e) { console.warn('PLRapport: toestandsgrenzen onbekend', e); }
+    // Dezelfde aandrijfvorm als PLSamenhang.leesApp, zodat de banden in de grafiek hetzelfde zeggen.
+    if (grens && window.PLSamenhang && typeof PLSamenhang.vormLive === 'function') grens = Object.assign({}, grens, { vorm: PLSamenhang.vormLive() });
     // Het stoplicht dat renderAIText() al toonde (aiVerdict). Opnieuw
     // berekenen zou de telemetrie van dat oordeel dubbel tellen.
     const verdict = { green: 'groen', amber: 'oranje', red: 'rood' }[rep.oordeel] || null;
@@ -528,7 +530,8 @@
                 groen: [22, 128, 61], oranje: [180, 95, 6], rood: [190, 30, 45] };
   const ZACHT = { groen: [232, 245, 236], oranje: [253, 243, 226], rood: [252, 232, 234], grijs: [241, 243, 246], blauw: [232, 240, 255] };
   const BAND = { uit: [235, 235, 235], start: [225, 225, 225], stationair_koud: [221, 234, 252], stationair_warm: [222, 244, 228],
-                 stil_gas: [238, 230, 250], toeren2500: [238, 230, 250], rijden_koud: [252, 246, 214], rijden_warm: [253, 240, 205], vollast: [253, 226, 205] };
+                 stil_gas: [238, 230, 250], toeren2500: [238, 230, 250], rijden_koud: [252, 246, 214], rijden_warm: [253, 240, 205], vollast: [253, 226, 205],
+                 laden: [220, 245, 240] };
 
   // jsPDF's standaardletters kennen geen emoji of pijlen: vervangen of weg.
   function schoon(t) {

@@ -2848,6 +2848,31 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Aandrijfvorm: mild, vol, plug-in, serieel (07-11-2026) ──
+  {
+    issue: '—',
+    naam: 'De aandrijfvorm komt uit het RDW (mild hybride = zijn verbranding), stuurt de balk (Zeilen, Motor laadt accu), zet de versnellingen uit bij e-CVT/serieel en vertelt de AI hoe lang de motor tijdens het rijden uit stond',
+    waarom: 'Een mild hybride (Swift, Puma, CX-5 vanaf 2021) stond als hybride in de app en kreeg EV-logica; een hybride op de accu las als dode toerentalsensor in rapport en AI. Ontbreekt een van de schakels in de draaiende app, dan valt alles stil terug op het oude gedrag.',
+    proef: async function () {
+      if (typeof aandrijfUitRdw !== 'function') return { staat: 'FOUT', detail: 'aandrijfUitRdw ontbreekt — herladen?' };
+      var m = aandrijfUitRdw([{ brandstof_omschrijving: 'Elektriciteit', netto_max_vermogen_elektrisch: '5.10', klasse_hybride_elektrisch_voertuig: 'NOVC-HEV' },
+        { brandstof_omschrijving: 'Benzine', nettomaximumvermogen: '121.00', klasse_hybride_elektrisch_voertuig: 'NOVC-HEV' }], 'MAZDA');
+      if (!m || m.vorm !== 'mild' || m.brandstof !== 'benzine') return { staat: 'FOUT', detail: 'CX-5 mild hybride (5,1 kW) wordt ' + (m && m.vorm) + '/' + (m && m.brandstof) };
+      var K = window.PLKenmerk, A = window.PLAandrijving;
+      if (!K || !A || typeof A.rit !== 'function') return { staat: 'FOUT', detail: 'PLKenmerk of PLAandrijving.rit ontbreekt — herladen?' };
+      if (K.profiel({ brandstof: 'benzine', aandrijving: m }).mild_hybride.waarde !== true) return { staat: 'FOUT', detail: 'PLKenmerk ziet de vorm niet' };
+      var r = null, t = 0;
+      for (var i = 0; i < 8; i++) r = A.bepaal({ rpm: 1800, snelheid: 60, t: t += 250, vorm: 'mild' }, r);
+      for (var j = 0; j < 8; j++) r = A.bepaal({ rpm: 0, snelheid: 45, t: t += 250, vorm: 'mild' }, r);
+      if (r.toestand !== 'ZEILEN') return { staat: 'FOUT', detail: 'mild hybride die uitrolt is ' + r.toestand };
+      if (typeof _plAandrijfPromptRegels !== 'function') return { staat: 'FOUT', detail: 'de AI-regel over de aandrijving ontbreekt' };
+      if (!window.PLGear || typeof PLGear._zonderVersnellingen !== 'function') return { staat: 'FOUT', detail: 'PLGear kent de aandrijfvorm niet' };
+      var vi = (typeof vehicleInfo !== 'undefined' && vehicleInfo) || {};
+      var hier = vi.aandrijving && vi.aandrijving.vorm ? 'deze auto: ' + vi.aandrijving.vorm + ' (' + vi.aandrijving.bron + ')' : 'deze auto: geen RDW-vorm (kenteken niet geladen?)';
+      return { staat: 'OK', detail: 'mild → benzine + Zeilen; ' + hier };
+    }
+  },
+
   // ── Schermtimers slapen, Hyperlane op tempo (07-11-2026) ──
   {
     issue: '#691',

@@ -27,6 +27,7 @@
     DRAAIT_STIL: '#f59e0b',
     DRAAIT_RIJDT: '#f97316',
     ACCU_RIJDT: '#22c55e',
+    ZEILEN: '#14b8a6',
     STARTSTOP: '#5e7cff',
     UIT_VOOR_START: '#94a3b8',
     START: '#eab308',
@@ -35,7 +36,7 @@
 
   // Het lijnicoon per toestand, uit PL_ICOON (pidlane-data.js).
   var ICOON = {
-    DRAAIT_STIL: 'motor', DRAAIT_RIJDT: 'motor', ACCU_RIJDT: 'accu', STARTSTOP: 'startstop',
+    DRAAIT_STIL: 'motor', DRAAIT_RIJDT: 'motor', ACCU_RIJDT: 'accu', ZEILEN: 'motor', STARTSTOP: 'startstop',
     UIT_VOOR_START: 'motor', START: 'motor', ONBEKEND: 'motor'
   };
 

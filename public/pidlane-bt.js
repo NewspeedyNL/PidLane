@@ -3310,17 +3310,12 @@ async function rdwLookup(showOverview, opties){
       if(rb.ok){
         const bd=await rb.json();
         if(Array.isArray(bd)&&bd.length){
-          const oms=bd.map(x=>String(x.brandstof_omschrijving||'').trim()).filter(Boolean);
-          if(oms.length){
-            const low=oms.join('+').toLowerCase();
-            let bf='';
-            if(oms.length>1 && /elektric/.test(low) && /(benzine|diesel)/.test(low)) bf='hybride';
-            else if(/diesel/.test(low)) bf='diesel';
-            else if(/benzine/.test(low)) bf='benzine';
-            else if(/elektric/.test(low)) bf='elektrisch';
-            else if(/lpg|cng|aardgas|waterstof/.test(low)) bf='lpg';
-            else bf=oms[0].toLowerCase();
-            if(bf){ mergeVehicleData('rdw', { brandstof:bf }); try{ log('RDW brandstof: '+vehicleInfo.brandstof,'info'); }catch(_){ /* stil: melding mag nooit de stroom breken */ } }
+          // Brandstof én aandrijfvorm uit dezelfde rijen (aandrijfUitRdw in
+          // pidlane-voertuigdata.js): een mild hybride wordt zijn verbranding.
+          const ad=aandrijfUitRdw(bd, f.merk||vehicleInfo.merk);
+          if(ad && ad.brandstof){
+            mergeVehicleData('rdw', { brandstof:ad.brandstof, verbranding:ad.verbranding, aandrijving:ad });
+            try{ log('RDW brandstof: '+vehicleInfo.brandstof+(ad.vorm && ad.vorm!=='verbranding' ? ' · aandrijving: '+ad.vorm+' ('+ad.bron+')' : ''),'info'); }catch(_){ /* stil: melding mag nooit de stroom breken */ }
           }
         }
       }

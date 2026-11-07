@@ -113,6 +113,8 @@ const CFG = {
 };
 
 function nu(){ return Date.now(); }
+// Onder dit toerental staat de motor stil (= PLAandrijving.drempels.rpmUit).
+const MOTOR_UIT_RPM = 150;
 function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ console.warn('PLGear: localStorage lezen mislukt', k, e); return null; } }
 function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){ console.warn('PLGear: localStorage schrijven mislukt', k, e); } }
 function logI(t,s){ if(typeof log==='function') log(t,s||'info'); }
@@ -419,6 +421,16 @@ const PLGear = {
      versnelling tussen motor en wielen. Kent het model nog niet alle
      versnellingen die er verwacht worden, dan is de hoogste niet bekend en
      is het dus nooit zeker. Onzeker betekent: het embleem, geen letter. */
+  /* Heeft deze auto vaste versnellingen? Nee bij een CVT of e-CVT en bij
+     een seriële hybride, volgens PLKenmerk (ook 'waarschijnlijk': een
+     ontbrekend cijfer is beter dan een verzonnen). Zonder PLKenmerk: ja. */
+  _zonderVersnellingen(){
+    if (!window.PLKenmerk || typeof PLKenmerk.live!=='function') return false;
+    try{
+      const k=PLKenmerk.live();
+      return !!((k.cvt && k.cvt.waarde===true) || (k.serieel && k.serieel.waarde===true));
+    }catch(e){ console.warn('PLGear: aandrijfkenmerken onleesbaar — versnellingen blijven aan', e); return false; }
+  },
   _neutraal(r, rpm){
     const g=(this.model&&this.model.gears)||[];
     if (!g.length || !(rpm<CFG.neutraalRpm) || !(r>0)) return false;
@@ -700,6 +712,11 @@ const PLGear = {
 
       const p=this._paar(), t=nu();
       if (!p || p.oud){ this._zet(null); return; }
+      // Zonder vaste versnellingen geen cijfer en geen leren (07-11-2026): een
+      // (e-)CVT of een seriële hybride heeft geen vaste verhouding tussen
+      // motor en wielen, en elke stabiele kruissnelheid werd hier een nieuwe
+      // "versnelling" (Corolla op de snelweg: 5).
+      if (this._zonderVersnellingen()){ this._buf=[]; this._zet(null); return; }
 
       if (p.kmh>=CFG.minKmh) this._laatstRijden=t;
       const rijdt = (t-this._laatstRijden) < CFG.stilNaMs;
@@ -744,7 +761,9 @@ const PLGear = {
         const m=this._match(stabiel);
         if (geldig){ this._afwijkRegistreer(!!m); this._sessie.stabiel++; if (m) this._sessie.pasten++; }
         doel = m ? m.gear : (this._neutraal(stabiel, p.rpm) ? 'N' : undefined);
-      } else if (p.kmh>=CFG.minKmh && p.rpm<CFG.neutraalRpm && !p.los){
+      } else if (p.kmh>=CFG.minKmh && p.rpm<CFG.neutraalRpm && p.rpm>=MOTOR_UIT_RPM && !p.los){
+        // (Een stilstaande motor tijdens het rijden is accurijden of zeilen,
+        // geen neutraal: daar stond hier "N" bij 50 km/h, 07-11-2026.)
         // rijden met toerental rond stationair en geen stabiele ratio: N
         // alleen als geen enkele versnelling dit kan (zie _neutraal)
         const r=p.kmh/(Math.max(p.rpm,1)/1000);

@@ -61,10 +61,17 @@
     turbo: 'turbo',
     diesel: 'dieselmotor',
     hybride: 'hybride aandrijving',
+    mild_hybride: 'mild hybride (e-motor helpt alleen, rijdt niet elektrisch)',
+    plugin: 'plug-in hybride (met stekker)',
+    serieel: 'serieel hybride (e-motor drijft aan, motor laadt vooral)',
     lpg: 'LPG-installatie',
     cvt: 'traploze automaat (CVT)',
     breedband_b1s1: 'breedbandsonde vóór de katalysator'
   };
+  // De aandrijfvorm in woorden; `p.vorm` is de enige kenmerk-plek met een
+  // tekst als waarde en staat daarom niet in NAAM (die zijn ja/nee).
+  var VORM_NAAM = { verbranding: 'alleen verbrandingsmotor', mild: 'mild hybride', vol: 'volhybride',
+    plugin: 'plug-in hybride', serieel: 'serieel hybride (e-motor drijft aan)', elektrisch: 'volledig elektrisch' };
   // Wat een mens kan beantwoorden; de rest is te meten of staat in RDW/profiel.
   var VRAAG = {
     lpg: 'Rijdt deze auto (ook) op LPG?',
@@ -78,7 +85,7 @@
 
   /* De bron, als een puur object:
      { merk, jaar, brandstof ('benzine'|'diesel'|'hybride'|'elektrisch'|'lpg'|…),
-       transmissie, turboProfiel ('ja'|'nee'|''), turboGezien, supported:[pid],
+       aandrijving ({vorm, bron} uit aandrijfUitRdw), transmissie, turboProfiel ('ja'|'nee'|''), turboGezien, supported:[pid],
        laadGevraagd (de auto gaf een gevraagde laadspanning), mens:{id:true|false} }
      `mens` zijn antwoorden en waarnemingen uit PLWaarneming. */
   function profiel(b) {
@@ -105,6 +112,18 @@
             (/diesel/.test(bs) && jaar >= 2000) ? k(true, 'waarschijnlijk', 'diesel vanaf 2000') : ONBEKEND);
     p.diesel = bs ? k(/diesel/.test(bs), 'bewezen', 'brandstof ' + bs) : ONBEKEND;
     p.hybride = bs ? k(/hybr/.test(bs), 'bewezen', 'brandstof ' + bs) : ONBEKEND;
+    // De aandrijfvorm uit het RDW (aandrijfUitRdw, pidlane-voertuigdata.js):
+    // een tweede as naast de brandstof. Mild wordt daar zijn verbranding, en
+    // is dus geen hybride in de zin van "rijdt ook elektrisch". Waarschijnlijk
+    // waar de vorm uit een vermogensgrens komt; de stekker (OVC) is bewezen.
+    var ad = b.aandrijving && typeof b.aandrijving === 'object' ? b.aandrijving : null;
+    var vorm = ad && ad.vorm ? String(ad.vorm) : null, vb = ad && ad.bron ? ad.bron : 'RDW';
+    if (vorm === 'mild') p.hybride = k(false, 'bewezen', 'mild hybride: ' + vb);
+    p.mild_hybride = vorm ? k(vorm === 'mild', vorm === 'mild' ? 'waarschijnlijk' : 'bewezen', vb) : ONBEKEND;
+    p.plugin = vorm ? k(vorm === 'plugin', 'bewezen', vb) : ONBEKEND;
+    p.serieel = vorm && vorm !== 'vol' && vorm !== 'plugin' ? k(vorm === 'serieel', vorm === 'serieel' ? 'waarschijnlijk' : 'bewezen', vb) :
+      vorm ? k(false, 'waarschijnlijk', vb) : ONBEKEND;
+    p.vorm = vorm ? { waarde: vorm, zeker: (vorm === 'mild' || vorm === 'serieel' || vorm === 'vol') ? 'waarschijnlijk' : 'bewezen', bron: vb } : ONBEKEND;
     p.lpg = uitMens('lpg') || (/lpg|cng/.test(bs) ? k(true, 'bewezen', 'brandstof ' + bs) : ONBEKEND);
     // Hybride ≠ e-CVT (#589). Het planetaire stelsel van Toyota (en Lexus, en
     // Ford, en de Suzuki's die een Toyota zijn) wél; Kia en Hyundai rijden
@@ -243,6 +262,8 @@
       var km = (prof || {})[id]; if (!km || km.waarde === null || km.waarde === undefined) return;
       r.push('- ' + NAAM[id] + ': ' + (km.waarde ? 'ja' : 'nee') + ' (' + km.zeker + ': ' + km.bron + ')');
     });
+    var vm = (prof || {}).vorm;
+    if (vm && vm.waarde) r.unshift('- aandrijfvorm: ' + (VORM_NAAM[vm.waarde] || vm.waarde) + ' (' + vm.zeker + ': ' + vm.bron + ')');
     var o = (lijst || []).map(function (x) { return '- ' + x.naam + (x.reden ? ' — ' + x.reden : ''); });
     if (!r.length && !o.length) return '';
     return '\n\nKENMERKEN VAN DEZE AUTO (bepalen of een regel voor déze auto geldt):\n' + (r.length ? r.join('\n') : '- nog niets bekend') +
@@ -269,12 +290,18 @@
     try {
       var vi = (typeof vehicleInfo !== 'undefined' && vehicleInfo) || {};
       b.merk = vi.merk || vi.make || ''; b.jaar = vi.year || ''; b.brandstof = vi.brandstof || '';
+      b.aandrijving = vi.aandrijving || null;
     } catch (e) { console.warn('PLKenmerk: vehicleInfo onleesbaar', e); }
     try {
       var g = window.PLGarage && PLGarage.gekoppeld ? PLGarage.gekoppeld() : null;
       if (g) {
         b.merk = b.merk || g.merk || ''; b.jaar = b.jaar || g.bouwjaar || '';
-        if (g.brandstof && g.brandstof !== 'onbekend') b.brandstof = g.brandstof;   // de klant weet het beter dan de VIN
+        // De klant weet het beter dan de VIN — behalve bij een mild hybride
+        // die vóór 07-11-2026 automatisch als 'hybride' is opgeslagen: het
+        // RDW zegt nu preciezer dat hij niet elektrisch rijdt.
+        var mildRdw = b.aandrijving && b.aandrijving.vorm === 'mild' && g.brandstof === 'hybride';
+        if (mildRdw) console.warn('PLKenmerk: profiel zegt hybride, RDW mild hybride (' + b.aandrijving.bron + ') — RDW wint');
+        if (g.brandstof && g.brandstof !== 'onbekend' && !mildRdw) b.brandstof = g.brandstof;
         b.transmissie = g.transmissie || ''; b.turboProfiel = g.turbo || '';
       }
     } catch (e) { console.warn('PLKenmerk: gekoppeld voertuig onleesbaar', e); }
@@ -331,7 +358,7 @@
   }
 
   window.PLKenmerk = {
-    NAAM: NAAM, VRAAG: VRAAG, KOEL_HARD: KOEL_HARD, KOEL_KLASSIEK: KOEL_KLASSIEK, LAAD_HARD_LAAG: LAAD_HARD_LAAG, laadHoog: laadHoog, LAAD_KLASSIEK: LAAD_KLASSIEK,
+    NAAM: NAAM, VORM_NAAM: VORM_NAAM, VRAAG: VRAAG, KOEL_HARD: KOEL_HARD, KOEL_KLASSIEK: KOEL_KLASSIEK, LAAD_HARD_LAAG: LAAD_HARD_LAAG, laadHoog: laadHoog, LAAD_KLASSIEK: LAAD_KLASSIEK,
     profiel: profiel, geldt: geldt, toepassen: toepassen, laadspanning: laadspanning, laadBand: laadBand, koelwater: koelwater,
     noteer: noteer, wisNotitie: wisNotitie, onbeslist: onbeslist, vragen: vragen, promptBlok: promptBlok,
     bronLive: bronLive, bronVoertuig: bronVoertuig, live: live, vergeet: vergeet, antwoord: antwoord, letOp: letOp,

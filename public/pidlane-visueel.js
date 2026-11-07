@@ -1344,7 +1344,9 @@ const LAMP_MOTOR = {
   STARTSTOP:      { soort:'ss',    kop:'Start/stop', waarde:'actief', icoon:'startstop' },
   START:          { soort:'start', kop:'Motor',      waarde:'start…', icoon:'motor' },
   UIT_VOOR_START: { soort:'uit',   kop:'Motor',      waarde:'uit',    icoon:'motor' },
-  ACCU_RIJDT:     { soort:'uit',   kop:'Motor',      waarde:'uit',    icoon:'motor' }
+  ACCU_RIJDT:     { soort:'uit',   kop:'Motor',      waarde:'uit',    icoon:'motor' },
+  // Mild hybride die uitrolt (07-11-2026): motor uit, maar geen accurijden.
+  ZEILEN:         { soort:'uit',   kop:'Motor',      waarde:'zeilt',  icoon:'motor' }
 };
 // Wat een brandend lampje erbij zegt (26-09-2026): links de motorbelasting
 // (0104) zolang de motor draait. Zonder getal blijft de toestand staan

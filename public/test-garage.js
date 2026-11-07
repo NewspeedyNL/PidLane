@@ -297,6 +297,13 @@ function laad(opties) {
   eis(Object.keys(K.rdwBijwerken({ apk_tot: '2027-03-14', bouwjaar: 2018 }, { apk_tot: '2027-03-14', bouwjaar: 2018 })).length === 0, 'RDW dagelijks: niets veranderd = niets opslaan');
   p = K.rdwNaarProfiel({}, [{ brandstof_omschrijving: 'Benzine' }, { brandstof_omschrijving: 'Elektriciteit' }]);
   eis(p.brandstof === 'hybride', 'benzine + elektriciteit = hybride');
+  // Mild hybride (07-11-2026): een oud profiel dat 'hybride' zegt wordt bij de
+  // dagelijkse RDW-ronde zijn verbranding; een andere keuze van de klant blijft.
+  const MILD = { vorm: 'mild', brandstof: 'benzine', bron: 'RDW NOVC-HEV, 5,1 kW elektrisch' };
+  eis(K.rdwBijwerken({ brandstof: 'hybride', apk_tot: '2027-03-14' }, { apk_tot: '2027-03-14' }, MILD).brandstof === 'benzine', 'RDW dagelijks: mild hybride met profiel hybride → benzine');
+  eis(!('brandstof' in K.rdwBijwerken({ brandstof: 'lpg' }, {}, MILD)), 'RDW dagelijks: een eigen keuze (lpg) blijft staan');
+  eis(!('brandstof' in K.rdwBijwerken({ brandstof: 'hybride' }, {}, { vorm: 'vol', brandstof: 'hybride' })), 'RDW dagelijks: een volhybride blijft hybride');
+  eis(!('brandstof' in K.rdwBijwerken({ brandstof: 'hybride' }, {}, null)), 'RDW dagelijks: zonder aandrijfvorm verandert er niets');
   p = K.profielUitVerbinding({ merk: 'Mazda', model: 'CX-5', year: '2018', brandstof: 'Benzine' }, false);
   eis(p.bouwjaar === 2018 && p.brandstof === 'benzine' && !('turbo' in p), 'uit de verbinding; geen turbo zonder bewijs');
 

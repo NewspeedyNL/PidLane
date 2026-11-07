@@ -494,7 +494,11 @@
     if (kw.length) p.vermogen_kw = Math.round(Math.max.apply(null, kw));
     var el = oms.indexOf('elektriciteit') >= 0;
     var fos = oms.filter(function (o) { return o && o !== 'elektriciteit'; })[0];
-    if (el && fos) p.brandstof = 'hybride';
+    // Een mild hybride is zijn verbranding (aandrijfUitRdw, pidlane-voertuigdata.js).
+    var ad = (typeof aandrijfUitRdw === 'function') ? aandrijfUitRdw(brandstoffen || [], rij.merk) : null;
+    if (typeof aandrijfUitRdw !== 'function') console.warn('PLGarage: aandrijfUitRdw ontbreekt — een mild hybride wordt als hybride opgeslagen');
+    if (ad && ad.vorm === 'mild') p.brandstof = ad.brandstof;
+    else if (el && fos) p.brandstof = 'hybride';
     else if (el) p.brandstof = 'elektrisch';
     else if (fos === 'benzine' || fos === 'diesel' || fos === 'lpg' || fos === 'cng') p.brandstof = fos;
     if (p.cilinderinhoud) p.motor = (Math.round(p.cilinderinhoud / 100) / 10).toFixed(1).replace('.', ',') + ' liter' + (p.vermogen_kw ? ', ' + p.vermogen_kw + ' kW (' + Math.round(p.vermogen_kw * 1.36) + ' pk)' : '');
@@ -2487,6 +2491,15 @@
 
   /* Het onderhoudsinterval zetten, zonder formulier (#490: het olie-interval
      uit het onderhoudsschema van PLSchema). Dezelfde velden als condBewaar(). */
+  /* Een mild hybride die vóór 07-11-2026 als 'hybride' is opgeslagen (toen
+     maakte rdwNaarProfiel van elke Benzine + Elektriciteit een hybride). Het
+     RDW zegt nu preciezer dat hij niet elektrisch rijdt (aandrijfUitRdw).
+     Alleen 'hybride' wordt bijgewerkt: koos de klant iets anders, dan blijft
+     dat staan. Puur: het voertuig en de RDW-uitkomst → nieuwe brandstof of null. */
+  function mildBesluit(v, ad) {
+    if (!v || !ad || ad.vorm !== 'mild' || v.brandstof !== 'hybride') return null;
+    return (ad.brandstof === 'benzine' || ad.brandstof === 'diesel') ? ad.brandstof : null;
+  }
   async function zetInterval(id, km, mnd) {
     if (!voertuig(id)) throw new Error('dit voertuig staat niet in Mijn voertuigen');
     await api('voertuig_opslaan', { voertuig: { id: id, onderhoud_interval_km: km || null, onderhoud_interval_mnd: mnd || null } });
@@ -3261,9 +3274,12 @@
      klant zelf invulde, overschrijft het RDW niet. Puur: geeft de velden die
      opgeslagen moeten worden, of {} als er niets verandert. */
   var RDW_LEEG_ALLEEN = ['merk', 'model', 'bouwjaar', 'brandstof', 'motor', 'cilinderinhoud', 'vermogen_kw'];
-  function rdwBijwerken(v, p) {
+  function rdwBijwerken(v, p, ad) {
     v = v || {}; p = p || {};
     var uit = {};
+    // ad = aandrijfUitRdw(): een oud profiel dat 'hybride' zegt voor een mild hybride wordt zijn verbranding.
+    var mild = mildBesluit(v, ad);
+    if (mild) uit.brandstof = mild;
     if (p.apk_tot && p.apk_tot !== v.apk_tot) uit.apk_tot = p.apk_tot;
     RDW_LEEG_ALLEEN.forEach(function (k) { if (p[k] != null && p[k] !== '' && (v[k] == null || v[k] === '')) uit[k] = p[k]; });
     return uit;
@@ -3284,7 +3300,7 @@
         try {
           var d = await PLZonder.haal(v.kenteken);
           if (d && d.rij) {
-            var zet = rdwBijwerken(v, rdwNaarProfiel(d.rij, d.bs));
+            var zet = rdwBijwerken(v, rdwNaarProfiel(d.rij, d.bs), typeof aandrijfUitRdw === 'function' ? aandrijfUitRdw(d.bs || [], d.rij && d.rij.merk) : null);
             if (Object.keys(zet).length) { zet.id = v.id; await api('voertuig_opslaan', { voertuig: zet }); }
             var c = cacheVan(v.id); c.rdw = d; c.rdwFout = null; c.rdwRecall = null;
           }

@@ -853,7 +853,7 @@ function telBij(x, val){
    Laden wint: dat is het moment waar een hybride om draait. "Motor" en niet
    "Hybride" als de motor draait: of de accu dan meehelpt, ziet standaard-OBD
    niet, en een woord dat iets beweert wat niet gemeten is hoort hier niet. */
-const TOESTAND_TEKST = { ACCU_RIJDT:'EV', DRAAIT_RIJDT:'Motor', DRAAIT_STIL:'Motor', START:'Start',
+const TOESTAND_TEKST = { ACCU_RIJDT:'EV', ZEILEN:'Zeilt', DRAAIT_RIJDT:'Motor', DRAAIT_STIL:'Motor', START:'Start',
                          STARTSTOP:'Stil', UIT_VOOR_START:'Stil' };
 function toestandTekst(res, stand){
   if(stand && stand.laden) return 'Laden';
