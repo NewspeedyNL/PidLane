@@ -302,6 +302,31 @@ function _plMeetcontextUitMeting(){
   return uit;
 }
 
+/* Wat de AI over de aandrijving moet weten (07-11-2026). Op een hybride
+   staat toerental 0 bij 50 km/h in de data; zonder uitleg leest dat als een
+   dode sensor (plsim-aandrijving.js, PIDLANE-ARCHIEF.md). Alleen wat
+   gemeten is (PLAandrijving.rit) of in het profiel staat (PLKenmerk). */
+function _plAandrijfPromptRegels(){
+  const r=[];
+  let rit=null, vorm=null;
+  try{ rit=(window.PLAandrijving && typeof PLAandrijving.rit==='function') ? PLAandrijving.rit() : null; }
+  catch(e){ console.warn('Rijtijd per aandrijving niet leesbaar voor de AI-prompt', e); }
+  try{ const k=(window.PLKenmerk && typeof PLKenmerk.live==='function') ? PLKenmerk.live() : null; vorm=k && k.vorm && k.vorm.waarde || null; }
+  catch(e){ console.warn('Aandrijfvorm niet leesbaar voor de AI-prompt', e); }
+  const min=ms=>Math.max(1, Math.round(ms/60000));
+  if(rit && rit.accuMs>=10000){
+    r.push('De verbrandingsmotor stond tijdens het rijden '+min(rit.accuMs)+' min uit (rijden op de accu'+
+      (rit.aandeelAccu!==null ? ', '+rit.aandeelAccu+'% van de rijtijd' : '')+'). Toerental 0 en motorbelasting 0 bij snelheid zijn dan NORMAAL — rapporteer dat niet als sensor- of motorfout. De motor koelt in die stukken af.');
+  }
+  if(rit && rit.zeilMs>=5000){
+    r.push('Mild hybride: de motor ging tijdens het uitrollen uit (zeilen, '+Math.round(rit.zeilMs/1000)+' s). Dat is normaal; deze auto rijdt niet elektrisch.');
+  }
+  if(vorm==='serieel'){
+    r.push('Seriële hybride: de motor drijft vooral een generator; zijn toerental volgt de laadvraag, niet de snelheid. Toerental bij stilstand is laden, geen stationair, en er zijn geen versnellingen.');
+  }
+  return r;
+}
+
 // De regel die aan élke AI-prompt geplakt wordt.
 function plMeetcontextPromptLine(){
   try{
@@ -314,6 +339,9 @@ function plMeetcontextPromptLine(){
     });
     const extra=String(m.extra||'').trim();
     if(extra) r.push('- Opgegeven door de gebruiker: '+extra);
+    // De aandrijving komt altijd uit de meting, ook als de gebruiker de
+    // vragen invulde: daar vraagt niemand naar (07-11-2026).
+    _plAandrijfPromptRegels().forEach(x=>r.push('- '+x));
     if(!r.length) return '';
     return '\n\nMEETCONTEXT ('+bron+' — weeg dit mee vóór je een conclusie trekt):\n'+r.join('\n');
   }catch(e){ return ''; }

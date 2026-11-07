@@ -44,6 +44,9 @@ var KRITIEK = [
   // aandrijfUitRdw erbij op 07-11-2026: PLGarage leidt er de brandstof van een
   // mild hybride mee af; ontbreekt hij, dan wordt die weer 'hybride'.
   'aandrijfUitRdw',
+  // _plAandrijfPromptRegels (07-11-2026): de AI-regel over rijden op de accu;
+  // blok 5 kijkt of hij er is.
+  '_plAandrijfPromptRegels',
   'ensurePIDListActive','ensurePIDsActive',
   // applyFeatureToggles erbij op 03-09-2026. Blok 5 draait de schakelaar
   // feat_demo echt om om te zien of beide demoknoppen verdwijnen; dat gaat

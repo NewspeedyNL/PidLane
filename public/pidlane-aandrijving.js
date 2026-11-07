@@ -91,10 +91,22 @@
     DRAAIT_STIL:    { emoji: '🔥', label: 'Stationair' },
     DRAAIT_RIJDT:   { emoji: '🔥', label: 'Rijdt op motor' },
     ACCU_RIJDT:     { emoji: '🔋', label: 'Rijdt op accu' },
+    // Mild hybride (07-11-2026): de motor gaat uit tijdens het uitrollen,
+    // maar de e-motor kan de auto niet zelf voortbewegen. Dat is geen
+    // accurijden, en het bewijst geen hybride.
+    ZEILEN:         { emoji: '🍃', label: 'Zeilen (motor uit)' },
     STARTSTOP:      { emoji: 'Ⓢ',       label: 'Start/stop actief' },
     UIT_VOOR_START: { emoji: '⏸',       label: 'Motor uit' },
     START:          { emoji: '⟳',       label: 'Motor start' },
     ONBEKEND:       { emoji: '○',       label: 'Onbekend' }
+  };
+
+  // Seriële hybride ("andersom"): de motor drijft een generator, de wielen
+  // blijven elektrisch. Dezelfde toestand, een ander woord — "Stationair"
+  // en "Rijdt op motor" zijn daar niet waar.
+  var LABELS_SERIEEL = {
+    DRAAIT_STIL:  { emoji: '🔌', label: 'Motor laadt accu' },
+    DRAAIT_RIJDT: { emoji: '🔋', label: 'Rijdt elektrisch · motor laadt' }
   };
 
   function _getal(v) {
@@ -149,20 +161,24 @@
         : 'motorlooptijd 0');
     }
     if (toestand === 'ACCU_RIJDT') d.push('de motor staat stil terwijl de auto rijdt');
+    if (toestand === 'ZEILEN') d.push('mild hybride: de motor is uit tijdens het rijden, de e-motor rijdt niet zelf');
+    if (nu.vorm === 'serieel' && (toestand === 'DRAAIT_STIL' || toestand === 'DRAAIT_RIJDT'))
+      d.push('seriële hybride: de motor drijft vooral de generator');
     return d.join(', ');
   }
 
   // ── Het ruwe oordeel, vóór de stabilisatie ─────────────────────────
   function _rauw(nu, v, motorDraait, rijdt, g) {
+    // nu.vorm: de aandrijfvorm uit PLKenmerk ('mild', 'serieel', …) of null.
     if (v && v.motorDraait === false && motorDraait === true) return 'START';
     if (motorDraait) return rijdt ? 'DRAAIT_RIJDT' : 'DRAAIT_STIL';
-    if (rijdt) return 'ACCU_RIJDT';
+    if (rijdt) return nu.vorm === 'mild' ? 'ZEILEN' : 'ACCU_RIJDT';
     return g.heeftGedraaid ? 'STARTSTOP' : 'UIT_VOOR_START';
   }
 
   /* bepaal(nu, vorige) — het enige dat deze module doet.
 
-     nu     { rpm, snelheid, looptijd, fuelRate, spanning, ecuLeeft, ouderdomMs, t }
+     nu     { rpm, snelheid, looptijd, fuelRate, spanning, ecuLeeft, ouderdomMs, t, vorm }
      vorige de vorige uitkomst van deze functie, of null bij een nieuwe sessie
 
      Alles in `nu` mag ontbreken; wat ontbreekt verlaagt de zekerheid of levert
@@ -220,10 +236,11 @@
     }
 
     var lt = _getal(nu.looptijd);
+    var lab = (nu.vorm === 'serieel' && LABELS_SERIEEL[toestand]) || LABELS[toestand];
     var res = {
       toestand: toestand,
-      emoji: LABELS[toestand].emoji,
-      label: LABELS[toestand].label,
+      emoji: lab.emoji,
+      label: lab.label,
       zekerheid: _zekerheidUit(toestand, nu, g),
       waarom: _waarom(toestand, nu, g),
       heeftGedraaid: g.heeftGedraaid,
@@ -266,7 +283,8 @@
       spanning: _getal(p['0142']),
       ecuLeeft: o.ecuLeeft !== false,
       ouderdomMs: (typeof o.ouderdomMs === 'number') ? o.ouderdomMs : null,
-      t: (typeof o.t === 'number') ? o.t : Date.now()
+      t: (typeof o.t === 'number') ? o.t : Date.now(),
+      vorm: (typeof o.vorm === 'string') ? o.vorm : null
     };
   }
 
@@ -338,14 +356,42 @@
       var ok = window.PLSched.laatsteSucces('010C') || 0;
       o = Object.assign({}, o, { ouderdomMs: ok ? (nuMs - ok) : (D.versMs + 1) });
     }
+    // De aandrijfvorm komt uit PLKenmerk (RDW, of een mens); bepaal() blijft
+    // zuiver en krijgt hem als invoer.
+    if (o.vorm === undefined && window.PLKenmerk && typeof window.PLKenmerk.live === 'function') {
+      try { var km = window.PLKenmerk.live(); o = Object.assign({}, o, { vorm: (km && km.vorm && km.vorm.waarde) || null }); }
+      catch (e) { console.warn('PLAandrijving: aandrijfvorm onleesbaar — de balk gebruikt de gewone woorden', e); }
+    }
     var nu = uitPidVals(bron, o);
     var gezienWas = !!(_stand && _stand.startStopGezien);
+    var vorigT = _stand ? _stand.t : null;
     _stand = bepaal(nu, _stand);
+    _stand.t = nu.t;
+    _telRit(_stand.toestand, vorigT, nu.t);
     if (_stand.startStopGezien && !gezienWas) _promoveer(_stand, nu);
     return _stand;
   }
   function laatste() { return _stand; }
-  function reset() { _stand = null; }
+  function reset() { _stand = null; _rit = _ritLeeg(); }
+
+  // ── Rijtijd per aandrijving, deze sessie (07-11-2026) ──────────────
+  // Voor de AI-meetcontext: hoe lang reed de auto met de motor uit? Eén tik
+  // telt hoogstens 5 s, zodat een gat in de meting geen rijtijd verzint.
+  // Stilstaan telt niet: voor het stoplicht staat elke hybride op de accu.
+  function _ritLeeg() { return { accuMs: 0, motorRijMs: 0, zeilMs: 0 }; }
+  var _rit = _ritLeeg();
+  function _telRit(toestand, vorigT, t) {
+    if (typeof vorigT !== 'number' || typeof t !== 'number') return;
+    var dt = Math.max(0, Math.min(5000, t - vorigT));
+    if (toestand === 'ACCU_RIJDT') _rit.accuMs += dt;
+    else if (toestand === 'DRAAIT_RIJDT') _rit.motorRijMs += dt;
+    else if (toestand === 'ZEILEN') _rit.zeilMs += dt;
+  }
+  function rit() {
+    var tot = _rit.accuMs + _rit.motorRijMs + _rit.zeilMs;
+    return { accuMs: _rit.accuMs, motorRijMs: _rit.motorRijMs, zeilMs: _rit.zeilMs, rijMs: tot,
+      aandeelAccu: tot >= 30000 ? Math.round(_rit.accuMs / tot * 100) : null };
+  }
 
   /* Mag de pollronde nú ICE-PIDs laten vallen? Alleen als het accurijden even
      heeft aangehouden. Eén verkeerd gelezen monster hoort geen halve
@@ -365,8 +411,10 @@
     tik: tik,
     laatste: laatste,
     reset: reset,
+    rit: rit,
     evPauzeGerust: evPauzeGerust,
     drempels: D,
-    labels: LABELS
+    labels: LABELS,
+    labelsSerieel: LABELS_SERIEEL
   };
 })();

@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-11-2026 — Aandrijfvorm: mild, vol, plug-in en serieel hybride
+ ═══════════════════════════════════════════════════════════
+
+ - Het RDW-kenteken geeft nu ook de aandrijfvorm (`aandrijfUitRdw`): met
+   stekker = plug-in, tot 20 kW elektrisch = mild hybride, meer elektrisch
+   dan motorvermogen = serieel, anders vol. Een mild hybride (Swift, Puma,
+   CX-5 vanaf 2021, Octavia e-TEC) heet voortaan benzine of diesel en krijgt
+   geen EV-logica meer. PLKenmerk kent mild_hybride, plugin en serieel.
+ - Rijden op de accu leest niet langer als een dode toerental- of
+   belastingsensor in het rapport en bij de AI. Op een gewone auto blijft
+   0 tpm bij snelheid wél verdacht.
+ - De balk zegt "Zeilen" bij een mild hybride die uitrolt, en "Motor laadt
+   accu" bij een seriële hybride. Geen versnellingscijfer bij een (e-)CVT of
+   seriële hybride, en geen "N" als de motor tijdens het rijden uit staat.
+ - De AI hoort hoe lang de motor tijdens het rijden uit stond, en dat
+   toerental 0 bij snelheid dan normaal is.
+
+ ═══════════════════════════════════════════════════════════
  07-11-2026 — Zuiniger: schermtimers slapen, Hyperlane op tempo (#691)
  ═══════════════════════════════════════════════════════════
 

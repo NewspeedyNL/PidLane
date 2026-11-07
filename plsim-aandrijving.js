@@ -50,15 +50,15 @@ const FASEN = [
 /* Per variant: welk toerental hoort bij (fase, snelheid, pedaal, i)? null =
    de ECU antwoordt niet op 010C (een BEV). 0 = motor uit. */
 const VARIANTEN = [
-  { id: 'ice', naam: 'Benzine (referentie)', ref: 'Mazda CX-5 2.0 SkyActiv-G 2018',
+  { id: 'ice', rdw: [{brandstof_omschrijving:'Benzine',nettomaximumvermogen:'121.00'}], naam: 'Benzine (referentie)', ref: 'Mazda CX-5 2.0 SkyActiv-G 2018',
     brandstof: 'benzine', verwacht: 'altijd motor; versnellingen leren',
     rpm: (f, v) => (f === 'stoplicht' ? 0 : gearRpm(v)),           // start/stop bij het stoplicht
     soc: () => null },
-  { id: 'mhev', naam: 'Mild hybride 48V (P0, motor drijft altijd aan)', ref: 'Skoda Octavia 1.5 e-TEC 2021 (DSG)',
+  { id: 'mhev', rdw: [{brandstof_omschrijving:'Elektriciteit',netto_max_vermogen_elektrisch:'13.50',klasse_hybride_elektrisch_voertuig:'NOVC-HEV'},{brandstof_omschrijving:'Benzine',nettomaximumvermogen:'110.00',klasse_hybride_elektrisch_voertuig:'NOVC-HEV'}], naam: 'Mild hybride 48V (P0, motor drijft altijd aan)', ref: 'Skoda Octavia 1.5 e-TEC 2021 (DSG)',
     brandstof: 'benzine', verwacht: 'motor drijft aan; uitrollen met motor uit = zeilen, geen EV-rijden',
     rpm: (f, v) => (f === 'stoplicht' || f === 'uitrollen' || f === 'afrit' ? 0 : gearRpm(v)),
     soc: () => null },
-  { id: 'hev_ps', naam: 'Volhybride power-split (e-CVT)', ref: 'Toyota Corolla 1.8 Hybrid 2020',
+  { id: 'hev_ps', rdw: [{brandstof_omschrijving:'Elektriciteit',netto_max_vermogen_elektrisch:'70.00',klasse_hybride_elektrisch_voertuig:'NOVC-HEV'},{brandstof_omschrijving:'Benzine',nettomaximumvermogen:'72.00',klasse_hybride_elektrisch_voertuig:'NOVC-HEV'}], naam: 'Volhybride power-split (e-CVT)', ref: 'Toyota Corolla 1.8 Hybrid 2020',
     brandstof: 'hybride', verwacht: 'EV tot ~50 km/h licht gas, motor los van snelheid (e-CVT), geen versnellingen',
     rpm: (f, v, p) => {
       if (f === 'stil_koud') return 1200;                                // opwarmen katalysator
@@ -68,7 +68,7 @@ const VARIANTEN = [
       return 1000 + p * 40;                                              // e-CVT: toeren volgt vermogen
     },
     soc: (f, i) => ({ stad: -0.02, stad2: -0.02, woonwijk: -0.02, uitrollen: 0.05, afrit: 0.05, snelweg: 0.005, oprit: -0.03 }[f] || 0) },
-  { id: 'hev_par', naam: 'Volhybride parallel (motor + e-motor, DCT)', ref: 'Kia Niro 1.6 GDi HEV 2019 (6DCT)',
+  { id: 'hev_par', rdw: [{brandstof_omschrijving:'Elektriciteit',netto_max_vermogen_elektrisch:'32.00',klasse_hybride_elektrisch_voertuig:'NOVC-HEV'},{brandstof_omschrijving:'Benzine',nettomaximumvermogen:'68.50',klasse_hybride_elektrisch_voertuig:'NOVC-HEV'}], naam: 'Volhybride parallel (motor + e-motor, DCT)', ref: 'Kia Niro 1.6 GDi HEV 2019 (6DCT)',
     brandstof: 'hybride', verwacht: 'EV-wegrijden, motor met versnellingen, e-boost op de oprit',
     rpm: (f, v) => {
       if (f === 'stoplicht' || f === 'stil_koud' || f === 'uitrollen' || f === 'afrit') return 0;
@@ -77,7 +77,7 @@ const VARIANTEN = [
       return gearRpm(v);
     },
     soc: (f) => ({ oprit: -0.05, uitrollen: 0.05, afrit: 0.05, woonwijk: -0.02, wegrijden: -0.03 }[f] || 0) },
-  { id: 'serie', naam: 'Serieel / range extender ("andersom": e-motor drijft, motor laadt)', ref: 'Nissan Qashqai e-Power 2022 (BMW i3 REx idem)',
+  { id: 'serie', rdw: [{brandstof_omschrijving:'Elektriciteit',netto_max_vermogen_elektrisch:'140.00',klasse_hybride_elektrisch_voertuig:'NOVC-HEV'},{brandstof_omschrijving:'Benzine',nettomaximumvermogen:'116.00',klasse_hybride_elektrisch_voertuig:'NOVC-HEV'}], naam: 'Serieel / range extender ("andersom": e-motor drijft, motor laadt)', ref: 'Nissan Qashqai e-Power 2022 (BMW i3 REx idem)',
     brandstof: 'hybride', verwacht: 'wielen altijd elektrisch; motor draait als generator, ook stilstaand, los van snelheid',
     rpm: (f) => {
       if (f === 'stil_koud') return 1500;                                // laadt de accu stilstaand
@@ -87,7 +87,7 @@ const VARIANTEN = [
       return 1900;
     },
     soc: (f) => ({ stil_koud: 0.04, stoplicht: 0.05, stad: -0.03, woonwijk: -0.03, uitrollen: 0.04, afrit: 0.04, snelweg: 0.005 }[f] || 0) },
-  { id: 'phev', naam: 'Plug-in hybride (eerst leeg rijden, dan hybride)', ref: 'Kia Niro PHEV 2020 / VW Golf GTE',
+  { id: 'phev', rdw: [{brandstof_omschrijving:'Benzine',nettomaximumvermogen:'77.20',klasse_hybride_elektrisch_voertuig:'OVC-HEV'},{brandstof_omschrijving:'Elektriciteit',netto_max_vermogen_elektrisch:'44.50',klasse_hybride_elektrisch_voertuig:'OVC-HEV'}], naam: 'Plug-in hybride (eerst leeg rijden, dan hybride)', ref: 'Kia Niro PHEV 2020 / VW Golf GTE',
     brandstof: 'hybride', verwacht: 'lang EV, ook op de snelweg; koude motorstart op 110 km/h',
     rpm: (f, v) => {
       if (['stil_koud', 'optrekken', 'stad', 'uitrollen', 'stad2', 'oprit', 'stoplicht', 'wegrijden', 'woonwijk'].includes(f)) return 0;
@@ -95,7 +95,7 @@ const VARIANTEN = [
       return 0;
     },
     soc: (f) => ({ snelweg: 0.0, afrit: 0.05 }[f] === undefined ? -0.04 : { snelweg: 0.0, afrit: 0.05 }[f]) },
-  { id: 'bev', naam: 'Volledig elektrisch (referentie)', ref: 'Volkswagen ID.3 2021',
+  { id: 'bev', rdw: [{brandstof_omschrijving:'Elektriciteit',netto_max_vermogen_elektrisch:'150.00'}], naam: 'Volledig elektrisch (referentie)', ref: 'Volkswagen ID.3 2021',
     brandstof: 'elektrisch', verwacht: 'geen 010C; balk mag niet blijven hangen op "Onbekend"',
     rpm: () => null, soc: () => null },
 ];
@@ -140,6 +140,10 @@ const PAGINA = `async function(variant, stappen){
     for (const k of Object.keys(pidVals)) delete pidVals[k];
     for (const k of Object.keys(pidHist)) delete pidHist[k];
     vehicleInfo.brandstof = variant.brandstof; vehicleInfo.merk = variant.ref.split(' ')[0];
+    // Zoals het kenteken het zet (pidlane-bt.js): brandstof en vorm uit de RDW-rijen.
+    delete vehicleInfo.aandrijving; delete vehicleInfo.verbranding;
+    if (variant.rdw && typeof aandrijfUitRdw === 'function') { const ad = aandrijfUitRdw(variant.rdw, vehicleInfo.merk);
+      if (ad) { vehicleInfo.brandstof = ad.brandstof; vehicleInfo.verbranding = ad.verbranding; vehicleInfo.aandrijving = ad; } }
     vehicleInfo.model = variant.ref.split(' ')[1];
     connected = true; demoMode = false;
     if (window.PLGear) { PLGear.model = null; PLGear.sleutel = null; PLGear._vinGezien = '__sim_' + variant.id;
@@ -202,7 +206,7 @@ const PAGINA = `async function(variant, stappen){
     let meetctx = null; try { meetctx = plMeetcontextPromptLine(); } catch (e) { meetctx = 'FOUT ' + e.message; }
     let gearModel = null; try { gearModel = PLGear.model && PLGear.model.gears ? PLGear.model.gears.map(r => +r.toFixed(1)) : null; } catch (e) { gearModel = 'FOUT'; }
     return JSON.stringify({ perFase, eind: eind && { toestand: eind.toestand, bewijstHybride: eind.bewijstHybride, startStopGezien: eind.startStopGezien },
-      motortype: detectEngineType(), rapport, samBlok, evAandeel: PLVisueel.aandeelUit(aandeel), samen, onderdeel, kenmerk, basis, meetctx, gearModel });
+      motortype: detectEngineType(), vorm: vehicleInfo.aandrijving && vehicleInfo.aandrijving.vorm, rit: PLAandrijving.rit && PLAandrijving.rit(), rapport, samBlok, evAandeel: PLVisueel.aandeelUit(aandeel), samen, onderdeel, kenmerk, basis, meetctx, gearModel });
   } finally { Date.now = echteNow; connected = false; if (window.PLSched && typeof echtSucces === 'function') PLSched.laatsteSucces = echtSucces; }
 }`;
 
@@ -214,7 +218,7 @@ const PAGINA = `async function(variant, stappen){
   try {
     for (const vr of VARIANTEN) {
       const st = bouwRit(vr);
-      const r = await app.ev(`(${PAGINA})(${JSON.stringify({ id: vr.id, brandstof: vr.brandstof, ref: vr.ref })}, ${JSON.stringify(st)})`);
+      const r = await app.ev(`(${PAGINA})(${JSON.stringify({ id: vr.id, brandstof: vr.brandstof, ref: vr.ref, rdw: vr.rdw })}, ${JSON.stringify(st)})`);
       uit[vr.id] = Object.assign({ naam: vr.naam, ref: vr.ref, verwacht: vr.verwacht }, JSON.parse(r));
     }
     if (app.fouten.length) uit.__jsfouten = app.fouten.slice(0, 10);
@@ -223,6 +227,7 @@ const PAGINA = `async function(variant, stappen){
   for (const [id, r] of Object.entries(uit)) {
     if (id === '__jsfouten') { console.log('JS-FOUTEN:', r); continue; }
     console.log('\n══ ' + r.naam + ' — ' + r.ref);
+    console.log('   vorm=' + r.vorm + ' rit=' + JSON.stringify(r.rit));
     console.log('   verwacht: ' + r.verwacht + '   | motortype=' + r.motortype + ' | EV-aandeel=' + r.evAandeel + '%' + ' | eind=' + JSON.stringify(r.eind));
     for (const [f, x] of Object.entries(r.perFase)) {
       const top = o => Object.entries(o).sort((a, b) => b[1] - a[1]).map(([k, n]) => k + '×' + n).join(', ');
