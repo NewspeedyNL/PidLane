@@ -2716,6 +2716,8 @@ MUTATIES=(
 "public/pidlane-verzamel.js@@      const blijft = b => b >= 2 || vs.length < 10;@@      const blijft = b => true;@@test-totaalcheck.js@@één trimpiek van 10,2 % staat weer als let op"
 "public/pidlane-kwaliteit.js@@['0C','0D','04','11','0B','10','06','14','24','34']@@['0C','0D','04','11','0B','10','06','07','14','24','34']@@test-totaalcheck.js@@een langetermijntrim die vast staat heet weer een bevroren sensor"
 "public/pidlane-kwaliteit.js@@ && !(stilNu && (kort==='0D'||kort==='11'));@@;@@test-totaalcheck.js@@gasklep 11 % bij stationair heet weer vastgelopen"
+"public/pidlane-kwaliteit.js@@        motorUitMag=stilNu || rijdendUit;@@        motorUitMag=true;@@test-motoruit.js@@toerental 0 bij 50 km/h op een gewone benzineauto heet niet meer verdacht"
+"public/pidlane-kwaliteit.js@@ && !(stilNu && (kort==='0D'||kort==='11')) && !motorUitMag;@@ && !(stilNu && (kort==='0D'||kort==='11'));@@test-motoruit.js@@een hybride op de accu heet weer een dode toerentalsensor"
 "public/pidlane-samenhang.js@@    const ect = traag(tl, '0105', i);@@    const ect = v('0105');@@test-samenhang.js@@een warme motor met traag koelwater rijdt weer koud"
 "public/pidlane-rapport.js@@    if (m && m.beperkt) grenzenMeting.push('Meting: ' + m.beperkt);@@    if (sh && !sh.geen) (sh.niet || []).forEach(x => grenzenMeting.push(x.titel + ': ' + x.reden));\n    if (m && m.beperkt) grenzenMeting.push('Meting: ' + m.beperkt);@@test-rapport.js@@het rapport somt weer elke proef op die niet gevraagd en niet uitgevoerd is"
 "public/pidlane-totalcheck.js@@    hist:rm.hist, watVoor:'de totaalcheck'@@    hist:{}, watVoor:'de totaalcheck'@@test-totaalcheck.js@@het rapport van de totaalcheck draagt weer niet de monsters van beide delen"

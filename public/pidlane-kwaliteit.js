@@ -89,7 +89,30 @@ function assessPidQuality(pid, val, scanMode=false){
     // zegt een vlakke lijn iets.
     const kort=pid.slice(2).toUpperCase();
     const stilNu=(typeof pidVals!=='undefined' && pidVals && pidVals['010D']===0);
-    const dynamisch=['0C','0D','04','11','0B','10','06','14','24','34'].includes(kort) && !(d&&d.bitmap) && !(stilNu && (kort==='0D'||kort==='11'));
+    // Een stilstaande verbrandingsmotor is geen dode sensor (07-11-2026). Op
+    // een hybride die op de accu rijdt staan toerental, belasting, MAF, MAP,
+    // trims en lambda minutenlang exact stil; dat las hier als "mogelijk dode
+    // sensor" en ging zo het rapport en de AI in (PIDLANE-ARCHIEF.md). Vrij
+    // alleen als de motor nu aantoonbaar stilstaat (010C onder de uit-drempel
+    // van PLAandrijving) én dat mag: stilstand (start/stop, elke auto) of een
+    // auto die rijdend de motor afzet (hybride, mild hybride, of rijden-op-
+    // de-accu gezien). Toerental 0 bij 50 km/h op een gewone benzineauto
+    // blijft verdacht — daar ís het een dode sensor.
+    let motorUitMag=false;
+    if(['0C','04','11','0B','10','06','14','24','34'].includes(kort)){
+      const rpmNu=(typeof pidVals!=='undefined' && pidVals) ? pidVals['010C'] : undefined;
+      const uitGrens=(window.PLAandrijving && PLAandrijving.drempels && PLAandrijving.drempels.rpmUit) || 150;
+      if(typeof rpmNu==='number' && rpmNu<uitGrens){
+        let rijdendUit=false;
+        try{
+          const km=window.PLKenmerk && PLKenmerk.live ? PLKenmerk.live() : {};
+          const st=window.PLAandrijving && PLAandrijving.laatste ? PLAandrijving.laatste() : null;
+          rijdendUit=!!((km.hybride && km.hybride.waarde===true) || (km.mild_hybride && km.mild_hybride.waarde===true) || (st && st.bewijstHybride));
+        }catch(e){ console.warn('assessPidQuality: aandrijfvorm onleesbaar — een stilstaande motor kan als dode sensor lezen', e); }
+        motorUitMag=stilNu || rijdendUit;
+      }
+    }
+    const dynamisch=['0C','0D','04','11','0B','10','06','14','24','34'].includes(kort) && !(d&&d.bitmap) && !(stilNu && (kort==='0D'||kort==='11')) && !motorUitMag;
     if(spread===0 && dynamisch)
       return {status:'twijfel', reden:'sensor staat exact vast (0 variatie) — mogelijk dode sensor of verbindingsfout, niet per se een motordefect', name, val, unit};
     if(dynamisch && Math.abs(val)<0.01 && spread<0.01)
