@@ -108,7 +108,8 @@ function normBrandstof(s){
 // Elektriciteit, NOVC-HEV. Die werd hier 'hybride', en kreeg daarmee EV-modus,
 // 015B en de hybride-AI-regel voor een e-motor die de auto niet zelf kan
 // voortbewegen. Wat ze scheidt is het elektrisch vermogen (steekproef RDW,
-// zie PIDLANE-ARCHIEF.md 07-11-2026): mild 1,9–13,5 kW, vol vanaf 32 kW.
+// zie PIDLANE-ARCHIEF.md 07-11-2026): mild 1,9–13,5 kW, vol vanaf 15,6 kW
+// (Jeep Avenger e-Hybrid), gewone volhybrides vanaf 32 kW.
 //
 // SERIEEL ("andersom": de e-motor drijft, de motor laadt) heeft meer
 // elektrisch vermogen dan motorvermogen: Qashqai e-Power 140/116, Jazz e:HEV
@@ -117,7 +118,11 @@ function normBrandstof(s){
 //
 // Alles op RDW is 'waarschijnlijk': een getal uit een register is geen
 // waarneming. Bewezen maakt een mens (PLWaarneming), via PLKenmerk.
-const AANDRIJF_MILD_KW = 20;        // ≤ dit elektrisch vermogen: mild hybride
+// ≤ dit elektrisch vermogen: mild hybride. Was 20 tot later op 07-11-2026:
+// de Jeep Avenger e-Hybrid (15,6 kW) rijdt bij lage snelheid elektrisch
+// (48V met e-DCT) en heette daarmee mild. De hoogste echte mild in de
+// steekproef is 13,5 kW (Octavia/Golf e-TSI); 15 ligt ertussen.
+const AANDRIJF_MILD_KW = 15;
 const AANDRIJF_SERIEEL_FACTOR = 1.05;
 const AANDRIJF_ECVT_MERK = /^(toyota|lexus)\b/;
 function _rdwKw(x){ const n=parseFloat(x); return isFinite(n) && n>0 ? n : null; }

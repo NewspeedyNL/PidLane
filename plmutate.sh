@@ -1153,6 +1153,7 @@ MUTATIES=(
 "public/pidlane-data.js@@{id:'misfire', sit:'constant', motor:true,@@{id:'misfire', sit:'constant',@@test-hybridebasis.js@@de misfire-test mag weer meten terwijl de auto op de accu rijdt"
 "public/pidlane-data.js@@     blijft bestaan in bscGroepen(), zodat zo'n test er zonder meer bij kan. */@@     blijft bestaan in bscGroepen(), zodat zo'n test er zonder meer bij kan. */\n  {id:'hv_soc', sit:'contact', groep:'hybride', naam:'HV-batterij SOC', pids:['015B'], uitleg:'SOC blijft binnen 30–80 %', hold:4, band:{lo:25,hi:85}},@@test-hybridebasis.js@@de SOC-test is terug: 015B als laadtoestand keurt een nieuwe hybride-accu af (#430)"
 "public/pidlane-voertuigdata.js@@    if(_vb) _setField('verbranding', _vb, src);\n@@@@test-voertuigreset.js@@het RDW zegt diesel-hybride, maar de diesel raakt weer kwijt (#430)"
+"public/pidlane-voertuigdata.js@@const AANDRIJF_MILD_KW = 15;@@const AANDRIJF_MILD_KW = 20;@@test-aandrijfvorm.js@@een Jeep Avenger e-Hybrid (15,6 kW, rijdt elektrisch) heet weer mild"
 "public/pidlane-voertuigdata.js@@  if(kwElektrisch!==null && kwElektrisch<=AANDRIJF_MILD_KW && verbranding){@@  if(false){@@test-aandrijfvorm.js@@een mild hybride heet weer hybride en krijgt de EV-logica"
 "public/pidlane-voertuigdata.js@@  if(/^OVC/.test(klasse||'')){@@  if(false){@@test-aandrijfvorm.js@@een plug-in met weinig kW wordt mild of serieel: de stekker telt niet meer"
 "public/pidlane-garage.js@@    kmh:  { min: 0,   max: 254,@@    kmh:  { min: 0,   max: 255,@@test-garage.js@@de rand van de codering (255 km/u) telt weer als echte snelheid"

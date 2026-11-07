@@ -41,7 +41,8 @@ const AUTO = {
   cx5_21:   [R('Elektriciteit', 0, '5.10', 'NOVC-HEV'), R('Benzine', '121.00', 0, 'NOVC-HEV')],
   puma:     [R('Elektriciteit', 0, '8.70', 'NOVC-HEV'), R('Benzine', '91.90', 0, 'NOVC-HEV')],
   octavia:  [R('Elektriciteit', 0, '13.50', 'NOVC-HEV'), R('Benzine', '110.00', 0, 'NOVC-HEV')],
-  dieselm:  [R('Diesel', '147.00', 0, 'NOVC-HEV'), R('Elektriciteit', 0, '15.00', 'NOVC-HEV')],   // nagebouwd
+  dieselm:  [R('Diesel', '147.00', 0, 'NOVC-HEV'), R('Elektriciteit', 0, '12.00', 'NOVC-HEV')],   // nagebouwd
+  avenger:  [R('Elektriciteit', 0, '15.60', 'NOVC-HEV'), R('Benzine', '74.00', 0, 'NOVC-HEV')],   // e-Hybrid 48V, e-DCT
   clio:     [R('Elektriciteit', 0, '51.00', 'NOVC-HEV'), R('Benzine', '69.00', 0, 'NOVC-HEV')],
   corolla:  [R('Elektriciteit', 0, '70.00', 'NOVC-HEV'), R('Benzine', '72.00', 0, 'NOVC-HEV')],
   jazz:     [R('Elektriciteit', 0, '80.00', 'NOVC-HEV'), R('Benzine', '72.00', 0, 'NOVC-HEV')],
@@ -60,6 +61,8 @@ t('… en zijn brandstof is benzine, niet hybride', v('swift').brandstof, 'benzi
 t('CX-5 vanaf 2021 (5,1 kW) → mild', v('cx5_21', 'MAZDA').vorm, 'mild');
 t('Puma 8,7 kW → mild', v('puma').vorm, 'mild');
 t('Octavia 13,5 kW → mild', v('octavia').vorm, 'mild');
+t('Jeep Avenger e-Hybrid 15,6 kW (rijdt elektrisch bij lage snelheid) → vol, niet mild', v('avenger', 'JEEP').vorm, 'vol');
+t('… en blijft hybride', v('avenger', 'JEEP').brandstof, 'hybride');
 t('diesel mild hybride → brandstof diesel', v('dieselm').brandstof, 'diesel');
 t('… en de verbranding blijft diesel', v('dieselm').verbranding, 'diesel');
 t('Clio E-Tech 51 kW → vol', v('clio', 'RENAULT').vorm, 'vol');

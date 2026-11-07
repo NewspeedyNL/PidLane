@@ -15,6 +15,35 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 07-11-2026 (avond) — "max 255 km/u": de rand van de codering als meting
+
+**Gevonden in de data van een klant** (D1, Jeep Avenger 2025): twee ritten
+met een topsnelheid van 255 km/u bij een gemiddelde van 39–48 km/u, en één
+met "accu ≥ 0,0 V". `ritTik()` (`pidlane-garage.js`) nam elk monster mee
+voor het maximum en minimum; één verkeerd antwoord was genoeg.
+
+**Online nagezocht.** 010D is één byte: 0xFF is precies 255 km/u. Op
+dezelfde manier is 0xFFFF bij 010C 16383,75 tpm en bij 0110 655,35 g/s, is
+0x00 bij 0105 −40 °C en 0xFF 215 °C. Er is geen algemene "niet
+beschikbaar"-waarde in J1979; een half of verkeerd toegewezen antwoord (een
+kloon-adapter, een multi-frame-antwoord, een andere ECU) levert juist zulke
+randwaarden of een losse sprong op. Ze vallen binnen `PID_HARD_LIMITS`
+(010D 0–255, 0105 −40–215), dus die laag vangt ze niet — terecht, want die
+grenzen gaan over wat fysiek kán.
+
+**De regel** (alleen voor de rituitersten en de afstand): binnen het
+bereik zonder de rand, en fysiek te volgen op de vorige goede waarde
+(snelheid ≤ 40 km/u per s + 8, koelwater ≤ 5 °C per s + 3, accu 6–20 V).
+Opgeslagen ritten worden bij het tonen met dezelfde `ritBinnen()` gelezen.
+De live-meters, de grafiek en de AI krijgen de randwaarde nog wel: een
+algemene spike-laag in `updPID()` is een groter besluit en staat hier niet in.
+
+**En de aandrijfvorm.** Dezelfde Avenger staat in het RDW als NOVC-HEV met
+15,6 kW elektrisch: onder de grens van 20 kW werd hij mild, terwijl de 48V
+e-DCT bij lage snelheid elektrisch rijdt. Grens naar 15 kW; de hoogste echte
+mild in de steekproef blijft 13,5 kW.
+
+
 ## 07-11-2026 (middag) — Het hele plaatje: wat elke module over "soort auto" vraagt
 
 **Vraag**: meters, temperaturen, verbruik, lambda, sensorvolgorde, berekende
