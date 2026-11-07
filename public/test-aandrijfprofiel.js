@@ -37,6 +37,7 @@ t('hybride zonder verbranding of vorm: benzine, rijdt elektrisch (zoals vroeger)
 t('diesel-hybride (verbranding uit het RDW)', P({ brandstof: 'hybride', verbranding: 'diesel', aandrijving: { vorm: 'vol' } }), 'diesel/vol/true');
 t('diesel-hybride uit de motornaam', P({ brandstof: 'hybride', motortype: '2.0 BlueHDi Hybrid4' }), 'diesel/null/true');
 t('mild hybride (brandstof benzine, vorm mild): rijdt niet elektrisch', P({ brandstof: 'benzine', aandrijving: { vorm: 'mild' } }), 'benzine/mild/false');
+t('mild uit de motornaam ("1.5 eTSI mHEV"), zonder RDW-vorm', P({ brandstof: 'benzine', motortype: '1.5 eTSI mHEV' }), 'benzine/mild/false');
 t('plug-in', P({ brandstof: 'hybride', verbranding: 'benzine', aandrijving: { vorm: 'plugin' } }), 'benzine/plugin/true');
 t('serieel', P({ brandstof: 'hybride', aandrijving: { vorm: 'serieel' } }), 'benzine/serieel/true');
 t('elektrisch: geen verbranding', P({ brandstof: 'elektrisch' }), '/elektrisch/true');

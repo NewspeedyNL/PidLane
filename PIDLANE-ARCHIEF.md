@@ -15,6 +15,49 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 07-11-2026 (middag) — Het hele plaatje: wat elke module over "soort auto" vraagt
+
+**Vraag**: meters, temperaturen, verbruik, lambda, sensorvolgorde, berekende
+waarden en logs — wat doet elk bij een andere aandrijving?
+
+**Wat er gevonden is.** De app had drie losse signalen voor de soort auto:
+`detectEngineType()` (één woord), `vehicleInfo.verbranding` (#430, door
+vrijwel niemand gelezen) en sinds #696 `aandrijving.vorm`. Bijna alles las
+alleen het eerste, en daar verstopte 'hybride' de diesel:
+
+- `pidlane-berekend.js` besliste diesel met `motor()==='diesel'`: een
+  diesel-hybride kreeg de luchtmassa-route met λ=1, geen roetfilterteller
+  (CA12), benzine-schakeldrempels, -energie en -prijs. LPG rekende de
+  luchtmassa om met benzine-constanten (±30% te weinig liters).
+- `pidPollInterval()` gaf een hybride voorrang op `['42','5B','5C','15B']`:
+  5C is de olietemperatuur en 15B bestaat niet als suffix. De diesel-hybride
+  verloor de raildruk-voorrang. De hybride-preset was de benzineset zonder
+  pedaal, terwijl de Energie-meter dat juist nodig heeft.
+- De meters kenden alleen `diesel:` per plek en één `hybride:`-lijst (Motor).
+  Hyperlane: toerenring op 0 bij accurijden en de scène "MOTOR KOUD" een hele
+  PHEV-rit lang. Emissie gaf een diesel-hybride lambda in plaats van DPF.
+- `PLAccu.laadStaat()`: "Motor uit — de accu levert alles" bij een hybride op
+  READY, terwijl de DC/DC-omvormer op 14 V laadt; elke motorstart van een
+  hybride werd een startdip- en rustmeting.
+- De demo simuleerde voor elke auto een benzine-CX-5: toerental nooit 0.
+
+**Twee fouten die pas in de browserproef boven kwamen** (`bproef-demoaandrijving.js`):
+- `detectEngineType()` las "1.0 EcoBoost **mHEV**" als hybride (de regex
+  `\b(p|m)?hev\b` van 07-10-2026). Herzien: een mHEV is zijn verbranding,
+  conform het besluit van vandaag. `test-hybridebasis.js` zei het
+  tegendeel en is mee aangepast — dat is een besluit, geen versoepeling.
+- `PLKenmerk` cachet zijn profiel een seconde. Wordt de aandrijfvorm net
+  gezet (RDW of demo), dan rekende de eerste tik met de vorige auto. Nu
+  `PLKenmerk.vergeet()` in `mergeVehicleData`. Bij het wisselen van
+  demo-auto bleef bovendien de aandrijfstand van de vorige auto staan.
+
+**Bewust niet gedaan.** Hyperlane's accuplek blijft 12V: de power-up en de
+zuinigstand lezen daar volts, en 015B (%) zou die breken. Lambda en trims
+worden bij motor uit al dof via `plOud` (de EV-modus pauzeert ze), dus daar
+was niets nodig. De DC/DC-regel kijkt naar spanning ≥ 13,2 V; of dat op elke
+hybride klopt, is een vraag voor een rit.
+
+
 ## 07-11-2026 — Zeven aandrijfvormen door de app (`plsim-aandrijving.js`)
 
 **Vraag**: hoe ziet PidLane eruit op een hybride — elektrisch rijden, motor met

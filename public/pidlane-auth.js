@@ -678,7 +678,44 @@ function demo(pid){
   if(pid==='0133') _ds[pid]=101+Math.random()*.5;                        // barometer ~101 kPa
   if(pid==='012C') _ds[pid]=Math.max(0,12+rijcyclus*8);                  // EGR 4-20%
 
+  // De aandrijving van de demo-auto (07-11-2026): zonder deze laag draaide
+  // elke demo als de CX-5 hierboven — toerental nooit 0, dus een "hybride"
+  // demo liet niets hybrides zien.
+  try{
+    const ap=(typeof aandrijfProfielLive==='function') ? aandrijfProfielLive() : null;
+    // Een hybride zonder bekende vorm (de Yaris-demo) rijdt als volhybride.
+    const o=demoAandrijving(pid, ap && (ap.vorm || (ap.elektrisch ? 'vol' : null)), t, _ds[pid]);
+    if(o!==undefined) _ds[pid]=o;
+  }catch(e){ console.warn('Demo: aandrijflaag mislukt — gewone verbrandingsmotor', e); }
   return Math.round(_ds[pid]*100)/100;
+}
+/* demoAandrijving(pid, vorm, t, waarde) → nieuwe waarde, of undefined als
+   deze aandrijving er niets aan verandert. Puur: alles hangt aan de klok.
+     vol      de motor alleen bij veel vraag (stadsritme), anders op de accu
+     plugin   bijna altijd op de accu; de motor alleen bij de hoogste vraag
+     serieel  de motor laadt in een eigen ritme (laag accuniveau), los van
+              de snelheid, op een vast toerental — ook stilstaand
+     mild     de motor gaat uit als de auto uitrolt (zeilen)
+   Wat bij een stilstaande motor hoort: toerental, belasting, luchtmassa,
+   verbruik en gasklep op 0. Het accuniveau 015B ademt mee. */
+function demoAandrijving(pid, vorm, t, waarde){
+  if(!vorm || vorm==='verbranding' || vorm==='elektrisch') return undefined;
+  const rij=Math.sin(t/8000), dalend=Math.cos(t/8000)<0;
+  let motor;
+  if(vorm==='vol') motor=rij>0.25;
+  else if(vorm==='plugin') motor=rij>0.85;
+  else if(vorm==='serieel') motor=Math.sin(t/20000)>0.2;
+  else if(vorm==='mild') motor=!(dalend && rij>-0.2 && rij<0.6);
+  else return undefined;
+  if(pid==='015B') return Math.round((vorm==='plugin' ? 62 : 55)+Math.sin(t/30000)*8);
+  if(!motor){
+    if(pid==='010C' || pid==='0104' || pid==='0110' || pid==='015E' || pid==='0111' || pid==='0143') return 0;
+    return undefined;
+  }
+  // Serieel: de motor is een generator. Zijn toerental volgt de laadvraag,
+  // niet de snelheid.
+  if(vorm==='serieel' && pid==='010C') return 2200+Math.sin(t/3000)*150;
+  return undefined;
 }
 
 // ════════════════════════════════════════

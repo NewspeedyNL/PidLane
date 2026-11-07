@@ -10,6 +10,27 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-11-2026 — Alles volgt de aandrijving: berekend, pollus, meters, accu, demo
+ ═══════════════════════════════════════════════════════════
+
+ - `aandrijfProfiel()`: welke verbranding (benzine/diesel/LPG) en of de
+   auto elektrisch rijdt, als twee vragen. Een diesel-hybride rekent nu als
+   diesel (geen luchtmassa-route, roetfilterteller, dieselprijs, raildruk
+   snel); LPG rekent de luchtmassa om met LPG-constanten. Een mHEV heet
+   overal benzine of diesel.
+ - Nieuwe berekende waarde CA18 Vermogensvraag: gevraagd vermogen en
+   terugwinnen, voor elke meter. Hyperlane toont hem op een hybride in de
+   grote ring; geen "MOTOR KOUD" meer terwijl een plug-in op de accu rijdt.
+ - Temperatuur toont op een hybride de aandrijfaccu (fabriekscode uit OBDb),
+   Emissie op een diesel-hybride het roetfilter, Verbruik "EV" op de accu.
+ - Pollus: de accu van een hybride vaker (de olietemperatuur niet meer),
+   de hybride-voorinstelling met gaspedaal en de juiste verbranding.
+ - Accu: op een hybride laadt bij READY de DC/DC-omvormer; geen startdip of
+   rustmeting bij elke motorstart.
+ - Demo: Ford Puma (mild), Qashqai e-Power (serieel), Niro PHEV en een
+   diesel-hybride, en de demo rijdt nu echt zoals zijn aandrijving.
+
+ ═══════════════════════════════════════════════════════════
  07-11-2026 — Aandrijfvorm: mild, vol, plug-in en serieel hybride
  ═══════════════════════════════════════════════════════════
 

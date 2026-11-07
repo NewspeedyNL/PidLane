@@ -11,7 +11,7 @@
 // Laat in demo-modus van brandstoftype wisselen zodat de PID-lijst én het
 // gedrag (verbranding vs EV) realistisch meeverandert. Zo kun je brandstof-
 // én EV-flows testen zonder echte adapter.
-function demoPIDsForFuel(brandstof){
+function demoPIDsForFuel(brandstof, verbranding){
   const b=String(brandstof||'').toLowerCase();
   const benzine=['010C','010D','0104','0111','0149','010E','010B','010F','0110',
     '0105','015C','0146','012F','015E','0106','0107','010A',
@@ -20,7 +20,9 @@ function demoPIDsForFuel(brandstof){
     // EV: geen verbrandings-PIDs. Snelheid, temps, 12V-spanning, accupakket.
     return ['010D','0146','0142','015B','0105','0143','0133'];
   }
-  if(/hybr|phev|hev/.test(b)) return [...benzine,'015B']; // verbrandingsmotor + accupakket
+  // Verbrandingsmotor + accupakket + het relatieve pedaal (de vermogensvraag).
+  // Een diesel-hybride (07-11-2026) krijgt de dieselset, geen lambdasondes.
+  if(/hybr|phev|hev/.test(b)) return [...(verbranding==='diesel' ? benzine.filter(p=>!['0114','0124','0134','0115'].includes(p)) : benzine),'015B','015A'];
   if(/diesel|gasolie/.test(b)) return benzine.filter(p=>!['0114','0124','0134','0115'].includes(p)); // geen breedband-lambda/O2
   return benzine; // benzine / lpg / cng / default
 }
@@ -53,6 +55,9 @@ function loadDemoVehicle(key){
    demoMode=false, en alleen als demoMode aan stond. */
 function plDemoStop(){
   vehicleInfo={ merk:'Onbekend', model:'', year:'', vin:'', brandstof:'', motor:'' };
+  // De aandrijfstand hoort bij déze demo-auto (07-11-2026): zonder reset reed
+  // de volgende demo-auto zijn eerste seconden "op de accu" van de vorige.
+  try{ if(window.PLAandrijving) PLAandrijving.reset(); }catch(e){ console.warn('Demo stoppen: aandrijfstand niet gewist — de volgende auto erft hem even', e); }
   try{ resetVehicleSources(); }catch(e){ console.warn('Demo stoppen: voertuigbronnen niet geleegd — de demo-auto kan blijven doorwerken', e); }
   // De zandbak dicht: wat de demo schreef is weg, demorapporten ook.
   try{ if(window.PLDemo) PLDemo.stop(); }catch(e){ console.warn('Demo stoppen: zandbak niet gesloten — demowaarden kunnen tot het herladen blijven staan', e); }
@@ -196,13 +201,19 @@ function _startDemoCore(car, kent){
   // Merge-laag voeden: normalisatie + fantoomfilter (purge bij brandstof) draaien
   // direct mee — dus een diesel-demo toont diesel-sensoren, benzine niet, enz.
   try{ resetVehicleSources(); mergeVehicleData('vin', { merk:demoVin.merk, model:demoVin.model, year:demoVin.year, brandstof:demoVin.brandstof }); }catch(e){ console.warn('mergeVehicleData mislukt:', e); }
+  // De aandrijfvorm van de demo-auto (07-11-2026): bij een echte auto komt die
+  // uit het RDW, hier uit DEMO_CARS. Zonder zou elke demo-hybride een
+  // gewone hybride zijn en elke diesel-hybride een benzine.
+  if(car && car.aandrijving){ vehicleInfo.aandrijving=car.aandrijving; if(car.verbranding) vehicleInfo.verbranding=car.verbranding; }
+  // Het kenmerkprofiel (een seconde gecachet) moet de nieuwe auto meteen zien.
+  try{ if(window.PLKenmerk) PLKenmerk.vergeet(); }catch(e){ console.warn('Demo: kenmerken niet ververst', e); }
 
   // De sensoren bij de brandstof van déze demo-auto (29-09-2026). Tot dan
   // kreeg elke auto de lijst van een Mazda CX-5 benzine: een diesel-demo had
   // lambdasondes, een elektrische een toerental. Een kentekendemo kent de
   // brandstof pas na het RDW; tot dan geldt benzine, en het fantoomfilter van
   // mergeVehicleData() haalt weg wat niet past zodra de brandstof binnen is.
-  const demoPIDs=demoPIDsForFuel(demoVin.brandstof);
+  const demoPIDs=demoPIDsForFuel(vehicleInfo.brandstof||demoVin.brandstof, vehicleInfo.verbranding);
   supportedPIDs=new Set(demoPIDs);
   buildDiscoveredPIDList();
 

@@ -2050,7 +2050,7 @@ MUTATIES=(
 # logtabel" is weg sinds #360: een demoregel wordt niet meer geschreven. De
 # fout die hij nabouwde vangt nu "logToSheets zet in de demo weer regels in
 # de buffer" hieronder.)
-"public/pidlane-demo.js@@  vehicleInfo={ merk:'Onbekend', model:'', year:'', vin:'', brandstof:'', motor:'' };\n  try{ resetVehicleSources(); }catch(e){ console.warn('Demo stoppen@@  try{ resetVehicleSources(); }catch(e){ console.warn('Demo stoppen@@test-demoopslag.js@@na de demo meet een echte auto zonder VIN door als de demo-auto"
+"public/pidlane-demo.js@@  vehicleInfo={ merk:'Onbekend', model:'', year:'', vin:'', brandstof:'', motor:'' };\n  // De aandrijfstand hoort bij déze demo-auto@@  // De aandrijfstand hoort bij déze demo-auto@@test-demoopslag.js@@na de demo meet een echte auto zonder VIN door als de demo-auto"
 # ── 29-09-2026: Rit beëindigen. Motor uit is een pauze, geen einde; het
 # venster rondt de rit af vóór de verbinding weg is; ATPC geeft de bus vrij.
 "public/pidlane-garage.js@@    if (stil > CFG.ritPauzeMs) return 'af';@@    if (stil > 3 * 60 * 1000) return 'af';@@test-garage.js@@drie minuten stil is weer het einde van de rit: één rit met een tankstop wordt er twee"
@@ -2174,7 +2174,7 @@ MUTATIES=(
 "public/pidlane-demo.js@@      if (Array.isArray(l)) for (var i = l.length - 1; i >= 0; i--) if (l[i] && l[i].demo) l.splice(i, 1);@@      void 0;@@test-demozandbak.js@@demorapporten blijven na de demo in het overzicht — en gaan als eerdere rapporten mee naar de AI"
 "public/pidlane-demo.js@@  demoMode=true; connected=true; dataStable=true;\n  plDemoAan();\n  closeConnOv();@@  demoMode=true; connected=true; dataStable=true;\n  closeConnOv();@@test-demozandbak.js@@de gewone demostart zet de zandbak niet aan"
 "public/pidlane-demo.js@@    if(!ingelogd) setTimeout(()=>{ try{@@    if(false) setTimeout(()=>{ try{@@bproef-demozandbak.js@@een demo zonder login eindigt op een verbindscherm achter de login"
-"public/pidlane-demo.js@@  const demoPIDs=demoPIDsForFuel(demoVin.brandstof);@@  const demoPIDs=demoPIDsForFuel('benzine');@@bproef-demozandbak.js@@elke demo-auto krijgt weer de sensoren van een benzine: lambdasondes op een diesel"
+"public/pidlane-demo.js@@  const demoPIDs=demoPIDsForFuel(vehicleInfo.brandstof||demoVin.brandstof, vehicleInfo.verbranding);@@  const demoPIDs=demoPIDsForFuel('benzine');@@bproef-demozandbak.js@@elke demo-auto krijgt weer de sensoren van een benzine: lambdasondes op een diesel"
 # ── Zonder adapter (29-09-2026) ──
 # De kenteken-check zegt dingen waar iemand op handelt. Een verkeerde kleur
 # hier is geen cosmetiek: "verzekerd" op een onverzekerde auto, of "logisch"
@@ -2559,6 +2559,10 @@ MUTATIES=(
 "public/pidlane-fuel.js@@ && !PLDemo.volledig()) return PLDemo.aiVoorbeeld(prompt, extra);@@) return PLDemo.aiVoorbeeld(prompt, extra);@@test-demozandbak.js@@de beheerdersdemo krijgt het voorbeeldrapport in plaats van de AI — #409"
 "public/pidlane-motortype.js@@  if(window.PLDemo && PLDemo.actief() && !PLDemo.volledig()){@@  if(window.PLDemo && PLDemo.actief()){@@test-demozandbak.js@@de beheerdersdemo slaat geen bestanden op — #409"
 # ── diesel: eigen sensoren op dezelfde weergaven (#393) ──
+"public/pidlane-motortype.js@@  if(_isMild(vehicleInfo, mt)) return@@  if(false) return@@test-hybridebasis.js@@een mHEV heet weer hybride en krijgt de EV-logica"
+"public/pidlane-motortype.js@@  return vorm === 'mild' || (!vorm && /\bmhev\b/.test(String(mt||'').toLowerCase()));@@  return vorm === 'mild';@@test-aandrijfprofiel.js@@de motornaam mHEV maakt geen mild hybride meer"
+"public/pidlane-demo.js@@  if(car && car.aandrijving){ vehicleInfo.aandrijving=car.aandrijving;@@  if(false){ vehicleInfo.aandrijving=car.aandrijving;@@bproef-demoaandrijving.js@@de demo-auto krijgt zijn aandrijfvorm niet: elke demo-hybride is een gewone hybride"
+"public/pidlane-auth.js@@    const o=demoAandrijving(pid, ap && (ap.vorm || (ap.elektrisch ? 'vol' : null)), t, _ds[pid]);@@    const o=undefined;@@bproef-demoaandrijving.js@@demo() rijdt weer elke auto als een benzine-CX-5"
 "public/pidlane-visprofiel.js@@  if(elektrisch(motor))\n    hier=hier.map(@@  if(false)\n    hier=hier.map(@@test-hybridemeters.js@@de elektrische variant per plek valt weg: Hyperlane toont weer toerental 0 op een hybride"
 "public/pidlane-visprofiel.js@@  if(x.zoekEerst) zoekHits();@@@@test-hybridemeters.js@@de HV-accu verliest weer van de inlaatlucht"
 "public/pidlane-visprofiel.js@@zoek:/^(?!.*(12 ?v|\baux|battery sensor|hulpaccu)).*(@@zoek:/^.*(@@test-hybridemeters.js@@de 12V-accusensor komt weer op de HV-accuplek"
