@@ -49,7 +49,7 @@ var KRITIEK = [
   '_plAandrijfPromptRegels',
   // aandrijfProfiel (07-11-2026): verbranding en elektrisch rijden als twee vragen;
   // berekend, pollus, preset en de versnellingsindicator lezen hem.
-  'aandrijfProfielLive','isDieselMotor',
+  'aandrijfProfiel','aandrijfProfielLive','isDieselMotor',
   'ensurePIDListActive','ensurePIDsActive',
   // applyFeatureToggles erbij op 03-09-2026. Blok 5 draait de schakelaar
   // feat_demo echt om om te zien of beide demoknoppen verdwijnen; dat gaat
