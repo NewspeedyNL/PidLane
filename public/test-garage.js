@@ -127,6 +127,36 @@ function laad(opties) {
   r = K.ritNieuw(t0);
   for (let i = 1; i <= 300; i++) K.ritTik(r, { kmh: 80, rpm: 1800, lph: i < 60 ? 6 : undefined }, t0 + i * 2000, 'diesel');
   eis(K.ritKlaar(r).verbruik_l100 === null, 'verbruik over een vijfde van de rit is geen ritverbruik');
+  // Onmogelijke uitersten (07-11-2026, Jeep Avenger van een klant: "max 255
+  // km/u" bij 39–48 km/u gemiddeld, en "accu ≥ 0,0 V"). De randen van de
+  // codering (0xFF = 255 km/u en 215 °C, 0x00 = −40 °C) en losse sprongen
+  // tellen niet mee voor de uitersten en niet voor de afstand.
+  r = K.ritNieuw(t0);
+  for (let i = 1; i <= 300; i++) {
+    const kmh = i === 150 ? 255 : (i === 200 ? 180 : 50);           // 0xFF en een sprong van 130 km/u in 2 s
+    const koel = i === 120 ? 215 : 90, accu = i === 180 ? 0 : 14.2;
+    K.ritTik(r, { kmh, rpm: 1800, koelwater: koel, accu, maf: 10 }, t0 + i * 2000, 'benzine');
+  }
+  sam = K.ritKlaar(r);
+  eis(sam.max_kmh === 50, 'een losse 255 (0xFF) of een sprong naar 180 km/u is geen topsnelheid', sam.max_kmh);
+  eis(sam.km > 8.2 && sam.km < 8.4, 'en telt niet mee voor de afstand (300 × 2 s × 50 km/u ≈ 8,3 km)', sam.km);
+  eis(sam.max_koelwater === 90, 'koelwater 215 °C (0xFF) is geen maximum', sam.max_koelwater);
+  eis(sam.min_accu === 14.2, 'accu 0 V bij draaiende motor is geen minimum', sam.min_accu);
+  eis(sam.extra && sam.extra.weg && sam.extra.weg.kmh === 2 && sam.extra.weg.koel === 1 && sam.extra.weg.accu === 1, 'de rit zegt hoeveel monsters er niet meetelden', JSON.stringify(sam.extra && sam.extra.weg));
+  // TEGENPROEF: echt hard optrekken en een echt warme motor tellen wél.
+  r = K.ritNieuw(t0);
+  for (let i = 1; i <= 120; i++) K.ritTik(r, { kmh: Math.min(160, i * 3), rpm: 3000, koelwater: 88 + i * 0.1, accu: 14.1 }, t0 + i * 1000, 'benzine');
+  sam = K.ritKlaar(r);
+  eis(sam.max_kmh === 160, 'TEGENPROEF: 3 km/u per seconde optrekken tot 160 telt', sam.max_kmh);
+  eis(sam.max_koelwater > 99, 'TEGENPROEF: geleidelijk warm worden telt', sam.max_koelwater);
+  eis(!sam.extra || !sam.extra.weg, 'TEGENPROEF: niets weggelaten bij een gewone rit');
+  // De rand zelf, los van de sprongregel: na 250 km/u is 255 geen sprong,
+  // maar wel 0xFF — de top van één byte zegt niet hoe hard hij ging.
+  r = K.ritNieuw(t0);
+  for (let i = 1; i <= 60; i++) K.ritTik(r, { kmh: i === 60 ? 255 : 250, rpm: 6000 }, t0 + i * 1000, 'benzine');
+  eis(K.ritKlaar(r).max_kmh === 250, 'na 250 km/u is 255 (0xFF) nog steeds geen meting', K.ritKlaar(r).max_kmh);
+  eis(K.ritBinnen('kmh', 255) === false && K.ritBinnen('kmh', 254) === true && K.ritBinnen('accu', 0) === false && K.ritBinnen('koel', 215) === false,
+    'opgeslagen ritten: 255 km/u, 0 V en 215 °C worden niet getoond');
   r = K.ritNieuw(t0);
   for (let i = 1; i <= 300; i++) K.ritTik(r, { kmh: 80, rpm: 1800, lph: 6.4 }, t0 + i * 2000, 'diesel');
   eis(K.ritKlaar(r).verbruik_l100 === 8, 'diesel met 015E: 6,4 l/u op 80 km/u = 8 l/100', String(K.ritKlaar(r).verbruik_l100));

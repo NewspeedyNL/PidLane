@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-11-2026 — Ritten zonder onmogelijke uitersten; mild hybride tot 15 kW
+ ═══════════════════════════════════════════════════════════
+
+ - Een rit telt een snelheid, koelwater- of accuwaarde alleen nog als
+   uiterste (en voor de afstand) als hij binnen het bereik ligt — zonder de
+   rand van de codering: 255 km/u en 215 °C zijn 0xFF, −40 °C is 0x00 — en
+   fysiek kan volgen op de vorige goede waarde. Een rit van een klant stond
+   op "max 255 km/u" en "accu ≥ 0,0 V". Opgeslagen ritten met zulke waarden
+   tonen ze niet meer; de rit bewaart hoeveel monsters er niet meetelden.
+ - Mild hybride is nu tot 15 kW elektrisch (was 20): de Jeep Avenger
+   e-Hybrid (15,6 kW) rijdt bij lage snelheid elektrisch en is dus vol.
+
+ ═══════════════════════════════════════════════════════════
  07-11-2026 — Alles volgt de aandrijving: berekend, pollus, meters, accu, demo
  ═══════════════════════════════════════════════════════════
 

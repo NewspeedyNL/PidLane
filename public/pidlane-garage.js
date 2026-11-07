@@ -178,7 +178,7 @@
                   : 'De motor wordt dan zelden goed warm en de accu laadt nauwelijks bij. Een langere rit per week helpt allebei.') });
     }
     if (v.turbo === 'ja') {
-      var snelweg = ritten.some(function (r) { return typeof r.max_kmh === 'number' && r.max_kmh >= 100; });
+      var snelweg = ritten.some(function (r) { return ritBinnen('kmh', r.max_kmh) && r.max_kmh >= 100; });
       uit.push({ soort: 'turbo', titel: 'Turbo sparen',
         tekst: 'Geef pas vol gas als het koelwater boven de 80 °C is, en laat na een snelwegrit de motor even stationair lopen voor je hem uitzet.' + (snelweg ? '' : '') });
     }
@@ -380,6 +380,49 @@
     }).sort(function (x, y) { return (y.veranderd - x.veranderd) || (x.naam < y.naam ? -1 : 1); });
   }
 
+  // ── Plausibiliteit van de rituitersten (07-11-2026) ────────────────
+  /* Een rit van een klant (Jeep Avenger, 13-10 en 30-10) had "max 255 km/u"
+     bij een gemiddelde van 39–48 km/u, en een andere "accu ≥ 0,0 V". Eén
+     monster was genoeg, want het maximum en minimum namen elk monster.
+     Wat er speelt (online nagezocht): de randen van de codering zijn wat een
+     verkeerd of half antwoord oplevert — 0xFF is 255 km/u, 215 °C koelwater;
+     0x00 is −40 °C; een losse byte uit een multi-frame-antwoord van een
+     kloon-adapter of een andere ECU geeft een sprong. Ze vallen binnen de
+     harde grenzen (PID_HARD_LIMITS), dus die vangen ze niet.
+     De regel: een waarde telt voor een uiterste alleen als hij binnen het
+     bereik ligt (de rand van de codering niet meegerekend) én fysiek kan
+     volgen op de vorige goede waarde. Een auto versnelt of remt niet meer
+     dan ~40 km/u per seconde (≈ 1,1 g), koelwater stijgt geen 5 °C per s. */
+  var RIT_GRENS = {
+    kmh:  { min: 0,   max: 254, sprongPerS: 40, marge: 8 },   // 255 = 0xFF, de top van één byte
+    koel: { min: -39, max: 214, sprongPerS: 5,  marge: 3 },   // −40 = 0x00, 215 = 0xFF
+    accu: { min: 6,   max: 20,  sprongPerS: 4,  marge: 1 }    // 0 V of ver boven 16 V: geen 12V-net
+  };
+  /* Puur: ligt v binnen het bereik van deze grootheid? (Ook voor wat al opgeslagen is.) */
+  function ritBinnen(soort, v) {
+    var g = RIT_GRENS[soort];
+    return !!g && typeof v === 'number' && isFinite(v) && v >= g.min && v <= g.max;
+  }
+  /* Puur: mag `v` op tijd `t` volgen op de vorige goede waarde `vorig` ({v, t})?
+     Zonder bruikbare vorige (begin van de rit, of na een meetgat) alleen het bereik. */
+  function ritPlausibel(soort, v, t, vorig) {
+    if (!ritBinnen(soort, v)) return false;
+    if (!vorig || typeof vorig.v !== 'number') return true;
+    var dt = (t - vorig.t) / 1000;
+    if (!(dt > 0) || dt > CFG.ritGatMaxS) return true;
+    var g = RIT_GRENS[soort];
+    return Math.abs(v - vorig.v) <= g.sprongPerS * dt + g.marge;
+  }
+  /* De waarde die telt, en het geheugen erbij: een onmogelijke waarde wordt
+     overgeslagen en de vorige goede blijft staan. r.goed = { soort: {v, t} }. */
+  function ritGoed(r, soort, v, t) {
+    r.goed = r.goed || {};
+    if (typeof v !== 'number') return null;
+    if (ritPlausibel(soort, v, t, r.goed[soort])) { r.goed[soort] = { v: v, t: t }; return v; }
+    r.weg = r.weg || {}; r.weg[soort] = (r.weg[soort] || 0) + 1;
+    return null;
+  }
+
   // ── De ritwaarnemer: een rit als optelsom van monsters ─────────────
   function ritNieuw(t) {
     return { start: new Date(t).toISOString(), t0: t, tLaatst: t, tBeweeg: t, km: 0, s: 0, sStat: 0, sBeweeg: 0,
@@ -394,10 +437,14 @@
     r.tLaatst = t;
     if (!(dt > 0)) return r;
     if (dt > CFG.ritGatMaxS) dt = 0;               // een meetgat is geen afgelegde weg
-    var kmh = typeof m.kmh === 'number' ? m.kmh : null;
+    // Een onmogelijke snelheid telt nergens mee: niet voor het maximum en
+    // niet voor de afstand. Voor de afstand loopt de vorige goede snelheid door.
+    var ruw = typeof m.kmh === 'number' ? m.kmh : null;
+    var kmh = ritGoed(r, 'kmh', ruw, t);
+    if (kmh == null && ruw != null && r.goed && r.goed.kmh) kmh = r.goed.kmh.v;
     if (kmh != null) {
       r.km += kmh * dt / 3600;
-      r.maxKmh = Math.max(r.maxKmh, kmh);
+      if (ruw === kmh) r.maxKmh = Math.max(r.maxKmh, kmh);
       if (kmh >= 2) {
         // Weer rijden na een pauze (tanken, motor uit, even weg): dezelfde
         // rit, met de pauze erin geteld. Of het een pauze wás, weet je pas nu.
@@ -407,8 +454,9 @@
       else if (typeof m.rpm === 'number' && m.rpm > 300) r.sStat += dt;
     }
     r.s += dt;
-    if (typeof m.koelwater === 'number') r.maxKoel = r.maxKoel == null ? m.koelwater : Math.max(r.maxKoel, m.koelwater);
-    if (typeof m.accu === 'number' && typeof m.rpm === 'number' && m.rpm > 300) r.minAccu = r.minAccu == null ? m.accu : Math.min(r.minAccu, m.accu);
+    var koel = ritGoed(r, 'koel', m.koelwater, t), accu = ritGoed(r, 'accu', m.accu, t);
+    if (koel != null) r.maxKoel = r.maxKoel == null ? koel : Math.max(r.maxKoel, koel);
+    if (accu != null && typeof m.rpm === 'number' && m.rpm > 300) r.minAccu = r.minAccu == null ? accu : Math.min(r.minAccu, accu);
     var lph = null;
     if (typeof m.lph === 'number') lph = m.lph;
     else if (typeof m.maf === 'number' && brandstof !== 'diesel') lph = m.maf * 3600 / (14.7 * 745);
@@ -462,6 +510,7 @@
     var extra = {};
     if (r.trimN) extra.trimLang = rond(r.trimSom / r.trimN, 1);
     if (r.pauzes) { extra.pauzes = r.pauzes; extra.pauze_s = Math.round(r.pauzeS || 0); }
+    if (r.weg) extra.weg = r.weg;   // onmogelijke monsters die niet meetelden (snelheid, koelwater, accu)
     var cd = conditieModule(), cds = cd && r.cd ? cd.samenvat(r.cd) : null;
     if (cds) extra.cd = cds;
     var uit = {
@@ -1614,8 +1663,8 @@
           (r.label ? ' <span class="gr-lab klein">🏷 ' + esc(r.label) + '</span>' : '') +
           '<div class="gr-klein">' + [r.verbruik_l100 != null ? verbruikNl(r.verbruik_l100) : null,
             (typeof r.liters === 'number' && pr.prijs) ? '€ ' + (r.liters * pr.prijs).toLocaleString('nl', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null,
-            r.max_kmh != null ? 'max ' + r.max_kmh + ' km/u' : null,
-            r.max_koelwater != null ? 'koelwater ' + Math.round(r.max_koelwater) + ' °C' : null, r.min_accu != null ? 'accu ≥ ' + nl1(r.min_accu) + ' V' : null,
+            ritBinnen('kmh', r.max_kmh) ? 'max ' + r.max_kmh + ' km/u' : null,
+            ritBinnen('koel', r.max_koelwater) ? 'koelwater ' + Math.round(r.max_koelwater) + ' °C' : null, ritBinnen('accu', r.min_accu) ? 'accu ≥ ' + nl1(r.min_accu) + ' V' : null,
             (r.codes && r.codes.length) ? 'codes: ' + r.codes.join(', ') : null].filter(Boolean).map(esc).join(' · ') + '</div>' +
           (_st.labelRit === r.id ? tekenLabelInvoer(r, rs) :
             '<div class="gr-knoppen"><button class="gr-k klein" onclick="PLGarage._labelOpen(\'' + esc(r.id) + '\')">🏷 ' + (r.label ? 'Label wijzigen' : 'Label geven') + '</button></div>') + '</div>';
@@ -3180,7 +3229,7 @@
       doe(function () { return api('rapport_verwijder', { id: r.id }); }, 'Rapport verwijderd').then(function () { delete cacheVan(_st.vid).rapporten; _st.view = 'voertuig'; _st.tab = 'rapporten'; teken(); });
     },
     // pure kern — voor test-garage.js
-    _kern: { obdbVanzelf: obdbVanzelf, sensSoort: sensSoort, sensGroepen: sensGroepen, tekenPidZoek: tekenPidZoek, status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritKlaar: ritKlaar, ritStand: ritStand,
+    _kern: { obdbVanzelf: obdbVanzelf, sensSoort: sensSoort, sensGroepen: sensGroepen, tekenPidZoek: tekenPidZoek, status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritBinnen: ritBinnen, ritKlaar: ritKlaar, ritStand: ritStand,
       rdwNaarProfiel: rdwNaarProfiel, rdwBijwerken: rdwBijwerken, profielUitVerbinding: profielUitVerbinding, voorinvulNieuw: voorinvulNieuw, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
       waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, akkoordVragen: akkoordVragen, bibSplits: bibSplits, cfg: CFG }
   };
