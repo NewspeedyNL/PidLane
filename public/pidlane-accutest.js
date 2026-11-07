@@ -201,12 +201,18 @@
 
   /* Wat het laadsysteem NU doet, uit de PIDs die het slim maken. Puur.
      o = { u, rpm, g (gevraagd), soc, i (stroom) }; elk mag null zijn. */
+  /* o.elektrisch (07-11-2026): een hybride die elektrisch rijdt heeft geen
+     dynamo. Met de motor uit en de auto op READY laadt de DC/DC-omvormer de
+     12V-accu uit de aandrijfaccu, op ±14 V. Hier stond dan "Motor uit — de
+     accu levert alles", en dat is precies verkeerd om. */
   function laadStaat(o) {
     o = o || {};
     const u = getal(o.u), rpm = getal(o.rpm), g = getal(o.g), soc = getal(o.soc), i = getal(o.i);
     const uit = { modus: null, volgt: null, stroom: null, afwijking: null };
     if (u === null) return Object.assign(uit, { staat: 'geen', kop: 'Geen spanning', tekst: 'Geen accuspanning (0142) — niet verbonden of de PID staat uit' });
-    if (rpm === null || rpm < 400) {
+    if (o.elektrisch && (rpm === null || rpm < 400) && u >= 13.2) {
+      Object.assign(uit, { staat: 'dcdc', kop: 'Omvormer laadt', tekst: nl1(u) + ' V met de motor uit: de DC/DC-omvormer laadt de 12V-accu uit de aandrijfaccu' });
+    } else if (rpm === null || rpm < 400) {
       Object.assign(uit, { staat: 'rust', kop: 'Motor uit', tekst: 'De accu levert alles' + (i !== null ? ' (' + nl1(-i) + ' A eruit)' : '') + (soc !== null ? '; laadtoestand ' + Math.round(soc) + ' %' : '') });
     } else if (g !== null && g >= 11 && g <= 16) {
       const afw = u - g; uit.afwijking = Math.round(afw * 100) / 100;
@@ -401,7 +407,14 @@
   function nuWaarden() {
     const c = rolCodes();
     return { u: vers('0142', 15000), rpm: vers('010C', 15000), g: vers(c.gevraagd, 20000), soc: vers(c.soc, 60000), i: vers(c.stroom, 20000),
-      accutemp: vers(c.accutemp, 120000), leeftijd: vers(c.leeftijd, 600000), buiten: vers('0146', 120000), codes: c };
+      accutemp: vers(c.accutemp, 120000), leeftijd: vers(c.leeftijd, 600000), buiten: vers('0146', 120000), codes: c, elektrisch: elektrischNu() };
+  }
+  /* Rijdt deze auto elektrisch (aandrijfProfiel)? Dan start de motor met de
+     aandrijfaccu en laadt een omvormer de 12V: startdip en "motor uit = rust"
+     gelden niet. */
+  function elektrischNu() {
+    try { return typeof aandrijfProfielLive === 'function' && !!aandrijfProfielLive().elektrisch; }
+    catch (e) { console.warn('PLAccu: aandrijving onleesbaar — als gewone auto', e); return false; }
   }
   function buitenTemp() { const w = nuWaarden(); return w.accutemp !== null ? w.accutemp : w.buiten; }
 
@@ -412,6 +425,9 @@
     if (typeof demoMode !== 'undefined' && demoMode) return;
     const rpm = getal(pidVals['010C']), nu = Date.now();
     if (rpm === null) return;
+    // Een hybride start zijn motor tientallen keren per rit met de
+    // aandrijfaccu: geen 12V-startdip, en "motor uit" is geen rust (07-11-2026).
+    if (elektrischNu()) return;
     const st = stand();
     if (_vorigRpm !== null && _vorigRpm >= 400 && rpm < 100) { st.motorUit = nu; bewaar(st); }
     if (_vorigRpm !== null && _vorigRpm < 300 && rpm >= 400 && !_wacht) _wacht = { t: nu, stil: st.motorUit ? (nu - st.motorUit) / 60000 : null };
@@ -464,6 +480,10 @@
   }
   async function meetStart() {
     if (!_t) _t = _nieuweTest();
+    if (elektrischNu()) {
+      _t.start = verwerk({ staat: 'onbekend', tekst: 'Deze hybride start de motor met de aandrijfaccu, niet met een 12V-startmotor: een startdip zegt hier niets over de accu. De rustspanning en de belastingproef wel.' });
+      return _t.start;
+    }
     _t.live = [];
     const m = await _bus('start', async (stuur) => {
       const uit = _t.live, t0 = _nu(); let dipT = null, mis = 0, getekend = 0;
@@ -607,7 +627,7 @@
       grenzen: gr.map((g) => ({ soort: g.alarm ? 'alarm' : 'let op', waarde: g.y, y: ny(g.y), label: g.label })),
       xLinks: opt.xLinks || null, xRechts: opt.xRechts || null };
   }
-  const KL = { goed: 'groen', volgt: 'groen', laadt: 'groen', stabiel: 'groen', matig: 'oranje', krap: 'oranje', laag: 'rood', zwak: 'rood', ontlaadt: 'rood',
+  const KL = { goed: 'groen', volgt: 'groen', laadt: 'groen', dcdc: 'groen', stabiel: 'groen', matig: 'oranje', krap: 'oranje', laag: 'rood', zwak: 'rood', ontlaadt: 'rood',
     te_hoog: 'rood', achter: 'rood', achteruit: 'oranje', waarschuw: 'oranje', onbekend: 'grijs', geen: 'grijs', rust: 'grijs' };
   /* Wat de gebruiker nu kan doen. Alleen uit wat er gemeten is. Puur. */
   function advies(c) {
@@ -779,7 +799,7 @@
 
   // ── de pagina ─────────────────────────────────────────────────────
   const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const KLEUR = { goed: 'gn', volgt: 'gn', laadt: 'gn', stabiel: 'gn', geen: '', matig: 'or', krap: 'or', onbekend: '', rust: 'bl', laag: 'rd', zwak: 'rd', ontlaadt: 'rd', te_hoog: 'rd', achter: 'rd', achteruit: 'rd', waarschuw: 'rd' };
+  const KLEUR = { goed: 'gn', volgt: 'gn', laadt: 'gn', dcdc: 'gn', stabiel: 'gn', geen: '', matig: 'or', krap: 'or', onbekend: '', rust: 'bl', laag: 'rd', zwak: 'rd', ontlaadt: 'rd', te_hoog: 'rd', achter: 'rd', achteruit: 'rd', waarschuw: 'rd' };
   const LABEL = { goed: 'goed', matig: 'matig', krap: 'krap', onbekend: 'te weinig data', geen: 'geen kou op komst', laag: 'laag', zwak: 'zwak', ontlaadt: 'ontlaadt', te_hoog: 'te hoog',
     achter: 'haalt de vraag niet', stabiel: 'stabiel', achteruit: 'gaat achteruit', waarschuw: 'startrisico' };
   const chip = (staat, tekst) => '<span class="pa-chip ' + (KLEUR[staat] || '') + '">' + esc(tekst == null ? (LABEL[staat] || staat) : tekst) + '</span>';
@@ -1066,7 +1086,7 @@
     versie: VERSIE,
     bewijs, bevestigd: isBevestigd, tegenbewijs, nieuweAccu, stand, uitslag, nu: nuWaarden, tempo, rapport, rapportModel: () => rapportModel(rapportCtx()),
     meetRust, meetStart, meetBelast, activeer, herstel, open, sluit, boot,
-    _kern: { kiesKandidaten, vers, laatste, pdfGrafiek, advies, rapportModel, startGrens, ocvSoc, kouFactor, rustOordeel, startUitMonsters, startOordeel, trend, winter, winterCurve, belastOordeel, laadStaat, grafiek, bewijsErbij, bevestigd, volt, toeren,
+    _kern: { kiesKandidaten, vers, laatste, pdfGrafiek, advies, rapportModel, startGrens, ocvSoc, kouFactor, rustOordeel, startUitMonsters, startOordeel, trend, winter, winterCurve, belastOordeel, laadStaat, grafiek, bewijsErbij, _tik, stand, bevestigd, volt, toeren,
       CFG: { VENSTER_DAGEN, RUST_MIN, RUST_LAAG, DIP_MIN_MONSTERS, DIP_MAX_GAT, KOU_K } }
   };
   if (typeof document !== 'undefined') boot();

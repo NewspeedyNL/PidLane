@@ -344,6 +344,28 @@ console.log('\n13. Benodigde PIDs zelf aanzetten — tijdelijk');
     toets('in de demo wordt niets aangezet', !r2.regels.length, JSON.stringify(r2));
     const rp = await globalThis.__rapportProef;
     toets('Rapport genereren: een PDF met bestandsnaam, kop "Accu en laadsysteem" op de vervolgpagina\'s', rp.x && /^PidLane_Accurapport_/.test(rp.x.fname) && rp.log.some((z) => z.pag > 1 && z.t === 'PidLane — Accu en laadsysteem'), JSON.stringify(rp.x && rp.x.fname));
+    // ── Hybride (07-11-2026): geen dynamo, geen 12V-startmotor ──
+    const lsH = K.laadStaat({ u: 14.1, rpm: 0, elektrisch: true }), lsI = K.laadStaat({ u: 14.1, rpm: 0 });
+    toets('hybride op READY, motor uit, 14,1 V: de omvormer laadt', lsH.staat === 'dcdc' && /DC\/DC/.test(lsH.tekst), JSON.stringify(lsH));
+    toets('TEGENPROEF gewone auto, motor uit: rust (de accu levert)', lsI.staat === 'rust', lsI.staat);
+    toets('hybride uitgeschakeld (12,5 V, motor uit): gewoon rust', K.laadStaat({ u: 12.5, rpm: 0, elektrisch: true }).staat === 'rust');
+    s.aandrijfProfielLive = () => ({ verbranding: 'benzine', vorm: 'vol', elektrisch: true });
+    const stH = await s.PLAccu.meetStart();
+    toets('hybride: de begeleide starttest zegt dat een startdip hier niets zegt', stH && stH.staat === 'onbekend' && /aandrijfaccu/.test(stH.tekst), JSON.stringify(stH));
+    // Stil meten bij elke start: op een hybride is "motor uit" geen rust.
+    const tikMet = (elektrisch) => {
+      s.aandrijfProfielLive = () => ({ verbranding: 'benzine', vorm: elektrisch ? 'vol' : 'verbranding', elektrisch });
+      s.pidHist = s.pidHist || {}; s.demoMode = false;
+      const voor = K.stand().motorUit;
+      s.pidVals = { '010C': 1500 }; K._tik(); s.__T += 1000;
+      s.pidVals = { '010C': 0 }; K._tik(); s.__T += 1000;
+      const na = K.stand().motorUit;
+      delete s.aandrijfProfielLive;
+      return na !== voor;
+    };
+    toets('hybride: de motor die uitgaat wordt niet als begin van een rustperiode bewaard', tikMet(true) === false);
+    toets('TEGENPROEF gewone auto: wel', tikMet(false) === true);
+
     console.log('\n' + n + ' controles, ' + fouten + ' fout');
     process.exit(fouten ? 1 : 0);
   })().catch((e) => { console.error(e); process.exit(1); });
