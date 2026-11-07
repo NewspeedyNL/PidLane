@@ -15,6 +15,72 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 07-11-2026 — Zeven aandrijfvormen door de app (`plsim-aandrijving.js`)
+
+**Vraag**: hoe ziet PidLane eruit op een hybride — elektrisch rijden, motor met
+e-ondersteuning, of andersom (e-motor drijft, motor laadt)? Per vorm een
+referentieauto en een nagebouwde rit van ~15 min (stilstand koud, stad 10 min,
+uitrollen, oprit, snelweg, afrit, stoplicht, woonwijk), met een nagebootste
+klok door de echte keten: `updPID()` → `updateEVMode()` → aandrijfbalk,
+`PLGear._tick()`, `PLVisueel.aandrijfLampjes()`, daarna `PLSamenhang`,
+`PLOnderdeel`, `PLRapport.model()` en de AI-blokken (brandstofregel,
+`PLKenmerk.blok()`, `plMeetcontextPromptLine()`). De ritten zijn
+**nagebouwd, geen opnames** — wat een echte ECU per modus antwoordt blijft een ritvraag.
+
+| vorm | referentie | RDW |
+|---|---|---|
+| benzine | Mazda CX-5 2018 | benzine |
+| mild hybride 48V (P0) | Skoda Octavia 1.5 e-TEC 2021 | benzine |
+| vol hybride power-split | Toyota Corolla 1.8 Hybrid 2020 | hybride |
+| vol hybride parallel | Kia Niro HEV 2019 (6DCT) | hybride |
+| serieel / range extender | Nissan Qashqai e-Power 2022, BMW i3 REx | hybride |
+| plug-in | Kia Niro PHEV 2020, VW Golf GTE | hybride |
+| elektrisch | VW ID.3 2021 | elektrisch |
+
+**Wat goed gaat.** HEV en PHEV: balk wisselt netjes tussen *Rijdt op accu*,
+*Motor start*, *Rijdt op motor* en *Start/stop actief*; EV-aandeel klopt met
+het profiel (Corolla 85 %, PHEV 89 %, Niro 10 %); de PHEV-koudstart op
+110 km/h wordt *Motor start*. Lampjes *Elektrisch* / *Hybride actief*. De
+thermostaatregel van `PLOnderdeel` slaat op een koude hybride níét aan: de
+`draait`-poort werkt. Geen JS-fouten.
+
+**Wat misgaat** (niet gerepareerd, één onderwerp per PR):
+
+1. **Toerental als dode sensor.** `assessPidQuality()` (`pidlane-kwaliteit.js`,
+   regel "platte sensor") ziet tien monsters 010C = 0 en 0104 = 0 tijdens
+   accurijden als *"sensor staat exact vast — mogelijk dode sensor"*. Dat
+   staat in het rapport onder *Wat opviel* en gaat als DATAKWALITEIT naar de
+   AI, op elke hybride die de meting op de accu eindigt. De uitzondering
+   `stilNu` dekt alleen 0D/11 bij stilstand, niet een stilstaande motor.
+2. **Mild hybride zeilt als EV.** Octavia e-TEC: uitrollen met motor uit geeft
+   *Rijdt op accu*, lampje *Elektrisch*, `bewijstHybride` en 3 % EV-aandeel.
+   Tegelijk zegt `PLKenmerk` *"hybride: nee (bewezen: brandstof benzine)"* en
+   de AI *"BENZINEauto"*. Meting en declaratie spreken elkaar tegen, en
+   "bewezen" rust hier op een kentekenveld.
+3. **Serieel heeft geen woord voor "motor laadt".** e-Power stilstaand met de
+   generator op 1800 tpm = *Stationair*; `PLSamenhang` telt 53 s *stilstaand
+   gas geven*; op de snelweg *Rijdt op motor* terwijl de wielen elektrisch
+   blijven. Met mode 01 alleen is laden niet te scheiden (zie de kop van
+   `pidlane-aandrijving.js`), maar het label kan wel de aandrijfvorm volgen.
+4. **Elektrisch: balk blijft *Onbekend*.** ID.3 geeft geen 010C, dus `bepaal()`
+   ziet een dode ECU, de hele rit. Het lampje heet daar *Hybride accu*.
+5. **AI hoort niets over accurijden.** De meetcontext noemt alleen start/stop
+   (*"toerental bij stilstand naar 0 is normaal"*). 010C = 0 bij 50 km/h staat
+   zonder uitleg in de data — en volgens punt 1 als mogelijk dode sensor.
+6. **Hybride motoren blijven koud** (PHEV 37 °C, Corolla 42 °C na 15 min), dus
+   bijna alles valt in *rijden koud* en de warme regels van `PLSamenhang`
+   blijven *niet beoordeeld*. Juist gedrag; alleen `pidlane-rit.js` zegt erbij
+   dat de motor moet meedraaien, het rapport niet.
+7. **Versnellingsindicator op e-CVT/serieel.** `PLGear` leest het CVT-kenmerk
+   van `PLKenmerk` niet. Met een al geleerd model (gedeeld model zonder VIN)
+   toonde de Corolla op de snelweg *5*, en bij accurijden *N* terwijl de auto
+   50 rijdt. Met een vers model leerde hij in deze rit niets.
+
+**Niet te meten met generieke OBD**: boost (motor + e-motor samen) en regen.
+PID 019A (hybride accuspanning/-stroom) is op internet niet met formule te
+bevestigen; het blijft een fabrikant-DID en dus een ritvraag.
+
+
 ## 06-11-2026 — Aangevinkt en toch niet aan; Grondig zonder venster
 
 **Gemeld uit het gebruik**: sensoren aanvinken in Mijn voertuigen → Sensoren
