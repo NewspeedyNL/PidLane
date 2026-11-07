@@ -76,6 +76,19 @@ thermostaatregel van `PLOnderdeel` slaat op een koude hybride níét aan: de
    toonde de Corolla op de snelweg *5*, en bij accurijden *N* terwijl de auto
    50 rijdt. Met een vers model leerde hij in deze rit niets.
 
+**HERZIEN (zelfde dag, RDW nagemeten): een mild hybride is in het RDW géén
+benzineauto.** De sim nam voor de Octavia e-TEC `brandstof: 'benzine'` aan. In
+`8ys7-d773` staan Ford Puma mHEV, Octavia e-TEC, Suzuki Swift (12V, 1,4 kW!) en
+Qashqai mHEV allemaal als *Benzine + Elektriciteit* met
+`klasse_hybride_elektrisch_voertuig = NOVC-HEV` — net als Corolla, Jazz e:HEV
+en Qashqai e-Power. `normBrandstof()` maakt daar `hybride` van, dus de app
+behandelt elke mild hybride nu als volhybride (AI-regel, lampje *Hybride accu*,
+015B). Punt 2 hierboven is daarmee erger dan gemeld. Wat ze wél scheidt is
+`netto_max_vermogen_elektrisch` in dezelfde rij (steekproef 2020+, meest
+voorkomend): Swift 1,9–2,2 kW, Puma 8,7–9 kW, Octavia/Golf mHEV 9,4–13,5 kW,
+Qashqai mHEV 3,6 kW, Niro HEV 32 kW, Clio E-Tech 36–51 kW, Corolla 53–83 kW,
+Jazz e:HEV 80–90 kW, Qashqai e-Power 140 kW. OVC-HEV = plug-in.
+
 **Niet te meten met generieke OBD**: boost (motor + e-motor samen) en regen.
 PID 019A (hybride accuspanning/-stroom) is op internet niet met formule te
 bevestigen; het blijft een fabrikant-DID en dus een ritvraag.
