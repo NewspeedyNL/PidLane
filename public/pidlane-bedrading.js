@@ -41,6 +41,9 @@ var KRITIEK = [
   'demo','detectEngineType','disconnectWebSerial','doLogin','download','dtcInfo','dtcPlan',
   // obdChipTap erbij op 06-11-2026: "Verbind adapter" op het startscherm (PLThuis) opent er het verbindscherm mee.
   'obdChipTap',
+  // aandrijfUitRdw erbij op 07-11-2026: PLGarage leidt er de brandstof van een
+  // mild hybride mee af; ontbreekt hij, dan wordt die weer 'hybride'.
+  'aandrijfUitRdw',
   'ensurePIDListActive','ensurePIDsActive',
   // applyFeatureToggles erbij op 03-09-2026. Blok 5 draait de schakelaar
   // feat_demo echt om om te zien of beide demoknoppen verdwijnen; dat gaat

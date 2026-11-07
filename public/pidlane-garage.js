@@ -494,7 +494,11 @@
     if (kw.length) p.vermogen_kw = Math.round(Math.max.apply(null, kw));
     var el = oms.indexOf('elektriciteit') >= 0;
     var fos = oms.filter(function (o) { return o && o !== 'elektriciteit'; })[0];
-    if (el && fos) p.brandstof = 'hybride';
+    // Een mild hybride is zijn verbranding (aandrijfUitRdw, pidlane-voertuigdata.js).
+    var ad = (typeof aandrijfUitRdw === 'function') ? aandrijfUitRdw(brandstoffen || [], rij.merk) : null;
+    if (typeof aandrijfUitRdw !== 'function') console.warn('PLGarage: aandrijfUitRdw ontbreekt — een mild hybride wordt als hybride opgeslagen');
+    if (ad && ad.vorm === 'mild') p.brandstof = ad.brandstof;
+    else if (el && fos) p.brandstof = 'hybride';
     else if (el) p.brandstof = 'elektrisch';
     else if (fos === 'benzine' || fos === 'diesel' || fos === 'lpg' || fos === 'cng') p.brandstof = fos;
     if (p.cilinderinhoud) p.motor = (Math.round(p.cilinderinhoud / 100) / 10).toFixed(1).replace('.', ',') + ' liter' + (p.vermogen_kw ? ', ' + p.vermogen_kw + ' kW (' + Math.round(p.vermogen_kw * 1.36) + ' pk)' : '');

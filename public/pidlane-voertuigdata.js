@@ -24,6 +24,7 @@ const _FIELD_SRC_PREF = {
   year:      { vin:1, nhtsa:2, rdw:3, user:4 },
   brandstof: { vin:1, nhtsa:2, rdw:3, user:4 },
   verbranding: { vin:1, nhtsa:2, rdw:3, user:4 },
+  aandrijving: { rdw:3, user:4 },
   motor:     { rdw:1, nhtsa:2, user:4 }
 };
 // Onthoudt met welke bron-rang elk veld is gevuld, zodat een zwakkere bron
@@ -96,6 +97,65 @@ function normBrandstof(s){
   return f;
 }
 
+// ── Aandrijfvorm uit de RDW-brandstofrijen (07-11-2026) ─────────────
+// Brandstof zegt WAAROP de motor loopt, aandrijfvorm HOE de auto rijdt. Dat
+// zijn twee assen, en zo houdt het RDW ze ook uit elkaar: per auto een rij per
+// brandstof, met `klasse_hybride_elektrisch_voertuig` (OVC-HEV = met stekker,
+// NOVC-HEV = zonder) en `netto_max_vermogen_elektrisch` op de rij Elektriciteit.
+//
+// WAAROM. Een mild hybride (Suzuki Swift 12V, 1,9 kW; Ford Puma 9 kW; Octavia
+// e-TEC 9,4 kW) staat in het RDW net als een Corolla als Benzine +
+// Elektriciteit, NOVC-HEV. Die werd hier 'hybride', en kreeg daarmee EV-modus,
+// 015B en de hybride-AI-regel voor een e-motor die de auto niet zelf kan
+// voortbewegen. Wat ze scheidt is het elektrisch vermogen (steekproef RDW,
+// zie PIDLANE-ARCHIEF.md 07-11-2026): mild 1,9–13,5 kW, vol vanaf 32 kW.
+//
+// SERIEEL ("andersom": de e-motor drijft, de motor laadt) heeft meer
+// elektrisch vermogen dan motorvermogen: Qashqai e-Power 140/116, Jazz e:HEV
+// 80/72. De grens staat op 1,05× omdat een Corolla 1.8 met 70/72 er vlak
+// onder zit; e-CVT-merken (power-split) worden nooit serieel genoemd.
+//
+// Alles op RDW is 'waarschijnlijk': een getal uit een register is geen
+// waarneming. Bewezen maakt een mens (PLWaarneming), via PLKenmerk.
+const AANDRIJF_MILD_KW = 20;        // ≤ dit elektrisch vermogen: mild hybride
+const AANDRIJF_SERIEEL_FACTOR = 1.05;
+const AANDRIJF_ECVT_MERK = /^(toyota|lexus)\b/;
+function _rdwKw(x){ const n=parseFloat(x); return isFinite(n) && n>0 ? n : null; }
+/* rijen = de rijen uit 8ys7-d773 van één kenteken; merk optioneel.
+   → { brandstof, verbranding, vorm, klasse, kwElektrisch, kwMotor, bron } of null.
+   vorm: 'verbranding' | 'mild' | 'vol' | 'plugin' | 'serieel' | 'elektrisch' | null (hybride, vorm onbekend).
+   brandstof volgt de bestaande woorden; alleen mild wordt zijn verbranding. Puur. */
+function aandrijfUitRdw(rijen, merk){
+  if(!Array.isArray(rijen) || !rijen.length) return null;
+  const oms=r=>String((r&&r.brandstof_omschrijving)||'').trim().toLowerCase();
+  const el=rijen.filter(r=>/elektric/.test(oms(r)));
+  const fos=rijen.filter(r=>oms(r) && !/elektric/.test(oms(r)));
+  const klasse=(rijen.map(r=>String((r&&r.klasse_hybride_elektrisch_voertuig)||'').trim().toUpperCase()).filter(Boolean)[0])||null;
+  const kwE=el.map(r=>_rdwKw(r.netto_max_vermogen_elektrisch)).filter(x=>x!==null);
+  const kwM=fos.map(r=>_rdwKw(r.nettomaximumvermogen)).filter(x=>x!==null);
+  const kwElektrisch=kwE.length?Math.max.apply(null,kwE):null, kwMotor=kwM.length?Math.max.apply(null,kwM):null;
+  const fo=fos.length?oms(fos[0]):'';
+  const verbranding=verbrandingVan(fo)||'';
+  const uit={ brandstof:'', verbranding:verbranding, vorm:null, klasse:klasse, kwElektrisch:kwElektrisch, kwMotor:kwMotor, bron:'' };
+  if(!fos.length && el.length){ uit.brandstof='elektrisch'; uit.vorm='elektrisch'; uit.bron='RDW: alleen elektriciteit'; return uit; }
+  if(!el.length){
+    uit.brandstof=/diesel/.test(fo)?'diesel':/benzine/.test(fo)?'benzine':/lpg|cng|aardgas|waterstof/.test(fo)?'lpg':fo;
+    uit.vorm='verbranding'; uit.bron='RDW: geen elektriciteit'; return uit;
+  }
+  const kw=n=>String(Math.round(n*10)/10).replace('.',',')+' kW';
+  if(/^OVC/.test(klasse||'')){ uit.brandstof='hybride'; uit.vorm='plugin'; uit.bron='RDW '+klasse+' (met stekker)'; return uit; }
+  if(kwElektrisch!==null && kwElektrisch<=AANDRIJF_MILD_KW && verbranding){
+    uit.brandstof=verbranding; uit.vorm='mild'; uit.bron='RDW '+(klasse||'hybride')+', '+kw(kwElektrisch)+' elektrisch'; return uit;
+  }
+  uit.brandstof='hybride';
+  if(kwElektrisch===null){ uit.bron='RDW '+(klasse||'hybride')+', elektrisch vermogen onbekend'; return uit; }
+  const ecvt=AANDRIJF_ECVT_MERK.test(String(merk||'').toLowerCase().trim());
+  if(!ecvt && kwMotor!==null && kwElektrisch>=kwMotor*AANDRIJF_SERIEEL_FACTOR){
+    uit.vorm='serieel'; uit.bron='RDW '+(klasse||'hybride')+', '+kw(kwElektrisch)+' elektrisch boven '+kw(kwMotor)+' motor'; return uit;
+  }
+  uit.vorm='vol'; uit.bron='RDW '+(klasse||'hybride')+', '+kw(kwElektrisch)+' elektrisch'; return uit;
+}
+
 // Welke verbrandingsmotor zit er in een hybride? (#430) normBrandstof() maakt
 // van "Diesel + Elektriciteit" één woord, 'hybride', en gooit de diesel weg;
 // daarna kreeg een diesel-hybride de benzinetests en verdwenen zijn DPF- en
@@ -139,6 +199,13 @@ function mergeVehicleData(src, data){
     // aanroep faalde stil, waardoor §11-punt 2 ("geen herijking van de
     // bronlijst") in de praktijk nooit is opgelost — ook al stond 5b als ✅.
     if(vehicleInfo.brandstof && vehicleInfo.brandstof!==_hadB){ try{ herijkPidGate('brandstoftype bekend: '+vehicleInfo.brandstof); }catch(e){ console.warn('herijkPidGate mislukt:', e); } }
+  }
+  // De verbranding apart (aandrijfUitRdw): uit "hybride" valt hij niet terug te lezen.
+  if(data.verbranding)           _setField('verbranding', verbrandingVan(data.verbranding), src);
+  // De aandrijfvorm is een object (vorm, bron, kW); dezelfde rangregel als de rest.
+  if(data.aandrijving && typeof data.aandrijving==='object'){
+    const r=(_FIELD_SRC_PREF.aandrijving||_SRC_RANK)[src]||0;
+    if(r>=(_vehSrc.aandrijving||0)){ vehicleInfo.aandrijving=data.aandrijving; _vehSrc.aandrijving=r; }
   }
   if(data.motor!==undefined)     _setField('motor',     data.motor, src);
   // Model NA merk zetten, zodat dedup het (net genormaliseerde) merk kent.
