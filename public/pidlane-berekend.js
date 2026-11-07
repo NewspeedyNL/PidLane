@@ -54,6 +54,11 @@ const STATISCH_MS = 600000;    // …behalve voor grootheden die niet bewegen
 const STATISCH = new Set(['0163','0133','012F','0146']);
 const TIK_MS = 400;
 const BENZINE_G_PER_L = 745, STOICH = 14.7;
+// LPG (07-11-2026): de luchtmassa-route rekende met benzine. LPG verbrandt
+// bij 15,5 kg lucht per kg en weegt ~540 g per liter vloeibaar, dus dezelfde
+// lucht is ±30% méér liters. Een LPG-auto die koud nog op benzine loopt, telt
+// in die minuten iets te hoog; 015E (als de auto hem geeft) gaat altijd voor.
+const LPG_G_PER_L = 540, STOICH_LPG = 15.5;
 /* Rendement pas vanaf dit vermogen (#457, 09-10-2026). Stationair geeft de
    CX-5 voor 0162 10 % van 250 Nm: een frictie- of modelwaarde, geen arbeid.
    Daaronder is de verhouding koppel/brandstof ruis, en bij gas los (lucht
@@ -82,7 +87,7 @@ const DEFS = {
          uitleg:'Uit snelheid en toerental, zelflerend per voertuig (versnellingsindicator). 0 = neutraal of koppeling in, -1 = achteruit.' },
   CA02:{ name:'Brandstofdebiet (berekend)', unit:'L/h', cat:'Berekend', min:0, max:60,
          bronnen:[['015E'],['0110']],
-         uitleg:'Direct uit 015E; anders uit de luchtmassa bij λ=1 (alleen benzine — een diesel loopt arm).' },
+         uitleg:'Direct uit 015E; anders uit de luchtmassa bij λ=1 (benzine of LPG — een diesel loopt arm, ook als hybride).' },
   CA03:{ name:'Verbruik nu (berekend)', unit:'L/100km', cat:'Berekend', min:0, max:50,
          bronnen:[['015E','010D'],['0110','010D']],
          uitleg:'Brandstofdebiet gedeeld door de snelheid. Onder 5 km/u geen waarde: dan is liters per 100 km geen getal.' },
@@ -136,11 +141,21 @@ function motor(){
   try{ return (typeof detectEngineType==='function') ? (detectEngineType() || 'benzine') : 'benzine'; }
   catch(e){ console.warn('PLBerekend: detectEngineType() mislukt', e); return 'benzine'; }
 }
+/* De twee assen (aandrijfProfiel, pidlane-motortype.js): welke VERBRANDING
+   (diesel-route, -drempels, -prijs) en of hij ELEKTRISCH rijdt. Een
+   diesel-hybride is hier een diesel: tot 07-11-2026 maakte motor()==='diesel'
+   daar benzine van. */
+function profiel(){
+  try{ if (typeof aandrijfProfielLive==='function') return aandrijfProfielLive(); }
+  catch(e){ console.warn('PLBerekend: aandrijfProfiel() mislukt — uit het motortype', e); }
+  const m=motor();
+  return { verbranding: m==='diesel' ? 'diesel' : m==='ev' ? '' : 'benzine', vorm:null, elektrisch: m==='hybride' || m==='ev' };
+}
 
 // ── PUUR: de rekenregels. v = { pid: getal } met alleen verse waarden. ──
-function lph(v, isDiesel){
+function lph(v, isDiesel, isLpg){
   if (typeof v['015E']==='number') return v['015E'];
-  if (typeof v['0110']==='number' && !isDiesel) return v['0110']*3600/(STOICH*BENZINE_G_PER_L);
+  if (typeof v['0110']==='number' && !isDiesel) return isLpg ? v['0110']*3600/(STOICH_LPG*LPG_G_PER_L) : v['0110']*3600/(STOICH*BENZINE_G_PER_L);
   return null;
 }
 function kw(v){
@@ -179,7 +194,7 @@ function schakelPunt(gear, ratios, isDiesel){
    verhoudingen en of het een diesel is. */
 function schakelBron(){
   const gi=gearInfo();
-  return { gear:gi.gear, ratios:gi.ratios, diesel:motor()==='diesel' };
+  return { gear:gi.gear, ratios:gi.ratios, diesel:profiel().verbranding==='diesel' };
 }
 function bereken(pid, v, o){
   v = v || {}; o = o || {};
@@ -189,9 +204,9 @@ function bereken(pid, v, o){
       const g=o.gear;
       return (typeof g==='number' && g>=-1 && g<=10) ? g : null;
     }
-    case 'CA02': { const l=lph(v, o.diesel); return l===null ? null : r2(Math.max(0,l)); }
+    case 'CA02': { const l=lph(v, o.diesel, o.lpg); return l===null ? null : r2(Math.max(0,l)); }
     case 'CA03': {
-      const l=lph(v, o.diesel), kmh=v['010D'];
+      const l=lph(v, o.diesel, o.lpg), kmh=v['010D'];
       if (l===null || typeof kmh!=='number' || kmh<5) return null;
       // Geklemd op het bereik van de tegel (#337). Bij 5–10 km/u is 60 l/100 km
       // echt, maar het zegt niets; tot 01-10 stond hier 99, en dan telde elk
@@ -214,7 +229,7 @@ function bereken(pid, v, o){
       return (typeof pct==='number' && typeof ref==='number' && ref>0) ? Math.round(pct/100*ref) : null;
     }
     case 'CA08': {
-      const l=lph(v, o.diesel);
+      const l=lph(v, o.diesel, o.lpg);
       return (l===null || !(o.prijs>0)) ? null : r2(Math.max(0,l)*o.prijs);
     }
     case 'CA09': {
@@ -223,7 +238,7 @@ function bereken(pid, v, o){
       return Math.round(Math.max(0,pct)/100*tank/verb*100);
     }
     case 'CA10': {
-      const k=kw(v), l=lph(v, o.diesel), e=o.kwhPerL;
+      const k=kw(v), l=lph(v, o.diesel, o.lpg), e=o.kwhPerL;
       if (k===null || l===null || !(e>0) || l<0.5 || k<REND_MIN_KW) return null;
       return r1(Math.min(99, k/(l*e)*100));
     }
@@ -257,6 +272,9 @@ function bronset(pid, heeft, isDiesel, o){
   const d=DEFS[String(pid).toUpperCase()]; if (!d) return null;
   if (d.diesel && !isDiesel) return null;
   if (d.automaat && !o.automaat) return null;
+  // Een hybride die elektrisch rijdt heeft geen koppelomvormer (e-CVT, DCT
+  // of vaste overbrenging): de slip van CA16 zou een verzonnen getal zijn.
+  if (d.automaat && o.elektrisch) return null;
   if (d.handbak && o.automaat) return null;
   if (d.vereist==='tank' && !(o.tank>0)) return null;
   for (const set of d.bronnen){
@@ -287,11 +305,13 @@ function dpfTik(s, m){
 // ── DE APP ────────────────────────────────────────────────────────
 let _voertuig = null;          // { prijs, tank, verbruik, vermogen, brandstof, naam } uit PLGarage
 function voertuig(v){ _voertuig = v || null; }
+/* Waarop de motor loopt, voor de energie per liter en de standaardprijs.
+   Een hybride tankt wat zijn verbranding is: een diesel-hybride diesel. */
 function brandstof(){
   const b=_voertuig && _voertuig.brandstof;
-  if (b && KWH_PER_L[b]) return b;
-  const m=motor();
-  return m==='diesel' ? 'diesel' : m==='hybride' ? 'hybride' : 'benzine';
+  if (b && KWH_PER_L[b] && !/hybr/.test(b)) return b;
+  const v=profiel().verbranding;
+  return v==='diesel' || v==='lpg' ? v : 'benzine';
 }
 function prijs(){
   const p=_voertuig && Number(_voertuig.prijs);
@@ -315,11 +335,11 @@ function heeft(pid){
 }
 function voorwaarden(){
   const gi=gearInfo();
-  return { automaat:gi.automaat, tank:_voertuig && Number(_voertuig.tank) };
+  return { automaat:gi.automaat, tank:_voertuig && Number(_voertuig.tank), elektrisch:profiel().elektrisch };
 }
 // Voor buildDiscoveredPIDList(): de berekende PIDs die op deze auto kunnen.
 function defs(){
-  const d=motor()==='diesel', o=voorwaarden(), uit=[];
+  const d=profiel().verbranding==='diesel', o=voorwaarden(), uit=[];
   Object.keys(DEFS).forEach(pid=>{
     if (bronset(pid, heeft, d, o)) uit.push(Object.assign({ pid, berekend:true }, DEFS[pid]));
   });
@@ -449,7 +469,7 @@ function tik(){
     // Het bewijs voor blok 5 blijft staan: een herverbinding midden in de rit
     // (#302) mag niet wissen wat er daarvoor gemeten is.
     if (!_wasAan){ _wasAan=true; _s.liters=0; _s.km=0; _s.sBrandstof=0; _bronPoging={}; _bronGemeld={}; }
-    const m=motor(), d=m==='diesel', gi=gearInfo();
+    const ap=profiel(), d=ap.verbranding==='diesel', lpg=ap.verbranding==='lpg', gi=gearInfo();
     const cache={};
     const meting=p=>{ if(!(p in cache)) cache[p]=versMeting(p, nu); return cache[p]; };
     const waarde=p=>{ const m=meting(p); return m ? m.v : undefined; };
@@ -459,7 +479,7 @@ function tik(){
     const dt=_s.laatsteT ? (nu-_s.laatsteT)/1000 : 0;
     _s.laatsteT=nu;
     const kmh=waarde('010D');
-    const l=lph({ '015E':waarde('015E'), '0110':waarde('0110') }, d);
+    const l=lph({ '015E':waarde('015E'), '0110':waarde('0110') }, d, lpg);
     let kmTik=0;
     if (dt>0 && dt<10){
       if (typeof kmh==='number'){ kmTik=kmh*dt/3600; _s.km+=kmTik; }
@@ -480,11 +500,11 @@ function tik(){
     const actief=(typeof activePIDs!=='undefined' && activePIDs) ? activePIDs : new Set();
     const pr=prijs();
     const verbGem = (_s.km>=5 && _s.liters>0) ? _s.liters/_s.km*100 : (_voertuig && Number(_voertuig.verbruik)>0 ? Number(_voertuig.verbruik) : null);
-    const o={ diesel:d, gear:gi.gear, ratios:gi.ratios, slip:gi.slip, baro:baroNu(), prijs:pr.prijs,
+    const o={ diesel:d, lpg:lpg, gear:gi.gear, ratios:gi.ratios, slip:gi.slip, baro:baroNu(), prijs:pr.prijs,
               tank:_voertuig && Number(_voertuig.tank), verbruikGem:verbGem, kwhPerL:KWH_PER_L[brandstof()],
               kosten:_s.liters*(pr.prijs||0), dpfKm:_dpf && typeof _dpf.kmSinds==='number' ? _dpf.kmSinds : null };
     const heeftNu=p=>heeft(p) || (typeof demoMode!=='undefined' && demoMode);
-    const vw={ automaat:gi.automaat, tank:o.tank };
+    const vw={ automaat:gi.automaat, tank:o.tank, elektrisch:ap.elektrisch };
     // ALLE berekende PIDs waarvan de bronnen binnenkomen, ook als ze niet
     // gekozen zijn: dan telt het sessiebewijs ze toch, en hoeft niemand voor
     // blok 5 eerst de juiste tegels aan te zetten. Alleen een gekozen PID

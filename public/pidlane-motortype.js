@@ -53,6 +53,43 @@ function detectEngineType(){
   return 'benzine';
 }
 
+/* aandrijfProfiel() — twee vragen, twee antwoorden (07-11-2026).
+   detectEngineType() geeft één woord, en 'hybride' verstopt welke motor erin
+   zit: een diesel-hybride kreeg overal de benzineroute (luchtmassa met λ=1,
+   geen roetfilterteller, benzine-schakeldrempels, lambda in plaats van DPF).
+   Daarom apart:
+     verbranding  'benzine' | 'diesel' | 'lpg' | '' (geen motor)
+                  → alles wat over de VERBRANDINGSMOTOR beslist
+     vorm         'verbranding' | 'mild' | 'vol' | 'plugin' | 'serieel' | 'elektrisch' | null
+     elektrisch   kan de auto zelf elektrisch rijden (vol, plug-in, serieel, ev)
+                  → alles wat over EV-gedrag beslist
+   detectEngineType() blijft voor wie één woord wil. Puur: alles komt uit `vi`
+   (vehicleInfo) en het motortype; aandrijfProfielLive() leest de app. */
+function aandrijfProfiel(vi, motortype){
+  vi = vi || {};
+  const bf = String(vi.brandstof || '').toLowerCase(), mt = String(motortype || vi.motortype || '').toLowerCase();
+  const vorm = (vi.aandrijving && vi.aandrijving.vorm) || null;
+  const et = (bf.includes('hybr') || mt.includes('hybr') || /\b(p|m)?hev\b/.test(mt)) ? 'hybride'
+    : (bf.includes('elektr') || mt.includes('elektr') || /\bb?ev\b/.test(mt)) ? 'ev'
+    : (bf.includes('diesel') || mt.includes('diesel') || mt.includes('tdi') || mt.includes('cdi')) ? 'diesel'
+    : bf.includes('lpg') || bf.includes('cng') ? 'lpg' : 'benzine';
+  let verbranding = String(vi.verbranding || '').toLowerCase();
+  if (!/^(benzine|diesel|lpg)$/.test(verbranding)) {
+    verbranding = et === 'ev' || vorm === 'elektrisch' ? ''
+      : et === 'diesel' || /diesel|tdi|cdi|crdi|dci|hdi|bluehdi|jtd|d-4d/.test(mt) ? 'diesel'
+      : et === 'lpg' ? 'lpg' : 'benzine';
+  }
+  const v = vorm || (et === 'ev' ? 'elektrisch' : et === 'hybride' ? null : 'verbranding');
+  const elektrisch = v === 'vol' || v === 'plugin' || v === 'serieel' || v === 'elektrisch' || (v === null && et === 'hybride');
+  return { verbranding: verbranding, vorm: v, elektrisch: elektrisch };
+}
+function aandrijfProfielLive(){
+  try{ return aandrijfProfiel((typeof vehicleInfo !== 'undefined' && vehicleInfo) || {}); }
+  catch(e){ console.warn('aandrijfProfiel: vehicleInfo onleesbaar — benzine aangenomen', e); return { verbranding:'benzine', vorm:null, elektrisch:false }; }
+}
+// Beslist iets over de verbrandingsmotor (diesel-route, -drempels, -sensoren)?
+function isDieselMotor(){ return aandrijfProfielLive().verbranding === 'diesel'; }
+
 // De vorige getoonde toestand, alleen om één logregel per overgang te maken.
 let _laatsteToestand = null;
 

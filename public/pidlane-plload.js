@@ -427,12 +427,20 @@ function pidPollInterval(pid){
   // 1) Profiel-override wint: dit ís de reden dat profielen bestaan
   if(prof.ovr && prof.ovr[suf]!==undefined) basis=prof.ovr[suf];
   if(basis===null){
-    // 2) Motortype-afhankelijke prioriteiten
-    const et=(typeof detectEngineType==='function')?detectEngineType():'benzine';
-    if(et==='hybride'||et==='ev'){
-      if(['42','5B','5C','15B'].includes(suf)) basis=500; // accu/spanning vaker
+    // 2) Aandrijving-afhankelijke prioriteiten, per as (07-11-2026,
+    //    aandrijfProfiel in pidlane-motortype.js). Elektrisch rijden en de
+    //    soort verbranding zijn twee vragen: een diesel-hybride krijgt de
+    //    accu vaker ÉN de raildruk snel. Tot die datum stond hier
+    //    ['42','5B','5C','15B']: 5C is de olietemperatuur (geen accu) en 15B
+    //    bestaat niet als suffix — die regel deed voor de helft niets.
+    let ap=null;
+    try{ ap=(typeof aandrijfProfielLive==='function') ? aandrijfProfielLive() : null; }
+    catch(e){ console.warn('pidPollInterval: aandrijfprofiel onleesbaar — het tempo van een gewone auto', e); }
+    if(ap && ap.elektrisch){
+      if(['42','5B'].includes(suf)) basis=500;            // 12V en aandrijfaccu vaker
       else if(['0C','0D'].includes(suf)) basis=150;       // RPM/snelheid altijd snel
-    } else if(et==='diesel'){
+    }
+    if(basis===null && ap && ap.verbranding==='diesel'){
       if(['23','59'].includes(suf)) basis=200;            // raildruk snel
       else if(['7A','7B','7C','7D'].includes(suf)) basis=5000; // DPF minder snel
     }

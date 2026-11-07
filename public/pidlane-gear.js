@@ -561,7 +561,7 @@ const PLGear = {
     return s>60 ? null : Math.max(0, Math.round(s*10)/10);
   },
   _motor(){
-    try{ return (typeof detectEngineType==='function' && detectEngineType()==='diesel') ? 'diesel' : 'benzine'; }
+    try{ return (typeof isDieselMotor==='function' ? isDieselMotor() : (typeof detectEngineType==='function' && detectEngineType()==='diesel')) ? 'diesel' : 'benzine'; }
     catch(e){ console.warn('PLGear: detectEngineType() mislukt', e); return 'benzine'; }
   },
   // Tijd in de getoonde versnelling bijtellen: model (over ritten heen) en sessie.
