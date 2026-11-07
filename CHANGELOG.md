@@ -26,6 +26,10 @@
    seriële hybride, en geen "N" als de motor tijdens het rijden uit staat.
  - De AI hoort hoe lang de motor tijdens het rijden uit stond, en dat
    toerental 0 bij snelheid dan normaal is.
+ - Een seriële hybride die stilstaand laadt telt in het volledig onderzoek
+   en de rapportgrafiek als "motor laadt", niet als stationair of 2500 tpm.
+ - Mijn voertuigen: een mild hybride die vroeger als hybride is opgeslagen,
+   wordt bij de dagelijkse RDW-ronde zijn verbranding.
 
  ═══════════════════════════════════════════════════════════
  07-11-2026 — Zuiniger: schermtimers slapen, Hyperlane op tempo (#691)
