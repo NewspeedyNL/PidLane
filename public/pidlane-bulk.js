@@ -657,14 +657,18 @@ function dashBij() {
 }
 
 /* Elke seconde de chip en (indien open) het dashboard bijwerken. Los van
-   de meet-tick, zodat een trage DOM de meting nooit ophoudt. */
-setInterval(function () {
-  try {
-    if (_blkS.actief) chipBij();
-    var o = _blkEl('blkOverlay');
-    if (o && o.style.display !== 'none') dashBij();
-  } catch(e){ console.warn('dashBij mislukt:', e); }
-}, 1000);
+   de meet-tick, zodat een trage DOM de meting nooit ophoudt. Alleen zolang
+   de app in beeld is (#691): de opname zelf loopt in de meet-tick door. */
+(function () {
+  var tik = function () {
+    try {
+      if (_blkS.actief) chipBij();
+      var o = _blkEl('blkOverlay');
+      if (o && o.style.display !== 'none') dashBij();
+    } catch(e){ console.warn('dashBij mislukt:', e); }
+  };
+  if (typeof window !== 'undefined' && window.PLRust) PLRust.elke(1000, tik, 'bulkdashboard'); else setInterval(tik, 1000);
+})();
 
 /* ═══════════════════ HERSTART OVERLEVEN ═══════════════════ */
 /* Telefoon in een hete auto, browser die de tab weggooit: dan is de

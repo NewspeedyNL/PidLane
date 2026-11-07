@@ -972,10 +972,17 @@ function frame(nu){
   // Weggegooid of verborgen: stoppen. De volgende zet() of wek() start opnieuw.
   if(!s.wortel.isConnected || !s.wortel.getClientRects().length){ stop(); return; }
   s.raf=requestAnimationFrame(frame);
+  // Beeldtempo (#691): een scherm van 90 of 120 Hz vraagt elk beeld, en dan
+  // tekende de tunnel twee keer zo vaak als nodig. Hoogstens 60 per seconde,
+  // en 30 als de auto al even stilstaat: dan beweegt er weinig.
+  const rust=rustBeeld(s.sc, s.stilS);
+  if(beeldOverslaan(nu-s.last, rust)) return;
   const dtRuw=Math.min(.1, (nu-s.last)/1000), dt=Math.min(.05, dtRuw), T=(nu-s.t0)/1000; s.last=nu;
   // De cockpit (tablet liggend, volledig scherm): zichtbaar = er wordt getekend
   const ckEl=s.wortel.querySelector('.vhl-ck'), ck=!!ckEl && ckEl.getClientRects().length>0;
-  if(ck) s.ck.zuinig=zuinig(s.ck.zuinig, _accu, dtRuw);
+  // Zuinig (hitte of lege accu) geldt ook op de telefoon (#691). Alleen beelden
+  // op vol tempo tellen mee: 30 per seconde in rust is een keuze, geen hitte.
+  if(!rust || !s.ck.zuinig) s.ck.zuinig=zuinig(s.ck.zuinig, _accu, rust ? 1/60 : dtRuw);
   s.wortel.classList.toggle('vhl-zuinig', ck && s.ck.zuinig.aan);
   maatBij();
   const o=s.opt, rood=o.toerenHi*.85, d=s.doel, w=s.wortel, e=echt(s);
@@ -1037,7 +1044,7 @@ function frame(nu){
   s.tilt[0]=volg(s.tilt[0], s.tiltDoel[0], dt, 4); s.tilt[1]=volg(s.tilt[1], s.tiltDoel[1], dt, 4);
   w.style.setProperty('--vhl-tx', (s.tilt[0]*5).toFixed(2)+'deg'); w.style.setProperty('--vhl-ty', (s.tilt[1]*7+s.lat*9).toFixed(2)+'deg');
   // Zuinig: de tunnel om het andere beeld (de canvas houdt het vorige)
-  const sla=ck && s.ck.zuinig.aan && ((s.ck.fr++)&1)===1;
+  const sla=s.ck.zuinig.aan && ((s.ck.fr++)&1)===1;
   if(s.gl && av!=='stil' && !sla){
     const gl=s.gl.gl, U=s.gl.U;
     gl.uniform1f(U.VT, VW.tunnel); gl.uniform1f(U.VA, VW.aurora); gl.uniform1f(U.VH, VW.hartslag); gl.uniform1f(U.VP, VW.pulsen); gl.uniform1f(U.VS, VW.sterren);
@@ -1196,6 +1203,18 @@ function zuinig(st, accu, dt){
   s.aan=s.warm || leeg;
   return s;
 }
+/* Beeldtempo (#691). Een beeld wordt overgeslagen als het vorige te kort
+   geleden was: 60 per seconde normaal, 30 in rust. De drempel ligt een fractie
+   onder het interval, anders valt op een scherm van precies 60 Hz af en toe
+   een beeld weg door een rAF-tijd die net te vroeg is. Puur. */
+const BEELD_MS = 1000/60, RUST_MS = 1000/30, BEELD_SPEL_MS = 2, RUST_S = STIL_S + 2;
+function beeldOverslaan(sinds, rust){
+  const n=Number(sinds);
+  if(!isFinite(n) || n<0) return false;
+  return n < (rust ? RUST_MS : BEELD_MS) - BEELD_SPEL_MS;
+}
+/* Rust: de scène is al stil en de auto staat langer dan RUST_S. Puur. */
+function rustBeeld(sc, stilS){ return sc==='stil' && Number(stilS)>=RUST_S; }
 /* De grafiek: de laatste minuut, vijf punten per seconde. Puur. */
 const GRAF_DT = .2, GRAF_N = 300;
 function grafBij(lijst, punt, n){
@@ -1349,7 +1368,7 @@ window.PLHyperlane = {
   COCKPIT_B:COCKPIT_B, COCKPIT_H:COCKPIT_H, cockpitMaat:cockpitMaat, cockpitNu:cockpitNu, TEMP_GRENS:TEMP_GRENS, tempStand:tempStand,
   remDeel:remDeel, remGeschat:remGeschat, REM_VOL_KMHS:REM_VOL_KMHS, boostBar:boostBar, binnenbogen:binnenbogen, BOOST_VOL:BOOST_VOL,
   waarschuwing:waarschuwing, KOUD_GAS:KOUD_GAS, KOUD_RPM:KOUD_RPM, grootMag:grootMag, grootNa:grootNa, GROOT_KMH:GROOT_KMH,
-  zuinig:zuinig, ZUINIG_DT:ZUINIG_DT, ZUINIG_UIT_DT:ZUINIG_UIT_DT, ZUINIG_HOUD_S:ZUINIG_HOUD_S, ZUINIG_ACCU:ZUINIG_ACCU,
+  zuinig:zuinig, beeldOverslaan:beeldOverslaan, rustBeeld:rustBeeld, BEELD_MS:BEELD_MS, RUST_MS:RUST_MS, RUST_S:RUST_S, ZUINIG_DT:ZUINIG_DT, ZUINIG_UIT_DT:ZUINIG_UIT_DT, ZUINIG_HOUD_S:ZUINIG_HOUD_S, ZUINIG_ACCU:ZUINIG_ACCU,
   grafBij:grafBij, GRAF_N:GRAF_N, GRAF_DT:GRAF_DT, gCirkelPunt:gCirkelPunt, autoHoek:autoHoek,
   start:start, stop:stop, wek:wek, zet:zet, voed:voed, voedRol:voedRol, VOED:VOED, VOED_GAS:VOED_GAS,
   actief:function(){ return !!_s; }

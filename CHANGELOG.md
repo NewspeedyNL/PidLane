@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 07-11-2026 — Zuiniger: schermtimers slapen, Hyperlane op tempo (#691)
+ ═══════════════════════════════════════════════════════════
+
+ - De monitorchip, het bulkdashboard en de monitorknop verversen alleen
+   nog als de app in beeld is (PLRust). Uit beeld is de timer weg, niet
+   alleen stil; terug in beeld klopt het scherm meteen.
+ - Hyperlane tekent hoogstens 60 beelden per seconde (een scherm van 120 Hz
+   tekende er 120) en 30 als de auto langer dan 5 s stilstaat.
+ - De zuinigstand (hitte of lege accu) geldt nu ook op de telefoon, niet
+   alleen in de tabletcockpit.
+
+ ═══════════════════════════════════════════════════════════
  06-11-2026 — Contact uit op het lampje, schakellampjes vrij van de balk
  ═══════════════════════════════════════════════════════════
 

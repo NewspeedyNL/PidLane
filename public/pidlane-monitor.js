@@ -429,7 +429,11 @@ window.updateMonitorBtn = function(){
     p.style.color       = aan ? 'var(--gn,#00a86b)' : 'var(--tx,#e6e9ef)';
   }
 };
-setInterval(()=>{ try{ window.updateMonitorBtn(); }catch(e){ console.warn('updateMonitorBtn mislukt:', e); } }, 3000);
+// Alleen zolang de app in beeld is (#691): de rit-monitor zelf hangt niet aan deze knop.
+(function(){
+  const tik=()=>{ try{ window.updateMonitorBtn(); }catch(e){ console.warn('updateMonitorBtn mislukt:', e); } };
+  if(typeof window!=='undefined' && window.PLRust) PLRust.elke(3000, tik, 'monitorknop'); else setInterval(tik, 3000);
+})();
 
 // De oude bewaarde stand wordt niet meer gelezen — sleutel opruimen zodat er
 // niets blijft rondslingeren dat suggereert dat de monitor nog aan zou staan.
