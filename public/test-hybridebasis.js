@@ -81,7 +81,11 @@ t('"1.8 Hybrid"', soort('', '1.8 Hybrid'), 'hybride');
 t('"1.6 GDi HEV" met RDW benzine', soort('benzine', '1.6 GDi HEV'), 'hybride');
 t('"2.0 e:HEV"', soort('', '2.0 e:HEV'), 'hybride');
 t('"1.6 T-GDI PHEV"', soort('benzine', '1.6 T-GDI PHEV'), 'hybride');
-t('"1.5 eTSI mHEV"', soort('benzine', '1.5 eTSI mHEV'), 'hybride');
+// Mild hybride is zijn verbranding (besluit 07-11-2026, aandrijfvorm als
+// tweede as): tot die datum stond hier 'hybride'.
+t('"1.5 eTSI mHEV" is een benzine (mild hybride)', soort('benzine', '1.5 eTSI mHEV'), 'benzine');
+t('"2.0 TDI mHEV" is een diesel (mild hybride)', soort('', '2.0 TDI mHEV'), 'diesel');
+t('RDW-vorm mild wint van brandstof hybride (oud profiel)', (p.vehicleInfo = { brandstof: 'hybride', aandrijving: { vorm: 'mild' } }, p.detectEngineType()), 'benzine');
 // De tegenproef: de woordgrens mag een echte EV niet kwijtraken.
 t('RDW zegt elektrisch', soort('elektrisch', ''), 'ev');
 t('motorlijst "Elektrisch"', soort('', 'Elektrisch'), 'ev');

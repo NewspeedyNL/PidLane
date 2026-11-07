@@ -2848,6 +2848,27 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Alles volgt de aandrijving (07-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Verbranding en elektrisch rijden zijn twee vragen (aandrijfProfiel): een diesel-hybride rekent als diesel, Hyperlane toont op een hybride de vermogensvraag (CA18), en de demo heeft een auto per aandrijfvorm',
+    waarom: 'Een diesel-hybride kreeg overal de benzineroute en een mHEV de EV-logica; Hyperlane stond op een plug-in de hele rit op MOTOR KOUD met de toerenring op 0. Valt een van deze schakels weg in de draaiende app, dan komt dat stil terug.',
+    proef: async function () {
+      if (typeof aandrijfProfiel !== 'function' || typeof aandrijfProfielLive !== 'function') return { staat: 'FOUT', detail: 'aandrijfProfiel ontbreekt — herladen?' };
+      var dh = aandrijfProfiel({ brandstof: 'hybride', verbranding: 'diesel', aandrijving: { vorm: 'vol' } });
+      if (dh.verbranding !== 'diesel' || !dh.elektrisch) return { staat: 'FOUT', detail: 'diesel-hybride wordt ' + JSON.stringify(dh) };
+      if (aandrijfProfiel({ brandstof: 'benzine', motortype: '1.5 eTSI mHEV' }).elektrisch) return { staat: 'FOUT', detail: 'een mHEV rijdt volgens de app elektrisch' };
+      if (!window.PLBerekend || !PLBerekend.DEFS.CA18) return { staat: 'FOUT', detail: 'CA18 (vermogensvraag) ontbreekt' };
+      if (!window.PLVisProfiel) return { staat: 'FOUT', detail: 'PLVisProfiel ontbreekt' };
+      var ring = PLVisProfiel.indeling('hyperlane', function () { return true; }, 'hybride', {}).plekken.toeren;
+      if (ring !== 'CA18') return { staat: 'FOUT', detail: 'Hyperlane op een hybride toont ' + ring + ' op de grote ring' };
+      var vormen = (window.DEMO_CARS || []).map(function (c) { return c.aandrijving && c.aandrijving.vorm; }).filter(Boolean);
+      if (['mild', 'serieel', 'plugin', 'vol'].some(function (v) { return vormen.indexOf(v) < 0; })) return { staat: 'FOUT', detail: 'demo-auto\'s per vorm: ' + vormen.join(',') };
+      var ap = aandrijfProfielLive();
+      return { staat: 'OK', detail: 'deze auto: verbranding ' + (ap.verbranding || 'geen') + ', vorm ' + (ap.vorm || 'onbekend') + (ap.elektrisch ? ', rijdt elektrisch' : '') };
+    }
+  },
+
   // ── Aandrijfvorm: mild, vol, plug-in, serieel (07-11-2026) ──
   {
     issue: '—',

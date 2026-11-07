@@ -1610,6 +1610,16 @@ window.DEMO_CARS =[
   { merk:'Volkswagen', model:'Golf',  year:'2017', brandstof:'benzine', vin:'WVWZZZAUZHW123456', wmi:'WVW', motortype:'1.4 TSI 125pk',        icon:'🚗' },
   { merk:'Toyota',     model:'Yaris', year:'2019', brandstof:'hybride', vin:'VNKKD3D310A123456', wmi:'VNK', motortype:'1.5 Hybrid 100pk',     icon:'🚕' },
   { merk:'Volvo',      model:'V40',   year:'2016', brandstof:'diesel',  vin:'YV1MV7431G2123456', wmi:'YV1', motortype:'D2 120pk',             icon:'🚘' },
+  // Per aandrijfvorm (07-11-2026), zodat elk scherm per vorm te bekijken is.
+  // `aandrijving` en `verbranding` zoals het RDW ze zou geven (aandrijfUitRdw).
+  { merk:'Ford',       model:'Puma',  year:'2022', brandstof:'benzine', vin:'WF0FXXWPCFN123456', wmi:'WF0', motortype:'1.0 EcoBoost mHEV 125pk', icon:'🍃',
+    verbranding:'benzine', aandrijving:{ vorm:'mild', bron:'demo: NOVC-HEV, 8,7 kW elektrisch' } },
+  { merk:'Nissan',     model:'Qashqai e-Power', year:'2023', brandstof:'hybride', vin:'SJNFAAJ11U1123456', wmi:'SJN', motortype:'1.5 e-Power 190pk', icon:'🔌',
+    verbranding:'benzine', aandrijving:{ vorm:'serieel', bron:'demo: NOVC-HEV, 140 kW elektrisch boven 116 kW motor' } },
+  { merk:'Kia',        model:'Niro PHEV', year:'2020', brandstof:'hybride', vin:'KNACC81CGL5123456', wmi:'KNA', motortype:'1.6 GDi PHEV 141pk', icon:'🔋',
+    verbranding:'benzine', aandrijving:{ vorm:'plugin', bron:'demo: OVC-HEV (met stekker)' } },
+  { merk:'Peugeot',    model:'508 HYbrid4', year:'2014', brandstof:'hybride', vin:'VF38EBHZ8EL123456', wmi:'VF3', motortype:'2.0 HDi Hybrid4 200pk', icon:'⛽',
+    verbranding:'diesel', aandrijving:{ vorm:'vol', bron:'demo: diesel-hybride' } },
 ];
 
 // ── ANALYSE_PID_SETS (was index.html regel 11810) ──

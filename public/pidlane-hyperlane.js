@@ -196,14 +196,17 @@ function warmte(koel){ return (koel===null || koel===undefined || !isFinite(Numb
 function nacht(uur){ return uur>=21 || uur<6; }
 const KOUD_C = 60, HEET_C = 118, REM_KMHS = 8, STIL_S = 3, CRUISE_S = 8, CRUISE_KMH = 70;
 /* De scène, in volgorde van voorrang. `i` = {koel, koelSt, toeren, rood,
-   snel, versn, stilS, launch, cruiseS}; wat ontbreekt telt niet. Puur. */
+   snel, versn, stilS, launch, cruiseS, motorStil}; wat ontbreekt telt niet.
+   motorStil (07-11-2026): een hybride die op de accu rijdt. Een plug-in rijdt
+   zo een hele rit met koelwater van 20 °C, en dan stond er de hele rit
+   "MOTOR KOUD — OPWARMEN" terwijl er niets op te warmen viel. Puur. */
 function scene(i){
   const n=function(v){ return v!==null && v!==undefined && isFinite(Number(v)); };
   if(i.koelSt==='danger' || (n(i.koel) && i.koel>=HEET_C)) return 'alarm';
   if(n(i.toeren) && i.rood>0 && i.toeren>=i.rood*.98) return 'begrenzer';
   if(n(i.versn) && i.versn<=-REM_KMHS && n(i.snel) && i.snel>5) return 'remmen';
   if(i.launch) return 'launch';
-  if(n(i.koel) && i.koel<KOUD_C) return 'koud';
+  if(n(i.koel) && i.koel<KOUD_C && !i.motorStil) return 'koud';
   if(i.stilS>=STIL_S) return 'stil';
   if(i.cruiseS>=CRUISE_S) return 'cruise';
   return 'rijden';
@@ -698,7 +701,8 @@ function opties(){
     (p && p.plekken || []).forEach(function(x){
       o.schaal[x.rol]={ lo:x.lo, hi:x.hi, dec:x.dec||0 };
       // Een eigen factor (PLToon) maakt er ook een ander getal van dan toeren of km/h.
-      const v=!!(pi.vervang && pi.vervang[x.rol]) || !!(pi.weergave && pi.weergave[x.rol] && pi.weergave[x.rol].factor);
+      // eigenRing (07-11-2026): een profielvariant met een eigen grootheid op de ring (hybride: CA18).
+      const v=!!(pi.vervang && pi.vervang[x.rol]) || !!(pi.weergave && pi.weergave[x.rol] && pi.weergave[x.rol].factor) || !!x.eigenRing;
       if(x.rol==='toeren' && !v) o.toerenHi=x.hi;
       if(x.rol==='snel' && !v) o.snelHi=x.hi;
       if(v && (x.rol==='toeren' || x.rol==='snel')) o.ring[x.rol]={ lo:x.lo, hi:x.hi, dec:x.dec||0, eenh:String((x.kort||x.naam||'')+(x.eenheid ? ' '+x.eenheid : '')).toUpperCase() };
@@ -836,6 +840,15 @@ function zet(rol, v, st, vervangen){
     _s.accu=a.st;
     if(a.start) _s.power={ t:0, rust:a.start.rust, dip:a.start.dip };
   }
+}
+/* Staat de verbrandingsmotor van een hybride nu stil? Alleen op een auto die
+   elektrisch rijdt (aandrijfProfiel) en alleen als PLAandrijving het weet. */
+function motorStilNu(){
+  try{
+    const ap=(typeof aandrijfProfielLive==='function') ? aandrijfProfielLive() : null;
+    const r=window.PLAandrijving && typeof PLAandrijving.laatste==='function' ? PLAandrijving.laatste() : null;
+    return !!(ap && ap.elektrisch && r && r.motorDraait===false && r.toestand!=='ONBEKEND');
+  }catch(e){ console.warn('PLHyperlane: aandrijving onleesbaar — koude-motorscène zoals op elke auto', e); return false; }
 }
 /* Het merk van de verbonden auto, als thema. */
 function merkNu(){
@@ -996,7 +1009,7 @@ function frame(nu){
   s.stilS=(e.snel!=null && e.snel<1) ? s.stilS+dt : 0;
   s.cruiseS=(e.snel!=null && e.snel>=CRUISE_KMH && Math.abs(vs)<1.5) ? s.cruiseS+dt : 0;
   const sc=live ? scene({ koel:e.koel, koelSt:s.koelSt, toeren:e.toeren, rood:rood, snel:e.snel, versn:vs,
-                          stilS:s.stilS, launch:s.nul.start!==null, cruiseS:s.cruiseS }) : 'rijden';
+                          stilS:s.stilS, launch:s.nul.start!==null, cruiseS:s.cruiseS, motorStil:motorStilNu() }) : 'rijden';
   if(sc!==s.sc){
     // Pulsen (en de tunnel) krijgen een ring bij het begin van remmen of de begrenzer
     if(sc==='remmen' || sc==='begrenzer') s.golf=0;

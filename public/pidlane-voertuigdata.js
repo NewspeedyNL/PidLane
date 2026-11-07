@@ -205,7 +205,12 @@ function mergeVehicleData(src, data){
   // De aandrijfvorm is een object (vorm, bron, kW); dezelfde rangregel als de rest.
   if(data.aandrijving && typeof data.aandrijving==='object'){
     const r=(_FIELD_SRC_PREF.aandrijving||_SRC_RANK)[src]||0;
-    if(r>=(_vehSrc.aandrijving||0)){ vehicleInfo.aandrijving=data.aandrijving; _vehSrc.aandrijving=r; }
+    if(r>=(_vehSrc.aandrijving||0)){
+      vehicleInfo.aandrijving=data.aandrijving; _vehSrc.aandrijving=r;
+      // PLKenmerk houdt zijn profiel een seconde vast; de nieuwe vorm moet nu gelden.
+      try{ if(window.PLKenmerk && typeof PLKenmerk.vergeet==='function') PLKenmerk.vergeet(); }
+      catch(e){ console.warn('mergeVehicleData: kenmerken niet ververst — de oude aandrijfvorm geldt nog even', e); }
+    }
   }
   if(data.motor!==undefined)     _setField('motor',     data.motor, src);
   // Model NA merk zetten, zodat dedup het (net genormaliseerde) merk kent.

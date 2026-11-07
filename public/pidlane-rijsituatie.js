@@ -820,8 +820,15 @@ function applyVehiclePIDPreset(merk, brandstof, jaar){
     preset = [...basis, ...hybride, '015B','0142'];
     btDiag('PID preset: Elektrisch','info');
   } else if(b.includes('hybr')){
-    preset = [...basis, ...benzine, ...hybride];
-    btDiag('PID preset: Hybride','info');
+    // De verbranding van déze hybride (aandrijfProfiel, 07-11-2026): een
+    // diesel-hybride kreeg hier de benzineset met lambda en zonder raildruk.
+    // Het gaspedaal hoort erbij: de Energie-meter rekent er het gevraagde
+    // vermogen uit, en toerental zegt op een hybride de helft van de tijd 0.
+    let dsl=false;
+    try{ dsl=(typeof isDieselMotor==='function') && isDieselMotor(); }
+    catch(e){ console.warn('PID-preset: verbranding onleesbaar — benzineset', e); }
+    preset = [...basis, ...(dsl ? diesel : benzine), ...hybride, '0149', '015A', ...(y>=2010?modern:[])];
+    btDiag('PID preset: Hybride ('+(dsl?'diesel':'benzine')+')','info');
   } else if(b.includes('diesel')){
     preset = [...basis, ...diesel, ...(y>=2010?modern:[])];
     btDiag(`PID preset: Diesel ${y>=2010?'(modern)':'(oud)'}`, 'info');
