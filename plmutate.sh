@@ -1155,6 +1155,7 @@ MUTATIES=(
 "public/pidlane-voertuigdata.js@@    if(_vb) _setField('verbranding', _vb, src);\n@@@@test-voertuigreset.js@@het RDW zegt diesel-hybride, maar de diesel raakt weer kwijt (#430)"
 "public/pidlane-voertuigdata.js@@  if(kwElektrisch!==null && kwElektrisch<=AANDRIJF_MILD_KW && verbranding){@@  if(false){@@test-aandrijfvorm.js@@een mild hybride heet weer hybride en krijgt de EV-logica"
 "public/pidlane-voertuigdata.js@@  if(/^OVC/.test(klasse||'')){@@  if(false){@@test-aandrijfvorm.js@@een plug-in met weinig kW wordt mild of serieel: de stekker telt niet meer"
+"public/pidlane-garage.js@@    if (mild) uit.brandstof = mild;@@@@test-garage.js@@een oud profiel dat hybride zegt voor een mild hybride blijft hybride na de RDW-ronde"
 "public/pidlane-voertuigdata.js@@  if(!ecvt && kwMotor!==null && kwElektrisch>=kwMotor*AANDRIJF_SERIEEL_FACTOR){@@  if(!ecvt && kwMotor!==null && kwElektrisch>=kwMotor*0.9){@@test-aandrijfvorm.js@@een Corolla (70/72 kW) heet serieel"
 "public/pidlane-kenmerk.js@@    if (vorm === 'mild') p.hybride = k(false, 'bewezen', 'mild hybride: ' + vb);@@    if (false) p.hybride = k(false, 'bewezen', 'mild hybride: ' + vb);@@test-aandrijfvorm.js@@PLKenmerk ziet een mild hybride met profiel 'hybride' als volhybride"
 "public/pidlane-aandrijving.js@@    if (rijdt) return nu.vorm === 'mild' ? 'ZEILEN' : 'ACCU_RIJDT';@@    if (rijdt) return 'ACCU_RIJDT';@@test-hybridewoorden.js@@een mild hybride die uitrolt heet weer Rijdt op accu en bewijst een hybride"
