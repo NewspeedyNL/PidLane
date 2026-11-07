@@ -2848,6 +2848,25 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Schermtimers slapen, Hyperlane op tempo (07-11-2026) ──
+  {
+    issue: '#691',
+    naam: 'De drie schermtimers hangen aan PLRust en lopen nu de app in beeld is; Hyperlane kent het beeldtempo (60 per seconde, 30 in rust)',
+    waarom: 'Uit beeld worden de monitorchip, het bulkdashboard en de monitorknop niet meer ververst. Hangt een timer niet aan PLRust, dan maakt hij de processor met het scherm uit nog elke seconde wakker; loopt er in beeld geen, dan staat de chip stil. Hoeveel accu het scheelt is een vraag voor de rit zelf (Android-batterijstatistiek).',
+    proef: async function () {
+      var R = window.PLRust, H = window.PLHyperlane;
+      if (!R || typeof R.taken !== 'function') return { staat: 'FOUT', detail: 'PLRust ontbreekt — herladen?' };
+      var t = R.taken(), namen = t.map(function (x) { return x.naam; }).sort().join(',');
+      if (namen !== 'bulkdashboard,monitorchip,monitorknop') return { staat: 'FOUT', detail: 'schermtimers aan PLRust: ' + (namen || 'geen') };
+      if (document.visibilityState === 'hidden') return { staat: 'LET OP', detail: 'pagina niet in beeld: niet te zien of ze lopen' };
+      var stil = t.filter(function (x) { return !x.loopt; }).map(function (x) { return x.naam; });
+      if (stil.length) return { staat: 'FOUT', detail: 'in beeld, en toch stil: ' + stil.join(', ') };
+      if (!H || typeof H.beeldOverslaan !== 'function') return { staat: 'FOUT', detail: 'PLHyperlane.beeldOverslaan ontbreekt — herladen?' };
+      if (H.beeldOverslaan(1000 / 60, false) || !H.beeldOverslaan(1000 / 120, false) || !H.beeldOverslaan(1000 / 60, true)) return { staat: 'FOUT', detail: 'beeldtempo klopt niet: 60 Hz moet tekenen, 120 Hz om het andere beeld, rust 30' };
+      return { staat: 'OK', detail: '3 schermtimers lopen in beeld; Hyperlane 60/30 per seconde' };
+    }
+  },
+
   // ── Het startscherm in drie lagen (06-11-2026) ──
   {
     issue: '—',

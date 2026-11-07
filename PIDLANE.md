@@ -181,6 +181,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 1 | `capacitor.js` | — | alleen in APK aanwezig; `onerror` vangt het web-geval af |
 | 2 | `config.js` | 3 | `PROXY_URL`, `AIRTABLE_URL`, `APP_VERSION`, repo-info |
 | 3 | `pidlane-data.js` | 100 | statische referentiedata: 148 J1979-PID-definities, `DTCDB` (generiek) + `DTC_MERK` (merkbuckets) + `merkGroep()`, kennisbank, `SOFTWARE_OORZAKEN` + `softwareOorzaken()` (inleren/codering als oorzaak in plaats van een sensor, #426), analysesets, `PID_TEKST`, `PID_TOESTAND` (grenzen per toestand van de motor, gelezen door `PLVerzamel.beoordeel()`), `slimGroep()`/`SLIM_DASH`/`SLIM_METER` (de VORM van de slimme weergave; de MAAT — en daarmee het vijfde vak "Rustig" — zit in `slimMaat()` in `pidlane-pids.js`) |
+| 3a | `pidlane-rust.js` | 4 | `PLRust` — **schermtimers slapen als de app uit beeld is** (#691, 07-11-2026). `elke(ms, fn, naam)` is `setInterval`, maar de timer wordt gewist bij `visibilitychange`/`appStateChange` naar verborgen en draait meteen één keer bij terugkomst. Alleen voor wat het scherm ververst (monitorchip, bulkdashboard, monitorknop) — meet-, rit- en sessietimers horen er níét aan. `test-rust.js`, `bproef-rust.js`. |
 | 4 | `pidlane-assets.js` | 205 | ingebedde media (base64), o.a. `BANDEN_IMG` |
 
 ### Fase 1b — opstart-intro (eerste in `<body>`)

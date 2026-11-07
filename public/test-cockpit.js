@@ -103,6 +103,17 @@ for (let i = 0; i < 60 * 70; i++) z = H.zuinig(z, null, 1 / 60);
 waar('na een minuut snel: niet meer zuinig', !z.aan);
 waar('accu bijna leeg en niet aan de lader: zuinig', H.zuinig(null, { niveau: .1, laden: false }, 1 / 60).aan);
 waar('accu bijna leeg maar laadt: niet zuinig', !H.zuinig(null, { niveau: .1, laden: true }, 1 / 60).aan);
+// Beeldtempo (#691): een rAF-reeks van een scherm naspelen en tellen wat er getekend wordt
+const teken = (hz, rust, s = 1) => { let laatst = 0, n = 0; for (let t = 1000 / hz; t <= s * 1000; t += 1000 / hz) { if (!H.beeldOverslaan(t - laatst, rust)) { n++; laatst = t; } } return n; };
+waar('60 Hz: elk beeld getekend (geen beeld weg door een vroege rAF)', teken(60, false) >= 59, teken(60, false));
+waar('120 Hz: hoogstens 60 per seconde', teken(120, false) <= 61 && teken(120, false) >= 59, teken(120, false));
+waar('90 Hz: niet boven 60', teken(90, false) <= 60, teken(90, false));
+waar('in rust op 120 Hz: hoogstens 30', teken(120, true) <= 31 && teken(120, true) >= 29, teken(120, true));
+waar('in rust op 60 Hz: 30', teken(60, true) >= 29 && teken(60, true) <= 31, teken(60, true));
+waar('een vreemde tijd (NaN, negatief) tekent gewoon', !H.beeldOverslaan(NaN, true) && !H.beeldOverslaan(-5, false));
+waar('rust: alleen in de stille scène en pas na RUST_S', H.rustBeeld('stil', H.RUST_S) && !H.rustBeeld('stil', H.RUST_S - .1) && !H.rustBeeld('rijden', 99));
+// Tegenproef: zonder rust tekent 120 Hz er twee keer zoveel als in rust
+waar('tegenproef: rust scheelt de helft', teken(120, false) >= 2 * teken(120, true) - 2, teken(120, false) + ' / ' + teken(120, true));
 let g = []; for (let i = 0; i < H.GRAF_N + 50; i++) g = H.grafBij(g, { t: i });
 waar('de grafiek houdt de laatste minuut', g.length === H.GRAF_N && g[g.length - 1].t === H.GRAF_N + 49);
 const gp = H.gCirkelPunt(3, 0), g0 = H.gCirkelPunt(0, .6);

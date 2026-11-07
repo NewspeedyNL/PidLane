@@ -918,8 +918,11 @@ function _monChipTick(){
   c.style.borderColor=kleur;
 }
 // Chip élke seconde verversen (ook buiten de pane); pane alleen indien zichtbaar
-// — die guard zit in _monTick zelf.
-setInterval(()=>{ try{ _monChipTick(); }catch(e){ console.warn('_monChipTick mislukt:', e); } try{ _monTick(); }catch(e){ console.warn('_monTick mislukt:', e); } },1000);
+// — die guard zit in _monTick zelf. Alleen zolang de app in beeld is (#691).
+(function(){
+  const tik=()=>{ try{ _monChipTick(); }catch(e){ console.warn('_monChipTick mislukt:', e); } try{ _monTick(); }catch(e){ console.warn('_monTick mislukt:', e); } };
+  if(typeof window!=='undefined' && window.PLRust) PLRust.elke(1000, tik, 'monitorchip'); else setInterval(tik, 1000);
+})();
 
 /* Welke testgroepen horen bij deze auto? Twee vragen, niet één (07-10-2026).
 
