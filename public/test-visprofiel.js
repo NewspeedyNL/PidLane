@@ -247,7 +247,7 @@ console.log('\n9. Diesel: andere sensoren op dezelfde weergaven (#393)');
   waar('diesel: 3000 tpm is de helft van de ring (schaal 6000)', els['vpf-f-toeren'].attr['stroke-dasharray'] === '37.5 100', els['vpf-f-toeren'].attr['stroke-dasharray']);
   waar('diesel: de neonring zegt "Gaspedaal"', /Gaspedaal/.test(P.html('motor', mD)));
   waar('zonder motorsoort (onbekend) is het de benzinekaart', P.indeling('emissie', alles).plekken.lambda === '0124');
-  const Tm = laad(BRON.replace("  if(motor!=='diesel') return hier;", "  return hier;")).PLVisProfiel;
+  const Tm = laad(BRON.replace("  if(motor==='diesel' || dieselHybride(motor))", "  if(false)")).PLVisProfiel;
   waar('tegenproef: zonder dieselplekken staat er weer lambda op een diesel', 'lambda' in Tm.indeling('emissie', alles, 'diesel').plekken);
   const Tk = laad(BRON.replace("  const p=voor(id, motor, opts && opts.ruim ? '*' : standNu());", "  const p=zoek(id);")).PLVisProfiel;
   waar('tegenproef: ketens zonder motor zetten de roetfilter-PIDs niet aan', !Tk.ketens('emissie', 'diesel').some(k => k.indexOf('017A') >= 0)

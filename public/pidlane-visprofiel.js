@@ -63,7 +63,18 @@ const PROFIELEN = [
     plekken:[
       { rol:'koel',   naam:'Koelwater',   kort:'Koel',    keten:['0105','0167'], eenheid:'°', soort:'thermo', lo:40, hi:130, dec:0 },
       { rol:'olie',   naam:'Motorolie',   kort:'Olie',    keten:['015C'],        eenheid:'°', soort:'thermo', lo:40, hi:150, dec:0, zoek:/olie|oil/i },
-      { rol:'inlaat', naam:'Inlaatlucht', kort:'Inlaat',  keten:['010F','0168'],        eenheid:'°', soort:'thermo', lo:-20, hi:80, dec:0 },
+      { rol:'inlaat', naam:'Inlaatlucht', kort:'Inlaat',  keten:['010F','0168'],        eenheid:'°', soort:'thermo', lo:-20, hi:80, dec:0,
+        // Hybride (07-11-2026): de aandrijfaccu en de inverter zijn de
+        // temperaturen die ertoe doen, en standaard-OBD heeft ze niet. De
+        // fabriekscodes van OBDb (Toyota, Kia) wel: de naam zoekt ze op.
+        // Geen treffer? Dan de inlaatlucht, zoals op elke auto.
+        elektrisch:{ rol:'hvtemp', naam:'Aandrijfaccu', kort:'HV-accu', keten:['010F','0168'], lo:-20, hi:70,
+          // Echte OBDb-namen: Kia "HV battery temperature, maximum", Toyota
+          // "Battery temperature TB1" / "Battery temperature 01", Corolla
+          // "Generator inverter temperature". Níét de 12V-accusensor (Kia
+          // "Battery temperature, battery sensor").
+          zoekEerst:true,
+          zoek:/^(?!.*(12 ?v|\baux|battery sensor|hulpaccu)).*((hv|hybrid|hybride|traction|tractie|high voltage|aandrijf)\b.*(batt|accu).*temp|battery temperature (tb\d|\d\d)|inverter.*temp)/i } },
       { rol:'buiten', naam:'Buiten',      kort:'Buiten',  keten:['0146'],        eenheid:'°', soort:'thermo', lo:-20, hi:45, dec:0, zoek:/buiten|omgeving|ambient|outside/i },
       { rol:'kat',    naam:'Katalysator', kort:'Kat',     keten:['013C','013E','017C'], eenheid:'°', soort:'thermo', lo:100, hi:950, dec:0,
         diesel:{ rol:'uitlaat', naam:'Uitlaatgas', kort:'Uitlaat', keten:['0178','017C','013C'], hi:700 } }
@@ -106,7 +117,10 @@ const PROFIELEN = [
     ] },
   { id:'verbruik', naam:'Verbruik', stijl:'digitaal', ondertitel:'Digitaal',
     plekken:[
-      { rol:'nu',     naam:'Verbruik nu', keten:['CA03','015E','CA02'], eenheid:'', soort:'segment', lo:0, hi:20, dec:1, groot:true },
+      { rol:'nu',     naam:'Verbruik nu', keten:['CA03','015E','CA02'], eenheid:'', soort:'segment', lo:0, hi:20, dec:1, groot:true,
+        // Hybride (07-11-2026): op de accu stond hier 0,0 — waar, maar het
+        // leest als een kapotte meting. EV zegt wat er gebeurt.
+        elektrisch:{ evTekst:'EV' } },
       { rol:'snel',   naam:'Snelheid',    keten:['010D'], eenheid:'km/u', soort:'getal', lo:0, hi:200, dec:0 },
       { rol:'pedaal', naam:'Gaspedaal',   keten:['0149','015A','014A','0111'], eenheid:'%', soort:'segment', lo:0, hi:100, dec:0 },
       { rol:'maf',    naam:'Luchtmassa',  keten:['0110'], eenheid:'g/s', soort:'segment', lo:0, hi:150, dec:1,
@@ -172,7 +186,13 @@ const PROFIELEN = [
   // de basismeter (#393).
   { id:'hyperlane', naam:'Hyperlane', stijl:'hyper', ondertitel:'Neon-tunnel',
     plekken:[
-      { rol:'toeren', naam:'Toerental', keten:['010C'], eenheid:'rpm', soort:'hyper', lo:0, hi:8000, dec:0, diesel:{ hi:6000 } },
+      { rol:'toeren', naam:'Toerental', keten:['010C'], eenheid:'rpm', soort:'hyper', lo:0, hi:8000, dec:0, diesel:{ hi:6000 },
+        // Hybride (07-11-2026): de grote ring is de vermogensvraag (CA18):
+        // rechts van nul wat je vraagt, links terugwinnen — net als de
+        // energiering van Slim visueel. Toerental staat de helft van de tijd
+        // op 0 en zegt dan niets. `eigenRing`: een getal met een eigen schaal,
+        // niet het toerental voor kleur, begrenzer of power-up.
+        elektrisch:{ naam:'Vermogen', kort:'Vermogen', keten:['CA18','010C'], eenheid:'%', lo:-50, hi:100, dec:0, eigenRing:true } },
       { rol:'snel',   naam:'Snelheid',  keten:['010D'], eenheid:'km/h', soort:'hyper', lo:0, hi:240, dec:0 },
       { rol:'koel',   naam:'Koelwater', kort:'Koelw', keten:['0105','0167'], eenheid:'°C', soort:'hyper', lo:40, hi:130, dec:0 },
       { rol:'gas',    naam:'Gaspedaal', kort:'Gas', keten:['0149','015A','014A','0111'], eenheid:'%', soort:'hyper', lo:0, hi:100, dec:0 },
@@ -240,14 +260,28 @@ function cockpitNu(){
   try{ return !!(window.PLHyperlane && typeof PLHyperlane.cockpitNu==='function' && PLHyperlane.cockpitNu()); }
   catch(e){ console.warn('PLVisProfiel: cockpit onbekend — telefoonindeling', e); return false; }
 }
+/* Is de verbrandingsmotor van deze hybride een diesel? (aandrijfProfiel,
+   07-11-2026) Een diesel-hybride kreeg hier lambda en trims in plaats van
+   roetfilter en AdBlue, omdat 'hybride' de diesel verstopte. */
+function dieselHybride(motor){
+  if(!elektrisch(motor) || typeof aandrijfProfielLive!=='function') return false;
+  try{ return aandrijfProfielLive().verbranding==='diesel'; }
+  catch(e){ console.warn('PLVisProfiel: verbranding onleesbaar — benzineplekken', e); return false; }
+}
 function plekkenVan(p, motor, stand){
   if(!p || !p.plekken) return null;
   if(elektrisch(motor) && p.hybride) return p.hybride.plekken;
   const st=stand || 'auto', ck=p.id==='hyperlane' && cockpitNu();
-  const hier=p.plekken.filter(function(x){ return x.cockpit ? ck : (ck || inStand(x, st)); });
-  if(motor!=='diesel') return hier;
-  return hier.filter(function(x){ return x.diesel!==false; })
-    .map(function(x){ return x.diesel ? Object.assign({}, x, x.diesel) : x; });
+  let hier=p.plekken.filter(function(x){ return x.cockpit ? ck : (ck || inStand(x, st)); });
+  if(motor==='diesel' || dieselHybride(motor))
+    hier=hier.filter(function(x){ return x.diesel!==false; })
+      .map(function(x){ return x.diesel ? Object.assign({}, x, x.diesel) : x; });
+  // Een auto die elektrisch rijdt: per plek een eigen variant (07-11-2026),
+  // naast de eigen lijst van Motor (p.hybride) — waar de grootheid dezelfde
+  // blijft maar een andere bron beter past.
+  if(elektrisch(motor))
+    hier=hier.map(function(x){ return x.elektrisch ? Object.assign({}, x, x.elektrisch) : x; });
+  return hier;
 }
 /* Het profiel zoals deze motor het ziet: dezelfde velden, andere plekken. */
 /* `stand` mag weg: dan de stand die nu gekozen is (standNu()). */
@@ -319,10 +353,14 @@ const RESERVE_SOORT = ['thermo', 'balk'];
 function ketenVan(id, x, opts, reserve){
   const k=[], kz=opts && opts.keuze && opts.keuze[id+'/'+x.rol];
   if(kz) k.push(kz);
-  x.keten.forEach(function(q){ if(k.indexOf(q)<0) k.push(q); });
-  if(x.zoek && opts && Array.isArray(opts.defs)) opts.defs.forEach(function(d){
+  const zoekHits=function(){ if(x.zoek && opts && Array.isArray(opts.defs)) opts.defs.forEach(function(d){
     if(d && d.pid && k.indexOf(d.pid)<0 && x.zoek.test(String(d.name||''))) k.push(d.pid);
-  });
+  }); };
+  // zoekEerst (07-11-2026): de naam is de betere bron, de keten de terugval
+  // (de HV-accu van een hybride, met de inlaatlucht als die er niet is).
+  if(x.zoekEerst) zoekHits();
+  x.keten.forEach(function(q){ if(k.indexOf(q)<0) k.push(q); });
+  if(!x.zoekEerst) zoekHits();
   // Alleen een balk of buis: een lambdaschaal of een trim vanuit het midden met
   // een temperatuur erin zegt iets anders dan hij toont.
   if(RESERVE_SOORT.indexOf(x.soort)>=0) (reserve||[]).forEach(function(r){ if(k.indexOf(r.pid)<0) k.push(r.pid); });
@@ -730,6 +768,12 @@ function html(id, ind){
 
 // ── EEN WAARDE OP ZIJN PLEK ───────────────────────────────────────
 function el(id){ return document.getElementById(id); }
+/* De verbrandingsmotor staat stil terwijl de auto rijdt (PLAandrijving:
+   rijden op de accu). Alleen voor de EV-tekst; zonder aandrijfstatus nee. */
+function motorStil(){
+  try{ const r=window.PLAandrijving && typeof PLAandrijving.laatste==='function' ? PLAandrijving.laatste() : null; return !!(r && r.toestand==='ACCU_RIJDT'); }
+  catch(e){ console.warn('PLVisProfiel: aandrijving onleesbaar — het getal in plaats van EV', e); return false; }
+}
 function zetTekst(id, t){ const e=el(id); if(e && e.textContent!==t) e.textContent=t; }
 /* `st` = het oordeel (ok/warn/danger/geen), van buiten aangereikt. */
 function bij(id, ind, pid, val, st){
@@ -751,7 +795,7 @@ function bij(id, ind, pid, val, st){
     // De ring van het toerental: 0–8000, op een diesel 0–6000 (#393), net
     // als de schaal van de basismeter.
     // Een stand (aan/uit, versnelling) als woord, zolang er geen eigen weergave op zit.
-    const t=(!w && typeof standTekst==='function' && standTekst(val, pid)) || tekst(vx, x.dec);
+    const t=(x.evTekst && motorStil()) ? x.evTekst : ((!w && typeof standTekst==='function' && standTekst(val, pid)) || tekst(vx, x.dec));
     // In een buis staat de eenheid achter het getal (90°); elders heeft hij een eigen vakje.
     zetTekst('vpf-w-'+x.rol, x.soort==='thermo' && t!=='—' ? t+x.eenheid : t);
     const f=el('vpf-f-'+x.rol), plek=el('vpf-p-'+x.rol);
@@ -761,7 +805,7 @@ function bij(id, ind, pid, val, st){
     // Hyperlane tekent zelf, vloeiend: hier alleen de waarde doorgeven.
     // Hyperlane tekent zelf; een vervangen plek telt alleen als getal, niet als
     // gas, koelwater of snelheid in de scènes (27-10-2026).
-    if(x.soort==='hyper'){ if(window.PLHyperlane) PLHyperlane.zet(x.rol, vx, st, !!(ind.vervang && ind.vervang[x.rol]) || !!(w && w.factor)); return; }
+    if(x.soort==='hyper'){ if(window.PLHyperlane) PLHyperlane.zet(x.rol, vx, st, !!(ind.vervang && ind.vervang[x.rol]) || !!(w && w.factor) || !!x.eigenRing); return; }
     if(!f) return;
     const v=d===null ? 0 : d;
     if(x.soort==='thermo') f.style.height=v.toFixed(1)+'%';
