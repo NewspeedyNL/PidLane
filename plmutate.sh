@@ -2724,7 +2724,7 @@ MUTATIES=(
 "public/pidlane-verzamel.js@@ && v >= kmh && acc.v >= kmh) acc.ms += t - acc.t;@@ && v >= kmh && acc.v >= kmh) acc.ms += 0;@@test-totaalcheck.js@@het verzamelscherm telt zijn eigen rijtijd niet meer"
 "public/pidlane-verzamel.js@@      const blijft = b => b >= 2 || vs.length < 10;@@      const blijft = b => true;@@test-totaalcheck.js@@één trimpiek van 10,2 % staat weer als let op"
 "public/pidlane-kwaliteit.js@@['0C','0D','04','11','0B','10','06','14','24','34']@@['0C','0D','04','11','0B','10','06','07','14','24','34']@@test-totaalcheck.js@@een langetermijntrim die vast staat heet weer een bevroren sensor"
-"public/pidlane-kwaliteit.js@@ && !(stilNu && (kort==='0D'||kort==='11'));@@;@@test-totaalcheck.js@@gasklep 11 % bij stationair heet weer vastgelopen"
+"public/pidlane-kwaliteit.js@@ && !(stilNu && (kort==='0D'||kort==='11')) && !motorUitMag;@@ && !motorUitMag;@@test-totaalcheck.js@@gasklep 11 % bij stationair heet weer vastgelopen"
 "public/pidlane-kwaliteit.js@@        motorUitMag=stilNu || rijdendUit;@@        motorUitMag=true;@@test-motoruit.js@@toerental 0 bij 50 km/h op een gewone benzineauto heet niet meer verdacht"
 "public/pidlane-kwaliteit.js@@ && !(stilNu && (kort==='0D'||kort==='11')) && !motorUitMag;@@ && !(stilNu && (kort==='0D'||kort==='11'));@@test-motoruit.js@@een hybride op de accu heet weer een dode toerentalsensor"
 "public/pidlane-samenhang.js@@    const ect = traag(tl, '0105', i);@@    const ect = v('0105');@@test-samenhang.js@@een warme motor met traag koelwater rijdt weer koud"
