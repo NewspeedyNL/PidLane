@@ -180,7 +180,10 @@ function toets(naam, waar, uitleg) {
         r.graf = !!el().querySelector('.vhl-score-graf polyline'); r.bewaard = PLHyperlane.leesRuns().length;
         el().click(); await wacht(1500); r.dichtNaTik = !aan();
         v().querySelector('.vhl-ritknop').click();
-        for (let i = 0; i < 25 && !aan(); i++) await wacht(200);
+        // Wachten op de kop van de hele rit, niet alleen op een open bord: op
+        // een drukke runner stond het bord al open met de vorige kop (RUN).
+        const kopNu = () => (el().querySelector('.vhl-score-kop') || {}).textContent || '';
+        for (let i = 0; i < 25 && !(aan() && /^RIT/.test(kopNu())); i++) await wacht(200);
         r.hand = aan(); r.kopHand = (el().querySelector('.vhl-score-kop') || {}).textContent || '';
         v().querySelector('.vhl-ritknop').click(); await wacht(1500); r.dichtNaKnop = !aan();
         return r;

@@ -121,6 +121,9 @@ function laad(o) {
     toets('stille stand, geen snelle', s._plHervat && s._plHervat.stil === true && !s._plHervat.snel, JSON.stringify(s._plHervat));
     toets('het verbindscherm is dicht', s.klassen.has('pl-stil'));
     toets('de stand duurt langer dan een hervatting (eerste scan)', s._plHervat.ms > 180000, String(s._plHervat.ms));
+    // Gedrag, niet alleen het getal: na vier minuten nog steeds stil.
+    s._plHervat.t = Date.now() - 240000;
+    toets('na vier minuten volle scan nog steeds stil, geen vensters', vm.runInContext('_hervatActief() && _isStil()', s) === true);
     toets('het kenteken komt ná het verbinden', vm.runInContext('_kentNaVerbinden()', s) === true);
   }
   {
@@ -129,6 +132,8 @@ function laad(o) {
     await s.connectSerial({ hervat: 'dode socket' });
     toets('TEGENPROEF: een hervatting is niet stil', s._plHervat && !s._plHervat.stil && s._plHervat.reden === 'dode socket', JSON.stringify(s._plHervat));
     toets('TEGENPROEF: en vraagt het kenteken niet na', vm.runInContext('_kentNaVerbinden()', s) === false);
+    s._plHervat.t = Date.now() - 240000;
+    toets('TEGENPROEF: een hervatting vervalt na drie minuten', vm.runInContext('_hervatActief()', s) === false);
   }
 
   console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' toetsen ok'));
