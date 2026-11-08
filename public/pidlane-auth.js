@@ -339,7 +339,17 @@ function finishLogin(user, account){
     if(lo) lo.classList.add('lg-leave');
     setTimeout(()=>{ if(lo){ lo.classList.add('hidden'); lo.classList.remove('lg-leave'); } }, 260);
   })();
-  document.getElementById('connOv').classList.remove('hidden');
+  // Na het inloggen het hoofdmenu, niet het verbindscherm (08-11-2026): de
+  // app werkt zonder auto. Een bekende adapter krijgt de aftelstrook
+  // (PLStrook), de rest verbindt via de knop. Zonder strook het oude gedrag.
+  if(window.PLStrook){
+    try{ closeConnOv(); }catch(e){ console.warn('Verbindscherm niet gesloten na inloggen:', e); }
+    try{ if(typeof goHome==='function') goHome(); }catch(e){ console.warn('Hoofdmenu niet geopend na inloggen:', e); }
+    try{ if(PLStrook.verbindMag()) PLStrook.aftellen(function(){ PLStrook.verbind(); }); }
+    catch(e){ console.warn('Aftellen naar verbinden niet gestart:', e); }
+  } else {
+    document.getElementById('connOv').classList.remove('hidden');
+  }
 
   // Verberg API key veld in connect modal — niet nodig na login
   const apiRow = document.getElementById('connApiRow');

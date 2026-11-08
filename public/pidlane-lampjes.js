@@ -424,7 +424,7 @@
 
   function verbind() {
     sluit();
-    try { document.getElementById('connOv').classList.remove('hidden'); }
+    try { if (typeof plVerbindOpen === 'function') plVerbindOpen(); else document.getElementById('connOv').classList.remove('hidden'); }
     catch (e) { console.warn('PLLampjes: verbindscherm opent niet', e); }
   }
 

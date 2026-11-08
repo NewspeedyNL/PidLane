@@ -10,6 +10,25 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 08-11-2026 — Verbinden zonder vensters; na het inloggen het hoofdmenu
+ ═══════════════════════════════════════════════════════════
+
+ - Na het inloggen kom je in het hoofdmenu in plaats van het verbindscherm.
+   Met een adapter die al eens verbond telt een strook bovenin vijf seconden
+   af (Nu verbinden, Annuleren, vinkje "altijd automatisch"); dat geldt ook
+   bij het openen van de app.
+ - Verbinden met de knop stelt geen vragen meer: geen kentekenstap vóór het
+   protocol, geen "voertuig bekend, overslaan?", geen samenvatting, geen
+   keuze Inrichten/Meteen rijden en geen Check-venster. De nieuwe strook
+   (PLStrook) toont Adapter, Protocol, Auto, Klaarzetten en Foutcodes met
+   een vinkje en klapt in als alles goed staat.
+ - Kenteken van een nieuwe auto: in de strook, alleen in stilstand. De
+   foutcodes worden één keer per auto per dag stil gelezen en vastgelegd;
+   een rode of oranje regel opent Check mijn auto.
+ - Lukt een stap niet zonder vraag (geen protocol herkend, adapter stil),
+   dan komt het verbindscherm terug zoals vroeger.
+
+ ═══════════════════════════════════════════════════════════
  07-11-2026 — Ritten zonder onmogelijke uitersten; mild hybride tot 15 kW
  ═══════════════════════════════════════════════════════════
 

@@ -15,6 +15,31 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 08-11-2026 — Verbinden zonder vensters
+
+**Waarom.** Verbinden was tot zeven vensters na elkaar: adapter, kenteken
+vóór het protocol, protocolkeuze, "voertuig bekend, overslaan?", Inrichten of
+Meteen rijden, de samenvatting en het Check-venster. De snelle stand van
+19-10-2026 haalde dat voor een bekende auto al weg; nu is die stil voor elke
+verbinding met de knop (`_plHervat.stil`), met de strook als enige weergave.
+
+**Wat bewust níét stil is.** Geen protocol herkend en de adapter die zwijgt
+vallen terug op het verbindscherm (`_snelUit()`): daar moet een mens kiezen.
+De Bluetooth-keuze van Android de eerste keer blijft, en in de browser vraagt
+Chrome de poort bij elke verbinding — daar opent `plVerbindOpen()` dus altijd
+het verbindscherm.
+
+**Twee valkuilen die de proeven vingen.** `vehicleInfo` staat met `let` in
+`pidlane-btflow.js` en is dus geen `window`-eigenschap; de strook leest hem
+met `typeof`. En een eerste verbinding met volle scan duurt langer dan de
+drie minuten van een hervatting (`HERVAT_MS`): zonder `STIL_MS` viel hij
+halverwege terug op de vensters.
+
+**Open.** Een eerste verbinding met een buitenlandse auto zonder VIN uit
+0902: de strook vraagt het kenteken, maar het RDW kent hem niet. Dan blijft
+Auto oranje; de klant kiest Later. Rijden kan, de brandstofzeef is dan
+onzeker. Of dat in de praktijk vaak voorkomt, zegt pas een rit.
+
 ## 07-11-2026 (avond) — "max 255 km/u": de rand van de codering als meting
 
 **Gevonden in de data van een klant** (D1, Jeep Avenger 2025): twee ritten

@@ -327,7 +327,17 @@ document.addEventListener('DOMContentLoaded', function(){
             if(connected) return;
             if(getSPP()){
               log('Automatisch herverbinden...','info');
-              setTimeout(()=>{ if(!connected) connectSerial({ hervat: 'herlaad' }); },800);
+              // Met aftellen en Annuleren (PLStrook, 08-11-2026); "altijd
+              // automatisch" verbindt meteen.
+              const ga=()=>{ if(!connected) connectSerial({ hervat: 'herlaad' }); };
+              setTimeout(()=>{
+                if(connected) return;
+                if(window.PLStrook){
+                  try{ PLStrook.aftellen(ga); return; }
+                  catch(e){ console.warn('Aftellen niet gestart — meteen verbinden:', e); }
+                }
+                ga();
+              },800);
               return;
             }
             if(n<3) setTimeout(()=>probeer(n+1),1000);

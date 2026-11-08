@@ -120,7 +120,9 @@ function laad(o) {
     const { s } = laad({ lukt: true });
     s._plHervat = { t: Date.now(), reden: 'oud' };
     await s.connectSerial({ type: 'click' });
-    toets('TEGENPROEF: de knop (of een klik-event) wist hem — die vraagt zoals altijd', s._plHervat === null,
+    // Sinds 08-11-2026 vraagt de knop niets meer (stil verbinden, PLStrook),
+    // maar de hervatting van daarvóór is wél weg: de knop is een nieuwe start.
+    toets('TEGENPROEF: de knop (of een klik-event) wist de oude hervatting en verbindt stil', !!s._plHervat && s._plHervat.reden !== 'oud' && s._plHervat.stil === true,
       JSON.stringify(s._plHervat));
   }
   {

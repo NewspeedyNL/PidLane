@@ -410,6 +410,8 @@ function obdChipTap(){
     // op niets — dan is de chip een dode knop, en daar controleert blok 5 op.
     const info=_connSpeed?('⚡ '+_connSpeed.readsPerSec+' reads/s · 📡 '+_connSpeed.pids+' PIDs\n\n'):'';
     if(confirm(info+(demoMode?'Demo modus stoppen?':'OBD-verbinding verbreken?'))) handleConnect();
+  } else if(typeof plVerbindOpen==='function'){
+    plVerbindOpen();   // bekende adapter: stil verbinden; anders het verbindscherm
   } else {
     document.getElementById('connOv').classList.remove('hidden');
   }
@@ -459,6 +461,8 @@ async function handleConnect(){
     try{ const _vt=document.getElementById('vtag'); if(_vt){ _vt.style.display='none'; _vt.dataset.naam=''; } }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
     pidVals={}; pidHist={}; stabilityCount={}; dataStable=false; window._stabilityT0=null;
     log('Verbinding verbroken','warn');
+  } else if(typeof plVerbindOpen==='function'){
+    plVerbindOpen();
   } else {
     document.getElementById('connOv').classList.remove('hidden');
   }

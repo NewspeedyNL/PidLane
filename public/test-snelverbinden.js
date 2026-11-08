@@ -31,7 +31,7 @@ function knip(kop, staart) {
   }
   return bron.slice(van, tot);
 }
-const snelBron = knip('/* SNEL VERBINDEN', '\n/* Het slot van een hervatting');
+const snelBron = knip('/* HERVATTEN (#229', '\n/* Het slot van een hervatting');
 const serialBron = knip('async function connectSerial(opt){', '\nfunction resetConnectBtn(){');
 
 const BEKEND = { spp_address: '00:04:3E:8B:7B:32', spp_name: 'OBDLink MX+ 90011', pl_lastTransport: 'spp',
@@ -58,7 +58,7 @@ function laad(o) {
     doSPPConnect: () => { s.spp++; return Promise.reject(new Error('Failed to connect to the device')); },
     connectSPP: () => { s.scan++; return Promise.reject(new Error('Geen SPP OBD2-adapter gevonden.')); },
     connectBLE: () => { s.ble++; return Promise.reject(new Error('Geen BLE OBD2-adapter gevonden.')); },
-    showConnError: (m) => { s.fouten.push(m); klassen.delete('pl-snel'); },
+    showConnError: (m) => { s.fouten.push(m); klassen.delete('pl-snel'); klassen.delete('pl-stil'); },
     resetConnectBtn() {}, stopPoll() {},
     console: { warn() {}, log() {}, error() {} }
   };
@@ -91,7 +91,7 @@ function laad(o) {
     toets('één ronde: de directe poging plus zijn herhaling', s.spp === 2, s.spp + ' directe pogingen');
     toets('de melding noemt de pair-knop', s.fouten.length === 1 && /pair-knop/.test(s.fouten[0]), JSON.stringify(s.fouten));
     toets('de stand is weg na een mislukking', s._plHervat === null);
-    toets('het gewone venster staat terug', !s.klassen.has('pl-snel'));
+    toets('het gewone venster staat terug', !s.klassen.has('pl-snel') && !s.klassen.has('pl-stil'));
   }
 
   console.log('\n3. TEGENPROEF: niet ingelogd → de hele keten, twee rondes, gewone melding');
@@ -108,8 +108,32 @@ function laad(o) {
     s.doSPPConnect = () => { s.spp++; vm.runInContext('connected = true', s); return Promise.resolve(); };
     await s.connectSerial();
     toets('verbonden in één poging', s.spp === 1 && vm.runInContext('connected', s) === true, s.spp + ' pogingen');
-    toets('venster in de snelle stand', s.klassen.has('pl-snel'));
+    // Sinds 08-11-2026 is snel ook stil: het venster is dicht, de strook spreekt.
+    toets('venster dicht (stil), niet de oude regel', s.klassen.has('pl-stil') && !s.klassen.has('pl-snel'), [...s.klassen].join(','));
     toets('hervatstand actief met reden "bekende auto"', s._plHervat && s._plHervat.snel === true && s._plHervat.reden === 'bekende auto', JSON.stringify(s._plHervat));
+  }
+
+  console.log('\n5. Stil verbinden (08-11-2026): elke verbinding met de knop, ook zonder bekende auto');
+  {
+    const s = laad({ opslag: {}, ingelogd: false });
+    s.connectBLE = () => { s.ble++; vm.runInContext('connected = true', s); return Promise.resolve(); };
+    await s.connectSerial();
+    toets('stille stand, geen snelle', s._plHervat && s._plHervat.stil === true && !s._plHervat.snel, JSON.stringify(s._plHervat));
+    toets('het verbindscherm is dicht', s.klassen.has('pl-stil'));
+    toets('de stand duurt langer dan een hervatting (eerste scan)', s._plHervat.ms > 180000, String(s._plHervat.ms));
+    // Gedrag, niet alleen het getal: na vier minuten nog steeds stil.
+    s._plHervat.t = Date.now() - 240000;
+    toets('na vier minuten volle scan nog steeds stil, geen vensters', vm.runInContext('_hervatActief() && _isStil()', s) === true);
+    toets('het kenteken komt ná het verbinden', vm.runInContext('_kentNaVerbinden()', s) === true);
+  }
+  {
+    const s = laad({ opslag: BEKEND });
+    s.doSPPConnect = () => { s.spp++; vm.runInContext('connected = true', s); return Promise.resolve(); };
+    await s.connectSerial({ hervat: 'dode socket' });
+    toets('TEGENPROEF: een hervatting is niet stil', s._plHervat && !s._plHervat.stil && s._plHervat.reden === 'dode socket', JSON.stringify(s._plHervat));
+    toets('TEGENPROEF: en vraagt het kenteken niet na', vm.runInContext('_kentNaVerbinden()', s) === false);
+    s._plHervat.t = Date.now() - 240000;
+    toets('TEGENPROEF: een hervatting vervalt na drie minuten', vm.runInContext('_hervatActief()', s) === false);
   }
 
   console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' toetsen ok'));

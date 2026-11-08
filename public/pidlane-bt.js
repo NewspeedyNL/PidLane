@@ -73,9 +73,15 @@ function btEnvDump(){
 const HERVAT_MS = 180000;
 function _hervatActief(){
   const h = window._plHervat;
-  return !!(h && (Date.now() - h.t) < HERVAT_MS);
+  return !!(h && (Date.now() - h.t) < (h.ms || HERVAT_MS));
 }
 function _isOpstart(){ return _hervatActief() && window._plHervat.reden==='opstart'; }
+/* STIL VERBINDEN (08-11-2026): zie STIL_MS bij het snelle verbinden. */
+function _isStil(){ return _hervatActief() && !!window._plHervat.stil; }
+/* Het kenteken komt uit het profiel van deze VIN, en anders ná het verbinden
+   in de strook — niet vóór het protocol. Bij een opstart én bij stil
+   verbinden: in beide gevallen kan het een andere auto zijn dan de vorige. */
+function _kentNaVerbinden(){ return _isOpstart() || _isStil(); }
 
 /* SNEL VERBINDEN (19-10-2026). Ingelogd, een adapter die al eens verbond,
    een bevestigd kenteken, een onthouden protocol en een voertuigprofiel:
@@ -85,6 +91,15 @@ function _isOpstart(){ return _hervatActief() && window._plHervat.reden==='opsta
    geen profiel en draait de scan zoals altijd. Elk punt waar de app iets
    moet vragen (geen protocol, adapter stil, mislukt) zet het gewone
    venster terug via _snelUit(). */
+/* STIL VERBINDEN (08-11-2026). Elke verbinding met de knop loopt zonder
+   vensters, niet alleen de snelle; de voortgang staat in de strook bovenin
+   (PLStrook, pidlane-strook.js). Een eerste verbinding met volle scan duurt
+   langer dan de drie minuten van een hervatting, vandaar STIL_MS. */
+const STIL_MS = 600000;
+function _strook(fn){
+  try{ if(window.PLStrook && !demoMode) fn(window.PLStrook); }
+  catch(e){ btDiag('Verbindstrook niet bijgewerkt: '+(e.message||e),'warn'); }
+}
 function plSnelBekend(lees, sleutels, ingelogd){
   if(!ingelogd) return false;
   if(!lees('spp_address') || !lees('pl_kenteken') || !lees('pl_proto_id')) return false;
@@ -102,14 +117,24 @@ function _snelMag(){
 }
 function _snelScherm(aan){
   const ov=document.getElementById('connOv');
-  if(ov && ov.classList) ov.classList.toggle('pl-snel', !!aan);
+  const stil=!!(window._plHervat && window._plHervat.stil);
+  if(ov && ov.classList){
+    ov.classList.toggle('pl-snel', !!aan && !stil);
+    ov.classList.toggle('pl-stil', !!aan && stil);
+  }
 }
 function _snelUit(reden){
   const h=window._plHervat;
-  if(!(h && h.snel)) return;
+  if(!(h && (h.snel || h.stil))) return;
   window._plHervat=null;
   _snelScherm(false);
-  btDiag('Snel verbinden gestopt: '+reden+' — gewone vensters terug','warn');
+  // Stil verbinden: het verbindscherm was dicht. De vraag moet in beeld.
+  if(h.stil){
+    const ov=document.getElementById('connOv');
+    if(ov) ov.classList.remove('hidden');
+    _strook(function(S){ S.naarVenster('protocol', reden+' — kies in het verbindscherm'); });
+  }
+  btDiag((h.stil?'Stil':'Snel')+' verbinden gestopt: '+reden+' — gewone vensters terug','warn');
 }
 
 /* Het slot van een hervatting. "Klaar voor gebruik" deed twee dingen: een
@@ -147,10 +172,12 @@ async function connectSerial(opt){
     catch(e){ btDiag('Opstart of herlaad niet te bepalen — als hervatting: '+(e.message||e),'warn'); }
   }
   window._plHervat = _reden ? { t: Date.now(), reden: _reden }
-    : (_snelMag() ? { t: Date.now(), reden: 'bekende auto', snel: true } : null);
+    : (_snelMag() ? { t: Date.now(), reden: 'bekende auto', snel: true, stil: true, ms: STIL_MS }
+      : { t: Date.now(), reden: 'stil verbinden', stil: true, ms: STIL_MS });
   window._plKentBevestigd = null;   // rdwLookup() zet hem; saveVinProfile() bewaart hem bij de VIN
   if(_reden==='opstart') btDiag('Opstart: de motor liep al een tijd niet — nieuwe start, zonder vragen','info');
-  _snelScherm(!!(window._plHervat && window._plHervat.snel));
+  _snelScherm(!!(window._plHervat && (window._plHervat.snel || window._plHervat.stil)));
+  _strook(function(S){ S.start(); });
   if(window._plHervat && window._plHervat.snel) btDiag('Snel verbinden: bekende adapter en auto — geen vragen','info');
   // Prominente disclosure vóór álles. Google Play eist dat de gebruiker weet
   // waarom Bluetooth wordt gevraagd vóórdat het systeemdialoog verschijnt —
@@ -333,6 +360,7 @@ async function connectSerial(opt){
           catch(e){ btDiag('Herverbindvlag niet bewaard — na een herlaad verbindt de app niet vanzelf (#229): '+(e.message||e),'warn'); }
           try{ if(window.PLStart) PLStart.gelukt(label); }
           catch(e){ btDiag('Startscherm (gelukt) mislukt: '+(e.message||e),'warn'); }
+          _strook(function(S){ S.stap('adapter','ok', (window._sppConn&&window._sppConn.name) || label); S.stap('protocol','bezig','zoeken — contact aan'); });
           return;
         }
         btDiag(`${label}: geen verbinding — volgende transport`, 'warn');
@@ -1786,7 +1814,14 @@ function pulseConnGate(){
 // → ALL_PID_DEFS verplaatst naar pidlane-data.js
 
 function showConnError(msg){
+  const _stilFout = !!(window.PLStrook && PLStrook.actief() && !demoMode);
   _snelScherm(false);
+  if(_stilFout){
+    // Stil verbinden: de fout in de strook, het verbindscherm blijft dicht
+    // (Details opent het).
+    _strook(function(S){ S.fout(msg); });
+    const ov=document.getElementById('connOv'); if(ov) ov.classList.add('hidden');
+  }
   document.getElementById('step1').style.display='';
   document.getElementById('step2').style.display='none';
   document.getElementById('step3').style.display='none';
@@ -2518,9 +2553,9 @@ function toonKentekenStap(){
     try{ inp.focus(); inp.select(); }catch(e){ /* stil: focus mag falen op een verborgen veld */ }
     // Opstart (27-10-2026): geen vraag, en ook niet het vorige kenteken — dit
     // kan een andere auto zijn. Het kenteken volgt uit de VIN (PLOpstart.naVin).
-    if(_isOpstart()){
+    if(_kentNaVerbinden()){
       if(inp) inp.value='';
-      btDiag('Opstart: kentekenstap overgeslagen — het kenteken volgt uit de VIN','info');
+      btDiag((_isOpstart()?'Opstart':'Stil verbinden')+': kentekenstap overgeslagen — het kenteken volgt uit de VIN','info');
       _kentPoortKlaar=true;
       scanNetworks();
       return;
@@ -2639,6 +2674,7 @@ async function scanNetworks(){
     log(`Protocol: ${protoName} (${protoResp})`,'ok');
     btDiag(`Protocol gevonden: ${protoName}`,'ok');
     _onthoudProtocol(protoResp);   // zodat een herverbinding niet terugvalt op AUTO
+    _strook(function(S){ S.stap('protocol','ok', protoName); });
     // Inventaris opschonen zodra bekend is wat de auto levert + welk type het is.
     // Heette purgeImplausiblePids(); die functie is in ronde 5b vervangen door
     // herijkPidGate(), maar deze aanroep bleef staan — binnen een stille catch,
@@ -2692,6 +2728,7 @@ async function scanNetworks(){
    beter weet kan toch zelf een protocol kiezen. */
 function toonAdapterStil(){
   _snelUit('adapter antwoordt niet op 0100');
+  _strook(function(S){ S.fout('De adapter reageert niet.\nZet hem aan of op pair en tik op Opnieuw.'); });
   btDiag('Adapter reageert niet op 0100 en ATI — geen protocolkeuze, maar opnieuw verbinden','warn');
   document.getElementById('step2Title').textContent='Adapter reageert niet';
   document.getElementById('step2Sub').textContent='Zet de adapter aan of op pair, en verbind opnieuw. Een protocol kiezen helpt hier niet.';
@@ -2953,18 +2990,19 @@ async function startDiscovery(){
   }
 
   // VIN uitlezen
+  _strook(function(S){ S.stap('protocol','ok'); S.stap('auto','bezig','VIN lezen'); });
   addProg('🔍','VIN uitlezen...');
   const vinInfo=await tryReadVIN();
   if(vinInfo?.vin){
     try{ await PLVerbind.naVin(vinInfo.vin); }
     catch(e){ btDiag('Verbindprofiel-geheugen overgeslagen: '+(e.message||e),'warn'); }
   }
-  if(vinInfo?.vin && _isOpstart() && window.PLOpstart){
+  if(vinInfo?.vin && _kentNaVerbinden() && window.PLOpstart){
     // Opstart: het kenteken uit het profiel van deze VIN, vóór de
     // brandstofpoort, zodat die het niet hoeft te vragen. Hoogstens 8 s.
     try{ await Promise.race([PLOpstart.naVin(vinInfo.vin), delay(8000)]); }
     catch(e){ btDiag('Opstart: kenteken uit het profiel niet opgehaald: '+(e.message||e),'warn'); }
-  } else if(!vinInfo?.vin && _isOpstart()){
+  } else if(!vinInfo?.vin && _kentNaVerbinden()){
     window._plKentNaCheck = true;
   }
   if(vinInfo?.vin){
@@ -3045,6 +3083,11 @@ async function startDiscovery(){
     }
   }catch(e){ btDiag('Brandstofpoort overgeslagen: '+(e.message||e), 'warn'); }
 
+  _strook(function(S){
+    if(window._plKentNaCheck) S.stap('auto','let', vinInfo?.vin ? 'nieuwe auto — kenteken volgt' : 'geen VIN — kenteken volgt');
+    else S.stap('auto','ok', S.autoTekst());
+    S.stap('klaar','bezig', supportedPIDs.size+' sensoren nakijken');
+  });
   // Eerste gezondheidsscan: lees elke PID 1x en beoordeel of die gezond/bij
   // de auto hoort. Ongezonde/dode PIDs worden in de lijst uitgegrijsd.
   //
@@ -3159,11 +3202,26 @@ async function startDiscovery(){
   // Hervatten: geen samenvatting om weg te tikken, wel wat wizFinish() doet.
   const _hervat = _hervatActief() ? window._plHervat : null;
   window._plHervat = null;
-  if(_hervat){
+  if(_hervat && _hervat.stil && !usedProfile){
+    // Stil verbinden met een auto zonder profiel: de standaardset, zoals na
+    // "Meteen rijden". Een bewaarde selectie hoort bij een andere auto.
+    try{ if(!demoMode) selectStandardSet(); wizFinish(); }
+    catch(e){ btDiag('Stil verbinden: standaardset niet gezet — kies sensoren met de hand: '+(e.message||e),'warn'); }
+  } else if(_hervat){
     _hervatAfronden(_hervat);
-    // Een opstart en een snelle verbinding met de knop zijn nieuwe sessies:
-    // de check (één keer per auto per dag). Een echte hervatting niet.
-    if(_hervat.reden==='opstart' || _hervat.snel){
+  }
+  if(_hervat && window.PLStrook && !demoMode){
+    // Geen samenvatting, geen keuzevenster, geen Check-venster: de strook
+    // zegt wat er klaarstaat, leest de foutcodes stil en vraagt zo nodig
+    // het kenteken (in stilstand). Inrichten staat in Meer.
+    const _echteHervat = !_hervat.stil && _hervat.reden!=='opstart';
+    _strook(function(S){
+      S.stap('klaar','ok', discoveredPIDDefs.length+' sensoren');
+      S.naVerbinding({ hervat:_echteHervat, opstart:_hervat.reden==='opstart' });
+    });
+  } else if(_hervat){
+    // Zonder strook (module niet geladen): het oude gedrag.
+    if(_hervat.reden==='opstart' || _hervat.snel || _hervat.stil){
       try{ if(window.PLNav) PLNav.naVerbinding({ opstart: _hervat.reden==='opstart' }); }
       catch(e){ btDiag('Automatische check niet gestart — tik zelf op Check mijn auto: '+(e.message||e),'warn'); }
     }

@@ -2848,6 +2848,28 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Verbinden zonder vensters (08-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Verbinden met de knop loopt stil: de strook bovenin toont Adapter, Protocol, Auto, Klaarzetten en Foutcodes, zonder samenvatting, keuze Inrichten of Check-venster; foutcodes één keer per auto per dag, kenteken alleen in stilstand',
+    waarom: 'Verbinden was venster na venster. Valt de strook of de stille stand weg in de draaiende app, dan komen de vensters stil terug, of verbindt de knop met een bekende adapter niet meer.',
+    proef: async function () {
+      if (!window.PLStrook || typeof window.plVerbindOpen !== 'function') return { staat: 'FOUT', detail: 'PLStrook of plVerbindOpen ontbreekt — herladen?' };
+      if (!window.PLFoutcodes || typeof PLFoutcodes.scanStil !== 'function') return { staat: 'FOUT', detail: 'PLFoutcodes.scanStil ontbreekt' };
+      if (typeof _kentNaVerbinden !== 'function') return { staat: 'FOUT', detail: '_kentNaVerbinden ontbreekt in pidlane-bt.js' };
+      var K = PLStrook._kern;
+      if (K.magKentekenVragen(60)) return { staat: 'FOUT', detail: 'het kentekenveld zou ook tijdens het rijden verschijnen' };
+      if (K.foutcodeRegel({ kleur: 'grijs' }).status === 'ok') return { staat: 'FOUT', detail: 'niet gelezen krijgt een vinkje' };
+      var ov = document.getElementById('connOv');
+      if (ov) { ov.classList.add('pl-stil'); var weg = getComputedStyle(ov).display === 'none'; ov.classList.remove('pl-stil'); if (!weg) return { staat: 'FOUT', detail: '#connOv.pl-stil is zichtbaar — de stylesheet mist de regel' }; }
+      var st = PLStrook.staat();
+      var detail = 'altijd automatisch ' + (PLStrook.altijd() ? 'aan' : 'uit');
+      if (st.st) detail += '; laatste verbinding: ' + st.st.stappen.map(function (x) { return x.naam + ' ' + x.status; }).join(', ');
+      if (!connected) return { staat: 'LET OP', detail: 'niet verbonden — alleen de bedrading gecontroleerd; ' + detail };
+      return { staat: 'OK', detail: detail };
+    }
+  },
+
   // ── Alles volgt de aandrijving (07-11-2026) ──
   {
     issue: '—',

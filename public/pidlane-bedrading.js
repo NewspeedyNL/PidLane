@@ -36,7 +36,7 @@
 // `typeof X === 'function'` doet: dat zijn precies de aanroepen die stil falen.
 var KRITIEK = [
   '_niceReportName','aiBusyBegin','aiBusyEnd','_srUpdateBadge','_noteMap','_recStats',
-  'appBack','btDiag','btLogAfkappen','btLogDomAfkappen','sppOudeSluiten','isObdNaam','plSnelBekend','_pollWacht','buildDiscoveredPIDList',
+  'appBack','btDiag','btLogAfkappen','btLogDomAfkappen','sppOudeSluiten','isObdNaam','plSnelBekend','_kentNaVerbinden','plVerbindOpen','_pollWacht','buildDiscoveredPIDList',
   'clearDTC','clearSLAutoHide','closeCaravanDash','closeKebab','closeLades','closeRitAnalyse',
   'demo','detectEngineType','disconnectWebSerial','doLogin','download','dtcInfo','dtcPlan',
   // obdChipTap erbij op 06-11-2026: "Verbind adapter" op het startscherm (PLThuis) opent er het verbindscherm mee.
