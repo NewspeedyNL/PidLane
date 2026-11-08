@@ -15,6 +15,77 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 08-11-2026 (avond) — Stil verbinden tegen de oude strategie: de kentekenpoort was een mens
+
+**De vraag.** Wizard, nieuwe volgorde, sensoren per voertuig, kenteken en VIN
+centraal: botst dat met wat er stond? Nagelopen op `main` na #700.
+
+**De basis die verschoof.** Tot 08-11 bevestigde bij elke verbinding met de
+knop een mens het kenteken (`#stepKent`, voorgevuld met "controleer of dit de
+auto is waar je nu in zit"). `pl_kenteken` betekende daardoor "de auto aan de
+adapter". Minstens zes plekken leunen op die betekenis zonder het te zeggen:
+`updateVehicleCard()` (automatische `rdwLookup()`), `brandstofPoort()` stap 1,
+`PLGarage.inrichtVoertuig()` (actief voertuig alleen als het kenteken klopt),
+`voorinvulNieuw()`, `welkomFoto()`, rapport/export/dossier. Stil verbinden haalt
+de mens weg maar laat `pl_kenteken` als globale waarheid staan. De VIN is de
+nieuwe sleutel (`pl_vinprof_<VIN>`), het kenteken is nog de oude — twee
+identiteiten, en bij een nieuwe auto wint de verkeerde.
+
+**Nagebouwd (browserproef, nep-CX-5 uit de vloot, `pl_kenteken=OUD123` van een
+vorige auto, stil verbinden).** `PLOpstart.naVin()` vraagt voor de onbekende
+VIN terecht niets op. Maar `updateVehicleCard()` ziet `!vehicleInfo.model`
+(NHTSA geeft voor een Europese of Japanse auto vaak alleen het merk) en zoekt
+`OUD123` zes keer op. Uitkomst: de Mazda heet *Peugeot 208, diesel*,
+`vehicleFuelType()` = diesel, `_plKentBevestigd` = OUD123, en
+`pl_vinprof_<VIN van de Mazda>` bewaart `kenteken: OUD123`. Vanaf de volgende
+verbinding haalt `naVin()` dat kenteken uit het profiel en vraagt niets meer:
+de verkeerde koppeling is blijvend. De strook toont wel "kenteken nodig", maar
+Later of wegrijden laat het zo. Dit is precies "de plaat van gisteren op de
+auto van nu" die de kentekenstap in `pidlane-bt.js` documenteert.
+`test-opstart.js` 6 toetst `naVin()` los en staat groen; de keten erachter is
+nooit samen getoetst. Bij een opstart (27-10) zat het gat er al, maar alleen
+voor automatische herverbindingen; nu geldt het voor elke verbinding.
+
+**Gevolg voor de zeef (§15b).** De brandstof komt uit de verkeerde auto, dus
+`pidGate()` en `initialHealthScan()` filteren diesel-/benzine-PIDs verkeerd,
+en `herijkPidGate()` uit de strook komt pas als iemand het juiste kenteken
+intikt.
+
+**Tweede botsing: de setup-wizard van 04-11 heeft geen ingang meer.** De tak
+`PLInrichten.vraagNaVerbinding()` in `pidlane-bt.js` haalt alleen nog wie uit
+de stille stand valt (`_snelUit()` of na `STIL_MS`). De strook gedraagt zich
+altijd als "Meteen rijden"; `PLThuis` wijst een nieuwe auto niet naar de
+wizard. Wat op 04-11 als eerste-verbindingsmoment ontworpen is, staat nu
+alleen in Meer. Een besluit nemen: óf een strookregel "nieuwe auto — inrichten?"
+(geen venster), óf de tak weghalen met de reden erbij.
+
+**Derde: dubbel verbinden na een herlaad met "altijd automatisch".**
+`pidlane-theme.js` roept bij sessieherstel eerst `finishLogin()` aan — die
+start `PLStrook.aftellen(verbind)`, en met `pl_verbind_altijd` gaat dat meteen
+naar `connectSerial()` zonder `hervat`. ~0,8 s later start dezelfde boot
+`aftellen(ga)` voor `connectSerial({hervat:'herlaad'})`; `connected` is dan nog
+false en `connectSerial()` heeft geen herintredingsslot (alleen uitgeschakelde
+knoppen). Twee verbindingen op één SPP-socket, en `_plHervat` wordt
+overschreven. Door lezen vastgesteld, niet gedraaid (vraagt native Capacitor).
+Zonder "altijd" vervangt de tweede aftelling de eerste en gaat het goed.
+
+**Vierde, kleiner: sensoren zonder VIN.** `selectieZonderVin()` (06-11) zet de
+set van het actieve voertuig op een auto die geen VIN geeft. De rem van 28-09
+("de set van een diesel hoort niet op een andere auto") houdt alleen nog via
+`supportedPIDs` en de PID-poort — en die poort rekent met de brandstof uit
+punt 1. Los is het verdedigbaar; samen met punt 1 versterken ze elkaar.
+
+**Wat níét botst.** Privacy: de VIN gaat nergens ruw uit (`pl_vinprof_` is
+lokaal, de garage koppelt op `_vlVinPseudoniem()`). De foutcode-check één keer
+per auto per dag (`PLOpstart.checkVandaag`) is dezelfde regel als bij de
+opstart. De volgorde startscherm → strook → Live is consistent met PLNav.
+
+**Richting voor de basis.** Niet de stille stand terugdraaien, maar het
+kenteken per VIN maken: bij een VIN zonder profiel is `pl_kenteken` onbekend
+(niet "het vorige"), en `updateVehicleCard()` zoekt alleen een kenteken op dat
+bij déze VIN bevestigd is. Zonder VIN blijft het kenteken een vraag in de
+strook. Dan kloppen de zes plekken hierboven weer zonder dat ze veranderen.
+
 ## 08-11-2026 — Verbinden zonder vensters
 
 **Waarom.** Verbinden was tot zeven vensters na elkaar: adapter, kenteken
