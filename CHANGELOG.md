@@ -21,6 +21,9 @@
  - Onderbalk, startscherm, statusstipjes, grafiek, de kaarten en het weer
    verversen alleen nog in beeld; terug in beeld meteen.
  - "Minder beweging" op de telefoon stopt nu alle eindeloze animaties.
+ - Opstart (#690, deel 1): de foto van de 1-euro-bandentest is een los
+   webp-bestand dat pas laadt als je de bandencheck opent, in plaats van
+   205 KB base64 die bij elke start geparsed werd.
 
  ═══════════════════════════════════════════════════════════
  08-11-2026 (avond) — Het kenteken hoort bij de VIN (PLIdentiteit)
