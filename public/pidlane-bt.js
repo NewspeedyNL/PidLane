@@ -76,20 +76,12 @@ function _hervatActief(){
   return !!(h && (Date.now() - h.t) < (h.ms || HERVAT_MS));
 }
 function _isOpstart(){ return _hervatActief() && window._plHervat.reden==='opstart'; }
-/* STIL VERBINDEN (08-11-2026). Elke verbinding met de knop loopt zonder
-   vensters; de voortgang staat in de strook bovenin (PLStrook,
-   pidlane-strook.js). Een eerste verbinding met een auto duurt met de
-   volledige scan langer dan drie minuten, vandaar het eigen venster. */
-const STIL_MS = 600000;
+/* STIL VERBINDEN (08-11-2026): zie STIL_MS bij het snelle verbinden. */
 function _isStil(){ return _hervatActief() && !!window._plHervat.stil; }
 /* Het kenteken komt uit het profiel van deze VIN, en anders ná het verbinden
    in de strook — niet vóór het protocol. Bij een opstart én bij stil
    verbinden: in beide gevallen kan het een andere auto zijn dan de vorige. */
 function _kentNaVerbinden(){ return _isOpstart() || _isStil(); }
-function _strook(fn){
-  try{ if(window.PLStrook && !demoMode) fn(window.PLStrook); }
-  catch(e){ btDiag('Verbindstrook niet bijgewerkt: '+(e.message||e),'warn'); }
-}
 
 /* SNEL VERBINDEN (19-10-2026). Ingelogd, een adapter die al eens verbond,
    een bevestigd kenteken, een onthouden protocol en een voertuigprofiel:
@@ -99,6 +91,15 @@ function _strook(fn){
    geen profiel en draait de scan zoals altijd. Elk punt waar de app iets
    moet vragen (geen protocol, adapter stil, mislukt) zet het gewone
    venster terug via _snelUit(). */
+/* STIL VERBINDEN (08-11-2026). Elke verbinding met de knop loopt zonder
+   vensters, niet alleen de snelle; de voortgang staat in de strook bovenin
+   (PLStrook, pidlane-strook.js). Een eerste verbinding met volle scan duurt
+   langer dan de drie minuten van een hervatting, vandaar STIL_MS. */
+const STIL_MS = 600000;
+function _strook(fn){
+  try{ if(window.PLStrook && !demoMode) fn(window.PLStrook); }
+  catch(e){ btDiag('Verbindstrook niet bijgewerkt: '+(e.message||e),'warn'); }
+}
 function plSnelBekend(lees, sleutels, ingelogd){
   if(!ingelogd) return false;
   if(!lees('spp_address') || !lees('pl_kenteken') || !lees('pl_proto_id')) return false;
