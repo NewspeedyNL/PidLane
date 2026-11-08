@@ -63,6 +63,8 @@ function laad() {
   s._pidLastUpd = {};
   vm.createContext(s);
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-plload.js', 'utf8'), s, { filename: 'pidlane-plload.js' });
+  // De proeven van blok 5 staan sinds 08-11-2026 in een eigen bestand (#690); CAMPAGNE leest ze bij het laden.
+  vm.runInContext(fs.readFileSync(require('path').join(__dirname, 'pidlane-proeven.js'), 'utf8'), s, { filename: 'pidlane-proeven.js' });
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-testrun.js', 'utf8'), s, { filename: 'pidlane-testrun.js' });
   if (!s.PLLoad || typeof s.PLLoad.zoneVan !== 'function') throw new Error('PLLoad.zoneVan() ontbreekt');
   if (!s.PLBudget || typeof s.PLBudget.zone !== 'function') throw new Error('PLBudget.zone() ontbreekt');

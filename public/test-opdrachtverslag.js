@@ -65,6 +65,8 @@ function laad() {
   };
   s._gestuurd = [];
   vm.createContext(s);
+  // De proeven van blok 5 staan sinds 08-11-2026 in een eigen bestand (#690); CAMPAGNE leest ze bij het laden.
+  vm.runInContext(fs.readFileSync(require('path').join(__dirname, 'pidlane-proeven.js'), 'utf8'), s, { filename: 'pidlane-proeven.js' });
   vm.runInContext(fs.readFileSync('pidlane-testrun.js', 'utf8'), s, { filename: 'pidlane-testrun.js' });
   if (!s.PLTestrunLive || typeof s.PLTestrunLive.verzend !== 'function')
     throw new Error('PLTestrunLive.verzend() ontbreekt — is de export hernoemd?');

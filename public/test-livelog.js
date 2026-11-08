@@ -144,6 +144,8 @@ function deel2() {
   s.PLBus = { stats() { return { belasting: 0, perSec: 0, venGemMs: 0, foutPct: 0 }; } };
   s.PLLoad = { staat() { return { mult: 1, tempoPct: 100 }; }, cfg: {} };
   vm.createContext(s);
+  // De proeven van blok 5 staan sinds 08-11-2026 in een eigen bestand (#690); CAMPAGNE leest ze bij het laden.
+  vm.runInContext(fs.readFileSync(require('path').join(__dirname, 'pidlane-proeven.js'), 'utf8'), s, { filename: 'pidlane-proeven.js' });
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-testrun.js', 'utf8'), s,
     { filename: 'pidlane-testrun.js' });
 
@@ -431,6 +433,8 @@ async function deel4() {
   s.PLLoad = { staat() { return { mult: 1, tempoPct: 100 }; }, cfg: {} };
   s.logToSheets = function () { };
   vm.createContext(s);
+  // De proeven van blok 5 staan sinds 08-11-2026 in een eigen bestand (#690); CAMPAGNE leest ze bij het laden.
+  vm.runInContext(fs.readFileSync(require('path').join(__dirname, 'pidlane-proeven.js'), 'utf8'), s, { filename: 'pidlane-proeven.js' });
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-testrun.js', 'utf8'), s,
     { filename: 'pidlane-testrun.js' });
 

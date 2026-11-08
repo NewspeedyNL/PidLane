@@ -58,6 +58,8 @@ function laad() {
   s.PLBus = { stats: function () { return { belasting: 70, perSec: 5, venGemMs: 120, foutPct: 0 }; } };
   s.PLLoad = { staat: function () { return { mult: 1, tempoPct: 100 }; }, cfg: {} };
   vm.createContext(s);
+  // De proeven van blok 5 staan sinds 08-11-2026 in een eigen bestand (#690); CAMPAGNE leest ze bij het laden.
+  vm.runInContext(fs.readFileSync(require('path').join(__dirname, 'pidlane-proeven.js'), 'utf8'), s, { filename: 'pidlane-proeven.js' });
   vm.runInContext(fs.readFileSync('pidlane-testrun.js', 'utf8'), s, { filename: 'pidlane-testrun.js' });
   if (!s.PLBegeleid || typeof s.PLBegeleid.markeringen !== 'function')
     throw new Error('PLBegeleid.markeringen() ontbreekt — is de export hernoemd?');

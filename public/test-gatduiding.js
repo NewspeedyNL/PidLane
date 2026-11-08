@@ -68,6 +68,8 @@ function laad() {
   s.PLBus = { stats() { return { belasting: 70, perSec: 5, venGemMs: 120, foutPct: 0 }; } };
   s.PLLoad = { staat() { return { mult: 1, tempoPct: 100 }; }, cfg: {} };
   vm.createContext(s);
+  // De proeven van blok 5 staan sinds 08-11-2026 in een eigen bestand (#690); CAMPAGNE leest ze bij het laden.
+  vm.runInContext(fs.readFileSync(require('path').join(__dirname, 'pidlane-proeven.js'), 'utf8'), s, { filename: 'pidlane-proeven.js' });
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-testrun.js', 'utf8'), s, { filename: 'pidlane-testrun.js' });
   if (typeof s.plGatDuiding !== 'function')
     { console.error('FOUT: plGatDuiding() niet gevonden — blok 14 duidt zijn gaten niet meer'); process.exit(1); }

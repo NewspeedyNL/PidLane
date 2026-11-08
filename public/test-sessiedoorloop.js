@@ -96,6 +96,8 @@ console.log('\n2. De testrun neemt het nummer één keer over');
   s.PLLoad = { staat: () => ({ mult: 1, tempoPct: 100 }), cfg: {} };
   s._plDoorlopendeSessie = '2026-09-24-1906-2';
   vm.createContext(s);
+  // De proeven van blok 5 staan sinds 08-11-2026 in een eigen bestand (#690); CAMPAGNE leest ze bij het laden.
+  vm.runInContext(fs.readFileSync(require('path').join(__dirname, 'pidlane-proeven.js'), 'utf8'), s, { filename: 'pidlane-proeven.js' });
   vm.runInContext(fs.readFileSync('pidlane-testrun.js', 'utf8'), s, { filename: 'pidlane-testrun.js' });
   const T = s.PLTestrunLive;
   toets('het eerste ritnummer na de herlaad is dat van vóór de crash', T.ritId() === '2026-09-24-1906-2', T.ritId());

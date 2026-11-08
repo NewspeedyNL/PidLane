@@ -240,8 +240,8 @@ MUTATIES=(
 "public/pidlane-achtergrond.js@@              door: null, stil: null, na: null,@@              door: 0, stil: 0, na: 0,@@test-achtergrond.js@@een niet-gemeten stilte leest als nul, dus als \"er was niets aan de hand\""
 "public/pidlane-achtergrond.js@@    if (staart >= _stilMs) return { ms: staart, van: _laatste };@@    if (false) return { ms: staart, van: _laatste };@@test-achtergrond.js@@de staart telt niet mee: een bevriezing die tot het eind duurt wordt nul"
 "public/pidlane-achtergrond.js@@    try { if (_timer !== null && typeof clearInterval === 'function') clearInterval(_timer); }@@    try { if (false) clearInterval(_timer); }@@test-achtergrond.js@@de hartslag blijft doorlopen als de app weer in beeld is"
-"public/pidlane-testrun.js@@PLAchtergrond.stilsteS(m.ms - 2000) : null;@@PLAchtergrond.totaalS(m.ms - 2000) : null;@@test-achtergrondproef.js@@blok 5 vergelijkt het gat weer met de afwezigheid in plaats van met de stilte"
-"public/pidlane-testrun.js@@return typeof x.na === 'number' && x.na >= 3; });@@return typeof x.na === 'number' && x.na >= 99999; });@@test-achtergrondproef.js@@afknijpen wordt niet meer herkend en gaat als bevriezing het verslag in"
+"public/pidlane-proeven.js@@PLAchtergrond.stilsteS(m.ms - 2000) : null;@@PLAchtergrond.totaalS(m.ms - 2000) : null;@@test-achtergrondproef.js@@blok 5 vergelijkt het gat weer met de afwezigheid in plaats van met de stilte"
+"public/pidlane-proeven.js@@return typeof x.na === 'number' && x.na >= 3; });@@return typeof x.na === 'number' && x.na >= 99999; });@@test-achtergrondproef.js@@afknijpen wordt niet meer herkend en gaat als bevriezing het verslag in"
 
 # ── #18, de native meetdienst (11-09-2026). De dienst is tegelijk de
 #    kandidaat-oplossing en het meetinstrument dat moet zeggen of hij werkt.
@@ -286,8 +286,8 @@ MUTATIES=(
 "public/pidlane-schil.js@@    if (_nieuwste && !opnieuw) return Promise.resolve(_nieuwste);@@    if (false) return Promise.resolve(_nieuwste);@@test-schil.js@@elke vraag naar de nieuwste build doet een eigen netwerkaanroep"
 "public/pidlane-schil.js@@        if (!r || !r.ok) {@@        if (!r) {@@test-schil.js@@een 404 van de Worker gaat door als geldig antwoord"
 "public/pidlane-schil.js@@    return window.plFetch('/version.json', { geenToken: true })@@    return window.plFetch('/version.json')@@test-schil.js@@de versiecheck stuurt het sessietoken mee waar dat niet hoort"
-"public/pidlane-testrun.js@@      if (achter > 0)@@      if (false)@@test-schilproef.js@@een achterlopende schil levert geen waarschuwing meer op"
-"public/pidlane-testrun.js@@      if (achter < 0)@@      if (false)@@test-schilproef.js@@een zelf gebouwde schil die voorloopt wordt niet meer gemeld"
+"public/pidlane-proeven.js@@      if (achter > 0)@@      if (false)@@test-schilproef.js@@een achterlopende schil levert geen waarschuwing meer op"
+"public/pidlane-proeven.js@@      if (achter < 0)@@      if (false)@@test-schilproef.js@@een zelf gebouwde schil die voorloopt wordt niet meer gemeld"
 
 # ── #191, het scanslot (11-09-2026). Gemeld uit het gebruik: diep zoeken gaf
 #    een dip met valse waarschuwingen. De reparatie zet twee bewakers stil, en
@@ -314,7 +314,7 @@ MUTATIES=(
 "public/pidlane-testrun.js@@  var kent = !!perioden;@@  var kent = true;@@test-gatduiding.js@@zonder PLAchtergrond wordt \"niet te zeggen\" toch een uitspraak over #18"
 "public/pidlane-testrun.js@@  var SPELING = 12000;@@  var SPELING = 0;@@test-gatduiding.js@@de speling tussen de twee tijdassen is weg, dus bijna elk gat valt buiten"
 "public/pidlane-testrun.js@@if (q && q !== '\\u2014' && uit.indexOf(q) === -1) uit.push(q);@@uit.push(q);@@test-blok5lijst.js@@de dekking van blok 5 ontdubbelt niet meer en laat de streep staan"
-"public/pidlane-testrun.js@@    issue: '#29',@@    issue: '',@@test-blok5lijst.js@@een proef in blok 5 is zijn issue kwijt en valt daarmee uit de dekking"
+"public/pidlane-proeven.js@@    issue: '#29',@@    issue: '',@@test-blok5lijst.js@@een proef in blok 5 is zijn issue kwijt en valt daarmee uit de dekking"
 "public/pidlane-testrun.js@@'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ')@@'BLOK 5 DEKT DEZE RONDE: #19, #15'@@test-blok5lijst.js@@de dekkingsregel in CAMPAGNE is weer met de hand overgeschreven"
 "public/pidlane-uitgebreid.js@@schoon.indexOf(hdr) >= 0;@@true;@@test-mode21.js@@de uitgebreide probe accepteert elk antwoord"
 "public/pidlane-uitgebreid.js@@      if (!force && _herkansT < PROBE_HERKANS && connected) {@@      if (false) {@@test-mode21.js@@een probe die de bus bezet trof komt die sessie nooit meer terug"
@@ -676,7 +676,7 @@ MUTATIES=(
 "public/pidlane-testrun.js@@if (zelfOvergeslagen) { laatstLoop = nu; return; }@@if (zelfOvergeslagen) { return; }@@test-rit.js@@een testrun boekt weer zijn eigen loopgat en stuurt je naar de bus"
 "public/pidlane-testrun.js@@      const sindsLoop = sindsM(gaten), sindsMeet = sindsM(meetgaten);@@      const sindsLoop = sindsM(gaten), sindsMeet = [];@@test-begeleid.js@@de adapterstap is weer blind voor het meetgat, en dat is het enige gat dat er valt"
 "public/pidlane-testrun.js@@        ? ' — alle meetgaten vallen binnen een periode waarin de app weg was: dan is dit de afgeknepen '@@        ? ' — alle meetgaten vallen buiten elke periode waarin de app weg was: dan is dit de '@@test-gatduiding.js@@een meetgat in de achtergrond wordt weer aan de bus toegeschreven"
-"public/pidlane-testrun.js@@      if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');@@      if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');\n      if (duur < 600) tekort.push('maar ' + Math.round(duur / 60) + ' min gereden van de tien');@@test-blok5lijst.js@@de tien minuten staan weer als drempel in de #19-proef"
+"public/pidlane-proeven.js@@      if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');@@      if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');\n      if (duur < 600) tekort.push('maar ' + Math.round(duur / 60) + ' min gereden van de tien');@@test-blok5lijst.js@@de tien minuten staan weer als drempel in de #19-proef"
 
 # ── De onderrand: bereikbaar of vast achter de balk (#172, 10-09-2026) ──
 # Deze proef meldde vanaf 01-09 elke rit FOUT, terwijl de bestuurder op 10-09
@@ -1026,9 +1026,9 @@ MUTATIES=(
 # En de andere helft: de proef zelf. Deze drie laten hem iets zeggen dat niet
 # klopt zonder dat er ook maar iets omvalt — een vals alarm of een vals groen
 # tijdens een rit, en dat is precies het soort proef dat genegeerd gaat worden.
-"public/pidlane-testrun.js@@      if (na.status === 401 || na.status === 403)@@      if (false)@@test-livelog.js@@een sessie zonder app-token levert FOUT in plaats van LET OP: de proef staat rood op elke run zonder login"
-"public/pidlane-testrun.js@@      while ((!na || (voor && na.tijd === voor.tijd)) && gewacht < 5000) {@@      while (!na && gewacht < 5000) {@@test-livelog.js@@een geslaagde verzending van vóór deze proef telt als bewijs: de proef keurt zijn eigen regel goed zonder dat die verstuurd is"
-"public/pidlane-testrun.js@@        return { staat: 'LET OP', detail: 'er is geen logadres ingesteld (AIRTABLE_URL leeg)@@        return { staat: 'FOUT', detail: 'er is geen logadres ingesteld (AIRTABLE_URL leeg)@@test-livelog.js@@een ontbrekende voorwaarde wordt als kapot kanaal gemeld"
+"public/pidlane-proeven.js@@      if (na.status === 401 || na.status === 403)@@      if (false)@@test-livelog.js@@een sessie zonder app-token levert FOUT in plaats van LET OP: de proef staat rood op elke run zonder login"
+"public/pidlane-proeven.js@@      while ((!na || (voor && na.tijd === voor.tijd)) && gewacht < 5000) {@@      while (!na && gewacht < 5000) {@@test-livelog.js@@een geslaagde verzending van vóór deze proef telt als bewijs: de proef keurt zijn eigen regel goed zonder dat die verstuurd is"
+"public/pidlane-proeven.js@@        return { staat: 'LET OP', detail: 'er is geen logadres ingesteld (AIRTABLE_URL leeg)@@        return { staat: 'FOUT', detail: 'er is geen logadres ingesteld (AIRTABLE_URL leeg)@@test-livelog.js@@een ontbrekende voorwaarde wordt als kapot kanaal gemeld"
 
 # ── DE METING IN BEELD HOUDEN (#228, 17-09-2026). Acht fouten die het venster
 # stil laten uitvallen of juist stil laten opkomen. Geen ervan geeft een
@@ -1407,7 +1407,7 @@ MUTATIES=(
 "public/pidlane-meetkamer.js@@    return veilig(String(v == null ? '' : v).replace(/\\\\/g, '\\\\\\\\').replace(/'/g, \"\\\\'\"));@@    return veilig(String(v == null ? '' : v));@@test-meetkamer.js@@een apostrof in een Airtable-id breekt de onclick van de keuzeknop"
 "worker.js@@  const alle = new URL(request.url).searchParams.get(\"alle\") === \"1\";@@  const alle = false;@@test-opdrachtroute.js@@?alle=1 geeft nog steeds alleen de actieve rij: de keuzeknoppen tonen er altijd maar een"
 "worker.js@@        opdracht: ruw2.length > 8192 ? \"\" : ruw2,@@        opdracht: ruw2,@@test-opdrachtroute.js@@een opdracht van een megabyte gaat alsnog de telefoon in voordat iemand hem afkeurt"
-"public/pidlane-testrun.js@@      var baan = PLMeetkamer.ronde(s);@@      var baan = PLMeetkamer.issuebaan(s);@@test-meetkamer.js@@de blok-5-proef roept een functie aan die na de hernoeming niet meer bestaat — precies de regressie die op 18-09 19:53 op productie stond"
+"public/pidlane-proeven.js@@      var baan = PLMeetkamer.ronde(s);@@      var baan = PLMeetkamer.issuebaan(s);@@test-meetkamer.js@@de blok-5-proef roept een functie aan die na de hernoeming niet meer bestaat — precies de regressie die op 18-09 19:53 op productie stond"
 
 # ── De markeringen overleven de volgende ronde (#255, 18-09-2026). De bedoelde
 # volgorde is meetrit → testrun → toestelronde → testrun, en juist die maakte de

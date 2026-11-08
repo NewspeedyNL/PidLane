@@ -1922,7 +1922,7 @@ en §11 van dit bestand op 02-09; blok 5 was hem aan het overdoen. De vorm van d
 fout is elke keer dezelfde: twee plekken die hetzelfde beweren, waarvan er één
 stil veroudert.
 
-Nu is elke proef een entry in `PROEVEN_B5`:
+Nu is elke proef een entry in `PROEVEN_B5` (sinds 08-11-2026 in `pidlane-proeven.js`, een fabriek die de testrun pas aanroept als iemand de lijst vraagt — #690):
 
 ```js
 {
