@@ -567,9 +567,10 @@
     }
   }
 
-  setInterval(function () {
-    try { leerKlok(); } catch (e) { console.warn('PLInrichten: leerrit', e); }
-  }, 5000);
+  // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding: de leerrit telt rijtijd, ook met
+  // Maps ervoor.
+  var _leerTik = function () { try { leerKlok(); } catch (e) { console.warn('PLInrichten: leerrit', e); } };
+  if (window.PLRust) PLRust.meet(5000, _leerTik, 'leerrit'); else setInterval(_leerTik, 5000);
 
   window.PLInrichten = {
     vraagNaVerbinding: vraagNaVerbinding,

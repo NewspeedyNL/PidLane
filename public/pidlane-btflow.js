@@ -177,9 +177,8 @@ function btDiag(msg, type='info'){
 function updateReco(){
   // Aanbevolen-banner verwijderd op verzoek — altijd verbergen.
 }
-// Fix 19-07: handle + guard zodat een herstart (bv. na opnieuw verbinden
-// tijdens een lange rit) geen tweede interval bovenop het eerste zet.
-if(!window._recoTimer) window._recoTimer=setInterval(updateReco,4000);
+// Geen timer meer (#691): updateReco() is leeg sinds de banner weg is, en een
+// lege tik elke 4 s maakte de processor wakker voor niets.
 
 // Eerlijke melding als opslaan native plugins vereist die er nog niet zijn
 function pluginStatus(){

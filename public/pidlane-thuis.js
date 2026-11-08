@@ -450,10 +450,12 @@
 
   function start() {
     teken();
-    setInterval(function () {
+    var tik = function () {
       try { var ws = el('welcomeScreen'); if (ws && !ws.classList.contains('hidden')) teken(); }
       catch (e) { console.warn('PLThuis: verversen mislukt', e); }
-    }, 1000);
+    };
+    // Alleen in beeld (PLRust, #691).
+    if (window.PLRust) PLRust.elke(1000, tik, 'startscherm'); else setInterval(tik, 1000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

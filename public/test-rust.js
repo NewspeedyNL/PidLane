@@ -28,7 +28,7 @@ function omgeving() {
   o.zet = (fn, ms) => { const id = o.volgende++; o.lopend.set(id, { fn, ms }); o.gezet++; return id; };
   o.wis = (id) => { o.lopend.delete(id); o.gewist++; };
   o.verborgen = () => o.weg;
-  o.tik = () => o.lopend.forEach(t => t.fn());
+  o.tik = () => [...o.lopend.values()].forEach(t => t.fn());   // wat nú loopt, niet wat een tik erbij zet
   return o;
 }
 
@@ -74,6 +74,37 @@ o = omgeving(); R = maak(o);
 R.elke(1000, () => {}, 'x');
 o.weg = true;
 toets('zonder zicht() blijft hij lopen — de wissel moet dus echt gemeld worden', o.lopend.size === 1);
+
+console.log('\n7. Meettimers: in beeld, of uit beeld met een verbinding');
+function omg2() { const x = omgeving(); x.verb = false; x.verbonden = () => x.verb; return x; }
+o = omg2(); R = maak(o); n = 0;
+R.meet(200, () => n++, 'gear');
+toets('in beeld loopt hij', R.actief() === 1);
+o.weg = true; R.zicht();
+toets('uit beeld zonder verbinding: weg', R.actief() === 0);
+toets('en één wekker kijkt of er verbonden wordt', R.wekker() && o.lopend.size === 1, 'lopend=' + o.lopend.size);
+o.verb = true; o.tik();   // de wekker tikt
+toets('uit beeld verbonden: de meettimer loopt weer, meteen één keer', R.actief() === 1 && n === 1, 'n=' + n);
+toets('en de wekker is weg', !R.wekker());
+const sch = R.elke(1000, () => {}, 'chip');
+toets('een schermtimer blijft uit beeld ook mét verbinding uit', sch.id === null);
+o.verb = false; R.zicht();
+toets('verbinding weg uit beeld: meettimer weg, wekker terug', R.actief() === 0 && R.wekker());
+o.weg = false; R.zicht();
+toets('terug in beeld: alles loopt, geen wekker', R.actief() === 2 && !R.wekker());
+
+console.log('\n8. weg(): een module die zelf stopt');
+o = omg2(); R = maak(o);
+const t = R.meet(1000, () => {}, 'toeschouwer');
+toets('weg() stopt en vergeet hem', R.weg(t) && R.actief() === 0 && R.taken().length === 0 && o.lopend.size === 0);
+o.weg = true; R.zicht(); o.weg = false; R.zicht();
+toets('en een wissel zet hem niet terug', R.actief() === 0);
+
+console.log('\n9. Tegenproef: een meettimer als schermtimer');
+o = omg2(); R = maak(o); o.verb = true;
+R.elke(200, () => {}, 'gear');
+o.weg = true; R.zicht();
+toets('met elke() stopt hij uit beeld ook tijdens een rit — daarom bestaat meet()', R.actief() === 0);
 
 console.log(fout ? '\ntest-rust: ' + fout + ' fout' : '\ntest-rust: alles goed');
 process.exit(fout ? 1 : 0);

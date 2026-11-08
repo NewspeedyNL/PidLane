@@ -499,5 +499,6 @@ window.PLTelemetrie = { DEFS, omhoog, hoeken, standaardNul, isTelemetrie, defs, 
   _opEvent:opEvent, _opMotion:opMotion };
 window.plIsTelemetrie = isTelemetrie;
 window.plTelemetrieDefs = defs;
-if (typeof setInterval==='function') setInterval(tik, TIK_MS);
+// Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding.
+if (window.PLRust) PLRust.meet(TIK_MS, tik, 'telemetrie'); else if (typeof setInterval==='function') setInterval(tik, TIK_MS);
 })();

@@ -15,6 +15,33 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 08-11-2026 (nacht) — #691: elke timer van de boot geteld
+
+**Waarom de eerste ronde (07-11) niet genoeg was.** Het issue noemde acht
+timers; die ronde hing er drie aan `PLRust`. Wat er werkelijk tikte is pas
+te zien als je élke `setInterval` vanaf de eerste module telt (een script
+via `Page.addScriptToEvaluateOnNewDocument`, nu `startApp({vooraf})` in
+`plbrowser.js`). Uit beeld en zonder verbinding, in 6,5 s: twintig timers,
+waaronder `gear` en `telemetrie` elke 200 ms, `berekend` elke 400 ms en de
+accu elke 500 ms. De helft stond niet in het issue.
+
+**Waarom twee soorten en geen lijst per module.** De vraag is steeds
+dezelfde: ververst hij het scherm, of verwerkt hij meetdata? Het eerste mag
+uit beeld slapen, het tweede alleen als er geen verbinding is. Een lijst met
+uitzonderingen per bestand groeit met elke module mee; twee soorten met één
+regel niet. Wat een regel overslaat (de sessiehartslag) staat met reden in
+`MAG_UIT_BEELD`, en een nieuwe vaste timer maakt de proef rood.
+
+**Wat niet triviaal was.** De rit-monitor stopte zichzelf via een watchdog
+als de verbinding wegviel. Slaapt die watchdog uit beeld, dan ziet hij dat
+nooit; `_cycle()` stopt de monitor nu zelf (`_magDoor()`). De
+achtergrondhartslag (#18) meet alleen nog met een verbinding: zonder is er
+niets te bevriezen. Een lege `updateReco()`-timer (elke 4 s, sinds de
+banner weg is) is weg.
+
+**Niet gemeten.** Wat het scheelt in batterij: dat is de Android-statistiek
+over 30 minuten Hyperlane, vóór en na, en dus een rit.
+
 ## 08-11-2026 (avond) — Stil verbinden tegen de oude strategie: de kentekenpoort was een mens
 
 **De vraag.** Wizard, nieuwe volgorde, sensoren per voertuig, kenteken en VIN

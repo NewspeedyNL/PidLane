@@ -249,9 +249,9 @@
     });
   }
 
-  if (typeof setInterval === 'function') setInterval(function () {
-    try { tik(); } catch (e) { console.warn('PLOpstart: tik mislukt', e); }
-  }, TIK_MS);
+  // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding: tik() bewaart alleen iets als de motor loopt.
+  var _opTik = function () { try { tik(); } catch (e) { console.warn('PLOpstart: tik mislukt', e); } };
+  if (window.PLRust) PLRust.meet(TIK_MS, _opTik, 'opstart'); else if (typeof setInterval === 'function') setInterval(_opTik, TIK_MS);
 
   window.PLOpstart = {
     reden: redenNu,

@@ -375,12 +375,14 @@
 
   function tikker() {
     if (_tikker) return;
-    _tikker = setInterval(function () {
+    var t = function () {
       try {
         verversDot();
         if (_open) teken();
       } catch(e){ console.warn('teken mislukt:', e); }
-    }, 4000);
+    };
+    // Schermtimer (PLRust, #691): alleen de stip en het paneel.
+    _tikker = window.PLRust ? PLRust.elke(4000, t, 'run-stip') : setInterval(t, 4000);
   }
 
   // De chip zelf zit in index.html, naast de andere drie. Zodra de DOM er

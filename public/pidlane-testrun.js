@@ -591,7 +591,8 @@ const PLBudget = (function () {
   function start() {
     if (_aan) return;
     _aan = true;
-    setInterval(monster, 2000);
+    // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding.
+    if (window.PLRust) PLRust.meet(2000, monster, 'testrun-belasting'); else setInterval(monster, 2000);
   }
 
   // De drempels uit PLLoad zelf halen, niet overschrijven. Anders meet dit blok
@@ -893,7 +894,8 @@ const PLRit = (function () {
   function start_() {
     if (_aan) return;
     _aan = true;
-    setInterval(tik, TIK);
+    // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding.
+    if (window.PLRust) PLRust.meet(TIK, tik, 'testrun-rit'); else setInterval(tik, TIK);
   }
 
   return {
@@ -2847,6 +2849,28 @@ function _zonderSporen(naam, fn) {
 }
 
 const PROEVEN_B5 = [
+
+  // ── Geen timers zonder reden (#691, 08-11-2026) ──
+  {
+    issue: '#691',
+    naam: 'Vaste timers hangen aan PLRust: schermtimers alleen in beeld, meettimers in beeld of met een verbinding; uit beeld zonder verbinding tikt er niets',
+    waarom: 'Uit beeld en zonder verbinding gingen twintig timers af, versnelling en telemetrie elke 200 ms. Valt een meettimer terug naar elke(), dan stopt de meting tijdens een rit met Maps ervoor; valt hij terug naar setInterval, dan loopt de batterij weer leeg.',
+    proef: async function () {
+      if (!window.PLRust || typeof PLRust.meet !== 'function') return { staat: 'FOUT', detail: 'PLRust.meet ontbreekt — herladen?' };
+      var t = PLRust.taken(), meet = t.filter(function (x) { return x.meet; }).map(function (x) { return x.naam; });
+      var mist = ['versnelling', 'telemetrie', 'berekend', 'garage', 'leerrit'].filter(function (n) { return meet.indexOf(n) < 0; });
+      if (mist.length) return { staat: 'FOUT', detail: 'geen meettimer: ' + mist.join(', ') + ' — die stoppen uit beeld óf lopen altijd' };
+      var sch = t.filter(function (x) { return !x.meet; }).map(function (x) { return x.naam; });
+      if (sch.indexOf('onderbalk') < 0 || sch.indexOf('startscherm') < 0) return { staat: 'FOUT', detail: 'onderbalk of startscherm hangt niet als schermtimer aan PLRust' };
+      var loopt = t.filter(function (x) { return x.loopt; }).length;
+      var detail = t.length + ' timers (' + meet.length + ' meten, ' + sch.length + ' scherm), ' + loopt + ' lopen nu';
+      if (connected) {
+        var stil = t.filter(function (x) { return x.meet && !x.loopt; }).map(function (x) { return x.naam; });
+        if (stil.length) return { staat: 'FOUT', detail: 'verbonden, maar meettimers slapen: ' + stil.join(', ') };
+      }
+      return { staat: 'OK', detail: detail };
+    }
+  },
 
   // ── Het kenteken hoort bij de VIN (08-11-2026) ──
   {

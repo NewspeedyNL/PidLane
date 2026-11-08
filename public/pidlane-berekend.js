@@ -637,5 +637,6 @@ window.PLBerekend = { vermogensvraag, DEFS, SCHAKEL, DPF, PRIJS_STANDAARD, KWH_P
   tik, stats, oordeel, weiger, voertuig, prijs, VERS_MS, SAMEN_MS, samen, maat, _nieuweSessie:function(){ _s=leegSessie(); } };
 window.plIsBerekend = isBerekend;
 window.plBerekendDefs = defs;
-if (typeof setInterval==='function') setInterval(tik, TIK_MS);
+// Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding.
+if (window.PLRust) PLRust.meet(TIK_MS, tik, 'berekend'); else if (typeof setInterval==='function') setInterval(tik, TIK_MS);
 })();

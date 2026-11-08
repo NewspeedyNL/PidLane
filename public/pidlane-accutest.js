@@ -450,7 +450,12 @@
     verwerk(trend(st.starts));
     if (_open) _teken();
   }
-  function boot() { if (_timer) return; _timer = setInterval(() => { try { _tik(); } catch (e) { console.warn('PLAccu: tik mislukt', e); } }, 500); }
+  // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding.
+  function boot() {
+    if (_timer) return;
+    const t = () => { try { _tik(); } catch (e) { console.warn('PLAccu: tik mislukt', e); } };
+    _timer = window.PLRust ? PLRust.meet(500, t, 'accu') : setInterval(t, 500);
+  }
 
   // ── de begeleide test ─────────────────────────────────────────────
   const volt = (r) => { const m = /(\d{1,2}(?:[.,]\d+)?)\s*V/i.exec(String(r || '')); return m ? Number(m[1].replace(',', '.')) : null; };

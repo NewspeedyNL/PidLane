@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 08-11-2026 (nacht) — Zuiniger: geen timers meer zonder reden (#691)
+ ═══════════════════════════════════════════════════════════
+
+ - Zonder verbinding en met de app uit beeld tikt er nu niets meer, behalve
+   de sessiehartslag (elke 30 s). Daarvoor gingen er twintig timers af,
+   versnelling en telemetrie elke 200 ms.
+ - Met een verbinding meten versnelling, telemetrie, berekende waarden,
+   accu, rit en leerrit gewoon door, ook met Maps ervoor.
+ - Onderbalk, startscherm, statusstipjes, grafiek, de kaarten en het weer
+   verversen alleen nog in beeld; terug in beeld meteen.
+ - "Minder beweging" op de telefoon stopt nu alle eindeloze animaties.
+
+ ═══════════════════════════════════════════════════════════
  08-11-2026 (avond) — Het kenteken hoort bij de VIN (PLIdentiteit)
  ═══════════════════════════════════════════════════════════
 

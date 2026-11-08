@@ -600,14 +600,23 @@
   function start() {
     teken(true);
     ververs();
-    setInterval(function () { try { teken(); } catch (e) { console.warn('PLWinter: kaart niet getekend', e); } }, 2000);
+    var tik = function () { try { teken(); } catch (e) { console.warn('PLWinter: kaart niet getekend', e); } };
+    // Alleen in beeld (PLRust, #691); terug in beeld tekent hij meteen.
+    if (window.PLRust) PLRust.elke(2000, tik, 'winterkaart'); else setInterval(tik, 2000);
     // Tot er een plaats is elke 10 s (de opstart), daarna elk kwartier;
     // PLWeer haalt pas opnieuw als het een uur oud is of van gisteren. Een
     // app die uit de achtergrond terugkomt, kijkt meteen.
-    var wacht = setInterval(function () { if (_opstartGehaald) clearInterval(wacht); else ververs(); }, 10 * 1000);
-    setInterval(ververs, 15 * 60 * 1000);
-    try { document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') ververs(); }); }
-    catch (e) { console.warn('PLWinter: geen zichtbaarheidsluisteraar — het weer ververst elk kwartier', e); }
+    // Schermtimer (PLRust, #691): zonder netwerk liep deze elke 10 s door.
+    var _wachtTik = function () { if (_opstartGehaald) { if (window.PLRust && typeof wacht === 'object') PLRust.weg(wacht); else clearInterval(wacht); } else ververs(); };
+    var wacht = window.PLRust ? PLRust.elke(10 * 1000, _wachtTik, 'weer-opstart') : setInterval(_wachtTik, 10 * 1000);
+    // Het weer elk kwartier, alleen in beeld. PLRust draait hem meteen als de
+    // app terugkomt; dat deed hier eerst een eigen visibilitychange.
+    if (window.PLRust) PLRust.elke(15 * 60 * 1000, ververs, 'weer');
+    else {
+      setInterval(ververs, 15 * 60 * 1000);
+      try { document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') ververs(); }); }
+      catch (e) { console.warn('PLWinter: geen zichtbaarheidsluisteraar — het weer ververst elk kwartier', e); }
+    }
   }
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
