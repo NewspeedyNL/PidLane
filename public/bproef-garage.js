@@ -107,9 +107,10 @@ const NEPSERVER = `(function(){
 
     console.log('\n── 3. een voertuig toevoegen ──');
     // #476: het kenteken uit de verbindingsstap staat al ingevuld.
-    await app.ev(`localStorage.setItem('pl_kenteken', 'R-054-XD'); PLGarage._nieuw(); 'ok'`);
+    // Sinds 08-11-2026 het kenteken van de verbinding uit PLIdentiteit.
+    await app.ev(`PLIdentiteit.begin(false); PLIdentiteit.bevestig('R-054-XD'); PLGarage._nieuw(); 'ok'`);
     toets('Voertuig toevoegen vult het kenteken van de verbinding al in (#476)', await wacht(`String((document.getElementById('grf_kenteken')||{}).value).replace(/-/g,'') === 'R054XD'`));
-    await app.ev(`localStorage.removeItem('pl_kenteken'); PLGarage._nieuw(); 'ok'`);
+    await app.ev(`PLIdentiteit.begin(false); localStorage.removeItem('pl_kenteken'); PLGarage._nieuw(); 'ok'`);
     await app.ev(`(function(){ const z=(id,w)=>{ document.getElementById('grf_'+id).value=w; };
       z('naam','Blauwe Mazda'); z('kenteken','ab-123-c'); z('merk','Mazda'); z('model','CX-5'); z('bouwjaar','2018');
       document.getElementById('grf_brandstof').value='benzine'; document.getElementById('grf_turbo').value='nee';
@@ -526,17 +527,25 @@ const NEPSERVER = `(function(){
     console.log('\n── 4h2. zonder chassisnummer: het actieve voertuig (06-11-2026) ──');
     // Uit het gebruik: aangevinkt in Mijn voertuigen → Sensoren, en daarna niet
     // in de keuzelijst aan. herkenAuto() stopte zonder VIN meteen.
+    // Sinds 08-11-2026 alleen als het bevestigde kenteken van de verbinding
+    // (PLIdentiteit) dat van het actieve voertuig is; eerst de tegenproef.
     const zonderVin = await app.ev(`(async function(){
       const wacht = ms => new Promise(r => setTimeout(r, ms));
       vehicleInfo.vin = ''; activePIDs.clear();
       supportedPIDs = new Set(['010C','010D','0105','0104','010B','0111','012F','0142','015E','0110']);
       buildDiscoveredPIDList();
+      PLIdentiteit.begin(false); PLIdentiteit.bevestig('ANDER1');
       window._plVerbindingKlaar = Date.now(); connected = true; demoMode = false;
       await wacht(4500);
+      const ander = [...activePIDs];
+      PLIdentiteit.bevestig(PLGarage.actief().kenteken);
+      await wacht(4500);
       const na = [...activePIDs];
-      return { na, lijst: discoveredPIDDefs.some(d => d.pid === '221310') };
+      return { ander, na, lijst: discoveredPIDDefs.some(d => d.pid === '221310'), kent: PLGarage.actief().kenteken };
     })()`);
-    toets('zonder VIN gaan de aangevinkte sensoren van het actieve voertuig toch aan',
+    toets('TEGENPROEF: zonder VIN en met een ander kenteken gaat de set van het actieve voertuig niet aan',
+      zonderVin.ander.indexOf('221310') < 0, JSON.stringify(zonderVin));
+    toets('zonder VIN, met het kenteken van het actieve voertuig: de aangevinkte sensoren gaan aan',
       zonderVin.lijst && ['221310', 'CA01'].every(p => zonderVin.na.indexOf(p) >= 0), JSON.stringify(zonderVin));
     // De wizard, stap Sensoren → Grondig: de zoekronde moet zichtbaar zijn.
     await app.ev(`PLInrichten._grondig(); 'ok'`);

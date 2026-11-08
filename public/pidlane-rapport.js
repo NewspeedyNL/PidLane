@@ -464,7 +464,8 @@
     const v = (typeof vehicleInfo !== 'undefined' && vehicleInfo) || {};
     let garage = null, kenteken = '';
     try { garage = (window.PLGarage && PLGarage.actief) ? PLGarage.actief() : null; } catch (e) { console.warn('PLRapport: actief voertuig onbekend', e); }
-    try { kenteken = localStorage.getItem('pl_kenteken') || ''; } catch (e) { console.warn('PLRapport: kenteken niet leesbaar', e); }
+    // Het kenteken van de auto waar het rapport over gaat (PLIdentiteit).
+    try { kenteken = (window.PLIdentiteit ? PLIdentiteit.kenteken() : localStorage.getItem('pl_kenteken')) || ''; } catch (e) { console.warn('PLRapport: kenteken niet leesbaar', e); }
     let recall = null;
     try {
       const res = window._plRecall;

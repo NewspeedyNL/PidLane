@@ -197,7 +197,9 @@
   function vi() { return (typeof vehicleInfo !== 'undefined' && vehicleInfo) || {}; }
   function isDemo() { return typeof demoMode !== 'undefined' && !!demoMode; }
   function isVerbonden() { return typeof connected !== 'undefined' && !!connected && !isDemo(); }
-  function kentNu() { try { return localStorage.getItem('pl_kenteken') || ''; } catch (e) { console.warn('PLInrichten: kenteken onleesbaar', e); return ''; } }
+  // Het kenteken van de auto aan de adapter (PLIdentiteit), niet het laatst
+  // gebruikte: anders kreeg een auto zonder VIN de sleutel van de vorige.
+  function kentNu() { return window.PLIdentiteit ? PLIdentiteit.kenteken() : ''; }
   function platform() { return !isDemo() && !!window.PLGarage && typeof PLGarage.inrichtVoertuig === 'function' && !!(window.currentUser && window.currentUser.user); }
   function akkoord() { return !!(window.PLGarage && PLGarage.akkoordNu && PLGarage.akkoordNu()); }
   function ctx() { return { platform: platform(), akkoord: akkoord(), verbonden: isVerbonden() }; }
@@ -390,7 +392,7 @@
     _bezig = true; teken();
     try {
       if (ken) {
-        try { localStorage.setItem('pl_kenteken', ken); } catch (e) { console.warn('PLInrichten: kenteken niet bewaard', e); }
+        if (window.PLIdentiteit) PLIdentiteit.bevestig(ken);
         if (ken !== schoonKent(v.kenteken || '') && typeof rdwLookup === 'function') {
           try { await rdwLookup(false, { kenteken: ken, statusEl: el('plInRdw') }); }
           catch (e) { console.warn('PLInrichten: RDW-opzoeking mislukt', e); }
@@ -540,6 +542,14 @@
     tekenKeuze();
     return true;
   }
+  /* Voor de strook (08-11-2026): moet deze auto nog ingericht worden? Zonder
+     venster en zonder iets te bewaren — de strook toont dan een knop. */
+  function nodig(opties) {
+    opties = opties || {};
+    return moetVragen(laad(), { demo: isDemo(), hervat: !!opties.hervat });
+  }
+  /* "Niet nu" in de strook = Meteen rijden: niet meer vanzelf aanbieden. */
+  function rijdenStil() { laad(); _st.keuze = 'rijden'; bewaar(); }
   // Op aanvraag: Meer, Mijn voorkeuren, Mijn voertuigen. Gaat verder waar de klant bleef.
   function open(opties) {
     opties = opties || {};
@@ -563,6 +573,8 @@
 
   window.PLInrichten = {
     vraagNaVerbinding: vraagNaVerbinding,
+    nodig: nodig,
+    rijdenStil: rijdenStil,
     open: open,
     sluit: sluit,
     naGarage: function () {

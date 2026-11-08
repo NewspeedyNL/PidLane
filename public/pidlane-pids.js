@@ -1497,10 +1497,10 @@ async function saveVinProfile(vin){
       merk:vehicleInfo.merk||'', model:vehicleInfo.model||'',
       year:vehicleInfo.year||'', brandstof:vehicleInfo.brandstof||'',
       motor:vehicleInfo.motor||'',
-      // Het kenteken van déze sessie (rdwLookup), zodat een opstart het uit
-      // de VIN haalt in plaats van het vorige te gokken (PLOpstart). Geen
-      // kenteken deze sessie: het oude uit het profiel blijft staan.
-      kenteken:(typeof window!=='undefined' && window._plKentBevestigd) || _vorigProfielKenteken(vin),
+      // Alleen een kenteken dat bij déze VIN bevestigd is (PLIdentiteit),
+      // anders het oude uit het profiel. Tot 08-11-2026 ging hier elk
+      // kenteken van de sessie in, ook dat van de vorige auto.
+      kenteken:(window.PLIdentiteit && PLIdentiteit.kentekenVoor(vin)) || _vorigProfielKenteken(vin),
       // Gezondheidsoordeel meebewaren. Zonder dit moest initialHealthScan()
       // bij ELKE verbinding opnieuw elke PID aftasten om te weten welke
       // sensoren de auto echt levert — 30-60s bus, terwijl het antwoord al

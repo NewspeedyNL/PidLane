@@ -309,6 +309,13 @@ document.addEventListener('DOMContentLoaded', function(){
       // vervaldatum) bewijst dat dit apparaat al geverifieerd is. Verlopen
       // token → tokLoad() geeft null en het loginscherm blijft staan.
       if(_tok) window.APP_TOKEN=_tok.token;
+      // Eén beslissing per opstart over automatisch verbinden (08-11-2026).
+      // Liep er vóór de herlaad een verbinding, dan herverbindt deze boot
+      // hieronder als hervatting; finishLogin() telt dan niet ook af. Anders
+      // startten er met "altijd automatisch" twee connectSerial()-aanroepen,
+      // en de tweede brak de eerste af (PLBus.breek, _btGen).
+      try{ window._plHervatBijBoot = localStorage.getItem('pl_autoconn')==='1' && !!window.Capacitor?.isNativePlatform?.(); }
+      catch(e){ console.warn('pl_autoconn niet te lezen — finishLogin telt af', e); window._plHervatBijBoot=false; }
       finishLogin(_name, _acc);
       log(`Sessie hersteld: ${_name}`,'ok');
       try{ restoreAppState(); }catch(e){ console.warn('restoreAppState mislukt:', e); }

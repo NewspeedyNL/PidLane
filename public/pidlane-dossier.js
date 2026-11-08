@@ -33,7 +33,8 @@ async function exportVehicleDossier(btn){
     y=38;
 
     // Voertuigblok
-    const kent=localStorage.getItem('pl_kenteken')||'';
+    // Het kenteken van déze auto (PLIdentiteit), niet het laatst gebruikte.
+    const kent=(window.PLIdentiteit?PLIdentiteit.kenteken():localStorage.getItem('pl_kenteken'))||'';
     const meta=[
       ['Voertuig',`${vehicleInfo.merk||'?'} ${vehicleInfo.model||''} ${vehicleInfo.year?'('+vehicleInfo.year+')':''}`.trim()],
       kent?['Kenteken',kent]:null, vin?['VIN',vin]:null,

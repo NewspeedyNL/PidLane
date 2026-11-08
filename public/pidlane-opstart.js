@@ -17,8 +17,8 @@
    Wat een opstart anders doet dan een hervatting (in pidlane-bt.js):
      • geen kentekenvraag en ook geen vorig kenteken: dat kan een andere
        auto zijn. Het kenteken komt uit het voertuigprofiel van deze VIN
-       (`kentekenUitProfiel()`), anders vraagt `vraagKenteken()` het ná de
-       check, in stilstand;
+       (PLIdentiteit, sinds 08-11-2026 voor élke verbinding), anders vraagt
+       de strook het — zonder strook `vraagKenteken()` ná de check;
      • de brandstofpoort vraagt niets;
      • geen protocol herkend: tot HERHAAL_MS stil opnieuw zoeken
        (`herhaalMag()`) in plaats van na één keer te vragen;
@@ -31,8 +31,7 @@
    app dan als dat apparaat verschijnt. Een klassieke SPP-adapter verschijnt
    nooit vanzelf; de handsfree van de auto wel. Vandaar de uitleg in het blad.
 
-   PUUR: soort, reden, dag, checkNodig, markeer, herhaalMag,
-   kentekenUitProfiel, wekkerTekst. Getoetst in test-opstart.js.
+   PUUR: soort, reden, dag, checkNodig, markeer, herhaalMag, wekkerTekst. Getoetst in test-opstart.js.
    ══════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -84,10 +83,6 @@
   function herhaalMag(start, nu) {
     return isFinite(start) && start > 0 && (nu - start) < HERHAAL_MS;
   }
-  function kentekenUitProfiel(prof) {
-    var k = String((prof && prof.kenteken) || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    return k.length >= 4 ? k : '';
-  }
   /* Wat het blad zegt, uit de staat van de plugin. */
   function wekkerTekst(st) {
     if (!st || !st.beschikbaar) return { kan: false, regel: 'Deze versie van de app kan nog niet gewekt worden. Werk de app bij via de Play Store.' };
@@ -137,22 +132,10 @@
     if (verbonden && motorLoopt(nu)) schrijf(OPSLAG.actief, String(nu));
   }
 
-  /* Het kenteken bij een opstart: uit het profiel van deze VIN, en anders
-     ná de check vragen — nooit tijdens het rijden. */
-  var _vraagOpen = false;
-  function naVin(v) {
-    var prof = null;
-    try { prof = JSON.parse(lees('pl_vinprof_' + String(v || '').toUpperCase()) || 'null'); }
-    catch (e) { console.warn('PLOpstart: profiel onleesbaar', e); }
-    var k = kentekenUitProfiel(prof);
-    if (k && typeof rdwLookup === 'function') {
-      try { btDiag('Opstart: kenteken uit het voertuigprofiel van deze VIN', 'info'); } catch (e) { console.warn(e); }
-      return Promise.resolve(rdwLookup(false, { kenteken: k })).then(function (r) { return !!(r && r.ok); },
-        function (e) { console.warn('PLOpstart: RDW-opzoeking uit profiel mislukt', e); return false; });
-    }
-    window._plKentNaCheck = true;
-    return Promise.resolve(false);
-  }
+  /* Het kenteken bij een opstart komt uit PLIdentiteit (het profiel van
+     deze VIN). Is het daarna nog onbekend en is er geen strook, dan vraagt
+     dit blad het ná de check, in stilstand. */
+  function kentOnbekend() { return !!(window.PLIdentiteit && !PLIdentiteit.bekend()); }
   function stilstand() {
     try {
       var s = (typeof pidVals !== 'undefined' && pidVals) ? Number(pidVals['010D']) : 0;
@@ -165,18 +148,17 @@
   }
   // Wacht tot de check dicht is en de auto stilstaat; hoogstens tien minuten.
   function kentekenLater() {
-    if (!window._plKentNaCheck || _vraagOpen) return;
+    if (!kentOnbekend() || _vraagOpen) return;
     var tot = Date.now() + 10 * 60 * 1000;
     var kijk = function () {
-      if (!window._plKentNaCheck) return;
-      if (Date.now() > tot) { window._plKentNaCheck = false; return; }
+      if (!kentOnbekend()) return;
+      if (Date.now() > tot) return;
       if (checkOpen() || !stilstand()) { setTimeout(kijk, 3000); return; }
       vraagKenteken();
     };
     setTimeout(kijk, 1500);
   }
   function vraagKenteken() {
-    window._plKentNaCheck = false;
     if (_vraagOpen) return;
     _vraagOpen = true;
     var ov = document.createElement('div');
@@ -278,13 +260,12 @@
     checkVergeten: checkVergeten,
     herhaalMag: function (start) { return herhaalMag(start, Date.now()); },
     HERHAAL_STAP_MS: HERHAAL_STAP_MS,
-    naVin: naVin,
     kentekenLater: kentekenLater,
     vraagKenteken: vraagKenteken,
     wekker: wekker,
     tik: tik,
     _kern: { soort: soort, reden: reden, dag: dag, autoSleutel: autoSleutel, checkNodig: checkNodig, markeer: markeer,
-      herhaalMag: herhaalMag, kentekenUitProfiel: kentekenUitProfiel, wekkerTekst: wekkerTekst,
+      herhaalMag: herhaalMag, wekkerTekst: wekkerTekst,
       OPSTART_MS: OPSTART_MS, HERHAAL_MS: HERHAAL_MS }
   };
 })();

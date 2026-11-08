@@ -86,6 +86,25 @@ kenteken per VIN maken: bij een VIN zonder profiel is `pl_kenteken` onbekend
 bij déze VIN bevestigd is. Zonder VIN blijft het kenteken een vraag in de
 strook. Dan kloppen de zes plekken hierboven weer zonder dat ze veranderen.
 
+**Gedaan, dezelfde avond (`pidlane-identiteit.js`).** Geen reparatie per
+plek maar één bron: `PLIdentiteit` kent het kenteken van de verbonden auto
+met zijn herkomst, en drie vlaggen (`_plKentBevestigd`, `_plKentNaCheck`,
+`PLOpstart.naVin()`) zijn erin opgegaan. `pl_kenteken` bleef bestaan, maar
+alleen nog als suggestie en als "mijn auto" zonder verbinding: PLZonder,
+PLWeten en de koopcheck bedoelden altijd al dat. Een conclusie die bij nader
+inzien niet klopte: "de zes plekken veranderen niet". Ze lazen allemaal
+`localStorage` rechtstreeks, dus ze moesten wél om — naar `kenteken()`. Wat
+niet veranderde is wat ze ermee doen. De nagebouwde fout staat nu als deel 5
+in `bproef-strook.js`; met de voertuigkaart terug op `pl_kenteken` wordt hij
+rood met de zes opzoekingen van OUD123 erbij. Ook punt 2 (Inrichten als
+knop in de strook), punt 3 (`_plHervatBijBoot`: één beslissing per boot) en
+punt 4 (zonder VIN alleen bij hetzelfde kenteken) zijn mee.
+
+**Nog open, en waarom niet in een browserproef.** Of een auto zonder VIN in
+de praktijk vaak voorkomt (dan vraagt de strook elke verbinding het kenteken,
+voorgevuld) en of de dubbele herlaad-verbinding echt optrad: dat vraagt een
+native herlaad op de telefoon, dus een rit.
+
 ## 08-11-2026 — Verbinden zonder vensters
 
 **Waarom.** Verbinden was tot zeven vensters na elkaar: adapter, kenteken

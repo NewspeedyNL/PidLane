@@ -148,7 +148,7 @@ var PL_HULP = {
         '<li>PidLane zoekt de adapter en daarna de auto. Bij <b>Verbinding inmeten…</b> meet hij hoe snel jouw auto antwoordt; dat duurt meestal minder dan een seconde. Na afloop zie je de sensoren van jouw auto.</li>' +
         '</ol>' +
         '<p><b>Verbinden zonder vensters.</b> Na het inloggen kom je in het hoofdmenu; de app werkt ook zonder auto. Verbinden stelt geen vragen: bovenin staat een strook met vijf regels, <b>Adapter</b>, <b>Protocol</b>, <b>Auto</b>, <b>Klaarzetten</b> en <b>Foutcodes</b>, die elk een vinkje krijgen. Staat alles goed, dan klapt de strook in; tik erop om hem weer te openen. ' +
-        'Alleen de allereerste keer kies je de adapter in het verbindscherm. Kent de app een auto nog niet, dan vraagt de strook het kenteken, en alleen als je stilstaat. De foutcodes worden één keer per auto per dag gelezen; staat er iets, dan wordt die regel oranje of rood en opent een tik <a data-hulp="check">Check mijn auto</a>. Gaat er iets mis, dan zegt de strook wat en staat er <b>Opnieuw</b> bij.</p>' +
+        'Alleen de allereerste keer kies je de adapter in het verbindscherm. Het kenteken hoort bij het chassisnummer: een auto die de app kent, krijgt zijn eigen kenteken. Kent de app een auto nog niet, dan vraagt de strook het kenteken, alleen als je stilstaat; het vorige kenteken staat dan al ingevuld, controleer of het klopt. Bij een nieuwe auto staat er ook <b>Inrichten</b> of <b>Niet nu</b> in de strook. De foutcodes worden één keer per auto per dag gelezen; staat er iets, dan wordt die regel oranje of rood en opent een tik <a data-hulp="check">Check mijn auto</a>. Gaat er iets mis, dan zegt de strook wat en staat er <b>Opnieuw</b> bij.</p>' +
         '<p>Open je de app met een adapter die al eens verbond, dan telt de strook vijf seconden af: <b>Verbinden met je auto</b>, met <b>Nu verbinden</b>, <b>Annuleren</b> en het vinkje <b>altijd automatisch</b>. Met dat vinkje verbindt hij voortaan meteen. Antwoordt de adapter niet, druk dan op de pair-knop van de adapter en tik op <b>Opnieuw</b>.</p>' +
         '<p>Zet je <b>Check na verbinden</b> aan (Meer → Mijn voorkeuren), dan opent <a data-hulp="check">Check mijn auto</a> na het verbinden vanzelf, <b>één keer per auto per dag</b>. ' +
         'Vindt hij niets, dan gaat de app na 5 seconden door naar Live; tik in het venster of op <b>Blijf hier</b> om te blijven. Tik je zelf op <b>Check mijn auto</b> en is alles in orde, dan ga je na 5 seconden vanzelf terug naar het hoofdscherm.</p>' +
@@ -160,7 +160,7 @@ var PL_HULP = {
     { id: 'inrichten', groep: 'start', titel: 'De setup-wizard',
       icoon: '🧭', kort: 'Eén keer per auto: de app leert je auto kennen en zet alles klaar.',
       tekst:
-        '<p>Verbind je voor het eerst met een auto, dan staat de standaardset sensoren meteen aan en kun je rijden. Inrichten doe je wanneer je wilt, via <b>Meer → 🧭 Setup-wizard</b>.</p>' +
+        '<p>Verbind je voor het eerst met een auto, dan staat de standaardset sensoren meteen aan en kun je rijden. In de strook bovenin staat dan <b>Inrichten</b> of <b>Niet nu</b>; later kan het altijd via <b>Meer → 🧭 Setup-wizard</b>.</p>' +
         '<p>Inrichten loopt deze stappen af, eerst wat de adapter nodig heeft en daarna de vragen:</p>' +
         '<ul>' +
         '<li>🔒 <b>Toestemming</b> — het akkoord voor <b>Mijn voertuigen</b>, als je dat nog niet gaf.</li>' +

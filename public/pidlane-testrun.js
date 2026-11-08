@@ -2848,6 +2848,28 @@ function _zonderSporen(naam, fn) {
 
 const PROEVEN_B5 = [
 
+  // ── Het kenteken hoort bij de VIN (08-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Het kenteken van de verbonden auto komt uit PLIdentiteit: bij een nieuwe VIN onbekend tot de klant het bevestigt, nooit stil dat van de vorige auto; zonder VIN gaan sensoren en versnellingen van Mijn voertuigen alleen aan bij hetzelfde kenteken',
+    waarom: 'Na stil verbinden werd een nieuwe auto stil het kenteken van de vorige opgezocht: verkeerd merk, verkeerde brandstof voor de sensorzeef, en dat kenteken blijvend in het profiel van de nieuwe VIN.',
+    proef: async function () {
+      if (!window.PLIdentiteit || !PLIdentiteit._kern) return { staat: 'FOUT', detail: 'PLIdentiteit ontbreekt — herladen?' };
+      var K = PLIdentiteit._kern;
+      if (K.metVin({ vin: 'WVWZZZ1KZ6W000001', kenteken: 'OUD123', bron: 'klant' }, 'JMZZZZZZZJX000001', '').kenteken)
+        return { staat: 'FOUT', detail: 'een andere VIN houdt het kenteken van de vorige auto' };
+      if (K.begin({ vin: '', kenteken: 'OUD123', bron: 'klant' }, false).kenteken) return { staat: 'FOUT', detail: 'een nieuwe verbinding houdt het oude kenteken' };
+      var id = PLIdentiteit.staat();
+      var vin = (typeof vehicleInfo !== 'undefined' && vehicleInfo && vehicleInfo.vin) || '';
+      if (!connected || !id) return { staat: 'LET OP', detail: 'niet verbonden — alleen de kern getoetst' };
+      if (vin && id.vin && id.vin !== vin) return { staat: 'FOUT', detail: 'PLIdentiteit hoort bij een andere VIN dan de verbonden auto' };
+      var prof = null; try { prof = JSON.parse(localStorage.getItem('pl_vinprof_' + vin) || 'null'); } catch (e) { return { staat: 'LET OP', detail: 'profiel onleesbaar: ' + (e.message || e) }; }
+      var pk = K.norm(prof && prof.kenteken);
+      if (pk && id.kenteken && pk !== id.kenteken) return { staat: 'FOUT', detail: 'profiel van deze VIN zegt ' + pk + ', de verbinding ' + id.kenteken };
+      return { staat: id.kenteken ? 'OK' : 'LET OP', detail: id.kenteken ? 'kenteken ' + id.kenteken + ' (' + id.bron + ')' : 'kenteken van deze auto nog niet bevestigd — de strook vraagt het' };
+    }
+  },
+
   // ── Verbinden zonder vensters (08-11-2026) ──
   {
     issue: '—',

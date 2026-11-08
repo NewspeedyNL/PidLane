@@ -12,6 +12,10 @@
 //   • Deel 2: geen samenvatting (#wizS6), geen keuze Inrichten (#plInOv),
 //     geen Check-venster (#plFcOv) en geen verbindscherm.
 //   • Deel 3: de foutcodes zijn gelezen en vastgelegd, niet alleen getoond.
+//   • Deel 5 (08-11-2026, PLIdentiteit): een nieuwe auto na een andere. Het
+//     kenteken van de vorige mag niet opgezocht worden en niet in het
+//     profiel van de nieuwe VIN komen. Vóór PLIdentiteit werd de Mazda hier
+//     "Peugeot 208, diesel" met kenteken OUD123 in zijn profiel.
 //
 // Draaien vanuit public/:  node bproef-strook.js
 // ══════════════════════════════════════════════════════════════════
@@ -88,6 +92,41 @@ const zichtbaar = (sel) => `(function(){ const e=document.querySelector(${JSON.s
     toets('PLFoutcodes heeft een uitslag', await app.ev(`!!PLFoutcodes.staat().scan`));
     toets('de bus kreeg mode 03 en 07', await app.ev(`window._PL_NEPLOG.indexOf('03') >= 0 && window._PL_NEPLOG.indexOf('07') >= 0`));
     toets('de dag is gemarkeerd', await app.ev(`PLOpstart.checkVandaag()`));
+
+    console.log('\n5. Een nieuwe auto na een andere: niet het kenteken van de vorige');
+    const vin2 = await app.ev(`(function(){
+      const v = (typeof vehicleInfo!=='undefined' && vehicleInfo.vin) || '';
+      localStorage.removeItem('pl_vinprof_' + v);   // de Mazda is weer onbekend
+      localStorage.setItem('pl_kenteken', 'OUD123');
+      localStorage.setItem('pl_id_nu', JSON.stringify({ vin: 'WVWZZZ1KZ6W000001', kenteken: 'OUD123', bron: 'klant' }));
+      window._PL_RDW = [];
+      const org = window.plFetch;
+      window.plFetch = function(u){
+        const d = decodeURIComponent(String(u)), m = d.match(/kenteken=([A-Z0-9]+)/i);
+        if (m) window._PL_RDW.push(m[1]);
+        if (/m9d7-ebf2/.test(d)) return Promise.resolve({ ok: true, json: () => Promise.resolve([{ kenteken: m ? m[1] : '', merk: 'PEUGEOT', handelsbenaming: '208', datum_eerste_toelating: '20120101' }]) });
+        if (/8ys7-d773/.test(d)) return Promise.resolve({ ok: true, json: () => Promise.resolve([{ brandstof_omschrijving: 'Diesel' }]) });
+        return org.apply(this, arguments);
+      };
+      return v; })()`);
+    await app.ev(`(async function(){
+      const a = PLNepAuto.maak(window._PL_PROFIEL);
+      window._sendBTOnce = async function(cmd){ const r = a.stuur(cmd); await new Promise(function(z){ setTimeout(z, Math.min(r.ms, 20)); }); return r.tekst; };
+      window._plVerbindingKlaar = 0;
+      window._plHervat = { t: Date.now(), reden: 'stil verbinden', stil: true, ms: 600000 };
+      PLIdentiteit.begin(false);   // wat connectSerial() doet
+      PLStrook.start(); PLStrook.stap('adapter', 'ok', 'nep-adapter');
+      await initELM327(); _kentPoortKlaar = false; await scanNetworks();
+    })()`);
+    toets('de tweede verbinding komt aan', await wacht(`window._plVerbindingKlaar > 0`, 120000));
+    await rust(1500);
+    const na = await app.ev(`(function(){ let p = {}; try { p = JSON.parse(localStorage.getItem('pl_vinprof_' + ${JSON.stringify(vin2)}) || '{}'); } catch (e) { console.warn(e); }
+      return { rdw: window._PL_RDW, merk: vehicleInfo.merk, brandstof: vehicleFuelType(), profiel: p.kenteken || '', bekend: PLIdentiteit.bekend(),
+        veld: (document.getElementById('plStrookKent') || {}).value || null }; })()`);
+    toets('het kenteken van de vorige auto is niet opgezocht  <- tegenproef: vóór PLIdentiteit zes keer', na.rdw.indexOf('OUD123') < 0, JSON.stringify(na.rdw));
+    toets('de auto blijft wat zijn VIN zegt, geen Peugeot diesel', na.merk !== 'Peugeot' && na.brandstof !== 'diesel', na.merk + ' / ' + na.brandstof);
+    toets('het profiel van de nieuwe VIN krijgt geen kenteken', na.profiel === '', na.profiel);
+    toets('de strook vraagt het, met OUD123 alleen als voorinvulling', !na.bekend && na.veld === 'OUD123', JSON.stringify(na));
 
     console.log('\n4. De strook zelf');
     const maat = await app.ev(`(function(){ const r=document.getElementById('plStrook').getBoundingClientRect(); return { l:r.left, r:r.right, b:window.innerWidth, t:r.top }; })()`);

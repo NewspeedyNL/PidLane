@@ -1012,14 +1012,22 @@
     teken();
   }
 
-  /* Zonder chassisnummer is het actieve voertuig de enige aanwijzing. Een auto
-     die op zijn VIN níét herkend is (_st.onbekend) is een andere auto en
-     krijgt niets. Wat niet bij deze auto past, haalt selectieToepassen() er
-     zelf uit (supportedPIDs en de PID-poort). */
+  /* Zonder chassisnummer herkent het bevestigde kenteken de auto
+     (PLIdentiteit, 08-11-2026): de set van het actieve voertuig gaat alleen
+     aan als zijn kenteken dat van de verbinding is. Tot die datum ging hij op
+     elke auto zonder VIN aan — ook op een andere auto, met de PID-poort als
+     enige rem, en die rekende met de brandstof van de vorige. Een auto die
+     op zijn VIN níét herkend is (_st.onbekend) krijgt niets. */
   var GEEN_VIN = '-';
+  function kentVerbinding() { return window.PLIdentiteit ? PLIdentiteit.kenteken() : ''; }
+  function zelfdeKenteken(a, b) {
+    var n = function (k) { return String(k || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+    return !!n(a) && n(a) === n(b);
+  }
   function selectieZonderVin() {
     if (_vinGezien === GEEN_VIN || _st.onbekend) return 0;
     var v = actief(); if (!v) return 0;
+    if (!zelfdeKenteken(v.kenteken, kentVerbinding())) return 0;
     _vinGezien = GEEN_VIN;
     var n = 0;
     try { n = pasSelectieToe(v); } catch (e) { console.warn('PLGarage: vaste sensorselectie zonder VIN niet toegepast', e); }
@@ -1037,7 +1045,12 @@
      eigen sleutel, zoals voor iedereen zonder Mijn voertuigen. */
   function versnellingsVoertuig() {
     if (!magBewaren() || _st.onbekend) return null;
-    return voertuig(_st.gekoppeld) || actief();
+    var gek = voertuig(_st.gekoppeld); if (gek) return gek;
+    // Verbonden zonder herkenning op de VIN: alleen het actieve voertuig als
+    // het kenteken van de verbinding het zijne is (PLIdentiteit, 08-11-2026).
+    var a = actief();
+    if (a && isVerbonden() && !zelfdeKenteken(a.kenteken, kentVerbinding())) return null;
+    return a;
   }
   var _gearSleutel = '';
   function gearKoppel() {
@@ -2475,7 +2488,7 @@
     var v = magPlatform() ? actief() : null, s = fotoVoor(v);
     if (!s) {
       var k = '';
-      try { k = localStorage.getItem('pl_kenteken') || ''; } catch (e) { console.warn('PLGarage: kenteken van de verbinding onleesbaar', e); }
+      k = kentVerbinding();
       s = foto(k) || (_welkomAuto && fotoStandaard(_welkomAuto) ? fotoStandaard(_welkomAuto).src : null);
     }
     if (s) { img.src = s; img.hidden = false; } else { img.hidden = true; img.removeAttribute('src'); }
@@ -2569,7 +2582,7 @@
     if (_st.onbekend) return { soort: 'nieuw', profiel: _st.onbekend.profiel || {} };
     var gek = voertuig(_st.gekoppeld);
     if (gek) return { soort: 'voertuig', v: gek };
-    var ken = ''; try { ken = fotoKenteken(localStorage.getItem('pl_kenteken') || ''); } catch (e) { console.warn('PLGarage: kenteken van de verbinding onleesbaar', e); }
+    var ken = fotoKenteken(kentVerbinding());
     var a = actief();
     if (a && ken && fotoKenteken(a.kenteken) === ken) return { soort: 'voertuig', v: a };
     return { soort: 'nieuw', profiel: {} };
@@ -2731,7 +2744,7 @@
     _actief: function (id) { zetActief(id); melding('Actief voertuig gewijzigd'); teken(); },
     _nieuw: function (vanVerbinding) {
       _st.view = 'formulier'; _st.vid = null;
-      var ken = ''; try { ken = localStorage.getItem('pl_kenteken') || ''; } catch (e) { console.warn('PLGarage: kenteken van de verbinding onleesbaar', e); }
+      var ken = kentVerbinding();
       _st.voorinvul = voorinvulNieuw(vanVerbinding ? _st.onbekend : null, ken, voertuigen(true));
       teken();
       // Kenteken bekend maar de rest niet: meteen bij het RDW ophalen.

@@ -233,7 +233,9 @@ function _uvdDefault(){
 }
 let userVehicleData=_uvdDefault();
 function _uvKey(){
-  let k=''; try{ k=(vehicleInfo&&vehicleInfo.vin)||localStorage.getItem('pl_kenteken')||''; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
+  // Zonder VIN het kenteken van déze auto (PLIdentiteit), niet het laatst
+  // gebruikte: dan kreeg een tweede auto het dossier van de eerste.
+  let k=''; try{ k=(vehicleInfo&&vehicleInfo.vin)||(window.PLIdentiteit?PLIdentiteit.kenteken():localStorage.getItem('pl_kenteken'))||''; }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
   return 'pl_uvd_'+(k||'onbekend');
 }
 function loadUserVehicleData(){
@@ -537,9 +539,9 @@ async function brandstofPoort(){
   // Opstart (PLOpstart, 27-10-2026): niets vragen tijdens het verbinden. Het
   // kenteken komt ná de check, en de RDW vult de brandstof dan alsnog.
   // Stil verbinden (08-11-2026) net zo: het kenteken komt in de strook.
+  // Het kenteken is dan nog onbekend (PLIdentiteit); de strook vraagt het.
   if(typeof _kentNaVerbinden === 'function' && _kentNaVerbinden()){
     try{ btDiag('Brandstof onbekend — het kenteken wordt na het verbinden gevraagd', 'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
-    window._plKentNaCheck = true;
     return { bron:'opstart', type:'onbekend' };
   }
   const kent = await _vraagKenteken();
@@ -550,7 +552,6 @@ async function brandstofPoort(){
     if(inp) inp.value = kent;
     const res = await rdwLookup();
     if(res && res.ok){
-      try{ localStorage.setItem('pl_kenteken', kent); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
       const type = nu();
       try{ btDiag('Brandstof via RDW ('+kent+'): '+type, 'ok'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
       return { bron:'rdw', type, kenteken:kent };
