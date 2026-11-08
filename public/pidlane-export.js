@@ -105,7 +105,7 @@ function _voertuigRegels() {
   if (naam) uit.push(['Voertuig', naam]);
   if (v.brandstof) uit.push(['Brandstof', v.brandstof]);
   if (v.vin) uit.push(['VIN', v.vin]);
-  try { const k = localStorage.getItem('pl_kenteken'); if (k) uit.push(['Kenteken', k]); } catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
+  try { const k = window.PLIdentiteit ? PLIdentiteit.kenteken() : localStorage.getItem('pl_kenteken'); if (k) uit.push(['Kenteken', k]); } catch(e){ console.warn('Export: kenteken niet leesbaar', e); }
   try { if (typeof activePIDs !== 'undefined') uit.push(['Sensoren', activePIDs.size + ' actief']); } catch(e){ /* stil: activePIDs kan nog niet bestaan bij export vóór een sessie */ }
   return uit;
 }

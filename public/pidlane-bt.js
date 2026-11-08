@@ -66,8 +66,10 @@ function btEnvDump(){
    bekend, overslaan?" en "Klaar voor gebruik". Vier tikken, tijdens het
    rijden, voor antwoorden die de vorige verbinding al gaf (proef van 24-09,
    19:08). In deze stand kiest elke stap zelf wat er de vorige keer gold, en
-   zegt dat in de BT-log. Een verbinding met de knop vraagt zoals altijd: een
-   volgende verbinding kan een andere auto zijn.
+   zegt dat in de BT-log. Een verbinding met de knop kan een andere auto
+   zijn: sinds 08-11-2026 vraagt hij niets meer (stil verbinden), maar begint
+   hij wel met een onbekend kenteken (PLIdentiteit.begin) — dat van de vorige
+   auto wordt nooit stil overgenomen.
    Drie minuten, dan vervalt hij: een hervatting die zo lang duurt, is geen
    hervatting meer. */
 const HERVAT_MS = 180000;
@@ -174,7 +176,10 @@ async function connectSerial(opt){
   window._plHervat = _reden ? { t: Date.now(), reden: _reden }
     : (_snelMag() ? { t: Date.now(), reden: 'bekende auto', snel: true, stil: true, ms: STIL_MS }
       : { t: Date.now(), reden: 'stil verbinden', stil: true, ms: STIL_MS });
-  window._plKentBevestigd = null;   // rdwLookup() zet hem; saveVinProfile() bewaart hem bij de VIN
+  // Het kenteken van de auto aan de adapter: onbekend bij elke nieuwe
+  // verbinding, behalve bij een echte hervatting (PLIdentiteit, 08-11-2026).
+  try{ if(window.PLIdentiteit) PLIdentiteit.begin(!!_reden && _reden!=='opstart'); }
+  catch(e){ btDiag('Kenteken van de vorige verbinding niet gewist: '+(e.message||e),'warn'); }
   if(_reden==='opstart') btDiag('Opstart: de motor liep al een tijd niet — nieuwe start, zonder vragen','info');
   _snelScherm(!!(window._plHervat && (window._plHervat.snel || window._plHervat.stil)));
   _strook(function(S){ S.start(); });
@@ -2547,12 +2552,17 @@ function toonKentekenStap(){
     // Voorvullen met het laatst gebruikte kenteken, maar de gebruiker moet het
     // wél bevestigen. Tot nu toe werd dat kenteken stilzwijgend hergebruikt op
     // élke auto waarmee je verbond — de plaat van gisteren op de auto van nu.
-    let vorig=''; try{ vorig=localStorage.getItem('pl_kenteken')||''; }catch(e){ /* stil: opslag kan geblokkeerd zijn */ }
+    // Sinds 08-11-2026 uit PLIdentiteit: het kenteken van deze verbinding
+    // (alleen bij een hervatting bekend), anders het laatst bevestigde als
+    // voorinvulling met "controleer".
+    const _id=window.PLIdentiteit;
+    const nu=_id ? _id.kenteken() : '';
+    const vorig=nu || (_id ? _id.laatst() : '');
     inp.value=vorig;
     if(vorig && stat) stat.textContent='Laatst gebruikt — controleer of dit de auto is waar je nu in zit';
     try{ inp.focus(); inp.select(); }catch(e){ /* stil: focus mag falen op een verborgen veld */ }
     // Opstart (27-10-2026): geen vraag, en ook niet het vorige kenteken — dit
-    // kan een andere auto zijn. Het kenteken volgt uit de VIN (PLOpstart.naVin).
+    // kan een andere auto zijn. Het kenteken volgt uit de VIN (PLIdentiteit.naVin).
     if(_kentNaVerbinden()){
       if(inp) inp.value='';
       btDiag((_isOpstart()?'Opstart':'Stil verbinden')+': kentekenstap overgeslagen — het kenteken volgt uit de VIN','info');
@@ -2561,7 +2571,7 @@ function toonKentekenStap(){
       return;
     }
     // Hervatten: dezelfde auto als een paar minuten geleden, dus niet vragen.
-    if(vorig && _hervatActief()){
+    if(nu && _hervatActief()){
       btDiag('Hervatten ('+window._plHervat.reden+'): kenteken '+vorig+' van de vorige verbinding, zonder te vragen','info');
       // Geen bereik of de RDW ligt plat: dan niet op dit scherm blijven
       // wachten maar overslaan — de VIN komt straks alsnog.
@@ -2997,13 +3007,15 @@ async function startDiscovery(){
     try{ await PLVerbind.naVin(vinInfo.vin); }
     catch(e){ btDiag('Verbindprofiel-geheugen overgeslagen: '+(e.message||e),'warn'); }
   }
-  if(vinInfo?.vin && _kentNaVerbinden() && window.PLOpstart){
-    // Opstart: het kenteken uit het profiel van deze VIN, vóór de
-    // brandstofpoort, zodat die het niet hoeft te vragen. Hoogstens 8 s.
-    try{ await Promise.race([PLOpstart.naVin(vinInfo.vin), delay(8000)]); }
-    catch(e){ btDiag('Opstart: kenteken uit het profiel niet opgehaald: '+(e.message||e),'warn'); }
-  } else if(!vinInfo?.vin && _kentNaVerbinden()){
-    window._plKentNaCheck = true;
+  // Het kenteken hoort bij de VIN (PLIdentiteit): het bevestigde kenteken
+  // van deze VIN, en anders onbekend — nooit dat van de vorige auto. Vóór de
+  // brandstofpoort, zodat die het niet hoeft te vragen. Hoogstens 8 s.
+  let _kentVin='';
+  try{ if(window.PLIdentiteit) _kentVin=PLIdentiteit.naVin(vinInfo?.vin||''); }
+  catch(e){ btDiag('Kenteken bij de VIN niet bepaald: '+(e.message||e),'warn'); }
+  if(_kentVin){
+    try{ await Promise.race([rdwLookup(false,{kenteken:_kentVin}), delay(8000)]); }
+    catch(e){ btDiag('Kenteken '+_kentVin+' niet opgezocht bij de RDW: '+(e.message||e),'warn'); }
   }
   if(vinInfo?.vin){
     addProg('✅',`VIN: ${vinInfo.vin}`);
@@ -3084,7 +3096,7 @@ async function startDiscovery(){
   }catch(e){ btDiag('Brandstofpoort overgeslagen: '+(e.message||e), 'warn'); }
 
   _strook(function(S){
-    if(window._plKentNaCheck) S.stap('auto','let', vinInfo?.vin ? 'nieuwe auto — kenteken volgt' : 'geen VIN — kenteken volgt');
+    if(window.PLIdentiteit && !PLIdentiteit.bekend()) S.stap('auto','let', vinInfo?.vin ? 'nieuwe auto — kenteken volgt' : 'geen VIN — kenteken volgt');
     else S.stap('auto','ok', S.autoTekst());
     S.stap('klaar','bezig', supportedPIDs.size+' sensoren nakijken');
   });
@@ -3291,7 +3303,10 @@ function updateVehicleCard(vinInfo){
   // De naam van de auto, niet de VIN (06-10-2026): die kwam zo rechtsboven.
   showVtag((vehicleInfo.merk && vehicleInfo.merk!=='Onbekend') ? (vehicleInfo.merk+' '+(vehicleInfo.model||'')).trim() : 'Verbonden');
   const card=document.getElementById('vehicleCard');
-  const savedKent=localStorage.getItem('pl_kenteken')||'';
+  // Het kenteken van déze auto (PLIdentiteit), niet het laatst gebruikte:
+  // dat zocht tot 08-11-2026 bij een nieuwe auto het kenteken van de vorige
+  // op, en de RDW-gegevens wonnen het dan van de VIN.
+  const savedKent=(window.PLIdentiteit ? PLIdentiteit.kenteken() : '')||'';
   const vinValid=/^[A-HJ-NPR-Z0-9]{17}$/.test(vehicleInfo.vin||'');
   if(!vinValid) vehicleInfo.vin='';
   card.innerHTML=`
@@ -3385,7 +3400,9 @@ async function rdwLookup(showOverview, opties){
     // wél goed stond. Op de rit van 16-08 leek dat op een niet-gevulde
     // brandstof; het was alleen de logregel. Nu uit de echte bron lezen.
     const brandstof=vehicleInfo.brandstof||f.brandstof||'';
-    if(!demoMode){ localStorage.setItem('pl_kenteken',kent); window._plKentBevestigd=kent; }   // een demo-kenteken is niet jouw auto
+    // Opzoeken = bevestigen: elke aanroep komt van de klant of van het
+    // profiel van deze VIN (PLIdentiteit). Een demo-kenteken is niet jouw auto.
+    if(!demoMode){ if(window.PLIdentiteit) PLIdentiteit.bevestig(kent); else localStorage.setItem('pl_kenteken',kent); }
     // PLRecall haakt hierop in en haalt de terugroepdetails op (welke actie,
     // welk risico, welke status) bovenop de ja/nee-vlag die we al hadden.
     try{ window.dispatchEvent(new CustomEvent('pl:kenteken-geladen',{detail:{kenteken:kent}})); }catch(e){ /* stil: element kan weg zijn */ }

@@ -345,7 +345,9 @@ function finishLogin(user, account){
   if(window.PLStrook){
     try{ closeConnOv(); }catch(e){ console.warn('Verbindscherm niet gesloten na inloggen:', e); }
     try{ if(typeof goHome==='function') goHome(); }catch(e){ console.warn('Hoofdmenu niet geopend na inloggen:', e); }
-    try{ if(PLStrook.verbindMag()) PLStrook.aftellen(function(){ PLStrook.verbind(); }); }
+    // Een herlaad met een lopende verbinding herverbindt zelf als hervatting
+    // (pidlane-theme.js, _plHervatBijBoot): dan hier niet ook aftellen.
+    try{ if(!window._plHervatBijBoot && PLStrook.verbindMag()) PLStrook.aftellen(function(){ PLStrook.verbind(); }); }
     catch(e){ console.warn('Aftellen naar verbinden niet gestart:', e); }
   } else {
     document.getElementById('connOv').classList.remove('hidden');

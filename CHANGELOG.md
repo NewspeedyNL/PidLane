@@ -10,6 +10,23 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 08-11-2026 (avond) — Het kenteken hoort bij de VIN (PLIdentiteit)
+ ═══════════════════════════════════════════════════════════
+
+ - Een nieuwe auto krijgt nooit meer stil het kenteken van de vorige. Het
+   kenteken van de verbonden auto komt uit één plek (pidlane-identiteit.js):
+   een bekende VIN geeft zijn eigen kenteken, een nieuwe VIN of een auto
+   zonder VIN is onbekend tot je het bevestigt. Nagebouwd vóór de fix: een
+   Mazda werd "Peugeot 208, diesel" met het oude kenteken in zijn profiel.
+ - De strook vult het vorige kenteken alleen voor, met "controleer"; wat je
+   typt blijft staan als de strook bijwerkt.
+ - Een nieuwe auto: Inrichten / Niet nu als knop in de strook (de wizard had
+   sinds het stille verbinden geen ingang meer, behalve in Meer).
+ - Zonder VIN gaan de aangevinkte sensoren en de versnellingsindicator van
+   Mijn voertuigen alleen aan als het kenteken dat van het actieve voertuig is.
+ - Na een herlaad met "altijd automatisch" start er nog maar één verbinding.
+
+ ═══════════════════════════════════════════════════════════
  08-11-2026 — Verbinden zonder vensters; na het inloggen het hoofdmenu
  ═══════════════════════════════════════════════════════════
 

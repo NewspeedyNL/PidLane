@@ -13,7 +13,10 @@
    Elke regel is wacht / bezig / ok / let / fout. De app blijft eronder
    gewoon bruikbaar. Staat alles op ok, dan klapt hij na KLAAR_MS in.
    Alleen een regel die iets van de klant nodig heeft houdt hem open:
-     • Auto zonder kenteken  → invoerveld in de strook, alleen in stilstand;
+     • Auto zonder kenteken  → invoerveld in de strook, alleen in stilstand,
+                               voorgevuld met het laatst bevestigde kenteken
+                               en "controleer" (PLIdentiteit, nooit blind);
+     • Nieuwe auto           → knop Inrichten / Niet nu (PLInrichten.nodig());
      • Foutcodes rood/oranje → tik opent Check mijn auto;
      • een fout              → uitleg plus Opnieuw.
 
@@ -63,9 +66,10 @@
     return st;
   }
   /* Mag de strook dicht? Alleen als niets nog loopt of iets vraagt. Een
-     "let" bij Foutcodes of Auto houdt hem open: daar moet de klant iets zien. */
+     "let" bij Foutcodes of Auto houdt hem open: daar moet de klant iets zien.
+     Net zo de knop Inrichten bij een nieuwe auto: ingeklapt zie je hem niet. */
   function inklappen(st) {
-    if (!st || st.fout || st.vraag) return false;
+    if (!st || st.fout || st.vraag || st.inricht) return false;
     return st.stappen.every(function (s) { return s.status === 'ok' || s.status === 'over'; });
   }
   /* Het stoplicht van PLFoutcodes → een regel. Grijs is "niet gelezen", en
@@ -138,6 +142,8 @@
 
   function teken() {
     var w = wortel();
+    // Een herteken (een stap die klaar is) mag getypte invoer niet wissen.
+    var inv = el('plStrookKent'), getypt = inv ? inv.value : null, focus = !!inv && document.activeElement === inv;
     if (!_open) { w.hidden = true; return; }
     w.hidden = false;
     w.classList.toggle('in', _ingeklapt);
@@ -179,15 +185,26 @@
             '<button type="button" class="pl-strook-k" onclick="PLStrook.sluit()">Sluiten</button>' +
           '</div>';
       }
+      if (_st.inricht && !_st.fout) {
+        h += '<div class="pl-strook-knoppen" id="plStrookInricht"><span class="pl-strook-t">Nieuwe auto — even inrichten?</span>' +
+          '<button type="button" class="pl-strook-k p" onclick="PLStrook._inrichten()">Inrichten</button>' +
+          '<button type="button" class="pl-strook-k" onclick="PLStrook._nietNu()">Niet nu</button></div>';
+      }
     }
     w.innerHTML = h;
+    var na = el('plStrookKent');
+    if (na && getypt !== null) { na.value = getypt; if (focus) try { na.focus(); } catch (e) { console.warn('PLStrook: focus', e); } }
   }
   function kentekenVeld() {
     if (!magKentekenVragen(snelheid())) {
       return '<div class="pl-strook-kent"><span class="pl-strook-t">Kenteken invullen kan zodra de auto stilstaat</span></div>';
     }
+    // Het laatst bevestigde kenteken als voorinvulling: één tik als het
+    // dezelfde auto is, maar altijd met "controleer" — nooit stil overnemen.
+    var sug = laatst();
     return '<div class="pl-strook-kent">' +
-      '<input id="plStrookKent" placeholder="Kenteken" maxlength="8" autocomplete="off" aria-label="Kenteken">' +
+      (sug ? '<span class="pl-strook-t">Laatst gebruikt: ' + esc(sug) + ' — controleer of dit deze auto is</span>' : '') +
+      '<input id="plStrookKent" placeholder="Kenteken" maxlength="8" autocomplete="off" aria-label="Kenteken" value="' + esc(sug) + '">' +
       '<button type="button" class="pl-strook-k p" id="plStrookKentOk" onclick="PLStrook._kenteken()">Opzoeken</button>' +
       '<button type="button" class="pl-strook-k" onclick="PLStrook._kentLater()">Later</button>' +
       '<div class="pl-strook-t" id="plStrookKentSt"></div></div>';
@@ -258,8 +275,10 @@
   function kentekenOk(tekst) {
     if (!_st) return;
     _st.vraag = null; clearInterval(_kentT);
-    window._plKentNaCheck = false;
     zet(_st, 'auto', 'ok', tekst || '');
+    // Zonder VIN is het kenteken nu de herkenning: de lus van PLGarage
+    // (herkenAuto → selectieZonderVin) zet de selectie bij de volgende tik.
+    inrichtVraag();
     teken(); plan();
   }
   function _kenteken() {
@@ -285,9 +304,31 @@
     zet(_st, 'auto', 'let', 'zonder kenteken — later via Mijn auto');
     teken();
   }
+  function kentekenNu() { return window.PLIdentiteit ? PLIdentiteit.kenteken() : ''; }
+  function kentekenBekend() { return !!(window.PLIdentiteit && PLIdentiteit.bekend()); }
+  function laatst() { return window.PLIdentiteit ? PLIdentiteit.laatst() : ''; }
+  /* De wizard bij een nieuwe auto: geen venster (besluit 08-11), wel een
+     knop. Alleen als de auto herkend is (VIN of bevestigd kenteken): anders
+     zou hij onder de gedeelde sleutel 'onbekend' bewaren. */
+  var _hervatNu = false;
+  function inrichtVraag() {
+    if (!_st) return;
+    var v = veh();
+    if (!(v.vin || kentekenBekend())) { _st.inricht = false; return; }
+    try { _st.inricht = !!(window.PLInrichten && PLInrichten.nodig && PLInrichten.nodig({ hervat: _hervatNu })); }
+    catch (e) { diag('setup-wizard niet te beoordelen: ' + (e.message || e), 'warn'); _st.inricht = false; }
+  }
+  function _inrichten() {
+    if (_st) _st.inricht = false; teken();
+    try { if (window.PLInrichten) PLInrichten.open(); } catch (e) { diag('setup-wizard opent niet: ' + (e.message || e), 'warn'); }
+  }
+  function _nietNu() {
+    if (_st) _st.inricht = false; teken(); plan();
+    try { if (window.PLInrichten && PLInrichten.rijdenStil) PLInrichten.rijdenStil(); } catch (e) { diag('keuze niet bewaard: ' + (e.message || e), 'warn'); }
+  }
   function autoTekst() {
     var v = veh();
-    var k = lees('pl_kenteken') || '';
+    var k = kentekenNu();
     var naam = [v.merk, v.model].filter(Boolean).join(' ');
     return [naam, k].filter(Boolean).join(' · ') || (v.vin ? 'VIN herkend' : 'herkend');
   }
@@ -303,8 +344,10 @@
       var s = _st.stappen.filter(function (x) { return x.id === id; })[0];
       if (s && s.status !== 'ok') s.status = 'ok';
     });
-    if (window._plKentNaCheck) vraagKenteken();
+    _hervatNu = !!opties.hervat;
+    if (!kentekenBekend()) vraagKenteken();
     else if (_st.stappen[2].status !== 'ok') zet(_st, 'auto', 'ok', autoTekst());
+    inrichtVraag();
     teken();
     return codes(opties).then(function () { plan(); });
   }
@@ -420,7 +463,7 @@
     altijd: altijd, autoTekst: autoTekst,
     staat: function () { return { st: _st, open: _open, ingeklapt: _ingeklapt, aftel: !!_aftel }; },
     _nu: _nu, _annuleer: _annuleer, _altijd: _altijd, _opnieuw: _opnieuw, _details: _details,
-    _codes: _codes, _wissel: _wissel, _kenteken: _kenteken, _kentLater: _kentLater,
+    _codes: _codes, _wissel: _wissel, _kenteken: _kenteken, _kentLater: _kentLater, _inrichten: _inrichten, _nietNu: _nietNu,
     _kern: { STAPPEN: STAPPEN, AFTEL_MS: AFTEL_MS, KLAAR_MS: KLAAR_MS, nieuw: nieuw, zet: zet, inklappen: inklappen,
       foutcodeRegel: foutcodeRegel, aftelDeel: aftelDeel, magKentekenVragen: magKentekenVragen, bekendeAdapter: bekendeAdapter }
   };

@@ -26,6 +26,9 @@ function toets(naam, waar, uitleg) {
 }
 
 const bron = fs.readFileSync('pidlane-bt.js', 'utf8');
+// Het kenteken van de vorige verbinding staat sinds 08-11-2026 in
+// PLIdentiteit (pl_id_nu); de echte module gaat mee de zandbak in.
+const bronId = fs.readFileSync('pidlane-identiteit.js', 'utf8');
 function knip(van, tot) {
   const a = bron.indexOf(van), b = bron.indexOf(tot, a + 1);
   if (a < 0 || b < 0) {
@@ -48,7 +51,11 @@ function laad(o) {
   const els = {};
   const s = {
     diag: [], rdw: [], scans: 0, starts: 0,
-    localStorage: { getItem: (k) => (o.kenteken && k === 'pl_kenteken' ? o.kenteken : null), setItem() {}, removeItem() {} },
+    localStorage: (function () {
+      const m = {};
+      if (o.kenteken) { m.pl_kenteken = o.kenteken; m.pl_id_nu = JSON.stringify({ vin: '', kenteken: o.kenteken, bron: 'klant' }); }
+      return { getItem: (k) => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: (k) => { delete m[k]; } };
+    })(),
     document: { getElementById: (id) => els[id] || (els[id] = el()), createElement: () => el(), querySelectorAll: () => [] },
     log() {}, console: { warn() {}, log() {} },
     Promise
@@ -59,8 +66,11 @@ function laad(o) {
   s.scanNetworks = () => { s.scans++; return Promise.resolve(); };
   s.startDiscovery = () => { s.starts++; return Promise.resolve(); };
   vm.createContext(s);
+  vm.runInContext(bronId, s);
   vm.runInContext('var discoveredNetworks = []; var selectedNetwork = null;\n' + HERVAT + KENTEKEN + PROTOCOL, s);
   if (o.hervat) s._plHervat = { t: Date.now() - (o.oudMs || 0), reden: o.hervat };
+  // Wat connectSerial() doet: alleen een echte hervatting houdt het kenteken.
+  s.PLIdentiteit.begin(!!o.hervat && o.hervat !== 'opstart');
   return { s, els };
 }
 const wacht = () => new Promise((r) => setImmediate(r));

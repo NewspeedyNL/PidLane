@@ -5,7 +5,9 @@
 // pure kern (wanneer klapt hij in, wat zegt het stoplicht, nooit een
 // kentekenveld tijdens het rijden) en het gedrag: een fout markeert de
 // lopende stap, aftellen met "altijd automatisch" verbindt meteen, en de
-// foutcodes worden één keer per dag gelezen.
+// foutcodes worden één keer per dag gelezen. Sinds 08-11-2026 laadt hij
+// ook de echte pidlane-identiteit.js: of de strook het kenteken vraagt,
+// hangt aan PLIdentiteit en niet meer aan een losse vlag.
 //
 // Draaien vanuit public/:  node test-strook.js
 // ══════════════════════════════════════════════════════════════════
@@ -15,6 +17,7 @@ const path = require('path');
 const vm = require('vm');
 
 const bron = fs.readFileSync(path.join(__dirname, 'pidlane-strook.js'), 'utf8');
+const bronId = fs.readFileSync(path.join(__dirname, 'pidlane-identiteit.js'), 'utf8');
 let n = 0, fout = 0;
 function toets(naam, waar, uitleg) {
   n++;
@@ -26,7 +29,20 @@ function laad(o) {
   o = o || {};
   const opslag = Object.assign({}, o.opslag);
   const elementen = {};
-  const maak = (id) => ({ id, hidden: false, innerHTML: '', classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {} });
+  // innerHTML zetten bouwt het kentekenveld opnieuw, zoals een browser:
+  // een nieuw element met de value uit de HTML. Zo is "invoer blijft staan
+  // bij een herteken" iets wat hier rood kán worden.
+  const maak = (id) => {
+    let html = '';
+    return { id, hidden: false, classList: { toggle() {}, add() {}, remove() {} }, setAttribute() {},
+      get innerHTML() { return html; },
+      set innerHTML(h) {
+        html = String(h);
+        const m = html.match(/id="plStrookKent"[^>]*?value="([^"]*)"/);
+        if (/id="plStrookKent"/.test(html)) elementen.plStrookKent = { value: m ? m[1] : '' };
+        else delete elementen.plStrookKent;
+      } };
+  };
   const s = {
     console: { warn() {}, log() {} },
     setTimeout: (f) => { if (o.nuTimers) f(); return 1; }, clearTimeout() {}, setInterval: () => 1, clearInterval() {},
@@ -44,7 +60,12 @@ function laad(o) {
   };
   s.window = s; s.opslag = opslag; s.elementen = elementen;
   vm.createContext(s);
+  vm.runInContext(bronId, s);
   vm.runInContext(bron, s);
+  // Standaard een verbinding met een bekend kenteken; kentOnbekend = een
+  // nieuwe auto waarvan nog niemand het kenteken zei.
+  s.PLIdentiteit.begin(false);
+  if (!o.kentOnbekend) s.PLIdentiteit.bevestig('TEST01');
   return s;
 }
 
@@ -193,38 +214,85 @@ function laad(o) {
     toets('"Check na verbinden" aan: het venster zoals altijd, geen tweede uitlezing', s.venster === 1 && s.gelezen === 0);
   }
 
-  console.log('\n6. Kenteken in de strook');
+  console.log('\n6. Kenteken in de strook (PLIdentiteit)');
   {
-    const s = metFoutcodes({});
-    s._plKentNaCheck = true;
+    const s = metFoutcodes({ kentOnbekend: true });
     s.PLStrook.start();
     await s.PLStrook.naVerbinding({});
     toets('nieuwe auto in stilstand: het invoerveld staat er', /plStrookKent"/.test(s.elementen.plStrook.innerHTML));
     toets('en de strook klapt niet in', !s.PLStrook._kern.inklappen(s.PLStrook.staat().st));
   }
   {
-    const s = metFoutcodes({ pidVals: { '010D': 80 } });
-    s._plKentNaCheck = true;
+    const s = metFoutcodes({});
+    s.PLStrook.start();
+    await s.PLStrook.naVerbinding({});
+    toets('TEGENPROEF: kenteken van deze auto bekend → geen invoerveld', !/plStrookKent"/.test(s.elementen.plStrook.innerHTML));
+  }
+  {
+    const s = metFoutcodes({ kentOnbekend: true, opslag: { pl_kenteken: 'OUD123' } });
+    s.PLStrook.start();
+    await s.PLStrook.naVerbinding({});
+    const h = s.elementen.plStrook.innerHTML;
+    toets('vorige auto: het laatste kenteken alleen als voorinvulling met "controleer"', /value="OUD123"/.test(h) && /controleer/.test(h), h.slice(0, 300));
+    toets('en Auto staat niet op ok met dat kenteken', s.PLStrook.staat().st.stappen.find(x => x.id === 'auto').status !== 'ok');
+  }
+  {
+    const s = metFoutcodes({ kentOnbekend: true, pidVals: { '010D': 80 } });
     s.PLStrook.start();
     await s.PLStrook.naVerbinding({});
     toets('TEGENPROEF: rijdend geen invoerveld', !/plStrookKent"/.test(s.elementen.plStrook.innerHTML) && /stilstaat/.test(s.elementen.plStrook.innerHTML));
   }
   {
-    const s = metFoutcodes({});
-    s._plKentNaCheck = true;
+    const s = metFoutcodes({ kentOnbekend: true });
     s.PLStrook.start();
     await s.PLStrook.naVerbinding({});
     s.elementen.plStrookKent = { value: 'xx-12-yz' };
     s.elementen.plStrookKentSt = { textContent: '' };
     let gevraagd = null;
-    s.rdwLookup = (a, b) => { gevraagd = b.kenteken; s.opslag.pl_kenteken = b.kenteken; s.vehicleInfo.merk = 'Mazda'; return Promise.resolve({ ok: true }); };
+    // Zoals de echte rdwLookup: opzoeken = bevestigen.
+    s.rdwLookup = (a, b) => { gevraagd = b.kenteken; s.PLIdentiteit.bevestig(b.kenteken); s.vehicleInfo.merk = 'Mazda'; return Promise.resolve({ ok: true }); };
     let herijkt = 0; s.herijkPidGate = () => { herijkt++; };
     await s.PLStrook._kenteken();
     const auto = s.PLStrook.staat().st.stappen.find(x => x.id === 'auto');
     toets('opgezocht met het schone kenteken', gevraagd === 'XX12YZ', gevraagd);
     toets('de zeef opnieuw (brandstof is nu bekend)', herijkt === 1);
     toets('Auto krijgt het vinkje met merk en kenteken', auto.status === 'ok' && /Mazda/.test(auto.tekst) && /XX12YZ/.test(auto.tekst), JSON.stringify(auto));
-    toets('de vlag van PLOpstart is weg', s._plKentNaCheck === false);
+    toets('PLIdentiteit kent het kenteken nu', s.PLIdentiteit.bekend() && s.PLIdentiteit.kenteken() === 'XX12YZ');
+  }
+  {
+    const s = metFoutcodes({ kentOnbekend: true });
+    s.PLStrook.start();
+    await s.PLStrook.naVerbinding({});
+    s.elementen.plStrookKent = { value: 'AB-12-CD' };
+    s.PLStrook.stap('codes', 'ok', 'later klaar');   // herteken terwijl de klant typt
+    toets('een herteken wist getypte invoer niet', s.elementen.plStrookKent.value === 'AB-12-CD');
+  }
+
+  console.log('\n7. Een nieuwe auto: Inrichten als knop, niet als venster');
+  {
+    const s = metFoutcodes({ vehicleInfo: { vin: 'JMZZZZZZZJX000001' } });
+    let rijden = 0;
+    s.PLInrichten = { nodig: () => true, rijdenStil: () => { rijden++; }, open() {} };
+    s.PLStrook.start();
+    await s.PLStrook.naVerbinding({});
+    toets('knop Inrichten in de strook', /plStrookInricht/.test(s.elementen.plStrook.innerHTML));
+    toets('en de strook klapt niet weg voordat de klant koos', !s.PLStrook._kern.inklappen(s.PLStrook.staat().st));
+    s.PLStrook._nietNu();
+    toets('Niet nu = Meteen rijden, bewaard', rijden === 1 && !/plStrookInricht/.test(s.elementen.plStrook.innerHTML));
+  }
+  {
+    const s = metFoutcodes({ kentOnbekend: true, vehicleInfo: {} });
+    s.PLInrichten = { nodig: () => true, rijdenStil() {}, open() {} };
+    s.PLStrook.start();
+    await s.PLStrook.naVerbinding({});
+    toets('TEGENPROEF: geen VIN en geen kenteken → nog geen Inrichten (sleutel zou "onbekend" zijn)', !/plStrookInricht/.test(s.elementen.plStrook.innerHTML));
+  }
+  {
+    const s = metFoutcodes({ vehicleInfo: { vin: 'JMZZZZZZZJX000001' } });
+    s.PLInrichten = { nodig: () => false, rijdenStil() {}, open() {} };
+    s.PLStrook.start();
+    await s.PLStrook.naVerbinding({});
+    toets('TEGENPROEF: al ingericht → geen knop', !/plStrookInricht/.test(s.elementen.plStrook.innerHTML));
   }
 
   console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' toetsen ok'));

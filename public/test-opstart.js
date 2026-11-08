@@ -107,27 +107,9 @@ toets('na een minuut: dan pas vragen', !K.herhaalMag(nu - 61000, nu));
 toets('de grens is 60 s', K.HERHAAL_MS === 60000);
 toets('zonder starttijd: niet', !K.herhaalMag(undefined, nu));
 
-console.log('\n6. Het kenteken uit het profiel van deze VIN');
-toets('kenteken uit het profiel, genormaliseerd', K.kentekenUitProfiel({ kenteken: 'r-054-xd' }) === 'R054XD');
-toets('geen of te kort kenteken: leeg', K.kentekenUitProfiel({}) === '' && K.kentekenUitProfiel(null) === '' && K.kentekenUitProfiel({ kenteken: 'AB' }) === '');
+// 6. Het kenteken uit het profiel van deze VIN: sinds 08-11-2026 in
+// PLIdentiteit, getoetst in test-identiteit.js.
 (async function () {
-  {
-    const rdw = [];
-    const z = zandbak({ btDiag() {}, rdwLookup: (x, o) => { rdw.push(o.kenteken); return Promise.resolve({ ok: true }); } });
-    z.opslag['pl_vinprof_' + A] = JSON.stringify({ vin: A, kenteken: 'R054XD' });
-    const ok = await z.O.naVin(A);
-    toets('bekende VIN: het kenteken uit zijn profiel wordt opgezocht', ok === true && rdw[0] === 'R054XD', JSON.stringify(rdw));
-    toets('en er wordt na de check niets gevraagd', !z.ctx._plKentNaCheck);
-  }
-  {
-    const rdw = [];
-    const z = zandbak({ btDiag() {}, rdwLookup: (x, o) => { rdw.push(o.kenteken); return Promise.resolve({ ok: true }); } });
-    z.opslag.pl_kenteken = 'OUD123';
-    const ok = await z.O.naVin(B);
-    toets('onbekende VIN: geen opzoeking, ook niet het vorige kenteken', ok === false && rdw.length === 0, JSON.stringify(rdw));
-    toets('maar wel de vraag na de check', z.ctx._plKentNaCheck === true);
-  }
-
   console.log('\n7. Wat het wekkerblad zegt');
   toets('oude app zonder plugin: bijwerken', /Werk de app bij/.test(K.wekkerTekst({ beschikbaar: false }).regel) && !K.wekkerTekst(null).kan);
   toets('Android 11: kan niet, met de reden', !K.wekkerTekst({ beschikbaar: true, ondersteund: false }).kan && /Android 12/.test(K.wekkerTekst({ beschikbaar: true, ondersteund: false }).regel));
