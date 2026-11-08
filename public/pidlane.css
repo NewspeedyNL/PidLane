@@ -4433,3 +4433,34 @@ body:has(#lgWaveBg:not(.off)) .ov#connOv{ background:rgba(2,3,10,.30); backdrop-
   .ov#loginOv .mbtn.p::after, .ov#connOv .mbtn.p::after{ animation:none !important; }
   .hlg-strepen{ display:none; }
 }
+
+/* ══ PLStrook — verbinden zonder vensters (08-11-2026) ══════════════
+   Smal en bovenin; de app blijft eronder bruikbaar. #connOv.pl-stil is
+   het verbindscherm tijdens stil verbinden: dicht, de strook spreekt. */
+#connOv.pl-stil{display:none!important}
+.pl-strook{position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:var(--z-modal,9600);max-width:480px;margin:0 auto;background:var(--sur2,#1b2333);border:1px solid var(--bd,#28324a);border-radius:12px;padding:8px 10px;font:500 13px var(--f);color:var(--tx,#eef2fa);box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.pl-strook[hidden]{display:none}
+.pl-strook-kop{display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px;background:none;border:0;color:inherit;font:inherit;padding:2px 0;cursor:pointer;text-align:left}
+.pl-strook-kop b{font-weight:800}
+.pl-strook-kop span{color:var(--tx2,#a9b4c8)}
+.pl-strook-balk{height:6px;border-radius:3px;background:var(--bd,#28324a);overflow:hidden;margin:6px 0}
+.pl-strook-balk i{display:block;height:100%;background:var(--bl,#3d8bfd);transition:width .2s linear}
+.pl-strook-lijst{margin-top:4px}
+.pl-strook-r{display:grid;grid-template-columns:18px auto 1fr;gap:6px;align-items:baseline;padding:3px 0}
+.pl-strook-r[role=button]{cursor:pointer}
+.pl-strook-i{font-weight:800;text-align:center}
+.pl-strook-n{font-weight:700}
+.pl-strook-t{color:var(--tx2,#a9b4c8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.pl-strook-r.s-wacht,.pl-strook-r.s-over{opacity:.55}
+.pl-strook-r.s-ok .pl-strook-i{color:var(--gn,#2ecc71)}
+.pl-strook-r.s-bezig .pl-strook-i{color:var(--bl,#3d8bfd)}
+.pl-strook-r.s-let .pl-strook-i{color:var(--or,#f5a623)}
+.pl-strook-r.s-fout .pl-strook-i{color:var(--rd,#e74c3c)}
+.pl-strook-kent{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:4px 0 6px 24px}
+.pl-strook-kent input{flex:1 1 120px;min-width:0;padding:7px 9px;border-radius:8px;border:1px solid var(--bd,#28324a);background:var(--sur,#121826);color:var(--tx,#eef2fa);font:700 14px var(--f);text-transform:uppercase}
+.pl-strook-kent .pl-strook-t{flex-basis:100%;white-space:normal}
+.pl-strook-fout{color:var(--rd,#e74c3c);margin:6px 0;line-height:1.35}
+.pl-strook-knoppen{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}
+.pl-strook-k{padding:7px 12px;border-radius:8px;border:1px solid var(--bd,#28324a);background:transparent;color:var(--tx,#eef2fa);font:700 13px var(--f);cursor:pointer}
+.pl-strook-k.p{background:var(--bl,#3d8bfd);border-color:var(--bl,#3d8bfd);color:#fff}
+.pl-strook-vink{display:flex;align-items:center;gap:5px;color:var(--tx2,#a9b4c8);font-size:12px}

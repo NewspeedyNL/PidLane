@@ -640,6 +640,32 @@
     if (ov) ov.style.display = 'none';
   }
 
+  /* Een verse uitlezing vastleggen: in de staat, het rapportarchief en Mijn
+     voertuigen. Eén plek voor scan() en scanStil(), zodat een stille
+     uitlezing na het verbinden (PLStrook) hetzelfde achterlaat. */
+  function neemScan(s) {
+    _st.scan = s;
+    try { if (typeof registerSessionReport === 'function') registerSessionReport({ type: 'dtc', title: 'Foutcodes & keuringsstatus', text: alsTekst(s) }); }
+    catch (e) { console.warn('PLFoutcodes: archiveren faalde', e); }
+    // Mijn voertuigen: codes worden issues, keuringsstatus gaat in de status.
+    try { if (window.PLGarage && PLGarage.foutcodes) PLGarage.foutcodes({ bevestigd: s.codes.bevestigd, pending: s.codes.pending, permanent: s.codes.permanent, gelezen: s.gelezen, readiness: s.readiness }); }
+    catch (e) { console.warn('PLFoutcodes: doorgeven aan Mijn voertuigen faalde', e); }
+  }
+  /* Zonder venster, na het verbinden (PLStrook, 08-11-2026). Wel vastgelegd,
+     anders zou de check van die dag nergens staan. Null bij een fout. */
+  async function scanStil() {
+    if (_st.bezig) return null;
+    _st.bezig = true;
+    try {
+      var s = await metBus(function () { return leesUit(stuurNu()); });
+      neemScan(s);
+      return s;
+    } catch (e) {
+      console.warn('PLFoutcodes.scanStil', e);
+      return null;
+    } finally { _st.bezig = false; }
+  }
+
   async function scan() {
     if (_st.bezig) return;
     stopDoor(true);
@@ -649,12 +675,7 @@
       var s = await metBus(function () {
         return leesUit(stuurNu(), function (t) { _st.stap = t; teken(); });
       });
-      _st.scan = s;
-      try { if (typeof registerSessionReport === 'function') registerSessionReport({ type: 'dtc', title: 'Foutcodes & keuringsstatus', text: alsTekst(s) }); }
-      catch (e) { console.warn('PLFoutcodes: archiveren faalde', e); }
-      // Mijn voertuigen: codes worden issues, keuringsstatus gaat in de status.
-      try { if (window.PLGarage && PLGarage.foutcodes) PLGarage.foutcodes({ bevestigd: s.codes.bevestigd, pending: s.codes.pending, permanent: s.codes.permanent, gelezen: s.gelezen, readiness: s.readiness }); }
-      catch (e) { console.warn('PLFoutcodes: doorgeven aan Mijn voertuigen faalde', e); }
+      neemScan(s);
       if (_st.doorGewild && (_st.doorDoel === 'thuis' ? magTerug(s) : magDoor(s))) startDoor();
       _st.doorGewild = false;   // één keer: opnieuw uitlezen is een eigen keuze
       return s;
@@ -1095,6 +1116,7 @@
     // Uitlezen zonder venster, voor het volledige onderzoek (PLOnderzoek, #428):
     // dezelfde bus, dezelfde demo-ECU, dezelfde keten als scan().
     leesStil: function () { return metBus(function () { return leesUit(stuurNu()); }); },
+    scanStil: scanStil,
     // pure kern en bus — voor test-foutcodes.js
     parseDtc: parseDtc,
     parseReadiness: parseReadiness,

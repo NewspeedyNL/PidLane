@@ -536,8 +536,9 @@ async function brandstofPoort(){
   // stelt terwijl je het antwoord al hebt, leert mensen om weg te klikken.
   // Opstart (PLOpstart, 27-10-2026): niets vragen tijdens het verbinden. Het
   // kenteken komt ná de check, en de RDW vult de brandstof dan alsnog.
-  if(typeof _isOpstart === 'function' && _isOpstart()){
-    try{ btDiag('Opstart: brandstof onbekend — het kenteken wordt na de check gevraagd', 'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
+  // Stil verbinden (08-11-2026) net zo: het kenteken komt in de strook.
+  if(typeof _kentNaVerbinden === 'function' && _kentNaVerbinden()){
+    try{ btDiag('Brandstof onbekend — het kenteken wordt na het verbinden gevraagd', 'info'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
     window._plKentNaCheck = true;
     return { bron:'opstart', type:'onbekend' };
   }
