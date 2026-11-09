@@ -56,7 +56,10 @@ const PLMon = {
   // ═══════════════ levenscyclus ═══════════════
   boot(){
     if (this._watchdog) return;
-    this._watchdog = setInterval(()=>{
+    // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding. Dat de verbinding wegvalt terwijl
+    // hij slaapt, vangt _cycle() zelf (_magDoor), dus hij hoeft er niet voor
+    // wakker te blijven.
+    const w=()=>{
       // Remote uitschakelbaar via admin (feat_monitor); ontbrekende key = AAN.
       const featOk = (typeof featOn!=='function') || featOn('feat_monitor');
       // De watchdog START niet meer uit zichzelf: dat doet alleen de gebruiker
@@ -66,7 +69,13 @@ const PLMon = {
                   (typeof connected!=='undefined' && connected) &&
                   !(typeof demoMode!=='undefined' && demoMode);
       if (!mag && this.active) this.stop();
-    }, this.cfg.watchdogMs);
+    };
+    this._watchdog = (typeof window!=='undefined' && window.PLRust) ? PLRust.meet(this.cfg.watchdogMs, w, 'monitor-waak') : setInterval(w, this.cfg.watchdogMs);
+  },
+
+  // Zonder verbinding (of in de demo) hoort de monitor niet door te lopen.
+  _magDoor(){
+    return (typeof connected!=='undefined' && connected) && !(typeof demoMode!=='undefined' && demoMode);
   },
 
   start(){
@@ -96,6 +105,7 @@ const PLMon = {
   // ═══════════════ hoofdcyclus ═══════════════
   async _cycle(){
     if (!this.active || this._busy) return;
+    if (!this._magDoor()) { this.stop(); return; }
     // Netjes wachten als de fast-lane midden in een pollronde zit: bij een
     // bezet slot slaan we deze tik over en proberen we het bij de volgende
     // opnieuw. withBusOfNiets() geeft het slot ALTIJD terug, ook als het werk

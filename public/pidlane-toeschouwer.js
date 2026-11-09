@@ -220,11 +220,15 @@
   var _timer = null;
   function start() {
     if (_timer || typeof setInterval !== 'function') return;
-    _timer = setInterval(function () {
-      try { tik(); } catch (e) { console.warn('Toeschouwer: tik mislukt', e); }
-    }, CFG.tikMs);
+    var t = function () { try { tik(); } catch (e) { console.warn('Toeschouwer: tik mislukt', e); } };
+    // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding.
+    _timer = window.PLRust ? PLRust.meet(CFG.tikMs, t, 'toeschouwer') : setInterval(t, CFG.tikMs);
   }
-  function stop() { if (_timer) { clearInterval(_timer); _timer = null; } }
+  function stop() {
+    if (!_timer) return;
+    if (window.PLRust && typeof _timer === 'object') PLRust.weg(_timer); else clearInterval(_timer);
+    _timer = null;
+  }
 
   window.PLToeschouwer = {
     tik: tik, stand: stand, duurS: duurS, gezien: gezien, maat: maat,

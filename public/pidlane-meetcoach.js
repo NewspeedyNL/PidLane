@@ -329,7 +329,8 @@
 
   function aan() {
     if (S.timer !== null) return;
-    try { S.timer = setInterval(tik, CFG.tikMs); }
+    // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding.
+    try { S.timer = window.PLRust ? PLRust.meet(CFG.tikMs, tik, 'meetcoach') : setInterval(tik, CFG.tikMs); }
     catch (e) { console.warn('meetcoach: geen klok — de automatiek staat stil', e); }
   }
   aan();

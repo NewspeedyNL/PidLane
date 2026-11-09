@@ -1233,11 +1233,13 @@ PLLoad.herstelNaProtocolLock=_herstelNaProtocolLock;
 // Periodiek: als batch uit staat en het al een tijd goed gaat, één keer
 // opnieuw proberen. Een eenmalige hapering schakelt batch dan niet voorgoed uit.
 // Fix 19-07: handle + guard tegen dubbele intervallen bij herstart.
-if(!window._batchRetryTimer) window._batchRetryTimer=setInterval(()=>{
+// Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding.
+const _plBatchRetryTik=()=>{
   if(!connected||demoMode) return;
   if(window._batchSupported===false && _batchOffSince && Date.now()-_batchOffSince>30000){
     window._batchSupported=undefined;   // undefined = opnieuw toegestaan
     _batchDips=0; _batchOffSince=0; PLBus.batchReset();
     btDiag('Multi-PID opnieuw proberen (herstelperiode voorbij)','info');
   }
-},10000);
+};
+if(!window._batchRetryTimer) window._batchRetryTimer=window.PLRust ? PLRust.meet(10000,_plBatchRetryTik,'batch-opnieuw') : setInterval(_plBatchRetryTik,10000);

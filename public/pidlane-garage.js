@@ -3417,7 +3417,9 @@
       apkMelding();
     } catch (e) { console.warn('PLGarage: lus', e); }
   }
-  setInterval(lus, CFG.tikMs);
+  // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding: de rit, RR en de sync. Terug in
+  // beeld draait hij meteen; de wachtrij heeft daarnaast 'online'.
+  if (window.PLRust) PLRust.meet(CFG.tikMs, lus, 'garage'); else setInterval(lus, CFG.tikMs);
   try { document.addEventListener('DOMContentLoaded', function () { tekenKaart(); lus(); }); } catch (e) { console.warn('PLGarage: DOMContentLoaded', e); }
   try { window.addEventListener('online', function () { wachtrijLegen(); }); } catch (e) { console.warn('PLGarage: online-luisteraar', e); }
 })();

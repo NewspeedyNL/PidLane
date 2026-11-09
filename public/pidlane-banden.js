@@ -319,7 +319,8 @@
       '<path class="vbm-ruit" d="M33 64q27-13 54 0l-5 24q-22-8-44 0z"/></svg>';
   }
 
-  setInterval(tik, 30000);
+  // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding.
+  if (window.PLRust) PLRust.meet(30000, tik, 'banden'); else setInterval(tik, 30000);
 
   window.PLBanden = { POS, OUD_MS, OUD_AUTO_MS, AUTO_MS, oudNu, WARN, GEVAAR, indeling, ontbreekt, stand, oordeel, open, sluit, lamp, teken, wielKleuren, mini, vraagPids, ververs, eenmaal,
     moetVragen, aan, zetAan, tik, lijstRegel,

@@ -115,6 +115,10 @@ function setConnectingUI(busy){
 }
 function setConn(on){
   if(!on) window._plVerbindingKlaar=0;   // zie setConnectingUI()
+  // Meettimers volgen de verbinding (PLRust, #691); uit beeld anders pas bij
+  // de wekker van PLRust. Na het zetten van connected, dus via een microtaak.
+  try{ if(window.PLRust) Promise.resolve().then(function(){ PLRust.verbinding(); }); }
+  catch(e){ console.warn('PLRust niet gemeld na verbinding:', e); }
   const dot=document.getElementById('sdot'),txt=document.getElementById('stxt'),btn=document.getElementById('cbtn');
   const pill=document.querySelector('.pill');
   if(pill){ pill.classList.remove('attn'); if(pill.dataset.origTitle) pill.title=pill.dataset.origTitle; }
@@ -418,14 +422,19 @@ function obdChipTap(){
 }
 // Fix 19-07: handles + guards zodat deze globale diensten niet stapelen
 // wanneer dit blok bij een herstart nogmaals wordt doorlopen.
-if(!window._topbarTimer) window._topbarTimer=setInterval(()=>{ try{updateTopbarStatus();}catch(e){ console.warn('updateTopbarStatus mislukt:', e); } },2000);   // dots actueel houden
-if(!window._aiPingTimer) window._aiPingTimer=setInterval(()=>{ try{checkAiReachable();}catch(e){ console.warn('checkAiReachable mislukt:', e); } },300000);   // proxy elke 5 min pingen
+// Alleen in beeld (PLRust, #691): de stipjes ziet niemand met het scherm uit,
+// en de AI-ping draait meteen als de app terugkomt.
+const _plTopbarTik=()=>{ try{updateTopbarStatus();}catch(e){ console.warn('updateTopbarStatus mislukt:', e); } };
+const _plAiPingTik=()=>{ try{checkAiReachable();}catch(e){ console.warn('checkAiReachable mislukt:', e); } };
+if(!window._topbarTimer) window._topbarTimer=window.PLRust ? PLRust.elke(2000,_plTopbarTik,'topbar') : setInterval(_plTopbarTik,2000);   // dots actueel houden
+if(!window._aiPingTimer) window._aiPingTimer=window.PLRust ? PLRust.elke(300000,_plAiPingTik,'ai-ping') : setInterval(_plAiPingTik,300000);   // proxy elke 5 min pingen
 setTimeout(()=>{ try{checkAiReachable();}catch(e){ console.warn('checkAiReachable mislukt:', e); } },1500);             // eerste check na opstart
 // Terug in beeld of weer online: dan meteen meten, niet pas bij de volgende ronde.
 if(!window._aiPingLuister){
   window._aiPingLuister=true;
   window.addEventListener('online', ()=>{ try{checkAiReachable();}catch(e){ console.warn('checkAiReachable mislukt:', e); } });
-  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ try{checkAiReachable();}catch(e){ console.warn('checkAiReachable mislukt:', e); } } });
+  // Terug in beeld: dat doet PLRust nu (de ai-ping-taak draait dan meteen).
+  if(!window.PLRust) document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ try{checkAiReachable();}catch(e){ console.warn('checkAiReachable mislukt:', e); } } });
 }
 async function handleConnect(){
   if(connected){

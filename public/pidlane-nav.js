@@ -311,7 +311,9 @@
     // Er is geen event voor "het startscherm ging dicht" of "een rapport werd
     // geopend" — die komen uit twintig modules. Een lichte rondgang is
     // eerlijker dan twintig haakjes waarvan er één vergeten wordt.
-    setInterval(ververs, 700);
+    // Alleen in beeld (PLRust, #691): wat de onderbalk toont, ziet niemand
+    // met het scherm uit.
+    if (window.PLRust) PLRust.elke(700, ververs, 'onderbalk'); else setInterval(ververs, 700);
     var ws = el('welcomeScreen');
     if (ws && window.MutationObserver) {
       try { new MutationObserver(ververs).observe(ws, { attributes: true, attributeFilter: ['class'] }); }

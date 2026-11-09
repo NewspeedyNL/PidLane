@@ -343,7 +343,10 @@
     // niets als het plan niet veranderd is.
     // recallRonde() doet hooguit één ronde per dag; de minuut vangt een login
     // of "Dit is mijn auto" die pas ná het openen komt.
-    setInterval(function () { synchroniseer(false); recallRonde(false); }, 60000);
+    // Alleen in beeld (PLRust, #691): een login of "Dit is mijn auto" gebeurt
+    // in beeld, en terug in beeld draait de ronde meteen.
+    var tik = function () { synchroniseer(false); recallRonde(false); };
+    if (window.PLRust) PLRust.elke(60000, tik, 'herinneringen'); else setInterval(tik, 60000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

@@ -632,7 +632,9 @@ function mailSupport(withDiag){
 
 // ── Hoofd Koopcheck functie ────────────────────────────────
 // ── Bandencheck: 1-euro-test illustratie (ingesloten) ──
-// → BANDEN_IMG (base64-afbeelding) verplaatst naar pidlane-assets.js
+// → de foto is sinds 08-11-2026 een los bestand (banden-euromunt.webp, #690):
+//   als base64 in pidlane-assets.js werd hij bij elke start geparsed (205 KB),
+//   ook door wie de bandencheck nooit opent.
 let _koopRit = 'nee';        // 'nee' | 'ja'
 let _koopRitDuur = '';        // '2min' | '10min'
 let _koopProefritData = null; // resultaat van proefrit, meegenomen in oordeel
@@ -1159,7 +1161,7 @@ function showBandenInfo(){
     m.innerHTML='<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;max-width:380px;width:100%;overflow:hidden">'+
       '<div style="padding:14px 16px 10px"><div style="font-weight:800;font-size:15px;margin-bottom:3px">🛞 De 1-euro bandentest</div>'+
       '<div style="font-size:12px;color:var(--tx2);line-height:1.5">Steek een euromunt rechtop in de groef van de band. De gouden rand is ongeveer 3&nbsp;mm — de wettelijke minimum profieldiepte is 1,6&nbsp;mm, maar onder 3&nbsp;mm neemt de grip op nat wegdek snel af.</div></div>'+
-      '<img src="'+BANDEN_IMG+'" style="width:100%;display:block" alt="1-euro bandentest">'+
+      '<img src="banden-euromunt.webp" loading="lazy" width="900" height="600" style="width:100%;height:auto;display:block" alt="1-euro bandentest">'+
       '<div style="padding:12px 16px 14px;font-size:12px;color:var(--tx2);line-height:1.6">'+
       '<div><b style="color:var(--rd)">Gouden gedeelte zichtbaar</b> → profiel te laag, banden vervangen.</div>'+
       '<div style="margin-top:4px"><b style="color:var(--gn)">Gouden rand verdwijnt in de groef</b> → profiel nog voldoende.</div>'+

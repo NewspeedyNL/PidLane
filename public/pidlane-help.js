@@ -421,7 +421,9 @@
     window.addEventListener('scroll', sluitTip, true);
     verversSchakelaar();
     plaats();
-    if (!_timer) _timer = setInterval(tik, INTERVAL_MS);
+    // Schermtimer (PLRust, #691): document.hidden overslaan maakte de
+    // processor nog steeds wakker.
+    if (!_timer) _timer = window.PLRust ? PLRust.elke(INTERVAL_MS, tik, 'help') : setInterval(tik, INTERVAL_MS);
   }
 
   window.PLHelp = {

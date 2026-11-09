@@ -550,7 +550,9 @@
     }
     // Verbinden, de demo en inloggen hebben geen gezamenlijk event; teken()
     // doet niets als er niets veranderd is.
-    setInterval(function () { try { teken(); } catch (e) { console.warn('PLZonder: kaart niet getekend', e); } }, 1500);
+    var tik = function () { try { teken(); } catch (e) { console.warn('PLZonder: kaart niet getekend', e); } };
+    // Alleen in beeld (PLRust, #691).
+    if (window.PLRust) PLRust.elke(1500, tik, 'zonder-adapter'); else setInterval(tik, 1500);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

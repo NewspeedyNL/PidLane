@@ -247,9 +247,9 @@ function _grTik(){
   if(!pane || !pane.classList.contains('active') || document.hidden || !grKeuze.length) return;
   drawGraph();
 }
-if(typeof setInterval==='function' && !_grKlok) _grKlok=setInterval(()=>{
-  try{ _grTik(); }catch(e){ console.warn('grafiek: tik mislukt', e); }
-}, 1000);
+// Via PLRust (#691): document.hidden overslaan maakte de processor nog wakker.
+const _grTikVeilig=()=>{ try{ _grTik(); }catch(e){ console.warn('grafiek: tik mislukt', e); } };
+if(typeof setInterval==='function' && !_grKlok) _grKlok=window.PLRust ? PLRust.elke(1000,_grTikVeilig,'grafiek') : setInterval(_grTikVeilig,1000);
 
 function isPIDOk(pid){
   const val=pidVals[pid]; if(val===undefined) return true;

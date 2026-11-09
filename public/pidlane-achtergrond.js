@@ -176,7 +176,14 @@
     _weg = _laatste = _stilVan = Date.now();
     _slagen = 0; _stilMs = 0; _aan = false;
     try {
-      if (typeof setInterval === 'function') { _timer = setInterval(_slag, HARTSLAG_MS); _aan = true; }
+      // Alleen met een verbinding (#691): de hartslag meet wat Android met een
+      // lopende meting doet. Zonder verbinding is er niets te meten en maakte
+      // hij de telefoon elke seconde wakker. _aan blijft dan false: "niet
+      // gemeten", geen stilte.
+      var verb = false;
+      try { verb = typeof connected !== 'undefined' && !!connected; } catch (e) { console.warn('achtergrond: verbinding onleesbaar — hartslag toch aan', e); verb = true; }
+      if (!verb) _aan = false;
+      else if (typeof setInterval === 'function') { _timer = setInterval(_slag, HARTSLAG_MS); _aan = true; }
       else console.warn('achtergrond: geen setInterval — de bevriezing wordt niet gemeten, alleen de afwezigheid (#18)');
     } catch (e) {
       console.warn('achtergrond: hartslag niet gestart — dan blijft de bevriezing een aanname (#18)', e);

@@ -504,5 +504,7 @@
       _wasVerbonden = v;
     } catch (e) { console.warn('PLVoorkeur: lus', e); }
   }
-  setInterval(lus, 2000);
+  // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding: hij ziet een nieuwe verbinding, ook
+  // een automatische uit beeld.
+  if (window.PLRust) PLRust.meet(2000, lus, 'voorkeur'); else setInterval(lus, 2000);
 })();

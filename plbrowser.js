@@ -283,6 +283,10 @@ async function startApp(opties) {
             { width: o.breedte || 412, height: o.hoogte || 915,
               deviceScaleFactor: 2, mobile: true });
   await cmd('Network.setBlockedURLs', { urls: GEBLOKKEERD });
+  // o.vooraf: een script dat vóór de eerste module draait (08-11-2026, #691).
+  // bproef-rust.js telt er élke setInterval van de boot mee, ook de timers
+  // die een module bij het laden zet en die een ev() achteraf niet meer ziet.
+  if (o.vooraf) await cmd('Page.addScriptToEvaluateOnNewDocument', { source: String(o.vooraf) });
   await cmd('Page.navigate', { url: appUrl });
 
   const tot = o.wachtMs || 30000;

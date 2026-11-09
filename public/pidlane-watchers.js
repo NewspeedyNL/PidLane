@@ -307,7 +307,9 @@ const PLWatch = {
 
   boot(){
     if (this._timer) return;
-    this._timer = setInterval(()=>{ try{ this._tick(); }catch(e){ console.warn('this._tick mislukt:', e); } }, this.cfg.tickMs);
+    // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding.
+    const t=()=>{ try{ this._tick(); }catch(e){ console.warn('this._tick mislukt:', e); } };
+    this._timer = (typeof window!=='undefined' && window.PLRust) ? PLRust.meet(this.cfg.tickMs, t, 'watchers') : setInterval(t, this.cfg.tickMs);
   },
 
   _actief(){ return !!(window.PLMon && window.PLMon.active); },

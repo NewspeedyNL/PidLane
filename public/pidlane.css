@@ -4464,3 +4464,11 @@ body:has(#lgWaveBg:not(.off)) .ov#connOv{ background:rgba(2,3,10,.30); backdrop-
 .pl-strook-k{padding:7px 12px;border-radius:8px;border:1px solid var(--bd,#28324a);background:transparent;color:var(--tx,#eef2fa);font:700 13px var(--f);cursor:pointer}
 .pl-strook-k.p{background:var(--bl,#3d8bfd);border-color:var(--bl,#3d8bfd);color:#fff}
 .pl-strook-vink{display:flex;align-items:center;gap:5px;color:var(--tx2,#a9b4c8);font-size:12px}
+
+/* #691 (08-11-2026): minder beweging = ook geen eindeloze animaties. Er
+   staan er 30 met `infinite` in dit bestand en maar een deel had een eigen
+   uitzondering; één regel vangt ze allemaal, ook nieuwe. Eenmalige
+   animaties lopen gewoon af. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-iteration-count: 1 !important; }
+}

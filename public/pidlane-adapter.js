@@ -1573,10 +1573,13 @@
   // wilt weten wat er de afgelopen minuten gebeurde.
   function start() {
     if (_sampler) return;
-    _sampler = setInterval(function () {
+    var t = function () {
       try { if (_verbonden()) monster(); } catch (e) { console.warn('Adaptermonster mislukt:', e); }
       try { _sessieTik(); } catch (e) { console.warn('Adapter-sessiemonster mislukt (#302):', e); }
-    }, HIST_MS);
+    };
+    // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding (de grafiek begint dus nog steeds
+    // gevuld zodra er een verbinding is).
+    _sampler = window.PLRust ? PLRust.meet(HIST_MS, t, 'adapter') : setInterval(t, HIST_MS);
   }
 
   if (document.readyState === 'loading') {

@@ -181,8 +181,7 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 1 | `capacitor.js` | — | alleen in APK aanwezig; `onerror` vangt het web-geval af |
 | 2 | `config.js` | 3 | `PROXY_URL`, `AIRTABLE_URL`, `APP_VERSION`, repo-info |
 | 3 | `pidlane-data.js` | 100 | statische referentiedata: 148 J1979-PID-definities, `DTCDB` (generiek) + `DTC_MERK` (merkbuckets) + `merkGroep()`, kennisbank, `SOFTWARE_OORZAKEN` + `softwareOorzaken()` (inleren/codering als oorzaak in plaats van een sensor, #426), analysesets, `PID_TEKST`, `PID_TOESTAND` (grenzen per toestand van de motor, gelezen door `PLVerzamel.beoordeel()`), `slimGroep()`/`SLIM_DASH`/`SLIM_METER` (de VORM van de slimme weergave; de MAAT — en daarmee het vijfde vak "Rustig" — zit in `slimMaat()` in `pidlane-pids.js`) |
-| 3a | `pidlane-rust.js` | 4 | `PLRust` — **schermtimers slapen als de app uit beeld is** (#691, 07-11-2026). `elke(ms, fn, naam)` is `setInterval`, maar de timer wordt gewist bij `visibilitychange`/`appStateChange` naar verborgen en draait meteen één keer bij terugkomst. Alleen voor wat het scherm ververst (monitorchip, bulkdashboard, monitorknop) — meet-, rit- en sessietimers horen er níét aan. `test-rust.js`, `bproef-rust.js`. |
-| 4 | `pidlane-assets.js` | 205 | ingebedde media (base64), o.a. `BANDEN_IMG` |
+| 3a | `pidlane-rust.js` | 5 | `PLRust` — **elke vaste timer slaapt als hij niets te doen heeft** (#691, 07/08-11-2026). Twee soorten: `elke(ms, fn, naam)` voor het scherm (alleen in beeld; gewist bij `visibilitychange`/`appStateChange`, terug in beeld meteen één keer) en `meet(ms, fn, naam)` voor een meting (in beeld, of uit beeld zolang `connected`: een rit met Maps ervoor meet door). `weg(taak)` stopt er een definitief. Wordt er uit beeld verbonden, dan ziet één wekker van 10 s dat; `setConn()` meldt het meteen via `verbinding()`. Alle vaste timers van de boot hangen eraan (onderbalk, startscherm, topbar, grafiek, versnelling, telemetrie, berekend, garage, accu, …); wat uit beeld zonder verbinding nog mag tikken staat in `MAG_UIT_BEELD` van `bproef-rust.js` (alleen de sessiehartslag). Vóór 08-11 gingen er zo twintig af, twee elke 200 ms. `test-rust.js`, `bproef-rust.js` 4 (telt via `startApp({vooraf})` élke `setInterval` van de boot). |
 
 ### Fase 1b — opstart-intro (eerste in `<body>`)
 
@@ -387,7 +386,7 @@ of ernaast, en hij klapt weer dicht.
 - Top-level `function` → globaal. Top-level `const`/`let` → gedeelde globale
   lexicale scope, zichtbaar voor élk later script. Gecontroleerd: **0 dubbele
   top-level declaraties** over alle modules (876 namen).
-- `pidlane-data.js` en `pidlane-assets.js` moeten vóór alles, want ze leveren
+- `pidlane-data.js` moet vóór alles, want hij levert
   definitietijd-constanten.
 - `pidlane-busgate.js` ná `pidlane-data.js` (heeft `PLBus.stats()` nodig) en vóór
   `pidlane-watchers.js`, dat hem raadpleegt. Staat in index.html direct vóór

@@ -849,7 +849,9 @@ const PLGear = {
   boot(){
     if (this._timer) return;
     this._laad('onbekend');
-    this._timer=setInterval(()=>this._tick(), CFG.tickMs);
+    // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding — zonder verbinding is er niets te schatten.
+    const t=()=>this._tick();
+    this._timer=window.PLRust ? PLRust.meet(CFG.tickMs, t, 'versnelling') : setInterval(t, CFG.tickMs);
     if (typeof window!=='undefined' && window.addEventListener)
       window.addEventListener('pagehide', ()=>this._opslaan(true));
     if (typeof document!=='undefined' && document.addEventListener)
