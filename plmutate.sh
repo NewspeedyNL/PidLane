@@ -227,6 +227,7 @@ MUTATIES=(
 "public/pidlane-uds.js@@  function rxVan(hdr) { return (parseInt(hdr, 16) + 8)@@  function rxVan(hdr) { return (parseInt(hdr, 16) + 0)@@test-uds.js@@het ontvangstfilter staat op het zendadres in plaats van adres + 8"
 "public/pidlane-uds.js@@      if (!/^A?[68]$/i.test(res.protocol)) { res.nietCan = true; return; }@@@@test-uds.js@@op een bus zonder CAN wordt toch per adres gevraagd"
 "public/pidlane-rijsituatie.js@@if(q.status==='ok'){ ok++; updPID(pid,val); } else onzin++;@@updPID(pid,val);\n      if(q.status==='ok') ok++; else onzin++;@@test-healthherziening.js@@de gezondheidscheck stempelt de versheidsbron vóór het oordeel"
+"public/pidlane-testrun.js@@    s.src = 'pidlane-proeven.js';@@    s.src = 'pidlane-proevn.js';@@bproef-meetkamer.js@@de testrun laadt de proeven van blok 5 niet meer: blok 5 en de meetkamer hebben geen lijst (#690)"
 "public/pidlane-testrun.js@@    id: 'achtergrond',@@    id: 'achtergrondproef',@@test-begeleid.js@@een stap van de begeleide rit is hernoemd zonder de volgorderegel mee te nemen"
 "public/pidlane-testrun.js@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C', '0155', '0156'];@@const RIT_PIDS = ['010D', '010B', '0133', '0123', '0159', '0104', '010C'];@@test-begeleid.js@@0155 en 0156 zijn weer uit de meet-PIDs verdwenen (#40 blijft dan onmeetbaar)"
 "public/pidlane-achtergrond.js@@if (tot - van < DREMPEL_MELDEN) return null;@@if (false) return null;@@test-achtergrond.js@@elke vensterwissel wordt als bevriezing geboekt"

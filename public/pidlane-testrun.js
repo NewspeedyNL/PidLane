@@ -2868,12 +2868,32 @@ function proevenB5() {
   });
   return _proevenB5;
 }
+function proevenGeladen() { return typeof window.PLProevenB5 === 'function'; }
+/* Pas laden als iemand de proeven nodig heeft (#690): de testrun openen,
+   blok 5 draaien, de meetkamer. Eén belofte, ook als drie plekken tegelijk
+   vragen. Mislukt het (geen netwerk), dan mag een volgende poging opnieuw. */
+let _proevenLaden = null;
+function laadProeven() {
+  if (proevenGeladen()) {
+    try { return Promise.resolve(proevenB5()); } catch (e) { return Promise.reject(e); }
+  }
+  if (_proevenLaden) return _proevenLaden;
+  _proevenLaden = new Promise(function (ok, nee) {
+    const s = document.createElement('script');
+    s.src = 'pidlane-proeven.js';
+    s.onload = function () { try { ok(proevenB5()); } catch (e) { _proevenLaden = null; nee(e); } };
+    s.onerror = function () { _proevenLaden = null; nee(new Error('pidlane-proeven.js is niet te laden — geen netwerk?')); };
+    document.head.appendChild(s);
+  });
+  return _proevenLaden;
+}
 
 // Welke issues dekt blok 5 deze ronde? Afgeleid, niet opgeschreven. Dit is
 // het antwoord op de vraag die tot 6.5 twee keer met de hand beantwoord werd:
 // één keer in de banner boven _blok5() en één keer in CAMPAGNE. Beide konden
 // verouderen zonder dat er iets rood werd; deze kan dat niet.
 function _dekkingB5() {
+  if (!proevenGeladen()) return null;   // nog niet geladen: niet "niets gedekt"
   const uit = [];
   for (let i = 0; i < proevenB5().length; i++) {
     const q = proevenB5()[i].issue;
@@ -2888,6 +2908,10 @@ async function _blok5() {
   // Geen eigen stopcheck: _doe() kijkt zelf naar _trStop en boekt dan niets.
   // Er hier nóg een zetten zou een tweede plek maken die dezelfde beslissing
   // neemt, en dat is in dit project al drie keer een bug geweest.
+  // Eerst de lijst (#690). Lukt dat niet, dan is dat een FOUT in het verslag:
+  // een blok 5 zonder proeven mag nooit als "niets aan de hand" lezen.
+  try { await laadProeven(); }
+  catch (e) { await _doe(5, 'De proeven laden (pidlane-proeven.js)', function () { return { staat: 'FOUT', detail: (e && e.message) || String(e) }; }); return; }
   for (let i = 0; i < proevenB5().length; i++) {
     await _doe(5, proevenB5()[i].naam, proevenB5()[i].proef);
   }
@@ -4858,6 +4882,9 @@ function _trGroep(naam) {
 }
 
 function openTestrun() {
+  // De proeven alvast laden (#690); het scherm tekent opnieuw zodra ze er zijn.
+  laadProeven().then(function () { try { _teken(); } catch (e) { console.warn('Testrun: niet hertekend na het laden van de proeven', e); } },
+    function (e) { console.warn('Testrun: de proeven zijn niet geladen — blok 5 meldt dat als FOUT', e); });
   if (typeof isAdmin === 'function' && !(typeof magOntwikkelen === 'function' ? magOntwikkelen() : isAdmin())) { try { showToast('Alleen voor ontwikkelaars'); } catch(e){ /* stil: melding mag nooit de stroom breken */ } return; }
   let ov = document.getElementById('testrunOv');
   if (!ov) {
@@ -5157,7 +5184,10 @@ function _teken() {
 // Herschrijf ze samen.
 const CAMPAGNE = {
   titel: 'OPLEVERING 24-10 — meetcoach: één vraag bij verbinden, één actie in Live, de rest meet en verzendt vanzelf',
-  vragen: [
+  // vragen is een getter (#690): de laatste regel komt uit de proevenlijst,
+  // en die wordt pas geladen als de testrun opent.
+  get vragen() { return this._vragen.concat([_dekkingRegel()]); },
+  _vragen: [
     '── WAAROM DEZE RONDE ────────',
     'DE MEETCOACH ZEGT HOE VER JE BENT. Bovenaan: hoeveel proeven klaar en hoe ver de rit is. Daaronder "Stap 1 van 3" met Volgende ›, ☰ Kies uit lijst en ✕ Niet deze rit, en wat vanzelf meet met "nog 2:30". In de lijst: welke proeven niet bij deze rit passen, weggezette stappen terug, en ✎ Rit aanpassen (de ritklok loopt door). Een uur snelweg zonder Stoplichten aangevinkt = geen contact-uit-stap. Klopt "nog …" niet met wat je reed, of mis je een stap: plak de regel van blok 5 over de meetcoach.',
     'GEEN MEETKAMER MEER NODIG. Bij verbinden vraagt Live één keer: hoe lang rij je, en wat kan deze rit (stoplicht, snelweg, helling, stilstaan). Daarna staat er bovenaan Live één actie tegelijk — doe hem als het kan, of tik Kan nu niet. Alle opdrachten laden vanzelf, hun sensoren lezen mee, en een uitkomst gaat bij verbreken of na een minuut contact uit vanzelf naar Second opinion. Een opstelling hoeft niet meer gekeurd: ongekeurd telt als auto, afkeuren kan achteraf. Sta je stil, dan vraagt de balk of hij de bus even mag hebben — alleen na Ja.',
@@ -5196,10 +5226,14 @@ const CAMPAGNE = {
     'SCHAKEL EN KIJK NAAR HET MIDDEN. Hyperlane, midden op Versnelling. Schakel rustig 2 → 3 → 4: het cijfer hoort binnen een seconde na het opkomen van de koppeling te kloppen. Staat er 2 s na het schakelen nog de oude, of flitst er tijdens het schakelen een verkeerde versnelling, plak dan blok 5 en zeg welke versnelling het was.',
     'DE LAMPJES EN DE PIJL. Rustig optrekken: de lampjes lopen op en bij het zuinige schakelpunt (rond 2400 tpm, diesel 2000) knipperen ze en staat er een rode ▲ naast de versnelling. Vol gas schuift het punt naar vlak onder de rode streep. In de hoogste versnelling geen pijl. Leidt het af bij gewoon rijden, zeg dat.',
     '── WAT DEZE RONDE NIET OPLOST ────────',
-    'HYBRIDE (#430, #452) heeft een hybride nodig; het analyserapport (#448) een analyse met AI, geparkeerd.',
-    'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.'
+    'HYBRIDE (#430, #452) heeft een hybride nodig; het analyserapport (#448) een analyse met AI, geparkeerd.'
   ]
 };
+function _dekkingRegel() {
+  const d = _dekkingB5();
+  if (!d) return 'BLOK 5 DEKT DEZE RONDE: de proevenlijst wordt geladen\u2026';
+  return 'BLOK 5 DEKT DEZE RONDE: ' + d.join(', ') + '. Deze regel wordt uit de proevenlijst zelf afgeleid, niet met de hand bijgehouden \u2014 komt er een proef bij, dan staat hij hier vanzelf.';
+}
 
 
 
@@ -5261,6 +5295,9 @@ window.PLTestrunLive = {
      `proeven()` geeft alleen de METADATA terug, niet de proeffuncties: het
      scherm moet ze tonen, niet draaien. Draaien doet blok 5. */
   proeven: function () {
+    // Nog niet geladen: laden en nu een lege lijst; de meetkamer tekent elke
+    // tik opnieuw (#690). Dit is een weergave, geen oordeel.
+    if (!proevenGeladen()) { laadProeven().catch(function (e) { console.warn('Meetkamer: proeven niet geladen', e); }); return []; }
     return proevenB5().map(function (p) { return { issue: p.issue, naam: p.naam, waarom: p.waarom }; });
   },
   log: function () { return _trLog.slice(); },
@@ -5342,6 +5379,7 @@ window.PLTestrunLive = {
              reden: mis.length ? mis.length + ' niet verzonden: ' + mis.map(function (u) { return u.naam; }).join(', ') : '' };
   },
 
+  laadProeven: laadProeven,
   nieuweSessie: nieuweSessie,
   bezig: function () { return !!_trBezig; },
   campagne: function () { return CAMPAGNE.titel; }
@@ -5372,6 +5410,8 @@ window.begeleidAfronden = begeleidAfronden;
 // wordt verliest bij de eerste opruimactie stil een entry.
 window.PLBlok5 = {
   proeven: function () { return proevenB5().map(function (p) { return { issue: p.issue, naam: p.naam, waarom: p.waarom, proef: p.proef }; }); },
+  // In de app eerst laden (#690); in een zandbak staat hij er al.
+  laad: function () { return laadProeven(); },
   dekking: _dekkingB5,
   // CAMPAGNE hoort er hier bij en niet als eigen export: de enige vraag die de
   // test erover stelt is of de dekkingsregel dáár uit dezelfde lijst komt.

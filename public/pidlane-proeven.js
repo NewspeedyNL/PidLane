@@ -38,6 +38,22 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Lichter opstarten (#690, 08-11-2026) ──
+  {
+    issue: '#690',
+    naam: 'De boot laadt geen pidlane-assets.js en geen proevenlijst meer: de bandenfoto is een los bestand, de proeven komen pas als de testrun opent',
+    waarom: 'Bij elke start werden 205 KB base64 en 537 KB proeven geparsed die bijna niemand nodig heeft. Komt een van de twee terug in de boot, dan wordt de app stil weer trager.',
+    proef: async function () {
+      var res = (performance.getEntriesByType ? performance.getEntriesByType('resource') : []);
+      var assets = res.filter(function (r) { return /pidlane-assets\.js/.test(r.name); });
+      if (assets.length || typeof window.BANDEN_IMG !== 'undefined') return { staat: 'FOUT', detail: 'pidlane-assets.js wordt weer geladen' };
+      var pr = res.filter(function (r) { return /pidlane-proeven\.js/.test(r.name); })[0];
+      var nav = (performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null);
+      if (pr && nav && pr.startTime < nav.domContentLoadedEventEnd) return { staat: 'FOUT', detail: 'pidlane-proeven.js laadt al bij de boot (' + Math.round(pr.startTime) + ' ms) — staat hij weer in index.html?' };
+      return { staat: 'OK', detail: pr ? 'proeven geladen na ' + Math.round(pr.startTime / 1000) + ' s, niet bij de boot' : 'proeven via een zandbak' };
+    }
+  },
+
   // ── Geen timers zonder reden (#691, 08-11-2026) ──
   {
     issue: '#691',

@@ -102,8 +102,18 @@ done
 # Een module die niet in index.html hangt, laadt niet — en faalt dan stil,
 # want de aanroepen zitten in try-catch. Precies het geval waar de
 # bedradingscontrole voor bestaat, maar dan één laag eerder.
+# Op verzoek geladen (#690, 08-11-2026): staat bewust niet in index.html,
+# maar dan moet een module hem zelf laden (s.src = '<naam>'), anders is
+# het weer een module die stil ontbreekt.
+OP_VERZOEK="pidlane-proeven.js"
 ontbreekt=""
 for f in pidlane-*.js; do
+  case " $OP_VERZOEK " in
+    *" $f "*)
+      if grep -q "src = '$f'" pidlane-*.js; then echo "${GROEN}  ok${UIT}  $f laadt op verzoek"
+      else echo "${ROOD}  NIET GELADEN${UIT}  $f staat niet in index.html en geen module laadt hem"; fout=$((fout+1)); fi
+      continue ;;
+  esac
   grep -q "src=\"$f\"" index.html || ontbreekt="$ontbreekt $f"
 done
 if [ -n "$ontbreekt" ]; then

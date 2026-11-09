@@ -24,6 +24,9 @@
  - Opstart (#690, deel 1): de foto van de 1-euro-bandentest is een los
    webp-bestand dat pas laadt als je de bandencheck opent, in plaats van
    205 KB base64 die bij elke start geparsed werd.
+ - Opstart (#690, deel 2): de proeven van blok 5 (537 KB) staan in
+   pidlane-proeven.js en worden pas geladen als de testrun opent. De boot
+   laadt nu ongeveer 5,3 MB aan scripts in plaats van ruim 6 MB.
 
  ═══════════════════════════════════════════════════════════
  08-11-2026 (avond) — Het kenteken hoort bij de VIN (PLIdentiteit)
