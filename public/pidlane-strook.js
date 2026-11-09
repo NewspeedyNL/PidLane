@@ -11,7 +11,9 @@
    WAT HET IS. Een smalle strook bovenin met vijf regels:
        Adapter → Protocol → Auto → Klaarzetten → Foutcodes
    Elke regel is wacht / bezig / ok / let / fout. De app blijft eronder
-   gewoon bruikbaar. Staat alles op ok, dan klapt hij na KLAAR_MS in.
+   gewoon bruikbaar, maar zolang het verbinden loopt ligt er een doek
+   achter (#plStrookDoek, afdekken()): de schermen eronder springen dan
+   heen en weer. Staat alles op ok, dan verdwijnt hij na KLAAR_MS.
    Alleen een regel die iets van de klant nodig heeft houdt hem open:
      • Auto zonder kenteken  → invoerveld in de strook, alleen in stilstand,
                                voorgevuld met het laatst bevestigde kenteken
@@ -31,7 +33,7 @@
    vinkje "altijd automatisch" (`pl_verbind_altijd`). Met dat vinkje begint
    het verbinden meteen.
 
-   PUUR (_kern): nieuw, zet, inklappen, foutcodeRegel, aftelDeel,
+   PUUR (_kern): nieuw, zet, inklappen, afdekken, foutcodeRegel, aftelDeel,
    magKentekenVragen, bekendeAdapter. Getoetst in test-strook.js.
    ══════════════════════════════════════════════════════════════════ */
 (function () {
@@ -80,6 +82,15 @@
     if (sl.kleur === 'rood') return { status: 'fout', tekst: sl.kop || 'Storing gevonden' };
     if (sl.kleur === 'oranje') return { status: 'let', tekst: sl.kop || 'Let op' };
     return { status: 'let', tekst: sl.kop || 'Niet gelezen' };
+  }
+  /* Moet de app achter de strook afgedekt? Alleen zolang het verbinden
+     loopt: de schermen eronder springen dan heen en weer (wens eigenaar,
+     09-11-2026). Een fout, een vraag of een "let" (het verbindscherm neemt
+     over) haalt het doek weg: dan moet de klant de app kunnen zien. */
+  function afdekken(st) {
+    if (!st || st.fout || st.vraag) return false;
+    if (st.stappen.some(function (s) { return s.status === 'let'; })) return false;
+    return st.stappen.some(function (s) { return s.status === 'wacht' || s.status === 'bezig'; });
   }
   function aftelDeel(start, nu, ms) {
     var d = (Number(nu) - Number(start)) / (ms || AFTEL_MS);
@@ -140,8 +151,22 @@
 
   var TEKEN = { wacht: '·', bezig: '◌', ok: '✓', let: '!', fout: '✕', over: '–' };
 
+  function doek(aan) {
+    var d = el('plStrookDoek');
+    if (!d && !aan) return;
+    if (!d) {
+      d = document.createElement('div');
+      d.id = 'plStrookDoek';
+      d.className = 'pl-strook-doek';
+      d.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(d);
+    }
+    d.hidden = !aan;
+  }
+
   function teken() {
     var w = wortel();
+    doek(!!(_open && !_aftel && afdekken(_st)));
     // Een herteken (een stap die klaar is) mag getypte invoer niet wissen.
     var inv = el('plStrookKent'), getypt = inv ? inv.value : null, focus = !!inv && document.activeElement === inv;
     if (!_open) { w.hidden = true; return; }
@@ -211,7 +236,9 @@
   }
   function plan() {
     clearTimeout(_dichtT);
-    if (_st && inklappen(_st)) _dichtT = setTimeout(function () { _ingeklapt = true; teken(); }, KLAAR_MS);
+    // Alles klaar: de strook verdwijnt helemaal (wens eigenaar, 09-11-2026).
+    // _st blijft staan: blok 5 leest de laatste verbinding uit staat().
+    if (_st && inklappen(_st)) _dichtT = setTimeout(function () { _open = false; _ingeklapt = false; teken(); }, KLAAR_MS);
   }
 
   // ── openbaar: de stappen ─────────────────────────────────────────
@@ -464,7 +491,7 @@
     staat: function () { return { st: _st, open: _open, ingeklapt: _ingeklapt, aftel: !!_aftel }; },
     _nu: _nu, _annuleer: _annuleer, _altijd: _altijd, _opnieuw: _opnieuw, _details: _details,
     _codes: _codes, _wissel: _wissel, _kenteken: _kenteken, _kentLater: _kentLater, _inrichten: _inrichten, _nietNu: _nietNu,
-    _kern: { STAPPEN: STAPPEN, AFTEL_MS: AFTEL_MS, KLAAR_MS: KLAAR_MS, nieuw: nieuw, zet: zet, inklappen: inklappen,
+    _kern: { STAPPEN: STAPPEN, AFTEL_MS: AFTEL_MS, KLAAR_MS: KLAAR_MS, nieuw: nieuw, zet: zet, inklappen: inklappen, afdekken: afdekken,
       foutcodeRegel: foutcodeRegel, aftelDeel: aftelDeel, magKentekenVragen: magKentekenVragen, bekendeAdapter: bekendeAdapter }
   };
 })();

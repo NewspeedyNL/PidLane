@@ -1267,7 +1267,7 @@
   var CSS =
     '#plGarOv{position:fixed;inset:0;z-index:var(--z-modal,9600);background:rgba(8,11,17,.92);display:flex;align-items:flex-start;justify-content:center;padding:16px 16px calc(16px + var(--pl-sab,0px));overflow-y:auto}' +
     '#plGarOv .gr-doos{background:var(--sur2);border:1px solid var(--bd);border-radius:14px;padding:14px;max-width:560px;width:100%;margin-top:calc(8px + var(--pl-sat,0px));font-family:var(--f)}' +
-    '#plGarOv .gr-kop{display:flex;align-items:center;gap:9px}' +
+    '#plGarOv .gr-kop{display:flex;align-items:center;gap:9px;margin-bottom:8px}' +
     '#plGarOv .gr-t{font:800 16px var(--f);color:var(--tx)}' +
     '#plGarOv .gr-x{margin-left:auto;background:var(--sur);color:var(--tx2);border:1px solid var(--bd);border-radius:8px;width:34px;height:34px;font:700 15px var(--f);cursor:pointer}' +
     '#plGarOv .gr-sub{font-size:12px;color:var(--tx3);margin:2px 0 12px}' +
@@ -1275,6 +1275,10 @@
     '#plGarOv .gr-bh{display:flex;align-items:center;gap:8px;font:800 13px var(--f);color:var(--tx);margin-bottom:6px}' +
     '#plGarOv .gr-bh .gr-r{margin-left:auto;font:600 11px var(--f);color:var(--tx3)}' +
     '#plGarOv .gr-auto{display:flex;gap:11px;align-items:center;cursor:pointer}' +
+    /* Grote tekst (L plus de lettergrootte van Android): een flexkind krimpt
+       standaard niet onder zijn langste woord, en dan duwde de tekstkolom
+       ACTIEF en het hele venster over de schermrand (09-11-2026). */
+    '#plGarOv .gr-doos{min-width:0} #plGarOv .gr-auto > div{min-width:0;overflow-wrap:anywhere} #plGarOv .gr-auto > .gr-klein{flex:0 0 auto}' +
     '#plGarOv .gr-dot{width:12px;height:12px;border-radius:50%;flex:0 0 12px}' +
     '#plGarOv .gr-foto{width:64px;height:40px;object-fit:contain;flex:0 0 64px} #plGarOv .gr-foto.groot{width:120px;height:72px;flex-basis:120px}' +
     '.gr-dot.groen{background:#22c55e}.gr-dot.oranje{background:#f59e0b}.gr-dot.rood{background:#ef4444}' +
@@ -1345,8 +1349,14 @@
     '#plGarOv .gr-srij[open]>summary::after{transform:rotate(90deg)}#plGarOv .gr-snaam{flex:1;min-width:0;overflow-wrap:anywhere}#plGarOv .gr-snaam small,#plGarOv .gr-sdet small{color:var(--tx3);font-size:11px}' +
     '#plGarOv .gr-sstat{flex:none;font:700 11px var(--f);color:var(--tx3)}#plGarOv .gr-sdet{padding:0 0 10px 30px;font-size:12px;color:var(--tx2);overflow-wrap:anywhere}' +
     '#plGarOv .gr-set{margin-top:0}#plGarOv .gr-zelf{margin-top:8px}#plGarOv .gr-kort .gr-knoppen{margin-top:4px}' +
-    '#plGarOv .gr-bewaarbalk{position:sticky;bottom:0;z-index:2;margin:10px 0 0;padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,var(--bg,#0b1020) 30%)}' +
+    /* De balk plakt tegen de onderrand van het venster en loopt door tot de
+       schermrand: Chrome laat een sticky element op de padding van #plGarOv
+       stoppen (16px + --pl-sab), en daaronder scrolde de lijst zichtbaar door.
+       Dicht, en --pl-sab in plaats van env(): die kent de tekstzoom niet en
+       telde de veilige zone dubbel (09-11-2026). */
+    '#plGarOv .gr-bewaarbalk{position:sticky;bottom:calc(-16px - var(--pl-sab,0px));z-index:2;margin:10px 0 -14px;padding:8px 0 calc(24px + var(--pl-sab,0px));background:var(--sur2);border-top:1px solid var(--bd)}' +
     '#plGarOv .gr-bewaarbalk .gr-k{width:100%}' +
+    '#plGarOv .gr-bewaarbalk .gr-k:disabled{opacity:1;background:var(--sur);border-color:var(--bd);color:var(--tx3)}' +
     '#plGarOv .gr-uitleg{margin:4px 0}#plGarOv .gr-uitleg>summary{font-size:12px;color:var(--bl,#3b82f6);cursor:pointer;padding:4px 0}' +
     '#plGarOv .gr-sgroep{margin-top:8px}#plGarOv .gr-gk{font:700 13px var(--f);color:var(--tx);padding:6px 0 2px}#plGarOv .gr-soort{color:var(--tx3);font-style:italic}' +
     '#plGarOv .gr-bib small{color:var(--tx3);font-size:11px}#plGarOv .gr-bib a{color:var(--bl,#3b82f6)}' +

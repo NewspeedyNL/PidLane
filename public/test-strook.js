@@ -51,7 +51,7 @@ function laad(o) {
     document: {
       getElementById: (id) => elementen[id] || null,
       createElement: () => maak('nieuw'),
-      body: { appendChild: (e) => { elementen.plStrook = e; e.id = 'plStrook'; } }
+      body: { appendChild: (e) => { elementen[e.id] = e; } }
     },
     demoMode: !!o.demo, connected: !!o.verbonden, pidVals: o.pidVals || {},
     Capacitor: { isNativePlatform: () => o.native !== false },
@@ -293,6 +293,39 @@ function laad(o) {
     s.PLStrook.start();
     await s.PLStrook.naVerbinding({});
     toets('TEGENPROEF: al ingericht → geen knop', !/plStrookInricht/.test(s.elementen.plStrook.innerHTML));
+  }
+
+  console.log('\n9. Doek achter de strook, en weg als het klaar is (09-11-2026)');
+  {
+    const K2 = laad().PLStrook._kern;
+    const st = K2.nieuw();
+    toets('nieuw: afdekken (alles wacht nog)', K2.afdekken(st));
+    K2.zet(st, 'adapter', 'bezig');
+    toets('tijdens een stap: afdekken', K2.afdekken(st));
+    const fo = K2.nieuw(); fo.fout = 'x';
+    toets('TEGENPROEF: bij een fout geen doek', !K2.afdekken(fo));
+    const vr = K2.nieuw(); vr.vraag = 'kenteken';
+    toets('TEGENPROEF: bij een kentekenvraag geen doek', !K2.afdekken(vr));
+    const le = K2.nieuw(); K2.zet(le, 'protocol', 'let');
+    toets('TEGENPROEF: verbindscherm neemt over ("let") → geen doek', !K2.afdekken(le));
+    const ok = K2.nieuw(); ok.stappen.forEach(x => { x.status = 'ok'; });
+    toets('TEGENPROEF: alles klaar → geen doek', !K2.afdekken(ok));
+    toets('TEGENPROEF: zonder staat geen doek', !K2.afdekken(null));
+  }
+  {
+    const s = laad();
+    s.PLStrook.start();
+    toets('start: het doek ligt er', s.elementen.plStrookDoek && !s.elementen.plStrookDoek.hidden);
+    s.PLStrook.fout('stuk');
+    toets('na een fout: doek weg, strook blijft', s.elementen.plStrookDoek.hidden && !s.elementen.plStrook.hidden);
+  }
+  {
+    const s = laad({ nuTimers: true });
+    s.PLStrook.start();
+    ['adapter', 'protocol', 'auto', 'klaar', 'codes'].forEach(id => s.PLStrook.stap(id, 'ok'));
+    toets('alles ok: de strook is helemaal weg', s.elementen.plStrook.hidden && !s.PLStrook.staat().open, JSON.stringify(s.PLStrook.staat()));
+    toets('en het doek ook', s.elementen.plStrookDoek.hidden);
+    toets('de laatste verbinding blijft leesbaar (blok 5)', !!s.PLStrook.staat().st);
   }
 
   console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' toetsen ok'));
