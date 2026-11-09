@@ -316,7 +316,12 @@ function laad(o) {
     const s = laad();
     s.PLStrook.start();
     toets('start: het doek ligt er', s.elementen.plStrookDoek && !s.elementen.plStrookDoek.hidden);
+    toets('en de strook heeft een knop Stoppen', /id="plStrookStop"/.test(s.elementen.plStrook.innerHTML));
+    let gestopt = 0; s.plVerbindStop = () => { gestopt++; return true; };
+    await s.PLStrook._stop();
+    toets('Stoppen roept plVerbindStop aan', gestopt === 1);
     s.PLStrook.fout('stuk');
+    toets('na een fout: geen knop Stoppen meer (er loopt niets)', !/plStrookStop/.test(s.elementen.plStrook.innerHTML));
     toets('na een fout: doek weg, strook blijft', s.elementen.plStrookDoek.hidden && !s.elementen.plStrook.hidden);
   }
   {

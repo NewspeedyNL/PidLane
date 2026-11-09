@@ -98,7 +98,18 @@ function _kentNaVerbinden(){ return _isOpstart() || _isStil(); }
    (PLStrook, pidlane-strook.js). Een eerste verbinding met volle scan duurt
    langer dan de drie minuten van een hervatting, vandaar STIL_MS. */
 const STIL_MS = 600000;
+/* STOPPEN TIJDENS HET VERBINDEN (09-11-2026). Met de strook en het doek
+   erachter was er tijdens het verbinden niets meer aan te raken: een adapter
+   die niet antwoordde was een doodlopende weg. Elke connectSerial() is een
+   poging met een nummer; plVerbindStop() markeert de lopende als gestopt.
+   Die poging loopt soms nog even na (een socket die net opengaat), maar
+   meldt niets meer en sluit wat er alsnog openging. */
+let _plPoging = 0, _plGestopt = 0;
+function plPogingGestopt(p){ return p <= _plGestopt; }
 function _strook(fn){
+  // Na Stoppen (plVerbindStop) meldt een poging die nog naloopt niets meer:
+  // anders sprong de strook met "Verbinden lukte niet" terug open.
+  if(_plPoging <= _plGestopt) return;
   try{ if(window.PLStrook && !demoMode) fn(window.PLStrook); }
   catch(e){ btDiag('Verbindstrook niet bijgewerkt: '+(e.message||e),'warn'); }
 }
@@ -163,6 +174,7 @@ function _hervatAfronden(h){
 }
 
 async function connectSerial(opt){
+  const _poging = ++_plPoging;
   // Alleen een expliciete hervatting zet de stand; elke andere aanroep (de
   // knop, een klik-event) wist hem.
   // Een bekende adapter + auto (plSnelBekend) loopt sinds 19-10-2026 ook zo.
@@ -344,7 +356,7 @@ async function connectSerial(opt){
   // 2 pogingen: de eerste scan mist de adapter vaak (BLE-cache koud);
   // een automatische tweede ronde vindt 'm dan meestal wel. Dit maakt het
   // bekende "tweede keer verbinden lukt wel" onzichtbaar voor de gebruiker.
-  for (let pass = 1; pass <= rondes && !connected && !permissionBlocked; pass++){
+  for (let pass = 1; pass <= rondes && !connected && !permissionBlocked && !plPogingGestopt(_poging); pass++){
     if (pass === 2) btDiag('↻ Automatische tweede scanronde...', 'proto');
     for (const [label, fn] of chain){
       btDiag(`▶ Poging${pass>1?' (ronde '+pass+')':''}: ${label}`, 'proto');
@@ -352,6 +364,11 @@ async function connectSerial(opt){
       catch(e){ btDiag('Startscherm (poging) mislukt: '+(e.message||e),'warn'); }
       try {
         await fn();
+        if (plPogingGestopt(_poging)){
+          btDiag('Verbinden gestopt door de klant — wat alsnog openging wordt gesloten','warn');
+          await _plVerbindingDicht();
+          return;
+        }
         if (connected){
           btDiag(`✓ Verbonden via ${label}`, 'ok');
           /* DE WENS OM VERBONDEN TE BLIJVEN (#229). Drie paden herverbinden
@@ -2752,6 +2769,38 @@ function adapterTochKiezen(){
   discoveredNetworks = (typeof plProtocolLijst==='function') ? plProtocolLijst(null) : [];
   renderNetworkCards();
 }
+async function _plVerbindingDicht(){
+  connected=false;
+  try{ stopPoll(); }catch(e){ btDiag('Pollus stoppen mislukt: '+(e.message||e),'warn'); }
+  try{ PLBus.breek('verbinden gestopt'); }catch(e){ window._pollBusy=false; }
+  window._btGen = (window._btGen || 0) + 1;   // wat nog in de rij staat is ongeldig
+  try{ if(window._sppConn) await window._sppConn.spp.disconnect({address:window._sppConn.address}); }
+  catch(e){ btDiag('Socket sluiten mislukt (kan al weg zijn): '+(e.message||e),'warn'); }
+  try{ if(window._bleConn) await window._bleConn.ble?.disconnect?.(window._bleConn.id); }
+  catch(e){ btDiag('BLE sluiten mislukt (kan al weg zijn): '+(e.message||e),'warn'); }
+  try{ if(window._webSerialWrite && typeof disconnectWebSerial==='function') await disconnectWebSerial(); }
+  catch(e){ btDiag('Web Serial sluiten mislukt: '+(e.message||e),'warn'); }
+  window._sppConn=null; window._bleConn=null; window._webBtWrite=null;
+  try{ if(typeof setConn==='function') setConn(false); }catch(e){ btDiag('Verbindingsstand niet bijgewerkt: '+(e.message||e),'warn'); }
+}
+/* De knop Stoppen in de strook. Geen herverbinden na een herlaad: dit is
+   bewust stoppen, net als Verbreken (pl_autoconn weg). */
+async function plVerbindStop(){
+  _plGestopt = _plPoging;
+  window._plHervat = null;
+  try{ localStorage.removeItem('pl_autoconn'); }
+  catch(e){ btDiag('Herverbindvlag niet gewist: '+(e.message||e),'warn'); }
+  try{ const ov=document.getElementById('connOv'); if(ov) ov.classList.add('hidden'); }
+  catch(e){ btDiag('Verbindscherm niet gesloten: '+(e.message||e),'warn'); }
+  try{ if(window.PLStrook) PLStrook.sluit(); }
+  catch(e){ btDiag('Strook niet gesloten: '+(e.message||e),'warn'); }
+  btDiag('Verbinden gestopt door de klant','warn');
+  await _plVerbindingDicht();
+  return true;
+}
+window.plVerbindStop=plVerbindStop;
+window.plPogingGestopt=plPogingGestopt;
+
 async function adapterOpnieuw(){
   btDiag('Opnieuw verbinden na een zwijgende adapter: socket dicht en opnieuw open','info');
   try{ if(window._sppConn) await window._sppConn.spp.disconnect({address:window._sppConn.address}); }

@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-11-2026 (avond) — Verbinden heeft weer een uitweg
+ ═══════════════════════════════════════════════════════════
+
+ - Tijdens het verbinden staat er een knop Stoppen in de strook. Hij sluit
+   wat openstaat en haalt het doek weg; de app werkt verder zonder adapter.
+   Een poging die nog naloopt meldt daarna niets meer.
+
+ ═══════════════════════════════════════════════════════════
  09-11-2026 — Mijn voertuigen: niets meer over de schermrand
  ═══════════════════════════════════════════════════════════
 

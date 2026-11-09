@@ -210,6 +210,14 @@
             '<button type="button" class="pl-strook-k" onclick="PLStrook.sluit()">Sluiten</button>' +
           '</div>';
       }
+      // Tijdens het verbinden is de app afgedekt: dan moet hier een uitweg
+      // staan (09-11-2026). Stoppen sluit wat openstaat; de app werkt verder
+      // zonder adapter.
+      if (afdekken(_st)) {
+        h += '<div class="pl-strook-knoppen" id="plStrookLoopt">' +
+          '<button type="button" class="pl-strook-k" id="plStrookStop" onclick="PLStrook._stop()">Stoppen</button>' +
+          '<span class="pl-strook-t">De app werkt ook zonder adapter</span></div>';
+      }
       if (_st.inricht && !_st.fout) {
         h += '<div class="pl-strook-knoppen" id="plStrookInricht"><span class="pl-strook-t">Nieuwe auto — even inrichten?</span>' +
           '<button type="button" class="pl-strook-k p" onclick="PLStrook._inrichten()">Inrichten</button>' +
@@ -464,6 +472,13 @@
     var w = _st; sluit();
     if (w && typeof connectSerial === 'function') { start(); Promise.resolve(connectSerial()).catch(function (e) { fout('Verbinden mislukt: ' + ((e && e.message) || e)); }); }
   }
+  function _stop() {
+    try {
+      if (typeof window.plVerbindStop === 'function') return Promise.resolve(window.plVerbindStop());
+    } catch (e) { diag('stoppen mislukt: ' + (e.message || e), 'warn'); }
+    sluit();
+    return Promise.resolve(false);
+  }
   function _details() {
     try { el('connOv').classList.remove('hidden', 'pl-stil', 'pl-snel'); }
     catch (e) { console.warn('PLStrook: verbindscherm opent niet', e); }
@@ -489,7 +504,7 @@
     vraagKenteken: vraagKenteken, naVerbinding: naVerbinding, aftellen: aftellen, verbind: verbind, verbindMag: verbindMag,
     altijd: altijd, autoTekst: autoTekst,
     staat: function () { return { st: _st, open: _open, ingeklapt: _ingeklapt, aftel: !!_aftel }; },
-    _nu: _nu, _annuleer: _annuleer, _altijd: _altijd, _opnieuw: _opnieuw, _details: _details,
+    _nu: _nu, _annuleer: _annuleer, _stop: _stop, _altijd: _altijd, _opnieuw: _opnieuw, _details: _details,
     _codes: _codes, _wissel: _wissel, _kenteken: _kenteken, _kentLater: _kentLater, _inrichten: _inrichten, _nietNu: _nietNu,
     _kern: { STAPPEN: STAPPEN, AFTEL_MS: AFTEL_MS, KLAAR_MS: KLAAR_MS, nieuw: nieuw, zet: zet, inklappen: inklappen, afdekken: afdekken,
       foutcodeRegel: foutcodeRegel, aftelDeel: aftelDeel, magKentekenVragen: magKentekenVragen, bekendeAdapter: bekendeAdapter }
