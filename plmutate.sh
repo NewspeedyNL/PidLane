@@ -1951,6 +1951,8 @@ MUTATIES=(
 "public/pidlane-garage.js@@      else nieuw.push(b);@@      nieuw.push(b);@@test-garage.js@@een toegevoegde code staat weer twee keer in Sensoren: eigen én bibliotheek"
 "public/pidlane-garage.js@@berAan = ber.filter(function (p) { return S.sel.indexOf(p) >= 0; });@@berAan = ber;@@bproef-garage.js@@alle berekende sensoren staan weer uitgeklapt, ook wat uit staat"
 "public/pidlane.css@@#pane-graph .gr-naam {@@.gr-naam {@@bproef-garage.js@@de grafiekregel voor .gr-naam geldt weer overal: de voertuignaam in Mijn voertuigen loopt niet af en duwt ACTIEF over de rand"
+"public/pidlane-garage.js@@    '#plGarOv .gr-chk{display:flex;@@    '#plGarOv .gr-chk-weg{display:flex;@@bproef-garage.js@@in het RR-formulier staat het vinkje weer los boven de sensornaam"
+"public/pidlane-garage.js@@    '#plGarOv .gr-2 > select,#plGarOv .gr-2 > span > select@@    '#plGarOv .gr-2-weg > select,#plGarOv .gr-2 > span > select@@bproef-garage.js@@de eenheidkeuze in het RR-formulier is weer een lichte systeemlijst"
 "public/pidlane-garage.js@@rol = bandVan(b), wiel = rol ? null : wielVan(b);@@rol = null, wiel = rol ? null : wielVan(b);@@test-garage.js@@de banden staan weer los tussen de andere sensoren, met de ATF ertussen"
 "public/pidlane-garage.js@@        if (!inSet(k, e)) return;\n        var i = S.sel.indexOf(e.code);@@        var i = S.sel.indexOf(e.code);@@bproef-garage.js@@het bandenvinkje haalt ook de andere eigen sensoren uit de meting"
 "public/pidlane-uitgebreid.js@@    const tempo = band ? 'opverzoek' : (EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal');@@    const tempo = EIGEN_TEMPO[e.tempo] ? e.tempo : 'normaal';@@test-mode21.js@@acht bandensensoren worden elke 2 s via een ander ECU-adres gevraagd"

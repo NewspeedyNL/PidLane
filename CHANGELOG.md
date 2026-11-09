@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-11-2026 (avond) — RR-formulier: één nette regel per sensor
+ ═══════════════════════════════════════════════════════════
+
+ - Vinkje en sensornaam staan naast elkaar, de eenheid rechts in een donkere
+   keuzelijst in plaats van een witte systeemlijst.
+
+ ═══════════════════════════════════════════════════════════
  09-11-2026 (avond) — Verbinden heeft weer een uitweg
  ═══════════════════════════════════════════════════════════
 
