@@ -15,6 +15,19 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 09-11-2026 (nacht) — Aankooprapport: "geen terugroepacties bekend" won van de RDW-vlag
+
+**Gevonden** bij het bouwen van het papierenrapport (#705), op een schermafdruk:
+RDW `openstaande_terugroepactie_indicator = Ja`, en toch een groene regel
+"Geen terugroepacties bekend". `PLRecall.check()` geeft `niveau: 'ok'` met
+`aantalTotaal: 0` als de detailtabellen niets opleveren, en
+`PLAankoop.signalen()` keek eerst naar die uitkomst en pas daarna naar de
+vlag. Nul gevonden acties tegenover een vlag die "open" zegt betekent dat
+het koppelen leeg bleef, niet dat de auto schoon is. Nu wint de vlag zolang
+er geen enkele actie gevonden is. Getoetst via de echte `signalen()` in
+`test-zonderuit.js`, met de tegenproef (acties gevonden en uitgevoerd →
+groen); mutatie in `plmutate.sh`.
+
 ## 09-11-2026 (avond) — De app met en zonder adapter, nagemeten in de draaiende app
 
 **Aanleiding.** De eigenaar: verbinden liep dood (achter het doek van de

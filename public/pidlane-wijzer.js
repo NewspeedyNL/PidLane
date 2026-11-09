@@ -306,10 +306,13 @@
     try { var m = JSON.parse(localStorage.getItem('pl_zonder_mijn') || 'null'); return m || {}; }
     catch (e) { console.warn('PLWijzer: eigen auto onleesbaar', e); return {}; }
   }
-  function klacht() {
+  /* gekozen: de klachten die de klant in de wizard al aantikte (09-11-2026,
+     #705). Dan meteen de eerste vraag, niet nog eens kiezen. */
+  function klacht(gekozen) {
     var O = oz();
     if (!O) { if (typeof showToast === 'function') showToast('De klachtenwijzer is niet geladen'); return; }
-    _w = { st: null, gekozen: [] };
+    _w = { st: null, gekozen: (gekozen || []).filter(function (k) { return k !== 'controle' && O.KLACHTEN[k]; }) };
+    if (_w.gekozen.length) { verder(); if (_w.st) return; }
     tekenKiezen();
   }
   function tekenKiezen() {

@@ -216,7 +216,13 @@ document.addEventListener('DOMContentLoaded', function(){
   // onder het welkomstscherm staan en dook hij weer op zodra dat scherm sloot.
   const wcBind=(id,fn)=>{
     const el=document.getElementById(id); if(!el) return;
-    el.onclick=function(ev){ try{ plCloseModeOverlays(); }catch(e){ console.warn('plCloseModeOverlays mislukt:', e); } return fn.call(this,ev); };
+    el.onclick=function(ev){
+      try{ plCloseModeOverlays(); }catch(e){ console.warn('plCloseModeOverlays mislukt:', e); }
+      // Zonder auto de adapterkaart in plaats van een dashboard dat niets meet (#705).
+      try{ if(window.PLZonderUit && PLZonderUit.poortKaart(id, (el.querySelector('.choice-title')||{}).textContent)) return; }
+      catch(e){ console.warn('Adapterkaart niet getoond — de kaart opent gewoon:', e); }
+      return fn.call(this,ev);
+    };
   };
   wcBind('wc-diag',()=>startChoice('diag'));
   wcBind('wc-onderdeel', ()=>{ document.getElementById('welcomeScreen').classList.add('hidden'); openOnderdeelCheck(); });

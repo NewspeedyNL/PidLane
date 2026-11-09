@@ -304,11 +304,13 @@ var MODULE_FEAT = {
    zinvol is; het opnemen daarna vraagt zelf om de verbinding. */
 var ZONDER_ADAPTER = { diep:1 };
 function heeftAuto(){
-  return veilig(function(){ return !!((typeof connected!=='undefined' && connected) || (typeof demoMode!=='undefined' && demoMode) || window._remoteVehicleMode); }, false);
+  // Eén betekenis: PLZonderUit.heeftAuto() beslist, ook voor de kaarten onder Alle functies.
+  return veilig(function(){ return window.PLZonderUit ? PLZonderUit.heeftAuto() : !!((typeof connected!=='undefined' && connected) || (typeof demoMode!=='undefined' && demoMode)); }, false);
 }
 function adapterNodig(k){ return !(k && ZONDER_ADAPTER[k]) && !heeftAuto(); }
 function toonAdapterNodig(k, naam){
   var M = k ? MODULES[k] : null;
+  var uitSoort = veilig(function(){ return window.PLZonderUit ? PLZonderUit.soortVoor(k, job) : null; }, null);
   var wat = naam || (M ? M.n : (METING[job.meting] || METING.stil).n);
   var knop = function(t, d, on){ return '<div class="wz-plan-item"><b>'+t+'</b><span>'+d+'</span><button class="wz-mod-run" onclick="'+on+'">Openen</button></div>'; };
   el('wzBody').innerHTML =
@@ -317,8 +319,10 @@ function toonAdapterNodig(k, naam){
     '<div class="wz-plan-item" style="border-color:var(--bl,#3b82f6)"><b>⚡ Verbind je adapter</b><span>Adapter in de OBD-poort, contact aan.</span>'+
       '<button class="wz-mod-run" id="wzVerbind" onclick="PLWizard.verbind()">Verbinden</button></div>'+
     '<div class="wz-plan-kop">Wat zonder adapter al kan</div>'+
-    (job.doel==='handel' ? knop('🔎 De papieren van de auto', 'APK, tellerstand, terugroepacties en techniek uit het RDW', 'PLWizard.zonder(\'kenteken\')') : '')+
-    (job.doel!=='handel' ? knop('🔎 Kenteken-check', 'APK, verzekering, NAP en terugroepacties', 'PLWizard.zonder(\'kenteken\')') : '')+
+    // De eigen uitkomst van deze vraag zonder auto (PLZonderUit, #705) bovenaan.
+    (uitSoort ? '<div class="wz-plan-item" id="wzZonderUit" style="border-color:var(--gn,#22c55e)"><b>'+esc(PLZonderUit.TITEL[uitSoort])+'</b><span>'+esc(PLZonderUit.UITLEG[uitSoort])+'</span>'+
+      '<button class="wz-mod-run" onclick="PLWizard.zonderUit(\''+uitSoort+'\')">Openen</button></div>' : '')+
+    (uitSoort!=='papieren' ? knop('🔎 Kenteken-check', 'APK, verzekering, NAP en terugroepacties', 'PLWizard.zonder(\'kenteken\')') : '')+
     knop('🔢 Foutcode opzoeken', 'Wat betekent een code van de garage', 'PLWizard.zonder(\'foutcode\')')+
     knop('◇ Probeer het in de demo', 'Hetzelfde, met een gesimuleerde auto. Er wordt niets bewaard.', 'PLWizard.zonder(\'simuleer\')');
   el('wzFoot').innerHTML = '<button class="wz-sec" id="wzNaarPlan" onclick="PLWizard.terugNaarPlan()">← Terug naar het plan</button>';
@@ -791,6 +795,10 @@ window.PLWizard = {
   verbind: function(){
     this.sluitStil();
     veilig(function(){ if(typeof plVerbindOpen==='function') plVerbindOpen(); else el('connOv').classList.remove('hidden'); });
+  },
+  zonderUit: function(soort){
+    this.sluitStil();
+    veilig(function(){ PLZonderUit.open(soort, { kenteken: job.kenteken, klachten: job.klachten }); });
   },
   zonder: function(w){
     this.sluitStil();

@@ -38,6 +38,24 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Zonder adapter een eigen uitkomst (#705, 09-11-2026) ──
+  {
+    issue: '#705',
+    naam: 'Zonder adapter: papierenrapport voor kopers, onderhoud volgens richtwaarden, lange rit en verbruik uit tankbeurten; 🔌 en de adapterkaart onder Alle functies',
+    waarom: 'De adapterkaart was een eindpunt. Valt PLZonderUit of de poort in wcBind weg in de draaiende app, dan opent een meetkaart weer een dashboard dat niets meet, of zegt het papierenrapport "groen" zonder dat er iets uitgelezen is.',
+    proef: async function () {
+      if (!window.PLZonderUit || !PLZonderUit._kern) return { staat: 'FOUT', detail: 'PLZonderUit ontbreekt — herladen?' };
+      if (!window.PLAankoop) return { staat: 'FOUT', detail: 'PLAankoop ontbreekt: het papierenrapport heeft geen signalen' };
+      var p = PLZonderUit._kern.papieren({ kenteken: 'AB123C', ts: Date.now(), rdw: { tellerstandoordeel: 'Logisch', openstaande_terugroepactie_indicator: 'Nee' } });
+      if (p.oordeel === 'groen') return { staat: 'FOUT', detail: 'het papierenrapport geeft groen zonder uitlezing' };
+      var los = Object.keys(PLZonderUit._kern.KAART).filter(function (id) { return !document.getElementById(id); });
+      if (los.length) return { staat: 'FOUT', detail: 'KAART noemt kaarten die er niet zijn: ' + los.join(', ') };
+      var zonder = document.body.classList.contains('pl-zonder-auto');
+      if (zonder === PLZonderUit.heeftAuto()) return { staat: 'LET OP', detail: 'het startscherm is nog niet bijgetekend na een verbindingswissel' };
+      return { staat: 'OK', detail: PLZonderUit.heeftAuto() ? 'met auto: de kaarten openen gewoon' : 'zonder auto: 🔌 bij de meetkaarten, de adapterkaart met een eigen uitkomst' };
+    }
+  },
+
   // ── Zonder adapter: een uitweg tijdens verbinden, een kaart in de wizard (09-11-2026) ──
   {
     issue: '—',

@@ -108,7 +108,9 @@ var PL_HULP = {
         '<li><b>Er is iets mis</b> — kies wat je merkt, beantwoord een paar vragen en zie wat het waarschijnlijk is, en wat een adapter zou meten.</li>' +
         '<li><b>Lampje brandt?</b> — wat een dashboardlampje betekent en of je mag doorrijden. Met <b>Foto van het dashboard</b> wijst de AI het lampje aan (kost tegoed; de foto wordt niet bewaard).</li>' +
         '<li><b>Foutcode opzoeken</b> — bijvoorbeeld P0301. Dit staat in de app zelf.</li>' +
-        '<li><b>Plannen kan altijd</b> — de vragen onder Snel naar beantwoord je ook zonder adapter, en je plan blijft staan. Tik je op <b>Starten</b> bij iets dat meet, dan zegt de app dat daarvoor de adapter nodig is en wat je intussen al kunt doen.</li>' +
+        '<li><b>Plannen kan altijd</b> — de vragen onder Snel naar beantwoord je ook zonder adapter, en je plan blijft staan. Tik je op <b>Starten</b> bij iets dat meet, dan zegt de app dat daarvoor de adapter nodig is en wat je intussen al kunt doen. Onder Alle functies staat bij alles wat meet een 🔌.</li>' +
+        '<li><b>Papierenrapport voor de koper</b> — bij Kopen of verkopen: RDW, tellerstand (NAP), APK, export, terugroepacties, bekende zwakke punten van het merk, wat je bij de bezichtiging zelf nakijkt (zoals de muntproef voor het bandenprofiel) en vragen voor de verkoper. Te bewaren in Rapporten. Het zegt er altijd bij dat de elektronica niet is uitgelezen.</li>' +
+        '<li><b>Onderhoud, lange rit en verbruik</b> — wat er volgens leeftijd en kilometers aan onderhoud aankomt (algemene richtwaarden; je serviceboekje gaat voor), een checklist voor een lange rit, en het echte verbruik uit je tankbeurten naast de typekeuring.</li>' +
         '<li><b>Simuleer verbinding</b> — alles proberen, er wordt niets bewaard.</li>' +
         '</ul>' +
         '<p>Onder de kenteken-check staan ook de <b>milieuklasse</b> (brandstof en emissieklasse, met een link naar milieuzones.nl), een schatting van de <b>kosten per maand</b> (wegenbelasting en brandstof), het <b>onderhoudsschema</b> van dit model (de AI zoekt het op; kost tegoed, niet geverifieerd) en of er een <b>adapter past</b>.</p>' +

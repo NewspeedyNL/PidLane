@@ -10,6 +10,24 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-11-2026 (nacht) — Zonder adapter een eigen uitkomst (#705)
+ ═══════════════════════════════════════════════════════════
+
+ - Papierenrapport voor de koper: RDW, NAP, APK, export, terugroepacties,
+   bekende zwakke punten van het merk, wat je bij de bezichtiging zelf
+   nakijkt en vragen voor de verkoper. Te bewaren in Rapporten. Nooit
+   "groen": de elektronica is niet uitgelezen, en dat staat erbij.
+ - Onderhoud volgens leeftijd en km (algemene richtwaarden, het boekje gaat
+   voor), een checklist voor een lange rit, en het echte verbruik uit je
+   tankbeurten naast de typekeuring.
+ - Er is iets mis zonder adapter gaat naar de klachtenwijzer, met de
+   klachten die je al koos.
+ - Alle functies: een 🔌 bij elke kaart die meet, en zonder adapter een
+   kaart met verbinden, de uitkomst zonder adapter en de demo.
+ - Aankooprapport: een leeg opgezochte terugroepactie won van de RDW-vlag
+   "openstaand" en gaf groen. Nu telt dan de vlag.
+
+ ═══════════════════════════════════════════════════════════
  09-11-2026 (avond) — Zonder adapter: plannen kan, meten wacht op de adapter
  ═══════════════════════════════════════════════════════════
 

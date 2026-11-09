@@ -2153,6 +2153,7 @@ function closeConnOv(){
 <script src="pidlane-strook.js"></script><!-- PLStrook: verbinden zonder vensters — de stappenstrook bovenin, aftellen bij het openen, kenteken in stilstand, foutcodes stil; ná pidlane-opstart.js; pidlane-bt.js, auth en theme lezen hem tijdens het draaien -->
 <script src="pidlane-zonder.js"></script><!-- PLZonder: zonder adapter — kenteken-check (RDW), foutcode opzoeken, simulatie; vereist plFetch, PLRecall, dtcInfo, PLGarage -->
 <script src="pidlane-weer.js"></script><!-- PLWeer (#556): de verwachting voor een plaats uit een lijst, via /weer — locatievrij; vereist plFetch -->
+<script src="pidlane-zonderuit.js"></script><!-- PLZonderUit (#705): een eigen uitkomst zonder adapter — papierenrapport voor kopers, onderhoud volgens richtwaarden, lange rit, verbruik uit tankbeurten; ná pidlane-zonder.js (PLZonder._blad, haal) en pidlane-aankooprapport.js -->
 <script src="pidlane-winter.js"></script><!-- PLWinter (#556/#559): winterprofiel, winterkaart op het startscherm en bandentabel; vereist ná pidlane-zonder.js (PLZonder._blad) en pidlane-weer.js; leest PLGarage -->
 <script src="pidlane-herinner.js"></script><!-- PLHerinner: APK en onderhoud als Android-melding (LocalNotifications), met terugval in de app; vereist PLZonder, PLGarage -->
 <script src="pidlane-thuis.js"></script><!-- PLThuis: het startscherm in drie lagen (de auto, Voor jou nu, Snel naar) en Startscherm aanpassen; ná winter en herinner, leest PLGarage, PLFoutcodes, PLOpstart, PLZonder -->

@@ -60,6 +60,59 @@ const zichtbaar = (sel) => `(function(){ const e=document.querySelector(${JSON.s
     toets('Kenteken-check vanaf de kaart opent', await app.ev(zichtbaar('#plZonderOv')));
     await app.ev(`PLZonder.sluit(); 'ok'`);
 
+    console.log('\n2b. Kopen zonder adapter: het papierenrapport (#705)');
+    // Het RDW is in de browserproef niet bereikbaar: PLZonder.haal en
+    // PLRecall.check krijgen een vaste rij. De rest is de echte code, ook
+    // PLAankoop.signalen() en autoKennisVoorMerk().
+    await app.ev(`(function(){
+      window._nepRdw = { kenteken:'AB123C', merk:'VOLKSWAGEN', handelsbenaming:'GOLF', tellerstandoordeel:'Onlogisch', vervaldatum_apk:'20270601',
+        export_indicator:'Nee', tenaamstellen_mogelijk:'Ja', wam_verzekerd:'Ja', openstaande_terugroepactie_indicator:'Nee', datum_eerste_toelating:'20120301', cilinderinhoud:'1395' };
+      PLZonder.haal = async function(){ return { rij: window._nepRdw, bs: [{ brandstof_omschrijving:'Benzine', brandstofverbruik_gecombineerd:'5.4' }], overzicht: { naam:'VOLKSWAGEN GOLF', regels: [] } }; };
+      if (window.PLRecall) PLRecall.check = async function(){ return null; };
+      connected=false; demoMode=false; PLWizard.open('handel'); PLWizard.kies(0); return 'ok'; })()`);
+    await rust(400);
+    await app.ev(`PLWizard.draai('markt'); 'ok'`);
+    await rust(400);
+    toets('de adapterkaart biedt het papierenrapport bovenaan', await app.ev(zichtbaar('#wzZonderUit')) && /Papierenrapport/.test(await app.ev(`document.getElementById('wzZonderUit').innerText`)));
+    await app.ev(`document.querySelector('#wzZonderUit button').click(); 'ok'`);
+    await rust(300);
+    toets('het venster vraagt het kenteken', await app.ev(zichtbaar('#pluKent')));
+    await app.ev(`document.getElementById('pluKent').value='AB-123-C'; PLZonderUit._papieren(); 'ok'`);
+    const oordeel = await (async () => { for (let i = 0; i < 30; i++) { const o = await app.ev(`(document.getElementById('pluOordeel')||{dataset:{}}).dataset.oordeel||''`); if (o) return o; await rust(100); } return ''; })();
+    toets('NAP onlogisch → rood oordeel op papier', oordeel === 'rood', oordeel);
+    const tekst = await app.ev(`document.getElementById('pluUit').innerText`);
+    toets('met zwakke punten van het merk, de bezichtigingslijst en vragen', /zwakke punten/i.test(tekst) && /euromunt/.test(tekst) && /Vragen voor de verkoper/.test(tekst), tekst.slice(0, 300));
+    toets('en wat de adapter er nog aan toevoegt', /Niet uitgelezen zonder adapter/.test(tekst));
+    await app.ev(`document.getElementById('pluBewaar').click(); 'ok'`);
+    toets('bewaren zet het in Rapporten', await app.ev(`(window._sessionReports||[]).some(function(r){ return r.type==='papieren' && /PAPIERENRAPPORT/.test(r.text); })`));
+    await app.ev(`PLZonder.sluit(); 'ok'`);
+
+    console.log('\n2c. Onderhoud en Er is iets mis zonder adapter');
+    await app.ev(`PLZonderUit.open('onderhoud'); document.getElementById('pluJaar').value='2015'; document.getElementById('pluKm').value='160000'; document.getElementById('pluOndGo').click(); 'ok'`);
+    await rust(200);
+    const ond = await app.ev(`document.getElementById('pluUit').innerText`);
+    toets('onderhoud: een lijst met richtwaarden, ook zonder laatste beurt', /Remvloeistof/.test(ond) && /Distributieriem/.test(ond) && /laatste beurt/.test(ond), ond.slice(0, 200));
+    await app.ev(`PLZonder.sluit(); PLZonderUit.open('klacht', { klachten: ['lampje'] }); 'ok'`);
+    await rust(300);
+    toets('Er is iets mis: de klachtenwijzer begint meteen bij de eerste vraag', await app.ev(`!!document.querySelector('#plZonderOv [data-plw-a]')`));
+    await app.ev(`PLZonder.sluit(); 'ok'`);
+
+    console.log('\n2d. Alle functies: 🔌 en de adapterkaart');
+    await app.ev(`connected=false; demoMode=false; PLThuis.teken(); 'ok'`);
+    toets('zonder auto: body.pl-zonder-auto', await app.ev(`document.body.classList.contains('pl-zonder-auto')`));
+    await app.ev(`document.getElementById('wc-koop').click(); 'ok'`);
+    await rust(300);
+    toets('Koop-check zonder adapter: de adapterkaart met het papierenrapport', await app.ev(zichtbaar('#pluPoort')) && await app.ev(zichtbaar('#pluAlternatief')));
+    await app.ev(`PLZonder.sluit(); 'ok'`);
+    await app.ev(`document.getElementById('wc-liveexpert').click(); 'ok'`);
+    await rust(300);
+    toets('TEGENPROEF: Meekijken als expert mag zonder adapter (geen kaart)', !(await app.ev(zichtbaar('#pluPoort'))));
+    await app.ev(`try{ PLRemote.sluitExpert && PLRemote.sluitExpert(); }catch(e){} document.querySelectorAll('.ov:not(.hidden)').forEach(function(o){ if(o.id!=='loginOv') o.classList.add('hidden'); }); 'ok'`);
+    await app.ev(`demoMode=true; PLThuis.teken(); document.getElementById('wc-onderhoud').click(); 'ok'`);
+    await rust(300);
+    toets('TEGENPROEF: in de demo opent de kaart gewoon', !(await app.ev(zichtbaar('#pluPoort'))) && !(await app.ev(`document.body.classList.contains('pl-zonder-auto')`)));
+    await app.ev(`try{ closeExtraDash('onderhoudDash'); }catch(e){} demoMode=false; 'ok'`);
+
     console.log('\n3. De tegenproeven');
     await plan();
     await app.ev(`demoMode = true; PLWizard.draai('dtc'); 'ok'`);

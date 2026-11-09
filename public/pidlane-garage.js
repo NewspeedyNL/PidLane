@@ -2675,6 +2675,8 @@
     dossier: dossier,
     dossierBewaar: dossierBewaar,
     actief: actief,
+    // De tankbeurten van een voertuig, voor PLZonderUit (verbruik zonder adapter).
+    tanken: async function (vid) { await laad(vid, 'tanken'); return cacheVan(vid).tanken || []; },
     // De status van één voertuig (APK, open punten, accu …) voor het startscherm (PLThuis).
     status: function (v) { return status(v); },
     foto: foto,
