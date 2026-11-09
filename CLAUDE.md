@@ -92,7 +92,7 @@ van dat bestand.
 
 **Bij elke oplevering toetst blok 5 wat er in díé update veranderd is.** Sinds
 testrun 6.6 is dat een lijst en geen functie: voeg een entry toe aan
-`PROEVEN_B5` in `pidlane-testrun.js`, of haal er een weg. Elke entry draagt
+`PROEVEN_B5` in `pidlane-proeven.js` (tot 08-11-2026 in `pidlane-testrun.js`), of haal er een weg. Elke entry draagt
 `issue`, `naam`, `waarom` en `proef`; `_blok5()` eronder loopt de lijst af en
 verandert niet mee. Zie §20 van `PIDLANE.md`.
 

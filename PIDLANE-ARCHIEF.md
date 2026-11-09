@@ -42,6 +42,17 @@ banner weg is) is weg.
 **Niet gemeten.** Wat het scheelt in batterij: dat is de Android-statistiek
 over 30 minuten Hyperlane, vóór en na, en dus een rit.
 
+**#690: waarom niet de hele testrun uitgesteld.** Het issue stelde voor
+`pidlane-testrun.js` pas te laden bij het openen. Maar in hetzelfde bestand
+staan `PLRit` en `PLBudget`, die `pidlane-bt.js`, `pidlane-plload.js`,
+`pidlane-aanlevering.js` en de achtergrondmeting vanaf de boot gebruiken, en
+`PLTestrunLive` (de sessiehartslag vraagt er het ritnummer). Wat wél alleen
+de testrun nodig heeft is de proevenlijst: 537 KB van de 866. Die is
+verplaatst (eigen commit, mechanisch) en wordt nu op verzoek geladen. Twee
+valkuilen: `CAMPAGNE` las de lijst al bij het laden (de dekkingsregel), en
+twee proeven lazen `_markeringen`/`_trHerstel` rechtstreeks — een kopie bij
+het laden zou de waarde van dat moment vasthouden, vandaar functies in `T`.
+
 ## 08-11-2026 (avond) — Stil verbinden tegen de oude strategie: de kentekenpoort was een mens
 
 **De vraag.** Wizard, nieuwe volgorde, sensoren per voertuig, kenteken en VIN

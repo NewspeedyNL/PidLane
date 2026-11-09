@@ -64,7 +64,7 @@ function toets(naam, waar, uitleg) {
     toets('PLRust is er', b.er);
     const scherm = (b.taken || []).filter(t => !t.meet).map(t => t.naam).sort().join(',');
     const meetN = (b.taken || []).filter(t => t.meet).map(t => t.naam);
-    const VERWACHT = ['ai-ping', 'bulkdashboard', 'grafiek', 'help', 'herinneringen', 'monitorchip', 'monitorknop', 'onderbalk', 'run-stip', 'startscherm', 'topbar', 'weer', 'weer-opstart', 'winterkaart', 'zonder-adapter'];
+    const VERWACHT = ['ai-ping', 'bulkdashboard', 'grafiek', 'help', 'herinneringen', 'monitorchip', 'monitorknop', 'onderbalk', 'run-stip', 'scherm-aan', 'startscherm', 'topbar', 'weer', 'weer-opstart', 'winterkaart', 'zonder-adapter'];
     toets('de schermtimers hangen eraan', scherm === VERWACHT.join(','), scherm);
     toets('de meettimers ook (versnelling, telemetrie, berekend, garage, accu)', ['versnelling', 'telemetrie', 'berekend', 'garage', 'accu'].every(x => meetN.indexOf(x) >= 0), meetN.join(','));
     toets('en ze lopen', (b.taken || []).every(t => t.loopt), JSON.stringify(b.taken));
@@ -114,6 +114,13 @@ function toets(naam, waar, uitleg) {
       document.dispatchEvent(new Event('visibilitychange'));
       return uit;
     })()`);
+    // Niet alleen wat binnen 6,5 s afgaat: ook een levende gewone timer van
+    // 15 of 30 s telt. Zo glipte de scherm-aan-timer (15 s) er eerst door.
+    const levend = await app.ev(`(function(){ const uit = {};
+      Object.keys(window.__plIv).forEach(function(k){ const x = window.__plIv[k]; if (!x.weg && x.waar !== 'pidlane-rust.js') uit[x.waar] = (uit[x.waar] || 0) + 1; });
+      return uit; })()`);
+    const vast = Object.keys(levend).filter(f => !MAG_UIT_BEELD[f]);
+    toets('geen levende gewone setInterval buiten MAG_UIT_BEELD (ook geen trage)', vast.length === 0, vast.map(f => f + ' ×' + levend[f]).join(', '));
     const stil = await tel(false, true);
     const teVeel = Object.keys(stil).filter(f => !MAG_UIT_BEELD[f]);
     toets('zonder verbinding: geen timer buiten MAG_UIT_BEELD', teVeel.length === 0, teVeel.map(f => f + ' ×' + stil[f]).join(', '));

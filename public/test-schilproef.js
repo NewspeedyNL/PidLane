@@ -83,6 +83,8 @@ function bouw(o) {
   // na: een index.html waar de scripttag ontbreekt.
   if (!o.zonderSchil)
     vm.runInContext(fs.readFileSync(__dirname + '/pidlane-schil.js', 'utf8'), s, { filename: 'pidlane-schil.js' });
+  // De proeven van blok 5 staan sinds 08-11-2026 in een eigen bestand (#690); CAMPAGNE leest ze bij het laden.
+  vm.runInContext(fs.readFileSync(require('path').join(__dirname, 'pidlane-proeven.js'), 'utf8'), s, { filename: 'pidlane-proeven.js' });
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-testrun.js', 'utf8'), s, { filename: 'pidlane-testrun.js' });
   if (!s.PLBlok5) { console.error('FOUT: PLBlok5 niet geladen'); process.exit(1); }
   return s;

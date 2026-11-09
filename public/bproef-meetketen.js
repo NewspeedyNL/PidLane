@@ -138,6 +138,7 @@ function toets(naam, waar, uitleg) {
     // "Opvallende metingen: 0105 uiterste 200" rapporteert. De vraag gaat over
     // wat twee modules bij elkáár achterlaten, en dat is per definitie niet te
     // zien als je er één uit zijn verband knipt.
+    await app.ev(`PLBlok5.laad().then(function(){ return true; })`);   // sinds 08-11-2026 op verzoek (#690)
     const sporen = await app.ev(`(function(){
       const naam = ['Laag 1 houdt een fysiek onmogelijke waarde tegen',
                     'De meting van de auto komt ongewijzigd bij de opslag aan'];

@@ -99,6 +99,8 @@ function bouw() {
 
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-achtergrond.js', 'utf8'),
     s, { filename: 'pidlane-achtergrond.js' });
+  // De proeven van blok 5 staan sinds 08-11-2026 in een eigen bestand (#690); CAMPAGNE leest ze bij het laden.
+  vm.runInContext(fs.readFileSync(__dirname + '/pidlane-proeven.js', 'utf8'), s, { filename: 'pidlane-proeven.js' });
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-testrun.js', 'utf8'),
     s, { filename: 'pidlane-testrun.js' });
   if (!s.PLBlok5) { console.error('FOUT: PLBlok5 niet gevonden'); process.exit(1); }

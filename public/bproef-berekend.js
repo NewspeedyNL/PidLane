@@ -89,6 +89,7 @@ function toets(naam, waar, uitleg) {
     await app.ev(`PLBerekend._nieuweSessie(); true`);
     const b5 = await app.ev(`(async function(){
       const namen = ['beeld-in-beeld', 'Slim visueel houdt', 'trekmodus toont', 'versnellingsindicator herkent', 'Berekende PIDs gaan', 'responstijd van de adapter'];
+      await PLBlok5.laad();   // sinds 08-11-2026 pas op verzoek geladen (#690)
       const lijst = PLBlok5.proeven(), uit = [];
       for (const n of namen) {
         const p = lijst.find(function (x) { return x.naam.indexOf(n) >= 0; });

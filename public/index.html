@@ -2221,7 +2221,9 @@ window.PLWake=(function(){
   // in beeld meteen opnieuw claimen zodat de sessie doorloopt.
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync();});
   // Fix 19-07: handle + guard tegen dubbele wakelock-sync bij herstart.
-  if(!window._wakeSyncTimer) window._wakeSyncTimer=setInterval(sync,15000);   // vangnet: status elke 15s her-evalueren
+  // Alleen in beeld (PLRust, #691): uit beeld neemt het OS de lock toch af, en
+  // terug in beeld draait PLRust hem meteen. Ving bproef-rust.js in CI.
+  if(!window._wakeSyncTimer) window._wakeSyncTimer=window.PLRust ? PLRust.elke(15000,sync,'scherm-aan') : setInterval(sync,15000);   // vangnet: status elke 15s her-evalueren
   try{ // direct reageren op verbinden/verbreken
     if(typeof setConn==='function'){const _s=setConn;
       setConn=function(on){const r=_s.apply(this,arguments);try{sync();}catch(_){console.warn('Scherm-aan niet bijgewerkt na setConn',_);}return r;};

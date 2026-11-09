@@ -299,7 +299,8 @@ inline CSS en ~8,5 KB inline bootstrap-JS. Die changelog is op 28-08-2026 naar
 | 46i | `pidlane-schema.js` | 10 | `PLSchema` — **het onderhoudsschema van dit model** (#490, 14-10-2026). Op een tik onder de kenteken-check (`PLWijzer._schema()`): de AI (`apiFetch`, `{meet:false}`) geeft per onderdeel van `PLConditie.ONDERDELEN` een interval in een `<schema>`-blok; `lees()` houdt alleen bekende id's en zinnige intervallen over. Gelabeld als niet geverifieerd, alleen met tegoed (`geenToegang()`; niet in de demo), lokaal bewaard onder `pl_schema_<sleutel()>` per merk, model, bouwjaar, brandstof en cc. Het olie-interval gaat via `PLGarage.zetInterval()` naar `onderhoud_interval_km/mnd`. Hangt ná `pidlane-wijzer.js`. Test: `test-schema.js`, blok 5 |
 | 47c | `pidlane-kaart.js` | 27 | `PLKaart` — de datapuntenkaart. **Neemt de verbinding over**: busslot met `PLBus.raak()`-hartslag, `ATH1`, `ATAT0`, korte `ATST`, en zet alles in een `finally` terug. Ontdekt stuurapparaten door de sweep 700-7FF (of 18DAxxF1 bij 29-bit) en leest het antwoordadres **uit de header**, niet uit zender+8. Enumereert daarna per module de mode 01/06/09-bitmaps, de mode 22-identifiers uit een getrapte lijst, en mode 21. Tweede pas markeert wat beweegt. `magVerzenden()` is één leespoort: niets dat schrijft komt erdoor. Knop in het testrunpaneel (blok 15) |
 | 48 | `pidlane-export.js` | 20 | `plOpslaan`/`plMaakPdf` — jsPDF in huisstijl |
-| 49 | `pidlane-testrun.js` | 76 | één knop, één rit, één logboek. Vervangt busdiag/zelftest/opdracht/diagbundel/logscherm/copiloot — zie §20 |
+| 49 | `pidlane-testrun.js` | 76 | één knop, één rit, één logboek. Vervangt busdiag/zelftest/opdracht/diagbundel/logscherm/copiloot — zie §20. Sinds 08-11-2026 (#690) zonder de proeven van blok 5: `proevenB5()` maakt de lijst uit `pidlane-proeven.js`, `laadProeven()` haalt dat bestand pas op als de testrun opent, blok 5 draait of de meetkamer erom vraagt. `CAMPAGNE.vragen` is een getter (de dekkingsregel komt uit de lijst). Een zandbak laadt `pidlane-proeven.js` zelf vóór de testrun |
+| 49a | `pidlane-proeven.js` | — | `PLProevenB5(T)` — **de proeven van blok 5** (`PROEVEN_B5`, 537 KB). Geen script-tag in `index.html`: de testrun laadt hem op verzoek. `T` levert wat de proeven uit de testrun nodig hebben; `T.markeringenRuw()` en `T.trHerstel()` zijn functies omdat ze tijdens een run veranderen. Een nieuwe proef komt hier bovenaan (CLAUDE.md). Tests: `test-blok5lijst.js`, `bproef-meetkamer.js` 1, `bproef-opstartlast.js` |
 | 50 | `pidlane-logboek.js` | 16 | `PLLogboek` — voegt vier logbronnen samen in één tijdlijn: `log()` (500 regels, via `plLokaalLog()`), `btDiag()` (1400, met kopie in localStorage), de diagbundel-ring (400) en de live-log-spiegel. Kebab → Logboek. **Trekt** data op bij openen; hangt zich niet in `log()` of `btDiag()` — die codebase heeft al één laag wrappers (`pidlane-remote.js`) en een tweede zou broncode-inspectie onbruikbaar maken |
 | 51 | `pidlane-privacy.js` | 12 | `PLPrivacy` — prominente Bluetooth-disclosure vóór `connectSerial()`, plus privacyscherm in het menu. Play Store-eis, zie `ANDROID-PLAYSTORE.md` |
 | 52 | `pidlane-start.js` | 20 | `PLStart` — startscherm: adapterprofielen per type, geheugen van eerdere verbindingen, verbindingscascade als live voortgang. Stuurt óók de ketenvolgorde in `connectSerial()` |
@@ -1922,7 +1923,7 @@ en §11 van dit bestand op 02-09; blok 5 was hem aan het overdoen. De vorm van d
 fout is elke keer dezelfde: twee plekken die hetzelfde beweren, waarvan er één
 stil veroudert.
 
-Nu is elke proef een entry in `PROEVEN_B5`:
+Nu is elke proef een entry in `PROEVEN_B5` (sinds 08-11-2026 in `pidlane-proeven.js`, een fabriek die de testrun pas aanroept als iemand de lijst vraagt — #690):
 
 ```js
 {

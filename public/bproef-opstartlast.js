@@ -35,6 +35,9 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('pidlane-assets.js wordt niet meer geladen', !app.verzoeken.some(p => /pidlane-assets\.js$/.test(p)), app.verzoeken.filter(p => /assets/.test(p)).join(','));
     toets('de bandenfoto ook niet', !app.verzoeken.some(p => /banden-euromunt\.webp$/.test(p)));
     toets('geen 205 KB base64 meer in de pagina', await app.ev(`typeof window.BANDEN_IMG === 'undefined'`));
+    toets('de proeven van blok 5 (537 KB) ook niet', !app.verzoeken.some(p => /pidlane-proeven\.js$/.test(p)));
+    const kb = await app.ev(`Math.round(performance.getEntriesByType('resource').filter(function(r){ return /\\.js(\\?|$)/.test(r.name); }).reduce(function(s, r){ return s + (r.decodedBodySize || 0); }, 0) / 1024)`);
+    console.log('  ·   scripts bij de boot: ' + kb + ' KB');
 
     console.log('\n2. De bandencheck');
     await app.ev(`showBandenInfo(); 'ok'`);

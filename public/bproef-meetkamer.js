@@ -52,6 +52,12 @@ function toets(naam, waar, uitleg) {
   try {
     console.log('\n1. De modules kennen elkaar na een echte boot');
     toets('PLMeetkamer bestaat', await app.ev(`!!window.PLMeetkamer`));
+    // #690: de proeven (537 KB) laden pas op verzoek, niet bij de boot.
+    toets('na de boot zijn de proeven NIET geladen (#690)', await app.ev(`typeof window.PLProevenB5 === 'undefined'`));
+    toets('en pidlane-proeven.js is niet opgevraagd', !app.verzoeken.some(p => /pidlane-proeven\.js$/.test(p)));
+    toets('TEGENPROEF: zonder laden is de lijst nog leeg — een weergave, geen oordeel', (await app.ev(`PLTestrunLive.proeven().length`)) === 0);
+    toets('laadProeven() haalt hem op', await app.ev(`PLTestrunLive.laadProeven().then(function(l){ return l.length > 0; })`));
+    toets('één keer, ook bij twee vragen tegelijk', await app.ev(`Promise.all([PLTestrunLive.laadProeven(), PLTestrunLive.laadProeven()]).then(function(){ return document.querySelectorAll('script[src="pidlane-proeven.js"]').length === 1; })`));
     toets('PLTestrunLive leent zijn proevenlijst uit',
       await app.ev(`typeof PLTestrunLive.proeven === 'function' && PLTestrunLive.proeven().length > 0`));
     toets('en die lijst draagt issue én naam',

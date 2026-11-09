@@ -59,6 +59,8 @@ function laad() {
     static now() { return s._klokNu; }
   };
   vm.createContext(s);
+  // De proeven van blok 5 staan sinds 08-11-2026 in een eigen bestand (#690); CAMPAGNE leest ze bij het laden.
+  vm.runInContext(fs.readFileSync(require('path').join(__dirname, 'pidlane-proeven.js'), 'utf8'), s, { filename: 'pidlane-proeven.js' });
   vm.runInContext(fs.readFileSync('pidlane-testrun.js', 'utf8'), s, { filename: 'pidlane-testrun.js' });
   if (!s.PLRit || !s.PLTestrunLive) {
     console.log('  FOUT  PLRit of PLTestrunLive niet gevonden in pidlane-testrun.js');
