@@ -2797,6 +2797,9 @@ MUTATIES=(
 "public/pidlane-wizard.js@@  if(heeft('koud') || heeft('vocht') || heeft('soms')) return 'monitor';@@  if(heeft('koud') || heeft('vocht')) return 'monitor';@@test-wizardtakken.js@@wie zegt dat het onvoorspelbaar is, krijgt weer een stilstaande meting in plaats van meelopen"
 "public/pidlane-wizard.js@@ var c = m[1].toUpperCase(); if(r.indexOf(c)<0) r.push(c);@@ var c = m[1]; if(r.indexOf(c)<0) r.push(c);@@test-wizardtakken.js@@een getypte p0171 gaat in kleine letters naar het onderzoek en past op geen enkele coderegel"
 "public/pidlane-wizard.js@@wanneer: (job.wanneer||[]).filter(function(w){ return !WANNEER_EXTRA[w]; }),@@wanneer: [],@@bproef-onderzoek.js@@het moment uit de wizard komt niet meer aan in het onderzoek"
+"public/pidlane-wizard.js@@    if(adapterNodig(k)){ toonAdapterNodig(k); return; }\n@@@@bproef-zonderadapter.js@@zonder adapter verzamelt de sensorcontrole weer 0 sensoren in 0 s en meldt een verbroken verbinding"
+"public/pidlane-wizard.js@@    if(adapterNodig()){ toonAdapterNodig(null); return; }\n@@@@bproef-zonderadapter.js@@Beginnen zonder adapter start weer een meting zonder auto"
+"public/pidlane-wizard.js@@function adapterNodig(k){ return !(k && ZONDER_ADAPTER[k]) && !heeftAuto(); }@@function adapterNodig(k){ return !(k && ZONDER_ADAPTER[k]); }@@bproef-zonderadapter.js@@ook in de demo en verbonden houdt de adapterkaart de module tegen"
 # ── #443 ronde 2: alle analyses via het scherm, de rit en de datalog als bron.
 "public/pidlane-verzamel.js@@    if (!bron && o.ritBron !== false) { bron = ritVanZojuist(eis); ritBron = !!bron; }@@@@test-verzamel.js@@na een rijtest meet het scherm opnieuw over de laatste minuten in plaats van de rit te nemen"
 "public/pidlane-verzamel.js@@    if (!b || !getal(b.eind) || Date.now() - b.eind > RIT_GELDIG_MS) return null;@@    if (!b) return null;@@test-verzamel.js@@een rit van een uur geleden telt nog als de meting van nu"

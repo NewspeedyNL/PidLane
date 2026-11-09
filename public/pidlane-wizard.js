@@ -293,6 +293,37 @@ var MODULE_FEAT = {
   trekken:'feat_caravan', langerit:'feat_langerit', klimaat:'feat_seizoen',
   accu:'feat_ev', evaccu:'feat_ev'
 };
+/* ZONDER ADAPTER (09-11-2026). Alle modules hierboven meten aan de auto.
+   Zonder verbinding liep elke module zijn eigen weg: de sensorcontrole
+   "verzamelde" 0 sensoren in 0 s en meldde een verbroken verbinding, vijf
+   andere wisselden stil van tabblad, alleen de accucheck zei "verbind eerst".
+   Nu één poort, in draai() én start(): zonder auto een kaart met wat er
+   nodig is, wat zonder adapter al kan, en de weg terug naar het plan. Het
+   plan blijft staan; na het verbinden staat alles vrij.
+   Uitzondering, met reden: diep begint met een vragenlijst die zonder auto
+   zinvol is; het opnemen daarna vraagt zelf om de verbinding. */
+var ZONDER_ADAPTER = { diep:1 };
+function heeftAuto(){
+  return veilig(function(){ return !!((typeof connected!=='undefined' && connected) || (typeof demoMode!=='undefined' && demoMode) || window._remoteVehicleMode); }, false);
+}
+function adapterNodig(k){ return !(k && ZONDER_ADAPTER[k]) && !heeftAuto(); }
+function toonAdapterNodig(k, naam){
+  var M = k ? MODULES[k] : null;
+  var wat = naam || (M ? M.n : (METING[job.meting] || METING.stil).n);
+  var knop = function(t, d, on){ return '<div class="wz-plan-item"><b>'+t+'</b><span>'+d+'</span><button class="wz-mod-run" onclick="'+on+'">Openen</button></div>'; };
+  el('wzBody').innerHTML =
+    '<div class="wz-vraag" id="wzAdapterNodig">Hiervoor is de adapter nodig</div>'+
+    '<div class="wz-sub">'+esc(wat)+' leest de auto uit via de OBD-adapter. Je plan blijft staan: na het verbinden kun je hier meteen verder.</div>'+
+    '<div class="wz-plan-item" style="border-color:var(--bl,#3b82f6)"><b>⚡ Verbind je adapter</b><span>Adapter in de OBD-poort, contact aan.</span>'+
+      '<button class="wz-mod-run" id="wzVerbind" onclick="PLWizard.verbind()">Verbinden</button></div>'+
+    '<div class="wz-plan-kop">Wat zonder adapter al kan</div>'+
+    (job.doel==='handel' ? knop('🔎 De papieren van de auto', 'APK, tellerstand, terugroepacties en techniek uit het RDW', 'PLWizard.zonder(\'kenteken\')') : '')+
+    (job.doel!=='handel' ? knop('🔎 Kenteken-check', 'APK, verzekering, NAP en terugroepacties', 'PLWizard.zonder(\'kenteken\')') : '')+
+    knop('🔢 Foutcode opzoeken', 'Wat betekent een code van de garage', 'PLWizard.zonder(\'foutcode\')')+
+    knop('◇ Probeer het in de demo', 'Hetzelfde, met een gesimuleerde auto. Er wordt niets bewaard.', 'PLWizard.zonder(\'simuleer\')');
+  el('wzFoot').innerHTML = '<button class="wz-sec" id="wzNaarPlan" onclick="PLWizard.terugNaarPlan()">← Terug naar het plan</button>';
+}
+
 function moduleAan(k){
   var f = MODULE_FEAT[k];
   if(!f || typeof featOn!=='function') return true;
@@ -685,6 +716,7 @@ function toonPlan(){
                 : 'Op basis van je antwoorden. Je kunt hier nog terug.')+
           '</div>'+
           samenvatting()+
+          (heeftAuto() ? '' : '<div class="wz-sub" id="wzZonderAdapter">🔌 Nog geen adapter verbonden. Je kunt alles klaarzetten; meten kan zodra je verbonden bent.</div>')+
           // Geen klacht: de algemene check (de totaalcheck) staat bovenaan.
           (job.doel==='storing' && job.controle && MODULES.conditie && moduleAan('conditie') ?
             '<div class="wz-plan-item" id="wzAlgemeen" style="border-color:#22d3ee"><b>🚦 Brede controle van de hele auto</b>'+
@@ -755,7 +787,17 @@ window.PLWizard = {
   },
   // Het volledige onderzoek (#428) krijgt de antwoorden mee; de wizard gaat
   // dicht, want het onderzoek heeft zijn eigen plan.
+  /* De twee uitwegen van de adapterkaart. */
+  verbind: function(){
+    this.sluitStil();
+    veilig(function(){ if(typeof plVerbindOpen==='function') plVerbindOpen(); else el('connOv').classList.remove('hidden'); });
+  },
+  zonder: function(w){
+    this.sluitStil();
+    veilig(function(){ if(window.PLZonder && typeof PLZonder[w]==='function') PLZonder[w](); });
+  },
   onderzoek: function(){
+    if(adapterNodig()){ toonAdapterNodig(null, 'Het volledige onderzoek'); return; }
     var ov=el('wizardNieuwOv'); if(ov) ov.style.display='none';
     actief=false; chipTick();
     PLOnderzoek.open({ klacht: job.klacht, klachten: job.klachten, wanneer: (job.wanneer||[]).filter(function(w){ return !WANNEER_EXTRA[w]; }),
@@ -874,6 +916,7 @@ window.PLWizard = {
   draai: function(k){
     var M=MODULES[k]; if(!M) return;
     var self=this;
+    if(adapterNodig(k)){ toonAdapterNodig(k); return; }
     var open=function(){
       actief=true; gedaan[k]=true;
       self.sluitStil();
@@ -907,6 +950,7 @@ window.PLWizard = {
   },
   start: function(){
     var meting = METING[job.meting] || METING.stil;
+    if(adapterNodig()){ toonAdapterNodig(null); return; }
     // Klacht doorgeven aan de AI-laag zodat de analyse er meteen op slaat.
     if(job.klacht) veilig(function(){ window._wizKlacht = job.klacht; });
     if(job.doel==='handel') koopVoorbereiden(job);
@@ -958,7 +1002,7 @@ window.PLWizard = {
   _actief: function(){ return actief; },
   _gedaan: function(){ return Object.keys(gedaan); },
   _boom: BOOM,
-  _kern: { codesUit: codesUit, metingUit: metingUit, lampjeUit: lampjeUit, WANNEER_EXTRA: WANNEER_EXTRA }, _modules: MODULES, _takken: TAKKEN, _feat: MODULE_FEAT
+  _kern: { adapterNodig: adapterNodig, ZONDER_ADAPTER: ZONDER_ADAPTER, codesUit: codesUit, metingUit: metingUit, lampjeUit: lampjeUit, WANNEER_EXTRA: WANNEER_EXTRA }, _modules: MODULES, _takken: TAKKEN, _feat: MODULE_FEAT
 };
 
 })();

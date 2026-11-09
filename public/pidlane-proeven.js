@@ -38,6 +38,21 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Zonder adapter: een uitweg tijdens verbinden, een kaart in de wizard (09-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Verbinden heeft een knop Stoppen; zonder adapter toont de wizard bij elke meetmodule één kaart (verbinden, Kenteken-check, demo) in plaats van een lege meting',
+    waarom: 'Achter het doek van de verbindstrook was niets meer aan te raken, en zonder adapter "verzamelde" de sensorcontrole 0 sensoren in 0 s terwijl vijf andere modules stil van tabblad wisselden.',
+    proef: async function () {
+      if (typeof window.plVerbindStop !== 'function' || !window.PLStrook || typeof PLStrook._stop !== 'function') return { staat: 'FOUT', detail: 'plVerbindStop of PLStrook._stop ontbreekt — herladen?' };
+      if (!window.PLWizard || !PLWizard._kern || typeof PLWizard._kern.adapterNodig !== 'function') return { staat: 'FOUT', detail: 'PLWizard._kern.adapterNodig ontbreekt — oude pidlane-wizard.js?' };
+      if (PLWizard._kern.adapterNodig('diep')) return { staat: 'FOUT', detail: 'de vragenlijst van Storing vangen wordt tegengehouden' };
+      var auto = !!(connected || demoMode);
+      if (PLWizard._kern.adapterNodig('systeem') === auto) return { staat: 'FOUT', detail: 'de poort volgt de verbinding niet (verbonden of demo: ' + auto + ')' };
+      return { staat: 'OK', detail: auto ? 'verbonden: de modules staan vrij' : 'niet verbonden: de wizard toont de adapterkaart' };
+    }
+  },
+
   // ── Lichter opstarten (#690, 08-11-2026) ──
   {
     issue: '#690',

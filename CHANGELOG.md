@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-11-2026 (avond) — Zonder adapter: plannen kan, meten wacht op de adapter
+ ═══════════════════════════════════════════════════════════
+
+ - Er is iets mis, Rit starten, Kopen of verkopen en Voorbereiden werken
+   zonder adapter tot en met het plan. Wie dan iets start dat meet, krijgt
+   één kaart: Verbinden, wat zonder adapter al kan (Kenteken-check, Foutcode
+   opzoeken, demo) en terug naar het plan. Voorheen verzamelde de
+   sensorcontrole 0 sensoren in 0 s en wisselden vijf modules stil van tab.
+
+ ═══════════════════════════════════════════════════════════
  09-11-2026 (avond) — RR-formulier: één nette regel per sensor
  ═══════════════════════════════════════════════════════════
 

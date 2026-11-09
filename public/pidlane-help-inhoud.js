@@ -108,6 +108,7 @@ var PL_HULP = {
         '<li><b>Er is iets mis</b> — kies wat je merkt, beantwoord een paar vragen en zie wat het waarschijnlijk is, en wat een adapter zou meten.</li>' +
         '<li><b>Lampje brandt?</b> — wat een dashboardlampje betekent en of je mag doorrijden. Met <b>Foto van het dashboard</b> wijst de AI het lampje aan (kost tegoed; de foto wordt niet bewaard).</li>' +
         '<li><b>Foutcode opzoeken</b> — bijvoorbeeld P0301. Dit staat in de app zelf.</li>' +
+        '<li><b>Plannen kan altijd</b> — de vragen onder Snel naar beantwoord je ook zonder adapter, en je plan blijft staan. Tik je op <b>Starten</b> bij iets dat meet, dan zegt de app dat daarvoor de adapter nodig is en wat je intussen al kunt doen.</li>' +
         '<li><b>Simuleer verbinding</b> — alles proberen, er wordt niets bewaard.</li>' +
         '</ul>' +
         '<p>Onder de kenteken-check staan ook de <b>milieuklasse</b> (brandstof en emissieklasse, met een link naar milieuzones.nl), een schatting van de <b>kosten per maand</b> (wegenbelasting en brandstof), het <b>onderhoudsschema</b> van dit model (de AI zoekt het op; kost tegoed, niet geverifieerd) en of er een <b>adapter past</b>.</p>' +
